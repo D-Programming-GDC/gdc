@@ -1,0 +1,125 @@
+D Front End for GCC - Release 0.24
+
+Last update: August 22, 2007
+
+Release Notes for 0.24
+  * Removed support for GCC 3.3.x
+  * Updated to DMD 1.020
+  * Fixed Bugzilla 1037, 1038 (gdc specific), 1043, 1045, 1046,
+    1031, 1032, 1034, 1065, 1109, 1191, 1137, 1152, 1208, 1325,
+    1329, 1898, 1400
+  * Fixed SourceForge issues 1689634, 1749622, 1721496, 1721435
+
+Supported Systems
+
+    * GCC 3.4.x, 4.0.x, 4.1.x
+    * Linux (tested on Fedora Core 5 x86, x86_64, and PowerPC)
+    * Mac OS X 10.3.9 and 10.4.x
+    * FreeBSD 6.x
+    * Cygwin
+    * MinGW
+    * AIX (tested on 5.1)
+
+Similar versions of the above systems should work and other Unix
+platforms may work.  Although the compiler will probably work on most
+architectures, the D runtime library will still need to be
+updated to support them.
+
+Requirements
+    * The base developer package for your system.  Generally, this
+      means binutils and a C runtime library.
+    * The MacOS X universal binary package requires XCode 2.4.1 or the
+      equivalent version of cctools.
+    * The gdmd wrapper script requires Perl.
+
+Downloads
+
+    * Main package
+      http://sourceforge.net/projects/dgcc
+    * Build Instructions
+      http://dgcc.sourceforge.net/gdc/install.html
+      (or see INSTALL included in the main package)
+
+Links
+
+    * This Project -- http://dgcc.sourceforge.net/
+    * The D Programming Language -- http://www.digitalmars.com/d/
+    * D Links Page -- http://digitalmars.com/d/dlinks.html
+    * The D.gnu newsgroup -- news://news.digitalmars.com/D.gnu
+    * For general D discussion, the digitalmars.D and
+      digitalmars.D.bugs newsgroups
+    * The GNU Compiler Collection -- http://gcc.gnu.org/
+    * Mac OS X binary distribution -- http://gdcmac.sourceforge.net/
+
+Contact
+David Friedman
+e-mail: dvdfrdmn@users.sf.net
+
+Status
+
+Known Issues
+    * See the DStress (http://svn.kuehne.cn/dstress/www/dstress.html)
+      page for known failing cases.
+    * Debugging information may have a few problems.  To enable D name
+      mangling in gdb, apply this patch.
+      (http://dsource.org/projects/gdb-patches/)
+    * Some targets do not support once-only linking which is needed
+      for templates to work smoothly. A workaround is to manually
+      control template emission.  See the -femit-templates option
+      below.  For Darwin, Apple's GCC 3.x compiler supports one-only
+      linking, but GDC does not build with those sources.  There are
+      no problems with the stock GCC 4.x on Darwin.
+    * Complex floating point operations may not work the same as DMD.
+    * Some math functions behave differently due to different
+      implementations of the extended floating-point type.
+    * Volatile statements may not always do the right thing.
+    * Because of a problem on AIX, the linker will pull in more
+      modules than needed.
+      See: http://groups-beta.google.com/groups?hl=en&q=%22large+executables+on+AIX%22&qt_s=Search
+    * Some C libraries (Cygwin, MinGW, AIX) don't handle
+      floating-point formatting and parsing in a standard way.
+
+Known Differences from DMD
+
+    * The type of _argptr in variadic functions is the target-specific
+      va_list type.  The only portable way to use _argptr is the
+      std.stdarg.va_arg template.  In particular, you cannot construct
+      a va_list from a pointer to data and expect it to work.
+    * In assembler code, direct access to parameters in naked
+      functions works differently.  Frame relative addressing through
+      [ESP+4] does work the same way.
+    * Currently, GDC uses the C calling convention for all functions
+      except those declared extern (Windows).
+    * GDC allows catch statements in finally blocks.
+    * pragma(lib) is not supported.
+    * Some targets do not have a distinct extended floating-point
+      type.  On these targets, real and double are the same size.
+    * On Win32 targets, GDC allocates 12 bytes for the real type, while
+      DMD allocates 10 bytes. This also applies to the components of
+      the creal type.
+
+Inline Assembler Notes
+
+    * Getting GCC to respect the "naked" attribute is difficult.  It
+      is recommended that you use only assembler statements in a naked
+      function.
+    * Jumps from assembler statements will not run cleanups (auto and
+      finally)
+
+See GDC.html for more information
+
+License
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA

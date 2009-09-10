@@ -1,0 +1,8 @@
+// gcc/config.d is a generated file
+module gcc.config;
+
+private import gcc.builtins;
+private import gcc.configext;
+
+alias __builtin_Clong Clong_t;
+alias __builtin_Culong Culong_t;

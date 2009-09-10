@@ -1,0 +1,137 @@
+
+// TODO: configurate ?  This is a real mess...
+version (linux) {
+    version(X86)
+	version = Use_FP_Math;
+    else version(X86_64)
+	version = Use_FP_Math;
+    else version(PPC)
+	version = Use_FP_Math;
+    else version(PPC64)
+	version = Use_FP_Math;
+    else version(SPARC)
+	version = Use_FP_Math;
+    else version(SPARC64)
+	version = Use_FP_Math;
+    // any system using IEEE FP is fine, just not listed
+
+} else version (darwin) {
+    // could use direct ieee stuff, but long double/real is a problem
+  extern (C) {
+      // the 'real' versions are declared, but do not actually exist...
+      int __isnand(double);
+      int __isnanf(float);
+      int __isnan(real);
+      int __isfinited(double);
+      int __isfinitef(float);
+      int __isfinite(real);
+      int __isnormald(double);
+      int __isnormalf(float);
+      int __isnormal(real);
+      int __fpclassifyd(double);
+      int __fpclassifyf(float);
+      int __fpclassify(real);
+      int __isinfd(double);
+      int __isinff(float);
+      int __isinf(real);
+      int __signbitd(double);
+      int __signbitf(float);
+      int __signbitl(real);
+  }
+  
+  int isnan(real x) { return __isnand(x); }
+  int isfinite(real x) { return __isfinited(x); }
+  int isnormal(real x) { return __isnormald(x); }
+  int isnormal(double x) { return __isnormald(x); }
+  int isnormal(float x) { return __isnormalf(x); }
+  int issubnormal(real x) { return __fpclassifyd(x) == FP_SUBNORMAL; }
+  int issubnormal(double x) { return __fpclassifyd(x) == FP_SUBNORMAL; }
+  int issubnormal(float x) { return __fpclassifyf(x) == FP_SUBNORMAL; }
+  int isinf(real x) { return __isinfd(x); }
+  int signbit(real x) { return __signbitd(x); }
+  int fpclassify(real x) { return __fpclassifyd(x); }    
+  int fpclassify(double x) { return __fpclassifyd(x); }    
+  int fpclassify(float x) { return __fpclassifyf(x); }    
+} else version (solaris) {
+    // for now this is a copy of the darwin stuff (and doesn't work)
+  extern (C) {
+      // the 'real' versions are declared, but do not actually exist...
+      int __isnand(double);
+      int __isnanf(float);
+      int __isnan(real);
+      int __isfinited(double);
+      int __isfinitef(float);
+      int __isfinite(real);
+      int __isnormald(double);
+      int __isnormalf(float);
+      int __isnormal(real);
+      int __fpclassifyd(double);
+      int __fpclassifyf(float);
+      int __fpclassify(real);
+      int __isinfd(double);
+      int __isinff(float);
+      int __isinf(real);
+      int __signbitd(double);
+      int __signbitf(float);
+      int __signbitl(real);
+  }
+  
+  int isnan(real x) { return __isnand(x); }
+  int isfinite(real x) { return __isfinited(x); }
+  int isnormal(real x) { return __isnormald(x); }
+  int isnormal(double x) { return __isnormald(x); }
+  int isnormal(float x) { return __isnormalf(x); }
+  int issubnormal(real x) { return __fpclassifyd(x) == FP_SUBNORMAL; }
+  int issubnormal(double x) { return __fpclassifyd(x) == FP_SUBNORMAL; }
+  int issubnormal(float x) { return __fpclassifyf(x) == FP_SUBNORMAL; }
+  int isinf(real x) { return __isinfd(x); }
+  int signbit(real x) { return __signbitd(x); }
+  int fpclassify(real x) { return __fpclassifyd(x); }    
+  int fpclassify(double x) { return __fpclassifyd(x); }    
+  int fpclassify(float x) { return __fpclassifyf(x); }    
+} else {
+    version = Use_FP_Math;
+}
+
+version (Use_FP_Math)
+{
+    import gcc.fpmath;
+
+    int isnan(real x) { return fpclassify(x)==FP_NAN; }
+    int isfinite(real x) {
+	int r = fpclassify(x);
+	return r != FP_NAN && r != FP_INFINITE;
+    }
+    int isnormal(real x) { return fpclassify(x)==FP_NORMAL; }
+    int isnormal(double x) { return fpclassify(x)==FP_NORMAL; }
+    int isnormal(float x) { return fpclassify(x)==FP_NORMAL; }
+    int issubnormal(real x) { return fpclassify(x) == FP_SUBNORMAL; }
+    int issubnormal(double x) { return fpclassify(x) == FP_SUBNORMAL; }
+    int issubnormal(float x) { return fpclassify(x) == FP_SUBNORMAL; }
+    int isinf(real x) { return fpclassify(x)==FP_INFINITE; }
+}
+
+// TODO: configure these
+private import std.c.stdio;
+extern (C) int ferror(FILE *);
+extern (C) int feof(FILE *);
+extern (C) void clearerr(FILE *);
+extern (C) void rewind(FILE *);
+extern (C) int _bufsize(FILE *);
+extern (C) int fileno(FILE *);
+
+alias __builtin_snprintf Csnprintf;
+alias __builtin_vsnprintf Cvsnprintf;
+alias __builtin_snprintf C_snprintf;
+alias __builtin_vsnprintf C_vsnprintf;
+
+version (GNU_Have_strtold)
+{
+    extern (C) real strtold(char*, char**);
+    alias strtold cstrtold;
+}
+else
+{
+    private extern (C) double strtod(char*, char**);
+    extern (D) real cstrtold(char* a, char** b) { return strtod(a, b); }
+}

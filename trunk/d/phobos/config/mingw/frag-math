@@ -1,0 +1,12 @@
+extern(C) {
+
+enum {
+  FP_NAN = 256,
+  FP_INFINITE = 1280,
+  FP_ZERO = 16384,
+  FP_SUBNORMAL = 17408,
+  FP_NORMAL = 1024,
+}
+
+}
+

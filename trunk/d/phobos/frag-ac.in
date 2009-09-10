@@ -1,0 +1,15 @@
+// frags-ac.in...
+
+@DCFG_LONG_DOUBLE_FUNCS@
+
+@DCFG_SQRTF@
+
+//   C stdio config for std.stdio
+const bool Have_fwide = @DCFG_FWIDE@;
+const bool Have_getdelim = @DCFG_HAVE_GETDELIM@;
+const bool Have_fgetln = @DCFG_HAVE_FGETLN@;
+const bool Have_fgetline = @DCFG_HAVE_FGETLINE@;
+const bool Have_Unlocked_Stdio = @DCFG_HAVE_UNLOCKED_STDIO@;
+const bool Have_Unlocked_Wide_Stdio = @DCFG_HAVE_UNLOCKED_WIDE_STDIO@;
+
+// ...frags-ac.in
