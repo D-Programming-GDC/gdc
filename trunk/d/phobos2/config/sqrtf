@@ -1,0 +1,1 @@
+alias __builtin_sqrtf sqrtf;
