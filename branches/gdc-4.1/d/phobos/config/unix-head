@@ -1,5 +1,0 @@
-module gcc.configunix;
-private import gcc.config;
-
-alias gcc.config.Coff_t off_t;
-alias gcc.config.tm tm;

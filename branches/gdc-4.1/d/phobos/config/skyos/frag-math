@@ -1,9 +1,0 @@
-// from fpmath.d
-enum
-{
-    FP_NAN = 1,
-    FP_INFINITE,
-    FP_ZERO,
-    FP_SUBNORMAL,
-    FP_NORMAL,
-}
