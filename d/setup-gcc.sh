@@ -8,18 +8,19 @@ else
 fi
 top=`pwd`
 
-# D 2.0 will be the default eventually
-#if test -d gcc/d/dmd2; then
-#    d_lang_version=2
-#else
-#    d_lang_version=1
-#fi
-
-if test -d gcc/d/dmd; then
-    d_lang_version=1
-elif test -d gcc/d/dmd2; then
+# D 2.0 is the defalt
+if test -d gcc/d/dmd2; then
     d_lang_version=2
+else
+    d_lang_version=1
 fi
+
+#D1 not default
+#if test -d gcc/d/dmd; then
+#    d_lang_version=1
+#elif test -d gcc/d/dmd2; then
+#    d_lang_version=2
+#fi
 
 
 # Read command line arguments
