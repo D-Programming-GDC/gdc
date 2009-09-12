@@ -1,2 +1,4 @@
 dev
-trunk/.project
+.cproject
+.project
+Debug

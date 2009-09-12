@@ -1,3 +1,5 @@
+0.25:
+
 0.24:
   * Removed support for GCC 3.3.x
   * Updated to DMD 1.020
@@ -31,7 +33,7 @@
   * Fixes for synchronized code generation
   * Better support for cross-hosted builds
   * Fixed Bugzilla 307, 375, 403, 575, 578
-  * Applied Anders Bjšrklund's MacOS X build patches
+  * Applied Anders Bjï¿½rklund's MacOS X build patches
 
 0.19:
   * Fixed D Bugzilla bugs 141(gdc), 157, 162, 164, 171, 174, 175, 192, 229
@@ -144,7 +146,7 @@
     * Improvements
           o Updated to DMD 0.121
           o New target: MingGW
-          o Included Anders F Bjšrklund's man pages.
+          o Included Anders F Bjï¿½rklund's man pages.
           o It is now possible to build a cross-compiler.  Only MingGW
             is supported out-of-the-box, however.
 
@@ -166,7 +168,7 @@
             longer required.
           o Inline assembler for x86 (there are some limitations --
             these need to be documented)
-          o Included Anders Bjšrklund's patches to enable the use of
+          o Included Anders Bjï¿½rklund's patches to enable the use of
             frameworks on Darwin.
           o On Darwin, D object code can be linked with the system
             gcc.  Likewise, gdc can link C++ object code built by the
@@ -188,8 +190,8 @@
           o Break in labeled switch statement
     * Improvements
           o Updated to DMD 0.110
-          o Applied Thomas KŸhne's and Anders Bjšrklund's HTML patches.
-          o Added Thomas KŸhne's "dump source" code
+          o Applied Thomas Kï¿½hne's and Anders Bjï¿½rklund's HTML patches.
+          o Added Thomas Kï¿½hne's "dump source" code
           o Phobos Makefile now supports the DESTDIR variable
 
 0.9:
@@ -197,7 +199,7 @@
     * Fixes
           o Detect use of non-static methods in a static context
           o Enumerated types are signed by default
-          o Anders Bjšrklund's patch for HTML infinite looping
+          o Anders Bjï¿½rklund's patch for HTML infinite looping
           o va_start is now a template.
           o Delegate expressions for struct methods now work
           o bswap uses unsigned right shift
