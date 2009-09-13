@@ -363,26 +363,26 @@ struct Box
                 if (type == typeid(ulong) || other.type == typeid(ulong))
                 {
                     ulong va = unbox!(ulong)(*this), vb = unbox!(ulong)(other);
-                    return va > vb ? 1 : va < vb ? -1 : 0;
+                    return va > vb ? 1.f : va < vb ? -1.f : 0.f;
                 }
                 
                 long va = unbox!(long)(*this), vb = unbox!(long)(other);
-                return va > vb ? 1 : va < vb ? -1 : 0;
+                return va > vb ? 1.f : va < vb ? -1.f : 0.f;
             }
             else if (tb == TypeClass.Float)
             {
                 real va = unbox!(real)(*this), vb = unbox!(real)(other);
-                return va > vb ? 1 : va < vb ? -1 : va == vb ? 0 : float.nan;
+                return va > vb ? 1.f : va < vb ? -1.f : va == vb ? 0.f : float.nan;
             }
             else if (tb == TypeClass.Complex)
             {
                 creal va = unbox!(creal)(*this), vb = unbox!(creal)(other);
-                return va == vb ? 0 : float.nan;
+                return va == vb ? 0.f : float.nan;
             }
             else if (tb == TypeClass.Imaginary)
             {
                 ireal va = unbox!(ireal)(*this), vb = unbox!(ireal)(other);
-                return va > vb ? 1 : va < vb ? -1 : va == vb ? 0 : float.nan;
+                return va > vb ? 1.f : va < vb ? -1.f : va == vb ? 0.f : float.nan;
             }
             
             assert (0);
