@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, September 2004
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -27,9 +33,6 @@
 
 #ifdef IN_GCC
 #include "d-gcc-real.h"
-
-/* %% fix? */
-//extern "C" bool real_isnan (const real_t *);
 #endif
 
 static real_t zero;	// work around DMC bug for now
@@ -819,11 +822,11 @@ Expression *Equal(enum TOK op, Type *type, Expression *e1, Expression *e2)
 #if __DMC__
 	cmp = (r1 == r2);
 #else
- 	#if IN_GCC
- 	if (r1.isNan() || r2.isNan())	// if unordered
- 	#else
+# if IN_GCC
+	if (r1.isNan() || r2.isNan())	// if unordered
+# else
 	if (isnan(r1) || isnan(r2))	// if unordered
-	#endif
+# endif
 	{
 	    cmp = 0;
 	}
@@ -1051,20 +1054,20 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
     {
 	if (e1->type->isfloating())
 	{   integer_t result;
-	 #ifdef IN_GCC
- 	    Type * rt = e1->type;
- 	    if (rt->iscomplex())
- 	    {
- 		switch (rt->toBasetype()->ty)
- 		{
- 		case Tcomplex32: rt = Type::tfloat32; break;
- 		case Tcomplex64: rt = Type::tfloat64; break;
- 		case Tcomplex80: rt = Type::tfloat80; break;
- 		default: assert(0);
- 		}
- 	    }
- 	    d_int64 r = e1->toReal().toInt(rt, type);
- #else
+#ifdef IN_GCC
+	    Type * rt = e1->type;
+	    if (rt->iscomplex())
+	    {
+		switch (rt->toBasetype()->ty)
+		{
+		case Tcomplex32: rt = Type::tfloat32; break;
+		case Tcomplex64: rt = Type::tfloat64; break;
+		case Tcomplex80: rt = Type::tfloat80; break;
+		default: assert(0);
+		}
+	    }
+	    d_int64 r = e1->toReal().toInt(rt, type);
+#else
 	    real_t r = e1->toReal();
 #endif
 
@@ -1326,12 +1329,12 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
 	    s = mem.malloc((len + 1) * sz);
 	    switch (sz)
- 	    {
- 		case 1: *(d_uns8*)s = v; break;
- 		case 2: *(d_uns16*)s = v; break;
- 		case 4: *(d_uns32*)s = v; break;
- 		default: assert(0);
- 	    }
+	    {
+		case 1: *(d_uns8*)s = v; break;
+		case 2: *(d_uns16*)s = v; break;
+		case 4: *(d_uns32*)s = v; break;
+		default: assert(0);
+	    }
 
 	    // Add terminating 0
 	    memset((unsigned char *)s + len * sz, 0, sz);
@@ -1383,7 +1386,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
     {
 	// Concatenate the strings
 	void *s;
-	void* sch;
+	void *sch;
 	StringExp *es1 = (StringExp *)e1;
 	StringExp *es;
 	Type *t;
@@ -1394,13 +1397,13 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 	s = mem.malloc((len + 1) * sz);
 	memcpy(s, es1->string, es1->len * sz);
 	sch = (unsigned char *)s + es1->len * sz;
- 	switch (sz)
- 	{
- 	    case 1: *(d_uns8*)sch = v; break;
- 	    case 2: *(d_uns16*)sch = v; break;
- 	    case 4: *(d_uns32*)sch = v; break;
- 	    default: assert(0);
- 	}
+	switch (sz)
+	{
+	    case 1: *(d_uns8*)sch = v; break;
+	    case 2: *(d_uns16*)sch = v; break;
+	    case 4: *(d_uns32*)sch = v; break;
+	    default: assert(0);
+	}
 
 	// Add terminating 0
 	memset((unsigned char *)s + len * sz, 0, sz);
@@ -1425,12 +1428,12 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
 	s = mem.malloc((len + 1) * sz);
 	switch (sz)
- 	{
- 	    case 1: *(d_uns8*)s = v; break;
- 	    case 2: *(d_uns16*)s = v; break;
- 	    case 4: *(d_uns32*)s = v; break;
- 	    default: assert(0);
- 	}
+	{
+	    case 1: *(d_uns8*)s = v; break;
+	    case 2: *(d_uns16*)s = v; break;
+	    case 4: *(d_uns32*)s = v; break;
+	    default: assert(0);
+	}
 	memcpy((unsigned char *)s + sz, es2->string, es2->len * sz);
 
 	// Add terminating 0
@@ -1462,19 +1465,13 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 	else
 	    e->type = type;
     }
-    else if ((e1->op == TOKarrayliteral || e1->op == TOKnull) &&
+    else if (e1->op == TOKarrayliteral &&
 	e1->type->toBasetype()->nextOf()->equals(e2->type))
     {
-	ArrayLiteralExp *es1;
-	if (e1->op == TOKarrayliteral)
-	{   es1 = (ArrayLiteralExp *)e1;
-	    es1 = new ArrayLiteralExp(es1->loc, (Expressions *)es1->elements->copy());
-	    es1->elements->push(e2);
-	}
-	else
-	{
-	    es1 = new ArrayLiteralExp(e1->loc, e2);
-	}
+	ArrayLiteralExp *es1 = (ArrayLiteralExp *)e1;
+
+	es1 = new ArrayLiteralExp(es1->loc, (Expressions *)es1->elements->copy());
+	es1->elements->push(e2);
 	e = es1;
 
 	if (type->toBasetype()->ty == Tsarray)

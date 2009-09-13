@@ -923,8 +923,7 @@ dt_size(dt_t * dt)
 		size += dt_size(dt->DTvalues);
 		break;
 	    default:
-	    break;
-		//assert(0); //ICE in uni.d, FIX THIS; GDC
+		assert(0);
 	}
 	dt = dt->DTnext;
     }

@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 // Issues with using -include total.h (defines integer_t) and then complex.h fails...
 #undef integer_t
 
@@ -17,15 +23,6 @@
 #include <assert.h>
 #include <complex.h>
 #include <math.h>
-
-/*#if _WIN32 && __DMC__
-extern "C" char * __cdecl __locale_decpoint;
-#endif
-
-#if IN_GCC
-// Issues with using -include total.h (defines integer_t) and then complex.h fails...
-#undef integer_t
-#endif*/
 
 #ifdef __APPLE__
 #define integer_t dmd_integer_t
@@ -42,7 +39,6 @@ extern "C" char * __cdecl __locale_decpoint;
 #elif linux
 #include "../root/mem.h"
 #endif
-
 //#include "port.h"
 #include "mtype.h"
 #include "init.h"
@@ -112,9 +108,6 @@ void initPrecedence()
     precedence[TOKassert] = PREC_primary;
     precedence[TOKfunction] = PREC_primary;
     precedence[TOKvar] = PREC_primary;
-#if V2
-    precedence[TOKdefault] = PREC_primary;
-#endif
 
     // post
     precedence[TOKdotti] = PREC_primary;
@@ -200,28 +193,21 @@ void initPrecedence()
 }
 
 /*************************************************************
- * Given var, we need to get the
- * right 'this' pointer if var is in an outer class, but our
+ * Now that we have the right function f, we need to get the
+ * right 'this' pointer if f is in an outer class, but our
  * existing 'this' pointer is in an inner class.
- * Input:
- *	e1	existing 'this'
- *	ad	struct or class we need the correct 'this' for
- *	var	the specific member of ad we're accessing
+ * This code is analogous to that used for variables
+ * in DotVarExp::semantic().
  */
 
-Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
-	Expression *e1, Declaration *var)
+Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad, Expression *e1, Declaration *var)
 {
-    //printf("\ngetRightThis(e1 = %s, ad = %s, var = %s)\n", e1->toChars(), ad->toChars(), var->toChars());
  L1:
     Type *t = e1->type->toBasetype();
-    //printf("e1->type = %s, var->type = %s\n", e1->type->toChars(), var->type->toChars());
 
-    /* If e1 is not the 'this' pointer for ad
-     */
     if (ad &&
-	!(t->ty == Tpointer && t->nextOf()->ty == Tstruct &&
-	  ((TypeStruct *)t->nextOf())->sym == ad)
+	!(t->ty == Tpointer && t->next->ty == Tstruct &&
+	  ((TypeStruct *)t->next)->sym == ad)
 	&&
 	!(t->ty == Tstruct &&
 	  ((TypeStruct *)t)->sym == ad)
@@ -230,51 +216,35 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
 	ClassDeclaration *cd = ad->isClassDeclaration();
 	ClassDeclaration *tcd = t->isClassHandle();
 
-	/* e1 is the right this if ad is a base class of e1
-	 */
 	if (!cd || !tcd ||
 	    !(tcd == cd || cd->isBaseOf(tcd, NULL))
 	   )
 	{
-	    /* Only classes can be inner classes with an 'outer'
-	     * member pointing to the enclosing class instance
-	     */
 	    if (tcd && tcd->isNested())
-	    {   /* e1 is the 'this' pointer for an inner class: tcd.
-		 * Rewrite it as the 'this' pointer for the outer class.
-		 */
+	    {   // Try again with outer scope
 
 		e1 = new DotVarExp(loc, e1, tcd->vthis);
-		e1->type = tcd->vthis->type;
-		// Do not call checkNestedRef()
-		//e1 = e1->semantic(sc);
+		e1 = e1->semantic(sc);
 
-		// Skip up over nested functions, and get the enclosing
+		// Skip over nested functions, and get the enclosing
 		// class type.
-		int n = 0;
-		Dsymbol *s;
-		for (s = tcd->toParent();
-		     s && s->isFuncDeclaration();
-		     s = s->toParent())
+		Dsymbol *s = tcd->toParent();
+		while (s && s->isFuncDeclaration())
 		{   FuncDeclaration *f = s->isFuncDeclaration();
 		    if (f->vthis)
 		    {
-			//printf("rewriting e1 to %s's this\n", f->toChars());
-			n++;
 			e1 = new VarExp(loc, f->vthis);
 		    }
+		    s = s->toParent();
 		}
 		if (s && s->isClassDeclaration())
-		{   e1->type = s->isClassDeclaration()->type;
-		    if (n > 1)
-			e1 = e1->semantic(sc);
-		}
-		else
-		    e1 = e1->semantic(sc);
+		    e1->type = s->isClassDeclaration()->type;
+		e1 = e1->semantic(sc);
 		goto L1;
 	    }
-	    /* Can't find a path from e1 to ad
-	     */
+#ifdef DEBUG
+	    printf("2: ");
+#endif
 	    error("this for %s needs to be type %s not type %s",
 		var->toChars(), ad->toChars(), t->toChars());
 	}
@@ -470,32 +440,6 @@ void preFunctionArguments(Loc loc, Scope *sc, Expressions *exps)
     }
 }
 
-/*********************************************
- * Call copy constructor for struct value argument.
- */
-#if V2
-Expression *callCpCtor(Loc loc, Scope *sc, Expression *e)
-{
-    Type *tb = e->type->toBasetype();
-    assert(tb->ty == Tstruct);
-    StructDeclaration *sd = ((TypeStruct *)tb)->sym;
-    if (sd->cpctor)
-    {
-	/* Create a variable tmp, and replace the argument e with:
-	 *	(tmp = e),tmp
-	 * and let AssignExp() handle the construction.
-	 * This is not the most efficent, ideally tmp would be constructed
-	 * directly onto the stack.
-	 */
-	Identifier *idtmp = Lexer::uniqueId("__tmp");
-	VarDeclaration *tmp = new VarDeclaration(loc, tb, idtmp, new ExpInitializer(0, e));
-	Expression *ae = new DeclarationExp(loc, tmp);
-	e = new CommaExp(loc, ae, new VarExp(loc, tmp));
-	e = e->semantic(sc);
-    }
-    return e;
-}
-#endif
 
 /****************************************
  * Now that we know the exact type of the function we're calling,
@@ -545,15 +489,7 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 		    error(loc, "expected %"PRIuSIZE" arguments, not %"PRIuSIZE, nparams, nargs);
 		    break;
 		}
-		arg = p->defaultArg;
-#if V2
-		if (arg->op == TOKdefault)
-		{   DefaultInitExp *de = (DefaultInitExp *)arg;
-		    arg = de->resolve(loc, sc);
-		}
-		else
-#endif
-		    arg = arg->copy();
+		arg = p->defaultArg->copy();
 		arguments->push(arg);
 		nargs++;
 	    }
@@ -693,7 +629,7 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 	    tb = arg->type->toBasetype();
 	    if (tb->ty == Tsarray)
 	    {	TypeSArray *ts = (TypeSArray *)tb;
-		Type *ta = ts->next->arrayOf();
+		Type *ta = tb->next->arrayOf();
 		if (ts->size(arg->loc) == 0)
 		{   arg = new NullExp(arg->loc);
 		    arg->type = ta;
@@ -701,19 +637,7 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 		else
 		    arg = arg->castTo(sc, ta);
 	    }
-#if V2
-	    if (tb->ty == Tstruct)
-	    {
-		arg = callCpCtor(loc, sc, arg);
-	    }
 
-	    // Give error for overloaded function addresses
-	    if (arg->op == TOKsymoff)
-	    {	SymOffExp *se = (SymOffExp *)arg;
-		if (se->hasOverloads && !se->var->isFuncDeclaration()->isUnique())
-		    arg->error("function %s is overloaded", arg->toChars());
-	    }
-#endif
 	    arg->rvalue();
 	}
 	arg = arg->optimize(WANTvalue);
@@ -740,7 +664,6 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 
 void expToCBuffer(OutBuffer *buf, HdrGenState *hgs, Expression *e, enum PREC pr)
 {
-    //if (precedence[e->op] == 0) e->dump(0);
     if (precedence[e->op] < pr)
     {
 	buf->writeByte('(');
@@ -838,7 +761,7 @@ Expression *Expression::copy()
 Expression *Expression::semantic(Scope *sc)
 {
 #if LOGSEMANTIC
-    printf("Expression::semantic() %s\n", toChars());
+    printf("Expression::semantic()\n");
 #endif
     if (type)
 	type = type->semantic(loc, sc);
@@ -879,7 +802,6 @@ void Expression::rvalue()
 	dump(0);
 	halt();
 #endif
-	type = Type::tint32;
     }
 }
 
@@ -1072,7 +994,7 @@ Expression *Expression::checkToPointer()
 	    e = new NullExp(loc);
 	else
 	    e = new AddrExp(loc, this);
-	e->type = ts->next->pointerTo();
+	e->type = tb->next->pointerTo();
     }
     return e;
 }
@@ -1103,7 +1025,7 @@ Expression *Expression::deref()
     {	Expression *e;
 
 	e = new PtrExp(loc, this);
-	e->type = ((TypeReference *)type)->next;
+	e->type = type->next;
 	return e;
     }
     return this;
@@ -1152,7 +1074,6 @@ IntegerExp::IntegerExp(Loc loc, integer_t value, Type *type)
     //printf("IntegerExp(value = %lld, type = '%s')\n", value, type ? type->toChars() : "");
     if (type && !type->isscalar())
     {
-	//printf("%s, loc = %d\n", toChars(), loc.linnum);
 	error("integral constant must be scalar type, not %s", type->toChars());
 	type = Type::terror;
     }
@@ -1207,22 +1128,21 @@ integer_t IntegerExp::toInteger()
 	    case Twchar:
 	    case Tuns16:	value = (d_uns16) value;	break;
 	    case Tint32:	value = (d_int32) value;	break;
-	    //case Tpointer:
 	    case Tdchar:
 	    case Tuns32:	value = (d_uns32) value;	break;
 	    case Tint64:	value = (d_int64) value;	break;
 	    case Tuns64:	value = (d_uns64) value;	break;
-	    
-	    case Tpointer:
- 		switch (PTRSIZE)
- 		{
- 		case 4: value = (d_uns32) value; break;
- 		case 8: value = (d_uns64) value; break;
-		default:
- 		    assert(PTRSIZE == 4 || PTRSIZE == 8);
- 		}
- 		break;
 
+	    case Tpointer:
+		switch (PTRSIZE)
+		{
+		case 4: value = (d_uns32) value; break;
+		case 8: value = (d_uns64) value; break;
+		default:
+		    assert(PTRSIZE == 4 || PTRSIZE == 8);
+		}
+		break;
+	    
 	    case Tenum:
 	    {
 		TypeEnum *te = (TypeEnum *)t;
@@ -1481,15 +1401,15 @@ complex_t RealExp::toComplex()
 
 int RealEquals(real_t x1, real_t x2)
 {
-	#ifndef IN_GCC
+#ifndef IN_GCC
     return (isnan(x1) && isnan(x2)) ||
 	/* In some cases, the REALPAD bytes get garbage in them,
 	 * so be sure and ignore them.
 	 */
 	memcmp(&x1, &x2, REALSIZE - REALPAD) == 0;
-	#else
-	return (x1.isNan() && x2.isNan()) || x1.isIdenticalTo(x2);
-	#endif
+#else
+    return (x1.isNan() && x2.isNan()) || x1.isIdenticalTo(x2);
+#endif
 }
 
 int RealExp::equals(Object *o)
@@ -1524,7 +1444,7 @@ int RealExp::isBool(int result)
 #endif
 }
 
-void floatToBuffer(OutBuffer *buf, Type *type, const real_t value)
+void floatToBuffer(OutBuffer *buf, Type *type, const real_t & value)
 {
     /* In order to get an exact representation, try converting it
      * to decimal then back again. If it matches, use it.
@@ -1532,21 +1452,19 @@ void floatToBuffer(OutBuffer *buf, Type *type, const real_t value)
      * always exact.
      */
     char buffer[48];
-    #ifdef IN_GCC
-     real_t parsed_value;
-     
-     value.format(buffer, sizeof(buffer));
-     parsed_value = real_t::parse(buffer, real_t::LongDouble);
-     if (parsed_value.isIdenticalTo( value ))
-     {
- 	buf->writestring(buffer);
- }
-     else
-     {
- 	value.formatHex(buffer, sizeof(buffer));
- 	buf->writestring(buffer);
-     }
- #else
+#ifdef IN_GCC
+    real_t parsed_value;
+    
+    value.format(buffer, sizeof(buffer));
+    parsed_value = real_t::parse(buffer, real_t::LongDouble);
+    if (parsed_value.isIdenticalTo( value ))
+	buf->writestring(buffer);
+    else
+    {
+	value.formatHex(buffer, sizeof(buffer));
+	buf->writestring(buffer);
+    }
+#else
     sprintf(buffer, "%Lg", value);
     assert(strlen(buffer) < sizeof(buffer));
 #if _WIN32 && __DMC__
@@ -1605,22 +1523,23 @@ void realToMangleBuffer(OutBuffer *buf, real_t value)
      * -0X1.1BC18BA997B95P+79	=> N11BC18BA997B95P79
      * 0X1.9P+2			=> 19P2
      */
-	#ifdef IN_GCC
-     if (value.isNan())
- 	buf->writestring("NAN");	// no -NAN bugs
-     else if (value.isInf())
- 	buf->writestring(value.isNegative()?"NINF":"INF");
- #else
+
+#ifdef IN_GCC
+    if (value.isNan())
+	buf->writestring("NAN");	// no -NAN bugs
+    else if (value.isInf())
+	buf->writestring(value.isNegative()?"NINF":"INF");
+#else
     if (isnan(value))
 	buf->writestring("NAN");	// no -NAN bugs
-	#endif
+#endif
     else
     {
 	char buffer[64];
 #ifdef IN_GCC
- 	value.formatHex(buffer, sizeof(buffer));
- 	int n = strlen(buffer);
- #else
+	value.formatHex(buffer, sizeof(buffer));
+	int n = strlen(buffer);
+#else
 	int n = sprintf(buffer, "%LA", value);
 	assert(n > 0 && n < sizeof(buffer));
 #endif
@@ -1723,15 +1642,15 @@ int ComplexExp::equals(Object *o)
     if (this == o ||
 	(((Expression *)o)->op == TOKcomplex80 &&
 	 ((ne = (ComplexExp *)o), type->equals(ne->type)) &&
-	 #ifndef IN_GCC
-	 RealEquals(creall(value), creall(ne->value)) &&
-	 RealEquals(cimagl(value), cimagl(ne->value))
-	 #else
-	 RealEquals(value.re, ne->value.re) &&
- 	 RealEquals(value.im, ne->value.im)
- 	 #endif
+#ifndef IN_GCC
+	    RealEquals(creall(value), creall(ne->value)) &&
+	    RealEquals(cimagl(value), cimagl(ne->value))
+#else
+	    RealEquals(value.re, ne->value.re) &&
+	    RealEquals(value.im, ne->value.im)
+#endif
+	 )
 	)
-       )
 	return 1;
     return 0;
 }
@@ -2175,8 +2094,7 @@ Expression *ThisExp::semantic(Scope *sc)
 	fd->nestedFrameRef = 1;
     }
 #endif
-    if (!sc->intypeof)
-	sc->callSuper |= CSXthis;
+    sc->callSuper |= CSXthis;
     return this;
 
 Lerr:
@@ -2285,8 +2203,7 @@ Expression *SuperExp::semantic(Scope *sc)
     }
 #endif
 
-    if (!sc->intypeof)
-	sc->callSuper |= CSXsuper;
+    sc->callSuper |= CSXsuper;
     return this;
 
 
@@ -2763,7 +2680,7 @@ void ArrayLiteralExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 void ArrayLiteralExp::toMangleBuffer(OutBuffer *buf)
 {
     size_t dim = elements ? elements->dim : 0;
-    buf->printf("A%"PRIuSIZE, dim); 
+    buf->printf("A%"PRIuSIZE, dim);
     for (size_t i = 0; i < dim; i++)
     {	Expression *e = (Expression *)elements->data[i];
 	e->toMangleBuffer(buf);
@@ -3580,7 +3497,6 @@ Expression *NewAnonClassExp::semantic(Scope *sc)
 {
 #if LOGSEMANTIC
     printf("NewAnonClassExp::semantic() %s\n", toChars());
-    //printf("thisexp = %p\n", thisexp);
     //printf("type: %s\n", type->toChars());
 #endif
 
@@ -5161,8 +5077,7 @@ Expression *DotVarExp::semantic(Scope *sc)
 	{
 	    AggregateDeclaration *ad = var->toParent()->isAggregateDeclaration();
 	    e1 = getRightThis(loc, sc, ad, e1, var);
-	    if (!sc->noaccesscheck)
-		accessCheck(loc, sc, e1, var);
+	    accessCheck(loc, sc, e1, var);
 	}
     }
     //printf("-DotVarExp::semantic('%s')\n", toChars());
@@ -5641,7 +5556,7 @@ Lagain:
 	DotTemplateExp *dte;
 	AggregateDeclaration *ad;
 	UnaExp *ue = (UnaExp *)(e1);
-
+        
     	if (e1->op == TOKdotvar)
         {   // Do overload resolution
 	    dve = (DotVarExp *)(e1);
@@ -5667,9 +5582,7 @@ Lagain:
 	    ad = td->toParent()->isAggregateDeclaration();
 	}	
 	if (f->needThis())
-	{
 	    ue->e1 = getRightThis(loc, sc, ad, ue->e1, f);
-	}
 
 	checkDeprecated(sc, f);
 	accessCheck(loc, sc, ue->e1, f);
@@ -5722,18 +5635,15 @@ Lagain:
 	    }
 	    else
 	    {
-		if (!sc->intypeof)
-		{
 #if 0
-		    if (sc->callSuper & (CSXthis | CSXsuper))
-			error("reference to this before super()");
+		if (sc->callSuper & (CSXthis | CSXsuper))
+		    error("reference to this before super()");
 #endif
-		    if (sc->noctor || sc->callSuper & CSXlabel)
-			error("constructor calls not allowed in loops or after labels");
-		    if (sc->callSuper & (CSXsuper_ctor | CSXthis_ctor))
-			error("multiple constructor calls");
-		    sc->callSuper |= CSXany_ctor | CSXsuper_ctor;
-		}
+		if (sc->noctor || sc->callSuper & CSXlabel)
+		    error("constructor calls not allowed in loops or after labels");
+		if (sc->callSuper & (CSXsuper_ctor | CSXthis_ctor))
+		    error("multiple constructor calls");
+		sc->callSuper |= CSXany_ctor | CSXsuper_ctor;
 
 		f = f->overloadResolve(loc, arguments);
 		checkDeprecated(sc, f);
@@ -5758,18 +5668,15 @@ Lagain:
 	}
 	else
 	{
-	    if (!sc->intypeof)
-	    {
 #if 0
-		if (sc->callSuper & (CSXthis | CSXsuper))
-		    error("reference to this before super()");
+	    if (sc->callSuper & (CSXthis | CSXsuper))
+		error("reference to this before super()");
 #endif
-		if (sc->noctor || sc->callSuper & CSXlabel)
-		    error("constructor calls not allowed in loops or after labels");
-		if (sc->callSuper & (CSXsuper_ctor | CSXthis_ctor))
-		    error("multiple constructor calls");
-		sc->callSuper |= CSXany_ctor | CSXthis_ctor;
-	    }
+	    if (sc->noctor || sc->callSuper & CSXlabel)
+		error("constructor calls not allowed in loops or after labels");
+	    if (sc->callSuper & (CSXsuper_ctor | CSXthis_ctor))
+		error("multiple constructor calls");
+	    sc->callSuper |= CSXany_ctor | CSXthis_ctor;
 
 	    f = cd->ctor;
 	    f = f->overloadResolve(loc, arguments);

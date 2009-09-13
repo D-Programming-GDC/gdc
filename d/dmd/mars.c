@@ -56,6 +56,7 @@ Global::Global()
     hdr_ext  = "di";
     doc_ext  = "html";
     ddoc_ext = "ddoc";
+
 #ifndef IN_GCC
 #if _WIN32
     obj_ext  = "obj";
@@ -65,7 +66,7 @@ Global::Global()
 #error "fix this"
 #endif
 #else
-	obj_ext = "o";
+    obj_ext = "o";
 #endif
 
 #ifndef IN_GCC
@@ -77,13 +78,12 @@ Global::Global()
 #error "fix this"
 #endif
 #else
-	lib_ext = "a";
+    lib_ext = "a";
 #endif
-
 
     copyright = "Copyright (c) 1999-2008 by Digital Mars";
     written = "written by Walter Bright";
-    version = "v1.031";
+    version = "v1.030";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -100,11 +100,11 @@ char *Loc::toChars()
     }
 
     if (linnum)
-    #ifndef IN_GCC
+#ifndef IN_GCC
 	buf.printf("(%d)", linnum);
-	#else
+#else
 	buf.printf(":%u", linnum);
-	#endif
+#endif
     buf.writeByte(0);
     return (char *)buf.extractData();
 }
@@ -169,8 +169,8 @@ void halt()
 #endif
 }
 
-
 #ifndef IN_GCC
+
 extern void backend_init();
 extern void backend_term();
 
@@ -336,10 +336,8 @@ int main(int argc, char *argv[])
 		global.params.link = 0;
 	    else if (strcmp(p + 1, "cov") == 0)
 		global.params.cov = 1;
-#if TARGET_LINUX
 	    else if (strcmp(p + 1, "fPIC") == 0)
 		global.params.pic = 1;
-#endif
 	    else if (strcmp(p + 1, "multiobj") == 0)
 		global.params.multiobj = 1;
 	    else if (strcmp(p + 1, "g") == 0)
@@ -682,8 +680,6 @@ int main(int argc, char *argv[])
     }
     if (global.params.cov)
 	VersionCondition::addPredefinedGlobalIdent("D_Coverage");
-    if (global.params.pic)
-	VersionCondition::addPredefinedGlobalIdent("D_PIC");
 #if V2
     if (global.params.useUnitTests)
 	VersionCondition::addPredefinedGlobalIdent("unittest");
@@ -1223,4 +1219,5 @@ long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep)
 }
 
 #endif
-#endif /*IN_GCC*/
+
+#endif

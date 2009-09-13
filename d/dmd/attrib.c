@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -50,13 +56,16 @@ Array *AttribDeclaration::include(Scope *sc, ScopeDsymbol *sd)
 
 int AttribDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
+    unsigned i;
     int m = 0;
     Array *d = include(sc, sd);
 
     if (d)
     {
-	for (unsigned i = 0; i < d->dim; i++)
-	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (i = 0; i < d->dim; i++)
+	{   Dsymbol *s;
+
+	    s = (Dsymbol *)d->data[i];
 	    m |= s->addMember(sc, sd, m | memnum);
 	}
     }
@@ -67,7 +76,7 @@ void AttribDeclaration::semantic(Scope *sc)
 {
     Array *d = include(sc, NULL);
 
-    //printf("\tAttribDeclaration::semantic '%s', d = %p\n",toChars(), d);
+    //printf("\tAttribDeclaration::semantic '%s'\n",toChars());
     if (d)
     {
 	for (unsigned i = 0; i < d->dim; i++)
@@ -81,12 +90,15 @@ void AttribDeclaration::semantic(Scope *sc)
 
 void AttribDeclaration::semantic2(Scope *sc)
 {
+    unsigned i;
     Array *d = include(sc, NULL);
 
     if (d)
     {
-	for (unsigned i = 0; i < d->dim; i++)
-	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (i = 0; i < d->dim; i++)
+	{   Dsymbol *s;
+
+	    s = (Dsymbol *)d->data[i];
 	    s->semantic2(sc);
 	}
     }
@@ -94,12 +106,15 @@ void AttribDeclaration::semantic2(Scope *sc)
 
 void AttribDeclaration::semantic3(Scope *sc)
 {
+    unsigned i;
     Array *d = include(sc, NULL);
 
     if (d)
     {
-	for (unsigned i = 0; i < d->dim; i++)
-	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (i = 0; i < d->dim; i++)
+	{   Dsymbol *s;
+
+	    s = (Dsymbol *)d->data[i];
 	    s->semantic3(sc);
 	}
     }
@@ -107,12 +122,15 @@ void AttribDeclaration::semantic3(Scope *sc)
 
 void AttribDeclaration::inlineScan()
 {
+    unsigned i;
     Array *d = include(NULL, NULL);
 
     if (d)
     {
-	for (unsigned i = 0; i < d->dim; i++)
-	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (i = 0; i < d->dim; i++)
+	{   Dsymbol *s;
+
+	    s = (Dsymbol *)d->data[i];
 	    //printf("AttribDeclaration::inlineScan %s\n", s->toChars());
 	    s->inlineScan();
 	}
@@ -123,12 +141,15 @@ void AttribDeclaration::addComment(unsigned char *comment)
 {
     if (comment)
     {
+	unsigned i;
 	Array *d = include(NULL, NULL);
 
 	if (d)
 	{
-	    for (unsigned i = 0; i < d->dim; i++)
-	    {   Dsymbol *s = (Dsymbol *)d->data[i];
+	    for (i = 0; i < d->dim; i++)
+	    {   Dsymbol *s;
+
+		s = (Dsymbol *)d->data[i];
 		//printf("AttribDeclaration::addComment %s\n", s->toChars());
 		s->addComment(comment);
 	    }
@@ -146,12 +167,15 @@ void AttribDeclaration::emitComment(Scope *sc)
 //    if (sc->docbuf)
 //	return;
 
+    unsigned i;
     Array *d = include(NULL, NULL);
 
     if (d)
     {
-	for (unsigned i = 0; i < d->dim; i++)
-	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (i = 0; i < d->dim; i++)
+	{   Dsymbol *s;
+
+	    s = (Dsymbol *)d->data[i];
 	    //printf("AttribDeclaration::emitComment %s\n", s->toChars());
 	    s->emitComment(sc);
 	}
@@ -160,12 +184,15 @@ void AttribDeclaration::emitComment(Scope *sc)
 
 void AttribDeclaration::toObjFile(int multiobj)
 {
+    unsigned i;
     Array *d = include(NULL, NULL);
 
     if (d)
     {
-	for (unsigned i = 0; i < d->dim; i++)
-	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (i = 0; i < d->dim; i++)
+	{   Dsymbol *s;
+
+	    s = (Dsymbol *)d->data[i];
 	    s->toObjFile(multiobj);
 	}
     }
@@ -173,14 +200,17 @@ void AttribDeclaration::toObjFile(int multiobj)
 
 int AttribDeclaration::cvMember(unsigned char *p)
 {
+    unsigned i;
     int nwritten = 0;
     int n;
     Array *d = include(NULL, NULL);
 
     if (d)
     {
-	for (unsigned i = 0; i < d->dim; i++)
-	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (i = 0; i < d->dim; i++)
+	{   Dsymbol *s;
+
+	    s = (Dsymbol *)d->data[i];
 	    n = s->cvMember(p);
 	    if (p)
 		p += n;
@@ -220,12 +250,15 @@ int AttribDeclaration::oneMember(Dsymbol **ps)
 
 void AttribDeclaration::checkCtorConstInit()
 {
+    unsigned i;
     Array *d = include(NULL, NULL);
 
     if (d)
     {
-	for (unsigned i = 0; i < d->dim; i++)
-	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (i = 0; i < d->dim; i++)
+	{   Dsymbol *s;
+
+	    s = (Dsymbol *)d->data[i];
 	    s->checkCtorConstInit();
 	}
     }
@@ -235,13 +268,15 @@ void AttribDeclaration::checkCtorConstInit()
  */
 
 void AttribDeclaration::addLocalClass(ClassDeclarations *aclasses)
-{
+{   unsigned i;
     Array *d = include(NULL, NULL);
 
     if (d)
     {
-	for (unsigned i = 0; i < d->dim; i++)
-	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (i = 0; i < d->dim; i++)
+	{   Dsymbol *s;
+
+	    s = (Dsymbol *)d->data[i];
 	    s->addLocalClass(aclasses);
 	}
     }
@@ -719,7 +754,8 @@ Dsymbol *PragmaDeclaration::syntaxCopy(Dsymbol *s)
 
 void PragmaDeclaration::semantic(Scope *sc)
 {   // Should be merged with PragmaStatement
-	Scope sc_save;
+    Scope sc_save;
+
     //printf("\tPragmaDeclaration::semantic '%s'\n",toChars());
     if (ident == Id::msg)
     {
@@ -803,128 +839,126 @@ void PragmaDeclaration::semantic(Scope *sc)
 	}
 	goto Lnodecl;
     }
-//starts here; added gdc code
-     else if (ident == Id::GNU_attribute)
-     {
- 	sc_save = *sc;
- 	
- 	// An empty list is allowed.
- 	if (args && args->dim)
- 	{
- 	    Expressions * a;
- 
- 	    if (sc->attributes)
- 		a = (Expressions *) sc->attributes->copy();
- 	    else
- 		a = new Expressions;
- 	    sc->attributes = a;
- 
- 	    for (unsigned i = 0; i < args->dim; i++)
- 	    {
- 		Expression * e = (Expression *) args->data[i];
- 		//e = e->semantic(sc);
+    else if (ident == Id::GNU_attribute)
+    {
+	sc_save = *sc;
+	
+	// An empty list is allowed.
+	if (args && args->dim)
+	{
+	    Expressions * a;
+
+	    if (sc->attributes)
+		a = (Expressions *) sc->attributes->copy();
+	    else
+		a = new Expressions;
+	    sc->attributes = a;
+
+	    for (unsigned i = 0; i < args->dim; i++)
+	    {
+		Expression * e = (Expression *) args->data[i];
+		//e = e->semantic(sc);
 		
 		if (e->op == TOKidentifier) {
- 		    /* ok */
- 		} else if (e->op == TOKcall) {
- 		    CallExp * c = (CallExp *) e;
- 		    if (c->e1->op != TOKidentifier)
- 			error("identifier or call expression expected for attribute");
- 		    if (c->arguments)
- 			for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
- 			{
- 			    c->arguments->data[ai] =
- 				((Expression *) c->arguments->data[ai])->semantic(sc);
- 			}
- 		}
- 		else
- 		{
- 		    error("identifier or call expression expected for attribute");
- 		    continue;
- 		}
- 		a->push(e);
- 	    }
- 	}
-     }
-     else if (ident == Id::GNU_set_attribute)
-     {
- 	if (!args || args->dim < 1)
- 	    error("declaration expected for setting attributes");
- 	else
- 	{
-	    Array p_attributes_list; // of Expressions**
- 	    {
- 		Expression * e = (Expression *) args->data[0];
- 		Expressions ** pa = NULL;
- 		
- 		e = e->semantic(sc);
- 		if (e->op == TOKvar)
- 		{
- 		    Declaration * d = ((VarExp *)e)->var;
- 		    if (d->isFuncDeclaration() || d->isVarDeclaration())
- 			pa = & d->attributes;
- 		}
- 		else if (e->op == TOKtype)
- 		{
- 		    Type * t = ((TypeExp *)e)->type;
- 		    if (t->ty == Ttypedef)
-			pa = & ((TypeTypedef *) t)->sym->attributes;
- 		    else if (t->ty == Tenum)
- 			pa = & ((TypeEnum *) t)->sym->attributes;
- 		    else if (t->ty == Tstruct)
- 			pa = & ((TypeStruct *) t)->sym->attributes;
- 		    else if (t->ty == Tclass)
- 			pa = & ((TypeClass *) t)->sym->attributes;
- 		}
- 
- 		if (pa)
- 		    p_attributes_list.push(pa);
- 		else
- 		    error("first argument must be a function, variable, or type declaration");
- 	    }
- 
- 	    Expressions * new_attrs = new Expressions;
- 	    for (unsigned i = 1; i < args->dim; i++)
- 	    {
- 		Expression * e = (Expression *) args->data[i];
- 		//e = e->semantic(sc);
- 		
- 		if (e->op == TOKidentifier) {
- 		    /* ok */
- 		} else if (e->op == TOKcall) {
- 		    CallExp * c = (CallExp *) e;
- 		    if (c->e1->op != TOKidentifier)
- 			error("identifier or call expression expected for attribute");
- 		    if (c->arguments)
- 			for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
- 			{
- 			    c->arguments->data[ai] =
- 				((Expression *) c->arguments->data[ai])->semantic(sc);
- 			}
- 		}
- 		else
+		    /* ok */
+		} else if (e->op == TOKcall) {
+		    CallExp * c = (CallExp *) e;
+		    if (c->e1->op != TOKidentifier)
+			error("identifier or call expression expected for attribute");
+		    if (c->arguments)
+			for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
+			{
+			    c->arguments->data[ai] =
+				((Expression *) c->arguments->data[ai])->semantic(sc);
+			}
+		}
+		else
 		{
- 		    error("identifier or call expression expected for attribute");
- 		    continue;
- 		}
- 		new_attrs->push(e);
- 	    }
- 	    
- 	    for (unsigned i = 0; i < p_attributes_list.dim; ++i)
- 	    {
- 		Expressions ** pa = (Expressions **) p_attributes_list.data[i];
- 		if (*pa)
- 		{
- 		    *pa = (Expressions *) (*pa)->copy();
- 		    (*pa)->append(new_attrs);
- 		}
+		    error("identifier or call expression expected for attribute");
+		    continue;
+		}
+		a->push(e);
+	    }
+	}
+    }
+    else if (ident == Id::GNU_set_attribute)
+    {
+	if (!args || args->dim < 1)
+	    error("declaration expected for setting attributes");
+	else
+	{
+	    Array p_attributes_list; // of Expressions**
+	    {
+		Expression * e = (Expression *) args->data[0];
+		Expressions ** pa = NULL;
+		
+		e = e->semantic(sc);
+		if (e->op == TOKvar)
+		{
+		    Declaration * d = ((VarExp *)e)->var;
+		    if (d->isFuncDeclaration() || d->isVarDeclaration())
+			pa = & d->attributes;
+		}
+		else if (e->op == TOKtype)
+		{
+		    Type * t = ((TypeExp *)e)->type;
+		    if (t->ty == Ttypedef)
+			pa = & ((TypeTypedef *) t)->sym->attributes;
+		    else if (t->ty == Tenum)
+			pa = & ((TypeEnum *) t)->sym->attributes;
+		    else if (t->ty == Tstruct)
+			pa = & ((TypeStruct *) t)->sym->attributes;
+		    else if (t->ty == Tclass)
+			pa = & ((TypeClass *) t)->sym->attributes;
+		}
+
+		if (pa)
+		    p_attributes_list.push(pa);
+		else
+		    error("first argument must be a function, variable, or type declaration");
+	    }
+
+	    Expressions * new_attrs = new Expressions;
+	    for (unsigned i = 1; i < args->dim; i++)
+	    {
+		Expression * e = (Expression *) args->data[i];
+		//e = e->semantic(sc);
+		
+		if (e->op == TOKidentifier) {
+		    /* ok */
+		} else if (e->op == TOKcall) {
+		    CallExp * c = (CallExp *) e;
+		    if (c->e1->op != TOKidentifier)
+			error("identifier or call expression expected for attribute");
+		    if (c->arguments)
+			for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
+			{
+			    c->arguments->data[ai] =
+				((Expression *) c->arguments->data[ai])->semantic(sc);
+			}
+		}
+		else
+		{
+		    error("identifier or call expression expected for attribute");
+		    continue;
+		}
+		new_attrs->push(e);
+	    }
+	    
+	    for (unsigned i = 0; i < p_attributes_list.dim; ++i)
+	    {
+		Expressions ** pa = (Expressions **) p_attributes_list.data[i];
+		if (*pa)
+		{
+		    *pa = (Expressions *) (*pa)->copy();
+		    (*pa)->append(new_attrs);
+		}
 		else
 		    *pa = new_attrs;
- 	    }
- 	}
- 	goto Lnodecl;
-     }
-//lots of lines added end here
+	    }
+	}
+	goto Lnodecl;
+    }
 #endif
     else if (global.params.ignoreUnsupportedPragmas)
     {
@@ -965,11 +999,12 @@ void PragmaDeclaration::semantic(Scope *sc)
 	    s->semantic(sc);
 	}
     }
-     #if IN_GCC
-     if (decl)
- 	if (ident == Id::GNU_attribute)
- 	    *sc = sc_save;
- #endif
+
+#if IN_GCC
+    if (decl)
+	if (ident == Id::GNU_attribute)
+	    *sc = sc_save;
+#endif
     return;
 
 Lnodecl:
@@ -1174,7 +1209,6 @@ Dsymbol *StaticIfDeclaration::syntaxCopy(Dsymbol *s)
 
 int StaticIfDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
-    //printf("StaticIfDeclaration::addMember() '%s'\n",toChars());
     /* This is deferred until semantic(), so that
      * expressions in the condition can refer to declarations
      * in the same scope, such as:
@@ -1201,7 +1235,7 @@ void StaticIfDeclaration::semantic(Scope *sc)
 {
     Array *d = include(sc, sd);
 
-    //printf("\tStaticIfDeclaration::semantic '%s', d = %p\n",toChars(), d);
+    //printf("\tStaticIfDeclaration::semantic '%s'\n",toChars());
     if (d)
     {
 	if (!addisdone)
@@ -1231,7 +1265,6 @@ CompileDeclaration::CompileDeclaration(Loc loc, Expression *exp)
 {
     this->exp = exp;
     this->sd = NULL;
-    this->compiled = 0;
 }
 
 Dsymbol *CompileDeclaration::syntaxCopy(Dsymbol *s)
@@ -1243,50 +1276,32 @@ Dsymbol *CompileDeclaration::syntaxCopy(Dsymbol *s)
 
 int CompileDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
-    //printf("CompileDeclaration::addMember(sc = %p)\n", sc);
     this->sd = sd;
-    if (memnum == 0)
-    {	/* No members yet, so parse the mixin now
-	 */
-	compileIt(sc);
-	memnum |= AttribDeclaration::addMember(sc, sd, memnum);
-	compiled = 1;
-    }
     return memnum;
-}
-
-void CompileDeclaration::compileIt(Scope *sc)
-{
-    //printf("CompileDeclaration::compileIt()\n");
-    exp = exp->semantic(sc);
-    exp = resolveProperties(sc, exp);
-    exp = exp->optimize(WANTvalue | WANTinterpret);
-    if (exp->op != TOKstring)
-    {	error("argument to mixin must be a string, not (%s)", exp->toChars());
-    }
-    else
-    {
-	StringExp *se = (StringExp *)exp;
-	se = se->toUTF8(sc);
-	Parser p(sc->module, (unsigned char *)se->string, se->len, 0);
-	p.loc = loc;
-	p.nextToken();
-	decl = p.parseDeclDefs(0);
-	if (p.token.value != TOKeof)
-	    error("incomplete mixin declaration (%s)", se->toChars());
-    }
 }
 
 void CompileDeclaration::semantic(Scope *sc)
 {
     //printf("CompileDeclaration::semantic()\n");
-
-    if (!compiled)
-    {
-	compileIt(sc);
-	AttribDeclaration::addMember(sc, sd, 0);
-	compiled = 1;
+    exp = exp->semantic(sc);
+    exp = resolveProperties(sc, exp);
+    exp = exp->optimize(WANTvalue | WANTinterpret);
+    if (exp->op != TOKstring)
+    {	error("argument to mixin must be a string, not (%s)", exp->toChars());
+	return;
     }
+    StringExp *se = (StringExp *)exp;
+    se = se->toUTF8(sc);
+    Parser p(sc->module, (unsigned char *)se->string, se->len, 0);
+    p.loc = loc;
+    p.nextToken();
+    decl = p.parseDeclDefs(0);
+    if (p.token.value != TOKeof)
+    {
+	error("incomplete mixin declaration (%s)", se->toChars());
+    }
+
+    AttribDeclaration::addMember(sc, sd, 0);
     AttribDeclaration::semantic(sc);
 }
 

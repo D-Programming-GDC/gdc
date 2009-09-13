@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #include <stdio.h>
 #include <assert.h>
 
@@ -40,7 +46,7 @@ AggregateDeclaration::AggregateDeclaration(Loc loc, Identifier *id)
     inv = NULL;
     aggNew = NULL;
     aggDelete = NULL;
-    
+
     attributes = NULL;
 
     stag = NULL;
@@ -251,9 +257,9 @@ void StructDeclaration::semantic(Scope *sc)
         scx = scope;            // save so we don't make redundant copies
         scope = NULL;
     }
-    #ifdef IN_GCC
-     methods.setDim(0);
- #endif
+#ifdef IN_GCC
+    methods.setDim(0);
+#endif
 
     parent = sc->parent;
     handle = type->pointerTo();
@@ -262,11 +268,10 @@ void StructDeclaration::semantic(Scope *sc)
     assert(!isAnonymous());
     if (sc->stc & STCabstract)
 	error("structs, unions cannot be abstract");
-	
-	if (attributes)
- 	attributes->append(sc->attributes);
-     else
- 	attributes = sc->attributes;
+    if (attributes)
+	attributes->append(sc->attributes);
+    else
+	attributes = sc->attributes;
 
     if (sizeok == 0)		// if not already done the addMember step
     {

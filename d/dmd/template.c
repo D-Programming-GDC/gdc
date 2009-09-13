@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 // Handle template implementation
 
 #include <stdio.h>
@@ -871,76 +877,23 @@ L2:
 		//printf("\tm2 = %d\n", m);
 	    }
 
-	    /* If no match, see if we can implicitly convert farg to the
-	     * parameter type.
-	     */
-	    if (!m)
-	    {	m = farg->implicitConvTo(fparam->type);
-	    }
-
 	    if (m)
 	    {	if (m < match)
 		    match = m;		// pick worst match
 		continue;
 	    }
 	}
-
-	/* The following code for variadic arguments closely
-	 * matches TypeFunction::callMatch()
-	 */
 	if (!(fdtype->varargs == 2 && i + 1 == nfparams))
 	    goto Lnomatch;
 
 	/* Check for match with function parameter T...
 	 */
-	Type *tb = fparam->type->toBasetype();
-	switch (tb->ty)
+	Type *t = fparam->type;
+	switch (t->ty)
 	{
 	    // Perhaps we can do better with this, see TypeFunction::callMatch()
 	    case Tsarray:
-	    {	TypeSArray *tsa = (TypeSArray *)tb;
-		integer_t sz = tsa->dim->toInteger();
-		if (sz != nfargs - i)
-		    goto Lnomatch;
-	    }
 	    case Tarray:
-	    {   TypeArray *ta = (TypeArray *)tb;
-		for (; i < nfargs; i++)
-		{
-		    Expression *arg = (Expression *)fargs->data[i];
-		    assert(arg);
-		    MATCH m;
-		    /* If lazy array of delegates,
-		     * convert arg(s) to delegate(s)
-		     */
-		    Type *tret = fparam->isLazyArray();
-		    if (tret)
-		    {
-			if (ta->next->equals(arg->type))
-			{   m = MATCHexact;
-			}
-			else
-			{
-			    m = arg->implicitConvTo(tret);
-			    if (m == MATCHnomatch)
-			    {
-				if (tret->toBasetype()->ty == Tvoid)
-				    m = MATCHconvert;
-			    }
-			}
-		    }
-		    else
-		    {
-			m = arg->type->deduceType(scope, ta->next, parameters, &dedtypes);
-			//m = arg->implicitConvTo(ta->next);
-		    }
-		    if (m == MATCHnomatch)
-			goto Lnomatch;
-		    if (m < match)
-			match = m;
-		}
-		goto Lmatch;
-	    }
 	    case Tclass:
 	    case Tident:
 		goto Lmatch;
@@ -2761,12 +2714,11 @@ TemplateInstance::TemplateInstance(Loc loc, Identifier *ident)
     this->argsym = NULL;
     this->aliasdecl = NULL;
     this->semanticdone = 0;
-    this->semantictiargsdone = 0;
     this->withsym = NULL;
     this->nest = 0;
-    #ifdef IN_GCC
+#ifdef IN_GCC
     this->objFileModule = NULL;
- 	#endif
+#endif
     this->havetempdecl = 0;
     this->isnested = NULL;
     this->errors = 0;
@@ -2787,12 +2739,11 @@ TemplateInstance::TemplateInstance(Loc loc, TemplateDeclaration *td, Objects *ti
     this->argsym = NULL;
     this->aliasdecl = NULL;
     this->semanticdone = 0;
-    this->semantictiargsdone = 1;
     this->withsym = NULL;
     this->nest = 0;
-    #ifdef IN_GCC
+#ifdef IN_GCC
     this->objFileModule = NULL;
- 	#endif
+#endif
     this->havetempdecl = 1;
     this->isnested = NULL;
     this->errors = 0;
@@ -2841,7 +2792,7 @@ Dsymbol *TemplateInstance::syntaxCopy(Dsymbol *s)
 
 
 #ifdef IN_GCC
- #include "d-dmd-gcc.h"
+#include "d-dmd-gcc.h"
 #endif
 
 void TemplateInstance::semantic(Scope *sc)
@@ -2861,15 +2812,15 @@ void TemplateInstance::semantic(Scope *sc)
     printf("\n+TemplateInstance::semantic('%s', this=%p)\n", toChars(), this);
 #endif
 #ifdef IN_GCC
-     /*
-     fprintf(stderr, "ti '%s' (%p), belongs in '%s'\n", toChars(), this,
- 	sc->module->toPrettyChars());
-     if (inst) {
- 	fprintf(stderr, "  -- really '%s' (%p)\n", inst->toChars(), inst);
-     } else {
- 	fprintf(stderr, "  -- doing semantic\n");
-     }
-     */
+    /*
+    fprintf(stderr, "ti '%s' (%p), belongs in '%s'\n", toChars(), this,
+	sc->module->toPrettyChars());
+    if (inst) {
+	fprintf(stderr, "  -- really '%s' (%p)\n", inst->toChars(), inst);
+    } else {
+	fprintf(stderr, "  -- doing semantic\n");
+    }
+    */
 #endif
     if (inst)		// if semantic() was already run
     {
@@ -2983,46 +2934,45 @@ void TemplateInstance::semantic(Scope *sc)
     int dosemantic3 = 0;
     {	Array *a;
 	int i;
+#ifdef IN_GCC
+	/* For "all" and "private" template modes, templates are always
+	   emitted.  Problem:  This picks up templates that aren't even
+	   needed in the current module. */
 	
-	#ifdef IN_GCC
- 	/* For "all" and "private" template modes, templates are always
- 	   emitted.  Problem:  This picks up templates that aren't even
- 	   needed in the current module. */
- 	
- 	if (d_gcc_force_templates())
- 	{
- 	    //fprintf(stderr, "\t0: adding to %s %s\n", sc->scopesym->kind(), sc->scopesym->toChars());
- 	    objFileModule = d_gcc_get_output_module();
- 	    a = objFileModule->members;
- 	}
- 	else
- 	#endif
+	if (d_gcc_force_templates())
+	{
+	    //fprintf(stderr, "\t0: adding to %s %s\n", sc->scopesym->kind(), sc->scopesym->toChars());
+	    objFileModule = d_gcc_get_output_module();
+	    a = objFileModule->members;
+	}
+	else
+#endif
 
 	if (sc->scopesym && sc->scopesym->members && !sc->scopesym->isTemplateMixin())
 	{
 	    //printf("\t1: adding to %s %s\n", sc->scopesym->kind(), sc->scopesym->toChars());
 	    a = sc->scopesym->members;
-	    #ifdef IN_GCC
- 	    {
+#ifdef IN_GCC
+	    {
 		Dsymbol * p = sc->scopesym;
- 		Module * m;
- 		TemplateInstance * i;
- 
- 		while (p) {
- 		    if ( (i = p->isTemplateInstance()) ) {
- 			if (i->objFileModule) {
- 			    objFileModule = i->objFileModule;
- 			    break;
- 			}
- 		    } else if ( (m = p->isModule()) ) {
- 			objFileModule = m; // %% importedFrom ?
- 			break;
- 		    }
- 		    p = p->parent;
- 		}
- 		// fprintf(stderr, "\t1: adding %s to module %s via %s %s\n", tempdecl->toChars(), objFileModule?objFileModule->toChars():"", sc->scopesym->kind(), sc->scopesym->toChars());
- 	    }
- 		#endif
+		Module * m;
+		TemplateInstance * i;
+
+		while (p) {
+		    if ( (i = p->isTemplateInstance()) ) {
+			if (i->objFileModule) {
+			    objFileModule = i->objFileModule;
+			    break;
+			}
+		    } else if ( (m = p->isModule()) ) {
+			objFileModule = m; // %% importedFrom ?
+			break;
+		    }
+		    p = p->parent;
+		}
+		// fprintf(stderr, "\t1: adding %s to module %s via %s %s\n", tempdecl->toChars(), objFileModule?objFileModule->toChars():"", sc->scopesym->kind(), sc->scopesym->toChars());
+	    }
+#endif
 	}
 	else
 	{   Module *m = sc->module->importedFrom;
@@ -3030,9 +2980,9 @@ void TemplateInstance::semantic(Scope *sc)
 	    a = m->members;
 	    if (m->semanticdone >= 3)
 		dosemantic3 = 1;
-		#ifdef IN_GCC
- 	    objFileModule = m;
- 		#endif
+#ifdef IN_GCC
+	    objFileModule = m;
+#endif
 	}
 	for (int i = 0; 1; i++)
 	{
@@ -3195,9 +3145,6 @@ void TemplateInstance::semantic(Scope *sc)
 void TemplateInstance::semanticTiargs(Scope *sc)
 {
     //printf("+TemplateInstance::semanticTiargs() %s\n", toChars());
-    if (semantictiargsdone)
-	return;
-    semantictiargsdone = 1;
     semanticTiargs(loc, sc, tiargs);
 }
 
@@ -4284,8 +4231,8 @@ char *TemplateMixin::toChars()
 void TemplateMixin::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     buf->writestring("mixin ");
-
-    for (int i = 0; i < idents->dim; i++)
+    int i;
+    for (i = 0; i < idents->dim; i++)
     {   Identifier *id = (Identifier *)idents->data[i];
 
     	if (i)
@@ -4295,7 +4242,7 @@ void TemplateMixin::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writestring("!(");
     if (tiargs)
     {
-        for (int i = 0; i < tiargs->dim; i++)
+        for (i = 0; i < tiargs->dim; i++)
         {   if (i)
                 buf->writebyte(',');
 	    Object *oarg = (Object *)tiargs->data[i];
@@ -4322,11 +4269,6 @@ void TemplateMixin::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         }
     }
     buf->writebyte(')');
-    if (ident)
-    {
-	buf->writebyte(' ');
-	buf->writestring(ident->toChars());
-    }
     buf->writebyte(';');
     buf->writenl();
 }

@@ -246,37 +246,37 @@ MATCH IntegerExp::implicitConvTo(Type *t)
 	    if ((unsigned short)value != value)
 		goto Lno;
 	    goto Lyes;
-	#if IN_GCC
- 	case Tfloat32:
- 	case Tfloat64:
- 	case Tfloat80:
- 	{
- 	    real_t::MyMode mode;
- 	    real_t f;
- 	    switch (toty)
- 	    {
- 	    case Tfloat32: mode = real_t::Float; break;
- 	    case Tfloat64: mode = real_t::Double; break;
- 	    case Tfloat80: mode = real_t::LongDouble; break;
- 	    }
- 	    if (type->isunsigned())
- 	    {
- 		f = real_t((d_uns64) value);
- 		f = f.convert(mode);
- 		if ((d_uns64) f.toInt() != (d_uns64) value)
- 		    goto Lno;
- 	    }
- 	    else
- 	    {
- 		f = real_t((d_int64) value);
- 		f = f.convert(mode);
- 		if ((d_int64) f.toInt() != (d_int64) value)
- 		    goto Lno;
- 	    }
- 	    goto Lyes;
- 	}
- #else
 
+#if IN_GCC
+	case Tfloat32:
+	case Tfloat64:
+	case Tfloat80:
+	{
+	    real_t::MyMode mode;
+	    real_t f;
+	    switch (toty)
+	    {
+	    case Tfloat32: mode = real_t::Float; break;
+	    case Tfloat64: mode = real_t::Double; break;
+	    case Tfloat80: mode = real_t::LongDouble; break;
+	    }
+	    if (type->isunsigned())
+	    {
+		f = real_t((d_uns64) value);
+		f = f.convert(mode);
+		if ((d_uns64) f.toInt() != (d_uns64) value)
+		    goto Lno;
+	    }
+	    else
+	    {
+		f = real_t((d_int64) value);
+		f = f.convert(mode);
+		if ((d_int64) f.toInt() != (d_int64) value)
+		    goto Lno;
+	    }
+	    goto Lyes;
+	}
+#else
 	case Tfloat32:
 	{
 	    volatile float f;
@@ -330,7 +330,7 @@ MATCH IntegerExp::implicitConvTo(Type *t)
 	    }
 	    goto Lyes;
 	}
-	#endif
+#endif
     }
     return Expression::implicitConvTo(t);
 

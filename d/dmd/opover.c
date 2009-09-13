@@ -8,7 +8,14 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-//Issues with using -include total.h (defines integer_t) and then complex.h fails...
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, September 2004
+*/
+
+
+// Issues with using -include total.h (defines integer_t) and then complex.h fails...
 #undef integer_t
 
 #include <stdio.h>

@@ -7,6 +7,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, September 2004
+*/
+
 #include <stdio.h>
 #include <stddef.h>
 #include <time.h>
@@ -39,6 +45,7 @@
 #else
 #include "dt.h"
 #endif
+
 #ifdef IN_GCC
 #include "d-dmd-gcc.h"
 #endif
@@ -46,43 +53,44 @@
 void obj_lzext(Symbol *s1,Symbol *s2);
 
 #ifdef IN_GCC
- #if 0
- static bool m_in_a(Module * m, Array * a) {
-     for (unsigned i = 0; i < a->dim; i++)
- 	if ( m == (Module *) a->data[i] )
- 	    return true;
-     return false;
- }
- static void find_module_deps(Module * the_module, Array * out_deps)
- {
-     Array work;
-     unsigned wi = 0;
- 
-     work.push(the_module);
-     while (wi < work.dim) {
- 	Module * a_module = (Module *) work.data[wi];
- 	for (unsigned i = 0; i < a_module->aimports.dim; i++) {
- 	    Module * an_imp = (Module*) a_module->aimports.data[i];
- 	    if (! an_imp->needModuleInfo() ||
- 		m_in_a(an_imp, & work) || m_in_a(an_imp, out_deps))
- 		continue;
- 	    if (an_imp->strictlyneedmoduleinfo)
- 	    {
- 		out_deps->push(an_imp);
- 		fprintf(stderr, "idep: %s -> %s", the_module->toPrettyChars(),
- 		    an_imp->toPrettyChars());
- 		if (a_module != the_module)
- 		    fprintf(stderr, " (via %s)", a_module->toPrettyChars());
- 		fprintf(stderr, "\n");
- 	    }
- 	    else
- 		work.push(an_imp);
- 	}
- 	wi++;
-     }
- }
- #endif
- #endif
+#if 0
+static bool m_in_a(Module * m, Array * a) {
+    for (unsigned i = 0; i < a->dim; i++)
+	if ( m == (Module *) a->data[i] )
+	    return true;
+    return false;
+}
+static void find_module_deps(Module * the_module, Array * out_deps)
+{
+    Array work;
+    unsigned wi = 0;
+
+    work.push(the_module);
+    while (wi < work.dim) {
+	Module * a_module = (Module *) work.data[wi];
+	for (unsigned i = 0; i < a_module->aimports.dim; i++) {
+	    Module * an_imp = (Module*) a_module->aimports.data[i];
+	    if (! an_imp->needModuleInfo() ||
+		m_in_a(an_imp, & work) || m_in_a(an_imp, out_deps))
+		continue;
+	    if (an_imp->strictlyneedmoduleinfo)
+	    {
+		out_deps->push(an_imp);
+		fprintf(stderr, "idep: %s -> %s", the_module->toPrettyChars(),
+		    an_imp->toPrettyChars());
+		if (a_module != the_module)
+		    fprintf(stderr, " (via %s)", a_module->toPrettyChars());
+		fprintf(stderr, "\n");
+	    }
+	    else
+		work.push(an_imp);
+	}
+	wi++;
+    }
+}
+#endif
+#endif
+
 
 /* ================================================================== */
 
@@ -144,18 +152,18 @@ void Module::genmoduleinfo()
 
     // importedModules[]
     int aimports_dim = aimports.dim;
-    #ifdef IN_GCC
- #if 0
-     Array adeps;
- 
-     if (! d_gcc_supports_weak())
-     {
- 	find_module_deps(this, & adeps);
- 	aimports_dim = adeps.dim;
-     }
-     else
- #endif
- #endif
+#ifdef IN_GCC
+#if 0
+    Array adeps;
+
+    if (! d_gcc_supports_weak())
+    {
+	find_module_deps(this, & adeps);
+	aimports_dim = adeps.dim;
+    }
+    else
+#endif
+#endif
     for (int i = 0; i < aimports.dim; i++)
     {	Module *m = (Module *)aimports.data[i];
 	if (!m->needModuleInfo())
@@ -175,9 +183,9 @@ void Module::genmoduleinfo()
 	dtdword(&dt, 0);
 
     if (needmoduleinfo)
-	dtdword(&dt, 8|0);		// flags (4 means MIstandalone)
-      else
- 	dtdword(&dt, 8|4);		// flags (4 means MIstandalone)
+	dti32(&dt, 8|0, true);		// flags (4 means MIstandalone)
+    else
+	dti32(&dt, 8|4, true);		// flags (4 means MIstandalone)
 
     if (sctor)
 	dtxoff(&dt, sctor, 0, TYnptr);
@@ -194,13 +202,7 @@ void Module::genmoduleinfo()
     else
 	dtdword(&dt, 0);
 
-#if V2
-    FuncDeclaration *sgetmembers = findGetMembers();
-    if (sgetmembers)
-	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
-    else
-#endif
-	dtdword(&dt, 0);			// xgetMembers
+    dtdword(&dt, 0);			// xgetMembers
 
     if (sictor)
 	dtxoff(&dt, sictor, 0, TYnptr);
@@ -208,25 +210,24 @@ void Module::genmoduleinfo()
 	dtdword(&dt, 0);
 
     //////////////////////////////////////////////
-    
-    #ifdef IN_GCC
- #if 0
-     if (! d_gcc_supports_weak())
- 	for (i = 0; i < adeps.dim; i++)
- 	{
- 	    Module *m;
- 	    Symbol *s;
-     
- 	    m = (Module *) adeps.data[i];
- 	    s = m->toSymbol();
- 	    s->Sflags |= SFLweak; // doesn't do anything yet, but see d-decls.cc:Module::toSymbol
- 	    dtxoff(&dt, s, 0, TYnptr);
- 	}
-     else
- #endif
- #endif
 
-    for (int i = 0; i < aimports.dim; i++)
+#ifdef IN_GCC
+#if 0
+    if (! d_gcc_supports_weak())
+	for (i = 0; i < adeps.dim; i++)
+	{
+	    Module *m;
+	    Symbol *s;
+    
+	    m = (Module *) adeps.data[i];
+	    s = m->toSymbol();
+	    s->Sflags |= SFLweak; // doesn't do anything yet, but see d-decls.cc:Module::toSymbol
+	    dtxoff(&dt, s, 0, TYnptr);
+	}
+    else
+#endif
+#endif
+   for (int i = 0; i < aimports.dim; i++)
     {	Module *m = (Module *)aimports.data[i];
 
 	if (m->needModuleInfo())
@@ -260,30 +261,29 @@ void Dsymbol::toObjFile(int multiobj)
 {
     //printf("Dsymbol::toObjFile('%s')\n", toChars());
     // ignore
-     #ifdef IN_GCC
-     TupleDeclaration * td = this->isTupleDeclaration();
-     if (td)
-     {	
- 	for (unsigned i = 0; i < td->objects->dim; i++)
- 	{
- 	    Object * o = (Object *) td->objects->data[i];
- 	    Expression * e;
- 	    Dsymbol *ds;
- 	    Declaration *d;
- 	    if ((o->dyncast() == DYNCAST_EXPRESSION) &&
- 		((Expression *) o)->op == TOKdsymbol)
- 	    {
- 		ds = ((DsymbolExp *) o)->s;
- 		d = ds->isDeclaration();
- 		if (d)
- 		    d->toObjFile(multiobj);
- 	    }
-  		
- 	}		
-     }   
- #endif
+#ifdef IN_GCC
+    TupleDeclaration * td = this->isTupleDeclaration();
+    if (td)
+    {	
+	for (unsigned i = 0; i < td->objects->dim; i++)
+	{
+	    Object * o = (Object *) td->objects->data[i];
+	    Expression * e;
+	    Dsymbol *ds;
+	    Declaration *d;
+	    if ((o->dyncast() == DYNCAST_EXPRESSION) &&
+		((Expression *) o)->op == TOKdsymbol)
+	    {
+		ds = ((DsymbolExp *) o)->s;
+		d = ds->isDeclaration();
+		if (d)
+		    d->toObjFile(multiobj);
+	    }
+		
+	}		
+    }   
+#endif
 }
-
 /* ================================================================== */
 
 void ClassDeclaration::toObjFile(int multiobj)
@@ -303,9 +303,9 @@ void ClassDeclaration::toObjFile(int multiobj)
     assert(!scope);	// semantic() should have been run to completion
 
     if (parent && parent->isTemplateInstance())
-  	scclass = SCcomdat;
-     else
- 	scclass = SCglobal;
+	scclass = SCcomdat;
+    else
+	scclass = SCglobal;
 
     // Put out the members
     for (i = 0; i < members->dim; i++)
@@ -414,7 +414,6 @@ void ClassDeclaration::toObjFile(int multiobj)
 	    void *deallocator;
 	    OffsetTypeInfo[] offTi;
 	    void *defaultConstructor;
-	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
        }
      */
     dt_t *dt = NULL;
@@ -477,9 +476,6 @@ void ClassDeclaration::toObjFile(int multiobj)
 
     // flags
     int flags = 4 | isCOMclass();
-#if V2
-    flags |= 16;
-#endif
     if (ctor)
 	flags |= 8;
     for (ClassDeclaration *cd = this; cd; cd = cd->baseClass)
@@ -515,14 +511,6 @@ void ClassDeclaration::toObjFile(int multiobj)
 	dtxoff(&dt, defaultCtor->toSymbol(), 0, TYnptr);
     else
 	dtdword(&dt, 0);
-
-#if V2
-    FuncDeclaration *sgetmembers = findGetMembers();
-    if (sgetmembers)
-	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
-    else
-	dtdword(&dt, 0);	// module getMembers() function
-#endif
 
     //////////////////////////////////////////////
 
@@ -717,37 +705,8 @@ void ClassDeclaration::toObjFile(int multiobj)
 
 	//printf("\tvtbl[%d] = %p\n", i, fd);
 	if (fd && (fd->fbody || !isAbstract()))
-	{   Symbol *s = fd->toSymbol();
-
-#if V2
-	    if (isFuncHidden(fd))
-	    {	/* fd is hidden from the view of this class.
-		 * If fd overlaps with any function in the vtbl[], then
-		 * issue 'hidden' error.
-		 */
-		for (int j = 1; j < vtbl.dim; j++)
-		{   if (j == i)
-			continue;
-		    FuncDeclaration *fd2 = ((Dsymbol *)vtbl.data[j])->isFuncDeclaration();
-		    if (!fd2->ident->equals(fd->ident))
-			continue;
-		    if (fd->leastAsSpecialized(fd2) || fd2->leastAsSpecialized(fd))
-		    {
-			if (global.params.warnings)
-			{   fprintf(stdmsg, "warning - ");
-			    TypeFunction *tf = (TypeFunction *)fd->type;
-			    if (tf->ty == Tfunction)
-				error("%s%s is hidden by %s\n", fd->toPrettyChars(), Argument::argsTypesToChars(tf->parameters, tf->varargs), toChars());
-			    else
-				error("%s is hidden by %s\n", fd->toPrettyChars(), toChars());
-			}
-			s = rtlsym[RTLSYM_DHIDDENFUNC];
-			break;
-		    }
-		}
-	    }
-#endif
-	    dtxoff(&dt, s, 0, TYnptr);
+	{
+	    dtxoff(&dt, fd->toSymbol(), 0, TYnptr);
 	}
 	else
 	    dtdword(&dt, 0);
@@ -851,9 +810,9 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 	toDebug();
 
     if (parent && parent->isTemplateInstance())
-  	scclass = SCcomdat;
-     else
- 	scclass = SCglobal;
+	scclass = SCcomdat;
+    else
+	scclass = SCglobal;
 
     // Put out the members
     for (i = 0; i < members->dim; i++)
@@ -889,9 +848,6 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 	    void *deallocator;
 	    OffsetTypeInfo[] offTi;
 	    void *defaultConstructor;
-#if V2
-	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
-#endif
        }
      */
     dt_t *dt = NULL;
@@ -950,11 +906,6 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 
     // defaultConstructor
     dtdword(&dt, 0);
-
-#if V2
-    // xgetMembers
-    dtdword(&dt, 0);
-#endif
 
     //////////////////////////////////////////////
 
@@ -1069,21 +1020,13 @@ void VarDeclaration::toObjFile(int multiobj)
 	return;
     }
 
-#if V2
-    // Do not store variables we cannot take the address of
-    if (!canTakeAddressOf())
-    {
-	return;
-    }
-#endif
-
     if (isDataseg() && !(storage_class & STCextern))
     {
 	s = toSymbol();
 	sz = type->size();
 
 	parent = this->toParent();
-#if V1	/* private statics should still get a global symbol, in case
+#if 1	/* private statics should still get a global symbol, in case
 	 * another module inlines a function that references it.
 	 */
 	if (/*protection == PROTprivate ||*/
@@ -1099,29 +1042,28 @@ void VarDeclaration::toObjFile(int multiobj)
 	    else
 		s->Sclass = SCglobal;
 
-            do
-            {
-                /* Global template data members need to be in comdat's
-                 * in case multiple .obj files instantiate the same
-                 * template with the same types.
-                 */
-                if (parent->isTemplateInstance() && !parent->isTemplateMixin())
-                {
-#if V1
-                    /* These symbol constants have already been copied,
-                     * so no reason to output them.
-                     * Note that currently there is no way to take
-                     * the address of such a const.
-                     */
-                    if (isConst() && type->toBasetype()->ty != Tsarray &&
-                        init && init->isExpInitializer())
-                        return;
-#endif
-                    s->Sclass = SCcomdat;
-                    break;
-                }
-                parent = parent->parent;
-            } while (parent);
+	    do
+	    {
+		/* Global template data members need to be in comdat's
+		 * in case multiple .obj files instantiate the same
+		 * template with the same types.
+		 */
+		if (parent->isTemplateInstance() && !parent->isTemplateMixin())
+		{
+		    /* These symbol constants have already been copied,
+		     * so no reason to output them.
+		     * Note that currently there is no way to take
+		     * the address of such a const.
+		     */
+		    if (isConst() && type->toBasetype()->ty != Tsarray &&
+			init && init->isExpInitializer())
+			return;
+
+		    s->Sclass = SCcomdat;
+		    break;
+		}
+		parent = parent->parent;
+	    } while (parent);
 	}
 	s->Sfl = FLdata;
 
@@ -1186,15 +1128,15 @@ void VarDeclaration::toObjFile(int multiobj)
 		obj_export(s,0);
 	}
     }
-    #ifdef IN_GCC
-     else {
- 	// This is needed for VarDeclarations in mixins that are to be
- 	// local variables of a function.  Otherwise, it would be
- 	// enough to make a check for isVarDeclaration() in
- 	// DeclarationExp::toElem.
- 	d_gcc_emit_local_variable(this);
-     }
- #endif
+#ifdef IN_GCC
+    else {
+	// This is needed for VarDeclarations in mixins that are to be
+	// local variables of a function.  Otherwise, it would be
+	// enough to make a check for isVarDeclaration() in
+	// DeclarationExp::toElem.
+	d_gcc_emit_local_variable(this);
+    }
+#endif
 }
 
 /* ================================================================== */
@@ -1214,8 +1156,14 @@ void TypedefDeclaration::toObjFile(int multiobj)
     else
     {
 	enum_SC scclass = SCglobal;
-	if (inTemplateInstance())
-	    scclass = SCcomdat;
+	for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
+	{
+	    if (parent->isTemplateInstance())
+	    {
+		scclass = SCcomdat;
+		break;
+	    }
+	}
 
 	// Generate static initializer
 	toInitializer();
@@ -1225,7 +1173,7 @@ void TypedefDeclaration::toObjFile(int multiobj)
 	sinit->Sseg = CDATA;
 #endif /* ELFOBJ */
 	if (! sinit->Sdt)
-	sinit->Sdt = tc->sym->init->toDt();
+	    sinit->Sdt = tc->sym->init->toDt();
 	outdata(sinit);
     }
 }
@@ -1236,24 +1184,25 @@ void EnumDeclaration::toObjFile(int multiobj)
 {
     //printf("EnumDeclaration::toObjFile('%s')\n", toChars());
 
-#if V2
-    if (isAnonymous())
-	return;
-#endif
-
     if (global.params.symdebug)
 	toDebug();
 
     type->getTypeInfo(NULL);	// generate TypeInfo
 
     TypeEnum *tc = (TypeEnum *)type;
-    if (!tc->sym->defaultval || type->isZeroInit())
+    if (type->isZeroInit() || !tc->sym->defaultval)
 	;
     else
     {
 	enum_SC scclass = SCglobal;
-	if (inTemplateInstance())
-	    scclass = SCcomdat;
+	for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
+	{
+	    if (parent->isTemplateInstance())
+	    {
+		scclass = SCcomdat;
+		break;
+	    }
+	}
 
 	// Generate static initializer
 	toInitializer();
@@ -1262,21 +1211,15 @@ void EnumDeclaration::toObjFile(int multiobj)
 #if ELFOBJ // Burton
 	sinit->Sseg = CDATA;
 #endif /* ELFOBJ */
-#if V1
-	 #ifndef IN_GCC
-  	dtnbytes(&sinit->Sdt, tc->size(0), (char *)&tc->sym->defaultval);
- #else
- 	Expression * e = new IntegerExp(0, tc->sym->defaultval, tc);
+#ifndef IN_GCC
+	dtnbytes(&sinit->Sdt, tc->size(0), (char *)&tc->sym->defaultval);
+#else
+	Expression * e = new IntegerExp(0, tc->sym->defaultval, tc);
 	e->toDt(& sinit->Sdt);
- #endif
+#endif
 	//sinit->Sdt = tc->sym->init->toDt();
-#endif
-#if V2
-	tc->sym->defaultval->toDt(&sinit->Sdt);
-#endif
 	outdata(sinit);
     }
 }
-
 
 

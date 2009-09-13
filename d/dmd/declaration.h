@@ -1,4 +1,5 @@
 
+
 // Compiler implementation of the D programming language
 // Copyright (c) 1999-2008 by Digital Mars
 // All Rights Reserved
@@ -7,6 +8,12 @@
 // License for redistribution is by either the Artistic License
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
 
 #ifndef DMD_DECLARATION_H
 #define DMD_DECLARATION_H
@@ -69,7 +76,6 @@ enum STC
     STCnothrow	    = 0x2000000,	// never throws exceptions
     STCpure	    = 0x4000000,	// pure function
     STCtls	    = 0x8000000,	// thread local
-    STCalias	    = 0x10000000,	// alias parameter
 };
 
 struct Match
@@ -468,7 +474,7 @@ struct FuncDeclaration : Declaration
     VarDeclaration *vthis;		// 'this' parameter (member and nested)
     VarDeclaration *v_arguments;	// '_arguments' parameter
 #if IN_GCC
-VarDeclaration *v_arguments_var;	// '_arguments' variable
+    VarDeclaration *v_arguments_var;	// '_arguments' variable
     VarDeclaration *v_argptr;	        // '_argptr' variable
 #endif
     Dsymbols *parameters;		// Array of VarDeclaration's for parameters
@@ -554,8 +560,10 @@ VarDeclaration *v_arguments_var;	// '_arguments' variable
     char *kind();
     void toDocBuffer(OutBuffer *buf);
 
-    static FuncDeclaration *genCfunc(Type *treturn, char *name, Type* t1 = 0, Type* t2 = 0, Type* t3 = 0);
-    static FuncDeclaration *genCfunc(Type *treturn, Identifier *id, Type* t1 = 0, Type* t2 = 0, Type* t3 = 0);
+    static FuncDeclaration *genCfunc(Type *treturn, char *name,
+	Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);
+    static FuncDeclaration *genCfunc(Type *treturn, Identifier *id,
+	Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);
 
     Symbol *toSymbol();
     Symbol *toThunkSymbol(target_ptrdiff_t offset);	// thunk version
@@ -608,24 +616,6 @@ struct CtorDeclaration : FuncDeclaration
     CtorDeclaration *isCtorDeclaration() { return this; }
 };
 
-#if V2
-struct PostBlitDeclaration : FuncDeclaration
-{
-    PostBlitDeclaration(Loc loc, Loc endloc);
-    PostBlitDeclaration(Loc loc, Loc endloc, Identifier *id);
-    Dsymbol *syntaxCopy(Dsymbol *);
-    void semantic(Scope *sc);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    int isVirtual();
-    int addPreInvariant();
-    int addPostInvariant();
-    int overloadInsert(Dsymbol *s);
-    void emitComment(Scope *sc);
-
-    PostBlitDeclaration *isPostBlitDeclaration() { return this; }
-};
-#endif
-
 struct DtorDeclaration : FuncDeclaration
 {
     DtorDeclaration(Loc loc, Loc endloc);
@@ -659,8 +649,7 @@ struct StaticCtorDeclaration : FuncDeclaration
 };
 
 struct StaticDtorDeclaration : FuncDeclaration
-{   VarDeclaration *vgate;	// 'gate' variable
-
+{
     StaticDtorDeclaration(Loc loc, Loc endloc);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);

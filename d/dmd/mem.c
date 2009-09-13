@@ -2,6 +2,12 @@
 /* Copyright (c) 2000 Digital Mars	*/
 /* All Rights Reserved 			*/
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, May 2005
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

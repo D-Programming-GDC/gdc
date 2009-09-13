@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #ifndef DMD_MARS_H
 #define DMD_MARS_H
 
@@ -194,13 +200,11 @@ typedef d_uns32			d_dchar;
 
 typedef uinteger_t target_size_t;
 typedef sinteger_t target_ptrdiff_t;
-
 #ifdef IN_GCC
 #include "d-gcc-real.h"
 #else
 typedef long double real_t;
 #endif
-
 // Modify OutBuffer::writewchar to write the correct size of wchar
 #if _WIN32
 #define writewchar writeword

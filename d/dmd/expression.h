@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, September 2004
+*/
+
 #ifndef DMD_EXPRESSION_H
 #define DMD_EXPRESSION_H
 

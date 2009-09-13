@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #ifndef DMD_AGGREGATE_H
 #define DMD_AGGREGATE_H
 
@@ -41,7 +47,7 @@ struct AggregateDeclaration : ScopeDsymbol
     enum PROT protection;
     Type *handle;		// 'this' type
     target_size_t structsize;	// size of struct
-    target_size_t alignsize;		// size of struct for alignment purposes
+    target_size_t alignsize;	// size of struct for alignment purposes
     target_size_t structalign;	// struct member alignment in effect
     int hasUnions;		// set if aggregate has overlapping fields
     Array fields;		// VarDeclaration fields
@@ -59,9 +65,8 @@ struct AggregateDeclaration : ScopeDsymbol
 
     FuncDeclarations dtors;	// Array of destructors
     FuncDeclaration *dtor;	// aggregate destructor
-    
-    Expressions * attributes;
 
+    Expressions * attributes;   // GCC decl/type attributes
 #ifdef IN_GCC
     Array methods;              // flat list of all methods for debug information
 #endif
@@ -150,7 +155,7 @@ struct BaseClass
     enum PROT protection;		// protection for the base interface
 
     ClassDeclaration *base;
-    target_ptrdiff_t offset;				// 'this' pointer offset
+    target_ptrdiff_t offset;		// 'this' pointer offset
     Array vtbl;				// for interfaces: Array of FuncDeclaration's
 					// making up the vtbl[]
 
@@ -165,7 +170,7 @@ struct BaseClass
     void copyBaseInterfaces(BaseClasses *);
 };
 
-extern int CLASSINFO_SIZE;
+extern int CLASSINFO_SIZE;		// value of ClassInfo.size
 
 struct ClassDeclaration : AggregateDeclaration
 {

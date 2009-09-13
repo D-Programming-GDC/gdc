@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #include <stdio.h>
 #include <ctype.h>
 #include <assert.h>
@@ -257,13 +263,13 @@ Expression *PtrExp::optimize(int result)
 	    e = ex;
 	else
 	{
-		#ifndef IN_GCC
+#ifndef IN_GCC
 	    e = ex->copy();
 	    e->type = type;
-	    #else
+#else
 	    // Stuffing types does not always work in GCC
- 	    return this;
- 	    #endif
+	    return this;
+#endif
 	}
 	return e;
     }
@@ -596,7 +602,6 @@ Expression *IdentityExp::optimize(int result)
     e1 = e1->optimize(WANTvalue | (result & WANTinterpret));
     e2 = e2->optimize(WANTvalue | (result & WANTinterpret));
     e = this;
-
     if (this->e1->isConst() && this->e2->isConst())
     {
 	e = Identity(op, type, this->e1, this->e2);

@@ -272,7 +272,7 @@ private:
 	{
 	    char[] name;
 	    DP tok;
-	    uint value; //used to be short; GDC
+	    short value;
 	}
 
 	static DateID dateidtab[] =

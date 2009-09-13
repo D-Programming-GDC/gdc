@@ -129,7 +129,6 @@ struct CompileStatement : Statement
     CompileStatement(Loc loc, Expression *exp);
     Statement *syntaxCopy();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    Statements *flatten(Scope *sc);
     Statement *semantic(Scope *sc);
 };
 
@@ -743,25 +742,26 @@ struct AsmStatement : Statement
     void toIR(IRState *irs);
 };
 
- #ifdef IN_GCC
- 
- // Assembler instructions with D expression operands
- struct ExtAsmStatement : Statement
- {
-     Expression *insnTemplate;
-     Expressions *args;            
-     Array *argNames;        // of NULL or Identifier*
-     Expressions *argConstraints;  // of StringExp*
-     unsigned nOutputArgs;
-     Expressions *clobbers;        // of StringExp*
- 
-     ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Array *argNames,
- 	Expressions *argConstraints, int nOutputArgs, Expressions *clobbers);
-     Statement *syntaxCopy();
-     Statement *semantic(Scope *sc);
-     void toIR(IRState *irs);
- };
- 
- #endif
+
+#ifdef IN_GCC
+
+// Assembler instructions with D expression operands
+struct ExtAsmStatement : Statement
+{
+    Expression *insnTemplate;
+    Expressions *args;            
+    Array *argNames;        // of NULL or Identifier*
+    Expressions *argConstraints;  // of StringExp*
+    unsigned nOutputArgs;
+    Expressions *clobbers;        // of StringExp*
+
+    ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Array *argNames,
+	Expressions *argConstraints, int nOutputArgs, Expressions *clobbers);
+    Statement *syntaxCopy();
+    Statement *semantic(Scope *sc);
+    void toIR(IRState *irs);
+};
+
+#endif
 
 #endif /* DMD_STATEMENT_H */
