@@ -63,6 +63,7 @@ int strcoll(in char* s1, in char* s2);		///
 void* memchr(in void* s, int c, size_t n);		///
 char* strtok(char*  s1, in char*  s2);		///
 const(char)* strerror(int errnum);			///
+const(char)* strerror_r(int errnum, char* buf, size_t buflen);	///
 
 version (Windows)
 {
