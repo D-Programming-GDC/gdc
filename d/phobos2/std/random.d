@@ -160,12 +160,12 @@ struct LinearCongruentialEngine(UIntType, UIntType a, UIntType c, UIntType m)
 /**
      Constructs a $(D_PARAM LinearCongruentialEngine) generator.
 */
-    static LinearCongruentialEngine opCall(UIntType x0 = 1)
+    /*static LinearCongruentialEngine opCall(UIntType x0 = 1)
     {
         LinearCongruentialEngine result;
         result.seed(x0);
         return result;
-    }
+    }*/
 
 /**
    (Re)seeds the generator.
@@ -316,12 +316,12 @@ struct MersenneTwisterEngine(
 /**
    Constructs a MersenneTwisterEngine object
 */
-    static MersenneTwisterEngine opCall(ResultType value)
+    /*static MersenneTwisterEngine opCall(ResultType value)
     {
         MersenneTwisterEngine result;
         result.seed(value);
         return result;
-    }
+    }*/
     
 /**
    Constructs a MersenneTwisterEngine object

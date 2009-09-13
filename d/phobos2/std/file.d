@@ -1444,7 +1444,7 @@ void listdir(string pathname, bool delegate(DirEntry* de) callback)
 {
     auto h = cenforce(opendir(toStringz(pathname)), pathname);
     scope(exit) closedir(h);
-    DirEntry de;
+    /*DirEntry de;
     for (dirent* fdata; (fdata = readdir(h)) != null; )
     {
         // Skip "." and ".."
@@ -1454,7 +1454,7 @@ void listdir(string pathname, bool delegate(DirEntry* de) callback)
         de.init(pathname, fdata);
         if (!callback(&de))	    
             break;
-    }
+    }*/
 }
 
 

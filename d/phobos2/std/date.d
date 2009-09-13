@@ -651,7 +651,7 @@ string toTimeString(d_time time)
  * If the string is not a valid date, d_time_nan is returned.
  */
 
-d_time parse(string s)
+/*d_time parse(string s)
 {
     Date dp;
     d_time n;
@@ -683,7 +683,7 @@ d_time parse(string s)
 	n =  d_time_nan;		// erroneous date string
     }
     return n;
-}
+}*/
 
 static this()
 {

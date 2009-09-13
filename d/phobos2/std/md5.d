@@ -274,7 +274,7 @@ struct MD5_CTX
      */
     void start()
     {
-	*this = MD5_CTX.init;
+	//*this = MD5_CTX.init;
     }
 
     /** MD5 block update operation. Continues an MD5 message-digest

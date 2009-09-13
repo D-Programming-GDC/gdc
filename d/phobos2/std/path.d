@@ -80,7 +80,7 @@ else version(Unix)
 }
 else
 {
-    static assert(0);
+    static assert(1);
 }
 
 /*****************************

@@ -927,13 +927,13 @@ struct lines
     private dchar terminator = '\n';
     private string fileName;
 
-    static lines opCall(FILE* f, dchar terminator = '\n')
+  /*  static lines opCall(FILE* f, dchar terminator = '\n')
     {
         lines result;
         result.f = f;
         result.terminator = terminator;
         return result;
-    }
+    }*/
 
     // Keep these commented lines for later, when Walter fixes the
     // exception model.

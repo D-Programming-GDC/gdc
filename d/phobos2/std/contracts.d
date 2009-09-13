@@ -395,7 +395,7 @@ unittest
 /*********************
  * Thrown if errors that set $(D errno) happen.
  */
-class ErrnoException : Exception
+/*class ErrnoException : Exception
 {
     uint errno;			// operating system error code
 
@@ -427,5 +427,5 @@ class ErrnoException : Exception
     {
 	throw new ErrnoException(getErrno());
     }
-}
+}*/
 
