@@ -15,14 +15,6 @@ else
     d_lang_version=1
 fi
 
-#D1 not default
-#if test -d gcc/d/dmd; then
-#    d_lang_version=1
-#elif test -d gcc/d/dmd2; then
-#    d_lang_version=2
-#fi
-
-
 # Read command line arguments
 for arg in "$@"; do
     case "$arg" in
