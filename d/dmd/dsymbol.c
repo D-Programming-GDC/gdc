@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2008 by Digital Mars
+// Copyright (c) 1999-2007 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -234,16 +234,6 @@ Dsymbol *Dsymbol::toParent2()
     return s;
 }
 
-TemplateInstance *Dsymbol::inTemplateInstance()
-{
-    for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
-    {
-	TemplateInstance *ti = parent->isTemplateInstance();
-	if (ti)
-	    return ti;
-    }
-    return NULL;
-}
 
 int Dsymbol::isAnonymous()
 {
@@ -269,16 +259,6 @@ void Dsymbol::inlineScan()
 {
     // Most Dsymbols have no further semantic analysis needed
 }
-
-/*********************************************
- * Search for ident as member of s.
- * Input:
- *	flags:	1	don't find private members
- *		2	don't give error messages
- *		4	return NULL if ambiguous
- * Returns:
- *	NULL if not found
- */
 
 Dsymbol *Dsymbol::search(Loc loc, Identifier *ident, int flags)
 {
@@ -399,9 +379,7 @@ LabelDsymbol *Dsymbol::isLabel()		// is this a LabelDsymbol()?
 
 AggregateDeclaration *Dsymbol::isMember()	// is this a member of an AggregateDeclaration?
 {
-    //printf("Dsymbol::isMember() %s\n", toChars());
     Dsymbol *parent = toParent();
-    //printf("parent is %s %s\n", parent->kind(), parent->toChars());
     return parent ? parent->isAggregateDeclaration() : NULL;
 }
 
@@ -629,11 +607,12 @@ Dsymbol *ScopeDsymbol::syntaxCopy(Dsymbol *s)
 }
 
 Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
-{
-    //printf("%s->ScopeDsymbol::search(ident='%s', flags=x%x)\n", toChars(), ident->toChars(), flags);
+{   Dsymbol *s;
+    int i;
 
+    //printf("%s->ScopeDsymbol::search(ident='%s', flags=x%x)\n", toChars(), ident->toChars(), flags);
     // Look in symbols declared in this module
-    Dsymbol *s = symtab ? symtab->lookup(ident) : NULL;
+    s = symtab ? symtab->lookup(ident) : NULL;
     if (s)
     {
 	//printf("\ts = '%s.%s'\n",toChars(),s->toChars());
@@ -641,7 +620,7 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
     else if (imports)
     {
 	// Look in imported modules
-	for (int i = 0; i < imports->dim; i++)
+	for (i = 0; i < imports->dim; i++)
 	{   ScopeDsymbol *ss = (ScopeDsymbol *)imports->data[i];
 	    Dsymbol *s2;
 
@@ -650,8 +629,6 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
 		continue;
 
 	    //printf("\tscanning import '%s', prots = %d, isModule = %p, isImport = %p\n", ss->toChars(), prots[i], ss->isModule(), ss->isImport());
-	    /* Don't find private members if ss is a module
-	     */
 	    s2 = ss->search(loc, ident, ss->isModule() ? 1 : 0);
 	    if (!s)
 		s = s2;
@@ -659,10 +636,6 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
 	    {
 		if (s->toAlias() == s2->toAlias())
 		{
-		    /* After following aliases, we found the same symbol,
-		     * so it's not an ambiguity.
-		     * But if one alias is deprecated, prefer the other.
-		     */
 		    if (s->isDeprecated())
 			s = s2;
 		}

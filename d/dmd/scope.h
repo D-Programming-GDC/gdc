@@ -7,6 +7,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #ifndef DMD_SCOPE_H
 #define DMD_SCOPE_H
 
@@ -48,7 +54,7 @@ struct Scope
     Statement *sbreak;		// enclosing statement that supports "break"
     Statement *scontinue;	// enclosing statement that supports "continue"
     ForeachStatement *fes;	// if nested function for ForeachStatement, this is it
-    target_size_t offset;		// next offset to use in aggregate
+    target_size_t offset;	// next offset to use in aggregate
     int inunion;		// we're processing members of a union
     int incontract;		// we're inside contract code
     int nofree;			// set if shouldn't free it
@@ -73,7 +79,7 @@ struct Scope
     int explicitProtection;	// set if in an explicit protection attribute
 
     unsigned stc;		// storage class
-    Expressions * attributes;
+    Expressions * attributes;   // GCC decl/type attributes
 
     unsigned flags;
 #define SCOPEctor	1	// constructor type

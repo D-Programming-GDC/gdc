@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, January 2007
+*/
+
 #ifndef DMD_MTYPE_H
 #define DMD_MTYPE_H
 
@@ -155,7 +161,7 @@ struct Type : Object
     #define tshiftcnt	tint32		// right side of shift expression
 //    #define tboolean	tint32		// result of boolean expression
     #define tboolean	tbool		// result of boolean expression
-    #define tindex	basic[Tindex]		// array/ptr index
+    #define tindex	basic[Tindex]	// array/ptr index
     static Type *tvoidptr;		// void*
     #define terror	basic[Terror]	// for error recovery
 

@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, September 2004
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -237,15 +243,15 @@ void CompileStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         buf->writenl();
 }
 
-Statements *CompileStatement::flatten(Scope *sc)
+Statement *CompileStatement::semantic(Scope *sc)
 {
-    //printf("CompileStatement::flatten() %s\n", exp->toChars());
+    //printf("CompileStatement::semantic() %s\n", exp->toChars());
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
     exp = exp->optimize(WANTvalue | WANTinterpret);
     if (exp->op != TOKstring)
     {	error("argument to mixin must be a string, not (%s)", exp->toChars());
-	return NULL;
+	return this;
     }
     StringExp *se = (StringExp *)exp;
     se = se->toUTF8(sc);
@@ -253,25 +259,17 @@ Statements *CompileStatement::flatten(Scope *sc)
     p.loc = loc;
     p.nextToken();
 
-    Statements *a = new Statements();
+    Statements *statements = new Statements();
     while (p.token.value != TOKeof)
     {
 	Statement *s = p.parseStatement(PSsemi | PScurlyscope);
-	a->push(s);
+	statements->push(s);
     }
-    return a;
+
+    Statement *s = new CompoundStatement(loc, statements);
+    return s->semantic(sc);
 }
 
-Statement *CompileStatement::semantic(Scope *sc)
-{
-    printf("CompileStatement::semantic() %s\n", exp->toChars());
-    /* Shouldn't happen unless errors, as CompileStatement::flatten()
-     * should have replaced it.
-     * Return NULL so no further errors happen.
-     */
-    assert(global.errors);
-    return NULL;
-}
 
 /******************************** DeclarationStatement ***************************/
 
@@ -476,9 +474,7 @@ Statement *CompoundStatement::semantic(Scope *sc)
 	i++;
     }
     if (statements->dim == 1)
-    {
-	return (Statement *)statements->data[0];
-    }
+	return s;
     return this;
 }
 
@@ -1177,8 +1173,8 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		    error("no storage class for key %s", arg->ident->toChars());
 		TY keyty = arg->type->ty;
 		if ((keyty != Tint32 && keyty != Tuns32) &&
- 		    (! global.params.isX86_64 ||
- 			(keyty != Tint64 && keyty != Tuns64))
+		    (! global.params.isX86_64 ||
+			(keyty != Tint64 && keyty != Tuns64))
 		   )
 		{
 		    error("foreach: key type must be int or uint, not %s", arg->type->toChars());
@@ -1319,8 +1315,8 @@ Statement *ForeachStatement::semantic(Scope *sc)
 
 	    if (key &&
 		((key->type->ty != Tint32 && key->type->ty != Tuns32) &&
-! 		 (! global.params.isX86_64 ||
-! 		     (key->type->ty != Tint64 && key->type->ty != Tuns64))
+		 (! global.params.isX86_64 ||
+		     (key->type->ty != Tint64 && key->type->ty != Tuns64))
 	        )
 	       )
 	    {
@@ -1440,17 +1436,17 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		 *	_aaApply(aggr, keysize, flde)
 		 */
 		if (dim == 2)
-		   fdapply = FuncDeclaration::genCfunc(Type::tint32, "_aaApply2",
- 			Type::tvoid->arrayOf(), Type::tsize_t, flde->type); // flde->type is not generic
+		    fdapply = FuncDeclaration::genCfunc(Type::tint32, "_aaApply2",
+			Type::tvoid->arrayOf(), Type::tsize_t, flde->type); // flde->type is not generic
 		else
 		    fdapply = FuncDeclaration::genCfunc(Type::tint32, "_aaApply",
- 			Type::tvoid->arrayOf(), Type::tsize_t, flde->type); // flde->type is not generic);
+			Type::tvoid->arrayOf(), Type::tsize_t, flde->type); // flde->type is not generic);
 		ec = new VarExp(0, fdapply);
 		Expressions *exps = new Expressions();
 		exps->push(aggr);
 		size_t keysize = taa->key->size();
 		keysize = (keysize + (PTRSIZE-1)) & ~(PTRSIZE-1);
- 		exps->push(new IntegerExp(0, keysize, Type::tsize_t));
+		exps->push(new IntegerExp(0, keysize, Type::tsize_t));
 		exps->push(flde);
 		e = new CallExp(loc, ec, exps);
 		e->type = Type::tint32;	// don't run semantic() on e
@@ -1486,7 +1482,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		int j = sprintf(fdname, "_aApply%s%.*s%d", r, 2, fntab[flag], dim);
 		assert(j < sizeof(fdname));
 		fdapply = FuncDeclaration::genCfunc(Type::tint32, fdname,
- 		    Type::tvoid->arrayOf(), flde->type); // flde->type is not generic
+		    Type::tvoid->arrayOf(), flde->type); // flde->type is not generic
 
 		ec = new VarExp(0, fdapply);
 		Expressions *exps = new Expressions();
@@ -1800,21 +1796,13 @@ void ConditionalStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     condition->toCBuffer(buf, hgs);
     buf->writenl();
-    buf->writeByte('{');
-    buf->writenl();
     if (ifbody)
 	ifbody->toCBuffer(buf, hgs);
-    buf->writeByte('}');
-    buf->writenl();
     if (elsebody)
     {
 	buf->writestring("else");
 	buf->writenl();
-	buf->writeByte('{');
-	buf->writenl();
 	elsebody->toCBuffer(buf, hgs);
-	buf->writeByte('}');
-	buf->writenl();
     }
     buf->writenl();
 }

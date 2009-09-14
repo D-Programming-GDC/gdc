@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #include <stdio.h>
 #include <assert.h>
 
@@ -50,9 +56,9 @@ FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, enum STC s
     localsymtab = NULL;
     vthis = NULL;
     v_arguments = NULL;
-    v_arguments_var = NULL;
 #if IN_GCC
     v_argptr = NULL;
+    v_arguments_var = NULL;
 #endif
     parameters = NULL;
     labtab = NULL;
@@ -131,9 +137,9 @@ void FuncDeclaration::semantic(Scope *sc)
     protection = sc->protection;
     storage_class |= sc->stc;
     if (attributes)
- 		attributes->append(sc->attributes);
+	attributes->append(sc->attributes);
     else
- 		attributes = sc->attributes;
+	attributes = sc->attributes;
     //printf("function storage_class = x%x\n", storage_class);
     Dsymbol *parent = toParent();
 
@@ -771,7 +777,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 		     * because we need it later on.
 		     */
 		    OutBuffer buf;
-		    buf.printf("_param_%"PRIuSIZE, i);;
+		    buf.printf("_param_%"PRIuSIZE, i);
 		    char *name = (char *)buf.extractData();
 		    id = new Identifier(name, TOKidentifier);
 		    arg->ident = id;
@@ -1133,10 +1139,10 @@ void FuncDeclaration::semantic3(Scope *sc)
 
 	    if (_arguments)
 	    {
-	    #if IN_GCC
- 		v_arguments_var = _arguments;
- 		v_arguments_var->init = new VoidInitializer(loc);
- 		#endif
+#if IN_GCC
+		v_arguments_var = _arguments;
+		v_arguments_var->init = new VoidInitializer(loc);
+#endif
 		/* Advance to elements[] member of TypeInfo_Tuple with:
 		 *  _arguments = v_arguments.elements;
 		 */
@@ -1777,7 +1783,6 @@ LabelDsymbol *FuncDeclaration::searchLabel(Identifier *ident)
     }
     return (LabelDsymbol *)s;
 }
-
 /****************************************
  * If non-static member function that has a 'this' pointer,
  * return the aggregate it is a member of.
@@ -1995,12 +2000,14 @@ int FuncDeclaration::addPostInvariant()
  * Generate a FuncDeclaration for a runtime library function.
  */
 
-FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, char *name,Type *t1, Type *t2, Type *t3)
+FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, char *name,
+    Type *t1, Type *t2, Type *t3)
 {
     return genCfunc(treturn, Lexer::idPool(name), t1, t2, t3);
 }
 
-FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id, Type *t1, Type *t2, Type *t3)
+FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id,
+    Type *t1, Type *t2, Type *t3)
 {
     FuncDeclaration *fd;
     TypeFunction *tf;
@@ -2022,19 +2029,19 @@ FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id, Type *
     }
     else
     {
-	 	Arguments * args = 0;
- 	if (t1) {
- 	    args = new Arguments;
- 	    args->push(new Argument(STCin,t1,0,0));
- 	    if (t2)
- 	    {
- 		args->push(new Argument(STCin,t2,0,0));
- 		if (t3)
- 		    args->push(new Argument(STCin,t3,0,0));
- 	    }
- 	}
- 
- 	tf = new TypeFunction(args, treturn, 0, LINKc);
+	Arguments * args = 0;
+	if (t1) {
+	    args = new Arguments;
+	    args->push(new Argument(STCin,t1,0,0));
+	    if (t2)
+	    {
+		args->push(new Argument(STCin,t2,0,0));
+		if (t3)
+		    args->push(new Argument(STCin,t3,0,0));
+	    }
+	}
+
+	tf = new TypeFunction(args, treturn, 0, LINKc);
 	fd = new FuncDeclaration(0, 0, id, STCstatic, tf);
 	fd->protection = PROTpublic;
 	fd->linkage = LINKc;
@@ -2048,7 +2055,6 @@ char *FuncDeclaration::kind()
 {
     return "function";
 }
-
 /*******************************
  * Look at all the variables in this function that are referenced
  * by nested functions, and determine if a closure needs to be
@@ -2065,11 +2071,7 @@ int FuncDeclaration::needsClosure()
      * 1) is a virtual function
      * 2) has its address taken
      * 3) has a parent that escapes
-     *
-     * Note that since a non-virtual function can be called by
-     * a virtual one, if that non-virtual function accesses a closure
-     * var, the closure still has to be taken. Hence, we check for isThis()
-     * instead of isVirtual(). (thanks to David Friedman)
+     * escapes.
      */
 
     //printf("FuncDeclaration::needsClosure() %s\n", toChars());
@@ -2083,14 +2085,14 @@ int FuncDeclaration::needsClosure()
 	    assert(f != this);
 
 	    //printf("\t\tf = %s, %d, %d\n", f->toChars(), f->isVirtual(), f->tookAddressOf);
-	    if (f->isThis() || f->tookAddressOf)
+	    if (f->isVirtual() || f->tookAddressOf)
 		goto Lyes;	// assume f escapes this function's scope
 
 	    // Look to see if any parents of f that are below this escape
 	    for (Dsymbol *s = f->parent; s != this; s = s->parent)
 	    {
 		f = s->isFuncDeclaration();
-		if (f && (f->isThis() || f->tookAddressOf))
+		if (f && (f->isVirtual() || f->tookAddressOf))
 		    goto Lyes;
 	    }
 	}
@@ -2231,8 +2233,6 @@ void CtorDeclaration::semantic(Scope *sc)
     else
 	tret = cd->type; //->referenceTo();
     type = new TypeFunction(arguments, tret, varargs, LINKd);
-    if (!originalType)
-	originalType = type;
 
     sc->flags |= SCOPEctor;
     type = type->semantic(loc, sc);
@@ -2395,34 +2395,6 @@ void StaticCtorDeclaration::semantic(Scope *sc)
 
     type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
 
-    /* If the static ctor appears within a template instantiation,
-     * it could get called multiple times by the module constructors
-     * for different modules. Thus, protect it with a gate.
-     */
-    if (inTemplateInstance())
-    {
-	/* Add this prefix to the function:
-	 *	static int gate;
-	 *	if (++gate != 1) return;
-	 * Note that this is not thread safe; should not have threads
-	 * during static construction.
-	 */
-	Identifier *id = Lexer::idPool("__gate");
-	VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
-	v->storage_class = STCstatic;
-	Statements *sa = new Statements();
-	Statement *s = new DeclarationStatement(0, v);
-	sa->push(s);
-	Expression *e = new IdentifierExp(0, id);
-	e = new AddAssignExp(0, e, new IntegerExp(1));
-	e = new EqualExp(TOKnotequal, 0, e, new IntegerExp(1));
-	s = new IfStatement(0, NULL, e, new ReturnStatement(0, NULL), NULL);
-	sa->push(s);
-	if (fbody)
-	    sa->push(fbody);
-	fbody = new CompoundStatement(0, sa);
-    }
-
     FuncDeclaration::semantic(sc);
 
     // We're going to need ModuleInfo
@@ -2478,7 +2450,6 @@ StaticDtorDeclaration::StaticDtorDeclaration(Loc loc, Loc endloc)
     : FuncDeclaration(loc, endloc,
       Identifier::generateId("_staticDtor"), STCstatic, NULL)
 {
-    vgate = NULL;
 }
 
 Dsymbol *StaticDtorDeclaration::syntaxCopy(Dsymbol *s)
@@ -2501,36 +2472,6 @@ void StaticDtorDeclaration::semantic(Scope *sc)
     {
     }
     type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
-
-    /* If the static ctor appears within a template instantiation,
-     * it could get called multiple times by the module constructors
-     * for different modules. Thus, protect it with a gate.
-     */
-    if (inTemplateInstance())
-    {
-	/* Add this prefix to the function:
-	 *	static int gate;
-	 *	if (--gate != 0) return;
-	 * Increment gate during constructor execution.
-	 * Note that this is not thread safe; should not have threads
-	 * during static destruction.
-	 */
-	Identifier *id = Lexer::idPool("__gate");
-	VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
-	v->storage_class = STCstatic;
-	Statements *sa = new Statements();
-	Statement *s = new DeclarationStatement(0, v);
-	sa->push(s);
-	Expression *e = new IdentifierExp(0, id);
-	e = new AddAssignExp(0, e, new IntegerExp(-1));
-	e = new EqualExp(TOKnotequal, 0, e, new IntegerExp(1));
-	s = new IfStatement(0, NULL, e, new ReturnStatement(0, NULL), NULL);
-	sa->push(s);
-	if (fbody)
-	    sa->push(fbody);
-	fbody = new CompoundStatement(0, sa);
-	vgate = v;
-    }
 
     FuncDeclaration::semantic(sc);
 
@@ -2660,7 +2601,12 @@ void InvariantDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 static Identifier *unitTestId()
 {
-    return Lexer::uniqueId("__unittest");
+    static int n;
+    char buffer[10 + sizeof(n)*3 + 1];
+
+    sprintf(buffer,"__unittest%d", n);
+    n++;
+    return Lexer::idPool(buffer);
 }
 
 UnitTestDeclaration::UnitTestDeclaration(Loc loc, Loc endloc)
@@ -2779,7 +2725,7 @@ void NewDeclaration::semantic(Scope *sc)
     {
 	Argument *a = Argument::getNth(tf->parameters, 0);
 	if (!a->type->equals(Type::tuns32)  &&
- 	    (! global.params.isX86_64 || !a->type->equals(Type::tuns64)))
+	    (! global.params.isX86_64 || !a->type->equals(Type::tuns64)))
 	    error("first argument must be type uint, not %s", a->type->toChars());
     }
 

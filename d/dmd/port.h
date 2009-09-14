@@ -52,14 +52,14 @@ struct Port
     static ulonglong strtoull(const char *p, char **pend, int base);
 
     static char *ull_to_string(char *buffer, ulonglong ull);
-    //static wchar_t *ull_to_string(wchar_t *buffer, ulonglong ull);
+    //    static wchar_t *ull_to_string(wchar_t *buffer, ulonglong ull);
 
     // Convert ulonglong to double
     static double ull_to_double(ulonglong ull);
 
     // Get locale-dependent list separator
     static char *list_separator();
-    //static wchar_t *wlist_separator();
+    //    static wchar_t *wlist_separator();
 };
 
 #endif

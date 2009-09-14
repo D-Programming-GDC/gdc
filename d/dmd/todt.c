@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, July 2007
+*/
+
 /* A dt_t is a simple structure representing data to be added
  * to the data segment of the output object file. As such,
  * it is a list of initialized bytes, 0 data, and offsets from
@@ -52,41 +58,42 @@ extern Symbol *static_sym();
 /* ================================================================ */
 
 #ifdef IN_GCC
- static dt_t *createTsarrayDt(dt_t * elem_or_all, Type *t)
- {
-     assert(elem_or_all != NULL);
-     target_size_t eoa_size = dt_size(elem_or_all);
-     if (eoa_size == t->size())
-     {
- 	return elem_or_all;
-     }
-     else
-     {
- 	TypeSArray * tsa = (TypeSArray *) t->toBasetype();
- 	assert(tsa->ty == Tsarray);
- 
- 	target_size_t dim = tsa->dim->toInteger();
- 	dt_t * adt = NULL;
- 	dt_t ** padt = & adt;
- 	
- 	if (eoa_size * dim == eoa_size)
- 	{
- 	    for (target_size_t i = 0; i < dim; i++)
- 		padt = dtcontainer(padt, NULL, elem_or_all);
- 	}
- 	else
+static dt_t *createTsarrayDt(dt_t * elem_or_all, Type *t)
+{
+    assert(elem_or_all != NULL);
+    target_size_t eoa_size = dt_size(elem_or_all);
+    if (eoa_size == t->size())
+    {
+	return elem_or_all;
+    }
+    else
+    {
+	TypeSArray * tsa = (TypeSArray *) t->toBasetype();
+	assert(tsa->ty == Tsarray);
+
+	target_size_t dim = tsa->dim->toInteger();
+	dt_t * adt = NULL;
+	dt_t ** padt = & adt;
+	
+	if (eoa_size * dim == eoa_size)
 	{
- 	    assert(tsa->size(0) % eoa_size == 0);
- 	    for (target_size_t i = 0; i < dim; i++)
- 		padt = dtcontainer(padt, NULL,
+	    for (target_size_t i = 0; i < dim; i++)
+		padt = dtcontainer(padt, NULL, elem_or_all);
+	}
+	else
+	{
+	    assert(tsa->size(0) % eoa_size == 0);
+	    for (target_size_t i = 0; i < dim; i++)
+		padt = dtcontainer(padt, NULL,
 		    createTsarrayDt(elem_or_all, tsa->next));
- 	}
- 	dt_t * fdt = NULL;
- 	dtcontainer(& fdt, t, adt);
- 	return fdt;
-     }
- }
- #endif
+	}
+	dt_t * fdt = NULL;
+	dtcontainer(& fdt, t, adt);
+	return fdt;
+    }
+}
+#endif
+
 
 dt_t *Initializer::toDt()
 {
@@ -189,18 +196,18 @@ dt_t *StructInitializer::toDt()
 		target_size_t voffset = v->offset;
 		assert(sz <= vsz);
 
-		#ifdef IN_GCC
- 		if (offset < voffset)
- 		    pdtend = dtnzeros(pdtend, voffset - offset);
- 		if (v->type->toBasetype()->ty == Tsarray)
- 		{
- 		    d = createTsarrayDt(d, v->type);
- 		    sz = dt_size(d);
- 		    assert(sz <= vsz);
- 		}
- 		pdtend = dtcat(pdtend, d);
- 		offset = voffset + sz;
- 		#else
+#ifdef IN_GCC
+		if (offset < voffset)
+		    pdtend = dtnzeros(pdtend, voffset - offset);
+		if (v->type->toBasetype()->ty == Tsarray)
+		{
+		    d = createTsarrayDt(d, v->type);
+		    sz = dt_size(d);
+		    assert(sz <= vsz);
+		}
+		pdtend = dtcat(pdtend, d);
+		offset = voffset + sz;
+#else
 		target_size_t dim = 1;
 		for (Type *vt = v->type->toBasetype();
 		     vt->ty == Tsarray;
@@ -227,7 +234,7 @@ dt_t *StructInitializer::toDt()
 		    if (sz == vsz)
 			break;
 		}
-		#endif //IN_GCC
+#endif
 	    }
 	}
     }
@@ -235,9 +242,9 @@ dt_t *StructInitializer::toDt()
 	dtnzeros(pdtend, ad->structsize - offset);
 
 #ifdef IN_GCC
-     dt_t * cdt = NULL;
-     dtcontainer(& cdt, ad->type, dt);
-     dt = cdt;
+    dt_t * cdt = NULL;
+    dtcontainer(& cdt, ad->type, dt);
+    dt = cdt;
 #endif
     return dt;
 }
@@ -274,8 +281,6 @@ dt_t *ArrayInitializer::toDt()
 	idx = (Expression *)index.data[i];
 	if (idx)
 	    length = idx->toInteger();
-	if (tn->ty == Tsarray)
-	    dt = createTsarrayDt(dt, tb->next);
 	//printf("\tindex[%d] = %p, length = %u, dim = %u\n", i, idx, length, dim);
 
 	assert(length < dim);
@@ -283,37 +288,37 @@ dt_t *ArrayInitializer::toDt()
 	dt = val->toDt();
 	if (dts.data[length])
 	    error(loc, "duplicate initializations for index %d", length);
+	if (tn->ty == Tsarray)
+	    dt = createTsarrayDt(dt, tb->next);
 	dts.data[length] = (void *)dt;
 	length++;
     }
 
     Expression *edefault = tb->next->defaultInit();
-    
-    #ifdef IN_GCC
-     dt_t * sadefault = NULL;
-  
-     if (tn->ty == Tsarray)
- 	tn->toDt(& sadefault);
-     else
- 	edefault->toDt(& sadefault);
-    #else
+#ifdef IN_GCC
+    dt_t * sadefault = NULL;
 
+    if (tn->ty == Tsarray)
+	tn->toDt(& sadefault);
+    else
+	edefault->toDt(& sadefault);
+#else
     unsigned n = 1;
     for (Type *tbn = tn; tbn->ty == Tsarray; tbn = tbn->next->toBasetype())
     {	TypeSArray *tsa = (TypeSArray *)tbn;
 
 	n *= tsa->dim->toInteger();
     }
-    #endif
+#endif
 
     d = NULL;
     pdtend = &d;
     for (i = 0; i < dim; i++)
     {
 	dt = (dt_t *)dts.data[i];
-	#ifdef IN_GCC
- 	pdtend = dtcontainer(pdtend, NULL, dt ? dt : sadefault);
- 	#else
+#ifdef IN_GCC
+	pdtend = dtcontainer(pdtend, NULL, dt ? dt : sadefault);
+#else
 	if (dt)
 	    pdtend = dtcat(pdtend, dt);
 	else
@@ -321,7 +326,7 @@ dt_t *ArrayInitializer::toDt()
 	    for (int j = 0; j < n; j++)
 		pdtend = edefault->toDt(pdtend);
 	}
-	#endif
+#endif
     }
     switch (tb->ty)
     {
@@ -332,34 +337,34 @@ dt_t *ArrayInitializer::toDt()
 	    tadim = ta->dim->toInteger();
 	    if (dim < tadim)
 	    {
-  		if (edefault->isBool(FALSE))
-  		    // pad out end of array
- 		    // (ok for GDC as well)
-  		    pdtend = dtnzeros(pdtend, size * (tadim - dim));
-  		else
-  		{
-  		    for (i = dim; i < tadim; i++)
- #ifdef IN_GCC
- 			pdtend = dtcontainer(pdtend, NULL, sadefault);
- #else
-  		    {	for (int j = 0; j < n; j++)
-  			    pdtend = edefault->toDt(pdtend);
-  		    }
- #endif
-  		}
-  	    }
-  	    else if (dim > tadim)
+		if (edefault->isBool(FALSE))
+		    // pad out end of array
+		    // (ok for GDC as well)
+		    pdtend = dtnzeros(pdtend, size * (tadim - dim));
+		else
+		{
+		    for (i = dim; i < tadim; i++)
+#ifdef IN_GCC
+			pdtend = dtcontainer(pdtend, NULL, sadefault);
+#else
+		    {	for (int j = 0; j < n; j++)
+			    pdtend = edefault->toDt(pdtend);
+		    }
+#endif
+		}
+	    }
+	    else if (dim > tadim)
 	    {
 #ifdef DEBUG
 		printf("1: ");
 #endif
 		error(loc, "too many initializers, %d, for array[%d]", dim, tadim);
 	    }
-	    #ifdef IN_GCC
- 	    dt_t * cdt = NULL;
- 	    dtcontainer(& cdt, type, d);
- 	    d = cdt;
- 		#endif
+#ifdef IN_GCC
+	    dt_t * cdt = NULL;
+	    dtcontainer(& cdt, type, d);
+	    d = cdt;
+#endif
 	    break;
 	}
 
@@ -375,13 +380,13 @@ dt_t *ArrayInitializer::toDt()
 	    if (tb->ty == Tarray)
 		dtdword(&d, dim);
 	    dtxoff(&d, s, 0, TYnptr);
-	    #ifdef IN_GCC
- 	    dt_t * cdt;
- 	    cdt = NULL;
- 	    if (tb->ty == Tarray)
- 		dtcontainer(& cdt, type, d);
- 	    d = cdt;
- 		#endif
+#ifdef IN_GCC
+	    dt_t * cdt;
+	    cdt = NULL;
+	    if (tb->ty == Tarray)
+		dtcontainer(& cdt, type, d);
+	    d = cdt;
+#endif
 	    break;
 
 	default:
@@ -400,8 +405,6 @@ dt_t *ArrayInitializer::toDtBit()
     dt_t *d;
     dt_t **pdtend;
     Type *tb = type->toBasetype();
-
-    //printf("ArrayInitializer::toDtBit('%s')\n", toChars());
 
     Bits databits;
     Bits initbits;
@@ -463,11 +466,11 @@ dt_t *ArrayInitializer::toDtBit()
     }
 
     d = NULL;
-    #ifdef IN_GCC
-     pdtend = dtnbits(&d, databits.allocdim * size, (char *)databits.data, sizeof(databits.data[0]));
- 	#else
+#ifdef IN_GCC
+    pdtend = dtnbits(&d, databits.allocdim * size, (char *)databits.data, sizeof(databits.data[0]));
+#else
     pdtend = dtnbytes(&d, databits.allocdim * size, (char *)databits.data);
-    #endif
+#endif
     switch (tb->ty)
     {
 	case Tsarray:
@@ -530,7 +533,9 @@ dt_t **Expression::toDt(dt_t **pdt)
     pdt = dtnzeros(pdt, 1);
     return pdt;
 }
+
 #ifndef IN_GCC
+
 dt_t **IntegerExp::toDt(dt_t **pdt)
 {   unsigned sz;
 
@@ -621,7 +626,8 @@ dt_t **ComplexExp::toDt(dt_t **pdt)
     return pdt;
 }
 
-#endif //IN_GCC
+
+#endif
 
 dt_t **NullExp::toDt(dt_t **pdt)
 {
@@ -639,25 +645,26 @@ dt_t **StringExp::toDt(dt_t **pdt)
     {
 	case Tarray:
 	    dt_t * adt; adt = NULL;
- 	    dtdword(& adt, len);
- #ifndef IN_GCC
- 	    dtabytes(& adt, TYnptr, 0, (len + 1) * sz, (char *)string);
- 	    pdt = dcat(pdt, adt);
- #else
- 	    dtawords(& adt, len + 1, string, sz);
- 	    pdt = dtcontainer(pdt, type, adt);
- #endif
+	    dtdword(& adt, len);
+#ifndef IN_GCC
+	    dtabytes(& adt, TYnptr, 0, (len + 1) * sz, (char *)string);
+	    pdt = dcat(pdt, adt);
+#else
+	    dtawords(& adt, len + 1, string, sz);
+	    pdt = dtcontainer(pdt, type, adt);
+#endif
+	    
 	    break;
 
 	case Tsarray:
 	{   TypeSArray *tsa = (TypeSArray *)type;
 	    integer_t dim;
-		
-		#ifndef IN_GCC
+
+#ifndef IN_GCC
 	    pdt = dtnbytes(pdt, len * sz, (const char *)string);
-	    #else
- 	    pdt = dtnwords(pdt, len, string, sz);
- 		#endif
+#else
+	    pdt = dtnwords(pdt, len, string, sz);
+#endif
 	    if (tsa->dim)
 	    {
 		dim = tsa->dim->toInteger();
@@ -670,11 +677,11 @@ dt_t **StringExp::toDt(dt_t **pdt)
 	    break;
 	}
 	case Tpointer:
-		#ifndef IN_GCC
+#ifndef IN_GCC
 	    pdt = dtabytes(pdt, TYnptr, 0, (len + 1) * sz, (char *)string);
-	    #else
- 	    pdt = dtawords(pdt, len + 1, string, sz);
- 		#endif
+#else
+	    pdt = dtawords(pdt, len + 1, string, sz);
+#endif
 	    break;
 
 	default:
@@ -698,11 +705,11 @@ dt_t **ArrayLiteralExp::toDt(dt_t **pdt)
 
 	pdtend = e->toDt(pdtend);
     }
-    #ifdef IN_GCC
-     dt_t * cdt = NULL;
-     dtcontainer(& cdt, type, d);
-     d = cdt;
- 	#endif
+#ifdef IN_GCC
+    dt_t * cdt = NULL;
+    dtcontainer(& cdt, type, d);
+    d = cdt;
+#endif
     Type *t = type->toBasetype();
 
     switch (t->ty)
@@ -713,7 +720,7 @@ dt_t **ArrayLiteralExp::toDt(dt_t **pdt)
 
 	case Tpointer:
 	case Tarray:
-	dt_t * adt; adt = NULL;
+	    dt_t * adt; adt = NULL;
 	    if (t->ty == Tarray)
 		dtdword(& adt, elements->dim);
 	    if (d)
@@ -728,12 +735,12 @@ dt_t **ArrayLiteralExp::toDt(dt_t **pdt)
 	    }
 	    else
 		dtdword(& adt, 0);
- 		#ifdef IN_GCC
- 	    if (t->ty == Tarray)
- 		dtcontainer(pdt, type, adt);
- 	    else
- 		#endif
- 		dtcat(pdt, adt);
+#ifdef IN_GCC
+	    if (t->ty == Tarray)
+		dtcontainer(pdt, type, adt);
+	    else
+#endif
+		dtcat(pdt, adt);
 
 	    break;
 
@@ -787,7 +794,7 @@ dt_t **StructLiteralExp::toDt(dt_t **pdt)
 	    else if (v->offset >= offset)
 	    {
 		target_size_t k;
- 		target_size_t offset2 = v->offset + v->type->size();
+		target_size_t offset2 = v->offset + v->type->size();
 		// Make sure this field (v) does not overlap any explicitly
 		// initialized field.
 		for (k = j + 1; 1; k++)
@@ -810,23 +817,23 @@ dt_t **StructLiteralExp::toDt(dt_t **pdt)
 		error("duplicate union initialization for %s", v->toChars());
 	    else
 	    {	target_size_t sz = dt_size(d);
- 		target_size_t vsz = v->type->size();
- 		target_size_t voffset = v->offset;
+		target_size_t vsz = v->type->size();
+		target_size_t voffset = v->offset;
 		assert(sz <= vsz);
 
-		#ifdef IN_GCC
- 		if (offset < voffset)
- 		    dtnzeros(& sdt, voffset - offset);
- 		if (v->type->toBasetype()->ty == Tsarray)
- 		{
- 		    d = createTsarrayDt(d, v->type);
- 		    sz = dt_size(d);
- 		    assert(sz <= vsz);
- 		}
- 		dtcat(& sdt, d);
- 		offset = voffset + sz;
- 		#endif //might need an #endif, might be an #else
- 		target_size_t dim = 1;
+#ifdef IN_GCC
+		if (offset < voffset)
+		    dtnzeros(& sdt, voffset - offset);
+		if (v->type->toBasetype()->ty == Tsarray)
+		{
+		    d = createTsarrayDt(d, v->type);
+		    sz = dt_size(d);
+		    assert(sz <= vsz);
+		}
+		dtcat(& sdt, d);
+		offset = voffset + sz;
+#else
+		target_size_t dim = 1;
 		for (Type *vt = v->type->toBasetype();
 		     vt->ty == Tsarray;
 		     vt = vt->next->toBasetype())
@@ -852,16 +859,17 @@ dt_t **StructLiteralExp::toDt(dt_t **pdt)
 		    if (sz == vsz)
 			break;
 		}
+#endif
 	    }
 	}
     }
     if (offset < sd->structsize)
 	dtnzeros(& sdt, sd->structsize - offset);
- #ifdef IN_GCC
-     dtcontainer(pdt, type, sdt);
- #else
-     pdt = dtcat(pdt, sdt);
- #endif
+#ifdef IN_GCC
+    dtcontainer(pdt, type, sdt);
+#else
+    pdt = dtcat(pdt, sdt);
+#endif
 
     return pdt;
 }
@@ -966,13 +974,13 @@ void ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
 	    Type *tb = v->type->toBasetype();
 	    if (ei && tb->ty == Tsarray)
 	    {
- 		#ifdef IN_GCC
- 		dt = init->toDt();
- 		dt = createTsarrayDt(dt, v->type);
- 		#else
+#ifdef IN_GCC
+		dt = init->toDt();
+		dt = createTsarrayDt(dt, v->type);
+#else
 		((TypeSArray *)tb)->toDtElem(&dt, ei->exp);
-		#endif
-		}
+#endif
+	    }
 	    else
 		dt = init->toDt();
 	}
@@ -1029,11 +1037,12 @@ void ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
 
 void StructDeclaration::toDt(dt_t **pdt)
 {
-	if (zeroInit)
-     {
- 	dtnzeros(pdt, structsize);
-  	return;
-     }
+    if (zeroInit)
+    {
+	dtnzeros(pdt, structsize);
+	return;
+    }
+
     unsigned offset;
     unsigned i;
     dt_t *dt;
@@ -1057,13 +1066,13 @@ void StructDeclaration::toDt(dt_t **pdt)
 	    Type *tb = v->type->toBasetype();
 	    if (ei && tb->ty == Tsarray)
 	    {
-	    #ifdef IN_GCC
- 		dt = init->toDt();
- 		dt = createTsarrayDt(dt, v->type);
- 		#else
+#ifdef IN_GCC
+		dt = init->toDt();
+		dt = createTsarrayDt(dt, v->type);
+#else
 		((TypeSArray *)tb)->toDtElem(&dt, ei->exp);
-		#endif
-		}
+#endif
+	    }
 	    else
 		dt = init->toDt();
 	}
@@ -1077,7 +1086,7 @@ void StructDeclaration::toDt(dt_t **pdt)
 	    {
 		if (offset < v->offset)
 		    dtnzeros(& sdt, v->offset - offset);
- 		dtcat(& sdt, dt);
+		dtcat(& sdt, dt);
 		offset = v->offset + v->type->size();
 	    }
 	}
@@ -1085,11 +1094,11 @@ void StructDeclaration::toDt(dt_t **pdt)
 
     if (offset < structsize)
 	dtnzeros(& sdt, structsize - offset);
- 	#ifdef IN_GCC
-     dtcontainer(pdt, type, sdt);
- 	#else
-     dtcat(pdt, sdt);
- 	#endif
+#ifdef IN_GCC
+    dtcontainer(pdt, type, sdt);
+#else
+    dtcat(pdt, sdt);
+#endif
 
     dt_optimize(*pdt);
 }
@@ -1137,56 +1146,56 @@ dt_t **TypeSArray::toDtElem(dt_t **pdt, Expression *e)
 	    databits.resize(len);
 	    if (e->toInteger())
 		databits.set();
-	    #ifdef IN_GCC
- 	    pdt = dtnbits(pdt, databits.allocdim * sizeof(databits.data[0]),
- 		(char *)databits.data, sizeof(databits.data[0]));
- 		#else
-  	    pdt = dtnbytes(pdt, databits.allocdim * sizeof(databits.data[0]),
-  		(char *)databits.data);
- 		#endif
+#ifdef IN_GCC
+	    pdt = dtnbits(pdt, databits.allocdim * sizeof(databits.data[0]),
+		(char *)databits.data, sizeof(databits.data[0]));
+#else
+	    pdt = dtnbytes(pdt, databits.allocdim * sizeof(databits.data[0]),
+		(char *)databits.data);
+#endif
 	}
 	else
 	{
-		dt_t *adt = NULL;
- 	    dt_t **padt = & adt;
- 	    /* problem...?
+	    dt_t *adt = NULL;
+	    dt_t **padt = & adt;
+	    /* problem...?
 	    if (tbn->ty == Tstruct)
 		tnext->toDt(pdt);
 	    else
 		e->toDt(pdt);
-		*/
+	    */
 	    e->toDt(padt);
- 	    dt_optimize(*padt);
- 
- 	    // These first two cases are okay for GDC too
- 	    if ((*padt)->dt == DT_azeros && !(*padt)->DTnext)
+	    dt_optimize(*padt);
+
+	    // These first two cases are okay for GDC too
+	    if ((*padt)->dt == DT_azeros && !(*padt)->DTnext)
 	    {
 		(*padt)->DTazeros *= len;
- 		pdt = dtcat(pdt, adt);
+		pdt = dtcat(pdt, adt);
 	    }
 	    else if ((*padt)->dt == DT_1byte && (*padt)->DTonebyte == 0 && !(*padt)->DTnext)
-  	    {
- 		(*padt)->dt = DT_azeros;
- 		(*padt)->DTazeros = len;
- 		pdt = dtcat(pdt, adt);
+	    {
+		(*padt)->dt = DT_azeros;
+		(*padt)->DTazeros = len;
+		pdt = dtcat(pdt, adt);
 	    }
 	    else if (e->op != TOKstring)
 	    {
-	    #ifdef IN_GCC
- 		pdt = dtcat(pdt, createTsarrayDt(adt, this));
- 		#else
+#ifdef IN_GCC
+		pdt = dtcat(pdt, createTsarrayDt(adt, this));
+#else
 		for (i = 1; i < len; i++)
 		{
 		    if (tbn->ty == Tstruct)
 		    {	padt = tnext->toDt(padt);
- 			while (*padt)
- 			    adt = &((*padt)->DTnext);
-  		    }
-  		    else
- 			padt = e->toDt(padt);
+			while (*padt)
+			    adt = &((*padt)->DTnext);
+		    }
+		    else
+			padt = e->toDt(padt);
 		}
 		pdt = dtcat(pdt, adt);
-		#endif
+#endif
 	    }
 	}
     }

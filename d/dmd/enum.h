@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #ifndef DMD_ENUM_H
 #define DMD_ENUM_H
 
@@ -33,7 +39,7 @@ struct EnumDeclaration : ScopeDsymbol
     integer_t maxval;
     integer_t minval;
     integer_t defaultval;	// default initializer
-    Expressions * attributes; //GCC decl/type attributes
+    Expressions * attributes; // GCC decl/type attributes
 
     EnumDeclaration(Loc loc, Identifier *id, Type *memtype);
     Dsymbol *syntaxCopy(Dsymbol *s);

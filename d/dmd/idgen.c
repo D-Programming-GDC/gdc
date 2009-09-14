@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, January 2007
+*/
+
 // Program to generate string files in d data structures.
 // Saves much tedious typing, and eliminates typo problems.
 // Generates:

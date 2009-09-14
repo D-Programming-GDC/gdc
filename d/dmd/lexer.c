@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 /* Lexical Analyzer */
 
 #include <stdio.h>
@@ -130,12 +136,12 @@ char *Token::toChars()
 #if IN_GCC
 	    sprintf(buffer,"%uU",(d_uns32)uns64value);
 #else
-	    sprintf(buffer,"%uU",uns32value);
+ 	    sprintf(buffer,"%uU",uns32value);
 #endif
 	    break;
 
 	case TOKint64v:
-	    sprintf(buffer,"%"PRIdMAX"L",int64value);;
+	    sprintf(buffer,"%"PRIdMAX"L",int64value);
 	    break;
 
 	case TOKuns64v:
@@ -180,6 +186,7 @@ char *Token::toChars()
 	    sprintf(buffer,"%LgLi", float80value);
 	    break;
 #endif
+
 
 	case TOKstring:
 #if CSTRINGS
@@ -328,7 +335,7 @@ void Lexer::error(const char *format, ...)
 
 	fprintf(stdmsg, "\n");
 	fflush(stdmsg);
-
+	
 	if (global.errors >= 20)	// moderate blizzard of cascading messages
 	    fatal();
     }
@@ -675,7 +682,6 @@ void Lexer::scan(Token *t)
 			sprintf(timestamp, "%.24s", p);
 		    }
 
-#if V1
 		    if (mod && id == Id::FILE)
 		    {
 			t->ustring = (unsigned char *)(loc.filename ? loc.filename : mod->ident->toChars());
@@ -686,9 +692,7 @@ void Lexer::scan(Token *t)
 			t->value = TOKint64v;
 			t->uns64value = loc.linnum;
 		    }
-		    else
-#endif
-		    if (id == Id::DATE)
+		    else if (id == Id::DATE)
 		    {
 			t->ustring = (unsigned char *)date;
 			goto Lstring;
@@ -700,11 +704,11 @@ void Lexer::scan(Token *t)
 		    }
 		    else if (id == Id::VENDOR)
 		    {
-		    #ifdef IN_GCC
- 			t->ustring = (unsigned char *)"GDC";
- 			#else
+#ifdef IN_GCC
+			t->ustring = (unsigned char *)"GDC";
+#else
 			t->ustring = (unsigned char *)"Digital Mars D";
-			#endif
+#endif
 			goto Lstring;
 		    }
 		    else if (id == Id::TIMESTAMP)
@@ -2925,11 +2929,8 @@ static Keyword keywords[] =
 #if V2
     {	"pure",		TOKpure		},
     {	"nothrow",	TOKnothrow	},
-    {	"__thread",	TOKtls		},
     {	"__traits",	TOKtraits	},
     {	"__overloadset", TOKoverloadset	},
-    {	"__FILE__",	TOKfile		},
-    {	"__LINE__",	TOKline		},
 #endif
 };
 

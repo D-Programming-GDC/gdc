@@ -7,6 +7,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -81,7 +87,8 @@ int wcharIsAscii(wchar_t *us, unsigned len)
     }
     return 1;
 }
-#endif //IN_GCC
+#endif
+
 
 /***********************************
  * Compare length-prefixed strings (bstr).
@@ -121,6 +128,7 @@ void error(const char *format, ...)
     va_end( ap );
     fprintf(stderr, "\n");
     fflush(stderr);
+
     exit(EXIT_FAILURE);
 }
 
@@ -571,6 +579,7 @@ char *FileName::name(const char *str)
 	       return e + 1;
 #endif
 #if _WIN32
+	    case '/':
 	    case '\\':
 	    case ':':
 		return e + 1;
@@ -1617,7 +1626,7 @@ void OutBuffer::vprintf(const char *format, va_list args)
     psize = sizeof(buffer);
     for (;;)
     {
-    	va_copy( args_copy, args );
+	va_copy(args_copy, args);
 #if _WIN32
 	count = _vsnprintf(p,psize,format,args_copy);
 	if (count != -1)

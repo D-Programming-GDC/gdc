@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -214,7 +220,7 @@ Dsymbol *ClassDeclaration::syntaxCopy(Dsymbol *s)
 }
 
 void ClassDeclaration::semantic(Scope *sc)
-{   int i;
+{   int i;
 
     //printf("ClassDeclaration::semantic(%s), type = %p, sizeok = %d, this = %p\n", toChars(), type, sizeok, this);
     //printf("\tparent = %p, '%s'\n", sc->parent, sc->parent ? sc->parent->toChars() : "");
@@ -256,9 +262,9 @@ void ClassDeclaration::semantic(Scope *sc)
 	scope = NULL;
     }
     if (attributes)
- 	attributes->append(sc->attributes);
-     else
- 	attributes = sc->attributes;
+	attributes->append(sc->attributes);
+    else
+	attributes = sc->attributes;
 #ifdef IN_GCC
     methods.setDim(0);
 #endif
@@ -383,11 +389,7 @@ void ClassDeclaration::semantic(Scope *sc)
 	    }
 
 	    // Check for duplicate interfaces
-	    if (attributes)
- 		attributes->append(sc->attributes);
-     	else
- 		attributes = sc->attributes;
- 		for (size_t j = (baseClass ? 1 : 0); j < i; j++)
+	    for (size_t j = (baseClass ? 1 : 0); j < i; j++)
 	    {
 		BaseClass *b2 = (BaseClass *)baseclasses.data[j];
 		if (b2->base == tc->sym)
@@ -530,7 +532,7 @@ void ClassDeclaration::semantic(Scope *sc)
     sc = sc->push(this);
     sc->stc &= ~(STCfinal | STCauto | STCscope | STCstatic |
 		 STCabstract | STCdeprecated);
-	sc->attributes=NULL;
+    sc->attributes = NULL;
     sc->parent = this;
     sc->inunion = 0;
 
@@ -547,7 +549,7 @@ void ClassDeclaration::semantic(Scope *sc)
 //	    sc->offset += PTRSIZE;	// room for uplevel context pointer
     }
     else
-    {	sc->offset = PTRSIZE * 2;		// allow room for vptr[] and monitor
+    {	sc->offset = PTRSIZE * 2;	// allow room for vptr[] and monitor
 	alignsize = PTRSIZE;
     }
     structsize = sc->offset;
@@ -1008,10 +1010,11 @@ void InterfaceDeclaration::semantic(Scope *sc)
 	scx = scope;		// save so we don't make redundant copies
 	scope = NULL;
     }
+
     if (attributes)
- 	attributes->append(sc->attributes);
-     else
- 	attributes = sc->attributes;
+	attributes->append(sc->attributes);
+    else
+	attributes = sc->attributes;
 
     if (sc->stc & STCdeprecated)
     {
@@ -1134,6 +1137,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
     }
 
     sc = sc->push(this);
+    sc->attributes = NULL;
     sc->parent = this;
     if (isCOMinterface())
 	sc->linkage = LINKwindows;

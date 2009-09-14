@@ -7,6 +7,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 #include <stdio.h>
 #include <assert.h>
 
@@ -60,8 +66,8 @@ void EnumDeclaration::semantic(Scope *sc)
 	memtype = Type::tint32;
     parent = sc->scopesym;
     if (attributes)
- 	attributes->append(sc->attributes);
-     else
+	attributes->append(sc->attributes);
+    else
 	attributes = sc->attributes;
     memtype = memtype->semantic(loc, sc);
 

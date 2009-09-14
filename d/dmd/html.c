@@ -7,6 +7,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, September 2004
+   Modified by Thomas Kuehne, November 2004
+*/
 
 /* HTML parser
  */
@@ -16,18 +22,16 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <errno.h>
-#include <wchar.h>
+//#include <wchar.h>
 
 #include "mars.h"
 #include "html.h"
 
 #include <assert.h>
 #include "root.h"
-#include "mars.h"
+//#include "../mars/mars.h"
 
 extern int HtmlNamedEntity(unsigned char *p, int length);
-
-static int isLineSeparator(const unsigned char* p);
 
 /**********************************
  * Determine if beginning of tag identifier
@@ -36,7 +40,7 @@ static int isLineSeparator(const unsigned char* p);
 
 inline int istagstart(int c)
 {
-    return (isalpha(c) || c == '_');
+    return (isalpha(c) || c == '_' || c == '!');
 }
 
 inline int istag(int c)
@@ -44,12 +48,41 @@ inline int istag(int c)
     return (isalnum(c) || c == '_');
 }
 
+/**
+ * identify DOS, Linux, Mac, Next and Unicode line endings
+ * 0 if this is no line seperator
+ * >0 the length of the seperator
+ * Note: input has to be UTF-8
+ */
+static int isLineSeperator(const unsigned char* p){
+	// Linux
+	if( p[0]=='\n'){
+		return 1;
+	}
+	
+	// Mac & Dos
+	if( p[0]=='\r'){
+		return (p[1]=='\n') ? 2 : 1;
+	}
+	
+	// Unicode (line || paragarph sep.)
+	if( p[0]==0xE2 && p[1]==0x80 && (p[2]==0xA8 || p[2]==0xA9)){
+		return 3;
+	}
+	
+	// Next
+	if( p[0]==0xC2 && p[1]==0x85){
+		return 2;
+	}
+	
+	return 0;
+}
+
 /**********************************************
  */
 
 Html::Html(const char *sourcename, unsigned char *base, unsigned length)
 {
-    //printf("Html::Html()\n");
     this->sourcename = sourcename;
     this->base = base;
     p = base;
@@ -67,18 +100,19 @@ void Html::error(const char *format, ...)
 {
     if (!global.gag)
     {
-	printf("%s(%d) : HTML Error: ", sourcename, linnum);
+	fprintf(stderr, "%s:%d: HTML Error: ", sourcename, linnum);
 
 	va_list ap;
 	va_start(ap, format);
-	vprintf(format, ap);
+	vfprintf(stderr, format, ap);
 	va_end(ap);
 
-	printf("\n");
-	fflush(stdout);
+	fprintf(stderr, "\n");
+	fflush(stderr);
     }
 
     global.errors++;
+    fatal();
 }
 
 /**********************************************
@@ -102,12 +136,23 @@ void Html::extractCode(OutBuffer *buf)
 	    case '\'':
 		skipString();
 		continue;
+	    */
 #endif
 	    case '<':
+		//-OLDOLDREMOVE//		if (p[1] == '!' && p[2] == '-' && p[3] == '-')
 		if (p[1] == '!' && isCommentStart())
 		{   // Comments start with <!--
+		    //OLDOLDREMOVE//		    p += 4;
 		    scanComment();
 		}
+		//OLDOLDREMOVE//else if ((p[1] == '/' && istagstart(p[2])) ||
+		//OLDOLDREMOVE//	 istagstart(p[1]))
+		/*OLDOLDMYCHANGES
+		{
+		    skipTag();
+		}
+		else
+		    p++;*/
   		else if(p[1] == '!' && isCDATAStart())
   		{
   		    scanCDATA();
@@ -115,7 +160,7 @@ void Html::extractCode(OutBuffer *buf)
 		else if (p[1] == '/' && istagstart(*skipWhite(p + 2)))
 		    skipTag();
 		else if (istagstart(*skipWhite(p + 1)))
-		    skipTag();
+ 		    skipTag();
 		else
 		    goto Ldefault;
 		continue;
@@ -136,19 +181,31 @@ void Html::extractCode(OutBuffer *buf)
 		    p++;
 		continue;
 
+		/* all this handled by isLineSeparator
 	    case '\r':
 		if (p[1] == '\n')
 		    goto Ldefault;
-	    case '\n':
-		linnum++;
-		// Always extract new lines, so that D lexer counts the
-		// lines right.
+ 	    case '\n':
+ 		linnum++;
+ 		// Always extract new lines, so that D lexer counts the
+ 		// lines right.
 		buf->writeByte(*p);
-		p++;
-		continue;
-
+ 		p++;
+ 		continue;
+		*/
+		
 	    default:
 	    Ldefault:
+ 		int lineSepLength=isLineSeperator(p);
+ 		if( lineSepLength>0 ){
+ 			linnum++;
+ 			// Always extract new lines, so that the D lexer
+ 			// counts the lines right.
+ 			buf->writeByte('\n');   // BUG: wchar
+ 			p+=lineSepLength;
+ 			continue;
+ 		}
+
 		if (inCode)
 		    buf->writeByte(*p);
 		p++;
@@ -206,8 +263,11 @@ void Html::skipTag()
 	    case '<':
 		if (p[1] == '!' && isCommentStart())
 		{   // Comments start with <!--
+		    //OLDOLD//p += 4;
 		    scanComment();
 		}
+		//OLDOLD//else if ((p[1] == '/' && istagstart(p[2])) ||
+		//OLDOLD//	 istagstart(p[1]))
 		else if (p[1] == '/' && istagstart(*skipWhite(p + 2)))
 		{   error("nested tag");
 		    skipTag();
@@ -216,6 +276,9 @@ void Html::skipTag()
 		{   error("nested tag");
 		    skipTag();
 		}
+		else
+		    //CHECKCHECK//stillneeded?
+		    p++;
 		// Treat comments as if they were whitespace
 		state = TSrest;
 		continue;
@@ -225,17 +288,19 @@ void Html::skipTag()
 		error("end of file before end of tag");
 		break;		// end of file
 
+		/* all handled by isLineSeparator
 	    case '\r':
 		if (p[1] == '\n')
 		    goto Ldefault;
-	    case '\n':
-		linnum++;
-		// Always extract new lines, so that code lexer counts the
-		// lines right.
+ 	    case '\n':
+ 		linnum++;
+ 		// Always extract new lines, so that code lexer counts the
+ 		// lines right.
 		dbuf->writeByte(*p);
-		state = TSrest;			// end of tag
-		p++;
-		continue;
+ 		state = TSrest;			// end of tag
+ 		p++;
+ 		continue;
+		*/
 
 	    case ' ':
 	    case '\t':
@@ -246,14 +311,24 @@ void Html::skipTag()
 		    continue;
 		}
 	    default:
-	    Ldefault:
+		//    Ldefault:
+		int lineSepLength = isLineSeperator(p);
+		if( lineSepLength>0 ){
+			linnum++;
+			// Always extract new lines, so that code lexer counts
+			// the lines right.
+			dbuf->writeByte('\n');  // BUG: wchar
+			state = TSrest;
+			p+=lineSepLength;
+			continue;
+		}
 		switch (state)
 		{
 		    case TStagstart:		// start of tag name
 			assert(istagstart(*p));
 			state = TStag;
 			tagstart = p;
-			taglen = 0;
+			taglen = 1;
 			break;
 
 		    case TStag:
@@ -277,7 +352,7 @@ void Html::skipTag()
     }
 
     // See if we parsed a <code> or </code> tag
-    if (taglen && memicmp((char *) tagstart, (char *) "CODE", taglen) == 0
+    if (taglen == 4 && memicmp((const char *)tagstart, "CODE", taglen) == 0
 	&& *(p - 2) != '/') // ignore "<code />" (XHTML)
     {
 	if (inot)
@@ -311,15 +386,17 @@ void Html::skipString()
 		}
 		continue;
 
+		/* all handled by isLineSeparator
 	    case '\r':
 		if (p[1] == '\n')
 		    goto Ldefault;
-	    case '\n':
-		linnum++;
-		// Always extract new lines, so that D lexer counts the
-		// lines right.
+ 	    case '\n':
+ 		linnum++;
+ 		// Always extract new lines, so that D lexer counts the
+ 		// lines right.
 		dbuf->writeByte(*p);
-		continue;
+ 		continue;
+		*/
 
 	    case 0:
 	    case 0x1a:
@@ -328,7 +405,15 @@ void Html::skipString()
 		break;
 
 	    default:
-	    Ldefault:
+		//	    Ldefault:
+		int lineSepLength = isLineSeperator(p);
+		if( lineSepLength>0 ){
+			linnum++;
+			// Always extract new lines, so that D lexer counts
+			// the lines right.
+			dbuf->writeByte('\n');   // BUG: wchar
+			continue;
+		}
 		continue;
 	}
 	break;
@@ -421,23 +506,34 @@ void Html::scanComment()
 		// skip white space
 		continue;
 
+		/* all handled by isLineSeparator
 	    case '\r':
 		if (p[1] == '\n')
 		    goto Ldefault;
-	    case '\n':
-		linnum++;		// remember to count lines
-		// Always extract new lines, so that D lexer counts the
-		// lines right.
+ 	    case '\n':
+ 		linnum++;		// remember to count lines
+ 		// Always extract new lines, so that D lexer counts the
+ 		// lines right.
 		dbuf->writeByte(*p);
-		continue;
-
+ 		continue;
+		*/
+		
 	    case 0:
 	    case 0x1a:
 		error("end of file before closing --> of comment");
 		break;
 
 	    default:
-	    Ldefault:
+		//    Ldefault:
+		int lineSepLength = isLineSeperator(p);
+		if( lineSepLength>0 ){
+			linnum++;       // remember to count lines
+			// Always extract new lines, so that D lexer counts
+			// the lines right.
+			dbuf->writeByte('\n');  // BUG: wchar
+			p+=lineSepLength-1;
+			continue;
+		}
 		scangt = 0;		// it's not -->
 		continue;
 	}
@@ -446,7 +542,7 @@ void Html::scanComment()
     //printf("*p = '%c'\n", *p);
 }
 
-/********************************************
+ /********************************************
  * Determine if we are at the start of a comment.
  * Input:
  *	p is on the opening '<'
@@ -524,7 +620,7 @@ void Html::scanCDATA()
 {
     while(*p && *p != 0x1A)
     {
-	int lineSepLength = isLineSeparator(p);
+	int lineSepLength = isLineSeperator(p);
 	if (lineSepLength>0)
 	{
 	    /* Always extract new lines, so that D lexer counts the lines
@@ -577,6 +673,7 @@ int Html::charEntity()
 	}
 	else
 	    hex = 0;
+
 	if (p[1] == ';')
 	    goto Linvalid;
 	while (1)
@@ -680,40 +777,11 @@ int Html::charEntity()
 
     // Kludge to convert non-breaking space to ascii space
     if (c == 160)
-	c = ' ';
-
+	c = 32;
     return c;
-
 Lignore:
     //printf("Lignore\n");
     p = pstart + 1;
     return '&';
-}
-
-/**
- * identify DOS, Linux, Mac, Next and Unicode line endings
- * 0 if this is no line separator
- * >0 the length of the separator
- * Note: input has to be UTF-8
- */
-static int isLineSeparator(const unsigned char* p)
-{
-    // Linux
-    if( p[0]=='\n')
-	return 1;
-
-    // Mac & Dos
-    if( p[0]=='\r')
-	return (p[1]=='\n') ? 2 : 1;
-
-    // Unicode (line || paragraph sep.)
-    if( p[0]==0xE2 && p[1]==0x80 && (p[2]==0xA8 || p[2]==0xA9))
-	return 3;
-
-    // Next
-    if( p[0]==0xC2 && p[1]==0x85)
-	return 2;
-
-    return 0;
 }
 

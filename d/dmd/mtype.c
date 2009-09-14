@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by David Friedman, December 2006
+*/
+
 // Issues with using -include total.h (defines integer_t) and then complex.h fails...
 #undef integer_t
 
@@ -17,16 +23,16 @@
 #include <stdio.h>
 #include <assert.h>
 #include <float.h>
+
 #include "gdc_alloca.h"
 
 #ifdef __DMC__
 #include <fp.h>
 #endif
 
- // TODO%% this undefines signbit and includes is the wrong complex.h anyway
- // -- not sure why this is needed, anyway
- // don't need to worry about all this if the 'nan negative by default' issue is resolved
-
+// TODO%% this undefines signbit and includes is the wrong complex.h anyway
+// -- not sure why this is needed, anyway
+// don't need to worry about all this if the 'nan negative by default' issue is resolved
 #if _MSC_VER
 #include <malloc.h>
 #include <complex>
@@ -57,10 +63,11 @@ static double zero = 0;
 #endif
 
 
- 
+
 #ifdef __APPLE__
 #define integer_t dmd_integer_t
 #endif
+
 
 #include "mem.h"
 
@@ -1053,38 +1060,38 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 
 	    case Tcomplex32:
 	    case Timaginary32:
-	     #ifdef IN_GCC
- 		// %% lazy, fix
- #define FLT_MAX real_t_properties[real_t::Float].maxval;		
- #define DBL_MAX real_t_properties[real_t::Double].maxval;		
- #define LDBL_MAX real_t_properties[real_t::LongDouble].maxval;
- #define FLT_MIN real_t_properties[real_t::Float].minval;
- #define DBL_MIN real_t_properties[real_t::Double].minval;
- #define LDBL_MIN real_t_properties[real_t::LongDouble].minval;
- #define FLT_DIG real_t_properties[real_t::Float].dig;
- #define DBL_DIG real_t_properties[real_t::Double].dig;
- #define LDBL_DIG real_t_properties[real_t::LongDouble].dig;
- #define FLT_MANT_DIG real_t_properties[real_t::Float].mant_dig;
- #define DBL_MANT_DIG real_t_properties[real_t::Double].mant_dig;
- #define LDBL_MANT_DIG real_t_properties[real_t::LongDouble].mant_dig;
- #define FLT_MAX_10_EXP real_t_properties[real_t::Float].max_10_exp;
- #define DBL_MAX_10_EXP real_t_properties[real_t::Double].max_10_exp;
- #define LDBL_MAX_10_EXP real_t_properties[real_t::LongDouble].max_10_exp;
- #define FLT_MIN_10_EXP real_t_properties[real_t::Float].min_10_exp;
- #define DBL_MIN_10_EXP real_t_properties[real_t::Double].min_10_exp;
- #define LDBL_MIN_10_EXP real_t_properties[real_t::LongDouble].min_10_exp;
- #define FLT_MAX_EXP real_t_properties[real_t::Float].max_exp;
- #define DBL_MAX_EXP real_t_properties[real_t::Double].max_exp;
- #define LDBL_MAX_EXP real_t_properties[real_t::LongDouble].max_exp;
- #define FLT_MIN_EXP real_t_properties[real_t::Float].min_exp;
- #define DBL_MIN_EXP real_t_properties[real_t::Double].min_exp;
- #define LDBL_MIN_EXP real_t_properties[real_t::LongDouble].min_exp;
- #define FLT_EPSILON real_t_properties[real_t::Float].epsilonval;
- #define DBL_EPSILON real_t_properties[real_t::Double].epsilonval;
- #define LDBL_EPSILON real_t_properties[real_t::LongDouble].epsilonval;
- 		
- 
- #endif
+#ifdef IN_GCC
+		// %% lazy, fix
+#define FLT_MAX real_t_properties[real_t::Float].maxval;		
+#define DBL_MAX real_t_properties[real_t::Double].maxval;		
+#define LDBL_MAX real_t_properties[real_t::LongDouble].maxval;
+#define FLT_MIN real_t_properties[real_t::Float].minval;
+#define DBL_MIN real_t_properties[real_t::Double].minval;
+#define LDBL_MIN real_t_properties[real_t::LongDouble].minval;
+#define FLT_DIG real_t_properties[real_t::Float].dig;
+#define DBL_DIG real_t_properties[real_t::Double].dig;
+#define LDBL_DIG real_t_properties[real_t::LongDouble].dig;
+#define FLT_MANT_DIG real_t_properties[real_t::Float].mant_dig;
+#define DBL_MANT_DIG real_t_properties[real_t::Double].mant_dig;
+#define LDBL_MANT_DIG real_t_properties[real_t::LongDouble].mant_dig;
+#define FLT_MAX_10_EXP real_t_properties[real_t::Float].max_10_exp;
+#define DBL_MAX_10_EXP real_t_properties[real_t::Double].max_10_exp;
+#define LDBL_MAX_10_EXP real_t_properties[real_t::LongDouble].max_10_exp;
+#define FLT_MIN_10_EXP real_t_properties[real_t::Float].min_10_exp;
+#define DBL_MIN_10_EXP real_t_properties[real_t::Double].min_10_exp;
+#define LDBL_MIN_10_EXP real_t_properties[real_t::LongDouble].min_10_exp;
+#define FLT_MAX_EXP real_t_properties[real_t::Float].max_exp;
+#define DBL_MAX_EXP real_t_properties[real_t::Double].max_exp;
+#define LDBL_MAX_EXP real_t_properties[real_t::LongDouble].max_exp;
+#define FLT_MIN_EXP real_t_properties[real_t::Float].min_exp;
+#define DBL_MIN_EXP real_t_properties[real_t::Double].min_exp;
+#define LDBL_MIN_EXP real_t_properties[real_t::LongDouble].min_exp;
+#define FLT_EPSILON real_t_properties[real_t::Float].epsilonval;
+#define DBL_EPSILON real_t_properties[real_t::Double].epsilonval;
+#define LDBL_EPSILON real_t_properties[real_t::LongDouble].epsilonval;
+		
+
+#endif
 	    case Tfloat32:	fvalue = FLT_MAX;	goto Lfvalue;
 	    case Tcomplex64:
 	    case Timaginary64:
@@ -1619,11 +1626,11 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	assert(size);
 	dup = (ident == Id::dup);
 	if (dup)
- 	    fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::adDup,
- 		Type::typeinfo->type, Type::tvoid->arrayOf());
- 	else
- 	    fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::adReverse,
- 		Type::tvoid->arrayOf(), Type::tsize_t);
+	    fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::adDup,
+		Type::typeinfo->type, Type::tvoid->arrayOf());
+	else
+	    fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::adReverse,
+		Type::tvoid->arrayOf(), Type::tsize_t);
 	ec = new VarExp(0, fd);
 	e = e->castTo(sc, n->arrayOf());	// convert to dynamic array
 	arguments = new Expressions();
@@ -1642,9 +1649,9 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	Expressions *arguments;
 
 	fd = FuncDeclaration::genCfunc(tint32->arrayOf(),
-		(char*)(n->ty == Tbit ? "_adSortBit" : "_adSort"),
- 	    Type::tvoid->arrayOf(),
- 	    n->ty == Tbit ? NULL : Type::tvoid->pointerTo());
+	    (char*)(n->ty == Tbit ? "_adSortBit" : "_adSort"),
+	    Type::tvoid->arrayOf(),
+	    n->ty == Tbit ? NULL : Type::tvoid->pointerTo());
 	ec = new VarExp(0, fd);
 	e = e->castTo(sc, n->arrayOf());	// convert to dynamic array
 	arguments = new Expressions();
@@ -2334,7 +2341,7 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 
 	assert(size);
 	fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::aaKeys,
- 	    Type::tvoid->arrayOf(), Type::tsize_t);
+	    Type::tvoid->arrayOf(), Type::tsize_t);
 	ec = new VarExp(0, fd);
 	arguments = new Expressions();
 	arguments->push(e);
@@ -2349,12 +2356,12 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	Expressions *arguments;
 
 	fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::aaValues,
- 	    Type::tvoid->arrayOf(), Type::tsize_t, Type::tsize_t);
+	    Type::tvoid->arrayOf(), Type::tsize_t, Type::tsize_t);
 	ec = new VarExp(0, fd);
 	arguments = new Expressions();
 	arguments->push(e);
 	size_t keysize = key->size(e->loc);
-	keysize = (keysize + (PTRSIZE-1)) & ~(PTRSIZE-1);	// BUG: 64 bit pointers?
+	keysize = (keysize + (PTRSIZE-1)) & ~(PTRSIZE-1);
 	arguments->push(new IntegerExp(0, keysize, Type::tsize_t));
 	arguments->push(new IntegerExp(0, next->size(e->loc), Type::tsize_t));
 	e = new CallExp(e->loc, ec, arguments);
@@ -2410,10 +2417,11 @@ Expression *TypeAArray::defaultInit(Loc loc)
     e->type = this;
     return e;
 }
+
 int TypeAArray::isZeroInit()
- {
-     return 1;
- }
+{
+    return 1;
+}
 
 int TypeAArray::checkBoolean()
 {
@@ -3110,19 +3118,19 @@ Expression *TypeDelegate::dotExp(Scope *sc, Expression *e, Identifier *ident)
 #endif
     if (ident == Id::ptr)
     {
-    #ifndef IN_GCC
+#ifndef IN_GCC
 	e->type = tvoidptr;
-	#else
+#else
 	if (e->op == TOKdelegate || e->op == TOKcast)
- 	    e = e->castTo(sc, tvoidptr); // Not an lvalue
- 	else
- 	{
+	    e = e->castTo(sc, tvoidptr); // Not an lvalue
+	else
+	{
 	    e = e->addressOf(sc);
- 	    e = e->castTo(sc, tvoidptr->pointerTo());
- 	    e = new PtrExp(e->loc, e);
- 	    e->type = tvoidptr;
- 	}
- #endif
+	    e = e->castTo(sc, tvoidptr->pointerTo());
+	    e = new PtrExp(e->loc, e);
+	    e->type = tvoidptr;
+	}
+#endif
 	return e;
     }
     else if (ident == Id::funcptr)
@@ -4260,7 +4268,6 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident)
     {
 	/* Create a TupleExp
 	 */
-	e = e->semantic(sc);	// do this before turning on noaccesscheck
 	Expressions *exps = new Expressions;
 	exps->reserve(sym->fields.dim);
 	for (size_t i = 0; i < sym->fields.dim; i++)
@@ -4269,10 +4276,7 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	    exps->push(fe);
 	}
 	e = new TupleExp(e->loc, exps);
-	sc = sc->push();
-	sc->noaccesscheck = 1;
 	e = e->semantic(sc);
-	sc->pop();
 	return e;
     }
 
@@ -4544,7 +4548,6 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident)
     {
 	/* Create a TupleExp
 	 */
-	e = e->semantic(sc);	// do this before turning on noaccesscheck
 	Expressions *exps = new Expressions;
 	exps->reserve(sym->fields.dim);
 	for (size_t i = 0; i < sym->fields.dim; i++)
@@ -4553,10 +4556,7 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	    exps->push(fe);
 	}
 	e = new TupleExp(e->loc, exps);
-	sc = sc->push();
-	sc->noaccesscheck = 1;
 	e = e->semantic(sc);
-	sc->pop();
 	return e;
     }
 
@@ -4954,13 +4954,13 @@ void TypeTuple::toDecoBuffer(OutBuffer *buf)
     OutBuffer buf2;
     Argument::argsToDecoBuffer(&buf2, arguments);
     unsigned len = buf2.offset;
-    #if __NEWLIB_H__
-     // newlib bug as of 1.14.0
-     char * p = (char*) buf2.extractData();
+#if __NEWLIB_H__
+    // newlib bug as of 1.14.0
+    char * p = (char*) buf2.extractData();
     buf->printf("%c%d%.*s", mangleChar[ty], len, len, p ? p : "");
- #else
+#else
     buf->printf("%c%d%.*s", mangleChar[ty], len, len, (char *)buf2.extractData());
-    #endif
+#endif
 }
 
 Expression *TypeTuple::getProperty(Loc loc, Identifier *ident)
