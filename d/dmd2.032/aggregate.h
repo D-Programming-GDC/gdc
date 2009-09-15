@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Vincenzo Ampolo, September 2009
+*/
+
 #ifndef DMD_AGGREGATE_H
 #define DMD_AGGREGATE_H
 
@@ -40,9 +46,9 @@ struct AggregateDeclaration : ScopeDsymbol
     unsigned storage_class;
     enum PROT protection;
     Type *handle;		// 'this' type
-    unsigned structsize;	// size of struct
-    unsigned alignsize;		// size of struct for alignment purposes
-    unsigned structalign;	// struct member alignment in effect
+    target_size_t structsize;	// size of struct
+    target_size_t alignsize;		// size of struct for alignment purposes
+    target_size_t structalign;	// struct member alignment in effect
     int hasUnions;		// set if aggregate has overlapping fields
     Array fields;		// VarDeclaration fields
     unsigned sizeok;		// set when structsize contains valid data
@@ -69,6 +75,8 @@ struct AggregateDeclaration : ScopeDsymbol
     FuncDeclarations dtors;	// Array of destructors
     FuncDeclaration *dtor;	// aggregate destructor
 
+    Expressions * attributes;   // GCC decl/type attributes
+
 #ifdef IN_GCC
     Array methods;              // flat list of all methods for debug information
 #endif
@@ -77,8 +85,8 @@ struct AggregateDeclaration : ScopeDsymbol
     void semantic2(Scope *sc);
     void semantic3(Scope *sc);
     void inlineScan();
-    unsigned size(Loc loc);
-    static void alignmember(unsigned salign, unsigned size, unsigned *poffset);
+    target_size_t size(Loc loc);
+    static void alignmember(target_size_t salign, target_size_t size, target_size_t *poffset);
     Type *getType();
     void addField(Scope *sc, VarDeclaration *v);
     int isDeprecated();		// is aggregate deprecated?
@@ -161,7 +169,7 @@ struct BaseClass
     enum PROT protection;		// protection for the base interface
 
     ClassDeclaration *base;
-    int offset;				// 'this' pointer offset
+    target_ptrdiff_t offset;				// 'this' pointer offset
     Array vtbl;				// for interfaces: Array of FuncDeclaration's
 					// making up the vtbl[]
 
@@ -176,11 +184,7 @@ struct BaseClass
     void copyBaseInterfaces(BaseClasses *);
 };
 
-#if DMDV2
-#define CLASSINFO_SIZE 	(0x3C+16+4)	// value of ClassInfo.size
-#else
-#define CLASSINFO_SIZE 	(0x3C+12+4)	// value of ClassInfo.size
-#endif
+extern int CLASSINFO_SIZE;		// value of ClassInfo.size
 
 struct ClassDeclaration : AggregateDeclaration
 {
@@ -218,7 +222,7 @@ struct ClassDeclaration : AggregateDeclaration
     int isBaseOf2(ClassDeclaration *cd);
 
     #define OFFSET_RUNTIME 0x76543210
-    virtual int isBaseOf(ClassDeclaration *cd, int *poffset);
+    virtual int isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset);
 
     Dsymbol *search(Loc, Identifier *ident, int flags);
 #if DMDV2
@@ -263,8 +267,8 @@ struct InterfaceDeclaration : ClassDeclaration
     InterfaceDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);
-    int isBaseOf(ClassDeclaration *cd, int *poffset);
-    int isBaseOf(BaseClass *bc, int *poffset);
+    int isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset);
+    int isBaseOf(BaseClass *bc, target_ptrdiff_t *poffset);
     const char *kind();
     int vtblOffset();
 #if DMDV2
