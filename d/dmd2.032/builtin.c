@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/*
+ * Note: This file has been modified to work with GCC
+ *
+ * Modified by Vincenzo Ampolo on Sept 2009
+ */
+
 #include <stdio.h>
 #include <assert.h>
 #include <math.h>

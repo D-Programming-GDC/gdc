@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Vincenzo Ampolo, September 2009
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -859,6 +865,7 @@ void PragmaDeclaration::setScope(Scope *sc)
 
 void PragmaDeclaration::semantic(Scope *sc)
 {   // Should be merged with PragmaStatement
+	Scope sc_save;
 
     //printf("\tPragmaDeclaration::semantic '%s'\n",toChars());
     if (ident == Id::msg)
@@ -883,8 +890,127 @@ void PragmaDeclaration::semantic(Scope *sc)
 	}
 	goto Lnodecl;
     }
-    else if (ident == Id::lib)
+    else if (ident == Id::GNU_attribute)
     {
+    	sc_save = *sc;
+
+		//Vincenzo Ampolo: probably this should be deleted
+    	// An empty list is allowed.
+		if (args && args->dim)
+		{
+			Expressions * a;
+
+			if (sc->attributes)
+			a = (Expressions *) sc->attributes->copy();
+			else
+			a = new Expressions;
+			sc->attributes = a;
+
+			for (unsigned i = 0; i < args->dim; i++)
+			{
+			Expression * e = (Expression *) args->data[i];
+			//e = e->semantic(sc);
+
+			if (e->op == TOKidentifier) {
+				/* ok */
+			} else if (e->op == TOKcall) {
+				CallExp * c = (CallExp *) e;
+				if (c->e1->op != TOKidentifier)
+				error("identifier or call expression expected for attribute");
+				if (c->arguments)
+				for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
+				{
+					c->arguments->data[ai] =
+					((Expression *) c->arguments->data[ai])->semantic(sc);
+				}
+			}
+			else
+			{
+				error("identifier or call expression expected for attribute");
+				continue;
+			}
+			a->push(e);
+			}
+		}
+		}
+		else if (ident == Id::GNU_set_attribute)
+		{
+		if (!args || args->dim < 1)
+			error("declaration expected for setting attributes");
+		else
+		{
+			Array p_attributes_list; // of Expressions**
+			{
+			Expression * e = (Expression *) args->data[0];
+			Expressions ** pa = NULL;
+
+			e = e->semantic(sc);
+			if (e->op == TOKvar)
+			{
+				Declaration * d = ((VarExp *)e)->var;
+				if (d->isFuncDeclaration() || d->isVarDeclaration())
+				pa = & d->attributes;
+			}
+			else if (e->op == TOKtype)
+			{
+				Type * t = ((TypeExp *)e)->type;
+				if (t->ty == Ttypedef)
+				pa = & ((TypeTypedef *) t)->sym->attributes;
+				else if (t->ty == Tenum)
+				pa = & ((TypeEnum *) t)->sym->attributes;
+				else if (t->ty == Tstruct)
+				pa = & ((TypeStruct *) t)->sym->attributes;
+				else if (t->ty == Tclass)
+				pa = & ((TypeClass *) t)->sym->attributes;
+			}
+
+			if (pa)
+				p_attributes_list.push(pa);
+			else
+				error("first argument must be a function, variable, or type declaration");
+			}
+
+			Expressions * new_attrs = new Expressions;
+			for (unsigned i = 1; i < args->dim; i++)
+			{
+			Expression * e = (Expression *) args->data[i];
+			//e = e->semantic(sc);
+
+			if (e->op == TOKidentifier) {
+				/* ok */
+			} else if (e->op == TOKcall) {
+				CallExp * c = (CallExp *) e;
+				if (c->e1->op != TOKidentifier)
+				error("identifier or call expression expected for attribute");
+				if (c->arguments)
+				for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
+				{
+					c->arguments->data[ai] =
+					((Expression *) c->arguments->data[ai])->semantic(sc);
+				}
+			}
+			else
+			{
+				error("identifier or call expression expected for attribute");
+				continue;
+			}
+			new_attrs->push(e);
+			}
+
+			for (unsigned i = 0; i < p_attributes_list.dim; ++i)
+			{
+			Expressions ** pa = (Expressions **) p_attributes_list.data[i];
+			if (*pa)
+			{
+				*pa = (Expressions *) (*pa)->copy();
+				(*pa)->append(new_attrs);
+			}
+			else
+				*pa = new_attrs;
+			}
+		}
+		goto Lnodecl;
+	}
 	if (!args || args->dim != 1)
 	    error("string expected for library name");
 	else
@@ -1004,6 +1130,12 @@ void PragmaDeclaration::semantic(Scope *sc)
 	    s->semantic(sc);
 	}
     }
+
+#if IN_GCC
+    if (decl)
+	if (ident == Id::GNU_attribute)
+	    *sc = sc_save;
+#endif
     return;
 
 Lnodecl:
