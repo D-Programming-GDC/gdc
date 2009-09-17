@@ -8,6 +8,13 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Vincenzo Ampolo, Sept 2009
+*/
+
+
 #include <stdio.h>
 #include <assert.h>
 
@@ -34,6 +41,7 @@ Declaration::Declaration(Identifier *id)
     protection = PROTundefined;
     linkage = LINKdefault;
     inuse = 0;
+    attributes = NULL;
 }
 
 void Declaration::semantic(Scope *sc)
@@ -45,7 +53,7 @@ const char *Declaration::kind()
     return "declaration";
 }
 
-unsigned Declaration::size(Loc loc)
+target_size_t Declaration::size(Loc loc)
 {
     assert(type);
     return type->size();
@@ -303,6 +311,10 @@ void TypedefDeclaration::semantic(Scope *sc)
 	basetype = basetype->semantic(loc, sc);
 	sem = 2;
 	type = type->semantic(loc, sc);
+	if (attributes)
+		    attributes->append(sc->attributes);
+	else
+		    attributes = sc->attributes;
 	if (sc->parent->isFuncDeclaration() && init)
 	    semantic2(sc);
 	storage_class |= sc->stc & STCdeprecated;
@@ -720,6 +732,10 @@ void VarDeclaration::semantic(Scope *sc)
     this->parent = sc->parent;
     //printf("this = %p, parent = %p, '%s'\n", this, parent, parent->toChars());
     protection = sc->protection;
+    if (attributes)
+    	    attributes->append(sc->attributes);
+    else
+    	    attributes = sc->attributes;
     //printf("sc->stc = %x\n", sc->stc);
     //printf("storage_class = x%x\n", storage_class);
 
@@ -767,7 +783,7 @@ void VarDeclaration::semantic(Scope *sc)
 	{   Argument *arg = Argument::getNth(tt->arguments, i);
 
 	    OutBuffer buf;
-	    buf.printf("_%s_field_%zu", ident->toChars(), i);
+	    buf.printf("_%s_field_%"PRIuSIZE, ident->toChars(), i);
 	    buf.writeByte(0);
 	    char *name = (char *)buf.extractData();
 	    Identifier *id = new Identifier(name, TOKidentifier);
@@ -1021,7 +1037,7 @@ Lagain:
 		    ei->exp = ei->exp->semantic(sc);
 		    if (!ei->exp->implicitConvTo(type))
 		    {
-			int dim = ((TypeSArray *)t)->dim->toInteger();
+		    sinteger_t dim = ((TypeSArray *)t)->dim->toInteger();
 			// If multidimensional static array, treat as one large array
 			while (1)
 			{

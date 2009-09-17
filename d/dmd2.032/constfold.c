@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Vincenzo Ampolo, Sept 2009
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -895,7 +901,32 @@ Expression *Cmp(enum TOK op, Type *type, Expression *e1, Expression *e2)
 	if (es2->len < len)
 	    len = es2->len;
 
-	int cmp = memcmp(es1->string, es2->string, sz * len);
+	int cmp = 0;
+	if (sz == 1)
+		cmp = memcmp(es1->string, es2->string, sz * len);
+	else if (sz == 2)
+	{
+		const d_uns16 * p1 = (const d_uns16 *) es1->string;
+		const d_uns16 * p2 = (const d_uns16 *) es2->string;
+		for (size_t i = 0; i < len; ++i)
+		if (p1[i] > p2[i])
+			{ cmp = 1; break; }
+		else if (p1[i] < p2[i])
+			{ cmp = -1; break; }
+	}
+	else if (sz == 4)
+	{
+		const d_uns32 * p1 = (const d_uns32 *) es1->string;
+		const d_uns32 * p2 = (const d_uns32 *) es2->string;
+		for (size_t i = 0; i < len; ++i)
+		if (p1[i] > p2[i])
+			{ cmp = 1; break; }
+		else if (p1[i] < p2[i])
+			{ cmp = -1; break; }
+	}
+	else
+		assert(0);
+
 	if (cmp == 0)
 	    cmp = es1->len - es2->len;
 
@@ -1101,7 +1132,22 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
     {
 	if (e1->type->isfloating())
 	{   dinteger_t result;
+#ifdef IN_GCC
+	    Type * rt = e1->type;
+	    if (rt->iscomplex())
+	    {
+	    	switch (rt->toBasetype()->ty)
+	    	{
+				case Tcomplex32: rt = Type::tfloat32; break;
+				case Tcomplex64: rt = Type::tfloat64; break;
+				case Tcomplex80: rt = Type::tfloat80; break;
+				default: assert(0);
+	    	}
+	    }
+	    d_int64 r = e1->toReal().toInt(rt, type);
+#else
 	    real_t r = e1->toReal();
+#endif
 
 	    switch (typeb->ty)
 	    {
@@ -1214,7 +1260,7 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
 	uinteger_t i = e2->toInteger();
 
 	if (i >= es1->len)
-	    e1->error("string index %ju is out of bounds [0 .. %zu]", i, es1->len);
+		e1->error("string index %"PRIuMAX" is out of bounds [0 .. %"PRIuSIZE"]", i, es1->len);
 	else
 	{   unsigned value = es1->charAt(i);
 	    e = new IntegerExp(loc, value, type);
@@ -1226,8 +1272,7 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
 	uinteger_t i = e2->toInteger();
 
 	if (i >= length)
-	{   e2->error("array index %ju is out of bounds %s[0 .. %ju]", i, e1->toChars(), length);
-	}
+	{   e2->error("array index %"PRIuMAX" is out of bounds %s[0 .. %"PRIuMAX"]", i, e1->toChars(), length);	}
 	else if (e1->op == TOKarrayliteral && !e1->checkSideEffect(2))
 	{   ArrayLiteralExp *ale = (ArrayLiteralExp *)e1;
 	    e = (Expression *)ale->elements->data[i];
@@ -1291,7 +1336,7 @@ Expression *Slice(Type *type, Expression *e1, Expression *lwr, Expression *upr)
 	uinteger_t iupr = upr->toInteger();
 
 	if (iupr > es1->len || ilwr > iupr)
-	    e1->error("string slice [%ju .. %ju] is out of bounds", ilwr, iupr);
+		e1->error("string slice [%"PRIuMAX" .. %"PRIuMAX"] is out of bounds", ilwr, iupr);
 	else
 	{   dinteger_t value;
 	    void *s;
@@ -1318,7 +1363,7 @@ Expression *Slice(Type *type, Expression *e1, Expression *lwr, Expression *upr)
 	uinteger_t iupr = upr->toInteger();
 
 	if (iupr > es1->elements->dim || ilwr > iupr)
-	    e1->error("array slice [%ju .. %ju] is out of bounds", ilwr, iupr);
+		e1->error("array slice [%"PRIuMAX" .. %"PRIuMAX"] is out of bounds", ilwr, iupr);
 	else
 	{
 	    Expressions *elements = new Expressions();
@@ -1363,7 +1408,13 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 	    dinteger_t v = e->toInteger();
 
 	    s = mem.malloc((len + 1) * sz);
-	    memcpy((unsigned char *)s, &v, sz);
+	    switch (sz)
+	    {
+	    		case 1: *(d_uns8*)s = v; break;
+	    		case 2: *(d_uns16*)s = v; break;
+	    		case 4: *(d_uns32*)s = v; break;
+	    		default: assert(0);
+	    }
 
 	    // Add terminating 0
 	    memset((unsigned char *)s + len * sz, 0, sz);
@@ -1386,6 +1437,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
     {
 	// Concatenate the strings
 	void *s;
+	void *sch;
 	StringExp *es1 = (StringExp *)e1;
 	StringExp *es2 = (StringExp *)e2;
 	StringExp *es;
@@ -1403,7 +1455,14 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 	}
 	s = mem.malloc((len + 1) * sz);
 	memcpy(s, es1->string, es1->len * sz);
-	memcpy((unsigned char *)s + es1->len * sz, es2->string, es2->len * sz);
+	sch = (unsigned char *)s + es1->len * sz;
+	switch (sz)
+	{
+		    case 1: *(d_uns8*)sch = es2->string; break;
+		    case 2: *(d_uns16*)sch = es2->string; break;
+		    case 4: *(d_uns32*)sch = es2->string; break;
+		    default: assert(0);
+	}
 
 	// Add terminating 0
 	memset((unsigned char *)s + len * sz, 0, sz);
@@ -1430,7 +1489,13 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 	dinteger_t v = e2->toInteger();
 
 	s = mem.malloc((len + 1) * sz);
-	memcpy(s, es1->string, es1->len * sz);
+	switch (sz)
+	{
+		    case 1: *(d_uns8*)s = v; break;
+		    case 2: *(d_uns16*)s = v; break;
+		    case 4: *(d_uns32*)s = v; break;
+		    default: assert(0);
+	}
 	memcpy((unsigned char *)s + es1->len * sz, &v, sz);
 
 	// Add terminating 0

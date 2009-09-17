@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Vincenzo Ampolo, Sept 2009
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -217,7 +223,6 @@ Dsymbol *ClassDeclaration::syntaxCopy(Dsymbol *s)
 
 void ClassDeclaration::semantic(Scope *sc)
 {   int i;
-    unsigned offset;
 
     //printf("ClassDeclaration::semantic(%s), type = %p, sizeok = %d, this = %p\n", toChars(), type, sizeok, this);
     //printf("\tparent = %p, '%s'\n", sc->parent, sc->parent ? sc->parent->toChars() : "");
@@ -258,6 +263,10 @@ void ClassDeclaration::semantic(Scope *sc)
 	scx = scope;		// save so we don't make redundant copies
 	scope = NULL;
     }
+    if (attributes)
+    	attributes->append(sc->attributes);
+    else
+    	attributes = sc->attributes;
 #ifdef IN_GCC
     methods.setDim(0);
 #endif
@@ -567,6 +576,7 @@ void ClassDeclaration::semantic(Scope *sc)
     sc->stc &= ~(STCfinal | STCauto | STCscope | STCstatic |
 		 STCabstract | STCdeprecated | STC_TYPECTOR | STCtls | STCgshared);
     sc->stc |= storage_class & STC_TYPECTOR;
+    sc->attributes = NULL;
     sc->parent = this;
     sc->inunion = 0;
 
@@ -781,7 +791,7 @@ int ClassDeclaration::isBaseOf2(ClassDeclaration *cd)
  * Determine if 'this' is a base class of cd.
  */
 
-int ClassDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
+int ClassDeclaration::isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset)
 {
     //printf("ClassDeclaration::isBaseOf(this = '%s', cd = '%s')\n", toChars(), cd->toChars());
     if (poffset)
@@ -1087,6 +1097,11 @@ void InterfaceDeclaration::semantic(Scope *sc)
 	scope = NULL;
     }
 
+    if (attributes)
+    	attributes->append(sc->attributes);
+    else
+    	attributes = sc->attributes;
+
     if (sc->stc & STCdeprecated)
     {
 	isdeprecated = 1;
@@ -1226,6 +1241,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
     sc->stc &= ~(STCfinal | STCauto | STCscope | STCstatic |
                  STCabstract | STCdeprecated | STC_TYPECTOR | STCtls | STCgshared);
     sc->stc |= storage_class & STC_TYPECTOR;
+    sc->attributes = NULL;
     sc->parent = this;
     if (isCOMinterface())
 	sc->linkage = LINKwindows;
@@ -1258,7 +1274,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
  *	1	is a base
  */
 
-int InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
+int InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset)
 {
     unsigned j;
 
@@ -1295,7 +1311,7 @@ int InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
 }
 
 
-int InterfaceDeclaration::isBaseOf(BaseClass *bc, int *poffset)
+int InterfaceDeclaration::isBaseOf(BaseClass *bc, target_ptrdiff_t *poffset)
 {
     //printf("%s.InterfaceDeclaration::isBaseOf(bc = '%s')\n", toChars(), bc->base->toChars());
     for (unsigned j = 0; j < bc->baseInterfaces_dim; j++)
