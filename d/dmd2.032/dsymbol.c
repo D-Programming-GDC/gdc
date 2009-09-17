@@ -8,6 +8,13 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Vincenzo Ampolo, Sept 2009
+   Based on David Friedman's work
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -390,7 +397,7 @@ void Dsymbol::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writestring(toChars());
 }
 
-unsigned Dsymbol::size(Loc loc)
+target_size_t Dsymbol::size(Loc loc)
 {
     error("Dsymbol '%s' has no size\n", toChars());
     return 0;

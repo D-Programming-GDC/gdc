@@ -8,6 +8,13 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Vincenzo Ampolo, Sept 2009
+   Based on David Friedman's work
+*/
+
 #ifndef DMD_DSYMBOL_H
 #define DMD_DSYMBOL_H
 
@@ -142,7 +149,7 @@ struct Dsymbol : Object
 #endif
     virtual void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     virtual void toDocBuffer(OutBuffer *buf);
-    virtual unsigned size(Loc loc);
+    virtual target_size_t size(Loc loc);
     virtual int isforwardRef();
     virtual void defineRef(Dsymbol *s);
     virtual AggregateDeclaration *isThis();	// is a 'this' required to access the member

@@ -8,6 +8,13 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Vincenzo Ampolo, Sept 2009
+   Based on David Friedman's work
+*/
+
 #ifndef DMD_DECLARATION_H
 #define DMD_DECLARATION_H
 
@@ -101,12 +108,13 @@ struct Declaration : Dsymbol
     unsigned storage_class;
     enum PROT protection;
     enum LINK linkage;
+    Expressions * attributes; // GCC decl/type attributes
     int inuse;			// used to detect cycles
 
     Declaration(Identifier *id);
     void semantic(Scope *sc);
     const char *kind();
-    unsigned size(Loc loc);
+    target_size_t size(Loc loc);
     void checkModify(Loc loc, Scope *sc, Type *t);
 
     void emitComment(Scope *sc);
@@ -227,7 +235,7 @@ struct AliasDeclaration : Declaration
 struct VarDeclaration : Declaration
 {
     Initializer *init;
-    unsigned offset;
+    target_size_t offset;
     int noauto;			// no auto semantics
 #if DMDV2
     FuncDeclarations nestedrefs; // referenced by these lexically nested functions
@@ -498,6 +506,7 @@ struct FuncDeclaration : Declaration
     VarDeclaration *vthis;		// 'this' parameter (member and nested)
     VarDeclaration *v_arguments;	// '_arguments' parameter
 #if IN_GCC
+    VarDeclaration *v_arguments_var;	// '_arguments' variable
     VarDeclaration *v_argptr;	        // '_argptr' variable
 #endif
     Dsymbols *parameters;		// Array of VarDeclaration's for parameters
@@ -597,11 +606,11 @@ struct FuncDeclaration : Declaration
     FuncDeclaration *isUnique();
     int needsClosure();
 
-    static FuncDeclaration *genCfunc(Type *treturn, const char *name);
-    static FuncDeclaration *genCfunc(Type *treturn, Identifier *id);
+    static FuncDeclaration *genCfunc(Type *treturn, char *name, Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);
+    static FuncDeclaration *genCfunc(Type *treturn, Identifier *id, Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);
 
     Symbol *toSymbol();
-    Symbol *toThunkSymbol(int offset);	// thunk version
+    Symbol *toThunkSymbol(target_ptrdiff_t offset);	// thunk version
     void toObjFile(int multiobj);			// compile to .obj file
     int cvMember(unsigned char *p);
     void buildClosure(IRState *irs);
