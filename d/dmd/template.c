@@ -876,6 +876,13 @@ L2:
 		}
 		//printf("\tm2 = %d\n", m);
 	    }
+	    
+	    /* If no match, see if we can implicitly convert farg to the
++ 	     * parameter type.
++ 	     */
+ 	    if (!m)
+ 	    {	m = farg->implicitConvTo(fparam->type);
+ 	    }
 
 	    if (m)
 	    {	if (m < match)
@@ -883,17 +890,63 @@ L2:
 		continue;
 	    }
 	}
+	
+	/* The following code for variadic arguments closely
++ 	 * matches TypeFunction::callMatch()
++ 	 */
 	if (!(fdtype->varargs == 2 && i + 1 == nfparams))
 	    goto Lnomatch;
 
 	/* Check for match with function parameter T...
 	 */
-	Type *t = fparam->type;
-	switch (t->ty)
+	Type *tb = fparam->type->toBasetype();
+ 	switch (tb->ty)
 	{
 	    // Perhaps we can do better with this, see TypeFunction::callMatch()
 	    case Tsarray:
-	    case Tarray:
+	    {	TypeSArray *tsa = (TypeSArray *)tb;
+ 		integer_t sz = tsa->dim->toInteger();
+ 		if (sz != nfargs - i)
+ 		    goto Lnomatch;
+	    }
+  	    case Tarray:
+ 	    {   TypeArray *ta = (TypeArray *)tb;
+ 		for (; i < nfargs; i++)
+ 		{
+ 		    Expression *arg = (Expression *)fargs->data[i];
+ 		    assert(arg);
+ 		    MATCH m;
+ 		    /* If lazy array of delegates,
++ 		     * convert arg(s) to delegate(s)
++ 		     */
+ 		    Type *tret = fparam->isLazyArray();
+ 		    if (tret)
+ 		    {
+ 			if (ta->next->equals(arg->type))
+ 			{   m = MATCHexact;
+ 			}
+ 			else
+ 			{
+ 			    m = arg->implicitConvTo(tret);
+ 			    if (m == MATCHnomatch)
+ 			    {
+ 				if (tret->toBasetype()->ty == Tvoid)
+ 				    m = MATCHconvert;
+ 			    }
+ 			}
+ 		    }
+ 		    else
+ 		    {
+ 			m = arg->type->deduceType(scope, ta->next, parameters, &dedtypes);
+ 			//m = arg->implicitConvTo(ta->next);
+ 		    }
+ 		    if (m == MATCHnomatch)
+ 			goto Lnomatch;
+ 		    if (m < match)
+ 			match = m;
+ 		}
+ 		goto Lmatch;
+ 	    }
 	    case Tclass:
 	    case Tident:
 		goto Lmatch;
@@ -2714,6 +2767,7 @@ TemplateInstance::TemplateInstance(Loc loc, Identifier *ident)
     this->argsym = NULL;
     this->aliasdecl = NULL;
     this->semanticdone = 0;
+    this->semantictiargsdone = 0;
     this->withsym = NULL;
     this->nest = 0;
 #ifdef IN_GCC
@@ -2739,6 +2793,7 @@ TemplateInstance::TemplateInstance(Loc loc, TemplateDeclaration *td, Objects *ti
     this->argsym = NULL;
     this->aliasdecl = NULL;
     this->semanticdone = 0;
+    this->semantictiargsdone = 1;
     this->withsym = NULL;
     this->nest = 0;
 #ifdef IN_GCC
@@ -3145,6 +3200,9 @@ void TemplateInstance::semantic(Scope *sc)
 void TemplateInstance::semanticTiargs(Scope *sc)
 {
     //printf("+TemplateInstance::semanticTiargs() %s\n", toChars());
+    if (semantictiargsdone)
+ 	return;
+     semantictiargsdone = 1;
     semanticTiargs(loc, sc, tiargs);
 }
 
@@ -4231,8 +4289,7 @@ char *TemplateMixin::toChars()
 void TemplateMixin::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     buf->writestring("mixin ");
-    int i;
-    for (i = 0; i < idents->dim; i++)
+    for (int i = 0; i < idents->dim; i++)
     {   Identifier *id = (Identifier *)idents->data[i];
 
     	if (i)
@@ -4242,7 +4299,7 @@ void TemplateMixin::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writestring("!(");
     if (tiargs)
     {
-        for (i = 0; i < tiargs->dim; i++)
+        for (int i = 0; i < tiargs->dim; i++)
         {   if (i)
                 buf->writebyte(',');
 	    Object *oarg = (Object *)tiargs->data[i];
@@ -4269,6 +4326,11 @@ void TemplateMixin::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         }
     }
     buf->writebyte(')');
+    if (ident)
+     {
+ 	buf->writebyte(' ');
+ 	buf->writestring(ident->toChars());
+     }
     buf->writebyte(';');
     buf->writenl();
 }

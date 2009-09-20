@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2007 by Digital Mars
+// Copyright (c) 1999-2008 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -8,10 +8,13 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+// This is the D parser
+
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, September 2004
+   Modified by Michael Parrott, September 2009
+   Using David Friedman's code
 */
 
 #include <stdio.h>
@@ -53,7 +56,7 @@
 //	(type)(expression)
 #define CCASTSYNTAX	1
 
-// Support C array declarations, such as
+// Support postfix C array declarations, such as
 //	int a[3][4];
 #define CARRAYDECL	1
 
@@ -547,6 +550,27 @@ StaticAssert *Parser::parseStaticAssert()
     return new StaticAssert(loc, exp, msg);
 }
 
+#if V2
+ TypeQualified *Parser::parseTypeof()
+ {   TypeQualified *t;
+     Loc loc = this->loc;
+ 
+     nextToken();
+     check(TOKlparen);
+     if (token.value == TOKreturn)	// typeof(return)
+     {
+ 	nextToken();
+ 	t = new TypeReturn(loc);
+     }
+     else
+     {	Expression *exp = parseExpression();	// typeof(expression)
+ 	t = new TypeTypeof(loc, exp);
+     }
+     check(TOKrparen);
+     return t;
+ }
+ #endif
+
 
 /***********************************
  * Parse extern (linkage)
@@ -882,13 +906,12 @@ Arguments *Parser::parseParameters(int *pvarargs)
     check(TOKlparen);
     while (1)
     {   Type *tb;
-	Identifier *ai;
+	Identifier *ai = NULL;
 	Type *at;
 	Argument *a;
 	unsigned storageClass;
 	Expression *ae;
 
-	ai = NULL;
 	storageClass = STCin;		// parameter is "in" by default
 	switch (token.value)
 	{
@@ -1037,6 +1060,8 @@ EnumDeclaration *Parser::parseEnum()
     }
     else
 	error("enum declaration is invalid");
+	
+	//printf("-parseEnum() %s\n", e->toChars());
 
     return e;
 }
@@ -1190,8 +1215,29 @@ BaseClasses *Parser::parseBaseClasses()
 }
 
 /**************************************
- * Parse a TemplateDeclaration.
- */
++  * Parse constraint.
++  * Constraint is of the form:
++  *	if ( ConstraintExpression )
++  */
+ 
+ #if V2
+ Expression *Parser::parseConstraint()
+ {   Expression *e = NULL;
+ 
+     if (token.value == TOKif)
+     {
+ 	nextToken();	// skip over 'if'
+ 	check(TOKlparen);
+ 	e = parseExpression();
+ 	check(TOKrparen);
+     }
+     return e;
+ }
+ #endif
+ 
+ /**************************************
+   * Parse a TemplateDeclaration.
+   */
 
 TemplateDeclaration *Parser::parseTemplateDeclaration()
 {
@@ -1322,13 +1368,36 @@ TemplateParameters *Parser::parseTemplateParameterList()
 		nextToken();
 		tp = new TemplateTupleParameter(loc, tp_ident);
 	    }
+	    #if V2
+ 	    else if (token.value == TOKthis)
+ 	    {	// ThisParameter
+ 		nextToken();
+ 		if (token.value != TOKidentifier)
+ 		{   error("identifier expected for template this parameter");
+ 		    goto Lerr;
+ 		}
+ 		tp_ident = token.ident;
+ 		nextToken();
+ 		if (token.value == TOKcolon)	// : Type
+ 		{
+ 		    nextToken();
+ 		    tp_spectype = parseType();
+ 		}
+ 		if (token.value == TOKassign)	// = Type
+ 		{
+ 		    nextToken();
+ 		    tp_defaulttype = parseType();
+ 		}
+ 		tp = new TemplateThisParameter(loc, tp_ident, tp_spectype, tp_defaulttype);
+ 	    }
+ 		#endif
 	    else
 	    {	// ValueParameter
 		tp_valtype = parseBasicType();
 		tp_valtype = parseDeclarator(tp_valtype, &tp_ident);
 		if (!tp_ident)
 		{
-		    error("no identifier for template value parameter");
+		    error("identifier expected for template value parameter");
 		    tp_ident = new Identifier("error", TOKidentifier);
 		}
 		if (token.value == TOKcolon)	// : CondExpression
@@ -1640,6 +1709,7 @@ Type *Parser::parseBasicType()
 	    break;
 
 	case TOKdot:
+	// Leading . as in .foo
 	    id = Id::empty;
 	    goto Lident;
 
@@ -1661,6 +1731,17 @@ Type *Parser::parseBasicType()
     }
     return t;
 }
+
+/******************************************
++  * Parse things that follow the initial type t.
++  *	t *
++  *	t []
++  *	t [type]
++  *	t [expression]
++  *	t [expression .. expression]
++  *	t function
++  *	t delegate
++  */
 
 Type *Parser::parseBasicType2(Type *t)
 {
@@ -1803,6 +1884,11 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 	    break;
 
 	case TOKlparen:
+	/* Parse things with parentheses around the identifier, like:
++ 	     *	int (*ident[3])[]
++ 	     * although the D style would be:
++ 	     *	int[]*[3] ident
++ 	     */
 	    nextToken();
 	    ts = parseDeclarator(t, pident);
 	    check(TOKrparen);
@@ -1818,11 +1904,16 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 	switch (token.value)
 	{
 #if CARRAYDECL
+/* Support C style array syntax:
++ 	     *   int ident[]
++ 	     * as opposed to D-style:
++ 	     *   int[] ident
++ 	     */
 	    case TOKlbracket:
 	    {	// This is the old C-style post [] syntax.
 		nextToken();
 		if (token.value == TOKrbracket)
-		{
+		{ // It's a dynamic array
 		    ta = new TypeDArray(t);			// []
 		    nextToken();
 		}
@@ -1843,6 +1934,11 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 		    ta = new TypeSArray(t, e);
 		    check(TOKrbracket);
 		}
+		/* Insert ta into
++ 		 *   ts -> ... -> t
++ 		 * so that
++ 		 *   ts -> ... -> ta -> t
++ 		 */
 		Type **pt;
 		for (pt = &ts; *pt != t; pt = &(*pt)->next)
 		    ;
@@ -1884,8 +1980,12 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 }
 
 /**********************************
- * Return array of Declaration *'s.
- */
++  * Parse Declarations.
++  * These can be:
++  *	1. declarations at global/class level
++  *	2. declarations at statement level
+   * Return array of Declaration *'s.
+   */
 
 Array *Parser::parseDeclarations()
 {
@@ -2132,9 +2232,57 @@ Array *Parser::parseDeclarations()
     return a;
 }
 
-/*****************************************
- * Parse contracts following function declaration.
- */
+  /*****************************************
++  * Parse auto declarations of the form:
++  *   storageClass ident = init, ident = init, ... ;
++  * and return the array of them.
++  * Starts with token on the first ident.
++  * Ends with scanner past closing ';'
++  */
+ 
+ #if V2
+ Array *Parser::parseAutoDeclarations(unsigned storageClass, unsigned char *comment)
+ {
+     Array *a = new Array;
+ 
+     while (1)
+     {
+ 	Identifier *ident = token.ident;
+ 	nextToken();		// skip over ident
+ 	assert(token.value == TOKassign);
+ 	nextToken();		// skip over '='
+ 	Initializer *init = parseInitializer();
+ 	VarDeclaration *v = new VarDeclaration(loc, NULL, ident, init);
+ 	v->storage_class = storageClass;
+ 	a->push(v);
+ 	if (token.value == TOKsemicolon)
+ 	{
+ 	    nextToken();
+ 	    addComment(v, comment);
+ 	}
+ 	else if (token.value == TOKcomma)
+ 	{
+ 	    nextToken();
+ 	    if (token.value == TOKidentifier &&
+ 		peek(&token)->value == TOKassign)
+ 	    {
+ 		addComment(v, comment);
+ 		continue;
+ 	    }
+ 	    else
+ 		error("Identifier expected following comma");
+ 	}
+ 	else
+ 	    error("semicolon expected following auto declaration, not '%s'", token.toChars());
+ 	break;
+     }
+     return a;
+ }
+ #endif
+ 
+ /*****************************************
+   * Parse contracts following function declaration.
+   */
 
 void Parser::parseContracts(FuncDeclaration *f)
 {
@@ -2398,6 +2546,34 @@ Initializer *Parser::parseInitializer()
     }
 }
 
+/*****************************************
++  * Parses default argument initializer expression that is an assign expression,
++  * with special handling for __FILE__ and __LINE__.
++  */
+ 
+ #if V2
+ Expression *Parser::parseDefaultInitExp()
+ {
+     if (token.value == TOKfile ||
+ 	token.value == TOKline)
+     {
+	Token *t = peek(&token);
+ 	if (t->value == TOKcomma || t->value == TOKrparen)
+ 	{   Expression *e;
+ 
+ 	    if (token.value == TOKfile)
+ 		e = new FileInitExp(loc);
+ 	    else
+ 		e = new LineInitExp(loc);
+ 	    nextToken();
+ 	    return e;
+ 	}
+     }
+ 
+     Expression *e = parseAssignExp();
+     return e;
+ }
+ #endif
 
 /*****************************************
  * Input:
@@ -2476,6 +2652,11 @@ Statement *Parser::parseStatement(int flags)
 	case TOKtypeid:
 	case TOKis:
 	case TOKlbracket:
+	#if V2
+ 	case TOKtraits:
+ 	case TOKfile:
+ 	case TOKline:
+	#endif
 	Lexp:
 	{   Expression *exp;
 
@@ -3118,6 +3299,10 @@ Statement *Parser::parseStatement(int flags)
 	case TOKvolatile:
 	    nextToken();
 	    s = parseStatement(PSsemi | PScurlyscope);
+	    #if V2
+ 	    if (!global.params.useDeprecated)
+ 		error("volatile statements deprecated; used synchronized statements instead");
+ 		#endif
 	    s = new VolatileStatement(loc, s);
 	    break;
 
@@ -3380,6 +3565,16 @@ void Parser::check(enum TOK value, char *string)
 int Parser::isDeclaration(Token *t, int needId, enum TOK endtok, Token **pt)
 {
     int haveId = 0;
+    
+    #if V2
+     if ((t->value == TOKconst || t->value == TOKinvariant) &&
+ 	peek(t)->value != TOKlparen)
+     {	/* const type
++ 	 * invariant type
++ 	 */
+ 	t = peek(t);
+     }
+ 	#endif
 
     if (!isBasicType(&t))
 	return FALSE;
@@ -3850,6 +4045,8 @@ Expression *Parser::parsePrimaryExp()
     Identifier *id;
     enum TOK save;
     Loc loc = this->loc;
+    
+    //printf("parsePrimaryExp(): loc = %d\n", loc.linnum);
 
     switch (token.value)
     {
@@ -3945,6 +4142,20 @@ Expression *Parser::parsePrimaryExp()
 	    e = new NullExp(loc);
 	    nextToken();
 	    break;
+	    
+	#if V2
+ 	case TOKfile:
+ 	{   char *s = loc.filename ? loc.filename : mod->ident->toChars();
+ 	    e = new StringExp(loc, s, strlen(s), 0);
+ 	    nextToken();
+ 	    break;
+ 	}
+ 
+ 	case TOKline:
+ 	    e = new IntegerExp(loc, loc.linnum, Type::tint32);
+ 	    nextToken();
+ 	    break;
+ #endif
 
 	case TOKtrue:
 	    e = new IntegerExp(loc, 1, Type::tbool);
@@ -4046,6 +4257,31 @@ Expression *Parser::parsePrimaryExp()
 	    e = new TypeidExp(loc, t);
 	    break;
 	}
+	
+	#if V2
+ 	case TOKtraits:
+ 	{   /* __traits(identifier, args...)
++ 	     */
+ 	    Identifier *ident;
+ 	    Objects *args = NULL;
+ 
+ 	    nextToken();
+ 	    check(TOKlparen);
+ 	    if (token.value != TOKidentifier)
+ 	    {   error("__traits(identifier, args...) expected");
+ 		goto Lerr;
+ 	    }
+ 	    ident = token.ident;
+ 	    nextToken();
+ 	    if (token.value == TOKcomma)
+ 		args = parseTemplateArgumentList2();	// __traits(identifier, args...)
+	    else
+ 		check(TOKrparen);		// __traits(identifier)
+ 
+ 	    e = new TraitsExp(loc, ident, args);
+ 	    break;
+ 	}
+ #endif
 
 	case TOKis:
 	{   Type *targ;
@@ -4469,6 +4705,11 @@ Expression *Parser::parseUnaryExp()
 		    case TOKfunction:
 		    case TOKdelegate:
 		    case TOKtypeof:
+		    
+		    #if V2
+ 		    case TOKfile:
+		    case TOKline:
+ 			#endif
 		    CASE_BASIC_TYPES:		// (type)int.size
 		    {	// (type) una_exp
 			Type *t;
@@ -4891,7 +5132,7 @@ Expression *Parser::parseExpression()
     Expression *e2;
     Loc loc = this->loc;
 
-    //printf("Parser::parseExpression()\n");
+    //printf("Parser::parseExpression() loc = %d\n", loc.linnum);
     e = parseAssignExp();
     while (token.value == TOKcomma)
     {

@@ -4268,6 +4268,7 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident)
     {
 	/* Create a TupleExp
 	 */
+	e = e->semantic(sc);	// do this before turning on noaccesscheck
 	Expressions *exps = new Expressions;
 	exps->reserve(sym->fields.dim);
 	for (size_t i = 0; i < sym->fields.dim; i++)
@@ -4276,7 +4277,10 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	    exps->push(fe);
 	}
 	e = new TupleExp(e->loc, exps);
+	sc = sc->push();
+ 	sc->noaccesscheck = 1;
 	e = e->semantic(sc);
+	sc->pop();
 	return e;
     }
 
@@ -4548,6 +4552,7 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident)
     {
 	/* Create a TupleExp
 	 */
+	e = e->semantic(sc);	// do this before turning on noaccesscheck
 	Expressions *exps = new Expressions;
 	exps->reserve(sym->fields.dim);
 	for (size_t i = 0; i < sym->fields.dim; i++)
@@ -4556,7 +4561,10 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	    exps->push(fe);
 	}
 	e = new TupleExp(e->loc, exps);
-	e = e->semantic(sc);
+	sc = sc->push();
+ 	sc->noaccesscheck = 1;
+  	e = e->semantic(sc);
+ 	sc->pop();
 	return e;
     }
 

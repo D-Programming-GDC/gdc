@@ -10,7 +10,8 @@
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, September 2004
+   Modified by Michael Parrott, September 2009
+   Using David Friedman's code
 */
 
 #include <stdio.h>
@@ -133,6 +134,13 @@ void Module::genmoduleinfo()
 	dtdword(&dt, 0);		// BUG: should be an assert()
     }
     dtdword(&dt, 0);			// monitor
+    
+    #if V2
+     FuncDeclaration *sgetmembers = findGetMembers();
+     if (sgetmembers)
+ 	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
+     else
+ #endif
 
     // name[]
     char *name = toPrettyChars();
@@ -302,10 +310,9 @@ void ClassDeclaration::toObjFile(int multiobj)
 
     assert(!scope);	// semantic() should have been run to completion
 
-    if (parent && parent->isTemplateInstance())
-	scclass = SCcomdat;
-    else
-	scclass = SCglobal;
+    scclass = SCglobal;
+     if (inTemplateInstance()) //possible changes needed here
+  	scclass = SCcomdat;
 
     // Put out the members
     for (i = 0; i < members->dim; i++)
@@ -414,6 +421,7 @@ void ClassDeclaration::toObjFile(int multiobj)
 	    void *deallocator;
 	    OffsetTypeInfo[] offTi;
 	    void *defaultConstructor;
+	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
        }
      */
     dt_t *dt = NULL;
@@ -476,6 +484,9 @@ void ClassDeclaration::toObjFile(int multiobj)
 
     // flags
     int flags = 4 | isCOMclass();
+    #if V2
+     flags |= 16;
+ #endif
     if (ctor)
 	flags |= 8;
     for (ClassDeclaration *cd = this; cd; cd = cd->baseClass)
@@ -511,6 +522,14 @@ void ClassDeclaration::toObjFile(int multiobj)
 	dtxoff(&dt, defaultCtor->toSymbol(), 0, TYnptr);
     else
 	dtdword(&dt, 0);
+	
+	#if V2
+     FuncDeclaration *sgetmembers = findGetMembers();
+     if (sgetmembers)
+ 	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
+     else
+ 	dtdword(&dt, 0);	// module getMembers() function
+ #endif
 
     //////////////////////////////////////////////
 
@@ -705,8 +724,37 @@ void ClassDeclaration::toObjFile(int multiobj)
 
 	//printf("\tvtbl[%d] = %p\n", i, fd);
 	if (fd && (fd->fbody || !isAbstract()))
-	{
-	    dtxoff(&dt, fd->toSymbol(), 0, TYnptr);
+	{   Symbol *s = fd->toSymbol();
+ 
+ #if V2
+ 	    if (isFuncHidden(fd))
+ 	    {	/* fd is hidden from the view of this class.
+ 		 * If fd overlaps with any function in the vtbl[], then
+ 		 * issue 'hidden' error.
+ 		 */
+ 		for (int j = 1; j < vtbl.dim; j++)
+ 		{   if (j == i)
+ 			continue;
+ 		    FuncDeclaration *fd2 = ((Dsymbol *)vtbl.data[j])->isFuncDeclaration();
+ 		    if (!fd2->ident->equals(fd->ident))
+ 			continue;
+ 		    if (fd->leastAsSpecialized(fd2) || fd2->leastAsSpecialized(fd))
+ 		    {
+ 			if (global.params.warnings)
+ 			{   fprintf(stdmsg, "warning - ");
+ 			    TypeFunction *tf = (TypeFunction *)fd->type;
+ 			    if (tf->ty == Tfunction)
+ 				error("%s%s is hidden by %s\n", fd->toPrettyChars(), Argument::argsTypesToChars(tf->parameters, tf->varargs), toChars());
+ 			    else
+ 				error("%s is hidden by %s\n", fd->toPrettyChars(), toChars());
+ 			}
+ 			s = rtlsym[RTLSYM_DHIDDENFUNC];
+ 			break;
+ 		    }
+ 		}
+ 	    }
+ #endif //V2
+ 	    dtxoff(&dt, s, 0, TYnptr);
 	}
 	else
 	    dtdword(&dt, 0);
@@ -809,7 +857,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     if (global.params.symdebug)
 	toDebug();
 
-    if (parent && parent->isTemplateInstance())
+    if (inTemplateInstance())
 	scclass = SCcomdat;
     else
 	scclass = SCglobal;
@@ -848,6 +896,9 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 	    void *deallocator;
 	    OffsetTypeInfo[] offTi;
 	    void *defaultConstructor;
+	    #if V2
+ 	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
+ 		#endif
        }
      */
     dt_t *dt = NULL;
@@ -906,6 +957,11 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 
     // defaultConstructor
     dtdword(&dt, 0);
+    
+    #if V2
+     // xgetMembers
+     dtdword(&dt, 0);
+ 	#endif
 
     //////////////////////////////////////////////
 
@@ -1019,6 +1075,14 @@ void VarDeclaration::toObjFile(int multiobj)
     {	toAlias()->toObjFile(0);
 	return;
     }
+    
+    #if V2
+     // Do not store variables we cannot take the address of
+     if (!canTakeAddressOf())
+     {
+ 	return;
+     }
+ #endif
 
     if (isDataseg() && !(storage_class & STCextern))
     {
@@ -1026,7 +1090,7 @@ void VarDeclaration::toObjFile(int multiobj)
 	sz = type->size();
 
 	parent = this->toParent();
-#if 1	/* private statics should still get a global symbol, in case
+#if V1	/* private statics should still get a global symbol, in case
 	 * another module inlines a function that references it.
 	 */
 	if (/*protection == PROTprivate ||*/
@@ -1050,6 +1114,7 @@ void VarDeclaration::toObjFile(int multiobj)
 		 */
 		if (parent->isTemplateInstance() && !parent->isTemplateMixin())
 		{
+			#if V1
 		    /* These symbol constants have already been copied,
 		     * so no reason to output them.
 		     * Note that currently there is no way to take
@@ -1058,6 +1123,8 @@ void VarDeclaration::toObjFile(int multiobj)
 		    if (isConst() && type->toBasetype()->ty != Tsarray &&
 			init && init->isExpInitializer())
 			return;
+			
+			#endif
 
 		    s->Sclass = SCcomdat;
 		    break;
@@ -1156,14 +1223,8 @@ void TypedefDeclaration::toObjFile(int multiobj)
     else
     {
 	enum_SC scclass = SCglobal;
-	for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
-	{
-	    if (parent->isTemplateInstance())
-	    {
+	if (inTemplateInstance())
 		scclass = SCcomdat;
-		break;
-	    }
-	}
 
 	// Generate static initializer
 	toInitializer();
@@ -1183,6 +1244,11 @@ void TypedefDeclaration::toObjFile(int multiobj)
 void EnumDeclaration::toObjFile(int multiobj)
 {
     //printf("EnumDeclaration::toObjFile('%s')\n", toChars());
+    
+    #if V2
+     if (isAnonymous())
+ 	return;
+ #endif
 
     if (global.params.symdebug)
 	toDebug();
@@ -1190,19 +1256,13 @@ void EnumDeclaration::toObjFile(int multiobj)
     type->getTypeInfo(NULL);	// generate TypeInfo
 
     TypeEnum *tc = (TypeEnum *)type;
-    if (type->isZeroInit() || !tc->sym->defaultval)
+    if (!tc->sym->defaultval || type->isZeroInit())
 	;
     else
     {
 	enum_SC scclass = SCglobal;
-	for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
-	{
-	    if (parent->isTemplateInstance())
-	    {
+	if (inTemplateInstance())
 		scclass = SCcomdat;
-		break;
-	    }
-	}
 
 	// Generate static initializer
 	toInitializer();
@@ -1211,6 +1271,13 @@ void EnumDeclaration::toObjFile(int multiobj)
 #if ELFOBJ // Burton
 	sinit->Sseg = CDATA;
 #endif /* ELFOBJ */
+#if V1
+  	dtnbytes(&sinit->Sdt, tc->size(0), (char *)&tc->sym->defaultval);
+  	//sinit->Sdt = tc->sym->init->toDt();
+#endif
+#if V2
+ 	tc->sym->defaultval->toDt(&sinit->Sdt);
+#endif
 #ifndef IN_GCC
 	dtnbytes(&sinit->Sdt, tc->size(0), (char *)&tc->sym->defaultval);
 #else
