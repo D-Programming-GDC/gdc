@@ -11,7 +11,8 @@
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, December 2006
+   Modified by Michael Parrott, September 2009
+   Using David Friedman's code
 */
 
 #include <stdio.h>
@@ -610,7 +611,7 @@ void ClassDeclaration::semantic(Scope *sc)
     if (!ctor && baseClass && baseClass->ctor)
     {
 	//printf("Creating default this(){} for class %s\n", toChars());
-	ctor = new CtorDeclaration(0, 0, NULL, 0);
+	ctor = new CtorDeclaration(loc, 0, NULL, 0);
 	ctor->fbody = new CompoundStatement(0, new Statements());
 	members->push(ctor);
 	ctor->addMember(sc, this, 1);
@@ -947,7 +948,7 @@ int ClassDeclaration::vtblOffset()
 /****************************************
  */
 
-char *ClassDeclaration::kind()
+const char *ClassDeclaration::kind()
 {
     return "class";
 }
@@ -1251,7 +1252,7 @@ int InterfaceDeclaration::isCOMinterface()
 /*******************************************
  */
 
-char *InterfaceDeclaration::kind()
+const char *InterfaceDeclaration::kind()
 {
     return "interface";
 }

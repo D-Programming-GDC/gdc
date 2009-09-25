@@ -400,7 +400,7 @@ void Dsymbol::emitDitto(Scope *sc)
 
 void ScopeDsymbol::emitMemberComments(Scope *sc)
 {
-    //printf("ScopeDsymbol::emitMemberComments()\n");
+    //printf("ScopeDsymbol::emitMemberComments() %s\n", toChars());
     OutBuffer *buf = sc->docbuf;
 
     if (members)
@@ -417,8 +417,10 @@ void ScopeDsymbol::emitMemberComments(Scope *sc)
 	else if (isTemplateDeclaration())
 	    m = "$(DDOC_TEMPLATE_MEMBERS \n";
 
-	// BUG: if no members are actually printed, we should not emit DDOC_MEMBERS
-	buf->writestring(m);
+	unsigned offset1 = buf->offset;		// save starting offset
+  	buf->writestring(m);
+ 	unsigned offset2 = buf->offset;		// to see if we write anything 
+ 	//^possiblely change to target_size_t/target_ptrdiff_t?
 	sc = sc->push(this);
 	for (int i = 0; i < members->dim; i++)
 	{
@@ -427,6 +429,13 @@ void ScopeDsymbol::emitMemberComments(Scope *sc)
 	    s->emitComment(sc);
 	}
 	sc->pop();
+	if (buf->offset == offset2)
+ 	{
+ 	    /* Didn't write out any members, so back out last write
++ 	     */
+ 	    buf->offset = offset1;
+ 	}
+ 	else
 	buf->writestring(")\n");
     }
 }
@@ -448,7 +457,9 @@ void emitProtection(OutBuffer *buf, PROT prot)
 
 void Dsymbol::emitComment(Scope *sc)		   { }
 void InvariantDeclaration::emitComment(Scope *sc)  { }
-//void PostBlitDeclaration::emitComment(Scope *sc)   { }
+#if V2
+void PostBlitDeclaration::emitComment(Scope *sc)   { }
+#endif
 void DtorDeclaration::emitComment(Scope *sc)	   { }
 void StaticCtorDeclaration::emitComment(Scope *sc) { }
 void StaticDtorDeclaration::emitComment(Scope *sc) { }
@@ -525,12 +536,8 @@ void TemplateDeclaration::emitComment(Scope *sc)
     //printf("TemplateDeclaration::emitComment() '%s', kind = %s\n", toChars(), kind());
     if (prot() == PROTprivate)
 	return;
-    if (!comment)
-	return;
 
-    OutBuffer *buf = sc->docbuf;
-    DocComment *dc = DocComment::parse(sc, this, comment);
-    unsigned o;
+    unsigned char *com = comment;
     int hasmembers = 1;
 
     Dsymbol *ss = this;
@@ -542,11 +549,21 @@ void TemplateDeclaration::emitComment(Scope *sc)
 	{
 	    ss = onemember->isFuncDeclaration();
 	    if (ss)
-		hasmembers = 0;
+		{	hasmembers = 0;
+ 		if (com != ss->comment)
+ 		    com = Lexer::combineComments(com, ss->comment);
+ 	    }
 	    else
 		ss = this;
 	}
     }
+    
+    if (!com)
+ 	return;
+ 
+     OutBuffer *buf = sc->docbuf;
+     DocComment *dc = DocComment::parse(sc, this, com);
+     unsigned o;
 
     if (!dc)
     {
@@ -743,7 +760,9 @@ void FuncDeclaration::toDocBuffer(OutBuffer *buf)
 	if (parent &&
 	    (td = parent->isTemplateDeclaration()) != NULL &&
 	    td->onemember == this)
-	{   HdrGenState hgs;
+	{   /* It's a function template
+! 	     */
+ 	    HdrGenState hgs;
 	    unsigned o = buf->offset;
 	    TypeFunction *tf = (TypeFunction *)type;
 

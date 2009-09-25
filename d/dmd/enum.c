@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2006 by Digital Mars
+// Copyright (c) 1999-2008 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -10,7 +10,8 @@
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, December 2006
+   Modified by Michael Parrott, September 2009
+   Using David Friedman's code
 */
 
 #include <stdio.h>
@@ -20,6 +21,7 @@
 #include "enum.h"
 #include "mtype.h"
 #include "scope.h"
+#include "declaration.h"
 
 /********************************* EnumDeclaration ****************************/
 
@@ -33,6 +35,7 @@ EnumDeclaration::EnumDeclaration(Loc loc, Identifier *id, Type *memtype)
     minval = 0;
     defaultval = 0;
     sinit = NULL;
+    isdeprecated = 0;
     attributes = NULL;
 }
 
@@ -64,6 +67,8 @@ void EnumDeclaration::semantic(Scope *sc)
 	return;
     if (!memtype)
 	memtype = Type::tint32;
+	if (sc->stc & STCdeprecated)
+ 	isdeprecated = 1;
     parent = sc->scopesym;
     if (attributes)
 	attributes->append(sc->attributes);
@@ -276,10 +281,15 @@ Type *EnumDeclaration::getType()
     return type;
 }
 
-char *EnumDeclaration::kind()
+const char *EnumDeclaration::kind()
 {
     return "enum";
 }
+
+int EnumDeclaration::isDeprecated()
+ {
+     return isdeprecated;
+ }
 
 /********************************* EnumMember ****************************/
 
@@ -317,7 +327,7 @@ void EnumMember::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     }
 }
 
-char *EnumMember::kind()
+const char *EnumMember::kind()
 {
     return "enum member";
 }

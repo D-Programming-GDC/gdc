@@ -40,6 +40,7 @@ import std.c.stdio;
 import std.c.stdlib;
 import std.c.string;
 import std.string;
+import std.gc;
 
 import std.outofmemory;
 
@@ -277,7 +278,9 @@ void *_aaGetp(AA* aa, TypeInfo keyti, size_t valuesize, void *pkey)
 
 	// Not found, create new elem
 	//printf("create new one\n");
+	std.gc.disable();
 	e = cast(aaA *) cast(void*) new void[aaA.sizeof + keysize + valuesize];
+	std.gc.enable;
 	memcpy(e + 1, pkey, keysize);
 	e.hash = key_hash;
 	*pe = e;
@@ -430,6 +433,7 @@ void _aaDelp(AA aa, TypeInfo keyti, void *pkey)
 			aa.a.nodes--;
 
 			// Should notify GC that e can be free'd now
+			delete e;
 			break;
 		    }
 		    pe = (c < 0) ? &e.left : &e.right;
@@ -565,6 +569,7 @@ AA _aaRehash(AA* paa, TypeInfo keyti)
 		    if (len <= prime_list[i])
 			break;
 		}
+		//printf("rehash %d x%x\n", len, len);
 		len = prime_list[i];
 		newb.b = new aaA*[len];
 

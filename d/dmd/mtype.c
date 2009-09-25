@@ -3245,6 +3245,7 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
     if (s)
     {
 	//printf("\t1: s = '%s' %p, kind = '%s'\n",s->toChars(), s, s->kind());
+	s->checkDeprecated(loc, sc);		// check for deprecated aliases
 	s = s->toAlias();
 	//printf("\t2: s = '%s' %p, kind = '%s'\n",s->toChars(), s, s->kind());
 	for (i = 0; i < idents.dim; i++)
@@ -3642,7 +3643,7 @@ Dsymbol *TypeTypeof::toDsymbol(Scope *sc)
 {
     Type *t;
 
-    t = semantic(0, sc);
+    t = semantic(loc, sc);
     if (t == this)
 	return NULL;
     return t->toDsymbol(sc);
@@ -3718,6 +3719,10 @@ Type *TypeTypeof::semantic(Loc loc, Scope *sc)
 	sc->intypeof++;
 	exp = exp->semantic(sc);
 	sc->intypeof--;
+	if (exp->op == TOKtype)
+ 	{
+ 	    error(loc, "argument %s to typeof is not an expression", exp->toChars());
+ 	}
 	t = exp->type;
 	if (!t)
 	{
@@ -4304,6 +4309,7 @@ L1:
 	//return getProperty(e->loc, ident);
 	return Type::dotExp(sc, e, ident);
     }
+    s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
 
     v = s->isVarDeclaration();
@@ -4628,6 +4634,27 @@ L1:
 	    }
 	    return e;
 	}
+	
+	if (ident == Id::__vptr)
+ 	{   /* The pointer to the vtbl[]
++ 	     * *cast(void***)e
++ 	     */
+ 	    e = e->castTo(sc, tvoidptr->pointerTo()->pointerTo());
+ 	    e = new PtrExp(e->loc, e);
+ 	    e = e->semantic(sc);
+ 	    return e;
+ 	}
+ 
+ 	if (ident == Id::__monitor)
+ 	{   /* The handle to the monitor (call it a void*)
++ 	     * *(cast(void**)e + 1)
++ 	     */
+ 	    e = e->castTo(sc, tvoidptr->pointerTo());
+ 	    e = new AddExp(e->loc, e, new IntegerExp(1));
+ 	    e = new PtrExp(e->loc, e);
+ 	    e = e->semantic(sc);
+ 	    return e;
+ 	}
 
 	if (ident == Id::typeinfo)
 	{
@@ -4645,6 +4672,7 @@ L1:
 	    return Type::dotExp(sc, e, ident);
 	}
     }
+    s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
     v = s->isVarDeclaration();
     if (v && v->isConst())

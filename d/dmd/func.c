@@ -108,6 +108,7 @@ void FuncDeclaration::semantic(Scope *sc)
     StructDeclaration *sd;
     ClassDeclaration *cd;
     InterfaceDeclaration *id;
+    Dsymbol *pd;
 
 #if 0
     printf("FuncDeclaration::semantic(sc = %p, this = %p, '%s', linkage = %d)\n", sc, this, toPrettyChars(), sc->linkage);
@@ -216,6 +217,17 @@ void FuncDeclaration::semantic(Scope *sc)
 	if (fbody)
 	    error("function body is not abstract in interface %s", id->toChars());
     }
+    /* Template member functions aren't virtual:
++      *   interface TestInterface { void tpl(T)(); }
++      * and so won't work in interfaces
++      */
+     if ((pd = toParent()) != NULL &&
+ 	pd->isTemplateInstance() &&
+ 	(pd = toParent2()) != NULL &&
+ 	(id = pd->isInterfaceDeclaration()) != NULL)
+     {
+ 	error("template member function not allowed in interface %s", id->toChars());
+     }
 
     cd = parent->isClassDeclaration();
     if (cd)
@@ -983,7 +995,8 @@ void FuncDeclaration::semantic3(Scope *sc)
 		f = (TypeFunction *)type;
 	    }
 
-	    int offend = fbody ? fbody->fallOffEnd() : TRUE;
+	    int offend = fbody ? fbody->blockExit() & BEfallthru : TRUE;
+ 	    //int offend = fbody ? fbody->fallOffEnd() : TRUE;
 
 	    if (isStaticCtorDeclaration())
 	    {	/* It's a static constructor. Ensure that all
@@ -2051,7 +2064,7 @@ FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id,
     return fd;
 }
 
-char *FuncDeclaration::kind()
+const char *FuncDeclaration::kind()
 {
     return "function";
 }
@@ -2120,7 +2133,7 @@ FuncAliasDeclaration::FuncAliasDeclaration(FuncDeclaration *funcalias)
     this->funcalias = funcalias;
 }
 
-char *FuncAliasDeclaration::kind()
+const char *FuncAliasDeclaration::kind()
 {
     return "function alias";
 }
@@ -2165,7 +2178,12 @@ int FuncLiteralDeclaration::isNested()
     return (tok == TOKdelegate);
 }
 
-char *FuncLiteralDeclaration::kind()
+int FuncLiteralDeclaration::isVirtual()
+ {
+     return FALSE;
+ }
+ 
+ const char *FuncLiteralDeclaration::kind()
 {
     // GCC requires the (char*) casts
     return (tok == TOKdelegate) ? (char*)"delegate" : (char*)"function";
@@ -2265,7 +2283,7 @@ void CtorDeclaration::semantic(Scope *sc)
 	cd->defaultCtor = this;
 }
 
-char *CtorDeclaration::kind()
+const char *CtorDeclaration::kind()
 {
     return "constructor";
 }
@@ -2792,7 +2810,7 @@ void NewDeclaration::semantic(Scope *sc)
     FuncDeclaration::semantic(sc);
 }
 
-char *NewDeclaration::kind()
+const char *NewDeclaration::kind()
 {
     return "allocator";
 }
@@ -2876,7 +2894,7 @@ void DeleteDeclaration::semantic(Scope *sc)
     FuncDeclaration::semantic(sc);
 }
 
-char *DeleteDeclaration::kind()
+const char *DeleteDeclaration::kind()
 {
     return "deallocator";
 }

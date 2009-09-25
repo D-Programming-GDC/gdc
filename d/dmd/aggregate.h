@@ -11,7 +11,8 @@
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, December 2006
+   Modified by Michael Parrott, September 2009
+   Using David Friedman's code
 */
 
 #ifndef DMD_AGGREGATE_H
@@ -127,7 +128,7 @@ struct StructDeclaration : AggregateDeclaration
     void semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     char *mangle();
-    char *kind();
+    const char *kind();
     Expression *cloneMembers();
     void toDocBuffer(OutBuffer *buf);
 
@@ -144,7 +145,7 @@ struct UnionDeclaration : StructDeclaration
 {
     UnionDeclaration(Loc loc, Identifier *id);
     Dsymbol *syntaxCopy(Dsymbol *s);
-    char *kind();
+    const char *kind();
 
     UnionDeclaration *isUnionDeclaration() { return this; }
 };
@@ -229,7 +230,7 @@ struct ClassDeclaration : AggregateDeclaration
 #endif
     int isAbstract();
     virtual int vtblOffset();
-    char *kind();
+    const char *kind();
     char *mangle();
     void toDocBuffer(OutBuffer *buf);
 
@@ -261,7 +262,7 @@ struct InterfaceDeclaration : ClassDeclaration
     void semantic(Scope *sc);
     int isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset);
     int isBaseOf(BaseClass *bc, target_ptrdiff_t *poffset);
-    char *kind();
+    const char *kind();
     int vtblOffset();
 #if V2
     int isCPPinterface();

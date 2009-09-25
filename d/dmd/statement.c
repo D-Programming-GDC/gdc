@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2007 by Digital Mars
+// Copyright (c) 1999-2008 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -120,6 +120,16 @@ int Statement::usesEH()
     return FALSE;
 }
 
+/* Only valid after semantic analysis
++  */
+ int Statement::blockExit()
+ {
+     printf("Statement::blockExit(%p)\n", this);
+     printf("%s\n", toChars());
+     //assert(0); //commented out for gdc
+     return BEany;
+ }
+
 // TRUE if statement may fall off the end without a throw or return
 
 int Statement::fallOffEnd()
@@ -204,6 +214,25 @@ Statement *ExpStatement::semantic(Scope *sc)
     return this;
 }
 
+int ExpStatement::blockExit()
+ {   int result = BEfallthru;
+ 
+     if (exp)
+     {
+ 	if (exp->op == TOKhalt)
+ 	    return BEhalt;
+ 	if (exp->op == TOKassert)
+ 	{   AssertExp *a = (AssertExp *)exp;
+ 
+ 	    if (a->e1->isBool(FALSE))	// if it's an assert(0)
+ 		return BEhalt;
+ 	}
+ 	if (exp->canThrow())
+ 	    result |= BEthrow;
+     }
+     return result;
+ }
+
 int ExpStatement::fallOffEnd()
 {
     if (exp)
@@ -272,13 +301,12 @@ Statements *CompileStatement::flatten(Scope *sc)
 
 Statement *CompileStatement::semantic(Scope *sc)
  {
-     printf("CompileStatement::semantic() %s\n", exp->toChars());
-     /* Shouldn't happen unless errors, as CompileStatement::flatten()
-+      * should have replaced it.
-+      * Return NULL so no further errors happen.
-+      */
-     assert(global.errors);
+     //printf("CompileStatement::semantic() %s\n", exp->toChars());
+     Statements *a = flatten(sc);
+     if (!a)
      return NULL;
+     Statement *s = new CompoundStatement(loc, a);
+     return s->semantic(sc);
  }
 
 
@@ -497,13 +525,11 @@ Statements *CompoundStatement::flatten(Scope *sc)
 }
 
 ReturnStatement *CompoundStatement::isReturnStatement()
-{   int i;
+{   
     ReturnStatement *rs = NULL;
 
-    for (i = 0; i < statements->dim; i++)
-    {	Statement *s;
-
-	s = (Statement *) statements->data[i];
+    for (int i = 0; i < statements->dim; i++)
+     {	Statement *s = (Statement *) statements->data[i];
 	if (s)
 	{
 	    rs = s->isReturnStatement();
@@ -515,12 +541,10 @@ ReturnStatement *CompoundStatement::isReturnStatement()
 }
 
 void CompoundStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
-{   int i;
+{   
 
-    for (i = 0; i < statements->dim; i++)
-    {	Statement *s;
-
-	s = (Statement *) statements->data[i];
+    for (int i = 0; i < statements->dim; i++)
+     {	Statement *s = (Statement *) statements->data[i];
 	if (s)
 	    s->toCBuffer(buf, hgs);
     }
@@ -529,14 +553,34 @@ void CompoundStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 int CompoundStatement::usesEH()
 {
     for (int i = 0; i < statements->dim; i++)
-    {	Statement *s;
-
-	s = (Statement *) statements->data[i];
+    {	Statement *s = (Statement *) statements->data[i];
 	if (s && s->usesEH())
 	    return TRUE;
     }
     return FALSE;
 }
+
+int CompoundStatement::blockExit() {
+     //printf("CompoundStatement::blockExit(%p) %d\n", this, statements->dim);
+     int result = BEfallthru;
+     for (size_t i = 0; i < statements->dim; i++)     {	Statement *s = (Statement *) statements->data[i]; 	if (s)
+ 	{
+ //printf("result = x%x\n", result);
+ //printf("%s\n", s->toChars());
+ 	    if (!(result & BEfallthru) && !s->comeFrom())
+	    {
+ 		if (global.params.warnings)
+ 		{   fprintf(stdmsg, "warning - ");
+ 		    s->error("statement is not reachable");
+ 		}
+ 	    }
+ 
+ 	    result &= ~BEfallthru;
+ 	    result |= s->blockExit();
+ 	}
+     }
+     return result;
+ }
 
 int CompoundStatement::fallOffEnd()
 {   int falloff = TRUE;
@@ -651,14 +695,26 @@ int UnrolledLoopStatement::hasContinue()
 int UnrolledLoopStatement::usesEH()
 {
     for (size_t i = 0; i < statements->dim; i++)
-    {	Statement *s;
-
-	s = (Statement *) statements->data[i];
+    {	Statement *s = (Statement *) statements->data[i];
 	if (s && s->usesEH())
 	    return TRUE;
     }
     return FALSE;
 }
+
+int UnrolledLoopStatement::blockExit()
+ {
+     int result = BEfallthru;
+     for (size_t i = 0; i < statements->dim; i++)
+     {	Statement *s = (Statement *) statements->data[i];
+ 	if (s)
+ 	{
+ 	    int r = s->blockExit();
+ 	    result |= r & ~(BEbreak | BEcontinue);
+ 	}
+     }
+     return result;
+ }
 
 int UnrolledLoopStatement::fallOffEnd()
 {
@@ -760,6 +816,12 @@ int ScopeStatement::usesEH()
     return statement ? statement->usesEH() : FALSE;
 }
 
+int ScopeStatement::blockExit()
+ {
+     //printf("ScopeStatement::blockExit(%p)\n", statement);
+     return statement ? statement->blockExit() : BEfallthru;
+ }
+
 int ScopeStatement::fallOffEnd()
 {
     return statement ? statement->fallOffEnd() : TRUE;
@@ -858,6 +920,35 @@ int WhileStatement::usesEH()
     return body ? body->usesEH() : 0;
 }
 
+int WhileStatement::blockExit()
+ {
+     //printf("WhileStatement::blockExit(%p)\n", this);
+ 
+     int result = BEnone;
+     if (condition->canThrow())
+ 	result |= BEthrow;
+     if (condition->isBool(TRUE))
+     {
+ 	if (body)
+ 	{   result |= body->blockExit();
+ 	    if (result & BEbreak)
+ 		result |= BEfallthru;
+ 	}
+     }
+     else if (condition->isBool(FALSE))
+     {
+ 	result |= BEfallthru;
+     }
+     else
+     {
+ 	if (body)
+ 	    result |= body->blockExit();
+ 	result |= BEfallthru;
+     }
+     result &= ~(BEbreak | BEcontinue);
+     return result;
+ }
+
 int WhileStatement::fallOffEnd()
 {
     if (body)
@@ -927,6 +1018,28 @@ int DoStatement::usesEH()
 {
     return body ? body->usesEH() : 0;
 }
+
+int DoStatement::blockExit()
+ {   int result;
+ 
+     if (body)
+     {	result = body->blockExit();
+ 	if (result == BEbreak)
+ 	    return BEfallthru;
+ 	if (result & BEcontinue)
+ 	    result |= BEfallthru;
+     }
+     else
+ 	result = BEfallthru;
+     if (result & BEfallthru)
+     {	if (condition->canThrow())
+ 	    result |= BEthrow;
+ 	if (!(result & BEbreak) && condition->isBool(TRUE))
+ 	    result &= ~BEfallthru;
+     }
+     result &= ~(BEbreak | BEcontinue);
+     return result;
+ }
 
 int DoStatement::fallOffEnd()
 {
@@ -1031,6 +1144,31 @@ int ForStatement::usesEH()
 {
     return (init && init->usesEH()) || body->usesEH();
 }
+
+int ForStatement::blockExit()
+ {   int result = BEfallthru;
+ 
+     if (init)
+     {	result = init->blockExit();
+ 	if (!(result & BEfallthru))
+ 	    return result;
+     }
+     if (condition)
+     {	if (condition->canThrow())
+ 	    result |= BEthrow;
+     }
+     else
+ 	result &= ~BEfallthru;	// the body must do the exiting
+     if (body)
+     {	int r = body->blockExit();
+ 	if (r & BEbreak)
+ 	    result |= BEfallthru;
+ 	result |= r & ~(BEbreak | BEcontinue);
+     }
+     if (increment && increment->canThrow())
+ 	result |= BEthrow;
+     return result;
+ }
 
 int ForStatement::fallOffEnd()
 {
@@ -1217,10 +1355,6 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		    VarDeclaration *v = new VarDeclaration(loc, arg->type, arg->ident, ie);
 		    if (e->isConst())
 			v->storage_class |= STCconst;
-#if V2
-		    else
-			v->storage_class |= STCfinal;
-#endif
 		    var = v;
 		}
 	    }
@@ -1586,6 +1720,19 @@ int ForeachStatement::usesEH()
     return body->usesEH();
 }
 
+int ForeachStatement::blockExit()
+ {   int result = BEfallthru;
+ 
+     if (aggr->canThrow())
+ 	result |= BEthrow;
+ 
+     if (body)
+     {
+ 	result |= body->blockExit() & ~(BEbreak | BEcontinue);
+     }
+     return result;
+ }
+
 int ForeachStatement::fallOffEnd()
 {
     if (body)
@@ -1604,7 +1751,6 @@ void ForeachStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     buf->writestring(Token::toChars(op));
     buf->writestring(" (");
-    int i;
     for (int i = 0; i < arguments->dim; i++)
     {
 	Argument *a = (Argument *)arguments->data[i];
@@ -1714,6 +1860,42 @@ int IfStatement::usesEH()
 {
     return (ifbody && ifbody->usesEH()) || (elsebody && elsebody->usesEH());
 }
+
+int IfStatement::blockExit()
+ {
+     //printf("IfStatement::blockExit(%p)\n", this);
+ 
+     int result = BEnone;
+     if (condition->canThrow())
+ 	result |= BEthrow;
+     if (condition->isBool(TRUE))
+     {
+ 	if (ifbody)
+ 	    result |= ifbody->blockExit();
+ 	else
+ 	    result |= BEfallthru;
+     }
+     else if (condition->isBool(FALSE))
+     {
+ 	if (elsebody)
+ 	    result |= elsebody->blockExit();
+ 	else
+ 	    result |= BEfallthru;
+     }
+     else
+     {
+ 	if (ifbody)
+ 	    result |= ifbody->blockExit();
+ 	else
+ 	    result |= BEfallthru;
+ 	if (elsebody)
+ 	    result |= elsebody->blockExit();
+ 	else
+ 	    result |= BEfallthru;
+     }
+     //printf("IfStatement::blockExit(%p) = x%x\n", this, result);
+     return result;
+ }
 
 int IfStatement::fallOffEnd()
 {
@@ -1913,6 +2095,18 @@ int PragmaStatement::usesEH()
     return body && body->usesEH();
 }
 
+int PragmaStatement::blockExit()
+ {
+     int result = BEfallthru;
+ #if 0 // currently, no code is generated for Pragma's, so it's just fallthru
+     if (arrayExpressionCanThrow(args))
+ 	result |= BEthrow;
+     if (body)
+ 	result |= body->blockExit();
+ #endif
+    return result;
+ }
+
 int PragmaStatement::fallOffEnd()
 {
     if (body)
@@ -2098,6 +2292,24 @@ int SwitchStatement::usesEH()
     return body ? body->usesEH() : 0;
 }
 
+int SwitchStatement::blockExit()
+ {   int result = BEnone;
+     if (condition->canThrow())
+ 	result |= BEthrow;
+ 
+     if (body)
+     {	result |= body->blockExit();
+ 	if (result & BEbreak)
+ 	{   result |= BEfallthru;
+ 	    result &= ~BEbreak;
+ 	}
+     }
+     else
+ 	result |= BEfallthru;
+ 
+     return result;
+ }
+
 int SwitchStatement::fallOffEnd()
 {
     if (body)
@@ -2203,6 +2415,11 @@ int CaseStatement::usesEH()
     return statement->usesEH();
 }
 
+int CaseStatement::blockExit()
+ {
+     return statement->blockExit();
+ }
+
 int CaseStatement::fallOffEnd()
 {
     return statement->fallOffEnd();
@@ -2241,6 +2458,7 @@ Statement *DefaultStatement::syntaxCopy()
 
 Statement *DefaultStatement::semantic(Scope *sc)
 {
+	//printf("DefaultStatement::semantic()\n");
     if (sc->sw)
     {
 	if (sc->sw->sdefault)
@@ -2259,6 +2477,11 @@ int DefaultStatement::usesEH()
 {
     return statement->usesEH();
 }
+
+int DefaultStatement::blockExit()
+ {
+     return statement->blockExit();
+ }
 
 int DefaultStatement::fallOffEnd()
 {
@@ -2297,6 +2520,11 @@ Statement *GotoDefaultStatement::semantic(Scope *sc)
 	error("goto default not in switch statement");
     return this;
 }
+
+int GotoDefaultStatement::blockExit()
+ {
+     return BEgoto;
+ }
 
 int GotoDefaultStatement::fallOffEnd()
 {
@@ -2343,6 +2571,11 @@ Statement *GotoCaseStatement::semantic(Scope *sc)
     return this;
 }
 
+int GotoCaseStatement::blockExit()
+ {
+     return BEgoto;
+ }
+
 int GotoCaseStatement::fallOffEnd()
 {
     return FALSE;
@@ -2365,6 +2598,11 @@ SwitchErrorStatement::SwitchErrorStatement(Loc loc)
     : Statement(loc)
 {
 }
+
+int SwitchErrorStatement::blockExit()
+ {
+     return BEthrow;
+ }
 
 int SwitchErrorStatement::fallOffEnd()
 {
@@ -2417,6 +2655,8 @@ Statement *ReturnStatement::semantic(Scope *sc)
 
     Type *tret = fd->type->nextOf();
     if (fd->tintro)
+/* We'll be implicitly casting the return expression to tintro
++ 	 */
 	tret = fd->tintro->nextOf();
     Type *tbret = NULL;
 
@@ -2626,9 +2866,13 @@ Statement *ReturnStatement::semantic(Scope *sc)
     }
 
     if (exp && tbret->ty == Tvoid && !fd->isMain())
-    {   Statement *s;
-
-	s = new ExpStatement(loc, exp);
+    {
+ 	/* Replace:
+! 	 *	return exp;
+! 	 * with:
+! 	 *	exp; return;
+! 	 */
+ 	Statement *s = new ExpStatement(loc, exp);
 	loc = 0;
 	exp = NULL;
 	return new CompoundStatement(loc, s, this);
@@ -2636,6 +2880,14 @@ Statement *ReturnStatement::semantic(Scope *sc)
 
     return this;
 }
+
+int ReturnStatement::blockExit()
+ {   int result = BEreturn;
+ 
+     if (exp && exp->canThrow())
+ 	result |= BEthrow;
+     return result;
+ }
 
 int ReturnStatement::fallOffEnd()
 {
@@ -2667,6 +2919,7 @@ Statement *BreakStatement::syntaxCopy()
 
 Statement *BreakStatement::semantic(Scope *sc)
 {
+	//printf("BreakStatement::semantic()\n");
     // If:
     //	break Identifier;
     if (ident)
@@ -2724,6 +2977,12 @@ Statement *BreakStatement::semantic(Scope *sc)
     }
     return this;
 }
+
+int BreakStatement::blockExit()
+ {
+     //printf("BreakStatement::blockExit(%p) = x%x\n", this, ident ? BEgoto : BEbreak);
+     return ident ? BEgoto : BEbreak;
+ }
 
 int BreakStatement::fallOffEnd()
 {
@@ -2824,6 +3083,11 @@ Statement *ContinueStatement::semantic(Scope *sc)
     return this;
 }
 
+int ContinueStatement::blockExit()
+ {
+     return ident ? BEgoto : BEcontinue;
+ }
+
 int ContinueStatement::fallOffEnd()
 {
     return FALSE;
@@ -2902,6 +3166,11 @@ int SynchronizedStatement::usesEH()
 {
     return TRUE;
 }
+
+int SynchronizedStatement::blockExit()
+ {
+     return body ? body->blockExit() : BEfallthru;
+ }
 
 int SynchronizedStatement::fallOffEnd()
 {
@@ -3013,6 +3282,18 @@ int WithStatement::usesEH()
     return body ? body->usesEH() : 0;
 }
 
+int WithStatement::blockExit()
+ {
+     int result = BEnone;
+     if (exp->canThrow())
+ 	result = BEthrow;
+     if (body)
+ 	result |= body->blockExit();
+     else
+ 	result |= BEfallthru;
+     return result;
+ }
+
 int WithStatement::fallOffEnd()
 {
     return body ? body->fallOffEnd() : TRUE;
@@ -3046,14 +3327,14 @@ Statement *TryCatchStatement::semantic(Scope *sc)
 {
     body = body->semanticScope(sc, NULL /*this*/, NULL);
 
-    for (int i = 0; i < catches->dim; i++)
-    {   Catch *c;
-
-	c = (Catch *)catches->data[i];
+    /* Even if body is NULL, still do semantic analysis on catches
+!      */
+     for (size_t i = 0; i < catches->dim; i++)
+     {   Catch *c = (Catch *)catches->data[i];
 	c->semantic(sc);
 
 	// Determine if current catch 'hides' any previous catches
-	for (int j = 0; j < i; j++)
+	for (size_t j = 0; j < i; j++)
 	{   Catch *cj = (Catch *)catches->data[j];
 	    char *si = c->loc.toChars();
 	    char *sj = cj->loc.toChars();
@@ -3074,6 +3355,19 @@ int TryCatchStatement::usesEH()
 {
     return TRUE;
 }
+
+int TryCatchStatement::blockExit()
+ {   int result;
+ 
+     assert(body);
+     result = body->blockExit();
+ 
+     for (size_t i = 0; i < catches->dim; i++)
+     {
+         Catch *c = (Catch *)catches->data[i];         result |= c->blockExit();
+     }
+     return result;
+ }
 
 int TryCatchStatement::fallOffEnd()
 {
@@ -3097,8 +3391,7 @@ void TryCatchStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writenl();
     if (body)
         body->toCBuffer(buf, hgs);
-    int i;
-    for (i = 0; i < catches->dim; i++)
+    for (size_t i = 0; i < catches->dim; i++)
     {
         Catch *c = (Catch *)catches->data[i];
         c->toCBuffer(buf, hgs);
@@ -3164,6 +3457,11 @@ void Catch::semantic(Scope *sc)
     sc->pop();
 }
 
+int Catch::blockExit()
+ {
+     return handler ? handler->blockExit() : BEfallthru;
+ }
+
 void Catch::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     buf->writestring("catch");
@@ -3175,6 +3473,7 @@ void Catch::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writenl();
     buf->writebyte('{');
     buf->writenl();
+    if (handler)
     handler->toCBuffer(buf, hgs);
     buf->writebyte('}');
     buf->writenl();
@@ -3234,6 +3533,12 @@ int TryFinallyStatement::usesEH()
     return TRUE;
 }
 
+int TryFinallyStatement::blockExit()
+ {
+     int result = body->blockExit();
+     return result;
+ }
+
 int TryFinallyStatement::fallOffEnd()
 {   int result;
 
@@ -3264,6 +3569,10 @@ Statement *OnScopeStatement::semantic(Scope *sc)
     /* semantic is called on results of scopeCode() */
     return this;
 }
+
+int OnScopeStatement::blockExit() {   // At this point, this statement is just an empty placeholder
+     return BEfallthru;
+ }
 
 void OnScopeStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
@@ -3356,6 +3665,11 @@ Statement *ThrowStatement::semantic(Scope *sc)
     return this;
 }
 
+int ThrowStatement::blockExit()
+ {
+     return BEthrow;  // obviously
+ }
+
 int ThrowStatement::fallOffEnd()
 {
     return FALSE;
@@ -3406,6 +3720,11 @@ Statements *VolatileStatement::flatten(Scope *sc)
 
     return a;
 }
+
+int VolatileStatement::blockExit()
+ {
+     return statement ? statement->blockExit() : BEfallthru;
+ }
 
 int VolatileStatement::fallOffEnd()
 {
@@ -3467,6 +3786,12 @@ Statement *GotoStatement::semantic(Scope *sc)
 	error("cannot goto in or out of finally block");
     return this;
 }
+
+int GotoStatement::blockExit()
+ {
+     //printf("GotoStatement::blockExit(%p)\n", this);
+     return BEgoto;
+ }
 
 int GotoStatement::fallOffEnd()
 {
@@ -3548,6 +3873,12 @@ int LabelStatement::usesEH()
 {
     return statement ? statement->usesEH() : FALSE;
 }
+
+int LabelStatement::blockExit()
+ {
+     //printf("LabelStatement::blockExit(%p)\n", this);
+     return statement ? statement->blockExit() : BEfallthru;
+ }
 
 int LabelStatement::fallOffEnd()
 {

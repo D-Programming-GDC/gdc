@@ -72,6 +72,8 @@ struct Msgtable msgtable[] =
     { "empty", "" },
     { "p" },
     { "coverage", "__coverage" },
+    { "__vptr" },
+    { "__monitor" },
 
     { "TypeInfo" },
     { "TypeInfo_Class" },

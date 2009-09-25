@@ -398,7 +398,7 @@ void TemplateDeclaration::semantic(Scope *sc)
      */
 }
 
-char *TemplateDeclaration::kind()
+const char *TemplateDeclaration::kind()
 {
     return (onemember && onemember->isAggregateDeclaration())
 		? onemember->kind()
@@ -877,12 +877,6 @@ L2:
 		//printf("\tm2 = %d\n", m);
 	    }
 	    
-	    /* If no match, see if we can implicitly convert farg to the
-+ 	     * parameter type.
-+ 	     */
- 	    if (!m)
- 	    {	m = farg->implicitConvTo(fparam->type);
- 	    }
 
 	    if (m)
 	    {	if (m < match)
@@ -1380,7 +1374,8 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 	    goto Lexact;
 	}
 	else
-	    goto Lnomatch;
+	    return implicitConvTo(tparam);
+ //	goto Lnomatch;
     }
 
     if (ty != tparam->ty)
@@ -2231,7 +2226,7 @@ void TemplateAliasParameter::semantic(Scope *sc)
     {
 	specAlias = specAliasT->toDsymbol(sc);
 	if (!specAlias)
-	    error("%s is not a symbol", specAliasT->toChars());
+	    error(loc, "%s is not a symbol", specAliasT->toChars());
     }
 #if 0 // Don't do semantic() until instantiation
     if (defaultAlias)
@@ -3869,7 +3864,7 @@ AliasDeclaration *TemplateInstance::isAliasDeclaration()
     return aliasdecl;
 }
 
-char *TemplateInstance::kind()
+const char *TemplateInstance::kind()
 {
     return "template instance";
 }
@@ -3952,6 +3947,7 @@ void TemplateMixin::semantic(Scope *sc)
 #if LOG
     printf("\tdo semantic\n");
 #endif
+	//util_progress(); //commented out for GDC
 
     Scope *scx = NULL;
     if (scope)
@@ -4065,6 +4061,11 @@ void TemplateMixin::semantic(Scope *sc)
 	TemplateMixin *tm = s->isTemplateMixin();
 	if (!tm || tempdecl != tm->tempdecl)
 	    continue;
+	    
+	 /* Different argument list lengths happen with variadic args
++ 	 */
+ 	if (tiargs->dim != tm->tiargs->dim)
+ 	    continue;
 
 	for (int i = 0; i < tiargs->dim; i++)
 	{   Object *o = (Object *)tiargs->data[i];
@@ -4249,7 +4250,7 @@ void TemplateMixin::inlineScan()
     TemplateInstance::inlineScan();
 }
 
-char *TemplateMixin::kind()
+const char *TemplateMixin::kind()
 {
     return "mixin";
 }

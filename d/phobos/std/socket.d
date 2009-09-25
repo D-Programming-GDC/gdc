@@ -60,6 +60,8 @@ else
     
 version(Win32)
 {
+	pragma (lib, "wsock32.lib");
+	
 	private import std.c.windows.windows, std.c.windows.winsock;
 	private alias std.c.windows.winsock.timeval _ctimeval;
 	

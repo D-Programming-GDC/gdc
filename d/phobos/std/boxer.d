@@ -203,7 +203,7 @@ struct Box
                 default: return TypeClass.Other;
             }
         }
-	assert(0);
+	//assert(0);
     }
     
     /** Return whether this value could be unboxed as the given type without throwing. */
@@ -352,7 +352,7 @@ struct Box
             if (!unboxable(other.type))
             {
                 if (inverted)
-                    return 0.f;
+                    return 0;
                 return other.opCmpInternal(*this, true);
             }
             
@@ -363,26 +363,26 @@ struct Box
                 if (type == typeid(ulong) || other.type == typeid(ulong))
                 {
                     ulong va = unbox!(ulong)(*this), vb = unbox!(ulong)(other);
-                    return va > vb ? 1.f : va < vb ? -1.f : 0.f;
+                    return va > vb ? 1 : va < vb ? -1 : 0;
                 }
                 
                 long va = unbox!(long)(*this), vb = unbox!(long)(other);
-                return va > vb ? 1.f : va < vb ? -1.f : 0.f;
+                return va > vb ? 1 : va < vb ? -1 : 0;
             }
             else if (tb == TypeClass.Float)
             {
                 real va = unbox!(real)(*this), vb = unbox!(real)(other);
-                return va > vb ? 1.f : va < vb ? -1.f : va == vb ? 0.f : float.nan;
+                return va > vb ? 1 : va < vb ? -1 : va == vb ? 0 : float.nan;
             }
             else if (tb == TypeClass.Complex)
             {
                 creal va = unbox!(creal)(*this), vb = unbox!(creal)(other);
-                return va == vb ? 0.f : float.nan;
+                return va == vb ? 0 : float.nan;
             }
             else if (tb == TypeClass.Imaginary)
             {
                 ireal va = unbox!(ireal)(*this), vb = unbox!(ireal)(other);
-                return va > vb ? 1.f : va < vb ? -1.f : va == vb ? 0.f : float.nan;
+                return va > vb ? 1 : va < vb ? -1 : va == vb ? 0 : float.nan;
             }
             
             assert (0);

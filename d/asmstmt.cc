@@ -123,7 +123,7 @@ int AsmStatement::comeFrom()
     return FALSE;
 }
 
-#if V2
+//#if V2
 
 int
 AsmStatement::blockExit()
@@ -132,7 +132,7 @@ AsmStatement::blockExit()
     return BEany;
 }
 
-#endif
+//#endif
 
 /* GCC does not support jumps from asm statements.  When optimization
    is turned on, labels referenced only from asm statements will not
