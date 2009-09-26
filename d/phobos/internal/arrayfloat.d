@@ -5,6 +5,7 @@
  * Based on code originally written by Burton Radons.
  * Placed in public domain.
  */
+//Modified to work with GDC
 
 import std.cpuid;
 
@@ -34,7 +35,7 @@ in
 }
 body
 {
-    version (D_InlineAsm_X86)
+    /*version (D_InlineAsm_X86)
     {
         auto aptr = a.ptr;
 	auto aend = aptr + a.length;
@@ -129,10 +130,10 @@ body
             *aptr++ = *bptr++ + *cptr++;
     }
     else
-    {
+    {*/
 	for (int i = 0; i < a.length; i++)
 	    a[i] = b[i] + c[i];
-    }
+    //}
     return a;
 }
 
@@ -205,7 +206,7 @@ in
 }
 body
 {
-    version (D_InlineAsm_X86)
+    /*version (D_InlineAsm_X86)
     {
         auto aptr = a.ptr;
 	auto aend = aptr + a.length;
@@ -300,10 +301,10 @@ body
             *aptr++ = *bptr++ - *cptr++;
     }
     else
-    {
+    {*/
 	for (int i = 0; i < a.length; i++)
 	    a[i] = b[i] - c[i];
-    }
+    //}
     return a;
 }
 
