@@ -4309,6 +4309,7 @@ L1:
 	//return getProperty(e->loc, ident);
 	return Type::dotExp(sc, e, ident);
     }
+    if (!s->isFuncDeclaration())	// because of overloading
     s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
 
@@ -4672,6 +4673,7 @@ L1:
 	    return Type::dotExp(sc, e, ident);
 	}
     }
+    if (!s->isFuncDeclaration())	// because of overloading
     s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
     v = s->isVarDeclaration();
