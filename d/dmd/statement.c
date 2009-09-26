@@ -126,7 +126,7 @@ int Statement::usesEH()
  {
      printf("Statement::blockExit(%p)\n", this);
      printf("%s\n", toChars());
-     //assert(0); //commented out for gdc
+     assert(0); //commented out for gdc
      return BEany;
  }
 

@@ -87,7 +87,8 @@ version (GNU)
 }
 
 
-private:
+private
+{
 /*
  * The following IEEE 'real' formats are currently supported:
  * 64 bit Big-endian  'double' (eg PowerPC)
@@ -185,7 +186,9 @@ version(LittleEndian) {
     const MANTISSA_LSB = 1;
     const MANTISSA_MSB = 0;
 }
-public:
+}
+public
+{
 
 class NotImplemented : Error
 {
@@ -2542,8 +2545,9 @@ else
 {
     // not implemented
 }
-
-package: // Not public yet
+}
+package
+{ // Not public yet
 /* Return the value that lies halfway between x and y on the IEEE number line.
  *
  * Formally, the result is the arithmetic mean of the binary significands of x
@@ -2662,8 +2666,9 @@ unittest {
     assert(ieeeMean(0.5*real.min*(1-4*real.epsilon),0.5*real.min)
            == 0.5*real.min*(1-2*real.epsilon));
 }
-
-public:
+}
+public
+{
 
     
 // The space allocated for real varies across targets.
@@ -2767,4 +2772,5 @@ unittest
     static real pp[] = [56.1, 32.7, 6];
 
     assert( poly(x, pp) == (56.1L + (32.7L + 6L * x) * x) );
+}
 }

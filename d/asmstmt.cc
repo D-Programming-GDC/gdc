@@ -243,7 +243,7 @@ Statement *ExtAsmStatement::semantic(Scope *sc)
     return this;
 }
 
-#if V2
+//#if V2
 
 int
 ExtAsmStatement::blockExit()
@@ -252,7 +252,7 @@ ExtAsmStatement::blockExit()
     return BEany;
 }
 
-#endif
+//#endif
 
 // StringExp::toIR usually adds a NULL.  We don't want that...
 

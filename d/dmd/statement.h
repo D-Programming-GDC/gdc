@@ -831,6 +831,8 @@ struct ExtAsmStatement : Statement
     Expressions *argConstraints;  // of StringExp*
     unsigned nOutputArgs;
     Expressions *clobbers;        // of StringExp*
+    
+    int blockExit();
 
     ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Array *argNames,
 	Expressions *argConstraints, int nOutputArgs, Expressions *clobbers);
