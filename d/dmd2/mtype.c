@@ -2981,8 +2981,7 @@ Expression *TypeReference::defaultInit(Loc loc)
 #if LOGDEFAULTINIT
     printf("TypeReference::defaultInit() '%s'\n", toChars());
 #endif
-    Expression *e;
-    e = new NullExp(loc);
+    Expression *e = new NullExp(loc);
     e->type = this;
     return e;
 }
@@ -3000,6 +2999,7 @@ TypeFunction::TypeFunction(Arguments *parameters, Type *treturn, int varargs, en
 {
 //if (!treturn) *(char*)0=0;
 //    assert(treturn);
+	assert(0 <= varargs && varargs <= 2);
     this->parameters = parameters;
     this->varargs = varargs;
     this->linkage = linkage;
@@ -3327,7 +3327,6 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 
 	for (size_t i = 0; i < dim; i++)
 	{   Argument *arg = Argument::getNth(tf->parameters, i);
-	    Type *t;
 
 	    tf->inuse++;
 	    arg->type = arg->type->semantic(loc,sc);
@@ -3341,7 +3340,13 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 	    else if (arg->storageClass & STCinvariant)
 		arg->type = arg->type->invariantOf();
 
-	    t = arg->type->toBasetype();
+	    if (arg->storageClass & (STCauto | STCalias | STCstatic))
+	    {
+	    	if (!arg->type)
+	    		continue;
+	    }
+
+	    Type *t = arg->type->toBasetype();
 
 	    if (arg->storageClass & (STCout | STCref | STClazy))
 	    {
@@ -3441,6 +3446,11 @@ int TypeFunction::callMatch(Expression *ethis, Expressions *args)
 	}
 	arg = (Expression *)args->data[u];
 	assert(arg);
+
+	// Non-lvalues do not match ref or out parameters
+	if (p->storageClass & (STCref | STCout) && !arg->isLvalue())
+		goto Nomatch;
+
 	if (p->storageClass & STClazy && p->type->ty == Tvoid &&
 		arg->type->ty != Tvoid)
 	    m = MATCHconvert;
@@ -5959,25 +5969,27 @@ Arguments *Argument::arraySyntaxCopy(Arguments *args)
 }
 
 char *Argument::argsTypesToChars(Arguments *args, int varargs)
-{   OutBuffer *buf;
+{
+	OutBuffer *buf = new OutBuffer();
 
-    buf = new OutBuffer();
+#if 1
+     HdrGenState hgs;
+     argsToCBuffer(buf, &hgs, args, varargs);
+#else
+      buf->writeByte('(');
+      if (args)
+      {
+    	  OutBuffer argbuf;
+    	  HdrGenState hgs;
 
-    buf->writeByte('(');
-    if (args)
-    {	int i;
-	OutBuffer argbuf;
-	HdrGenState hgs;
-
-	for (i = 0; i < args->dim; i++)
-	{   Argument *arg;
-
-	    if (i)
-		buf->writeByte(',');
-	    arg = (Argument *)args->data[i];
-	    argbuf.reset();
-	    arg->type->toCBuffer2(&argbuf, &hgs, 0);
-	    buf->write(&argbuf);
+ 	for (int i = 0; i < args->dim; i++)
+ 	{
+ 		if (i)
+ 			buf->writeByte(',');
+ 	    Argument *arg = (Argument *)args->data[i];
+  	    argbuf.reset();
+  	    arg->type->toCBuffer2(&argbuf, &hgs, 0);
+  	    buf->write(&argbuf);
 	}
 	if (varargs)
 	{
@@ -5987,7 +5999,7 @@ char *Argument::argsTypesToChars(Arguments *args, int varargs)
 	}
     }
     buf->writeByte(')');
-
+#endif
     return buf->toChars();
 }
 
@@ -5999,13 +6011,12 @@ void Argument::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Arguments *argume
 	OutBuffer argbuf;
 
 	for (i = 0; i < arguments->dim; i++)
-	{   Argument *arg;
-
+	{
 	    if (i)
-		buf->writestring(", ");
-	    arg = (Argument *)arguments->data[i];
+	 		buf->writestring(", ");
+	    Argument *arg = (Argument *)arguments->data[i];
 	    if (arg->storageClass & STCout)
-		buf->writestring("out ");
+	  		buf->writestring("out ");
 	    else if (arg->storageClass & STCref)
 		buf->writestring((global.params.Dversion == 1)
 			? (char *)"inout " : (char *)"ref ");
@@ -6013,11 +6024,22 @@ void Argument::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Arguments *argume
 		buf->writestring("in ");
 	    else if (arg->storageClass & STClazy)
 		buf->writestring("lazy ");
+	    else if (arg->storageClass & STCalias)
+	    buf->writestring("alias ");
+	    else if (arg->storageClass & STCauto)
+	    buf->writestring("auto ");
+
 	    if (arg->storageClass & STCconst)
 		buf->writestring("const ");
 	    if (arg->storageClass & STCinvariant)
 		buf->writestring("invariant ");
+
 	    argbuf.reset();
+	    if (arg->storageClass & STCalias)
+	    {	if (arg->ident)
+				argbuf.writestring(arg->ident->toChars());
+	    }
+	    else
 	    arg->type->toCBuffer(&argbuf, arg->ident, hgs);
 	    if (arg->defaultArg)
 	    {
@@ -6051,6 +6073,28 @@ void Argument::argsToDecoBuffer(OutBuffer *buf, Arguments *arguments)
 	    arg->toDecoBuffer(buf);
 	}
     }
+}
+
+/****************************************
+ * Determine if parameter list is really a template parameter list
+ * (i.e. it has auto or alias parameters)
+ */
+
+int Argument::isTPL(Arguments *arguments)
+{
+     //printf("Argument::isTPL()\n");
+
+     if (arguments)
+     {
+ 	size_t dim = Argument::dim(arguments);
+ 	for (size_t i = 0; i < dim; i++)
+ 	{
+ 	    Argument *arg = Argument::getNth(arguments, i);
+ 	    if (arg->storageClass & (STCalias | STCauto | STCstatic))
+ 		return 1;
+ 	}
+     }
+     return 0;
 }
 
 /****************************************************

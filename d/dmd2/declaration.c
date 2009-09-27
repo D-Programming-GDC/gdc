@@ -92,6 +92,7 @@ enum PROT Declaration::prot()
  * Issue error if not.
  */
 
+#if V2
 void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
 {
     if (sc->incontract && isParameter())
@@ -153,7 +154,7 @@ void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
 	}
     }
 }
-
+#endif V2
 
 /********************************* TupleDeclaration ****************************/
 
@@ -669,12 +670,14 @@ Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
 
 void VarDeclaration::semantic(Scope *sc)
 {
-    //printf("VarDeclaration::semantic('%s', parent = '%s')\n", toChars(), sc->parent->toChars());
-    //printf(" type = %s\n", type ? type->toChars() : "null");
-    //printf(" stc = x%x\n", sc->stc);
-    //printf(" storage_class = x%x\n", storage_class);
-    //printf("linkage = %d\n", sc->linkage);
-    //if (strcmp(toChars(), "mul") == 0) halt();
+#if 0
+	printf("VarDeclaration::semantic('%s', parent = '%s')\n", toChars(), sc->parent->toChars());
+	printf(" type = %s\n", type ? type->toChars() : "null");
+	printf(" stc = x%x\n", sc->stc);
+	printf(" storage_class = x%x\n", storage_class);
+	printf("linkage = %d\n", sc->linkage);
+	//if (strcmp(toChars(), "mul") == 0) halt();
+#endif
 
     storage_class |= sc->stc;
     if (storage_class & STCextern && init)
@@ -1122,16 +1125,21 @@ Dsymbol *VarDeclaration::toAlias()
 
 void VarDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-    if (storage_class & STCmanifest)
-	buf->writestring("manifest ");
+
+	if (storage_class & STCconst)
+		buf->writestring("const ");
     if (storage_class & STCstatic)
-	buf->writestring("static ");
-    if (storage_class & STCtls)
-	buf->writestring("__tls ");
-    if (storage_class & STCconst)
-	buf->writestring("const ");
+    	buf->writestring("static ");
+    if (storage_class & STCauto)
+    	buf->writestring("auto ");
+#if V2
+    if (storage_class & STCmanifest)
+    	buf->writestring("manifest ");
     if (storage_class & STCinvariant)
-	buf->writestring("invariant ");
+    	buf->writestring("invariant ");
+    if (storage_class & STCtls)
+    	buf->writestring("__thread ");
+#endif
 
     if (type)
 	type->toCBuffer(buf, ident, hgs);

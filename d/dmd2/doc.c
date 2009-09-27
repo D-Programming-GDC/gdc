@@ -743,7 +743,9 @@ void FuncDeclaration::toDocBuffer(OutBuffer *buf)
 	if (parent &&
 	    (td = parent->isTemplateDeclaration()) != NULL &&
 	    td->onemember == this)
-	{   HdrGenState hgs;
+	{   /* It's a function template
+	    */
+	    HdrGenState hgs;
 	    unsigned o = buf->offset;
 	    TypeFunction *tf = (TypeFunction *)type;
 
@@ -1581,7 +1583,13 @@ Argument *isFunctionParameter(Dsymbol *s, unsigned char *p, unsigned len)
      */
     if (f && f->type)
     {
-	TypeFunction *tf = (TypeFunction *)f->type;
+    	TypeFunction *tf;
+    	if (f->originalType)
+    	{
+    	    tf = (TypeFunction *)f->originalType;
+    	}
+    	else
+    	    tf = (TypeFunction *)f->type;
 
 	if (tf->parameters)
 	{

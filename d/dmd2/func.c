@@ -12,6 +12,7 @@
    work with the GDC compiler.
 
    Modified by David Friedman, December 2006
+   Modified by Vincenzo Ampolo, September 2009
 */
 
 #include <stdio.h>
@@ -74,6 +75,9 @@ FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, enum STC s
     fes = NULL;
     introducing = 0;
     tintro = NULL;
+    /* The type given for "infer the return type" is a TypeFunction with
+     * NULL for the return type.
+     */
     inferRetType = (type && type->nextOf() == NULL);
     scope = NULL;
     hasReturnExp = 0;
@@ -183,8 +187,8 @@ void FuncDeclaration::semantic(Scope *sc)
 	attributes = sc->attributes;
     Dsymbol *parent = toParent();
 
-    if (isAuto() || isScope())
-	error("functions cannot be scope or auto");
+    if (storage_class & STCscope)
+   error("functions cannot be scope");
 
     if (isAbstract() && !isVirtual())
 	error("non-virtual functions cannot be abstract");
@@ -611,10 +615,9 @@ void FuncDeclaration::semantic3(Scope *sc)
 
     // Check the 'throws' clause
     if (fthrows)
-    {	int i;
-
-	for (i = 0; i < fthrows->dim; i++)
-	{
+    {
+    	for (int i = 0; i < fthrows->dim; i++)
+      	{
 	    Type *t = (Type *)fthrows->data[i];
 
 	    t = t->semantic(loc, sc);
@@ -1779,7 +1782,14 @@ MATCH FuncDeclaration::leastAsSpecialized(FuncDeclaration *g)
     for (int u = 0; u < nfparams; u++)
     {
 	Argument *p = Argument::getNth(tf->parameters, u);
-	Expression *e = p->type->defaultInit();
+	Expression *e;
+	if (p->storageClass & (STCref | STCout))
+	{
+	    e = new IdentifierExp(0, p->ident);
+	    e->type = p->type;
+	}
+	else
+	    e = p->type->defaultInit();
 	args.data[u] = e;
     }
 
@@ -2309,6 +2319,8 @@ void CtorDeclaration::semantic(Scope *sc)
     else
 	tret = cd->type; //->referenceTo();
     type = new TypeFunction(arguments, tret, varargs, LINKd);
+    if (!originalType)
+    	originalType = type;
 
     sc->flags |= SCOPEctor;
     type = type->semantic(loc, sc);
@@ -2543,6 +2555,34 @@ void StaticCtorDeclaration::semantic(Scope *sc)
 
     type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
 
+    /* If the static ctor appears within a template instantiation,
+     * it could get called multiple times by the module constructors
+     * for different modules. Thus, protect it with a gate.
+     */
+    if (inTemplateInstance())
+    {
+    /* Add this prefix to the function:
+     *	static int gate;
+     *	if (++gate != 1) return;
+     * Note that this is not thread safe; should not have threads
+     * during static construction.
+     */
+    	Identifier *id = Lexer::idPool("__gate");
+     	VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
+     	v->storage_class = STCstatic;
+     	Statements *sa = new Statements();
+     	Statement *s = new DeclarationStatement(0, v);
+     	sa->push(s);
+     	Expression *e = new IdentifierExp(0, id);
+     	e = new AddAssignExp(0, e, new IntegerExp(1));
+     	e = new EqualExp(TOKnotequal, 0, e, new IntegerExp(1));
+     	s = new IfStatement(0, NULL, e, new ReturnStatement(0, NULL), NULL);
+     	sa->push(s);
+     	if (fbody)
+     	    sa->push(fbody);
+     	fbody = new CompoundStatement(0, sa);
+    }
+
     FuncDeclaration::semantic(sc);
 
     // We're going to need ModuleInfo
@@ -2598,6 +2638,7 @@ StaticDtorDeclaration::StaticDtorDeclaration(Loc loc, Loc endloc)
     : FuncDeclaration(loc, endloc,
       Identifier::generateId("_staticDtor"), STCstatic, NULL)
 {
+	vgate = NULL;
 }
 
 Dsymbol *StaticDtorDeclaration::syntaxCopy(Dsymbol *s)
@@ -2620,6 +2661,36 @@ void StaticDtorDeclaration::semantic(Scope *sc)
     {
     }
     type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
+
+    /* If the static ctor appears within a template instantiation,
+     * it could get called multiple times by the module constructors
+     * for different modules. Thus, protect it with a gate.
+     */
+    if (inTemplateInstance())
+    {
+     	/* Add this prefix to the function:
+     	 *	static int gate;
+     	 *	if (--gate != 0) return;
+     	 * Increment gate during constructor execution.
+     	 * Note that this is not thread safe; should not have threads
+     	 * during static destruction.
+     	 */
+     	Identifier *id = Lexer::idPool("__gate");
+     	VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
+     	v->storage_class = STCstatic;
+     	Statements *sa = new Statements();
+     	Statement *s = new DeclarationStatement(0, v);
+     	sa->push(s);
+     	Expression *e = new IdentifierExp(0, id);
+     	e = new AddAssignExp(0, e, new IntegerExp(-1));
+     	e = new EqualExp(TOKnotequal, 0, e, new IntegerExp(1));
+     	s = new IfStatement(0, NULL, e, new ReturnStatement(0, NULL), NULL);
+     	sa->push(s);
+     	if (fbody)
+     	    sa->push(fbody);
+     	fbody = new CompoundStatement(0, sa);
+     	vgate = v;
+    }
 
     FuncDeclaration::semantic(sc);
 

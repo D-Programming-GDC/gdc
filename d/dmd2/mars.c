@@ -8,6 +8,12 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Vincenzo Ampolo, September 2009
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -83,7 +89,7 @@ Global::Global()
 
     copyright = "Copyright (c) 1999-2008 by Digital Mars";
     written = "written by Walter Bright";
-    version = "v2.014";
+    version = "v2.015";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -336,8 +342,10 @@ int main(int argc, char *argv[])
 		global.params.link = 0;
 	    else if (strcmp(p + 1, "cov") == 0)
 		global.params.cov = 1;
+#if TARGET_LINUX
 	    else if (strcmp(p + 1, "fPIC") == 0)
 		global.params.pic = 1;
+#endif
 	    else if (strcmp(p + 1, "multiobj") == 0)
 		global.params.multiobj = 1;
 	    else if (strcmp(p + 1, "g") == 0)
@@ -680,6 +688,8 @@ int main(int argc, char *argv[])
     }
     if (global.params.cov)
 	VersionCondition::addPredefinedGlobalIdent("D_Coverage");
+    if (global.params.pic)
+    	VersionCondition::addPredefinedGlobalIdent("D_PIC");
 #if V2
     if (global.params.useUnitTests)
 	VersionCondition::addPredefinedGlobalIdent("unittest");

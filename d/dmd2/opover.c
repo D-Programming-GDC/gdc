@@ -12,6 +12,7 @@
    work with the GDC compiler.
 
    Modified by David Friedman, September 2004
+   Modified by Vincenzo Ampolo, September 2009
 */
 
 
@@ -46,6 +47,7 @@
 #include "template.h"
 
 static void inferApplyArgTypesX(FuncDeclaration *fstart, Arguments *arguments);
+static void inferApplyArgTypesZ(TemplateDeclaration *tstart, Arguments *arguments);
 static int inferApplyArgTypesY(TypeFunction *tf, Arguments *arguments);
 static void templateResolve(Match *m, TemplateDeclaration *td, Scope *sc, Loc loc, Objects *targsi, Expression *ethis, Expressions *arguments);
 
@@ -513,7 +515,6 @@ void inferApplyArgTypes(enum TOK op, Arguments *arguments, Expression *aggr)
     }
 
     AggregateDeclaration *ad;
-    FuncDeclaration *fd;
 
     Argument *arg = (Argument *)arguments->data[0];
     Type *taggr = aggr->type;
@@ -584,9 +585,18 @@ void inferApplyArgTypes(enum TOK op, Arguments *arguments, Expression *aggr)
 						   : Id::apply);
 	    if (s)
 	    {
-		fd = s->isFuncDeclaration();
-		if (fd) 
-		    inferApplyArgTypesX(fd, arguments);
+	    	FuncDeclaration *fd = s->isFuncDeclaration();
+			if (fd)
+			{   inferApplyArgTypesX(fd, arguments);
+					break;
+			}
+			#if 0
+			TemplateDeclaration *td = s->isTemplateDeclaration();
+			if (td)
+			{   inferApplyArgTypesZ(td, arguments);
+				break;
+			}
+			#endif
 	    }
 	    break;
 	}
@@ -596,8 +606,8 @@ void inferApplyArgTypes(enum TOK op, Arguments *arguments, Expression *aggr)
 	    if (0 && aggr->op == TOKdelegate)
 	    {	DelegateExp *de = (DelegateExp *)aggr;
 
-		fd = de->func->isFuncDeclaration();
-		if (fd)
+	    FuncDeclaration *fd = de->func->isFuncDeclaration();
+	    if (fd)
 		    inferApplyArgTypesX(fd, arguments);
 	    }
 	    else
@@ -632,51 +642,6 @@ static void inferApplyArgTypesX(FuncDeclaration *fstart, Arguments *arguments)
 {
     overloadApply(fstart, &fp3, arguments);
 }
-
-#if 0
-static void inferApplyArgTypesX(FuncDeclaration *fstart, Arguments *arguments)
-{
-    Declaration *d;
-    Declaration *next;
-
-    for (d = fstart; d; d = next)
-    {
-	FuncDeclaration *f;
-	FuncAliasDeclaration *fa;
-	AliasDeclaration *a;
-
-	fa = d->isFuncAliasDeclaration();
-	if (fa)
-	{
-	    inferApplyArgTypesX(fa->funcalias, arguments);
-	    next = fa->overnext;
-	}
-	else if ((f = d->isFuncDeclaration()) != NULL)
-	{
-	    next = f->overnext;
-
-	    TypeFunction *tf = (TypeFunction *)f->type;
-	    if (inferApplyArgTypesY(tf, arguments) == 1)
-		continue;
-	    if (arguments->dim == 0)
-		return;
-	}
-	else if ((a = d->isAliasDeclaration()) != NULL)
-	{
-	    Dsymbol *s = a->toAlias();
-	    next = s->isDeclaration();
-	    if (next == a)
-		break;
-	    if (next == fstart)
-		break;
-	}
-	else
-	{   d->error("is aliased to a function");
-	    break;
-	}
-    }
-}
-#endif
 
 /******************************
  * Infer arguments from type of function.
@@ -729,6 +694,39 @@ static int inferApplyArgTypesY(TypeFunction *tf, Arguments *arguments)
   Lnomatch:
     return 1;
 }
+
+/*******************************************
+  * Infer foreach arg types from a template function opApply which looks like:
+  *    int opApply(alias int func(ref uint))() { ... }
+  */
+
+#if 0
+void inferApplyArgTypesZ(TemplateDeclaration *tstart, Arguments *arguments)
+{
+     for (TemplateDeclaration *td = tstart; td; td = td->overnext)
+     {
+         if (!td->scope)
+         {
+             error("forward reference to template %s", td->toChars());
+             return;
+         }
+         if (!td->onemember || !td->onemember->toAlias()->isFuncDeclaration())
+         {
+             error("is not a function template");
+             return;
+         }
+ 	if (!td->parameters || td->parameters->dim != 1)
+ 	    continue;
+ 	TemplateParameter *tp = (TemplateParameter *)td->parameters->data[0];
+ 	TemplateAliasParameter *tap = tp->isTemplateAliasParameter();
+ 	if (!tap || !tap->specType || tap->specType->ty != Tfunction)
+ 	    continue;
+ 	TypeFunction *tf = (TypeFunction *)tap->specType;
+ 	if (inferApplyArgTypesY(tf, arguments) == 0)	// found it
+ 	    return;
+     }
+ }
+#endif
 
 /**************************************
  */
