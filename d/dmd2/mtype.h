@@ -12,6 +12,7 @@
    work with the GDC compiler.
 
    Modified by David Friedman, January 2007
+   Modified by Vincenzo Ampolo, September 2009
 */
 
 #ifndef DMD_MTYPE_H

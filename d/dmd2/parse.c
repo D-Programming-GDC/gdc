@@ -1978,6 +1978,7 @@ Type *Parser::parseBasicType()
 		{   // It's an associative array declaration
 
 		    //printf("it's an associative array\n");
+			Type *index = parseType();		// [ type ]
 		    t = new TypeAArray(t, index);
 		    check(TOKrbracket);
 		}
