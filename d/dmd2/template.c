@@ -187,20 +187,20 @@ int match(Object *o1, Object *o2, TemplateDeclaration *tempdecl, Scope *sc)
 	    goto Lnomatch;
     }
     else if (s1)
-	VarDeclaration *v1 = s1->isVarDeclaration();
-	VarDeclaration *v2 = s2->isVarDeclaration();
-	if (v1 && v2 && v1->storage_class & v2->storage_class & STCmanifest)
-	{   ExpInitializer *ei1 = v1->init->isExpInitializer();
-	    ExpInitializer *ei2 = v2->init->isExpInitializer();
-	    if (ei1 && ei2 && !ei1->exp->equals(ei2->exp))
-		goto Lnomatch;
-	}
     {
-	//printf("%p %s, %p %s\n", s1, s1->toChars(), s2, s2->toChars());
-	if (!s2 || !s1->equals(s2) || s1->parent != s2->parent)
-	{
-	    goto Lnomatch;
-	}
+    	//printf("%p %s, %p %s\n", s1, s1->toChars(), s2, s2->toChars());
+    	if (!s2 || !s1->equals(s2) || s1->parent != s2->parent)
+    	{
+    		goto Lnomatch;
+    	}
+    	VarDeclaration *v1 = s1->isVarDeclaration();
+    	VarDeclaration *v2 = s2->isVarDeclaration();
+    	if (v1 && v2 && v1->storage_class & v2->storage_class & STCmanifest)
+    	{   ExpInitializer *ei1 = v1->init->isExpInitializer();
+    		ExpInitializer *ei2 = v2->init->isExpInitializer();
+    		if (ei1 && ei2 && !ei1->exp->equals(ei2->exp))
+    			goto Lnomatch;
+    	}
     }
     else if (v1)
     {
@@ -2534,34 +2534,23 @@ void TemplateAliasParameter::print(Object *oarg, Object *oded)
 
 void TemplateAliasParameter::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-    buf->writestring("alias ");
-    buf->writestring(ident->toChars());
-    if (specAliasT)
-    {
-	buf->writestring(" : ");
-	specAliasT->toCBuffer(buf, NULL, hgs);
-    }
-    if (defaultAlias)
-    {
-	buf->writestring(" = ");
-	defaultAlias->toCBuffer(buf, NULL, hgs);
-    }      buf->writestring("alias ");
-         if (specType)
-         {	HdrGenState hgs;
-     	specType->toCBuffer(buf, ident, &hgs);
-         }
-         else
-         buf->writestring(ident->toChars());
-         if (specAlias)
-         {
-     	buf->writestring(" : ");
-     	ObjectToCBuffer(buf, hgs, specAlias);
-         }
-         if (defaultAlias)
-         {
-     	buf->writestring(" = ");
-     	ObjectToCBuffer(buf, hgs, defaultAlias);
-         }
+	 buf->writestring("alias ");
+	 if (specType)
+	 {	HdrGenState hgs;
+		specType->toCBuffer(buf, ident, &hgs);
+	 }
+	 else
+		buf->writestring(ident->toChars());
+	 if (specAlias)
+	 {
+		buf->writestring(" : ");
+		ObjectToCBuffer(buf, hgs, specAlias);
+	 }
+	 if (defaultAlias)
+	 {
+		buf->writestring(" = ");
+		ObjectToCBuffer(buf, hgs, defaultAlias);
+	 }
 }
 
 
@@ -4522,11 +4511,6 @@ int TemplateMixin::oneMember(Dsymbol **ps)
 {
     return Dsymbol::oneMember(ps);
 }
-    if (ident)
-    {
-	buf->writebyte(' ');
-	buf->writestring(ident->toChars());
-    }
 
 int TemplateMixin::hasPointers()
 {

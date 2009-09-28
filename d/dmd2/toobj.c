@@ -189,19 +189,20 @@ void Module::genmoduleinfo()
 	dti32(&dt, 8|4, true);		// flags (4 means MIstandalone)
 
     if (sctor)
-	dtxoff(&dt, sctor, 0, TYnptr);
+    	dtxoff(&dt, sctor, 0, TYnptr);
     else
-	dtdword(&dt, 0);
+    	dtdword(&dt, 0);
 
     if (sdtor)
-	dtxoff(&dt, sdtor, 0, TYnptr);
+    	dtxoff(&dt, sdtor, 0, TYnptr);
     else
-	dtdword(&dt, 0);
-    assert(!scope);	// semantic() should have been run to completion
+    	dtdword(&dt, 0);
+
     if (stest)
-	dtxoff(&dt, stest, 0, TYnptr);
+    	dtxoff(&dt, stest, 0, TYnptr);
     else
-	dtdword(&dt, 0);
+    	dtdword(&dt, 0);
+
 #if V2
     FuncDeclaration *sgetmembers = findGetMembers();
     if (sgetmembers)
