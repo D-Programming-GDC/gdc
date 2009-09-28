@@ -1914,8 +1914,10 @@ void IfStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 	if (arg->type)
 	    arg->type->toCBuffer(buf, arg->ident, hgs);
 	else
+	{   buf->writestring("auto ");
 	    buf->writestring(arg->ident->toChars());
-	buf->writebyte(';');
+	}
+ 	buf->writestring(" = ");
     }
     condition->toCBuffer(buf, hgs);
     buf->writebyte(')');
@@ -1986,6 +1988,13 @@ int ConditionalStatement::usesEH()
 {
     return (ifbody && ifbody->usesEH()) || (elsebody && elsebody->usesEH());
 }
+
+int ConditionalStatement::blockExit()
+ {
+     int result = ifbody->blockExit();
+     if (elsebody)
+ 	result |= elsebody->blockExit();     return result;
+ }
 
 void ConditionalStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {

@@ -171,7 +171,7 @@ $(D_DRIVER_NAME)-cross$(exeext): $(D_DRIVER_NAME)$(exeext)
 	cp $(D_DRIVER_NAME)$(exeext) $(D_DRIVER_NAME)-cross$(exeext)
 
 D_DMD_OBJS = \
-    d/access.dmd.o d/array.dmd.o d/attrib.dmd.o d/cast.dmd.o d/class.dmd.o d/clone.dmd.o d/cond.dmd.o d/constfold.dmd.o d/dchar.dmd.o d/declaration.dmd.o d/delegatize.dmd.o d/doc.dmd.o \
+    d/access.dmd.o d/array.dmd.o d/arrayop.dmd.o d/attrib.dmd.o d/cast.dmd.o d/class.dmd.o d/clone.dmd.o d/cond.dmd.o d/constfold.dmd.o d/dchar.dmd.o d/declaration.dmd.o d/delegatize.dmd.o d/doc.dmd.o \
     d/dsymbol.dmd.o d/dump.dmd.o d/entity.dmd.o d/enum.dmd.o d/expression.dmd.o d/func.dmd.o d/gnuc.dmd.o d/hdrgen.dmd.o d/html.dmd.o d/identifier.dmd.o d/import.dmd.o \
     d/init.dmd.o d/inline.dmd.o d/interpret.dmd.o d/lexer.dmd.o d/lstring.dmd.o d/macro.dmd.o d/mangle.dmd.o d/mars.dmd.o d/mem.dmd.o d/mtype.dmd.o d/module.dmd.o d/opover.dmd.o d/optimize.dmd.o d/parse.dmd.o \
     d/root.dmd.o d/scope.dmd.o d/statement.dmd.o d/staticassert.dmd.o d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o  \
@@ -184,7 +184,7 @@ D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o d/d-objfile.glue.o d/d-irstate.glue.o  \
 	d/d-glue.glue.o d/d-convert.glue.o d/d-todt.glue.o d/d-gcc-real.glue.o \
         d/d-gt.cglue.o d/d-builtins.cglue.o d/d-misc.cglue.o d/d-builtins2.glue.o \
-	d/symbol.glue.o d/asmstmt.glue.o d/dt.glue.o 
+	d/symbol.glue.o d/asmstmt.glue.o d/dt.glue.o
 ifeq ($(D_LANGUAGE_VERSION),2)
 D_GLUE_OBJS += d/d-cppmngl.glue.o
 endif

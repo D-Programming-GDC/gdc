@@ -911,6 +911,8 @@ void VarDeclaration::semantic(Scope *sc)
 
     if (init)
     {
+    	sc = sc->push();
+ 	sc->stc &= ~(STCconst | STCinvariant | STCpure);
 	ArrayInitializer *ai = init->isArrayInitializer();
 	if (ai && tb->ty == Taarray)
 	{
@@ -1045,6 +1047,7 @@ void VarDeclaration::semantic(Scope *sc)
 		    init = i2;		// no errors, keep result
 	    }
 	}
+	sc = sc->pop();
     }
 }
 

@@ -996,9 +996,14 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 /* ================================================================== */
 
 void StructDeclaration::toObjFile(int multiobj)
-{   unsigned i;
+{
 
     //printf("StructDeclaration::toObjFile('%s')\n", toChars());
+    
+    if (multiobj)
+     {	obj_append(this);
+ 	return;
+     }
 
     // Anonymous structs/unions only exist as part of others,
     // do not output forward referenced structs's
@@ -1036,7 +1041,8 @@ void StructDeclaration::toObjFile(int multiobj)
 	    if (sinit->Sclass == SCcomdat &&
 		sinit->Sdt &&
 		sinit->Sdt->dt == DT_azeros &&
-		sinit->Sdt->DTnext == NULL)
+		sinit->Sdt->DTnext == NULL &&
+ 		!global.params.multiobj)
 	    {
 		sinit->Sclass = SCglobal;
 		sinit->Sdt->dt = DT_common;
@@ -1050,7 +1056,7 @@ void StructDeclaration::toObjFile(int multiobj)
 	}
 
 	// Put out the members
-	for (i = 0; i < members->dim; i++)
+	for (unsigned i = 0; i < members->dim; i++)
 	{
 	    Dsymbol *member;
 

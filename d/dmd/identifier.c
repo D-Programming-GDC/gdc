@@ -87,15 +87,19 @@ int Identifier::dyncast()
     return DYNCAST_IDENTIFIER;
 }
 
-Identifier *Identifier::generateId(char *prefix)
-{   OutBuffer buf;
-    char *id;
-    static unsigned i;
-
-    buf.writestring(prefix);
-    buf.printf("%u", ++i);
-
-    id = buf.toChars();
-    buf.data = NULL;
-    return new Identifier(id, TOKidentifier);
-}
+Identifier *Identifier::generateId(const char *prefix)
+ {
+     static size_t i;
+ 
+     return generateId(prefix, ++i); }
+ 
+ Identifier *Identifier::generateId(const char *prefix, size_t i)
+  {   OutBuffer buf;
+  
+      buf.writestring(prefix);
+     buf.printf("%zu", i);
+  
+     char *id = buf.toChars();
+      buf.data = NULL;
+     return Lexer::idPool(id);
+  }

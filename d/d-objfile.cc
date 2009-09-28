@@ -1134,7 +1134,7 @@ outdata(Symbol * sym)
 }
 
 void
-obj_includelib(char *name)
+obj_includelib(const char *name)
 {
     d_warning(OPT_Wunknown_pragmas, "pragma(lib) not implemented");
 }

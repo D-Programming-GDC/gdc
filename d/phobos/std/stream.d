@@ -2339,7 +2339,8 @@ class EndianStream : FilterStream {
       buffer += size;
     }
   }
-
+  override void read(out byte x) { readExact(&x, x.sizeof); }
+  override void read(out ubyte x) { readExact(&x, x.sizeof); }
   void read(out short x) { readExact(&x, x.sizeof); fixBO(&x,x.sizeof); }
   void read(out ushort x) { readExact(&x, x.sizeof); fixBO(&x,x.sizeof); }
   void read(out int x) { readExact(&x, x.sizeof); fixBO(&x,x.sizeof); }
@@ -2392,6 +2393,8 @@ class EndianStream : FilterStream {
     writeBlock(bom.ptr, bom.length);
   }
 
+	override void write(byte x) { writeExact(&x, x.sizeof); }
+  override void write(ubyte x) { writeExact(&x, x.sizeof); }
   void write(short x) { fixBO(&x,x.sizeof); writeExact(&x, x.sizeof); }
   void write(ushort x) { fixBO(&x,x.sizeof); writeExact(&x, x.sizeof); }
   void write(int x) { fixBO(&x,x.sizeof); writeExact(&x, x.sizeof); }
