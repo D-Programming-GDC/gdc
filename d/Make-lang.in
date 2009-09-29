@@ -170,12 +170,22 @@ $(D_DRIVER_NAME)-cross$(exeext): $(D_DRIVER_NAME)$(exeext)
 	-rm -f $(D_DRIVER_NAME)-cross$(exeext)
 	cp $(D_DRIVER_NAME)$(exeext) $(D_DRIVER_NAME)-cross$(exeext)
 
+ifeq ($(D_LANGUAGE_VERSION),2)
+D_DMD_OBJS = \
+    d/access.dmd.o d/array.dmd.o d/attrib.dmd.o d/cast.dmd.o d/class.dmd.o d/clone.dmd.o d/cond.dmd.o d/constfold.dmd.o d/dchar.dmd.o d/declaration.dmd.o d/delegatize.dmd.o d/doc.dmd.o \
+    d/dsymbol.dmd.o d/dump.dmd.o d/entity.dmd.o d/enum.dmd.o d/expression.dmd.o d/func.dmd.o d/gnuc.dmd.o d/hdrgen.dmd.o d/html.dmd.o d/identifier.dmd.o d/import.dmd.o \
+    d/init.dmd.o d/inline.dmd.o d/interpret.dmd.o d/lexer.dmd.o d/lstring.dmd.o d/macro.dmd.o d/mangle.dmd.o d/mars.dmd.o d/mem.dmd.o d/mtype.dmd.o d/module.dmd.o d/opover.dmd.o d/optimize.dmd.o d/parse.dmd.o \
+    d/root.dmd.o d/scope.dmd.o d/statement.dmd.o d/staticassert.dmd.o d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o  \
+    d/todt.dmd.o d/toobj.dmd.o d/typinf.dmd.o d/unialpha.dmd.o d/utf.dmd.o d/version.dmd.o
+else
 D_DMD_OBJS = \
     d/access.dmd.o d/array.dmd.o d/arrayop.dmd.o d/attrib.dmd.o d/cast.dmd.o d/class.dmd.o d/clone.dmd.o d/cond.dmd.o d/constfold.dmd.o d/dchar.dmd.o d/declaration.dmd.o d/delegatize.dmd.o d/doc.dmd.o \
     d/dsymbol.dmd.o d/dump.dmd.o d/entity.dmd.o d/enum.dmd.o d/expression.dmd.o d/func.dmd.o d/gnuc.dmd.o d/hdrgen.dmd.o d/html.dmd.o d/identifier.dmd.o d/import.dmd.o \
     d/init.dmd.o d/inline.dmd.o d/interpret.dmd.o d/lexer.dmd.o d/lstring.dmd.o d/macro.dmd.o d/mangle.dmd.o d/mars.dmd.o d/mem.dmd.o d/mtype.dmd.o d/module.dmd.o d/opover.dmd.o d/optimize.dmd.o d/parse.dmd.o \
     d/root.dmd.o d/scope.dmd.o d/statement.dmd.o d/staticassert.dmd.o d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o  \
     d/todt.dmd.o d/toobj.dmd.o d/typinf.dmd.o d/unialpha.dmd.o d/utf.dmd.o d/version.dmd.o
+endif
+
 ifeq ($(D_LANGUAGE_VERSION),2)
 D_DMD_OBJS += d/builtin.dmd.o d/traits.dmd.o
 endif
