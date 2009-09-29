@@ -12,6 +12,7 @@
    work with the GDC compiler.
 
    Modified by David Friedman, December 2006
+   Modified by Vincenzo Ampolo, September 2009
 */
 
 #include <stdio.h>
@@ -37,7 +38,7 @@
 #include "parse.h"
 #include "template.h"
 
-extern void obj_includelib(char *name);
+extern void obj_includelib(const char *name);
 void obj_startaddress(Symbol *s);
 
 
