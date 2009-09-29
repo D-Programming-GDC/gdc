@@ -1593,8 +1593,8 @@ class Socket
 	static int select(SocketSet checkRead, SocketSet checkWrite, SocketSet checkError, int microseconds)
 	{
 		timeval tv;
-		tv.seconds = 0;
-		tv.microseconds = microseconds;
+		tv.seconds = microseconds / 1_000_000;
+ 	    tv.microseconds = microseconds % 1_000_000;
 		return select(checkRead, checkWrite, checkError, &tv);
 	}
 	

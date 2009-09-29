@@ -4642,7 +4642,8 @@ Expression *BinExp::semantic(Scope *sc)
     printf("BinExp::semantic('%s')\n", toChars());
 #endif
     e1 = e1->semantic(sc);
-    if (!e1->type)
+    if (!e1->type &&
+ 	!(op == TOKassign && e1->op == TOKdottd))	// a.template = e2
     {
 	error("%s has no value", e1->toChars());
 	e1->type = Type::terror;
@@ -4653,7 +4654,6 @@ Expression *BinExp::semantic(Scope *sc)
 	error("%s has no value", e2->toChars());
 	e2->type = Type::terror;
     }
-    assert(e1->type);
     return this;
 }
 
@@ -7345,6 +7345,12 @@ Expression *AssignExp::semantic(Scope *sc)
     }
 
     BinExp::semantic(sc);
+    if (e1->op == TOKdottd)
+     {	// Rewrite a.b=e2, when b is a template, as a.b(e2)
+ 	Expression *e = new CallExp(loc, e1, e2);
+ 	e = e->semantic(sc);
+ 	return e;
+     }
     e2 = resolveProperties(sc, e2);
     assert(e1->type);
 
