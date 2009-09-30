@@ -1072,7 +1072,8 @@ class Thread
 	 */
 
 	extern (C) static void pauseHandler(int sig)
-	{	int result;
+	{	
+		int result;
 
 	    // Save all registers on the stack so they'll be scanned by the GC
 	    __builtin_unwind_init();
