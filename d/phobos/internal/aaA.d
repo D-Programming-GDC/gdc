@@ -583,7 +583,7 @@ AA _aaRehash(AA* paa, TypeInfo keyti)
 	    }
 
 	    *paa.a = newb;
-	    _aaBalance(paa);
+	    //_aaBalance(paa);
 	}
 	return *paa;
     }
@@ -592,7 +592,7 @@ AA _aaRehash(AA* paa, TypeInfo keyti)
 +  * Balance an array.
 +  */
  
- void _aaBalance(AA* paa)
+ /+void _aaBalance(AA* paa)
  {
      //printf("_aaBalance()\n");
      if (paa.a)
@@ -640,7 +640,7 @@ AA _aaRehash(AA* paa, TypeInfo keyti)
  	    buildTree(p, 0, k);
  	}
      }
- }
+ }+/
 
 
 /********************************************

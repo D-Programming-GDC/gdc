@@ -238,7 +238,7 @@ Expression *BinExp::arrayOp(Scope *sc)
 	    "_arraySliceSliceMulass_w",
 	};
 
-	//int i = binary(name, libArrayopFuncs, sizeof(libArrayopFuncs) / sizeof(char *)); //commented for gdc
+	//int i = binary(name, libArrayopFuncs, sizeof(libArrayopFuncs) / sizeof(char *)); //commented out for gdc
 	int i;
 	if (i == -1)
 	{
