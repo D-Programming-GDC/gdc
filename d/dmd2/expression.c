@@ -2124,6 +2124,11 @@ void DsymbolExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writestring(s->toChars());
 }
 
+int DsymbolExp::isLvalue()
+{
+    return 1;
+}
+
 Expression *DsymbolExp::toLvalue(Scope *sc, Expression *e)
 {
 #if 0

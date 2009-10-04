@@ -34,6 +34,8 @@
    Modified by David Friedman, September 2004
 */
 
+import std.gc;
+import std.gc;
 //import std.stdio;
 import std.c.stdarg;
 import std.c.stdio;
@@ -278,7 +280,9 @@ void *_aaGetp(AA* aa, TypeInfo keyti, size_t valuesize, void *pkey)
 
 	// Not found, create new elem
 	//printf("create new one\n");
+	std.gc.disable();
 	e = cast(aaA *) cast(void*) new void[aaA.sizeof + keysize + valuesize];
+	std.gc.enable();
 	memcpy(e + 1, pkey, keysize);
 	e.hash = key_hash;
 	*pe = e;
@@ -426,9 +430,11 @@ void _aaDelp(AA aa, TypeInfo keyti, void *pkey)
 			    while (*pe);
 			    *pe = e.right;
 			    e.right = null;
+			delete e;
 			}
 
 			aa.a.nodes--;
+			delete e;
 
 			// Should notify GC that e can be free'd now
 			break;

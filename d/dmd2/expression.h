@@ -12,6 +12,7 @@
    work with the GDC compiler.
 
    Modified by David Friedman, September 2004
+   Modified by Vincenzo Ampolo, September 2009
 */
 
 #ifndef DMD_EXPRESSION_H
