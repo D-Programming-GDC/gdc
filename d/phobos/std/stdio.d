@@ -107,7 +107,7 @@ class StdioException : Exception
     {
 	version (Unix)
 	{   char[80] buf = void;
-	    auto s = /*std.string.c.*/_d_gnu_cbridge_strerror(errno, buf.ptr, buf.length);
+	    auto s = std.c.string._d_gnu_cbridge_strerror(errno, buf.ptr, buf.length);
 	}
 	else
 	{
