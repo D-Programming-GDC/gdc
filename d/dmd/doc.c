@@ -47,9 +47,9 @@
 
 struct Escape
 {
-    char *strings[256];
+    const char *strings[256];
 
-    static char *escapeChar(unsigned c);
+    static const char *escapeChar(unsigned c);
 };
 
 struct Section
@@ -96,8 +96,8 @@ struct DocComment
 };
 
 
-int cmp(char *stringz, void *s, size_t slen);
-int icmp(char *stringz, void *s, size_t slen);
+int cmp(const char *stringz, void *s, size_t slen);
+int icmp(const char *stringz, void *s, size_t slen);
 int isDitto(unsigned char *comment);
 unsigned char *skipwhitespace(unsigned char *p);
 unsigned skiptoident(OutBuffer *buf, unsigned i);
@@ -404,7 +404,7 @@ void ScopeDsymbol::emitMemberComments(Scope *sc)
     OutBuffer *buf = sc->docbuf;
 
     if (members)
-    {	char *m = "$(DDOC_MEMBERS \n";
+    {	const char *m = "$(DDOC_MEMBERS \n";
 
 	if (isModule())
 	    m = "$(DDOC_MODULE_MEMBERS \n";
@@ -442,7 +442,7 @@ void ScopeDsymbol::emitMemberComments(Scope *sc)
 
 void emitProtection(OutBuffer *buf, PROT prot)
 {
-    char *p;
+    const char *p;
 
     switch (prot)
     {
@@ -919,6 +919,8 @@ DocComment::DocComment()
 DocComment *DocComment::parse(Scope *sc, Dsymbol *s, unsigned char *comment)
 {   unsigned idlen;
 
+//printf("parse(%s): '%s'\n", s->toChars(), comment);
+
     if (sc->lastdc && isDitto(comment))
 	return NULL;
 
@@ -963,6 +965,8 @@ void DocComment::parseSections(unsigned char *comment)
 
     unsigned char *name = NULL;
     unsigned namelen = 0;
+    
+    //printf("parseSections('%s')\n", comment);
 
     p = comment;
     while (*p)
@@ -1089,7 +1093,7 @@ void Section::write(DocComment *dc, Scope *sc, Dsymbol *s, OutBuffer *buf)
 {
     if (namelen)
     {
-	static char *table[] =
+	static const char *table[] =
 	{	"AUTHORS", "BUGS", "COPYRIGHT", "DATE",
 		"DEPRECATED", "EXAMPLES", "HISTORY", "LICENSE",
 		"RETURNS", "SEE_ALSO", "STANDARDS", "THROWS",
@@ -1433,7 +1437,7 @@ void DocComment::parseEscapes(Escape **pescapetable, unsigned char *textstart, u
  * Return < 0, ==0, > 0
  */
 
-int cmp(char *stringz, void *s, size_t slen)
+int cmp(const char *stringz, void *s, size_t slen)
 {
     size_t len1 = strlen(stringz);
 
@@ -1442,7 +1446,7 @@ int cmp(char *stringz, void *s, size_t slen)
     return memcmp(stringz, s, slen);
 }
 
-int icmp(char *stringz, void *s, size_t slen)
+int icmp(const char *stringz, void *s, size_t slen)
 {
     size_t len1 = strlen(stringz);
 
@@ -1579,7 +1583,7 @@ Lno:
 
 int isKeyword(unsigned char *p, unsigned len)
 {
-    static char *table[] = { "true", "false", "null" };
+    static const char *table[] = { "true", "false", "null" };
 
     for (int i = 0; i < sizeof(table) / sizeof(table[0]); i++)
     {
@@ -1630,10 +1634,10 @@ Argument *isFunctionParameter(Dsymbol *s, unsigned char *p, unsigned len)
 void highlightText(Scope *sc, Dsymbol *s, OutBuffer *buf, unsigned offset)
 {
     //printf("highlightText()\n");
-    char *sid = s->ident->toChars();
+    const char *sid = s->ident->toChars();
     FuncDeclaration *f = s->isFuncDeclaration();
     unsigned char *p;
-    char *se;
+    const char *se;
 
     int leadingBlank = 1;
     int inCode = 0;
@@ -1879,7 +1883,7 @@ void highlightCode(Scope *sc, Dsymbol *s, OutBuffer *buf, unsigned offset)
     //printf("highlightCode(s = '%s', kind = %s)\n", sid, s->kind());
     for (unsigned i = offset; i < buf->offset; i++)
     {	unsigned char c = buf->data[i];
-	char *se;
+	const char *se;
 
 	se = Escape::escapeChar(c);
 	if (se)
@@ -1921,7 +1925,7 @@ void highlightCode(Scope *sc, Dsymbol *s, OutBuffer *buf, unsigned offset)
 void highlightCode3(OutBuffer *buf, unsigned char *p, unsigned char *pend)
 {
     for (; p < pend; p++)
-    {	char *s = Escape::escapeChar(*p);
+    {	const char *s = Escape::escapeChar(*p);
 	if (s)
 	    buf->writestring(s);
 	else
@@ -1943,7 +1947,7 @@ void highlightCode2(Scope *sc, Dsymbol *s, OutBuffer *buf, unsigned offset)
     Token tok;
     OutBuffer res;
     unsigned char *lastp = buf->data;
-    char *highlight;
+    const char *highlight;
 
     //printf("highlightCode2('%.*s')\n", buf->offset - 1, buf->data);
     res.reserve(buf->offset);
@@ -2004,8 +2008,8 @@ void highlightCode2(Scope *sc, Dsymbol *s, OutBuffer *buf, unsigned offset)
  * Find character string to replace c with.
  */
 
-char *Escape::escapeChar(unsigned c)
-{   char *s;
+const char *Escape::escapeChar(unsigned c)
+{   const char *s;
 
     switch (c)
     {

@@ -2419,9 +2419,9 @@ Expression *TypeAArray::defaultInit(Loc loc)
 }
 
 int TypeAArray::isZeroInit()
-{
-    return 1;
-}
+ {
+     return TRUE;
+ }
 
 int TypeAArray::checkBoolean()
 {
@@ -3621,6 +3621,34 @@ Type *TypeInstance::semantic(Loc loc, Scope *sc)
     return t;
 }
 
+Dsymbol *TypeInstance::toDsymbol(Scope *sc)
+ {
+     Type *t;
+     Expression *e;
+     Dsymbol *s;
+ 
+     //printf("TypeInstance::semantic(%s)\n", toChars());
+ 
+     if (sc->parameterSpecialization)
+     {
+ 	unsigned errors = global.errors;
+ 	global.gag++;
+ 
+ 	resolve(loc, sc, &e, &t, &s);
+ 
+ 	global.gag--;
+ 	if (errors != global.errors)
+ 	{   if (global.gag == 0)
+ 		global.errors = errors;
+ 	    return NULL;
+ 	}
+     }
+     else
+ 	resolve(loc, sc, &e, &t, &s);
+ 
+     return s;
+ }
+
 
 /***************************** TypeTypeof *****************************/
 
@@ -3895,6 +3923,12 @@ Expression *TypeEnum::getProperty(Loc loc, Identifier *ident)
 	    goto Lfwd;
 	e = defaultInit(loc);
     }
+    else if (ident == Id::stringof)
+     {	char *s = toChars();
+ 	e = new StringExp(loc, s, strlen(s), 'c');
+ 	Scope sc;
+ 	e = e->semantic(&sc);
+     }
     else
     {
 	if (!sym->memtype)
@@ -4268,11 +4302,14 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	error(e->loc, "struct %s is forward referenced", sym->toChars());
 	return new IntegerExp(e->loc, 0, Type::tint32);
     }
-
+	
+	/* If e.tupleof
++      */
     if (ident == Id::tupleof)
     {
-	/* Create a TupleExp
-	 */
+	/* Create a TupleExp out of the fields of the struct e:
+! 	 * (e.field0, e.field1, e.field2, ...)
+  	 */
 	e = e->semantic(sc);	// do this before turning on noaccesscheck
 	Expressions *exps = new Expressions;
 	exps->reserve(sym->fields.dim);
@@ -4365,6 +4402,14 @@ L1:
 	de->type = e->type;
 	return de;
     }
+    
+    Import *timp = s->isImport();
+     if (timp)
+     {
+ 	e = new DsymbolExp(e->loc, s);
+ 	e = e->semantic(sc);
+ 	return e;
+     }
 
     d = s->isDeclaration();
 #ifdef DEBUG
@@ -4410,6 +4455,7 @@ L1:
 
 	// *(&e + offset)
 	accessCheck(e->loc, sc, e, d);
+	#if 0
 	b = new AddrExp(e->loc, e);
 	b->type = e->type->pointerTo();
 	b = new AddExp(e->loc, b, new IntegerExp(e->loc, v->offset, Type::tsize_t));
@@ -4417,6 +4463,7 @@ L1:
 	e = new PtrExp(e->loc, b);
 	e->type = v->type;
 	return e;
+	#endif
     }
 
     de = new DotVarExp(e->loc, e, d);

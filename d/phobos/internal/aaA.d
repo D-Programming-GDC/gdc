@@ -578,6 +578,7 @@ AA _aaRehash(AA* paa, TypeInfo keyti)
 		    if (e)
 			_aaRehash_x(e);
 		}
+		delete aa.b;
 
 		newb.nodes = aa.nodes;
 	    }

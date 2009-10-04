@@ -107,7 +107,6 @@ void Import::load(Scope *sc)
     }
     if (!pkg)
 	pkg = mod;
-    mod->semantic();
 
     //printf("-Import::load('%s'), pkg = %p\n", toChars(), pkg);
 }
@@ -131,6 +130,12 @@ void Import::semantic(Scope *sc)
 	}
 #endif
 
+// Modules need a list of each imported module
+ 	//printf("%s imports %s\n", sc->module->toChars(), mod->toChars());
+ 	sc->module->aimports.push(mod);
+ 
+ 	mod->semantic();
+
 	if (!isstatic && !aliasId && !names.dim)
 	{
 	    /* Default to private importing
@@ -141,8 +146,6 @@ void Import::semantic(Scope *sc)
 	    sc->scopesym->importScope(mod, prot);
 	}
 
-	// Modules need a list of each imported module
-	sc->module->aimports.push(mod);
 
 	if (mod->needmoduleinfo)
 	    sc->module->needmoduleinfo = 1;
@@ -177,6 +180,10 @@ Dsymbol *Import::toAlias()
     return this;
 }
 
+/*****************************
++  * Add import to sd's symbol table.
++  */
+
 int Import::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
     int result = 0;
@@ -187,6 +194,9 @@ int Import::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
     if (aliasId)
 	result = Dsymbol::addMember(sc, sd, memnum);
 
+	/* Instead of adding the import to sd's symbol table,
++      * add each of the alias=name pairs
++      */
     for (size_t i = 0; i < names.dim; i++)
     {
 	Identifier *name = (Identifier *)names.data[i];
@@ -195,27 +205,7 @@ int Import::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 	if (!alias)
 	    alias = name;
 
-#if 1
 	TypeIdentifier *tname = new TypeIdentifier(loc, name);
-#else
-	TypeIdentifier *tname = new TypeIdentifier(loc, NULL);
-	if (packages)
-	{
-	    for (size_t j = 0; j < packages->dim; j++)
-	    {   Identifier *pid = (Identifier *)packages->data[j];
-
-		if (!tname->ident)
-		    tname->ident = pid;
-		else
-		    tname->addIdent(pid);
-	    }
-	}
-	if (!tname->ident)
-	    tname->ident = id;
-	else
-	    tname->addIdent(id);
-	tname->addIdent(name);
-#endif
 	AliasDeclaration *ad = new AliasDeclaration(loc, alias, tname);
 	result |= ad->addMember(sc, sd, memnum);
 
@@ -230,7 +220,9 @@ Dsymbol *Import::search(Loc loc, Identifier *ident, int flags)
     //printf("%s.Import::search(ident = '%s', flags = x%x)\n", toChars(), ident->toChars(), flags);
 
     if (!pkg)
-	load(NULL);
+	{	load(NULL);
+ 	mod->semantic();
+     }
 
     // Forward it to the package/module
     return pkg->search(loc, ident, flags);

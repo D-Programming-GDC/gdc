@@ -21,6 +21,7 @@
 #include <assert.h>
 
 #include "gdc_alloca.h"
+#include <string> //for msc_ver
 
 #if _WIN32
 #include <windows.h>
@@ -1614,12 +1615,40 @@ void OutBuffer::align(unsigned size)
     fill0(nbytes);
 }
 
+////////////////////////////////////////////////////////////////
+ // The compiler shipped with Visual Studio 2005 (and possible
+ // other versions) does not support C99 printf format specfiers
+ // such as %z and %j
+ #if _MSC_VER using std::string; using std::wstring;
+ 
+ template<typename S>
+ inline void 
+ search_and_replace(S& str, const S& what, const S& replacement)
+ {
+     assert(!what.empty());
+     size_t pos = str.find(what);
+     while (pos != S::npos) 
+     {
+         str.replace(pos, what.size(), replacement);
+         pos = str.find(what, pos + replacement.size());
+     }
+ }
+ #define WORKAROUND_C99_SPECIFIERS_BUG(S,tmp,f) \
+     S tmp = f;                                 \
+     search_and_replace(fmt, S("%z"), S("%l")); \
+     search_and_replace(fmt, S("%j"), S("%i")); \
+     f = tmp.c_str();
+ #else
+ #define WORKAROUND_C99_SPECIFIERS_BUG(S,tmp,f)
+ #endif
+
 void OutBuffer::vprintf(const char *format, va_list args)
 {
     char buffer[128];
     char *p;
     unsigned psize;
     int count;
+    WORKAROUND_C99_SPECIFIERS_BUG(string, fmt, format);
     va_list args_copy;
 
     p = buffer;
@@ -1634,7 +1663,19 @@ void OutBuffer::vprintf(const char *format, va_list args)
 	psize *= 2;
 #endif
 #ifndef _WIN32
-	count = vsnprintf(p,psize,format,args_copy);
+	va_list va;
+         va_copy(va, args);
+ /*
+!   The functions vprintf(), vfprintf(), vsprintf(), vsnprintf()
+!   are equivalent to the functions printf(), fprintf(), sprintf(),
+!   snprintf(), respectively, except that they are called with a
+!   va_list instead of a variable number of arguments. These
+!   functions do not call the va_end macro. Consequently, the value
+!   of ap is undefined after the call. The application should call
+!   va_end(ap) itself afterwards.
+!  */
+ 	count = vsnprintf(p,psize,format,va);
+         va_end(va);
 	if (count == -1)
 	    psize *= 2;
 	else if (count >= psize)
@@ -1667,7 +1708,10 @@ void OutBuffer::vprintf(const wchar_t *format, va_list args)
 	psize *= 2;
 #endif
 #ifndef _WIN32
-	count = vsnwprintf(p,psize,format,args_copy);
+	va_list va;
+         va_copy(va, args);
+ 	count = vsnwprintf(p,psize,format,va);
+         va_end(va); 
 	if (count == -1)
 	    psize *= 2;
 	else if (count >= psize)

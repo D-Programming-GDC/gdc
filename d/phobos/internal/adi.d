@@ -354,7 +354,7 @@ else
     len = a1.length;
     if (a2.length < len)
 	len = a2.length;
-    c = std.string.memcmp(cast(char *)a1.ptr, cast(char *)a2.ptr, len);
+    c = /+std.string.+/memcmp(cast(char *)a1.ptr, cast(char *)a2.ptr, len);
     if (!c)
 	c = cast(int)a1.length - cast(int)a2.length;
     return c;

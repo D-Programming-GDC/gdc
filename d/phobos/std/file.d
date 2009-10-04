@@ -513,7 +513,7 @@ struct DirEntry
 	size_t wlength;
 	size_t n;
 
-	clength = std.string.strlen(fd.cFileName.ptr);
+	clength = std.c.string.strlen(fd.cFileName.ptr);
 
 	// Convert cFileName[] to unicode
 	wlength = MultiByteToWideChar(0,0,fd.cFileName.ptr,clength,null,0);
@@ -795,8 +795,8 @@ void listdir(char[] pathname, bool delegate(DirEntry* de) callback)
 		do
 		{
 		    // Skip "." and ".."
-		    if (std.string.strcmp(fileinfo.cFileName.ptr, ".") == 0 ||
-			std.string.strcmp(fileinfo.cFileName.ptr, "..") == 0)
+		    if (std.c.string.strcmp(fileinfo.cFileName.ptr, ".") == 0 ||
+ 			std.c.string.strcmp(fileinfo.cFileName.ptr, "..") == 0)
 			continue;
 
 		    de.init(pathname, &fileinfo);
@@ -1217,7 +1217,7 @@ char[] getcwd()
     {
 	throw new FileException("cannot get cwd", getErrno());
     }
-    auto len = std.string.strlen(p);
+    auto len = std.c.string.strlen(p);
     auto buf = new char[len];
     buf[] = p[0 .. len];
     std.c.stdlib.free(p);
@@ -1244,7 +1244,7 @@ struct DirEntry
     ubyte didstat;			// done lazy evaluation of stat()
 
     void init(char[] path, dirent *fd)
-    {	size_t len = std.string.strlen(fd.d_name.ptr);
+    {	size_t len = std.c.string.strlen(fd.d_name.ptr);
 	name = std.path.join(path, fd.d_name[0 .. len]);
 	version(GNU)
 	    { }
@@ -1409,8 +1409,8 @@ void listdir(char[] pathname, bool delegate(DirEntry* de) callback)
 	    while((fdata = readdir(h)) != null)
 	    {
 		// Skip "." and ".."
-		if (!std.string.strcmp(fdata.d_name.ptr, ".") ||
-		    !std.string.strcmp(fdata.d_name.ptr, ".."))
+		if (!std.c.string.strcmp(fdata.d_name.ptr, ".") ||
+ 		    !std.c.string.strcmp(fdata.d_name.ptr, ".."))
 			continue;
 
 		de.init(pathname, fdata);

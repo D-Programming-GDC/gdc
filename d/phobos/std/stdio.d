@@ -107,11 +107,11 @@ class StdioException : Exception
     {
 	version (Unix)
 	{   char[80] buf = void;
-	    auto s = std.string._d_gnu_cbridge_strerror(errno, buf.ptr, buf.length);
+	    auto s = /*std.string.c.*/_d_gnu_cbridge_strerror(errno, buf.ptr, buf.length);
 	}
 	else
 	{
-	    auto s = std.string.strerror(errno);
+	    auto s = std.c.string.strerror(errno);
 	}
 	super(std.string.toString(s).dup);
     }
