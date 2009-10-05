@@ -764,7 +764,8 @@ Condition *Parser::parseStaticIfCondition()
     if (token.value == TOKlparen)	// optional ()
     {
      	nextToken();
-      	check(TOKrparen);
+     	exp = parseAssignExp();
+     	check(TOKrparen);
     }
     else
     {   error("(expression) expected following static if");
