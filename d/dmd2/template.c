@@ -216,8 +216,10 @@ int match(Object *o1, Object *o2, TemplateDeclaration *tempdecl, Scope *sc)
 		goto Lnomatch;
 	}
     }
+    //printf("match\n");
     return 1;	// match
 Lnomatch:
+    //printf("nomatch\n");
     return 0;	// nomatch;
 }
 
@@ -581,9 +583,16 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
     /* Any parameter left without a type gets the type of
      * its corresponding arg
      */
-	for (int i = 0; i < dedtypes_dim; i++)
-	{
-	    if (!dedtypes->data[i])
+    	for (int i = 0; i < dedtypes_dim; i++)
+    	{
+    		if (!dedtypes->data[i])
+    		{
+    			assert(i < ti->tiargs->dim);
+    			dedtypes->data[i] = ti->tiargs->data[i];
+    		}
+    	}
+	}
+
     if (m && constraint && !(flag & 1))
     {	/* Check to see if constraint is satisfied.
 	 */
@@ -601,12 +610,6 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
         }
     }
 
-	    {   assert(i < ti->tiargs->dim);
-		dedtypes->data[i] = ti->tiargs->data[i];
-	    }
-	}
-    }
-
 #if LOGM
     // Print out the results
     printf("--------------------------\n");
@@ -614,22 +617,22 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
     printf("instance %s\n", ti->toChars());
     if (m)
     {
-	for (int i = 0; i < dedtypes_dim; i++)
-	{
-	    TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
-	    Object *oarg;
+    	for (int i = 0; i < dedtypes_dim; i++)
+    	{
+    		TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
+    		Object *oarg;
 
-	    printf(" [%d]", i);
+    		printf(" [%d]", i);
 
-	    if (i < ti->tiargs->dim)
-		oarg = (Object *)ti->tiargs->data[i];
-	    else
-		oarg = NULL;
-	    tp->print(oarg, (Object *)dedtypes->data[i]);
-	}
+    		if (i < ti->tiargs->dim)
+    			oarg = (Object *)ti->tiargs->data[i];
+    		else
+    			oarg = NULL;
+    		tp->print(oarg, (Object *)dedtypes->data[i]);
+    	}
     }
     else
-	goto Lnomatch;
+    	goto Lnomatch;
 #endif
 
 #if LOGM
