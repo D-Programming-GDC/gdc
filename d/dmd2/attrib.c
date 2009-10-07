@@ -738,7 +738,7 @@ Dsymbol *PragmaDeclaration::syntaxCopy(Dsymbol *s)
 
 void PragmaDeclaration::semantic(Scope *sc)
 {   // Should be merged with PragmaStatement
-    Scope sc_save;
+	Scope sc_save;
 
     //printf("\tPragmaDeclaration::semantic '%s'\n",toChars());
     if (ident == Id::msg)
@@ -1214,6 +1214,7 @@ Dsymbol *StaticIfDeclaration::syntaxCopy(Dsymbol *s)
 
 int StaticIfDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
+	//printf("StaticIfDeclaration::addMember() '%s'\n",toChars());
     /* This is deferred until semantic(), so that
      * expressions in the condition can refer to declarations
      * in the same scope, such as:
@@ -1240,7 +1241,7 @@ void StaticIfDeclaration::semantic(Scope *sc)
 {
     Array *d = include(sc, sd);
 
-    //printf("\tStaticIfDeclaration::semantic '%s'\n",toChars());
+    //printf("\tStaticIfDeclaration::semantic '%s', d = %p\n",toChars(), d);
     if (d)
     {
 	if (!addisdone)
@@ -1295,13 +1296,12 @@ int CompileDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 
 void CompileDeclaration::compileIt(Scope *sc)
 {
-    //printf("CompileDeclaration::semantic()\n");
+	//printf("CompileDeclaration::compileIt()\n");
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
     exp = exp->optimize(WANTvalue | WANTinterpret);
     if (exp->op != TOKstring)
     {	error("argument to mixin must be a string, not (%s)", exp->toChars());
-	return;
     }
     else
     {

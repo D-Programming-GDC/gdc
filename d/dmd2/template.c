@@ -281,6 +281,7 @@ Object *objectSyntaxCopy(Object *o)
     return o;
 }
 
+
 /* ======================== TemplateDeclaration ============================= */
 
 TemplateDeclaration::TemplateDeclaration(Loc loc, Identifier *id,
@@ -300,13 +301,13 @@ TemplateDeclaration::TemplateDeclaration(Loc loc, Identifier *id,
 	    if (ttp)
 	    {
 		printf("\tparameter[%d] = %s : %s\n", i, tp->ident->toChars(), ttp->specType ? ttp->specType->toChars() : "");
-    this->constraint = constraint;
 	    }
 	}
 #endif
     this->loc = loc;
     this->parameters = parameters;
     this->origParameters = parameters;
+    this->constraint = constraint;
     this->members = decldefs;
     this->overnext = NULL;
     this->overroot = NULL;
@@ -586,8 +587,7 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
     	for (int i = 0; i < dedtypes_dim; i++)
     	{
     		if (!dedtypes->data[i])
-    		{
-    			assert(i < ti->tiargs->dim);
+    		{	assert(i < ti->tiargs->dim);
     			dedtypes->data[i] = ti->tiargs->data[i];
     		}
     	}
@@ -1015,7 +1015,8 @@ L2:
 	 			match = m;
 	 		}
 	 		goto Lmatch;
-	 	    }	    case Tclass:
+	 	    }
+	 	case Tclass:
 	    case Tident:
 		goto Lmatch;
 
@@ -1062,6 +1063,11 @@ Lmatch:
 	    {	oded = tp->defaultArg(loc, paramscope);
 		if (!oded)
 		    goto Lnomatch;
+	    }
+	  declareParameter(paramscope, tp, oded);
+	  dedargs->data[i] = (void *)oded;
+	}
+    }
     if (constraint)
     {	/* Check to see if constraint is satisfied.
 	 */
@@ -1079,12 +1085,6 @@ Lmatch:
         }
     }
 
-
-	    }
-	    declareParameter(paramscope, tp, oded);
-	    dedargs->data[i] = (void *)oded;
-	}
-    }
 
 #if 0
     for (i = 0; i < dedargs->dim; i++)
@@ -1342,22 +1342,22 @@ void TemplateDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writeByte('(');
     for (int i = 0; i < parameters->dim; i++)
     {
-	TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
-	if (hgs->ddoc)
-	    tp = (TemplateParameter *)origParameters->data[i];
-    if (constraint)
+    	TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
+    	if (hgs->ddoc)
+    		tp = (TemplateParameter *)origParameters->data[i];
+    	if (i)
+		    buf->writeByte(',');
+		tp->toCBuffer(buf, hgs);
+	}
+	buf->writeByte(')');
+
+	if (constraint)
     {	buf->writestring(" if (");
 	constraint->toCBuffer(buf, hgs);
 	buf->writeByte(')');
     }
 
-	if (i)
-	    buf->writeByte(',');
-	tp->toCBuffer(buf, hgs);
-    }
-    buf->writeByte(')');
-
-    if (hgs->hdrgen)
+	if (hgs->hdrgen)
     {
 	hgs->tpltMember++;
 	buf->writenl();
@@ -1384,6 +1384,12 @@ char *TemplateDeclaration::toChars()
     buf.writeByte('(');
     for (int i = 0; i < parameters->dim; i++)
     {
+    	TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
+    	if (i)
+    	    buf.writeByte(',');
+    	tp->toCBuffer(&buf, &hgs);
+    }
+    buf.writeByte(')');
 
     if (constraint)
     {	buf.writestring(" if (");
@@ -1391,12 +1397,6 @@ char *TemplateDeclaration::toChars()
 	buf.writeByte(')');
     }
 
-	TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
-	if (i)
-	    buf.writeByte(',');
-	tp->toCBuffer(&buf, &hgs);
-    }
-    buf.writeByte(')');
     buf.writeByte(0);
     return (char *)buf.extractData();
 }
@@ -2985,18 +2985,14 @@ TemplateInstance::TemplateInstance(Loc loc, Identifier *ident)
 #endif
     this->loc = loc;
     this->name = ident;
-    this->semantictiargsdone = 0;
     this->tiargs = NULL;
     this->tempdecl = NULL;
     this->inst = NULL;
     this->argsym = NULL;
     this->aliasdecl = NULL;
     this->semanticdone = 0;
+    this->semantictiargsdone = 0;
     this->withsym = NULL;
-/*****************
- * This constructor is only called when we figured out which function
- * template to instantiate.
- */
     this->nest = 0;
 #ifdef IN_GCC
     this->objFileModule = NULL;
@@ -3006,13 +3002,16 @@ TemplateInstance::TemplateInstance(Loc loc, Identifier *ident)
     this->errors = 0;
 }
 
+/*****************
+ * This constructor is only called when we figured out which function
+ * template to instantiate.
+ */
 
 TemplateInstance::TemplateInstance(Loc loc, TemplateDeclaration *td, Objects *tiargs)
     : ScopeDsymbol(NULL)
 {
 #if LOG
     printf("TemplateInstance(this = %p, tempdecl = '%s')\n", this, td->toChars());
-    this->semantictiargsdone = 1;
 #endif
     this->loc = loc;
     this->name = td->ident;
@@ -3022,6 +3021,7 @@ TemplateInstance::TemplateInstance(Loc loc, TemplateDeclaration *td, Objects *ti
     this->argsym = NULL;
     this->aliasdecl = NULL;
     this->semanticdone = 0;
+    this->semantictiargsdone = 1;
     this->withsym = NULL;
     this->nest = 0;
 #ifdef IN_GCC
@@ -3360,9 +3360,6 @@ void TemplateInstance::semantic(Scope *sc)
 	//printf("\t[%d] semantic on '%s' %p kind %s in '%s'\n", i, s->toChars(), s, s->kind(), this->toChars());
 	//printf("test: isnested = %d, sc2->parent = %s\n", isnested, sc2->parent->toChars());
 //	if (isnested)
-    if (semantictiargsdone)
-	return;
-    semantictiargsdone = 1;
 //	    s->parent = sc->parent;
 	//printf("test3: isnested = %d, s->parent = %s\n", isnested, s->parent->toChars());
 	s->semantic(sc2);
@@ -3432,6 +3429,9 @@ void TemplateInstance::semantic(Scope *sc)
 void TemplateInstance::semanticTiargs(Scope *sc)
 {
     //printf("+TemplateInstance::semanticTiargs() %s\n", toChars());
+	if (semantictiargsdone)
+		return;
+	semantictiargsdone = 1;
     semanticTiargs(loc, sc, tiargs, 0);
 }
 
@@ -3661,10 +3661,6 @@ TemplateDeclaration *TemplateInstance::findBestMatch(Scope *sc)
 
 #if LOG
     printf("TemplateInstance::findBestMatch()\n");
-	if (tempdecl && !tempdecl->overnext)
-	    // Only one template, so we can give better error message
-	    error("%s does not match template declaration %s", toChars(), tempdecl->toChars());
-	else
 #endif
     for (TemplateDeclaration *td = tempdecl; td; td = td->overnext)
     {
@@ -3730,7 +3726,11 @@ TemplateDeclaration *TemplateInstance::findBestMatch(Scope *sc)
 
     if (!td_best)
     {
-	error("%s does not match any template declaration", toChars());
+    	if (tempdecl && !tempdecl->overnext)
+    		// Only one template, so we can give better error message
+    		error("%s does not match template declaration %s", toChars(), tempdecl->toChars());
+    	else
+    		error("%s does not match any template declaration", toChars());
 	return NULL;
     }
     if (td_ambig)
@@ -3878,7 +3878,6 @@ Identifier *TemplateInstance::genIdent()
 	    if (ta->deco)
 		buf.writestring(ta->deco);
 	    else
-    //printf("\tgenIdent = %s\n", id);
 	    {
 #ifdef DEBUG
 		printf("ta = %d, %s\n", ta->ty, ta->toChars());
@@ -3960,6 +3959,7 @@ Identifier *TemplateInstance::genIdent()
     buf.writeByte('Z');
     id = buf.toChars();
     buf.data = NULL;
+    //printf("\tgenIdent = %s\n", id);
     return new Identifier(id, TOKidentifier);
 }
 
@@ -4583,6 +4583,11 @@ void TemplateMixin::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         }
     }
     buf->writebyte(')');
+    if (ident)
+    {
+    	buf->writebyte(' ');
+    	buf->writestring(ident->toChars());
+    }
     buf->writebyte(';');
     buf->writenl();
 }

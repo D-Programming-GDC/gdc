@@ -825,7 +825,7 @@ int isf(void *param, FuncDeclaration *fd)
 
 int ClassDeclaration::isFuncHidden(FuncDeclaration *fd)
 {
-    //printf("ClassDeclaration::isFuncHidden(%s)\n", fd->toChars());
+	//printf("ClassDeclaration::isFuncHidden(class = %s, fd = %s)\n", toChars(), fd->toChars());
     Dsymbol *s = search(0, fd->ident, 4|2);
     if (!s)
     {	//printf("not found\n");

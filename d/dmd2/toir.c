@@ -273,7 +273,6 @@ int intrinsic_op(char *name)
 #else
  	"9intrinsic2btFxPkkZi",
 #endif
-
 	"9intrinsic3bsfFkZi",
 	"9intrinsic3bsrFkZi",
 	"9intrinsic3btcFPkkZi",

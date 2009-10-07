@@ -761,7 +761,7 @@ Condition *Parser::parseStaticIfCondition()
     Loc loc = this->loc;
 
     nextToken();
-    if (token.value == TOKlparen)	// optional ()
+    if (token.value == TOKlparen)
     {
      	nextToken();
      	exp = parseAssignExp();
@@ -900,10 +900,10 @@ InvariantDeclaration *Parser::parseInvariant()
 
     nextToken();
 
-    // () are optional
-    if (token.value == TOKlparen)
-    {	nextToken();
-	check(TOKrparen);
+    if (token.value == TOKlparen)	// optional ()
+    {
+    	nextToken();
+    	check(TOKrparen);
     }
 
     f = new InvariantDeclaration(loc, 0);
@@ -2236,7 +2236,6 @@ Array *Parser::parseDeclarations(unsigned storage_class)
 		if (peek(&token)->value == TOKlparen)
 		    break; // const as type constructor
 		stc = STCconst; // const as storage class
-
 		goto L1;
 
 	    case TOKinvariant:
@@ -2284,8 +2283,6 @@ Array *Parser::parseDeclarations(unsigned storage_class)
 	}
 	break;
     }
-
-    a = new Array();
 
     /* Look for auto initializers:
      *	storage_class identifier = initializer;
@@ -2519,7 +2516,6 @@ Array *Parser::parseAutoDeclarations(unsigned storageClass, unsigned char *comme
      return a;
 }
 #endif
-
 
 /*****************************************
  * Parse contracts following function declaration.

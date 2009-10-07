@@ -400,7 +400,7 @@ void Dsymbol::emitDitto(Scope *sc)
 
 void ScopeDsymbol::emitMemberComments(Scope *sc)
 {
-    //printf("ScopeDsymbol::emitMemberComments()\n");
+	//printf("ScopeDsymbol::emitMemberComments() %s\n", toChars());
     OutBuffer *buf = sc->docbuf;
 
     if (members)

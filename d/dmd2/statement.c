@@ -211,8 +211,7 @@ Statement *ExpStatement::semantic(Scope *sc)
 	exp->checkSideEffect(0);
 	exp = exp->optimize(0);
 	if (exp->op == TOKdeclaration && !isDeclarationStatement())
-	{
-		Statement *s = new DeclarationStatement(loc, exp);
+	{	Statement *s = new DeclarationStatement(loc, exp);
 	    return s;
 	}
 	//exp = exp->optimize(isDeclarationStatement() ? WANTvalue : 0);
@@ -314,6 +313,7 @@ Statement *CompileStatement::semantic(Scope *sc)
      assert(global.errors);
      return NULL;
  }
+
 
 /******************************** DeclarationStatement ***************************/
 
@@ -515,7 +515,9 @@ Statement *CompoundStatement::semantic(Scope *sc)
 	i++;
     }
     if (statements->dim == 1)
+    {
     	return (Statement *)statements->data[0];
+    }
     return this;
 }
 

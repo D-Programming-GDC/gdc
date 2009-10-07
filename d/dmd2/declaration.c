@@ -154,7 +154,7 @@ void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
 	}
     }
 }
-#endif V2
+#endif
 
 /********************************* TupleDeclaration ****************************/
 

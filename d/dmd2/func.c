@@ -1625,6 +1625,7 @@ int fp2(void *param, FuncDeclaration *f)
 	    {
 	    MATCH c1 = f->leastAsSpecialized(m->lastf);
 	    MATCH c2 = m->lastf->leastAsSpecialized(f);
+	    //printf("c1 = %d, c2 = %d\n", c1, c2);
 	    if (c1 > c2)
 		goto LfIsBetter;
 	    if (c1 < c2)
@@ -1796,7 +1797,7 @@ MATCH FuncDeclaration::leastAsSpecialized(FuncDeclaration *g)
     MATCH m = (MATCH) tg->callMatch(NULL, &args);
     if (m)
     {
-        /* A variadic template is less specialized than a
+    	/* A variadic parameter list is less specialized than a
          * non-variadic one.
          */
         if (tf->varargs && !tg->varargs)
