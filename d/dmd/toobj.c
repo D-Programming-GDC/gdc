@@ -135,13 +135,6 @@ void Module::genmoduleinfo()
     }
     dtdword(&dt, 0);			// monitor
     
-    #if V2
-     FuncDeclaration *sgetmembers = findGetMembers();
-     if (sgetmembers)
- 	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
-     else
- #endif
-
     // name[]
     char *name = toPrettyChars();
     size_t namelen = strlen(name);
@@ -210,6 +203,12 @@ void Module::genmoduleinfo()
     else
 	dtdword(&dt, 0);
 
+    #if V2
+    FuncDeclaration *sgetmembers = findGetMembers();
+    if (sgetmembers)
+	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
+    else
+#endif
     dtdword(&dt, 0);			// xgetMembers
 
     if (sictor)
@@ -304,6 +303,12 @@ void ClassDeclaration::toObjFile(int multiobj)
 
     if (!members)
 	return;
+
+    if (multiobj)
+    {
+    	obj_append(this);
+    	return;
+    }
 
     if (global.params.symdebug)
 	toDebug();

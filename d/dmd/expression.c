@@ -290,8 +290,8 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
 #ifdef DEBUG
 	    printf("2: ");
 #endif
-/* Can't find a path from e1 to ad
-! 	     */
+	    /* Can't find a path from e1 to ad
+ 	     */
 	    e1->error("this for %s needs to be type %s not type %s",
 		var->toChars(), ad->toChars(), t->toChars());
 	}
@@ -404,8 +404,8 @@ void arrayExpressionSemantic(Expressions *exps, Scope *sc)
 }
 
 /******************************
-+  * Perform canThrow() on an array of Expressions.
-+  */
+  * Perform canThrow() on an array of Expressions.
+  */
  
  #if V2 int arrayExpressionCanThrow(Expressions *exps)
  {
@@ -5273,10 +5273,16 @@ Expression *DotIdExp::semantic(Scope *sc)
 	eleft = de->e1;
 	eright = de->e2;
     }
+    else
+		{
+    		e1 = resolveProperties(sc, e1);
+    		eleft = NULL;
+    		eright = e1;
+		}
     #if V2
      if (e1->op == TOKtuple && ident == Id::offsetof)
      {	/* 'distribute' the .offsetof to each of the tuple elements.
-+ 	 */
+ 	 */
  	TupleExp *te = (TupleExp *)e1;
  	Expressions *exps = new Expressions();
  	exps->setDim(te->exps->dim);
@@ -5291,12 +5297,6 @@ Expression *DotIdExp::semantic(Scope *sc)
  	return e;
      }
  #endif
-    else
-    {
-	e1 = resolveProperties(sc, e1);
-	eleft = NULL;
-	eright = e1;
-    }
 
     if (e1->op == TOKtuple && ident == Id::length)
     {

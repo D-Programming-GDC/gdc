@@ -1374,8 +1374,8 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 	if (sz != es2->sz)
  	{
  	    /* Can happen with:
-! 	     *   auto s = "foo"d ~ "bar"c;
-! 	     */
+ 	     *   auto s = "foo"d ~ "bar"c;
+ 	     */
  	    assert(global.errors);
  	    return e;
  	}

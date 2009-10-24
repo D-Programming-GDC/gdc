@@ -1005,15 +1005,15 @@ void PragmaDeclaration::toObjFile(int multiobj)
 	name[se->len] = 0;
 	#if _WIN32
  	/* The OMF format allows library names to be inserted
-+ 	 * into the object file. The linker will then automatically
-+ 	 * search that library, too.
-+ 	 */
+ 	 * into the object file. The linker will then automatically
+ 	 * search that library, too.
+ 	 */
   	obj_includelib(name);
  #elif linux
  	/* The ELF format does not allow embedded library names,
-+ 	 * so instead append the library name to the list to be passed
-+ 	 * to the linker.
-+ 	 */
+ 	 * so instead append the library name to the list to be passed
+ 	 * to the linker.
+ 	 */
  	global.params.libfiles->push((void *) name);
  #else
  	error("pragma lib not supported");
@@ -1084,8 +1084,8 @@ void ConditionalDeclaration::emitComment(Scope *sc)
     else if (sc->docbuf)
      {
  	/* If generating doc comment, be careful because if we're inside
-+ 	 * a template, then include(NULL, NULL) will fail.
-+ 	 */
+ 	 * a template, then include(NULL, NULL) will fail.
+ 	 */
  	Array *d = decl ? decl : elsedecl;
  	for (unsigned i = 0; i < d->dim; i++)
  	{   Dsymbol *s = (Dsymbol *)d->data[i];

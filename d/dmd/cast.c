@@ -49,11 +49,11 @@ Expression *Expression::implicitCastTo(Scope *sc, Type *t)
  	       )
  	    {
  		/* This is really only a semi-kludge fix,
-+ 		 * we really should look at the operands of op
-+ 		 * and see if they are narrower types.
-+ 		 * For example, b=b|b and b=b|7 and s=b+b should be allowed,
-+ 		 * but b=b|i should be an error.
-+ 		 */
+ 		 * we really should look at the operands of op
+ 		 * and see if they are narrower types.
+ 		 * For example, b=b|b and b=b|7 and s=b+b should be allowed,
+ 		 * but b=b|i should be an error.
+ 		 */
  		;
  	    }
  	    else
@@ -422,7 +422,7 @@ MATCH NullExp::implicitConvTo(Type *t)
      }
      return m;
  }
- #endif //V2
+ #endif
 
 MATCH StringExp::implicitConvTo(Type *t)
 {   MATCH m;
@@ -483,7 +483,6 @@ MATCH ArrayLiteralExp::implicitConvTo(Type *t)
      printf("ArrayLiteralExp::implicitConvTo(this=%s, type=%s, t=%s)\n",
  	toChars(), type->toChars(), t->toChars());
  #endif
-
     Type *typeb = type->toBasetype();
     Type *tb = t->toBasetype();
     if ((tb->ty == Tarray || tb->ty == Tsarray) &&
@@ -1113,7 +1112,6 @@ L1:
     return e->Expression::castTo(sc, t);
 }
 
-
 Expression *SymOffExp::castTo(Scope *sc, Type *t)
 {
     Type *tb;
@@ -1421,15 +1419,15 @@ Expression *BinExp::typeCombine(Scope *sc)
     else if ((t1->ty == Tsarray || t1->ty == Tarray) &&
 	     e2->op == TOKnull && t2->ty == Tpointer && t2->nextOf()->ty == Tvoid)
      {	/*  (T[n] op void*)
-! 	 *  (T[] op void*)
-! 	 */
+ 	 *  (T[] op void*)
+ 	 */
 	goto Lx1;
     }
     else if ((t2->ty == Tsarray || t2->ty == Tarray) &&
 	     e1->op == TOKnull && t1->ty == Tpointer && t1->nextOf()->ty == Tvoid)
      {	/*  (void* op T[n])
-! 	 *  (void* op T[])
-! 	 */
+ 	 *  (void* op T[])
+ 	 */
 	goto Lx2;
     }
     else if ((t1->ty == Tsarray || t1->ty == Tarray) && t1->implicitConvTo(t2))
@@ -1533,7 +1531,7 @@ Expression *BinExp::typeCombine(Scope *sc)
  	e1 = e1->optimize(WANTvalue);
  	if (isCommutative() && e1->isConst())
  	{   /* Swap operands to minimize number of functions generated
-+ 	     */
+ 	     */
  	    //printf("swap %s\n", e->toChars());
  	    Expression *tmp = e1;
  	    e1 = e2;
