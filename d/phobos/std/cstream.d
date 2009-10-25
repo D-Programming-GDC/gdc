@@ -1,3 +1,5 @@
+// Written in the D programming language
+
 /**
  * The std.cstream module bridges std.c.stdio (or std.stdio) and std.stream.
  * Both std.c.stdio and std.stream are publicly imported by std.cstream.
@@ -144,7 +146,7 @@ class CFile : Stream {
     // string#1 + string#2 + int should give exacly that
     version (Win32)
       assert(file.position() == 19 + 13 + 4);
-    version (linux)
+    version (Posix)
       assert(file.position() == 18 + 13 + 4);
     file.close();
     // no operations are allowed when file is closed
@@ -153,8 +155,7 @@ class CFile : Stream {
     file = new CFile(f,FileMode.In,true);
     // should be ok to read
     assert(file.readable);
-    char[] line = file.readLine();
-    char[] exp = "Testing stream.d:";
+    auto line = file.readLine();    auto exp = "Testing stream.d:";
     assert(line[0] == 'T');
     assert(line.length == exp.length);
     assert(!std.string.cmp(line, "Testing stream.d:"));
@@ -162,7 +163,7 @@ class CFile : Stream {
     file.seek(7, SeekPos.Current);
     version (Win32)
       assert(file.position() == 19 + 7);
-    version (linux)
+    version (Posix)
       assert(file.position() == 18 + 7);
     assert(!std.string.cmp(file.readString(6), "world!"));
     i = 0; file.read(i);
@@ -170,7 +171,7 @@ class CFile : Stream {
     // string#1 + string#2 + int should give exacly that
     version (Win32)
       assert(file.position() == 19 + 13 + 4);
-    version (linux)
+    version (Posix)
       assert(file.position() == 18 + 13 + 4);
     // we must be at the end of file
     file.close();

@@ -92,8 +92,10 @@ public alias int                    boolean;
  * External function declarations
  */
 
-version(linux)
+version(Posix)
     version = dlopen;
+else version(linux)
+	version = dlopen;
 else version (freebsd)
     version = dlopen;
 
@@ -220,7 +222,7 @@ else
 {
 	const int platform_not_discriminated = 0;
 
-	static assert(platform_not_discriminated);
+	static assert(0);
 }
 
 /** The platform-independent module handle. Note that this has to be
@@ -838,9 +840,9 @@ else version(darwin)
 }
 else
 {
-	const int platform_not_discriminated = 0;
+	//const int platform_not_discriminated = 0;
 
-	static assert(platform_not_discriminated);
+	static assert(0); //used to platform_not_discriminated
 }
 
 /* /////////////////////////////////////////////////////////////////////////////

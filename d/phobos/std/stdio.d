@@ -2,7 +2,7 @@
 // Written in the D programming language.
 
 /* Written by Walter Bright and Andrei Alexandrescu
- * www.digitalmars.com
+ * http://www.digitalmars.com/d
  * Placed in the Public Domain.
  */
 
@@ -53,6 +53,7 @@ version (GNU)
 	void funlockfile(FILE*);
     }
     
+    
     static if (Have_getdelim)
     {
 	import gcc.config.unix;
@@ -90,7 +91,6 @@ version (GNU)
 else
     static assert(0);
 
-
 /*********************
  * Thrown if I/O errors happen.
  */
@@ -98,7 +98,7 @@ class StdioException : Exception
 {
     uint errno;			// operating system error code
 
-    this(char[] msg)
+    this(string msg)
     {
 	super(msg);
     }
@@ -116,7 +116,7 @@ class StdioException : Exception
 	super(std.string.toString(s).dup);
     }
 
-    static void opCall(char[] msg)
+    static void opCall(string msg)
     {
 	throw new StdioException(msg);
     }
@@ -153,9 +153,7 @@ void writefx(FILE* fp, TypeInfo[] arguments, va_list argptr, int newline=false)
 	    }
 	    else
 	    {   char[4] buf;
-		char[] b;
-
-		b = std.utf.toUTF8(buf, c);
+		auto b = std.utf.toUTF8(buf, c);
 		for (size_t i = 0; i < b.length; i++)
 		    FPUTC(b[i], fp);
 	    }
@@ -283,7 +281,7 @@ int main()
 }
 ---
  */
-char[] readln(FILE* fp = stdin)
+string readln(FILE* fp = stdin)
 {
     char[] buf;
     readln(fp, buf);
@@ -345,7 +343,7 @@ size_t readln(FILE* fp, inout char[] buf)
 	    {
 		buf.length = 0;
 		int c2;
-		for (int c; (c = FGETWC(fp)) != -1; )
+		for (int c = void; (c = FGETWC(fp)) != -1; )
 		{
 		    if ((c & ~0x7F) == 0)
 		    {   buf ~= c;
@@ -433,7 +431,7 @@ size_t readln(FILE* fp, inout char[] buf)
 		}
 
 		buf.length = 0;
-		for (int c; (c = FGETC(fp)) != -1; )
+		for (int c = void; (c = FGETC(fp)) != -1; )
 		{
 		    buf ~= c;
 		    if (c == '\n')

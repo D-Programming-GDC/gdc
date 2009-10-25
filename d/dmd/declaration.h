@@ -563,7 +563,7 @@ struct FuncDeclaration : Declaration
     const char *kind();
     void toDocBuffer(OutBuffer *buf);
 
-    static FuncDeclaration *genCfunc(Type *treturn, char *name,
+    static FuncDeclaration *genCfunc(Type *treturn, const char *name,
 	Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);
     static FuncDeclaration *genCfunc(Type *treturn, Identifier *id,
 	Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);

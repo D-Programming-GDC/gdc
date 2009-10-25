@@ -279,7 +279,8 @@ SRC_ZLIB= etc\c\zlib\trees.h \
 	etc\c\zlib\ChangeLog \
 	etc\c\zlib\README \
 	etc\c\zlib\win32.mak \
-	etc\c\zlib\linux.mak
+	etc\c\zlib\linux.mak \
+	etc\c\zlib\osx.mak
 
 SRC_GC= internal\gc\gc.d \
 	internal\gc\gcold.d \
@@ -288,9 +289,11 @@ SRC_GC= internal\gc\gc.d \
 	internal\gc\gcbits.d \
 	internal\gc\win32.d \
 	internal\gc\gclinux.d \
+	internal\gc\gcosxc.c \
 	internal\gc\testgc.d \
 	internal\gc\win32.mak \
-	internal\gc\linux.mak
+	internal\gc\linux.mak \
+ 	internal\gc\osx.mak
 
 phobos.lib : $(OBJS) $(SRCS) minit.obj internal\gc\dmgc.lib \
  	etc\c\zlib\zlib.lib win32.mak
@@ -320,7 +323,7 @@ html : $(DOCS)
 
 internal\gc\dmgc.lib:
 	cd internal\gc
-	make -f win32.mak dmgc.lib
+	make DMD=$(DMD) -f win32.mak dmgc.lib
 	cd ..\..
 
 etc\c\zlib\zlib.lib:
@@ -880,11 +883,11 @@ $(DOC)\std_c_wcharh.html : std.ddoc std\c\wcharh.d
 
 ######################################################
 
-zip : win32.mak linux.mak phoboslicense.txt std.ddoc $(SRC) \
+zip : win32.mak linux.mak osx.mak phoboslicense.txt std.ddoc $(SRC) \
 	$(SRC_STD) $(SRC_STD_C) $(SRC_TI) $(SRC_INT) $(SRC_STD_WIN) \
 	$(SRC_STDLINUX) $(SRC_ETC) $(SRC_ETC_C) $(SRC_ZLIB) $(SRC_GC)
 	del phobos.zip
-	zip32 -u phobos win32.mak linux.mak std.ddoc
+	zip32 -u phobos win32.mak linux.mak osx.mak std.ddoc
 	zip32 -u phobos $(SRC)
 	zip32 -u phobos $(SRC_TI)
 	zip32 -u phobos $(SRC_INT)
@@ -893,6 +896,7 @@ zip : win32.mak linux.mak phoboslicense.txt std.ddoc $(SRC) \
 	zip32 -u phobos $(SRC_STD_WIN)
 	zip32 -u phobos $(SRC_STD_C_WIN)
 	zip32 -u phobos $(SRC_STD_C_LINUX)
+	zip32 -u phobos $(SRC_STD_C_OSX)
 	zip32 -u phobos $(SRC_ETC)
 	zip32 -u phobos $(SRC_ETC_C)
 	zip32 -u phobos $(SRC_ZLIB)
@@ -906,8 +910,8 @@ cleanhtml:
 	del $(DOCS)
 
 install:
-	$(CP) phobos.lib gcstub.obj $(DIR)\lib
-	$(CP) win32.mak linux.mak phoboslicense.txt minit.obj std.ddoc $(DIR)\src\phobos
+	$(CP) phobos.lib gcstub.obj $(DIR)\windows\lib
+ 	$(CP) win32.mak linux.mak osx.mak phoboslicense.txt minit.obj std.ddoc $(DIR)\src\phobos
 	$(CP) $(SRC) $(DIR)\src\phobos
 	$(CP) $(SRC_STD) $(DIR)\src\phobos\std
 	$(CP) $(SRC_STD_C) $(DIR)\src\phobos\std\c
@@ -916,6 +920,7 @@ install:
 	$(CP) $(SRC_STD_WIN) $(DIR)\src\phobos\std\windows
 	$(CP) $(SRC_STD_C_WIN) $(DIR)\src\phobos\std\c\windows
 	$(CP) $(SRC_STD_C_LINUX) $(DIR)\src\phobos\std\c\linux
+	$(CP) $(SRC_STD_C_OSX) $(DIR)\src\phobos\std\c\osx
 	$(CP) $(SRC_ETC) $(DIR)\src\phobos\etc
 	$(CP) $(SRC_ETC_C) $(DIR)\src\phobos\etc\c
 	$(CP) $(SRC_ZLIB) $(DIR)\src\phobos\etc\c\zlib

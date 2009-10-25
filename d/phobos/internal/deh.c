@@ -271,6 +271,14 @@ Object *_d_translate_se_to_d_exception(EXCEPTION_RECORD *exception_record)
         case STATUS_STACK_OVERFLOW:
             pti = _d_create_exception_object(&_Class_9Exception, "Stack Overflow");
             break;
+            
+        case STATUS_DATATYPE_MISALIGNMENT:
+             pti = _d_create_exception_object(&_Class_9Exception, "Datatype Misalignment");
+             break;
+ 
+        case STATUS_ARRAY_BOUNDS_EXCEEDED:
+             pti = _d_create_exception_object(&_Class_9Exception, "Array Bounds Exceeded");
+             break;
 
         // convert all other exception codes into a Win32Exception
         default:
@@ -409,7 +417,7 @@ void _d_monitor_epilog(void *x, void *y, Object *h)
 
 /* ======================== linux =============================== */
 
-#if linux
+#if linux || __APPLE__
 
 #include	"mars.h"
 

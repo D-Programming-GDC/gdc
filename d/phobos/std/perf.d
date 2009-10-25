@@ -96,7 +96,7 @@ version(Unix)
     version (GNU) {
 	private import std.c.unix.unix;
     }
-    else version (linux) {
+    else version (Posix) {
 	extern (C)
 	{
 	    private struct timeval

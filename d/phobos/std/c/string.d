@@ -1,7 +1,7 @@
 
 /**
  * C's &lt;string.h&gt;
- * Authors: Walter Bright, Digital Mars, www.digitalmars.com
+ * Authors: Walter Bright, Digital Mars, http://www.digitalmars.com
  * License: Public Domain
  * Macros:
  *	WIKI=Phobos/StdCString
@@ -63,6 +63,16 @@ int strcoll(char* s1, char* s2);		///
 void* memchr(void* s, int c, size_t n);		///
 char* strtok(char*  s1, char*  s2);		///
 char* strerror(int errnum);			///
+
+version (OSX)
+ {
+     int strerror_r(int errnum, char* buf, size_t buflen);	///
+ }
+ 
+ version (FreeBSD)
+ {
+     int strerror_r(int errnum, char* buf, size_t buflen);	///
+ }
 
 version (Windows)
 {

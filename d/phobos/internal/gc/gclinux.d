@@ -6,6 +6,18 @@
 import std.c.linux.linuxextern;
 import std.c.linux.linux;
 
+version (OSX)
+{
+    extern (C)
+    {
+	uint get_end();
+	uint get_etext();
+	uint get_edata();
+
+	extern void* __osx_stack_end;	// set by D startup code
+    }
+}
+
 /+
 extern (C)
 {
@@ -89,6 +101,14 @@ void *os_query_stackBottom()
 	}
 	return *libc_stack_end;
     }
+    else version (OSX)
+    {
+ 	/* A better method would be to set this value as the address
++ 	 * of a local variable defined in extern(C) main().
++ 	 */
+ 	//return cast(void*)0xC0000000;
+ 	return __osx_stack_end;
+    }
     else
     {	// This doesn't resolve on all versions of Linux
 	return __libc_stack_end;
@@ -102,6 +122,21 @@ void *os_query_stackBottom()
 
 void os_query_staticdataseg(void **base, uint *nbytes)
 {
+	version (OSX)
+     {	/* These are probably wrong.
++ 	 * See http://www.manpagez.com/man/3/get_etext/
++ 	 * Should use dylib(3) instead.
++ 	 *
++ 	 * EDIT: should be handled by _d_osx_image_init() now. - SK
++ 	 */
+ 	//*base = cast(void *)get_etext();
+ 	//*nbytes = cast(byte *)get_end() - cast(byte *)get_etext();
+ 	*base = null;
+ 	*nbytes = 0;
+     }
+     else
+     {
     *base = cast(void *)&__data_start;
     *nbytes = cast(byte *)&_end - cast(byte *)&__data_start;
+    }
 }

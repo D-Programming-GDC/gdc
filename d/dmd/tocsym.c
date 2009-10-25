@@ -43,6 +43,8 @@
 void slist_add(Symbol *s);
 void slist_reset();
 
+Classsym *fake_classsym(const char *id);
+
 /********************************* SymbolDeclaration ****************************/
 
 SymbolDeclaration::SymbolDeclaration(Loc loc, Symbol *s, StructDeclaration *dsym)
@@ -67,7 +69,7 @@ Symbol *Dsymbol::toSymbolX(const char *prefix, int sclass, type *t, const char *
 {
     Symbol *s;
     char *id;
-    char *n;
+    const char *n;
     size_t nlen;
 
     //printf("Dsymbol::toSymbolX('%s')\n", prefix);
@@ -187,7 +189,7 @@ Symbol *VarDeclaration::toSymbol()
 		t = type_fake(TYnptr);
 	}
 	else if (storage_class & STClazy)
-	    t = type_fake(TYullong);		// Tdelegate as C type
+	    t = type_fake(TYdelegate);		// Tdelegate as C type
 	else if (isParameter())
 	    t = type->toCParamtype();
 	else
@@ -196,6 +198,11 @@ Symbol *VarDeclaration::toSymbol()
 
 	if (isDataseg())
 	{
+		if (storage_class & STCtls)
+ 	    {	/* Thread local storage
++ 		 */
+ 		type_setty(&t, t->Tty | mTYthread);
+ 	    }
 	    s->Sclass = SCextern;
 	    s->Sfl = FLextern;
 	    slist_add(s);
@@ -313,11 +320,15 @@ Symbol *FuncDeclaration::toSymbol()
 	s = symbol_calloc(id);
 	slist_add(s);
 
-	{   func_t *f;
+	{
 
 	    s->Sclass = SCglobal;
 	    symbol_func(s);
-	    f = s->Sfunc;
+	    func_t *f = s->Sfunc;
+ 	    if (isVirtual())
+ 		f->Fflags |= Fvirtual;
+ 	    else if (isMember2())
+ 		f->Fflags |= Fstatic;
 	    f->Fstartline.Slinnum = loc.linnum;
 	    f->Fstartline.Sfilename = loc.filename;
 	    if (endloc.linnum)
@@ -369,7 +380,7 @@ Symbol *FuncDeclaration::toSymbol()
 	}
 	if (msave)
 	    assert(msave == t->Tmangle);
-	//printf("Tty = %d, mangle = x%x\n", t->Tty, t->Tmangle);
+	//printf("Tty = %x, mangle = x%x\n", t->Tty, t->Tmangle);
 	t->Tcount++;
 	s->Stype = t;
         //s->Sfielddef = this;
@@ -424,9 +435,9 @@ Symbol *static_sym()
     s->Sfl = FLextern;
     s->Sflags |= SFLnodebug;
     s->Stype = t;
-#if ELFOBJ // Burton
+#if ELFOBJ || MACHOBJ
     s->Sseg = DATA;
-#endif /* ELFOBJ */
+#endif
     slist_add(s);
     return s;
 }
@@ -435,7 +446,7 @@ Symbol *static_sym()
  * Fake a struct symbol.
  */
 
-Classsym *fake_classsym(char *name)
+Classsym *fake_classsym(const char *name)
 {   TYPE *t;
     Classsym *scc;
 
@@ -602,11 +613,7 @@ Symbol *EnumDeclaration::toInitializer()
 	stag = fake_classsym(NULL);
 	Identifier *ident_save = ident;
 	if (!ident)
-	{   static int num;
-	    char name[6 + sizeof(num) * 3 + 1];
-	    sprintf(name, "__enum%d", ++num);
-	    ident = Lexer::idPool(name);
-	}
+	ident = Lexer::uniqueId("__enum");
 	s = toSymbolX("__init", SCextern, stag->Stype, "Z");
 	ident = ident_save;
 	s->Sfl = FLextern;

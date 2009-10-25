@@ -1,3 +1,4 @@
+// Written in the D programming language.
 
 /**
  * Macros:
@@ -122,9 +123,8 @@ version (Unix) alias std.string.cmp fcmp;
 
 char[] getExt(char[] fullname)
 {
-    size_t i;
 
-    i = fullname.length;
+    size_t i = fullname.length;
     while (i > 0)
     {
 	if (fullname[i - 1] == '.')
@@ -147,14 +147,13 @@ char[] getExt(char[] fullname)
 unittest
 {
     debug(path) printf("path.getExt.unittest\n");
-    int i;
     char[] result;
 
     version (Win32)
 	result = getExt("d:\\path\\foo.bat");
     version (Unix)
 	result = getExt("/path/foo.bat");
-    i = cmp(result, "bat");
+    auto i = cmp(result, "bat");
     assert(i == 0);
 
     version (Win32)
@@ -216,9 +215,7 @@ unittest
 
 char[] getName(char[] fullname)
 {
-    size_t i;
-
-    i = fullname.length;
+    size_t i = fullname.length;
     while (i > 0)
     {
 	if (fullname[i - 1] == '.')
@@ -241,17 +238,16 @@ char[] getName(char[] fullname)
 unittest
 {
     debug(path) printf("path.getName.unittest\n");
-    int i;
     char[] result;
 
     result = getName("foo.bar");
-    i = cmp(result, "foo");
+    auto i = cmp(result, "foo");
     assert(i == 0);
 
     result = getName("d:\\path.two\\bar");
     version (Win32)
 	i = cmp(result, null);
-    version (linux)
+    version (Posix)
 	i = cmp(result, "d:\\path");
     assert(i == 0);
 }
@@ -289,9 +285,8 @@ char[] getBaseName(char[] fullname)
     }
     body
     {
-	size_t i;
-
-	for (i = fullname.length; i > 0; i--)
+	auto i = fullname.length;
+ 	for (; i > 0; i--)
 	{
 	    version(Win32)
 	    {
@@ -420,9 +415,8 @@ char[] getDrive(char[] fullname)
     {
 	version(Win32)
 	{
-	    size_t i;
 
-	    for (i = 0; i < fullname.length; i++)
+	    for (size_t i = 0; i < fullname.length; i++)
 	    {
 		if (fullname[i] == ':')
 		    return fullname[0 .. i + 1];

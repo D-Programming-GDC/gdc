@@ -135,6 +135,13 @@ void Module::genmoduleinfo()
     }
     dtdword(&dt, 0);			// monitor
     
+    #if V2
+     FuncDeclaration *sgetmembers = findGetMembers();
+     if (sgetmembers)
+ 	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
+     else
+ #endif
+
     // name[]
     char *name = toPrettyChars();
     size_t namelen = strlen(name);
@@ -171,7 +178,7 @@ void Module::genmoduleinfo()
 	    aimports_dim--;
     }
     dtdword(&dt, aimports_dim);
-    if (aimports.dim)
+    if (aimports_dim)
 	dtxoff(&dt, csym, sizeof_ModuleInfo, TYnptr);
     else
 	dtdword(&dt, 0);
@@ -203,12 +210,6 @@ void Module::genmoduleinfo()
     else
 	dtdword(&dt, 0);
 
-    #if V2
-    FuncDeclaration *sgetmembers = findGetMembers();
-    if (sgetmembers)
-	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
-    else
-#endif
     dtdword(&dt, 0);			// xgetMembers
 
     if (sictor)
@@ -251,7 +252,7 @@ void Module::genmoduleinfo()
     }
 
     csym->Sdt = dt;
-#if ELFOBJ
+#if ELFOBJ || MACHOBJ
     // Cannot be CONST because the startup code sets flag bits in it
     csym->Sseg = DATA;
 #endif
@@ -303,12 +304,6 @@ void ClassDeclaration::toObjFile(int multiobj)
 
     if (!members)
 	return;
-
-    if (multiobj)
-    {
-    	obj_append(this);
-    	return;
-    }
 
     if (global.params.symdebug)
 	toDebug();
@@ -362,9 +357,7 @@ void ClassDeclaration::toObjFile(int multiobj)
 	    for (i = 0; i < dtors.dim; i++)
 	    {	DtorDeclaration *d = (DtorDeclaration *)dtors.data[i];
 		Symbol *s = d->toSymbol();
-		elem *e;
-
-		e = el_bin(OPcall, TYvoid, el_var(s), el_var(sthis));
+		elem *e = el_bin(OPcall, TYvoid, el_var(s), el_var(sthis));
 		edtor = el_combine(e, edtor);
 	    }
 
@@ -401,7 +394,10 @@ void ClassDeclaration::toObjFile(int multiobj)
     sinit->Sfl = FLdata;
 #if ELFOBJ // Burton
     sinit->Sseg = CDATA;
-#endif /* ELFOBJ */
+#endif
+#if MACHOBJ
+    sinit->Sseg = DATA;
+#endif
     toDt(&sinit->Sdt);
     outdata(sinit);
 
@@ -704,10 +700,10 @@ void ClassDeclaration::toObjFile(int multiobj)
 
 
     csym->Sdt = dt;
-#if ELFOBJ // Burton
+#if ELFOBJ || MACHOBJ // Burton
     // ClassInfo cannot be const data, because we use the monitor on it
     csym->Sseg = DATA;
-#endif /* ELFOBJ */
+#endif
     outdata(csym);
     if (isExport())
 	obj_export(csym,0);
@@ -767,9 +763,12 @@ void ClassDeclaration::toObjFile(int multiobj)
     vtblsym->Sdt = dt;
     vtblsym->Sclass = scclass;
     vtblsym->Sfl = FLdata;
-#if ELFOBJ // Burton
-    vtblsym->Sseg = CDATA;
-#endif /* ELFOBJ */
+#if ELFOBJ
+      vtblsym->Sseg = CDATA;
+#endif
+#if MACHOBJ
+    vtblsym->Sseg = DATA;
+#endif
     outdata(vtblsym);
     if (isExport())
 	obj_export(vtblsym,0);
@@ -990,9 +989,12 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     }
 
     csym->Sdt = dt;
-#if ELFOBJ // Burton
-    csym->Sseg = CDATA;
-#endif /* ELFOBJ */
+#if ELFOBJ
+      csym->Sseg = CDATA;
+#endif
+#if MACHOBJ
+    csym->Sseg = DATA;
+#endif
     outdata(csym);
     if (isExport())
 	obj_export(csym,0);
@@ -1034,7 +1036,7 @@ void StructDeclaration::toObjFile(int multiobj)
 	    sinit->Sfl = FLdata;
 	    toDt(&sinit->Sdt);
 
-#if !ELFOBJ
+#if OMFOBJ
 	    /* For OMF, common blocks aren't pulled in from the library.
 	     */
 	    /* ELF comdef's generate multiple
@@ -1054,8 +1056,11 @@ void StructDeclaration::toObjFile(int multiobj)
 	    }
 #endif
 
-#if ELFOBJ // Burton
+#if ELFOBJ
 	    sinit->Sseg = CDATA;
+#endif
+#if MACHOBJ
+	    sinit->Sseg = DATA;
 #endif
 	    outdata(sinit);
 	}
@@ -1194,12 +1199,12 @@ void VarDeclaration::toObjFile(int multiobj)
 	    s->Sdt->dt = DT_common;
 	}
 
-#if ELFOBJ // Burton
+#if ELFOBJ || MACHOBJ // Burton
 	if (s->Sdt && s->Sdt->dt == DT_azeros && s->Sdt->DTnext == NULL)
 	    s->Sseg = UDATA;
 	else
 	    s->Sseg = DATA;
-#endif /* ELFOBJ */
+#endif
 	if (sz)
 	{   outdata(s);
 	    if (isExport())
@@ -1243,7 +1248,10 @@ void TypedefDeclaration::toObjFile(int multiobj)
 	sinit->Sfl = FLdata;
 #if ELFOBJ // Burton
 	sinit->Sseg = CDATA;
-#endif /* ELFOBJ */
+#endif
+#if MACHOBJ
+	sinit->Sseg = DATA;
+#endif
 	if (! sinit->Sdt)
 	    sinit->Sdt = tc->sym->init->toDt();
 	outdata(sinit);
@@ -1281,7 +1289,10 @@ void EnumDeclaration::toObjFile(int multiobj)
 	sinit->Sfl = FLdata;
 #if ELFOBJ // Burton
 	sinit->Sseg = CDATA;
-#endif /* ELFOBJ */
+#endif
+#if MACHOBJ
+ 	sinit->Sseg = DATA;
+#endif
 #if V1
   	dtnbytes(&sinit->Sdt, tc->size(0), (char *)&tc->sym->defaultval);
   	//sinit->Sdt = tc->sym->init->toDt();

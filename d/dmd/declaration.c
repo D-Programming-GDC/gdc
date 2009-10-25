@@ -113,26 +113,24 @@ enum PROT Declaration::prot()
  		fd->toParent() == toParent()
  	       )
  	    {
- 	    	VarDeclaration *v = isVarDeclaration();
- 	    	assert(v);
- 	    	v->ctorinit = 1;
- 	    	//printf("setting ctorinit\n");
- 	     }
- 	     else
- 	     {
- 	    	if (s)
- 	    	{   s = s->toParent2();
-				continue;
- 	    	}
- 	    	else
- 	    	{
- 	    		const char *p = isStatic() ? "static " : "";
- 	    		error(loc, "can only initialize %sconst %s inside %sconstructor",
- 	    				p, toChars(), p); 	    	}
+ 		VarDeclaration *v = isVarDeclaration();
+ 		assert(v);
+ 		v->ctorinit = 1;
+ 		//printf("setting ctorinit\n"); 	    }
+ 	    else 	    {
+ 		if (s)
+ 		{   s = s->toParent2();
+ 		    continue;
+ 		}
+ 		else
+		{
+ 		    const char *p = isStatic() ? "static " : "";
+ 		    error(loc, "can only initialize %sconst %s inside %sconstructor",
+ 			p, toChars(), p); 		}
  	    }
  	    break;
  	}
-  }
+     }
      else
      {
  	VarDeclaration *v = isVarDeclaration();
@@ -1149,9 +1147,9 @@ void VarDeclaration::checkCtorConstInit()
 }
 
 /************************************
-  * Check to see if this variable is actually in an enclosing function
-  * rather than the current one.
-  */
+!  * Check to see if this variable is actually in an enclosing function
+!  * rather than the current one.
+   */
 
 void VarDeclaration::checkNestedReference(Scope *sc, Loc loc)
 {

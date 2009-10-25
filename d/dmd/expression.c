@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2008 by Digital Mars
+// Copyright (c) 1999-2009 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -21,13 +21,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <math.h>
 #include <assert.h>
 #if _MSC_VER
 #include <complex>
 #else
 #include <complex.h>
 #endif
-#include <math.h>
 
 #ifdef __APPLE__
 #define integer_t dmd_integer_t
@@ -41,7 +41,7 @@ extern "C" char * __cdecl __locale_decpoint;
 #include "mem.h"
 #elif _WIN32
 #include "..\root\mem.h"
-#elif linux
+#elif linux || __APPLE__
 #include "../root/mem.h"
 #endif
 //#include "port.h"
@@ -290,8 +290,8 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
 #ifdef DEBUG
 	    printf("2: ");
 #endif
-	    /* Can't find a path from e1 to ad
- 	     */
+/* Can't find a path from e1 to ad
+! 	     */
 	    e1->error("this for %s needs to be type %s not type %s",
 		var->toChars(), ad->toChars(), t->toChars());
 	}
@@ -404,8 +404,8 @@ void arrayExpressionSemantic(Expressions *exps, Scope *sc)
 }
 
 /******************************
-  * Perform canThrow() on an array of Expressions.
-  */
++  * Perform canThrow() on an array of Expressions.
++  */
  
  #if V2 int arrayExpressionCanThrow(Expressions *exps)
  {
@@ -1613,7 +1613,11 @@ complex_t RealExp::toComplex()
 int RealEquals(real_t x1, real_t x2)
 {
 #ifndef IN_GCC
-    return (isnan(x1) && isnan(x2)) ||
+    #if __APPLE__
+     return (__inline_isnan(x1) && __inline_isnan(x2)) ||
+ 	#else
+      return (isnan(x1) && isnan(x2)) ||
+ 	#endif
 	/* In some cases, the REALPAD bytes get garbage in them,
 	 * so be sure and ignore them.
 	 */
@@ -1741,7 +1745,11 @@ void realToMangleBuffer(OutBuffer *buf, real_t value)
     else if (value.isInf())
 	buf->writestring(value.isNegative()?"NINF":"INF");
 #else
-    if (isnan(value))
+    #if __APPLE__
+     if (__inline_isnan(value))
+ 	#else
+      if (isnan(value))
+ 	#endif
 	buf->writestring("NAN");	// no -NAN bugs
 #endif
     else
@@ -5273,16 +5281,10 @@ Expression *DotIdExp::semantic(Scope *sc)
 	eleft = de->e1;
 	eright = de->e2;
     }
-    else
-		{
-    		e1 = resolveProperties(sc, e1);
-    		eleft = NULL;
-    		eright = e1;
-		}
     #if V2
      if (e1->op == TOKtuple && ident == Id::offsetof)
      {	/* 'distribute' the .offsetof to each of the tuple elements.
- 	 */
++ 	 */
  	TupleExp *te = (TupleExp *)e1;
  	Expressions *exps = new Expressions();
  	exps->setDim(te->exps->dim);
@@ -5297,6 +5299,12 @@ Expression *DotIdExp::semantic(Scope *sc)
  	return e;
      }
  #endif
+    else
+    {
+	e1 = resolveProperties(sc, e1);
+	eleft = NULL;
+	eright = e1;
+    }
 
     if (e1->op == TOKtuple && ident == Id::length)
     {

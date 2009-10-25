@@ -2,7 +2,7 @@
 
 /**
  * Information about the target operating system, environment, and CPU
- * Authors: Walter Bright, www.digitalmars.com
+ * Authors: Walter Bright, http://www.digitalmars.com
  * License: Public Domain
  * Macros:
  *	WIKI = Phobos/StdSystem
@@ -27,6 +27,7 @@ const
 	Win32 = 1,		// Microsoft 32 bit Windows systems
 	linux,			// all linux systems
 	Unix,                  // Unix-like
+	OSX,
 	NoSystem               // No operating system
     }
 
@@ -42,6 +43,9 @@ const
     {
 	Family family = Family.Unix;
     }	     
+    else version (OSX)
+    {
+	Family family = Family.OSX;    }
     else version (NoSystem)
     {
 	Family family = Family.NoSystem;
@@ -62,6 +66,7 @@ const
 	WindowsXP,
 
 	RedHatLinux,
+	OSX
     }
 
     /// Byte order endianness

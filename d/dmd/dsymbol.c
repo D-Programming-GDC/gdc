@@ -221,6 +221,17 @@ Dsymbol *Dsymbol::pastMixin()
     return s;
 }
 
+TemplateInstance *Dsymbol::inTemplateInstance()
+ {
+     for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
+     {
+ 	TemplateInstance *ti = parent->isTemplateInstance();
+ 	if (ti)
+ 	    return ti;
+     }
+     return NULL;
+ }
+
 /**********************************
  * Use this instead of toParent() when looking for the
  * 'this' pointer of the enclosing function/class.
@@ -234,16 +245,6 @@ Dsymbol *Dsymbol::toParent2()
     return s;
 }
 
-TemplateInstance *Dsymbol::inTemplateInstance()
-{
-    for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
-    {
-	TemplateInstance *ti = parent->isTemplateInstance();
-	if (ti)
-	    return ti;
-    }
-    return NULL;
-}
 
 int Dsymbol::isAnonymous()
 {
@@ -271,14 +272,14 @@ void Dsymbol::inlineScan()
 }
 
 /*********************************************
-  * Search for ident as member of s.
-  * Input:
-  *	flags:	1	don't find private members
-  *		2	don't give error messages
-  *		4	return NULL if ambiguous
-  * Returns:
-  *	NULL if not found
-  */
++  * Search for ident as member of s.
++  * Input:
++  *	flags:	1	don't find private members
++  *		2	don't give error messages
++  *		4	return NULL if ambiguous
++  * Returns:
++  *	NULL if not found
++  */
 
 Dsymbol *Dsymbol::search(Loc loc, Identifier *ident, int flags)
 {
@@ -654,7 +655,7 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
 
 	    //printf("\tscanning import '%s', prots = %d, isModule = %p, isImport = %p\n", ss->toChars(), prots[i], ss->isModule(), ss->isImport());
 	    /* Don't find private members if ss is a module
- 	     */
++ 	     */
 	    s2 = ss->search(loc, ident, ss->isModule() ? 1 : 0);
 	    if (!s)
 		s = s2;
@@ -663,9 +664,9 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
 		if (s->toAlias() == s2->toAlias())
 		{
 			/* After following aliases, we found the same symbol,
- 		     * so it's not an ambiguity.
-		     * But if one alias is deprecated, prefer the other.
- 		     */
++ 		     * so it's not an ambiguity.
++ 		     * But if one alias is deprecated, prefer the other.
++ 		     */
 		    if (s->isDeprecated())
 			s = s2;
 		}

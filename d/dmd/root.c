@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2006 by Digital Mars
+// Copyright (c) 1999-2009 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // www.digitalmars.com
@@ -28,7 +28,7 @@
 #include <direct.h>
 #endif
 
-#ifndef _WIN32
+#ifndef _WIN32 //#if linux || __APPLE__ || __FreeBSD__
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>

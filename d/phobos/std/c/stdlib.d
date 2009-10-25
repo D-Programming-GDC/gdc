@@ -20,13 +20,16 @@ private import std.stdint;
 
 extern (C):
 
-enum
+version (Windows)
 {
+     enum
+     {
     _MAX_PATH   = 260,
     _MAX_DRIVE  = 3,
     _MAX_DIR    = 256,
     _MAX_FNAME  = 256,
     _MAX_EXT    = 256,
+    }
 }
 
 ///
@@ -91,7 +94,7 @@ struct lldiv_t { long quot,rem; }
 	alias gcc.config.errno.ERANGE ERANGE;
     }
     else
-	const int ERANGE = 34;	// on both Windows and linux
+	const int ERANGE = 34;	// on Windows, linux and OSX
 
 double atof(char *);	///
 int    atoi(char *);	/// ditto

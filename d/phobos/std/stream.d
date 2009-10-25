@@ -1,3 +1,5 @@
+// Written in the D programming language
+
 /**
  * Macros:
  *	WIKI = Phobos/StdStream
@@ -45,25 +47,25 @@ module std.stream;
 /// A base class for stream exceptions.
 class StreamException: Exception {
   /// Construct a StreamException with given error message.
-  this(char[] msg) { super(msg); }
+  this(string msg) { super(msg); }
 }
 
 /// Thrown when unable to read data from Stream.
 class ReadException: StreamException {
   /// Construct a ReadException with given error message.
-  this(char[] msg) { super(msg); }
+  this(string msg) { super(msg); }
 }
 
 /// Thrown when unable to write data to Stream.
 class WriteException: StreamException {
   /// Construct a WriteException with given error message.
-  this(char[] msg) { super(msg); }
+  this(string msg) { super(msg); }
 }
 
 /// Thrown when unable to move Stream pointer.
 class SeekException: StreamException {
   /// Construct a SeekException with given error message.
-  this(char[] msg) { super(msg); }
+  this(string msg) { super(msg); }
 }
 
 // seek whence...
@@ -162,7 +164,7 @@ interface InputStream {
    * For example, to echo a file line-by-line with line numbers run:
    * ------------------------------------
    * Stream file = new BufferedFile("sample.txt");
-   * foreach(ulong n, char[] line; file) {
+   * foreach(ulong n, string line; file) {
    *   stdout.writefln("line %d: %s",n,line);
    * }
    * file.close();
@@ -215,17 +217,17 @@ interface InputStream {
    * Scan a string from the input using a similar form to C's scanf
    * and <a href="std_format.html">std.format</a>.
    *
-   * An argument of type char[] is interpreted as a format string.
+   * An argument of type string is interpreted as a format string.
    * All other arguments must be pointer types.
    * If a format string is not present a default will be supplied computed from
-   * the base type of the pointer type. An argument of type char[]* is filled
+   * the base type of the pointer type. An argument of type string* is filled
    * (possibly with appending characters) and a slice of the result is assigned
    * back into the argument. For example the following readf statements
    * are equivalent:
    * --------------------------
    * int x;
    * double y;
-   * char[] s;
+   * string s;
    * file.readf(&x, " hello ", &y, &s);
    * file.readf("%d hello %f %s", &x, &y, &s);
    * file.readf("%d hello %f", &x, &y, "%s", &s);
@@ -560,13 +562,13 @@ class Stream : InputStream, OutputStream {
     return res;
   }
 
-  // iterate through the stream line-by-line with line count and char[]
+  // iterate through the stream line-by-line with line count and string
   int opApply(int delegate(inout ulong n, inout char[] line) dg) {
     int res = 0;
     ulong n = 1;
     char[128] buf;
     while (!eof()) {
-      char[] line = readLine(buf);
+      auto line = readLine(buf);
       res = dg(n,line);
       if (res) break;
       n++;
@@ -579,7 +581,7 @@ class Stream : InputStream, OutputStream {
     int res = 0;
     wchar[128] buf;
     while (!eof()) {
-      wchar[] line = readLineW(buf);
+      auto line = readLineW(buf);
       res = dg(line);
       if (res) break;
     }
@@ -592,7 +594,7 @@ class Stream : InputStream, OutputStream {
     ulong n = 1;
     wchar[128] buf;
     while (!eof()) {
-      wchar[] line = readLineW(buf);
+      auto line = readLineW(buf);
       res = dg(n,line);
       if (res) break;
       n++;
@@ -611,7 +613,7 @@ class Stream : InputStream, OutputStream {
   // reads a Unicode string of given length, throws
   // ReadException on error
   wchar[] readStringW(size_t length) {
-    wchar[] result = new wchar[length];
+    auto result = new wchar[length];
     readExact(result.ptr, result.length * wchar.sizeof);
     return result;
   }
@@ -686,7 +688,7 @@ class Stream : InputStream, OutputStream {
   }
 
   int vreadf(TypeInfo[] arguments, va_list args) {
-    char[] fmt;
+    string fmt;
     int j = 0;
     int count = 0, i = 0;
     char c = getc();
@@ -694,7 +696,7 @@ class Stream : InputStream, OutputStream {
       if (fmt.length == 0 || i == fmt.length) {
 	i = 0;
 	if (arguments[j] is typeid(char[])) {
-	  fmt = va_arg!(char[])(args);
+	  fmt = va_arg!(string)(args);
 	  j++;
 	  continue;
 	} else if (arguments[j] is typeid(int*) ||
@@ -964,13 +966,13 @@ class Stream : InputStream, OutputStream {
 	    *p = s;
 	  } else if (arguments[j] is typeid(char*)) {
 	    s ~= 0;
-	    char* q = va_arg!(char*)(args);
+	    auto q = va_arg!(char*)(args);
 	    q[0 .. s.length] = s[];
 	  } else if (arguments[j] is typeid(wchar[]*)) {
-	    wchar[]* q = va_arg!(wchar[]*)(args);
+	    auto q = va_arg!(wchar[]*)(args);
 	    *q = toUTF16(s);
 	  } else if (arguments[j] is typeid(dchar[]*)) {
-	    dchar[]* q = va_arg!(dchar[]*)(args);
+	    auto q = va_arg!(dchar[]*)(args);
 	    *q = toUTF32(s);
 	  }
 	  j++;
@@ -1128,7 +1130,7 @@ class Stream : InputStream, OutputStream {
     // by Walter's permission
     char[1024] buffer;
     char* p = buffer.ptr;
-    char* f = toStringz(format);
+    auto f = toStringz(format);
     size_t psize = buffer.length;
     size_t count;
     va_list args_copy;
@@ -1171,8 +1173,7 @@ class Stream : InputStream, OutputStream {
 
   private void doFormatCallback(dchar c) {
     char[4] buf;
-    char[] b;
-    b = std.utf.toUTF8(buf, c);
+    auto b = std.utf.toUTF8(buf, c);
     writeString(b);
   }
 
@@ -1299,7 +1300,7 @@ class Stream : InputStream, OutputStream {
    * If the stream is not seekable the contents from the current position to eof
    * is read and returned.
    */
-  override char[] toString() {
+  override string toString() {
     if (!readable)
       return super.toString();
     size_t pos;
@@ -1488,7 +1489,7 @@ class BufferedStream : FilterStream {
    *
    */
 
-  invariant {
+  invariant() {
     assert(bufferSourcePos <= bufferLen);
     assert(bufferCurPos <= bufferLen);
     assert(bufferLen <= buffer.length);
@@ -1762,13 +1763,13 @@ class BufferedStream : FilterStream {
 /// An exception for File errors.
 class StreamFileException: StreamException {
   /// Construct a StreamFileException with given error message.
-  this(char[] msg) { super(msg); }
+  this(string msg) { super(msg); }
 }
 
 /// An exception for errors during File.open.
 class OpenException: StreamFileException {
   /// Construct an OpenFileException with given error message.
-  this(char[] msg) { super(msg); }
+  this(string msg) { super(msg); }
 }
 
 // access modes; may be or'ed
@@ -1843,14 +1844,18 @@ class File: Stream {
    * The FileMode.Append mode will open the file for writing and move the
    * file position to the end of the file.
    */
-  this(char[] filename, FileMode mode = FileMode.In) { this(); open(filename, mode); }
+  this(string filename, FileMode mode = FileMode.In)
+  {
+      this();
+      open(filename, mode);
+  }
 
 
   /***
    * Open a file for the stream, in an identical manner to the constructors.
    * If an error occurs an OpenException is thrown.
    */
-  void open(char[] filename, FileMode mode = FileMode.In) {
+  void open(string filename, FileMode mode = FileMode.In) {
     close();
     int access, share, createMode;
     parseMode(mode, access, share, createMode);
@@ -1918,12 +1923,12 @@ class File: Stream {
   }
 
   /// Create a file for writing.
-  void create(char[] filename) {
+  void create(string filename) {
     create(filename, FileMode.OutNew);
   }
 
   /// ditto
-  void create(char[] filename, FileMode mode) {
+  void create(string filename, FileMode mode) {
     close();
     open(filename, mode | FileMode.OutNew);
   }
@@ -2108,7 +2113,7 @@ class BufferedFile: BufferedStream {
   this() { super(new File()); }
 
   /// opens file in requested mode and buffer size
-  this(char[] filename, FileMode mode = FileMode.In,
+  this(string filename, FileMode mode = FileMode.In,
        uint bufferSize = DefaultBufferSize) {
     super(new File(filename,mode),bufferSize);
   }
@@ -2124,14 +2129,14 @@ class BufferedFile: BufferedStream {
   }
 
   /// opens file in requested mode
-  void open(char[] filename, FileMode mode = FileMode.In) {
+  void open(string filename, FileMode mode = FileMode.In) {
     File sf = cast(File)s;
     sf.open(filename,mode);
     resetSource();
   }
 
   /// creates file in requested mode
-  void create(char[] filename, FileMode mode = FileMode.OutNew) {
+  void create(string filename, FileMode mode = FileMode.OutNew) {
     File sf = cast(File)s;
     sf.create(filename,mode);
     resetSource();
@@ -2531,7 +2536,7 @@ class TArrayStream(Buffer): Stream {
   }
 
   // ensure subclasses don't violate this
-  invariant {
+  invariant() {
     assert(len <= buf.length);
     assert(cur <= len);
   }
@@ -2593,7 +2598,7 @@ class TArrayStream(Buffer): Stream {
     return cast(ubyte[])res;
   }
 
-  override char[] toString() {
+  override string toString() {
     return cast(char[]) data ();
   }
 }
@@ -2676,8 +2681,8 @@ class MemoryStream: TArrayStream!(ubyte[]) {
     m.position = 0;
     assert (m.available == 42);
     m.writef("%d %d %s",100,345,"hello");
-    char[] str = m.toString;
-    assert (str[0..13] == "100 345 hello");
+    auto str = m.toString;
+    assert (str[0..13] == "100 345 hello", str[0 .. 13]);
     assert (m.available == 29);
     assert (m.position == 13);
     
@@ -2690,7 +2695,7 @@ class MemoryStream: TArrayStream!(ubyte[]) {
     assert (str[0..16] == "before 345 hello");
     m2.position = 3;
     m2.copyFrom(m);
-    char[] str2 = m.toString;
+    auto str2 = m.toString;
     str = m2.toString;
     assert (str == ("bef" ~ str2));
   }
@@ -2811,7 +2816,7 @@ class SliceStream : FilterStream {
     this.bounded = true;
   }
 
-  invariant {
+  invariant() {
     if (bounded)
       assert (pos <= high - low);
     else

@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2008 by Digital Mars
+// Copyright (c) 1999-2009 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -25,26 +25,20 @@
 #include	"init.h"
 #include	"template.h"
 
-#if _WIN32
+#if IN_GCC
+#include "mem.h"
+#endif
+/*#if _WIN32
 #include	"..\tk\mem.h"	// for mem_malloc
-#elif linux
+#elif linux || __APPLE__
 #include	"../tk/mem.h"	// for mem_malloc
+#endif*/
+
+#if __APPLE__
+#define __I86__ 1
 #endif
 
-#include	"cc.h"
-#include	"el.h"
-#include	"oper.h"
-#include	"global.h"
-#include	"code.h"
-#include	"type.h"
-#include	"dt.h"
-#include	"irstate.h"
-#include	"id.h"
-#include	"type.h"
-#include	"toir.h"
-
 static char __file__[] = __FILE__;	/* for tassert.h		*/
-#include	"tassert.h"
 
 
 elem *addressElem(elem *e, Type *t);
@@ -143,7 +137,7 @@ elem *callfunc(Loc loc,
 	    }
 	    ea = arg->toElem(irs);
 	L1:
-	    if (ea->Ety == TYstruct)
+	    if (tybasic(ea->Ety) == TYstruct)
 	    {
 		ea = el_una(OPstrpar, TYstruct, ea);
 		ea->Enumbytes = ea->E1->Enumbytes;
@@ -169,23 +163,23 @@ elem *callfunc(Loc loc,
 	    Symbol *stmp = symbol_genauto(t);
 	    ehidden = el_ptr(stmp);
 	}
-	if (global.params.isLinux && tf->linkage != LINKd)
- 	    ;	// ehidden goes last on Linux C++
- 	else
- 	{
-	if (ep)
-	{
-#if 0 // BUG: implement
-	    if (reverse && type_mangle(tfunc) == mTYman_cpp)
-		ep = el_param(ehidden,ep);
-	    else
-#endif
-		ep = el_param(ep,ehidden);
-	}
+	if ((global.params.isLinux || global.params.isOSX) && tf->linkage != LINKd)
+	    ;	// ehidden goes last on Linux/OSX C++
 	else
-	    ep = ehidden;
-	ehidden = NULL;
-    }
+	{
+	    if (ep)
+	    {
+#if 0 // BUG: implement
+		if (reverse && type_mangle(tfunc) == mTYman_cpp)
+		    ep = el_param(ehidden,ep);
+		else
+#endif
+		    ep = el_param(ep,ehidden);
+	    }
+	    else
+		ep = ehidden;
+	    ehidden = NULL;
+	}
     }
 
     if (fd && fd->isMember2())
@@ -244,7 +238,7 @@ elem *callfunc(Loc loc,
 
     ep = el_param(ep, ethis);
     if (ehidden)
- 	ep = el_param(ep, ehidden);	// if ehidden goes last
+	ep = el_param(ep, ehidden);	// if ehidden goes last
 
     tyret = tret->totym();
 
@@ -280,6 +274,15 @@ elem *callfunc(Loc loc,
 	e->Ety = TYnptr;
 	e = el_una(OPind, tyret, e);
     }
+
+#if V2
+    if (tf->isref)
+    {
+	e->Ety = TYnptr;
+	e = el_una(OPind, tyret, e);
+    }
+#endif
+
     if (tybasic(tyret) == TYstruct)
     {
 	e->Enumbytes = tret->size();
@@ -595,6 +598,7 @@ elem *Expression::toElem(IRState *irs)
 /***************************************
  */
 
+#if V1
 elem *VarExp::toElem(IRState *irs)
 {   Symbol *s;
     elem *e;
@@ -697,8 +701,9 @@ L1:
     el_setLoc(e,loc);
     return e;
 }
+#endif
 
-/*****************************************
+/**************************************
  */
 
 elem *FuncExp::toElem(IRState *irs)
@@ -848,6 +853,12 @@ elem *ThisExp::toElem(IRState *irs)
     else
 	ethis = el_var(irs->sthis);
 
+#if STRUCTTHISREF
+    if (type->ty == Tstruct)
+    {	ethis = el_una(OPind, TYstruct, ethis);
+	ethis->Enumbytes = type->size();
+    }
+#endif
     el_setLoc(ethis,loc);
     return ethis;
 }
@@ -870,10 +881,10 @@ elem *RealExp::toElem(IRState *irs)
 {   union eve c;
     tym_t ty;
 
-    //printf("RealExp::toElem(%p)\n", this);
+    //printf("RealExp::toElem(%p) %s\n", this, toChars());
     memset(&c, 0, sizeof(c));
     ty = type->toBasetype()->totym();
-    switch (ty)
+    switch (tybasic(ty))
     {
 	case TYfloat:
 	case TYifloat:
@@ -910,12 +921,14 @@ elem *ComplexExp::toElem(IRState *irs)
     real_t re;
     real_t im;
 
+    //printf("ComplexExp::toElem(%p) %s\n", this, toChars());
+
+    memset(&c, 0, sizeof(c));
     re = creall(value);
     im = cimagl(value);
 
-    memset(&c, 0, sizeof(c));
     ty = type->totym();
-    switch (ty)
+    switch (tybasic(ty))
     {
 	case TYcfloat:
 	    c.Vcfloat.re = (float) re;
@@ -928,8 +941,22 @@ elem *ComplexExp::toElem(IRState *irs)
 	    break;
 
 	case TYcldouble:
+#if 1
 	    c.Vcldouble.re = re;
 	    c.Vcldouble.im = im;
+#else
+{unsigned short *p = (unsigned short *)&c.Vcldouble;
+for (int i = 0; i < (LNGDBLSIZE*2)/2; i++) printf("%04x ", p[i]);
+printf("\n");}
+	    c.Vcldouble.im = im;
+{unsigned short *p = (unsigned short *)&c.Vcldouble;
+for (int i = 0; i < (LNGDBLSIZE*2)/2; i++) printf("%04x ", p[i]);
+printf("\n");}
+	    c.Vcldouble.re = re;
+{unsigned short *p = (unsigned short *)&c.Vcldouble;
+for (int i = 0; i < (LNGDBLSIZE*2)/2; i++) printf("%04x ", p[i]);
+printf("\n");}
+#endif
 	    break;
 
 	default:
@@ -1030,6 +1057,9 @@ elem *StringExp::toElem(IRState *irs)
 #if ELFOBJ // Burton
 	si->Sseg = CDATA;
 #endif
+#if MACHOBJ
+	si->Sseg = DATA;
+#endif
 	outdata(si);
 
 	st->m = irs->m;
@@ -1052,7 +1082,7 @@ elem *StringExp::toElem(IRState *irs)
 	si->Sdt = dt;
 	si->Sfl = FLdata;
 
-#if ELFOBJ // Burton
+#if ELFOBJ || MACHOBJ // Burton
 	si->Sseg = CDATA;
 #endif
 	outdata(si);
@@ -1532,6 +1562,9 @@ elem *AssertExp::toElem(IRState *irs)
 #if ELFOBJ
 		    assertexp_sfilename->Sseg = CDATA;
 #endif
+#if MACHOBJ
+		    assertexp_sfilename->Sseg = DATA;
+#endif
 		    outdata(assertexp_sfilename);
 
 		    assertexp_mn = m;
@@ -1598,46 +1631,6 @@ elem *BinExp::toElemBin(IRState *irs,int op)
     return e;
 }
 
-/****************************************
- */
-
-elem *CommaExp::toElem(IRState *irs)
-{
-    assert(e1 && e2);
-    elem *eleft  = e1->toElem(irs);
-    elem *eright = e2->toElem(irs);
-    elem *e = el_combine(eleft, eright);
-    if (e)
-	el_setLoc(e, loc);
-    return e;
-}
-
-
-/***************************************
- */
-
-elem *CondExp::toElem(IRState *irs)
-{   elem *eleft;
-    elem *eright;
-
-    elem *ec = econd->toElem(irs);
-
-    eleft = e1->toElem(irs);
-    tym_t ty = eleft->Ety;
-    if (global.params.cov && e1->loc.linnum)
-	eleft = el_combine(incUsageElem(irs, e1->loc), eleft);
-
-    eright = e2->toElem(irs);
-    if (global.params.cov && e2->loc.linnum)
-	eright = el_combine(incUsageElem(irs, e2->loc), eright);
-
-    elem *e = el_bin(OPcond, ty, ec, el_bin(OPcolon, ty, eleft, eright));
-    if (tybasic(ty) == TYstruct)
-	e->Enumbytes = e1->type->size();
-    el_setLoc(e, loc);
-    return e;
-}
-
 /***************************************
  */
 
@@ -1650,7 +1643,7 @@ elem *AddExp::toElem(IRState *irs)
 	(tb2->ty == Tarray || tb2->ty == Tsarray)
        )
     {
-	error("Array operations not implemented");
+	error("Array operation %s not implemented", toChars());
     }
     else
 	e = toElemBin(irs,OPadd);
@@ -1880,8 +1873,14 @@ elem *CmpExp::toElem(IRState *irs)
 	ea2 = e2->toElem(irs);
 	ea2 = array_toDarray(t2, ea2);
 
+#if V2
+	ep = el_params(telement->arrayOf()->getInternalTypeInfo(NULL)->toElem(irs),
+		ea2, ea1, NULL);
+	rtlfunc = RTLSYM_ARRAYCMP2;
+#else
 	ep = el_params(telement->getInternalTypeInfo(NULL)->toElem(irs), ea2, ea1, NULL);
 	rtlfunc = RTLSYM_ARRAYCMP;
+#endif
 	e = el_bin(OPcall, TYint, el_var(rtlsym[rtlfunc]), ep);
 	e = el_bin(eop, TYint, e, el_long(TYint, 0));
 	el_setLoc(e,loc);
@@ -1967,8 +1966,14 @@ elem *EqualExp::toElem(IRState *irs)
 	ea2 = e2->toElem(irs);
 	ea2 = array_toDarray(t2, ea2);
 
+#if V2
+	ep = el_params(telement->arrayOf()->getInternalTypeInfo(NULL)->toElem(irs),
+		ea2, ea1, NULL);
+	rtlfunc = RTLSYM_ARRAYEQ2;
+#else
 	ep = el_params(telement->getInternalTypeInfo(NULL)->toElem(irs), ea2, ea1, NULL);
 	rtlfunc = RTLSYM_ARRAYEQ;
+#endif
 	e = el_bin(OPcall, TYint, el_var(rtlsym[rtlfunc]), ep);
 	if (op == TOKnotequal)
 	    e = el_bin(OPxor, TYint, e, el_long(TYint, 1));
@@ -2163,8 +2168,8 @@ elem *AssignExp::toElem(IRState *irs)
 
 	// which we do if the 'next' types match
 	if (ismemset)
-	{   // Do a memset for array[]=n
-		//printf("Lpair %s\n", toChars());
+	{   // Do a memset for array[]=v
+	    //printf("Lpair %s\n", toChars());
 	    SliceExp *are = (SliceExp *)e1;
 	    elem *elwr;
 	    elem *eupr;
@@ -2294,46 +2299,46 @@ elem *AssignExp::toElem(IRState *irs)
 	    //elem_print(e);
 	    goto Lret;
 	}
-	#if 0
+#if 0
 	else if (e2->op == TOKadd || e2->op == TOKmin)
- 	{
- 	    /* It's ea[] = eb[] +- ec[]
-+ 	     */
- 	    BinExp *e2a = (BinExp *)e2;
- 	    Type *t = e2->type->toBasetype()->nextOf()->toBasetype();
- 	    if (t->ty != Tfloat32 && t->ty != Tfloat64 && t->ty != Tfloat80)
- 	    {
- 		e2->error("array add/min for %s not supported", t->toChars());
- 		return el_long(TYint, 0);
- 	    }
- 	    elem *ea = e1->toElem(irs);
- 	    ea = array_toDarray(e1->type, ea);
- 	    elem *eb = e2a->e1->toElem(irs);
- 	    eb = array_toDarray(e2a->e1->type, eb);
- 	    elem *ec = e2a->e2->toElem(irs);
- 	    ec = array_toDarray(e2a->e2->type, ec);
- 
- 	    int rtl = RTLSYM_ARRAYASSADDFLOAT;
- 	    if (t->ty == Tfloat64)
- 		rtl = RTLSYM_ARRAYASSADDDOUBLE;
- 	    else if (t->ty == Tfloat80)
- 		rtl = RTLSYM_ARRAYASSADDREAL;
- 	    if (e2->op == TOKmin)
- 	    {
- 		rtl = RTLSYM_ARRAYASSMINFLOAT;
- 		if (t->ty == Tfloat64)
- 		    rtl = RTLSYM_ARRAYASSMINDOUBLE;
- 		else if (t->ty == Tfloat80)
- 		    rtl = RTLSYM_ARRAYASSMINREAL;
- 	    }
- 
- 	    /* Set parameters so the order of evaluation is eb, ec, ea
-+ 	     */
- 	    elem *ep = el_params(eb, ec, ea, NULL);
- 	    e = el_bin(OPcall, type->totym(), el_var(rtlsym[rtl]), ep);
- 	    goto Lret;
- 	}
- 	#endif //0
+	{
+	    /* It's ea[] = eb[] +- ec[]
+	     */
+	    BinExp *e2a = (BinExp *)e2;
+	    Type *t = e2->type->toBasetype()->nextOf()->toBasetype();
+	    if (t->ty != Tfloat32 && t->ty != Tfloat64 && t->ty != Tfloat80)
+	    {
+		e2->error("array add/min for %s not supported", t->toChars());
+		return el_long(TYint, 0);
+	    }
+	    elem *ea = e1->toElem(irs);
+	    ea = array_toDarray(e1->type, ea);
+	    elem *eb = e2a->e1->toElem(irs);
+	    eb = array_toDarray(e2a->e1->type, eb);
+	    elem *ec = e2a->e2->toElem(irs);
+	    ec = array_toDarray(e2a->e2->type, ec);
+
+	    int rtl = RTLSYM_ARRAYASSADDFLOAT;
+	    if (t->ty == Tfloat64)
+		rtl = RTLSYM_ARRAYASSADDDOUBLE;
+	    else if (t->ty == Tfloat80)
+		rtl = RTLSYM_ARRAYASSADDREAL;
+	    if (e2->op == TOKmin)
+	    {
+		rtl = RTLSYM_ARRAYASSMINFLOAT;
+		if (t->ty == Tfloat64)
+		    rtl = RTLSYM_ARRAYASSMINDOUBLE;
+		else if (t->ty == Tfloat80)
+		    rtl = RTLSYM_ARRAYASSMINREAL;
+	    }
+
+	    /* Set parameters so the order of evaluation is eb, ec, ea
+	     */
+	    elem *ep = el_params(eb, ec, ea, NULL);
+	    e = el_bin(OPcall, type->totym(), el_var(rtlsym[rtl]), ep);
+	    goto Lret;
+	}
+#endif
 	else
 	{
 	    /* It's array1[]=array2[]
@@ -2377,21 +2382,21 @@ elem *AssignExp::toElem(IRState *irs)
 		e = el_pair(eto->Ety, el_copytree(elen), e);
 		e = el_combine(eto, e);
 	    }
-	    #if V2
- 	    else if (postblit && op != TOKblit)
- 	    {
- 		/* Generate:
-+ 		 *	_d_arrayassign(ti, efrom, eto)
-+ 		 * or:
-+ 		 *	_d_arrayctor(ti, efrom, eto)
-+ 		 */
- 		el_free(esize);
- 		Expression *ti = t1->nextOf()->toBasetype()->getTypeInfo(NULL);
- 		ep = el_params(eto, efrom, ti->toElem(irs), NULL);
- 		int rtl = (op == TOKconstruct) ? RTLSYM_ARRAYCTOR : RTLSYM_ARRAYASSIGN;
- 		e = el_bin(OPcall, type->totym(), el_var(rtlsym[rtl]), ep);
- 	    }
- 		#endif
+#if V2
+	    else if (postblit && op != TOKblit)
+	    {
+		/* Generate:
+		 *	_d_arrayassign(ti, efrom, eto)
+		 * or:
+		 *	_d_arrayctor(ti, efrom, eto)
+		 */
+		el_free(esize);
+		Expression *ti = t1->nextOf()->toBasetype()->getTypeInfo(NULL);
+		ep = el_params(eto, efrom, ti->toElem(irs), NULL);
+		int rtl = (op == TOKconstruct) ? RTLSYM_ARRAYCTOR : RTLSYM_ARRAYASSIGN;
+		e = el_bin(OPcall, type->totym(), el_var(rtlsym[rtl]), ep);
+	    }
+#endif
 	    else
 	    {
 		// Generate:
@@ -2417,6 +2422,26 @@ elem *AssignExp::toElem(IRState *irs)
 	ta = ae->e1->type->toBasetype();
 	ty = ta->ty;
     }
+
+#if V2
+    /* Look for reference initializations
+     */
+    if (op == TOKconstruct && e1->op == TOKvar)
+    {
+	VarExp *ve = (VarExp *)e1;
+	Declaration *s = ve->var;
+	if (s->storage_class & STCref)
+	{
+	    Expression *ae = e2->addressOf(NULL);
+	    e = ae->toElem(irs);
+	    elem *es = el_var(s->toSymbol());
+	    es->Ety = TYnptr;
+	    e = el_bin(OPeq, TYnptr, es, e);
+	    goto Lret;
+	}
+    }
+#endif
+
 #if 1
     /* This will work if we can distinguish an assignment from
      * an initialization of the lvalue. It'll work if the latter.
@@ -2763,6 +2788,50 @@ elem *UshrExp::toElem(IRState *irs)
     return e;
 }
 
+/****************************************
+ */
+
+elem *CommaExp::toElem(IRState *irs)
+{
+    assert(e1 && e2);
+    elem *eleft  = e1->toElem(irs);
+    elem *eright = e2->toElem(irs);
+    elem *e = el_combine(eleft, eright);
+    if (e)
+	el_setLoc(e, loc);
+    return e;
+}
+
+
+/***************************************
+ */
+
+elem *CondExp::toElem(IRState *irs)
+{   elem *eleft;
+    elem *eright;
+
+    elem *ec = econd->toElem(irs);
+
+    eleft = e1->toElem(irs);
+    tym_t ty = eleft->Ety;
+    if (global.params.cov && e1->loc.linnum)
+	eleft = el_combine(incUsageElem(irs, e1->loc), eleft);
+
+    eright = e2->toElem(irs);
+    if (global.params.cov && e2->loc.linnum)
+	eright = el_combine(incUsageElem(irs, e2->loc), eright);
+
+    elem *e = el_bin(OPcond, ty, ec, el_bin(OPcolon, ty, eleft, eright));
+    if (tybasic(ty) == TYstruct)
+	e->Enumbytes = e1->type->size();
+    el_setLoc(e, loc);
+    return e;
+}
+
+
+/***************************************
+ */
+
 elem *TypeDotIdExp::toElem(IRState *irs)
 {
     print();
@@ -2801,7 +2870,7 @@ elem *DotVarExp::toElem(IRState *irs)
     Type *tb1 = e1->type->toBasetype();
     if (tb1->ty != Tclass && tb1->ty != Tpointer)
 	//e = el_una(OPaddr, TYnptr, e);
- 	e = addressElem(e, tb1);
+	e = addressElem(e, tb1);
     e = el_bin(OPadd, TYnptr, e, el_long(TYint, v ? v->offset : 0));
     e = el_una(OPind, type->totym(), e);
     if (tybasic(e->Ety) == TYstruct)
@@ -4242,6 +4311,20 @@ elem *StructLiteralExp::toElem(IRState *irs)
 		{   e1->Eoper = OPstreq;
 		    e1->Enumbytes = v->type->size();
 		}
+#if V2
+		/* Call postBlit() on e1
+		 */
+		Type *tb = v->type->toBasetype();
+		if (tb->ty == Tstruct)
+		{   StructDeclaration *sd = ((TypeStruct *)tb)->sym;
+		    if (sd->postblit)
+		    {	FuncDeclaration *fd = sd->postblit;
+			ec = el_copytree(ec);
+			ec = callfunc(loc, irs, 1, Type::tvoid, ec, tb->pointerTo(), fd, fd->type, NULL, NULL);
+			e1 = el_bin(OPcomma, ec->Ety, e1, ec);
+		    }
+		}
+#endif
 	    }
 	    e = el_combine(e, e1);
 	}

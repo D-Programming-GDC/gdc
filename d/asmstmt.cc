@@ -64,6 +64,7 @@ d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4)
 }
 #endif
 
+#if V2 //for GDC D1
 AsmStatement::AsmStatement(Loc loc, Token *tokens) :
     Statement(loc)
 {
@@ -133,6 +134,8 @@ AsmStatement::blockExit()
 }
 
 //#endif
+
+#endif //V2 for GDC
 
 /* GCC does not support jumps from asm statements.  When optimization
    is turned on, labels referenced only from asm statements will not

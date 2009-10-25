@@ -1,7 +1,7 @@
 
 /**
  * C's &lt;time.h&gt;
- * Authors: Walter Bright, Digital Mars, www.digitalmars.com
+ * Authors: Walter Bright, Digital Mars, http://www.digitalmars.com
  * License: Public Domain
  * Macros:
  *	WIKI=Phobos/StdCTime
@@ -38,31 +38,74 @@ alias Clong_t clock_t;
 
 version (Windows)
 {   const clock_t CLOCKS_PER_SEC = 1000;
+    const clock_t CLK_TCK        = 1000;
+    struct tm
+     {  int     tm_sec,
+                tm_min,
+                tm_hour,
+                tm_mday,
+                tm_mon,
+                tm_year,
+                tm_wday,
+                tm_yday,
+                tm_isdst;
+     }
 }
 else version (linux)
 {   const clock_t CLOCKS_PER_SEC = 1000000;
-}
-else version (darwin)
-{
-    const clock_t CLOCKS_PER_SEC = 100;
-}
-else
-{
-    static assert(0);
-}
-
-version (Windows)
-{
-    const clock_t CLK_TCK        = 1000;
-}
-else version (linux)
-{
     extern (C) int sysconf(int);
     extern clock_t CLK_TCK;
     /*static this()
     {
 	CLK_TCK = cast(clock_t) sysconf(2);
     }*/
+     struct tm
+     {  int     tm_sec,
+                tm_min,
+                tm_hour,
+                tm_mday,
+                tm_mon,
+                tm_year,
+                tm_wday,
+                tm_yday,
+                tm_isdst;
+     }
+ }
+ else version (OSX)
+ {
+     const clock_t CLOCKS_PER_SEC = 100;
+     const clock_t CLK_TCK        = 100;
+ 
+     struct tm
+     {  int     tm_sec,
+                tm_min,
+                tm_hour,
+                tm_mday,
+                tm_mon,
+                tm_year,
+                tm_wday,
+                tm_yday,
+                tm_isdst;
+     }
+ }
+ else version (FreeBSD)
+ {
+     const clock_t CLOCKS_PER_SEC = 128;
+     const clock_t CLK_TCK        = 128; // deprecated, use sysconf(_SC_CLK_TCK)
+ 
+     struct tm
+     {   int     tm_sec,
+                tm_min,
+                tm_hour,
+                tm_mday,
+                tm_mon,
+                tm_year,
+                tm_wday,
+                tm_yday,
+                tm_isdst;
+ 	int tm_gmtoff;
+ 	char* tm_zone;
+     }
 }
 else
 {
@@ -78,17 +121,6 @@ extern int timezone;
 extern int altzone;
 extern char *tzname[2];
 
-struct tm
-{      int     tm_sec,
-               tm_min,
-               tm_hour,
-               tm_mday,
-               tm_mon,
-               tm_year,
-               tm_wday,
-               tm_yday,
-               tm_isdst;
-}
 }
 
 clock_t clock();

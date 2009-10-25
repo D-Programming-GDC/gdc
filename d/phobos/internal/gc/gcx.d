@@ -77,9 +77,13 @@ else version (GNU)
 {
     private import gcgcc;
 }
-else version (linux)
+else version (Posix)
 {
     import gclinux;
+}
+else version (OSX)
+{
+	import std.c.osx.osx;
 }
 
 /*version (BigEndian)
@@ -108,7 +112,7 @@ private void* rt_stackBottom()
     {
 	return gcgcc.os_query_stackBottom();
     }
-    else version (linux)
+    else version (Posix)
     {
         return gclinux.os_query_stackBottom();
     }
@@ -261,7 +265,7 @@ class GC
 
     void Dtor()
     {
-	version (linux)
+	version (Posix)
 	{
 	    //debug(PRINTF) printf("Thread %x ", pthread_self());
 	    //debug(PRINTF) printf("GC.Dtor()\n");
@@ -1960,7 +1964,24 @@ struct Gcx
 			else
 			    mark(t.stackBottom, t.stackTop);
 		    }
-		    else version (linux)
+		    else version (OSX)
+ 		    {
+ 		        x86_thread_state32_t   state = void;
+ 		        mach_msg_type_number_t count = x86_THREAD_STATE32_COUNT;
+ 		        
+ 		        if (thread_get_state(t.machid,
+ 		                             x86_THREAD_STATE32,
+ 		                             &state,
+ 		                             &count) != KERN_SUCCESS)
+ 		        {
+ 		            assert(0);
+ 		        }
+ 		        debug (PRINTF) printf("mt scan stack bot = %x, top = %x\n", state.esp, t.stackBottom);
+ 		        
+ 			mark(cast(void *)state.esp, t.stackBottom);
+ 			mark(&state.eax, &state.esp);
+ 		    }
+ 		    else version (Posix)
 		    {
 			// The registers are already stored in the stack
 			//printf("Thread: ESP = x%x, stackBottom = x%x, isSelf = %d\n", Thread.getESP(), t.stackBottom, t.isSelf());

@@ -222,7 +222,6 @@ Dsymbol *ClassDeclaration::syntaxCopy(Dsymbol *s)
 
 void ClassDeclaration::semantic(Scope *sc)
 {   int i;
-	target_ptrdiff_t offset;
 
     //printf("ClassDeclaration::semantic(%s), type = %p, sizeok = %d, this = %p\n", toChars(), type, sizeok, this);
     //printf("\tparent = %p, '%s'\n", sc->parent, sc->parent ? sc->parent->toChars() : "");
@@ -556,8 +555,8 @@ void ClassDeclaration::semantic(Scope *sc)
   	sc->linkage = LINKwindows;
  #else
  	/* This enables us to use COM objects under Linux and
- 	 * work with things like XPCOM
- 	 */
++ 	 * work with things like XPCOM
++ 	 */
  	sc->linkage = LINKc;
  #endif
      }

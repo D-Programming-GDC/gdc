@@ -1,7 +1,7 @@
 
 /**
  * C's &lt;stdarg.h&gt;
- * Authors: Hauke Duden and Walter Bright, Digital Mars, www.digitalmars.com
+ * Authors: Hauke Duden and Walter Bright, Digital Mars, http://www.digitalmars.com
  * License: Public Domain
  * Macros:
  *	WIKI=Phobos/StdCStdarg
@@ -23,6 +23,14 @@ else version (linux)
     alias dchar wchar_t;
 }
 else version (Unix)
+{
+    alias dchar wchar_t;
+}
+else version (OSX)
+{
+    alias dchar wchar_t;
+}
+else version (FreeBSD)
 {
     alias dchar wchar_t;
 }

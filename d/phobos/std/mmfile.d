@@ -258,7 +258,7 @@ class MmFile
 		}
 		else version (unix_mm)
 		{
-			char* namez = toStringz(filename);
+			auto namez = toStringz(filename);
 			void* p;
 			int oflag;
 			int fmode;
@@ -324,12 +324,14 @@ class MmFile
 					unix.write(fd, &c, 1);
 				}
 				else if (prot & PROT_READ && size == 0)
-					size = statbuf.st_size;
+					size = cast(ulong)statbuf.st_size;
 			}
 			else
 			{
 				fd = -1;
-				flags |= MAP_ANONYMOUS;
+				version (linux)			flags |= MAP_ANONYMOUS;
+				else version (OSX)		flags |= MAP_ANON;
+ 				else				static assert(0);
 			}
 			this.size = size;
 			size_t initial_map = (window && 2*window<size)? 2*window : cast(size_t)size;

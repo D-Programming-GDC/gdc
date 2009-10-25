@@ -23,6 +23,12 @@ extern (C) void _moduleUnitTests();
 
 extern (C) bool no_catch_exceptions;
 
+version (OSX)
+{
+    // The bottom of the stack
+    extern (C) void* __osx_stack_end = cast(void*)0xC0000000;
+}
+
 /***********************************
  * The D main() function supplied by the user's program
  */
@@ -42,7 +48,16 @@ extern (C) int main(size_t argc, char **argv)
     int myesp;
     int myebx;
 
-    version (linux)
+    version (OSX)
+     {	/* OSX does not provide a way to get at the top of the
+! 	 * stack, except for the magic value 0xC0000000.
+! 	 * But as far as the gc is concerned, argv is at the top
+! 	 * of the main thread's stack, so save the address of that.
+! 	 */
+ 	__osx_stack_end = cast(void*)&argv;
+     }
+ 
+     version (Posix)
     {
 	_STI_monitor_staticctor();
 	_STI_critical_init();
@@ -109,7 +124,7 @@ extern (C) int main(size_t argc, char **argv)
 	}
     }
 
-    version (linux)
+    version (Posix)
     {
 	free(am);
 	_STD_critical_term();

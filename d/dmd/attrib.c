@@ -21,7 +21,7 @@
 
 #if _WIN32 || IN_GCC
 #include "mem.h"
-#elif linux
+#elif linux || __APPLE__
 #include "../root/mem.h"
 #endif
 
@@ -146,6 +146,14 @@ void AttribDeclaration::addComment(unsigned char *comment)
 void AttribDeclaration::emitComment(Scope *sc)
 {
     //printf("AttribDeclaration::emitComment(sc = %p)\n", sc);
+    
+    /* A general problem with this, illustrated by BUGZILLA 2516,
++      * is that attributes are not transmitted through to the underlying
++      * member declarations for template bodies, because semantic analysis
++      * is not done for template declaration bodies
++      * (only template instantiations).
++      * Hence, Ddoc omits attributes from template members.
++      */
 
     Array *d = include(NULL, NULL);
 
@@ -322,11 +330,17 @@ void StorageClassDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 	{ STCstatic,       TOKstatic },
 	{ STCextern,       TOKextern },
 	{ STCconst,        TOKconst },
+ //	{ STCinvariant,    TOKimmutable },
+ //	{ STCshared,       TOKshared },
 	{ STCfinal,        TOKfinal },
 	{ STCabstract,     TOKabstract },
 	{ STCsynchronized, TOKsynchronized },
 	{ STCdeprecated,   TOKdeprecated },
 	{ STCoverride,     TOKoverride },
+ //	{ STCnothrow,      TOKnothrow },
+ //	{ STCpure,         TOKpure },
+ //	{ STCref,          TOKref },
+ //	{ STCtls,          TOKtls },
     };
 
     int written = 0;
@@ -591,7 +605,7 @@ void AnonDeclaration::semantic(Scope *sc)
 
 	sc = sc->push();
 	sc->anonAgg = &aad;
-	sc->stc &= ~(STCauto | STCscope | STCstatic);
+	sc->stc &= ~(STCauto | STCscope | STCstatic | STCtls);
 	sc->inunion = isunion;
 	sc->offset = 0;
 	sc->flags = 0;
@@ -710,6 +724,7 @@ PragmaDeclaration::PragmaDeclaration(Loc loc, Identifier *ident, Expressions *ar
 
 Dsymbol *PragmaDeclaration::syntaxCopy(Dsymbol *s)
 {
+	//printf("PragmaDeclaration::syntaxCopy(%s)\n", toChars());
     PragmaDeclaration *pd;
 
     assert(!s);
@@ -1003,17 +1018,18 @@ void PragmaDeclaration::toObjFile(int multiobj)
 	char *name = (char *)mem.malloc(se->len + 1);
 	memcpy(name, se->string, se->len);
 	name[se->len] = 0;
-	#if _WIN32
+	#if OMFOBJ
  	/* The OMF format allows library names to be inserted
- 	 * into the object file. The linker will then automatically
- 	 * search that library, too.
- 	 */
++ 	 * into the object file. The linker will then automatically
++ 	 * search that library, too.
++ 	 */
   	obj_includelib(name);
- #elif linux
+ 	#elif ELFOBJ || MACHOBJ
+ 	/* The format does not allow embedded library names,
  	/* The ELF format does not allow embedded library names,
- 	 * so instead append the library name to the list to be passed
- 	 * to the linker.
- 	 */
++ 	 * so instead append the library name to the list to be passed
++ 	 * to the linker.
++ 	 */
  	global.params.libfiles->push((void *) name);
  #else
  	error("pragma lib not supported");
@@ -1084,8 +1100,8 @@ void ConditionalDeclaration::emitComment(Scope *sc)
     else if (sc->docbuf)
      {
  	/* If generating doc comment, be careful because if we're inside
- 	 * a template, then include(NULL, NULL) will fail.
- 	 */
++ 	 * a template, then include(NULL, NULL) will fail.
++ 	 */
  	Array *d = decl ? decl : elsedecl;
  	for (unsigned i = 0; i < d->dim; i++)
  	{   Dsymbol *s = (Dsymbol *)d->data[i];
@@ -1271,7 +1287,7 @@ Dsymbol *CompileDeclaration::syntaxCopy(Dsymbol *s)
 
 int CompileDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
-    //printf("CompileDeclaration::addMember(sc = %p)\n", sc);
+    //printf("CompileDeclaration::addMember(sc = %p, memnum = %d)\n", sc, memnum);
     this->sd = sd;
     if (memnum == 0)
     {	/* No members yet, so parse the mixin now

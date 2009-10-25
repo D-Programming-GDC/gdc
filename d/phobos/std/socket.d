@@ -49,6 +49,10 @@ version(Unix)
 {
 	version = BsdSockets;
 }
+version(Posix)
+{
+	version = BsdSockets;
+}
 
 version (skyos) { /* nothging */ }
 else
@@ -112,6 +116,25 @@ class SocketException: Exception
 			{
 				char[80] buf;
 				auto cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
+				//char* cs;
+	 		    version (linux)
+	 		    {
+	 			cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
+			    }
+	 		    else version (OSX)
+	 		    {
+	 			auto errs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
+	 			if (errs == 0)
+	 			    cs = buf.ptr;
+	 			else
+	 			{
+				    cs = "Unknown error";
+	 			}
+	 		    }
+	 		    else
+	 		    {
+	 			static assert(0);
+	 		    }
 				auto len = strlen(cs);
 				
 				if(cs[len - 1] == '\n')
@@ -222,7 +245,8 @@ class Protocol
 			aliases = new string[i];
 			for(i = 0; i != aliases.length; i++)
 			{
-				aliases[i] = std.string.toString(proto.p_aliases[i]).dup;
+				aliases[i] =
+ 				std.string.toString(proto.p_aliases[i]).dup;
 			}
 		}
 		else
@@ -305,7 +329,8 @@ class Service
 			aliases = new string[i];
 			for(i = 0; i != aliases.length; i++)
 			{
-				aliases[i] = std.string.toString(serv.s_aliases[i]).dup;
+				aliases[i] =
+                                 std.string.toString(serv.s_aliases[i]).dup;
 			}
 		}
 		else
@@ -1165,7 +1190,7 @@ class Socket
 					if(WSAEWOULDBLOCK == err)
 						return;
 				}
-				else version(Unix)
+				else version(Unix) //posix
 				{
 					if(EINPROGRESS == err)
 						return;
@@ -1572,7 +1597,7 @@ class Socket
 			if(_SOCKET_ERROR == result && WSAGetLastError() == WSAEINTR)
 				return -1;
 		}
-		else version(Unix)
+		else version(Unix) //posix??
 		{
 			if(_SOCKET_ERROR == result && getErrno() == EINTR)
 				return -1;
