@@ -620,6 +620,7 @@ AC_SUBST(DCFG_GETPWNAM_R)
 
 
 AC_SUBST(DCFG_UNIX)
+AC_SUBST(DCFG_POSIX)
 	
 if test -z "$DFLAGS"; then
     DFLAGS="-g -frelease -O2"
