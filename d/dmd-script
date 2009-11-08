@@ -97,6 +97,7 @@ sub printUsage() {
     print <<EOF
 Documentation: http://www.digitalmars.com/d/1.0/index.html
                http://dgcc.sourceforge.net/
+               http://bitbucket.org/goshawk/gdc/wiki/Home
 Usage:
   gdmd files.d ... { -switch }
 
