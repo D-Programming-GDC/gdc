@@ -33,20 +33,15 @@
 #ifdef IN_GCC
 
 #include <time.h>
-#include "mem.h"
 
 #else
 
 #if __GNUC__
 #include <time.h>
 #endif
+#endif
 
-#if _WIN32
-#include "..\root\mem.h"
-#else
-#include "../root/mem.h"
-#endif
-#endif
+#include "rmem.h"
 
 #include "stringtable.h"
 

@@ -27,7 +27,7 @@
 #include "dsymbol.h"
 #include "id.h"
 
-#include <mem.h>
+#include "rmem.h"
 
 // Back end
 #include "cc.h"

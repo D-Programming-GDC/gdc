@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "mem.h"
+#include "rmem.h"
 #include "lexer.h"
 #include "parse.h"
 #include "init.h"

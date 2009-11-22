@@ -31,8 +31,8 @@
 #include "id.h"
 #include "import.h"
 #include "template.h"
+#include "rmem.h" //commented out for gdc??
 
-#include <mem.h>
 #ifndef IN_GCC
 #include "cc.h"
 #include "global.h"
@@ -240,7 +240,13 @@ void Module::genmoduleinfo()
 
 	if (m->needModuleInfo())
 	{   Symbol *s = m->toSymbol();
-	    s->Sflags |= SFLweak;
+	    /* Weak references don't pull objects in from the library,
++ 	     * they resolve to 0 if not pulled in by something else.
++ 	     * Don't pull in a module just because it was imported.
++ 	     */
+#if !OMFOBJ // Optlink crashes with weak symbols at EIP 41AFE7, 402000
+     s->Sflags |= SFLweak;
+#endif
 	    dtxoff(&dt, s, 0, TYnptr);
 	}
     }
@@ -742,12 +748,12 @@ void ClassDeclaration::toObjFile(int multiobj)
  		    if (fd->leastAsSpecialized(fd2) || fd2->leastAsSpecialized(fd))
  		    {
  			if (global.params.warnings)
- 			{   fprintf(stdmsg, "warning - ");
+ 			{
  			    TypeFunction *tf = (TypeFunction *)fd->type;
  			    if (tf->ty == Tfunction)
- 				error("%s%s is hidden by %s\n", fd->toPrettyChars(), Argument::argsTypesToChars(tf->parameters, tf->varargs), toChars());
+ 				warning("%s%s is hidden by %s\n", fd->toPrettyChars(), Argument::argsTypesToChars(tf->parameters, tf->varargs), toChars());
  			    else
- 				error("%s is hidden by %s\n", fd->toPrettyChars(), toChars());
+ 				warning("%s is hidden by %s\n", fd->toPrettyChars(), toChars());
  			}
  			s = rtlsym[RTLSYM_DHIDDENFUNC];
  			break;
@@ -1028,10 +1034,14 @@ void StructDeclaration::toObjFile(int multiobj)
 #if 0
 	    sinit->Sclass = SCcomdat;
 #else
-	    if (parent && parent->isTemplateInstance())
+	    if (inTemplateInstance())
+ 	    {
 		sinit->Sclass = SCcomdat;
+		}
 	    else
+	    {
 		sinit->Sclass = SCglobal;
+		}
 #endif
 	    sinit->Sfl = FLdata;
 	    toDt(&sinit->Sdt);

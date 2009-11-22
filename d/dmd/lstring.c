@@ -11,7 +11,7 @@
 #include <stdlib.h>
 
 #include "dchar.h"
-#include "mem.h"
+#include "rmem.h"
 #include "lstring.h"
 
 #ifdef _MSC_VER // prevent compiler internal crash

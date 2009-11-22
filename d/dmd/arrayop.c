@@ -11,11 +11,7 @@
 #include <string.h>
 #include <assert.h>
 
-#if _WIN32 || IN_GCC
-#include "mem.h"
-#else
-#include "../root/mem.h"
-#endif
+#include "rmem.h"
 
 #include "stringtable.h"
 
@@ -28,7 +24,7 @@
 #include "module.h"
 #include "init.h"
 
-//extern int binary(const char *p , const char **tab, int high);
+//extern int binary(const char *p , const char **tab, int high); //commented out for gdc
 
 /**************************************
  * Hash table of array op functions already generated or known about.

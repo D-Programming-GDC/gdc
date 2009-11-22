@@ -40,7 +40,7 @@
 #include "port.h"
 #include "root.h"
 #include "dchar.h"
-#include "mem.h"
+#include "rmem.h"
 
 #if 0 //__SC__ //def DEBUG
 extern "C" void __cdecl _assert(void *e, void *f, unsigned line)

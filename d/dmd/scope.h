@@ -20,6 +20,8 @@
 #pragma once
 #endif /* __DMC__ */
 
+#include "dsymbol.h"
+
 struct Dsymbol;
 struct ScopeDsymbol;
 struct Array;

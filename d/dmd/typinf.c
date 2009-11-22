@@ -33,7 +33,7 @@
 #include "import.h"
 #include "aggregate.h"
 
-#include <mem.h>
+#include "rmem.h"
 #ifndef IN_GCC
 #include "cc.h"
 #include "global.h"

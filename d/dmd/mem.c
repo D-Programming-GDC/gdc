@@ -13,7 +13,7 @@
 #include <string.h>
 
 #if IN_GCC
-#include "mem.h"
+#include "rmem.h" //used to be mem.h ; commented out for gdc
 #elif linux || __APPLE__ || __FreeBSD__
 #include "../root/mem.h"
 #else
