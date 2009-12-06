@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2005 by Digital Mars
+// Copyright (c) 1999-2009 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -20,8 +20,6 @@
 #pragma once
 #endif /* __DMC__ */
 
-#include "dsymbol.h"
-
 struct Dsymbol;
 struct ScopeDsymbol;
 struct Array;
@@ -37,8 +35,13 @@ struct AggregateDeclaration;
 struct AnonymousAggregateDeclaration;
 struct FuncDeclaration;
 struct DocComment;
+#if __GNUC__
+#include "dsymbol.h"    // PROT
+#include "mars.h"       // LINK
+#else
 enum LINK;
 enum PROT;
+#endif 
 
 struct Scope
 {

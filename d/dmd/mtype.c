@@ -17,7 +17,13 @@
 // Issues with using -include total.h (defines integer_t) and then complex.h fails...
 #undef integer_t
 
+#define __C99FEATURES__ 1	// Needed on Solaris for NaN and more
 #define __USE_ISOC99 1		// so signbit() gets defined
+
+#if (defined (__SVR4) && defined (__sun))
+#include <alloca.h>
+#endif
+
 #include <math.h>
 
 #include <stdio.h>
@@ -25,10 +31,6 @@
 #include <float.h>
 
 #include "gdc_alloca.h"
-
-#ifdef __DMC__
-#include <fp.h>
-#endif
 
 // TODO%% this undefines signbit and includes is the wrong complex.h anyway
 // -- not sure why this is needed, anyway
@@ -40,19 +42,8 @@
 #elif __DMC__
 // includes the wrong complex.h in C++
 #include <complex.h>
-#else
-//#define signbit 56
-#endif
-
-#if __APPLE__
-#include <math.h>
-static double zero = 0;
-#elif __GNUC__
-#include <math.h>
-// %% shouldn't be necessary
-//#include <bits/nan.h>
-//#include <bits/mathdef.h>
-static double zero = 0;
+#elif __MINGW32__
+#include <malloc.h>
 #endif
 
 #ifndef NAN
@@ -70,6 +61,7 @@ static double zero = 0;
 
 
 #include "rmem.h"
+#include "port.h"
 
 #include "dsymbol.h"
 #include "mtype.h"
@@ -102,12 +94,15 @@ int PTRSIZE = 4;
 #if TARGET_OSX
 int REALSIZE = 16;
 int REALPAD = 6;
+int REALALIGNSIZE = 16;
 #elif TARGET_LINUX || TARGET_FREEBSD
 int REALSIZE = 12;
 int REALPAD = 2;
+int REALALIGNSIZE = 4;
 #else
 int REALSIZE = 10;
 int REALPAD = 0;
+int REALALIGNSIZE = 2;
 #endif
 int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
@@ -142,7 +137,7 @@ Type::Type(TY ty, Type *next)
     this->mod = 0;
     this->next = next;
     this->deco = NULL;
-#if V2
+#if DMDV2
     this->cto = NULL;
     this->ito = NULL;
 #endif
@@ -1040,11 +1035,7 @@ unsigned TypeBasic::alignsize()
 	case Tfloat80:
 	case Timaginary80:
 	case Tcomplex80:
-	    #if TARGET_OSX
- 	    sz = 16;
- 		#else
-  	    sz = 2;
- 		#endif
+	    sz = REALALIGNSIZE;
 	    break;
 
 	default:
@@ -1170,24 +1161,12 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 	    case Tfloat64:
 	    case Tfloat80:
 	    {
-#if IN_GCC
-		// mode doesn't matter, will be converted in RealExp anyway
-		fvalue = real_t::getnan(real_t::LongDouble);
-#elif __GNUC__
-		// gcc nan's have the sign bit set by default, so turn it off
-		// Need the volatile to prevent gcc from doing incorrect
-		// constant folding.
-		volatile d_float80 foo;
-		foo = NAN;
-		if (signbit(foo))	// signbit sometimes, not always, set
-		    foo = -foo;		// turn off sign bit
-		fvalue = foo;
-#elif _MSC_VER
-		unsigned long nan[2]= { 0xFFFFFFFF, 0x7FFFFFFF };
-		fvalue = *(double*)nan;
-#else
-		fvalue = NAN;
-#endif
+	    #if IN_GCC
+ 		// mode doesn't matter, will be converted in RealExp anyway
+ 		fvalue = real_t::getnan(real_t::LongDouble);
+ 		#else
+		fvalue = Port::nan;
+		#endif
 		goto Lfvalue;
 	    }
 	}
@@ -1205,15 +1184,11 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 	    case Tfloat32:
 	    case Tfloat64:
 	    case Tfloat80:
-#if IN_GCC
-		fvalue = real_t::getinfinity();
-#elif __GNUC__
-		fvalue = 1 / zero;
-#elif _MSC_VER
-		fvalue = std::numeric_limits<long double>::infinity();
-#else
-		fvalue = INFINITY;
-#endif
+	    #if IN_GCC
+ 		fvalue = real_t::getinfinity();
+ 		#else
+		fvalue = Port::infinity;
+		#endif
 		goto Lfvalue;
 	}
     }
@@ -1429,7 +1404,7 @@ Expression *TypeBasic::dotExp(Scope *sc, Expression *e, Identifier *ident)
 }
 
 Expression *TypeBasic::defaultInit(Loc loc)
-{   integer_t value = 0;
+{   dinteger_t value = 0;
 
 #if LOGDEFAULTINIT
     printf("TypeBasic::defaultInit() '%s'\n", toChars());
@@ -1715,7 +1690,7 @@ Type *TypeSArray::syntaxCopy()
 }
 
 d_uns64 TypeSArray::size(Loc loc)
-{   integer_t sz;
+{   dinteger_t sz;
 
     if (!dim)
 	return Type::size(loc);
@@ -1727,7 +1702,7 @@ d_uns64 TypeSArray::size(Loc loc)
 	sz = ((sz + 31) & ~31) / 8;	// size in bytes, rounded up to 32 bit dwords
     }
     else
-    {	integer_t n, n2;
+    {	dinteger_t n, n2;
 
 	n = next->size();
 	n2 = n * sz;
@@ -1876,7 +1851,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
     Type *tbn = next->toBasetype();
 
     if (dim)
-    {	integer_t n, n2;
+    {	dinteger_t n, n2;
 
 	dim = semanticLength(sc, tbn, dim);
 
@@ -1889,10 +1864,10 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
 	     */
 	    return this;
 	}
-	integer_t d1 = dim->toInteger();
+	dinteger_t d1 = dim->toInteger();
 	dim = dim->castTo(sc, tsize_t);
 	dim = dim->optimize(WANTvalue);
-	integer_t d2 = dim->toInteger();
+	dinteger_t d2 = dim->toInteger();
 
 	if (d1 != d2)
 	    goto Loverflow;
@@ -2387,7 +2362,7 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	arguments = new Expressions();
 	arguments->push(e);
 	size_t keysize = key->size(e->loc);
-	keysize = (keysize + (PTRSIZE-1)) & ~(PTRSIZE-1);
+	keysize = (keysize + PTRSIZE - 1) & ~(PTRSIZE - 1);
 	arguments->push(new IntegerExp(0, keysize, Type::tsize_t));
 	arguments->push(new IntegerExp(0, next->size(e->loc), Type::tsize_t));
 	e = new CallExp(e->loc, ec, arguments);
@@ -2984,7 +2959,7 @@ int TypeFunction::callMatch(Expressions *args)
 	    if (varargs == 2 && u + 1 == nparams)	// if last varargs param
 	    {	Type *tb = p->type->toBasetype();
 		TypeSArray *tsa;
-		integer_t sz;
+		dinteger_t sz;
 
 		switch (tb->ty)
 		{

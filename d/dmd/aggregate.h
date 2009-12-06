@@ -115,7 +115,7 @@ struct AnonymousAggregateDeclaration : AggregateDeclaration
 struct StructDeclaration : AggregateDeclaration
 {
     int zeroInit;		// !=0 if initialize with 0 fill
-#if V2
+#if DMDV2
     int hasIdentityAssign;	// !=0 if has identity opAssign
     FuncDeclaration *cpctor;	// generated copy-constructor, if any
 
@@ -217,7 +217,7 @@ struct ClassDeclaration : AggregateDeclaration
     virtual int isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset);
 
     Dsymbol *search(Loc, Identifier *ident, int flags);
-#if V2
+#if DMDV2
     int isFuncHidden(FuncDeclaration *fd);
 #endif
     FuncDeclaration *findFunc(Identifier *ident, TypeFunction *tf);
@@ -225,7 +225,7 @@ struct ClassDeclaration : AggregateDeclaration
     int isNested();
     int isCOMclass();
     virtual int isCOMinterface();
-#if V2
+#if DMDV2
     virtual int isCPPinterface();
 #endif
     int isAbstract();
@@ -254,7 +254,7 @@ struct ClassDeclaration : AggregateDeclaration
 
 struct InterfaceDeclaration : ClassDeclaration
 {
-#if V2
+#if DMDV2
     int cpp;				// !=0 if this is a C++ interface
 #endif
     InterfaceDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses);
@@ -264,7 +264,7 @@ struct InterfaceDeclaration : ClassDeclaration
     int isBaseOf(BaseClass *bc, target_ptrdiff_t *poffset);
     const char *kind();
     int vtblOffset();
-#if V2
+#if DMDV2
     int isCPPinterface();
 #endif
     virtual int isCOMinterface();

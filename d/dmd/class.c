@@ -154,7 +154,7 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
 		Type::typeinfotypelist = this;
 	    }
 
-#if V2
+#if DMDV2
 	    if (id == Id::TypeInfo_Const)
 	    {	if (Type::typeinfoconst)
 		    Type::typeinfoconst->error("%s", msg);
@@ -829,7 +829,7 @@ Dsymbol *ClassDeclaration::search(Loc loc, Identifier *ident, int flags)
  * Return 1 if function is hidden (not findable through search).
  */
 
-#if V2
+#if DMDV2
 int isf(void *param, FuncDeclaration *fd)
 {
     //printf("param = %p, fd = %p %s\n", param, fd, fd->toChars());

@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2008 by Digital Mars
+// Copyright (c) 1999-2009 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -24,22 +24,7 @@
 //#include <wchar.h>
 #include <stdlib.h>
 #include <assert.h>
-#if _MSC_VER
-#include <time.h>
-#else
-#include <sys/time.h>
-#endif
-
-#ifdef IN_GCC
-
-#include <time.h>
-
-#else
-
-#if __GNUC__
-#include <time.h>
-#endif
-#endif
+#include <time.h>	// for time() and ctime()
 
 #include "rmem.h"
 
@@ -54,10 +39,6 @@
 #if _WIN32 && __DMC__
 // from \dm\src\include\setlocal.h
 extern "C" char * __cdecl __locale_decpoint;
-#endif
-
-#if _MSC_VER // workaround VC++ bug, labels and types should be in separate namespaces
-#define Lstring Lstr
 #endif
 
 extern int HtmlNamedEntity(unsigned char *p, int length);
@@ -585,7 +566,7 @@ void Lexer::scan(Token *t)
 		t->value = hexStringConstant(t);
 		return;
 
-#if V2
+#if DMDV2
 	    case 'q':
 		if (p[1] == '"')
 		{
@@ -644,7 +625,7 @@ void Lexer::scan(Token *t)
 	    case 'a':  	case 'b':   case 'c':   case 'd':   case 'e':
 	    case 'f':  	case 'g':   case 'h':   case 'i':   case 'j':
 	    case 'k':  	            case 'm':   case 'n':   case 'o':
-#if V2
+#if DMDV2
 	    case 'p':  	/*case 'q': case 'r':*/ case 's':   case 't':
 #else
 	    case 'p':  	case 'q': /*case 'r':*/ case 's':   case 't':
@@ -693,11 +674,11 @@ void Lexer::scan(Token *t)
 			sprintf(time, "%.8s", p + 11);
 			sprintf(timestamp, "%.24s", p);
 		    }
-			#if V1
+			#if DMDV1
 		    if (mod && id == Id::FILE)
 		    {
 			t->ustring = (unsigned char *)(loc.filename ? loc.filename : mod->ident->toChars());
-			goto Lstring;
+			goto Lstr;
 		    }
 		    else if (mod && id == Id::LINE)
 		    {
@@ -709,12 +690,12 @@ void Lexer::scan(Token *t)
  		    if (id == Id::DATE)
 		    {
 			t->ustring = (unsigned char *)date;
-			goto Lstring;
+			goto Lstr;
 		    }
 		    else if (id == Id::TIME)
 		    {
 			t->ustring = (unsigned char *)time;
-			goto Lstring;
+			goto Lstr;
 		    }
 		    else if (id == Id::VENDOR)
 		    {
@@ -723,12 +704,12 @@ void Lexer::scan(Token *t)
 #else
 			t->ustring = (unsigned char *)"Digital Mars D";
 #endif
-			goto Lstring;
+			goto Lstr;
 		    }
 		    else if (id == Id::TIMESTAMP)
 		    {
 			t->ustring = (unsigned char *)timestamp;
-		     Lstring:
+		     Lstr:
 			t->value = TOKstring;
 		     Llen:
 			t->postfix = 0;
@@ -753,7 +734,7 @@ void Lexer::scan(Token *t)
 			t->value = TOKint64v;
 			t->uns64value = major * 1000 + minor;
 		    }
-#if V2
+#if DMDV2
 		    else if (id == Id::EOFX)
 		    {
 			t->value = TOKeof;
@@ -1499,7 +1480,7 @@ TOK Lexer::hexStringConstant(Token *t)
 }
 
 
-#if V2
+#if DMDV2
 /**************************************
  * Lex delimited strings:
  *	q"(foo(xxx))"   // "foo(xxx)"
@@ -2962,7 +2943,7 @@ static Keyword keywords[] =
     // Added after 1.0
     {	"ref",		TOKref		},
     {	"macro",	TOKmacro	},
-#if V2
+#if DMDV2
     {	"pure",		TOKpure		},
     {	"nothrow",	TOKnothrow	},
     {	"__thread",	TOKtls		},
@@ -3024,7 +3005,7 @@ void Lexer::initKeywords()
     Token::tochars[TOKxorass]		= "^=";
     Token::tochars[TOKassign]		= "=";
     Token::tochars[TOKconstruct]	= "=";
-#if V2
+#if DMDV2
     Token::tochars[TOKblit]		= "=";
 #endif
     Token::tochars[TOKlt]		= "<";
@@ -3111,4 +3092,6 @@ void Lexer::initKeywords()
     Token::tochars[TOKdeclaration]	= "declaration";
     Token::tochars[TOKdottd]		= "dottd";
     Token::tochars[TOKon_scope_exit]	= "scope(exit)";
+    Token::tochars[TOKon_scope_success]	= "scope(success)";
+    Token::tochars[TOKon_scope_failure]	= "scope(failure)";
 }

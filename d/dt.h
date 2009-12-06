@@ -40,9 +40,15 @@ struct dt_t {
     enum DT dt;
     struct dt_t * DTnext;
     union {
-	integer_t DTint;
+    #if V1
+	dinteger_t DTint; 
+	dinteger_t DTazeros;
+	dinteger_t DTonebyte; //all used to be integer_t
+	#else
+	integer_t DTint; 
 	integer_t DTazeros;
 	integer_t DTonebyte;
+	#endif
 	struct dt_t * DTvalues;
     };
     union {
@@ -55,7 +61,14 @@ struct dt_t {
 
 enum TypeType;
 
-extern dt_t** dtval(dt_t** pdt, DT t, integer_t i, void * p);
+extern dt_t** dtval(dt_t** pdt, DT t, 
+#if V1
+dinteger_t i,
+#else
+integer_t i,
+#endif 
+void * p);
+
 extern dt_t** dtcat(dt_t** pdt, dt_t * d);
     
 inline dt_t**

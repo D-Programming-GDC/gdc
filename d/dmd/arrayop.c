@@ -255,7 +255,7 @@ Expression *BinExp::arrayOp(Scope *sc)
 	    Arguments *fparams = new Arguments();
 	    Expression *loopbody = buildArrayLoop(fparams);
 	    Argument *p = (Argument *)fparams->data[0 /*fparams->dim - 1*/];
-#if V1
+#if DMDV1
 	    // for (size_t i = 0; i < p.length; i++)
 	    Initializer *init = new ExpInitializer(0, new IntegerExp(0, 0, Type::tsize_t));
 	    Dsymbol *d = new VarDeclaration(0, Type::tsize_t, Id::p, init);

@@ -37,17 +37,17 @@ struct EnumDeclaration : ScopeDsymbol
 {
     Type *type;			// the TypeEnum
     Type *memtype;		// type of the members
-    #if V1
-      integer_t maxval;
-      integer_t minval;
-      integer_t defaultval;	// default initializer
- #else
+    #if DMDV1
+      dinteger_t maxval;
+      dinteger_t minval;
+      dinteger_t defaultval;	// default initializer
+ 	#else
      Expression *maxval;
      Expression *minval;
      Expression *defaultval;	// default initializer
  
      Scope *scope;		// !=NULL means context to use
- #endif
+ 	#endif
      int isdeprecated;
     Expressions * attributes; // GCC decl/type attributes
 
@@ -58,7 +58,7 @@ struct EnumDeclaration : ScopeDsymbol
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Type *getType();
     const char *kind();
-    #if V2
+    #if DMDV2
      Dsymbol *search(Loc, Identifier *ident, int flags);
  	#endif
      int isDeprecated();			// is Dsymbol deprecated?

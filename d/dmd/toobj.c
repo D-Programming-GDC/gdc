@@ -135,7 +135,7 @@ void Module::genmoduleinfo()
     }
     dtdword(&dt, 0);			// monitor
     
-    #if V2
+    #if DMDV2
      FuncDeclaration *sgetmembers = findGetMembers();
      if (sgetmembers)
  	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
@@ -491,7 +491,7 @@ void ClassDeclaration::toObjFile(int multiobj)
 
     // flags
     int flags = 4 | isCOMclass();
-    #if V2
+    #if DMDV2
      flags |= 16;
  #endif
     if (ctor)
@@ -530,7 +530,7 @@ void ClassDeclaration::toObjFile(int multiobj)
     else
 	dtdword(&dt, 0);
 	
-	#if V2
+	#if DMDV2
      FuncDeclaration *sgetmembers = findGetMembers();
      if (sgetmembers)
  	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
@@ -733,7 +733,7 @@ void ClassDeclaration::toObjFile(int multiobj)
 	if (fd && (fd->fbody || !isAbstract()))
 	{   Symbol *s = fd->toSymbol();
  
- #if V2
+ #if DMDV2
  	    if (isFuncHidden(fd))
  	    {	/* fd is hidden from the view of this class.
  		 * If fd overlaps with any function in the vtbl[], then
@@ -906,7 +906,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 	    void *deallocator;
 	    OffsetTypeInfo[] offTi;
 	    void *defaultConstructor;
-	    #if V2
+	    #if DMDV2
  	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
  		#endif
        }
@@ -968,7 +968,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     // defaultConstructor
     dtdword(&dt, 0);
     
-    #if V2
+    #if DMDV2
      // xgetMembers
      dtdword(&dt, 0);
  	#endif
@@ -1102,7 +1102,7 @@ void VarDeclaration::toObjFile(int multiobj)
 	return;
     }
     
-    #if V2
+    #if DMDV2
      // Do not store variables we cannot take the address of
      if (!canTakeAddressOf())
      {
@@ -1116,7 +1116,7 @@ void VarDeclaration::toObjFile(int multiobj)
 	sz = type->size();
 
 	parent = this->toParent();
-#if V1	/* private statics should still get a global symbol, in case
+#if DMDV1	/* private statics should still get a global symbol, in case
 	 * another module inlines a function that references it.
 	 */
 	if (/*protection == PROTprivate ||*/
@@ -1140,7 +1140,7 @@ void VarDeclaration::toObjFile(int multiobj)
 		 */
 		if (parent->isTemplateInstance() && !parent->isTemplateMixin())
 		{
-			#if V1
+			#if DMDV1
 		    /* These symbol constants have already been copied,
 		     * so no reason to output them.
 		     * Note that currently there is no way to take
@@ -1274,7 +1274,7 @@ void EnumDeclaration::toObjFile(int multiobj)
 {
     //printf("EnumDeclaration::toObjFile('%s')\n", toChars());
     
-    #if V2
+    #if DMDV2
      if (isAnonymous())
  	return;
  #endif
@@ -1303,11 +1303,11 @@ void EnumDeclaration::toObjFile(int multiobj)
 #if MACHOBJ
  	sinit->Sseg = DATA;
 #endif
-#if V1
+#if DMDV1
   	dtnbytes(&sinit->Sdt, tc->size(0), (char *)&tc->sym->defaultval);
   	//sinit->Sdt = tc->sym->init->toDt();
 #endif
-#if V2
+#if DMDV2
  	tc->sym->defaultval->toDt(&sinit->Sdt);
 #endif
 #ifndef IN_GCC
