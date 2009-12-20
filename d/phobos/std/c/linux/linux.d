@@ -3,19 +3,28 @@
 module std.c.linux.linux;
 
 public import std.c.unix.unix;
-public import std.c.dirent;
-public import std.c.linux.linuxextern;
-
-extern (C)
+version (FreeBSD)
 {
-    /* From <dlfcn.h>
-     * See http://www.opengroup.org/onlinepubs/007908799/xsh/dlsym.html
-     */
+    public import std.c.freebsd.freebsd;
+}
+else
+{
 
-    const int RTLD_NOW = 0x00002;	// Correct for Red Hat 8
 
-    void* dlopen(in char* file, int mode);
-    int   dlclose(void* handle);
-    void* dlsym(void* handle, char* name);
-    char* dlerror();
+	public import std.c.dirent;
+	public import std.c.linux.linuxextern;
+
+	extern (C)
+	{
+	    /* From <dlfcn.h>
+	     * See http://www.opengroup.org/onlinepubs/007908799/xsh/dlsym.html
+	     */
+
+	    const int RTLD_NOW = 0x00002;	// Correct for Red Hat 8
+
+	    void* dlopen(in char* file, int mode);
+	    int   dlclose(void* handle);
+	    void* dlsym(void* handle, char* name);
+	    char* dlerror();
+	}
 }

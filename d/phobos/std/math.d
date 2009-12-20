@@ -100,6 +100,9 @@ version (GNU)
 	version = GCC_ExtAsm_X86;
 }
 
+version(DigitalMars){
+     version=INLINE_YL2X;	// x87 has opcodes for these
+}
 
 private:
 /*
@@ -1284,7 +1287,18 @@ real ldexp(real n, int exp);    /* intrinsic */
  *    )
  */
 
-real log(real x)                { return std.c.math.logl(x); }
+real log(real x)
+{
+    version (INLINE_YL2X)
+	return yl2x(x, LN2);
+    else
+	return std.c.math.logl(x);
+}
+ 
+unittest
+{
+    assert(log(E) == 1);
+}
 
 /**************************************
  * Calculate the base-10 logarithm of x.
@@ -1297,7 +1311,18 @@ real log(real x)                { return std.c.math.logl(x); }
  *      )
  */
 
-real log10(real x)              { return std.c.math.log10l(x); }
+real log10(real x)
+{
+    version (INLINE_YL2X)
+ 	return yl2x(x, LOG2);
+    else
+	return std.c.math.log10l(x);
+}
+ 
+unittest
+{
+	assert(log10(1000) == 3);
+}
 
 /******************************************
  *      Calculates the natural logarithm of 1 + x.
@@ -1328,7 +1353,13 @@ real log1p(real x)              { return std.c.math.log1pl(x); }
  *  )
  */
 version (GNU_Need_exp2_log2) real log2(real x) { return std.c.math.logl(x) / LOG2; } else
-real log2(real x)               { return std.c.math.log2l(x); }
+real log2(real x)
+{
+    version (INLINE_YL2X)
+	return yl2x(x, 1);
+    else
+	return std.c.math.log2l(x);
+}
 
 /*****************************************
  * Extracts the exponent of x as a signed integral value.
@@ -2975,4 +3006,21 @@ unittest
     static real pp[] = [56.1, 32.7, 6];
 
     assert( poly(x, pp) == (56.1L + (32.7L + 6L * x) * x) );
+}
+
+/* **********************************
+ * Building block functions, they
+ * translate to a single x87 instruction.
+ */
+
+real yl2x(real x, real y);	// y * log2(x)
+real yl2xp1(real x, real y);	// y * log2(x + 1)
+
+unittest
+{
+    version (INLINE_YL2X)
+    {
+ 	assert(yl2x(1024, 1) == 10);
+ 	assert(yl2xp1(1023, 1) == 10);
+    }
 }

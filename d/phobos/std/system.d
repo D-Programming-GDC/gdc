@@ -28,6 +28,7 @@ const
 	linux,			// all linux systems
 	Unix,                  // Unix-like
 	OSX,
+	FreeBSD,
 	NoSystem               // No operating system
     }
 
@@ -46,6 +47,10 @@ const
     else version (OSX)
     {
 	Family family = Family.OSX;    }
+    else version (FreeBSD)
+     {
+ 	Family family = Family.FreeBSD;
+    }
     else version (NoSystem)
     {
 	Family family = Family.NoSystem;
@@ -66,7 +71,8 @@ const
 	WindowsXP,
 
 	RedHatLinux,
-	OSX
+	OSX,
+	FreeBSD,
     }
 
     /// Byte order endianness

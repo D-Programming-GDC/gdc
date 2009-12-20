@@ -20,7 +20,7 @@
 #include <assert.h>
 
 #if _WIN32
-#elif linux || __APPLE__
+#elif linux || __APPLE__ || __FreeBSD__
 #define PHOBOS_USE_PTHREADS	1
 #else
 #endif
@@ -134,8 +134,10 @@ void _d_monitorrelease(Object *h)
 // needs to be else..
 #if PHOBOS_USE_PTHREADS
 
+#if linux || __APPLE__
 #ifndef PTHREAD_MUTEX_RECURSIVE
 #    define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP#endif
+#endif
 
 #ifndef HAVE_PTHREAD_MUTEX_RECURSIVE
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP

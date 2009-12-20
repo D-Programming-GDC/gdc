@@ -83,14 +83,16 @@ void _STD_critical_term()
 
 /* ================================= linux ============================ */
 
-#if linux || PHOBOS_USE_PTHREADS || __APPLE__
+#if linux || PHOBOS_USE_PTHREADS || __APPLE__ || __FreeBSD__
 
 
 #include	<pthread.h>
 // PTHREAD_MUTEX_RECURSIVE is the "standard" symbol,
+#if linux || __APPLE__
 // while the _NP version is specific to Linux
 #ifndef PTHREAD_MUTEX_RECURSIVE
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
+#endif
 #endif
 
 #ifndef HAVE_PTHREAD_MUTEX_RECURSIVE

@@ -82,6 +82,10 @@ else version(BsdSockets)
 {
 	version (Unix)
 	{
+		version (FreeBSD)
+		{
+			private import std.c.freebsd.socket;
+		}
 		private import std.c.unix.unix;
 		private alias std.c.unix.unix.timeval _ctimeval;
 	}
@@ -129,6 +133,16 @@ class SocketException: Exception
 	 			else
 	 			{
 				    cs = "Unknown error";
+	 			}
+	 		    }
+	 		    else version (FreeBSD)
+	 		    {
+	 			auto errs = strerror_r(errorCode, buf.ptr, buf.length);
+	 			if (errs == 0)
+	 			    cs = buf.ptr;
+	 			else
+	 			{
+	 			    cs = "Unknown error";
 	 			}
 	 		    }
 	 		    else

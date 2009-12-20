@@ -38,6 +38,10 @@
 
 static real_t zero;	// work around DMC bug for now
 
+#if __FreeBSD__
+#define fmodl fmod	// hack for now, fix later
+#endif
+
 #define LOG 0
 
 Expression *expType(Type *type, Expression *e)

@@ -524,6 +524,15 @@ void *os_query_stackBottom()
 
 else version (Unix)
 {
+version (FreeBSD)
+{
+    private import std.c.freebsd.freebsd;
+    private import std.c.freebsd.pthread;
+}
+else
+{
+    private import std.c.linux.linux;
+}
 
 private import std.c.unix.unix;
 private import gcc.builtins;

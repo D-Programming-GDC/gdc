@@ -16,7 +16,7 @@
 
 #ifndef IN_GCC
 
-#if linux || __APPLE__
+#if linux || __APPLE__ || __FreeBSD__
 #include <errno.h>
 #endif
 #endif
@@ -59,7 +59,7 @@ Global::Global()
 #ifndef IN_GCC
 #if TARGET_WINDOS
     obj_ext  = "obj";
-#elif TARGET_LINUX || TARGET_OSX
+#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD
     obj_ext  = "o";
 #else
 #error "fix this"
@@ -71,7 +71,7 @@ Global::Global()
 #ifndef IN_GCC
 #if TARGET_WINDOS
     lib_ext  = "lib";
-#elif TARGET_LINUX || TARGET_OSX
+#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD
     lib_ext  = "a";
 #else
 #error "fix this"
@@ -82,7 +82,7 @@ Global::Global()
 
     copyright = "Copyright (c) 1999-2009 by Digital Mars";
     written = "written by Walter Bright";
-    version = "v1.042";
+    version = "v1.043";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
 
 #if TARGET_WINDOS
     global.params.defaultlibname = "phobos";
-#elif TARGET_LINUX || TARGET_OSX
+#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD
     global.params.defaultlibname = "phobos";
 #endif
 
@@ -335,6 +335,11 @@ int main(int argc, char *argv[])
      // For legacy compatibility
      VersionCondition::addPredefinedGlobalIdent("darwin");
 #endif
+#if TARGET_FREEBSD
+     VersionCondition::addPredefinedGlobalIdent("Posix");
+     VersionCondition::addPredefinedGlobalIdent("FreeBSD");
+     global.params.isFreeBSD = 1;
+#endif
     VersionCondition::addPredefinedGlobalIdent("X86");
     VersionCondition::addPredefinedGlobalIdent("LittleEndian");
     //VersionCondition::addPredefinedGlobalIdent("D_Bits");
@@ -346,7 +351,7 @@ int main(int argc, char *argv[])
 #if _WIN32
     inifile(argv[0], "sc.ini");
 #endif
-#if linux || __APPLE__
+#if linux || __APPLE__ || __FreeBSD__
     inifile(argv[0], "dmd.conf");
 #endif
     getenv_setargv("DFLAGS", &argc, &argv);
@@ -369,7 +374,7 @@ int main(int argc, char *argv[])
 		global.params.link = 0;
 	    else if (strcmp(p + 1, "cov") == 0)
 		global.params.cov = 1;
-		#if TARGET_LINUX || TARGET_OSX
+		#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD
 	    else if (strcmp(p + 1, "fPIC") == 0)
 		global.params.pic = 1;
 		#endif
@@ -615,6 +620,13 @@ int main(int argc, char *argv[])
  		browse("http://www.digitalmars.com/d/2.0/dmd-osx.html");
 #endif
 #endif
+#if __FreeBSD__
+#if DMDV1
+ 		browse("http://www.digitalmars.com/d/1.0/dmd-freebsd.html");
+#else
+		browse("http://www.digitalmars.com/d/2.0/dmd-freebsd.html");
+#endif
+#endif
 		exit(EXIT_SUCCESS);
 	    }
 	    else if (strcmp(p + 1, "run") == 0)
@@ -645,9 +657,9 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-#if !TARGET_LINUX && !TARGET_OSX
+#if !TARGET_LINUX && !TARGET_OSX && !TARGET_FREEBSD
 	    char *ext = FileName::ext(p);
-	    if (ext && stricmp(ext, "exe") == 0)
+	    if (ext && FileName::compare(ext, "exe") == 0)
 	    {
 		global.params.objname = p;
 		continue;
@@ -830,22 +842,14 @@ int main(int argc, char *argv[])
 	if (ext)
 	{   /* Deduce what to do with a file based on its extension
 	     */
-#if linux || __APPLE__
-	    if (strcmp(ext, global.obj_ext) == 0)
-#else
-	    if (stricmp(ext, global.obj_ext) == 0)
-#endif
+		if (FileName::equals(ext, global.obj_ext))
 	    {
 		global.params.objfiles->push(files.data[i]);
 		libmodules.push(files.data[i]);
 		continue;
 	    }
 
-#if linux || __APPLE__
-	    if (strcmp(ext, global.lib_ext) == 0)
-#else
-	    if (stricmp(ext, global.lib_ext) == 0)
-#endif
+		if (FileName::equals(ext, global.lib_ext))
 	    {
 		global.params.libfiles->push(files.data[i]);
 		libmodules.push(files.data[i]);
@@ -859,19 +863,19 @@ int main(int argc, char *argv[])
 	    }
 
 #if TARGET_WINDOS
-	    if (stricmp(ext, "res") == 0)
+	    if (FileName::equals(ext, "res"))
 	    {
 		global.params.resfile = (char *)files.data[i];
 		continue;
 	    }
 
-	    if (stricmp(ext, "def") == 0)
+	    if (FileName::equals(ext, "def"))
 	    {
 		global.params.deffile = (char *)files.data[i];
 		continue;
 	    }
 
-	    if (stricmp(ext, "exe") == 0)
+	    if (FileName::equals(ext, "exe"))
 	    {
 		assert(0);	// should have already been handled
 	    }
@@ -880,12 +884,12 @@ int main(int argc, char *argv[])
 	    /* Examine extension to see if it is a valid
 	     * D source file extension
 	     */
-	    if (stricmp(ext, global.mars_ext) == 0 ||
-	    stricmp(ext, global.hdr_ext) == 0 ||
-		stricmp(ext, "dd") == 0 ||
-		stricmp(ext, "htm") == 0 ||
-		stricmp(ext, "html") == 0 ||
-		stricmp(ext, "xhtml") == 0)
+	    if (FileName::equals(ext, global.mars_ext) ||
+ 		FileName::equals(ext, global.hdr_ext) ||
+ 		FileName::equals(ext, "dd") ||
+ 		FileName::equals(ext, "htm") ||
+ 		FileName::equals(ext, "html") ||
+ 		FileName::equals(ext, "xhtml"))
 	    {
 		ext--;			// skip onto '.'
 		assert(*ext == '.');

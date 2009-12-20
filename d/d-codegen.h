@@ -21,11 +21,7 @@
 
 #include "d-irstate.h"
 
-#if V1
 typedef dinteger_t xdmd_integer_t;
-#else
-typedef integer_t xdmd_integer_t;
-#endif
 
 #include "d-objfile.h"
 

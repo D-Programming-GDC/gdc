@@ -135,7 +135,9 @@ struct FileName : String
     FileName(char *path, char *name);
     hash_t hashCode();
     int equals(Object *obj);
+    static int equals(const char *name1, const char *name2);
     int compare(Object *obj);
+    static int compare(const char *name1, const char *name2);
     static int absolute(const char *name);
     static char *ext(const char *);
     char *ext();
@@ -143,7 +145,7 @@ struct FileName : String
     static char *name(const char *);
     char *name();
     static char *path(const char *);
-    static char *replaceName(char *path, char *name);
+    static const char *replaceName(const char *path, const char *name);
 
     static char *combine(const char *path, const char *name);
     static Array *splitPath(const char *path);

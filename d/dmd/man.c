@@ -26,7 +26,7 @@ void browse(const char *url)
 
 #endif
 
-#if linux
+#if linux || __FreeBSD__
 
 #include	<sys/types.h>
 #include	<sys/wait.h>
@@ -96,5 +96,3 @@ void browse(const char *url)
  }
  
 #endif
- 
-#if __FreeBSD__#endif
