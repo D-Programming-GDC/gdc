@@ -857,11 +857,6 @@ alias std.c.unix.unix unix;
 
 private import std.c.string;
 
-version(OSX)
-{
-   alias int __time_t;
-}
-
 /***********************************
  */
 
@@ -1152,7 +1147,13 @@ void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
     {
 	throw new FileException(name, getErrno());
     }
-	version (linux)
+    version (GNU)
+    {
+      ftc = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+    fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+    ftm = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+    }
+	else version (linux)
     {
     ftc = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
     fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
@@ -1386,7 +1387,13 @@ struct DirEntry
 	    return;
 	}
 	_size = cast(ulong)statbuf.st_size;
- 	version (linux)
+	version (GNU)
+	{
+	_creationTime = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+	_lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+	_lastWriteTime = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+	}
+ 	else version (linux)
  	{
 	_creationTime = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
 	_lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
@@ -1587,6 +1594,11 @@ void copy(string from, string to)
     }
 
     utimbuf utim = void;
+    version (GNU)
+    {
+    utim.actime = cast(typeof(utim.actime))statbuf.st_atime;
+    utim.modtime = cast(typeof(utim.modtime))statbuf.st_mtime;
+    }
     version (linux)
     {
     utim.actime = cast(typeof(utim.actime))statbuf.st_atime;
