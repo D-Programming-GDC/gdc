@@ -1599,7 +1599,7 @@ void copy(string from, string to)
     utim.actime = cast(typeof(utim.actime))statbuf.st_atime;
     utim.modtime = cast(typeof(utim.modtime))statbuf.st_mtime;
     }
-    version (linux)
+    else version (linux)
     {
     utim.actime = cast(typeof(utim.actime))statbuf.st_atime;
     utim.modtime = cast(typeof(utim.modtime))statbuf.st_mtime;
