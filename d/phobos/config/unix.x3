@@ -82,10 +82,37 @@ x3_gi_pop_header();
 
 x3_gi_push_header("<sys/stat.h>");
 x3_out_enum(NULL, NULL, "^S_I.*", NULL);
+x3_out_text("version (OSX)\n"
+            "{\n");
+
+
+x3_out_text("struct struct_stat\n"
+     "{\n"
+ 	"dev_t st_dev;\n"
+ 	"ino_t st_ino;\n"
+ 	"mode_t st_mode;\n"
+ 	"nlink_t st_nlink;\n"
+ 	"uid_t st_uid;\n"
+ 	"gid_t st_gid;\n"
+ 	"dev_t st_rdev;\n"
+ 	"timespec st_atimespec;\n"
+ 	"timespec st_mtimespec;\n"
+ 	"timespec st_ctimespec;\n"
+ 	"off_t st_size;\n"
+ 	"blkcnt_t st_blocks;\n"
+ 	"blksize_t st_blksize;\n"
+ 	"uint st_flags;\n"
+ 	"uint st_gen;\n"
+ 	"int st_lspare;\n"
+ 	"long st_qspare[2];\n"
+     "}\n");
+x3_out_text("}\n");
+x3_out_text("else\n{\n");
 x3_out_struct("struct stat", "struct_stat", "i:st_dev", "i:st_ino",
     "i:st_mode", "i:st_nlink", "i:st_uid", "i:st_gid", "i:st_rdev",
     "i:st_size", "i:st_blksize", "i:st_blocks", "i:st_atime", "i:st_mtime",
     "i:st_ctime", NULL);
+x3_out_text("}\n");
 x3_gi_pop_header();
 
 x3_gi_push_header("<signal.h>");

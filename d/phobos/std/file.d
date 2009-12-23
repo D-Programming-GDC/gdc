@@ -857,6 +857,11 @@ alias std.c.unix.unix unix;
 
 private import std.c.string;
 
+version(OSX)
+{
+   alias int __time_t;
+}
+
 /***********************************
  */
 
