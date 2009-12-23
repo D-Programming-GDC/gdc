@@ -121,19 +121,19 @@ class SocketException: Exception
 				char[80] buf;
 				auto cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
 				//char* cs;
-	 		    version (linux)
+	 		    /+version (linux)
 	 		    {
-	 			cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
+	 			 cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
 			    }
 	 		    else version (OSX)
 	 		    {
-	 			auto errs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
-	 			if (errs == 0)
+	 			 auto errs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
+	 			 if (errs == 0)
 	 			    cs = buf.ptr;
-	 			else
-	 			{
+	 			 else
+	 			 {
 				    cs = "Unknown error";
-	 			}
+	 			 }
 	 		    }
 	 		    else version (FreeBSD)
 	 		    {
@@ -148,7 +148,7 @@ class SocketException: Exception
 	 		    else
 	 		    {
 	 			static assert(0);
-	 		    }
+	 		    }+/
 				auto len = strlen(cs);
 				
 				if(cs[len - 1] == '\n')
