@@ -106,10 +106,10 @@ version (FreeBSD)
 
 version (OSX)
 {
-    extern (C)    {
+   extern (C)   {
  	extern void* _minfo_beg;
  	extern void* _minfo_end;
-    }
+   }
 }
 
 ModuleInfo[] _moduleinfo_dtors;
