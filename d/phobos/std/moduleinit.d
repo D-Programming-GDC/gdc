@@ -104,13 +104,13 @@ version (FreeBSD)
     extern (C) ModuleReference *_Dmodule_ref;	// start of linked list
 }
 
-version (OSX)
+/*version (OSX)
 {
    extern (C)   {
  	extern void* _minfo_beg;
  	extern void* _minfo_end;
    }
-}
+}*/
 
 ModuleInfo[] _moduleinfo_dtors;
 uint _moduleinfo_dtors_i;
@@ -155,7 +155,7 @@ extern (C) void _moduleCtor()
  	}
     }
     
-    version (OSX)
+    /+version (OSX)
      {	/* The ModuleInfo references are stored in the special segment
 + 	 * __minfodata, which is bracketed by the segments __minfo_beg
 + 	 * and __minfo_end. The variables _minfo_beg and _minfo_end
@@ -170,7 +170,7 @@ extern (C) void _moduleCtor()
  	    //printf("\t%p\n", m);
  	    printf("\t%.*s\n", m.name);
  	}
-     }
+     }+/
 
     version (Win32)
     {
