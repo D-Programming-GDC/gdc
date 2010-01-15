@@ -1319,10 +1319,10 @@ char[][] split(char[] s, char[] delim)
 		{
 		    nwords++;
 		    j = find(s[i .. s.length], delim);
-		    if (j == -1)
+		    if (j+1 == 0)
 			break;
 		    i += j + delim.length;
-		    if (i == s.length)
+		    if (i >= s.length)
 		    {	nwords++;
 			break;
 		    }
@@ -1335,7 +1335,7 @@ char[][] split(char[] s, char[] delim)
 		while (true)
 		{
 		    j = find(s[i .. s.length], delim);
-		    if (j == -1)
+		    if (j+1 == 0)
 		    {
 			words[wordi] = s[i .. s.length];
 			break;
@@ -1343,7 +1343,7 @@ char[][] split(char[] s, char[] delim)
 		    words[wordi] = s[i .. i + j];
 		    wordi++;
 		    i += j + delim.length;
-		    if (i == s.length)
+		    if (i >= s.length)
 		    {
 			words[wordi] = "";
 			break;
