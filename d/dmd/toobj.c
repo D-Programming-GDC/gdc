@@ -408,6 +408,12 @@ void ClassDeclaration::toObjFile(int multiobj)
     outdata(sinit);
 
     //////////////////////////////////////////////
+    
+    // Put out the TypeInfo
+    type->getTypeInfo(NULL);
+    type->vtinfo->toObjFile(multiobj);
+
+    //////////////////////////////////////////////
 
     // Put out the ClassInfo
     csym->Sclass = scclass;
@@ -429,6 +435,7 @@ void ClassDeclaration::toObjFile(int multiobj)
 	    OffsetTypeInfo[] offTi;
 	    void *defaultConstructor;
 	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
+	    TypeInfo typeinfo;
        }
      */
     dt_t *dt = NULL;
@@ -436,7 +443,7 @@ void ClassDeclaration::toObjFile(int multiobj)
     if (classinfo)
     {
 	if (classinfo->structsize != CLASSINFO_SIZE)
-	    error("D compiler and phobos/object.d are mismatched");
+	    error("D compiler and phobos' object.d are mismatched");
     }
 
     if (classinfo)
@@ -493,7 +500,8 @@ void ClassDeclaration::toObjFile(int multiobj)
     int flags = 4 | isCOMclass();
     #if DMDV2
      flags |= 16;
- #endif
+ 	 #endif
+ 	flags |= 32;
     if (ctor)
 	flags |= 8;
     for (ClassDeclaration *cd = this; cd; cd = cd->baseClass)
@@ -537,6 +545,9 @@ void ClassDeclaration::toObjFile(int multiobj)
      else
  	dtdword(&dt, 0);	// module getMembers() function
  #endif
+ 
+ dtxoff(&dt, type->vtinfo->toSymbol(), 0, TYnptr);	// typeinfo
+     //dtdword(&dt, 0);
 
     //////////////////////////////////////////////
 
@@ -886,6 +897,12 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     toSymbol();
 
     //////////////////////////////////////////////
+    
+    // Put out the TypeInfo
+    type->getTypeInfo(NULL);
+    type->vtinfo->toObjFile(multiobj);
+
+    //////////////////////////////////////////////
 
     // Put out the ClassInfo
     csym->Sclass = scclass;
@@ -909,6 +926,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 	    #if DMDV2
  	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
  		#endif
+ 		TypeInfo typeinfo;
        }
      */
     dt_t *dt = NULL;
@@ -956,7 +974,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     dtdword(&dt, 0);
 
     // flags
-    dti32(&dt, 4 | isCOMinterface(), true);
+    dtdword(&dt, 4 | isCOMinterface() | 32); //dti32(&dt, 4 | isCOMinterface(), true);
 
     // deallocator
     dtdword(&dt, 0);
@@ -972,6 +990,8 @@ void InterfaceDeclaration::toObjFile(int multiobj)
      // xgetMembers
      dtdword(&dt, 0);
  	#endif
+ 	
+ 	dtxoff(&dt, type->vtinfo->toSymbol(), 0, TYnptr);	// typeinfo
 
     //////////////////////////////////////////////
 

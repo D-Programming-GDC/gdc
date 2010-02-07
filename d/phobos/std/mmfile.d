@@ -332,6 +332,7 @@ class MmFile
 				version (linux)			flags |= MAP_ANONYMOUS;
 				else version (OSX)		flags |= MAP_ANON;
 				else version (FreeBSD)		flags |= MAP_ANON;
+				else version (Solaris)		flags |= MAP_ANON;
  				else				static assert(0);
 			}
 			this.size = size;

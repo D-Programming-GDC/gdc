@@ -271,6 +271,7 @@ struct TemplateInstance : ScopeDsymbol
 
     TemplateDeclaration *tempdecl;	// referenced by foo.bar.abc
     TemplateInstance *inst;		// refer to existing instance
+    TemplateInstance *tinst;		// enclosing template instance
     ScopeDsymbol *argsym;		// argument symbol table
     AliasDeclaration *aliasdecl;	// !=NULL if instance is an alias for its
 					// sole member
@@ -302,6 +303,7 @@ struct TemplateInstance : ScopeDsymbol
     int oneMember(Dsymbol **ps);
     char *toChars();
     char *mangle();
+    void printInstantiationTrace();
 
     void toObjFile(int multiobj);			// compile to .obj file
 

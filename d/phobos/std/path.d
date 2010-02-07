@@ -5,7 +5,7 @@
  *	WIKI = Phobos/StdPath
  * Copyright:
  *	Placed into public domain.
- *	www.digitalmars.com
+ *	http://www.digitalmars.com
  *
  * Grzegorz Adam Hankiewicz added some documentation.
  *

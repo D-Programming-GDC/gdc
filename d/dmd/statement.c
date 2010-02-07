@@ -1136,6 +1136,7 @@ Statement *ForStatement::semantic(Scope *sc)
 
     sc->sbreak = this;
     sc->scontinue = this;
+    if (body)
     body = body->semantic(sc);
     sc->noctor--;
 

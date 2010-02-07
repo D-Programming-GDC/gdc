@@ -13,6 +13,8 @@
    Modified by David Friedman, December 2006
 */
 
+#define POSIX (linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4)
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -334,14 +336,15 @@ char *FileName::combine(const char *path, const char *name)
     {	f[pathlen] = '/';
 	pathlen++;
     }
-#endif
-#if _WIN32
+#elif _WIN32
     if (path[pathlen - 1] != '\\' &&
  	path[pathlen - 1] != '/'  &&
  	path[pathlen - 1] != ':')
     {	f[pathlen] = '\\';
 	pathlen++;
     }
+#else
+    assert(0);
 #endif
     memcpy(f + pathlen, name, namelen + 1);
     return f;
@@ -500,13 +503,14 @@ int FileName::equals(const char *name1, const char *name2)
 
 int FileName::absolute(const char *name)
 {
-#if _WIN32
+#ifndef _WIN32
+	return (*name == '/');
+#elif _WIN32
     return (*name == '\\') ||
 	   (*name == '/')  ||
 	   (*name && name[1] == ':');
-#endif
-#ifndef _WIN32
-    return (*name == '/');
+#else
+    assert(0);
 #endif
 }
 
@@ -632,10 +636,11 @@ char *FileName::path(const char *str)
 #ifndef _WIN32
 	if (n[-1] == '/')
 	    n--;
-#endif
-#if _WIN32
+#elif _WIN32
 	if (n[-1] == '\\' || n[-1] == '/')
 	    n--;
+#else
+ 	assert(0);
 #endif
     }
     pathlen = n - str;
@@ -670,14 +675,15 @@ const char *FileName::replaceName(const char *path, const char *name)
     {	f[pathlen] = '/';
 	pathlen++;
     }
-#endif
-#if _WIN32
+#elif _WIN32
     if (path[pathlen - 1] != '\\' &&
  	path[pathlen - 1] != '/' &&
  	path[pathlen - 1] != ':')
     {	f[pathlen] = '\\';
 	pathlen++;
     }
+#else
+    assert(0);
 #endif
     memcpy(f + pathlen, name, namelen + 1);
     return f;
@@ -745,9 +751,10 @@ int FileName::equalsExt(const char *ext)
 	return 0;
 #ifndef _WIN32
     return strcmp(e,ext) == 0;
-#endif
-#if _WIN32
+#elif _WIN32
     return stricmp(e,ext) == 0;
+#else
+    assert(0);
 #endif
 }
 
@@ -761,9 +768,10 @@ void FileName::CopyTo(FileName *to)
 
 #if _WIN32
     file.touchtime = mem.malloc(sizeof(WIN32_FIND_DATAA));	// keep same file time
-#endif
-#ifndef _WIN32
+#elif _WIN32
     file.touchtime = mem.malloc(sizeof(struct stat)); // keep same file time
+#else
+    assert(0);
 #endif
     file.readv();
     file.name = to;
@@ -812,8 +820,7 @@ int FileName::exists(const char *name)
     if (S_ISDIR(st.st_mode))
 	return 2;
     return 1;
-#endif
-#if _WIN32
+#elif _WIN32
     DWORD dw;
     int result;
 
@@ -825,6 +832,8 @@ int FileName::exists(const char *name)
     else
 	result = 1;
     return result;
+#else
+    assert(0);
 #endif
 }
 
@@ -982,8 +991,7 @@ err:
 err1:
     result = 1;
     return result;
-#endif
-#if _WIN32
+#elif _WIN32
     DWORD size;
     DWORD numread;
     HANDLE h;
@@ -1037,6 +1045,8 @@ err:
 err1:
     result = 1;
     return result;
+#else
+    assert(0);
 #endif
 }
 
@@ -1048,8 +1058,7 @@ int File::mmread()
 {
 #ifndef _WIN32
     return read();
-#endif
-#if _WIN32
+#elif _WIN32
     HANDLE hFile;
     HANDLE hFileMap;
     DWORD size;
@@ -1089,6 +1098,8 @@ int File::mmread()
 
 Lerr:
     return GetLastError();			// failure
+#else
+    assert(0);
 #endif
 }
 
@@ -1132,8 +1143,7 @@ err2:
     ::remove(name);
 err:
     return 1;
-#endif
-#if _WIN32
+#elif _WIN32
     HANDLE h;
     DWORD numwritten;
     char *name;
@@ -1162,6 +1172,8 @@ err2:
     DeleteFileA(name);
 err:
     return 1;
+#else
+    assert(0);
 #endif
 }
 
@@ -1175,8 +1187,7 @@ int File::append()
 {
 #ifndef _WIN32
     return 1;
-#endif
-#if _WIN32
+#elif _WIN32
     HANDLE h;
     DWORD numwritten;
     char *name;
@@ -1211,6 +1222,8 @@ err2:
     CloseHandle(h);
 err:
     return 1;
+#else
+    assert(0);
 #endif
 }
 
@@ -1255,8 +1268,7 @@ int File::exists()
 {
 #ifndef _WIN32
     return 0;
-#endif
-#if _WIN32
+#elif _WIN32
     DWORD dw;
     int result;
     char *name;
@@ -1273,6 +1285,8 @@ int File::exists()
     else
 	result = 1;
     return result;
+#else
+    assert(0);
 #endif
 }
 
@@ -1280,9 +1294,10 @@ void File::remove()
 {
 #ifndef _WIN32
     ::remove(this->name->toChars());
-#endif
-#if _WIN32
+#elif _WIN32
     DeleteFileA(this->name->toChars());
+#else
+    assert(0);
 #endif
 }
 
@@ -1295,8 +1310,7 @@ Array *File::match(FileName *n)
 {
 #ifndef _WIN32
     return NULL;
-#endif
-#if _WIN32
+#elif _WIN32
     HANDLE h;
     WIN32_FIND_DATAA fileinfo;
     Array *a;
@@ -1326,6 +1340,8 @@ Array *File::match(FileName *n)
 	FindClose(h);
     }
     return a;
+#else
+    assert(0);
 #endif
 }
 
@@ -1333,13 +1349,14 @@ int File::compareTime(File *f)
 {
 #ifndef _WIN32
     return 0;
-#endif
-#if _WIN32
+#elif _WIN32
     if (!touchtime)
 	stat();
     if (!f->touchtime)
 	f->stat();
     return CompareFileTime(&((WIN32_FIND_DATAA *)touchtime)->ftLastWriteTime, &((WIN32_FIND_DATAA *)f->touchtime)->ftLastWriteTime);
+#else
+    assert(0);
 #endif
 }
 
@@ -1350,8 +1367,7 @@ void File::stat()
     {
 	touchtime = mem.calloc(1, sizeof(struct stat));
     }
-#endif
-#if _WIN32
+#elif _WIN32
     HANDLE h;
 
     if (!touchtime)
@@ -1363,6 +1379,8 @@ void File::stat()
     {
 	FindClose(h);
     }
+#else
+    assert(0);
 #endif
 }
 

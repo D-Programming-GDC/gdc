@@ -53,59 +53,82 @@ version (Windows)
 }
 else version (linux)
 {   const clock_t CLOCKS_PER_SEC = 1000000;
+   extern (C) int sysconf(int);
+   extern clock_t CLK_TCK;
+   /*static this()
+   {
+CLK_TCK = cast(clock_t) sysconf(2);
+   }*/
+    struct tm
+    {  int     tm_sec,
+               tm_min,
+               tm_hour,
+               tm_mday,
+               tm_mon,
+               tm_year,
+               tm_wday,
+               tm_yday,
+               tm_isdst;
+    }
+}
+else version (OSX)
+{
+    const clock_t CLOCKS_PER_SEC = 100;
+    const clock_t CLK_TCK        = 100;
+
+    struct tm
+    {  int     tm_sec,
+               tm_min,
+               tm_hour,
+               tm_mday,
+               tm_mon,
+               tm_year,
+               tm_wday,
+               tm_yday,
+               tm_isdst;
+    }
+}
+else version (FreeBSD)
+{
+    const clock_t CLOCKS_PER_SEC = 128;
+    const clock_t CLK_TCK        = 128; // deprecated, use sysconf(_SC_CLK_TCK)
+
+    struct tm
+    {   int     tm_sec,
+               tm_min,
+               tm_hour,
+               tm_mday,
+               tm_mon,
+               tm_year,
+               tm_wday,
+               tm_yday,
+               tm_isdst;
+	int tm_gmtoff;
+	char* tm_zone;
+    }
+}
+else version (Solaris)
+{
+    const clock_t CLOCKS_PER_SEC = 1000000;
+    clock_t CLK_TCK        = 0; // deprecated, use sysconf(_SC_CLK_TCK)
+
     extern (C) int sysconf(int);
-    extern clock_t CLK_TCK;
-    /*static this()
+    static this()
     {
-	CLK_TCK = cast(clock_t) sysconf(2);
-    }*/
-     struct tm
-     {  int     tm_sec,
-                tm_min,
-                tm_hour,
-                tm_mday,
-                tm_mon,
-                tm_year,
-                tm_wday,
-                tm_yday,
-                tm_isdst;
-     }
- }
- else version (OSX)
- {
-     const clock_t CLOCKS_PER_SEC = 100;
-     const clock_t CLK_TCK        = 100;
- 
-     struct tm
-     {  int     tm_sec,
-                tm_min,
-                tm_hour,
-                tm_mday,
-                tm_mon,
-                tm_year,
-                tm_wday,
-                tm_yday,
-                tm_isdst;
-     }
- }
- else version (FreeBSD)
- {
-     const clock_t CLOCKS_PER_SEC = 128;
-     const clock_t CLK_TCK        = 128; // deprecated, use sysconf(_SC_CLK_TCK)
- 
-     struct tm
-     {   int     tm_sec,
-                tm_min,
-                tm_hour,
-                tm_mday,
-                tm_mon,
-                tm_year,
-                tm_wday,
-                tm_yday,
-                tm_isdst;
- 	int tm_gmtoff;
- 	char* tm_zone;
-     }
+       CLK_TCK = _sysconf(3);
+    }
+
+    struct tm
+    {   int     tm_sec,
+               tm_min,
+               tm_hour,
+               tm_mday,
+               tm_mon,
+               tm_year,
+               tm_wday,
+               tm_yday,
+               tm_isdst;
+    }
 }
 else
 {

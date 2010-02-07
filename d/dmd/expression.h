@@ -183,6 +183,13 @@ struct IntegerExp : Expression
     dt_t **toDt(dt_t **pdt);
 };
 
+struct ErrorExp : IntegerExp
+{
+    ErrorExp();
+
+    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+};
+
 struct RealExp : Expression
 {
     real_t value;
@@ -444,16 +451,7 @@ struct StructLiteralExp : Expression
     Expression *inlineScan(InlineScanState *iss);
 };
 
-struct TypeDotIdExp : Expression
-{
-    Identifier *ident;
-
-    TypeDotIdExp(Loc loc, Type *type, Identifier *ident);
-    Expression *syntaxCopy();
-    Expression *semantic(Scope *sc);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    elem *toElem(IRState *irs);
-};
+Expression *typeDotIdExp(Loc loc, Type *type, Identifier *ident);
 
 struct TypeExp : Expression
 {

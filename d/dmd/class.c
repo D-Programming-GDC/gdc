@@ -530,7 +530,7 @@ void ClassDeclaration::semantic(Scope *sc)
 		    else
 			assert(0);
 		    assert(!vthis);
-		    vthis = new ThisDeclaration(t);
+		    vthis = new ThisDeclaration(loc, t);
 		    members->push(vthis);
 		}
 	    }

@@ -20,7 +20,7 @@
 #include <assert.h>
 
 #if _WIN32
-#elif linux || __APPLE__ || __FreeBSD__
+#elif linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
 #define PHOBOS_USE_PTHREADS	1
 #else
 #endif
@@ -127,12 +127,10 @@ void _d_monitorrelease(Object *h)
     }
 }
 
-#endif
-
 /* =============================== linux ============================ */
 
 // needs to be else..
-#if PHOBOS_USE_PTHREADS
+#elif PHOBOS_USE_PTHREADS
 
 #if linux || __APPLE__
 #ifndef PTHREAD_MUTEX_RECURSIVE
@@ -248,5 +246,6 @@ void _d_monitorrelease(Object *h)
 	h->monitor = NULL;
     }
 }
-
+#else
+#error Unsupported platform
 #endif

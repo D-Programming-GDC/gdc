@@ -442,7 +442,7 @@ void StructDeclaration::semantic(Scope *sc)
 	    }
 	    else
 	    {
-		if (!vd->type->isZeroInit())
+		if (!vd->type->isZeroInit(loc))
 		{
 		    zeroInit = 0;
 		    break;

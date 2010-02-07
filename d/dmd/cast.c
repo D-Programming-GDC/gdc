@@ -1528,7 +1528,7 @@ Expression *BinExp::typeCombine(Scope *sc)
  	e1 = e1->optimize(WANTvalue);
  	if (isCommutative() && e1->isConst())
  	{   /* Swap operands to minimize number of functions generated
-+ 	     */
+ 	     */
  	    //printf("swap %s\n", e->toChars());
  	    Expression *tmp = e1;
  	    e1 = e2;
@@ -1539,6 +1539,9 @@ Expression *BinExp::typeCombine(Scope *sc)
     {
      Lincompatible:
 	incompatibleTypes();
+	type = Type::terror;
+ 	e1 = new ErrorExp();
+ 	e2 = new ErrorExp();
     }
 Lret:
     if (!type)

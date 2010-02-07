@@ -209,7 +209,7 @@ install-data-local: $(D_PREREQ_SRCS) libgphobos.a
 	for i in etc etc/c \
 		etc/c/zlib \
 		gcc std std/c \
-                std/c/darwin std/c/linux std/c/mach std/c/skyos std/c/unix std/c/windows std/c/freebsd \
+                std/c/darwin std/c/linux std/c/mach std/c/skyos std/c/unix std/c/windows std/c/freebsd std/c/osx std/c/posix std/c/solaris \
 		std/typeinfo std/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 		for f in $(srcdir)/$$i/*.[hd]; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \

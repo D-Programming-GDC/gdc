@@ -2067,10 +2067,12 @@ elem * TypeExp::toElem(IRState* irs) {
     return irs->errorMark(type);
 }
 
+#if V2 //keep D2 compatibility
 elem * TypeDotIdExp::toElem(IRState* irs) {
     ::error("TypeDotIdExp::toElem: don't know what to do (%s)", toChars());
     return irs->errorMark(type);
 }
+#endif
 
 elem *
 StringExp::toElem(IRState * irs)
@@ -4435,7 +4437,7 @@ gcc_d_backend_init()
 #if V2
     CLASSINFO_SIZE = 19 * PTRSIZE;
 #else
-    CLASSINFO_SIZE = 18 * PTRSIZE;
+    CLASSINFO_SIZE = (0x3C+12+4);
 #endif
 
     d_init_builtins();

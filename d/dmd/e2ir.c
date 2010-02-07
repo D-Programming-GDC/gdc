@@ -13,6 +13,8 @@
 #include	<time.h>
 #include	<complex.h>
 
+#include "port.h"
+
 #include	"lexer.h"
 #include	"expression.h"
 #include	"mtype.h"
@@ -28,7 +30,7 @@
 #if IN_GCC
 #include "mem.h"
 #endif
-/*#include	"mem.h"	// for mem_malloc*/
+/*#include	"mem.h"	// for tk/mem_malloc*/
 
 #if __APPLE__
 #define __I86__ 1
@@ -161,7 +163,8 @@ elem *callfunc(Loc loc,
 	}
 	if ((global.params.isLinux ||
  	     global.params.isOSX ||
- 	     global.params.isFreeBSD) && tf->linkage != LINKd)
+ 	     global.params.isFreeBSD ||
+ 	     global.params.isSolaris) && tf->linkage != LINKd)
 	    ;	// ehidden goes last on Linux/OSX C++
 	else
 	{
@@ -891,6 +894,8 @@ elem *RealExp::toElem(IRState *irs)
 	case TYfloat:
 	case TYifloat:
 	    c.Vfloat = value;
+	    if (Port::isSignallingNan(value))
+ 		((unsigned int*)&c.Vfloat)[0] &= 0xFFBFFFFFL;
 	    break;
 
 	case TYdouble:
@@ -900,7 +905,10 @@ elem *RealExp::toElem(IRState *irs)
 
 	case TYldouble:
 	case TYildouble:
-	    c.Vldouble = value;
+	    c.Vdouble = value;	// unfortunately, this converts SNAN to QNAN
+ 	    if (Port::isSignallingNan(value))
+ 		// Put SNAN back
+ 		((unsigned int*)&c.Vdouble)[1] &= 0xFFF7FFFFL;
 	    break;
 
 	default:
@@ -934,12 +942,20 @@ elem *ComplexExp::toElem(IRState *irs)
     {
 	case TYcfloat:
 	    c.Vcfloat.re = (float) re;
-	    c.Vcfloat.im = (float) im;
+	    if (Port::isSignallingNan(re))
+ 		((unsigned int*)&c.Vcfloat.re)[0] &= 0xFFBFFFFFL;
+ 	    c.Vcfloat.im = (float) im;
+ 	    if (Port::isSignallingNan(im))
+ 		((unsigned int*)&c.Vcfloat.im)[0] &= 0xFFBFFFFFL;
 	    break;
 
 	case TYcdouble:
 	    c.Vcdouble.re = (double) re;
-	    c.Vcdouble.im = (double) im;
+	    if (Port::isSignallingNan(re))
+ 		((unsigned int*)&c.Vcdouble.re)[1] &= 0xFFF7FFFFL;
+ 	    c.Vcdouble.im = (double) im;
+ 	    if (Port::isSignallingNan(re))
+ 		((unsigned int*)&c.Vcdouble.im)[1] &= 0xFFF7FFFFL;
 	    break;
 
 	case TYcldouble:
@@ -1229,10 +1245,18 @@ elem *NewExp::toElem(IRState *irs)
 	    ethis = thisexp->toElem(irs);
 	    if (offset)
 		ethis = el_bin(OPadd, TYnptr, ethis, el_long(TYint, offset));
+		
+		if (!cd->vthis)
+ 	    {
+ 		error("forward reference to %s", cd->toChars());
+ 	    }
+ 	    else
+ 	    {
 
 	    ey = el_bin(OPadd, TYnptr, ey, el_long(TYint, cd->vthis->offset));
 	    ey = el_una(OPind, TYnptr, ey);
 	    ey = el_bin(OPeq, TYnptr, ey, ethis);
+	    }
 
 //printf("ex: "); elem_print(ex);
 //printf("ey: "); elem_print(ey);
@@ -1511,7 +1535,7 @@ elem *AssertExp::toElem(IRState *irs)
 	if (global.params.useInvariants && t1->ty == Tclass &&
 	    !((TypeClass *)t1)->sym->isInterfaceDeclaration())
 	{
-#if TARGET_LINUX || TARGET_FREEBSD
+#if TARGET_LINUX || TARGET_FREEBSD || TARGET_SOLARIS
 	    e = el_bin(OPcall, TYvoid, el_var(rtlsym[RTLSYM__DINVARIANT]), e);
 #else
 	    e = el_bin(OPcall, TYvoid, el_var(rtlsym[RTLSYM_DINVARIANT]), e);

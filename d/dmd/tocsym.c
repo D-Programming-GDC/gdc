@@ -12,6 +12,11 @@
 #include <stddef.h>
 #include <time.h>
 #include <assert.h>
+
+#if __sun&&__SVR4
+#include <alloca.h>
+#endif
+
 #include "gdc_alloca.h"
 
 #include "mars.h"

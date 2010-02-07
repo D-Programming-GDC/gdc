@@ -7,6 +7,8 @@
  
 version (FreeBSD)
     import std.c.freebsd.freebsd;
+else version (Solaris)
+    import std.c.solaris.solaris;
 else
     import std.c.linux.linux;
 
@@ -23,6 +25,14 @@ version (OSX)
 }
 
 version (FreeBSD)
+{
+    extern (C)
+    {
+	extern char etext;
+    }
+}
+
+version (Solaris)
 {
     extern (C)
     {
@@ -150,6 +160,11 @@ void os_query_staticdataseg(void **base, uint *nbytes)
     {
  	*base = cast(void *)&etext;
  	*nbytes = cast(byte *)&_end - cast(byte *)&etext;
+    }
+    else version (Solaris)
+    {
+	*base = cast(void *)&etext;
+	*nbytes = cast(byte *)&_end - cast(byte *)&etext;
     }
      else
      {
