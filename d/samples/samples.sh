@@ -10,4 +10,5 @@ do
    echo "Done!"
    echo -e "${prog} output:\n"
    ./${prog}.out
+   echo "---------"
 done
