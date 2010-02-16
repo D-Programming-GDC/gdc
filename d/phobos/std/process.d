@@ -249,7 +249,9 @@ else version(Windows)
 }
 else
 {
-    static assert(0);
+  // Evidently if we don't need it we don't _need_ it.
+  assert(false);
+  // static assert(0);
 } // version
 }
 

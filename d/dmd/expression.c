@@ -394,7 +394,8 @@ void arrayExpressionSemantic(Expressions *exps, Scope *sc)
 +  * Perform canThrow() on an array of Expressions.
 +  */
  
- #if DMDV2 int arrayExpressionCanThrow(Expressions *exps)
+ #if DMDV2
+ int arrayExpressionCanThrow(Expressions *exps)
  {
      if (exps)
      {
@@ -3290,7 +3291,8 @@ int StructLiteralExp::checkSideEffect(int flag)
 #if DMDV2
  int StructLiteralExp::canThrow()
  {
-     return arrayExpressionCanThrow(elements); }
+     return arrayExpressionCanThrow(elements);
+ }
  #endif
 
 void StructLiteralExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -4493,7 +4495,8 @@ void TypeidExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
  	    Object *oarg = (Object *)args->data[i];
  	    ObjectToCBuffer(buf, hgs, oarg);
  	}
-     }     buf->writeByte(')');
+     }
+     buf->writeByte(')');
  }
  #endif
 
@@ -6075,7 +6078,8 @@ Expression *CallExp::semantic(Scope *sc)
  	    unsigned errors = global.errors;
  	    global.gag++;
  	    etmp = e1->semantic(sc);
- 	    global.gag--; 	    if (errors != global.errors)
+ 	    global.gag--;
+ 	    if (errors != global.errors)
  	    {
  		global.errors = errors;
  		targsi = ti->tiargs;
@@ -6203,6 +6207,10 @@ Lagain:
 	    f = dve->var->isFuncDeclaration();
 	    assert(f);
 	    f = f->overloadResolve(loc, arguments);
+	    if (!f)
+            {   type = Type::terror;
+                return this;
+            }
 
 	    ad = f->toParent()->isAggregateDeclaration();
 	}
@@ -6502,7 +6510,8 @@ int CallExp::checkSideEffect(int flag)
  
 	if (e->checkSideEffect(2))
  	    return 1;
-     } 
+     }
+ 
      /* If calling a function or delegate that is typed as pure,
 +      * then this expression has no side effects.
 +      */
@@ -6553,7 +6562,8 @@ int CallExp::checkSideEffect(int flag)
      if (tb->ty == Tfunction && ((TypeFunction *)tb)->isref)
  	return 1;		// function returns a reference
      return 0;
-  } #endif
+  }
+ #endif
 
 Expression *CallExp::toLvalue(Scope *sc, Expression *e)
 {
