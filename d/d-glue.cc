@@ -4434,11 +4434,8 @@ gcc_d_backend_init()
     default:
 	abort();
     }
-#if V2
+
     CLASSINFO_SIZE = 19 * PTRSIZE;
-#else
-    CLASSINFO_SIZE = (0x3C+12+4);
-#endif
 
     d_init_builtins();
     
