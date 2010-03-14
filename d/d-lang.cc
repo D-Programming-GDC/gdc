@@ -361,9 +361,14 @@ d_init ()
 #ifdef D_OS_VERSYM
     VersionCondition::addPredefinedGlobalIdent((char*) D_OS_VERSYM);
     if (strcmp(D_OS_VERSYM, "darwin") == 0)
-   VersionCondition::addPredefinedGlobalIdent((char*) "OSX");
+    VersionCondition::addPredefinedGlobalIdent((char*) "OSX");
     if (strcmp(D_OS_VERSYM, "Win32") == 0)
-	is_target_win32 = true;
+	 {
+		 VersionCondition::addPredefinedGlobalIdent("Windows");
+		 is_target_win32 = true;
+	 }
+	 if (strcmp(D_OS_VERSYM, "freebsd") == 0)
+    VersionCondition::addPredefinedGlobalIdent((char*) "FreeBSD");
 #endif
 #ifdef D_OS_VERSYM2
     VersionCondition::addPredefinedGlobalIdent((char*) D_OS_VERSYM2);
