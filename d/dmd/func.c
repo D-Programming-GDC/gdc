@@ -1592,7 +1592,7 @@ int fp2(void *param, FuncDeclaration *f)
 
     if (f != m->lastf)		// skip duplicates
     {
-
+   m->anyf = f;
 	TypeFunction *tf = (TypeFunction *)f->type;
 	tf = (TypeFunction *)f->type;
 	match = (MATCH) tf->callMatch(arguments);
