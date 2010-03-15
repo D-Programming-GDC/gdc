@@ -24,7 +24,7 @@ version (OSX)
     }
 }
 
-version (FreeBSD)
+version (freebsd)
 {
     extern (C)
     {
@@ -156,7 +156,7 @@ void os_query_staticdataseg(void **base, uint *nbytes)
  	*base = null;
  	*nbytes = 0;
      }
-     else version (FreeBSD)
+     else version (freebsd)
     {
  	*base = cast(void *)&etext;
  	*nbytes = cast(byte *)&_end - cast(byte *)&etext;

@@ -331,7 +331,7 @@ class MmFile
 				fd = -1;
 				version (linux)			flags |= MAP_ANONYMOUS;
 				else version (OSX)		flags |= MAP_ANON;
-				else version (FreeBSD)		flags |= MAP_ANON;
+				else version (freebsd)		flags |= MAP_ANON;
 				else version (Solaris)		flags |= MAP_ANON;
  				else				static assert(0);
 			}

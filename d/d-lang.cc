@@ -367,8 +367,6 @@ d_init ()
 		 VersionCondition::addPredefinedGlobalIdent("Windows");
 		 is_target_win32 = true;
 	 }
-	 if (strcmp(D_OS_VERSYM, "freebsd") == 0)
-    VersionCondition::addPredefinedGlobalIdent((char*) "FreeBSD");
 #endif
 #ifdef D_OS_VERSYM2
     VersionCondition::addPredefinedGlobalIdent((char*) D_OS_VERSYM2);
