@@ -6,10 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if IN_GCC
+#include "rmem.h"
+#else
 #if linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
 #include "../root/rmem.h"
 #else
 #include "rmem.h"
+#endif
 #endif
 
 /* This implementation of the storage allocator uses the standard C allocation package.
