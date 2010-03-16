@@ -132,7 +132,7 @@ else version (OSX)
     int feholdexcept(fenv_t *envp);		///
     int feupdateenv(fenv_t *envp);		///
 }
-else version (freebsd)
+else version (FreeBSD)
 {
     /// Entire floating point environment
 

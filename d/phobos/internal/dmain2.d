@@ -29,7 +29,7 @@ version (OSX)
     extern (C) void* __osx_stack_end = cast(void*)0xC0000000;
 }
 
-version (freebsd)
+version (FreeBSD)
 {
     // The bottom of the stack
     extern (C) void* __libc_stack_end;
@@ -69,7 +69,7 @@ extern (C) int main(size_t argc, char **argv)
  	__osx_stack_end = cast(void*)&argv;
      }
      
-     version (freebsd)
+     version (FreeBSD)
     {	/* FreeBSD does not provide a way to get at the top of the
  	 * stack.
  	 * But as far as the gc is concerned, argv is at the top

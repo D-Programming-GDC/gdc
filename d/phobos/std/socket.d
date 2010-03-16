@@ -84,7 +84,7 @@ else version(BsdSockets)
 	{
 		version (FreeBSD)
 		{
-			private import std.c.freebsd.socket;
+			// private import std.c.freebsd.socket;
 		}
 		private import std.c.unix.unix;
 		private alias std.c.unix.unix.timeval _ctimeval;

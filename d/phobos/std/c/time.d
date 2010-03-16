@@ -88,7 +88,7 @@ else version (OSX)
                tm_isdst;
     }
 }
-else version (freebsd)
+else version (FreeBSD)
 {
     const clock_t CLOCKS_PER_SEC = 128;
     const clock_t CLK_TCK        = 128; // deprecated, use sysconf(_SC_CLK_TCK)

@@ -48,7 +48,7 @@ const
     else version (OSX)
     {
 	Family family = Family.OSX;    }
-    else version (freebsd)
+    else version (FreeBSD)
      {
  	Family family = Family.FreeBSD;
     }

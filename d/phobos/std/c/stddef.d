@@ -30,7 +30,7 @@ else version (OSX)
 {
     alias dchar wchar_t;
 }
-else version (freebsd)
+else version (FreeBSD)
 {
     alias dchar wchar_t;
 }

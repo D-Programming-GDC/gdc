@@ -527,7 +527,7 @@ else version (Unix)
 version (FreeBSD)
 {
     private import std.c.freebsd.freebsd;
-    private import std.c.freebsd.pthread;
+    //private import std.c.freebsd.pthread;
 }
 else
 {
