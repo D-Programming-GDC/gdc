@@ -2290,6 +2290,8 @@ Expression *interpret_aaKeys(InterState *istate, Expressions *arguments)
 	return NULL;
     AssocArrayLiteralExp *aae = (AssocArrayLiteralExp *)earg;
     Expression *e = new ArrayLiteralExp(aae->loc, aae->keys);
+    Type *elemType = ((TypeAArray *)aae->type)->index;
+    e->type = new TypeSArray(elemType, new IntegerExp(arguments ? arguments->dim : 0));
     return e;
 }
 
@@ -2306,6 +2308,8 @@ Expression *interpret_aaValues(InterState *istate, Expressions *arguments)
 	return NULL;
     AssocArrayLiteralExp *aae = (AssocArrayLiteralExp *)earg;
     Expression *e = new ArrayLiteralExp(aae->loc, aae->values);
+    Type *elemType = ((TypeAArray *)aae->type)->next;
+    e->type = new TypeSArray(elemType, new IntegerExp(arguments ? arguments->dim : 0));
     //printf("result is %s\n", e->toChars());
     return e;
 }

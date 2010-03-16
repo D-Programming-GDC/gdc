@@ -51,7 +51,6 @@ AggregateDeclaration::AggregateDeclaration(Loc loc, Identifier *id)
 
     stag = NULL;
     sinit = NULL;
-    scope = NULL;
     #if DMDV2
      dtor = NULL;
  
@@ -269,6 +268,7 @@ void StructDeclaration::semantic(Scope *sc)
 #endif
 
     parent = sc->parent;
+    type = type->semantic(loc, sc);
     #if STRUCTTHISREF
      handle = type;
  	#else

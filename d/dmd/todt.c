@@ -194,7 +194,6 @@ dt_t *StructInitializer::toDt()
 	    {	target_size_t sz = dt_size(d);
 		target_size_t vsz = v->type->size();
 		target_size_t voffset = v->offset;
-		assert(sz <= vsz);
 
 #ifdef IN_GCC
 		if (offset < voffset)
@@ -214,7 +213,9 @@ dt_t *StructInitializer::toDt()
 		     vt = vt->next->toBasetype())
 		{   TypeSArray *tsa = (TypeSArray *)vt;
 		    dim *= tsa->dim->toInteger();
-		}
+		}	
+		//printf("sz = %d, dim = %d, vsz = %d\n", sz, dim, vsz);
+ 		assert(sz == vsz || sz * dim <= vsz);
 
 		for (target_size_t i = 0; i < dim; i++)
 		{

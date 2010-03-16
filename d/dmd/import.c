@@ -133,8 +133,6 @@ void Import::semantic(Scope *sc)
 // Modules need a list of each imported module
  	//printf("%s imports %s\n", sc->module->toChars(), mod->toChars());
  	sc->module->aimports.push(mod);
- 
- 	mod->semantic();
 
 	if (!isstatic && !aliasId && !names.dim)
 	{
@@ -146,6 +144,7 @@ void Import::semantic(Scope *sc)
 	    sc->scopesym->importScope(mod, prot);
 	}
 
+	mod->semantic();
 
 	if (mod->needmoduleinfo)
 	    sc->module->needmoduleinfo = 1;

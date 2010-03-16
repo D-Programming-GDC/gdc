@@ -555,6 +555,7 @@ struct TypeEnum : Type
     EnumDeclaration *sym;
 
     TypeEnum(EnumDeclaration *sym);
+    Type *syntaxCopy();
     d_uns64 size(Loc loc);
     unsigned alignsize();
     char *toChars();

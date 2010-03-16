@@ -13,7 +13,7 @@
 #include	<time.h>
 #include	<complex.h>
 
-#include "port.h"
+#include	"port.h"
 
 #include	"lexer.h"
 #include	"expression.h"
@@ -27,16 +27,26 @@
 #include	"init.h"
 #include	"template.h"
 
-#if IN_GCC
-#include "mem.h"
-#endif
-/*#include	"mem.h"	// for tk/mem_malloc*/
+#include	"mem.h"	// for tk/mem_malloc
 
 #if __APPLE__
 #define __I86__ 1
 #endif
 
+#include	"cc.h"
+#include	"el.h"
+#include	"oper.h"
+#include	"global.h"
+#include	"code.h"
+#include	"type.h"
+#include	"dt.h"
+#include	"irstate.h"
+#include	"id.h"
+#include	"type.h"
+#include	"toir.h"
+
 static char __file__[] = __FILE__;	/* for tassert.h		*/
+#include	"tassert.h"
 
 
 elem *addressElem(elem *e, Type *t);
@@ -45,7 +55,7 @@ elem *bit_assign(enum OPER op, elem *eb, elem *ei, elem *ev, int result);
 elem *bit_read(elem *eb, elem *ei, int result);
 elem *exp2_copytotemp(elem *e);
 
-#define el_setLoc(e,loc)	((e)->Esrcpos.Sfilename = (loc).filename, \
+#define el_setLoc(e,loc)	((e)->Esrcpos.Sfilename = (char *)(loc).filename, \
 				 (e)->Esrcpos.Slinnum = (loc).linnum)
 
 /************************************
@@ -162,9 +172,9 @@ elem *callfunc(Loc loc,
 	    ehidden = el_ptr(stmp);
 	}
 	if ((global.params.isLinux ||
- 	     global.params.isOSX ||
- 	     global.params.isFreeBSD ||
- 	     global.params.isSolaris) && tf->linkage != LINKd)
+	     global.params.isOSX ||
+	     global.params.isFreeBSD ||
+	     global.params.isSolaris) && tf->linkage != LINKd)
 	    ;	// ehidden goes last on Linux/OSX C++
 	else
 	{
@@ -253,16 +263,16 @@ elem *callfunc(Loc loc,
 	    ep->Ety = tyret;
 	    e = ep;
 	    if (op == OPscale)
-	    {	
-	    elem *et = e->E1;
+	    {
+		elem *et = e->E1;
 		e->E1 = el_una(OPs32_d, TYdouble, e->E2);
 		e->E1 = el_una(OPd_ld, TYldouble, e->E1);
 		e->E2 = et;
-		}
- 	    else if (op == OPyl2x || op == OPyl2xp1)
- 	    {
- 		elem *et = e->E1;
- 		e->E1 = e->E2;
+	    }
+	    else if (op == OPyl2x || op == OPyl2xp1)
+	    {
+		elem *et = e->E1;
+		e->E1 = e->E2;
 		e->E2 = et;
 	    }
 	}
@@ -666,6 +676,7 @@ elem *VarExp::toElem(IRState *irs)
 	//printf("\tadding symbol\n");
 	symbol_add(s);
     }
+
     if (var->isImportedSymbol())
     {
 	e = el_var(var->toImport());
@@ -895,20 +906,20 @@ elem *RealExp::toElem(IRState *irs)
 	case TYifloat:
 	    c.Vfloat = value;
 	    if (Port::isSignallingNan(value))
- 		((unsigned int*)&c.Vfloat)[0] &= 0xFFBFFFFFL;
+		((unsigned int*)&c.Vfloat)[0] &= 0xFFBFFFFFL;
 	    break;
 
 	case TYdouble:
 	case TYidouble:
-	    c.Vdouble = value;
+	    c.Vdouble = value;	// unfortunately, this converts SNAN to QNAN
+	    if (Port::isSignallingNan(value))
+		// Put SNAN back
+		((unsigned int*)&c.Vdouble)[1] &= 0xFFF7FFFFL;
 	    break;
 
 	case TYldouble:
 	case TYildouble:
-	    c.Vdouble = value;	// unfortunately, this converts SNAN to QNAN
- 	    if (Port::isSignallingNan(value))
- 		// Put SNAN back
- 		((unsigned int*)&c.Vdouble)[1] &= 0xFFF7FFFFL;
+	    c.Vldouble = value;
 	    break;
 
 	default:
@@ -943,19 +954,19 @@ elem *ComplexExp::toElem(IRState *irs)
 	case TYcfloat:
 	    c.Vcfloat.re = (float) re;
 	    if (Port::isSignallingNan(re))
- 		((unsigned int*)&c.Vcfloat.re)[0] &= 0xFFBFFFFFL;
- 	    c.Vcfloat.im = (float) im;
- 	    if (Port::isSignallingNan(im))
- 		((unsigned int*)&c.Vcfloat.im)[0] &= 0xFFBFFFFFL;
+		((unsigned int*)&c.Vcfloat.re)[0] &= 0xFFBFFFFFL;
+	    c.Vcfloat.im = (float) im;
+	    if (Port::isSignallingNan(im))
+		((unsigned int*)&c.Vcfloat.im)[0] &= 0xFFBFFFFFL;
 	    break;
 
 	case TYcdouble:
 	    c.Vcdouble.re = (double) re;
 	    if (Port::isSignallingNan(re))
- 		((unsigned int*)&c.Vcdouble.re)[1] &= 0xFFF7FFFFL;
- 	    c.Vcdouble.im = (double) im;
- 	    if (Port::isSignallingNan(re))
- 		((unsigned int*)&c.Vcdouble.im)[1] &= 0xFFF7FFFFL;
+		((unsigned int*)&c.Vcdouble.re)[1] &= 0xFFF7FFFFL;
+	    c.Vcdouble.im = (double) im;
+	    if (Port::isSignallingNan(re))
+		((unsigned int*)&c.Vcdouble.im)[1] &= 0xFFF7FFFFL;
 	    break;
 
 	case TYcldouble:
@@ -1245,17 +1256,16 @@ elem *NewExp::toElem(IRState *irs)
 	    ethis = thisexp->toElem(irs);
 	    if (offset)
 		ethis = el_bin(OPadd, TYnptr, ethis, el_long(TYint, offset));
-		
-		if (!cd->vthis)
- 	    {
- 		error("forward reference to %s", cd->toChars());
- 	    }
- 	    else
- 	    {
 
-	    ey = el_bin(OPadd, TYnptr, ey, el_long(TYint, cd->vthis->offset));
-	    ey = el_una(OPind, TYnptr, ey);
-	    ey = el_bin(OPeq, TYnptr, ey, ethis);
+	    if (!cd->vthis)
+	    {
+		error("forward reference to %s", cd->toChars());
+	    }
+	    else
+	    {
+		ey = el_bin(OPadd, TYnptr, ey, el_long(TYint, cd->vthis->offset));
+		ey = el_una(OPind, TYnptr, ey);
+		ey = el_bin(OPeq, TYnptr, ey, ethis);
 	    }
 
 //printf("ex: "); elem_print(ex);
@@ -1574,7 +1584,7 @@ elem *AssertExp::toElem(IRState *irs)
 		if (!assertexp_sfilename || strcmp(loc.filename, assertexp_name) != 0 || assertexp_mn != m)
 		{
 		    dt_t *dt = NULL;
-		    char *id;
+		    const char *id;
 		    int len;
 
 		    id = loc.filename;
@@ -1594,7 +1604,7 @@ elem *AssertExp::toElem(IRState *irs)
 		    outdata(assertexp_sfilename);
 
 		    assertexp_mn = m;
-		    assertexp_name = id;
+		    assertexp_name = (char *)id;
 		}
 
 		efilename = el_var(assertexp_sfilename);
@@ -1670,6 +1680,7 @@ elem *AddExp::toElem(IRState *irs)
        )
     {
 	error("Array operation %s not implemented", toChars());
+	e = el_long(type->totym(), 0);	// error recovery
     }
     else
 	e = toElemBin(irs,OPadd);
@@ -1680,8 +1691,20 @@ elem *AddExp::toElem(IRState *irs)
  */
 
 elem *MinExp::toElem(IRState *irs)
-{
-    return toElemBin(irs,OPmin);
+{   elem *e;
+    Type *tb1 = e1->type->toBasetype();
+    Type *tb2 = e2->type->toBasetype();
+
+    if ((tb1->ty == Tarray || tb1->ty == Tsarray) &&
+	(tb2->ty == Tarray || tb2->ty == Tsarray)
+       )
+    {
+	error("Array operation %s not implemented", toChars());
+	e = el_long(type->totym(), 0);	// error recovery
+    }
+    else
+	e = toElemBin(irs,OPmin);
+    return e;
 }
 
 /***************************************
@@ -2404,13 +2427,13 @@ elem *AssignExp::toElem(IRState *irs)
 		esize = el_bin(OPmul, TYint, elen, esize);
 		epto = array_toPtr(e1->type, ex);
 		epfr = array_toPtr(e2->type, efrom);
-		#if 1
- 		// memcpy() is faster, so if we can't beat 'em, join 'em
- 		e = el_params(esize, epfr, epto, NULL);
- 		e = el_bin(OPcall,TYnptr,el_var(rtlsym[RTLSYM_MEMCPY]),e);
-		#else
-  		e = el_bin(OPmemcpy, TYnptr, epto, el_param(epfr, esize));
-		#endif
+#if 1
+		// memcpy() is faster, so if we can't beat 'em, join 'em
+		e = el_params(esize, epfr, epto, NULL);
+		e = el_bin(OPcall,TYnptr,el_var(rtlsym[RTLSYM_MEMCPY]),e);
+#else
+		e = el_bin(OPmemcpy, TYnptr, epto, el_param(epfr, esize));
+#endif
 		e = el_pair(eto->Ety, el_copytree(elen), e);
 		e = el_combine(eto, e);
 	    }
@@ -2517,11 +2540,10 @@ elem *AssignExp::toElem(IRState *irs)
 	{
 	    elem *e1;
 	    elem *e2;
-	    tym_t tym;
 
 	    //printf("toElemBin() '%s'\n", toChars());
 
-	    tym = type->totym();
+	    tym_t tym = type->totym();
 
 	    e1 = this->e1->toElem(irs);
 	    elem *ex = e1;
@@ -2548,7 +2570,7 @@ elem *AssignExp::toElem(IRState *irs)
 	    }
 	    else
 	    {
-		e2 = this->e2->toElem(irs);
+		elem *e2 = this->e2->toElem(irs);
 		e = el_bin(OPstreq,tym,e1,e2);
 		e->Enumbytes = this->e1->type->size();
 	    }
@@ -2864,13 +2886,6 @@ elem *CondExp::toElem(IRState *irs)
 /***************************************
  */
 
-elem *TypeDotIdExp::toElem(IRState *irs)
-{
-    print();
-    assert(0);
-    return NULL;
-}
-
 elem *TypeExp::toElem(IRState *irs)
 {
 #ifdef DEBUG
@@ -2932,7 +2947,7 @@ elem *DelegateExp::toElem(IRState *irs)
     {
 	ethis = e1->toElem(irs);
 	if (e1->type->ty != Tclass && e1->type->ty != Tpointer)
-	    ethis = el_una(OPaddr, TYnptr, ethis);
+	    ethis = addressElem(ethis, e1->type);
 
 	if (e1->op == TOKsuper)
 	    directcall = 1;
@@ -3275,7 +3290,7 @@ elem *CastExp::toElem(IRState *irs)
 	int offset;
 	int rtl = RTLSYM_DYNAMIC_CAST;
 
-	cdfrom = e1->type->isClassHandle();
+	cdfrom = tfrom->isClassHandle();
 	cdto   = t->isClassHandle();
 	if (cdfrom->isInterfaceDeclaration())
 	{
@@ -4131,9 +4146,11 @@ elem *ArrayLiteralExp::toElem(IRState *irs)
 
     //printf("ArrayLiteralExp::toElem() %s\n", toChars());
     if (elements)
-    {
+    {	Expressions args;
 	dim = elements->dim;
+	args.setDim(dim + 1);		// +1 for number of args parameter
 	e = el_long(TYint, dim);
+	args.data[dim] = (void *)e;
 	for (size_t i = 0; i < dim; i++)
 	{   Expression *el = (Expression *)elements->data[i];
 	    elem *ep = el->toElem(irs);
@@ -4143,8 +4160,14 @@ elem *ArrayLiteralExp::toElem(IRState *irs)
 		ep = el_una(OPstrpar, TYstruct, ep);
 		ep->Enumbytes = el->type->size();
 	    }
-	    e = el_param(ep, e);
+	    args.data[dim - (i + 1)] = (void *)ep;
 	}
+
+	/* Because the number of parameters can get very large, produce
+	 * a balanced binary tree so we don't blow up the stack in
+	 * the subsequent tree walking code.
+	 */
+	e = el_params(args.data, dim + 1);
     }
     else
     {	dim = 0;
@@ -4362,6 +4385,31 @@ elem *StructLiteralExp::toElem(IRState *irs)
 	    e = el_combine(e, e1);
 	}
     }
+
+#if DMDV2
+    if (sd->isnested)
+    {	// Initialize the hidden 'this' pointer
+	assert(sd->fields.dim);
+	Dsymbol *s = (Dsymbol *)sd->fields.data[sd->fields.dim - 1];
+	ThisDeclaration *v = s->isThisDeclaration();
+	assert(v);
+
+	elem *e1;
+	if (tybasic(stmp->Stype->Tty) == TYnptr)
+	{   e1 = el_var(stmp);
+	    e1->EV.sp.Voffset = soffset;
+	}
+	else
+	{   e1 = el_ptr(stmp);
+	    if (soffset)
+		e1 = el_bin(OPadd, TYnptr, e1, el_long(TYsize_t, soffset));
+	}
+	e1 = el_bin(OPadd, TYnptr, e1, el_long(TYsize_t, v->offset));
+	e1 = setEthis(loc, irs, e1, sd);
+
+	e = el_combine(e, e1);
+    }
+#endif
 
     elem *ev = el_var(stmp);
     ev->Enumbytes = sd->structsize;

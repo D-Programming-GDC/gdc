@@ -45,8 +45,6 @@ struct EnumDeclaration : ScopeDsymbol
      Expression *maxval;
      Expression *minval;
      Expression *defaultval;	// default initializer
- 
-     Scope *scope;		// !=NULL means context to use
  	#endif
      int isdeprecated;
     Expressions * attributes; // GCC decl/type attributes
