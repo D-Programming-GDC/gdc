@@ -131,6 +131,7 @@ Usage:
   -offilename	 name output file to filename
   -op            do not strip paths from source file
   -m...          pass an -m... option to gdc
+  -pipe          Use pipes rather than intermediate files
   -profile	 profile runtime performance of generated code
   -quiet         suppress unnecessary messages
   -q,arg1,...    pass arg1, arg2, etc. to to gdc
@@ -309,6 +310,8 @@ while ( $arg_i < scalar(@ARGV) ) {
 	$output_parents = 1;
     } elsif ( $arg =~ m/^-nofloat$/ ) {
 	# do nothing
+	} elsif ( $arg =~ m/^-pipe$/ ) {
+   push @out, '-pipe';
     } elsif ( $arg =~ m/^-profile$/ ) {
 	# there is more to profiling than this ... -finstrument-functions?
 	push @out, '-pg';
