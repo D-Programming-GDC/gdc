@@ -910,7 +910,7 @@ Symbol *AggregateDeclaration::toInitializer()
 
 	TREE_ADDRESSABLE( t ) = 1;
 	TREE_CONSTANT( t ) = 1;
-	TREE_READONLY( t ) = 1;
+	TREE_INVARIANT( t ) = 1;
 	DECL_CONTEXT( t ) = 0; // These are always global
     }
     return sinit;
