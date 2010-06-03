@@ -1929,7 +1929,7 @@ struct AsmProcessor
 		}
 		if (use_star)
 		    insnTemplate->writebyte('*');
-		if (operand->constDisplacement) {
+		if (operand->constDisplacement || operand->segmentPrefix != Reg_Invalid) {
 		    if (operand->symbolDisplacement.dim)
 			insnTemplate->writebyte('+');
 		    addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
