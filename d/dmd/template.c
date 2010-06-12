@@ -591,8 +591,8 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
     if (!flag)
     {
 	/* Any parameter left without a type gets the type of
-! 	 * its corresponding arg
-! 	 */
+	 * its corresponding arg
+	 */
 	for (int i = 0; i < dedtypes_dim; i++)
 	{
 	    if (!dedtypes->data[i])
@@ -605,7 +605,7 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
     #if DMDV2
      if (m && constraint && !(flag & 1))
      {	/* Check to see if constraint is satisfied.
-+ 	 */
+	 */
  	Expression *e = constraint->syntaxCopy();
  	paramscope->flags |= SCOPEstaticif;
  	e = e->semantic(paramscope);
@@ -1006,8 +1006,8 @@ Type *argtype = farg->type;
 	}
 	
 	/* The following code for variadic arguments closely
-+ 	 * matches TypeFunction::callMatch()
-+ 	 */
+	 * matches TypeFunction::callMatch()
+	 */
 	if (!(fdtype->varargs == 2 && i + 1 == nfparams))
 	    goto Lnomatch;
 
@@ -1031,8 +1031,8 @@ Type *argtype = farg->type;
  		    assert(arg);
  		    MATCH m;
  		    /* If lazy array of delegates,
-+ 		     * convert arg(s) to delegate(s)
-+ 		     */
+		     * convert arg(s) to delegate(s)
+		     */
  		    Type *tret = fparam->isLazyArray();
  		    if (tret)
  		    {
@@ -1119,7 +1119,7 @@ Lmatch:
     #if DMDV2
      if (constraint)
      {	/* Check to see if constraint is satisfied.
-+ 	 */
+	 */
  	Expression *e = constraint->syntaxCopy();
  	paramscope->flags |= SCOPEstaticif;
  	e = e->semantic(paramscope);
@@ -1537,7 +1537,7 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 		goto Lnomatch;
 		
 		/* Need a loc to go with the semantic routine.
-+ 	     */
+	     */
  	    Loc loc;
  	    if (parameters->dim)
  	    {
@@ -1899,13 +1899,21 @@ MATCH TypeInstance::deduceType(Scope *sc,
 
       L2:
 
-	for (int i = 0; i < tempinst->tiargs->dim; i++)
+    for (int i = 0; 1; i++)
 	{
 	    //printf("\ttest: tempinst->tiargs[%d]\n", i);
+	    Object *o1;
+	    if (i < tempinst->tiargs->dim)
+		o1 = (Object *)tempinst->tiargs->data[i];
+	    else if (i < tempinst->tdtypes.dim && i < tp->tempinst->tiargs->dim)
+		// Pick up default arg
+		o1 = (Object *)tempinst->tdtypes.data[i];
+	    else
+		break;
+
 	    if (i >= tp->tempinst->tiargs->dim)
  		goto Lnomatch;
 	    int j;
-	    Object *o1 = (Object *)tempinst->tiargs->data[i];
 	    Object *o2 = (Object *)tp->tempinst->tiargs->data[i];
 
 	    Type *t1 = isType(o1);
@@ -1925,6 +1933,7 @@ MATCH TypeInstance::deduceType(Scope *sc,
 	    if (t2)	printf("t2 = %s\n", t2->toChars());
 	    if (e1)	printf("e1 = %s\n", e1->toChars());
 	    if (e2)	printf("e2 = %s\n", e2->toChars());
+	    int j;
 	    if (s1)	printf("s1 = %s\n", s1->toChars());
  	    if (s2)	printf("s2 = %s\n", s2->toChars());
  	    if (v1)	printf("v1 = %s\n", v1->toChars());
@@ -3073,9 +3082,9 @@ TemplateInstance::TemplateInstance(Loc loc, Identifier *ident)
 }
 
 /*****************
-+  * This constructor is only called when we figured out which function
-+  * template to instantiate.
-+  */
+ * This constructor is only called when we figured out which function
+ * template to instantiate.
+ */
 
 
 TemplateInstance::TemplateInstance(Loc loc, TemplateDeclaration *td, Objects *tiargs)
@@ -3213,8 +3222,8 @@ void TemplateInstance::semantic(Scope *sc)
     else
     {
 	/* Run semantic on each argument, place results in tiargs[]
-! 	 * (if we havetempdecl, then tiargs is already evaluated)
-! 	 */
+	 * (if we havetempdecl, then tiargs is already evaluated)
+	 */
 	semanticTiargs(sc);
 
 	tempdecl = findTemplateDeclaration(sc);
@@ -3545,9 +3554,9 @@ void TemplateInstance::semanticTiargs(Scope *sc)
 }
 
 /**********************************
-!  * Input:
-!  *	flags	1: replace const variables with their initializers
-!  */
+ * Input:
+ *	flags	1: replace const variables with their initializers
+ */
 
 void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int flags)
 {
@@ -4446,7 +4455,7 @@ void TemplateMixin::semantic(Scope *sc)
 	    continue;
 	    
 	 /* Different argument list lengths happen with variadic args
-+ 	 */
+	 */
  	if (tiargs->dim != tm->tiargs->dim)
  	    continue;
 

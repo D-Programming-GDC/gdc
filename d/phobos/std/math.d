@@ -846,14 +846,14 @@ real expm1(real x)
       enum { PARAMSIZE = (real.sizeof+3)&(0xFFFF_FFFC) } // always a multiple of 4
       asm {
         /*  expm1() for x87 80-bit reals, IEEE754-2008 conformant.
-+          * Author: Don Clugston.
-+          * 
-+          *    expm1(x) = 2^(rndint(y))* 2^(y-rndint(y)) - 1 where y = LN2*x.
-+          *    = 2rndy * 2ym1 + 2rndy - 1, where 2rndy = 2^(rndint(y))
-+          *     and 2ym1 = (2^(y-rndint(y))-1).
-+          *    If 2rndy  < 0.5*real.epsilon, result is -1.
-+          *    Implementation is otherwise the same as for exp2()
-+          */
+         * Author: Don Clugston.
+         * 
+         *    expm1(x) = 2^(rndint(y))* 2^(y-rndint(y)) - 1 where y = LN2*x.
+         *    = 2rndy * 2ym1 + 2rndy - 1, where 2rndy = 2^(rndint(y))
+         *     and 2ym1 = (2^(y-rndint(y))-1).
+         *    If 2rndy  < 0.5*real.epsilon, result is -1.
+         *    Implementation is otherwise the same as for exp2()
+         */
         naked;        
         fld real ptr [ESP+4] ; // x
         mov AX, [ESP+4+8]; // AX = exponent and sign
@@ -917,35 +917,35 @@ L_largenegative:
 }
 version (GNU_msvcrt_math) { /* nothing */ } else
 /**
-!  * Calculates 2$(SUP x).
-!  *
-!  *  $(TABLE_SV
-!  *    $(TR $(TH x)             $(TH exp2(x)    )
-!  *    $(TD +$(INFIN))          $(TD +$(INFIN)) )
-!  *    $(TD -$(INFIN))          $(TD +0.0)      )
-!  *    $(TR $(TD $(NAN))        $(TD $(NAN))    )
-!  *  )
-!  */
+ * Calculates 2$(SUP x).
+ *
+ *  $(TABLE_SV
+ *    $(TR $(TH x)             $(TH exp2(x)    )
+ *    $(TD +$(INFIN))          $(TD +$(INFIN)) )
+ *    $(TD -$(INFIN))          $(TD +0.0)      )
+ *    $(TR $(TD $(NAN))        $(TD $(NAN))    )
+ *  )
+ */
 real exp2(real x) 
 {
     version(Naked_D_InlineAsm_X86) {
       enum { PARAMSIZE = (real.sizeof+3)&(0xFFFF_FFFC) } // always a multiple of 4
       asm {
         /*  exp2() for x87 80-bit reals, IEEE754-2008 conformant.
-!          * Author: Don Clugston.
-!          * 
-!          * exp2(x) = 2^(rndint(x))* 2^(y-rndint(x))
-!          * The trick for high performance is to avoid the fscale(28cycles on core2),
-!          * frndint(19 cycles), leaving f2xm1(19 cycles) as the only slow instruction.
-!          * 
-!          * We can do frndint by using fist. BUT we can't use it for huge numbers,
-!          * because it will set the Invalid Operation flag is overflow or NaN occurs.
-!          * Fortunately, whenever this happens the result would be zero or infinity.
-!          * 
-!          * We can perform fscale by directly poking into the exponent. BUT this doesn't
-!          * work for the (very rare) cases where the result is subnormal. So we fall back
-!          * to the slow method in that case.
-!          */
+         * Author: Don Clugston.
+         * 
+         * exp2(x) = 2^(rndint(x))* 2^(y-rndint(x))
+         * The trick for high performance is to avoid the fscale(28cycles on core2),
+         * frndint(19 cycles), leaving f2xm1(19 cycles) as the only slow instruction.
+         * 
+         * We can do frndint by using fist. BUT we can't use it for huge numbers,
+         * because it will set the Invalid Operation flag is overflow or NaN occurs.
+         * Fortunately, whenever this happens the result would be zero or infinity.
+         * 
+         * We can perform fscale by directly poking into the exponent. BUT this doesn't
+         * work for the (very rare) cases where the result is subnormal. So we fall back
+         * to the slow method in that case.
+         */
         naked;        
         fld real ptr [ESP+4] ; // x
         mov AX, [ESP+4+8]; // AX = exponent and sign

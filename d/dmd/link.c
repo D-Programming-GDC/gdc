@@ -35,13 +35,13 @@ int executecmd(char *cmd, char *args, int useenv);
 int executearg0(char *cmd, char *args);
 
 /****************************************
-+  * Write filename to cmdbuf, quoting if necessary.
-+  */
+ * Write filename to cmdbuf, quoting if necessary.
+ */
  
  void writeFilename(OutBuffer *buf, char *filename, size_t len)
  {
      /* Loop and see if we need to quote
-+      */
+      */
      for (size_t i = 0; i < len; i++)
      {	char c = filename[i];
  
@@ -49,7 +49,7 @@ int executearg0(char *cmd, char *args);
  	    continue;
  
  	/* Need to quote
-+ 	 */
+	 */
  	buf->writeByte('"');
  	buf->write(filename, len);
  	buf->writeByte('"');
@@ -57,7 +57,7 @@ int executearg0(char *cmd, char *args);
      }
  
      /* No quoting necessary
-+      */
+      */
      buf->write(filename, len);
  }
  
@@ -98,8 +98,8 @@ int runLINK()
 	writeFilename(&cmdbuf, global.params.exefile);
     else
     {	/* Generate exe file name from first obj name.
-! 	 * No need to add it to cmdbuf because the linker will default to it.
-! 	 */
+	 * No need to add it to cmdbuf because the linker will default to it.
+	 */
 	char *n = (char *)global.params.objfiles->data[0];
 	n = FileName::name(n);
 	FileName *fn = FileName::forceExt(n, "exe");
@@ -275,13 +275,13 @@ int runLINK()
 	argv.push((void *) p);
     }
     /* Add each library, prefixing it with "-l".
-+      * The order of libraries passed is:
-+      *  1. any libraries passed with -L command line switch
-+      *  2. libraries specified on the command line
-+      *  3. libraries specified by pragma(lib), which were appended
-+      *     to global.params.libfiles.
-+      *  4. standard libraries.
-+      */
+     * The order of libraries passed is:
+     *  1. any libraries passed with -L command line switch
+     *  2. libraries specified on the command line
+     *  3. libraries specified by pragma(lib), which were appended
+     *     to global.params.libfiles.
+     *  4. standard libraries.
+     */
      for (i = 0; i < global.params.libfiles->dim; i++)
      {	char *p = (char *)global.params.libfiles->data[i];
  	size_t plen = strlen(p);

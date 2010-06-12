@@ -919,8 +919,8 @@ void[] read(string name)
     void[] buf;
     if (size == 0)
     {	/* The size could be 0 if the file is a device or a procFS file,
-! 	 * so we just have to try reading it.
-! 	 */
+	 * so we just have to try reading it.
+	 */
  	int readsize = 1024;
  	while (1)
  	{

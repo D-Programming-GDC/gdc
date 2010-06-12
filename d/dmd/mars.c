@@ -88,7 +88,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
 #endif
     ;
-    version = "v1.046";
+    version = "v1.047";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -690,7 +690,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-#if !TARGET_LINUX && !TARGET_OSX && !TARGET_FREEBSD
+#if TARGET_WINDOS
 	    char *ext = FileName::ext(p);
 	    if (ext && FileName::compare(ext, "exe") == 0)
 	    {

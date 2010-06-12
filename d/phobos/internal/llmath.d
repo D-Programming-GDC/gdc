@@ -33,32 +33,32 @@ void __ULDIV__()
  	js	Lleft		;
  
  	/* We have n>d, and know that n/d will fit in 32 bits.
-+          * d will be left justified if we shift it left s bits.
-+ 	 * [d1,d0] <<= s
-+ 	 * [n2,n1,n0] = [n1,n0] << s
-+ 	 *
-+ 	 * Use one divide, by this reasoning:
-+ 	 * ([n2,n1]<<32 + n0)/(d1<<32 + d0)
-+ 	 * becomes:
-+ 	 * ([n2,n1]<<32)/(d1<<32 + d0) + n0/(d1<<32 + d0)
-+ 	 * The second divide is always 0.
-+ 	 * Ignore the d0 in the first divide, which will yield a quotient
-+ 	 * that might be too high by 1 (because d1 is left justified).
-+ 	 * We can tell if it's too big if:
-+ 	 *  q*[d1,d0] > [n2,n1,n0]
-+ 	 * which is:
-+ 	 *  q*[d1,d0] > [[q*[d1,0]+q%[d1,0],n1,n0]
-+ 	 * If we subtract q*[d1,0] from both sides, we get:
-+ 	 *  q*d0 > [[n2,n1]%d1,n0]
-+ 	 * So if it is too big by one, reduce q by one to q'=q-one.
-+ 	 * Compute remainder as:
-+ 	 *  r = ([n1,n0] - q'*[d1,d0]) >> s
-+ 	 * Again, we can subtract q*[d1,0]:
-+ 	 *  r = ([n1,n0] - q*[d1,0] - (q'*[d1,d0] - q*[d1,0])) >> s
-+ 	 *  r = ([[n2,n1]%d1,n0] + (q*[d1,0] - (q - one)*[d1,d0])) >> s
-+ 	 *  r = ([[n2,n1]%d1,n0] + (q*[d1,0] - [d1 *(q-one),d0*(1-q)])) >> s
-+ 	 *  r = ([[n2,n1]%d1,n0] + [d1 *one,d0*(one-q)])) >> s
-+ 	 */
+         * d will be left justified if we shift it left s bits.
+	 * [d1,d0] <<= s
+	 * [n2,n1,n0] = [n1,n0] << s
+	 *
+	 * Use one divide, by this reasoning:
+	 * ([n2,n1]<<32 + n0)/(d1<<32 + d0)
+	 * becomes:
+	 * ([n2,n1]<<32)/(d1<<32 + d0) + n0/(d1<<32 + d0)
+	 * The second divide is always 0.
+	 * Ignore the d0 in the first divide, which will yield a quotient
+	 * that might be too high by 1 (because d1 is left justified).
+	 * We can tell if it's too big if:
+	 *  q*[d1,d0] > [n2,n1,n0]
+	 * which is:
+	 *  q*[d1,d0] > [[q*[d1,0]+q%[d1,0],n1,n0]
+	 * If we subtract q*[d1,0] from both sides, we get:
+	 *  q*d0 > [[n2,n1]%d1,n0]
+	 * So if it is too big by one, reduce q by one to q'=q-one.
+	 * Compute remainder as:
+	 *  r = ([n1,n0] - q'*[d1,d0]) >> s
+	 * Again, we can subtract q*[d1,0]:
+	 *  r = ([n1,n0] - q*[d1,0] - (q'*[d1,d0] - q*[d1,0])) >> s
+	 *  r = ([[n2,n1]%d1,n0] + (q*[d1,0] - (q - one)*[d1,d0])) >> s
+	 *  r = ([[n2,n1]%d1,n0] + (q*[d1,0] - [d1 *(q-one),d0*(1-q)])) >> s
+	 *  r = ([[n2,n1]%d1,n0] + [d1 *one,d0*(one-q)])) >> s
+	 */
  
   	push	EBP		;
  	push	ESI		;

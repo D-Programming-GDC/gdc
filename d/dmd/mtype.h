@@ -123,7 +123,7 @@ struct Type : Object
     TY ty;
     unsigned char mod;	// modifiers MODxxxx
  	/* pick this order of numbers so switch statements work better
-! 	 */
+	 */
 	#define MODconst     1	// type is const
 	#define MODinvariant 4	// type is invariant
  	#define MODshared    2	// type is shared
@@ -520,6 +520,7 @@ struct TypeTypeof : TypeQualified
     Type *syntaxCopy();
     Dsymbol *toDsymbol(Scope *sc);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
+    void toDecoBuffer(OutBuffer *buf);
     Type *semantic(Loc loc, Scope *sc);
     d_uns64 size(Loc loc);
 };

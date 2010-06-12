@@ -67,16 +67,16 @@ dinteger_t i,
 #else
 integer_t i,
 #endif 
-void * p);
+const void * p);
 
 extern dt_t** dtcat(dt_t** pdt, dt_t * d);
     
 inline dt_t**
-dtnbytes(dt_t** pdt, size_t count, char * pbytes) {
+dtnbytes(dt_t** pdt, size_t count, const char * pbytes) {
     return dtval(pdt, DT_nbytes, count, pbytes); }
 
 inline dt_t**
-dtabytes(dt_t** pdt, TypeType, int, size_t count, char * pbytes) {
+dtabytes(dt_t** pdt, TypeType, int, size_t count, const char * pbytes) {
     return dtval(pdt, DT_abytes, count, pbytes); }
 
 inline dt_t**

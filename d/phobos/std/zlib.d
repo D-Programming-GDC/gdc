@@ -196,6 +196,7 @@ void[] uncompress(void[] srcbuf, size_t destlen = 0u, int winbits = 15)
 		throw new ZlibException(err);
 	}
     }
+    assert(0);
 }
 
 unittest

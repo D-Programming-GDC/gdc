@@ -919,10 +919,10 @@ void Module::runDeferredSemantic()
 }
 
 /************************************
-+  * Recursively look at every module this module imports,
-+  * return TRUE if it imports m.
-+  * Can be used to detect circular imports.
-+  */
+ * Recursively look at every module this module imports,
+ * return TRUE if it imports m.
+ * Can be used to detect circular imports.
+ */
  
  int Module::imports(Module *m)
  {

@@ -97,9 +97,9 @@ struct Monitor
  */
 class Object
 {
-/**
-+      * Converts Object to human readable text and writes it to stdout.
-+      */
+    /**
+     * Converts Object to human readable text and writes it to stdout.
+     */
     void print()
     {
 	char[] s = toString();

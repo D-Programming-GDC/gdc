@@ -2445,10 +2445,10 @@ done:
 #ifdef IN_GCC
 	    real_t::parse((char *)stringbuffer.data, real_t::Double);
 #else	    
-		/* Should do our own strtod(), since dmc and linux gcc
-+ 	     * accept 2.22507e-308, while apple gcc will only take
-+ 	     * 2.22508e-308. Not sure who is right.
-+ 	     */
+	    /* Should do our own strtod(), since dmc and linux gcc
+	     * accept 2.22507e-308, while apple gcc will only take
+	     * 2.22508e-308. Not sure who is right.
+	     */
 	    strtod((char *)stringbuffer.data, NULL);
 #endif
 	    result = TOKfloat64v;
@@ -2644,10 +2644,10 @@ unsigned Lexer::decodeUTF()
 void Lexer::getDocComment(Token *t, unsigned lineComment)
 {
     /* ct tells us which kind of comment it is: '/', '*', or '+'
-!      */
+     */
     unsigned char ct = t->ptr[2];
     /* Start of comment text skips over / * *, / + +, or / / /
-+      */
+     */
     unsigned char *q = t->ptr + 3;	// start of comment text
 
     unsigned char *qend = p;
@@ -2674,8 +2674,8 @@ void Lexer::getDocComment(Token *t, unsigned lineComment)
     }
     
     /* Comment is now [q .. qend].
-+      * Canonicalize it into buf[].
-+      */
+     * Canonicalize it into buf[].
+     */
      OutBuffer buf;
      int linestart = 0;
 

@@ -26,13 +26,13 @@ dinteger_t i,
 #else
 integer_t i,
 #endif
-void * p)
+const void * p)
 {
     dt_t * d = new dt_t;
     d->dt = t;
     d->DTnext = 0;
     d->DTint = i;
-    d->DTpointer = p;
+    d->DTpointer = (void*)p;
     return dtcat(pdt, d);
 }
 

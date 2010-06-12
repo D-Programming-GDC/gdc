@@ -62,10 +62,10 @@ extern (C) int main(size_t argc, char **argv)
 
     version (OSX)
      {	/* OSX does not provide a way to get at the top of the
-! 	 * stack, except for the magic value 0xC0000000.
-! 	 * But as far as the gc is concerned, argv is at the top
-! 	 * of the main thread's stack, so save the address of that.
-! 	 */
+	 * stack, except for the magic value 0xC0000000.
+	 * But as far as the gc is concerned, argv is at the top
+	 * of the main thread's stack, so save the address of that.
+	 */
  	__osx_stack_end = cast(void*)&argv;
      }
      

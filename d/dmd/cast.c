@@ -46,11 +46,11 @@ Expression *Expression::implicitCastTo(Scope *sc, Type *t)
  	       )
  	    {
  		/* This is really only a semi-kludge fix,
-+ 		 * we really should look at the operands of op
-+ 		 * and see if they are narrower types.
-+ 		 * For example, b=b|b and b=b|7 and s=b+b should be allowed,
-+ 		 * but b=b|i should be an error.
-+ 		 */
+		 * we really should look at the operands of op
+		 * and see if they are narrower types.
+		 * For example, b=b|b and b=b|7 and s=b+b should be allowed,
+		 * but b=b|i should be an error.
+		 */
  		;
  	    }
  	    else
@@ -1447,15 +1447,15 @@ Expression *BinExp::typeCombine(Scope *sc)
     else if ((t1->ty == Tsarray || t1->ty == Tarray) &&
 	     e2->op == TOKnull && t2->ty == Tpointer && t2->nextOf()->ty == Tvoid)
      {	/*  (T[n] op void*)
-! 	 *  (T[] op void*)
-! 	 */
+	 *  (T[] op void*)
+	 */
 	goto Lx1;
     }
     else if ((t2->ty == Tsarray || t2->ty == Tarray) &&
 	     e1->op == TOKnull && t1->ty == Tpointer && t1->nextOf()->ty == Tvoid)
      {	/*  (void* op T[n])
-! 	 *  (void* op T[])
-! 	 */
+	 *  (void* op T[])
+	 */
 	goto Lx2;
     }
     else if ((t1->ty == Tsarray || t1->ty == Tarray) && t1->implicitConvTo(t2))

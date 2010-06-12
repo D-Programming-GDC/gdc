@@ -126,8 +126,8 @@ void *os_query_stackBottom()
     else version (OSX)
     {
  	/* A better method would be to set this value as the address
-+ 	 * of a local variable defined in extern(C) main().
-+ 	 */
+	 * of a local variable defined in extern(C) main().
+	 */
  	//return cast(void*)0xC0000000;
  	return __osx_stack_end;
     }
@@ -146,11 +146,11 @@ void os_query_staticdataseg(void **base, uint *nbytes)
 {
 	version (OSX)
      {	/* These are probably wrong.
-+ 	 * See http://www.manpagez.com/man/3/get_etext/
-+ 	 * Should use dylib(3) instead.
-+ 	 *
-+ 	 * EDIT: should be handled by _d_osx_image_init() now. - SK
-+ 	 */
+	 * See http://www.manpagez.com/man/3/get_etext/
+	 * Should use dylib(3) instead.
+	 *
+	 * EDIT: should be handled by _d_osx_image_init() now. - SK
+	 */
  	//*base = cast(void *)get_etext();
  	//*nbytes = cast(byte *)get_end() - cast(byte *)get_etext();
  	*base = null;

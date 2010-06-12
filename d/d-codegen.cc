@@ -2053,7 +2053,14 @@ IRState::assignValue(Expression * e, VarDeclaration * v)
     {
 	AssignExp * a_exp = (AssignExp *) e;
 	if (a_exp->e1->op == TOKvar && ((VarExp *) a_exp->e1)->var == v)
-	    return convertForAssignment(a_exp->e2, v->type);
+	{
+	    tree a_val = convertForAssignment(a_exp->e2, v->type);
+	    // Look for reference initializations
+	    if ( e->op == TOKconstruct && v->isRef() )
+		return addressOf(a_val);
+	    else
+		return a_val;
+	}
 	//else
 	    //return e->toElem(this);
     }

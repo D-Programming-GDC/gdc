@@ -33,6 +33,9 @@
 #include "module.h"
 #include "parse.h"
 #include "template.h"
+#if TARGET_NET
+ #include "frontend.net/pragma.h"
+#endif
 
 extern void obj_includelib(const char *name);
 void obj_startaddress(Symbol *s);
@@ -64,6 +67,41 @@ int AttribDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 	}
     }
     return m;
+}
+
+void AttribDeclaration::setScopeNewSc(Scope *sc,
+	unsigned stc, enum LINK linkage, enum PROT protection, int explicitProtection,
+	unsigned structalign)
+{
+    if (decl)
+    {
+	Scope *newsc = sc;
+	if (stc != sc->stc ||
+	    linkage != sc->linkage ||
+	    protection != sc->protection ||
+	    explicitProtection != sc->explicitProtection ||
+	    structalign != sc->structalign)
+	{
+	    // create new one for changes
+	    newsc = new Scope(*sc);
+	    newsc->flags &= ~SCOPEfree;
+	    newsc->stc = stc;
+	    newsc->linkage = linkage;
+	    newsc->protection = protection;
+	    newsc->explicitProtection = explicitProtection;
+	    newsc->structalign = structalign;
+	}
+	for (unsigned i = 0; i < decl->dim; i++)
+	{   Dsymbol *s = (Dsymbol *)decl->data[i];
+
+	    s->setScope(newsc);	// yes, the only difference from semanticNewSc()
+	}
+	if (newsc != sc)
+	{
+	    sc->offset = newsc->offset;
+	    newsc->pop();
+	}
+    }
 }
 
 void AttribDeclaration::semanticNewSc(Scope *sc,
@@ -179,12 +217,12 @@ void AttribDeclaration::emitComment(Scope *sc)
     //printf("AttribDeclaration::emitComment(sc = %p)\n", sc);
     
     /* A general problem with this, illustrated by BUGZILLA 2516,
-+      * is that attributes are not transmitted through to the underlying
-+      * member declarations for template bodies, because semantic analysis
-+      * is not done for template declaration bodies
-+      * (only template instantiations).
-+      * Hence, Ddoc omits attributes from template members.
-+      */
+     * is that attributes are not transmitted through to the underlying
+     * member declarations for template bodies, because semantic analysis
+     * is not done for template declaration bodies
+     * (only template instantiations).
+     * Hence, Ddoc omits attributes from template members.
+     */
 
     Array *d = include(NULL, NULL);
 
@@ -326,11 +364,10 @@ Dsymbol *StorageClassDeclaration::syntaxCopy(Dsymbol *s)
     return scd;
 }
 
-void StorageClassDeclaration::semantic(Scope *sc)
+void StorageClassDeclaration::setScope(Scope *sc)
 {
     if (decl)
     {
-#if 1
 	unsigned scstc = sc->stc;
 
 	/* These sets of storage classes are mutually exclusive,
@@ -346,30 +383,30 @@ void StorageClassDeclaration::semantic(Scope *sc)
 	    scstc &= ~(STCgshared | STCshared | STCtls);
 	scstc |= stc;
 
-	semanticNewSc(sc, scstc, sc->linkage, sc->protection, sc->explicitProtection, sc->structalign);
-#else
-	unsigned stc_save = sc->stc;
+	setScopeNewSc(sc, scstc, sc->linkage, sc->protection, sc->explicitProtection, sc->structalign);
+    }
+}
+
+void StorageClassDeclaration::semantic(Scope *sc)
+{
+    if (decl)
+    {
+	unsigned scstc = sc->stc;
 
 	/* These sets of storage classes are mutually exclusive,
 	 * so choose the innermost or most recent one.
 	 */
 	if (stc & (STCauto | STCscope | STCstatic | STCextern | STCmanifest))
-	    sc->stc &= ~(STCauto | STCscope | STCstatic | STCextern | STCmanifest);
+	    scstc &= ~(STCauto | STCscope | STCstatic | STCextern | STCmanifest);
 	if (stc & (STCauto | STCscope | STCstatic | STCtls | STCmanifest | STCgshared))
-	    sc->stc &= ~(STCauto | STCscope | STCstatic | STCtls | STCmanifest | STCgshared);
+	    scstc &= ~(STCauto | STCscope | STCstatic | STCtls | STCmanifest | STCgshared);
 	if (stc & (STCconst | STCimmutable | STCmanifest))
-	    sc->stc &= ~(STCconst | STCimmutable | STCmanifest);
+	    scstc &= ~(STCconst | STCimmutable | STCmanifest);
 	if (stc & (STCgshared | STCshared | STCtls))
-	    sc->stc &= ~(STCgshared | STCshared | STCtls);
-	sc->stc |= stc;
-	for (unsigned i = 0; i < decl->dim; i++)
-	{
-	    Dsymbol *s = (Dsymbol *)decl->data[i];
-
-	    s->semantic(sc);
-	}
-	sc->stc = stc_save;
-	#endif
+	    scstc &= ~(STCgshared | STCshared | STCtls);
+	scstc |= stc;
+	
+	semanticNewSc(sc, scstc, sc->linkage, sc->protection, sc->explicitProtection, sc->structalign);
     }
 }
 
@@ -388,17 +425,11 @@ void StorageClassDeclaration::stcToCBuffer(OutBuffer *buf, int stc)
 	{ STCstatic,       TOKstatic },
 	{ STCextern,       TOKextern },
 	{ STCconst,        TOKconst },
- //	{ STCinvariant,    TOKimmutable },
- //	{ STCshared,       TOKshared },
 	{ STCfinal,        TOKfinal },
 	{ STCabstract,     TOKabstract },
 	{ STCsynchronized, TOKsynchronized },
 	{ STCdeprecated,   TOKdeprecated },
 	{ STCoverride,     TOKoverride },
- //	{ STCnothrow,      TOKnothrow },
- //	{ STCpure,         TOKpure },
- //	{ STCref,          TOKref },
- //	{ STCtls,          TOKtls },
     };
 
     for (int i = 0; i < sizeof(table)/sizeof(table[0]); i++)
@@ -437,25 +468,21 @@ Dsymbol *LinkDeclaration::syntaxCopy(Dsymbol *s)
     return ld;
 }
 
+void LinkDeclaration::setScope(Scope *sc)
+{
+    //printf("LinkDeclaration::setScope(linkage = %d, decl = %p)\n", linkage, decl);
+    if (decl)
+    {
+	setScopeNewSc(sc, sc->stc, linkage, sc->protection, sc->explicitProtection, sc->structalign);
+    }
+}
+
 void LinkDeclaration::semantic(Scope *sc)
 {
     //printf("LinkDeclaration::semantic(linkage = %d, decl = %p)\n", linkage, decl);
     if (decl)
     {
-#if 1
 	semanticNewSc(sc, sc->stc, linkage, sc->protection, sc->explicitProtection, sc->structalign);
-#else
-	enum LINK linkage_save = sc->linkage;
-
-	sc->linkage = linkage;
-	for (unsigned i = 0; i < decl->dim; i++)
-	{
-	    Dsymbol *s = (Dsymbol *)decl->data[i];
-
-	    s->semantic(sc);
-	}
-	sc->linkage = linkage_save;
-    #endif
     }
 }
 
@@ -523,27 +550,19 @@ Dsymbol *ProtDeclaration::syntaxCopy(Dsymbol *s)
     return pd;
 }
 
-void ProtDeclaration::semantic(Scope *sc)
+void ProtDeclaration::setScope(Scope *sc)
 {
     if (decl)
     {
-#if 1
-	semanticNewSc(sc, sc->stc, sc->linkage, protection, 1, sc->structalign);
-#else
-	enum PROT protection_save = sc->protection;
-	int explicitProtection_save = sc->explicitProtection;
+	setScopeNewSc(sc, sc->stc, sc->linkage, protection, 1, sc->structalign);
+    }
+}
 
-	sc->protection = protection;
-	sc->explicitProtection = 1;
-	for (unsigned i = 0; i < decl->dim; i++)
-	{
-	    Dsymbol *s = (Dsymbol *)decl->data[i];
-
-	    s->semantic(sc);
-	}
-	sc->protection = protection_save;
-	sc->explicitProtection = explicitProtection_save;
-    #endif
+void ProtDeclaration::semantic(Scope *sc)	
+{
+    if (decl)
+    {
+	semanticNewSc(sc, sc->stc, sc->linkage, protection, 1, sc->structalign);    
     }
 }
 
@@ -589,25 +608,21 @@ Dsymbol *AlignDeclaration::syntaxCopy(Dsymbol *s)
     return ad;
 }
 
+void AlignDeclaration::setScope(Scope *sc)
+{
+    //printf("\tAlignDeclaration::setScope '%s'\n",toChars());
+    if (decl)
+    {
+	setScopeNewSc(sc, sc->stc, sc->linkage, sc->protection, sc->explicitProtection, salign);
+    }
+}
+
 void AlignDeclaration::semantic(Scope *sc)
 {
     //printf("\tAlignDeclaration::semantic '%s'\n",toChars());
     if (decl)
     {
-#if 1
 	semanticNewSc(sc, sc->stc, sc->linkage, sc->protection, sc->explicitProtection, salign);
-#else
-	unsigned salign_save = sc->structalign;
-
-	sc->structalign = salign;
-	for (unsigned i = 0; i < decl->dim; i++)
-	{
-	    Dsymbol *s = (Dsymbol *)decl->data[i];
-
-	    s->semantic(sc);
-	}
-	sc->structalign = salign_save;
-	#endif
     }
 }
 
@@ -823,7 +838,7 @@ void PragmaDeclaration::semantic(Scope *sc)
 		if (e->op == TOKstring)
 		{
 		    StringExp *se = (StringExp *)e;
-		    fprintf(stdmsg, "%.*s", (int)se->len, se->string);
+		    fprintf(stdmsg, "%.*s", (int)se->len, (char *)se->string);
 		}
 		else
 		    error("string expected for message, not '%s'", e->toChars());
@@ -1013,6 +1028,27 @@ void PragmaDeclaration::semantic(Scope *sc)
 	goto Lnodecl;
     }
 #endif
+#if TARGET_NET
+    else if (ident == Lexer::idPool("assembly"))
+    {
+        if (!args || args->dim != 1)
+	        error("pragma has invalid number of arguments");
+	    else
+	    {
+	        Expression *e = (Expression *)args->data[0];
+	        e = e->semantic(sc);
+	        e = e->optimize(WANTvalue | WANTinterpret);
+	        args->data[0] = (void *)e;
+	        if (e->op != TOKstring)
+		    {
+		        error("string expected, not '%s'", e->toChars());
+	        }
+            PragmaScope* pragma = new PragmaScope(this, sc->parent, static_cast<StringExp*>(e));
+            decl = new Array;
+            decl->push(pragma);
+        }
+    }
+#endif // TARGET_NET
     else if (global.params.ignoreUnsupportedPragmas)
     {
 	if (global.params.verbose)
@@ -1092,16 +1128,16 @@ void PragmaDeclaration::toObjFile(int multiobj)
 	name[se->len] = 0;
 	#if OMFOBJ
  	/* The OMF format allows library names to be inserted
-+ 	 * into the object file. The linker will then automatically
-+ 	 * search that library, too.
-+ 	 */
+	 * into the object file. The linker will then automatically
+	 * search that library, too.
+	 */
   	obj_includelib(name);
  	#elif ELFOBJ || MACHOBJ
  	/* The format does not allow embedded library names,
- 	/* The ELF format does not allow embedded library names,
-+ 	 * so instead append the library name to the list to be passed
-+ 	 * to the linker.
-+ 	 */
+ 	 * The ELF format does not allow embedded library names,
+	 * so instead append the library name to the list to be passed
+	 * to the linker.
+	 */
  	global.params.libfiles->push((void *) name);
  #else
  	error("pragma lib not supported");
@@ -1184,8 +1220,8 @@ void ConditionalDeclaration::emitComment(Scope *sc)
     else if (sc->docbuf)
      {
  	/* If generating doc comment, be careful because if we're inside
-+ 	 * a template, then include(NULL, NULL) will fail.
-+ 	 */
+	 * a template, then include(NULL, NULL) will fail.
+	 */
  	Array *d = decl ? decl : elsedecl;
  	for (unsigned i = 0; i < d->dim; i++)
  	{   Dsymbol *s = (Dsymbol *)d->data[i];

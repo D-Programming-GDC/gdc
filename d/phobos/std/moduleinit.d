@@ -182,11 +182,11 @@ extern (C) void _moduleCtor()
     
     /+version (OSX)
      {	/* The ModuleInfo references are stored in the special segment
-+ 	 * __minfodata, which is bracketed by the segments __minfo_beg
-+ 	 * and __minfo_end. The variables _minfo_beg and _minfo_end
-+ 	 * are of zero size and are in the two bracketing segments,
-+ 	 * respectively.
-+ 	 */ 	size_t length = cast(ModuleInfo*)&_minfo_end - cast(ModuleInfo*)&_minfo_beg;
+ 	 * __minfodata, which is bracketed by the segments __minfo_beg
+ 	 * and __minfo_end. The variables _minfo_beg and _minfo_end
+ 	 * are of zero size and are in the two bracketing segments,
+ 	 * respectively.
+ 	 */ 	size_t length = cast(ModuleInfo*)&_minfo_end - cast(ModuleInfo*)&_minfo_beg;
  	_moduleinfo_array = (cast(ModuleInfo*)&_minfo_beg)[0 .. length];
  	debug printf("moduleinfo: ptr = %p, length = %d\n", _moduleinfo_array.ptr, _moduleinfo_array.length);
  
@@ -235,8 +235,7 @@ void _moduleCtor2(ModuleInfo[] mi, int skip)
 	    m.name.ptr);
 	if (m.flags & MIctordone)
 	    continue;
-	debug printf("\tmodule[%d] = '%.*s', m = x%x\n", i,
-	    cast(int) m.name.length, m.name.ptr, m);
+    debug printf("\tmodule[%d] = '%.*s', m = x%x, m.flags = x%x\n", i, m.name, m, m.flags);
 
 	if (m.ctor || m.dtor)
 	{

@@ -245,11 +245,11 @@ elem *getEthis(Loc loc, IRState *irs, Dsymbol *fd)
 }
 
 /*************************
-+  * Initialize the hidden aggregate member, vthis, with
-+  * the context pointer.
-+  * Returns:
-+  *	*(ey + ad.vthis.offset) = this;
-+  */
+ * Initialize the hidden aggregate member, vthis, with
+ * the context pointer.
+ * Returns:
+ *	*(ey + ad.vthis.offset) = this;
+ */
 #if DMDV2
 elem *setEthis(Loc loc, IRState *irs, elem *ey, AggregateDeclaration *ad)
 {
@@ -300,7 +300,7 @@ elem *setEthis(Loc loc, IRState *irs, elem *ey, AggregateDeclaration *ad)
  	  )
  	)
     {   /* Class we're new'ing is at the same level as thisfd
-+ 	 */
+	 */
  	assert(offset == 0);	// BUG: should handle this case
  	ethis = el_var(irs->sthis);
     }
@@ -356,8 +356,8 @@ int intrinsic_op(char *name)
 	"9intrinsic5outpwFktZt",
 	#elif V2
  	/* The names are mangled differently because of the pure and
-+ 	 * nothrow attributes.
-+ 	 */
+	 * nothrow attributes.
+	 */
  	"4math3cosFNaNbeZe",
  	"4math3sinFNaNbeZe",
  	"4math4fabsFNaNbeZe",
@@ -515,17 +515,17 @@ void FuncDeclaration::buildClosure(IRState *irs)
 	
 	#if DMDV2
  	/* BUG: doesn't handle destructors for the local variables.
-+ 	 * The way to do it is to make the closure variables the fields
-+ 	 * of a class object:
-+ 	 *    class Closure
-+ 	 *    {   vtbl[]
-+ 	 *	  monitor
-+ 	 *	  ptr to destructor
-+ 	 *	  sthis
-+ 	 *	  ... closure variables ...
-+ 	 *	  ~this() { call destructor }
-+ 	 *    }
-+ 	 */
+	 * The way to do it is to make the closure variables the fields
+	 * of a class object:
+	 *    class Closure
+	 *    {   vtbl[]
+	 *	  monitor
+	 *	  ptr to destructor
+	 *	  sthis
+	 *	  ... closure variables ...
+	 *	  ~this() { call destructor }
+	 *    }
+	 */
  #endif
  	//printf("FuncDeclaration::buildClosure()\n");
 
@@ -554,8 +554,8 @@ void FuncDeclaration::buildClosure(IRState *irs)
  	    if (v->storage_class & STClazy)
  	    {
  		/* Lazy variables are really delegates,
-! 		 * so give same answers that TypeDelegate would
-! 		 */
+		 * so give same answers that TypeDelegate would
+		 */
  		memsize = PTRSIZE * 2;
  		memalignsize = memsize;
  		xalign = global.structalign;
@@ -634,9 +634,9 @@ void FuncDeclaration::buildClosure(IRState *irs)
 #endif
 
 /***************************
-+  * Determine return style of function - whether in registers or
-+  * through a hidden pointer to the caller's stack.
-+  */
+ * Determine return style of function - whether in registers or
+ * through a hidden pointer to the caller's stack.
+ */
  
  enum RET TypeFunction::retStyle()
  {

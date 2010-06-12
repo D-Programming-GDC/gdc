@@ -3424,6 +3424,8 @@ L1:
 	}
 	if (t->ty == Ttuple)
 	    *pt = t;
+	else if (t->ty == Ttypeof)
+	    *pt = t->semantic(loc, sc);
 	else
 	    *pt = t->merge();
     }
@@ -3730,6 +3732,11 @@ void TypeTypeof::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
     exp->toCBuffer(buf, hgs);
     buf->writeByte(')');
     toCBuffer2Helper(buf, hgs);
+}
+
+void TypeTypeof::toDecoBuffer(OutBuffer *buf)
+{
+    assert(0);
 }
 
 Type *TypeTypeof::semantic(Loc loc, Scope *sc)
@@ -4362,12 +4369,12 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	return new IntegerExp(e->loc, 0, Type::tint32);
     }
 	
-	/* If e.tupleof
-+      */
+    /* If e.tupleof
+     */
     if (ident == Id::tupleof)
     {
 	/* Create a TupleExp out of the fields of the struct e:
-! 	 * (e.field0, e.field1, e.field2, ...)
+	 * (e.field0, e.field1, e.field2, ...)
   	 */
 	e = e->semantic(sc);	// do this before turning on noaccesscheck
 	Expressions *exps = new Expressions;
@@ -4587,7 +4594,7 @@ TypeClass::TypeClass(ClassDeclaration *sym)
 
 char *TypeClass::toChars()
 {
-    return sym->toPrettyChars();
+    return (char *)sym->toPrettyChars();
 }
 
 Type *TypeClass::syntaxCopy()
@@ -4744,8 +4751,8 @@ L1:
 	
 	if (ident == Id::__vptr)
  	{   /* The pointer to the vtbl[]
-+ 	     * *cast(void***)e
-+ 	     */
+	     * *cast(void***)e
+	     */
  	    e = e->castTo(sc, tvoidptr->pointerTo()->pointerTo());
  	    e = new PtrExp(e->loc, e);
  	    e = e->semantic(sc);
@@ -4754,8 +4761,8 @@ L1:
  
  	if (ident == Id::__monitor)
  	{   /* The handle to the monitor (call it a void*)
-+ 	     * *(cast(void**)e + 1)
-+ 	     */
+	     * *(cast(void**)e + 1)
+	     */
  	    e = e->castTo(sc, tvoidptr->pointerTo());
  	    e = new AddExp(e->loc, e, new IntegerExp(1));
  	    e = new PtrExp(e->loc, e);

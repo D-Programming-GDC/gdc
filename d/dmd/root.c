@@ -408,10 +408,12 @@ Array *FileName::splitPath(const char *path)
 			continue;
 #endif
 
+#if 0
 		    case ' ':
 		    case '\t':		// tabs in filenames?
 			if (!instring)	// if not in string
 			    break;	// treat as end of path
+#endif
 		    default:
 			buf.writeByte(c);
 			continue;
@@ -1704,14 +1706,14 @@ void OutBuffer::vprintf(const char *format, va_list args)
 	va_list va;
          va_copy(va, args);
  /*
-!   The functions vprintf(), vfprintf(), vsprintf(), vsnprintf()
-!   are equivalent to the functions printf(), fprintf(), sprintf(),
-!   snprintf(), respectively, except that they are called with a
-!   va_list instead of a variable number of arguments. These
-!   functions do not call the va_end macro. Consequently, the value
-!   of ap is undefined after the call. The application should call
-!   va_end(ap) itself afterwards.
-!  */
+  The functions vprintf(), vfprintf(), vsprintf(), vsnprintf()
+  are equivalent to the functions printf(), fprintf(), sprintf(),
+  snprintf(), respectively, except that they are called with a
+  va_list instead of a variable number of arguments. These
+  functions do not call the va_end macro. Consequently, the value
+  of ap is undefined after the call. The application should call
+  va_end(ap) itself afterwards.
+ */
  	count = vsnprintf(p,psize,format,va);
          va_end(va);
 	if (count == -1)

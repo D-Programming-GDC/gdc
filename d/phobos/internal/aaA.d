@@ -590,8 +590,8 @@ AA _aaRehash(AA* paa, TypeInfo keyti)
     }
     
 /********************************************
-+  * Balance an array.
-+  */
+ * Balance an array.
+ */
  
  /+void _aaBalance(AA* paa)
  {
@@ -605,7 +605,7 @@ AA _aaRehash(AA* paa, TypeInfo keyti)
  	foreach (j, e; aa.b)
  	{
  	    /* Temporarily store contents of bucket in array[]
-+ 	     */
+	     */
  	    size_t k = 0;
  
  	    void addToArray(aaA* e)
@@ -622,8 +622,8 @@ AA _aaRehash(AA* paa, TypeInfo keyti)
  	    addToArray(e);
  
 	    /* The contents of the bucket are now sorted into array[].
-+ 	     * Rebuild the tree.
-+ 	     */
+	     * Rebuild the tree.
+	     */
  
  	    void buildTree(aaA** p, size_t x1, size_t x2)
  	    {

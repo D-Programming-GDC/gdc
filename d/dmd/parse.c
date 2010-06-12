@@ -1259,10 +1259,10 @@ BaseClasses *Parser::parseBaseClasses()
 }
 
 /**************************************
-+  * Parse constraint.
-+  * Constraint is of the form:
-+  *	if ( ConstraintExpression )
-+  */
+ * Parse constraint.
+ * Constraint is of the form:
+ *	if ( ConstraintExpression )
+ */
  
  #if DMDV2
  Expression *Parser::parseConstraint()
@@ -1830,15 +1830,15 @@ Type *Parser::parseBasicType()
 }
 
 /******************************************
-+  * Parse things that follow the initial type t.
-+  *	t *
-+  *	t []
-+  *	t [type]
-+  *	t [expression]
-+  *	t [expression .. expression]
-+  *	t function
-+  *	t delegate
-+  */
+ * Parse things that follow the initial type t.
+ *	t *
+ *	t []
+ *	t [type]
+ *	t [expression]
+ *	t [expression .. expression]
+ *	t function
+ *	t delegate
+ */
 
 Type *Parser::parseBasicType2(Type *t)
 {
@@ -1981,11 +1981,11 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 	    break;
 
 	case TOKlparen:
-	/* Parse things with parentheses around the identifier, like:
-+ 	     *	int (*ident[3])[]
-+ 	     * although the D style would be:
-+ 	     *	int[]*[3] ident
-+ 	     */
+	    /* Parse things with parentheses around the identifier, like:
+	     *	int (*ident[3])[]
+	     * although the D style would be:
+	     *	int[]*[3] ident
+	     */
 	    nextToken();
 	    ts = parseDeclarator(t, pident);
 	    check(TOKrparen);
@@ -2002,11 +2002,11 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 	switch (token.value)
 	{
 #if CARRAYDECL
-/* Support C style array syntax:
-+ 	     *   int ident[]
-+ 	     * as opposed to D-style:
-+ 	     *   int[] ident
-+ 	     */
+	    /* Support C style array syntax:
+	     *   int ident[]
+	     * as opposed to D-style:
+	     *   int[] ident
+	     */
 	    case TOKlbracket:
 	    {	// This is the old C-style post [] syntax.
 		nextToken();
@@ -2033,10 +2033,10 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 		    check(TOKrbracket);
 		}
 		/* Insert ta into
-+ 		 *   ts -> ... -> t
-+ 		 * so that
-+ 		 *   ts -> ... -> ta -> t
-+ 		 */
+		 *   ts -> ... -> t
+		 * so that
+		 *   ts -> ... -> ta -> t
+		 */
 		Type **pt;
 		for (pt = &ts; *pt != t; pt = &(*pt)->next)
 		    ;
@@ -2078,12 +2078,12 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 }
 
 /**********************************
-+  * Parse Declarations.
-+  * These can be:
-+  *	1. declarations at global/class level
-+  *	2. declarations at statement level
-   * Return array of Declaration *'s.
-   */
+ * Parse Declarations.
+ * These can be:
+ *	1. declarations at global/class level
+ *	2. declarations at statement level
+ * Return array of Declaration *'s.
+ */
 
 Array *Parser::parseDeclarations()
 {
@@ -2331,57 +2331,57 @@ Array *Parser::parseDeclarations()
     return a;
 }
 
-  /*****************************************
-+  * Parse auto declarations of the form:
-+  *   storageClass ident = init, ident = init, ... ;
-+  * and return the array of them.
-+  * Starts with token on the first ident.
-+  * Ends with scanner past closing ';'
-+  */
+/*****************************************
+ * Parse auto declarations of the form:
+ *   storageClass ident = init, ident = init, ... ;
+ * and return the array of them.
+ * Starts with token on the first ident.
+ * Ends with scanner past closing ';'
+ */
  
- #if DMDV2
- Array *Parser::parseAutoDeclarations(unsigned storageClass, unsigned char *comment)
- {
-     Array *a = new Array;
+#if DMDV2
+Array *Parser::parseAutoDeclarations(unsigned storageClass, unsigned char *comment)
+{
+    Array *a = new Array;
+
+    while (1)
+    {
+	Identifier *ident = token.ident;
+	nextToken();		// skip over ident
+	assert(token.value == TOKassign);
+	nextToken();		// skip over '='
+	Initializer *init = parseInitializer();
+	VarDeclaration *v = new VarDeclaration(loc, NULL, ident, init);
+	v->storage_class = storageClass;
+	a->push(v);
+	if (token.value == TOKsemicolon)
+	{
+	    nextToken();
+	    addComment(v, comment);
+	}
+	else if (token.value == TOKcomma)
+	{
+	    nextToken();
+	    if (token.value == TOKidentifier &&
+		peek(&token)->value == TOKassign)
+	    {
+		addComment(v, comment);
+		continue;
+	    }
+	    else
+		error("Identifier expected following comma");
+	}
+	else
+	    error("semicolon expected following auto declaration, not '%s'", token.toChars());
+	break;
+    }
+    return a;
+}
+#endif
  
-     while (1)
-     {
- 	Identifier *ident = token.ident;
- 	nextToken();		// skip over ident
- 	assert(token.value == TOKassign);
- 	nextToken();		// skip over '='
- 	Initializer *init = parseInitializer();
- 	VarDeclaration *v = new VarDeclaration(loc, NULL, ident, init);
- 	v->storage_class = storageClass;
- 	a->push(v);
- 	if (token.value == TOKsemicolon)
- 	{
- 	    nextToken();
- 	    addComment(v, comment);
- 	}
- 	else if (token.value == TOKcomma)
- 	{
- 	    nextToken();
- 	    if (token.value == TOKidentifier &&
- 		peek(&token)->value == TOKassign)
- 	    {
- 		addComment(v, comment);
- 		continue;
- 	    }
- 	    else
- 		error("Identifier expected following comma");
- 	}
- 	else
- 	    error("semicolon expected following auto declaration, not '%s'", token.toChars());
- 	break;
-     }
-     return a;
- }
- #endif
- 
- /*****************************************
-   * Parse contracts following function declaration.
-   */
+/*****************************************
+ * Parse contracts following function declaration.
+ */
 
 void Parser::parseContracts(FuncDeclaration *f)
 {
@@ -2575,10 +2575,10 @@ Initializer *Parser::parseInitializer()
 	    return is;
 
 	case TOKlbracket:
-	/* Scan ahead to see if it is an array initializer or
-+ 	     * an expression.
-+ 	     * If it ends with a ';', it is an array initializer.
-+ 	     */
+	    /* Scan ahead to see if it is an array initializer or
+	     * an expression.
+	     * If it ends with a ';', it is an array initializer.
+	     */
  	    brackets = 1;
  	    for (t = peek(&token); 1; t = peek(t))
  	    {
@@ -2680,33 +2680,33 @@ Initializer *Parser::parseInitializer()
 }
 
 /*****************************************
-+  * Parses default argument initializer expression that is an assign expression,
-+  * with special handling for __FILE__ and __LINE__.
-+  */
+ * Parses default argument initializer expression that is an assign expression,
+ * with special handling for __FILE__ and __LINE__.
+ */
  
- #if DMDV2
- Expression *Parser::parseDefaultInitExp()
- {
-     if (token.value == TOKfile ||
- 	token.value == TOKline)
-     {
+#if DMDV2
+Expression *Parser::parseDefaultInitExp()
+{
+    if (token.value == TOKfile ||
+	token.value == TOKline)
+    {
 	Token *t = peek(&token);
- 	if (t->value == TOKcomma || t->value == TOKrparen)
- 	{   Expression *e;
- 
- 	    if (token.value == TOKfile)
- 		e = new FileInitExp(loc);
- 	    else
- 		e = new LineInitExp(loc);
- 	    nextToken();
- 	    return e;
- 	}
-     }
- 
-     Expression *e = parseAssignExp();
-     return e;
- }
- #endif
+	if (t->value == TOKcomma || t->value == TOKrparen)
+	{   Expression *e;
+
+	    if (token.value == TOKfile)
+		e = new FileInitExp(loc);
+	    else
+		e = new LineInitExp(loc);
+	    nextToken();
+	    return e;
+	}
+    }
+
+    Expression *e = parseAssignExp();
+    return e;
+}
+#endif
 
 /*****************************************
  * Input:
@@ -3709,8 +3709,8 @@ int Parser::isDeclaration(Token *t, int needId, enum TOK endtok, Token **pt)
      if ((t->value == TOKconst || t->value == TOKinvariant) &&
  	peek(t)->value != TOKlparen)
      {	/* const type
-+ 	 * invariant type
-+ 	 */
+	 * invariant type
+	 */
  	t = peek(t);
      }
  	#endif
@@ -4419,7 +4419,7 @@ Expression *Parser::parsePrimaryExp()
 	#if DMDV2
  	case TOKtraits:
  	{   /* __traits(identifier, args...)
-+ 	     */
+	     */
  	    Identifier *ident;
  	    Objects *args = NULL;
  

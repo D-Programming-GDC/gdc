@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2008 by Digital Mars
+// Copyright (c) 1999-2009 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -239,7 +239,7 @@ void Module::gendocfile()
     // Generate predefined macros
 
     // Set the title to be the name of the module
-    {	char *p = toPrettyChars();
+    {	const char *p = toPrettyChars();
 	Macro::define(&macrotable, (unsigned char *)"TITLE", 5, (unsigned char *)p, strlen(p));
     }
 
@@ -422,7 +422,7 @@ void ScopeDsymbol::emitMemberComments(Scope *sc)
 	if (buf->offset == offset2)
  	{
  	    /* Didn't write out any members, so back out last write
-+ 	     */
+	     */
  	    buf->offset = offset1;
  	}
  	else
@@ -751,7 +751,7 @@ void FuncDeclaration::toDocBuffer(OutBuffer *buf)
 	    (td = parent->isTemplateDeclaration()) != NULL &&
 	    td->onemember == this)
 	{   /* It's a function template
-! 	     */
+	     */
  	    HdrGenState hgs;
 	    unsigned o = buf->offset;
 	    TypeFunction *tf = (TypeFunction *)type;

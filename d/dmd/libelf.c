@@ -261,8 +261,8 @@ void Library::scanObjModule(ObjModule *om)
  
  	    if (section->sh_type == SHT_SYMTAB)
  	    {   /* sh_link gives the particular string table section
-! 		 * used for the symbol names.
-! 		 */
+		 * used for the symbol names.
+		 */
  		Elf32_Shdr *string_section = (Elf32_Shdr *)(buf + eh->e_shoff +
  		    eh->e_shentsize * section->sh_link);
  		if (string_section->sh_type != SHT_STRTAB)

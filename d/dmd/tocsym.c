@@ -89,7 +89,7 @@ Symbol *Dsymbol::toSymbolX(const char *prefix, int sclass, type *t, const char *
     }
 #endif
     id = (char *) alloca(2 + nlen + sizeof(size_t) * 3 + strlen(prefix) + strlen(suffix) + 1);
-    sprintf(id,"_D%s%d%s%s", n, strlen(prefix), prefix, suffix);
+    sprintf(id,"_D%s%lu%s%s", n, strlen(prefix), prefix, suffix);
 #if 0
     if (global.params.isWindows &&
 	(type_mangle(t) == mTYman_c || type_mangle(t) == mTYman_std))
@@ -143,7 +143,7 @@ Symbol *Dsymbol::toImport(Symbol *sym)
     id = (char *) alloca(6 + strlen(n) + 1 + sizeof(type_paramsize(sym->Stype))*3 + 1);
     if (sym->Stype->Tmangle == mTYman_std && tyfunc(sym->Stype->Tty))
     {
-	sprintf(id,"_imp__%s@%d",n,type_paramsize(sym->Stype));
+	sprintf(id,"_imp__%s@%lu",n,type_paramsize(sym->Stype));
     }
     else if (sym->Stype->Tmangle == mTYman_d)
 	sprintf(id,"_imp_%s",n);
@@ -205,7 +205,7 @@ Symbol *VarDeclaration::toSymbol()
 	{
 		if (storage_class & STCtls)
  	    {	/* Thread local storage
-+ 		 */
+		 */
  		type_setty(&t, t->Tty | mTYthread);
  	    }
 	    s->Sclass = SCextern;
@@ -326,6 +326,7 @@ Symbol *FuncDeclaration::toSymbol()
 	slist_add(s);
 
 	{
+	    s->prettyIdent = toPrettyChars();
 
 	    s->Sclass = SCglobal;
 	    symbol_func(s);

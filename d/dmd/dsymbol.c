@@ -151,7 +151,7 @@ char *Dsymbol::toChars()
     return ident ? ident->toChars() : (char *)"__anonymous";
 }
 
-char *Dsymbol::toPrettyChars()
+const char *Dsymbol::toPrettyChars()
 {   Dsymbol *p;
     char *s;
     char *q;
@@ -177,6 +177,16 @@ char *Dsymbol::toPrettyChars()
 	if (q == s)
 	    break;
 	q--;
+#if TARGET_NET
+    if (AggregateDeclaration* ad = p->isAggregateDeclaration())
+    {
+        if (ad->isNested() && p->parent && p->parent->isAggregateDeclaration())
+        {
+            *q = '/';
+            continue;
+        }
+    }
+#endif
 	*q = '.';
     }
     return s;
@@ -261,6 +271,7 @@ int Dsymbol::isAnonymous()
 
 void Dsymbol::setScope(Scope *sc)
 {
+    //printf("Dsymbol::setScope() %p %s\n", this, toChars());
     if (!sc->nofree)
 	sc->setNoFree();		// may need it even after semantic() finishes
     scope = sc;
@@ -303,14 +314,14 @@ void Dsymbol::inlineScan()
 }
 
 /*********************************************
-+  * Search for ident as member of s.
-+  * Input:
-+  *	flags:	1	don't find private members
-+  *		2	don't give error messages
-+  *		4	return NULL if ambiguous
-+  * Returns:
-+  *	NULL if not found
-+  */
+ * Search for ident as member of s.
+ * Input:
+ *	flags:	1	don't find private members
+ *		2	don't give error messages
+ *		4	return NULL if ambiguous
+ * Returns:
+ *	NULL if not found
+ */
 
 Dsymbol *Dsymbol::search(Loc loc, Identifier *ident, int flags)
 {
@@ -423,6 +434,13 @@ int Dsymbol::isDeprecated()
 {
     return FALSE;
 }
+
+#if DMDV2
+int Dsymbol::isOverloadable()
+{
+    return 0;
+}
+#endif
 
 LabelDsymbol *Dsymbol::isLabel()		// is this a LabelDsymbol()?
 {
@@ -631,6 +649,25 @@ void Dsymbol::addComment(unsigned char *comment)
 #endif
 }
 
+/********************************* OverloadSet ****************************/
+
+#if DMDV2
+OverloadSet::OverloadSet()
+    : Dsymbol()
+{
+}
+
+void OverloadSet::push(Dsymbol *s)
+{
+    a.push(s);
+}
+
+const char *OverloadSet::kind()
+{
+    return "overloadset";
+}
+#endif
+
 
 /********************************* ScopeDsymbol ****************************/
 
@@ -689,7 +726,7 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
 
 	    //printf("\tscanning import '%s', prots = %d, isModule = %p, isImport = %p\n", ss->toChars(), prots[i], ss->isModule(), ss->isImport());
 	    /* Don't find private members if ss is a module
-+ 	     */
+	     */
 	    s2 = ss->search(loc, ident, ss->isModule() ? 1 : 0);
 	    if (!s)
 		s = s2;
@@ -697,10 +734,10 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
 	    {
 		if (s->toAlias() == s2->toAlias())
 		{
-			/* After following aliases, we found the same symbol,
-+ 		     * so it's not an ambiguity.
-+ 		     * But if one alias is deprecated, prefer the other.
-+ 		     */
+		    /* After following aliases, we found the same symbol,
+		     * so it's not an ambiguity.
+		     * But if one alias is deprecated, prefer the other.
+		     */
 		    if (s->isDeprecated())
 			s = s2;
 		}
