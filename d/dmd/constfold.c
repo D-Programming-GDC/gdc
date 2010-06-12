@@ -1503,7 +1503,8 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
  	e = es;
  
  	if (type->toBasetype()->ty == Tsarray)
- 	{	    e->type = new TypeSArray(t1->nextOf(), new IntegerExp(loc, es->elements->dim, Type::tindex));
+ 	{
+	    e->type = new TypeSArray(t1->nextOf(), new IntegerExp(loc, es->elements->dim, Type::tindex));
  	    e->type = e->type->semantic(loc, NULL);
  	}
  	else

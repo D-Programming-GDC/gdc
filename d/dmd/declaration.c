@@ -122,8 +122,10 @@ enum PROT Declaration::prot()
  		VarDeclaration *v = isVarDeclaration();
  		assert(v);
  		v->ctorinit = 1;
- 		//printf("setting ctorinit\n"); 	    }
- 	    else 	    {
+ 		//printf("setting ctorinit\n");
+ 	    }
+ 	    else
+ 	    {
  		if (s)
  		{   s = s->toParent2();
  		    continue;
@@ -132,7 +134,8 @@ enum PROT Declaration::prot()
 		{
  		    const char *p = isStatic() ? "static " : "";
  		    error(loc, "can only initialize %sconst %s inside %sconstructor",
- 			p, toChars(), p); 		}
+ 			p, toChars(), p);
+ 		}
  	    }
  	    break;
  	}
@@ -1229,7 +1232,12 @@ void VarDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 	buf->writestring(ident->toChars());
     if (init)
     {	buf->writestring(" = ");
-#if DMDV2	ExpInitializer *ie = init->isExpInitializer();	if (ie && (ie->exp->op == TOKconstruct || ie->exp->op == TOKblit))	    ((AssignExp *)ie->exp)->e2->toCBuffer(buf, hgs);	else#endif
+#if DMDV2
+	ExpInitializer *ie = init->isExpInitializer();
+	if (ie && (ie->exp->op == TOKconstruct || ie->exp->op == TOKblit))
+	    ((AssignExp *)ie->exp)->e2->toCBuffer(buf, hgs);
+	else
+#endif
 	init->toCBuffer(buf, hgs);
     }
     buf->writeByte(';');

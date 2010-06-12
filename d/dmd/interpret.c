@@ -2247,7 +2247,8 @@ Expression *DotVarExp::interpret(InterState *istate)
  	    VarDeclaration *v = var->isVarDeclaration();
  	    if (v)
  	    {	e = se->getField(type, v->offset);
- 		if (!e) 		    e = EXP_CANT_INTERPRET;
+ 		if (!e)
+ 		    e = EXP_CANT_INTERPRET;
  		return e;
  	    }
  	}

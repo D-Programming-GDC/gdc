@@ -281,7 +281,8 @@ int main()
 	fprintf(fp, "#include \"lexer.h\"\n");
 
 	for (i = 0; i < sizeof(msgtable) / sizeof(msgtable[0]); i++)
-	{   const char *id = msgtable[i].ident; 	    const char *p = msgtable[i].name;
+	{   const char *id = msgtable[i].ident;
+ 	    const char *p = msgtable[i].name;
 
 	    if (!p)
 		p = id;

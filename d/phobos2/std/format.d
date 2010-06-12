@@ -684,7 +684,8 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 		// Is pointer alignment on the x64 4 bytes or 8?
 		return (tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
 	    }
-	    
+
+	    
 	  putc('[');
 	  bool comma=false;
 	  auto argptrSave = p_args;

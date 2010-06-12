@@ -553,10 +553,13 @@ int CompoundStatement::usesEH()
     return FALSE;
 }
 
-int CompoundStatement::blockExit() {
+int CompoundStatement::blockExit()
+ {
      //printf("CompoundStatement::blockExit(%p) %d\n", this, statements->dim);
      int result = BEfallthru;
-     for (size_t i = 0; i < statements->dim; i++)     {	Statement *s = (Statement *) statements->data[i]; 	if (s)
+     for (size_t i = 0; i < statements->dim; i++)
+     {	Statement *s = (Statement *) statements->data[i];
+ 	if (s)
  	{
  //printf("result = x%x\n", result);
  //printf("%s\n", s->toChars());
@@ -2061,7 +2064,8 @@ int ConditionalStatement::blockExit()
  {
      int result = ifbody->blockExit();
      if (elsebody)
- 	result |= elsebody->blockExit();     return result;
+ 	result |= elsebody->blockExit();
+     return result;
  }
 
 void ConditionalStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -3374,7 +3378,8 @@ int TryCatchStatement::blockExit()
  
      for (size_t i = 0; i < catches->dim; i++)
      {
-         Catch *c = (Catch *)catches->data[i];         result |= c->blockExit();
+         Catch *c = (Catch *)catches->data[i];
+         result |= c->blockExit();
      }
      return result;
  }
@@ -3556,7 +3561,8 @@ Statement *OnScopeStatement::semantic(Scope *sc)
     return this;
 }
 
-int OnScopeStatement::blockExit() {   // At this point, this statement is just an empty placeholder
+int OnScopeStatement::blockExit()
+ {   // At this point, this statement is just an empty placeholder
      return BEfallthru;
  }
 
@@ -3905,7 +3911,8 @@ LabelDsymbol *LabelDsymbol::isLabel()		// is this a LabelDsymbol()?
  {
      return TRUE;
  }
-  int AsmStatement::blockExit()
+ 
+ int AsmStatement::blockExit()
  {
      // Assume the worst
      return BEfallthru | BEthrow | BEreturn | BEgoto | BEhalt;

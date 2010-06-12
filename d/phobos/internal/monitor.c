@@ -134,7 +134,8 @@ void _d_monitorrelease(Object *h)
 
 #if linux || __APPLE__
 #ifndef PTHREAD_MUTEX_RECURSIVE
-#    define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP#endif
+#    define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
+#endif
 #endif
 
 #ifndef HAVE_PTHREAD_MUTEX_RECURSIVE

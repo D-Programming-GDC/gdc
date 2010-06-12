@@ -429,6 +429,7 @@ wchar_t  ungetwc(wchar_t, FILE *);	///
 wchar_t	 getwchar_t(); ///
 wchar_t	 putwchar_t(wchar_t c); ///
 wchar_t	 getwc(FILE *fp); ///
-wchar_t	 putwc(wchar_t c, FILE *fp) ///;
+wchar_t	 putwc(wchar_t c, FILE *fp) ///
+;
 
 int fwide(FILE* fp, int mode);	///

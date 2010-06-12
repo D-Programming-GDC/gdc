@@ -638,7 +638,8 @@ struct TypeidExp : Expression
 };
 
 #if DMDV2
- struct TraitsExp : Expression {
+ struct TraitsExp : Expression
+ {
      Identifier *ident;
      Objects *args;
  
@@ -1130,7 +1131,8 @@ ASSIGNEXP(Xor)
  ASSIGNEXP(Shl)
  ASSIGNEXP(Shr)
  ASSIGNEXP(Ushr)
- ASSIGNEXP(Cat) 
+ ASSIGNEXP(Cat)
+ 
  #undef X
 #undef ASSIGNEXP
 
@@ -1459,7 +1461,8 @@ struct CondExp : BinExp
  
  struct LineInitExp : DefaultInitExp
  {
-     LineInitExp(Loc loc);     Expression *semantic(Scope *sc);
+     LineInitExp(Loc loc);
+     Expression *semantic(Scope *sc);
      Expression *resolve(Loc loc, Scope *sc);
  };
  #endif

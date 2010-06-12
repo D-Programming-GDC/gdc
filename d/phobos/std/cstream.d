@@ -155,7 +155,8 @@ class CFile : Stream {
     file = new CFile(f,FileMode.In,true);
     // should be ok to read
     assert(file.readable);
-    auto line = file.readLine();    auto exp = "Testing stream.d:";
+    auto line = file.readLine();
+    auto exp = "Testing stream.d:";
     assert(line[0] == 'T');
     assert(line.length == exp.length);
     assert(!std.string.cmp(line, "Testing stream.d:"));

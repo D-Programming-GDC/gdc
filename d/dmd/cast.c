@@ -41,7 +41,8 @@ Expression *Expression::implicitCastTo(Scope *sc, Type *t)
 		return e->implicitCastTo(sc, t);
 		
 		if (tyfrom == Tint32 &&
- 		(op == TOKadd || op == TOKmin || 		 op == TOKand || op == TOKor || op == TOKxor)
+ 		(op == TOKadd || op == TOKmin ||
+ 		 op == TOKand || op == TOKor || op == TOKxor)
  	       )
  	    {
  		/* This is really only a semi-kludge fix,

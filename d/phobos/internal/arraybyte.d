@@ -29,7 +29,8 @@ else
     alias std.cpuid.sse sse;
     alias std.cpuid.sse2 sse2;
     alias std.cpuid.amd3dnow amd3dnow;
-}
+}
+
 //version = log;
 
 bool disjoint(T)(T[] a, T[] b)

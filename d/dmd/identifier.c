@@ -91,7 +91,8 @@ Identifier *Identifier::generateId(const char *prefix)
  {
      static size_t i;
  
-     return generateId(prefix, ++i); }
+     return generateId(prefix, ++i);
+ }
  
  Identifier *Identifier::generateId(const char *prefix, size_t i)
   {   OutBuffer buf;

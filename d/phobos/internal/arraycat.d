@@ -30,7 +30,8 @@
 
    Modified by David Friedman, November 2006
 */
- 
+
+ 
 module arraycat;
 
 import object;

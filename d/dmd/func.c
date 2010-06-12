@@ -2149,7 +2149,8 @@ int FuncDeclaration::needsClosure()
      * 2) has its address taken
      * 3) has a parent that escapes
      *
-     * Note that since a non-virtual function can be called by     * a virtual one, if that non-virtual function accesses a closure
+     * Note that since a non-virtual function can be called by
+     * a virtual one, if that non-virtual function accesses a closure
      * var, the closure still has to be taken. Hence, we check for isThis()
      * instead of isVirtual(). (thanks to David Friedman)
      */

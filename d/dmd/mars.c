@@ -526,7 +526,8 @@ int main(int argc, char *argv[])
 	    else if (strcmp(p + 1, "release") == 0)
 		global.params.release = 1;
 		#if DMDV2
- 	    else if (strcmp(p + 1, "safe") == 0) 		global.params.safe = 1;
+ 	    else if (strcmp(p + 1, "safe") == 0)
+ 		global.params.safe = 1;
  		#endif
 	    else if (strcmp(p + 1, "unittest") == 0)
 		global.params.useUnitTests = 1;

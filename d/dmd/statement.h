@@ -358,7 +358,8 @@ struct ForeachStatement : Statement
      int hasBreak();
      int hasContinue();
      int usesEH();
-     int blockExit();
+     int blockExit();
+
      int comeFrom();
      Expression *interpret(InterState *istate);
      void toCBuffer(OutBuffer *buf, HdrGenState *hgs);

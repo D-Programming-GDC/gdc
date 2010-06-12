@@ -1160,7 +1160,8 @@ void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
     fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
     ftm = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
     }
-     else version (OSX)     {	// BUG: should add in tv_nsec field
+     else version (OSX)
+     {	// BUG: should add in tv_nsec field
  	ftc = cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
  	fta = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
  	ftm = cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;

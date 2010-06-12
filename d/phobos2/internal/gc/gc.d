@@ -332,7 +332,8 @@ Array _d_newarrayiT(TypeInfo ti, size_t length)
 	    }
 	}
 	result.length = length;
-	result.data = cast(byte*) p;
+	result.data = cast(byte*) p
+;
     }
     return result;
 

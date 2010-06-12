@@ -787,7 +787,8 @@ Identifier *Type::getTypeInfoIdent(int internal)
     len = buf.offset;
     name = (char *)alloca(19 + sizeof(len) * 3 + len + 1);
     buf.writeByte(0);
-     #if TARGET_OSX     // The LINKc will prepend the _
+     #if TARGET_OSX
+     // The LINKc will prepend the _
      sprintf(name, "D%dTypeInfo_%s6__initZ", 9 + len, buf.data);
  	#else
       sprintf(name, "_D%dTypeInfo_%s6__initZ", 9 + len, buf.data);

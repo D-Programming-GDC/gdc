@@ -646,7 +646,8 @@ struct CtorDeclaration : FuncDeclaration
     CtorDeclaration *isCtorDeclaration() { return this; }
 };
 
-#if DMDV2 struct PostBlitDeclaration : FuncDeclaration
+#if DMDV2
+ struct PostBlitDeclaration : FuncDeclaration
  {
      PostBlitDeclaration(Loc loc, Loc endloc);
     PostBlitDeclaration(Loc loc, Loc endloc, Identifier *id);
