@@ -768,19 +768,23 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 		    arg = arg->castTo(sc, ta);
 	    }
 	    
-	    #if DMDV2
- 	    if (tb->ty == Tstruct)
- 	    {
- 		arg = callCpCtor(loc, sc, arg);
- 	    }
-  
- 	    // Give error for overloaded function addresses
- 	    if (arg->op == TOKsymoff)
- 	    {	SymOffExp *se = (SymOffExp *)arg;
- 		if (se->hasOverloads && !se->var->isFuncDeclaration()->isUnique())
- 		    arg->error("function %s is overloaded", arg->toChars());
- 	    }
- 	#endif
+#if DMDV2
+	    if (tb->ty == Tstruct)
+	    {
+		arg = callCpCtor(loc, sc, arg);
+	    }
+#endif
+
+	    // Give error for overloaded function addresses
+#if DMDV2
+	    if (arg->op == TOKsymoff)
+	    {	SymOffExp *se = (SymOffExp *)arg;
+		if (
+		    se->hasOverloads &&
+		    !se->var->isFuncDeclaration()->isUnique())
+		    arg->error("function %s is overloaded", arg->toChars());
+	    }
+#endif
 
 	    arg->rvalue();
 	}
@@ -1210,10 +1214,10 @@ Expression *Expression::addressOf(Scope *sc)
 Expression *Expression::deref()
 {
     //printf("Expression::deref()\n");
-    if (type->ty == Treference)
-    {	Expression *e;
-
-	e = new PtrExp(loc, this);
+    // type could be null if forward referencing an 'auto' variable
+    if (type && type->ty == Treference)
+    {
+	Expression *e = new PtrExp(loc, this);
 	e->type = ((TypeReference *)type)->next;
 	return e;
     }
@@ -3233,8 +3237,26 @@ Expression *StructLiteralExp::getField(Type *type, unsigned offset)
  	e = (Expression *)elements->data[i];
 	if (e)
 	{
-	    e = e->copy();
-	    e->type = type;
+	    //printf("e = %s, e->type = %s\n", e->toChars(), e->type->toChars());
+
+	    /* If type is a static array, and e is an initializer for that array,
+	     * then the field initializer should be an array literal of e.
+	     */
+	    if (e->type != type && type->ty == Tsarray)
+	    {   TypeSArray *tsa = (TypeSArray *)type;
+		uinteger_t length = tsa->dim->toInteger();
+		Expressions *z = new Expressions;
+		z->setDim(length);
+		for (int q = 0; q < length; ++q)
+		    z->data[q] = e->copy();
+		e = new ArrayLiteralExp(loc, z);
+		e->type = type;
+	    }
+	    else
+	    {
+		e = e->copy();
+		e->type = type;
+	    }
 	}
     }
     return e;
@@ -3249,20 +3271,23 @@ int StructLiteralExp::getFieldIndex(Type *type, unsigned offset)
 {
     /* Find which field offset is by looking at the field offsets
      */
-    for (size_t i = 0; i < sd->fields.dim; i++)
+    if (elements->dim)
     {
-	Dsymbol *s = (Dsymbol *)sd->fields.data[i];
-	VarDeclaration *v = s->isVarDeclaration();
-	assert(v);
+	for (size_t i = 0; i < sd->fields.dim; i++)
+	{
+	    Dsymbol *s = (Dsymbol *)sd->fields.data[i];
+	    VarDeclaration *v = s->isVarDeclaration();
+	    assert(v);
 
-	if (offset == v->offset &&
-	    type->size() == v->type->size())
-	{   Expression *e = (Expression *)elements->data[i];
-	    if (e)
-	    {
-		return i;
+	    if (offset == v->offset &&
+		type->size() == v->type->size())
+	    {   Expression *e = (Expression *)elements->data[i];
+		if (e)
+		{
+		    return i;
+		}
+		break;
 	    }
-	    break;
 	}
     }
     return -1;
@@ -3977,7 +4002,7 @@ Expression *VarExp::semantic(Scope *sc)
     VarDeclaration *v = var->isVarDeclaration();
     if (v)
     {
-	if (v->isConst() && type->toBasetype()->ty != Tsarray && v->init)
+	if (v->isConst() && v->type && type->toBasetype()->ty != Tsarray && v->init)
 	{
 	    ExpInitializer *ei = v->init->isExpInitializer();
 	    if (ei)
@@ -5021,6 +5046,46 @@ int BinExp::checkSideEffect(int flag)
     return Expression::checkSideEffect(flag);
 }
 
+// generate an error if this is a nonsensical *=,/=, or %=, eg real *= imaginary
+void BinExp::checkComplexMulAssign()
+{
+    // Any multiplication by an imaginary or complex number yields a complex result.
+    // r *= c, i*=c, r*=i, i*=i are all forbidden operations.
+    const char *opstr = Token::toChars(op);
+    if ( e1->type->isreal() && e2->type->iscomplex())
+    {
+        error("%s %s %s is undefined. Did you mean %s %s %s.re ?",
+            e1->type->toChars(), opstr, e2->type->toChars(), 
+            e1->type->toChars(), opstr, e2->type->toChars());
+    }
+    else if (e1->type->isimaginary() && e2->type->iscomplex())
+    {
+        error("%s %s %s is undefined. Did you mean %s %s %s.im ?",
+            e1->type->toChars(), opstr, e2->type->toChars(),
+            e1->type->toChars(), opstr, e2->type->toChars());
+    }
+    else if ((e1->type->isreal() || e1->type->isimaginary()) &&
+	e2->type->isimaginary())
+    {
+        error("%s %s %s is an undefined operation", e1->type->toChars(),
+		opstr, e2->type->toChars());
+    }
+}
+
+// generate an error if this is a nonsensical += or -=, eg real += imaginary
+void BinExp::checkComplexAddAssign()
+{
+    // Addition or subtraction of a real and an imaginary is a complex result.
+    // Thus, r+=i, r+=c, i+=r, i+=c are all forbidden operations.
+    if ( (e1->type->isreal() && (e2->type->isimaginary() || e2->type->iscomplex())) ||
+         (e1->type->isimaginary() && (e2->type->isreal() || e2->type->iscomplex()))        
+        )
+    {
+        error("%s %s %s is undefined (result is complex)",
+	    e1->type->toChars(), Token::toChars(op), e2->type->toChars());
+    }
+}
+
 void BinExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     expToCBuffer(buf, hgs, e1, precedence[op]);
@@ -5966,9 +6031,10 @@ CallExp::CallExp(Loc loc, Expression *e, Expression *earg1)
 	: UnaExp(loc, TOKcall, sizeof(CallExp), e)
 {
     Expressions *arguments = new Expressions();
-    arguments->setDim(1);
-    arguments->data[0] = (void *)earg1;
-
+    if (earg1)
+    {	arguments->setDim(1);
+	arguments->data[0] = (void *)earg1;
+    }
     this->arguments = arguments;
 }
 
@@ -7090,9 +7156,10 @@ Expression *CastExp::semantic(Scope *sc)
 	    return e->implicitCastTo(sc, to);
 	}
 
+	Type *t1b = e1->type->toBasetype();
 	Type *tob = to->toBasetype();
 	if (tob->ty == Tstruct &&
-	    !tob->equals(e1->type->toBasetype()) &&
+	    !tob->equals(t1b) &&
 	    ((TypeStruct *)to)->sym->search(0, Id::call, 0)
 	   )
 	{
@@ -7108,6 +7175,18 @@ Expression *CastExp::semantic(Scope *sc)
 	    e = new CallExp(loc, e, e1);
 	    e = e->semantic(sc);
 	    return e;
+	}
+
+	// Struct casts are possible only when the sizes match
+	if (tob->ty == Tstruct || t1b->ty == Tstruct)
+	{
+	    size_t fromsize = t1b->size(loc);
+	    size_t tosize = tob->size(loc);
+	    if (fromsize != tosize)
+	    {
+		error("cannot cast from %s to %s", e1->type->toChars(), to->toChars());
+		return new ErrorExp();
+	    }
 	}
     }
     e = e1->castTo(sc, to);
@@ -8156,6 +8235,7 @@ Expression *AddAssignExp::semantic(Scope *sc)
 	    typeCombine(sc);
 	    e1->checkArithmetic();
 	    e2->checkArithmetic();
+	    checkComplexAddAssign();
 	    if (type->isreal() || type->isimaginary())
 	    {
 		assert(global.errors || e2->type->isfloating());
@@ -8203,6 +8283,7 @@ Expression *MinAssignExp::semantic(Scope *sc)
     {
 	e1 = e1->checkArithmetic();
 	e2 = e2->checkArithmetic();
+	checkComplexAddAssign();
 	type = e1->type;
 	typeCombine(sc);
 	if (type->isreal() || type->isimaginary())
@@ -8304,6 +8385,7 @@ Expression *MulAssignExp::semantic(Scope *sc)
     typeCombine(sc);
     e1->checkArithmetic();
     e2->checkArithmetic();
+    checkComplexMulAssign();
     if (e2->type->isfloating())
     {	Type *t1;
 	Type *t2;
@@ -8367,6 +8449,7 @@ Expression *DivAssignExp::semantic(Scope *sc)
     typeCombine(sc);
     e1->checkArithmetic();
     e2->checkArithmetic();
+    checkComplexMulAssign();
     if (e2->type->isimaginary())
     {	Type *t1;
 	Type *t2;
@@ -8410,6 +8493,8 @@ ModAssignExp::ModAssignExp(Loc loc, Expression *e1, Expression *e2)
 
 Expression *ModAssignExp::semantic(Scope *sc)
 {
+    BinExp::semantic(sc);
+    checkComplexMulAssign();
     return commonSemanticAssign(sc);
 }
 
@@ -9330,8 +9415,6 @@ CmpExp::CmpExp(enum TOK op, Loc loc, Expression *e1, Expression *e2)
 
 Expression *CmpExp::semantic(Scope *sc)
 {   Expression *e;
-    Type *t1;
-    Type *t2;
 
 #if LOGSEMANTIC
     printf("CmpExp::semantic('%s')\n", toChars());
@@ -9341,8 +9424,10 @@ Expression *CmpExp::semantic(Scope *sc)
 
     BinExp::semanticp(sc);
 
-    if (e1->type->toBasetype()->ty == Tclass && e2->op == TOKnull ||
-	e2->type->toBasetype()->ty == Tclass && e1->op == TOKnull)
+    Type *t1 = e1->type->toBasetype();
+    Type *t2 = e2->type->toBasetype();
+    if (t1->ty == Tclass && e2->op == TOKnull ||
+	t2->ty == Tclass && e1->op == TOKnull)
     {
 	error("do not use null when comparing class types");
     }
@@ -9360,6 +9445,15 @@ Expression *CmpExp::semantic(Scope *sc)
 	e = e->semantic(sc);
 	}
 	return e;
+    }
+
+    /* Disallow comparing T[]==T and T==T[]
+     */
+    if (e1->op == TOKslice && t1->ty == Tarray && e2->implicitConvTo(t1->nextOf()) ||
+	e2->op == TOKslice && t2->ty == Tarray && e1->implicitConvTo(t2->nextOf()))
+    {
+	incompatibleTypes();
+	return new ErrorExp();
     }
 
     typeCombine(sc);
@@ -9413,8 +9507,6 @@ EqualExp::EqualExp(enum TOK op, Loc loc, Expression *e1, Expression *e2)
 
 Expression *EqualExp::semantic(Scope *sc)
 {   Expression *e;
-    Type *t1;
-    Type *t2;
 
     //printf("EqualExp::semantic('%s')\n", toChars());
     if (type)
@@ -9443,8 +9535,10 @@ Expression *EqualExp::semantic(Scope *sc)
 	}
     }
 
-    if (e1->type->toBasetype()->ty == Tclass && e2->op == TOKnull ||
-	e2->type->toBasetype()->ty == Tclass && e1->op == TOKnull)
+    Type *t1 = e1->type->toBasetype();
+    Type *t2 = e2->type->toBasetype();
+    if (t1->ty == Tclass && e2->op == TOKnull ||
+	t2->ty == Tclass && e1->op == TOKnull)
     {
 	error("use '%s' instead of '%s' when comparing with null",
 		Token::toChars(op == TOKequal ? TOKidentity : TOKnotidentity),
@@ -9463,6 +9557,15 @@ Expression *EqualExp::semantic(Scope *sc)
 	    }
 	    return e;
 	}
+    }
+
+    /* Disallow comparing T[]==T and T==T[]
+     */
+    if (e1->op == TOKslice && t1->ty == Tarray && e2->implicitConvTo(t1->nextOf()) ||
+	e2->op == TOKslice && t2->ty == Tarray && e1->implicitConvTo(t2->nextOf()))
+    {
+	incompatibleTypes();
+	return new ErrorExp();
     }
 
     e = typeCombine(sc);

@@ -44,6 +44,8 @@ struct Msgtable msgtable[] =
     { "dtor", "_dtor" },
     { "classInvariant", "__invariant" },
     { "unitTest", "_unitTest" },
+    { "require", "__require" },
+    { "ensure", "__ensure" },
     { "init" },
     { "size" },
     { "__sizeof", "sizeof" },

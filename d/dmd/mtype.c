@@ -2308,6 +2308,7 @@ Type *TypeAArray::semantic(Loc loc, Scope *sc)
 	case Tfunction:
 	case Tvoid:
 	case Tnone:
+	case Ttuple:
 	    error(loc, "can't have associative array key of %s", key->toChars());
 	    break;
     }
@@ -2726,6 +2727,9 @@ int Type::covariant(Type *t)
     Type *t1n = t1->next;
     Type *t2n = t2->next;
 
+    if (!t1n || !t2n)		// happens with return type inference
+	goto Lnotcovariant;
+
     if (t1n->equals(t2n))
 	goto Lcovariant;
     if (t1n->ty != Tclass || t2n->ty != Tclass)
@@ -2836,10 +2840,10 @@ void TypeFunction::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
 	switch (linkage)
 	{
 	    case LINKd:		p = NULL;	break;
-	    case LINKc:		p = "C ";	break;
-	    case LINKwindows:	p = "Windows ";	break;
-	    case LINKpascal:	p = "Pascal ";	break;
-	    case LINKcpp:	p = "C++ ";	break;
+	    case LINKc:		p = " C";	break;
+	    case LINKwindows:	p = " Windows";	break;
+	    case LINKpascal:	p = " Pascal";	break;
+	    case LINKcpp:	p = " C++";	break;
 	    default:
 		assert(0);
 	}
@@ -2894,16 +2898,22 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 	}
 
     if (tf->parameters)
-    {	size_t dim = Argument::dim(tf->parameters);
+    {
+	/* Create a scope for evaluating the default arguments for the parameters
+	 */
+	Scope *argsc = sc->push();
+	argsc->stc = 0;			// don't inherit storage class
+	argsc->protection = PROTpublic;
 
+	size_t dim = Argument::dim(tf->parameters);
 	for (size_t i = 0; i < dim; i++)
 	{   Argument *arg = Argument::getNth(tf->parameters, i);
-	    Type *t;
 
 	    tf->inuse++;
-	    arg->type = arg->type->semantic(loc,sc);
+	    arg->type = arg->type->semantic(loc, argsc);
 	    if (tf->inuse == 1) tf->inuse--;
-	    t = arg->type->toBasetype();
+
+	    Type *t = arg->type->toBasetype();
 
 	    if (arg->storageClass & (STCout | STCref | STClazy))
 	    {
@@ -2915,9 +2925,9 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 
 	    if (arg->defaultArg)
 	    {
-		arg->defaultArg = arg->defaultArg->semantic(sc);
-		arg->defaultArg = resolveProperties(sc, arg->defaultArg);
-		arg->defaultArg = arg->defaultArg->implicitCastTo(sc, arg->type);
+		arg->defaultArg = arg->defaultArg->semantic(argsc);
+		arg->defaultArg = resolveProperties(argsc, arg->defaultArg);
+		arg->defaultArg = arg->defaultArg->implicitCastTo(argsc, arg->type);
 	    }
 
 	    /* If arg turns out to be a tuple, the number of parameters may
@@ -2928,6 +2938,7 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 		i--;
 	    }
 	}
+	argsc->pop();
     }
     if (tf->next)
     tf->deco = tf->merge()->deco;
@@ -3311,6 +3322,19 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
 			goto Lerror;
 		    goto L3;
 		}
+		else if (v && id == Id::stringof)
+		{
+		    e = new DsymbolExp(loc, s);
+		    do
+		    {
+			id = (Identifier *)idents.data[i];
+			e = new DotIdExp(loc, e, id);
+		    } while (++i < idents.dim);
+		    e = e->semantic(sc);
+		    *pe = e;
+		    return;
+		}
+
 		t = s->getType();
 		if (!t && s->isDeclaration())
 		    t = s->isDeclaration()->type;
@@ -3407,19 +3431,27 @@ L1:
 	{
 	    if (t->reliesOnTident())
 	    {
-		Scope *scx;
-
-		for (scx = sc; 1; scx = scx->enclosing)
+		if (s->scope)
+		    t = t->semantic(loc, s->scope);
+		else
 		{
-		    if (!scx)
-		    {   error(loc, "forward reference to '%s'", t->toChars());
-			return;
+		    /* Attempt to find correct scope in which to evaluate t.
+		     * Not sure if this is right or not, or if we should just
+		     * give forward reference error if s->scope is not set.
+		     */
+		    for (Scope *scx = sc; 1; scx = scx->enclosing)
+		    {
+			if (!scx)
+			{   error(loc, "forward reference to '%s'", t->toChars());
+			    return;
+			}
+			if (scx->scopesym == scopesym)
+			{
+			    t = t->semantic(loc, scx);
+			    break;
+			}
 		    }
-		    if (scx->scopesym == scopesym)
-			break;
 		}
-		t = t->semantic(loc, scx);
-		//((TypeIdentifier *)t)->resolve(loc, scx, pe, &t, ps);
 	    }
 	}
 	if (t->ty == Ttuple)
@@ -4417,7 +4449,7 @@ L1:
     s = s->toAlias();
 
     v = s->isVarDeclaration();
-    if (v && v->isConst() && v->type->toBasetype()->ty != Tsarray)
+    if (v && v->isConst() && v->type && v->type->toBasetype()->ty != Tsarray)
     {	ExpInitializer *ei = v->getExpInitializer();
 
 	if (ei)
@@ -4852,9 +4884,16 @@ L1:
 
     if (e->op == TOKtype)
     {
-	VarExp *ve;
-
-	if (d->needThis() && (hasThis(sc) || !d->isFuncDeclaration()))
+	/* It's:
+	 *    Class.d
+	 */
+	if (d->isTupleDeclaration())
+	{
+	    e = new TupleExp(e->loc, d->isTupleDeclaration());
+	    e = e->semantic(sc);
+	    return e;
+	}
+	else if (d->needThis() && (hasThis(sc) || !(sc->intypeof || d->isFuncDeclaration())))
 	{
 	    if (sc->func)
 	    {
@@ -4883,15 +4922,11 @@ L1:
 	    e = de->semantic(sc);
 	    return e;
 	}
-	else if (d->isTupleDeclaration())
-	{
-	    e = new TupleExp(e->loc, d->isTupleDeclaration());
-	    e = e->semantic(sc);
-	    return e;
-	}
 	else
-	    ve = new VarExp(e->loc, d);
-	return ve;
+	{
+	    VarExp *ve = new VarExp(e->loc, d);
+	    return ve;
+	}
     }
 
     if (d->isDataseg())

@@ -1786,7 +1786,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		    default:		assert(0);
 		}
 		const char *r = (op == TOKforeach_reverse) ? "R" : "";
-		int j = sprintf(fdname, "_aApply%s%.*s%ld", r, 2, fntab[flag], dim);
+		int j = sprintf(fdname, "_aApply%s%.*s%zd", r, 2, fntab[flag], dim);
 		assert(j < sizeof(fdname));
 		fdapply = FuncDeclaration::genCfunc(Type::tint32, fdname,
 		    Type::tvoid->arrayOf(), flde->type); // flde->type is not generic
@@ -2551,6 +2551,11 @@ Statement *StaticAssertStatement::semantic(Scope *sc)
 {
     sa->semantic2(sc);
     return NULL;
+}
+
+int StaticAssertStatement::blockExit()
+{
+    return BEfallthru;
 }
 
 void StaticAssertStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -3334,16 +3339,17 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	return gs;
     }
 
-    if (exp && tbret->ty == Tvoid && !fd->isMain())
+    if (exp && tbret->ty == Tvoid && !implicit0)
     {
- 	/* Replace:
+	/* Replace:
 	 *	return exp;
 	 * with:
 	 *	exp; return;
 	 */
- 	Statement *s = new ExpStatement(loc, exp);
-	loc = 0;
+	Statement *s = new ExpStatement(loc, exp);
 	exp = NULL;
+	s = s->semantic(sc);
+	loc = 0;
 	return new CompoundStatement(loc, s, this);
     }
 

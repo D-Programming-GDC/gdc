@@ -88,7 +88,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
 #endif
     ;
-    version = "v1.047";
+    version = "v1.049";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -1060,6 +1060,17 @@ int main(int argc, char *argv[])
     if (global.errors)
 	fatal();
 #endif
+
+    // load all unconditional imports for better symbol resolving
+    for (i = 0; i < modules.dim; i++)
+    {
+       m = (Module *)modules.data[i];
+       if (global.params.verbose)
+           printf("importall %s\n", m->toChars());
+       m->importAll(0);
+    }
+    if (global.errors)
+       fatal();
 
     // Do semantic analysis
     for (i = 0; i < modules.dim; i++)

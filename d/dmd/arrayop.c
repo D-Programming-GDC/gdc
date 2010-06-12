@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2008 by Digital Mars
+// Copyright (c) 1999-2009 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -38,6 +38,14 @@ StringTable arrayfuncs;
 
 Expression *BinExp::arrayOp(Scope *sc)
 {
+    //printf("BinExp::arrayOp() %s\n", toChars());
+
+    if (type->toBasetype()->nextOf()->toBasetype()->ty == Tvoid)
+    {
+        error("Cannot perform array operations on void[] arrays");
+        return new ErrorExp();
+    }
+
     Expressions *arguments = new Expressions();
 
     /* The expression to generate an array operation for is mangled
@@ -292,6 +300,8 @@ Expression *BinExp::arrayOp(Scope *sc)
 	    sc->stc = 0;
 	    sc->linkage = LINKc;
 	    fd->semantic(sc);
+	    fd->semantic2(sc);
+	    fd->semantic3(sc);
 	    sc->pop();
 	}
 	else
