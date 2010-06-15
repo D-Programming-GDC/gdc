@@ -4113,10 +4113,21 @@ ForeachRangeStatement::toIR(IRState * irs)
     tree key_decl = irs->var(key);
     tree lwr_decl = irs->localVar(lwr->type);
     tree upr_decl = irs->localVar(upr->type);
-    tree iter_expr = irs->vmodify(key_decl,
+    tree iter_expr;
+    tree condition;
+
+#if D_GCC_VER >= 43
+    if ( POINTER_TYPE_P (TREE_TYPE (key_decl)) )
+    {
+    	iter_expr = irs->vmodify(key_decl,
+	    irs->pointerOffsetOp(fwd ? PLUS_EXPR : MINUS_EXPR,
+		key_decl, TYPE_POINTER_TO(key_decl)));
+    }
+    else
+#endif
+    iter_expr = irs->vmodify(key_decl,
 	build2(fwd ? PLUS_EXPR : MINUS_EXPR, TREE_TYPE(key_decl),
 	    key_decl, irs->integerConstant(1, TREE_TYPE(key_decl))));
-    tree condition;
     
     irs->expandDecl(lwr_decl);
     irs->expandDecl(upr_decl);

@@ -1021,6 +1021,7 @@ d_parse_file (int /*set_yydebug*/)
 	 fatal();
 #endif
 
+#if ! V2
     // load all unconditional imports for better symbol resolving
     for (i = 0; i < modules.dim; i++)
     {
@@ -1031,6 +1032,7 @@ d_parse_file (int /*set_yydebug*/)
     }
     if (global.errors)
 	goto had_errors;
+#endif
 
     // Do semantic analysis
     for (i = 0; i < modules.dim; i++)
