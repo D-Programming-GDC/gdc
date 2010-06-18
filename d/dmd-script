@@ -113,6 +113,7 @@ Usage:
   -debug         compile in debug code
   -debug=level   compile in debug code <= level
   -debug=ident   compile in debug code identified by ident
+  -deps=filename write module dependencies to filename
   -g             add symbolic debug info
   -gc            add symbolic debug info, pretend to be C
   -H             generate 'header' file
@@ -248,6 +249,8 @@ while ( $arg_i < scalar(@ARGV) ) {
 	errorExit "unrecognized switch '$arg'";
     } elsif ( $arg =~ m/^-defaultlib=(.*)$/ ) {
 	$default_lib = $1;
+    } elsif ( $arg =~ m/^-deps=(.*)$/ ) {
+	push @out, (defined($1) ? "-fdeps=$1" : '-fdeps');
     } elsif ( $arg =~ m/^-g$/ ) {
 	$debug = 1;
 	push @out, '-g';

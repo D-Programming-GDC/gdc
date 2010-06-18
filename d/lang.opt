@@ -60,6 +60,10 @@ fdebug-c
 D
 With -g, generate C debug information for debugger compatibility
 
+fdeps=
+D Joined RejectNegative
+-fdeps=<filename> Write module dependencies to filename
+
 fd-verbose
 D
 Print information about D language processing to stdout
