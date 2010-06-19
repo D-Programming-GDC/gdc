@@ -910,8 +910,10 @@ Symbol *AggregateDeclaration::toInitializer()
 
 	TREE_ADDRESSABLE( t ) = 1;
 	TREE_CONSTANT( t ) = 1;
-	TREE_INVARIANT( t ) = 1;
 	DECL_CONTEXT( t ) = 0; // These are always global
+
+	// DECL is initialized at runtime, so set it's type as read-only.
+	TREE_READONLY( TREE_TYPE(t) ) = 1;
     }
     return sinit;
 }
