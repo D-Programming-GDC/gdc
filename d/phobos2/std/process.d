@@ -241,7 +241,7 @@ int execvp(in string pathname, in string[] argv)
 /** ditto */
 int execvpe(in string pathname, in string[] argv, in string[] envp)
 {
-version (GNU_Need_execvpe)
+version(Unix)
 {
     // Is pathname rooted?
     if(pathname[0] == '/')

@@ -5099,14 +5099,9 @@ fi
 # AC_SUBST(DCFG_EXPM1)
 # also erf, erfc
 
-ac_fn_c_check_func "$LINENO" "execvpe" "ac_cv_func_execvpe"
-if test "x$ac_cv_func_execvpe" = x""yes; then :
-  DCFG_EXECVPE=""
-else
-  DCFG_EXECVPE="GNU_Need_execvpe"
-fi
-
-
+# use version(Posix)/version(Unix) instead.
+#AC_CHECK_FUNC(execvpe,DCFG_EXECVPE="",DCFG_EXECVPE="GNU_Need_execvpe")
+#AC_SUBST(DCFG_EXECVPE)
 
 ac_fn_c_check_func "$LINENO" "spawnvp" "ac_cv_func_spawnvp"
 if test "x$ac_cv_func_spawnvp" = x""yes; then :

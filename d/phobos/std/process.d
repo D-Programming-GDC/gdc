@@ -205,7 +205,7 @@ int execvp(string pathname, string[] argv)
 /** ditto */
 int execvpe(string pathname, string[] argv, string[] envp)
 {
-version (GNU_Need_execvpe)
+version(Posix)
 {
     // Is pathname rooted?
     if(pathname[0] == '/')
@@ -249,9 +249,7 @@ else version(Windows)
 }
 else
 {
-  // Evidently if we don't need it we don't _need_ it.
-  assert(false);
-  // static assert(0);
+  static assert(0);
 } // version
 }
 
