@@ -167,6 +167,13 @@ int Statement::comeFrom()
     return FALSE;
 }
 
+// Return TRUE if statement has no code in it
+int Statement::isEmpty()
+{
+    //printf("Statement::isEmpty()\n");
+    return FALSE;
+}
+
 /****************************************
  * If this statement has code that needs to run in a finally clause
  * at the end of the current scope, return that code in the form of
@@ -334,6 +341,11 @@ Statement *CompileStatement::semantic(Scope *sc)
      Statement *s = new CompoundStatement(loc, a);
      return s->semantic(sc);
  }
+
+int ExpStatement::isEmpty()
+{
+    return exp == NULL;
+}
 
 
 /******************************** DeclarationStatement ***************************/
@@ -595,13 +607,15 @@ int CompoundStatement::blockExit()
  //printf("%s\n", s->toChars());
  	    if (!(result & BEfallthru) && !s->comeFrom())
 	    {
-		if (s->blockExit() != BEhalt)
- 		s->warning("statement is not reachable");
+		if (s->blockExit() != BEhalt && !s->isEmpty())
+		    s->warning("statement is not reachable");
  	    }
- 
- 	    result &= ~BEfallthru;
- 	    result |= s->blockExit();
- 	}
+	    else
+	    {
+		result &= ~BEfallthru;
+		result |= s->blockExit();
+	    }
+	}
      }
      return result;
  }
@@ -695,6 +709,16 @@ void CompoundDeclarationStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writeByte(';');
     if (!hgs->FLinit.init)
         buf->writenl();
+}
+
+int CompoundStatement::isEmpty()
+{
+    for (int i = 0; i < statements->dim; i++)
+    {	Statement *s = (Statement *) statements->data[i];
+	if (s && !s->isEmpty())
+	    return FALSE;
+    }
+    return TRUE;
 }
 
 
@@ -890,10 +914,17 @@ int ScopeStatement::blockExit()
      return statement ? statement->blockExit() : BEfallthru;
  }
 
+
 int ScopeStatement::comeFrom()
 {
     //printf("ScopeStatement::comeFrom()\n");
     return statement ? statement->comeFrom() : FALSE;
+}
+
+int ScopeStatement::isEmpty()
+{
+    //printf("ScopeStatement::isEmpty() %d\n", statement ? statement->isEmpty() : TRUE);
+    return statement ? statement->isEmpty() : TRUE;
 }
 
 void ScopeStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -1133,8 +1164,9 @@ Statement *ForStatement::semantic(Scope *sc)
     condition = condition->checkToBoolean();
    }
     if (increment)
-	{	increment = increment->semantic(sc);
+    {	increment = increment->semantic(sc);
  	increment = resolveProperties(sc, increment);
+	increment = increment->optimize(0);
     }
 
     sc->sbreak = this;
@@ -3863,6 +3895,11 @@ Statement *TryCatchStatement::semantic(Scope *sc)
 	    if (c->type->toBasetype()->implicitConvTo(cj->type->toBasetype()))
 		error("catch at %s hides catch at %s", sj, si);
 	}
+    }
+
+    if (!body || body->isEmpty())
+    {
+	return NULL;
     }
     return this;
 }

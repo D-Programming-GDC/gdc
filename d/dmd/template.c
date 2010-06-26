@@ -4030,6 +4030,7 @@ Identifier *TemplateInstance::genIdent()
 	{   sinteger_t v;
 	    real_t r;
 
+	    ea = ea->optimize(WANTvalue | WANTinterpret);
 	    if (ea->op == TOKvar)
 	    {
 		sa = ((VarExp *)ea)->var;

@@ -106,6 +106,7 @@ struct Module : Package
 
     Macro *macrotable;		// document comment macros
     Escape *escapetable;	// document comment escapes
+    bool safe;			// TRUE if module is marked as 'safe'
 
     Module(char *arg, Identifier *ident, int doDocComment, int doHdrGen);
     ~Module();
@@ -113,6 +114,7 @@ struct Module : Package
     static Module *load(Loc loc, Array *packages, Identifier *ident);
 
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+    void toJsonBuffer(OutBuffer *buf);
     const char *kind();
     void setDocfile();	// set docfile member
     void read(Loc loc);	// read file
@@ -135,6 +137,7 @@ struct Module : Package
     void gendocfile();
     int needModuleInfo();
     Dsymbol *search(Loc loc, Identifier *ident, int flags);
+    Dsymbol *symtabInsert(Dsymbol *s);
     void deleteObjFile();
     void addDeferredSemantic(Dsymbol *s);
     void runDeferredSemantic();
@@ -175,6 +178,7 @@ struct ModuleDeclaration
 {
     Identifier *id;
     Array *packages;		// array of Identifier's representing packages
+    bool safe;
 
     ModuleDeclaration(Array *packages, Identifier *id);
 

@@ -119,6 +119,7 @@ struct Declaration : Dsymbol
     void checkModify(Loc loc, Scope *sc, Type *t);
 
     void emitComment(Scope *sc);
+    void toJsonBuffer(OutBuffer *buf);
     void toDocBuffer(OutBuffer *buf);
 
     char *mangle();
@@ -316,6 +317,7 @@ struct ClassInfoDeclaration : VarDeclaration
     void semantic(Scope *sc);
 
     void emitComment(Scope *sc);
+    void toJsonBuffer(OutBuffer *buf);
 
     Symbol *toSymbol();
 };
@@ -329,6 +331,7 @@ struct ModuleInfoDeclaration : VarDeclaration
     void semantic(Scope *sc);
 
     void emitComment(Scope *sc);
+    void toJsonBuffer(OutBuffer *buf);
 
     Symbol *toSymbol();
 };
@@ -342,6 +345,7 @@ struct TypeInfoDeclaration : VarDeclaration
     void semantic(Scope *sc);
 
     void emitComment(Scope *sc);
+    void toJsonBuffer(OutBuffer *buf);
 
     Symbol *toSymbol();
     void toObjFile(int multiobj);			// compile to .obj file
@@ -692,6 +696,7 @@ struct CtorDeclaration : FuncDeclaration
      int addPostInvariant();
      int overloadInsert(Dsymbol *s);
      void emitComment(Scope *sc);
+     void toJsonBuffer(OutBuffer *buf);
  
      PostBlitDeclaration *isPostBlitDeclaration() { return this; }
  };
@@ -711,6 +716,7 @@ struct DtorDeclaration : FuncDeclaration
     int addPostInvariant();
     int overloadInsert(Dsymbol *s);
     void emitComment(Scope *sc);
+    void toJsonBuffer(OutBuffer *buf);
 
     DtorDeclaration *isDtorDeclaration() { return this; }
 };
@@ -726,6 +732,7 @@ struct StaticCtorDeclaration : FuncDeclaration
     int addPreInvariant();
     int addPostInvariant();
     void emitComment(Scope *sc);
+    void toJsonBuffer(OutBuffer *buf);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
     StaticCtorDeclaration *isStaticCtorDeclaration() { return this; }
@@ -742,6 +749,7 @@ struct StaticDtorDeclaration : FuncDeclaration
     int addPreInvariant();
     int addPostInvariant();
     void emitComment(Scope *sc);
+    void toJsonBuffer(OutBuffer *buf);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
     StaticDtorDeclaration *isStaticDtorDeclaration() { return this; }
@@ -756,6 +764,7 @@ struct InvariantDeclaration : FuncDeclaration
     int addPreInvariant();
     int addPostInvariant();
     void emitComment(Scope *sc);
+    void toJsonBuffer(OutBuffer *buf);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
     InvariantDeclaration *isInvariantDeclaration() { return this; }

@@ -143,6 +143,7 @@ struct Dsymbol : Object
 #endif
     virtual void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     virtual void toDocBuffer(OutBuffer *buf);
+    virtual void toJsonBuffer(OutBuffer *buf);
     virtual target_size_t size(Loc loc);
     virtual int isforwardRef();
     virtual void defineRef(Dsymbol *s);
@@ -248,6 +249,7 @@ struct ScopeDsymbol : Dsymbol
     Dsymbol *nameCollision(Dsymbol *s);
     const char *kind();
     FuncDeclaration *findGetMembers();
+    virtual Dsymbol *symtabInsert(Dsymbol *s);
 
     void emitMemberComments(Scope *sc);
 
