@@ -8,11 +8,11 @@ else
 fi
 top=`pwd`
 
-# D 2.0 is the defalt
-if test -d gcc/d/dmd2; then
-    d_lang_version=2
-else
+# D 1.0 is the defalt
+if test -d gcc/d/dmd; then
     d_lang_version=1
+elif test -d gcc/d/dmd2; then
+    d_lang_version=2
 fi
 
 # Read command line arguments
