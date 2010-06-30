@@ -650,14 +650,14 @@ extern (C) int _adEq(Array a1, Array a2, TypeInfo ti)
 }
 
 extern (C) int _adEq2(Array a1, Array a2, TypeInfo ti)
- {
-     //printf("_adEq2(a1.length = %d, a2.length = %d)\n", a1.length, a2.length);
-     if (a1.length != a2.length)
- 	return 0;		// not equal
-     if (!ti.equals(&a1, &a2))
- 	return 0;
-     return 1;
- }
+{
+    //printf("_adEq2(a1.length = %d, a2.length = %d)\n", a1.length, a2.length);
+    if (a1.length != a2.length)
+	return 0;		// not equal
+    if (!ti.equals(&a1, &a2))
+	return 0;
+    return 1;
+}
 
 unittest
 {
@@ -752,10 +752,10 @@ extern (C) int _adCmp(Array a1, Array a2, TypeInfo ti)
 }
 
 extern (C) int _adCmp2(Array a1, Array a2, TypeInfo ti)
- {
-     //printf("_adCmp2(a1.length = %d, a2.length = %d)\n", a1.length, a2.length);
-     return ti.compare(&a1, &a2);
- }
+{
+    //printf("_adCmp2(a1.length = %d, a2.length = %d)\n", a1.length, a2.length);
+    return ti.compare(&a1, &a2);
+}
 
 unittest
 {

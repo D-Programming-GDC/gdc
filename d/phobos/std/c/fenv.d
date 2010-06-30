@@ -23,36 +23,36 @@ version (Windows)
 	ushort reserved[2];
     }
     extern fenv_t _FE_DFL_ENV;
- 
-     /// Default floating point environment
-     fenv_t* FE_DFL_ENV = &_FE_DFL_ENV;
- 
-     alias int fexcept_t;	/// Floating point status flags
- 
-     int fetestexcept(int excepts);		///
-     int feraiseexcept(int excepts);		///
-     int feclearexcept(int excepts);		///
-     //int fegetexcept(fexcept_t *flagp,int excepts);	///
-     //int fesetexcept(fexcept_t *flagp,int excepts);	///
-     int fegetround();			///
-     int fesetround(int round);		///
-     int fegetprec();			///
-     int fesetprec(int prec);		///
-     int fegetenv(fenv_t *envp);		///
-     int fesetenv(fenv_t *envp);		///
-     //void feprocentry(fenv_t *envp);	///
-     //void feprocexit(const fenv_t *envp);	///
- 
-     int fegetexceptflag(fexcept_t *flagp,int excepts);	///
-     int fesetexceptflag(fexcept_t *flagp,int excepts);	///
-     int feholdexcept(fenv_t *envp);		///
-     int feupdateenv(fenv_t *envp);		///
- 
- }
- else version (linux)
- {
-     /// Entire floating point environment
- 
+
+    /// Default floating point environment
+    fenv_t* FE_DFL_ENV = &_FE_DFL_ENV;
+
+    alias int fexcept_t;	/// Floating point status flags
+
+    int fetestexcept(int excepts);		///
+    int feraiseexcept(int excepts);		///
+    int feclearexcept(int excepts);		///
+    //int fegetexcept(fexcept_t *flagp,int excepts);	///
+    //int fesetexcept(fexcept_t *flagp,int excepts);	///
+    int fegetround();			///
+    int fesetround(int round);		///
+    int fegetprec();			///
+    int fesetprec(int prec);		///
+    int fegetenv(fenv_t *envp);		///
+    int fesetenv(fenv_t *envp);		///
+    //void feprocentry(fenv_t *envp);	///
+    //void feprocexit(const fenv_t *envp);	///
+
+    int fegetexceptflag(fexcept_t *flagp,int excepts);	///
+    int fesetexceptflag(fexcept_t *flagp,int excepts);	///
+    int feholdexcept(fenv_t *envp);		///
+    int feupdateenv(fenv_t *envp);		///
+
+}
+else version (linux)
+{
+    /// Entire floating point environment
+
     struct fenv_t
     {
 	ushort __control_word;
@@ -81,7 +81,7 @@ version (Windows)
     //int fegetexcept(fexcept_t *flagp,int excepts);	///
     //int fesetexcept(fexcept_t *flagp,int excepts);	///
     int fegetround();			///
-   int fesetround(int round);		///
+    int fesetround(int round);		///
     int fegetprec();			///
     int fesetprec(int prec);		///
     int fegetenv(fenv_t *envp);		///
@@ -96,10 +96,10 @@ version (Windows)
 }
 else version (OSX)
 {
-  /// Entire floating point environment
+    /// Entire floating point environment
 
-   struct fenv_t
-   {
+    struct fenv_t
+    {
 	ushort __control;
 	ushort __status;
 	uint __mxcsr;
@@ -138,15 +138,15 @@ else version (FreeBSD)
 
     struct fenv_t
     {
-		struct X87
-		{
-		    uint __control;
-		    uint __status;
-		    uint __tag;
-		    char[16] other;
-	   }
-	   X87 __x87;
-		uint __mxcsr;
+	struct X87
+	{
+	    uint __control;
+	    uint __status;
+	    uint __tag;
+	    char[16] other;
+	}
+	X87 __x87;
+	uint __mxcsr;
     }
 
     extern fenv_t __fe_defl_env;
@@ -202,7 +202,8 @@ else
 {
     static assert(0);
 }
-}
+
+
 
 /// The various floating point exceptions
 enum

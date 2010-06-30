@@ -508,9 +508,9 @@ Box[] boxArray(TypeInfo[] types, void* data)
     return array;
 }
 
- /**
-  * Box each argument passed to the function, returning an array of boxes.
-  */    
+/**
+ * Box each argument passed to the function, returning an array of boxes.
+ */    
 Box[] boxArray(...)
 {
     version (GNU)
@@ -555,9 +555,9 @@ Box[] boxArray(...)
 	return boxArray(_arguments, cast(void *) _argptr);
 }
 
- /**
-  * Convert an array of boxes into an array of arguments.
-  */    
+/**
+ * Convert an array of boxes into an array of arguments.
+ */    
 void boxArrayToArguments(Box[] arguments, out TypeInfo[] types, out void* data)
 {
     size_t dataLength;

@@ -1017,7 +1017,7 @@ unittest
         assert(exp == eptr);
 
     }
-    static if (real.mant_dig == 64) {
+   static if (real.mant_dig == 64) {
      static real extendedvals[][3] = [ // x,frexp,exp
         [0x1.a5f1c2eb3fe4efp+73, 0x1.A5F1C2EB3FE4EFp-1,   74],    // normal
         [0x1.fa01712e8f0471ap-1064,  0x1.fa01712e8f0471ap-1,     -1063],

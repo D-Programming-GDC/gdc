@@ -121,7 +121,7 @@ assert(is(typeof(squares) == int[]));
 */
 template map(fun...)
 {
-	alias mapImpl!(fun).map map;
+    alias mapImpl!(fun).map map;
 }
 
 template mapImpl(fun...)
@@ -157,7 +157,7 @@ unittest
 // reduce
 /*private*/ template NxNHelper(F...)
 {
-	/*private*/ template For(Args...)
+    /*private*/ template For(Args...)
     {
         enum uint fs = TypeTuple!(F).length;
         static assert(
@@ -508,12 +508,12 @@ void inPlace(alias fun, Range, Ranges...)(Range r, Ranges rs)
 {
     alias unaryFun!(fun) f;
     foreach (j; begin(r) .. end(r)) f(*j);
-    	foreach (i, x; rs)
-	    {
-    		foreach (j; begin(x) .. end(x)) f(*j);
-	    }
+    foreach (i, x; rs)
+    {
+        foreach (j; begin(x) .. end(x)) f(*j);
+    }
 }
-	  
+
 version (wyda) unittest
 {
     // fill with 42
@@ -963,7 +963,7 @@ Iterator!(Range) findBoyerMoore(string pred = q{a == b}, Range)(
 
 version (wyda) unittest
 {
-	debug(string) writefln("Boyer-Moore implementation version (wyda) unittest\n");
+    debug(string) writefln("Boyer-Moore implementation version (wyda) unittest\n");
     string h = "/homes/aalexand/d/dmd/bin/../lib/libphobos.a(dmain2.o)"
         "(.gnu.linkonce.tmain+0x74): In function `main' undefined reference"
         " to `_Dmain':";

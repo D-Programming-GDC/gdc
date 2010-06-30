@@ -86,10 +86,6 @@ else version (OSX)
 	import std.c.osx.osx;
 }
 
-/*version (BigEndian)
-  private import std.intrinsic;*/
-
-
 
 version (MULTI_THREADED)
 {
@@ -2060,9 +2056,6 @@ struct Gcx
 		    *b = 0;
 
 		    o = pool.baseAddr + (b - bbase) * 32 * 16;
-		    /*		    version (BigEndian)
-			bitm = bswap(bitm);
-		    */
 		    if (!(bitm & 0xFFFF))
 		    {
 			bitm >>= 16;

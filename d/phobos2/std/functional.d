@@ -172,7 +172,7 @@ unittest
 
 template not(alias pred)
 {
-	bool not(T...)(T args) { return !unaryFun!(pred)(args); }
+    bool not(T...)(T args) { return !unaryFun!(pred)(args); }
 }
 
 /*private*/ template Adjoin(F...)

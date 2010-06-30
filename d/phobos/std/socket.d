@@ -269,8 +269,8 @@ class Protocol
 			aliases = new string[i];
 			for(i = 0; i != aliases.length; i++)
 			{
-				aliases[i] =
- 				std.string.toString(proto.p_aliases[i]).dup;
+			    aliases[i] =
+				std.string.toString(proto.p_aliases[i]).dup;
 			}
 		}
 		else
@@ -353,8 +353,8 @@ class Service
 			aliases = new string[i];
 			for(i = 0; i != aliases.length; i++)
 			{
-				aliases[i] =
-                                 std.string.toString(serv.s_aliases[i]).dup;
+                            aliases[i] =
+                                std.string.toString(serv.s_aliases[i]).dup;
 			}
 		}
 		else
@@ -499,7 +499,8 @@ class InternetHost
 			aliases = new string[i];
 			for(i = 0; i != aliases.length; i++)
 			{
-				aliases[i] = std.string.toString(he.h_aliases[i]).dup;
+                            aliases[i] =
+                                std.string.toString(he.h_aliases[i]).dup;
 			}
 		}
 		else
@@ -727,7 +728,8 @@ class InternetAddress: Address
 			InternetHost ih = new InternetHost;
 			if(!ih.getHostByName(addr))
 				//throw new AddressException("Invalid internet address");
-				throw new AddressException("Unable to resolve host '" ~ addr ~ "'");
+                            throw new AddressException(
+                                 "Unable to resolve host '" ~ addr ~ "'");
 			uiaddr = ih.addrList[0];
 		}
 		sin.sin_addr.s_addr = htonl(uiaddr);
@@ -767,7 +769,7 @@ class InternetAddress: Address
 	/// Human readable string representing the IPv4 address and port in the form $(I a.b.c.d:e).
 	string toString()
 	{
-		return toAddrString() ~ ":" ~ toPortString();
+            return toAddrString() ~ ":" ~ toPortString();
 	}
 	
 	/**
@@ -1641,10 +1643,10 @@ class Socket
 	/// ditto
 	static int select(SocketSet checkRead, SocketSet checkWrite, SocketSet checkError, int microseconds)
 	{
-		timeval tv;
-		tv.seconds = microseconds / 1_000_000;
- 	    tv.microseconds = microseconds % 1_000_000;
-		return select(checkRead, checkWrite, checkError, &tv);
+	    timeval tv;
+	    tv.seconds = microseconds / 1_000_000;
+	    tv.microseconds = microseconds % 1_000_000;
+	    return select(checkRead, checkWrite, checkError, &tv);
 	}
 	
 	

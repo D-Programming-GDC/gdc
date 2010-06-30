@@ -91,7 +91,7 @@ void _STD_critical_term()
 #if linux || __APPLE__
 // while the _NP version is specific to Linux
 #ifndef PTHREAD_MUTEX_RECURSIVE
-#define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
+#    define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif
 #endif
 
@@ -139,7 +139,7 @@ void _d_criticalenter(D_CRITICAL_SECTION *dcs)
 	    dcs->next = dcs_list;
 	    dcs_list = dcs;
 #ifndef PTHREAD_MUTEX_ALREADY_RECURSIVE
-	    pthread_mutex_init(&dcs->cs, & _criticals_attr);
+	    pthread_mutex_init(&dcs->cs, &_criticals_attr);
 #else
 	    pthread_mutex_init(&dcs->cs, NULL);
 #endif

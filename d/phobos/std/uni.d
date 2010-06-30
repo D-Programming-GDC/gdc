@@ -614,7 +614,7 @@ Lis:
 	assert(0);		// should have been in table
     }
     else
-    return 1;
+	return 1;
 }
 
 unittest

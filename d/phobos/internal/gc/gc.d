@@ -70,16 +70,16 @@ void hasNoPointers(void* p)	      { _gc.hasNoPointers(p); }
 void setV1_0()			      { _gc.setV1_0(); }
 
 // for gcosxc.c
- extern (C) void _d_gc_addrange(void *pbot, void *ptop)
- {
-     _gc.addRange(pbot, ptop);
- }
- 
- //for gcosxc.c
- extern (C) void _d_gc_removerange(void *pbot)
- {
-     _gc.removeRange(pbot);
- }
+extern (C) void _d_gc_addrange(void *pbot, void *ptop)
+{
+    _gc.addRange(pbot, ptop);
+}
+
+//for gcosxc.c
+extern (C) void _d_gc_removerange(void *pbot)
+{
+    _gc.removeRange(pbot);
+}
 
 void[] malloc(size_t nbytes)
 {
@@ -349,8 +349,7 @@ Array _d_newarrayiT(TypeInfo ti, size_t length)
 	    }
 	}
 	result.length = length;
-	result.data = cast(byte*) p
-;
+	result.data = cast(byte*) p;
     }
     return result;
 

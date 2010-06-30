@@ -61,30 +61,30 @@ extern (C) int main(size_t argc, char **argv)
     int myebx;
 
     version (OSX)
-     {	/* OSX does not provide a way to get at the top of the
+    {	/* OSX does not provide a way to get at the top of the
 	 * stack, except for the magic value 0xC0000000.
 	 * But as far as the gc is concerned, argv is at the top
 	 * of the main thread's stack, so save the address of that.
 	 */
- 	__osx_stack_end = cast(void*)&argv;
-     }
-     
-     version (FreeBSD)
-    {	/* FreeBSD does not provide a way to get at the top of the
- 	 * stack.
- 	 * But as far as the gc is concerned, argv is at the top
- 	 * of the main thread's stack, so save the address of that.
- 	 */
- 	__libc_stack_end = cast(void*)&argv;
+	__osx_stack_end = cast(void*)&argv;
     }
-    
-    version (Solaris)
-    {	/* As far as the gc is concerned, argv is at the top
-    	 * of the main thread's stack, so save the address of that.
+
+    version (FreeBSD)
+    {	/* FreeBSD does not provide a way to get at the top of the
+	 * stack.
+	 * But as far as the gc is concerned, argv is at the top
+	 * of the main thread's stack, so save the address of that.
 	 */
 	__libc_stack_end = cast(void*)&argv;
     }
- 
+
+    version (Solaris)
+    {	/* As far as the gc is concerned, argv is at the top
+	 * of the main thread's stack, so save the address of that.
+	 */
+	__libc_stack_end = cast(void*)&argv;
+    }
+
     version (Posix)
     {
 	_STI_monitor_staticctor();

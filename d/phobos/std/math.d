@@ -412,7 +412,7 @@ unittest{
 version(GNU) alias std.c.math.tanl tan; else
 real tan(real x)
 {
-	version(Naked_D_InlineAsm_X86) {
+    version(Naked_D_InlineAsm_X86) {
     asm
     {
         fld     x[EBP]                  ; // load theta
@@ -446,8 +446,8 @@ trigerr:
 Lret:
     ;
     } else {
-         return stdc.math.tanl(x);
-     }
+        return stdc.math.tanl(x);
+    }
 }
 
 unittest
@@ -802,15 +802,15 @@ creal sqrt(creal z)
 }
 
 /**
-   * Calculates e$(SUP x).
-   *
-   *  $(TABLE_SV
-   *    $(TR $(TH x)             $(TH e$(SUP x)) )
-   *    $(TD +$(INFIN))          $(TD +$(INFIN)) )
-   *    $(TD -$(INFIN))          $(TD +0.0)      )
-   *    $(TR $(TD $(NAN))        $(TD $(NAN))    )
-   *  )
-   */
+ * Calculates e$(SUP x).
+ *
+ *  $(TABLE_SV
+ *    $(TR $(TH x)             $(TH e$(SUP x)) )
+ *    $(TD +$(INFIN))          $(TD +$(INFIN)) )
+ *    $(TD -$(INFIN))          $(TD +0.0)      )
+ *    $(TR $(TD $(NAN))        $(TD $(NAN))    )
+ *  )
+ */
 real exp(real x) {
     version(Naked_D_InlineAsm_X86) {
    //  e^x = 2^(LOG2E*x)
@@ -832,13 +832,13 @@ version (GNU_Need_exp2_log2) real exp2(real x) { return std.c.math.powl(2, x); }
  * For very small x, expm1(x) is more accurate 
  * than exp(x)-1. 
  *
- *      $(TABLE_SV
+ *  $(TABLE_SV
  *    $(TR $(TH x)             $(TH e$(SUP x)-1)  )
  *    $(TR $(TD $(PLUSMN)0.0)  $(TD $(PLUSMN)0.0) )
  *    $(TD +$(INFIN))          $(TD +$(INFIN))    )
  *    $(TD -$(INFIN))          $(TD -1.0)         )
  *    $(TR $(TD $(NAN))        $(TD $(NAN))       )
- *      )
+ *  )
  */
 real expm1(real x) 
 {
@@ -1321,7 +1321,7 @@ real log10(real x)
  
 unittest
 {
-	//printf("%Lg\n", log10(1000) - 3);
+    //printf("%Lg\n", log10(1000) - 3);
     assert(fabs(log10(1000) - 3) < .000001);
 }
 

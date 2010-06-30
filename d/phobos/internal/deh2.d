@@ -285,38 +285,37 @@ extern (Windows) void _d_throw(Object *h)
 		// accesses all items on the stack as relative to EBP.
 
 		void *blockaddr = phi.finally_code;
-		
-		version (OSX)
- 		{
- 		    asm
- 		    {
- 			sub	ESP,4		;
- 			push	EBX		;
- 			mov	EBX,blockaddr	;
- 			push	EBP		;
- 			mov	EBP,regebp	;
- 			call	EBX		;
- 			pop	EBP		;
- 			pop	EBX		;
- 			add	ESP,4		;
- 		    }
- 		}
- 		else
- 		{
 
-		asm
+		version (OSX)
 		{
-		    push	EBX		;
-		    mov		EBX,blockaddr	;
-		    push	EBP		;
-		    mov		EBP,regebp	;
-		    call	EBX		;
-		    pop		EBP		;
-		    pop		EBX		;
+		    asm
+		    {
+			sub	ESP,4		;
+			push	EBX		;
+			mov	EBX,blockaddr	;
+			push	EBP		;
+			mov	EBP,regebp	;
+			call	EBX		;
+			pop	EBP		;
+			pop	EBX		;
+			add	ESP,4		;
+		    }
+		}
+		else
+		{
+		    asm
+		    {
+			push	EBX		;
+			mov	EBX,blockaddr	;
+			push	EBP		;
+			mov	EBP,regebp	;
+			call	EBX		;
+			pop	EBP		;
+			pop	EBX		;
+		    }
 		}
 	    }
 	}
-    }
     }
 }
 

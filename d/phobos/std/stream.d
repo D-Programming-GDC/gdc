@@ -1889,7 +1889,7 @@ class File: Stream {
 			 out int share,
 			 out int createMode) {
     version (Win32) {
-    	share |= FILE_SHARE_READ | FILE_SHARE_WRITE;
+      share |= FILE_SHARE_READ | FILE_SHARE_WRITE;
       if (mode & FileMode.In) {
 	access |= GENERIC_READ;
 	createMode = OPEN_EXISTING;
@@ -1903,7 +1903,7 @@ class File: Stream {
       }
     }
     version (Unix) {
-    	share = 0666;
+      share = 0666;
       if (mode & FileMode.In) {
 	access = O_RDONLY;
       }
@@ -2397,7 +2397,7 @@ class EndianStream : FilterStream {
     writeBlock(bom.ptr, bom.length);
   }
 
-	override void write(byte x) { writeExact(&x, x.sizeof); }
+  override void write(byte x) { writeExact(&x, x.sizeof); }
   override void write(ubyte x) { writeExact(&x, x.sizeof); }
   void write(short x) { fixBO(&x,x.sizeof); writeExact(&x, x.sizeof); }
   void write(ushort x) { fixBO(&x,x.sizeof); writeExact(&x, x.sizeof); }

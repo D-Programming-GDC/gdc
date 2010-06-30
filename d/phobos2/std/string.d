@@ -4290,13 +4290,13 @@ unittest
  * on each line.
  * The last line is terminated with a \n.
  * Params:
- *	s = text string to be wrapped
- *	columns = maximum number of _columns in the paragraph
- *	firstindent = string used to _indent first line of the paragraph
- *	indent = string to use to _indent following lines of the paragraph
- *	tabsize = column spacing of tabs
+ *  s = text string to be wrapped
+ *  columns = maximum number of _columns in the paragraph
+ *  firstindent = string used to _indent first line of the paragraph
+ *  indent = string to use to _indent following lines of the paragraph
+ *  tabsize = column spacing of tabs
  * Returns:
- *	The resulting paragraph.
+ *  The resulting paragraph.
  */
 
 string wrap(string s, ptrdiff_t columns = 80, string firstindent = null,

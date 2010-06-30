@@ -24,8 +24,8 @@ extern(C):
 
 version (linux)
 {
-	alias int socklen_t;
- 
+    alias int socklen_t;
+
     enum: int
     {
 	AF_UNSPEC =     0,
@@ -42,16 +42,15 @@ version (linux)
 	PF_IPX =        AF_IPX,
 	PF_APPLETALK =  AF_APPLETALK,
 	PF_INET6 =      AF_INET6,
-}
+    }
 
-enum: int
-{
+    enum: int
+    {
 	SOL_SOCKET =  1,
-}
+    }
 
-
-enum: int
-{
+    enum: int
+    {
 	SO_DEBUG =       1,
 	SO_BROADCAST =   6,
 	SO_REUSEADDR =   2,
@@ -97,7 +96,7 @@ enum: int
 	IPV6_LEAVE_ANYCAST =   28,
 	IPV6_IPSEC_POLICY =    34,
 	IPV6_XFRM_POLICY =     35,
-}
+    }
 
     enum: int
     {
@@ -148,7 +147,7 @@ enum: int
 	char* ai_canonname;
 	addrinfo* ai_next;
     }
-  }
+}
 else version (OSX)
 {
     alias uint socklen_t;

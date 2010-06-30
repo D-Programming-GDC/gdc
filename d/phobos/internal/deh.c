@@ -271,66 +271,65 @@ Object *_d_translate_se_to_d_exception(EXCEPTION_RECORD *exception_record)
         case STATUS_STACK_OVERFLOW:
             pti = _d_create_exception_object(&_Class_9Exception, "Stack Overflow");
             break;
-            
+
         case STATUS_DATATYPE_MISALIGNMENT:
-             pti = _d_create_exception_object(&_Class_9Exception, "Datatype Misalignment");
-             break;
- 
+            pti = _d_create_exception_object(&_Class_9Exception, "Datatype Misalignment");
+            break;
+
         case STATUS_ARRAY_BOUNDS_EXCEEDED:
-             pti = _d_create_exception_object(&_Class_9Exception, "Array Bounds Exceeded");
-             break;
-             
+            pti = _d_create_exception_object(&_Class_9Exception, "Array Bounds Exceeded");
+            break;
+  
         case STATUS_FLOAT_INVALID_OPERATION:
-             pti = _d_create_exception_object(&_Class_9Exception, "Invalid Floating Point Operation");
-             break;
- 
- 		case STATUS_FLOAT_DENORMAL_OPERAND:
-             pti = _d_create_exception_object(&_Class_9Exception, "Floating Point Denormal Operand");
-             break;
- 
- 		case STATUS_FLOAT_INEXACT_RESULT:
-             pti = _d_create_exception_object(&_Class_9Exception, "Floating Point Inexact Result");
-             break;
- 
- 		case STATUS_FLOAT_OVERFLOW:
-             pti = _d_create_exception_object(&_Class_9Exception, "Floating Point Overflow");
-             break;
- 
- 		case STATUS_FLOAT_UNDERFLOW:
-             pti = _d_create_exception_object(&_Class_9Exception, "Floating Point Underflow");
-             break;
- 
- 		case STATUS_FLOAT_STACK_CHECK:
-             pti = _d_create_exception_object(&_Class_9Exception, "Floating Point Stack Check");
-             break;
- 
- 		case STATUS_PRIVILEGED_INSTRUCTION:
-             #if 0 // doesn't compile
+            pti = _d_create_exception_object(&_Class_9Exception, "Invalid Floating Point Operation");
+            break;
+
+		case STATUS_FLOAT_DENORMAL_OPERAND:
+            pti = _d_create_exception_object(&_Class_9Exception, "Floating Point Denormal Operand");
+            break;
+
+		case STATUS_FLOAT_INEXACT_RESULT:
+            pti = _d_create_exception_object(&_Class_9Exception, "Floating Point Inexact Result");
+            break;
+
+		case STATUS_FLOAT_OVERFLOW:
+            pti = _d_create_exception_object(&_Class_9Exception, "Floating Point Overflow");
+            break;
+
+		case STATUS_FLOAT_UNDERFLOW:
+            pti = _d_create_exception_object(&_Class_9Exception, "Floating Point Underflow");
+            break;
+
+		case STATUS_FLOAT_STACK_CHECK:
+            pti = _d_create_exception_object(&_Class_9Exception, "Floating Point Stack Check");
+            break;
+
+		case STATUS_PRIVILEGED_INSTRUCTION:
+#if 0
             if (*((unsigned char *)(exception_record->ExceptionAddress))==0xF4) { // HLT
                 pti = _d_create_exception_object(&_Class_5Error, "assert(0) or HLT instruction");
             } else {
                 pti = _d_create_exception_object(&_Class_5Error, "Privileged Instruction");
             }
-				#else
-            pti = _d_create_exception_object(&_Class_9Exception, "Privileged Instruction");
-				#endif
-             break;
- 
- 		case STATUS_ILLEGAL_INSTRUCTION:
-             pti = _d_create_exception_object(&_Class_9Exception, "Illegal Instruction");
-             break;
- /*
- 		case STATUS_INTEGER_OVERFLOW: // not supported on any x86 processor
- 		case STATUS_IN_PAGE_ERROR:
- 		case STATUS_INVALID_DISPOSITION:
- 		case STATUS_NONCONTINUABLE_EXCEPTION:
- 		case STATUS_BREAKPOINT:
- 		case STATUS_SINGLE_STEP:
- 		// In DMC, but not in Microsoft docs
-		case STATUS_GUARD_PAGE_VIOLATION:
- 		case STATUS_INVALID_HANDLE:
- */
+#else
+	    pti = _d_create_exception_object(&_Class_9Exception, "Privileged Instruction");
+#endif
+            break;
 
+		case STATUS_ILLEGAL_INSTRUCTION:
+            pti = _d_create_exception_object(&_Class_9Exception, "Illegal Instruction");
+            break;
+/*
+		case STATUS_INTEGER_OVERFLOW: // not supported on any x86 processor
+		case STATUS_IN_PAGE_ERROR:
+		case STATUS_INVALID_DISPOSITION:
+		case STATUS_NONCONTINUABLE_EXCEPTION:
+		case STATUS_BREAKPOINT:
+		case STATUS_SINGLE_STEP:
+		// In DMC, but not in Microsoft docs
+		case STATUS_GUARD_PAGE_VIOLATION:
+		case STATUS_INVALID_HANDLE:
+*/
         // convert all other exception codes into a Win32Exception
         default:
             pti = _d_create_exception_object(&_Class_9Exception, "Win32 Exception");

@@ -413,7 +413,7 @@ d_time LocalTimetoUTC(d_time t)
 {
     return (t == d_time_nan)
 	? d_time_nan
-	/* BUGZILLA 1752 says this line should be:
+/* BUGZILLA 1752 says this line should be:
  *	: t - LocalTZA - DaylightSavingTA(t);
  */
 	: t - LocalTZA - DaylightSavingTA(t - LocalTZA);
@@ -428,13 +428,13 @@ d_time MakeTime(d_time hour, d_time min, d_time sec, d_time ms)
 	   ms * TicksPerMs;
 }
 
-/******************************
-  * Params:
-  *	month = 0..11
-  *	date = day of month, 1..31
-  * Returns:
-  *	number of days since start of epoch
-  */
+/* *****************************
+ * Params:
+ *	month = 0..11
+ *	date = day of month, 1..31
+ * Returns:
+ *	number of days since start of epoch
+ */
 
 d_time MakeDay(d_time year, d_time month, d_time date)
 {   d_time t;

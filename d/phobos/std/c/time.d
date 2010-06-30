@@ -39,26 +39,28 @@ alias Clong_t clock_t;
 version (Windows)
 {   const clock_t CLOCKS_PER_SEC = 1000;
     const clock_t CLK_TCK        = 1000;
+
     struct tm
-     {  int     tm_sec,
-                tm_min,
-                tm_hour,
-                tm_mday,
-                tm_mon,
-                tm_year,
-                tm_wday,
-                tm_yday,
-                tm_isdst;
-     }
+    {  int     tm_sec,
+               tm_min,
+               tm_hour,
+               tm_mday,
+               tm_mon,
+               tm_year,
+               tm_wday,
+               tm_yday,
+               tm_isdst;
+    }
 }
 else version (linux)
 {   const clock_t CLOCKS_PER_SEC = 1000000;
-   extern (C) int sysconf(int);
-   extern clock_t CLK_TCK;
-   /*static this()
-   {
-CLK_TCK = cast(clock_t) sysconf(2);
-   }*/
+    extern (C) int sysconf(int);
+    extern clock_t CLK_TCK;
+    /*static this()
+    {
+	CLK_TCK = cast(clock_t) sysconf(2);
+    }*/
+
     struct tm
     {  int     tm_sec,
                tm_min,

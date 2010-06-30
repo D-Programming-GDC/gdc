@@ -946,20 +946,19 @@ void[] read(string name)
     }
     else
     {
- 	buf = std.gc.malloc(cast(int)size);
-    if (buf.ptr)
-	std.gc.hasNoPointers(buf.ptr);
+	buf = std.gc.malloc(cast(int)size);
+	if (buf.ptr)
+	    std.gc.hasNoPointers(buf.ptr);
 
     auto numread = unix.read(fd, buf.ptr, cast(int)size); //auto numread = std.c.linux.linux.read(fd, buf.ptr, cast(int)size);
-    if (numread != size)
-    {
-        //printf("\tread error, errno = %d\n",getErrno());
-        goto err2;
+	if (numread != size)
+	{
+	    //printf("\tread error, errno = %d\n",getErrno());
+	    goto err2;
+	}
     }
-    }
-  
-   Leof:
 
+  Leof:
     if (unix.close(fd) == -1)
     {
 	//printf("\tclose error, errno = %d\n",getErrno());
@@ -1156,21 +1155,21 @@ void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
     }
 	else version (linux)
     {
-    ftc = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
-    fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
-    ftm = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+	ftc = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+	fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+	ftm = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
     }
-     else version (OSX)
-     {	// BUG: should add in tv_nsec field
- 	ftc = cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
- 	fta = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
- 	ftm = cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
-     }
-     else version (FreeBSD)
+    else version (OSX)
     {	// BUG: should add in tv_nsec field
- 	ftc = cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
- 	fta = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
- 	ftm = cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
+	ftc = cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
+	fta = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
+	ftm = cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
+    }
+    else version (FreeBSD)
+    {	// BUG: should add in tv_nsec field
+	ftc = cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
+	fta = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
+	ftm = cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
     }
     else version (Solaris)
     {  // BUG: should add in *nsec fields
@@ -1178,10 +1177,10 @@ void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
        fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
        ftm = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
     }
-     else
-     {
- 	static assert(0);
-     }
+    else
+    {
+	static assert(0);
+    }
 }
 
 
@@ -1323,10 +1322,10 @@ struct DirEntry
 	    { }
 	else
 	    d_type = fd.d_type;
-	    // Some platforms, like Solaris, don't have this member.
-        // TODO: Bug: d_type is never set on Solaris (see bugzilla 2838 for fix.)
-        static if (is(fd.d_type))
-            d_type = fd.d_type;
+       // Some platforms, like Solaris, don't have this member.
+       // TODO: Bug: d_type is never set on Solaris (see bugzilla 2838 for fix.)
+       static if (is(fd.d_type))
+           d_type = fd.d_type;
 	didstat = 0;
     }
 
@@ -1406,33 +1405,33 @@ struct DirEntry
 	_lastWriteTime = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
 	}
  	else version (linux)
- 	{
-	_creationTime = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
-	_lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
-	_lastWriteTime = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+	{
+	    _creationTime = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+	    _lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+	    _lastWriteTime = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
 	}
- 	else version (OSX)
- 	{
- 	    _creationTime =   cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
- 	    _lastAccessTime = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
- 	    _lastWriteTime =  cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
- 	}
- 	else version (FreeBSD)
- 	{
- 	    _creationTime =   cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
- 	    _lastAccessTime = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
+	else version (OSX)
+	{
+	    _creationTime =   cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
+	    _lastAccessTime = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
 	    _lastWriteTime =  cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
- 	}
- 	else version (Solaris)
- 	{
- 	    _creationTime   = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
- 	    _lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
- 	    _lastWriteTime  = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
- 	}
- 	else
- 	{
- 	    static assert(0);
- 	}
+	}
+	else version (FreeBSD)
+	{
+	    _creationTime =   cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
+	    _lastAccessTime = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
+	    _lastWriteTime =  cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
+	}
+	else version (Solaris)
+	{
+	    _creationTime   = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+	    _lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+	    _lastWriteTime  = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+	}
+	else
+	{
+	    static assert(0);
+	}
 	_st_mode = statbuf.st_mode;
 	didstat = 1;
     }

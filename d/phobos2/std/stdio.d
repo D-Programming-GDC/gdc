@@ -496,7 +496,7 @@ int main()
     return 0;
 }
 ---
- */
+*/
 string readln(FILE* fp = stdin, dchar terminator = '\n')
 {
     char[] buf;
@@ -537,7 +537,7 @@ This method is more efficient than the one in the previous example
 because $(D_PARAM readln(stdin, buf)) reuses (if possible) memory
 allocated by $(D_PARAM buf), whereas $(D_PARAM buf = readln()) makes a
 new memory allocation with every line.
- */
+*/
 size_t readln(FILE* fp, inout char[] buf, dchar terminator = '\n')
 {
     version (GNU)
@@ -927,7 +927,7 @@ struct lines
     private dchar terminator = '\n';
     private string fileName;
 
-  /*  static lines opCall(FILE* f, dchar terminator = '\n')
+  /*static lines opCall(FILE* f, dchar terminator = '\n')
     {
         lines result;
         result.f = f;

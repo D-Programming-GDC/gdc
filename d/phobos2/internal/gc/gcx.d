@@ -82,10 +82,6 @@ else version (linux)
     import gclinux;
 }
 
-/*version (BigEndian)
-  private import std.intrinsic;*/
-
-
 
 version (MULTI_THREADED)
 {
@@ -1870,7 +1866,7 @@ struct Gcx
 	    asm
 	    {
 		pushad		;
-		mov	sp[EBP],ESP	;
+		mov sp[EBP],ESP	;
 	    }
 	}
 	result = fullcollect(sp);
@@ -2038,9 +2034,6 @@ struct Gcx
 		    *b = 0;
 
 		    o = pool.baseAddr + (b - bbase) * 32 * 16;
-		    /*		    version (BigEndian)
-			bitm = bswap(bitm);
-		    */
 		    if (!(bitm & 0xFFFF))
 		    {
 			bitm >>= 16;

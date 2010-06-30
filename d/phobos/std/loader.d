@@ -434,7 +434,7 @@ else version(dlopen)
     private void ExeModule_Uninit_()
     {
         if(0 == --s_init)
-	    {
+        {
         }
     }
 
@@ -903,10 +903,10 @@ public:
 	    {
 		m_hModule = ExeModule_AddRef(hModule);
 	    }
-        else version (darwin)
-        {
-        m_hModule = ExeModule_AddRef(hModule);
-        }
+	    else version (darwin)
+	    {
+		m_hModule = ExeModule_AddRef(hModule);
+	    }
 	    else
 		static assert(0);
         }
@@ -931,12 +931,12 @@ public:
 	    if (null is m_hModule)
 		throw new ExeModuleException(ExeModule_Error());
 	}
-    else version (darwin)
-    {
-        m_hModule = ExeModule_Load(moduleName);
-        if (null is m_hModule)
-        throw new ExeModuleException(ExeModule_Error());
-    }
+	else version (darwin)
+	{
+	    m_hModule = ExeModule_Load(moduleName);
+	    if (null is m_hModule)
+		throw new ExeModuleException(ExeModule_Error());
+	}
 	else
 	{
 	    static assert(0);		// unsupported system
@@ -968,10 +968,10 @@ public:
 	    {
 		ExeModule_Release(m_hModule);
 	    }
-        else version (darwin)
-        {
-        ExeModule_Release(m_hModule);
-        }
+	    else version (darwin)
+	    {
+		ExeModule_Release(m_hModule);
+	    }
 	    else
 		static assert(0);
         }
@@ -1005,15 +1005,15 @@ public:
 		throw new ExeModuleException(ExeModule_Error());
 	    }
 	}
-    else version (darwin)
-    {
-        void *symbol = ExeModule_GetSymbol(m_hModule, symbolName);
+	else version (darwin)
+	{
+	    void *symbol = ExeModule_GetSymbol(m_hModule, symbolName);
 
-        if(null is symbol)
-        {
-        throw new ExeModuleException(ExeModule_Error());
-        }
-    }
+	    if(null is symbol)
+	    {
+		throw new ExeModuleException(ExeModule_Error());
+	    }
+	}
 	else
 	{
 	    static assert(0);
@@ -1065,10 +1065,10 @@ public:
 	{
 	    return ExeModule_GetPath_(m_hModule);
 	}
-    else version (darwin)
-    {
-        return ExeModule_GetPath_(m_hModule);
-    }
+	else version (darwin)
+	{
+	    return ExeModule_GetPath_(m_hModule);
+	}
 	else
 	    static assert(0);
     }

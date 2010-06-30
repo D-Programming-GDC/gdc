@@ -347,14 +347,14 @@ class Thread
         {
             if (nthreads > 1)
             {
-                    thread_id thisid = GetCurrentThreadId();
+		thread_id thisid = GetCurrentThreadId();
 
-                for (int i = 0; i < allThreadsDim; i++)
-                    {
-                        Thread t = allThreads[i];
-                        if (t && t.id != thisid && t.state == TS.RUNNING)
-                        t.pause();
-                }
+		for (int i = 0; i < allThreadsDim; i++)
+		{
+		    Thread t = allThreads[i];
+		    if (t && t.id != thisid && t.state == TS.RUNNING)
+			t.pause();
+		}
             }
         }
     }
@@ -989,7 +989,7 @@ class Thread
 	}
 
 	debug (thread) printf("Ending thread %d\n", t.idx);
-	    t.state = TS.TERMINATED;
+	t.state = TS.TERMINATED;
         synchronized (Thread.classinfo)
         {
             allThreads[t.idx] = null;

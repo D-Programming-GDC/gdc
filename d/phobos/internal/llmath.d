@@ -157,31 +157,31 @@ D3:	// Divide [EDX,EAX] by EBX
 	mov	EDX,ECX		;
 	xor	ECX,ECX		;
 	ret			;
-	
-	quo0:	// Quotient is 0
- 	// Remainder is [EDX,EAX]
- 	mov	EBX,EAX		;
- 	mov	ECX,EDX		;
- 	xor	EAX,EAX		;
- 	xor	EDX,EDX		;
- 	ret			;
- 
- Lleft:	// The quotient is 0 or 1 and EDX >= ECX
- 	cmp	EDX,ECX		;
- 	ja	quo1		;	// [EDX,EAX] > [ECX,EBX]
- 	// EDX == ECX
- 	cmp	EAX,EBX		;
- 	jb	quo0		;
- 
- quo1:	// Quotient is 1
- 	// Remainder is [EDX,EAX] - [ECX,EBX]
- 	sub	EAX,EBX		;
- 	sbb	EDX,ECX		;
- 	mov	EBX,EAX		;
- 	mov	ECX,EDX		;
- 	mov	EAX,1		;
- 	xor	EDX,EDX		;
- 	ret			;
+
+quo0:	// Quotient is 0
+	// Remainder is [EDX,EAX]
+	mov	EBX,EAX		;
+	mov	ECX,EDX		;
+	xor	EAX,EAX		;
+	xor	EDX,EDX		;
+	ret			;
+
+Lleft:	// The quotient is 0 or 1 and EDX >= ECX
+	cmp	EDX,ECX		;
+	ja	quo1		;	// [EDX,EAX] > [ECX,EBX]
+	// EDX == ECX
+	cmp	EAX,EBX		;
+	jb	quo0		;
+
+quo1:	// Quotient is 1
+	// Remainder is [EDX,EAX] - [ECX,EBX]
+	sub	EAX,EBX		;
+	sbb	EDX,ECX		;
+	mov	EBX,EAX		;
+	mov	ECX,EDX		;
+	mov	EAX,1		;
+	xor	EDX,EDX		;
+	ret			;
     }
 }
 
@@ -286,43 +286,43 @@ private real adjust = cast(real)0x800_0000_0000_0000 * 0x10;
 
 real __U64_LDBL()
 {
-version (OSX)
-     {
- 	asm
- 	{   naked				;
- 	    push	EDX			;
- 	    push	EAX			;
- 	    and		dword ptr 4[ESP], 0x7FFFFFFF	;
- 	    fild	qword ptr [ESP]		;
- 	    test	EDX,EDX			;
- 	    jns		L1			;
- 	    push	0x0000403e		;
- 	    push	0x80000000		;
- 	    push	0			;
- 	    fld		real ptr [ESP]		; // adjust
- 	    add		ESP,12			;
- 	    faddp	ST(1), ST		;
- 	L1:					;
- 	    add		ESP, 8			;
- 	    ret					;
+    version (OSX)
+    {
+	asm
+	{   naked				;
+	    push	EDX			;
+	    push	EAX			;
+	    and		dword ptr 4[ESP], 0x7FFFFFFF	;
+	    fild	qword ptr [ESP]		;
+	    test	EDX,EDX			;
+	    jns		L1			;
+	    push	0x0000403e		;
+	    push	0x80000000		;
+	    push	0			;
+	    fld		real ptr [ESP]		; // adjust
+	    add		ESP,12			;
+	    faddp	ST(1), ST		;
+	L1:					;
+	    add		ESP, 8			;
+	    ret					;
 	}
     }
     else
     {
-    asm
-    {	naked					;
-	push	EDX				;
-	push	EAX				;
-	and	dword ptr 4[ESP], 0x7FFFFFFF	;
-	fild	qword ptr [ESP]			;
-	test	EDX,EDX				;
-	jns	L1				;
-	fld	real ptr adjust			;
-	faddp	ST(1), ST			;
-    L1:						;
-	add	ESP, 8				;
-	ret					;
-    }
+	asm
+	{   naked				;
+	    push	EDX			;
+	    push	EAX			;
+	    and		dword ptr 4[ESP], 0x7FFFFFFF	;
+	    fild	qword ptr [ESP]		;
+	    test	EDX,EDX			;
+	    jns		L1			;
+	    fld		real ptr adjust		;
+	    faddp	ST(1), ST		;
+	L1:					;
+	    add		ESP, 8			;
+	    ret					;
+	}
     }
 }
 
@@ -386,36 +386,36 @@ ulong __DBLULLNG()
     }
     else
     {
-    asm
-    {	naked					;
-	push	EDX				;
-	push	EAX				;
-	fld	double ptr [ESP]		;
-	sub	ESP,8				;
-	fld	real ptr adjust			;
-	fcomp					;
-	fstsw	AX				;
-	fstcw	8[ESP]				;
-	fldcw	roundTo0			;
-	sahf					;
-	jae	L1				;
-	fld	real ptr adjust			;
-	fsubp	ST(1), ST			;
-	fistp	qword ptr [ESP]			;
-	pop	EAX				;
-	pop	EDX				;
-	fldcw	[ESP]				;
-	add	ESP,8				;
-	add	EDX,0x8000_0000			;
-	ret					;
-    L1:						;
-	fistp	qword ptr [ESP]			;
-	pop	EAX				;
-	pop	EDX				;
-	fldcw	[ESP]				;
-	add	ESP,8				;
-	ret					;
-    }
+	asm
+	{   naked				;
+	    push	EDX			;
+	    push	EAX			;
+	    fld		double ptr [ESP]	;
+	    sub		ESP,8			;
+	    fld		real ptr adjust		;
+	    fcomp				;
+	    fstsw	AX			;
+	    fstcw	8[ESP]			;
+	    fldcw	roundTo0		;
+	    sahf				;
+	    jae		L1			;
+	    fld		real ptr adjust		;
+	    fsubp	ST(1), ST		;
+	    fistp	qword ptr [ESP]		;
+	    pop		EAX			;
+	    pop		EDX			;
+	    fldcw	[ESP]			;
+	    add		ESP,8			;
+	    add		EDX,0x8000_0000		;
+	    ret					;
+	L1:					;
+	    fistp	qword ptr [ESP]		;
+	    pop		EAX			;
+	    pop		EDX			;
+	    fldcw	[ESP]			;
+	    add		ESP,8			;
+	    ret					;
+	}
     }
 }
 
@@ -441,17 +441,17 @@ uint __DBLULNG()
     }
     else
     {
-    asm
-    {	naked					;
-	sub	ESP,16				;
-	fstcw	8[ESP]				;
-	fldcw	roundTo0			;
-	fistp	qword ptr [ESP]			;
-	fldcw	8[ESP]				;
-	pop	EAX				;
-	add	ESP,12				;
-	ret					;
-    }
+	asm
+	{   naked				;
+	    sub		ESP,16			;
+	    fstcw	8[ESP]			;
+	    fldcw	roundTo0		;
+	    fistp	qword ptr [ESP]		;
+	    fldcw	8[ESP]			;
+	    pop		EAX			;
+	    add		ESP,12			;
+	    ret					;
+	}
     }
 }
 

@@ -235,7 +235,7 @@ void _moduleCtor2(ModuleInfo[] mi, int skip)
 	    m.name.ptr);
 	if (m.flags & MIctordone)
 	    continue;
-    debug printf("\tmodule[%d] = '%.*s', m = x%x, m.flags = x%x\n", i, m.name, m, m.flags);
+	debug printf("\tmodule[%d] = '%.*s', m = x%x, m.flags = x%x\n", i, m.name, m, m.flags);
 
 	if (m.ctor || m.dtor)
 	{
