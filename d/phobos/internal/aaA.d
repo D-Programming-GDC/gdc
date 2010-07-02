@@ -6,7 +6,7 @@
  */
 
 /*
- *  Copyright (C) 2000-2007 by Digital Mars, www.digitalmars.com
+ *  Copyright (C) 2000-2008 by Digital Mars, http://www.digitalmars.com
  *  Written by Walter Bright
  *
  *  This software is provided 'as-is', without any express or implied
@@ -47,13 +47,14 @@ import std.outofmemory;
 // Auto-rehash and pre-allocate - Dave Fladebo
 
 static size_t[] prime_list = [
-    97UL,         389UL,
-    1543UL,       6151UL,
-    24593UL,      98317UL,
-    393241UL,     1572869UL,
-    6291469UL,    25165843UL,
-    100663319UL,  402653189UL,
-    1610612741UL, 4294967291UL
+               97UL,            389UL,
+            1_543UL,          6_151UL,
+           24_593UL,         98_317UL,
+          393_241UL,      1_572_869UL,
+        6_291_469UL,     25_165_843UL,
+      100_663_319UL,    402_653_189UL,
+    1_610_612_741UL,  4_294_967_291UL,
+//    8_589_934_513UL, 17_179_869_143UL
 ];
 
 /* This is the type of the return value for dynamic arrays.
@@ -280,7 +281,7 @@ void *_aaGetp(AA* aa, TypeInfo keyti, size_t valuesize, void *pkey)
 	//printf("create new one\n");
 	std.gc.disable();
 	e = cast(aaA *) cast(void*) new void[aaA.sizeof + keysize + valuesize];
-	std.gc.enable;
+	std.gc.enable();
 	memcpy(e + 1, pkey, keysize);
 	e.hash = key_hash;
 	*pe = e;
@@ -815,7 +816,7 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
     BB* result;
 
     //printf("_d_assocarrayliteralT(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
-    //writefln("tivalue = %s", ti.next.classinfo.name);
+    //printf("tivalue = %.*s\n", ti.next.classinfo.name);
     if (length == 0 || valuesize == 0 || keysize == 0)
     {
 	;

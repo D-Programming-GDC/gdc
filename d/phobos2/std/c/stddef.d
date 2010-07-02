@@ -1,10 +1,10 @@
 
 /**
- * C's &lt;stdarg.h&gt;
- * Authors: Hauke Duden and Walter Bright, Digital Mars, www.digitalmars.com
+ * C's &lt;stddef.h&gt;
+ * Authors: Walter Bright, Digital Mars, www.digitalmars.com
  * License: Public Domain
  * Macros:
- *	WIKI=Phobos/StdCStdarg
+ *	WIKI=Phobos/StdCStddef
  */
 
 module std.c.stddef;

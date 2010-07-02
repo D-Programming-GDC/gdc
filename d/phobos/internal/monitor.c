@@ -138,6 +138,7 @@ void _d_monitorrelease(Object *h)
 #endif
 #endif
 
+// Includes attribute fixes from David Friedman's GDC port
 #ifndef HAVE_PTHREAD_MUTEX_RECURSIVE
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif

@@ -1565,6 +1565,7 @@ unittest
 /**************************************
  * Split s[] into an array of lines,
  * using CR, LF, or CR-LF as the delimiter.
+ * The delimiter is not included in the line.
  */
 
 string[] splitlines(string s)

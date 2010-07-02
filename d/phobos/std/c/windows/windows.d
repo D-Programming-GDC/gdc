@@ -250,8 +250,11 @@ enum
     FILE_VOLUME_IS_COMPRESSED       = 0x00008000,  
 }
 
-const DWORD MAILSLOT_NO_MESSAGE = cast(DWORD)-1;
-const DWORD MAILSLOT_WAIT_FOREVER = cast(DWORD)-1; 
+enum
+{
+    MAILSLOT_NO_MESSAGE = cast(DWORD)-1,
+    MAILSLOT_WAIT_FOREVER = cast(DWORD)-1, 
+}
 
 enum : uint
 {
@@ -275,8 +278,12 @@ enum
 }
 
 const HANDLE INVALID_HANDLE_VALUE = cast(HANDLE)-1;
-const DWORD INVALID_SET_FILE_POINTER = cast(DWORD)-1;
-const DWORD INVALID_FILE_SIZE = cast(DWORD)0xFFFFFFFF;
+
+enum : DWORD
+{
+    INVALID_SET_FILE_POINTER = cast(DWORD)-1,
+    INVALID_FILE_SIZE = cast(DWORD)0xFFFFFFFF,
+}
 
 struct OVERLAPPED {
     DWORD   Internal;
@@ -324,6 +331,13 @@ struct WIN32_FIND_DATAW {
     DWORD dwReserved1;
     wchar  cFileName[ 260  ];
     wchar  cAlternateFileName[ 14 ];
+}
+
+enum
+{
+	STD_INPUT_HANDLE =    cast(DWORD)-10,
+	STD_OUTPUT_HANDLE =   cast(DWORD)-11,
+	STD_ERROR_HANDLE =    cast(DWORD)-12,
 }
 
 export
@@ -428,8 +442,11 @@ enum
 // Key creation/open disposition
 //
 
-const int REG_CREATED_NEW_KEY =         0x00000001;   // New Registry Key created
-const int REG_OPENED_EXISTING_KEY =     0x00000002;   // Existing Key opened
+enum : int
+{
+	REG_CREATED_NEW_KEY =         0x00000001,   // New Registry Key created
+	REG_OPENED_EXISTING_KEY =     0x00000002,   // Existing Key opened
+}
 
 
 //
@@ -1102,6 +1119,7 @@ enum
 export HANDLE GetCurrentThread();
 export BOOL GetProcessTimes(HANDLE hProcess, LPFILETIME lpCreationTime, LPFILETIME lpExitTime, LPFILETIME lpKernelTime, LPFILETIME lpUserTime);
 export HANDLE GetCurrentProcess();
+export DWORD GetCurrentProcessId();
 export BOOL DuplicateHandle (HANDLE sourceProcess, HANDLE sourceThread,
         HANDLE targetProcessHandle, HANDLE *targetHandle, DWORD access, 
         BOOL inheritHandle, DWORD options);
@@ -2083,11 +2101,15 @@ enum
 	COLOR_BTNHILIGHT =        COLOR_BTNHIGHLIGHT,
 }
 
-const int CW_USEDEFAULT = cast(int)0x80000000;
+enum : int
+{
+	CW_USEDEFAULT = cast(int)0x80000000
+}
+
 /*
  * Special value for CreateWindow, et al.
  */
-const HWND HWND_DESKTOP = (cast(HWND)0);
+const HWND HWND_DESKTOP = cast(HWND)0;
 
 
 export ATOM RegisterClassA(WNDCLASSA *lpWndClass);
@@ -2713,8 +2735,11 @@ export HWND SetFocus(HWND hWnd);
 export int wsprintfA(LPSTR, LPCSTR, ...);
 export int wsprintfW(LPWSTR, LPCWSTR, ...);
 
-const uint INFINITE = uint.max;
-const uint WAIT_OBJECT_0 = 0;
+enum : uint
+{
+	INFINITE = uint.max,
+	WAIT_OBJECT_0 = 0,
+}
 
 export HANDLE CreateSemaphoreA(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCTSTR lpName);
 export HANDLE OpenSemaphoreA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCTSTR lpName);

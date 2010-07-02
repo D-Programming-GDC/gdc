@@ -809,7 +809,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
 	    case Mangle.Tpointer:
 		vnumber = cast(size_t)va_arg!(void*)(argptr);
-		uc = 1;
+		if (fc != 'x' && fc != 'X')		uc = 1;
 		flags |= FL0pad;
 		if (!(flags & FLprecision))
 		{   flags |= FLprecision;
@@ -1077,7 +1077,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 		case Mangle.Tpointer:
 		    alias void * void_ponter_t;
 		    vnumber = cast(size_t)*cast(void**)p_args; p_args += void_ponter_t.sizeof;
-		    uc = 1;
+		    if (fc != 'x' && fc != 'X')		uc = 1;
 		    flags |= FL0pad;
 		    if (!(flags & FLprecision))
 		    {   flags |= FLprecision;

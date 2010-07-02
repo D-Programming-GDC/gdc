@@ -85,7 +85,8 @@ void _STD_critical_term()
 
 #if linux || PHOBOS_USE_PTHREADS
 
-
+#include	<stdio.h>
+#include	<stdlib.h>
 #include	<pthread.h>
 
 #ifndef HAVE_PTHREAD_MUTEX_RECURSIVE

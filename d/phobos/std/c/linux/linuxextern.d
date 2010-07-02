@@ -1,6 +1,6 @@
 
 /* Written by Walter Bright.
- * http://www.digitalmars.com/d/
+ * www.digitalmars.com
  * Placed into public domain.
  * Linux(R) is the registered trademark of Linus Torvalds in the U.S. and other
  * countries.

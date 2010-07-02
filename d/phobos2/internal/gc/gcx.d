@@ -30,7 +30,7 @@
    Modified by David Friedman, July 2006
 */
 
-// D Garbage Collector implementation
+// D Programming Language Garbage Collector implementation
 
 /************** Debugging ***************************/
 

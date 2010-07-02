@@ -210,17 +210,22 @@ deprecated char* toCharz(char[] s)
 
 /*********************************
  * Convert array of chars s[] to a C-style 0 terminated string.
+ * s[] must not contain embedded 0's.
  */
 
 char* toStringz(char[] s)
     in
     {
+	assert(memchr(s.ptr, 0, s.length) == null);
     }
     out (result)
     {
 	if (result)
-	{   assert(strlen(result) == s.length);
-	    assert(memcmp(result, s.ptr, s.length) == 0);
+	{
+	    auto slen = s.length;
+	    while (slen > 0 && s[slen-1] == '\0') --slen;
+	    assert(strlen(result) == slen);
+	    assert(memcmp(result, s.ptr, slen) == 0);
 	}
     }
     body
@@ -265,6 +270,14 @@ unittest
     char[] test = "";
     p = toStringz(test);
     assert(*p == 0);
+
+    test = "\0";
+    p = toStringz(test);
+    assert(*p == 0);
+
+    test = "foo\0";
+    p = toStringz(test);
+    assert(p[0] == 'f' && p[1] == 'o' && p[2] == 'o' && p[3] == 0);
 }
 
 /******************************************

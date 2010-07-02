@@ -89,7 +89,6 @@ version(unittest)
     private import std.stdio;
     private import std.random;
     import std.string;
-    import std.string;
 }
 
 /**
@@ -1279,7 +1278,7 @@ bool equal(string pred = q{a == b}, Range1, Range2)(Range1 r1, Range2 r2)
     return equal!(binaryFun!(pred), Range1, Range2)(r1, r2);
 }
 
-unittest
+version (wyda) unittest
 {
     int[] a = [ 1, 2, 4, 3];
     assert(!equal(a, a[1..$]));
@@ -2198,7 +2197,8 @@ Iterator!(Range) partition(alias predOrStr,
                            SwapStrategy ss = SwapStrategy.unstable,
                            alias iterSwap = .iterSwap, Range)(Range r)
 {
-	alias unaryFun!(predOrStr) pred;
+    alias unaryFun!(predOrStr) pred;
+    typeof(return) result = void;
     auto left = begin(r), right = end(r);
     if (left == right) return left;
     static if (ss == SwapStrategy.stable)

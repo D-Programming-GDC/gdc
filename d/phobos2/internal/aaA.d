@@ -34,14 +34,13 @@
    Modified by David Friedman, September 2004
 */
 
-import std.gc;
-import std.gc;
 //import std.stdio;
 import std.c.stdarg;
 import std.c.stdio;
 import std.c.stdlib;
 import std.c.string;
 import std.string;
+import std.gc;
 
 import std.outofmemory;
 
@@ -430,13 +429,12 @@ void _aaDelp(AA aa, TypeInfo keyti, void *pkey)
 			    while (*pe);
 			    *pe = e.right;
 			    e.right = null;
-			delete e;
 			}
 
 			aa.a.nodes--;
-			delete e;
 
 			// Should notify GC that e can be free'd now
+			delete e;
 			break;
 		    }
 		    pe = (c < 0) ? &e.left : &e.right;

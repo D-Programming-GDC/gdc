@@ -1317,7 +1317,7 @@ public int test()
 }
 
 /************************************************
- * Test string[] starting at startindex against regular expression.
+ * Test s[] starting at startindex against regular expression.
  * Returns: 0 for no match, !=0 for match
  */
 

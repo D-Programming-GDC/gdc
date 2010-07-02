@@ -327,7 +327,8 @@ Array _d_newarrayiT(TypeInfo ti, size_t length)
 	else*/
 	    size *= length;
 	auto p = _gc.malloc(size + 1);
-	debug(PRINTF) printf(" p = %p\n", p);
+	debug(PRINTF)
+	    printf(" p = %p, isize = %d\n", p, isize);
 	if (!(ti.next.flags() & 1))
 	    _gc.hasNoPointers(p);
 	if (isize == 1)

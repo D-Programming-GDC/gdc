@@ -60,6 +60,8 @@ extern (C)
 	stdfp start_addr, void* arglist, uint initflag,
 	thread_id* thrdaddr);
 
+private const uint  WAIT_TIMEOUT = 258;
+
 /**
  * The type of the thread handle used by the operating system.
  * For Windows, it is equivalent to a HANDLE from windows.d.
@@ -73,7 +75,7 @@ alias uint thread_id;
  */
 class ThreadError : Error
 {
-    this(char[] s)
+    this(string s)
     {
 	super("Thread error: " ~ s);
     }
@@ -156,15 +158,17 @@ class Thread
 		}
 	    }
 	    nthreads++;
-	}
 
-	state = TS.RUNNING;
-	hdl = _beginthreadex(null, cast(uint)stacksize, &threadstart, cast(void*)this, 0, &id);
-	if (hdl == cast(thread_hdl)0)
-	{   state = TS.FINISHED;
-	    synchronized (Thread.classinfo) allThreads[idx] = null;
-	    idx = -1;
-	    error("failed to start");
+	    state = TS.RUNNING;
+	    hdl = _beginthreadex(null, cast(uint)stacksize, &threadstart, cast(void*)this, 0, &id);
+	    if (hdl == cast(thread_hdl)0)
+	    {
+		allThreads[idx] = null;
+		nthreads--;
+		state = TS.FINISHED;
+		idx = -1;
+		error("failed to start");
+	    }
 	}
     }
 
@@ -203,8 +207,9 @@ class Thread
 	}
     }
 
-    /*****************************
-     * Wait for this thread to terminate.
+    /******************************
+     * Wait for this thread to terminate or until milliseconds time has
+     * elapsed, whichever occurs first.
      * Simply returns if thread has already terminated.
      * Throws: $(B ThreadError) if the thread hasn't begun yet or
      * is called on itself.
@@ -217,9 +222,12 @@ class Thread
 	{   DWORD dw;
 
 	    dw = WaitForSingleObject(hdl, milliseconds);
-            state = TS.FINISHED;
-            CloseHandle(hdl);
-            hdl = null;
+	    if (dw != WAIT_TIMEOUT)
+	    {
+		state = TS.FINISHED;
+		CloseHandle(hdl);
+		hdl = null;
+	    }
 	}
     }
 
@@ -250,7 +258,8 @@ class Thread
 	INCREASE,	/// Increase thread priority
 	DECREASE,	/// Decrease thread priority
 	IDLE,		/// Assign thread low priority
-	CRITICAL	/// Assign thread high priority
+	CRITICAL,	/// Assign thread high priority
+	NORMAL,
     }
 
     /**
@@ -274,6 +283,9 @@ class Thread
 		break;
 	    case PRIORITY.CRITICAL:
 		nPriority = THREAD_PRIORITY_TIME_CRITICAL;
+		break;
+	    case PRIORITY.NORMAL:
+		nPriority = THREAD_PRIORITY_NORMAL;
 		break;
 	    default:
 		assert(0);
@@ -408,7 +420,7 @@ class Thread
 
     int delegate() dg;
 
-    void error(char[] msg)
+    void error(string msg)
     {
 	throw new ThreadError(msg);
     }
@@ -563,7 +575,7 @@ private extern (C) void* _d_gcc_query_stack_origin();
 
 class ThreadError : Error
 {
-    this(char[] s)
+    this(string s)
     {
 	super("Thread error: " ~ s);
     }
@@ -933,7 +945,7 @@ class Thread
 
     int delegate() dg;
 
-    void error(char[] msg)
+    void error(string msg)
     {
 	throw new ThreadError(msg);
     }

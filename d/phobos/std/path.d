@@ -147,7 +147,7 @@ char[] getExt(char[] fullname)
 unittest
 {
     debug(path) printf("path.getExt.unittest\n");
-    char[] result;
+    string result;
 
     version (Win32)
 	result = getExt("d:\\path\\foo.bat");
@@ -213,7 +213,7 @@ unittest
  * -----
  */
 
-char[] getName(char[] fullname)
+string getName(string fullname)
 {
     size_t i = fullname.length;
     while (i > 0)
@@ -238,7 +238,7 @@ char[] getName(char[] fullname)
 unittest
 {
     debug(path) printf("path.getName.unittest\n");
-    char[] result;
+    string result;
 
     result = getName("foo.bar");
     auto i = cmp(result, "foo");
@@ -278,7 +278,7 @@ unittest
  * -----
  */
 
-char[] getBaseName(char[] fullname)
+string getBaseName(string fullname)
     out (result)
     {
 	assert(result.length <= fullname.length);
@@ -306,7 +306,7 @@ unittest
 {
     debug(path) printf("path.getBaseName.unittest\n");
     int i;
-    char[] result;
+    string result;
 
     version (Windows)
 	result = getBaseName("d:\\path\\foo.bat");
@@ -346,7 +346,7 @@ unittest
  * version(Win32)
  * {
  *     getDirName(r"d:\path\foo.bat") => "d:\path"
- *     getDirName(getDirName(r"d:\path\foo.bat")) => "d:\"
+ *     getDirName(getDirName(r"d:\path\foo.bat")) => r"d:\"
  * }
  * version(linux)
  * {
@@ -356,7 +356,7 @@ unittest
  * -----
  */
 
-char[] getDirName(char[] fullname)
+string getDirName(string fullname)
     out (result)
     {
 	assert(result.length <= fullname.length);
@@ -371,7 +371,7 @@ char[] getDirName(char[] fullname)
 	    {
 		if (fullname[i - 1] == ':')
 		    break;
-		if (fullname[i - 1] == '\\')
+		if (fullname[i - 1] == '\\' || fullname[i - 1] == '/')
 		{   i--;
 		    break;
 		}
@@ -387,6 +387,12 @@ char[] getDirName(char[] fullname)
 	return fullname[0 .. i];
     }
 
+unittest
+{
+    string filename = "foo/bar";
+    auto d = getDirName(filename);
+    assert(d == "foo");
+}
 
 /********************************
  * Extracts the drive letter of a path.
@@ -406,7 +412,7 @@ char[] getDirName(char[] fullname)
  * -----
  */
 
-char[] getDrive(char[] fullname)
+string getDrive(string fullname)
     out (result)
     {
 	assert(result.length <= fullname.length);
@@ -450,9 +456,9 @@ char[] getDrive(char[] fullname)
  * -----
  */
 
-char[] defaultExt(char[] filename, char[] ext)
+string defaultExt(string filename, string ext)
 {
-    char[] existing;
+    string existing;
 
     existing = getExt(filename);
     if (existing.length == 0)
@@ -490,9 +496,9 @@ char[] defaultExt(char[] filename, char[] ext)
  * -----
  */
 
-char[] addExt(char[] filename, char[] ext)
+string addExt(string filename, string ext)
 {
-    char[] existing;
+    string existing;
 
     existing = getExt(filename);
     if (existing.length == 0)
@@ -536,9 +542,9 @@ char[] addExt(char[] filename, char[] ext)
  * -----
  */
 
-int isabs(char[] path)
+int isabs(string path)
 {
-    char[] d = getDrive(path);
+    string d = getDrive(path);
 
     version (Windows)
     {
@@ -591,15 +597,15 @@ unittest
  * -----
  */
 
-char[] join(char[] p1, char[] p2)
+string join(string p1, string p2)
 {
     if (!p2.length)
 	return p1;
     if (!p1.length)
 	return p2;
 
-    char[] p;
-    char[] d1;
+    string p;
+    string d1;
 
     version(Win32)
     {
@@ -655,7 +661,7 @@ unittest
 {
     debug(path) printf("path.join.unittest\n");
 
-    char[] p;
+    string p;
     int i;
 
     p = join("foo", "bar");
@@ -831,7 +837,7 @@ int fncharmatch(dchar c1, dchar c2)
  * -----
  */
 
-int fnmatch(char[] filename, char[] pattern)
+int fnmatch(string filename, string pattern)
     in
     {
 	// Verify that pattern[] is valid
@@ -997,9 +1003,9 @@ unittest
  * -----
  * import std.path;
  *
- * void process_file(char[] filename)
+ * void process_file(string filename)
  * {
- *     char[] path = expandTilde(filename);
+ *     string path = expandTilde(filename);
  *     ...
  * }
  * -----
@@ -1007,10 +1013,10 @@ unittest
  * -----
  * import std.path;
  *
- * const char[] RESOURCE_DIR_TEMPLATE = "~/.applicationrc";
- * char[] RESOURCE_DIR;    // This gets expanded in main().
+ * const string RESOURCE_DIR_TEMPLATE = "~/.applicationrc";
+ * string RESOURCE_DIR;    // This gets expanded in main().
  *
- * int main(char[][] args)
+ * int main(string[] args)
  * {
  *     RESOURCE_DIR = expandTilde(RESOURCE_DIR_TEMPLATE);
  *     ...
@@ -1020,7 +1026,7 @@ unittest
  * Authors: Grzegorz Adam Hankiewicz, Thomas Kühne.
  */
 
-char[] expandTilde(char[] inputPath)
+string expandTilde(string inputPath)
 {
     version(Unix)
     {
@@ -1094,7 +1100,7 @@ version (Unix)
 /**
  * Replaces the tilde from path with the environment variable HOME.
  */
-private char[] expandFromEnvironment(char[] path)
+private string expandFromEnvironment(string path)
 {
     assert(path.length >= 1);
     assert(path[0] == '~');
@@ -1115,7 +1121,7 @@ private char[] expandFromEnvironment(char[] path)
  * is joined to path[char_pos .. length] if char_pos is smaller
  * than length, otherwise path is not appended to c_path.
  */
-private char[] combineCPathWithDPath(char* c_path, char[] path, int char_pos)
+private string combineCPathWithDPath(char* c_path, string path, int char_pos)
 {
     assert(c_path != null);
     assert(path.length > 0);
@@ -1129,7 +1135,7 @@ private char[] combineCPathWithDPath(char* c_path, char[] path, int char_pos)
 	end--;
 
     // Create our own copy, as lifetime of c_path is undocumented
-    char[] cp = c_path[0 .. end].dup;
+    string cp = c_path[0 .. end].dup;
 
     // Do we append something from path?
     if (char_pos < path.length)

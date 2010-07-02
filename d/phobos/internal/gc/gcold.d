@@ -40,6 +40,7 @@ Array _d_newarrayip(size_t length, size_t size, void * init)
 {
     Array result;
 
+    //debug(PRINTF) printf("_d_newarrayi(length = %d, size = %d)\n", length, size);
     if (length && size)
     {
 	result.length = length;

@@ -649,8 +649,6 @@ unittest {
 }
 
 /***************************************************************
- Convert character string to the return type. These functions will be
- deprecated because to!(T) supersedes them.
  * The $(D_PARAM parse) family of functions works quite like the
  * $(D_PARAM to) family, except that (1) it only works with strings as
  * input, (2) takes the input string by reference and advances it to

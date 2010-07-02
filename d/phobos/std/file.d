@@ -98,7 +98,7 @@ class FileException : Exception
  *	FileException on error.
  */
 
-void[] read(string name)
+void[] read(char[] name)
 {
     DWORD numread;
     HANDLE h;
@@ -151,7 +151,7 @@ err1:
  * Throws: FileException on error.
  */
 
-void write(string name, void[] buffer)
+void write(char[] name, void[] buffer)
 {
     HANDLE h;
     DWORD numwritten;
@@ -193,7 +193,7 @@ err:
  * Throws: FileException on error.
  */
 
-void append(string name, void[] buffer)
+void append(char[] name, void[] buffer)
 {
     HANDLE h;
     DWORD numwritten;
@@ -237,7 +237,7 @@ err:
  * Throws: FileException on error.
  */
 
-void rename(string from, string to)
+void rename(char[] from, char[] to)
 {
     BOOL result;
 
@@ -255,7 +255,7 @@ void rename(string from, string to)
  * Throws: FileException on error.
  */
 
-void remove(string name)
+void remove(char[] name)
 {
     BOOL result;
 
@@ -273,7 +273,7 @@ void remove(string name)
  * Throws: FileException on error.
  */
 
-ulong getSize(string name)
+ulong getSize(char[] name)
 {
     HANDLE findhndl;
     uint resulth;
@@ -309,7 +309,7 @@ ulong getSize(string name)
  * Throws: FileException on error.
  */
 
-void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
+void getTimes(char[] name, out d_time ftc, out d_time fta, out d_time ftm)
 {
     HANDLE findhndl;
 
@@ -345,7 +345,7 @@ void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
  * Return 1 if it does, 0 if not.
  */
 
-int exists(string name)
+int exists(char[] name)
 {
     uint result;
 
@@ -383,7 +383,7 @@ uint getAttributes(string name)
  * Throws: FileException if name[] doesn't exist.
  */
 
-int isfile(string name)
+int isfile(char[] name)
 {
     return (getAttributes(name) & FILE_ATTRIBUTE_DIRECTORY) == 0;
 }
@@ -393,7 +393,7 @@ int isfile(string name)
  * Throws: FileException if name[] doesn't exist.
  */
 
-int isdir(string name)
+int isdir(char[] name)
 {
     return (getAttributes(name) & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
@@ -403,7 +403,7 @@ int isdir(string name)
  * Throws: FileException on error.
  */
 
-void chdir(string pathname)
+void chdir(char[] pathname)
 {   BOOL result;
 
     if (useWfuncs)
@@ -422,7 +422,7 @@ void chdir(string pathname)
  * Throws: FileException on error.
  */
 
-void mkdir(string pathname)
+void mkdir(char[] pathname)
 {   BOOL result;
 
     if (useWfuncs)
@@ -441,7 +441,7 @@ void mkdir(string pathname)
  * Throws: FileException on error.
  */
 
-void rmdir(string pathname)
+void rmdir(char[] pathname)
 {   BOOL result;
 
     if (useWfuncs)
@@ -460,7 +460,7 @@ void rmdir(string pathname)
  * Throws: FileException on error.
  */
 
-string getcwd()
+char[] getcwd()
 {
     if (useWfuncs)
     {
@@ -508,7 +508,7 @@ struct DirEntry
 
     void init(string path, WIN32_FIND_DATA *fd)
     {
-	wstring wbuf;
+	wchar[] wbuf;
 	size_t clength;
 	size_t wlength;
 	size_t n;
@@ -1188,7 +1188,7 @@ void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
  * Does file/directory exist?
  */
 
-int exists(string name)
+int exists(char[] name)
 {
     return access(toStringz(name),0) == 0;
 
@@ -1244,7 +1244,7 @@ void chdir(string pathname)
  * Make directory.
  */
 
-void mkdir(string pathname)
+void mkdir(char[] pathname)
 {
     if (unix.mkdir(toStringz(pathname), 0777))
     {

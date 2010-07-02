@@ -976,8 +976,6 @@ private void writeImpl(in string name, in void[] buffer, in uint mode)
 
 /*********************************************
  * Write a file.
- * Returns:
- *	0	success
  */
 
 void write(in string name, in void[] buffer)

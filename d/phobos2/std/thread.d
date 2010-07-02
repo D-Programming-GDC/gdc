@@ -207,8 +207,9 @@ class Thread
 	}
     }
 
-    /*****************************
-     * Wait for this thread to terminate.
+    /******************************
+     * Wait for this thread to terminate or until milliseconds time has
+     * elapsed, whichever occurs first.
      * Simply returns if thread has already terminated.
      * Throws: $(B ThreadError) if the thread hasn't begun yet or
      * is called on itself.

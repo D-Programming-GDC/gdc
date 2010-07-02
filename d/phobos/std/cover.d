@@ -108,7 +108,7 @@ static ~this()
 	// Generate source file name
 	string srcfilename = std.path.join(srcpath, c.filename);
 
-	string buf = cast(char[])std.file.read(srcfilename);
+	string buf = cast(string)std.file.read(srcfilename);
 	string[] lines = std.string.splitlines(buf);
 
 	// Generate listing file name
@@ -116,7 +116,7 @@ static ~this()
 
 	if (merge && exists(lstfilename) && isfile(lstfilename))
 	{
-	    string lst = cast(char[])std.file.read(lstfilename);
+	    string lst = cast(string)std.file.read(lstfilename);
 	    string[] lstlines = std.string.splitlines(lst);
 
 	    for (size_t i = 0; i < lstlines.length; i++)

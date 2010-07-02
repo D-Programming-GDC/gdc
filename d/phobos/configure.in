@@ -571,7 +571,7 @@ case "$d_target_os" in
     freebsd*|k*bsd*-gnu)
 	     d_have_loader=1
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_stdio.o"
-         D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/freebsd/freebsd.o"
+	     D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/freebsd/freebsd.o"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     ;;
     linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"

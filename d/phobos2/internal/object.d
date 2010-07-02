@@ -64,10 +64,6 @@ alias typeof(cast(void*)0 - cast(void*)0) ptrdiff_t;
 
 alias size_t hash_t;
 
-alias invariant(char)[] string;
-alias invariant(wchar)[] wstring;
-alias invariant(dchar)[] dstring;
-
 extern (C)
 {   /// C's printf function.
     int printf(const char *, ...);
@@ -81,6 +77,13 @@ extern (C)
 
     Object _d_newclass(ClassInfo ci);
 }
+
+/// Standard boolean type.
+alias bool bit;
+
+alias invariant(char)[] string;
+alias invariant(wchar)[] wstring;
+alias invariant(dchar)[] dstring;
 
 /* *************************
  * Internal struct pointed to by the hidden .monitor member.

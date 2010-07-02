@@ -42,7 +42,7 @@ int os_mem_commit(void *base, uint offset, uint nbytes)
 
 int os_mem_decommit(void *base, uint offset, uint nbytes)
 {
-    return cast(int)VirtualFree(base + offset, nbytes, MEM_DECOMMIT) == 0; 
+    return cast(int)(VirtualFree(base + offset, nbytes, MEM_DECOMMIT) == 0);
 }
 
 /***********************************
@@ -55,7 +55,7 @@ int os_mem_decommit(void *base, uint offset, uint nbytes)
 
 int os_mem_unmap(void *base, uint nbytes)
 {
-    return cast(int)VirtualFree(base, 0, MEM_RELEASE) == 0; 
+    return cast(int)(VirtualFree(base, 0, MEM_RELEASE) == 0);
 }
 
 

@@ -438,7 +438,7 @@ else version(dlopen)
         }
     }
 
-    private HXModule ExeModule_Load_(in char[] moduleName)
+    private HXModule ExeModule_Load_(in string moduleName)
     in
     {
         assert(null !is moduleName);

@@ -800,7 +800,7 @@ int inflateInit2(z_streamp strm, int windowBits)
    any decompression apart from reading the zlib header if present: this will
    be done by inflate(). (So next_in and avail_in may be modified, but next_out
    and avail_out are unchanged.)
-/
+*/
 
 int inflateSetDictionary(z_streamp strm, ubyte* dictionary, uint  dictLength);
 /*

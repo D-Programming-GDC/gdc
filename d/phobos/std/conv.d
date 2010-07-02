@@ -105,7 +105,7 @@ int toInt(char[] s)
 	goto Lerr;
 
     int sign = 0;
-    uint v = 0;
+    int v = 0;
 
     for (int i = 0; i < length; i++)
     {
@@ -133,13 +133,13 @@ int toInt(char[] s)
     }
     if (sign == -1)
     {
-	if (v > 0x80000000)
+	if (cast(uint)v > 0x80000000)
 	    goto Loverflow;
 	v = -v;
     }
     else
     {
-	if (v > 0x7FFFFFFF)
+	if (cast(uint)v > 0x7FFFFFFF)
 	    goto Loverflow;
     }
     return v;
@@ -325,7 +325,7 @@ long toLong(char[] s)
 	goto Lerr;
 
     int sign = 0;
-    ulong v = 0;
+    long v = 0;
 
     for (int i = 0; i < length; i++)
     {
@@ -353,13 +353,13 @@ long toLong(char[] s)
     }
     if (sign == -1)
     {
-	if (v > 0x8000000000000000)
+	if (cast(ulong)v > 0x8000000000000000)
 	    goto Loverflow;
 	v = -v;
     }
     else
     {
-	if (v > 0x7FFFFFFFFFFFFFFF)
+	if (cast(ulong)v > 0x7FFFFFFFFFFFFFFF)
 	    goto Loverflow;
     }
     return v;

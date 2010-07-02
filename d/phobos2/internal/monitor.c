@@ -134,6 +134,7 @@ void _d_monitorrelease(Object *h)
 // needs to be else..
 #if PHOBOS_USE_PTHREADS
 
+// Includes attribute fixes from David Friedman's GDC port
 #ifndef HAVE_PTHREAD_MUTEX_RECURSIVE
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif
