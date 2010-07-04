@@ -1535,7 +1535,7 @@ Statement *FuncDeclaration::mergeFrequire(Statement *sf)
     {
 	FuncDeclaration *fdv = (FuncDeclaration *)foverrides.data[i];
 	sf = fdv->mergeFrequire(sf);
-	if (fdv->frequire)
+	if (fdv->fdrequire)
 	{
 	    //printf("fdv->frequire: %s\n", fdv->frequire->toChars());
 	    /* Make the call:
@@ -1579,7 +1579,7 @@ Statement *FuncDeclaration::mergeFensure(Statement *sf)
     {
 	FuncDeclaration *fdv = (FuncDeclaration *)foverrides.data[i];
 	sf = fdv->mergeFensure(sf);
-	if (fdv->fensure)
+	if (fdv->fdensure)
 	{
 	    //printf("fdv->fensure: %s\n", fdv->fensure->toChars());
 	    // Make the call: __ensure(result)
@@ -3157,14 +3157,20 @@ void UnitTestDeclaration::semantic(Scope *sc)
 	sc2->pop();
     }
 
+#if 0
     // We're going to need ModuleInfo even if the unit tests are not
     // compiled in, because other modules may import this module and refer
     // to this ModuleInfo.
+    // (This doesn't make sense to me?)
     Module *m = getModule();
     if (!m)
 	m = sc->module;
     if (m)
+    {
+	//printf("module3 %s needs moduleinfo\n", m->toChars());
 	m->needmoduleinfo = 1;
+    }
+#endif
 }
 
 AggregateDeclaration *UnitTestDeclaration::isThis()

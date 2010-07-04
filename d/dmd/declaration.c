@@ -149,7 +149,7 @@ enum PROT Declaration::prot()
  	    if (isConst())
  		p = "const";
  	    else if (isInvariant())
- 		p = "mutable";
+ 		p = "immutable";
  	    else if (storage_class & STCmanifest)
  		p = "enum";
  	    else if (!t->isAssignable())
@@ -213,6 +213,7 @@ Type *TupleDeclaration::getType()
 	Arguments *args = new Arguments();
 	args->setDim(objects->dim);
 	OutBuffer buf;
+	int hasdeco = 1;
 	for (size_t i = 0; i < objects->dim; i++)
 	{   Type *t = (Type *)objects->data[i];
 
@@ -226,9 +227,13 @@ Type *TupleDeclaration::getType()
 	    Argument *arg = new Argument(STCin, t, NULL, NULL);
 #endif
 	    args->data[i] = (void *)arg;
+	    if (!t->deco)
+		hasdeco = 0;
 	}
 
 	tupletype = new TypeTuple(args);
+	if (hasdeco)
+	    return tupletype->semantic(0, NULL);
     }
 
     return tupletype;
@@ -478,11 +483,11 @@ void AliasDeclaration::semantic(Scope *sc)
 	goto L2;			// it's a symbolic alias
 
     #if DMDV2
-    if (storage_class & STCref)
+    if (storage_class & (STCref | STCnothrow | STCpure))
     {	// For 'ref' to be attached to function types, and picked
 	// up by Type::resolve(), it has to go into sc.
 	sc = sc->push();
-	sc->stc |= STCref;
+	sc->stc |= storage_class & (STCref | STCnothrow | STCpure);
 	type->resolve(loc, sc, &e, &t, &s);
 	sc = sc->pop();
     }
@@ -1050,6 +1055,7 @@ void VarDeclaration::semantic(Scope *sc)
 		else if (t->ty == Tstruct)
 		{
 		    ei->exp = ei->exp->semantic(sc);
+		    ei->exp = resolveProperties(sc, ei->exp);
 		    StructDeclaration *sd = ((TypeStruct *)t)->sym;
 #if DMDV2
 		    /* Look to see if initializer is a call to the constructor
@@ -1122,7 +1128,8 @@ void VarDeclaration::semantic(Scope *sc)
 		}
 	    }
 	}
-	else if (isConst() || isFinal())
+	else if (isConst() || isFinal() ||
+		 parent->isAggregateDeclaration())
 	{
 	    /* Because we may need the results of a const declaration in a
 	     * subsequent type, such as an array dimension, before semantic2()

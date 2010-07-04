@@ -2063,7 +2063,7 @@ elem * ScopeExp::toElem(IRState* irs) {
 }
 
 elem * TypeExp::toElem(IRState* irs) {
-    ::error("%s is not an expression", toChars());
+    ::error("type %s is not an expression", toChars());
     return irs->errorMark(type);
 }
 
@@ -3024,6 +3024,9 @@ Type::toCtype() {
 	   function types and not complete it until it was actually
 	   used in a call. */
 	case Tident: return void_type_node;
+	    
+	/* We can get Ttuple from void (T...)(T t) */
+	case Ttuple: return void_type_node;
 	    
 	default:
 	    ::error("unexpected call to Type::toCtype() for %s\n", this->toChars());
