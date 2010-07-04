@@ -23,6 +23,7 @@
 #endif /* __DMC__ */
 
 #include "root.h"
+
 #include "dsymbol.h"
 
 struct Identifier;
@@ -44,7 +45,7 @@ struct dt_t;
 struct AggregateDeclaration : ScopeDsymbol
 {
     Type *type;
-    unsigned storage_class;
+    StorageClass storage_class;
     enum PROT protection;
     Type *handle;		// 'this' type
     target_size_t structsize;	// size of struct
@@ -58,6 +59,10 @@ struct AggregateDeclaration : ScopeDsymbol
 				// 2: cannot determine size; fwd referenced
     int isdeprecated;		// !=0 if deprecated
 
+#if DMDV2
+    int isnested;		// !=0 if is nested
+    VarDeclaration *vthis;	// 'this' parameter if this aggregate is nested
+#endif
     // Special member functions
     InvariantDeclaration *inv;		// invariant
     NewDeclaration *aggNew;		// allocator
@@ -88,6 +93,7 @@ struct AggregateDeclaration : ScopeDsymbol
     void addField(Scope *sc, VarDeclaration *v);
     int isDeprecated();		// is aggregate deprecated?
     FuncDeclaration *buildDtor(Scope *sc);
+    int isNested();
 
     void emitComment(Scope *sc);
     void toJsonBuffer(OutBuffer *buf);
@@ -136,7 +142,15 @@ struct StructDeclaration : AggregateDeclaration
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     char *mangle();
     const char *kind();
+#if DMDV1
     Expression *cloneMembers();
+#endif
+#if DMDV2
+    int needOpAssign();
+    FuncDeclaration *buildOpAssign(Scope *sc);
+    FuncDeclaration *buildPostBlit(Scope *sc);
+    FuncDeclaration *buildCpCtor(Scope *sc);
+#endif
     void toDocBuffer(OutBuffer *buf);
 
     PROT getAccess(Dsymbol *smember);	// determine access to smember
@@ -186,8 +200,10 @@ struct ClassDeclaration : AggregateDeclaration
     static ClassDeclaration *classinfo;
 
     ClassDeclaration *baseClass;	// NULL only if this is Object
+#if DMDV1
     CtorDeclaration *ctor;
     CtorDeclaration *defaultCtor;	// default constructor
+#endif
     FuncDeclaration *staticCtor;
     FuncDeclaration *staticDtor;
     Array vtbl;				// Array of FuncDeclaration's making up the vtbl[]
@@ -208,10 +224,10 @@ struct ClassDeclaration : AggregateDeclaration
 					// it derives from IUnknown)
     int isauto;				// !=0 if this is an auto class
     int isabstract;			// !=0 if abstract class
-
+#if DMDV1
     int isnested;			// !=0 if is nested
     VarDeclaration *vthis;		// 'this' parameter if this class is nested
-
+#endif
     int inuse;				// to prevent recursive attempts
 
     ClassDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses);
@@ -229,7 +245,9 @@ struct ClassDeclaration : AggregateDeclaration
 #endif
     FuncDeclaration *findFunc(Identifier *ident, TypeFunction *tf);
     void interfaceSemantic(Scope *sc);
+#if DMDV1
     int isNested();
+#endif
     int isCOMclass();
     virtual int isCOMinterface();
 #if DMDV2

@@ -577,6 +577,9 @@ struct TypeEnum : Type
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
+#if CPP_MANGLE
+    void toCppMangle(OutBuffer *buf, CppMangleState *cms);
+#endif
 
     type *toCtype();
 };
@@ -645,7 +648,7 @@ struct TypeClass : Type
 #if DMDV2
     Type *toHeadMutable();
     MATCH constConv(Type *to);
-#if TARGET_LINUX || TARGET_OSX
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 #endif
@@ -690,19 +693,21 @@ struct TypeSlice : Type
 struct Argument : Object
 {
     //enum InOut inout;
-    unsigned storageClass;
+    StorageClass storageClass;
     Type *type;
     Identifier *ident;
     Expression *defaultArg;
 
-    Argument(unsigned storageClass, Type *type, Identifier *ident, Expression *defaultArg);
+    Argument(StorageClass storageClass, Type *type, Identifier *ident, Expression *defaultArg);
     Argument *syntaxCopy();
     Type *isLazyArray();
     void toDecoBuffer(OutBuffer *buf);
     static Arguments *arraySyntaxCopy(Arguments *args);
     static char *argsTypesToChars(Arguments *args, int varargs);
+    static void argsCppMangle(OutBuffer *buf, CppMangleState *cms, Arguments *arguments, int varargs);
     static void argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Arguments *arguments, int varargs);
     static void argsToDecoBuffer(OutBuffer *buf, Arguments *arguments);
+    static int isTPL(Arguments *arguments);
     static size_t dim(Arguments *arguments);
     static Argument *getNth(Arguments *arguments, size_t nth, size_t *pn = NULL);
 };
@@ -714,5 +719,7 @@ extern int Tsize_t;
 extern int Tptrdiff_t;
 
 #endif
+
+int arrayTypeCompatible(Loc loc, Type *t1, Type *t2);
 
 #endif /* DMD_MTYPE_H */
