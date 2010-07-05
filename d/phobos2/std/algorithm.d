@@ -331,7 +331,7 @@ template reduce(F...)
     }
 }
 
-version (wyda) unittest
+unittest
 {
     int[] a = [ 3, 4 ];
     auto r = reduce!("a + b")(0, a);
@@ -374,7 +374,7 @@ Range overlap(Range)(Range r1, Range r2)
     return b < e ? range(b, e) : null;
 }
 
-version(wyda) unittest
+unittest
 {
     int[] a = [ 10, 11, 12, 13, 14 ];
     int[] b = a[1 .. 3];
@@ -410,7 +410,7 @@ Range overlap(Range)(Range r1, Range r2)
     return b < e ? range(b, e) : null;
 }
 
-version(wyda) unittest
+unittest
 {
     int[] a = [ 10, 11, 12, 13, 14 ];
     int[] b = a[1 .. 3];
@@ -455,24 +455,20 @@ assert(r1 == [ 2.5 ]);
 
 Ranges[0] filter(alias pred, Ranges...)(Ranges rs)
 {
+    alias unaryFun!(pred) fun;
     typeof(return) result;
     // Accumulate
     foreach (i, range; rs[0 .. $]) // all inputs
     {
         foreach (it; begin(range) .. end(range)) // current input
         {
-            if (pred(*it)) result ~= *it;
+            if (fun(*it)) result ~= *it;
         }
     }
     return result;
 }
 
-Ranges[0] filter(string pred, Ranges...)(Ranges rs)
-{
-    return .filter!(unaryFun!(pred), Ranges)(rs);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ 3, 4 ];
     auto r = filter!("a > 3")(a);
@@ -505,15 +501,15 @@ void inPlace(alias fun, Range, Ranges...)(Range r, Ranges rs)
 // @@@BUG@@ This should work:
 // void inPlace(alias fun, Ranges...)(Ranges rs)
 {
-    alias unaryFun!(fun) f;
-    foreach (j; begin(r) .. end(r)) f(*j);
+    alias unaryFun!(fun, true) todo;
+    foreach (j; begin(r) .. end(r)) todo(*j);
     foreach (i, x; rs)
     {
-        foreach (j; begin(x) .. end(x)) f(*j);
+        foreach (j; begin(x) .. end(x)) todo(*j);
     }
 }
 
-version (wyda) unittest
+unittest
 {
     // fill with 42
     int[] a = [ 1, 2 ];
@@ -562,7 +558,7 @@ void move(T)(ref T source, ref T target)
     }
 }
 
-version (wyda) unittest
+unittest
 {
     Object obj1 = new Object;
     Object obj2 = obj1;
@@ -656,7 +652,7 @@ Range overwriteAdjacent(
     return .overwriteAdjacent!(binaryFun!(fun), move, Range)(r);
 }
 
-version (wyda) unittest
+unittest
 {
     int[] arr = [ 1, 2, 2, 2, 2, 3, 4, 4, 4, 5 ];
     auto r = overwriteAdjacent(arr);
@@ -690,24 +686,19 @@ string[] s = [ "Hello", "world", "!" ];
 assert(find!("toupper(a) == toupper(b)")(s, "hello") == begin(s));
 ----
 */
-Iterator!(Range) find(alias pred, Range, E)(Range haystack, E needle)
+Iterator!(Range) find(alias pred = "a == b", Range, E)(Range haystack, E needle)
 {
+    alias binaryFun!(pred) test;
+    // @@@BUG@@@
     //foreach (i; begin(haystack) .. end(haystack))
     for (auto i = begin(haystack); i != end(haystack); ++i)
     {
-        if (pred(*i, needle)) return i;
+        if (test(*i, needle)) return i;
     }
     return end(haystack);
 }
 
-/// Ditto
-Iterator!(Range) find(string pred = "a == b", Range, E)(
-    Range haystack, E needle)
-{
-    return .find!(binaryFun!(pred), Range, E)(haystack, needle);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ 1, 2, 3 ];
     assert(find(a, 5) == end(a));
@@ -725,9 +716,12 @@ version (wyda) unittest
 // Case-insensitive find of a string
     string[] s = [ "Hello", "world", "!" ];
     assert(find!("toupper(a) == toupper(b)")(s, "hello") == begin(s));
+    
+    static bool f(string a, string b) { return toupper(a) == toupper(b); }
+    assert(find!(f)(s, "hello") == begin(s));
 }
 
-version (wyda) unittest
+unittest
 {
     int[] a = [ 1, 2, 3, 2, 6 ];
     assert(find(retro(a), 5) == rEnd(a));
@@ -764,20 +758,15 @@ assert(find!(pred)(arr) == begin(arr));
 */
 Iterator!(Range) find(alias pred, Range)(Range haystack)
 {
+    alias unaryFun!(pred) predFun;
     foreach (i; begin(haystack) .. end(haystack))
     {
-        if (pred(*i)) return i;
+        if (predFun(*i)) return i;
     }
     return end(haystack);
 }
 
-/// Ditto
-Iterator!(Range) find(string pred, Range)(Range haystack)
-{
-    return find!(unaryFun!(pred), Range)(haystack);
-}
-
-version (wyda) unittest
+unittest
 {
     auto a = [ 1, 2, 3 ];
     assert(find!("a > 2")(a) == end(a) - 1);
@@ -802,8 +791,8 @@ assert(findRange(a, b) == begin(a) + 2);
 assert(findRange(b, a) == end(b));
 ----
 */
-Iterator!(Range1) findRange(alias pred, Range1, Range2)(
-    Range1 seq, Range2 subseq)
+Iterator!(Range1) findRange(alias pred = "a == b", Range1, Range2)
+    (Range1 seq, Range2 subseq)
 {
     auto e1 = end(seq);
     if (seq.length < subseq.length) return e1;
@@ -817,14 +806,7 @@ Iterator!(Range1) findRange(alias pred, Range1, Range2)(
     return e1;
 }
 
-/// Ditto
-Iterator!(Range1) findRange(
-    string pred = q{a == b}, Range1, Range2)(Range1 seq, Range2 subseq)
-{
-    return .findRange!(binaryFun!(pred), Range1, Range2)(seq, subseq);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ -1, 0, 1, 2, 3, 4, 5 ];
     int[] b = [ 1, 2, 3 ];
@@ -947,22 +929,14 @@ BUGS:
 Should cache the scaffolding built for the last $(D subseq) in
 thread-safe storage so it is not rebuilt repeatedly.
 */
-Iterator!(Range) findBoyerMoore(alias pred, Range)(Range seq,
-                                                   Range subseq)
+Iterator!(Range) findBoyerMoore(alias pred = "a == b", Range)
+    (Range seq, Range subseq)
 {
-    return BoyerMooreFinder!(pred, Range)(subseq).inspect(seq);
+    return BoyerMooreFinder!(binaryFun!(pred), Range)(subseq).inspect(seq);
 }
 
-/// Ditto
-Iterator!(Range) findBoyerMoore(string pred = q{a == b}, Range)(
-    Range seq, Range subseq)
+unittest
 {
-    return .findBoyerMoore!(binaryFun!(pred), Range)(seq, subseq);
-}
-
-version (wyda) unittest
-{
-    debug(string) writefln("Boyer-Moore implementation version (wyda) unittest\n");
     string h = "/homes/aalexand/d/dmd/bin/../lib/libphobos.a(dmain2.o)"
         "(.gnu.linkonce.tmain+0x74): In function `main' undefined reference"
         " to `_Dmain':";
@@ -994,25 +968,19 @@ p = findAdjacent!("a < b")(a);
 assert(p == begin(a) + 6);
 ----
 */
-Iterator!(Range) findAdjacent(alias pred, Range)(Range r)
+Iterator!(Range) findAdjacent(alias pred = "a == b", Range)(Range r)
 {
     auto first = begin(r), last = end(r);
     auto next = first;
     if (first != last)
     {
         for (++next; next != last; ++first, ++next)
-            if (pred(*first, *next)) return first;
+            if (binaryFun!(pred)(*first, *next)) return first;
     }
     return last;
 }
 
-/// Ditto
-Iterator!(Range) findAdjacent(string pred = q{a == b}, Range)(Range r)
-{
-    return .findAdjacent!(binaryFun!(pred), Range)(r);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ 11, 10, 10, 9, 8, 8, 7, 8, 9 ];
     auto p = findAdjacent(a);
@@ -1037,7 +1005,7 @@ assert(findAmong(a, b) == begin(a) + 2);
 assert(findAmong(b, a) == begin(b));
 ----
 */
-Iterator!(Range1) findAmong(alias pred, Range1, Range2)(
+Iterator!(Range1) findAmong(alias pred = "a == b", Range1, Range2)(
     Range1 seq, Range2 choices)
 {
     foreach (i, e; seq)
@@ -1047,19 +1015,14 @@ Iterator!(Range1) findAmong(alias pred, Range1, Range2)(
     return end(seq);
 }
 
-/// Ditto
-Iterator!(Range1) findAmong(
-    string pred = q{a == b}, Range1, Range2)(Range1 seq, Range2 choices)
-{
-    return .findAmong!(binaryFun!(pred), Range1, Range2)(seq, choices);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ -1, 0, 2, 1, 2, 3, 4, 5 ];
     int[] b = [ 1, 2, 3 ];
     assert(findAmong(a, b) == begin(a) + 2);
     assert(findAmong(b, [ 4, 6, 7 ]) == end(b));
+    assert(findAmong!("a==b")(a, b) == begin(a) + 2);
+    assert(findAmong!("a==b")(b, [ 4, 6, 7 ]) == end(b));
 }
 
 // findAmongSorted
@@ -1083,25 +1046,19 @@ assert(findAmongSorted(a, b) == begin(a) + 2);
 assert(findAmongSorted(b, a) == end(b));
 ----
 */
-Iterator!(Range1) findAmongSorted(alias less, Range1, Range2)(
+Iterator!(Range1) findAmongSorted(alias less = "a < b", Range1, Range2)(
     Range1 seq, in Range2 choices)
 {
-    assert(isSorted!(less)(choices));
+    alias binaryFun!(less) lessFun; // pun not intended
+    assert(isSorted!(lessFun)(choices));
     foreach (i, e; seq)
     {
-        if (canFindSorted!(less)(choices, e)) return begin(seq) + i;
+        if (canFindSorted!(lessFun)(choices, e)) return begin(seq) + i;
     }
     return end(seq);
 }
 
-/// Ditto
-Iterator!(Range1) findAmongSorted(
-    string less = q{a < b}, Range1, Range2)(Range1 seq, in Range2 subseq)
-{
-    return .findAmongSorted!(binaryFun!(less), Range1, Range2)(seq, subseq);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ -1, 0, 2, 1, 2, 3, 4, 5 ];
     int[] b = [ 1, 2, 3 ];
@@ -1126,15 +1083,9 @@ assert(canFind!("a - 1 < b")(a, 4));
 assert(!canFind!("a > 5")(a));
 ----
 */
-bool canFind(alias pred, Range, E)(Range haystack, E needle)
+bool canFind(alias pred = "a == b", Range, E)(Range haystack, E needle)
 {
     return find!(pred)(haystack, needle) != end(haystack);
-}
-
-/// Ditto
-bool canFind(string pred = q{a == b}, Range, E)(Range haystack, E needle)
-{
-    return find!(binaryFun!(pred), Range, E)(haystack, needle) != end(haystack);
 }
 
 /// Ditto
@@ -1144,27 +1095,9 @@ bool canFind(alias pred, Range)(Range haystack)
 }
 
 /// Ditto
-bool canFind(string pred, Range)(Range haystack)
-{
-    return find!(unaryFun!(pred))(haystack) != end(haystack);
-}
-
-/// Ditto
 bool canFindAmong(alias pred, Range1, Range2)(Range1 seq, Range2 choices)
 {
-    return findAmong!(pred)(seq, choices) != end(seq);
-}
-
-/// Ditto
-bool canFindAmong(string pred, Range1, Range2)(Range1 seq, Range2 choices)
-{
-    return findAmong!(binaryFun!(pred))(seq, choices) != end(seq);
-}
-
-/// Ditto
-bool canFindAmongSorted(alias pred, Range1, Range2)(Range1 seq, Range2 choices)
-{
-    return canFindAmongSorted!(pred)(seq, choices) != end(seq);
+    return findAmongSorted!(pred)(seq, choices) != end(seq);
 }
 
 /// Ditto
@@ -1188,20 +1121,13 @@ assert(count!("a > b")(a, 2) == 5);
 ----
 */
 
-size_t count(alias pred, Range, E)(Range r, E value)
+size_t count(alias pred = "a == b", Range, E)(Range r, E value)
 {
-    bool pred2(typeof(*begin(r)) a) { return pred(a, value); }
+    bool pred2(typeof(*begin(r)) a) { return binaryFun!(pred)(a, value); }
     return count!(pred2)(r);
 }
 
-/// Ditto
-size_t count(string pred = "a == b", Range, E)(
-    Range r, E value)
-{
-    return count!(binaryFun!(pred), Range, E)(r, value);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ 1, 2, 4, 3, 2, 5, 3, 2, 4 ];
     assert(count(a, 2) == 3);
@@ -1223,18 +1149,12 @@ size_t count(alias pred, Range)(Range r)
     size_t result;
     foreach (i; begin(r) .. end(r))
     {
-        if (pred(*i)) ++result;
+        if (unaryFun!(pred)(*i)) ++result;
     }
     return result;
 }
 
-/// Ditto
-size_t count(string pred, Range)(Range r)
-{
-    return count!(unaryFun!(pred), Range)(r);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ 1, 2, 4, 3, 2, 5, 3, 2, 4 ];
     assert(count!("a == 3")(a) == 2);
@@ -1265,20 +1185,14 @@ double[] c = [ 1.005, 2, 4, 3];
 assert(equal!(approxEqual)(b, c));
 ----
 */
-bool equal(alias pred, Range1, Range2)(Range1 r1, Range2 r2)
+bool equal(alias pred = "a == b", Range1, Range2)(Range1 r1, Range2 r2)
 {
     if (r1.length != r2.length) return false;
     auto result = mismatch!(pred)(r1, r2);
     return result._0 == end(r1) && result._1 == end(r2);
 }
 
-/// Ditto
-bool equal(string pred = q{a == b}, Range1, Range2)(Range1 r1, Range2 r2)
-{
-    return equal!(binaryFun!(pred), Range1, Range2)(r1, r2);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ 1, 2, 4, 3];
     assert(!equal(a, a[1..$]));
@@ -1341,7 +1255,7 @@ MinType!(T1, T2, T) min(T1, T2, T...)(T1 a, T2 b, T xs)
     }
 }
 
-version (wyda) unittest
+unittest
 {
     int a = 5;
     short b = 6;
@@ -1416,7 +1330,7 @@ MaxType!(T1, T2, T) max(T1, T2, T...)(T1 a, T2 b, T xs)
     }
 }
 
-version (wyda) unittest
+unittest
 {
     int a = 5;
     short b = 6;
@@ -1454,24 +1368,17 @@ assert(m._1 == begin(y) + 3);
 */
 
 Tuple!(Iterator!(Range1), Iterator!(Range2))
-mismatch(alias pred, Range1, Range2)(Range1 r1, Range2 r2)
+mismatch(alias pred = "a == b", Range1, Range2)(Range1 r1, Range2 r2)
 {
     auto i1 = begin(r1), i2 = begin(r2), e1 = end(r1), e2 = end(r2);
     for (; i1 != e1 && i2 != e2; ++i1, ++i2)
     {
-        if (!pred(*i1, *i2)) break;
+        if (!binaryFun!(pred)(*i1, *i2)) break;
     }
     return tuple(i1, i2);
 }
 
-/// Ditto
-Tuple!(Iterator!(Range1), Iterator!(Range2))
-mismatch(string pred = q{a == b}, Range1, Range2)(Range1 r1, Range2 r2)
-{
-    return .mismatch!(binaryFun!(pred), Range1, Range2)(r1, r2);
-}
-
-version (wyda) unittest
+unittest
 {
     // doc example
     int[]    x = [ 1,  5, 2, 7,   4, 3 ];
@@ -1694,7 +1601,7 @@ levenshteinDistanceAndPath(string equals = "a == b",
         s, t);
 }
 
-version (wyda) unittest
+unittest
 {
     assert(levenshteinDistance("a", "a") == 0);
     assert(levenshteinDistance("a", "b") == 1);
@@ -1754,7 +1661,7 @@ Range2 copy(Range1, Range2)(Range1 source, Range2 target)
     return range(t, te);
 }
 
-version (wyda) unittest
+unittest
 {
     int[] a = [ 1, 5 ];
     int[] b = [ 9, 8 ];
@@ -1797,7 +1704,7 @@ Range2 copyIf(alias pred, Range1, Range2)(Range1 source, Range2 target)
     auto t = begin(target), te = end(target);
     foreach (s; begin(source) .. end(source))
     {
-        if (!pred(*s)) continue;
+        if (!unaryFun!(pred)(*s)) continue;
         if (t == te) enforce(false,
                              "copyIf: insufficient space in target range");
         *t = *s;
@@ -1806,12 +1713,7 @@ Range2 copyIf(alias pred, Range1, Range2)(Range1 source, Range2 target)
     return range(t, te);
 }
 
-Range2 copyIf(string pred, Range1, Range2)(Range1 source, Range2 target)
-{
-    return .copyIf!(unaryFun!(pred), Range1, Range2)(source, target);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ 1, 5 ];
     int[] b = [ 9, 8 ];
@@ -1887,7 +1789,7 @@ void reverse(alias iterSwap = .iterSwap, Range)(Range r)
     }
 }
 
-version (wyda) unittest
+unittest
 {
     int[] range = null;
     reverse(range);
@@ -1960,7 +1862,7 @@ It rotate(alias iterSwap = .iterSwap, Range, It)(Range r, It middle)
     return newMiddle;
 }
 
-version (wyda) unittest
+unittest
 {
     // doc example
     auto arr = [4, 5, 6, 7, 1, 2, 3];
@@ -2067,7 +1969,7 @@ Range eliminate(alias pred,
     return range(begin(r), partition!(not!(pred), ss, assignIter, Range)(r));
 }
 
-version (wyda) unittest
+unittest
 {
     int[] arr = [ 1, 2, 3, 4, 5 ];
 // eliminate even elements
@@ -2088,27 +1990,19 @@ assert(r == [ 1, 3, 4, 5 ]);
 assert(arr == [ 1, 3, 4, 5, 4, 5, 2  ]);
 ----
 */
-Range eliminate(alias pred,
+Range eliminate(alias pred = "a == b",
                 SwapStrategy ss = SwapStrategy.semistable,
                 Range, Value)(Range r, Value v)
 {
     alias Iterator!(Range) It;
-    bool comp(typeof(*It) a) { return !pred(a, v); }
+    bool comp(typeof(*It) a) { return !binaryFun!(pred)(a, v); }
     static void assignIterB(It a, It b) { *a = *b; }
     return range(begin(r), 
                  partition!(comp,
                             ss, assignIterB, Range)(r));
 }
 
-/// Ditto
-Range eliminate(string pred = "a == b",
-                SwapStrategy ss = SwapStrategy.semistable,
-                Range, Value)(Range r, Value v)
-{
-    return .eliminate!(binaryFun!(pred), ss, Range, Value)(r, v);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] arr = [ 1, 2, 3, 2, 4, 5, 2 ];
 // keep elements different from 2
@@ -2263,7 +2157,7 @@ Iterator!(Range) partition(alias predOrStr,
     return result;
 }
 
-version (wyda) unittest // partition
+unittest // partition
 {
     auto Arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     auto arr = Arr.dup;
@@ -2367,7 +2261,7 @@ version (wyda) unittest // partition
 //     return .partitionPivot!(binaryFun!(less), ss, iterSwap, Range, It)(r, m);
 // }
 
-// version (wyda) unittest
+// unittest
 // {
 //     auto a = [3, 3, 2];
 //     bool less(int a, int b) { return a < b; }
@@ -2442,9 +2336,9 @@ assert(v[n] == 9);
 
 BUGS:
 
-stable topN has not been implemented yet.
-*/
-void topN(alias less,
+Stable topN has not been implemented yet.
+  */
+void topN(alias less = "a < b",
                 SwapStrategy ss = SwapStrategy.unstable,
                 alias iterSwap = .iterSwap, Range, It)(Range r, It nth)
 {
@@ -2457,7 +2351,10 @@ void topN(alias less,
     {
         auto pivot = b + (e - b) / 2;
         auto pivotVal = *pivot;
-        bool pred(ElementType!(Range) a) { return a < pivotVal; }
+        bool pred(ElementType!(Range) a)
+        {
+            return binaryFun!(less)(a, pivotVal);
+        }
         iterSwap(pivot, e - 1);
         pivot = partition!(pred, ss, iterSwap)(range(b, e));
         iterSwap(pivot, e - 1);
@@ -2467,15 +2364,7 @@ void topN(alias less,
     }
 }
 
-/// Ditto
-void topN(string less = q{a < b},
-                SwapStrategy ss = SwapStrategy.unstable,
-                alias iterSwap = .iterSwap, Range, It)(Range r, It nth)
-{
-    return .topN!(binaryFun!(less), ss, iterSwap, Range, It)(r, nth);
-}
-
-version (wyda) unittest
+unittest
 {
     scope(failure) writeln(stderr, "Failure testing algorithm");
     //auto v = ([ 25, 7, 9, 2, 0, 5, 21 ]).dup;
@@ -2534,28 +2423,22 @@ assert(words == [ "a", "aBc", "abc", "ABC", "b", "c" ]);
 ----
 */
 
-void sort(alias less, SwapStrategy ss = SwapStrategy.unstable,
+void sort(alias less = "a < b", SwapStrategy ss = SwapStrategy.unstable,
           alias iterSwap = .iterSwap, Range)(Range r)
 {
-    static if (is(typeof(less(*begin(r), *end(r))) == bool))
+    alias binaryFun!(less) lessFun;
+    static if (is(typeof(lessFun(*begin(r), *end(r))) == bool))
     {
-        sortImpl!(less, ss, iterSwap)(r);
-        assert(isSorted!(less)(r));
+        sortImpl!(lessFun, ss, iterSwap)(r);
+        assert(isSorted!(lessFun)(r));
     }
     else
     {
-        static assert(false, typeof(&less).stringof);
+        static assert(false, "Invalid predicate passed to sort");
     }
 }
 
-/// Ditto
-void sort(string less = q{a < b}, SwapStrategy ss = SwapStrategy.unstable,
-          alias iterSwap = .iterSwap, Range)(Range r)
-{
-    return .sort!(binaryFun!(less), ss, iterSwap, Range)(r);
-}
-
-version (wyda) unittest
+unittest
 {
     // sort using delegate
     int a[] = new int[100];
@@ -2733,7 +2616,7 @@ present in Python and Lisp. This is because sorting is done in-place
 and only minimal extra data (one array of transformed elements) is
 created.
 */
-void schwartzSort(alias transform, alias less,
+void schwartzSort(alias transform, alias less = "a < b",
                   SwapStrategy ss = SwapStrategy.unstable, Range)(Range r)
 {
     alias typeof(transform(*begin(r))) XformType;
@@ -2754,14 +2637,7 @@ void schwartzSort(alias transform, alias less,
     sort!(less, ss, mySwap)(xform);
 }
 
-/// Ditto
-void schwartzSort(alias transform, string less = q{a < b},
-                  SwapStrategy ss = SwapStrategy.unstable, Range)(Range r)
-{
-    return .schwartzSort!(transform, binaryFun!(less), ss, Range)(r);
-}
-
-version (wyda) unittest
+unittest
 {
     static double entropy(double[] probs) {
         double result = 0;
@@ -2810,22 +2686,14 @@ partialSort(a, begin(a) + 5);
 assert(a[0 .. 5] == [ 0, 1, 2, 3, 4 ]);
 ----
 */
-void partialSort(alias less, SwapStrategy ss = SwapStrategy.unstable,
+void partialSort(alias less = "a < b", SwapStrategy ss = SwapStrategy.unstable,
     alias iterSwap = .iterSwap, Range, It)(Range r, It mid)
 {
     topN!(less, ss, iterSwap)(r, mid);
     sort!(less, ss, iterSwap, Range)(range(begin(r), mid));
 }
 
-/// Ditto
-void partialSort(string less = "a < b",
-    SwapStrategy ss = SwapStrategy.unstable,
-    alias iterSwap = .iterSwap, Range, It)(Range r, It mid)
-{
-    return .partialSort!(binaryFun!(less), ss, iterSwap, Range, It)(r, mid);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 ];
     partialSort(a, begin(a) + 5);
@@ -2928,6 +2796,7 @@ bool isSorted(string less = "a < b", Range)(Range r)
     alias iterSwap,
     SRange, TRange)(SRange source, TRange target)
 {
+    alias binaryFun!(less) lessFun;
     static assert(ss == SwapStrategy.unstable,
                   "Stable indexing not yet implemented");
     alias Iterator!(SRange) SIter;
@@ -2950,7 +2819,7 @@ bool isSorted(string less = "a < b", Range)(Range r)
     }
     bool indirectLess(TElem a, TElem b)
     {
-        return less(*index2iter(a), *index2iter(b));
+        return lessFun(*index2iter(a), *index2iter(b));
     }
     void indirectCopy(SIter from, ref TElem to)
     {
@@ -2986,7 +2855,7 @@ bool isSorted(string less = "a < b", Range)(Range r)
         // add stuff to heap
         for (; sb != se; ++sb)
         {
-            if (!less(*sb, *index2iter(*tb))) continue;
+            if (!lessFun(*sb, *index2iter(*tb))) continue;
             // copy the source over the smallest
             indirectCopy(sb, *tb);
             heapify!(indirectLess, iterSwap)(target, tb);
@@ -3061,17 +2930,7 @@ void partialIndex(
     return .topNIndexImpl!(less, true, ss, iterSwap)(source, target);
 }
 
-/// Ditto
-void partialIndex(
-    string less,
-    SwapStrategy ss = SwapStrategy.unstable,
-    alias iterSwap = .iterSwap,
-    SRange, TRange)(SRange source, TRange target)
-{
-    return .topNIndexImpl!(binaryFun!(less), true, ss, iterSwap)(source, target);
-}
-
-version (wyda) unittest
+unittest
 {
     invariant arr = [ 2, 3, 1 ];
     auto index = new invariant(int)*[3];
@@ -3080,7 +2939,7 @@ version (wyda) unittest
     assert(isSorted!("*a < *b")(index));
 }
 
-version (wyda) unittest
+unittest
 {
     static bool less(int a, int b) { return a < b; }
     {
@@ -3183,7 +3042,7 @@ version (wyda) unittest
 //         transform, binaryFun!(less), ss, iterSwap, Range)(r);
 // }
 
-// version (wyda) unittest
+// unittest
 // {
 //     string[] arr = [ "D", "ab", "c", "Ab", "C" ];
 //     auto index = schwartzMakeIndex!(toupper, "a < b",
@@ -3258,16 +3117,15 @@ p = lowerBound!("a < b")(a, 4); // predicate as string
 assert(*p == 4);
 ----
 */
-Iterator!(Range) lowerBound(alias less, Range, V)(Range r, V value)
+Iterator!(Range) lowerBound(alias less = "a < b", Range, V)(Range r, V value)
 {
-    //assert(isSorted!(less)(r));
     auto first = begin(r);
     auto count = end(r) - first;
     while (count > 0)
     {
         invariant step = count / 2;
         auto it = first + step;
-        if (less(*it, value))
+        if (binaryFun!(less)(*it, value))
         {
             first = it + 1;
             count -= step + 1;
@@ -3280,13 +3138,7 @@ Iterator!(Range) lowerBound(alias less, Range, V)(Range r, V value)
     return first;
 }
 
-/// Ditto
-Iterator!(Range) lowerBound(string less = q{a < b}, Range, V)(Range r, V value)
-{
-    return .lowerBound!(binaryFun!(less), Range, V)(r, value);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ];
     auto p = lowerBound!("a < b")(a, 4);
@@ -3317,16 +3169,15 @@ auto p = upperBound(a, 3);
 assert(p == begin(a) + 5);
 ----
 */
-Iterator!(Range) upperBound(alias less, Range, V)(Range r, V value)
+Iterator!(Range) upperBound(alias less = "a < b", Range, V)(Range r, V value)
 {
-    //assert(isSorted!(less)(r));
     auto first = begin(r);
     size_t count = end(r) - first;
     while (count > 0)
     {
         auto step = count / 2;
         auto it = first + step;
-        if (!less(value,*it))
+        if (!binaryFun!(less)(value,*it))
         {
             first = it + 1;
             count -= step + 1;
@@ -3336,13 +3187,7 @@ Iterator!(Range) upperBound(alias less, Range, V)(Range r, V value)
   return first;
 }
 
-/// Ditto
-Iterator!(Range) upperBound(string less = q{a < b}, Range, V)(Range r, V value)
-{
-    return .upperBound!(binaryFun!(less), Range, V)(r, value);
-}
-
-version (wyda) unittest
+unittest
 {
     auto a = [ 1, 2, 3, 3, 3, 4, 4, 5, 6 ];
     auto p = upperBound(a, 3);
@@ -3372,20 +3217,20 @@ auto r = equalRange(a, 3);
 assert(r == [ 3, 3, 3 ]);
 ----
 */
-Range equalRange(alias less, Range, V)(Range r, V value)
+Range equalRange(alias less = "a < b", Range, V)(Range r, V value)
 {
-    //assert(isSorted!(less)(r));
+    alias binaryFun!(less) lessFun;
     auto first = begin(r), last = end(r);
     for (size_t count = last - first; count > 0; )
     {
         auto step = count / 2;
         auto middle = first + step;
-        if (less(*middle, value))
+        if (lessFun(*middle, value))
         {
             first = middle + 1;
             count -= step + 1;
         }
-        else if (less(value, *middle))
+        else if (lessFun(value, *middle))
         {
             count = step;
         }
@@ -3401,13 +3246,7 @@ Range equalRange(alias less, Range, V)(Range r, V value)
     return range(first, first);
 }
 
-/// Ditto
-Range equalRange(string less = q{a < b}, Range, V)(Range r, V value)
-{
-    return .equalRange!(binaryFun!(less), Range, V)(r, value);
-}
-
-version (wyda) unittest
+unittest
 {
     int[] a = [ 1, 2, 3, 3, 3, 4, 4, 5, 6 ];
     auto p = equalRange(a, 3);
@@ -3426,18 +3265,13 @@ evaluations of $(D less). See also STL's $(WEB
 sgi.com/tech/stl/binary_search.html, binary_search).
 */
 
-bool canFindSorted(alias less, T, V)(T range, V value)
+bool canFindSorted(alias less = "a < b", T, V)(T range, V value)
 {
     auto p = lowerBound!(less)(range, value);
-    return p != end(range) && !less(value, *p);
+    return p != end(range) && !binaryFun!(less)(value, *p);
 }
 
-bool canFindSorted(string less = q{a < b}, T, V)(T range, V value)
-{
-    return .canFindSorted!(binaryFun!(less), T, V)(range, value);
-}
-
-version (wyda) unittest
+unittest
 {
     auto a = rndstuff!(int);
     if (a.length)
@@ -3453,7 +3287,7 @@ Converts the range $(D r) into a heap. Performs $(BIGOH r.length)
 evaluations of $(D less).
 */
 
-void makeHeap(alias less, alias iterSwap = .iterSwap, Range)(Range r)
+void makeHeap(alias less = "a < b", alias iterSwap = .iterSwap, Range)(Range r)
 {
     if (r.length < 2) return;
     auto i = begin(r) + (r.length - 2) / 2;
@@ -3464,7 +3298,7 @@ void makeHeap(alias less, alias iterSwap = .iterSwap, Range)(Range r)
     }
 }
 
-version (wyda) unittest
+unittest
 {
     // example from "Introduction to Algorithms" Cormen et al., p 146
     int[] a = [ 4, 1, 3, 2, 16, 9, 10, 14, 8, 7 ];
@@ -3495,7 +3329,7 @@ void heapify(alias less, alias iterSwap, Range, It)(Range r, It i)
     }
 }
 
-version (wyda) unittest
+unittest
 {
     // example from "Introduction to Algorithms" Cormen et al., p 143
     int[] a = [ 16, 4, 10, 14, 7, 9, 3, 2, 8, 1 ];
@@ -3563,7 +3397,7 @@ void partialSortCopy(alias less, alias iterSwap = .iterSwap, SRange, TRange)(
     sortHeap!(less, iterSwap)(target);
 }
 
-version (wyda) unittest
+unittest
 {
     auto r = Random(unpredictableSeed);
     int[] a = new int[uniform(r, 0, 1000)];

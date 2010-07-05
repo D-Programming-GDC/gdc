@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2006 by Digital Mars
+// Copyright (c) 1999-2008 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -38,11 +38,18 @@ struct EnumDeclaration : ScopeDsymbol
     Type *type;			// the TypeEnum
     Type *memtype;		// type of the members
 
+#if V1
+    integer_t maxval;
+    integer_t minval;
+    integer_t defaultval;	// default initializer
+#else
     Expression *maxval;
     Expression *minval;
     Expression *defaultval;	// default initializer
 
     Scope *scope;		// !=NULL means context to use
+#endif
+    int isdeprecated;
     Expressions * attributes; // GCC decl/type attributes
 
     EnumDeclaration(Loc loc, Identifier *id, Type *memtype);
@@ -51,8 +58,11 @@ struct EnumDeclaration : ScopeDsymbol
     int oneMember(Dsymbol **ps);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Type *getType();
-    char *kind();
+    const char *kind();
+#if V2
     Dsymbol *search(Loc, Identifier *ident, int flags);
+#endif
+    int isDeprecated();			// is Dsymbol deprecated?
 
     void emitComment(Scope *sc);
     void toDocBuffer(OutBuffer *buf);
@@ -76,7 +86,7 @@ struct EnumMember : Dsymbol
     EnumMember(Loc loc, Identifier *id, Expression *value, Type *type);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    char *kind();
+    const char *kind();
 
     void emitComment(Scope *sc);
     void toDocBuffer(OutBuffer *buf);

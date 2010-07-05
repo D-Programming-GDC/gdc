@@ -167,6 +167,14 @@ int pthread_barrier_init(pthread_barrier_t*, pthread_barrierattr_t*, uint);
 int pthread_barrier_destroy(pthread_barrier_t*);
 int pthread_barrier_wait(pthread_barrier_t*);
 
+enum
+{
+  PTHREAD_MUTEX_TIMED_NP,
+  PTHREAD_MUTEX_RECURSIVE_NP,
+  PTHREAD_MUTEX_ERRORCHECK_NP,
+  PTHREAD_MUTEX_ADAPTIVE_NP
+};
+
 // version ( Unix_Sched )
 void sched_yield();
 

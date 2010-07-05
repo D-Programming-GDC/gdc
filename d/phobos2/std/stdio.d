@@ -995,7 +995,7 @@ struct lines
     int opApplyRaw(D)(D dg)
     {
         alias ParameterTypeTuple!(dg) Parms;
-        enum duplicate = is(typeof(Parms[$ - 1]) : invariant(ubyte)[]);
+        enum duplicate = is(Parms[$ - 1] : invariant(ubyte)[]);
         int result = 1;
         int c = void;
         FLOCK(f);
@@ -1192,12 +1192,8 @@ struct chunks
 //         return result;
 //     }
 
-    int opApply(int delegate(ref ubyte[]) dg)
+    int opApply(D)(D dg)
     {
-//         scope(exit) {
-//             if (fileName.length && fclose(f))
-//                 StdioException("Could not close file `"~fileName~"'");
-//         }
         const maxStackSize = 1024 * 16;
         ubyte[] buffer = void;
         if (size < maxStackSize)
@@ -1206,6 +1202,7 @@ struct chunks
             buffer = new ubyte[size];
         size_t r = void;
         int result = 1;
+        uint tally = 0;
         while ((r = std.c.stdio.fread(buffer.ptr,
                                       buffer[0].sizeof, size, f)) > 0)
         {
@@ -1216,7 +1213,12 @@ struct chunks
                 if (!feof(f)) throw new StdioException(ferror(f));
                 buffer.length = r;
             }
+            static if (is(typeof(dg(tally, buffer)))) {
+                if ((result = dg(tally, buffer)) != 0) break;
+            } else {
             if ((result = dg(buffer)) != 0) break;
+        }
+        ++tally;
         }
         return result;
     }

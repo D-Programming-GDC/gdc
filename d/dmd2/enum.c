@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2007 by Digital Mars
+// Copyright (c) 1999-2008 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -23,6 +23,7 @@
 #include "id.h"
 #include "expression.h"
 #include "module.h"
+#include "declaration.h"
 
 /********************************* EnumDeclaration ****************************/
 
@@ -37,6 +38,7 @@ EnumDeclaration::EnumDeclaration(Loc loc, Identifier *id, Type *memtype)
     defaultval = NULL;
     sinit = NULL;
     scope = NULL;
+    isdeprecated = 0;
     attributes = NULL;
 }
 
@@ -85,6 +87,9 @@ void EnumDeclaration::semantic(Scope *sc)
         scx = scope;            // save so we don't make redundant copies
         scope = NULL;
     }
+    
+    if (sc->stc & STCdeprecated)
+ 	isdeprecated = 1;
 
     parent = sc->parent;
     if (attributes)
@@ -318,9 +323,14 @@ Type *EnumDeclaration::getType()
     return type;
 }
 
-char *EnumDeclaration::kind()
+const char *EnumDeclaration::kind()
 {
     return "enum";
+}
+
+int EnumDeclaration::isDeprecated()
+{
+    return isdeprecated;
 }
 
 Dsymbol *EnumDeclaration::search(Loc loc, Identifier *ident, int flags)
@@ -385,7 +395,7 @@ void EnumMember::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     }
 }
 
-char *EnumMember::kind()
+const char *EnumMember::kind()
 {
     return "enum member";
 }

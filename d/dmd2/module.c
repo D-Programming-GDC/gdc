@@ -228,7 +228,7 @@ Module::~Module()
 {
 }
 
-char *Module::kind()
+const char *Module::kind()
 {
     return "module";
 }
@@ -943,7 +943,7 @@ Package::Package(Identifier *ident)
 }
 
 
-char *Package::kind()
+const char *Package::kind()
 {
     return "package";
 }

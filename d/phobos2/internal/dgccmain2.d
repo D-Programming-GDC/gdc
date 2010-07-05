@@ -12,6 +12,7 @@ version (GNU)
 
 extern (C) void _STI_monitor_staticctor();
 extern (C) void _STD_monitor_staticdtor();
+extern (C) void __monitor_staticdtor();
 extern (C) void _STI_critical_init();
 extern (C) void _STD_critical_term();
 extern (C) void gc_init();
@@ -99,7 +100,7 @@ extern (C) int _d_run_main(int argc, char **argv, main_type main_func)
     
     free(am);
     _STD_critical_term();
-    _STD_monitor_staticdtor();
+    __monitor_staticdtor();
 
     return result;
 }

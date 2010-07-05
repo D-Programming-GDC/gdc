@@ -113,6 +113,7 @@ void FuncDeclaration::semantic(Scope *sc)
     StructDeclaration *sd;
     ClassDeclaration *cd;
     InterfaceDeclaration *id;
+    Dsymbol *pd;
 
 #if 0
     printf("FuncDeclaration::semantic(sc = %p, this = %p, '%s', linkage = %d)\n", sc, this, toPrettyChars(), sc->linkage);
@@ -263,6 +264,18 @@ void FuncDeclaration::semantic(Scope *sc)
 	    error("special function not allowed in interface %s", id->toChars());
 	if (fbody)
 	    error("function body is not abstract in interface %s", id->toChars());
+    }
+    
+    /* Template member functions aren't virtual:
+     *   interface TestInterface { void tpl(T)(); }
+     * and so won't work in interfaces
+     */
+    if ((pd = toParent()) != NULL &&
+ 	pd->isTemplateInstance() &&
+ 	(pd = toParent2()) != NULL &&
+ 	(id = pd->isInterfaceDeclaration()) != NULL)
+   {
+ 	error("template member function not allowed in interface %s", id->toChars());
     }
 
     cd = parent->isClassDeclaration();
@@ -1991,7 +2004,7 @@ int FuncDeclaration::isVirtual()
 {
 #if 0
     printf("FuncDeclaration::isVirtual(%s)\n", toChars());
-    printf("%p %d %d %d %d\n", isMember(), isStatic(), protection == PROTprivate, isCtorDeclaration(), linkage != LINKd);
+    printf("isMember:%p isStatic:%d private:%d ctor:%d !Dlinkage:%d\n", isMember(), isStatic(), protection == PROTprivate, isCtorDeclaration(), linkage != LINKd);
     printf("result is %d\n",
 	isMember() &&
 	!(isStatic() || protection == PROTprivate || protection == PROTpackage) &&
@@ -2133,7 +2146,7 @@ FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id,
     return fd;
 }
 
-char *FuncDeclaration::kind()
+const char *FuncDeclaration::kind()
 {
     return "function";
 }
@@ -2176,7 +2189,7 @@ int FuncDeclaration::needsClosure()
 		goto Lyes;	// assume f escapes this function's scope
 
 	    // Look to see if any parents of f that are below this escape
-	    for (Dsymbol *s = f->parent; s != this; s = s->parent)
+	    for (Dsymbol *s = f->parent; s && s != this; s = s->parent)
 	    {
 		f = s->isFuncDeclaration();
 		if (f && (f->isThis() || f->tookAddressOf))
@@ -2204,7 +2217,7 @@ FuncAliasDeclaration::FuncAliasDeclaration(FuncDeclaration *funcalias)
     this->funcalias = funcalias;
 }
 
-char *FuncAliasDeclaration::kind()
+const char *FuncAliasDeclaration::kind()
 {
     return "function alias";
 }
@@ -2249,7 +2262,12 @@ int FuncLiteralDeclaration::isNested()
     return (tok == TOKdelegate);
 }
 
-char *FuncLiteralDeclaration::kind()
+int FuncLiteralDeclaration::isVirtual()
+{
+    return FALSE;
+}
+
+const char *FuncLiteralDeclaration::kind()
 {
     // GCC requires the (char*) casts
     return (tok == TOKdelegate) ? (char*)"delegate" : (char*)"function";
@@ -2277,7 +2295,7 @@ CtorDeclaration::CtorDeclaration(Loc loc, Loc endloc, Arguments *arguments, int 
 {
     this->arguments = arguments;
     this->varargs = varargs;
-    //printf("CtorDeclaration() %s\n", toChars());
+    //printf("CtorDeclaration(loc = %s) %s\n", loc.toChars(), toChars());
 }
 
 Dsymbol *CtorDeclaration::syntaxCopy(Dsymbol *s)
@@ -2348,7 +2366,7 @@ void CtorDeclaration::semantic(Scope *sc)
 	cd->defaultCtor = this;
 }
 
-char *CtorDeclaration::kind()
+const char *CtorDeclaration::kind()
 {
     return "constructor";
 }
@@ -2947,7 +2965,7 @@ void NewDeclaration::semantic(Scope *sc)
     FuncDeclaration::semantic(sc);
 }
 
-char *NewDeclaration::kind()
+const char *NewDeclaration::kind()
 {
     return "allocator";
 }
@@ -3031,7 +3049,7 @@ void DeleteDeclaration::semantic(Scope *sc)
     FuncDeclaration::semantic(sc);
 }
 
-char *DeleteDeclaration::kind()
+const char *DeleteDeclaration::kind()
 {
     return "deallocator";
 }

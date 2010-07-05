@@ -619,7 +619,7 @@ void ClassDeclaration::semantic(Scope *sc)
     if (!ctor && baseClass && baseClass->ctor)
     {
 	//printf("Creating default this(){} for class %s\n", toChars());
-	ctor = new CtorDeclaration(0, 0, NULL, 0);
+	ctor = new CtorDeclaration(loc, 0, NULL, 0);
 	ctor->fbody = new CompoundStatement(0, new Statements());
 	members->push(ctor);
 	ctor->addMember(sc, this, 1);
@@ -981,7 +981,7 @@ int ClassDeclaration::vtblOffset()
 /****************************************
  */
 
-char *ClassDeclaration::kind()
+const char *ClassDeclaration::kind()
 {
     return "class";
 }
@@ -1308,7 +1308,7 @@ int InterfaceDeclaration::isCPPinterface()
 /*******************************************
  */
 
-char *InterfaceDeclaration::kind()
+const char *InterfaceDeclaration::kind()
 {
     return "interface";
 }

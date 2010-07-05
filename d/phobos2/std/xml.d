@@ -113,7 +113,9 @@ void main()
     writefln(join(doc.pretty(3),"\n"));
 }
 -------------------------------------------------------------------------------
-*/
+ * Macros:
+ *	WIKI=Phobos/StdXml
+ */
 
 module std.xml;
 import std.string;
@@ -504,7 +506,7 @@ class Document : Element
          * if (d1 == d2) { }
          * --------------
          */
-        override int opEquals(Object o)
+        override bool opEquals(Object o)
         {
             const doc = toType!(const Document)(o);
             return
@@ -735,7 +737,7 @@ class Element : Item
      * if (e1 == e2) { }
      * --------------
      */
-    override int opEquals(Object o)
+    override bool opEquals(Object o)
     {
         const element = toType!(const Element)(o);
         uint len = items.length;
@@ -1003,7 +1005,7 @@ class Tag
          * if (tag1 == tag2) { }
          * --------------
          */
-        override int opEquals(Object o)
+        override bool opEquals(Object o)
         {
             const tag = toType!(const Tag)(o);
             return
@@ -1147,7 +1149,7 @@ class Comment : Item
      * if (item1 == item2) { }
      * --------------
      */
-    override int opEquals(Object o)
+    override bool opEquals(Object o)
     {
         const item = toType!(const Item)(o);
         const t = cast(Comment)item;
@@ -1226,7 +1228,7 @@ class CData : Item
      * if (item1 == item2) { }
      * --------------
      */
-    override int opEquals(Object o)
+    override bool opEquals(Object o)
     {
         const item = toType!(const Item)(o);
         const t = cast(CData)item;
@@ -1303,7 +1305,7 @@ class Text : Item
      * if (item1 == item2) { }
      * --------------
      */
-    override int opEquals(Object o)
+    override bool opEquals(Object o)
     {
         const item = toType!(const Item)(o);
         const t = cast(Text)item;
@@ -1385,7 +1387,7 @@ class XMLInstruction : Item
      * if (item1 == item2) { }
      * --------------
      */
-    override int opEquals(Object o)
+    override bool opEquals(Object o)
     {
         const item = toType!(const Item)(o);
         const t = cast(XMLInstruction)item;
@@ -1464,7 +1466,7 @@ class ProcessingInstruction : Item
      * if (item1 == item2) { }
      * --------------
      */
-    override int opEquals(Object o)
+    override bool opEquals(Object o)
     {
         const item = toType!(const Item)(o);
         const t = cast(ProcessingInstruction)item;
@@ -1513,7 +1515,7 @@ class ProcessingInstruction : Item
 abstract class Item
 {
     /// Compares with another Item of same type for equality
-    abstract override int opEquals(Object o);
+    abstract override bool opEquals(Object o);
 
     /// Compares with another Item of same type
     abstract override int opCmp(Object o);
@@ -2544,7 +2546,8 @@ void check(string s)
 
 unittest
 {
-    return; // WHY ARE WE NOT RUNNING THIS UNIT TEST?
+  version (none) // WHY ARE WE NOT RUNNING THIS UNIT TEST?
+  {
     try
     {
         check(q"[<?xml version="1.0"?>
@@ -2588,6 +2591,7 @@ unittest
             " from start tag name \"genre\"");
         assert(n != -1);
     }
+  }
 }
 
 /** The base class for exceptions thrown by this module */

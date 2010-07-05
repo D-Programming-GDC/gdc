@@ -60,6 +60,11 @@ a = boxArray(arg_types, arg_data);
  *	Burton Radons
  * License:
  *	Public Domain
+ * Bugs:
+ *	$(UL
+ *	$(LI $(BUGZILLA 309))
+ *	$(LI $(BUGZILLA 1968))
+ *	)
  * Macros:
  *	WIKI=Phobos/StdBoxer
  */
@@ -211,7 +216,6 @@ struct Box
                 default: return TypeClass.Other;
             }
         }
-	assert(0);
     }
     
     /** Return whether this value could be unboxed as the given type without throwing. */

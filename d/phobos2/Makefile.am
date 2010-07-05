@@ -91,6 +91,7 @@ TI=ti_AC.o ti_Ag.o ti_Aint.o ti_Along.o ti_Ashort.o \
 MAIN_OBJS=std/asserterror.o std/hiddenfunc.o internal/switch.o gcstats.o \
 	internal/critical.o internal/object.o internal/monitor.o internal/arraycat.o internal/invariant.o \
 	internal/arrayassign.o internal/aaA.o internal/adi.o internal/aApply.o internal/aApplyR.o \
+	internal/arraydouble.o internal/arrayfloat.o \
 	std/outofmemory.o std/compiler.o std/system.o std/moduleinit.o std/md5.o std/base64.o \
 	internal/cast.o std/string.o internal/memset.o std/math.o \
 	std/outbuffer.o std/ctype.o std/regexp.o std/random.o \
@@ -128,7 +129,7 @@ GCC_OBJS = gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
 	gcc/cbridge_time.o gcc/cbridge_strerror.o
 
 # modules which require some kind of operating system	
-OS_OBJS = std/file.o std/mmfile.o std/path.o std/perf.o std/process.o std/socket.o std/socketstream.o 
+OS_OBJS = std/file.o std/mmfile.o std/path.o std/perf.o std/process.o std/socket.o std/socketstream.o std/synchro.o 
 
 # std.c.linux.linux, std.loader, gcc.cbridge*
 WINDOWS_OBJS=std/c/windows/windows.o std/c/windows/com.o std/c/windows/winsock.o \

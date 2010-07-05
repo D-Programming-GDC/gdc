@@ -36,6 +36,9 @@
  * has a unique instance of class $(B Thread) associated with it.
  * It is important to use the $(B Thread) class to create and manage
  * threads as the garbage collector needs to know about all the threads.
+ *
+ * Authors: Walter Bright, Bartosz Milewski
+ *
  * Macros:
  *	WIKI=Phobos/StdThread
  */
@@ -404,11 +407,15 @@ class Thread
      *
      */
     static uint nthreads = 1;
+    static __thread uint myCompactThreadId; // 11-bit ((idx << 1) | 1)
+    enum uint TID_BITS = 11;
 
   private:
 
     static uint allThreadsDim;
-    static Thread[0x400] allThreads;	// length matches value in C runtime
+    enum uint MAX_THREADS = (1 << (TID_BITS - 1)); // 0x400
+    static Thread[MAX_THREADS] allThreads;  // length matches value in C runtime
+    static assert(MAX_THREADS == 0x400);
 
     TS state;
     int idx = -1;			// index into allThreads[]
@@ -424,6 +431,11 @@ class Thread
     {
 	throw new ThreadError(msg);
     }
+    
+    void SetMyCompactThreadId()
+    {
+        myCompactThreadId = ((idx << 1) | 1);
+    }
 
 
     /* ***********************************************
@@ -433,6 +445,7 @@ class Thread
     extern (Windows) static uint threadstart(void *p)
     {
 	Thread t = cast(Thread)p;
+	t.SetMyCompactThreadId();
 	int result;
 
 	debug (thread) printf("Starting thread %d\n", t.idx);
@@ -476,6 +489,7 @@ class Thread
 	allThreads[0] = t;
 	allThreadsDim = 1;
 	t.idx = 0;
+	t.SetMyCompactThreadId();
     }
 
     static ~this()
@@ -904,6 +918,8 @@ class Thread
     }
 
     static uint nthreads = 1;
+    static __thread uint myCompactThreadId; // 11-bit ((idx << 1) | 1)
+    enum uint TID_BITS = 11;
 
   private:
 
@@ -912,7 +928,9 @@ class Thread
     // Set max to Windows equivalent for compatibility.
     // pthread_create will fail gracefully if stack limit
     // is reached prior to allThreads max.
-    static Thread[0x400] allThreads;
+    enum uint MAX_THREADS = (1 << (TID_BITS - 1)); // 0x400
+    static Thread[MAX_THREADS] allThreads;
+    static assert(MAX_THREADS == 0x400);
  
     version (GNU_pthread_suspend)
     {
@@ -938,7 +956,12 @@ class Thread
 
     void error(string msg)
     {
-	throw new ThreadError(msg);
+	    throw new ThreadError(msg);
+    }
+    
+    void SetMyCompactThreadId()
+    {
+        myCompactThreadId = ((idx << 1) | 1);
     }
 
     void init(size_t stackSize)
@@ -967,6 +990,7 @@ class Thread
     extern (C) static void *threadstart(void *p)
     {
 	Thread t = cast(Thread)p;
+	t.SetMyCompactThreadId();
 	int result;
 
 	debug (thread) printf("Starting thread x%x (%d)\n", t, t.idx);
@@ -1019,6 +1043,7 @@ class Thread
 	allThreads[0] = t;
 	allThreadsDim = 1;
 	t.idx = 0;
+	t.SetMyCompactThreadId();
 
 	version (GNU_pthread_suspend)
 	{

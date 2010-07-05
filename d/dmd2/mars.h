@@ -307,6 +307,7 @@ void deleteExeFile();
 int runProgram();
 void inifile(char *argv0, char *inifile);
 void halt();
+void util_progress();
 
 /*** Where to send error messages ***/
 #if IN_GCC

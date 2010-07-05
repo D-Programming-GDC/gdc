@@ -192,7 +192,7 @@ char *Dsymbol::locToChars()
     return loc.toChars();
 }
 
-char *Dsymbol::kind()
+const char *Dsymbol::kind()
 {
     return "symbol";
 }
@@ -520,6 +520,10 @@ void Dsymbol::checkDeprecated(Loc loc, Scope *sc)
 	{
 	    if (sc->scopesym && sc->scopesym->isDeprecated())
 		return;
+		
+		// If inside a StorageClassDeclaration that is deprecated
+ 	    if (sc->stc & STCdeprecated)
+ 		return;
 	}
 
 	error(loc, "is deprecated");
@@ -612,7 +616,7 @@ void OverloadSet::push(Dsymbol *s)
     a.push(s);
 }
 
-char *OverloadSet::kind()
+const char *OverloadSet::kind()
 {
     return "overloadset";
 }
@@ -846,7 +850,7 @@ Dsymbol *ScopeDsymbol::nameCollision(Dsymbol *s)
     return sprev;
 }
 
-char *ScopeDsymbol::kind()
+const char *ScopeDsymbol::kind()
 {
     return "ScopeDsymbol";
 }

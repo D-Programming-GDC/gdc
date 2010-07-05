@@ -628,6 +628,7 @@ Expression *shift_optimize(int result, BinExp *e, Expression *(*shift)(Type *, E
 	target_size_t sz = e->e1->type->size() * 8;
 	if (i2 < 0 || i2 > sz)
 	{   error("shift left by %"PRIdMAX" exceeds %"PRIuTSIZE, i2, sz);
+	//{   e->error("shift by %jd is outside the range 0..%zu", i2, sz);
 	    e->e2 = new IntegerExp(0);
 	}
 	if (e->e1->isConst() == 1)

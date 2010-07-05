@@ -385,10 +385,10 @@ private:
 }
 else
 {
-    string toString() { return "unknown CPU\n"; }
+    char[] toString() { return "unknown CPU\n"; }
 
-    string vendor()		{return "unknown vendor"; }
-    string processor()		{return "unknown processor"; }
+    char[] vendor()		{return "unknown vendor"; }
+    char[] processor()		{return "unknown processor"; }
 
     bool mmx()			{return false; }
     bool fxsr()			{return false; }

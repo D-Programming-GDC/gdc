@@ -39,7 +39,7 @@ x3_out_int_value("L_tmpnam");
 x3_pop_optional(1);
 
 // want to get rid of this...
-x3_out_int_value_ex("FILE_struct_size", "sizeof(FILE)", "size_t", NULL, 0, "0");
+//x3_out_int_value_ex("FILE_struct_size", "sizeof(FILE)", "size_t", NULL, 0, "0");
 
 x3_out_type("fpos_t");
 
