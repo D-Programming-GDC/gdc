@@ -440,9 +440,8 @@ fi
 # AC_SUBST(DCFG_EXPM1)
 # also erf, erfc
 
-# use version(Unix) instead.
-#AC_CHECK_FUNC(execvpe,DCFG_EXECVPE="",DCFG_EXECVPE="GNU_Need_execvpe")
-#AC_SUBST(DCFG_EXECVPE)
+AC_CHECK_FUNC(execvpe,DCFG_EXECVPE="",DCFG_EXECVPE="GNU_Need_execvpe")
+AC_SUBST(DCFG_EXECVPE)
 
 AC_CHECK_FUNC(spawnvp,DCFG_SPAWNVP="",DCFG_SPAWNVP="GNU_Need_spawnvp")
 AC_SUBST(DCFG_SPAWNVP)
