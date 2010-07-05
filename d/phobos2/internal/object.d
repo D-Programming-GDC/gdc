@@ -43,9 +43,6 @@ module object;
 
 import std.outofmemory;
 
-/// Standard boolean type.
-alias bool bit;
-
 /**
  * An unsigned integral type large enough to span the memory space. Use for
  * array indices and pointer offsets for maximal portability to

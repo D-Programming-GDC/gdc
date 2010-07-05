@@ -720,6 +720,8 @@ extern int Tptrdiff_t;
 
 #endif
 
+#ifndef IN_GCC
 int arrayTypeCompatible(Loc loc, Type *t1, Type *t2);
+#endif
 
 #endif /* DMD_MTYPE_H */
