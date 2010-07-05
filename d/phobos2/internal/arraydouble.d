@@ -6,6 +6,12 @@
  * Placed in public domain.
  */
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Iain Buclaw, July 2010
+*/
+
 import std.cpuid;
 
 bool disjoint(T)(T[] a, T[] b)
@@ -34,7 +40,7 @@ in
 }
 body
 {
-    version (D_InlineAsm_X86)
+    /*version (D_InlineAsm_X86)
     {
         auto aptr = a.ptr;
 	auto aend = aptr + a.length;
@@ -89,7 +95,7 @@ body
         while (aptr < aend)
             *aptr++ = *bptr++ + *cptr++;
     }
-    else
+    else*/
     {
 	foreach (i; 0 .. a.length)
 	    a[i] = b[i] + c[i];
@@ -166,7 +172,7 @@ in
 }
 body
 {
-    version (D_InlineAsm_X86)
+    /*version (D_InlineAsm_X86)
     {
         auto aptr = a.ptr;
 	auto aend = aptr + a.length;
@@ -221,7 +227,7 @@ body
         while (aptr < aend)
             *aptr++ = *bptr++ - *cptr++;
     }
-    else
+    else*/
     {
 	foreach (i; 0 .. a.length)
 	    a[i] = b[i] - c[i];
