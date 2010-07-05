@@ -431,12 +431,11 @@ class Thread
     {
 	throw new ThreadError(msg);
     }
-    
+
     void SetMyCompactThreadId()
     {
         myCompactThreadId = ((idx << 1) | 1);
     }
-
 
     /* ***********************************************
      * This is just a wrapper to interface between C rtl and Thread.run().
@@ -956,9 +955,9 @@ class Thread
 
     void error(string msg)
     {
-	    throw new ThreadError(msg);
+	throw new ThreadError(msg);
     }
-    
+
     void SetMyCompactThreadId()
     {
         myCompactThreadId = ((idx << 1) | 1);

@@ -38,8 +38,8 @@ EnumDeclaration::EnumDeclaration(Loc loc, Identifier *id, Type *memtype)
     defaultval = NULL;
     sinit = NULL;
     scope = NULL;
-    isdeprecated = 0;
     attributes = NULL;
+    isdeprecated = 0;
 }
 
 Dsymbol *EnumDeclaration::syntaxCopy(Dsymbol *s)
@@ -87,9 +87,9 @@ void EnumDeclaration::semantic(Scope *sc)
         scx = scope;            // save so we don't make redundant copies
         scope = NULL;
     }
-    
+
     if (sc->stc & STCdeprecated)
- 	isdeprecated = 1;
+	isdeprecated = 1;
 
     parent = sc->parent;
     if (attributes)

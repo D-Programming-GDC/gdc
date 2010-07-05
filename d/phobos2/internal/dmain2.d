@@ -114,7 +114,7 @@ extern (C) int main(size_t argc, char **argv)
 	free(am);
 	_STD_critical_term();
     }
-    __monitor_staticdtor();
+	__monitor_staticdtor();
     return result;
 }
 

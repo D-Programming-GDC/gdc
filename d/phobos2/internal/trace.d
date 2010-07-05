@@ -319,7 +319,7 @@ static void trace_times(Symbol* root)
 
 	version (Win32)
 	{
-        auto p = cast(invariant(char)*) toStringz(s.Sident);
+            auto p = cast(invariant(char)*) toStringz(s.Sident);
 	    p = unmangle_ident(p);
 	    if (p)
 		id = p[0 .. strlen(p)];

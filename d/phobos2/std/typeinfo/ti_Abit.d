@@ -50,7 +50,7 @@ class TypeInfo_Ab : TypeInfo
 	return hash;
     }
 
-    bool equals(void *p1, void *p2)
+    int equals(void *p1, void *p2)
     {
 	bit[] s1 = *cast(bit[]*)p1;
 	bit[] s2 = *cast(bit[]*)p2;

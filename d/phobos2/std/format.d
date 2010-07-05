@@ -1907,7 +1907,7 @@ unittest
 
     r = std.string.format(">%14d<, ", 15, [1,2,3]);
     assert(r == ">            15<, [1,2,3]");
-    
+
     assert(std.string.format("%8s", "bar") == "     bar");
     assert(std.string.format("%8s", "b\u00e9ll\u00f4") == "   b\u00e9ll\u00f4");
 }

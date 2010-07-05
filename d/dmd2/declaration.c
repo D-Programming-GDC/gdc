@@ -311,7 +311,7 @@ void TypedefDeclaration::semantic(Scope *sc)
 	    attributes = sc->attributes;
 	if (sc->parent->isFuncDeclaration() && init)
 	    semantic2(sc);
-	    storage_class |= sc->stc & STCdeprecated;
+	storage_class |= sc->stc & STCdeprecated;
     }
     else if (sem == 1)
     {

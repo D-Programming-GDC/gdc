@@ -49,8 +49,8 @@ struct EnumDeclaration : ScopeDsymbol
 
     Scope *scope;		// !=NULL means context to use
 #endif
-    int isdeprecated;
     Expressions * attributes; // GCC decl/type attributes
+    int isdeprecated;
 
     EnumDeclaration(Loc loc, Identifier *id, Type *memtype);
     Dsymbol *syntaxCopy(Dsymbol *s);

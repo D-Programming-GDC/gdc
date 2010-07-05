@@ -308,7 +308,7 @@ Statement *CompileStatement::semantic(Scope *sc)
     //printf("CompileStatement::semantic() %s\n", exp->toChars());
     Statements *a = flatten(sc);
     if (!a)
-    return NULL;
+	return NULL;
     Statement *s = new CompoundStatement(loc, a);
     return s->semantic(sc);
 }
@@ -932,24 +932,24 @@ int WhileStatement::blockExit()
     int result = BEnone;
     if (condition->canThrow())
 	result |= BEthrow;
-	if (condition->isBool(TRUE))
+    if (condition->isBool(TRUE))
     {
-    if (body)
-    {	result |= body->blockExit();
-	if (result & BEbreak)
-	    result |= BEfallthru;
+	if (body)
+	{   result |= body->blockExit();
+	    if (result & BEbreak)
+		result |= BEfallthru;
 	}
-   }
+    }
     else if (condition->isBool(FALSE))
-   {
- 	result |= BEfallthru;
+    {
+	result |= BEfallthru;
     }
     else
     {
- 	if (body)
- 	    result |= body->blockExit();
+	if (body)
+	    result |= body->blockExit();
 	result |= BEfallthru;
-	}
+    }
     result &= ~(BEbreak | BEcontinue);
     return result;
 }
@@ -1028,17 +1028,17 @@ int DoStatement::blockExit()
 {   int result;
 
     if (body)
-      {	result = body->blockExit();
-  	if (result == BEbreak)
-  	    return BEfallthru;
-  	if (result & BEcontinue)
-  	    result |= BEfallthru;
-      }
-      else
-  	result = BEfallthru;
+    {	result = body->blockExit();
+	if (result == BEbreak)
+	    return BEfallthru;
+	if (result & BEcontinue)
+	    result |= BEfallthru;
+    }
+    else
+	result = BEfallthru;
     if (result & BEfallthru)
     {	if (condition->canThrow())
-  	    result |= BEthrow;
+	    result |= BEthrow;
 	if (!(result & BEbreak) && condition->isBool(TRUE))
 	    result &= ~BEfallthru;
     }
@@ -2055,31 +2055,31 @@ int IfStatement::blockExit()
     int result = BEnone;
     if (condition->canThrow())
 	result |= BEthrow;
-	if (condition->isBool(TRUE))
+    if (condition->isBool(TRUE))
     {
- 	if (ifbody)
+	if (ifbody)
 	    result |= ifbody->blockExit();
- 	else
- 	    result |= BEfallthru;
+	else
+	    result |= BEfallthru;
     }
     else if (condition->isBool(FALSE))
     {
- 	if (elsebody)
- 	    result |= elsebody->blockExit();
- 	else
- 	    result |= BEfallthru;
+	if (elsebody)
+	    result |= elsebody->blockExit();
+	else
+	    result |= BEfallthru;
     }
     else
     {
-    if (ifbody)
-	result |= ifbody->blockExit();
-    else
-	result |= BEfallthru;
-    if (elsebody)
-	result |= elsebody->blockExit();
-    else
-	result |= BEfallthru;
-	}
+	if (ifbody)
+	    result |= ifbody->blockExit();
+	else
+	    result |= BEfallthru;
+	if (elsebody)
+	    result |= elsebody->blockExit();
+	else
+	    result |= BEfallthru;
+    }
     //printf("IfStatement::blockExit(%p) = x%x\n", this, result);
     return result;
 }

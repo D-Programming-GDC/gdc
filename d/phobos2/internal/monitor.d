@@ -10,6 +10,12 @@ Macros:
     WIKI = Phobos/Monitor
 */
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Iain Buclaw, July 2010
+*/
+
 module internal.monitor;
 import std.outofmemory;
 
@@ -197,7 +203,7 @@ extern(C) void _STI_monitor_staticctor()
 
 
 /** Called only once by a single thread during teardown */
-extern(C) void _STD_monitor_staticdtor()
+extern(C) void __monitor_staticdtor()
 {
     //printf("__monitor_staticdtor\n");
     deStruct(__monitor_mutex);
@@ -292,7 +298,7 @@ private:
 } // Windows
 
 /* ================================ linux ================================= */
-version (linux)
+else version (linux)
 {
 
 private import std.c.linux.linux;
@@ -304,17 +310,8 @@ extern(C)
 
 void initLocks()
 {
-	version(GNU)
-	{
-		pthread_mutexattr_init(&_monitors_attr);
-		pthread_mutexattr_setpshared(&_monitors_attr, PTHREAD_MUTEX_RECURSIVE_NP);
-    	//pthread_attr_settype(&_monitors_attr, PTHREAD_MUTEX_RECURSIVE_NP);
-   	}
-   	else
-   	{
-		pthread_mutexattr_init(&_monitors_attr);
-		pthread_mutexattr_settype(&_monitors_attr, PTHREAD_MUTEX_RECURSIVE_NP);
-	}
+    pthread_mutexattr_init(&_monitors_attr);
+    pthread_mutexattr_settype(&_monitors_attr, PTHREAD_MUTEX_RECURSIVE_NP);
 }
 void uninitLocks()
 {
@@ -348,3 +345,21 @@ private:
 
 } // linux
 
+
+else //version (NoSystem) // ??
+{
+
+void initLocks() {}
+void uninitLocks() {}
+
+struct OsMutex
+{
+    string toString() { return "OsMutex"; }
+public:
+    void setup() {}
+    void teardown() {}
+    void lock() {}
+    void unlock() {}
+}
+
+}

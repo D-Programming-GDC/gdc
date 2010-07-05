@@ -1216,9 +1216,9 @@ struct chunks
             static if (is(typeof(dg(tally, buffer)))) {
                 if ((result = dg(tally, buffer)) != 0) break;
             } else {
-            if ((result = dg(buffer)) != 0) break;
-        }
-        ++tally;
+                if ((result = dg(buffer)) != 0) break;
+            }
+            ++tally;
         }
         return result;
     }

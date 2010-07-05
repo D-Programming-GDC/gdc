@@ -1298,7 +1298,7 @@ int CompileDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 
 void CompileDeclaration::compileIt(Scope *sc)
 {
-	//printf("CompileDeclaration::compileIt(loc = %d)\n", loc.linnum);
+    //printf("CompileDeclaration::compileIt(loc = %d)\n", loc.linnum);
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
     exp = exp->optimize(WANTvalue | WANTinterpret);
@@ -1307,14 +1307,14 @@ void CompileDeclaration::compileIt(Scope *sc)
     }
     else
     {
-    StringExp *se = (StringExp *)exp;
-    se = se->toUTF8(sc);
-    Parser p(sc->module, (unsigned char *)se->string, se->len, 0);
-    p.loc = loc;
-    p.nextToken();
-    decl = p.parseDeclDefs(0);
-    if (p.token.value != TOKeof)
-    	exp->error("incomplete mixin declaration (%s)", se->toChars());
+	StringExp *se = (StringExp *)exp;
+	se = se->toUTF8(sc);
+	Parser p(sc->module, (unsigned char *)se->string, se->len, 0);
+	p.loc = loc;
+	p.nextToken();
+	decl = p.parseDeclDefs(0);
+	if (p.token.value != TOKeof)
+	    exp->error("incomplete mixin declaration (%s)", se->toChars());
     }
 }
 

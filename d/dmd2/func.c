@@ -265,17 +265,17 @@ void FuncDeclaration::semantic(Scope *sc)
 	if (fbody)
 	    error("function body is not abstract in interface %s", id->toChars());
     }
-    
+
     /* Template member functions aren't virtual:
      *   interface TestInterface { void tpl(T)(); }
      * and so won't work in interfaces
      */
     if ((pd = toParent()) != NULL &&
- 	pd->isTemplateInstance() &&
- 	(pd = toParent2()) != NULL &&
- 	(id = pd->isInterfaceDeclaration()) != NULL)
-   {
- 	error("template member function not allowed in interface %s", id->toChars());
+	pd->isTemplateInstance() &&
+	(pd = toParent2()) != NULL &&
+	(id = pd->isInterfaceDeclaration()) != NULL)
+    {
+	error("template member function not allowed in interface %s", id->toChars());
     }
 
     cd = parent->isClassDeclaration();

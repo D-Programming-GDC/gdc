@@ -10,7 +10,7 @@
 
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
- 
+
    Modified by David Friedman, September 2004
 */
 
@@ -806,11 +806,11 @@ Expression *createTypeInfoArray(Scope *sc, Expression *exps[], int dim)
     buf.writeByte(0);
     id = Lexer::idPool((char *)buf.data);
 
-    #ifdef IN_GCC
+#ifdef IN_GCC
     Module *m = d_gcc_get_output_module();
-    #else
+#else
     Module *m = sc->module;
-    #endif
+#endif
     Dsymbol *s = m->symtab->lookup(id);
 
     if (s && s->parent == m)

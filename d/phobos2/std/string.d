@@ -160,7 +160,7 @@ int cmp(C1, C2)(in C1[] s1, in C2[] s2)
                 c2 = std.utf.decode(s2, i2);
             if (c1 != c2) return cast(int) c1 - cast(int) c2;
         }
-        assert(0);
+	assert(0);
     }
 }
 

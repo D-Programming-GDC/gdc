@@ -11,7 +11,6 @@ version (GNU)
     private import gc_guess_stack;
 
 extern (C) void _STI_monitor_staticctor();
-extern (C) void _STD_monitor_staticdtor();
 extern (C) void __monitor_staticdtor();
 extern (C) void _STI_critical_init();
 extern (C) void _STD_critical_term();

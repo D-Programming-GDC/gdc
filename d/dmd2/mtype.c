@@ -4250,9 +4250,9 @@ Type *TypeTypeof::semantic(Loc loc, Scope *sc)
 	exp = exp->semantic(sc);
 	sc->intypeof--;
 	if (exp->op == TOKtype)
- 	{
- 	    error(loc, "argument %s to typeof is not an expression", exp->toChars());
- 	}
+	{
+	    error(loc, "argument %s to typeof is not an expression", exp->toChars());
+	}
 	t = exp->type;
 	if (!t)
 	{
@@ -4983,7 +4983,7 @@ L1:
 	return Type::dotExp(sc, e, ident);
     }
     if (!s->isFuncDeclaration())	// because of overloading
- 	s->checkDeprecated(e->loc, sc);
+	s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
 
     v = s->isVarDeclaration();
@@ -5380,27 +5380,27 @@ L1:
 	    }
 	    return e;
 	}
-	
+
 	if (ident == Id::__vptr)
- 	{   /* The pointer to the vtbl[]
- 	     * *cast(invariant(void*)**)e
- 	     */
- 	    e = e->castTo(sc, tvoidptr->invariantOf()->pointerTo()->pointerTo());
- 	    e = new PtrExp(e->loc, e);
- 	    e = e->semantic(sc);
- 	    return e;
- 	}
- 
- 	if (ident == Id::__monitor)
- 	{   /* The handle to the monitor (call it a void*)
- 	     * *(cast(void**)e + 1)
- 	     */
- 	    e = e->castTo(sc, tvoidptr->pointerTo());
- 	    e = new AddExp(e->loc, e, new IntegerExp(1));
- 	    e = new PtrExp(e->loc, e);
- 	    e = e->semantic(sc);
- 	    return e;
- 	}
+	{   /* The pointer to the vtbl[]
+	     * *cast(invariant(void*)**)e
+	     */
+	    e = e->castTo(sc, tvoidptr->invariantOf()->pointerTo()->pointerTo());
+	    e = new PtrExp(e->loc, e);
+	    e = e->semantic(sc);
+	    return e;
+	}
+
+	if (ident == Id::__monitor)
+	{   /* The handle to the monitor (call it a void*)
+	     * *(cast(void**)e + 1)
+	     */
+	    e = e->castTo(sc, tvoidptr->pointerTo());
+	    e = new AddExp(e->loc, e, new IntegerExp(1));
+	    e = new PtrExp(e->loc, e);
+	    e = e->semantic(sc);
+	    return e;
+	}
 
 	if (ident == Id::typeinfo)
 	{
@@ -5440,7 +5440,7 @@ L1:
 	}
     }
     if (!s->isFuncDeclaration())	// because of overloading
- 	s->checkDeprecated(e->loc, sc);
+	s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
     v = s->isVarDeclaration();
     if (v && !v->isDataseg())

@@ -277,7 +277,7 @@ void StructDeclaration::semantic(Scope *sc)
     protection = sc->protection;
     storage_class |= sc->stc;
     if (sc->stc & STCdeprecated)
- 	isdeprecated = 1;
+	isdeprecated = 1;
     assert(!isAnonymous());
     if (sc->stc & STCabstract)
 	error("structs, unions cannot be abstract");

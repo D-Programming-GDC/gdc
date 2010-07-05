@@ -60,7 +60,7 @@ class TypeInfo_Ad : TypeInfo
 	for (size_t u = 0; u < len; u++)
 	{
 	    auto c = TypeInfo_d._equals(s1[u], s2[u]);
- 	    if (!c)
+	    if (!c)
 		return 0;
 	}
 	return 1;

@@ -635,7 +635,7 @@ Expression *Ushr(Type *type, Expression *e1, Expression *e2)
 }
 
 Expression *And(Type *type, Expression *e1, Expression *e2)
-{    
+{
     Expression *e;
     e = new IntegerExp(e1->loc, e1->toInteger() & e2->toInteger(), type);
     return e;
@@ -1557,7 +1557,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
 	if (type->toBasetype()->ty == Tsarray)
 	{
-	     e->type = new TypeSArray(e2->type, new IntegerExp(loc, es1->elements->dim, Type::tindex));
+	    e->type = new TypeSArray(e2->type, new IntegerExp(loc, es1->elements->dim, Type::tindex));
 	    e->type = e->type->semantic(loc, NULL);
 	}
 	else

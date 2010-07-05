@@ -429,13 +429,13 @@ void ScopeDsymbol::emitMemberComments(Scope *sc)
 	}
 	sc->pop();
 	if (buf->offset == offset2)
- 	{
- 	    /* Didn't write out any members, so back out last write
- 	     */
- 	    buf->offset = offset1;
- 	}
- 	else
-	buf->writestring(")\n");
+	{
+	    /* Didn't write out any members, so back out last write
+	     */
+	    buf->offset = offset1;
+	}
+	else
+	    buf->writestring(")\n");
     }
 }
 
@@ -548,17 +548,18 @@ void TemplateDeclaration::emitComment(Scope *sc)
 	{
 	    ss = onemember->isFuncDeclaration();
 	    if (ss)
-		{	hasmembers = 0;
- 		if (com != ss->comment)
- 		    com = Lexer::combineComments(com, ss->comment);
- 	    }
+	    {	hasmembers = 0;
+		if (com != ss->comment)
+		    com = Lexer::combineComments(com, ss->comment);
+	    }
 	    else
 		ss = this;
 	}
     }
+
     if (!com)
- 	return;
- 
+	return;
+
     OutBuffer *buf = sc->docbuf;
     DocComment *dc = DocComment::parse(sc, this, com);
     unsigned o;

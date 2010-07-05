@@ -1687,7 +1687,6 @@ Dsymbol *Parser::parseMixin()
     nextToken();
 
     return tm;
-
 }
 
 /******************************************

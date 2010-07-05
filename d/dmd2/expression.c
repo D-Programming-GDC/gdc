@@ -1291,11 +1291,11 @@ integer_t IntegerExp::toInteger()
 
 	    default:
 		/* This can happen if errors, such as
- 		 * the type is painted on like in fromConstInitializer().
- 		 */
- 		if (!global.errors)
- 		{   type->print();
-		assert(0);
+		 * the type is painted on like in fromConstInitializer().
+		 */
+		if (!global.errors)
+		{   type->print();
+		    assert(0);
 		}
 		break;
 	}
@@ -1448,17 +1448,17 @@ void IntegerExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 		goto L3;
 
 	    default:
-	    /* This can happen if errors, such as
- 		 * the type is painted on like in fromConstInitializer().
- 		 */
- 		if (!global.errors)
- 		{
+		/* This can happen if errors, such as
+		 * the type is painted on like in fromConstInitializer().
+		 */
+		if (!global.errors)
+		{
 #ifdef DEBUG
-		t->print();
+		    t->print();
 #endif
-		assert(0);
-	}
-	break;
+		    assert(0);
+		}
+		break;
 	}
     }
     else if (v & 0x8000000000000000LL)
@@ -4261,7 +4261,7 @@ Expression *TypeidExp::semantic(Scope *sc)
     typeidType = typeidType->semantic(loc, sc);
     e = typeidType->getTypeInfo(sc);
     if (e->loc.linnum == 0)
- 	e->loc = loc;		// so there's at least some line number info
+	e->loc = loc;		// so there's at least some line number info
     return e;
 }
 
@@ -5402,11 +5402,11 @@ Expression *DotVarExp::semantic(Scope *sc)
 	    e1 = getRightThis(loc, sc, ad, e1, var);
 	    if (!sc->noaccesscheck)
 		accessCheck(loc, sc, e1, var);
-		
-		VarDeclaration *v = var->isVarDeclaration();
- 	    Expression *e = expandVar(WANTvalue, v);
- 	    if (e)
- 		return e;
+
+	    VarDeclaration *v = var->isVarDeclaration();
+	    Expression *e = expandVar(WANTvalue, v);
+	    if (e)
+		return e;
 	}
     }
     //printf("-DotVarExp::semantic('%s')\n", toChars());
@@ -5997,17 +5997,17 @@ Lagain:
 	}	
 	if (f->needThis())
 	    ue->e1 = getRightThis(loc, sc, ad, ue->e1, f);
-	    
+
 	/* Cannot call public functions from inside invariant
- 	 * (because then the invariant would have infinite recursion)
- 	 */
- 	if (sc->func && sc->func->isInvariantDeclaration() &&
- 	    ue->e1->op == TOKthis &&
- 	    f->addPostInvariant()
- 	   )
- 	{
- 	    error("cannot call public/export function %s from invariant", f->toChars());
- 	}
+	 * (because then the invariant would have infinite recursion)
+	 */
+	if (sc->func && sc->func->isInvariantDeclaration() &&
+	    ue->e1->op == TOKthis &&
+	    f->addPostInvariant()
+	   )
+	{
+	    error("cannot call public/export function %s from invariant", f->toChars());
+	}
 
 	checkDeprecated(sc, f);
 	accessCheck(loc, sc, ue->e1, f);

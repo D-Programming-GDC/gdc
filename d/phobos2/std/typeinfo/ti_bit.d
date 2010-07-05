@@ -12,7 +12,7 @@ class TypeInfo_b : TypeInfo
 	return *cast(bit *)p;
     }
 
-    bool equals(void *p1, void *p2)
+    int equals(void *p1, void *p2)
     {
 	return *cast(bit *)p1 == *cast(bit *)p2;
     }

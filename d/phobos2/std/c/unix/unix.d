@@ -99,6 +99,14 @@ int sigsuspend(sigset_t*);
 Clong_t sysconf(int name);
 
 // version ( Unix_Pthread )...
+enum
+{
+    PTHREAD_MUTEX_TIMED_NP,
+    PTHREAD_MUTEX_RECURSIVE_NP,
+    PTHREAD_MUTEX_ERRORCHECK_NP,
+    PTHREAD_MUTEX_ADAPTIVE_NP
+}
+
 int pthread_attr_init(pthread_attr_t *);
 int pthread_attr_destroy(pthread_attr_t *);
 int pthread_attr_setdetachstate(pthread_attr_t *, int);
@@ -157,6 +165,8 @@ int pthread_mutexattr_init(pthread_mutexattr_t *);
 int pthread_mutexattr_destroy(pthread_mutexattr_t *);
 int pthread_mutexattr_getpshared(pthread_mutexattr_t *, int *);
 int pthread_mutexattr_setpshared(pthread_mutexattr_t *, int);
+int pthread_mutexattr_gettype(pthread_mutexattr_t*, int *);
+int pthread_mutexattr_settype(pthread_mutexattr_t*, int);
 
 int pthread_barrierattr_init(pthread_barrierattr_t*);
 int pthread_barrierattr_getpshared(pthread_barrierattr_t*, int*);
@@ -166,14 +176,6 @@ int pthread_barrierattr_setpshared(pthread_barrierattr_t*, int);
 int pthread_barrier_init(pthread_barrier_t*, pthread_barrierattr_t*, uint);
 int pthread_barrier_destroy(pthread_barrier_t*);
 int pthread_barrier_wait(pthread_barrier_t*);
-
-enum
-{
-  PTHREAD_MUTEX_TIMED_NP,
-  PTHREAD_MUTEX_RECURSIVE_NP,
-  PTHREAD_MUTEX_ERRORCHECK_NP,
-  PTHREAD_MUTEX_ADAPTIVE_NP
-};
 
 // version ( Unix_Sched )
 void sched_yield();

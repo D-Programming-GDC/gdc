@@ -410,7 +410,7 @@ Range overlap(Range)(Range r1, Range r2)
     return b < e ? range(b, e) : null;
 }
 
-unittest
+version(wyda) unittest
 {
     int[] a = [ 10, 11, 12, 13, 14 ];
     int[] b = a[1 .. 3];
@@ -716,7 +716,7 @@ unittest
 // Case-insensitive find of a string
     string[] s = [ "Hello", "world", "!" ];
     assert(find!("toupper(a) == toupper(b)")(s, "hello") == begin(s));
-    
+
     static bool f(string a, string b) { return toupper(a) == toupper(b); }
     assert(find!(f)(s, "hello") == begin(s));
 }
@@ -1097,14 +1097,13 @@ bool canFind(alias pred, Range)(Range haystack)
 /// Ditto
 bool canFindAmong(alias pred, Range1, Range2)(Range1 seq, Range2 choices)
 {
-    return findAmongSorted!(pred)(seq, choices) != end(seq);
+    return findAmong!(pred)(seq, choices) != end(seq);
 }
 
 /// Ditto
-bool canFindAmongSorted(string pred, Range1, Range2)(
-    Range1 seq, Range2 choices)
+bool canFindAmongSorted(alias pred, Range1, Range2)(Range1 seq, Range2 choices)
 {
-    return canFindAmongSorted!(pred)(seq, choices) != end(seq);
+    return findAmongSorted!(pred)(seq, choices) != end(seq);
 }
 
 // count
@@ -1998,8 +1997,8 @@ Range eliminate(alias pred = "a == b",
     bool comp(typeof(*It) a) { return !binaryFun!(pred)(a, v); }
     static void assignIterB(It a, It b) { *a = *b; }
     return range(begin(r), 
-                 partition!(comp,
-                            ss, assignIterB, Range)(r));
+            partition!(comp,
+                    ss, assignIterB, Range)(r));
 }
 
 unittest
@@ -2261,7 +2260,7 @@ unittest // partition
 //     return .partitionPivot!(binaryFun!(less), ss, iterSwap, Range, It)(r, m);
 // }
 
-// unittest
+// version (wyda) unittest
 // {
 //     auto a = [3, 3, 2];
 //     bool less(int a, int b) { return a < b; }
@@ -2337,7 +2336,7 @@ assert(v[n] == 9);
 BUGS:
 
 Stable topN has not been implemented yet.
-  */
+*/
 void topN(alias less = "a < b",
                 SwapStrategy ss = SwapStrategy.unstable,
                 alias iterSwap = .iterSwap, Range, It)(Range r, It nth)
@@ -3042,7 +3041,7 @@ unittest
 //         transform, binaryFun!(less), ss, iterSwap, Range)(r);
 // }
 
-// unittest
+// version (wyda) unittest
 // {
 //     string[] arr = [ "D", "ab", "c", "Ab", "C" ];
 //     auto index = schwartzMakeIndex!(toupper, "a < b",
@@ -3410,7 +3409,7 @@ unittest
 
 // Internal random array generators
 
-version (wyda) version(unittest)
+version(unittest)
 {
     private enum size_t maxArraySize = 50;
     private enum size_t minArraySize = maxArraySize - 1;

@@ -33,9 +33,9 @@ import std.typetuple;
 template ReturnType(alias dg)
 {
     static if (is(typeof(dg)))	// if dg is an expression
-  	alias ReturnType!(typeof(dg), void) ReturnType;
+	alias ReturnType!(typeof(dg), void) ReturnType;
     else			// dg is a type
- 	alias ReturnType!(dg, void) ReturnType;
+	alias ReturnType!(dg, void) ReturnType;
 }
 
 template ReturnType(dg, dummy = void)

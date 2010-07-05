@@ -34,7 +34,7 @@ in
 }
 body
 {
-    version (none)
+    version (D_InlineAsm_X86)
     {
         auto aptr = a.ptr;
 	auto aend = aptr + a.length;
@@ -205,7 +205,7 @@ in
 }
 body
 {
-    version (none)
+    version (D_InlineAsm_X86)
     {
         auto aptr = a.ptr;
 	auto aend = aptr + a.length;

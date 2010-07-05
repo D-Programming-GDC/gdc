@@ -420,7 +420,7 @@ extern (C)
 
     void* dlopen(in char* file, int mode);
     int   dlclose(void* handle);
-    void* dlsym(void* handle, char* name);
+    void* dlsym(void* handle, in char* name);
     char* dlerror();
 }
 

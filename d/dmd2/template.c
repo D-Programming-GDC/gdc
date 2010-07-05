@@ -1459,16 +1459,16 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 	{
 	    if (!sc)
 		goto Lnomatch;
-		
-		/* Need a loc to go with the semantic routine.
- 	     */
+
+	    /* Need a loc to go with the semantic routine.
+	     */
 	    Loc loc;
- 	    if (parameters->dim)
- 	    {
- 		TemplateParameter *tp = (TemplateParameter *)parameters->data[0];
- 		loc = tp->loc;
- 	    }
- 	    
+	    if (parameters->dim)
+	    {
+		TemplateParameter *tp = (TemplateParameter *)parameters->data[0];
+		loc = tp->loc;
+	    }
+
 	    /* BUG: what if tparam is a template instance, that
 	     * has as an argument another Tident?
 	     */
@@ -4212,7 +4212,9 @@ void TemplateMixin::semantic(Scope *sc)
 #if LOG
     printf("\tdo semantic\n");
 #endif
-    //util_progress(); //needed for GDC?
+#ifndef IN_GCC
+    util_progress();
+#endif
 
     Scope *scx = NULL;
     if (scope)
@@ -4326,11 +4328,11 @@ void TemplateMixin::semantic(Scope *sc)
 	TemplateMixin *tm = s->isTemplateMixin();
 	if (!tm || tempdecl != tm->tempdecl)
 	    continue;
-	    
+
 	/* Different argument list lengths happen with variadic args
- 	 */
- 	if (tiargs->dim != tm->tiargs->dim)
- 	    continue;
+	 */
+	if (tiargs->dim != tm->tiargs->dim)
+	    continue;
 
 	for (int i = 0; i < tiargs->dim; i++)
 	{   Object *o = (Object *)tiargs->data[i];

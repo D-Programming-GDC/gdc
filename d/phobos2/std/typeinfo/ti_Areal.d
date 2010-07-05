@@ -61,8 +61,8 @@ class TypeInfo_Ae : TypeInfo
 	for (size_t u = 0; u < len; u++)
 	{
 	    bool c = TypeInfo_e._equals(s1[u], s2[u]);
- 	    if (c == false)
- 		return false;
+	    if (c == false)
+		return false;
 	}
 	return 1;
     }
