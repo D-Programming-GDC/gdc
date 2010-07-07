@@ -240,11 +240,13 @@ Expression *BinExp::arrayOp(Scope *sc)
 	    "_arraySliceSliceMulass_w",
 	};
 
-	//Search for the library function
+	//Search for the library function using a linear search
 	int i = -1;
+	size_t namelen = strlen(name);
 	for( int ii = 0; ii < sizeof(libArrayopFuncs) / sizeof(char *); ii++)
 	{
-		if( strcmp( libArrayopFuncs[ii], name ) == 0 )
+		if( strlen(libArrayopFuncs[ii]) == namelen &&
+			strcmp(libArrayopFuncs[ii], name) == 0 )
 		{
 			i = 0;
 		}
