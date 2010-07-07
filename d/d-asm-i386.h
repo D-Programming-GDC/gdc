@@ -913,6 +913,7 @@ static AsmOpEnt opData[] = {
     { "pand",     Op_DstSrcMMX },
     { "pandn",    Op_DstSrcMMX },
     { "pavgb",    Op_DstSrcMMX },
+    { "pavgusb",  Op_DstSrcMMX }, // AMD 3dNow! 
     { "pavgw",    Op_DstSrcMMX },
     { "pcmpeqb",  Op_DstSrcMMX },
     { "pcmpeqd",  Op_DstSrcMMX },
@@ -921,6 +922,25 @@ static AsmOpEnt opData[] = {
     { "pcmpgtd",  Op_DstSrcMMX },
     { "pcmpgtw",  Op_DstSrcMMX },
     { "pextrw",   Op_DstSrcImmM }, // gpr32 dest
+    { "pf2id",    Op_DstSrcMMX }, // %% AMD 3dNow! opcodes
+    { "pfacc",    Op_DstSrcMMX },
+    { "pfadd",    Op_DstSrcMMX },
+    { "pfcmpeq",  Op_DstSrcMMX },
+    { "pfcmpge",  Op_DstSrcMMX },
+    { "pfcmpgt",  Op_DstSrcMMX },
+    { "pfmax",    Op_DstSrcMMX },
+    { "pfmin",    Op_DstSrcMMX },
+    { "pfmul",    Op_DstSrcMMX },
+    { "pfnacc",   Op_DstSrcMMX }, // 3dNow values are returned in MM0 register,
+    { "pfpnacc",  Op_DstSrcMMX }, // so should be correct to use Op_DstSrcMMX.
+    { "pfrcp",    Op_DstSrcMMX },
+    { "pfrcpit1", Op_DstSrcMMX },
+    { "pfrcpit2", Op_DstSrcMMX },
+    { "pfrsqit1", Op_DstSrcMMX },
+    { "pfrsqrt",  Op_DstSrcMMX },
+    { "pfsub",    Op_DstSrcMMX },
+    { "pfsubr",   Op_DstSrcMMX },
+    { "pi2fd",    Op_DstSrcMMX }, // %%
     { "pinsrw",   Op_DstSrcImmM }, // gpr32(16), mem16 src, sse too
     { "pmaddwd",  Op_DstSrcMMX },
     { "pmaxsw",   Op_DstSrcMMX },
@@ -928,6 +948,7 @@ static AsmOpEnt opData[] = {
     { "pminsw",   Op_DstSrcMMX },
     { "pminub",   Op_DstSrcMMX },
     { "pmovmskb", Op_DstSrcMMX },
+    { "pmulhrw",  Op_DstSrcMMX }, // AMD 3dNow! 
     { "pmulhuw",  Op_DstSrcMMX },
     { "pmulhw",   Op_DstSrcMMX },
     { "pmullw",   Op_DstSrcMMX },
@@ -965,6 +986,7 @@ static AsmOpEnt opData[] = {
     { "psubusb",  Op_DstSrcMMX },
     { "psubusw",  Op_DstSrcMMX },
     { "psubw",    Op_DstSrcMMX },
+    { "pswapd",   Op_DstSrcMMX }, // AMD 3dNow! 
     { "punpckhbw", Op_DstSrcMMX },
     { "punpckhdq", Op_DstSrcMMX },
     { "punpckhqdq",Op_DstSrcMMX },
