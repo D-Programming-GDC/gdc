@@ -24,8 +24,6 @@
 #include "module.h"
 #include "init.h"
 
-//extern int binary(const char *p , const char **tab, int high); //commented out for gdc
-
 /**************************************
  * Hash table of array op functions already generated or known about.
  */
@@ -59,7 +57,7 @@ Expression *BinExp::arrayOp(Scope *sc)
 
     /* Append deco of array element type
      */
-#if V2
+#if DMDV2
     buf.writestring(type->toBasetype()->nextOf()->toBasetype()->mutableOf()->deco);
 #else
     buf.writestring(type->toBasetype()->nextOf()->toBasetype()->deco);
@@ -242,8 +240,16 @@ Expression *BinExp::arrayOp(Scope *sc)
 	    "_arraySliceSliceMulass_w",
 	};
 
-	//int i = binary(name, libArrayopFuncs, sizeof(libArrayopFuncs) / sizeof(char *)); //commented out for gdc
-	int i;
+	//Search for the library function
+	int i = -1;
+	for( int ii = 0; ii < sizeof(libArrayopFuncs) / sizeof(char *); ii++)
+	{
+		if( strcmp( libArrayopFuncs[ii], name ) == 0 )
+		{
+			i = 0;
+		}
+	}
+	
 	if (i == -1)
 	{
 #ifdef DEBUG	// Make sure our array is alphabetized
@@ -307,7 +313,7 @@ Expression *BinExp::arrayOp(Scope *sc)
 	else
 	{   /* In library, refer to it.
 	     */
-	    fd = FuncDeclaration::genCfunc(type, name);
+	    fd = FuncDeclaration::genCfunc(type, name, type, type, type);
 	}
 	sv->ptrvalue = fd;	// cache symbol in hash table
     }
