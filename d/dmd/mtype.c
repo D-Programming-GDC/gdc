@@ -30,7 +30,10 @@
 #include <assert.h>
 #include <float.h>
 
+#if IN_GCC
 #include "gdc_alloca.h"
+#include "d-confdefs.h"
+#endif
 
 // TODO%% this undefines signbit and includes is the wrong complex.h anyway
 // -- not sure why this is needed, anyway
@@ -1072,7 +1075,7 @@ unsigned TypeBasic::alignsize()
 	    sz = REALALIGNSIZE;
 	    break;
 	    
-	#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
+#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
 	case Tint64:
 	case Tuns64:
 	case Tfloat64:
@@ -1081,7 +1084,7 @@ unsigned TypeBasic::alignsize()
 	case Tcomplex64:
 	    sz = 4;
 	    break;
-	#endif
+#endif
 
 	default:
 	    sz = size(0);

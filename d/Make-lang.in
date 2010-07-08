@@ -250,7 +250,7 @@ D_BORROWED_C_OBJS +=
 # The full path for -include ...total.h is only needed for g++ < 3.x
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
-d/%.dmd.o: $(srcdir)/$(D_dmd_srcdir)/%.c $(D_DMD_H)
+d/%.dmd.o: $(srcdir)/$(D_dmd_srcdir)/%.c $(D_DMD_H) d/d-confdefs.h
 	$(CXX) $(ALL_DMD_COMPILER_FLAGS) -include $(srcdir)/$(D_dmd_srcdir)/total.h -o d/$*.dmd.o -c $<
 
 # For generator programs, can't implicitly include "total.h" which includes "id.h"

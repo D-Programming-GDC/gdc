@@ -51,12 +51,12 @@ AggregateDeclaration::AggregateDeclaration(Loc loc, Identifier *id)
 
     stag = NULL;
     sinit = NULL;
-    #if DMDV2
+#if DMDV2
      dtor = NULL;
  
      ctor = NULL;
      defaultCtor = NULL;
- 	 #endif
+#endif
 }
 
 enum PROT AggregateDeclaration::prot()
@@ -149,7 +149,7 @@ void AggregateDeclaration::alignmember(
     //printf("salign = %d, size = %d, offset = %d\n",salign,size,offset);
     if (salign > 1)
     {
-    assert(size != 3);
+	assert(size != 3);
  	int sa = size;
  	if (sa == 0 || salign < sa)
  	    sa = salign;
@@ -171,12 +171,12 @@ void AggregateDeclaration::addField(Scope *sc, VarDeclaration *v)
     Type *t = v->type->toBasetype();
     if (t->ty == Tstruct /*&& isStructDeclaration()*/)
     {	TypeStruct *ts = (TypeStruct *)t;
-    #if DMDV2
+#if DMDV2
  	if (ts->sym == this)
  	{
  	    error("cannot have field %s with same struct type", v->toChars());
  	}
- 	#endif
+#endif
 
 	if (ts->sym->sizeok != 1)
 	{
@@ -216,11 +216,11 @@ StructDeclaration::StructDeclaration(Loc loc, Identifier *id)
     : AggregateDeclaration(loc, id)
 {
     zeroInit = 0;	// assume false until we do semantic processing
-    #if DMDV2
-     hasIdentityAssign = 0;
-     cpctor = NULL;
-     postblit = NULL;
- 	#endif
+#if DMDV2
+    hasIdentityAssign = 0;
+    cpctor = NULL;
+    postblit = NULL;
+#endif
 
     // For forward references
     type = new TypeStruct(this);
@@ -269,11 +269,11 @@ void StructDeclaration::semantic(Scope *sc)
 
     parent = sc->parent;
     type = type->semantic(loc, sc);
-    #if STRUCTTHISREF
-     handle = type;
- 	#else
-      handle = type->pointerTo();
- 	#endif
+#if STRUCTTHISREF
+    handle = type;
+#else
+    handle = type->pointerTo();
+#endif
     structalign = sc->structalign;
     protection = sc->protection;
     if (sc->stc & STCdeprecated)
@@ -281,12 +281,12 @@ void StructDeclaration::semantic(Scope *sc)
     assert(!isAnonymous());
     if (sc->stc & STCabstract)
 	error("structs, unions cannot be abstract");
-	#if DMDV2
-     if (storage_class & STCinvariant)
-         type = type->invariantOf();
-     else if (storage_class & STCconst)
-         type = type->constOf();
- 	#endif
+#if DMDV2
+    if (storage_class & STCinvariant)
+	type = type->invariantOf();
+    else if (storage_class & STCconst)
+	type = type->constOf();
+#endif
     if (attributes)
 	attributes->append(sc->attributes);
     else
@@ -384,12 +384,11 @@ void StructDeclaration::semantic(Scope *sc)
 
 	id = Id::cmp;
     }
-
 #if DMDV2
-     dtor = buildDtor(sc2);
-     postblit = buildPostBlit(sc2);
-     cpctor = buildCpCtor(sc2);
-     buildOpAssign(sc2);
+    dtor = buildDtor(sc2);
+    postblit = buildPostBlit(sc2);
+    cpctor = buildCpCtor(sc2);
+    buildOpAssign(sc2);
 #endif
 
     sc2->pop();
@@ -453,9 +452,9 @@ void StructDeclaration::semantic(Scope *sc)
 
     /* Look for special member functions.
      */
-     #if DMDV2
-     ctor =   (CtorDeclaration *)search(0, Id::ctor, 0);
- 	#endif
+#if DMDV2
+    ctor =   (CtorDeclaration *)search(0, Id::ctor, 0);
+#endif
     inv =    (InvariantDeclaration *)search(0, Id::classInvariant, 0);
     aggNew =       (NewDeclaration *)search(0, Id::classNew,       0);
     aggDelete = (DeleteDeclaration *)search(0, Id::classDelete,    0);

@@ -75,3 +75,11 @@ fi
 if test -n "$d_os_versym"; then
     echo "#define D_OS_VERSYM \"$d_os_versym\""
 fi
+
+case "$d_os_versym" in
+# What about aix, bsd and sysv? 
+darwin)  echo "#define TARGET_OSX     1" ;;
+freebsd) echo "#define TARGET_FREEBSD 1" ;;
+linux)   echo "#define TARGET_LINUX   1" ;;
+solaris) echo "#define TARGET_SOLARIS 1" ;;
+esac
