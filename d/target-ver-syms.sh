@@ -76,6 +76,7 @@ if test -n "$d_os_versym"; then
     echo "#define D_OS_VERSYM \"$d_os_versym\""
 fi
 
+# In DMD, this is usually defined in the target's Makefile.
 case "$d_os_versym" in
 # What about aix, bsd and sysv? 
 darwin)  echo "#define TARGET_OSX     1" ;;

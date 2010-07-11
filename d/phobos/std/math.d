@@ -1027,7 +1027,7 @@ creal expi(real y)
     version(GCC_ExtAsm_X86)
     {
 	real re = void, im = void;
-	asm { "fsincos" : "=&t" im , "=u" re : "0" y; }
+	asm { "fsincos" : "=&t" re , "=u" im : "0" y; }
 	return re + im * 1i;
     }
     else version(D_InlineAsm_X86)
