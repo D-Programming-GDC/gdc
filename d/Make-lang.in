@@ -216,9 +216,6 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o d/d-objfile.gl
 ifeq ($(D_LANGUAGE_VERSION),2)
 D_GLUE_OBJS += d/d-cppmngl.glue.o
 endif
-ifeq ($(D_LANGUAGE_VERSION),1)
-D_GLUE_OBJS += d/d-backendfunctions.o #fix
-endif
 
 ifdef D_is_apple_ver
  ifeq ($(D_gcc_main_ver),4.0)

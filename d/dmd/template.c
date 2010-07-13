@@ -4348,7 +4348,9 @@ void TemplateMixin::semantic(Scope *sc)
 #if LOG
     printf("\tdo semantic\n");
 #endif
-	//util_progress(); //commented out for GDC
+#ifndef IN_GCC
+    util_progress();
+#endif
 
     Scope *scx = NULL;
     if (scope)
