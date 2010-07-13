@@ -385,8 +385,10 @@ dt_t *ArrayInitializer::toDt()
 	    dt_t * cdt;
 	    cdt = NULL;
 	    if (tb->ty == Tarray)
+	    {
 		dtcontainer(& cdt, type, d);
-	    d = cdt;
+		d = cdt;
+	    }
 #endif
 	    break;
 
