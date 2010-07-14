@@ -576,7 +576,6 @@ else
 
 private extern (C) void* _d_gcc_query_stack_origin();
 
-
 class ThreadError : Error
 {
     this(string s)
@@ -1074,6 +1073,7 @@ class Thread
 	    if (result)
 		goto Lfail;
 	    sigact.sa_handler = &pauseHandler;
+	    sigact.sa_flags = SA_RESTART;
 	    result = sigaction(SIGUSR1, &sigact, null);
 	    if (result)
 		goto Lfail;

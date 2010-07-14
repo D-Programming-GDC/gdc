@@ -303,6 +303,11 @@ void ClassDeclaration::toObjFile(int multiobj)
     if (!members)
 	return;
 
+    if (multiobj)
+    {	obj_append(this);
+	return;
+    }
+
     if (global.params.symdebug)
 	toDebug();
 
@@ -993,9 +998,13 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 /* ================================================================== */
 
 void StructDeclaration::toObjFile(int multiobj)
-{   unsigned i;
-
+{
     //printf("StructDeclaration::toObjFile('%s')\n", toChars());
+
+    if (multiobj)
+    {	obj_append(this);
+	return;
+    }
 
     // Anonymous structs/unions only exist as part of others,
     // do not output forward referenced structs's
@@ -1047,7 +1056,7 @@ void StructDeclaration::toObjFile(int multiobj)
 	}
 
 	// Put out the members
-	for (i = 0; i < members->dim; i++)
+	for (unsigned i = 0; i < members->dim; i++)
 	{
 	    Dsymbol *member;
 

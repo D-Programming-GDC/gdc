@@ -31,7 +31,7 @@
 #include "id.h"
 #include "import.h"
 #include "template.h"
-#include "rmem.h" //commented out for gdc??
+#include "rmem.h"
 
 #ifndef IN_GCC
 #include "cc.h"

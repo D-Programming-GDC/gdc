@@ -996,13 +996,17 @@ d_parse_file (int /*set_yydebug*/)
     {
 	m = (Module *)modules.data[i];
 	aw->addFile(m->srcfile);
+    }
+    aw->start();
+    for (i = 0; i < modules.dim; i++)
+    {
 	if (aw->read(i))
 	{
 	    error("cannot read file %s", m->srcfile->name->toChars());
 	    goto had_errors;
 	}
     }
-    aw->start();
+    AsyncRead::dispose(aw);
 #else
     for (i = 0; i < modules.dim; i++)
     {
@@ -1177,10 +1181,6 @@ d_parse_file (int /*set_yydebug*/)
  had_errors:
     // Add DMD error count to GCC error count to to exit with error status
     errorcount += global.errors;
-
-#if ! V2
-    AsyncRead::dispose(aw);
-#endif
 
     g.ofile->finish();
 

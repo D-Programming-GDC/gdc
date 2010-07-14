@@ -239,7 +239,8 @@ TI = ti_AC.o ti_Ag.o ti_Aint.o ti_Along.o ti_Ashort.o \
 
 MAIN_OBJS = std/asserterror.o std/hiddenfunc.o internal/switch.o gcstats.o \
 	internal/arrayassign.o internal/aaA.o internal/adi.o internal/aApply.o internal/aApplyR.o \
-	internal/arraydouble.o internal/arrayfloat.o \
+	internal/arraydouble.o internal/arrayfloat.o internal/arrayreal.d \
+	internal/arraybyte.o internal/arrayshort.o internal/arrayint.o \
 	std/outofmemory.o std/compiler.o std/system.o std/moduleinit.o std/md5.o std/base64.o \
 	internal/cast.o std/string.o internal/memset.o std/math.o \
 	std/outbuffer.o std/ctype.o std/regexp.o std/random.o \

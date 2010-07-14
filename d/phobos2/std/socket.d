@@ -61,6 +61,7 @@ else
 version(Win32)
 {
 
+	pragma (lib, "ws2_32.lib");
 	pragma (lib, "wsock32.lib");
 
 	private import std.c.windows.windows, std.c.windows.winsock;
@@ -536,7 +537,8 @@ class InternetHost
 unittest
 {
 	InternetHost ih = new InternetHost;
-	assert(ih.getHostByName("www.digitalmars.com"));
+	if (!ih.getHostByName("www.digitalmars.com"))
+	    return;		// don't fail if not connected to internet
 	printf("addrList.length = %d\n", ih.addrList.length);
 	assert(ih.addrList.length);
 	InternetAddress ia = new InternetAddress(ih.addrList[0], InternetAddress.PORT_ANY);

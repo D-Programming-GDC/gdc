@@ -1,3 +1,18 @@
+2010-07-14  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	Merge with DMD 2.018
+
+	* d-lang.cc: Added support for AsyncRead in D1.
+
+	* dmd/constfold.c, dmd2/constfold.c: Fixed lost precision when casting
+	from large floats to integral types.
+
+	* dmd/todt.c, dmd2/todt.c: Fixed initialiased pointer array values
+	being reset to null during compilation.
+
+	* Make-lang.in, d-backendfunctions.c, dmd/template.c: Removed
+	backendfunctions.c from Makefile.
+
 2010-07-11  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-asm-i386.h: AMD Opcodes Supported.

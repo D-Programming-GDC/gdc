@@ -210,8 +210,8 @@ class Exception : Object
     this(string msg);
     this(string msg, Error next);
 
-    void print();
-    string toString();
+    override void print();
+    override string toString();
 }
 
 // Non-recoverable errors
