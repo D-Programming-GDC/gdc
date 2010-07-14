@@ -27,6 +27,10 @@
 #include "cond.h"
 #include "mars.h"
 
+#if ! V2
+#include "async.h"
+#endif
+
 #include <assert.h>
 #include "d-gcc-includes.h"
 #include "options.h"
@@ -898,7 +902,10 @@ d_parse_file (int /*set_yydebug*/)
     an_output_module = NULL;
     Array modules; // vs. outmodules... = [an_output_module] or modules
     modules.reserve(num_in_fnames);
-    
+#if ! V2
+    AsyncRead *aw;
+#endif
+
     // %% FIX
     if ( ! main_input_filename ) {
 	::error("input file name required; cannot use stdin");
@@ -982,7 +989,28 @@ d_parse_file (int /*set_yydebug*/)
 
     //global.params.verbose = 1;
     
-    // Read files, parse them
+    // Read files
+#if ! V2
+    aw = AsyncRead::create(modules.dim);
+    for (i = 0; i < modules.dim; i++)
+    {
+	m = (Module *)modules.data[i];
+	aw->addFile(m->srcfile);
+	if (aw->read(i))
+	{
+	    error("cannot read file %s", m->srcfile->name->toChars());
+	    goto had_errors;
+	}
+    }
+    aw->start();
+#else
+    for (i = 0; i < modules.dim; i++)
+    {
+	m = (Module *)modules.data[i];
+	m->read(0);
+    }
+#endif
+    // Parse files
     for (i = 0; i < modules.dim; i++)
     {
 	m = (Module *)modules.data[i];
@@ -992,7 +1020,6 @@ d_parse_file (int /*set_yydebug*/)
 	    Module::rootModule = m;
 	m->importedFrom = m;
 	//m->deleteObjFile(); // %% driver does this
-	m->read(0);
 	m->parse(global.params.dump_source);
 	d_gcc_magic_module(m);
 	if (m->isDocFile)
@@ -1150,6 +1177,10 @@ d_parse_file (int /*set_yydebug*/)
  had_errors:
     // Add DMD error count to GCC error count to to exit with error status
     errorcount += global.errors;
+
+#if ! V2
+    AsyncRead::dispose(aw);
+#endif
 
     g.ofile->finish();
 
