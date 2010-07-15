@@ -61,7 +61,7 @@ std/boxer.t.o: std/boxer.o
 	cp $< $@
 
 %.t.o : %.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fno-release -funittest -I $(srcdir) -I $(srcdir)/internal/gc -I ./$(host_alias) -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -fno-release -funittest -fversion=Unittest -I $(srcdir) -I $(srcdir)/internal/gc -I ./$(host_alias) -c $<
 
 internal/gc/gcx.t.o: $(D_PREREQ_SRCS) $(srcdir)/internal/gc/gcx.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -funittest -I $(srcdir) -I $(srcdir)/internal/gc -I ./$(host_alias) -c $<
