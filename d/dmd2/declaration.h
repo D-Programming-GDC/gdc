@@ -572,7 +572,7 @@ struct FuncDeclaration : Declaration
     FuncDeclaration *isUnique();
     int needsClosure();
 
-    static FuncDeclaration *genCfunc(Type *treturn, char *name,
+    static FuncDeclaration *genCfunc(Type *treturn, const char *name,
 	Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);
     static FuncDeclaration *genCfunc(Type *treturn, Identifier *id,
 	Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);

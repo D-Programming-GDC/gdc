@@ -1194,3 +1194,45 @@ else
 {
     static assert(0);
 }
+
+unittest
+{
+    printf("Start thread test\n");
+    class Foo
+    {
+	int _i, _j;
+	synchronized void Inc()
+	{
+	    verify();
+	    ++_i;
+	    ++_j;
+	    verify();
+	}
+	synchronized void verify()
+	{
+	    assert(_i == _j);
+	}
+    }
+
+    auto foo = new Foo;
+
+    int test()
+    {
+	assert(Thread.getThis.isSelf);
+	Thread.getThis.yield;
+	for (int i = 0; i < 1000; ++i)
+	    foo.Inc;
+	return 0;
+    }
+    Thread[100] threads;
+    for (int i = 0; i < 100; ++i)
+	threads[i] = new Thread(&test);
+    for (int i = 0; i < 100; ++i)
+	threads[i].start;
+    for (int i = 0; i < 100; ++i)
+	threads[i].wait;
+    for (int i = 0; i < 100; ++i)
+	assert(threads[i].getState == Thread.TS.FINISHED);
+    printf("Thread test successful\n");
+}
+

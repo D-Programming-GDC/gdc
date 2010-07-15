@@ -258,7 +258,7 @@ MAIN_OBJS = std/asserterror.o std/hiddenfunc.o internal/switch.o gcstats.o \
 	std/algorithm.o std/bitmanip.o std/contracts.o std/functional.o \
 	std/getopt.o std/numeric.o std/slist.o std/typecons.o std/variant.o \
 	std/cover.o std/complex.o std/encoding.o std/iterator.o std/xml.o \
-	std/bigint.o
+	std/atomics.o std/bigint.o
 
 
 # This should not be linked into a shared library.

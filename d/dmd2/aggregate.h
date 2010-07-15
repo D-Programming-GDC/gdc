@@ -63,6 +63,11 @@ struct AggregateDeclaration : ScopeDsymbol
     NewDeclaration *aggNew;		// allocator
     DeleteDeclaration *aggDelete;	// deallocator
 
+#if V2
+    CtorDeclaration *ctor;
+    CtorDeclaration *defaultCtor;	// default constructor
+#endif
+
     FuncDeclarations dtors;	// Array of destructors
     FuncDeclaration *dtor;	// aggregate destructor
 
@@ -181,8 +186,6 @@ struct ClassDeclaration : AggregateDeclaration
     static ClassDeclaration *classinfo;
 
     ClassDeclaration *baseClass;	// NULL only if this is Object
-    CtorDeclaration *ctor;
-    CtorDeclaration *defaultCtor;	// default constructor
     FuncDeclaration *staticCtor;
     FuncDeclaration *staticDtor;
     Array vtbl;				// Array of FuncDeclaration's making up the vtbl[]

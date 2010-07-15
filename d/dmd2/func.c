@@ -225,6 +225,11 @@ void FuncDeclaration::semantic(Scope *sc)
     sd = parent->isStructDeclaration();
     if (sd)
     {
+	if (isCtorDeclaration())
+	{
+	    return;
+	}
+#if 0
 	// Verify no constructors, destructors, etc.
 	if (isCtorDeclaration()
 	    //||isDtorDeclaration()
@@ -235,7 +240,6 @@ void FuncDeclaration::semantic(Scope *sc)
 	    error("special member functions not allowed for %ss", sd->kind());
 	}
 
-#if 0
 	if (!sd->inv)
 	    sd->inv = isInvariantDeclaration();
 
@@ -1102,7 +1106,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 			    e = new AssertExp(
 				  endloc,
 				  new IntegerExp(0),
-				  new StringExp(loc, "missing return expression")
+				  new StringExp(loc, (char *)"missing return expression")
 				);
 			}
 			else
@@ -1219,7 +1223,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 		{   // Call invariant virtually
 		    ThisExp *v = new ThisExp(0);
 		    v->type = vthis->type;
-		    Expression *se = new StringExp(0, "null this");
+		    Expression *se = new StringExp(0, (char *)"null this");
 		    se = se->semantic(sc);
 		    se->type = Type::tchar->arrayOf();
 		    e = new AssertExp(loc, v, se);
@@ -2098,7 +2102,7 @@ int FuncDeclaration::addPostInvariant()
  * Generate a FuncDeclaration for a runtime library function.
  */
 
-FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, char *name,
+FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, const char *name,
     Type *t1, Type *t2, Type *t3)
 {
     return genCfunc(treturn, Lexer::idPool(name), t1, t2, t3);
@@ -2232,7 +2236,7 @@ FuncLiteralDeclaration::FuncLiteralDeclaration(Loc loc, Loc endloc, Type *type,
 	enum TOK tok, ForeachStatement *fes)
     : FuncDeclaration(loc, endloc, NULL, STCundefined, type)
 {
-    char *id;
+    const char *id;
 
     if (fes)
 	id = "__foreachbody";
@@ -2320,7 +2324,7 @@ Dsymbol *CtorDeclaration::syntaxCopy(Dsymbol *s)
 
 void CtorDeclaration::semantic(Scope *sc)
 {
-    ClassDeclaration *cd;
+    AggregateDeclaration *ad;
     Type *tret;
 
     //printf("CtorDeclaration::semantic()\n");
@@ -2332,14 +2336,16 @@ void CtorDeclaration::semantic(Scope *sc)
 
     parent = sc->parent;
     Dsymbol *parent = toParent();
-    cd = parent->isClassDeclaration();
-    if (!cd)
+    ad = parent->isAggregateDeclaration();
+    if (!ad || parent->isUnionDeclaration())
     {
-	error("constructors are only for class definitions");
+	error("constructors are only for class or struct definitions");
 	tret = Type::tvoid;
     }
     else
-	tret = cd->type; //->referenceTo();
+    {	tret = ad->handle;
+	assert(tret);
+    }
     type = new TypeFunction(arguments, tret, varargs, LINKd);
     if (!originalType)
     	originalType = type;
@@ -2352,11 +2358,9 @@ void CtorDeclaration::semantic(Scope *sc)
     //	return this;
     // to the function body
     if (fbody)
-    {	Expression *e;
-	Statement *s;
-
-	e = new ThisExp(0);
-	s = new ReturnStatement(0, e);
+    {
+	Expression *e = new ThisExp(0);
+	Statement *s = new ReturnStatement(0, e);
 	fbody = new CompoundStatement(0, fbody, s);
     }
 
@@ -2365,8 +2369,12 @@ void CtorDeclaration::semantic(Scope *sc)
     sc->pop();
 
     // See if it's the default constructor
-    if (cd && varargs == 0 && Argument::dim(arguments) == 0)
-	cd->defaultCtor = this;
+    if (ad && varargs == 0 && Argument::dim(arguments) == 0)
+    {	if (ad->isStructDeclaration())
+	    error("default constructor not allowed for structs");
+	else
+	    ad->defaultCtor = this;
+    }
 }
 
 const char *CtorDeclaration::kind()
@@ -2376,7 +2384,7 @@ const char *CtorDeclaration::kind()
 
 char *CtorDeclaration::toChars()
 {
-    return "this";
+    return (char *)"this";
 }
 
 int CtorDeclaration::isVirtual()
@@ -2690,28 +2698,28 @@ void StaticDtorDeclaration::semantic(Scope *sc)
      */
     if (inTemplateInstance())
     {
-     	/* Add this prefix to the function:
-     	 *	static int gate;
-     	 *	if (--gate != 0) return;
-     	 * Increment gate during constructor execution.
-     	 * Note that this is not thread safe; should not have threads
-     	 * during static destruction.
-     	 */
-     	Identifier *id = Lexer::idPool("__gate");
-     	VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
-     	v->storage_class = STCstatic;
-     	Statements *sa = new Statements();
-     	Statement *s = new DeclarationStatement(0, v);
-     	sa->push(s);
-     	Expression *e = new IdentifierExp(0, id);
-     	e = new AddAssignExp(0, e, new IntegerExp(-1));
-     	e = new EqualExp(TOKnotequal, 0, e, new IntegerExp(1));
-     	s = new IfStatement(0, NULL, e, new ReturnStatement(0, NULL), NULL);
-     	sa->push(s);
-     	if (fbody)
-     	    sa->push(fbody);
-     	fbody = new CompoundStatement(0, sa);
-     	vgate = v;
+	/* Add this prefix to the function:
+	 *	static int gate;
+	 *	if (--gate != 0) return;
+	 * Increment gate during constructor execution.
+	 * Note that this is not thread safe; should not have threads
+	 * during static destruction.
+	 */
+	Identifier *id = Lexer::idPool("__gate");
+	VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
+	v->storage_class = STCstatic;
+	Statements *sa = new Statements();
+	Statement *s = new DeclarationStatement(0, v);
+	sa->push(s);
+	Expression *e = new IdentifierExp(0, id);
+	e = new AddAssignExp(0, e, new IntegerExp(-1));
+	e = new EqualExp(TOKnotequal, 0, e, new IntegerExp(0));
+	s = new IfStatement(0, NULL, e, new ReturnStatement(0, NULL), NULL);
+	sa->push(s);
+	if (fbody)
+	    sa->push(fbody);
+	fbody = new CompoundStatement(0, sa);
+	vgate = v;
     }
 
     FuncDeclaration::semantic(sc);

@@ -586,7 +586,7 @@ void Type::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
 void Type::toCBuffer3(OutBuffer *buf, HdrGenState *hgs, int mod)
 {
     if (mod != this->mod)
-    {	char *p;
+    {	const char *p;
 
 	switch (this->mod)
 	{
@@ -1068,7 +1068,7 @@ MATCH TypeNext::constConv(Type *to)
 
 TypeBasic::TypeBasic(TY ty)
 	: Type(ty)
-{   char *d;
+{   const char *d;
     unsigned flags;
 
 #define TFLAGSintegral	1
@@ -1823,8 +1823,8 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	Expression *ec;
 	FuncDeclaration *fd;
 	Expressions *arguments;
-	char *nm;
-	static char *name[2] = { "_adReverseChar", "_adReverseWchar" };
+	const char *nm;
+	static const char *name[2] = { "_adReverseChar", "_adReverseWchar" };
 
 	nm = name[n->ty == Twchar];
 	fd = FuncDeclaration::genCfunc(next->arrayOf(), nm, Type::tvoid->arrayOf());
@@ -1840,8 +1840,8 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	Expression *ec;
 	FuncDeclaration *fd;
 	Expressions *arguments;
-	char *nm;
-	static char *name[2] = { "_adSortChar", "_adSortWchar" };
+	const char *nm;
+	static const char *name[2] = { "_adSortChar", "_adSortWchar" };
 
 	nm = name[n->ty == Twchar];
 	fd = FuncDeclaration::genCfunc(next->arrayOf(), nm, Type::tvoid->arrayOf());
@@ -2096,7 +2096,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
 	dim = semanticLength(sc, tbn, dim);
 
 	dim = dim->optimize(WANTvalue | WANTinterpret);
-	if (sc->parameterSpecialization && dim->op == TOKvar &&
+	if (sc && sc->parameterSpecialization && dim->op == TOKvar &&
 	    ((VarExp *)dim)->var->storage_class & STCtemplateparameter)
 	{
 	    /* It could be a template parameter N which has no value yet:
@@ -3166,7 +3166,7 @@ void TypeFunction::toDecoBuffer(OutBuffer *buf, int flag)
 void TypeFunction::toCBuffer(OutBuffer *buf, Identifier *ident, HdrGenState *hgs)
 {
     //printf("TypeFunction::toCBuffer() this = %p %s\n", this, toChars());
-    char *p = NULL;
+    const char *p = NULL;
 
     if (inuse)
     {	inuse = 2;		// flag error to caller
@@ -3224,7 +3224,7 @@ void TypeFunction::toCBuffer(OutBuffer *buf, Identifier *ident, HdrGenState *hgs
 void TypeFunction::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
 {
     //printf("TypeFunction::toCBuffer2() this = %p %s\n", this, toChars());
-    char *p = NULL;
+    const char *p = NULL;
 
     if (inuse)
     {	inuse = 2;		// flag error to caller
@@ -4448,9 +4448,8 @@ Type *TypeEnum::toBasetype()
 }
 
 void TypeEnum::toDecoBuffer(OutBuffer *buf, int flag)
-{   char *name;
-
-    name = sym->mangle();
+{
+    const char *name = sym->mangle();
     Type::toDecoBuffer(buf, flag);
     buf->printf("%s", name);
 }
@@ -4635,10 +4634,8 @@ Type *TypeTypedef::toHeadMutable()
 
 void TypeTypedef::toDecoBuffer(OutBuffer *buf, int flag)
 {
-    char *name;
-
     Type::toDecoBuffer(buf, flag);
-    name = sym->mangle();
+    const char *name = sym->mangle();
     buf->printf("%s", name);
 }
 
@@ -4879,9 +4876,7 @@ Dsymbol *TypeStruct::toDsymbol(Scope *sc)
 
 void TypeStruct::toDecoBuffer(OutBuffer *buf, int flag)
 {
-    char *name;
-
-    name = sym->mangle();
+    const char *name = sym->mangle();
     //printf("TypeStruct::toDecoBuffer('%s') = '%s'\n", toChars(), name);
     Type::toDecoBuffer(buf, flag);
     buf->printf("%s", name);
@@ -5260,9 +5255,7 @@ Dsymbol *TypeClass::toDsymbol(Scope *sc)
 
 void TypeClass::toDecoBuffer(OutBuffer *buf, int flag)
 {
-    char *name;
-
-    name = sym->mangle();
+    const char *name = sym->mangle();
     //printf("TypeClass::toDecoBuffer('%s' flag=%d mod=%x) = '%s'\n", toChars(), flag, mod, name);
     Type::toDecoBuffer(buf, flag);
     buf->printf("%s", name);

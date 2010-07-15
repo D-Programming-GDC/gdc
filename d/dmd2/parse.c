@@ -2622,6 +2622,7 @@ Initializer *Parser::parseInitializer()
     Loc loc = this->loc;
     Token *t;
     int braces;
+    int brackets;
 
     switch (token.value)
     {
@@ -2709,6 +2710,39 @@ Initializer *Parser::parseInitializer()
 	    return is;
 
 	case TOKlbracket:
+	    /* Scan ahead to see if it is an array initializer or
+	     * an expression.
+	     * If it ends with a ';' ',' or '}', it is an array initializer.
+	     */
+	    brackets = 1;
+	    for (t = peek(&token); 1; t = peek(t))
+	    {
+		switch (t->value)
+		{
+		    case TOKlbracket:
+			brackets++;
+			continue;
+
+		    case TOKrbracket:
+			if (--brackets == 0)
+			{   t = peek(t);
+			    if (t->value != TOKsemicolon &&
+				t->value != TOKcomma &&
+				t->value != TOKrcurly)
+				goto Lexpression;
+			    break;
+			}
+			continue;
+
+		    case TOKeof:
+			break;
+
+		    default:
+			continue;
+		}
+		break;
+	    }
+
 	    ia = new ArrayInitializer(loc);
 	    nextToken();
 	    comma = 0;
@@ -3805,7 +3839,7 @@ void Parser::check(Loc loc, enum TOK value)
     nextToken();
 }
 
-void Parser::check(enum TOK value, char *string)
+void Parser::check(enum TOK value, const char *string)
 {
     if (token.value != value)
 	error("found '%s' when expecting '%s' following '%s'",
@@ -4704,7 +4738,7 @@ Expression *Parser::parsePrimaryExp()
 	    nextToken();
 	    if (token.value != TOKrbracket)
 	    {
-		while (1)
+		while (token.value != TOKeof)
 		{
 		    Expression *e = parseAssignExp();
 		    if (token.value == TOKcolon && (keys || values->dim == 0))
@@ -5009,10 +5043,13 @@ Expression *Parser::parseUnaryExp()
 		tk = peek(tk);		// skip over right parenthesis
 		switch (tk->value)
 		{
+		    case TOKnot:
+			tk = peek(tk);
+			if (tk->value == TOKis)	// !is
+			    break;
 		    case TOKdot:
 		    case TOKplusplus:
 		    case TOKminusminus:
-		    case TOKnot:
 		    case TOKdelete:
 		    case TOKnew:
 		    case TOKlparen:
@@ -5610,6 +5647,7 @@ Expression *Parser::parseNewExp(Expression *thisexp)
 void Parser::addComment(Dsymbol *s, unsigned char *blockComment)
 {
     s->addComment(combineComments(blockComment, token.lineComment));
+    token.lineComment = NULL;
 }
 
 

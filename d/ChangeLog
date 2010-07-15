@@ -1,3 +1,12 @@
+2010-07-16  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	Merge with DMD 2.019
+
+	* d-decls.cc: Merge changes from dmd2/tocsym.c
+
+	* phobos/Makefile.am, phobos/Makefile.in, phobos2/Makefile.am,
+	phobos2/Makefile.in: Fix build for check-target-libphobos tests.
+
 2010-07-14  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	Merge with DMD 2.018

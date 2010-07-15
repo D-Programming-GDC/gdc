@@ -53,6 +53,9 @@ AggregateDeclaration::AggregateDeclaration(Loc loc, Identifier *id)
     sinit = NULL;
     scope = NULL;
     dtor = NULL;
+
+    ctor = NULL;
+    defaultCtor = NULL;
 }
 
 enum PROT AggregateDeclaration::prot()
@@ -449,6 +452,7 @@ void StructDeclaration::semantic(Scope *sc)
 
     /* Look for special member functions.
      */
+    ctor =   (CtorDeclaration *)search(0, Id::ctor, 0);
     inv =    (InvariantDeclaration *)search(0, Id::classInvariant, 0);
     aggNew =       (NewDeclaration *)search(0, Id::classNew,       0);
     aggDelete = (DeleteDeclaration *)search(0, Id::classDelete,    0);

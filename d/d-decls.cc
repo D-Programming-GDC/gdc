@@ -1003,11 +1003,7 @@ Symbol *Module::toModuleArray()
  *		1	add value signature
  */
 
-#if V1
 Symbol *TypeAArray::aaGetSymbol(const char *func, int flags)
-#else
-Symbol *TypeAArray::aaGetSymbol(char *func, int flags)
-#endif
 {
     // This is not used in GCC (yet?)
     return 0;

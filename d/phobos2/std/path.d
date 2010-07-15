@@ -387,7 +387,10 @@ string dirname(string fullname)
                 break;
             if (fullname[i - 1] == sep[0] || fullname[i - 1] == altsep[0])
             {
-                i--;
+                // Leave separator when it's the starting character (current root)
+		// or when it's preceded by ':' (absolute root)
+                if (i != 1 && fullname[i - 2] != ':')
+                    i--;
                 break;
             }
         }
@@ -411,6 +414,13 @@ unittest
     string filename = "foo/bar";
     auto d = getDirName(filename);
     assert(d == "foo");
+
+    version (Win32)
+    {
+	assert(dirname(r"\path\to\file") == r"\path\to");
+	assert(dirname(r"\foo") == r"\");
+	assert(dirname(r"c:\foo") == r"c:\");
+    }
 }
 
 /********************************

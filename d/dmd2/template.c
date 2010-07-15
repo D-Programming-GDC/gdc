@@ -3955,15 +3955,15 @@ Identifier *TemplateInstance::genIdent()
  	    if (v && v->storage_class & STCmanifest)
  	    {	ExpInitializer *ei = v->init->isExpInitializer();
  		if (ei)
-  	    {
+		{
  		    ea = ei->exp;
  		    goto Lea;
  		}
  	    }
 #endif
-		char *p = sa->mangle();
-		buf.printf("%"PRIuSIZE"%s", strlen(p), p);
-	    }
+	    const char *p = sa->mangle();
+	    buf.printf("%"PRIuSIZE"%s", strlen(p), p);
+	}
 	else if (va)
 	{
 	    assert(i + 1 == args->dim);		// must be last one

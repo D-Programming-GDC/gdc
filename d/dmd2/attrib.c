@@ -423,7 +423,7 @@ void LinkDeclaration::semantic3(Scope *sc)
 }
 
 void LinkDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
-{   char *p;
+{   const char *p;
 
     switch (linkage)
     {
@@ -444,7 +444,7 @@ void LinkDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 char *LinkDeclaration::toChars()
 {
-    return "extern ()";
+    return (char *)"extern ()";
 }
 
 /********************************* ProtDeclaration ****************************/
@@ -489,7 +489,7 @@ void ProtDeclaration::semantic(Scope *sc)
 }
 
 void ProtDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
-{   char *p;
+{   const char *p;
 
     switch (protection)
     {
@@ -1214,7 +1214,7 @@ Dsymbol *StaticIfDeclaration::syntaxCopy(Dsymbol *s)
 
 int StaticIfDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
-	//printf("StaticIfDeclaration::addMember() '%s'\n",toChars());
+    //printf("StaticIfDeclaration::addMember() '%s'\n",toChars());
     /* This is deferred until semantic(), so that
      * expressions in the condition can refer to declarations
      * in the same scope, such as:
@@ -1285,14 +1285,14 @@ Dsymbol *CompileDeclaration::syntaxCopy(Dsymbol *s)
 
 int CompileDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
-	//printf("CompileDeclaration::addMember(sc = %p)\n", sc);
-	this->sd = sd;
-	if (memnum == 0)
-	{	/* No members yet, so parse the mixin now */
-	 	compileIt(sc);
- 		memnum |= AttribDeclaration::addMember(sc, sd, memnum);
-		compiled = 1;
-     }
+    //printf("CompileDeclaration::addMember(sc = %p, memnum = %d)\n", sc, memnum);
+    this->sd = sd;
+    if (memnum == 0)
+    {	/* No members yet, so parse the mixin now */
+	compileIt(sc);
+ 	memnum |= AttribDeclaration::addMember(sc, sd, memnum);
+	compiled = 1;
+    }
     return memnum;
 }
 
