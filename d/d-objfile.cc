@@ -1067,6 +1067,7 @@ dt2tree_list_of_elems(dt_t * dt)
 	DECL_CONTEXT(field) = aggtype;
 	DECL_FIELD_OFFSET(field) = offset;
 	DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;
+	SET_DECL_OFFSET_ALIGN(field, TYPE_ALIGN( TREE_TYPE( field )));
 	DECL_ARTIFICIAL(field) = 1;
 	DECL_IGNORED_P(field) = 1;
 	layout_decl(field, 0);

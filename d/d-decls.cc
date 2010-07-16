@@ -325,12 +325,8 @@ Symbol *VarDeclaration::toSymbol()
 	    // VarExp -- makeAddressOf could switch back to the VAR_DECL
 
 	    // if ( typs->isscalar() ) CONST_DECL...
-#if D_GCC_VER < 43
-	    // %% GCC 4.3 tries to perform direct assignments of readonly DECLs that ICEs
-	    // when attempted using an incomplete initializer.
-	    // Evidently, there is no easy way around this yet except...
 	    TREE_READONLY( var_decl ) = 1;
-#endif
+
 	    // can at least do this...
 	    //  const doesn't seem to matter for aggregates, so prevent problems..
 	    if ( type->isscalar() ) {
@@ -913,14 +909,9 @@ Symbol *AggregateDeclaration::toInitializer()
 	// CONSTRUCTOR itself?
 
 	TREE_ADDRESSABLE( t ) = 1;
+	TREE_READONLY( t ) = 1;
 	TREE_CONSTANT( t ) = 1;
 	DECL_CONTEXT( t ) = 0; // These are always global
-#if D_GCC_VER < 43
-	// %% GCC 4.3 tries to perform direct assignments of readonly DECLs that ICEs
-	// when attempted using an incomplete initializer.
-	// Evidently, there is no easy way around this yet except...
-	TREE_READONLY( t ) = 1;
-#endif
     }
     return sinit;
 }
