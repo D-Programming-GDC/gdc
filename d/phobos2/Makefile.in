@@ -238,6 +238,7 @@ TI = ti_AC.o ti_Ag.o ti_Aint.o ti_Along.o ti_Ashort.o \
 	ti_void.o
 
 MAIN_OBJS = std/asserterror.o std/hiddenfunc.o internal/switch.o gcstats.o \
+	internal/critical.o internal/object.o internal/monitor.o internal/arraycat.o internal/invariant.o \
 	internal/arrayassign.o internal/aaA.o internal/adi.o internal/aApply.o internal/aApplyR.o \
 	internal/arraydouble.o internal/arrayfloat.o internal/arrayreal.o \
 	internal/arraybyte.o internal/arrayshort.o internal/arrayint.o \
