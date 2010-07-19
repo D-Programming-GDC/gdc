@@ -1145,6 +1145,8 @@ CommaExp::toElem(IRState * irs)
     }
     tree t1 = e1->toElem( irs );
     tree t2 = e2->toElem( irs );
+
+    assert(type);
     return build2(COMPOUND_EXPR, type->toCtype(), t1, t2);
 }
 
@@ -2197,11 +2199,31 @@ ArrayLiteralExp::toElem(IRState * irs)
 elem *
 AssocArrayLiteralExp::toElem(IRState * irs)
 {
-    TypeAArray * aa_type = (TypeAArray *)type->toBasetype();
-    assert(aa_type->ty == Taarray);
+    Type * a_type = type->toBasetype()->mutableOf();
+    assert(a_type->ty == Taarray);
+    TypeAArray * aa_type = (TypeAArray *)a_type;
+
+#if V2
+    /* As of 2.020, the hash function for Aa (array of chars) is custom 
+     * and different from Axa and Aya, which get the generic hash function.
+     * So, rewrite the type of the AArray so that if it's key type is an
+     * array of const or invariant, make it an array of mutable.
+     *
+     * This gets fixed around 2.035, so we won't need this afterwards.
+     */
+    Type * tkey = aa_type->index->toBasetype();
+    if (tkey->ty == Tarray)
+    {
+	tkey = tkey->nextOf()->mutableOf()->arrayOf();
+	tkey = tkey->semantic(0, NULL);
+	aa_type = new TypeAArray(aa_type->nextOf(), tkey);
+	aa_type = (TypeAArray *)aa_type->merge();
+    }
+#endif
+
     assert(keys != NULL);
     assert(values != NULL);
-    
+
     tree keys_var = irs->exprVar(irs->arrayType(aa_type->index, keys->dim)); //?
     tree vals_var = irs->exprVar(irs->arrayType(aa_type->next, keys->dim));
     tree keys_ptr = irs->nop(irs->addressOf(keys_var),

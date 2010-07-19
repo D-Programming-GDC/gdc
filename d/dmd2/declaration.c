@@ -869,6 +869,9 @@ Lagain:
 	}
     }
 
+    if ((storage_class & (STCref | STCparameter | STCforeach)) == STCref)
+	error("only parameters or foreach declarations can be ref");
+
     if (type->isauto() && !noauto)
     {
 	if (storage_class & (STCfield | STCout | STCref | STCstatic | STCmanifest | STCtls) || !fd)
@@ -939,7 +942,7 @@ Lagain:
     if (init)
     {
 	sc = sc->push();
-	sc->stc &= ~(STCconst | STCinvariant | STCpure);
+	sc->stc &= ~(STCconst | STCinvariant | STCpure | STCnothrow | STCref | STCshared);
 
 	ArrayInitializer *ai = init->isArrayInitializer();
 	if (ai && tb->ty == Taarray)
@@ -1039,6 +1042,12 @@ Lagain:
 				    e->op = TOKblit;
 				    e->type = t;
 				    ei->exp = new CommaExp(loc, e, ei->exp);
+#if IN_GCC
+				    /* We rely on exp->type being set here, else
+				     * causes problems later in CommaExp::toElem()
+				     */
+				    ei->exp = ei->exp->semantic(sc);
+#endif
 
 				    /* Replace __ctmp being constructed with e1
 				     */
@@ -1217,8 +1226,10 @@ int VarDeclaration::isImportedSymbol()
 
 void VarDeclaration::checkCtorConstInit()
 {
+#if 0 /* doesn't work if more than one static ctor */
     if (ctorinit == 0 && isCtorinit() && !(storage_class & STCfield))
 	error("missing initializer in static constructor for const variable");
+#endif
 }
 
 /************************************

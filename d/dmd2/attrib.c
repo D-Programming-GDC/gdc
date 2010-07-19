@@ -63,9 +63,9 @@ int AttribDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
     if (d)
     {
     	for (unsigned i = 0; i < d->dim; i++)
-			{   Dsymbol *s = (Dsymbol *)d->data[i];
-    	  	    m |= s->addMember(sc, sd, m | memnum);
-    	  	}
+	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	    m |= s->addMember(sc, sd, m | memnum);
+	}
     }
     return m;
 }
@@ -92,10 +92,10 @@ void AttribDeclaration::semantic2(Scope *sc)
 
     if (d)
     {
-    	for (unsigned i = 0; i < d->dim; i++)
-			{   Dsymbol *s = (Dsymbol *)d->data[i];
-    	  	    s->semantic2(sc);
-    	  	}
+	for (unsigned i = 0; i < d->dim; i++)
+	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	    s->semantic2(sc);
+	}
     }
 }
 
@@ -105,10 +105,10 @@ void AttribDeclaration::semantic3(Scope *sc)
 
     if (d)
     {
-    	for (unsigned i = 0; i < d->dim; i++)
-		{   Dsymbol *s = (Dsymbol *)d->data[i];
-    	  	    s->semantic3(sc);
-    	}
+	for (unsigned i = 0; i < d->dim; i++)
+	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	    s->semantic3(sc);
+	}
     }
 }
 
@@ -118,12 +118,12 @@ void AttribDeclaration::inlineScan()
 
     if (d)
     {
-    	for (unsigned i = 0; i < d->dim; i++)
-		{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (unsigned i = 0; i < d->dim; i++)
+	{   Dsymbol *s = (Dsymbol *)d->data[i];
 
 	    //printf("AttribDeclaration::inlineScan %s\n", s->toChars());
-			s->inlineScan();
-		}
+	    s->inlineScan();
+	}
     }
 }
 
@@ -131,14 +131,14 @@ void AttribDeclaration::addComment(unsigned char *comment)
 {
     if (comment)
     {
-    	Array *d = include(NULL, NULL);
+	Array *d = include(NULL, NULL);
 
 	if (d)
 	{
-		for (unsigned i = 0; i < d->dim; i++)
-		{   Dsymbol *s = (Dsymbol *)d->data[i];
+	    for (unsigned i = 0; i < d->dim; i++)
+	    {   Dsymbol *s = (Dsymbol *)d->data[i];
 		//printf("AttribDeclaration::addComment %s\n", s->toChars());
-			s->addComment(comment);
+		s->addComment(comment);
 	    }
 	}
     }
@@ -158,11 +158,11 @@ void AttribDeclaration::emitComment(Scope *sc)
 
     if (d)
     {
-    	for (unsigned i = 0; i < d->dim; i++)
-    	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (unsigned i = 0; i < d->dim; i++)
+	{   Dsymbol *s = (Dsymbol *)d->data[i];
 	    //printf("AttribDeclaration::emitComment %s\n", s->toChars());
-			s->emitComment(sc);
-    	}
+	    s->emitComment(sc);
+	}
     }
 }
 
@@ -174,7 +174,7 @@ void AttribDeclaration::toObjFile(int multiobj)
     {
     	for (unsigned i = 0; i < d->dim; i++)
     	{   Dsymbol *s = (Dsymbol *)d->data[i];
-			s->toObjFile(multiobj);
+	    s->toObjFile(multiobj);
     	}
     }
 }
@@ -187,13 +187,13 @@ int AttribDeclaration::cvMember(unsigned char *p)
 
     if (d)
     {
-    	for (unsigned i = 0; i < d->dim; i++)
-    	{   Dsymbol *s = (Dsymbol *)d->data[i];
-			n = s->cvMember(p);
-			if (p)
-			p += n;
-			nwritten += n;
-    	}
+	for (unsigned i = 0; i < d->dim; i++)
+	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	    n = s->cvMember(p);
+	    if (p)
+		p += n;
+	    nwritten += n;
+	}
     }
     return nwritten;
 }
@@ -232,10 +232,10 @@ void AttribDeclaration::checkCtorConstInit()
 
     if (d)
     {
-    	for (unsigned i = 0; i < d->dim; i++)
-    	{   Dsymbol *s = (Dsymbol *)d->data[i];
-			s->checkCtorConstInit();
-    	}
+	for (unsigned i = 0; i < d->dim; i++)
+	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	    s->checkCtorConstInit();
+	}
     }
 }
 
@@ -248,10 +248,10 @@ void AttribDeclaration::addLocalClass(ClassDeclarations *aclasses)
 
     if (d)
     {
-    	for (unsigned i = 0; i < d->dim; i++)
-    	{   Dsymbol *s = (Dsymbol *)d->data[i];
-			s->addLocalClass(aclasses);
-    	}
+	for (unsigned i = 0; i < d->dim; i++)
+	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	    s->addLocalClass(aclasses);
+	}
     }
 }
 
@@ -336,7 +336,8 @@ void StorageClassDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 	{ STCstatic,       TOKstatic },
 	{ STCextern,       TOKextern },
 	{ STCconst,        TOKconst },
-	{ STCinvariant,    TOKinvariant },
+	{ STCinvariant,    TOKimmutable },
+	{ STCshared,       TOKshared },
 	{ STCfinal,        TOKfinal },
 	{ STCabstract,     TOKabstract },
 	{ STCsynchronized, TOKsynchronized },
@@ -344,6 +345,7 @@ void StorageClassDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 	{ STCoverride,     TOKoverride },
 	{ STCnothrow,      TOKnothrow },
 	{ STCpure,         TOKpure },
+	{ STCref,          TOKref },
 	{ STCtls,          TOKtls },
     };
 

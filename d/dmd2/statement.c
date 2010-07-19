@@ -211,7 +211,7 @@ Statement *ExpStatement::semantic(Scope *sc)
 	exp->checkSideEffect(0);
 	exp = exp->optimize(0);
 	if (exp->op == TOKdeclaration && !isDeclarationStatement())
-	{	Statement *s = new DeclarationStatement(loc, exp);
+	{   Statement *s = new DeclarationStatement(loc, exp);
 	    return s;
 	}
 	//exp = exp->optimize(isDeclarationStatement() ? WANTvalue : 0);
@@ -2947,7 +2947,10 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	{   VarExp *ve = (VarExp *)exp;
 	    VarDeclaration *v = ve->var->isVarDeclaration();
 
-	    if (!v || v->isOut() || v->isRef())
+	    if (((TypeFunction *)fd->type)->isref)
+		// Function returns a reference
+		fd->nrvo_can = 0;
+	    else if (!v || v->isOut() || v->isRef())
 		fd->nrvo_can = 0;
 	    else if (tbret->ty == Tstruct && ((TypeStruct *)tbret)->sym->dtor)
 		// Struct being returned has destructors
@@ -3077,6 +3080,22 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	    exp = new AssignExp(loc, v, exp);
 	    exp = exp->semantic(sc);
 	}
+
+	if (((TypeFunction *)fd->type)->isref)
+	{   // Function returns a reference
+	    if (tbret->isMutable())
+		exp = exp->modifiableLvalue(sc, exp);
+	    else
+		exp = exp->toLvalue(sc, exp);
+
+	    if (exp->op == TOKvar)
+	    {	VarExp *ve = (VarExp *)exp;
+		VarDeclaration *v = ve->var->isVarDeclaration();
+		if (v && !v->isDataseg() && !(v->storage_class & (STCref | STCout)))
+		    error("escaping reference to local variable %s", v->toChars());
+	    }
+	}
+
 	//exp->dump(0);
 	//exp->print();
 	exp->checkEscape();
