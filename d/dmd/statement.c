@@ -1647,32 +1647,32 @@ Statement *ForeachStatement::semantic(Scope *sc)
  	    Statement *init = new DeclarationStatement(loc, r);
 //printf("init: %s\n", init->toChars());
  
- 	    // !__r.empty
- 	    Expression *e = new VarExp(loc, r);
- 	    e = new DotIdExp(loc, e, Id::Fempty);
- 	    Expression *condition = new NotExp(loc, e);
+	    // !__r.empty
+	    Expression *e = new VarExp(loc, r);
+	    e = new DotIdExp(loc, e, Id::Fempty);
+	    Expression *condition = new NotExp(loc, e);
  
- 	    // __r.next
- 	    e = new VarExp(loc, r);
- 	    Expression *increment = new DotIdExp(loc, e, idnext);
+	    // __r.next
+	    e = new VarExp(loc, r);
+	    Expression *increment = new DotIdExp(loc, e, idnext);
  
- 	    /* Declaration statement for e:
+	    /* Declaration statement for e:
 	     *    auto e = __r.idhead;
 	     */
- 	    e = new VarExp(loc, r);
- 	    Expression *einit = new DotIdExp(loc, e, idhead);
+	    e = new VarExp(loc, r);
+	    Expression *einit = new DotIdExp(loc, e, idhead);
 //	    einit = einit->semantic(sc);
- 	    Parameter *arg = (Parameter *)arguments->data[0];
- 	    VarDeclaration *ve = new VarDeclaration(loc, arg->type, arg->ident, new ExpInitializer(loc, einit));
- 	    ve->storage_class |= STCforeach;
+	    Parameter *arg = (Parameter *)arguments->data[0];
+	    VarDeclaration *ve = new VarDeclaration(loc, arg->type, arg->ident, new ExpInitializer(loc, einit));
+	    ve->storage_class |= STCforeach;
 	    ve->storage_class |= arg->storageClass & (STCin | STCout | STCref | STC_TYPECTOR);
- 
- 	    DeclarationExp *de = new DeclarationExp(loc, ve);
- 
- 	    Statement *body = new CompoundStatement(loc,
- 		new DeclarationStatement(loc, de), this->body);
 
- 	    s = new ForStatement(loc, init, condition, increment, body);
+	    DeclarationExp *de = new DeclarationExp(loc, ve);
+
+	    Statement *body = new CompoundStatement(loc,
+		new DeclarationStatement(loc, de), this->body);
+
+	    s = new ForStatement(loc, init, condition, increment, body);
 #if 0
 	    printf("init: %s\n", init->toChars());
 	    printf("condition: %s\n", condition->toChars());

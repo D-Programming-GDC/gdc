@@ -664,13 +664,13 @@ void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argum
 		    return;
 		}
 		arg = p->defaultArg;
- #if DMDV2
+#if DMDV2
  		if (arg->op == TOKdefault)
  		{   DefaultInitExp *de = (DefaultInitExp *)arg;
  		    arg = de->resolve(loc, sc);
  		}
  		else
- #endif
+#endif
  		    arg = arg->copy();
 		arguments->push(arg);
 		nargs++;
@@ -682,10 +682,10 @@ void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argum
 		if (arg->implicitConvTo(p->type))
 		{
 		    if (nargs != nparams)
-            {	error(loc, "expected %zu function arguments, not %zu", nparams, nargs);
+		    {   error(loc, "expected %"PRIuSIZE" function arguments, not %"PRIuSIZE, nparams, nargs);
 			return;
 		    }
-            goto L1;
+		    goto L1;
 		}
 	     L2:
 		Type *tb = p->type->toBasetype();
@@ -2291,9 +2291,10 @@ Lagain:
     if (f)
     {	//printf("'%s' is a function\n", f->toChars());
     if (!f->type->deco)
- 	{
- 	    error("forward reference to %s", toChars());
- 	}
+	{
+	    error("forward reference to %s", toChars());
+	    return new ErrorExp();
+	}
 	return new VarExp(loc, f);
     }
     cd = s->isClassDeclaration();
@@ -3118,6 +3119,7 @@ Expression *AssocArrayLiteralExp::semantic(Scope *sc)
 	keys->setDim(0);
 	values->setDim(0);
     }
+
     Type *tkey = NULL;
     Type *tvalue = NULL;
     keys = arrayExpressionToCommonType(sc, keys, &tkey);
@@ -5042,13 +5044,13 @@ Expression *BinExp::commonSemanticAssign(Scope *sc)
 	e = op_overload(sc);
 	if (e)
 	    return e;
-	    
-	  if (e1->op == TOKslice)
- 	{   // T[] op= ...
- 	    typeCombine(sc);
- 	    type = e1->type;
- 	    return arrayOp(sc);
- 	}
+
+	if (e1->op == TOKslice)
+	{   // T[] op= ...
+	    typeCombine(sc);
+	    type = e1->type;
+	    return arrayOp(sc);
+	}
 
 	e1 = e1->modifiableLvalue(sc, e1);
 	e1->checkScalar();
@@ -5080,13 +5082,13 @@ Expression *BinExp::commonSemanticAssignIntegral(Scope *sc)
 	e = op_overload(sc);
 	if (e)
 	    return e;
-	    
+
 	if (e1->op == TOKslice)
- 	{   // T[] op= ...
- 	    typeCombine(sc);
- 	    type = e1->type;
- 	    return arrayOp(sc);
- 	}
+	{   // T[] op= ...
+	    typeCombine(sc);
+	    type = e1->type;
+	    return arrayOp(sc);
+	}
 
 	e1 = e1->modifiableLvalue(sc, e1);
 	e1->checkScalar();
@@ -8421,13 +8423,13 @@ Expression *MinAssignExp::semantic(Scope *sc)
     e = op_overload(sc);
     if (e)
 	return e;
-	
-	if (e1->op == TOKslice)
-     {	// T[] -= ...
- 	typeCombine(sc);
- 	type = e1->type;
- 	return arrayOp(sc);
-     }
+
+    if (e1->op == TOKslice)
+    {	// T[] -= ...
+	typeCombine(sc);
+	type = e1->type;
+	return arrayOp(sc);
+    }
 
     e1 = e1->modifiableLvalue(sc, e1);
     e1->checkScalar();
@@ -8481,7 +8483,7 @@ Expression *CatAssignExp::semantic(Scope *sc)
     Type *tb2 = e2->type->toBasetype();
 
     e2->rvalue();
-    
+
     Type *tb1next = tb1->nextOf();
 
     if ((tb1->ty == Tarray) &&
@@ -8542,13 +8544,22 @@ Expression *MulAssignExp::semantic(Scope *sc)
     e = op_overload(sc);
     if (e)
 	return e;
-	
-	if (e1->op == TOKslice)
-     {	// T[] -= ...
- 	typeCombine(sc);
- 	type = e1->type;
- 	return arrayOp(sc);
-     }
+
+#if DMDV2
+    if (e1->op == TOKarraylength)
+    {
+	e = ArrayLengthExp::rewriteOpAssign(this);
+	e = e->semantic(sc);
+	return e;
+    }
+#endif
+
+    if (e1->op == TOKslice)
+    {	// T[] -= ...
+	typeCombine(sc);
+	type = e1->type;
+	return arrayOp(sc);
+    }
 
     e1 = e1->modifiableLvalue(sc, e1);
     e1->checkScalar();
@@ -8606,13 +8617,22 @@ Expression *DivAssignExp::semantic(Scope *sc)
     e = op_overload(sc);
     if (e)
 	return e;
-	
-	 if (e1->op == TOKslice)
-     {	// T[] -= ...
- 	typeCombine(sc);
- 	type = e1->type;
- 	return arrayOp(sc);
-     }
+
+#if DMDV2
+    if (e1->op == TOKarraylength)
+    {
+	e = ArrayLengthExp::rewriteOpAssign(this);
+	e = e->semantic(sc);
+	return e;
+    }
+#endif
+
+    if (e1->op == TOKslice)
+    {	// T[] -= ...
+	typeCombine(sc);
+	type = e1->type;
+	return arrayOp(sc);
+    }
 
     e1 = e1->modifiableLvalue(sc, e1);
     e1->checkScalar();

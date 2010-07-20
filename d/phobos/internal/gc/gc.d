@@ -1059,6 +1059,7 @@ extern (C) wchar[] _d_arrayappendwd(inout wchar[] x, dchar c)
     return x;
 }
 
+
 extern (C)
 byte[] _d_arraycatT(TypeInfo ti, byte[] x, byte[] y)
 out (result)

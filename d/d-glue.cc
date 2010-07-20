@@ -3264,17 +3264,17 @@ TypeFunction::toCtype() {
 	}
 	
 	if (parameters) {
-	#if V2 //Until 2.037
+#if V2 //Until 2.037
 	    size_t n_args = Argument::dim(parameters);
-	#else
-		size_t n_args = Parameter::dim(parameters);
-	#endif
+#else
+	    size_t n_args = Parameter::dim(parameters);
+#endif
 	    for (size_t i = 0; i < n_args; i++) {
-	#if V2 //Until 2.037
+#if V2 //Until 2.037
 		Argument * arg = Argument::getNth(parameters, i);
-	#else
+#else
 		Parameter * arg = Parameter::getNth(parameters, i);
-	#endif
+#endif
 		type_list.cons( IRState::trueArgumentType(arg) );
 	    }
 	}

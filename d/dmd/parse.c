@@ -4892,10 +4892,10 @@ Expression *Parser::parseUnaryExp()
 		    case TOKdelegate:
 		    case TOKtypeof:
 		    
-		    #if DMDV2
+#if DMDV2
  		    case TOKfile:
 		    case TOKline:
- 			#endif
+#endif
 		    case BASIC_TYPES:		// (type)int.size
 		    {	// (type) una_exp
 			Type *t;

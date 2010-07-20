@@ -208,11 +208,11 @@ gcc_type_to_d_type(tree t)
 	    
 	    tree t_arg_types = TYPE_ARG_TYPES(t);
 	    int varargs = t_arg_types != NULL_TREE;
-	#if V2 //Until 2.037
+#if V2 //Until 2.037
 	    Arguments * args = new Arguments;
-	#else
-		Parameters * args = new Parameters;
-	#endif
+#else
+	    Parameters * args = new Parameters;
+#endif
 	    args->reserve(list_length(t_arg_types));
 	    for (tree tl = t_arg_types; tl != NULL_TREE; tl = TREE_CHAIN(tl))
 	    {
@@ -230,11 +230,11 @@ gcc_type_to_d_type(tree t)
 		    Type * d_arg_type = gcc_type_to_d_type(ta);
 		    if (! d_arg_type)
 			return NULL;
-		#if V2 //Until 2.037
-			args->push(new Argument(io, d_arg_type, NULL, NULL));
-		#else
-			args->push(new Parameter(io, d_arg_type, NULL, NULL));
-		#endif
+#if V2 //Until 2.037
+		    args->push(new Argument(io, d_arg_type, NULL, NULL));
+#else
+		    args->push(new Parameter(io, d_arg_type, NULL, NULL));
+#endif
 		}
 		else
 		    varargs = 0;
@@ -303,13 +303,13 @@ d_gcc_magic_stdarg_module(Module *m, bool is_c_std_arg)
 			tf = (TypeFunction *) fd->type;
 			assert( tf->ty == Tfunction &&
 			    tf->parameters && tf->parameters->dim >= 1 );
-		#if V2 //Until 2.037
+#if V2 //Until 2.037
 			((Argument*) tf->parameters->data[0])->storageClass &= ~(STCin|STCout|STCref);
 			((Argument*) tf->parameters->data[0])->storageClass |= STCin;
-		#else
+#else
 			((Parameter*) tf->parameters->data[0])->storageClass &= ~(STCin|STCout|STCref);
 			((Parameter*) tf->parameters->data[0])->storageClass |= STCin;
-		#endif
+#endif
 		    }
 		}
 	    }

@@ -1053,7 +1053,7 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     Arguments * formal_args = func_type->parameters; // can be NULL for genCfunc decls
     size_t n_formal_args = formal_args ? (int) Argument::dim(formal_args) : 0;
 #else
-	Parameters * formal_args = func_type->parameters; // can be NULL for genCfunc decls
+    Parameters * formal_args = func_type->parameters; // can be NULL for genCfunc decls
     size_t n_formal_args = formal_args ? (int) Parameter::dim(formal_args) : 0;
 #endif
     size_t n_actual_args = arguments ? arguments->dim : 0;
@@ -1069,11 +1069,11 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
 	    actual_arg_tree = actual_arg_exp->toElem(this);
 	} else if (fi < n_formal_args) {
 	    // Actual arguments for declared formal arguments
-	#if V2 //Until 2.037
+#if V2 //Until 2.037
 	    Argument * formal_arg = Argument::getNth(formal_args, fi);
-	#else
-		Parameter * formal_arg = Parameter::getNth(formal_args, fi);
-	#endif
+#else
+	    Parameter * formal_arg = Parameter::getNth(formal_args, fi);
+#endif
 	    actual_arg_tree = convertForArgument(actual_arg_exp, formal_arg);
 
 	    // from c-typeck.c: convert_arguments, default_conversion, ...
@@ -1415,18 +1415,18 @@ IRState::getLibCallDecl(LibCall lib_call)
 	{
 	    TypeFunction * tf = (TypeFunction *) decl->type;
 	    tf->varargs = varargs ? 1 : 0;
-	#if V2 //Until 2.037
+#if V2 //Until 2.037
 	    Arguments * args = new Arguments;
-	#else
-		Parameters * args = new Parameters;
-	#endif
+#else
+	    Parameters * args = new Parameters;
+#endif
 	    args->setDim( arg_types.dim );
 	    for (unsigned i = 0; i < arg_types.dim; i++)
-	#if V2 //Until 2.037
+#if V2 //Until 2.037
 		args->data[i] = new Argument( STCin, (Type *) arg_types.data[i],
-	#else
+#else
 		args->data[i] = new Parameter( STCin, (Type *) arg_types.data[i],
-	#endif
+#endif
 		    NULL, NULL);
 	    tf->parameters = args;
 	}

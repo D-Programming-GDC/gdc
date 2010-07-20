@@ -754,36 +754,36 @@ void ClassDeclaration::toObjFile(int multiobj)
 	//printf("\tvtbl[%d] = %p\n", i, fd);
 	if (fd && (fd->fbody || !isAbstract()))
 	{   Symbol *s = fd->toSymbol();
- 
- #if DMDV2
- 	    if (isFuncHidden(fd))
- 	    {	/* fd is hidden from the view of this class.
- 		 * If fd overlaps with any function in the vtbl[], then
- 		 * issue 'hidden' error.
- 		 */
- 		for (int j = 1; j < vtbl.dim; j++)
- 		{   if (j == i)
- 			continue;
- 		    FuncDeclaration *fd2 = ((Dsymbol *)vtbl.data[j])->isFuncDeclaration();
- 		    if (!fd2->ident->equals(fd->ident))
- 			continue;
- 		    if (fd->leastAsSpecialized(fd2) || fd2->leastAsSpecialized(fd))
- 		    {
- 			if (global.params.warnings)
- 			{
- 			    TypeFunction *tf = (TypeFunction *)fd->type;
- 			    if (tf->ty == Tfunction)
- 				warning("%s%s is hidden by %s\n", fd->toPrettyChars(), Parameter::argsTypesToChars(tf->parameters, tf->varargs), toChars());
- 			    else
- 				warning("%s is hidden by %s\n", fd->toPrettyChars(), toChars());
- 			}
- 			s = rtlsym[RTLSYM_DHIDDENFUNC];
- 			break;
- 		    }
- 		}
- 	    }
- #endif //V2
- 	    dtxoff(&dt, s, 0, TYnptr);
+
+#if DMDV2
+	    if (isFuncHidden(fd))
+	    {	/* fd is hidden from the view of this class.
+		 * If fd overlaps with any function in the vtbl[], then
+		 * issue 'hidden' error.
+		 */
+		for (int j = 1; j < vtbl.dim; j++)
+		{   if (j == i)
+			continue;
+		    FuncDeclaration *fd2 = ((Dsymbol *)vtbl.data[j])->isFuncDeclaration();
+		    if (!fd2->ident->equals(fd->ident))
+			continue;
+		    if (fd->leastAsSpecialized(fd2) || fd2->leastAsSpecialized(fd))
+		    {
+			if (global.params.warnings)
+			{
+			    TypeFunction *tf = (TypeFunction *)fd->type;
+			    if (tf->ty == Tfunction)
+				warning("%s%s is hidden by %s\n", fd->toPrettyChars(), Parameter::argsTypesToChars(tf->parameters, tf->varargs), toChars());
+			    else
+				warning("%s is hidden by %s\n", fd->toPrettyChars(), toChars());
+			}
+			s = rtlsym[RTLSYM_DHIDDENFUNC];
+			break;
+		    }
+		}
+	    }
+#endif //V2
+	    dtxoff(&dt, s, 0, TYnptr);
 	}
 	else
 	    dtdword(&dt, 0);

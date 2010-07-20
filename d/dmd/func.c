@@ -822,6 +822,7 @@ void FuncDeclaration::semantic3(Scope *sc)
  	 * and install them in parameters[]
  	 */
  	size_t nparams = Parameter::dim(f->parameters);
+	if (nparams)
 	{   /* parameters[] has all the tuples removed, as the back end
 	     * doesn't know about tuples
 	     */
@@ -942,12 +943,14 @@ void FuncDeclaration::semantic3(Scope *sc)
 
 		v = new VarDeclaration(loc, type->nextOf(), outId, NULL);
 		v->noauto = 1;
-		#if DMDV2
+#if DMDV2
+		if (!isVirtual())
+		    v->storage_class |= STCconst;
  		if (f->isref)
  		{
  		    v->storage_class |= STCref | STCforeach;
  		}
- 		#endif
+#endif
 		sc2->incontract--;
 		v->semantic(sc2);
 		sc2->incontract++;

@@ -323,7 +323,7 @@ struct ForStatement : Statement
 
 struct ForeachStatement : Statement
 {
-    enum TOK op;	// TOKforeach or TOKforeach_reverse
+    enum TOK op;		// TOKforeach or TOKforeach_reverse
     Parameters *arguments;	// array of Parameter*'s
     Expression *aggr;
     Statement *body;
@@ -353,34 +353,34 @@ struct ForeachStatement : Statement
 };
 
 #if DMDV2
- struct ForeachRangeStatement : Statement
- {
-     enum TOK op;		// TOKforeach or TOKforeach_reverse
-     Parameter *arg;		// loop index variable
-     Expression *lwr;
-     Expression *upr;
-     Statement *body;
- 
-     VarDeclaration *key;
- 
-     ForeachRangeStatement(Loc loc, enum TOK op, Parameter *arg,
- 	Expression *lwr, Expression *upr, Statement *body);
-     Statement *syntaxCopy();
-     Statement *semantic(Scope *sc);
-     int hasBreak();
-     int hasContinue();
-     int usesEH();
-     int blockExit();
+struct ForeachRangeStatement : Statement
+{
+    enum TOK op;		// TOKforeach or TOKforeach_reverse
+    Parameter *arg;		// loop index variable
+    Expression *lwr;
+    Expression *upr;
+    Statement *body;
 
-     int comeFrom();
-     Expression *interpret(InterState *istate);
-     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
- 
-     Statement *inlineScan(InlineScanState *iss);
- 
-     void toIR(IRState *irs);
- };
- #endif
+    VarDeclaration *key;
+
+    ForeachRangeStatement(Loc loc, enum TOK op, Parameter *arg,
+	Expression *lwr, Expression *upr, Statement *body);
+    Statement *syntaxCopy();
+    Statement *semantic(Scope *sc);
+    int hasBreak();
+    int hasContinue();
+    int usesEH();
+    int blockExit();
+
+    int comeFrom();
+    Expression *interpret(InterState *istate);
+    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+
+    Statement *inlineScan(InlineScanState *iss);
+
+    void toIR(IRState *irs);
+};
+#endif
 
 struct IfStatement : Statement
 {

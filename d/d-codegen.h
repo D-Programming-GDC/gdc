@@ -155,7 +155,7 @@ struct IRState : IRBase
 #if V2 //NOTE: When the dmd frontend for D2 is up to 2.037, the #if V2 can be taken out
     tree convertForArgument(Expression * exp, Argument * arg);
 #else
-	tree convertForArgument(Expression * exp, Parameter * arg);
+    tree convertForArgument(Expression * exp, Parameter * arg);
 #endif
     tree convertForCondition(Expression * exp) {
 	return convertForCondition(exp->toElem(this), exp->type); }
@@ -195,7 +195,7 @@ struct IRState : IRBase
     static bool isArgumentReferenceType(Argument * arg);
     static tree trueArgumentType(Argument * arg);
 #else
-	static bool isArgumentReferenceType(Parameter * arg);
+    static bool isArgumentReferenceType(Parameter * arg);
     static tree trueArgumentType(Parameter * arg);
 #endif
 
