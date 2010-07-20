@@ -129,10 +129,10 @@ elem *callfunc(Loc loc,
 	    arg = (Expression *)arguments->data[i];
 	    //printf("\targ[%d]: %s\n", i, arg->toChars());
 
-	    size_t nparams = Argument::dim(tf->parameters);
+	    size_t nparams = Parameter::dim(tf->parameters);
 	    if (i - j < nparams && i >= j)
 	    {
-		Argument *p = Argument::getNth(tf->parameters, i - j);
+		Parameter *p = Parameter::getNth(tf->parameters, i - j);
 
 		if (p->storageClass & (STCout | STCref))
 		{
@@ -2631,16 +2631,29 @@ elem *CatAssignExp::toElem(IRState *irs)
     Type *tb1 = e1->type->toBasetype();
     Type *tb2 = e2->type->toBasetype();
 
-    if (tb1->ty == Tarray || tb2->ty == Tsarray)
-    {   elem *e1;
-	elem *e2;
-	elem *ep;
+    if (tb1->ty == Tarray && tb2->ty == Tdchar &&
+	(tb1->nextOf()->ty == Tchar || tb1->nextOf()->ty == Twchar))
+    {	// Append dchar to char[] or wchar[]
 
-	e1 = this->e1->toElem(irs);
+	elem *e1 = this->e1->toElem(irs);
 	e1 = el_una(OPaddr, TYnptr, e1);
 
-	e2 = this->e2->toElem(irs);
-	if (tybasic(e2->Ety) == TYstruct)
+	elem *e2 = this->e2->toElem(irs);
+
+	elem *ep = el_params(e2, e1, NULL);
+	int rtl = (tb1->nextOf()->ty == Tchar)
+		? RTLSYM_ARRAYAPPENDCD
+		: RTLSYM_ARRAYAPPENDWD;
+	e = el_bin(OPcall, TYdarray, el_var(rtlsym[rtl]), ep);
+	el_setLoc(e,loc);
+    }
+    else if (tb1->ty == Tarray || tb2->ty == Tsarray)
+    {
+	elem *e1 = this->e1->toElem(irs);
+	e1 = el_una(OPaddr, TYnptr, e1);
+
+	elem *e2 = this->e2->toElem(irs);
+	if (tybasic(e2->Ety) == TYstruct || tybasic(e2->Ety) == TYarray)
 	{
 	    e2 = el_una(OPstrpar, TYstruct, e2);
 	    e2->Enumbytes = e2->E1->Enumbytes;
@@ -2651,23 +2664,13 @@ elem *CatAssignExp::toElem(IRState *irs)
 	if ((tb2->ty == Tarray || tb2->ty == Tsarray) &&
 	    tb1n->equals(tb2->nextOf()->toBasetype()))
 	{   // Append array
-#if 1
-	    ep = el_params(e2, e1, this->e1->type->getTypeInfo(NULL)->toElem(irs), NULL);
+	    elem *ep = el_params(e2, e1, this->e1->type->getTypeInfo(NULL)->toElem(irs), NULL);
 	    e = el_bin(OPcall, TYdarray, el_var(rtlsym[RTLSYM_ARRAYAPPENDT]), ep);
-#else
-	    ep = el_params(el_long(TYint, tb1n->size()), e2, e1, NULL);
-	    e = el_bin(OPcall, TYdarray, el_var(rtlsym[RTLSYM_ARRAYAPPEND]), ep);
-#endif
 	}
 	else
 	{   // Append element
-#if 1
-	    ep = el_params(e2, e1, this->e1->type->getTypeInfo(NULL)->toElem(irs), NULL);
+	    elem *ep = el_params(e2, e1, this->e1->type->getTypeInfo(NULL)->toElem(irs), NULL);
 	    e = el_bin(OPcall, TYdarray, el_var(rtlsym[RTLSYM_ARRAYAPPENDCT]), ep);
-#else
-	    ep = el_params(e2, el_long(TYint, tb1n->size()), e1, NULL);
-	    e = el_bin(OPcall, TYdarray, el_var(rtlsym[RTLSYM_ARRAYAPPENDC]), ep);
-#endif
 	}
 	el_setLoc(e,loc);
     }
@@ -2720,7 +2723,15 @@ elem *ShlAssignExp::toElem(IRState *irs)
 
 elem *ShrAssignExp::toElem(IRState *irs)
 {
-    return toElemBin(irs,OPshrass);
+    //printf("ShrAssignExp::toElem() %s, %s\n", e1->type->toChars(), e1->toChars());
+    Type *t1 = e1->type;
+    if (e1->op == TOKcast)
+    {	/* Use the type before it was integrally promoted to int
+	 */
+	CastExp *ce = (CastExp *)e1;
+	t1 = ce->e1->type;
+    }
+    return toElemBin(irs, t1->isunsigned() ? OPshrass : OPashrass);
 }
 
 
@@ -2830,7 +2841,7 @@ elem *ShlExp::toElem(IRState *irs)
 
 elem *ShrExp::toElem(IRState *irs)
 {
-    return toElemBin(irs,OPshr);
+    return toElemBin(irs, e1->type->isunsigned() ? OPshr : OPashr);
 }
 
 

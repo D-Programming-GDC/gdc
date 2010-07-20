@@ -202,7 +202,7 @@ Array *Parser::parseDeclDefs(int once)
 		break;
 	    }
 
-	    CASE_BASIC_TYPES:
+	    case BASIC_TYPES:
 	    case TOKalias:
 	    case TOKtypedef:
 	    case TOKidentifier:
@@ -792,7 +792,7 @@ Condition *Parser::parseStaticIfCondition()
 Dsymbol *Parser::parseCtor()
 {
     CtorDeclaration *f;
-    Arguments *arguments;
+    Parameters *arguments;
     int varargs;
     Loc loc = this->loc;
 
@@ -918,7 +918,7 @@ UnitTestDeclaration *Parser::parseUnitTest()
 NewDeclaration *Parser::parseNew()
 {
     NewDeclaration *f;
-    Arguments *arguments;
+    Parameters *arguments;
     int varargs;
     Loc loc = this->loc;
 
@@ -938,7 +938,7 @@ NewDeclaration *Parser::parseNew()
 DeleteDeclaration *Parser::parseDelete()
 {
     DeleteDeclaration *f;
-    Arguments *arguments;
+    Parameters *arguments;
     int varargs;
     Loc loc = this->loc;
 
@@ -955,9 +955,9 @@ DeleteDeclaration *Parser::parseDelete()
  * Parse parameter list.
  */
 
-Arguments *Parser::parseParameters(int *pvarargs)
+Parameters *Parser::parseParameters(int *pvarargs)
 {
-    Arguments *arguments = new Arguments();
+    Parameters *arguments = new Parameters();
     int varargs = 0;
     int hasdefault = 0;
 
@@ -966,7 +966,7 @@ Arguments *Parser::parseParameters(int *pvarargs)
     {   Type *tb;
 	Identifier *ai = NULL;
 	Type *at;
-	Argument *a;
+	Parameter *a;
 	StorageClass storageClass = 0;
 	Expression *ae;
 
@@ -1025,12 +1025,12 @@ Arguments *Parser::parseParameters(int *pvarargs)
 		    if (storageClass & (STCout | STCref))
 			error("variadic argument cannot be out or ref");
 		    varargs = 2;
-		    a = new Argument(storageClass, at, ai, ae);
+		    a = new Parameter(storageClass, at, ai, ae);
 		    arguments->push(a);
 		    nextToken();
 		    break;
 		}
-		a = new Argument(storageClass, at, ai, ae);
+		a = new Parameter(storageClass, at, ai, ae);
 		arguments->push(a);
 		if (token.value == TOKcomma)
 		{   nextToken();
@@ -1784,7 +1784,7 @@ Type *Parser::parseBasicType()
     //printf("parseBasicType()\n");
     switch (token.value)
     {
-	CASE_BASIC_TYPES_X(t):
+	case BASIC_TYPES_X(t):
 	    nextToken();
 	    break;
 
@@ -1956,7 +1956,7 @@ Type *Parser::parseBasicType2(Type *t)
 	    {	// Handle delegate declaration:
 		//	t delegate(parameter list)
 		//	t function(parameter list)
-		Arguments *arguments;
+		Parameters *arguments;
 		int varargs;
 		enum TOK save = token.value;
 
@@ -2063,7 +2063,7 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 	    }
 #endif
 	    case TOKlparen:
-	    {	Arguments *arguments;
+	    {	Parameters *arguments;
 		int varargs;
 
 		if (tpl)
@@ -2838,7 +2838,7 @@ Statement *Parser::parseStatement(int flags)
 	    goto Ldeclaration;
 	}
 
-	CASE_BASIC_TYPES:
+	case BASIC_TYPES:
 	case TOKtypedef:
 	case TOKalias:
 	case TOKconst:
@@ -3010,7 +3010,7 @@ Statement *Parser::parseStatement(int flags)
 	case TOKforeach_reverse:
 	{
 	    enum TOK op = token.value;
-	    Arguments *arguments;
+	    Parameters *arguments;
 
 	    Statement *d;
 	    Statement *body;
@@ -3019,7 +3019,7 @@ Statement *Parser::parseStatement(int flags)
 	    nextToken();
 	    check(TOKlparen);
 
-	    arguments = new Arguments();
+	    arguments = new Parameters();
 
 	    while (1)
 	    {
@@ -3027,7 +3027,7 @@ Statement *Parser::parseStatement(int flags)
 		Identifier *ai = NULL;
 		Type *at;
 		unsigned storageClass;
-		Argument *a;
+		Parameter *a;
 
 		storageClass = STCin;
 		if (token.value == TOKinout || token.value == TOKref)
@@ -3049,7 +3049,7 @@ Statement *Parser::parseStatement(int flags)
 		if (!ai)
 		    error("no identifier for declarator %s", at->toChars());
 	      Larg:
-		a = new Argument(storageClass, at, ai, NULL);
+		a = new Parameter(storageClass, at, ai, NULL);
 		arguments->push(a);
 		if (token.value == TOKcomma)
 		{   nextToken();
@@ -3067,7 +3067,7 @@ Statement *Parser::parseStatement(int flags)
 	}
 
 	case TOKif:
-	{   Argument *arg = NULL;
+	{   Parameter *arg = NULL;
 	    Expression *condition;
 	    Statement *ifbody;
 	    Statement *elsebody;
@@ -3083,7 +3083,7 @@ Statement *Parser::parseStatement(int flags)
 		    Token *t = peek(&token);
 		    if (t->value == TOKassign)
 		    {
-			arg = new Argument(STCin, NULL, token.ident, NULL);
+			arg = new Parameter(STCin, NULL, token.ident, NULL);
 			nextToken();
 			nextToken();
 		    }
@@ -3106,7 +3106,7 @@ Statement *Parser::parseStatement(int flags)
 		tb = parseBasicType();
 		at = parseDeclarator(tb, &ai);
 		check(TOKassign);
-		arg = new Argument(STCin, at, ai, NULL);
+		arg = new Parameter(STCin, at, ai, NULL);
 	    }
 
 	    // Check for " ident;"
@@ -3115,7 +3115,7 @@ Statement *Parser::parseStatement(int flags)
 		Token *t = peek(&token);
 		if (t->value == TOKcomma || t->value == TOKsemicolon)
 		{
-		    arg = new Argument(STCin, NULL, token.ident, NULL);
+		    arg = new Parameter(STCin, NULL, token.ident, NULL);
 		    nextToken();
 		    nextToken();
 		    if (1 || !global.params.useDeprecated)
@@ -3758,7 +3758,7 @@ int Parser::isBasicType(Token **pt)
 
     switch (t->value)
     {
-	CASE_BASIC_TYPES:
+	case BASIC_TYPES:
 	    t = peek(t);
 	    break;
 
@@ -4399,7 +4399,7 @@ Expression *Parser::parsePrimaryExp()
 	    break;
 	}
 
-	CASE_BASIC_TYPES_X(t):
+	case BASIC_TYPES_X(t):
 	    nextToken();
 	L1:
 	    check(TOKdot, t->toChars());
@@ -4617,7 +4617,7 @@ Expression *Parser::parsePrimaryExp()
 	    /* function type(parameters) { body }
 	     * delegate type(parameters) { body }
 	     */
-	    Arguments *arguments;
+	    Parameters *arguments;
 	    int varargs;
 	    FuncLiteralDeclaration *fd;
 	    Type *t;
@@ -4626,7 +4626,7 @@ Expression *Parser::parsePrimaryExp()
 	    {
 		t = NULL;
 		varargs = 0;
-		arguments = new Arguments();
+		arguments = new Parameters();
 	    }
 	    else
 	    {
@@ -4896,7 +4896,7 @@ Expression *Parser::parseUnaryExp()
  		    case TOKfile:
 		    case TOKline:
  			#endif
-		    CASE_BASIC_TYPES:		// (type)int.size
+		    case BASIC_TYPES:		// (type)int.size
 		    {	// (type) una_exp
 			Type *t;
 

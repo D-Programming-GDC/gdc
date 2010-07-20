@@ -459,11 +459,100 @@ void expandTuples(Expressions *exps)
     }
 }
 
+Expressions *arrayExpressionToCommonType(Scope *sc, Expressions *exps, Type **pt)
+{
+#if DMDV1
+    /* The first element sets the type
+     */
+    Type *t0 = NULL;
+    for (size_t i = 0; i < exps->dim; i++)
+    {	Expression *e = (Expression *)exps->data[i];
+
+	if (!e->type)
+	{   error("%s has no value", e->toChars());
+	    e = new ErrorExp();
+	}
+	e = resolveProperties(sc, e);
+
+	if (!t0)
+	    t0 = e->type;
+	else
+	    e = e->implicitCastTo(sc, t0);
+	exps->data[i] = (void *)e;
+    }
+
+    if (!t0)
+	t0 = Type::tvoid;
+    if (pt)
+	*pt = t0;
+
+    // Eventually, we want to make this copy-on-write
+    return exps;
+#endif
+#if DMDV2
+    /* The type is determined by applying ?: to each pair.
+     */
+    IntegerExp integerexp(0);
+    CondExp condexp(0, &integerexp, NULL, NULL);
+
+    Type *t0 = NULL;
+    Expression *e0;
+    int j0;
+    for (size_t i = 0; i < exps->dim; i++)
+    {   Expression *e = (Expression *)exps->data[i];
+
+	e = resolveProperties(sc, e);
+	if (!e->type)
+	{   error("%s has no value", e->toChars());
+	    e = new ErrorExp();
+	}
+
+	if (t0)
+	{   if (t0 != e->type)
+	    {
+		/* This applies ?: to merge the types. It's backwards;
+		 * ?: should call this function to merge types.
+		 */
+		condexp.type = NULL;
+		condexp.e1 = e0;
+		condexp.e2 = e;
+		condexp.semantic(sc);
+		exps->data[j0] = (void *)condexp.e1;
+		e = condexp.e2;
+		t0 = e->type;
+	    }
+	}
+	else
+	{   j0 = i;
+	    e0 = e;
+	    t0 = e->type;
+	}
+	exps->data[i] = (void *)e;
+    }
+
+    if (t0)
+    {
+	for (size_t i = 0; i < exps->dim; i++)
+	{   Expression *e = (Expression *)exps->data[i];
+	    e = e->implicitCastTo(sc, t0);
+	    exps->data[i] = (void *)e;
+	}
+    }
+    else
+	t0 = Type::tvoid;		// [] is typed as void[]
+    if (pt)
+	*pt = t0;
+
+    // Eventually, we want to make this copy-on-write
+    return exps;
+#endif
+}
+
 /****************************************
  * Preprocess arguments to function.
  */
 
-void preFunctionArguments(Loc loc, Scope *sc, Expressions *exps)
+void preFunctionParameters(Loc loc, Scope *sc, Expressions *exps)
 {
     if (exps)
     {
@@ -535,14 +624,14 @@ void preFunctionArguments(Loc loc, Scope *sc, Expressions *exps)
  *	4. add hidden _arguments[] argument
  */
 
-void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *arguments)
+void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *arguments)
 {
     unsigned n;
 
-    //printf("functionArguments()\n");
+    //printf("functionParameters()\n");
     assert(arguments);
     size_t nargs = arguments ? arguments->dim : 0;
-    size_t nparams = Argument::dim(tf->parameters);
+    size_t nparams = Parameter::dim(tf->parameters);
 
     if (nargs > nparams && tf->varargs == 0)
 	error(loc, "expected %"PRIuSIZE" arguments, not %"PRIuSIZE" for non-variadic function type %s",
@@ -563,7 +652,7 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 
 	if (i < nparams)
 	{
-	    Argument *p = Argument::getNth(tf->parameters, i);
+	    Parameter *p = Parameter::getNth(tf->parameters, i);
 
 	    if (!arg)
 	    {
@@ -572,7 +661,7 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 		    if (tf->varargs == 2 && i + 1 == nparams)
 			goto L2;
 		    error(loc, "expected %"PRIuSIZE" function arguments, not %"PRIuSIZE, nparams, nargs);
-		    break;
+		    return;
 		}
 		arg = p->defaultArg;
  #if DMDV2
@@ -593,7 +682,9 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 		if (arg->implicitConvTo(p->type))
 		{
 		    if (nargs != nparams)
-                error(loc, "expected %zu function arguments, not %zu", nparams, nargs);
+            {	error(loc, "expected %zu function arguments, not %zu", nparams, nargs);
+			return;
+		    }
             goto L1;
 		}
 	     L2:
@@ -807,9 +898,8 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
     // If D linkage and variadic, add _arguments[] as first argument
     if (tf->linkage == LINKd && tf->varargs == 1)
     {
-	Expression *e;
-
-	e = createTypeInfoArray(sc, (Expression **)&arguments->data[nparams],
+	assert(arguments->dim >= nparams);
+	Expression *e = createTypeInfoArray(sc, (Expression **)&arguments->data[nparams],
 		arguments->dim - nparams);
 	arguments->insert(0, e);
     }
@@ -3012,24 +3102,14 @@ Expression *AssocArrayLiteralExp::syntaxCopy()
 
 Expression *AssocArrayLiteralExp::semantic(Scope *sc)
 {   Expression *e;
-    Type *tkey = NULL;
-    Type *tvalue = NULL;
 
 #if LOGSEMANTIC
     printf("AssocArrayLiteralExp::semantic('%s')\n", toChars());
 #endif
 
     // Run semantic() on each element
-    for (size_t i = 0; i < keys->dim; i++)
-    {	Expression *key = (Expression *)keys->data[i];
-	Expression *value = (Expression *)values->data[i];
-
-	key = key->semantic(sc);
-	value = value->semantic(sc);
-
-	keys->data[i] = (void *)key;
-	values->data[i] = (void *)value;
-    }
+    arrayExpressionSemantic(keys, sc);
+    arrayExpressionSemantic(values, sc);
     expandTuples(keys);
     expandTuples(values);
     if (keys->dim != values->dim)
@@ -3038,34 +3118,11 @@ Expression *AssocArrayLiteralExp::semantic(Scope *sc)
 	keys->setDim(0);
 	values->setDim(0);
     }
-    for (size_t i = 0; i < keys->dim; i++)
-    {	Expression *key = (Expression *)keys->data[i];
-	Expression *value = (Expression *)values->data[i];
+    Type *tkey = NULL;
+    Type *tvalue = NULL;
+    keys = arrayExpressionToCommonType(sc, keys, &tkey);
+    values = arrayExpressionToCommonType(sc, values, &tvalue);
 
-	if (!key->type)
-	    error("%s has no value", key->toChars());
-	if (!value->type)
-	    error("%s has no value", value->toChars());
-	key = resolveProperties(sc, key);
-	value = resolveProperties(sc, value);
-
-	if (!tkey)
-	    tkey = key->type;
-	else
-	    key = key->implicitCastTo(sc, tkey);
-	keys->data[i] = (void *)key;
-
-	if (!tvalue)
-	    tvalue = value->type;
-	else
-	    value = value->implicitCastTo(sc, tvalue);
-	values->data[i] = (void *)value;
-    }
-
-    if (!tkey)
-	tkey = Type::tvoid;
-    if (!tvalue)
-	tvalue = Type::tvoid;
     type = new TypeAArray(tvalue, tkey);
     type = type->semantic(loc, sc);
     return this;
@@ -3578,9 +3635,9 @@ Lagain:
     //printf("tb: %s, deco = %s\n", tb->toChars(), tb->deco);
 
     arrayExpressionSemantic(newargs, sc);
-    preFunctionArguments(loc, sc, newargs);
+    preFunctionParameters(loc, sc, newargs);
     arrayExpressionSemantic(arguments, sc);
-    preFunctionArguments(loc, sc, arguments);
+    preFunctionParameters(loc, sc, arguments);
 
     if (thisexp && tb->ty != Tclass)
 	error("e.new is only for allocating nested classes, not %s", tb->toChars());
@@ -3694,7 +3751,7 @@ Lagain:
 
 	    if (!arguments)
 		arguments = new Expressions();
-	    functionArguments(loc, sc, tf, arguments);
+	    functionParameters(loc, sc, tf, arguments);
 	}
 	else
 	{
@@ -3716,7 +3773,7 @@ Lagain:
 	    assert(allocator);
 
 	    tf = (TypeFunction *)f->type;
-	    functionArguments(loc, sc, tf, newargs);
+	    functionParameters(loc, sc, tf, newargs);
 	}
 	else
 	{
@@ -3750,7 +3807,7 @@ Lagain:
 	    assert(allocator);
 
 	    tf = (TypeFunction *)f->type;
-	    functionArguments(loc, sc, tf, newargs);
+	    functionParameters(loc, sc, tf, newargs);
 
 	    e = new VarExp(loc, f);
 	    e = new CallExp(loc, e, newargs);
@@ -4715,11 +4772,11 @@ Expression *IsExp::semantic(Scope *sc)
 		    goto Lno;
 		else
 		{   ClassDeclaration *cd = ((TypeClass *)targ)->sym;
-		    Arguments *args = new Arguments;
+		    Parameters *args = new Parameters;
 		    args->reserve(cd->baseclasses.dim);
 		    for (size_t i = 0; i < cd->baseclasses.dim; i++)
 		    {	BaseClass *b = (BaseClass *)cd->baseclasses.data[i];
-			args->push(new Argument(STCin, b->type, NULL, NULL));
+			args->push(new Parameter(STCin, b->type, NULL, NULL));
 		    }
 		    tded = new TypeTuple(args);
 		}
@@ -4746,14 +4803,14 @@ Expression *IsExp::semantic(Scope *sc)
 		/* Generate tuple from function parameter types.
 		 */
 		assert(tded->ty == Tfunction);
-		Arguments *params = ((TypeFunction *)tded)->parameters;
-		size_t dim = Argument::dim(params);
-		Arguments *args = new Arguments;
+		Parameters *params = ((TypeFunction *)tded)->parameters;
+		size_t dim = Parameter::dim(params);
+		Parameters *args = new Parameters;
 		args->reserve(dim);
 		for (size_t i = 0; i < dim; i++)
-		{   Argument *arg = Argument::getNth(params, i);
+		{   Parameter *arg = Parameter::getNth(params, i);
 		    assert(arg && arg->type);
-		    args->push(new Argument(arg->storageClass, arg->type, NULL, NULL));
+		    args->push(new Parameter(arg->storageClass, arg->type, NULL, NULL));
 		}
 		tded = new TypeTuple(args);
 		break;
@@ -5861,7 +5918,66 @@ Expression *DotTemplateInstanceExp::syntaxCopy()
 }
 
 Expression *DotTemplateInstanceExp::semantic(Scope *sc)
-{   Dsymbol *s;
+{
+#if 1
+#if LOGSEMANTIC
+    printf("DotTemplateInstanceExp::semantic('%s')\n", toChars());
+#endif
+    Expression *eleft;
+    Expression *e = new DotIdExp(loc, e1, ti->name);
+L1:
+    e = e->semantic(sc);
+    if (e->op == TOKdottd)
+    {
+	DotTemplateExp *dte = (DotTemplateExp *)e;
+	TemplateDeclaration *td = dte->td;
+	eleft = dte->e1;
+	ti->tempdecl = td;
+	ti->semantic(sc);
+	Dsymbol *s = ti->inst->toAlias();
+	Declaration *v = s->isDeclaration();
+	if (v)
+	{   e = new DotVarExp(loc, eleft, v);
+	    e = e->semantic(sc);
+	    return e;
+	}
+	e = new ScopeExp(loc, ti);
+	e = new DotExp(loc, eleft, e);
+	e = e->semantic(sc);
+	return e;
+    }
+    else if (e->op == TOKimport)
+    {   ScopeExp *se = (ScopeExp *)e;
+	TemplateDeclaration *td = se->sds->isTemplateDeclaration();
+	if (!td)
+	{   error("%s is not a template", e->toChars());
+	    return new ErrorExp();
+	}
+	ti->tempdecl = td;
+	e = new ScopeExp(loc, ti);
+	e = e->semantic(sc);
+	return e;
+    }
+    else if (e->op == TOKdotexp)
+    {	DotExp *de = (DotExp *)e;
+
+        if (de->e2->op == TOKimport)
+        {   // This should *really* be moved to ScopeExp::semantic()
+	    ScopeExp *se = (ScopeExp *)de->e2;
+	    de->e2 = new DsymbolExp(loc, se->sds);
+	    de->e2 = de->e2->semantic(sc);
+        }
+
+        if (de->e2->op == TOKtemplate)
+        {   TemplateExp *te = (TemplateExp *) de->e2;
+	    e = new DotTemplateExp(loc,de->e1,te->td);
+        }
+	goto L1;
+    }
+    error("%s isn't a template", e->toChars());
+    return new ErrorExp();
+#else
+    Dsymbol *s;
     Dsymbol *s2;
     TemplateDeclaration *td;
     Expression *e;
@@ -5975,6 +6091,7 @@ Expression *DotTemplateInstanceExp::semantic(Scope *sc)
 
 Lerr:
     return new IntegerExp(loc, 0, Type::tint32);
+#endif
 }
 
 void DotTemplateInstanceExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -6348,7 +6465,7 @@ Lagain:
     }
 
     arrayExpressionSemantic(arguments, sc);
-    preFunctionArguments(loc, sc, arguments);
+    preFunctionParameters(loc, sc, arguments);
 
     if (e1->op == TOKdotvar && t1->ty == Tfunction ||
         e1->op == TOKdottd)
@@ -6632,7 +6749,7 @@ Lcheckargs:
 
     if (!arguments)
 	arguments = new Expressions();
-    functionArguments(loc, sc, tf, arguments);
+    functionParameters(loc, sc, tf, arguments);
 
     assert(type);
 
@@ -7426,7 +7543,7 @@ Expression *SliceExp::semantic(Scope *sc)
 	}
 	else if (e1->op == TOKtype)	// slicing a type tuple
 	{   tup = (TypeTuple *)t;
-	    length = Argument::dim(tup->arguments);
+	    length = Parameter::dim(tup->arguments);
 	}
 	else
 	    assert(0);
@@ -7445,10 +7562,10 @@ Expression *SliceExp::semantic(Scope *sc)
 		e = new TupleExp(loc, exps);
 	    }
 	    else
-	    {	Arguments *args = new Arguments;
+	    {	Parameters *args = new Parameters;
 		args->reserve(j2 - j1);
 		for (size_t i = j1; i < j2; i++)
-		{   Argument *arg = Argument::getNth(tup->arguments, i);
+		{   Parameter *arg = Parameter::getNth(tup->arguments, i);
 		    args->push(arg);
 		}
 		e = new TypeExp(e1->loc, new TypeTuple(args));
@@ -7825,7 +7942,7 @@ Expression *IndexExp::semantic(Scope *sc)
 	    else if (e1->op == TOKtype)
 	    {
 		tup = (TypeTuple *)t1;
-		length = Argument::dim(tup->arguments);
+		length = Parameter::dim(tup->arguments);
 	    }
 	    else
 		assert(0);
@@ -7836,7 +7953,7 @@ Expression *IndexExp::semantic(Scope *sc)
 		if (e1->op == TOKtuple)
 		    e = (Expression *)te->exps->data[(size_t)index];
 		else
-		    e = new TypeExp(e1->loc, Argument::getNth(tup->arguments, (size_t)index)->type);
+		    e = new TypeExp(e1->loc, Parameter::getNth(tup->arguments, (size_t)index)->type);
 	    }
 	    else
 	    {
@@ -8364,11 +8481,16 @@ Expression *CatAssignExp::semantic(Scope *sc)
     Type *tb2 = e2->type->toBasetype();
 
     e2->rvalue();
+    
+    Type *tb1next = tb1->nextOf();
 
     if ((tb1->ty == Tarray) &&
 	(tb2->ty == Tarray || tb2->ty == Tsarray) &&
-	e2->implicitConvTo(e1->type)
-	//e1->type->next->equals(e2->type->next)
+	(e2->implicitConvTo(e1->type)
+#if DMDV2
+	 || tb2->nextOf()->implicitConvTo(tb1next)
+#endif
+	)
        )
     {	// Append array
 	e2 = e2->castTo(sc, e1->type);
@@ -8376,18 +8498,30 @@ Expression *CatAssignExp::semantic(Scope *sc)
 	e = this;
     }
     else if ((tb1->ty == Tarray) &&
-	e2->implicitConvTo(tb1->nextOf())
+	e2->implicitConvTo(tb1next)
        )
     {	// Append element
-	e2 = e2->castTo(sc, tb1->nextOf());
+	e2 = e2->castTo(sc, tb1next);
 	type = e1->type;
 	e = this;
+    }
+    else if (tb1->ty == Tarray &&
+	(tb1next->ty == Tchar || tb1next->ty == Twchar) &&
+	e2->implicitConvTo(Type::tdchar)
+       )
+    {	// Append dchar to char[] or wchar[]
+	e2 = e2->castTo(sc, Type::tdchar);
+	type = e1->type;
+	e = this;
+
+	/* Do not allow appending wchar to char[] because if wchar happens
+	 * to be a surrogate pair, nothing good can result.
+	 */
     }
     else
     {
 	error("cannot append type %s to type %s", tb2->toChars(), tb1->toChars());
-	type = Type::tint32;
-	e = this;
+	e = new ErrorExp();
     }
     return e;
 }

@@ -2200,7 +2200,7 @@ elem *
 AssocArrayLiteralExp::toElem(IRState * irs)
 {
 #if ! V2
-    TypeAArray * aa_type = type->toBasetype();
+    TypeAArray * aa_type = (TypeAArray *)type->toBasetype();
     assert(aa_type->ty == Taarray);
 #else
     Type * a_type = type->toBasetype()->mutableOf();
@@ -2289,7 +2289,7 @@ StructLiteralExp::toElem(IRState *irs)
 		VarDeclaration * fld = (VarDeclaration *) sd->fields.data[i];
 #if V2
     		bool postblit = false;
-		tree result = NULL_TREE;
+			tree result = NULL_TREE;
 
     		Type * t = fld->type->toBasetype();
     		while (t->ty == Tsarray)
@@ -2304,7 +2304,7 @@ StructLiteralExp::toElem(IRState *irs)
     		if (postblit)
     		{
 		    /* Not implemented yet. */
-		}
+			}
 		else
 #endif
 		ce.cons(fld->csym->Stree, irs->convertTo(e, fld->type));
@@ -3264,9 +3264,17 @@ TypeFunction::toCtype() {
 	}
 	
 	if (parameters) {
+	#if V2 //Until 2.037
 	    size_t n_args = Argument::dim(parameters);
+	#else
+		size_t n_args = Parameter::dim(parameters);
+	#endif
 	    for (size_t i = 0; i < n_args; i++) {
+	#if V2 //Until 2.037
 		Argument * arg = Argument::getNth(parameters, i);
+	#else
+		Parameter * arg = Parameter::getNth(parameters, i);
+	#endif
 		type_list.cons( IRState::trueArgumentType(arg) );
 	    }
 	}
