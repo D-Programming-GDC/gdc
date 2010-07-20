@@ -595,7 +595,6 @@ char *FileName::name(const char *str)
 #endif
 #if _WIN32
 	    case '/':
-	    case '/':
   	    case '\\':
  		return e + 1;
   	    case ':':

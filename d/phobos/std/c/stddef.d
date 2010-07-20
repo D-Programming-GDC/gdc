@@ -11,7 +11,7 @@ module std.c.stddef;
 
 version (GNU)
 {
-    import gcc.config.libc;
+    private import gcc.config.libc;
     alias gcc.config.libc.wchar_t wchar_t;
 } 
 else version (Win32)

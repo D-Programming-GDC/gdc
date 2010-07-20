@@ -37,18 +37,15 @@
 #include "attrib.h"
 
 #if _WIN32
-static inline int os_critsecsize()
-{
-    return sizeof(CRITICAL_SECTION);
-}
+#include <windows.h>
+#define CRITSECSIZE sizeof(CRITICAL_SECTION)
+#elif linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
+#include <pthread.h>
+#define CRITSECSIZE sizeof(pthread_mutex_t)
+#else
+#define CRITSECSIZE 0
 #endif
 
-#if linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
-static inline int os_critsecsize()
-{
-    return sizeof(pthread_mutex_t);
-}
-#endif
 
 /******************************** Statement ***************************/
 
@@ -3680,7 +3677,7 @@ Statement *SynchronizedStatement::semantic(Scope *sc)
 	 *  try { body } finally { _d_criticalexit(critsec.ptr); }
 	 */
 	Identifier *id = Lexer::uniqueId("__critsec");
-	Type *t = new TypeSArray(Type::tint8, new IntegerExp(PTRSIZE +  os_critsecsize()));
+	Type *t = new TypeSArray(Type::tint8, new IntegerExp(PTRSIZE + CRITSECSIZE)); 
 	VarDeclaration *tmp = new VarDeclaration(loc, t, id, NULL);
 	tmp->storage_class |= STCgshared | STCstatic;
 

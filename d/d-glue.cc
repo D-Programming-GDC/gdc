@@ -931,6 +931,24 @@ tree array_set_expr(IRState * irs, tree ptr, tree src, tree count) {
 #endif
 }
 
+#if V2
+// Determine if type is an array of structs that need a postblit.
+static StructDeclaration *
+needsPostblit(Type *t)
+{
+    t = t->toBasetype();
+    while (t->ty == Tsarray)
+	t = t->nextOf()->toBasetype();
+    if (t->ty == Tstruct)
+    {   StructDeclaration * sd = ((TypeStruct *)t)->sym;
+	if (sd->postblit)
+	    return sd;
+    }
+    return NULL;
+}
+#endif
+
+
 elem *
 AssignExp::toElem(IRState* irs) {
     // First, handle special assignment semantics
@@ -981,49 +999,30 @@ AssignExp::toElem(IRState* irs) {
 #if V2
 	    if (op != TOKblit)
 	    {
-		Type * t = elem_type;
-		while (t->ty == Tsarray)
-		    t = t->nextOf()->toBasetype();
-		if (t->ty == Tstruct)
-		{
-		    StructDeclaration *sd = ((TypeStruct *)elem_type)->sym;
-		    if (sd->postblit)
-		    {   
-			tree e;
-			AddrOfExpr aoe;
-			tree args[4];
-			args[0] = irs->darrayPtrRef(dyn_array_exp);
-			args[1] = aoe.set(irs, e2->toElem(irs));
-			args[2] = irs->darrayLenRef(dyn_array_exp);
-			args[3] = irs->typeinfoReference(elem_type);
-			e = irs->libCall(op == TOKconstruct ?
+		if (needsPostblit(elem_type))
+		{   
+		    tree e;
+		    AddrOfExpr aoe;
+		    tree args[4];
+		    args[0] = irs->darrayPtrRef(dyn_array_exp);
+		    args[1] = aoe.set(irs, e2->toElem(irs));
+		    args[2] = irs->darrayLenRef(dyn_array_exp);
+		    args[3] = irs->typeinfoReference(elem_type);
+		    e = irs->libCall(op == TOKconstruct ?
 			    LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN,
 			    4, args);
-			e = irs->compound(aoe.finish(irs, e), dyn_array_exp);
-			return e;
-		    }
+		    e = irs->compound(aoe.finish(irs, e), dyn_array_exp);
+		    return e;
 		}
 	    }
-
 #endif
-	    
+
 	    tree set_exp = array_set_expr( irs, irs->darrayPtrRef(dyn_array_exp),
 		e2->toElem(irs), irs->darrayLenRef(dyn_array_exp));
 	    return irs->compound(set_exp, dyn_array_exp);
 	} else {
-	    bool postblit = false;
 #if V2
-	    Type * t = elem_type;
-	    while (t->ty == Tsarray)
-		t = t->nextOf()->toBasetype();
-	    if (t->ty == Tstruct)
-	    {
-		StructDeclaration *sd = ((TypeStruct *)elem_type)->sym;
-		if (sd->postblit)
-		    postblit = true;
-	    }
-
-	    if (postblit && op != TOKblit)
+	    if (needsPostblit(elem_type) && op != TOKblit)
 	    {
 		tree args[3] = {
 		    irs->typeinfoReference(elem_type),
@@ -2288,23 +2287,28 @@ StructLiteralExp::toElem(IRState *irs)
 	    {
 		VarDeclaration * fld = (VarDeclaration *) sd->fields.data[i];
 #if V2
-    		bool postblit = false;
-			tree result = NULL_TREE;
+		bool postblit = false;
+		StructDeclaration * sd;
+		Type * tb = fld->type->toBasetype();
 
-    		Type * t = fld->type->toBasetype();
-    		while (t->ty == Tsarray)
-    		    t = t->nextOf()->toBasetype();
-    		if (t->ty == Tstruct)
-    		{
-    		    StructDeclaration *sd = ((TypeStruct *)t)->sym;
-    		    if (sd->postblit)
-    			postblit = true;
-    		}
+		if (sd = needsPostblit(tb))
+		    postblit = true;
 
-    		if (postblit)
-    		{
-		    /* Not implemented yet. */
-			}
+		if (tb->ty == Tstruct)
+		{
+		    // Call postblit()
+		    if (sd)
+		    {
+			FuncDeclaration * fd = sd->postblit;
+			Array args;
+			tree result;
+			//result = irs->call(fd, /* e1? */ & args);
+		    }
+		}
+		else if (postblit)
+		{
+		    /* Not implemented yet */
+		}
 		else
 #endif
 		ce.cons(fld->csym->Stree, irs->convertTo(e, fld->type));
