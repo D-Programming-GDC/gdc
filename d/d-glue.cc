@@ -2199,11 +2199,13 @@ ArrayLiteralExp::toElem(IRState * irs)
 elem *
 AssocArrayLiteralExp::toElem(IRState * irs)
 {
+#if ! V2
+    TypeAArray * aa_type = type->toBasetype();
+    assert(aa_type->ty == Taarray);
+#else
     Type * a_type = type->toBasetype()->mutableOf();
     assert(a_type->ty == Taarray);
     TypeAArray * aa_type = (TypeAArray *)a_type;
-
-#if V2
     /* As of 2.020, the hash function for Aa (array of chars) is custom 
      * and different from Axa and Aya, which get the generic hash function.
      * So, rewrite the type of the AArray so that if it's key type is an
@@ -2220,7 +2222,6 @@ AssocArrayLiteralExp::toElem(IRState * irs)
 	aa_type = (TypeAArray *)aa_type->merge();
     }
 #endif
-
     assert(keys != NULL);
     assert(values != NULL);
 
@@ -2286,6 +2287,26 @@ StructLiteralExp::toElem(IRState *irs)
 	    if (e)
 	    {
 		VarDeclaration * fld = (VarDeclaration *) sd->fields.data[i];
+#if V2
+    		bool postblit = false;
+		tree result = NULL_TREE;
+
+    		Type * t = fld->type->toBasetype();
+    		while (t->ty == Tsarray)
+    		    t = t->nextOf()->toBasetype();
+    		if (t->ty == Tstruct)
+    		{
+    		    StructDeclaration *sd = ((TypeStruct *)t)->sym;
+    		    if (sd->postblit)
+    			postblit = true;
+    		}
+
+    		if (postblit)
+    		{
+		    /* Not implemented yet. */
+		}
+		else
+#endif
 		ce.cons(fld->csym->Stree, irs->convertTo(e, fld->type));
 	    }
 	}
