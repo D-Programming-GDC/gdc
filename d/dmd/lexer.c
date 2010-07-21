@@ -99,8 +99,12 @@ void Token::print()
 #endif
 
 const char *Token::toChars()
- {   const char *p;
+{   const char *p;
+#if IN_GCC
+    static char buffer[(3 + 3 * sizeof(value) + 1) * 2];
+#else
     static char buffer[3 + 3 * sizeof(value) + 1];
+#endif
 
     p = buffer;
     switch (value)
