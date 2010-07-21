@@ -1425,7 +1425,7 @@ struct AsmProcessor
     }
 
     void addOperand(const char * fmt, AsmArgType type, Expression * e, AsmCode * asmcode, AsmArgMode mode = Mode_Input) {
-	insnTemplate->writestring((char*) fmt);
+	insnTemplate->writestring(fmt);
 	insnTemplate->printf("%d", asmcode->args.dim);
 	asmcode->args.push( new AsmArg(type, e, mode) );
     }
@@ -1505,7 +1505,7 @@ struct AsmProcessor
     }
 
     void writeReg(Reg reg) {
-	insnTemplate->writestring((char*) "%%");
+	insnTemplate->writestring("%%");
 	insnTemplate->write(TREE_STRING_POINTER( regInfo[reg].gccName ),
 	    TREE_STRING_LENGTH( regInfo[reg].gccName ));
     }
@@ -1647,7 +1647,7 @@ struct AsmProcessor
 		if (mnemonic[mlen-1] == 'd')
 		    insnTemplate->write(mnemonic, mlen-1);
 		else {
-		    insnTemplate->writestring((char*) mnemonic);
+		    insnTemplate->writestring(mnemonic);
 		    insnTemplate->writebyte('w');
 		}
 	    }
@@ -1665,7 +1665,7 @@ struct AsmProcessor
 		    insnTemplate->write(mnemonic, mlen-1);
 		    insnTemplate->writebyte('l');
 		} else {
-		    insnTemplate->writestring((char*) mnemonic);
+		    insnTemplate->writestring(mnemonic);
 		}
 	    }
 	    break;
@@ -1697,7 +1697,7 @@ struct AsmProcessor
 	    }
 	    break;
 	default:
-	    insnTemplate->writestring((char*) mnemonic);
+	    insnTemplate->writestring(mnemonic);
 	    if (type_char)
 		insnTemplate->writebyte(type_char);
 	    break;
@@ -1752,7 +1752,7 @@ struct AsmProcessor
 	for (int i__ = 0; i__ < nOperands; i__++) {
 	    int i;
 	    if (i__ != 0)
-		insnTemplate->writestring((char*) ", ");
+		insnTemplate->writestring(", ");
 
 	    fmt = "%";
     
@@ -2576,9 +2576,9 @@ struct AsmProcessor
     void doEven() {
 	// .align for GAS is in bits, others probably use bytes..
 #ifdef HAVE_GAS_BALIGN_AND_P2ALIGN 
-	insnTemplate->writestring((char *) ".align\t2");
+	insnTemplate->writestring(".align\t2");
 #else
-	insnTemplate->writestring((char *) ".align\t2");
+	insnTemplate->writestring(".align\t2");
 #endif
 	setAsmCode();
     }
@@ -2594,7 +2594,7 @@ struct AsmProcessor
 
 	machine_mode mode;
 
-	insnTemplate->writestring((char*) directives[op - Op_db]);
+	insnTemplate->writestring(directives[op - Op_db]);
 	insnTemplate->writebyte('\t');
 
 	do {
