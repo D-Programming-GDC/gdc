@@ -361,21 +361,21 @@ d_init ()
 #  endif
 #endif
     if (cpu_versym)
-	VersionCondition::addPredefinedGlobalIdent((char*) cpu_versym);
+	VersionCondition::addPredefinedGlobalIdent(cpu_versym);
 #ifdef D_OS_VERSYM
-    VersionCondition::addPredefinedGlobalIdent((char*) D_OS_VERSYM);
+    VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM);
     if (strcmp(D_OS_VERSYM, "darwin") == 0)
-    VersionCondition::addPredefinedGlobalIdent((char*) "OSX");
+    VersionCondition::addPredefinedGlobalIdent("OSX");
     if (strcmp(D_OS_VERSYM, "Win32") == 0)
 	 {
 		 VersionCondition::addPredefinedGlobalIdent("Windows");
 		 is_target_win32 = true;
 	 }
     if (strcmp(D_OS_VERSYM, "freebsd") == 0)
-    VersionCondition::addPredefinedGlobalIdent((char*) "FreeBSD");
+    VersionCondition::addPredefinedGlobalIdent("FreeBSD");
 #endif
 #ifdef D_OS_VERSYM2
-    VersionCondition::addPredefinedGlobalIdent((char*) D_OS_VERSYM2);
+    VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM2);
     if (strcmp(D_OS_VERSYM2, "Win32") == 0)
 	is_target_win32 = true;
 #endif
@@ -439,10 +439,13 @@ d_init ()
 # define TARGET_OBJFMT_CPP_BUILTINS()
 #endif
 
+#if 0 //%% Remove?
 # define preprocessing_asm_p() (cpp_get_options (pfile)->lang == CLK_ASM)
 # define preprocessing_trad_p() (cpp_get_options (pfile)->traditional)
+#else
 # define preprocessing_asm_p() (0)
 # define preprocessing_trad_p() (0)
+#endif
 # define c_dialect_cxx() (0)
 # define c_dialect_objc() (0)
 # define builtin_define(TXT) (cpp_define (pfile, TXT))
@@ -760,7 +763,7 @@ d_write_global_declarations()
 #endif
     
 
-    for (int i = 0; i < globalFunctions.dim; i++)
+    for (unsigned i = 0; i < globalFunctions.dim; i++)
 	debug_hooks->global_decl(vec[i]);
 
 #if D_GCC_VER == 40
