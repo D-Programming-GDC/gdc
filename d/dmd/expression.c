@@ -3705,15 +3705,7 @@ Lagain:
 		else
 		{
 		    for (Dsymbol *sf = sc->func; 1; sf= sf->toParent2()->isFuncDeclaration())
-		    {if (!v->isDataseg() && !(v->storage_class & (STCref | STCout)))
-+	{   /* BUG: This should be allowed:
-+	     *   void foo()
-+	     *   { int a;
-+	     *     int* bar() { return &a; }
-+	     *   }
-+	     */
-+	    error("escaping reference to local %s", v->toChars());
-+	}
+		    {
 			if (!sf)
 			{
 			    error("outer class %s 'this' needed to 'new' nested class %s", cdn->toChars(), cd->toChars());
