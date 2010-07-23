@@ -39,15 +39,17 @@ struct EnumDeclaration : ScopeDsymbol
     Type *type;			// the TypeEnum
     Type *memtype;		// type of the members
     #if DMDV1
-      dinteger_t maxval;
-      dinteger_t minval;
-      dinteger_t defaultval;	// default initializer
- 	#else
-     Expression *maxval;
-     Expression *minval;
-     Expression *defaultval;	// default initializer
+    dinteger_t maxval;
+    dinteger_t minval;
+    dinteger_t defaultval;	// default initializer
+	#else
+    Expression *maxval;
+    Expression *minval;
+    Expression *defaultval;	// default initializer
  	#endif
-     int isdeprecated;
+    int isdeprecated;
+    int isdone;			// 0: not done
+				// 1: semantic() successfully completed
     Expressions * attributes; // GCC decl/type attributes
 
     EnumDeclaration(Loc loc, Identifier *id, Type *memtype);
