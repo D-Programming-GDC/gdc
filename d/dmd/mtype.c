@@ -420,7 +420,7 @@ void Type::toCBuffer3(OutBuffer *buf, HdrGenState *hgs, int mod)
 	    case MODconst:
 		p = "const(";
 		goto L1;
-	    case MODinvariant:
+	    case MODimmutable:
 		p = "invariant(";
 	    L1:	buf->writestring(p);
 		toCBuffer2(buf, hgs, this->mod);
@@ -554,12 +554,9 @@ int Type::checkBoolean()
 
 void Type::checkDeprecated(Loc loc, Scope *sc)
 {
-    Type *t;
-    Dsymbol *s;
-
-    for (t = this; t; t = t->next)
+    for (Type *t = this; t; t = t->next)
     {
-	s = t->toDsymbol(sc);
+	Dsymbol *s = t->toDsymbol(sc);
 	if (s)
 	    s->checkDeprecated(loc, sc);
     }
@@ -572,6 +569,18 @@ Expression *Type::defaultInit(Loc loc)
     printf("Type::defaultInit() '%s'\n", toChars());
 #endif
     return NULL;
+}
+
+/***************************************
+ * Use when we prefer the default initializer to be a literal,
+ * rather than a global immutable variable.
+ */
+Expression *Type::defaultInitLiteral(Loc loc)
+{
+#if LOGDEFAULTINIT
+    printf("Type::defaultInitLiteral() '%s'\n", toChars());
+#endif
+    return defaultInit(loc);
 }
 
 int Type::isZeroInit(Loc loc)
@@ -2209,10 +2218,7 @@ Expression *TypeDArray::defaultInit(Loc loc)
 #if LOGDEFAULTINIT
     printf("TypeDArray::defaultInit() '%s'\n", toChars());
 #endif
-    Expression *e;
-    e = new NullExp(loc);
-    e->type = this;
-    return e;
+    return new NullExp(loc, this);
 }
 
 int TypeDArray::isZeroInit(Loc loc)
@@ -2456,10 +2462,7 @@ Expression *TypeAArray::defaultInit(Loc loc)
 #if LOGDEFAULTINIT
     printf("TypeAArray::defaultInit() '%s'\n", toChars());
 #endif
-    Expression *e;
-    e = new NullExp(loc);
-    e->type = this;
-    return e;
+    return new NullExp(loc, this);
 }
 
 int TypeAArray::isZeroInit(Loc loc)
@@ -2572,9 +2575,7 @@ Expression *TypePointer::defaultInit(Loc loc)
 #if LOGDEFAULTINIT
     printf("TypePointer::defaultInit() '%s'\n", toChars());
 #endif
-    Expression *e = new NullExp(loc);
-    e->type = this;
-    return e;
+    return new NullExp(loc, this);
 }
 
 int TypePointer::isZeroInit(Loc loc)
@@ -2638,10 +2639,7 @@ Expression *TypeReference::defaultInit(Loc loc)
 #if LOGDEFAULTINIT
     printf("TypeReference::defaultInit() '%s'\n", toChars());
 #endif
-    Expression *e;
-    e = new NullExp(loc);
-    e->type = this;
-    return e;
+    return new NullExp(loc, this);
 }
 
 int TypeReference::isZeroInit(Loc loc)
@@ -2867,6 +2865,12 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 	return this;
     }
     //printf("TypeFunction::semantic() this = %p\n", this);
+    //printf("TypeFunction::semantic() %s, sc->stc = %x\n", toChars(), sc->stc);
+
+    /* Copy in order to not mess up original.
+     * This can produce redundant copies if inferring return type,
+     * as semantic() will get called again on this.
+     */
 
     TypeFunction *tf = (TypeFunction *)mem.malloc(sizeof(TypeFunction));
     memcpy(tf, this, sizeof(TypeFunction));
@@ -2884,10 +2888,12 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
     if (tf->next)
     {
     tf->next = tf->next->semantic(loc,sc);
+#if !SARRAYVALUE
     if (tf->next->toBasetype()->ty == Tsarray)
     {	error(loc, "functions cannot return static array %s", tf->next->toChars());
 	tf->next = Type::terror;
     }
+#endif
     if (tf->next->toBasetype()->ty == Tfunction)
     {	error(loc, "functions cannot return a function");
 	tf->next = Type::terror;
@@ -2910,35 +2916,51 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 
 	size_t dim = Parameter::dim(tf->parameters);
 	for (size_t i = 0; i < dim; i++)
-	{   Parameter *arg = Parameter::getNth(tf->parameters, i);
+	{   Parameter *fparam = Parameter::getNth(tf->parameters, i);
 
 	    tf->inuse++;
-	    arg->type = arg->type->semantic(loc, argsc);
+	    fparam->type = fparam->type->semantic(loc, argsc);
 	    if (tf->inuse == 1) tf->inuse--;
 
-	    Type *t = arg->type->toBasetype();
+	    Type *t = fparam->type->toBasetype();
 
-	    if (arg->storageClass & (STCout | STCref | STClazy))
+	    if (fparam->storageClass & (STCout | STCref | STClazy))
 	    {
 		if (t->ty == Tsarray)
 		    error(loc, "cannot have out or ref parameter of type %s", t->toChars());
 	    }
-	    if (!(arg->storageClass & STClazy) && t->ty == Tvoid)
-		error(loc, "cannot have parameter of type %s", arg->type->toChars());
+	    if (!(fparam->storageClass & STClazy) && t->ty == Tvoid)
+		error(loc, "cannot have parameter of type %s", fparam->type->toChars());
 
-	    if (arg->defaultArg)
+	    if (fparam->defaultArg)
 	    {
-		arg->defaultArg = arg->defaultArg->semantic(argsc);
-		arg->defaultArg = resolveProperties(argsc, arg->defaultArg);
-		arg->defaultArg = arg->defaultArg->implicitCastTo(argsc, arg->type);
+		fparam->defaultArg = fparam->defaultArg->semantic(argsc);
+		fparam->defaultArg = resolveProperties(argsc, fparam->defaultArg);
+		fparam->defaultArg = fparam->defaultArg->implicitCastTo(argsc, fparam->type);
 	    }
 
 	    /* If arg turns out to be a tuple, the number of parameters may
 	     * change.
 	     */
 	    if (t->ty == Ttuple)
-	    {	dim = Parameter::dim(tf->parameters);
+	    {
+		// Propagate storage class from tuple parameters to their element-parameters.
+		TypeTuple *tt = (TypeTuple *)t;
+		if (tt->arguments)
+		{
+		    size_t tdim = tt->arguments->dim;
+		    for (size_t j = 0; j < tdim; j++)
+		    {   Parameter *narg = (Parameter *)tt->arguments->data[j];
+			narg->storageClass = fparam->storageClass;
+		    }
+		}
+
+		/* Reset number of parameters, and back up one to do this arg again,
+		 * now that it is the first element of a tuple
+		 */
+		dim = Parameter::dim(tf->parameters);
 		i--;
+		continue;
 	    }
 	}
 	argsc->pop();
@@ -3150,10 +3172,7 @@ Expression *TypeDelegate::defaultInit(Loc loc)
 #if LOGDEFAULTINIT
     printf("TypeDelegate::defaultInit() '%s'\n", toChars());
 #endif
-    Expression *e;
-    e = new NullExp(loc);
-    e->type = this;
-    return e;
+    return new NullExp(loc, this);
 }
 
 int TypeDelegate::isZeroInit(Loc loc)
@@ -3943,6 +3962,10 @@ Dsymbol *TypeEnum::toDsymbol(Scope *sc)
 
 Type *TypeEnum::toBasetype()
 {
+	if (sym->scope)
+    {
+	sym->semantic(NULL);	// attempt to resolve forward reference
+    }
     if (!sym->memtype)
     {
 #ifdef DEBUG
@@ -4582,18 +4605,45 @@ unsigned TypeStruct::memalign(unsigned salign)
 }
 
 Expression *TypeStruct::defaultInit(Loc loc)
-{   Symbol *s;
-    Declaration *d;
-
+{
 #if LOGDEFAULTINIT
     printf("TypeStruct::defaultInit() '%s'\n", toChars());
 #endif
-    s = sym->toInitializer();
-    d = new SymbolDeclaration(sym->loc, s, sym);
+    Symbol *s = sym->toInitializer();
+    Declaration *d = new SymbolDeclaration(sym->loc, s, sym);
     assert(d);
     d->type = this;
     return new VarExp(sym->loc, d);
 }
+
+/***************************************
+ * Use when we prefer the default initializer to be a literal,
+ * rather than a global immutable variable.
+ */
+Expression *TypeStruct::defaultInitLiteral(Loc loc)
+{
+#if LOGDEFAULTINIT
+    printf("TypeStruct::defaultInitLiteral() '%s'\n", toChars());
+#endif
+    Expressions *structelems = new Expressions();
+    structelems->setDim(sym->fields.dim);
+    for (size_t j = 0; j < structelems->dim; j++)
+    {
+	VarDeclaration *vd = (VarDeclaration *)(sym->fields.data[j]);
+	Expression *e;
+	if (vd->init)
+	    e = vd->init->toExpression();
+	else
+	    e = vd->type->defaultInitLiteral();
+	structelems->data[j] = e;
+    }
+    StructLiteralExp *structinit = new StructLiteralExp(loc, (StructDeclaration *)sym, structelems);
+    // Why doesn't the StructLiteralExp constructor do this, when
+    // sym->type != NULL ?
+    structinit->type = sym->type;
+    return structinit;
+}
+
 
 int TypeStruct::isZeroInit(Loc loc)
 {
@@ -5012,10 +5062,7 @@ Expression *TypeClass::defaultInit(Loc loc)
 #if LOGDEFAULTINIT
     printf("TypeClass::defaultInit() '%s'\n", toChars());
 #endif
-    Expression *e;
-    e = new NullExp(loc);
-    e->type = this;
-    return e;
+    return new NullExp(loc, this);
 }
 
 int TypeClass::isZeroInit(Loc loc)
@@ -5308,7 +5355,7 @@ void TypeSlice::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
 
 /***************************** Parameter *****************************/
 
-Parameter::Parameter(unsigned storageClass, Type *type, Identifier *ident, Expression *defaultArg)
+Parameter::Parameter(StorageClass storageClass, Type *type, Identifier *ident, Expression *defaultArg)
 {
     this->type = type;
     this->ident = ident;

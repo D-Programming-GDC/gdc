@@ -282,7 +282,7 @@ void StructDeclaration::semantic(Scope *sc)
     if (sc->stc & STCabstract)
 	error("structs, unions cannot be abstract");
 #if DMDV2
-    if (storage_class & STCinvariant)
+    if (storage_class & STCimmutable)
 	type = type->invariantOf();
     else if (storage_class & STCconst)
 	type = type->constOf();
@@ -313,6 +313,22 @@ void StructDeclaration::semantic(Scope *sc)
     sc2->explicitProtection = 0;
 
     int members_dim = members->dim;
+    
+    /* Set scope so if there are forward references, we still might be able to
+     * resolve individual members like enums.
+     */
+    for (int i = 0; i < members_dim; i++)
+    {	Dsymbol *s = (Dsymbol *)members->data[i];
+	/* There are problems doing this in the general case because
+	 * Scope keeps track of things like 'offset'
+	 */
+	if (s->isEnumDeclaration() || (s->isAggregateDeclaration() && s->ident))
+	{
+	    //printf("setScope %s %s\n", s->kind(), s->toChars());
+	    s->setScope(sc2);
+	}
+    }
+
     for (i = 0; i < members_dim; i++)
     {
 	Dsymbol *s = (Dsymbol *)members->data[i];
@@ -464,6 +480,22 @@ void StructDeclaration::semantic(Scope *sc)
 	semantic2(sc);
 	semantic3(sc);
     }
+}
+
+Dsymbol *StructDeclaration::search(Loc loc, Identifier *ident, int flags)
+{
+    //printf("%s.StructDeclaration::search('%s')\n", toChars(), ident->toChars());
+
+    if (scope)
+    	semantic(scope);
+
+    if (!members || !symtab)
+    {
+	error("is forward referenced when looking for '%s'", ident->toChars());
+	return NULL;
+    }
+
+    return ScopeDsymbol::search(loc, ident, flags);
 }
 
 void StructDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)

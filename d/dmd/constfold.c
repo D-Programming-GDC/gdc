@@ -80,7 +80,7 @@ int ComplexExp::isConst()
 
 int NullExp::isConst()
 {
-    return 1;
+    return 0;
 }
 
 int SymOffExp::isConst()
@@ -863,7 +863,7 @@ Expression *Equal(enum TOK op, Type *type, Expression *e1, Expression *e2)
 }
 
 Expression *Identity(enum TOK op, Type *type, Expression *e1, Expression *e2)
-{   Expression *e;
+{
     Loc loc = e1->loc;
     int cmp;
 
@@ -1060,21 +1060,28 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
 	return e1;
 
     Type *tb = to->toBasetype();
+    Type *typeb = type->toBasetype();
 
     /* Allow casting from one string type to another
      */
     if (e1->op == TOKstring)
     {
-	Type *typeb = type->toBasetype();
 	if (tb->ty == Tarray && typeb->ty == Tarray &&
 	    tb->nextOf()->size() == typeb->nextOf()->size())
 	{
 	    return expType(to, e1);
 	}
     }
+    
+    if (e1->op == TOKarrayliteral && typeb == tb)
+    {
+        return e1;
+    }
 
     if (e1->isConst() != 1)
+    {
 	return EXP_CANT_INTERPRET;
+	}
 
     if (tb->ty == Tbool)
 	e = new IntegerExp(loc, e1->toInteger() != 0, type);

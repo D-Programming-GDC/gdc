@@ -229,7 +229,7 @@ Array *Parser::parseDeclDefs(int once)
 		    s = parseInvariant();
 		else
 		{
-		    stc = STCinvariant;
+		    stc = STCimmutable;
 		    goto Lstc;
 		}
 #endif
@@ -310,7 +310,7 @@ Array *Parser::parseDeclDefs(int once)
 		    case TOKabstract:	  stc |= STCabstract;	 goto Lstc;
 		    case TOKsynchronized: stc |= STCsynchronized; goto Lstc;
 		    case TOKdeprecated:   stc |= STCdeprecated;	 goto Lstc;
-		    //case TOKinvariant:    stc |= STCinvariant;   goto Lstc;
+		    //case TOKinvariant:    stc |= STCimmutable;   goto Lstc;
 		    default:
 			break;
 		}

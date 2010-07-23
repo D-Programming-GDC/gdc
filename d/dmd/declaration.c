@@ -148,7 +148,7 @@ enum PROT Declaration::prot()
  	    const char *p = NULL;
  	    if (isConst())
  		p = "const";
- 	    else if (isInvariant())
+ 	    else if (isImmutable())
  		p = "immutable";
  	    else if (storage_class & STCmanifest)
  		p = "enum";
@@ -316,6 +316,9 @@ void TypedefDeclaration::semantic(Scope *sc)
     {	sem = 1;
 	basetype = basetype->semantic(loc, sc);
 	sem = 2;
+#if DMDV2
+	type = type->addStorageClass(storage_class);
+#endif
 	type = type->semantic(loc, sc);
 	if (attributes)
 	    attributes->append(sc->attributes);
@@ -450,9 +453,11 @@ void AliasDeclaration::semantic(Scope *sc)
 	return;
     }
     this->inSemantic = 1;
-
+    
+#if DMDV1   // don't really know why this is here
     if (storage_class & STCconst)
 	error("cannot be const");
+#endif
 
     storage_class |= sc->stc & STCdeprecated;
 
@@ -483,11 +488,12 @@ void AliasDeclaration::semantic(Scope *sc)
 	goto L2;			// it's a symbolic alias
 
     #if DMDV2
+    type = type->addStorageClass(storage_class);
     if (storage_class & (STCref | STCnothrow | STCpure))
     {	// For 'ref' to be attached to function types, and picked
 	// up by Type::resolve(), it has to go into sc.
 	sc = sc->push();
-	sc->stc |= storage_class & (STCref | STCnothrow | STCpure);
+	sc->stc |= storage_class & (STCref | STCnothrow | STCpure | STCshared);
 	type->resolve(loc, sc, &e, &t, &s);
 	sc = sc->pop();
     }
@@ -1321,7 +1327,7 @@ int VarDeclaration::isDataseg()
 {
 #if 0
     printf("VarDeclaration::isDataseg(%p, '%s')\n", this, toChars());
-    printf("%x, %p, %p\n", storage_class & (STCstatic | STCconst), parent->isModule(), parent->isTemplateInstance());
+    printf("%llx, %p, %p\n", storage_class & (STCstatic | STCconst), parent->isModule(), parent->isTemplateInstance());
     printf("parent = '%s'\n", parent->toChars());
 #endif
     Dsymbol *parent = this->toParent();
@@ -1342,6 +1348,17 @@ int VarDeclaration::isDataseg()
 int VarDeclaration::isThreadlocal()
 {
     return 0;
+}
+
+/********************************************
+ * Can variable be read and written by CTFE?
+ */
+
+int VarDeclaration::isCTFE()
+{
+    //printf("VarDeclaration::isCTFE(%p, '%s')\n", this, toChars());
+    //printf("%llx\n", storage_class);
+    return (storage_class & STCctfe) || !isDataseg();
 }
 
 int VarDeclaration::hasPointers()

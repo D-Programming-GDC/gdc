@@ -69,7 +69,6 @@ enum STC
     STCctorinit     = 0x20000,		// can only be set inside constructor
     STCtemplateparameter = 0x40000,	// template parameter
     STCscope	    = 0x80000,		// template parameter
-    STCinvariant    = 0x100000,
     STCimmutable    = 0x100000,
     STCref	    = 0x200000,
     STCinit	    = 0x400000,		// has explicit initializer
@@ -82,8 +81,15 @@ enum STC
     STCshared       = 0x20000000,	// accessible from multiple threads
     STCgshared      = 0x40000000,	// accessible from multiple threads
 					// but not typed as "shared"
-    STC_TYPECTOR    = (STCconst | STCimmutable | STCshared),
+    STCwild         = 0x80000000,	// for "wild" type constructor
+    STC_TYPECTOR    = (STCconst | STCimmutable | STCshared | STCwild),
 };
+
+#define STCproperty	0x100000000LL
+#define STCsafe		0x200000000LL
+#define STCtrusted	0x400000000LL
+#define STCsystem	0x800000000LL
+#define STCctfe		0x1000000000LL	// can be used in CTFE, even if it is static
 
 struct Match
 {
@@ -134,7 +140,7 @@ struct Declaration : Dsymbol
     int isFinal()        { return storage_class & STCfinal; }
     int isAbstract()     { return storage_class & STCabstract; }
     int isConst()        { return storage_class & STCconst; }
-    int isInvariant()    { return storage_class & STCinvariant; }
+    int isImmutable()    { return storage_class & STCimmutable; }
     int isAuto()         { return storage_class & STCauto; }
     int isScope()        { return storage_class & (STCscope | STCauto); }
     int isSynchronized() { return storage_class & STCsynchronized; }
@@ -272,6 +278,7 @@ struct VarDeclaration : Declaration
     int isImportedSymbol();
     int isDataseg();
     int isThreadlocal();
+    int isCTFE();
     int hasPointers();
 #if DMDV2
     int canTakeAddressOf();
@@ -617,6 +624,7 @@ struct FuncDeclaration : Declaration
     int needsClosure();
     Statement *mergeFrequire(Statement *);
     Statement *mergeFensure(Statement *);
+    Parameters *getParameters(int *pvarargs);
 
     static FuncDeclaration *genCfunc(Type *treturn, const char *name,
 	Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);

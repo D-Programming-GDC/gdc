@@ -389,7 +389,7 @@ enum MATCH
     MATCHexact		// exact match
 };
 
-typedef unsigned StorageClass;
+typedef uint64_t StorageClass;
 
 
 void warning(Loc loc, const char *format, ...);

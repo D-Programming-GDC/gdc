@@ -18,6 +18,7 @@
 #include "hdrgen.h"
 #include "scope.h"
 #include "template.h"
+#include "declaration.h"
 
 
 /********************************* AttribDeclaration ****************************/
@@ -48,10 +49,6 @@ void StaticAssert::semantic(Scope *sc)
 {
 }
 
-#include "scope.h"
-#include "template.h"
-#include "declaration.h"
-
 void StaticAssert::semantic2(Scope *sc)
 {
     Expression *e;
@@ -75,9 +72,8 @@ void StaticAssert::semantic2(Scope *sc)
 	    error("(%s) is false", exp->toChars());
  		if(sc->tinst)
  	    sc->tinst->printInstantiationTrace();
- 	  if (!global.gag) {
+ 	if (!global.gag)
 	    fatal();
-    }
     }
     else if (!e->isBool(TRUE))
     {

@@ -709,6 +709,7 @@ void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argum
  			Type *t = new TypeSArray(((TypeArray *)tb)->next, new IntegerExp(nargs - i));
 			t = t->semantic(loc, sc);
 			VarDeclaration *v = new VarDeclaration(loc, t, id, new VoidInitializer(loc));
+			v->storage_class |= STCctfe;
 			v->semantic(sc);
 			v->parent = sc->parent;
 			//sc->insert(v);
@@ -862,9 +863,7 @@ void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argum
 	    {	TypeSArray *ts = (TypeSArray *)tb;
 		Type *ta = ts->next->arrayOf();
 		if (ts->size(arg->loc) == 0)
-		{   arg = new NullExp(arg->loc);
-		    arg->type = ta;
-		}
+		    arg = new NullExp(arg->loc, ta);
 		else
 		    arg = arg->castTo(sc, ta);
 	    }
@@ -1179,6 +1178,10 @@ void Expression::checkEscape()
 {
 }
 
+void Expression::checkEscapeRef()
+{
+}
+
 void Expression::checkScalar()
 {
     if (!type->isscalar())
@@ -1195,7 +1198,7 @@ Expression *Expression::checkIntegral()
 {
     if (!type->isintegral())
     {	error("'%s' is not of integral type, it is a %s", toChars(), type->toChars());
-	return new IntegerExp(0);
+	return new ErrorExp();
     }
     return this;
 }
@@ -1204,7 +1207,7 @@ Expression *Expression::checkArithmetic()
 {
     if (!type->isintegral() && !type->isfloating())
     {	error("'%s' is not of arithmetic type, it is a %s", toChars(), type->toChars());
-	return new IntegerExp(0);
+	return new ErrorExp();
     }
     return this;
 }
@@ -1504,7 +1507,8 @@ complex_t IntegerExp::toComplex()
 
 int IntegerExp::isBool(int result)
 {
-    return result ? value != 0 : value == 0;
+    int r = toInteger() != 0;
+    return result ? r : !r;
 }
 
 Expression *IntegerExp::semantic(Scope *sc)
@@ -2609,10 +2613,11 @@ void SuperExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /******************************** NullExp **************************/
 
-NullExp::NullExp(Loc loc)
+NullExp::NullExp(Loc loc, Type *type)
 	: Expression(loc, TOKnull, sizeof(NullExp))
 {
     committed = 0;
+    this->type = type;
 }
 
 Expression *NullExp::semantic(Scope *sc)
@@ -3285,9 +3290,7 @@ if (type)
 		}
 	    }
 	    else
-	    {	e = v->type->defaultInit();
-		e->loc = loc;
-	    }
+		e = v->type->defaultInitLiteral(loc);
 	    offset = v->offset + v->type->size();
 	}
 	elements->push(e);
@@ -3702,7 +3705,15 @@ Lagain:
 		else
 		{
 		    for (Dsymbol *sf = sc->func; 1; sf= sf->toParent2()->isFuncDeclaration())
-		    {
+		    {if (!v->isDataseg() && !(v->storage_class & (STCref | STCout)))
++	{   /* BUG: This should be allowed:
++	     *   void foo()
++	     *   { int a;
++	     *     int* bar() { return &a; }
++	     *   }
++	     */
++	    error("escaping reference to local %s", v->toChars());
++	}
 			if (!sf)
 			{
 			    error("outer class %s 'this' needed to 'new' nested class %s", cdn->toChars(), cd->toChars());
@@ -4020,8 +4031,15 @@ void SymOffExp::checkEscape()
     VarDeclaration *v = var->isVarDeclaration();
     if (v)
     {
-	if (!v->isDataseg())
-	    error("escaping reference to local variable %s", v->toChars());
+	if (!v->isDataseg() && !(v->storage_class & (STCref | STCout)))
+	{   /* BUG: This should be allowed:
+	     *   void foo()
+	     *   { int a;
+	     *     int* bar() { return &a; }
+	     *   }
+	     */
+	    error("escaping reference to local %s", v->toChars());
+	}
     }
 }
 
@@ -4071,6 +4089,7 @@ Expression *VarExp::semantic(Scope *sc)
 	}
 #endif
     }
+
     /* Fix for 1161 doesn't work because it causes protection
      * problems when instantiating imported templates passing private
      * variables as alias template parameters.
@@ -4093,7 +4112,7 @@ Expression *VarExp::semantic(Scope *sc)
 	#if DMDV2
  	if (sc->func && sc->func->isPure() && !sc->intypeof)
  	{
- 	    if (v->isDataseg() && !v->isInvariant())
+ 	    if (v->isDataseg() && !v->isImmutable())
  		error("pure function '%s' cannot access mutable static data '%s'", sc->func->toChars(), v->toChars());
  	}
  #endif
@@ -4106,6 +4125,7 @@ Expression *VarExp::semantic(Scope *sc)
 	return e;
     }
 #endif
+
     return this;
 }
 
@@ -4135,14 +4155,24 @@ void VarExp::checkEscape()
     }
 }
 
+void VarExp::checkEscapeRef()
+{
+    VarDeclaration *v = var->isVarDeclaration();
+    if (v)
+    {
+	if (!v->isDataseg() && !(v->storage_class & (STCref | STCout)))
+	    error("escaping reference to local variable %s", v->toChars());
+    }
+}
+
 #if DMDV2
- int VarExp::isLvalue()
- {
-     if (var->storage_class & STClazy)
- 	return 0;
-     return 1;
- }
- #endif
+int VarExp::isLvalue()
+{
+    if (var->storage_class & STClazy)
+    return 0;
+    return 1;
+}
+#endif
 
 Expression *VarExp::toLvalue(Scope *sc, Expression *e)
 {
@@ -4762,7 +4792,13 @@ Expression *IsExp::semantic(Scope *sc)
  
  	    case TOKinvariant:
  	    case TOKimmutable:
- 		if (!targ->isInvariant())
+ 		if (!targ->isImmutable())
+		    goto Lno;
+		tded = targ;
+		break;
+
+	    case TOKshared:
+		if (!targ->isShared())
  		    goto Lno;
  		tded = targ;
  		break;
@@ -4856,7 +4892,9 @@ Expression *IsExp::semantic(Scope *sc)
 	m = targ->deduceType(NULL, tspec, &parameters, &dedtypes);
 	if (m == MATCHnomatch ||
 	    (m != MATCHexact && tok == TOKequal))
+	{
 	    goto Lno;
+	}
 	else
 	{
 	    assert(dedtypes.dim == 1);
@@ -4876,6 +4914,8 @@ Expression *IsExp::semantic(Scope *sc)
     else if (tspec)
     {
 	/* Evaluate to TRUE if targ matches tspec
+	* is(targ == tspec)
+	 * is(targ : tspec)
 	 */
 	tspec = tspec->semantic(loc, sc);
 	//printf("targ  = %s\n", targ->toChars());
@@ -5688,11 +5728,13 @@ Expression *DotIdExp::semantic(Scope *sc)
          */
  	unsigned errors = global.errors;
  	global.gag++;
+ 	Type *t1 = e1->type;
  	e = e1->type->dotExp(sc, e1, ident);
  	global.gag--;
  	if (errors != global.errors)	// if failed to find the property
  	{
  	    global.errors = errors;
+ 	    e1->type = t1;		// kludge to restore type
  	    e = new DotIdExp(loc, new IdentifierExp(loc, Id::empty), ident);
  	    e = new CallExp(loc, e, e1);
  	}
@@ -5885,7 +5927,7 @@ Expression *DotVarExp::modifiableLvalue(Scope *sc, Expression *e)
  	    !var->type->isAssignable() ||
  	    var->storage_class & STCmanifest
  	   )
- 	    error("cannot modify const/invariant %s", toChars());
+ 	    error("cannot modify const/immutable expression %s", toChars());
      }
  	#endif
     return this;
@@ -6950,6 +6992,11 @@ Expression *AddrExp::semantic(Scope *sc)
     return this;
 }
 
+void AddrExp::checkEscape()
+{
+    e1->checkEscapeRef();
+}
+
 /************************************************************/
 
 PtrExp::PtrExp(Loc loc, Expression *e)
@@ -7005,6 +7052,11 @@ int PtrExp::isLvalue()
     return 1;
 }
 #endif
+
+void PtrExp::checkEscapeRef()
+{
+    e1->checkEscape();
+}
 
 Expression *PtrExp::toLvalue(Scope *sc, Expression *e)
 {
@@ -7392,7 +7444,7 @@ void CastExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
  	    case MODconst:
  		buf->writestring(Token::tochars[TOKconst]);
  		break;
- 	    case MODinvariant:
+ 	    case MODimmutable:
  		buf->writestring(Token::tochars[TOKimmutable]);
  		break;
  	    case MODshared:
@@ -7582,7 +7634,9 @@ Expression *SliceExp::semantic(Scope *sc)
 	return e;
     }
 	if (t->ty == Tarray)
- 	type = e1->type;
+	{
+	type = e1->type;
+	}
     else
     type = t->nextOf()->arrayOf();
     return e;
@@ -7594,13 +7648,18 @@ Lerror:
     else
 	s = t->toChars();
     error("%s cannot be sliced with []", s);
-    e = new IntegerExp(0);
+    e = new ErrorExp();
     return e;
 }
 
 void SliceExp::checkEscape()
 {
     e1->checkEscape();
+}
+
+void SliceExp::checkEscapeRef()
+{
+    e1->checkEscapeRef();
 }
 
 #if DMDV2
@@ -7648,8 +7707,7 @@ ArrayLengthExp::ArrayLengthExp(Loc loc, Expression *e1)
 }
 
 Expression *ArrayLengthExp::semantic(Scope *sc)
-{   Expression *e;
-
+{
 #if LOGSEMANTIC
     printf("ArrayLengthExp::semantic('%s')\n", toChars());
 #endif
@@ -7800,6 +7858,11 @@ Expression *CommaExp::semantic(Scope *sc)
 void CommaExp::checkEscape()
 {
     e2->checkEscape();
+}
+
+void CommaExp::checkEscapeRef()
+{
+    e2->checkEscapeRef();
 }
 
 #if DMDV2
@@ -9959,6 +10022,11 @@ void CondExp::checkEscape()
     e2->checkEscape();
 }
 
+void CondExp::checkEscapeRef()
+{
+    e1->checkEscapeRef();
+    e2->checkEscapeRef();
+}
 
 Expression *CondExp::checkToBoolean()
 {
@@ -9984,11 +10052,11 @@ int CondExp::checkSideEffect(int flag)
 }
 
 #if DMDV2
- int CondExp::canThrow()
- {
-     return econd->canThrow() || e1->canThrow() || e2->canThrow();
- }
- #endif
+int CondExp::canThrow()
+{
+    return econd->canThrow() || e1->canThrow() || e2->canThrow();
+}
+#endif
 
 void CondExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
