@@ -999,7 +999,7 @@ AssignExp::toElem(IRState* irs) {
 #if V2
 	    if (op != TOKblit)
 	    {
-		if (needsPostblit(elem_type))
+		if (needsPostblit(elem_type) != NULL)
 		{   
 		    tree e;
 		    AddrOfExpr aoe;
@@ -1022,7 +1022,7 @@ AssignExp::toElem(IRState* irs) {
 	    return irs->compound(set_exp, dyn_array_exp);
 	} else {
 #if V2
-	    if (needsPostblit(elem_type) && op != TOKblit)
+	    if (op != TOKblit && needsPostblit(elem_type) != NULL)
 	    {
 		tree args[3] = {
 		    irs->typeinfoReference(elem_type),
@@ -2274,7 +2274,7 @@ elem *
 StructLiteralExp::toElem(IRState *irs)
 {
     assert(irs->typesSame(type->toBasetype(), sd->type->toBasetype()));
-    
+
     tree ctor = make_node( CONSTRUCTOR );
     CtorEltMaker ce;
     TREE_TYPE( ctor ) = type->toCtype();
@@ -2287,27 +2287,24 @@ StructLiteralExp::toElem(IRState *irs)
 	    {
 		VarDeclaration * fld = (VarDeclaration *) sd->fields.data[i];
 #if V2
-		bool postblit = false;
-		StructDeclaration * sd;
 		Type * tb = fld->type->toBasetype();
-
-		if (sd = needsPostblit(tb))
-		    postblit = true;
-
-		if (tb->ty == Tstruct)
+		StructDeclaration * sd;
+		if ((sd = needsPostblit(tb)) != NULL)
 		{
-		    // Call postblit()
-		    if (sd)
+		    // Call postblit() on e
+		    if (tb->ty == Tstruct)
 		    {
-			FuncDeclaration * fd = sd->postblit;
 			Array args;
-			tree result;
-			//result = irs->call(fd, /* e1? */ & args);
+			FuncDeclaration * fd = sd->postblit;
+			tree ec = save_expr(e->toElem(irs));
+			irs->doExp(irs->call(fd, irs->addressOf(ec), & args));
+			ce.cons(fld->csym->Stree, irs->convertTo(ec, e->type, fld->type));
 		    }
-		}
-		else if (postblit)
-		{
-		    /* Not implemented yet */
+		    else
+		    {
+			/* Not implemented yet */
+			assert(0);
+		    }
 		}
 		else
 #endif
