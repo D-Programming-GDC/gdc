@@ -1512,7 +1512,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 	      */
 	    Identifier *id = Lexer::uniqueId("__aggr");
 	    ExpInitializer *ie = new ExpInitializer(loc, new SliceExp(loc, aggr, NULL, NULL));
-	    VarDeclaration *tmp = new VarDeclaration(loc, aggr->type->nextOf()->arrayOf(), id, ie);
+	    VarDeclaration *tmp = new VarDeclaration(loc, tab->nextOf()->arrayOf(), id, ie);
 
 	    Expression *tmp_length = new DotIdExp(loc, new VarExp(loc, tmp), Id::length);
 
@@ -2440,7 +2440,14 @@ Statement *PragmaStatement::semantic(Scope *sc)
                 Expression *e = (Expression *)args->data[i];
 
                 e = e->semantic(sc);
-		e = e->optimize(WANTvalue | WANTinterpret);
+#if 1
+		        e = e->optimize(WANTvalue | WANTinterpret);
+#else
+	        e = e->interpret(NULL);
+		if (e == EXP_CANT_INTERPRET)
+		    fprintf(stdmsg, ((Expression *)args->data[i])->toChars());
+                else
+#endif
                 if (e->op == TOKstring)
                 {
                     StringExp *se = (StringExp *)e;

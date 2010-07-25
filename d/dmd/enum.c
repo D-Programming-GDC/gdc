@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -21,6 +21,7 @@
 #include "enum.h"
 #include "mtype.h"
 #include "scope.h"
+#include "module.h"
 #include "declaration.h"
 
 /********************************* EnumDeclaration ****************************/
@@ -80,8 +81,10 @@ void EnumDeclaration::semantic(Scope *sc)
         scope = NULL;
     }
     
+    unsigned dprogress_save = Module::dprogress;
+    
 	if (sc->stc & STCdeprecated)
- 	isdeprecated = 1;
+	isdeprecated = 1;
     parent = sc->scopesym;
     if (attributes)
 	attributes->append(sc->attributes);
@@ -106,6 +109,7 @@ void EnumDeclaration::semantic(Scope *sc)
     }
     
     isdone = 1;
+    Module::dprogress++;
 
     t = isAnonymous() ? memtype : type;
     symtab = new DsymbolTable();

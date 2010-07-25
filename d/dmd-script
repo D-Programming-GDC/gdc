@@ -132,6 +132,7 @@ Usage:
   -offilename	 name output file to filename
   -op            do not strip paths from source file
   -m...          pass an -m... option to gdc
+  -map           generate linker .map file
   -pipe          Use pipes rather than intermediate files
   -profile	 profile runtime performance of generated code
   -quiet         suppress unnecessary messages
@@ -357,6 +358,9 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ($arg eq '-man') {
 	browse("http://dgcc.sourceforge.net/gdc/manual.html");
 	exit 0;
+	} elsif ( $arg =~ m/^-map$/ ) {
+	# Should check for Mac?? (in link.c, _APPLE_ is -map)
+	push @link_out, '-Wl,-Map=' . substr($first_input_file, 0, length($first_input_file)-2) . ".map"
     } elsif ( $arg =~ m/^-m.+/ ) {
 	# Pass -mxxx options
 	push @out, $arg;

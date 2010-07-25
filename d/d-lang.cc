@@ -1086,6 +1086,11 @@ d_parse_file (int /*set_yydebug*/)
     }
     if (global.errors)
 	goto had_errors;
+	
+#if V1
+	Module::dprogress = 1;
+    Module::runDeferredSemantic();
+#endif
 
     // Do pass 2 semantic analysis
     for (i = 0; i < modules.dim; i++)

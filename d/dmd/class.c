@@ -271,6 +271,7 @@ void ClassDeclaration::semantic(Scope *sc)
 	attributes->append(sc->attributes);
     else
 	attributes = sc->attributes;
+	unsigned dprogress_save = Module::dprogress;
 #ifdef IN_GCC
     methods.setDim(0);
 #endif
@@ -633,6 +634,8 @@ void ClassDeclaration::semantic(Scope *sc)
 	scope = scx ? scx : new Scope(*sc);
 	scope->setNoFree();
 	scope->module->addDeferredSemantic(this);
+	
+	Module::dprogress = dprogress_save;
 
 	//printf("\tsemantic('%s') failed due to forward references\n", toChars());
 	return;

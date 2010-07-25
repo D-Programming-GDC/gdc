@@ -26,6 +26,10 @@
 #include	<unistd.h>
 #endif
 
+#if __APPLE__
+#import <CoreServices/CoreServices.h>
+#endif
+
 #include	"cc.h"
 #include	"global.h"
 #include	"code.h"
@@ -1288,65 +1292,104 @@ void obj_ehtables(Symbol *sfunc,targ_size_t size,Symbol *ehsym)
 void obj_ehsections()
 {
     //printf("obj_ehsections()\n");
+
+    /* Determine Mac OSX version, and put out the sections slightly differently for each.
+     * This is needed because the linker on OSX 10.5 behaves differently than
+     * the linker on 10.6.
+     * See Bugzilla 3502 for more information.
+     */
+    SInt32 MacVersion;
+    SInt32 MacOSX_10_5 = 0x1050;
+    SInt32 MacOSX_10_6 = 0x1060;
+    Gestalt(gestaltSystemVersion, &MacVersion);
+
     type *t = type_fake(TYint);
     t->Tmangle = mTYman_c;
+
+    /* If we don't write something to each seg, then the linker won't put
+     * them in this necessary order. Don't know why linker is broken.
+     */
 
     /* Exception handling sections
      */
     int seg = mach_getsegment("__deh_beg", "__DATA", 2, S_REGULAR);
     symbol *s_deh_beg = symbol_name("_deh_beg", SCglobal, t);
     objpubdef(seg, s_deh_beg, 0);
-    //obj_bytes(sec, 0, 4, NULL);
-
+    if (MacVersion >= MacOSX_10_6)
+	obj_bytes(seg, 0, 12, NULL);	// 12 is size of struct FuncTable in D runtime
     seg = mach_getsegment("__deh_eh", "__DATA", 2, S_REGULAR);
-    /* If we don't write something to this seg, then the linker won't put
-     * it between deh_beg and deh_end. Don't know why.
-     */
     Outbuffer *buf = SegData[seg]->SDbuf;
-    buf->writezeros(12);
+    buf->writezeros(12);		// 12 is size of struct FuncTable in D runtime,
+					// this entry gets skipped over by __eh_finddata()
 
     seg = mach_getsegment("__deh_end", "__DATA", 2, S_REGULAR);
     symbol *s_deh_end = symbol_name("_deh_end", SCglobal, t);
     objpubdef(seg, s_deh_end, 0);
+    if (MacVersion >= MacOSX_10_6)
+	obj_bytes(seg, 0, 4, NULL);
 
     /* Thread local storage sections
      */
     seg = mach_getsegment("__tls_beg", "__DATA", 2, S_REGULAR);
     symbol *s_tls_beg = symbol_name("_tls_beg", SCglobal, t);
     objpubdef(seg, s_tls_beg, 0);
-    //obj_bytes(sec, 0, 4, NULL);
+    if (MacVersion >= MacOSX_10_6)
+	obj_bytes(seg, 0, 4, NULL);
+    seg = mach_getsegment("__tls_data", "__DATA", 2, S_REGULAR);
+    if (MacVersion >= MacOSX_10_6)
+    {	Outbuffer *buf = SegData[seg]->SDbuf;
+	// Don't need to write if the size is already non-zero
+	if (buf->size() == 0)
+	    buf->writezeros(4);
+    }
 
-    mach_getsegment("__tlsdata", "__DATA", 2, S_REGULAR);
+    seg = mach_getsegment("__tlscoal_nt", "__DATA", 4, S_COALESCED);
+    if (MacVersion >= MacOSX_10_6)
+	SegData[seg]->SDbuf->writezeros(4);
 
     seg = mach_getsegment("__tls_end", "__DATA", 2, S_REGULAR);
     symbol *s_tls_end = symbol_name("_tls_end", SCglobal, t);
     objpubdef(seg, s_tls_end, 0);
+    if (MacVersion >= MacOSX_10_6)
+	obj_bytes(seg, 0, 4, NULL);
 
+#if 0
     /* Thread local comdat sections
      */
     seg = mach_getsegment("__tlscoal_beg", "__DATA", 2, S_REGULAR);
     symbol *s_tlscoal_beg = symbol_name("_tlscoal_beg", SCglobal, t);
     objpubdef(seg, s_tlscoal_beg, 0);
-    //obj_bytes(sec, 0, 4, NULL);
+    if (MacVersion >= MacOSX_10_6)
+	obj_bytes(seg, 0, 4, NULL);
 
-    mach_getsegment("__tlscoal_nt", "__DATA", 4, S_COALESCED);
+    seg = mach_getsegment("__tlscoal_nt", "__DATA", 4, S_COALESCED);
+    if (MacVersion >= MacOSX_10_6)
+	SegData[seg]->SDbuf->writezeros(4);
 
     seg = mach_getsegment("__tlscoal", "__DATA", 2, S_REGULAR);
     symbol *s_tlscoal_end = symbol_name("_tlscoal_end", SCglobal, t);
     objpubdef(seg, s_tlscoal_end, 0);
+    if (MacVersion >= MacOSX_10_6)
+	obj_bytes(seg, 0, 4, NULL);
+#endif
 
     /* Module info sections
      */
     seg = mach_getsegment("__minfo_beg", "__DATA", 2, S_REGULAR);
     symbol *s_minfo_beg = symbol_name("_minfo_beg", SCglobal, t);
     objpubdef(seg, s_minfo_beg, 0);
-    //obj_bytes(sec, 0, 4, NULL);
+    if (MacVersion >= MacOSX_10_6)
+	obj_bytes(seg, 0, 4, NULL);
 
-    mach_getsegment("__minfodata", "__DATA", 2, S_REGULAR);
+    seg = mach_getsegment("__minfodata", "__DATA", 2, S_REGULAR);
+    if (MacVersion >= MacOSX_10_6)
+	SegData[seg]->SDbuf->writezeros(4);
 
     seg = mach_getsegment("__minfo_end", "__DATA", 2, S_REGULAR);
     symbol *s_minfo_end = symbol_name("_minfo_end", SCglobal, t);
     objpubdef(seg, s_minfo_end, 0);
+    if (MacVersion >= MacOSX_10_6)
+	obj_bytes(seg, 0, 4, NULL);
 }
 
 /*********************************
@@ -1380,9 +1423,16 @@ int obj_comdat(Symbol *s)
     else if ((s->ty() & mTYLINK) == mTYthread)
     {
 	s->Sfl = FLtlsdata;
+#if 1
+	mach_getsegment("__tls_beg", "__DATA", 2, S_REGULAR);
+	mach_getsegment("__tls_data", "__DATA", 2, S_REGULAR);
+	s->Sseg = mach_getsegment("__tlscoal_nt", "__DATA", 4, S_COALESCED);
+	mach_getsegment("__tls_end", "__DATA", 2, S_REGULAR);
+#else
 	mach_getsegment("__tlscoal_beg", "__DATA", 2, S_REGULAR);
 	s->Sseg = mach_getsegment("__tlscoal_nt", "__DATA", 4, S_COALESCED);
 	mach_getsegment("__tlscoal", "__DATA", 2, S_REGULAR);
+#endif
     }
     else
     {
@@ -1526,7 +1576,10 @@ seg_data *obj_tlsseg()
 
     if (seg_tlsseg == UNKNOWN)
     {
-	seg_tlsseg = mach_getsegment("__tlsdata", "__DATA", 2, S_REGULAR);
+	mach_getsegment("__tls_beg", "__DATA", 2, S_REGULAR);
+	seg_tlsseg = mach_getsegment("__tls_data", "__DATA", 2, S_REGULAR);
+	mach_getsegment("__tlscoal_nt", "__DATA", 4, S_COALESCED);
+	mach_getsegment("__tls_end", "__DATA", 2, S_REGULAR);
     }
     return SegData[seg_tlsseg];
 }

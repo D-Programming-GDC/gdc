@@ -1,5 +1,5 @@
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -72,7 +72,7 @@ FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageCla
     inlineNest = 0;
     inlineAsm = 0;
     cantInterpret = 0;
-    semanticRun = 0;
+    semanticRun = PASSinit;
 #if DMDV1
       nestedFrameRef = 0;
 #endif
@@ -128,7 +128,7 @@ void FuncDeclaration::semantic(Scope *sc)
     printf("type: %p, %s\n", type, type->toChars());
 #endif
 
-    if (semanticRun && isFuncLiteralDeclaration())
+    if (semanticRun != PASSinit && isFuncLiteralDeclaration())
     {
 	/* Member functions that have return types that are
 	 * forward references can have semantic() run more than
@@ -137,8 +137,24 @@ void FuncDeclaration::semantic(Scope *sc)
 	 */
 	return;
     }
-    assert(semanticRun <= 1);
-    semanticRun = 1;
+    parent = sc->parent;
+    Dsymbol *parent = toParent();
+
+    if (semanticRun == PASSsemanticdone)
+    {
+	if (!parent->isClassDeclaration())
+	    return;
+	// need to re-run semantic() in order to set the class's vtbl[]
+    }
+    else
+    {
+	assert(semanticRun <= PASSsemantic);
+	semanticRun = PASSsemantic;
+    }
+
+    unsigned dprogress_save = Module::dprogress;
+
+    foverrides.setDim(0);	// reset in case semantic() is being retried for this function
 
     if (!type->deco)
     {
@@ -154,11 +170,6 @@ void FuncDeclaration::semantic(Scope *sc)
     size_t nparams = Parameter::dim(f->parameters);
 
     linkage = sc->linkage;
-//    if (!parent)
-    {
-	//parent = sc->scopesym;
-	parent = sc->parent;
-    }
     protection = sc->protection;
     storage_class |= sc->stc;
     if (attributes)
@@ -166,7 +177,6 @@ void FuncDeclaration::semantic(Scope *sc)
     else
 	attributes = sc->attributes;
     //printf("function storage_class = x%x\n", storage_class);
-    Dsymbol *parent = toParent();
     
     if (ident == Id::ctor && !isCtorDeclaration())
  	error("_ctor is reserved for constructors");
@@ -244,7 +254,7 @@ void FuncDeclaration::semantic(Scope *sc)
 	    isInvariantDeclaration() ||
 	    isUnitTestDeclaration() || isNewDeclaration() || isDelete())
 	    error("special function not allowed in interface %s", id->toChars());
-	if (fbody)
+	if (fbody && isVirtual())
 	    error("function body is not abstract in interface %s", id->toChars());
     }
     /* Template member functions aren't virtual:
@@ -313,8 +323,11 @@ void FuncDeclaration::semantic(Scope *sc)
 	    goto Ldone;
 	}
 
-	// Find index of existing function in vtbl[] to override
-	vi = findVtblIndex(&cd->vtbl, cd->baseClass ? cd->baseClass->vtbl.dim : 0);
+	/* Find index of existing function in base class's vtbl[] to override
+	 * (the index will be the same as in cd's current vtbl[])
+	 */
+	vi = cd->baseClass ? findVtblIndex(&cd->baseClass->vtbl, cd->baseClass->vtbl.dim)
+			   : -1;
 	switch (vi)
 	{
 	    case -1:
@@ -354,10 +367,11 @@ void FuncDeclaration::semantic(Scope *sc)
 
 	    case -2:	// can't determine because of fwd refs
 		cd->sizeok = 2;	// can't finish due to forward reference
+		Module::dprogress = dprogress_save;
 		return;
 
 	    default:
-	    {   FuncDeclaration *fdv = (FuncDeclaration *)cd->vtbl.data[vi];
+	    {   FuncDeclaration *fdv = (FuncDeclaration *)cd->baseClass->vtbl.data[vi];
 		// This function is covariant with fdv
 		if (fdv->isFinal())
 		    error("cannot override final function %s", fdv->toPrettyChars());
@@ -431,6 +445,7 @@ void FuncDeclaration::semantic(Scope *sc)
 
 		case -2:
 		    cd->sizeok = 2;	// can't finish due to forward reference
+		    Module::dprogress = dprogress_save;
 		    return;
 
 		default:
@@ -448,19 +463,22 @@ void FuncDeclaration::semantic(Scope *sc)
 			/* Only need to have a tintro if the vptr
 			 * offsets differ
 			 */
+			unsigned errors = global.errors;
+			global.gag++;            // suppress printing of error messages
 			target_ptrdiff_t offset;
-			if (fdv->type->nextOf()->isBaseOf(type->nextOf(), &offset))
+			int baseOf = fdv->type->nextOf()->isBaseOf(type->nextOf(), &offset);
+			global.gag--;            // suppress printing of error messages
+			if (errors != global.errors)
+			{
+			    // any error in isBaseOf() is a forward reference error, so we bail out
+			    global.errors = errors;
+			    cd->sizeok = 2;    // can't finish due to forward reference
+			    Module::dprogress = dprogress_save;
+			    return;
+			}
+			if (baseOf)
 			{
 			    ti = fdv->type;
-#if 0
-			    if (offset)
-				ti = fdv->type;
-			    else if (type->nextOf()->ty == Tclass)
-			    {   ClassDeclaration *cdn = ((TypeClass *)type->nextOf())->sym;
-				if (cdn && cdn->sizeok != 1)
-				    ti = fdv->type;
-			    }
-#endif
 			}
 		    }
 		    if (ti)
@@ -572,7 +590,7 @@ void FuncDeclaration::semantic(Scope *sc)
 	}
     }
 
-    if (isVirtual())
+    if (isVirtual() && semanticRun != PASSsemanticdone)
     {
 	/* Rewrite contracts as nested functions, then call them.
 	 * Doing it as nested functions means that overriding functions
@@ -628,6 +646,9 @@ void FuncDeclaration::semantic(Scope *sc)
     }
 
 Ldone:
+    Module::dprogress++;
+    semanticRun = PASSsemanticdone;
+    
     /* Save scope for possible later use (if we need the
      * function internals)
      */
@@ -664,9 +685,9 @@ void FuncDeclaration::semantic3(Scope *sc)
     //printf("\tlinkage = %d\n", sc->linkage);
 
     //printf(" sc->incontract = %d\n", sc->incontract);
-    if (semanticRun >= 3)
+    if (semanticRun >= PASSsemantic3)
 	return;
-    semanticRun = 3;
+    semanticRun = PASSsemantic3;
 
     if (!type || type->ty != Tfunction)
 	return;
@@ -1393,7 +1414,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 	sc2->callSuper = 0;
 	sc2->pop();
     }
-    semanticRun = 4;
+    semanticRun = PASSsemantic3done;
 }
 
 void FuncDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -1565,6 +1586,7 @@ int FuncDeclaration::overrides(FuncDeclaration *fd)
 /*************************************************
  * Find index of function in vtbl[0..dim] that
  * this function overrides.
+ * Prefer an exact match to a covariant one.
  * Returns:
  *	-1	didn't find one
  *	-2	can't determine because of forward references
@@ -1572,11 +1594,16 @@ int FuncDeclaration::overrides(FuncDeclaration *fd)
 
 int FuncDeclaration::findVtblIndex(Array *vtbl, int dim)
 {
+	FuncDeclaration *mismatch = NULL;
+    int bestvi = -1;
     for (int vi = 0; vi < dim; vi++)
     {
 	FuncDeclaration *fdv = ((Dsymbol *)vtbl->data[vi])->isFuncDeclaration();
 	if (fdv && fdv->ident == ident)
 	{
+		if (type->equals(fdv->type))	// if exact match
+	        return vi;			// no need to look further
+
 	    int cov = type->covariant(fdv->type);
 	    //printf("\tbaseclass cov = %d\n", cov);
 	    switch (cov)
@@ -1585,15 +1612,12 @@ int FuncDeclaration::findVtblIndex(Array *vtbl, int dim)
 		    break;
 
 		case 1:
-		    return vi;
+		        bestvi = vi;	// covariant, but not identical
+	            break;		// keep looking for an exact match
 
 		case 2:
-		    //type->print();
-		    //fdv->type->print();
-		    //printf("%s %s\n", type->deco, fdv->type->deco);
-		    error("of type %s overrides but is not covariant with %s of type %s",
-			type->toChars(), fdv->toPrettyChars(), fdv->type->toChars());
-		    break;
+		    mismatch = fdv;	// overrides, but is not covariant
+		    break;		// keep looking for an exact match
 
 		case 3:
 		    return -2;	// forward references
@@ -1603,7 +1627,15 @@ int FuncDeclaration::findVtblIndex(Array *vtbl, int dim)
 	    }
 	}
     }
-    return -1;
+    if (bestvi == -1 && mismatch)
+    {
+	//type->print();
+	//mismatch->type->print();
+	//printf("%s %s\n", type->deco, mismatch->type->deco);
+	error("of type %s overrides but is not covariant with %s of type %s",
+	    type->toChars(), mismatch->toPrettyChars(), mismatch->type->toChars());
+    }
+    return bestvi;
 }
 
 /****************************************************
@@ -2404,7 +2436,7 @@ int FuncDeclaration::needsClosure()
 	{   FuncDeclaration *f = (FuncDeclaration *)v->nestedrefs.data[j];
 	    assert(f != this);
 
-	    //printf("\t\tf = %s, %d, %d\n", f->toChars(), f->isVirtual(), f->tookAddressOf);
+	    //printf("\t\tf = %s, %d, %p, %d\n", f->toChars(), f->isVirtual(), f->isThis(), f->tookAddressOf);
 	    if (f->isThis() || f->tookAddressOf)
 		goto Lyes;	// assume f escapes this function's scope
 
@@ -2459,7 +2491,7 @@ Parameters *FuncDeclaration::getParameters(int *pvarargs)
 
 FuncAliasDeclaration::FuncAliasDeclaration(FuncDeclaration *funcalias)
     : FuncDeclaration(funcalias->loc, funcalias->endloc, funcalias->ident,
-	(enum STC)funcalias->storage_class, funcalias->type)
+	funcalias->storage_class, funcalias->type)
 {
     assert(funcalias != this);
     this->funcalias = funcalias;
@@ -2485,7 +2517,7 @@ FuncLiteralDeclaration::FuncLiteralDeclaration(Loc loc, Loc endloc, Type *type,
 	id = "__dgliteral";
     else
 	id = "__funcliteral";
-    this->ident = Identifier::generateId(id);
+    this->ident = Lexer::uniqueId(id);
     this->tok = tok;
     this->fes = fes;
     //printf("FuncLiteralDeclaration() id = '%s', type = '%s'\n", this->ident->toChars(), type->toChars());
@@ -2499,7 +2531,9 @@ Dsymbol *FuncLiteralDeclaration::syntaxCopy(Dsymbol *s)
     if (s)
 	f = (FuncLiteralDeclaration *)s;
     else
-	f = new FuncLiteralDeclaration(loc, endloc, type->syntaxCopy(), tok, fes);
+	{	f = new FuncLiteralDeclaration(loc, endloc, type->syntaxCopy(), tok, fes);
+	f->ident = ident;		// keep old identifier
+    }
     FuncDeclaration::syntaxCopy(f);
     return f;
 }
@@ -2565,13 +2599,7 @@ Dsymbol *CtorDeclaration::syntaxCopy(Dsymbol *s)
 
 void CtorDeclaration::semantic(Scope *sc)
 {
-    ClassDeclaration *cd;
-    Type *tret;
-
-    //printf("CtorDeclaration::semantic()\n");
-    if (type)
-	return;
-
+    //printf("CtorDeclaration::semantic() %s\n", toChars());
     sc = sc->push();
 #if STRUCTTHISREF
     if (ad && ad->isStructDeclaration())
@@ -2581,7 +2609,8 @@ void CtorDeclaration::semantic(Scope *sc)
 
     parent = sc->parent;
     Dsymbol *parent = toParent();
-    cd = parent->isClassDeclaration();
+    Type *tret;
+    ClassDeclaration *cd = parent->isClassDeclaration();
     if (!cd)
     {
 	error("constructors are only for class definitions");
@@ -2589,7 +2618,8 @@ void CtorDeclaration::semantic(Scope *sc)
     }
     else
 	tret = cd->type; //->referenceTo();
-    type = new TypeFunction(arguments, tret, varargs, LINKd);
+    if (!type)
+	type = new TypeFunction(arguments, tret, varargs, LINKd);
     
     if (!originalType)
  	originalType = type;
@@ -2601,7 +2631,7 @@ void CtorDeclaration::semantic(Scope *sc)
     // Append:
     //	return this;
     // to the function body
-    if (fbody)
+    if (fbody && semanticRun < PASSsemantic)
     {
 	Expression *e = new ThisExp(loc);
 	Statement *s = new ReturnStatement(loc, e);
@@ -2675,6 +2705,7 @@ void PostBlitDeclaration::semantic(Scope *sc)
 {
     //printf("PostBlitDeclaration::semantic() %s\n", toChars());
     //printf("ident: %s, %s, %p, %p\n", ident->toChars(), Id::dtor->toChars(), ident, Id::dtor);
+    //printf("stc = x%llx\n", sc->stc);
     parent = sc->parent;
     Dsymbol *parent = toParent();
     StructDeclaration *ad = parent->isStructDeclaration();
@@ -2682,9 +2713,11 @@ void PostBlitDeclaration::semantic(Scope *sc)
     {
 	error("post blits are only for struct/union definitions, not %s %s", parent->kind(), parent->toChars());
     }
-    else if (ident == Id::_postblit)
+    else if (ident == Id::_postblit && semanticRun < PASSsemantic)
 	ad->postblits.push(this);
-    type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
+	
+    if (!type)
+	type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
 
     sc = sc->push();
     sc->stc &= ~STCstatic;		// not static
@@ -2717,9 +2750,7 @@ int PostBlitDeclaration::isVirtual()
 
 void PostBlitDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-    if (hgs->hdrgen)
-	return;
-    buf->writestring("=this()");
+    buf->writestring("this(this)");
     bodyToCBuffer(buf, hgs);
 }
 #endif
@@ -2755,9 +2786,11 @@ void DtorDeclaration::semantic(Scope *sc)
     {
 	error("destructors are only for class/struct/union definitions, not %s %s", parent->kind(), parent->toChars());
     }
-    else
+    else if (semanticRun < PASSsemantic)
 	cd->dtors.push(this);
-    type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
+
+    if (!type)
+	type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
 
     sc = sc->push();
     sc->stc &= ~STCstatic;		// not a static destructor
@@ -2823,10 +2856,8 @@ StaticCtorDeclaration::StaticCtorDeclaration(Loc loc, Loc endloc)
 
 Dsymbol *StaticCtorDeclaration::syntaxCopy(Dsymbol *s)
 {
-    StaticCtorDeclaration *scd;
-
     assert(!s);
-    scd = new StaticCtorDeclaration(loc, endloc);
+    StaticCtorDeclaration *scd = new StaticCtorDeclaration(loc, endloc);
     return FuncDeclaration::syntaxCopy(scd);
 }
 
@@ -2835,15 +2866,16 @@ void StaticCtorDeclaration::semantic(Scope *sc)
 {
     //printf("StaticCtorDeclaration::semantic()\n");
 
-    type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
+    if (!type)
+	type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
     
     /* If the static ctor appears within a template instantiation,
-     * it could get called multiple times by the module constructors
-     * for different modules. Thus, protect it with a gate.
-     */
-     if (inTemplateInstance())
-     {
- 	/* Add this prefix to the function:
+    * it could get called multiple times by the module constructors
+    * for different modules. Thus, protect it with a gate.
+    */
+    if (inTemplateInstance() && semanticRun < PASSsemantic)
+    {
+	/* Add this prefix to the function:
 	 *	static int gate;
 	 *	if (++gate != 1) return;
 	 * Note that this is not thread safe; should not have threads
@@ -2873,6 +2905,7 @@ void StaticCtorDeclaration::semantic(Scope *sc)
 	m = sc->module;
     if (m)
     {	m->needmoduleinfo = 1;
+    //printf("module1 %s needs moduleinfo\n", m->toChars());
 #ifdef IN_GCC
 	m->strictlyneedmoduleinfo = 1;
 #endif
@@ -2935,20 +2968,16 @@ Dsymbol *StaticDtorDeclaration::syntaxCopy(Dsymbol *s)
 
 void StaticDtorDeclaration::semantic(Scope *sc)
 {
-    ClassDeclaration *cd;
-    Type *tret;
+    ClassDeclaration *cd = sc->scopesym->isClassDeclaration();
 
-    cd = sc->scopesym->isClassDeclaration();
-    if (!cd)
-    {
-    }
-    type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
+    if (!type)
+	type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
     
     /* If the static ctor appears within a template instantiation,
      * it could get called multiple times by the module constructors
      * for different modules. Thus, protect it with a gate.
      */
-     if (inTemplateInstance())
+     if (inTemplateInstance() && semanticRun < PASSsemantic)
      {
  	/* Add this prefix to the function:
 	 *	static int gate;
@@ -3042,23 +3071,21 @@ Dsymbol *InvariantDeclaration::syntaxCopy(Dsymbol *s)
 
 void InvariantDeclaration::semantic(Scope *sc)
 {
-    AggregateDeclaration *ad;
-    Type *tret;
-
     parent = sc->parent;
     Dsymbol *parent = toParent();
-    ad = parent->isAggregateDeclaration();
+    AggregateDeclaration *ad = parent->isAggregateDeclaration();
     if (!ad)
     {
 	error("invariants are only for struct/union/class definitions");
 	return;
     }
-    else if (ad->inv && ad->inv != this)
+    else if (ad->inv && ad->inv != this && semanticRun < PASSsemantic)
     {
 	error("more than one invariant for %s", ad->toChars());
     }
     ad->inv = this;
-    type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
+    if (!type)
+	type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
 
     sc = sc->push();
     sc->stc &= ~STCstatic;		// not a static invariant
@@ -3125,11 +3152,11 @@ void UnitTestDeclaration::semantic(Scope *sc)
 {
     if (global.params.useUnitTests)
     {
-
-	type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
+	if (!type)
+	    type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
 	Scope *sc2 = sc->push();
- 	sc2->linkage = LINKd;
- 	FuncDeclaration::semantic(sc2);
+	sc2->linkage = LINKd;
+	FuncDeclaration::semantic(sc2);
 	sc2->pop();
     }
 
@@ -3202,20 +3229,18 @@ Dsymbol *NewDeclaration::syntaxCopy(Dsymbol *s)
 
 void NewDeclaration::semantic(Scope *sc)
 {
-    ClassDeclaration *cd;
-    Type *tret;
-
     //printf("NewDeclaration::semantic()\n");
 
     parent = sc->parent;
     Dsymbol *parent = toParent();
-    cd = parent->isClassDeclaration();
+    ClassDeclaration *cd = parent->isClassDeclaration();
     if (!cd && !parent->isStructDeclaration())
     {
 	error("new allocators only are for class or struct definitions");
     }
-    tret = Type::tvoid->pointerTo();
-    type = new TypeFunction(arguments, tret, varargs, LINKd);
+    Type *tret = Type::tvoid->pointerTo();
+    if (!type)
+	type = new TypeFunction(arguments, tret, varargs, LINKd);
 
     type = type->semantic(loc, sc);
     assert(type->ty == Tfunction);
@@ -3289,18 +3314,17 @@ Dsymbol *DeleteDeclaration::syntaxCopy(Dsymbol *s)
 
 void DeleteDeclaration::semantic(Scope *sc)
 {
-    ClassDeclaration *cd;
-
     //printf("DeleteDeclaration::semantic()\n");
 
     parent = sc->parent;
     Dsymbol *parent = toParent();
-    cd = parent->isClassDeclaration();
+    ClassDeclaration *cd = parent->isClassDeclaration();
     if (!cd && !parent->isStructDeclaration())
     {
 	error("new allocators only are for class or struct definitions");
     }
-    type = new TypeFunction(arguments, Type::tvoid, 0, LINKd);
+    if (!type)
+	type = new TypeFunction(arguments, Type::tvoid, 0, LINKd);
 
     type = type->semantic(loc, sc);
     assert(type->ty == Tfunction);

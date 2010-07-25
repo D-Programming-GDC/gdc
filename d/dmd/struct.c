@@ -25,6 +25,7 @@
 #include "module.h"
 #include "id.h"
 #include "statement.h"
+#include "template.h"
 
 /********************************* AggregateDeclaration ****************************/
 
@@ -266,6 +267,9 @@ void StructDeclaration::semantic(Scope *sc)
         scx = scope;            // save so we don't make redundant copies
         scope = NULL;
     }
+    
+    unsigned dprogress_save = Module::dprogress;
+    
 #ifdef IN_GCC
     methods.setDim(0);
 #endif
@@ -423,6 +427,8 @@ void StructDeclaration::semantic(Scope *sc)
 	scope = scx ? scx : new Scope(*sc);
 	scope->setNoFree();
 	scope->module->addDeferredSemantic(this);
+	
+	Module::dprogress = dprogress_save;
 	//printf("\tdeferring %s\n", toChars());
 	return;
     }

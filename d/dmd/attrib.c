@@ -381,6 +381,8 @@ void StorageClassDeclaration::setScope(Scope *sc)
 	    scstc &= ~(STCconst | STCimmutable | STCmanifest);
 	if (stc & (STCgshared | STCshared | STCtls))
 	    scstc &= ~(STCgshared | STCshared | STCtls);
+	if (stc & (STCsafe | STCtrusted | STCsystem))
+	    scstc &= ~(STCsafe | STCtrusted | STCsystem);
 	scstc |= stc;
 
 	setScopeNewSc(sc, scstc, sc->linkage, sc->protection, sc->explicitProtection, sc->structalign);
@@ -404,6 +406,8 @@ void StorageClassDeclaration::semantic(Scope *sc)
 	    scstc &= ~(STCconst | STCimmutable | STCmanifest);
 	if (stc & (STCgshared | STCshared | STCtls))
 	    scstc &= ~(STCgshared | STCshared | STCtls);
+	if (stc & (STCsafe | STCtrusted | STCsystem))
+	    scstc &= ~(STCsafe | STCtrusted | STCsystem);
 	scstc |= stc;
 	
 	semanticNewSc(sc, scstc, sc->linkage, sc->protection, sc->explicitProtection, sc->structalign);
@@ -442,6 +446,10 @@ void StorageClassDeclaration::stcToCBuffer(OutBuffer *buf, StorageClass stc)
 	{ STCref,          TOKref },
 	{ STCtls,          TOKtls },
 	{ STCgshared,      TOKgshared },
+	{ STCproperty,     TOKat },
+	{ STCsafe,         TOKat },
+	{ STCtrusted,      TOKat },
+	{ STCdisable,       TOKat },
 #endif
     };
 
@@ -698,6 +706,8 @@ void AnonDeclaration::semantic(Scope *sc)
 	scx = scope;
 	scope = NULL;
     }
+    
+    unsigned dprogress_save = Module::dprogress;
 
     assert(sc->parent);
 
@@ -728,7 +738,7 @@ void AnonDeclaration::semantic(Scope *sc)
 
 	sc = sc->push();
 	sc->anonAgg = &aad;
-	sc->stc &= ~(STCauto | STCscope | STCstatic | STCtls);
+	sc->stc &= ~(STCauto | STCscope | STCstatic | STCtls | STCgshared);
 	sc->inunion = isunion;
 	sc->offset = 0;
 	sc->flags = 0;
@@ -760,6 +770,7 @@ void AnonDeclaration::semantic(Scope *sc)
 		scope->setNoFree();
 		scope->module->addDeferredSemantic(this);
 	    }
+	    Module::dprogress = dprogress_save;
 	    //printf("\tforward reference %p\n", this);
 	    return;
 	}

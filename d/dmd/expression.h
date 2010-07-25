@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -511,6 +511,7 @@ struct NewExp : Expression
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
     Expression *optimize(int result);
+    Expression *interpret(InterState *istate);
     elem *toElem(IRState *irs);
     int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -547,6 +548,7 @@ struct SymOffExp : Expression
 
     SymOffExp(Loc loc, Declaration *var, target_size_t offset);
     Expression *semantic(Scope *sc);
+    Expression *interpret(InterState *istate);
     void checkEscape();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     int isConst();
@@ -610,6 +612,7 @@ struct FuncExp : Expression
     FuncExp(Loc loc, FuncLiteralDeclaration *fd);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
+    Expression *interpret(InterState *istate);
     void scanForNestedRef(Scope *sc);
     char *toChars();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -838,6 +841,7 @@ struct DelegateExp : UnaExp
 
     DelegateExp(Loc loc, Expression *e, FuncDeclaration *func);
     Expression *semantic(Scope *sc);
+    Expression *interpret(InterState *istate);
     MATCH implicitConvTo(Type *t);
     Expression *castTo(Scope *sc, Type *t);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);

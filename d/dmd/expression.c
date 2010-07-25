@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -1369,7 +1369,8 @@ Expressions *Expression::arraySyntaxCopy(Expressions *exps)
 	for (int i = 0; i < a->dim; i++)
 	{   Expression *e = (Expression *)exps->data[i];
 
-	    e = e->syntaxCopy();
+	    if (e)
+		e = e->syntaxCopy();
 	    a->data[i] = e;
 	}
     }
