@@ -1358,6 +1358,7 @@ IRState::getLibCallDecl(LibCall lib_call)
 	case LIBCALL_ARRAYCTOR:
 	    arg_types.push(Type::typeinfo->type);
 	    arg_types.push(Type::tvoid->arrayOf());
+	    arg_types.push(Type::tvoid->arrayOf());
 	    return_type = Type::tvoid->arrayOf();
 	    break;
 	case LIBCALL_ARRAYSETASSIGN:

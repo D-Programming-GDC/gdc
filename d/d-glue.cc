@@ -1990,7 +1990,7 @@ NewExp::toElem(IRState * irs)
 	    {
 		lib_call = elem_init_type->isZeroInit() ?
 		    LIBCALL_NEWARRAYMTP : LIBCALL_NEWARRAYMITP;
-		
+
 		tree dims_var = irs->exprVar(irs->arrayType(size_type_node, arguments->dim));
 		{
 		    tree dims_init;
@@ -2291,20 +2291,28 @@ StructLiteralExp::toElem(IRState *irs)
 		StructDeclaration * sd;
 		if ((sd = needsPostblit(tb)) != NULL)
 		{
-		    // Call postblit() on e
-		    if (tb->ty == Tstruct)
+		    tree ec = irs->localVar(e->type->toCtype());
+		    if (tb->ty == Tsarray)
 		    {
-			Array args;
-			FuncDeclaration * fd = sd->postblit;
-			tree ec = save_expr(e->toElem(irs));
-			irs->doExp(irs->call(fd, irs->addressOf(ec), & args));
-			ce.cons(fld->csym->Stree, irs->convertTo(ec, e->type, fld->type));
+			/* Generate _d_arrayctor(ti, from = e, to = ec) */
+			Type * ti = tb->nextOf();
+			tree args[3] = {
+			    irs->typeinfoReference(ti),
+			    irs->toDArray(e),
+			    irs->convertTo(ec, e->type, ti->arrayOf())
+			};
+			irs->doExp(irs->libCall(LIBCALL_ARRAYCTOR, 3, args));
 		    }
 		    else
 		    {
-			/* Not implemented yet */
-			assert(0);
+			/* Call __postblit(&ec) */
+			Array args;
+			FuncDeclaration * fd = sd->postblit;
+			DECL_INITIAL(ec) = e->toElem(irs);
+			irs->expandDecl(ec);
+			irs->doExp(irs->call(fd, irs->addressOf(ec), & args));
 		    }
+		    ce.cons(fld->csym->Stree, irs->convertTo(ec, e->type, fld->type));
 		}
 		else
 #endif
