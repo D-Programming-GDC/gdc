@@ -439,13 +439,8 @@ d_init ()
 # define TARGET_OBJFMT_CPP_BUILTINS()
 #endif
 
-#if 0 //%% Remove?
-# define preprocessing_asm_p() (cpp_get_options (pfile)->lang == CLK_ASM)
-# define preprocessing_trad_p() (cpp_get_options (pfile)->traditional)
-#else
 # define preprocessing_asm_p() (0)
 # define preprocessing_trad_p() (0)
-#endif
 # define c_dialect_cxx() (0)
 # define c_dialect_objc() (0)
 # define builtin_define(TXT) (cpp_define (pfile, TXT))
