@@ -32,7 +32,9 @@
 #include "cond.h"
 #include "expression.h"
 #include "lexer.h"
+#ifndef IN_GCC
 #include "lib.h"
+#endif
 #include "json.h"
 
 #if WINDOWS_SEH

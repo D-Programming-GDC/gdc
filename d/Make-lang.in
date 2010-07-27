@@ -90,12 +90,12 @@ D_DMD_H := $(subst d/dmd,$(D_dmd_srcdir),$(D_DMD_H))
 else
 D_DMD_H := d/dmd/aggregate.h d/dmd/aliasthis.h d/dmd/arraytypes.h d/dmd/async.h \
 	d/dmd/attrib.h \
-	d/dmd/complex_t.h d/dmd/cond.h d/dmd/dchar.h d/dmd/declaration.h \
+	d/d-gcc-complex_t.h d/dmd/cond.h d/dmd/dchar.h d/dmd/declaration.h \
 	d/dmd/doc.h d/dmd/dsymbol.h d/dmd/enum.h d/dmd/expression.h \
 	d/dmd/gnuc.h d/dmd/hdrgen.h d/dmd/html.h d/dmd/identifier.h \
 	d/dmd/import.h d/dmd/init.h d/dmd/json.h d/dmd/lexer.h d/dmd/lstring.h \
-	d/dmd/macro.h d/dmd/mars.h d/dmd/mem.h d/dmd/module.h d/dmd/mtype.h \
-	d/dmd/parse.h d/dmd/port.h d/dmd/rmem.h d/dmd/root.h d/dmd/scope.h \
+	d/dmd/macro.h d/dmd/mars.h d/dmd/module.h d/dmd/mtype.h \
+	d/dmd/parse.h d/dmd/rmem.h d/dmd/root.h d/dmd/scope.h \
 	d/dmd/statement.h d/dmd/staticassert.h d/dmd/stringtable.h \
 	d/dmd/template.h d/dmd/total.h d/dmd/utf.h d/dmd/version.h \
 	d/id.h d/d-dmd-gcc.h d/d-gcc-real.h

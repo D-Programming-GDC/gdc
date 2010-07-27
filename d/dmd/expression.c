@@ -31,7 +31,7 @@ extern "C" char * __cdecl __locale_decpoint;
 #endif
 
 #include "rmem.h"
-#include "port.h"
+//#include "port.h"
 
 #include "mtype.h"
 #include "init.h"

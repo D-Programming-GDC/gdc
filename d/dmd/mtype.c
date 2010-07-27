@@ -64,7 +64,7 @@
 
 
 #include "rmem.h"
-#include "port.h"
+//#include "port.h"
 
 #include "dsymbol.h"
 #include "mtype.h"
@@ -1218,12 +1218,12 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 	    case Tfloat64:
 	    case Tfloat80:
 	    {
-	    #if IN_GCC
+#if IN_GCC
  		// mode doesn't matter, will be converted in RealExp anyway
  		fvalue = real_t::getnan(real_t::LongDouble);
- 		#else
+#else
 		fvalue = Port::nan;
-		#endif
+#endif
 		goto Lfvalue;
 	    }
 	}
@@ -1241,11 +1241,11 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 	    case Tfloat32:
 	    case Tfloat64:
 	    case Tfloat80:
-	    #if IN_GCC
+#if IN_GCC
  		fvalue = real_t::getinfinity();
- 		#else
+#else
 		fvalue = Port::infinity;
-		#endif
+#endif
 		goto Lfvalue;
 	}
     }

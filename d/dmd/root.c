@@ -39,7 +39,7 @@
 #include <utime.h>
 #endif
 
-#include "port.h"
+//#include "port.h"
 #include "root.h"
 #include "dchar.h"
 #include "rmem.h"
