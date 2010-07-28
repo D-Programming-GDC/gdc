@@ -702,7 +702,7 @@ d_handle_option (size_t scode, const char *arg, int value)
 	  global.params.warnings = 2;
 	  gen.warnSignCompare = value;
 	  break;
-	  case OPT_Werror:
+      case OPT_Werror:
 	  global.params.warnings = 1;
 	  gen.warnSignCompare = value;
 	  break;
@@ -1087,7 +1087,7 @@ d_parse_file (int /*set_yydebug*/)
 	goto had_errors;
 	
 #if V1
-	Module::dprogress = 1;
+    Module::dprogress = 1;
     Module::runDeferredSemantic();
 #endif
 
@@ -1158,8 +1158,14 @@ d_parse_file (int /*set_yydebug*/)
     }
     
     // Do not attempt to generate output files if errors or warnings occurred
-    if (global.errors || global.warnings)
+    if (global.errors
+#if V1
+	|| global.warnings
+#endif
+       )
+    {
 	fatal();
+    }
 
     g.ofile = new ObjectFile();
     if (fonly_arg)

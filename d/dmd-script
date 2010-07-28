@@ -347,7 +347,7 @@ while ( $arg_i < scalar(@ARGV) ) {
 	$show_commands = 1;
     } elsif ( $arg =~ m/^-w$/ ) {
 	push @out, "-Werror";
-	} elsif ( $arg =~ m/^-wi$/ ) {
+    } elsif ( $arg =~ m/^-wi$/ ) {
 	push @out, "-Wall";
     } elsif ( $arg =~ m/^-quiet$/ ) {
 	# ignored
