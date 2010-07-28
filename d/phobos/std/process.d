@@ -206,7 +206,7 @@ int execvp(string pathname, string[] argv)
 /** ditto */
 int execvpe(string pathname, string[] argv, string[] envp)
 {
-version(Posix)
+version (GNU_Need_execvpe)
 {
     // Is pathname rooted?
     if(pathname[0] == '/')
@@ -238,7 +238,7 @@ version(Posix)
         return iRet;
     }
 }
-else version(Windows)
+else
 {
     auto argv_ = cast(char**)alloca((char*).sizeof * (1 + argv.length));
     auto envp_ = cast(char**)alloca((char*).sizeof * (1 + envp.length));
@@ -247,10 +247,6 @@ else version(Windows)
     toAStringz(envp, envp_);
 
     return std.c.process.execvpe(toStringz(pathname), argv_, envp_);
-}
-else
-{
-  static assert(0);
 } // version
 }
 

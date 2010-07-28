@@ -131,7 +131,7 @@ OS_OBJS = std/file.o std/mmfile.o std/path.o std/perf.o std/process.o std/socket
 # std.c.linux.linux, std.loader, gcc.cbridge*
 WINDOWS_OBJS=std/c/windows/windows.o std/c/windows/com.o std/c/windows/winsock.o \
 	std/windows/iunknown.o std/windows/registry.o std/windows/syserror.o \
-	std/windows/charset.o
+	std/windows/charset.o std/thread_helper.o
 # D_EXTRA_OBJS=@D_EXTRA_OBJS@
 
 # needed until instrinsics are implemented

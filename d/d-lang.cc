@@ -146,10 +146,10 @@ static const char * fonly_arg;
 static const char * multilib_dir;
 
 static unsigned int
-d_init_options (unsigned int, const char **)
+d_init_options (unsigned int, const char ** argv)
 {
     // Set default values
-    global.params.argv0 = (char *) progname;
+    global.params.argv0 = (char *) argv[0]; //progname
     global.params.link = 1;
     global.params.useAssert = 1;
     global.params.useInvariants = 1;
@@ -846,6 +846,11 @@ d_parse_file (int /*set_yydebug*/)
     char * p, * e;
     char * name;
     unsigned i;
+    
+    if (global.params.verbose)
+    {   printf("binary    %s\n", global.params.argv0);
+        printf("version   %s\n", global.version);
+    }
 
     if (global.params.verbose && asm_out_file == stdout)
     {

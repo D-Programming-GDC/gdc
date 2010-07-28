@@ -64,14 +64,14 @@ const char *Identifier::toHChars2()
     else if (this == Id::result) p = "result";
     else if (this == Id::returnLabel) p = "return";
     else
-    {	p = toChars();
-	if (*p == '_')
-	{
-	    if (memcmp(p, "_staticCtor", 11) == 0)
-		p = "static this";
-	    else if (memcmp(p, "_staticDtor", 11) == 0)
-		p = "static ~this";
-	}
+    {   p = toChars();
+        if (*p == '_')
+        {
+            if (memcmp(p, "_staticCtor", 11) == 0)
+                p = "static this";
+            else if (memcmp(p, "_staticDtor", 11) == 0)
+                p = "static ~this";
+        }
     }
 
     return p;
@@ -88,19 +88,19 @@ int Identifier::dyncast()
 }
 
 Identifier *Identifier::generateId(const char *prefix)
- {
-     static size_t i;
- 
-     return generateId(prefix, ++i);
- }
- 
- Identifier *Identifier::generateId(const char *prefix, size_t i)
-  {   OutBuffer buf;
-  
-      buf.writestring(prefix);
-     buf.printf("%zu", i);
-  
-     char *id = buf.toChars();
-      buf.data = NULL;
-     return Lexer::idPool(id);
-  }
+{
+    static size_t i;
+
+    return generateId(prefix, ++i);
+}
+
+Identifier *Identifier::generateId(const char *prefix, size_t i)
+{   OutBuffer buf;
+
+    buf.writestring(prefix);
+    buf.printf("%zu", i);
+
+    char *id = buf.toChars();
+    buf.data = NULL;
+    return Lexer::idPool(id);
+}

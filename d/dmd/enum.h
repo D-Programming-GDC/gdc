@@ -36,20 +36,20 @@ struct HdrGenState;
 struct EnumDeclaration : ScopeDsymbol
 {   /* enum ident : memtype { ... }
      */
-    Type *type;			// the TypeEnum
-    Type *memtype;		// type of the members
-    #if DMDV1
+    Type *type;                 // the TypeEnum
+    Type *memtype;              // type of the members
+#if DMDV1
     dinteger_t maxval;
     dinteger_t minval;
-    dinteger_t defaultval;	// default initializer
-	#else
+    dinteger_t defaultval;      // default initializer
+#else
     Expression *maxval;
     Expression *minval;
-    Expression *defaultval;	// default initializer
- 	#endif
+    Expression *defaultval;     // default initializer
+#endif
     int isdeprecated;
-    int isdone;			// 0: not done
-				// 1: semantic() successfully completed
+    int isdone;                 // 0: not done
+                                // 1: semantic() successfully completed
     Expressions * attributes; // GCC decl/type attributes
 
     EnumDeclaration(Loc loc, Identifier *id, Type *memtype);
@@ -59,10 +59,10 @@ struct EnumDeclaration : ScopeDsymbol
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Type *getType();
     const char *kind();
-    #if DMDV2
-     Dsymbol *search(Loc, Identifier *ident, int flags);
- 	#endif
-     int isDeprecated();			// is Dsymbol deprecated?
+#if DMDV2
+    Dsymbol *search(Loc, Identifier *ident, int flags);
+#endif
+    int isDeprecated();                 // is Dsymbol deprecated?
 
     void emitComment(Scope *sc);
     void toJsonBuffer(OutBuffer *buf);
@@ -70,7 +70,7 @@ struct EnumDeclaration : ScopeDsymbol
 
     EnumDeclaration *isEnumDeclaration() { return this; }
 
-    void toObjFile(int multiobj);			// compile to .obj file
+    void toObjFile(int multiobj);                       // compile to .obj file
     void toDebug();
     int cvMember(unsigned char *p);
 

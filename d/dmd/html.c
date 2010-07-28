@@ -55,27 +55,27 @@ inline int istag(int c)
  * Note: input has to be UTF-8
  */
 static int isLineSeperator(const unsigned char* p){
-	// Linux
-	if( p[0]=='\n'){
-		return 1;
-	}
-	
-	// Mac & Dos
-	if( p[0]=='\r'){
-		return (p[1]=='\n') ? 2 : 1;
-	}
-	
-	// Unicode (line || paragarph sep.)
-	if( p[0]==0xE2 && p[1]==0x80 && (p[2]==0xA8 || p[2]==0xA9)){
-		return 3;
-	}
-	
-	// Next
-	if( p[0]==0xC2 && p[1]==0x85){
-		return 2;
-	}
-	
-	return 0;
+        // Linux
+        if( p[0]=='\n'){
+                return 1;
+        }
+
+        // Mac & Dos
+        if( p[0]=='\r'){
+                return (p[1]=='\n') ? 2 : 1;
+        }
+
+        // Unicode (line || paragarph sep.)
+        if( p[0]==0xE2 && p[1]==0x80 && (p[2]==0xA8 || p[2]==0xA9)){
+                return 3;
+        }
+
+        // Next
+        if( p[0]==0xC2 && p[1]==0x85){
+                return 2;
+        }
+
+        return 0;
 }
 
 /**********************************************
@@ -100,15 +100,15 @@ void Html::error(const char *format, ...)
 {
     if (!global.gag)
     {
-	fprintf(stderr, "%s:%d: HTML Error: ", sourcename, linnum);
+        fprintf(stderr, "%s:%d: HTML Error: ", sourcename, linnum);
 
-	va_list ap;
-	va_start(ap, format);
-	vfprintf(stderr, format, ap);
-	va_end(ap);
+        va_list ap;
+        va_start(ap, format);
+        vfprintf(stderr, format, ap);
+        va_end(ap);
 
-	fprintf(stderr, "\n");
-	fflush(stderr);
+        fprintf(stderr, "\n");
+        fflush(stderr);
     }
 
     global.errors++;
@@ -123,97 +123,97 @@ void Html::error(const char *format, ...)
 void Html::extractCode(OutBuffer *buf)
 {
     //printf("Html::extractCode()\n");
-    dbuf = buf;			// save for other routines
+    dbuf = buf;                 // save for other routines
     buf->reserve(end - p);
     inCode = 0;
     while (1)
     {
-	//printf("p = %p, *p = x%x\n", p, *p);
-	switch (*p)
-	{
+        //printf("p = %p, *p = x%x\n", p, *p);
+        switch (*p)
+        {
 #if 0 // strings are not recognized outside of tags
-	    case '"':
-	    case '\'':
-		skipString();
-		continue;
-	    */
+            case '"':
+            case '\'':
+                skipString();
+                continue;
+            */
 #endif
-	    case '<':
-		//-OLDOLDREMOVE//		if (p[1] == '!' && p[2] == '-' && p[3] == '-')
-		if (p[1] == '!' && isCommentStart())
-		{   // Comments start with <!--
-		    //OLDOLDREMOVE//		    p += 4;
-		    scanComment();
-		}
-		//OLDOLDREMOVE//else if ((p[1] == '/' && istagstart(p[2])) ||
-		//OLDOLDREMOVE//	 istagstart(p[1]))
-		/*OLDOLDMYCHANGES
-		{
-		    skipTag();
-		}
-		else
-		    p++;*/
-  		else if(p[1] == '!' && isCDATAStart())
-  		{
-  		    scanCDATA();
-  		}
-		else if (p[1] == '/' && istagstart(*skipWhite(p + 2)))
-		    skipTag();
-		else if (istagstart(*skipWhite(p + 1)))
- 		    skipTag();
-		else
-		    goto Ldefault;
-		continue;
+            case '<':
+                //-OLDOLDREMOVE//               if (p[1] == '!' && p[2] == '-' && p[3] == '-')
+                if (p[1] == '!' && isCommentStart())
+                {   // Comments start with <!--
+                    //OLDOLDREMOVE//                p += 4;
+                    scanComment();
+                }
+                //OLDOLDREMOVE//else if ((p[1] == '/' && istagstart(p[2])) ||
+                //OLDOLDREMOVE//         istagstart(p[1]))
+                /*OLDOLDMYCHANGES
+                {
+                    skipTag();
+                }
+                else
+                    p++;*/
+                else if(p[1] == '!' && isCDATAStart())
+                {
+                    scanCDATA();
+                }
+                else if (p[1] == '/' && istagstart(*skipWhite(p + 2)))
+                    skipTag();
+                else if (istagstart(*skipWhite(p + 1)))
+                    skipTag();
+                else
+                    goto Ldefault;
+                continue;
 
-	    case 0:
-	    case 0x1a:
-		break;		// end of file
+            case 0:
+            case 0x1a:
+                break;          // end of file
 
-	    case '&':
-		if (inCode)
-		{   // Translate character entity into ascii for D parser
-		    int c;
+            case '&':
+                if (inCode)
+                {   // Translate character entity into ascii for D parser
+                    int c;
 
-		    c = charEntity();
-		    buf->writeUTF8(c);
-		}
-		else
-		    p++;
-		continue;
+                    c = charEntity();
+                    buf->writeUTF8(c);
+                }
+                else
+                    p++;
+                continue;
 
-		/* all this handled by isLineSeparator
-	    case '\r':
-		if (p[1] == '\n')
-		    goto Ldefault;
- 	    case '\n':
- 		linnum++;
- 		// Always extract new lines, so that D lexer counts the
- 		// lines right.
-		buf->writeByte(*p);
- 		p++;
- 		continue;
-		*/
-		
-	    default:
-	    Ldefault:
- 		int lineSepLength=isLineSeperator(p);
- 		if( lineSepLength>0 ){
- 			linnum++;
- 			// Always extract new lines, so that the D lexer
- 			// counts the lines right.
- 			buf->writeByte('\n');   // BUG: wchar
- 			p+=lineSepLength;
- 			continue;
- 		}
+                /* all this handled by isLineSeparator
+            case '\r':
+                if (p[1] == '\n')
+                    goto Ldefault;
+            case '\n':
+                linnum++;
+                // Always extract new lines, so that D lexer counts the
+                // lines right.
+                buf->writeByte(*p);
+                p++;
+                continue;
+                */
 
-		if (inCode)
-		    buf->writeByte(*p);
-		p++;
-		continue;
-	}
-	break;
+            default:
+            Ldefault:
+                int lineSepLength=isLineSeperator(p);
+                if( lineSepLength>0 ){
+                        linnum++;
+                        // Always extract new lines, so that the D lexer
+                        // counts the lines right.
+                        buf->writeByte('\n');   // BUG: wchar
+                        p+=lineSepLength;
+                        continue;
+                }
+
+                if (inCode)
+                    buf->writeByte(*p);
+                p++;
+                continue;
+        }
+        break;
     }
-    buf->writeByte(0);				// ending sentinel
+    buf->writeByte(0);                          // ending sentinel
     //printf("D code is: '%s'\n", (char *)buf->data);
 }
 
@@ -221,19 +221,19 @@ void Html::extractCode(OutBuffer *buf)
  * Scan to end of <> tag.
  * Look for <code> and </code> tags to start/stop D processing.
  * Input:
- *	p is on opening '<' of tag; it's already verified that
- *	it's a tag by lookahead
+ *      p is on opening '<' of tag; it's already verified that
+ *      it's a tag by lookahead
  * Output:
- *	p is past closing '>' of tag
+ *      p is past closing '>' of tag
  */
 
 void Html::skipTag()
 {
-    enum TagState	// what parsing state we're in
+    enum TagState       // what parsing state we're in
     {
-	TStagstart,	// start of tag name
-	TStag,		// in a tag name
-	TSrest,		// following tag name
+        TStagstart,     // start of tag name
+        TStag,          // in a tag name
+        TSrest,         // following tag name
     };
     enum TagState state = TStagstart;
     int inot;
@@ -243,125 +243,125 @@ void Html::skipTag()
     p++;
     inot = 0;
     if (*p == '/')
-    {	inot = 1;
-	p++;
+    {   inot = 1;
+        p++;
     }
     while (1)
     {
-	switch (*p)
-	{
-	    case '>':		// found end of tag
-		p++;
-		break;
+        switch (*p)
+        {
+            case '>':           // found end of tag
+                p++;
+                break;
 
-	    case '"':
-	    case '\'':
-		state = TSrest;
-		skipString();
-		continue;
+            case '"':
+            case '\'':
+                state = TSrest;
+                skipString();
+                continue;
 
-	    case '<':
-		if (p[1] == '!' && isCommentStart())
-		{   // Comments start with <!--
-		    //OLDOLD//p += 4;
-		    scanComment();
-		}
-		//OLDOLD//else if ((p[1] == '/' && istagstart(p[2])) ||
-		//OLDOLD//	 istagstart(p[1]))
-		else if (p[1] == '/' && istagstart(*skipWhite(p + 2)))
-		{   error("nested tag");
-		    skipTag();
-		}
-		else if (istagstart(*skipWhite(p + 1)))
-		{   error("nested tag");
-		    skipTag();
-		}
-		else
-		    //CHECKCHECK//stillneeded?
-		    p++;
-		// Treat comments as if they were whitespace
-		state = TSrest;
-		continue;
+            case '<':
+                if (p[1] == '!' && isCommentStart())
+                {   // Comments start with <!--
+                    //OLDOLD//p += 4;
+                    scanComment();
+                }
+                //OLDOLD//else if ((p[1] == '/' && istagstart(p[2])) ||
+                //OLDOLD//       istagstart(p[1]))
+                else if (p[1] == '/' && istagstart(*skipWhite(p + 2)))
+                {   error("nested tag");
+                    skipTag();
+                }
+                else if (istagstart(*skipWhite(p + 1)))
+                {   error("nested tag");
+                    skipTag();
+                }
+                else
+                    //CHECKCHECK//stillneeded?
+                    p++;
+                // Treat comments as if they were whitespace
+                state = TSrest;
+                continue;
 
-	    case 0:
-	    case 0x1a:
-		error("end of file before end of tag");
-		break;		// end of file
+            case 0:
+            case 0x1a:
+                error("end of file before end of tag");
+                break;          // end of file
 
-		/* all handled by isLineSeparator
-	    case '\r':
-		if (p[1] == '\n')
-		    goto Ldefault;
- 	    case '\n':
- 		linnum++;
- 		// Always extract new lines, so that code lexer counts the
- 		// lines right.
-		dbuf->writeByte(*p);
- 		state = TSrest;			// end of tag
- 		p++;
- 		continue;
-		*/
+                /* all handled by isLineSeparator
+            case '\r':
+                if (p[1] == '\n')
+                    goto Ldefault;
+            case '\n':
+                linnum++;
+                // Always extract new lines, so that code lexer counts the
+                // lines right.
+                dbuf->writeByte(*p);
+                state = TSrest;                 // end of tag
+                p++;
+                continue;
+                */
 
-	    case ' ':
-	    case '\t':
-	    case '\f':
-	    case '\v':
-		if (state == TStagstart)
-		{   p++;
-		    continue;
-		}
-	    default:
-		//    Ldefault:
-		int lineSepLength = isLineSeperator(p);
-		if( lineSepLength>0 ){
-			linnum++;
-			// Always extract new lines, so that code lexer counts
-			// the lines right.
-			dbuf->writeByte('\n');  // BUG: wchar
-			state = TSrest;
-			p+=lineSepLength;
-			continue;
-		}
-		switch (state)
-		{
-		    case TStagstart:		// start of tag name
-			assert(istagstart(*p));
-			state = TStag;
-			tagstart = p;
-			taglen = 1;
-			break;
+            case ' ':
+            case '\t':
+            case '\f':
+            case '\v':
+                if (state == TStagstart)
+                {   p++;
+                    continue;
+                }
+            default:
+                //    Ldefault:
+                int lineSepLength = isLineSeperator(p);
+                if( lineSepLength>0 ){
+                        linnum++;
+                        // Always extract new lines, so that code lexer counts
+                        // the lines right.
+                        dbuf->writeByte('\n');  // BUG: wchar
+                        state = TSrest;
+                        p+=lineSepLength;
+                        continue;
+                }
+                switch (state)
+                {
+                    case TStagstart:            // start of tag name
+                        assert(istagstart(*p));
+                        state = TStag;
+                        tagstart = p;
+                        taglen = 1;
+                        break;
 
-		    case TStag:
-			if (istag(*p))
-			{   // Continuing tag name
-			    taglen++;
-			}
-			else
-			{   // End of tag name
-			    state = TSrest;
-			}
-			break;
+                    case TStag:
+                        if (istag(*p))
+                        {   // Continuing tag name
+                            taglen++;
+                        }
+                        else
+                        {   // End of tag name
+                            state = TSrest;
+                        }
+                        break;
 
-		    case TSrest:
-			break;
-		}
-		p++;
-		continue;
-	}
-	break;
+                    case TSrest:
+                        break;
+                }
+                p++;
+                continue;
+        }
+        break;
     }
 
     // See if we parsed a <code> or </code> tag
     if (taglen == 4 && memicmp((const char *)tagstart, "CODE", taglen) == 0
-	&& *(p - 2) != '/') // ignore "<code />" (XHTML)
+        && *(p - 2) != '/') // ignore "<code />" (XHTML)
     {
-	if (inot)
-	{   inCode--;
-	    if (inCode < 0)
-		inCode = 0;		// ignore extra </code>'s
-	}
-	else
-	    inCode++;
+        if (inot)
+        {   inCode--;
+            if (inCode < 0)
+                inCode = 0;             // ignore extra </code>'s
+        }
+        else
+            inCode++;
     }
 }
 
@@ -375,48 +375,48 @@ void Html::skipString()
 
     while (1)
     {
-	p++;
-	switch (*p)
-	{
-	    case '"':
-	    case '\'':
-		if (*p == tc)
-		{   p++;
-		    break;
-		}
-		continue;
+        p++;
+        switch (*p)
+        {
+            case '"':
+            case '\'':
+                if (*p == tc)
+                {   p++;
+                    break;
+                }
+                continue;
 
-		/* all handled by isLineSeparator
-	    case '\r':
-		if (p[1] == '\n')
-		    goto Ldefault;
- 	    case '\n':
- 		linnum++;
- 		// Always extract new lines, so that D lexer counts the
- 		// lines right.
-		dbuf->writeByte(*p);
- 		continue;
-		*/
+                /* all handled by isLineSeparator
+            case '\r':
+                if (p[1] == '\n')
+                    goto Ldefault;
+            case '\n':
+                linnum++;
+                // Always extract new lines, so that D lexer counts the
+                // lines right.
+                dbuf->writeByte(*p);
+                continue;
+                */
 
-	    case 0:
-	    case 0x1a:
-	    Leof:
-		error("end of file before closing %c of string", tc);
-		break;
+            case 0:
+            case 0x1a:
+            Leof:
+                error("end of file before closing %c of string", tc);
+                break;
 
-	    default:
-		//	    Ldefault:
-		int lineSepLength = isLineSeperator(p);
-		if( lineSepLength>0 ){
-			linnum++;
-			// Always extract new lines, so that D lexer counts
-			// the lines right.
-			dbuf->writeByte('\n');   // BUG: wchar
-			continue;
-		}
-		continue;
-	}
-	break;
+            default:
+                //          Ldefault:
+                int lineSepLength = isLineSeperator(p);
+                if( lineSepLength>0 ){
+                        linnum++;
+                        // Always extract new lines, so that D lexer counts
+                        // the lines right.
+                        dbuf->writeByte('\n');   // BUG: wchar
+                        continue;
+                }
+                continue;
+        }
+        break;
     }
 }
 
@@ -429,20 +429,20 @@ unsigned char *Html::skipWhite(unsigned char *q)
 {
     for (; 1; q++)
     {
-	switch (*q)
-	{
-	    case ' ':
-	    case '\t':
-	    case '\f':
-	    case '\v':
-	    case '\r':
-	    case '\n':
-		continue;
+        switch (*q)
+        {
+            case ' ':
+            case '\t':
+            case '\f':
+            case '\v':
+            case '\r':
+            case '\n':
+                continue;
 
-	    default:
-		break;
-	}
-	break;
+            default:
+                break;
+        }
+        break;
     }
     return q;
 }
@@ -465,79 +465,79 @@ void Html::scanComment()
 
     //printf("scanComment()\n");
     if (*p == '\n')
-    {	linnum++;
-	// Always extract new lines, so that D lexer counts the
-	// lines right.
-	dbuf->writeByte(*p);
+    {   linnum++;
+        // Always extract new lines, so that D lexer counts the
+        // lines right.
+        dbuf->writeByte(*p);
     }
     while (1)
     {
-	//scangt = 1;			// IE 5.0 compatibility
-	p++;
-	switch (*p)
-	{
-	    case '-':
-		if (p[1] == '-')
-		{
-		    if (p[2] == '>')	// optimize for most common case
-		    {
-			p += 3;
-			break;
-		    }
-		    p++;
-		    scangt = 1;
-		}
-		else
-		    scangt = 0;
-		continue;
+        //scangt = 1;                   // IE 5.0 compatibility
+        p++;
+        switch (*p)
+        {
+            case '-':
+                if (p[1] == '-')
+                {
+                    if (p[2] == '>')    // optimize for most common case
+                    {
+                        p += 3;
+                        break;
+                    }
+                    p++;
+                    scangt = 1;
+                }
+                else
+                    scangt = 0;
+                continue;
 
-	    case '>':
-		if (scangt)
-		{   // found -->
-		    p++;
-		    break;
-		}
-		continue;
+            case '>':
+                if (scangt)
+                {   // found -->
+                    p++;
+                    break;
+                }
+                continue;
 
-	    case ' ':
-	    case '\t':
-	    case '\f':
-	    case '\v':
-		// skip white space
-		continue;
+            case ' ':
+            case '\t':
+            case '\f':
+            case '\v':
+                // skip white space
+                continue;
 
-		/* all handled by isLineSeparator
-	    case '\r':
-		if (p[1] == '\n')
-		    goto Ldefault;
- 	    case '\n':
- 		linnum++;		// remember to count lines
- 		// Always extract new lines, so that D lexer counts the
- 		// lines right.
-		dbuf->writeByte(*p);
- 		continue;
-		*/
-		
-	    case 0:
-	    case 0x1a:
-		error("end of file before closing --> of comment");
-		break;
+                /* all handled by isLineSeparator
+            case '\r':
+                if (p[1] == '\n')
+                    goto Ldefault;
+            case '\n':
+                linnum++;               // remember to count lines
+                // Always extract new lines, so that D lexer counts the
+                // lines right.
+                dbuf->writeByte(*p);
+                continue;
+                */
 
-	    default:
-		//    Ldefault:
-		int lineSepLength = isLineSeperator(p);
-		if( lineSepLength>0 ){
-			linnum++;       // remember to count lines
-			// Always extract new lines, so that D lexer counts
-			// the lines right.
-			dbuf->writeByte('\n');  // BUG: wchar
-			p+=lineSepLength-1;
-			continue;
-		}
-		scangt = 0;		// it's not -->
-		continue;
-	}
-	break;
+            case 0:
+            case 0x1a:
+                error("end of file before closing --> of comment");
+                break;
+
+            default:
+                //    Ldefault:
+                int lineSepLength = isLineSeperator(p);
+                if( lineSepLength>0 ){
+                        linnum++;       // remember to count lines
+                        // Always extract new lines, so that D lexer counts
+                        // the lines right.
+                        dbuf->writeByte('\n');  // BUG: wchar
+                        p+=lineSepLength-1;
+                        continue;
+                }
+                scangt = 0;             // it's not -->
+                continue;
+        }
+        break;
     }
     //printf("*p = '%c'\n", *p);
 }
@@ -545,59 +545,59 @@ void Html::scanComment()
  /********************************************
  * Determine if we are at the start of a comment.
  * Input:
- *	p is on the opening '<'
+ *      p is on the opening '<'
  * Returns:
- *	0 if not start of a comment
- * 	1 if start of a comment, p is adjusted to point past --
+ *      0 if not start of a comment
+ *      1 if start of a comment, p is adjusted to point past --
  */
 
 int Html::isCommentStart()
 #ifdef __DMC__
     __out(result)
     {
-	if (result == 0)
-	    ;
-	else if (result == 1)
-	{
-	    assert(p[-2] == '-' && p[-1] == '-');
-	}
-	else
-	    assert(0);
+        if (result == 0)
+            ;
+        else if (result == 1)
+        {
+            assert(p[-2] == '-' && p[-1] == '-');
+        }
+        else
+            assert(0);
     }
     __body
 #endif /* __DMC__ */
-    {	unsigned char *s;
+    {   unsigned char *s;
 
-	if (p[0] == '<' && p[1] == '!')
-	{
-	    for (s = p + 2; 1; s++)
-	    {
-		switch (*s)
-		{
-		    case ' ':
-		    case '\t':
-		    case '\r':
-		    case '\f':
-		    case '\v':
-			// skip white space, even though spec says no
-			// white space is allowed
-			continue;
+        if (p[0] == '<' && p[1] == '!')
+        {
+            for (s = p + 2; 1; s++)
+            {
+                switch (*s)
+                {
+                    case ' ':
+                    case '\t':
+                    case '\r':
+                    case '\f':
+                    case '\v':
+                        // skip white space, even though spec says no
+                        // white space is allowed
+                        continue;
 
-		    case '-':
-			if (s[1] == '-')
-			{
-			    p = s + 2;
-			    return 1;
-			}
-			goto No;
+                    case '-':
+                        if (s[1] == '-')
+                        {
+                            p = s + 2;
+                            return 1;
+                        }
+                        goto No;
 
-		    default:
-			goto No;
-		}
-	    }
-	}
+                    default:
+                        goto No;
+                }
+            }
+        }
     No:
-	return 0;
+        return 0;
     }
 
 int Html::isCDATAStart()
@@ -607,12 +607,12 @@ int Html::isCDATAStart()
 
     if (strncmp((char*)p, CDATA_START_MARKER, len) == 0)
     {
-	p += len;
-	return 1;
+        p += len;
+        return 1;
     }
     else
     {
-	return 0;
+        return 0;
     }
 }
 
@@ -620,41 +620,41 @@ void Html::scanCDATA()
 {
     while(*p && *p != 0x1A)
     {
-	int lineSepLength = isLineSeperator(p);
-	if (lineSepLength>0)
-	{
-	    /* Always extract new lines, so that D lexer counts the lines
-	     * right.
-	     */
-	    linnum++;
-	    dbuf->writeUTF8('\n');
-	    p += lineSepLength;
-	    continue;
+        int lineSepLength = isLineSeperator(p);
+        if (lineSepLength>0)
+        {
+            /* Always extract new lines, so that D lexer counts the lines
+             * right.
+             */
+            linnum++;
+            dbuf->writeUTF8('\n');
+            p += lineSepLength;
+            continue;
         }
-	else if (p[0] == ']' && p[1] == ']' && p[2] == '>')
-	{
-	    /* end of CDATA section */
-	    p += 3;
-	    return;
-	}
-	else if (inCode)
-	{
-	    /* this CDATA section contains D code */
-	    dbuf->writeByte(*p);
-	}
+        else if (p[0] == ']' && p[1] == ']' && p[2] == '>')
+        {
+            /* end of CDATA section */
+            p += 3;
+            return;
+        }
+        else if (inCode)
+        {
+            /* this CDATA section contains D code */
+            dbuf->writeByte(*p);
+        }
 
-	p++;
+        p++;
     }
 }
 
 /********************************************
  * Convert an HTML character entity into a character.
  * Forms are:
- *	&name;		named entity
- *	&#ddd;		decimal
- *	&#xhhhh;	hex
+ *      &name;          named entity
+ *      &#ddd;          decimal
+ *      &#xhhhh;        hex
  * Input:
- *	p is on the &
+ *      p is on the &
  */
 
 int Html::charEntity()
@@ -666,118 +666,118 @@ int Html::charEntity()
     //printf("Html::charEntity('%c')\n", *p);
     if (p[1] == '#')
     {
-	p++;
-	if (p[1] == 'x' || p[1] == 'X')
-	{   p++;
-	    hex = 1;
-	}
-	else
-	    hex = 0;
+        p++;
+        if (p[1] == 'x' || p[1] == 'X')
+        {   p++;
+            hex = 1;
+        }
+        else
+            hex = 0;
 
-	if (p[1] == ';')
-	    goto Linvalid;
-	while (1)
-	{
-	    p++;
-	    switch (*p)
-	    {
-		case 0:
-		case 0x1a:
-		    error("end of file before end of character entity");
-		    goto Lignore;
+        if (p[1] == ';')
+            goto Linvalid;
+        while (1)
+        {
+            p++;
+            switch (*p)
+            {
+                case 0:
+                case 0x1a:
+                    error("end of file before end of character entity");
+                    goto Lignore;
 
-		case '\n':
-		case '\r':
-		case '<':	// tag start
-		    // Termination is assumed
-		    break;
+                case '\n':
+                case '\r':
+                case '<':       // tag start
+                    // Termination is assumed
+                    break;
 
-		case ';':
-		    // Termination is explicit
-		    p++;
-		    break;
+                case ';':
+                    // Termination is explicit
+                    p++;
+                    break;
 
-		case '0': case '1': case '2': case '3': case '4':
-		case '5': case '6': case '7': case '8': case '9':
-		    v = *p - '0';
-		    goto Lvalue;
+                case '0': case '1': case '2': case '3': case '4':
+                case '5': case '6': case '7': case '8': case '9':
+                    v = *p - '0';
+                    goto Lvalue;
 
-		case 'a': case 'b': case 'c':
-		case 'd': case 'e': case 'f':
-		    if (!hex)
-			goto Linvalid;
-		    v = (*p - 'a') + 10;
-		    goto Lvalue;
+                case 'a': case 'b': case 'c':
+                case 'd': case 'e': case 'f':
+                    if (!hex)
+                        goto Linvalid;
+                    v = (*p - 'a') + 10;
+                    goto Lvalue;
 
-		case 'A': case 'B': case 'C':
-		case 'D': case 'E': case 'F':
-		    if (!hex)
-			goto Linvalid;
-		    v = (*p - 'A') + 10;
-		    goto Lvalue;
+                case 'A': case 'B': case 'C':
+                case 'D': case 'E': case 'F':
+                    if (!hex)
+                        goto Linvalid;
+                    v = (*p - 'A') + 10;
+                    goto Lvalue;
 
-		Lvalue:
-		    if (hex)
-			c = (c << 4) + v;
-		    else
-			c = (c * 10) + v;
-		    if (c > 0x10FFFF)
-		    {
-			error("character entity out of range");
-			goto Lignore;
-		    }
-		    continue;
+                Lvalue:
+                    if (hex)
+                        c = (c << 4) + v;
+                    else
+                        c = (c * 10) + v;
+                    if (c > 0x10FFFF)
+                    {
+                        error("character entity out of range");
+                        goto Lignore;
+                    }
+                    continue;
 
-		default:
-		Linvalid:
-		    error("invalid numeric character reference");
-		    goto Lignore;
-	    }
-	    break;
-	}
+                default:
+                Linvalid:
+                    error("invalid numeric character reference");
+                    goto Lignore;
+            }
+            break;
+        }
     }
     else
     {
-	// It's a named entity; gather all characters until ;
-	unsigned char *idstart = p + 1;
+        // It's a named entity; gather all characters until ;
+        unsigned char *idstart = p + 1;
 
-	while (1)
-	{
-	    p++;
-	    switch (*p)
-	    {
-		case 0:
-		case 0x1a:
-		    error("end of file before end of character entity");
-		    break;
+        while (1)
+        {
+            p++;
+            switch (*p)
+            {
+                case 0:
+                case 0x1a:
+                    error("end of file before end of character entity");
+                    break;
 
-		case '\n':
-		case '\r':
-		case '<':	// tag start
-		    // Termination is assumed
-		    c = HtmlNamedEntity(idstart, p - idstart);
-		    if (c == -1)
-			goto Lignore;
-		    break;
+                case '\n':
+                case '\r':
+                case '<':       // tag start
+                    // Termination is assumed
+                    c = HtmlNamedEntity(idstart, p - idstart);
+                    if (c == -1)
+                        goto Lignore;
+                    break;
 
-		case ';':
-		    // Termination is explicit
-		    c = HtmlNamedEntity(idstart, p - idstart);
-		    if (c == -1)
-			goto Lignore;
-		    p++;
-		    break;
+                case ';':
+                    // Termination is explicit
+                    c = HtmlNamedEntity(idstart, p - idstart);
+                    if (c == -1)
+                        goto Lignore;
+                    p++;
+                    break;
 
-		default:
-		    continue;
-	    }
-	    break;
-	}
+                default:
+                    continue;
+            }
+            break;
+        }
     }
 
     // Kludge to convert non-breaking space to ascii space
     if (c == 160)
-	c = 32;
+        c = 32;
     return c;
 Lignore:
     //printf("Lignore\n");
