@@ -41,12 +41,18 @@
 {".XHTML", "@d", D_D_SPEC_REST },
 {".d", "@d", D_D_SPEC_REST },
 {".D", "@d", D_D_SPEC_REST },
+{".dd", "@d", D_D_SPEC_REST },
+{".DD", "@d", D_D_SPEC_REST },
+{".di", "@d", D_D_SPEC_REST },
+{".DI", "@d", D_D_SPEC_REST },
 {"@d",
      "%{!E:cc1d %i %:d-all-sources() %(cc1_options) %(cc1d) %I %N %{nostdinc*} %{+e*} %{I*} %{J*}\
       %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC_REST },
 #else
 {".d", "@d", D_D_SPEC_REST },
 {".D", "@d", D_D_SPEC_REST },
+{".di", "@d", D_D_SPEC_REST },
+{".DI", "@d", D_D_SPEC_REST },
 {"@d",
      "%{!E:cc1d %i %(cc1_options) %(cc1d) %I %N %{nostdinc*} %{+e*} %{I*} %{J*}\
       %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC_REST },

@@ -370,6 +370,8 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-.+$/ ) {
 	errorExit "unrecognized switch '$arg'";
     } elsif ( $arg =~ m/^.+\.d$/i ||
+	      $arg =~ m/^.+\.dd$/i ||
+	      $arg =~ m/^.+\.di$/i ||
 	      $arg =~ m/^.+\.htm$/i ||
 	      $arg =~ m/^.+\.html$/i ||
 	      $arg =~ m/^.+\.xhtml$/i) {
