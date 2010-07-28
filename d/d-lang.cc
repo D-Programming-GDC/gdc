@@ -699,7 +699,11 @@ d_handle_option (size_t scode, const char *arg, int value)
 	  // ignored
 	  break;
       case OPT_Wall:
-	  global.params.warnings = value;
+	  global.params.warnings = 2;
+	  gen.warnSignCompare = value;
+	  break;
+	  case OPT_Werror:
+	  global.params.warnings = 1;
 	  gen.warnSignCompare = value;
 	  break;
       case OPT_Wsign_compare:
@@ -1152,7 +1156,9 @@ d_parse_file (int /*set_yydebug*/)
 	    m->inlineScan();
 	}
     }
-    if (global.errors)
+    
+    // Do not attempt to generate output files if errors or warnings occurred
+    if (global.errors || global.warnings)
 	fatal();
 
     g.ofile = new ObjectFile();

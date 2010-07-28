@@ -146,6 +146,7 @@ Usage:
   -version=level compile in version code >= level
   -version=ident compile in version code identified by ident
   -w             enable warnings
+  -wi            enable informational warnings
 EOF
 ;
 }
@@ -345,6 +346,8 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-vdmd$/ ) {
 	$show_commands = 1;
     } elsif ( $arg =~ m/^-w$/ ) {
+	push @out, "-Werror";
+	} elsif ( $arg =~ m/^-wi$/ ) {
 	push @out, "-Wall";
     } elsif ( $arg =~ m/^-quiet$/ ) {
 	# ignored

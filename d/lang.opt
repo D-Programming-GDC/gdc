@@ -166,3 +166,7 @@ D Joined Separate
 Wall
 D
 Enable most warning messages
+
+Werror
+D
+Error out the compiler on warnings

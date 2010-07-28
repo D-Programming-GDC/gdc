@@ -613,6 +613,9 @@ void FuncDeclaration::semantic(Scope *sc)
 	    frequire = new CompoundStatement(loc, s1, s2);
 	    fdrequire = fd;
 	}
+	
+	if (!outId && f->nextOf()->toBasetype()->ty != Tvoid)
+	    outId = Id::result;	// provide a default
 
 	if (fensure)
 	{   /*   out (result) { ... }
@@ -620,9 +623,6 @@ void FuncDeclaration::semantic(Scope *sc)
 	     *   tret __ensure(ref tret result) { ... }
 	     *   __ensure(result);
 	     */
-	    if (!outId && f->nextOf()->toBasetype()->ty != Tvoid)
-		outId = Id::result;	// provide a default
-
 	    Loc loc = fensure->loc;
 	    Parameters *arguments = new Parameters();
 	    Parameter *a = NULL;
@@ -742,14 +742,14 @@ void FuncDeclaration::semantic3(Scope *sc)
 	if (ad)
 	{   VarDeclaration *v;
 
-	    if (isFuncLiteralDeclaration() && isNested())
+	    if (isFuncLiteralDeclaration() && isNested() && !sc->intypeof)
 	    {
-		error("literals cannot be class members");
+		error("function literals cannot be class members");
 		return;
 	    }
 	    else
 	    {
-		assert(!isNested());	// can't be both member and nested
+		assert(!isNested() || sc->intypeof);	// can't be both member and nested
 		assert(ad->handle);
 		v = new ThisDeclaration(loc, ad->handle);
 		v->storage_class |= STCparameter | STCin;
@@ -2557,15 +2557,9 @@ int FuncLiteralDeclaration::isVirtual()
 
 void FuncLiteralDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-    static Identifier *idfunc;
-    static Identifier *iddel;
-
-    if (!idfunc)
-	idfunc = new Identifier("function", 0);
-    if (!iddel)
-	iddel = new Identifier("delegate", 0);
-
-    type->toCBuffer(buf, ((tok == TOKdelegate) ? iddel : idfunc), hgs);
+    buf->writestring(kind());
+    buf->writeByte(' ');
+    type->toCBuffer(buf, NULL, hgs);
     bodyToCBuffer(buf, hgs);
 }
 

@@ -94,6 +94,7 @@
 #define STRUCTTHISREF DMDV2	// if 'this' for struct is a reference, not a pointer
 #define SNAN_DEFAULT_INIT DMDV2	// if floats are default initialized to signalling NaN
 #define SARRAYVALUE DMDV2	// static arrays are value types
+#define MODULEINFO_IS_STRUCT DMDV2   // if ModuleInfo is a struct rather than a class
 
 // Set if C++ mangling is done by the front end
 #define CPP_MANGLE (DMDV2 && (TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS))
@@ -157,7 +158,9 @@ struct Param
     char useInline;	// inline expand functions
     char release;	// build release version
     char preservePaths;	// !=0 means don't strip path from source file
-    char warnings;	// enable warnings
+    char warnings;	// 0: enable warnings
+			// 1: warnings as errors
+			// 2: informational warnings (no errors)
     char pic;		// generate position-independent-code for shared libs
     char cov;		// generate code coverage data
     char nofloat;	// code should not pull in floating point support
@@ -242,7 +245,8 @@ struct Global
 
     Param params;
     unsigned errors;	// number of errors reported so far
-    unsigned gag;	// !=0 means gag reporting of errors
+    unsigned warnings;	// number of warnings reported so far
+    unsigned gag;	// !=0 means gag reporting of errors & warnings
 
     Global();
 };
@@ -398,6 +402,7 @@ typedef uint64_t StorageClass;
 void warning(Loc loc, const char *format, ...);
 void error(Loc loc, const char *format, ...);
 void verror(Loc loc, const char *format, va_list);
+void vwarning(Loc loc, const char *format, va_list);
 void fatal();
 void err_nomem();
 int runLINK();
