@@ -207,7 +207,7 @@ D_DMD_OBJS = \
     d/enum.dmd.o d/expression.dmd.o d/func.dmd.o d/gnuc.dmd.o d/hdrgen.dmd.o \
     d/html.dmd.o d/identifier.dmd.o d/import.dmd.o d/init.dmd.o d/inline.dmd.o \
     d/interpret.dmd.o d/json.dmd.o d/lexer.dmd.o d/lstring.dmd.o \
-    d/machobj.dmd.o d/macro.dmd.o d/mangle.dmd.o d/mars.dmd.o d/mtype.dmd.o \
+    d/macro.dmd.o d/mangle.dmd.o d/mars.dmd.o d/mtype.dmd.o \
     d/module.dmd.o d/opover.dmd.o d/optimize.dmd.o d/parse.dmd.o d/rmem.dmd.o \
     d/root.dmd.o d/scope.dmd.o d/speller.dmd.o d/statement.dmd.o d/staticassert.dmd.o \
     d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o d/todt.dmd.o \
