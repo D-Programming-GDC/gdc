@@ -354,7 +354,10 @@ Symbol *VarDeclaration::toSymbol()
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
 	// Have to test for import first
 	if (isImportedSymbol())
+	{
 	    gen.addDeclAttribute( var_decl, "dllimport" );
+	    DECL_DLLIMPORT_P( var_decl ) = 1;        
+	}
 	else if (isExport())
 	    gen.addDeclAttribute( var_decl, "dllexport" );
 #endif
@@ -567,7 +570,10 @@ Symbol *FuncDeclaration::toSymbol()
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
 	    // Have to test for import first
 	    if (isImportedSymbol())
+	    {
 		gen.addDeclAttribute( fn_decl, "dllimport" );
+		DECL_DLLIMPORT_P( fn_decl ) = 1;
+	    }
 	    else if (isExport())
 		gen.addDeclAttribute( fn_decl, "dllexport" );
 #endif
