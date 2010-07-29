@@ -48,7 +48,7 @@ struct Msgtable msgtable[] =
     { "init" },
     { "size" },
     { "__sizeof", "sizeof" },
-    { "alignof" },
+    { "__xalignof", "alignof" },
     { "mangleof" },
     { "stringof" },
     { "tupleof" },

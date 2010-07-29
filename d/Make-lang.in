@@ -211,7 +211,7 @@ D_DMD_OBJS = \
     d/module.dmd.o d/opover.dmd.o d/optimize.dmd.o d/parse.dmd.o d/rmem.dmd.o \
     d/root.dmd.o d/scope.dmd.o d/speller.dmd.o d/statement.dmd.o d/staticassert.dmd.o \
     d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o d/todt.dmd.o \
-    d/toobj.dmd.o d/typinf.dmd.o d/unialpha.dmd.o d/utf.dmd.o d/version.dmd.o
+    d/toobj.dmd.o d/typinf.dmd.o d/unialpha.dmd.o d/unittests.dmd.o d/utf.dmd.o d/version.dmd.o
 endif
 
 ifeq ($(D_LANGUAGE_VERSION),2)

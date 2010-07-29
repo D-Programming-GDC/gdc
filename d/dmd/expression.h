@@ -114,7 +114,7 @@ struct Expression : Object
     virtual void toMangleBuffer(OutBuffer *buf);
     virtual Expression *toLvalue(Scope *sc, Expression *e);
     virtual Expression *modifiableLvalue(Scope *sc, Expression *e);
-    Expression *implicitCastTo(Scope *sc, Type *t);
+    virtual Expression *implicitCastTo(Scope *sc, Type *t);
     virtual MATCH implicitConvTo(Type *t);
     virtual Expression *castTo(Scope *sc, Type *t);
     virtual void checkEscape();
@@ -149,6 +149,7 @@ struct Expression : Object
     virtual int inlineCost(InlineCostState *ics);
     virtual Expression *doInline(InlineDoState *ids);
     virtual Expression *inlineScan(InlineScanState *iss);
+    Expression *inlineCopy(Scope *sc);
 
     // For operator overloading
     virtual int isCommutative();
@@ -194,6 +195,7 @@ struct ErrorExp : IntegerExp
 {
     ErrorExp();
 
+    Expression *implicitCastTo(Scope *sc, Type *t);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 };
 
@@ -432,7 +434,7 @@ struct AssocArrayLiteralExp : Expression
 
 struct StructLiteralExp : Expression
 {
-    StructDeclaration *sd;              // which aggregate this is for
+    StructDeclaration *sd;      // which aggregate this is for
     Expressions *elements;      // parallels sd->fields[] with
                                 // NULL entries for fields to skip
 
@@ -538,6 +540,18 @@ struct NewAnonClassExp : Expression
     int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 };
+
+#if DMDV2
+struct SymbolExp : Expression
+{
+    Declaration *var;
+    int hasOverloads;
+
+    SymbolExp(Loc loc, enum TOK op, int size, Declaration *var, int hasOverloads);
+
+    elem *toElem(IRState *irs);
+};
+#endif
 
 // Offset from symbol
 
