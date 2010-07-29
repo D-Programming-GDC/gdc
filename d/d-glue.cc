@@ -619,12 +619,30 @@ ModExp::toElem(IRState * irs)
 elem *
 DivExp::toElem(IRState * irs)
 {
-    return make_math_op(this, irs);
+    TY ty1 = e1->type->toBasetype()->ty;
+    TY ty2 = e2->type->toBasetype()->ty;
+    
+    if ((ty1 == Tarray || ty1 == Tsarray) ||
+	(ty2 == Tarray || ty2 == Tsarray) ) {
+	error("Array operation %s not implemented", toChars());
+	return irs->errorMark(type);
+    }
+    else
+	return make_math_op(this, irs);
 }
 elem *
 MulExp::toElem(IRState * irs) 
 {
-    return make_math_op(this, irs);
+    TY ty1 = e1->type->toBasetype()->ty;
+    TY ty2 = e2->type->toBasetype()->ty;
+    
+    if ((ty1 == Tarray || ty1 == Tsarray) ||
+	(ty2 == Tarray || ty2 == Tsarray) ) {
+	error("Array operation %s not implemented", toChars());
+	return irs->errorMark(type);
+    }
+    else
+	return make_math_op(this, irs);
 }
 
 static tree
@@ -736,8 +754,16 @@ CatExp::toElem(IRState * irs)
 elem *
 MinExp::toElem(IRState* irs)
 {
-    // The front end has already taken care of pointer-int and pointer-pointer
-    return make_math_op(this, irs);
+    TY ty1 = e1->type->toBasetype()->ty;
+    TY ty2 = e2->type->toBasetype()->ty;
+    
+    if ((ty1 == Tarray || ty1 == Tsarray) ||
+	(ty2 == Tarray || ty2 == Tsarray) ) {
+	error("Array operation %s not implemented", toChars());
+	return irs->errorMark(type);
+    } else
+	// The front end has already taken care of pointer-int and pointer-pointer
+	return make_math_op(this, irs);
 }
 
 elem *
@@ -746,9 +772,9 @@ AddExp::toElem(IRState* irs)
     TY ty1 = e1->type->toBasetype()->ty;
     TY ty2 = e2->type->toBasetype()->ty;
     
-    if ((ty1 == Tarray || ty1 == Tsarray) &&
+    if ((ty1 == Tarray || ty1 == Tsarray) ||
 	(ty2 == Tarray || ty2 == Tsarray) ) {
-	error("Array operations not implemented");
+	error("Array operation %s not implemented", toChars());
 	return irs->errorMark(type);
     } else
 	// The front end has already taken care of (pointer + integer)
@@ -1363,6 +1389,14 @@ NegExp::toElem(IRState * irs)
 {
     // %% GCC B.E. won't optimize (NEGATE_EXPR (INTEGER_CST ..))..
     // %% is type correct?
+    TY ty1 = e1->type->toBasetype()->ty;
+    
+    if (ty1 == Tarray || ty1 == Tsarray)
+    {
+	error("Array operation %s not implemented", toChars());
+	return irs->errorMark(type);
+    }
+    
     return build1(NEGATE_EXPR, type->toCtype(), e1->toElem(irs));
 }
 
