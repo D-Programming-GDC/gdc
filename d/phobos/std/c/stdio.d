@@ -120,10 +120,9 @@ version (Win32)
 {
     version (GNU) {
 	// _NFILE is not defined anywhere
-	extern export FILE _imp___iob[5];
-	alias _imp___iob _iob;
+	extern export FILE _iob[5];
     } else {
-	extern FILE _iob[_NFILE];	// _NFILE is not defined anywhere
+	extern FILE _iob[_NFILE];
 	extern void function() _fcloseallp;
 	extern ubyte __fhnd_info[_NFILE];
 
