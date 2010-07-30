@@ -2158,12 +2158,17 @@ Expression *IdentifierExp::semantic(Scope *sc)
        return e;
     }
 #endif
-
+    const char *n = importHint(ident->toChars());
+    if (n)
+        error("'%s' is not defined, perhaps you need to import %s; ?", ident->toChars(), n);
+    else
+    {
     s = sc->search_correct(ident);
     if (s)
         error("undefined identifier %s, did you mean %s %s?", ident->toChars(), s->kind(), s->toChars());
     else
         error("undefined identifier %s", ident->toChars());
+    }
     return new ErrorExp();
 }
 
@@ -2278,7 +2283,9 @@ Lagain:
     {
         //printf("Identifier '%s' is a variable, type '%s'\n", toChars(), v->type->toChars());
         if (!type)
-        {   type = v->type;
+        {   if (!v->type && v->scope)
+                v->semantic(v->scope);
+            type = v->type;
             if (!v->type)
             {   error("forward reference of %s", v->toChars());
                 type = Type::terror;
@@ -2326,7 +2333,10 @@ Lagain:
     f = s->isFuncDeclaration();
     if (f)
     {   //printf("'%s' is a function\n", f->toChars());
-    if (!f->type->deco)
+
+        if (!f->originalType && f->scope)       // semantic not yet run
+            f->semantic(f->scope); 
+        if (!f->type->deco)
         {
             error("forward reference to %s", toChars());
             return new ErrorExp();
@@ -3535,10 +3545,12 @@ Expression *ScopeExp::semantic(Scope *sc)
 Lagain:
     ti = sds->isTemplateInstance();
     if (ti && !global.errors)
-    {   Dsymbol *s;
+    {
         if (!ti->semanticRun)
             ti->semantic(sc);
-        s = ti->inst->toAlias();
+        if (ti->inst)
+        {
+            Dsymbol *s = ti->inst->toAlias();
         sds2 = s->isScopeDsymbol();
         if (!sds2)
         {   Expression *e;
@@ -3562,6 +3574,7 @@ Lagain:
             goto Lagain;
         }
         //printf("sds = %s, '%s'\n", sds->kind(), sds->toChars());
+    }
     }
     else
     {

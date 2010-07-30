@@ -345,7 +345,7 @@ void ClassDeclaration::semantic(Scope *sc)
                 }
                 if (!tc->sym->symtab || tc->sym->sizeok == 0)
                 {   // Try to resolve forward reference
-                    if (sc->mustsemantic && tc->sym->scope)
+                    if (/*sc->mustsemantic &&*/ tc->sym->scope)
                         tc->sym->semantic(NULL);
                 }
                 if (!tc->sym->symtab || tc->sym->scope || tc->sym->sizeok == 0)
@@ -413,7 +413,7 @@ void ClassDeclaration::semantic(Scope *sc)
 
             if (!tc->sym->symtab)
             {   // Try to resolve forward reference
-                if (sc->mustsemantic && tc->sym->scope)
+                if (/*sc->mustsemantic &&*/ tc->sym->scope)
                     tc->sym->semantic(NULL);
             }
 

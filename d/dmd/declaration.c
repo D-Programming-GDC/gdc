@@ -533,7 +533,7 @@ void AliasDeclaration::semantic(Scope *sc)
     //printf("alias is a symbol %s %s\n", s->kind(), s->toChars());
     type = NULL;
     VarDeclaration *v = s->isVarDeclaration();
-    if (v && v->linkage == LINKdefault)
+    if (0 && v && v->linkage == LINKdefault)
     {
         error("forward reference of %s", v->toChars());
         s = NULL;
@@ -830,8 +830,8 @@ void VarDeclaration::semantic(Scope *sc)
             OutBuffer buf;
             buf.printf("_%s_field_%"PRIuSIZE, ident->toChars(), i);
             buf.writeByte(0);
-            char *name = (char *)buf.extractData();
-            Identifier *id = new Identifier(name, TOKidentifier);
+            const char *name = (const char *)buf.extractData();
+            Identifier *id = Lexer::idPool(name);
 
             Expression *einit = ie;
             if (ie && ie->op == TOKtuple)
