@@ -84,6 +84,7 @@ D_EXTRA_OBJS="gcc/config/unix.o gcc/cbridge_fdset.o std/c/dirent.o std/c/unix/un
 D_EXTRA_OBJS="std/c/linux/linux.o $D_EXTRA_OBJS"
 D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_unix_d_src)'
 DCFG_UNIX="Unix"
+DCFG_POSIX="Posix"
 
 ])
 
