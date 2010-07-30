@@ -1,15 +1,3 @@
-/**
- * Contains all implicitly declared types and variables.
- *
- * Copyright: Copyright Digital Mars 2000 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
- * Authors:   Walter Bright, Sean Kelly
- *
- *          Copyright Digital Mars 2000 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module object;
 
 alias typeof(int.sizeof)                    size_t;
@@ -18,9 +6,9 @@ alias typeof(cast(void*)0 - cast(void*)0)   ptrdiff_t;
 alias size_t hash_t;
 alias bool equals_t;
 
-alias immutable(char)[]  string;
-alias immutable(wchar)[] wstring;
-alias immutable(dchar)[] dstring;
+alias invariant(char)[]  string;
+alias invariant(wchar)[] wstring;
+alias invariant(dchar)[] dstring;
 
 class Object
 {
@@ -60,12 +48,10 @@ class ClassInfo : Object
     //  4:      // has offTi[] member
     //  8:      // has constructors
     // 16:      // has xgetMembers member
-    // 32:      // has typeinfo member
     void*       deallocator;
     OffsetTypeInfo[] offTi;
     void*       defaultConstructor;
     const(MemberInfo[]) function(string) xgetMembers;
-    TypeInfo    typeinfo;
 
     static ClassInfo find(in char[] classname);
     Object create();
@@ -180,11 +166,6 @@ class TypeInfo_Invariant : TypeInfo_Const
 
 }
 
-class TypeInfo_Shared : TypeInfo_Const
-{
-
-}
-
 abstract class MemberInfo
 {
     string name();
@@ -226,10 +207,6 @@ class ModuleInfo
     void function() ctor;
     void function() dtor;
     void function() unitTest;
-
-    void*           xgetMembers;
-    void function() ictor;
-    void*[4] reserved;
 
     static int opApply(int delegate(inout ModuleInfo));
 }

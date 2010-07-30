@@ -96,31 +96,43 @@ private
 {
     void gc_removeRange(void* p);
 }
+    extern (C) 
+{
+    void* gc_getHandle();
+}
+    extern (C) 
+{
+    void gc_setHandle(void* p);
+}
+    extern (C) 
+{
+    void gc_endHandle();
+}
 }
 struct GC
 {
-    static 
+    static
 {
     void enable()
 {
 gc_enable();
 }
 }
-    static 
+    static
 {
     void disable()
 {
 gc_disable();
 }
 }
-    static 
+    static
 {
     void collect()
 {
 gc_collect();
 }
 }
-    static 
+    static
 {
     void minimize()
 {
@@ -134,116 +146,137 @@ NO_SCAN = 2,
 NO_MOVE = 4,
 }
     alias BlkInfo_ BlkInfo;
-    static 
+    static
 {
     uint getAttr(void* p)
 {
 return gc_getAttr(p);
 }
 }
-    static 
+    static
 {
     uint setAttr(void* p, uint a)
 {
 return gc_setAttr(p,a);
 }
 }
-    static 
+    static
 {
     uint clrAttr(void* p, uint a)
 {
 return gc_clrAttr(p,a);
 }
 }
-    static 
+    static
 {
     void* malloc(size_t sz, uint ba = 0)
 {
 return gc_malloc(sz,ba);
 }
 }
-    static 
+    static
 {
     void* calloc(size_t sz, uint ba = 0)
 {
 return gc_calloc(sz,ba);
 }
 }
-    static 
+    static
 {
     void* realloc(void* p, size_t sz, uint ba = 0)
 {
 return gc_realloc(p,sz,ba);
 }
 }
-    static 
+    static
 {
     size_t extend(void* p, size_t mx, size_t sz)
 {
 return gc_extend(p,mx,sz);
 }
 }
-    static 
+    static
 {
     size_t reserve(size_t sz)
 {
 return gc_reserve(sz);
 }
 }
-    static 
+    static
 {
     void free(void* p)
 {
 gc_free(p);
 }
 }
-    static 
+    static
 {
     void* addrOf(void* p)
 {
 return gc_addrOf(p);
 }
 }
-    static 
+    static
 {
     size_t sizeOf(void* p)
 {
 return gc_sizeOf(p);
 }
 }
-    static 
+    static
 {
     BlkInfo query(void* p)
 {
 return gc_query(p);
 }
 }
-    static 
+    static
 {
     void addRoot(void* p)
 {
 gc_addRoot(p);
 }
 }
-    static 
+    static
 {
     void addRange(void* p, size_t sz)
 {
 gc_addRange(p,sz);
 }
 }
-    static 
+    static
 {
     void removeRoot(void* p)
 {
 gc_removeRoot(p);
 }
 }
-    static 
+    static
 {
     void removeRange(void* p)
 {
 gc_removeRange(p);
+}
+}
+    static
+{
+    void* getHandle()
+{
+return gc_getHandle();
+}
+}
+    static
+{
+    void setHandle(void* p)
+{
+gc_setHandle(p);
+}
+}
+    static
+{
+    void endHandle()
+{
+gc_endHandle();
 }
 }
 }

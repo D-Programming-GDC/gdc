@@ -17,7 +17,7 @@ private
 {
     void rt_setTraceHandler(TraceHandler h);
 }
-    alias void delegate(Throwable) ExceptionHandler;
+    alias void delegate(Exception) ExceptionHandler;
     extern (C) 
 {
     bool rt_init(ExceptionHandler dg = null);
@@ -26,67 +26,45 @@ private
 {
     bool rt_term(ExceptionHandler dg = null);
 }
-    extern (C) 
-{
-    void* rt_loadLibrary(in char[] name);
-}
-    extern (C) 
-{
-    bool rt_unloadLibrary(void* ptr);
-}
 }
 struct Runtime
 {
-    static 
+    static
 {
-    bool initialize(ExceptionHandler dg = null)
+    bool initialize(void delegate(Exception) dg = null)
 {
 return rt_init(dg);
 }
 }
-    static 
+    static
 {
-    bool terminate(ExceptionHandler dg = null)
+    bool terminate(void delegate(Exception) dg = null)
 {
 return rt_term(dg);
 }
 }
-    static 
+    static
 {
     bool isHalting()
 {
 return rt_isHalting();
 }
 }
-    static 
-{
-    void* loadLibrary(in char[] name)
-{
-return rt_loadLibrary(name);
-}
-}
-    static 
-{
-    bool unloadLibrary(void* p)
-{
-return rt_unloadLibrary(p);
-}
-}
-    static 
+    static
 {
     void traceHandler(TraceHandler h)
 {
 rt_setTraceHandler(h);
 }
 }
-    static 
+    static
 {
     void collectHandler(CollectHandler h)
 {
 rt_setCollectHandler(h);
 }
 }
-    static 
+    static
 {
     void moduleUnitTester(ModuleUnitTester h)
 {
@@ -95,7 +73,7 @@ sm_moduleUnitTester = h;
 }
     private
 {
-    __gshared 
+    static
 {
     ModuleUnitTester sm_moduleUnitTester = null;
 }
