@@ -692,7 +692,7 @@ CatExp::toElem(IRState * irs)
     }
 
     n_args = 1 + (n_operands > 2 ? 1 : 0) +
-	(n_operands * (irs->splitDynArrayVarArgs ? 2 : 1));
+	n_operands * (n_operands > 2 && irs->splitDynArrayVarArgs ? 2 : 1);
     args = new tree[n_args];
     args[0] = irs->typeinfoReference(type);
     if (n_operands > 2)
@@ -715,7 +715,7 @@ CatExp::toElem(IRState * irs)
 	    }
 	    else
 		array_exp = irs->toDArray(oe);
-	    if (irs->splitDynArrayVarArgs)
+	    if (n_operands > 2 && irs->splitDynArrayVarArgs)
 	    {
 		array_exp = irs->maybeMakeTemp(array_exp);
 		args[ai--] = irs->darrayPtrRef(array_exp); // note: filling array
