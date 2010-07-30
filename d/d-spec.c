@@ -74,6 +74,9 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     /* If nonzero, the user gave us the `-v' flag.  */
     int saw_verbose_flag = 0;
 
+    /* Used by -debuglib */
+    int saw_debug_flag = 0;
+
     /* This is a tristate:
        -1 means we should not link in libstdc++
        0  means we should link in libstdc++ if it is needed
@@ -81,7 +84,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     int library = 0;
 
     /* If nonzero, use the standard D runtime library when linking with
-       stanard libraries. */
+       standard libraries. */
     int phobos = 1;
 
     /* The number of arguments being added to what's in argv, other than
@@ -122,6 +125,12 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 
     /* The argument list.  */
     const char *const *argv;
+
+    /* What default library to use instead of phobos */
+    const char *defaultlib = NULL;
+
+    /* What debug library to use instead of phobos */
+    const char *debuglib = NULL; 
 
     /* The number of libraries added in.  */
     int added_libraries;
@@ -168,6 +177,30 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 			    phobos = 0;
 			    args[i] |= REMOVE_ARG;
 			}
+		    else if (strcmp (argv[i], "-defaultlib") == 0)
+			{
+			    added = 1;
+			    phobos = 0;
+			    args[i] |= REMOVE_ARG;
+			    if (defaultlib != NULL)
+				free(defaultlib);
+			    defaultlib = xmalloc(sizeof(char) * (strlen(argv[++i]) + 3));
+			    strcpy(defaultlib, "-l");
+			    strcat(defaultlib, argv[i]);
+			    args[i] |= REMOVE_ARG;
+			}
+		    else if (strcmp (argv[i], "-debuglib") == 0)
+			{
+			    added = 1;
+			    phobos = 0;
+			    args[i] |= REMOVE_ARG;
+			    if (debuglib != NULL)
+				free(debuglib);
+			    debuglib = xmalloc(sizeof(char) * (strlen(argv[++i]) + 3));
+			    strcpy(debuglib, "-l");
+			    strcat(debuglib, argv[i]);
+			    args[i] |= REMOVE_ARG;
+			}
 		    else if (strcmp (argv[i], "-lm") == 0
 			|| strcmp (argv[i], "-lmath") == 0
 			|| strcmp (argv[i], MATH_LIBRARY) == 0
@@ -182,6 +215,8 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 			saw_profile_flag++;
 		    else if (strcmp (argv[i], "-v") == 0)
 			saw_verbose_flag = 1;
+		    else if (strcmp (argv[i], "-g") == 0)
+			saw_debug_flag = 1;
 		    else if (strncmp (argv[i], "-x", 2) == 0)
 			{
 			    if (library == 0)
@@ -366,6 +401,16 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 	    arglist[j++] = saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS;
 	    added_libraries++;
 	    need_pthreads = 1;
+	}
+    else if (saw_debug_flag && debuglib)
+	{
+	    arglist[j++] = debuglib;
+	    added_libraries++;
+	}
+    else if (defaultlib)
+	{
+	    arglist[j++] = defaultlib;
+	    added_libraries++;
 	}
     if (saw_math)
 	arglist[j++] = saw_math;
