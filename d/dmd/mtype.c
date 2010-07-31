@@ -1514,7 +1514,7 @@ Expression *TypeBasic::defaultInit(Loc loc)
         case Tcomplex64:
         case Tcomplex80:
             return getProperty(loc, Id::nan);
-            
+
         case Tvoid:
             error(loc, "void does not have a default initializer");
             return new ErrorExp();
@@ -1589,7 +1589,7 @@ MATCH TypeBasic::implicitConvTo(Type *to)
     //printf("TypeBasic::implicitConvTo(%s) from %s\n", to->toChars(), toChars());
     if (this == to)
         return MATCHexact;
-        
+
 #if DMDV2
     if (ty == to->ty)
     {

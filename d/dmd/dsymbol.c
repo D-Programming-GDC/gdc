@@ -1202,7 +1202,7 @@ Dsymbol *DsymbolTable::insert(Dsymbol *s)
 Dsymbol *DsymbolTable::insert(Identifier *ident, Dsymbol *s)
 {
     //printf("DsymbolTable::insert()\n");
-    #if STRINGTABLE
+#if STRINGTABLE
     StringValue *sv = tab->insert(ident->toChars(), ident->len);
     if (!sv)
         return NULL;            // already in table

@@ -2165,16 +2165,17 @@ Expression *IdentifierExp::semantic(Scope *sc)
        return e;
     }
 #endif
+
     const char *n = importHint(ident->toChars());
     if (n)
         error("'%s' is not defined, perhaps you need to import %s; ?", ident->toChars(), n);
     else
     {
-    s = sc->search_correct(ident);
-    if (s)
-        error("undefined identifier %s, did you mean %s %s?", ident->toChars(), s->kind(), s->toChars());
-    else
-        error("undefined identifier %s", ident->toChars());
+        s = sc->search_correct(ident);
+        if (s)
+            error("undefined identifier %s, did you mean %s %s?", ident->toChars(), s->kind(), s->toChars());
+        else
+            error("undefined identifier %s", ident->toChars());
     }
     return new ErrorExp();
 }
@@ -2340,9 +2341,8 @@ Lagain:
     f = s->isFuncDeclaration();
     if (f)
     {   //printf("'%s' is a function\n", f->toChars());
-
         if (!f->originalType && f->scope)       // semantic not yet run
-            f->semantic(f->scope); 
+            f->semantic(f->scope);
         if (!f->type->deco)
         {
             error("forward reference to %s", toChars());
@@ -3558,30 +3558,30 @@ Lagain:
         if (ti->inst)
         {
             Dsymbol *s = ti->inst->toAlias();
-        sds2 = s->isScopeDsymbol();
-        if (!sds2)
-        {   Expression *e;
+            sds2 = s->isScopeDsymbol();
+            if (!sds2)
+            {   Expression *e;
 
-            //printf("s = %s, '%s'\n", s->kind(), s->toChars());
-            if (ti->withsym)
-            {
-                // Same as wthis.s
-                e = new VarExp(loc, ti->withsym->withstate->wthis);
-                e = new DotVarExp(loc, e, s->isDeclaration());
+                //printf("s = %s, '%s'\n", s->kind(), s->toChars());
+                if (ti->withsym)
+                {
+                    // Same as wthis.s
+                    e = new VarExp(loc, ti->withsym->withstate->wthis);
+                    e = new DotVarExp(loc, e, s->isDeclaration());
+                }
+                else
+                    e = new DsymbolExp(loc, s);
+                e = e->semantic(sc);
+                //printf("-1ScopeExp::semantic()\n");
+                return e;
             }
-            else
-                e = new DsymbolExp(loc, s);
-            e = e->semantic(sc);
-            //printf("-1ScopeExp::semantic()\n");
-            return e;
+            if (sds2 != sds)
+            {
+                sds = sds2;
+                goto Lagain;
+            }
+            //printf("sds = %s, '%s'\n", sds->kind(), sds->toChars());
         }
-        if (sds2 != sds)
-        {
-            sds = sds2;
-            goto Lagain;
-        }
-        //printf("sds = %s, '%s'\n", sds->kind(), sds->toChars());
-    }
     }
     else
     {
@@ -5282,7 +5282,7 @@ void BinExp::incompatibleTypes()
        )
         error("incompatible types for ((%s) %s (%s)): '%s' and '%s'",
              e1->toChars(), Token::toChars(op), e2->toChars(),
-            e1->type->toChars(), e2->type->toChars());
+             e1->type->toChars(), e2->type->toChars());
 }
 
 /************************************************************/
@@ -5582,16 +5582,16 @@ Expression *DotIdExp::semantic(Scope *sc)
     }
 
     if (e1->op == TOKdottd)
-     {
+    {
         error("template %s does not have property %s", e1->toChars(), ident->toChars());
         return new ErrorExp();
-     }
+    }
 
-     if (!e1->type)
-     {
+    if (!e1->type)
+    {
         error("expression %s does not have property %s", e1->toChars(), ident->toChars());
         return new ErrorExp();
-     }
+    }
 
     if (eright->op == TOKimport)        // also used for template alias's
     {
@@ -7095,31 +7095,31 @@ Expression *PtrExp::semantic(Scope *sc)
 #if LOGSEMANTIC
     printf("PtrExp::semantic('%s')\n", toChars());
 #endif
-                if (!type)
-     {
-    UnaExp::semantic(sc);
-    e1 = resolveProperties(sc, e1);
-    if (!e1->type)
-        printf("PtrExp::semantic('%s')\n", toChars());
-    Type *tb = e1->type->toBasetype();
-    switch (tb->ty)
+    if (!type)
     {
-        case Tpointer:
-            type = tb->next;
-            break;
+        UnaExp::semantic(sc);
+        e1 = resolveProperties(sc, e1);
+        if (!e1->type)
+            printf("PtrExp::semantic('%s')\n", toChars());
+        Type *tb = e1->type->toBasetype();
+        switch (tb->ty)
+        {
+            case Tpointer:
+                type = tb->next;
+                break;
 
-        case Tsarray:
-        case Tarray:
-            type = tb->next;
-            e1 = e1->castTo(sc, type->pointerTo());
-            break;
+            case Tsarray:
+            case Tarray:
+                type = tb->next;
+                e1 = e1->castTo(sc, type->pointerTo());
+                break;
 
-        default:
-            error("can only * a pointer, not a '%s'", e1->type->toChars());
-        case Terror:
-            return new ErrorExp();
-    }
-    rvalue();
+            default:
+                error("can only * a pointer, not a '%s'", e1->type->toChars());
+            case Terror:
+                return new ErrorExp();
+        }
+        rvalue();
     }
     return this;
 }
@@ -8117,7 +8117,7 @@ Expression *IndexExp::semantic(Scope *sc)
         default:
             error("%s must be an array or pointer type, not %s",
                 e1->toChars(), e1->type->toChars());
-            case Terror:
+        case Terror:
             goto Lerr;
     }
     return e;
@@ -9739,7 +9739,7 @@ Expression *InExp::semantic(Scope *sc)
                 // Convert key to type of key
                 e1 = e1->implicitCastTo(sc, ta->index);
             }
-            
+
             // Return type is pointer to value
             type = ta->nextOf()->pointerTo();
             break;

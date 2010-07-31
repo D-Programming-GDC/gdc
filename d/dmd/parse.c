@@ -3759,15 +3759,14 @@ void Parser::check(enum TOK value)
 void Parser::check(Loc loc, enum TOK value)
 {
     if (token.value != value)
-        error("found '%s' when expecting '%s' following %s",
-            token.toChars(), Token::toChars(value));
+        error(loc, "found '%s' when expecting '%s'", token.toChars(), Token::toChars(value));
     nextToken();
 }
 
 void Parser::check(enum TOK value, const char *string)
 {
     if (token.value != value)
-        error("found '%s' when expecting '%s' following '%s'",
+        error("found '%s' when expecting '%s' following %s",
             token.toChars(), Token::toChars(value), string);
     nextToken();
 }

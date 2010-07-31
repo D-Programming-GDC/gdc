@@ -1050,13 +1050,12 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 
 void StructDeclaration::toObjFile(int multiobj)
 {
-
     //printf("StructDeclaration::toObjFile('%s')\n", toChars());
 
     if (multiobj)
-     {  obj_append(this);
+    {   obj_append(this);
         return;
-     }
+    }
 
     // Anonymous structs/unions only exist as part of others,
     // do not output forward referenced structs's
@@ -1077,11 +1076,11 @@ void StructDeclaration::toObjFile(int multiobj)
             if (inTemplateInstance())
             {
                 sinit->Sclass = SCcomdat;
-                }
+            }
             else
             {
                 sinit->Sclass = SCglobal;
-                }
+            }
 #endif
             sinit->Sfl = FLdata;
             toDt(&sinit->Sdt);

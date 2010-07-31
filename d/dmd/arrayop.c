@@ -83,7 +83,7 @@ Expression *BinExp::arrayOp(Scope *sc)
         error("Cannot perform array operations on void[] arrays");
         return new ErrorExp();
     }
-    
+
     if (!isArrayOpValid(e2))
     {
         e2->error("invalid array operation %s (did you forget a [] ?)", toChars());

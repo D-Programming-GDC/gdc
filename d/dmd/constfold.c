@@ -1176,7 +1176,7 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
     else
     {
         if (type != Type::terror)
-        error(loc, "cannot cast %s to %s", e1->type->toChars(), type->toChars());
+            error(loc, "cannot cast %s to %s", e1->type->toChars(), type->toChars());
         e = new ErrorExp();
     }
     return e;

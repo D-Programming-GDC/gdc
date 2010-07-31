@@ -33,7 +33,7 @@ const char *utf_decodeChar(unsigned char *s, size_t len, size_t *pidx, dchar_t *
     dchar_t V;
     size_t i = *pidx;
     unsigned char u = s[i];
-    
+
     //printf("utf_decodeChar(s = %02x, %02x, %02x len = %d)\n", u, s[1], s[2], len);
 
     assert(i >= 0 && i < len);

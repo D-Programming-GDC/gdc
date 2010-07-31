@@ -1237,7 +1237,6 @@ void Lexer::scan(Token *t)
 #if DMDV1
             DOUBLE('^', TOKxor, '=', TOKxorass)
 #endif
-
 #undef DOUBLE
 
             case '#':
@@ -1286,7 +1285,6 @@ unsigned Lexer::escapeSequence()
     int n;
     int ndigits;
 
-    c = *p;
     switch (c)
     {
         case '\'':
@@ -1672,6 +1670,7 @@ TOK Lexer::delimitedStringConstant(Token *t)
 #if DMDV2
                             && hereid
 #endif
+                           )
             {   Token t;
                 unsigned char *psave = p;
                 p--;

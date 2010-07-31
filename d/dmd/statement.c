@@ -1091,24 +1091,24 @@ int DoStatement::usesEH()
 int DoStatement::blockExit()
 {   int result;
 
-     if (body)
-     {  result = body->blockExit();
+    if (body)
+    {  result = body->blockExit();
         if (result == BEbreak)
             return BEfallthru;
         if (result & BEcontinue)
             result |= BEfallthru;
-     }
-     else
+    }
+    else
         result = BEfallthru;
-     if (result & BEfallthru)
-     {
+    if (result & BEfallthru)
+    {  
         if (condition->canThrow())
             result |= BEthrow;
         if (!(result & BEbreak) && condition->isBool(TRUE))
             result &= ~BEfallthru;
-     }
-     result &= ~(BEbreak | BEcontinue);
-     return result;
+    }
+    result &= ~(BEbreak | BEcontinue);
+    return result;
 }
 
 
@@ -1303,7 +1303,7 @@ ForeachStatement::ForeachStatement(Loc loc, enum TOK op, Parameters *arguments,
     this->value = NULL;
 
     this->func = NULL;
-    
+
     this->cases = NULL;
     this->gotos = NULL;
 }
@@ -1735,9 +1735,8 @@ Statement *ForeachStatement::semantic(Scope *sc)
                 else
                 {   // Make a copy of the ref argument so it isn't
                     // a reference.
-                    
-                    id = Lexer::uniqueId("__applyArg", i);
 
+                    id = Lexer::uniqueId("__applyArg", i);
                     Initializer *ie = new ExpInitializer(0, new IdentifierExp(0, id));
                     VarDeclaration *v = new VarDeclaration(0, arg->type, arg->ident, ie);
                     s = new DeclarationStatement(0, v);
@@ -1833,7 +1832,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
                 int j = sprintf(fdname, "_aApply%s%.*s%zd", r, 2, fntab[flag], dim);
                 assert(j < sizeof(fdname));
                 FuncDeclaration *fdapply = FuncDeclaration::genCfunc(Type::tint32, fdname,
-                    Type::tvoid->arrayOf(), flde->type); // flde->type is not generic
+                        Type::tvoid->arrayOf(), flde->type); // flde->type is not generic
 
                 ec = new VarExp(0, fdapply);
                 Expressions *exps = new Expressions();
@@ -3302,7 +3301,6 @@ Statement *ReturnStatement::semantic(Scope *sc)
         }
         else if (fd->type->nextOf()->toBasetype() == Type::tvoid)
         {
-
             s = new ReturnStatement(0, NULL);
             sc->fes->cases->push(s);
 
@@ -3313,7 +3311,6 @@ Statement *ReturnStatement::semantic(Scope *sc)
         }
         else
         {
-
             // Construct: return vresult;
             if (!fd->vresult)
             {   // Declare vresult
