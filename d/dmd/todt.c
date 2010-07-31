@@ -1051,12 +1051,14 @@ void ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
 
 void StructDeclaration::toDt(dt_t **pdt)
 {
+#if 0
+    // %% ?
     if (zeroInit)
     {
         dtnzeros(pdt, structsize);
         return;
     }
-
+#endif
     unsigned offset;
     unsigned i;
     dt_t *dt;
@@ -1196,7 +1198,8 @@ dt_t **TypeSArray::toDtElem(dt_t **pdt, Expression *e)
             else if (e->op != TOKstring)
             {
 #ifdef IN_GCC
-                pdt = dtcat(pdt, createTsarrayDt(adt, this));
+                if(e->type->ty != Terror)
+                    pdt = dtcat(pdt, createTsarrayDt(adt, this));
 #else
                 for (i = 1; i < len; i++)
                 {

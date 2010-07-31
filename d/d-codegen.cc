@@ -2471,7 +2471,12 @@ IRState::attributes(Expressions * in_attrs)
 }
 
 tree
-IRState::integerConstant(xdmd_integer_t value, tree type) {
+IRState::integerConstant(xdmd_integer_t value, tree type)
+{
+    // The type is error_mark_node, we can't do anything.
+    if (type == error_mark_node) {
+	return type;
+    }
 #if D_GCC_VER < 40
     // Assuming xdmd_integer_t is 64 bits
 # if HOST_BITS_PER_WIDE_INT == 32
