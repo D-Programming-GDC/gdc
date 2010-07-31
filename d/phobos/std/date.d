@@ -2,20 +2,25 @@
 // Written in the D programming language.
 
 /**
- * Dates are represented in several formats. The date implementation revolves
- * around a central type, d_time, from which other formats are converted to and
- * from.
- * Dates are calculated using the Gregorian calendar.
- * References:
- *	$(LINK2 http://en.wikipedia.org/wiki/Gregorian_calendar, Gregorian calendar (Wikipedia))
- * Macros:
- *	WIKI = Phobos/StdDate
+ * Dates are represented in several formats. The date implementation
+ * revolves around a central type, $(D d_time), from which other
+ * formats are converted to and from.  Dates are calculated using the
+ * Gregorian calendar.
+ *
+ * References: $(WEB wikipedia.org/wiki/Gregorian_calendar, Gregorian
+ * calendar (Wikipedia))
+ *
+ * Macros: WIKI = Phobos/StdDate
+ *
+ * Copyright: Copyright Digital Mars 2000 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Authors:   $(WEB digitalmars.com, Walter Bright)
+ *
+ *          Copyright Digital Mars 2000 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
-// Copyright (c) 1999-2008 by Digital Mars
-// All Rights Reserved
-// written by Walter Bright
-// http://www.digitalmars.com
 
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
@@ -29,10 +34,10 @@ private import std.stdio;
 private import std.dateparse;
 
 /**
- * d_time is a signed arithmetic type giving the time elapsed since January 1,
- * 1970.
- * Negative values are for dates preceding 1970. The time unit used is Ticks.
- * Ticks are milliseconds or smaller intervals.
+ * $(D d_time) is a signed arithmetic type giving the time elapsed
+ * since January 1, 1970.  Negative values are for dates preceding
+ * 1970. The time unit used is Ticks.  Ticks are milliseconds or
+ * smaller intervals.
  *
  * The usual arithmetic operations can be performed on d_time, such as adding,
  * subtracting, etc. Elapsed time in Ticks can be computed by subtracting a
@@ -89,7 +94,8 @@ d_time LocalTZA = 0;
 const char[] daystr = "SunMonTueWedThuFriSat";
 const char[] monstr = "JanFebMarAprMayJunJulAugSepOctNovDec";
 
-const int[12] mdays = [ 0,31,59,90,120,151,181,212,243,273,304,334 ];
+const int[12] mdays =
+    [ 0,31,59,90,120,151,181,212,243,273,304,334 ];
 
 /********************************
  * Compute year and week [1..53] from t. The ISO 8601 week 1 is the first week
@@ -102,23 +108,20 @@ void toISO8601YearWeek(d_time t, out int year, out int week)
 {
     year = YearFromTime(t);
 
-    int yday = Day(t) - DayFromYear(year);
-    int d;
-    int w;
-    int ydaybeg;
+    auto yday = Day(t) - DayFromYear(year);
 
     /* Determine day of week Jan 4 falls on.
      * Weeks begin on a Monday.
      */
 
-    d = DayFromYear(year);
-    w = (d + 3/*Jan4*/ + 3) % 7;
+    auto d = DayFromYear(year);
+    auto w = (d + 3/*Jan4*/ + 3) % 7;
     if (w < 0)
         w += 7;
 
     /* Find yday of beginning of ISO 8601 year
      */
-    ydaybeg = 3/*Jan4*/ - w;
+    auto ydaybeg = 3/*Jan4*/ - w;
 
     /* Check if yday is actually the last week of the previous year
      */
@@ -158,9 +161,7 @@ void toISO8601YearWeek(d_time t, out int year, out int week)
 
 d_time floor(d_time d, int divisor)
 {
-    if (d < 0)
-	d -= divisor - 1;
-    return d / divisor;
+    return (d < 0 ? d - divisor - 1 : d) / divisor;
 }
 
 int dmod(d_time n, d_time d)
@@ -210,8 +211,15 @@ int Day(d_time t)
 
 int LeapYear(int y)
 {
-    return ((y & 3) == 0 &&
-	    (y % 100 || (y % 400) == 0));
+    return (y & 3) == 0 && (y % 100 || (y % 400) == 0);
+}
+
+unittest 
+{
+    assert(!LeapYear(1970));
+    assert(LeapYear(1984));
+    assert(LeapYear(2000));
+    assert(!LeapYear(2100));
 }
 
 int DaysInYear(int y)
@@ -237,7 +245,7 @@ d_time TimeFromYear(int y)
  */
 
 int YearFromTime(d_time t)
-{   int y;
+{
 
     if (t == d_time_nan)
 	return 0;
@@ -245,7 +253,7 @@ int YearFromTime(d_time t)
     // Hazard a guess
     //y = 1970 + cast(int) (t / (365.2425 * msPerDay));
     // Use integer only math
-    y = 1970 + cast(int) (t / (3652425 * (msPerDay / 10000)));
+    int y = 1970 + cast(int) (t / (3652425 * (msPerDay / 10000)));
 
     if (TimeFromYear(y) <= t)
     {
@@ -289,13 +297,10 @@ int inLeapYear(d_time t)
 
 int MonthFromTime(d_time t)
 {
-    int day;
+    auto year = YearFromTime(t);
+    auto day = Day(t) - DayFromYear(year);
+
     int month;
-    int year;
-
-    year = YearFromTime(t);
-    day = Day(t) - DayFromYear(year);
-
     if (day < 59)
     {
 	if (day < 31)
@@ -349,16 +354,11 @@ int MonthFromTime(d_time t)
  */
 int DateFromTime(d_time t)
 {
-    int day;
-    int leap;
-    int month;
-    int year;
+    auto year = YearFromTime(t);
+    auto day = Day(t) - DayFromYear(year);
+    auto leap = LeapYear(year);
+    auto month = MonthFromTime(t);
     int date;
-
-    year = YearFromTime(t);
-    day = Day(t) - DayFromYear(year);
-    leap = LeapYear(year);
-    month = MonthFromTime(t);
     switch (month)
     {
 	case 0:	 date = day +   1;		break;
@@ -386,9 +386,8 @@ int DateFromTime(d_time t)
  *	and 6 represents Saturday.
  */
 int WeekDay(d_time t)
-{   int w;
-
-    w = (cast(int)Day(t) + 4) % 7;
+{
+    auto w = (cast(int)Day(t) + 4) % 7;
     if (w < 0)
 	w += 7;
     return w;
@@ -437,16 +436,12 @@ d_time MakeTime(d_time hour, d_time min, d_time sec, d_time ms)
  */
 
 d_time MakeDay(d_time year, d_time month, d_time date)
-{   d_time t;
-    int y;
-    int m;
-    int leap;
+{
+    auto y = cast(int)(year + floor(month, 12));
+    auto m = dmod(month, 12);
 
-    y = cast(int)(year + floor(month, 12));
-    m = dmod(month, 12);
-
-    leap = LeapYear(y);
-    t = TimeFromYear(y) + cast(d_time)mdays[m] * msPerDay;
+    auto leap = LeapYear(y);
+    auto t = TimeFromYear(y) + cast(d_time)mdays[m] * msPerDay;
     if (leap && month >= 2)
 	t += msPerDay;
 
@@ -513,7 +508,7 @@ body
 
     // If monthday is more than the number of days in the month,
     // back up to 'last' occurrence
-    if (mday > 28 && mday > DaysInMonth(year, month))
+    if (mday > 28 && mday > daysInMonth(year, month))
     {	assert(n == 5);
 	mday -= 7;
     }
@@ -535,7 +530,7 @@ unittest
  *	month = 1..12
  */
  
-int DaysInMonth(int year, int month)
+int daysInMonth(int year, int month)
 {
     switch (month)
     {
@@ -561,8 +556,8 @@ int DaysInMonth(int year, int month)
   
 unittest
 {
-    assert(DaysInMonth(2003, 2) == 28);
-    assert(DaysInMonth(2004, 2) == 29);
+    assert(daysInMonth(2003, 2) == 28);
+    assert(daysInMonth(2004, 2) == 29);
 }
 
 /*************************************
@@ -586,38 +581,30 @@ unittest
 
 string toString(d_time time)
 {
-    d_time t;
-    char sign;
-    int hr;
-    int mn;
-    int len;
-    d_time offset;
-    d_time dst;
-
     // Years are supposed to be -285616 .. 285616, or 7 digits
     // "Tue Apr 02 02:04:57 GMT-0800 1996"
-    char[] buffer = new char[29 + 7 + 1];
+    auto buffer = new char[29 + 7 + 1];
 
     if (time == d_time_nan)
 	return "Invalid Date";
 
-    dst = DaylightSavingTA(time);
-    offset = LocalTZA + dst;
-    t = time + offset;
-    sign = '+';
+    auto dst = DaylightSavingTA(time);
+    auto offset = LocalTZA + dst;
+    auto t = time + offset;
+    auto sign = '+';
     if (offset < 0)
     {	sign = '-';
 //	offset = -offset;
 	offset = -(LocalTZA + dst);
     }
 
-    mn = cast(int)(offset / msPerMinute);
-    hr = mn / 60;
+    auto mn = cast(int)(offset / msPerMinute);
+    auto hr = mn / 60;
     mn %= 60;
 
     //printf("hr = %d, offset = %g, LocalTZA = %g, dst = %g, + = %g\n", hr, offset, LocalTZA, dst, LocalTZA + dst);
 
-    len = sprintf(buffer.ptr, "%.3s %.3s %02d %02d:%02d:%02d GMT%c%02d%02d %d",
+    auto len = sprintf(buffer.ptr, "%.3s %.3s %02d %02d:%02d:%02d GMT%c%02d%02d %d",
 	&daystr[WeekDay(t) * 3],
 	&monstr[MonthFromTime(t) * 3],
 	DateFromTime(t),
@@ -641,13 +628,12 @@ string toUTCString(d_time t)
 {
     // Years are supposed to be -285616 .. 285616, or 7 digits
     // "Tue, 02 Apr 1996 02:04:57 GMT"
-    char[] buffer = new char[25 + 7 + 1];
-    int len;
+    auto buffer = new char[25 + 7 + 1];
 
     if (t == d_time_nan)
 	return "Invalid Date";
 
-    len = sprintf(buffer.ptr, "%.3s, %02d %.3s %d %02d:%02d:%02d UTC",
+    auto len = sprintf(buffer.ptr, "%.3s, %02d %.3s %d %02d:%02d:%02d UTC",
 	&daystr[WeekDay(t) * 3], DateFromTime(t),
 	&monstr[MonthFromTime(t) * 3],
 	YearFromTime(t),
@@ -656,7 +642,7 @@ string toUTCString(d_time t)
     // Ensure no buggy buffer overflows
     assert(len < buffer.length);
 
-    return buffer[0 .. len];
+    return cast(string) buffer[0 .. len];
 }
 
 /************************************
@@ -667,23 +653,18 @@ string toUTCString(d_time t)
 
 string toDateString(d_time time)
 {
-    d_time t;
-    d_time offset;
-    d_time dst;
-    int len;
-
     // Years are supposed to be -285616 .. 285616, or 7 digits
     // "Tue Apr 02 1996"
-    char[] buffer = new char[29 + 7 + 1];
+    auto buffer = new char[29 + 7 + 1];
 
     if (time == d_time_nan)
 	return "Invalid Date";
 
-    dst = DaylightSavingTA(time);
-    offset = LocalTZA + dst;
-    t = time + offset;
+    auto dst = DaylightSavingTA(time);
+    auto offset = LocalTZA + dst;
+    auto t = time + offset;
 
-    len = sprintf(buffer.ptr, "%.3s %.3s %02d %d",
+    auto len = sprintf(buffer.ptr, "%.3s %.3s %02d %d",
 	&daystr[WeekDay(t) * 3],
 	&monstr[MonthFromTime(t) * 3],
 	DateFromTime(t),
@@ -692,7 +673,7 @@ string toDateString(d_time time)
     // Ensure no buggy buffer overflows
     assert(len < buffer.length);
 
-    return buffer[0 .. len];
+    return cast(string) buffer[0 .. len];
 }
 
 /******************************************
@@ -704,37 +685,29 @@ string toDateString(d_time time)
 
 string toTimeString(d_time time)
 {
-    d_time t;
-    char sign;
-    int hr;
-    int mn;
-    int len;
-    d_time offset;
-    d_time dst;
-
     // "02:04:57 GMT-0800"
-    char[] buffer = new char[17 + 1];
+    auto buffer = new char[17 + 1];
 
     if (time == d_time_nan)
 	return "Invalid Date";
 
-    dst = DaylightSavingTA(time);
-    offset = LocalTZA + dst;
-    t = time + offset;
-    sign = '+';
+    auto dst = DaylightSavingTA(time);
+    auto offset = LocalTZA + dst;
+    auto t = time + offset;
+    auto sign = '+';
     if (offset < 0)
     {	sign = '-';
 //	offset = -offset;
 	offset = -(LocalTZA + dst);
     }
 
-    mn = cast(int)(offset / msPerMinute);
-    hr = mn / 60;
+    auto mn = cast(int)(offset / msPerMinute);
+    auto hr = mn / 60;
     mn %= 60;
 
     //printf("hr = %d, offset = %g, LocalTZA = %g, dst = %g, + = %g\n", hr, offset, LocalTZA, dst, LocalTZA + dst);
 
-    len = sprintf(buffer.ptr, "%02d:%02d:%02d GMT%c%02d%02d",
+    auto len = sprintf(buffer.ptr, "%02d:%02d:%02d GMT%c%02d%02d",
 	HourFromTime(t), MinFromTime(t), SecFromTime(t),
 	sign, hr, mn);
 
@@ -742,31 +715,27 @@ string toTimeString(d_time time)
     assert(len < buffer.length);
 
     // Lop off terminating 0
-    return buffer[0 .. len];
+    return cast(string) buffer[0 .. len];
 }
 
 
 /******************************************
- * Parses s as a textual date string, and returns it as a d_time.
- * If the string is not a valid date, d_time_nan is returned.
+ * Parses s as a textual date string, and returns it as a d_time.  If
+ * the string is not a valid date, $(D d_time_nan) is returned.
  */
 
 d_time parse(string s)
 {
-    Date dp;
-    d_time n;
-    d_time day;
-    d_time time;
-
     try
     {
+    	Date dp;
 	dp.parse(s);
 
 	//writefln("year = %d, month = %d, day = %d", dp.year, dp.month, dp.day);
 	//writefln("%02d:%02d:%02d.%03d", dp.hour, dp.minute, dp.second, dp.ms);
 	//writefln("weekday = %d, ampm = %d, tzcorrection = %d", dp.weekday, 1, dp.tzcorrection);
 
-	time = MakeTime(dp.hour, dp.minute, dp.second, dp.ms);
+	auto time = MakeTime(dp.hour, dp.minute, dp.second, dp.ms);
 	if (dp.tzcorrection == int.min)
 	    time -= LocalTZA;
 	else
@@ -774,15 +743,14 @@ d_time parse(string s)
 	    time += cast(d_time)(dp.tzcorrection / 100) * msPerHour +
 		    cast(d_time)(dp.tzcorrection % 100) * msPerMinute;
 	}
-	day = MakeDay(dp.year, dp.month - 1, dp.day);
-	n = MakeDate(day,time);
-	n = TimeClip(n);
+	auto day = MakeDay(dp.year, dp.month - 1, dp.day);
+        auto result = MakeDate(day,time);
+        return TimeClip(result);
     }
     catch
     {
-	n =  d_time_nan;		// erroneous date string
+	return d_time_nan;                // erroneous date string
     }
-    return n;
 }
 
 static this()
@@ -793,7 +761,6 @@ static this()
 
 version (Win32)
 {
-
     private import std.c.windows.windows;
     //import c.time;
 
@@ -803,17 +770,15 @@ version (Win32)
     d_time getUTCtime()
     {
 	SYSTEMTIME st;
-	d_time n;
 
 	GetSystemTime(&st);		// get time in UTC
-	n = SYSTEMTIME2d_time(&st, 0);
-	return n;
+	return SYSTEMTIME2d_time(&st, 0);
 	//return c.time.time(null) * TicksPerSecond;
     }
 
     static d_time FILETIME2d_time(FILETIME *ft)
-    {   SYSTEMTIME st;
-
+    {
+        SYSTEMTIME st = void;
 	if (!FileTimeToSystemTime(ft, &st))
 	    return d_time_nan;
 	return SYSTEMTIME2d_time(&st, 0);
@@ -823,9 +788,8 @@ version (Win32)
     {
 	/* More info: http://delphicikk.atw.hu/listaz.php?id=2667&oldal=52
 	 */
-	d_time n;
-	d_time day;
-	d_time time;
+	d_time day = void;
+        d_time time = void;
 
 	if (st.wYear)
 	{
@@ -838,48 +802,41 @@ version (Win32)
 	     * wDayOfWeek is weekday 0..6 corresponding to Sunday..Saturday
 	     * wDay is the nth time, 1..5, that wDayOfWeek occurs
 	     */
-  
- 	    auto year = YearFromTime(t);
- 	    auto mday = DateFromNthWeekdayOfMonth(year, st.wMonth, st.wDay, st.wDayOfWeek);
- 	    day = MakeDay(year, st.wMonth - 1, mday);
- 	    time = MakeTime(st.wHour, st.wMinute, 0, 0);
+
+	    auto year = YearFromTime(t);
+	    auto mday = DateFromNthWeekdayOfMonth(year, st.wMonth, st.wDay, st.wDayOfWeek);
+	    day = MakeDay(year, st.wMonth - 1, mday);
+	    time = MakeTime(st.wHour, st.wMinute, 0, 0);
 	}
-	n = MakeDate(day,time);
-	n = TimeClip(n);
-	return n;
+	auto n = MakeDate(day,time);
+        return TimeClip(n);
     }
 
     d_time getLocalTZA()
     {
-	d_time t;
-	DWORD r;
-	TIME_ZONE_INFORMATION tzi;
+	TIME_ZONE_INFORMATION tzi = void;
 
 	/* http://msdn.microsoft.com/library/en-us/sysinfo/base/gettimezoneinformation.asp
 	 * http://msdn2.microsoft.com/en-us/library/ms725481.aspx
 	 */
-	r = GetTimeZoneInformation(&tzi);
+	auto r = GetTimeZoneInformation(&tzi);
 	//printf("bias = %d\n", tzi.Bias);
 	//printf("standardbias = %d\n", tzi.StandardBias);
 	//printf("daylightbias = %d\n", tzi.DaylightBias);
 	switch (r)
 	{
 	    case TIME_ZONE_ID_STANDARD:
-		t = -(tzi.Bias + tzi.StandardBias) * cast(d_time)(60 * TicksPerSecond);
-		break;
+		return -(tzi.Bias + tzi.StandardBias)
+                    * cast(d_time)(60 * TicksPerSecond);
 	    case TIME_ZONE_ID_DAYLIGHT:
+		//falthrough
 		//t = -(tzi.Bias + tzi.DaylightBias) * cast(d_time)(60 * TicksPerSecond);
 		//break;
 	    case TIME_ZONE_ID_UNKNOWN:
-		t = -(tzi.Bias) * cast(d_time)(60 * TicksPerSecond);
-		break;
-
+		return -(tzi.Bias) * cast(d_time)(60 * TicksPerSecond);
 	    default:
-		t = 0;
-		break;
+		return 0;
 	}
-
-	return t;
     }
 
     /*
@@ -888,16 +845,14 @@ version (Win32)
 
     int DaylightSavingTA(d_time dt)
     {
-	int t;
-	DWORD r;
-	TIME_ZONE_INFORMATION tzi;
+	TIME_ZONE_INFORMATION tzi = void;
 	d_time ts;
 	d_time td;
 
 	/* http://msdn.microsoft.com/library/en-us/sysinfo/base/gettimezoneinformation.asp
 	 */
-	r = GetTimeZoneInformation(&tzi);
-	t = 0;
+	auto r = GetTimeZoneInformation(&tzi);
+        auto t = 0;
 	switch (r)
 	{
 	    case TIME_ZONE_ID_STANDARD:
@@ -936,6 +891,9 @@ else version (Unix)
     private import std.c.unix.unix;
     //private import std.c.posix.posix;
 
+    /******
+     * Get current UTC time.
+     */
     d_time getUTCtime()
     {   timeval tv;
 
@@ -1024,6 +982,9 @@ else version (Posix)
 
     private import std.c.linux.linux;
 
+    /******
+     * Get current UTC time.
+     */
     d_time getUTCtime()
     {   timeval tv;
 
@@ -1114,7 +1075,7 @@ else version (NoSystem)
     int DaylightSavingTA(d_time dt) { return 0; }
 }
 
-/+ ====================== DOS File Time =============================== +/
+/+ DOS File Time +/
 
 /***
  * Type representing the DOS file date/time format.

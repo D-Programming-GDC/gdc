@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -45,7 +45,10 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
     static char msg[] = "only object.d can define this reserved class name";
 
     if (baseclasses)
-        this->baseclasses = *baseclasses;
+        // Actually, this is a transfer
+        this->baseclasses = baseclasses;
+    else
+        this->baseclasses = new BaseClasses();
     baseClass = NULL;
 
     interfaces_dim = 0;
@@ -53,7 +56,7 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
 
     vtblInterfaces = NULL;
 
-    //printf("ClassDeclaration(%s), dim = %d\n", id->toChars(), this->baseclasses.dim);
+    //printf("ClassDeclaration(%s), dim = %d\n", id->toChars(), this->baseclasses->dim);
 
     // For forward references
     type = new TypeClass(this);
@@ -214,12 +217,12 @@ Dsymbol *ClassDeclaration::syntaxCopy(Dsymbol *s)
 
     cd->storage_class |= storage_class;
 
-    cd->baseclasses.setDim(this->baseclasses.dim);
-    for (int i = 0; i < cd->baseclasses.dim; i++)
+    cd->baseclasses->setDim(this->baseclasses->dim);
+    for (int i = 0; i < cd->baseclasses->dim; i++)
     {
-        BaseClass *b = (BaseClass *)this->baseclasses.data[i];
+        BaseClass *b = (BaseClass *)this->baseclasses->data[i];
         BaseClass *b2 = new BaseClass(b->type->syntaxCopy(), b->protection);
-        cd->baseclasses.data[i] = b2;
+        cd->baseclasses->data[i] = b2;
     }
 
     ScopeDsymbol::syntaxCopy(cd);
@@ -282,20 +285,20 @@ void ClassDeclaration::semantic(Scope *sc)
     }
 
     // Expand any tuples in baseclasses[]
-    for (i = 0; i < baseclasses.dim; )
-    {   BaseClass *b = (BaseClass *)baseclasses.data[i];
+    for (i = 0; i < baseclasses->dim; )
+    {   BaseClass *b = (BaseClass *)baseclasses->data[i];
         b->type = b->type->semantic(loc, sc);
         Type *tb = b->type->toBasetype();
 
         if (tb->ty == Ttuple)
         {   TypeTuple *tup = (TypeTuple *)tb;
             enum PROT protection = b->protection;
-            baseclasses.remove(i);
+            baseclasses->remove(i);
             size_t dim = Parameter::dim(tup->arguments);
             for (size_t j = 0; j < dim; j++)
             {   Parameter *arg = Parameter::getNth(tup->arguments, j);
                 b = new BaseClass(arg->type, protection);
-                baseclasses.insert(i + j, b);
+                baseclasses->insert(i + j, b);
             }
         }
         else
@@ -303,17 +306,17 @@ void ClassDeclaration::semantic(Scope *sc)
     }
 
     // See if there's a base class as first in baseclasses[]
-    if (baseclasses.dim)
+    if (baseclasses->dim)
     {   TypeClass *tc;
         BaseClass *b;
         Type *tb;
 
-        b = (BaseClass *)baseclasses.data[0];
+        b = (BaseClass *)baseclasses->data[0];
         //b->type = b->type->semantic(loc, sc);
         tb = b->type->toBasetype();
         if (tb->ty != Tclass)
         {   error("base type must be class or interface, not %s", b->type->toChars());
-            baseclasses.remove(0);
+            baseclasses->remove(0);
         }
         else
         {
@@ -339,7 +342,7 @@ void ClassDeclaration::semantic(Scope *sc)
                     if (cdb == this)
                     {
                         error("circular inheritance");
-                        baseclasses.remove(0);
+                        baseclasses->remove(0);
                         goto L7;
                     }
                 }
@@ -372,12 +375,12 @@ void ClassDeclaration::semantic(Scope *sc)
 
     // Treat the remaining entries in baseclasses as interfaces
     // Check for errors, handle forward references
-    for (i = (baseClass ? 1 : 0); i < baseclasses.dim; )
+    for (i = (baseClass ? 1 : 0); i < baseclasses->dim; )
     {   TypeClass *tc;
         BaseClass *b;
         Type *tb;
 
-        b = (BaseClass *)baseclasses.data[i];
+        b = (BaseClass *)baseclasses->data[i];
         b->type = b->type->semantic(loc, sc);
         tb = b->type->toBasetype();
         if (tb->ty == Tclass)
@@ -387,7 +390,7 @@ void ClassDeclaration::semantic(Scope *sc)
         if (!tc || !tc->sym->isInterfaceDeclaration())
         {
             error("base type must be interface, not %s", b->type->toChars());
-            baseclasses.remove(i);
+            baseclasses->remove(i);
             continue;
         }
         else
@@ -406,7 +409,7 @@ void ClassDeclaration::semantic(Scope *sc)
             // Check for duplicate interfaces
             for (size_t j = (baseClass ? 1 : 0); j < i; j++)
             {
-                BaseClass *b2 = (BaseClass *)baseclasses.data[j];
+                BaseClass *b2 = (BaseClass *)baseclasses->data[j];
                 if (b2->base == tc->sym)
                     error("inherits from duplicate interface %s", b2->base->toChars());
             }
@@ -451,7 +454,7 @@ void ClassDeclaration::semantic(Scope *sc)
         }
         bt = tbase->semantic(loc, sc)->toBasetype();
         b = new BaseClass(bt, PROTpublic);
-        baseclasses.shift(b);
+        baseclasses->shift(b);
         assert(b->type->ty == Tclass);
         tc = (TypeClass *)(b->type);
         baseClass = tc->sym;
@@ -459,8 +462,8 @@ void ClassDeclaration::semantic(Scope *sc)
         b->base = baseClass;
     }
 
-    interfaces_dim = baseclasses.dim;
-    interfaces = (BaseClass **)baseclasses.data;
+    interfaces_dim = baseclasses->dim;
+    interfaces = (BaseClass **)baseclasses->data;
 
 
     if (baseClass)
@@ -671,13 +674,14 @@ void ClassDeclaration::semantic(Scope *sc)
     if (!ctor && baseClass && baseClass->ctor)
     {
         //printf("Creating default this(){} for class %s\n", toChars());
-        ctor = new CtorDeclaration(loc, 0, NULL, 0);
+        CtorDeclaration *ctor = new CtorDeclaration(loc, 0, NULL, 0);
         ctor->fbody = new CompoundStatement(0, new Statements());
         members->push(ctor);
         ctor->addMember(sc, this, 1);
         *sc = scsave;   // why? What about sc->nofree?
         sc->offset = structsize;
         ctor->semantic(sc);
+        this->ctor = ctor;
         defaultCtor = ctor;
     }
 
@@ -737,12 +741,12 @@ void ClassDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     {
         buf->printf("%s ", kind());
         buf->writestring(toChars());
-        if (baseclasses.dim)
+        if (baseclasses->dim)
             buf->writestring(" : ");
     }
-    for (int i = 0; i < baseclasses.dim; i++)
+    for (int i = 0; i < baseclasses->dim; i++)
     {
-        BaseClass *b = (BaseClass *)baseclasses.data[i];
+        BaseClass *b = (BaseClass *)baseclasses->data[i];
 
         if (i)
             buf->writeByte(',');
@@ -790,8 +794,8 @@ int ClassDeclaration::isBaseOf2(ClassDeclaration *cd)
     if (!cd)
         return 0;
     //printf("ClassDeclaration::isBaseOf2(this = '%s', cd = '%s')\n", toChars(), cd->toChars());
-    for (int i = 0; i < cd->baseclasses.dim; i++)
-    {   BaseClass *b = (BaseClass *)cd->baseclasses.data[i];
+    for (int i = 0; i < cd->baseclasses->dim; i++)
+    {   BaseClass *b = (BaseClass *)cd->baseclasses->data[i];
 
         if (b->base == this || isBaseOf2(b->base))
             return 1;
@@ -815,7 +819,7 @@ int ClassDeclaration::isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset)
 
         /* cd->baseClass might not be set if cd is forward referenced.
          */
-        if (!cd->baseClass && cd->baseclasses.dim && !cd->isInterfaceDeclaration())
+        if (!cd->baseClass && cd->baseclasses->dim && !cd->isInterfaceDeclaration())
         {
             cd->error("base class is forward referenced by %s", toChars());
         }
@@ -851,9 +855,9 @@ Dsymbol *ClassDeclaration::search(Loc loc, Identifier *ident, int flags)
 
         int i;
 
-        for (i = 0; i < baseclasses.dim; i++)
+        for (i = 0; i < baseclasses->dim; i++)
         {
-            BaseClass *b = (BaseClass *)baseclasses.data[i];
+            BaseClass *b = (BaseClass *)baseclasses->data[i];
 
             if (b->base)
             {
@@ -1105,20 +1109,20 @@ void InterfaceDeclaration::semantic(Scope *sc)
     }
 
     // Expand any tuples in baseclasses[]
-    for (i = 0; i < baseclasses.dim; )
-    {   BaseClass *b = (BaseClass *)baseclasses.data[0];
+    for (i = 0; i < baseclasses->dim; )
+    {   BaseClass *b = (BaseClass *)baseclasses->data[0];
         b->type = b->type->semantic(loc, sc);
         Type *tb = b->type->toBasetype();
 
         if (tb->ty == Ttuple)
         {   TypeTuple *tup = (TypeTuple *)tb;
             enum PROT protection = b->protection;
-            baseclasses.remove(i);
+            baseclasses->remove(i);
             size_t dim = Parameter::dim(tup->arguments);
             for (size_t j = 0; j < dim; j++)
             {   Parameter *arg = Parameter::getNth(tup->arguments, j);
                 b = new BaseClass(arg->type, protection);
-                baseclasses.insert(i + j, b);
+                baseclasses->insert(i + j, b);
             }
         }
         else
@@ -1126,12 +1130,12 @@ void InterfaceDeclaration::semantic(Scope *sc)
     }
 
     // Check for errors, handle forward references
-    for (i = 0; i < baseclasses.dim; )
+    for (i = 0; i < baseclasses->dim; )
     {   TypeClass *tc;
         BaseClass *b;
         Type *tb;
 
-        b = (BaseClass *)baseclasses.data[i];
+        b = (BaseClass *)baseclasses->data[i];
         b->type = b->type->semantic(loc, sc);
         tb = b->type->toBasetype();
         if (tb->ty == Tclass)
@@ -1141,7 +1145,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
         if (!tc || !tc->sym->isInterfaceDeclaration())
         {
             error("base type must be interface, not %s", b->type->toChars());
-            baseclasses.remove(i);
+            baseclasses->remove(i);
             continue;
         }
         else
@@ -1149,7 +1153,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
             // Check for duplicate interfaces
             for (size_t j = 0; j < i; j++)
             {
-                BaseClass *b2 = (BaseClass *)baseclasses.data[j];
+                BaseClass *b2 = (BaseClass *)baseclasses->data[j];
                 if (b2->base == tc->sym)
                     error("inherits from duplicate interface %s", b2->base->toChars());
             }
@@ -1158,7 +1162,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
             if (b->base == this || isBaseOf2(b->base))
             {
                 error("circular inheritance of interface");
-                baseclasses.remove(i);
+                baseclasses->remove(i);
                 continue;
             }
             if (!b->base->symtab)
@@ -1180,8 +1184,8 @@ void InterfaceDeclaration::semantic(Scope *sc)
         i++;
     }
 
-    interfaces_dim = baseclasses.dim;
-    interfaces = (BaseClass **)baseclasses.data;
+    interfaces_dim = baseclasses->dim;
+    interfaces = (BaseClass **)baseclasses->data;
 
     interfaceSemantic(sc);
 

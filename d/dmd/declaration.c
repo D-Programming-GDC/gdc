@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -105,7 +105,10 @@ void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
     if (sc->incontract && isParameter())
         error(loc, "cannot modify parameter '%s' in contract", toChars());
 
-    if (isCtorinit())
+    if (sc->incontract && isResult())
+        error(loc, "cannot modify result '%s' in contract", toChars());
+
+    if (isCtorinit() && !t->isMutable())
     {   // It's only modifiable if inside the right constructor
         Dsymbol *s = sc->func;
         while (1)
@@ -489,11 +492,11 @@ void AliasDeclaration::semantic(Scope *sc)
 
 #if DMDV2
     type = type->addStorageClass(storage_class);
-    if (storage_class & (STCref | STCnothrow | STCpure))
+    if (storage_class & (STCref | STCnothrow | STCpure | STCdisable))
     {   // For 'ref' to be attached to function types, and picked
         // up by Type::resolve(), it has to go into sc.
         sc = sc->push();
-        sc->stc |= storage_class & (STCref | STCnothrow | STCpure | STCshared);
+        sc->stc |= storage_class & (STCref | STCnothrow | STCpure | STCshared | STCdisable);
         type->resolve(loc, sc, &e, &t, &s);
         sc = sc->pop();
     }
@@ -561,7 +564,7 @@ void AliasDeclaration::semantic(Scope *sc)
             s = NULL;
         }
     }
-    if (!aliassym)
+    //printf("setting aliassym %s to %s %s\n", toChars(), s->kind(), s->toChars());
     aliassym = s;
     this->inSemantic = 0;
 }
@@ -683,6 +686,9 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     this->loc = loc;
     offset = 0;
     noauto = 0;
+#if DMDV2
+    isargptr = FALSE;
+#endif
 #if DMDV1
     nestedref = 0;
 #endif
@@ -1373,7 +1379,7 @@ int VarDeclaration::isCTFE()
 {
     //printf("VarDeclaration::isCTFE(%p, '%s')\n", this, toChars());
     //printf("%llx\n", storage_class);
-    return (storage_class & STCctfe) || !isDataseg();
+    return (storage_class & STCctfe) != 0; // || !isDataseg();
 }
 
 int VarDeclaration::hasPointers()

@@ -1051,18 +1051,24 @@ char *Expression::toChars()
 
 void Expression::error(const char *format, ...)
 {
-    va_list ap;
-    va_start(ap, format);
-    ::verror(loc, format, ap);
-    va_end( ap );
+    if (type != Type::terror)
+    {
+        va_list ap;
+        va_start(ap, format);
+        ::verror(loc, format, ap);
+        va_end( ap );
+    }
 }
 
 void Expression::warning(const char *format, ...)
 {
-    va_list ap;
-    va_start(ap, format);
-    ::vwarning(loc, format, ap);
-    va_end( ap );
+    if (type != Type::terror)
+    {
+        va_list ap;
+        va_start(ap, format);
+        ::vwarning(loc, format, ap);
+        va_end( ap );
+    }
 }
 
 void Expression::rvalue()
@@ -1394,7 +1400,8 @@ IntegerExp::IntegerExp(Loc loc, dinteger_t value, Type *type)
     if (type && !type->isscalar())
     {
         //printf("%s, loc = %d\n", toChars(), loc.linnum);
-        error("integral constant must be scalar type, not %s", type->toChars());
+        if (type->ty != Terror)
+            error("integral constant must be scalar type, not %s", type->toChars());
         type = Type::terror;
     }
     this->type = type;
@@ -4848,9 +4855,9 @@ Expression *IsExp::semantic(Scope *sc)
                 else
                 {   ClassDeclaration *cd = ((TypeClass *)targ)->sym;
                     Parameters *args = new Parameters;
-                    args->reserve(cd->baseclasses.dim);
-                    for (size_t i = 0; i < cd->baseclasses.dim; i++)
-                    {   BaseClass *b = (BaseClass *)cd->baseclasses.data[i];
+                    args->reserve(cd->baseclasses->dim);
+                    for (size_t i = 0; i < cd->baseclasses->dim; i++)
+                    {   BaseClass *b = (BaseClass *)cd->baseclasses->data[i];
                         args->push(new Parameter(STCin, b->type, NULL, NULL));
                     }
                     tded = new TypeTuple(args);
@@ -5270,9 +5277,12 @@ int BinExp::canThrow()
 
 void BinExp::incompatibleTypes()
 {
-    error("incompatible types for ((%s) %s (%s)): '%s' and '%s'",
-         e1->toChars(), Token::toChars(op), e2->toChars(),
-         e1->type->toChars(), e2->type->toChars());
+    if (e1->type->toBasetype() != Type::terror &&
+        e2->type->toBasetype() != Type::terror
+       )
+        error("incompatible types for ((%s) %s (%s)): '%s' and '%s'",
+             e1->toChars(), Token::toChars(op), e2->toChars(),
+            e1->type->toChars(), e2->type->toChars());
 }
 
 /************************************************************/
@@ -5574,13 +5584,13 @@ Expression *DotIdExp::semantic(Scope *sc)
     if (e1->op == TOKdottd)
      {
         error("template %s does not have property %s", e1->toChars(), ident->toChars());
-        return e1;
+        return new ErrorExp();
      }
 
      if (!e1->type)
      {
         error("expression %s does not have property %s", e1->toChars(), ident->toChars());
-        return e1;
+        return new ErrorExp();
      }
 
     if (eright->op == TOKimport)        // also used for template alias's
@@ -6017,7 +6027,7 @@ L1:
     e = e->semantic(sc);
     if (e->op == TOKdottd)
     {
-    if (global.errors)
+        if (global.errors)
             return new ErrorExp();      // TemplateInstance::semantic() will fail anyway
         DotTemplateExp *dte = (DotTemplateExp *)e;
         TemplateDeclaration *td = dte->td;
@@ -6029,7 +6039,27 @@ L1:
         Dsymbol *s = ti->inst->toAlias();
         Declaration *v = s->isDeclaration();
         if (v)
-        {   e = new DotVarExp(loc, eleft, v);
+        {
+            /* Fix for Bugzilla 4003
+             * The problem is a class template member function v returning a reference to the same
+             * type as the enclosing template instantiation. This results in a nested instantiation,
+             * which of course gets short circuited. The return type then gets set to
+             * the template instance type before instantiation, rather than after.
+             * We can detect this by the deco not being set. If so, go ahead and retry
+             * the return type semantic.
+             * The offending code is the return type from std.typecons.Tuple.slice:
+             *    ref Tuple!(Types[from .. to]) slice(uint from, uint to)()
+             *    {
+             *        return *cast(typeof(return) *) &(field[from]);
+             *    }
+             * and this line from the following unittest:
+             *    auto s = a.slice!(1, 3);
+             * where s's type wound up not having semantic() run on it.
+             */
+            if (v->type && !v->type->deco)
+                v->type = v->type->semantic(v->loc, sc);
+
+            e = new DotVarExp(loc, eleft, v);
             e = e->semantic(sc);
             return e;
         }
@@ -7086,6 +7116,7 @@ Expression *PtrExp::semantic(Scope *sc)
 
         default:
             error("can only * a pointer, not a '%s'", e1->type->toChars());
+        case Terror:
             return new ErrorExp();
     }
     rvalue();
@@ -7491,26 +7522,7 @@ void CastExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         to->toCBuffer(buf, NULL, hgs);
     else
     {
-        switch (mod)
-        {   case 0:
-                break;
-            case MODconst:
-                buf->writestring(Token::tochars[TOKconst]);
-                break;
-            case MODimmutable:
-                buf->writestring(Token::tochars[TOKimmutable]);
-                break;
-            case MODshared:
-                buf->writestring(Token::tochars[TOKshared]);
-                break;
-            case MODshared | MODconst:
-                buf->writestring(Token::tochars[TOKshared]);
-                buf->writeByte(' ');
-                buf->writestring(Token::tochars[TOKconst]);
-                break;
-            default:
-                assert(0);
-        }
+        MODtoBuffer(buf, mod);
     }
 #endif
     buf->writeByte(')');
@@ -7562,7 +7574,9 @@ Expression *SliceExp::semantic(Scope *sc)
     if (t->ty == Tpointer)
     {
         if (!lwr || !upr)
-            error("need upper and lower bound to slice pointer");
+        {   error("need upper and lower bound to slice pointer");
+            return new ErrorExp();
+        }
     }
     else if (t->ty == Tarray)
     {
@@ -7623,11 +7637,15 @@ Expression *SliceExp::semantic(Scope *sc)
     {   lwr = lwr->semantic(sc);
         lwr = resolveProperties(sc, lwr);
         lwr = lwr->implicitCastTo(sc, Type::tsize_t);
+        if (lwr->type == Type::terror)
+            goto Lerr;
     }
     if (upr)
     {   upr = upr->semantic(sc);
         upr = resolveProperties(sc, upr);
         upr = upr->implicitCastTo(sc, Type::tsize_t);
+        if (lwr->type == Type::terror)
+            goto Lerr;
     }
 
     if (t->ty == Tsarray || t->ty == Tarray || t->ty == Ttuple)
@@ -7682,7 +7700,7 @@ Expression *SliceExp::semantic(Scope *sc)
         else
         {
             error("string slice [%"PRIuMAX" .. %"PRIuMAX"] is out of bounds", i1, i2);
-            e = new IntegerExp(0);
+            goto Lerr;
         }
         return e;
     }
@@ -7695,12 +7713,15 @@ Expression *SliceExp::semantic(Scope *sc)
     return e;
 
 Lerror:
+    if (e1->op == TOKerror)
+        return e1;
     char *s;
     if (t->ty == Tvoid)
         s = e1->toChars();
     else
         s = t->toChars();
     error("%s cannot be sliced with []", s);
+Lerr:
     e = new ErrorExp();
     return e;
 }
@@ -7809,7 +7830,9 @@ Expression *ArrayExp::semantic(Scope *sc)
     if (t1->ty != Tclass && t1->ty != Tstruct)
     {   // Convert to IndexExp
         if (arguments->dim != 1)
-            error("only one index allowed to index %s", t1->toChars());
+        {   error("only one index allowed to index %s", t1->toChars());
+            goto Lerr;
+        }
         e = new IndexExp(loc, e1, (Expression *)arguments->data[0]);
         return e->semantic(sc);
     }
@@ -7820,7 +7843,11 @@ Expression *ArrayExp::semantic(Scope *sc)
 
         e = e->semantic(sc);
         if (!e->type)
-            error("%s has no value", e->toChars());
+        {   error("%s has no value", e->toChars());
+            goto Lerr;
+        }
+        else if (e->type == Type::terror)
+            goto Lerr;
         arguments->data[i] = (void *)e;
     }
 
@@ -7830,9 +7857,12 @@ Expression *ArrayExp::semantic(Scope *sc)
     e = op_overload(sc);
     if (!e)
     {   error("no [] operator overload for type %s", e1->type->toChars());
-        e = e1;
+        goto Lerr;
     }
     return e;
+
+Lerr:
+    return new ErrorExp();
 }
 
 #if DMDV2
@@ -7998,9 +8028,11 @@ Expression *IndexExp::semantic(Scope *sc)
     if (!e2->type)
     {
         error("%s has no value", e2->toChars());
-        e2->type = Type::terror;
+        goto Lerr;
     }
     e2 = resolveProperties(sc, e2);
+    if (e2->type == Type::terror)
+        goto Lerr;
 
     if (t1->ty == Tsarray || t1->ty == Tarray || t1->ty == Ttuple)
         sc = sc->pop();
@@ -8085,10 +8117,13 @@ Expression *IndexExp::semantic(Scope *sc)
         default:
             error("%s must be an array or pointer type, not %s",
                 e1->toChars(), e1->type->toChars());
-            type = Type::tint32;
-            break;
+            case Terror:
+            goto Lerr;
     }
     return e;
+
+Lerr:
+    return new ErrorExp();
 }
 
 #if DMDV2
@@ -8416,6 +8451,14 @@ Expression *AssignExp::checkToBoolean()
 
 /************************************************************/
 
+ConstructExp::ConstructExp(Loc loc, Expression *e1, Expression *e2)
+    : AssignExp(loc, e1, e2)
+{
+    op = TOKconstruct;
+}
+
+/************************************************************/
+
 AddAssignExp::AddAssignExp(Loc loc, Expression *e1, Expression *e2)
         : BinExp(loc, TOKaddass, sizeof(AddAssignExp), e1, e2)
 {
@@ -8590,7 +8633,9 @@ Expression *CatAssignExp::semantic(Scope *sc)
     {   SliceExp *se = (SliceExp *)e1;
 
         if (se->e1->type->toBasetype()->ty == Tsarray)
-            error("cannot append to static array %s", se->e1->type->toChars());
+        {   error("cannot append to static array %s", se->e1->type->toChars());
+            return new ErrorExp();
+        }
     }
 
     e1 = e1->modifiableLvalue(sc, e1);
@@ -8638,7 +8683,8 @@ Expression *CatAssignExp::semantic(Scope *sc)
     }
     else
     {
-        error("cannot append type %s to type %s", tb2->toChars(), tb1->toChars());
+        if (tb1 != Type::terror && tb2 != Type::terror)
+            error("cannot append type %s to type %s", tb2->toChars(), tb1->toChars());
         e = new ErrorExp();
     }
     return e;
@@ -9679,20 +9725,30 @@ Expression *InExp::semantic(Scope *sc)
 
     //type = Type::tboolean;
     Type *t2b = e2->type->toBasetype();
-    if (t2b->ty != Taarray)
+    switch (t2b->ty)
     {
-        error("rvalue of in expression must be an associative array, not %s", e2->type->toChars());
-        type = Type::terror;
-    }
-    else
-    {
-        TypeAArray *ta = (TypeAArray *)t2b;
+        case Taarray:
+        {
+            TypeAArray *ta = (TypeAArray *)t2b;
 
-        // Convert key to type of key
-        e1 = e1->implicitCastTo(sc, ta->index);
+#if DMDV2
+            // Special handling for array keys
+            if (!arrayTypeCompatible(e1->loc, e1->type, ta->index))
+#endif
+            {
+                // Convert key to type of key
+                e1 = e1->implicitCastTo(sc, ta->index);
+            }
+            
+            // Return type is pointer to value
+            type = ta->nextOf()->pointerTo();
+            break;
+        }
 
-        // Return type is pointer to value
-        type = ta->nextOf()->pointerTo();
+        default:
+            error("rvalue of in expression must be an associative array, not %s", e2->type->toChars());
+        case Terror:
+            return new ErrorExp();
     }
     return this;
 }

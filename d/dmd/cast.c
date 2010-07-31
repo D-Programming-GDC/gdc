@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -85,6 +85,8 @@ printf("%p %p type: %s to: %s\n", type->deco, t->deco, type->deco, t->deco);
 //printf("%p %p %p\n", type->nextOf()->arrayOf(), type, t);
 fflush(stdout);
 #endif
+    if (t->ty != Terror && type->ty != Terror)
+    {
     if (!t->deco)
     {   /* Can happen with:
          *    enum E { One }
@@ -101,6 +103,7 @@ fflush(stdout);
 
     error("cannot implicitly convert expression (%s) of type %s to %s",
         toChars(), type->toChars(), t->toChars());
+    }
     return new ErrorExp();
 }
 
@@ -861,7 +864,7 @@ Expression *StringExp::castTo(Scope *sc, Type *t)
         case X(Tchar, Twchar):
             for (size_t u = 0; u < len;)
             {   unsigned c;
-                char *p = utf_decodeChar((unsigned char *)se->string, len, &u, &c);
+                const char *p = utf_decodeChar((unsigned char *)se->string, len, &u, &c);
                 if (p)
                     error("%s", p);
                 else
@@ -874,7 +877,7 @@ Expression *StringExp::castTo(Scope *sc, Type *t)
         case X(Tchar, Tdchar):
             for (size_t u = 0; u < len;)
             {   unsigned c;
-                char *p = utf_decodeChar((unsigned char *)se->string, len, &u, &c);
+                const char *p = utf_decodeChar((unsigned char *)se->string, len, &u, &c);
                 if (p)
                     error("%s", p);
                 buffer.write4(c);
@@ -886,7 +889,7 @@ Expression *StringExp::castTo(Scope *sc, Type *t)
         case X(Twchar,Tchar):
             for (size_t u = 0; u < len;)
             {   unsigned c;
-                char *p = utf_decodeWchar((unsigned short *)se->string, len, &u, &c);
+                const char *p = utf_decodeWchar((unsigned short *)se->string, len, &u, &c);
                 if (p)
                     error("%s", p);
                 else
@@ -899,7 +902,7 @@ Expression *StringExp::castTo(Scope *sc, Type *t)
         case X(Twchar,Tdchar):
             for (size_t u = 0; u < len;)
             {   unsigned c;
-                char *p = utf_decodeWchar((unsigned short *)se->string, len, &u, &c);
+                const char *p = utf_decodeWchar((unsigned short *)se->string, len, &u, &c);
                 if (p)
                     error("%s", p);
                 buffer.write4(c);
@@ -1579,6 +1582,7 @@ Expression *BinExp::typeCombine(Scope *sc)
         type = Type::terror;
         e1 = new ErrorExp();
         e2 = new ErrorExp();
+        return new ErrorExp();
     }
 Lret:
     if (!type)

@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -45,6 +45,8 @@ extern int HtmlNamedEntity(unsigned char *p, int length);
 
 #define LS 0x2028       // UTF line separator
 #define PS 0x2029       // UTF paragraph separator
+
+void unittest_lexer();
 
 /********************************************
  * Do our own char maps
@@ -395,6 +397,16 @@ TOK Lexer::peekNext()
     return peek(&token)->value;
 }
 
+/***********************
+ * Look 2 tokens ahead at value.
+ */
+
+TOK Lexer::peekNext2()
+{
+    Token *t = peek(&token);
+    return peek(t)->value;
+}
+
 /*********************************
  * tk is on the opening (.
  * Look ahead and return token that is past the closing ).
@@ -592,8 +604,10 @@ void Lexer::scan(Token *t)
                 t->value = escapeStringConstant(t,0);
                 return;
 
+#if ! TEXTUAL_ASSEMBLY_OUT
             case '\\':                  // escaped string literal
             {   unsigned c;
+                unsigned char *pstart = p;
 
                 stringbuffer.reset();
                 do
@@ -620,8 +634,13 @@ void Lexer::scan(Token *t)
                 memcpy(t->ustring, stringbuffer.data, stringbuffer.offset);
                 t->postfix = 0;
                 t->value = TOKstring;
+#if DMDV2
+                if (!global.params.useDeprecated)
+                    error("Escape String literal %.*s is deprecated, use double quoted string literal \"%.*s\" instead", p - pstart, pstart, p - pstart, pstart);
+#endif
                 return;
             }
+#endif
 
             case 'l':
             case 'L':
@@ -1163,6 +1182,27 @@ void Lexer::scan(Token *t)
                     t->value = TOKtilde;                // ~
                 return;
 
+#if DMDV2
+            case '^':
+                p++;
+                if (*p == '^')
+                {   p++;
+                    if (*p == '=')
+                    {   p++;
+                        t->value = TOKpowass;  // ^^=
+                    }
+                    else
+                        t->value = TOKpow;     // ^^
+                }
+                else if (*p == '=')
+                {   p++;
+                    t->value = TOKxorass;    // ^=
+                }
+                else
+                    t->value = TOKxor;       // ^
+                return;
+#endif
+
 #define SINGLE(c,tok) case c: p++; t->value = tok; return;
 
             SINGLE('(', TOKlparen)
@@ -1176,7 +1216,9 @@ void Lexer::scan(Token *t)
             SINGLE(';', TOKsemicolon)
             SINGLE(':', TOKcolon)
             SINGLE('$', TOKdollar)
-
+#if DMDV2
+            SINGLE('@', TOKat)
+#endif
 #undef SINGLE
 
 #define DOUBLE(c1,tok1,c2,tok2)         \
@@ -1192,7 +1234,9 @@ void Lexer::scan(Token *t)
 
             DOUBLE('*', TOKmul, '=', TOKmulass)
             DOUBLE('%', TOKmod, '=', TOKmodass)
+#if DMDV1
             DOUBLE('^', TOKxor, '=', TOKxorass)
+#endif
 
 #undef DOUBLE
 
@@ -1234,7 +1278,11 @@ void Lexer::scan(Token *t)
  */
 
 unsigned Lexer::escapeSequence()
-{   unsigned c;
+{   unsigned c = *p;
+
+#ifdef TEXTUAL_ASSEMBLY_OUT
+    return c;
+#endif
     int n;
     int ndigits;
 
@@ -1595,6 +1643,10 @@ TOK Lexer::delimitedStringConstant(Token *t)
             else
             {   delimright = c;
                 nest = 0;
+#if DMDV2
+                if (isspace(c))
+                    error("delimiter cannot be whitespace");
+#endif
             }
         }
         else
@@ -1616,7 +1668,10 @@ TOK Lexer::delimitedStringConstant(Token *t)
             }
             else if (c == delimright)
                 goto Ldone;
-            if (startline && isalpha(c))
+            if (startline && isalpha(c)
+#if DMDV2
+                            && hereid
+#endif
             {   Token t;
                 unsigned char *psave = p;
                 p--;
@@ -1725,6 +1780,7 @@ TOK Lexer::escapeStringConstant(Token *t, int wide)
         c = *p++;
         switch (c)
         {
+#if !( TEXTUAL_ASSEMBLY_OUT )
             case '\\':
                 switch (*p)
                 {
@@ -1740,7 +1796,7 @@ TOK Lexer::escapeStringConstant(Token *t, int wide)
                         break;
                 }
                 break;
-
+#endif
             case '\n':
                 loc.linnum++;
                 break;
@@ -1801,6 +1857,7 @@ TOK Lexer::charConstant(Token *t, int wide)
     c = *p++;
     switch (c)
     {
+#if ! TEXTUAL_ASSEMBLY_OUT
         case '\\':
             switch (*p)
             {
@@ -1820,7 +1877,7 @@ TOK Lexer::charConstant(Token *t, int wide)
                     break;
             }
             break;
-
+#endif
         case '\n':
         L1:
             loc.linnum++;
@@ -2450,7 +2507,10 @@ done:
 #ifdef IN_GCC
             real_t::parse((char *)stringbuffer.data, real_t::Float);
 #else
-            strtof((char *)stringbuffer.data, NULL);
+            {   // Only interested in errno return
+                float f = strtof((char *)stringbuffer.data, NULL);
+                // Assign to f to keep gcc warnings at bay
+            }
 #endif
             result = TOKfloat32v;
             p++;
@@ -2464,7 +2524,10 @@ done:
              * accept 2.22507e-308, while apple gcc will only take
              * 2.22508e-308. Not sure who is right.
              */
-            strtod((char *)stringbuffer.data, NULL);
+            {   // Only interested in errno return
+                double d = strtod((char *)stringbuffer.data, NULL);
+                // Assign to d to keep gcc warnings at bay
+            }
 #endif
             result = TOKfloat64v;
             break;
@@ -2964,6 +3027,7 @@ static Keyword keywords[] =
     {   "pure",         TOKpure         },
     {   "nothrow",      TOKnothrow      },
     {   "__thread",     TOKtls          },
+    {   "__gshared",    TOKgshared      },
     {   "__traits",     TOKtraits       },
     {   "__overloadset", TOKoverloadset },
     {   "__FILE__",     TOKfile         },
@@ -3068,6 +3132,8 @@ void Lexer::initKeywords()
     Token::tochars[TOKcast]             = "cast";
     Token::tochars[TOKplusplus]         = "++";
     Token::tochars[TOKminusminus]       = "--";
+    Token::tochars[TOKpreplusplus]      = "++";
+    Token::tochars[TOKpreminusminus]    = "--";
     Token::tochars[TOKtype]             = "type";
     Token::tochars[TOKquestion]         = "?";
     Token::tochars[TOKneg]              = "-";
@@ -3091,6 +3157,11 @@ void Lexer::initKeywords()
 
     Token::tochars[TOKorass]            = "|=";
     Token::tochars[TOKidentifier]       = "identifier";
+#if DMDV2
+    Token::tochars[TOKat]               = "@";
+    Token::tochars[TOKpow]              = "^^";
+    Token::tochars[TOKpowass]           = "^^=";
+#endif
 
      // For debugging
     Token::tochars[TOKerror]            = "error";
@@ -3111,4 +3182,31 @@ void Lexer::initKeywords()
     Token::tochars[TOKon_scope_exit]    = "scope(exit)";
     Token::tochars[TOKon_scope_success] = "scope(success)";
     Token::tochars[TOKon_scope_failure] = "scope(failure)";
+
+#if UNITTEST
+    unittest_lexer();
+#endif
 }
+
+#if UNITTEST
+
+void unittest_lexer()
+{
+    //printf("unittest_lexer()\n");
+
+    /* Not much here, just trying things out.
+     */
+    const unsigned char text[] = "int";
+    Lexer lex1(NULL, (unsigned char *)text, 0, sizeof(text), 0, 0);
+    TOK tok;
+    tok = lex1.nextToken();
+    //printf("tok == %s, %d, %d\n", Token::toChars(tok), tok, TOKint32);
+    assert(tok == TOKint32);
+    tok = lex1.nextToken();
+    assert(tok == TOKeof);
+    tok = lex1.nextToken();
+    assert(tok == TOKeof);
+}
+
+#endif
+

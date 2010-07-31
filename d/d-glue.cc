@@ -463,6 +463,7 @@ CmpExp::toElem(IRState* irs)
 static tree
 make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * exp_type, IRState * irs)
 {
+	
     // Integral promotions have already been done in the front end
     tree_code out_code;
 
@@ -570,6 +571,18 @@ make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * ex
 tree
 make_math_op(BinExp * exp, IRState * irs)
 {
+	TY ty1 = exp->e1->type->toBasetype()->ty;
+    TY ty2 = exp->e2->type->toBasetype()->ty;
+
+    if ((ty1 == Tarray || ty1 == Tsarray) &&
+        (ty2 == Tarray || ty2 == Tsarray) &&
+        exp->op != TOKequal
+       )
+    {
+        error("Array operation %s not implemented", exp->toChars());
+        return irs->errorMark(exp->type);
+    }
+    
     return make_math_op(exp->op,
 	exp->e1->toElem(irs), exp->e1->type,
 	exp->e2->toElem(irs), exp->e2->type,
@@ -754,14 +767,6 @@ CatExp::toElem(IRState * irs)
 elem *
 MinExp::toElem(IRState* irs)
 {
-    TY ty1 = e1->type->toBasetype()->ty;
-    TY ty2 = e2->type->toBasetype()->ty;
-    
-    if ((ty1 == Tarray || ty1 == Tsarray) ||
-	(ty2 == Tarray || ty2 == Tsarray) ) {
-	error("Array operation %s not implemented", toChars());
-	return irs->errorMark(type);
-    } else
 	// The front end has already taken care of pointer-int and pointer-pointer
 	return make_math_op(this, irs);
 }
@@ -769,14 +774,6 @@ MinExp::toElem(IRState* irs)
 elem *
 AddExp::toElem(IRState* irs)
 {
-    TY ty1 = e1->type->toBasetype()->ty;
-    TY ty2 = e2->type->toBasetype()->ty;
-    
-    if ((ty1 == Tarray || ty1 == Tsarray) ||
-	(ty2 == Tarray || ty2 == Tsarray) ) {
-	error("Array operation %s not implemented", toChars());
-	return irs->errorMark(type);
-    } else
 	// The front end has already taken care of (pointer + integer)
 	return make_math_op(this, irs);
 }
@@ -792,6 +789,18 @@ tree chain_cvt(tree t, Type * typ, Array & casts, IRState * irs)
 
 tree make_assign_math_op(BinExp * exp, IRState * irs)
 {
+	TY ty1 = exp->e1->type->toBasetype()->ty;
+    TY ty2 = exp->e2->type->toBasetype()->ty;
+
+    if ((ty1 == Tarray || ty1 == Tsarray) &&
+        (ty2 == Tarray || ty2 == Tsarray) &&
+        exp->op != TOKequal 
+        )
+    {
+        error("Array operation %s not implemented", exp->toChars());
+        return irs->errorMark(exp->type);
+    }
+	
     Expression * e1_to_use;
     Type * lhs_type = 0;
     tree result;
@@ -3519,23 +3528,51 @@ intfc_binfo_for(tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offse
 #if D_GCC_VER < 40
 	make_tree_vec(BINFO_ELTS)
 #else
+
+#if V1
+	make_tree_binfo(iface->baseclasses->dim)
+#else
 	make_tree_binfo(iface->baseclasses.dim)
+#endif
+
 #endif
 	;
     TREE_TYPE              (binfo) = TREE_TYPE( iface->type->toCtype() ); // RECORD_TYPE, not REFERENCE_TYPE
     BINFO_INHERITANCE_CHAIN(binfo) = tgt_binfo;
     BINFO_OFFSET           (binfo) = size_int(inout_offset * PTRSIZE);
 
-    if (iface->baseclasses.dim) {
+#if V1
+    if (iface->baseclasses->dim) {
+#else
+	if (iface->baseclasses.dim) {
+#endif
+
 #if D_GCC_VER < 40
+
+#if V1
+	BINFO_BASETYPES(binfo)    = make_tree_vec(iface->baseclasses->dim);
+#else
 	BINFO_BASETYPES(binfo)    = make_tree_vec(iface->baseclasses.dim);
 #endif
+
+#endif
 #ifdef BINFO_BASEACCESSES
+
+#if V1
+	BINFO_BASEACCESSES(binfo) = make_tree_vec(iface->baseclasses->dim);
+#else
 	BINFO_BASEACCESSES(binfo) = make_tree_vec(iface->baseclasses.dim);
 #endif
+
+#endif
     }
-    for (unsigned i = 0; i < iface->baseclasses.dim; i++) {
+#if V1
+	for (unsigned i = 0; i < iface->baseclasses->dim; i++) {
+	BaseClass * bc = (BaseClass *) iface->baseclasses->data[i];
+#else
+	for (unsigned i = 0; i < iface->baseclasses.dim; i++) {
 	BaseClass * bc = (BaseClass *) iface->baseclasses.data[i];
+#endif
 
 	if (i)
 	    inout_offset++;
@@ -3628,8 +3665,13 @@ TypeClass::toCtype()
 	    agg_layout.go();
 	} else {
 	    ClassDeclaration * p = sym;
-	    while (p->baseclasses.dim) {
+#if V1
+	    while (p->baseclasses->dim) {
+		p = ((BaseClass *) p->baseclasses->data[0])->base;
+#else
+		while (p->baseclasses.dim) {
 		p = ((BaseClass *) p->baseclasses.data[0])->base;
+#endif
 	    }
 	    DECL_FCONTEXT( vfield ) = TREE_TYPE( p->type->toCtype() );
 	}

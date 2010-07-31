@@ -2653,6 +2653,7 @@ Initializer *Parser::parseInitializer()
                         {   t = peek(t);
                             if (t->value != TOKsemicolon &&
                                 t->value != TOKcomma &&
+                                t->value != TOKrbracket &&
                                 t->value != TOKrcurly)
                                 goto Lexpression;
                             break;
@@ -2976,7 +2977,7 @@ Statement *Parser::parseStatement(int flags)
             s = new CompoundStatement(loc, statements);
             if (flags & (PSscope | PScurlyscope))
                 s = new ScopeStatement(loc, s);
-            nextToken();
+            check(TOKrcurly, "compound statement");
             break;
         }
 
@@ -3758,7 +3759,8 @@ void Parser::check(enum TOK value)
 void Parser::check(Loc loc, enum TOK value)
 {
     if (token.value != value)
-        error(loc, "found '%s' when expecting '%s'", token.toChars(), Token::toChars(value));
+        error("found '%s' when expecting '%s' following %s",
+            token.toChars(), Token::toChars(value));
     nextToken();
 }
 
