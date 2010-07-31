@@ -2077,7 +2077,7 @@ IRState::assignValue(Expression * e, VarDeclaration * v)
 	{
 	    tree a_val = convertForAssignment(a_exp->e2, v->type);
 	    // Look for reference initializations
-	    if ( e->op == TOKconstruct && v->isRef() )
+	    if (e->op == TOKconstruct && v->storage_class & (STCout | STCref))
 		return addressOf(a_val);
 	    else
 		return a_val;
