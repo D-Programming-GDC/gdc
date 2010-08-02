@@ -162,7 +162,20 @@ static void uniqueName(Declaration * d, tree t, const char * asm_name) {
 	sv->intvalue++;
     }
 
-    SET_DECL_ASSEMBLER_NAME(t, get_identifier(out_name));
+    tree id;
+#if D_GCC_VER >= 43
+    /* Only FUNCTION_DECLs and VAR_DECLs for variables with static storage
+       duration need a mangled DECL_ASSEMBLER_NAME. */
+    if (f || (v && (v->protection == PROTpublic || v->storage_class & (STCstatic | STCextern))))
+    {
+	id = targetm.mangle_decl_assembler_name(t, get_identifier(out_name));
+    }
+    else
+    /* Mangling will be left to the decision of the backend */
+#endif
+    id = get_identifier(out_name);
+
+    SET_DECL_ASSEMBLER_NAME(t, id);
 
     if (alloc_name)
 	free(alloc_name);
