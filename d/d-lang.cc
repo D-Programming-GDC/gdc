@@ -890,7 +890,7 @@ d_parse_file (int /*set_yydebug*/)
     Type::tdchar->toCtype();
     
     for (TY ty = (TY) 0; ty < TMAX; ty = (TY)(ty + 1)) {
-	if (Type::basic[ty])
+	if (Type::basic[ty] && ty != Terror)
 	    nametype(Type::basic[ty]);
     }
 
