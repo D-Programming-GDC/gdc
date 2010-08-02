@@ -184,6 +184,11 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 			    args[i] |= REMOVE_ARG;
 			    if (defaultlib != NULL)
 				free(defaultlib);
+			    if (i + 1 == argc)
+			    {
+				error ("missing argument to '%s' option", argv[i] + 1);
+				break;
+			    }
 			    defaultlib = xmalloc(sizeof(char) * (strlen(argv[++i]) + 3));
 			    strcpy(defaultlib, "-l");
 			    strcat(defaultlib, argv[i]);
@@ -196,6 +201,11 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 			    args[i] |= REMOVE_ARG;
 			    if (debuglib != NULL)
 				free(debuglib);
+			    if (i + 1 == argc)
+			    {
+				error ("missing argument to '%s' option", argv[i] + 1);
+				break;
+			    }
 			    debuglib = xmalloc(sizeof(char) * (strlen(argv[++i]) + 3));
 			    strcpy(debuglib, "-l");
 			    strcat(debuglib, argv[i]);
