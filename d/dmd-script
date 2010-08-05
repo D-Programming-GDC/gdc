@@ -104,6 +104,7 @@ Usage:
   files.d        D source files
   -arch ...      pass an -arch ... option to gdc
   -c             do not link
+  -cov           do code coverage analysis
   -D             generate documentation
   -Dddocdir      write documentation file to docdir directory
   -Dffilename    write documentation file to filename
@@ -125,19 +126,21 @@ Usage:
   -inline        do function inlining
   -Jpath         where to look for string imports
   -Llinkerflag   pass linkerflag to link
+  -lib           generate library rather than object files
+  -man           open web browser on manual page
   -nofloat       do not emit reference to floating point
   -O             optimize
   -o-            do not write object file
   -odobjdir      write object files to directory objdir
-  -offilename	 name output file to filename
+  -offilename    name output file to filename
   -op            do not strip paths from source file
   -m...          pass an -m... option to gdc
   -map           generate linker .map file
   -pipe          Use pipes rather than intermediate files
-  -profile	 profile runtime performance of generated code
+  -profile       profile runtime performance of generated code
   -quiet         suppress unnecessary messages
   -q,arg1,...    pass arg1, arg2, etc. to to gdc
-  -release	 compile release version
+  -release       compile release version
   -run srcfile args...   run resulting program, passing args
   -unittest      compile in unit tests
   -v             verbose
@@ -152,7 +155,7 @@ EOF
 }
 
 sub errorExit(@) {
-    print STDERR "dmd: ", @_, "\n" if @_;
+    print STDERR "gdmd: ", @_, "\n" if @_;
     exit 1;
 }
 use subs qw(errorExit);
@@ -219,6 +222,7 @@ sub browse($) {
     }
     push @cmd, $url;
     system @cmd;
+    print "Opening documentation page.";
     exit 0;
 }
 
@@ -359,7 +363,7 @@ while ( $arg_i < scalar(@ARGV) ) {
 	# Pass -fxxx options
 	push @out, $arg;
     } elsif ($arg eq '-man') {
-	browse("http://dgcc.sourceforge.net/gdc/manual.html");
+	browse("http://bitbucket.org/goshawk/gdc/wiki/UserDocumentation");
 	exit 0;
 	} elsif ( $arg =~ m/^-map$/ ) {
 	# Should check for Mac?? (in link.c, _APPLE_ is -map)
