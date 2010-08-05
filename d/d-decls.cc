@@ -164,14 +164,14 @@ static void uniqueName(Declaration * d, tree t, const char * asm_name) {
 
     tree id;
 #if D_GCC_VER >= 43
-    /* Only FUNCTION_DECLs and VAR_DECLs for variables with static storage
-       duration need a mangled DECL_ASSEMBLER_NAME. */
+    /* In 4.3.x, it is now the job of the front-end to ensure decls get mangled for their target.
+       We'll only allow FUNCTION_DECLs and VAR_DECLs for variables with static storage duration
+       to get a mangled DECL_ASSEMBLER_NAME. And the backend should handle the rest. */
     if (f || (v && (v->protection == PROTpublic || v->storage_class & (STCstatic | STCextern))))
     {
 	id = targetm.mangle_decl_assembler_name(t, get_identifier(out_name));
     }
     else
-    /* Mangling will be left to the decision of the backend */
 #endif
     id = get_identifier(out_name);
 

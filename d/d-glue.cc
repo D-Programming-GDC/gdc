@@ -551,6 +551,9 @@ make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * ex
 	tree e_new_type_1 = is_unsigned ?
 	    d_unsigned_type(exp_type->toCtype()) :
 	    d_signed_type(exp_type->toCtype());
+	/* For >>> and >>>= operations, need e1 to be of the same
+	   signedness as what we are converting to, else we get
+	   undefined behaviour when optimizations are enabled. */
 	if (op == TOKushr) {
 	    e1 = convert(e_new_type_1, e1);
 	}
@@ -576,7 +579,7 @@ make_math_op(BinExp * exp, IRState * irs)
     TY ty1 = exp->e1->type->toBasetype()->ty;
     TY ty2 = exp->e2->type->toBasetype()->ty;
 
-    if ((ty1 == Tarray || ty1 == Tsarray) &&
+    if ((ty1 == Tarray || ty1 == Tsarray) ||
 	(ty2 == Tarray || ty2 == Tsarray))
     {
 	error("Array operation %s not implemented", exp->toChars());
@@ -775,7 +778,7 @@ make_assign_math_op(BinExp * exp, IRState * irs)
     TY ty1 = exp->e1->type->toBasetype()->ty;
     TY ty2 = exp->e2->type->toBasetype()->ty;
 
-    if ((ty1 == Tarray || ty1 == Tsarray) &&
+    if ((ty1 == Tarray || ty1 == Tsarray) ||
 	(ty2 == Tarray || ty2 == Tsarray))
     {
 	error("Array operation %s not implemented", exp->toChars());
