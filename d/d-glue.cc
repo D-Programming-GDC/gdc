@@ -551,6 +551,9 @@ make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * ex
 	tree e_new_type_1 = is_unsigned ?
 	    d_unsigned_type(exp_type->toCtype()) :
 	    d_signed_type(exp_type->toCtype());
+	if (op == TOKushr) {
+	    e1 = convert(e_new_type_1, e1);
+	}
 	tree t = build2(out_code, e_new_type_1, e1, e2);
 	return convert(exp_type->toCtype(), t);
     } else {
