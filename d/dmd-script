@@ -115,6 +115,7 @@ Usage:
   -debug=level   compile in debug code <= level
   -debug=ident   compile in debug code identified by ident
   -deps=filename write module dependencies to filename
+  -fall-sources  for every source file, semantically process each file preceding it
   -g             add symbolic debug info
   -gc            add symbolic debug info, pretend to be C
   -H             generate 'header' file
@@ -319,8 +320,8 @@ while ( $arg_i < scalar(@ARGV) ) {
 	$output_parents = 1;
     } elsif ( $arg =~ m/^-nofloat$/ ) {
 	# do nothing
-	} elsif ( $arg =~ m/^-pipe$/ ) {
-   push @out, '-pipe';
+    } elsif ( $arg =~ m/^-pipe$/ ) {
+	push @out, '-pipe';
     } elsif ( $arg =~ m/^-profile$/ ) {
 	# there is more to profiling than this ... -finstrument-functions?
 	push @out, '-pg';
@@ -365,9 +366,16 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ($arg eq '-man') {
 	browse("http://bitbucket.org/goshawk/gdc/wiki/UserDocumentation");
 	exit 0;
-	} elsif ( $arg =~ m/^-map$/ ) {
-	# Should check for Mac?? (in link.c, _APPLE_ is -map)
-	push @link_out, '-Wl,-Map=' . substr($first_input_file, 0, length($first_input_file)-2) . ".map"
+    } elsif ( $arg =~ m/^-map$/ ) {
+	# Check for Mac (Untested)
+	if ($^O =~ m/darwin/i) 
+	{
+	    push @link_out, '-Wl,-map=' . substr($first_input_file, 0, length($first_input_file)-2) . ".map";
+	}
+	else
+	{
+	    push @link_out, '-Wl,-Map=' . substr($first_input_file, 0, length($first_input_file)-2) . ".map";
+	}
     } elsif ( $arg =~ m/^-m.+/ ) {
 	# Pass -mxxx options
 	push @out, $arg;
