@@ -777,8 +777,10 @@ Symbol *ClassDeclaration::toSymbol()
 	tree decl;
 	csym = toSymbolX("__Class", SCextern, 0, "Z");
 	slist_add(csym);
-	decl = build_decl( VAR_DECL, get_identifier( csym->Sident ),
-	    TREE_TYPE( ClassDeclaration::classinfo->type->toCtype() )); // want the RECORD_TYPE, not the REFERENCE_TYPE
+	decl = build_decl(VAR_DECL, get_identifier(csym->Sident),
+	    TREE_TYPE(ClassDeclaration::classinfo != NULL
+		? ClassDeclaration::classinfo->type->toCtype() // want the RECORD_TYPE, not the REFERENCE_TYPE
+		: error_mark_node));
 	csym->Stree = decl;
 	dkeep(decl);
  
