@@ -313,9 +313,9 @@ void ClassDeclaration::toObjFile(int multiobj)
 
     assert(!scope);	// semantic() should have been run to completion
 
-	scclass = SCglobal;
-	if (inTemplateInstance())
-	  	    scclass = SCcomdat;
+    scclass = SCglobal;
+    if (inTemplateInstance())
+	scclass = SCcomdat;
 
     // Put out the members
     for (i = 0; i < members->dim; i++)
@@ -1227,9 +1227,9 @@ void TypedefDeclaration::toObjFile(int multiobj)
 	;
     else
     {
-    enum_SC scclass = SCglobal;
+	enum_SC scclass = SCglobal;
    	if (inTemplateInstance())
-   		scclass = SCcomdat;
+	    scclass = SCcomdat;
 
 	// Generate static initializer
 	toInitializer();
@@ -1265,9 +1265,9 @@ void EnumDeclaration::toObjFile(int multiobj)
 	;
     else
     {
-    enum_SC scclass = SCglobal;
-    if (inTemplateInstance())
-    	scclass = SCcomdat;
+	enum_SC scclass = SCglobal;
+	if (inTemplateInstance())
+	    scclass = SCcomdat;
 
 	// Generate static initializer
 	toInitializer();

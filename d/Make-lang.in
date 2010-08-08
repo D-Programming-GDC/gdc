@@ -77,7 +77,7 @@ gcc_d_include_dir = $(libsubdir)/$(unlibsubdir)/..`echo $(exec_prefix) | sed -e 
 
 ifeq ($(D_LANGUAGE_VERSION),2)
 D_DMD_H := d/dmd/aggregate.h d/dmd/arraytypes.h d/dmd/attrib.h \
-	d/dmd/complex_t.h d/dmd/cond.h d/dmd/dchar.h d/dmd/declaration.h \
+	d/dmd/cond.h d/dmd/dchar.h d/dmd/declaration.h \
 	d/dmd/doc.h d/dmd/dsymbol.h d/dmd/enum.h d/dmd/expression.h \
 	d/dmd/gnuc.h d/dmd/hdrgen.h d/dmd/html.h d/dmd/identifier.h \
 	d/dmd/import.h d/dmd/init.h d/dmd/lexer.h d/dmd/lstring.h \

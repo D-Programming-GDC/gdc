@@ -8401,7 +8401,7 @@ Expression *AssignExp::semantic(Scope *sc)
     {   // Try to do a decent error message with the expression
         // before it got constant folded
         if (op != TOKconstruct)
-        e1 = e1->modifiableLvalue(sc, e1old);
+            e1 = e1->modifiableLvalue(sc, e1old);
     }
 
     if (e1->op == TOKslice &&

@@ -188,19 +188,19 @@ int match(Object *o1, Object *o2, TemplateDeclaration *tempdecl, Scope *sc)
     }
     else if (s1)
     {
-    	//printf("%p %s, %p %s\n", s1, s1->toChars(), s2, s2->toChars());
-    	if (!s2 || !s1->equals(s2) || s1->parent != s2->parent)
-    	{
-    		goto Lnomatch;
-    	}
-    	VarDeclaration *v1 = s1->isVarDeclaration();
-    	VarDeclaration *v2 = s2->isVarDeclaration();
-    	if (v1 && v2 && v1->storage_class & v2->storage_class & STCmanifest)
-    	{   ExpInitializer *ei1 = v1->init->isExpInitializer();
-    		ExpInitializer *ei2 = v2->init->isExpInitializer();
-    		if (ei1 && ei2 && !ei1->exp->equals(ei2->exp))
-    			goto Lnomatch;
-    	}
+	//printf("%p %s, %p %s\n", s1, s1->toChars(), s2, s2->toChars());
+	if (!s2 || !s1->equals(s2) || s1->parent != s2->parent)
+	{
+	    goto Lnomatch;
+	}
+	VarDeclaration *v1 = s1->isVarDeclaration();
+	VarDeclaration *v2 = s2->isVarDeclaration();
+	if (v1 && v2 && v1->storage_class & v2->storage_class & STCmanifest)
+	{   ExpInitializer *ei1 = v1->init->isExpInitializer();
+	    ExpInitializer *ei2 = v2->init->isExpInitializer();
+	    if (ei1 && ei2 && !ei1->exp->equals(ei2->exp))
+		goto Lnomatch;
+	}
     }
     else if (v1)
     {
@@ -581,17 +581,17 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
 
     if (!flag)
     {
-    /* Any parameter left without a type gets the type of
-     * its corresponding arg
-     */
-    	for (int i = 0; i < dedtypes_dim; i++)
-    	{
-    		if (!dedtypes->data[i])
-    		{	assert(i < ti->tiargs->dim);
-    			dedtypes->data[i] = ti->tiargs->data[i];
-    		}
-    	}
+	/* Any parameter left without a type gets the type of
+	 * its corresponding arg
+	 */
+	for (int i = 0; i < dedtypes_dim; i++)
+	{
+	    if (!dedtypes->data[i])
+	    {	assert(i < ti->tiargs->dim);
+		dedtypes->data[i] = ti->tiargs->data[i];
+	    }
 	}
+    }
 
     if (m && constraint && !(flag & 1))
     {	/* Check to see if constraint is satisfied.
@@ -600,14 +600,14 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
 	paramscope->flags |= SCOPEstaticif;
 	e = e->semantic(paramscope);
 	e = e->optimize(WANTvalue | WANTinterpret);
-        if (e->isBool(TRUE))
-            ;
-        else if (e->isBool(FALSE))
-            goto Lnomatch;
-        else
-        {
-            e->error("constraint %s is not constant or does not evaluate to a bool", e->toChars());
-        }
+	if (e->isBool(TRUE))
+	    ;
+	else if (e->isBool(FALSE))
+	    goto Lnomatch;
+	else
+	{
+	    e->error("constraint %s is not constant or does not evaluate to a bool", e->toChars());
+	}
     }
 
 #if LOGM

@@ -101,3 +101,12 @@ symbol_tree(tree t)
     s->Stree = t;
     return s;
 }
+
+void slist_add(Symbol * /*s*/)
+{
+}
+
+void slist_reset()
+{
+}
+

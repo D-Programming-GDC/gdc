@@ -42,13 +42,6 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
-void slist_add(Symbol */*s*/)
-{
-}
-void slist_reset()
-{
-}
-
 /********************************* SymbolDeclaration ****************************/
 
 SymbolDeclaration::SymbolDeclaration(Loc loc, Symbol *s, StructDeclaration *dsym)
@@ -167,8 +160,7 @@ static void uniqueName(Declaration * d, tree t, const char * asm_name) {
     /* In 4.3.x, it is now the job of the front-end to ensure decls get mangled for their target.
        We'll only allow FUNCTION_DECLs and VAR_DECLs for variables with static storage duration
        to get a mangled DECL_ASSEMBLER_NAME. And the backend should handle the rest. */
-    if (f || (v && (v->protection == PROTpublic || v->storage_class & (STCstatic | STCextern))))
-    {
+    if (f || (v && (v->protection == PROTpublic || v->storage_class & (STCstatic | STCextern)))) {
 	id = targetm.mangle_decl_assembler_name(t, get_identifier(out_name));
     }
     else
@@ -614,7 +606,7 @@ Symbol *FuncDeclaration::toSymbol()
 		    // %% hack: on darwin (at least) using a DECL_EXTERNAL (IRState::getLibCallDecl)
 		    // and TREE_STATIC FUNCTION_DECLs causes the stub label to be output twice.  This
 		    // is a work around.  This doesn't handle the case in which the normal
-		    // getLibCallDecl has already bee created and used.  Note that the problem only
+		    // getLibCallDecl has already been created and used.  Note that the problem only
 		    // occurs with function inlining is used.
 		    gen.replaceLibCallDecl(this);
 		    break;

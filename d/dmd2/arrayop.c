@@ -241,11 +241,11 @@ Expression *BinExp::arrayOp(Scope *sc)
 	size_t namelen = strlen(name);
 	for( int ii = 0; ii < sizeof(libArrayopFuncs) / sizeof(char *); ii++)
 	{
-		if( strlen(libArrayopFuncs[ii]) == namelen &&
-			strcmp(libArrayopFuncs[ii], name) == 0 )
-		{
-			i = 0;
-		}
+	    if( strlen(libArrayopFuncs[ii]) == namelen &&
+		strcmp(libArrayopFuncs[ii], name) == 0 )
+	    {
+		i = 0;
+	    }
 	}
 	
 	if (i == -1)
