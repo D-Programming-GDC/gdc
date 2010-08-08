@@ -45,7 +45,9 @@ long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep);
 #include "cond.h"
 #include "expression.h"
 #include "lexer.h"
+#ifndef IN_GCC
 #include "lib.h"
+#endif
 
 void browse(const char *url);
 void getenv_setargv(const char *envvar, int *pargc, char** *pargv);

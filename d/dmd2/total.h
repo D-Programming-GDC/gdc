@@ -41,6 +41,6 @@
 #include "id.h"
 #include "cond.h"
 #include "version.h"
-#include "lib.h"
+//#include "lib.h"
 
 #endif /* DMD_TOTAL_H */
