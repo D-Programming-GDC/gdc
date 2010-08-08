@@ -210,11 +210,11 @@ typedef HOST_WIDE_INT hwint;
 typedef unsigned HOST_WIDE_INT uhwint;
 
 #if D_GCC_VER < 40
-static inline tree build0(enum tree_code c, tree t) { return build(c, t); }
-static inline tree build1(enum tree_code c, tree t, tree a) { return build(c, t, a); }
-static inline tree build2(enum tree_code c, tree t, tree a, tree b) { return build(c, t, a, b); }
-static inline tree build3(enum tree_code c, tree t, tree a, tree b, tree c) { return build(c, t, a, b, c); }
-static inline tree build4(enum tree_code c, tree t, tree a, tree b, tree c, tree d) { return build(c, t, a, b, d); }
+static inline tree build0(enum tree_code o, tree t) { return build(o, t); }
+//static inline tree build1(enum tree_code o, tree t, tree a) { return build(o, t, a); }
+static inline tree build2(enum tree_code o, tree t, tree a, tree b) { return build(o, t, a, b); }
+static inline tree build3(enum tree_code o, tree t, tree a, tree b, tree c) { return build(o, t, a, b, c); }
+static inline tree build4(enum tree_code o, tree t, tree a, tree b, tree c, tree d) { return build(o, t, a, b, c, d); }
 #define gcc_assert(x) (assert(x))
 #define gcc_unreachable(x) (assert(0))
 #endif

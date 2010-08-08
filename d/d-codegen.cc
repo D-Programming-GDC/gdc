@@ -723,10 +723,8 @@ IRState::pointerOffsetOp(int op, tree ptr, tree idx)
     }
     return build2(POINTER_PLUS_EXPR, TREE_TYPE(ptr), ptr, 
 	convert(sizetype, idx));
-#elif D_GCC_VER >= 40
-    return build2((enum tree_code) op, TREE_TYPE(ptr), ptr, idx);
 #else
-    return build2(op, TREE_TYPE(ptr), ptr, idx);
+    return build2((enum tree_code) op, TREE_TYPE(ptr), ptr, idx);
 #endif    
 }
 

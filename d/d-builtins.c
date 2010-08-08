@@ -535,6 +535,18 @@ d_builtin_function (const char *name, tree type, int function_code,
   return decl;
 }
 
+#if D_GCC_VER < 40
+/* GCC expects this function to be provided by each language frontend.  */
+tree
+builtin_function (const char *name, tree type, int function_code,
+		    enum built_in_class klass, const char *library_name,
+		    tree attrs)
+{
+    return d_builtin_function(name, type, function_code,
+			      klass, library_name, attrs);
+}
+#endif
+
 #endif
 
 #include "gt-d-d-builtins.h"

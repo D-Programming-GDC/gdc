@@ -3479,7 +3479,12 @@ binfo_for(tree tgt_binfo, ClassDeclaration * cls)
 	tree prot_tree;
 	
 	BINFO_BASEACCESSES(binfo) = make_tree_vec(1);
-	switch ( ((BaseClass *) cls->baseclasses.data[0])->protection ) {
+#if V1
+	BaseClass * bc = (BaseClass *) cls->baseclasses->data[0];
+#else
+	BaseClass * bc = (BaseClass *) cls->baseclasses.data[0];
+#endif
+	switch (bc->protection) {
 	case PROTpublic:
 	    prot_tree = access_public_node;
 	    break;

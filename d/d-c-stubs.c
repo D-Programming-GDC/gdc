@@ -37,21 +37,25 @@ c_lex (tree *value)
 {
 #if D_GCC_VER >= 40
     gcc_assert(0);
-#else
-    return 0;
 #endif
+    return 0;
 }
 
 enum cpp_ttype
 pragma_lex (tree *value)
 {
+#if D_GCC_VER >= 40
     gcc_assert(0);
+#endif
+    return 0;
 }
 
 tree
 lookup_name (tree name)
 {
+#if D_GCC_VER >= 40
     gcc_assert(0);
+#endif
     return NULL_TREE;
 }
 
