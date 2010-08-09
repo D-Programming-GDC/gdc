@@ -3283,6 +3283,7 @@ IRState::doJump(Statement * stmt, tree t_label)
     if (stmt)
 	g.ofile->doLineNote( stmt->loc );
     addExp(build1(GOTO_EXPR, void_type_node, t_label));
+    TREE_USED(t_label) = 1;
 }
 
 tree

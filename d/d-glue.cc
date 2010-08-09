@@ -3684,6 +3684,7 @@ LabelStatement::toIR(IRState* irs)
     tree t = irs->getLabelTree( label  );
 
     if (t) {
+	TREE_USED(t) = 1;
 	irs->doLabel(t);
 	if (label->asmLabelNum)
 	    d_expand_priv_asm_label(irs, label->asmLabelNum);
