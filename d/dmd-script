@@ -362,12 +362,10 @@ while ( $arg_i < scalar(@ARGV) ) {
 	# ignored
     } elsif ( $arg =~ m/^-q,(.*)$/ ) {
 	push @out, split(qr/,/, $1);
-	
     } elsif ( $arg =~ m/^-X$/ ) {
 	push @out, '-fXf=' . substr($first_input_file, 0, length($first_input_file)-2) . ".json";;
     } elsif ( $arg =~ m/^-Xf(.*)$/ ) {
 	push @out, '-fXf=' . $1
-	
     } elsif ( $arg eq '-fall-sources' ) {
 	$seen_all_sources_flag = 1;
     } elsif ( $arg =~ m/^-f.+/ ) {
