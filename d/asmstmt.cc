@@ -181,7 +181,7 @@ d_expand_priv_asm_label(IRState * irs, unsigned n)
 #else
     tree t = d_build_asm_stmt(insnt, NULL_TREE, NULL_TREE, NULL_TREE);
     ASM_VOLATILE_P( t ) = 1;
-    ASM_INPUT_P( t) = 1; // what is this doing?
+    ASM_INPUT_P( t ) = 1; // what is this doing?
     irs->addExp(t);
 #endif
 }

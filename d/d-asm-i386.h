@@ -1748,7 +1748,7 @@ struct AsmProcessor
 	    stmt->regs |= (1 << Reg_EAX)|
 		(1 << Reg_ECX)|(1 << Reg_EDX);
 
-	insnTemplate->writebyte('\t');
+	insnTemplate->writebyte(' ');
 	for (int i__ = 0; i__ < nOperands; i__++) {
 	    int i;
 	    if (i__ != 0)
@@ -2562,9 +2562,9 @@ struct AsmProcessor
 	if ((align & -align) == align) {
 	    // %% is this printf portable?
 #ifdef HAVE_GAS_BALIGN_AND_P2ALIGN 
-	    insnTemplate->printf(".balign\t%u", (unsigned) align);
+	    insnTemplate->printf(".balign %u", (unsigned) align);
 #else
-	    insnTemplate->printf(".align\t%u", (unsigned) align);
+	    insnTemplate->printf(".align %u", (unsigned) align);
 #endif
 	} else {
 	    stmt->error("alignment must be a power of 2");
@@ -2576,9 +2576,9 @@ struct AsmProcessor
     void doEven() {
 	// .align for GAS is in bits, others probably use bytes..
 #ifdef HAVE_GAS_BALIGN_AND_P2ALIGN 
-	insnTemplate->writestring(".align\t2");
+	insnTemplate->writestring(".balign 2");
 #else
-	insnTemplate->writestring(".align\t2");
+	insnTemplate->writestring(".align 2");
 #endif
 	setAsmCode();
     }
@@ -2595,7 +2595,7 @@ struct AsmProcessor
 	machine_mode mode;
 
 	insnTemplate->writestring(directives[op - Op_db]);
-	insnTemplate->writebyte('\t');
+	insnTemplate->writebyte(' ');
 
 	do {
 	    // DMD is pretty strict here, not even constant expressions are allowed..
@@ -2637,12 +2637,12 @@ struct AsmProcessor
 		    long words[3];
 		    real_to_target(words, & token->float80value.rv(), mode);
 		    // don't use directives..., just use .long like GCC
-		    insnTemplate->printf(".long\t%u", words[0]);
+		    insnTemplate->printf(".long %u", words[0]);
 		    if (mode != SFmode)
 			insnTemplate->printf(",%u", words[1]);
 		    // DMD outputs 10 bytes, so we need to switch to .short here
 		    if (mode == XFmode)
-			insnTemplate->printf("\n\t.short\t%u", words[2]);
+			insnTemplate->printf("\n .short %u", words[2]);
 		} else {
 		    stmt->error("expected float constant");
 		}
