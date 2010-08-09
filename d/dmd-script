@@ -109,21 +109,21 @@ Usage:
   -Dddocdir      write documentation file to docdir directory
   -Dffilename    write documentation file to filename
   -d             allow deprecated features
-  -f...          pass an -f... option to gdc
-  -framework ... pass a -framework ... option to gdc
   -debug         compile in debug code
   -debug=level   compile in debug code <= level
   -debug=ident   compile in debug code identified by ident
   -deps=filename write module dependencies to filename
+  -f...          pass an -f... option to gdc
   -fall-sources  for every source file, semantically process each file preceding it
+  -framework ... pass a -framework ... option to gdc
   -g             add symbolic debug info
   -gc            add symbolic debug info, pretend to be C
   -H             generate 'header' file
   -Hdhdrdir      write 'header' file to hdrdir directory
   -Hffilename    write 'header' file to filename
   --help         print help
-  -ignore        ignore unsupported pragmas
   -Ipath         where to look for imports
+  -ignore        ignore unsupported pragmas
   -inline        do function inlining
   -Jpath         where to look for string imports
   -Llinkerflag   pass linkerflag to link
@@ -250,12 +250,12 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-debug(?:=(.*))?$/ ) {
 	push @out, (defined($1) ? "-fdebug=$1" : '-fdebug');
     } elsif ( $arg =~ m/^-debuglib=(.*)$/ ) {
-	$debug_lib = $1;
+	push @link_out, '-debuglib', $1;
     } elsif ( $arg =~ m/^-debug.*$/ ) {
 	# Passing this to gdc only gives warnings; exit with an error here
 	errorExit "unrecognized switch '$arg'";
     } elsif ( $arg =~ m/^-defaultlib=(.*)$/ ) {
-	$default_lib = $1;
+	push @link_out, '-defaultlib', $1;
     } elsif ( $arg =~ m/^-deps=(.*)$/ ) {
 	push @out, (defined($1) ? "-fdeps=$1" : '-fdeps');
     } elsif ( $arg =~ m/^-g$/ ) {
@@ -561,14 +561,8 @@ foreach my $srcf_i (@sources) {
 }
 
 if ($ok && $link) {
-    my @override_lib = ();
-    if ($debug && defined($debug_lib)) {
-	@override_lib = ('-nophoboslib', "-l$debug_lib")
-    } elsif (! $debug && defined($default_lib)) {
-	@override_lib = ('-nophoboslib', "-l$default_lib")
-    }
 	
-    my @cmd = ($gdc, @out, @dobjects, @objects, @override_lib, @link_out);
+    my @cmd = ($gdc, @out, @dobjects, @objects, @link_out);
     if ( $output_file ) {
 	push @cmd, '-o', $output_file;
     }
