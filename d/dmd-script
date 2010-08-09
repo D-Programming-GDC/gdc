@@ -112,6 +112,8 @@ Usage:
   -debug         compile in debug code
   -debug=level   compile in debug code <= level
   -debug=ident   compile in debug code identified by ident
+  -debuglib=lib  use lib for compiling with debugging rather than phobos
+  -defaultlib=lib    use lib for compiling rather than phobos
   -deps=filename write module dependencies to filename
   -f...          pass an -f... option to gdc
   -fall-sources  for every source file, semantically process each file preceding it
