@@ -112,8 +112,8 @@ Usage:
   -debug         compile in debug code
   -debug=level   compile in debug code <= level
   -debug=ident   compile in debug code identified by ident
-  -debuglib=lib  use lib for compiling with debugging rather than phobos
-  -defaultlib=lib    use lib for compiling rather than phobos
+  -debuglib=lib  debug library to use instead of phobos
+  -defaultlib=lib    default library to use instead of phobos
   -deps=filename write module dependencies to filename
   -f...          pass an -f... option to gdc
   -fall-sources  for every source file, semantically process each file preceding it
@@ -153,6 +153,8 @@ Usage:
   -version=ident compile in version code identified by ident
   -w             enable warnings
   -wi            enable informational warnings
+  -X             generate JSON file
+  -Xffilename    write JSON file to filename
 EOF
 ;
 }
@@ -360,6 +362,12 @@ while ( $arg_i < scalar(@ARGV) ) {
 	# ignored
     } elsif ( $arg =~ m/^-q,(.*)$/ ) {
 	push @out, split(qr/,/, $1);
+	
+    } elsif ( $arg =~ m/^-X$/ ) {
+	push @out, '-fXf=' . substr($first_input_file, 0, length($first_input_file)-2) . ".json";;
+    } elsif ( $arg =~ m/^-Xf(.*)$/ ) {
+	push @out, '-fXf=' . $1
+	
     } elsif ( $arg eq '-fall-sources' ) {
 	$seen_all_sources_flag = 1;
     } elsif ( $arg =~ m/^-f.+/ ) {

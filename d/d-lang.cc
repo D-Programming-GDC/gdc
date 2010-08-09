@@ -29,6 +29,7 @@
 
 #if ! V2
 #include "async.h"
+#include "json.h"
 #endif
 
 #include <assert.h>
@@ -709,6 +710,10 @@ d_handle_option (size_t scode, const char *arg, int value)
       case OPT_Wsign_compare:
 	  gen.warnSignCompare = value;
 	  break;
+      case OPT_fXf_:
+	  global.params.doXGeneration = 1;
+	  global.params.xfilename = (char*)arg;
+	  break;
       default:
 	  break;
       }
@@ -1180,6 +1185,12 @@ d_parse_file (int /*set_yydebug*/)
     g.irs = & gen; // needed for FuncDeclaration::toObjFile shouldDefer check
     
     // Generate output files
+    
+#if V1
+    if (global.params.doXGeneration)
+	json_generate(&modules);
+#endif
+
     for (i = 0; i < modules.dim; i++)
     {
 	m = (Module *)modules.data[i];
