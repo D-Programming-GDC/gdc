@@ -42,6 +42,8 @@ elif grep version_string gcc/version.c | grep -q '"4.0'; then
     gcc_ver=4.0
 elif grep -q '^4\.1\.' gcc/BASE-VER; then
     gcc_ver=4.1
+elif grep -q '^4\.2\.' gcc/BASE-VER; then
+    gcc_ver=4.2
 elif grep -q '^4\.3\.' gcc/BASE-VER; then
     gcc_ver=4.3
 fi

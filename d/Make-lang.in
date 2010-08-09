@@ -229,28 +229,31 @@ D_GLUE_OBJS += d/d-cppmngl.glue.o
 endif
 
 ifdef D_is_apple_ver
- ifeq ($(D_gcc_main_ver),4.0)
-  D_GLUE_OBJS += d/d-apple-gcc.cglue.o
-  D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
- endif
+  ifeq ($(D_gcc_main_ver),4.0)
+    D_GLUE_OBJS += d/d-apple-gcc.cglue.o
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+  endif
 else
- ifeq ($(D_gcc_main_ver),3.4)
-   D_GLUE_OBJS += d/d-c-stubs.cglue.o
-   D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
-   D_EXTRA_LIBS += libcpp.a
- else
+  ifeq ($(D_gcc_main_ver),3.4)
+    D_GLUE_OBJS += d/d-c-stubs.cglue.o
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_EXTRA_LIBS += libcpp.a
+  endif
   ifeq ($(D_gcc_main_ver),4.1)
-   D_GLUE_OBJS += d/d-c-stubs.cglue.o
-   D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
-  else
-   ifeq ($(D_gcc_main_ver),4.3)
+    D_GLUE_OBJS += d/d-c-stubs.cglue.o
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+  endif 
+  ifeq ($(D_gcc_main_ver),4.2)
+    D_GLUE_OBJS += d/d-c-stubs.cglue.o
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_DRIVER_OBJS += opts-common.o gcc-options.o
+  endif 
+  ifeq ($(D_gcc_main_ver),4.3)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
     D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
     D_EXTRA_LIBS += $(GMPLIBS)
     D_DRIVER_OBJS += opts-common.o gcc-options.o
-   endif
   endif
- endif
 endif
 
 D_BORROWED_C_OBJS += 
