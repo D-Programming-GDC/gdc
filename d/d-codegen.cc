@@ -1211,11 +1211,10 @@ IRState::getLibCallDecl(LibCall lib_call)
 	    break;
 	case LIBCALL_NEWARRAYMTP:
 	case LIBCALL_NEWARRAYMITP:
-	    arg_types.push( Type::tsize_t );
-	    arg_types.push( Type::tint32 ); // Currently 'int', even if 64-bit
 	    arg_types.push( Type::typeinfo->type );
-	    if (lib_call == LIBCALL_NEWARRAYMITP)
-		arg_types.push( Type::tsize_t );
+	    arg_types.push( Type::tint32 ); // Currently 'int', even if 64-bit
+	    arg_types.push( Type::tsize_t );
+	    return_type = Type::tvoid->arrayOf();
 	    break;
 	case LIBCALL_ALLOCMEMORY:
 	    arg_types.push( Type::tsize_t );
