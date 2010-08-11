@@ -33,21 +33,12 @@ static tree handle_vector_size_attribute (tree *, tree, tree, int,
 					  bool *);
 static tree handle_nonnull_attribute (tree *, tree, tree, int, bool *);
 static tree handle_nothrow_attribute (tree *, tree, tree, int, bool *);
-/*not in gdc//static tree handle_cleanup_attribute (tree *, tree, tree, int, bool *);*/
+//static tree handle_cleanup_attribute (tree *, tree, tree, int, bool *);
 static tree handle_warn_unused_result_attribute (tree *, tree, tree, int,
 						 bool *);
-
-/*not in gdc//static void check_function_nonnull (tree, tree);*/
-static void check_nonnull_arg (void *, tree, unsigned HOST_WIDE_INT);
-static bool nonnull_check_p (tree, unsigned HOST_WIDE_INT);
 static bool get_nonnull_operand (tree, unsigned HOST_WIDE_INT *);
 
 /* extra for gdc copy: */
-static void check_function_arguments_recurse (void (*)
-					      (void *, tree,
-					       unsigned HOST_WIDE_INT),
-					      void *, tree,
-					      unsigned HOST_WIDE_INT);
 static tree
 handle_format_arg_attribute (tree *node ATTRIBUTE_UNUSED, tree name ATTRIBUTE_UNUSED,
 			     tree args ATTRIBUTE_UNUSED, int flags ATTRIBUTE_UNUSED, bool *no_add_attrs ATTRIBUTE_UNUSED)
@@ -130,8 +121,9 @@ const struct attribute_spec d_common_attribute_table[] =
   { "nothrow",                0, 0, true,  false, false,
 			      handle_nothrow_attribute },
   { "may_alias",	      0, 0, false, true, false, NULL },
-  /* not in gdc//  { "cleanup",		      1, 1, true, false, false,
-     handle_cleanup_attribute },*/
+/* not in gdc
+  { "cleanup",		      1, 1, true, false, false,
+			      handle_cleanup_attribute },*/
   { "warn_unused_result",     0, 0, false, true, true,
 			      handle_warn_unused_result_attribute },
   { NULL,                     0, 0, false, false, false, NULL }
@@ -1216,82 +1208,6 @@ handle_nonnull_attribute (tree *node, tree name ATTRIBUTE_UNUSED,
   return NULL_TREE;
 }
 
-#if 0
-/* not in gdc */
-/* Check the argument list of a function call for null in argument slots
-   that are marked as requiring a non-null pointer argument.  */
-
-static void
-check_function_nonnull (tree attrs, tree params)
-{
-  tree a, args, param;
-  int param_num;
-
-  for (a = attrs; a; a = TREE_CHAIN (a))
-    {
-      if (is_attribute_p ("nonnull", TREE_PURPOSE (a)))
-	{
-          args = TREE_VALUE (a);
-
-          /* Walk the argument list.  If we encounter an argument number we
-             should check for non-null, do it.  If the attribute has no args,
-             then every pointer argument is checked (in which case the check
-	     for pointer type is done in check_nonnull_arg).  */
-          for (param = params, param_num = 1; ;
-               param_num++, param = TREE_CHAIN (param))
-            {
-              if (! param)
-	break;
-              if (! args || nonnull_check_p (args, param_num))
-	check_function_arguments_recurse (check_nonnull_arg, NULL,
-					  TREE_VALUE (param),
-					  param_num);
-            }
-	}
-    }
-}
-#endif
-
-/* Helper for check_function_nonnull; given a list of operands which
-   must be non-null in ARGS, determine if operand PARAM_NUM should be
-   checked.  */
-
-static bool
-nonnull_check_p (tree args, unsigned HOST_WIDE_INT param_num)
-{
-  unsigned HOST_WIDE_INT arg_num;
-
-  for (; args; args = TREE_CHAIN (args))
-    {
-      if (! get_nonnull_operand (TREE_VALUE (args), &arg_num))
-        abort ();
-
-      if (arg_num == param_num)
-	return true;
-    }
-  return false;
-}
-
-/* Check that the function argument PARAM (which is operand number
-   PARAM_NUM) is non-null.  This is called by check_function_nonnull
-   via check_function_arguments_recurse.  */
-
-static void
-check_nonnull_arg (void *ctx ATTRIBUTE_UNUSED, tree param,
-		   unsigned HOST_WIDE_INT param_num)
-{
-  /* Just skip checking the argument if it's not a pointer.  This can
-     happen if the "nonnull" attribute was given without an operand
-     list (which means to check every pointer argument).  */
-
-  if (TREE_CODE (TREE_TYPE (param)) != POINTER_TYPE)
-    return;
-
-  if (integer_zerop (param))
-    warning ("null argument where non-null required (arg %lu)",
-             (unsigned long) param_num);
-}
-
 /* Helper for nonnull attribute handling; fetch the operand number
    from the attribute argument list.  */
 
@@ -1332,54 +1248,6 @@ handle_nothrow_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
   return NULL_TREE;
 }
 
-#if 0
-/* not in gdc */
-/* Handle a "cleanup" attribute; arguments as in
-   struct attribute_spec.handler.  */
-
-static tree
-handle_cleanup_attribute (tree *node, tree name, tree args,
-			  int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
-{
-  tree decl = *node;
-  tree cleanup_id, cleanup_decl;
-
-  /* ??? Could perhaps support cleanups on TREE_STATIC, much like we do
-     for global destructors in C++.  This requires infrastructure that
-     we don't have generically at the moment.  It's also not a feature
-     we'd be missing too much, since we do have attribute constructor.  */
-  if (TREE_CODE (decl) != VAR_DECL || TREE_STATIC (decl))
-    {
-      warning ("`%s' attribute ignored", IDENTIFIER_POINTER (name));
-      *no_add_attrs = true;
-      return NULL_TREE;
-    }
-
-  /* Verify that the argument is a function in scope.  */
-  /* ??? We could support pointers to functions here as well, if
-     that was considered desirable.  */
-  cleanup_id = TREE_VALUE (args);
-  if (TREE_CODE (cleanup_id) != IDENTIFIER_NODE)
-    {
-      error ("cleanup arg not an identifier");
-      *no_add_attrs = true;
-      return NULL_TREE;
-    }
-  cleanup_decl = lookup_name (cleanup_id);
-  if (!cleanup_decl || TREE_CODE (cleanup_decl) != FUNCTION_DECL)
-    {
-      error ("cleanup arg not a function");
-      *no_add_attrs = true;
-      return NULL_TREE;
-    }
-
-  /* That the function has proper type is checked with the
-     eventual call to build_function_call.  */
-
-  return NULL_TREE;
-}
-#endif
-
 /* Handle a "warn_unused_result" attribute.  No special handling.  */
 
 static tree
@@ -1397,105 +1265,3 @@ handle_warn_unused_result_attribute (tree *node, tree name,
   return NULL_TREE;
 }
 
-#if 0
-/* not in gdc */
-/* Check for valid arguments being passed to a function.  */
-static void
-check_function_arguments (tree attrs, tree params)
-{
-  /* Check for null being passed in a pointer argument that must be
-     non-null.  We also need to do this if format checking is enabled.  */
-
-  if (warn_nonnull)
-    check_function_nonnull (attrs, params);
-
-  /* Check for errors in format strings.  */
-
-  if (warn_format)
-    check_function_format (NULL, attrs, params);
-}
-#endif
-
-/* Generic argument checking recursion routine.  PARAM is the argument to
-   be checked.  PARAM_NUM is the number of the argument.  CALLBACK is invoked
-   once the argument is resolved.  CTX is context for the callback.  */
-void
-check_function_arguments_recurse (void (*callback)
-				  (void *, tree, unsigned HOST_WIDE_INT),
-				  void *ctx, tree param,
-				  unsigned HOST_WIDE_INT param_num)
-{
-  if (TREE_CODE (param) == NOP_EXPR)
-    {
-      /* Strip coercion.  */
-      check_function_arguments_recurse (callback, ctx,
-				        TREE_OPERAND (param, 0), param_num);
-      return;
-    }
-
-  if (TREE_CODE (param) == CALL_EXPR)
-    {
-      tree type = TREE_TYPE (TREE_TYPE (TREE_OPERAND (param, 0)));
-      tree attrs;
-      bool found_format_arg = false;
-
-      /* See if this is a call to a known internationalization function
-	 that modifies a format arg.  Such a function may have multiple
-	 format_arg attributes (for example, ngettext).  */
-
-      for (attrs = TYPE_ATTRIBUTES (type);
-	   attrs;
-	   attrs = TREE_CHAIN (attrs))
-	if (is_attribute_p ("format_arg", TREE_PURPOSE (attrs)))
-	  {
-	    tree inner_args;
-	    tree format_num_expr;
-	    int format_num;
-	    int i;
-
-	    /* Extract the argument number, which was previously checked
-	       to be valid.  */
-	    format_num_expr = TREE_VALUE (TREE_VALUE (attrs));
-	    while (TREE_CODE (format_num_expr) == NOP_EXPR
-		   || TREE_CODE (format_num_expr) == CONVERT_EXPR
-		   || TREE_CODE (format_num_expr) == NON_LVALUE_EXPR)
-	      format_num_expr = TREE_OPERAND (format_num_expr, 0);
-
-	    if (TREE_CODE (format_num_expr) != INTEGER_CST
-		|| TREE_INT_CST_HIGH (format_num_expr) != 0)
-	      abort ();
-
-	    format_num = TREE_INT_CST_LOW (format_num_expr);
-
-	    for (inner_args = TREE_OPERAND (param, 1), i = 1;
-		 inner_args != 0;
-		 inner_args = TREE_CHAIN (inner_args), i++)
-	      if (i == format_num)
-		{
-		  check_function_arguments_recurse (callback, ctx,
-						    TREE_VALUE (inner_args),
-						    param_num);
-		  found_format_arg = true;
-		  break;
-		}
-	  }
-
-      /* If we found a format_arg attribute and did a recursive check,
-	 we are done with checking this argument.  Otherwise, we continue
-	 and this will be considered a non-literal.  */
-      if (found_format_arg)
-	return;
-    }
-
-  if (TREE_CODE (param) == COND_EXPR)
-    {
-      /* Check both halves of the conditional expression.  */
-      check_function_arguments_recurse (callback, ctx,
-				        TREE_OPERAND (param, 1), param_num);
-      check_function_arguments_recurse (callback, ctx,
-				        TREE_OPERAND (param, 2), param_num);
-      return;
-    }
-
-  (*callback) (ctx, param, param_num);
-}

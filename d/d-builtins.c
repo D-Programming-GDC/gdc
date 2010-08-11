@@ -55,18 +55,20 @@ extern void dkeep(tree t);
 #endif
 
 
-#if D_GCC_VER < 40
-# ifdef D_GCC_VER341
-#  include "d-bi-attrs-341.h"
-# else
-#  include "d-bi-attrs-34.h"
-# endif
-#elif D_GCC_VER < 41
+#if D_GCC_VER341
+#include "d-bi-attrs-341.h"
+#elif D_GCC_VER == 34
+#include "d-bi-attrs-34.h"
+#elif D_GCC_VER == 40
 #include "d-bi-attrs-40.h"
-#elif D_GCC_VER < 43
+#elif D_GCC_VER == 41
 #include "d-bi-attrs-41.h"
-#else
+#elif D_GCC_VER == 42
+#include "d-bi-attrs-42.h"
+#elif D_GCC_VER == 43
 #include "d-bi-attrs-43.h"
+#else
+#error "Version of GCC is not supported."
 #endif
 
 #if D_GCC_VER >= 41
@@ -267,10 +269,8 @@ def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
     {
 	builtin_type a = va_arg (list, builtin_type);
 	t = builtin_types[(int) a];
-#if D_GCC_VER >= 43
 	if (t == error_mark_node)
 	    goto egress;
-#endif
 	args = tree_cons (NULL_TREE, t, args);
     }
     va_end (list);
@@ -280,10 +280,8 @@ def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
 	args = chainon (args, void_list_node);
 
     t = builtin_types[(int) ret];
-#if D_GCC_VER >= 43
     if (t == error_mark_node)
 	goto egress;
-#endif
     t = build_function_type (t, args);
 
 egress:

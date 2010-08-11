@@ -44,19 +44,9 @@ static tree handle_warn_unused_result_attribute (tree *, tree, tree, int,
 						 bool *);
 static tree handle_sentinel_attribute (tree *, tree, tree, int, bool *);
 
-//static void check_function_nonnull (tree, tree);
-static void check_nonnull_arg (void *, tree, unsigned HOST_WIDE_INT);
-static bool nonnull_check_p (tree, unsigned HOST_WIDE_INT);
 static bool get_nonnull_operand (tree, unsigned HOST_WIDE_INT *);
-//static int resort_field_decl_cmp (const void *, const void *);
 
 /* extra for gdc copy: */
-static void check_function_arguments_recurse (void (*)
-					      (void *, tree,
-					       unsigned HOST_WIDE_INT),
-					      void *, tree,
-					      unsigned HOST_WIDE_INT);
-
 static tree
 handle_format_arg_attribute (tree *node ATTRIBUTE_UNUSED, tree name ATTRIBUTE_UNUSED,
 			     tree args ATTRIBUTE_UNUSED, int flags ATTRIBUTE_UNUSED, bool *no_add_attrs ATTRIBUTE_UNUSED)
@@ -70,21 +60,6 @@ handle_format_attribute (tree *node ATTRIBUTE_UNUSED, tree name ATTRIBUTE_UNUSED
     return NULL_TREE;
 }
 /* -- end extra */
-
-/* more copied... */
-
-/* Warn about using __null (as NULL in C++) as sentinel.  For code compiled
-   with GCC this doesn't matter as __null is guaranteed to have the right
-   size.  */
-
-int warn_strict_null_sentinel;
-
-/* Warn about format/argument anomalies in calls to formatted I/O functions
-   (*printf, *scanf, strftime, strfmon, etc.).  */
-
-int warn_format;
-
-/* end more copied-- */
 
 /* Table of machine-independent attributes common to all C-like languages.  */
 const struct attribute_spec d_common_attribute_table[] =
@@ -165,10 +140,9 @@ const struct attribute_spec d_common_attribute_table[] =
   { "nothrow",                0, 0, true,  false, false,
 			      handle_nothrow_attribute },
   { "may_alias",	      0, 0, false, true, false, NULL },
-  /* not in gdc
+/* not in gdc
   { "cleanup",		      1, 1, true, false, false,
-			      handle_cleanup_attribute },
-  */
+			      handle_cleanup_attribute },*/
   { "warn_unused_result",     0, 0, false, true, true,
 			      handle_warn_unused_result_attribute },
   { "sentinel",               0, 1, false, true, true,
@@ -1039,41 +1013,6 @@ handle_visibility_attribute (tree *node, tree name, tree args,
   return NULL_TREE;
 }
 
-/* Determine the ELF symbol visibility for DECL, which is either a
-   variable or a function.  It is an error to use this function if a
-   definition of DECL is not available in this translation unit.
-   Returns true if the final visibility has been determined by this
-   function; false if the caller is free to make additional
-   modifications.  */
-
-bool
-c_determine_visibility (tree decl)
-{
-  gcc_assert (TREE_CODE (decl) == VAR_DECL
-	      || TREE_CODE (decl) == FUNCTION_DECL);
-
-  /* If the user explicitly specified the visibility with an
-     attribute, honor that.  DECL_VISIBILITY will have been set during
-     the processing of the attribute.  We check for an explicit
-     attribute, rather than just checking DECL_VISIBILITY_SPECIFIED,
-     to distinguish the use of an attribute from the use of a "#pragma
-     GCC visibility push(...)"; in the latter case we still want other
-     considerations to be able to overrule the #pragma.  */
-  if (lookup_attribute ("visibility", DECL_ATTRIBUTES (decl)))
-    return true;
-
-  /* Anything that is exported must have default visibility.  */
-  if (TARGET_DLLIMPORT_DECL_ATTRIBUTES
-      && lookup_attribute ("dllexport", DECL_ATTRIBUTES (decl)))
-    {
-      DECL_VISIBILITY (decl) = VISIBILITY_DEFAULT;
-      DECL_VISIBILITY_SPECIFIED (decl) = 1;
-      return true;
-    }
-
-  return false;
-}
-
 /* Handle an "tls_model" attribute; arguments as in
    struct attribute_spec.handler.  */
 
@@ -1443,148 +1382,6 @@ handle_nonnull_attribute (tree *node, tree ARG_UNUSED (name),
   return NULL_TREE;
 }
 
-/* Check the argument list of a function call for null in argument slots
-   that are marked as requiring a non-null pointer argument.  */
-
-static void
-check_function_nonnull (tree attrs, tree params)
-{
-  tree a, args, param;
-  int param_num;
-
-  for (a = attrs; a; a = TREE_CHAIN (a))
-    {
-      if (is_attribute_p ("nonnull", TREE_PURPOSE (a)))
-	{
-	  args = TREE_VALUE (a);
-
-	  /* Walk the argument list.  If we encounter an argument number we
-	     should check for non-null, do it.  If the attribute has no args,
-	     then every pointer argument is checked (in which case the check
-	     for pointer type is done in check_nonnull_arg).  */
-	  for (param = params, param_num = 1; ;
-	       param_num++, param = TREE_CHAIN (param))
-	    {
-	      if (!param)
-	break;
-	      if (!args || nonnull_check_p (args, param_num))
-	check_function_arguments_recurse (check_nonnull_arg, NULL,
-					  TREE_VALUE (param),
-					  param_num);
-	    }
-	}
-    }
-}
-
-/* Check that the Nth argument of a function call (counting backwards
-   from the end) is a (pointer)0.  */
-
-static void
-check_function_sentinel (tree attrs, tree params, tree typelist)
-{
-  tree attr = lookup_attribute ("sentinel", attrs);
-
-  if (attr)
-    {
-      /* Skip over the named arguments.  */
-      while (typelist && params)
-      {
-	typelist = TREE_CHAIN (typelist);
-	params = TREE_CHAIN (params);
-      }
-      
-      if (typelist || !params)
-	warning (OPT_Wformat,
-		 "not enough variable arguments to fit a sentinel");
-      else
-        {
-	  tree sentinel, end;
-	  unsigned pos = 0;
-	  
-	  if (TREE_VALUE (attr))
-	    {
-	      tree p = TREE_VALUE (TREE_VALUE (attr));
-	      pos = TREE_INT_CST_LOW (p);
-	    }
-
-	  sentinel = end = params;
-
-	  /* Advance `end' ahead of `sentinel' by `pos' positions.  */
-	  while (pos > 0 && TREE_CHAIN (end))
-	    {
-	      pos--;
-	      end = TREE_CHAIN (end);
-	    }
-	  if (pos > 0)
-	    {
-	      warning (OPT_Wformat,
-		       "not enough variable arguments to fit a sentinel");
-	      return;
-	    }
-
-	  /* Now advance both until we find the last parameter.  */
-	  while (TREE_CHAIN (end))
-	    {
-	      end = TREE_CHAIN (end);
-	      sentinel = TREE_CHAIN (sentinel);
-	    }
-
-	  /* Validate the sentinel.  */
-	  if ((!POINTER_TYPE_P (TREE_TYPE (TREE_VALUE (sentinel)))
-	       || !integer_zerop (TREE_VALUE (sentinel)))
-	      /* Although __null (in C++) is only an integer we allow it
-		 nevertheless, as we are guaranteed that it's exactly
-		 as wide as a pointer, and we don't want to force
-		 users to cast the NULL they have written there.
-		 We warn with -Wstrict-null-sentinel, though.  */
-              && (warn_strict_null_sentinel
-		  || null_node != TREE_VALUE (sentinel)))
-	    warning (OPT_Wformat, "missing sentinel in function call");
-	}
-    }
-}
-
-/* Helper for check_function_nonnull; given a list of operands which
-   must be non-null in ARGS, determine if operand PARAM_NUM should be
-   checked.  */
-
-static bool
-nonnull_check_p (tree args, unsigned HOST_WIDE_INT param_num)
-{
-  unsigned HOST_WIDE_INT arg_num = 0;
-
-  for (; args; args = TREE_CHAIN (args))
-    {
-      bool found = get_nonnull_operand (TREE_VALUE (args), &arg_num);
-
-      gcc_assert (found);
-
-      if (arg_num == param_num)
-	return true;
-    }
-  return false;
-}
-
-/* Check that the function argument PARAM (which is operand number
-   PARAM_NUM) is non-null.  This is called by check_function_nonnull
-   via check_function_arguments_recurse.  */
-
-static void
-check_nonnull_arg (void * ARG_UNUSED (ctx), tree param,
-		   unsigned HOST_WIDE_INT param_num)
-{
-  /* Just skip checking the argument if it's not a pointer.  This can
-     happen if the "nonnull" attribute was given without an operand
-     list (which means to check every pointer argument).  */
-
-  if (TREE_CODE (TREE_TYPE (param)) != POINTER_TYPE)
-    return;
-
-  if (integer_zerop (param))
-    warning (OPT_Wnonnull, "null argument where non-null required "
-	     "(argument %lu)", (unsigned long) param_num);
-}
-
 /* Helper for nonnull attribute handling; fetch the operand number
    from the attribute argument list.  */
 
@@ -1685,102 +1482,3 @@ handle_sentinel_attribute (tree *node, tree name, tree args,
   return NULL_TREE;
 }
 
-/* Check for valid arguments being passed to a function.  */
-void
-check_function_arguments (tree attrs, tree params, tree typelist)
-{
-  /* Check for null being passed in a pointer argument that must be
-     non-null.  We also need to do this if format checking is enabled.  */
-
-  if (warn_nonnull)
-    check_function_nonnull (attrs, params);
-
-  /* Check for errors in format strings.  */
-
-  /* disabled in gdc
-  if (warn_format || warn_missing_format_attribute)
-      check_function_format (attrs, params);
-  */
-
-  if (warn_format)
-    check_function_sentinel (attrs, params, typelist);
-}
-
-/* Generic argument checking recursion routine.  PARAM is the argument to
-   be checked.  PARAM_NUM is the number of the argument.  CALLBACK is invoked
-   once the argument is resolved.  CTX is context for the callback.  */
-void
-check_function_arguments_recurse (void (*callback)
-				  (void *, tree, unsigned HOST_WIDE_INT),
-				  void *ctx, tree param,
-				  unsigned HOST_WIDE_INT param_num)
-{
-  if (TREE_CODE (param) == NOP_EXPR)
-    {
-      /* Strip coercion.  */
-      check_function_arguments_recurse (callback, ctx,
-					TREE_OPERAND (param, 0), param_num);
-      return;
-    }
-
-  if (TREE_CODE (param) == CALL_EXPR)
-    {
-      tree type = TREE_TYPE (TREE_TYPE (TREE_OPERAND (param, 0)));
-      tree attrs;
-      bool found_format_arg = false;
-
-      /* See if this is a call to a known internationalization function
-	 that modifies a format arg.  Such a function may have multiple
-	 format_arg attributes (for example, ngettext).  */
-
-      for (attrs = TYPE_ATTRIBUTES (type);
-	   attrs;
-	   attrs = TREE_CHAIN (attrs))
-	if (is_attribute_p ("format_arg", TREE_PURPOSE (attrs)))
-	  {
-	    tree inner_args;
-	    tree format_num_expr;
-	    int format_num;
-	    int i;
-
-	    /* Extract the argument number, which was previously checked
-	       to be valid.  */
-	    format_num_expr = TREE_VALUE (TREE_VALUE (attrs));
-
-	    gcc_assert (TREE_CODE (format_num_expr) == INTEGER_CST
-			&& !TREE_INT_CST_HIGH (format_num_expr));
-
-	    format_num = TREE_INT_CST_LOW (format_num_expr);
-
-	    for (inner_args = TREE_OPERAND (param, 1), i = 1;
-		 inner_args != 0;
-		 inner_args = TREE_CHAIN (inner_args), i++)
-	      if (i == format_num)
-		{
-		  check_function_arguments_recurse (callback, ctx,
-						    TREE_VALUE (inner_args),
-						    param_num);
-		  found_format_arg = true;
-		  break;
-		}
-	  }
-
-      /* If we found a format_arg attribute and did a recursive check,
-	 we are done with checking this argument.  Otherwise, we continue
-	 and this will be considered a non-literal.  */
-      if (found_format_arg)
-	return;
-    }
-
-  if (TREE_CODE (param) == COND_EXPR)
-    {
-      /* Check both halves of the conditional expression.  */
-      check_function_arguments_recurse (callback, ctx,
-					TREE_OPERAND (param, 1), param_num);
-      check_function_arguments_recurse (callback, ctx,
-					TREE_OPERAND (param, 2), param_num);
-      return;
-    }
-
-  (*callback) (ctx, param, param_num);
-}
