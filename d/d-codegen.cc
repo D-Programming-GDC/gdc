@@ -821,7 +821,6 @@ IRState::hwi2toli(HOST_WIDE_INT low, HOST_WIDE_INT high)
 
 
 #if D_GCC_VER >= 40
-int xxx;
 tree
 IRState::binding(tree var_chain, tree body)
 {
@@ -832,46 +831,6 @@ IRState::binding(tree var_chain, tree body)
     // %%EXPER -- if a BIND_EXPR is an a SAVE_EXPR, gimplify dies
     // in mostly_copy_tree_r.  prevent the latter from seeing
     // our shameful BIND_EXPR by wrapping it in a TARGET_EXPR
-    
-    /*
-    
-    tree bt = build3(BIND_EXPR, TREE_TYPE(body), var_chain, body, NULL_TREE);
-    tree tt = build_decl(VAR_DECL, NULL_TREE, TREE_TYPE(bt));
-    DECL_CONTEXT( tt ) = DECL_CONTEXT(var_chain); // cheat -> exprVar
-    DECL_ARTIFICIAL( tt ) = 1;
-    DECL_IGNORED_P( tt ) = 1;    
-    
-    return build4(TARGET_EXPR, TREE_TYPE(tt), tt, bt, NULL_TREE, NULL_TREE);
-    
-    */
-    /*
-    tree ini = DECL_INITIAL(var_chain);
-    DECL_INITIAL(var_chain) = NULL_TREE;
-    
-    return compound( build4(TARGET_EXPR, void_type_node, var_chain, ini,
-	NULL_TREE, NULL_TREE), body );
-    */
-    /*
-    tree ini = DECL_INITIAL(var_chain);
-    if (ini)
-    {
-	DECL_INITIAL(var_chain) = NULL_TREE;
-	
-	return compound( build4(TARGET_EXPR, void_type_node, var_chain, ini,
-	    NULL_TREE, NULL_TREE), body );
-    }
-    else
-    {
-	 ++xxx;
-	 
-	tree bt = build3(BIND_EXPR, TREE_TYPE(body), var_chain, body, NULL_TREE);
-	tree tt = build_decl(VAR_DECL, NULL_TREE, TREE_TYPE(bt));
-	DECL_CONTEXT( tt ) = DECL_CONTEXT(var_chain); // cheat -> exprVar
-	DECL_ARTIFICIAL( tt ) = 1;
-	DECL_IGNORED_P( tt ) = 1;    
-
-	return build4(TARGET_EXPR, TREE_TYPE(tt), tt, bt, NULL_TREE, NULL_TREE);
-    }*/
     if ( DECL_INITIAL(var_chain) )
     {
 	tree ini = build2(MODIFY_EXPR, void_type_node, var_chain, DECL_INITIAL(var_chain));
