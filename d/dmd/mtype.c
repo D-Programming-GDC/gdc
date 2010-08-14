@@ -107,10 +107,12 @@ int REALALIGNSIZE = 16;
 int REALSIZE = 12;
 int REALPAD = 2;
 int REALALIGNSIZE = 4;
-#else
+#elif TARGET_WINDOS
 int REALSIZE = 10;
 int REALPAD = 0;
 int REALALIGNSIZE = 2;
+#else
+#error "fix this"
 #endif
 
 int Tsize_t = Tuns32;
@@ -269,9 +271,11 @@ void Type::init()
     {
         PTRSIZE = 8;
         if (global.params.isLinux || global.params.isFreeBSD || global.params.isSolaris)
-            REALSIZE = 10;
-        else
-            REALSIZE = 8;
+        {
+            REALSIZE = 16;
+            REALPAD = 6;
+            REALALIGNSIZE = 16;
+        }
         Tsize_t = Tuns64;
         Tptrdiff_t = Tint64;
         Tindex = Tint64;
@@ -4841,6 +4845,9 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident)
         exps->reserve(sym->fields.dim);
         for (size_t i = 0; i < sym->fields.dim; i++)
         {   VarDeclaration *v = (VarDeclaration *)sym->fields.data[i];
+            // Don't include hidden 'this' pointer
+            if (v->isThisDeclaration())
+                continue;
             Expression *fe = new DotVarExp(e->loc, e, v);
             exps->push(fe);
         }

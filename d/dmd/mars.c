@@ -87,13 +87,27 @@ Global::Global()
     lib_ext = "a";
 #endif
 
+#ifndef IN_GCC
+#if TARGET_WINDOS
+    dll_ext  = "dll";
+#elif TARGET_LINUX || TARGET_FREEBSD || TARGET_SOLARIS
+    dll_ext  = "so";
+#elif TARGET_OSX
+    dll_ext = "dylib";
+#else
+#error "fix this"
+#endif
+#else
+    dll_ext  = "so";
+#endif
+
     copyright = "Copyright (c) 1999-2010 by Digital Mars";
     written = "written by Walter Bright"
 #if TARGET_NET
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
 #endif
     ;
-    version = "v1.062";
+    version = "v1.063";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -271,8 +285,11 @@ Usage:\n\
   -debug=ident   compile in debug code identified by ident\n\
   -debuglib=name    set symbolic debug library to name\n\
   -defaultlib=name  set default library to name\n\
-  -deps=filename write module dependencies to filename\n%s\
-  -g             add symbolic debug info\n\
+  -deps=filename write module dependencies to filename\n%s"
+#if TARGET_OSX
+"  -dylib         generate dylib\n"
+#endif
+"  -g             add symbolic debug info\n\
   -gc            add symbolic debug info, pretend to be C\n\
   -H             generate 'header' file\n\
   -Hddirectory   write 'header' file to directory\n\
@@ -438,7 +455,11 @@ int main(int argc, char *argv[])
             else if (strcmp(p + 1, "fPIC") == 0)
                 global.params.pic = 1;
 #endif
-                else if (strcmp(p + 1, "map") == 0)
+#if TARGET_OSX
+            else if (strcmp(p + 1, "dylib") == 0)
+                global.params.dll = 1;
+#endif
+            else if (strcmp(p + 1, "map") == 0)
                 global.params.map = 1;
             else if (strcmp(p + 1, "multiobj") == 0)
                 global.params.multiobj = 1;
@@ -450,6 +471,8 @@ int main(int argc, char *argv[])
             {   error("use -profile instead of -gt\n");
                 global.params.trace = 1;
             }
+            else if (strcmp(p + 1, "m32") == 0)
+                global.params.isX86_64 = 0;
             else if (strcmp(p + 1, "m64") == 0)
                 global.params.isX86_64 = 1;
             else if (strcmp(p + 1, "profile") == 0)

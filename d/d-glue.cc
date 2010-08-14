@@ -3679,8 +3679,12 @@ ClassDeclaration::toDebug()
 void
 LabelStatement::toIR(IRState* irs)
 {
-    FuncDeclaration * func = irs->func; 
+    FuncDeclaration * func = irs->func;
+#if V1
+    LabelDsymbol * label = fwdrefs ? func->returnLabel : func->searchLabel(ident);
+#else
     LabelDsymbol * label = isReturnLabel ? func->returnLabel : func->searchLabel(ident);
+#endif
     tree t = irs->getLabelTree( label  );
 
     if (t) {
@@ -3689,7 +3693,11 @@ LabelStatement::toIR(IRState* irs)
 	if (label->asmLabelNum)
 	    d_expand_priv_asm_label(irs, label->asmLabelNum);
 
+#if V1
+	if (fwdrefs && func->fensure)
+#else
 	if (isReturnLabel && func->fensure)
+#endif
 	    func->fensure->toIR(irs);
 	else if (statement)
 	    statement->toIR(irs);

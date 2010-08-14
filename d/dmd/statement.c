@@ -1840,7 +1840,12 @@ Statement *ForeachStatement::semantic(Scope *sc)
                    aggr = aggr->castTo(sc, tn->arrayOf());
                 exps->push(aggr);
                 exps->push(flde);
-                e = new CallExp(loc, ec, exps);
+                if (aggr->op == TOKdelegate &&
+                    ((DelegateExp *)aggr)->func->isNested())
+                    // See Bugzilla 3560
+                    e = new CallExp(loc, ((DelegateExp *)aggr)->e1, exps);
+                else
+                    e = new CallExp(loc, ec, exps);
                 e->type = Type::tint32; // don't run semantic() on e
             }
             else if (tab->ty == Tdelegate)
@@ -3789,10 +3794,12 @@ Statement *WithStatement::semantic(Scope *sc)
     else if (exp->op == TOKtype)
     {   TypeExp *es = (TypeExp *)exp;
 
-        sym = es->type->toDsymbol(sc)->isScopeDsymbol();
+        Dsymbol *s = es->type->toDsymbol(sc);
+        sym = s ? s->isScopeDsymbol() : NULL;
         if (!sym)
-        {   error("%s has no members", es->toChars());
-            body = body->semantic(sc);
+        {   error("with type %s has no members", es->toChars());
+            if (body)
+                body = body->semantic(sc);
             return this;
         }
     }
@@ -4345,7 +4352,7 @@ LabelStatement::LabelStatement(Loc loc, Identifier *ident, Statement *statement)
     this->statement = statement;
     this->tf = NULL;
     this->lblock = NULL;
-    this->isReturnLabel = 0;
+    this->fwdrefs = NULL;
 }
 
 Statement *LabelStatement::syntaxCopy()

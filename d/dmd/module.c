@@ -89,6 +89,7 @@ Module::Module(char *filename, Identifier *ident, int doDocComment, int doHdrGen
     decldefs = NULL;
     vmoduleinfo = NULL;
     massert = NULL;
+    munittest = NULL;
     marray = NULL;
     sictor = NULL;
     sctor = NULL;
@@ -350,15 +351,20 @@ void Module::read(Loc loc)
 {
     //printf("Module::read('%s') file '%s'\n", toChars(), srcfile->toChars());
     if (srcfile->read())
-    {   error(loc, "cannot read file '%s'", srcfile->toChars());
+    {   error(loc, "is in file '%s' which cannot be read", srcfile->toChars());
         if (!global.gag)
         {   /* Print path
              */
-            for (size_t i = 0; i < global.path->dim; i++)
+            if (global.path)
             {
-                char *p = (char *)global.path->data[i];
-                fprintf(stdmsg, "import path[%d] = %s\n", i, p);
+                for (int i = 0; i < global.path->dim; i++)
+                {
+                    char *p = (char *)global.path->data[i];
+                    fprintf(stdmsg, "import path[%d] = %s\n", i, p);
+                }
             }
+        else
+            fprintf(stdmsg, "Specify path to file '%s' with -I switch\n", srcfile->toChars());
         }
         fatal();
     }
@@ -775,6 +781,14 @@ void Module::semantic()
         s->setScope(sc);
     }
 #endif
+
+    // Do semantic() on members that don't depend on others
+    for (int i = 0; i < members->dim; i++)
+    {   Dsymbol *s = (Dsymbol *)members->data[i];
+
+        //printf("\tModule('%s'): '%s'.semantic0()\n", toChars(), s->toChars());
+        s->semantic0(sc);
+    }
 
     // Pass 1 semantic routines: do public side of the definition
     for (int i = 0; i < members->dim; i++)

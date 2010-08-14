@@ -148,7 +148,7 @@ uint __eh_find_caller(uint regbp, uint *pretaddr)
 
 extern (Windows) void _d_throw(Object *h)
 {
-    uint regebp;
+    size_t regebp;
 
     debug
     {
@@ -261,7 +261,7 @@ extern (Windows) void _d_throw(Object *h)
 
 			// Jump to catch block. Does not return.
 			{
-			    uint catch_esp;
+			    size_t catch_esp;
 			    fp_t catch_addr;
 
 			    catch_addr = cast(fp_t)(pcb.code);
