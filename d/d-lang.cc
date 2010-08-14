@@ -1557,7 +1557,7 @@ tree
 d_signed_or_unsigned_type (int unsignedp, tree type)
 {
   if (! INTEGRAL_TYPE_P (type)
-      || TREE_UNSIGNED (type) == (unsigned) unsignedp)
+      || TYPE_UNSIGNED (type) == (unsigned) unsignedp)
     return type;
 
   if (TYPE_PRECISION (type) == TYPE_PRECISION (signed_char_type_node))
@@ -1591,10 +1591,6 @@ d_signed_or_unsigned_type (int unsignedp, tree type)
 
   return type;
 }
-
-#if D_GCC_VER < 40
-#define TYPE_UNSIGNED TREE_UNSIGNED
-#endif
 
 /* Type promotion for variable arguments.  */
 tree

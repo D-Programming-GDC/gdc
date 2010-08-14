@@ -412,8 +412,8 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 	    exp = d_convert_basic(d_type_for_size(POINTER_SIZE, 1), exp);
 	break;
     default:
-	if (exp_type->isreal() && target_type->isimaginary() ||
-	    exp_type->isimaginary() && target_type->isreal()) {
+	if (( exp_type->isreal() && target_type->isimaginary() )
+	    || ( exp_type->isimaginary() && target_type->isreal() )) {
 	    // warn? handle in front end?
 	    
 	    result = build_real_from_int_cst( target_type->toCtype(), integer_zero_node );
@@ -685,9 +685,9 @@ IRState::pointerIntSum(tree ptr_node, tree idx_exp)
     {
 	
 	if (TYPE_PRECISION (TREE_TYPE (intop)) != TYPE_PRECISION (sizetype)
-	    || TREE_UNSIGNED (TREE_TYPE (intop)) != TREE_UNSIGNED (sizetype))
+	    || TYPE_UNSIGNED (TREE_TYPE (intop)) != TYPE_UNSIGNED (sizetype))
 	    intop = convert (d_type_for_size (TYPE_PRECISION (sizetype), 
-				 TREE_UNSIGNED (sizetype)), intop);
+				 TYPE_UNSIGNED (sizetype)), intop);
 	intop = convert (prod_result_type,
 	    build2/*_binary_op*/ (MULT_EXPR, TREE_TYPE(size_exp), intop,  // the type here may be wrong %%
 		convert (TREE_TYPE (intop), size_exp)));
@@ -767,7 +767,7 @@ IRState::boundsCond(tree index, tree upper_bound, bool inclusive)
 	convert( d_unsigned_type(TREE_TYPE(index)), index ),
 	upper_bound);
     
-    if (! TREE_UNSIGNED( TREE_TYPE( index ))) {
+    if (! TYPE_UNSIGNED( TREE_TYPE( index ))) {
 	bound_check = build2(TRUTH_ANDIF_EXPR, boolean_type_node, bound_check,
 	    // %% conversions
 	    build2(GE_EXPR, boolean_type_node, index, integer_zero_node));
@@ -2438,7 +2438,7 @@ IRState::integerConstant(xdmd_integer_t value, tree type)
     tree tree_value = build_int_2(value & 0xffffffff, (value >> 32) & 0xffffffff);
 # elif HOST_BITS_PER_WIDE_INT == 64
     tree tree_value = build_int_2(value,
-	type && ! TREE_UNSIGNED(type) && (value & 0x8000000000000000ULL) ?
+	type && ! TYPE_UNSIGNED(type) && (value & 0x8000000000000000ULL) ?
 	~(unsigned HOST_WIDE_INT) 0 : 0);
 # else
 #  error Fix This

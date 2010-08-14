@@ -202,9 +202,11 @@ extern GTY(()) tree d_keep_list;
 #include "d-dmd-gcc.h"
 
 #if D_GCC_VER >= 40
-#define TREE_UNSIGNED TYPE_UNSIGNED
 #define build_type_copy	build_variant_type_copy
+#else
+#define TYPE_UNSIGNED TREE_UNSIGNED
 #endif
+
 
 typedef HOST_WIDE_INT hwint;
 typedef unsigned HOST_WIDE_INT uhwint;

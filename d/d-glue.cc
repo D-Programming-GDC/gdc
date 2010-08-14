@@ -53,8 +53,8 @@ signed_compare_check(tree * e1, tree * e2)
     tree t2 = TREE_TYPE( *e2 );
     if (INTEGRAL_TYPE_P( t1 ) &&
 	INTEGRAL_TYPE_P( t2 )) {
-	int u1 = TREE_UNSIGNED( t1 );
-	int u2 = TREE_UNSIGNED( t2 );
+	int u1 = TYPE_UNSIGNED( t1 );
+	int u2 = TYPE_UNSIGNED( t2 );
 
 	if (u1 ^ u2) {
 	    if (gen.warnSignCompare) {
@@ -3178,7 +3178,7 @@ TypeEnum::toCtype()
 	TYPE_MAX_VALUE( ctype ) = gen.integerConstant(sym->maxval, enum_mem_type_node);
 #endif
 	layout_type( ctype );
-	TREE_UNSIGNED( ctype ) = isunsigned() != 0; // layout_type can change this
+	TYPE_UNSIGNED( ctype ) = isunsigned() != 0; // layout_type can change this
 
 	// Move this to toDebug() ?
 	ListMaker enum_values;

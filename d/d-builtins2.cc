@@ -92,7 +92,7 @@ gcc_type_to_d_type(tree t)
     case INTEGER_TYPE:
 	{
 	    unsigned sz = tree_low_cst( TYPE_SIZE_UNIT( t ), 1 );
-	    bool unsgn = TREE_UNSIGNED( t );
+	    bool unsgn = TYPE_UNSIGNED( t );
 
 	    // This search assumes that integer types come before char and bit...
 	    for (int i = 0; i < (int) TMAX; i++) {
