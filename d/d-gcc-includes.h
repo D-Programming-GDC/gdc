@@ -88,8 +88,6 @@ extern "C" {
 #if D_GCC_VER <= 43
 #  ifdef USE_MAPPED_LOCATION
 #    define D_USE_MAPPED_LOCATION 1
-#  else
-#    define D_USE_MAPPED_LOCATION 0
 #  endif
 #else
 #define D_USE_MAPPED_LOCATION 1
