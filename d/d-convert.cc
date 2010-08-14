@@ -19,108 +19,15 @@
 #include "d-gcc-includes.h"
 #include "d-lang.h"
 
-/* Perform default promotions for C data used in expressions.
-   Arrays and functions are converted to pointers;
-   enumeral types or short or char, to int.
-   In addition, manifest constants symbols are replaced by their values.  */
-
-extern "C" tree
-default_conversion (tree exp)
-{
-#if 0
-  tree orig_exp;
-  tree type = TREE_TYPE (exp);
-  enum tree_code code = TREE_CODE (type);
-
-  if (code == FUNCTION_TYPE || code == ARRAY_TYPE)
-    return default_function_array_conversion (exp);
-
-  /* Constants can be used directly unless they're not loadable.  */
-  if (TREE_CODE (exp) == CONST_DECL)
-    exp = DECL_INITIAL (exp);
-
-  /* Replace a nonvolatile const static variable with its value unless
-     it is an array, in which case we must be sure that taking the
-     address of the array produces consistent results.  */
-  else if (gcc_optimize() && TREE_CODE (exp) == VAR_DECL && code != ARRAY_TYPE)
-    {
-      exp = decl_constant_value_for_broken_optimization (exp);
-      type = TREE_TYPE (exp);
-    }
-
-  /* Strip NON_LVALUE_EXPRs and no-op conversions, since we aren't using as
-     an lvalue. 
-
-     Do not use STRIP_NOPS here!  It will remove conversions from pointer
-     to integer and cause infinite recursion.  */
-  orig_exp = exp;
-  while (TREE_CODE (exp) == NON_LVALUE_EXPR
-	 || (TREE_CODE (exp) == NOP_EXPR
-	     && TREE_TYPE (TREE_OPERAND (exp, 0)) == TREE_TYPE (exp)))
-    exp = TREE_OPERAND (exp, 0);
-
-  /* Preserve the original expression code.  */
-  if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (TREE_CODE (exp))))
-    C_SET_EXP_ORIGINAL_CODE (exp, C_EXP_ORIGINAL_CODE (orig_exp));
-
-  /* Normally convert enums to int,
-     but convert wide enums to something wider.  */
-  if (code == ENUMERAL_TYPE)
-    {
-      type = c_common_type_for_size (MAX (TYPE_PRECISION (type),
-					  TYPE_PRECISION (integer_type_node)),
-				     ((TYPE_PRECISION (type)
-				       >= TYPE_PRECISION (integer_type_node))
-				      && TREE_UNSIGNED (type)));
-
-      return convert (type, exp);
-    }
-
-  if (TREE_CODE (exp) == COMPONENT_REF
-      && DECL_C_BIT_FIELD (TREE_OPERAND (exp, 1))
-      /* If it's thinner than an int, promote it like a
-	 c_promoting_integer_type_p, otherwise leave it alone.  */
-      && 0 > compare_tree_int (DECL_SIZE (TREE_OPERAND (exp, 1)),
-			       TYPE_PRECISION (integer_type_node)))
-    return convert (integer_type_node, exp);
-
-  if (c_promoting_integer_type_p (type))
-    {
-      /* Preserve unsignedness if not really getting any wider.  */
-      if (TREE_UNSIGNED (type)
-	  && TYPE_PRECISION (type) == TYPE_PRECISION (integer_type_node))
-	return convert (unsigned_type_node, exp);
-
-      return convert (integer_type_node, exp);
-    }
-
-  if (code == VOID_TYPE)
-    {
-      error ("void value not ignored as it ought to be");
-      return error_mark_node;
-    }
-  return exp;
-#else
-  return exp;
-#endif
-}
-
 // copied this over just to support d_truthvalue_conversion, so assumes bool
 static tree
-build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1, int convert_p)
+build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1, int /*convert_p*/)
 {
     tree op0, op1;
     tree result_type = NULL_TREE;
-    if (convert_p)
-    {
-      op0 = default_conversion (orig_op0);
-      op1 = default_conversion (orig_op1);
-    }
-    else
-    {
-      op0 = orig_op0;
-      op1 = orig_op1;
-    }
+
+    op0 = orig_op0;
+    op1 = orig_op1;
 
     /* Also need to convert pointer/int comparison for GCC >= 4.1 */
     tree type0 = TREE_TYPE (op0);
@@ -134,6 +41,13 @@ build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1, int convert_p
 	&& integer_zerop (op0))
     {
 	result_type = type1;
+    }
+
+    /* If integral, need to convert unsigned/signed comparison for GCC >= 4.4 */
+    if (INTEGRAL_TYPE_P (type0) && INTEGRAL_TYPE_P (type1)
+	&& TYPE_UNSIGNED(type0) != TYPE_UNSIGNED(type1))
+    {
+	result_type = TYPE_UNSIGNED(type0) ? type0 : type1;
     }
 
     if (result_type)
@@ -219,28 +133,6 @@ d_truthvalue_conversion (tree expr)
 {
   if (TREE_CODE (expr) == ERROR_MARK)
     return expr;
-
-#if 0 /* This appears to be wrong for C++.  */
-  /* These really should return error_mark_node after 2.4 is stable.
-     But not all callers handle ERROR_MARK properly.  */
-  switch (TREE_CODE (TREE_TYPE (expr)))
-    {
-    case RECORD_TYPE:
-      error ("struct type value used where scalar is required");
-      return boolean_false_node;
-
-    case UNION_TYPE:
-      error ("union type value used where scalar is required");
-      return boolean_false_node;
-
-    case ARRAY_TYPE:
-      error ("array type value used where scalar is required");
-      return boolean_false_node;
-
-    default:
-      break;
-    }
-#endif /* 0 */
 
   switch (TREE_CODE (expr))
     {

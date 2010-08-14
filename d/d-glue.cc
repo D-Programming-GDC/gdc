@@ -920,15 +920,17 @@ void do_array_set(IRState * irs, tree in_ptr, tree in_val, tree in_cnt) {
     irs->startLoop(NULL);
 
     irs->continueHere();
-    
-    irs->exitIfFalse( build2(NE_EXPR, boolean_type_node, integer_zero_node, count_var) );
+
+    irs->exitIfFalse( build2(NE_EXPR, boolean_type_node,
+		      convert(TREE_TYPE(count_var), integer_zero_node), count_var) );
 
     irs->doExp( build2(MODIFY_EXPR, void_type_node, irs->indirect(ptr_var), value_to_use));
     irs->doExp( build2(MODIFY_EXPR, void_type_node, ptr_var,
 		    irs->pointerOffset(ptr_var,
 			TYPE_SIZE_UNIT(TREE_TYPE(TREE_TYPE(ptr_var)))) ));
     irs->doExp( build2(MODIFY_EXPR, void_type_node, count_var,
-		    build2(MINUS_EXPR, TREE_TYPE(count_var), count_var, integer_one_node)) );
+		    build2(MINUS_EXPR, TREE_TYPE(count_var), count_var,
+			convert(TREE_TYPE(count_var), integer_one_node))) );
 
     irs->endLoop();
 
@@ -2428,9 +2430,6 @@ genericize_function(tree fndecl)
 {
   FILE *dump_file;
   int local_dump_flags;
-#if 0
-  struct cgraph_node *cgn;
-#endif
 
   /* Dump the C-specific tree IR.  */
   dump_file = dump_begin (TDI_original, &local_dump_flags);
@@ -2460,14 +2459,6 @@ genericize_function(tree fndecl)
 
   /* Dump the genericized tree IR.  */
   dump_function (TDI_generic, fndecl);
-#if 0
-  /* Genericize all nested functions now.  We do things in this order so
-     that items like VLA sizes are expanded properly in the context of
-     the correct function.  */
-  cgn = cgraph_node (fndecl);
-  for (cgn = cgn->nested; cgn ; cgn = cgn->next_nested)
-    genericize_function (cgn->decl);
-#endif  
 }
 
 #endif

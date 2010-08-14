@@ -1731,7 +1731,7 @@ IRState::darrayVal(tree type, uinteger_t len, tree data)
     len_value = integerConstant(len, TREE_TYPE(len_field));
 
     ce.cons(len_field, len_value);
-    ce.cons(ptr_field, ptr_value ); // shouldn't need to convert the pointer...
+    ce.cons(ptr_field, convert(TREE_TYPE(ptr_field), ptr_value));
     
     CONSTRUCTOR_ELTS( ctor ) = ce.head;
 

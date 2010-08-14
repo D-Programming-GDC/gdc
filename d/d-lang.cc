@@ -1859,21 +1859,31 @@ d_expand_function(tree fndecl)
 
 #if D_GCC_VER >= 40
 static int
-d_types_compatible_p (tree x, tree y)
+d_types_compatible_p (tree t1, tree t2)
 {
-    if (lhd_types_compatible_p(x, y))
+    tree d_va_list = NULL;
+
+    /* Is compatible if types are equivalent */
+    if (lhd_types_compatible_p (t1, t2))
 	return 1;
-    else if (d_gcc_builtin_va_list_d_type &&
-	(
-	 ( x == d_gcc_builtin_va_list_d_type->ctype &&
-	     y == va_list_type_node ) ||
-	 ( y == d_gcc_builtin_va_list_d_type->ctype &&
-	     x == va_list_type_node ) ))
+
+    if (d_gcc_builtin_va_list_d_type)
+	d_va_list = d_gcc_builtin_va_list_d_type->ctype;
+
+    /* Is compatible if we are dealing with C <-> D va_list nodes */
+    if ((t1 == d_va_list && t2 == va_list_type_node)
+	|| (t2 == d_va_list && t1 == va_list_type_node))
 	return 1;
-    else
-	return 0;
-	
-    return TYPE_MAIN_VARIANT (x) == TYPE_MAIN_VARIANT (y);
+
+    /* Is compatible if aggregates are same type and share the same
+       attributes. The frontend should have already ensured that types
+       aren't wildly different anyway... */
+    if (AGGREGATE_TYPE_P (t1) && AGGREGATE_TYPE_P (t2)
+	&& TREE_CODE (t1) == TREE_CODE (t2)
+	&& TYPE_ATTRIBUTES (t1) == TYPE_ATTRIBUTES (t2))
+	return 1;
+
+    return 0;
 }
 
 #if V2

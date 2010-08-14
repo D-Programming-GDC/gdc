@@ -43,6 +43,11 @@ builtin_define_with_value (const char *macro, const char *expansion, int is_str)
     /* nothing */
 }
 
+tree
+default_conversion (tree exp)
+{
+    return exp;
+}
 
 tree
 build_function_call (tree function, tree params)
