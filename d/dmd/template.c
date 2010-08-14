@@ -1618,12 +1618,13 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
             goto Lexact;
         }
         else
-            return implicitConvTo(tparam);
- //     goto Lnomatch;
+            //return implicitConvTo(tparam);
+            goto Lnomatch;
     }
 
     if (ty != tparam->ty)
-        goto Lnomatch;
+        return implicitConvTo(tparam);
+        //goto Lnomatch;
 
     if (nextOf())
         return nextOf()->deduceType(sc, tparam->nextOf(), parameters, dedtypes);
