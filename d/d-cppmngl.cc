@@ -242,6 +242,10 @@ TypeBasic::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
     char c;
     const char * s;
+    
+    if (isConst())
+	buf->writeByte('K');
+    
     switch (ty)
     {
     case Tvoid: c = 'v'; break;
