@@ -44,8 +44,8 @@ d_bi_init(int nt, int nb)
 	error("cannot represent built in va_list type in D");
 	abort();
     }
-    if (! d_gcc_builtin_va_list_d_type->ctype)
-	d_gcc_builtin_va_list_d_type->toCtype();
+    // generate ctype if it doesn't already exist
+    d_gcc_builtin_va_list_d_type->toCtype();
 }
 
 /*

@@ -2065,11 +2065,10 @@ IRState::twoFieldType(tree rec_type, tree ft1, tree ft2, Type * d_type, const ch
 	TYPE_STUB_DECL(rec_type) = stub_decl;
 	TYPE_NAME(rec_type) = stub_decl;
 	DECL_ARTIFICIAL(stub_decl) = 1;
-#if USE_MAPPED_LOCATION
+#if D_USE_MAPPED_LOCATION
 	DECL_SOURCE_LOCATION(stub_decl) = BUILTINS_LOCATION;
 	DECL_SOURCE_LOCATION(f0) = BUILTINS_LOCATION;
 	DECL_SOURCE_LOCATION(f1) = BUILTINS_LOCATION;
-// %% not sure if >= 4.3 and ! USE_MAPPED_LOCATION
 #endif
 	g.ofile->rodc(stub_decl, 0);
     }

@@ -432,7 +432,7 @@ AsmStatement::toIR(IRState * irs)
 		clobbers_mem = true;
 	    break;
 	case Arg_LocalSize:
-	    var_frame_offset = cfun->x_frame_offset;
+	    var_frame_offset = frame_offset;
 	    if (var_frame_offset < 0)
 		var_frame_offset = - var_frame_offset;
 	    arg_val = irs->integerConstant( var_frame_offset );

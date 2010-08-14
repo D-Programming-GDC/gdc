@@ -109,7 +109,7 @@ ObjectFile::doLineNote(const Loc & loc)
     }
 }
 
-#ifdef USE_MAPPED_LOCATION
+#ifdef D_USE_MAPPED_LOCATION
 static location_t
 cvtLocToloc_t(const Loc loc)
 {
@@ -148,7 +148,7 @@ void
 ObjectFile::setLoc(const Loc & loc)
 {
     if (loc.filename) {
-#ifdef USE_MAPPED_LOCATION
+#ifdef D_USE_MAPPED_LOCATION
 	input_location = cvtLocToloc_t(loc);
 #else
 	location_t gcc_loc = { loc.filename, loc.linnum };
@@ -165,7 +165,7 @@ ObjectFile::setDeclLoc(tree t, const Loc & loc)
     // DWARF2 will often crash if the DECL_SOURCE_FILE is not set.  It's
     // easier the error here.
     assert(loc.filename);
-#ifdef USE_MAPPED_LOCATION
+#ifdef D_USE_MAPPED_LOCATION
     DECL_SOURCE_LOCATION (t) = cvtLocToloc_t(loc);
 #else
     DECL_SOURCE_FILE (t) = loc.filename;
@@ -204,7 +204,7 @@ void
 ObjectFile::setCfunEndLoc(const Loc & loc)
 {
     tree fn_decl = cfun->decl;
-# ifdef USE_MAPPED_LOCATION
+# ifdef D_USE_MAPPED_LOCATION
     if (loc.filename)
 	cfun->function_end_locus = cvtLocToloc_t(loc);
     else
@@ -763,7 +763,7 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
 	
 	fnname = XSTR(XEXP(DECL_RTL(thunk_decl), 0), 0);
 	gen.initFunctionStart(thunk_decl, 0);
-	current_function_is_thunk = 1;
+	cfun->is_thunk = 1;
 	assemble_start_function (thunk_decl, fnname);
 	targetm.asm_out.output_mi_thunk (asm_out_file, thunk_decl,
 	    delta, 0, alias);

@@ -82,6 +82,20 @@ extern "C" {
 #endif
 }
 
+// Define our own macro for handling mapped locations as
+// future versions of GCC (> 4.3) will poison it's use.
+#ifndef D_USE_MAPPED_LOCATION
+#if D_GCC_VER <= 43
+#  ifdef USE_MAPPED_LOCATION
+#    define D_USE_MAPPED_LOCATION 1
+#  else
+#    define D_USE_MAPPED_LOCATION 0
+#  endif
+#else
+#define D_USE_MAPPED_LOCATION 1
+#endif
+#endif
+
 // Undefine things that give us problems
 #undef RET
 

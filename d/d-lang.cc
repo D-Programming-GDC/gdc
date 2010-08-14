@@ -283,7 +283,7 @@ d_cpp_forall_callback(cpp_reader *, cpp_hashnode * hn, void *)
 
 /* Supports CPP builtins. */
 cpp_reader * parse_in;
-void
+extern "C" void
 builtin_define_std (const char *macro)
 {
     // Do nothing.  No need for these (yet).
@@ -329,7 +329,7 @@ d_init ()
 #  endif
 #endif
 
-#ifdef USE_MAPPED_LOCATION
+#ifdef D_USE_MAPPED_LOCATION
     /* input_location is initially set to BUILTINS_LOCATION (2).  This 
        will cause a segfault if errors are reported before any line maps 
        are created. Setting input_location to zero stops those segfaults,

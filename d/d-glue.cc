@@ -3416,7 +3416,7 @@ TypeAArray::toCtype()
 	    aa_type = make_node( RECORD_TYPE );
 	    tree f0 = build_decl(FIELD_DECL, get_identifier("ptr"), ptr_type_node);
 	    DECL_CONTEXT(f0) = aa_type;
-#if USE_MAPPED_LOCATION
+#if D_USE_MAPPED_LOCATION
 	    DECL_SOURCE_LOCATION(f0) = BUILTINS_LOCATION;
 #endif
 	    TYPE_FIELDS(aa_type) = f0;
@@ -4535,7 +4535,7 @@ gcc_d_backend_init()
     d_null_pointer = convert(ptr_type_node, integer_zero_node);
 
     TYPE_NAME( integer_type_node ) = build_decl(TYPE_DECL, get_identifier("int"), integer_type_node);
-    TYPE_NAME( char_type_node ) = build_decl(TYPE_DECL, get_identifier("cchar"), char_type_node); // "char?"
+    TYPE_NAME( char_type_node ) = build_decl(TYPE_DECL, get_identifier("char"), char_type_node);
 
     REALSIZE = int_size_in_bytes(long_double_type_node);
     REALPAD = 0;
