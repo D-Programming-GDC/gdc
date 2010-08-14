@@ -518,7 +518,7 @@ class Thread
 
     public static void thread_attach()
     {
-	Thread_attach(GetCurrentThreadId(), Thread.getCurrentThreadHandle(), os_query_stackBottom());
+	thread_attach(GetCurrentThreadId(), Thread.getCurrentThreadHandle(), os_query_stackBottom());
     }
 
     public static void thread_attach(thread_id id, thread_hdl hdl, void* bottom)
