@@ -610,7 +610,8 @@ IRState::convertForCondition(tree exp_tree, Type * exp_type) {
 	a = delegateObjectRef(tmp);
 	b = delegateMethodRef(tmp);
 	if (TYPE_MODE(TREE_TYPE(a)) == TYPE_MODE(TREE_TYPE(b)))
-	    result = build2(BIT_IOR_EXPR, TREE_TYPE(a), a, b);
+	    result = build2(BIT_IOR_EXPR, TREE_TYPE(a), a,
+			    convert(TREE_TYPE(a), b));
 	else {
 	    a = d_truthvalue_conversion(a);
 	    b = d_truthvalue_conversion(b);
@@ -1921,10 +1922,18 @@ IRState::delegateVal(tree method_exp, tree object_exp, Type * d_type)
 	obj_field = TYPE_FIELDS( type );
 	func_field = TREE_CHAIN( obj_field );
     }
-    ce.cons(obj_field,  object_exp);
-    ce.cons(func_field, method_exp);
-    CONSTRUCTOR_ELTS( ctor ) = ce.head;
 
+    if (obj_field)
+	ce.cons(obj_field, convert (TREE_TYPE(obj_field), object_exp));
+    else
+	ce.cons(obj_field, object_exp);
+
+    if (func_field)
+	ce.cons(func_field, convert (TREE_TYPE(func_field), method_exp));
+    else
+	ce.cons(func_field, method_exp);
+
+    CONSTRUCTOR_ELTS( ctor ) = ce.head;
     return ctor;
 }
 
