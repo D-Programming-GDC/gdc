@@ -4352,7 +4352,8 @@ LabelStatement::LabelStatement(Loc loc, Identifier *ident, Statement *statement)
     this->statement = statement;
     this->tf = NULL;
     this->lblock = NULL;
-    this->fwdrefs = NULL;
+    //this->fwdrefs = NULL; //See Issue #54
+    this->isReturnLabel = 0;
 }
 
 Statement *LabelStatement::syntaxCopy()
