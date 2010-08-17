@@ -3764,13 +3764,26 @@ ThrowStatement::toIR(IRState* irs)
 void
 TryFinallyStatement::toIR(IRState * irs)
 {
+#if D_GCC_VER < 40
     // %% doc: this is not the same as a start_eh/end_eh_cleanup sequence
     tree t_body = body ? irs->makeStmtExpr(body) : d_void_zero_node;
     tree t_finl = finalbody ? irs->makeStmtExpr(finalbody) : d_void_zero_node;
     tree tf = build2(TRY_FINALLY_EXPR, void_type_node, t_body, t_finl);
     // TREE_SIDE_EFFECTS(tf) = 1; // probably not needed
     irs->doLineNote(loc);
+    irs->beginFlow(this, NULL);
     irs->doExp(tf);
+    irs->endFlow();
+#else
+    irs->doLineNote(loc);
+    irs->startTry(this);
+    if (body)
+	body->toIR(irs);
+    irs->startFinally();
+    if (finalbody)
+	finalbody->toIR(irs);
+    irs->endFinally();
+#endif
 }
 
 void
@@ -3899,7 +3912,7 @@ SynchronizedStatement::toIR(IRState * irs)
 	g.ofile->rodc(critsec_decl, 1);
 
 #if D_GCC_VER < 40
-	expand_eh_region_start();	
+	expand_eh_region_start();
 	expand_expr_stmt_value(irs->libCall(LIBCALL_CRITICALENTER, 1, & critsec_ref), 0, 1);
 	if (body)
 	    body->toIR( irs );
@@ -3965,6 +3978,9 @@ ReturnStatement::toIR(IRState* irs)
 void
 DefaultStatement::toIR(IRState * irs)
 {
+    if(! irs->currentFlow()->condition )
+	error("default cannot be in different try block level from switch");
+
     irs->doCase(NULL_TREE, cblock);
     if (statement)
 	statement->toIR( irs );
@@ -3974,6 +3990,8 @@ void
 CaseStatement::toIR(IRState * irs)
 {
     tree case_value;
+    if(! irs->currentFlow()->condition )
+	error("case cannot be in different try block level from switch");
 
     if ( exp->type->isscalar() )
 	case_value = exp->toElem(irs);

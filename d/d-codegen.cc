@@ -2903,7 +2903,8 @@ IRState::endCond() { expand_end_cond(); }
 
 void
 IRState::startLoop(Statement * stmt) {
-    beginFlow(stmt, expand_start_loop_continue_elsewhere(1));
+    Flow *f = beginFlow(stmt, expand_start_loop_continue_elsewhere(1));
+    f->continueLabel = label(stmt ? stmt->loc : 0);
 }
 
 void
@@ -2935,7 +2936,8 @@ IRState::startCase(Statement * stmt, tree t_cond)
     clear_last_expr ();
     g.ofile->doLineNote(stmt->loc);
     expand_start_case( 1, t_cond, TREE_TYPE( t_cond ), "switch statement" );
-    beginFlow(stmt, NULL);
+    Flow * f = beginFlow(stmt, NULL);
+    f->condition = t_cond;
 }
 
 void
@@ -3080,7 +3082,7 @@ IRState::startCond(Statement * stmt, Expression * e_cond)
 {
     tree t_cond = convertForCondition(e_cond);
 
-    Flow * f = beginFlow(stmt/*, 0*/);
+    Flow * f = beginFlow(stmt);
     f->condition = t_cond;
 }
 
@@ -3112,7 +3114,7 @@ IRState::endCond()
 
 void
 IRState::startLoop(Statement * stmt) {
-    Flow * f = beginFlow(stmt/*, Break|Continue*/);
+    Flow * f = beginFlow(stmt);
     f->continueLabel = label(stmt ? stmt->loc : 0); // should be end for 'do' loop
 }
 

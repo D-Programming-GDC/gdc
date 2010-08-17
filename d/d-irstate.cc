@@ -296,7 +296,7 @@ IRBase::doLabel(tree t_label)
 #else
 
 IRBase::Flow *
-IRBase::beginFlow(Statement * stmt/*, int labels*/)
+IRBase::beginFlow(Statement * stmt)
 {
     Flow * flow = new Flow;
     
@@ -304,16 +304,6 @@ IRBase::beginFlow(Statement * stmt/*, int labels*/)
     flow->exitLabel = NULL_TREE;
     flow->condition = NULL_TREE;
     flow->trueBranch = NULL_TREE;
-    /*
-    if (labels & Break)
-	flow->exitLabel = error_mark_node; // don't create until needed
-    if (labels & Continue) {
-	flow->continueLabel = build_decl(LABEL_DECL, NULL, void_type_node);
-	DECL_CONTEXT( flow->continueLabel ) = getLocalContext();
-	//used,mode?
-    }
-    flow->exitLabel = NULL;
-    */
     
     loops.push(flow);
 
@@ -342,8 +332,9 @@ IRBase::doLabel(tree t_label)
        This makes auto-vectorization possible in conditional loops.
        The only excemption to this is in LabelStatement::toIR, in which
        all computed labels are marked regardless.  */
-    if(TREE_USED(t_label))
+    if(TREE_USED(t_label)) {
 	addExp(build1(LABEL_EXPR, void_type_node, t_label));
+    }
 }
 
 #endif

@@ -88,6 +88,15 @@ public:
 	nesting * loop;
 	tree      exitLabel;
 	tree      overrideContinueLabel;
+	// Copied for information purposes. Not actually used.
+	union {
+	    struct {
+		tree continueLabel;
+	    };
+	    struct {
+		tree condition;
+	    };
+	};
     } Flow;
 #else
     typedef struct
@@ -118,13 +127,12 @@ public:
 #if D_GCC_VER < 40    
     Flow *    beginFlow(Statement * stmt, nesting * loop);
 #else
-    //typedef enum { Break = 0x1, Continue = 0x2 } FlowLabel;
-    Flow *    beginFlow(Statement * stmt/*, int labels*/);
+    Flow *    beginFlow(Statement * stmt);
 #endif
     void      endFlow();
     Flow *    currentFlow() { return (Flow *) loops.tos(); }
     void      doLabel(tree t_label);
- 
+
     // ** DECL_CONTEXT support
 
     tree getLocalContext() { return func ? func->toSymbol()->Stree : NULL_TREE; }
@@ -137,17 +145,18 @@ public:
        a new scope. (And for now, until the emitLocalVar crash is
        solved, this also creates a default binding contour.)
        
-       "Binding countour": Same as GCC's definition, whatever that is.
+       "Binding contour": Same as GCC's definition, whatever that is.
        Each user-declared variable will have a binding contour that begins
        where the variable is declared and ends at it's containing scope.
     */
-    Array scopes; // of unsigned*
+    Array      scopes; // of unsigned*
     
-    void startScope();
-    void endScope();
+    void       startScope();
+    void       endScope();
+    unsigned * currentScope() { return (unsigned *) scopes.tos(); }
 
-    void startBindings();
-    void endBindings();
+    void       startBindings();
+    void       endBindings();
 
 
     // ** Volatile state
