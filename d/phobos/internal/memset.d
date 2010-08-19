@@ -41,7 +41,7 @@ short *_memset16(short *p, short value, size_t count)
     short *ptop;
 
     for (ptop = &p[count]; p < ptop; p++)
-	*p = value;
+        *p = value;
     return pstart;
 }
 
@@ -51,13 +51,13 @@ version (Asm86)
 {
     asm
     {
-	mov	EDI,p		;
-	mov	EAX,value	;
-	mov	ECX,count	;
-	mov	EDX,EDI		;
-	rep			;
-	stosd			;
-	mov	EAX,EDX		;
+        mov     EDI,p           ;
+        mov     EAX,value       ;
+        mov     ECX,count       ;
+        mov     EDX,EDI         ;
+        rep                     ;
+        stosd                   ;
+        mov     EAX,EDX         ;
     }
 }
 else
@@ -66,7 +66,7 @@ else
     int *ptop;
 
     for (ptop = &p[count]; p < ptop; p++)
-	*p = value;
+        *p = value;
     return pstart;
 }
 }
@@ -77,7 +77,7 @@ long *_memset64(long *p, long value, size_t count)
     long *ptop;
 
     for (ptop = &p[count]; p < ptop; p++)
-	*p = value;
+        *p = value;
     return pstart;
 }
 
@@ -87,7 +87,7 @@ cdouble *_memset128(cdouble *p, cdouble value, size_t count)
     cdouble *ptop;
 
     for (ptop = &p[count]; p < ptop; p++)
-	*p = value;
+        *p = value;
     return pstart;
 }
 
@@ -97,7 +97,7 @@ real *_memset80(real *p, real value, size_t count)
     real *ptop;
 
     for (ptop = &p[count]; p < ptop; p++)
-	*p = value;
+        *p = value;
     return pstart;
 }
 
@@ -107,7 +107,7 @@ creal *_memset160(creal *p, creal value, size_t count)
     creal *ptop;
 
     for (ptop = &p[count]; p < ptop; p++)
-	*p = value;
+        *p = value;
     return pstart;
 }
 
@@ -117,8 +117,8 @@ void *_memsetn(void *p, void *value, int count, size_t sizelem)
 
     for (i = 0; i < count; i++)
     {
-	memcpy(p, value, sizelem);
-	p = cast(void *)(cast(char *)p + sizelem);
+        memcpy(p, value, sizelem);
+        p = cast(void *)(cast(char *)p + sizelem);
     }
     return pstart;
 }

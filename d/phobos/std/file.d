@@ -2,7 +2,7 @@
 
 /**
  * Macros:
- *	WIKI = Phobos/StdFile
+ *      WIKI = Phobos/StdFile
  */
 
 /*
@@ -69,22 +69,22 @@ static this()
 class FileException : Exception
 {
 
-    uint errno;			// operating system error code
+    uint errno;                 // operating system error code
 
     this(string name)
     {
-	this(name, "file I/O");
+        this(name, "file I/O");
     }
 
     this(string name, string message)
     {
-	super(name ~ ": " ~ message);
+        super(name ~ ": " ~ message);
     }
 
     this(string name, uint errno)
     {
-	this(name, sysErrorString(errno));
-	this.errno = errno;
+        this(name, sysErrorString(errno));
+        this.errno = errno;
     }
 }
 
@@ -95,7 +95,7 @@ class FileException : Exception
 /********************************************
  * Read file name[], return array of bytes read.
  * Throws:
- *	FileException on error.
+ *      FileException on error.
  */
 
 void[] read(char[] name)
@@ -105,36 +105,36 @@ void[] read(char[] name)
 
     if (useWfuncs)
     {
-	wchar* namez = std.utf.toUTF16z(name);
-	h = CreateFileW(namez,GENERIC_READ,FILE_SHARE_READ,null,OPEN_EXISTING,
-	    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
+        wchar* namez = std.utf.toUTF16z(name);
+        h = CreateFileW(namez,GENERIC_READ,FILE_SHARE_READ,null,OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
     }
     else
     {
-	char* namez = toMBSz(name);
-	h = CreateFileA(namez,GENERIC_READ,FILE_SHARE_READ,null,OPEN_EXISTING,
-	    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
+        char* namez = toMBSz(name);
+        h = CreateFileA(namez,GENERIC_READ,FILE_SHARE_READ,null,OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
     }
 
     if (h == INVALID_HANDLE_VALUE)
-	goto err1;
+        goto err1;
 
     auto size = GetFileSize(h, null);
     if (size == INVALID_FILE_SIZE)
-	goto err2;
+        goto err2;
 
     auto buf = std.gc.malloc(size);
     if (buf)
-	std.gc.hasNoPointers(buf.ptr);
+        std.gc.hasNoPointers(buf.ptr);
 
     if (ReadFile(h,buf.ptr,size,&numread,null) != 1)
-	goto err2;
+        goto err2;
 
     if (numread != size)
-	goto err2;
+        goto err2;
 
     if (!CloseHandle(h))
-	goto err;
+        goto err;
 
     return buf[0 .. size];
 
@@ -158,27 +158,27 @@ void write(char[] name, void[] buffer)
 
     if (useWfuncs)
     {
-	wchar* namez = std.utf.toUTF16z(name);
-	h = CreateFileW(namez,GENERIC_WRITE,0,null,CREATE_ALWAYS,
-	    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
+        wchar* namez = std.utf.toUTF16z(name);
+        h = CreateFileW(namez,GENERIC_WRITE,0,null,CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
     }
     else
     {
-	char* namez = toMBSz(name);
-	h = CreateFileA(namez,GENERIC_WRITE,0,null,CREATE_ALWAYS,
-	    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
+        char* namez = toMBSz(name);
+        h = CreateFileA(namez,GENERIC_WRITE,0,null,CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
     }
     if (h == INVALID_HANDLE_VALUE)
-	goto err;
+        goto err;
 
     if (WriteFile(h,buffer.ptr,buffer.length,&numwritten,null) != 1)
-	goto err2;
+        goto err2;
 
     if (buffer.length != numwritten)
-	goto err2;
+        goto err2;
     
     if (!CloseHandle(h))
-	goto err;
+        goto err;
     return;
 
 err2:
@@ -200,29 +200,29 @@ void append(char[] name, void[] buffer)
 
     if (useWfuncs)
     {
-	wchar* namez = std.utf.toUTF16z(name);
-	h = CreateFileW(namez,GENERIC_WRITE,0,null,OPEN_ALWAYS,
-	    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
+        wchar* namez = std.utf.toUTF16z(name);
+        h = CreateFileW(namez,GENERIC_WRITE,0,null,OPEN_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
     }
     else
     {
-	char* namez = toMBSz(name);
-	h = CreateFileA(namez,GENERIC_WRITE,0,null,OPEN_ALWAYS,
-	    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
+        char* namez = toMBSz(name);
+        h = CreateFileA(namez,GENERIC_WRITE,0,null,OPEN_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,cast(HANDLE)null);
     }
     if (h == INVALID_HANDLE_VALUE)
-	goto err;
+        goto err;
 
     SetFilePointer(h, 0, null, FILE_END);
 
     if (WriteFile(h,buffer.ptr,buffer.length,&numwritten,null) != 1)
-	goto err2;
+        goto err2;
 
     if (buffer.length != numwritten)
-	goto err2;
+        goto err2;
     
     if (!CloseHandle(h))
-	goto err;
+        goto err;
     return;
 
 err2:
@@ -242,11 +242,11 @@ void rename(char[] from, char[] to)
     BOOL result;
 
     if (useWfuncs)
-	result = MoveFileW(std.utf.toUTF16z(from), std.utf.toUTF16z(to));
+        result = MoveFileW(std.utf.toUTF16z(from), std.utf.toUTF16z(to));
     else
-	result = MoveFileA(toMBSz(from), toMBSz(to));
+        result = MoveFileA(toMBSz(from), toMBSz(to));
     if (!result)
-	throw new FileException(to, GetLastError());
+        throw new FileException(to, GetLastError());
 }
 
 
@@ -260,11 +260,11 @@ void remove(char[] name)
     BOOL result;
 
     if (useWfuncs)
-	result = DeleteFileW(std.utf.toUTF16z(name));
+        result = DeleteFileW(std.utf.toUTF16z(name));
     else
-	result = DeleteFileA(toMBSz(name));
+        result = DeleteFileA(toMBSz(name));
     if (!result)
-	throw new FileException(name, GetLastError());
+        throw new FileException(name, GetLastError());
 }
 
 
@@ -281,24 +281,24 @@ ulong getSize(char[] name)
 
     if (useWfuncs)
     {
-	WIN32_FIND_DATAW filefindbuf;
+        WIN32_FIND_DATAW filefindbuf;
 
-	findhndl = FindFirstFileW(std.utf.toUTF16z(name), &filefindbuf);
-	resulth = filefindbuf.nFileSizeHigh;
-	resultl = filefindbuf.nFileSizeLow;
+        findhndl = FindFirstFileW(std.utf.toUTF16z(name), &filefindbuf);
+        resulth = filefindbuf.nFileSizeHigh;
+        resultl = filefindbuf.nFileSizeLow;
     }
     else
     {
-	WIN32_FIND_DATA filefindbuf;
+        WIN32_FIND_DATA filefindbuf;
 
-	findhndl = FindFirstFileA(toMBSz(name), &filefindbuf);
-	resulth = filefindbuf.nFileSizeHigh;
-	resultl = filefindbuf.nFileSizeLow;
+        findhndl = FindFirstFileA(toMBSz(name), &filefindbuf);
+        resulth = filefindbuf.nFileSizeHigh;
+        resultl = filefindbuf.nFileSizeLow;
     }
 
     if (findhndl == cast(HANDLE)-1)
     {
-	throw new FileException(name, GetLastError());
+        throw new FileException(name, GetLastError());
     }
     FindClose(findhndl);
     return (cast(ulong)resulth << 32) + resultl;
@@ -315,26 +315,26 @@ void getTimes(char[] name, out d_time ftc, out d_time fta, out d_time ftm)
 
     if (useWfuncs)
     {
-	WIN32_FIND_DATAW filefindbuf;
+        WIN32_FIND_DATAW filefindbuf;
 
-	findhndl = FindFirstFileW(std.utf.toUTF16z(name), &filefindbuf);
-	ftc = std.date.FILETIME2d_time(&filefindbuf.ftCreationTime);
-	fta = std.date.FILETIME2d_time(&filefindbuf.ftLastAccessTime);
-	ftm = std.date.FILETIME2d_time(&filefindbuf.ftLastWriteTime);
+        findhndl = FindFirstFileW(std.utf.toUTF16z(name), &filefindbuf);
+        ftc = std.date.FILETIME2d_time(&filefindbuf.ftCreationTime);
+        fta = std.date.FILETIME2d_time(&filefindbuf.ftLastAccessTime);
+        ftm = std.date.FILETIME2d_time(&filefindbuf.ftLastWriteTime);
     }
     else
     {
-	WIN32_FIND_DATA filefindbuf;
+        WIN32_FIND_DATA filefindbuf;
 
-	findhndl = FindFirstFileA(toMBSz(name), &filefindbuf);
-	ftc = std.date.FILETIME2d_time(&filefindbuf.ftCreationTime);
-	fta = std.date.FILETIME2d_time(&filefindbuf.ftLastAccessTime);
-	ftm = std.date.FILETIME2d_time(&filefindbuf.ftLastWriteTime);
+        findhndl = FindFirstFileA(toMBSz(name), &filefindbuf);
+        ftc = std.date.FILETIME2d_time(&filefindbuf.ftCreationTime);
+        fta = std.date.FILETIME2d_time(&filefindbuf.ftLastAccessTime);
+        ftm = std.date.FILETIME2d_time(&filefindbuf.ftLastWriteTime);
     }
 
     if (findhndl == cast(HANDLE)-1)
     {
-	throw new FileException(name, GetLastError());
+        throw new FileException(name, GetLastError());
     }
     FindClose(findhndl);
 }
@@ -350,10 +350,10 @@ int exists(char[] name)
     uint result;
 
     if (useWfuncs)
-	// http://msdn.microsoft.com/library/default.asp?url=/library/en-us/fileio/base/getfileattributes.asp
-	result = GetFileAttributesW(std.utf.toUTF16z(name));
+        // http://msdn.microsoft.com/library/default.asp?url=/library/en-us/fileio/base/getfileattributes.asp
+        result = GetFileAttributesW(std.utf.toUTF16z(name));
     else
-	result = GetFileAttributesA(toMBSz(name));
+        result = GetFileAttributesA(toMBSz(name));
 
     return result != 0xFFFFFFFF;
 }
@@ -368,12 +368,12 @@ uint getAttributes(string name)
     uint result;
 
     if (useWfuncs)
-	result = GetFileAttributesW(std.utf.toUTF16z(name));
+        result = GetFileAttributesW(std.utf.toUTF16z(name));
     else
-	result = GetFileAttributesA(toMBSz(name));
+        result = GetFileAttributesA(toMBSz(name));
     if (result == 0xFFFFFFFF)
     {
-	throw new FileException(name, GetLastError());
+        throw new FileException(name, GetLastError());
     }
     return result;
 }
@@ -407,13 +407,13 @@ void chdir(char[] pathname)
 {   BOOL result;
 
     if (useWfuncs)
-	result = SetCurrentDirectoryW(std.utf.toUTF16z(pathname));
+        result = SetCurrentDirectoryW(std.utf.toUTF16z(pathname));
     else
-	result = SetCurrentDirectoryA(toMBSz(pathname));
+        result = SetCurrentDirectoryA(toMBSz(pathname));
 
     if (!result)
     {
-	throw new FileException(pathname, GetLastError());
+        throw new FileException(pathname, GetLastError());
     }
 }
 
@@ -426,13 +426,13 @@ void mkdir(char[] pathname)
 {   BOOL result;
 
     if (useWfuncs)
-	result = CreateDirectoryW(std.utf.toUTF16z(pathname), null);
+        result = CreateDirectoryW(std.utf.toUTF16z(pathname), null);
     else
-	result = CreateDirectoryA(toMBSz(pathname), null);
+        result = CreateDirectoryA(toMBSz(pathname), null);
 
     if (!result)
     {
-	throw new FileException(pathname, GetLastError());
+        throw new FileException(pathname, GetLastError());
     }
 }
 
@@ -445,13 +445,13 @@ void rmdir(char[] pathname)
 {   BOOL result;
 
     if (useWfuncs)
-	result = RemoveDirectoryW(std.utf.toUTF16z(pathname));
+        result = RemoveDirectoryW(std.utf.toUTF16z(pathname));
     else
-	result = RemoveDirectoryA(toMBSz(pathname));
+        result = RemoveDirectoryA(toMBSz(pathname));
 
     if (!result)
     {
-	throw new FileException(pathname, GetLastError());
+        throw new FileException(pathname, GetLastError());
     }
 }
 
@@ -464,29 +464,29 @@ char[] getcwd()
 {
     if (useWfuncs)
     {
-	wchar c;
+        wchar c;
 
-	auto len = GetCurrentDirectoryW(0, &c);
-	if (!len)
-	    goto Lerr;
-	auto dir = new wchar[len];
-	len = GetCurrentDirectoryW(len, dir.ptr);
-	if (!len)
-	    goto Lerr;
-	return std.utf.toUTF8(dir[0 .. len]); // leave off terminating 0
+        auto len = GetCurrentDirectoryW(0, &c);
+        if (!len)
+            goto Lerr;
+        auto dir = new wchar[len];
+        len = GetCurrentDirectoryW(len, dir.ptr);
+        if (!len)
+            goto Lerr;
+        return std.utf.toUTF8(dir[0 .. len]); // leave off terminating 0
     }
     else
     {
-	char c;
+        char c;
 
-	auto len = GetCurrentDirectoryA(0, &c);
-	if (!len)
-	    goto Lerr;
-	auto dir = new char[len];
-	len = GetCurrentDirectoryA(len, dir.ptr);
-	if (!len)
-	    goto Lerr;
-	return dir[0 .. len];		// leave off terminating 0
+        auto len = GetCurrentDirectoryA(0, &c);
+        if (!len)
+            goto Lerr;
+        auto dir = new char[len];
+        len = GetCurrentDirectoryA(len, dir.ptr);
+        if (!len)
+            goto Lerr;
+        return dir[0 .. len];           // leave off terminating 0
     }
 
 Lerr:
@@ -499,47 +499,47 @@ Lerr:
 
 struct DirEntry
 {
-    string name;			/// file or directory name
-    ulong size = ~0UL;			/// size of file in bytes
-    d_time creationTime = d_time_nan;	/// time of file creation
-    d_time lastAccessTime = d_time_nan;	/// time file was last accessed
-    d_time lastWriteTime = d_time_nan;	/// time file was last written to
-    uint attributes;		// Windows file attributes OR'd together
+    string name;                        /// file or directory name
+    ulong size = ~0UL;                  /// size of file in bytes
+    d_time creationTime = d_time_nan;   /// time of file creation
+    d_time lastAccessTime = d_time_nan; /// time file was last accessed
+    d_time lastWriteTime = d_time_nan;  /// time file was last written to
+    uint attributes;            // Windows file attributes OR'd together
 
     void init(string path, WIN32_FIND_DATA *fd)
     {
-	wchar[] wbuf;
-	size_t clength;
-	size_t wlength;
-	size_t n;
+        wchar[] wbuf;
+        size_t clength;
+        size_t wlength;
+        size_t n;
 
-	clength = std.c.string.strlen(fd.cFileName.ptr);
+        clength = std.c.string.strlen(fd.cFileName.ptr);
 
-	// Convert cFileName[] to unicode
-	wlength = MultiByteToWideChar(0,0,fd.cFileName.ptr,clength,null,0);
-	if (wlength > wbuf.length)
-	    wbuf.length = wlength;
-	n = MultiByteToWideChar(0,0,fd.cFileName.ptr,clength,cast(wchar*)wbuf,wlength);
-	assert(n == wlength);
-	// toUTF8() returns a new buffer
-	name = std.path.join(path, std.utf.toUTF8(wbuf[0 .. wlength]));
+        // Convert cFileName[] to unicode
+        wlength = MultiByteToWideChar(0,0,fd.cFileName.ptr,clength,null,0);
+        if (wlength > wbuf.length)
+            wbuf.length = wlength;
+        n = MultiByteToWideChar(0,0,fd.cFileName.ptr,clength,cast(wchar*)wbuf,wlength);
+        assert(n == wlength);
+        // toUTF8() returns a new buffer
+        name = std.path.join(path, std.utf.toUTF8(wbuf[0 .. wlength]));
 
-	size = (cast(ulong)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
-	creationTime = std.date.FILETIME2d_time(&fd.ftCreationTime);
-	lastAccessTime = std.date.FILETIME2d_time(&fd.ftLastAccessTime);
-	lastWriteTime = std.date.FILETIME2d_time(&fd.ftLastWriteTime);
-	attributes = fd.dwFileAttributes;
+        size = (cast(ulong)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
+        creationTime = std.date.FILETIME2d_time(&fd.ftCreationTime);
+        lastAccessTime = std.date.FILETIME2d_time(&fd.ftLastAccessTime);
+        lastWriteTime = std.date.FILETIME2d_time(&fd.ftLastWriteTime);
+        attributes = fd.dwFileAttributes;
     }
 
     void init(string path, WIN32_FIND_DATAW *fd)
     {
-	size_t clength = std.string.wcslen(fd.cFileName.ptr);
-	name = std.path.join(path, std.utf.toUTF8(fd.cFileName[0 .. clength]));
-	size = (cast(ulong)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
-	creationTime = std.date.FILETIME2d_time(&fd.ftCreationTime);
-	lastAccessTime = std.date.FILETIME2d_time(&fd.ftLastAccessTime);
-	lastWriteTime = std.date.FILETIME2d_time(&fd.ftLastWriteTime);
-	attributes = fd.dwFileAttributes;
+        size_t clength = std.string.wcslen(fd.cFileName.ptr);
+        name = std.path.join(path, std.utf.toUTF8(fd.cFileName[0 .. clength]));
+        size = (cast(ulong)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
+        creationTime = std.date.FILETIME2d_time(&fd.ftCreationTime);
+        lastAccessTime = std.date.FILETIME2d_time(&fd.ftLastAccessTime);
+        lastWriteTime = std.date.FILETIME2d_time(&fd.ftLastWriteTime);
+        attributes = fd.dwFileAttributes;
     }
 
     /****
@@ -547,7 +547,7 @@ struct DirEntry
      */
     uint isdir()
     {
-	return attributes & FILE_ATTRIBUTE_DIRECTORY;
+        return attributes & FILE_ATTRIBUTE_DIRECTORY;
     }
 
     /****
@@ -555,7 +555,7 @@ struct DirEntry
      */
     uint isfile()
     {
-	return !(attributes & FILE_ATTRIBUTE_DIRECTORY);
+        return !(attributes & FILE_ATTRIBUTE_DIRECTORY);
     }
 }
 
@@ -565,8 +565,8 @@ struct DirEntry
  * The names in the contents do not include the pathname.
  * Throws: FileException on error
  * Example:
- *	This program lists all the files and subdirectories in its
- *	path argument.
+ *      This program lists all the files and subdirectories in its
+ *      path argument.
  * ----
  * import std.stdio;
  * import std.file;
@@ -576,7 +576,7 @@ struct DirEntry
  *    auto dirs = std.file.listdir(args[1]);
  *
  *    foreach (d; dirs)
- *	writefln(d);
+ *      writefln(d);
  * }
  * ----
  */
@@ -587,8 +587,8 @@ string[] listdir(string pathname)
     
     bool listing(string filename)
     {
-	result ~= filename;
-	return true; // continue
+        result ~= filename;
+        return true; // continue
     }
     
     listdir(pathname, &listing);
@@ -600,14 +600,14 @@ string[] listdir(string pathname)
  * Return all the files in the directory and its subdirectories
  * that match pattern or regular expression r.
  * Params:
- *	pathname = Directory name
- *	pattern = String with wildcards, such as $(RED "*.d"). The supported
- *		wildcard strings are described under fnmatch() in
- *		$(LINK2 std_path.html, std.path).
- *	r = Regular expression, for more powerful _pattern matching.
+ *      pathname = Directory name
+ *      pattern = String with wildcards, such as $(RED "*.d"). The supported
+ *              wildcard strings are described under fnmatch() in
+ *              $(LINK2 std_path.html, std.path).
+ *      r = Regular expression, for more powerful _pattern matching.
  * Example:
- *	This program lists all the files with a "d" extension in
- *	the path passed as the first argument.
+ *      This program lists all the files with a "d" extension in
+ *      the path passed as the first argument.
  * ----
  * import std.stdio;
  * import std.file;
@@ -617,7 +617,7 @@ string[] listdir(string pathname)
  *    auto d_source_files = std.file.listdir(args[1], "*.d");
  *
  *    foreach (d; d_source_files)
- *	writefln(d);
+ *      writefln(d);
  * }
  * ----
  * A regular expression version that searches for all files with "d" or
@@ -632,7 +632,7 @@ string[] listdir(string pathname)
  *    auto d_source_files = std.file.listdir(args[1], RegExp(r"\.(d|obj)$"));
  *
  *    foreach (d; d_source_files)
- *	writefln(d);
+ *      writefln(d);
  * }
  * ----
  */
@@ -642,13 +642,13 @@ string[] listdir(string pathname, string pattern)
     
     bool callback(DirEntry* de)
     {
-	if (de.isdir)
-	    listdir(de.name, &callback);
-	else
-	{   if (std.path.fnmatch(de.name, pattern))
-		result ~= de.name;
-	}
-	return true; // continue
+        if (de.isdir)
+            listdir(de.name, &callback);
+        else
+        {   if (std.path.fnmatch(de.name, pattern))
+                result ~= de.name;
+        }
+        return true; // continue
     }
     
     listdir(pathname, &callback);
@@ -662,13 +662,13 @@ string[] listdir(string pathname, RegExp r)
     
     bool callback(DirEntry* de)
     {
-	if (de.isdir)
-	    listdir(de.name, &callback);
-	else
-	{   if (r.test(de.name))
-		result ~= de.name;
-	}
-	return true; // continue
+        if (de.isdir)
+            listdir(de.name, &callback);
+        else
+        {   if (r.test(de.name))
+                result ~= de.name;
+        }
+        return true; // continue
     }
     
     listdir(pathname, &callback);
@@ -679,12 +679,12 @@ string[] listdir(string pathname, RegExp r)
  * For each file and directory name in pathname[],
  * pass it to the callback delegate.
  * Params:
- *	callback =	Delegate that processes each
- *			filename in turn. Returns true to
- *			continue, false to stop.
+ *      callback =      Delegate that processes each
+ *                      filename in turn. Returns true to
+ *                      continue, false to stop.
  * Example:
- *	This program lists all the files in its
- *	path argument, including the path.
+ *      This program lists all the files in its
+ *      path argument, including the path.
  * ----
  * import std.stdio;
  * import std.path;
@@ -713,7 +713,7 @@ void listdir(string pathname, bool delegate(string filename) callback)
 {
     bool listing(DirEntry* de)
     {
-	return callback(std.path.getBaseName(de.name));
+        return callback(std.path.getBaseName(de.name));
     }
 
     listdir(pathname, &listing);
@@ -723,12 +723,12 @@ void listdir(string pathname, bool delegate(string filename) callback)
  * For each file and directory DirEntry in pathname[],
  * pass it to the callback delegate.
  * Params:
- *	callback =	Delegate that processes each
- *			DirEntry in turn. Returns true to
- *			continue, false to stop.
+ *      callback =      Delegate that processes each
+ *                      DirEntry in turn. Returns true to
+ *                      continue, false to stop.
  * Example:
- *	This program lists all the files in its
- *	path argument and all subdirectories thereof.
+ *      This program lists all the files in its
+ *      path argument and all subdirectories thereof.
  * ----
  * import std.stdio;
  * import std.file;
@@ -758,57 +758,57 @@ void listdir(string pathname, bool delegate(DirEntry* de) callback)
     c = std.path.join(pathname, "*.*");
     if (useWfuncs)
     {
-	WIN32_FIND_DATAW fileinfo;
+        WIN32_FIND_DATAW fileinfo;
 
-	h = FindFirstFileW(std.utf.toUTF16z(c), &fileinfo);
-	if (h != INVALID_HANDLE_VALUE)
-	{
-	    try
-	    {
-		do
-		{
-		    // Skip "." and ".."
-		    if (std.string.wcscmp(fileinfo.cFileName.ptr, ".") == 0 ||
-			std.string.wcscmp(fileinfo.cFileName.ptr, "..") == 0)
-			continue;
+        h = FindFirstFileW(std.utf.toUTF16z(c), &fileinfo);
+        if (h != INVALID_HANDLE_VALUE)
+        {
+            try
+            {
+                do
+                {
+                    // Skip "." and ".."
+                    if (std.string.wcscmp(fileinfo.cFileName.ptr, ".") == 0 ||
+                        std.string.wcscmp(fileinfo.cFileName.ptr, "..") == 0)
+                        continue;
 
-		    de.init(pathname, &fileinfo);
-		    if (!callback(&de))
-			break;
-		} while (FindNextFileW(h,&fileinfo) != FALSE);
-	    }
-	    finally
-	    {
-		FindClose(h);
-	    }
-	}
+                    de.init(pathname, &fileinfo);
+                    if (!callback(&de))
+                        break;
+                } while (FindNextFileW(h,&fileinfo) != FALSE);
+            }
+            finally
+            {
+                FindClose(h);
+            }
+        }
     }
     else
     {
-	WIN32_FIND_DATA fileinfo;
+        WIN32_FIND_DATA fileinfo;
 
-	h = FindFirstFileA(toMBSz(c), &fileinfo);
-	if (h != INVALID_HANDLE_VALUE)	// should we throw exception if invalid?
-	{
-	    try
-	    {
-		do
-		{
-		    // Skip "." and ".."
-		    if (std.c.string.strcmp(fileinfo.cFileName.ptr, ".") == 0 ||
- 			std.c.string.strcmp(fileinfo.cFileName.ptr, "..") == 0)
-			continue;
+        h = FindFirstFileA(toMBSz(c), &fileinfo);
+        if (h != INVALID_HANDLE_VALUE)  // should we throw exception if invalid?
+        {
+            try
+            {
+                do
+                {
+                    // Skip "." and ".."
+                    if (std.c.string.strcmp(fileinfo.cFileName.ptr, ".") == 0 ||
+                        std.c.string.strcmp(fileinfo.cFileName.ptr, "..") == 0)
+                        continue;
 
-		    de.init(pathname, &fileinfo);
-		    if (!callback(&de))
-			break;
-		} while (FindNextFileA(h,&fileinfo) != FALSE);
-	    }
-	    finally
-	    {
-		FindClose(h);
-	    }
-	}
+                    de.init(pathname, &fileinfo);
+                    if (!callback(&de))
+                        break;
+                } while (FindNextFileA(h,&fileinfo) != FALSE);
+            }
+            finally
+            {
+                FindClose(h);
+            }
+        }
     }
 }
 
@@ -835,9 +835,9 @@ void copy(string from, string to)
     BOOL result;
 
     if (useWfuncs)
-	result = CopyFileW(std.utf.toUTF16z(from), std.utf.toUTF16z(to), false);
+        result = CopyFileW(std.utf.toUTF16z(from), std.utf.toUTF16z(to), false);
     else
-	result = CopyFileA(toMBSz(from), toMBSz(to), false);
+        result = CopyFileA(toMBSz(from), toMBSz(to), false);
     if (!result)
          throw new FileException(to, GetLastError());
 }
@@ -864,30 +864,30 @@ private import std.c.string;
 class FileException : Exception
 {
 
-    uint errno;			// operating system error code
+    uint errno;                 // operating system error code
 
     this(string name)
     {
-	this(name, "file I/O");
+        this(name, "file I/O");
     }
 
     this(string name, string message)
     {
-	super(name ~ ": " ~ message);
+        super(name ~ ": " ~ message);
     }
 
     this(string name, uint errno)
-    {	char[1024] buf = void;
-	auto s = _d_gnu_cbridge_strerror(errno, buf.ptr, buf.length);
-	this(name, std.string.toString(s).dup);
-	this.errno = errno;
+    {   char[1024] buf = void;
+        auto s = _d_gnu_cbridge_strerror(errno, buf.ptr, buf.length);
+        this(name, std.string.toString(s).dup);
+        this.errno = errno;
     }
 }
 
 /********************************************
  * Read a file.
  * Returns:
- *	array of bytes read
+ *      array of bytes read
  */
 
 void[] read(string name)
@@ -911,57 +911,57 @@ void[] read(string name)
     }
     auto size = statbuf.st_size;
     if (size > size_t.max)
-	goto err2;
+        goto err2;
 
     if (size > int.max)
- 	goto err2;
+        goto err2;
  
     void[] buf;
     if (size == 0)
-    {	/* The size could be 0 if the file is a device or a procFS file,
-	 * so we just have to try reading it.
-	 */
- 	int readsize = 1024;
- 	while (1)
- 	{
- 	    buf = std.gc.realloc(buf.ptr, cast(int)size + readsize);
+    {   /* The size could be 0 if the file is a device or a procFS file,
+         * so we just have to try reading it.
+         */
+        int readsize = 1024;
+        while (1)
+        {
+            buf = std.gc.realloc(buf.ptr, cast(int)size + readsize);
  
- 	    auto toread = readsize;
- 	    while (toread)
- 	    {
- 		auto numread = unix.read(fd, buf.ptr + size, toread);
- 		if (numread == -1)
- 		    goto err2;
- 		size += numread;
- 		if (numread == 0)
- 		{   if (size == 0)			// it really was 0 size
- 			delete buf;			// don't need the buffer
- 		    else
- 			std.gc.hasNoPointers(buf.ptr);
- 		    goto Leof;				// end of file
- 		}
- 		toread -= numread;
- 	    }
- 	}
+            auto toread = readsize;
+            while (toread)
+            {
+                auto numread = unix.read(fd, buf.ptr + size, toread);
+                if (numread == -1)
+                    goto err2;
+                size += numread;
+                if (numread == 0)
+                {   if (size == 0)                      // it really was 0 size
+                        delete buf;                     // don't need the buffer
+                    else
+                        std.gc.hasNoPointers(buf.ptr);
+                    goto Leof;                          // end of file
+                }
+                toread -= numread;
+            }
+        }
     }
     else
     {
-	buf = std.gc.malloc(cast(int)size);
-	if (buf.ptr)
-	    std.gc.hasNoPointers(buf.ptr);
+        buf = std.gc.malloc(cast(int)size);
+        if (buf.ptr)
+            std.gc.hasNoPointers(buf.ptr);
 
     auto numread = unix.read(fd, buf.ptr, cast(int)size); //auto numread = std.c.linux.linux.read(fd, buf.ptr, cast(int)size);
-	if (numread != size)
-	{
-	    //printf("\tread error, errno = %d\n",getErrno());
-	    goto err2;
-	}
+        if (numread != size)
+        {
+            //printf("\tread error, errno = %d\n",getErrno());
+            goto err2;
+        }
     }
 
   Leof:
     if (unix.close(fd) == -1)
     {
-	//printf("\tclose error, errno = %d\n",getErrno());
+        //printf("\tclose error, errno = %d\n",getErrno());
         goto err;
     }
 
@@ -979,10 +979,10 @@ err1:
 unittest
 {
     version (linux)
-    {	// A file with "zero" length that doesn't have 0 length at all
-	char[] s = cast(char[])std.file.read("/proc/sys/kernel/osrelease");
- 	assert(s.length > 0);
- 	//writefln("'%s'", s);
+    {   // A file with "zero" length that doesn't have 0 length at all
+        char[] s = cast(char[])std.file.read("/proc/sys/kernel/osrelease");
+        assert(s.length > 0);
+        //writefln("'%s'", s);
     }
 }
 
@@ -1056,7 +1056,7 @@ void rename(string from, string to)
     char *toz = toStringz(to);
 
     if (std.c.stdio.rename(fromz, toz) == -1)
-	throw new FileException(to, getErrno());
+        throw new FileException(to, getErrno());
 }
 
 
@@ -1067,7 +1067,7 @@ void rename(string from, string to)
 void remove(string name)
 {
     if (std.c.stdio.remove(toStringz(name)) == -1)
-	throw new FileException(name, getErrno());
+        throw new FileException(name, getErrno());
 }
 
 
@@ -1100,7 +1100,7 @@ ulong getSize(string name)
 
     if (unix.close(fd) == -1)
     {
-	//printf("\tclose error, errno = %d\n",getErrno());
+        //printf("\tclose error, errno = %d\n",getErrno());
         goto err;
     }
 
@@ -1126,7 +1126,7 @@ uint getAttributes(string name)
     namez = toStringz(name);
     if (unix.stat(namez, &statbuf))
     {
-	throw new FileException(name, getErrno());
+        throw new FileException(name, getErrno());
     }
 
     return statbuf.st_mode;
@@ -1145,7 +1145,7 @@ void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
     namez = toStringz(name);
     if (std.c.unix.unix.stat(namez, &statbuf))
     {
-	throw new FileException(name, getErrno());
+        throw new FileException(name, getErrno());
     }
     version (GNU)
     {
@@ -1153,23 +1153,23 @@ void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
     fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
     ftm = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
     }
-	else version (linux)
+        else version (linux)
     {
-	ftc = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
-	fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
-	ftm = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+        ftc = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+        fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+        ftm = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
     }
     else version (OSX)
-    {	// BUG: should add in tv_nsec field
-	ftc = cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
-	fta = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
-	ftm = cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
+    {   // BUG: should add in tv_nsec field
+        ftc = cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
+        fta = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
+        ftm = cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
     }
     else version (FreeBSD)
-    {	// BUG: should add in tv_nsec field
-	ftc = cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
-	fta = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
-	ftm = cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
+    {   // BUG: should add in tv_nsec field
+        ftc = cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
+        fta = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
+        ftm = cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
     }
     else version (Solaris)
     {  // BUG: should add in *nsec fields
@@ -1179,7 +1179,7 @@ void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
     }
     else
     {
-	static assert(0);
+        static assert(0);
     }
 }
 
@@ -1199,7 +1199,7 @@ int exists(char[] name)
     namez = toStringz(name);
     if (unix.stat(namez, &statbuf))
     {
-	return 0;
+        return 0;
     }
     return 1;
 +/
@@ -1216,7 +1216,7 @@ unittest
 
 int isfile(string name)
 {
-    return (getAttributes(name) & S_IFMT) == S_IFREG;	// regular file
+    return (getAttributes(name) & S_IFMT) == S_IFREG;   // regular file
 }
 
 /****************************************************
@@ -1236,7 +1236,7 @@ void chdir(string pathname)
 {
     if (unix.chdir(toStringz(pathname)))
     {
-	throw new FileException(pathname, getErrno());
+        throw new FileException(pathname, getErrno());
     }
 }
 
@@ -1248,7 +1248,7 @@ void mkdir(char[] pathname)
 {
     if (unix.mkdir(toStringz(pathname), 0777))
     {
-	throw new FileException(pathname, getErrno());
+        throw new FileException(pathname, getErrno());
     }
 }
 
@@ -1260,7 +1260,7 @@ void rmdir(string pathname)
 {
     if (unix.rmdir(toStringz(pathname)))
     {
-	throw new FileException(pathname, getErrno());
+        throw new FileException(pathname, getErrno());
     }
 }
 
@@ -1272,29 +1272,29 @@ string getcwd()
 {
     version(all)
     {
-	char buf[PATH_MAX];
-	if (! unix.getcwd(buf.ptr, buf.length))
-	{
-	    throw new FileException("cannot get cwd", getErrno());
-	}
-	size_t len = strlen(buf.ptr);
-	string result = new char[len];
-	result[] = buf[0..len];
-	return result;
+        char buf[PATH_MAX];
+        if (! unix.getcwd(buf.ptr, buf.length))
+        {
+            throw new FileException("cannot get cwd", getErrno());
+        }
+        size_t len = strlen(buf.ptr);
+        string result = new char[len];
+        result[] = buf[0..len];
+        return result;
     }
     else
     {
     auto p = unix.getcwd(null, 0);
     if (!p)
     {
-	throw new FileException("cannot get cwd", getErrno());
+        throw new FileException("cannot get cwd", getErrno());
     }
     auto len = std.c.string.strlen(p);
     auto buf = new char[len];
     buf[] = p[0 .. len];
     std.c.stdlib.free(p);
     return buf;
-    }	    
+    }       
 
 }
 
@@ -1304,81 +1304,81 @@ string getcwd()
 
 struct DirEntry
 {
-    string name;			/// file or directory name
-    ulong _size = ~0UL;			// size of file in bytes
-    d_time _creationTime = d_time_nan;	// time of file creation
+    string name;                        /// file or directory name
+    ulong _size = ~0UL;                 // size of file in bytes
+    d_time _creationTime = d_time_nan;  // time of file creation
     d_time _lastAccessTime = d_time_nan; // time file was last accessed
-    d_time _lastWriteTime = d_time_nan;	// time file was last written to
+    d_time _lastWriteTime = d_time_nan; // time file was last written to
     version (GNU)
-	typeof(struct_stat.st_mode) _st_mode;
+        typeof(struct_stat.st_mode) _st_mode;
     else
-	ubyte d_type;
-    ubyte didstat;			// done lazy evaluation of stat()
+        ubyte d_type;
+    ubyte didstat;                      // done lazy evaluation of stat()
 
     void init(string path, dirent *fd)
-    {	size_t len = std.c.string.strlen(fd.d_name.ptr);
-	name = std.path.join(path, fd.d_name[0 .. len]);
-	version(GNU)
-	    { }
-	else
-	    d_type = fd.d_type;
+    {   size_t len = std.c.string.strlen(fd.d_name.ptr);
+        name = std.path.join(path, fd.d_name[0 .. len]);
+        version(GNU)
+            { }
+        else
+            d_type = fd.d_type;
        // Some platforms, like Solaris, don't have this member.
        // TODO: Bug: d_type is never set on Solaris (see bugzilla 2838 for fix.)
        static if (is(fd.d_type))
            d_type = fd.d_type;
-	didstat = 0;
+        didstat = 0;
     }
 
     int isdir()
     {
-	version(GNU)
-	{
-	    if (!didstat)
-		doStat();
-	    return (_st_mode & S_IFMT) == S_IFDIR;
-	}
-	else
-	    return d_type & DT_DIR;
+        version(GNU)
+        {
+            if (!didstat)
+                doStat();
+            return (_st_mode & S_IFMT) == S_IFDIR;
+        }
+        else
+            return d_type & DT_DIR;
     }
 
     int isfile()
     {
-	version(GNU)
-	{
-	    if (!didstat)
-		doStat();
-	    return (_st_mode & S_IFMT) == S_IFREG;
-	}
-	else
-	    return d_type & DT_REG;
+        version(GNU)
+        {
+            if (!didstat)
+                doStat();
+            return (_st_mode & S_IFMT) == S_IFREG;
+        }
+        else
+            return d_type & DT_REG;
     }
 
     ulong size()
     {
-	if (!didstat)
-	    doStat();
-	return _size;
+        if (!didstat)
+            doStat();
+        return _size;
     }
 
     d_time creationTime()
     {
-	if (!didstat)
-	    doStat();
-	return _creationTime;
+        if (!didstat)
+            doStat();
+        return _creationTime;
     }
 
     d_time lastAccessTime()
     {
-	if (!didstat)
-	    doStat();
-	return _lastAccessTime;
+        if (!didstat)
+            doStat();
+        return _lastAccessTime;
     }
 
     d_time lastWriteTime()
     {
-	if (!didstat)
-	    doStat();
-	return _lastWriteTime;
+        if (!didstat)
+            doStat();
+        return _lastWriteTime;
     }
 
     /* This is to support lazy evaluation, because doing stat's is
@@ -1387,53 +1387,53 @@ struct DirEntry
 
     void doStat()
     {
-	int fd;
-	struct_stat statbuf;
-	char* namez;
+        int fd;
+        struct_stat statbuf;
+        char* namez;
 
-	namez = toStringz(name);
-	if (std.c.unix.unix.stat(namez, &statbuf))
-	{
-	    //printf("\tstat error, errno = %d\n",getErrno());
-	    return;
-	}
-	_size = cast(ulong)statbuf.st_size;
-	version (GNU)
-	{
-	_creationTime = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
-	_lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
-	_lastWriteTime = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
-	}
- 	else version (linux)
-	{
-	    _creationTime = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
-	    _lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
-	    _lastWriteTime = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
-	}
-	else version (OSX)
-	{
-	    _creationTime =   cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
-	    _lastAccessTime = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
-	    _lastWriteTime =  cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
-	}
-	else version (FreeBSD)
-	{
-	    _creationTime =   cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
-	    _lastAccessTime = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
-	    _lastWriteTime =  cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
-	}
-	else version (Solaris)
-	{
-	    _creationTime   = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
-	    _lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
-	    _lastWriteTime  = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
-	}
-	else
-	{
-	    static assert(0);
-	}
-	_st_mode = statbuf.st_mode;
-	didstat = 1;
+        namez = toStringz(name);
+        if (std.c.unix.unix.stat(namez, &statbuf))
+        {
+            //printf("\tstat error, errno = %d\n",getErrno());
+            return;
+        }
+        _size = cast(ulong)statbuf.st_size;
+        version (GNU)
+        {
+        _creationTime = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+        _lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+        _lastWriteTime = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+        }
+        else version (linux)
+        {
+            _creationTime = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+            _lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+            _lastWriteTime = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+        }
+        else version (OSX)
+        {
+            _creationTime =   cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
+            _lastAccessTime = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
+            _lastWriteTime =  cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
+        }
+        else version (FreeBSD)
+        {
+            _creationTime =   cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
+            _lastAccessTime = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
+            _lastWriteTime =  cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
+        }
+        else version (Solaris)
+        {
+            _creationTime   = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+            _lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+            _lastWriteTime  = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+        }
+        else
+        {
+            static assert(0);
+        }
+        _st_mode = statbuf.st_mode;
+        didstat = 1;
     }
 }
 
@@ -1448,8 +1448,8 @@ string[] listdir(string pathname)
     
     bool listing(string filename)
     {
-	result ~= filename;
-	return true; // continue
+        result ~= filename;
+        return true; // continue
     }
     
     listdir(pathname, &listing);
@@ -1461,13 +1461,13 @@ string[] listdir(string pathname, string pattern)
     
     bool callback(DirEntry* de)
     {
-	if (de.isdir)
-	    listdir(de.name, &callback);
-	else
-	{   if (std.path.fnmatch(de.name, pattern))
-		result ~= de.name;
-	}
-	return true; // continue
+        if (de.isdir)
+            listdir(de.name, &callback);
+        else
+        {   if (std.path.fnmatch(de.name, pattern))
+                result ~= de.name;
+        }
+        return true; // continue
     }
     
     listdir(pathname, &callback);
@@ -1479,13 +1479,13 @@ string[] listdir(string pathname, RegExp r)
     
     bool callback(DirEntry* de)
     {
-	if (de.isdir)
-	    listdir(de.name, &callback);
-	else
-	{   if (r.test(de.name))
-		result ~= de.name;
-	}
-	return true; // continue
+        if (de.isdir)
+            listdir(de.name, &callback);
+        else
+        {   if (r.test(de.name))
+                result ~= de.name;
+        }
+        return true; // continue
     }
     
     listdir(pathname, &callback);
@@ -1496,7 +1496,7 @@ void listdir(string pathname, bool delegate(string filename) callback)
 {
     bool listing(DirEntry* de)
     {
-	return callback(std.path.getBaseName(de.name));
+        return callback(std.path.getBaseName(de.name));
     }
 
     listdir(pathname, &listing);
@@ -1511,24 +1511,24 @@ void listdir(string pathname, bool delegate(DirEntry* de) callback)
     h = opendir(toStringz(pathname));
     if (h)
     {
-	try
-	{
-	    while((fdata = readdir(h)) != null)
-	    {
-		// Skip "." and ".."
-		if (!std.c.string.strcmp(fdata.d_name.ptr, ".") ||
- 		    !std.c.string.strcmp(fdata.d_name.ptr, ".."))
-			continue;
+        try
+        {
+            while((fdata = readdir(h)) != null)
+            {
+                // Skip "." and ".."
+                if (!std.c.string.strcmp(fdata.d_name.ptr, ".") ||
+                    !std.c.string.strcmp(fdata.d_name.ptr, ".."))
+                        continue;
 
-		de.init(pathname, fdata);
-		if (!callback(&de))	    
-		    break;
-	    }
-	}
-	finally
-	{
-	    closedir(h);
-	}
+                de.init(pathname, fdata);
+                if (!callback(&de))         
+                    break;
+            }
+        }
+        finally
+        {
+            closedir(h);
+        }
     }
     else
     {
@@ -1575,8 +1575,8 @@ void copy(string from, string to)
     size_t BUFSIZ = 4096 * 16;
     void* buf = std.c.stdlib.malloc(BUFSIZ);
     if (!buf)
-    {	BUFSIZ = 4096;
-	buf = std.c.stdlib.malloc(BUFSIZ);
+    {   BUFSIZ = 4096;
+        buf = std.c.stdlib.malloc(BUFSIZ);
     }
     if (!buf)
     {
@@ -1585,28 +1585,28 @@ void copy(string from, string to)
     }
 
     for (auto size = statbuf.st_size; size; )
-    {	size_t toread = (size > BUFSIZ) ? BUFSIZ : cast(size_t)size;
+    {   size_t toread = (size > BUFSIZ) ? BUFSIZ : cast(size_t)size;
 
-	auto n = std.c.unix.unix.read(fd, buf, toread);
-	if (n != toread)
-	{
-	    //printf("\tread error, errno = %d\n",getErrno());
-	    goto err5;
-	}
-	n = std.c.unix.unix.write(fdw, buf, toread);
-	if (n != toread)
-	{
-	    //printf("\twrite error, errno = %d\n",getErrno());
-	    goto err5;
-	}
-	size -= toread;
+        auto n = std.c.unix.unix.read(fd, buf, toread);
+        if (n != toread)
+        {
+            //printf("\tread error, errno = %d\n",getErrno());
+            goto err5;
+        }
+        n = std.c.unix.unix.write(fdw, buf, toread);
+        if (n != toread)
+        {
+            //printf("\twrite error, errno = %d\n",getErrno());
+            goto err5;
+        }
+        size -= toread;
     }
 
     std.c.stdlib.free(buf);
 
     if (std.c.unix.unix.close(fdw) == -1)
     {
-	//printf("\tclose error, errno = %d\n",getErrno());
+        //printf("\tclose error, errno = %d\n",getErrno());
         goto err2;
     }
 
@@ -1623,13 +1623,13 @@ void copy(string from, string to)
     }
     else version (OSX)
     {
-	utim.actime = cast(__time_t)statbuf.st_atimespec.tv_sec;
-	utim.modtime = cast(__time_t)statbuf.st_mtimespec.tv_sec;
+        utim.actime = cast(__time_t)statbuf.st_atimespec.tv_sec;
+        utim.modtime = cast(__time_t)statbuf.st_mtimespec.tv_sec;
     }
     else version (FreeBSD)
     {
- 	utim.actime = cast(__time_t)statbuf.st_atimespec.tv_sec;
- 	utim.modtime = cast(__time_t)statbuf.st_mtimespec.tv_sec;
+        utim.actime = cast(__time_t)statbuf.st_atimespec.tv_sec;
+        utim.modtime = cast(__time_t)statbuf.st_mtimespec.tv_sec;
     }
     else version (Solaris)
     {
@@ -1638,17 +1638,17 @@ void copy(string from, string to)
     }
     else
     {
-	static assert(0);
+        static assert(0);
     }
     if (utime(toz, &utim) == -1)
     {
-	//printf("\tutime error, errno = %d\n",getErrno());
-	goto err3;
+        //printf("\tutime error, errno = %d\n",getErrno());
+        goto err3;
     }
 
     if (std.c.unix.unix.close(fd) == -1)
     {
-	//printf("\tclose error, errno = %d\n",getErrno());
+        //printf("\tclose error, errno = %d\n",getErrno());
         goto err1;
     }
 
@@ -1696,21 +1696,21 @@ unittest
 
     remove("unittest_write.tmp");
     if (exists("unittest_write.tmp"))
-	assert(0);
+        assert(0);
     remove("unittest_write2.tmp");
     if (exists("unittest_write2.tmp"))
-	assert(0);
+        assert(0);
 }
 
 unittest
 {
     listdir (".", delegate bool (DirEntry * de)
     {
-	auto s = std.string.format("%s : c %s, w %s, a %s", de.name,
-		toUTCString (de.creationTime),
-		toUTCString (de.lastWriteTime),
-		toUTCString (de.lastAccessTime));
-	return true;
+        auto s = std.string.format("%s : c %s, w %s, a %s", de.name,
+                toUTCString (de.creationTime),
+                toUTCString (de.lastWriteTime),
+                toUTCString (de.lastAccessTime));
+        return true;
     }
     );
 }

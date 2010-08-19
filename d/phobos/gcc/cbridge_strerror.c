@@ -17,7 +17,7 @@ char * _d_gnu_cbridge_strerror(int en, char * buf, size_t len)
 #else
     strncpy(buf, strerror(en), len);
     if (len)
-	buf[len-1] = '\0';
+        buf[len-1] = '\0';
     return buf;
 #endif
 }

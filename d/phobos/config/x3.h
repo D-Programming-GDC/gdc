@@ -194,8 +194,8 @@ typedef struct _X3_Type {
     struct _X3_Type *next;
     //X3_TgtSize  int_param;
     union {
-	struct _X3_Struct * struct_def;
-	X3_TgtSize array_length;
+        struct _X3_Struct * struct_def;
+        X3_TgtSize array_length;
     } u;
     int         flags;
 } X3_Type;

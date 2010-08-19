@@ -41,12 +41,12 @@ enum : _Unwind_State
 alias int _Unwind_Action;
 enum : _Unwind_Action
 {
-    _UA_SEARCH_PHASE =	1,
-    _UA_CLEANUP_PHASE =	2,
-    _UA_HANDLER_FRAME =	4,
-    _UA_FORCE_UNWIND =	8,
-    _UA_END_OF_STACK =	16,
-    _URC_NO_REASON = 	_URC_OK
+    _UA_SEARCH_PHASE =  1,
+    _UA_CLEANUP_PHASE = 2,
+    _UA_HANDLER_FRAME = 4,
+    _UA_FORCE_UNWIND =  8,
+    _UA_END_OF_STACK =  16,
+    _URC_NO_REASON =    _URC_OK
 }
 
 
@@ -86,13 +86,13 @@ struct _Unwind_Control_Block
   /* Pr cache (for pr's benefit): */
   struct _pr_cache
     {
-      _uw fnstart;			/* function start address */
-      _Unwind_EHT_Header *ehtp;	/* pointer to EHT entry header word */
-      _uw additional;		/* additional data */
+      _uw fnstart;                      /* function start address */
+      _Unwind_EHT_Header *ehtp; /* pointer to EHT entry header word */
+      _uw additional;           /* additional data */
       _uw reserved1;
     }
   _pr_cache pr_cache;
-  long[0] _force_alignment;	/* Force alignment to 8-byte boundary */
+  long[0] _force_alignment;     /* Force alignment to 8-byte boundary */
 };
 
   /* Virtual Register Set*/
@@ -175,7 +175,7 @@ alias extern(C) _Unwind_Reason_Code function(int, _Unwind_Action,
     void *) _Unwind_Stop_Fn;
 
 _Unwind_Reason_Code _Unwind_ForcedUnwind (_Unwind_Control_Block *,
-					    _Unwind_Stop_Fn, void *);
+                                            _Unwind_Stop_Fn, void *);
 _Unwind_Word _Unwind_GetCFA (_Unwind_Context *);
 void _Unwind_Complete(_Unwind_Control_Block *ucbp);
 void _Unwind_DeleteException (_Unwind_Exception *);
@@ -194,15 +194,15 @@ _Unwind_Word _Unwind_decode_target2 (_Unwind_Word ptr)
     tmp = *cast(_Unwind_Word *) ptr;
     /* Zero values are always NULL.  */
     if (!tmp)
-	return 0;
+        return 0;
 
     //#if defined(linux) || defined(__NetBSD__)
     version(linux)
-	const bool pc_rel_ind = true;
+        const bool pc_rel_ind = true;
     else version(netbsd) // TODO: name
-	const bool pc_rel_ind = true;
+        const bool pc_rel_ind = true;
     else
-	const bool pc_rel_ind = false;
+        const bool pc_rel_ind = false;
     static if (pc_rel_ind)
     {
       /* Pc-relative indirect.  */
@@ -230,7 +230,7 @@ _Unwind_Word _Unwind_GetGR (_Unwind_Context *context, int regno)
 }
 
 /* Return the address of the instruction, not the actual IP value.  */
-/*#define _Unwind_GetIP(context)			\
+/*#define _Unwind_GetIP(context)                        \
   (_Unwind_GetGR (context, 15) & ~(_Unwind_Word)1)*/
 _Unwind_Word _Unwind_GetIP(_Unwind_Context *context)
 {
@@ -245,7 +245,7 @@ void _Unwind_SetGR (_Unwind_Context *context, int regno, _Unwind_Word val)
 
 /* The dwarf unwinder doesn't understand arm/thumb state.  We assume the
    landing pad uses the same instruction set as the call site.  */
-/*#define _Unwind_SetIP(context, val)					\
+/*#define _Unwind_SetIP(context, val)                                   \
   _Unwind_SetGR (context, 15, val | (_Unwind_GetGR (context, 15) & 1))*/
 void _Unwind_SetIP(_Unwind_Context *context, _Unwind_Word val)
 {

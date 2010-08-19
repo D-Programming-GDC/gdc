@@ -33,7 +33,7 @@
 
 /**
  * Macros:
- *	WIKI=Phobos/StdProcess
+ *      WIKI=Phobos/StdProcess
  */
 
 
@@ -71,11 +71,11 @@ private void toAStringz(char[][] a, char**az)
 //{
 //    int spawnvp(int mode, string pathname, string[] argv)
 //    {
-//	char** argv_ = cast(char**)alloca((char*).sizeof * (1 + argv.length));
+//      char** argv_ = cast(char**)alloca((char*).sizeof * (1 + argv.length));
 //
-//	toAStringz(argv, argv_);
+//      toAStringz(argv, argv_);
 //
-//	return std.c.process.spawnvp(mode, toStringz(pathname), argv_);
+//      return std.c.process.spawnvp(mode, toStringz(pathname), argv_);
 //    }
 //}
 
@@ -220,7 +220,7 @@ version (GNU_Need_execvpe)
         string[]    envPaths    =   std.string.split(std.string.toString(std.c.stdlib.getenv("PATH")), ":");
         int         iRet        =   0;
 
-        // Note: if any call to execve() succeeds, this process will cease 
+        // Note: if any call to execve() succeeds, this process will cease
         // execution, so there's no need to check the execve() result through
         // the loop.
 
@@ -265,7 +265,7 @@ version(MainTest)
         else
         {
             string[]    dummy_env;
-            
+
             dummy_env ~= "VAL0=value";
             dummy_env ~= "VAL1=value";
 

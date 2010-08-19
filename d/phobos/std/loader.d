@@ -95,7 +95,7 @@ public alias int                    boolean;
 version(Posix)
     version = dlopen;
 else version(linux)
-	version = dlopen;
+        version = dlopen;
 else version (freebsd)
     version = dlopen;
 
@@ -115,7 +115,7 @@ else version(dlopen)
 
     extern(C)
     {
-	alias void* HModule_;
+        alias void* HModule_;
     }
 }
 else version(darwin)
@@ -138,8 +138,8 @@ else version(darwin)
         /* Constant for the magic field of the mach_header */
         const uint MH_MAGIC = 0xfeedface;   // the mach magic number
         const uint MH_CIGAM = 0xcefaedfe;   // x86 variant
-	const uint MH_MAGIC_64 = 0xfeedfacf;  // the 64-bit mach magic number
-	const uint MH_CIGAM_64 = 0xcffaedfe;  // NXSwapInt(MH_MAGIC_64)
+        const uint MH_MAGIC_64 = 0xfeedfacf;  // the 64-bit mach magic number
+        const uint MH_CIGAM_64 = 0xcffaedfe;  // NXSwapInt(MH_MAGIC_64)
 
         // #include <mach-o/dyld.h>
         
@@ -220,9 +220,9 @@ else version(darwin)
 }
 else
 {
-	const int platform_not_discriminated = 0;
+        const int platform_not_discriminated = 0;
 
-	static assert(0);
+        static assert(0);
 }
 
 /** The platform-independent module handle. Note that this has to be
@@ -376,20 +376,20 @@ version(Windows)
 
     private string ExeModule_Error_()
     {
-	return sysErrorString(s_lastError);
+        return sysErrorString(s_lastError);
     }
 
     private string ExeModule_GetPath_(HXModule hModule)
     {
         char    szFileName[260]; // Need to use a constant here
 
-	// http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dllproc/base/getmodulefilename.asp
+        // http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dllproc/base/getmodulefilename.asp
         uint cch = GetModuleFileNameA(cast(HModule_)hModule, szFileName.ptr, szFileName.length);
 
-	if (cch == 0)
-	{
+        if (cch == 0)
+        {
             record_error_();
-	}
+        }
         return szFileName[0 .. cch].dup;
     }
 }
@@ -445,8 +445,8 @@ else version(dlopen)
     }
     body
     {
-	ExeModuleInfo*   mi_p = moduleName in s_modules;
-	ExeModuleInfo   mi = mi_p is null ? null : *mi_p;
+        ExeModuleInfo*   mi_p = moduleName in s_modules;
+        ExeModuleInfo   mi = mi_p is null ? null : *mi_p;
 
         if(null !is mi)
         {
@@ -746,7 +746,7 @@ else version(darwin)
             
             magic = (* cast(mach_header *) mi.m_hmod).magic;
             if ( magic == MH_MAGIC || magic == MH_CIGAM ||
-		 magic == MH_MAGIC_64 || magic == MH_CIGAM_64)
+                 magic == MH_MAGIC_64 || magic == MH_CIGAM_64)
             {
                 // Can not unlink dynamic libraries on Darwin
             }
@@ -788,8 +788,8 @@ else version(darwin)
             /* Global context, use NSLookupAndBindSymbol */
             symbol = NSLookupAndBindSymbol(name);
         else if ( ( magic == MH_MAGIC || magic == MH_CIGAM ||
-		    magic == MH_MAGIC_64 || magic == MH_CIGAM_64
-		    ) &&
+                    magic == MH_MAGIC_64 || magic == MH_CIGAM_64
+                    ) &&
             NSIsSymbolNameDefinedInImage(cast(mach_header *) handle, name))
             symbol = NSLookupSymbolInImage(cast(mach_header *) handle, name,
                 NSLOOKUPSYMBOLINIMAGE_OPTION_BIND |
@@ -840,9 +840,9 @@ else version(darwin)
 }
 else
 {
-	//const int platform_not_discriminated = 0;
+        //const int platform_not_discriminated = 0;
 
-	static assert(0); //used to platform_not_discriminated
+        static assert(0); //used to platform_not_discriminated
 }
 
 /* /////////////////////////////////////////////////////////////////////////////
@@ -862,12 +862,12 @@ public:
     {
       version (Unix)
       {
-	char[80] buf = void;
-	super(std.string.toString(_d_gnu_cbridge_strerror(errcode, buf.ptr, buf.length)).dup);
+        char[80] buf = void;
+        super(std.string.toString(_d_gnu_cbridge_strerror(errcode, buf.ptr, buf.length)).dup);
       }
       else
       {
-	super(std.string.toString(strerror(errcode)).dup);
+        super(std.string.toString(strerror(errcode)).dup);
       }
     }
 }
@@ -892,23 +892,23 @@ public:
         }
         else
         {
-	    version (Windows)
-	    {
-		string path = Path();
-		m_hModule = cast(HXModule)LoadLibraryA(toStringz(path));
-		if (m_hModule == null)
-		    throw new ExeModuleException(GetLastError());
-	    }
-	    else version (dlopen)
-	    {
-		m_hModule = ExeModule_AddRef(hModule);
-	    }
-	    else version (darwin)
-	    {
-		m_hModule = ExeModule_AddRef(hModule);
-	    }
-	    else
-		static assert(0);
+            version (Windows)
+            {
+                string path = Path();
+                m_hModule = cast(HXModule)LoadLibraryA(toStringz(path));
+                if (m_hModule == null)
+                    throw new ExeModuleException(GetLastError());
+            }
+            else version (dlopen)
+            {
+                m_hModule = ExeModule_AddRef(hModule);
+            }
+            else version (darwin)
+            {
+                m_hModule = ExeModule_AddRef(hModule);
+            }
+            else
+                static assert(0);
         }
     }
 
@@ -919,28 +919,28 @@ public:
     }
     body
     {
-	version (Windows)
-	{
-	    m_hModule = cast(HXModule)LoadLibraryA(toStringz(moduleName));
-	    if (null is m_hModule)
-		throw new ExeModuleException(GetLastError());
-	}
-	else version (dlopen)
-	{
-	    m_hModule = ExeModule_Load(moduleName);
-	    if (null is m_hModule)
-		throw new ExeModuleException(ExeModule_Error());
-	}
-	else version (darwin)
-	{
-	    m_hModule = ExeModule_Load(moduleName);
-	    if (null is m_hModule)
-		throw new ExeModuleException(ExeModule_Error());
-	}
-	else
-	{
-	    static assert(0);		// unsupported system
-	}
+        version (Windows)
+        {
+            m_hModule = cast(HXModule)LoadLibraryA(toStringz(moduleName));
+            if (null is m_hModule)
+                throw new ExeModuleException(GetLastError());
+        }
+        else version (dlopen)
+        {
+            m_hModule = ExeModule_Load(moduleName);
+            if (null is m_hModule)
+                throw new ExeModuleException(ExeModule_Error());
+        }
+        else version (darwin)
+        {
+            m_hModule = ExeModule_Load(moduleName);
+            if (null is m_hModule)
+                throw new ExeModuleException(ExeModule_Error());
+        }
+        else
+        {
+            static assert(0);           // unsupported system
+        }
     }
     ~this()
     {
@@ -959,21 +959,21 @@ public:
     {
         if(null !is m_hModule)
         {
-	    version (Windows)
-	    {
-		if(!FreeLibrary(cast(HModule_)m_hModule))
-		    throw new ExeModuleException(GetLastError());
-	    }
-	    else version (dlopen)
-	    {
-		ExeModule_Release(m_hModule);
-	    }
-	    else version (darwin)
-	    {
-		ExeModule_Release(m_hModule);
-	    }
-	    else
-		static assert(0);
+            version (Windows)
+            {
+                if(!FreeLibrary(cast(HModule_)m_hModule))
+                    throw new ExeModuleException(GetLastError());
+            }
+            else version (dlopen)
+            {
+                ExeModule_Release(m_hModule);
+            }
+            else version (darwin)
+            {
+                ExeModule_Release(m_hModule);
+            }
+            else
+                static assert(0);
         }
     }
 /// @}
@@ -988,36 +988,36 @@ public:
      */
     void *getSymbol(in string symbolName)
     {
-	version (Windows)
-	{
-	    void *symbol = GetProcAddress(cast(HModule_)m_hModule, toStringz(symbolName));
-	    if(null is symbol)
-	    {
-		throw new ExeModuleException(GetLastError());
-	    }
-	}
-	else version (dlopen)
-	{
-	    void *symbol = ExeModule_GetSymbol(m_hModule, symbolName);
+        version (Windows)
+        {
+            void *symbol = GetProcAddress(cast(HModule_)m_hModule, toStringz(symbolName));
+            if(null is symbol)
+            {
+                throw new ExeModuleException(GetLastError());
+            }
+        }
+        else version (dlopen)
+        {
+            void *symbol = ExeModule_GetSymbol(m_hModule, symbolName);
 
-	    if(null is symbol)
-	    {
-		throw new ExeModuleException(ExeModule_Error());
-	    }
-	}
-	else version (darwin)
-	{
-	    void *symbol = ExeModule_GetSymbol(m_hModule, symbolName);
+            if(null is symbol)
+            {
+                throw new ExeModuleException(ExeModule_Error());
+            }
+        }
+        else version (darwin)
+        {
+            void *symbol = ExeModule_GetSymbol(m_hModule, symbolName);
 
-	    if(null is symbol)
-	    {
-		throw new ExeModuleException(ExeModule_Error());
-	    }
-	}
-	else
-	{
-	    static assert(0);
-	}
+            if(null is symbol)
+            {
+                throw new ExeModuleException(ExeModule_Error());
+            }
+        }
+        else
+        {
+            static assert(0);
+        }
 
         return symbol;
     }
@@ -1050,27 +1050,27 @@ public:
     {
         assert(null != m_hModule);
 
-	version (Windows)
-	{
-	    char szFileName[260]; // Need to use a constant here
+        version (Windows)
+        {
+            char szFileName[260]; // Need to use a constant here
 
-	    // http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dllproc/base/getmodulefilename.asp
-	    uint cch = GetModuleFileNameA(cast(HModule_)m_hModule, szFileName.ptr, szFileName.length);
-	    if (cch == 0)
-		throw new ExeModuleException(GetLastError());
+            // http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dllproc/base/getmodulefilename.asp
+            uint cch = GetModuleFileNameA(cast(HModule_)m_hModule, szFileName.ptr, szFileName.length);
+            if (cch == 0)
+                throw new ExeModuleException(GetLastError());
 
-	    return szFileName[0 .. cch].dup;
-	}
-	else version (dlopen)
-	{
-	    return ExeModule_GetPath_(m_hModule);
-	}
-	else version (darwin)
-	{
-	    return ExeModule_GetPath_(m_hModule);
-	}
-	else
-	    static assert(0);
+            return szFileName[0 .. cch].dup;
+        }
+        else version (dlopen)
+        {
+            return ExeModule_GetPath_(m_hModule);
+        }
+        else version (darwin)
+        {
+            return ExeModule_GetPath_(m_hModule);
+        }
+        else
+            static assert(0);
     }
 /// @}
 
@@ -1098,7 +1098,7 @@ version(TestMain)
                 auto ExeModule xmod =   new ExeModule(moduleName);
 
                 printf("\"%.*s\" is loaded\n", cast(int) moduleName.length,
-		    moduleName.ptr);
+                    moduleName.ptr);
 
                 void    *symbol =   xmod.getSymbol(symbolName);
 

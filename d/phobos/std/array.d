@@ -13,14 +13,14 @@ class ArrayBoundsError : Error
   public:
     this(char[] filename, uint linnum)
     {
-	this.linnum = linnum;
-	this.filename = filename;
+        this.linnum = linnum;
+        this.filename = filename;
 
-	char[] buffer = new char[19 + filename.length + linnum.sizeof * 3 + 1];
-	int len;
-	len = sprintf(buffer.ptr, "ArrayBoundsError %.*s(%u)",
-	    cast(int) filename.length, filename.ptr, linnum);
-	super(buffer[0..len]);
+        char[] buffer = new char[19 + filename.length + linnum.sizeof * 3 + 1];
+        int len;
+        len = sprintf(buffer.ptr, "ArrayBoundsError %.*s(%u)",
+            cast(int) filename.length, filename.ptr, linnum);
+        super(buffer[0..len]);
     }
 }
 

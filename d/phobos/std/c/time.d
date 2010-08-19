@@ -4,7 +4,7 @@
  * Authors: Walter Bright, Digital Mars, http://www.digitalmars.com
  * License: Public Domain
  * Macros:
- *	WIKI=Phobos/StdCTime
+ *      WIKI=Phobos/StdCTime
  */
 
 module std.c.time;
@@ -27,7 +27,7 @@ version (GNU)
     extern char *tzname[2];
     version (Windows)
     {
-	const clock_t CLK_TCK        = 1000;
+        const clock_t CLK_TCK        = 1000;
     }
     // Else: not implemented yet.  Could be be a constant or
     // a sysconf() call depending on the OS.
@@ -58,7 +58,7 @@ else version (linux)
     extern clock_t CLK_TCK;
     /*static this()
     {
-	CLK_TCK = cast(clock_t) sysconf(2);
+        CLK_TCK = cast(clock_t) sysconf(2);
     }*/
 
     struct tm
@@ -105,8 +105,8 @@ else version (FreeBSD)
                tm_wday,
                tm_yday,
                tm_isdst;
-	int tm_gmtoff;
-	char* tm_zone;
+        int tm_gmtoff;
+        char* tm_zone;
     }
 }
 else version (Solaris)

@@ -45,21 +45,21 @@ on_dyld_add_image(const struct mach_header* hdr, intptr_t slide) {
 #endif
 
     for (i = 0;
-	 i < sizeof(GC_dyld_sections) / sizeof(GC_dyld_sections[0]);
-	 i++) {
-	
+         i < sizeof(GC_dyld_sections) / sizeof(GC_dyld_sections[0]);
+         i++) {
+        
 #if THIS_IS_64_BIT
-	sec = getsectbynamefromheader_64((const struct mach_header_64*) hdr,
-	    GC_dyld_sections[i].seg, GC_dyld_sections[i].sect);
+        sec = getsectbynamefromheader_64((const struct mach_header_64*) hdr,
+            GC_dyld_sections[i].seg, GC_dyld_sections[i].sect);
 #else
-	sec = getsectbynamefromheader(hdr, GC_dyld_sections[i].seg,
-	    GC_dyld_sections[i].sect);
+        sec = getsectbynamefromheader(hdr, GC_dyld_sections[i].seg,
+            GC_dyld_sections[i].sect);
 #endif
-	if (sec == NULL || sec->size == 0)
-	    continue;
-	start = slide + sec->addr;
-	end = start + sec->size;
-	    
+        if (sec == NULL || sec->size == 0)
+            continue;
+        start = slide + sec->addr;
+        end = start + sec->size;
+            
         GC_add_range((void*) start, (void*) end);
     }
 }
@@ -76,22 +76,22 @@ on_dyld_remove_image(const struct mach_header* hdr, intptr_t slide) {
 #endif
 
     for(i = 0;
-	i < sizeof(GC_dyld_sections) / sizeof(GC_dyld_sections[0]);
-	i++) {
+        i < sizeof(GC_dyld_sections) / sizeof(GC_dyld_sections[0]);
+        i++) {
 
 #if THIS_IS_64_BIT
-	sec = getsectbynamefromheader_64((const struct mach_header_64*) hdr,
-	    GC_dyld_sections[i].seg, GC_dyld_sections[i].sect);
+        sec = getsectbynamefromheader_64((const struct mach_header_64*) hdr,
+            GC_dyld_sections[i].seg, GC_dyld_sections[i].sect);
 #else
-	sec = getsectbynamefromheader(hdr, GC_dyld_sections[i].seg,
-	    GC_dyld_sections[i].sect);
+        sec = getsectbynamefromheader(hdr, GC_dyld_sections[i].seg,
+            GC_dyld_sections[i].sect);
 #endif
-	if (sec == NULL || sec->size == 0)
-	    continue;
-	start = slide + sec->addr;
-	end = start + sec->size;
+        if (sec == NULL || sec->size == 0)
+            continue;
+        start = slide + sec->addr;
+        end = start + sec->size;
 
-	GC_remove_range((void*) start);//, (void*) end);
+        GC_remove_range((void*) start);//, (void*) end);
     }
 }
 
@@ -100,9 +100,9 @@ void _d_gcc_dyld_start(enum DataSegmentTracking mode)
     static int started = 0;
 
     if (! started) {
-	started = 1;
-	_dyld_register_func_for_add_image(on_dyld_add_image);
-	_dyld_register_func_for_remove_image(on_dyld_remove_image);
+        started = 1;
+        _dyld_register_func_for_add_image(on_dyld_add_image);
+        _dyld_register_func_for_remove_image(on_dyld_remove_image);
     }
 
     // (for LoadTimeLibrariesOnly:) Can't unregister callbacks 

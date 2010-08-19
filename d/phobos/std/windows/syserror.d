@@ -15,19 +15,19 @@ char[] sysErrorString(uint errcode)
     DWORD r;
 
     r = FormatMessageA( 
-	    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-	    FORMAT_MESSAGE_FROM_SYSTEM | 
-	    FORMAT_MESSAGE_IGNORE_INSERTS,
-	    null,
-	    errcode,
-	    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-	    cast(LPTSTR)&buffer,
-	    0,
-	    null);
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+            FORMAT_MESSAGE_FROM_SYSTEM | 
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+            null,
+            errcode,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+            cast(LPTSTR)&buffer,
+            0,
+            null);
 
     /* Remove \r\n from error string */
     if (r >= 2)
-	r -= 2;
+        r -= 2;
 
     /* Create 0 terminated copy on GC heap because fromMBSz()
      * may return it.

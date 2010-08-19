@@ -46,7 +46,7 @@ $(I UnsignedInteger):
     $(I DecimalDigit) $(I UnsignedInteger)
  * </pre>
  * Macros:
- *	WIKI=Phobos/StdConv
+ *      WIKI=Phobos/StdConv
  */
 
 module std.conv;
@@ -57,7 +57,7 @@ private import std.math;  // for fabs(), isnan()
 private import std.stdio; // for writefln() and printf()
 
 
-//debug=conv;		// uncomment to turn on debugging printf's
+//debug=conv;           // uncomment to turn on debugging printf's
 
 /* ************* Exceptions *************** */
 
@@ -68,7 +68,7 @@ class ConvError : Error
 {
     this(char[] s)
     {
-	super("conversion " ~ s);
+        super("conversion " ~ s);
     }
 }
 
@@ -84,7 +84,7 @@ class ConvOverflowError : Error
 {
     this(char[] s)
     {
-	super("Error: overflow " ~ s);
+        super("Error: overflow " ~ s);
     }
 }
 
@@ -102,45 +102,45 @@ int toInt(char[] s)
     int length = s.length;
 
     if (!length)
-	goto Lerr;
+        goto Lerr;
 
     int sign = 0;
     int v = 0;
 
     for (int i = 0; i < length; i++)
     {
-	char c = s[i];
-	if (c >= '0' && c <= '9')
-	{
-	    if (v < int.max/10 || (v == int.max/10 && c + sign <= '7'))
-		v = v * 10 + (c - '0');
-	    else
-		goto Loverflow;
-	}
-	else if (c == '-' && i == 0)
-	{
-	    sign = -1;
-	    if (length == 1)
-		goto Lerr;
-	}
-	else if (c == '+' && i == 0)
-	{
-	    if (length == 1)
-		goto Lerr;
-	}
-	else
-	    goto Lerr;
+        char c = s[i];
+        if (c >= '0' && c <= '9')
+        {
+            if (v < int.max/10 || (v == int.max/10 && c + sign <= '7'))
+                v = v * 10 + (c - '0');
+            else
+                goto Loverflow;
+        }
+        else if (c == '-' && i == 0)
+        {
+            sign = -1;
+            if (length == 1)
+                goto Lerr;
+        }
+        else if (c == '+' && i == 0)
+        {
+            if (length == 1)
+                goto Lerr;
+        }
+        else
+            goto Lerr;
     }
     if (sign == -1)
     {
-	if (cast(uint)v > 0x80000000)
-	    goto Loverflow;
-	v = -v;
+        if (cast(uint)v > 0x80000000)
+            goto Loverflow;
+        v = -v;
     }
     else
     {
-	if (cast(uint)v > 0x7FFFFFFF)
-	    goto Loverflow;
+        if (cast(uint)v > 0x7FFFFFFF)
+            goto Loverflow;
     }
     return v;
 
@@ -184,36 +184,36 @@ unittest
 
     static char[][] errors =
     [
-	"",
-	"-",
-	"+",
-	"-+",
-	" ",
-	" 0",
-	"0 ",
-	"- 0",
-	"1-",
-	"xx",
-	"123h",
-	"2147483648",
-	"-2147483649",
-	"5656566565",
+        "",
+        "-",
+        "+",
+        "-+",
+        " ",
+        " 0",
+        "0 ",
+        "- 0",
+        "1-",
+        "xx",
+        "123h",
+        "2147483648",
+        "-2147483649",
+        "5656566565",
     ];
 
     for (int j = 0; j < errors.length; j++)
     {
-	i = 47;
-	try
-	{
-	    i = toInt(errors[j]);
-	    printf("i = %d\n", i);
-	}
-	catch (Error e)
-	{
-	    debug(conv) e.print();
-	    i = 3;
-	}
-	assert(i == 3);
+        i = 47;
+        try
+        {
+            i = toInt(errors[j]);
+            printf("i = %d\n", i);
+        }
+        catch (Error e)
+        {
+            debug(conv) e.print();
+            i = 3;
+        }
+        assert(i == 3);
     }
 }
 
@@ -227,22 +227,22 @@ uint toUint(char[] s)
     int length = s.length;
 
     if (!length)
-	goto Lerr;
+        goto Lerr;
 
     uint v = 0;
 
     for (int i = 0; i < length; i++)
     {
-	char c = s[i];
-	if (c >= '0' && c <= '9')
-	{
-	    if (v < uint.max/10 || (v == uint.max/10 && c <= '5'))
-		v = v * 10 + (c - '0');
-	    else
-		goto Loverflow;
-	}
-	else
-	    goto Lerr;
+        char c = s[i];
+        if (c >= '0' && c <= '9')
+        {
+            if (v < uint.max/10 || (v == uint.max/10 && c <= '5'))
+                v = v * 10 + (c - '0');
+            else
+                goto Loverflow;
+        }
+        else
+            goto Lerr;
     }
     return v;
 
@@ -280,36 +280,36 @@ unittest
 
     static char[][] errors =
     [
-	"",
-	"-",
-	"+",
-	"-+",
-	" ",
-	" 0",
-	"0 ",
-	"- 0",
-	"1-",
-	"+5",
-	"-78",
-	"xx",
-	"123h",
-	"4294967296",
+        "",
+        "-",
+        "+",
+        "-+",
+        " ",
+        " 0",
+        "0 ",
+        "- 0",
+        "1-",
+        "+5",
+        "-78",
+        "xx",
+        "123h",
+        "4294967296",
     ];
 
     for (int j = 0; j < errors.length; j++)
     {
-	i = 47;
-	try
-	{
-	    i = toUint(errors[j]);
-	    printf("i = %d\n", i);
-	}
-	catch (Error e)
-	{
-	    debug(conv) e.print();
-	    i = 3;
-	}
-	assert(i == 3);
+        i = 47;
+        try
+        {
+            i = toUint(errors[j]);
+            printf("i = %d\n", i);
+        }
+        catch (Error e)
+        {
+            debug(conv) e.print();
+            i = 3;
+        }
+        assert(i == 3);
     }
 }
 
@@ -322,45 +322,45 @@ long toLong(char[] s)
     int length = s.length;
 
     if (!length)
-	goto Lerr;
+        goto Lerr;
 
     int sign = 0;
     long v = 0;
 
     for (int i = 0; i < length; i++)
     {
-	char c = s[i];
-	if (c >= '0' && c <= '9')
-	{
-	    if (v < long.max/10 || (v == long.max/10 && c + sign <= '7'))
-		v = v * 10 + (c - '0');
-	    else
-		goto Loverflow;
-	}
-	else if (c == '-' && i == 0)
-	{
-	    sign = -1;
-	    if (length == 1)
-		goto Lerr;
-	}
-	else if (c == '+' && i == 0)
-	{
-	    if (length == 1)
-		goto Lerr;
-	}
-	else
-	    goto Lerr;
+        char c = s[i];
+        if (c >= '0' && c <= '9')
+        {
+            if (v < long.max/10 || (v == long.max/10 && c + sign <= '7'))
+                v = v * 10 + (c - '0');
+            else
+                goto Loverflow;
+        }
+        else if (c == '-' && i == 0)
+        {
+            sign = -1;
+            if (length == 1)
+                goto Lerr;
+        }
+        else if (c == '+' && i == 0)
+        {
+            if (length == 1)
+                goto Lerr;
+        }
+        else
+            goto Lerr;
     }
     if (sign == -1)
     {
-	if (cast(ulong)v > 0x8000000000000000)
-	    goto Loverflow;
-	v = -v;
+        if (cast(ulong)v > 0x8000000000000000)
+            goto Loverflow;
+        v = -v;
     }
     else
     {
-	if (cast(ulong)v > 0x7FFFFFFFFFFFFFFF)
-	    goto Loverflow;
+        if (cast(ulong)v > 0x7FFFFFFFFFFFFFFF)
+            goto Loverflow;
     }
     return v;
 
@@ -410,35 +410,35 @@ unittest
 
     static char[][] errors =
     [
-	"",
-	"-",
-	"+",
-	"-+",
-	" ",
-	" 0",
-	"0 ",
-	"- 0",
-	"1-",
-	"xx",
-	"123h",
-	"9223372036854775808",
-	"-9223372036854775809",
+        "",
+        "-",
+        "+",
+        "-+",
+        " ",
+        " 0",
+        "0 ",
+        "- 0",
+        "1-",
+        "xx",
+        "123h",
+        "9223372036854775808",
+        "-9223372036854775809",
     ];
 
     for (int j = 0; j < errors.length; j++)
     {
-	i = 47;
-	try
-	{
-	    i = toLong(errors[j]);
-	    printf("l = %d\n", i);
-	}
-	catch (Error e)
-	{
-	    debug(conv) e.print();
-	    i = 3;
-	}
-	assert(i == 3);
+        i = 47;
+        try
+        {
+            i = toLong(errors[j]);
+            printf("l = %d\n", i);
+        }
+        catch (Error e)
+        {
+            debug(conv) e.print();
+            i = 3;
+        }
+        assert(i == 3);
     }
 }
 
@@ -452,22 +452,22 @@ ulong toUlong(char[] s)
     int length = s.length;
 
     if (!length)
-	goto Lerr;
+        goto Lerr;
 
     ulong v = 0;
 
     for (int i = 0; i < length; i++)
     {
-	char c = s[i];
-	if (c >= '0' && c <= '9')
-	{
-	    if (v < ulong.max/10 || (v == ulong.max/10 && c <= '5'))
-		v = v * 10 + (c - '0');
-	    else
-		goto Loverflow;
-	}
-	else
-	    goto Lerr;
+        char c = s[i];
+        if (c >= '0' && c <= '9')
+        {
+            if (v < ulong.max/10 || (v == ulong.max/10 && c <= '5'))
+                v = v * 10 + (c - '0');
+            else
+                goto Loverflow;
+        }
+        else
+            goto Lerr;
     }
     return v;
 
@@ -512,36 +512,36 @@ unittest
 
     static char[][] errors =
     [
-	"",
-	"-",
-	"+",
-	"-+",
-	" ",
-	" 0",
-	"0 ",
-	"- 0",
-	"1-",
-	"+5",
-	"-78",
-	"xx",
-	"123h",
-	"18446744073709551616",
+        "",
+        "-",
+        "+",
+        "-+",
+        " ",
+        " 0",
+        "0 ",
+        "- 0",
+        "1-",
+        "+5",
+        "-78",
+        "xx",
+        "123h",
+        "18446744073709551616",
     ];
 
     for (int j = 0; j < errors.length; j++)
     {
-	i = 47;
-	try
-	{
-	    i = toUlong(errors[j]);
-	    printf("i = %d\n", i);
-	}
-	catch (Error e)
-	{
-	    debug(conv) e.print();
-	    i = 3;
-	}
-	assert(i == 3);
+        i = 47;
+        try
+        {
+            i = toUlong(errors[j]);
+            printf("i = %d\n", i);
+        }
+        catch (Error e)
+        {
+            debug(conv) e.print();
+            i = 3;
+        }
+        assert(i == 3);
     }
 }
 
@@ -555,7 +555,7 @@ short toShort(char[] s)
     int v = toInt(s);
 
     if (v != cast(short)v)
-	goto Loverflow;
+        goto Loverflow;
 
     return cast(short)v;
 
@@ -596,35 +596,35 @@ unittest
 
     static char[][] errors =
     [
-	"",
-	"-",
-	"+",
-	"-+",
-	" ",
-	" 0",
-	"0 ",
-	"- 0",
-	"1-",
-	"xx",
-	"123h",
-	"32768",
-	"-32769",
+        "",
+        "-",
+        "+",
+        "-+",
+        " ",
+        " 0",
+        "0 ",
+        "- 0",
+        "1-",
+        "xx",
+        "123h",
+        "32768",
+        "-32769",
     ];
 
     for (int j = 0; j < errors.length; j++)
     {
-	i = 47;
-	try
-	{
-	    i = toShort(errors[j]);
-	    printf("i = %d\n", i);
-	}
-	catch (Error e)
-	{
-	    debug(conv) e.print();
-	    i = 3;
-	}
-	assert(i == 3);
+        i = 47;
+        try
+        {
+            i = toShort(errors[j]);
+            printf("i = %d\n", i);
+        }
+        catch (Error e)
+        {
+            debug(conv) e.print();
+            i = 3;
+        }
+        assert(i == 3);
     }
 }
 
@@ -638,7 +638,7 @@ ushort toUshort(char[] s)
     uint v = toUint(s);
 
     if (v != cast(ushort)v)
-	goto Loverflow;
+        goto Loverflow;
 
     return cast(ushort)v;
 
@@ -673,36 +673,36 @@ unittest
 
     static char[][] errors =
     [
-	"",
-	"-",
-	"+",
-	"-+",
-	" ",
-	" 0",
-	"0 ",
-	"- 0",
-	"1-",
-	"+5",
-	"-78",
-	"xx",
-	"123h",
-	"65536",
+        "",
+        "-",
+        "+",
+        "-+",
+        " ",
+        " 0",
+        "0 ",
+        "- 0",
+        "1-",
+        "+5",
+        "-78",
+        "xx",
+        "123h",
+        "65536",
     ];
 
     for (int j = 0; j < errors.length; j++)
     {
-	i = 47;
-	try
-	{
-	    i = toUshort(errors[j]);
-	    printf("i = %d\n", i);
-	}
-	catch (Error e)
-	{
-	    debug(conv) e.print();
-	    i = 3;
-	}
-	assert(i == 3);
+        i = 47;
+        try
+        {
+            i = toUshort(errors[j]);
+            printf("i = %d\n", i);
+        }
+        catch (Error e)
+        {
+            debug(conv) e.print();
+            i = 3;
+        }
+        assert(i == 3);
     }
 }
 
@@ -716,7 +716,7 @@ byte toByte(char[] s)
     int v = toInt(s);
 
     if (v != cast(byte)v)
-	goto Loverflow;
+        goto Loverflow;
 
     return cast(byte)v;
 
@@ -757,35 +757,35 @@ unittest
 
     static char[][] errors =
     [
-	"",
-	"-",
-	"+",
-	"-+",
-	" ",
-	" 0",
-	"0 ",
-	"- 0",
-	"1-",
-	"xx",
-	"123h",
-	"128",
-	"-129",
+        "",
+        "-",
+        "+",
+        "-+",
+        " ",
+        " 0",
+        "0 ",
+        "- 0",
+        "1-",
+        "xx",
+        "123h",
+        "128",
+        "-129",
     ];
 
     for (int j = 0; j < errors.length; j++)
     {
-	i = 47;
-	try
-	{
-	    i = toByte(errors[j]);
-	    printf("i = %d\n", i);
-	}
-	catch (Error e)
-	{
-	    debug(conv) e.print();
-	    i = 3;
-	}
-	assert(i == 3);
+        i = 47;
+        try
+        {
+            i = toByte(errors[j]);
+            printf("i = %d\n", i);
+        }
+        catch (Error e)
+        {
+            debug(conv) e.print();
+            i = 3;
+        }
+        assert(i == 3);
     }
 }
 
@@ -799,7 +799,7 @@ ubyte toUbyte(char[] s)
     uint v = toUint(s);
 
     if (v != cast(ubyte)v)
-	goto Loverflow;
+        goto Loverflow;
 
     return cast(ubyte)v;
 
@@ -834,36 +834,36 @@ unittest
 
     static char[][] errors =
     [
-	"",
-	"-",
-	"+",
-	"-+",
-	" ",
-	" 0",
-	"0 ",
-	"- 0",
-	"1-",
-	"+5",
-	"-78",
-	"xx",
-	"123h",
-	"256",
+        "",
+        "-",
+        "+",
+        "-+",
+        " ",
+        " 0",
+        "0 ",
+        "- 0",
+        "1-",
+        "+5",
+        "-78",
+        "xx",
+        "123h",
+        "256",
     ];
 
     for (int j = 0; j < errors.length; j++)
     {
-	i = 47;
-	try
-	{
-	    i = toUbyte(errors[j]);
-	    printf("i = %d\n", i);
-	}
-	catch (Error e)
-	{
-	    debug(conv) e.print();
-	    i = 3;
-	}
-	assert(i == 3);
+        i = 47;
+        try
+        {
+            i = toUbyte(errors[j]);
+            printf("i = %d\n", i);
+        }
+        catch (Error e)
+        {
+            debug(conv) e.print();
+            i = 3;
+        }
+        assert(i == 3);
     }
 }
 
@@ -875,7 +875,7 @@ unittest
 version (skyos)
 {
     float strtof(char * s, char ** ep) {
-	return strtod(s, ep);
+        return strtod(s, ep);
     }
 }
 
@@ -892,19 +892,19 @@ float toFloat(in char[] s)
 
     //writefln("toFloat('%s')", s);
     version (aix)
-	s = toupper(s);
+        s = toupper(s);
     sz = toStringz(s);
     if (std.ctype.isspace(*sz))
-	goto Lerr;
+        goto Lerr;
 
     // BUG: should set __locale_decpoint to "." for DMC
 
     setErrno(0);
     f = strtof(sz, &endptr);
     if (getErrno() == ERANGE)
-	goto Lerr;
+        goto Lerr;
     if (endptr && (endptr == sz || *endptr != 0))
-	goto Lerr;
+        goto Lerr;
 
     return f;
         
@@ -948,11 +948,11 @@ unittest
     bool ok = false;
     try
     {
-	toFloat("\x00");
+        toFloat("\x00");
     }
     catch (ConvError e)
     {
-	ok = true;
+        ok = true;
     }
     assert(ok);
 }
@@ -969,19 +969,19 @@ double toDouble(in char[] s)
 
     //writefln("toDouble('%s')", s);
     version (aix)
-	s = toupper(s);
+        s = toupper(s);
     sz = toStringz(s);
     if (std.ctype.isspace(*sz))
-	goto Lerr;
+        goto Lerr;
 
     // BUG: should set __locale_decpoint to "." for DMC
 
     setErrno(0);
     f = strtod(sz, &endptr);
     if (getErrno() == ERANGE)
-	goto Lerr;
+        goto Lerr;
     if (endptr && (endptr == sz || *endptr != 0))
-	goto Lerr;
+        goto Lerr;
 
     return f;
         
@@ -1028,11 +1028,11 @@ unittest
     bool ok = false;
     try
     {
-	toDouble("\x00");
+        toDouble("\x00");
     }
     catch (ConvError e)
     {
-	ok = true;
+        ok = true;
     }
     assert(ok);
 }
@@ -1048,19 +1048,19 @@ real toReal(in char[] s)
 
     //writefln("toReal('%s')", s);
     version (aix)
-	s = toupper(s);
+        s = toupper(s);
     sz = toStringz(s);
     if (std.ctype.isspace(*sz))
-	goto Lerr;
+        goto Lerr;
 
     // BUG: should set __locale_decpoint to "." for DMC
 
     setErrno(0);
     f = _conv_strtold(sz, &endptr);
     if (getErrno() == ERANGE)
-	goto Lerr;
+        goto Lerr;
     if (endptr && (endptr == sz || *endptr != 0))
-	goto Lerr;
+        goto Lerr;
 
     return f;
         
@@ -1112,11 +1112,11 @@ unittest
     bool ok = false;
     try
     {
-	toReal("\x00");
+        toReal("\x00");
     }
     catch (ConvError e)
     {
-	ok = true;
+        ok = true;
     }
     assert(ok);
 }

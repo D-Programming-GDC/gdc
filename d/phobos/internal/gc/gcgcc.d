@@ -14,22 +14,22 @@ version (GC_Use_Alloc_MMap)
 
     void *os_mem_map(size_t nbytes)
     {   void *p;
-	p = mmap(null, nbytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-	return (p == MAP_FAILED) ? null : p;
+        p = mmap(null, nbytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        return (p == MAP_FAILED) ? null : p;
     }
     int os_mem_commit(void *base, size_t offset, size_t nbytes)
     {
-	return 0;
+        return 0;
     }
 
     int os_mem_decommit(void *base, size_t offset, size_t nbytes)
     {
-	return 0;
+        return 0;
     }
 
     int os_mem_unmap(void *base, size_t nbytes)
     {
-	return munmap(base, nbytes);
+        return munmap(base, nbytes);
     }
 }
 else version (GC_Use_Alloc_Valloc)
@@ -53,25 +53,25 @@ else version (GC_Use_Alloc_Malloc)
 
     void *os_mem_map(size_t nbytes)
     {   byte * p, q;
-	p = cast(byte *) std.c.stdlib.malloc(nbytes + PAGESIZE);
-	q = p + ((PAGESIZE - ((cast(size_t) p & PAGE_MASK))) & PAGE_MASK);
-	* cast(void**)(q + nbytes) = p;
-	return q;
+        p = cast(byte *) std.c.stdlib.malloc(nbytes + PAGESIZE);
+        q = p + ((PAGESIZE - ((cast(size_t) p & PAGE_MASK))) & PAGE_MASK);
+        * cast(void**)(q + nbytes) = p;
+        return q;
     }
     int os_mem_commit(void *base, size_t offset, size_t nbytes)
     {
-	return 0;
+        return 0;
     }
 
     int os_mem_decommit(void *base, size_t offset, size_t nbytes)
     {
-	return 0;
+        return 0;
     }
 
     int os_mem_unmap(void *base, size_t nbytes)
     {
-	std.c.stdlib.free( * cast(void**)( cast(byte*) base + nbytes ) );
-	return 0;
+        std.c.stdlib.free( * cast(void**)( cast(byte*) base + nbytes ) );
+        return 0;
     }
 }
 else version (GC_Use_Alloc_Fixed_Heap)
@@ -97,44 +97,44 @@ void *os_query_stackBottom()
 {
     version (GC_Use_Stack_GLibC)
     {
-	return __libc_stack_end;
+        return __libc_stack_end;
     }
     else version (GC_Use_Stack_Guess)
     {
-	// dmainwhatever should be private too
-	// import main?
-	return stackOriginGuess;
+        // dmainwhatever should be private too
+        // import main?
+        return stackOriginGuess;
     }
     else version (GC_Use_Stack_FreeBSD)
     {
-	void * stack_origin;
-	if (_d_gcc_gc_freebsd_stack(& stack_origin))
-	    return stack_origin;
-	else
-	    // No way to signal an error
-	    return null;
+        void * stack_origin;
+        if (_d_gcc_gc_freebsd_stack(& stack_origin))
+            return stack_origin;
+        else
+            // No way to signal an error
+            return null;
     }
     else version (GC_Use_Stack_Scan)
     {
-	static assert(0);
+        static assert(0);
     }
     else version (GC_Use_Stack_Fixed)
     {
-	version (darwin)
-	{
-	    static if (size_t.sizeof == 4)
-		return cast(void*) 0xc0000000;
-	    else static if (size_t.sizeof == 8)
-		return cast(void*) 0x7ffff_00000000UL;
-	    else
-		static assert(0);
-	}
-	else
-	    static assert(0);
+        version (darwin)
+        {
+            static if (size_t.sizeof == 4)
+                return cast(void*) 0xc0000000;
+            else static if (size_t.sizeof == 8)
+                return cast(void*) 0x7ffff_00000000UL;
+            else
+                static assert(0);
+        }
+        else
+            static assert(0);
     }
     else
     {
-	static assert(0);
+        static assert(0);
     }
 }
 
@@ -169,11 +169,11 @@ void os_query_staticdataseg(void **base, size_t *nbytes)
     // Can't assume the input addresses are word-aligned
     static void * adjust_up(void * p)
     {
-	return p + ((S - (cast(size_t)p & (S-1))) & (S-1)); // cast ok even if 64-bit
+        return p + ((S - (cast(size_t)p & (S-1))) & (S-1)); // cast ok even if 64-bit
     }
     static void * adjust_down(void * p)
     {
-	return p - (cast(size_t) p & (S-1));
+        return p - (cast(size_t) p & (S-1));
     }
     
     void * main_data_start;
@@ -184,110 +184,110 @@ void os_query_staticdataseg(void **base, size_t *nbytes)
     
     version (GC_Use_Data_Dyld)
     {
-	_d_gcc_dyld_start(DataSegmentTracking.Dynamic);
-	return; // no need for any other method
+        _d_gcc_dyld_start(DataSegmentTracking.Dynamic);
+        return; // no need for any other method
     }
 
     version (GC_Use_Data_Fixed)
     {
-	static if (FM.One) {
-	    main_data_start = adjust_up  ( & Data_Start );
-	    main_data_end   = adjust_down( & Data_End );
-	    *base = main_data_start;
-	    *nbytes = main_data_end - main_data_start;
-	} else static if (FM.Two) {
-	    main_data_start = adjust_up  ( & Data_Start );
-	    main_data_end   = adjust_down( & Data_End );
-	    *base = main_data_start;
-	    *nbytes = main_data_end - main_data_start;
-	    addRange(adjust_up( & Data_Start_2 ), adjust_down( & Data_End_2 ));
-	} else static if (FM.MinMax) {
-	    static void * min(void *a, void *b) { return a < b ? a : b; }
-	    static void * max(void *a, void *b) { return a > b ? a : b; }
-	    main_data_start = adjust_up  ( & Data_Start < & Data_Start_2 ? & Data_Start : & Data_Start_2 );
-	    main_data_end   = adjust_down( & Data_End > & Data_End_2 ? & Data_End : & Data_End_2 );
-	    *base = main_data_start;
-	    *nbytes = main_data_end - main_data_start;
-	}
-	//goto have_main_data;
+        static if (FM.One) {
+            main_data_start = adjust_up  ( & Data_Start );
+            main_data_end   = adjust_down( & Data_End );
+            *base = main_data_start;
+            *nbytes = main_data_end - main_data_start;
+        } else static if (FM.Two) {
+            main_data_start = adjust_up  ( & Data_Start );
+            main_data_end   = adjust_down( & Data_End );
+            *base = main_data_start;
+            *nbytes = main_data_end - main_data_start;
+            addRange(adjust_up( & Data_Start_2 ), adjust_down( & Data_End_2 ));
+        } else static if (FM.MinMax) {
+            static void * min(void *a, void *b) { return a < b ? a : b; }
+            static void * max(void *a, void *b) { return a > b ? a : b; }
+            main_data_start = adjust_up  ( & Data_Start < & Data_Start_2 ? & Data_Start : & Data_Start_2 );
+            main_data_end   = adjust_down( & Data_End > & Data_End_2 ? & Data_End : & Data_End_2 );
+            *base = main_data_start;
+            *nbytes = main_data_end - main_data_start;
+        }
+        //goto have_main_data;
     }
 
     //have_main_data:
 
     version (GC_Use_Data_Proc_Maps)
     {
-	// TODO: Exclude zero-mapped regions...
+        // TODO: Exclude zero-mapped regions...
 
-	int fd = open("/proc/self/maps", O_RDONLY);
-	int count; // %% need to configure ret for read..
-	char buf[2024];
-	char * p;
-	char * e;
-	char * s;
-	void * start;
-	void * end;
+        int fd = open("/proc/self/maps", O_RDONLY);
+        int count; // %% need to configure ret for read..
+        char buf[2024];
+        char * p;
+        char * e;
+        char * s;
+        void * start;
+        void * end;
 
-	p = buf;
-	if (fd != -1) {
-	    while ( (count = read(fd, p, buf.sizeof - (p - buf.ptr))) > 0 ) {
-		e = p + count;
-		p = buf;
-		while (1) {
-		    s = p;
-		    while (p < e && *p != '\n')
-			p++;
-		    if (p < e) {
-			// parse the entry in [s, p)
-			static if (S == 4) {
-			    enum Ofs {
-				Write_Prot = 19,
-				Start_Addr = 0,
-				End_Addr = 9,
-				Addr_Len = 8,
-			    }
-			} else static if (S == 8) {
-			    enum Ofs {
-				Write_Prot = 35,
-				Start_Addr = 0,
-				End_Addr = 9,
-				Addr_Len = 17,
-			    }
-			} else {
-			    static assert(0);
-			}
+        p = buf;
+        if (fd != -1) {
+            while ( (count = read(fd, p, buf.sizeof - (p - buf.ptr))) > 0 ) {
+                e = p + count;
+                p = buf;
+                while (1) {
+                    s = p;
+                    while (p < e && *p != '\n')
+                        p++;
+                    if (p < e) {
+                        // parse the entry in [s, p)
+                        static if (S == 4) {
+                            enum Ofs {
+                                Write_Prot = 19,
+                                Start_Addr = 0,
+                                End_Addr = 9,
+                                Addr_Len = 8,
+                            }
+                        } else static if (S == 8) {
+                            enum Ofs {
+                                Write_Prot = 35,
+                                Start_Addr = 0,
+                                End_Addr = 9,
+                                Addr_Len = 17,
+                            }
+                        } else {
+                            static assert(0);
+                        }
 
-			// %% this is wrong for 64-bit:
-			// uint   strtoul(char *,char **,int);
+                        // %% this is wrong for 64-bit:
+                        // uint   strtoul(char *,char **,int);
 
-			if (s[Ofs.Write_Prot] == 'w') {
-			    s[Ofs.Start_Addr + Ofs.Addr_Len] = '\0';
-			    s[Ofs.End_Addr + Ofs.Addr_Len] = '\0';
-			    start = cast(void *) strtoul(s + Ofs.Start_Addr, null, 16);
-			    end   = cast(void *) strtoul(s + Ofs.End_Addr, null, 16);
+                        if (s[Ofs.Write_Prot] == 'w') {
+                            s[Ofs.Start_Addr + Ofs.Addr_Len] = '\0';
+                            s[Ofs.End_Addr + Ofs.Addr_Len] = '\0';
+                            start = cast(void *) strtoul(s + Ofs.Start_Addr, null, 16);
+                            end   = cast(void *) strtoul(s + Ofs.End_Addr, null, 16);
 
-			    // 1. Exclude anything overlapping [main_data_start,main_data_end)
-			    // 2. Exclude stack
-			    if ( (! main_data_end ||
-				  ! (main_data_start >= start && main_data_end <= end)) &&
-				 ! (& buf >= start && & buf < end)) {
-				// we already have static data from this region.  anything else
-				// is heap (%% check)
-				debug (ProcMaps)
-				    printf("Adding map range %p 0%p\n", start, end);
-				addRange(start, end);
-			    }
-			}
+                            // 1. Exclude anything overlapping [main_data_start,main_data_end)
+                            // 2. Exclude stack
+                            if ( (! main_data_end ||
+                                  ! (main_data_start >= start && main_data_end <= end)) &&
+                                 ! (& buf >= start && & buf < end)) {
+                                // we already have static data from this region.  anything else
+                                // is heap (%% check)
+                                debug (ProcMaps)
+                                    printf("Adding map range %p 0%p\n", start, end);
+                                addRange(start, end);
+                            }
+                        }
 
-			p++;
-		    } else {
-			count = p - s;
-			memmove(buf, s, count);
-			p = buf.ptr + count;
-			break;
-		    }
-		}
-	    }
-	    close(fd);
-	}
+                        p++;
+                    } else {
+                        count = p - s;
+                        memmove(buf, s, count);
+                        p = buf.ptr + count;
+                        break;
+                    }
+                }
+            }
+            close(fd);
+        }
     }
 }

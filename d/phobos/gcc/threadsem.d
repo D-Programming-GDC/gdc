@@ -22,54 +22,54 @@ version (GNU_Semaphore_POSIX)
 {
     private import std.c.unix.unix;
     struct Semaphore {
-	sem_t sem;
-	bool create() {  return sem_init(& sem, 0, 0) == 0; }
-	void wait() { sem_wait(& sem); }
-	void signal() { sem_post(& sem); }
-	
+        sem_t sem;
+        bool create() {  return sem_init(& sem, 0, 0) == 0; }
+        void wait() { sem_wait(& sem); }
+        void signal() { sem_post(& sem); }
+        
     }
 }
 else version (GNU_Semaphore_Mach)
 {
     private import std.c.mach.mach;
     struct Semaphore {
-	semaphore_t sem;
-	bool create() {
-	    return semaphore_create(current_task(), & sem,
-		SYNC_POLICY_FIFO, 0) == KERN_SUCCESS; }
-	void wait() { semaphore_wait(sem); }
-	void signal() { semaphore_signal(sem); }
+        semaphore_t sem;
+        bool create() {
+            return semaphore_create(current_task(), & sem,
+                SYNC_POLICY_FIFO, 0) == KERN_SUCCESS; }
+        void wait() { semaphore_wait(sem); }
+        void signal() { semaphore_signal(sem); }
     }
 }
 else version (GNU_Sempahore_Pthreads)
 {
     private import std.c.unix.unix;
     struct Semaphore {
-	pthread_mutex_t lock;
-	pthread_cond_t  cond;
-	int count; // boehm-gc only calls lock once -- outside the loop
-	bool create() {
-	    count = 0;
-	    return  pthread_mutex_init(& lock, null) == 0 &&
-		pthread_cond_init(& cond, null) == 0;
-	}
-	void wait() {
-	    // boehm-gc only calls lock once -- outside the loop
-	    pthread_mutex_lock(& lock);
-	    if (--count < 0) {
-		while (count < 0) { // shouldn't be needed
-		    pthread_cond_wait(& cond, & lock);
-		}
-	    }
-	    pthread_mutex_unlock(& lock);
-	}
-	void signal() {
-	    pthread_mutex_lock(& lock);
-	    if (++count >= 0) {
-		pthread_cond_signal(& cond);
-	    }
-	    pthread_mutex_unlock(& lock);
-	}
+        pthread_mutex_t lock;
+        pthread_cond_t  cond;
+        int count; // boehm-gc only calls lock once -- outside the loop
+        bool create() {
+            count = 0;
+            return  pthread_mutex_init(& lock, null) == 0 &&
+                pthread_cond_init(& cond, null) == 0;
+        }
+        void wait() {
+            // boehm-gc only calls lock once -- outside the loop
+            pthread_mutex_lock(& lock);
+            if (--count < 0) {
+                while (count < 0) { // shouldn't be needed
+                    pthread_cond_wait(& cond, & lock);
+                }
+            }
+            pthread_mutex_unlock(& lock);
+        }
+        void signal() {
+            pthread_mutex_lock(& lock);
+            if (++count >= 0) {
+                pthread_cond_signal(& cond);
+            }
+            pthread_mutex_unlock(& lock);
+        }
     }
 }
 else version (GNU_Semaphore_SysV)

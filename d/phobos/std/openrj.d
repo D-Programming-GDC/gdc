@@ -38,12 +38,12 @@
  * Open-RJ mapping for the D standard library.
  *
  * Authors:
- *	Matthew Wilson
+ *      Matthew Wilson
  * References:
- *	$(LINK2 http://www.$(OPENRJ).org/, Open-RJ)
+ *      $(LINK2 http://www.$(OPENRJ).org/, Open-RJ)
  * Macros:
- *	WIKI=Phobos/StdOpenrj
- *	OPENRJ=openrj
+ *      WIKI=Phobos/StdOpenrj
+ *      OPENRJ=openrj
  */
 
 /* /////////////////////////////////////////////////////////////////////////////
@@ -1114,8 +1114,8 @@ version(MainTest)
                     foreach(Field field; record.fields)
                     {
                         printf("    Field: %.*s=%.*s\n",
-			    cast(int) field.name.length, field.name.ptr,
-			    cast(int) field.value.length, field.value.ptr);
+                            cast(int) field.name.length, field.name.ptr,
+                            cast(int) field.value.length, field.value.ptr);
                     }
                 }
 
@@ -1123,8 +1123,8 @@ version(MainTest)
                 foreach(Field field; database)
                 {
                         printf("    Field: %.*s=%.*s\n",
-			    cast(int) field.name.length, field.name.ptr,
-			    cast(int) field.value.length, field.value.ptr);
+                            cast(int) field.name.length, field.name.ptr,
+                            cast(int) field.value.length, field.value.ptr);
                 }
 
                 Record[]    records =   database.getRecordsContainingField("Name");
@@ -1135,8 +1135,8 @@ version(MainTest)
                     foreach(Field field; record.fields)
                     {
                         printf("    Field: %.*s=%.*s\n",
-			    cast(int) field.name.length, field.name.ptr,
-			    cast(int) field.value.length, field.value.ptr);
+                            cast(int) field.name.length, field.name.ptr,
+                            cast(int) field.value.length, field.value.ptr);
                     }
                 }
             }

@@ -21,7 +21,7 @@
 
 #if _WIN32
 #elif linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
-#define PHOBOS_USE_PTHREADS	1
+#define PHOBOS_USE_PTHREADS     1
 #else
 #endif
 
@@ -38,7 +38,7 @@
 // This is what the monitor reference in Object points to
 typedef struct Monitor
 {
-    Array delegates;	// for the notification system
+    Array delegates;    // for the notification system
 
 #if _WIN32
     CRITICAL_SECTION mon;
@@ -49,7 +49,7 @@ typedef struct Monitor
 #endif
 } Monitor;
 
-#define MONPTR(h)	(&((Monitor *)(h)->monitor)->mon)
+#define MONPTR(h)       (&((Monitor *)(h)->monitor)->mon)
 
 static volatile int inited;
 
@@ -64,16 +64,16 @@ static CRITICAL_SECTION _monitor_critsec;
 void _STI_monitor_staticctor()
 {
     if (!inited)
-    {	InitializeCriticalSection(&_monitor_critsec);
-	inited = 1;
+    {   InitializeCriticalSection(&_monitor_critsec);
+        inited = 1;
     }
 }
 
 void _STD_monitor_staticdtor()
 {
     if (inited)
-    {	inited = 0;
-	DeleteCriticalSection(&_monitor_critsec);
+    {   inited = 0;
+        DeleteCriticalSection(&_monitor_critsec);
     }
 }
 
@@ -81,20 +81,20 @@ void _d_monitorenter(Object *h)
 {
     //printf("_d_monitorenter(%p), %p\n", h, h->monitor);
     if (!h->monitor)
-    {	Monitor *cs;
+    {   Monitor *cs;
 
-	cs = (Monitor *)calloc(sizeof(Monitor), 1);
-	assert(cs);
-	EnterCriticalSection(&_monitor_critsec);
-	if (!h->monitor)	// if, in the meantime, another thread didn't set it
-	{
-	    h->monitor = (void *)cs;
-	    InitializeCriticalSection(&cs->mon);
-	    cs = NULL;
-	}
-	LeaveCriticalSection(&_monitor_critsec);
-	if (cs)			// if we didn't use it
-	    free(cs);
+        cs = (Monitor *)calloc(sizeof(Monitor), 1);
+        assert(cs);
+        EnterCriticalSection(&_monitor_critsec);
+        if (!h->monitor)        // if, in the meantime, another thread didn't set it
+        {
+            h->monitor = (void *)cs;
+            InitializeCriticalSection(&cs->mon);
+            cs = NULL;
+        }
+        LeaveCriticalSection(&_monitor_critsec);
+        if (cs)                 // if we didn't use it
+            free(cs);
     }
     //printf("-_d_monitorenter(%p)\n", h);
     EnterCriticalSection(MONPTR(h));
@@ -116,14 +116,14 @@ void _d_monitorrelease(Object *h)
 {
     if (h->monitor)
     {
-	_d_notify_release(h);
+        _d_notify_release(h);
 
-	DeleteCriticalSection(MONPTR(h));
+        DeleteCriticalSection(MONPTR(h));
 
-	// We can improve this by making a free list of monitors
-	free((void *)h->monitor);
+        // We can improve this by making a free list of monitors
+        free((void *)h->monitor);
 
-	h->monitor = NULL;
+        h->monitor = NULL;
     }
 }
 
@@ -149,23 +149,23 @@ static pthread_mutexattr_t _monitors_attr;
 void _STI_monitor_staticctor()
 {
     if (!inited)
-    {	
+    {   
 #ifndef PTHREAD_MUTEX_ALREADY_RECURSIVE
-	pthread_mutexattr_init(&_monitors_attr);
-	pthread_mutexattr_settype(&_monitors_attr, PTHREAD_MUTEX_RECURSIVE);
+        pthread_mutexattr_init(&_monitors_attr);
+        pthread_mutexattr_settype(&_monitors_attr, PTHREAD_MUTEX_RECURSIVE);
 #endif
-	pthread_mutex_init(&_monitor_critsec, 0); // the global critical section doesn't need to be recursive
-	inited = 1;
+        pthread_mutex_init(&_monitor_critsec, 0); // the global critical section doesn't need to be recursive
+        inited = 1;
     }
 }
 
 void _STD_monitor_staticdtor()
 {
     if (inited)
-    {	inited = 0;
+    {   inited = 0;
 #ifndef PTHREAD_MUTEX_ALREADY_RECURSIVE
-	pthread_mutex_destroy(&_monitor_critsec);
-	pthread_mutexattr_destroy(&_monitors_attr);
+        pthread_mutex_destroy(&_monitor_critsec);
+        pthread_mutexattr_destroy(&_monitors_attr);
 #endif
     }
 }
@@ -174,24 +174,24 @@ void _d_monitorenter(Object *h)
 {
     //printf("_d_monitorenter(%p), %p\n", h, h->monitor);
     if (!h->monitor)
-    {	Monitor *cs;
+    {   Monitor *cs;
 
-	cs = (Monitor *)calloc(sizeof(Monitor), 1);
-	assert(cs);
-	pthread_mutex_lock(&_monitor_critsec);
-	if (!h->monitor)	// if, in the meantime, another thread didn't set it
-	{
-	    h->monitor = (void *)cs;
+        cs = (Monitor *)calloc(sizeof(Monitor), 1);
+        assert(cs);
+        pthread_mutex_lock(&_monitor_critsec);
+        if (!h->monitor)        // if, in the meantime, another thread didn't set it
+        {
+            h->monitor = (void *)cs;
 #ifndef PTHREAD_MUTEX_ALREADY_RECURSIVE
-	    pthread_mutex_init(&cs->mon, & _monitors_attr);
+            pthread_mutex_init(&cs->mon, & _monitors_attr);
 #else
-	    pthread_mutex_init(&cs->mon, NULL);
+            pthread_mutex_init(&cs->mon, NULL);
 #endif
-	    cs = NULL;
-	}
-	pthread_mutex_unlock(&_monitor_critsec);
-	if (cs)			// if we didn't use it
-	    free(cs);
+            cs = NULL;
+        }
+        pthread_mutex_unlock(&_monitor_critsec);
+        if (cs)                 // if we didn't use it
+            free(cs);
     }
     //printf("-_d_monitorenter(%p)\n", h);
     pthread_mutex_lock(MONPTR(h));
@@ -214,14 +214,14 @@ void _d_monitorrelease(Object *h)
 {
     if (h->monitor)
     {
-	_d_notify_release(h);
+        _d_notify_release(h);
 
-	pthread_mutex_destroy(MONPTR(h));
+        pthread_mutex_destroy(MONPTR(h));
 
-	// We can improve this by making a free list of monitors
-	free((void *)h->monitor);
+        // We can improve this by making a free list of monitors
+        free((void *)h->monitor);
 
-	h->monitor = NULL;
+        h->monitor = NULL;
     }
 }
 
@@ -233,7 +233,7 @@ void _STD_monitor_staticdtor() { }
 void _d_monitorenter(Object *h)
 {
     if (! h->monitor)
-	h->monitor = (Monitor *)calloc(sizeof(Monitor), 1);
+        h->monitor = (Monitor *)calloc(sizeof(Monitor), 1);
 }
 void _d_monitorexit(Object *h)
 {
@@ -242,10 +242,10 @@ void _d_monitorrelease(Object *h)
 {
     if (h->monitor)
     {
-	_d_notify_release(h);
-	// We can improve this by making a free list of monitors
-	free((void *)h->monitor);
-	h->monitor = NULL;
+        _d_notify_release(h);
+        // We can improve this by making a free list of monitors
+        free((void *)h->monitor);
+        h->monitor = NULL;
     }
 }
 #else

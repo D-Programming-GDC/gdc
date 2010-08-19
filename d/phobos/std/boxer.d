@@ -50,16 +50,16 @@ a = boxArray(arg_types, arg_data);
  * with the array.
  *
  * Authors:
- *	Burton Radons
+ *      Burton Radons
  * License:
- *	Public Domain
+ *      Public Domain
  * Bugs:
- *	$(UL
- *	$(LI $(BUGZILLA 309))
- *	$(LI $(BUGZILLA 1968))
- *	)
+ *      $(UL
+ *      $(LI $(BUGZILLA 309))
+ *      $(LI $(BUGZILLA 1968))
+ *      )
  * Macros:
- *	WIKI=Phobos/StdBoxer
+ *      WIKI=Phobos/StdBoxer
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
@@ -137,7 +137,7 @@ private bool isArrayTypeInfo(TypeInfo type)
 private enum TypeClass
 {
     Bool, /**< bool */
-    Bit = Bool,	// for backwards compatibility
+    Bit = Bool, // for backwards compatibility
     Integer, /**< byte, ubyte, short, ushort, int, uint, long, ulong */
     Float, /**< float, double, real */
     Complex, /**< cfloat, cdouble, creal */
@@ -294,13 +294,13 @@ struct Box
         
         args[0..(char[]).sizeof] = (cast(void*) &format)[0..(char[]).sizeof];
         args[(char[]).sizeof..length] = data;
-	version (GNU)
-	{
-	    va_list dummy = void;
-	    std.format.doFormatPtr(&putc, arguments, dummy, args.ptr);
-	}
-	else
-	    std.format.doFormat(&putc, arguments, args.ptr);
+        version (GNU)
+        {
+            va_list dummy = void;
+            std.format.doFormatPtr(&putc, arguments, dummy, args.ptr);
+        }
+        else
+            std.format.doFormat(&putc, arguments, args.ptr);
         delete args;
         
         return string;
@@ -426,34 +426,34 @@ body
 {
     version (GNU)
     {
-	// Help for promoted types
-	TypeInfo ti_orig = _arguments[0]; 
-	TypeInfo ti = ti_orig;
-	TypeInfo_Typedef ttd;
-	
-	while ( (ttd = cast(TypeInfo_Typedef) ti) !is null )
-	    ti = ttd.base;
+        // Help for promoted types
+        TypeInfo ti_orig = _arguments[0]; 
+        TypeInfo ti = ti_orig;
+        TypeInfo_Typedef ttd;
+        
+        while ( (ttd = cast(TypeInfo_Typedef) ti) !is null )
+            ti = ttd.base;
 
-	if (ti is typeid(float))
-	{
-	    float f = va_arg!(float)(_argptr);
-	    return box(ti_orig, cast(void *) & f);
-	}
-	else if (ti is typeid(char) || ti is typeid(byte) || ti is typeid(ubyte))
-	{
-	    byte b = va_arg!(byte)(_argptr);
-	    return box(ti_orig, cast(void *) & b);
-	}
-	else if (ti is typeid(wchar) || ti is typeid(short) || ti is typeid(ushort))
-	{
-	    short s = va_arg!(short)(_argptr);
-	    return box(ti_orig, cast(void *) & s);
-	}
-	else if (ti is typeid(bool))
-	{
-	    bool b = va_arg!(bool)(_argptr);
-	    return box(ti_orig, cast(void *) & b);
-	}
+        if (ti is typeid(float))
+        {
+            float f = va_arg!(float)(_argptr);
+            return box(ti_orig, cast(void *) & f);
+        }
+        else if (ti is typeid(char) || ti is typeid(byte) || ti is typeid(ubyte))
+        {
+            byte b = va_arg!(byte)(_argptr);
+            return box(ti_orig, cast(void *) & b);
+        }
+        else if (ti is typeid(wchar) || ti is typeid(short) || ti is typeid(ushort))
+        {
+            short s = va_arg!(short)(_argptr);
+            return box(ti_orig, cast(void *) & s);
+        }
+        else if (ti is typeid(bool))
+        {
+            bool b = va_arg!(bool)(_argptr);
+            return box(ti_orig, cast(void *) & b);
+        }
     }
     return box(_arguments[0], cast(void*) _argptr);
 }
@@ -511,44 +511,44 @@ Box[] boxArray(...)
 {
     version (GNU)
     {
-	Box[] array = new Box[_arguments.length];
+        Box[] array = new Box[_arguments.length];
 
-	foreach(size_t index, TypeInfo ti_orig; _arguments)
-	{
-	    TypeInfo ti = ti_orig;
-	    TypeInfo_Typedef ttd;
+        foreach(size_t index, TypeInfo ti_orig; _arguments)
+        {
+            TypeInfo ti = ti_orig;
+            TypeInfo_Typedef ttd;
 
-	    while ( (ttd = cast(TypeInfo_Typedef) ti) !is null )
-		ti = ttd.base;
+            while ( (ttd = cast(TypeInfo_Typedef) ti) !is null )
+                ti = ttd.base;
 
-	    if (ti is typeid(float))
-	    {
-		float f = va_arg!(float)(_argptr);
-		array[index] = box(ti_orig, cast(void *) & f);
-	    }
-	    else if (ti is typeid(char) || ti is typeid(byte) || ti is typeid(ubyte))
-	    {
-		byte b = va_arg!(byte)(_argptr);
-		array[index] = box(ti_orig, cast(void *) & b);
-	    }
-	    else if (ti is typeid(wchar) || ti is typeid(short) || ti is typeid(ushort))
-	    {
-		short s = va_arg!(short)(_argptr);
-		array[index] = box(ti_orig, cast(void *) & s);
-	    }
-	    else if (ti is typeid(bool))
-	    {
-		bool b = va_arg!(bool)(_argptr);
-		array[index] = box(ti_orig, cast(void *) & b);
-	    }
-	    else
-		array[index] = box(ti_orig, cast(void*) _argptr);
-	}
+            if (ti is typeid(float))
+            {
+                float f = va_arg!(float)(_argptr);
+                array[index] = box(ti_orig, cast(void *) & f);
+            }
+            else if (ti is typeid(char) || ti is typeid(byte) || ti is typeid(ubyte))
+            {
+                byte b = va_arg!(byte)(_argptr);
+                array[index] = box(ti_orig, cast(void *) & b);
+            }
+            else if (ti is typeid(wchar) || ti is typeid(short) || ti is typeid(ushort))
+            {
+                short s = va_arg!(short)(_argptr);
+                array[index] = box(ti_orig, cast(void *) & s);
+            }
+            else if (ti is typeid(bool))
+            {
+                bool b = va_arg!(bool)(_argptr);
+                array[index] = box(ti_orig, cast(void *) & b);
+            }
+            else
+                array[index] = box(ti_orig, cast(void*) _argptr);
+        }
 
-	return array;
+        return array;
     }
     else
-	return boxArray(_arguments, cast(void*) _argptr);
+        return boxArray(_arguments, cast(void*) _argptr);
 }
 
 /**
@@ -581,7 +581,7 @@ void boxArrayToArguments(Box[] arguments, out TypeInfo[] types, out void* data)
  */    
 class UnboxException : Exception
 {
-    Box object;	/// This is the box that the user attempted to unbox.
+    Box object; /// This is the box that the user attempted to unbox.
 
     TypeInfo outputType; /// This is the type that the user attempted to unbox the value as.
 

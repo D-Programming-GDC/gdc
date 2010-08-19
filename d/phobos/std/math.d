@@ -93,15 +93,15 @@ version (GNU)
 {
     // Some functions are missing from msvcrt...
     version (Windows)
-	version = GNU_msvcrt_math;
+        version = GNU_msvcrt_math;
 
     // Use extended asm for x86
     version(X86)
-	version = GCC_ExtAsm_X86;
+        version = GCC_ExtAsm_X86;
 }
 
 version(DigitalMars){
-     version=INLINE_YL2X;	// x87 has opcodes for these
+     version=INLINE_YL2X;       // x87 has opcodes for these
 }
 
 private:
@@ -346,7 +346,7 @@ real cos(real x);       /* intrinsic */
  */
 
 version(GNU) alias std.c.math.sinl sin; else
-real sin(real x);	/* intrinsic */
+real sin(real x);       /* intrinsic */
 
 
 /***********************************
@@ -494,7 +494,7 @@ unittest
            instruction. */
         version (GNU)
             if (i == vals.length - 1)
-	        continue;
+                continue;
 
         real x = vals[i][0];
         real r = vals[i][1];
@@ -1027,9 +1027,9 @@ creal expi(real y)
 {
     version(GCC_ExtAsm_X86)
     {
-	real re = void, im = void;
-	asm { "fsincos" : "=&t" re , "=u" im : "0" y; }
-	return re + im * 1i;
+        real re = void, im = void;
+        asm { "fsincos" : "=&t" re , "=u" im : "0" y; }
+        return re + im * 1i;
     }
     else version(D_InlineAsm_X86)
     {
@@ -1182,25 +1182,25 @@ real frexp(real value, out int exp)
     }
     else version(GNU)
     {
-	switch (gcc.fpcls.fpclassify(value)) {
-	case gcc.fpcls.FP_NORMAL:
-	case gcc.fpcls.FP_ZERO:
-	case gcc.fpcls.FP_SUBNORMAL: // I can only hope the library frexp normalizes the value...
-	    return std.c.math.frexpl(value, & exp);
-	case gcc.fpcls.FP_INFINITE:
-	    exp = gcc.fpcls.signbit(value) ? int.min : int.max;
-	    return value;
-	case gcc.fpcls.FP_NAN:
-	    exp = int.min;
-	    return value;
-	}
+        switch (gcc.fpcls.fpclassify(value)) {
+        case gcc.fpcls.FP_NORMAL:
+        case gcc.fpcls.FP_ZERO:
+        case gcc.fpcls.FP_SUBNORMAL: // I can only hope the library frexp normalizes the value...
+            return std.c.math.frexpl(value, & exp);
+        case gcc.fpcls.FP_INFINITE:
+            exp = gcc.fpcls.signbit(value) ? int.min : int.max;
+            return value;
+        case gcc.fpcls.FP_NAN:
+            exp = int.min;
+            return value;
+        }
     }
 }
 
 
 unittest
 {
-    static real vals[][3] =	// x,frexp,exp
+    static real vals[][3] =     // x,frexp,exp
     [
         [0.0,   0.0,    0],
         [-0.0,  -0.0,   0],
@@ -1217,8 +1217,8 @@ unittest
     int i;
 
     for (i = 0; i < vals.length; i++) {
-	if (real.min_exp > -16381)
-	    continue;
+        if (real.min_exp > -16381)
+            continue;
         real x = vals[i][0];
         real e = vals[i][1];
         int exp = cast(int)vals[i][2];
@@ -1291,9 +1291,9 @@ real ldexp(real n, int exp);    /* intrinsic */
 real log(real x)
 {
     version (INLINE_YL2X)
-	return yl2x(x, LN2);
+        return yl2x(x, LN2);
     else
-	return std.c.math.logl(x);
+        return std.c.math.logl(x);
 }
  
 unittest
@@ -1315,9 +1315,9 @@ unittest
 real log10(real x)
 {
     version (INLINE_YL2X)
- 	return yl2x(x, LOG2);
+        return yl2x(x, LOG2);
     else
-	return std.c.math.log10l(x);
+        return std.c.math.log10l(x);
 }
  
 unittest
@@ -1358,9 +1358,9 @@ version (GNU_Need_exp2_log2) real log2(real x) { return std.c.math.logl(x) / LOG
 real log2(real x)
 {
     version (INLINE_YL2X)
-	return yl2x(x, 1);
+        return yl2x(x, 1);
     else
-	return std.c.math.log2l(x);
+        return std.c.math.log2l(x);
 }
 
 /*****************************************
@@ -1557,8 +1557,8 @@ unittest
 
     for (int i = 0; i < vals.length; i++)
     {
-	if (i == 5 && real.max_exp < 16383)
-	    continue;
+        if (i == 5 && real.max_exp < 16383)
+            continue;
 
         real x = vals[i][0];
         real y = vals[i][1];
@@ -1719,31 +1719,31 @@ version (GNU_Need_round)
 {
     real round(real x)
     {
-	real y = floor(x);
-	real r = x - y;
-	if (r > 0.5)
-	    return y + 1;
-	else if (r == 0.5)
-	{
-	    r = y - 2.0 * floor(0.5 * y);
-	    if (r == 1.0)
-		return y + 1;
-	}
-	return y;
+        real y = floor(x);
+        real r = x - y;
+        if (r > 0.5)
+            return y + 1;
+        else if (r == 0.5)
+        {
+            r = y - 2.0 * floor(0.5 * y);
+            if (r == 1.0)
+                return y + 1;
+        }
+        return y;
     }
     unittest {
-	real r;
-	assert(isnan(round(real.nan)));
-	r = round(real.infinity);
-	assert(isinf(r) && r > 0);
-	r = round(-real.infinity);
-	assert(isinf(r) && r < 0);
-	assert(round(3.4) == 3);
-	assert(round(3.5) == 4);
-	assert(round(3.6) == 4);
-	assert(round(-3.4) == -3);
-	assert(round(-3.5) == -4);
-	assert(round(-3.6) == -4);
+        real r;
+        assert(isnan(round(real.nan)));
+        r = round(real.infinity);
+        assert(isinf(r) && r > 0);
+        r = round(-real.infinity);
+        assert(isinf(r) && r < 0);
+        assert(round(3.4) == 3);
+        assert(round(3.5) == 4);
+        assert(round(3.6) == 4);
+        assert(round(-3.4) == -3);
+        assert(round(-3.5) == -4);
+        assert(round(-3.6) == -4);
     }
 }
 else
@@ -1775,16 +1775,16 @@ version (GNU_Need_trunc)
     real trunc(real n) { return n >= 0 ? std.math.floor(n) : std.c.matheil(n); }
     unittest
     {
-	real r;
-	r = trunc(real.infinity);
-	assert(isinf(r) && r > 0);
-	r = trunc(-real.infinity);
-	assert(isinf(r) && r < 0);
-	assert(isnan(trunc(real.nan)));
-	assert(trunc(3.3) == 3);
-	assert(trunc(3.6) == 3);
-	assert(trunc(-3.3) == -3);
-	assert(trunc(-3.6) == -3);
+        real r;
+        r = trunc(real.infinity);
+        assert(isinf(r) && r > 0);
+        r = trunc(-real.infinity);
+        assert(isinf(r) && r < 0);
+        assert(isnan(trunc(real.nan)));
+        assert(trunc(3.3) == 3);
+        assert(trunc(3.6) == 3);
+        assert(trunc(-3.3) == -3);
+        assert(trunc(-3.6) == -3);
     }
 }
 else
@@ -2911,9 +2911,9 @@ public:
 version (D_InlineAsm_X86)
 {
     static if (real.sizeof == 10)
-	{ version = poly_10; }
+        { version = poly_10; }
     else static if (real.sizeof == 12)
-	{ version = poly_12; }
+        { version = poly_12; }
 }
 
 /***********************************
@@ -3015,14 +3015,14 @@ unittest
  * translate to a single x87 instruction.
  */
 
-real yl2x(real x, real y);	// y * log2(x)
-real yl2xp1(real x, real y);	// y * log2(x + 1)
+real yl2x(real x, real y);      // y * log2(x)
+real yl2xp1(real x, real y);    // y * log2(x + 1)
 
 unittest
 {
     version (INLINE_YL2X)
     {
- 	assert(yl2x(1024, 1) == 10);
- 	assert(yl2xp1(1023, 1) == 10);
+        assert(yl2x(1024, 1) == 10);
+        assert(yl2xp1(1023, 1) == 10);
     }
 }

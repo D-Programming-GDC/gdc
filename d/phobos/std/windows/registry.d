@@ -76,13 +76,13 @@ class Win32Exception : Exception
 
     this(string message)
     {
-	super(msg);
+        super(msg);
     }
 
     this(string msg, int errnum)
     {
-	super(msg);
-	error = errnum;
+        super(msg);
+        error = errnum;
     }
 }
 
@@ -360,7 +360,15 @@ private REG_VALUE_TYPE _RVT_from_Endian(Endian endian)
 
 private uint swap(in uint i)
 {
-    version(X86)
+    version (D_InlineAsm_X86)
+    {
+        asm
+        {    naked;
+             bswap EAX ;
+             ret ;
+        }
+    }
+    else version (D_InlineAsm_X86_64)
     {
         asm
         {    naked;
@@ -681,8 +689,8 @@ body
             case    REG_VALUE_TYPE.REG_SZ:
             case    REG_VALUE_TYPE.REG_EXPAND_SZ:
                 value = std.string.toString(cast(char*)data);
-		if (value.ptr == cast(char*)&u.qw)
-		    value = value.dup;		// don't point into the stack
+                if (value.ptr == cast(char*)&u.qw)
+                    value = value.dup;          // don't point into the stack
                 break;
 version(LittleEndian)
 {
@@ -1303,7 +1311,7 @@ public:
 
         // Allocate
 
-	char[]  cs      =   new char[total];
+        char[]  cs      =   new char[total];
         int     base    =   0;
 
         // Slice the individual strings into the new array
@@ -1445,8 +1453,8 @@ public:
 
         return value;
  +/
-	// ExpandEnvironemntStrings():
-	//	http://msdn2.microsoft.com/en-us/library/ms724265.aspx
+        // ExpandEnvironemntStrings():
+        //      http://msdn2.microsoft.com/en-us/library/ms724265.aspx
         LPCSTR  lpSrc       =   toStringz(value);
         DWORD   cchRequired =   ExpandEnvironmentStringsA(lpSrc, null, 0);
         char[]  newValue    =   new char[cchRequired];
@@ -1456,7 +1464,7 @@ public:
             throw new Win32Exception("Failed to expand environment variables");
         }
 
-        return std.string.toString(newValue.ptr);	// remove trailing 0
+        return std.string.toString(newValue.ptr);       // remove trailing 0
     }
 
     /// Obtains the current value as an array of strings
@@ -1852,7 +1860,7 @@ public:
         {
             DWORD   cchName;
 
-	    res     =   Reg_EnumKeyName_(hkey, index, sName, cchName);
+            res     =   Reg_EnumKeyName_(hkey, index, sName, cchName);
             assert(ERROR_MORE_DATA != res);
 
             if(ERROR_NO_MORE_ITEMS == res)
@@ -1994,7 +2002,7 @@ public:
         {
             DWORD   cchName =   1 + cchValueMaxLen;
 
-	    res = Reg_EnumValueName_(hkey, index, sName.ptr, cchName);
+            res = Reg_EnumValueName_(hkey, index, sName.ptr, cchName);
             if(ERROR_NO_MORE_ITEMS == res)
             {
                 // Enumeration complete
@@ -2119,7 +2127,7 @@ public:
         {
             DWORD   cchName =   1 + cchValueMaxLen;
 
-	    res = Reg_EnumValueName_(hkey, index, sName.ptr, cchName);
+            res = Reg_EnumValueName_(hkey, index, sName.ptr, cchName);
             if(ERROR_NO_MORE_ITEMS == res)
             {
                 // Enumeration complete

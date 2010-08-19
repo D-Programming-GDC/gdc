@@ -31,9 +31,9 @@ x3_gi_pop_header();
 x3_gi_push_header("<sys/types.h>");
 {
     if (! x3_query_int_value("NFDBITS", "int", & dummy_int, & dummy_type)) {
-	/* for AIX */
-	++pop_count;
-	x3_gi_push_header("<sys/select.h>");
+        /* for AIX */
+        ++pop_count;
+        x3_gi_push_header("<sys/select.h>");
     }
     x3_out_int_value("NFDBITS");
     x3_out_int_value("FD_SETSIZE");
@@ -61,9 +61,9 @@ x3_gi_pop_header();
     pop_count = 0;
     x3_gi_push_header("<sys/time.h>");
     if (x3_compile_test())
-	++pop_count;
+        ++pop_count;
     else
-	x3_gi_pop_header();
+        x3_gi_pop_header();
 
     x3_gi_push_header("<sys/time.h>");
 
@@ -97,7 +97,7 @@ x3_out_text("alias extern(C) void function(int) __sighandler_t;\n");
     static const char * nm[3] = {"SIG_DFL","SIG_IGN","SIG_ERR"};
     int i;
     for (i = 0; i < 3; i++) {
-	x3_out_int_value_ex(nm[i], nm[i], "void *", "__sighandler_t", 1, NULL);
+        x3_out_int_value_ex(nm[i], nm[i], "void *", "__sighandler_t", 1, NULL);
     }
 }
 
@@ -142,9 +142,9 @@ if (x3_compile_test()) {
     x3_out_enum(NULL, NULL, "^PROT_[^_].*", NULL);
     x3_out_enum(NULL, NULL, "^MAP_[^_].*", "-^MAP_FAILED$", NULL);
     if (! x3_query_int_value("MAP_ANONYMOUS", "int", & dummy_int, & dummy_type))
-	x3_out_int_value_ex("MAP_ANONYMOUS", "MAP_ANON", "int", "int", 0, NULL);
+        x3_out_int_value_ex("MAP_ANONYMOUS", "MAP_ANON", "int", "int", 0, NULL);
     if (! x3_query_int_value("MAP_ANON", "int", & dummy_int, & dummy_type))
-	x3_out_int_value_ex("MAP_ANON", "MAP_ANONYMOUS", "int", "int", 0, NULL);
+        x3_out_int_value_ex("MAP_ANON", "MAP_ANONYMOUS", "int", "int", 0, NULL);
 
     x3_push_optional(1);
     x3_out_enum(NULL, NULL, "^MS_[^_].*", NULL);
@@ -262,12 +262,12 @@ x3_out_struct("struct servent", NULL, "s_name", "s_aliases", "i:s_port", "s_prot
 {
     X3_Struct * s = x3_struct_new_c_name("struct hostent");
     x3_struct_add_fields(s, "h_name", "h_aliases", "h_addrtype", "h_length",
-	"h_addr_list", NULL);
+        "h_addr_list", NULL);
     x3_struct_add_extra(s, "\n"
-	"  char* h_addr()\n"
-	"  {\n"
-	"      return h_addr_list[0];\n"
-	"  }\n");
+        "  char* h_addr()\n"
+        "  {\n"
+        "      return h_addr_list[0];\n"
+        "  }\n");
     x3_struct_out(s);
 }
 /*//not required for std/socket.d yet

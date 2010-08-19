@@ -6,7 +6,7 @@
  * Authors: Ben Hinkle
  * License: Public Domain
  * Macros:
- *	WIKI=Phobos/StdCstream
+ *      WIKI=Phobos/StdCstream
  */
 
 module std.cstream;

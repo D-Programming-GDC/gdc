@@ -55,9 +55,9 @@ extern (C) int _d_run_main(int argc, char **argv, main_type main_func)
     int result;
 
     version (GC_Use_Stack_Guess)
-	stackOriginGuess = &argv;
+        stackOriginGuess = &argv;
     version (GNU_CBridge_Stdio)
-	_d_gnu_cbridge_init_stdio();
+        _d_gnu_cbridge_init_stdio();
     // Win32: original didn't do this -- what about Gcc?
     _STI_monitor_staticctor();
     _STI_critical_init();
@@ -66,35 +66,35 @@ extern (C) int _d_run_main(int argc, char **argv, main_type main_func)
 
     void go()
     {
-	_moduleCtor();
-	_moduleUnitTests();
+        _moduleCtor();
+        _moduleUnitTests();
 
-	for (i = 0; i < argc; i++)
-	{
-	    int len = strlen(argv[i]);
-	    am[i] = argv[i][0 .. len];
-	}
+        for (i = 0; i < argc; i++)
+        {
+            int len = strlen(argv[i]);
+            am[i] = argv[i][0 .. len];
+        }
 
-	args = am[0 .. argc];
+        args = am[0 .. argc];
 
-	result = main_func(args);
-	_moduleDtor();
-	gc_term();
+        result = main_func(args);
+        _moduleDtor();
+        gc_term();
     }
 
     if (no_catch_exceptions)
-	go();
+        go();
     else
     {
-	try
-	    go();
-	catch (Object o)
-	{
-	    char[] msg = o.toString();
-	    fprintf(stderr, "Error: ");
-	    fprintf(stderr, "%.*s\n", cast(int) msg.length, msg.ptr);
-	    exit(EXIT_FAILURE);
-	}
+        try
+            go();
+        catch (Object o)
+        {
+            char[] msg = o.toString();
+            fprintf(stderr, "Error: ");
+            fprintf(stderr, "%.*s\n", cast(int) msg.length, msg.ptr);
+            exit(EXIT_FAILURE);
+        }
     }
     
     free(am);
