@@ -1364,6 +1364,13 @@ RemoveExp::toElem(IRState * irs)
 elem *
 BoolExp::toElem(IRState * irs)
 {
+    if (e1->op == TOKcall && e1->type->toBasetype()->ty == Tvoid)
+    {
+	/* This could happen as '&&' is allowed as a shorthand for 'if'
+	    eg:  (condition) && callexpr();  */
+	return e1->toElem(irs);
+    }
+
     return d_convert_basic(type->toCtype(), irs->convertForCondition(e1));
 }
 
