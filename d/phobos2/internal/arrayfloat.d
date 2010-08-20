@@ -68,7 +68,7 @@ body
     auto bptr = b.ptr;
     auto cptr = c.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 834% faster 
 	if (sse() && b.length >= 16)
@@ -153,7 +153,7 @@ body
 		mov cptr, ECX;
 	    }
 	}
-    }+/
+    }
 
     // Handle remainder
     version (log) if (aptr < aend) printf("\tbase\n");
@@ -223,7 +223,7 @@ body
     auto bptr = b.ptr;
     auto cptr = c.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 834% faster 
 	if (sse() && b.length >= 16)
@@ -306,7 +306,7 @@ body
 		mov cptr, ECX;
 	    }
 	}
-    }+/
+    }
 
     // Handle remainder
     while (aptr < aend)
@@ -373,7 +373,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 665% faster 
 	if (sse() && a.length >= 16)
@@ -452,7 +452,7 @@ body
 		mov bptr, EAX;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ = *bptr++ + value;
@@ -510,7 +510,7 @@ T[] _arrayExpSliceAddass_f(T[] a, T value)
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 302% faster 
 	if (sse() && a.length >= 16)
@@ -588,7 +588,7 @@ T[] _arrayExpSliceAddass_f(T[] a, T value)
 		mov dword ptr [aptr], ESI;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ += value;
@@ -654,7 +654,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 468% faster 
 	if (sse() && a.length >= 16)
@@ -731,7 +731,7 @@ body
 		mov dword ptr [bptr], ECX;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ += *bptr++;
@@ -797,7 +797,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 622% faster 
 	if (sse() && a.length >= 16)
@@ -877,7 +877,7 @@ body
 		mov dword ptr [bptr], EAX;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ = *bptr++ - value;
@@ -942,7 +942,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 690% faster 
 	if (sse() && a.length >= 16)
@@ -1025,7 +1025,7 @@ body
 		mov bptr, EAX;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ = value - *bptr++;
@@ -1083,7 +1083,7 @@ T[] _arrayExpSliceMinass_f(T[] a, T value)
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 304% faster 
 	if (sse() && a.length >= 16)
@@ -1161,7 +1161,7 @@ T[] _arrayExpSliceMinass_f(T[] a, T value)
 		mov dword ptr [aptr], ESI;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ -= value;
@@ -1227,7 +1227,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 468% faster 
 	if (sse() && a.length >= 16)
@@ -1304,7 +1304,7 @@ body
 		mov bptr, ECX;
 	    }
 	}        
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ -= *bptr++;
@@ -1370,7 +1370,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 607% faster 
 	if (sse() && a.length >= 16)
@@ -1449,7 +1449,7 @@ body
 		mov bptr, EAX;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ = *bptr++ * value;
@@ -1517,7 +1517,7 @@ body
     auto bptr = b.ptr;
     auto cptr = c.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 833% faster 
 	if (sse() && a.length >= 16)
@@ -1600,7 +1600,7 @@ body
 		mov cptr, ECX;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ = *bptr++ * *cptr++;
@@ -1658,7 +1658,7 @@ T[] _arrayExpSliceMulass_f(T[] a, T value)
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 303% faster 
 	if (sse() && a.length >= 16)
@@ -1736,7 +1736,7 @@ T[] _arrayExpSliceMulass_f(T[] a, T value)
 		mov dword ptr [aptr], ESI;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ *= value;
@@ -1802,7 +1802,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 525% faster 
 	if (sse() && a.length >= 16)
@@ -1879,7 +1879,7 @@ body
 		mov dword ptr [bptr], ECX;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ *= *bptr++;
@@ -1950,7 +1950,7 @@ body
      */
     T recip = cast(T)1 / value;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 587% faster 
 	if (sse() && a.length >= 16)
@@ -2037,7 +2037,7 @@ body
 		mov dword ptr [bptr], EAX;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ = *bptr++ * recip;
@@ -2100,7 +2100,7 @@ T[] _arrayExpSliceDivass_f(T[] a, T value)
      */
     T recip = cast(T)1 / value;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
 	// SSE version is 245% faster 
 	if (sse() && a.length >= 16)
@@ -2185,7 +2185,7 @@ T[] _arrayExpSliceDivass_f(T[] a, T value)
 		mov dword ptr [aptr], ESI;
 	    }
 	}
-    }+/
+    }
 
     while (aptr < aend)
 	*aptr++ *= recip;

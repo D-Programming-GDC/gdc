@@ -59,7 +59,7 @@ private template CodeGenSliceSliceOp(string opD, string opSSE, string op3DNow)
     auto bptr = b.ptr;
     auto cptr = c.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE version is 834% faster
         if (sse() && b.length >= 16)
@@ -142,7 +142,7 @@ private template CodeGenSliceSliceOp(string opD, string opSSE, string op3DNow)
                 mov cptr, ECX;
             }
         }
-    }+/
+    }
 
     // Handle remainder
     while (aptr < aend)
@@ -336,7 +336,7 @@ private template CodeGenExpSliceOpAssign(string opD, string opSSE, string op3DNo
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         if (sse() && a.length >= 16)
         {
@@ -421,7 +421,7 @@ private template CodeGenExpSliceOpAssign(string opD, string opSSE, string op3DNo
                 mov dword ptr [aptr], ESI;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ ` ~ opD ~ ` value;
@@ -644,7 +644,7 @@ private template CodeGenSliceExpOp(string opD, string opSSE, string op3DNow)
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE version is 665% faster
         if (sse() && a.length >= 16)
@@ -723,7 +723,7 @@ private template CodeGenSliceExpOp(string opD, string opSSE, string op3DNow)
                 mov bptr, EAX;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ = *bptr++ ` ~ opD ~ ` value;
@@ -955,7 +955,7 @@ private template CodeGenSliceOpAssign(string opD, string opSSE, string op3DNow)
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE version is 468% faster
         if (sse() && a.length >= 16)
@@ -1032,7 +1032,7 @@ private template CodeGenSliceOpAssign(string opD, string opSSE, string op3DNow)
                 mov dword ptr [bptr], ECX;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ ` ~ opD ~ ` *bptr++;
@@ -1229,7 +1229,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE version is 690% faster
         if (sse() && a.length >= 16)
@@ -1312,7 +1312,7 @@ body
                 mov bptr, EAX;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ = value - *bptr++;

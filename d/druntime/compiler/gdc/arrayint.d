@@ -73,7 +73,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE2 aligned version is 380% faster
         if (sse2() && a.length >= 8)
@@ -199,7 +199,7 @@ body
                 mov bptr, EAX;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ = *bptr++ + value;
@@ -279,7 +279,7 @@ body
     auto bptr = b.ptr;
     auto cptr = c.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE2 aligned version is 1710% faster
         if (sse2() && a.length >= 8)
@@ -382,7 +382,7 @@ body
                 mov cptr, ECX;
             }
         }
-    }+/
+    }
 
 normal:
     while (aptr < aend)
@@ -453,7 +453,7 @@ T[] _arrayExpSliceAddass_i(T[] a, T value)
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE2 aligned version is 83% faster
         if (sse2() && a.length >= 8)
@@ -567,7 +567,7 @@ T[] _arrayExpSliceAddass_i(T[] a, T value)
                 mov aptr, ESI;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ += value;
@@ -645,7 +645,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE2 aligned version is 695% faster
         if (sse2() && a.length >= 8)
@@ -739,7 +739,7 @@ body
                 mov bptr, ECX;
             }
         }
-    }+/
+    }
 
 normal:
     while (aptr < aend)
@@ -818,7 +818,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE2 aligned version is 400% faster
         if (sse2() && a.length >= 8)
@@ -944,7 +944,7 @@ body
                 mov bptr, EAX;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ = *bptr++ - value;
@@ -1021,7 +1021,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE2 aligned version is 1812% faster
         if (sse2() && a.length >= 8)
@@ -1124,7 +1124,7 @@ body
                 mov bptr, EAX;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ = value - *bptr++;
@@ -1203,7 +1203,7 @@ body
     auto bptr = b.ptr;
     auto cptr = c.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE2 aligned version is 1721% faster
         if (sse2() && a.length >= 8)
@@ -1306,7 +1306,7 @@ body
                 mov cptr, ECX;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ = *bptr++ - *cptr++;
@@ -1376,7 +1376,7 @@ T[] _arrayExpSliceMinass_i(T[] a, T value)
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE2 aligned version is 81% faster
         if (sse2() && a.length >= 8)
@@ -1490,7 +1490,7 @@ T[] _arrayExpSliceMinass_i(T[] a, T value)
                 mov aptr, ESI;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ -= value;
@@ -1568,7 +1568,7 @@ body
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
-    /+version (D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         // SSE2 aligned version is 731% faster
         if (sse2() && a.length >= 8)
@@ -1662,7 +1662,7 @@ body
                 mov bptr, ECX;
             }
         }
-    }+/
+    }
 
     while (aptr < aend)
         *aptr++ -= *bptr++;

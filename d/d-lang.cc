@@ -149,6 +149,9 @@ static const char * iprefix;
 static bool std_inc; // %%FIX: find a place for this
 static const char * fonly_arg;
 static const char * multilib_dir;
+// Because of PR16888, on x86 platforms, GCC clears unused reg names.
+// As this doesn't affect us, need a way to restore them.
+static const char *saved_reg_names[FIRST_PSEUDO_REGISTER];
 
 static unsigned int
 d_init_options (unsigned int, const char ** argv)
@@ -297,6 +300,12 @@ static bool
 d_init ()
 {
     const char * cpu_versym = NULL;
+
+#if D_GCC_VER >= 40
+    /* Restore register names if any were cleared during backend init */
+    if (memcmp (reg_names, saved_reg_names, sizeof reg_names))
+	memcpy (reg_names, saved_reg_names, sizeof reg_names);
+#endif
     
     /* Currently, isX86_64 indicates a 64-bit target in general and is not
        Intel-specific. */
@@ -404,11 +413,17 @@ d_init ()
     if (TARGET_LONG_DOUBLE_128)
 	VersionCondition::addPredefinedGlobalIdent("GNU_LongDouble128");
 #endif
-    
-    if (d_have_inline_asm() && cpu_versym && strcmp(cpu_versym, "X86") == 0)
+
+    if (d_have_inline_asm())
     {
 	VersionCondition::addPredefinedGlobalIdent("D_InlineAsm");
-	VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86");
+
+	if (TARGET_80387)
+	    VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86");
+	// TODO: D_InlineAsm_X86_64
+	
+	/* Should define this anyway to set us apart from the competition. */
+	VersionCondition::addPredefinedGlobalIdent("GNU_InlineAsm");
     }
 
     /* Setting global.params.cov forces module info generation which is
@@ -732,6 +747,8 @@ bool d_post_options(const char ** fn)
     if (num_in_fnames)
 	*fn = in_fnames[0];
 #if D_GCC_VER >= 40
+    // Save register names for restoring later.
+    memcpy (saved_reg_names, reg_names, sizeof reg_names);
 
     // Inline option code copied from c-opts.c
     flag_inline_trees = 1;
