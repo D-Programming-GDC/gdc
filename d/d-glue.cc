@@ -4329,10 +4329,10 @@ WhileStatement::toIR(IRState* irs)
 {
     irs->doLineNote(loc); // store for next statement...
     irs->startLoop(this);
-    irs->continueHere();
     irs->exitIfFalse(condition, 1); // 1 == is topcond .. good as deprecated..
     if (body)
 	body->toIR( irs );
+    irs->continueHere();
     irs->endLoop();
 }
 
