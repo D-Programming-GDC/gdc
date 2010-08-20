@@ -715,8 +715,10 @@ d_handle_option (size_t scode, const char *arg, int value)
 	  gen.warnSignCompare = value;
 	  break;
       case OPT_fXf_:
+#if V1
 	  global.params.doXGeneration = 1;
 	  global.params.xfilename = (char*)arg;
+#endif
 	  break;
       default:
 	  break;
