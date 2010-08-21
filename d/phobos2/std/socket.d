@@ -44,6 +44,10 @@ module std.socket;
 
 private import std.string, std.stdint, std.c.string, std.c.stdlib;
 
+version(unittest)
+{
+    private import std.c.stdio : printf;
+}
 
 version(Unix)
 {
@@ -1600,8 +1604,8 @@ class Socket
 	static int select(SocketSet checkRead, SocketSet checkWrite, SocketSet checkError, int microseconds)
 	{
 		timeval tv;
-		tv.seconds = 0;
-		tv.microseconds = microseconds;
+		tv.seconds = microseconds / 1_000_000;
+		tv.microseconds = microseconds % 1_000_000;
 		return select(checkRead, checkWrite, checkError, &tv);
 	}
 	

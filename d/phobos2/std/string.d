@@ -45,7 +45,6 @@ private import std.c.string;
 private import std.utf;
 private import std.encoding;
 private import std.uni;
-private import std.array;
 private import std.format;
 private import std.ctype;
 private import std.stdarg;
@@ -53,6 +52,7 @@ private import std.contracts;
 private import std.typetuple;
 private import std.conv;
 private import std.traits;
+private import core.exception : onArrayBoundsError;
 
 extern (C)
 {
@@ -3051,7 +3051,7 @@ char[] sformat(char[] s, ...)
     if (c <= 0x7F)
     {
         if (i >= s.length)
-        throw new ArrayBoundsError("std.string.sformat", 0);
+        onArrayBoundsError("std.string.sformat", 0);
         s[i] = cast(char)c;
         ++i;
     }
@@ -3059,7 +3059,7 @@ char[] sformat(char[] s, ...)
     {   char[4] buf;
         auto b = std.utf.toUTF8(buf, c);
         if (i + b.length > s.length)
-        throw new ArrayBoundsError("std.string.sformat", 0);
+        onArrayBoundsError("std.string.sformat", 0);
         s[i..i+b.length] = b[];
         i += b.length;
     }
@@ -3903,7 +3903,7 @@ bool isNumeric(TypeInfo[] _arguments, va_list _argptr)
     else if (_arguments[0] == typeid(byte))
     {
     char[1] t;
-    t[0] = va_arg!(byte)(_argptr);
+    t[0] = va_arg!(char)(_argptr);
     return isNumeric(cast(string)t);
     }
     else if (_arguments[0] == typeid(ireal))

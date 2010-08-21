@@ -24,8 +24,8 @@ module std.outbuffer;
 
 private
 {
+    import core.memory;
     import std.string;
-    import std.gc;
     import std.c.stdio;
     import std.c.stdlib;
     import std.c.stdarg;
@@ -86,7 +86,7 @@ class OutBuffer
 	    if (data.length < offset + nbytes)
 	    {
 		data.length = (offset + nbytes) * 2;
-		std.gc.hasPointers(data.ptr);
+		GC.clrAttr(data.ptr, GC.BlkAttr.NO_SCAN);
 	    }
 	}
 

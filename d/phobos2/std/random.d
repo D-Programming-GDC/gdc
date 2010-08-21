@@ -468,8 +468,13 @@ auto n = rnd.next;
 
 uint unpredictableSeed()
 {
-    static uint moseghint = 87324921;
-    return cast(uint) (getpid ^ getUTCtime ^ ++moseghint);
+    static bool seeded;
+    static MinstdRand0 rand;
+    if (!seeded) {
+        rand.seed(getpid ^ cast(uint)getUTCtime);
+        seeded = true;
+    }
+    return cast(uint) (getUTCtime ^ rand.next);
 }
 
 unittest
@@ -477,8 +482,6 @@ unittest
     // not much to test here
     auto a = unpredictableSeed;
     static assert(is(typeof(a) == uint));
-    auto b = unpredictableSeed;
-    assert(a != b);
 }
 
 /**

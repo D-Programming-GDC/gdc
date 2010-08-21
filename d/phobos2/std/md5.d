@@ -94,6 +94,7 @@ module std.md5;
 
 import std.string;
 import std.contracts;
+import std.c.stdio : printf;
 
 version(D_InlineAsm)
     version(X86)

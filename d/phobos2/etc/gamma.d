@@ -375,7 +375,7 @@ real lgamma(real x)
 version(X86) // requires feqrel
 unittest {
     // return true if x is +0.0
-    bit isPosZero(real x)
+    bool isPosZero(real x)
     {
        return (x==0) && (signbit(x)==0);
     }

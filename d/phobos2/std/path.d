@@ -40,7 +40,7 @@ version(Unix)
 {
     private import std.c.stdlib;
     private import std.c.unix.unix;
-    private import std.outofmemory;
+    private import core.exception : onOutOfMemoryError;
 }
 
 version(Windows)
@@ -365,18 +365,18 @@ unittest
  * -----
  * version(Win32)
  * {
- *     dirname(r"d:\path\foo.bat") => "d:\path"
- *     dirname(dirname(r"d:\path\foo.bat")) => "d:\"
+ *     assert(dirname(r"d:\path\foo.bat") == r"d:\path");
+ *     assert(dirname(dirname(r"d:\path\foo.bat")) == r"d:\");
  * }
  * version(linux)
  * {
- *     dirname("/home/user")  => "/home"
- *     dirname(dirname("/home/user"))  => ""
+ *     assert(dirname("/home/user") == "/home");
+ *     assert(dirname(dirname("/home/user")) == "");
  * }
  * -----
  */
 
-string dirname(string fullname)
+Char[] dirname(Char)(Char[] fullname)
 {
     auto i = fullname.length;
     for (; i > 0; i--)
@@ -387,8 +387,9 @@ string dirname(string fullname)
                 break;
             if (fullname[i - 1] == sep[0] || fullname[i - 1] == altsep[0])
             {
-                // Leave separator when it's the starting character (current root)
-		// or when it's preceded by ':' (absolute root)
+                // Leave separator when it's the starting character
+		// (current root) or when it's preceded by ':'
+		// (absolute root)
                 if (i != 1 && fullname[i - 2] != ':')
                     i--;
                 break;
@@ -1279,7 +1280,7 @@ Lerror:
     // Errors are going to be caused by running out of memory
     if (extra_memory)
 	std.c.stdlib.free(extra_memory);
-    _d_OutOfMemory();
+    onOutOfMemoryError();
     return null;
 
     }

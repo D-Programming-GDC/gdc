@@ -30,10 +30,10 @@ module std.stdio;
 
 public import std.c.stdio;
 
+import core.memory;
 import std.format;
 import std.utf;
 import std.string;
-import std.gc;
 import std.c.stdlib;
 import std.c.string;
 import std.c.stddef;
@@ -653,8 +653,8 @@ size_t readln(FILE* fp, inout char[] buf, dchar terminator = '\n')
 		buf.length = 0;
 		for (int c = void; (c = FGETC(fp)) != -1; )
 		{
-		    buf ~= c;
-		    if (c == terminator)
+		    buf ~= cast(char)c;
+		    if (cast(char)c == terminator)
 			break;
 		}
 	    }
@@ -662,7 +662,7 @@ size_t readln(FILE* fp, inout char[] buf, dchar terminator = '\n')
 		StdioException();
 	    return buf.length;
 	}
-	buf = buf.ptr[0 .. std.gc.capacity(buf.ptr)];
+	buf = buf.ptr[0 .. GC.sizeOf(buf.ptr)];
 	if (s <= buf.length)
 	{
 	    buf.length = s;
