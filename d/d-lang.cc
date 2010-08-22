@@ -128,7 +128,11 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING
 #define LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING d_convert_parm_for_inlining
 #endif
+#endif
 
+#if D_GCC_VER >= 44
+#undef LANG_HOOKS_INIT_TS
+#define LANG_HOOKS_INIT_TS d_init_ts
 #endif
 
 
@@ -750,6 +754,12 @@ bool d_post_options(const char ** fn)
     // Save register names for restoring later.
     memcpy (saved_reg_names, reg_names, sizeof reg_names);
 
+#if D_GCC_VER >= 43
+    // Workaround for embedded functions, don't inline if debugging is on.
+    flag_inline_small_functions = !write_symbols;
+#endif
+
+#if D_GCC_VER < 44
     // Inline option code copied from c-opts.c
     flag_inline_trees = 1;
 
@@ -758,6 +768,7 @@ bool d_post_options(const char ** fn)
 	flag_no_inline = 1;
     if (flag_inline_functions)
 	flag_inline_trees = 2;
+#endif
 
     /* If we are given more than one input file, we must use
        unit-at-a-time mode.  */
@@ -1815,7 +1826,7 @@ tree_code_type[] = {
 #include "d/d-tree.def"
 };
 
-#else
+#elif D_GCC_VER < 44
 
 const enum tree_code_class
 tree_code_type[] = {
@@ -1826,6 +1837,8 @@ tree_code_type[] = {
 #endif
 
 #undef DEFTREECODE
+
+#if D_GCC_VER < 44
 
 /* Table indexed by tree code giving number of expression
  operands beyond the fixed part of the node structure.
@@ -1850,6 +1863,8 @@ const char *const tree_code_name[] = {
 #include "d/d-tree.def"
 };
 #undef DEFTREECODE
+
+#endif
 
 #if D_GCC_VER >= 40 && D_GCC_VER < 43
 
@@ -1934,8 +1949,15 @@ d_convert_parm_for_inlining  (tree parm, tree value, tree fndecl, int argnum)
 }
 #endif
     
-#endif
+#endif // D_GCC_VER < 44
 
+#if D_GCC_VER >= 44
+static void
+d_init_ts (void)
+{
+    tree_contains_struct[STATIC_CHAIN_DECL][TS_DECL_COMMON] = 1;
+}
+#endif
 
 struct lang_type *
 build_d_type_lang_specific(Type * t)

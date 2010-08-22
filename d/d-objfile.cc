@@ -727,7 +727,9 @@ make_alias_for_thunk (tree function)
   DECL_EXTERNAL (alias) = 0;
   DECL_ARTIFICIAL (alias) = 1;
   DECL_NO_STATIC_CHAIN (alias) = 1;
+#if D_GCC_VER < 44
   DECL_INLINE (alias) = 0;
+#endif
   DECL_DECLARED_INLINE_P (alias) = 0;
   //DECL_INITIAL (alias) = error_mark_node;
   TREE_ADDRESSABLE (alias) = 1;

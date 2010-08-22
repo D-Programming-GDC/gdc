@@ -559,7 +559,7 @@ Symbol *FuncDeclaration::toSymbol()
 	    if (inlineAsm) {
 		DECL_UNINLINABLE(fn_decl) = 1;
 	    } else {
-#if D_GCC_VER >= 40
+#if D_GCC_VER >= 40 && D_GCC_VER <= 43
 		// see grokdeclarator in c-decl.c
 		if (flag_inline_trees == 2 && fbody /* && should_emit? */)
 		    DECL_INLINE (fn_decl) = 1;
@@ -709,7 +709,9 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
 	DECL_ARTIFICIAL(thunk_decl) = 1;
 	DECL_IGNORED_P(thunk_decl) = 1;
 	DECL_NO_STATIC_CHAIN(thunk_decl) = 1;
+#if D_GCC_VER < 44
 	DECL_INLINE(thunk_decl) = 0;
+#endif
 	DECL_DECLARED_INLINE_P(thunk_decl) = 0;
 	//needed on some targets to avoid "causes a section type conflict"
 	D_DECL_ONE_ONLY(thunk_decl) = D_DECL_ONE_ONLY(target_func_decl);

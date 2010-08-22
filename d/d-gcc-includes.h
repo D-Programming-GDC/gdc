@@ -75,7 +75,11 @@ extern "C" {
 #if D_GCC_VER >= 40
 #include "cgraph.h"
 #include "tree-iterator.h"
+#if D_GCC_VER >= 44
+#include "gimple.h"
+#else
 #include "tree-gimple.h"
+#endif
 #include "tree-dump.h"
 #include "tree-inline.h"
 #endif

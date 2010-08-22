@@ -70,6 +70,8 @@ extern void dkeep(tree t);
 #include "d-bi-attrs-42.h"
 #elif D_GCC_VER == 43
 #include "d-bi-attrs-43.h"
+#elif D_GCC_VER == 44
+#include "d-bi-attrs-44.h"
 #else
 #error "Version of GCC is not supported."
 #endif

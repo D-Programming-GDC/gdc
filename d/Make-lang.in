@@ -229,7 +229,8 @@ D_GLUE_OBJS += d/d-cppmngl.glue.o
 endif
 
 D_BI_ATTRS = d/d-bi-attrs-341.h d/d-bi-attrs-34.h d/d-bi-attrs-40.h \
-             d/d-bi-attrs-41.h d/d-bi-attrs-42.h d/d-bi-attrs-43.h
+             d/d-bi-attrs-41.h d/d-bi-attrs-42.h d/d-bi-attrs-43.h \
+             d/d-bi-attrs-44.h
 
 ifdef D_is_apple_ver
   ifeq ($(D_gcc_main_ver),4.0)
@@ -254,6 +255,13 @@ else
   ifeq ($(D_gcc_main_ver),4.3)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
     D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_EXTRA_LIBS += $(GMPLIBS)
+    D_DRIVER_OBJS += opts-common.o gcc-options.o
+  endif
+  ifeq ($(D_gcc_main_ver),4.4)
+    D_GLUE_OBJS += d/d-c-stubs.cglue.o
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_BORROWED_C_OBJS += gimplify.o tree-iterator.o
     D_EXTRA_LIBS += $(GMPLIBS)
     D_DRIVER_OBJS += opts-common.o gcc-options.o
   endif
