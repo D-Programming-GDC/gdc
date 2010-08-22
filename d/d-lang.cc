@@ -418,10 +418,10 @@ d_init ()
     {
 	VersionCondition::addPredefinedGlobalIdent("D_InlineAsm");
 
-	if (TARGET_80387)
+	if (cpu_versym && strcmp(cpu_versym, "X86") == 0)
 	    VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86");
 	// TODO: D_InlineAsm_X86_64
-	
+
 	/* Should define this anyway to set us apart from the competition. */
 	VersionCondition::addPredefinedGlobalIdent("GNU_InlineAsm");
     }
