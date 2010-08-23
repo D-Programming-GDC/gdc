@@ -2538,6 +2538,15 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
 	// gcc_assert(nested_func->isNested())
 	outer_func = nested_func->toParent2()->isFuncDeclaration();
 	gcc_assert(outer_func != NULL);
+
+	if (func != outer_func)
+	{
+	    if (!func->vthis) // if no frame pointer for this function
+	    {
+		nested_func->error("is a nested function and cannot be accessed from %s", func->toChars());
+		return d_null_pointer;
+	    }
+	}
     }
     else
     {
@@ -2592,7 +2601,7 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
 	    if (! o) {
 	    cannot_access_frame:
 		error("cannot access frame of function '%s' from '%s'",
-		    outer_func->ident->string, func->ident->string);
+		      outer_func->toChars(), func->toChars());
 		return d_null_pointer;
 	    }
 	}
