@@ -1,6 +1,6 @@
 diff -c gcc-4.1.2-orig/configure gcc-4.1.2/configure
 *** gcc-4.1.2-orig/configure	2006-11-21 12:48:36.000000000 -0500
---- gcc-4.1.2/configure	2010-08-19 18:54:13.793207811 -0400
+--- gcc-4.1.2/configure	2010-08-22 20:01:36.362317540 -0400
 ***************
 *** 909,915 ****
   		target-libgfortran \
@@ -10,19 +10,18 @@ diff -c gcc-4.1.2-orig/configure gcc-4.1.2/configure
   
   # these tools are built using the target libraries, and are intended to
   # run only in the target environment
---- 909,917 ----
+--- 909,916 ----
   		target-libgfortran \
   		${libgcj} \
   		target-libobjc \
 ! 		target-libada \
-! 		target-libphobos \
-! 		target-libdruntime"
+! 		target-libphobos"
   
   # these tools are built using the target libraries, and are intended to
   # run only in the target environment
 ***************
 *** 1802,1807 ****
---- 1804,1810 ----
+--- 1803,1809 ----
     CXX=${CXX-${host_alias}-c++}
     CXXFLAGS=${CXXFLAGS-"-g -O2"}
     CC_FOR_BUILD=${CC_FOR_BUILD-gcc}
@@ -32,7 +31,7 @@ diff -c gcc-4.1.2-orig/configure gcc-4.1.2/configure
   
 ***************
 *** 1815,1820 ****
---- 1818,1824 ----
+--- 1817,1823 ----
     # This is all going to change when we autoconfiscate...
   
     CC_FOR_BUILD="\$(CC)"
@@ -42,7 +41,7 @@ diff -c gcc-4.1.2-orig/configure gcc-4.1.2/configure
   
 ***************
 *** 6317,6322 ****
---- 6321,6327 ----
+--- 6320,6326 ----
   s%@target_configargs@%$target_configargs%g
   s%@target_configdirs@%$target_configdirs%g
   s%@CC_FOR_BUILD@%$CC_FOR_BUILD%g
@@ -52,7 +51,7 @@ diff -c gcc-4.1.2-orig/configure gcc-4.1.2/configure
   s%@BISON@%$BISON%g
 diff -c gcc-4.1.2-orig/configure.in gcc-4.1.2/configure.in
 *** gcc-4.1.2-orig/configure.in	2006-11-21 12:48:36.000000000 -0500
---- gcc-4.1.2/configure.in	2010-08-19 18:55:25.113207852 -0400
+--- gcc-4.1.2/configure.in	2010-08-22 20:02:33.202317113 -0400
 ***************
 *** 151,157 ****
   		target-libgfortran \
@@ -62,19 +61,18 @@ diff -c gcc-4.1.2-orig/configure.in gcc-4.1.2/configure.in
   
   # these tools are built using the target libraries, and are intended to
   # run only in the target environment
---- 151,159 ----
+--- 151,158 ----
   		target-libgfortran \
   		${libgcj} \
   		target-libobjc \
 ! 		target-libada \
-! 		target-libphobos \
-! 		target-libdruntime"
+! 		target-libphobos"
   
   # these tools are built using the target libraries, and are intended to
   # run only in the target environment
 ***************
 *** 1010,1015 ****
---- 1012,1018 ----
+--- 1011,1017 ----
     CXX=${CXX-${host_alias}-c++}
     CXXFLAGS=${CXXFLAGS-"-g -O2"}
     CC_FOR_BUILD=${CC_FOR_BUILD-gcc}
@@ -84,7 +82,7 @@ diff -c gcc-4.1.2-orig/configure.in gcc-4.1.2/configure.in
   
 ***************
 *** 1023,1028 ****
---- 1026,1032 ----
+--- 1025,1031 ----
     # This is all going to change when we autoconfiscate...
   
     CC_FOR_BUILD="\$(CC)"
@@ -94,7 +92,7 @@ diff -c gcc-4.1.2-orig/configure.in gcc-4.1.2/configure.in
   
 ***************
 *** 2092,2097 ****
---- 2096,2102 ----
+--- 2095,2101 ----
   
   # Build tools.
   AC_SUBST(CC_FOR_BUILD)
@@ -104,21 +102,20 @@ diff -c gcc-4.1.2-orig/configure.in gcc-4.1.2/configure.in
   # Generate default definitions for YACC, M4, LEX and other programs that run
 diff -c gcc-4.1.2-orig/Makefile.def gcc-4.1.2/Makefile.def
 *** gcc-4.1.2-orig/Makefile.def	2005-11-11 16:47:07.000000000 -0500
---- gcc-4.1.2/Makefile.def	2010-08-19 18:52:53.861207859 -0400
+--- gcc-4.1.2/Makefile.def	2010-08-22 20:02:48.934318090 -0400
 ***************
 *** 136,141 ****
---- 136,143 ----
+--- 136,142 ----
   target_modules = { module= qthreads; };
   target_modules = { module= rda; };
   target_modules = { module= libada; };
 + target_modules = { module= libphobos; };
-+ target_modules = { module= libdruntime; };
   
   // These are (some of) the make targets to be done in each subdirectory.
   // Not all; these are the ones which don't have special options.
 diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
 *** gcc-4.1.2-orig/Makefile.in	2006-04-04 17:03:05.000000000 -0400
---- gcc-4.1.2/Makefile.in	2010-08-19 18:56:50.000000000 -0400
+--- gcc-4.1.2/Makefile.in	2010-08-22 20:03:06.000000000 -0400
 ***************
 *** 626,632 ****
       maybe-configure-target-boehm-gc \
@@ -128,13 +125,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   # The target built for a native non-bootstrap build.
   .PHONY: all
---- 626,634 ----
+--- 626,633 ----
       maybe-configure-target-boehm-gc \
       maybe-configure-target-qthreads \
       maybe-configure-target-rda \
 !     maybe-configure-target-libada \
-!     maybe-configure-target-libphobos \
-!     maybe-configure-target-libdruntime
+!     maybe-configure-target-libphobos
   
   # The target built for a native non-bootstrap build.
   .PHONY: all
@@ -147,13 +143,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   # Do a target for all the subdirectories.  A ``make do-X'' will do a
   # ``make X'' in all subdirectories (because, in general, there is a
---- 747,755 ----
+--- 746,753 ----
       maybe-all-target-boehm-gc \
       maybe-all-target-qthreads \
       maybe-all-target-rda \
 !     maybe-all-target-libada \
-!     maybe-all-target-libphobos \
-!     maybe-all-target-libdruntime
+!     maybe-all-target-libphobos
   
   # Do a target for all the subdirectories.  A ``make do-X'' will do a
   # ``make X'' in all subdirectories (because, in general, there is a
@@ -166,13 +161,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   .PHONY: do-dvi
   do-dvi:
---- 856,864 ----
+--- 854,861 ----
       maybe-info-target-boehm-gc \
       maybe-info-target-qthreads \
       maybe-info-target-rda \
 !     maybe-info-target-libada \
-!     maybe-info-target-libphobos \
-!     maybe-info-target-libdruntime
+!     maybe-info-target-libphobos
   
   .PHONY: do-dvi
   do-dvi:
@@ -185,13 +179,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   .PHONY: do-html
   do-html:
---- 960,968 ----
+--- 957,964 ----
       maybe-dvi-target-boehm-gc \
       maybe-dvi-target-qthreads \
       maybe-dvi-target-rda \
 !     maybe-dvi-target-libada \
-!     maybe-dvi-target-libphobos \
-!     maybe-dvi-target-libdruntime
+!     maybe-dvi-target-libphobos
   
   .PHONY: do-html
   do-html:
@@ -204,13 +197,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   .PHONY: do-TAGS
   do-TAGS:
---- 1064,1072 ----
+--- 1060,1067 ----
       maybe-html-target-boehm-gc \
       maybe-html-target-qthreads \
       maybe-html-target-rda \
 !     maybe-html-target-libada \
-!     maybe-html-target-libphobos \
-!     maybe-html-target-libdruntime
+!     maybe-html-target-libphobos
   
   .PHONY: do-TAGS
   do-TAGS:
@@ -223,13 +215,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   .PHONY: do-install-info
   do-install-info:
---- 1168,1176 ----
+--- 1163,1170 ----
       maybe-TAGS-target-boehm-gc \
       maybe-TAGS-target-qthreads \
       maybe-TAGS-target-rda \
 !     maybe-TAGS-target-libada \
-!     maybe-TAGS-target-libphobos \
-!     maybe-TAGS-target-libdruntime
+!     maybe-TAGS-target-libphobos
   
   .PHONY: do-install-info
   do-install-info:
@@ -242,13 +233,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   .PHONY: do-installcheck
   do-installcheck:
---- 1272,1280 ----
+--- 1266,1273 ----
       maybe-install-info-target-boehm-gc \
       maybe-install-info-target-qthreads \
       maybe-install-info-target-rda \
 !     maybe-install-info-target-libada \
-!     maybe-install-info-target-libphobos \
-!     maybe-install-info-target-libdruntime
+!     maybe-install-info-target-libphobos
   
   .PHONY: do-installcheck
   do-installcheck:
@@ -261,13 +251,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   .PHONY: do-mostlyclean
   do-mostlyclean:
---- 1376,1384 ----
+--- 1369,1376 ----
       maybe-installcheck-target-boehm-gc \
       maybe-installcheck-target-qthreads \
       maybe-installcheck-target-rda \
 !     maybe-installcheck-target-libada \
-!     maybe-installcheck-target-libphobos \
-!     maybe-installcheck-target-libdruntime
+!     maybe-installcheck-target-libphobos
   
   .PHONY: do-mostlyclean
   do-mostlyclean:
@@ -280,13 +269,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   .PHONY: do-clean
   do-clean:
---- 1480,1488 ----
+--- 1472,1479 ----
       maybe-mostlyclean-target-boehm-gc \
       maybe-mostlyclean-target-qthreads \
       maybe-mostlyclean-target-rda \
 !     maybe-mostlyclean-target-libada \
-!     maybe-mostlyclean-target-libphobos \
-!     maybe-mostlyclean-target-libdruntime
+!     maybe-mostlyclean-target-libphobos
   
   .PHONY: do-clean
   do-clean:
@@ -299,13 +287,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   .PHONY: do-distclean
   do-distclean:
---- 1584,1592 ----
+--- 1575,1582 ----
       maybe-clean-target-boehm-gc \
       maybe-clean-target-qthreads \
       maybe-clean-target-rda \
 !     maybe-clean-target-libada \
-!     maybe-clean-target-libphobos \
-!     maybe-clean-target-libdruntime
+!     maybe-clean-target-libphobos
   
   .PHONY: do-distclean
   do-distclean:
@@ -318,13 +305,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   .PHONY: do-maintainer-clean
   do-maintainer-clean:
---- 1688,1696 ----
+--- 1678,1685 ----
       maybe-distclean-target-boehm-gc \
       maybe-distclean-target-qthreads \
       maybe-distclean-target-rda \
 !     maybe-distclean-target-libada \
-!     maybe-distclean-target-libphobos \
-!     maybe-distclean-target-libdruntime
+!     maybe-distclean-target-libphobos
   
   .PHONY: do-maintainer-clean
   do-maintainer-clean:
@@ -337,13 +323,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   
   # Here are the targets which correspond to the do-X targets.
---- 1792,1800 ----
+--- 1781,1788 ----
       maybe-maintainer-clean-target-boehm-gc \
       maybe-maintainer-clean-target-qthreads \
       maybe-maintainer-clean-target-rda \
 !     maybe-maintainer-clean-target-libada \
-!     maybe-maintainer-clean-target-libphobos \
-!     maybe-maintainer-clean-target-libdruntime
+!     maybe-maintainer-clean-target-libphobos
   
   
   # Here are the targets which correspond to the do-X targets.
@@ -356,13 +341,12 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   do-check:
   	@: $(MAKE); $(unstage)
---- 1952,1960 ----
+--- 1940,1947 ----
       maybe-check-target-boehm-gc \
       maybe-check-target-qthreads \
       maybe-check-target-rda \
 !     maybe-check-target-libada \
-!     maybe-check-target-libphobos \
-!     maybe-check-target-libdruntime
+!     maybe-check-target-libphobos
   
   do-check:
   	@: $(MAKE); $(unstage)
@@ -375,19 +359,18 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
   
   uninstall:
   	@echo "the uninstall target is not supported in this tree"
---- 2153,2161 ----
+--- 2140,2147 ----
       maybe-install-target-boehm-gc \
       maybe-install-target-qthreads \
       maybe-install-target-rda \
 !     maybe-install-target-libada \
-!     maybe-install-target-libphobos \
-!     maybe-install-target-libdruntime
+!     maybe-install-target-libphobos
   
   uninstall:
   	@echo "the uninstall target is not supported in this tree"
 ***************
 *** 34743,34748 ****
---- 34771,35474 ----
+--- 34757,35111 ----
   
   
   
@@ -740,367 +723,16 @@ diff -c gcc-4.1.2-orig/Makefile.in gcc-4.1.2/Makefile.in
 + 
 + 
 + 
-+ # There's only one multilib.out.  Cleverer subdirs shouldn't need it copied.
-+ @if target-libdruntime
-+ $(TARGET_SUBDIR)/libdruntime/multilib.out: multilib.out
-+ 	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libdruntime ; \
-+ 	rm -f $(TARGET_SUBDIR)/libdruntime/Makefile || : ; \
-+ 	cp multilib.out $(TARGET_SUBDIR)/libdruntime/multilib.out
-+ @endif target-libdruntime
-+ 
-+ 
-+ 
-+ .PHONY: configure-target-libdruntime maybe-configure-target-libdruntime
-+ maybe-configure-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-configure-target-libdruntime: configure-target-libdruntime
-+ configure-target-libdruntime: $(TARGET_SUBDIR)/libdruntime/multilib.out
-+ 	@$(unstage)
-+ 	@test ! -f $(TARGET_SUBDIR)/libdruntime/Makefile || exit 0; \
-+ 	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libdruntime ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo Configuring in $(TARGET_SUBDIR)/libdruntime; \
-+ 	cd "$(TARGET_SUBDIR)/libdruntime" || exit 1; \
-+ 	case $(srcdir) in \
-+ 	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
-+ 	  *) topdir=`echo $(TARGET_SUBDIR)/libdruntime/ | \
-+ 		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
-+ 	esac; \
-+ 	srcdiroption="--srcdir=$${topdir}/libdruntime"; \
-+ 	libsrcdir="$$s/libdruntime"; \
-+ 	rm -f no-such-file || : ; \
-+ 	CONFIG_SITE=no-such-file $(SHELL) $${libsrcdir}/configure \
-+ 	  $(TARGET_CONFIGARGS) $${srcdiroption}  \
-+ 	  || exit 1
-+ @endif target-libdruntime
-+ 
-+ 
-+ 
-+ 
-+ 
-+ .PHONY: all-target-libdruntime maybe-all-target-libdruntime
-+ maybe-all-target-libdruntime:
-+ @if target-libdruntime
-+ TARGET-target-libdruntime=all
-+ maybe-all-target-libdruntime: all-target-libdruntime
-+ all-target-libdruntime: configure-target-libdruntime
-+ 	@$(unstage)
-+ 	@r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(TARGET_FLAGS_TO_PASS)  $(TARGET-target-libdruntime))
-+ @endif target-libdruntime
-+ 
-+ 
-+ 
-+ 
-+ 
-+ .PHONY: check-target-libdruntime maybe-check-target-libdruntime
-+ maybe-check-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-check-target-libdruntime: check-target-libdruntime
-+ 
-+ check-target-libdruntime:
-+ 	@: $(MAKE); $(unstage)
-+ 	@r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(TARGET_FLAGS_TO_PASS)   check)
-+ 
-+ @endif target-libdruntime
-+ 
-+ .PHONY: install-target-libdruntime maybe-install-target-libdruntime
-+ maybe-install-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-install-target-libdruntime: install-target-libdruntime
-+ 
-+ install-target-libdruntime: installdirs
-+ 	@: $(MAKE); $(unstage)
-+ 	@r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(TARGET_FLAGS_TO_PASS)  install)
-+ 
-+ @endif target-libdruntime
-+ 
-+ # Other targets (info, dvi, etc.)
-+ 
-+ .PHONY: maybe-info-target-libdruntime info-target-libdruntime
-+ maybe-info-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-info-target-libdruntime: info-target-libdruntime
-+ 
-+ info-target-libdruntime: \
-+     configure-target-libdruntime 
-+ 	@: $(MAKE); $(unstage)
-+ 	@[ -f $(TARGET_SUBDIR)/libdruntime/Makefile ] || exit 0 ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo "Doing info in $(TARGET_SUBDIR)/libdruntime" ; \
-+ 	for flag in $(EXTRA_TARGET_FLAGS); do \
-+ 	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
-+ 	done; \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
-+ 	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
-+ 	          "RANLIB=$${RANLIB}" \
-+ 	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" \
-+ 	           info) \
-+ 	  || exit 1
-+ 
-+ @endif target-libdruntime
-+ 
-+ .PHONY: maybe-dvi-target-libdruntime dvi-target-libdruntime
-+ maybe-dvi-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-dvi-target-libdruntime: dvi-target-libdruntime
-+ 
-+ dvi-target-libdruntime: \
-+     configure-target-libdruntime 
-+ 	@: $(MAKE); $(unstage)
-+ 	@[ -f $(TARGET_SUBDIR)/libdruntime/Makefile ] || exit 0 ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo "Doing dvi in $(TARGET_SUBDIR)/libdruntime" ; \
-+ 	for flag in $(EXTRA_TARGET_FLAGS); do \
-+ 	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
-+ 	done; \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
-+ 	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
-+ 	          "RANLIB=$${RANLIB}" \
-+ 	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" \
-+ 	           dvi) \
-+ 	  || exit 1
-+ 
-+ @endif target-libdruntime
-+ 
-+ .PHONY: maybe-html-target-libdruntime html-target-libdruntime
-+ maybe-html-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-html-target-libdruntime: html-target-libdruntime
-+ 
-+ html-target-libdruntime: \
-+     configure-target-libdruntime 
-+ 	@: $(MAKE); $(unstage)
-+ 	@[ -f $(TARGET_SUBDIR)/libdruntime/Makefile ] || exit 0 ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo "Doing html in $(TARGET_SUBDIR)/libdruntime" ; \
-+ 	for flag in $(EXTRA_TARGET_FLAGS); do \
-+ 	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
-+ 	done; \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
-+ 	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
-+ 	          "RANLIB=$${RANLIB}" \
-+ 	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" \
-+ 	           html) \
-+ 	  || exit 1
-+ 
-+ @endif target-libdruntime
-+ 
-+ .PHONY: maybe-TAGS-target-libdruntime TAGS-target-libdruntime
-+ maybe-TAGS-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-TAGS-target-libdruntime: TAGS-target-libdruntime
-+ 
-+ TAGS-target-libdruntime: \
-+     configure-target-libdruntime 
-+ 	@: $(MAKE); $(unstage)
-+ 	@[ -f $(TARGET_SUBDIR)/libdruntime/Makefile ] || exit 0 ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo "Doing TAGS in $(TARGET_SUBDIR)/libdruntime" ; \
-+ 	for flag in $(EXTRA_TARGET_FLAGS); do \
-+ 	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
-+ 	done; \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
-+ 	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
-+ 	          "RANLIB=$${RANLIB}" \
-+ 	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" \
-+ 	           TAGS) \
-+ 	  || exit 1
-+ 
-+ @endif target-libdruntime
-+ 
-+ .PHONY: maybe-install-info-target-libdruntime install-info-target-libdruntime
-+ maybe-install-info-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-install-info-target-libdruntime: install-info-target-libdruntime
-+ 
-+ install-info-target-libdruntime: \
-+     configure-target-libdruntime \
-+     info-target-libdruntime 
-+ 	@: $(MAKE); $(unstage)
-+ 	@[ -f $(TARGET_SUBDIR)/libdruntime/Makefile ] || exit 0 ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo "Doing install-info in $(TARGET_SUBDIR)/libdruntime" ; \
-+ 	for flag in $(EXTRA_TARGET_FLAGS); do \
-+ 	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
-+ 	done; \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
-+ 	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
-+ 	          "RANLIB=$${RANLIB}" \
-+ 	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" \
-+ 	           install-info) \
-+ 	  || exit 1
-+ 
-+ @endif target-libdruntime
-+ 
-+ .PHONY: maybe-installcheck-target-libdruntime installcheck-target-libdruntime
-+ maybe-installcheck-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-installcheck-target-libdruntime: installcheck-target-libdruntime
-+ 
-+ installcheck-target-libdruntime: \
-+     configure-target-libdruntime 
-+ 	@: $(MAKE); $(unstage)
-+ 	@[ -f $(TARGET_SUBDIR)/libdruntime/Makefile ] || exit 0 ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo "Doing installcheck in $(TARGET_SUBDIR)/libdruntime" ; \
-+ 	for flag in $(EXTRA_TARGET_FLAGS); do \
-+ 	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
-+ 	done; \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
-+ 	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
-+ 	          "RANLIB=$${RANLIB}" \
-+ 	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" \
-+ 	           installcheck) \
-+ 	  || exit 1
-+ 
-+ @endif target-libdruntime
-+ 
-+ .PHONY: maybe-mostlyclean-target-libdruntime mostlyclean-target-libdruntime
-+ maybe-mostlyclean-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-mostlyclean-target-libdruntime: mostlyclean-target-libdruntime
-+ 
-+ mostlyclean-target-libdruntime: 
-+ 	@: $(MAKE); $(unstage)
-+ 	@[ -f $(TARGET_SUBDIR)/libdruntime/Makefile ] || exit 0 ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo "Doing mostlyclean in $(TARGET_SUBDIR)/libdruntime" ; \
-+ 	for flag in $(EXTRA_TARGET_FLAGS); do \
-+ 	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
-+ 	done; \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
-+ 	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
-+ 	          "RANLIB=$${RANLIB}" \
-+ 	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" \
-+ 	           mostlyclean) \
-+ 	  || exit 1
-+ 
-+ @endif target-libdruntime
-+ 
-+ .PHONY: maybe-clean-target-libdruntime clean-target-libdruntime
-+ maybe-clean-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-clean-target-libdruntime: clean-target-libdruntime
-+ 
-+ clean-target-libdruntime: 
-+ 	@: $(MAKE); $(unstage)
-+ 	@[ -f $(TARGET_SUBDIR)/libdruntime/Makefile ] || exit 0 ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo "Doing clean in $(TARGET_SUBDIR)/libdruntime" ; \
-+ 	for flag in $(EXTRA_TARGET_FLAGS); do \
-+ 	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
-+ 	done; \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
-+ 	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
-+ 	          "RANLIB=$${RANLIB}" \
-+ 	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" \
-+ 	           clean) \
-+ 	  || exit 1
-+ 
-+ @endif target-libdruntime
-+ 
-+ .PHONY: maybe-distclean-target-libdruntime distclean-target-libdruntime
-+ maybe-distclean-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-distclean-target-libdruntime: distclean-target-libdruntime
-+ 
-+ distclean-target-libdruntime: 
-+ 	@: $(MAKE); $(unstage)
-+ 	@[ -f $(TARGET_SUBDIR)/libdruntime/Makefile ] || exit 0 ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo "Doing distclean in $(TARGET_SUBDIR)/libdruntime" ; \
-+ 	for flag in $(EXTRA_TARGET_FLAGS); do \
-+ 	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
-+ 	done; \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
-+ 	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
-+ 	          "RANLIB=$${RANLIB}" \
-+ 	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" \
-+ 	           distclean) \
-+ 	  || exit 1
-+ 
-+ @endif target-libdruntime
-+ 
-+ .PHONY: maybe-maintainer-clean-target-libdruntime maintainer-clean-target-libdruntime
-+ maybe-maintainer-clean-target-libdruntime:
-+ @if target-libdruntime
-+ maybe-maintainer-clean-target-libdruntime: maintainer-clean-target-libdruntime
-+ 
-+ maintainer-clean-target-libdruntime: 
-+ 	@: $(MAKE); $(unstage)
-+ 	@[ -f $(TARGET_SUBDIR)/libdruntime/Makefile ] || exit 0 ; \
-+ 	r=`${PWD_COMMAND}`; export r; \
-+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
-+ 	$(NORMAL_TARGET_EXPORTS) \
-+ 	echo "Doing maintainer-clean in $(TARGET_SUBDIR)/libdruntime" ; \
-+ 	for flag in $(EXTRA_TARGET_FLAGS); do \
-+ 	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
-+ 	done; \
-+ 	(cd $(TARGET_SUBDIR)/libdruntime && \
-+ 	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
-+ 	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
-+ 	          "RANLIB=$${RANLIB}" \
-+ 	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" \
-+ 	           maintainer-clean) \
-+ 	  || exit 1
-+ 
-+ @endif target-libdruntime
-+ 
-+ 
-+ 
   # ----------
   # GCC module
   # ----------
 ***************
 *** 36182,36187 ****
---- 36908,36917 ----
+--- 36545,36552 ----
   
   configure-target-libada: maybe-all-gcc
   
 + configure-target-libphobos: maybe-all-gcc
-+ 
-+ configure-target-libdruntime: maybe-all-gcc
 + 
   
   

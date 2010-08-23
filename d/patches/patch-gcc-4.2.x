@@ -1,6 +1,6 @@
-diff -cr gcc.orig/cgraph.c gcc/cgraph.c
-*** gcc.orig/cgraph.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/cgraph.c	2010-08-09 21:59:35.656048809 +0100
+diff -cr gcc-orig/cgraph.c gcc/cgraph.c
+*** gcc-orig/cgraph.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/cgraph.c	2010-08-22 20:09:26.026318962 -0400
 ***************
 *** 198,203 ****
 --- 198,204 ----
@@ -42,9 +42,9 @@ diff -cr gcc.orig/cgraph.c gcc/cgraph.c
       }
     return node;
   }
-diff -cr gcc.orig/config/arm/arm.c gcc/config/arm/arm.c
-*** gcc.orig/config/arm/arm.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/config/arm/arm.c	2010-08-09 21:59:35.672046024 +0100
+diff -cr gcc-orig/config/arm/arm.c gcc/config/arm/arm.c
+*** gcc-orig/config/arm/arm.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/config/arm/arm.c	2010-08-22 20:09:26.030319960 -0400
 ***************
 *** 15485,15490 ****
 --- 15485,15499 ----
@@ -63,9 +63,9 @@ diff -cr gcc.orig/config/arm/arm.c gcc/config/arm/arm.c
         else
   	abort ();
         break;
-diff -cr gcc.orig/config/darwin.h gcc/config/darwin.h
-*** gcc.orig/config/darwin.h	2007-09-01 16:28:30.000000000 +0100
---- gcc/config/darwin.h	2010-08-09 21:59:35.960046956 +0100
+diff -cr gcc-orig/config/darwin.h gcc/config/darwin.h
+*** gcc-orig/config/darwin.h	2007-09-01 11:28:30.000000000 -0400
+--- gcc/config/darwin.h	2010-08-22 20:09:26.034318095 -0400
 ***************
 *** 759,765 ****
   /* Macros defining the various PIC cases.  */
@@ -83,9 +83,9 @@ diff -cr gcc.orig/config/darwin.h gcc/config/darwin.h
   #define MACHOPIC_JUST_INDIRECT	(MACHO_DYNAMIC_NO_PIC_P)
   #define MACHOPIC_PURE		(flag_pic && ! MACHO_DYNAMIC_NO_PIC_P)
   
-diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
-*** gcc.orig/config/i386/i386.c	2007-12-13 09:25:46.000000000 +0000
---- gcc/config/i386/i386.c	2010-08-09 21:59:35.980044261 +0100
+diff -cr gcc-orig/config/i386/i386.c gcc/config/i386/i386.c
+*** gcc-orig/config/i386/i386.c	2007-12-13 04:25:46.000000000 -0500
+--- gcc/config/i386/i386.c	2010-08-22 20:09:26.046320530 -0400
 ***************
 *** 5217,5222 ****
 --- 5217,5227 ----
@@ -117,9 +117,9 @@ diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
   	  output_asm_insn ("jmp\t{*}%1", xops);
   	}
       }
-diff -cr gcc.orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
-*** gcc.orig/config/rs6000/rs6000.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/config/rs6000/rs6000.c	2010-08-09 21:59:36.016048069 +0100
+diff -cr gcc-orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
+*** gcc-orig/config/rs6000/rs6000.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/config/rs6000/rs6000.c	2010-08-22 20:09:26.082318825 -0400
 ***************
 *** 15482,15488 ****
   	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
@@ -138,9 +138,9 @@ diff -cr gcc.orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
   	i = 0;
         else if (! strcmp (language_string, "GNU F77")
   	       || ! strcmp (language_string, "GNU F95"))
-diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
-*** gcc.orig/dwarf2out.c	2007-10-10 10:29:13.000000000 +0100
---- gcc/dwarf2out.c	2010-08-09 21:59:36.032044446 +0100
+diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
+*** gcc-orig/dwarf2out.c	2007-10-10 05:29:13.000000000 -0400
+--- gcc/dwarf2out.c	2010-08-22 20:09:26.094317488 -0400
 ***************
 *** 5406,5412 ****
     unsigned int lang = get_AT_unsigned (comp_unit_die, DW_AT_language);
@@ -186,9 +186,9 @@ diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
   
         /* If we are in terse mode, don't generate any DIEs to represent any
   	 variable declarations or definitions.  */
-diff -cr gcc.orig/expr.c gcc/expr.c
-*** gcc.orig/expr.c	2008-02-04 22:03:09.000000000 +0000
---- gcc/expr.c	2010-08-09 21:59:36.048054650 +0100
+diff -cr gcc-orig/expr.c gcc/expr.c
+*** gcc-orig/expr.c	2008-02-04 17:03:09.000000000 -0500
+--- gcc/expr.c	2010-08-22 20:09:26.098318137 -0400
 ***************
 *** 8740,8745 ****
 --- 8740,8750 ----
@@ -203,9 +203,9 @@ diff -cr gcc.orig/expr.c gcc/expr.c
       case EXC_PTR_EXPR:
         return get_exception_pointer (cfun);
   
-diff -cr gcc.orig/function.c gcc/function.c
-*** gcc.orig/function.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/function.c	2010-08-09 21:59:36.056046168 +0100
+diff -cr gcc-orig/function.c gcc/function.c
+*** gcc-orig/function.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/function.c	2010-08-22 20:09:26.102317179 -0400
 ***************
 *** 3022,3028 ****
         FUNCTION_ARG_ADVANCE (all.args_so_far, data.promoted_mode,
@@ -295,9 +295,9 @@ diff -cr gcc.orig/function.c gcc/function.c
   #ifdef HAVE_prologue
     if (HAVE_prologue)
       {
-diff -cr gcc.orig/function.h gcc/function.h
-*** gcc.orig/function.h	2007-09-01 16:28:30.000000000 +0100
---- gcc/function.h	2010-08-09 21:59:36.060057013 +0100
+diff -cr gcc-orig/function.h gcc/function.h
+*** gcc-orig/function.h	2007-09-01 11:28:30.000000000 -0400
+--- gcc/function.h	2010-08-22 20:09:26.102317179 -0400
 ***************
 *** 462,467 ****
 --- 462,475 ----
@@ -315,9 +315,9 @@ diff -cr gcc.orig/function.h gcc/function.h
   };
   
   /* If va_list_[gf]pr_size is set to this, it means we don't know how
-diff -cr gcc.orig/gcc.c gcc/gcc.c
-*** gcc.orig/gcc.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/gcc.c	2010-08-09 21:59:36.068046924 +0100
+diff -cr gcc-orig/gcc.c gcc/gcc.c
+*** gcc-orig/gcc.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/gcc.c	2010-08-22 20:09:26.106318526 -0400
 ***************
 *** 126,131 ****
 --- 126,134 ----
@@ -429,9 +429,9 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
   	    /* Here we define characters other than letters and digits.  */
   
   	  case '{':
-diff -cr gcc.orig/gcc.h gcc/gcc.h
-*** gcc.orig/gcc.h	2007-09-01 16:28:30.000000000 +0100
---- gcc/gcc.h	2010-08-09 21:59:36.068046924 +0100
+diff -cr gcc-orig/gcc.h gcc/gcc.h
+*** gcc-orig/gcc.h	2007-09-01 11:28:30.000000000 -0400
+--- gcc/gcc.h	2010-08-22 20:09:26.106318526 -0400
 ***************
 *** 37,43 ****
      || (CHAR) == 'e' || (CHAR) == 'T' || (CHAR) == 'u' \
@@ -449,9 +449,9 @@ diff -cr gcc.orig/gcc.h gcc/gcc.h
   
   /* This defines which multi-letter switches take arguments.  */
   
-diff -cr gcc.orig/gimplify.c gcc/gimplify.c
-*** gcc.orig/gimplify.c	2008-05-01 12:15:32.000000000 +0100
---- gcc/gimplify.c	2010-08-09 21:59:36.076048150 +0100
+diff -cr gcc-orig/gimplify.c gcc/gimplify.c
+*** gcc-orig/gimplify.c	2008-05-01 07:15:32.000000000 -0400
+--- gcc/gimplify.c	2010-08-22 20:09:26.106318526 -0400
 ***************
 *** 5506,5511 ****
 --- 5506,5517 ----
@@ -467,9 +467,9 @@ diff -cr gcc.orig/gimplify.c gcc/gimplify.c
   	case TREE_LIST:
   	  gcc_unreachable ();
   
-diff -cr gcc.orig/predict.c gcc/predict.c
-*** gcc.orig/predict.c	2008-01-24 15:59:18.000000000 +0000
---- gcc/predict.c	2010-08-09 21:59:36.080068284 +0100
+diff -cr gcc-orig/predict.c gcc/predict.c
+*** gcc-orig/predict.c	2008-01-24 10:59:18.000000000 -0500
+--- gcc/predict.c	2010-08-22 20:09:26.110318756 -0400
 ***************
 *** 1318,1323 ****
 --- 1318,1324 ----
@@ -480,9 +480,9 @@ diff -cr gcc.orig/predict.c gcc/predict.c
   	      && (tmp = last_stmt (bb))
   	      && TREE_CODE (tmp) == RETURN_EXPR
   	      && !single_pred_p (bb))
-diff -cr gcc.orig/tree.def gcc/tree.def
-*** gcc.orig/tree.def	2007-09-01 16:28:30.000000000 +0100
---- gcc/tree.def	2010-08-09 21:59:36.084045326 +0100
+diff -cr gcc-orig/tree.def gcc/tree.def
+*** gcc-orig/tree.def	2007-09-01 11:28:30.000000000 -0400
+--- gcc/tree.def	2010-08-22 20:09:26.110318756 -0400
 ***************
 *** 527,532 ****
 --- 527,539 ----
@@ -499,9 +499,9 @@ diff -cr gcc.orig/tree.def gcc/tree.def
   /* Specify a value to compute along with its corresponding cleanup.
      Operand 0 is the cleanup expression.
      The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
-diff -cr gcc.orig/tree-dump.c gcc/tree-dump.c
-*** gcc.orig/tree-dump.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/tree-dump.c	2010-08-09 21:59:36.088055052 +0100
+diff -cr gcc-orig/tree-dump.c gcc/tree-dump.c
+*** gcc-orig/tree-dump.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/tree-dump.c	2010-08-22 20:09:26.110318756 -0400
 ***************
 *** 605,610 ****
 --- 605,614 ----
@@ -515,9 +515,9 @@ diff -cr gcc.orig/tree-dump.c gcc/tree-dump.c
       case CONSTRUCTOR:
         {
   	unsigned HOST_WIDE_INT cnt;
-diff -cr gcc.orig/tree-gimple.c gcc/tree-gimple.c
-*** gcc.orig/tree-gimple.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/tree-gimple.c	2010-08-09 21:59:36.088055052 +0100
+diff -cr gcc-orig/tree-gimple.c gcc/tree-gimple.c
+*** gcc-orig/tree-gimple.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/tree-gimple.c	2010-08-22 20:09:26.110318756 -0400
 ***************
 *** 71,76 ****
 --- 71,78 ----
@@ -549,9 +549,9 @@ diff -cr gcc.orig/tree-gimple.c gcc/tree-gimple.c
   }
   
   /*  Return true if T is a GIMPLE condition.  */
-diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
-*** gcc.orig/tree-inline.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/tree-inline.c	2010-08-09 21:59:36.096046920 +0100
+diff -cr gcc-orig/tree-inline.c gcc/tree-inline.c
+*** gcc-orig/tree-inline.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/tree-inline.c	2010-08-22 20:09:26.110318756 -0400
 ***************
 *** 554,563 ****
        knows not to copy VAR_DECLs, etc., so this is safe.  */
@@ -586,9 +586,9 @@ diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
   	  && TREE_OPERAND (*tp, 0) == TREE_OPERAND (*tp, 1)
   	  && (lang_hooks.tree_inlining.auto_var_in_fn_p
   	      (TREE_OPERAND (*tp, 0), fn)))
-diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
-*** gcc.orig/tree-nested.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/tree-nested.c	2010-08-09 21:59:36.100063492 +0100
+diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
+*** gcc-orig/tree-nested.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/tree-nested.c	2010-08-22 20:09:26.114318287 -0400
 ***************
 *** 327,332 ****
 --- 327,333 ----
@@ -667,9 +667,9 @@ diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
         append_to_statement_list (x, &stmt_list);
       }
   
-diff -cr gcc.orig/tree-pretty-print.c gcc/tree-pretty-print.c
-*** gcc.orig/tree-pretty-print.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/tree-pretty-print.c	2010-08-09 21:59:36.104046190 +0100
+diff -cr gcc-orig/tree-pretty-print.c gcc/tree-pretty-print.c
+*** gcc-orig/tree-pretty-print.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/tree-pretty-print.c	2010-08-22 20:09:26.114318287 -0400
 ***************
 *** 1155,1160 ****
 --- 1155,1170 ----
@@ -689,9 +689,9 @@ diff -cr gcc.orig/tree-pretty-print.c gcc/tree-pretty-print.c
       case WITH_CLEANUP_EXPR:
         NIY;
         break;
-diff -cr gcc.orig/tree-sra.c gcc/tree-sra.c
-*** gcc.orig/tree-sra.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/tree-sra.c	2010-08-09 21:59:36.108045721 +0100
+diff -cr gcc-orig/tree-sra.c gcc/tree-sra.c
+*** gcc-orig/tree-sra.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/tree-sra.c	2010-08-22 20:09:26.114318287 -0400
 ***************
 *** 248,253 ****
 --- 248,255 ----
@@ -717,9 +717,9 @@ diff -cr gcc.orig/tree-sra.c gcc/tree-sra.c
   
   	      saw_one_field = true;
   	    }
-diff -cr gcc.orig/tree-vect-analyze.c gcc/tree-vect-analyze.c
-*** gcc.orig/tree-vect-analyze.c	2007-09-01 16:28:30.000000000 +0100
---- gcc/tree-vect-analyze.c	2010-08-09 21:59:36.112045949 +0100
+diff -cr gcc-orig/tree-vect-analyze.c gcc/tree-vect-analyze.c
+*** gcc-orig/tree-vect-analyze.c	2007-09-01 11:28:30.000000000 -0400
+--- gcc/tree-vect-analyze.c	2010-08-22 20:09:26.118318097 -0400
 ***************
 *** 593,598 ****
 --- 593,601 ----

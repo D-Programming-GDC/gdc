@@ -1,6 +1,6 @@
 diff -cr gcc-orig/cgraph.c gcc/cgraph.c
-*** gcc-orig/cgraph.c	Mon Oct 31 16:07:29 2005
---- gcc/cgraph.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/cgraph.c	2007-01-05 14:44:10.000000000 -0500
+--- gcc/cgraph.c	2010-08-22 20:03:59.362319560 -0400
 ***************
 *** 182,187 ****
 --- 182,188 ----
@@ -42,9 +42,9 @@ diff -cr gcc-orig/cgraph.c gcc/cgraph.c
       }
     return node;
   }
-diff -cr gcc-orig/config/arm.c gcc/config/arm.c
-*** gcc-orig/config/arm/arm.c	Mon Oct 16 21:04:38 2006
---- gcc/config/arm/arm.c	Sun Sep 30 21:58:58 2007
+diff -cr gcc-orig/config/arm/arm.c gcc/config/arm/arm.c
+*** gcc-orig/config/arm/arm.c	2006-10-16 21:04:38.000000000 -0400
+--- gcc/config/arm/arm.c	2010-08-22 20:03:59.378318102 -0400
 ***************
 *** 15371,15376 ****
 --- 15371,15385 ----
@@ -64,8 +64,8 @@ diff -cr gcc-orig/config/arm.c gcc/config/arm.c
   	abort ();
         break;
 diff -cr gcc-orig/config/darwin.h gcc/config/darwin.h
-*** gcc-orig/config/darwin.h	Mon Nov 14 23:55:12 2005
---- gcc/config/darwin.h	Tue Jan 23 19:39:14 2007
+*** gcc-orig/config/darwin.h	2005-11-14 23:55:12.000000000 -0500
+--- gcc/config/darwin.h	2010-08-22 20:03:59.378318102 -0400
 ***************
 *** 926,933 ****
   
@@ -85,13 +85,12 @@ diff -cr gcc-orig/config/darwin.h gcc/config/darwin.h
   
   #undef TARGET_ENCODE_SECTION_INFO
   #define TARGET_ENCODE_SECTION_INFO  darwin_encode_section_info
-Only in gcc/config: darwin.h.orig
 diff -cr gcc-orig/config/i386/i386.c gcc/config/i386/i386.c
-*** gcc-orig/config/i386/i386.c	Tue May 16 21:11:59 2006
---- gcc/config/i386/i386.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/config/i386/i386.c	2006-11-17 02:01:22.000000000 -0500
+--- gcc/config/i386/i386.c	2010-08-22 20:03:59.390319978 -0400
 ***************
-*** 4727,4732 ****
---- 4727,4737 ----
+*** 4754,4759 ****
+--- 4754,4764 ----
       frame->red_zone_size = 0;
     frame->to_allocate -= frame->red_zone_size;
     frame->stack_pointer_offset -= frame->red_zone_size;
@@ -104,7 +103,7 @@ diff -cr gcc-orig/config/i386/i386.c gcc/config/i386/i386.c
     fprintf (stderr, "nregs: %i\n", frame->nregs);
     fprintf (stderr, "size: %i\n", size);
 ***************
-*** 16950,16956 ****
+*** 16979,16985 ****
   	  output_set_got (tmp);
   
   	  xops[1] = tmp;
@@ -112,7 +111,7 @@ diff -cr gcc-orig/config/i386/i386.c gcc/config/i386/i386.c
   	  output_asm_insn ("jmp\t{*}%1", xops);
   	}
       }
---- 16950,16956 ----
+--- 16984,16990 ----
   	  output_set_got (tmp);
   
   	  xops[1] = tmp;
@@ -120,11 +119,12 @@ diff -cr gcc-orig/config/i386/i386.c gcc/config/i386/i386.c
   	  output_asm_insn ("jmp\t{*}%1", xops);
   	}
       }
+Only in gcc/config/i386: i386.c.orig
 diff -cr gcc-orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
-*** gcc-orig/config/rs6000/rs6000.c	Thu Apr 13 01:46:01 2006
---- gcc/config/rs6000/rs6000.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/config/rs6000/rs6000.c	2006-12-16 14:24:56.000000000 -0500
+--- gcc/config/rs6000/rs6000.c	2010-08-22 20:03:59.398320995 -0400
 ***************
-*** 15236,15242 ****
+*** 15305,15311 ****
   	 use language_string.
   	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
   	 Java is 13.  Objective-C is 14.  */
@@ -132,7 +132,7 @@ diff -cr gcc-orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
   	i = 0;
         else if (! strcmp (language_string, "GNU F77")
   	       || ! strcmp (language_string, "GNU F95"))
---- 15236,15243 ----
+--- 15305,15312 ----
   	 use language_string.
   	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
   	 Java is 13.  Objective-C is 14.  */
@@ -141,10 +141,10 @@ diff -cr gcc-orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
   	i = 0;
         else if (! strcmp (language_string, "GNU F77")
   	       || ! strcmp (language_string, "GNU F95"))
-Only in gcc: d
+Only in gcc/config/rs6000: rs6000.c.orig
 diff -cr gcc-orig/dwarf2.h gcc/dwarf2.h
-*** gcc-orig/dwarf2.h	Fri Jun 24 22:02:01 2005
---- gcc/dwarf2.h	Tue Jan 23 19:39:14 2007
+*** gcc-orig/dwarf2.h	2005-06-24 22:02:01.000000000 -0400
+--- gcc/dwarf2.h	2010-08-22 20:03:59.398320995 -0400
 ***************
 *** 731,736 ****
 --- 731,737 ----
@@ -156,10 +156,10 @@ diff -cr gcc-orig/dwarf2.h gcc/dwarf2.h
       DW_LANG_Mips_Assembler = 0x8001,
       /* UPC.  */
 diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
-*** gcc-orig/dwarf2out.c	Mon Apr 10 09:21:13 2006
---- gcc/dwarf2out.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/dwarf2out.c	2006-12-27 17:23:55.000000000 -0500
+--- gcc/dwarf2out.c	2010-08-22 20:03:59.402321504 -0400
 ***************
-*** 5311,5317 ****
+*** 5322,5328 ****
     unsigned int lang = get_AT_unsigned (comp_unit_die, DW_AT_language);
   
     return (lang == DW_LANG_C || lang == DW_LANG_C89
@@ -167,7 +167,7 @@ diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
   }
   
   /* Return TRUE if the language is C++.  */
---- 5311,5318 ----
+--- 5322,5329 ----
     unsigned int lang = get_AT_unsigned (comp_unit_die, DW_AT_language);
   
     return (lang == DW_LANG_C || lang == DW_LANG_C89
@@ -177,8 +177,8 @@ diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
   
   /* Return TRUE if the language is C++.  */
 ***************
-*** 12187,12192 ****
---- 12188,12195 ----
+*** 12210,12215 ****
+--- 12211,12218 ----
       language = DW_LANG_Pascal83;
     else if (strcmp (language_string, "GNU Java") == 0)
       language = DW_LANG_Java;
@@ -188,7 +188,7 @@ diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
       language = DW_LANG_C89;
   
 ***************
-*** 13318,13324 ****
+*** 13346,13352 ****
   
         /* For local statics lookup proper context die.  */
         if (TREE_STATIC (decl) && decl_function_context (decl))
@@ -196,7 +196,7 @@ diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
   
         /* If we are in terse mode, don't generate any DIEs to represent any
   	 variable declarations or definitions.  */
---- 13321,13327 ----
+--- 13349,13355 ----
   
         /* For local statics lookup proper context die.  */
         if (TREE_STATIC (decl) && decl_function_context (decl))
@@ -204,12 +204,13 @@ diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
   
         /* If we are in terse mode, don't generate any DIEs to represent any
   	 variable declarations or definitions.  */
+Only in gcc: dwarf2out.c.orig
 diff -cr gcc-orig/expr.c gcc/expr.c
-*** gcc-orig/expr.c	Wed May 17 12:03:25 2006
---- gcc/expr.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/expr.c	2006-11-02 12:18:52.000000000 -0500
+--- gcc/expr.c	2010-08-22 20:03:59.406319848 -0400
 ***************
-*** 8476,8481 ****
---- 8476,8486 ----
+*** 8477,8482 ****
+--- 8477,8487 ----
         /* Lowered by gimplify.c.  */
         gcc_unreachable ();
   
@@ -221,11 +222,12 @@ diff -cr gcc-orig/expr.c gcc/expr.c
       case EXC_PTR_EXPR:
         return get_exception_pointer (cfun);
   
+Only in gcc: expr.c.orig
 diff -cr gcc-orig/function.c gcc/function.c
-*** gcc-orig/function.c	Wed Jan  4 04:13:56 2006
---- gcc/function.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/function.c	2006-11-28 07:01:45.000000000 -0500
+--- gcc/function.c	2010-08-22 20:03:59.410318611 -0400
 ***************
-*** 2990,2996 ****
+*** 2997,3003 ****
         FUNCTION_ARG_ADVANCE (all.args_so_far, data.promoted_mode,
   			    data.passed_type, data.named_arg);
   
@@ -233,7 +235,7 @@ diff -cr gcc-orig/function.c gcc/function.c
   
         if (assign_parm_setup_block_p (&data))
   	assign_parm_setup_block (&all, parm, &data);
---- 2990,2997 ----
+--- 2997,3004 ----
         FUNCTION_ARG_ADVANCE (all.args_so_far, data.promoted_mode,
   			    data.passed_type, data.named_arg);
   
@@ -243,7 +245,7 @@ diff -cr gcc-orig/function.c gcc/function.c
         if (assign_parm_setup_block_p (&data))
   	assign_parm_setup_block (&all, parm, &data);
 ***************
-*** 3005,3011 ****
+*** 3012,3018 ****
   
     /* Output all parameter conversion instructions (possibly including calls)
        now that all parameters have been copied out of hard registers.  */
@@ -251,7 +253,7 @@ diff -cr gcc-orig/function.c gcc/function.c
   
     /* If we are receiving a struct value address as the first argument, set up
        the RTL for the function result. As this might require code to convert
---- 3006,3013 ----
+--- 3013,3020 ----
   
     /* Output all parameter conversion instructions (possibly including calls)
        now that all parameters have been copied out of hard registers.  */
@@ -261,8 +263,8 @@ diff -cr gcc-orig/function.c gcc/function.c
     /* If we are receiving a struct value address as the first argument, set up
        the RTL for the function result. As this might require code to convert
 ***************
-*** 3135,3140 ****
---- 3137,3145 ----
+*** 3142,3147 ****
+--- 3144,3152 ----
     struct assign_parm_data_all all;
     tree fnargs, parm, stmts = NULL;
   
@@ -273,7 +275,7 @@ diff -cr gcc-orig/function.c gcc/function.c
     fnargs = assign_parms_augmented_arg_list (&all);
   
 ***************
-*** 4169,4179 ****
+*** 4176,4186 ****
         tree parm = cfun->static_chain_decl;
         rtx local = gen_reg_rtx (Pmode);
   
@@ -285,7 +287,7 @@ diff -cr gcc-orig/function.c gcc/function.c
       }
   
     /* If the function receives a non-local goto, then store the
---- 4174,4188 ----
+--- 4181,4195 ----
         tree parm = cfun->static_chain_decl;
         rtx local = gen_reg_rtx (Pmode);
   
@@ -302,8 +304,8 @@ diff -cr gcc-orig/function.c gcc/function.c
   
     /* If the function receives a non-local goto, then store the
 ***************
-*** 5086,5091 ****
---- 5095,5103 ----
+*** 5093,5098 ****
+--- 5102,5110 ----
   #endif
     edge_iterator ei;
   
@@ -313,9 +315,10 @@ diff -cr gcc-orig/function.c gcc/function.c
   #ifdef HAVE_prologue
     if (HAVE_prologue)
       {
+Only in gcc: function.c.orig
 diff -cr gcc-orig/function.h gcc/function.h
-*** gcc-orig/function.h	Fri Aug 19 17:16:20 2005
---- gcc/function.h	Tue Jan 23 19:39:14 2007
+*** gcc-orig/function.h	2005-08-19 17:16:20.000000000 -0400
+--- gcc/function.h	2010-08-22 20:03:59.414319678 -0400
 ***************
 *** 461,466 ****
 --- 461,474 ----
@@ -334,8 +337,8 @@ diff -cr gcc-orig/function.h gcc/function.h
   
   /* If va_list_[gf]pr_size is set to this, it means we don't know how
 diff -cr gcc-orig/gcc.c gcc/gcc.c
-*** gcc-orig/gcc.c	Wed May 17 14:38:58 2006
---- gcc/gcc.c	Thu Mar  1 10:42:36 2007
+*** gcc-orig/gcc.c	2006-11-07 09:26:21.000000000 -0500
+--- gcc/gcc.c	2010-08-22 20:03:59.422317972 -0400
 ***************
 *** 126,131 ****
 --- 126,134 ----
@@ -370,8 +373,8 @@ diff -cr gcc-orig/gcc.c gcc/gcc.c
   
   struct compiler
 ***************
-*** 3797,3802 ****
---- 3803,3811 ----
+*** 3800,3805 ****
+--- 3806,3814 ----
   	}
       }
   
@@ -382,8 +385,8 @@ diff -cr gcc-orig/gcc.c gcc/gcc.c
       {
         /* -save-temps overrides -pipe, so that temp files are produced */
 ***************
-*** 4135,4140 ****
---- 4144,4161 ----
+*** 4138,4143 ****
+--- 4147,4164 ----
   	}
       }
   
@@ -403,8 +406,8 @@ diff -cr gcc-orig/gcc.c gcc/gcc.c
     infiles[n_infiles].name = 0;
   }
 ***************
-*** 5106,5111 ****
---- 5127,5143 ----
+*** 5109,5114 ****
+--- 5130,5146 ----
   	      return value;
   	    break;
   
@@ -422,9 +425,10 @@ diff -cr gcc-orig/gcc.c gcc/gcc.c
   	    /* Here we define characters other than letters and digits.  */
   
   	  case '{':
-diff -cr gcc-orig/gcc.c gcc/gcc.h
-*** gcc-orig/gcc.h Fri Jun 24 22:02:01 2005
---- gcc/gcc.h       Sun Mar  4 13:44:05 2007
+Only in gcc: gcc.c.orig
+diff -cr gcc-orig/gcc.h gcc/gcc.h
+*** gcc-orig/gcc.h	2005-06-24 22:02:01.000000000 -0400
+--- gcc/gcc.h	2010-08-22 20:03:59.422317972 -0400
 ***************
 *** 38,44 ****
      || (CHAR) == 'e' || (CHAR) == 'T' || (CHAR) == 'u' \
@@ -443,11 +447,11 @@ diff -cr gcc-orig/gcc.c gcc/gcc.h
   /* This defines which multi-letter switches take arguments.  */
   
 diff -cr gcc-orig/gimplify.c gcc/gimplify.c
-*** gcc-orig/gimplify.c	Wed Apr  5 09:41:27 2006
---- gcc/gimplify.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/gimplify.c	2006-11-19 11:15:47.000000000 -0500
+--- gcc/gimplify.c	2010-08-22 20:03:59.426318760 -0400
 ***************
-*** 4181,4186 ****
---- 4181,4192 ----
+*** 4187,4192 ****
+--- 4187,4198 ----
   	    }
   	  break;
   
@@ -460,9 +464,10 @@ diff -cr gcc-orig/gimplify.c gcc/gimplify.c
   	case TREE_LIST:
   	  gcc_unreachable ();
   
+Only in gcc: gimplify.c.orig
 diff -cr gcc-orig/predict.c gcc/predict.c
-*** gcc-orig/predict.c	Thu Jul 19 20:05:21 2007
---- gcc/predict.c	Thu Jul 19 20:06:06 2007
+*** gcc-orig/predict.c	2005-11-04 19:55:23.000000000 -0500
+--- gcc/predict.c	2010-08-22 20:03:59.426318760 -0400
 ***************
 *** 1339,1344 ****
 --- 1339,1345 ----
@@ -474,8 +479,8 @@ diff -cr gcc-orig/predict.c gcc/predict.c
   	      && !single_pred_p (bb))
   	    {
 diff -cr gcc-orig/real.c gcc/real.c
-*** gcc-orig/real.c	Mon Sep 19 13:01:40 2005
---- gcc/real.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/real.c	2005-09-19 13:01:40.000000000 -0400
+--- gcc/real.c	2010-08-22 20:03:59.430318780 -0400
 ***************
 *** 2212,2217 ****
 --- 2212,2219 ----
@@ -487,9 +492,28 @@ diff -cr gcc-orig/real.c gcc/real.c
   }
   
   /* Fills R with 2**N.  */
+diff -cr gcc-orig/tree.def gcc/tree.def
+*** gcc-orig/tree.def	2006-02-10 12:32:10.000000000 -0500
+--- gcc/tree.def	2010-08-22 20:03:59.434318171 -0400
+***************
+*** 526,531 ****
+--- 526,538 ----
+     Operand 2 is the static chain argument, or NULL.  */
+  DEFTREECODE (CALL_EXPR, "call_expr", tcc_expression, 3)
+  
++ /* Operand 0 is the FUNC_DECL of the outer function for
++    which the static chain is to be computed. */
++ DEFTREECODE (STATIC_CHAIN_EXPR, "static_chain_expr", tcc_expression, 1)
++     
++ /* Represents a function's static chain.  It can be used as an lvalue. */
++ DEFTREECODE (STATIC_CHAIN_DECL, "static_chain_decl", tcc_expression, 0)
++ 
+  /* Specify a value to compute along with its corresponding cleanup.
+     Operand 0 is the cleanup expression.
+     The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
 diff -cr gcc-orig/tree-dump.c gcc/tree-dump.c
-*** gcc-orig/tree-dump.c	Sat Aug 20 12:03:58 2005
---- gcc/tree-dump.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/tree-dump.c	2005-08-20 12:03:58.000000000 -0400
+--- gcc/tree-dump.c	2010-08-22 20:03:59.430318780 -0400
 ***************
 *** 582,587 ****
 --- 582,591 ----
@@ -504,8 +528,8 @@ diff -cr gcc-orig/tree-dump.c gcc/tree-dump.c
         {
   	unsigned HOST_WIDE_INT cnt;
 diff -cr gcc-orig/tree-gimple.c gcc/tree-gimple.c
-*** gcc-orig/tree-gimple.c	Sun Nov 20 14:05:43 2005
---- gcc/tree-gimple.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/tree-gimple.c	2005-11-20 14:05:43.000000000 -0500
+--- gcc/tree-gimple.c	2010-08-22 20:03:59.430318780 -0400
 ***************
 *** 72,77 ****
 --- 72,79 ----
@@ -538,8 +562,8 @@ diff -cr gcc-orig/tree-gimple.c gcc/tree-gimple.c
   
   /*  Return true if T is a GIMPLE condition.  */
 diff -cr gcc-orig/tree-inline.c gcc/tree-inline.c
-*** gcc-orig/tree-inline.c	Fri Apr 28 07:43:43 2006
---- gcc/tree-inline.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/tree-inline.c	2007-01-05 08:53:45.000000000 -0500
+--- gcc/tree-inline.c	2010-08-22 20:03:59.430318780 -0400
 ***************
 *** 602,611 ****
        knows not to copy VAR_DECLs, etc., so this is safe.  */
@@ -575,11 +599,11 @@ diff -cr gcc-orig/tree-inline.c gcc/tree-inline.c
   	  && (lang_hooks.tree_inlining.auto_var_in_fn_p
   	      (TREE_OPERAND (*tp, 0), fn)))
 diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
-*** gcc-orig/tree-nested.c	Mon Oct  3 16:57:45 2005
---- gcc/tree-nested.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/tree-nested.c	2006-07-20 11:43:44.000000000 -0400
+--- gcc/tree-nested.c	2010-08-22 20:03:59.434318171 -0400
 ***************
-*** 320,325 ****
---- 320,326 ----
+*** 323,328 ****
+--- 323,329 ----
     if (!decl)
       {
         tree type;
@@ -588,7 +612,7 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
         type = get_frame_type (info->outer);
         type = build_pointer_type (type);
 ***************
-*** 330,341 ****
+*** 333,344 ****
   	 Note also that it's represented as a parameter.  This is more
   	 close to the truth, since the initial value does come from 
   	 the caller.  */
@@ -601,7 +625,7 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
   
         /* Tell tree-inline.c that we never write to this variable, so
   	 it can copy-prop the replacement value immediately.  */
---- 331,347 ----
+--- 334,350 ----
   	 Note also that it's represented as a parameter.  This is more
   	 close to the truth, since the initial value does come from 
   	 the caller.  */
@@ -620,8 +644,8 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
         /* Tell tree-inline.c that we never write to this variable, so
   	 it can copy-prop the replacement value immediately.  */
 ***************
-*** 738,743 ****
---- 744,751 ----
+*** 741,746 ****
+--- 747,754 ----
   
     if (info->context == target_context)
       {
@@ -631,8 +655,8 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
       }
     else
 ***************
-*** 1221,1226 ****
---- 1229,1238 ----
+*** 1224,1229 ****
+--- 1232,1241 ----
         if (DECL_NO_STATIC_CHAIN (decl))
   	break;
   
@@ -644,8 +668,8 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
   	 we need to insert the trampoline.  */
         for (i = info; i->context != target_context; i = i->outer)
 ***************
-*** 1285,1290 ****
---- 1297,1310 ----
+*** 1288,1293 ****
+--- 1300,1313 ----
   	  = get_static_chain (info, target_context, &wi->tsi);
         break;
   
@@ -661,7 +685,7 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
       case MODIFY_EXPR:
       case WITH_SIZE_EXPR:
 ***************
-*** 1384,1390 ****
+*** 1387,1393 ****
         tree x = build (COMPONENT_REF, TREE_TYPE (root->chain_field),
   		      root->frame_decl, root->chain_field, NULL_TREE);
         x = build (MODIFY_EXPR, TREE_TYPE (x), x, get_chain_decl (root));
@@ -669,7 +693,7 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
       }
   
     /* If trampolines were created, then we need to initialize them.  */
---- 1404,1432 ----
+--- 1407,1435 ----
         tree x = build (COMPONENT_REF, TREE_TYPE (root->chain_field),
   		      root->frame_decl, root->chain_field, NULL_TREE);
         x = build (MODIFY_EXPR, TREE_TYPE (x), x, get_chain_decl (root));
@@ -699,9 +723,10 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
       }
   
     /* If trampolines were created, then we need to initialize them.  */
+Only in gcc: tree-nested.c.orig
 diff -cr gcc-orig/tree-pretty-print.c gcc/tree-pretty-print.c
-*** gcc-orig/tree-pretty-print.c	Sun Jul 31 16:55:41 2005
---- gcc/tree-pretty-print.c	Tue Jan 23 19:39:14 2007
+*** gcc-orig/tree-pretty-print.c	2005-07-31 16:55:41.000000000 -0400
+--- gcc/tree-pretty-print.c	2010-08-22 20:03:59.434318171 -0400
 ***************
 *** 1004,1009 ****
 --- 1004,1019 ----
@@ -722,8 +747,8 @@ diff -cr gcc-orig/tree-pretty-print.c gcc/tree-pretty-print.c
         NIY;
         break;
 diff -cr gcc-orig/tree-sra.c gcc/tree-sra.c
-*** gcc-orig/tree-sra.c Sun Nov 20 19:55:57 2005
---- gcc/tree-sra.c      Sun Jul 22 11:32:36 2007
+*** gcc-orig/tree-sra.c	2005-11-20 19:55:57.000000000 -0500
+--- gcc/tree-sra.c	2010-08-22 20:03:59.434318171 -0400
 ***************
 *** 198,203 ****
 --- 198,205 ----
@@ -749,28 +774,9 @@ diff -cr gcc-orig/tree-sra.c gcc/tree-sra.c
   
   	      saw_one_field = true;
   	    }
-diff -cr gcc-orig/tree.def gcc/tree.def
-*** gcc-orig/tree.def	Fri Feb 10 12:32:10 2006
---- gcc/tree.def	Tue Jan 23 19:39:14 2007
-***************
-*** 526,531 ****
---- 526,538 ----
-     Operand 2 is the static chain argument, or NULL.  */
-  DEFTREECODE (CALL_EXPR, "call_expr", tcc_expression, 3)
-  
-+ /* Operand 0 is the FUNC_DECL of the outer function for
-+    which the static chain is to be computed. */
-+ DEFTREECODE (STATIC_CHAIN_EXPR, "static_chain_expr", tcc_expression, 1)
-+     
-+ /* Represents a function's static chain.  It can be used as an lvalue. */
-+ DEFTREECODE (STATIC_CHAIN_DECL, "static_chain_decl", tcc_expression, 0)
-+ 
-  /* Specify a value to compute along with its corresponding cleanup.
-     Operand 0 is the cleanup expression.
-     The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
 diff -cr gcc-orig/varray.h gcc/varray.h
-*** gcc-orig/varray.h	Fri Jun 24 22:02:01 2005
---- gcc/varray.h	Tue Jan 23 19:39:14 2007
+*** gcc-orig/varray.h	2005-06-24 22:02:01.000000000 -0400
+--- gcc/varray.h	2010-08-22 20:03:59.434318171 -0400
 ***************
 *** 62,67 ****
 --- 62,78 ----
