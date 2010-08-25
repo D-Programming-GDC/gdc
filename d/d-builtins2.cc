@@ -47,17 +47,16 @@ d_bi_init(int nt, int nb)
 	error("cannot represent built in va_list type in D");
 	abort();
     }
+#if D_GCC_VER >= 44
+    /* GCC-4.4 checks that the underlying type actually points at the same tree
+       as va_list_type_node. The ctype may well have equivalent values but that
+       does not work with gcc/builtins.c
+     */
+    tree vtype = TREE_TYPE(va_list_type_node);
+    d_gcc_builtin_va_list_d_type->nextOf()->ctype = vtype;
+#endif
     // generate ctype if it doesn't already exist
     d_gcc_builtin_va_list_d_type->toCtype();
-
-#if D_GCC_VER >= 44
-    /* GCC-4.4 checks that this field actually points at the same tree
-       as va_list_type_node. the ctype may well have equivalent values
-       but that does not work with gcc/builtins.c
-     */
-    tree type = d_gcc_builtin_va_list_d_type->toCtype();
-    TYPE_MAIN_VARIANT(type) = TYPE_MAIN_VARIANT(va_list_type_node);
-#endif
 }
 
 /*
