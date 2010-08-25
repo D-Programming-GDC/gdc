@@ -1916,16 +1916,11 @@ d_types_compatible_p (tree t1, tree t2)
     /* Is compatible if aggregates are same type or share the same
        attributes. The frontend should have already ensured that types
        aren't wildly different anyway... */
-    if (AGGREGATE_TYPE_P (t1) && AGGREGATE_TYPE_P (t2) &&
-	TREE_CODE (t1) == TREE_CODE (t2))
+    if (AGGREGATE_TYPE_P (t1) && AGGREGATE_TYPE_P (t2)
+	&& TREE_CODE (t1) == TREE_CODE (t2))
     {
-	tree type1 = TREE_TYPE (t1);
-	tree type2 = TREE_TYPE (t2);
-
-	if (TREE_CODE (t1) == ARRAY_TYPE
-	    || TREE_CODE (t2) == ARRAY_TYPE) {
-	    return (TREE_CODE (type1) == TREE_CODE (type2));
-	}
+	if (TREE_CODE (t1) == ARRAY_TYPE)
+	    return (TREE_TYPE (t1) == TREE_TYPE (t2));
 	
 	return (TYPE_ATTRIBUTES (t1) == TYPE_ATTRIBUTES (t2));
     }
