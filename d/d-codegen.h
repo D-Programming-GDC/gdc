@@ -294,6 +294,11 @@ struct IRState : IRBase
 	    t = nop(TREE_OPERAND(exp, 0), build_pointer_type(TREE_TYPE(exp)));
 	else
 #endif
+	/* Just convert arrays (struct[]) to pointers (struct *), rather than
+	   creating a new pointer to the array (struct[] *)  */
+	if (TREE_CODE (TREE_TYPE (exp)) == ARRAY_TYPE)
+	    t = build1(ADDR_EXPR, build_pointer_type(TREE_TYPE(TREE_TYPE(exp))), exp);
+	else
 	    t = build1(ADDR_EXPR, build_pointer_type(TREE_TYPE(exp)), exp);
 #if D_NO_TRAMPOLINES
 	if (TREE_CODE( exp ) == FUNCTION_DECL)
