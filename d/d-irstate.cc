@@ -332,9 +332,8 @@ IRBase::doLabel(tree t_label)
        This makes auto-vectorization possible in conditional loops.
        The only excemption to this is in LabelStatement::toIR, in which
        all computed labels are marked regardless.  */
-    if(TREE_USED(t_label)) {
+    if(D_LABEL_USED(t_label))
 	addExp(build1(LABEL_EXPR, void_type_node, t_label));
-    }
 }
 
 #endif

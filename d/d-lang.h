@@ -79,6 +79,9 @@ enum d_tree_code {
    but a literal function / method reference */
 #define D_IS_METHOD_CALL_EXPR(NODE) (TREE_LANG_FLAG_0(NODE))
 
+/* True if the label has been computed, or used by the frontend. */
+#define D_LABEL_USED(NODE) (TREE_LANG_FLAG_1(NODE))
+
 /* True if the symbol should be made "link one only".  This is used to
    defer calling make_decl_one_only() before the decl has been prepared. */
 #define D_DECL_ONE_ONLY(NODE) (DECL_LANG_FLAG_0(NODE))
