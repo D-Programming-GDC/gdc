@@ -84,7 +84,7 @@ diff -cr gcc.orig/cgraphunit.c gcc/cgraphunit.c
     current_function_decl = NULL;
 diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
 *** gcc.orig/config/i386/i386.c	2010-04-08 16:09:17.000000000 +0100
---- gcc/config/i386/i386.c	2010-08-14 11:48:10.525941850 +0100
+--- gcc/config/i386/i386.c	2010-08-26 17:07:37.795141161 +0100
 ***************
 *** 7876,7881 ****
 --- 7876,7886 ----
@@ -467,7 +467,7 @@ diff -cr gcc.orig/function.h gcc/function.h
   /* If va_list_[gf]pr_size is set to this, it means we don't know how
 diff -cr gcc.orig/gcc.c gcc/gcc.c
 *** gcc.orig/gcc.c	2010-01-09 00:05:06.000000000 +0000
---- gcc/gcc.c	2010-08-14 11:48:10.633539259 +0100
+--- gcc/gcc.c	2010-08-26 16:58:35.667131102 +0100
 ***************
 *** 126,131 ****
 --- 126,134 ----
@@ -527,8 +527,20 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
     EXTRA_SPEC_FUNCTIONS
   #endif
 ***************
+*** 4022,4027 ****
+--- 4035,4043 ----
+  	}
+      }
+  
++   if (need_pthreads)
++       n_switches++;
++  
+    if (save_temps_flag && use_pipes)
+      {
+        /* -save-temps overrides -pipe, so that temp files are produced */
+***************
 *** 4332,4337 ****
---- 4345,4362 ----
+--- 4348,4365 ----
         infiles[0].name   = "help-dummy";
       }
   
@@ -549,7 +561,7 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
   }
 ***************
 *** 5337,5342 ****
---- 5362,5378 ----
+--- 5365,5381 ----
   	      return value;
   	    break;
   
