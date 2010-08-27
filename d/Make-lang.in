@@ -262,7 +262,7 @@ else
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
     D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
     D_BORROWED_C_OBJS += gimplify.o tree-iterator.o
-    D_EXTRA_LIBS += $(GMPLIBS)
+    D_EXTRA_LIBS += $(BACKENDLIBS)
     D_DRIVER_OBJS += opts-common.o gcc-options.o
   endif
 endif
