@@ -22,7 +22,7 @@
 module gcc.unwind_generic;
 
 private import gcc.builtins;
-private import std.c.process; // for abort
+private import stdc.stdlib; // for abort
 
 /* This is derived from the C++ ABI for IA-64.  Where we diverge
    for cross-architecture compatibility are noted with "@@@".  */
@@ -204,8 +204,6 @@ _Unwind_Reason_Code _Unwind_SjLj_Resume_or_Rethrow (_Unwind_Exception *);
    compatible with the standard ABI for IA-64, we inline these.  */
 
 version (IA64) {
-private import std.c.process;
-
 _Unwind_Ptr
 _Unwind_GetDataRelBase (_Unwind_Context *_C)
 {

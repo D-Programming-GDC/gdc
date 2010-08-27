@@ -4,9 +4,9 @@
 */
 
 import object;
-import std.c.stdio;
-import std.c.stdlib;
-import std.c.string;
+import stdc.stdio;
+import stdc.stdlib;
+import stdc.string;
 version (GNU)
     private import gc_guess_stack;
 

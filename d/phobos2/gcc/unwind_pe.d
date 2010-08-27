@@ -20,7 +20,7 @@
 module gcc.unwind_pe;
 
 import gcc.unwind;
-private import std.c.process : abort;
+private import stdc.stdlib : abort;
 
 /* @@@ Really this should be out of line, but this also causes link
    compatibility problems with the base ABI.  This is slightly better

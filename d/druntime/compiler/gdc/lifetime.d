@@ -1058,7 +1058,7 @@ struct Array2
 /**
  *
  */
-extern (C) long _adDupT(TypeInfo ti, Array2 a)
+extern (C) Array2 _adDupT(TypeInfo ti, Array2 a)
 out (result)
 {
     auto sizeelem = ti.next.tsize();            // array element size
@@ -1076,7 +1076,7 @@ body
         r.length = a.length;
         memcpy(r.ptr, a.ptr, size);
     }
-    return *cast(long*)(&r);
+    return r;
 }
 
 

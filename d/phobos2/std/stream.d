@@ -82,7 +82,7 @@ private {
   import std.system;    // for Endian enumeration
   import std.intrinsic; // for bswap
   import std.utf;
-  import std.stdarg;
+  import std.c.stdarg;
 }
 
 version (Windows) {
@@ -1138,7 +1138,7 @@ class Stream : InputStream, OutputStream {
     size_t count;
     va_list args_copy;
     while (true) {
-      __va_copy(args_copy, args);
+      va_copy(args_copy, args);
       version (Win32) {
 	count = _vsnprintf(p, psize, f, args_copy);
 	if (count != -1)
