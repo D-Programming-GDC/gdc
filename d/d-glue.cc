@@ -4239,6 +4239,7 @@ void
 ForeachRangeStatement::toIR(IRState * irs)
 {
     bool fwd = op == TOKforeach;
+    Type * key_type = key->type->toBasetype();
     
     irs->startScope();
     irs->startBindings(); /* Variables created by the function will probably
@@ -4263,7 +4264,7 @@ ForeachRangeStatement::toIR(IRState * irs)
     {
     	iter_expr = irs->vmodify(key_decl,
 	    irs->pointerOffsetOp(fwd ? PLUS_EXPR : MINUS_EXPR,
-		key_decl, TYPE_POINTER_TO(key_decl)));
+		key_decl, size_int(key_type->nextOf()->size())));
     }
     else
 #endif
