@@ -72,6 +72,11 @@ D_dmd_srcdir=d/dmd$(D_ver_suffix)
 D_incl_subdir=d$(D_ver_suffix)
 D_EXTRA_DEFINES += -DLIBPHOBOS=\"-lgphobos$(D_ver_suffix)\" -DLIBPHOBOS_PROFILE=\"-lgphobos$(D_ver_suffix)\"
 
+# druntime library for linker
+ifeq ($(D_LANGUAGE_VERSION),2)
+  D_EXTRA_DEFINES += -DLIBDRUNTIME=\"-lgdruntime\" -DLIBDRUNTIME_PROFILE=\"-lgdruntime\"
+endif
+
 # This should be configured
 gcc_d_include_dir = $(libsubdir)/$(unlibsubdir)/..`echo $(exec_prefix) | sed -e 's|^$(prefix)||' -e 's|/[^/]*|/..|g'`/include/$(D_incl_subdir)/$(version)
 

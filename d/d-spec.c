@@ -90,6 +90,14 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
        standard libraries. */
     int phobos = 1;
 
+#ifdef LIBDRUNTIME
+    /* If nonzero, use the standard D2 runtime library when linking with
+       standard libraries. */
+    int druntime = 1;
+#else
+    int druntime = 0;
+#endif
+
     /* The number of arguments being added to what's in argv, other than
        libraries.  We use this to track the number of times we've inserted
        -xc++/-xnone.  */
@@ -353,8 +361,8 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     /* There is one extra argument added here for the runtime
        library: -lgphobos.  The -pthread argument is added by
        setting need_pthreads. */
-    num_args = argc + added + need_math + shared_libgcc + (library > 0 ? 1 : 0) + 1;
-    arglist = xmalloc (num_args * sizeof (char *));
+    num_args = argc + added + need_math + shared_libgcc + druntime + (library > 0 ? 1 : 0) + 1;
+    arglist = xmalloc (num_args * sizeof (char *) + 1);
 
     i = 0;
     j = 0;
@@ -413,6 +421,10 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 	{
 	    arglist[j++] = saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS;
 	    added_libraries++;
+#ifdef LIBDRUNTIME
+	    arglist[j++] = saw_profile_flag ? LIBDRUNTIME_PROFILE : LIBDRUNTIME;
+	    added_libraries++;
+#endif
 	    need_pthreads = 1;
 	}
     else if (saw_debug_flag && debuglib)

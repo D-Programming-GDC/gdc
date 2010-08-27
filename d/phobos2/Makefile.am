@@ -151,7 +151,8 @@ COMMON_OBJS=common/core/bitmanip.o common/core/exception.o common/core/memory.o 
 	    common/core/runtime.o common/core/thread.o common/stdc/errno.o
 
 # This should not be linked into a shared library.
-CMAIN_OBJS=compiler/gdc/cmain.o
+#CMAIN_OBJS=compiler/gdc/cmain.o
+CMAIN_OBJS=compiler/gdc/dmain2.o
 
 GC_OBJS = @D_GC_MODULES@
 
