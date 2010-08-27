@@ -298,6 +298,8 @@ struct Test { int x: sizeof(DIR)>4; };],
 
 D_EXTRA_OBJS=
 AC_SUBST(D_EXTRA_OBJS)
+DRUNTIME_OBJS=
+AC_SUBST(DRUNTIME_OBJS)
 
 D_PREREQ_SRCS='$(config_d_src) $(config_errno_d_src) $(config_libc_d_src) $(config_mathfuncs_d_src)'
 AC_SUBST(D_PREREQ_SRCS)
@@ -308,7 +310,7 @@ case "$target_cpu" in
 esac
 
 if test $d_use_ieee_fpsb -gt 0; then
-    D_EXTRA_OBJS="$D_EXTRA_OBJS internal/fpmath.o"
+    DRUNTIME_OBJS="$DRUNTIME_OBJS compiler/gdc/fpmath.o"
 fi
 
 DCFG_USE_IEEE_FPSB=$d_use_ieee_fpsb
@@ -327,7 +329,7 @@ if test "$with_newlib" = yes; then
     DCFG_EXP2_LOG2="GNU_Need_exp2_log2"
     
     AC_DEFINE(HAVE_FP_CLASSIFY_SIGNBIT,1,[Define to 1 fpclassify and signbit are available])
-    D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_math.o"
+    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_math.o"
     D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_fpcls_d_src)'
     
     # TODO: exec stuff
@@ -430,7 +432,7 @@ AC_TRY_COMPILE([
 if test $d_use_ieee_fpsb -eq 0; then
     if test -n "$d_have_fpsb"; then
 	AC_DEFINE(HAVE_FP_CLASSIFY_SIGNBIT,1,[Define to 1 fpclassify and signbit are available])
-	D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_math.o"
+	DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_math.o"
 	D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_fpcls_d_src)'
     fi
 fi
@@ -530,10 +532,10 @@ AC_TRY_COMPILE([#include <unwind.h>],[
 ],
   [AC_MSG_RESULT([no])
    DCFG_ARM_EABI_UNWINDER=0
-   D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/unwind_generic.o"],
+   DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_generic.o"],
   [AC_MSG_RESULT([yes])
    DCFG_ARM_EABI_UNWINDER=1
-   D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/unwind_arm.o"])
+   DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_arm.o"])
 AC_SUBST(DCFG_ARM_EABI_UNWINDER)
 
 AC_MSG_CHECKING([if std.boxer will work])
@@ -569,17 +571,17 @@ case "$d_target_os" in
 	     ;;
     freebsd*|k*bsd*-gnu)
 	     d_have_loader=1
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_stdio.o"
+	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     ;;
     linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"
 	     d_sem_impl="posix"
 	     d_have_loader=1 # should check for <dlfcn.h>, and use verion(GNU_Have_dlopen)
              ;;
-    cygwin*) D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_stdio.o"
+    cygwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     ;;
-    mingw*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_stdio.o"
+    mingw*)  #DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
 	     #DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
@@ -587,7 +589,7 @@ case "$d_target_os" in
 	     d_have_loader=1
 	     ;;
     skyos*)  d_sem_impl="skyos"
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_stdio.o"
+	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     AC_DEFINE(PTHREAD_MUTEX_ALREADY_RECURSIVE,1,[Define if mutexes are recursive by default])
 	     ;;
@@ -595,7 +597,7 @@ case "$d_target_os" in
 	         DCFG_UNIX=NoSystem
 		 AC_DEFINE(PHOBOS_NO_SYSTEM,1,[Define if there is no file system, synchronization services, etc.])
 	     fi
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_stdio.o"
+	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     ;;
 esac
@@ -658,14 +660,14 @@ D_GC_FLAGS=
 
 case "$target_os" in
   mingw*)
-	    D_GC_MODULES=internal/gc/win32.o
+	    D_GC_MODULES=gc/win32.o
 	    need_to_cfgr_gc=''
 	    ;;
   *)        if test "$with_newlib"; then
 		dnl Not sure what to do about GC...
-		D_GC_MODULES=internal/gc/gcgcc.o
+		D_GC_MODULES=gc/gcgcc.o
 		D_GC_FLAGS='-fversion=GC_Use_Stack_Guess -fversion=GC_Use_Alloc_Malloc'
-		D_GC_MODULES="internal/gc/gcgcc.o internal/gc/gc_guess_stack.o"
+		D_GC_MODULES="gc/gcgcc.o gc/gc_guess_stack.o"
 	    else
 		need_to_cfgr_gc=yes
 	    fi

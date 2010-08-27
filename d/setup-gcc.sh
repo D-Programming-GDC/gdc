@@ -8,7 +8,7 @@ else
 fi
 top=`pwd`
 
-# D 1.0 is the defalt
+# D 1.0 is the default
 if test -d gcc/d/dmd; then
     d_lang_version=1
 elif test -d gcc/d/dmd2; then
@@ -19,7 +19,10 @@ fi
 for arg in "$@"; do
     case "$arg" in
 	--d-language-version=*) d_lang_version=${arg##--d-language-version=} ;;
+	-v1) d_lang_version=1 ;;
+	-v2) d_lang_version=2 ;;
 	*)
+	    echo "Usage: $0 [OPTION]"
 	    echo "error: invalid option '$arg'"
 	    exit 1
 	    ;;
@@ -82,30 +85,24 @@ echo "D_LANGUAGE_VERSION=$d_lang_version" > gcc/d/d-make-include
 # directory.
 mkdir libphobos && \
     cd libphobos && \
-    ../symlink-tree ../gcc/d/phobos$d_subdir_sfx .svn > /dev/null && \
+    ../symlink-tree ../gcc/d/phobos$d_subdir_sfx > /dev/null && \
     cd "$top" || exit 1
 
-# 2. If they are building D2, then create links to the druntime sources in
+# 1.1 If they are building D2, then create links to the druntime sources in
 # the top level directory
-#if test "$d_lang_version" = 2; then
-#    mkdir libdruntime && \
-#    cd libdruntime && \
-#    ../symlink-tree ../gcc/d/druntime .svn > /dev/null && \
-#    cd "$top" || exit 1
-#    
-#    # 2.1. Adding libdruntime to the list of target libs in config-lang.in
-#    cd gcc/d
-#    cat config-lang.in > config-lang.in.tmp
-#    echo "target_libs+=\"target-libdruntime\"" > config-lang.in.tmp2
-#    cat config-lang.in.tmp config-lang.in.tmp2 > config-lang.in.tmp3
-#    cat config-lang.in.tmp3 > config-lang.in
-#    rm config-lang.in.tmp
-#    rm config-lang.in.tmp2
-#    rm config-lang.in.tmp3
-#    cd "$top" || exit 1
-#fi
+if test "$d_lang_version" = 2; then
+    cd libphobos && \
+    ../symlink-tree ../gcc/d/druntime > /dev/null && \
+    cd "$top" || exit 1
 
-# 3. Patch the top-level directory
+    # object file better off being in the top directory.
+    cd libphobos && \
+    ln -s ../gcc/d/druntime/import/object.di object.di && \
+    unlink import/object.di && \
+    cd "$top" || exit 1
+fi
+
+# 2. Patch the top-level directory
 #
 # If the patch for the top-level Makefile.in doesn't take, you can regenerate
 # it with:
@@ -118,11 +115,11 @@ if test -n "$gcc_apple"; then
     patch -l -p1 < "gcc/d/patches/patch-build_gcc-$gcc_patch_key" || exit 1
 fi
 
-# 4. Patch the gcc subdirectory
+# 3. Patch the gcc subdirectory
 cd gcc || exit 1
 patch -p1 < "$gcc_patch_fn" || exit 1
 
-# 4.1 Patch the gcc version string
+# 3.1 Patch the gcc version string
 if test "$gcc_ver" = 4.1; then
     cur_DEV_PHASE=`cat DEV-PHASE`
     echo "$cur_DEV_PHASE $gdc_ver_msg" > DEV-PHASE
@@ -133,7 +130,7 @@ else
 	version.c > version.c.tmp && mv -f version.c.tmp version.c
 fi
 
-# 5. Maybe apply Darwin patches
+# 4. Maybe apply Darwin patches
 if test -z "$gcc_apple" && test "`uname`" = Darwin; then
     if test -f d/patches/patch-gcc-darwin-eh-$gcc_patch_key; then
 	patch -p1 < d/patches/patch-gcc-darwin-eh-$gcc_patch_key || exit 1

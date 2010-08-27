@@ -79,7 +79,8 @@ AC_CHECK_FUNC(mmap,DCFG_MMAP="GNU_Unix_Have_MMap",[])
 AC_CHECK_FUNC(getpwnam_r,DCFG_GETPWNAM_R="GNU_Unix_Have_getpwnam_r",[])
 
 
-D_EXTRA_OBJS="gcc/config/unix.o gcc/cbridge_fdset.o std/c/dirent.o std/c/unix/unix.o $D_EXTRA_OBJS"
+D_EXTRA_OBJS="std/c/dirent.o std/c/unix/unix.o $D_EXTRA_OBJS"
+DRUNTIME_OBJS="gcc/config/unix.o gcc/cbridge_fdset.o $DRUNTIME_OBJS"
 # Add "linux" module for compatibility even if not Linux
 D_EXTRA_OBJS="std/c/linux/linux.o $D_EXTRA_OBJS"
 D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_unix_d_src)'
@@ -89,9 +90,10 @@ DCFG_POSIX="Posix"
 ])
 
 dnl Garbage collection configuration
+dnl TODO: deprecate this and merge all OS specific bits into druntime.
 AC_DEFUN([DPHOBOS_CONFIGURE_GC],[
 
-D_GC_MODULES=internal/gc/gcgcc.o
+#D_GC_MODULES=gc/gcgcc.o
 
 d_gc_alloc=
 d_gc_stack=
@@ -102,11 +104,11 @@ case "$d_target_os" in
 	    ;;
   cygwin*)  d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    ;;
-  darwin*)  D_GC_MODULES="$D_GC_MODULES internal/gc/gc_dyld.o"
+  darwin*)  D_GC_MODULES="$D_GC_MODULES gc/gc_dyld.o"
 	    d_gc_stack=GC_Use_Stack_Fixed
 	    d_gc_data="$d_gc_data GC_Use_Data_Dyld"
 	    ;;
-  *freebsd*)D_GC_MODULES="$D_GC_MODULES internal/gc/gc_freebsd.o"
+  *freebsd*)D_GC_MODULES="$D_GC_MODULES gc/gc_freebsd.o"
 	    d_gc_stack=GC_Use_Stack_FreeBSD
 	    d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    dnl maybe just GC_Use_Stack_ExternC
@@ -118,7 +120,7 @@ case "$d_target_os" in
 	    ;;
   skyos*)   d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    ;;
-  *)        D_GC_MODULES=internal/gc/gcgcc.o
+  *)        D_GC_MODULES=gc/gcgcc.o
             ;;
 esac
 
@@ -147,7 +149,7 @@ if test -z "$d_gc_stack"; then
 fi
 if test -z "$d_gc_stack"; then
     d_gc_stack=GC_Use_Stack_Guess
-    D_GC_MODULES="$D_GC_MODULES internal/gc/gc_guess_stack.o"
+    D_GC_MODULES="$D_GC_MODULES gc/gc_guess_stack.o"
 fi
 if test -z "$d_gc_stack"; then
     AC_MSG_ERROR([No usable stack origin information])
