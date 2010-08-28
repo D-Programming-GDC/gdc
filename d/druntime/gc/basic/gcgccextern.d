@@ -33,7 +33,7 @@ version(GC_Use_Data_Fixed)
         alias _bss_end__ Data_End_2;
         enum FM { MinMax = 1, One = 0, Two = 0 }
     }
-    else version (FreeBSD)
+    else version (freebsd)
     {
         // use '_etext' if '__fini_array_end' doesn't work
         /* There is a bunch of read-only data after .data and before .bss, but

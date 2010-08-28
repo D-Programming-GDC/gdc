@@ -127,9 +127,9 @@ BASE_OBJS=compiler/aaA.o compiler/aApply.o compiler/aApplyR.o compiler/adi.o \
 	  compiler/monitor.o compiler/obj.o compiler/object_.o \
 	  compiler/qsort.o compiler/switch_.o compiler/trace.o
 
-GCC_OBJS = gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
-	gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
-	gcc/cbridge_time.o gcc/cbridge_strerror.o
+GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
+	 gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
+	 gcc/cbridge_time.o gcc/cbridge_strerror.o
 
 UTIL_OBJS=compiler/util/console.o compiler/util/cpuid.o compiler/util/ctype.o \
 	  compiler/util/string.o compiler/util/utf.o
@@ -154,10 +154,12 @@ COMMON_OBJS=common/core/bitmanip.o common/core/exception.o common/core/memory.o 
 #CMAIN_OBJS=compiler/gdc/cmain.o
 CMAIN_OBJS=compiler/gdc/dmain2.o
 
-GC_OBJS = @D_GC_MODULES@
+D_GC_MODULES=@D_GC_MODULES@
 
-GC_OBJS+=gc/basic/gc.o gc/basic/gcalloc.o gc/basic/gcbits.o \
-	 gc/basic/gcstats.o gc/basic/gcx.o
+D_GC_MODULES+=gc/gc.o gc/gcalloc.o gc/gcbits.o \
+	      gc/gcstats.o gc/gcx.o
+
+GC_OBJS=$(subst gc,gc/basic,$(D_GC_MODULES))
 
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(COMMON_OBJS) $(GC_OBJS) $(GCC_OBJS)
 
@@ -221,7 +223,7 @@ std/stream.t.o: std/stream.d $(D_PREREQ_SRCS)
 
 ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS) $(WEAK_OBJS)
 
-libgphobos2.a : libgdruntime.a $(ALL_PHOBOS_OBJS) $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
+libgphobos2.a : libgdruntime.a $(ALL_PHOBOS_OBJS)
 	$(AR) -r $@ $(ALL_PHOBOS_OBJS)
 	$(RANLIB) $@
 
@@ -263,6 +265,7 @@ install-data-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 clean-local:
 	rm -f $(ALL_PHOBOS_OBJS) $(CMAIN_OBJS)
 	rm -f $(ALL_PHOBOS_OBJS:.o=.t.o)
+	rm -f $(ALL_DRUNTIME_OBJS)
 	rm -f unittest.o
 	rm -f unittest$(EXEEXT) testgc$(EXEEXT)
 	rm -f $(config_d_src) $(config_errno_d_src) $(config_libc_d_src)

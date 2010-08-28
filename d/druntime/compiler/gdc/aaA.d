@@ -802,7 +802,8 @@ body
  */
 
 extern (C)
-BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
+BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
+    void *keys, void *values)
 {
     auto valuesize = ti.next.tsize();           // value size
     auto keyti = ti.key;
@@ -817,11 +818,10 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
     }
     else
     {
-        va_list q;
-        va_start!(size_t)(q, length);
+	void * qkey = keys;
+	void * qval = values;
 
         result = new BB();
-        result.keyti = keyti;
         size_t i;
 
         for (i = 0; i < prime_list.length - 1; i++)
@@ -838,10 +838,10 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
         size_t keytsize = aligntsize(keysize);
 
         for (size_t j = 0; j < length; j++)
-        {   void* pkey = q;
-            q += keystacksize;
-            void* pvalue = q;
-            q += valuestacksize;
+        {   void* pkey = qkey;
+	    qkey += keysize;
+            void* pvalue = qval;
+	    qval += valuesize;
             aaA* e;
 
             auto key_hash = keyti.getHash(pkey);
@@ -875,7 +875,6 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
             memcpy(cast(void *)(e + 1) + keytsize, pvalue, valuesize);
         }
 
-        va_end(q);
     }
     return result;
 }

@@ -96,7 +96,7 @@ version(Posix)
     version = dlopen;
 else version(linux)
         version = dlopen;
-else version (freebsd)
+else version (FreeBSD)
     version = dlopen;
 
 version(Windows)

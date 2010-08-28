@@ -48,6 +48,12 @@ builtin_define_with_value (const char *macro, const char *expansion, int is_str)
     /* nothing */
 }
 
+tree
+default_conversion (tree exp)
+{
+    return exp;
+}
+
 enum { unused } c_language;
 
 enum cpp_ttype

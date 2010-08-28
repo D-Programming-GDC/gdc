@@ -126,9 +126,9 @@ version(D_InlineAsm_X86)
 
     static this()
     {
-	getVendorString(vendorStr.ptr);
-	processorStr = getProcessorString();
-	getFeatureFlags(& flags, & misc, & exflags, & apic, & signature);
+	getVendorString();
+	getProcessorString();
+	getFeatureFlags();
 
 	// stepping / family / model
 	_stepping = signature&0xF;
@@ -226,8 +226,9 @@ private:
     /* **
      * fetches the cpu vendor string
      */
-    private void getVendorString(char* dst)
+    private void getVendorString()
     {
+	char* dst = vendorStr.ptr;
 	// puts the vendor string into dst
 	asm
 	{
@@ -242,7 +243,7 @@ private:
 	}
     }
 
-    private string getProcessorString()
+    private void getProcessorString()
     {
 	char[48] buffer;
 	char* dst = buffer.ptr;
@@ -280,14 +281,13 @@ private:
 	}
 
 	if (buffer[0] == char.init) // no support
-	    return "";
+	    return;
 
 	// seems many intel processors prepend whitespace
-	return std.string.strip(std.string.toString(dst)).idup;
+	processorStr = std.string.strip(std.string.toString(dst)).idup;
     }
 
-    private void getFeatureFlags(uint *flags, uint *misc, uint *exflags,
-	uint *apic, uint *signature)
+    private void getFeatureFlags()
     {
 	uint f,m,e,a,s;
 	asm
@@ -317,11 +317,11 @@ private:
 	    db 0x5b  /* pop EBX */      ;
 	    ;
 	}
-	*flags = f;
-	*misc = m;
-	*exflags = e;
-	*apic = a;
-	*signature = s;
+	flags = f;
+	misc = m;
+	exflags = e;
+	apic = a;
+	signature = s;
     }
 
     private void getThreadingIntel()

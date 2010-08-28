@@ -120,7 +120,7 @@ case "$d_target_os" in
 	    ;;
   skyos*)   d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    ;;
-  *)        D_GC_MODULES=gc/gcgcc.o
+  *)        #D_GC_MODULES=gc/gcgcc.o
             ;;
 esac
 
