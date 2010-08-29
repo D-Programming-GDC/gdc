@@ -1557,7 +1557,7 @@ DotVarExp::toElem(IRState * irs)
 		return irs->var(var_decl);
 	    }
 	} else {
-	    // error below
+	    error("%s is not a field, but a %s", var->toChars(), var->kind());
 	}
 	break;
     default:
@@ -1960,17 +1960,21 @@ NewExp::toElem(IRState * irs)
 			   STATIC_CHAIN_EXPR created here will never be
 			   translated. Use a null pointer for the link in
 			   this case. */
-			if (
+			if (irs->func == fd_outer) {
 #if V2
-			    fd_outer->closureVars.dim ||
-			    irs->getFrameInfo(fd_outer)->creates_closure
+			    if (fd_outer->closureVars.dim ||
+				irs->getFrameInfo(fd_outer)->creates_closure)
 #else
-			    fd_outer->nestedFrameRef
+			    if(fd_outer->nestedFrameRef)
 #endif
-			    )
-			    vthis_value = irs->getFrameForNestedClass(class_decl); // %% V2: rec_type->class_type
-			else
+				vthis_value = irs->getFrameForNestedClass(class_decl); // %% V2: rec_type->class_type
+			    else if (fd_outer->vthis)
+				vthis_value = irs->var(fd_outer->vthis);
+			}
+			else {
 			    vthis_value = d_null_pointer;
+			}
+
 		    } else {
 			assert(0);
 		    }
