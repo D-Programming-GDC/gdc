@@ -31,6 +31,7 @@
    link against function in the C front end.  These definitions
    satisfy the link requirements, but should never be executed. */
 
+void
 add_cpp_dir_path (cpp_dir *p, int chain)
 {
     /* nothing */
@@ -53,6 +54,37 @@ default_conversion (tree exp)
 {
     return exp;
 }
+
+tree
+build_binary_op (location_t location, enum tree_code code,
+                 tree orig_op0, tree orig_op1, int convert_p)
+{
+#if D_GCC_VER >= 40
+    gcc_assert(0);
+#endif
+    return NULL_TREE;
+}
+
+tree
+build_unary_op (location_t location,
+		enum tree_code code, tree xarg, int flag)
+{
+#if D_GCC_VER >= 40
+    gcc_assert(0);
+#endif
+    return NULL_TREE;
+}
+
+tree
+build_indirect_ref (location_t loc, tree ptr, const char *errorstring)
+{
+#if D_GCC_VER >= 40
+    gcc_assert(0);
+#endif
+    return NULL_TREE;
+}
+
+int flag_iso; // used in d-lang.cc
 
 enum { unused } c_language;
 

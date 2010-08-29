@@ -448,8 +448,9 @@ d_init ()
     {
 	line_maps lm;
 	cpp_reader * pfile; // Target macros below expect this identifier.
-	int flag_iso = 0;   // ditto
+	extern int flag_iso;// ditto
 
+	flag_iso = 0;
 	linemap_init(& lm);
 #if D_GCC_VER >= 43
 	lm.reallocator = NULL;
@@ -481,7 +482,7 @@ d_init ()
 	TARGET_CPU_CPP_BUILTINS ();
 	TARGET_OS_CPP_BUILTINS ();
 	TARGET_OBJFMT_CPP_BUILTINS ();
-	
+
 	cpp_forall_identifiers(pfile, & d_cpp_forall_callback, NULL);
 
 	cpp_destroy(pfile);

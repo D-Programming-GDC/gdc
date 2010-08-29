@@ -1960,7 +1960,7 @@ NewExp::toElem(IRState * irs)
 			   STATIC_CHAIN_EXPR created here will never be
 			   translated. Use a null pointer for the link in
 			   this case. */
-			if (irs->func == fd_outer) {
+			if (fd_outer->vthis) {
 #if V2
 			    if (fd_outer->closureVars.dim ||
 				irs->getFrameInfo(fd_outer)->creates_closure)
@@ -1968,7 +1968,7 @@ NewExp::toElem(IRState * irs)
 			    if(fd_outer->nestedFrameRef)
 #endif
 				vthis_value = irs->getFrameForNestedClass(class_decl); // %% V2: rec_type->class_type
-			    else if (fd_outer->vthis)
+			    else
 				vthis_value = irs->var(fd_outer->vthis);
 			}
 			else {
