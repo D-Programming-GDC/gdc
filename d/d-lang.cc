@@ -366,6 +366,9 @@ d_init ()
     maybe_fixup_cygwin();
 
     VersionCondition::addPredefinedGlobalIdent("GNU");
+#if V2
+    VersionCondition::addPredefinedGlobalIdent("D_Version2");
+#endif
 #ifdef D_CPU_VERSYM64
     if (global.params.isX86_64 == 1)
     	cpu_versym = D_CPU_VERSYM64;

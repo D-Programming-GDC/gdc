@@ -156,10 +156,11 @@ CMAIN_OBJS=compiler/gdc/dmain2.o
 
 D_GC_MODULES=@D_GC_MODULES@
 
-D_GC_MODULES+=gc/gc.o gc/gcalloc.o gc/gcbits.o \
-	      gc/gcstats.o gc/gcx.o
+# Underscore added for subst to correctly work
+D_GC_MODULES+=gc_/gc.o gc_/gcalloc.o gc_/gcbits.o \
+	      gc_/gcstats.o gc_/gcx.o
 
-GC_OBJS=$(subst gc,gc/basic,$(D_GC_MODULES))
+GC_OBJS=$(subst gc_,gc/basic,$(D_GC_MODULES))
 
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(COMMON_OBJS) $(GC_OBJS) $(GCC_OBJS)
 

@@ -93,7 +93,7 @@ dnl Garbage collection configuration
 dnl TODO: deprecate this and merge all OS specific bits into druntime.
 AC_DEFUN([DPHOBOS_CONFIGURE_GC],[
 
-#D_GC_MODULES=gc/gcgcc.o
+dnl D_GC_MODULES=gc_/gcgcc.o
 
 d_gc_alloc=
 d_gc_stack=
@@ -104,11 +104,11 @@ case "$d_target_os" in
 	    ;;
   cygwin*)  d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    ;;
-  darwin*)  D_GC_MODULES="$D_GC_MODULES gc/gc_dyld.o"
+  darwin*)  D_GC_MODULES="$D_GC_MODULES gc_/gc_dyld.o"
 	    d_gc_stack=GC_Use_Stack_Fixed
 	    d_gc_data="$d_gc_data GC_Use_Data_Dyld"
 	    ;;
-  *freebsd*)D_GC_MODULES="$D_GC_MODULES gc/gc_freebsd.o"
+  *freebsd*)D_GC_MODULES="$D_GC_MODULES gc_/gc_freebsd.o"
 	    d_gc_stack=GC_Use_Stack_FreeBSD
 	    d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    dnl maybe just GC_Use_Stack_ExternC
@@ -120,7 +120,7 @@ case "$d_target_os" in
 	    ;;
   skyos*)   d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    ;;
-  *)        #D_GC_MODULES=gc/gcgcc.o
+  *)        dnl D_GC_MODULES=gc_/gcgcc.o
             ;;
 esac
 
