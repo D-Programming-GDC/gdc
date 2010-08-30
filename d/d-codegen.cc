@@ -218,25 +218,6 @@ IRState::var(VarDeclaration * v)
 {
     bool is_closure_var = v->toSymbol()->SclosureField != NULL;
 
-    /* // testing...
-    bool test2 = false;
-    Dsymbol * vp = v->toParent2();
-    if (vp)
-    {
-	FuncDeclaration * f = vp->isFuncDeclaration();
-	if (f && getFrameInfo(f)->creates_closure)
-	{
-	    for (unsigned i = 0; i < f->closureVars.dim; ++i)
-		if (v == f->closureVars.data[i])
-		{
-		    test2 = true;
-		    break;
-		}
-	}
-	gcc_assert(is_closure_var == test2);
-    }
-    //...testing */
-    
     if (is_closure_var)
     {
 	FuncDeclaration * f = v->toParent2()->isFuncDeclaration();
@@ -2541,10 +2522,30 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
 
 	if (func != outer_func)
 	{
+	    Dsymbol * this_func = func;
+	    Dsymbol * parent_sym = nested_sym->toParent2();
 	    if (!func->vthis) // if no frame pointer for this function
 	    {
 		nested_func->error("is a nested function and cannot be accessed from %s", func->toChars());
 		return d_null_pointer;
+	    }
+	    /* Search for frame pointer, make sure we can reach it,
+	       else we'll ICE later in tree-ssa.  */
+	    while (nested_func != this_func)
+	    {
+		FuncDeclaration * fndecl;
+		if ( (fndecl = this_func->isFuncDeclaration()) )
+		{
+		    if (parent_sym == fndecl->toParent2())
+			break;
+		    assert(fndecl->isNested() || fndecl->vthis);
+		}
+		else
+		{
+		    func->error("cannot get frame pointer to %s", nested_sym->toChars());
+		    return d_null_pointer;
+		}
+		this_func = this_func->toParent2();
 	    }
 	}
     }
