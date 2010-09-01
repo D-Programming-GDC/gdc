@@ -90,13 +90,9 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
        standard libraries. */
     int phobos = 1;
 
-#ifdef LIBDRUNTIME
     /* If nonzero, use the standard D2 runtime library when linking with
        standard libraries. */
-    int druntime = 1;
-#else
     int druntime = 0;
-#endif
 
     /* The number of arguments being added to what's in argv, other than
        libraries.  We use this to track the number of times we've inserted
@@ -357,12 +353,17 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     shared_libgcc = 0;
 #endif
 
+    /* We are linking against a druntime */
+#ifdef LIBDRUNTIME
+    druntime = 1;
+#endif
+
     /* Make sure to have room for the trailing NULL argument.  */
     /* There is one extra argument added here for the runtime
        library: -lgphobos.  The -pthread argument is added by
        setting need_pthreads. */
-    num_args = argc + added + need_math + shared_libgcc + druntime + (library > 0 ? 1 : 0) + 1;
-    arglist = xmalloc (num_args * sizeof (char *) + 1);
+    num_args = argc + added + need_math + shared_libgcc + (druntime > 0 ? 1 : 0) + (library > 0 ? 1 : 0) + 1;
+    arglist = xmalloc (num_args * sizeof (char *));
 
     i = 0;
     j = 0;

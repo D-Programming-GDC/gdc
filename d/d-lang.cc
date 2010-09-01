@@ -763,6 +763,7 @@ bool d_post_options(const char ** fn)
 
 #if D_GCC_VER >= 43
     // Workaround for embedded functions, don't inline if debugging is on.
+    // See Issue #38 for why.
     flag_inline_small_functions = !write_symbols;
 #endif
 
