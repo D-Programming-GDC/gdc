@@ -186,6 +186,30 @@ diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
   
         /* If we are in terse mode, don't generate any DIEs to represent any
   	 variable declarations or definitions.  */
+diff -cr gcc-orig/except.c gcc/except.c
+*** gcc-orig/except.c	2007-09-01 16:28:30.000000000 +0100
+--- gcc/except.c	2010-09-01 17:58:16.098347399 +0100
+***************
+*** 1816,1821 ****
+--- 1816,1833 ----
+  
+  	  region = VEC_index (eh_region, cfun->eh->region_array, INTVAL (XEXP (note, 0)));
+  	  this_call_site = lp_info[region->region_number].call_site_index;
++ 	  if (region->type == ERT_CATCH)
++ 	  {
++ 	    /* Use previous region information */
++ 	    region = region->outer;
++ 	    if (!region)
++ 	    {
++ 	      /* No previous region, must change function contexts. */
++ 	      this_call_site = -1;
++ 	    }
++ 	    else
++ 	    this_call_site = lp_info[region->region_number].call_site_index;        
++ 	  }
+  	}
+  
+        if (this_call_site == last_call_site)
 diff -cr gcc-orig/expr.c gcc/expr.c
 *** gcc-orig/expr.c	2008-02-04 17:03:09.000000000 -0500
 --- gcc/expr.c	2010-08-22 20:09:26.098318137 -0400

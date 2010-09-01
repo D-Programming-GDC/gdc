@@ -137,7 +137,6 @@ diff -cr gcc.orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
   	i = 0;
         else if (! strcmp (language_string, "GNU F77")
   	       || ! strcmp (language_string, "GNU Fortran"))
-Only in gcc: d
 diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
 *** gcc.orig/dwarf2out.c	2010-02-10 15:09:06.000000000 +0000
 --- gcc/dwarf2out.c	2010-08-14 11:48:10.590539796 +0100
@@ -208,6 +207,27 @@ diff -cr gcc.orig/except.c gcc/except.c
     rtx landing_pad;
     int action;
 ***************
+*** 1777,1782 ****
+--- 1777,1794 ----
+  
+  	  region = VEC_index (eh_region, cfun->eh->region_array, INTVAL (XEXP (note, 0)));
+  	  this_call_site = lp_info[region->region_number].call_site_index;
++ 	  if (region->type == ERT_CATCH)
++ 	  {
++ 	    /* Use previous region information */
++ 	    region = region->outer;
++ 	    if (!region)
++ 	    {
++ 	      /* No previous region, must change function contexts. */
++ 	      this_call_site = -1;
++ 	    }
++ 	    else
++ 	    this_call_site = lp_info[region->region_number].call_site_index;        
++ 	  }
+  	}
+  
+        if (this_call_site == last_call_site)
+***************
 *** 3198,3204 ****
   {
     call_site_record record;
@@ -216,7 +236,7 @@ diff -cr gcc.orig/except.c gcc/except.c
     record->landing_pad = landing_pad;
     record->action = action;
   
---- 3198,3204 ----
+--- 3210,3216 ----
   {
     call_site_record record;
     
@@ -233,7 +253,7 @@ diff -cr gcc.orig/except.c gcc/except.c
         size += size_of_uleb128 (cs->action);
       }
   
---- 3399,3405 ----
+--- 3411,3417 ----
   
     for (i = 0; i < n; ++i)
       {
@@ -250,7 +270,7 @@ diff -cr gcc.orig/except.c gcc/except.c
         size += size_of_uleb128 (INTVAL (cs->landing_pad));
         size += size_of_uleb128 (cs->action);
       }
---- 3415,3421 ----
+--- 3427,3433 ----
   
     for (i = 0; i < n; ++i)
       {
@@ -267,7 +287,7 @@ diff -cr gcc.orig/except.c gcc/except.c
         char reg_start_lab[32];
         char reg_end_lab[32];
         char landing_pad_lab[32];
---- 3432,3438 ----
+--- 3444,3450 ----
   
     for (i = 0; i < n; ++i)
       {
@@ -284,7 +304,7 @@ diff -cr gcc.orig/except.c gcc/except.c
   
         dw2_asm_output_data_uleb128 (INTVAL (cs->landing_pad),
   				   "region %d landing pad", i);
---- 3486,3492 ----
+--- 3498,3504 ----
   
     for (i = 0; i < n; ++i)
       {

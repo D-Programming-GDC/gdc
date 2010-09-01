@@ -140,6 +140,30 @@ diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
     else
       language = DW_LANG_C89;
   
+diff -cr gcc-orig/except.c gcc/except.c
+*** gcc-orig/except.c	2005-09-06 09:09:34.000000000 +0100
+--- gcc/except.c	2010-09-01 18:20:10.102368654 +0100
+***************
+*** 1548,1553 ****
+--- 1548,1565 ----
+  
+  	  region = cfun->eh->region_array[INTVAL (XEXP (note, 0))];
+  	  this_call_site = lp_info[region->region_number].call_site_index;
++ 	  if (region->type == ERT_CATCH)
++ 	  {
++ 	    /* Use previous region information */
++ 	    region = region->outer;
++ 	    if (!region)
++ 	    {
++ 	      /* No previous region, must change function contexts. */
++ 	      this_call_site = -1;
++ 	    }
++ 	    else
++ 	    this_call_site = lp_info[region->region_number].call_site_index;        
++ 	  }
+  	}
+  
+        if (this_call_site == last_call_site)
 diff -cr gcc-orig/expr.c gcc/expr.c
 *** gcc-orig/expr.c	2006-03-21 23:50:31.000000000 -0500
 --- gcc/expr.c	2010-08-22 19:57:56.310318679 -0400

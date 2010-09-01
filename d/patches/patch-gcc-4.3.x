@@ -82,7 +82,6 @@ diff -cr gcc-orig/cgraphunit.c gcc/cgraphunit.c
   
     /* Make sure that BE didn't give up on compiling.  */
     /* ??? Can happen with nested function of extern inline.  */
-Only in gcc: cgraphunit.c.orig
 diff -cr gcc-orig/config/i386/i386.c gcc/config/i386/i386.c
 *** gcc-orig/config/i386/i386.c	2010-03-31 16:14:10.000000000 -0400
 --- gcc/config/i386/i386.c	2010-08-22 20:21:33.242319467 -0400
@@ -117,7 +116,6 @@ diff -cr gcc-orig/config/i386/i386.c gcc/config/i386/i386.c
   	  output_asm_insn ("jmp\t{*}%1", xops);
   	}
       }
-Only in gcc/config/i386: i386.c.orig
 diff -cr gcc-orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
 *** gcc-orig/config/rs6000/rs6000.c	2009-09-23 18:30:05.000000000 -0400
 --- gcc/config/rs6000/rs6000.c	2010-08-22 20:21:33.258318288 -0400
@@ -139,7 +137,6 @@ diff -cr gcc-orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
   	i = 0;
         else if (! strcmp (language_string, "GNU F77")
   	       || ! strcmp (language_string, "GNU F95"))
-Only in gcc/config/rs6000: rs6000.c.orig
 diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
 *** gcc-orig/dwarf2out.c	2009-06-18 16:06:04.000000000 -0400
 --- gcc/dwarf2out.c	2010-08-22 20:21:33.266319165 -0400
@@ -189,7 +186,30 @@ diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
   
         /* If we are in terse mode, don't generate any DIEs to represent any
   	 variable declarations or definitions.  */
-Only in gcc: dwarf2out.c.orig
+diff -cr gcc-orig/except.c gcc/except.c
+*** gcc-orig/except.c	2010-08-07 23:20:32.623306514 +0100
+--- gcc/except.c	2010-09-01 18:03:06.763377179 +0100
+***************
+*** 1821,1826 ****
+--- 1821,1838 ----
+  
+  	  region = VEC_index (eh_region, cfun->eh->region_array, INTVAL (XEXP (note, 0)));
+  	  this_call_site = lp_info[region->region_number].call_site_index;
++ 	  if (region->type == ERT_CATCH)
++ 	  {
++ 	    /* Use previous region information */
++ 	    region = region->outer;
++ 	    if (!region)
++ 	    {
++ 	      /* No previous region, must change function contexts. */
++ 	      this_call_site = -1;
++ 	    }
++ 	    else
++ 	    this_call_site = lp_info[region->region_number].call_site_index;        
++ 	  }
+  	}
+  
+        if (this_call_site == last_call_site)
 diff -cr gcc-orig/expr.c gcc/expr.c
 *** gcc-orig/expr.c	2009-01-06 11:17:41.000000000 -0500
 --- gcc/expr.c	2010-08-22 20:21:33.270321419 -0400
@@ -207,7 +227,6 @@ diff -cr gcc-orig/expr.c gcc/expr.c
       case EXC_PTR_EXPR:
         return get_exception_pointer (cfun);
   
-Only in gcc: expr.c.orig
 diff -cr gcc-orig/function.c gcc/function.c
 *** gcc-orig/function.c	2009-06-19 17:44:24.000000000 -0400
 --- gcc/function.c	2010-08-22 20:21:33.270321419 -0400
@@ -300,7 +319,6 @@ diff -cr gcc-orig/function.c gcc/function.c
   #ifdef HAVE_prologue
     if (HAVE_prologue)
       {
-Only in gcc: function.c.orig
 diff -cr gcc-orig/function.h gcc/function.h
 *** gcc-orig/function.h	2008-01-26 12:18:35.000000000 -0500
 --- gcc/function.h	2010-08-22 20:21:33.270321419 -0400
@@ -473,7 +491,6 @@ diff -cr gcc-orig/gimplify.c gcc/gimplify.c
   	case TREE_LIST:
   	  gcc_unreachable ();
   
-Only in gcc: gimplify.c.orig
 diff -cr gcc-orig/tree.def gcc/tree.def
 *** gcc-orig/tree.def	2007-10-29 07:05:04.000000000 -0400
 --- gcc/tree.def	2010-08-22 20:21:33.282318755 -0400
@@ -633,7 +650,6 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
       }
   
     /* If a chain_decl was created, then it needs to be registered with
-Only in gcc: tree-nested.c~
 diff -cr gcc-orig/tree-pretty-print.c gcc/tree-pretty-print.c
 *** gcc-orig/tree-pretty-print.c	2008-01-27 11:48:54.000000000 -0500
 --- gcc/tree-pretty-print.c	2010-08-22 20:21:33.282318755 -0400

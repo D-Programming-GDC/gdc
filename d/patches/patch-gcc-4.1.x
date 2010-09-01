@@ -119,7 +119,6 @@ diff -cr gcc-orig/config/i386/i386.c gcc/config/i386/i386.c
   	  output_asm_insn ("jmp\t{*}%1", xops);
   	}
       }
-Only in gcc/config/i386: i386.c.orig
 diff -cr gcc-orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
 *** gcc-orig/config/rs6000/rs6000.c	2006-12-16 14:24:56.000000000 -0500
 --- gcc/config/rs6000/rs6000.c	2010-08-22 20:03:59.398320995 -0400
@@ -141,7 +140,6 @@ diff -cr gcc-orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
   	i = 0;
         else if (! strcmp (language_string, "GNU F77")
   	       || ! strcmp (language_string, "GNU F95"))
-Only in gcc/config/rs6000: rs6000.c.orig
 diff -cr gcc-orig/dwarf2.h gcc/dwarf2.h
 *** gcc-orig/dwarf2.h	2005-06-24 22:02:01.000000000 -0400
 --- gcc/dwarf2.h	2010-08-22 20:03:59.398320995 -0400
@@ -204,7 +202,30 @@ diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
   
         /* If we are in terse mode, don't generate any DIEs to represent any
   	 variable declarations or definitions.  */
-Only in gcc: dwarf2out.c.orig
+diff -cr gcc-orig/except.c gcc/except.c
+*** gcc-orig/except.c	2010-09-01 17:53:52.026346348 +0100
+--- gcc/except.c	2010-09-01 17:54:14.191346857 +0100
+***************
+*** 1725,1730 ****
+--- 1725,1742 ----
+  
+  	  region = VEC_index (eh_region, cfun->eh->region_array, INTVAL (XEXP (note, 0)));
+  	  this_call_site = lp_info[region->region_number].call_site_index;
++ 	  if (region->type == ERT_CATCH)
++ 	  {
++ 	    /* Use previous region information */
++ 	    region = region->outer;
++ 	    if (!region)
++ 	    {
++ 	      /* No previous region, must change function contexts. */
++ 	      this_call_site = -1;
++ 	    }
++ 	    else
++ 	    this_call_site = lp_info[region->region_number].call_site_index;        
++ 	  }
+  	}
+  
+        if (this_call_site == last_call_site)
 diff -cr gcc-orig/expr.c gcc/expr.c
 *** gcc-orig/expr.c	2006-11-02 12:18:52.000000000 -0500
 --- gcc/expr.c	2010-08-22 20:03:59.406319848 -0400
@@ -222,7 +243,6 @@ diff -cr gcc-orig/expr.c gcc/expr.c
       case EXC_PTR_EXPR:
         return get_exception_pointer (cfun);
   
-Only in gcc: expr.c.orig
 diff -cr gcc-orig/function.c gcc/function.c
 *** gcc-orig/function.c	2006-11-28 07:01:45.000000000 -0500
 --- gcc/function.c	2010-08-22 20:03:59.410318611 -0400
@@ -315,7 +335,6 @@ diff -cr gcc-orig/function.c gcc/function.c
   #ifdef HAVE_prologue
     if (HAVE_prologue)
       {
-Only in gcc: function.c.orig
 diff -cr gcc-orig/function.h gcc/function.h
 *** gcc-orig/function.h	2005-08-19 17:16:20.000000000 -0400
 --- gcc/function.h	2010-08-22 20:03:59.414319678 -0400
@@ -425,7 +444,6 @@ diff -cr gcc-orig/gcc.c gcc/gcc.c
   	    /* Here we define characters other than letters and digits.  */
   
   	  case '{':
-Only in gcc: gcc.c.orig
 diff -cr gcc-orig/gcc.h gcc/gcc.h
 *** gcc-orig/gcc.h	2005-06-24 22:02:01.000000000 -0400
 --- gcc/gcc.h	2010-08-22 20:03:59.422317972 -0400
@@ -464,7 +482,6 @@ diff -cr gcc-orig/gimplify.c gcc/gimplify.c
   	case TREE_LIST:
   	  gcc_unreachable ();
   
-Only in gcc: gimplify.c.orig
 diff -cr gcc-orig/predict.c gcc/predict.c
 *** gcc-orig/predict.c	2005-11-04 19:55:23.000000000 -0500
 --- gcc/predict.c	2010-08-22 20:03:59.426318760 -0400
@@ -723,7 +740,6 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
       }
   
     /* If trampolines were created, then we need to initialize them.  */
-Only in gcc: tree-nested.c.orig
 diff -cr gcc-orig/tree-pretty-print.c gcc/tree-pretty-print.c
 *** gcc-orig/tree-pretty-print.c	2005-07-31 16:55:41.000000000 -0400
 --- gcc/tree-pretty-print.c	2010-08-22 20:03:59.434318171 -0400
