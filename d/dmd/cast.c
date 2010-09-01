@@ -40,7 +40,7 @@ Expression *Expression::implicitCastTo(Scope *sc, Type *t)
             if (e->op == TOKint64)
                 return e->implicitCastTo(sc, t);
 
-                if (tyfrom == Tint32 &&
+            if (tyfrom == Tint32 &&
                 (op == TOKadd || op == TOKmin ||
                  op == TOKand || op == TOKor || op == TOKxor)
                )
@@ -56,9 +56,9 @@ Expression *Expression::implicitCastTo(Scope *sc, Type *t)
             else
             {
 
-            warning("implicit conversion of expression (%s) of type %s to %s can cause loss of data",
-                toChars(), type->toChars(), t->toChars());
-                }
+                warning("implicit conversion of expression (%s) of type %s to %s can cause loss of data",
+                        toChars(), type->toChars(), t->toChars());
+            }
         }
 #if DMDV2
         if (match == MATCHconst && t == type->constOf())
