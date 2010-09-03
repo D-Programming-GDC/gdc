@@ -3716,12 +3716,13 @@ GotoStatement::toIR(IRState* irs)
     g.ofile->setLoc(loc); /* This makes the 'undefined label' error show up on the correct line...
 			     The extra doLineNote in doJump shouldn't cause a problem. */
 
-    if (tf != label->statement->tf)
-	error("cannot goto forward out of or into finally block");
-
     tree t = irs->getLabelTree( label );
     if (t)
+    {
+	if (tf != label->statement->tf)
+	    error("cannot goto forward out of or into finally block");
 	irs->doJump(this, t);
+    }
     // else, there was an error
 }
 

@@ -677,7 +677,10 @@ IRState::pointerIntSum(tree ptr_node, tree idx_exp)
 	    build2/*_binary_op*/ (MULT_EXPR, TREE_TYPE(size_exp), intop,  // the type here may be wrong %%
 		convert (TREE_TYPE (intop), size_exp)));
 	intop = fold(intop);
-    }    
+    }
+
+    if (result_type_node == error_mark_node)
+	return result_type_node; // else we'll ICE.
 
     if ( integer_zerop(intop) )
 	return ptr_node;
@@ -1654,6 +1657,9 @@ IRState::arrayElemRef(IndexExp * aer_exp, ArrayScope * aryscp)
 tree
 IRState::darrayPtrRef(tree exp)
 {
+    if (exp == error_mark_node)
+	return exp; // else we'll ICE.
+
     // Get the backend type for the array and pick out the array data
     // pointer field (assumed to be the second field.)
     tree ptr_field = TREE_CHAIN( TYPE_FIELDS( TREE_TYPE( exp )));
@@ -1664,6 +1670,9 @@ IRState::darrayPtrRef(tree exp)
 tree
 IRState::darrayLenRef(tree exp)
 {
+    if (exp == error_mark_node)
+	return exp; // else we'll ICE.
+
     // Get the backend type for the array and pick out the array length
     // field (assumed to be the first field.)
     tree len_field = TYPE_FIELDS( TREE_TYPE( exp ));

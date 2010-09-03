@@ -640,7 +640,7 @@ ObjectFile::declareType(tree t, tree decl)
 {
     bool top_level = /*DECL_CONTEXT(decl) == fileContext || */
 	! DECL_CONTEXT(decl);
-	
+
     // okay to do this?
     rodc(decl, top_level);
 }
