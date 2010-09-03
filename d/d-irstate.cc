@@ -204,10 +204,8 @@ IRBase::popStatementList()
 tree
 IRBase::getLabelTree(LabelDsymbol * label)
 {
-    if (! label->statement) {
-	error("undefined label %s", label->ident->string); // %% ident okay?
+    if (! label->statement)
 	return NULL_TREE;
-    }
     
     if (! label->statement->lblock) {
 	tree label_decl = build_decl (LABEL_DECL, get_identifier(label->ident->string), void_type_node);
@@ -219,6 +217,11 @@ IRBase::getLabelTree(LabelDsymbol * label)
 	if (label->statement->loc.filename)
 	    g.ofile->setDeclLoc( label_decl, label->statement->loc ); // %% label->loc okay?
 	label->statement->lblock = label_decl;
+#if 0 /* V1 */ 
+	if (! label->statement->fwdrefs)
+	    label->statement->fwdrefs = new Array();
+	label->statement->fwdrefs->push(label_decl); // %% what to push?
+#endif
     }
     return label->statement->lblock;
 }
@@ -332,7 +335,7 @@ IRBase::doLabel(tree t_label)
        This makes auto-vectorization possible in conditional loops.
        The only excemption to this is in LabelStatement::toIR, in which
        all computed labels are marked regardless.  */
-    if(D_LABEL_USED(t_label))
+    if(D_LABEL_IS_USED(t_label))
 	addExp(build1(LABEL_EXPR, void_type_node, t_label));
 }
 

@@ -3055,7 +3055,7 @@ IRState::doJump(Statement * stmt, tree t_label)
     if (stmt)
 	g.ofile->doLineNote(stmt->loc);
     expand_goto(t_label);
-    D_LABEL_USED(t_label) = 1 ;
+    D_LABEL_IS_USED(t_label) = 1 ;
 }
 
 tree
@@ -3264,7 +3264,7 @@ IRState::doJump(Statement * stmt, tree t_label)
     if (stmt)
 	g.ofile->doLineNote(stmt->loc);
     addExp(build1(GOTO_EXPR, void_type_node, t_label));
-    D_LABEL_USED(t_label) = 1;
+    D_LABEL_IS_USED(t_label) = 1;
 }
 
 tree

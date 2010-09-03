@@ -79,9 +79,6 @@ enum d_tree_code {
    but a literal function / method reference */
 #define D_IS_METHOD_CALL_EXPR(NODE) (TREE_LANG_FLAG_0(NODE))
 
-/* True if the label has been computed, or used by the frontend. */
-#define D_LABEL_USED(NODE) (TREE_LANG_FLAG_1(NODE))
-
 /* True if the symbol should be made "link one only".  This is used to
    defer calling make_decl_one_only() before the decl has been prepared. */
 #define D_DECL_ONE_ONLY(NODE) (DECL_LANG_FLAG_0(NODE))
@@ -93,6 +90,9 @@ enum d_tree_code {
 
 /* True if the function has been marked "naked". */
 #define D_DECL_NO_FRAME_POINTER(NODE) (DECL_LANG_FLAG_2(NODE))
+
+/* True if the label has been computed, or used by the frontend. */
+#define D_LABEL_IS_USED(NODE) (DECL_LANG_FLAG_3(NODE))
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and

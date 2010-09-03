@@ -3685,26 +3685,26 @@ void
 LabelStatement::toIR(IRState* irs)
 {
     FuncDeclaration * func = irs->func;
-#if 0
-    LabelDsymbol * label = fwdrefs ? func->returnLabel : func->searchLabel(ident);
-#else
+#if V2
     LabelDsymbol * label = isReturnLabel ? func->returnLabel : func->searchLabel(ident);
+#else
+    LabelDsymbol * label = func->searchLabel(ident);
 #endif
-    tree t = irs->getLabelTree( label );
+    tree t_label;
 
-    if (t) {
-	D_LABEL_USED(t) = 1;
-	irs->doLabel(t);
+    // %% Safe to use lblock as first choice?
+    if ( (t_label = lblock) || (t_label = irs->getLabelTree(label)) )
+    {
+	D_LABEL_IS_USED(t_label) = 1;
+	irs->doLabel(t_label);
 	if (label->asmLabelNum)
 	    d_expand_priv_asm_label(irs, label->asmLabelNum);
-
-#if 0
-	if (fwdrefs && func->fensure)
-#else
+#if V2
 	if (isReturnLabel && func->fensure)
-#endif
 	    func->fensure->toIR(irs);
-	else if (statement)
+	else
+#endif
+	if (statement)
 	    statement->toIR(irs);
     }
     // else, there was an error
@@ -3713,16 +3713,17 @@ LabelStatement::toIR(IRState* irs)
 void
 GotoStatement::toIR(IRState* irs)
 {
+    tree t_label;
+
     g.ofile->setLoc(loc); /* This makes the 'undefined label' error show up on the correct line...
 			     The extra doLineNote in doJump shouldn't cause a problem. */
+    if (!label->statement)
+	error("label %s is undefined", label->toChars());
+    else if (tf != label->statement->tf)
+	error("cannot goto forward out of or into finally block");
 
-    tree t = irs->getLabelTree( label );
-    if (t)
-    {
-	if (tf != label->statement->tf)
-	    error("cannot goto forward out of or into finally block");
-	irs->doJump(this, t);
-    }
+    if ( (t_label = irs->getLabelTree(label)) )
+	irs->doJump(this, t_label);
     // else, there was an error
 }
 
