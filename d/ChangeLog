@@ -5,11 +5,6 @@
 	member member array in static func
 	[955dc7d43780]
 
-	* d-codegen.cc, d-glue.cc, d-irstate.cc, d-lang.h, dmd/func.c,
-	dmd/statement.c, dmd/statement.h:
-	Issue #54: 1.063 changes in phobos versioning + dmd backend.
-	[4c10fa4a539a]
-
 2010-09-01  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* dmd/cast.c, dmd/impcnvgen.c, dmd2/impcnvgen.c:

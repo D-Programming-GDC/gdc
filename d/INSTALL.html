@@ -17,89 +17,65 @@
 <h3>Required source packages</h3>
 
 <ul>
-
-  <li>The "core" package of a recent GCC 3.4.x, 4.0.x, or 4.1.x
+  <li>The "core" package of a recent GCC 3.4.x, 4.0.x, 4.1.x, 4.2.x, 4.3.x or 4.4.x
 release.<br>
-
   </li>
-
   <li>The GDC source package<span style="font-weight: bold;">.</span></li>
-
 </ul>
 
 <h3>Required software</h3>
 
 <ul>
-
   <li>The usual <a href="http://gcc.gnu.org/install/prerequisites.html">GCC
 requirements</a><br>
-
   </li>
-
   <li>An existing C++ compiler (even if you use <span style="font-family: monospace;">make bootstrap</span>).&nbsp; G++ 3.x,
 4.0.1, and later versions
 are known to work.&nbsp; G++ 2.x and 4.0.0 are
 known to <span style="font-style: italic;">not </span>work.</li>
-
 </ul>
+
 For runtime software requirements, see the <a href="manual.html">user manual</a>.
+
 <h3>Directories</h3>
 
 <ul>
-
   <li><span style="font-style: italic; font-family: monospace;">&lt;srcdir&gt;</span>
 -- Location of the GCC sources</li>
-
   <li><span style="font-style: italic; font-family: monospace;">&lt;builddir&gt;</span>
 -- Build directory for GCC</li>
-
   <li><span style="font-style: italic; font-family: monospace;">&lt;prefix&gt;</span>
 -- Install directory for GCC</li>
-
 </ul>
 
 <h3>Building the Compiler and Runtime Library<br>
-
 </h3>
 
 <ol>
-
   <li>Unpack the GCC archive.&nbsp; This creates <span style="font-family: monospace;">&lt;</span><span style="font-style: italic; font-family: monospace;">srcdir</span><span style="font-family: monospace;">&gt;</span>.<br>
-
   </li>
-
   <li>Change to the <span style="font-style: italic; font-family: monospace;">&lt;srcdir&gt;</span><span style="font-family: monospace;">/gcc</span> directory.</li>
-
   <li>Unpack the gdc archive.&nbsp; This will create a
 subdirectory named "<span style="font-family: monospace;">d</span>".</li>
-
   <li>Change back to <span style="font-style: italic; font-family: monospace;">&lt;srcdir&gt;</span><span style="font-family: monospace;"></span> and run the setup script:<br>
-
     <br>
-
     <span style="font-family: monospace;">./gcc/d/setup-gcc.sh</span><br>
 
     <br>
-      If the source was obtained from Subversion, use
+      If the source was obtained from Mercurial, use
       <span style="font-family: monospace;">--d-language-version</span>
 	to specify which version of the D language to use:<br>
 	<br>
     <span style="font-family: monospace;">./gcc/d/setup-gcc.sh --d-language-version=2</span><br>
-
     <br>
       Note that this creates a file in the <span style="font-family: monospace;">d/</span> source directory.    <br>
-
     <br>
-
-
   </li>
-
   <li>Build GCC using the normal <a href="http://gcc.gnu.org/install/">install
 instructions</a>.&nbsp; The
 only difference is that "<span style="font-family: monospace;">d</span>"
 is added to the <span style="font-family: monospace;">--enable-languages</span>
 option.<br>
-
     <br>
 
 If you need to specify a compiler
@@ -120,12 +96,9 @@ Remember to always use "<span style="font-family: monospace;">gmake</span>"
 if GNU Make is not the system's default.<span style="font-style: italic;"></span>&nbsp;<br>
 
     <br>
-
   </li>
-
   <li>Install with "<span style="font-family: monospace;">make
-install</span>". <br>
-
+install</span>". (Depending on your distribution, you may need to use "sudo make install" instead of just "make install".)<br>
   </li>
 
 </ol>
@@ -151,14 +124,10 @@ the files:<br>
 
   <li>Do a native build on the target.&nbsp; The files will
 be in <span style="font-style: italic; font-family: monospace;">&lt;builddir&gt;/&lt;target&gt;/libphobos</span>.<br>
-
   </li>
-
   <li>Look at the existing files in <span style="font-style: italic; font-family: monospace;">&lt;srcdir&gt;</span><span style="font-family: monospace;">/gcc/d/phobos/config/mingw</span> as
 an example of what is need.<br>
-
   </li>
-
   <li>Let the build fail for Phobos.&nbsp; You will have a working C
 cross-compiler at that point. Compile gen_config1.c,
 gen_math.c, gen_unix.c, run them on the target, and copy the resultant
@@ -173,47 +142,29 @@ option --enable-phobos-config-dir=&lt;dir&gt;.<br>
 <br>
 
 <h3>Runtime Library Notes<br>
-
 </h3>
 
 <ul>
 
   <li>To run the unit tests, run "<span style="font-family: monospace;">make
 check-target-libphobos</span>".<br>
-
   </li>
-
   
   <ul>
-
-    <li>On some targets, std.math tests will fail because
-there
+    <li>On some targets, std.math tests will fail because there
 is no 80-bit real (or library support for it.)</li>
-
     <li>On some targets, std.conv tests will fail because the floating
 point conversion functions do not work as expected.<br>
-
     </li>
-
-  
   </ul>
 
-  
   <ul>
-
     <li>On FreeBSD and Linux, the test of the "%A" format will fail due
 to a library bug.<br>
-
     </li>
-
-  
   </ul>
-
+  
 </ul>
-
-<ol>
-
-</ol>
 
 </body>
 </html>

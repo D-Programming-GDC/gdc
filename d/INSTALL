@@ -2,7 +2,7 @@ Build Instructions
 
 Required source packages
 
-    * The "core" package of a recent GCC 3.4.x, 4.0.x, or 4.1.x release.
+    * The "core" package of a recent GCC 3.4.x, 4.0.x, 4.1.x, 4.2.x, 4.3.x or 4.4.x release.
     * The GDC source package.
       
 Required software
@@ -48,7 +48,8 @@ Building the Compiler and Runtime Library
 
       Remember to always use "gmake" if GNU Make is not the system's default.
 
-   6. Install with "make install". 
+   6. Install with "make install". (Depending on your distribution, you may need
+   to use "sudo make install" instead of just "make install".)
 
 
 Building a Cross Compiler

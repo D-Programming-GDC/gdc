@@ -14,18 +14,22 @@ gdc accepts mostly the same options as gcc.
 .IP files.htm
 .IP files.html
 D source files
+.IP files.di
+D interface files
 .IP files.o  
 Object files to link in
 .IP files.a
 Library files to link in
-.IP  -frelease
-compile release version
-.IP  -funittest
-compile in unit tests
+.IP -fall-sources
+For each source file on the command line, semantically process each file
+preceding it.  Use this if compilation errors occur due to complicated
+.IP -f[no-]bounds-check
+Controls array bounds checking
+circular module references.  This will slow compilation noticeably.
 .IP  -fdeprecated
 allow deprecated features
-.IP  -fversion=ident
-compile in version code identified by ident
+.IP  -fdeps=<filename>
+output module dependencies to <filename>
 .IP -femit-templates[=full|private|none|auto]
 Controls whether or not template code is emitted.
 
@@ -41,13 +45,34 @@ Do not emit templates at all.
 For targets that support templates, the "full" mode is used. 
 Otherwise, the "private" mode is used.
 .RE
-.IP -f[no-]bounds-check
-Controls array bounds checking
-.IP -fall-sources
-For each source file on the command line, semantically process each file
-preceding it.  Use this if compilation errors occur due to complicated
-circular module references.  This will slow compilation noticeably.
+
+.IP  -fintfc
+generate D interface files
+.IP  -fintfc-dir=<dir>
+write D interface files to directory <dir>
+.IP -fintfc-file=<filename>
+wite D interface file to <filename>
+.IP  -frelease
+compile release version
+.IP  -funittest
+compile in unit tests
+.IP  -fversion=ident
+compile in version code identified by ident
+.IP  -fXf=<filename>
+output JSON to <filename>
+
 .SH SEE ALSO
 .BR gcc(1)
+
 .SH AUTHOR
-Copyright (C) 2004 David Friedman
+Copyright
+
+(C) 2004 David Friedman
+
+Modified by
+
+(C) 2010 Iain Buclaw
+
+(C) 2010 Michael Parrott
+
+(C) 2010 Vincenzo Ampolo

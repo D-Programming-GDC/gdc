@@ -1,4 +1,10 @@
-0.25:
+0.25: (Future release)
+  * Support for GCC, 4.2.x, 4.3.x, and 4.4.x added
+  * Updated D1 to 1.063
+  * Updated D2 to 2.020
+  * Added druntime support
+  * Fixed Bugzilla ...
+  * Fixed Bitbucket issues ...
 
 0.24:
   * Removed support for GCC 3.3.x
@@ -20,7 +26,7 @@
   * Updated to DMD 1.004
   * Fixed Bugzilla 836, 837, 838, 839, 841, 843, 844, 889, 896
   * Fixed problems with missing debug information
-  * Added Rick Mann's -frameowrk patch for gdmd
+  * Added Rick Mann's -framework patch for gdmd
 
 0.21:
   * Updated to DMD 1.00

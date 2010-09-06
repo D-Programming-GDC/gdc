@@ -12,7 +12,7 @@ Release Notes for 0.24
 
 Supported Systems
 
-    * GCC 3.4.x, 4.0.x, 4.1.x
+    * GCC 3.4.x, 4.0.x, 4.1.x, 4.2.x, 4.3.x, 4.4.x
     * Linux (tested on Fedora Core 5 x86, x86_64, and PowerPC)
     * Mac OS X 10.3.9 and 10.4.x
     * FreeBSD 6.x
@@ -35,14 +35,15 @@ Requirements
 Downloads
 
     * Main package
-      http://sourceforge.net/projects/dgcc
+      hhttp://bitbucket.org/goshawk/gdc/wiki/Home
     * Build Instructions
-      http://dgcc.sourceforge.net/gdc/install.html
+      http://bitbucket.org/goshawk/gdc/wiki/Home#installation
       (or see INSTALL included in the main package)
 
 Links
 
-    * This Project -- http://dgcc.sourceforge.net/
+    * This Project -- http://bitbucket.org/goshawk/gdc/wiki/Home
+    * Previous home -- http://dgcc.sourceforge.net/
     * The D Programming Language -- http://www.digitalmars.com/d/
     * D Links Page -- http://digitalmars.com/d/dlinks.html
     * The D.gnu newsgroup -- news://news.digitalmars.com/D.gnu
@@ -54,6 +55,10 @@ Links
 Contact
 David Friedman
 e-mail: dvdfrdmn@users.sf.net
+Iain Buclaw
+e-mail: ibuclaw@ubuntu.com
+Michael Parrott
+e-mail: baseball.mjp@gmail.com
 
 Status
 
