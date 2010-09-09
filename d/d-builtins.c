@@ -58,9 +58,7 @@ extern void dkeep(tree t);
 #endif
 
 
-#if D_GCC_VER341
-#include "d-bi-attrs-341.h"
-#elif D_GCC_VER == 34
+#if D_GCC_VER == 34
 #include "d-bi-attrs-34.h"
 #elif D_GCC_VER == 40
 #include "d-bi-attrs-40.h"
@@ -76,7 +74,12 @@ extern void dkeep(tree t);
 #error "Version of GCC is not supported."
 #endif
 
-#if D_GCC_VER >= 41
+
+/* Nonzero if an ISO standard was selected.  It rejects macros in the
+   user's namespace.  */
+
+/*extern*/ int flag_iso;
+
 /* Nonzero means enable C89 Amendment 1 features.  */
 
 /*extern*/ int flag_isoc94;
@@ -84,7 +87,7 @@ extern void dkeep(tree t);
 /* Nonzero means use the ISO C99 dialect of C.  */
 
 /*extern*/ int flag_isoc99;
-#endif
+
 
 /* Used to help initialize the builtin-types.def table.  When a type of
    the correct size doesn't exist, use error_mark_node instead of NULL.

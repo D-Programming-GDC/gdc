@@ -84,8 +84,6 @@ build_indirect_ref (location_t loc, tree ptr, const char *errorstring)
     return NULL_TREE;
 }
 
-int flag_iso; // used in d-lang.cc
-
 enum { unused } c_language;
 
 enum cpp_ttype
