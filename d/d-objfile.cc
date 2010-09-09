@@ -9,12 +9,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -140,7 +140,7 @@ cvtLocToloc_t(const Loc loc)
     StringValue * sv = lmtab.update(loc.filename, strlen(loc.filename));
     const struct line_map * lm = 0;
     unsigned new_line_count = 0;
-    
+
     if (! sv->intvalue)
     {
 	new_line_count = 5000;
@@ -159,7 +159,7 @@ cvtLocToloc_t(const Loc loc)
 	linemap_add(line_table, LC_LEAVE, 0, NULL, 0);
 	lm = linemap_lookup(line_table, sv->intvalue);
     }
-    
+
     // cheat...
     return
     	lm->start_location + ((loc.linnum - lm->to_line) << lm->column_bits);
@@ -208,7 +208,7 @@ ObjectFile::setDeclLoc(tree t, Dsymbol * decl)
     }
 
     // fallback; backend sometimes crashes if not set
-    
+
     Loc l;
 
     Module * m = decl->getModule();
@@ -216,9 +216,9 @@ ObjectFile::setDeclLoc(tree t, Dsymbol * decl)
 	l.filename = m->srcfile->name->str;
     } else {
 	l.filename = "<no_file>"; // Emptry string can mess up debug info
-    }    
+    }
     l.linnum = 1;
-    setDeclLoc(t, l); 
+    setDeclLoc(t, l);
 }
 
 #if D_GCC_VER >= 40
@@ -239,7 +239,7 @@ ObjectFile::setCfunEndLoc(const Loc & loc)
 	cfun->function_end_locus.file = DECL_SOURCE_FILE (fn_decl);
 	cfun->function_end_locus.line = DECL_SOURCE_LINE (fn_decl);
     }
-# endif    
+# endif
 }
 #endif
 
@@ -288,16 +288,16 @@ is_function_nested_in_function(Dsymbol * dsym)
 		cd = dsym->isClassDeclaration();
 	}
     }
-    
+
     return false;
-}   
+}
 #endif
 
 void
 ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
 {
     /* First method: Use one-only/coalesced attribute.
-       
+
        If user has specified -femit-templates=private, honor that
        even if the target supports one-only. */
     if ( ! D_DECL_IS_TEMPLATE( decl_tree ) || gen.emitTemplates != TEprivate ) {
@@ -313,10 +313,10 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
 	    || ( dsym && is_function_nested_in_function(dsym) )
 #endif
 	     ) {
-	    
+
 	    return;
 	}
-	    
+
 #ifdef MAKE_DECL_COALESCED
 	// %% TODO: check if available like SUPPORTS_ONE_ONLY
 	// for Apple gcc...
@@ -337,7 +337,7 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
 	}
     }
 
-    /* Second method: Make a private copy. 
+    /* Second method: Make a private copy.
 
        For RTTI, we can always make a private copy.  For templates, only do
        this if the user specified -femit-templates=private. */
@@ -358,7 +358,7 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
 {
     Declaration * real_decl = dsym->isDeclaration();
     FuncDeclaration * func_decl = real_decl ? real_decl->isFuncDeclaration() : 0;
-    
+
     if (force_static_public ||
 	( TREE_CODE( decl_tree ) == VAR_DECL && (real_decl && real_decl->isDataseg()) ) ||
 	( TREE_CODE( decl_tree ) == FUNCTION_DECL ) ) {
@@ -396,7 +396,7 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
 	if (TREE_CODE( decl_tree ) == VAR_DECL &&
 	    (real_decl && (real_decl->storage_class & STCextern)) )
 	    is_static = false;
-	
+
 	if ( is_static ) {
 	    DECL_EXTERNAL( decl_tree ) = 0;
 	    TREE_STATIC( decl_tree ) = 1; // %% don't set until there is a body?
@@ -466,9 +466,9 @@ ObjectFile::outputStaticSymbol(tree t) {
     /* D allows zero-length declarations.  Such a declaration ends up with
        DECL_SIZE(t) == NULL_TREE which is what the backend function
        assembler_variable checks.  This could change in later versions...
-       
+
        Maybe all of these variables should be aliased to one symbol... */
-    
+
     // %%TODO: could move this to lang_hooks.decls.prepare_assemble_variable to
     // make this check less precarious. -- or finish_incomplete_decl (from
     // wrapup_global_declarations
@@ -476,7 +476,7 @@ ObjectFile::outputStaticSymbol(tree t) {
 	DECL_SIZE(t) = bitsize_int(0);
 	DECL_SIZE_UNIT(t) = size_int(0);
     } // Otherwise, if DECL_SIZE == 0, just let it fail...
-    
+
     rodc(t, 1);
 }
 
@@ -485,7 +485,7 @@ ObjectFile::outputFunction(FuncDeclaration * f)
 {
     Symbol * s = f->toSymbol();
     tree t = s->Stree;
-    
+
     if (TREE_CODE(t) == FUNCTION_DECL)
     {
 	if (DECL_STATIC_CONSTRUCTOR( t ))
@@ -559,7 +559,7 @@ ObjectFile::addAggMethods(tree rec_type, AggregateDeclaration * agg)
 	ListMaker methods;
 	for (unsigned i = 0; i < agg->methods.dim; i++) {
 	    FuncDeclaration * fd = (FuncDeclaration *) agg->methods.data[i];
-	    
+
 	    methods.chain(fd->toSymbol()->Stree);
 	}
 	TYPE_METHODS( rec_type ) = methods.head;
@@ -626,7 +626,7 @@ ObjectFile::initTypeDecl(tree t, tree decl)
 #else
 	    // g++ does this and the debugging code assumes it:
 	    DECL_ARTIFICIAL( TYPE_STUB_DECL( t ) ) = 1;
-#endif	    
+#endif
 	    break;
 	default:
 	    // nothing
@@ -784,7 +784,7 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
 
 	current_function_decl = thunk_decl;
 	DECL_RESULT( thunk_decl ) = build_decl(RESULT_DECL, 0, integer_type_node);
-	
+
 	fnname = XSTR(XEXP(DECL_RTL(thunk_decl), 0), 0);
 	gen.initFunctionStart(thunk_decl, 0);
 	cfun->is_thunk = 1;
@@ -816,7 +816,7 @@ ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, boo
 	Symbol * s = mod->toSymbolX(name + 1, 0, 0, "FZv");
 	name = s->Sident;
     }
-    
+
     TypeFunction * func_type = new TypeFunction(0, Type::tvoid, 0, LINKc);
     FuncDeclaration * func = new FuncDeclaration(mod->loc, mod->loc, // %% locs may be wrong
 	Lexer::idPool(name), STCstatic, func_type); // name is only to prevent crashes
@@ -832,7 +832,7 @@ ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, boo
     // D static ctors, dtors, unittests, and the ModuleInfo chain function
     // are always private (see ObjectFile::setupSymbolStorage, default case)
     TREE_PUBLIC( func_decl ) = public_fn;
-    
+
     // %% maybe remove the identifier
 
     func->fbody = new ExpStatement(mod->loc,
@@ -924,7 +924,7 @@ dt_size(dt_t * dt)
 	switch (dt->dt) {
 	    case DT_azeros:
 	    case DT_common:
-	    case DT_nbytes:	
+	    case DT_nbytes:
 		size += dt->DTint;
 		break;
 	    case DT_abytes:
@@ -971,7 +971,7 @@ check_static_sym(Symbol * sym)
 	    TREE_READONLY( t_var ) = TREE_READONLY( t_ini ) = 1;
 	}
 	// %% need to check SCcomdat?
-	
+
 	TREE_PRIVATE( t_var ) = 1;
 	DECL_IGNORED_P( t_var ) = 1;
 	DECL_ARTIFICIAL( t_var ) = 1;
@@ -999,7 +999,7 @@ dt2node(dt_t * dt)
     case DT_nbytes:
 	{
 	    tree s = build_string(dt->DTint, (char *) dt->DTpointer);
-	    TREE_TYPE( s ) = gen.arrayType(Type::tuns8, dt->DTint);	    
+	    TREE_TYPE( s ) = gen.arrayType(Type::tuns8, dt->DTint);
 	    return s;
 	}
     case DT_abytes:
@@ -1144,7 +1144,7 @@ outdata(Symbol * sym)
 	DECL_EXTERNAL( t ) = 0;
 	TREE_STATIC( t ) = 1;
     }
-    
+
     layout_decl(t, 0);
 
     // from outputStaticSymbol:

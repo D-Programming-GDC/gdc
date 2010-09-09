@@ -1,6 +1,6 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2004 David Friedman
-   
+
    Modified by
     Michael Parrott, Iain Buclaw, (C) 2010
 
@@ -8,12 +8,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -118,7 +118,7 @@ gcc_type_to_d_type(tree t)
 		return Type::tfloat64;
 	    else if (t == long_double_type_node)
 		return Type::tfloat80;
-	    
+
 	    unsigned sz = tree_low_cst( TYPE_SIZE_UNIT( t ), 1 );
 	    for (int i = 0; i < (int) TMAX; i++) {
 		d = Type::basic[i];
@@ -148,7 +148,7 @@ gcc_type_to_d_type(tree t)
 	    tree index = TYPE_DOMAIN (t);
 	    tree ub = TYPE_MAX_VALUE (index);
 	    tree lb = TYPE_MIN_VALUE (index);
-	    tree length	    
+	    tree length
 		= size_binop (PLUS_EXPR, size_one_node,
 				 convert (sizetype,
 					  fold (build2 (MINUS_EXPR,
@@ -169,7 +169,7 @@ gcc_type_to_d_type(tree t)
 		if (ti == t)
 		    return (Type *) builtin_converted_types.data[i + 1];
 	    }
-	    
+
 	    const char * name;
 	    char name_buf[64];
 	    static int serial;
@@ -181,7 +181,7 @@ gcc_type_to_d_type(tree t)
 		snprintf(name_buf, sizeof(name_buf), "__bi_type_%d", ++serial);
 		name = name_buf;
 	    }
-	    
+
 	    StructDeclaration * sd = new StructDeclaration(0, Lexer::idPool(name));
 	    /* The gcc.builtins module may not exist yet, so cannot set
 	       sd->parent here. If it is va_list, the parent needs to
@@ -190,7 +190,7 @@ gcc_type_to_d_type(tree t)
 	    sd->structsize = int_size_in_bytes( t );
 	    sd->alignsize = TYPE_ALIGN_UNIT( t );
 	    sd->sizeok = 1;
-	    
+
 	    d = new TypeStruct(sd);
 	    sd->type = d;
 	    sd->handle = new TypePointer(d);
@@ -212,7 +212,7 @@ gcc_type_to_d_type(tree t)
 	    Type * ret = gcc_type_to_d_type(TREE_TYPE(t));
 	    if (! ret)
 		return NULL;
-	    
+
 	    tree t_arg_types = TYPE_ARG_TYPES(t);
 	    int varargs = t_arg_types != NULL_TREE;
 #if V2 //Until 2.037
@@ -233,7 +233,7 @@ gcc_type_to_d_type(tree t)
 			ta = TREE_TYPE( ta );
 			io = STCref;
 		    }
-		    
+
 		    Type * d_arg_type = gcc_type_to_d_type(ta);
 		    if (! d_arg_type)
 			return NULL;
@@ -265,7 +265,7 @@ d_bi_builtin_func(tree decl)
 }
 
 
-    
+
 
 // std.stdarg is different: it expects pointer types (i.e. _argptr)
 /*
@@ -292,7 +292,7 @@ d_gcc_magic_stdarg_module(Module *m, bool is_c_std_arg)
 		IRState::setCStdArgStart(td);
 	    } else
 		continue;
-	    
+
 	    if ( TREE_CODE( va_list_type_node ) == ARRAY_TYPE ) {
 		/* For GCC, a va_list can be an array.  D static arrays are
 		   automatically passed by reference, but the 'inout'

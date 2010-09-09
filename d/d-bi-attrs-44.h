@@ -614,7 +614,7 @@ get_priority (tree args, bool is_destructor)
 
   if (!args)
     return DEFAULT_INIT_PRIORITY;
-  
+
   if (!SUPPORTS_INIT_PRIORITY)
     {
       if (is_destructor)
@@ -638,12 +638,12 @@ get_priority (tree args, bool is_destructor)
       if (is_destructor)
 	warning (0,
 		 "destructor priorities from 0 to %d are reserved "
-		 "for the implementation", 
+		 "for the implementation",
 		 MAX_RESERVED_INIT_PRIORITY);
       else
 	warning (0,
 		 "constructor priorities from 0 to %d are reserved "
-		 "for the implementation", 
+		 "for the implementation",
 		 MAX_RESERVED_INIT_PRIORITY);
     }
   return pri;
@@ -1051,7 +1051,7 @@ handle_weak_attribute (tree *node, tree name,
     declare_weak (*node);
   else
     warning (OPT_Wattributes, "%qE attribute ignored", name);
-    	
+
 
   return NULL_TREE;
 }
@@ -1066,11 +1066,11 @@ handle_alias_attribute (tree *node, tree name, tree args,
   tree decl = *node;
 
   if ((TREE_CODE (decl) == FUNCTION_DECL && DECL_INITIAL (decl))
-      || (TREE_CODE (decl) != FUNCTION_DECL 
+      || (TREE_CODE (decl) != FUNCTION_DECL
 	  && TREE_PUBLIC (decl) && !DECL_EXTERNAL (decl))
       /* A static variable declaration is always a tentative definition,
 	 but the alias is a non-tentative definition which overrides.  */
-      || (TREE_CODE (decl) != FUNCTION_DECL 
+      || (TREE_CODE (decl) != FUNCTION_DECL
 	  && ! TREE_PUBLIC (decl) && DECL_INITIAL (decl)))
     {
       error ("%q+D defined both normally and as an alias", decl);
@@ -1353,11 +1353,11 @@ handle_alloc_size_attribute (tree *node, tree ARG_UNUSED (name), tree args,
       tree position = TREE_VALUE (args);
 
       if (TREE_CODE (position) != INTEGER_CST
-	  || TREE_INT_CST_HIGH (position) 
+	  || TREE_INT_CST_HIGH (position)
 	  || TREE_INT_CST_LOW (position) < 1
 	  || TREE_INT_CST_LOW (position) > arg_count )
 	{
-	  warning (OPT_Wattributes, 
+	  warning (OPT_Wattributes,
 	           "alloc_size parameter outside range");
 	  *no_add_attrs = true;
 	  return NULL_TREE;
@@ -1728,14 +1728,14 @@ handle_sentinel_attribute (tree *node, tree name, tree args,
 	  *no_add_attrs = true;
 	}
     }
-  
+
   if (args)
     {
       tree position = TREE_VALUE (args);
 
       if (TREE_CODE (position) != INTEGER_CST)
 	{
-	  warning (OPT_Wattributes, 
+	  warning (OPT_Wattributes,
 		   "requested position is not an integer constant");
 	  *no_add_attrs = true;
 	}

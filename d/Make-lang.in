@@ -135,7 +135,7 @@ D_EXTRA_DEFINES += -DD_GCC_VER=$(subst .,,$(D_gcc_main_ver))
 #  ifeq ($(D_gcc_main_ver),4.0)
 #   D_EXTRA_DEFINES += -DD_GCC_VER=40
 #  else
-#    ifeq 
+#    ifeq
 #  else
 #   D_EXTRA_DEFINES += -DD_GCC_VER=41
 #  endif
@@ -167,7 +167,7 @@ D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/$(D_dmd_srcdir) -Id
 D_CC_FLAGS = -Wno-missing-braces
 D_CC_FLAGS += -fmessage-length=0
 #ifeq ($(if $(findstring darwin,$(build)),T,$(if $(findstring darwin,$(host)),T)),T)
-# 
+#
 #D_CC_FLAGS += -Wno-long-double
 #endif
 ifeq ($(if $(findstring solaris,$(build)),T,$(if $(findstring solaris,$(host)),T)),T)
@@ -251,12 +251,12 @@ else
   ifeq ($(D_gcc_main_ver),4.1)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
     D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
-  endif 
+  endif
   ifeq ($(D_gcc_main_ver),4.2)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
     D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
     D_DRIVER_OBJS += opts-common.o gcc-options.o
-  endif 
+  endif
   ifeq ($(D_gcc_main_ver),4.3)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
     D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
@@ -272,7 +272,7 @@ else
   endif
 endif
 
-D_BORROWED_C_OBJS += 
+D_BORROWED_C_OBJS +=
 
 # The full path for -include ...total.h is only needed for g++ < 3.x
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>

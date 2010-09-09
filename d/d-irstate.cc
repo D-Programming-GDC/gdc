@@ -3,17 +3,17 @@
 
    Modified by
     Iain Buclaw, (C) 2010
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -46,13 +46,13 @@ IRBase::IRBase()
 #endif
 }
 
-IRState * 
+IRState *
 IRBase::startFunction(FuncDeclaration * decl)
 {
     IRState * new_irs = new IRState();
     new_irs->parent = g.irs;
     new_irs->func = decl;
-    
+
     tree decl_tree = decl->toSymbol()->Stree;
 
     // %%MOVE to ofile -- shuold be able to do after codegen
@@ -76,7 +76,7 @@ void
 IRBase::endFunction()
 {
     assert(scopes.dim == 0);
-    
+
     func = 0; // make shouldDeferFunction return false
     // Assumes deferredFuncDecls will not change after this point
 
@@ -91,7 +91,7 @@ IRBase::endFunction()
 	    f->toObjFile(false);
 	}
     }
-	
+
     // %%TODO
     /*
     if (can_delete)
@@ -145,7 +145,7 @@ void
 IRBase::addExp(tree e)
 {
     enum tree_code code = TREE_CODE (e);
-    
+
     /* Need to check that this is actually an expression; it
        could be an integer constant (statement with no effect.)
        Maybe should filter those out anyway... */
@@ -175,9 +175,9 @@ IRBase::popStatementList()
     statementList = chain;
 
     // %% should gdc bother doing this?
-    
+
     /* If the statement list is completely empty, just return it.  This is
-       just as good small as build_empty_stmt, with the advantage that 
+       just as good small as build_empty_stmt, with the advantage that
        statement lists are merged when they appended to one another.  So
        using the STATEMENT_LIST avoids pathological buildup of EMPTY_STMT_P
        statements.  */
@@ -206,18 +206,18 @@ IRBase::getLabelTree(LabelDsymbol * label)
 {
     if (! label->statement)
 	return NULL_TREE;
-    
+
     if (! label->statement->lblock) {
 	tree label_decl = build_decl (LABEL_DECL, get_identifier(label->ident->string), void_type_node);
 
-	assert(func != 0);    
+	assert(func != 0);
 	DECL_CONTEXT( label_decl ) = getLocalContext();
 	DECL_MODE( label_decl ) = VOIDmode; // Not sure why or if this is needed
 	// Not setting this doesn't seem to cause problems (unlike VAR_DECLs)
 	if (label->statement->loc.filename)
 	    g.ofile->setDeclLoc( label_decl, label->statement->loc ); // %% label->loc okay?
 	label->statement->lblock = label_decl;
-#if 0 /* V1 */ 
+#if 0 /* V1 */
 	if (! label->statement->fwdrefs)
 	    label->statement->fwdrefs = new Array();
 	label->statement->fwdrefs->push(label_decl); // %% what to push?
@@ -237,7 +237,7 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 
 	if (scope_stmt)
 	    stmt = scope_stmt->statement;
-	
+
 	for (int i = loops.dim - 1; i >= 0; i--) {
 	    Flow * flow = (Flow *) loops.data[i];
 
@@ -252,7 +252,7 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 	for (int i = loops.dim - 1; i >= 0; i--) {
 	    Flow * flow = (Flow *) loops.data[i];
 
-	    if (( ! want_continue && flow->statement->hasBreak() ) ||		 
+	    if (( ! want_continue && flow->statement->hasBreak() ) ||
 		flow->statement->hasContinue())
 		return flow;
 	}
@@ -266,12 +266,12 @@ IRBase::Flow *
 IRBase::beginFlow(Statement * stmt, nesting * loop)
 {
     Flow * flow = new Flow;
-    
+
     flow->statement = stmt;
     flow->loop = loop;
     flow->exitLabel = NULL;
     flow->overrideContinueLabel = NULL;
-    
+
     loops.push(flow);
 
     return flow;
@@ -281,9 +281,9 @@ void
 IRBase::endFlow()
 {
     Flow * flow;
-    
+
     assert(loops.dim);
-    
+
     flow = (Flow *) loops.pop();
     if (flow->exitLabel)
 	expand_label(flow->exitLabel); // %% need a statement after this?
@@ -302,12 +302,12 @@ IRBase::Flow *
 IRBase::beginFlow(Statement * stmt)
 {
     Flow * flow = new Flow;
-    
+
     flow->statement = stmt;
     flow->exitLabel = NULL_TREE;
     flow->condition = NULL_TREE;
     flow->trueBranch = NULL_TREE;
-    
+
     loops.push(flow);
 
     pushStatementList();
@@ -319,9 +319,9 @@ void
 IRBase::endFlow()
 {
     Flow * flow;
-    
+
     assert(loops.dim);
-    
+
     flow = (Flow *) loops.pop();
     if (flow->exitLabel)
 	doLabel(flow->exitLabel);
@@ -359,12 +359,12 @@ void IRBase::startScope()
 void IRBase::endScope()
 {
     unsigned * p_count;
-    
+
     assert(scopes.dim);
     p_count = (unsigned *) scopes.tos();
 
     //endBindings();
-    
+
     //printf("%*s  ending scope with %d left \n", scopes.dim, "", *p_count);
     while ( *p_count )
 	endBindings();
@@ -382,7 +382,7 @@ void IRBase::startBindings()
 #if D_GCC_VER < 40
     // This is the key to getting local variables recorded for debugging.
     // Simplying having the whole tree of BLOCKs doesn't matter as
-    // reorder_blocks will discard the whole thing.  
+    // reorder_blocks will discard the whole thing.
     expand_start_bindings_and_block(0, block);
 #else
     pushStatementList();
@@ -416,5 +416,5 @@ void IRBase::endBindings()
     --( * (unsigned *) scopes.tos() );
     assert( * (int *) scopes.tos() >= 0 );
     //printf("%*s  end -> %d\n", scopes.dim, "", * (unsigned *) scopes.tos() );
-    
+
 }

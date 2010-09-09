@@ -27,7 +27,7 @@
 struct complex_t
 {
     real_t re;
-    real_t im;    
+    real_t im;
 
     complex_t() { this->re = 0; this->im = 0; }
     complex_t(real_t re) { this->re = re; this->im = 0; }
@@ -37,7 +37,7 @@ struct complex_t
     complex_t operator - (complex_t y) { complex_t r; r.re = re - y.re; r.im = im - y.im; return r; }
     complex_t operator - () { complex_t r; r.re = -re; r.im = -im; return r; }
     complex_t operator * (complex_t y) { return complex_t(re * y.re - im * y.im, im * y.re + re * y.im); }
-    
+
     complex_t operator / (complex_t y)
     {
 	real_t abs_y_re = y.re.isNegative() ? -y.re : y.re;

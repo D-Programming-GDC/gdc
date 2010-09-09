@@ -1,6 +1,6 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2007 David Friedman
-   
+
    Modified by
     Michael Parrott, (C) 2010
 
@@ -8,12 +8,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -99,7 +99,7 @@ static void
 cpp_mangle_arguments(TypeFunction * tf, OutBuffer * buf, CppMangleState *cms)
 {
     bool have_some_args = false;
-    
+
     if (tf->parameters)
     {
 	size_t dim = Argument::dim(tf->parameters);
@@ -124,9 +124,9 @@ cpp_mangle_arguments(TypeFunction * tf, OutBuffer * buf, CppMangleState *cms)
 		arg->type->pointerTo()->toCppMangle(buf, cms);
 		continue;
 	    }
-	    
+
 	    // %% const/invariant not translated?
-	    
+
 	    arg->type->toCppMangle(buf, cms);
 	}
     }
@@ -146,10 +146,10 @@ cpp_mangle1(Dsymbol *sthis, OutBuffer * buf, CppMangleState * cms)
     bool is_nested_ident = false;
     FuncDeclaration * fd;
     Array pfxs;
-    
+
     do
     {
-	
+
 	if ( s != sthis && s->isFuncDeclaration() )
 	{
 	    buf->writeByte('Z');
@@ -187,7 +187,7 @@ cpp_mangle1(Dsymbol *sthis, OutBuffer * buf, CppMangleState * cms)
 	if (! s->isFuncDeclaration())
 	    cms->add(s);
     }
-    
+
     if (is_nested_ident)
 	buf->writeByte('E');
 
@@ -245,10 +245,10 @@ TypeBasic::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
     char c;
     const char * s;
-    
+
     if (isConst())
 	buf->writeByte('K');
-    
+
     switch (ty)
     {
     case Tvoid: c = 'v'; break;
@@ -273,9 +273,9 @@ TypeBasic::toCppMangle(OutBuffer *buf, CppMangleState *cms)
     do_fp:
 	cpp_mangle_fp(this, s, buf, cms);
 	return;
-	
+
     case Tbool: c = 'b'; break;
-	
+
     case Tchar: c = 'c'; break;
 #ifdef WCHAR_TYPE_SIZE
     case Twchar:
@@ -312,10 +312,10 @@ TypeSArray::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 	buf->writeByte('_');
 	if (next)
 	    next->toCppMangle(buf, cms);
-	
+
 	assert(! cms->hasSubstitute(this, NULL));
 
-	cms->add(this); 
+	cms->add(this);
     }
 }
 
@@ -339,9 +339,9 @@ TypePointer::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 	buf->writeByte('P');
 	if (next)
 	    next->toCppMangle(buf, cms);
-	
+
 	assert(! cms->hasSubstitute(this, NULL));
-	
+
 	cms->add(this);
     }
 }
@@ -354,7 +354,7 @@ TypeReference::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 	buf->writeByte('R');
 	if (next)
 	    next->toCppMangle(buf, cms);
-	
+
 	assert(! cms->hasSubstitute(this, NULL));
 
 	cms->add(this);
@@ -410,7 +410,7 @@ TypeClass::toCppMangle(OutBuffer *buf, CppMangleState *cms)
     {
 	buf->writeByte('P');
 	cpp_mangle1(sym, buf, cms);
-	
+
 	assert(! cms->hasSubstitute(this, NULL));
 
 	cms->add(this);

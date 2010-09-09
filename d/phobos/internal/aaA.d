@@ -57,13 +57,6 @@ static size_t[] prime_list = [
 //    8_589_934_513UL, 17_179_869_143UL
 ];
 
-/* This is the type of the return value for dynamic arrays.
- * It should be a type that is returned in registers.
- * Although DMD will return types of Array in registers,
- * gcc will not, so we instead use a 'long'.
- */
-alias long ArrayRet_t;
-
 struct Array
 {
     size_t length;

@@ -1,6 +1,6 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2004 David Friedman
-   
+
    Modified by
     Michael Parrott, (C) 2009
     Iain Buclaw, (C) 2010
@@ -9,12 +9,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -24,7 +24,7 @@
 #include "dt.h"
 
 dt_t**
-dtval(dt_t** pdt, DT t, 
+dtval(dt_t** pdt, DT t,
 #if V1
 dinteger_t i,
 #else
@@ -68,7 +68,7 @@ dtnbits(dt_t** pdt, size_t count, char * pbytes, unsigned unit_size)
 
     while (p_unit < p_unit_end) {
 	bitunit_t inv = *p_unit++;
-	
+
 	for (unsigned i = 0; i < sizeof(bitunit_t)*8; i++) {
 	    outv |= ((inv >> i) & 1) << b;
 	    if (++b == 8) {
@@ -80,6 +80,6 @@ dtnbits(dt_t** pdt, size_t count, char * pbytes, unsigned unit_size)
     }
     assert( (unsigned)(p_out - pbits) == count);
 
-    return dtnbytes(pdt, count, pbits);    
+    return dtnbytes(pdt, count, pbits);
 }
 

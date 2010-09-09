@@ -1,6 +1,6 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2004 David Friedman
-   
+
    Modified by
     Michael Parrot, (C) 2009, 2010
 
@@ -8,12 +8,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -132,7 +132,7 @@ struct IRState : IRBase
     } Intrinsic;
 
     static tree declContext(Dsymbol * d_sym);
-    
+
     // ** Local variables
     void emitLocalVar(VarDeclaration * v, bool no_init = false);
     tree localVar(tree t_type);
@@ -141,18 +141,18 @@ struct IRState : IRBase
     tree maybeExprVar(tree exp, tree * out_var);
     void expandDecl(tree t_decl);
 
-#if V2    
+#if V2
     tree var(VarDeclaration * v);
 #else
     tree var(VarDeclaration * v) { return v->toSymbol()->Stree; }
 #endif
-    
+
     // ** Type conversion
-    
+
     // 'convertTo' just to give it a different name from the extern "C" convert
     tree convertTo(Expression * exp, Type * target_type);
     tree convertTo(tree exp, Type * exp_type, Type * target_type);
-    
+
     tree convertForAssignment(Expression * exp, Type * target_type);
     tree convertForAssignment(tree exp_tree, Type * exp_type, Type * target_type);
 #if V2 //NOTE: When the dmd frontend for D2 is up to 2.037, the #if V2 can be taken out
@@ -179,7 +179,7 @@ struct IRState : IRBase
 #endif
     }
 
-    
+
     // ** Type management
     static Type * getDType(tree t) {
 	// %% TODO: assert that its a type node..
@@ -231,12 +231,12 @@ struct IRState : IRBase
 
     static tree realPart(tree c);
     static tree imagPart(tree c);
-    
+
     // ** Dynamic arrays
     static tree darrayPtrRef(tree exp);
            tree darrayPtrRef(Expression * e) { return darrayPtrRef(e->toElem(this)); }
     static tree darrayLenRef(tree exp);
-    
+
     static tree darrayVal(tree type, tree len, tree data);
     // data may be NULL for a null pointer value
     static tree darrayVal(tree type, uinteger_t len, tree data);
@@ -244,7 +244,7 @@ struct IRState : IRBase
 	return darrayVal(type->toCtype(), len, data);
     }
     static tree darrayString(const char * str);
-    
+
     static char * hostToTargetString(char * str, size_t length, unsigned unit_size);
 
     // Length of either a static or dynamic array
@@ -269,7 +269,7 @@ struct IRState : IRBase
     static tree twoFieldType(tree rec_type, tree ft1, tree ft2, Type * d_type = 0, const char * n1 = "_a", const char * n2 = "_b");
     static tree twoFieldType(Type * ft1, Type * ft2, Type * d_type = 0, const char * n1 = "_a", const char * n2 = "_b");
     static tree twoFieldCtor(tree rec_type, tree f1, tree f2, int storage_class = 0);
-    
+
     // ** Temporaries (currently just SAVE_EXPRs)
 
     // Create a SAVE_EXPR if 't' might have unwanted side effects if referenced
@@ -283,10 +283,10 @@ struct IRState : IRBase
 
     // ** Various expressions
     tree toElemLvalue(Expression * e);
-    
+
     static tree addressOf(tree exp) {
 	tree t;
-	
+
 	d_mark_addressable(exp);
 #if ENABLE_CHECKING
 	// Gimplify doesn't like &(*(ptr-to-array-type)) with static arrays
@@ -333,7 +333,7 @@ struct IRState : IRBase
     static tree
     pvoidOkay(tree t) {
 	if ( VOID_TYPE_P( TREE_TYPE( TREE_TYPE( t ))) ) {
-	    // ::warning("indexing array of void"); 
+	    // ::warning("indexing array of void");
 	    return convert(Type::tuns8->pointerTo()->toCtype(), t);
 	} else
 	    return t;
@@ -342,10 +342,10 @@ struct IRState : IRBase
     tree boolOp(enum tree_code code, tree a, tree b) {
 	return build2(code, boolean_type_node, a, b);
     }
-    
+
     tree checkedIndex(Loc loc, tree index, tree upper_bound, bool inclusive);
     tree boundsCond(tree index, tree upper_bound, bool inclusive);
-    
+
     tree arrayElemRef(IndexExp * aer_exp, ArrayScope * aryscp);
 
 #if D_GCC_VER < 40
@@ -356,7 +356,7 @@ struct IRState : IRBase
 #else
     static tree binding(tree var_chain, tree body);
 #endif
-    
+
     static tree compound(tree a, tree b, tree type = 0) {
 	return build2(COMPOUND_EXPR, type ? type : TREE_TYPE(b), a, b);
     }
@@ -395,13 +395,13 @@ struct IRState : IRBase
 	    (TREE_CODE(t) == NOP_EXPR &&
 		TREE_CODE( TREE_OPERAND(t, 0) ) == ERROR_MARK);
     }
-    
+
     // ** Function calls
     tree call(Expression * expr, Array * arguments);
     tree call(FuncDeclaration * func_decl, Array * args);
     tree call(FuncDeclaration * func_decl, tree object, Array * args);
     tree call(TypeFunction *guess, tree callable, tree object, Array * arguments);
-    
+
     tree assertCall(Loc loc, LibCall libcall = LIBCALL_ASSERT);
     tree assertCall(Loc loc, Expression * msg);
     static FuncDeclaration * getLibCallDecl(LibCall lib_call);
@@ -439,7 +439,7 @@ struct IRState : IRBase
 
     // %%
     static bool originalOmitFramePointer;
-    
+
 protected:
     tree maybeExpandSpecialCall(tree call_exp);
 public:
@@ -448,7 +448,7 @@ public:
     tree typeinfoReference(Type * t);
 
     target_size_t getTargetSizeConst(tree t);
-    
+
     static Module * builtinsModule;
     static Module * intrinsicModule;
     static TemplateDeclaration * stdargTemplateDecl;
@@ -530,7 +530,7 @@ public:
     // ** Callback statement evalutation
 
     static Array stmtExprList;
-    
+
     tree makeStmtExpr(Statement * statement);
     static void retrieveStmtExpr(tree t, Statement ** s_out, IRState ** i_out);
 
@@ -644,9 +644,9 @@ public:
     int argi;
     CallExpr(tree ce_) : ce(ce_), argi(0) { }
     tree callee() { return CALL_EXPR_FN(ce); }
-    tree nextArg() 
+    tree nextArg()
     {
-	tree result = argi < call_expr_nargs(ce) ? 
+	tree result = argi < call_expr_nargs(ce) ?
 	    CALL_EXPR_ARG(ce, argi) : NULL_TREE;
 	++argi;
 	return result;
@@ -660,7 +660,7 @@ public:
 	tree result = arge ? TREE_VALUE(arge) : NULL_TREE;
 	arge = TREE_CHAIN(arge);
 	return result;
-    }    
+    }
 #endif
 private:
     CallExpr() { }

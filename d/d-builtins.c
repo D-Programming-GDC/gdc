@@ -1,6 +1,6 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2004 David Friedman
-   
+
    Modified by
     Iain Buclaw, (C) 2010
 
@@ -8,12 +8,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -177,34 +177,34 @@ void do_build_builtin_fn(enum built_in_function fncode,
     bool both_p, bool fallback_p, bool nonansi_p,
     tree fnattrs, bool implicit_p)
 {
-    tree decl;							
-    const char *libname; 
+    tree decl;
+    const char *libname;
 
 #if D_GCC_VER >= 43
     if (fntype == error_mark_node)
 	return;
 #endif
 
-    gcc_assert ((!both_p && !fallback_p)     
-	|| !strncmp (name, "__builtin_", 
-	    strlen ("__builtin_"))); 
-    libname = name + strlen ("__builtin_"); 
+    gcc_assert ((!both_p && !fallback_p)
+	|| !strncmp (name, "__builtin_",
+	    strlen ("__builtin_")));
+    libname = name + strlen ("__builtin_");
 
     /*if (!BOTH_P)*/
 #if D_GCC_VER >= 43
     decl = add_builtin_function(name, fntype, fncode, fnclass,
 	fallback_p ?libname : NULL, fnattrs);
 #else
-    decl = lang_hooks.builtin_function (name, fntype,	
-	fncode,					
-	fnclass,					
-	fallback_p ?libname : NULL,				
+    decl = lang_hooks.builtin_function (name, fntype,
+	fncode,
+	fnclass,
+	fallback_p ?libname : NULL,
 	fnattrs);
 #endif
 
-    built_in_decls[(int) fncode] = decl;				
-    if (implicit_p)							
-	implicit_built_in_decls[(int) fncode] = decl;			
+    built_in_decls[(int) fncode] = decl;
+    if (implicit_p)
+	implicit_built_in_decls[(int) fncode] = decl;
 }
 #endif
 
@@ -300,8 +300,8 @@ void d_init_builtins(void)
   tree va_list_arg_type_node;
 
   d_bi_init((int) BT_LAST, (int) END_BUILTINS);
-    
-    
+
+
   if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
     {
 	/* It might seem natural to make the reference type a pointer,
@@ -315,7 +315,7 @@ void d_init_builtins(void)
 	va_list_ref_type_node = build_reference_type (va_list_type_node);
     }
 
-  
+
   intmax_type_node = intDI_type_node;
   uintmax_type_node = unsigned_intDI_type_node;
   signed_size_type_node = d_signed_type(size_type_node);
@@ -456,16 +456,16 @@ void d_init_builtins(void)
       do_build_builtin_fn(ENUM, NAME, CLASS, TYPE, builtin_types[TYPE], LIBTYPE, BOTH_P, \
 	  FALLBACK_P, NONANSI_P, built_in_attributes[(int) ATTRS], IMPLICIT);
 #endif
-  
+
 #include "builtins.def"
 #undef DEF_BUILTIN
 
 #if D_GCC_VER >= 40
   build_common_builtin_nodes ();
 #endif
-  
+
   (*targetm.init_builtins) ();
-    
+
   main_identifier_node = get_identifier ("main");
 
 #if D_GCC_VER >= 41
@@ -503,7 +503,7 @@ d_builtin_function (const char *name, tree type, int function_code,
 		    enum built_in_class klass, const char *library_name,
 		    tree attrs)
 {
-  // As of 4.3.x, this is done by add_builtin_fucntion 
+  // As of 4.3.x, this is done by add_builtin_fucntion
     //%% for D, just use library_name?
   tree decl = build_decl (FUNCTION_DECL, get_identifier (name), type);
   DECL_EXTERNAL (decl) = 1;
@@ -515,7 +515,7 @@ d_builtin_function (const char *name, tree type, int function_code,
 #endif
   // %% gcc4 -- is make_decl_rtl needed? why are we doing it in gcc3?
   // shouldn't it go after attributes?
-  
+
   pushdecl (decl);
   DECL_BUILT_IN_CLASS (decl) = klass;
   DECL_FUNCTION_CODE (decl) = function_code;

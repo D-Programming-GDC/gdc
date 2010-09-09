@@ -1,6 +1,6 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2004 David Friedman
-   
+
    Modified by
     Michael Parrott, Vincenzo Ampolo, Iain Buclaw, (C) 2010
 
@@ -8,12 +8,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -29,7 +29,7 @@
 #include "d-codegen.h"
 
 // see d-convert.cc
-tree 
+tree
 convert (tree type, tree expr)
 {
     Type * target_type = g.irs->getDType(type);
@@ -76,7 +76,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
 {
     bool is_compare = false; // %% should this be true for unordered comparisons?
     tree_code out_code;
-    
+
     switch (op) {
     case TOKidentity: // fall through
     case TOKequal:
@@ -129,7 +129,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
 		    // result is comparison of real parts; otherwise, result false
 		    //
 		    // Does D define an ordering for complex numbers?
-		    
+
 		    // make a target-independent _cmplxCmp ?
 		    tree it, rt;
 		    TOK hard, soft;
@@ -143,7 +143,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
 		    default:
 			break;
 		    }
-		    
+
 		    switch (op) {
 		    case TOKule:
 		    case TOKle:
@@ -153,7 +153,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
 		    case TOKul:
 		    case TOKlt:
 			hard = soft = TOKlt;
-			break;			
+			break;
 		    case TOKuge:
 		    case TOKge:
 			hard = TOKlt;
@@ -185,7 +185,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
 	    }
 	}
 	// else, normal
-	
+
 	switch (op) {
 	case TOKlt: out_code = LT_EXPR; is_compare = true; break;
 	case TOKgt: out_code = GT_EXPR; is_compare = true; break;
@@ -304,10 +304,10 @@ EqualExp::toElem(IRState* irs)
 	     base_ty_2 == Tsarray || base_ty_2 == Tarray) ) {
 
 	Type * elem_type = base_type_1->nextOf()->toBasetype();
-	
+
 	// _adCmp compares each element.  If bitwise comparison is ok,
 	// use memcmp.
-	
+
 	if (elem_type->isfloating() || elem_type->isClassHandle() ||
 	    elem_type->ty == Tsarray || elem_type->ty == Tarray ||
 	    elem_type->ty == Tstruct)
@@ -337,7 +337,7 @@ EqualExp::toElem(IRState* irs)
 
 		if ( e_base_ty == Tarray ) {
 		    tree array_expr = irs->maybeMakeTemp( e->toElem(irs) );
-		
+
 		    data_expr[i] = irs->darrayPtrRef( array_expr );
 		    len_expr[i]  = irs->darrayLenRef( array_expr ); // may be used twice -- should be okay
 		} else {
@@ -360,7 +360,7 @@ EqualExp::toElem(IRState* irs)
 		tree_cons( NULL_TREE, data_expr[0],
 		    tree_cons( NULL_TREE, data_expr[1],
 			tree_cons( NULL_TREE, size, NULL_TREE ))));
-	    
+
 	    result = irs->boolOp(op == TOKequal ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR,
 		irs->boolOp(op == TOKequal ? EQ_EXPR : NE_EXPR, len_expr[0], len_expr[1]),
 		irs->boolOp(op == TOKequal ? EQ_EXPR : NE_EXPR, result,	integer_zero_node));
@@ -379,7 +379,7 @@ InExp::toElem(IRState * irs)
     Type * e2_base_type = e2->type->toBasetype();
     AddrOfExpr aoe;
     assert( e2_base_type->ty == Taarray );
-    
+
     tree args[3];
     Type * key_type = ((TypeAArray *) e2_base_type)->index->toBasetype();
     args[0] = e2->toElem(irs);
@@ -406,7 +406,7 @@ CmpExp::toElem(IRState* irs)
 
 	args[0] = irs->toDArray(e1);
 	args[1] = irs->toDArray(e2);
-	
+
 	switch (elem_type->ty) {
 	case Tvoid:
 	    lib_call = LIBCALL_ADCMPCHAR;
@@ -437,19 +437,19 @@ CmpExp::toElem(IRState* irs)
 	case TOKgt: out_code = GT_EXPR; break;
 	case TOKle: out_code = LE_EXPR; break;
 	case TOKge: out_code = GE_EXPR; break;
-	    
+
 	case TOKlg: out_code = NE_EXPR; break;
-	case TOKunord: 
+	case TOKunord:
 	case TOKleg:
 	    // %% Could do a check for side effects and drop the unused condition
 	    return build2(COMPOUND_EXPR, boolean_type_node,
-		result, 
+		result,
 		d_truthvalue_conversion( this->op == TOKunord ? integer_zero_node : integer_one_node ));
 	case TOKule: out_code = LE_EXPR; break;
 	case TOKul:  out_code = LT_EXPR; break;
 	case TOKuge: out_code = GE_EXPR; break;
 	case TOKug:  out_code = GT_EXPR; break;
-	case TOKue:  out_code = EQ_EXPR; break;	    
+	case TOKue:  out_code = EQ_EXPR; break;
 	    break;
 	default:
 	    abort();
@@ -482,7 +482,7 @@ make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * ex
 	} else {
 	    e2_adj = build1(NEGATE_EXPR, TREE_TYPE(e2), e2);
 	}
-	
+
 	if (e1_type->isreal()) {
 	    e_real = e1;
 	    e_imag = e2_adj;
@@ -492,7 +492,7 @@ make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * ex
 	}
 
 	return build2(COMPLEX_EXPR, exp_type->toCtype(), e_real, e_imag);
-	
+
     } else {
 	switch (op) {
 	case TOKadd: out_code = PLUS_EXPR; break;
@@ -537,14 +537,14 @@ make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * ex
     }
     else if (POINTER_TYPE_P(TREE_TYPE(e1)) && POINTER_TYPE_P(TREE_TYPE(e2)))
     {
-	/* Need to convert pointers to integers because tree-vrp asserts 
+	/* Need to convert pointers to integers because tree-vrp asserts
 	   against (ptr MINUS ptr). */
-	   
+
 	// %% need to work on this
 	tree tt = d_type_for_mode(ptr_mode, TYPE_UNSIGNED(exp_type->toCtype()));
 	e1 = convert(tt, e1);
 	e2 = convert(tt, e2);
-	return convert(exp_type->toCtype(), 
+	return convert(exp_type->toCtype(),
 	    build2(out_code, tt, e1, e2));
     }
     else
@@ -641,7 +641,7 @@ DivExp::toElem(IRState * irs)
     return make_math_op(this, irs);
 }
 elem *
-MulExp::toElem(IRState * irs) 
+MulExp::toElem(IRState * irs)
 {
     return make_math_op(this, irs);
 }
@@ -677,7 +677,7 @@ CatExp::toElem(IRState * irs)
     }
 
     // Flatten multiple concatenations
-    
+
     unsigned n_operands = 2;
     unsigned n_args;
     tree * args;
@@ -701,7 +701,7 @@ CatExp::toElem(IRState * irs)
 
     unsigned ai = n_args - 1;
     CatExp * ce = this;
-    
+
     while (ce) {
 	Expression *oe = ce->e2;
 	while (1)
@@ -907,10 +907,10 @@ void do_array_set(IRState * irs, tree in_ptr, tree in_val, tree in_cnt) {
 
     DECL_INITIAL(count_var) = in_cnt;
     DECL_INITIAL(ptr_var) = in_ptr;
-    
+
     irs->expandDecl(count_var);
     irs->expandDecl(ptr_var);
-    
+
     if (irs->isFreeOfSideEffects(in_val)) {
 	value_to_use = in_val;
     } else {
@@ -919,7 +919,7 @@ void do_array_set(IRState * irs, tree in_ptr, tree in_val, tree in_cnt) {
 	irs->expandDecl(val_var);
 	value_to_use = val_var;
     }
-    
+
     irs->startLoop(NULL);
 
     irs->continueHere();
@@ -1014,7 +1014,7 @@ AssignExp::toElem(IRState* irs) {
 
 	if (irs->typesCompatible(elem_type, e2->type->toBasetype())) {
 	    // Set a range of elements to one value.
-	    
+
 	    // %% This is used for initing on-stack static arrays..
 	    // should optimize with memset if possible
 	    // %% vararg issues
@@ -1024,7 +1024,7 @@ AssignExp::toElem(IRState* irs) {
 	    if (op != TOKblit)
 	    {
 		if (needsPostblit(elem_type) != NULL)
-		{   
+		{
 		    tree e;
 		    AddrOfExpr aoe;
 		    tree args[4];
@@ -1092,7 +1092,7 @@ AssignExp::toElem(IRState* irs) {
 	}
     } else {
 	// Simple assignment
-	
+
 	tree lhs = irs->toElemLvalue(e1);
 	tree result = build2(MODIFY_EXPR, type->toCtype(),
 	    lhs, irs->convertForAssignment(e2, e1->type));
@@ -1124,7 +1124,7 @@ elem *
 IndexExp::toElem(IRState* irs)
 {
     Type * array_type = e1->type->toBasetype();
-    
+
     if (array_type->ty != Taarray) {
 	ArrayScope aryscp(irs, lengthVar, loc);
 	/* arrayElemRef will call aryscp.finish.  This result
@@ -1180,7 +1180,7 @@ ArrayLengthExp::toElem(IRState * irs)
 	return irs->darrayLenRef(e1->toElem(irs));
     } else {
 	// Tsarray case seems to be handled by front-end
-	
+
 	error("unexpected type for array length: %s", type->toChars());
 	return irs->errorMark(type);
     }
@@ -1191,11 +1191,11 @@ SliceExp::toElem(IRState * irs)
 {
     // This function assumes that the front end casts the result to a dynamic array.
     assert(type->toBasetype()->ty == Tarray);
-    
+
     // Use convert-to-dynamic-array code if possible
     if (e1->type->toBasetype()->ty == Tsarray && ! upr && ! lwr)
 	return irs->convertTo(e1->toElem(irs), e1->type, type);
-    
+
     Type * orig_array_type = e1->type->toBasetype();
 
     tree orig_array_expr = NULL;
@@ -1212,9 +1212,9 @@ SliceExp::toElem(IRState * irs)
     // specs don't say bounds if are checked for error or clipped to current size
 
     // Get the data pointer for static and dynamic arrays
-    orig_pointer_expr = irs->convertTo(orig_array_expr, orig_array_type, 
+    orig_pointer_expr = irs->convertTo(orig_array_expr, orig_array_type,
 	orig_array_type->nextOf()->pointerTo());
-    
+
     final_ptr_expr = orig_pointer_expr;
 
     // orig_array_expr is already a save_expr if necessary, so
@@ -1288,7 +1288,7 @@ make_aa_del(IRState * irs, Expression * e_array, Expression * e_index)
     tree args[3];
     Type * key_type = ((TypeAArray *) e_array->type->toBasetype())->index->toBasetype();
     AddrOfExpr aoe;
-    
+
     args[0] = e_array->toElem(irs);
     args[1] = irs->typeinfoReference(key_type);
     args[2] = aoe.set(irs, irs->convertTo( e_index, key_type ));
@@ -1304,16 +1304,16 @@ DeleteExp::toElem(IRState* irs)
 
 	if (! global.params.useDeprecated)
 	    error("delete aa[key] deprecated, use aa.remove(key)", e1->toChars());
-	
+
 	Expression * e_array = ((BinExp *) e1)->e1;
 	Expression * e_index = ((BinExp *) e1)->e2;
-	
+
 	// Check that the array is actually an associative array
 	if (e_array->type->toBasetype()->ty == Taarray)
 	    return make_aa_del(irs, e_array, e_index);
     }
 
-    // Otherwise, this is normal delete	
+    // Otherwise, this is normal delete
     LibCall lib_call;
     tree t = e1->toElem(irs);
     Type * base_type = e1->type->toBasetype();
@@ -1351,7 +1351,7 @@ RemoveExp::toElem(IRState * irs)
 {
     Expression * e_array = e1;
     Expression * e_index = e2;
-    
+
     // Check that the array is actually an associative array
     if (e_array->type->toBasetype()->ty == Taarray) {
 	return make_aa_del(irs, e_array, e_index);
@@ -1395,13 +1395,13 @@ NegExp::toElem(IRState * irs)
     // %% GCC B.E. won't optimize (NEGATE_EXPR (INTEGER_CST ..))..
     // %% is type correct?
     TY ty1 = e1->type->toBasetype()->ty;
-    
+
     if (ty1 == Tarray || ty1 == Tsarray)
     {
 	error("Array operation %s not implemented", toChars());
 	return irs->errorMark(type);
     }
-    
+
     return build1(NEGATE_EXPR, type->toCtype(), e1->toElem(irs));
 }
 
@@ -1421,7 +1421,7 @@ PtrExp::toElem(IRState * irs)
     Type * rec_type = 0;
     target_size_t the_offset;
     tree rec_tree;
-    
+
     if (e1->op == TOKadd) {
 	BinExp * add_exp = (BinExp *) e1;
 	if (add_exp->e1->op == TOKaddress &&
@@ -1445,7 +1445,7 @@ PtrExp::toElem(IRState * irs)
 	}
 	// otherwise, no real benefit?
     }
-    
+
     if (rec_type && rec_type->ty == Tstruct) {
 	StructDeclaration * sd = ((TypeStruct *)rec_type)->sym;
 	for (unsigned i = 0; i < sd->fields.dim; i++) {
@@ -1460,7 +1460,7 @@ PtrExp::toElem(IRState * irs)
 	    }
 	}
     }
-    
+
     tree e = irs->indirect(e1->toElem(irs), type->toCtype());
     if (irs->inVolatile())
 	TREE_THIS_VOLATILE( e ) = 1;
@@ -1496,7 +1496,7 @@ DotTypeExp::toElem(IRState *irs)
     // The only case in which this seems to be a valid expression is when
     // it is used to specify a non-virtual call ( SomeClass.func(...) ).
     // This case is handled in IRState::objectInstanceMethod.
-    
+
     error("cannot use \"%s\" as an expression", toChars());
 
     // Can cause ICEs later; should just exit now.
@@ -1685,7 +1685,7 @@ FuncExp::toElem(IRState * irs)
 	::error("Unexpected FunExp type");
 	return irs->errorMark(type);
     }
-    
+
     // If nested, this will be a trampoline...
 }
 
@@ -1735,14 +1735,14 @@ SymbolExp::toElem(IRState * irs)
 	return e;
     } else if (op == TOKsymoff) {
 	target_size_t offset = ((SymOffExp *) this)->offset;
-	    
+
 	VarDeclaration * v = var->isVarDeclaration();
 	tree a;
 	if (v)
 	    a = irs->var(v);
 	else
 	    a = var->toSymbol()->Stree;
-	
+
 	if ( irs->isDeclarationReferenceType(var) )
 	    assert(POINTER_TYPE_P(TREE_TYPE(a)));
 	else
@@ -1766,7 +1766,7 @@ VarExp::toElem(IRState* irs)
 	/*::*/error("Need 'this' to access member %s", var->ident->string);
 	return irs->errorMark(type);
     }
-    
+
     // For variables that are references (currently only out/inout arguments;
     // objects don't count), evaluating the variable means we want what it refers to.
     //tree e = irs->var(var);
@@ -1802,15 +1802,15 @@ SymOffExp::toElem(IRState * irs) {
 	a = irs->var(v);
     else
 	a = var->toSymbol()->Stree;
-    
+
     if ( irs->isDeclarationReferenceType(var) )
 	assert(POINTER_TYPE_P(TREE_TYPE(a)));
     else
 	a = irs->addressOf(var);
-    
+
     if (! offset)
 	return convert(type->toCtype(), a);
-    
+
     tree b = irs->integerConstant(offset, Type::tsize_t);
     return irs->nop(irs->pointerOffset(a, b), type->toCtype());
 }
@@ -1863,7 +1863,7 @@ findThis(IRState * irs, ClassDeclaration * target_cd)
     while (fd) {
 	AggregateDeclaration * fd_ad;
 	ClassDeclaration * fd_cd;
-	
+
 	if ((fd_ad = fd->isThis()) &&
 	    (fd_cd = fd_ad->isClassDeclaration())) {
 	    if (target_cd == fd_cd) {
@@ -1894,13 +1894,13 @@ NewExp::toElem(IRState * irs)
 
     if (allocator)
 	assert(newargs);
-    
+
     switch (base_type->ty) {
     case Tclass:
 	{
 	    TypeClass * class_type = (TypeClass *) base_type;
 	    ClassDeclaration * class_decl = class_type->sym;
-	    
+
 	    tree new_call;
 	    tree setup_exp = NULL_TREE;
 	    // type->toCtype() is a REFERENCE_TYPE; we want the RECORD_TYPE
@@ -1929,7 +1929,7 @@ NewExp::toElem(IRState * irs)
 	    if (class_type->sym->isNested()) {
 		tree vthis_value = NULL_TREE;
 		tree vthis_field = class_type->sym->vthis->toSymbol()->Stree;
-		
+
 		if (thisexp) {
 		    ClassDeclaration *thisexp_cd = thisexp->type->isClassHandle();
 		    Dsymbol *outer = class_decl->toParent2();
@@ -1992,7 +1992,7 @@ NewExp::toElem(IRState * irs)
 	    }
 
 	    new_call = irs->maybeCompound(setup_exp, new_call);
-	    
+
 	    // Constructor call
 	    if (member) {
 		result = irs->call(member, new_call, arguments);
@@ -2005,7 +2005,7 @@ NewExp::toElem(IRState * irs)
 	{
 	    assert( ! allocator );
 	    assert( arguments && arguments->dim > 0 );
-	    
+
 	    LibCall lib_call;
 
 	    Type * elem_init_type = newtype;
@@ -2069,7 +2069,7 @@ NewExp::toElem(IRState * irs)
 	    tree new_call;
 	    tree t;
 	    bool need_init = true;
-	    
+
 	    if (onstack) {
 		tree stack_var = irs->localVar( object_type );
 		irs->expandDecl(stack_var);
@@ -2198,11 +2198,11 @@ array_literal_assign(IRState * irs, tree mem, ArrayLiteralExp * ale)
 
     for (unsigned i = 0; i < ale->elements->dim; i++) {
 	Expression * e = (Expression *) ale->elements->data[i];
-	tree elemp_e = irs->pointerOffset(mem, offset);	
+	tree elemp_e = irs->pointerOffset(mem, offset);
 	tree assgn_e = irs->vmodify( irs->indirect(elemp_e),
 	    e->toElem(irs));
 	result = irs->maybeCompound(result, assgn_e);
-	
+
 	offset = size_binop(PLUS_EXPR, offset, elem_size);
     }
     return result;
@@ -2248,7 +2248,7 @@ AssocArrayLiteralExp::toElem(IRState * irs)
     Type * a_type = type->toBasetype()->mutableOf();
     assert(a_type->ty == Taarray);
     TypeAArray * aa_type = (TypeAArray *)a_type;
-    /* As of 2.020, the hash function for Aa (array of chars) is custom 
+    /* As of 2.020, the hash function for Aa (array of chars) is custom
      * and different from Axa and Aya, which get the generic hash function.
      * So, rewrite the type of the AArray so that if it's key type is an
      * array of const or invariant, make it an array of mutable.
@@ -2308,7 +2308,7 @@ AssocArrayLiteralExp::toElem(IRState * irs)
     TREE_TYPE( ctor ) = aa_type->toCtype();
     ce.cons(TYPE_FIELDS(TREE_TYPE( ctor )), result);
     CONSTRUCTOR_ELTS( ctor ) = ce.head;
-    
+
     result = irs->binding(keys_var, irs->binding(vals_var, ctor));
     return irs->nop(result, type->toCtype());
 }
@@ -2362,7 +2362,7 @@ StructLiteralExp::toElem(IRState *irs)
 		ce.cons(fld->csym->Stree, irs->convertTo(e, fld->type));
 	    }
 	}
-    
+
     CONSTRUCTOR_ELTS( ctor ) = ce.head;
     return ctor;
 }
@@ -2370,8 +2370,8 @@ StructLiteralExp::toElem(IRState *irs)
 elem *
 NullExp::toElem(IRState * irs)
 {
-    TY base_ty = type->toBasetype()->ty; 
-    // 0 -> dynamic array.  This is a special case conversion.  
+    TY base_ty = type->toBasetype()->ty;
+    // 0 -> dynamic array.  This is a special case conversion.
     // Move to convert for convertTo if it shows up elsewhere.
     switch (base_ty) {
     case Tarray:
@@ -2381,7 +2381,7 @@ NullExp::toElem(IRState * irs)
 	    tree ctor = make_node(CONSTRUCTOR);
 	    tree fa;
 	    CtorEltMaker ce;
- 
+
 	    TREE_TYPE(ctor) = type->toCtype();
 	    fa = TYPE_FIELDS(TREE_TYPE(ctor));
 	    ce.cons(fa, convert(TREE_TYPE(fa), integer_zero_node));
@@ -2537,18 +2537,18 @@ FuncDeclaration::toObjFile(int multiobj)
     tree old_current_function_decl = current_function_decl;
     function * old_cfun = cfun;
 #endif
-    
+
     current_function_decl = fn_decl;
 
     TREE_STATIC( fn_decl ) = 1;
-	
+
     {
 	Type * func_type = tintro ? tintro : type;
 	Type * ret_type = func_type->nextOf()->toBasetype();
 	if (isMain() && ret_type->ty == Tvoid)
 	    ret_type = Type::tint32;
 	result_decl = build_decl( RESULT_DECL, NULL_TREE, ret_type->toCtype() );
-    }   
+    }
     g.ofile->setDeclLoc(result_decl, this);
     DECL_RESULT( fn_decl ) = result_decl;
     DECL_CONTEXT( result_decl ) = fn_decl;
@@ -2569,13 +2569,13 @@ FuncDeclaration::toObjFile(int multiobj)
 #if V2
     bool needs_static_chain = irs->functionNeedsChain(this);
 #endif
-    
+
     int n_parameters = parameters ? parameters->dim : 0;
 
     // Special arguments...
     static const int VTHIS = -2;
     static const int VARGUMENTS = -1;
-	
+
     for (int i = VTHIS; i < (int) n_parameters; i++) {
 	VarDeclaration * param = 0;
 	tree parm_type = 0;
@@ -2643,9 +2643,9 @@ FuncDeclaration::toObjFile(int multiobj)
     rest_of_decl_compilation(fn_decl, /*toplevel*/1, /*atend*/0);
 #endif
     // ... has this here, but with more args...
- 	
+
     DECL_INITIAL( fn_decl ) = error_mark_node; // Just doing what they tell me to do...
- 	
+
     IRState::initFunctionStart(fn_decl, loc);
 #if D_NO_TRAMPOLINES
     /* If this is a member function that nested (possibly indirectly) in another
@@ -2663,7 +2663,7 @@ FuncDeclaration::toObjFile(int multiobj)
 	while ( cd->isNested() ) {
 	    Dsymbol * d = cd->toParent2();
 
-	    
+
 	    tree vthis_field = cd->vthis->toSymbol()->Stree;
 	    t = irs->component(irs->indirect(t), vthis_field);
 	    FuncDeclaration * f;
@@ -2676,7 +2676,7 @@ FuncDeclaration::toObjFile(int multiobj)
 		}
 		else
 #endif
-		{		
+		{
 		    static_chain_expr = t;
 		}
 		break;
@@ -2689,13 +2689,13 @@ FuncDeclaration::toObjFile(int multiobj)
     }
 #endif
 
-#if D_GCC_VER >= 40	
+#if D_GCC_VER >= 40
     cfun->naked = naked ? 1 : 0;
 #endif
-#if D_GCC_VER < 40	
+#if D_GCC_VER < 40
     // Must be done before expand_function_start.
     cfun->static_chain_expr = static_chain_expr;
-    
+
     expand_function_start (fn_decl, 0);
 
     /* If this function is the C `main', emit a call to `__main'
@@ -2706,16 +2706,16 @@ FuncDeclaration::toObjFile(int multiobj)
 	&& DECL_FILE_SCOPE_P (fn_decl)
 	)
 	expand_main_function ();
-    
- 
+
+
     //cfun->x_whole_function_mode_p = 1; // %% I gues...
     //cfun->function_frequency = ; // %% it'd be nice to do something with this..
     //need DECL_RESULT ?
- 
+
     // Start a binding level for the function/arguments
     (*lang_hooks.decls.pushlevel) (0);
     expand_start_bindings (2);
-	
+
     // Add the argument declarations to the symbol table for the back end
     set_decl_binding_chain( DECL_ARGUMENTS( fn_decl ));
 
@@ -2723,15 +2723,15 @@ FuncDeclaration::toObjFile(int multiobj)
 
     // Start a binding level for the function body
     //(*lang_hooks.decls.pushlevel) (0);
-#else	
+#else
     pushlevel(0);
     irs->pushStatementList();
 #endif
-    
+
     irs->startScope();
     irs->doLineNote(loc);
 
-#if D_GCC_VER >= 40	
+#if D_GCC_VER >= 40
     if (static_chain_expr) {
 	cfun->custom_static_chain = 1;
 	irs->doExp( build2(MODIFY_EXPR, ptr_type_node,
@@ -2753,10 +2753,10 @@ FuncDeclaration::toObjFile(int multiobj)
 	}
 	irs->useClosure(closure_func, closure_expr);
     }
-    
+
     buildClosure(irs); // may change irs->closureLink and irs->closureFunc
 #endif
-	
+
     if (vresult)
 	irs->emitLocalVar(vresult);
 
@@ -2786,7 +2786,7 @@ FuncDeclaration::toObjFile(int multiobj)
 	}
 #else
 	irs->pushStatementList();
-#endif	
+#endif
     }
     if (v_arguments_var)
 	irs->emitLocalVar(v_arguments_var, true);
@@ -2832,7 +2832,7 @@ FuncDeclaration::toObjFile(int multiobj)
        return the temp variable.
 
        When optimization is turned on, this whole process results in
-       no extra code!       
+       no extra code!
     */
     /* This would apply to complex types as well, but GDC currently
        returns complex types as a struct instead of in ST(0) and ST(1).
@@ -2846,7 +2846,7 @@ FuncDeclaration::toObjFile(int multiobj)
 	tree cns_str = build_string(2, "=t");
 	tree out_arg = tree_cons(tree_cons(NULL_TREE, cns_str, NULL_TREE),
 	    result_var, NULL_TREE);
-	
+
 	irs->expandDecl(result_var);
 	irs->doAsm(nop_str, out_arg, NULL_TREE, NULL_TREE);
 	irs->doReturn( build2(MODIFY_EXPR, TREE_TYPE(result_decl),
@@ -2866,14 +2866,14 @@ FuncDeclaration::toObjFile(int multiobj)
 	v_argptr->init = NULL; // VoidInitializer?
 	irs->emitLocalVar(v_argptr, true);
 	irs->addExp(init_exp);
-	    
+
 	tree cleanup = irs->buildCall(void_type_node,
 	    irs->addressOf( built_in_decls[BUILT_IN_VA_END] ),
 	    tree_cons(NULL_TREE, irs->addressOf(var), NULL_TREE));
 	irs->addExp( build2( TRY_FINALLY_EXPR, void_type_node, body, cleanup ));
     }
 #endif
-    
+
     irs->endScope();
 
 #if D_GCC_VER < 40
@@ -2912,7 +2912,7 @@ FuncDeclaration::toObjFile(int multiobj)
     //block = (*lang_hooks.decls.poplevel) (1, 0, 1);
     block = poplevel(1, 0, 1);
 #endif
- 
+
     DECL_INITIAL (fn_decl) = block; // %% redundant, see poplevel
     BLOCK_SUPERCONTEXT( DECL_INITIAL (fn_decl) ) = fn_decl; // done in C, don't know effect
 
@@ -2926,7 +2926,7 @@ FuncDeclaration::toObjFile(int multiobj)
     this_sym->outputStage = Finished;
     if (! errorcount && ! global.errors)
     	g.ofile->outputFunction(this);
-    
+
 #if D_GCC_VER < 40
     //rest_of_compilation( fn_decl );
     if (gen.functionNeedsChain(this))
@@ -2935,18 +2935,18 @@ FuncDeclaration::toObjFile(int multiobj)
 	current_function_decl = NULL_TREE; // must come before endFunction
 
     g.irs->endFunction();
- 
+
     flag_omit_frame_pointer = saved_omit_frame_pointer;
 #else
     current_function_decl = old_current_function_decl; // must come before endFunction
     set_cfun(old_cfun);
-	
+
     irs->endFunction();
 #endif
 }
 
 #if V2
-    
+
 void
 FuncDeclaration::buildClosure(IRState * irs)
 {
@@ -2975,14 +2975,14 @@ FuncDeclaration::buildClosure(IRState * irs)
     layout_type(closure_rec_type);
 
     ffi->closure_rec = closure_rec_type;
-    
+
     tree closure_ptr = irs->localVar(build_pointer_type(closure_rec_type));
     DECL_NAME(closure_ptr) = get_identifier("__closptr");
     DECL_ARTIFICIAL(closure_ptr) = DECL_IGNORED_P(closure_ptr) = 0;
 
     tree arg = d_convert_basic(Type::tsize_t->toCtype(),
 	TYPE_SIZE_UNIT(closure_rec_type));
-    
+
     DECL_INITIAL(closure_ptr) =
 	irs->nop(irs->libCall(LIBCALL_ALLOCMEMORY, 1, & arg),
 	    TREE_TYPE(closure_ptr));
@@ -3006,7 +3006,7 @@ FuncDeclaration::buildClosure(IRState * irs)
 	irs->doExp(irs->vmodify(irs->component(irs->indirect(closure_ptr),
 		    vsym->SclosureField), vsym->Stree));
     }
-	
+
     irs->useClosure(this, closure_ptr);
 }
 
@@ -3040,7 +3040,7 @@ Module::genobjfile(int multiobj)
 	    if (mi.unitTests.dim)
 		stest = g.ofile->doFunctionToCallFunctions("*__modtest", & mi.unitTests)->toSymbol();
 	}
-    
+
 	genmoduleinfo();
     }
 
@@ -3097,7 +3097,7 @@ Type::toCtype() {
 	case Timaginary80:
 	    ctype = build_type_copy( long_double_type_node );
 	    return ctype;
-	    
+
 	case Terror: return error_mark_node;
 
 	/* We can get Tident with forward references.  There seems to
@@ -3108,10 +3108,10 @@ Type::toCtype() {
 	   function types and not complete it until it was actually
 	   used in a call. */
 	case Tident: return void_type_node;
-	    
+
 	/* We can get Ttuple from void (T...)(T t) */
 	case Ttuple: return void_type_node;
-	    
+
 	default:
 	    ::error("unexpected call to Type::toCtype() for %s\n", this->toChars());
 	    abort();
@@ -3141,10 +3141,10 @@ TypeTypedef::toCtype()
     tree type_node = sym->basetype->toCtype();
     apply_type_attributes(sym->attributes, type_node);
     return type_node;
-    /*    
+    /*
     tree type_decl = build_decl(TYPE_DECL, get_identifier( sym->ident->string ),
 	type_node);
-    DECL_CONTEXT( type_decl ) = 
+    DECL_CONTEXT( type_decl ) =
     rest_of_decl_compilation(type_decl, NULL, ?context?, 0); //%% flag
     */
 }
@@ -3166,7 +3166,7 @@ TypeEnum::toCtype()
 {
     if (! ctype) {
 	tree enum_mem_type_node = sym->memtype->toCtype();
-	
+
 	ctype = make_node( ENUMERAL_TYPE );
 	// %% c-decl.c: if (flag_short_enums) TYPE_PACKED(enumtype) = 1;
 	TYPE_PRECISION( ctype ) = size(0) * 8;
@@ -3219,7 +3219,7 @@ TypeStruct::toCtype()
     if (! ctype) {
 	// need to set this right away in case of self-references
 	ctype = make_node( sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE );
-	
+
 	TYPE_LANG_SPECIFIC( ctype ) = build_d_type_lang_specific(this);
 
 	/* %% copied from AggLayout::finish -- also have to set the size
@@ -3235,13 +3235,13 @@ TypeStruct::toCtype()
 	TYPE_PACKED ( ctype ) = TYPE_PACKED ( ctype ); // %% todo
 	apply_type_attributes(sym->attributes, ctype, true);
 	compute_record_mode ( ctype );
-	
+
 	// %%  stor-layout.c:finalize_type_size ... it's private to that file
-	
+
 	TYPE_CONTEXT( ctype ) = gen.declContext(sym);
-	
+
 	g.ofile->initTypeDecl(ctype, sym);
-	
+
 	AggLayout agg_layout(sym, ctype);
 	agg_layout.go();
 
@@ -3287,14 +3287,14 @@ unsigned TypeFunction::totym() { return 0; } // Unused
 type *
 TypeFunction::toCtype() {
     // %%TODO: If x86, and D linkage, use regparm(1)
-    
+
     if (! ctype) {
 	ListMaker type_list;
 	tree ret_type;
 
 	// Function type can be reference by parameters, etc.  Set ctype early.
 	ctype = make_node(FUNCTION_TYPE);
-	
+
 	if (varargs == 1 && linkage == LINKd) {
 	    // hidden _arguments parameter
 #if BREAKABI
@@ -3303,7 +3303,7 @@ TypeFunction::toCtype() {
 	    type_list.cons( Type::typeinfo->type->arrayOf()->toCtype() );
 #endif
 	}
-	
+
 	if (parameters) {
 #if V2 //Until 2.037
 	    size_t n_args = Argument::dim(parameters);
@@ -3319,12 +3319,12 @@ TypeFunction::toCtype() {
 		type_list.cons( IRState::trueArgumentType(arg) );
 	    }
 	}
-	
+
 	/* Last parm if void indicates fixed length list (as opposed to
 	   printf style va_* list). */
 	if (varargs != 1)
 	    type_list.cons( void_type_node );
-	
+
 	if (next) {
 	    ret_type = next->toCtype();
 	} else {
@@ -3362,7 +3362,7 @@ TypeFunction::retStyle()
 {
     /* Need the ctype to determine this, but this is called from
        the front end before semantic processing is finished.  An
-       accurate value is not currently needed anyway. */ 
+       accurate value is not currently needed anyway. */
     return RETstack;
 }
 
@@ -3376,17 +3376,17 @@ TypeSArray::toCtype()
 #if ! V2
 	    gcc_assert(! next->isbit());
 #endif
-	    
+
 	    if (next->toBasetype()->ty == Tvoid)
 		ctype = gen.arrayType(Type::tuns8, size);
 	    else
 		ctype = gen.arrayType(next, size);
-		
+
 	} else {
 	    ::error("invalid expressions for static array dimension: %s", dim->toChars());
 	    abort();
 	}
-    } 
+    }
     return ctype;
 }
 
@@ -3459,7 +3459,7 @@ TypeDelegate::toCtype()
 static tree
 binfo_for(tree tgt_binfo, ClassDeclaration * cls)
 {
-    tree binfo = 
+    tree binfo =
 #if D_GCC_VER < 40
 	make_tree_vec(BINFO_ELTS)
 #else
@@ -3482,7 +3482,7 @@ binfo_for(tree tgt_binfo, ClassDeclaration * cls)
 #error update vector stuff
 #endif
 	tree prot_tree;
-	
+
 	BINFO_BASEACCESSES(binfo) = make_tree_vec(1);
 #if V1
 	BaseClass * bc = (BaseClass *) cls->baseclasses->data[0];
@@ -3599,12 +3599,12 @@ TypeClass::toCtype()
 	g.ofile->initTypeDecl(rec_type, sym);
 
 	obj_rec_type = TREE_TYPE( gen.getObjectType()->toCtype() );
-	
+
 	// Note that this is set on the reference type, not the record type.
 	TYPE_LANG_SPECIFIC( ctype ) = build_d_type_lang_specific( this );
 
 	AggLayout agg_layout(sym, rec_type);
-	
+
 	// Most of this silly code is just to produce correct debugging information.
 
 	/* gdb apparently expects the vtable field to be named
@@ -3616,7 +3616,7 @@ TypeClass::toCtype()
 	// Add the virtual table pointer
 	tree decl = build_decl(FIELD_DECL, get_identifier("_vptr$"), /*vtbl_type*/d_vtbl_ptr_type_node);
 	agg_layout.addField( decl, 0 ); // %% target stuff..
-	
+
 	if (inherited) {
 	    vfield = copy_node( decl );
 	    DECL_ARTIFICIAL( decl ) = DECL_IGNORED_P( decl ) = 1;
@@ -3666,7 +3666,7 @@ ClassDeclaration::toDebug()
     tree rec_type = TREE_TYPE( type->toCtype() );
     /* Used to create BINFO even if debugging was off.  This was needed to keep
        references to inherited types. */
-	
+
     g.ofile->addAggMethods(rec_type, this);
 
     if ( ! isInterfaceDeclaration() )
@@ -3677,7 +3677,7 @@ ClassDeclaration::toDebug()
 	bc.base = this;
 	TYPE_BINFO( rec_type ) = intfc_binfo_for(NULL_TREE, this, offset);
     }
-	
+
     g.ofile->declareType(rec_type, this);
 }
 
@@ -3751,7 +3751,7 @@ SwitchErrorStatement::toIR(IRState* irs)
 void
 VolatileStatement::toIR(IRState* irs)
 {
-    irs->pushVolatile(); 
+    irs->pushVolatile();
     statement->toIR( irs );
     irs->popVolatile();
 }
@@ -3762,7 +3762,7 @@ ThrowStatement::toIR(IRState* irs)
     ClassDeclaration * class_decl = exp->type->toBasetype()->isClassHandle();
     // Front end already checks for isClassHandle
     InterfaceDeclaration * intfc_decl = class_decl->isInterfaceDeclaration();
-    
+
     tree arg = exp->toElem(irs);
 
     if (intfc_decl) {
@@ -3772,7 +3772,7 @@ ThrowStatement::toIR(IRState* irs)
 	    error("cannot throw COM interfaces");
 	}
     }
-    
+
     irs->doLineNote(loc);
     irs->doExp( irs->libCall(LIBCALL_THROW, 1, & arg) );
     // %%TODO: somehow indicate flow stops here? -- set attribute noreturn on _d_throw
@@ -3814,9 +3814,9 @@ TryCatchStatement::toIR(IRState * irs)
     if (catches) {
 	for (unsigned i = 0; i < catches->dim; i++) {
 	    Catch * a_catch = (Catch *) catches->data[i];
-		
+
 	    irs->startCatch(a_catch->type->toCtype()); //expand_start_catch( xxx );
-	    
+
 	    irs->doLineNote(a_catch->loc);
 	    irs->startScope();
 
@@ -3865,7 +3865,7 @@ SynchronizedStatement::toIR(IRState * irs)
 
 	irs->startBindings();
 	tree decl = irs->localVar(IRState::getObjectType());
-	
+
 	DECL_IGNORED_P( decl ) = 1;
 	tree cleanup = irs->libCall(LIBCALL_MONITOREXIT, 1, & decl);
 	// assuming no conversions needed
@@ -3883,7 +3883,7 @@ SynchronizedStatement::toIR(IRState * irs)
 	} else {
 	    init_exp = exp->toElem(irs);
 	}
-	
+
 	DECL_INITIAL(decl) = init_exp;
 
 	irs->doLineNote(loc);
@@ -3965,16 +3965,16 @@ void
 ReturnStatement::toIR(IRState* irs)
 {
     irs->doLineNote(loc);
-    
+
     if (exp) {
 	if (exp->type->toBasetype()->ty != Tvoid) { // %% == Type::tvoid ?
 	    FuncDeclaration * func = irs->func;
 	    Type * ret_type = func->tintro ?
 		func->tintro->nextOf() : func->type->nextOf();
-	    
+
             if (func->isMain() && ret_type->toBasetype()->ty == Tvoid)
                 ret_type = Type::tint32;
-	    
+
 	    tree result_decl = DECL_RESULT( irs->func->toSymbol()->Stree );
 	    tree result_assign = build2 ( MODIFY_EXPR,
 		TREE_TYPE( result_decl ), result_decl,
@@ -4056,12 +4056,12 @@ SwitchStatement::toIR(IRState * irs)
 	}
 	outdata(s);
 	tree p_table = irs->addressOf(s->Stree);
-	
+
 	tree args[2] = {
 	    irs->darrayVal(cond_type->arrayOf()->toCtype(), cases->dim,
 		p_table),
 	    cond_tree };
-	
+
 	cond_tree = irs->libCall(lib_call, 2, args);
     } else if (! cond_type->isscalar()) {
 	::error("cannot handle switch condition of type %s", cond_type->toChars());
@@ -4143,10 +4143,10 @@ ForeachStatement::toIR(IRState* irs)
 	fprintf(stderr, "EXPER: I need this\n");
 	default_loc = Loc(g.mod, 1); // %% fix
     }
-    
+
     if (! value->loc.filename)
 	g.ofile->setDeclLoc( value->toSymbol()->Stree, default_loc );
-    
+
     irs->emitLocalVar(value, true);
 
     if (key) {
@@ -4156,7 +4156,7 @@ ForeachStatement::toIR(IRState* irs)
 	    DECL_INITIAL( key->toSymbol()->Stree ) = op == TOKforeach ?
 		irs->integerConstant(0, key->type) :
 		irs->arrayLength(aggr_expr, agg_type);
-	
+
 	irs->emitLocalVar(key); // %% getExpInitializer causes uneeded initialization
     }
 
@@ -4246,7 +4246,7 @@ ForeachRangeStatement::toIR(IRState * irs)
 {
     bool fwd = op == TOKforeach;
     Type * key_type = key->type->toBasetype();
-    
+
     irs->startScope();
     irs->startBindings(); /* Variables created by the function will probably
 			     end up in a contour created by emitLocalVar.  This
@@ -4277,7 +4277,7 @@ ForeachRangeStatement::toIR(IRState * irs)
     iter_expr = irs->vmodify(key_decl,
 	build2(fwd ? PLUS_EXPR : MINUS_EXPR, TREE_TYPE(key_decl),
 	    key_decl, irs->integerConstant(1, TREE_TYPE(key_decl))));
-    
+
     irs->expandDecl(lwr_decl);
     irs->expandDecl(upr_decl);
     irs->doExp( irs->vmodify(lwr_decl, lwr->toElem(irs)) );
@@ -4366,7 +4366,7 @@ CompoundStatement::toIR(IRState* irs)
     if (statements) {
 	for (unsigned i = 0; i < statements->dim; i++) {
 	    Statement * statement = (Statement *) statements->data[i];
-	    
+
 	    if (statement)
 		statement->toIR(irs);
 	}
@@ -4381,7 +4381,7 @@ UnrolledLoopStatement::toIR(IRState* irs)
 	irs->continueHere();
 	for (unsigned i = 0; i < statements->dim; i++) {
 	    Statement * statement = (Statement *) statements->data[i];
-	    
+
 	    if (statement)
 	    {
 		irs->setContinueLabel( irs->label(loc) );
@@ -4419,7 +4419,7 @@ PragmaStatement::toIR(IRState *)
 void
 EnumDeclaration::toDebug()
 {
-    
+
 }
 
 int
@@ -4465,18 +4465,18 @@ d_expand_expr(tree exp, rtx target , enum machine_mode tmode, int modifier, rtx 
 	// in expand_start_case().
 	irs->startBindings();
 	// preserve_temp_slots as in c-common.c:c_expand_expr
-	
+
 	stmt->toIR(irs);
 	irs->endBindings();
 
 	expand_end_stmt_expr (rtl_expr);
-	
+
 	rtx result = expand_expr (rtl_expr, target, tmode, (enum expand_modifier) modifier);
 	pop_temp_slots();
 	return result;
     } else if ( TREE_CODE(exp) == (enum tree_code) D_ARRAY_SET_EXPR ){
 	// %% if single byte element, expand to memset
-	
+
 	assert( POINTER_TYPE_P( TREE_TYPE( TREE_OPERAND( exp, 0 ))));
 	assert( INTEGRAL_TYPE_P( TREE_TYPE( TREE_OPERAND( exp, 2 ))));
 	// assuming unsigned source is unsigned
@@ -4486,7 +4486,7 @@ d_expand_expr(tree exp, rtx target , enum machine_mode tmode, int modifier, rtx 
 
 	do_array_set(g.irs,   // %% fix!
 	    TREE_OPERAND(exp, 0), TREE_OPERAND(exp, 1), TREE_OPERAND(exp, 2));
-	
+
 	expand_end_stmt_expr(rtl_expr);
 	rtx result = expand_expr(rtl_expr, target, tmode, (enum expand_modifier) modifier);
 	pop_temp_slots ();
@@ -4543,7 +4543,7 @@ gcc_d_backend_init()
 
     // c was: TREE_TYPE (identifier_global_value (get_identifier (SIZE_TYPE)));
     //signed_size_type_node = c_common_signed_type (size_type_node);
-    
+
     // If this is called after the next statements, you'll get an ICE.
     set_sizetype(size_type_node);
 
@@ -4598,7 +4598,7 @@ gcc_d_backend_init()
     CLASSINFO_SIZE = 19 * PTRSIZE;
 
     d_init_builtins();
-    
+
     if (flag_exceptions) {
 	eh_personality_libfunc = init_one_libfunc(d_using_sjlj_exceptions()
 	    ? "__gdc_personality_sj0" : "__gdc_personality_v0");

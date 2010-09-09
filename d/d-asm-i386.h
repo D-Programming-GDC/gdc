@@ -9,12 +9,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -152,7 +152,7 @@ typedef enum {
     Clb_SizeDXAX = 0x02,
     Clb_EAX      = 0x03,
     Clb_DXAX_Mask = 0x03,
-    
+
     Clb_Flags    = 0x04,
     Clb_DI       = 0x08,
     Clb_SI       = 0x10,
@@ -309,12 +309,12 @@ typedef enum {
     OprC_MMX = 16,
     OprC_MMX_Mem = 17,
     OprC_Shift = 18, // imm or CL
-    
+
     Opr_ClassMask = 0x1f,
-    
+
     Opr_Dest     = 0x20,
     Opr_Update   = 0x60,
-    
+
     Opr_NoType = 0x80,
 } OprVals;
 
@@ -337,7 +337,7 @@ typedef struct {
 	return operands[0] & Opr_Label;
     }
     */
-    
+
     unsigned nOperands() {
 	if (!operands[0])
 	    return 0;
@@ -402,11 +402,11 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_DstW      */  { D|mr,  0,    0,    Word_Types  },
     /* Op_DstF      */  { D|mr,  0,    0,    1, Clb_Flags },
     /* Op_UpdF      */  { U|mr,  0,    0,    1, Clb_Flags },
-    /* Op_DstSrc    */  { D|mr,  mri,  0,/**/1  }, 
-    /* Op_DstSrcF   */  { D|mr,  mri,  0,/**/1, Clb_Flags }, 
-    /* Op_UpdSrcF   */  { U|mr,  mri,  0,/**/1, Clb_Flags }, 
-    /* Op_DstSrcFW  */  { D|mr,  mri,  0,/**/Word_Types, Clb_Flags }, 
-    /* Op_UpdSrcFW  */  { U|mr,  mri,  0,/**/Word_Types, Clb_Flags }, 
+    /* Op_DstSrc    */  { D|mr,  mri,  0,/**/1  },
+    /* Op_DstSrcF   */  { D|mr,  mri,  0,/**/1, Clb_Flags },
+    /* Op_UpdSrcF   */  { U|mr,  mri,  0,/**/1, Clb_Flags },
+    /* Op_DstSrcFW  */  { D|mr,  mri,  0,/**/Word_Types, Clb_Flags },
+    /* Op_UpdSrcFW  */  { U|mr,  mri,  0,/**/Word_Types, Clb_Flags },
     /* Op_DstSrcSSE */  { U|sse, ssem, 0     },  // some may not be update %%
     /* Op_DstSrcMMX */  { U|mmx, mmxm, 0     },  // some may not be update %%
     /* Op_DstSrcImmS*/  { U|sse, ssem, N|imm  }, // some may not be update %%
@@ -417,8 +417,8 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_DstMemNT  */  { D|mem, 0,    0     },
     /* Op_DstRMBNT  */  { D|mr,  0,    0,    Byte_NoType },
     /* Op_DstRMWNT  */  { D|mr,  0,    0     },
-    /* Op_UpdUpd    */  { U|mr,U|mr,   0,/**/1  }, 
-    /* Op_UpdUpdF   */  { U|mr,U|mr,   0,/**/1, Clb_Flags }, 
+    /* Op_UpdUpd    */  { U|mr,U|mr,   0,/**/1  },
+    /* Op_UpdUpdF   */  { U|mr,U|mr,   0,/**/1, Clb_Flags },
     /* Op_Src       */  {   mri, 0,    0,    1  },
     /* Op_SrcRMWNT  */  {   mr,  0,    0,    0  },
     /* Op_SrcW      */  {   mri, 0,    0,    Word_Types  },
@@ -431,7 +431,7 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_SrcSrcFW  */  {   mr,  mri,  0,    Word_Types, Clb_Flags },
     /* Op_SrcSrcSSEF*/  {   sse, ssem, 0,    0, Clb_Flags },
     /* Op_SrcSrcMMX */  {   mmx, mmx,  0, },
-    /* Op_Shift     */  { D|mr,N|shft, 0,/**/1, Clb_Flags }, 
+    /* Op_Shift     */  { D|mr,N|shft, 0,/**/1, Clb_Flags },
     /* Op_Branch    */  {   mri },
     /* Op_CBranch   */  {   imm },
     /* Op_0         */  {   0,0,0 },
@@ -444,11 +444,11 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_Fs_P      */  {   mem, 0,    0,    0, Clb_ST }, // "
     /* Op_Fis       */  {   mem, 0,    0,    FPInt_Types }, // only 16bit and 32bit, DMD defaults to 16bit
     /* Op_Fis_ST    */  {   mem, 0,    0,    FPInt_Types, Clb_ST }, // "
-    /* Op_Fis_P     */  {   mem, 0,    0,    FPInt_Types, Clb_ST }, // push and pop, fild so also 64 bit 
+    /* Op_Fis_P     */  {   mem, 0,    0,    FPInt_Types, Clb_ST }, // push and pop, fild so also 64 bit
     /* Op_Fid       */  { D|mem, 0,    0,    FPInt_Types }, // only 16bit and 32bit, DMD defaults to 16bit
-    /* Op_Fid_P     */  { D|mem, 0,    0,    FPInt_Types, Clb_ST }, // push and pop, fild so also 64 bit 
+    /* Op_Fid_P     */  { D|mem, 0,    0,    FPInt_Types, Clb_ST }, // push and pop, fild so also 64 bit
     /* Op_Ffd       */  { D|mfp, 0,    0,    FP_Types, 0, Next_Form, Op_FfdR }, // only 16bit and 32bit, DMD defaults to 16bit, reg form doesn't need type
-    /* Op_FfdR      */  { D|rfp, 0,    0  }, 
+    /* Op_FfdR      */  { D|rfp, 0,    0  },
     /* Op_Ffd_P     */  { D|mfp, 0,    0,    FP_Types, Clb_ST, Next_Form, Op_FfdR_P, }, // pop, fld so also 80 bit, "
     /* Op_FfdR_P    */  { D|rfp, 0,    0,    0,        Clb_ST },
     /* Op_Fd_P      */  { D|mem, 0,    0,    0, Clb_ST }, // "
@@ -476,7 +476,7 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_cmpxchg8b */  { D|mem/*64*/,0,0,   0, Clb_SizeDXAX/*32*/|Clb_Flags, Out_Mnemonic, Mn_cmpxchg8b },
     /* Op_cmpxchg   */  { D|mr,  reg, 0,     1, Clb_SizeAX|Clb_Flags },
     /* Op_cpuid     */  {   0,0,0 },    // Clobbers eax, ebx, ecx, and edx. Handled specially below.
-    /* Op_enter     */  {   imm, imm }, // operands *not* reversed for gas, %% inform gcc of EBP clobber?, 
+    /* Op_enter     */  {   imm, imm }, // operands *not* reversed for gas, %% inform gcc of EBP clobber?,
     /* Op_fdisi     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_fdisi },
     /* Op_feni      */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_feni },
     /* Op_fsetpm    */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_fsetpm },
@@ -484,7 +484,7 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_imul      */  { D|reg, mr,  imm,   1, Clb_Flags, Next_Form, Op_imul2 }, // 16/32 only
     /* Op_imul2     */  { D|reg, mri, 0,     1, Clb_Flags, Next_Form, Op_imul1 }, // 16/32 only
     /* Op_imul1     */  {   mr,  0,   0,     1, Clb_Flags|Clb_SizeDXAX },
-    /* Op_in        */  { D|ax,N|port,0,     1  },        
+    /* Op_in        */  { D|ax,N|port,0,     1  },
     /* Op_ins       */  {   mem,N|dx, 0,     1, Clb_DI }, // can't override ES segment for this one
     /* Op_insX      */  {   0,   0,   0,     0, Clb_DI }, // output segment overrides %% needs work
     /* Op_iret      */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_iretw },
@@ -497,20 +497,20 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_movsx     */  { D|reg, mr,  0,     1 }, // type suffix is special case
     /* Op_movzx     */  { D|reg, mr,  0,     1 }, // type suffix is special case
     /* Op_mul       */  { U|ax,  mr,  0,     1, Clb_SizeDXAX|Clb_Flags, Next_Form, Op_Src_DXAXF },
-    /* Op_out       */  { N|port,ax,  0,     1  },        
+    /* Op_out       */  { N|port,ax,  0,     1  },
     /* Op_outs      */  { N|dx,  mem, 0,     1, Clb_SI },
     /* Op_outsX     */  {   0,   0,   0,     0, Clb_SI },
     /* Op_push      */  {   mri, 0,    0,    Word_Types, Clb_SP }, // would be Op_SrcW, but DMD defaults to 32-bit for immediate form
-    /* Op_ret       */  {   imm, 0,   0,     0, 0, Next_Form, Op_0  }, 
+    /* Op_ret       */  {   imm, 0,   0,     0, 0, Next_Form, Op_0  },
     /* Op_retf      */  {   0,   0,   0,     0, 0, Out_Mnemonic, Mn_lret  },
     /* Op_scas      */  {   mem, 0,   0,     1, Clb_DI|Clb_Flags },
     /* Op_scasX     */  {   0,   0,   0,     0, Clb_DI|Clb_Flags },
     /* Op_stos      */  {   mem, 0,   0,     1, Clb_DI },
     /* Op_stosX     */  {   0,   0,   0,     0, Clb_DI },
     /* Op_xlat      */  {   mem, 0,   0,     0, Clb_SizeAX }
-    
+
     /// * Op_arpl      */  { D|mr,  reg }, // 16 only -> DstSrc
-    /// * Op_bsX       */  {   rw,  mrw,  0,    1, Clb_Flags },//->srcsrcf 
+    /// * Op_bsX       */  {   rw,  mrw,  0,    1, Clb_Flags },//->srcsrcf
     /// * Op_bt        */  {   mrw, riw,  0,    1, Clb_Flags },//->srcsrcf
     /// * Op_btX       */  { D|mrw, riw,  0,    1, Clb_Flags },//->dstsrcf .. immediate does not contribute to size
     /// * Op_cmovCC    */  { D|rw,  mrw,  0,    1 } // ->dstsrc
@@ -562,7 +562,7 @@ static AsmOpEnt opData[] = {
     { "addsd",  Op_DstSrcSSE },
     { "addss",  Op_DstSrcSSE },
     { "addsubpd", Op_DstSrcSSE },
-    { "addsubps", Op_DstSrcSSE },    
+    { "addsubps", Op_DstSrcSSE },
     { "align",  Op_Align },
     { "and",    Op_UpdSrcF },
     { "andnpd", Op_DstSrcSSE },
@@ -656,7 +656,7 @@ static AsmOpEnt opData[] = {
     { "cwde", Op_0_AX },
     //{ "da", Op_ },// dunno what this is -- takes labels?
     { "daa",   Op_Adjust },
-    { "das",   Op_Adjust },    
+    { "das",   Op_Adjust },
     { "db",    Op_db },
     { "dd",    Op_dd },
     { "de",    Op_de },
@@ -693,15 +693,15 @@ static AsmOpEnt opData[] = {
     { "fcmovnu",  Op_FdSTiSTi },
     { "fcmovu",   Op_FdSTiSTi },
     { "fcom",   Op_FCmp },
-    { "fcomi",  Op_FCmpFlg  }, 
+    { "fcomi",  Op_FCmpFlg  },
     { "fcomip", Op_FCmpFlgP },
     { "fcomp",  Op_FCmpP },
     { "fcompp", Op_F0_P },   // pops twice
-    { "fcos",   Op_F0_ST }, 
+    { "fcos",   Op_F0_ST },
     { "fdecstp",Op_F0_P },   // changes stack
     { "fdisi",  Op_fdisi },
     { "fdiv",   Op_FMath },
-    { "fdivp",  Op_FPMath }, 
+    { "fdivp",  Op_FPMath },
     { "fdivr",  Op_FMath },
     { "fdivrp", Op_FPMath },
     { "feni",   Op_feni },
@@ -716,8 +716,8 @@ static AsmOpEnt opData[] = {
     { "fincstp",Op_F0_P },
     { "finit",  Op_F0_P },
     { "fist",   Op_Fid }, // only 16,32bit
-    { "fistp",  Op_Fid_P }, 
-    { "fisttp", Op_Fid_P }, 
+    { "fistp",  Op_Fid_P },
+    { "fisttp", Op_Fid_P },
     { "fisub",  Op_Fis_ST },
     { "fisubr", Op_Fis_ST },
     { "fld",    Op_fld },
@@ -742,10 +742,10 @@ static AsmOpEnt opData[] = {
     { "fnstenv",Op_DstMemNT },
     { "fnstsw", Op_fXstsw },
     { "fpatan", Op_F0_P }, // pop and modify new ST
-    { "fprem",  Op_F0_ST }, 
-    { "fprem1", Op_F0_ST }, 
+    { "fprem",  Op_F0_ST },
+    { "fprem1", Op_F0_ST },
     { "fptan",  Op_F0_P }, // modify ST and push 1.0
-    { "frndint",Op_F0_ST }, 
+    { "frndint",Op_F0_ST },
     { "frstor", Op_SrcMemNT }, // but clobbers everything
     { "fsave",  Op_DstMemNT },
     { "fscale", Op_F0_ST },
@@ -794,7 +794,7 @@ static AsmOpEnt opData[] = {
     { "invd", Op_0 },
     { "invlpg", Op_SrcMemNT },
     { "iret",  Op_iret },
-    { "iretd", Op_iretd },    
+    { "iretd", Op_iretd },
     { "ja",    Op_CBranch },
     { "jae",   Op_CBranch },
     { "jb",    Op_CBranch },
@@ -857,7 +857,7 @@ static AsmOpEnt opData[] = {
     { "lss",   Op_DstSrc },
     { "ltr",   Op_DstMemNT },
     { "maskmovdqu", Op_SrcSrcMMX }, // writes to [edi]
-    { "maskmovq",   Op_SrcSrcMMX }, 
+    { "maskmovq",   Op_SrcSrcMMX },
     { "maxpd", Op_DstSrcSSE },
     { "maxps", Op_DstSrcSSE },
     { "maxsd", Op_DstSrcSSE },
@@ -934,7 +934,7 @@ static AsmOpEnt opData[] = {
     { "pand",     Op_DstSrcMMX },
     { "pandn",    Op_DstSrcMMX },
     { "pavgb",    Op_DstSrcMMX },
-    { "pavgusb",  Op_DstSrcMMX }, // AMD 3dNow! 
+    { "pavgusb",  Op_DstSrcMMX }, // AMD 3dNow!
     { "pavgw",    Op_DstSrcMMX },
     { "pcmpeqb",  Op_DstSrcMMX },
     { "pcmpeqd",  Op_DstSrcMMX },
@@ -969,7 +969,7 @@ static AsmOpEnt opData[] = {
     { "pminsw",   Op_DstSrcMMX },
     { "pminub",   Op_DstSrcMMX },
     { "pmovmskb", Op_DstSrcMMX },
-    { "pmulhrw",  Op_DstSrcMMX }, // AMD 3dNow! 
+    { "pmulhrw",  Op_DstSrcMMX }, // AMD 3dNow!
     { "pmulhuw",  Op_DstSrcMMX },
     { "pmulhw",   Op_DstSrcMMX },
     { "pmullw",   Op_DstSrcMMX },
@@ -978,7 +978,7 @@ static AsmOpEnt opData[] = {
     { "popa",     Op_SizedStack },  // For intel this is always 16-bit
     { "popad",    Op_SizedStack },  // GAS doesn't accept 'popad' -- these clobber everything, but supposedly it would be used to preserve clobbered regs
     { "popf",     Op_SizedStack },  // rewrite the insn with a special case
-    { "popfd",    Op_SizedStack }, 
+    { "popfd",    Op_SizedStack },
     { "por",      Op_DstSrcMMX },
     { "prefetchnta", Op_SrcMemNT },
     { "prefetcht0",  Op_SrcMemNT },
@@ -1007,7 +1007,7 @@ static AsmOpEnt opData[] = {
     { "psubusb",  Op_DstSrcMMX },
     { "psubusw",  Op_DstSrcMMX },
     { "psubw",    Op_DstSrcMMX },
-    { "pswapd",   Op_DstSrcMMX }, // AMD 3dNow! 
+    { "pswapd",   Op_DstSrcMMX }, // AMD 3dNow!
     { "punpckhbw", Op_DstSrcMMX },
     { "punpckhdq", Op_DstSrcMMX },
     { "punpckhqdq",Op_DstSrcMMX },
@@ -1197,7 +1197,7 @@ struct AsmProcessor
 	Reg baseReg;
 	Reg indexReg;
 	int scale;
-	
+
 	OperandClass cls;
 	PtrType dataSize;
 	PtrType dataSizeHint; // DMD can use the type of a referenced variable
@@ -1228,7 +1228,7 @@ struct AsmProcessor
 
 	if ( ! regInfo[0].ident ) {
 	    char buf[8], *p;
-	    
+
 	    for (int i = 0; i < N_Regs; i++) {
 		strncpy(buf, regInfo[i].name, sizeof(buf) - 1);
 		for (p = buf; *p; p++)
@@ -1245,8 +1245,8 @@ struct AsmProcessor
 	    Handled = new Expression(0, TOKvoid, sizeof(Expression));
 
 	    ident_seg = Lexer::idPool("seg");
-	
-	    eof_tok.value = TOKeof; 
+
+	    eof_tok.value = TOKeof;
 	    eof_tok.next = 0;
 	}
     }
@@ -1277,7 +1277,7 @@ struct AsmProcessor
 
     void parse() {
 	op = parseOpcode();
-	
+
 	switch (op) {
 	case Op_Align:
 	    doAlign();
@@ -1347,7 +1347,7 @@ struct AsmProcessor
 	} while (i != j);
 
 	stmt->error("unknown opcode '%s'", opcode);
-	
+
 	return Op_Invalid;
     }
 
@@ -1355,7 +1355,7 @@ struct AsmProcessor
     void doInstruction() {
 	bool ok = true;
 	unsigned operand_i = 0;
-	
+
 	opInfo = & asmOpInfo[op];
 	memset(operands, 0, sizeof(operands));
 
@@ -1406,7 +1406,7 @@ struct AsmProcessor
 
 	for (unsigned i = 0; i < nOperands; i++)
 	    classifyOperand(& operands[i]);
-	
+
 	while (1) {
 	    if (nOperands == opInfo->nOperands()) {
 		wrong_number = false;
@@ -1415,7 +1415,7 @@ struct AsmProcessor
 		    Op_FCmpP/Op_FCmpP1 */
 		for (unsigned i = 0; i < nOperands; i++) {
 		    Operand * operand = & operands[i];
-		    
+
 		    switch (opInfo->operands[i] & Opr_ClassMask) {
 		    case OprC_Mem: // no FPMem currently
 			if (operand->cls != Opr_Mem)
@@ -1454,7 +1454,7 @@ struct AsmProcessor
     void addLabel(unsigned n) {
 	// No longer taking the address of the actual label -- doesn't seem like it would help.
 	char buf[64];
-	
+
 	d_format_priv_asm_label(buf, n);
 	insnTemplate->writestring(buf);
     }
@@ -1466,7 +1466,7 @@ struct AsmProcessor
     void classifyOperand(Operand * operand) {
 	operand->cls = classifyOperand1(operand);
     }
-    
+
     OperandClass classifyOperand1(Operand * operand) {
 	bool is_localsize = false;
 	bool really_have_symbol = false;
@@ -1478,7 +1478,7 @@ struct AsmProcessor
 
 	if (operand->isOffset && ! operand->hasBracket)
 	    return Opr_Immediate;
-	
+
 	if (operand->hasBracket || really_have_symbol) { // %% redo for 'offset' function
 	    if (operand->reg != Reg_Invalid) {
 		invalidExpression();
@@ -1492,7 +1492,7 @@ struct AsmProcessor
 	    invalidExpression();
 	    return Opr_Invalid;
 	}
-	
+
 	if (operand->segmentPrefix != Reg_Invalid) {
 	    if (operand->reg != Reg_Invalid) {
 		invalidExpression();
@@ -1609,7 +1609,7 @@ struct AsmProcessor
 	    case Int_Types:   min_type = Byte_Ptr; break;
 	    case Word_Types:  min_type = Short_Ptr; break;
 	    case FPInt_Types:
-		if (op == Op_Fis_ST) // integer math instructions 
+		if (op == Op_Fis_ST) // integer math instructions
 		    min_type = Int_Ptr;
 		else // compare, load, store
 		    min_type = Short_Ptr;
@@ -1618,12 +1618,12 @@ struct AsmProcessor
 	    }
 	    if (op == Op_push && operands[0].cls == Opr_Immediate)
 		min_type = Int_Ptr;
-	    
+
 	    for (int i = 0; i < nOperands; i++) {
 		if (hint_type == Default_Ptr &&
 		    ! (opInfo->operands[i] & Opr_NoType))
 		    hint_type = operands[i].dataSizeHint;
-		    
+
 		if ((opInfo->operands[i] & Opr_NoType) ||
 		    operands[i].dataSize == Default_Ptr)
 		    continue;
@@ -1660,7 +1660,7 @@ struct AsmProcessor
 		return false;
 	    }
 	}
-	
+
 	switch (op) {
 	case Op_SizedStack:
 	    {
@@ -1700,7 +1700,7 @@ struct AsmProcessor
 		    op1_size = operands[1].dataSizeHint;
 		// Need type char for source arg
 		switch (op1_size) {
-		case Byte_Ptr: 
+		case Byte_Ptr:
 		case Default_Ptr:
 		    tc_1 = 'b';
 		    break;
@@ -1776,7 +1776,7 @@ struct AsmProcessor
 		insnTemplate->writestring(", ");
 
 	    fmt = "%";
-    
+
 	    switch (op) {
 	    case Op_mul:
 		// gas won't accept the two-operand form; skip to the source operand
@@ -1863,7 +1863,7 @@ struct AsmProcessor
 		} else {
 		    mode = Mode_Input;
 		}
-		
+
 		use_star = opTakesLabel();//opInfo->takesLabel();
 		if (operand->segmentPrefix != Reg_Invalid) {
 		    writeReg(operand->segmentPrefix);
@@ -1877,13 +1877,13 @@ struct AsmProcessor
 		       operand could be a floating point constant.  If this
 		       is the case, it will be turned into a const static
 		       VAR_DECL later in AsmStatement::toIR. */
-		    
+
 		    if (e->op == TOKvar)
 			decl = ((VarExp *) e)->var;
 
 		    /* The GCC will error (or just warn) on references to
 		       nonlocal vars, but it cannot catch closure vars. */
-		    
+
 		    /* TODO: Could allow this for the frame-relative
 		       case if it's a closure var.  We do not know if
 		       it is a closure var at this point, however.
@@ -1893,7 +1893,7 @@ struct AsmProcessor
 		    if (decl && !(decl->isDataseg() || decl->isCodeseg()) &&
 			decl->toParent2() != sc->func)
 			stmt->error("cannot access nonlocal variable %s", decl->toChars());
-		    
+
 		    if (operand->baseReg != Reg_Invalid &&
 			decl && ! decl->isDataseg()) {
 
@@ -1901,7 +1901,7 @@ struct AsmProcessor
 
 			/* GCC doesn't give the front end access to stack offsets
 			   when optimization is turned on (3.x) or at all (4.x).
-			   
+
 			   Try to convert var[EBP] (or var[ESP] for naked funcs) to
 			   a memory expression that does not require us to know
 			   the stack offset.
@@ -1927,12 +1927,12 @@ struct AsmProcessor
 			    }
 			    e = new PtrExp(0, e);
 			    e->type = decl->type;
-			    
+
 			    operand->constDisplacement = 0;
 			    operand->baseReg = Reg_Invalid;
 
 			    addOperand(fmt, Arg_Memory, e, asmcode, mode);
-			    
+
 			} else {
 			    addOperand("%a", Arg_FrameRelative, e, asmcode);
 			}
@@ -1940,7 +1940,7 @@ struct AsmProcessor
 			    asmcode->clobbersMemory = 1;
 		    } else  {
 			// Plain memory reference to variable
-			
+
 			/* If in a reg, DMD moves to memory.. even with -O, so we'll do the same
 			   by always using the "m" contraint.
 
@@ -1955,7 +1955,7 @@ struct AsmProcessor
 			    LabelDsymbol * lbl = (LabelDsymbol *) ((DsymbolExp *) e)->s;
 			    if (! lbl->asmLabelNum)
 				lbl->asmLabelNum = ++d_priv_asm_label_serial;
-			    
+
 			    use_star = false;
 			    addLabel(lbl->asmLabelNum);
 			} else if ((decl && decl->isCodeseg())) { // if function or label
@@ -2038,7 +2038,7 @@ struct AsmProcessor
     void slotExp(Expression * exp) {
 	/*
 	  if offset, make a note
-	
+
 	  if integer, add to immediate
 	  if reg:
 	      if not in bracket, set reg (else error)
@@ -2055,7 +2055,7 @@ struct AsmProcessor
 	    exp = ((AddrExp *) exp)->e1;
 	    is_offset = true;
 	}
-	
+
 	if (isIntExp(exp)) {
 	    if (is_offset)
 		invalidExpression();
@@ -2095,7 +2095,7 @@ struct AsmProcessor
 		    operand->dataSizeHint = ty == Tfloat80 || ty == Timaginary80 ?
 			Extended_Ptr : (PtrType) v->type->size(0);
 		}
-		
+
 		if (! operand->symbolDisplacement.dim) {
 		    if (is_offset && ! operand->inBracket)
 			operand->isOffset = 1;
@@ -2269,7 +2269,7 @@ struct AsmProcessor
 	    if (! operand->inBracket) {
 		invalidExpression(); // maybe should allow, e.g. DS:EBX+EAX*4
 	    }
-	    
+
 	    if (operand->scale || operand->indexReg != Reg_Invalid) {
 		invalidExpression();
 		return true;
@@ -2288,7 +2288,7 @@ struct AsmProcessor
 		stmt->error("invalid index register scale '%d'", operand->scale);
 		return true;
 	    }
-	    
+
 	    return true;
 	}
 	return false;
@@ -2328,11 +2328,11 @@ struct AsmProcessor
     Expression * parseBrExp() {
 	// %% check (why is bracket lower precends..)
 	// 3+4[eax] -> 3 + (4 [EAX]) ..
-	
+
 	// only one bracked allowed, so this doesn't quite handle
 	// the spec'd syntax
 	Expression * e;
-	
+
 	if (token->value == TOKlbracket)
 	    e = Handled;
 	else
@@ -2341,7 +2341,7 @@ struct AsmProcessor
 	// DMD allows multiple bracket expressions.
 	while (token->value == TOKlbracket) {
 	    nextToken();
-	    
+
 	    operand->inBracket = operand->hasBracket = 1;
 	    slotExp(parseAsmExp());
 	    operand->inBracket = 0;
@@ -2378,7 +2378,7 @@ struct AsmProcessor
     Expression * parseUnaExp() {
 	Expression * e = NULL;
 	PtrType ptr_type;
-	
+
 	// First, check for type prefix.
 	if (token->value != TOKeof &&
 	    peekToken()->value == TOKidentifier &&
@@ -2433,7 +2433,7 @@ struct AsmProcessor
     Expression * parsePrimaryExp() {
 	Expression * e;
 	Identifier * ident = NULL;
-	
+
 	switch (token->value) {
 	case TOKint32v:
 	case TOKuns32v:
@@ -2455,7 +2455,7 @@ struct AsmProcessor
 	    {
 		ident = token->ident;
 		nextToken();
-		
+
 		if (ident == Id::__LOCAL_SIZE) {
 		    return new IdentifierExp(stmt->loc, ident);
 		} else if (ident == Id::__dollar) {
@@ -2523,13 +2523,13 @@ struct AsmProcessor
 			}
 		    }
 		}
-		
+
 		if (opTakesLabel()/*opInfo->takesLabel()*/ && e->op == TOKidentifier) {
 		    // DMD uses labels secondarily to other symbols, so check
 		    // if IdentifierExp::semantic won't find anything.
 		    Dsymbol *scopesym;
-		    
-		    if ( ! sc->search(stmt->loc, ident, & scopesym) )		    
+
+		    if ( ! sc->search(stmt->loc, ident, & scopesym) )
 			return new DsymbolExp(stmt->loc,
 			    sc->func->searchLabel( ident ));
 		}
@@ -2550,7 +2550,7 @@ struct AsmProcessor
 			    ve->type = e->type;
 			    e = ve;
 			}
-		    }			    
+		    }
 		}
 		return e;
 	    }
@@ -2582,7 +2582,7 @@ struct AsmProcessor
 
 	if ((align & -align) == align) {
 	    // %% is this printf portable?
-#ifdef HAVE_GAS_BALIGN_AND_P2ALIGN 
+#ifdef HAVE_GAS_BALIGN_AND_P2ALIGN
 	    insnTemplate->printf(".balign %u", (unsigned) align);
 #else
 	    insnTemplate->printf(".align %u", (unsigned) align);
@@ -2596,7 +2596,7 @@ struct AsmProcessor
 
     void doEven() {
 	// .align for GAS is in bits, others probably use bytes..
-#ifdef HAVE_GAS_BALIGN_AND_P2ALIGN 
+#ifdef HAVE_GAS_BALIGN_AND_P2ALIGN
 	insnTemplate->writestring(".balign 2");
 #else
 	insnTemplate->writestring(".align 2");
@@ -2671,8 +2671,8 @@ struct AsmProcessor
 	    default:
 		abort();
 	    }
-	    
-	    nextToken();	    
+
+	    nextToken();
 	    if (token->value == TOKcomma) {
 		insnTemplate->writebyte(',');
 		nextToken();
@@ -2724,6 +2724,6 @@ bool getFrameRelativeValue(tree decl, HOST_WIDE_INT * result)
 	}
 	// shouldn't have virtual_stack_vars_rtx by itself
     }
-    
+
     return false;
 }

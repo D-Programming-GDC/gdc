@@ -1,16 +1,16 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2004 David Friedman
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -47,7 +47,7 @@ myMode_to_machineMode(real_t::MyMode mode)
     case real_t::Float: return TYPE_MODE(float_type_node);
     case real_t::Double: return TYPE_MODE(double_type_node);
     case real_t::LongDouble: return TYPE_MODE(long_double_type_node);
-	
+
     default:
 	abort();
 	return VOIDmode;
@@ -64,7 +64,7 @@ real_t::init()
     assert(sizeof(real_t) >= sizeof(REAL_VALUE_TYPE));
     for (int i = (int) Float; i < (int) NumModes; i++) {
 	real_t_Properties & p = real_t_properties[i];
-	
+
 	enum machine_mode mode = myMode_to_machineMode((MyMode) i);
 	const struct real_format & rf = * REAL_MODE_FORMAT(mode);
 
@@ -134,7 +134,7 @@ real_t::real_t(int v)
 real_t::real_t(d_uns64 v)
 {
 # if HOST_BITS_PER_WIDE_INT == 32
-    REAL_VALUE_FROM_UNSIGNED_INT(rv(), 
+    REAL_VALUE_FROM_UNSIGNED_INT(rv(),
 	v & 0xffffffff,	(v >> 32) & 0xffffffff,
 	max_float_mode());
 # elif HOST_BITS_PER_WIDE_INT == 64
@@ -219,7 +219,7 @@ real_t real_t::operator% (const real_t & r)
 	real_nan(& rvt, "", 1, max_float_mode());
 	return real_t(rvt);
     }
-    
+
     if ( rv().cl == rvc_zero ) {
 	return *this;
     }
@@ -317,7 +317,7 @@ bool
 real_t::floatCompare(int op, const real_t & r)
 {
     enum tree_code out;
-    
+
     switch ( (enum TOK) op ) {
     case TOKleg: out = ORDERED_EXPR; break; //n = r1 <>= r2;	break;
     case TOKlg:
@@ -368,7 +368,7 @@ real_t::isNan()
 bool
 real_t::isConversionExact(MyMode to_mode) const
 {
-    return exact_real_truncate(myMode_to_machineMode(to_mode), & rv()); 
+    return exact_real_truncate(myMode_to_machineMode(to_mode), & rv());
 }
 
 void

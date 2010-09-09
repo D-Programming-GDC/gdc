@@ -24,13 +24,13 @@ target_os=`echo $target | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)$/\3/'`
 
 d_target_os=`echo $target_os | sed 's/^\([A-Za-z_]+\)/\1/'`
 case "$d_target_os" in
-aix*) d_os_versym=aix ; d_unix=1 ;; 
+aix*) d_os_versym=aix ; d_unix=1 ;;
 coff*) ;;
 cygwin*) d_os_versym=cygwin ; d_unix=1 ;;
 darwin*) d_os_versym=darwin ; d_unix=1 ;;
 elf*) ;;
 *freebsd*) d_os_versym=freebsd ; d_unix=1 ;;
-linux*) d_os_versym=linux ; d_unix=1 ;; 
+linux*) d_os_versym=linux ; d_unix=1 ;;
 mingw32*) d_os_versym=Win32; d_windows=1 ;;
 pe*)    case "$target" in
 	    *-skyos*-*) d_os_versym=skyos ; d_unix=1 ;;
@@ -78,7 +78,7 @@ fi
 
 # In DMD, this is usually defined in the target's Makefile.
 case "$d_os_versym" in
-# What about aix, bsd and sysv? 
+# What about aix, bsd and sysv?
 darwin)  echo "#define TARGET_OSX     1" ;;
 freebsd) echo "#define TARGET_FREEBSD 1" ;;
 linux)   echo "#define TARGET_LINUX   1" ;;

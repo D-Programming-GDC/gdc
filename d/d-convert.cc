@@ -3,17 +3,17 @@
 
    Modified by
     Iain Buclaw, (C) 2010
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -258,7 +258,7 @@ d_truthvalue_conversion (tree expr)
     }
 
   tree t_zero = integer_zero_node;
-  
+
   if (TREE_CODE (TREE_TYPE (expr)) == COMPLEX_TYPE)
     {
       tree t = save_expr (expr);
@@ -279,7 +279,7 @@ d_truthvalue_conversion (tree expr)
 	t_zero = convert( TREE_TYPE(expr), t_zero );
     }
 #endif
-  
+
 
   return build_buul_binary_op (NE_EXPR, expr, t_zero, 1);
 }

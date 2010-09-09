@@ -4,17 +4,17 @@
    Modified by
     Michael Parrott, (C) 2009, 2010
     Iain Buclaw, (C) 2010
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -266,7 +266,7 @@ static char *
 prefixed_path(const char * path)
 {
     // based on c-incpath.c
-    size_t len = cpp_GCC_INCLUDE_DIR_len;    
+    size_t len = cpp_GCC_INCLUDE_DIR_len;
     if (iprefix && len != 0 && ! strncmp(path, cpp_GCC_INCLUDE_DIR, len))
 	return concat(iprefix, path + len, NULL);
     else
@@ -310,7 +310,7 @@ d_init ()
     if (memcmp (reg_names, saved_reg_names, sizeof reg_names))
 	memcpy (reg_names, saved_reg_names, sizeof reg_names);
 #endif
-    
+
     /* Currently, isX86_64 indicates a 64-bit target in general and is not
        Intel-specific. */
 #ifdef TARGET_64BIT
@@ -347,15 +347,15 @@ d_init ()
 #endif
 
 #ifdef D_USE_MAPPED_LOCATION
-    /* input_location is initially set to BUILTINS_LOCATION (2).  This 
-       will cause a segfault if errors are reported before any line maps 
+    /* input_location is initially set to BUILTINS_LOCATION (2).  This
+       will cause a segfault if errors are reported before any line maps
        are created. Setting input_location to zero stops those segfaults,
        but then decls are created with DECL_SOURCE_LOCATION set to zero
        which causes segfaults in dwarf2out. */
     linemap_add(line_table, LC_RENAME, 0, "<builtin>", 1);
     input_location = linemap_line_start(line_table, 1, 1);
 #endif
-    
+
     Type::init();
     Id::initialize();
     Module::init();
@@ -461,7 +461,7 @@ d_init ()
 #endif
 					     );
 	cpp_change_file(pfile, LC_ENTER, "<built-in>");
-	
+
 	// from c-cppbuiltin.c
 #ifndef TARGET_OS_CPP_BUILTINS
 # define TARGET_OS_CPP_BUILTINS()
@@ -498,7 +498,7 @@ d_init ()
 	char * target_dir = prefixed_path(D_PHOBOS_TARGET_DIR);
 	if (multilib_dir)
 	    target_dir = concat(target_dir, "/", multilib_dir, NULL);
-	
+
 	global.params.imppath->insert(0, prefixed_path(D_PHOBOS_DIR));
 	global.params.imppath->insert(0, target_dir);
     }
@@ -807,7 +807,7 @@ d_write_global_declarations()
 #if D_GCC_VER >= 41
     cgraph_optimize();
 #endif
-    
+
 
     for (unsigned i = 0; i < globalFunctions.dim; i++)
 	debug_hooks->global_decl(vec[i]);
@@ -825,7 +825,7 @@ d_write_global_declarations()
     */
     cgraph_optimize();
 #endif
-    
+
 #endif
 }
 
@@ -893,7 +893,7 @@ d_parse_file (int /*set_yydebug*/)
     char * p, * e;
     char * name;
     unsigned i;
-    
+
     if (global.params.verbose)
     {   printf("binary    %s\n", global.params.argv0);
         printf("version   %s\n", global.version);
@@ -935,7 +935,7 @@ d_parse_file (int /*set_yydebug*/)
     Type::tchar->toCtype();
     Type::twchar->toCtype();
     Type::tdchar->toCtype();
-    
+
     for (TY ty = (TY) 0; ty < TMAX; ty = (TY)(ty + 1)) {
 	if (Type::basic[ty] && ty != Terror)
 	    nametype(Type::basic[ty]);
@@ -976,21 +976,21 @@ d_parse_file (int /*set_yydebug*/)
     }
 
     //fprintf (stderr, "***** %d files  main=%s\n", num_in_fnames, input_filename);
-    
+
     for (i = 0; i < num_in_fnames; i++) {
 	if (fonly_arg) {
 	    if (i == 0)
 		continue;
-	    /* %% Do the other modules really need to be processed? 
+	    /* %% Do the other modules really need to be processed?
 	    else if (an_output_module)
 		break;
 	    */
 	}
-	
+
 	//fprintf(stderr, "fn %d = %s\n", i, in_fnames[i]);
 
 	char * the_fname = (char*) in_fnames[i];
-	
+
 	p = FileName::name(the_fname);
 	e = FileName::ext(p);
 	if (e) {
@@ -1014,7 +1014,7 @@ d_parse_file (int /*set_yydebug*/)
 	    if (!*name)
 		goto Linvalid;
 	}
-	
+
 	id = new Identifier(name, 0);
 	Module * m = new Module(the_fname, id, global.params.doDocComments, global.params.doHdrGeneration);
 	if (! strcmp(in_fnames[i], main_input_filename))
@@ -1033,16 +1033,16 @@ d_parse_file (int /*set_yydebug*/)
     // TemplateInstanceS during the semantic pass.  In order for
     // -femit-templates=private to work, template instances must be emitted
     // in every translation unit.  To do this, the TemplateInstaceS have to
-    // have toObjFile called in the module being compiled.  
+    // have toObjFile called in the module being compiled.
     // TemplateInstance puts itself somwhere during ::semantic, thus it has
     // to know the current module...
 
     assert(an_output_module);
-    
+
     Module * m;
 
     //global.params.verbose = 1;
-    
+
     // Read files
 #if ! V2
     aw = AsyncRead::create(modules.dim);
@@ -1137,7 +1137,7 @@ d_parse_file (int /*set_yydebug*/)
     }
     if (global.errors)
 	goto had_errors;
-	
+
 #if V1
     Module::dprogress = 1;
     Module::runDeferredSemantic();
@@ -1208,7 +1208,7 @@ d_parse_file (int /*set_yydebug*/)
 	    m->inlineScan();
 	}
     }
-    
+
     // Do not attempt to generate output files if errors or warnings occurred
     if (global.errors
 #if V1
@@ -1225,9 +1225,9 @@ d_parse_file (int /*set_yydebug*/)
     else
 	g.ofile->modules.append(& modules);
     g.irs = & gen; // needed for FuncDeclaration::toObjFile shouldDefer check
-    
+
     // Generate output files
-    
+
 #if V1
     if (global.params.doXGeneration)
 	json_generate(&modules);
@@ -1262,7 +1262,7 @@ d_parse_file (int /*set_yydebug*/)
 #endif
 
     an_output_module = 0;
-    
+
     gcc_d_backend_term();
 }
 
@@ -1271,7 +1271,7 @@ d_gcc_dump_source(const char * srcname, const char * ext, unsigned char * data, 
 {
     // Note: There is a dump_base_name variable, but as long as the all-sources hack is in
     // around, the base name has to be determined here.
-    
+
     /* construct output name */
     char* base = (char*) alloca(strlen(srcname)+1);
     base = strcpy(base, srcname);
@@ -1362,7 +1362,7 @@ d_mark_addressable (tree t)
       default:
 	return true;
     }
-  
+
     return 1;
 }
 
@@ -1705,7 +1705,7 @@ poplevel (int keep, int reverse, int routinebody)
 	block = make_node(BLOCK);
     else
 	block = NULL_TREE;
-    
+
     if (block) {
 	BLOCK_VARS( block ) = routinebody ? NULL_TREE : decls;
 	BLOCK_SUBBLOCKS( block ) = level->blocks;
@@ -1746,7 +1746,7 @@ global_bindings_p (void)
 {
     // This is called by the backend before parsing.  Need to make this do
     // something or lang_hooks.clear_binding_stack (lhd_clear_binding_stack)
-    // loops forever. 
+    // loops forever.
     return current_binding_level == global_binding_level || ! global_binding_level;
 }
 
@@ -1779,7 +1779,7 @@ pushdecl (tree decl)
     // %% should only be for variables OR, should also use TRANSLATION_UNIT for toplevel..
     if ( DECL_CONTEXT( decl ) == NULL_TREE )
 	DECL_CONTEXT( decl ) = current_function_decl; // could be NULL_TREE (top level) .. hmm. // hm.m.
-    
+
     /* Put decls on list in reverse order. We will reverse them later if necessary. */
     TREE_CHAIN (decl) = current_binding_level->names;
     current_binding_level->names = decl;
@@ -1886,7 +1886,7 @@ d_expand_function(tree fndecl)
   bool save_flag = flag_omit_frame_pointer;
   flag_omit_frame_pointer = gen.originalOmitFramePointer ||
       D_DECL_NO_FRAME_POINTER( fndecl );
-  
+
   tree_rest_of_compilation (fndecl);
 
   flag_omit_frame_pointer = save_flag;
@@ -1929,7 +1929,7 @@ d_types_compatible_p (tree t1, tree t2)
     {
 	if (TREE_CODE (t1) == ARRAY_TYPE)
 	    return (TREE_TYPE (t1) == TREE_TYPE (t2));
-	
+
 	return (TYPE_ATTRIBUTES (t1) == TYPE_ATTRIBUTES (t2));
     }
     /* else */
@@ -1960,7 +1960,7 @@ d_convert_parm_for_inlining  (tree parm, tree value, tree fndecl, int argnum)
 	return value;
 }
 #endif
-    
+
 #endif // D_GCC_VER < 44
 
 #if D_GCC_VER >= 44

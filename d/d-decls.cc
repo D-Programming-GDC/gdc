@@ -4,17 +4,17 @@
    Modified by
     Michael Parrot, (C) 2009, 2010
     Iain Buclaw, (C) 2010
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -127,7 +127,7 @@ Symbol *Dsymbol::toImport(Symbol * /*sym*/)
 
 static StringTable * uniqueNames = 0;
 static void uniqueName(Declaration * d, tree t, const char * asm_name) {
-    Dsymbol * p = d->toParent2(); 
+    Dsymbol * p = d->toParent2();
     const char * out_name = asm_name;
     char * alloc_name = 0;
 
@@ -246,7 +246,7 @@ Symbol *VarDeclaration::toSymbol()
 	    } while (parent);
 	}
 #endif
-	
+
 	if (storage_class & STCparameter)
 	    decl_kind = PARM_DECL;
 	else if (
@@ -276,7 +276,7 @@ Symbol *VarDeclaration::toSymbol()
 	csym = new Symbol();
 	csym->Stree = var_decl;
 
-	if (decl_kind != CONST_DECL) {	    
+	if (decl_kind != CONST_DECL) {
 	    if (isDataseg())
 		uniqueName(this, var_decl, ident_to_use);
 	    if (c_ident)
@@ -291,7 +291,7 @@ Symbol *VarDeclaration::toSymbol()
 	    /* from gcc code: Some languages have different nominal and real types.  */
 	    // %% What about DECL_ORIGINAL_TYPE, DECL_ARG_TYPE_AS_WRITTEN, DECL_ARG_TYPE ?
 	    DECL_ARG_TYPE( var_decl ) = TREE_TYPE (var_decl);
-	    
+
 	    DECL_CONTEXT( var_decl ) = gen.declContext(this);
 	    assert( TREE_CODE(DECL_CONTEXT( var_decl )) == FUNCTION_DECL );
 	} else if (decl_kind == CONST_DECL) {
@@ -355,7 +355,7 @@ Symbol *VarDeclaration::toSymbol()
 	    DECL_NONLOCAL( var_decl ) = 1;
 	    TREE_ADDRESSABLE( var_decl ) = 1;
 	}
-	
+
 	TREE_USED( var_decl ) = 1;
 #endif
 
@@ -365,7 +365,7 @@ Symbol *VarDeclaration::toSymbol()
 	if (isImportedSymbol())
 	{
 	    gen.addDeclAttribute( var_decl, "dllimport" );
-	    DECL_DLLIMPORT_P( var_decl ) = 1;        
+	    DECL_DLLIMPORT_P( var_decl ) = 1;
 	}
 	else if (isExport())
 	    gen.addDeclAttribute( var_decl, "dllexport" );
@@ -397,7 +397,7 @@ Symbol *TypeInfoDeclaration::toSymbol()
 {
     if ( ! csym ) {
 	VarDeclaration::toSymbol();
-	
+
 	// This variable is the static initialization for the
 	// given TypeInfo.  It is the actual data, not a reference
 	assert( TREE_CODE( TREE_TYPE( csym->Stree )) == REFERENCE_TYPE );
@@ -433,9 +433,9 @@ Symbol *FuncAliasDeclaration::toSymbol()
 // returns a FUNCTION_DECL tree
 Symbol *FuncDeclaration::toSymbol()
 {
-    if (! csym) {	
+    if (! csym) {
 	csym  = new Symbol();
-	
+
 	if (! isym) {
 	    tree id;
 	    //struct prod_token_parm_item* parm;
@@ -507,11 +507,11 @@ Symbol *FuncDeclaration::toSymbol()
 		DECL_VIRTUAL_P (fn_decl) = 1;
 	    }
 	    if (! gen.functionNeedsChain(this)
-    #if D_GCC_VER >= 40
+#if D_GCC_VER >= 40
 		// gcc 4.0: seems to be an error to set DECL_NO_STATIC_CHAIN on a toplevel function
 		// (tree-nest.c:1282:convert_all_function_calls)
 		&& decl_function_context(fn_decl)
-    #endif
+#endif
 		) {
 		// Prevent backend from thinking this is a nested function.
 		DECL_NO_STATIC_CHAIN( fn_decl ) = 1;
@@ -617,7 +617,7 @@ Symbol *FuncDeclaration::toSymbol()
 		    break;
 		case LINKd:
 		    // %% If x86, regparm(1)
-		    // not sure if reg struct return 
+		    // not sure if reg struct return
 		    break;
 		case LINKcpp:
 		    break;
@@ -625,7 +625,7 @@ Symbol *FuncDeclaration::toSymbol()
 		    fprintf(stderr, "linkage = %d\n", linkage);
 		    assert(0);
 	    }
-	    
+
 	    csym->Sident = mangled_ident_str; // save for making thunks
 	    csym->Stree = fn_decl;
 
@@ -647,7 +647,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
     Thunk * thunk;
 
     toSymbol();
-    
+
     /* If the thunk is to be static (that is, it is being emitted in this
        module, there can only be one FUNCTION_DECL for it.   Thus, there
        is a list of all thunks for a given function. */
@@ -655,7 +655,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
 	csym->thunks = new Array;
     Array & thunks = * csym->thunks;
     bool found = false;
-	
+
     for (unsigned i = 0; i < thunks.dim; i++) {
 	thunk = (Thunk *) thunks.data[i];
 	if (thunk->offset == offset) {
@@ -706,7 +706,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
 	TREE_PRIVATE(thunk_decl) = TREE_PRIVATE(target_func_decl);
 	TREE_PUBLIC(thunk_decl) = TREE_PUBLIC(target_func_decl);
 #endif
-	
+
 	DECL_ARTIFICIAL(thunk_decl) = 1;
 	DECL_IGNORED_P(thunk_decl) = 1;
 	DECL_NO_STATIC_CHAIN(thunk_decl) = 1;
@@ -726,7 +726,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
 	//g.ofile->prepareSymbolOutput(sthunk);
 	g.ofile->doThunk(thunk_decl, target_func_decl, offset);
 #else
-	if ( TREE_STATIC(thunk_decl) )	
+	if ( TREE_STATIC(thunk_decl) )
 	    g.ofile->doThunk(thunk_decl, target_func_decl, offset);
 #endif
 
@@ -782,7 +782,7 @@ Symbol *ClassDeclaration::toSymbol()
 		: error_mark_node));
 	csym->Stree = decl;
 	dkeep(decl);
- 
+
 	g.ofile->setupStaticStorage(this, decl);
 	g.ofile->setDeclLoc(decl, this);
 
@@ -802,7 +802,7 @@ Symbol *InterfaceDeclaration::toSymbol()
     {
 	csym = ClassDeclaration::toSymbol();
 	tree decl = csym->Stree;
-	
+
 	Symbol * temp_sym = toSymbolX("__Interface", SCextern, 0, "Z");
 	DECL_NAME( decl ) = get_identifier( temp_sym->Sident );
 	delete temp_sym;
@@ -825,7 +825,7 @@ Symbol *Module::toSymbol()
 	/* This causes problems  .. workaround
 	   is to call moduleinfo->toCtype() before we start processing
 	   decls in genobjfile. ...
-	   
+
 	    if (moduleinfo) {
 		some_type = moduleinfo->type;
 	    } else {
@@ -833,7 +833,7 @@ Symbol *Module::toSymbol()
 	    }
 	*/
 	some_type = gen.getObjectType();
-	
+
 	csym = toSymbolX("__ModuleInfo", SCextern, 0, "Z");
 	slist_add(csym);
 
@@ -841,11 +841,11 @@ Symbol *Module::toSymbol()
 	    TREE_TYPE(some_type->toCtype())); // want the RECORD_TYPE, not the REFERENCE_TYPE
 	g.ofile->setDeclLoc(decl, this);
 	csym->Stree = decl;
-	
+
 	dkeep(decl);
-	
+
 	g.ofile->setupStaticStorage(this, decl);
-	
+
 	TREE_CONSTANT( decl ) = 0; // *not* readonly, moduleinit depends on this
 	TREE_READONLY( decl ) = 0; // Not an lvalue, tho
     }
@@ -862,7 +862,7 @@ Symbol *ClassDeclaration::toVtblSymbol()
     if (!vtblsym)
     {
 	tree decl;
-	
+
 	vtblsym = toSymbolX("__vtbl", SCextern, 0, "Z");
 	slist_add(vtblsym);
 

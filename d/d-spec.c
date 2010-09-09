@@ -1,6 +1,6 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2004 David Friedman
-   
+
    Modified by
     Iain Buclaw, (C) 2010
 
@@ -8,12 +8,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -68,7 +68,7 @@ void
 lang_specific_driver (int *in_argc, const char *const **in_argv,
 		      int *in_added_libraries)
 {
-    
+
     int i, j;
 
     /* If nonzero, the user gave us the `-p' or `-pg' flag.  */
@@ -137,7 +137,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     const char *defaultlib = NULL;
 
     /* What debug library to use instead of phobos */
-    const char *debuglib = NULL; 
+    const char *debuglib = NULL;
 
     /* The number of libraries added in.  */
     int added_libraries;
@@ -265,16 +265,16 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 			       cause a warning.  */
 			    library = -1;
 			}
-		    else if (strcmp (argv[i], "-static-libgcc") == 0 
+		    else if (strcmp (argv[i], "-static-libgcc") == 0
 			|| strcmp (argv[i], "-static") == 0)
 			shared_libgcc = 0;
 		    else if (strncmp (argv[i], "-fonly=", 7) == 0)
 			{
 			    int len;
-			    
+
 			    args[i] |= REMOVE_ARG;
 			    only_source_option = argv[i]; //%%TODO: copy/const
-			    
+
 			    len = strlen(only_source_option);
 			    if (len <= 2 || only_source_option[len-1] != 'd' ||
 				only_source_option[len-2] != '.') {
@@ -303,7 +303,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 		}
 	    else
 		{
-		    int len; 
+		    int len;
 
 		    if (saw_speclang)
 			{
@@ -319,7 +319,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 			    n_all_d_sources++;
 			    args[i] |= D_SOURCE_FILE;
 			}
-	  
+
 		    /* If we don't know that this is a header file, we might
 		       need to be linking in the libraries.  */
 		    if (library == 0)
@@ -367,7 +367,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 
     i = 0;
     j = 0;
-  
+
     /* Copy the 0th argument, i.e., the name of the program itself.  */
     arglist[i++] = argv[j++];
 
@@ -379,7 +379,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 		    ++i;
 		    continue;
 		}
-	    
+
 	    arglist[j] = argv[i];
 
 	    /* Make sure -lstdc++ is before the math library, since libstdc++
@@ -475,7 +475,7 @@ d_all_sources_spec_function (int argc, const char ** argv)
 
     if (only_source_option) {
 	char * result;
-	
+
 	for (i = 0; i < n_all_d_sources; i++)
 	    result_len += strlen(all_d_sources[i]);
 	result_len += n_all_d_sources + 1; /* once space to separate each file and terminating null
@@ -521,13 +521,13 @@ d_output_prefix_spec_function (int argc, const char ** argv)
     return result;
 }
 
- 
+
 /* Number of extra output files that lang_specific_pre_link may generate.  */
 int lang_specific_extra_outfiles = 0;  /* Not used for D.  */
 
 /* not for 4.3.x+ ... */
 
-/* Table of language-specific spec functions.  */ 
+/* Table of language-specific spec functions.  */
 const struct spec_function lang_specific_spec_functions[] =
 {
     { "d-all-sources",  d_all_sources_spec_function },

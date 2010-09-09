@@ -9,12 +9,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -113,8 +113,8 @@ void AsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     bool sep = 0, nsep = 0;
     buf->writestring("asm { ");
-    
-    for (Token * t = tokens; t; t = t->next) {	
+
+    for (Token * t = tokens; t; t = t->next) {
 	switch (t->value) {
 	case TOKlparen:
 	case TOKrparen:
@@ -334,16 +334,16 @@ bool d_have_inline_asm() { return true; }
 
 Statement *AsmStatement::semantic(Scope *sc)
 {
-    
+
     sc->func->inlineAsm = 1;
     sc->func->inlineStatus = ILSno; // %% not sure
     // %% need to set DECL_UNINLINABLE too?
     sc->func->hasReturnExp = 1; // %% DMD does this, apparently...
-    
+
     // empty statement -- still do the above things because they might be expected?
     if (! tokens)
 	return this;
-    
+
     AsmProcessor ap(sc, this);
     ap.run();
     return this;
@@ -391,11 +391,11 @@ AsmStatement::toIR(IRState * irs)
 
     for (unsigned i = 0; i < code->args.dim; i++) {
 	AsmArg * arg = (AsmArg *) code->args.data[i];
-	
+
 	bool is_input = true;
 	tree arg_val = NULL_TREE;
 	tree cns = NULL_TREE;
-	
+
 	switch (arg->type) {
 	case Arg_Integer:
 	    arg_val = arg->expr->toElem(irs);
@@ -425,7 +425,7 @@ AsmStatement::toIR(IRState * irs)
 		TREE_STATIC(cnst) = TREE_CONSTANT(cnst) = TREE_READONLY(cnst) =
 		    TREE_PRIVATE(cnst) = DECL_ARTIFICIAL(cnst) = DECL_IGNORED_P(cnst) = 1;
 		g.ofile->rodc(cnst, 1);
-		arg_val = cnst;    
+		arg_val = cnst;
 	    }
 	    else
 		arg_val = arg->expr->toElem(irs);
@@ -482,7 +482,7 @@ AsmStatement::toIR(IRState * irs)
     // Telling GCC that callee-saved registers are clobbered makes it preserve
     // those registers.   This changes the stack from what a naked function
     // expects.
-    
+
     if (! irs->func->naked) {
 	for (int i = 0; i < 32; i++) {
 	    if (regs & (1 << i)) {
@@ -504,7 +504,7 @@ AsmStatement::toIR(IRState * irs)
 	if (arg_map[i] < 0)
 	    arg_map[i] = -arg_map[i] - 1 + n_outputs;
     }
-    
+
     bool pct = false;
     char * p = code->insnTemplate;
     char * q = p + code->insnTemplateLen;

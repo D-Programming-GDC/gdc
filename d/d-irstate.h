@@ -1,16 +1,16 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2004 David Friedman
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -48,7 +48,7 @@ struct IRBase : Object
     IRBase();
 
     // ** Functions
-    
+
     // This is used by LabelStatement to find the LabelDsymbol that
     // GotoStatements refer to.
     FuncDeclaration * func; // %% make this a stack
@@ -62,15 +62,15 @@ public:
     static void initFunctionStart(tree fn_decl, const Loc & loc);
 
     // ** Statement Lists
-    
+
     void addExp(tree e);
 #if D_GCC_VER >= 40
     tree statementList;
-    
+
     void pushStatementList();
     tree popStatementList();
 #endif
-    
+
     // ** Labels
 
     // It is only valid to call this while the function in which the label is defined
@@ -121,10 +121,10 @@ public:
 #endif
 
     Array loops; // of Flow
-    
+
     // These routines don't generate code.  They are for tracking labeled loops.
     Flow *    getLoopForLabel(Identifier * ident, bool want_continue = false);
-#if D_GCC_VER < 40    
+#if D_GCC_VER < 40
     Flow *    beginFlow(Statement * stmt, nesting * loop);
 #else
     Flow *    beginFlow(Statement * stmt);
@@ -144,13 +144,13 @@ public:
        function has a toplevel scope.  Every ScopeStatement creates
        a new scope. (And for now, until the emitLocalVar crash is
        solved, this also creates a default binding contour.)
-       
+
        "Binding contour": Same as GCC's definition, whatever that is.
        Each user-declared variable will have a binding contour that begins
        where the variable is declared and ends at it's containing scope.
     */
     Array      scopes; // of unsigned*
-    
+
     void       startScope();
     void       endScope();
     unsigned * currentScope() { return (unsigned *) scopes.tos(); }
