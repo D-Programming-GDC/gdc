@@ -233,9 +233,8 @@ ifeq ($(D_LANGUAGE_VERSION),2)
 D_GLUE_OBJS += d/d-cppmngl.glue.o
 endif
 
-D_BI_ATTRS = d/d-bi-attrs-341.h d/d-bi-attrs-34.h d/d-bi-attrs-40.h \
-             d/d-bi-attrs-41.h d/d-bi-attrs-42.h d/d-bi-attrs-43.h \
-             d/d-bi-attrs-44.h
+D_BI_ATTRS = d/d-bi-attrs-34.h d/d-bi-attrs-40.h d/d-bi-attrs-41.h \
+             d/d-bi-attrs-42.h d/d-bi-attrs-43.h d/d-bi-attrs-44.h
 
 ifdef D_is_apple_ver
   ifeq ($(D_gcc_main_ver),4.0)
