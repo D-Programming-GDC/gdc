@@ -2452,12 +2452,26 @@ IRState::integerConstant(xdmd_integer_t value, tree type)
     }
 #else
 # if HOST_BITS_PER_WIDE_INT == 32
-    tree tree_value = build_int_cst_type(type, value & 0xffffffff);
+#  if D_GCC_VER >= 43
+    tree tree_value = build_int_cst_wide_type(type, value & 0xffffffff,
+					      (value >> 32) & 0xffffffff);
+#  else
+    tree tree_value = build_int_cst_wide(type, value & 0xffffffff,
+					 (value >> 32) & 0xffffffff);
+#  endif
 # elif HOST_BITS_PER_WIDE_INT == 64
     tree tree_value = build_int_cst_type(type, value);
 # else
 #  error Fix This
 # endif
+
+# if D_GCC_VER < 43
+    /* VALUE may be an incorrect representation for TYPE.  Example:
+       uint x = cast(uint) -3; // becomes "-3u" -- value=0xfffffffffffffd type=Tuns32
+       Constant folding will not work correctly unless this is done. */
+    tree_value = force_fit_type(tree_value, 0, 0, 0);
+#endif
+
 #endif
     return tree_value;
 }
