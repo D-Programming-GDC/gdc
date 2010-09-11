@@ -123,7 +123,7 @@ BASE_OBJS=compiler/aaA.o compiler/aApply.o compiler/aApplyR.o compiler/adi.o \
 	  compiler/cast_.o compiler/cmath2.o compiler/complex.o \
 	  compiler/cover.o compiler/critical.o compiler/dgccmain2.o \
 	  compiler/invariant.o compiler/invariant_.o compiler/lifetime.o \
-	  compiler/llmath.o compiler/memory.o compiler/memset.o \
+	  compiler/memory.o compiler/memset.o \
 	  compiler/monitor.o compiler/obj.o compiler/object_.o \
 	  compiler/qsort.o compiler/switch_.o compiler/trace.o
 
