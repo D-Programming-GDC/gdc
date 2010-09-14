@@ -52,7 +52,7 @@ private import stdc.string;
 version(D_InlineAsm_X86)
 {
     /// Returns vendor string
-    char[] vendor()             {return vendorStr;}
+    string vendor()             {return vendorStr.idup;}
     /// Returns processor string
     string processor()          {return processorStr;}
 
@@ -261,7 +261,7 @@ private:
             return;
 
         // seems many intel processors prepend whitespace
-        processorStr = cast(string)strip(toString(dst)).dup;
+        processorStr = strip(toString(dst)).idup;
     }
 
     private void getFeatureFlags()
@@ -451,8 +451,8 @@ private:
 }
 else
 {
-    char[] vendor()             {return "unknown vendor"; }
-    char[] processor()          {return "unknown processor"; }
+    string vendor()             {return "unknown vendor"; }
+    string processor()          {return "unknown processor"; }
 
     bool mmx()                  {return false; }
     bool fxsr()                 {return false; }

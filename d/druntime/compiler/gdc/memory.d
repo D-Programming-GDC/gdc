@@ -23,19 +23,26 @@
  *     distribution.
  * Authors:   Walter Bright, Sean Kelly
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Iain Buclaw, September 2010.
+*/
 module rt.memory;
 
 
 private
 {
-    version( linux )
+    version( GNU )
     {
-        version = SimpleLibcStackEnd;
+	import gcgccextern;
 
-        version( SimpleLibcStackEnd )
-        {
-            extern (C) extern void* __libc_stack_end;
-        }
+	version( GC_Use_Stack_Guess )
+	    import gc_guess_stack;
+
+	version( GC_Use_Stack_FreeBSD )
+	    extern (C) int _d_gcc_gc_freebsd_stack(void **);
     }
 }
 
@@ -45,7 +52,7 @@ private
  */
 extern (C) void* rt_stackBottom()
 {
-    version( Windows )
+    version( Windows ) // TODO: Does this work with MinGW?
     {
         asm
         {
@@ -54,25 +61,38 @@ extern (C) void* rt_stackBottom()
             ret;
         }
     }
-    else version( linux )
+    else version( GC_Use_Stack_GLibC )
     {
-        version( SimpleLibcStackEnd )
-        {
-            return __libc_stack_end;
-        }
-        else
-        {
-            // See discussion: http://autopackage.org/forums/viewtopic.php?t=22
-                static void** libc_stack_end;
-
-                if( libc_stack_end == libc_stack_end.init )
-                {
-                    void* handle = dlopen( null, RTLD_NOW );
-                    libc_stack_end = cast(void**) dlsym( handle, "__libc_stack_end" );
-                    dlclose( handle );
-                }
-                return *libc_stack_end;
-        }
+	return __libc_stack_end;
+    }
+    else version( GC_Use_Stack_Guess )
+    {
+	return stackOriginGuess;
+    }
+    else version( GC_Use_Stack_FreeBSD )
+    {
+	void * stack_origin;
+	if( _d_gcc_gc_freebsd_stack(&stack_origin) )
+	    return stack_origin;
+	else
+	    // No way to signal an error
+	    return null;
+    }
+    else version( GC_Use_Stack_Scan )
+    {
+        static assert( false, "Operating system not supported." );
+    }
+    else version( GC_Use_Stack_Fixed )
+    {
+	version( darwin )
+	{
+	    static if( size_t.sizeof == 4 )
+		return cast(void*) 0xc0000000;
+	    else static if( size_t.sizeof == 8 )
+		return cast(void*) 0x7ffff_00000000UL;
+	    else
+		static assert( false, "Operating system not supported." );
+	}
     }
     else
     {
@@ -86,6 +106,7 @@ extern (C) void* rt_stackBottom()
  */
 extern (C) void* rt_stackTop()
 {
+    // OK to use asm? or use the fallback method...
     version( D_InlineAsm_X86 )
     {
         asm
@@ -95,9 +116,22 @@ extern (C) void* rt_stackTop()
             ret;
         }
     }
+    else version( D_InlineAsm_X86_64 )
+    {
+	asm
+	{
+	    naked;
+	    mov RAX, RSP;
+	    ret;
+	}
+    }
     else
     {
-            static assert( false, "Architecture not supported." );
+	// TODO: add builtin for using stack pointer rtx
+	int dummy;
+	void * p = & dummy + 1; // +1 doesn't help much; also assume stack grows down
+	p = cast(void*)( (cast(size_t) p) & ~(size_t.sizeof - 1));
+	return p;
     }
 }
 

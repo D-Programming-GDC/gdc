@@ -5,6 +5,12 @@
  * License:   BSD Style, see LICENSE
  * Authors:   Sean Kelly
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Iain Buclaw, September 2010.
+*/
 module core.thread;
 
 // this should be true for most architectures
@@ -57,19 +63,7 @@ private
 
     void* getStackTop()
     {
-        version( D_InlineAsm_X86 )
-        {
-            asm
-            {
-                naked;
-                mov EAX, ESP;
-                ret;
-            }
-        }
-        else
-        {
-            return rt_stackTop();
-        }
+        return rt_stackTop();
     }
 }
 
