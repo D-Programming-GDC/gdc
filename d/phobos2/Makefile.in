@@ -253,10 +253,10 @@ BASE_OBJS = compiler/aaA.o compiler/aApply.o compiler/aApplyR.o compiler/adi.o \
 	  compiler/arrayassign.o compiler/arraybyte.o compiler/arraycast.o \
 	  compiler/arraycat.o compiler/arraydouble.o compiler/arrayfloat.o \
 	  compiler/arrayint.o compiler/arrayreal.o compiler/arrayshort.o \
-	  compiler/cast_.o compiler/cmath2.o compiler/complex.o \
+	  compiler/cast_.o compiler/complex.o \
 	  compiler/cover.o compiler/critical.o compiler/dgccmain2.o \
 	  compiler/invariant.o compiler/invariant_.o compiler/lifetime.o \
-	  compiler/memory.o compiler/memset.o \
+	  compiler/gccmemory.o compiler/memset.o \
 	  compiler/monitor.o compiler/obj.o compiler/object_.o \
 	  compiler/qsort.o compiler/switch_.o compiler/trace.o
 
