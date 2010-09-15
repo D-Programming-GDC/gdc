@@ -3396,8 +3396,11 @@ type *
 TypeDArray::toCtype()
 {
     if (! ctype)
+    {
 	ctype = gen.twoFieldType(Type::tsize_t, next->pointerTo(), this,
 	    "length", "ptr");
+	dkeep(ctype);
+    }
     return ctype;
 }
 

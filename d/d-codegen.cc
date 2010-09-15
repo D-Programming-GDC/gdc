@@ -49,7 +49,7 @@ d_gcc_force_templates()
 void
 IRState::emitLocalVar(VarDeclaration * v, bool no_init)
 {
-    if (v->isDataseg() || (v->storage_class & STCfield))
+    if (v->isDataseg() || v->isMember())
 	return;
 
     Symbol * sym = v->toSymbol();

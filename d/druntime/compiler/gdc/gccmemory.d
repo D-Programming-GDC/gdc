@@ -1,7 +1,7 @@
 /**
  * This module exposes functionality for inspecting and manipulating memory.
  *
- * Based off the original rt.memory module, but patched work with the GDC compiler.
+ * Based off the original rt.memory template, but written to work with the GDC compiler.
  *
  * Written by Iain Buclaw, September 2010.
  */
