@@ -3912,11 +3912,12 @@ Statement *TryCatchStatement::semantic(Scope *sc)
                 error("catch at %s hides catch at %s", sj, si);
         }
     }
-
+#ifndef IN_GCC
     if (!body || body->isEmpty())
     {
         return NULL;
     }
+#endif
     return this;
 }
 

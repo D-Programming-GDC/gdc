@@ -527,6 +527,13 @@ public:
     void doExp(Expression * e) { doExp(e->toElem(this)); } // %% should handle volatile...?
     void doAsm(tree insn_tmpl, tree outputs, tree inputs, tree clobbers);
 
+    // ** Goto/Label statement evaluation
+
+    void pushLabel(LabelDsymbol * l) { Labels.push(getLabelBlock(l)); }
+    void checkSwitchCase(Statement * stmt, int default_flag = 0);
+    void checkGoto(Statement * stmt, LabelDsymbol * label);
+    void checkPreviousGoto(Array * refs);
+
     // ** Callback statement evalutation
 
     static Array stmtExprList;

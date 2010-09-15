@@ -2927,8 +2927,7 @@ IRState::endCond() { expand_end_cond(); }
 
 void
 IRState::startLoop(Statement * stmt) {
-    Flow *f = beginFlow(stmt, expand_start_loop_continue_elsewhere(1));
-    f->continueLabel = label(stmt ? stmt->loc : 0);
+    beginFlow(stmt, expand_start_loop_continue_elsewhere(1));
 }
 
 void
@@ -2961,7 +2960,7 @@ IRState::startCase(Statement * stmt, tree t_cond)
     g.ofile->doLineNote(stmt->loc);
     expand_start_case( 1, t_cond, TREE_TYPE( t_cond ), "switch statement" );
     Flow * f = beginFlow(stmt, NULL);
-    f->condition = t_cond;
+    f->kind = level_switch;
 }
 
 void
@@ -3014,12 +3013,15 @@ IRState::exitLoop(Identifier * ident)
 void
 IRState::startTry(Statement * stmt)
 {
+    beginFlow(stmt, NULL);
+    currentFlow()->kind = level_try;
     expand_eh_region_start();
 }
 
 void
 IRState::startCatches()
 {
+    currentFlow()->kind = level_catch;
     expand_start_all_catch();
 }
 
@@ -3039,6 +3041,7 @@ void
 IRState::endCatches()
 {
     expand_end_all_catch();
+    endFlow();
 }
 
 void
@@ -3069,7 +3072,7 @@ IRState::doJump(Statement * stmt, tree t_label)
     if (stmt)
 	g.ofile->doLineNote(stmt->loc);
     expand_goto(t_label);
-    D_LABEL_IS_USED(t_label) = 1 ;
+    D_LABEL_IS_USED(t_label) = 1;
 }
 
 tree
@@ -3164,6 +3167,7 @@ IRState::startCase(Statement * stmt, tree t_cond)
 {
     Flow * f = beginFlow(stmt);
     f->condition = t_cond;
+    f->kind = level_switch;
 }
 
 void
@@ -3212,12 +3216,14 @@ void
 IRState::startTry(Statement * stmt)
 {
     beginFlow(stmt);
+    currentFlow()->kind = level_try;
 }
 
 void
 IRState::startCatches()
 {
     currentFlow()->tryBody = popStatementList();
+    currentFlow()->kind = level_catch;
     pushStatementList();
 }
 
@@ -3253,6 +3259,7 @@ void
 IRState::startFinally()
 {
     currentFlow()->tryBody = popStatementList();
+    currentFlow()->kind = level_finally;
     pushStatementList();
 }
 
@@ -3308,6 +3315,104 @@ IRState::doAsm(tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
     addExp( t );
 #endif
 }
+
+
+void
+IRState::checkSwitchCase(Statement * stmt, int default_flag)
+{
+    Flow * flow = currentFlow();
+
+    assert(flow);
+    if (flow->kind != level_switch && flow->kind != level_block)
+    {
+	stmt->error("%s cannot be in different try block level from switch",
+		    default_flag ? "default" : "case");
+    }
+}
+
+void
+IRState::checkGoto(Statement * stmt, LabelDsymbol * label)
+{
+    Statement * curBlock = NULL;
+    unsigned curLevel = loops.dim;
+    int found = 0;
+
+    if (curLevel)
+	curBlock = currentFlow()->statement;
+
+    for (unsigned i = 0; i < Labels.dim; i++)
+    {
+	Label * linfo = (Label *)Labels.data[i];
+	assert(linfo);
+
+	if (label == linfo->label)
+	{
+	    // No need checking for finally, should have already been handled.
+	    if (linfo->kind == level_try &&
+		curLevel <= linfo->level && curBlock != linfo->block)
+	    {
+		stmt->error("cannot goto into try block");
+	    }
+	    // %% doc: It is illegal for goto to be used to skip initializations,
+	    // %%      so this should include all gotos into catches...
+	    if (linfo->kind == level_catch && curBlock != linfo->block)
+		stmt->error("cannot goto into catch block");
+
+	    found = 1;
+	    break;
+	}
+    }
+#if V1
+    // Push forward referenced gotos.
+    if (! found)
+    {
+	if (! label->statement->fwdrefs)
+	    label->statement->fwdrefs = new Array();
+	label->statement->fwdrefs->push(getLabelBlock(label, stmt));
+    }
+#endif
+}
+
+void
+IRState::checkPreviousGoto(Array * refs)
+{
+    Statement * stmt; // Our forward reference.
+
+    for (unsigned i = 0; i < refs->dim; i++)
+    {
+	Label * ref = (Label *)refs->data[i];
+	int found = 0;
+
+	assert(ref && ref->from);
+	stmt = ref->from;
+
+	for (unsigned i = 0; i < Labels.dim; i++)
+	{
+	    Label * linfo = (Label *)Labels.data[i];
+	    assert(linfo);
+
+	    if (ref->label == linfo->label)
+	    {
+		// No need checking for finally, should have already been handled.
+		if (linfo->kind == level_try &&
+		    ref->level <= linfo->level && ref->block != linfo->block)
+		{
+		    stmt->error("cannot goto into try block");
+		}
+		// %% doc: It is illegal for goto to be used to skip initializations,
+		// %%      so this should include all gotos into catches...
+		if (linfo->kind == level_catch &&
+		    (ref->block != linfo->block || ref->kind != linfo->kind))
+		    stmt->error("cannot goto into catch block");
+
+		found = 1;
+		break;
+	    }
+	}
+	assert(found);
+    }
+}
+
 
 WrappedExp::WrappedExp(Loc loc, enum TOK op, tree exp_node, Type * type)
     : Expression(loc, op, sizeof(WrappedExp))

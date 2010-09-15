@@ -71,37 +71,55 @@ public:
     tree popStatementList();
 #endif
 
+    // ** Scope kinds.
+
+    /* The kinds of levels we recognize. */
+    typedef enum LevelKind {
+	level_block = 0,    /* An ordinary block scope. */
+	level_switch,	    /* A switch-block */
+	level_try,	    /* A try-block. */
+	level_catch,	    /* A catch-block. */
+	level_finally,	    /* A finally-block. */
+    } LevelKind;
+
     // ** Labels
+
+    typedef struct
+    {
+	LabelDsymbol * label;
+	Statement * block;
+	Statement * from;
+	LevelKind kind;
+	unsigned level;
+    } Label;
+
+    Array Labels; // of Label.
 
     // It is only valid to call this while the function in which the label is defined
     // is being compiled.
-    tree getLabelTree(LabelDsymbol * label);
-
+    tree    getLabelTree(LabelDsymbol * label);
+    Label * getLabelBlock(LabelDsymbol * label, Statement * from = NULL);
+    bool    isReturnLabel(Identifier * ident) {
+	return func->returnLabel ? ident == func->returnLabel->ident : 0;
+    }
 
     // ** Loops (and case statements)
 #if D_GCC_VER < 40
     typedef struct
     {
 	Statement * statement;
+	LevelKind   kind;
 	// expand_start_case doesn't return a nesting structure, so
 	// we have to generate our own label for 'break'
 	nesting * loop;
 	tree      exitLabel;
 	tree      overrideContinueLabel;
-	// Copied for information purposes. Not actually used.
-	union {
-	    struct {
-		tree continueLabel;
-	    };
-	    struct {
-		tree condition;
-	    };
-	};
     } Flow;
 #else
     typedef struct
     {
 	Statement * statement;
+	LevelKind   kind;
 	tree exitLabel;
 	union {
 	    struct {

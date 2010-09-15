@@ -3685,27 +3685,27 @@ void
 LabelStatement::toIR(IRState* irs)
 {
     FuncDeclaration * func = irs->func;
-#if V2
-    LabelDsymbol * label = isReturnLabel ? func->returnLabel : func->searchLabel(ident);
-#else
-    LabelDsymbol * label = func->searchLabel(ident);
-#endif
+    LabelDsymbol * label = irs->isReturnLabel(ident) ? func->returnLabel : func->searchLabel(ident);
     tree t_label;
 
-    // %% Safe to use lblock as first choice?
-    if ( (t_label = lblock) || (t_label = irs->getLabelTree(label)) )
+    if (t_label = irs->getLabelTree(label))
     {
-	D_LABEL_IS_USED(t_label) = 1;
+	irs->pushLabel(label);
 	irs->doLabel(t_label);
 	if (label->asmLabelNum)
 	    d_expand_priv_asm_label(irs, label->asmLabelNum);
-#if V2
-	if (isReturnLabel && func->fensure)
+	if (irs->isReturnLabel(ident) && func->fensure)
 	    func->fensure->toIR(irs);
-	else
-#endif
-	if (statement)
+	else if (statement)
 	    statement->toIR(irs);
+#if V1
+	if (fwdrefs)
+	{
+	    irs->checkPreviousGoto(fwdrefs);
+	    delete fwdrefs;
+	    fwdrefs = NULL;
+	}
+#endif
     }
     // else, there was an error
 }
@@ -3721,6 +3721,8 @@ GotoStatement::toIR(IRState* irs)
 	error("label %s is undefined", label->toChars());
     else if (tf != label->statement->tf)
 	error("cannot goto forward out of or into finally block");
+    else
+	irs->checkGoto(this, label);
 
     if ( (t_label = irs->getLabelTree(label)) )
 	irs->doJump(this, t_label);
@@ -3995,9 +3997,7 @@ ReturnStatement::toIR(IRState* irs)
 void
 DefaultStatement::toIR(IRState * irs)
 {
-    if(! irs->currentFlow()->condition )
-	error("default cannot be in different try block level from switch");
-
+    irs->checkSwitchCase(this, 1);
     irs->doCase(NULL_TREE, cblock);
     if (statement)
 	statement->toIR( irs );
@@ -4007,13 +4007,13 @@ void
 CaseStatement::toIR(IRState * irs)
 {
     tree case_value;
-    if(! irs->currentFlow()->condition )
-	error("case cannot be in different try block level from switch");
 
     if ( exp->type->isscalar() )
 	case_value = exp->toElem(irs);
     else
 	case_value = irs->integerConstant(index, Type::tint32);
+
+    irs->checkSwitchCase(this);
     irs->doCase(case_value, cblock);
     if (statement)
 	statement->toIR( irs );

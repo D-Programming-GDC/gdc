@@ -144,8 +144,6 @@ IRBase::addExp(tree e)
 void
 IRBase::addExp(tree e)
 {
-    enum tree_code code = TREE_CODE (e);
-
     /* Need to check that this is actually an expression; it
        could be an integer constant (statement with no effect.)
        Maybe should filter those out anyway... */
@@ -207,24 +205,51 @@ IRBase::getLabelTree(LabelDsymbol * label)
     if (! label->statement)
 	return NULL_TREE;
 
-    if (! label->statement->lblock) {
+    if (! label->statement->lblock)
+    {
 	tree label_decl = build_decl (LABEL_DECL, get_identifier(label->ident->string), void_type_node);
 
 	assert(func != 0);
 	DECL_CONTEXT( label_decl ) = getLocalContext();
 	DECL_MODE( label_decl ) = VOIDmode; // Not sure why or if this is needed
+	D_LABEL_IS_USED( label_decl ) = 1;
 	// Not setting this doesn't seem to cause problems (unlike VAR_DECLs)
 	if (label->statement->loc.filename)
 	    g.ofile->setDeclLoc( label_decl, label->statement->loc ); // %% label->loc okay?
 	label->statement->lblock = label_decl;
-#if 0 /* V1 */
-	if (! label->statement->fwdrefs)
-	    label->statement->fwdrefs = new Array();
-	label->statement->fwdrefs->push(label_decl); // %% what to push?
-#endif
     }
     return label->statement->lblock;
 }
+
+IRBase::Label *
+IRBase::getLabelBlock(LabelDsymbol * label, Statement * from)
+{
+    Label * l = new Label;
+    l->block = NULL;
+    l->from = NULL;
+    l->kind = level_block;
+    l->level = 0;
+
+    for (int i = loops.dim - 1; i >= 0; i--)
+    {
+	Flow * flow = (Flow *)loops.data[i];
+
+	if (flow->kind != level_block &&
+	    flow->kind != level_switch)
+	{
+	    l->block = flow->statement;
+	    l->kind  = flow->kind;
+	    l->level = i + 1;
+	    break;
+	}
+    }
+    if (from)
+	l->from = from;
+
+    l->label = label;
+    return l;
+}
+
 
 IRBase::Flow *
 IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
@@ -269,6 +294,7 @@ IRBase::beginFlow(Statement * stmt, nesting * loop)
 
     flow->statement = stmt;
     flow->loop = loop;
+    flow->kind = level_block;
     flow->exitLabel = NULL;
     flow->overrideContinueLabel = NULL;
 
@@ -304,6 +330,7 @@ IRBase::beginFlow(Statement * stmt)
     Flow * flow = new Flow;
 
     flow->statement = stmt;
+    flow->kind = level_block;
     flow->exitLabel = NULL_TREE;
     flow->condition = NULL_TREE;
     flow->trueBranch = NULL_TREE;
@@ -361,7 +388,7 @@ void IRBase::endScope()
     unsigned * p_count;
 
     assert(scopes.dim);
-    p_count = (unsigned *) scopes.tos();
+    p_count = currentScope();
 
     //endBindings();
 
@@ -389,8 +416,8 @@ void IRBase::startBindings()
 #endif
 
     assert(scopes.dim);
-    ++( * (unsigned *) scopes.tos() );
-    //printf("%*s  start -> %d\n", scopes.dim, "", * (unsigned *) scopes.tos() );
+    ++( * currentScope() );
+    //printf("%*s  start -> %d\n", scopes.dim, "", * currentScope() );
 
 }
 
@@ -413,8 +440,8 @@ void IRBase::endBindings()
     insert_block(block);
 
     assert(scopes.dim);
-    --( * (unsigned *) scopes.tos() );
-    assert( * (int *) scopes.tos() >= 0 );
-    //printf("%*s  end -> %d\n", scopes.dim, "", * (unsigned *) scopes.tos() );
+    --( * currentScope() );
+    assert( * (int *) currentScope() >= 0 );
+    //printf("%*s  end -> %d\n", scopes.dim, "", * currentScope() );
 
 }
