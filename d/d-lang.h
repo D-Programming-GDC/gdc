@@ -64,8 +64,8 @@ union lang_tree_node
 };
 
 /* Using GENERIC_NEXT ensures we don't ICE in gtype-d when checking is enabled.
-   This is backwards compatibility for unaffected GCC versions. */
-#if D_GCC_VER < 43
+   strangely, this phenomenon only occurs on 4.3.x */
+#if D_GCC_VER != 43
 #define GENERIC_NEXT(NODE) TREE_CHAIN(NODE)
 #endif
 
