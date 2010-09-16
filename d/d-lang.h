@@ -55,13 +55,19 @@ struct lang_type GTY(())
    there is no special lang_identifier */
 union lang_tree_node
   GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
-       chain_next ("(union lang_tree_node *)TREE_CHAIN (&%h.generic)")))
+       chain_next ("(union lang_tree_node *)GENERIC_NEXT (&%h.generic)")))
 {
   union tree_node GTY ((tag ("0"),
 			desc ("tree_node_structure (&%h)")))
     generic;
   struct lang_identifier GTY ((tag ("1"))) identifier;
 };
+
+/* Using GENERIC_NEXT ensures we don't ICE in gtype-d when checking is enabled.
+   This is backwards compatibility for unaffected GCC versions. */
+#if D_GCC_VER < 43
+#define GENERIC_NEXT(NODE) TREE_CHAIN(NODE)
+#endif
 
 // These special tree codes are not needed for 4.x
 #if D_GCC_VER < 40
