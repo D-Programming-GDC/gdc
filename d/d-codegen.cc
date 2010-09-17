@@ -243,13 +243,15 @@ IRState::convertTo(Expression * exp, Type * target_type)
 tree
 IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 {
-    tree result = 0;
-    target_type = target_type->toBasetype();
+    tree result = NULL_TREE;
+    Type * orig_exp_type = exp_type;
 
-    assert(exp_type);
+    assert(exp_type && target_type);
+    target_type = target_type->toBasetype();
     exp_type = exp_type->toBasetype();
 
-    if (typesSame(exp_type, target_type))
+    if (typesSame(exp_type, target_type) &&
+	typesSame(orig_exp_type, target_type))
 	return exp;
 
     switch (exp_type->ty) {

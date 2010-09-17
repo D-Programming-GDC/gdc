@@ -63,8 +63,8 @@ union lang_tree_node
   struct lang_identifier GTY ((tag ("1"))) identifier;
 };
 
-/* Using GENERIC_NEXT ensures we don't ICE in gtype-d when checking is enabled.
-   strangely, this phenomenon only occurs on 4.3.x */
+/* GENERIC_NEXT is needed for 4.3.x only, to prevent ICEs in gtype-d.
+   For everyone else, just alias to TREE_CHAIN. */
 #if D_GCC_VER != 43
 #define GENERIC_NEXT(NODE) TREE_CHAIN(NODE)
 #endif

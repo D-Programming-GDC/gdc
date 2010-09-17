@@ -571,6 +571,8 @@ make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * ex
 	    e2 = irs->convertTo(e2, e2_type, e1_type);
 	else if (tc2 == COMPLEX_TYPE && tc1 != COMPLEX_TYPE)
 	    e1 = irs->convertTo(e1, e1_type, e2_type);
+	else if (!irs->typesSame(e1_type, e2_type))
+	    e2 = irs->convertTo(e2, e2_type, e1_type);
 
 	return build2(out_code, exp_type->toCtype(), e1, e2);
     }
@@ -1732,6 +1734,9 @@ SymbolExp::toElem(IRState * irs)
 		TREE_THIS_VOLATILE(e) = 1;
 	    }
 	}
+	
+	if (!irs->typesSame(var->type, type))
+	    e = irs->convertTo(e, var->type, type);
 	return e;
     } else if (op == TOKsymoff) {
 	target_size_t offset = ((SymOffExp *) this)->offset;
@@ -1790,6 +1795,9 @@ VarExp::toElem(IRState* irs)
 	    TREE_THIS_VOLATILE(e) = 1;
 	}
     }
+
+    if (!irs->typesSame(var->type, type))
+	e = irs->convertTo(e, var->type, type);
     return e;
 }
 
@@ -3171,6 +3179,7 @@ TypeEnum::toCtype()
 	// %% c-decl.c: if (flag_short_enums) TYPE_PACKED(enumtype) = 1;
 	TYPE_PRECISION( ctype ) = size(0) * 8;
 	TYPE_SIZE( ctype ) = 0; // as in c-decl.c
+	TREE_TYPE( ctype ) = enum_mem_type_node;
 	apply_type_attributes(sym->attributes, ctype, true);
 #if V2
 	/* Because minval and maxval are of this type,
@@ -3691,7 +3700,7 @@ LabelStatement::toIR(IRState* irs)
     LabelDsymbol * label = irs->isReturnLabel(ident) ? func->returnLabel : func->searchLabel(ident);
     tree t_label;
 
-    if (t_label = irs->getLabelTree(label))
+    if ( (t_label = irs->getLabelTree(label)) )
     {
 	irs->pushLabel(label);
 	irs->doLabel(t_label);
@@ -3826,12 +3835,15 @@ TryCatchStatement::toIR(IRState * irs)
 	    irs->startScope();
 
 	    if ( a_catch->var ) {
+		Symbol * exc = a_catch->var->toSymbol();
 		tree exc_obj = irs->convertTo(irs->exceptionObject(),
-		    irs->getObjectType(), a_catch->type);
+					      irs->getObjectType(), a_catch->type);
 		// need to override initializer...
 		// set DECL_INITIAL now and emitLocalVar will know not to change it
-		DECL_INITIAL( a_catch->var->toSymbol()->Stree ) = exc_obj;
+		DECL_INITIAL(exc->Stree) = exc_obj;
 		irs->emitLocalVar(a_catch->var);
+		// No longer needed, causes problems...
+		DECL_INITIAL(exc->Stree) = NULL_TREE;
 	    }
 
 	    if (a_catch->handler)
