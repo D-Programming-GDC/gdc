@@ -8,6 +8,12 @@
  *  Modified by Sean Kelly for use with the D Runtime Project
  */
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Iain Buclaw, September 2010.
+*/
+
 module rt.dmain2;
 
 private
@@ -75,14 +81,24 @@ extern (C) void _d_switch_error(string file, uint line)
     onSwitchError(file, line);
 }
 
-extern (C) void _d_hidden_func()
+version(GNU)
 {
-    Object o;
-    asm
+    extern (C) void _d_hidden_func(Object o)
     {
-        mov o, EAX;
+	onHiddenFuncError(o);
     }
-    onHiddenFuncError(o);
+}
+else
+{
+    extern (C) void _d_hidden_func()
+    {
+    	Object o;
+    	asm
+    	{
+    	    mov o, EAX;
+    	}
+    	onHiddenFuncError(o);
+    }
 }
 
 bool _d_isHalting = false;
