@@ -92,8 +92,10 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
     if (! no_init) {
 	g.ofile->doLineNote(v->loc);
 
-	if (! init_val)
+	if (! init_val) {
 	    init_val = DECL_INITIAL(var_decl);
+	    DECL_INITIAL(var_decl) = NULL_TREE; // %% from expandDecl
+	}
 #if D_GCC_VER < 40
 	if (init_val
 #if V2

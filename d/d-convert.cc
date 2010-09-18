@@ -45,12 +45,16 @@ build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1, int /*convert
     {
 	result_type = type1;
     }
-
-    /* If integral, need to convert unsigned/signed comparison for GCC >= 4.4 */
-    if (INTEGRAL_TYPE_P (type0) && INTEGRAL_TYPE_P (type1)
-	&& TYPE_UNSIGNED(type0) != TYPE_UNSIGNED(type1))
+    /* If integral, need to convert unsigned/signed comparison for GCC >= 4.4.x
+       Will also need to convert if type precisions differ. */
+    else if (INTEGRAL_TYPE_P (type0) && INTEGRAL_TYPE_P (type1))
     {
-	result_type = TYPE_UNSIGNED(type0) ? type0 : type1;
+	if (TYPE_PRECISION(type0) > TYPE_PRECISION(type1))
+	    result_type = type0;
+	else if (TYPE_PRECISION(type0) < TYPE_PRECISION(type1))
+	    result_type = type1;
+	else if (TYPE_UNSIGNED(type0) != TYPE_UNSIGNED(type1))
+	    result_type = TYPE_UNSIGNED(type0) ? type0 : type1;
     }
 
     if (result_type)
