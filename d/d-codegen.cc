@@ -1699,7 +1699,11 @@ IRState::darrayVal(tree type, tree len, tree data)
     ptr_field = TREE_CHAIN( len_field );
 
     ce.cons(len_field, len);
+#if ENABLE_CHECKING
+    ce.cons(ptr_field, convert(TREE_TYPE(ptr_field), data));
+#else
     ce.cons(ptr_field, data); // shouldn't need to convert the pointer...
+#endif
     CONSTRUCTOR_ELTS( ctor ) = ce.head;
 
     return ctor;
@@ -1729,8 +1733,11 @@ IRState::darrayVal(tree type, uinteger_t len, tree data)
     len_value = integerConstant(len, TREE_TYPE(len_field));
 
     ce.cons(len_field, len_value);
+#if ENABLE_CHECKING
     ce.cons(ptr_field, convert(TREE_TYPE(ptr_field), ptr_value));
-
+#else
+    ce.cons(ptr_field, ptr_value ); // shouldn't need to convert the pointer...
+#endif
     CONSTRUCTOR_ELTS( ctor ) = ce.head;
 
     return ctor;
@@ -1919,7 +1926,7 @@ IRState::delegateVal(tree method_exp, tree object_exp, Type * d_type)
 	obj_field = TYPE_FIELDS( type );
 	func_field = TREE_CHAIN( obj_field );
     }
-
+#if ENABLE_CHECKING
     if (obj_field)
 	ce.cons(obj_field, convert (TREE_TYPE(obj_field), object_exp));
     else
@@ -1929,7 +1936,10 @@ IRState::delegateVal(tree method_exp, tree object_exp, Type * d_type)
 	ce.cons(func_field, convert (TREE_TYPE(func_field), method_exp));
     else
 	ce.cons(func_field, method_exp);
-
+#else
+    ce.cons(obj_field, object_exp);
+    ce.cons(func_field, method_exp);
+#endif
     CONSTRUCTOR_ELTS( ctor ) = ce.head;
     return ctor;
 }

@@ -45,6 +45,7 @@ build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1, int /*convert
     {
 	result_type = type1;
     }
+#if ENABLE_CHECKING
     /* If integral, need to convert unsigned/signed comparison for GCC >= 4.4.x
        Will also need to convert if type precisions differ. */
     else if (INTEGRAL_TYPE_P (type0) && INTEGRAL_TYPE_P (type1))
@@ -56,7 +57,7 @@ build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1, int /*convert
 	else if (TYPE_UNSIGNED(type0) != TYPE_UNSIGNED(type1))
 	    result_type = TYPE_UNSIGNED(type0) ? type0 : type1;
     }
-
+#endif
     if (result_type)
     {
 	if (TREE_TYPE (op0) != result_type)

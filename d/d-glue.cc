@@ -571,13 +571,14 @@ make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * ex
 	    e2 = irs->convertTo(e2, e2_type, e1_type);
 	else if (tc2 == COMPLEX_TYPE && tc1 != COMPLEX_TYPE)
 	    e1 = irs->convertTo(e1, e1_type, e2_type);
+#if ENABLE_CHECKING
 	else {
 	    if (!irs->typesSame(e1_type, exp_type))
 		e1 = irs->convertTo(e1, e1_type, exp_type);
 	    if (!irs->typesSame(e2_type, exp_type))
 		e2 = irs->convertTo(e2, e2_type, exp_type);
 	}
-
+#endif
 	return build2(out_code, exp_type->toCtype(), e1, e2);
     }
 }
@@ -1738,9 +1739,10 @@ SymbolExp::toElem(IRState * irs)
 		TREE_THIS_VOLATILE(e) = 1;
 	    }
 	}
-
+#if ENABLE_CHECKING
 	if (!irs->typesSame(var->type, type))
 	    e = irs->convertTo(e, var->type, type);
+#endif
 	return e;
     } else if (op == TOKsymoff) {
 	target_size_t offset = ((SymOffExp *) this)->offset;
@@ -1799,9 +1801,10 @@ VarExp::toElem(IRState* irs)
 	    TREE_THIS_VOLATILE(e) = 1;
 	}
     }
-
+#if ENABLE_CHECKING
     if (!irs->typesSame(var->type, type))
 	e = irs->convertTo(e, var->type, type);
+#endif
     return e;
 }
 
