@@ -183,10 +183,8 @@ void do_build_builtin_fn(enum built_in_function fncode,
     tree decl;
     const char *libname;
 
-#if D_GCC_VER >= 43
     if (fntype == error_mark_node)
 	return;
-#endif
 
     gcc_assert ((!both_p && !fallback_p)
 	|| !strncmp (name, "__builtin_",
@@ -319,12 +317,12 @@ void d_init_builtins(void)
     }
 
 
-  intmax_type_node = intDI_type_node;
-  uintmax_type_node = unsigned_intDI_type_node;
-  signed_size_type_node = d_signed_type(size_type_node);
-  string_type_node = build_pointer_type (char_type_node);
-  const_string_type_node = build_pointer_type (build_qualified_type
-      (char_type_node, TYPE_QUAL_CONST));
+  intmax_type_node       = intDI_type_node;
+  uintmax_type_node      = unsigned_intDI_type_node;
+  signed_size_type_node  = d_signed_type(size_type_node);
+  string_type_node       = build_pointer_type (char_type_node);
+  const_string_type_node = build_pointer_type(build_qualified_type
+					      (char_type_node, TYPE_QUAL_CONST));
 
   void_list_node = tree_cons(NULL_TREE, void_type_node, NULL_TREE);
 

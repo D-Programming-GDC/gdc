@@ -1484,6 +1484,15 @@ elem *
 CallExp::toElem(IRState* irs)
 {
     tree t = irs->call(e1, arguments);
+#if V2
+    TypeFunction * tf = (TypeFunction *)e1->type;
+    if (tf->isref && e1->type->ty == Tfunction)
+    {
+	TREE_TYPE(t) = type->pointerTo()->toCtype();
+	return irs->indirect(t);
+    }
+    //else
+#endif
     // Some library calls are defined to return a generic type.
     // this->type is the real type. (See crash2.d)
     TREE_TYPE(t) = type->toCtype();
@@ -2349,11 +2358,12 @@ StructLiteralExp::toElem(IRState *irs)
 		StructDeclaration * sd;
 		if ((sd = needsPostblit(tb)) != NULL)
 		{
-		    tree ec = irs->localVar(e->type->toCtype());
+		    tree ec;
 		    if (tb->ty == Tsarray)
 		    {
 			/* Generate _d_arrayctor(ti, from = e, to = ec) */
 			Type * ti = tb->nextOf();
+			ec = irs->localVar(e->type->toCtype());
 			tree args[3] = {
 			    irs->typeinfoReference(ti),
 			    irs->toDArray(e),
@@ -2366,8 +2376,7 @@ StructLiteralExp::toElem(IRState *irs)
 			/* Call __postblit(&ec) */
 			Array args;
 			FuncDeclaration * fd = sd->postblit;
-			DECL_INITIAL(ec) = e->toElem(irs);
-			irs->expandDecl(ec);
+			ec = e->toElem(irs);
 			irs->doExp(irs->call(fd, irs->addressOf(ec), & args));
 		    }
 		    ce.cons(fld->csym->Stree, irs->convertTo(ec, e->type, fld->type));
@@ -2538,6 +2547,7 @@ FuncDeclaration::toObjFile(int multiobj)
     announce_function( fn_decl );
     IRState * irs = IRState::startFunction(this);
 #if V2
+    TypeFunction * tf = (TypeFunction *)type;
     irs->useClosure(NULL, NULL_TREE);
 #endif
 
@@ -2556,12 +2566,17 @@ FuncDeclaration::toObjFile(int multiobj)
     current_function_decl = fn_decl;
 
     TREE_STATIC( fn_decl ) = 1;
-
     {
 	Type * func_type = tintro ? tintro : type;
 	Type * ret_type = func_type->nextOf()->toBasetype();
+
 	if (isMain() && ret_type->ty == Tvoid)
 	    ret_type = Type::tint32;
+#if V2
+	/* Convert 'ref int foo' into 'int* foo' */
+	if (tf->isref)
+	    ret_type = ret_type->pointerTo();
+#endif
 	result_decl = build_decl( RESULT_DECL, NULL_TREE, ret_type->toCtype() );
     }
     g.ofile->setDeclLoc(result_decl, this);
@@ -2902,27 +2917,25 @@ FuncDeclaration::toObjFile(int multiobj)
        there is a single statement.  This code creates a statemnt list
        unconditionally because the DECL_SAVED_TREE will always be a
        BIND_EXPR. */
+    {
+	tree body = DECL_SAVED_TREE(fn_decl);
+	tree t;
 
-    if (1)
-	{
-	    tree body = DECL_SAVED_TREE(fn_decl);
-	    tree t;
+	gcc_assert(TREE_CODE(body) == BIND_EXPR);
 
-	    gcc_assert(TREE_CODE(body) == BIND_EXPR);
-
-	    t = TREE_OPERAND(body, 1);
-	    if (TREE_CODE(t) != STATEMENT_LIST) {
-		tree sl = alloc_stmt_list();
-		append_to_statement_list_force(t, & sl);
-		TREE_OPERAND(body, 1) = sl;
-	    } else if (! STATEMENT_LIST_HEAD(t)) {
-		/* For empty functions: Without this, there is a
-		   segfault when inlined.  Seen on build=ppc-linux but
-		   not others (why?). */
-		append_to_statement_list_force(
-		   build1(RETURN_EXPR,void_type_node,NULL_TREE), & t);
-	    }
+	t = TREE_OPERAND(body, 1);
+	if (TREE_CODE(t) != STATEMENT_LIST) {
+	    tree sl = alloc_stmt_list();
+	    append_to_statement_list_force(t, & sl);
+	    TREE_OPERAND(body, 1) = sl;
+	} else if (! STATEMENT_LIST_HEAD(t)) {
+	    /* For empty functions: Without this, there is a
+	       segfault when inlined.  Seen on build=ppc-linux but
+	       not others (why?). */
+	    append_to_statement_list_force(
+	       build1(RETURN_EXPR,void_type_node,NULL_TREE), & t);
 	}
+    }
 
     //block = (*lang_hooks.decls.poplevel) (1, 0, 1);
     block = poplevel(1, 0, 1);
@@ -3346,6 +3359,10 @@ TypeFunction::toCtype() {
 	} else {
 	    ret_type = void_type_node;
 	}
+#if V2
+	if (isref)
+	    ret_type = build_pointer_type(ret_type);
+#endif
 
 	TREE_TYPE( ctype ) = ret_type;
 	TYPE_ARG_TYPES( ctype ) = type_list.head;
@@ -3376,6 +3393,11 @@ TypeFunction::toCtype() {
 enum RET
 TypeFunction::retStyle()
 {
+#if V2
+    /* Return by reference. Needed? */
+    if (isref)
+	return RETregs;
+#endif
     /* Need the ctype to determine this, but this is called from
        the front end before semantic processing is finished.  An
        accurate value is not currently needed anyway. */
@@ -3990,18 +4012,25 @@ ReturnStatement::toIR(IRState* irs)
     if (exp) {
 	if (exp->type->toBasetype()->ty != Tvoid) { // %% == Type::tvoid ?
 	    FuncDeclaration * func = irs->func;
+	    TypeFunction * tf = (TypeFunction *)func->type;
 	    Type * ret_type = func->tintro ?
-		func->tintro->nextOf() : func->type->nextOf();
+		func->tintro->nextOf() : tf->nextOf();
 
             if (func->isMain() && ret_type->toBasetype()->ty == Tvoid)
                 ret_type = Type::tint32;
 
 	    tree result_decl = DECL_RESULT( irs->func->toSymbol()->Stree );
-	    tree result_assign = build2 ( MODIFY_EXPR,
-		TREE_TYPE( result_decl ), result_decl,
-		// %% convert for init -- if we were returning a reference,
-		// would want to take the address...
-		irs->convertForAssignment(exp, (Type*)ret_type) );
+	    // %% convert for init -- if we were returning a reference,
+	    // would want to take the address...
+#if V2
+	    if (tf->isref) {
+		exp = exp->addressOf(NULL);
+		ret_type = ret_type->pointerTo();
+	    }
+#endif
+	    tree result_value = irs->convertForAssignment(exp, (Type*)ret_type);
+	    tree result_assign = build2(MODIFY_EXPR, TREE_TYPE(result_decl),
+					result_decl, result_value);
 
 	    irs->doReturn(result_assign); // expand_return(result_assign);
 	} else {
@@ -4516,13 +4545,7 @@ d_expand_expr(tree exp, rtx target , enum machine_mode tmode, int modifier, rtx 
 }
 
 #endif
-/*else..
-void x(tree ptr, tree src, tree count) {
-    tree count_var =;
-    tree ptr_var = ;
-    buildN(BIND_EXPR, count_var, t_loop, block???0
-}
- */
+
 
 static tree
 d_build_eh_type_type(tree type)
@@ -4550,11 +4573,11 @@ gcc_d_backend_init()
     // built-in functions.
     flag_signed_char = 0;
     // This is required or we'll crash pretty early on. %%log
-    build_common_tree_nodes (flag_signed_char
 #if D_GCC_VER >= 40
-	, false
+    build_common_tree_nodes (flag_signed_char, false);
+#else
+    build_common_tree_nodes (flag_signed_char);
 #endif
-			     );
 
     // This is also required (or the manual equivalent) or crashes
     // will occur later
@@ -4631,7 +4654,7 @@ gcc_d_backend_init()
 
     /* copied and modified from cp/decl.c; only way for vtable to work in gdb... */
     // or not, I'm feeling very confused...
-    if (1) {
+    {
 	/* Make sure we get a unique function type, so we can give
 	   its pointer type a name.  (This wins for gdb.) */
 	tree vfunc_type = make_node (FUNCTION_TYPE);

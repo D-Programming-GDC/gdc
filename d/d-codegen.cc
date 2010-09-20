@@ -552,7 +552,7 @@ IRState::convertForAssignment(Expression * exp, Type * target_type)
 	    TREE_TYPE( empty ) = target_type->toCtype();
 	    CONSTRUCTOR_ELTS( empty ) = ce.head; // %% will this zero-init?
 	    TREE_CONSTANT( empty ) = 1;
-	    // static?
+	    TREE_STATIC( empty ) = 1;
 	    return empty;
 	    // %%TODO: Use a code (lang_specific in decl or flag) to memset instead?
 	} else {
@@ -683,8 +683,8 @@ IRState::pointerIntSum(tree ptr_node, tree idx_exp)
 	intop = fold(intop);
     }
 
-    if (result_type_node == error_mark_node)
-	return result_type_node; // else we'll ICE.
+    if ( isErrorMark(result_type_node) )
+	return result_type_node; // backend will ICE otherwise
 
     if ( integer_zerop(intop) )
 	return ptr_node;
@@ -918,18 +918,16 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
     } else if (expr->op == TOKvar) {
 	FuncDeclaration * fd = ((VarExp *) expr)->var->isFuncDeclaration();
 	tf = (TypeFunction *) fd->type;
-	if (fd) {
-	    if (fd->isNested()) {
+	if (fd->isNested()) {
 #if D_NO_TRAMPOLINES
-		object = getFrameForFunction(fd);
+	    object = getFrameForFunction(fd);
 #else
-		// Pass fake argument for nested functions
-		object = d_null_pointer;
+	    // Pass fake argument for nested functions
+	    object = d_null_pointer;
 #endif
-	    } else if (fd->needThis()) {
-		expr->error("need 'this' to access member %s", fd->toChars());
-		object = d_null_pointer; // continue processing...
-	    }
+	} else if (fd->needThis()) {
+	    expr->error("need 'this' to access member %s", fd->toChars());
+	    object = d_null_pointer; // continue processing...
 	}
     } else {
 	tf = get_function_type(t);
@@ -1661,8 +1659,8 @@ IRState::arrayElemRef(IndexExp * aer_exp, ArrayScope * aryscp)
 tree
 IRState::darrayPtrRef(tree exp)
 {
-    if (exp == error_mark_node)
-	return exp; // else we'll ICE.
+    if ( isErrorMark(exp) )
+	return exp; // backend will ICE otherwise
 
     // Get the backend type for the array and pick out the array data
     // pointer field (assumed to be the second field.)
@@ -1674,8 +1672,8 @@ IRState::darrayPtrRef(tree exp)
 tree
 IRState::darrayLenRef(tree exp)
 {
-    if (exp == error_mark_node)
-	return exp; // else we'll ICE.
+    if ( isErrorMark(exp) )
+	return exp; // backend wih ICE otherwise
 
     // Get the backend type for the array and pick out the array length
     // field (assumed to be the first field.)
@@ -2445,9 +2443,9 @@ tree
 IRState::integerConstant(xdmd_integer_t value, tree type)
 {
     // The type is error_mark_node, we can't do anything.
-    if (type == error_mark_node) {
+    if ( isErrorMark(type) )
 	return type;
-    }
+
 #if D_GCC_VER < 40
     // Assuming xdmd_integer_t is 64 bits
 # if HOST_BITS_PER_WIDE_INT == 32

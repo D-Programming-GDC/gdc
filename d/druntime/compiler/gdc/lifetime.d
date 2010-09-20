@@ -351,7 +351,7 @@ extern (C) void[] _d_newarraymiTp(TypeInfo ti, int ndims, size_t* pdim)
 {
     void[] result = void;
 
-    debug(PRINTF) printf("_d_newarraymiT(ndims = %d)\n", ndims);
+    debug(PRINTF) printf("_d_newarraymiTp(ndims = %d)\n", ndims);
     if (ndims == 0)
         result = null;
     else
