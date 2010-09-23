@@ -1246,6 +1246,8 @@ SliceExp::toElem(IRState * irs)
 	if (global.params.useArrayBounds && array_len_expr) {
 	    upr_tree = irs->maybeMakeTemp(upr_tree);
 	    final_len_expr = irs->checkedIndex(loc, upr_tree, array_len_expr, true);
+	} else {
+	    final_len_expr = upr_tree;
 	}
 	if (lwr_tree) {
 	    lwr_tree = irs->maybeMakeTemp(lwr_tree);
