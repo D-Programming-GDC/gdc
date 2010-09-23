@@ -1211,6 +1211,7 @@ SliceExp::toElem(IRState * irs)
     tree final_ptr_expr = NULL;
     tree array_len_expr = NULL;
     tree lwr_tree = NULL;
+    tree upr_tree = NULL;
 
     ArrayScope aryscp(irs, lengthVar, loc);
 
@@ -1241,10 +1242,10 @@ SliceExp::toElem(IRState * irs)
 	    lwr_tree = NULL_TREE;
     }
     if (upr) {
-	final_len_expr = upr->toElem(irs);
+	upr_tree = upr->toElem(irs);
 	if (global.params.useArrayBounds && array_len_expr) {
-	    final_len_expr = irs->maybeMakeTemp(final_len_expr);
-	    final_len_expr = irs->checkedIndex(loc, final_len_expr, array_len_expr, true);
+	    upr_tree = irs->maybeMakeTemp(upr_tree);
+	    final_len_expr = irs->checkedIndex(loc, upr_tree, array_len_expr, true);
 	}
 	if (lwr_tree) {
 	    lwr_tree = irs->maybeMakeTemp(lwr_tree);
@@ -1268,8 +1269,10 @@ SliceExp::toElem(IRState * irs)
     }
     if (lwr_tree) {
 	if (global.params.useArrayBounds && array_len_expr) { // %% && ! is zero
-	    lwr_tree = irs->maybeMakeTemp(lwr_tree);
-	    lwr_tree = irs->checkedIndex(loc, lwr_tree, array_len_expr, true); // lower bound can equal length
+	    lwr_tree = irs->maybeCompound(
+			    irs->checkedIndex(loc, lwr_tree, array_len_expr, true), // lower bound can equal length
+			    upr_tree ? irs->checkedIndex(loc, lwr_tree, upr_tree, true) // implements check upr < lwr
+				     : NULL_TREE);
 	}
 
 #if ! V2
