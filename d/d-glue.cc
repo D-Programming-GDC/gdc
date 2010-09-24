@@ -1489,15 +1489,6 @@ elem *
 CallExp::toElem(IRState* irs)
 {
     tree t = irs->call(e1, arguments);
-#if V2
-    TypeFunction * tf = (TypeFunction *)e1->type;
-    if (tf->isref && e1->type->ty == Tfunction)
-    {
-	TREE_TYPE(t) = type->pointerTo()->toCtype();
-	return irs->indirect(t);
-    }
-    //else
-#endif
     // Some library calls are defined to return a generic type.
     // this->type is the real type. (See crash2.d)
     TREE_TYPE(t) = type->toCtype();

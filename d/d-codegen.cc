@@ -1056,6 +1056,11 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     }
 
     tree result = buildCall(TREE_TYPE(func_type_node), actual_callee, actual_arg_list.head);
+#if V2
+    // Assumes call can't be intrinsic if isref is true.
+    if (func_type->isref)
+	return indirect(result);
+#endif
     return maybeExpandSpecialCall(result);
 }
 
