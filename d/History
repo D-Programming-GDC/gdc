@@ -1,10 +1,11 @@
-0.25: (Future release)
+0.25:
   * Support for GCC, 4.2.x, 4.3.x, and 4.4.x added
   * Updated D1 to 1.063
   * Updated D2 to 2.020
   * Added druntime support
-  * Fixed Bugzilla ...
-  * Fixed Bitbucket issues ...
+  * Fixed Bugzilla 1041, 1044, 1136, 1145, 1296, 1669, 1689,
+    1751, 1813, 1822, 1921, 1930, 2079, 2102, 2291, 2421
+  * Fixed Bitbucket issues too numerous to mention. :-)
 
 0.24:
   * Removed support for GCC 3.3.x
