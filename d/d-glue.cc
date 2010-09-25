@@ -2568,12 +2568,14 @@ FuncDeclaration::toObjFile(int multiobj)
 
 	if (isMain() && ret_type->ty == Tvoid)
 	    ret_type = Type::tint32;
+
+	result_decl = ret_type->toCtype();
 #if V2
-	/* Convert 'ref int foo' into 'int* foo' */
+	/* Build reference type */
 	if (tf->isref)
-	    ret_type = ret_type->pointerTo();
+	    result_decl = build_reference_type(result_decl);
 #endif
-	result_decl = build_decl( RESULT_DECL, NULL_TREE, ret_type->toCtype() );
+	result_decl = build_decl(RESULT_DECL, NULL_TREE, result_decl);
     }
     g.ofile->setDeclLoc(result_decl, this);
     DECL_RESULT( fn_decl ) = result_decl;
@@ -3357,7 +3359,7 @@ TypeFunction::toCtype() {
 	}
 #if V2
 	if (isref)
-	    ret_type = build_pointer_type(ret_type);
+	    ret_type = build_reference_type(ret_type);
 #endif
 
 	TREE_TYPE( ctype ) = ret_type;
@@ -4019,10 +4021,8 @@ ReturnStatement::toIR(IRState* irs)
 	    // %% convert for init -- if we were returning a reference,
 	    // would want to take the address...
 #if V2
-	    if (tf->isref) {
+	    if (tf->isref)
 		exp = exp->addressOf(NULL);
-		ret_type = ret_type->pointerTo();
-	    }
 #endif
 	    tree result_value = irs->convertForAssignment(exp, (Type*)ret_type);
 	    tree result_assign = build2(MODIFY_EXPR, TREE_TYPE(result_decl),
