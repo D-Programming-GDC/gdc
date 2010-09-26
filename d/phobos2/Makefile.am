@@ -197,12 +197,10 @@ MAIN_OBJS=std/compiler.o std/system.o std/md5.o std/base64.o \
 	std/cover.o std/complex.o std/encoding.o std/iterator.o std/xml.o \
 	std/atomics.o std/bigint.o
 
-ZLIB_OBJS= etc/c/zlib/adler32.o etc/c/zlib/compress.o \
-	etc/c/zlib/crc32.o etc/c/zlib/gzio.o \
-	etc/c/zlib/uncompr.o etc/c/zlib/deflate.o \
-	etc/c/zlib/trees.o etc/c/zlib/zutil.o \
-	etc/c/zlib/inflate.o etc/c/zlib/infback.o \
-	etc/c/zlib/inftrees.o etc/c/zlib/inffast.o
+ZLIB_OBJS= zlib/adler32.o zlib/compress.o zlib/crc32.o \
+	zlib/gzio.o zlib/uncompr.o zlib/deflate.o \
+	zlib/trees.o zlib/zutil.o zlib/inflate.o \
+	zlib/infback.o zlib/inftrees.o zlib/inffast.o
 
 # modules which require some kind of operating system	
 OS_OBJS = std/file.o std/mmfile.o std/path.o std/perf.o std/process.o std/socket.o std/socketstream.o
@@ -245,16 +243,15 @@ install-exec-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 
 install-data-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 	for i in etc etc/c \
-		etc/c/zlib \
 		gcc std std/c \
                 std/c/darwin std/c/linux std/c/mach std/c/skyos std/c/unix std/c/windows \
-		std/typeinfo std/windows; do \
+		std/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/$$i/*.[hd]; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done
 	for i in core; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/common/$$i/*.[hd]; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+		for f in $(srcdir)/common/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done
 	for i in crc32.d object.di; do \
 		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done

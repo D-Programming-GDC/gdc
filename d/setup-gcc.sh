@@ -102,6 +102,13 @@ if test "$d_lang_version" = 2; then
     cd "$top" || exit 1
 fi
 
+# 1.2 Create a directory of links to the Zlib sources in the libphobos
+# directory.
+mkdir libphobos/zlib && \
+    cd libphobos/zlib && \
+    ../../symlink-tree ../../gcc/d/zlib > /dev/null && \
+    cd "$top" || exit 1
+
 # 2. Patch the top-level directory
 #
 # If the patch for the top-level Makefile.in doesn't take, you can regenerate
