@@ -1121,7 +1121,7 @@ private string expandFromEnvironment(string path)
  * is joined to path[char_pos .. length] if char_pos is smaller
  * than length, otherwise path is not appended to c_path.
  */
-private string combineCPathWithDPath(char* c_path, string path, int char_pos)
+private string combineCPathWithDPath(char* c_path, string path, size_t char_pos)
 {
     assert(c_path != null);
     assert(path.length > 0);

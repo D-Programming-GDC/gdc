@@ -182,7 +182,7 @@ class OutBuffer
      * Append nbytes of 0 to the internal buffer.
      */
 
-    void fill0(uint nbytes)
+    void fill0(size_t nbytes)
     {
         reserve(nbytes);
         data[offset .. offset + nbytes] = 0;
@@ -203,9 +203,8 @@ class OutBuffer
         assert((offset & (alignsize - 1)) == 0);
     }
     body
-    {   size_t nbytes;
-
-        nbytes = offset & (alignsize - 1);
+    {
+        auto nbytes = offset & (alignsize - 1);
         if (nbytes)
             fill0(alignsize - nbytes);
     }
@@ -227,7 +226,7 @@ class OutBuffer
     void align4()
     {
         if (offset & 3)
-        {   size_t nbytes = (4 - offset) & 3;
+        {   auto nbytes = (4 - offset) & 3;
             fill0(nbytes);
         }
     }
@@ -236,10 +235,10 @@ class OutBuffer
      * Convert internal buffer to array of chars.
      */
 
-    char[] toString()
+    string toString()
     {
         //printf("OutBuffer.toString()\n");
-        return cast(char[])data[0 .. offset];
+        return cast(string)data[0 .. offset];
     }
 
     /*****************************************
@@ -249,14 +248,12 @@ class OutBuffer
     void vprintf(string format, va_list args)
     {
         char[128] buffer;
-        char* p;
-        uint psize;
         int count;
         va_list args_copy;
 
         auto f = toStringz(format);
-        p = buffer.ptr;
-        psize = buffer.length;
+        auto p = buffer.ptr;
+        auto psize = buffer.length;
         for (;;)
         {
             va_copy(args_copy, args);

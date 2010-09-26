@@ -3,6 +3,7 @@
  * C's &lt;stdio.h&gt;
  * Authors: Walter Bright, Digital Mars, www.digitalmars.com
  * License: Public Domain
+ * Source: $(PHOBOSSRC std/c/_stdio.d)
  * Macros:
  *      WIKI=Phobos/StdCStdio
  */
@@ -72,6 +73,7 @@ struct _iobuf
     }
     else version (linux)
     {
+        int     _flags;
         char*   _read_ptr;
         char*   _read_end;
         char*   _read_base;

@@ -92,6 +92,10 @@ dtdword(dt_t** pdt, target_size_t val) {
     return dtval(pdt, DT_word, val, 0); }
 
 inline dt_t**
+dtsize_t(dt_t** pdt, target_size_t val) {
+    return dtval(pdt, DT_word, val, 0); }
+
+inline dt_t**
 dtxoff(dt_t** pdt, Symbol * sym, target_size_t offset, TypeType) {
     return dtval(pdt, DT_xoff, offset, sym); }
 

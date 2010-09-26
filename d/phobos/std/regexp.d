@@ -174,8 +174,8 @@ class RegExpException : Exception
 
 struct regmatch_t
 {
-    int rm_so;                  // index of start of match
-    int rm_eo;                  // index past end of match
+    ptrdiff_t rm_so;              // index of start of match
+    ptrdiff_t rm_eo;              // index past end of match
 }
 
 private alias char rchar;       // so we can make a wchar version
@@ -248,17 +248,14 @@ unittest
 char[] sub(char[] string, char[] pattern, char[] delegate(RegExp) dg, char[] attributes = null)
 {
     auto r = new RegExp(pattern, attributes);
-    rchar[] result;
-    int lastindex;
-    int offset;
 
-    result = string;
-    lastindex = 0;
-    offset = 0;
+    auto result = string;
+    size_t lastindex = 0;
+    size_t offset = 0;
     while (r.test(string, lastindex))
     {
-        int so = r.pmatch[0].rm_so;
-        int eo = r.pmatch[0].rm_eo;
+        auto so = r.pmatch[0].rm_so;
+        auto eo = r.pmatch[0].rm_eo;
 
         rchar[] replacement = dg(r);
 
@@ -336,9 +333,9 @@ unittest
  * ---
  */
 
-int find(rchar[] string, char[] pattern, char[] attributes = null)
+ptrdiff_t find(rchar[] string, char[] pattern, char[] attributes = null)
 {
-    int i = -1;
+    ptrdiff_t i = -1;
 
     auto r = new RegExp(pattern, attributes);
     if (r.test(string))
@@ -353,8 +350,7 @@ unittest
 {
     debug(regexp) printf("regexp.find.unittest\n");
 
-    int i;
-    i = find("xabcy", "abc");
+    auto i = find("xabcy", "abc");
     assert(i == 1);
     i = find("cba", "abc");
     assert(i == -1);
@@ -378,14 +374,14 @@ unittest
  * ---
  */
 
-int rfind(rchar[] string, char[] pattern, char[] attributes = null)
+ptrdiff_t rfind(rchar[] string, char[] pattern, char[] attributes = null)
 {
-    int i = -1;
-    int lastindex = 0;
+    ptrdiff_t i = -1;
+    size_t lastindex = 0;
 
     auto r = new RegExp(pattern, attributes);
     while (r.test(string, lastindex))
-    {   int eo = r.pmatch[0].rm_eo;
+    {   auto eo = r.pmatch[0].rm_eo;
         i = r.pmatch[0].rm_so;
         if (lastindex == eo)
             lastindex++;                // always consume some source
@@ -398,10 +394,8 @@ int rfind(rchar[] string, char[] pattern, char[] attributes = null)
 
 unittest
 {
-    int i;
-
     debug(regexp) printf("regexp.rfind.unittest\n");
-    i = rfind("abcdefcdef", "c");
+    auto i = rfind("abcdefcdef", "c");
     assert(i == 6);
     i = rfind("abcdefcdef", "cd");
     assert(i == 6);
@@ -668,9 +662,9 @@ class RegExp
         if (n >= pmatch.length)
             return null;
         else
-        {   size_t rm_so, rm_eo;
-            rm_so = pmatch[n].rm_so;
-            rm_eo = pmatch[n].rm_eo;
+        {
+            auto rm_so = pmatch[n].rm_so;
+            auto rm_eo = pmatch[n].rm_eo;
             if (rm_so == rm_eo)
                 return null;
             return input[rm_so .. rm_eo];
@@ -852,22 +846,21 @@ public rchar[][] split(rchar[] string)
 
     if (string.length)
     {
-        int p = 0;
-        int q;
+        ptrdiff_t p = 0;
+        ptrdiff_t q;
         for (q = p; q != string.length;)
         {
             if (test(string, q))
-            {   int e;
-
+            {
                 q = pmatch[0].rm_so;
-                e = pmatch[0].rm_eo;
+                auto e = pmatch[0].rm_eo;
                 if (e != p)
                 {
                     result ~= string[p .. q];
-                    for (int i = 1; i < pmatch.length; i++)
+                    for (size_t i = 1; i < pmatch.length; i++)
                     {
-                        int so = pmatch[i].rm_so;
-                        int eo = pmatch[i].rm_eo;
+                        auto so = pmatch[i].rm_so;
+                        auto eo = pmatch[i].rm_eo;
                         if (so == eo)
                         {   so = 0;     // -1 gives array bounds error
                             eo = 0;
@@ -943,16 +936,14 @@ unittest
  *      index of match if successful, -1 if not found
  */
 
-public int find(rchar[] string)
+public ptrdiff_t find(rchar[] string)
 {
-    int i;
-
-    i = test(string);
-    if (i)
-        i = pmatch[0].rm_so;
+    ptrdiff_t result;
+    if (test(string))
+        result = pmatch[0].rm_so;
     else
-        i = -1;                 // no match
-    return i;
+        result = -1;                 // no match
+    return result;
 }
 
 //deprecated alias find search;
@@ -961,9 +952,8 @@ unittest
 {
     debug(regexp) printf("regexp.find.unittest()\n");
 
-    int i;
     RegExp r = new RegExp("abc", null);
-    i = r.find("xabcy");
+    auto i = r.find("xabcy");
     assert(i == 1);
     i = r.find("cba");
     assert(i == -1);
@@ -983,10 +973,10 @@ public rchar[][] match(rchar[] string)
 
     if (attributes & REA.global)
     {
-        int lastindex = 0;
+        ptrdiff_t lastindex = 0;
 
         while (test(string, lastindex))
-        {   int eo = pmatch[0].rm_eo;
+        {   auto eo = pmatch[0].rm_eo;
 
             result ~= input[pmatch[0].rm_so .. eo];
             if (lastindex == eo)
@@ -1036,19 +1026,17 @@ unittest
 public rchar[] replace(rchar[] string, rchar[] format)
 {
     rchar[] result;
-    int lastindex;
-    int offset;
 
     result = string;
-    lastindex = 0;
-    offset = 0;
+    ptrdiff_t lastindex = 0;
+    size_t offset = 0;
     for (;;)
     {
         if (!test(string, lastindex))
             break;
 
-        int so = pmatch[0].rm_so;
-        int eo = pmatch[0].rm_eo;
+        auto so = pmatch[0].rm_so;
+        auto eo = pmatch[0].rm_eo;
 
         rchar[] replacement = replace(format);
 
@@ -1197,10 +1185,10 @@ public int test()
  * Returns: 0 for no match, !=0 for match
  */
 
-public int test(char[] string, int startindex)
+public int test(char[] string, ptrdiff_t startindex)
 {
     char firstc;
-    uint si;
+    size_t si;
 
     input = string;
     debug (regexp) printf("RegExp.test(input[] = '%.*s', startindex = %d)\n",
@@ -1235,7 +1223,7 @@ public int test(char[] string, int startindex)
                     break;              // no match
             }
         }
-        for (int i = 0; i < re_nsub + 1; i++)
+        for (size_t i = 0; i < re_nsub + 1; i++)
         {
             pmatch[i].rm_so = -1;
             pmatch[i].rm_eo = -1;
@@ -1267,7 +1255,7 @@ public int test(char[] string, int startindex)
     return 0;           // no match
 }
 
-int chr(inout uint si, rchar c)
+int chr(inout size_t si, rchar c)
 {
     for (; si < input.length; si++)
     {
@@ -1282,7 +1270,6 @@ void printProgram(ubyte[] prog)
 {
   //debug(regexp)
   {
-    uint pc;
     uint len;
     uint n;
     uint m;
@@ -1291,7 +1278,7 @@ void printProgram(ubyte[] prog)
     ubyte[] s;
 
     printf("printProgram()\n");
-    for (pc = 0; pc < prog.length; )
+    for (size_t pc = 0; pc < prog.length; )
     {
         printf("%3d: ", pc);
 
@@ -1490,14 +1477,14 @@ void printProgram(ubyte[] prog)
  *      0 no match
  */
 
-int trymatch(int pc, int pcend)
-{   int srcsave;
-    uint len;
+int trymatch(size_t pc, size_t pcend)
+{
+    size_t len;
     uint n;
     uint m;
     uint count;
-    uint pop;
-    uint ss;
+    size_t pop;
+    size_t ss;
     regmatch_t *psave;
     uint c1;
     uint c2;
@@ -1510,7 +1497,7 @@ int trymatch(int pc, int pcend)
         printf("RegExp.trymatch(pc = %d, src = '%.*s', pcend = %d)\n",
             pc, cast(int) s.length, s.ptr, pcend);
     }
-    srcsave = src;
+    auto srcsave = src;
     psave = null;
     for (;;)
     {
@@ -1737,9 +1724,8 @@ int trymatch(int pc, int pcend)
                 if (trymatch(pop, pcend))
                 {
                     if (pcend != program.length)
-                    {   int s;
-
-                        s = src;
+                    {
+                        auto s = src;
                         if (trymatch(pcend, program.length))
                         {   debug(regexp) printf("\tfirst operand matched\n");
                             src = s;
@@ -1776,16 +1762,14 @@ int trymatch(int pc, int pcend)
                 debug(regexp) printf("\tREanystar\n");
                 pc++;
                 for (;;)
-                {   int s1;
-                    int s2;
-
-                    s1 = src;
+                {
+                    auto s1 = src;
                     if (src == input.length)
                         break;
                     if (!(attributes & REA.dotmatchlf) && input[src] == '\n')
                         break;
                     src++;
-                    s2 = src;
+                    auto s2 = src;
 
                     // If no match after consumption, but it
                     // did match before, then no match
@@ -1827,10 +1811,9 @@ int trymatch(int pc, int pcend)
                 if (program[pc] == REnmq)       // if minimal munch
                 {
                     for (; count < m; count++)
-                    {   int s1;
-
+                    {
                         memcpy(psave, pmatch.ptr, (re_nsub + 1) * regmatch_t.sizeof);
-                        s1 = src;
+                        auto s1 = src;
 
                         if (trymatch(pop + len, program.length))
                         {
@@ -1855,16 +1838,14 @@ int trymatch(int pc, int pcend)
                 else    // maximal munch
                 {
                     for (; count < m; count++)
-                    {   int s1;
-                        int s2;
-
+                    {
                         memcpy(psave, pmatch.ptr, (re_nsub + 1) * regmatch_t.sizeof);
-                        s1 = src;
+                        auto s1 = src;
                         if (!trymatch(pop, pop + len))
                         {   debug(regexp) printf("\tdoesn't match subexpression\n");
                             break;
                         }
-                        s2 = src;
+                        auto s2 = src;
 
                         // If source is not consumed, don't
                         // infinite loop on the match
@@ -2006,8 +1987,8 @@ int trymatch(int pc, int pcend)
                 n = program[pc + 1];
                 debug(regexp) printf("\tREbackref %d\n", n);
 
-                int so = pmatch[n + 1].rm_so;
-                int eo = pmatch[n + 1].rm_eo;
+                auto so = pmatch[n + 1].rm_so;
+                auto eo = pmatch[n + 1].rm_eo;
                 len = eo - so;
                 if (src + len > input.length)
                     goto Lnomatch;
@@ -2037,13 +2018,13 @@ Lnomatch:
 /* =================== Compiler ================== */
 
 int parseRegexp()
-{   uint offset;
-    uint gotooffset;
+{
+    size_t gotooffset;
     uint len1;
     uint len2;
 
     //printf("parseRegexp() '%.*s'\n", pattern[p .. pattern.length]);
-    offset = buf.offset;
+    auto offset = buf.offset;
     for (;;)
     {
         assert(p <= pattern.length);
@@ -2061,11 +2042,11 @@ int parseRegexp()
                 gotooffset = buf.offset;
                 buf.write(REgoto);
                 buf.write(cast(uint)0);
-                len1 = buf.offset - offset;
+                len1 = cast(uint)(buf.offset - offset);
                 buf.spread(offset, 1 + uint.sizeof);
                 gotooffset += 1 + uint.sizeof;
                 parseRegexp();
-                len2 = buf.offset - (gotooffset + 1 + uint.sizeof);
+                len2 = cast(uint)(buf.offset - (gotooffset + 1 + uint.sizeof));
                 buf.data[offset] = REor;
                 (cast(uint *)&buf.data[offset + 1])[0] = len1;
                 (cast(uint *)&buf.data[gotooffset + 1])[0] = len2;
@@ -2079,15 +2060,15 @@ int parseRegexp()
 }
 
 int parsePiece()
-{   uint offset;
+{
     uint len;
     uint n;
     uint m;
     ubyte op;
-    int plength = pattern.length;
+    auto plength = pattern.length;
 
     //printf("parsePiece() '%.*s'\n", pattern[p .. pattern.length]);
-    offset = buf.offset;
+    auto offset = buf.offset;
     parseAtom();
     if (p == plength)
         return 1;
@@ -2167,7 +2148,7 @@ int parsePiece()
             {   op = REnmq;     // minimal munch version
                 p++;
             }
-            len = buf.offset - offset;
+            len = cast(uint)(buf.offset - offset);
             buf.spread(offset, 1 + uint.sizeof * 3);
             buf.data[offset] = op;
             uint* puint = cast(uint *)&buf.data[offset + 1];
@@ -2188,7 +2169,7 @@ Lerr:
 
 int parseAtom()
 {   ubyte op;
-    uint offset;
+    size_t offset;
     rchar c;
 
     //printf("parseAtom() '%.*s'\n", pattern[p .. pattern.length]);
@@ -2213,7 +2194,7 @@ int parseAtom()
                 re_nsub++;
                 parseRegexp();
                 *cast(uint *)&buf.data[offset] =
-                    buf.offset - (offset + uint.sizeof * 2);
+                    cast(uint)(buf.offset - (offset + uint.sizeof * 2));
                 if (p == pattern.length || pattern[p] != ')')
                 {
                     error("')' expected");
@@ -2314,8 +2295,7 @@ int parseAtom()
                 {
                     // Look ahead and see if we can make this into
                     // an REstring
-                    int q;
-                    int len;
+                    size_t q;
 
                     for (q = p; q < pattern.length; ++q)
                     {   rchar qc = pattern[q];
@@ -2344,7 +2324,7 @@ int parseAtom()
                         }
                         break;
                     }
-                    len = q - p;
+                    auto len = q - p;
                     if (len > 0)
                     {
                         debug(regexp) printf("writing string len %d, c = '%c', pattern[p] = '%c'\n", len+1, c, pattern[p]);
@@ -2380,8 +2360,8 @@ int parseAtom()
 private:
 class Range
 {
-    uint maxc;
-    uint maxb;
+    size_t maxc;
+    size_t maxb;
     OutBuffer buf;
     ubyte* base;
     BitArray bits;
@@ -2393,37 +2373,34 @@ class Range
             this.base = &buf.data[buf.offset];
     }
 
-    void setbitmax(uint u)
-    {   uint b;
-
+    void setbitmax(size_t u)
+    {
         //printf("setbitmax(x%x), maxc = x%x\n", u, maxc);
         if (u > maxc)
         {
             maxc = u;
-            b = u / 8;
+            auto b = u / 8;
             if (b >= maxb)
-            {   uint u2;
-
-                u2 = base ? base - &buf.data[0] : 0;
+            {
+                auto u2 = base ? base - &buf.data[0] : 0;
                 ++b;
                 version (BigEndian)
                 {
                     while (b & (uint.sizeof-1))
                         ++b;
                 }
-                
                 buf.fill0(b - maxb);
                 base = &buf.data[u2];
                 maxb = b;
                 // %% moved array recreate out of this condition
-                bits.ptr = cast(uint*)this.base;
+                bits.ptr = cast(size_t*)this.base;
             }
             //bits = (cast(bit*)this.base)[0 .. maxc + 1];
             bits.len = maxc + 1;
         }
     }
 
-    void setbit2(uint u)
+    void setbit2(size_t u)
     {
         setbitmax(u + 1);
         //printf("setbit2 [x%02x] |= x%02x\n", u >> 3, 1 << (u & 7));
@@ -2433,16 +2410,15 @@ class Range
 };
 
 int parseRange()
-{   ubyte op;
+{
     int c;
     int c2;
     uint i;
     uint cmax;
-    uint offset;
 
     cmax = 0x7F;
     p++;
-    op = REbit;
+    ubyte op = REbit;
     if (p == pattern.length)
         goto Lerr;
     if (pattern[p] == '^')
@@ -2452,7 +2428,7 @@ int parseRange()
             goto Lerr;
     }
     buf.write(op);
-    offset = buf.offset;
+    auto offset = buf.offset;
     buf.write(cast(uint)0);             // reserve space for length
     buf.reserve(128 / 8);
     auto r = new Range(buf);
@@ -2806,9 +2782,8 @@ void optimize()
             {
                 auto bitbuf = new OutBuffer;
                 auto r = new Range(bitbuf);
-                uint offset;
+                auto offset = i;
 
-                offset = i;
                 if (starrchars(r, prog[i .. prog.length]))
                 {
                     debug(regexp) printf("\tfilter built\n");
@@ -2837,7 +2812,7 @@ void optimize()
 int starrchars(Range r, ubyte[] prog)
 {   rchar c;
     uint maxc;
-    uint maxb;
+    size_t maxb;
     uint len;
     uint b;
     uint n;
@@ -3029,8 +3004,8 @@ public static rchar[] replace3(rchar[] format, rchar[] input, regmatch_t[] pmatc
 {
     rchar[] result;
     uint c2;
-    int rm_so;
-    int rm_eo;
+    ptrdiff_t rm_so;
+    ptrdiff_t rm_eo;
     int i;
 
 //    printf("replace3(format = '%.*s', input = '%.*s')\n", format, input);

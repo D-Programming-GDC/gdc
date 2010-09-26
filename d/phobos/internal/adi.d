@@ -56,7 +56,7 @@ struct Array
  * reversed.
  */
 
-extern (C) Array _adReverseChar(char[] a)
+extern (C) char[] _adReverseChar(char[] a)
 {
     if (a.length > 1)
     {
@@ -108,7 +108,7 @@ extern (C) Array _adReverseChar(char[] a)
              */
             memcpy(tmp.ptr, hi, stridehi);
             memcpy(tmplo.ptr, lo, stridelo);
-            memmove(lo + stridehi, lo + stridelo , (hi - lo) - stridelo);
+            memmove(lo + stridehi, lo + stridelo , cast(size_t)(hi - lo) - stridelo);
             memcpy(lo, tmp.ptr, stridehi);
             memcpy(hi + cast(int) stridehi - cast(int) stridelo, tmplo.ptr, stridelo);
 
@@ -116,7 +116,7 @@ extern (C) Array _adReverseChar(char[] a)
             hi = hi - 1 + (cast(int) stridehi - cast(int) stridelo);
         }
     }
-    return *cast(Array*)(&a);
+    return a;
 }
 
 unittest
@@ -238,7 +238,7 @@ unittest
 
 extern (C) int _adCmpChar(Array a1, Array a2)
 {
-version (Asm86)
+version (D_InlineAsm_X86)
 {
     asm
     {   naked                   ;
@@ -347,14 +347,13 @@ Unequal:
 }
 else
 {
-    int len;
     int c;
 
     //printf("adCmpChar()\n");
-    len = a1.length;
+    size_t len = a1.length;
     if (a2.length < len)
         len = a2.length;
-    c = /+std.string.+/memcmp(cast(char *)a1.ptr, cast(char *)a2.ptr, len);
+    c = std.c.string.memcmp(cast(char *)a1.ptr, cast(char *)a2.ptr, len);
     if (!c)
         c = cast(int)a1.length - cast(int)a2.length;
     return c;

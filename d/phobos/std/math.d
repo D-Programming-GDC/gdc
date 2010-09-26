@@ -1,6 +1,7 @@
 // Written in the D programming language
 
 /**
+ * Source: $(PHOBOSSRC std/_math.d)
  * Macros:
  *      WIKI = Phobos/StdMath
  *
@@ -33,9 +34,9 @@
  * Authors:
  *      Walter Bright, Don Clugston
  * Copyright:
- *      Copyright (c) 2001-2005 by Digital Mars,
+ *      Copyright (c) 2001-2010 by Digital Mars,
  *      All Rights Reserved,
- *      www.digitalmars.com
+ *      http://www.digitalmars.com
  * License:
  *  This software is provided 'as-is', without any express or implied
  *  warranty. In no event will the authors be held liable for any damages
@@ -447,7 +448,7 @@ trigerr:
 Lret:
     ;
     } else {
-        return stdc.math.tanl(x);
+        return std.c.math.tanl(x);
     }
 }
 
@@ -807,8 +808,8 @@ creal sqrt(creal z)
  *
  *  $(TABLE_SV
  *    $(TR $(TH x)             $(TH e$(SUP x)) )
- *    $(TD +$(INFIN))          $(TD +$(INFIN)) )
- *    $(TD -$(INFIN))          $(TD +0.0)      )
+ *    $(TR $(TD +$(INFIN))     $(TD +$(INFIN)) )
+ *    $(TR $(TD -$(INFIN))     $(TD +0.0)      )
  *    $(TR $(TD $(NAN))        $(TD $(NAN))    )
  *  )
  */
@@ -836,8 +837,8 @@ version (GNU_Need_exp2_log2) real exp2(real x) { return std.c.math.powl(2, x); }
  *  $(TABLE_SV
  *    $(TR $(TH x)             $(TH e$(SUP x)-1)  )
  *    $(TR $(TD $(PLUSMN)0.0)  $(TD $(PLUSMN)0.0) )
- *    $(TD +$(INFIN))          $(TD +$(INFIN))    )
- *    $(TD -$(INFIN))          $(TD -1.0)         )
+ *    $(TR $(TD +$(INFIN))     $(TD +$(INFIN))    )
+ *    $(TR $(TD -$(INFIN))     $(TD -1.0)         )
  *    $(TR $(TD $(NAN))        $(TD $(NAN))       )
  *  )
  */
@@ -921,9 +922,9 @@ version (GNU_msvcrt_math) { /* nothing */ } else
  * Calculates 2$(SUP x).
  *
  *  $(TABLE_SV
- *    $(TR $(TH x)             $(TH exp2(x)    )
- *    $(TD +$(INFIN))          $(TD +$(INFIN)) )
- *    $(TD -$(INFIN))          $(TD +0.0)      )
+ *    $(TR $(TH x)             $(TH exp2(x))   )
+ *    $(TR $(TD +$(INFIN))     $(TD +$(INFIN)) )
+ *    $(TR $(TD -$(INFIN))     $(TD +0.0)      )
  *    $(TR $(TD $(NAN))        $(TD $(NAN))    )
  *  )
  */
@@ -1032,6 +1033,15 @@ creal expi(real y)
         return re + im * 1i;
     }
     else version(D_InlineAsm_X86)
+    {
+        asm
+        {
+            fld y;
+            fsincos;
+            fxch ST(1), ST(0);
+        }
+    }
+    else version(D_InlineAsm_X86_64)
     {
         asm
         {
@@ -1417,6 +1427,13 @@ real scalbn(real x, int n)
             fscale;
             fstp ST(1)/*, ST*/;
         }
+    } else version(D_InlineAsm_X86_64) {
+        asm {
+            fild n;
+            fld x;
+            fscale;
+            fstp ST(1), ST;
+        }
     } else {
         return std.c.math.scalbnl(x, n);
     }
@@ -1697,6 +1714,16 @@ long lrint(real x)
     version (Posix)
         return std.c.math.llrintl(x);
     else version(D_InlineAsm_X86)
+    {
+        long n;
+        asm
+        {
+            fld x;
+            fistp n;
+        }
+        return n;
+    }
+    else version(D_InlineAsm_X86_64)
     {
         long n;
         asm
@@ -2992,10 +3019,10 @@ body
     {
         ptrdiff_t i = A.length - 1;
         real r = A[i];
-        while (--i >= 0)
+        while (i)
         {
             r *= x;
-            r += A[i];
+            r += A[--i];
         }
         return r;
     }

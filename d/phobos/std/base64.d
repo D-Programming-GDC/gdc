@@ -1,11 +1,12 @@
 /**
  * Encodes/decodes MIME base64 data.
  *
+ * Source: $(PHOBOSSRC std/_base64.d)
  * Macros:
  *      WIKI=Phobos/StdBase64
  * References:
- *      <a href="http://en.wikipedia.org/wiki/Base64">Wikipedia Base64</a>$(BR)
- *      <a href="http://www.ietf.org/rfc/rfc2045.txt">RFC 2045</a>$(BR)
+ *      $(LINK2 http://en.wikipedia.org/wiki/Base64, Wikipedia Base64)$(BR)
+ *      $(LINK2 http://www.ietf.org/rfc/rfc2045.txt, RFC 2045)$(BR)
  */
 
 
@@ -68,10 +69,9 @@ const char[] array = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345
 
 size_t encodeLength(size_t slen)
 {
-        uint result;
-        result = slen / 3;
+        auto result = slen / 3;
         if(slen % 3)
-                result++;
+            result++;
         return result * 4;
 }
 
@@ -95,14 +95,13 @@ body
                 return buf[0 .. 0];
         
         size_t stri;
-        size_t strmax = str.length / 3;
-        size_t strleft = str.length % 3;
+        auto strmax = str.length / 3;
+        auto strleft = str.length % 3;
         uint x;
-        char* sp, bp;
         
-        bp = &buf[0];
-        sp = &str[0];
-        for(stri = 0; stri != strmax; stri++)
+        auto bp = &buf[0];
+        auto sp = &str[0];
+        for (stri = 0; stri != strmax; stri++)
         {
                 x = (sp[0] << 16) | (sp[1] << 8) | (sp[2]);
                 sp+= 3;
@@ -225,13 +224,12 @@ body
                 throw new Base64Exception("Invalid encoded base64 string");
         
         size_t estri;
-        size_t estrmax = estr.length / 4;
+        auto estrmax = estr.length / 4;
         uint x;
-        char* sp, bp;
         char ch;
         
-        sp = &estr[0];
-        bp = &buf[0];
+        auto sp = &estr[0];
+        auto bp = &buf[0];
         for(estri = 0; estri != estrmax; estri++)
         {
                 x = arrayIndex(sp[0]) << 18 | arrayIndex(sp[1]) << 12;

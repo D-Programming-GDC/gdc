@@ -20,9 +20,8 @@ class TypeInfo_P : TypeInfo
         auto c = *cast(void* *)p1 - *cast(void* *)p2;
         if (c < 0)
             return -1;
-        else if (c > 0)
-            return 1;
-        return 0;
+        else
+            return c != 0;
     }
 
     size_t tsize()
@@ -32,9 +31,7 @@ class TypeInfo_P : TypeInfo
 
     void swap(void *p1, void *p2)
     {
-        void* t;
-
-        t = *cast(void* *)p1;
+        auto t = *cast(void* *)p1;
         *cast(void* *)p1 = *cast(void* *)p2;
         *cast(void* *)p2 = t;
     }

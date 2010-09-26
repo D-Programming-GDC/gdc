@@ -58,7 +58,7 @@ struct lldiv_t { long quot,rem; }
         private import gcc.builtins;
         alias gcc.builtins.__builtin_alloca alloca;     ///
     } else {
-        void *alloca(size_t);   ///
+        void *alloca(size_t);   /// Allocate bytes on stack
     }
 
     void *calloc(size_t, size_t);       ///

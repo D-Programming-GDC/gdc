@@ -101,10 +101,6 @@ module std.md5;
 
 import std.string;
 
-version(D_InlineAsm)
-    version(X86)
-        version = Asm86;
-
 /***************************************
  * Computes MD5 digest of array of data.
  */
@@ -180,7 +176,7 @@ struct MD5_CTX
      */
     static uint ROTATE_LEFT(uint x, uint n)
     {
-        version (Asm86)
+        version (D_InlineAsm_X86)
         {
             version (GNU)
             {
@@ -255,9 +251,8 @@ struct MD5_CTX
      */
     void update(void[] input)
     {
-      uint index, partLen;
-      size_t i;
-      size_t inputLen = input.length;
+      size_t i, index, partLen;
+      auto inputLen = input.length;
 
       /* Compute number of bytes mod 64 */
       index = (cast(uint)count >> 3) & (64 - 1);

@@ -1189,7 +1189,6 @@ class Thread
             // Save all registers on the stack so they'll be scanned by the GC
             __builtin_unwind_init();
 
-
             assert(sig == SIGUSR1);
 
             sigset_t sigmask;

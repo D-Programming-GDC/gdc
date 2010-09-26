@@ -16,7 +16,7 @@ private import std.intrinsic;
 struct BitArray
 {
     size_t len;
-    uint* ptr;
+    size_t* ptr;
 
     size_t dim()
     {
@@ -38,7 +38,7 @@ struct BitArray
             if (newdim != olddim)
             {
                 // Create a fake array so we can use D's realloc machinery
-                uint[] b = ptr[0 .. olddim];
+                auto b = ptr[0 .. olddim];
                 b.length = newdim;              // realloc
                 ptr = b.ptr;
                 if (newdim & 31)
@@ -86,7 +86,7 @@ struct BitArray
     {
         BitArray ba;
 
-        uint[] b = ptr[0 .. dim].dup;
+        auto b = ptr[0 .. dim].dup;
         ba.len = len;
         ba.ptr = b.ptr;
         return ba;
@@ -96,7 +96,6 @@ struct BitArray
     {
         BitArray a;
         BitArray b;
-        int i;
 
         debug(bitarray) printf("BitArray.dup.unittest\n");
 
@@ -104,7 +103,7 @@ struct BitArray
         a[0] = 1; a[1] = 0; a[2] = 1;
         b = a.dup;
         assert(b.length == 3);
-        for (i = 0; i < 3; i++)
+        for (int i = 0; i < 3; i++)
         {   debug(bitarray) printf("b[%d] = %d\n", i, b[i]);
             assert(b[i] == (((i ^ 1) & 1) ? true : false));
         }
@@ -300,10 +299,8 @@ struct BitArray
                 return 0;               // not equal
         }
 
-        uint mask;
-
         n = this.length & ((8 * uint.sizeof) - 1);
-        mask = (1 << n) - 1;
+        auto mask = (1 << n) - 1;
         //printf("i = %d, n = %d, mask = %x, %x, %x\n", i, n, mask, p1[i], p2[i]);
         return (mask == 0) || (p1[i] & mask) == (p2[i] & mask);
     }
@@ -336,14 +333,13 @@ struct BitArray
 
     int opCmp(BitArray a2)
     {
-        size_t len;
         size_t i;
 
-        len = this.length;
+        auto len = this.length;
         if (a2.length < len)
             len = a2.length;
-        uint* p1 = cast(uint*)this.ptr;
-        uint* p2 = cast(uint*)a2.ptr;
+        auto p1 = cast(uint*)this.ptr;
+        auto p2 = cast(uint*)a2.ptr;
         size_t n = len / (8 * uint.sizeof);
         for (i = 0; i < n; i++)
         {
@@ -361,10 +357,9 @@ struct BitArray
         }
         */
         uint mask = 1;
-        for (size_t j = i * (8 * uint.sizeof); j < len; j++)
-        {   int c;
-
-            c = cast(int)(p1[i] & mask) - cast(int)(p2[i] & mask);
+        for (auto j = i * (8 * uint.sizeof); j < len; j++)
+        {
+            auto c = cast(int)(p1[i] & mask) - cast(int)(p2[i] & mask);
             if (c)
                 return c;
             mask <<= 1;
@@ -372,9 +367,8 @@ struct BitArray
         ptrdiff_t c = cast(ptrdiff_t)this.len - cast(ptrdiff_t)a2.length;
         if (c < 0)
             return -1;
-        else if (c > 0)
-            return 1;
-        return 0;
+        else
+            return c != 0;
     }
 
     unittest
@@ -432,7 +426,7 @@ struct BitArray
     }
     body
     {
-        ptr = cast(uint*)v.ptr;
+        ptr = cast(typeof(ptr))v.ptr;
         len = numbits;
     }
 
@@ -891,9 +885,7 @@ struct BitArray
      */
     BitArray opCat(bool b)
     {
-        BitArray r;
-
-        r = this.dup;
+        auto r = this.dup;
         r.length = len + 1;
         r[len] = b;
         return r;

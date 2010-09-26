@@ -992,11 +992,8 @@ unittest
 
 void write(string name, void[] buffer)
 {
-    int fd;
-    char *namez;
-
-    namez = toStringz(name);
-    fd = unix.open(namez, O_CREAT | O_WRONLY | O_TRUNC, 0660);
+    auto namez = toStringz(name);
+    auto fd = unix.open(namez, O_CREAT | O_WRONLY | O_TRUNC, 0660);
     if (fd == -1)
         goto err;
 
@@ -1022,11 +1019,8 @@ err:
 
 void append(string name, void[] buffer)
 {
-    int fd;
-    char *namez;
-
-    namez = toStringz(name);
-    fd = unix.open(namez, O_APPEND | O_WRONLY | O_CREAT, 0660);
+    auto namez = toStringz(name);
+    auto fd = unix.open(namez, O_APPEND | O_WRONLY | O_CREAT, 0660);
     if (fd == -1)
         goto err;
 
@@ -1565,7 +1559,7 @@ void copy(string from, string to)
         goto err2;
     }
 
-    int fdw = std.c.unix.unix.open(toz, O_CREAT | O_WRONLY | O_TRUNC, 0660);
+    auto fdw = std.c.unix.unix.open(toz, O_CREAT | O_WRONLY | O_TRUNC, 0660);
     if (fdw == -1)
     {
         //printf("\topen error, errno = %d\n",getErrno());
@@ -1573,7 +1567,7 @@ void copy(string from, string to)
     }
 
     size_t BUFSIZ = 4096 * 16;
-    void* buf = std.c.stdlib.malloc(BUFSIZ);
+    auto buf = std.c.stdlib.malloc(BUFSIZ);
     if (!buf)
     {   BUFSIZ = 4096;
         buf = std.c.stdlib.malloc(BUFSIZ);

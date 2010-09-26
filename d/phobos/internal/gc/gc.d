@@ -45,6 +45,11 @@ public import std.outofmemory;
 public import gcstats;
 public import std.thread;
 
+//version (X86)
+//    alias ulong array_t;
+//else
+    alias void[] array_t;
+
 version=GCCLASS;
 
 version (GCCLASS)
@@ -625,11 +630,12 @@ body
         }
         else version (D_InlineAsm_X86_64)
         {
+	    size_t newsize = void;
             asm
             {
-                mov     RAX,size        ;
-                mul     RAX,length      ;
-                mov     size,RAX        ;
+                mov     RAX,newlength   ;
+                mul     RAX,sizeelem    ;
+                mov     newsize,RAX     ;
                 jc      Loverflow       ;
             }
         }
@@ -746,11 +752,12 @@ body
         }
         else version (D_InlineAsm_X86_64)
         {
+	    size_t newsize = void;
             asm
             {
-                mov     RAX,size        ;
-                mul     RAX,length      ;
-                mov     size,RAX        ;
+                mov     RAX,newlength   ;
+                mul     RAX,sizeelem    ;
+                mov     newsize,RAX     ;
                 jc      Loverflow       ;
             }
         }

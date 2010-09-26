@@ -194,6 +194,7 @@ struct BaseClass
 };
 
 extern int CLASSINFO_SIZE;              // value of ClassInfo.size
+#define CLASSINFO_SIZE_64 CLASSINFO_SIZE // value of ClassInfo.size
 
 struct ClassDeclaration : AggregateDeclaration
 {
@@ -223,7 +224,7 @@ struct ClassDeclaration : AggregateDeclaration
     ClassInfoDeclaration *vclassinfo;   // the ClassInfo object for this ClassDeclaration
     int com;                            // !=0 if this is a COM class (meaning
                                         // it derives from IUnknown)
-    int isauto;                         // !=0 if this is an auto class
+    int isscope;                        // !=0 if this is an auto class
     int isabstract;                     // !=0 if abstract class
 #if DMDV1
     int isnested;                       // !=0 if is nested
@@ -240,6 +241,7 @@ struct ClassDeclaration : AggregateDeclaration
     #define OFFSET_RUNTIME 0x76543210
     virtual int isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset);
 
+    virtual int isBaseInfoComplete();
     Dsymbol *search(Loc, Identifier *ident, int flags);
 #if DMDV2
     int isFuncHidden(FuncDeclaration *fd);
@@ -289,6 +291,7 @@ struct InterfaceDeclaration : ClassDeclaration
     int isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset);
     int isBaseOf(BaseClass *bc, target_ptrdiff_t *poffset);
     const char *kind();
+    int isBaseInfoComplete();
     int vtblOffset();
 #if DMDV2
     int isCPPinterface();

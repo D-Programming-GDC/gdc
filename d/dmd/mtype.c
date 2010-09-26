@@ -542,7 +542,7 @@ ClassDeclaration *Type::isClassHandle()
     return NULL;
 }
 
-int Type::isauto()
+int Type::isscope()
 {
     return FALSE;
 }
@@ -2013,7 +2013,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
             tbn = next = tint32;
             break;
     }
-    if (tbn->isauto())
+    if (tbn->isscope())
         error(loc, "cannot have array of auto %s", tbn->toChars());
     return merge();
 }
@@ -2191,8 +2191,8 @@ Type *TypeDArray::semantic(Loc loc, Scope *sc)
             tn = next = tint32;
             break;
     }
-    if (tn->isauto())
-        error(loc, "cannot have array of auto %s", tn->toChars());
+    if (tn->isscope())
+        error(loc, "cannot have array of scope %s", tn->toChars());
     if (next != tn)
         //deco = NULL;                  // redo
         return tn->arrayOf();
@@ -2388,7 +2388,7 @@ Type *TypeAArray::semantic(Loc loc, Scope *sc)
             error(loc, "can't have associative array of %s", next->toChars());
             break;
     }
-    if (next->isauto())
+    if (next->isscope())
         error(loc, "cannot have array of auto %s", next->toChars());
 
     return merge();
@@ -2792,18 +2792,26 @@ int Type::covariant(Type *t)
 
     if (t1n->equals(t2n))
         goto Lcovariant;
-    if (t1n->ty != Tclass || t2n->ty != Tclass)
-        goto Lnotcovariant;
-
-    // If t1n is forward referenced:
-    ClassDeclaration *cd = ((TypeClass *)t1n)->sym;
-    if (!cd->baseClass && cd->baseclasses->dim && !cd->isInterfaceDeclaration())
+    if (t1n->ty == Tclass && t2n->ty == Tclass)
     {
-        return 3;
-    }
+        ClassDeclaration *cd = ((TypeClass *)t1n)->sym;
+        ClassDeclaration *cd2 = ((TypeClass *)t2n)->sym;
+        if (cd == cd2)
+            goto Lcovariant;
 
+        // If t1n is forward referenced:
+#if 0
+        if (!cd->baseClass && cd->baseclasses->dim && !cd->isInterfaceDeclaration())
+#else
+        if (!cd->isBaseInfoComplete())
+#endif
+        {
+            return 3;
+        }
+    }
     if (t1n->implicitConvTo(t2n))
         goto Lcovariant;
+
     goto Lnotcovariant;
     }
 
@@ -2946,24 +2954,24 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
     tf->linkage = sc->linkage;
     if (tf->next)
     {
-    tf->next = tf->next->semantic(loc,sc);
+        tf->next = tf->next->semantic(loc,sc);
 #if !SARRAYVALUE
-    if (tf->next->toBasetype()->ty == Tsarray)
-    {   error(loc, "functions cannot return static array %s", tf->next->toChars());
-        tf->next = Type::terror;
-    }
-#endif
-    if (tf->next->toBasetype()->ty == Tfunction)
-    {   error(loc, "functions cannot return a function");
-        tf->next = Type::terror;
-    }
-    if (tf->next->toBasetype()->ty == Ttuple)
-    {   error(loc, "functions cannot return a tuple");
-        tf->next = Type::terror;
-    }
-    if (tf->next->isauto() && !(sc->flags & SCOPEctor))
-        error(loc, "functions cannot return auto %s", tf->next->toChars());
+        if (tf->next->toBasetype()->ty == Tsarray)
+        {   error(loc, "functions cannot return static array %s", tf->next->toChars());
+            tf->next = Type::terror;
         }
+#endif
+        if (tf->next->toBasetype()->ty == Tfunction)
+        {   error(loc, "functions cannot return a function");
+            tf->next = Type::terror;
+        }
+        if (tf->next->toBasetype()->ty == Ttuple)
+        {   error(loc, "functions cannot return a tuple");
+            tf->next = Type::terror;
+        }
+        if (tf->next->isscope() && !(sc->flags & SCOPEctor))
+            error(loc, "functions cannot return scope %s", tf->next->toChars());
+    }
 
     if (tf->parameters)
     {
@@ -3211,6 +3219,16 @@ Type *TypeDelegate::semantic(Loc loc, Scope *sc)
 d_uns64 TypeDelegate::size(Loc loc)
 {
     return PTRSIZE * 2;
+}
+
+unsigned TypeDelegate::alignsize()
+{
+#if DMDV1
+    // See Bugzilla 942 for discussion
+    if (!global.params.isX86_64)
+        return PTRSIZE * 2;
+#endif
+    return PTRSIZE;
 }
 
 void TypeDelegate::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
@@ -5104,9 +5122,9 @@ ClassDeclaration *TypeClass::isClassHandle()
     return sym;
 }
 
-int TypeClass::isauto()
+int TypeClass::isscope()
 {
-    return sym->isauto;
+    return sym->isscope;
 }
 
 int TypeClass::isBaseOf(Type *t, target_ptrdiff_t *poffset)

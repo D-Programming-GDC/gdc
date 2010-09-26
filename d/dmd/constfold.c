@@ -558,13 +558,11 @@ Expression *Shl(Type *type, Expression *e1, Expression *e2)
 }
 
 Expression *Shr(Type *type, Expression *e1, Expression *e2)
-{   Expression *e;
+{
     Loc loc = e1->loc;
-    unsigned count;
-    dinteger_t value;
 
-    value = e1->toInteger();
-    count = e2->toInteger();
+    dinteger_t value = e1->toInteger();
+    unsigned count = e2->toInteger();
     switch (e1->type->toBasetype()->ty)
     {
         case Tint8:
@@ -599,21 +597,22 @@ Expression *Shr(Type *type, Expression *e1, Expression *e2)
                 value = (d_uns64)(value) >> count;
                 break;
 
+        case Terror:
+                return e1;
+
         default:
                 assert(0);
     }
-    e = new IntegerExp(loc, value, type);
+    Expression *e = new IntegerExp(loc, value, type);
     return e;
 }
 
 Expression *Ushr(Type *type, Expression *e1, Expression *e2)
-{   Expression *e;
+{
     Loc loc = e1->loc;
-    unsigned count;
-    dinteger_t value;
 
-    value = e1->toInteger();
-    count = e2->toInteger();
+    dinteger_t value = e1->toInteger();
+    unsigned count = e2->toInteger();
     switch (e1->type->toBasetype()->ty)
     {
         case Tint8:
@@ -638,10 +637,13 @@ Expression *Ushr(Type *type, Expression *e1, Expression *e2)
                 value = (d_uns64)(value) >> count;
                 break;
 
+        case Terror:
+                return e1;
+
         default:
                 assert(0);
     }
-    e = new IntegerExp(loc, value, type);
+    Expression *e = new IntegerExp(loc, value, type);
     return e;
 }
 
@@ -1055,7 +1057,7 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
     Loc loc = e1->loc;
 
     //printf("Cast(type = %s, to = %s, e1 = %s)\n", type->toChars(), to->toChars(), e1->toChars());
-    //printf("e1->type = %s\n", e1->type->toChars());
+    //printf("\te1->type = %s\n", e1->type->toChars());
     if (type->equals(e1->type) && to->equals(type))
         return e1;
 
@@ -1074,14 +1076,10 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
     }
 
     if (e1->op == TOKarrayliteral && typeb == tb)
-    {
         return e1;
-    }
 
     if (e1->isConst() != 1)
-    {
         return EXP_CANT_INTERPRET;
-        }
 
     if (tb->ty == Tbool)
         e = new IntegerExp(loc, e1->toInteger() != 0, type);
@@ -1111,7 +1109,7 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
             real_t r = e1->toReal();
 #endif
 
-            switch (type->toBasetype()->ty)
+            switch (typeb->ty)
             {
                 case Tint8:     result = (d_int8)r;     break;
                 case Tchar:
@@ -1352,7 +1350,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
     Type *t2 = e2->type->toBasetype();
 
     //printf("Cat(e1 = %s, e2 = %s)\n", e1->toChars(), e2->toChars());
-    //printf("\tt1 = %s, t2 = %s\n", t1->toChars(), t2->toChars())
+    //printf("\tt1 = %s, t2 = %s, type = %s\n", t1->toChars(), t2->toChars(), type->toChars());
 
     if (e1->op == TOKnull && (e2->op == TOKint64 || e2->op == TOKstructliteral))
     {   e = e2;
@@ -1510,7 +1508,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
         if (type->toBasetype()->ty == Tsarray)
         {
-            e->type = new TypeSArray(e1->type->toBasetype()->next, new IntegerExp(0, es1->elements->dim, Type::tindex));
+            e->type = new TypeSArray(t1->next, new IntegerExp(loc, es1->elements->dim, Type::tindex));
             e->type = e->type->semantic(loc, NULL);
         }
         else

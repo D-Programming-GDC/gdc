@@ -45,6 +45,11 @@ module std.cpuid;
 import std.string;
 
 version(D_InlineAsm_X86)
+    version = Asm;
+version(D_InlineAsm_X86_64)
+    version = Asm;
+
+version(Asm)
 {
     /// Returns everything as a printable string
     char[] toString()
@@ -226,7 +231,7 @@ private:
      */
     private void getVendorString()
     {
-	char* dst = vendorStr.ptr;
+        char* dst = vendorStr.ptr;
         // puts the vendor string into dst
         version (D_InlineAsm_X86)
             asm
@@ -241,7 +246,15 @@ private:
                 db 0x5b  /* pop EBX */      ;
             }
         else version (D_InlineAsm_X86_64)
-            static assert(0);
+            asm
+            {
+                mov EAX, 0                  ;
+                cpuid                       ;
+                mov RAX, dst                ;
+                mov [RAX], EBX              ;
+                mov [RAX+4], EDX            ;
+                mov [RAX+8], ECX            ;
+            }
         else
             static assert(0);
     }
@@ -284,7 +297,33 @@ private:
             db 0x5b  /* pop EBX */      ;
         }
         else version (D_InlineAsm_X86_64)
-            static assert(0);
+        asm
+        {
+            mov EAX, 0x8000_0000        ;
+            cpuid                       ;
+            cmp EAX, 0x8000_0004        ;
+            jb PSLabel                  ; // no support
+            mov RDI, dst                ;
+            mov EAX, 0x8000_0002        ;
+            cpuid                       ;
+            mov [RDI], EAX              ;
+            mov [RDI+4], EBX            ;
+            mov [RDI+8], ECX            ;
+            mov [RDI+12], EDX           ;
+            mov EAX, 0x8000_0003        ;
+            cpuid                       ;
+            mov [RDI+16], EAX           ;
+            mov [RDI+20], EBX           ;
+            mov [RDI+24], ECX           ;
+            mov [RDI+28], EDX           ;
+            mov EAX, 0x8000_0004        ;
+            cpuid                       ;
+            mov [RDI+32], EAX           ;
+            mov [RDI+36], EBX           ;
+            mov [RDI+40], ECX           ;
+            mov [RDI+44], EDX           ;
+        PSLabel:                        ;
+        }
         else
             static assert(0);
 
@@ -327,7 +366,31 @@ private:
             ;
         }
         else version (D_InlineAsm_X86_64)
-            static assert(0);
+        asm
+        {
+            mov EAX, 0                  ;
+            cpuid                       ;
+            cmp EAX, 1                  ;
+            jb FeatLabel                ; // no support
+            mov EAX, 1                  ;
+            cpuid                       ;
+            mov f, EDX                  ;
+            mov m, ECX                  ;
+            mov a, EBX                  ;
+            mov s, EAX                  ;
+
+        FeatLabel:                      ;
+            mov EAX, 0x8000_0000        ;
+            cpuid                       ;
+            cmp EAX, 0x8000_0001        ;
+            jb FeatLabel2               ; // no support
+            mov EAX, 0x8000_0001        ;
+            cpuid                       ;
+            mov e, EDX                  ;
+
+        FeatLabel2:
+            ;
+        }
         else
             static assert(0);
         flags = f;
@@ -358,7 +421,19 @@ private:
             db 0x5b  /* pop EBX */      ;
         }
         else version (D_InlineAsm_X86_64)
-            static assert(0);
+        asm
+        {
+            mov EAX, 0                  ;
+            cpuid                       ;
+            cmp EAX, 4                  ;
+            jb IntelSingle              ;
+            mov EAX, 4                  ;
+            mov ECX, 0                  ;
+            cpuid                       ;
+            mov n, EAX                  ;
+            mov b, 1                    ;
+        IntelSingle:                    ;
+        }
         else
             static assert(0);
         if (b != 0)
@@ -392,7 +467,18 @@ private:
             db 0x5b  /* pop EBX */      ;
         }
         else version (D_InlineAsm_X86_64)
-            static assert(0);
+        asm
+        {
+            mov EAX, 0x8000_0000        ;
+            cpuid                       ;
+            cmp EAX, 0x8000_0008        ;
+            jb AMDSingle                ;
+            mov EAX, 0x8000_0008        ;
+            cpuid                       ;
+            mov n, CL                   ;
+            mov b, 1                    ;
+        AMDSingle:                      ;
+        }
         else
             static assert(0);
         if (b != 0)

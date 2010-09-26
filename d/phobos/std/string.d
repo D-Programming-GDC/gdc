@@ -313,9 +313,7 @@ unittest
 {
     debug(string) printf("string.find.unittest\n");
 
-    int i;
-
-    i = find(null, cast(dchar)'a');
+    auto i = find(null, cast(dchar)'a');
     assert(i == -1);
     i = find("def", cast(dchar)'a');
     assert(i == -1);
@@ -363,9 +361,7 @@ unittest
 {
     debug(string) printf("string.ifind.unittest\n");
 
-    int i;
-
-    i = ifind(null, cast(dchar)'a');
+    auto i = ifind(null, cast(dchar)'a');
     assert(i == -1);
     i = ifind("def", cast(dchar)'a');
     assert(i == -1);
@@ -415,9 +411,7 @@ unittest
 {
     debug(string) printf("string.rfind.unittest\n");
 
-    int i;
-
-    i = rfind(null, cast(dchar)'a');
+    auto i = rfind(null, cast(dchar)'a');
     assert(i == -1);
     i = rfind("def", cast(dchar)'a');
     assert(i == -1);
@@ -473,9 +467,7 @@ unittest
 {
     debug(string) printf("string.irfind.unittest\n");
 
-    int i;
-
-    i = irfind(null, cast(dchar)'a');
+    auto i = irfind(null, cast(dchar)'a');
     assert(i == -1);
     i = irfind("def", cast(dchar)'a');
     assert(i == -1);
@@ -560,9 +552,7 @@ unittest
 {
     debug(string) printf("string.find.unittest\n");
 
-    int i;
-
-    i = find(null, "a");
+    auto i = find(null, "a");
     assert(i == -1);
     i = find("def", "a");
     assert(i == -1);
@@ -645,9 +635,7 @@ unittest
 {
     debug(string) printf("string.ifind.unittest\n");
 
-    int i;
-
-    i = ifind(null, "a");
+    auto i = ifind(null, "a");
     assert(i == -1);
     i = ifind("def", "a");
     assert(i == -1);
@@ -723,10 +711,8 @@ ptrdiff_t rfind(char[] s, char[] sub)
 
 unittest
 {
-    int i;
-
     debug(string) printf("string.rfind.unittest\n");
-    i = rfind("abcdefcdef", "c");
+    auto i = rfind("abcdefcdef", "c");
     assert(i == 6);
     i = rfind("abcdefcdef", "cd");
     assert(i == 6);
@@ -789,10 +775,8 @@ ptrdiff_t irfind(char[] s, char[] sub)
 
 unittest
 {
-    int i;
-
     debug(string) printf("string.irfind.unittest\n");
-    i = irfind("abcdefCdef", "c");
+    auto i = irfind("abcdefCdef", "c");
     assert(i == 6);
     i = irfind("abcdefCdef", "cD");
     assert(i == 6);
@@ -1375,11 +1359,10 @@ unittest
 
     char[] s = ",peter,paul,jerry,";
     char[][] words;
-    int i;
 
     words = split(s, ",");
     assert(words.length == 5);
-    i = cmp(words[0], "");
+    auto i = cmp(words[0], "");
     assert(i == 0);
     i = cmp(words[1], "peter");
     assert(i == 0);
@@ -1709,7 +1692,7 @@ char[] center(char[] s, ptrdiff_t width)
     if (s.length >= width)
         return s;
     char[] r = new char[width];
-    ptrdiff_t left = (width - s.length) / 2;
+    auto left = (width - s.length) / 2;
     r[0 .. left] = cast(char)' ';
     r[left .. left + s.length] = s;
     r[left + s.length .. width] = cast(char)' ';
@@ -1763,7 +1746,6 @@ char[] zfill(char[] s, ptrdiff_t width)
 char[] replace(char[] s, char[] from, char[] to)
 {
     char[] p;
-    ptrdiff_t i;
     size_t istart;
 
     //printf("replace('%.*s','%.*s','%.*s')\n", s, from, to);
@@ -1772,7 +1754,7 @@ char[] replace(char[] s, char[] from, char[] to)
     istart = 0;
     while (istart < s.length)
     {
-        i = find(s[istart .. s.length], from);
+        auto i = find(s[istart .. s.length], from);
         if (i == -1)
         {
             p ~= s[istart .. s.length];
@@ -1861,7 +1843,7 @@ body
     if (s.length == 0)
         return sub;
 
-    ptrdiff_t newlength = s.length + sub.length;
+    auto newlength = s.length + sub.length;
     char[] result = new char[newlength];
 
     result[0 .. index] = s[0 .. index];
@@ -1924,9 +1906,8 @@ unittest
 
     char[] s = "This is a fofofof list";
     char[] sub = "fof";
-    int i;
 
-    i = count(s, sub);
+    auto i = count(s, sub);
     assert(i == 2);
 }
 
@@ -1959,7 +1940,7 @@ char[] expandtabs(char[] string, ptrdiff_t tabsize = 8)
                     result[i .. i + nspaces] = ' ';
                 }
                 else
-                {   ptrdiff_t j = result.length;
+                {   auto j = result.length;
                     result.length = j + nspaces;
                     result[j .. j + nspaces] = ' ';
                 }
@@ -2055,7 +2036,7 @@ char[] entab(char[] string, ptrdiff_t tabsize = 8)
                     if (!changes)
                         change();
 
-                    ptrdiff_t j = result.length - nspaces;
+                    auto j = result.length - nspaces;
                     ptrdiff_t ntabs = (((column - nspaces) % tabsize) + nspaces) / tabsize;
                     result.length = j + ntabs;
                     result[j .. j + ntabs] = '\t';
@@ -2084,7 +2065,7 @@ char[] entab(char[] string, ptrdiff_t tabsize = 8)
                     if (!changes)
                         change();
 
-                    ptrdiff_t j = result.length - nspaces;
+                    auto j = result.length - nspaces;
                     ptrdiff_t ntabs = (nspaces + tabsize - 1) / tabsize;
                     result.length = j + ntabs;
                     result[j .. j + ntabs] = '\t';
@@ -3316,12 +3297,12 @@ unittest
 
 final bool isNumeric(in char[] s, in bool bAllowSep = false)
 {
-    ptrdiff_t iLen = s.length;
+    auto   iLen = s.length;
     bool   bDecimalPoint = false;
     bool   bExponent = false;
     bool   bComplex = false;
     char[] sx = std.string.tolower(s); 
-    int    j  = 0;
+    size_t j  = 0;
     char   c;
 
     //writefln("isNumeric(char[], bool = false) called!");

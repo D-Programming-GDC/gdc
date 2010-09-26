@@ -80,7 +80,7 @@ else
  *  bsr(x21) = 5
  */
 version (GNU)
-int bsr(uint v)
+int bsr(size_t v)
 {
     uint m = 0x80000000;
     uint i;
@@ -91,57 +91,57 @@ int bsr(uint v)
     return i; // supposed to be undefined
 }
 else
-    int bsr(uint v);
+    int bsr(size_t v);
 
 /**
  * Tests the bit.
  */
 version (GNU)
-int bt(in uint *p, uint bitnum)
+int bt(in size_t *p, size_t bitnum)
 {
     return (p[bitnum / (uint.sizeof*8)] & (1<<(bitnum & ((uint.sizeof*8)-1)))) ? -1 : 0 ;
 }
 else
-    int bt(in uint *p, uint bitnum);
+    int bt(in size_t *p, size_t bitnum);
 
 /**
  * Tests and complements the bit.
  */
 version (GNU)
-int btc(uint *p, uint bitnum)
+int btc(size_t *p, size_t bitnum)
 {
-    uint * q = p + (bitnum / (uint.sizeof*8));
-    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
+    size_t * q = p + (bitnum / (size_t.sizeof*8));
+    size_t mask = 1 << (bitnum & ((size_t.sizeof*8) - 1));
     int result = *q & mask;
     *q ^= mask;
     return result ? -1 : 0;
 }
 else
-int btc(uint *p, uint bitnum);
+int btc(size_t *p, size_t bitnum);
 
 /**
  * Tests and resets (sets to 0) the bit.
  */
 version (GNU)
-int btr(uint *p, uint bitnum)
+int btr(size_t *p, size_t bitnum)
 {
-    uint * q = p + (bitnum / (uint.sizeof*8));
-    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
+    size_t * q = p + (bitnum / (size_t.sizeof*8));
+    size_t mask = 1 << (bitnum & ((size_t.sizeof*8) - 1));
     int result = *q & mask;
     *q &= ~mask;
     return result ? -1 : 0;
 }
 else
-    int btr(uint *p, uint bitnum);
+    int btr(size_t *p, size_t bitnum);
 
 /**
  * Tests and sets the bit.
  * Params:
- * p = a non-NULL pointer to an array of uints.
+ * p = a non-NULL pointer to an array of size_ts.
  * index = a bit number, starting with bit 0 of p[0],
  * and progressing. It addresses bits like the expression:
 ---
-p[index / (uint.sizeof*8)] & (1 << (index & ((uint.sizeof*8) - 1)))
+p[index / (size_t.sizeof*8)] & (1 << (index & ((size_t.sizeof*8) - 1)))
 ---
  * Returns:
  *      A non-zero value if the bit was set, and a zero
@@ -154,7 +154,7 @@ import std.intrinsic;
 
 int main()
 {
-    uint array[2];
+    size_t array[2];
 
     array[0] = 2;
     array[1] = 0x100;
@@ -192,16 +192,16 @@ array = [0]:x2, [1]:x100
 </pre>
  */
 version (GNU)
-int bts(uint *p, uint bitnum)
+int bts(size_t *p, size_t bitnum)
 {
-    uint * q = p + (bitnum / (uint.sizeof*8));
-    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
+    size_t * q = p + (bitnum / (size_t.sizeof*8));
+    size_t mask = 1 << (bitnum & ((size_t.sizeof*8) - 1));
     int result = *q & mask;
     *q |= mask;
     return result ? -1 : 0;
 }
 else
-    int bts(uint *p, uint bitnum);
+    int bts(size_t *p, size_t bitnum);
 
 
 /**
