@@ -35,8 +35,8 @@ module rt.aaA;
 
 private
 {
-    import stdc.stdarg;
-    import stdc.string;
+    import core.stdc.stdarg;
+    import core.stdc.string;
 
     enum BlkAttr : uint
     {
@@ -818,8 +818,8 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
     }
     else
     {
-	void * qkey = keys;
-	void * qval = values;
+        void * qkey = keys;
+        void * qval = values;
 
         result = new BB();
         size_t i;
@@ -839,9 +839,9 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
 
         for (size_t j = 0; j < length; j++)
         {   void* pkey = qkey;
-	    qkey += keysize;
+            qkey += keysize;
             void* pvalue = qval;
-	    qval += valuesize;
+            qval += valuesize;
             aaA* e;
 
             auto key_hash = keyti.getHash(pkey);

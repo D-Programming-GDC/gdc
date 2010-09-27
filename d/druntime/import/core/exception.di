@@ -5,14 +5,14 @@ private
     alias void function(string file, size_t line, string msg = null) assertHandlerType;
     assertHandlerType assertHandler = null;
 }
-class ArrayBoundsException : Exception
+class RangeError : Error
 {
     this(string file, size_t line)
 {
-super("Array index out of bounds",file,line);
+super("Range violation",file,line);
 }
 }
-class AssertException : Exception
+class AssertError : Error
 {
     this(string file, size_t line)
 {
@@ -23,7 +23,7 @@ super("Assertion failure",file,line);
 super(msg,file,line);
 }
 }
-class FinalizeException : Exception
+class FinalizeError : Error
 {
     ClassInfo info;
     this(ClassInfo c, Exception e = null)
@@ -39,14 +39,14 @@ return "An exception was thrown while finalizing an instance of class " ~ info.n
 }
 }
 }
-class HiddenFuncException : Exception
+class HiddenFuncError : Error
 {
     this(ClassInfo ci)
 {
 super("Hidden method called for " ~ ci.name);
 }
 }
-class OutOfMemoryException : Exception
+class OutOfMemoryError : Error
 {
     this(string file, size_t line)
 {
@@ -60,7 +60,7 @@ return msg ? super.toString() : "Memory allocation failed";
 }
 }
 }
-class SwitchException : Exception
+class SwitchError : Error
 {
     this(string file, size_t line)
 {
@@ -90,7 +90,7 @@ extern (C)
 }
 extern (C) 
 {
-    void onArrayBoundsError(string file, size_t line);
+    void onRangeError(string file, size_t line);
 }
 extern (C) 
 {

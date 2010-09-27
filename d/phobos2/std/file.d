@@ -561,7 +561,7 @@ struct DirEntry
 	size_t wlength;
 	size_t n;
 
-	clength = std.string.strlen(fd.cFileName.ptr);
+	clength = std.c.string.strlen(fd.cFileName.ptr);
 
 	// Convert cFileName[] to unicode
 	wlength = MultiByteToWideChar(0,0,fd.cFileName.ptr,clength,null,0);
@@ -855,8 +855,8 @@ void listdir(in string pathname, bool delegate(DirEntry* de) callback)
 		do
 		{
 		    // Skip "." and ".."
-		    if (std.string.strcmp(fileinfo.cFileName.ptr, ".") == 0 ||
-			std.string.strcmp(fileinfo.cFileName.ptr, "..") == 0)
+		    if (std.c.string.strcmp(fileinfo.cFileName.ptr, ".") == 0 ||
+			std.c.string.strcmp(fileinfo.cFileName.ptr, "..") == 0)
 			continue;
 
 		    de.init(pathname, &fileinfo);
@@ -1302,14 +1302,14 @@ string getcwd()
 	char buf[PATH_MAX] = void;
 	cenforce(unix.getcwd(buf.ptr, buf.length),
             "cannot get cwd");
-	return buf[0 .. std.string.strlen(buf.ptr)].idup;
+	return buf[0 .. std.c.string.strlen(buf.ptr)].idup;
     }
     else
     {
     auto p = cenforce(std.c.linux.linux.getcwd(null, 0),
             "cannot get cwd");
     scope(exit) std.c.stdlib.free(p);
-    return p[0 .. std.string.strlen(p)].idup;
+    return p[0 .. std.c.string.strlen(p)].idup;
     }
 }
 
@@ -1333,7 +1333,7 @@ struct DirEntry
 
     void init(string path, dirent *fd)
     {
-        invariant len = std.string.strlen(fd.d_name.ptr);
+        invariant len = std.c.string.strlen(fd.d_name.ptr);
 	name = std.path.join(path, fd.d_name[0 .. len].idup);
 	version(GNU)
 	    { }
@@ -1478,8 +1478,8 @@ void listdir(string pathname, bool delegate(DirEntry* de) callback)
     for (dirent* fdata; (fdata = readdir(h)) != null; )
     {
         // Skip "." and ".."
-        if (!std.string.strcmp(fdata.d_name.ptr, ".") ||
-                !std.string.strcmp(fdata.d_name.ptr, ".."))
+        if (!std.c.string.strcmp(fdata.d_name.ptr, ".") ||
+                !std.c.string.strcmp(fdata.d_name.ptr, ".."))
             continue;
         de.init(pathname, fdata);
         if (!callback(&de))	    

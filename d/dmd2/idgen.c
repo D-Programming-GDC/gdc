@@ -76,6 +76,7 @@ struct Msgtable msgtable[] =
     { "coverage", "__coverage" },
     { "__vptr" },
     { "__monitor" },
+    { "system" },
 
     { "TypeInfo" },
     { "TypeInfo_Class" },
@@ -212,6 +213,12 @@ struct Msgtable msgtable[] =
     // For foreach
     { "apply", "opApply" },
     { "applyReverse", "opApplyReverse" },
+
+    { "Fempty", "empty" },
+    { "Fhead", "head" },
+    { "Ftoe", "toe" },
+    { "Fnext", "next" },
+    { "Fretreat", "retreat" },
 
     { "adDup", "_adDupT" },
     { "adReverse", "_adReverse" },

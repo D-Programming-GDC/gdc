@@ -37,10 +37,10 @@ module rt.lifetime;
 
 private
 {
-    import stdc.stdlib;
-    import stdc.string;
-    import stdc.stdarg;
-    debug(PRINTF) import stdc.stdio;
+    import core.stdc.stdlib;
+    import core.stdc.string;
+    import core.stdc.stdarg;
+    debug(PRINTF) import core.stdc.stdio;
 }
 
 
@@ -211,10 +211,10 @@ extern (C) Array _d_newarrayT(TypeInfo ti, size_t length)
 
     debug(PRINTF) printf("_d_newarrayT(length = x%x, size = %d)\n", length, size);
     if (length == 0 || size == 0)
-	{ }
+        { }
     else
     {
-	result.length = length;
+        result.length = length;
         /*version (D_InlineAsm_X86)
         {
             asm
@@ -248,7 +248,7 @@ extern (C) Array _d_newarrayiT(TypeInfo ti, size_t length)
     debug(PRINTF) printf("_d_newarrayiT(length = %d, size = %d)\n", length, size);
 
     if (length == 0 || size == 0)
-	{ }
+        { }
     else
     {
         auto initializer = ti.next.init();
@@ -286,8 +286,8 @@ extern (C) Array _d_newarrayiT(TypeInfo ti, size_t length)
                 memcpy(p + u, q, isize);
             }
         }
-	result.length = length;
-	result.data = cast(byte*) p;
+        result.length = length;
+        result.data = cast(byte*) p;
     }
     return result;
 
@@ -563,13 +563,13 @@ body
 
     if (newlength)
     {
-	version (GNU)
-	{
-	    // required to output the label;
-	    static char x = 0;
-	    if (x)
-		goto Loverflow;
-	}
+        version (GNU)
+        {
+            // required to output the label;
+            static char x = 0;
+            if (x)
+                goto Loverflow;
+        }
 
         version (D_InlineAsm_X86)
         {
@@ -671,13 +671,13 @@ body
 
     if (newlength)
     {
-	version (GNU)
-	{
-	    // required to output the label;
-	    static char x = 0;
-	    if (x)
-		goto Loverflow;
-	}
+        version (GNU)
+        {
+            // required to output the label;
+            static char x = 0;
+            if (x)
+                goto Loverflow;
+        }
 
         version (D_InlineAsm_X86)
         {

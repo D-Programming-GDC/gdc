@@ -52,10 +52,10 @@ private import gcbits;
 private import gcstats;
 private import gcalloc;
 
-private import cstdlib = stdc.stdlib : calloc, free, malloc, realloc;
-private import stdc.string;
+private import cstdlib = core.stdc.stdlib : calloc, free, malloc, realloc;
+private import core.stdc.string;
 
-debug private import stdc.stdio;
+debug private import core.stdc.stdio;
 
 version (GNU)
 {
@@ -86,14 +86,8 @@ private
 
     extern (C) void* rt_stackBottom();
     extern (C) void* rt_stackTop();
-    extern (C) void* rt_staticDataBottom();
-    extern (C) void* rt_staticDataTop();
 
     extern (C) void rt_finalize( void* p, bool det = true );
-
-    alias void delegate( void*, void* ) scanFn;
-
-    extern (C) void rt_scanStaticData( scanFn scan );
 
     version (MULTI_THREADED)
     {
@@ -101,6 +95,7 @@ private
         extern (C) void thread_suspendAll();
         extern (C) void thread_resumeAll();
 
+        alias void delegate( void*, void* ) scanFn;
         extern (C) void thread_scanAll( scanFn fn, void* curStackTop = null );
     }
 
@@ -1126,21 +1121,6 @@ class GC
     }
 
 
-    static void scanStaticData(gc_t g)
-    {
-        //debug(PRINTF) printf("+GC.scanStaticData()\n");
-        auto pbot = rt_staticDataBottom();
-        auto ptop = rt_staticDataTop();
-        g.addRange(pbot, ptop - pbot);
-        //debug(PRINTF) printf("-GC.scanStaticData()\n");
-    }
-
-    static void unscanStaticData(gc_t g)
-    {
-        auto pbot = rt_staticDataBottom();
-        g.removeRange(pbot);
-    }
-
     /**
      * add p to list of roots
      */
@@ -1179,6 +1159,22 @@ class GC
         else synchronized (gcLock)
         {
             gcx.removeRoot(p);
+        }
+    }
+
+
+    /**
+     *
+     */
+    int delegate(int delegate(inout void*)) rootIter()
+    {
+        if (!thread_needLock())
+        {
+            return &gcx.rootIter;
+        }
+        else synchronized (gcLock)
+        {
+            return &gcx.rootIter;
         }
     }
 
@@ -1223,6 +1219,22 @@ class GC
         else synchronized (gcLock)
         {
             gcx.removeRange(p);
+        }
+    }
+
+
+    /**
+     *
+     */
+    int delegate(int delegate(inout Range)) rangeIter()
+    {
+        if (!thread_needLock())
+        {
+            return &gcx.rangeIter;
+        }
+        else synchronized (gcLock)
+        {
+            return &gcx.rangeIter;
         }
     }
 
@@ -1593,6 +1605,22 @@ struct Gcx
     /**
      *
      */
+    int rootIter(int delegate(inout void*) dg)
+    {
+        int result = 0;
+        for( size_t i = 0; i < nroots; ++i )
+        {
+            result = dg(roots[i]);
+            if (result)
+                break;
+        }
+        return result;
+    }
+
+
+    /**
+     *
+     */
     void addRange(void *pbot, void *ptop)
     {
         debug(PRINTF) printf("Thread %x ", pthread_self());
@@ -1640,6 +1668,22 @@ struct Gcx
         // The problem is that we can get a Close() call on a thread
         // other than the one the range was allocated on.
         //assert(zero);
+    }
+
+
+    /**
+     *
+     */
+    int rangeIter(int delegate(inout Range) dg)
+    {
+        int result = 0;
+        for( size_t i = 0; i < nranges; ++i )
+        {
+            result = dg(ranges[i]);
+            if (result)
+                break;
+        }
+        return result;
     }
 
 
@@ -2261,8 +2305,6 @@ struct Gcx
             pool = pooltable[n];
             pool.mark.copy(&pool.freebits);
         }
-
-        rt_scanStaticData( &mark );
 
         version (MULTI_THREADED)
         {

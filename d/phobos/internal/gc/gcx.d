@@ -1869,39 +1869,39 @@ struct Gcx
         else
         {
             version (D_InlineAsm_X86)
-	    {
+            {
                 asm
                 {
                     pushad                  ;
                     mov     sp[EBP],ESP     ;
                 }
-	    }
+            }
             else version (D_InlineAsm_X86_64)
-	    {
+            {
                 asm
                 {
-		    push RAX ;
-		    push RBX ;
-     		    push RCX ;
-     		    push RDX ;
-     		    push RSI ;
-     		    push RDI ;
-     		    push RBP ;
-     		    push R8  ;
-     		    push R9  ;
-     		    push R10  ;
-     		    push R11  ;
-     		    push R12  ;
-     		    push R13  ;
-     		    push R14  ;
-     		    push R15  ;
-     		    push EAX ;   // 16 byte align the stack
+                    push RAX ;
+                    push RBX ;
+                    push RCX ;
+                    push RDX ;
+                    push RSI ;
+                    push RDI ;
+                    push RBP ;
+                    push R8  ;
+                    push R9  ;
+                    push R10  ;
+                    push R11  ;
+                    push R12  ;
+                    push R13  ;
+                    push R14  ;
+                    push R15  ;
+                    push EAX ;   // 16 byte align the stack
                 }
-	    }
+            }
             else
-	    {
+            {
                 static assert( false, "Architecture not supported." );
-	    }
+            }
         }
         result = fullcollect(sp);
         version (GNU)
@@ -1910,40 +1910,40 @@ struct Gcx
         }
         else
         {
-	    version (D_InlineAsm_X86)
-	    {
-		asm
-    		{
-    		    popad           ;
-    		}
-    	    }
-	    else version (D_InlineAsm_X86_64)
-	    {
-		asm
-		{
-     		    pop EAX ;   // 16 byte align the stack
-     		    pop R15  ;
-     		    pop R14  ;
-     		    pop R13  ;
-     		    pop R12  ;
-     		    pop R11  ;
-     		    pop R10  ;
-     		    pop R9  ;
-     		    pop R8  ;
-     		    pop RBP ;
-     		    pop RDI ;
-     		    pop RSI ;
-     		    pop RDX ;
-     		    pop RCX ;
-     		    pop RBX ;
-     		    pop RAX ;
-		}
-	    }
-	    else
-	    {
+            version (D_InlineAsm_X86)
+            {
+                asm
+                {
+                    popad           ;
+                }
+            }
+            else version (D_InlineAsm_X86_64)
+            {
+                asm
+                {
+                    pop EAX ;   // 16 byte align the stack
+                    pop R15  ;
+                    pop R14  ;
+                    pop R13  ;
+                    pop R12  ;
+                    pop R11  ;
+                    pop R10  ;
+                    pop R9  ;
+                    pop R8  ;
+                    pop RBP ;
+                    pop RDI ;
+                    pop RSI ;
+                    pop RDX ;
+                    pop RCX ;
+                    pop RBX ;
+                    pop RAX ;
+                }
+            }
+            else
+            {
                 static assert( false, "Architecture not supported." );
-	    }
-	}
+            }
+        }
         return result;
     }
 

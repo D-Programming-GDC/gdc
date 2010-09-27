@@ -630,7 +630,7 @@ body
         }
         else version (D_InlineAsm_X86_64)
         {
-	    size_t newsize = void;
+            size_t newsize = void;
             asm
             {
                 mov     RAX,newlength   ;
@@ -752,7 +752,7 @@ body
         }
         else version (D_InlineAsm_X86_64)
         {
-	    size_t newsize = void;
+            size_t newsize = void;
             asm
             {
                 mov     RAX,newlength   ;

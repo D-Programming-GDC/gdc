@@ -96,18 +96,6 @@ private
 {
     void gc_removeRange(void* p);
 }
-    extern (C) 
-{
-    void* gc_getHandle();
-}
-    extern (C) 
-{
-    void gc_setHandle(void* p);
-}
-    extern (C) 
-{
-    void gc_endHandle();
-}
 }
 struct GC
 {
@@ -256,27 +244,6 @@ gc_removeRoot(p);
     void removeRange(void* p)
 {
 gc_removeRange(p);
-}
-}
-    static
-{
-    void* getHandle()
-{
-return gc_getHandle();
-}
-}
-    static
-{
-    void setHandle(void* p)
-{
-gc_setHandle(p);
-}
-}
-    static
-{
-    void endHandle()
-{
-gc_endHandle();
 }
 }
 }

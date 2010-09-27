@@ -26,7 +26,7 @@ private import gcc.unwind_pe;
 private import gcc.builtins;
 
 private import core.memory;
-private import stdc.stdlib;
+private import core.stdc.stdlib;
 //private import std.c.process;
 
 static if (Use_ARM_EABI_Unwinder)

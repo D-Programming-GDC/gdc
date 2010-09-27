@@ -77,8 +77,8 @@ version( Windows )
 {
     private
     {
-        import stdc.stdint : uintptr_t; // for _beginthreadex decl below
-        import sys.windows.windows;
+        import core.stdc.stdint : uintptr_t; // for _beginthreadex decl below
+        import core.sys.windows.windows;
 
         const DWORD TLS_OUT_OF_INDEXES  = 0xFFFFFFFF;
 
@@ -104,8 +104,8 @@ version( Windows )
             // NOTE: No GC allocations may occur until the stack pointers have
             //       been set and Thread.getThis returns a valid reference to
             //       this thread object (this latter condition is not strictly
-            //       necessary on Win32 but it should be followed for the sake
-            //       of consistency).
+            //       necessary on Windows but it should be followed for the
+            //       sake of consistency).
 
             // TODO: Consider putting an auto exception object here (using
             //       alloca) forOutOfMemoryError plus something to track
@@ -144,13 +144,14 @@ else version( Posix )
 {
     private
     {
-        import stdc.posix.semaphore;
-        import stdc.posix.pthread;
-        import stdc.posix.signal;
-        import stdc.posix.time;
-        import stdc.errno;
+        import core.sys.posix.semaphore;
+        import core.sys.posix.pthread;
+        import core.sys.posix.signal;
+        import core.sys.posix.time;
+        import core.stdc.errno;
 
         extern (C) int getErrno();
+
         version( GNU )
         {
             import gcc.builtins;
@@ -192,8 +193,20 @@ else version( Posix )
             //       implementation actually requires default initialization
             //       then pthread_cleanup should be restructured to maintain
             //       the current lack of a link dependency.
+            version( linux )
+            {
+                pthread_cleanup cleanup = void;
+                cleanup.push( &thread_cleanupHandler, cast(void*) obj );
+            }
+            else version( darwin )
+            {
             pthread_cleanup cleanup = void;
             cleanup.push( &thread_cleanupHandler, cast(void*) obj );
+            }
+            else
+            {
+                pthread_cleanup_push( &thread_cleanupHandler, cast(void*) obj );
+            }
 
             // NOTE: For some reason this does not always work for threads.
             //obj.m_main.bstack = getStackBottom();
@@ -223,8 +236,8 @@ else version( Posix )
             // NOTE: No GC allocations may occur until the stack pointers have
             //       been set and Thread.getThis returns a valid reference to
             //       this thread object (this latter condition is not strictly
-            //       necessary on Win32 but it should be followed for the sake
-            //       of consistency).
+            //       necessary on Windows but it should be followed for the
+            //       sake of consistency).
 
             // TODO: Consider putting an auto exception object here (using
             //       alloca) forOutOfMemoryError plus something to track
@@ -459,7 +472,7 @@ class Thread
             return;
         }
 
-        version( Win32 )
+        version( Windows )
         {
             m_addr = m_addr.init;
             CloseHandle( m_hndl );
@@ -495,7 +508,7 @@ class Thread
     }
     body
     {
-        version( Win32 ) {} else
+        version( Windows ) {} else
         version( Posix )
         {
             pthread_attr_t  attr;
@@ -515,7 +528,7 @@ class Thread
         //       and causing memory to be collected that is still in use.
         synchronized( slock )
         {
-            version( Win32 )
+            version( Windows )
             {
                 m_hndl = cast(HANDLE) _beginthreadex( null, m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
                 if( cast(size_t) m_hndl == 0 )
@@ -553,7 +566,7 @@ class Thread
      */
     final Object join( bool rethrow = true )
     {
-        version( Win32 )
+        version( Windows )
         {
             if( WaitForSingleObject( m_hndl, INFINITE ) != WAIT_OBJECT_0 )
                 throw new ThreadException( "Unable to join thread" );
@@ -670,7 +683,7 @@ class Thread
             return false;
         }
 
-        version( Win32 )
+        version( Windows )
         {
             uint ecode = 0;
             GetExitCodeThread( m_hndl, &ecode );
@@ -717,7 +730,7 @@ class Thread
      */
     final int priority()
     {
-        version( Win32 )
+        version( Windows )
         {
             return GetThreadPriority( m_hndl );
         }
@@ -741,7 +754,7 @@ class Thread
      */
     final void priority( int val )
     {
-        version( Win32 )
+        version( Windows )
         {
             if( !SetThreadPriority( m_hndl, val ) )
                 throw new ThreadException( "Unable to set thread priority" );
@@ -785,7 +798,7 @@ class Thread
      * Example:
      * ------------------------------------------------------------------------
      *
-     * Thread.sleep( 500 );        // sleep for 50 milliseconds
+     * Thread.sleep( 500_000 );    // sleep for 50 milliseconds
      * Thread.sleep( 50_000_000 ); // sleep for 5 seconds
      *
      * ------------------------------------------------------------------------
@@ -797,7 +810,7 @@ class Thread
     }
     body
     {
-        version( Win32 )
+        version( Windows )
         {
             enum : uint
             {
@@ -805,9 +818,14 @@ class Thread
                 MAX_SLEEP_MILLIS = uint.max - 1
             }
 
-            period = period < TICKS_PER_MILLI ?
-                        1 :
-                        period / TICKS_PER_MILLI;
+            // NOTE: In instances where all other threads in the process have a
+            //       lower priority than the current thread, the current thread
+            //       will not yield with a sleep time of zero.  However, unlike
+            //       yield(), the user is not asking for a yield to occur but
+            //       only for execution to suspend for the requested interval.
+            //       Therefore, expected performance may not be met if a yield
+            //       is forced upon the user.
+            period /= TICKS_PER_MILLI;
             while( period > MAX_SLEEP_MILLIS )
             {
                 Sleep( MAX_SLEEP_MILLIS );
@@ -862,7 +880,7 @@ class Thread
      */
     static void yield()
     {
-        version( Win32 )
+        version( Windows )
         {
             // NOTE: Sleep(1) is necessary because Sleep(0) does not give
             //       lower priority threads any timeslice, so looping on
@@ -893,7 +911,7 @@ class Thread
         // NOTE: This function may not be called until thread_init has
         //       completed.  See thread_suspendAll for more information
         //       on why this might occur.
-        version( Win32 )
+        version( Windows )
         {
             return cast(Thread) TlsGetValue( sm_this );
         }
@@ -1063,7 +1081,7 @@ class Thread
      */
     static this()
     {
-        version( Win32 )
+        version( Windows )
         {
             PRIORITY_MIN = -15;
             PRIORITY_MAX =  15;
@@ -1133,7 +1151,7 @@ private:
     //
     // Standard types
     //
-    version( Win32 )
+    version( Windows )
     {
         alias uint TLSKey;
         alias uint ThreadAddr;
@@ -1157,7 +1175,7 @@ private:
     //
     // Standard thread data
     //
-    version( Win32 )
+    version( Windows )
     {
         HANDLE          m_hndl;
     }
@@ -1189,7 +1207,7 @@ private:
     //
     static void setThis( Thread t )
     {
-        version( Win32 )
+        version( Windows )
         {
             TlsSetValue( sm_this, cast(void*) t );
         }
@@ -1256,7 +1274,7 @@ private:
     Context*            m_curr;
     bool                m_lock;
 
-    version( Win32 )
+    version( Windows )
     {
         uint[8]         m_reg; // edi,esi,ebp,esp,ebx,edx,ecx,eax
     }
@@ -1417,7 +1435,7 @@ private:
     {
         assert( t );
         assert( t.next || t.prev );
-        version( Win32 )
+        version( Windows )
         {
             // NOTE: This doesn't work for Posix as m_isRunning must be set to
             //       false after the thread is removed during normal execution.
@@ -1475,7 +1493,7 @@ extern (C) void thread_init()
     //       exist to be scanned at this point, it is sufficient for these
     //       functions to detect the condition and return immediately.
 
-    version( Win32 )
+    version( Windows )
     {
         Thread.sm_this = TlsAlloc();
         assert( Thread.sm_this != TLS_OUT_OF_INDEXES );
@@ -1537,7 +1555,7 @@ extern (C) void thread_init()
  */
 extern (C) void thread_attachThis()
 {
-    version( Win32 )
+    version( Windows )
     {
         Thread          thisThread  = new Thread();
         Thread.Context* thisContext = &thisThread.m_main;
@@ -1677,7 +1695,7 @@ extern (C) void thread_suspendAll()
      */
     void suspend( Thread t )
     {
-        version( Win32 )
+        version( Windows )
         {
             if( t.m_addr != GetCurrentThreadId() && SuspendThread( t.m_hndl ) == 0xFFFFFFFF )
             {
@@ -1821,7 +1839,7 @@ body
      */
     void resume( Thread t )
     {
-        version( Win32 )
+        version( Windows )
         {
             if( t.m_addr != GetCurrentThreadId() && ResumeThread( t.m_hndl ) == 0xFFFFFFFF )
             {
@@ -1942,7 +1960,7 @@ body
                 scan( c.bstack, c.tstack + 1 );
         }
     }
-    version( Win32 )
+    version( Windows )
     {
         for( Thread t = Thread.sm_tbeg; t; t = t.next )
         {
@@ -2222,7 +2240,7 @@ private
         }
         else
         {
-            version( Win32 )
+            version( Windows )
                 version = AsmX86_Win32;
             else version( Posix )
                 version = AsmX86_Posix;
@@ -2237,9 +2255,9 @@ private
 
     version( Posix )
     {
-        import stdc.posix.unistd;   // for sysconf
-        import stdc.posix.sys.mman; // for mmap
-        import stdc.posix.stdlib;   // for malloc, valloc, free
+        import core.sys.posix.unistd;   // for sysconf
+        import core.sys.posix.sys.mman; // for mmap
+        import core.sys.posix.stdlib;   // for malloc, valloc, free
 
         version( AsmX86_Win32 ) {} else
         version( AsmX86_Posix ) {} else
@@ -2251,7 +2269,7 @@ private
             //       a version identifier.  Please note that this is considered
             //       an obsolescent feature according to the POSIX spec, so a
             //       custom solution is still preferred.
-            import stdc.posix.ucontext;
+            import core.sys.posix.ucontext;
         }
     }
 
@@ -2741,7 +2759,7 @@ class Fiber
      */
     static Fiber getThis()
     {
-        version( Win32 )
+        version( Windows )
         {
             return cast(Fiber) TlsGetValue( sm_this );
         }
@@ -2759,7 +2777,7 @@ class Fiber
 
     static this()
     {
-        version( Win32 )
+        version( Windows )
         {
             sm_this = TlsAlloc();
             assert( sm_this != TLS_OUT_OF_INDEXES );
@@ -3128,7 +3146,7 @@ private:
     //
     static void setThis( Fiber f )
     {
-        version( Win32 )
+        version( Windows )
         {
             TlsSetValue( sm_this, cast(void*) f );
         }

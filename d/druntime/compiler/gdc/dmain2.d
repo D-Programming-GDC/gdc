@@ -18,19 +18,28 @@ module rt.dmain2;
 
 private
 {
+    version (GNU)
+        import gccmemory;
+    else
+        import memory;
+
     import util.console;
-    import stdc.stddef;
-    import stdc.stdlib;
-    import stdc.string;
+    import core.stdc.stddef;
+    import core.stdc.stdlib;
+    import core.stdc.string;
 }
 
-version(Windows)
+version (Windows)
 {
+    extern (Windows) alias int function() FARPROC;
+    extern (Windows) FARPROC    GetProcAddress(void*, in char*);
+    extern (Windows) void*      LoadLibraryA(in char*);
+    extern (Windows) int        FreeLibrary(void*);
     extern (Windows) void*      LocalFree(void*);
     extern (Windows) wchar_t*   GetCommandLineW();
     extern (Windows) wchar_t**  CommandLineToArgvW(wchar_t*, int*);
     extern (Windows) export int WideCharToMultiByte(uint, uint, wchar_t*, int, char*, int, char*, int);
-    pragma(lib, "shell32.lib");   // needed for CommandLineToArgvW
+    pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
 }
 
 extern (C) void _STI_monitor_staticctor();
@@ -45,12 +54,64 @@ extern (C) void _moduleDtor();
 extern (C) void thread_joinAll();
 
 /***********************************
+ * These are a temporary means of providing a GC hook for DLL use.  They may be
+ * replaced with some other similar functionality later.
+ */
+extern (C)
+{
+    void* gc_getProxy();
+    void  gc_setProxy(void* p);
+    void  gc_clrProxy();
+
+    alias void* function()      gcGetFn;
+    alias void  function(void*) gcSetFn;
+    alias void  function()      gcClrFn;
+}
+
+extern (C) void* rt_loadLibrary(in char[] name)
+{
+    version (Windows)
+    {
+        char[260] temp = void;
+        temp[0 .. name.length] = name[];
+        temp[name.length] = cast(char) 0;
+        void* ptr = LoadLibraryA(temp.ptr);
+        if (ptr is null)
+            return ptr;
+        gcSetFn gcSet = cast(gcSetFn) GetProcAddress(ptr, "gc_setProxy");
+        if (gcSet !is null)
+            gcSet(gc_getProxy());
+        return ptr;
+
+    }
+    else version (linux)
+    {
+        throw new Exception("rt_loadLibrary not yet implemented on linux.");
+    }
+}
+
+extern (C) bool rt_unloadLibrary(void* ptr)
+{
+    version (Windows)
+    {
+        gcClrFn gcClr  = cast(gcClrFn) GetProcAddress(ptr, "gc_clrProxy");
+        if (gcClr !is null)
+            gcClr();
+        return FreeLibrary(ptr) != 0;
+    }
+    else version (linux)
+    {
+        throw new Exception("rt_unloadLibrary not yet implemented on linux.");
+    }
+}
+
+/***********************************
  * These functions must be defined for any D program linked
  * against this library.
  */
 extern (C) void onAssertError(string file, size_t line);
 extern (C) void onAssertErrorMsg(string file, size_t line, string msg);
-extern (C) void onArrayBoundsError(string file, size_t line);
+extern (C) void onRangeError(string file, size_t line);
 extern (C) void onHiddenFuncError(Object o);
 extern (C) void onSwitchError(string file, size_t line);
 extern (C) bool runModuleUnitTests();
@@ -73,7 +134,7 @@ extern (C) static void _d_assert_msg(string msg, string file, uint line)
 
 extern (C) void _d_array_bounds(string file, uint line)
 {
-    onArrayBoundsError(file, line);
+    onRangeError(file, line);
 }
 
 extern (C) void _d_switch_error(string file, uint line)
@@ -85,19 +146,19 @@ version(GNU)
 {
     extern (C) void _d_hidden_func(Object o)
     {
-	onHiddenFuncError(o);
+        onHiddenFuncError(o);
     }
 }
 else
 {
     extern (C) void _d_hidden_func()
     {
-    	Object o;
-    	asm
-    	{
-    	    mov o, EAX;
-    	}
-    	onHiddenFuncError(o);
+        Object o;
+        asm
+        {
+            mov o, EAX;
+        }
+        onHiddenFuncError(o);
     }
 }
 
@@ -128,6 +189,7 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
     try
     {
         gc_init();
+        initStaticDataGC();
         version (Windows)
             _minit();
         _moduleCtor();
@@ -244,7 +306,7 @@ extern (C) int main(int argc, char **argv)
 
     bool trapExceptions = rt_trapExceptions;
 
-    void tryExec(void delegate() dg)
+    void tryExec(scope void delegate() dg)
     {
 
         if (trapExceptions)
@@ -309,6 +371,7 @@ extern (C) int main(int argc, char **argv)
     void runAll()
     {
         gc_init();
+        initStaticDataGC();
         version (Windows)
             _minit();
         _moduleCtor();

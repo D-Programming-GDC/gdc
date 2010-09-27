@@ -121,9 +121,9 @@ BASE_OBJS=compiler/aaA.o compiler/aApply.o compiler/aApplyR.o compiler/adi.o \
 	  compiler/arraycat.o compiler/arraydouble.o compiler/arrayfloat.o \
 	  compiler/arrayint.o compiler/arrayreal.o compiler/arrayshort.o \
 	  compiler/cast_.o compiler/complex.o \
-	  compiler/cover.o compiler/critical.o compiler/dgccmain2.o \
+	  compiler/critical.o compiler/dgccmain2.o \
 	  compiler/invariant.o compiler/invariant_.o compiler/lifetime.o \
-	  compiler/gccmemory.o compiler/memset.o \
+	  compiler/gccmemory.o \
 	  compiler/monitor.o compiler/obj.o compiler/object_.o \
 	  compiler/qsort.o compiler/switch_.o
 
@@ -148,7 +148,7 @@ DRUNTIME_OBJS+=$(subst compiler,compiler/gdc,$(BASE_OBJS)) \
 	       $(subst ti_,compiler/gdc/typeinfo/ti_,$(TI))
 
 COMMON_OBJS=common/core/bitmanip.o common/core/exception.o common/core/memory.o \
-	    common/core/runtime.o common/core/thread.o common/stdc/errno.o
+	    common/core/runtime.o common/core/thread.o common/core/stdc/errno.o
 
 # This should not be linked into a shared library.
 #CMAIN_OBJS=compiler/gdc/cmain.o
@@ -181,7 +181,7 @@ unittest: unittest.o libgphobos2_t.a libgphobos2.a
 	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -lgphobos2_t $(LIBS)
 
 MAIN_OBJS=std/compiler.o std/system.o std/md5.o std/base64.o \
-	std/string.o std/math.o \
+	std/string.o std/math.o std/array.o \
 	std/outbuffer.o std/ctype.o std/regexp.o std/random.o \
 	std/stream.o std/cstream.o \
 	std/utf.o std/uri.o \

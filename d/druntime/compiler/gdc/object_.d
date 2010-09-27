@@ -39,10 +39,10 @@ module object;
 
 private
 {
-    import stdc.string;
-    import stdc.stdlib;
+    import core.stdc.string;
+    import core.stdc.stdlib;
     import util.string;
-    debug(PRINTF) import stdc.stdio;
+    debug(PRINTF) import core.stdc.stdio;
 
     extern (C) void onOutOfMemoryError();
     extern (C) Object _d_newclass(ClassInfo ci);
@@ -1368,17 +1368,17 @@ extern (C) void _moduleUnitTests()
     debug (PRINTF) printf("_moduleUnitTests()\n");
     for (uint i = 0; i < _moduleinfo_array.length; i++)
     {
-	ModuleInfo m = _moduleinfo_array[i];
+        ModuleInfo m = _moduleinfo_array[i];
 
-	if (!m)
-	    continue;
+        if (!m)
+            continue;
 
-	debug (PRINTF) printf("\tmodule[%d] = '%.*s'\n", i,
-	    cast(int) m.name.length, m.name.ptr);
-	if (m.unitTest)
-	{
-	    (*m.unitTest)();
-	}
+        debug (PRINTF) printf("\tmodule[%d] = '%.*s'\n", i,
+            cast(int) m.name.length, m.name.ptr);
+        if (m.unitTest)
+        {
+            (*m.unitTest)();
+        }
     }
 }
 

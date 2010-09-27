@@ -35,8 +35,8 @@ version (Windows)
 {
     private
 {
-    import stdc.stdint;
-    import sys.windows.windows;
+    import core.stdc.stdint;
+    import core.sys.windows.windows;
     const
 {
     DWORD TLS_OUT_OF_INDEXES = -1u;
@@ -70,11 +70,11 @@ else
 {
     private
 {
-    import stdc.posix.semaphore;
-    import stdc.posix.pthread;
-    import stdc.posix.signal;
-    import stdc.posix.time;
-    import stdc.errno;
+    import core.sys.posix.semaphore;
+    import core.sys.posix.pthread;
+    import core.sys.posix.signal;
+    import core.sys.posix.time;
+    import core.stdc.errno;
     extern (C) 
 {
     int getErrno();
@@ -246,7 +246,7 @@ NO,
 FN,
 DG,
 }
-    version (Win32)
+    version (Windows)
 {
     alias uint TLSKey;
     alias uint ThreadAddr;
@@ -268,7 +268,7 @@ else
     TLSKey sm_this;
 }
     void*[LOCAL_MAX] m_local;
-    version (Win32)
+    version (Windows)
 {
     HANDLE m_hndl;
 }
@@ -348,7 +348,7 @@ return m_curr;
     Context m_main;
     Context* m_curr;
     bool m_lock;
-    version (Win32)
+    version (Windows)
 {
     uint[8] m_reg;
 }
@@ -527,7 +527,7 @@ private
 }
 else
 {
-    version (Win32)
+    version (Windows)
 {
     version = AsmX86_Win32;
 }
@@ -552,9 +552,9 @@ else
 }
     version (Posix)
 {
-    import stdc.posix.unistd;
-    import stdc.posix.sys.mman;
-    import stdc.posix.stdlib;
+    import core.sys.posix.unistd;
+    import core.sys.posix.sys.mman;
+    import core.sys.posix.stdlib;
     version (AsmX86_Win32)
 {
 }
@@ -570,7 +570,7 @@ else
 }
 else
 {
-    import stdc.posix.ucontext;
+    import core.sys.posix.ucontext;
 }
 }
 }

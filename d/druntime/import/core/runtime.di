@@ -26,6 +26,14 @@ private
 {
     bool rt_term(ExceptionHandler dg = null);
 }
+    extern (C) 
+{
+    void* rt_loadLibrary(in char[] name);
+}
+    extern (C) 
+{
+    bool rt_unloadLibrary(void* ptr);
+}
 }
 struct Runtime
 {
@@ -48,6 +56,20 @@ return rt_term(dg);
     bool isHalting()
 {
 return rt_isHalting();
+}
+}
+    static
+{
+    void* loadLibrary(in char[] name)
+{
+return rt_loadLibrary(name);
+}
+}
+    static
+{
+    bool unloadLibrary(void* p)
+{
+return rt_unloadLibrary(p);
 }
 }
     static

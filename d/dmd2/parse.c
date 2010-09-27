@@ -78,8 +78,26 @@ Array *Parser::parseModule()
     if (token.value == TOKmodule)
     {
 	unsigned char *comment = token.blockComment;
+	bool safe = FALSE;
 
 	nextToken();
+	if (token.value == TOKlparen)
+	{
+	    nextToken();
+	    if (token.value != TOKidentifier)
+	    {	error("module (safe) identifier expected");
+		goto Lerr;
+	    }
+	    Identifier *id = token.ident;
+
+	    if (id == Id::system)
+		safe = TRUE;
+	    else
+		error("(safe) expected, not %s", id->toChars());
+	    nextToken();
+	    check(TOKrparen);
+	}
+
 	if (token.value != TOKidentifier)
 	{   error("Identifier expected following module");
 	    goto Lerr;
@@ -103,7 +121,7 @@ Array *Parser::parseModule()
 		id = token.ident;
 	    }
 
-	    md = new ModuleDeclaration(a, id);
+	    md = new ModuleDeclaration(a, id, safe);
 
 	    if (token.value != TOKsemicolon)
 		error("';' expected following module declaration instead of %s", token.toChars());
@@ -450,7 +468,7 @@ Array *Parser::parseDeclDefs(int once)
 		}
 		ident = token.ident;
 		nextToken();
-		if (token.value == TOKcomma)
+		if (token.value == TOKcomma && peekNext() != TOKrparen)
 		    args = parseArguments();	// pragma(identifier, args...)
 		else
 		    check(TOKrparen);		// pragma(identifier)
@@ -3438,7 +3456,7 @@ Statement *Parser::parseStatement(int flags)
 	    }
 	    ident = token.ident;
 	    nextToken();
-	    if (token.value == TOKcomma)
+	    if (token.value == TOKcomma && peekNext() != TOKrparen)
 		args = parseArguments();	// pragma(identifier, args...);
 	    else
 		check(TOKrparen);		// pragma(identifier);
@@ -5693,7 +5711,7 @@ Expression *Parser::parseExpression()
 
 /*************************
  * Collect argument list.
- * Assume current token is '(' or '['.
+ * Assume current token is ',', '(' or '['.
  */
 
 Expressions *Parser::parseArguments()

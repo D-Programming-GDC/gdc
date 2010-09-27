@@ -21,11 +21,6 @@
 #include <limits.h>
 
 #ifndef IN_GCC
-#if _WIN32
-#include <windows.h>
-long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep);
-#endif
-
 #if __DMC__
 #include <dos.h>
 #endif
@@ -47,6 +42,11 @@ long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep);
 #include "lexer.h"
 #ifndef IN_GCC
 #include "lib.h"
+
+#if WINDOWS_SEH
+#include <windows.h>
+long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep);
+#endif
 #endif
 
 void browse(const char *url);
@@ -91,7 +91,7 @@ Global::Global()
 
     copyright = "Copyright (c) 1999-2008 by Digital Mars";
     written = "written by Walter Bright";
-    version = "v2.020";
+    version = "v2.021";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -227,6 +227,7 @@ Usage:\n\
   -quiet         suppress unnecessary messages\n\
   -release	 compile release version\n\
   -run srcfile args...   run resulting program, passing args\n\
+  -safe          safe memory model\n\
   -unittest      compile in unit tests\n\
   -v             verbose\n\
   -version=level compile in version code >= level\n\
@@ -469,6 +470,8 @@ int main(int argc, char *argv[])
 		global.params.quiet = 1;
 	    else if (strcmp(p + 1, "release") == 0)
 		global.params.release = 1;
+	    else if (strcmp(p + 1, "safe") == 0)
+		global.params.safe = 1;
 	    else if (strcmp(p + 1, "unittest") == 0)
 		global.params.useUnitTests = 1;
 	    else if (p[1] == 'I')
@@ -864,7 +867,7 @@ int main(int argc, char *argv[])
 	}
     }
 
-#if _WIN32
+#if _WINDOWS_SEH
   __try
   {
 #endif
@@ -1062,7 +1065,7 @@ int main(int argc, char *argv[])
     if (global.params.lib && !global.errors)
 	library->write();
 
-#if _WIN32
+#if _WINDOWS_SEH
   }
   __except (__ehfilter(GetExceptionInformation()))
   {
@@ -1218,7 +1221,7 @@ Ldone:
     *pargv = (char **)argv->data;
 }
 
-#if _WIN32
+#if _WINDOWS_SEH
 
 long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep)
 {

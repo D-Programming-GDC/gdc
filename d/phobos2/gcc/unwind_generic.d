@@ -22,7 +22,7 @@
 module gcc.unwind_generic;
 
 private import gcc.builtins;
-private import stdc.stdlib; // for abort
+private import core.stdc.stdlib; // for abort
 
 /* This is derived from the C++ ABI for IA-64.  Where we diverge
    for cross-architecture compatibility are noted with "@@@".  */
