@@ -41,7 +41,7 @@
 #define V1	0
 #define V2	1	// Version 2.0 features
 #define BREAKABI 1	// 0 if not ready to break the ABI just yet
-#define STRUCTTHISREF 0	// if 'this' for struct is a reference, not a pointer
+#define STRUCTTHISREF V2	// if 'this' for struct is a reference, not a pointer
 
 struct Array;
 

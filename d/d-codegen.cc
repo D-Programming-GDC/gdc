@@ -1991,9 +1991,14 @@ IRState::objectInstanceMethod(Expression * obj_exp, FuncDeclaration * func, Type
 	if (obj_exp->op == TOKsuper ||
 	    obj_type->ty == Tstruct || obj_type->ty == Tpointer ||
 	    func->isFinal() || ! func->isVirtual() || is_dottype) {
-
-	    if (obj_type->ty == Tstruct)
-		this_expr = addressOf(this_expr);
+#if STRUCTTHISREF
+	    // Don't need the address of 'this' as is already a reference.
+	    if (obj_exp->op != TOKthis)
+#endif
+	    {
+		if (obj_type->ty == Tstruct)
+		    this_expr = addressOf(this_expr);
+	    }
 	    return methodCallExpr(functionPointer(func), this_expr, d_type);
 	} else {
 	    // Interface methods are also in the class's vtable, so we don't

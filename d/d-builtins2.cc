@@ -193,7 +193,11 @@ gcc_type_to_d_type(tree t)
 
 	    d = new TypeStruct(sd);
 	    sd->type = d;
+#if STRUCTTHISREF
+	    sd->handle = d;
+#else
 	    sd->handle = new TypePointer(d);
+#endif
 
 	    /* Does not seem necessary to convert fields, but the
 	       members field must be non-null for the above size

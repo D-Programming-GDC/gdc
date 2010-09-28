@@ -477,7 +477,16 @@ Symbol *FuncDeclaration::toSymbol()
 		// Do this even if there is no debug info.  It is needed to make
 		// sure member functions are not called statically
 		if (isThis()) {
-		    tree method_type = build_method_type(TREE_TYPE(agg_decl->handle->toCtype()), fn_type);
+		    tree method_type = NULL_TREE;
+		    tree handle = agg_decl->handle->toCtype();
+#if STRUCTTHISREF
+		    // Handle not a pointer type
+		    if (agg_decl->isStructDeclaration())
+			method_type = build_method_type(handle, fn_type);
+		    else
+#endif
+		    method_type = build_method_type(TREE_TYPE(handle), fn_type);
+
 		    TYPE_ATTRIBUTES( method_type ) = TYPE_ATTRIBUTES( fn_type );
 		    fn_type = method_type;
 
