@@ -4029,13 +4029,13 @@ ReturnStatement::toIR(IRState* irs)
                 ret_type = Type::tint32;
 
 	    tree result_decl = DECL_RESULT( irs->func->toSymbol()->Stree );
+	    tree result_value = irs->convertForAssignment(exp, ret_type);
+#if V2
 	    // %% convert for init -- if we were returning a reference,
 	    // would want to take the address...
-#if V2
 	    if (tf->isref)
-		exp = exp->addressOf(NULL);
+		result_value = irs->addressOf(result_value);
 #endif
-	    tree result_value = irs->convertForAssignment(exp, (Type*)ret_type);
 	    tree result_assign = build2(MODIFY_EXPR, TREE_TYPE(result_decl),
 					result_decl, result_value);
 

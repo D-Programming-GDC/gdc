@@ -275,7 +275,8 @@ TI = ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
    ti_ushort.o ti_void.o ti_wchar.o
 
 COMMON_OBJS = common/core/bitmanip.o common/core/exception.o common/core/memory.o \
-	    common/core/runtime.o common/core/thread.o common/core/stdc/errno.o
+	    common/core/runtime.o common/core/thread.o common/core/stdc/errno.o \
+	    common/core/vararg.o
 
 
 # This should not be linked into a shared library.
@@ -284,7 +285,7 @@ CMAIN_OBJS = compiler/gdc/dmain2.o
 GC_OBJS = $(subst gc_,gc/basic,$(D_GC_MODULES))
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(COMMON_OBJS) $(GC_OBJS) $(GCC_OBJS)
 MAIN_OBJS = std/compiler.o std/system.o std/md5.o std/base64.o \
-	std/string.o std/math.o \
+	std/string.o std/math.o std/array.o \
 	std/outbuffer.o std/ctype.o std/regexp.o std/random.o \
 	std/stream.o std/cstream.o \
 	std/utf.o std/uri.o \

@@ -49,6 +49,25 @@ version (Windows)
 {
     uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*);
 }
+    version (DigitalMars)
+{
+    extern (C) 
+{
+    extern __thread
+{
+    int _tlsstart;
+}
+    extern __thread
+{
+    int _tlsend;
+}
+}
+}
+else
+{
+    int _tlsstart;
+    alias _tlsstart _tlsend;
+}
     extern (Windows) 
 {
     uint thread_entryPoint(void* arg);
@@ -82,6 +101,25 @@ else
     version (GNU)
 {
     import gcc.builtins;
+}
+    version (DigitalMars)
+{
+    extern (C) 
+{
+    extern __thread
+{
+    int _tlsstart;
+}
+    extern __thread
+{
+    int _tlsend;
+}
+}
+}
+else
+{
+    int _tlsstart;
+    alias _tlsstart _tlsend;
 }
     extern (C) 
 {
@@ -233,6 +271,9 @@ return getThis().m_local[key] = val;
 {
 m_call = Call.NO;
 m_curr = &m_main;
+void* pstart = cast(void*)&_tlsstart;
+void* pend = cast(void*)&_tlsend;
+m_tls = pstart[0..pend - pstart];
 }
     final
 {
@@ -348,6 +389,7 @@ return m_curr;
     Context m_main;
     Context* m_curr;
     bool m_lock;
+    void[] m_tls;
     version (Windows)
 {
     uint[8] m_reg;

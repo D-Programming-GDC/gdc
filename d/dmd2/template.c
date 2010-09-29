@@ -45,7 +45,6 @@ long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep);
 
 #define LOG	0
 
-
 /********************************************
  * These functions substitute for dynamic_cast. dynamic_cast does not work
  * on earlier versions of gcc.
@@ -351,7 +350,9 @@ void TemplateDeclaration::semantic(Scope *sc)
 
     if (sc->func)
     {
-//	error("cannot declare template at function scope %s", sc->func->toChars());
+#if V1
+	error("cannot declare template at function scope %s", sc->func->toChars());
+#endif
     }
 
     if (/*global.params.useArrayBounds &&*/ sc->module)
@@ -594,6 +595,7 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
 	}
     }
 
+#if V2
     if (m && constraint && !(flag & 1))
     {	/* Check to see if constraint is satisfied.
 	 */
@@ -610,6 +612,7 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
 	    e->error("constraint %s is not constant or does not evaluate to a bool", e->toChars());
 	}
     }
+#endif
 
 #if LOGM
     // Print out the results
@@ -620,16 +623,16 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
     {
     	for (int i = 0; i < dedtypes_dim; i++)
     	{
-    		TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
-    		Object *oarg;
+    	    TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
+    	    Object *oarg;
 
-    		printf(" [%d]", i);
+    	    printf(" [%d]", i);
 
-    		if (i < ti->tiargs->dim)
-    			oarg = (Object *)ti->tiargs->data[i];
-    		else
-    			oarg = NULL;
-    		tp->print(oarg, (Object *)dedtypes->data[i]);
+    	    if (i < ti->tiargs->dim)
+    		oarg = (Object *)ti->tiargs->data[i];
+    	    else
+    		oarg = NULL;
+    	    tp->print(oarg, (Object *)dedtypes->data[i]);
     	}
     }
     else
@@ -878,6 +881,7 @@ L1:
     }
 
 L2:
+#if V2
     // Match 'ethis' to any TemplateThisParameter's
     if (ethis)
     {
@@ -896,6 +900,7 @@ L2:
 	    }
 	}
     }
+#endif
 
     // Loop through the function parameters
     for (i = 0; i < nfparams; i++)
@@ -1063,6 +1068,7 @@ Lmatch:
 	  dedargs->data[i] = (void *)oded;
 	}
     }
+#if V2
     if (constraint)
     {	/* Check to see if constraint is satisfied.
 	 */
@@ -1079,7 +1085,7 @@ Lmatch:
             e->error("constraint %s is not constant or does not evaluate to a bool", e->toChars());
         }
     }
-
+#endif
 
 #if 0
     for (i = 0; i < dedargs->dim; i++)
@@ -1318,7 +1324,6 @@ FuncDeclaration *TemplateDeclaration::deduceFunctionTemplate(Scope *sc, Loc loc,
 
 	OutBuffer buf;
 	argExpTypesToCBuffer(&buf, fargs, &hgs);
-
 	error(loc, "cannot deduce template function from argument types !(%s)(%s)",
 		bufa.toChars(), buf.toChars());
     }
@@ -1339,20 +1344,21 @@ void TemplateDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     {
     	TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
     	if (hgs->ddoc)
-    		tp = (TemplateParameter *)origParameters->data[i];
+    	    tp = (TemplateParameter *)origParameters->data[i];
     	if (i)
-		    buf->writeByte(',');
-		tp->toCBuffer(buf, hgs);
-	}
-	buf->writeByte(')');
-
-	if (constraint)
+	    buf->writeByte(',');
+	tp->toCBuffer(buf, hgs);
+    }
+    buf->writeByte(')');
+#if V2
+    if (constraint)
     {	buf->writestring(" if (");
 	constraint->toCBuffer(buf, hgs);
 	buf->writeByte(')');
     }
+#endif
 
-	if (hgs->hdrgen)
+    if (hgs->hdrgen)
     {
 	hgs->tpltMember++;
 	buf->writenl();
@@ -1385,13 +1391,13 @@ char *TemplateDeclaration::toChars()
     	tp->toCBuffer(&buf, &hgs);
     }
     buf.writeByte(')');
-
+#if V2
     if (constraint)
     {	buf.writestring(" if (");
 	constraint->toCBuffer(&buf, &hgs);
 	buf.writeByte(')');
     }
-
+#endif
     buf.writeByte(0);
     return (char *)buf.extractData();
 }
@@ -3258,7 +3264,14 @@ void TemplateInstance::semantic(Scope *sc)
 #endif
 
 	//if (scx && scx->scopesym) printf("3: scx is %s %s\n", scx->scopesym->kind(), scx->scopesym->toChars());
-	if (scx && scx->scopesym && scx->scopesym->members && !scx->scopesym->isTemplateMixin())
+	if (scx && scx->scopesym &&
+	    scx->scopesym->members && !scx->scopesym->isTemplateMixin() &&
+	    /* The following test should really be if scx->module recursively
+	     * imports itself. Because if it does, see bugzilla 2500.
+	     */
+	    //scx->module == tempdecl->getModule()
+	    !scx->module->imports(scx->module)
+	   )
 	{
 	    //printf("\t1: adding to %s %s\n", scx->scopesym->kind(), scx->scopesym->toChars());
 	    a = scx->scopesym->members;

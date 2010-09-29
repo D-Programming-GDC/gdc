@@ -85,6 +85,23 @@ version( Windows )
         extern (Windows) alias uint function(void*) btex_fptr;
         extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*);
 
+        version( DigitalMars )
+        {
+            // NOTE: The memory between the addresses of _tlsstart and _tlsend
+            //       is the storage for thread-local data in D 2.0.  Both of
+            //       these are defined in dm\src\win32\tlsseg.asm by DMC.
+            extern (C)
+            {
+                extern __thread int _tlsstart;
+                extern __thread int _tlsend;
+            }
+        }
+        else
+        {
+            int   _tlsstart;
+            alias _tlsstart _tlsend;
+        }
+
 
         //
         // entry point for Windows threads
@@ -100,6 +117,10 @@ version( Windows )
             obj.m_main.tstack = obj.m_main.bstack;
             Thread.add( &obj.m_main );
             Thread.setThis( obj );
+
+            void* pstart = cast(void*) &_tlsstart;
+            void* pend   = cast(void*) &_tlsend;
+            obj.m_tls = pstart[0 .. pend - pstart];
 
             // NOTE: No GC allocations may occur until the stack pointers have
             //       been set and Thread.getThis returns a valid reference to
@@ -155,6 +176,20 @@ else version( Posix )
         version( GNU )
         {
             import gcc.builtins;
+        }
+
+        version( DigitalMars )
+        {
+            extern (C)
+            {
+                extern __thread int _tlsstart;
+                extern __thread int _tlsend;
+            }
+        }
+        else
+        {
+            int   _tlsstart;
+            alias _tlsstart _tlsend;
         }
 
 
@@ -232,6 +267,10 @@ else version( Posix )
             assert( obj.m_curr == &obj.m_main );
             Thread.add( &obj.m_main );
             Thread.setThis( obj );
+
+            void* pstart = cast(void*) &_tlsstart;
+            void* pend   = cast(void*) &_tlsend;
+            obj.m_tls = pstart[0 .. pend - pstart];
 
             // NOTE: No GC allocations may occur until the stack pointers have
             //       been set and Thread.getThis returns a valid reference to
@@ -1113,6 +1152,10 @@ private:
     {
         m_call = Call.NO;
         m_curr = &m_main;
+
+        void* pstart = cast(void*) &_tlsstart;
+        void* pend   = cast(void*) &_tlsend;
+        m_tls = pstart[0 .. pend - pstart];
     }
 
 
@@ -1273,6 +1316,7 @@ private:
     Context             m_main;
     Context*            m_curr;
     bool                m_lock;
+    void[]              m_tls;  // spans implicit thread local storage
 
     version( Windows )
     {
@@ -1960,9 +2004,12 @@ body
                 scan( c.bstack, c.tstack + 1 );
         }
     }
-    version( Windows )
+
+    for( Thread t = Thread.sm_tbeg; t; t = t.next )
     {
-        for( Thread t = Thread.sm_tbeg; t; t = t.next )
+        scan( &t.m_tls[0], &t.m_tls[0] + t.m_tls.length );
+
+        version( Windows )
         {
             scan( &t.m_reg[0], &t.m_reg[0] + t.m_reg.length );
         }

@@ -64,9 +64,9 @@ class ZlibException : Exception
  * value when computing a cumulative checksum.
  */
 
-uint adler32(uint adler, void[] buf)
+uint adler32(uint adler, const(void)[] buf)
 {
-    return etc.c.zlib.adler32(adler, cast(ubyte *)buf, buf.length);
+    return etc.c.zlib.adler32(adler, cast(ubyte *)buf.ptr, buf.length);
 }
 
 unittest
@@ -86,9 +86,9 @@ unittest
  * when computing a cumulative checksum.
  */
 
-uint crc32(uint crc, void[] buf)
+uint crc32(uint crc, const(void)[] buf)
 {
-    return etc.c.zlib.crc32(crc, cast(ubyte *)buf, buf.length);
+    return etc.c.zlib.crc32(crc, cast(ubyte *)buf.ptr, buf.length);
 }
 
 unittest

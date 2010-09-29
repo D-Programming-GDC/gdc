@@ -430,6 +430,13 @@ struct TypeInfoInvariantDeclaration : TypeInfoDeclaration
 
     void toDt(dt_t **pdt);
 };
+
+struct TypeInfoSharedDeclaration : TypeInfoDeclaration
+{
+    TypeInfoSharedDeclaration(Type *tinfo);
+
+    void toDt(dt_t **pdt);
+};
 #endif
 
 /**************************************************************/
@@ -558,6 +565,7 @@ struct FuncDeclaration : Declaration
     int isAbstract();
     int isCodeseg();
     int isOverloadable();
+    int isPure();
     virtual int isNested();
     int needThis();
     virtual int isVirtual();

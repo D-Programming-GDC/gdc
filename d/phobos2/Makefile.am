@@ -148,7 +148,8 @@ DRUNTIME_OBJS+=$(subst compiler,compiler/gdc,$(BASE_OBJS)) \
 	       $(subst ti_,compiler/gdc/typeinfo/ti_,$(TI))
 
 COMMON_OBJS=common/core/bitmanip.o common/core/exception.o common/core/memory.o \
-	    common/core/runtime.o common/core/thread.o common/core/stdc/errno.o
+	    common/core/runtime.o common/core/thread.o common/core/stdc/errno.o \
+	    common/core/vararg.o
 
 # This should not be linked into a shared library.
 #CMAIN_OBJS=compiler/gdc/cmain.o
