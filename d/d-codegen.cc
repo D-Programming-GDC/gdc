@@ -273,13 +273,14 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 	}
 	break;
     case Tstruct:
-	if (target_type->ty == Tpointer) {
-	    exp = addressOf(exp);
-	} else if (target_type->ty == Tstruct) {
-	    // FIXME: We should be able to handle casting from one struct to another.
-	    ::error("can't convert struct expression %s to %s",
-		    exp_type->toChars(), target_type->toChars());
-	    return error_mark_node;
+	if (target_type->ty == Tstruct) {
+	    if (target_type->size() == exp_type->size()) {
+		// Allowed to cast to structs with same type size.
+		result = indirect(addressOf(exp), target_type->toCtype());
+	    } else {
+		::error("can't convert struct %s to %s", exp_type->toChars(), target_type->toChars());
+		return error_mark_node;
+	    }
 	}
 	// else error: conversion to non-scalar type requested.
 	break;
