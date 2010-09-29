@@ -53,46 +53,6 @@
 
 void obj_lzext(Symbol *s1,Symbol *s2);
 
-#ifdef IN_GCC
-#if 0
-static bool m_in_a(Module * m, Array * a) {
-    for (unsigned i = 0; i < a->dim; i++)
-	if ( m == (Module *) a->data[i] )
-	    return true;
-    return false;
-}
-static void find_module_deps(Module * the_module, Array * out_deps)
-{
-    Array work;
-    unsigned wi = 0;
-
-    work.push(the_module);
-    while (wi < work.dim) {
-	Module * a_module = (Module *) work.data[wi];
-	for (unsigned i = 0; i < a_module->aimports.dim; i++) {
-	    Module * an_imp = (Module*) a_module->aimports.data[i];
-	    if (! an_imp->needModuleInfo() ||
-		m_in_a(an_imp, & work) || m_in_a(an_imp, out_deps))
-		continue;
-	    if (an_imp->strictlyneedmoduleinfo)
-	    {
-		out_deps->push(an_imp);
-		fprintf(stderr, "idep: %s -> %s", the_module->toPrettyChars(),
-		    an_imp->toPrettyChars());
-		if (a_module != the_module)
-		    fprintf(stderr, " (via %s)", a_module->toPrettyChars());
-		fprintf(stderr, "\n");
-	    }
-	    else
-		work.push(an_imp);
-	}
-	wi++;
-    }
-}
-#endif
-#endif
-
-
 /* ================================================================== */
 
 // Put out instance of ModuleInfo for this Module
@@ -153,18 +113,6 @@ void Module::genmoduleinfo()
 
     // importedModules[]
     int aimports_dim = aimports.dim;
-#ifdef IN_GCC
-#if 0
-    Array adeps;
-
-    if (! d_gcc_supports_weak())
-    {
-	find_module_deps(this, & adeps);
-	aimports_dim = adeps.dim;
-    }
-    else
-#endif
-#endif
     for (int i = 0; i < aimports.dim; i++)
     {	Module *m = (Module *)aimports.data[i];
 	if (!m->needModuleInfo())
@@ -218,22 +166,6 @@ void Module::genmoduleinfo()
 
     //////////////////////////////////////////////
 
-#ifdef IN_GCC
-#if 0
-    if (! d_gcc_supports_weak())
-	for (i = 0; i < adeps.dim; i++)
-	{
-	    Module *m;
-	    Symbol *s;
-    
-	    m = (Module *) adeps.data[i];
-	    s = m->toSymbol();
-	    s->Sflags |= SFLweak; // doesn't do anything yet, but see d-decls.cc:Module::toSymbol
-	    dtxoff(&dt, s, 0, TYnptr);
-	}
-    else
-#endif
-#endif
     for (int i = 0; i < aimports.dim; i++)
     {	Module *m = (Module *)aimports.data[i];
 
@@ -360,9 +292,7 @@ void ClassDeclaration::toObjFile(int multiobj)
 	    for (i = 0; i < dtors.dim; i++)
 	    {	DtorDeclaration *d = (DtorDeclaration *)dtors.data[i];
 		Symbol *s = d->toSymbol();
-		elem *e;
-
-		e = el_bin(OPcall, TYvoid, el_var(s), el_var(sthis));
+		elem *e = el_bin(OPcall, TYvoid, el_var(s), el_var(sthis));
 		edtor = el_combine(e, edtor);
 	    }
 

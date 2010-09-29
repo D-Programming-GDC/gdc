@@ -2696,12 +2696,12 @@ class EncodingSchemeUtf16Native : EncodingScheme
 
         override uint encodedLength(dchar c)
         {
-        	return std.encoding.encodedLength!(wchar)(c);
+            return std.encoding.encodedLength!(wchar)(c);
         }
 
         override uint encode(dchar c, ubyte[] buffer)
         {
-        	auto r = cast(wchar[])buffer;
+            auto r = cast(wchar[])cast(void[])buffer;
             return wchar.sizeof * std.encoding.encode(c,r);
         }
 
@@ -2712,7 +2712,7 @@ class EncodingSchemeUtf16Native : EncodingScheme
         }
         body
         {
-            auto t = cast(const(wchar)[]) s;
+            auto t = cast(const(wchar)[]) cast(const(void)[]) s;
             dchar c = std.encoding.decode(t);
             s = s[$-t.length..$];
             return c;
@@ -2725,7 +2725,7 @@ class EncodingSchemeUtf16Native : EncodingScheme
         }
         body
         {
-            auto t = cast(const(wchar)[]) s;
+            auto t = cast(const(wchar)[]) cast(const(void)[]) s;
             dchar c = std.encoding.safeDecode(t);
             s = s[$-t.length..$];
             return c;
@@ -2774,12 +2774,12 @@ class EncodingSchemeUtf32Native : EncodingScheme
 
         override uint encodedLength(dchar c)
         {
-        	return std.encoding.encodedLength!(dchar)(c);
+            return std.encoding.encodedLength!(dchar)(c);
         }
 
         override uint encode(dchar c, ubyte[] buffer)
         {
-        	auto r = cast(dchar[])buffer;
+            auto r = cast(dchar[])buffer;
             return dchar.sizeof * std.encoding.encode(c,r);
         }
 
