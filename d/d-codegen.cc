@@ -272,6 +272,17 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 	    return error_mark_node;
 	}
 	break;
+    case Tstruct:
+	if (target_type->ty == Tpointer) {
+	    exp = addressOf(exp);
+	} else if (target_type->ty == Tstruct) {
+	    // FIXME: We should be able to handle casting from one struct to another.
+	    ::error("can't convert struct expression %s to %s",
+		    exp_type->toChars(), target_type->toChars());
+	    return error_mark_node;
+	}
+	// else error: conversion to non-scalar type requested.
+	break;
     case Tclass:
 	if (target_type->ty == Tclass) {
 	    ClassDeclaration * target_class_decl = ((TypeClass *) target_type)->sym;
@@ -1991,14 +2002,8 @@ IRState::objectInstanceMethod(Expression * obj_exp, FuncDeclaration * func, Type
 	if (obj_exp->op == TOKsuper ||
 	    obj_type->ty == Tstruct || obj_type->ty == Tpointer ||
 	    func->isFinal() || ! func->isVirtual() || is_dottype) {
-#if STRUCTTHISREF
-	    // Don't need the address of 'this' as is already a reference.
-	    if (obj_exp->op != TOKthis)
-#endif
-	    {
-		if (obj_type->ty == Tstruct)
-		    this_expr = addressOf(this_expr);
-	    }
+	    if (obj_type->ty == Tstruct)
+		this_expr = addressOf(this_expr);
 	    return methodCallExpr(functionPointer(func), this_expr, d_type);
 	} else {
 	    // Interface methods are also in the class's vtable, so we don't

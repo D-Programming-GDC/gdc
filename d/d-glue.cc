@@ -1441,10 +1441,6 @@ PtrExp::toElem(IRState * irs)
 	    Expression * rec_exp = ((AddrExp*) add_exp->e1)->e1;
 	    rec_type = rec_exp->type->toBasetype();
 	    rec_tree = rec_exp->toElem(irs);
-#if STRUCTTHISREF
-	    if (rec_exp->op == TOKthis)
-		rec_tree = irs->indirect(rec_tree);
-#endif
 	    the_offset = add_exp->e2->toUInteger();
 	}
     } else if (e1->op == TOKsymoff) {
@@ -1566,13 +1562,8 @@ DotVarExp::toElem(IRState * irs)
 	} else if ( (var_decl = var->isVarDeclaration()) ) {
 	    if (var_decl->storage_class & STCfield) {
 		tree this_tree = e1->toElem(irs);
-#if STRUCTTHISREF
-		// No check needed...
-		this_tree = irs->indirect(this_tree);
-#else
 		if ( obj_basetype_ty != Tstruct )
 		    this_tree = irs->indirect(this_tree);
-#endif
 		return irs->component(this_tree, var_decl->toSymbol()->Stree);
 	    } else {
 		return irs->var(var_decl);
@@ -2430,13 +2421,23 @@ NullExp::toElem(IRState * irs)
 elem *
 ThisExp::toElem(IRState * irs)
 {
-    if (var)
-	return irs->var(var->isVarDeclaration());
-    // %% DMD issue -- creates ThisExp without setting var to vthis
-    // %%TODO: updated in 0.79-0.81?
-    assert( irs->func );
-    assert( irs->func->vthis );
-    return irs->var(irs->func->vthis);
+    tree this_tree = NULL_TREE;
+
+    if (var) {
+	this_tree = irs->var(var->isVarDeclaration());
+    } else {
+    	// %% DMD issue -- creates ThisExp without setting var to vthis
+    	// %%TODO: updated in 0.79-0.81?
+    	assert(irs->func);
+    	assert(irs->func->vthis);
+    	this_tree = irs->var(irs->func->vthis);
+    }
+#if STRUCTTHISREF
+    if (type->ty == Tstruct)
+	this_tree = irs->indirect(this_tree);
+#endif
+
+    return this_tree;
 }
 
 elem *

@@ -275,7 +275,7 @@ TI = ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
    ti_ushort.o ti_void.o ti_wchar.o
 
 COMMON_OBJS = common/core/bitmanip.o common/core/exception.o common/core/memory.o \
-	    common/core/runtime.o common/core/thread.o common/stdc/errno.o
+	    common/core/runtime.o common/core/thread.o common/core/stdc/errno.o
 
 
 # This should not be linked into a shared library.
