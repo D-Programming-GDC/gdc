@@ -353,9 +353,10 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     shared_libgcc = 0;
 #endif
 
-    /* We are linking against a druntime */
 #ifdef LIBDRUNTIME
-    druntime = 1;
+    /* We are linking against a druntime */
+    if (library > 0)
+	druntime = 1;
 #endif
 
     /* Make sure to have room for the trailing NULL argument.  */
@@ -422,10 +423,6 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 	{
 	    arglist[j++] = saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS;
 	    added_libraries++;
-#ifdef LIBDRUNTIME
-	    arglist[j++] = saw_profile_flag ? LIBDRUNTIME_PROFILE : LIBDRUNTIME;
-	    added_libraries++;
-#endif
 	    need_pthreads = 1;
 	}
     else if (saw_debug_flag && debuglib)
@@ -438,6 +435,19 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 	    arglist[j++] = defaultlib;
 	    added_libraries++;
 	}
+#ifdef LIBDRUNTIME
+    else if (druntime)
+	{
+	    arglist[j++] = saw_profile_flag ? LIBDRUNTIME_PROFILE : LIBDRUNTIME;
+	    added_libraries++;
+	    need_pthreads = 1;
+	}
+    if (phobos)
+	{
+	    arglist[j++] = saw_profile_flag ? LIBDRUNTIME_PROFILE : LIBDRUNTIME;
+	    added_libraries++;
+	}
+#endif
     if (saw_math)
 	arglist[j++] = saw_math;
     else if (library > 0 && need_math)
