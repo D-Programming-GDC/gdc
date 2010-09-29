@@ -610,6 +610,11 @@ d_handle_option (size_t scode, const char *arg, int value)
 	  flag_bounds_check = global.params.useArrayBounds = ! value;
 	  global.params.useSwitchError = ! value;
 	  break;
+#if V2
+      case OPT_fsafe:
+	  global.params.safe = value;
+	  break;
+#endif
       case OPT_funittest:
 	  global.params.useUnitTests = value;
 	  break;
@@ -782,6 +787,12 @@ bool d_post_options(const char ** fn)
        unit-at-a-time mode.  */
     if (num_in_fnames > 1)
 	flag_unit_at_a_time = 1;
+#endif
+
+#if V2
+    /* -safe implies array bounds checking */
+    if (global.params.safe)
+	flag_bounds_check = global.params.useArrayBounds = 1;
 #endif
     return false;
 }

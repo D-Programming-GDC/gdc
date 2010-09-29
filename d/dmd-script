@@ -149,6 +149,7 @@ Usage:
   -q,arg1,...    pass arg1, arg2, etc. to to gdc
   -release       compile release version
   -run srcfile args...   run resulting program, passing args
+  -safe          safe memory model
   -unittest      compile in unit tests
   -v             verbose
   -v1            D language version 1
@@ -345,6 +346,8 @@ while ( $arg_i < scalar(@ARGV) ) {
 
 	push @run_args, @ARGV[$arg_i..$#ARGV];
 	last;
+    } elsif ( $arg =~ m/^-safe$/ ) {
+	push @out, '-fsafe';
     } elsif ( $arg =~ m/^-unittest$/ ) {
 	push @out, '-funittest';
     } elsif ( $arg =~ m/^-v$/ ) {

@@ -40,6 +40,10 @@ frelease
 D
 Compile release version
 
+fsafe
+D
+Safe memory model
+
 funittest
 D
 Compile in unittest code
