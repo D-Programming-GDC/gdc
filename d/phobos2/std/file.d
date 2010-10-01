@@ -729,7 +729,7 @@ string[] listdir(string pathname, RegExp r)
  *
  * Note:
  *
- * This function is being phased off. New code should use $(D_PARAM
+ * This function is being phased out. New code should use $(D_PARAM
  * dirEntries) (see below).
  * 
  * Params:
@@ -779,7 +779,7 @@ void listdir(in string pathname, bool delegate(string filename) callback)
  *
  * Note:
  *
- * This function is being phased off. New code should use $(D_PARAM
+ * This function is being phased out. New code should use $(D_PARAM
  * dirEntries) (see below).
  * 
  * Params:
@@ -902,9 +902,9 @@ void copy(in string from, in string to)
 
 }
 
-/* =========================== linux ======================= */
+/* =========================== Posix ======================= */
 
-else version (Unix)
+else version (Posix)
 {
 
 private import std.c.unix.unix;
@@ -938,9 +938,9 @@ class FileException : Exception
     }
 }
 
-private T cenforce(T)(T condition, lazy string name)
+private T cenforce(T)(T condition, lazy const(char)[] name)
 {
-    if (!condition) throw new FileException(name, getErrno);
+    if (!condition) throw new FileException(name.idup, getErrno());
     return condition;
 }
 
@@ -1102,6 +1102,8 @@ void setTimes(in string name, d_time fta, d_time ftm)
 {
     version (all)
     {
+version (none) // does not compile
+{
         // utimbuf times = {
         //     cast(__time_t) (fta / std.date.TicksPerSecond),
         //     cast(__time_t) (ftm / std.date.TicksPerSecond) };
@@ -1113,7 +1115,12 @@ void setTimes(in string name, d_time fta, d_time ftm)
         t[1].tv_sec = ftm / std.date.TicksPerSecond;
         t[1].tv_usec = cast(long) ((cast(double) ftm / std.date.TicksPerSecond)
                 * 1_000_000) % 1_000_000;
-        enforce(utimes(toStringz(name), t.ptr) == 0);
+        enforce(utime(toStringz(name), t.ptr) == 0);
+}
+else
+{
+	assert(0);
+}
     }
     else
     {
@@ -1195,7 +1202,7 @@ unittest
  * Does file/directory exist?
  */
 
-bool exists(in string name)
+bool exists(in char[] name)
 {
     return access(toStringz(name), 0) == 0;
 }
@@ -1240,7 +1247,7 @@ void chdir(string pathname)
  * Make directory.
  */
 
-void mkdir(string pathname)
+void mkdir(in char[] pathname)
 {
     cenforce(unix.mkdir(toStringz(pathname), 0777) == 0, pathname);
 }
@@ -1249,9 +1256,9 @@ void mkdir(string pathname)
  * Make directory and all parent directories as needed.
  */
 
-void mkdirRecurse(string pathname)
+void mkdirRecurse(in char[] pathname)
 {
-    invariant left = dirname(pathname);
+    auto left = dirname(pathname);
     exists(left) || mkdirRecurse(left);
     mkdir(pathname);
 }
@@ -1397,10 +1404,24 @@ struct DirEntry
         if (didstat) return;
 	enforce(unix.stat(toStringz(name), &statbuf) == 0,
                 "Failed to stat file `"~name~"'");
-	_size = statbuf.st_size;
-	_creationTime = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
-	_lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
-	_lastWriteTime = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+	_size = cast(ulong)statbuf.st_size;
+	version (linux)
+	{
+	    _creationTime = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+	    _lastAccessTime = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+	    _lastWriteTime = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+	}
+	else version (OSX)
+	{
+	    _creationTime =   cast(d_time)statbuf.st_ctimespec.tv_sec * std.date.TicksPerSecond;
+	    _lastAccessTime = cast(d_time)statbuf.st_atimespec.tv_sec * std.date.TicksPerSecond;
+	    _lastWriteTime =  cast(d_time)statbuf.st_mtimespec.tv_sec * std.date.TicksPerSecond;
+	}
+	else
+	{
+	    static assert(0);
+	}
+
 	didstat = true;
     }
 }
@@ -1486,6 +1507,7 @@ void listdir(string pathname, bool delegate(DirEntry* de) callback)
             break;
     }*/
 }
+
 
 
 /***************************************************
@@ -1660,7 +1682,6 @@ struct DirIterator
             }
             return result == 0; 
         }
-        
         // consume the worklist
         while (worklist.length)
         {
@@ -1710,7 +1731,7 @@ DirIterator dirEntries(string path, SpanMode mode)
 
 unittest
 {
-  version (Unix)
+  version (Posix)
   {
     assert(system("mkdir -p dmd-testing") == 0);
     scope(exit) system("rm -rf dmd-testing");

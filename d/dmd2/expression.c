@@ -21,13 +21,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <math.h>
 #include <assert.h>
 #if _MSC_VER
 #include <complex>
 #else
 #include <complex.h>
 #endif
-#include <math.h>
 
 #ifdef __APPLE__
 #define integer_t dmd_integer_t
@@ -41,7 +41,7 @@ extern "C" char * __cdecl __locale_decpoint;
 #include "mem.h"
 #elif _WIN32
 #include "..\root\mem.h"
-#elif linux
+#elif linux || __APPLE__
 #include "../root/mem.h"
 #endif
 //#include "port.h"
@@ -62,6 +62,7 @@ extern "C" char * __cdecl __locale_decpoint;
 #include "attrib.h"
 #include "hdrgen.h"
 #include "parse.h"
+
 
 Expression *createTypeInfoArray(Scope *sc, Expression *args[], int dim);
 Expression *expandVar(int result, VarDeclaration *v);
@@ -1617,7 +1618,11 @@ complex_t RealExp::toComplex()
 int RealEquals(real_t x1, real_t x2)
 {
 #ifndef IN_GCC
+#if __APPLE__
+    return (__inline_isnan(x1) && __inline_isnan(x2)) ||
+#else
     return (isnan(x1) && isnan(x2)) ||
+#endif
 	/* In some cases, the REALPAD bytes get garbage in them,
 	 * so be sure and ignore them.
 	 */
@@ -1745,7 +1750,11 @@ void realToMangleBuffer(OutBuffer *buf, real_t value)
     else if (value.isInf())
 	buf->writestring(value.isNegative()?"NINF":"INF");
 #else
+#if __APPLE__
+    if (__inline_isnan(value))
+#else
     if (isnan(value))
+#endif
 	buf->writestring("NAN");	// no -NAN bugs
 #endif
     else
@@ -6647,7 +6656,7 @@ int CallExp::canThrow()
     for (size_t i = 0; i < arguments->dim; i++)
     {   Expression *e = (Expression *)arguments->data[i];
 
-	if (e->canThrow())
+	if (e && e->canThrow())
 	    return 1;
     }
 

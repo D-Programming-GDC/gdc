@@ -929,6 +929,7 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
 	callee = delegateMethodRef(callee);
     } else if (expr->op == TOKvar) {
 	FuncDeclaration * fd = ((VarExp *) expr)->var->isFuncDeclaration();
+	assert(fd);
 	tf = (TypeFunction *) fd->type;
 	if (fd->isNested()) {
 #if D_NO_TRAMPOLINES

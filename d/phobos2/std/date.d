@@ -86,8 +86,8 @@ enum
 
 d_time LocalTZA = 0;
 
-invariant char[] daystr = "SunMonTueWedThuFriSat";
-invariant char[] monstr = "JanFebMarAprMayJunJulAugSepOctNovDec";
+immutable char[] daystr = "SunMonTueWedThuFriSat";
+immutable char[] monstr = "JanFebMarAprMayJunJulAugSepOctNovDec";
 
 const int[12] mdays = [ 0,31,59,90,120,151,181,212,243,273,304,334 ];
 
@@ -928,14 +928,15 @@ version (Win32)
 	return t;
     }
 }
-else version (Unix)
+else version (Posix)
 {
-    // for now, just copy linux
+
     private import std.c.unix.unix;
 
     d_time getUTCtime()
     {   timeval tv;
 
+	//printf("getUTCtime()\n");
 	if (gettimeofday(&tv, null))
 	{   // Some error happened - try time() instead
 	    return time(null) * TicksPerSecond;
@@ -946,7 +947,7 @@ else version (Unix)
     }
 
     private extern (C) time_t _d_gnu_cbridge_tza();
-    
+
     d_time getLocalTZA()
     {
 	return _d_gnu_cbridge_tza() * TicksPerSecond;
@@ -966,97 +967,6 @@ else version (Unix)
 	{
 	    d_time seconds = dt / TicksPerSecond;
 	    t = cast(time_t) seconds;
-	    if (t == seconds)	// if in range
-	    {
-		tmp = localtime(&t);
-		if (tmp.tm_isdst > 0)
-		    dst = TicksPerHour;	// BUG: Assume daylight savings time is plus one hour.
-	    }
-	    else // out of range for system time, use our own calculation
-	    {
-		/* BUG: this works for the US, but not other timezones.
-		 */
-
-		dt -= LocalTZA;
-
-		int year = YearFromTime(dt);
-
-		/* Compute time given year, month 1..12,
-		 * week in month, weekday, hour
-		 */
-		d_time dstt(int year, int month, int week, int weekday, int hour)
-		{
-		    auto mday = DateFromNthWeekdayOfMonth(year,  month, weekday, week);
-		    return TimeClip(MakeDate(
-			MakeDay(year, month - 1, mday),
-			MakeTime(hour, 0, 0, 0)));
-		}
-
-		d_time start;
-		d_time end;
-		if (year < 2007)
-		{   // Daylight savings time goes from 2 AM the first Sunday
-		    // in April through 2 AM the last Sunday in October
-		    start = dstt(year,  4, 1, 0, 2);
-		    end   = dstt(year, 10, 5, 0, 2);
-		}
-		else
-		{
-		    // the second Sunday of March to
-		    // the first Sunday in November
-		    start = dstt(year,  3, 2, 0, 2);
-		    end   = dstt(year, 11, 1, 0, 2);
-		}
-
-		if (start <= dt && dt < end)
-		    dst = TicksPerHour;
-		//writefln("start = %s, dt = %s, end = %s, dst = %s", start, dt, end, dst);
-	    }
-	}
-	return dst;
-    }
-}
-else version (linux)
-{
-
-    private import std.c.linux.linux;
-
-    d_time getUTCtime()
-    {   timeval tv;
-
-	//printf("getUTCtime()\n");
-	if (gettimeofday(&tv, null))
-	{   // Some error happened - try time() instead
-	    return time(null) * TicksPerSecond;
-	}
-
-	return tv.tv_sec * cast(d_time)TicksPerSecond +
-		(tv.tv_usec / (1000000 / cast(d_time)TicksPerSecond));
-    }
-
-    d_time getLocalTZA()
-    {
-	int t;
-
-	time(&t);
-	localtime(&t);	// this will set timezone
-	return -(timezone * TicksPerSecond);
-    }
-
-    /*
-     * Get daylight savings time adjust for time dt.
-     */
-
-    int DaylightSavingTA(d_time dt)
-    {
-	tm *tmp;
-	int t;
-	int dst = 0;
-
-	if (dt != d_time_nan)
-	{
-	    d_time seconds = dt / TicksPerSecond;
-	    t = cast(int) seconds;
 	    if (t == seconds)	// if in range
 	    {
 		tmp = localtime(&t);

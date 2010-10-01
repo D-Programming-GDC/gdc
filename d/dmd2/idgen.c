@@ -249,6 +249,7 @@ struct Msgtable msgtable[] =
     { "main" },
     { "WinMain" },
     { "DllMain" },
+    { "tls_get_addr", "___tls_get_addr" },
 
     // Builtin functions
     { "std" },

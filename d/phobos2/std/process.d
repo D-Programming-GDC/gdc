@@ -1,7 +1,7 @@
 // Written in the D programming language
 
 /*
- *  Copyright (C) 2003-2008 by Digital Mars, http://www.digitalmars.com
+ *  Copyright (C) 2003-2009 by Digital Mars, http://www.digitalmars.com
  *  Written by Matthew Wilson and Walter Bright
  *
  *  Incorporating idea (for execvpe() on Linux) from Russ Lewis
@@ -55,7 +55,7 @@ version (Windows)
     private import std.stdio : readln, fclose;
     private import std.c.windows.windows:GetCurrentProcessId;
 }
-version (linux)
+version (Posix)
 {
     private import std.stdio : popen, readln, fclose;
 }
@@ -125,7 +125,7 @@ int spawnvp(int mode, string pathname, string[] argv)
 
     toAStringz(argv, argv_);
 
-    version(Unix)
+    version(Posix)
     {
         return _spawnvp(mode, toStringz(pathname), argv_);
     }
@@ -135,7 +135,7 @@ int spawnvp(int mode, string pathname, string[] argv)
     }
 }
 
-version(Unix)
+version(Posix)
 {
 private import std.c.unix.unix;
 int _spawnvp(int mode, in char *pathname, in char **argv)
@@ -196,7 +196,7 @@ int  termsig(int status)    { return status & 0x7f; }
 bool exited(int status)     { return cast(bool)((status & 0x7f) == 0); }
 int  exitstatus(int status) { return (status & 0xff00) >> 8; }
 }   // private
-}   // version(linux)
+}   // version (Posix)
 
 /* ========================================================== */
 
@@ -285,7 +285,7 @@ else
 } // version
 }
 
-version(Unix)
+version(Posix)
 {
     alias std.c.process.getpid getpid;
 }
@@ -428,4 +428,3 @@ version(MainTest)
 }
 
 /* ////////////////////////////////////////////////////////////////////////// */
-

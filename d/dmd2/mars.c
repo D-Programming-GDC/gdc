@@ -25,7 +25,7 @@
 #include <dos.h>
 #endif
 
-#if linux
+#if linux || __APPLE__
 #include <errno.h>
 #endif
 #endif
@@ -66,9 +66,9 @@ Global::Global()
     ddoc_ext = "ddoc";
 
 #ifndef IN_GCC
-#if _WIN32
+#if TARGET_WINDOS
     obj_ext  = "obj";
-#elif linux
+#elif TARGET_LINUX || TARGET_OSX
     obj_ext  = "o";
 #else
 #error "fix this"
@@ -78,9 +78,9 @@ Global::Global()
 #endif
 
 #ifndef IN_GCC
-#if _WIN32
+#if TARGET_WINDOS
     lib_ext  = "lib";
-#elif linux
+#elif TARGET_LINUX || TARGET_OSX
     lib_ext  = "a";
 #else
 #error "fix this"
@@ -91,7 +91,7 @@ Global::Global()
 
     copyright = "Copyright (c) 1999-2009 by Digital Mars";
     written = "written by Walter Bright";
-    version = "v2.023";
+    version = "v2.025";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -146,7 +146,14 @@ void verror(Loc loc, const char *format, va_list ap)
 	mem.free(p);
 
 	fprintf(stdmsg, "Error: ");
+#if _MSC_VER
+	// MS doesn't recognize %zu format
+	OutBuffer tmp;
+	tmp.vprintf(format, ap);
+	fprintf(stdmsg, "%s", tmp.toChars());
+#else
 	vfprintf(stdmsg, format, ap);
+#endif
 	fprintf(stdmsg, "\n");
 	fflush(stdmsg);
 //halt();
@@ -291,24 +298,32 @@ int main(int argc, char *argv[])
     global.params.objfiles = new Array();
     global.params.ddocfiles = new Array();
 
-#if _WIN32
+#if TARGET_WINDOS
     global.params.defaultlibname = "phobos";
-#elif linux
+#elif TARGET_LINUX || TARGET_OSX
     global.params.defaultlibname = "phobos2";
 #endif
     global.params.debuglibname = global.params.defaultlibname;
 
     // Predefine version identifiers
     VersionCondition::addPredefinedGlobalIdent("DigitalMars");
-#if _WIN32
+#if TARGET_WINDOS
     VersionCondition::addPredefinedGlobalIdent("Windows");
     global.params.isWindows = 1;
 #endif
-#if linux
+#if TARGET_LINUX
     VersionCondition::addPredefinedGlobalIdent("Posix");
     VersionCondition::addPredefinedGlobalIdent("linux");
     global.params.isLinux = 1;
-#endif /* linux */
+#endif
+#if TARGET_OSX
+    VersionCondition::addPredefinedGlobalIdent("Posix");
+    VersionCondition::addPredefinedGlobalIdent("OSX");
+    global.params.isOSX = 1;
+
+    // For legacy compatibility
+    VersionCondition::addPredefinedGlobalIdent("darwin");
+#endif
     VersionCondition::addPredefinedGlobalIdent("LittleEndian");
     //VersionCondition::addPredefinedGlobalIdent("D_Bits");
 #if V2
@@ -319,7 +334,7 @@ int main(int argc, char *argv[])
 #if _WIN32
     inifile(argv[0], "sc.ini");
 #endif
-#if linux
+#if linux || __APPLE__
     inifile(argv[0], "dmd.conf");
 #endif
     getenv_setargv("DFLAGS", &argc, &argv);
@@ -342,7 +357,7 @@ int main(int argc, char *argv[])
 		global.params.link = 0;
 	    else if (strcmp(p + 1, "cov") == 0)
 		global.params.cov = 1;
-#if TARGET_LINUX
+#if TARGET_LINUX || TARGET_OSX
 	    else if (strcmp(p + 1, "fPIC") == 0)
 		global.params.pic = 1;
 #endif
@@ -581,6 +596,13 @@ int main(int argc, char *argv[])
 		browse("http://www.digitalmars.com/d/2.0/dmd-linux.html");
 #endif
 #endif
+#if __APPLE__
+#if V1
+		browse("http://www.digitalmars.com/d/1.0/dmd-osx.html");
+#else
+		browse("http://www.digitalmars.com/d/2.0/dmd-osx.html");
+#endif
+#endif
 		exit(EXIT_SUCCESS);
 	    }
 	    else if (strcmp(p + 1, "run") == 0)
@@ -611,7 +633,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-#if !TARGET_LINUX
+#if !TARGET_LINUX && !TARGET_OSX
 	    char *ext = FileName::ext(p);
 	    if (ext && stricmp(ext, "exe") == 0)
 	    {
@@ -630,6 +652,10 @@ int main(int argc, char *argv[])
     {	usage();
 	return EXIT_FAILURE;
     }
+
+#if TARGET_OSX
+    global.params.pic = 1;
+#endif
 
     if (global.params.release)
     {	global.params.useInvariants = 0;
@@ -697,7 +723,7 @@ int main(int argc, char *argv[])
 	VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86_64");
 	VersionCondition::addPredefinedGlobalIdent("X86_64");
 	VersionCondition::addPredefinedGlobalIdent("D_LP64");
-#if _WIN32
+#if TARGET_WINDOS
 	VersionCondition::addPredefinedGlobalIdent("Win64");
 #endif
     }
@@ -706,7 +732,7 @@ int main(int argc, char *argv[])
 	VersionCondition::addPredefinedGlobalIdent("D_InlineAsm");
 	VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86");
 	VersionCondition::addPredefinedGlobalIdent("X86");
-#if _WIN32
+#if TARGET_WINDOS
 	VersionCondition::addPredefinedGlobalIdent("Win32");
 #endif
     }
@@ -790,7 +816,7 @@ int main(int argc, char *argv[])
 	if (ext)
 	{   /* Deduce what to do with a file based on its extension
 	     */
-#if TARGET_LINUX
+#if linux || __APPLE__
 	    if (strcmp(ext, global.obj_ext) == 0)
 #else
 	    if (stricmp(ext, global.obj_ext) == 0)
@@ -801,7 +827,7 @@ int main(int argc, char *argv[])
 		continue;
 	    }
 
-#if TARGET_LINUX
+#if linux || __APPLE__
 	    if (strcmp(ext, global.lib_ext) == 0)
 #else
 	    if (stricmp(ext, global.lib_ext) == 0)
@@ -818,7 +844,7 @@ int main(int argc, char *argv[])
 		continue;
 	    }
 
-#if !TARGET_LINUX
+#if TARGET_WINDOS
 	    if (stricmp(ext, "res") == 0)
 	    {
 		global.params.resfile = (char *)files.data[i];

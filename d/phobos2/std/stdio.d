@@ -119,7 +119,7 @@ class StdioException : Exception
 
     this(uint errno)
     {
-	version (Unix)
+	version (Posix)
 	{   char[80] buf = void;
 	    auto s = std.c.string._d_gnu_cbridge_strerror(errno, buf.ptr, buf.length);
 	}
@@ -229,6 +229,7 @@ void writefx(FILE* fp, TypeInfo[] arguments, va_list argptr, int newline=false)
 	}
     }
 }
+
 
 /***********************************
  * If the first argument $(D_PARAM args[0]) is a $(D_PARAM FILE*), for
@@ -735,7 +736,7 @@ FILE* fopen(in char[] name, in char[] mode = "r")
     return result;
 }
 
-version (linux)
+version (Posix)
 {
     extern(C) FILE* popen(const char*, const char*);
 

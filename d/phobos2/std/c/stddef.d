@@ -1,7 +1,7 @@
 
 /**
  * C's &lt;stddef.h&gt;
- * Authors: Walter Bright, Digital Mars, www.digitalmars.com
+ * Authors: Walter Bright, Digital Mars, http://www.digitalmars.com
  * License: Public Domain
  * Macros:
  *	WIKI=Phobos/StdCStddef
@@ -23,6 +23,10 @@ else version (linux)
     alias dchar wchar_t;
 }
 else version (Unix)
+{
+    alias dchar wchar_t;
+}
+else version (OSX)
 {
     alias dchar wchar_t;
 }

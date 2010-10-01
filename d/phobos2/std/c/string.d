@@ -1,7 +1,7 @@
 
 /**
  * C's &lt;string.h&gt;
- * Authors: Walter Bright, Digital Mars, www.digitalmars.com
+ * Authors: Walter Bright, Digital Mars, http://www.digitalmars.com
  * License: Public Domain
  * Macros:
  *	WIKI=Phobos/StdCString

@@ -118,7 +118,7 @@ version (Win32)
 {
     extern(Windows) int QueryPerformanceCounter(ulong *count);
 }
-else version (Unix)
+else version (Posix)
 {
     private import std.c.unix.unix;
 }
@@ -807,7 +807,7 @@ static this()
     {
 	QueryPerformanceCounter(&s);
     }
-    else version(Unix)
+    else version(Posix)
     {
 	// time.h
 	// sys/time.h

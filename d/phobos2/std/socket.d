@@ -49,9 +49,9 @@ version(unittest)
     private import std.c.stdio : printf;
 }
 
-version(Unix)
+version(Posix)
 {
-	version = BsdSockets;
+    version = BsdSockets;
 }
 
 version (skyos) { /* nothging */ }
@@ -82,7 +82,7 @@ version(Win32)
 }
 else version(BsdSockets)
 {
-	version (Unix)
+	version (Posix)
 	{
 		private import std.c.unix.unix;
 		private alias std.c.unix.unix.timeval _ctimeval;
@@ -107,28 +107,28 @@ else
 class SocketException: Exception
 {
 	int errorCode; /// Platform-specific error code.
-	
+
 	this(string msg, int err = 0)
 	{
-		errorCode = err;
-		
-		version(Unix)
+	    errorCode = err;
+
+	    version(Posix)
+	    {
+		if(errorCode > 0)
 		{
-			if(errorCode > 0)
-			{
-				char[80] buf;
-				auto cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
-				auto len = strlen(cs);
-				
-				if(cs[len - 1] == '\n')
-					len--;
-				if(cs[len - 1] == '\r')
-					len--;
-				msg = cast(string) (msg ~ ": " ~ cs[0 .. len]);
-			}
+		    char[80] buf;
+		    auto cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
+		    auto len = strlen(cs);
+
+		    if(cs[len - 1] == '\n')
+			len--;
+			if(cs[len - 1] == '\r')
+			    len--;
+			msg = cast(string) (msg ~ ": " ~ cs[0 .. len]);
 		}
-		
-		super(msg);
+	    }
+
+	    super(msg);
 	}
 }
 
@@ -228,8 +228,8 @@ class Protocol
 			aliases = new string[i];
 			for(i = 0; i != aliases.length; i++)
 			{
-                            aliases[i] =
-                                std.string.toString(proto.p_aliases[i]).idup;
+			    aliases[i] =
+				std.string.toString(proto.p_aliases[i]).idup;
 			}
 		}
 		else
@@ -1176,7 +1176,7 @@ class Socket
 					if(WSAEWOULDBLOCK == err)
 						return;
 				}
-				else version(Unix)
+				else version(Posix)
 				{
 					if(EINPROGRESS == err)
 						return;
@@ -1583,7 +1583,7 @@ class Socket
 			if(_SOCKET_ERROR == result && WSAGetLastError() == WSAEINTR)
 				return -1;
 		}
-		else version(Unix)
+		else version(Posix)
 		{
 			if(_SOCKET_ERROR == result && getErrno() == EINTR)
 				return -1;

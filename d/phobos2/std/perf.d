@@ -782,7 +782,7 @@ version(Windows)
 
     /* ////////////////////////////////////////////////////////////////////////// */
 }
-else version(Unix)
+else version(Posix)
 {
     private import std.c.unix.unix; // for timeval, timezone, and gettimeofday
 

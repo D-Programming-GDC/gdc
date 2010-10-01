@@ -295,7 +295,7 @@ class OutBuffer
 	}
 	write(cast(ubyte[]) p[0 .. count]);
 	/+
-	version (linux)
+	version (Posix)
 	{
 	    if (p != buffer)
 		c.stdlib.free(p);

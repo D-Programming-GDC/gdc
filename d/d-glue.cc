@@ -2701,8 +2701,6 @@ FuncDeclaration::toObjFile(int multiobj)
 	tree t = vthis->toSymbol()->Stree;
 	while ( cd->isNested() ) {
 	    Dsymbol * d = cd->toParent2();
-
-
 	    tree vthis_field = cd->vthis->toSymbol()->Stree;
 	    t = irs->component(irs->indirect(t), vthis_field);
 	    FuncDeclaration * f;

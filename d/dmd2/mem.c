@@ -14,7 +14,7 @@
 
 #if IN_GCC
 #include "mem.h"
-#elif linux
+#elif linux || __APPLE__ || __FreeBSD__
 #include "../root/mem.h"
 #else
 #include "mem.h"

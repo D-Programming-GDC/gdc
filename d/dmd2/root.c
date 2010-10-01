@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2006 by Digital Mars
+// Copyright (c) 1999-2009 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // www.digitalmars.com
@@ -833,7 +833,7 @@ void FileName::ensurePathExists(const char *path)
 #if _WIN32
 	    if (path[strlen(path) - 1] != '\\')
 #endif
-#if linux
+#if linux || __APPLE__ || __FreeBSD__
 	    if (path[strlen(path) - 1] != '\\')
 #endif
 	    {

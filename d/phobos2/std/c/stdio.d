@@ -60,6 +60,44 @@ else version (linux)
     }
 }
 
+version (OSX)
+{
+    enum
+    {
+	int EOF = -1,
+	int BUFSIZ = 1024,
+	int FOPEN_MAX = 20,
+	int FILENAME_MAX = 1024,
+	int TMP_MAX = 308915776,
+	int L_tmpnam = 1024,
+    }
+
+    struct __sbuf
+    {
+	char* _base;
+	int _size;
+    }
+}
+
+version (FreeBSD)
+{
+    enum
+    {
+	int EOF = -1,
+	int BUFSIZ = 1024,
+	int FOPEN_MAX = 20,
+	int FILENAME_MAX = 1024,
+	int TMP_MAX = 308915776,
+	int L_tmpnam = 1024,
+    }
+
+    struct __sbuf
+    {
+	char* _base;
+	int _size;
+    }
+}
+
 enum { SEEK_SET, SEEK_CUR, SEEK_END }
 
 struct _iobuf
@@ -141,6 +179,52 @@ version (Win32)
 	    FHND_WCHAR	= 0x40,
 	}
     }
+    version (OSX)
+    {
+	char* _p;
+	int _r;
+	int _w;
+	short _flags;
+	short _file;
+	__sbuf _bf;
+	int _lbfsize;
+	void* _cookie;
+	int function(void*) _close;
+	int function(void*, char*, int) _read;
+	fpos_t function(void*, fpos_t, int) _seek;
+	int function(void*, char*, int) _write;
+	__sbuf _ub;
+	void* _extra;
+	int _ur;
+	char[3] _ubuf;
+	char[1] _nbuf;
+	__sbuf _lb;
+	int _blksize;
+	fpos_t _offset;
+    }
+    version (FreeBSD)
+    {
+	char* _p;
+	int _r;
+	int _w;
+	short _flags;
+	short _file;
+	__sbuf _bf;
+	int _lbfsize;
+	void* _cookie;
+	int function(void*) _close;
+	int function(void*, char*, int) _read;
+	fpos_t function(void*, fpos_t, int) _seek;
+	int function(void*, char*, int) _write;
+	__sbuf _ub;
+	void* _extra;
+	int _ur;
+	char[3] _ubuf;
+	char[1] _nbuf;
+	__sbuf _lb;
+	int _blksize;
+	fpos_t _offset;
+    }
 }
 
 version (Win32)
@@ -162,7 +246,7 @@ version (Win32)
     }
 }
 
-version (linux)
+version (Posix)
 {
     enum
     {
@@ -332,8 +416,8 @@ version (Win32)
     }
     else
 	int  fileno(FILE *fp);
-    int  _snprintf(char *,size_t,in char *,...);
-    int  _vsnprintf(char *,size_t,in char *,va_list);
+    int  _snprintf(char *,size_t,const char *,...);
+    int  _vsnprintf(char *,size_t,const char *,va_list);
 }
 else version (darwin)
 {
@@ -401,7 +485,7 @@ else version (GNU)
     alias __builtin_snprintf snprintf;
     alias __builtin_vsnprintf vsnprintf;
 }
-else version (linux)
+else version (Posix)
 {
     int  ferror(FILE *fp);
     int  feof(FILE *fp);
@@ -409,8 +493,8 @@ else version (linux)
     void rewind(FILE *fp);
     int  _bufsize(FILE *fp);
     int  fileno(FILE *fp);
-    int  snprintf(char *,size_t,in char *,...);
-    int  vsnprintf(char *,size_t,in char *,va_list);
+    int  snprintf(char *,size_t,const char *,...);
+    int  vsnprintf(char *,size_t,const char *,va_list);
 }
 
 int      unlink(in char *);	///

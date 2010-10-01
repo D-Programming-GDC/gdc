@@ -858,7 +858,7 @@ public:
 
     this(uint errcode)
     {
-      version (Unix)
+      version (Posix)
       {
 	char[80] buf = void;
 	super(std.string.toString(_d_gnu_cbridge_strerror(errcode, buf.ptr, buf.length)).idup);

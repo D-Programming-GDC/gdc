@@ -15,6 +15,6 @@ extern (C)
 
     void* dlopen(in char* file, int mode);
     int   dlclose(void* handle);
-    void* dlsym(void* handle, in char* name);
+    void* dlsym(void* handle, const(char)* name);
     char* dlerror();
 }
