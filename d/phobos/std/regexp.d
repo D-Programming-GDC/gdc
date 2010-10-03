@@ -1629,7 +1629,7 @@ int trymatch(size_t pc, size_t pcend)
                 c1 = input[src];
                 //printf("[x%02x]=x%02x, x%02x\n", c1 >> 3, ((&program[pc + 1 + 4])[c1 >> 3] ), (1 << (c1 & 7)));
                 if (c1 <= pu[0] &&
-                    !bt(cast(uint*)&(program[pc + 1 + 4]), c1)) // assumes BitArray implementation
+                    !bt(cast(size_t*)&(program[pc + 1 + 4]), c1)) // assumes BitArray implementation
                     goto Lnomatch;
                 pc += 1 + 2 * ushort.sizeof + len;
                 break;
@@ -1644,7 +1644,7 @@ int trymatch(size_t pc, size_t pcend)
                 c1 = input[src];
                 if (c1 > pu[0])
                     goto Lnomatch;
-                if (!bt(cast(uint*)&(program[pc + 1 + 4]), c1)) // assumes BitArray implementation
+                if (!bt(cast(size_t*)&(program[pc + 1 + 4]), c1)) // assumes BitArray implementation
                     goto Lnomatch;
                 src++;
                 pc += 1 + 2 * ushort.sizeof + len;
@@ -1659,7 +1659,7 @@ int trymatch(size_t pc, size_t pcend)
                 len = pu[1];
                 c1 = input[src];
                 if (c1 <= pu[0] &&
-                    bt(cast(uint*)&(program[pc + 1 + 4]), c1)) // assumes BitArray implementation
+                    bt(cast(size_t*)&(program[pc + 1 + 4]), c1)) // assumes BitArray implementation
                     goto Lnomatch;
                 src++;
                 pc += 1 + 2 * ushort.sizeof + len;
