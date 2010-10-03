@@ -585,6 +585,12 @@ Symbol *FuncDeclaration::toSymbol()
 		   flag_omit_frame_pointer back on. */
 		DECL_UNINLINABLE( fn_decl ) = 1;
 	    }
+#if V2
+	    if (isPure()) {
+		gen.addDeclAttribute( fn_decl, "pure" );
+		DECL_PURE_P( fn_decl ) = 1;
+	    }
+#endif
 
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
 	    // Have to test for import first
@@ -596,7 +602,6 @@ Symbol *FuncDeclaration::toSymbol()
 	    else if (isExport())
 		gen.addDeclAttribute( fn_decl, "dllexport" );
 #endif
-
 	    g.ofile->setDeclLoc(fn_decl, this);
 	    g.ofile->setupSymbolStorage(this, fn_decl);
 	    if (! ident)

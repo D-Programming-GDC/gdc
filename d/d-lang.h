@@ -219,6 +219,9 @@ extern GTY(()) tree d_keep_list;
 #define TYPE_UNSIGNED TREE_UNSIGNED
 #endif
 
+#if D_GCC_VER < 44
+#define DECL_PURE_P DECL_IS_PURE
+#endif
 
 typedef HOST_WIDE_INT hwint;
 typedef unsigned HOST_WIDE_INT uhwint;
