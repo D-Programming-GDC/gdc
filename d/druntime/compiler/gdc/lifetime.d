@@ -969,28 +969,28 @@ body
 extern (C) byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
 {   void* a;
     size_t length;
-    byte[]* p;
     uint i;
     byte[] b;
+    va_list va;
     auto size = ti.next.tsize(); // array element size
 
-    p = cast(byte[]*)(&n + 1);
+    va_start!(typeof(n))(va, n);
 
     for (i = 0; i < n; i++)
     {
-        b = *p++;
+        b = va_arg!(typeof(b))(va);
         length += b.length;
     }
     if (!length)
         return null;
 
     a = gc_malloc(length * size, !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN : 0);
-    p = cast(byte[]*)(&n + 1);
+    va_start!(typeof(n))(va, n);
 
     uint j = 0;
     for (i = 0; i < n; i++)
     {
-        b = *p++;
+        b = va_arg!(typeof(b))(va);
         if (b.length)
         {
             memcpy(a + j, b.ptr, b.length * size);
