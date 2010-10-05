@@ -497,6 +497,11 @@ public:
 public:
     static bool functionNeedsChain(FuncDeclaration *f);
 
+    // Frame pointer for functions inside nested class/structs 
+    static FuncDeclaration * isClassNestedInFunction(ClassDeclaration * cd);
+    static FuncDeclaration * isStructNestedInFunction(StructDeclaration * sd);
+    static bool isFuncNestedInFunction(FuncDeclaration * inner, FuncDeclaration * outer);
+
     // ** Instruction stream manipulation
     void startCond(Statement * stmt, Expression * e_cond);
     void startElse();

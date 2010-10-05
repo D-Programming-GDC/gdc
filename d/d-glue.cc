@@ -1843,26 +1843,6 @@ isClassNestedIn(ClassDeclaration *inner, ClassDeclaration *outer)
     return false;
 }
 
-static FuncDeclaration *
-isClassNestedInFunction(ClassDeclaration * cd)
-{
-    while (cd) {
-	if (cd->isNested()) {
-	    Dsymbol * s = cd->toParent2();
-	    FuncDeclaration * fd = s->isFuncDeclaration();
-
-	    if (fd)
-		return fd;
-	    else {
-		cd = s->isClassDeclaration();
-		assert(cd);
-	    }
-	} else
-	    break;
-    }
-    return NULL;
-}
-
 
 /*
   findThis
@@ -1896,7 +1876,7 @@ findThis(IRState * irs, ClassDeclaration * target_cd)
 		// not implemented
 		assert(0);
 	    } else {
-		fd = isClassNestedInFunction(fd_cd);
+		fd = irs->isClassNestedInFunction(fd_cd);
 	    }
 	} else if (fd->isNested()) {
 	    fd = fd->toParent2()->isFuncDeclaration();
@@ -1980,21 +1960,19 @@ NewExp::toElem(IRState * irs)
 			   STATIC_CHAIN_EXPR created here will never be
 			   translated. Use a null pointer for the link in
 			   this case. */
-			if (fd_outer->vthis) {
 #if V2
-			    if (fd_outer->closureVars.dim ||
-				irs->getFrameInfo(fd_outer)->creates_closure)
+			if (fd_outer->closureVars.dim ||
+			    irs->getFrameInfo(fd_outer)->creates_closure)
 #else
-			    if(fd_outer->nestedFrameRef)
+			if(fd_outer->nestedFrameRef)
 #endif
-				vthis_value = irs->getFrameForNestedClass(class_decl); // %% V2: rec_type->class_type
-			    else
-				vthis_value = irs->var(fd_outer->vthis);
-			}
-			else {
+			{
+			    vthis_value = irs->getFrameForNestedClass(class_decl); // %% V2: rec_type->class_type
+			} else if (fd_outer->vthis) {
+			    vthis_value = irs->var(fd_outer->vthis);
+			} else {
 			    vthis_value = d_null_pointer;
 			}
-
 		    } else {
 			assert(0);
 		    }

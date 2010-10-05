@@ -2681,50 +2681,75 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
 #endif
 }
 
-#if V2
+/* Return the parent function of a nested class. */
+FuncDeclaration *
+IRState::isClassNestedInFunction(ClassDeclaration * cd)
+{
+    FuncDeclaration * fd = NULL;
+    while (cd && cd->isNested())
+    {
+	Dsymbol * dsym = cd->toParent2();
+	if ( (fd = dsym->isFuncDeclaration()) )
+	    return fd;
+	else
+	    cd = dsym->isClassDeclaration();
+    }
+    return NULL;
+}
 
-/* For the purposes this is used, fd is assumed to be a nested
-   function or a method of a class that is (eventually) nested in a
+/* Return the parent function of a nested struct. */
+FuncDeclaration *
+IRState::isStructNestedInFunction(StructDeclaration * sd)
+{
+    FuncDeclaration * fd = NULL;
+    while (sd && sd->isNested())
+    {
+	Dsymbol * dsym = sd->toParent2();
+	if ( (fd = dsym->isFuncDeclaration()) )
+	    return fd;
+	else
+	    sd = dsym->isStructDeclaration();
+    }
+    return NULL;
+}
+
+/* For the purposes this is used, inner is assumed to be a nested
+   function or a method of a class or struct that is (eventually) nested in a
    function.
 */
-static bool
-isFuncNestedInFunc(FuncDeclaration * fd, FuncDeclaration *fo)
+bool
+IRState::isFuncNestedInFunction(FuncDeclaration * inner, FuncDeclaration * outer)
 {
-    if (fd == fo)
+    if (inner == outer)
 	return false;
 
-    while (fd)
+    while (inner)
     {
 	AggregateDeclaration * ad;
 	ClassDeclaration * cd;
+	StructDeclaration * sd;
 
-	if (fd == fo)
+	if (inner == outer)
 	{
-	    //fprintf(stderr, "%s is nested in %s\n", fd->toChars(), fo->toChars());
+	    //fprintf(stderr, "%s is nested in %s\n", inner->toChars(), outer->toChars());
 	    return true;
 	}
-	else if (fd->isNested())
-	    fd = fd->toParent2()->isFuncDeclaration();
-	else if ( (ad = fd->isThis()) && (cd = ad->isClassDeclaration()) )
-	{
-	    fd = NULL;
-	    while (cd && cd->isNested())
-	    {
-		Dsymbol * dsym = cd->toParent2();
-		if ( (fd = dsym->isFuncDeclaration()) )
-		    break;
-		else
-		    cd = dsym->isClassDeclaration();
-	    }
-	}
+	else if (inner->isNested())
+	    inner = inner->toParent2()->isFuncDeclaration();
+	else if ( (ad = inner->isThis()) && (cd = ad->isClassDeclaration()) )
+	    inner = isClassNestedInFunction(cd);
+	else if ( (ad = inner->isThis()) && (sd = ad->isStructDeclaration()) )
+	    inner = isStructNestedInFunction(sd);
 	else
 	    break;
     }
 
-    //fprintf(stderr, "%s is NOT nested in %s\n", fd->toChars(), fo->toChars());
+    //fprintf(stderr, "%s is NOT nested in %s\n", inner->toChars(), outer->toChars());
     return false;
 }
 
+
+#if V2
 FuncFrameInfo *
 IRState::getFrameInfo(FuncDeclaration *fd)
 {
@@ -2760,20 +2785,18 @@ IRState::getFrameInfo(FuncDeclaration *fd)
 	{
 	    AggregateDeclaration * ad;
 	    ClassDeclaration * cd;
+	    StructDeclaration * sd;
 
-	    if (ff != fd)
+	    if (ff != fd && getFrameInfo(ff)->creates_closure)
 	    {
-		if (getFrameInfo(ff)->creates_closure)
-		{
-		    for (int i = 0; i < ff->closureVars.dim; i++)
-		    {   VarDeclaration *v = (VarDeclaration *)ff->closureVars.data[i];
-			for (int j = 0; j < v->nestedrefs.dim; j++)
-			{   FuncDeclaration *fi = (FuncDeclaration *)v->nestedrefs.data[j];
-			    if (isFuncNestedInFunc(fi, fd))
-			    {
-				ffi->creates_closure = true;
-				goto L_done;
-			    }
+		for (int i = 0; i < ff->closureVars.dim; i++)
+		{   VarDeclaration *v = (VarDeclaration *)ff->closureVars.data[i];
+		    for (int j = 0; j < v->nestedrefs.dim; j++)
+		    {   FuncDeclaration *fi = (FuncDeclaration *)v->nestedrefs.data[j];
+			if (isFuncNestedInFunction(fi, fd))
+			{
+			    ffi->creates_closure = true;
+			    goto L_done;
 			}
 		    }
 		}
@@ -2782,17 +2805,9 @@ IRState::getFrameInfo(FuncDeclaration *fd)
 	    if (ff->isNested())
 		ff = ff->toParent2()->isFuncDeclaration();
 	    else if ( (ad = ff->isThis()) && (cd = ad->isClassDeclaration()) )
-	    {
-		ff = NULL;
-		while (cd && cd->isNested())
-		{
-		    Dsymbol * dsym = cd->toParent2();
-		    if ( (ff = dsym->isFuncDeclaration()) )
-			break;
-		    else
-			cd = dsym->isClassDeclaration();
-		}
-	    }
+		ff = isClassNestedInFunction(cd);
+	    else if ( (ad = ff->isThis()) && (sd = ad->isStructDeclaration()) )
+		ff = isStructNestedInFunction(sd);
 	    else
 		break;
 	}
@@ -2818,6 +2833,7 @@ IRState::getClosureRef(FuncDeclaration * outer_func)
     {
 	AggregateDeclaration * ad;
 	ClassDeclaration * cd;
+	StructDeclaration * sd;
 
 	gcc_assert(getFrameInfo(fd)->creates_closure); // remove this if we loosen creates_closure
 
@@ -2825,33 +2841,16 @@ IRState::getClosureRef(FuncDeclaration * outer_func)
 	result = indirect(result, ptr_type_node);
 
 	if (fd->isNested())
-	{
 	    fd = fd->toParent2()->isFuncDeclaration();
-	}
+	/* getClosureRef is only used to get the pointer to a function's frame
+	   (not a class instances.)  With the current implementation, the link
+	   the closure record always points to the outer function's frame even
+	   if there are intervening nested classes or structs.
+	   So, we can just skip over those... */
 	else if ( (ad = fd->isThis()) && (cd = ad->isClassDeclaration()) )
-	{
-	    fd = NULL;
-	    while (cd && cd->isNested())
-	    {
-		/* Shouldn't need to do this.  getClosureRef is only
-		   used to get the pointer to a function's frame (not
-		   a class instances.)  With the current implementation,
-		   the link the closure record always points to the
-		   outer function's frame even if there are intervening
-		   nested classes.  So, we can just skip over those... */
-		/*
-		tree vthis_field = cd->vthis->toSymbol()->Stree;
-		result = nop(result, cd->type->toCtype());
-		result = component(indirect(result), vthis_field);
-		*/
-
-		Dsymbol * dsym = cd->toParent2();
-		if ( (fd = dsym->isFuncDeclaration()) )
-		    break;
-		else
-		    cd = dsym->isClassDeclaration();
-	    }
-	}
+	    fd = isClassNestedInFunction(cd);
+	else if ( (ad = fd->isThis()) && (sd = ad->isStructDeclaration()) )
+	    fd = isStructNestedInFunction(sd);
 	else
 	    break;
     }
@@ -2868,8 +2867,8 @@ IRState::getClosureRef(FuncDeclaration * outer_func)
 	return d_null_pointer;
     }
 }
-
 #endif
+
 
 /* Return true if function F needs to have the static chain passed to
    it.  This only applies to nested function handling provided by the
@@ -2913,7 +2912,6 @@ IRState::toElemLvalue(Expression * e)
 	fprintf(stderr, "IRState::toElemLvalue TOKcast\n");
     else
     */
-
     if (e->op == TOKindex) {
 	IndexExp * ie = (IndexExp *) e;
 	Expression * e1 = ie->e1;
