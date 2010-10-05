@@ -586,10 +586,16 @@ Symbol *FuncDeclaration::toSymbol()
 		DECL_UNINLINABLE( fn_decl ) = 1;
 	    }
 #if V2
-	    if (isPure()) {
-		gen.addDeclAttribute( fn_decl, "pure" );
+	    if (storage_class & STCpure)
 		DECL_PURE_P( fn_decl ) = 1;
-	    }
+	    if (storage_class & STCnothrow)
+		TREE_NOTHROW( fn_decl ) = 1;
+	    // TODO: check 'immutable' means arguments are readonly...
+	    if (storage_class & STCinvariant)
+		TREE_READONLY( fn_decl ) = 1;
+	    if (storage_class & STCconst)
+		TREE_CONSTANT( fn_decl ) = 1;
+
 #endif
 
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
