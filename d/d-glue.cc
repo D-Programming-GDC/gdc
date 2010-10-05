@@ -714,7 +714,7 @@ CatExp::toElem(IRState * irs)
 	while (1)
 	{
 	    tree array_exp;
-	    if (irs->typesCompatible(oe->type->toBasetype(), elem_type))
+	    if (irs->typesCompatible(oe->type->toBasetype(), elem_type->toBasetype()))
 	    {
 		tree elem_var = NULL_TREE;
 		array_exp = one_elem_array(irs, oe, elem_var);
