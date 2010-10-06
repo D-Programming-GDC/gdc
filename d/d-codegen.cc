@@ -84,21 +84,6 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
 	    Expression * ie = exp_init->toExpression();
 	    if ( ! (init_val = assignValue(ie, v)) )
 		init_exp = ie->toElem(this);
-#if V2
-	// If the struct is nested in a function, need to setup __closptr.
-	if (v->type->ty == Tstruct) {
-	    StructDeclaration * sd = ((TypeStruct *)v->type)->sym;
-	    if (sd->isNested() && ie->op == TOKconstruct) {
-		tree vthis_field = sd->vthis->toSymbol()->Stree;
-		tree vthis_value = getVThisValue(sd, ie);
-
-    		init_exp = vmodify(var_exp, init_val);
-		tree setup_exp = build2(MODIFY_EXPR, TREE_TYPE(vthis_field),
-			component(var_exp, vthis_field), vthis_value);
-		init_exp = compound(init_exp, setup_exp);
-	    }
-	}
-#endif
 	}
 	else
 	    no_init = true;
@@ -2072,6 +2057,10 @@ IRState::imagPart(tree c) {
 tree
 IRState::assignValue(Expression * e, VarDeclaration * v)
 {
+    // Construct structs with an init expression.
+    if (v->type->ty == Tstruct)
+	return NULL_TREE;
+
     if (e->op == TOKassign || e->op == TOKconstruct || e->op == TOKblit)
     {
 	AssignExp * a_exp = (AssignExp *) e;
@@ -2804,7 +2793,7 @@ findThis(IRState * irs, ClassDeclaration * target_cd)
    This is here mostly due to removing duplicate code,
    and clean implementation purposes.  */
 tree
-IRState::getVThisValue(Dsymbol * decl, Expression * e)
+IRState::getVThis(Dsymbol * decl, Expression * e)
 {
     tree vthis_value = NULL_TREE;
 

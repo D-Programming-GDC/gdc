@@ -499,7 +499,7 @@ public:
     static bool isFuncNestedIn(FuncDeclaration * inner, FuncDeclaration * outer);
     static FuncDeclaration * isClassNestedInFunction(ClassDeclaration * cd);
 
-    tree getVThisValue(Dsymbol * decl, Expression * e);
+    tree getVThis(Dsymbol * decl, Expression * e);
 
     // Static chain for nested functions
     tree getFrameForFunction(FuncDeclaration * f);

@@ -1103,7 +1103,20 @@ AssignExp::toElem(IRState* irs) {
 	tree lhs = irs->toElemLvalue(e1);
 	tree result = build2(MODIFY_EXPR, type->toCtype(),
 	    lhs, irs->convertForAssignment(e2, e1->type));
+#if V2
+	// Maybe setup hidden pointer to outer scope context.
+	if (e1->type->ty == Tstruct) {
+	    StructDeclaration * sd = ((TypeStruct *)e1->type)->sym;
+	    if (sd->isNested() && op == TOKconstruct) {
+		tree vthis_field = sd->vthis->toSymbol()->Stree;
+		tree vthis_value = irs->getVThis(sd, this);
 
+		tree vthis_exp = build2(MODIFY_EXPR, TREE_TYPE(vthis_field),
+			irs->component(lhs, vthis_field), vthis_value);
+		result = irs->compound(result, vthis_exp);
+	    }
+	}
+#endif
 	return result;
     }
 }
@@ -1893,7 +1906,7 @@ NewExp::toElem(IRState * irs)
 			vthis_value = irs->convertTo(vthis_value, thisexp->type, outer_cd->type);
 		    }
 		} else {
-		    vthis_value = irs->getVThisValue(class_decl, this);
+		    vthis_value = irs->getVThis(class_decl, this);
 		}
 
 		if (vthis_value) {
@@ -2017,7 +2030,7 @@ NewExp::toElem(IRState * irs)
 		StructDeclaration * struct_decl = struct_type->sym;
 
 		if (struct_decl->isNested()) {
-		    tree vthis_value = irs->getVThisValue(struct_decl, this);
+		    tree vthis_value = irs->getVThis(struct_decl, this);
 		    tree vthis_field = struct_decl->vthis->toSymbol()->Stree;
 
 		    new_call = save_expr( new_call );
