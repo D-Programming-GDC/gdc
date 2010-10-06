@@ -1,16 +1,10 @@
 // Copyright (C) 2000-2001 by Chromium Communications
 // All Rights Reserved
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, September 2004
-*/
-
 #ifndef ROOT_MEM_H
 #define ROOT_MEM_H
 
-#include <sys/types.h> // for size_t
+#include <stddef.h>	// for size_t
 
 typedef void (*FINALIZERPROC)(void* pObj, void* pClientData);
 

@@ -297,6 +297,7 @@ struct Type : Object
     virtual Type *nextOf();
 
     static void error(Loc loc, const char *format, ...);
+    static void warning(Loc loc, const char *format, ...);
 
     // For backend
     virtual unsigned totym();
@@ -826,5 +827,7 @@ extern int Tsize_t;
 extern int Tptrdiff_t;
 
 #endif
+
+int arrayTypeCompatible(Loc loc, Type *t1, Type *t2);
 
 #endif /* DMD_MTYPE_H */

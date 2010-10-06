@@ -20,11 +20,7 @@
 */
 
 #include "symbol.h"
-#if V1
 #include "rmem.h"
-#else
-#include "mem.h"
-#endif
 
 Symbol::Symbol()
 {

@@ -15,9 +15,6 @@
    Modified by Vincenzo Ampolo, September 2009
 */
 
-// Issues with using -include total.h (defines integer_t) and then complex.h fails...
-#undef integer_t
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -29,21 +26,21 @@
 #include <complex.h>
 #endif
 
-#ifdef __APPLE__
-#define integer_t dmd_integer_t
-#endif
-
 #if _WIN32 && __DMC__
 extern "C" char * __cdecl __locale_decpoint;
 #endif
 
 #if IN_GCC
-#include "mem.h"
-#elif _WIN32
-#include "..\root\mem.h"
-#elif linux || __APPLE__
-#include "../root/mem.h"
+// Issues with using -include total.h (defines integer_t) and then complex.h fails...
+#undef integer_t
 #endif
+
+#ifdef __APPLE__
+#define integer_t dmd_integer_t
+#endif
+
+#include "rmem.h"
+
 //#include "port.h"
 #include "mtype.h"
 #include "init.h"
@@ -953,6 +950,18 @@ void Expression::error(const char *format, ...)
     va_start(ap, format);
     ::verror(loc, format, ap);
     va_end( ap );
+}
+
+void Expression::warning(const char *format, ...)
+{
+    if (global.params.warnings && !global.gag)
+    {
+	fprintf(stdmsg, "warning - ");
+	va_list ap;
+	va_start(ap, format);
+	::verror(loc, format, ap);
+	va_end( ap );
+    }
 }
 
 void Expression::rvalue()
@@ -3122,6 +3131,7 @@ Expression *StructLiteralExp::syntaxCopy()
 
 Expression *StructLiteralExp::semantic(Scope *sc)
 {   Expression *e;
+    int nfields = sd->fields.dim - sd->isnested;
 
 #if LOGSEMANTIC
     printf("StructLiteralExp::semantic('%s')\n", toChars());
@@ -3147,7 +3157,7 @@ Expression *StructLiteralExp::semantic(Scope *sc)
 	if (!e->type)
 	    error("%s has no value", e->toChars());
 	e = resolveProperties(sc, e);
-	if (i >= sd->fields.dim)
+	if (i >= nfields)
 	{   error("more initializers than fields of %s", sd->toChars());
 	    break;
 	}
@@ -3173,10 +3183,11 @@ Expression *StructLiteralExp::semantic(Scope *sc)
 
     /* Fill out remainder of elements[] with default initializers for fields[]
      */
-    for (size_t i = elements->dim; i < sd->fields.dim; i++)
+    for (size_t i = elements->dim; i < nfields; i++)
     {	Dsymbol *s = (Dsymbol *)sd->fields.data[i];
 	VarDeclaration *v = s->isVarDeclaration();
 	assert(v);
+	assert(!v->isThisDeclaration());
 
 	if (v->offset < offset)
 	{   e = NULL;
@@ -4748,7 +4759,9 @@ Expression *IsExp::semantic(Scope *sc)
 	m = targ->deduceType(NULL, tspec, parameters, &dedtypes);
 	if (m == MATCHnomatch ||
 	    (m != MATCHexact && tok == TOKequal))
+	{
 	    goto Lno;
+	}
 	else
 	{
 	    tded = (Type *)dedtypes.data[0];
@@ -4790,6 +4803,8 @@ Expression *IsExp::semantic(Scope *sc)
     else if (tspec)
     {
 	/* Evaluate to TRUE if targ matches tspec
+	 * is(targ == tspec)
+	 * is(targ : tspec)
 	 */
 	tspec = tspec->semantic(loc, sc);
 	//printf("targ  = %s\n", targ->toChars());
@@ -6020,6 +6035,7 @@ Expression *CallExp::semantic(Scope *sc)
     Type *t1;
     int istemp;
     Objects *targsi = NULL;	// initial list of template arguments
+    TemplateInstance *tierror = NULL;
 
 #if LOGSEMANTIC
     printf("CallExp::semantic() %s\n", toChars());
@@ -6109,6 +6125,7 @@ Expression *CallExp::semantic(Scope *sc)
 	    */
 		global.errors = errors;
 		targsi = ti->tiargs;
+		tierror = ti;			// for error reporting
 		e1 = new IdentifierExp(loc, ti->name);
 	    }
 	}
@@ -6135,6 +6152,7 @@ Expression *CallExp::semantic(Scope *sc)
 	    {
 		global.errors = errors;
 		targsi = ti->tiargs;
+		tierror = ti;		// for error reporting
 		e1 = new DotIdExp(loc, se->e1, ti->name);
 	    }
 	    else
@@ -6534,7 +6552,9 @@ Lagain:
 	    TemplateExp *te = (TemplateExp *)e1;
 	    f = te->td->deduceFunctionTemplate(sc, loc, targsi, NULL, arguments);
 	    if (!f)
-	    {	type = Type::terror;
+	    {	if (tierror)
+		    tierror->error("errors instantiating template");	// give better error message
+		type = Type::terror;
 		return this;
 	    }
 	    if (f->needThis() && hasThis(sc))
@@ -6677,8 +6697,8 @@ int CallExp::canThrow()
 #if V2
 int CallExp::isLvalue()
 {
-    if (type->toBasetype()->ty == Tstruct)
-	return 1;
+//    if (type->toBasetype()->ty == Tstruct)
+//	return 1;
     Type *tb = e1->type->toBasetype();
     if (tb->ty == Tfunction && ((TypeFunction *)tb)->isref)
 	return 1;		// function returns a reference
@@ -7487,7 +7507,12 @@ Expression *SliceExp::semantic(Scope *sc)
 	return e;
     }
 
-    type = t->nextOf()->arrayOf();
+    if (t->ty == Tarray)
+    {
+	type = e1->type;
+    }
+    else
+	type = t->nextOf()->arrayOf();
     return e;
 
 Lerror:
@@ -7824,8 +7849,14 @@ Expression *IndexExp::semantic(Scope *sc)
 
 	case Taarray:
 	{   TypeAArray *taa = (TypeAArray *)t1;
-
-	    e2 = e2->implicitCastTo(sc, taa->index);	// type checking
+	    if (!arrayTypeCompatible(e2->loc, e2->type, taa->index)
+#if IN_GCC
+		    || e2->op == TOKnull // NULL implicitly converts to any pointer type or dynamic array
+#endif
+	       )
+	    {
+		e2 = e2->implicitCastTo(sc, taa->index);	// type checking
+	    }
 	    type = taa->next;
 	    break;
 	}
@@ -9516,8 +9547,16 @@ Expression *InExp::semantic(Scope *sc)
     {
 	TypeAArray *ta = (TypeAArray *)t2b;
 
-	// Convert key to type of key
-	e1 = e1->implicitCastTo(sc, ta->index);
+	// Special handling for array keys
+	if (!arrayTypeCompatible(e1->loc, e1->type, ta->index)
+#if IN_GCC
+		|| e1->op == TOKnull // NULL implicitly converts to any pointer type or dynamic array
+#endif
+	   )
+	{
+	    // Convert key to type of key
+	    e1 = e1->implicitCastTo(sc, ta->index);
+	}
 
 	// Return type is pointer to value
 	type = ta->nextOf()->pointerTo();
@@ -9685,18 +9724,7 @@ Expression *EqualExp::semantic(Scope *sc)
     type = Type::tboolean;
 
     // Special handling for array comparisons
-    t1 = e1->type->toBasetype();
-    t2 = e2->type->toBasetype();
-
-    if ((t1->ty == Tarray || t1->ty == Tsarray || t1->ty == Tpointer) &&
-	(t2->ty == Tarray || t2->ty == Tsarray || t2->ty == Tpointer))
-    {
-	if (t1->nextOf()->implicitConvTo(t2->nextOf()) < MATCHconst &&
-	    t2->nextOf()->implicitConvTo(t1->nextOf()) < MATCHconst &&
-	    (t1->nextOf()->ty != Tvoid && t2->nextOf()->ty != Tvoid))
-	    error("array equality comparison type mismatch, %s vs %s", t1->toChars(), t2->toChars());
-    }
-    else
+    if (!arrayTypeCompatible(loc, e1->type, e2->type))
     {
 	if (e1->type != e2->type && e1->type->isfloating() && e2->type->isfloating())
 	{

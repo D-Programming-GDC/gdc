@@ -23,7 +23,7 @@
 #include <complex.h>
 #endif
 
-#include "mem.h"
+#include "rmem.h"
 #include "root.h"
 
 #include "mtype.h"

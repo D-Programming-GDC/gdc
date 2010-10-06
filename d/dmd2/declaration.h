@@ -445,6 +445,7 @@ struct ThisDeclaration : VarDeclaration
 {
     ThisDeclaration(Type *t);
     Dsymbol *syntaxCopy(Dsymbol *);
+    ThisDeclaration *isThisDeclaration() { return this; }
 };
 
 enum ILS

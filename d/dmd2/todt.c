@@ -1062,29 +1062,39 @@ void StructDeclaration::toDt(dt_t **pdt)
     for (i = 0; i < fields.dim; i++)
     {
 	VarDeclaration *v = (VarDeclaration *)fields.data[i];
-	Initializer *init;
-
 	//printf("\tfield '%s' voffset %d, offset = %d\n", v->toChars(), v->offset, offset);
 	dt = NULL;
-	init = v->init;
-	if (init)
-	{   //printf("\t\thas initializer %s\n", init->toChars());
-	    ExpInitializer *ei = init->isExpInitializer();
-	    Type *tb = v->type->toBasetype();
-	    if (ei && tb->ty == Tsarray)
-	    {
-#ifdef IN_GCC
-		dt = init->toDt();
-		dt = createTsarrayDt(dt, v->type);
-#else
-		((TypeSArray *)tb)->toDtElem(&dt, ei->exp);
-#endif
-	    }
-	    else
-		dt = init->toDt();
+	int sz;
+
+	if (v->storage_class & STCref)
+	{
+	    sz = PTRSIZE;
+	    if (v->offset >= offset)
+		dtnzeros(&dt, sz);
 	}
-	else if (v->offset >= offset)
-	    v->type->toDt(&dt);
+	else
+	{
+	    sz = v->type->size();
+	    Initializer *init = v->init;
+	    if (init)
+	    {	//printf("\t\thas initializer %s\n", init->toChars());
+		ExpInitializer *ei = init->isExpInitializer();
+		Type *tb = v->type->toBasetype();
+		if (ei && tb->ty == Tsarray)
+		{
+#ifdef IN_GCC
+		    dt = init->toDt();
+		    dt = createTsarrayDt(dt, v->type);
+#else
+		    ((TypeSArray *)tb)->toDtElem(&dt, ei->exp);
+#endif
+		}
+		else
+		    dt = init->toDt();
+	    }
+	    else if (v->offset >= offset)
+		v->type->toDt(&dt);
+	}
 	if (dt)
 	{
 	    if (v->offset < offset)

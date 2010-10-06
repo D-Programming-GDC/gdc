@@ -554,6 +554,8 @@ int DaysInMonth(int year, int month)
 	case 9:
 	case 11:
 	    return 30;
+	default:
+	    assert(0);
     }
 }
 

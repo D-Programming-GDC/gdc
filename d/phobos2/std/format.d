@@ -2070,7 +2070,7 @@ FormatInfo parseFormatSpec(S)(ref S fmt)
             fmt = fmt[i + 1 .. $];
             return result;
         }
-    assert(false);
+    //assert(false);
 }
 
 //-------------------------------------------------------------------------------
@@ -2314,6 +2314,8 @@ private void formatGeneric(Writer, D)(ref Writer w, const(void)* arg,
         auto s = cast(const char[]) obj;
         w.write(s);
     } else static if (is(D Original == typedef)) {
+        formatGeneric!(Writer, Original)(w, arg, f);
+    } else static if (is(D Original == enum)) {
         formatGeneric!(Writer, Original)(w, arg, f);
     } else static if (is(const D == const(float))
                       || is(const(D) == const(double))

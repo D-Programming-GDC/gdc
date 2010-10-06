@@ -30,22 +30,14 @@
 #include <sys/time.h>
 #endif
 #ifdef IN_GCC
-
 #include <time.h>
-#include "mem.h"
-
 #else
-
 #if __GNUC__
 #include <time.h>
 #endif
+#endif
 
-#if _WIN32
-#include "..\root\mem.h"
-#else
-#include "../root/mem.h"
-#endif
-#endif
+#include "rmem.h"
 
 #include "stringtable.h"
 
@@ -627,6 +619,7 @@ void Lexer::scan(Token *t)
 #if ! TEXTUAL_ASSEMBLY_OUT
 	    case '\\':			// escaped string literal
 	    {	unsigned c;
+		unsigned char *pstart = p;
 
 		stringbuffer.reset();
 		do
@@ -653,6 +646,8 @@ void Lexer::scan(Token *t)
 		memcpy(t->ustring, stringbuffer.data, stringbuffer.offset);
 		t->postfix = 0;
 		t->value = TOKstring;
+		if (!global.params.useDeprecated)
+		    error("Escape String literal %.*s is deprecated, use double quoted string literal \"%.*s\" instead", p - pstart, pstart, p - pstart, pstart);
 		return;
 	    }
 #endif

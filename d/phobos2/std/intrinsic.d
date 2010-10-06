@@ -28,6 +28,8 @@
 
 module std.intrinsic;
 
+//nothrow:
+
 /**
  * Scans the bits in v starting with bit 0, looking
  * for the first set bit.
@@ -36,18 +38,18 @@ module std.intrinsic;
  *	The return value is undefined if v is zero.
  */
 version (GNU)
-    int bsf(uint v)
-    {
-	uint m = 1;
-	uint i;
-	for (i = 0; i < 32; i++,m<<=1) {
-	    if (v&m)
-		return i;
-	}
-	return i; // supposed to be undefined
+pure nothrow int bsf(uint v)
+{
+    uint m = 1;
+    uint i;
+    for (i = 0; i < 32; i++,m<<=1) {
+	if (v&m)
+	    return i;
     }
+    return i; // supposed to be undefined
+}
 else
-    int bsf(uint v);
+    pure nothrow int bsf(uint v);
 
 /**
  * Scans the bits in v from the most significant bit
@@ -79,7 +81,7 @@ else
  *  bsr(x21) = 5
  */
 version (GNU)
-int bsr(uint v)
+pure nothrow int bsr(uint v)
 {
     uint m = 0x80000000;
     uint i;
@@ -90,7 +92,7 @@ int bsr(uint v)
     return i; // supposed to be undefined
 }
 else
-    int bsr(uint v);
+    pure nothrow int bsr(uint v);
 
 /**
  * Tests the bit.
@@ -101,8 +103,7 @@ int bt(in uint *p, uint bitnum)
     return (p[bitnum / (uint.sizeof*8)] & (1<<(bitnum & ((uint.sizeof*8)-1)))) ? -1 : 0 ;
 }
 else
-    int bt(in uint *p, uint bitnum);
-
+    pure nothrow int bt(in uint *p, uint bitnum);
 /**
  * Tests and complements the bit.
  */
@@ -209,12 +210,12 @@ else
 	becomes byte 0.
  */
 version (GNU)
-uint bswap(uint v)
+pure nothrow uint bswap(uint v)
 {
     return ((v&0xFF)<<24)|((v&0xFF00)<<8)|((v&0xFF0000)>>>8)|((v&0xFF000000)>>>24);
 }
 else
-    uint bswap(uint v);
+    pure nothrow uint bswap(uint v);
 
 
 /**

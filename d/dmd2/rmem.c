@@ -2,22 +2,18 @@
 /* Copyright (c) 2000 Digital Mars	*/
 /* All Rights Reserved 			*/
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, May 2005
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #if IN_GCC
-#include "mem.h"
-#elif linux || __APPLE__ || __FreeBSD__
-#include "../root/mem.h"
+#include "rmem.h"
 #else
-#include "mem.h"
+#if linux || __APPLE__ || __FreeBSD__
+#include "../root/rmem.h"
+#else
+#include "rmem.h"
+#endif
 #endif
 
 /* This implementation of the storage allocator uses the standard C allocation package.
@@ -118,7 +114,7 @@ void *Mem::mallocdup(void *o, size_t size)
 
 void Mem::error()
 {
-    fprintf(stderr, "Error: out of memory\n");
+    printf("Error: out of memory\n");
     exit(EXIT_FAILURE);
 }
 
@@ -138,7 +134,7 @@ void * operator new(size_t m_size)
     void *p = malloc(m_size);
     if (p)
 	return p;
-    fprintf(stderr, "Error: out of memory\n");
+    printf("Error: out of memory\n");
     exit(EXIT_FAILURE);
     return p;
 }

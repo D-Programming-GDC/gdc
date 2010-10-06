@@ -1,6 +1,16 @@
 // Written in the D programming language
 
 /**
+ * Elementary mathematical functions.
+ *
+ * The functionality closely follows the IEEE754-2008 standard for
+ * floating-point arithmetic, including the use of camelCase names rather
+ * than C99-style lower case names. All of these functions behave correctly
+ * when presented with an infinity or NaN.
+ *  
+ * Authors:
+ *      Walter Bright, Don Clugston
+ *      
  * Macros:
  *      WIKI = Phobos/StdMath
  *
@@ -12,7 +22,8 @@
  *
  *      NAN = $(RED NAN)
  *      SUP = <span style="vertical-align:super;font-size:smaller">$0</span>
- *      GAMMA =  &#915;
+ *      GAMMA = &#915;
+ *      THETA = &theta;
  *      INTEGRAL = &#8747;
  *      INTEGRATE = $(BIG &#8747;<sub>$(SMALL $1)</sub><sup>$2</sup>)
  *      POWER = $1<sup>$2</sup>
@@ -25,11 +36,10 @@
  *      PI = &pi;
  *      LT = &lt;
  *      GT = &gt;
+ *      SQRT = &radix;
+ *      HALF = &frac12;
  */
-
 /*
- * Authors:
- *      Walter Bright, Don Clugston
  * Copyright:
  *      Copyright (c) 2001-2005 by Digital Mars,
  *      All Rights Reserved,
@@ -64,8 +74,7 @@
    Modified by David Friedman, September 2007
 */
 
-
-module std.math;
+module(system) std.math;
 
 //debug=math;           // uncomment to turn on debugging printf's
 
@@ -86,6 +95,17 @@ version (GNU)
 	version = GCC_ExtAsm_X86;
 }
 
+version(GNU){
+    // GDC can't actually do inline asm.
+} else version(D_InlineAsm_X86) {
+    version = Naked_D_InlineAsm_X86;
+} else version(LDC) {    
+    import ldc.intrinsics;
+    version(X86)
+    {
+        version = LDC_X86;
+    }
+}
 
 private:
 /*
@@ -195,14 +215,11 @@ class NotImplemented : Error
     }
 }
 
-enum real E =          2.7182818284590452354L;  /** e */
- // 3.32193 fldl2t
-enum real LOG2T =      0x1.a934f0979a3715fcp+1; /** log<sub>2</sub>10 */
- // 1.4427 fldl2e
-enum real LOG2E =      0x1.71547652b82fe178p+0; /** log<sub>2</sub>e */
- // 0.30103 fldlg2
-enum real LOG2 =       0x1.34413509f79fef32p-2; /** log<sub>10</sub>2 */
-enum real LOG10E =     0.43429448190325182765;  /** log<sub>10</sub>e */
+enum real E =          2.7182818284590452354L;  /** e */ // 0x1.5BF0A8B1_45769535_5FF5p+1L
+enum real LOG2T =      0x1.a934f0979a3715fcp+1; /** $(SUB log, 2)10 */ // 3.32193 fldl2t  
+enum real LOG2E =      0x1.71547652b82fe178p+0; /** $(SUB log, 2)e */ // 1.4427 fldl2e
+enum real LOG2 =       0x1.34413509f79fef32p-2; /** $(SUB log, 10)2 */ // 0.30103 fldlg2
+enum real LOG10E =     0.43429448190325182765;  /** $(SUB log, 10)e */
 enum real LN2 =        0x1.62e42fefa39ef358p-1; /** ln 2 */  // 0.693147 fldln2
 enum real LN10 =       2.30258509299404568402;  /** ln 10 */
 enum real PI =         0x1.921fb54442d1846ap+1; /** $(_PI) */ // 3.14159 fldpi
@@ -210,9 +227,9 @@ enum real PI_2 =       1.57079632679489661923;  /** $(PI) / 2 */
 enum real PI_4 =       0.78539816339744830962;  /** $(PI) / 4 */
 enum real M_1_PI =     0.31830988618379067154;  /** 1 / $(PI) */
 enum real M_2_PI =     0.63661977236758134308;  /** 2 / $(PI) */
-enum real M_2_SQRTPI = 1.12837916709551257390;  /** 2 / &radic;$(PI) */
-enum real SQRT2 =      1.41421356237309504880;  /** &radic;2 */
-enum real SQRT1_2 =    0.70710678118654752440;  /** &radic;&frac12; */
+enum real M_2_SQRTPI = 1.12837916709551257390;  /** 2 / $(SQRT)$(PI) */
+enum real SQRT2 =      1.41421356237309504880;  /** $(SQRT)2 */
+enum real SQRT1_2 =    0.70710678118654752440;  /** $(SQRT)$(HALF) */
 
 /*
         Octal versions:
@@ -263,7 +280,7 @@ real abs(Num)(Num y)
 unittest
 {
     assert(isIdentical(abs(-0.0L), 0.0L));
-    assert(isnan(abs(real.nan)));
+    assert(isNaN(abs(real.nan)));
     assert(abs(-real.infinity) == real.infinity);
     assert(abs(-3.2Li) == 3.2L);
     assert(abs(71.6Li) == 71.6L);
@@ -311,7 +328,7 @@ unittest
  */
 
 version(GNU) alias std.c.math.cosl cos; else
-real cos(real x);       /* intrinsic */
+pure nothrow real cos(real x);       /* intrinsic */
 
 /***********************************
  * Returns sine of x. x is in radians.
@@ -327,7 +344,7 @@ real cos(real x);       /* intrinsic */
  */
 
 version(GNU) alias std.c.math.sinl sin; else
-real sin(real x);	/* intrinsic */
+pure nothrow real sin(real x);	/* intrinsic */
 
 
 /***********************************
@@ -335,13 +352,14 @@ real sin(real x);	/* intrinsic */
  *
  *  sin(z) = sin(z.re)*cosh(z.im) + cos(z.re)*sinh(z.im)i
  *
- * If both sin(&theta;) and cos(&theta;) are required,
- * it is most efficient to use expi(&theta).
+ * If both sin($(THETA)) and cos($(THETA)) are required,
+ * it is most efficient to use expi($(THETA)).
  */
 creal sin(creal z)
 {
   creal cs = expi(z.re);
-  return cs.im * cosh(z.im) + cs.re * sinh(z.im) * 1i;
+  creal csh = coshisinh(z.im);
+  return cs.im * csh.re + cs.re * csh.im * 1i;
 }
 
 /** ditto */
@@ -364,7 +382,8 @@ unittest
 creal cos(creal z)
 {
   creal cs = expi(z.re);
-  return cs.re * cosh(z.im) - cs.im * sinh(z.im) * 1i;
+  creal csh = coshisinh(z.im);
+  return cs.re * csh.re - cs.im * csh.im * 1i;
 }
  
 /** ditto */
@@ -392,8 +411,9 @@ unittest{
  */
 
 version(GNU) alias std.c.math.tanl tan; else
-real tan(real x)
+pure nothrow real tan(real x)
 {
+    version(Naked_D_InlineAsm_X86) {
     asm
     {
         fld     x[EBP]                  ; // load theta
@@ -426,6 +446,9 @@ trigerr:
 
 Lret:
     ;
+    } else {
+        return stdc.math.tanl(x);
+    }
 }
 
 unittest
@@ -450,18 +473,13 @@ unittest
 
             // special angles
             [   PI_4,   1],
-            //[ PI_2,   real.infinity],
+            //[   PI_2,   real.infinity], // PI_2 is not _exactly_ pi/2.
             [   3*PI_4, -1],
             [   PI,     0],
             [   5*PI_4, 1],
-            //[ 3*PI_2, -real.infinity],
+            //[   3*PI_2, -real.infinity],
             [   7*PI_4, -1],
             [   2*PI,   0],
-
-            // overflow
-            [   real.infinity,  real.nan],
-            [   real.nan,       real.nan],
-            //[   1e+100,       real.nan],
     ];
     int i;
 
@@ -478,14 +496,19 @@ unittest
         real t = tan(x);
 
         //printf("tan(%Lg) = %Lg, should be %Lg\n", x, t, r);
-        assert(mfeq(r, t, .0000001));
+        if (!isIdentical(r, t)) assert(fabs(r-t) <= .0000001);
 
         x = -x;
         r = -r;
         t = tan(x);
         //printf("tan(%Lg) = %Lg, should be %Lg\n", x, t, r);
-        assert(mfeq(r, t, .0000001));
+        if (!isIdentical(r, t) && !(r!<>=0 && t!<>=0)) assert(fabs(r-t) <= .0000001);
     }
+    // overflow
+    assert(isNaN(tan(real.infinity)));
+    assert(isNaN(tan(-real.infinity)));
+    // NaN propagation
+    assert(isIdentical( tan(NaN(0x0123L)), NaN(0x0123L) ));
 }
 
 /***************
@@ -573,11 +596,17 @@ real atan2(real y, real x)      { return std.c.math.atan2l(y,x); }
  *      $(TR $(TD $(PLUSMN)$(INFIN)) $(TD $(PLUSMN)0.0) $(TD no) )
  *      )
  */
-float cosh(float x)               { return std.c.math.coshf(x); }
+real cosh(real x)               {
+    //  cosh = (exp(x)+exp(-x))/2.
+    // The naive implementation works correctly. 
+    real y = exp(x);
+    return (y + 1.0/y) * 0.5;
+}
 /// ditto
-double cosh(double x)               { return std.c.math.cosh(x); }
+double cosh(double x)               { return cosh(cast(real)x); }
 /// ditto
-real cosh(real x)               { return std.c.math.coshl(x); }
+float cosh(float x)               { return cosh(cast(real)x); }
+
 
 /***********************************
  * Calculates the hyperbolic sine of x.
@@ -588,11 +617,23 @@ real cosh(real x)               { return std.c.math.coshl(x); }
  *      $(TR $(TD $(PLUSMN)$(INFIN)) $(TD $(PLUSMN)$(INFIN)) $(TD no))
  *      )
  */
-float sinh(float x)               { return std.c.math.sinhf(x); }
+real sinh(real x)
+{
+    //  sinh(x) =  (exp(x)-exp(-x))/2;    
+    // Very large arguments could cause an overflow, but
+    // the maximum value of x for which exp(x) + exp(-x)) != exp(x)
+    // is x = 0.5 * (real.mant_dig) * LN2. // = 22.1807 for real80.
+    if (fabs(x) > real.mant_dig * LN2) {
+        return copysign(0.5 * exp(fabs(x)), x);
+    }    
+    real y = expm1(x);
+    return 0.5 * y / (y+1) * (y+2);
+}
 /// ditto
-double sinh(double x)               { return std.c.math.sinh(x); }
+double sinh(double x)               { return sinh(cast(real)x); }
 /// ditto
-real sinh(real x)               { return std.c.math.sinhl(x); }
+float sinh(float x)               { return sinh(cast(real)x); }
+
 
 /***********************************
  * Calculates the hyperbolic tangent of x.
@@ -603,15 +644,43 @@ real sinh(real x)               { return std.c.math.sinhl(x); }
  *      $(TR $(TD $(PLUSMN)$(INFIN)) $(TD $(PLUSMN)1.0) $(TD no))
  *      )
  */
-float tanh(float x)               { return std.c.math.tanhf(x); }
+real tanh(real x)
+{
+    //  tanh(x) = (exp(x) - exp(-x))/(exp(x)+exp(-x))
+    if (fabs(x) > real.mant_dig * LN2) {
+        return copysign(1, x);        
+    }
+    real y = expm1(2*x);
+    return y / (y + 2);
+}
 /// ditto
-double tanh(double x)               { return std.c.math.tanh(x); }
+double tanh(double x)             { return tanh(cast(real)x); }
 /// ditto
-real tanh(real x)               { return std.c.math.tanhl(x); }
+float tanh(float x)               { return tanh(cast(real)x); }
 
-//real acosh(real x)            { return std.c.math.acoshl(x); }
-//real asinh(real x)            { return std.c.math.asinhl(x); }
-//real atanh(real x)            { return std.c.math.atanhl(x); }
+private:
+/* Returns cosh(x) + I * sinh(x)
+ * Only one call to exp() is performed.
+ */
+creal coshisinh(real x)
+{
+    // See comments for cosh, sinh.
+    if (fabs(x) > real.mant_dig * LN2) {
+        real y = exp(fabs(x));
+        return y*0.5 + 0.5i * copysign(y, x);
+    } else {
+        real y = expm1(x);
+        return (y + 1.0 + 1.0/(y + 1.0)) * 0.5 + 0.5i * y / (y+1) * (y+2);
+    }
+}
+
+unittest {
+    creal c = coshisinh(3.0);
+    assert(c.re == cosh(3.0));
+    assert(c.im == sinh(3.0));
+}
+
+public:
 
 /***********************************
  * Calculates the inverse hyperbolic cosine of x.
@@ -636,12 +705,17 @@ real acosh(real x)
     else
         return log(x + sqrt(x*x - 1));
 }
+/// ditto
+double acosh(double x)             { return acosh(cast(real)x); }
+/// ditto
+float acosh(float x)               { return acosh(cast(real)x); }
+
 
 unittest
 {
-    assert(isnan(acosh(0.9)));
-    assert(isnan(acosh(real.nan)));
-    assert(acosh(1)==0.0);
+    assert(isNaN(acosh(0.9)));
+    assert(isNaN(acosh(real.nan)));
+    assert(acosh(1.0)==0.0);
     assert(acosh(real.infinity) == real.infinity);
 }
 
@@ -670,6 +744,10 @@ real asinh(real x)
             return copysign(log1p(fabs(x) + x*x / (1 + sqrt(x*x + 1)) ), x);
     }
 }
+/// ditto
+double asinh(double x)             { return asinh(cast(real)x); }
+/// ditto
+float asinh(float x)               { return asinh(cast(real)x); }
 
 unittest
 {
@@ -677,7 +755,7 @@ unittest
     assert(isIdentical(asinh(-0.0), -0.0));
     assert(asinh(real.infinity) == real.infinity);
     assert(asinh(-real.infinity) == -real.infinity);
-    assert(isnan(asinh(real.nan)));
+    assert(isNaN(asinh(real.nan)));
 }
 
 /***********************************
@@ -702,13 +780,18 @@ real atanh(real x)
     // log( (1+x)/(1-x) ) == log ( 1 + (2*x)/(1-x) )
     return copysign(0.5 * log1p( 2 * x / (1 - x) ), x);
 }
+/// ditto
+double atanh(double x)             { return atanh(cast(real)x); }
+/// ditto
+float atanh(float x)               { return atanh(cast(real)x); }
+
 
 unittest
 {
     assert(isIdentical(atanh(0.0), 0.0));
     assert(isIdentical(atanh(-0.0),-0.0));
-    assert(isnan(atanh(real.nan)));
-    assert(isnan(atanh(-real.infinity)));
+    assert(isNaN(atanh(real.nan)));
+    assert(isNaN(atanh(-real.infinity)));
 }
 
 /*****************************************
@@ -717,7 +800,7 @@ unittest
  * greater than long.max, the result is
  * indeterminate.
  */
-long rndtol(real x);    /* intrinsic */
+pure nothrow long rndtol(real x);    /* intrinsic */
 
 
 /*****************************************
@@ -739,12 +822,21 @@ extern (C) real rndtonl(real x);
  *      )
  */
 
-version(GNU) float sqrt(float x) { return std.c.math.sqrtf(x); } else
-float sqrt(float x);    /* intrinsic */
-version(GNU) double sqrt(double x) { return std.c.math.sqrt(x); } else /// ditto
-double sqrt(double x);  /* intrinsic */ /// ditto
-version(GNU) real sqrt(real x) { return std.c.math.sqrtl(x); } else /// ditto
-real sqrt(real x);      /* intrinsic */ /// ditto
+version(GNU)
+{
+    float sqrt(float x)   { return std.c.math.sqrtf(x); }
+    double sqrt(double x) { return std.c.math.sqrt(x);  } // ditto
+    real sqrt(real x)     { return std.c.math.sqrtl(x); } // ditto
+}
+else
+{
+    pure nothrow
+    {
+	float sqrt(float x);    /* intrinsic */
+	double sqrt(double x);  /* intrinsic */ /// ditto
+	real sqrt(real x);      /* intrinsic */ /// ditto
+    }
+}
 
 creal sqrt(creal z)
 {
@@ -787,29 +879,61 @@ creal sqrt(creal z)
     return c;
 }
 
-/**********************
+/**
  * Calculates e$(SUP x).
  *
- *      $(TABLE_SV
- *      $(TR $(TH x)         $(TH exp(x)))
- *      $(TR $(TD +$(INFIN)) $(TD +$(INFIN)) )
- *      $(TR $(TD -$(INFIN)) $(TD +0.0) )
- *      )
+ *  $(TABLE_SV
+ *    $(TR $(TH x)             $(TH e$(SUP x)) )
+ *    $(TD +$(INFIN))          $(TD +$(INFIN)) )
+ *    $(TD -$(INFIN))          $(TD +0.0)      )
+ *    $(TR $(TD $(NAN))        $(TD $(NAN))    )
+ *  )
  */
-float exp(float x)                { return std.c.math.expf(x); }
+real exp(real x) {
+    version(Naked_D_InlineAsm_X86) {
+   //  e^x = 2^(LOG2E*x)
+   // (This is valid because the overflow & underflow limits for exp
+   // and exp2 are so similar).
+    return exp2(LOG2E*x);
+    } else {
+	return std.c.math.expl(x);
+    }
+}
 /// ditto
-double exp(double x)                { return std.c.math.exp(x); }
+double exp(double x)             { return std.c.math.exp(x); }
 /// ditto
-real exp(real x)                { return std.c.math.expl(x); }
+float exp(float x)               { return std.c.math.expf(x); }
 
-/**********************
+/**
+ * Calculates the value of the natural logarithm base (e)
+ * raised to the power of x, minus 1.
+ *
+ * For very small x, expm1(x) is more accurate
+ * than exp(x)-1.
+ *
+ *  $(TABLE_SV
+ *    $(TR $(TH x)             $(TH e$(SUP x)-1)  )
+ *    $(TR $(TD $(PLUSMN)0.0)  $(TD $(PLUSMN)0.0) )
+ *    $(TD +$(INFIN))          $(TD +$(INFIN))    )
+ *    $(TD -$(INFIN))          $(TD -1.0)         )
+ *    $(TR $(TD $(NAN))        $(TD $(NAN))       )
+ *  )
+ */
+version (GNU_msvcrt_math) { /* nothing */ } else
+real expm1(real x)
+{
+    return std.c.math.expm1l(x);
+}
+
+/**
  * Calculates 2$(SUP x).
  *
- *      $(TABLE_SV
- *      $(TR $(TH x)         $(TH exp2(x)))
- *      $(TR $(TD +$(INFIN)) $(TD +$(INFIN)))
- *      $(TR $(TD -$(INFIN)) $(TD +0.0))
- *      )
+ *  $(TABLE_SV
+ *    $(TR $(TH x)             $(TH exp2(x)    )
+ *    $(TD +$(INFIN))          $(TD +$(INFIN)) )
+ *    $(TD -$(INFIN))          $(TD +0.0)      )
+ *    $(TR $(TD $(NAN))        $(TD $(NAN))    )
+ *  )
  */
 version (GNU_Need_exp2_log2)
 {
@@ -827,23 +951,13 @@ double exp2(double x)		{ return std.c.math.exp2(x); }
 /// ditto
 real exp2(real x)               { return std.c.math.exp2l(x); }
 }
-/******************************************
- * Calculates the value of the natural logarithm base (e)
- * raised to the power of x, minus 1.
- *
- * For very small x, expm1(x) is more accurate
- * than exp(x)-1.
- *
- *      $(TABLE_SV
- *      $(TR $(TH x)            $(TH e$(SUP x)-1))
- *      $(TR $(TD $(PLUSMN)0.0) $(TD $(PLUSMN)0.0))
- *      $(TR $(TD +$(INFIN))    $(TD +$(INFIN)))
- *      $(TR $(TD -$(INFIN))    $(TD -1.0))
- *      )
- */
 
-version (GNU_msvcrt_math) { /* nothing */ } else
-real expm1(real x)              { return std.c.math.expm1l(x); }
+unittest{
+    assert(exp2(0.5L)== SQRT2);
+    assert(exp2(8.0L) == 256.0);
+    assert(exp2(-9.0L)== 1.0L/512.0);
+    assert(exp(3.0L) == E*E*E);
+}
 
 /**
  * Calculate cos(y) + i sin(y).
@@ -880,15 +994,16 @@ unittest
     assert(expi(1.3e5L) == cos(1.3e5L) + sin(1.3e5L) * 1i);
     assert(expi(0.0L) == 1L + 0.0Li);
 }
-
+    
 /*********************************************************************
  * Separate floating point value into significand and exponent.
  *
  * Returns:
- *      Calculate and return <i>x</i> and exp such that
- *      value =<i>x</i>*2$(SUP exp) and
- *      .5 $(LT)= |<i>x</i>| $(LT) 1.0<br>
- *      <i>x</i> has same sign as value.
+ *      Calculate and return $(I x) and $(I exp) such that
+ *      value =$(I x)*2$(SUP exp) and
+ *      .5 $(LT)= |$(I x)| $(LT) 1.0
+ *      
+ *      $(I x) has same sign as value.
  *
  *      $(TABLE_SV
  *      $(TR $(TH value)           $(TH returns)         $(TH exp))
@@ -923,22 +1038,17 @@ real frexp(real value, out int exp)
             }
         } else {
             exp = ex - F.EXPBIAS;
-            vu[F.EXPPOS_SHORT] =
-                cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FFE);
+            vu[F.EXPPOS_SHORT] = (0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FFE;
         }
     } else if (!*vl) {
         // value is +-0.0
         exp = 0;
     } else {
         // denormal
-        int i = -0x3FFD;
-        do {
-            i--;
-            *vl <<= 1;
-        } while (*vl > 0);
-        exp = i;
-        vu[F.EXPPOS_SHORT] =
-            cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FFE);
+        value *= F.POW2MANTDIG;
+        ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
+        exp = ex - F.EXPBIAS - 63;
+        vu[F.EXPPOS_SHORT] = (0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FFE;
     }
   } else static if (real.mant_dig == 113) { // quadruple      
         if (ex) { // If exponent is non-zero
@@ -994,7 +1104,7 @@ real frexp(real value, out int exp)
         sgn = cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT])| 0x3FE0);
         *vl &= 0x7FFF_FFFF_FFFF_FFFF;
 
-        int i = -0x3FD+11;
+        int i = -0x3FD + 11;
         do {
             i--;
             *vl <<= 1;
@@ -1082,7 +1192,7 @@ unittest
  * Extracts the exponent of x as a signed integral value.
  *
  * If x is not a special value, the result is the same as
- * <tt>cast(int)logb(x)</tt>.
+ * $(D cast(int)logb(x)).
  *
  *      $(TABLE_SV
  *      $(TR $(TH x)                $(TH ilogb(x))     $(TH Range error?))
@@ -1103,7 +1213,7 @@ alias std.c.math.FP_ILOGBNAN FP_ILOGBNAN;
  */
 
 version(GNU) alias std.c.math.ldexpl ldexp; else
-real ldexp(real n, int exp);    /* intrinsic */
+pure nothrow real ldexp(real n, int exp);    /* intrinsic */
 
 /**************************************
  * Calculate the natural logarithm of x.
@@ -1150,7 +1260,7 @@ real log1p(real x)              { return std.c.math.log1pl(x); }
 
 /***************************************
  * Calculates the base-2 logarithm of x:
- * log<sub>2</sub>x
+ * $(SUB log, 2)x
  *
  *  $(TABLE_SV
  *  $(TR $(TH x)            $(TH log2(x))   $(TH divide by 0?) $(TH invalid?))
@@ -1248,7 +1358,7 @@ real cbrt(real x)               { return std.c.math.cbrtl(x); }
  *      )
  */
 version (GNU) alias std.c.math.fabsl fabs; else
-real fabs(real x);      /* intrinsic */
+pure nothrow real fabs(real x);      /* intrinsic */
 
 
 /***********************************************************************
@@ -1287,12 +1397,12 @@ real hypot(real x, real y)
     int ex, ey, e;
 
     // Note, hypot(INFINITY, NAN) = INFINITY.
-    if (isinf(x) || isinf(y))
+    if (isInfinity(x) || isInfinity(y))
         return real.infinity;
 
-    if (isnan(x))
+    if (isNaN(x))
         return x;
-    if (isnan(y))
+    if (isNaN(y))
         return y;
 
     re = fabs(x);
@@ -1350,7 +1460,7 @@ unittest
         [ 0,      -0,     0],
         [ 3,      4,      5],
         [ -300,   -400,   500],
-        [ real.min, real.min, 4.75473e-4932L],
+        [ real.min, real.min, 0x1.6a09e667f3bcc908p-16382L],
         [ real.max/2, real.max/2, 0x1.6a09e667f3bcc908p+16383L],
         [ real.infinity, real.nan, real.infinity],
         [ real.nan, real.nan, real.nan],
@@ -1365,7 +1475,7 @@ unittest
         real y = vals[i][1];
         real z = vals[i][2];
         real h = hypot(x, y);
-        assert(mfeq(z, h, .0000001));
+        assert(isIdentical(z, h));
     }
 }
 
@@ -1416,7 +1526,7 @@ real lgamma(real x)
  *  Like x!, $(GAMMA)(x+1) = x*$(GAMMA)(x).
  *
  *  Mathematically, if z.re > 0 then
- *   $(GAMMA)(z) = $(INTEGRATE 0, &infin;) $(POWER t, z-1)$(POWER e, -t) dt
+ *   $(GAMMA)(z) = $(INTEGRATE 0, $(INFIN)) $(POWER t, z-1)$(POWER e, -t) dt
  *
  *    $(TABLE_SV
  *      $(TR $(TH x)              $(TH $(GAMMA)(x))       $(TH invalid?))
@@ -1476,11 +1586,11 @@ real nearbyint(real x) { return std.c.math.nearbyintl(x); }
  * mode.
  * If the return value is not equal to x, the FE_INEXACT
  * exception is raised.
- * <b>nearbyint</b> performs
+ * $(B nearbyint) performs
  * the same operation, but does not set the FE_INEXACT exception.
  */
 version(GNU) alias std.c.math.rintl rint; else
-real rint(real x);      /* intrinsic */
+pure nothrow real rint(real x);      /* intrinsic */
 
 /***************************************
  * Rounds x to the nearest integer value, using the current rounding
@@ -1533,11 +1643,11 @@ version (GNU_Need_round)
     }
     unittest {
 	real r;
-	assert(isnan(round(real.nan)));
+	assert(isNan(round(real.nan)));
 	r = round(real.infinity);
-	assert(isinf(r) && r > 0);
+	assert(isInfinity(r) && r > 0);
 	r = round(-real.infinity);
-	assert(isinf(r) && r < 0);
+	assert(isInfinity(r) && r < 0);
 	assert(round(3.4) == 3);
 	assert(round(3.5) == 4);
 	assert(round(3.6) == 4);
@@ -1577,10 +1687,10 @@ version (GNU_Need_trunc)
     {
 	real r;
 	r = trunc(real.infinity);
-	assert(isinf(r) && r > 0);
+	assert(isInfinity(r) && r > 0);
 	r = trunc(-real.infinity);
-	assert(isinf(r) && r < 0);
-	assert(isnan(trunc(real.nan)));
+	assert(isInfinity(r) && r < 0);
+	assert(isNan(trunc(real.nan)));
 	assert(trunc(3.3) == 3);
 	assert(trunc(3.6) == 3);
 	assert(trunc(-3.3) == -3);
@@ -1629,9 +1739,9 @@ import gcc.fpcls;
  * Returns !=0 if e is a NaN.
  */
 
-int isnan(real x) { return fpclassify(x)==FP_NAN; }
+int isNaN(real x) { return fpclassify(x)==FP_NAN; }
 /*
-int isnan(real x)
+int isNaN(real x)
 {
   alias floatTraits!(real) F;
   static if (real.mant_dig==53) { // double
@@ -1656,25 +1766,25 @@ int isnan(real x)
 
 unittest
 {
-    assert(isnan(float.nan));
-    assert(isnan(-double.nan));
-    assert(isnan(real.nan));
+    assert(isNaN(float.nan));
+    assert(isNaN(-double.nan));
+    assert(isNaN(real.nan));
 
-    assert(!isnan(53.6));
-    assert(!isnan(float.infinity));
+    assert(!isNaN(53.6));
+    assert(!isNaN(float.infinity));
 }
 
 /*********************************
  * Returns !=0 if e is finite (not infinite or $(NAN)).
  */
 
-int isfinite(real x)
+int isFinite(real x)
 {
     int r = fpclassify(x);
     return r != FP_NAN && r != FP_INFINITE;
 }
 /*
-int isfinite(real e)
+int isFinite(real e)
 {
     alias floatTraits!(real) F;
     ushort* pe = cast(ushort *)&e;
@@ -1684,9 +1794,9 @@ int isfinite(real e)
 
 unittest
 {
-    assert(isfinite(1.23));
-    assert(!isfinite(double.infinity));
-    assert(!isfinite(float.nan));
+    assert(isFinite(1.23));
+    assert(!isFinite(double.infinity));
+    assert(!isFinite(float.nan));
 }
 
 
@@ -1698,24 +1808,24 @@ unittest
  * be converted to normal reals.
  */
 
-int isnormal(float x) { return fpclassify(x)==FP_NORMAL; }
+int isNormal(float x) { return fpclassify(x)==FP_NORMAL; }
 
 /// ditto
 
-int isnormal(double x) { return fpclassify(x)==FP_NORMAL; }
+int isNormal(double x) { return fpclassify(x)==FP_NORMAL; }
 
 /// ditto
 
-int isnormal(real x) { return fpclassify(x)==FP_NORMAL; }
+int isNormal(real x) { return fpclassify(x)==FP_NORMAL; }
 
 /*
-int isnormal(X)(X x)
+int isNormal(X)(X x)
 {
     alias floatTraits!(X) F;
 
     static if(real.mant_dig==106) { // doubledouble
         // doubledouble is normal if the least significant part is normal.
-        return isnormal((cast(double*)&x)[MANTISSA_LSB]);
+        return isNormal((cast(double*)&x)[MANTISSA_LSB]);
     } else {
 	ushort e = F.EXPMASK & (cast(ushort *)&x)[F.EXPPOS_SHORT];
         return (e != F.EXPMASK && e!=0);
@@ -1729,16 +1839,16 @@ unittest
     double d = 500;
     real e = 10e+48;
 
-    assert(isnormal(f));
-    assert(isnormal(d));
-    assert(isnormal(e));
+    assert(isNormal(f));
+    assert(isNormal(d));
+    assert(isNormal(e));
     f = d = e = 0;
-    assert(!isnormal(f));
-    assert(!isnormal(d));
-    assert(!isnormal(e));
-    assert(!isnormal(real.infinity));
-    assert(isnormal(-real.max));
-    assert(!isnormal(real.min/4));
+    assert(!isNormal(f));
+    assert(!isNormal(d));
+    assert(!isNormal(e));
+    assert(!isNormal(real.infinity));
+    assert(isNormal(-real.max));
+    assert(!isNormal(real.min/4));
 
 }
 
@@ -1751,22 +1861,22 @@ unittest
  * be converted to normal reals.
  */
 
-int issubnormal(float x) { return fpclassify(x) == FP_SUBNORMAL; }
+int isSubnormal(float x) { return fpclassify(x) == FP_SUBNORMAL; }
 
 unittest
 {
     float f = 3.0;
 
-    for (f = 1.0; !issubnormal(f); f /= 2)
+    for (f = 1.0; !isSubnormal(f); f /= 2)
         assert(f != 0);
 }
 
 /// ditto
 
-int issubnormal(double x) { return fpclassify(x) == FP_SUBNORMAL; }
+int isSubnormal(double x) { return fpclassify(x) == FP_SUBNORMAL; }
 
 /*
-int issubnormal(double d)
+int isSubnormal(double d)
 {
     uint *p = cast(uint *)&d;
     return (p[MANTISSA_MSB] & 0x7FF0_0000) == 0
@@ -1778,20 +1888,20 @@ unittest
 {
     double f;
 
-    for (f = 1; !issubnormal(f); f /= 2)
+    for (f = 1; !isSubnormal(f); f /= 2)
         assert(f != 0);
 }
 
 /// ditto
 
-int issubnormal(real x) { return fpclassify(x) == FP_SUBNORMAL; }
+int isSubnormal(real x) { return fpclassify(x) == FP_SUBNORMAL; }
 
 /*
-int issubnormal(real x)
+int isSubnormal(real x)
 {
     alias floatTraits!(real) F;
     static if (real.mant_dig == 53) { // double
-        return issubnormal(cast(double)x);
+        return isSubnormal(cast(double)x);
     } else static if (real.mant_dig == 113) { // quadruple
         ushort e = F.EXPMASK & (cast(ushort *)&x)[F.EXPPOS_SHORT];
         long*   ps = cast(long *)&x;
@@ -1803,7 +1913,7 @@ int issubnormal(real x)
 
         return (pe[F.EXPPOS_SHORT] & F.EXPMASK) == 0 && *ps > 0;
     } else { // double double
-        return issubnormal(cast(double*)(&x)[MANTISSA_MSB]);
+        return isSubnormal(cast(double*)(&x)[MANTISSA_MSB]);
     }
 }
 */
@@ -1811,7 +1921,7 @@ unittest
 {
     real f;
 
-    for (f = 1; !issubnormal(f); f /= 2)
+    for (f = 1; !isSubnormal(f); f /= 2)
         assert(f != 0);
 }
 
@@ -1819,10 +1929,10 @@ unittest
  * Return !=0 if e is $(PLUSMN)$(INFIN).
  */
 
-int isinf(real x) { return fpclassify(x)==FP_INFINITE; }
+int isInfinity(real x) { return fpclassify(x)==FP_INFINITE; }
 
 /*
-int isinf(real x)
+int isInfinity(real x)
 {
     alias floatTraits!(real) F;
     static if (real.mant_dig == 53) { // double
@@ -1846,12 +1956,12 @@ int isinf(real x)
     
 unittest
 {
-    assert(isinf(float.infinity));
-    assert(!isinf(float.nan));
-    assert(isinf(double.infinity));
-    assert(isinf(-real.infinity));
+    assert(isInfinity(float.infinity));
+    assert(!isInfinity(float.nan));
+    assert(isInfinity(double.infinity));
+    assert(isInfinity(-real.infinity));
 
-    assert(isinf(-1.0 / 0.0));
+    assert(isInfinity(-1.0 / 0.0));
 }
 
 /*********************************
@@ -1937,7 +2047,7 @@ unittest
     assert(e == -21);
 
     e = copysign(real.nan, -23.8);
-    assert(isnan(e) && signbit(e));
+    assert(isNaN(e) && signbit(e));
 }
 
 /*********************************
@@ -1960,15 +2070,127 @@ unittest
     assert(sgn(-0.0) == 0);
 }
 
-/******************************************
- * Creates a quiet NAN with the information from tagp[] embedded in it.
+// Functions for NaN payloads
+/*
+ * A 'payload' can be stored in the significand of a $(NAN). One bit is required
+ * to distinguish between a quiet and a signalling $(NAN). This leaves 22 bits
+ * of payload for a float; 51 bits for a double; 62 bits for an 80-bit real;
+ * and 111 bits for a 128-bit quad.
+*/
+/**
+ * Create a quiet $(NAN), storing an integer inside the payload.
  *
- * BUGS: DMD always returns real.nan, ignoring the payload.
+ * For floats, the largest possible payload is 0x3F_FFFF.
+ * For doubles, it is 0x3_FFFF_FFFF_FFFF.
+ * For 80-bit or 128-bit reals, it is 0x3FFF_FFFF_FFFF_FFFF.
  */
-version (GNU_Need_nan)
-real nan(in char[] tagp) { return real.nan; } // could implement with strtod, but need test if THAT works first
-else
-real nan(in char[] tagp) { return std.c.math.nanl(toStringz(tagp)); }
+pure nothrow real NaN(ulong payload)
+{
+    static if (real.mant_dig == 64) { //real80
+	ulong v = 3; // implied bit = 1, quiet bit = 1
+    } else {
+	ulong v = 2; // no implied bit. quiet bit = 1
+    }
+
+    ulong a = payload;
+
+    // 22 Float bits
+    ulong w = a & 0x3F_FFFF;
+    a -= w;
+
+    v <<=22;
+    v |= w;
+    a >>=22;
+
+    // 29 Double bits
+    v <<=29;
+    w = a & 0xFFF_FFFF;
+    v |= w;
+    a -= w;
+    a >>=29;
+
+    static if (real.mant_dig == 53) { // double
+	v |=0x7FF0_0000_0000_0000;
+	real x;
+	* cast(ulong *)(&x) = v;
+	return x;
+    } else {
+	v <<=11;
+	a &= 0x7FF;
+	v |= a;
+	real x = real.nan;
+	// Extended real bits
+	static if (real.mant_dig==113) { //quadruple
+	    v<<=1; // there's no implicit bit
+	    version(LittleEndian) {
+		*cast(ulong*)(6+cast(ubyte*)(&x)) = v;
+	    } else {
+		*cast(ulong*)(2+cast(ubyte*)(&x)) = v;
+	    }
+	} else { // real80
+	    * cast(ulong *)(&x) = v;
+	}
+	return x;
+    }
+}
+
+/**
+ * Extract an integral payload from a $(NAN).
+ *
+ * Returns:
+ * the integer payload as a ulong.
+ *
+ * For floats, the largest possible payload is 0x3F_FFFF.
+ * For doubles, it is 0x3_FFFF_FFFF_FFFF.
+ * For 80-bit or 128-bit reals, it is 0x3FFF_FFFF_FFFF_FFFF.
+ */
+pure nothrow ulong getNaNPayload(real x)
+{
+    //  assert(isNaN(x));
+    static if (real.mant_dig == 53) {
+	ulong m = *cast(ulong *)(&x);
+	// Make it look like an 80-bit significand
+	// Skip exponent, and quiet bit
+	m &= 0x0007_FFFF_FFFF_FFFF;
+	m <<= 10;
+    } else static if (real.mant_dig==113) { // quadruple
+	version(LittleEndian) {
+	    ulong m = *cast(ulong*)(6+cast(ubyte*)(&x));
+	} else {
+	    ulong m = *cast(ulong*)(2+cast(ubyte*)(&x));
+	}
+	m>>=1; // there's no implicit bit
+    } else {
+	ulong m = *cast(ulong *)(&x);
+    }
+    // ignore implicit bit and quiet bit
+    ulong f = m & 0x3FFF_FF00_0000_0000L;
+    ulong w = f >>> 40;
+    w |= (m & 0x00FF_FFFF_F800L) << (22 - 11);
+    w |= (m & 0x7FF) << 51;
+    return w;
+}
+
+debug(UnitTest) {
+unittest {
+    real nan4 = NaN(0x789_ABCD_EF12_3456);
+    static if (real.mant_dig == 64 || real.mant_dig==113) {
+	assert (getNaNPayload(nan4) == 0x789_ABCD_EF12_3456);
+    } else {
+	assert (getNaNPayload(nan4) == 0x1_ABCD_EF12_3456);
+    }
+    double nan5 = nan4;
+    assert (getNaNPayload(nan5) == 0x1_ABCD_EF12_3456);
+    float nan6 = nan4;
+    assert (getNaNPayload(nan6) == 0x12_3456);
+    nan4 = NaN(0xFABCD);
+    assert (getNaNPayload(nan4) == 0xFABCD);
+    nan6 = nan4;
+    assert (getNaNPayload(nan6) == 0xFABCD);
+    nan5 = NaN(0x100_0000_0000_3456);
+    assert(getNaNPayload(nan5) == 0x0000_0000_3456);
+}
+}
 
 /**
  * Calculate the next largest floating point value after x.
@@ -2353,14 +2575,14 @@ F pow(F)(F x, F y) if (isFloatingPoint!(F))
     //version (linux) // C pow() often does not handle special values correctly
     version (GNU) // ...assume the same for all GCC targets
     {
-        if (isnan(y))
+        if (isNaN(y))
             return y;
 
         if (y == 0)
             return 1;           // even if x is $(NAN)
-        if (isnan(x) && y != 0)
+        if (isNaN(x) && y != 0)
             return x;
-        if (isinf(y))
+        if (isInfinity(y))
         {
             if (fabs(x) > 1)
             {
@@ -2381,7 +2603,7 @@ F pow(F)(F x, F y) if (isFloatingPoint!(F))
                     return +0.0;
             }
         }
-        if (isinf(x))
+        if (isInfinity(x))
         {
             if (signbit(x))
             {   long i;
@@ -2458,25 +2680,6 @@ unittest
     assert(pow(x, -2) == 1 / (x * x));
     assert(pow(x, -3) == 1 / (x * x * x));
     assert(pow(x, -8) == 1 / ((x * x) * (x * x) * (x * x) * (x * x)));
-}
-
-/****************************************
- * Simple function to compare two floating point values
- * to a specified precision.
- * Returns:
- *      1       match
- *      0       nomatch
- */
-
-private int mfeq(real x, real y, real precision)
-{
-    if (x == y)
-        return 1;
-    if (isnan(x))
-        return isnan(y);
-    if (isnan(y))
-        return 0;
-    return fabs(x - y) <= precision;
 }
 
 version (X86)
@@ -2752,8 +2955,8 @@ version (D_InlineAsm_X86)
 }
 
 /***********************************
- * Evaluate polynomial A(x) = $(SUB a, 0) + $(SUB a, 1)x + $(SUB a, 2)&sup2;
- *                          + $(SUB a,3)x&sup3; ...
+ * Evaluate polynomial A(x) = $(SUB a, 0) + $(SUB a, 1)x + $(SUB a, 2)$(POWER x,2)
+ *                          + $(SUB a,3)$(POWER x,3); ...
  * Uses Horner's rule A(x) = $(SUB a, 0) + x($(SUB a, 1) + x($(SUB a, 2) 
  *                         + x($(SUB a, 3) + ...)))
  * Params:
@@ -2928,3 +3131,10 @@ unittest
     double[] arr2 = [ 1.001, 1.999, 3 ];
     assert(approxEqual(arr1, arr2));
 }
+
+// Included for backwards compatibility with Phobos1
+alias isNaN isnan;
+alias isFinite isfinite;
+alias isNormal isnormal;
+alias isSubnormal issubnormal;
+alias isInfinity isinf;
