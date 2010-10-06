@@ -31,8 +31,8 @@
 #include "cond.h"
 #include "mars.h"
 
-#if ! V2
 #include "async.h"
+#if ! V2
 #include "json.h"
 #endif
 
@@ -967,9 +967,7 @@ d_parse_file (int /*set_yydebug*/)
     an_output_module = NULL;
     Array modules; // vs. outmodules... = [an_output_module] or modules
     modules.reserve(num_in_fnames);
-#if ! V2
     AsyncRead *aw;
-#endif
 
     // %% FIX
     if ( ! main_input_filename ) {
@@ -1055,7 +1053,6 @@ d_parse_file (int /*set_yydebug*/)
     //global.params.verbose = 1;
 
     // Read files
-#if ! V2
     aw = AsyncRead::create(modules.dim);
     for (i = 0; i < modules.dim; i++)
     {
@@ -1072,13 +1069,7 @@ d_parse_file (int /*set_yydebug*/)
 	}
     }
     AsyncRead::dispose(aw);
-#else
-    for (i = 0; i < modules.dim; i++)
-    {
-	m = (Module *)modules.data[i];
-	m->read(0);
-    }
-#endif
+
     // Parse files
     for (i = 0; i < modules.dim; i++)
     {

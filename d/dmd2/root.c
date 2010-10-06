@@ -39,7 +39,7 @@
 //#include "port.h"
 #include "root.h"
 #include "dchar.h"
-#include "mem.h"
+#include "rmem.h"
 
 #if 0 //__SC__ //def DEBUG
 extern "C" void __cdecl _assert(void *e, void *f, unsigned line)
@@ -335,7 +335,9 @@ char *FileName::combine(const char *path, const char *name)
     }
 #endif
 #if _WIN32
-    if (path[pathlen - 1] != '\\' && path[pathlen - 1] != ':' && path[pathlen - 1] != '/')
+    if (path[pathlen - 1] != '\\' &&
+	path[pathlen - 1] != ':'  &&
+	path[pathlen - 1] != '/')
     {	f[pathlen] = '\\';
 	pathlen++;
     }
@@ -581,8 +583,15 @@ char *FileName::name(const char *str)
 #if _WIN32
 	    case '/':
 	    case '\\':
-	    case ':':
 		return e + 1;
+	    case ':':
+		/* The ':' is a drive letter only if it is the second
+		 * character or the last character,
+		 * otherwise it is an ADS (Alternate Data Stream) separator.
+		 * Consider ADS separators as part of the file name.
+		 */
+		if (e == str + 1 || e == str + len - 1)
+		    return e + 1;
 #endif
 	    default:
 		if (e == str)
@@ -655,7 +664,9 @@ char *FileName::replaceName(char *path, char *name)
     }
 #endif
 #if _WIN32
-    if (path[pathlen - 1] != '\\' && path[pathlen - 1] != ':' && path[pathlen - 1] != '/')
+    if (path[pathlen - 1] != '\\' &&
+	path[pathlen - 1] != '/' &&
+	path[pathlen - 1] != ':')
     {	f[pathlen] = '\\';
 	pathlen++;
     }
@@ -821,8 +832,8 @@ void FileName::ensurePathExists(const char *path)
 	    if (*p)
 	    {
 #if _WIN32
-		size_t len = strlen(p);
-		if (len > 2 && p[-1] == ':')
+		size_t len = strlen(path);
+		if (len > 2 && p[-1] == ':' && path + 2 == p)
 		{   mem.free(p);
 		    return;
 		}
