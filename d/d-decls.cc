@@ -554,8 +554,10 @@ Symbol *FuncDeclaration::toSymbol()
 		if (is_template_member && outer_func)
 		{
 		    Symbol * outer_sym = outer_func->toSymbol();
+#if ! V2
 		    // TODO: This could currently fail on D2
 		    assert(outer_sym->outputStage != Finished);
+#endif
 		    if (! outer_sym->otherNestedFuncs)
 			outer_sym->otherNestedFuncs = new FuncDeclarations;
 		    outer_sym->otherNestedFuncs->push(this);

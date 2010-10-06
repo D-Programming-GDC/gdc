@@ -468,9 +468,6 @@ public:
 
     static tree label(Loc loc, Identifier * ident = 0);
 
-    // Static chain for nested functions
-    tree getFrameForFunction(FuncDeclaration * f);
-    tree getFrameForNestedClass(ClassDeclaration * c);
 #if V2
     void useClosure(FuncDeclaration * f, tree l) {
 	_closureLink = l;
@@ -497,10 +494,22 @@ public:
 public:
     static bool functionNeedsChain(FuncDeclaration *f);
 
-    // Frame pointer for functions inside nested class/structs 
+    // Check for nested functions/class/structs 
+    static bool isClassNestedIn(ClassDeclaration *inner, ClassDeclaration *outer);
+    static bool isFuncNestedIn(FuncDeclaration * inner, FuncDeclaration * outer);
     static FuncDeclaration * isClassNestedInFunction(ClassDeclaration * cd);
+
+    tree getVThisValue(Dsymbol * decl, Expression * e);
+
+    // Static chain for nested functions
+    tree getFrameForFunction(FuncDeclaration * f);
+    tree getFrameForNestedClass(ClassDeclaration * c);
+
+#if V2
+    // %% D2.0 - handle structs too
     static FuncDeclaration * isStructNestedInFunction(StructDeclaration * sd);
-    static bool isFuncNestedInFunction(FuncDeclaration * inner, FuncDeclaration * outer);
+    tree getFrameForNestedStruct(StructDeclaration * s);
+#endif
 
     // ** Instruction stream manipulation
     void startCond(Statement * stmt, Expression * e_cond);

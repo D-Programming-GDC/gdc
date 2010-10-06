@@ -1836,56 +1836,6 @@ SymOffExp::toElem(IRState * irs) {
 }
 #endif
 
-bool
-isClassNestedIn(ClassDeclaration *inner, ClassDeclaration *outer)
-{
-    // not implemented yet
-    return false;
-}
-
-
-/*
-  findThis
-
-  Starting from the current function, try to find a suitable value of
-  'this' in nested functions and (not implemented yet:) nested class
-  instances.
-
-  A suitable 'this' value is an instance of target_cd or a class that
-  has target_cd as a base.
-*/
-
-static tree
-findThis(IRState * irs, ClassDeclaration * target_cd)
-{
-    FuncDeclaration * fd = irs->func;
-
-    while (fd) {
-	AggregateDeclaration * fd_ad;
-	ClassDeclaration * fd_cd;
-
-	if ((fd_ad = fd->isThis()) &&
-	    (fd_cd = fd_ad->isClassDeclaration())) {
-	    if (target_cd == fd_cd) {
-		return irs->var(fd->vthis);
-	    } else if (target_cd->isBaseOf(fd_cd, NULL)) {
-		assert(fd->vthis); // && fd->vthis->csym->Stree
-		return irs->convertTo(irs->var(fd->vthis),
-		    fd_cd->type, target_cd->type);
-	    } else if (isClassNestedIn(fd_cd, target_cd)) {
-		// not implemented
-		assert(0);
-	    } else {
-		fd = irs->isClassNestedInFunction(fd_cd);
-	    }
-	} else if (fd->isNested()) {
-	    fd = fd->toParent2()->isFuncDeclaration();
-	} else
-	    fd = NULL;
-    }
-    return NULL_TREE;
-}
-
 elem *
 NewExp::toElem(IRState * irs)
 {
@@ -1929,7 +1879,6 @@ NewExp::toElem(IRState * irs)
 	    if (class_type->sym->isNested()) {
 		tree vthis_value = NULL_TREE;
 		tree vthis_field = class_type->sym->vthis->toSymbol()->Stree;
-
 		if (thisexp) {
 		    ClassDeclaration *thisexp_cd = thisexp->type->isClassHandle();
 		    Dsymbol *outer = class_decl->toParent2();
@@ -1944,39 +1893,7 @@ NewExp::toElem(IRState * irs)
 			vthis_value = irs->convertTo(vthis_value, thisexp->type, outer_cd->type);
 		    }
 		} else {
-		    Dsymbol *outer = class_decl->toParent2();
-		    ClassDeclaration *cd_outer = outer->isClassDeclaration();
-		    FuncDeclaration *fd_outer = outer->isFuncDeclaration();
-
-		    if (cd_outer) {
-			vthis_value = findThis(irs, cd_outer);
-			if (vthis_value == NULL_TREE)
-			    error("outer class %s 'this' needed to 'new' nested class %s",
-				cd_outer->ident->string, class_decl->ident->string);
-		    } else if (fd_outer) {
-			/* If a class nested in a function has no methods
-			   and there are no other nested functions,
-			   lower_nested_functions is never called and any
-			   STATIC_CHAIN_EXPR created here will never be
-			   translated. Use a null pointer for the link in
-			   this case. */
-#if V2
-			if (fd_outer->closureVars.dim ||
-			    irs->getFrameInfo(fd_outer)->creates_closure)
-#else
-			if(fd_outer->nestedFrameRef)
-#endif
-			{
-			    vthis_value = irs->getFrameForNestedClass(class_decl); // %% V2: rec_type->class_type
-			} else if (fd_outer->vthis) {
-			    vthis_value = irs->var(fd_outer->vthis);
-			} else {
-			    vthis_value = d_null_pointer;
-			}
-		    } else {
-			assert(0);
-		    }
-
+		    vthis_value = irs->getVThisValue(class_decl, this);
 		}
 
 		if (vthis_value) {
@@ -2093,6 +2010,25 @@ NewExp::toElem(IRState * irs)
 		    irs->convertForAssignment(object_type->defaultInit(), object_type) );
 		new_call = irs->compound(t, new_call);
 	    }
+#if V2
+	    // %% D2.0 nested structs
+	    if (base_type->ty == Tstruct) {
+		TypeStruct * struct_type = (TypeStruct *)base_type;
+		StructDeclaration * struct_decl = struct_type->sym;
+
+		if (struct_decl->isNested()) {
+		    tree vthis_value = irs->getVThisValue(struct_decl, this);
+		    tree vthis_field = struct_decl->vthis->toSymbol()->Stree;
+
+		    new_call = save_expr( new_call );
+		    tree setup_exp = build2(MODIFY_EXPR, TREE_TYPE(vthis_field),
+			    irs->component( irs->indirect(new_call, struct_type->toCtype()),
+				vthis_field ),
+			    vthis_value);
+		    new_call = irs->compound(setup_exp, new_call);
+		}
+	    }
+#endif
 	    return irs->nop(new_call, type->toCtype());
 	}
 	break;
@@ -2525,8 +2461,9 @@ FuncDeclaration::toObjFile(int multiobj)
     FuncDeclaration * closure_func = NULL;
     tree closure_expr = NULL_TREE;
 #endif
-#endif
     ClassDeclaration * cd;
+    StructDeclaration * sd;
+#endif
     AggregateDeclaration * ad = NULL;
 
     announce_function( fn_decl );
@@ -2669,38 +2606,61 @@ FuncDeclaration::toObjFile(int multiobj)
        function, construct an expession for this member function's static chain
        by going through parent link of nested classes.
     */
-    if (ad && (cd = ad->isClassDeclaration()) && ! (static_chain_expr
+    if (! static_chain_expr
 #if V2
 	    || closure_expr
 #endif
-						    )) {
-	/* D 2.0 Closures: this->vthis is passed as a normal parameter and
-	   is valid to access as Stree before the closure frame is created. */
-	tree t = vthis->toSymbol()->Stree;
-	while ( cd->isNested() ) {
-	    Dsymbol * d = cd->toParent2();
-	    tree vthis_field = cd->vthis->toSymbol()->Stree;
-	    t = irs->component(irs->indirect(t), vthis_field);
-	    FuncDeclaration * f;
-	    if ( (f = d->isFuncDeclaration() )) {
+	) {
+	if (ad && (cd = ad->isClassDeclaration()))
+	{
+    	    /* D 2.0 Closures: this->vthis is passed as a normal parameter and
+    	       is valid to access as Stree before the closure frame is created. */
+    	    tree t = vthis->toSymbol()->Stree;
+    	    while ( cd->isNested() ) {
+    		Dsymbol * d = cd->toParent2();
+    		tree vthis_field = cd->vthis->toSymbol()->Stree;
+    		t = irs->component(irs->indirect(t), vthis_field);
+    		FuncDeclaration * f;
+    		if ( (f = d->isFuncDeclaration() )) {
 #if V2
-		if (! needs_static_chain)
-		{
-		    closure_expr = t;
-		    closure_func = f;
-		}
-		else
+    		    if (! needs_static_chain) {
+    			closure_expr = t;
+    			closure_func = f;
+		    } else
 #endif
-		{
-		    static_chain_expr = t;
-		}
-		break;
-	    } else if ( (cd = d->isClassDeclaration()) ) {
-		// nothing
-	    } else {
-		assert(0);
-	    }
-	}
+    			static_chain_expr = t;
+    		    break;
+    		} else if ( (cd = d->isClassDeclaration()) ) {
+    		    // nothing
+    		} else
+    		    assert(0);
+    	    }
+    	}
+#if V2
+	else if (ad && (sd = ad->isStructDeclaration()))
+	{
+    	    /* D 2.0 Closures: this->vthis is passed as a normal parameter and
+    	       is valid to access as Stree before the closure frame is created. */
+    	    tree t = vthis->toSymbol()->Stree;
+    	    while ( sd->isNested() ) {
+    		Dsymbol * d = sd->toParent2();
+    		tree vthis_field = sd->vthis->toSymbol()->Stree;
+    		t = irs->component(irs->indirect(t), vthis_field);
+    		FuncDeclaration * f;
+    		if ( (f = d->isFuncDeclaration() )) {
+    		    if (! needs_static_chain) {
+    			closure_expr = t;
+    			closure_func = f;
+    		    } else
+    			static_chain_expr = t;
+    		    break;
+    		} else if ( (sd = d->isStructDeclaration()) ) {
+    		    // nothing
+    		} else
+    		    assert(0);
+    	    }
+    	}
+#endif
     }
 #endif
 
