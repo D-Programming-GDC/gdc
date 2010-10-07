@@ -426,7 +426,7 @@ MATCH StructLiteralExp::implicitConvTo(Type *t)
     }
     return m;
 }
-#endif //V2
+#endif
 
 MATCH StringExp::implicitConvTo(Type *t)
 {   MATCH m;

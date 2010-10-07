@@ -82,10 +82,9 @@
 #endif
 
 #ifdef IN_GCC
-//To maintain compatibility with GDC2
-#define V1      1
-#define V2      0
 /* Changes for the GDC compiler by David Friedman */
+#define V1	DMDV1
+#define V2	DMDV2
 #endif
 
 #define DMDV1   1

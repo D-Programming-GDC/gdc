@@ -22,16 +22,11 @@
  * be written to the data segment.
  */
 
-#undef integer_t
 #include        <stdio.h>
 #include        <string.h>
 #include        <time.h>
 #include        <assert.h>
 #include        <complex.h>
-
-#ifdef __APPLE__
-#define integer_t dmd_integer_t
-#endif
 
 #include        "lexer.h"
 #include        "mtype.h"

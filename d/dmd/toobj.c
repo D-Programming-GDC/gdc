@@ -718,7 +718,7 @@ void ClassDeclaration::toObjFile(int multiobj)
                     }
                 }
             }
-#endif //V2
+#endif
             dtxoff(&dt, s, 0, TYnptr);
         }
         else

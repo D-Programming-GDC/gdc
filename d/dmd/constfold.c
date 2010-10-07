@@ -1248,7 +1248,7 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
         if (e1->op == TOKarrayliteral && !e1->checkSideEffect(2))
         {   ArrayLiteralExp *ale = (ArrayLiteralExp *)e1;
             if (i >= ale->elements->dim)
-            {   e2->error("array index %ju is out of bounds %s[0 .. %u]", i, e1->toChars(), ale->elements->dim);
+            {   e2->error("array index %"PRIuMAX" is out of bounds %s[0 .. %u]", i, e1->toChars(), ale->elements->dim);
             }
             else
             {   e = (Expression *)ale->elements->data[i];

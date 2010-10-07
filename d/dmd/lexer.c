@@ -720,7 +720,7 @@ void Lexer::scan(Token *t)
                         t->uns64value = loc.linnum;
                     }
                     else
-#endif //if V1
+#endif
                     if (id == Id::DATE)
                     {
                         t->ustring = (unsigned char *)date;

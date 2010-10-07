@@ -115,7 +115,7 @@ struct TemplateParameter
     virtual TemplateTypeParameter  *isTemplateTypeParameter();
     virtual TemplateValueParameter *isTemplateValueParameter();
     virtual TemplateAliasParameter *isTemplateAliasParameter();
-#if V2
+#if DMDV2
     virtual TemplateThisParameter *isTemplateThisParameter();
 #endif
     virtual TemplateTupleParameter *isTemplateTupleParameter();
@@ -164,7 +164,7 @@ struct TemplateTypeParameter : TemplateParameter
     void *dummyArg();
 };
 
-#if V2
+#if DMDV2
 struct TemplateThisParameter : TemplateTypeParameter
 {
     /* Syntax:

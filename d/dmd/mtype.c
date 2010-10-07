@@ -14,9 +14,6 @@
    Modified by David Friedman, December 2006
 */
 
-// Issues with using -include total.h (defines integer_t) and then complex.h fails...
-#undef integer_t
-
 #define __C99FEATURES__ 1       // Needed on Solaris for NaN and more
 #define __USE_ISOC99 1          // so signbit() gets defined
 
@@ -55,13 +52,6 @@
 #ifndef INFINITY
 #define INFINITY (infinity())
 #endif
-
-
-
-#ifdef __APPLE__
-#define integer_t dmd_integer_t
-#endif
-
 
 #include "rmem.h"
 //#include "port.h"
@@ -1930,7 +1920,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
         uinteger_t d = dim->toUInteger();
 
         if (d >= sd->objects->dim)
-        {   error(loc, "tuple index %ju exceeds %u", d, sd->objects->dim);
+        {   error(loc, "tuple index %"PRIuMAX" exceeds %u", d, sd->objects->dim);
             return Type::terror;
         }
         Object *o = (Object *)sd->objects->data[(size_t)d];

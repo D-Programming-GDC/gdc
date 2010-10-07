@@ -468,7 +468,7 @@ Expression *BinExp::optimize(int result)
             dinteger_t i2 = e2->toInteger();
             d_uns64 sz = e1->type->size() * 8;
             if (i2 < 0 || i2 > sz)
-            {   error("shift assign by %jd is outside the range 0..%zu", i2, sz);
+            {   error("shift assign by %"PRIdMAX" is outside the range 0..%"PRIuSIZE, i2, sz);
                 e2 = new IntegerExp(0);
             }
         }
