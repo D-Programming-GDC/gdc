@@ -147,7 +147,7 @@ DRUNTIME_OBJS+=$(subst compiler,compiler/gdc,$(BASE_OBJS)) \
 	       $(subst compiler,compiler/gdc,$(UTIL_OBJS)) \
 	       $(subst ti_,compiler/gdc/typeinfo/ti_,$(TI))
 
-COMMON_OBJS=common/core/bitmanip.o common/core/exception.o common/core/memory.o \
+COMMON_OBJS=common/core/bitop.o common/core/exception.o common/core/memory.o \
 	    common/core/runtime.o common/core/thread.o common/core/stdc/errno.o \
 	    common/core/vararg.o
 
@@ -195,7 +195,7 @@ MAIN_OBJS=std/compiler.o std/system.o std/md5.o std/base64.o \
 	std/signals.o std/cpuid.o std/traits.o std/typetuple.o std/bind.o \
 	std/algorithm.o std/bitmanip.o std/contracts.o std/functional.o \
 	std/getopt.o std/numeric.o std/typecons.o std/variant.o \
-	std/cover.o std/complex.o std/encoding.o std/iterator.o std/xml.o \
+	std/complex.o std/encoding.o std/iterator.o std/xml.o \
 	std/atomics.o std/bigint.o
 
 ZLIB_OBJS= zlib/adler32.o zlib/compress.o zlib/crc32.o \

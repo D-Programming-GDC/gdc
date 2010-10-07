@@ -10,6 +10,9 @@ module core.stdc.complex;
 
 extern (C):
 
+alias creal complex;
+alias ireal imaginary;
+
 cdouble cacos(cdouble z);
 cfloat  cacosf(cfloat z);
 creal   cacosl(creal z);
@@ -78,9 +81,9 @@ cdouble csqrt(cdouble z);
 cfloat  csqrtf(cfloat z);
 creal   csqrtl(creal z);
 
- double  carg(cdouble z);
- float   cargf(cfloat z);
- real    cargl(creal z);
+ double carg(cdouble z);
+ float  cargf(cfloat z);
+ real   cargl(creal z);
 
  double cimag(cdouble z);
  float  cimagf(cfloat z);

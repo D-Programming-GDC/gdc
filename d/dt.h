@@ -44,15 +44,9 @@ struct dt_t {
     enum DT dt;
     struct dt_t * DTnext;
     union {
-#if V1
 	dinteger_t DTint;
 	dinteger_t DTazeros;
-	dinteger_t DTonebyte; //all used to be integer_t
-#else
-	integer_t DTint;
-	integer_t DTazeros;
-	integer_t DTonebyte;
-#endif
+	dinteger_t DTonebyte;
 	struct dt_t * DTvalues;
     };
     union {
@@ -65,14 +59,7 @@ struct dt_t {
 
 enum TypeType;
 
-extern dt_t** dtval(dt_t** pdt, DT t,
-#if V1
-dinteger_t i,
-#else
-integer_t i,
-#endif
-const void * p);
-
+extern dt_t** dtval(dt_t** pdt, DT t, dinteger_t i, const void * p);
 extern dt_t** dtcat(dt_t** pdt, dt_t * d);
 
 inline dt_t**
@@ -105,7 +92,7 @@ dttree(dt_t** pdt, tree t) {
 
 inline void
 dt_optimize(dt_t *) { }
-// %% should be integer_t?, but when used in todt.c, it's assigned to an unsigned
+// %% should be dinteger_t?, but when used in todt.c, it's assigned to an unsigned
 target_size_t dt_size(dt_t * dt);
 
 // Added for GCC to get correct byte ordering / size

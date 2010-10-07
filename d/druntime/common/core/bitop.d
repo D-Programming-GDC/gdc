@@ -1,14 +1,14 @@
 /**
  * This module contains a collection of bit-level operations.
  *
- * Copyright: Copyright (c) 2005-2008, The D Runtime Project
- * License:   BSD Style, see LICENSE
+ * Copyright: Public Domain
+ * License:   Public Domain
  * Authors:   Walter Bright, Don Clugston, Sean Kelly
  */
-module core.bitmanip;
+module core.bitop;
 
 
-version( DDoc )
+version( D_Ddoc )
 {
     /**
      * Scans the bits in v starting with bit 0, looking
@@ -19,7 +19,6 @@ version( DDoc )
      */
     int bsf( uint v );
 
-
     /**
      * Scans the bits in v from the most significant bit
      * to the least significant bit, looking
@@ -29,7 +28,7 @@ version( DDoc )
      *  The return value is undefined if v is zero.
      * Example:
      * ---
-     * import core.bitmanip;
+     * import core.bitop;
      *
      * int main()
      * {
@@ -84,7 +83,7 @@ version( DDoc )
      *
      * Example:
      * ---
-    import core.bitmanip;
+    import core.bitop;
 
     int main()
     {

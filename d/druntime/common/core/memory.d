@@ -2,9 +2,14 @@
  * The memory module provides an interface to the garbage collector and to
  * any other OS or API-level memory management facilities.
  *
- * Copyright: Copyright (c) 2005-2008, The D Runtime Project
- * License:   BSD Style, see LICENSE
+ * Copyright: Copyright Sean Kelly 2005 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
  * Authors:   Sean Kelly
+ *
+ *          Copyright Sean Kelly 2005 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.memory;
 
@@ -57,10 +62,10 @@ private
 struct GC
 {
     /**
-     * Enables the garbage collector if collections have previously been
-     * suspended by a call to disable.  This function is reentrant, and
-     * must be called once for every call to disable before the garbage
-     * collector is enabled.
+     * Enables automatic garbage collection behavior if collections have
+     * previously been suspended by a call to disable.  This function is
+     * reentrant, and must be called once for every call to disable before
+     * automatic collections are enabled.
      */
     static void enable()
     {
@@ -69,8 +74,11 @@ struct GC
 
 
     /**
-     * Disables the garbage collector.  This function is reentrant, but
-     * enable must be called once for each call to disable.
+     * Disables automatic garbage collections performed to minimize the
+     * process footprint.  Collections may continue to occur in instances
+     * where the implementation deems necessary for correct program behavior,
+     * such as during an out of memory condition.  This function is reentrant,
+     * but enable must be called once for each call to disable.
      */
     static void disable()
     {

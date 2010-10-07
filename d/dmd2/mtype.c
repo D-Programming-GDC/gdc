@@ -14,21 +14,17 @@
    Modified by David Friedman, December 2006
 */
 
-// Issues with using -include total.h (defines integer_t) and then complex.h fails...
-#undef integer_t
-
+#define __C99FEATURES__ 1	// Needed on Solaris for NaN and more
 #define __USE_ISOC99 1		// so signbit() gets defined
 #include <math.h>
 
 #include <stdio.h>
 #include <assert.h>
+#ifndef IN_GCC
 #include <float.h>
+#endif
 
 #include "gdc_alloca.h"
-
-#ifdef __DMC__
-#include <fp.h>
-#endif
 
 // TODO%% this undefines signbit and includes is the wrong complex.h anyway
 // -- not sure why this is needed, anyway
@@ -38,21 +34,9 @@
 #include <complex>
 #include <limits>
 #elif __DMC__
-// includes the wrong complex.h in C++
 #include <complex.h>
-#else
-//#define signbit 56
-#endif
-
-#if __APPLE__
-#include <math.h>
-static double zero = 0;
-#elif __GNUC__
-#include <math.h>
-// %% shouldn't be necessary
-//#include <bits/nan.h>
-//#include <bits/mathdef.h>
-static double zero = 0;
+#elif __MINGW32__
+#include <malloc.h>
 #endif
 
 #ifndef NAN
@@ -62,14 +46,8 @@ static double zero = 0;
 #define INFINITY (infinity())
 #endif
 
-
-
-#ifdef __APPLE__
-#define integer_t dmd_integer_t
-#endif
-
-
 #include "rmem.h"
+//#include "port.h"
 
 #include "dsymbol.h"
 #include "mtype.h"
@@ -99,16 +77,25 @@ FuncDeclaration *hasThis(Scope *sc);
  */
 
 int PTRSIZE = 4;
+
+/* REALSIZE = size a real consumes in memory
+ * REALPAD = 'padding' added to the CPU real size to bring it up to REALSIZE
+ * REALALIGNSIZE = alignment for reals
+ */
 #if TARGET_OSX
 int REALSIZE = 16;
 int REALPAD = 6;
+int REALALIGNSIZE = 16;
 #elif TARGET_LINUX || TARGET_FREEBSD
 int REALSIZE = 12;
 int REALPAD = 2;
+int REALALIGNSIZE = 4;
 #else
 int REALSIZE = 10;
 int REALPAD = 0;
+int REALALIGNSIZE = 2;
 #endif
+
 int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
 int Tindex = Tint32;
@@ -145,7 +132,7 @@ Type::Type(TY ty)
     this->ty = ty;
     this->mod = 0;
     this->deco = NULL;
-#if V2
+#if DMDV2
     this->cto = NULL;
     this->ito = NULL;
     this->sto = NULL;
@@ -287,7 +274,7 @@ void Type::init()
     if (global.params.isX86_64)
     {
 	PTRSIZE = 8;
-	if (global.params.isLinux)
+	if (global.params.isLinux || global.params.isFreeBSD)
 	    REALSIZE = 10;
 	else
 	    REALSIZE = 8;
@@ -1096,7 +1083,7 @@ void Type::toCBuffer3(OutBuffer *buf, HdrGenState *hgs, int mod)
     if (mod != this->mod)
     {	const char *p;
 
-	if (mod & MODshared)
+	if (this->mod & MODshared)
 	    buf->writestring("shared(");
 	switch (this->mod & (MODconst | MODinvariant))
 	{
@@ -1115,7 +1102,7 @@ void Type::toCBuffer3(OutBuffer *buf, HdrGenState *hgs, int mod)
 	    default:
 		assert(0);
 	}
-	if (mod & MODshared)
+	if (this->mod & MODshared)
 	    buf->writeByte(')');
     }
 }
@@ -1833,12 +1820,19 @@ unsigned TypeBasic::alignsize()
 	case Tfloat80:
 	case Timaginary80:
 	case Tcomplex80:
-#if TARGET_OSX
-	    sz = 16;
-#else
-	    sz = 2;
-#endif
+	    sz = REALALIGNSIZE;
 	    break;
+
+#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD
+        case Tint64:
+        case Tuns64:
+        case Tfloat64:
+        case Timaginary64:
+        case Tcomplex32:
+        case Tcomplex64:
+            sz = 4;
+            break;
+#endif
 
 	default:
 	    sz = size(0);
@@ -1907,7 +1901,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 #define FLT_EPSILON real_t_properties[real_t::Float].epsilonval;
 #define DBL_EPSILON real_t_properties[real_t::Double].epsilonval;
 #define LDBL_EPSILON real_t_properties[real_t::LongDouble].epsilonval;
-		
 
 #endif
 	    case Tfloat32:	fvalue = FLT_MAX;	goto Lfvalue;
@@ -1964,20 +1957,8 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 #if IN_GCC
 		// mode doesn't matter, will be converted in RealExp anyway
 		fvalue = real_t::getnan(real_t::LongDouble);
-#elif __GNUC__
-		// gcc nan's have the sign bit set by default, so turn it off
-		// Need the volatile to prevent gcc from doing incorrect
-		// constant folding.
-		volatile d_float80 foo;
-		foo = NAN;
-		if (signbit(foo))	// signbit sometimes, not always, set
-		    foo = -foo;		// turn off sign bit
-		fvalue = foo;
-#elif _MSC_VER
-		unsigned long nan[2]= { 0xFFFFFFFF, 0x7FFFFFFF };
-		fvalue = *(double*)nan;
 #else
-		fvalue = NAN;
+		fvalue = Port::nan;
 #endif
 		goto Lfvalue;
 	    }
@@ -1998,12 +1979,8 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 	    case Tfloat80:
 #if IN_GCC
 		fvalue = real_t::getinfinity();
-#elif __GNUC__
-		fvalue = 1 / zero;
-#elif _MSC_VER
-		fvalue = std::numeric_limits<long double>::infinity();
 #else
-		fvalue = INFINITY;
+		fvalue = Port::infinity;
 #endif
 		goto Lfvalue;
 	}
@@ -2221,7 +2198,27 @@ Expression *TypeBasic::dotExp(Scope *sc, Expression *e, Identifier *ident)
 }
 
 Expression *TypeBasic::defaultInit(Loc loc)
-{   integer_t value = 0;
+{   dinteger_t value = 0;
+
+#if SNAN_DEFAULT_INIT
+#ifndef IN_GCC
+    /*
+     * Use a payload which is different from the machine NaN,
+     * so that uninitialised variables can be
+     * detected even if exceptions are disabled.
+     */
+    unsigned short snan[8] = { 0, 0, 0, 0xA000, 0x7FFF };
+    /*
+     * Although long doubles are 10 bytes long, some
+     * C ABIs pad them out to 12 or even 16 bytes, so
+     * leave enough space in the snan array.
+     */
+    assert(REALSIZE <= sizeof(snan));
+    d_float80 fvalue = *(long double*)snan;
+#else
+    real_t fvalue = real_t::getsnan(real_t::LongDouble);
+#endif
+#endif
 
 #if LOGDEFAULTINIT
     printf("TypeBasic::defaultInit() '%s'\n", toChars());
@@ -2243,10 +2240,25 @@ Expression *TypeBasic::defaultInit(Loc loc)
 	case Tfloat32:
 	case Tfloat64:
 	case Tfloat80:
+#if SNAN_DEFAULT_INIT
+	    return new RealExp(loc, fvalue, this);
+#else
+	    return getProperty(loc, Id::nan);
+#endif
+
 	case Tcomplex32:
 	case Tcomplex64:
 	case Tcomplex80:
+#if SNAN_DEFAULT_INIT
+	{   // Can't use fvalue + I*fvalue (the im part becomes a quiet NaN).
+	    complex_t cvalue;
+	    ((real_t *)&cvalue)[0] = fvalue;
+	    ((real_t *)&cvalue)[1] = fvalue;
+	    return new ComplexExp(loc, cvalue, this);
+	}
+#else
 	    return getProperty(loc, Id::nan);
+#endif
 
 	case Tvoid:
 	    error(loc, "void does not have a default initializer");
@@ -2515,13 +2527,13 @@ Type *TypeSArray::syntaxCopy()
 }
 
 d_uns64 TypeSArray::size(Loc loc)
-{   integer_t sz;
+{   dinteger_t sz;
 
     if (!dim)
 	return Type::size(loc);
     sz = dim->toInteger();
 
-    {	integer_t n, n2;
+    {	dinteger_t n, n2;
 
 	n = next->size();
 	n2 = n * sz;
@@ -2653,7 +2665,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
 	uinteger_t d = dim->toUInteger();
 
 	if (d >= sd->objects->dim)
-	{   error(loc, "tuple index %ju exceeds %u", d, sd->objects->dim);
+	{   error(loc, "tuple index %"PRIuMAX" exceeds %u", d, sd->objects->dim);
 	    return Type::terror;
 	}
 	Object *o = (Object *)sd->objects->data[(size_t)d];
@@ -2671,7 +2683,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
     Type *tbn = next->toBasetype();
 
     if (dim)
-    {	integer_t n, n2;
+    {	dinteger_t n, n2;
 
 	dim = semanticLength(sc, tbn, dim);
 
@@ -2684,10 +2696,10 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
 	     */
 	    return this;
 	}
-	integer_t d1 = dim->toInteger();
+	dinteger_t d1 = dim->toInteger();
 	dim = dim->castTo(sc, tsize_t);
 	dim = dim->optimize(WANTvalue);
-	integer_t d2 = dim->toInteger();
+	dinteger_t d2 = dim->toInteger();
 
 	if (d1 != d2)
 	    goto Loverflow;
@@ -3274,7 +3286,7 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	arguments = new Expressions();
 	arguments->push(e);
 	size_t keysize = index->size(e->loc);
-	keysize = (keysize + (PTRSIZE-1)) & ~(PTRSIZE-1);
+	keysize = (keysize + PTRSIZE - 1) & ~(PTRSIZE - 1);
 	arguments->push(new IntegerExp(0, keysize, Type::tsize_t));
 	arguments->push(new IntegerExp(0, next->size(e->loc), Type::tsize_t));
 	e = new CallExp(e->loc, ec, arguments);
@@ -3624,7 +3636,8 @@ int Type::covariant(Type *t)
 #if 0
     printf("Type::covariant(t = %s) %s\n", t->toChars(), toChars());
     printf("deco = %p, %p\n", deco, t->deco);
-    //printf("ty = %d\n", next->ty);
+//    printf("ty = %d\n", next->ty);
+    printf("mod = %x, %x\n", mod, t->mod);
 #endif
 
     int inoutmismatch = 0;
@@ -3702,6 +3715,16 @@ int Type::covariant(Type *t)
     goto Lnotcovariant;
 
 Lcovariant:
+    /* Can convert mutable to const
+     */
+    if (t1->mod != t2->mod)
+    {
+	if (!(t1->mod & MODconst) && (t2->mod & MODconst))
+	    goto Lnotcovariant;
+	if (!(t1->mod & MODshared) && (t2->mod & MODshared))
+	    goto Lnotcovariant;
+    }
+
     /* Can convert pure to impure, and nothrow to throw
      */
     if (!t1->ispure && t2->ispure)
@@ -4062,7 +4085,7 @@ int TypeFunction::callMatch(Expression *ethis, Expressions *args)
 	    if (varargs == 2 && u + 1 == nparams)	// if last varargs param
 	    {	Type *tb = p->type->toBasetype();
 		TypeSArray *tsa;
-		integer_t sz;
+		dinteger_t sz;
 
 		switch (tb->ty)
 		{
@@ -4917,7 +4940,6 @@ Type *TypeTypeof::semantic(Loc loc, Scope *sc)
 	 */
 	//t = t->toHeadMutable();
     }
-
     if (idents.dim)
     {
 	Dsymbol *s = t->toDsymbol(sc);
@@ -4928,6 +4950,7 @@ Type *TypeTypeof::semantic(Loc loc, Scope *sc)
 	    Identifier *id = (Identifier *)idents.data[i];
 	    s = s->searchX(loc, sc, id);
 	}
+
 	if (s)
 	{
 	    t = s->getType();
@@ -5232,6 +5255,10 @@ Expression *TypeEnum::defaultInit(Loc loc)
 
 int TypeEnum::isZeroInit()
 {
+	if (!sym->defaultval) { 
+		error(0, "enum %s is forward referenced", sym->toChars());
+		return 0;
+	}
     return sym->defaultval->isBool(FALSE);
 }
 
@@ -5619,6 +5646,17 @@ L1:
 	    ident != Id::stringof &&
 	    ident != Id::offsetof)
 	{
+	    /* See if we should forward to the alias this.
+	     */
+	    if (sym->aliasthis)
+	    {	/* Rewrite e.ident as:
+		 *	e.aliasthis.ident
+		 */
+		e = new DotIdExp(e->loc, e, sym->aliasthis->ident);
+		e = new DotIdExp(e->loc, e, ident);
+		return e->semantic(sc);
+	    }
+
 	    /* Look for overloaded opDot() to see if we should forward request
 	     * to it.
 	     */
@@ -5867,6 +5905,16 @@ MATCH TypeStruct::implicitConvTo(Type *to)
 	    }
 	}
     }
+    else if (sym->aliasthis)
+    {
+	m = MATCHnomatch;
+	Declaration *d = sym->aliasthis->isDeclaration();
+	if (d)
+	{   assert(d->type);
+	    Type *t = d->type->addMod(mod);
+	    m = t->implicitConvTo(to);
+	}
+    }
     else
 	m = MATCHnomatch;	// no match
     return m;
@@ -6088,6 +6136,17 @@ L1:
 		ident != Id::stringof &&
 		ident != Id::offsetof)
 	    {
+		/* See if we should forward to the alias this.
+		 */
+		if (sym->aliasthis)
+		{   /* Rewrite e.ident as:
+		     *	e.aliasthis.ident
+		     */
+		    e = new DotIdExp(e->loc, e, sym->aliasthis->ident);
+		    e = new DotIdExp(e->loc, e, ident);
+		    return e->semantic(sc);
+		}
+
 		/* Look for overloaded opDot() to see if we should forward request
 		 * to it.
 		 */
@@ -6294,7 +6353,18 @@ MATCH TypeClass::implicitConvTo(Type *to)
 	    return MATCHconvert;
     }
 
-    return MATCHnomatch;
+    m = MATCHnomatch;
+    if (sym->aliasthis)
+    {
+	Declaration *d = sym->aliasthis->isDeclaration();
+	if (d)
+	{   assert(d->type);
+	    Type *t = d->type->addMod(mod);
+	    m = t->implicitConvTo(to);
+	}
+    }
+
+    return m;
 }
 
 MATCH TypeClass::constConv(Type *to)
@@ -6730,15 +6800,12 @@ void Argument::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Arguments *argume
 	    else if (arg->storageClass & STCauto)
 	    buf->writestring("auto ");
 
-	    if (arg->storageClass & STCscope)
-		buf->writestring("scope ");
+	    unsigned stc = arg->storageClass;
+	    if (arg->type && arg->type->mod & MODshared)
+		stc &= ~STCshared;
 
-	    if (arg->storageClass & STCconst)
-		buf->writestring("const ");
-	    if (arg->storageClass & STCinvariant)
-		buf->writestring("immutable ");
-	    if (arg->storageClass & STCshared)
-		buf->writestring("shared ");
+	    StorageClassDeclaration::stcToCBuffer(buf,
+		stc & (STCconst | STCinvariant | STCshared | STCscope));
 
 	    argbuf.reset();
 	    if (arg->storageClass & STCalias)

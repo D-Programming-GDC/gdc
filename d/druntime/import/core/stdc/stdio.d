@@ -10,44 +10,53 @@ module core.stdc.stdio;
 
 private
 {
-    import core.stdc.stdarg;
-    import core.stdc.stddef;
     import core.stdc.config;
+    import core.stdc.stddef; // for size_t
+    import core.stdc.stdarg; // for va_list
 }
 
 extern (C):
 
 version( Windows )
 {
-    const int BUFSIZ         = 0x4000;
-    const int EOF            = -1;
-    const int FOPEN_MAX      = 20;
-    const int FILENAME_MAX   = 256; // 255 plus NULL
-    const int TMP_MAX        = 32767;
-    const int _SYS_OPEN      = 20;
-    const int SYS_OPEN       = _SYS_OPEN;
+    enum
+    {
+        BUFSIZ       = 0x4000,
+        EOF          = -1,
+        FOPEN_MAX    = 20,
+        FILENAME_MAX = 256, // 255 plus NULL
+        TMP_MAX      = 32767,
+        SYS_OPEN     = 20,	// non-standard
+    }
 
-    const int     _NFILE     = 60;
-    const char[]  _P_tmpdir  = "\\";
-    const wchar[] _wP_tmpdir = "\\";
-    const int     L_tmpnam   = _P_tmpdir.length + 12;
+    enum int     _NFILE     = 60;	// non-standard
+    enum string  _P_tmpdir  = "\\"; // non-standard
+    enum wstring _wP_tmpdir = "\\"; // non-standard
+    enum int     L_tmpnam   = _P_tmpdir.length + 12;
 }
 else version( linux )
 {
-    //const int BUFSIZ      = 0x4000;
-    const int EOF           = -1;
-    const int FOPEN_MAX     = 16;
-    const int FILENAME_MAX  = 4095;
-    const int TMP_MAX       = 238328;
-    const int L_tmpnam      = 20;
+    enum
+    {
+        BUFSIZ       = 8192,
+        EOF          = -1,
+        FOPEN_MAX    = 16,
+        FILENAME_MAX = 4095,
+        TMP_MAX      = 238328,
+        L_tmpnam     = 20
+    }
 }
-else version( darwin )
+else version( OSX )
 {
-    const int EOF           = -1;
-    const int FOPEN_MAX     = 20;
-    const int FILENAME_MAX  = 1024;
-    const int TMP_MAX       = 308915776;
-    const int L_tmpnam      = 1024;
+    enum
+    {
+		BUFSIZ		= 1024,
+        EOF          = -1,
+        FOPEN_MAX    = 20,
+        FILENAME_MAX = 1024,
+        TMP_MAX      = 308915776,
+        L_tmpnam     = 1024,
+    }
 
     private
     {
@@ -65,11 +74,14 @@ else version( darwin )
 }
 else version ( freebsd )
 {
-    const int EOF           = -1;
-    const int FOPEN_MAX     = 20;
-    const int FILENAME_MAX  = 1024;
-    const int TMP_MAX       = 308915776;
-    const int L_tmpnam      = 1024;
+    enum
+    {
+        EOF          = -1,
+        FOPEN_MAX    = 20,
+        FILENAME_MAX = 1024,
+        TMP_MAX      = 308915776,
+        L_tmpnam     = 1024
+    }
 
     private
     {
@@ -80,6 +92,7 @@ else version ( freebsd )
         }
         struct __sFILEX
         {
+
         }
     }
 }
@@ -132,7 +145,7 @@ struct _iobuf
         char[1] _shortbuf;
         void*   _lock;
     }
-    else version( darwin )
+    else version( OSX )
     {
         ubyte*    _p;
         int       _r;
@@ -197,17 +210,17 @@ alias _iobuf FILE;
 
 enum
 {
-    _F_RDWR = 0x0003,
-    _F_READ = 0x0001,
-    _F_WRIT = 0x0002,
-    _F_BUF  = 0x0004,
-    _F_LBUF = 0x0008,
-    _F_ERR  = 0x0010,
-    _F_EOF  = 0x0020,
-    _F_BIN  = 0x0040,
-    _F_IN   = 0x0080,
-    _F_OUT  = 0x0100,
-    _F_TERM = 0x0200,
+    _F_RDWR = 0x0003, // non-standard
+    _F_READ = 0x0001, // non-standard
+    _F_WRIT = 0x0002, // non-standard
+    _F_BUF  = 0x0004, // non-standard
+    _F_LBUF = 0x0008, // non-standard
+    _F_ERR  = 0x0010, // non-standard
+    _F_EOF  = 0x0020, // non-standard
+    _F_BIN  = 0x0040, // non-standard
+    _F_IN   = 0x0080, // non-standard
+    _F_OUT  = 0x0100, // non-standard
+    _F_TERM = 0x0200, // non-standard
 }
 
 version( Windows )
@@ -215,50 +228,28 @@ version( Windows )
     enum
     {
         _IOFBF   = 0,
-        _IOREAD  = 1,
-        _IOWRT   = 2,
-        _IONBF   = 4,
-        _IOMYBUF = 8,
-        _IOEOF   = 0x10,
-        _IOERR   = 0x20,
         _IOLBF   = 0x40,
-        _IOSTRG  = 0x40,
-        _IORW    = 0x80,
-        _IOTRAN  = 0x100,
-        _IOAPP   = 0x200,
+		_IONBF   = 4,
+        _IOREAD  = 1,	  // non-standard
+        _IOWRT   = 2,	  // non-standard
+        _IOMYBUF = 8,	  // non-standard	
+        _IOEOF   = 0x10,  // non-standard
+        _IOERR   = 0x20,  // non-standard
+        _IOSTRG  = 0x40,  // non-standard
+        _IORW    = 0x80,  // non-standard
+        _IOTRAN  = 0x100, // non-standard
+        _IOAPP   = 0x200, // non-standard
     }
 
     extern void function() _fcloseallp;
 
-    version (GNU)
-    {
-        extern FILE[_NFILE]* _imp___iob;
+    private extern FILE[_NFILE] _iob;
 
-        auto FILE* stdin;
-        auto FILE* stdout;
-        auto FILE* stderr;
-        auto FILE* stdaux;
-        auto FILE* stdprn;
-
-        static this()
-        {
-            stdin  = &(*_imp___iob)[0];
-            stdout = &(*_imp___iob)[1];
-            stderr = &(*_imp___iob)[2];
-            stdaux = &(*_imp___iob)[3];
-            stdprn = &(*_imp___iob)[4];
-        }
-    }
-    else
-    {
-        extern FILE[_NFILE] _iob;
-
-        auto FILE* stdin  = &_iob[0];
-        auto FILE* stdout = &_iob[1];
-        auto FILE* stderr = &_iob[2];
-        auto FILE* stdaux = &_iob[3];
-        auto FILE* stdprn = &_iob[4];
-    }
+    auto FILE* stdin  = &_iob[0];
+    auto FILE* stdout = &_iob[1];
+    auto FILE* stderr = &_iob[2];
+    auto FILE* stdaux = &_iob[3];
+    auto FILE* stdprn = &_iob[4];
 }
 else version( linux )
 {
@@ -273,26 +264,26 @@ else version( linux )
     extern FILE* stdout;
     extern FILE* stderr;
 }
-else version( darwin )
+else version( OSX )
 {
-    extern FILE* __stdinp;
-    extern FILE* __stdoutp;
-    extern FILE* __stderrp;
-
-    auto FILE* stdin;
-    auto FILE* stdout;
-    auto FILE* stderr;
-
-    static this()
+	enum
     {
-        stdin  = __stdinp;
-        stdout = __stdoutp;
-        stderr = __stderrp;
+        _IOFBF = 0,
+        _IOLBF = 1,
+        _IONBF = 2,
     }
+
+    private extern FILE* __stdinp;
+    private extern FILE* __stdoutp;
+    private extern FILE* __stderrp;
+
+    alias __stdinp  stdin;
+    alias __stdoutp stdout;
+    alias __stderrp stderr;
 }
 else version( freebsd )
 {
-    extern FILE[3] __sF;
+    private extern FILE[3] __sF;
 
     auto FILE* stdin  = &__sF[0];
     auto FILE* stdout = &__sF[1];
@@ -385,7 +376,7 @@ else version( linux )
     int  snprintf(char* s, size_t n, in char* format, ...);
     int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
 }
-else version( darwin )
+else version( OSX )
 {
     void rewind(FILE*);
     void clearerr(FILE*);
@@ -413,33 +404,3 @@ else
 }
 
 void perror(in char* s);
-
-int fwprintf(FILE* stream, in wchar_t* format, ...);
-int fwscanf(FILE* stream, in wchar_t* format, ...);
-int swprintf(wchar_t* s, size_t n, in wchar_t* format, ...);
-int swscanf(in wchar_t* s, in wchar_t* format, ...);
-int vfwprintf(FILE* stream, in wchar_t* format, va_list arg);
-int vfwscanf(FILE* stream, in wchar_t* format, va_list arg);
-int vswprintf(wchar_t* s, size_t n, in wchar_t* format, va_list arg);
-int vswscanf(in wchar_t* s, in wchar_t* format, va_list arg);
-int vwprintf(in wchar_t* format, va_list arg);
-int vwscanf(in wchar_t* format, va_list arg);
-int wprintf(in wchar_t* format, ...);
-int wscanf(in wchar_t* format, ...);
-
-wint_t fgetwc(FILE* stream);
-wint_t fputwc(wchar_t c, FILE* stream);
-
-wchar_t* fgetws(wchar_t* s, int n, FILE* stream);
-int      fputws(in wchar_t* s, FILE* stream);
-
-extern (D)
-{
-    wint_t getwchar()                     { return fgetwc(stdin);     }
-    wint_t putwchar(wchar_t c)            { return fputwc(c,stdout);  }
-    wint_t getwc(FILE* stream)            { return fgetwc(stream);    }
-    wint_t putwc(wchar_t c, FILE* stream) { return fputwc(c, stream); }
-}
-
-wint_t ungetwc(wint_t c, FILE* stream);
-int    fwide(FILE* stream, int mode);

@@ -37,7 +37,7 @@ version (Windows)
 {
     import core.stdc.stdint;
     import core.sys.windows.windows;
-    const
+    const 
 {
     DWORD TLS_OUT_OF_INDEXES = -1u;
 }
@@ -53,11 +53,11 @@ version (Windows)
 {
     extern (C) 
 {
-    extern __thread
+    extern __thread 
 {
     int _tlsstart;
 }
-    extern __thread
+    extern __thread 
 {
     int _tlsend;
 }
@@ -75,9 +75,7 @@ else
     HANDLE GetCurrentThreadHandle()
 {
 const uint DUPLICATE_SAME_ACCESS = 2;
-HANDLE curr = GetCurrentThread();
-HANDLE proc = GetCurrentProcess();
-HANDLE hndl;
+HANDLE curr = GetCurrentThread(),proc = GetCurrentProcess(),hndl;
 DuplicateHandle(proc,curr,proc,&hndl,0,TRUE,DUPLICATE_SAME_ACCESS);
 return hndl;
 }
@@ -98,22 +96,38 @@ else
 {
     int getErrno();
 }
+    version (OSX)
+{
+    import core.sys.osx.mach.thread_act;
+    extern (C) 
+{
+    mach_port_t pthread_mach_thread_np(pthread_t);
+}
+}
     version (GNU)
 {
     import gcc.builtins;
 }
     version (DigitalMars)
 {
+    version (linux)
+{
     extern (C) 
 {
-    extern __thread
+    extern __thread 
 {
     int _tlsstart;
 }
-    extern __thread
+    extern __thread 
 {
     int _tlsend;
 }
+}
+}
+else
+{
+    int _tlsstart;
+    alias _tlsstart _tlsend;
 }
 }
 else
@@ -174,90 +188,90 @@ m_sz = sz;
 m_call = Call.DG;
 m_curr = &m_main;
 }
-        final
+        final 
 {
     void start();
 }
-    final
+    final 
 {
     Object join(bool rethrow = true);
 }
-    final
+    final 
 {
     char[] name();
 }
-    final
+    final 
 {
     void name(char[] val);
 }
-    final
+    final 
 {
     bool isDaemon();
 }
-    final
+    final 
 {
     void isDaemon(bool val);
 }
-    final
+    final 
 {
     bool isRunning();
 }
-    static const
+    static const 
 {
     int PRIORITY_MIN;
 }
-    static const
+    static const 
 {
     int PRIORITY_MAX;
 }
-    final
+    final 
 {
     int priority();
 }
-    final
+    final 
 {
     void priority(int val);
 }
-    static
+    static 
 {
     void sleep(long period);
 }
-    static
+    static 
 {
     void yield();
 }
-    static
+    static 
 {
     Thread getThis();
 }
-    static
+    static 
 {
     Thread[] getAll();
 }
-    static
+    static 
 {
     int opApply(int delegate(ref Thread) dg);
 }
-    static const
+    static const 
 {
     uint LOCAL_MAX = 64;
 }
-    static
+    static 
 {
     uint createLocal();
 }
-    static
+    static 
 {
     void deleteLocal(uint key);
 }
-    static
+    static 
 {
     void* getLocal(uint key)
 {
 return getThis().m_local[key];
 }
 }
-    static
+    static 
 {
     void* setLocal(uint key, void* val)
 {
@@ -275,7 +289,7 @@ void* pstart = cast(void*)&_tlsstart;
 void* pend = cast(void*)&_tlsend;
 m_tls = pstart[0..pend - pstart];
 }
-    final
+    final 
 {
     void run();
 }
@@ -300,11 +314,11 @@ else
     alias pthread_t ThreadAddr;
 }
 }
-    static
+    static 
 {
     bool[LOCAL_MAX] sm_local;
 }
-    static
+    static 
 {
     TLSKey sm_this;
 }
@@ -312,6 +326,13 @@ else
     version (Windows)
 {
     HANDLE m_hndl;
+}
+else
+{
+    version (OSX)
+{
+    mach_port_t m_tmach;
+}
 }
     ThreadAddr m_addr;
     Call m_call;
@@ -330,13 +351,13 @@ void delegate() m_dg;
     Object m_unhandled;
     private
 {
-    static
+    static 
 {
     void setThis(Thread t);
 }
     private
 {
-    final
+    final 
 {
     void pushContext(Context* c)
 in
@@ -349,7 +370,7 @@ c.within = m_curr;
 m_curr = c;
 }
 }
-    final
+    final 
 {
     void popContext()
 in
@@ -363,7 +384,7 @@ m_curr = c.within;
 c.within = null;
 }
 }
-    final
+    final 
 {
     Context* topContext()
 in
@@ -375,7 +396,7 @@ body
 return m_curr;
 }
 }
-    static
+    static 
 {
     struct Context
 {
@@ -392,48 +413,83 @@ return m_curr;
     void[] m_tls;
     version (Windows)
 {
+    version (X86)
+{
     uint[8] m_reg;
+}
+else
+{
+    version (X86_64)
+{
+    ulong[16] m_reg;
+}
+else
+{
+    static assert("Architecture not supported.");
+}
+}
+}
+else
+{
+    version (OSX)
+{
+    version (X86)
+{
+    uint[8] m_reg;
+}
+else
+{
+    version (X86_64)
+{
+    ulong[16] m_reg;
+}
+else
+{
+    static assert("Architecture not supported.");
+}
+}
+}
 }
     private
 {
-    static
+    static 
 {
     Object slock()
 {
 return Thread.classinfo;
 }
 }
-    static
+    static 
 {
     Context* sm_cbeg;
 }
-    static
+    static 
 {
     size_t sm_clen;
 }
-    static
+    static 
 {
     Thread sm_tbeg;
 }
-    static
+    static 
 {
     size_t sm_tlen;
 }
     Thread prev;
     Thread next;
-    static
+    static 
 {
     void add(Context* c);
 }
-    static
+    static 
 {
     void remove(Context* c);
 }
-    static
+    static 
 {
     void add(Thread t);
 }
-    static
+    static 
 {
     void remove(Thread t);
 }
@@ -531,27 +587,27 @@ return newval;
 }
 class ThreadGroup
 {
-    final
+    final 
 {
     Thread create(void function() fn);
 }
-    final
+    final 
 {
     Thread create(void delegate() dg);
 }
-    final
+    final 
 {
     void add(Thread t);
 }
-    final
+    final 
 {
     void remove(Thread t);
 }
-    final
+    final 
 {
     int opApply(int delegate(ref Thread) dg);
 }
-    final
+    final 
 {
     void joinAll(bool rethrow = true);
 }
@@ -617,7 +673,7 @@ else
 }
 }
 }
-    const
+    const 
 {
     size_t PAGESIZE;
 }
@@ -672,11 +728,11 @@ m_state = State.HOLD;
 allocStack(sz);
 initStack();
 }
-        final
+        final 
 {
     Object call(bool rethrow = true);
 }
-    final
+    final 
 {
     void reset()
 in
@@ -697,22 +753,22 @@ HOLD,
 EXEC,
 TERM,
 }
-    final
+    final 
 {
     State state()
 {
 return m_state;
 }
 }
-    static
+    static 
 {
     void yield();
 }
-    static
+    static 
 {
     void yieldAndThrow(Object obj);
 }
-    static
+    static 
 {
     Fiber getThis();
 }
@@ -723,7 +779,7 @@ return m_state;
 {
 m_call = Call.NO;
 }
-    final
+    final 
 {
     void run();
 }
@@ -746,15 +802,15 @@ void delegate() m_dg;
     State m_state;
     private
 {
-    final
+    final 
 {
     void allocStack(size_t sz);
 }
-    final
+    final 
 {
     void freeStack();
 }
-    final
+    final 
 {
     void initStack();
 }
@@ -763,7 +819,7 @@ void delegate() m_dg;
     void* m_pmem;
     static if(is(ucontext_t))
 {
-    static
+    static 
 {
     ucontext_t sm_utxt = void;
 }
@@ -772,27 +828,37 @@ void delegate() m_dg;
 }
     private
 {
-    static
+    static 
 {
     void setThis(Fiber f);
 }
-    static
+    static 
 {
     Thread.TLSKey sm_this;
 }
     private
 {
-    final
+    final 
 {
     void switchIn();
 }
-    final
+    final 
 {
     void switchOut();
 }
 }
 }
 }
+}
+}
+}
+version (OSX)
+{
+    extern (D) 
+{
+    void* ___tls_get_addr(void* p)
+{
+return p;
 }
 }
 }

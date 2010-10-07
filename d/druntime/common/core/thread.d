@@ -1,9 +1,14 @@
 /**
  * The thread module provides support for thread creation and management.
  *
- * Copyright: Copyright (c) 2005-2008, The D Runtime Project
- * License:   BSD Style, see LICENSE
+ * Copyright: Copyright Sean Kelly 2005 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
  * Authors:   Sean Kelly
+ *
+ *          Copyright Sean Kelly 2005 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
@@ -173,6 +178,12 @@ else version( Posix )
 
         extern (C) int getErrno();
 
+        version( OSX )
+        {
+            import core.sys.osx.mach.thread_act;
+            extern (C) mach_port_t pthread_mach_thread_np(pthread_t);
+        }
+
         version( GNU )
         {
             import gcc.builtins;
@@ -180,10 +191,18 @@ else version( Posix )
 
         version( DigitalMars )
         {
-            extern (C)
+            version( linux )
             {
-                extern __thread int _tlsstart;
-                extern __thread int _tlsend;
+                extern (C)
+                {
+                    extern __thread int _tlsstart;
+                    extern __thread int _tlsend;
+                }
+            }
+            else
+            {
+                int   _tlsstart;
+                alias _tlsstart _tlsend;
             }
         }
         else
@@ -233,10 +252,10 @@ else version( Posix )
                 pthread_cleanup cleanup = void;
                 cleanup.push( &thread_cleanupHandler, cast(void*) obj );
             }
-            else version( darwin )
+            else version( OSX )
             {
-            pthread_cleanup cleanup = void;
-            cleanup.push( &thread_cleanupHandler, cast(void*) obj );
+                pthread_cleanup cleanup = void;
+                cleanup.push( &thread_cleanupHandler, cast(void*) obj );
             }
             else
             {
@@ -522,6 +541,10 @@ class Thread
             pthread_detach( m_addr );
             m_addr = m_addr.init;
         }
+        version( OSX )
+        {
+            m_tmach = m_tmach.init;
+        }
     }
 
 
@@ -547,6 +570,14 @@ class Thread
     }
     body
     {
+        auto wasThreaded  = multiThreadedFlag;
+        multiThreadedFlag = true;
+        scope( failure )
+        {
+            if( !wasThreaded )
+                multiThreadedFlag = false;
+        }
+
         version( Windows ) {} else
         version( Posix )
         {
@@ -581,7 +612,12 @@ class Thread
                 if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
                     throw new ThreadException( "Error creating thread" );
             }
-            multiThreadedFlag = true;
+            version( OSX )
+            {
+                m_tmach = pthread_mach_thread_np( m_addr );
+                if( m_tmach == m_tmach.init )
+                    throw new ThreadException( "Error creating thread" );
+            }
             add( this );
         }
     }
@@ -1222,6 +1258,10 @@ private:
     {
         HANDLE          m_hndl;
     }
+    else version( OSX )
+    {
+        mach_port_t     m_tmach;
+    }
     ThreadAddr          m_addr;
     Call                m_call;
     char[]              m_name;
@@ -1320,7 +1360,35 @@ private:
 
     version( Windows )
     {
+      version( X86 )
+      {
         uint[8]         m_reg; // edi,esi,ebp,esp,ebx,edx,ecx,eax
+      }
+      else version( X86_64 )
+      {
+        ulong[16]       m_reg; // rdi,rsi,rbp,rsp,rbx,rdx,rcx,rax
+                               // r8,r9,r10,r11,r12,r13,r14,r15
+      }
+      else
+      {
+        static assert( "Architecture not supported." );
+      }
+    }
+    else version( OSX )
+    {
+      version( X86 )
+      {
+        uint[8]         m_reg; // edi,esi,ebp,esp,ebx,edx,ecx,eax
+      }
+      else version( X86_64 )
+      {
+        ulong[16]       m_reg; // rdi,rsi,rbp,rsp,rbx,rdx,rcx,rax
+                               // r8,r9,r10,r11,r12,r13,r14,r15
+      }
+      else
+      {
+        static assert( "Architecture not supported." );
+      }
     }
 
 
@@ -1629,6 +1697,11 @@ extern (C) void thread_attachThis()
 
         Thread.setThis( thisThread );
     }
+    version( OSX )
+    {
+        thisThread.m_tmach = pthread_mach_thread_np( thisThread.m_addr );
+        assert( thisThread.m_tmach != thisThread.m_tmach.init );
+    }    
 
     Thread.add( thisThread );
     Thread.add( thisContext );
@@ -1756,17 +1829,89 @@ extern (C) void thread_suspendAll()
 
             if( !GetThreadContext( t.m_hndl, &context ) )
                 throw new ThreadException( "Unable to load thread context" );
-            if( !t.m_lock )
-                t.m_curr.tstack = cast(void*) context.Esp;
-            // edi,esi,ebp,esp,ebx,edx,ecx,eax
-            t.m_reg[0] = context.Edi;
-            t.m_reg[1] = context.Esi;
-            t.m_reg[2] = context.Ebp;
-            t.m_reg[3] = context.Esp;
-            t.m_reg[4] = context.Ebx;
-            t.m_reg[5] = context.Edx;
-            t.m_reg[6] = context.Ecx;
-            t.m_reg[7] = context.Eax;
+
+            version( X86 )
+            {
+                if( !t.m_lock )
+                    t.m_curr.tstack = cast(void*) context.Esp;
+                // eax,ebx,ecx,edx,edi,esi,ebp,esp
+                t.m_reg[0] = context.Eax;
+                t.m_reg[1] = context.Ebx;
+                t.m_reg[2] = context.Ecx;
+                t.m_reg[3] = context.Edx;
+                t.m_reg[4] = context.Edi;
+                t.m_reg[5] = context.Esi;
+                t.m_reg[6] = context.Ebp;
+                t.m_reg[7] = context.Esp;
+            }
+            else
+            {
+                static assert( "Architecture not supported." );
+            }
+        }
+        else version( OSX )
+        {
+            if( t.m_addr != pthread_self() && thread_suspend( t.m_tmach ) != KERN_SUCCESS )
+            {
+                if( !t.isRunning )
+                {
+                    Thread.remove( t );
+                    return;
+                }
+                throw new ThreadException( "Unable to suspend thread" );
+            }
+
+            version( X86 )
+            {
+                x86_thread_state32_t    state = void;
+                mach_msg_type_number_t  count = x86_THREAD_STATE32_COUNT;
+
+                if( thread_get_state( t.m_tmach, x86_THREAD_STATE32, &state, &count ) != KERN_SUCCESS )
+                    throw new ThreadException( "Unable to load thread state" );
+                if( !t.m_lock )
+                    t.m_curr.tstack = cast(void*) state.esp;
+                // eax,ebx,ecx,edx,edi,esi,ebp,esp
+                t.m_reg[0] = state.eax;
+                t.m_reg[1] = state.ebx;
+                t.m_reg[2] = state.ecx;
+                t.m_reg[3] = state.edx;
+                t.m_reg[4] = state.edi;
+                t.m_reg[5] = state.esi;
+                t.m_reg[6] = state.ebp;
+                t.m_reg[7] = state.esp;
+            }
+            else version( X86_64 )
+            {
+                x86_thread_state64_t    state = void;
+                mach_msg_type_number_t  count = x86_THREAD_STATE64_COUNT;
+
+                if( thread_get_state( t.m_tmach, x86_THREAD_STATE64, &state, &count ) != KERN_SUCCESS )
+                    throw new ThreadException( "Unable to load thread state" );
+                if( !t.m_lock )
+                    t.m_curr.tstack = cast(void*) state.rsp;
+                // rax,rbx,rcx,rdx,rdi,rsi,rbp,rsp
+                t.m_reg[0] = state.rax;
+                t.m_reg[1] = state.rbx;
+                t.m_reg[2] = state.rcx;
+                t.m_reg[3] = state.rdx;
+                t.m_reg[4] = state.rdi;
+                t.m_reg[5] = state.rsi;
+                t.m_reg[6] = state.rbp;
+                t.m_reg[7] = state.rsp;
+                // r8,r9,r10,r11,r12,r13,r14,r15
+                t.m_reg[8]  = state.r8;
+                t.m_reg[9]  = state.r9;
+                t.m_reg[10] = state.r10;
+                t.m_reg[11] = state.r11;
+                t.m_reg[12] = state.r12;
+                t.m_reg[13] = state.r13;
+                t.m_reg[14] = state.r14;
+                t.m_reg[15] = state.r15;
+            }
+            else
+            {
+                static assert( "Architecture not supported." );
+            }
         }
         else version( Posix )
         {
@@ -1886,6 +2031,22 @@ body
         version( Windows )
         {
             if( t.m_addr != GetCurrentThreadId() && ResumeThread( t.m_hndl ) == 0xFFFFFFFF )
+            {
+                if( !t.isRunning )
+                {
+                    Thread.remove( t );
+                    return;
+                }
+                throw new ThreadException( "Unable to resume thread" );
+            }
+
+            if( !t.m_lock )
+                t.m_curr.tstack = t.m_curr.bstack;
+            t.m_reg[0 .. $] = 0;
+        }
+        else version( OSX )
+        {
+            if( t.m_addr != pthread_self() && thread_resume( t.m_tmach ) != KERN_SUCCESS )
             {
                 if( !t.isRunning )
                 {
@@ -3094,9 +3255,16 @@ private:
 
         // NOTE: On OS X the stack must be 16-byte aligned according to the
         // IA-32 call spec.
-        version( darwin )
+        version( OSX )
         {
-             pstack = cast(void*)(cast(uint)(pstack) - (cast(uint)(pstack) & 0x0F));
+            version( StackGrowsDown )
+            {
+                pstack = cast(void*)(cast(uint)(pstack) - (cast(uint)(pstack) & 0x0F));
+            }
+            else
+            {
+                pstack = cast(void*)(cast(uint)(pstack) + (cast(uint)(pstack) & 0x0F));
+            }
         }
 
         version( AsmX86_Win32 )
@@ -3121,6 +3289,7 @@ private:
         }
         else version( AsmX86_Posix )
         {
+            push( 0x00000000 );                                     // Pad stack for OSX
             push( cast(size_t) &fiber_entryPoint );                 // EIP
             push( 0x00000000 );                                     // EBP
             push( 0x00000000 );                                     // EAX
@@ -3276,5 +3445,19 @@ private:
         //       to prevent Bad Things from happening.
         volatile tobj.m_lock = false;
         tobj.m_curr.tstack = tobj.m_curr.bstack;
+    }
+}
+
+version (OSX)
+{
+    /* The Mach-O object file format does not allow for thread local storage
+     * declarations. So, instead we roll our own by putting tls into
+     * the sections __tlsdata and __tlscoal_nt.
+     */
+
+    extern (D)
+    void* ___tls_get_addr(void* p)
+    {
+	return p;
     }
 }

@@ -34,6 +34,7 @@
 #include "hdrgen.h"
 #include "parse.h"
 #include "template.h"
+#include "attrib.h"
 
 /******************************** Statement ***************************/
 
@@ -573,7 +574,6 @@ int CompoundStatement::blockExit()
     return result;
 }
 
-
 int CompoundStatement::comeFrom()
 {   int comefrom = FALSE;
 
@@ -589,6 +589,82 @@ int CompoundStatement::comeFrom()
     return comefrom;
 }
 
+
+/******************************** CompoundDeclarationStatement ***************************/
+
+CompoundDeclarationStatement::CompoundDeclarationStatement(Loc loc, Statements *s)
+    : CompoundStatement(loc, s)
+{
+    statements = s;
+}
+
+Statement *CompoundDeclarationStatement::syntaxCopy()
+{
+    Statements *a = new Statements();
+    a->setDim(statements->dim);
+    for (size_t i = 0; i < statements->dim; i++)
+    {	Statement *s = (Statement *)statements->data[i];
+	if (s)
+	    s = s->syntaxCopy();
+	a->data[i] = s;
+    }
+    CompoundDeclarationStatement *cs = new CompoundDeclarationStatement(loc, a);
+    return cs;
+}
+
+void CompoundDeclarationStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
+{
+    int nwritten = 0;
+    for (int i = 0; i < statements->dim; i++)
+    {	Statement *s = (Statement *) statements->data[i];
+	if (s)
+	{   DeclarationStatement *ds = s->isDeclarationStatement();
+	    assert(ds);
+	    DeclarationExp *de = (DeclarationExp *)ds->exp;
+	    assert(de->op == TOKdeclaration);
+	    Declaration *d = de->declaration->isDeclaration();
+	    assert(d);
+	    VarDeclaration *v = d->isVarDeclaration();
+	    if (v)
+	    {
+		/* This essentially copies the part of VarDeclaration::toCBuffer()
+		 * that does not print the type.
+		 * Should refactor this.
+		 */
+		if (nwritten)
+		{
+		    buf->writeByte(',');
+		    buf->writestring(v->ident->toChars());
+		}
+		else
+		{
+		    StorageClassDeclaration::stcToCBuffer(buf, v->storage_class);
+		    if (v->type)
+			v->type->toCBuffer(buf, v->ident, hgs);
+		    else
+			buf->writestring(v->ident->toChars());
+		}
+
+		if (v->init)
+		{   buf->writestring(" = ");
+#if DMDV2
+		    ExpInitializer *ie = v->init->isExpInitializer();
+		    if (ie && (ie->exp->op == TOKconstruct || ie->exp->op == TOKblit))
+			((AssignExp *)ie->exp)->e2->toCBuffer(buf, hgs);
+		    else
+#endif
+			v->init->toCBuffer(buf, hgs);
+		}
+	    }
+	    else
+		d->toCBuffer(buf, hgs);
+	    nwritten++;
+	}
+    }
+    buf->writeByte(';');
+    if (!hgs->FLinit.init)
+        buf->writenl();
+}
 
 /**************************** UnrolledLoopStatement ***************************/
 
@@ -1058,7 +1134,7 @@ Statement *ForStatement::semantic(Scope *sc)
 
     sc->sbreak = this;
     sc->scontinue = this;
-    body = body->semantic(sc);
+    if (body) body = body->semantic(sc);
     sc->noctor--;
 
     sc->pop();
@@ -1134,11 +1210,7 @@ void ForStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     if (init)
     {
         hgs->FLinit.init++;
-        hgs->FLinit.decl = 0;
         init->toCBuffer(buf, hgs);
-        if (hgs->FLinit.decl > 0)
-            buf->writebyte(';');
-        hgs->FLinit.decl = 0;
         hgs->FLinit.init--;
     }
     else
@@ -1263,12 +1335,15 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		if (arg->storageClass & (STCout | STCref | STClazy))
 		    error("no storage class for key %s", arg->ident->toChars());
 		TY keyty = arg->type->ty;
-		if ((keyty != Tint32 && keyty != Tuns32) &&
-		    (! global.params.isX86_64 ||
-			(keyty != Tint64 && keyty != Tuns64))
-		   )
+		if (keyty != Tint32 && keyty != Tuns32)
 		{
-		    error("foreach: key type must be int or uint, not %s", arg->type->toChars());
+		    if (global.params.isX86_64)
+		    {
+			if (keyty != Tint64 && keyty != Tuns64)
+			    error("foreach: key type must be int or uint, long or ulong, not %s", arg->type->toChars());
+		    }
+		    else
+			error("foreach: key type must be int or uint, not %s", arg->type->toChars());
 		}
 		Initializer *ie = new ExpInitializer(0, new IntegerExp(k));
 		VarDeclaration *var = new VarDeclaration(loc, arg->type, arg->ident, ie);
@@ -1393,7 +1468,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 
 	    sc->sbreak = this;
 	    sc->scontinue = this;
-	    body = body->semantic(sc);
+	    if (body) body = body->semantic(sc);
 
 	    if (tab->nextOf()->implicitConvTo(value->type) < MATCHconst)
 	    {
@@ -1404,14 +1479,15 @@ Statement *ForeachStatement::semantic(Scope *sc)
 			tab->toChars(), value->type->toChars());
 	    }
 
-	    if (key &&
-		((key->type->ty != Tint32 && key->type->ty != Tuns32) &&
-		 (! global.params.isX86_64 ||
-		     (key->type->ty != Tint64 && key->type->ty != Tuns64))
-	        )
-	       )
+	    if (key && key->type->ty != Tint32 && key->type->ty != Tuns32)
 	    {
-		error("foreach: key type must be int or uint, not %s", key->type->toChars());
+		if (global.params.isX86_64)
+		{
+		    if (key->type->ty != Tint64 && key->type->ty != Tuns64)
+			error("foreach: key type must be int or uint, long or ulong, not %s", key->type->toChars());
+		}
+		else
+		    error("foreach: key type must be int or uint, not %s", key->type->toChars());
 	    }
 
 	    if (key && key->storage_class & (STCout | STCref))
@@ -1436,7 +1512,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 
 	case Tclass:
 	case Tstruct:
-#if V2
+#if DMDV2
 	{   /* Look for range iteration, i.e. the properties
 	     * .empty, .next, .retreat, .head and .rear
 	     *    foreach (e; range) { ... }
@@ -1500,6 +1576,12 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		new DeclarationStatement(loc, de), this->body);
 
 	    s = new ForStatement(loc, init, condition, increment, body);
+#if 0
+	    printf("init: %s\n", init->toChars());
+	    printf("condition: %s\n", condition->toChars());
+	    printf("increment: %s\n", increment->toChars());
+	    printf("body: %s\n", body->toChars());
+#endif
 	    s = s->semantic(sc);
 	    break;
 	}
@@ -1518,7 +1600,9 @@ Statement *ForeachStatement::semantic(Scope *sc)
 	    Type *tret;
 
 	    if (!checkForArgTypes())
+	    {	body = body->semantic(sc);
 		return this;
+	    }
 
 	    tret = func->type->nextOf();
 
@@ -1743,16 +1827,18 @@ Statement *ForeachStatement::semantic(Scope *sc)
 }
 
 bool ForeachStatement::checkForArgTypes()
-{
+{   bool result = TRUE;
+
     for (size_t i = 0; i < arguments->dim; i++)
     {	Argument *arg = (Argument *)arguments->data[i];
 	if (!arg->type)
 	{
 	    error("cannot infer type for %s", arg->ident->toChars());
-	    return FALSE;
+	    arg->type = Type::terror;
+	    result = FALSE;
 	}
     }
-    return TRUE;
+    return result;
 }
 
 int ForeachStatement::hasBreak()
@@ -1822,7 +1908,7 @@ void ForeachStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /**************************** ForeachRangeStatement ***************************/
 
-#if V2
+#if DMDV2
 
 ForeachRangeStatement::ForeachRangeStatement(Loc loc, enum TOK op, Argument *arg,
 	Expression *lwr, Expression *upr, Statement *body)
@@ -2964,6 +3050,7 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	else if (tbret->ty != Tvoid)
 	{
 	    exp = exp->implicitCastTo(sc, tret);
+	    exp = exp->optimize(WANTvalue);
 	}
     }
     else if (fd->inferRetType)

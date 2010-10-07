@@ -37,56 +37,56 @@ private
 }
 struct Runtime
 {
-    static
+    static 
 {
     bool initialize(void delegate(Exception) dg = null)
 {
 return rt_init(dg);
 }
 }
-    static
+    static 
 {
     bool terminate(void delegate(Exception) dg = null)
 {
 return rt_term(dg);
 }
 }
-    static
+    static 
 {
     bool isHalting()
 {
 return rt_isHalting();
 }
 }
-    static
+    static 
 {
     void* loadLibrary(in char[] name)
 {
 return rt_loadLibrary(name);
 }
 }
-    static
+    static 
 {
     bool unloadLibrary(void* p)
 {
 return rt_unloadLibrary(p);
 }
 }
-    static
+    static 
 {
     void traceHandler(TraceHandler h)
 {
 rt_setTraceHandler(h);
 }
 }
-    static
+    static 
 {
     void collectHandler(CollectHandler h)
 {
 rt_setCollectHandler(h);
 }
 }
-    static
+    static 
 {
     void moduleUnitTester(ModuleUnitTester h)
 {
@@ -95,7 +95,7 @@ sm_moduleUnitTester = h;
 }
     private
 {
-    static
+    static 
 {
     ModuleUnitTester sm_moduleUnitTester = null;
 }

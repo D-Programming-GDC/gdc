@@ -28,7 +28,7 @@
 
 module std.intrinsic;
 
-//nothrow:
+nothrow:
 
 /**
  * Scans the bits in v starting with bit 0, looking
@@ -98,7 +98,7 @@ else
  * Tests the bit.
  */
 version (GNU)
-int bt(in uint *p, uint bitnum)
+pure nothrow int bt(in uint *p, uint bitnum)
 {
     return (p[bitnum / (uint.sizeof*8)] & (1<<(bitnum & ((uint.sizeof*8)-1)))) ? -1 : 0 ;
 }

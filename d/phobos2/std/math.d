@@ -1025,7 +1025,7 @@ real frexp(real value, out int exp)
     alias floatTraits!(real) F;
 
     ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
-  static if (real.mant_dig == 64) { // real80
+    static if (real.mant_dig == 64) { // real80
     if (ex) { // If exponent is non-zero
         if (ex == F.EXPMASK) {   // infinity or NaN
             if (*vl &  0x7FFF_FFFF_FFFF_FFFF) {  // NaN

@@ -9,8 +9,8 @@
 module core.sys.posix.arpa.inet;
 
 private import core.sys.posix.config;
-public import core.stdc.inttypes : uint32_t, uint16_t;
-public import core.sys.posix.sys.socket : socklen_t;
+public import core.stdc.inttypes; // for uint32_t, uint16_t
+public import core.sys.posix.sys.socket; // for socklen_t
 
 extern (C):
 
@@ -49,7 +49,7 @@ version( linux )
         in_addr_t s_addr;
     }
 
-    const INET_ADDRSTRLEN = 16;
+    enum INET_ADDRSTRLEN = 16;
 
     uint32_t htonl(uint32_t);
     uint16_t htons(uint16_t);
@@ -61,7 +61,7 @@ version( linux )
     char*     inet_ntop(int, in void*, char*, socklen_t);
     int       inet_pton(int, in char*, void*);
 }
-else version( darwin )
+else version( OSX )
 {
     alias uint16_t in_port_t; // TODO: verify
     alias uint32_t in_addr_t; // TODO: verify
@@ -71,7 +71,7 @@ else version( darwin )
         in_addr_t s_addr;
     }
 
-    const INET_ADDRSTRLEN = 16;
+    enum INET_ADDRSTRLEN = 16;
 
     uint32_t htonl(uint32_t);
     uint16_t htons(uint16_t);
@@ -93,7 +93,7 @@ else version( freebsd )
         in_addr_t s_addr;
     }
 
-    const INET_ADDRSTRLEN = 16;
+    enum INET_ADDRSTRLEN = 16;
 
     uint32_t htonl(uint32_t);
     uint16_t htons(uint16_t);
@@ -115,13 +115,13 @@ INET6_ADDRSTRLEN // from core.sys.posix.netinet.in_
 
 version( linux )
 {
-    const INET6_ADDRSTRLEN = 46;
+    enum INET6_ADDRSTRLEN = 46;
 }
-else version( darwin )
+else version( OSX )
 {
-    const INET6_ADDRSTRLEN = 46;
+    enum INET6_ADDRSTRLEN = 46;
 }
 else version( freebsd )
 {
-    const INET6_ADDRSTRLEN = 46;
+    enum INET6_ADDRSTRLEN = 46;
 }

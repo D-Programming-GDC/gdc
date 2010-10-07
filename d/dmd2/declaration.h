@@ -416,7 +416,7 @@ struct TypeInfoTupleDeclaration : TypeInfoDeclaration
     void toDt(dt_t **pdt);
 };
 
-#if V2
+#if DMDV2
 struct TypeInfoConstDeclaration : TypeInfoDeclaration
 {
     TypeInfoConstDeclaration(Type *tinfo);
@@ -456,7 +456,7 @@ enum ILS
 };
 
 /**************************************************************/
-#if V2
+#if DMDV2
 
 enum BUILTIN
 {
@@ -523,7 +523,7 @@ struct FuncDeclaration : Declaration
     VarDeclaration *nrvo_var;		// variable to replace with shidden
     Symbol *shidden;			// hidden pointer passed to function
 
-#if V2
+#if DMDV2
     enum BUILTIN builtin;		// set if this is a known, builtin
 					// function we can evaluate at compile
 					// time
@@ -596,6 +596,13 @@ struct FuncDeclaration : Declaration
     FuncDeclaration *isFuncDeclaration() { return this; }
 };
 
+FuncDeclaration *resolveFuncCall(Scope *sc, Loc loc, Dsymbol *s,
+	Objects *tiargs,
+	Expression *ethis,
+	Expressions *arguments,
+	int flags);
+
+
 struct FuncAliasDeclaration : FuncDeclaration
 {
     FuncDeclaration *funcalias;
@@ -640,7 +647,7 @@ struct CtorDeclaration : FuncDeclaration
     CtorDeclaration *isCtorDeclaration() { return this; }
 };
 
-#if V2
+#if DMDV2
 struct PostBlitDeclaration : FuncDeclaration
 {
     PostBlitDeclaration(Loc loc, Loc endloc);
@@ -665,6 +672,8 @@ struct DtorDeclaration : FuncDeclaration
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+    const char *kind();
+    char *toChars();
     int isVirtual();
     int addPreInvariant();
     int addPostInvariant();

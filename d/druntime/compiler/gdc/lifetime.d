@@ -551,9 +551,6 @@ in
 }
 body
 {
-    byte* newdata;
-    size_t sizeelem = ti.next.tsize();
-
     debug(PRINTF)
     {
         printf("_d_arraysetlengthT(p = %p, sizeelem = %d, newlength = %d)\n", p, sizeelem, newlength);
@@ -561,8 +558,16 @@ body
             printf("\tp.data = %p, p.length = %d\n", p.data, p.length);
     }
 
+    byte* newdata = void;
     if (newlength)
     {
+        if (newlength <= p.length)
+        {
+            p.length = newlength;
+            newdata = p.data;
+            return newdata[0 .. newlength];
+        }
+        size_t sizeelem = ti.next.tsize();
         version (GNU)
         {
             // required to output the label;

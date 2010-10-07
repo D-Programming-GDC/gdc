@@ -24,13 +24,7 @@
 #include "dt.h"
 
 dt_t**
-dtval(dt_t** pdt, DT t,
-#if V1
-dinteger_t i,
-#else
-integer_t i,
-#endif
-const void * p)
+dtval(dt_t** pdt, DT t, dinteger_t i, const void * p)
 {
     dt_t * d = new dt_t;
     d->dt = t;

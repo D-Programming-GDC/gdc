@@ -166,6 +166,8 @@ int match(Object *o1, Object *o2, TemplateDeclaration *tempdecl, Scope *sc)
 	    }
 	}
 
+	//printf("t1 = %s\n", t1->toChars());
+	//printf("t2 = %s\n", t2->toChars());
 	if (!t2 || !t1->equals(t2))
 	    goto Lnomatch;
     }
@@ -193,7 +195,7 @@ int match(Object *o1, Object *o2, TemplateDeclaration *tempdecl, Scope *sc)
 	{
 	    goto Lnomatch;
 	}
-#if V2
+#if DMDV2
 	VarDeclaration *v1 = s1->isVarDeclaration();
 	VarDeclaration *v2 = s2->isVarDeclaration();
 	if (v1 && v2 && v1->storage_class & v2->storage_class & STCmanifest)
@@ -270,7 +272,7 @@ void ObjectToCBuffer(OutBuffer *buf, HdrGenState *hgs, Object *oarg)
     }
 }
 
-#if V2
+#if DMDV2
 Object *objectSyntaxCopy(Object *o)
 {
     if (!o)
@@ -311,9 +313,7 @@ TemplateDeclaration::TemplateDeclaration(Loc loc, Identifier *id,
     this->loc = loc;
     this->parameters = parameters;
     this->origParameters = parameters;
-#if V2
     this->constraint = constraint;
-#endif
     this->members = decldefs;
     this->overnext = NULL;
     this->overroot = NULL;
@@ -338,11 +338,9 @@ Dsymbol *TemplateDeclaration::syntaxCopy(Dsymbol *)
 	    p->data[i] = (void *)tp->syntaxCopy();
 	}
     }
-#if V2
     Expression *e = NULL;
     if (constraint)
 	e = constraint->syntaxCopy();
-#endif
     d = Dsymbol::arraySyntaxCopy(members);
     td = new TemplateDeclaration(loc, ident, p, e, d);
     return td;
@@ -358,7 +356,7 @@ void TemplateDeclaration::semantic(Scope *sc)
 
     if (sc->func)
     {
-#if V1
+#if DMDV1
 	error("cannot declare template at function scope %s", sc->func->toChars());
 #endif
     }
@@ -566,7 +564,7 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
 	    printf("\tparameter[%d] is %s : %s\n", i, tp->ident->toChars(), ttp->specType ? ttp->specType->toChars() : "");
 #endif
 
-#if V1
+#if DMDV1
 	m2 = tp->matchArg(paramscope, ti->tiargs, i, parameters, dedtypes, &sparam);
 #else
 	m2 = tp->matchArg(paramscope, ti->tiargs, i, parameters, dedtypes, &sparam, (flag & 2) ? 1 : 0);
@@ -605,7 +603,7 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
 	}
     }
 
-#if V2
+#if DMDV2
     if (m && constraint && !(flag & 1))
     {	/* Check to see if constraint is satisfied.
 	 */
@@ -760,8 +758,8 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(Loc loc, Objects *targsi,
     int tuple_dim = 0;
     MATCH match = MATCHexact;
     FuncDeclaration *fd = onemember->toAlias()->isFuncDeclaration();
-    TypeFunction *fdtype;		// type of fd
-    TemplateTupleParameter *tp;
+    Arguments *fparameters;		// function parameter list
+    int fvarargs;			// function varargs
     Objects dedtypes;	// for T:T*, the dedargs is the T*, dedtypes is the T
 
 #if 0
@@ -770,6 +768,8 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(Loc loc, Objects *targsi,
     {	Expression *e = (Expression *)fargs->data[i];
 	printf("\tfarg[%d] is %s, type is %s\n", i, e->toChars(), e->type->toChars());
     }
+    printf("fd = %s\n", fd->toChars());
+    printf("fd->type = %p\n", fd->type);
 #endif
 
     assert((size_t)scope > 0x10000);
@@ -785,27 +785,57 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(Loc loc, Objects *targsi,
     paramsym->parent = scope->parent;
     Scope *paramscope = scope->push(paramsym);
 
-    tp = isVariadic();
+    TemplateTupleParameter *tp = isVariadic();
+
+#if 0
+    for (i = 0; i < dedargs->dim; i++)
+    {
+	printf("\tdedarg[%d] = ", i);
+	Object *oarg = (Object *)dedargs->data[i];
+	if (oarg) printf("%s", oarg->toChars());
+	printf("\n");
+    }
+#endif
+
 
     nargsi = 0;
     if (targsi)
     {	// Set initial template arguments
+	size_t n;
 
 	nargsi = targsi->dim;
-	if (nargsi > parameters->dim)
+	n = parameters->dim;
+	if (tp)
+	    n--;
+	if (nargsi > n)
 	{   if (!tp)
 		goto Lnomatch;
-	    dedargs->setDim(nargsi);
-	    dedargs->zero();
+
+	    /* The extra initial template arguments
+	     * now form the tuple argument.
+	     */
+	    Tuple *t = new Tuple();
+	    assert(parameters->dim);
+	    dedargs->data[parameters->dim - 1] = (void *)t;
+
+	    tuple_dim = nargsi - n;
+	    t->objects.setDim(tuple_dim);
+	    for (size_t i = 0; i < tuple_dim; i++)
+	    {
+		t->objects.data[i] = (void *)targsi->data[n + i];
+	    }
+	    declareParameter(paramscope, tp, t);
 	}
+	else
+	    n = nargsi;
 
-	memcpy(dedargs->data, targsi->data, nargsi * sizeof(*dedargs->data));
+	memcpy(dedargs->data, targsi->data, n * sizeof(*dedargs->data));
 
-	for (i = 0; i < nargsi; i++)
+	for (size_t i = 0; i < n; i++)
 	{   assert(i < parameters->dim);
 	    TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
 	    MATCH m;
-	    Declaration *sparam;
+	    Declaration *sparam = NULL;
 
 	    m = tp->matchArg(paramscope, dedargs, i, parameters, &dedtypes, &sparam);
 	    //printf("\tdeduceType m = %d\n", m);
@@ -819,11 +849,31 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(Loc loc, Objects *targsi,
 		goto Lnomatch;
 	}
     }
+#if 0
+    for (i = 0; i < dedargs->dim; i++)
+    {
+	printf("\tdedarg[%d] = ", i);
+	Object *oarg = (Object *)dedargs->data[i];
+	if (oarg) printf("%s", oarg->toChars());
+	printf("\n");
+    }
+#endif
 
-    assert(fd->type->ty == Tfunction);
-    fdtype = (TypeFunction *)fd->type;
+    if (fd->type)
+    {
+	assert(fd->type->ty == Tfunction);
+	TypeFunction *fdtype = (TypeFunction *)fd->type;
+	fparameters = fdtype->parameters;
+	fvarargs = fdtype->varargs;
+    }
+    else
+    {	CtorDeclaration *fctor = fd->isCtorDeclaration();
+	assert(fctor);
+	fparameters = fctor->arguments;
+	fvarargs = fctor->varargs;
+    }
 
-    nfparams = Argument::dim(fdtype->parameters); // number of function parameters
+    nfparams = Argument::dim(fparameters); // number of function parameters
     nfargs = fargs->dim;		// number of function arguments
 
     /* Check for match of function arguments with variadic template
@@ -853,14 +903,14 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(Loc loc, Objects *targsi,
 	     */
 	    for (fptupindex = 0; fptupindex < nfparams; fptupindex++)
 	    {
-		Argument *fparam = (Argument *)fdtype->parameters->data[fptupindex];
+		Argument *fparam = (Argument *)fparameters->data[fptupindex];
 		if (fparam->type->ty != Tident)
 		    continue;
 		TypeIdentifier *tid = (TypeIdentifier *)fparam->type;
 		if (!tp->ident->equals(tid->ident) || tid->idents.dim)
 		    continue;
 
-		if (fdtype->varargs)	// variadic function doesn't
+		if (fvarargs)		// variadic function doesn't
 		    goto Lnomatch;	// go with variadic template
 
 		/* The types of the function arguments
@@ -887,13 +937,13 @@ L1:
 	;
     else if (nfargs > nfparams)
     {
-	if (fdtype->varargs == 0)
+	if (fvarargs == 0)
 	    goto Lnomatch;		// too many args, no match
 	match = MATCHconvert;		// match ... with a conversion
     }
 
 L2:
-#if V2
+#if DMDV2
     // Match 'ethis' to any TemplateThisParameter's
     if (ethis)
     {
@@ -904,7 +954,7 @@ L2:
 	    {	MATCH m;
 
 		Type *t = new TypeIdentifier(0, ttp->ident);
-		m = ethis->type->deduceType(scope, t, parameters, &dedtypes);
+		m = ethis->type->deduceType(paramscope, t, parameters, &dedtypes);
 		if (!m)
 		    goto Lnomatch;
 		if (m < match)
@@ -927,7 +977,7 @@ L2:
 	    continue;
 	}
 
-	Argument *fparam = Argument::getNth(fdtype->parameters, i);
+	Argument *fparam = Argument::getNth(fparameters, i);
 
 	if (i >= nfargs)		// if not enough arguments
 	{
@@ -946,7 +996,7 @@ L2:
 #endif
 	    Type *argtype = farg->type;
 
-#if V2
+#if DMDV2
 	    /* Allow string literals which are type [] to match with [dim]
 	     */
 	    if (farg->op == TOKstring)
@@ -962,8 +1012,7 @@ L2:
 #endif
 
 	    MATCH m;
-	    //m = argtype->toHeadMutable()->deduceType(scope, fparam->type, parameters, &dedtypes);
-	    m = argtype->deduceType(scope, fparam->type, parameters, &dedtypes);
+	    m = argtype->deduceType(paramscope, fparam->type, parameters, &dedtypes);
 	    //printf("\tdeduceType m = %d\n", m);
 
 	    /* If no match, see if there's a conversion to a delegate
@@ -975,7 +1024,7 @@ L2:
 
 		if (!tf->varargs && Argument::dim(tf->parameters) == 0)
 		{
-		    m = farg->type->deduceType(scope, tf->next, parameters, &dedtypes);
+		    m = farg->type->deduceType(paramscope, tf->next, parameters, &dedtypes);
 		    if (!m && tf->next->toBasetype()->ty == Tvoid)
 			m = MATCHconvert;
 		}
@@ -992,7 +1041,7 @@ L2:
 	/* The following code for variadic arguments closely
 	 * matches TypeFunction::callMatch()
 	 */
-	if (!(fdtype->varargs == 2 && i + 1 == nfparams))
+	if (!(fvarargs == 2 && i + 1 == nfparams))
 	    goto Lnomatch;
 
 	/* Check for match with function parameter T...
@@ -1000,52 +1049,52 @@ L2:
 	Type *tb = fparam->type->toBasetype();
 	switch (tb->ty)
 	{
-		// Perhaps we can do better with this, see TypeFunction::callMatch()
-		case Tsarray:
-	 {	TypeSArray *tsa = (TypeSArray *)tb;
-	 		integer_t sz = tsa->dim->toInteger();
-	 		if (sz != nfargs - i)
-	 		    goto Lnomatch;
-	 	    }
-	  	    case Tarray:
-	 	    {   TypeArray *ta = (TypeArray *)tb;
-	 		for (; i < nfargs; i++)
-	 		{
-			    Expression *arg = (Expression *)fargs->data[i];
-	 		    assert(arg);
-	 		    MATCH m;
-	 		    /* If lazy array of delegates,
-	 		     * convert arg(s) to delegate(s)
-	 		     */
-	 		    Type *tret = fparam->isLazyArray();
-	 		    if (tret)
-	 		    {
-	 			if (ta->next->equals(arg->type))
-	 			{   m = MATCHexact;
-	 			}
-	 			else
-	 			{
-	 			    m = arg->implicitConvTo(tret);
-	 			    if (m == MATCHnomatch)
-	 			    {
-	 				if (tret->toBasetype()->ty == Tvoid)
-	 				    m = MATCHconvert;
-	 			    }
-	 			}
-	 		    }
-	 		    else
-	 		    {
-	 			m = arg->type->deduceType(scope, ta->next, parameters, &dedtypes);
-	 			//m = arg->implicitConvTo(ta->next);
-	 		    }
-	 		    if (m == MATCHnomatch)
-	 			goto Lnomatch;
-	 		    if (m < match)
-	 			match = m;
-	 		}
-	 		goto Lmatch;
-	 	    }
-	 	case Tclass:
+	    // Perhaps we can do better with this, see TypeFunction::callMatch()
+	    case Tsarray:
+	    {	TypeSArray *tsa = (TypeSArray *)tb;
+		dinteger_t sz = tsa->dim->toInteger();
+		if (sz != nfargs - i)
+		    goto Lnomatch;
+	    }
+	    case Tarray:
+	    {   TypeArray *ta = (TypeArray *)tb;
+		for (; i < nfargs; i++)
+		{
+		    Expression *arg = (Expression *)fargs->data[i];
+		    assert(arg);
+		    MATCH m;
+		    /* If lazy array of delegates,
+		     * convert arg(s) to delegate(s)
+		     */
+		    Type *tret = fparam->isLazyArray();
+		    if (tret)
+		    {
+			if (ta->next->equals(arg->type))
+			{   m = MATCHexact;
+			}
+			else
+			{
+			    m = arg->implicitConvTo(tret);
+			    if (m == MATCHnomatch)
+			    {
+				if (tret->toBasetype()->ty == Tvoid)
+				    m = MATCHconvert;
+			    }
+			}
+		    }
+		    else
+		    {
+			m = arg->type->deduceType(paramscope, ta->next, parameters, &dedtypes);
+			//m = arg->implicitConvTo(ta->next);
+		    }
+		    if (m == MATCHnomatch)
+			goto Lnomatch;
+		    if (m < match)
+			match = m;
+		}
+		goto Lmatch;
+	    }
+	    case Tclass:
 	    case Tident:
 		goto Lmatch;
 
@@ -1068,6 +1117,8 @@ Lmatch:
 	Object *oarg = (Object *)dedargs->data[i];
 	Object *oded = (Object *)dedtypes.data[i];
 	//printf("1dedargs[%d] = %p, dedtypes[%d] = %p\n", i, oarg, i, oded);
+	//if (oarg) printf("oarg: %s\n", oarg->toChars());
+	//if (oded) printf("oded: %s\n", oded->toChars());
 	if (!oarg)
 	{
 	    if (oded)
@@ -1093,11 +1144,12 @@ Lmatch:
 		if (!oded)
 		    goto Lnomatch;
 	    }
-	  declareParameter(paramscope, tp, oded);
-	  dedargs->data[i] = (void *)oded;
+	    declareParameter(paramscope, tp, oded);
+	    dedargs->data[i] = (void *)oded;
 	}
     }
-#if V2
+
+#if DMDV2
     if (constraint)
     {	/* Check to see if constraint is satisfied.
 	 */
@@ -1147,6 +1199,22 @@ void TemplateDeclaration::declareParameter(Scope *sc, TemplateParameter *tp, Obj
     Tuple *va = isTuple(o);
 
     Dsymbol *s;
+
+    // See if tp->ident already exists with a matching definition
+    Dsymbol *scopesym;
+    s = sc->search(loc, tp->ident, &scopesym);
+    if (s && scopesym == sc->scopesym)
+    {
+	TupleDeclaration *td = s->isTupleDeclaration();
+	if (va && td)
+	{   Tuple tup;
+	    tup.objects = *td->objects;
+	    if (match(va, &tup, this, sc))
+	    {
+		return;
+	    }
+	}
+    }
 
     if (targ)
     {
@@ -1335,7 +1403,9 @@ FuncDeclaration *TemplateDeclaration::deduceFunctionTemplate(Scope *sc, Loc loc,
     return fd;
 
   Lerror:
+#if DMDV2
     if (!(flags & 1))
+#endif
     {
 	HdrGenState hgs;
 
@@ -1379,7 +1449,7 @@ void TemplateDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 	tp->toCBuffer(buf, hgs);
     }
     buf->writeByte(')');
-#if V2
+#if DMDV2
     if (constraint)
     {	buf->writestring(" if (");
 	constraint->toCBuffer(buf, hgs);
@@ -1420,7 +1490,7 @@ char *TemplateDeclaration::toChars()
     	tp->toCBuffer(&buf, &hgs);
     }
     buf.writeByte(')');
-#if V2
+#if DMDV2
     if (constraint)
     {	buf.writestring(" if (");
 	constraint->toCBuffer(&buf, &hgs);
@@ -1587,10 +1657,13 @@ Lexact:
 Lnomatch:
     return MATCHnomatch;
 
+#if DMDV2
 Lconst:
     return MATCHconst;
+#endif
 }
 
+#if DMDV2
 MATCH TypeDArray::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 	Objects *dedtypes)
 {
@@ -1604,6 +1677,7 @@ MATCH TypeDArray::deduceType(Scope *sc, Type *tparam, TemplateParameters *parame
   Lnomatch:
     return MATCHnomatch;
 }
+#endif
 
 MATCH TypeSArray::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 	Objects *dedtypes)
@@ -1831,8 +1905,11 @@ MATCH TypeInstance::deduceType(Scope *sc,
 	Type *tparam, TemplateParameters *parameters,
 	Objects *dedtypes)
 {
-    //printf("TypeInstance::deduceType(tparam = %s) %s\n", tparam->toChars(), toChars());
-    //printf("\ttparam = %d, ", tparam->ty); tparam->print();
+#if 0
+    printf("TypeInstance::deduceType()\n");
+    printf("\tthis   = %d, ", ty); print();
+    printf("\ttparam = %d, ", tparam->ty); tparam->print();
+#endif
 
     // Extra check
     if (tparam && tparam->ty == Tinstance)
@@ -1887,12 +1964,13 @@ MATCH TypeInstance::deduceType(Scope *sc,
 	    goto Lnomatch;
 
       L2:
-	if (tempinst->tiargs->dim != tp->tempinst->tiargs->dim)
-	    goto Lnomatch;
 
 	for (int i = 0; i < tempinst->tiargs->dim; i++)
 	{
 	    //printf("\ttest: tempinst->tiargs[%d]\n", i);
+	    if (i >= tp->tempinst->tiargs->dim)
+		goto Lnomatch;
+
 	    int j;
 	    Object *o1 = (Object *)tempinst->tiargs->data[i];
 	    Object *o2 = (Object *)tp->tempinst->tiargs->data[i];
@@ -1918,6 +1996,43 @@ MATCH TypeInstance::deduceType(Scope *sc,
 	    if (v1)	printf("v1 = %s\n", v1->toChars());
 	    if (v2)	printf("v2 = %s\n", v2->toChars());
 #endif
+
+	    TemplateTupleParameter *ttp;
+	    if (t2 &&
+		t2->ty == Tident &&
+		i == tp->tempinst->tiargs->dim - 1 &&
+		i == tempinst->tempdecl->parameters->dim - 1 &&
+		(ttp = tempinst->tempdecl->isVariadic()) != NULL)
+	    {
+		/* Given:
+		 *  struct A(B...) {}
+		 *  alias A!(int, float) X;
+		 *  static if (!is(X Y == A!(Z), Z))
+		 * deduce that Z is a tuple(int, float)
+		 */
+
+		j = templateParameterLookup(t2, parameters);
+		if (j == -1)
+		    goto Lnomatch;
+
+		/* Create tuple from remaining args
+		 */
+		Tuple *vt = new Tuple();
+		int vtdim = tempinst->tiargs->dim - i;
+		vt->objects.setDim(vtdim);
+		for (size_t k = 0; k < vtdim; k++)
+		    vt->objects.data[k] = (void *)tempinst->tiargs->data[i + k];
+
+		Tuple *v = (Tuple *)dedtypes->data[j];
+		if (v)
+		{
+		    if (!match(v, vt, tempinst->tempdecl, sc))
+			goto Lnomatch;
+		}
+		else
+		    dedtypes->data[j] = vt;
+		break; //return MATCHexact;
+	    }
 
 	    if (t1 && t2)
 	    {
@@ -2159,7 +2274,7 @@ TemplateTupleParameter *TemplateParameter::isTemplateTupleParameter()
     return NULL;
 }
 
-#if V2
+#if DMDV2
 TemplateThisParameter  *TemplateParameter::isTemplateThisParameter()
 {
     return NULL;
@@ -2412,7 +2527,7 @@ Object *TemplateTypeParameter::defaultArg(Loc loc, Scope *sc)
 
 /* ======================== TemplateThisParameter =========================== */
 
-#if V2
+#if DMDV2
 // this-parameter
 
 TemplateThisParameter::TemplateThisParameter(Loc loc, Identifier *ident,
@@ -2857,7 +2972,6 @@ Lmatch:
     //printf("vt = %s\n", vt->toChars());
     if (ei->type)
     {
-	//ei->type = ei->type->toHeadMutable();
 	m = (MATCH)ei->implicitConvTo(vt);
 	//printf("m: %d\n", m);
 	if (!m)
@@ -2934,7 +3048,7 @@ Object *TemplateValueParameter::defaultArg(Loc loc, Scope *sc)
     {
 	e = e->syntaxCopy();
 	e = e->semantic(sc);
-#if V2
+#if DMDV2
 	if (e->op == TOKdefault)
 	{   DefaultInitExp *de = (DefaultInitExp *)e;
 	    e = de->resolve(loc, sc);
@@ -3569,7 +3683,7 @@ void TemplateInstance::semanticTiargs(Scope *sc)
 void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int flags)
 {
     // Run semantic on each argument, place results in tiargs[]
-    //printf("+TemplateInstance::semanticTiargs()\n");
+    //printf("+TemplateInstance::semanticTiargs() %s\n", toChars());
     if (!tiargs)
 	return;
     for (size_t j = 0; j < tiargs->dim; j++)
@@ -3930,7 +4044,7 @@ int TemplateInstance::hasNestedArgs(Objects *args)
 	  Lsa:
 	    Declaration *d = sa->isDeclaration();
 	    if (d && !d->isDataseg() &&
-#if V2
+#if DMDV2
 		!(d->storage_class & STCmanifest) &&
 #endif
 		(!d->isFuncDeclaration() || d->isFuncDeclaration()->isNested()) &&
@@ -4039,7 +4153,6 @@ Identifier *TemplateInstance::genIdent()
 #if 1
 	    /* Use deco that matches what it would be for a function parameter
 	     */
-	    //buf.writestring(ea->type->toHeadMutable()->deco);
 	    buf.writestring(ea->type->deco);
 #else
 	    // Use type of parameter, not type of argument

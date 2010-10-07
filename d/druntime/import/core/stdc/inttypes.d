@@ -8,8 +8,8 @@
  */
 module core.stdc.inttypes;
 
-public import core.stdc.stddef;
-public import core.stdc.stdint;
+public import core.stdc.stddef; // for wchar_t
+public import core.stdc.stdint; // required by spec
 
 extern (C):
 
@@ -19,229 +19,228 @@ struct imaxdiv_t
                 rem;
 }
 
-version( VerboseC )
+private alias immutable(char)* _cstr;
+
+enum _cstr PRId8            = "hhd";
+enum _cstr PRId16           = "hd";
+enum _cstr PRId32           = "ld";
+enum _cstr PRId64           = "lld";
+
+enum _cstr PRIdLEAST8       = "hhd";
+enum _cstr PRIdLEAST16      = "hd";
+enum _cstr PRIdLEAST32      = "ld";
+enum _cstr PRIdLEAST64      = "lld";
+
+enum _cstr PRIdFAST8        = "hhd";
+enum _cstr PRIdFAST16       = "d";
+enum _cstr PRIdFAST32       = "ld";
+enum _cstr PRIdFAST64       = "lld";
+
+enum _cstr PRIi8            = "hhi";
+enum _cstr PRIi16           = "hi";
+enum _cstr PRIi32           = "li";
+enum _cstr PRIi64           = "lli";
+
+enum _cstr PRIiLEAST8       = "hhi";
+enum _cstr PRIiLEAST16      = "hi";
+enum _cstr PRIiLEAST32      = "li";
+enum _cstr PRIiLEAST64      = "lli";
+
+enum _cstr PRIiFAST8        = "hhi";
+enum _cstr PRIiFAST16       = "i";
+enum _cstr PRIiFAST32       = "li";
+enum _cstr PRIiFAST64       = "lli";
+
+enum _cstr PRIo8            = "hho";
+enum _cstr PRIo16           = "ho";
+enum _cstr PRIo32           = "lo";
+enum _cstr PRIo64           = "llo";
+
+enum _cstr PRIoLEAST8       = "hho";
+enum _cstr PRIoLEAST16      = "ho";
+enum _cstr PRIoLEAST32      = "lo";
+enum _cstr PRIoLEAST64      = "llo";
+
+enum _cstr PRIoFAST8        = "hho";
+enum _cstr PRIoFAST16       = "o";
+enum _cstr PRIoFAST32       = "lo";
+enum _cstr PRIoFAST64       = "llo";
+
+enum _cstr PRIu8            = "hhu";
+enum _cstr PRIu16           = "hu";
+enum _cstr PRIu32           = "lu";
+enum _cstr PRIu64           = "llu";
+
+enum _cstr PRIuLEAST8       = "hhu";
+enum _cstr PRIuLEAST16      = "hu";
+enum _cstr PRIuLEAST32      = "lu";
+enum _cstr PRIuLEAST64      = "llu";
+
+enum _cstr PRIuFAST8        = "hhu";
+enum _cstr PRIuFAST16       = "u";
+enum _cstr PRIuFAST32       = "lu";
+enum _cstr PRIuFAST64       = "llu";
+
+enum _cstr PRIx8            = "hhx";
+enum _cstr PRIx16           = "hx";
+enum _cstr PRIx32           = "lx";
+enum _cstr PRIx64           = "llx";
+
+enum _cstr PRIxLEAST8       = "hhx";
+enum _cstr PRIxLEAST16      = "hx";
+enum _cstr PRIxLEAST32      = "lx";
+enum _cstr PRIxLEAST64      = "llx";
+
+enum _cstr PRIxFAST8        = "hhx";
+enum _cstr PRIxFAST16       = "x";
+enum _cstr PRIxFAST32       = "lx";
+enum _cstr PRIxFAST64       = "llx";
+
+enum _cstr PRIX8            = "hhX";
+enum _cstr PRIX16           = "hX";
+enum _cstr PRIX32           = "lX";
+enum _cstr PRIX64           = "llX";
+
+enum _cstr PRIXLEAST8       = "hhX";
+enum _cstr PRIXLEAST16      = "hX";
+enum _cstr PRIXLEAST32      = "lX";
+enum _cstr PRIXLEAST64      = "llX";
+
+enum _cstr PRIXFAST8        = "hhX";
+enum _cstr PRIXFAST16       = "X";
+enum _cstr PRIXFAST32       = "lX";
+enum _cstr PRIXFAST64       = "llX";
+
+enum _cstr SCNd8            = "hhd";
+enum _cstr SCNd16           = "hd";
+enum _cstr SCNd32           = "ld";
+enum _cstr SCNd64           = "lld";
+
+enum _cstr SCNdLEAST8       = "hhd";
+enum _cstr SCNdLEAST16      = "hd";
+enum _cstr SCNdLEAST32      = "ld";
+enum _cstr SCNdLEAST64      = "lld";
+
+enum _cstr SCNdFAST8        = "hhd";
+enum _cstr SCNdFAST16       = "d";
+enum _cstr SCNdFAST32       = "ld";
+enum _cstr SCNdFAST64       = "lld";
+
+enum _cstr SCNi8            = "hhd";
+enum _cstr SCNi16           = "hi";
+enum _cstr SCNi32           = "li";
+enum _cstr SCNi64           = "lli";
+
+enum _cstr SCNiLEAST8       = "hhd";
+enum _cstr SCNiLEAST16      = "hi";
+enum _cstr SCNiLEAST32      = "li";
+enum _cstr SCNiLEAST64      = "lli";
+
+enum _cstr SCNiFAST8        = "hhd";
+enum _cstr SCNiFAST16       = "i";
+enum _cstr SCNiFAST32       = "li";
+enum _cstr SCNiFAST64       = "lli";
+
+enum _cstr SCNo8            = "hhd";
+enum _cstr SCNo16           = "ho";
+enum _cstr SCNo32           = "lo";
+enum _cstr SCNo64           = "llo";
+
+enum _cstr SCNoLEAST8       = "hhd";
+enum _cstr SCNoLEAST16      = "ho";
+enum _cstr SCNoLEAST32      = "lo";
+enum _cstr SCNoLEAST64      = "llo";
+
+enum _cstr SCNoFAST8        = "hhd";
+enum _cstr SCNoFAST16       = "o";
+enum _cstr SCNoFAST32       = "lo";
+enum _cstr SCNoFAST64       = "llo";
+
+enum _cstr SCNu8            = "hhd";
+enum _cstr SCNu16           = "hu";
+enum _cstr SCNu32           = "lu";
+enum _cstr SCNu64           = "llu";
+
+enum _cstr SCNuLEAST8       = "hhd";
+enum _cstr SCNuLEAST16      = "hu";
+enum _cstr SCNuLEAST32      = "lu";
+enum _cstr SCNuLEAST64      = "llu";
+
+enum _cstr SCNuFAST8        = "hhd";
+enum _cstr SCNuFAST16       = "u";
+enum _cstr SCNuFAST32       = "lu";
+enum _cstr SCNuFAST64       = "llu";
+
+enum _cstr SCNx8            = "hhd";
+enum _cstr SCNx16           = "hx";
+enum _cstr SCNx32           = "lx";
+enum _cstr SCNx64           = "llx";
+
+enum _cstr SCNxLEAST8       = "hhd";
+enum _cstr SCNxLEAST16      = "hx";
+enum _cstr SCNxLEAST32      = "lx";
+enum _cstr SCNxLEAST64      = "llx";
+
+enum _cstr SCNxFAST8        = "hhd";
+enum _cstr SCNxFAST16       = "x";
+enum _cstr SCNxFAST32       = "lx";
+enum _cstr SCNxFAST64       = "llx";
+
+version( X86_64 )
 {
-    const char* PRId8           = "hhd";
-    const char* PRId16          = "hd";
-    const char* PRId32          = "ld";
-    const char* PRId64          = "lld";
+    enum _cstr PRIdMAX      = PRId64;
+    enum _cstr PRIiMAX      = PRIi64;
+    enum _cstr PRIoMAX      = PRIo64;
+    enum _cstr PRIuMAX      = PRIu64;
+    enum _cstr PRIxMAX      = PRIx64;
+    enum _cstr PRIXMAX      = PRIX64;
 
-    const char* PRIdLEAST8      = "hhd";
-    const char* PRIdLEAST16     = "hd";
-    const char* PRIdLEAST32     = "ld";
-    const char* PRIdLEAST64     = "lld";
+    enum _cstr SCNdMAX      = SCNd64;
+    enum _cstr SCNiMAX      = SCNi64;
+    enum _cstr SCNoMAX      = SCNo64;
+    enum _cstr SCNuMAX      = SCNu64;
+    enum _cstr SCNxMAX      = SCNx64;
 
-    const char* PRIdFAST8       = "hhd";
-    const char* PRIdFAST16      = "d";
-    const char* PRIdFAST32      = "ld";
-    const char* PRIdFAST64      = "lld";
+    enum _cstr PRIdPTR      = PRId64;
+    enum _cstr PRIiPTR      = PRIi64;
+    enum _cstr PRIoPTR      = PRIo64;
+    enum _cstr PRIuPTR      = PRIu64;
+    enum _cstr PRIxPTR      = PRIx64;
+    enum _cstr PRIXPTR      = PRIX64;
 
-    const char* PRIi8           = "hhi";
-    const char* PRIi16          = "hi";
-    const char* PRIi32          = "li";
-    const char* PRIi64          = "lli";
+    enum _cstr SCNdPTR      = SCNd64;
+    enum _cstr SCNiPTR      = SCNi64;
+    enum _cstr SCNoPTR      = SCNo64;
+    enum _cstr SCNuPTR      = SCNu64;
+    enum _cstr SCNxPTR      = SCNx64;
+}
+else
+{
+    enum _cstr PRIdMAX      = PRId32;
+    enum _cstr PRIiMAX      = PRIi32;
+    enum _cstr PRIoMAX      = PRIo32;
+    enum _cstr PRIuMAX      = PRIu32;
+    enum _cstr PRIxMAX      = PRIx32;
+    enum _cstr PRIXMAX      = PRIX32;
 
-    const char* PRIiLEAST8      = "hhi";
-    const char* PRIiLEAST16     = "hi";
-    const char* PRIiLEAST32     = "li";
-    const char* PRIiLEAST64     = "lli";
+    enum _cstr SCNdMAX      = SCNd32;
+    enum _cstr SCNiMAX      = SCNi32;
+    enum _cstr SCNoMAX      = SCNo32;
+    enum _cstr SCNuMAX      = SCNu32;
+    enum _cstr SCNxMAX      = SCNx32;
 
-    const char* PRIiFAST8       = "hhi";
-    const char* PRIiFAST16      = "i";
-    const char* PRIiFAST32      = "li";
-    const char* PRIiFAST64      = "lli";
+    enum _cstr PRIdPTR      = PRId32;
+    enum _cstr PRIiPTR      = PRIi32;
+    enum _cstr PRIoPTR      = PRIo32;
+    enum _cstr PRIuPTR      = PRIu32;
+    enum _cstr PRIxPTR      = PRIx32;
+    enum _cstr PRIXPTR      = PRIX32;
 
-    const char* PRIo8           = "hho";
-    const char* PRIo16          = "ho";
-    const char* PRIo32          = "lo";
-    const char* PRIo64          = "llo";
-
-    const char* PRIoLEAST8      = "hho";
-    const char* PRIoLEAST16     = "ho";
-    const char* PRIoLEAST32     = "lo";
-    const char* PRIoLEAST64     = "llo";
-
-    const char* PRIoFAST8       = "hho";
-    const char* PRIoFAST16      = "o";
-    const char* PRIoFAST32      = "lo";
-    const char* PRIoFAST64      = "llo";
-
-    const char* PRIu8           = "hhu";
-    const char* PRIu16          = "hu";
-    const char* PRIu32          = "lu";
-    const char* PRIu64          = "llu";
-
-    const char* PRIuLEAST8      = "hhu";
-    const char* PRIuLEAST16     = "hu";
-    const char* PRIuLEAST32     = "lu";
-    const char* PRIuLEAST64     = "llu";
-
-    const char* PRIuFAST8       = "hhu";
-    const char* PRIuFAST16      = "u";
-    const char* PRIuFAST32      = "lu";
-    const char* PRIuFAST64      = "llu";
-
-    const char* PRIx8           = "hhx";
-    const char* PRIx16          = "hx";
-    const char* PRIx32          = "lx";
-    const char* PRIx64          = "llx";
-
-    const char* PRIxLEAST8      = "hhx";
-    const char* PRIxLEAST16     = "hx";
-    const char* PRIxLEAST32     = "lx";
-    const char* PRIxLEAST64     = "llx";
-
-    const char* PRIxFAST8       = "hhx";
-    const char* PRIxFAST16      = "x";
-    const char* PRIxFAST32      = "lx";
-    const char* PRIxFAST64      = "llx";
-
-    const char* PRIX8           = "hhX";
-    const char* PRIX16          = "hX";
-    const char* PRIX32          = "lX";
-    const char* PRIX64          = "llX";
-
-    const char* PRIXLEAST8      = "hhX";
-    const char* PRIXLEAST16     = "hX";
-    const char* PRIXLEAST32     = "lX";
-    const char* PRIXLEAST64     = "llX";
-
-    const char* PRIXFAST8       = "hhX";
-    const char* PRIXFAST16      = "X";
-    const char* PRIXFAST32      = "lX";
-    const char* PRIXFAST64      = "llX";
-
-    const char* SCNd8           = "hhd";
-    const char* SCNd16          = "hd";
-    const char* SCNd32          = "ld";
-    const char* SCNd64          = "lld";
-
-    const char* SCNdLEAST8      = "hhd";
-    const char* SCNdLEAST16     = "hd";
-    const char* SCNdLEAST32     = "ld";
-    const char* SCNdLEAST64     = "lld";
-
-    const char* SCNdFAST8       = "hhd";
-    const char* SCNdFAST16      = "d";
-    const char* SCNdFAST32      = "ld";
-    const char* SCNdFAST64      = "lld";
-
-    const char* SCNi8           = "hhd";
-    const char* SCNi16          = "hi";
-    const char* SCNi32          = "li";
-    const char* SCNi64          = "lli";
-
-    const char* SCNiLEAST8      = "hhd";
-    const char* SCNiLEAST16     = "hi";
-    const char* SCNiLEAST32     = "li";
-    const char* SCNiLEAST64     = "lli";
-
-    const char* SCNiFAST8       = "hhd";
-    const char* SCNiFAST16      = "i";
-    const char* SCNiFAST32      = "li";
-    const char* SCNiFAST64      = "lli";
-
-    const char* SCNo8           = "hhd";
-    const char* SCNo16          = "ho";
-    const char* SCNo32          = "lo";
-    const char* SCNo64          = "llo";
-
-    const char* SCNoLEAST8      = "hhd";
-    const char* SCNoLEAST16     = "ho";
-    const char* SCNoLEAST32     = "lo";
-    const char* SCNoLEAST64     = "llo";
-
-    const char* SCNoFAST8       = "hhd";
-    const char* SCNoFAST16      = "o";
-    const char* SCNoFAST32      = "lo";
-    const char* SCNoFAST64      = "llo";
-
-    const char* SCNu8           = "hhd";
-    const char* SCNu16          = "hu";
-    const char* SCNu32          = "lu";
-    const char* SCNu64          = "llu";
-
-    const char* SCNuLEAST8      = "hhd";
-    const char* SCNuLEAST16     = "hu";
-    const char* SCNuLEAST32     = "lu";
-    const char* SCNuLEAST64     = "llu";
-
-    const char* SCNuFAST8       = "hhd";
-    const char* SCNuFAST16      = "u";
-    const char* SCNuFAST32      = "lu";
-    const char* SCNuFAST64      = "llu";
-
-    const char* SCNx8           = "hhd";
-    const char* SCNx16          = "hx";
-    const char* SCNx32          = "lx";
-    const char* SCNx64          = "llx";
-
-    const char* SCNxLEAST8      = "hhd";
-    const char* SCNxLEAST16     = "hx";
-    const char* SCNxLEAST32     = "lx";
-    const char* SCNxLEAST64     = "llx";
-
-    const char* SCNxFAST8       = "hhd";
-    const char* SCNxFAST16      = "x";
-    const char* SCNxFAST32      = "lx";
-    const char* SCNxFAST64      = "llx";
-
-  version( X86_64 )
-  {
-    const char* PRIdMAX         = PRId64;
-    const char* PRIiMAX         = PRIi64;
-    const char* PRIoMAX         = PRIo64;
-    const char* PRIuMAX         = PRIu64;
-    const char* PRIxMAX         = PRIx64;
-    const char* PRIXMAX         = PRIX64;
-
-    const char* SCNdMAX         = SCNd64;
-    const char* SCNiMAX         = SCNi64;
-    const char* SCNoMAX         = SCNo64;
-    const char* SCNuMAX         = SCNu64;
-    const char* SCNxMAX         = SCNx64;
-
-    const char* PRIdPTR         = PRId64;
-    const char* PRIiPTR         = PRIi64;
-    const char* PRIoPTR         = PRIo64;
-    const char* PRIuPTR         = PRIu64;
-    const char* PRIxPTR         = PRIx64;
-    const char* PRIXPTR         = PRIX64;
-
-    const char* SCNdPTR         = SCNd64;
-    const char* SCNiPTR         = SCNi64;
-    const char* SCNoPTR         = SCNo64;
-    const char* SCNuPTR         = SCNu64;
-    const char* SCNxPTR         = SCNx64;
-  }
-  else
-  {
-    const char* PRIdMAX         = PRId32;
-    const char* PRIiMAX         = PRIi32;
-    const char* PRIoMAX         = PRIo32;
-    const char* PRIuMAX         = PRIu32;
-    const char* PRIxMAX         = PRIx32;
-    const char* PRIXMAX         = PRIX32;
-
-    const char* SCNdMAX         = SCNd32;
-    const char* SCNiMAX         = SCNi32;
-    const char* SCNoMAX         = SCNo32;
-    const char* SCNuMAX         = SCNu32;
-    const char* SCNxMAX         = SCNx32;
-
-    const char* PRIdPTR         = PRId32;
-    const char* PRIiPTR         = PRIi32;
-    const char* PRIoPTR         = PRIo32;
-    const char* PRIuPTR         = PRIu32;
-    const char* PRIxPTR         = PRIx32;
-    const char* PRIXPTR         = PRIX32;
-
-    const char* SCNdPTR         = SCNd32;
-    const char* SCNiPTR         = SCNi32;
-    const char* SCNoPTR         = SCNo32;
-    const char* SCNuPTR         = SCNu32;
-    const char* SCNxPTR         = SCNx32;
-  }
+    enum _cstr SCNdPTR      = SCNd32;
+    enum _cstr SCNiPTR      = SCNi32;
+    enum _cstr SCNoPTR      = SCNo32;
+    enum _cstr SCNuPTR      = SCNu32;
+    enum _cstr SCNxPTR      = SCNx32;
 }
 
 intmax_t  imaxabs(intmax_t j);

@@ -23,7 +23,7 @@
 
 module rt.deh2;
 
-// Exception handling support for linux
+// Exception handling support for Posix
 
 //debug=1;
 
@@ -292,15 +292,33 @@ extern (Windows) void _d_throw(Object *h)
 
                 void *blockaddr = phi.finally_code;
 
-                asm
+                version (OSX)
                 {
-                    push        EBX             ;
-                    mov         EBX,blockaddr   ;
-                    push        EBP             ;
-                    mov         EBP,regebp      ;
-                    call        EBX             ;
-                    pop         EBP             ;
-                    pop         EBX             ;
+                    asm
+                    {
+                        sub     ESP,4           ; // align stack to 16
+                        push    EBX             ;
+                        mov     EBX,blockaddr   ;
+                        push    EBP             ;
+                        mov     EBP,regebp      ;
+                        call    EBX             ;
+                        pop     EBP             ;
+                        pop     EBX             ;
+                        add     ESP,4           ;
+                    }
+                }
+                else
+                {
+                    asm
+                    {
+                        push        EBX             ;
+                        mov         EBX,blockaddr   ;
+                        push        EBP             ;
+                        mov         EBP,regebp      ;
+                        call        EBX             ;
+                        pop         EBP             ;
+                        pop         EBX             ;
+                    }
                 }
             }
         }

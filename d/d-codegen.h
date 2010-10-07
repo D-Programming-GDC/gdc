@@ -24,12 +24,7 @@
 
 #include "d-irstate.h"
 
-#if V1
 typedef dinteger_t xdmd_integer_t;
-#endif
-#if V2
-typedef integer_t xdmd_integer_t;
-#endif
 
 #include "d-objfile.h"
 
@@ -202,7 +197,7 @@ struct IRState : IRBase
     static tree trueArgumentType(Parameter * arg);
 #endif
 
-    static tree arrayType(Type * d_type, uinteger_t size) // %% use of integer_t
+    static tree arrayType(Type * d_type, uinteger_t size) // %% use of dinteger_t
     { return arrayType(d_type->toCtype(), size); }
     static tree arrayType(tree type_node, uinteger_t size);
 

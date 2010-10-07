@@ -8,8 +8,8 @@
  */
 module core.stdc.stdlib;
 
-private import core.stdc.stddef;
 private import core.stdc.config;
+public import core.stdc.stddef; // for size_t, wchar_t
 
 extern (C):
 
@@ -31,10 +31,10 @@ struct lldiv_t
          rem;
 }
 
-const EXIT_SUCCESS  = 0;
-const EXIT_FAILURE  = 1;
-const RAND_MAX      = 32767;
-const MB_CUR_MAX    = 1;
+enum EXIT_SUCCESS = 0;
+enum EXIT_FAILURE = 1;
+enum RAND_MAX     = 32767;
+enum MB_CUR_MAX   = 1;
 
 double  atof(in char* nptr);
 int     atoi(in char* nptr);
@@ -48,14 +48,6 @@ c_long  strtol(in char* nptr, char** endptr, int base);
 long    strtoll(in char* nptr, char** endptr, int base);
 c_ulong strtoul(in char* nptr, char** endptr, int base);
 ulong   strtoull(in char* nptr, char** endptr, int base);
-
-double  wcstod(in wchar_t* nptr, wchar_t** endptr);
-float   wcstof(in wchar_t* nptr, wchar_t** endptr);
-real    wcstold(in wchar_t* nptr, wchar_t** endptr);
-c_long  wcstol(in wchar_t* nptr, wchar_t** endptr, int base);
-long    wcstoll(in wchar_t* nptr, wchar_t** endptr, int base);
-c_ulong wcstoul(in wchar_t* nptr, wchar_t** endptr, int base);
-ulong   wcstoull(in wchar_t* nptr, wchar_t** endptr, int base);
 
 int     rand();
 void    srand(uint seed);
@@ -92,7 +84,7 @@ size_t  wcstombs(char* s, in wchar_t* pwcs, size_t n);
 
 version( DigitalMars )
 {
-    void* alloca(size_t size);
+    void* alloca(size_t size); // non-standard
 }
 else version( GNU )
 {

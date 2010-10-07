@@ -31,7 +31,7 @@ class FinalizeError : Error
 super("Finalization error",e);
 info = c;
 }
-    override
+    override 
 {
     string toString()
 {
@@ -52,7 +52,7 @@ class OutOfMemoryError : Error
 {
 super("Memory allocation failed",file,line);
 }
-    override
+    override 
 {
     string toString()
 {

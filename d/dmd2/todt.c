@@ -22,16 +22,11 @@
  * be written to the data segment.
  */
 
-#undef integer_t
 #include	<stdio.h>
 #include	<string.h>
 #include	<time.h>
 #include	<assert.h>
 #include	<complex.h>
-
-#ifdef __APPLE__
-#define integer_t dmd_integer_t
-#endif
 
 #include	"lexer.h"
 #include	"mtype.h"
@@ -397,7 +392,7 @@ dt_t *ArrayInitializer::toDt()
 
 dt_t *ArrayInitializer::toDtBit()
 {
-#if V1
+#if DMDV1
     unsigned size;
     unsigned length;
     unsigned i;
@@ -416,7 +411,7 @@ dt_t *ArrayInitializer::toDtBit()
 	 * use instead the dimension of the type in order
 	 * to get the whole thing.
 	 */
-	integer_t value = ((TypeSArray*)tb)->dim->toInteger();
+	dinteger_t value = ((TypeSArray*)tb)->dim->toInteger();
 	tadim = value;
 	assert(tadim == value);	 // truncation overflow should already be checked
 	databits.resize(tadim);
@@ -443,7 +438,7 @@ dt_t *ArrayInitializer::toDtBit()
 
 	idx = (Expression *)index.data[i];
 	if (idx)
-	{   integer_t value;
+	{   dinteger_t value;
 	    value = idx->toInteger();
 	    length = value;
 	    if (length != value)
@@ -662,7 +657,7 @@ dt_t **StringExp::toDt(dt_t **pdt)
 
 	case Tsarray:
 	{   TypeSArray *tsa = (TypeSArray *)type;
-	    integer_t dim;
+	    dinteger_t dim;
 
 #ifndef IN_GCC
 	    pdt = dtnbytes(pdt, len * sz, (const char *)string);

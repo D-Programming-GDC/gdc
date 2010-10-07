@@ -1113,10 +1113,11 @@ AssignExp::toElem(IRState* irs) {
 
 		tree vthis_exp = build2(MODIFY_EXPR, TREE_TYPE(vthis_field),
 			irs->component(lhs, vthis_field), vthis_value);
-		result = irs->compound(result, vthis_exp);
+		result = irs->maybeCompound(result, vthis_exp);
 	    }
 	}
 #endif
+
 	return result;
     }
 }
@@ -1929,6 +1930,62 @@ NewExp::toElem(IRState * irs)
 	    }
 	    return irs->convertTo(result, base_type, type);
 	}
+    case Tstruct:
+	{
+	    TypeStruct * struct_type = (TypeStruct *)newtype;
+	    Type * handle_type = base_type->pointerTo();
+	    tree new_call;
+	    tree t;
+	    bool need_init = true;
+
+	    if (onstack) {
+		tree stack_var = irs->localVar( struct_type );
+		irs->expandDecl(stack_var);
+		new_call = irs->addressOf( stack_var );
+	    } else if (allocator) {
+		new_call = irs->call(allocator, newargs);
+	    } else {
+		tree args[2];
+		LibCall lib_call = struct_type->isZeroInit() ?
+		    LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
+		args[0] = irs->typeinfoReference( struct_type->arrayOf() );
+		args[1] = irs->integerConstant(1, Type::tsize_t);
+		new_call = irs->libCall(lib_call, 2, args);
+		new_call = irs->darrayPtrRef(new_call);
+		need_init = false;
+	    }
+	    new_call = irs->nop(new_call, handle_type->toCtype());
+	    if ( need_init ) {
+		// Save the result allocation call.
+		new_call = save_expr( new_call );
+		t = irs->indirect(new_call);
+		t = build2(MODIFY_EXPR, TREE_TYPE(t), t,
+		    irs->convertForAssignment(struct_type->defaultInit(loc), struct_type) );
+		new_call = irs->compound(t, new_call);
+	    }
+	    // Constructor call
+	    if ( member ) {
+		new_call = irs->call(member, new_call, arguments);
+	    }
+#if V2
+	    // %% D2.0 nested structs
+	    StructDeclaration * struct_decl = struct_type->sym;
+
+	    if (struct_decl->isNested()) {
+		tree vthis_value = irs->getVThis(struct_decl, this);
+		tree vthis_field = struct_decl->vthis->toSymbol()->Stree;
+
+		new_call = save_expr( new_call );
+		tree setup_exp = build2(MODIFY_EXPR, TREE_TYPE(vthis_field),
+			irs->component( irs->indirect(new_call, struct_type->toCtype()),
+			    vthis_field ),
+			vthis_value);
+		new_call = irs->compound(setup_exp, new_call);
+	    }
+#endif
+	    return irs->nop(new_call, type->toCtype());
+	}
+	break;
     case Tarray:
 	{
 	    assert( ! allocator );
@@ -1942,11 +1999,9 @@ NewExp::toElem(IRState * irs)
 	       allocated by this call. */
 	    for (unsigned i = 0; i < arguments->dim; i++)
 		elem_init_type = elem_init_type->toBasetype()->nextOf(); // assert ty == Tarray
-
 #if ! V2
 	    gcc_assert(! elem_init_type->isbit());
 #endif
-
 	    if (arguments->dim == 1)
 	    {
 		lib_call = elem_init_type->isZeroInit() ?
@@ -2023,25 +2078,7 @@ NewExp::toElem(IRState * irs)
 		    irs->convertForAssignment(object_type->defaultInit(), object_type) );
 		new_call = irs->compound(t, new_call);
 	    }
-#if V2
-	    // %% D2.0 nested structs
-	    if (base_type->ty == Tstruct) {
-		TypeStruct * struct_type = (TypeStruct *)base_type;
-		StructDeclaration * struct_decl = struct_type->sym;
 
-		if (struct_decl->isNested()) {
-		    tree vthis_value = irs->getVThis(struct_decl, this);
-		    tree vthis_field = struct_decl->vthis->toSymbol()->Stree;
-
-		    new_call = save_expr( new_call );
-		    tree setup_exp = build2(MODIFY_EXPR, TREE_TYPE(vthis_field),
-			    irs->component( irs->indirect(new_call, struct_type->toCtype()),
-				vthis_field ),
-			    vthis_value);
-		    new_call = irs->compound(setup_exp, new_call);
-		}
-	    }
-#endif
 	    return irs->nop(new_call, type->toCtype());
 	}
 	break;

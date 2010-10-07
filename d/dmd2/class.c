@@ -151,7 +151,7 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
 		Type::typeinfotypelist = this;
 	    }
 
-#if V2
+#if DMDV2
 	    if (id == Id::TypeInfo_Const)
 	    {	if (Type::typeinfoconst)
 		    Type::typeinfoconst->error("%s", msg);
@@ -643,13 +643,14 @@ void ClassDeclaration::semantic(Scope *sc)
     if (!ctor && baseClass && baseClass->ctor)
     {
 	//printf("Creating default this(){} for class %s\n", toChars());
-	ctor = new CtorDeclaration(loc, 0, NULL, 0);
+	CtorDeclaration *ctor = new CtorDeclaration(loc, 0, NULL, 0);
 	ctor->fbody = new CompoundStatement(0, new Statements());
 	members->push(ctor);
 	ctor->addMember(sc, this, 1);
 	*sc = scsave;	// why? What about sc->nofree?
 	sc->offset = structsize;
 	ctor->semantic(sc);
+	this->ctor = ctor;
 	defaultCtor = ctor;
     }
 
@@ -840,7 +841,7 @@ Dsymbol *ClassDeclaration::search(Loc loc, Identifier *ident, int flags)
  * Return 1 if function is hidden (not findable through search).
  */
 
-#if V2
+#if DMDV2
 int isf(void *param, FuncDeclaration *fd)
 {
     //printf("param = %p, fd = %p %s\n", param, fd, fd->toChars());

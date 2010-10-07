@@ -45,24 +45,24 @@ version( linux )
         int sched_priority;
     }
 
-    const SCHED_OTHER   = 0;
-    const SCHED_FIFO    = 1;
-    const SCHED_RR      = 2;
+    enum SCHED_OTHER    = 0;
+    enum SCHED_FIFO     = 1;
+    enum SCHED_RR       = 2;
     //SCHED_SPORADIC (SS|TSP)
 }
-else version( darwin )
+else version( OSX )
 {
-    const SCHED_OTHER   = 1;
-    const SCHED_FIFO    = 4;
-    const SCHED_RR      = 2;
-    // SCHED_SPORADIC seems to be unavailable
+    enum SCHED_OTHER    = 1;
+    enum SCHED_FIFO     = 4;
+    enum SCHED_RR       = 2;
+    //SCHED_SPORADIC (SS|TSP)
 
-    private const __SCHED_PARAM_SIZE__ = 4;
+    private enum __SCHED_PARAM_SIZE__ = 4;
 
     struct sched_param
     {
-        int                         sched_priority;
-        byte[__SCHED_PARAM_SIZE__]  opaque;
+        int                             sched_priority;
+        byte[__PTHREAD_MUTEX_SIZE__]    __opaque;
     }
 }
 else version( freebsd )
@@ -72,9 +72,9 @@ else version( freebsd )
         int sched_priority;
     }
 
-    const SCHED_FIFO    = 1;
-    const SCHED_OTHER   = 2;
-    const SCHED_RR      = 3;
+    enum SCHED_FIFO     = 1;
+    enum SCHED_OTHER    = 2;
+    enum SCHED_RR       = 3;
     //SCHED_SPORADIC (SS|TSP)
 }
 
@@ -94,7 +94,7 @@ version( linux )
 {
     int sched_yield();
 }
-else version( darwin )
+else version( OSX )
 {
     int sched_yield();
 }
@@ -118,7 +118,7 @@ version( linux )
     int sched_get_priority_min(int);
     int sched_rr_get_interval(pid_t, timespec*);
 }
-else version( darwin )
+else version( OSX )
 {
     int sched_get_priority_min(int);
     int sched_get_priority_max(int);

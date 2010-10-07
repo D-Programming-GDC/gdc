@@ -9,7 +9,7 @@
 module core.stdc.time;
 
 private import core.stdc.config;
-private import core.stdc.stddef;
+private import core.stdc.stddef; // for size_t
 
 extern (C):
 
@@ -53,7 +53,7 @@ version( Windows )
 {
     clock_t CLOCKS_PER_SEC = 1000;
 }
-else version( darwin )
+else version( OSX )
 {
     clock_t CLOCKS_PER_SEC = 100;
 }
@@ -75,25 +75,19 @@ char*   ctime(in time_t* timer);
 tm*     gmtime(in time_t* timer);
 tm*     localtime(in time_t* timer);
 size_t  strftime(char* s, size_t maxsize, in char* format, in tm* timeptr);
-size_t  wcsftime(wchar_t* s, size_t maxsize, in wchar_t* format, in tm* timeptr);
 
 version( Windows )
 {
-    void  tzset();
-    void  _tzset();
-    char* _strdate(char* s);
-    char* _strtime(char* s);
-
-    wchar_t* _wasctime(tm*);
-    wchar_t* _wctime(time_t*);
-    wchar_t* _wstrdate(wchar_t*);
-    wchar_t* _wstrtime(wchar_t*);
+    void  tzset();  		 // non-standard
+    void  _tzset(); 		 // non-standard
+    char* _strdate(char* s); // non-standard
+    char* _strtime(char* s); // non-standard
 }
 else version( linux )
 {
-    void tzset();
+    void tzset(); // non-standard
 }
 else version( freebsd )
 {
-    void tzset();
+    void tzset(); // non-standard
 }

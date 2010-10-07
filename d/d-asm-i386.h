@@ -2577,11 +2577,7 @@ struct AsmProcessor
 	// parse primary: DMD allows 'MyAlign' (const int) but not '2+2'
 	// GAS is padding with NOPs last time I checked.
 	Expression * e = parseAsmExp()->optimize(WANTvalue | WANTinterpret);
-#if V1
 	dinteger_t align = e->toInteger();
-#else
-	integer_t align = e->toInteger();
-#endif
 
 	if ((align & -align) == align) {
 	    // %% is this printf portable?

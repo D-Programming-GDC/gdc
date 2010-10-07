@@ -44,6 +44,7 @@ struct real_t {
     static void init();
     static real_t parse(const char * str, MyMode mode);
     static real_t getnan(MyMode mode);
+    static real_t getsnan(MyMode mode);
     static real_t getinfinity();
 
     // This constructor prevent the use of the real_t in a union
@@ -83,6 +84,7 @@ struct real_t {
     // for debugging:
     bool isInf();
     bool isNan();
+    bool isSignallingNan();
     bool isConversionExact(MyMode to_mode) const;
     void toBytes(unsigned char * buf, unsigned buf_size);
     void dump();

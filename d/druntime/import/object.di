@@ -6,9 +6,9 @@ alias typeof(cast(void*)0 - cast(void*)0)   ptrdiff_t;
 alias size_t hash_t;
 alias bool equals_t;
 
-alias invariant(char)[]  string;
-alias invariant(wchar)[] wstring;
-alias invariant(dchar)[] dstring;
+alias immutable(char)[]  string;
+alias immutable(wchar)[] wstring;
+alias immutable(dchar)[] dstring;
 
 class Object
 {
@@ -212,6 +212,9 @@ class ModuleInfo
     void function() ctor;
     void function() dtor;
     void function() unitTest;
+
+    void*           xgetMembers;
+    void function() ictor;
 
     static int opApply(int delegate(inout ModuleInfo));
 }

@@ -10,7 +10,7 @@ module core.sys.posix.sys.time;
 
 private import core.sys.posix.config;
 public import core.sys.posix.sys.types;  // for time_t, suseconds_t
-public import core.sys.posix.sys.select; // for fd_set, FD_CLR() FD_ISSET() FD_SET() FD_ZERO() FD_SETSIZE
+public import core.sys.posix.sys.select; // for fd_set, FD_CLR() FD_ISSET() FD_SET() FD_ZERO() FD_SETSIZE, select()
 
 extern (C):
 
@@ -36,7 +36,7 @@ ITIMER_PROF
 
 int getitimer(int, itimerval*);
 int gettimeofday(timeval*, void*);
-int select(int, fd_set*, fd_set*, fd_set*, timeval*);
+int select(int, fd_set*, fd_set*, fd_set*, timeval*); (defined in core.sys.posix.sys.signal)
 int setitimer(int, in itimerval*, itimerval*);
 int utimes(in char*, in timeval[2]); // LEGACY
 */
@@ -55,17 +55,16 @@ version( linux )
         timeval it_value;
     }
 
-    const ITIMER_REAL       = 0;
-    const ITIMER_VIRTUAL    = 1;
-    const ITIMER_PROF       = 2;
+    enum ITIMER_REAL    = 0;
+    enum ITIMER_VIRTUAL = 1;
+    enum ITIMER_PROF    = 2;
 
     int getitimer(int, itimerval*);
     int gettimeofday(timeval*, void*);
-    int select(int, fd_set*, fd_set*, fd_set*, timeval*);
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, in timeval[2]); // LEGACY
 }
-else version( darwin )
+else version( OSX )
 {
     struct timeval
     {
@@ -88,7 +87,6 @@ else version( darwin )
 
     int getitimer(int, itimerval*);
     int gettimeofday(timeval*, timezone_t*); // timezone_t* is normally void*
-    int select(int, fd_set*, fd_set*, fd_set*, timeval*);
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, in timeval[2]);
 }
@@ -115,7 +113,6 @@ else version( freebsd )
 
     int getitimer(int, itimerval*);
     int gettimeofday(timeval*, timezone_t*); // timezone_t* is normally void*
-    int select(int, fd_set*, fd_set*, fd_set*, timeval*);
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, in timeval[2]);
 }

@@ -100,6 +100,15 @@ real_t::getnan(MyMode mode)
     return r;
 }
 
+// Same as getnan, except the significand is forced to be a signalling NaN
+real_t
+real_t::getsnan(MyMode mode)
+{
+    real_t r;
+    real_nan(& r.rv(), "", 0, myMode_to_machineMode(mode));
+    return r;
+}
+
 real_t
 real_t::getinfinity()
 {
@@ -363,6 +372,13 @@ bool
 real_t::isNan()
 {
     return REAL_VALUE_ISNAN(rv());
+}
+
+// Same as isNan, but also check if is signalling.
+bool
+real_t::isSignallingNan()
+{
+    return REAL_VALUE_ISNAN(rv()) && rv().signalling;
 }
 
 bool

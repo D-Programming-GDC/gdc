@@ -50,19 +50,21 @@ the target object file format:
 	TARGET_WINDOS	Covers 32 bit windows and 64 bit windows
 	TARGET_LINUX	Covers 32 and 64 bit linux
 	TARGET_OSX	Covers 32 and 64 bit Mac OSX
+	TARGET_FREEBSD	Covers 32 and 64 bit FreeBSD
 
     It is expected that the compiler for each platform will be able
     to generate 32 and 64 bit code from the same compiler binary.
 
     Target object module format:
 	OMFOBJ		Intel Object Module Format, used on Windows
-	ELFOBJ		Elf Object Module Format, used on linux
+	ELFOBJ		Elf Object Module Format, used on linux and FreeBSD
 	MACHOBJ		Mach-O Object Module Format, used on Mac OSX
 
     There are currently no macros for byte endianness order.
  */
 
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
 #define __STDC_FORMAT_MACROS 1
@@ -78,14 +80,17 @@ the target object file format:
 
 #ifdef IN_GCC
 /* Changes for the GDC compiler by David Friedman */
+#define V1	DMDV1
+#define V2	DMDV2
 #endif
 
-#define V1	0
-#define V2	1	// Version 2.0 features
+#define DMDV1	0
+#define DMDV2	1	// Version 2.0 features
 #define BREAKABI 1	// 0 if not ready to break the ABI just yet
-#define STRUCTTHISREF V2	// if 'this' for struct is a reference, not a pointer
+#define STRUCTTHISREF DMDV2	// if 'this' for struct is a reference, not a pointer
+#define SNAN_DEFAULT_INIT DMDV2	// if floats are default initialized to signalling NaN
 
-/* Other targets are TARGET_LINUX and TARGET_OSX, which are
+/* Other targets are TARGET_LINUX, TARGET_OSX and TARGET_FREEBSD, which are
  * set on the command line via the compiler makefile.
  */
 
@@ -94,7 +99,7 @@ the target object file format:
 #define OMFOBJ 1
 #endif
 
-#if TARGET_LINUX
+#if TARGET_LINUX || TARGET_FREEBSD
 #ifndef ELFOBJ
 #define ELFOBJ 1
 #endif
@@ -127,6 +132,7 @@ struct Param
     char isLinux;	// generate code for linux
     char isOSX;		// generate code for Mac OSX
     char isWindows;	// generate code for Windows
+    char isFreeBSD;	// generate code for FreeBSD
     char scheduler;	// which scheduler to use
     char useDeprecated;	// allow use of deprecated features
     char useAssert;	// generate runtime code for assert()'s
@@ -230,11 +236,6 @@ extern Global global;
 #define WINDOWS_SEH	(_WIN32 && __DMC__)
 
 
-#if __GNUC__
-//#define memicmp strncasecmp
-//#define stricmp strcasecmp
-#endif
-
 #ifdef __DMC__
  typedef _Complex long double complex_t;
 #else
@@ -243,12 +244,13 @@ extern Global global;
  #endif
  #ifdef __APPLE__
   //#include "complex.h"//This causes problems with include the c++ <complex> and not the C "complex.h"
-  #define integer_t dmd_integer_t
  #endif
 #endif
 
-// Be careful not to care about sign when using integer_t
-typedef uint64_t integer_t;
+// Be careful not to care about sign when using dinteger_t
+//typedef uint64_t integer_t;
+typedef uint64_t dinteger_t;	// use this instead of integer_t to
+				// avoid conflicts with system #include's
 
 // Signed and unsigned variants
 typedef int64_t sinteger_t;
@@ -365,7 +367,7 @@ enum MATCH
 {
     MATCHnomatch,	// no match
     MATCHconvert,	// match with conversions
-#if V2
+#if DMDV2
     MATCHconst,		// match with conversion to const
 #endif
     MATCHexact		// exact match

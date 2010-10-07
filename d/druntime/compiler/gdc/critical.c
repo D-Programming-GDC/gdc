@@ -8,7 +8,7 @@
 
 #if _WIN32
 
-#include        <windows.h>
+#include <windows.h>
 
 /******************************************
  * Enter/exit critical section.
@@ -75,11 +75,17 @@ void _STD_critical_term()
 
 /* ================================= linux ============================ */
 
-#if linux
+#if linux || __APPLE__
 
-#include        <stdio.h>
-#include        <stdlib.h>
-#include        <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+
+// PTHREAD_MUTEX_RECURSIVE is the "standard" symbol,
+// while the _NP version is specific to Linux
+#ifndef PTHREAD_MUTEX_RECURSIVE
+#    define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
+#endif
 
 /******************************************
  * Enter/exit critical section.
@@ -135,7 +141,7 @@ void _STI_critical_init()
     if (!dcs_list)
     {   //printf("_STI_critical_init()\n");
         pthread_mutexattr_init(&_criticals_attr);
-        pthread_mutexattr_settype(&_criticals_attr, PTHREAD_MUTEX_RECURSIVE_NP);
+        pthread_mutexattr_settype(&_criticals_attr, PTHREAD_MUTEX_RECURSIVE);
 
         // The global critical section doesn't need to be recursive
         pthread_mutex_init(&critical_section.cs, 0);
@@ -157,3 +163,4 @@ void _STD_critical_term()
 }
 
 #endif
+
