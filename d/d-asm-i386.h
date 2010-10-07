@@ -1947,6 +1947,12 @@ struct AsmProcessor
 			   In order to get the correct output for function and label symbols,
 			   the %an format must be used with the "p" constraint.
 			*/
+			if (operand->constDisplacement) {
+			    addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
+			    if (operand->symbolDisplacement.dim)
+				insnTemplate->writebyte('+');
+			}
+
 			if (isDollar(e)) {
 			    unsigned lbl_num = ++d_priv_asm_label_serial;
 			    addLabel(lbl_num);
@@ -1973,9 +1979,6 @@ struct AsmProcessor
 		if (use_star)
 		    insnTemplate->writebyte('*');
 		if (operand->constDisplacement || operand->segmentPrefix != Reg_Invalid) {
-		    if (operand->symbolDisplacement.dim)
-			insnTemplate->writebyte('+');
-		    addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
 		    if (opInfo->operands[i] & Opr_Dest)
 			asmcode->clobbersMemory = 1;
 		}

@@ -336,7 +336,7 @@ AsmStatement::toIR(IRState * irs)
 	    else if (arg->expr->op == TOKdsymbol) {
 		arg_val = irs->getLabelTree( (LabelDsymbol *) ((DsymbolExp *) arg->expr)->s );
 	    } else
-		assert(0);
+		arg_val = arg->expr->toElem(irs); //assert(0);
 	    arg_val = irs->addressOf(arg_val);
 	    cns = p_cns;
 	    break;
