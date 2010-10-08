@@ -33,7 +33,8 @@
 #include "import.h"
 #include "aggregate.h"
 
-#include <rmem.h>
+#ifndef TARGET_NET
+#include "rmem.h"
 #ifndef IN_GCC
 #include "cc.h"
 #include "global.h"
@@ -48,6 +49,7 @@
 #include "symbol.h"
 #include "dt.h"
 #include "d-dmd-gcc.h"
+#endif // IN_GCC
 #endif
 
 extern Symbol *static_sym();
@@ -220,7 +222,7 @@ TypeInfoDeclaration *TypeTuple::getTypeInfoDeclaration()
     return new TypeInfoTupleDeclaration(this);
 }
 
-
+#ifndef TARGET_NET
 /****************************************************
  */
 
@@ -746,6 +748,7 @@ void TypeInfoDeclaration::toObjFile(int multiobj)
 }
 
 #endif
+#endif // TARGET_NET
 
 /* ========================================================================= */
 

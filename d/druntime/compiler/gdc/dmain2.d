@@ -201,6 +201,7 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
         version (Windows)
             _minit();
         _moduleCtor();
+        runModuleUnitTests();
         return true;
     }
     catch (Throwable e)

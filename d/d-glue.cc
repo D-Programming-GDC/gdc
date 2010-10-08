@@ -592,7 +592,7 @@ make_math_op(BinExp * exp, IRState * irs)
     if ((ty1 == Tarray || ty1 == Tsarray) ||
 	(ty2 == Tarray || ty2 == Tsarray))
     {
-	error("Array operation %s not implemented", exp->toChars());
+	exp->error("Array operation %s not implemented", exp->toChars());
 	return irs->errorMark(exp->type);
     }
 
@@ -791,7 +791,7 @@ make_assign_math_op(BinExp * exp, IRState * irs)
     if ((ty1 == Tarray || ty1 == Tsarray) ||
 	(ty2 == Tarray || ty2 == Tsarray))
     {
-	error("Array operation %s not implemented", exp->toChars());
+	exp->error("Array operation %s not implemented", exp->toChars());
 	return irs->errorMark(exp->type);
     }
 
@@ -2094,13 +2094,6 @@ elem * TypeExp::toElem(IRState* irs) {
     ::error("type %s is not an expression", toChars());
     return irs->errorMark(type);
 }
-
-#if V2 //keep D2 compatibility
-elem * TypeDotIdExp::toElem(IRState* irs) {
-    ::error("TypeDotIdExp::toElem: don't know what to do (%s)", toChars());
-    return irs->errorMark(type);
-}
-#endif
 
 elem *
 StringExp::toElem(IRState * irs)
