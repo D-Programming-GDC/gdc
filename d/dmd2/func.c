@@ -1,4 +1,3 @@
-
 // Compiler implementation of the D programming language
 // Copyright (c) 1999-2008 by Digital Mars
 // All Rights Reserved
@@ -199,7 +198,7 @@ void FuncDeclaration::semantic(Scope *sc)
     Dsymbol *parent = toParent();
 
     if (storage_class & STCscope)
-   error("functions cannot be scope");
+	error("functions cannot be scope");
 
     if (isAbstract() && !isVirtual())
 	error("non-virtual functions cannot be abstract");
@@ -649,8 +648,8 @@ void FuncDeclaration::semantic3(Scope *sc)
     // Check the 'throws' clause
     if (fthrows)
     {
-    	for (int i = 0; i < fthrows->dim; i++)
-      	{
+	for (int i = 0; i < fthrows->dim; i++)
+	{
 	    Type *t = (Type *)fthrows->data[i];
 
 	    t = t->semantic(loc, sc);
@@ -1857,7 +1856,7 @@ MATCH FuncDeclaration::leastAsSpecialized(FuncDeclaration *g)
     MATCH m = (MATCH) tg->callMatch(NULL, &args);
     if (m)
     {
-    	/* A variadic parameter list is less specialized than a
+        /* A variadic parameter list is less specialized than a
          * non-variadic one.
          */
         if (tf->varargs && !tg->varargs)
@@ -2432,7 +2431,7 @@ void CtorDeclaration::semantic(Scope *sc)
 	((TypeFunction *)type)->isref = 1;
 #endif
     if (!originalType)
-    	originalType = type;
+	originalType = type;
 
     sc->flags |= SCOPEctor;
     type = type->semantic(loc, sc);
@@ -2685,26 +2684,26 @@ void StaticCtorDeclaration::semantic(Scope *sc)
      */
     if (inTemplateInstance())
     {
-    /* Add this prefix to the function:
-     *	static int gate;
-     *	if (++gate != 1) return;
-     * Note that this is not thread safe; should not have threads
-     * during static construction.
-     */
-    	Identifier *id = Lexer::idPool("__gate");
-     	VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
-     	v->storage_class = STCstatic;
-     	Statements *sa = new Statements();
-     	Statement *s = new DeclarationStatement(0, v);
-     	sa->push(s);
-     	Expression *e = new IdentifierExp(0, id);
-     	e = new AddAssignExp(0, e, new IntegerExp(1));
-     	e = new EqualExp(TOKnotequal, 0, e, new IntegerExp(1));
-     	s = new IfStatement(0, NULL, e, new ReturnStatement(0, NULL), NULL);
-     	sa->push(s);
-     	if (fbody)
-     	    sa->push(fbody);
-     	fbody = new CompoundStatement(0, sa);
+	/* Add this prefix to the function:
+	 *	static int gate;
+	 *	if (++gate != 1) return;
+	 * Note that this is not thread safe; should not have threads
+	 * during static construction.
+	 */
+	Identifier *id = Lexer::idPool("__gate");
+	VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
+	v->storage_class = STCstatic;
+	Statements *sa = new Statements();
+	Statement *s = new DeclarationStatement(0, v);
+	sa->push(s);
+	Expression *e = new IdentifierExp(0, id);
+	e = new AddAssignExp(0, e, new IntegerExp(1));
+	e = new EqualExp(TOKnotequal, 0, e, new IntegerExp(1));
+	s = new IfStatement(0, NULL, e, new ReturnStatement(0, NULL), NULL);
+	sa->push(s);
+	if (fbody)
+	    sa->push(fbody);
+	fbody = new CompoundStatement(0, sa);
     }
 
     FuncDeclaration::semantic(sc);
@@ -2762,7 +2761,7 @@ StaticDtorDeclaration::StaticDtorDeclaration(Loc loc, Loc endloc)
     : FuncDeclaration(loc, endloc,
       Identifier::generateId("_staticDtor"), STCstatic, NULL)
 {
-	vgate = NULL;
+    vgate = NULL;
 }
 
 Dsymbol *StaticDtorDeclaration::syntaxCopy(Dsymbol *s)

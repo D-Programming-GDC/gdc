@@ -124,7 +124,7 @@ const char *Token::toChars()
 #if IN_GCC
 	    sprintf(buffer,"%uU",(d_uns32)uns64value);
 #else
- 	    sprintf(buffer,"%uU",uns32value);
+	    sprintf(buffer,"%uU",uns32value);
 #endif
 	    break;
 
@@ -174,7 +174,6 @@ const char *Token::toChars()
 	    sprintf(buffer,"%LgLi", float80value);
 	    break;
 #endif
-
 
 	case TOKstring:
 #if CSTRINGS
@@ -323,7 +322,7 @@ void Lexer::error(const char *format, ...)
 
 	fprintf(stdmsg, "\n");
 	fflush(stdmsg);
-	
+
 	if (global.errors >= 20)	// moderate blizzard of cascading messages
 	    fatal();
     }

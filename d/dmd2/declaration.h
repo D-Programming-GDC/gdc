@@ -273,7 +273,6 @@ struct VarDeclaration : Declaration
     VarDeclaration *isVarDeclaration() { return (VarDeclaration *)this; }
 };
 
-
 /**************************************************************/
 
 // This is a shell around a back end symbol
@@ -703,8 +702,8 @@ struct StaticCtorDeclaration : FuncDeclaration
 };
 
 struct StaticDtorDeclaration : FuncDeclaration
-{
-	VarDeclaration *vgate;	// 'gate' variable
+{   VarDeclaration *vgate;	// 'gate' variable
+
     StaticDtorDeclaration(Loc loc, Loc endloc);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);

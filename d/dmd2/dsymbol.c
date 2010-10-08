@@ -237,13 +237,13 @@ Dsymbol *Dsymbol::toParent2()
 
 TemplateInstance *Dsymbol::inTemplateInstance()
 {
-	for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
-	{
-		TemplateInstance *ti = parent->isTemplateInstance();
-		if (ti)
-			return ti;
-	}
-	return NULL;
+    for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
+    {
+	TemplateInstance *ti = parent->isTemplateInstance();
+	if (ti)
+	    return ti;
+    }
+    return NULL;
 }
 
 int Dsymbol::isAnonymous()

@@ -105,6 +105,7 @@ void initPrecedence()
 #if DMDV2
     precedence[TOKdefault] = PREC_primary;
 #endif
+
     // post
     precedence[TOKdotti] = PREC_primary;
     precedence[TOKdot] = PREC_primary;
@@ -259,20 +260,19 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
 		    if (f->vthis)
 		    {
 			//printf("rewriting e1 to %s's this\n", f->toChars());
-		    	n++;
-		    	e1 = new VarExp(loc, f->vthis);
+			n++;
+			e1 = new VarExp(loc, f->vthis);
 		    }
 		}
 		if (s && s->isClassDeclaration())
 		{   e1->type = s->isClassDeclaration()->type;
 		    if (n > 1)
-				e1 = e1->semantic(sc);
+			e1 = e1->semantic(sc);
 		}
 		else
-			e1 = e1->semantic(sc);
+		    e1 = e1->semantic(sc);
 		goto L1;
 	    }
-
 	    /* Can't find a path from e1 to ad
 	     */
 	    e1->error("this for %s needs to be type %s not type %s",
@@ -781,7 +781,6 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 #endif
 	    arg->rvalue();
 	}
-
 	arg = arg->optimize(WANTvalue);
 	arguments->data[i] = (void *) arg;
 	if (done)
@@ -1368,13 +1367,13 @@ dinteger_t IntegerExp::toInteger()
 	    case Tint64:	value = (d_int64) value;	break;
 	    case Tuns64:	value = (d_uns64) value;	break;
 	    case Tpointer:
-		if (PTRSIZE == 4)
-		    value = (d_uns32) value;
-		else if (PTRSIZE == 8)
-		    value = (d_uns64) value;
+                if (PTRSIZE == 4)
+                    value = (d_uns32) value;
+                else if (PTRSIZE == 8)
+                    value = (d_uns64) value;
 		else
 		    assert(0);
-		break;
+                break;
 
 	    case Tenum:
 	    {
@@ -2350,7 +2349,7 @@ Expression *ThisExp::semantic(Scope *sc)
     type = var->type;
     var->isVarDeclaration()->checkNestedReference(sc, loc);
     if (!sc->intypeof)
-    sc->callSuper |= CSXthis;
+	sc->callSuper |= CSXthis;
     return this;
 
 Lerr:
@@ -2459,7 +2458,7 @@ Expression *SuperExp::semantic(Scope *sc)
     var->isVarDeclaration()->checkNestedReference(sc, loc);
 
     if (!sc->intypeof)
-    sc->callSuper |= CSXsuper;
+	sc->callSuper |= CSXsuper;
     return this;
 
 
@@ -3915,7 +3914,7 @@ void NewAnonClassExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     }
 }
 
-/********************** SymOffExp **************************************/
+/********************** SymbolExp **************************************/
 
 #if DMDV2
 SymbolExp::SymbolExp(Loc loc, enum TOK op, int size, Declaration *var, int hasOverloads)
@@ -4140,7 +4139,7 @@ OverExp::OverExp(OverloadSet *s)
 
 int OverExp::isLvalue()
 {
-	return 1;
+    return 1;
 }
 
 Expression *OverExp::toLvalue(Scope *sc, Expression *e)
@@ -5666,7 +5665,6 @@ Expression *DotVarExp::semantic(Scope *sc)
 	}
 
 	e1 = e1->semantic(sc);
-
 	type = var->type;
 	if (!type && global.errors)
 	{   // var is goofed up, just return 0
@@ -6122,8 +6120,8 @@ Expression *CallExp::semantic(Scope *sc)
 	    global.gag--;
 	    if (errors != global.errors)
 	    {
-	    /* Didn't work, go with partial explicit specialization
-	    */
+		/* Didn't work, go with partial explicit specialization
+		 */
 		global.errors = errors;
 		targsi = ti->tiargs;
 		tierror = ti;			// for error reporting
@@ -6144,7 +6142,7 @@ Expression *CallExp::semantic(Scope *sc)
 	     * If not, go with partial explicit specialization.
 	     */
 	    ti->semanticTiargs(sc);
-	    Expression *etmp = e1->semantic(sc);
+	    Expression *etmp = e1->trySemantic(sc);
 	    if (etmp)
 		e1 = etmp;	// it worked
 	    else		// didn't work
@@ -6425,18 +6423,18 @@ Lagain:
 	    }
 	    else
 	    {
-	    	if (!sc->intypeof)
-	    	{
+		if (!sc->intypeof)
+		{
 #if 0
-		if (sc->callSuper & (CSXthis | CSXsuper))
-		    error("reference to this before super()");
+		    if (sc->callSuper & (CSXthis | CSXsuper))
+			error("reference to this before super()");
 #endif
-		if (sc->noctor || sc->callSuper & CSXlabel)
-		    error("constructor calls not allowed in loops or after labels");
-		if (sc->callSuper & (CSXsuper_ctor | CSXthis_ctor))
-		    error("multiple constructor calls");
-		sc->callSuper |= CSXany_ctor | CSXsuper_ctor;
-	    	}
+		    if (sc->noctor || sc->callSuper & CSXlabel)
+			error("constructor calls not allowed in loops or after labels");
+		    if (sc->callSuper & (CSXsuper_ctor | CSXthis_ctor))
+			error("multiple constructor calls");
+		    sc->callSuper |= CSXany_ctor | CSXsuper_ctor;
+		}
 
 		f = resolveFuncCall(sc, loc, cd->baseClass->ctor, NULL, NULL, arguments, 0);
 		checkDeprecated(sc, f);
@@ -6464,18 +6462,18 @@ Lagain:
 	}
 	else
 	{
-		 if (!sc->intypeof)
-		 {
+	    if (!sc->intypeof)
+	    {
 #if 0
-	    if (sc->callSuper & (CSXthis | CSXsuper))
-		error("reference to this before super()");
+		if (sc->callSuper & (CSXthis | CSXsuper))
+		    error("reference to this before super()");
 #endif
-	    if (sc->noctor || sc->callSuper & CSXlabel)
-		error("constructor calls not allowed in loops or after labels");
-	    if (sc->callSuper & (CSXsuper_ctor | CSXthis_ctor))
-		error("multiple constructor calls");
-	    sc->callSuper |= CSXany_ctor | CSXthis_ctor;
-		 }
+		if (sc->noctor || sc->callSuper & CSXlabel)
+		    error("constructor calls not allowed in loops or after labels");
+		if (sc->callSuper & (CSXsuper_ctor | CSXthis_ctor))
+		    error("multiple constructor calls");
+		sc->callSuper |= CSXany_ctor | CSXthis_ctor;
+	    }
 
 	    f = resolveFuncCall(sc, loc, cd->ctor, NULL, NULL, arguments, 0);
 	    checkDeprecated(sc, f);

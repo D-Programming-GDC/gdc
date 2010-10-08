@@ -58,7 +58,7 @@ int AttribDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 
     if (d)
     {
-    	for (unsigned i = 0; i < d->dim; i++)
+	for (unsigned i = 0; i < d->dim; i++)
 	{   Dsymbol *s = (Dsymbol *)d->data[i];
 	    m |= s->addMember(sc, sd, m | memnum);
 	}
@@ -70,7 +70,7 @@ void AttribDeclaration::semantic(Scope *sc)
 {
     Array *d = include(sc, NULL);
 
-    //printf("\tAttribDeclaration::semantic '%s'\n",toChars());
+    //printf("\tAttribDeclaration::semantic '%s', d = %p\n",toChars(), d);
     if (d)
     {
 	for (unsigned i = 0; i < d->dim; i++)
@@ -116,7 +116,6 @@ void AttribDeclaration::inlineScan()
     {
 	for (unsigned i = 0; i < d->dim; i++)
 	{   Dsymbol *s = (Dsymbol *)d->data[i];
-
 	    //printf("AttribDeclaration::inlineScan %s\n", s->toChars());
 	    s->inlineScan();
 	}
@@ -170,10 +169,10 @@ void AttribDeclaration::toObjFile(int multiobj)
 
     if (d)
     {
-    	for (unsigned i = 0; i < d->dim; i++)
-    	{   Dsymbol *s = (Dsymbol *)d->data[i];
+	for (unsigned i = 0; i < d->dim; i++)
+	{   Dsymbol *s = (Dsymbol *)d->data[i];
 	    s->toObjFile(multiobj);
-    	}
+	}
     }
 }
 
@@ -1321,9 +1320,10 @@ int CompileDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
     //printf("CompileDeclaration::addMember(sc = %p, memnum = %d)\n", sc, memnum);
     this->sd = sd;
     if (memnum == 0)
-    {	/* No members yet, so parse the mixin now */
+    {	/* No members yet, so parse the mixin now
+	 */
 	compileIt(sc);
- 	memnum |= AttribDeclaration::addMember(sc, sd, memnum);
+	memnum |= AttribDeclaration::addMember(sc, sd, memnum);
 	compiled = 1;
     }
     return memnum;
@@ -1352,15 +1352,15 @@ void CompileDeclaration::compileIt(Scope *sc)
 }
 
 void CompileDeclaration::semantic(Scope *sc)
- {
-	//printf("CompileDeclaration::semantic()\n");
+{
+    //printf("CompileDeclaration::semantic()\n");
 
-	if (!compiled)
-	{
-		compileIt(sc);
-		AttribDeclaration::addMember(sc, sd, 0);
-		compiled = 1;
-	}
+    if (!compiled)
+    {
+	compileIt(sc);
+	AttribDeclaration::addMember(sc, sd, 0);
+	compiled = 1;
+    }
     AttribDeclaration::semantic(sc);
 }
 

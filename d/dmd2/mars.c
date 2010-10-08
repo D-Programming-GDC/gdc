@@ -947,7 +947,7 @@ int main(int argc, char *argv[])
 	}
     }
 
-#if _WINDOWS_SEH
+#if WINDOWS_SEH
   __try
   {
 #endif
@@ -1174,7 +1174,7 @@ int main(int argc, char *argv[])
     if (global.params.lib && !global.errors)
 	library->write();
 
-#if _WINDOWS_SEH
+#if WINDOWS_SEH
   }
   __except (__ehfilter(GetExceptionInformation()))
   {
@@ -1330,7 +1330,7 @@ Ldone:
     *pargv = (char **)argv->data;
 }
 
-#if _WINDOWS_SEH
+#if WINDOWS_SEH
 
 long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep)
 {

@@ -622,18 +622,18 @@ void inferApplyArgTypes(enum TOK op, Arguments *arguments, Expression *aggr)
 						   : Id::apply);
 	    if (s)
 	    {
-	    	FuncDeclaration *fd = s->isFuncDeclaration();
-			if (fd)
-			{   inferApplyArgTypesX(fd, arguments);
-					break;
-			}
-			#if 0
-			TemplateDeclaration *td = s->isTemplateDeclaration();
-			if (td)
-			{   inferApplyArgTypesZ(td, arguments);
-				break;
-			}
-			#endif
+		FuncDeclaration *fd = s->isFuncDeclaration();
+		if (fd) 
+		{   inferApplyArgTypesX(fd, arguments);
+		    break;
+		}
+#if 0
+		TemplateDeclaration *td = s->isTemplateDeclaration();
+		if (td)
+		{   inferApplyArgTypesZ(td, arguments);
+		    break;
+		}
+#endif
 	    }
 	    break;
 	}
@@ -643,8 +643,8 @@ void inferApplyArgTypes(enum TOK op, Arguments *arguments, Expression *aggr)
 	    if (0 && aggr->op == TOKdelegate)
 	    {	DelegateExp *de = (DelegateExp *)aggr;
 
-	    FuncDeclaration *fd = de->func->isFuncDeclaration();
-	    if (fd)
+		FuncDeclaration *fd = de->func->isFuncDeclaration();
+		if (fd)
 		    inferApplyArgTypesX(fd, arguments);
 	    }
 	    else
@@ -733,36 +733,36 @@ static int inferApplyArgTypesY(TypeFunction *tf, Arguments *arguments)
 }
 
 /*******************************************
-  * Infer foreach arg types from a template function opApply which looks like:
-  *    int opApply(alias int func(ref uint))() { ... }
-  */
+ * Infer foreach arg types from a template function opApply which looks like:
+ *    int opApply(alias int func(ref uint))() { ... }
+ */
 
 #if 0
 void inferApplyArgTypesZ(TemplateDeclaration *tstart, Arguments *arguments)
 {
-     for (TemplateDeclaration *td = tstart; td; td = td->overnext)
-     {
-         if (!td->scope)
-         {
-             error("forward reference to template %s", td->toChars());
-             return;
-         }
-         if (!td->onemember || !td->onemember->toAlias()->isFuncDeclaration())
-         {
-             error("is not a function template");
-             return;
-         }
- 	if (!td->parameters || td->parameters->dim != 1)
- 	    continue;
- 	TemplateParameter *tp = (TemplateParameter *)td->parameters->data[0];
- 	TemplateAliasParameter *tap = tp->isTemplateAliasParameter();
- 	if (!tap || !tap->specType || tap->specType->ty != Tfunction)
- 	    continue;
- 	TypeFunction *tf = (TypeFunction *)tap->specType;
- 	if (inferApplyArgTypesY(tf, arguments) == 0)	// found it
- 	    return;
-     }
- }
+    for (TemplateDeclaration *td = tstart; td; td = td->overnext)
+    {
+        if (!td->scope)
+        {
+            error("forward reference to template %s", td->toChars());
+            return;
+        }
+        if (!td->onemember || !td->onemember->toAlias()->isFuncDeclaration())
+        {
+            error("is not a function template");
+            return;
+        }
+	if (!td->parameters || td->parameters->dim != 1)
+	    continue;
+	TemplateParameter *tp = (TemplateParameter *)td->parameters->data[0];
+	TemplateAliasParameter *tap = tp->isTemplateAliasParameter();
+	if (!tap || !tap->specType || tap->specType->ty != Tfunction)
+	    continue;
+	TypeFunction *tf = (TypeFunction *)tap->specType;
+	if (inferApplyArgTypesY(tf, arguments) == 0)	// found it
+	    return;
+    }
+}
 #endif
 
 /**************************************

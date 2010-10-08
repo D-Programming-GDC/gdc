@@ -155,6 +155,7 @@ void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
 }
 #endif
 
+
 /********************************* TupleDeclaration ****************************/
 
 TupleDeclaration::TupleDeclaration(Loc loc, Identifier *id, Objects *objects)
@@ -679,12 +680,12 @@ Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
 void VarDeclaration::semantic(Scope *sc)
 {
 #if 0
-	printf("VarDeclaration::semantic('%s', parent = '%s')\n", toChars(), sc->parent->toChars());
-	printf(" type = %s\n", type ? type->toChars() : "null");
-	printf(" stc = x%x\n", sc->stc);
-	printf(" storage_class = x%x\n", storage_class);
-	printf("linkage = %d\n", sc->linkage);
-	//if (strcmp(toChars(), "mul") == 0) halt();
+    printf("VarDeclaration::semantic('%s', parent = '%s')\n", toChars(), sc->parent->toChars());
+    printf(" type = %s\n", type ? type->toChars() : "null");
+    printf(" stc = x%x\n", sc->stc);
+    printf(" storage_class = x%x\n", storage_class);
+    printf("linkage = %d\n", sc->linkage);
+    //if (strcmp(toChars(), "mul") == 0) halt();
 #endif
 
     storage_class |= sc->stc;

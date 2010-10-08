@@ -1141,9 +1141,6 @@ Type *Type::merge()
 	sv = stringtable.update((char *)buf.data, buf.offset);
 	if (sv->ptrvalue)
 	{   t = (Type *) sv->ptrvalue;
-	    if (! t->deco) {
-		fprintf(stderr, "nooooooooooooooooooooooo!\n");
-	    }
 	    assert(t->deco);
 	    //printf("old value, deco = '%s' %p\n", t->deco, t->deco);
 	}
@@ -1151,10 +1148,6 @@ Type *Type::merge()
 	{
 	    sv->ptrvalue = this;
 	    deco = sv->lstring.string;
-	    if (! t->deco) {
-		fprintf(stderr, "yeeeeeeeeeeeeeeeeeeeeeeeesss!\n");
-	    }
-	    assert(deco);
 	    //printf("new value, deco = '%s' %p\n", t->deco, t->deco);
 	}
     }
@@ -3978,8 +3971,8 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 
 	    if (arg->storageClass & (STCauto | STCalias | STCstatic))
 	    {
-	    	if (!arg->type)
-	    		continue;
+		if (!arg->type)
+		    continue;
 	    }
 
 	    Type *t = arg->type->toBasetype();
@@ -4085,7 +4078,7 @@ int TypeFunction::callMatch(Expression *ethis, Expressions *args)
 
 	// Non-lvalues do not match ref or out parameters
 	if (p->storageClass & (STCref | STCout) && !arg->isLvalue())
-		goto Nomatch;
+	    goto Nomatch;
 
 	if (p->storageClass & STClazy && p->type->ty == Tvoid &&
 		arg->type->ty != Tvoid)
@@ -6558,13 +6551,7 @@ void TypeTuple::toDecoBuffer(OutBuffer *buf, int flag)
     OutBuffer buf2;
     Argument::argsToDecoBuffer(&buf2, arguments);
     unsigned len = buf2.offset;
-#if __NEWLIB_H__
-    // newlib bug as of 1.14.0
-    char * p = (char*) buf2.extractData();
-    buf->printf("%d%.*s", len, len, p ? p : "");
-#else
     buf->printf("%d%.*s", len, len, (char *)buf2.extractData());
-#endif
 }
 
 Expression *TypeTuple::getProperty(Loc loc, Identifier *ident)
@@ -6755,26 +6742,24 @@ Arguments *Argument::arraySyntaxCopy(Arguments *args)
 
 char *Argument::argsTypesToChars(Arguments *args, int varargs)
 {
-	OutBuffer *buf = new OutBuffer();
+    OutBuffer *buf = new OutBuffer();
 
 #if 1
-     HdrGenState hgs;
-     argsToCBuffer(buf, &hgs, args, varargs);
+    HdrGenState hgs;
+    argsToCBuffer(buf, &hgs, args, varargs);
 #else
-      buf->writeByte('(');
-      if (args)
-      {
-    	  OutBuffer argbuf;
-    	  HdrGenState hgs;
+    buf->writeByte('(');
+    if (args)
+    {	OutBuffer argbuf;
+	HdrGenState hgs;
 
- 	for (int i = 0; i < args->dim; i++)
- 	{
- 		if (i)
- 			buf->writeByte(',');
- 	    Argument *arg = (Argument *)args->data[i];
-  	    argbuf.reset();
-  	    arg->type->toCBuffer2(&argbuf, &hgs, 0);
-  	    buf->write(&argbuf);
+	for (int i = 0; i < args->dim; i++)
+	{   if (i)
+		buf->writeByte(',');
+	    Argument *arg = (Argument *)args->data[i];
+	    argbuf.reset();
+	    arg->type->toCBuffer2(&argbuf, &hgs, 0);
+	    buf->write(&argbuf);
 	}
 	if (varargs)
 	{
@@ -6798,10 +6783,11 @@ void Argument::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Arguments *argume
 	for (i = 0; i < arguments->dim; i++)
 	{
 	    if (i)
-	 		buf->writestring(", ");
+		buf->writestring(", ");
 	    Argument *arg = (Argument *)arguments->data[i];
+
 	    if (arg->storageClass & STCout)
-	  		buf->writestring("out ");
+		buf->writestring("out ");
 	    else if (arg->storageClass & STCref)
 		buf->writestring((global.params.Dversion == 1)
 			? (char *)"inout " : (char *)"ref ");
@@ -6810,9 +6796,9 @@ void Argument::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Arguments *argume
 	    else if (arg->storageClass & STClazy)
 		buf->writestring("lazy ");
 	    else if (arg->storageClass & STCalias)
-	    buf->writestring("alias ");
+		buf->writestring("alias ");
 	    else if (arg->storageClass & STCauto)
-	    buf->writestring("auto ");
+		buf->writestring("auto ");
 
 	    unsigned stc = arg->storageClass;
 	    if (arg->type && arg->type->mod & MODshared)
@@ -6824,10 +6810,10 @@ void Argument::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Arguments *argume
 	    argbuf.reset();
 	    if (arg->storageClass & STCalias)
 	    {	if (arg->ident)
-				argbuf.writestring(arg->ident->toChars());
+		    argbuf.writestring(arg->ident->toChars());
 	    }
 	    else
-	    arg->type->toCBuffer(&argbuf, arg->ident, hgs);
+		arg->type->toCBuffer(&argbuf, arg->ident, hgs);
 	    if (arg->defaultArg)
 	    {
 		argbuf.writestring(" = ");
@@ -6862,6 +6848,7 @@ void Argument::argsToDecoBuffer(OutBuffer *buf, Arguments *arguments)
     }
 }
 
+
 /****************************************
  * Determine if parameter list is really a template parameter list
  * (i.e. it has auto or alias parameters)
@@ -6869,19 +6856,19 @@ void Argument::argsToDecoBuffer(OutBuffer *buf, Arguments *arguments)
 
 int Argument::isTPL(Arguments *arguments)
 {
-     //printf("Argument::isTPL()\n");
+    //printf("Argument::isTPL()\n");
 
-     if (arguments)
-     {
- 	size_t dim = Argument::dim(arguments);
- 	for (size_t i = 0; i < dim; i++)
- 	{
- 	    Argument *arg = Argument::getNth(arguments, i);
- 	    if (arg->storageClass & (STCalias | STCauto | STCstatic))
- 		return 1;
- 	}
-     }
-     return 0;
+    if (arguments)
+    {
+	size_t dim = Argument::dim(arguments);
+	for (size_t i = 0; i < dim; i++)
+	{
+	    Argument *arg = Argument::getNth(arguments, i);
+	    if (arg->storageClass & (STCalias | STCauto | STCstatic))
+		return 1;
+	}
+    }
+    return 0;
 }
 
 /****************************************************

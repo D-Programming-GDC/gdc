@@ -271,7 +271,7 @@ void CompileStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 Statements *CompileStatement::flatten(Scope *sc)
 {
-	//printf("CompileStatement::flatten() %s\n", exp->toChars());
+    //printf("CompileStatement::flatten() %s\n", exp->toChars());
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
     exp = exp->optimize(WANTvalue | WANTinterpret);
@@ -290,7 +290,7 @@ Statements *CompileStatement::flatten(Scope *sc)
     {
 	Statement *s = p.parseStatement(PSsemi | PScurlyscope);
 	a->push(s);
-	}
+    }
     return a;
 }
 
@@ -506,7 +506,7 @@ Statement *CompoundStatement::semantic(Scope *sc)
     }
     if (statements->dim == 1)
     {
-    	return (Statement *)statements->data[0];
+	return (Statement *)statements->data[0];
     }
     return this;
 }
@@ -518,11 +518,10 @@ Statements *CompoundStatement::flatten(Scope *sc)
 
 ReturnStatement *CompoundStatement::isReturnStatement()
 {
-	ReturnStatement *rs = NULL;
+    ReturnStatement *rs = NULL;
 
     for (int i = 0; i < statements->dim; i++)
-    {
-    	Statement *s = (Statement *) statements->data[i];
+    {	Statement *s = (Statement *) statements->data[i];
 	if (s)
 	{
 	    rs = s->isReturnStatement();
@@ -1469,7 +1468,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 
 	    sc->sbreak = this;
 	    sc->scontinue = this;
-	    if (body) body = body->semantic(sc);
+	    body = body->semantic(sc);
 
 	    if (tab->nextOf()->implicitConvTo(value->type) < MATCHconst)
 	    {
@@ -1761,34 +1760,33 @@ Statement *ForeachStatement::semantic(Scope *sc)
 	    }
 	    else
 	    {
-	    assert(tab->ty == Tstruct || tab->ty == Tclass);
-	    Identifier *idapply = (op == TOKforeach_reverse)
-	    ? Id::applyReverse : Id::apply;
-	    Dsymbol *sapply = search_function((AggregateDeclaration *)tab->toDsymbol(sc), idapply);
-	    Expressions *exps = new Expressions();
+		assert(tab->ty == Tstruct || tab->ty == Tclass);
+		Identifier *idapply = (op == TOKforeach_reverse)
+				? Id::applyReverse : Id::apply;
+		Dsymbol *sapply = search_function((AggregateDeclaration *)tab->toDsymbol(sc), idapply);
+	        Expressions *exps = new Expressions();
 #if 0
- 		TemplateDeclaration *td;
- 		if (sapply &&
- 		    (td = sapply->isTemplateDeclaration()) != NULL)
- 		{   /* Call:
- 		     *	aggr.apply!(fld)()
- 		     */
- 		    TemplateInstance *ti = new TemplateInstance(loc, idapply);
- 		    Objects *tiargs = new Objects();
- 		    tiargs->push(fld);
- 		    ti->tiargs = tiargs;
+		TemplateDeclaration *td;
+		if (sapply &&
+		    (td = sapply->isTemplateDeclaration()) != NULL)
+		{   /* Call:
+		     *	aggr.apply!(fld)()
+		     */
+		    TemplateInstance *ti = new TemplateInstance(loc, idapply);
+		    Objects *tiargs = new Objects();
+		    tiargs->push(fld);
+		    ti->tiargs = tiargs;
 		    ec = new DotTemplateInstanceExp(loc, aggr, ti);
- 		}
- 		else
+		}
+		else
 #endif
-{
-
-		/* Call:
-		 *	aggr.apply(flde)
-		 */
- 		ec = new DotIdExp(loc, aggr, idapply);
-		exps->push(flde);
-}
+		{
+		    /* Call:
+		     *	aggr.apply(flde)
+		     */
+		    ec = new DotIdExp(loc, aggr, idapply);
+		    exps->push(flde);
+		}
 		e = new CallExp(loc, ec, exps);
 		e = e->semantic(sc);
 		if (e->type != Type::tint32)
@@ -2968,8 +2966,8 @@ Statement *ReturnStatement::semantic(Scope *sc)
 
     Type *tret = fd->type->nextOf();
     if (fd->tintro)
-    /* We'll be implicitly casting the return expression to tintro
-     */
+	/* We'll be implicitly casting the return expression to tintro
+	 */
 	tret = fd->tintro->nextOf();
     Type *tbret = NULL;
 
@@ -3113,7 +3111,7 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	    // Construct: return vresult;
 	    if (!fd->vresult)
 	    {	// Declare vresult
-	    VarDeclaration *v = new VarDeclaration(loc, tret, Id::result, NULL);
+		VarDeclaration *v = new VarDeclaration(loc, tret, Id::result, NULL);
 		v->noauto = 1;
 		v->semantic(scx);
 		if (!scx->insert(v))
@@ -3187,9 +3185,9 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	gs->label = fd->returnLabel;
 	if (exp)
 	{   /* Replace: return exp;
- 	     * with:    exp; goto returnLabel;
- 	     */
- 	    Statement *s = new ExpStatement(0, exp);
+	     * with:    exp; goto returnLabel;
+	     */
+	    Statement *s = new ExpStatement(0, exp);
 	    return new CompoundStatement(loc, s, gs);
 	}
 	return gs;
@@ -3197,15 +3195,15 @@ Statement *ReturnStatement::semantic(Scope *sc)
 
     if (exp && tbret->ty == Tvoid && !fd->isMain())
     {
-    	/* Replace:
-     	 *	return exp;
-     	 * with:
-     	 *	exp; return;
-     	 */
-     	Statement *s = new ExpStatement(loc, exp);
-     	loc = 0;
-     	exp = NULL;
-     	return new CompoundStatement(loc, s, this);
+	/* Replace:
+	 *	return exp;
+	 * with:
+	 *	exp; return;
+	 */
+	Statement *s = new ExpStatement(loc, exp);
+	loc = 0;
+	exp = NULL;
+	return new CompoundStatement(loc, s, this);
     }
 
     return this;

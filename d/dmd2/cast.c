@@ -1428,15 +1428,15 @@ Expression *BinExp::scaleFactor(Scope *sc)
 }
 
 /**************************************
-  * Combine types.
-  * Output:
-  *	*pt	merged type, if *pt is not NULL
-  *	*pe1	rewritten e1
-  *	*pe2	rewritten e2
-  * Returns:
-  *	!=0	success
-  *	0	failed
-  */
+ * Combine types.
+ * Output:
+ *	*pt	merged type, if *pt is not NULL
+ *	*pe1	rewritten e1
+ *	*pe2	rewritten e2
+ * Returns:
+ *	!=0	success
+ *	0	failed
+ */
 
 int typeMerge(Scope *sc, Expression *e, Type **pt, Expression **pe1, Expression **pe2)
 {
@@ -1473,14 +1473,14 @@ int typeMerge(Scope *sc, Expression *e, Type **pt, Expression **pe1, Expression 
 	{
 	    if (t1 == t2)
 	    {
-	    	t = t1;
-	    	goto Lret;
+		t = t1;
+		goto Lret;
 	    }
 
 	    if (t1b == t2b)
 	    {
-	    	t = t1b;
-	    	goto Lret;
+		t = t1b;
+		goto Lret;
 	    }
 	}
 
@@ -1490,7 +1490,6 @@ int typeMerge(Scope *sc, Expression *e, Type **pt, Expression **pe1, Expression 
 	t2 = Type::basic[ty2];
 	e1 = e1->castTo(sc, t1);
 	e2 = e2->castTo(sc, t2);
-
 	//printf("after typeCombine():\n");
 	//dump(0);
 	//printf("ty = %d, ty1 = %d, ty2 = %d\n", ty, ty1, ty2);
@@ -1499,7 +1498,6 @@ int typeMerge(Scope *sc, Expression *e, Type **pt, Expression **pe1, Expression 
 
     t1 = t1b;
     t2 = t2b;
-
 
 Lagain:
     if (t1 == t2)
@@ -1695,13 +1693,13 @@ Lagain:
     else
     {
      Lincompatible:
-     return 0;
+	return 0;
     }
 Lret:
-	if (!*pt)
-		*pt = t;
-	*pe1 = e1;
-	*pe2 = e2;
+    if (!*pt)
+	*pt = t;
+    *pe1 = e1;
+    *pe2 = e2;
 #if 0
     printf("-typeMerge() %s op %s\n", e1->toChars(), e2->toChars());
     if (e1->type) printf("\tt1 = %s\n", e1->type->toChars());
@@ -1710,6 +1708,7 @@ Lret:
 #endif
     //dump(0);
     return 1;
+
 
 Lt1:
     e2 = e2->castTo(sc, t1);
@@ -1722,7 +1721,7 @@ Lt2:
     goto Lret;
 }
 
- /************************************
+/************************************
  * Bring leaves to common type.
  */
 

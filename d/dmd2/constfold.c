@@ -1117,11 +1117,11 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
 
     if (e1->op == TOKstring)
     {
-    	if (tb->ty == Tarray && typeb->ty == Tarray &&
-    			tb->nextOf()->size() == typeb->nextOf()->size())
-    	{
-    		return expType(to, e1);
-    	}
+	if (tb->ty == Tarray && typeb->ty == Tarray &&
+	    tb->nextOf()->size() == typeb->nextOf()->size())
+	{
+	    return expType(to, e1);
+	}
     }
 
     if (e1->isConst() != 1)
@@ -1587,16 +1587,16 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
     else if ((e1->op == TOKarrayliteral || e1->op == TOKnull) &&
 	e1->type->toBasetype()->nextOf()->equals(e2->type))
     {
-    	ArrayLiteralExp *es1;
-    	if (e1->op == TOKarrayliteral)
-    	{   es1 = (ArrayLiteralExp *)e1;
-    	  	es1 = new ArrayLiteralExp(es1->loc, (Expressions *)es1->elements->copy());
-    	  	es1->elements->push(e2);
-    	}
-    	else
-    	{
-    	    es1 = new ArrayLiteralExp(e1->loc, e2);
-    	}
+	ArrayLiteralExp *es1;
+	if (e1->op == TOKarrayliteral)
+	{   es1 = (ArrayLiteralExp *)e1;
+	    es1 = new ArrayLiteralExp(es1->loc, (Expressions *)es1->elements->copy());
+	    es1->elements->push(e2);
+	}
+	else
+	{
+	    es1 = new ArrayLiteralExp(e1->loc, e2);
+	}
 	e = es1;
 
 	if (type->toBasetype()->ty == Tsarray)

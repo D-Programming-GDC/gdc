@@ -282,6 +282,7 @@ typedef sinteger_t target_ptrdiff_t;
 #else
 typedef long double real_t;
 #endif
+
 // Modify OutBuffer::writewchar to write the correct size of wchar
 #if _WIN32
 #define writewchar writeword

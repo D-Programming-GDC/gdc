@@ -8,6 +8,8 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
+// This is the D parser
+
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
@@ -225,7 +227,7 @@ Array *Parser::parseDeclDefs(int once)
 	    case TOKtypeof:
 	    case TOKdot:
 	    Ldeclaration:
-	    a = parseDeclarations(STCundefined);
+		a = parseDeclarations(STCundefined);
 		decldefs->append(a);
 		continue;
 
@@ -390,24 +392,24 @@ Array *Parser::parseDeclDefs(int once)
 		if (token.value == TOKidentifier &&
 		    peek(&token)->value == TOKassign)
 		{
-			a = parseAutoDeclarations(storageClass, comment);
-			decldefs->append(a);
-			continue;
+		    a = parseAutoDeclarations(storageClass, comment);
+		    decldefs->append(a);
+		    continue;
 		}
 
 		/* Look for return type inference for template functions.
 		 */
 		Token *tk;
 		if (token.value == TOKidentifier &&
-		   (tk = peek(&token))->value == TOKlparen &&
+		    (tk = peek(&token))->value == TOKlparen &&
 		    skipParens(tk, &tk) &&
 		    (peek(tk)->value == TOKlparen ||
 		     peek(tk)->value == TOKlcurly)
 		   )
 		{
-			a = parseDeclarations(storageClass);
-			decldefs->append(a);
-			continue;
+		    a = parseDeclarations(storageClass);
+		    decldefs->append(a);
+		    continue;
 		}
 		a = parseBlock();
 		s = new StorageClassDeclaration(storageClass, a);
@@ -667,6 +669,7 @@ TypeQualified *Parser::parseTypeof()
     return t;
 }
 #endif
+
 /***********************************
  * Parse extern (linkage)
  * The parser is on the 'extern' token.
@@ -807,9 +810,9 @@ Condition *Parser::parseStaticIfCondition()
     nextToken();
     if (token.value == TOKlparen)
     {
-     	nextToken();
-     	exp = parseAssignExp();
-     	check(TOKrparen);
+	nextToken();
+	exp = parseAssignExp();
+	check(TOKrparen);
     }
     else
     {   error("(expression) expected following static if");
@@ -974,11 +977,10 @@ InvariantDeclaration *Parser::parseInvariant()
     Loc loc = this->loc;
 
     nextToken();
-
     if (token.value == TOKlparen)	// optional ()
     {
-    	nextToken();
-    	check(TOKrparen);
+	nextToken();
+	check(TOKrparen);
     }
 
     f = new InvariantDeclaration(loc, 0);
@@ -1062,12 +1064,12 @@ Arguments *Parser::parseParameters(int *pvarargs)
     check(TOKlparen);
     while (1)
     {   Type *tb;
-    Identifier *ai = NULL;
-    Type *at;
-    Argument *a;
-    unsigned storageClass = 0;
-    unsigned stc;
-    Expression *ae;
+	Identifier *ai = NULL;
+	Type *at;
+	Argument *a;
+	unsigned storageClass = 0;
+	unsigned stc;
+	Expression *ae;
 
 	for (;1; nextToken())
 	{
@@ -1122,33 +1124,33 @@ Arguments *Parser::parseParameters(int *pvarargs)
 		    continue;
 
 #if 0
- 		case TOKstatic:	   stc = STCstatic;		goto L2;
- 		case TOKauto:   storageClass = STCauto;		goto L4;
- 		case TOKalias:  storageClass = STCalias;	goto L4;
- 		L4:
- 		    nextToken();
- 		    if (token.value == TOKidentifier)
- 		    {	ai = token.ident;
- 			nextToken();
- 		    }
- 		    else
- 			ai = NULL;
- 		    at = NULL;		// no type
- 		    ae = NULL;		// no default argument
- 		    if (token.value == TOKassign)	// = defaultArg
- 		    {   nextToken();
- 			ae = parseDefaultInitExp();
- 			hasdefault = 1;
- 		    }
- 		    else
- 		    {   if (hasdefault)
- 			    error("default argument expected for alias %s",
- 				    ai ? ai->toChars() : "");
- 		    }
- 		    goto L3;
- #endif
+		case TOKstatic:	   stc = STCstatic;		goto L2;
+		case TOKauto:   storageClass = STCauto;		goto L4;
+		case TOKalias:  storageClass = STCalias;	goto L4;
+		L4:
+		    nextToken();
+		    if (token.value == TOKidentifier)
+		    {	ai = token.ident;
+			nextToken();
+		    }
+		    else
+			ai = NULL;
+		    at = NULL;		// no type
+		    ae = NULL;		// no default argument
+		    if (token.value == TOKassign)	// = defaultArg
+		    {   nextToken();
+			ae = parseDefaultInitExp();
+			hasdefault = 1;
+		    }
+		    else
+		    {   if (hasdefault)
+			    error("default argument expected for alias %s",
+				    ai ? ai->toChars() : "");
+		    }
+		    goto L3;
+#endif
 
- 		default:
+		default:
 		Ldefault:
 		    stc = storageClass & (STCin | STCout | STCref | STClazy);
 		    if (stc & (stc - 1))	// if stc is not a power of 2
@@ -1298,6 +1300,7 @@ EnumDeclaration *Parser::parseEnum()
     }
     else
 	error("enum declaration is invalid");
+
     //printf("-parseEnum() %s\n", e->toChars());
     return e;
 }
@@ -1406,11 +1409,11 @@ Dsymbol *Parser::parseAggregate()
     if (tpl)
     {	// Wrap a template around the aggregate declaration
 
- 	Array *decldefs = new Array();
-   	decldefs->push(a);
- 	TemplateDeclaration *tempdecl =
-	new TemplateDeclaration(loc, id, tpl, constraint, decldefs);
-      	return tempdecl;
+	Array *decldefs = new Array();
+	decldefs->push(a);
+	TemplateDeclaration *tempdecl =
+		new TemplateDeclaration(loc, id, tpl, constraint, decldefs);
+	return tempdecl;
     }
 
     return a;
@@ -1575,30 +1578,30 @@ TemplateParameters *Parser::parseTemplateParameterList(int flag)
 		}
 		else
 		{
-		if (token.value != TOKidentifier)
-		{   error("identifier expected for template alias parameter");
-		    goto Lerr;
-		}
-		tp_ident = token.ident;
-		nextToken();
+		    if (token.value != TOKidentifier)
+		    {   error("identifier expected for template alias parameter");
+			goto Lerr;
+		    }
+		    tp_ident = token.ident;
+		    nextToken();
 		}
 		Object *spec = NULL;
 		if (token.value == TOKcolon)	// : Type
 		{
 		    nextToken();
 		    if (isDeclaration(&token, 0, TOKreserved, NULL))
-		    	spec = parseType();
+			spec = parseType();
 		    else
-		    	spec = parseCondExp();
+			spec = parseCondExp();
 		}
 		Object *def = NULL;
 		if (token.value == TOKassign)	// = Type
 		{
 		    nextToken();
 		    if (isDeclaration(&token, 0, TOKreserved, NULL))
-		    	def = parseType();
+			def = parseType();
 		    else
-		    	def = parseCondExp();
+			def = parseCondExp();
 		}
 		tp = new TemplateAliasParameter(loc, tp_ident, spectype, spec, def);
 	    }
@@ -1661,7 +1664,7 @@ TemplateParameters *Parser::parseTemplateParameterList(int flag)
 		tp_valtype = parseType(&tp_ident);
 		if (!tp_ident)
 		{
-			error("identifier expected for template value parameter");
+		    error("identifier expected for template value parameter");
 		    tp_ident = new Identifier("error", TOKidentifier);
 		}
 		if (token.value == TOKcolon)	// : CondExpression
@@ -1858,7 +1861,7 @@ Objects *Parser::parseTemplateArgumentList2()
 			    decldefs->push(fd);
 			    TemplateDeclaration *tempdecl =
 				new TemplateDeclaration(fd->loc, fd->ident, tpl, NULL, decldefs);
-			    tempdecl->literal = 1;      // it's a template 'literal'
+			    tempdecl->literal = 1;	// it's a template 'literal'
 			    tiargs->push(tempdecl);
 			    goto L1;
 			}
@@ -2139,12 +2142,12 @@ Type *Parser::parseBasicType()
 	    break;
 
 	case TOKdot:
-		// Leading . as in .foo
+	    // Leading . as in .foo
 	    id = Id::empty;
 	    goto Lident;
 
 	case TOKtypeof:
-		// typeof(expression)
+	    // typeof(expression)
 	    tid = parseTypeof();
 	    goto Lident2;
 
@@ -2201,12 +2204,12 @@ Type *Parser::parseBasicType()
  *	t delegate
  */
 
-  Type *Parser::parseBasicType2(Type *t)
-  {
-      //printf("parseBasicType2()\n");
-      while (1)
-      {
-    switch (token.value)
+Type *Parser::parseBasicType2(Type *t)
+{
+    //printf("parseBasicType2()\n");
+    while (1)
+    {
+	switch (token.value)
 	{
 	    case TOKmul:
 		t = new TypePointer(t);
@@ -2227,20 +2230,20 @@ Type *Parser::parseBasicType()
 		{   // It's an associative array declaration
 
 		    //printf("it's an associative array\n");
-			Type *index = parseType();		// [ type ]
+		    Type *index = parseType();		// [ type ]
 		    t = new TypeAArray(t, index);
 		    check(TOKrbracket);
 		}
 		else
 		{
-			//printf("it's type[expression]\n");
-			inBrackets++;
-			Expression *e = parseExpression();		// [ expression ]
-			if (token.value == TOKslice)
-			{
-				nextToken();
-			 	Expression *e2 = parseExpression();	// [ exp .. exp ]
-				t = new TypeSlice(t, e, e2);
+		    //printf("it's type[expression]\n");
+		    inBrackets++;
+		    Expression *e = parseExpression();		// [ expression ]
+		    if (token.value == TOKslice)
+		    {
+			nextToken();
+			Expression *e2 = parseExpression();	// [ exp .. exp ]
+			t = new TypeSlice(t, e, e2);
 		    }
 		    else
 			t = new TypeSArray(t,e);
@@ -2263,7 +2266,7 @@ Type *Parser::parseBasicType()
 		nextToken();
 		arguments = parseParameters(&varargs);
 		while (1)
-		{	// Postfixes of 'pure' or 'nothrow'
+		{   // Postfixes of 'pure' or 'nothrow'
 		    if (token.value == TOKpure)
 			ispure = true;
 		    else if (token.value == TOKnothrow)
@@ -2283,12 +2286,12 @@ Type *Parser::parseBasicType()
 	    }
 
 	    default:
-	    	return t;
-	    }
-	    assert(0);
+		return t;
 	}
 	assert(0);
-	return NULL;
+    }
+    assert(0);
+    return NULL;
 }
 
 Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters **tpl)
@@ -2439,9 +2442,9 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 		 * so that
 		 *   ts -> ... -> tf -> t
 		 */
-                Type **pt;
- 		for (pt = &ts; *pt != t; pt = &((TypeNext*)*pt)->next)
-                    ;
+		Type **pt;
+		for (pt = &ts; *pt != t; pt = &((TypeNext*)*pt)->next)
+		    ;
 		*pt = tf;
 		break;
 	    }
@@ -2453,12 +2456,12 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 }
 
 /**********************************
-   * Parse Declarations.
-   * These can be:
-   *	1. declarations at global/class level
-   *	2. declarations at statement level
-   * Return array of Declaration *'s.
-   */
+ * Parse Declarations.
+ * These can be:
+ *	1. declarations at global/class level
+ *	2. declarations at statement level
+ * Return array of Declaration *'s.
+ */
 
 Array *Parser::parseDeclarations(unsigned storage_class)
 {
@@ -2474,9 +2477,8 @@ Array *Parser::parseDeclarations(unsigned storage_class)
 
     //printf("parseDeclarations() %s\n", token.toChars());
     if (storage_class)
-    {
-    	ts = NULL;		// infer type
-     	goto L2;
+    {	ts = NULL;		// infer type
+	goto L2;
     }
 
     switch (token.value)
@@ -2512,8 +2514,8 @@ Array *Parser::parseDeclarations(unsigned storage_class)
 	{
 	    case TOKconst:
 		if (peek(&token)->value == TOKlparen)
-		    break; // const as type constructor
-		stc = STCconst; // const as storage class
+		    break;		// const as type constructor
+		stc = STCconst;		// const as storage class
 		goto L1;
 
 	    case TOKinvariant:
@@ -2579,17 +2581,17 @@ Array *Parser::parseDeclarations(unsigned storage_class)
 	token.value == TOKidentifier &&
 	peek(&token)->value == TOKassign)
     {
-    	return parseAutoDeclarations(storage_class, comment);
+	return parseAutoDeclarations(storage_class, comment);
     }
 
     if (token.value == TOKclass)
     {
-    AggregateDeclaration *s = (AggregateDeclaration *)parseAggregate();
-    s->storage_class |= storage_class;
-    a = new Array();
-    a->push(s);
-    addComment(s, comment);
-    return a;
+	AggregateDeclaration *s = (AggregateDeclaration *)parseAggregate();
+	s->storage_class |= storage_class;
+	a = new Array();
+	a->push(s);
+	addComment(s, comment);
+	return a;
     }
 
     /* Look for return type inference for template functions.
@@ -2597,23 +2599,23 @@ Array *Parser::parseDeclarations(unsigned storage_class)
     {
     Token *tk;
     if (storage_class &&
-    	token.value == TOKidentifier &&
-    	(tk = peek(&token))->value == TOKlparen &&
-     	skipParens(tk, &tk) &&
-     	peek(tk)->value == TOKlparen)
+	token.value == TOKidentifier &&
+	(tk = peek(&token))->value == TOKlparen &&
+	skipParens(tk, &tk) &&
+	peek(tk)->value == TOKlparen)
     {
-     	ts = NULL;
+	ts = NULL;
     }
     else
     {
-    	ts = parseBasicType();
-        ts = parseBasicType2(ts);
+	ts = parseBasicType();
+	ts = parseBasicType2(ts);
     }
     }
 
-    L2:
-		tfirst = NULL;
-		a = new Array();
+L2:
+    tfirst = NULL;
+    a = new Array();
 
     while (1)
     {
@@ -2633,7 +2635,7 @@ Array *Parser::parseDeclarations(unsigned storage_class)
 
 	if (tok == TOKtypedef || tok == TOKalias)
 	{   Declaration *v;
-		Initializer *init = NULL;
+	    Initializer *init = NULL;
 
 	    if (token.value == TOKassign)
 	    {
@@ -2675,24 +2677,24 @@ Array *Parser::parseDeclarations(unsigned storage_class)
 	}
 	else if (t->ty == Tfunction)
 	{
-		TypeFunction *tf = (TypeFunction *)t;
-		Expression *constraint = NULL;
+	    TypeFunction *tf = (TypeFunction *)t;
+	    Expression *constraint = NULL;
 #if 0
-		if (Argument::isTPL(tf->parameters))
-		{
-			if (!tpl)
-				tpl = new TemplateParameters();
-		}
+	    if (Argument::isTPL(tf->parameters))
+	    {
+		if (!tpl)
+		    tpl = new TemplateParameters();
+	    }
 #endif
-		 FuncDeclaration *f =
-		 new FuncDeclaration(loc, 0, ident, (enum STC)storage_class, t);
-		 addComment(f, comment);
-		 if (tpl)
-		 	constraint = parseConstraint();
-		 parseContracts(f);
-		 addComment(f, NULL);
-		 Dsymbol *s;
-		if (link == linkage)
+	    FuncDeclaration *f =
+		new FuncDeclaration(loc, 0, ident, (enum STC)storage_class, t);
+	    addComment(f, comment);
+	    if (tpl)
+		constraint = parseConstraint();
+	    parseContracts(f);
+	    addComment(f, NULL);
+	    Dsymbol *s;
+	    if (link == linkage)
 	    {
 		s = f;
 	    }
@@ -2706,19 +2708,19 @@ Array *Parser::parseDeclarations(unsigned storage_class)
 	     */
 	    if (tpl)
 	    {
-	 		// Wrap a template around the function declaration
-	 		Array *decldefs = new Array();
-	 		decldefs->push(s);
-	 		TemplateDeclaration *tempdecl =
+		// Wrap a template around the function declaration
+		Array *decldefs = new Array();
+		decldefs->push(s);
+		TemplateDeclaration *tempdecl =
 		    new TemplateDeclaration(loc, s->ident, tpl, constraint, decldefs);
-	 		s = tempdecl;
+		s = tempdecl;
 	    }
 	    addComment(s, comment);
 	    a->push(s);
 	}
 	else
 	{
- 	    Initializer *init = NULL;
+	    Initializer *init = NULL;
 	    if (token.value == TOKassign)
 	    {
 		nextToken();
@@ -2777,31 +2779,31 @@ Array *Parser::parseAutoDeclarations(unsigned storageClass, unsigned char *comme
 	assert(token.value == TOKassign);
 	nextToken();		// skip over '='
 	Initializer *init = parseInitializer();
- 	VarDeclaration *v = new VarDeclaration(loc, NULL, ident, init);
- 	v->storage_class = storageClass;
- 	a->push(v);
- 	if (token.value == TOKsemicolon)
- 	{
- 	    nextToken();
- 	    addComment(v, comment);
- 	}
- 	else if (token.value == TOKcomma)
- 	{
- 	    nextToken();
- 	    if (token.value == TOKidentifier &&
- 		peek(&token)->value == TOKassign)
- 	    {
- 		addComment(v, comment);
- 		continue;
- 	    }
- 	    else
- 		error("Identifier expected following comma");
- 	}
- 	else
- 	    error("semicolon expected following auto declaration, not '%s'", token.toChars());
- 	break;
-     }
-     return a;
+	VarDeclaration *v = new VarDeclaration(loc, NULL, ident, init);
+	v->storage_class = storageClass;
+	a->push(v);
+	if (token.value == TOKsemicolon)
+	{
+	    nextToken();
+	    addComment(v, comment);
+	}
+	else if (token.value == TOKcomma)
+	{
+	    nextToken();
+	    if (token.value == TOKidentifier &&
+		peek(&token)->value == TOKassign)
+	    {
+		addComment(v, comment);
+		continue;
+	    }
+	    else
+		error("Identifier expected following comma");
+	}
+	else
+	    error("semicolon expected following auto declaration, not '%s'", token.toChars());
+	break;
+    }
+    return a;
 }
 #endif
 
@@ -3265,7 +3267,7 @@ Statement *Parser::parseStatement(int flags)
 	Ldeclaration:
 	{   Array *a;
 
-		a = parseDeclarations(STCundefined);
+	    a = parseDeclarations(STCundefined);
 	    if (a->dim > 1)
 	    {
 		Statements *as = new Statements();
@@ -4515,19 +4517,19 @@ int Parser::isParameters(Token **pt)
 		continue;
 
 #if 0
-  	    case TOKstatic:
-  		continue;
- 	    case TOKauto:
- 	    case TOKalias:
- 		t = peek(t);
- 		if (t->value == TOKidentifier)
- 		    t = peek(t);
- 		if (t->value == TOKassign)
- 		{   t = peek(t);
- 		    if (!isExpression(&t))
- 			return FALSE;
- 		}
- 		goto L3;
+	    case TOKstatic:
+		continue;
+	    case TOKauto:
+	    case TOKalias:
+		t = peek(t);
+		if (t->value == TOKidentifier)
+		    t = peek(t);
+		if (t->value == TOKassign)
+		{   t = peek(t);
+		    if (!isExpression(&t))
+			return FALSE;
+		}
+		goto L3;
 #endif
 
 	    default:
@@ -4547,7 +4549,7 @@ int Parser::isParameters(Token **pt)
 		    t = peek(t);
 		    break;
 		}
-		L3:
+	    L3:
 		if (t->value == TOKcomma)
 		{
 		    continue;

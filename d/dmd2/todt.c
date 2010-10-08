@@ -401,6 +401,8 @@ dt_t *ArrayInitializer::toDtBit()
     dt_t **pdtend;
     Type *tb = type->toBasetype();
 
+    //printf("ArrayInitializer::toDtBit('%s')\n", toChars());
+
     Bits databits;
     Bits initbits;
 
@@ -1072,7 +1074,7 @@ void StructDeclaration::toDt(dt_t **pdt)
 	    sz = v->type->size();
 	    Initializer *init = v->init;
 	    if (init)
-	    {	//printf("\t\thas initializer %s\n", init->toChars());
+	    {   //printf("\t\thas initializer %s\n", init->toChars());
 		ExpInitializer *ei = init->isExpInitializer();
 		Type *tb = v->type->toBasetype();
 		if (ei && tb->ty == Tsarray)

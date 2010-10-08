@@ -582,7 +582,7 @@ void ClassDeclaration::semantic(Scope *sc)
 //	    sc->offset += PTRSIZE;	// room for uplevel context pointer
     }
     else
-    {	sc->offset = PTRSIZE * 2;	// allow room for vptr[] and monitor
+    {	sc->offset = PTRSIZE * 2;	// allow room for __vptr and __monitor
 	alignsize = PTRSIZE;
     }
     structsize = sc->offset;
@@ -850,7 +850,7 @@ int isf(void *param, FuncDeclaration *fd)
 
 int ClassDeclaration::isFuncHidden(FuncDeclaration *fd)
 {
-	//printf("ClassDeclaration::isFuncHidden(class = %s, fd = %s)\n", toChars(), fd->toChars());
+    //printf("ClassDeclaration::isFuncHidden(class = %s, fd = %s)\n", toChars(), fd->toChars());
     Dsymbol *s = search(0, fd->ident, 4|2);
     if (!s)
     {	//printf("not found\n");

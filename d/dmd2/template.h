@@ -58,7 +58,7 @@ struct TemplateDeclaration : ScopeDsymbol
     TemplateDeclaration *overroot;	// first in overnext list
 
     Scope *scope;
-    Dsymbol *onemember;			// if !=NULL then one member of this template
+    Dsymbol *onemember;		// if !=NULL then one member of this template
 
     int literal;		// this template declaration is a literal
 
@@ -210,9 +210,9 @@ struct TemplateAliasParameter : TemplateParameter
      *	specType ident : specAlias = defaultAlias
      */
 
-	Type *specType;
-	Object *specAlias;
-	Object *defaultAlias;
+    Type *specType;
+    Object *specAlias;
+    Object *defaultAlias;
 
     static Dsymbol *sdummy;
 

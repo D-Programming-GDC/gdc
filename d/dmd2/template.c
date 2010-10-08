@@ -291,8 +291,8 @@ Object *objectSyntaxCopy(Object *o)
 /* ======================== TemplateDeclaration ============================= */
 
 TemplateDeclaration::TemplateDeclaration(Loc loc, Identifier *id,
- 	TemplateParameters *parameters, Expression *constraint, Array *decldefs)
-      : ScopeDsymbol(id)
+	TemplateParameters *parameters, Expression *constraint, Array *decldefs)
+    : ScopeDsymbol(id)
 {
 #if LOG
     printf("TemplateDeclaration(this = %p, id = '%s')\n", this, id->toChars());
@@ -601,7 +601,7 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
 	for (int i = 0; i < dedtypes_dim; i++)
 	{
 	    if (!dedtypes->data[i])
-	    {	assert(i < ti->tiargs->dim);
+	    {   assert(i < ti->tiargs->dim);
 		dedtypes->data[i] = ti->tiargs->data[i];
 	    }
 	}
@@ -615,14 +615,14 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
 	paramscope->flags |= SCOPEstaticif;
 	e = e->semantic(paramscope);
 	e = e->optimize(WANTvalue | WANTinterpret);
-	if (e->isBool(TRUE))
-	    ;
-	else if (e->isBool(FALSE))
-	    goto Lnomatch;
-	else
-	{
-	    e->error("constraint %s is not constant or does not evaluate to a bool", e->toChars());
-	}
+        if (e->isBool(TRUE))
+            ;
+        else if (e->isBool(FALSE))
+            goto Lnomatch;
+        else
+        {
+            e->error("constraint %s is not constant or does not evaluate to a bool", e->toChars());
+        }
     }
 #endif
 
@@ -633,22 +633,22 @@ MATCH TemplateDeclaration::matchWithInstance(TemplateInstance *ti,
     printf("instance %s\n", ti->toChars());
     if (m)
     {
-    	for (int i = 0; i < dedtypes_dim; i++)
-    	{
-    	    TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
-    	    Object *oarg;
+	for (int i = 0; i < dedtypes_dim; i++)
+	{
+	    TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
+	    Object *oarg;
 
-    	    printf(" [%d]", i);
+	    printf(" [%d]", i);
 
-    	    if (i < ti->tiargs->dim)
-    		oarg = (Object *)ti->tiargs->data[i];
-    	    else
-    		oarg = NULL;
-    	    tp->print(oarg, (Object *)dedtypes->data[i]);
-    	}
+	    if (i < ti->tiargs->dim)
+		oarg = (Object *)ti->tiargs->data[i];
+	    else
+		oarg = NULL;
+	    tp->print(oarg, (Object *)dedtypes->data[i]);
+	}
     }
     else
-    	goto Lnomatch;
+	goto Lnomatch;
 #endif
 
 #if LOGM
@@ -1391,8 +1391,8 @@ FuncDeclaration *TemplateDeclaration::deduceFunctionTemplate(Scope *sc, Loc loc,
     }
     if (td_ambig)
     {
-    	error(loc, "matches more than one function template declaration:\n  %s\nand:\n  %s",
-    	td_best->toChars(), td_ambig->toChars());
+	error(loc, "matches more than one function template declaration:\n  %s\nand:\n  %s",
+		td_best->toChars(), td_ambig->toChars());
     }
 
     /* The best match is td_best with arguments tdargs.
@@ -1445,10 +1445,10 @@ void TemplateDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writeByte('(');
     for (int i = 0; i < parameters->dim; i++)
     {
-    	TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
-    	if (hgs->ddoc)
-    	    tp = (TemplateParameter *)origParameters->data[i];
-    	if (i)
+	TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
+	if (hgs->ddoc)
+	    tp = (TemplateParameter *)origParameters->data[i];
+	if (i)
 	    buf->writeByte(',');
 	tp->toCBuffer(buf, hgs);
     }
@@ -1488,10 +1488,10 @@ char *TemplateDeclaration::toChars()
     buf.writeByte('(');
     for (int i = 0; i < parameters->dim; i++)
     {
-    	TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
-    	if (i)
-    	    buf.writeByte(',');
-    	tp->toCBuffer(&buf, &hgs);
+	TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
+	if (i)
+	    buf.writeByte(',');
+	tp->toCBuffer(&buf, &hgs);
     }
     buf.writeByte(')');
 #if DMDV2
@@ -1956,7 +1956,7 @@ MATCH TypeInstance::deduceType(Scope *sc,
 		    goto Lnomatch;
 		if (dedtypes->data[i])
 		{   // Must match already deduced symbol
-			Object *s = (Object *)dedtypes->data[i];
+		    Object *s = (Object *)dedtypes->data[i];
 
 		    if (s != sa)
 			goto Lnomatch;
@@ -2405,7 +2405,7 @@ MATCH TemplateTypeParameter::matchArg(Scope *sc, Objects *tiargs,
     ta = isType(oarg);
     if (!ta)
     {
-    //printf("%s %p %p %p\n", oarg->toChars(), isExpression(oarg), isDsymbol(oarg), isTuple(oarg));
+	//printf("%s %p %p %p\n", oarg->toChars(), isExpression(oarg), isDsymbol(oarg), isTuple(oarg));
 	goto Lnomatch;
     }
     //printf("ta is %s\n", ta->toChars());
@@ -2570,8 +2570,8 @@ void TemplateThisParameter::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 Dsymbol *TemplateAliasParameter::sdummy = NULL;
 
 TemplateAliasParameter::TemplateAliasParameter(Loc loc, Identifier *ident,
-Type *specType, Object *specAlias, Object *defaultAlias)
-      : TemplateParameter(loc, ident)
+	Type *specType, Object *specAlias, Object *defaultAlias)
+    : TemplateParameter(loc, ident)
 {
     this->ident = ident;
     this->specType = specType;
@@ -2586,11 +2586,11 @@ TemplateAliasParameter *TemplateAliasParameter::isTemplateAliasParameter()
 
 TemplateParameter *TemplateAliasParameter::syntaxCopy()
 {
-	TemplateAliasParameter *tp = new TemplateAliasParameter(loc, ident, specType, specAlias, defaultAlias);
-	if (tp->specType)
-		tp->specType = specType->syntaxCopy();
-	tp->specAlias = objectSyntaxCopy(specAlias);
-	tp->defaultAlias = objectSyntaxCopy(defaultAlias);
+    TemplateAliasParameter *tp = new TemplateAliasParameter(loc, ident, specType, specAlias, defaultAlias);
+    if (tp->specType)
+	tp->specType = specType->syntaxCopy();
+    tp->specAlias = objectSyntaxCopy(specAlias);
+    tp->defaultAlias = objectSyntaxCopy(defaultAlias);
     return tp;
 }
 
@@ -2626,11 +2626,11 @@ Object *aliasParameterSemantic(Loc loc, Scope *sc, Object *o)
 
 void TemplateAliasParameter::semantic(Scope *sc)
 {
-	if (specType)
+    if (specType)
     {
-		specType = specType->semantic(loc, sc);
+	specType = specType->semantic(loc, sc);
     }
-	specAlias = aliasParameterSemantic(loc, sc, specAlias);
+    specAlias = aliasParameterSemantic(loc, sc, specAlias);
 #if 0 // Don't do semantic() until instantiation
     if (defaultAlias)
 	defaultAlias = defaultAlias->semantic(loc, sc);
@@ -2654,11 +2654,11 @@ Lnomatch:
 }
 
 MATCH TemplateAliasParameter::matchArg(Scope *sc,
-		Objects *tiargs, int i, TemplateParameters *parameters,
-		Objects *dedtypes,
-		Declaration **psparam, int flags)
+	Objects *tiargs, int i, TemplateParameters *parameters,
+	Objects *dedtypes,
+	Declaration **psparam, int flags)
 {
-	Object *sa;
+    Object *sa;
     Object *oarg;
     Expression *ea;
     Dsymbol *s;
@@ -2682,62 +2682,62 @@ MATCH TemplateAliasParameter::matchArg(Scope *sc,
     sa = getDsymbol(oarg);
     if (sa)
     {
-     	/* specType means the alias must be a declaration with a type
-     	 * that matches specType.
-     	 */
-     	if (specType)
-     	{   Declaration *d = ((Dsymbol *)sa)->isDeclaration();
-     	    if (!d)
-     		goto Lnomatch;
-     	    if (!d->type->equals(specType))
-      	goto Lnomatch;
-     	}
-         }
-         else
-         {
-     	sa = oarg;
-     	ea = isExpression(oarg);
-     	if (ea)
-     	{   if (specType)
-     	    {
-     		if (!ea->type->equals(specType))
-     		    goto Lnomatch;
-     	    }
-     	}
-     	else
-     	    goto Lnomatch;
-         }
+	/* specType means the alias must be a declaration with a type
+	 * that matches specType.
+	 */
+	if (specType)
+	{   Declaration *d = ((Dsymbol *)sa)->isDeclaration();
+	    if (!d)
+		goto Lnomatch;
+	    if (!d->type->equals(specType))
+		goto Lnomatch;
+	}
+    }
+    else
+    {
+	sa = oarg;
+	ea = isExpression(oarg);
+	if (ea)
+	{   if (specType)
+	    {
+		if (!ea->type->equals(specType))
+		    goto Lnomatch;
+	    }
+	}
+	else
+	    goto Lnomatch;
+    }
 
-          if (specAlias)
-          {
-     	if (sa == sdummy)
-      	    goto Lnomatch;
-      	if (sa != specAlias)
-      	    goto Lnomatch;
-          }
-          else if (dedtypes->data[i])
-          {   // Must match already deduced symbol
-     	Object *s = (Object *)dedtypes->data[i];
+    if (specAlias)
+    {
+	if (sa == sdummy)
+	    goto Lnomatch;
+	if (sa != specAlias)
+	    goto Lnomatch;
+    }
+    else if (dedtypes->data[i])
+    {   // Must match already deduced symbol
+	Object *s = (Object *)dedtypes->data[i];
 
-      	if (!sa || s != sa)
-      	    goto Lnomatch;
-          }
-          dedtypes->data[i] = sa;
+	if (!sa || s != sa)
+	    goto Lnomatch;
+    }
+    dedtypes->data[i] = sa;
 
-         s = isDsymbol(sa);
-         if (s)
-     	*psparam = new AliasDeclaration(loc, ident, s);
-         else
-         {
-     	assert(ea);
+    s = isDsymbol(sa);
+    if (s)
+	*psparam = new AliasDeclaration(loc, ident, s);
+    else
+    {
+	assert(ea);
 
-             // Declare manifest constant
-             Initializer *init = new ExpInitializer(loc, ea);
-             VarDeclaration *v = new VarDeclaration(loc, NULL, ident, init);
-             v->storage_class = STCmanifest;
-             v->semantic(sc);
-     	*psparam = v;
-         }
+        // Declare manifest constant
+        Initializer *init = new ExpInitializer(loc, ea);
+        VarDeclaration *v = new VarDeclaration(loc, NULL, ident, init);
+        v->storage_class = STCmanifest;
+        v->semantic(sc);
+	*psparam = v;
+    }
     return MATCHexact;
 
 Lnomatch:
@@ -2759,23 +2759,23 @@ void TemplateAliasParameter::print(Object *oarg, Object *oded)
 
 void TemplateAliasParameter::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-	 buf->writestring("alias ");
-	 if (specType)
-	 {	HdrGenState hgs;
-		specType->toCBuffer(buf, ident, &hgs);
-	 }
-	 else
-		buf->writestring(ident->toChars());
-	 if (specAlias)
-	 {
-		buf->writestring(" : ");
-		ObjectToCBuffer(buf, hgs, specAlias);
-	 }
-	 if (defaultAlias)
-	 {
-		buf->writestring(" = ");
-		ObjectToCBuffer(buf, hgs, defaultAlias);
-	 }
+    buf->writestring("alias ");
+    if (specType)
+    {	HdrGenState hgs;
+	specType->toCBuffer(buf, ident, &hgs);
+    }
+    else
+	buf->writestring(ident->toChars());
+    if (specAlias)
+    {
+	buf->writestring(" : ");
+	ObjectToCBuffer(buf, hgs, specAlias);
+    }
+    if (defaultAlias)
+    {
+	buf->writestring(" = ");
+	ObjectToCBuffer(buf, hgs, defaultAlias);
+    }
 }
 
 
@@ -2795,14 +2795,14 @@ void *TemplateAliasParameter::dummyArg()
 
 Object *TemplateAliasParameter::specialization()
 {
-	return specAlias;
+    return specAlias;
 }
 
 
 Object *TemplateAliasParameter::defaultArg(Loc loc, Scope *sc)
 {
-	Object *o = aliasParameterSemantic(loc, sc, defaultAlias);
-	return o;
+    Object *o = aliasParameterSemantic(loc, sc, defaultAlias);
+    return o;
 }
 
 /* ======================== TemplateValueParameter ========================== */
@@ -3264,9 +3264,9 @@ Objects *TemplateInstance::arraySyntaxCopy(Objects *objs)
 	a->setDim(objs->dim);
 	for (size_t i = 0; i < objs->dim; i++)
 	{
-		a->data[i] = objectSyntaxCopy((Object *)objs->data[i]);
+	    a->data[i] = objectSyntaxCopy((Object *)objs->data[i]);
 	}
-      }
+    }
     return a;
 }
 
@@ -3350,9 +3350,9 @@ void TemplateInstance::semantic(Scope *sc)
     }
     else
     {
-    /* Run semantic on each argument, place results in tiargs[]
-     * (if we havetempdecl, then tiargs is already evaluated)
-     */
+	/* Run semantic on each argument, place results in tiargs[]
+	 * (if we havetempdecl, then tiargs is already evaluated)
+	 */
 	semanticTiargs(sc);
 
 	tempdecl = findTemplateDeclaration(sc);
@@ -3593,7 +3593,7 @@ void TemplateInstance::semantic(Scope *sc)
     sc2->parent = /*isnested ? sc->parent :*/ this;
 
 #ifndef IN_GCC
-#if _WINDOWS_SEH
+#if WINDOWS_SEH
   __try
   {
 #endif
@@ -3611,7 +3611,7 @@ void TemplateInstance::semantic(Scope *sc)
 	sc2->module->runDeferredSemantic();
     }
 #ifndef IN_GCC
-#if _WINDOWS_SEH
+#if WINDOWS_SEH
   }
   __except (__ehfilter(GetExceptionInformation()))
   {
@@ -3673,9 +3673,9 @@ void TemplateInstance::semantic(Scope *sc)
 void TemplateInstance::semanticTiargs(Scope *sc)
 {
     //printf("+TemplateInstance::semanticTiargs() %s\n", toChars());
-	if (semantictiargsdone)
-		return;
-	semantictiargsdone = 1;
+    if (semantictiargsdone)
+	return;
+    semantictiargsdone = 1;
     semanticTiargs(loc, sc, tiargs, 0);
 }
 
@@ -3973,11 +3973,11 @@ TemplateDeclaration *TemplateInstance::findBestMatch(Scope *sc)
 
     if (!td_best)
     {
-    	if (tempdecl && !tempdecl->overnext)
-    		// Only one template, so we can give better error message
-    		error("%s does not match template declaration %s", toChars(), tempdecl->toChars());
-    	else
-    		error("%s does not match any template declaration", toChars());
+	if (tempdecl && !tempdecl->overnext)
+	    // Only one template, so we can give better error message
+	    error("%s does not match template declaration %s", toChars(), tempdecl->toChars());
+	else
+	    error("%s does not match any template declaration", toChars());
 	return NULL;
     }
     if (td_ambig)
@@ -4094,7 +4094,7 @@ int TemplateInstance::hasNestedArgs(Objects *args)
 		    nested |= 1;
 		}
 		else
-			error("cannot use local '%s' as parameter to non-global template %s", d->toChars(), tempdecl->toChars());
+		    error("cannot use local '%s' as parameter to non-global template %s", d->toChars(), tempdecl->toChars());
 	    }
 	}
 	else if (va)
@@ -4142,7 +4142,7 @@ Identifier *TemplateInstance::genIdent()
 	}
 	else if (ea)
 	{
-	Lea:
+	  Lea:
 	    sinteger_t v;
 	    real_t r;
 
@@ -4185,18 +4185,18 @@ Identifier *TemplateInstance::genIdent()
 	    Declaration *d = sa->isDeclaration();
 	    if (d && !d->type->deco)
 	    {	error("forward reference of %s", d->toChars());
-	    	continue;
+		continue;
 	    }
 #if 0
- 	    VarDeclaration *v = sa->isVarDeclaration();
- 	    if (v && v->storage_class & STCmanifest)
- 	    {	ExpInitializer *ei = v->init->isExpInitializer();
- 		if (ei)
+	    VarDeclaration *v = sa->isVarDeclaration();
+	    if (v && v->storage_class & STCmanifest)
+	    {	ExpInitializer *ei = v->init->isExpInitializer();
+		if (ei)
 		{
- 		    ea = ei->exp;
- 		    goto Lea;
- 		}
- 	    }
+		    ea = ei->exp;
+		    goto Lea;
+		}
+	    }
 #endif
 	    const char *p = sa->mangle();
 	    buf.printf("%"PRIuSIZE"%s", strlen(p), p);
@@ -4820,7 +4820,7 @@ void TemplateMixin::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writestring("!(");
     if (tiargs)
     {
-    	for (int i = 0; i < tiargs->dim; i++)
+        for (int i = 0; i < tiargs->dim; i++)
         {   if (i)
                 buf->writebyte(',');
 	    Object *oarg = (Object *)tiargs->data[i];
@@ -4849,8 +4849,8 @@ void TemplateMixin::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writebyte(')');
     if (ident)
     {
-    	buf->writebyte(' ');
-    	buf->writestring(ident->toChars());
+	buf->writebyte(' ');
+	buf->writestring(ident->toChars());
     }
     buf->writebyte(';');
     buf->writenl();

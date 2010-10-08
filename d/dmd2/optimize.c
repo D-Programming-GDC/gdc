@@ -791,6 +791,7 @@ Expression *IdentityExp::optimize(int result)
     e1 = e1->optimize(WANTvalue | (result & WANTinterpret));
     e2 = e2->optimize(WANTvalue | (result & WANTinterpret));
     e = this;
+
     if (this->e1->isConst() && this->e2->isConst())
     {
 	e = Identity(op, type, this->e1, this->e2);
