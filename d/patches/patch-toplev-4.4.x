@@ -1,6 +1,6 @@
-diff -c gcc-4.4.4.orig/configure gcc-4.4.4/configure
-*** gcc-4.4.4.orig/configure	2009-04-25 05:10:29.000000000 +0100
---- gcc-4.4.4/configure	2010-08-13 20:28:30.629406981 +0100
+diff -c gcc-4.4.5-orig/configure gcc-4.4.5/configure
+*** gcc-4.4.5-orig/configure	2010-06-07 16:10:40.000000000 -0400
+--- gcc-4.4.5/configure	2010-10-11 13:58:10.235107240 -0400
 ***************
 *** 1918,1923 ****
 --- 1918,1924 ----
@@ -11,9 +11,9 @@ diff -c gcc-4.4.4.orig/configure gcc-4.4.4/configure
   		target-libada"
   
   # these tools are built using the target libraries, and are intended to
-diff -c gcc-4.4.4.orig/configure.ac gcc-4.4.4/configure.ac
-*** gcc-4.4.4.orig/configure.ac	2009-04-25 05:10:29.000000000 +0100
---- gcc-4.4.4/configure.ac	2010-08-13 20:28:01.357407479 +0100
+diff -c gcc-4.4.5-orig/configure.ac gcc-4.4.5/configure.ac
+*** gcc-4.4.5-orig/configure.ac	2010-06-07 16:10:40.000000000 -0400
+--- gcc-4.4.5/configure.ac	2010-10-11 13:58:10.239107241 -0400
 ***************
 *** 189,194 ****
 --- 189,195 ----
@@ -24,9 +24,9 @@ diff -c gcc-4.4.4.orig/configure.ac gcc-4.4.4/configure.ac
   		target-libada"
   
   # these tools are built using the target libraries, and are intended to
-diff -c gcc-4.4.4.orig/Makefile.def gcc-4.4.4/Makefile.def
-*** gcc-4.4.4.orig/Makefile.def	2009-04-25 05:10:29.000000000 +0100
---- gcc-4.4.4/Makefile.def	2010-08-13 20:27:08.404428119 +0100
+diff -c gcc-4.4.5-orig/Makefile.def gcc-4.4.5/Makefile.def
+*** gcc-4.4.5-orig/Makefile.def	2009-04-25 00:10:28.000000000 -0400
+--- gcc-4.4.5/Makefile.def	2010-10-11 13:58:10.247107241 -0400
 ***************
 *** 163,168 ****
 --- 163,169 ----
@@ -37,9 +37,9 @@ diff -c gcc-4.4.4.orig/Makefile.def gcc-4.4.4/Makefile.def
   
   // These are (some of) the make targets to be done in each subdirectory.
   // Not all; these are the ones which don't have special options.
-diff -c gcc-4.4.4.orig/Makefile.in gcc-4.4.4/Makefile.in
-*** gcc-4.4.4.orig/Makefile.in	2009-04-25 05:10:29.000000000 +0100
---- gcc-4.4.4/Makefile.in	2010-08-13 20:38:57.988407148 +0100
+diff -c gcc-4.4.5-orig/Makefile.in gcc-4.4.5/Makefile.in
+*** gcc-4.4.5-orig/Makefile.in	2009-04-25 00:10:28.000000000 -0400
+--- gcc-4.4.5/Makefile.in	2010-10-11 13:58:10.271107241 -0400
 ***************
 *** 769,775 ****
       maybe-configure-target-qthreads \
