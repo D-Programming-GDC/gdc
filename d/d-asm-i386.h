@@ -1951,6 +1951,7 @@ struct AsmProcessor
 			    addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
 			    if (operand->symbolDisplacement.dim)
 				insnTemplate->writebyte('+');
+			    operand->constDisplacement = 0;
 			}
 
 			if (isDollar(e)) {
@@ -1978,7 +1979,12 @@ struct AsmProcessor
 		}
 		if (use_star)
 		    insnTemplate->writebyte('*');
-		if (operand->constDisplacement || operand->segmentPrefix != Reg_Invalid) {
+		if (operand->constDisplacement) {
+		    if (operand->symbolDisplacement.dim)
+			insnTemplate->writebyte('+');
+		    addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
+		}
+		if (operand->segmentPrefix != Reg_Invalid) {
 		    if (opInfo->operands[i] & Opr_Dest)
 			asmcode->clobbersMemory = 1;
 		}
