@@ -2666,8 +2666,12 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
 
 	    Dsymbol * o = nested_func = func;
 	    do {
-		if (! nested_func->isNested())
+		if (! nested_func->isNested()) {
+#if V2
+		    if (! nested_func->isMember())
+#endif
 		    goto cannot_access_frame;
+		}
 		while ( (o = o->toParent2()) )
 		    if ( (nested_func = o->isFuncDeclaration()) )
 			break;
