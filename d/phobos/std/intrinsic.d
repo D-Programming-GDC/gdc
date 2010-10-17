@@ -82,8 +82,8 @@ else
 version (GNU)
 int bsr(size_t v)
 {
-    uint m = 0x80000000;
-    uint i;
+    size_t m = 0x80000000;
+    size_t i;
     for (i = 32; i ; i--,m>>>=1) {
         if (v&m)
             return i-1;
@@ -99,7 +99,7 @@ else
 version (GNU)
 int bt(in size_t *p, size_t bitnum)
 {
-    return (p[bitnum / (uint.sizeof*8)] & (1<<(bitnum & ((uint.sizeof*8)-1)))) ? -1 : 0 ;
+    return (p[bitnum / (size_t.sizeof*8)] & (1<<(bitnum & ((size_t.sizeof*8)-1)))) ? -1 : 0 ;
 }
 else
     int bt(in size_t *p, size_t bitnum);
