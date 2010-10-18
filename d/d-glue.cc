@@ -44,8 +44,13 @@ elem *
 CondExp::toElem(IRState * irs)
 {
     tree cn = irs->convertForCondition( econd );
+#if ENABLE_CHECKING
+    tree t1 = irs->convertTo(e1, type);
+    tree t2 = irs->convertTo(e2, type);
+#else
     tree t1 = e1->toElem( irs );
     tree t2 = e2->toElem( irs );
+#endif
     return build3(COND_EXPR, type->toCtype(), cn, t1, t2);
 }
 
@@ -1502,11 +1507,24 @@ AddrExp::toElem(IRState * irs)
 elem *
 CallExp::toElem(IRState* irs)
 {
-    tree t = irs->call(e1, arguments);
+    tree call_exp = irs->call(e1, arguments);
     // Some library calls are defined to return a generic type.
     // this->type is the real type. (See crash2.d)
-    TREE_TYPE(t) = type->toCtype();
-    return t;
+#if ENABLE_CHECKING
+    Type * e1_type = NULL;
+
+    if (e1->type->ty == Tfunction)
+	e1_type = e1->type->nextOf();
+    else if (e1->type->ty == Tdelegate)
+	e1_type = e1->type->nextOf()->nextOf();
+    
+    if (e1_type && e1_type->ty != Taarray && type->ty != Taarray)
+	call_exp = irs->convertTo(call_exp, e1_type, type);
+    else
+#endif
+    TREE_TYPE(call_exp) = type->toCtype();
+
+    return call_exp;
 }
 
 elem *

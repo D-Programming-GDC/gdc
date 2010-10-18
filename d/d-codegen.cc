@@ -1715,11 +1715,8 @@ IRState::darrayVal(tree type, tree len, tree data)
     ptr_field = TREE_CHAIN( len_field );
 
     ce.cons(len_field, len);
-#if ENABLE_CHECKING
-    ce.cons(ptr_field, convert(TREE_TYPE(ptr_field), data));
-#else
     ce.cons(ptr_field, data); // shouldn't need to convert the pointer...
-#endif
+
     CONSTRUCTOR_ELTS( ctor ) = ce.head;
 
     return ctor;
@@ -1743,17 +1740,14 @@ IRState::darrayVal(tree type, uinteger_t len, tree data)
 	assert( POINTER_TYPE_P( TREE_TYPE( data )));
 	ptr_value = data;
     } else {
-	ptr_value = d_null_pointer;
+	ptr_value = convert(TREE_TYPE(ptr_field), d_null_pointer);
     }
 
     len_value = integerConstant(len, TREE_TYPE(len_field));
 
     ce.cons(len_field, len_value);
-#if ENABLE_CHECKING
-    ce.cons(ptr_field, convert(TREE_TYPE(ptr_field), ptr_value));
-#else
-    ce.cons(ptr_field, ptr_value ); // shouldn't need to convert the pointer...
-#endif
+    ce.cons(ptr_field, ptr_value); // shouldn't need to convert the pointer...
+
     CONSTRUCTOR_ELTS( ctor ) = ce.head;
 
     return ctor;
