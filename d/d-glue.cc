@@ -3237,10 +3237,13 @@ TypeEnum::toCtype()
 			member->ident->string, NULL);
 		else
 		    ident = (char *) member->ident->string;
-
+#if V2
+		/* Enums in D2 can be any data type, not just integers. */
+		enum_values.cons(get_identifier(ident), member->value->toElem(& gen));
+#else
 		enum_values.cons( get_identifier(ident),
 		    gen.integerConstant(member->value->toInteger(), ctype) );
-
+#endif
 		if (sym->ident)
 		    free(ident);
 	    }

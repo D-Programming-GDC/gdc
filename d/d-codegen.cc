@@ -1680,9 +1680,14 @@ IRState::darrayPtrRef(tree exp)
     if ( isErrorMark(exp) )
 	return exp; // backend will ICE otherwise
 
+    tree base_type = TREE_TYPE( exp );
+#if V2
+    if (TREE_CODE( base_type ) == ENUMERAL_TYPE)
+	base_type = TREE_TYPE( TREE_TYPE(exp) );
+#endif
     // Get the backend type for the array and pick out the array data
     // pointer field (assumed to be the second field.)
-    tree ptr_field = TREE_CHAIN( TYPE_FIELDS( TREE_TYPE( exp )));
+    tree ptr_field = TREE_CHAIN( TYPE_FIELDS( base_type ));
     //return build2(COMPONENT_REF, TREE_TYPE( ptr_field ), exp, ptr_field);
     return component(exp, ptr_field);
 }
@@ -1691,11 +1696,16 @@ tree
 IRState::darrayLenRef(tree exp)
 {
     if ( isErrorMark(exp) )
-	return exp; // backend wih ICE otherwise
+	return exp; // backend will ICE otherwise
 
+    tree base_type = TREE_TYPE( exp );
+#if V2
+    if (TREE_CODE( base_type ) == ENUMERAL_TYPE)
+	base_type = TREE_TYPE( TREE_TYPE(exp) );
+#endif
     // Get the backend type for the array and pick out the array length
     // field (assumed to be the first field.)
-    tree len_field = TYPE_FIELDS( TREE_TYPE( exp ));
+    tree len_field = TYPE_FIELDS( base_type );
     return component(exp, len_field);
 }
 
@@ -1703,12 +1713,17 @@ IRState::darrayLenRef(tree exp)
 tree
 IRState::darrayVal(tree type, tree len, tree data)
 {
+    tree base_type = type;
+#if V2
+    if (TREE_CODE( base_type ) == ENUMERAL_TYPE)
+	base_type = TREE_TYPE( type );
+#endif
     // %% assert type is a darray
     tree ctor = make_node( CONSTRUCTOR );
     tree len_field, ptr_field;
     CtorEltMaker ce;
 
-    TREE_TYPE( ctor ) = type;
+    TREE_TYPE( ctor ) = base_type;
     TREE_STATIC( ctor ) = 0;   // can be set by caller if needed
     TREE_CONSTANT( ctor ) = 0; // "
     len_field = TYPE_FIELDS( TREE_TYPE( ctor ));
@@ -1725,12 +1740,17 @@ IRState::darrayVal(tree type, tree len, tree data)
 tree
 IRState::darrayVal(tree type, uinteger_t len, tree data)
 {
+    tree base_type = type;
+#if V2
+    if (TREE_CODE( base_type ) == ENUMERAL_TYPE)
+	base_type = TREE_TYPE( type );
+#endif
     // %% assert type is a darray
     tree ctor = make_node( CONSTRUCTOR );
     tree len_value, ptr_value, len_field, ptr_field;
     CtorEltMaker ce;
 
-    TREE_TYPE( ctor ) = type;
+    TREE_TYPE( ctor ) = base_type;
     TREE_STATIC( ctor ) = 0;   // can be set by caller if needed
     TREE_CONSTANT( ctor ) = 0; // "
     len_field = TYPE_FIELDS( TREE_TYPE( ctor ));
