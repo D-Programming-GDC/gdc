@@ -64,13 +64,6 @@ static size_t[] prime_list = [
 //  8_589_934_513UL, 17_179_869_143UL
 ];
 
-/* This is the type of the return value for dynamic arrays.
- * It should be a type that is returned in registers.
- * Although DMD will return types of Array in registers,
- * gcc will not, so we instead use a 'long'.
- */
-alias long ArrayRet_t;
-
 struct Array
 {
     size_t length;
@@ -452,7 +445,7 @@ void _aaDelp(AA aa, TypeInfo keyti, void* pkey)
  * Produce array of values from aa.
  */
 
-ArrayRet_t _aaValues(AA aa, size_t keysize, size_t valuesize)
+Array _aaValues(AA aa, size_t keysize, size_t valuesize)
 in
 {
     assert(keysize == aligntsize(keysize));
@@ -494,7 +487,7 @@ body
         }
         assert(resi == a.length);
     }
-    return *cast(ArrayRet_t*)(&a);
+    return a;
 }
 
 
@@ -644,7 +637,7 @@ void _aaBalance(AA* paa)
  * Produce array of N byte keys from aa.
  */
 
-ArrayRet_t _aaKeys(AA aa, size_t keysize)
+Array _aaKeys(AA aa, size_t keysize)
 {
     byte[] res;
     size_t resi;
@@ -666,9 +659,10 @@ ArrayRet_t _aaKeys(AA aa, size_t keysize)
         } while (e !is null);
     }
 
+    Array a;
     auto len = _aaLen(aa);
     if (!len)
-        return 0;
+        return a;
     res = (cast(byte*) gc_malloc(len * keysize,
                                  !(aa.a.keyti.flags() & 1) ? BlkAttr.NO_SCAN : 0))[0 .. len * keysize];
     resi = 0;
@@ -679,10 +673,9 @@ ArrayRet_t _aaKeys(AA aa, size_t keysize)
     }
     assert(resi == len);
 
-    Array a;
     a.length = len;
     a.ptr = res.ptr;
-    return *cast(ArrayRet_t*)(&a);
+    return a;
 }
 
 
