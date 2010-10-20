@@ -550,7 +550,7 @@ fi
 rm -f conftest.d conftest.$ac_objext
 
 case "$d_target_os" in
-  aix*|*bsd*|cygwin*|darwin*|linux*|skyos*|solaris*|sysv*) d_have_unix=1 ;;
+  aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;
 esac
 
 DCFG_CBRIDGE_STDIO=

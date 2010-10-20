@@ -108,7 +108,7 @@ case "$d_target_os" in
 	    d_gc_stack=GC_Use_Stack_Fixed
 	    d_gc_data="$d_gc_data GC_Use_Data_Dyld"
 	    ;;
-  *freebsd*)D_GC_MODULES="$D_GC_MODULES gc_/gc_freebsd.o"
+  freebsd*|k*bsd*-gnu)D_GC_MODULES="$D_GC_MODULES gc_/gc_freebsd.o"
 	    d_gc_stack=GC_Use_Stack_FreeBSD
 	    d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    dnl maybe just GC_Use_Stack_ExternC

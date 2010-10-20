@@ -29,7 +29,9 @@ coff*) ;;
 cygwin*) d_os_versym=cygwin ; d_unix=1 ;;
 darwin*) d_os_versym=darwin ; d_unix=1 ;;
 elf*) ;;
-*freebsd*) d_os_versym=freebsd ; d_unix=1 ;;
+freebsd*) d_os_versym=freebsd ; d_unix=1 ;;
+k*bsd*-gnu) d_os_versym=freebsd ; d_unix=1 ;;
+kopensolaris*-gnu) d_os_versym=solaris; d_unix=1 ;;
 linux*) d_os_versym=linux ; d_unix=1 ;;
 mingw32*) d_os_versym=Win32; d_windows=1 ;;
 pe*)    case "$target" in
@@ -41,7 +43,9 @@ solaris*) d_os_versym=solaris; d_unix=1 ;;
 sysv3*) d_os_versym=sysv3; d_unix=1 ;;
 sysv4*) d_os_versym=sysv4; d_unix=1 ;;
 
-*bsd*) d_os_versym=bsd ; d_unix=1 ;;
+*bsd*) d_os_versym=bsd; d_unix=1 ;;
+
+gnu*) d_os_versym=hurd; d_unix=1 ;;
 
 *) d_os_versym="$d_target_os"
 esac
@@ -78,9 +82,10 @@ fi
 
 # In DMD, this is usually defined in the target's Makefile.
 case "$d_os_versym" in
-# What about aix, bsd and sysv?
 darwin)  echo "#define TARGET_OSX     1" ;;
 freebsd) echo "#define TARGET_FREEBSD 1" ;;
 linux)   echo "#define TARGET_LINUX   1" ;;
 solaris) echo "#define TARGET_SOLARIS 1" ;;
+Win32)                                   ;; # Nothing
+*)       echo "#define TARGET_UNIX    1" ;;
 esac
