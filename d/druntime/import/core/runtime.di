@@ -17,7 +17,7 @@ private
 {
     void rt_setTraceHandler(TraceHandler h);
 }
-    alias void delegate(Exception) ExceptionHandler;
+    alias void delegate(Throwable) ExceptionHandler;
     extern (C) 
 {
     bool rt_init(ExceptionHandler dg = null);
@@ -39,14 +39,14 @@ struct Runtime
 {
     static 
 {
-    bool initialize(void delegate(Exception) dg = null)
+    bool initialize(ExceptionHandler dg = null)
 {
 return rt_init(dg);
 }
 }
     static 
 {
-    bool terminate(void delegate(Exception) dg = null)
+    bool terminate(ExceptionHandler dg = null)
 {
 return rt_term(dg);
 }
@@ -95,7 +95,7 @@ sm_moduleUnitTester = h;
 }
     private
 {
-    static 
+    __gshared 
 {
     ModuleUnitTester sm_moduleUnitTester = null;
 }

@@ -1,42 +1,22 @@
-//_ aaA.d
-
 /**
- * Part of the D programming language runtime library.
  * Implementation of associative arrays.
- */
-
-/*
- *  Copyright (C) 2000-2008 by Digital Mars, http://www.digitalmars.com
- *  Written by Walter Bright
  *
- *  This software is provided 'as-is', without any express or implied
- *  warranty. In no event will the authors be held liable for any damages
- *  arising from the use of this software.
+ * Copyright: Copyright Digital Mars 2000 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
+ * Authors:   Walter Bright, Sean Kelly
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
- *
- *  o  The origin of this software must not be misrepresented; you must not
- *     claim that you wrote the original software. If you use this software
- *     in a product, an acknowledgment in the product documentation would be
- *     appreciated but is not required.
- *  o  Altered source versions must be plainly marked as such, and must not
- *     be misrepresented as being the original software.
- *  o  This notice may not be removed or altered from any source
- *     distribution.
+ *          Copyright Digital Mars 2000 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
-/*
- *  Modified by Sean Kelly for use with the D Runtime Project
- */
-
 module rt.aaA;
 
 private
 {
     import core.stdc.stdarg;
     import core.stdc.string;
+    import core.stdc.stdio;
 
     enum BlkAttr : uint
     {
@@ -53,7 +33,7 @@ private
 
 // Auto-rehash and pre-allocate - Dave Fladebo
 
-static size_t[] prime_list = [
+immutable size_t[] prime_list = [
               97UL,            389UL,
            1_543UL,          6_151UL,
           24_593UL,         98_317UL,
@@ -246,10 +226,14 @@ body
 {
     size_t i;
     aaA *e;
+//printf("keyti = %p\n", keyti);
+//printf("aa = %p\n", aa);
     auto keysize = aligntsize(keyti.tsize());
 
     if (!aa.a)
         aa.a = new BB();
+//printf("aa = %p\n", aa);
+//printf("aa.a = %p\n", aa.a);
     aa.a.keyti = keyti;
 
     if (!aa.a.b.length)
@@ -286,9 +270,10 @@ body
     *pe = e;
 
     auto nodes = ++aa.a.nodes;
-    //printf("length = %d, nodes = %d\n", (*aa.a).length, nodes);
+    //printf("length = %d, nodes = %d\n", aa.a.b.length, nodes);
     if (nodes > aa.a.b.length * 4)
     {
+        //printf("rehash\n");
         _aaRehash(aa,keyti);
     }
 
@@ -477,8 +462,9 @@ body
     if (aa.a)
     {
         a.length = _aaLen(aa);
-        a.ptr = cast(byte*) gc_malloc(a.length * valuesize,
-                                      valuesize < (void*).sizeof ? BlkAttr.NO_SCAN : 0);
+	a.ptr = cast(byte*) gc_malloc(a.length * valuesize,
+				      valuesize < (void*).sizeof ? BlkAttr.NO_SCAN : 0);
+//      a.ptr = (new void[a.length * valuesize]).ptr;
         resi = 0;
         foreach (e; aa.a.b)
         {

@@ -359,7 +359,6 @@ Symbol *VarDeclaration::toSymbol()
 	TREE_USED( var_decl ) = 1;
 #endif
 
-
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
 	// Have to test for import first
 	if (isImportedSymbol())
@@ -369,6 +368,16 @@ Symbol *VarDeclaration::toSymbol()
 	}
 	else if (isExport())
 	    gen.addDeclAttribute( var_decl, "dllexport" );
+#endif
+
+#if V2
+	if (global.params.vtls && isDataseg() && isThreadlocal())
+	{
+	    char *p = loc.toChars();
+	    fprintf(stderr, "%s: %s is thread local\n", p ? p : "", toChars());
+	    if (p)
+		free(p);
+	}
 #endif
     }
     return csym;

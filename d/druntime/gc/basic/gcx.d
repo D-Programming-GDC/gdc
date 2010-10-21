@@ -1,29 +1,15 @@
 /**
- * This module contains the garbage collector implementation.
+ * Contains the garbage collector implementation.
  *
- * Copyright: Copyright (C) 2001-2007 Digital Mars, www.digitalmars.com.
- *            All rights reserved.
- * License:
- *  This software is provided 'as-is', without any express or implied
- *  warranty. In no event will the authors be held liable for any damages
- *  arising from the use of this software.
- *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, in both source and binary form, subject to the following
- *  restrictions:
- *
- *  o  The origin of this software must not be misrepresented; you must not
- *     claim that you wrote the original software. If you use this software
- *     in a product, an acknowledgment in the product documentation would be
- *     appreciated but is not required.
- *  o  Altered source versions must be plainly marked as such, and must not
- *     be misrepresented as being the original software.
- *  o  This notice may not be removed or altered from any source
- *     distribution.
+ * Copyright: Copyright Digital Mars 2001 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
  * Authors:   Walter Bright, David Friedman, Sean Kelly
+ *
+ *          Copyright Digital Mars 2001 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
 module gc.gcx;
 
 // D Programming Language Garbage Collector implementation
@@ -58,6 +44,8 @@ private import core.stdc.string;
 version (GNU)
     private import gcc.builtins;
 
+debug (PRINTF) import core.stdc.stdio : printf;
+debug (COLLECT_PRINTF) import core.stdc.stdio : printf;
 debug private import core.stdc.stdio;
 
 private
@@ -215,14 +203,14 @@ const uint GCVERSION = 1;       // increment every time we change interface
 
 class GC
 {
-    // For passing to debug code
-    static size_t line;
-    static char*  file;
+    // For passing to debug code (not thread safe)
+    __gshared size_t line;
+    __gshared char*  file;
 
     uint gcversion = GCVERSION;
 
     Gcx *gcx;                   // implementation
-    static ClassInfo gcLock;    // global lock
+    __gshared ClassInfo gcLock;    // global lock
 
 
     void initialize()
@@ -441,8 +429,8 @@ class GC
 
         // Compute size bin
         // Cache previous binsize lookup - Dave Fladebo.
-        static size_t lastsize = -1;
-        static Bins lastbin;
+        __gshared size_t lastsize = -1;
+        __gshared Bins lastbin;
         if (size == lastsize)
             bin = lastbin;
         else
@@ -1393,8 +1381,8 @@ struct Range
 }
 
 
-const uint binsize[B_MAX] = [ 16,32,64,128,256,512,1024,2048,4096 ];
-const uint notbinsize[B_MAX] = [ ~(16u-1),~(32u-1),~(64u-1),~(128u-1),~(256u-1),
+immutable uint binsize[B_MAX] = [ 16,32,64,128,256,512,1024,2048,4096 ];
+immutable uint notbinsize[B_MAX] = [ ~(16u-1),~(32u-1),~(64u-1),~(128u-1),~(256u-1),
                                 ~(512u-1),~(1024u-1),~(2048u-1),~(4096u-1) ];
 
 /* ============================ Gcx =============================== */
@@ -1602,7 +1590,7 @@ struct Gcx
      */
     void addRange(void *pbot, void *ptop)
     {
-        debug(PRINTF) printf("Thread %x ", pthread_self());
+        //debug(PRINTF) printf("Thread %x ", pthread_self());
         debug(PRINTF) printf("%x.Gcx::addRange(%x, %x), nranges = %d\n", this, pbot, ptop, nranges);
         if (nranges == rangedim)
         {
@@ -1630,7 +1618,7 @@ struct Gcx
      */
     void removeRange(void *pbot)
     {
-        debug(PRINTF) printf("Thread %x ", pthread_self());
+        //debug(PRINTF) printf("Thread %x ", pthread_self());
         debug(PRINTF) printf("%x.Gcx.removeRange(%x), nranges = %d\n", this, pbot, nranges);
         for (size_t i = nranges; i--;)
         {

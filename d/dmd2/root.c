@@ -13,6 +13,8 @@
    Modified by David Friedman, December 2006
 */
 
+#define POSIX (linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4)
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -811,8 +813,7 @@ int FileName::exists(const char *name)
     if (S_ISDIR(st.st_mode))
 	return 2;
     return 1;
-#endif
-#if _WIN32
+#elif _WIN32
     DWORD dw;
     int result;
 
@@ -824,6 +825,8 @@ int FileName::exists(const char *name)
     else
 	result = 1;
     return result;
+#else
+    assert(0);
 #endif
 }
 
@@ -850,7 +853,7 @@ void FileName::ensurePathExists(const char *path)
 #if _WIN32
 	    if (path[strlen(path) - 1] != '\\')
 #endif
-#if linux || __APPLE__ || __FreeBSD__
+#if POSIX
 	    if (path[strlen(path) - 1] != '\\')
 #endif
 	    {
@@ -981,8 +984,7 @@ err:
 err1:
     result = 1;
     return result;
-#endif
-#if _WIN32
+#elif _WIN32
     DWORD size;
     DWORD numread;
     HANDLE h;
@@ -1036,6 +1038,8 @@ err:
 err1:
     result = 1;
     return result;
+#else
+    assert(0);
 #endif
 }
 
@@ -1088,6 +1092,8 @@ int File::mmread()
 
 Lerr:
     return GetLastError();			// failure
+#else
+    assert(0);
 #endif
 }
 
@@ -1131,8 +1137,7 @@ err2:
     ::remove(name);
 err:
     return 1;
-#endif
-#if _WIN32
+#elif _WIN32
     HANDLE h;
     DWORD numwritten;
     char *name;
@@ -1161,6 +1166,8 @@ err2:
     DeleteFileA(name);
 err:
     return 1;
+#else
+    assert(0);
 #endif
 }
 
@@ -1210,6 +1217,8 @@ err2:
     CloseHandle(h);
 err:
     return 1;
+#else
+    assert(0);
 #endif
 }
 
@@ -1362,6 +1371,8 @@ void File::stat()
     {
 	FindClose(h);
     }
+#else
+    assert(0);
 #endif
 }
 
@@ -1701,6 +1712,8 @@ void OutBuffer::vprintf(const char *format, va_list args)
 	    psize = count + 1;
 	else
 	    break;
+#else
+    assert(0);
 #endif
 	p = (char *) alloca(psize);	// buffer too small, try again with larger size
     }
@@ -1739,6 +1752,8 @@ void OutBuffer::vprintf(const wchar_t *format, va_list args)
 	    psize = count + 1;
 	else
 	    break;
+#else
+    assert(0);
 #endif
 	p = (dchar *) alloca(psize * 2);	// buffer too small, try again with larger size
     }

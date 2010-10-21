@@ -1869,7 +1869,8 @@ struct AsmProcessor
 		    writeReg(operand->segmentPrefix);
 		    insnTemplate->writebyte(':');
 		}
-		if (operand->symbolDisplacement.dim) {
+		if (operand->symbolDisplacement.dim)
+		{
 		    Expression * e = (Expression *) operand->symbolDisplacement.data[0];
 		    Declaration * decl = 0;
 
@@ -1895,8 +1896,8 @@ struct AsmProcessor
 			stmt->error("cannot access nonlocal variable %s", decl->toChars());
 
 		    if (operand->baseReg != Reg_Invalid &&
-			decl && ! decl->isDataseg()) {
-
+			decl && ! decl->isDataseg())
+		    {
 			// Use the offset from frame pointer
 
 			/* GCC doesn't give the front end access to stack offsets
@@ -1910,8 +1911,8 @@ struct AsmProcessor
 			if (operand->indexReg == Reg_Invalid &&
 			    decl->isVarDeclaration() &&
 			    ((operand->baseReg == Reg_EBP && ! sc->func->naked ) ||
-				(operand->baseReg == Reg_ESP && sc->func->naked)) ) {
-
+				(operand->baseReg == Reg_ESP && sc->func->naked)) )
+			{
 			    e = new AddrExp(0, e);
 			    e->type = decl->type->pointerTo();
 
@@ -1938,7 +1939,9 @@ struct AsmProcessor
 			}
 			if (opInfo->operands[i] & Opr_Dest)
 			    asmcode->clobbersMemory = 1;
-		    } else  {
+		    }
+		    else
+		    {
 			// Plain memory reference to variable
 
 			/* If in a reg, DMD moves to memory.. even with -O, so we'll do the same
@@ -1949,8 +1952,7 @@ struct AsmProcessor
 			*/
 			if (operand->constDisplacement) {
 			    addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
-			    if (operand->symbolDisplacement.dim)
-				insnTemplate->writebyte('+');
+			    insnTemplate->writebyte('+');
 			    operand->constDisplacement = 0;
 			}
 
@@ -1979,11 +1981,9 @@ struct AsmProcessor
 		}
 		if (use_star)
 		    insnTemplate->writebyte('*');
-		if (operand->constDisplacement) {
-		    if (operand->symbolDisplacement.dim)
-			insnTemplate->writebyte('+');
+		if (operand->constDisplacement)
 		    addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
-		}
+
 		if (operand->segmentPrefix != Reg_Invalid) {
 		    if (opInfo->operands[i] & Opr_Dest)
 			asmcode->clobbersMemory = 1;

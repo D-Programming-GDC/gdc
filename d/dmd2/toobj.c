@@ -63,7 +63,7 @@ void Module::genmoduleinfo()
 
     Symbol *msym = toSymbol();
     unsigned offset;
-    unsigned sizeof_ModuleInfo = 14 * PTRSIZE;
+    unsigned sizeof_ModuleInfo = 18 * PTRSIZE;
 
     //////////////////////////////////////////////
 
@@ -83,6 +83,7 @@ void Module::genmoduleinfo()
 	    void *unitTest;
 	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
 	    void *ictor;
+	    void*[4] reserved;
        }
      */
     dt_t *dt = NULL;
@@ -163,6 +164,12 @@ void Module::genmoduleinfo()
 	dtxoff(&dt, sictor, 0, TYnptr);
     else
 	dtdword(&dt, 0);
+
+    // void*[4] reserved;
+    dtdword(&dt, 0);
+    dtdword(&dt, 0);
+    dtdword(&dt, 0);
+    dtdword(&dt, 0);
 
     //////////////////////////////////////////////
 
@@ -347,6 +354,12 @@ void ClassDeclaration::toObjFile(int multiobj)
 
     //////////////////////////////////////////////
 
+    // Put out the TypeInfo
+    type->getTypeInfo(NULL);
+    type->vtinfo->toObjFile(multiobj);
+
+    //////////////////////////////////////////////
+
     // Put out the ClassInfo
     csym->Sclass = scclass;
     csym->Sfl = FLdata;
@@ -367,6 +380,7 @@ void ClassDeclaration::toObjFile(int multiobj)
 	    OffsetTypeInfo[] offTi;
 	    void *defaultConstructor;
 	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
+	    TypeInfo typeinfo;
        }
      */
     dt_t *dt = NULL;
@@ -374,7 +388,7 @@ void ClassDeclaration::toObjFile(int multiobj)
     if (classinfo)
     {
 	if (classinfo->structsize != CLASSINFO_SIZE)
-	    error("D compiler and phobos/object.d are mismatched");
+	    error("D compiler and phobos' object.d are mismatched");
     }
 
     if (classinfo)
@@ -432,6 +446,7 @@ void ClassDeclaration::toObjFile(int multiobj)
 #if DMDV2
     flags |= 16;
 #endif
+    flags |= 32;
     if (ctor)
 	flags |= 8;
     for (ClassDeclaration *cd = this; cd; cd = cd->baseClass)
@@ -475,6 +490,9 @@ void ClassDeclaration::toObjFile(int multiobj)
     else
 	dtdword(&dt, 0);	// module getMembers() function
 #endif
+
+    dtxoff(&dt, type->vtinfo->toSymbol(), 0, TYnptr);	// typeinfo
+    //dtdword(&dt, 0);
 
     //////////////////////////////////////////////
 
@@ -824,6 +842,12 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 
     //////////////////////////////////////////////
 
+    // Put out the TypeInfo
+    type->getTypeInfo(NULL);
+    type->vtinfo->toObjFile(multiobj);
+
+    //////////////////////////////////////////////
+
     // Put out the ClassInfo
     csym->Sclass = scclass;
     csym->Sfl = FLdata;
@@ -846,6 +870,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 #if DMDV2
 	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
 #endif
+	    TypeInfo typeinfo;
        }
      */
     dt_t *dt = NULL;
@@ -893,7 +918,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     dtdword(&dt, 0);
 
     // flags
-    dti32(&dt, 4 | isCOMinterface(), true);
+    dti32(&dt, 4 | isCOMinterface() | 32, true);
 
     // deallocator
     dtdword(&dt, 0);
@@ -909,6 +934,8 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     // xgetMembers
     dtdword(&dt, 0);
 #endif
+
+    dtxoff(&dt, type->vtinfo->toSymbol(), 0, TYnptr);	// typeinfo
 
     //////////////////////////////////////////////
 
@@ -1137,7 +1164,8 @@ void VarDeclaration::toObjFile(int multiobj)
 	if (s->Sclass == SCcomdat &&
 	    s->Sdt &&
 	    s->Sdt->dt == DT_azeros &&
-	    s->Sdt->DTnext == NULL)
+	    s->Sdt->DTnext == NULL &&
+	    !isThreadlocal())
 	{
 	    s->Sclass = SCglobal;
 	    s->Sdt->dt = DT_common;

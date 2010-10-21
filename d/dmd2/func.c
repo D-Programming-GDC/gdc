@@ -119,9 +119,21 @@ void FuncDeclaration::semantic(Scope *sc)
     printf("FuncDeclaration::semantic(sc = %p, this = %p, '%s', linkage = %d)\n", sc, this, toPrettyChars(), sc->linkage);
     if (isFuncLiteralDeclaration())
 	printf("\tFuncLiteralDeclaration()\n");
-    printf("sc->parent = %s\n", sc->parent->toChars());
+    printf("sc->parent = %s, parent = %s\n", sc->parent->toChars(), parent ? parent->toChars() : "");
     printf("type: %p, %s\n", type, type->toChars());
 #endif
+
+    if (semanticRun && isFuncLiteralDeclaration())
+    {
+	/* Member functions that have return types that are
+	 * forward references can have semantic() run more than
+	 * once on them.
+	 * See test\interface2.d, test20
+	 */
+	return;
+    }
+    assert(semanticRun <= 1);
+    semanticRun = 1;
 
     storage_class |= sc->stc & ~STCref;
     //printf("function storage_class = x%x\n", storage_class);
@@ -136,17 +148,17 @@ void FuncDeclaration::semantic(Scope *sc)
 	type = type->semantic(loc, sc);
 	unsigned stc = storage_class;
 	if (type->isInvariant())
-	    stc |= STCinvariant;
+	    stc |= STCimmutable;
 	if (type->isConst())
 	    stc |= STCconst;
 	if (type->isShared())
 	    stc |= STCshared;
-	switch (stc & (STCinvariant | STCconst | STCshared))
+	switch (stc & STC_TYPECTOR)
 	{
-	    case STCinvariant:
-	    case STCinvariant | STCconst:
-	    case STCinvariant | STCconst | STCshared:
-	    case STCinvariant | STCshared:
+	    case STCimmutable:
+	    case STCimmutable | STCconst:
+	    case STCimmutable | STCconst | STCshared:
+	    case STCimmutable | STCshared:
 		// Don't use toInvariant(), as that will do a merge()
 		type = type->makeInvariant();
 		type->deco = type->merge()->deco;
@@ -619,7 +631,6 @@ void FuncDeclaration::semantic2(Scope *sc)
 
 void FuncDeclaration::semantic3(Scope *sc)
 {   TypeFunction *f;
-    AggregateDeclaration *ad;
     VarDeclaration *argptr = NULL;
     VarDeclaration *_arguments = NULL;
 
@@ -637,9 +648,9 @@ void FuncDeclaration::semantic3(Scope *sc)
     //printf("\tlinkage = %d\n", sc->linkage);
 
     //printf(" sc->incontract = %d\n", sc->incontract);
-    if (semanticRun)
+    if (semanticRun >= 3)
 	return;
-    semanticRun = 1;
+    semanticRun = 3;
 
     if (!type || type->ty != Tfunction)
 	return;
@@ -677,7 +688,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 	sc2->sw = NULL;
 	sc2->fes = fes;
 	sc2->linkage = LINKd;
-	sc2->stc &= ~(STCauto | STCscope | STCstatic | STCabstract | STCdeprecated | STCconst | STCfinal | STCinvariant | STCtls | STCref);
+	sc2->stc &= ~(STCauto | STCscope | STCstatic | STCabstract | STCdeprecated | STC_TYPECTOR | STCfinal | STCtls | STCgshared | STCref);
 	sc2->attributes = NULL;
 	sc2->protection = PROTpublic;
 	sc2->explicitProtection = 0;
@@ -687,7 +698,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 	sc2->noctor = 0;
 
 	// Declare 'this'
-	ad = isThis();
+	AggregateDeclaration *ad = isThis();
 	if (ad)
 	{   VarDeclaration *v;
 
@@ -717,7 +728,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 			thandle = thandle->nextOf()->constOf()->pointerTo();
 		    }
 		}
-		else if (storage_class & STCinvariant || type->isInvariant())
+		else if (storage_class & STCimmutable || type->isInvariant())
 		{
 		    if (thandle->ty == Tclass)
 			thandle = thandle->invariantOf();
@@ -731,7 +742,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 		    assert(0);  // not implemented
 		}
 #endif
-		v = new ThisDeclaration(thandle);
+		v = new ThisDeclaration(loc, thandle);
 		v->storage_class |= STCparameter;
 #if STRUCTTHISREF
 		if (thandle->ty == Tstruct)
@@ -750,7 +761,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 	     * enclosing function's stack frame.
 	     * Note that nested functions and member functions are disjoint.
 	     */
-	    VarDeclaration *v = new ThisDeclaration(Type::tvoid->pointerTo());
+	    VarDeclaration *v = new ThisDeclaration(loc, Type::tvoid->pointerTo());
 	    v->storage_class |= STCparameter;
 	    v->semantic(sc2);
 	    if (!sc2->insert(v))
@@ -761,7 +772,11 @@ void FuncDeclaration::semantic3(Scope *sc)
 
 	// Declare hidden variable _arguments[] and _argptr
 	if (f->varargs == 1)
-	{   Type *t;
+	{
+#if TARGET_NET
+        varArgs(sc2, f, argptr, _arguments);
+#else
+        Type *t;
 
 	    if (f->linkage == LINKd)
 	    {	// Declare _arguments[]
@@ -799,6 +814,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 		sc2->insert(argptr);
 		argptr->parent = this;
 	    }
+#endif
 	}
 
 	// Propagate storage class from tuple parameters to their element-parameters.
@@ -847,7 +863,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 		v->storage_class |= STCparameter;
 		if (f->varargs == 2 && i + 1 == nparams)
 		    v->storage_class |= STCvariadic;
-		v->storage_class |= arg->storageClass & (STCin | STCout | STCref | STClazy | STCfinal | STCconst | STCinvariant | STCnodtor);
+		v->storage_class |= arg->storageClass & (STCin | STCout | STCref | STClazy | STCfinal | STC_TYPECTOR | STCnodtor);
 		v->semantic(sc2);
 		if (!sc2->insert(v))
 		    error("parameter %s.%s is already defined", toChars(), v->toChars());
@@ -1329,7 +1345,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 	sc2->callSuper = 0;
 	sc2->pop();
     }
-    semanticRun = 2;
+    semanticRun = 4;
 }
 
 void FuncDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -2442,9 +2458,9 @@ void CtorDeclaration::semantic(Scope *sc)
     // to the function body
     if (fbody)
     {
-	Expression *e = new ThisExp(0);
-	Statement *s = new ReturnStatement(0, e);
-	fbody = new CompoundStatement(0, fbody, s);
+	Expression *e = new ThisExp(loc);
+	Statement *s = new ReturnStatement(loc, e);
+	fbody = new CompoundStatement(loc, fbody, s);
     }
 
     FuncDeclaration::semantic(sc);
@@ -2482,7 +2498,7 @@ int CtorDeclaration::addPreInvariant()
 
 int CtorDeclaration::addPostInvariant()
 {
-    return (vthis && global.params.useInvariants);
+    return (isThis() && vthis && global.params.useInvariants);
 }
 
 
@@ -2549,7 +2565,7 @@ int PostBlitDeclaration::addPreInvariant()
 
 int PostBlitDeclaration::addPostInvariant()
 {
-    return (vthis && global.params.useInvariants);
+    return (isThis() && vthis && global.params.useInvariants);
 }
 
 int PostBlitDeclaration::isVirtual()
@@ -2616,7 +2632,7 @@ int DtorDeclaration::overloadInsert(Dsymbol *s)
 
 int DtorDeclaration::addPreInvariant()
 {
-    return (vthis && global.params.useInvariants);
+    return (isThis() && vthis && global.params.useInvariants);
 }
 
 int DtorDeclaration::addPostInvariant()

@@ -1,39 +1,43 @@
-// Written in the D programming language
 /** 
- Identify the characteristics of the host CPU, providing information
- about cache sizes and assembly optimisation hints.
- 
- Some of this information was extremely difficult to track down. Some of the
- documents below were found only in cached versions stored by search engines!
-  This code relies on information found in:
+ * Identify the characteristics of the host CPU, providing information
+ * about cache sizes and assembly optimisation hints.
+ *
+ * Some of this information was extremely difficult to track down. Some of the
+ * documents below were found only in cached versions stored by search engines!
+ * This code relies on information found in:
 	
-  - "Intel(R) 64 and IA-32 Architectures Software Developers Manual,
-	  Volume 2A: Instruction Set Reference, A-M" (2007).
-  - "AMD CPUID Specification", Advanced Micro Devices, Rev 2.28 (2008).
-  - "AMD Processor Recognition Application Note For Processors Prior to AMD
-      Family 0Fh Processors", Advanced Micro Devices, Rev 3.13 (2005).
-  - "AMD Geode(TM) GX Processors Data Book",
-      Advanced Micro Devices, Publication ID 31505E, (2005).
-  - "AMD K6 Processor Code Optimisation", Advanced Micro Devices, Rev D (2000).
-  - "Application note 106: Software Customization for the 6x86 Family",
-      Cyrix Corporation, Rev 1.5 (1998)
-  - http://ftp.intron.ac/pub/document/cpu/cpuid.htm
-  - "Geode(TM) GX1 Processor Series Low Power Integrated X86 Solution",
-      National Semiconductor, (2002)
-  - "The VIA Isaiah Architecture", G. Glenn Henry, Centaur Technology, Inc (2008).
-  - http://www.sandpile.org/ia32/cpuid.htm
-  - http://grafi.ii.pw.edu.pl/gbm/x86/cpuid.html
-  - "What every programmer should know about memory",
-     Ulrich Depper, Red Hat, Inc., (2007). 
-   
-AUTHORS:  Don Clugston, Tomas Lindquist Olsen &lt;tomas@famolsen.dk&gt;
-COPYRIGHT:	Public Domain
-
-BUGS:	Currently only works on x86 and Itanium CPUs.
-        Many processors have bugs in their microcode for the CPUID instruction,
-        so sometimes the cache information may be incorrect.
-*/
-
+ * - "Intel(R) 64 and IA-32 Architectures Software Developers Manual,
+ *	  Volume 2A: Instruction Set Reference, A-M" (2007).
+ * - "AMD CPUID Specification", Advanced Micro Devices, Rev 2.28 (2008).
+ * - "AMD Processor Recognition Application Note For Processors Prior to AMD
+ *    Family 0Fh Processors", Advanced Micro Devices, Rev 3.13 (2005).
+ * - "AMD Geode(TM) GX Processors Data Book",
+ *    Advanced Micro Devices, Publication ID 31505E, (2005).
+ * - "AMD K6 Processor Code Optimisation", Advanced Micro Devices, Rev D (2000).
+ * - "Application note 106: Software Customization for the 6x86 Family",
+ *    Cyrix Corporation, Rev 1.5 (1998)
+ * - http://ftp.intron.ac/pub/document/cpu/cpuid.htm
+ * - "Geode(TM) GX1 Processor Series Low Power Integrated X86 Solution",
+ *   National Semiconductor, (2002)
+ * - "The VIA Isaiah Architecture", G. Glenn Henry, Centaur Technology, Inc (2008).
+ * - http://www.sandpile.org/ia32/cpuid.htm
+ * - http://grafi.ii.pw.edu.pl/gbm/x86/cpuid.html
+ * - "What every programmer should know about memory",
+ *    Ulrich Depper, Red Hat, Inc., (2007). 
+ * 
+ * Bugs: Currently only works on x86 and Itanium CPUs.
+ *      Many processors have bugs in their microcode for the CPUID instruction,
+ *      so sometimes the cache information may be incorrect.
+ *
+ * Copyright: Copyright Don Clugston 2007 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
+ * Authors:   Don Clugston, Tomas Lindquist Olsen &lt;tomas@famolsen.dk&gt;
+ *
+ *          Copyright Don Clugston 2007 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
+ */
 module rt.util.cpuid;
 
 // If optimizing for a particular processor, it is generally better
@@ -88,7 +92,7 @@ public:
 	
 	/// The data caches. If there are fewer than 5 physical caches levels,
 	/// the remaining levels are set to uint.max (== entire memory space)
-	CacheInfo[5] datacache;
+	__gshared CacheInfo[5] datacache;
 	/// Does it have an x87 FPU on-chip?
 	bool x87onChip()    {return (features&FPU_BIT)!=0;}
     /// Is MMX supported?
@@ -174,6 +178,7 @@ public:
     /// Does this CPU perform better on Pentium I code than Pentium Pro code?
     bool preferPentium1() { return family < 6 || (family==6 && model < 0xF && !probablyIntel); }
 
+__gshared:
 public:
     /// Processor type (vendor-dependent).
     /// This should be visible ONLY for display purposes.
@@ -270,19 +275,18 @@ version(X86_64) {
 version(D_InlineAsm_X86) {
 // Note that this code will also work for Itanium in x86 mode.
 
-uint max_cpuid, max_extended_cpuid;
+shared uint max_cpuid, max_extended_cpuid;
 
 // CPUID2: "cache and tlb information"
 void getcacheinfoCPUID2()
 {
-	// CPUID2 is a dog's breakfast. What was Intel thinking???
 	// We are only interested in the data caches
 	void decipherCpuid2(ubyte x) {
 		if (x==0) return;
 		// Values from http://www.sandpile.org/ia32/cpuid.htm.
 		// Includes Itanium and non-Intel CPUs.
 		//
-		ubyte [] ids = [
+		immutable ubyte [47] ids = [
 			0x0A, 0x0C, 0x2C, 0x60, 0x0E, 0x66, 0x67, 0x68,
 			// level 2 cache
 			0x41, 0x42, 0x43, 0x44, 0x45, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7F,
@@ -291,7 +295,7 @@ void getcacheinfoCPUID2()
 		    // level 3 cache
 			0x22, 0x23, 0x25, 0x29, 0x46, 0x47, 0x4A, 0x4B, 0x4C, 0x4D
 		];
-		uint [] sizes = [
+		immutable uint [47] sizes = [
 			8, 16, 32, 16, 24, 8, 16, 32,
 		    128, 256, 512, 1024, 2048, 1024, 128, 256, 512, 1024, 2048, 512,
 		    256, 512, 1024, 2048, 512, 1024, 4096, 6*1024,
@@ -299,7 +303,7 @@ void getcacheinfoCPUID2()
 			512, 1024, 2048, 4096, 4096, 8192, 6*1024, 8192, 12*1024, 16*1024
 		];
 	// CPUBUG: Pentium M reports 0x2C but tests show it is only 4-way associative
-		ubyte [] ways = [
+		immutable ubyte [47] ways = [
 			2, 4, 8, 8, 6, 4, 4, 4,
 		    4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 2,
 		    8, 8, 8, 8, 4, 8, 16, 24,
@@ -440,7 +444,7 @@ void getAMDcacheinfo()
 			mov d6, EDX; // L3 cache info
 		}
 	
-		ubyte [] assocmap = [ 0, 1, 2, 0, 4, 0, 8, 0, 16, 0, 32, 48, 64, 96, 128, 0xFF ];
+		immutable ubyte [] assocmap = [ 0, 1, 2, 0, 4, 0, 8, 0, 16, 0, 32, 48, 64, 96, 128, 0xFF ];
 		datacache[1].size = (c6>>16) & 0xFFFF;
 		datacache[1].associativity = assocmap[(c6>>12)&0xF];
 		datacache[1].lineSize = c6 & 0xFF;
@@ -563,7 +567,7 @@ void cpuidX86()
 	// NS Geode GX1 provides CyrixCPUID2 _and_ does the same wrong behaviour
 	// for CPUID80000005. But Geode GX uses the AMD method
 	
-	// Deal with idiotic Geode GX1 - make it same as MediaGX MMX.
+	// Deal with Geode GX1 - make it same as MediaGX MMX.
 	if (max_extended_cpuid==0x8000_0005 && max_cpuid==2) {		
 		max_extended_cpuid = 0x8000_0004;
 	}

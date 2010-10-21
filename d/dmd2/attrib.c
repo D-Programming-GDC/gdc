@@ -301,10 +301,12 @@ void StorageClassDeclaration::semantic(Scope *sc)
 	 */
 	if (stc & (STCauto | STCscope | STCstatic | STCextern | STCmanifest))
 	    sc->stc &= ~(STCauto | STCscope | STCstatic | STCextern | STCmanifest);
-	if (stc & (STCauto | STCscope | STCstatic | STCtls | STCmanifest))
-	    sc->stc &= ~(STCauto | STCscope | STCstatic | STCtls | STCmanifest);
-	if (stc & (STCconst | STCinvariant | STCmanifest))
-	    sc->stc &= ~(STCconst | STCinvariant | STCmanifest);
+	if (stc & (STCauto | STCscope | STCstatic | STCtls | STCmanifest | STCgshared))
+	    sc->stc &= ~(STCauto | STCscope | STCstatic | STCtls | STCmanifest | STCgshared);
+	if (stc & (STCconst | STCimmutable | STCmanifest))
+	    sc->stc &= ~(STCconst | STCimmutable | STCmanifest);
+	if (stc & (STCgshared | STCshared | STCtls))
+	    sc->stc &= ~(STCgshared | STCshared | STCtls);
 	sc->stc |= stc;
 	for (unsigned i = 0; i < decl->dim; i++)
 	{
@@ -333,7 +335,7 @@ void StorageClassDeclaration::stcToCBuffer(OutBuffer *buf, int stc)
 	{ STCstatic,       TOKstatic },
 	{ STCextern,       TOKextern },
 	{ STCconst,        TOKconst },
-	{ STCinvariant,    TOKimmutable },
+	{ STCimmutable,    TOKimmutable },
 	{ STCshared,       TOKshared },
 	{ STCfinal,        TOKfinal },
 	{ STCabstract,     TOKabstract },
@@ -344,6 +346,7 @@ void StorageClassDeclaration::stcToCBuffer(OutBuffer *buf, int stc)
 	{ STCpure,         TOKpure },
 	{ STCref,          TOKref },
 	{ STCtls,          TOKtls },
+	{ STCgshared,      TOKgshared },
 	{ STClazy,         TOKlazy },
 	{ STCalias,        TOKalias },
 	{ STCout,          TOKout },
@@ -613,7 +616,7 @@ void AnonDeclaration::semantic(Scope *sc)
 
 	sc = sc->push();
 	sc->anonAgg = &aad;
-	sc->stc &= ~(STCauto | STCscope | STCstatic | STCtls);
+	sc->stc &= ~(STCauto | STCscope | STCstatic | STCtls | STCgshared);
 	sc->inunion = isunion;
 	sc->offset = 0;
 	sc->flags = 0;

@@ -1964,13 +1964,8 @@ NewExp::toElem(IRState * irs)
 		new_call = irs->call(allocator, newargs);
 	    } else {
 		tree args[2];
-#if V2
-		LibCall lib_call = struct_type->isZeroInit() ?
-		    LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
-#else
 		LibCall lib_call = struct_type->isZeroInit(loc) ?
 		    LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
-#endif
 		args[0] = irs->typeinfoReference( struct_type->arrayOf() );
 		args[1] = irs->integerConstant(1, Type::tsize_t);
 		new_call = irs->libCall(lib_call, 2, args);
@@ -4648,8 +4643,11 @@ gcc_d_backend_init()
     default:
 	abort();
     }
-
+#if V2
+    CLASSINFO_SIZE = (19 * PTRSIZE) + 4;
+#else
     CLASSINFO_SIZE = 19 * PTRSIZE;
+#endif
 
     d_init_builtins();
 

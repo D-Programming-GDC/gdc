@@ -386,17 +386,16 @@ d_init ()
 #ifdef D_OS_VERSYM
     VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM);
     if (strcmp(D_OS_VERSYM, "darwin") == 0)
-    VersionCondition::addPredefinedGlobalIdent("OSX");
+	VersionCondition::addPredefinedGlobalIdent("OSX");
     if (strcmp(D_OS_VERSYM, "Win32") == 0)
     {
 	VersionCondition::addPredefinedGlobalIdent("Windows");
 	is_target_win32 = true;
     }
-#if V1
     if (strcmp(D_OS_VERSYM, "freebsd") == 0)
 	VersionCondition::addPredefinedGlobalIdent("FreeBSD");
-#endif
-
+    if (strcmp(D_OS_VERSYM, "solaris") == 0)
+	VersionCondition::addPredefinedGlobalIdent("Solaris");
 #endif
 #ifdef D_OS_VERSYM2
     VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM2);
@@ -688,6 +687,9 @@ d_handle_option (size_t scode, const char *arg, int value)
 	  break;
       case OPT_fd_verbose:
 	  global.params.verbose = 1;
+	  break;
+      case OPT_fd_vtls:
+	  global.params.vtls = 1;
 	  break;
       case OPT_fd_version_1:
 	  global.params.Dversion = 1;

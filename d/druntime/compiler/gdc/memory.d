@@ -1,27 +1,14 @@
 /**
  * This module exposes functionality for inspecting and manipulating memory.
  *
- * Copyright: Copyright (C) 2005-2006 Digital Mars, www.digitalmars.com.
- *            All rights reserved.
- * License:
- *  This software is provided 'as-is', without any express or implied
- *  warranty. In no event will the authors be held liable for any damages
- *  arising from the use of this software.
- *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, in both source and binary form, subject to the following
- *  restrictions:
- *
- *  o  The origin of this software must not be misrepresented; you must not
- *     claim that you wrote the original software. If you use this software
- *     in a product, an acknowledgment in the product documentation would be
- *     appreciated but is not required.
- *  o  Altered source versions must be plainly marked as such, and must not
- *     be misrepresented as being the original software.
- *  o  This notice may not be removed or altered from any source
- *     distribution.
+ * Copyright: Copyright Digital Mars 2000 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
+ *
+ *          Copyright Digital Mars 2000 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.memory;
 
@@ -34,7 +21,25 @@ private
 
         version( SimpleLibcStackEnd )
         {
-            extern (C) extern void* __libc_stack_end;
+            extern (C) extern __gshared void* __libc_stack_end;
+        }
+    }
+    version( FreeBSD )
+    {
+        version = SimpleLibcStackEnd;
+
+        version( SimpleLibcStackEnd )
+        {
+            extern (C) extern __gshared void* __libc_stack_end;
+        }
+    }
+    version( Solaris )
+    {
+        version = SimpleLibcStackEnd;
+
+        version( SimpleLibcStackEnd )
+        {
+            extern (C) extern __gshared void* __libc_stack_end;
         }
     }
     extern (C) void gc_addRange( void* p, size_t sz );
@@ -80,6 +85,14 @@ extern (C) void* rt_stackBottom()
     {
         return cast(void*) 0xc0000000;
     }
+    else version( FreeBSD )
+    {
+        return __libc_stack_end;
+    }
+    else version( Solaris )
+    {
+        return __libc_stack_end;
+    }
     else
     {
         static assert( false, "Operating system not supported." );
@@ -114,23 +127,29 @@ private
     {
         extern (C)
         {
-            extern int _xi_a;   // &_xi_a just happens to be start of data segment
-            extern int _edata;  // &_edata is start of BSS segment
-            extern int _end;    // &_end is past end of BSS
+            extern __gshared
+            {
+                int _xi_a;   // &_xi_a just happens to be start of data segment
+                int _edata;  // &_edata is start of BSS segment
+                int _end;    // &_end is past end of BSS
+            }
         }
     }
     else version( linux )
     {
         extern (C)
         {
-            extern int _data;
-            extern int __data_start;
-            extern int _end;
-            extern int _data_start__;
-            extern int _data_end__;
-            extern int _bss_start__;
-            extern int _bss_end__;
-            extern int __fini_array_end;
+            extern __gshared
+            {
+                int _data;
+                int __data_start;
+                int _end;
+                int _data_start__;
+                int _data_end__;
+                int _bss_start__;
+                int _bss_end__;
+                int __fini_array_end;
+            }
         }
 
             alias __data_start  Data_Start;
@@ -139,6 +158,28 @@ private
     else version( OSX )
     {
         extern (C) void _d_osx_image_init();
+    }
+    else version( FreeBSD )
+    {
+        extern (C)
+        {
+            extern __gshared
+            {
+                int etext;
+                int _end;
+            }
+        }
+    }
+    else version( Solaris )
+    {
+        extern (C)
+        {
+            extern __gshared
+            {
+                int etext;
+                int _end;
+            }
+        }
     }
 }
 
@@ -156,6 +197,14 @@ void initStaticDataGC()
     else version( OSX )
     {
         _d_osx_image_init();
+    }
+    else version( FreeBSD )
+    {
+        gc_addRange( &etext, cast(size_t) &_end - cast(size_t) &etext );
+    }
+    else version( Solaris )
+    {
+        gc_addRange( &etext, cast(size_t) &_end - cast(size_t) &etext );
     }
     else
     {

@@ -258,7 +258,7 @@ Array *Parser::parseDeclDefs(int once)
 		}
 		else
 		{
-		    stc = STCinvariant;
+		    stc = STCimmutable;
 		    goto Lstc;
 		}
 		break;
@@ -318,7 +318,7 @@ Array *Parser::parseDeclDefs(int once)
 	    case TOKimmutable:
 		if (peek(&token)->value == TOKlparen)
 		    goto Ldeclaration;
-		stc = STCinvariant;
+		stc = STCimmutable;
 		goto Lstc;
 
 	    case TOKshared:
@@ -339,18 +339,14 @@ Array *Parser::parseDeclDefs(int once)
 	    case TOKpure:         stc = STCpure;	 goto Lstc;
 	    case TOKref:          stc = STCref;          goto Lstc;
 	    case TOKtls:          stc = STCtls;		 goto Lstc;
+	    case TOKgshared:      stc = STCgshared;	 goto Lstc;
 	    //case TOKmanifest:	  stc = STCmanifest;	 goto Lstc;
 #endif
 
 	    Lstc:
 		if (storageClass & stc)
 		    error("redundant storage class %s", Token::toChars(token.value));
-		{
-		unsigned u = storageClass | stc;
-		u &= STCconst | STCinvariant | STCmanifest;
-		if (u & (u - 1))
-		    error("conflicting storage class %s", Token::toChars(token.value));
-		}
+		composeStorageClass(storageClass | stc);
 		nextToken();
 	    Lstc2:
 		storageClass |= stc;
@@ -368,7 +364,7 @@ Array *Parser::parseDeclDefs(int once)
 			else if (token.value == TOKshared)
 			    stc = STCshared;
 			else
-			    stc = STCinvariant;
+			    stc = STCimmutable;
 			goto Lstc;
 		    case TOKfinal:	  stc = STCfinal;	 goto Lstc;
 		    case TOKauto:	  stc = STCauto;	 goto Lstc;
@@ -381,6 +377,7 @@ Array *Parser::parseDeclDefs(int once)
 		    case TOKpure:         stc = STCpure;	 goto Lstc;
 		    case TOKref:          stc = STCref;          goto Lstc;
 		    case TOKtls:          stc = STCtls;		 goto Lstc;
+		    case TOKgshared:      stc = STCgshared;	 goto Lstc;
 		    //case TOKmanifest:	  stc = STCmanifest;	 goto Lstc;
 		    default:
 			break;
@@ -576,6 +573,21 @@ Array *Parser::parseDeclDefs(int once)
     return decldefs;
 }
 
+/*********************************************
+ * Give error on conflicting storage classes.
+ */
+
+void Parser::composeStorageClass(unsigned stc)
+{
+    unsigned u = stc;
+    u &= STCconst | STCimmutable | STCmanifest;
+    if (u & (u - 1))
+	error("conflicting storage class %s", Token::toChars(token.value));
+    u = stc;
+    u &= STCgshared | STCshared | STCtls;
+    if (u & (u - 1))
+	error("conflicting storage class %s", Token::toChars(token.value));
+}
 
 /********************************************
  * Parse declarations after an align, protection, or extern decl.
@@ -592,6 +604,10 @@ Array *Parser::parseBlock()
 	case TOKsemicolon:
 	    error("declaration expected following attribute, not ';'");
 	    nextToken();
+	    break;
+
+	case TOKeof:
+	    error("declaration expected following attribute, not EOF");
 	    break;
 
 	case TOKlcurly:
@@ -1093,7 +1109,7 @@ Arguments *Parser::parseParameters(int *pvarargs)
 		case TOKimmutable:
 		    if (peek(&token)->value == TOKlparen)
 			goto Ldefault;
-		    stc = STCinvariant;
+		    stc = STCimmutable;
 		    goto L2;
 
 		case TOKshared:
@@ -1116,11 +1132,7 @@ Arguments *Parser::parseParameters(int *pvarargs)
 		       )
 			error("redundant storage class %s", Token::toChars(token.value));
 		    storageClass |= stc;
-		    {
-		    unsigned u = storageClass & (STCconst | STCinvariant);
-		    if (u & (u - 1))
-			error("conflicting storage class %s", Token::toChars(token.value));
-		    }
+		    composeStorageClass(storageClass);
 		    continue;
 
 #if 0
@@ -1157,7 +1169,7 @@ Arguments *Parser::parseParameters(int *pvarargs)
 			error("incompatible parameter storage classes");
 		    if ((storageClass & (STCconst | STCout)) == (STCconst | STCout))
 			error("out cannot be const");
-		    if ((storageClass & (STCinvariant | STCout)) == (STCinvariant | STCout))
+		    if ((storageClass & (STCimmutable | STCout)) == (STCimmutable | STCout))
 			error("out cannot be immutable");
 		    if ((storageClass & STCscope) &&
 			(storageClass & (STCref | STCout)))
@@ -1970,14 +1982,14 @@ Import *Parser::parseImport(Array *decldefs, int isstatic)
 	    a->push(id);
 	    nextToken();
 	    if (token.value != TOKidentifier)
-	    {   error("Identifier expected following package");
+	    {   error("identifier expected following package");
 		break;
 	    }
 	    id = token.ident;
 	    nextToken();
 	}
 
-	s = new Import(loc, a, token.ident, aliasid, isstatic);
+	s = new Import(loc, a, id, aliasid, isstatic);
 	decldefs->push(s);
 
 	/* Look for
@@ -1988,14 +2000,13 @@ Import *Parser::parseImport(Array *decldefs, int isstatic)
 	{
 	    do
 	    {	Identifier *name;
-		Identifier *alias;
 
 		nextToken();
 		if (token.value != TOKidentifier)
 		{   error("Identifier expected following :");
 		    break;
 		}
-		alias = token.ident;
+		Identifier *alias = token.ident;
 		nextToken();
 		if (token.value == TOKassign)
 		{
@@ -2522,7 +2533,7 @@ Array *Parser::parseDeclarations(unsigned storage_class)
 	    case TOKimmutable:
 		if (peek(&token)->value == TOKlparen)
 		    break;
-		stc = STCinvariant;
+		stc = STCimmutable;
 		goto L1;
 
 	    case TOKshared:
@@ -2544,18 +2555,14 @@ Array *Parser::parseDeclarations(unsigned storage_class)
 	    case TOKpure:       stc = STCpure;		 goto L1;
 	    case TOKref:        stc = STCref;            goto L1;
 	    case TOKtls:        stc = STCtls;		 goto L1;
+	    case TOKgshared:    stc = STCgshared;	 goto L1;
 	    case TOKenum:	stc = STCmanifest;	 goto L1;
 #endif
 	    L1:
 		if (storage_class & stc)
 		    error("redundant storage class '%s'", token.toChars());
 		storage_class = (STC) (storage_class | stc);
-		{
-		unsigned u = storage_class;
-		u &= STCconst | STCinvariant | STCmanifest;
-		if (u & (u - 1))
-		    error("conflicting storage class %s", Token::toChars(token.value));
-		}
+		composeStorageClass(storage_class);
 		nextToken();
 		continue;
 
@@ -3262,6 +3269,8 @@ Statement *Parser::parseStatement(int flags)
 	case TOKshared:
 	case TOKnothrow:
 	case TOKpure:
+	case TOKtls:
+	case TOKgshared:
 #endif
 //	case TOKtypeof:
 	Ldeclaration:
@@ -4865,8 +4874,8 @@ Expression *Parser::parsePrimaryExp()
 
 #if DMDV2
 	case TOKfile:
-	{   char *s = loc.filename ? loc.filename : mod->ident->toChars();
-	    e = new StringExp(loc, s, strlen(s), 0);
+	{   const char *s = loc.filename ? loc.filename : mod->ident->toChars();
+	    e = new StringExp(loc, (char *)s, strlen(s), 0);
 	    nextToken();
 	    break;
 	}

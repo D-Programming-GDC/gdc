@@ -461,7 +461,7 @@ void ClassDeclaration::semantic(Scope *sc)
 	com = baseClass->isCOMclass();
 	isauto = baseClass->isauto;
 	vthis = baseClass->vthis;
-	storage_class |= baseClass->storage_class & (STCconst | STCinvariant);
+	storage_class |= baseClass->storage_class & STC_TYPECTOR;
     }
     else
     {
@@ -536,7 +536,7 @@ void ClassDeclaration::semantic(Scope *sc)
 		    if (t->ty == Tstruct)	// ref to struct
 			t = Type::tvoidptr;
 		    assert(!vthis);
-		    vthis = new ThisDeclaration(t);
+		    vthis = new ThisDeclaration(loc, t);
 		    members->push(vthis);
 		}
 	    }
@@ -547,15 +547,17 @@ void ClassDeclaration::semantic(Scope *sc)
 	isauto = 1;
     if (storage_class & STCabstract)
 	isabstract = 1;
-    if (storage_class & STCinvariant)
+    if (storage_class & STCimmutable)
 	type = type->invariantOf();
     else if (storage_class & STCconst)
 	type = type->constOf();
+    else if (storage_class & STCshared)
+	type = type->sharedOf();
 
     sc = sc->push(this);
     sc->stc &= ~(STCfinal | STCauto | STCscope | STCstatic |
-		 STCabstract | STCdeprecated | STCconst | STCinvariant | STCtls);
-    sc->stc |= storage_class & (STCconst | STCinvariant);
+		 STCabstract | STCdeprecated | STC_TYPECTOR | STCtls | STCgshared);
+    sc->stc |= storage_class & STC_TYPECTOR;
     sc->attributes = NULL;
     sc->parent = this;
     sc->inunion = 0;
@@ -1148,7 +1150,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
 	}
 #if 0
 	// Inherit const/invariant from base class
-	storage_class |= b->base->storage_class & (STCconst | STCinvariant);
+	storage_class |= b->base->storage_class & STC_TYPECTOR;
 #endif
 	i++;
     }
@@ -1192,7 +1194,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
     }
 
     protection = sc->protection;
-    storage_class |= sc->stc & (STCconst | STCinvariant);
+    storage_class |= sc->stc & STC_TYPECTOR;
 
     for (i = 0; i < members->dim; i++)
     {
@@ -1202,8 +1204,8 @@ void InterfaceDeclaration::semantic(Scope *sc)
 
     sc = sc->push(this);
     sc->stc &= ~(STCfinal | STCauto | STCscope | STCstatic |
-                 STCabstract | STCdeprecated | STCconst | STCinvariant | STCtls);
-    sc->stc |= storage_class & (STCconst | STCinvariant);
+                 STCabstract | STCdeprecated | STC_TYPECTOR | STCtls | STCgshared);
+    sc->stc |= storage_class & STC_TYPECTOR;
     sc->attributes = NULL;
     sc->parent = this;
     if (isCOMinterface())
@@ -1285,11 +1287,14 @@ int InterfaceDeclaration::isBaseOf(BaseClass *bc, target_ptrdiff_t *poffset)
 	{
 	    if (poffset)
 	    {	*poffset = b->offset;
+		if (j && bc->base->isInterfaceDeclaration())
+		    *poffset = OFFSET_RUNTIME;
 	    }
 	    return 1;
 	}
 	if (isBaseOf(b, poffset))
-	{
+	{   if (j && poffset && bc->base->isInterfaceDeclaration())
+		*poffset = OFFSET_RUNTIME;
 	    return 1;
 	}
     }

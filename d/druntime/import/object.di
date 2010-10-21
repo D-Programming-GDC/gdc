@@ -1,3 +1,15 @@
+/**
+ * Contains all implicitly declared types and variables.
+ *
+ * Copyright: Copyright Digital Mars 2000 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
+ * Authors:   Walter Bright, Sean Kelly
+ *
+ *          Copyright Digital Mars 2000 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
+ */
 module object;
 
 alias typeof(int.sizeof)                    size_t;
@@ -48,10 +60,12 @@ class ClassInfo : Object
     //  4:      // has offTi[] member
     //  8:      // has constructors
     // 16:      // has xgetMembers member
+    // 32:      // has typeinfo member
     void*       deallocator;
     OffsetTypeInfo[] offTi;
     void*       defaultConstructor;
     const(MemberInfo[]) function(string) xgetMembers;
+    TypeInfo    typeinfo;
 
     static ClassInfo find(in char[] classname);
     Object create();
@@ -215,6 +229,7 @@ class ModuleInfo
 
     void*           xgetMembers;
     void function() ictor;
+    void*[4] reserved;
 
     static int opApply(int delegate(inout ModuleInfo));
 }

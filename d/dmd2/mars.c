@@ -21,7 +21,7 @@
 #include <limits.h>
 
 #ifndef IN_GCC
-#if linux || __APPLE__ || __FreeBSD__
+#if linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
 #include <errno.h>
 #endif
 #endif
@@ -66,7 +66,7 @@ Global::Global()
 #ifndef IN_GCC
 #if TARGET_WINDOS
     obj_ext  = "obj";
-#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD
+#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
     obj_ext  = "o";
 #elif TARGET_NET
 #else
@@ -79,7 +79,7 @@ Global::Global()
 #ifndef IN_GCC
 #if TARGET_WINDOS
     lib_ext  = "lib";
-#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD
+#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
     lib_ext  = "a";
 #elif TARGET_NET
 #else
@@ -95,7 +95,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates."
 #endif
     ;
-    version = "v2.029";
+    version = "v2.030";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -125,6 +125,11 @@ Loc::Loc(Module *mod, unsigned linnum)
 {
     this->linnum = linnum;
     this->filename = mod ? mod->srcfile->toChars() : NULL;
+}
+
+bool Loc::equals(const Loc& loc)
+{
+    return linnum == loc.linnum && FileName::equals(filename, loc.filename);
 }
 
 /**************************************
@@ -320,7 +325,7 @@ int main(int argc, char *argv[])
 
 #if TARGET_WINDOS
     global.params.defaultlibname = "phobos";
-#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD
+#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
     global.params.defaultlibname = "phobos2";
 #elif TARGET_NET
 #else
@@ -348,10 +353,17 @@ int main(int argc, char *argv[])
     VersionCondition::addPredefinedGlobalIdent("Posix");
     VersionCondition::addPredefinedGlobalIdent("FreeBSD");
     global.params.isFreeBSD = 1;
-#elif TARGET_NET
-    VersionCondition::addPredefinedGlobalIdent("D_NET");
+#elif TARGET_SOLARIS
+    VersionCondition::addPredefinedGlobalIdent("Posix");
+    VersionCondition::addPredefinedGlobalIdent("Solaris");
+    global.params.isSolaris = 1;
 #else
 #error "fix this"
+#endif
+
+#if TARGET_NET
+    // TARGET_NET macro is NOT mutually-exclusive with TARGET_WINDOS
+    VersionCondition::addPredefinedGlobalIdent("D_NET");
 #endif
 
     VersionCondition::addPredefinedGlobalIdent("LittleEndian");
@@ -363,7 +375,7 @@ int main(int argc, char *argv[])
 
 #if _WIN32
     inifile(argv[0], "sc.ini");
-#elif linux || __APPLE__ || __FreeBSD__
+#elif linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
     inifile(argv[0], "dmd.conf");
 #else
 #error "fix this"
@@ -388,7 +400,7 @@ int main(int argc, char *argv[])
 		global.params.link = 0;
 	    else if (strcmp(p + 1, "cov") == 0)
 		global.params.cov = 1;
-#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD
+#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
 	    else if (strcmp(p + 1, "fPIC") == 0)
 		global.params.pic = 1;
 #endif
@@ -408,6 +420,10 @@ int main(int argc, char *argv[])
 		global.params.trace = 1;
 	    else if (strcmp(p + 1, "v") == 0)
 		global.params.verbose = 1;
+#if DMDV2
+	    else if (strcmp(p + 1, "vtls") == 0)
+		global.params.vtls = 1;
+#endif
 	    else if (strcmp(p + 1, "v1") == 0)
 	    {
 #if DMDV1

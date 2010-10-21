@@ -13,11 +13,15 @@
  * allocator may do better to store this data separately, similar to the basic
  * GC.
  *
- * Copyright: Public Domain
- * License:   Public Domain
+ * Copyright: Copyright Sean Kelly 2005 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
  * Authors:   Sean Kelly
+ *
+ *          Copyright Sean Kelly 2005 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
 module gc.gc;
 
 private
@@ -72,8 +76,8 @@ private
         extern (C) void function(void*) gc_removeRange;
     }
 
-    Proxy  pthis;
-    Proxy* proxy;
+    __gshared Proxy  pthis;
+    __gshared Proxy* proxy;
 
     void initProxy()
     {
@@ -105,8 +109,8 @@ private
         pthis.gc_removeRange = &gc_removeRange;
     }
 
-    void** roots  = null;
-    size_t nroots = 0;
+    __gshared void** roots  = null;
+    __gshared size_t nroots = 0;
 
     struct Range
     {
@@ -114,8 +118,8 @@ private
         size_t len;
     }
 
-    Range* ranges  = null;
-    size_t nranges = 0;
+    __gshared Range* ranges  = null;
+    __gshared size_t nranges = 0;
 }
 
 extern (C) void gc_init()

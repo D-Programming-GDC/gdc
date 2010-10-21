@@ -1,38 +1,18 @@
 /**
- * Part of the D programming language runtime library.
- * Forms the symbols available to all D programs. Includes
- * Object, which is the root of the class object hierarchy.
- *
- * This module is implicitly imported.
+ * Forms the symbols available to all D programs. Includes Object, which is
+ * the root of the class object hierarchy.  This module is implicitly
+ * imported.
  * Macros:
  *      WIKI = Object
- */
-
-/*
- *  Copyright (C) 2004-2007 by Digital Mars, www.digitalmars.com
- *  Written by Walter Bright
  *
- *  This software is provided 'as-is', without any express or implied
- *  warranty. In no event will the authors be held liable for any damages
- *  arising from the use of this software.
+ * Copyright: Copyright Digital Mars 2000 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
+ * Authors:   Walter Bright, Sean Kelly
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, in both source and binary form, subject to the following
- *  restrictions:
- *
- *  o  The origin of this software must not be misrepresented; you must not
- *     claim that you wrote the original software. If you use this software
- *     in a product, an acknowledgment in the product documentation would be
- *     appreciated but is not required.
- *  o  Altered source versions must be plainly marked as such, and must not
- *     be misrepresented as being the original software.
- *  o  This notice may not be removed or altered from any source
- *     distribution.
- */
-
-/*
- *  Modified by Sean Kelly for use with the D Runtime Project
+ *          Copyright Digital Mars 2000 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
 
 module object;
@@ -178,10 +158,12 @@ class ClassInfo : Object
     //  4:                      // has offTi[] member
     //  8:                      // has constructors
     // 16:                      // has xgetMembers member
+    // 32:                      // has typeinfo member
     void*       deallocator;
     OffsetTypeInfo[] offTi;
     void function(Object) defaultConstructor;   // default Constructor
     const(MemberInfo[]) function(in char[]) xgetMembers;
+    TypeInfo typeinfo;
 
     /**
      * Search all modules for ClassInfo corresponding to classname.
@@ -420,7 +402,7 @@ class TypeInfo_Array : TypeInfo
         hash_t hash = 0;
         void[] a = *cast(void[]*)p;
         for (size_t i = 0; i < a.length; i++)
-            hash += value.getHash(a.ptr + i * sz);
+            hash += value.getHash(a.ptr + i * sz) * 11;
         return hash;
     }
 
@@ -1120,7 +1102,7 @@ class Throwable : Object
 
 
 alias Throwable.TraceInfo function(void* ptr = null) TraceHandler;
-private TraceHandler traceHandler = null;
+private __gshared TraceHandler traceHandler = null;
 
 
 /**
@@ -1215,6 +1197,8 @@ class ModuleInfo
 
     void function() ictor;      // module static constructor (order independent)
 
+    void*[4] reserved;          // for future expansion
+
     static int opApply(int delegate(inout ModuleInfo) dg)
     {
         int ret = 0;
@@ -1232,7 +1216,7 @@ class ModuleInfo
 
 // Windows: this gets initialized by minit.asm
 // Posix: this gets initialized in _moduleCtor()
-extern (C) ModuleInfo[] _moduleinfo_array;
+extern (C) __gshared ModuleInfo[] _moduleinfo_array;
 
 
 version (linux)
@@ -1245,20 +1229,46 @@ version (linux)
         ModuleInfo       mod;
     }
 
-    extern (C) ModuleReference* _Dmodule_ref;   // start of linked list
+    extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
+}
+
+version (FreeBSD)
+{
+    // This linked list is created by a compiler generated function inserted
+    // into the .ctor list by the compiler.
+    struct ModuleReference
+    {
+        ModuleReference* next;
+        ModuleInfo       mod;
+    }
+
+    extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
+}
+
+version (Solaris)
+{
+    // This linked list is created by a compiler generated function inserted
+    // into the .ctor list by the compiler.
+    struct ModuleReference
+    {
+        ModuleReference* next;
+        ModuleInfo       mod;
+    }
+
+    extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
 }
 
 version (OSX)
 {
     extern (C)
     {
-        extern void* _minfo_beg;
-        extern void* _minfo_end;
+        extern __gshared void* _minfo_beg;
+        extern __gshared void* _minfo_end;
     }
 }
 
-ModuleInfo[] _moduleinfo_dtors;
-uint         _moduleinfo_dtors_i;
+__gshared ModuleInfo[] _moduleinfo_dtors;
+__gshared uint         _moduleinfo_dtors_i;
 
 // Register termination function pointers
 extern (C) int _fatexit(void*);
@@ -1284,7 +1294,37 @@ extern (C) void _moduleCtor()
             len++;
         }
     }
-    
+
+    version (FreeBSD)
+    {
+        int len = 0;
+        ModuleReference *mr;
+
+        for (mr = _Dmodule_ref; mr; mr = mr.next)
+            len++;
+        _moduleinfo_array = new ModuleInfo[len];
+        len = 0;
+        for (mr = _Dmodule_ref; mr; mr = mr.next)
+        {   _moduleinfo_array[len] = mr.mod;
+            len++;
+        }
+    }
+
+    version (Solaris)
+    {
+        int len = 0;
+        ModuleReference *mr;
+
+        for (mr = _Dmodule_ref; mr; mr = mr.next)
+            len++;
+        _moduleinfo_array = new ModuleInfo[len];
+        len = 0;
+        for (mr = _Dmodule_ref; mr; mr = mr.next)
+        {   _moduleinfo_array[len] = mr.mod;
+            len++;
+        }
+    }
+
     version (OSX)
     {
         /* The ModuleInfo references are stored in the special segment

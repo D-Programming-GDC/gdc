@@ -103,7 +103,7 @@ version( Windows )
         }
         else
         {
-            int   _tlsstart;
+            __gshared int   _tlsstart;
             alias _tlsstart _tlsend;
         }
 
@@ -201,13 +201,13 @@ else version( Posix )
             }
             else
             {
-                int   _tlsstart;
+                __gshared int   _tlsstart;
                 alias _tlsstart _tlsend;
             }
         }
         else
         {
-            int   _tlsstart;
+            __gshared int   _tlsstart;
             alias _tlsstart _tlsend;
         }
 
@@ -316,7 +316,7 @@ else version( Posix )
         //
         // used to track the number of suspended threads
         //
-        sem_t   suspendCount;
+        __gshared sem_t   suspendCount;
 
 
         extern (C) void thread_suspendHandler( int sig )
@@ -1245,8 +1245,8 @@ private:
     //
     // Local storage
     //
-    static bool[LOCAL_MAX]  sm_local;
-    static TLSKey           sm_this;
+    __gshared bool[LOCAL_MAX]  sm_local;
+    __gshared TLSKey           sm_this;
 
     void*[LOCAL_MAX]        m_local;
 
@@ -1437,11 +1437,14 @@ private:
     }
 
 
-    static Context*     sm_cbeg;
-    static size_t       sm_clen;
+    __gshared
+    {
+	Context*     sm_cbeg;
+	size_t       sm_clen;
 
-    static Thread       sm_tbeg;
-    static size_t       sm_tlen;
+	Thread       sm_tbeg;
+	size_t       sm_tlen;
+    }
 
     //
     // Used for ordering threads in the global thread list.
@@ -1763,7 +1766,7 @@ static ~this()
 
 
 // Used for needLock below
-private bool multiThreadedFlag = false;
+private __gshared bool multiThreadedFlag = false;
 
 
 /**
@@ -1782,7 +1785,7 @@ extern (C) bool thread_needLock()
 
 
 // Used for suspendAll/resumeAll below
-private uint suspendDepth = 0;
+private __gshared uint suspendDepth = 0;
 
 
 /**
@@ -3373,7 +3376,7 @@ private:
     }
 
 
-    static Thread.TLSKey    sm_this;
+    __gshared Thread.TLSKey    sm_this;
 
 
 private:

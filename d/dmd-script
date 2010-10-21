@@ -156,6 +156,7 @@ Usage:
   -vdmd          print commands run by this script
   -version=level compile in version code >= level
   -version=ident compile in version code identified by ident
+  -vtls          list all variables going into thread local storage
   -w             enable warnings
   -wi            enable informational warnings
   -X             generate JSON file
@@ -353,6 +354,8 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-v$/ ) {
 	$verbose = 1;
 	push @out, '-fd-verbose';
+    } elsif ( $arg =~ m/^-vtls$/ ) {
+	push @out, '-fd-vtls';
     } elsif ( $arg =~ m/^-v1$/ ) {
 	push @out, '-fd-version=1';
     } elsif ( $arg =~ m/^-version=(.*)$/ ) {

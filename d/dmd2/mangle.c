@@ -30,7 +30,7 @@
 #include "id.h"
 #include "module.h"
 
-#if IN_GCC || TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD
+#if IN_GCC || TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
 char *cpp_mangle(Dsymbol *s);
 #endif
 
@@ -79,7 +79,12 @@ L1:
     if (sthis->type->deco)
 	buf.writestring(sthis->type->deco);
     else
-    {	assert(fd->inferRetType);
+    {
+#ifdef DEBUG
+	if (!fd->inferRetType)
+	    printf("%s\n", fd->toChars());
+#endif
+	assert(fd->inferRetType);
     }
 
     id = buf.toChars();
@@ -120,7 +125,7 @@ char *Declaration::mangle()
 		    return ident->toChars();
 
 		case LINKcpp:
-#if IN_GCC || DMDV2 && (TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD)
+#if IN_GCC || DMDV2 && (TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS)
 		    return cpp_mangle(this);
 #else
 		    // Windows C++ mangling is done by C++ back end
@@ -223,7 +228,9 @@ char *TemplateInstance::mangle()
     printf("\n");
 #endif
     id = ident ? ident->toChars() : toChars();
-    if (tempdecl->parent)
+    if (!tempdecl)
+	error("is not defined");
+    else if (tempdecl->parent)
     {
 	char *p = tempdecl->parent->mangle();
 	if (p[0] == '_' && p[1] == 'D')

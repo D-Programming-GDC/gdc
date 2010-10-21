@@ -303,10 +303,12 @@ void StructDeclaration::semantic(Scope *sc)
     if (sc->stc & STCabstract)
 	error("structs, unions cannot be abstract");
 #if DMDV2
-    if (storage_class & STCinvariant)
+    if (storage_class & STCimmutable)
         type = type->invariantOf();
     else if (storage_class & STCconst)
         type = type->constOf();
+    else if (storage_class & STCshared)
+        type = type->sharedOf();
 #endif
     if (attributes)
 	attributes->append(sc->attributes);
@@ -351,7 +353,7 @@ void StructDeclaration::semantic(Scope *sc)
 		    if (t->ty == Tstruct)
 			t = Type::tvoidptr;	// t should not be a ref type
                     assert(!vthis);
-                    vthis = new ThisDeclaration(t);
+                    vthis = new ThisDeclaration(loc, t);
 		    //vthis->storage_class |= STCref;
                     members->push(vthis);
                 }
@@ -361,7 +363,7 @@ void StructDeclaration::semantic(Scope *sc)
 
     sizeok = 0;
     sc2 = sc->push(this);
-    sc2->stc &= storage_class & (STCconst | STCinvariant);
+    sc2->stc &= storage_class & STC_TYPECTOR;
     sc2->attributes = NULL;
     sc2->parent = this;
     if (isUnionDeclaration())
@@ -506,7 +508,7 @@ void StructDeclaration::semantic(Scope *sc)
 	    }
 	    else
 	    {
-		if (!vd->type->isZeroInit())
+		if (!vd->type->isZeroInit(loc))
 		{
 		    zeroInit = 0;
 		    break;

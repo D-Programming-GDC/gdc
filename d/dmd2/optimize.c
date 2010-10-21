@@ -48,11 +48,20 @@ static real_t zero;	// work around DMC bug for now
 
 Expression *expandVar(int result, VarDeclaration *v)
 {
-    //printf("expandVar(result = %d, v = %s)\n", result, v ? v->toChars() : "null");
+    //printf("expandVar(result = %d, v = %p, %s)\n", result, v, v ? v->toChars() : "null");
+
     Expression *e = NULL;
-	if (v && !v->type) { error("ICE"); return e; }
-    if (v && (v->isConst() || v->isInvariant() || v->storage_class & STCmanifest))
+    if (!v)
+	return e;
+
+    if (v->isConst() || v->isInvariant() || v->storage_class & STCmanifest)
     {
+	if (!v->type)
+	{
+	    //error("ICE");
+	    return e;
+	}
+
 	Type *tb = v->type->toBasetype();
 	if (result & WANTinterpret ||
 	    v->storage_class & STCmanifest ||
@@ -62,7 +71,10 @@ Expression *expandVar(int result, VarDeclaration *v)
 	    if (v->init)
 	    {
 		if (v->inuse)
+		{   if (v->storage_class & STCmanifest)
+			v->error("recursive initialization of constant");
 		    goto L1;
+		}
 		Expression *ei = v->init->toExpression();
 		if (!ei)
 		    goto L1;
@@ -106,7 +118,9 @@ Expression *expandVar(int result, VarDeclaration *v)
 	    {
 		e = e->castTo(NULL, v->type);
 	    }
+	    v->inuse++;
 	    e = e->optimize(result);
+	    v->inuse--;
 	}
     }
 L1:
@@ -385,7 +399,7 @@ Expression *PtrExp::optimize(int result)
 	if (e && e->op == TOKstructliteral)
 	{   StructLiteralExp *sle = (StructLiteralExp *)e;
 	    e = sle->getField(type, se->offset);
-	    if (e != EXP_CANT_INTERPRET)
+	    if (e && e != EXP_CANT_INTERPRET)
 		return e;
 	}
     }
@@ -407,7 +421,7 @@ Expression *DotVarExp::optimize(int result)
 	    if (vf)
 	    {
 		e = sle->getField(type, vf->offset);
-		if (e != EXP_CANT_INTERPRET)
+		if (e && e != EXP_CANT_INTERPRET)
 		    return e;
 	    }
 	}
@@ -418,7 +432,7 @@ Expression *DotVarExp::optimize(int result)
 	if (vf)
 	{
 	    Expression *e = sle->getField(type, vf->offset);
-	    if (e != EXP_CANT_INTERPRET)
+	    if (e && e != EXP_CANT_INTERPRET)
 		return e;
 	}
     }

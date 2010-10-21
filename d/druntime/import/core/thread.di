@@ -65,7 +65,10 @@ version (Windows)
 }
 else
 {
+    __gshared 
+{
     int _tlsstart;
+}
     alias _tlsstart _tlsend;
 }
     extern (Windows) 
@@ -126,20 +129,29 @@ else
 }
 else
 {
+    __gshared 
+{
     int _tlsstart;
+}
     alias _tlsstart _tlsend;
 }
 }
 else
 {
+    __gshared 
+{
     int _tlsstart;
+}
     alias _tlsstart _tlsend;
 }
     extern (C) 
 {
     void* thread_entryPoint(void* arg);
 }
+    __gshared 
+{
     sem_t suspendCount;
+}
     extern (C) 
 {
     void thread_suspendHandler(int sig);
@@ -314,11 +326,11 @@ else
     alias pthread_t ThreadAddr;
 }
 }
-    static 
+    __gshared 
 {
     bool[LOCAL_MAX] sm_local;
 }
-    static 
+    __gshared 
 {
     TLSKey sm_this;
 }
@@ -459,20 +471,11 @@ else
 return Thread.classinfo;
 }
 }
-    static 
+    __gshared 
 {
     Context* sm_cbeg;
-}
-    static 
-{
     size_t sm_clen;
-}
-    static 
-{
     Thread sm_tbeg;
-}
-    static 
-{
     size_t sm_tlen;
 }
     Thread prev;
@@ -520,7 +523,10 @@ extern (C)
 }
 private
 {
+    __gshared 
+{
     bool multiThreadedFlag = false;
+}
 }
 extern (C) 
 {
@@ -531,7 +537,10 @@ return multiThreadedFlag;
 }
 private
 {
+    __gshared 
+{
     uint suspendDepth = 0;
+}
 }
 extern (C) 
 {
@@ -832,7 +841,7 @@ void delegate() m_dg;
 {
     void setThis(Fiber f);
 }
-    static 
+    __gshared 
 {
     Thread.TLSKey sm_this;
 }

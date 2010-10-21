@@ -1,11 +1,14 @@
-/*
- * Placed into the Public Domain.
- * written by Walter Bright
- * http://www.digitalmars.com
- */
-
-/*
- *  Modified by Sean Kelly for use with the D Runtime Project
+/**
+ * Contains main program entry point and support routines.
+ *
+ * Copyright: Copyright Digital Mars 2000 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
+ * Authors:   Walter Bright, Sean Kelly
+ *
+ *          Copyright Digital Mars 2000 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
@@ -13,7 +16,6 @@
 
    Modified by Iain Buclaw, September 2010.
 */
-
 module rt.dmain2;
 
 private
@@ -170,14 +172,14 @@ else
     }
 }
 
-bool _d_isHalting = false;
+shared bool _d_isHalting = false;
 
 extern (C) bool rt_isHalting()
 {
     return _d_isHalting;
 }
 
-extern (C) bool rt_trapExceptions = true;
+extern (C) shared bool rt_trapExceptions = true;
 
 void _d_criticalInit()
 {

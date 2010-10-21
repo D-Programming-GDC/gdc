@@ -1,10 +1,15 @@
 /**
  * D header file for POSIX.
  *
- * Copyright: Public Domain
- * License:   Public Domain
+ * Copyright: Copyright Sean Kelly 2005 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
+ *
+ *          Copyright Sean Kelly 2005 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sys.posix.time;
 
@@ -235,23 +240,31 @@ char* strptime(in char*, in char*, tm*);
 
 version( linux )
 {
-    extern int    daylight;
-    extern c_long timezone;
+    extern __gshared int    daylight;
+    extern __gshared c_long timezone;
 
     tm*   getdate(in char*);
     char* strptime(in char*, in char*, tm*);
 }
 else version( OSX )
 {
-    extern c_long timezone;
+    extern __gshared c_long timezone;
 
     tm*   getdate(in char*);
     char* strptime(in char*, in char*, tm*);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
-    extern c_long timezone;
+    extern __gshared c_long timezone;
 
     //tm*   getdate(in char*);
     char* strptime(in char*, in char*, tm*);
 }
+else version( Solaris )
+{
+    extern __gshared c_long timezone;
+
+    //tm*   getdate(in char*);
+    char* strptime(in char*, in char*, tm*);
+}
+

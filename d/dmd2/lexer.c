@@ -2966,6 +2966,7 @@ static Keyword keywords[] =
     {	"pure",		TOKpure		},
     {	"nothrow",	TOKnothrow	},
     {	"__thread",	TOKtls		},
+    {	"__gshared",	TOKgshared	},
     {	"__traits",	TOKtraits	},
     {	"__overloadset", TOKoverloadset	},
     {	"__FILE__",	TOKfile		},
