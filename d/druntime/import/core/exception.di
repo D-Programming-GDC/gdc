@@ -3,7 +3,10 @@ module core.exception;
 private
 {
     alias void function(string file, size_t line, string msg = null) assertHandlerType;
+    __gshared 
+{
     assertHandlerType assertHandler = null;
+}
 }
 class RangeError : Error
 {

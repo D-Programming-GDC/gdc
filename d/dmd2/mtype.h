@@ -297,6 +297,7 @@ struct Type : Object
     virtual Expression *toExpression();
     virtual int hasPointers();
     virtual Type *nextOf();
+    uinteger_t sizemask();
 
     static void error(Loc loc, const char *format, ...);
     static void warning(Loc loc, const char *format, ...);
@@ -663,6 +664,7 @@ struct TypeEnum : Type
     EnumDeclaration *sym;
 
     TypeEnum(EnumDeclaration *sym);
+    Type *syntaxCopy();
     d_uns64 size(Loc loc);
     unsigned alignsize();
     char *toChars();

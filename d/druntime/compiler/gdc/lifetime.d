@@ -202,7 +202,16 @@ extern (C) Array _d_newarrayT(TypeInfo ti, size_t length)
     else
     {
         result.length = length;
-        /*version (D_InlineAsm_X86)
+        
+        version (GNU)
+        {
+            // required to output the label;
+            static char x = 0;
+            if (x)
+                goto Loverflow;
+        }
+
+        version (D_InlineAsm_X86)
         {
             asm
             {
@@ -212,7 +221,7 @@ extern (C) Array _d_newarrayT(TypeInfo ti, size_t length)
                 jc      Loverflow       ;
             }
         }
-        else*/
+        else
             size *= length;
         result.data = cast(byte*) gc_malloc(size + 1, !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN : 0);
         debug(PRINTF) printf(" p = %p\n", result.data);
@@ -241,7 +250,16 @@ extern (C) Array _d_newarrayiT(TypeInfo ti, size_t length)
         auto initializer = ti.next.init();
         auto isize = initializer.length;
         auto q = initializer.ptr;
-        /*version (D_InlineAsm_X86)
+        
+        version (GNU)
+        {
+            // required to output the label;
+            static char x = 0;
+            if (x)
+                goto Loverflow;
+        }
+
+        version (D_InlineAsm_X86)
         {
             asm
             {
@@ -251,7 +269,7 @@ extern (C) Array _d_newarrayiT(TypeInfo ti, size_t length)
                 jc      Loverflow       ;
             }
         }
-        else*/
+        else
             size *= length;
         auto p = gc_malloc(size + 1, !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN : 0);
         debug(PRINTF) printf(" p = %p\n", p);

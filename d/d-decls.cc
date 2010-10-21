@@ -600,7 +600,7 @@ Symbol *FuncDeclaration::toSymbol()
 	    if (storage_class & STCnothrow)
 		TREE_NOTHROW( fn_decl ) = 1;
 	    // TODO: check 'immutable' means arguments are readonly...
-	    if (storage_class & STCinvariant)
+	    if (storage_class & STCimmutable)
 		TREE_READONLY( fn_decl ) = 1;
 	    if (storage_class & STCconst)
 		TREE_CONSTANT( fn_decl ) = 1;

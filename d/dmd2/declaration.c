@@ -471,6 +471,7 @@ void AliasDeclaration::semantic(Scope *sc)
     if (s && ((s->getType() && type->equals(s->getType())) || s->isEnumMember()))
 	goto L2;			// it's a symbolic alias
 
+#if DMDV2
     if (storage_class & STCref)
     {	// For 'ref' to be attached to function types, and picked
 	// up by Type::resolve(), it has to go into sc.
@@ -480,6 +481,7 @@ void AliasDeclaration::semantic(Scope *sc)
 	sc = sc->pop();
     }
     else
+#endif
 	type->resolve(loc, sc, &e, &t, &s);
     if (s)
     {
@@ -496,7 +498,9 @@ void AliasDeclaration::semantic(Scope *sc)
 	t = e->type;
     }
     else if (t)
+    {
 	type = t;
+    }
     if (overnext)
 	ScopeDsymbol::multiplyDefined(0, this, overnext);
     this->inSemantic = 0;
@@ -534,6 +538,7 @@ void AliasDeclaration::semantic(Scope *sc)
 	    s = NULL;
 	}
     }
+    //printf("setting aliassym %p to %p\n", this, s);
     aliassym = s;
     this->inSemantic = 0;
 }
@@ -631,12 +636,14 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     this->loc = loc;
     offset = 0;
     noauto = 0;
+#if DMDV1
+    nestedref = 0;
+#endif
     ctorinit = 0;
     aliassym = NULL;
     onstack = 0;
     canassign = 0;
     value = NULL;
-    scope = NULL;
 }
 
 Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
@@ -730,10 +737,12 @@ void VarDeclaration::semantic(Scope *sc)
     //printf("sc->stc = %x\n", sc->stc);
     //printf("storage_class = x%x\n", storage_class);
 
+#if DMDV2
     if (storage_class & STCgshared && global.params.safe && !sc->module->safe)
     {
 	error("__gshared not allowed in safe mode; use shared");
     }
+#endif
 
     Dsymbol *parent = toParent();
     FuncDeclaration *fd = parent->isFuncDeclaration();
@@ -848,7 +857,9 @@ Lagain:
 	if (!aad)
 	    aad = parent->isAggregateDeclaration();
 	if (aad)
-	{   assert(!(storage_class & (STCextern | STCstatic | STCtls | STCgshared)));
+	{
+#if DMDV2
+	    assert(!(storage_class & (STCextern | STCstatic | STCtls | STCgshared)));
 
 	    if (storage_class & (STCconst | STCimmutable) && init)
 	    {
@@ -856,6 +867,7 @@ Lagain:
 		    storage_class |= STCstatic;
 	    }
 	    else
+#endif
 		aad->addField(sc, this);
 	}
 
@@ -888,11 +900,13 @@ Lagain:
 	}
     }
 
+#if DMDV2
     if ((storage_class & (STCref | STCparameter | STCforeach)) == STCref &&
 	ident != Id::This)
     {
 	error("only parameters or foreach declarations can be ref");
     }
+#endif
 
     if (type->isauto() && !noauto)
     {
@@ -937,7 +951,9 @@ Lagain:
 	    Expression *e1;
 	    e1 = new VarExp(loc, this);
 	    e = new AssignExp(loc, e1, e);
+#if DMDV2
 	    e->op = TOKconstruct;
+#endif
 	    e->type = e1->type;		// don't type check this, it would fail
 	    init = new ExpInitializer(loc, e);
 	    return;
@@ -958,8 +974,10 @@ Lagain:
 	{
 	    init = getExpInitializer();
 	}
+#if DMDV2
 	// Default initializer is always a blit
 	op = TOKblit;
+#endif
     }
 
     if (init)
@@ -1037,7 +1055,7 @@ Lagain:
 		else if (t->ty == Tstruct)
 		{
 		    ei->exp = ei->exp->semantic(sc);
-
+#if DMDV2
 		    /* Look to see if initializer is a call to the constructor
 		     */
 		    StructDeclaration *sd = ((TypeStruct *)t)->sym;
@@ -1081,7 +1099,7 @@ Lagain:
 			    }
 			}
 		    }
-
+#endif
 		    if (!ei->exp->implicitConvTo(type))
 		    {	Type *ti = ei->exp->type->toBasetype();
 			// Don't cast away invariant or mutability in initializer
@@ -1135,11 +1153,12 @@ Lagain:
 		{
 		    if (global.gag == 0)
 			global.errors = errors;	// act as if nothing happened
-
+#if DMDV2
 		    /* Save scope for later use, to try again
 		     */
 		    scope = new Scope(*sc);
 		    scope->setNoFree();
+#endif
 		}
 		else if (ei)
 		{
@@ -1153,6 +1172,7 @@ Lagain:
 		    {
 			ei->exp = e;		// no errors, keep result
 		    }
+#if DMDV2
 		    else
 		    {
 			/* Save scope for later use, to try again
@@ -1160,6 +1180,7 @@ Lagain:
 			scope = new Scope(*sc);
 			scope->setNoFree();
 		    }
+#endif
 		}
 		else
 		    init = i2;		// no errors, keep result
@@ -1213,10 +1234,12 @@ void VarDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 	buf->writestring(ident->toChars());
     if (init)
     {	buf->writestring(" = ");
+#if DMDV2
 	ExpInitializer *ie = init->isExpInitializer();
 	if (ie && (ie->exp->op == TOKconstruct || ie->exp->op == TOKblit))
 	    ((AssignExp *)ie->exp)->e2->toCBuffer(buf, hgs);
 	else
+#endif
 	    init->toCBuffer(buf, hgs);
     }
     buf->writeByte(';');

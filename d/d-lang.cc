@@ -647,14 +647,12 @@ d_handle_option (size_t scode, const char *arg, int value)
       case OPT_fdebug_c:
 	  strcpy(lang_name, value ? "GNU C" : "GNU D");
 	  break;
-#if ! V2
       case OPT_fdeps_:
 	  global.params.moduleDepsFile = (char*)arg;
 	  if (!global.params.moduleDepsFile[0])
 	      error("bad argument for -fdeps");
 	  global.params.moduleDeps = new OutBuffer;
 	  break;
-#endif
       case OPT_fignore_unknown_pragmas:
 	  global.params.ignoreUnsupportedPragmas = value;
 	  break;
@@ -1169,7 +1167,6 @@ d_parse_file (int /*set_yydebug*/)
     if (global.errors)
 	goto had_errors;
 
-#if ! V2
     if (global.params.moduleDeps != NULL)
     {
 	assert(global.params.moduleDepsFile != NULL);
@@ -1179,7 +1176,6 @@ d_parse_file (int /*set_yydebug*/)
 	deps.setbuffer((void*)ob->data, ob->offset);
 	deps.writev();
     }
-#endif
 
     // Scan for functions to inline
     if (global.params.useInline)

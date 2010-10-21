@@ -226,14 +226,14 @@ body
 {
     size_t i;
     aaA *e;
-//printf("keyti = %p\n", keyti);
-//printf("aa = %p\n", aa);
+    //printf("keyti = %p\n", keyti);
+    //printf("aa = %p\n", aa);
     auto keysize = aligntsize(keyti.tsize());
 
     if (!aa.a)
         aa.a = new BB();
-//printf("aa = %p\n", aa);
-//printf("aa.a = %p\n", aa.a);
+    //printf("aa = %p\n", aa);
+    //printf("aa.a = %p\n", aa.a);
     aa.a.keyti = keyti;
 
     if (!aa.a.b.length)
@@ -462,9 +462,8 @@ body
     if (aa.a)
     {
         a.length = _aaLen(aa);
-	a.ptr = cast(byte*) gc_malloc(a.length * valuesize,
-				      valuesize < (void*).sizeof ? BlkAttr.NO_SCAN : 0);
-//      a.ptr = (new void[a.length * valuesize]).ptr;
+        a.ptr = cast(byte*) gc_malloc(a.length * valuesize,
+                                      valuesize < (void*).sizeof ? BlkAttr.NO_SCAN : 0);
         resi = 0;
         foreach (e; aa.a.b)
         {

@@ -15,7 +15,7 @@ class FiberException : Exception
 super(msg);
 }
 }
-private
+private 
 {
     extern (C) 
 {
@@ -33,7 +33,7 @@ return rt_stackBottom();
 }
 version (Windows)
 {
-    private
+    private 
 {
     import core.stdc.stdint;
     import core.sys.windows.windows;
@@ -88,7 +88,7 @@ else
 {
     version (Posix)
 {
-    private
+    private 
 {
     import core.sys.posix.semaphore;
     import core.sys.posix.pthread;
@@ -291,7 +291,7 @@ return getThis().m_local[key] = val;
 }
 }
     static this();
-    private
+    private 
 {
     this()
 {
@@ -305,7 +305,7 @@ m_tls = pstart[0..pend - pstart];
 {
     void run();
 }
-    private
+    private 
 {
     enum Call 
 {
@@ -361,13 +361,13 @@ void delegate() m_dg;
 }
     bool m_isDaemon;
     Object m_unhandled;
-    private
+    private 
 {
     static 
 {
     void setThis(Thread t);
 }
-    private
+    private 
 {
     final 
 {
@@ -462,7 +462,7 @@ else
 }
 }
 }
-    private
+    private 
 {
     static 
 {
@@ -474,8 +474,17 @@ return Thread.classinfo;
     __gshared 
 {
     Context* sm_cbeg;
+}
+    __gshared 
+{
     size_t sm_clen;
+}
+    __gshared 
+{
     Thread sm_tbeg;
+}
+    __gshared 
+{
     size_t sm_tlen;
 }
     Thread prev;
@@ -521,7 +530,7 @@ extern (C)
 {
     void thread_joinAll();
 }
-private
+private 
 {
     __gshared 
 {
@@ -535,7 +544,7 @@ extern (C)
 return multiThreadedFlag;
 }
 }
-private
+private 
 {
     __gshared 
 {
@@ -550,7 +559,7 @@ extern (C)
 {
     void thread_resumeAll();
 }
-private
+private 
 {
     alias void delegate(void*, void*) scanAllThreadsFn;
 }
@@ -583,7 +592,7 @@ Thread.setLocal(m_key,wrap);
 wrap.val = newval;
 return newval;
 }
-    private
+    private 
 {
     struct Wrap
 {
@@ -620,12 +629,12 @@ class ThreadGroup
 {
     void joinAll(bool rethrow = true);
 }
-    private
+    private 
 {
     Thread[Thread] m_all;
 }
 }
-private
+private 
 {
     version (D_InlineAsm_X86)
 {
@@ -688,7 +697,7 @@ else
 }
 }
 static this();
-private
+private 
 {
     extern (C) 
 {
@@ -782,7 +791,7 @@ return m_state;
     Fiber getThis();
 }
     static this();
-    private
+    private 
 {
     this()
 {
@@ -792,7 +801,7 @@ m_call = Call.NO;
 {
     void run();
 }
-    private
+    private 
 {
     enum Call 
 {
@@ -809,7 +818,7 @@ void delegate() m_dg;
     bool m_isRunning;
     Object m_unhandled;
     State m_state;
-    private
+    private 
 {
     final 
 {
@@ -835,7 +844,7 @@ void delegate() m_dg;
     ucontext_t m_utxt = void;
     ucontext_t* m_ucur = null;
 }
-    private
+    private 
 {
     static 
 {
@@ -845,7 +854,7 @@ void delegate() m_dg;
 {
     Thread.TLSKey sm_this;
 }
-    private
+    private 
 {
     final 
 {

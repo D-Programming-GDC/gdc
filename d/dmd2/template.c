@@ -317,7 +317,7 @@ TemplateDeclaration::TemplateDeclaration(Loc loc, Identifier *id,
     this->members = decldefs;
     this->overnext = NULL;
     this->overroot = NULL;
-    this->scope = NULL;
+    this->semanticRun = 0;
     this->onemember = NULL;
     this->literal = 0;
 }
@@ -352,8 +352,9 @@ void TemplateDeclaration::semantic(Scope *sc)
 #if LOG
     printf("TemplateDeclaration::semantic(this = %p, id = '%s')\n", this, ident->toChars());
 #endif
-    if (scope)
+    if (semanticRun)
 	return;		// semantic() already run
+    semanticRun = 1;
 
     if (sc->func)
     {
@@ -877,8 +878,8 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(Loc loc, Objects *targsi,
 	fvarargs = fctor->varargs;
     }
 
-    nfparams = Argument::dim(fparameters); // number of function parameters
-    nfargs = fargs->dim;		// number of function arguments
+    nfparams = Argument::dim(fparameters);	// number of function parameters
+    nfargs = fargs ? fargs->dim : 0;		// number of function arguments
 
     /* Check for match of function arguments with variadic template
      * parameter, such as:
@@ -1328,7 +1329,7 @@ FuncDeclaration *TemplateDeclaration::deduceFunctionTemplate(Scope *sc, Loc loc,
 
     for (TemplateDeclaration *td = this; td; td = td->overnext)
     {
-	if (!td->scope)
+	if (!td->semanticRun)
 	{
 	    error("forward reference to template %s", td->toChars());
 	    goto Lerror;
@@ -3214,7 +3215,7 @@ TemplateInstance::TemplateInstance(Loc loc, Identifier *ident)
     this->tinst = NULL;
     this->argsym = NULL;
     this->aliasdecl = NULL;
-    this->semanticdone = 0;
+    this->semanticRun = 0;
     this->semantictiargsdone = 0;
     this->withsym = NULL;
     this->nest = 0;
@@ -3245,7 +3246,7 @@ TemplateInstance::TemplateInstance(Loc loc, TemplateDeclaration *td, Objects *ti
     this->tinst = NULL;
     this->argsym = NULL;
     this->aliasdecl = NULL;
-    this->semanticdone = 0;
+    this->semanticRun = 0;
     this->semantictiargsdone = 1;
     this->withsym = NULL;
     this->nest = 0;
@@ -3332,13 +3333,13 @@ void TemplateInstance::semantic(Scope *sc)
     // get the enclosing template instance from the scope tinst
     tinst = sc->tinst;
 
-    if (semanticdone != 0)
+    if (semanticRun != 0)
     {
 	error(loc, "recursive template expansion");
 //	inst = this;
 	return;
     }
-    semanticdone = 1;
+    semanticRun = 1;
 
 #if LOG
     printf("\tdo semantic\n");
@@ -3512,7 +3513,7 @@ void TemplateInstance::semantic(Scope *sc)
 	{   Module *m = sc->module->importedFrom;
 	    //printf("\t2: adding to module %s instead of module %s\n", m->toChars(), sc->module->toChars());
 	    a = m->members;
-	    if (m->semanticdone >= 3)
+	    if (m->semanticRun >= 3)
 		dosemantic3 = 1;
 #ifdef IN_GCC
 	    objFileModule = m;
@@ -3536,9 +3537,9 @@ void TemplateInstance::semantic(Scope *sc)
 
     // Create our own scope for the template parameters
     Scope *scope = tempdecl->scope;
-    if (!scope)
+    if (!tempdecl->semanticRun)
     {
-	error("forward reference to template declaration %s\n", tempdecl->toChars());
+	error("template instantiation %s forward references template declaration %s\n", toChars(), tempdecl->toChars());
 	return;
     }
 
@@ -3752,6 +3753,7 @@ void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int f
 	    }
 	    else if (ta)
 	    {
+	      Ltype:
 		if (ta->ty == Ttuple)
 		{   // Expand tuple
 		    TypeTuple *tt = (TypeTuple *)ta;
@@ -3787,12 +3789,26 @@ void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int f
 		ea = ea->optimize(WANTvalue | WANTinterpret);
 	    tiargs->data[j] = ea;
 	    if (ea->op == TOKtype)
-		tiargs->data[j] = ea->type;
+	    {	ta = ea->type;
+		goto Ltype;
+	    }
+	    if (ea->op == TOKtuple)
+	    {   // Expand tuple
+		TupleExp *te = (TupleExp *)ea;
+		size_t dim = te->exps->dim;
+		tiargs->remove(j);
+		if (dim)
+		{   tiargs->reserve(dim);
+		    for (size_t i = 0; i < dim; i++)
+			tiargs->insert(j + i, te->exps->data[i]);
+		}
+		j--;
+	    }
 	}
 	else if (sa)
 	{
 	    TemplateDeclaration *td = sa->isTemplateDeclaration();
-	    if (td && !td->scope && td->literal)
+	    if (td && !td->semanticRun && td->literal)
 		td->semantic(sc);
 	}
 	else
@@ -3933,6 +3949,23 @@ TemplateDeclaration *TemplateInstance::findBestMatch(Scope *sc)
 #if LOG
     printf("TemplateInstance::findBestMatch()\n");
 #endif
+    // First look for forward references
+    for (TemplateDeclaration *td = tempdecl; td; td = td->overnext)
+    {
+	if (!td->semanticRun)
+	{
+	    if (td->scope)
+	    {	// Try to fix forward reference
+		td->semantic(td->scope);
+	    }
+	    if (!td->semanticRun)
+	    {
+		error("%s forward references template declaration %s\n", toChars(), td->toChars());
+		return NULL;
+	    }
+	}
+    }
+
     for (TemplateDeclaration *td = tempdecl; td; td = td->overnext)
     {
 	MATCH m;
@@ -3949,11 +3982,7 @@ TemplateDeclaration *TemplateInstance::findBestMatch(Scope *sc)
 
 	dedtypes.setDim(td->parameters->dim);
 	dedtypes.zero();
-	if (!td->scope)
-	{
-	    error("forward reference to template declaration %s", td->toChars());
-	    return NULL;
-	}
+	assert(td->semanticRun);
 	m = td->matchWithInstance(this, &dedtypes, 0);
 	//printf("matchWithInstance = %d\n", m);
 	if (!m)			// no match at all
@@ -4247,7 +4276,7 @@ Identifier *TemplateInstance::genIdent()
  * template instance arguments.
  */
 
-void TemplateInstance::declareParameters(Scope *scope)
+void TemplateInstance::declareParameters(Scope *sc)
 {
     //printf("TemplateInstance::declareParameters()\n");
     for (int i = 0; i < tdtypes.dim; i++)
@@ -4257,7 +4286,7 @@ void TemplateInstance::declareParameters(Scope *scope)
 	Object *o = (Object *)tdtypes.data[i];		// initializer for tp
 
 	//printf("\ttdtypes[%d] = %p\n", i, o);
-	tempdecl->declareParameter(scope, tp, o);
+	tempdecl->declareParameter(sc, tp, o);
     }
 }
 
@@ -4265,9 +4294,9 @@ void TemplateInstance::declareParameters(Scope *scope)
 void TemplateInstance::semantic2(Scope *sc)
 {   int i;
 
-    if (semanticdone >= 2)
+    if (semanticRun >= 2)
 	return;
-    semanticdone = 2;
+    semanticRun = 2;
 #if LOG
     printf("+TemplateInstance::semantic2('%s')\n", toChars());
 #endif
@@ -4297,12 +4326,12 @@ printf("\tmember '%s', kind = '%s'\n", s->toChars(), s->kind());
 void TemplateInstance::semantic3(Scope *sc)
 {
 #if LOG
-    printf("TemplateInstance::semantic3('%s'), semanticdone = %d\n", toChars(), semanticdone);
+    printf("TemplateInstance::semantic3('%s'), semanticRun = %d\n", toChars(), semanticRun);
 #endif
 //if (toChars()[0] == 'D') *(char*)0=0;
-    if (semanticdone >= 3)
+    if (semanticRun >= 3)
 	return;
-    semanticdone = 3;
+    semanticRun = 3;
     if (!errors && members)
     {
 	sc = tempdecl->scope;
@@ -4447,7 +4476,6 @@ TemplateMixin::TemplateMixin(Loc loc, Identifier *ident, Type *tqual,
     this->tqual = tqual;
     this->idents = idents;
     this->tiargs = tiargs ? tiargs : new Objects();
-    this->scope = NULL;
 }
 
 Dsymbol *TemplateMixin::syntaxCopy(Dsymbol *s)
@@ -4481,7 +4509,7 @@ void TemplateMixin::semantic(Scope *sc)
     printf("+TemplateMixin::semantic('%s', this=%p)\n", toChars(), this);
     fflush(stdout);
 #endif
-    if (semanticdone &&
+    if (semanticRun &&
 	// This for when a class/struct contains mixin members, and
 	// is done over because of forward references
 	(!parent || !toParent()->isAggregateDeclaration()))
@@ -4491,8 +4519,8 @@ void TemplateMixin::semantic(Scope *sc)
 #endif
 	return;
     }
-    if (!semanticdone)
-	semanticdone = 1;
+    if (!semanticRun)
+	semanticRun = 1;
 #if LOG
     printf("\tdo semantic\n");
 #endif
@@ -4565,7 +4593,7 @@ void TemplateMixin::semantic(Scope *sc)
     assert(tempdecl);
     for (TemplateDeclaration *td = tempdecl; td; td = td->overnext)
     {
-	if (!td->scope)
+	if (!td->semanticRun)
 	{
 	    /* Cannot handle forward references if mixin is a struct member,
 	     * because addField must happen during struct's semantic, not
@@ -4573,7 +4601,7 @@ void TemplateMixin::semantic(Scope *sc)
 	     * runDeferred will re-run mixin's semantic outside of the struct's
 	     * semantic.
 	     */
-	    semanticdone = 0;
+	    semanticRun = 0;
 	    AggregateDeclaration *ad = toParent()->isAggregateDeclaration();
 	    if (ad)
 		ad->sizeok = 2;
@@ -4679,19 +4707,19 @@ void TemplateMixin::semantic(Scope *sc)
 
     argsym = new ScopeDsymbol();
     argsym->parent = scy->parent;
-    Scope *scope = scy->push(argsym);
+    Scope *argscope = scy->push(argsym);
 
     unsigned errorsave = global.errors;
 
     // Declare each template parameter as an alias for the argument type
-    declareParameters(scope);
+    declareParameters(argscope);
 
     // Add members to enclosing scope, as well as this scope
     for (unsigned i = 0; i < members->dim; i++)
     {   Dsymbol *s;
 
 	s = (Dsymbol *)members->data[i];
-	s->addMember(scope, this, i);
+	s->addMember(argscope, this, i);
 	//sc->insert(s);
 	//printf("sc->parent = %p, sc->scopesym = %p\n", sc->parent, sc->scopesym);
 	//printf("s->parent = %s\n", s->parent->toChars());
@@ -4702,7 +4730,7 @@ void TemplateMixin::semantic(Scope *sc)
     printf("\tdo semantic() on template instance members '%s'\n", toChars());
 #endif
     Scope *sc2;
-    sc2 = scope->push(this);
+    sc2 = argscope->push(this);
     sc2->offset = sc->offset;
 
     static int nest;
@@ -4745,7 +4773,7 @@ void TemplateMixin::semantic(Scope *sc)
 
     sc2->pop();
 
-    scope->pop();
+    argscope->pop();
 
 //    if (!isAnonymous())
     {
@@ -4759,9 +4787,9 @@ void TemplateMixin::semantic(Scope *sc)
 void TemplateMixin::semantic2(Scope *sc)
 {   int i;
 
-    if (semanticdone >= 2)
+    if (semanticRun >= 2)
 	return;
-    semanticdone = 2;
+    semanticRun = 2;
 #if LOG
     printf("+TemplateMixin::semantic2('%s')\n", toChars());
 #endif
@@ -4789,9 +4817,9 @@ void TemplateMixin::semantic2(Scope *sc)
 void TemplateMixin::semantic3(Scope *sc)
 {   int i;
 
-    if (semanticdone >= 3)
+    if (semanticRun >= 3)
 	return;
-    semanticdone = 3;
+    semanticRun = 3;
 #if LOG
     printf("TemplateMixin::semantic3('%s')\n", toChars());
 #endif

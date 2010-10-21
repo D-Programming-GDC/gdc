@@ -78,6 +78,11 @@ FuncDeclaration *hasThis(Scope *sc);
 Expression *fromConstInitializer(int result, Expression *e);
 int arrayExpressionCanThrow(Expressions *exps);
 
+struct IntRange
+{   uinteger_t imin;
+    uinteger_t imax;
+};
+
 struct Expression : Object
 {
     Loc loc;			// file location
@@ -115,6 +120,7 @@ struct Expression : Object
     virtual Expression *modifiableLvalue(Scope *sc, Expression *e);
     virtual Expression *implicitCastTo(Scope *sc, Type *t);
     virtual MATCH implicitConvTo(Type *t);
+    virtual IntRange getIntRange();
     virtual Expression *castTo(Scope *sc, Type *t);
     virtual void checkEscape();
     void checkScalar();
@@ -174,6 +180,7 @@ struct IntegerExp : Expression
     Expression *interpret(InterState *istate);
     char *toChars();
     void dump(int indent);
+    IntRange getIntRange();
     dinteger_t toInteger();
     real_t toReal();
     real_t toImaginary();
@@ -475,6 +482,7 @@ struct TypeExp : Expression
     TypeExp(Loc loc, Type *type);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
+    void rvalue();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Expression *optimize(int result);
     elem *toElem(IRState *irs);
@@ -1009,6 +1017,8 @@ struct CastExp : UnaExp
     CastExp(Loc loc, Expression *e, unsigned mod);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
+    MATCH implicitConvTo(Type *t);
+    IntRange getIntRange();
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     int checkSideEffect(int flag);
@@ -1093,11 +1103,14 @@ struct CommaExp : BinExp
     CommaExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     void checkEscape();
+    IntRange getIntRange();
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);
     int isBool(int result);
     int checkSideEffect(int flag);
+    MATCH implicitConvTo(Type *t);
+    Expression *castTo(Scope *sc, Type *t);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     elem *toElem(IRState *irs);
@@ -1254,6 +1267,7 @@ struct DivExp : BinExp
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
     Expression *buildArrayLoop(Arguments *fparams);
+    IntRange getIntRange();
 
     // For operator overloading
     Identifier *opId();
@@ -1284,6 +1298,7 @@ struct ShlExp : BinExp
     Expression *semantic(Scope *sc);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
+    IntRange getIntRange();
 
     // For operator overloading
     Identifier *opId();
@@ -1298,6 +1313,7 @@ struct ShrExp : BinExp
     Expression *semantic(Scope *sc);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
+    IntRange getIntRange();
 
     // For operator overloading
     Identifier *opId();
@@ -1312,6 +1328,7 @@ struct UshrExp : BinExp
     Expression *semantic(Scope *sc);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
+    IntRange getIntRange();
 
     // For operator overloading
     Identifier *opId();
@@ -1328,6 +1345,7 @@ struct AndExp : BinExp
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
     Expression *buildArrayLoop(Arguments *fparams);
+    IntRange getIntRange();
 
     // For operator overloading
     int isCommutative();
@@ -1345,6 +1363,8 @@ struct OrExp : BinExp
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
     Expression *buildArrayLoop(Arguments *fparams);
+    MATCH implicitConvTo(Type *t);
+    IntRange getIntRange();
 
     // For operator overloading
     int isCommutative();
@@ -1362,6 +1382,8 @@ struct XorExp : BinExp
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
     Expression *buildArrayLoop(Arguments *fparams);
+    MATCH implicitConvTo(Type *t);
+    IntRange getIntRange();
 
     // For operator overloading
     int isCommutative();
