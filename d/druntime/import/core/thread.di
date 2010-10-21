@@ -268,14 +268,22 @@ m_curr = &m_main;
 {
     uint LOCAL_MAX = 64;
 }
+    deprecated 
+{
     static 
 {
     uint createLocal();
 }
+}
+    deprecated 
+{
     static 
 {
     void deleteLocal(uint key);
 }
+}
+    deprecated 
+{
     static 
 {
     void* getLocal(uint key)
@@ -283,11 +291,15 @@ m_curr = &m_main;
 return getThis().m_local[key];
 }
 }
+}
+    deprecated 
+{
     static 
 {
     void* setLocal(uint key, void* val)
 {
 return getThis().m_local[key] = val;
+}
 }
 }
     static this();
@@ -567,7 +579,9 @@ extern (C)
 {
     void thread_scanAll(scanAllThreadsFn scan, void* curStackTop = null);
 }
-template ThreadLocal(T)
+deprecated 
+{
+    template ThreadLocal(T)
 {
 class ThreadLocal
 {
@@ -600,6 +614,7 @@ return newval;
 }
     T m_def;
     uint m_key;
+}
 }
 }
 }

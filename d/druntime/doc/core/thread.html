@@ -329,7 +329,7 @@ Zero if all elemented are visited, nonzero if not.
 <br><br>
 
 </dd>
-<dt><big>static uint <u>createLocal</u>();
+<dt><big>deprecated static uint <u>createLocal</u>();
 </big></dt>
 <dd>Reserves a local storage pointer for use and initializes this location
  to <b>null</b> for all running threads.
@@ -340,7 +340,7 @@ A key representing the array offset of this memory location.
 <br><br>
 
 </dd>
-<dt><big>static void <u>deleteLocal</u>(uint <i>key</i>);
+<dt><big>deprecated static void <u>deleteLocal</u>(uint <i>key</i>);
 </big></dt>
 <dd>Marks the supplied <i>key</i> as available and sets the associated location
  to <b>null</b> for all running threads.  It is assumed that any <i>key</i> passed
@@ -353,7 +353,7 @@ A key representing the array offset of this memory location.
 </table><br>
 
 </dd>
-<dt><big>static void* <u>getLocal</u>(uint <i>key</i>);
+<dt><big>deprecated static void* <u>getLocal</u>(uint <i>key</i>);
 </big></dt>
 <dd>Loads the value stored at <i>key</i> within a thread-local static array.  It is
  assumed that any <i>key</i> passed to this function is valid.
@@ -368,7 +368,7 @@ The data associated with the supplied <i>key</i>.
 <br><br>
 
 </dd>
-<dt><big>static void* <u>setLocal</u>(uint <i>key</i>, void* <i>val</i>);
+<dt><big>deprecated static void* <u>setLocal</u>(uint <i>key</i>, void* <i>val</i>);
 </big></dt>
 <dd>Stores the supplied value at <i>key</i> within a thread-local static array.  It
  is assumed that any <i>key</i> passed to this function is valid.

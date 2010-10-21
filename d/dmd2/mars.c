@@ -95,7 +95,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates."
 #endif
     ;
-    version = "v2.031";
+    version = "v2.032";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -340,6 +340,10 @@ int main(int argc, char *argv[])
 #if TARGET_WINDOS
     VersionCondition::addPredefinedGlobalIdent("Windows");
     global.params.isWindows = 1;
+#if TARGET_NET
+    // TARGET_NET macro is NOT mutually-exclusive with TARGET_WINDOS
+    VersionCondition::addPredefinedGlobalIdent("D_NET");
+#endif
 #elif TARGET_LINUX
     VersionCondition::addPredefinedGlobalIdent("Posix");
     VersionCondition::addPredefinedGlobalIdent("linux");
@@ -361,11 +365,6 @@ int main(int argc, char *argv[])
     global.params.isSolaris = 1;
 #else
 #error "fix this"
-#endif
-
-#if TARGET_NET
-    // TARGET_NET macro is NOT mutually-exclusive with TARGET_WINDOS
-    VersionCondition::addPredefinedGlobalIdent("D_NET");
 #endif
 
     VersionCondition::addPredefinedGlobalIdent("LittleEndian");
@@ -697,7 +696,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-#if !TARGET_LINUX && !TARGET_OSX && !TARGET_FREEBSD
+#if TARGET_WINDOS
 	    char *ext = FileName::ext(p);
 	    if (ext && FileName::compare(ext, "exe") == 0)
 	    {

@@ -1,12 +1,12 @@
 // D import file generated from 'core\sync\semaphore.d'
 module core.sync.semaphore;
-public
+public 
 {
     import core.sync.exception;
 }
 version (Win32)
 {
-    private
+    private 
 {
     import core.sys.windows.windows;
 }
@@ -15,19 +15,19 @@ else
 {
     version (OSX)
 {
-    private
+    private 
 {
     import core.sync.config;
 }
-    private
+    private 
 {
     import core.stdc.errno;
 }
-    private
+    private 
 {
     import core.sys.posix.time;
 }
-    private
+    private 
 {
     import core.sys.osx.mach.semaphore;
 }
@@ -36,19 +36,19 @@ else
 {
     version (Posix)
 {
-    private
+    private 
 {
     import core.sync.config;
 }
-    private
+    private 
 {
     import core.stdc.errno;
 }
-    private
+    private 
 {
     import core.sys.posix.pthread;
 }
-    private
+    private 
 {
     import core.sys.posix.semaphore;
 }
@@ -62,7 +62,7 @@ class Semaphore
     bool wait(long period);
     void notify();
     bool tryWait();
-    private
+    private 
 {
     version (Win32)
 {
@@ -86,7 +86,7 @@ else
 }
 version (unittest)
 {
-    private
+    private 
 {
     import core.thread;
 }

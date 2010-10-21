@@ -246,7 +246,7 @@ class Semaphore
                     throw new SyncException( "Unable to wait for semaphore" );
             }
             // -w trip
-            return false;
+            //return false;
         }
         else version( Posix )
         {
@@ -262,8 +262,6 @@ class Semaphore
                 if( errno != EINTR )
                     throw new SyncException( "Unable to wait for semaphore" );
             }
-            // -w trip
-            return false;
         }
     }
 
@@ -336,8 +334,6 @@ class Semaphore
                 if( errno != EINTR )
                     throw new SyncException( "Unable to wait for semaphore" );
             }
-            // -w trip
-            return false;
         }
     }
 

@@ -301,7 +301,7 @@ void TypeInfoTypedefDeclaration::toDt(dt_t **pdt)
     assert(sd->basetype->vtinfo);
     dtxoff(pdt, sd->basetype->vtinfo->toSymbol(), 0, TYnptr);	// TypeInfo for basetype
 
-    char *name = sd->toPrettyChars();
+    const char *name = sd->toPrettyChars();
     size_t namelen = strlen(name);
     dtdword(pdt, namelen);
     dtabytes(pdt, TYnptr, 0, namelen + 1, name);
@@ -343,7 +343,7 @@ void TypeInfoEnumDeclaration::toDt(dt_t **pdt)
     else
 	dtdword(pdt, 0);
 
-    char *name = sd->toPrettyChars();
+    const char *name = sd->toPrettyChars();
     size_t namelen = strlen(name);
     dtdword(pdt, namelen);
     dtabytes(pdt, TYnptr, 0, namelen + 1, name);
@@ -479,7 +479,7 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
      *	name[]
      */
 
-    char *name = sd->toPrettyChars();
+    const char *name = sd->toPrettyChars();
     size_t namelen = strlen(name);
     dtdword(pdt, namelen);
     //dtabytes(pdt, TYnptr, 0, namelen + 1, name);

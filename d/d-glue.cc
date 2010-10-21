@@ -4170,6 +4170,9 @@ IfStatement::toIR(IRState * irs)
 void
 ForeachStatement::toIR(IRState* irs)
 {
+    ::error("ForeachStatement::toIR: we shouldn't emit this (%s)", toChars());
+    abort();
+#if 0
     // %% better?: set iter to start - 1 and use result of increment for condition?
 
     // side effects?
@@ -4292,6 +4295,7 @@ ForeachStatement::toIR(IRState* irs)
 
     irs->endBindings(); // not really needed
     irs->endScope();
+#endif
 }
 
 #if V2
@@ -4299,6 +4303,9 @@ ForeachStatement::toIR(IRState* irs)
 void
 ForeachRangeStatement::toIR(IRState * irs)
 {
+    ::error("ForeachRangeStatement::toIR: we shouldn't emit this (%s)", toChars());
+    abort();
+#if 0
     bool fwd = op == TOKforeach;
     Type * key_type = key->type->toBasetype();
 
@@ -4359,6 +4366,7 @@ ForeachRangeStatement::toIR(IRState * irs)
 
     irs->endBindings(); // not really needed
     irs->endScope();
+#endif
 }
 
 #endif
@@ -4396,6 +4404,9 @@ DoStatement::toIR(IRState * irs)
 void
 WhileStatement::toIR(IRState* irs)
 {
+    ::error("WhileStatement::toIR: we shouldn't emit this (%s)", toChars());
+    abort();
+#if 0
     irs->doLineNote(loc); // store for next statement...
     irs->startLoop(this);
     irs->exitIfFalse(condition, 1); // 1 == is topcond .. good as deprecated..
@@ -4403,6 +4414,7 @@ WhileStatement::toIR(IRState* irs)
 	body->toIR( irs );
     irs->continueHere();
     irs->endLoop();
+#endif
 }
 
 void

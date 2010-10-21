@@ -356,6 +356,8 @@ void ClassDeclaration::semantic(Scope *sc)
 		    //printf("\ttry later, forward reference of base class %s\n", tc->sym->toChars());
 		    scope = scx ? scx : new Scope(*sc);
 		    scope->setNoFree();
+		    if (tc->sym->scope)
+		        tc->sym->scope->module->addDeferredSemantic(tc->sym);
 		    scope->module->addDeferredSemantic(this);
 		    return;
 		}
@@ -409,6 +411,12 @@ void ClassDeclaration::semantic(Scope *sc)
 		    error("inherits from duplicate interface %s", b2->base->toChars());
 	    }
 
+	    if (!tc->sym->symtab)
+	    {   // Try to resolve forward reference
+		if (sc->mustsemantic && tc->sym->scope)
+		    tc->sym->semantic(NULL);
+	    }
+
 	    b->base = tc->sym;
 	    if (!b->base->symtab || b->base->scope)
 	    {
@@ -417,6 +425,8 @@ void ClassDeclaration::semantic(Scope *sc)
 		//printf("\ttry later, forward reference of base %s\n", baseClass->toChars());
 		scope = scx ? scx : new Scope(*sc);
 		scope->setNoFree();
+		if (tc->sym->scope)
+		    tc->sym->scope->module->addDeferredSemantic(tc->sym);
 		scope->module->addDeferredSemantic(this);
 		return;
 	    }
@@ -806,8 +816,8 @@ int ClassDeclaration::isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset)
 Dsymbol *ClassDeclaration::search(Loc loc, Identifier *ident, int flags)
 {
     Dsymbol *s;
-
     //printf("%s.ClassDeclaration::search('%s')\n", toChars(), ident->toChars());
+
     if (scope)
     {	Scope *sc = scope;
 	sc->mustsemantic++;
@@ -970,10 +980,12 @@ int ClassDeclaration::isCOMinterface()
     return 0;
 }
 
+#if DMDV2
 int ClassDeclaration::isCPPinterface()
 {
     return 0;
 }
+#endif
 
 
 /****************************************
@@ -1154,6 +1166,11 @@ void InterfaceDeclaration::semantic(Scope *sc)
 		error("circular inheritance of interface");
 		baseclasses.remove(i);
 		continue;
+	    }
+	    if (!b->base->symtab)
+	    {   // Try to resolve forward reference
+		if (sc->mustsemantic && b->base->scope)
+		    b->base->semantic(NULL);
 	    }
 	    if (!b->base->symtab || b->base->scope || b->base->inuse)
 	    {
@@ -1340,10 +1357,12 @@ int InterfaceDeclaration::isCOMinterface()
     return com;
 }
 
+#if DMDV2
 int InterfaceDeclaration::isCPPinterface()
 {
     return cpp;
 }
+#endif
 
 /*******************************************
  */
