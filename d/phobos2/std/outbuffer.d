@@ -16,9 +16,7 @@
 
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
-
-   Modified by David Friedman, September 2004
-*/
+ */
 
 module std.outbuffer;
 
@@ -28,7 +26,7 @@ private
     import std.string;
     import std.c.stdio;
     import std.c.stdlib;
-    import std.c.stdarg;
+    import std.stdarg;
 }
 
 /*********************************************
@@ -43,12 +41,12 @@ private
 class OutBuffer
 {
     ubyte data[];
-    size_t offset;
+    uint offset;
 
     invariant()
     {
 	//printf("this = %p, offset = %x, data.length = %u\n", this, offset, data.length);
-	assert(offset <= data.length);
+        assert(offset <= data.length);
     }
 
     this()
@@ -71,7 +69,7 @@ class OutBuffer
      */
 
 
-    void reserve(size_t nbytes)
+    void reserve(uint nbytes)
 	in
 	{
 	    assert(offset + nbytes >= offset);
@@ -101,6 +99,16 @@ class OutBuffer
 	    offset += bytes.length;
 	}
 
+    void write(in wchar[] chars)
+	{
+        write(cast(ubyte[]) chars);
+	}
+
+    void write(const(dchar)[] chars)
+	{
+        write(cast(ubyte[]) chars);
+	}
+
     void write(ubyte b)		/// ditto
 	{
 	    reserve(ubyte.sizeof);
@@ -110,12 +118,13 @@ class OutBuffer
 
     void write(byte b) { write(cast(ubyte)b); }		/// ditto
     void write(char c) { write(cast(ubyte)c); }		/// ditto
+    void write(dchar c) { write(cast(uint)c); }		/// ditto
 
     void write(ushort w)		/// ditto
     {
-	reserve(ushort.sizeof);
-	*cast(ushort *)&data[offset] = w;
-	offset += ushort.sizeof;
+        reserve(ushort.sizeof);
+        *cast(ushort *)&data[offset] = w;
+        offset += ushort.sizeof;
     }
 
     void write(short s) { write(cast(ushort)s); }		/// ditto
@@ -166,14 +175,18 @@ class OutBuffer
 	offset += real.sizeof;
     }
 
-    void write(string s)		/// ditto
+    void write(in char[] s)		/// ditto
     {
-	write(cast(ubyte[])s);
+        write(cast(ubyte[])s);
     }
+    // void write(immutable(char)[] s)		/// ditto
+    // {
+    //     write(cast(ubyte[])s);
+    // }
 
     void write(OutBuffer buf)		/// ditto
     {
-	write(buf.toBytes());
+        write(buf.toBytes());
     }
 
     /****************************************
@@ -191,7 +204,7 @@ class OutBuffer
      * 0-fill to align on power of 2 boundary.
      */
 
-    void alignSize(size_t alignsize)
+    void alignSize(uint alignsize)
     in
     {
 	assert(alignsize && (alignsize & (alignsize - 1)) == 0);
@@ -201,7 +214,7 @@ class OutBuffer
 	assert((offset & (alignsize - 1)) == 0);
     }
     body
-    {   size_t nbytes;
+    {   uint nbytes;
 
 	nbytes = offset & (alignsize - 1);
 	if (nbytes)
@@ -225,7 +238,7 @@ class OutBuffer
     void align4()
     {
 	if (offset & 3)
-	{   size_t nbytes = (4 - offset) & 3;
+	{   uint nbytes = (4 - offset) & 3;
 	    fill0(nbytes);
 	}
     }
@@ -250,35 +263,23 @@ class OutBuffer
 	char* p;
 	uint psize;
 	int count;
-	va_list args_copy;
 
 	auto f = toStringz(format);
 	p = buffer.ptr;
 	psize = buffer.length;
 	for (;;)
 	{
-	    va_copy(args_copy, args);
 	    version(Win32)
 	    {
-		count = _vsnprintf(p,psize,f,args_copy);
+		count = _vsnprintf(p,psize,f,args);
 		if (count != -1)
 		    break;
 		psize *= 2;
 		p = cast(char *) alloca(psize);	// buffer too small, try again with larger size
 	    }
-	    else version(GNU) {
-		count = vsnprintf(p,psize,f,args_copy);
-		if (count == -1)
-		    psize *= 2;
-		else if (count >= psize)
-		    psize = count + 1;
-		else
-		    break;
-		p = cast(char *) alloca(psize);	// buffer too small, try again with larger size
-	    }
-	    else version(linux)
+	    version(Posix)
 	    {
-		count = vsnprintf(p,psize,f,args_copy);
+		count = vsnprintf(p,psize,f,args);
 		if (count == -1)
 		    psize *= 2;
 		else if (count >= psize)
@@ -327,7 +328,7 @@ class OutBuffer
      * all data past index.
      */
 
-    void spread(size_t index, size_t nbytes)
+    void spread(uint index, uint nbytes)
 	in
 	{
 	    assert(index <= offset);
@@ -337,7 +338,7 @@ class OutBuffer
 	    reserve(nbytes);
 
 	    // This is an overlapping copy - should use memmove()
-	    for (size_t i = offset; i > index; )
+	    for (uint i = offset; i > index; )
 	    {
 		--i;
 		data[i + nbytes] = data[i];
@@ -355,9 +356,9 @@ unittest
     //printf("buf = %p\n", buf);
     //printf("buf.offset = %x\n", buf.offset);
     assert(buf.offset == 0);
-    buf.write("hello");
+    buf.write("hello"[]);
     buf.write(cast(byte)0x20);
-    buf.write("world");
+    buf.write("world"[]);
     buf.printf(" %d", 6);
     //printf("buf = '%.*s'\n", buf.toString());
     assert(cmp(buf.toString(), "hello world 6") == 0);

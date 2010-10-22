@@ -24,9 +24,7 @@
 
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
-
-   Modified by David Friedman, April 2005
-*/
+ */
 
 module std.stream;
 
@@ -82,7 +80,7 @@ private {
   import std.system;    // for Endian enumeration
   import std.intrinsic; // for bswap
   import std.utf;
-  import std.c.stdarg;
+  import std.stdarg;
 }
 
 version (Windows) {
@@ -193,6 +191,7 @@ interface InputStream {
 
   wchar[] readStringW(size_t length);
 
+
   /***
    * Read and return the next character in the stream.
    *
@@ -201,8 +200,6 @@ interface InputStream {
    * If EOF is reached then getc returns char.init and getcw returns wchar.init.
    */
 
-  // pushes back character c into the stream; only has
-  // effect on further calls to getc() and getcw()
   char getc();
   wchar getcw(); /// ditto
 
@@ -360,6 +357,7 @@ interface OutputStream {
   void close(); /// Close the stream, flushing output if appropriate.
   bool isOpen(); /// Return true if the stream is currently open.
 }
+
 
 /***
  * Stream is the base abstract class from which the other stream classes derive.
@@ -1136,17 +1134,15 @@ class Stream : InputStream, OutputStream {
     auto f = toStringz(format);
     size_t psize = buffer.length;
     size_t count;
-    va_list args_copy;
     while (true) {
-      va_copy(args_copy, args);
       version (Win32) {
-	count = _vsnprintf(p, psize, f, args_copy);
+	count = _vsnprintf(p, psize, f, args);
 	if (count != -1)
 	  break;
 	psize *= 2;
 	p = cast(char*) alloca(psize);
       } else version (Posix) {
-	count = vsnprintf(p, psize, f, args_copy);
+	count = vsnprintf(p, psize, f, args);
 	if (count == -1)
 	  psize *= 2;
 	else if (count >= psize)
@@ -1164,9 +1160,9 @@ class Stream : InputStream, OutputStream {
   // writes data to stream using printf() syntax,
   // returns number of bytes written
   size_t printf(char[] format, ...) {
-    version (GNU)
-	return vprintf(format, _argptr);
-    else {
+    version (GNU) {
+      return vprintf(format, _argptr);
+    } else {
       va_list ap;
       ap = cast(va_list) &format;
       ap += format.sizeof;
@@ -1641,51 +1637,50 @@ class BufferedStream : FilterStream {
   // reusing the memory in buffer if result will fit, otherwise
   // will reallocate (using concatenation)
   template TreadLine(T) {
-    T[] readLine(T[] inBuffer)
+      T[] readLine(T[] inBuffer)
       {
-	size_t    lineSize = 0;
-	bool    haveCR = false;
-	T       c = '\0';
-	size_t    idx = 0;
-	ubyte*  pc = cast(ubyte*)&c;
+          size_t    lineSize = 0;
+          bool    haveCR = false;
+          T       c = '\0';
+          size_t    idx = 0;
+          ubyte*  pc = cast(ubyte*)&c;
 
-      L0:
-	for(;;) {
-	  uint start = bufferCurPos;
-	L1:
-	  foreach(ubyte b; buffer[start .. bufferLen]) {
-	    bufferCurPos++;
-	    pc[idx] = b;
-	    if(idx < T.sizeof - 1) {
-	      idx++;
-	      continue L1;
-	    } else {
-	      idx = 0;
-	    }
-	    if(c == '\n' || haveCR) {
-	      if(haveCR && c != '\n') bufferCurPos--;
-	      break L0;
-	    } else {
-	      if(c == '\r') {
-		haveCR = true;
-	      } else {
-		if(lineSize < inBuffer.length) {
-		  inBuffer[lineSize] = c;
-		} else {
-		  inBuffer ~= c;
-		}
-		lineSize++;
-	      }
-	    }
-	  }
-	  flush();
-	  size_t res = super.readBlock(buffer.ptr, buffer.length);
-	  if(!res) break L0; // EOF
-	  bufferSourcePos = bufferLen = res;
-	  streamPos += res;
-	}
-
-	return inBuffer[0 .. lineSize];
+        L0:
+          for(;;) {
+              uint start = bufferCurPos;
+            L1:
+              foreach(ubyte b; buffer[start .. bufferLen]) {
+                  bufferCurPos++;
+                  pc[idx] = b;
+                  if(idx < T.sizeof - 1) {
+                      idx++;
+                      continue L1;
+                  } else {
+                      idx = 0;
+                  }
+                  if(c == '\n' || haveCR) {
+                      if(haveCR && c != '\n') bufferCurPos--;
+                      break L0;
+                  } else {
+                      if(c == '\r') {
+                          haveCR = true;
+                      } else {
+                          if(lineSize < inBuffer.length) {
+                              inBuffer[lineSize] = c;
+                          } else {
+                              inBuffer ~= c;
+                          }
+                          lineSize++;
+                      }
+                  }
+              }
+              flush();
+              size_t res = super.readBlock(buffer.ptr, buffer.length);
+              if(!res) break L0; // EOF
+              bufferSourcePos = bufferLen = res;
+              streamPos += res;
+          }
+          return inBuffer[0 .. lineSize];
       }
   } // template TreadLine(T)
 
@@ -1791,11 +1786,10 @@ version (Win32) {
   }
 }
 version (Posix) {
-  private import std.c.unix.unix;
+  private import core.sys.posix.fcntl;
+  private import core.sys.posix.unistd;
   alias int HANDLE;
 }
-version (NoSystem)
-  alias int HANDLE;
 
 /// This subclass is for unbuffered file system streams.
 class File: Stream {
@@ -1803,11 +1797,9 @@ class File: Stream {
   version (Win32) {
     private HANDLE hFile;
   }
-  else version (Posix) {
+  version (Posix) {
     private HANDLE hFile = -1;
   }
-  else version (NoSystem)
-    private HANDLE hFile;
 
   this() {
     super();
@@ -1828,8 +1820,8 @@ class File: Stream {
     writeable = cast(bool)(mode & FileMode.Out);
     version(Windows) {
       seekable = GetFileType(hFile) == 1; // FILE_TYPE_DISK
-    } else version (Posix) {
-      ulong result = lseek(hFile, 0, 0);
+    } else {
+      auto result = lseek(hFile, 0, 0);
       seekable = (result != ~0);
     }
   }
@@ -1876,11 +1868,9 @@ class File: Stream {
       isopen = hFile != INVALID_HANDLE_VALUE;
     }
     version (Posix) {
-      hFile = std.c.unix.unix.open(toStringz(filename), access | createMode, share);
+      hFile = core.sys.posix.fcntl.open(toStringz(filename), access | createMode, share);
       isopen = hFile != -1;
     }
-    version (NoSystem)
-      throw new OpenException("Files not supported on this target");
     if (!isopen)
       throw new OpenException(cast(string) ("Cannot open or create file '"
                                             ~ filename ~ "'"));
@@ -1893,14 +1883,13 @@ class File: Stream {
 			 out int share,
 			 out int createMode) {
     version (Win32) {
+      share |= FILE_SHARE_READ | FILE_SHARE_WRITE;
       if (mode & FileMode.In) {
 	access |= GENERIC_READ;
-	share |= FILE_SHARE_READ;
 	createMode = OPEN_EXISTING;
       }
       if (mode & FileMode.Out) {
 	access |= GENERIC_WRITE;
-	share |= FILE_SHARE_READ | FILE_SHARE_WRITE;
 	createMode = OPEN_ALWAYS; // will create if not present
       }
       if ((mode & FileMode.OutNew) == FileMode.OutNew) {
@@ -1908,14 +1897,13 @@ class File: Stream {
       }
     }
     version (Posix) {
+      share = 0666;
       if (mode & FileMode.In) {
 	access = O_RDONLY;
-	share = 0660;
       }
       if (mode & FileMode.Out) {
 	createMode = O_CREAT; // will create if not present
 	access = O_WRONLY;
-	share = 0660;
       }
       if (access == (O_WRONLY | O_RDONLY)) {
 	access = O_RDWR;
@@ -1946,7 +1934,7 @@ class File: Stream {
 	  CloseHandle(hFile);
 	  hFile = null;
 	} else version (Posix) {
-	  std.c.unix.unix.close(hFile);
+	  core.sys.posix.unistd.close(hFile);
 	  hFile = -1;
 	}
       }
@@ -1971,7 +1959,7 @@ class File: Stream {
     version (Win32) {
       ReadFile(hFile, buffer, size, &size, null);
     } else version (Posix) {
-      size = std.c.unix.unix.read(hFile, buffer, size);
+      size = core.sys.posix.unistd.read(hFile, buffer, size);
       if (size == -1)
 	size = 0;
     }
@@ -1984,7 +1972,7 @@ class File: Stream {
     version (Win32) {
       WriteFile(hFile, buffer, size, &size, null);
     } else version (Posix) {
-      size = std.c.unix.unix.write(hFile, buffer, size);
+      size = core.sys.posix.unistd.write(hFile, buffer, size);
       if (size == -1)
 	size = 0;
     }
@@ -2000,15 +1988,12 @@ class File: Stream {
 	throw new SeekException("unable to move file pointer");
       ulong result = (cast(ulong)hi << 32) + low;
     } else version (Posix) {
-       ulong result = lseek(hFile, cast(off_t)offset, rel);
-      if (result == 0xFFFFFFFF)
-	throw new SeekException("unable to move file pointer");
-    } else version (NoSystem) {
-	int result;
+      auto result = lseek(hFile, cast(int)offset, rel);
+      if (result == cast(typeof(result))-1)
 	throw new SeekException("unable to move file pointer");
     }
     readEOF = false;
-    return result;
+    return cast(ulong)result;
   }
 
   /***
@@ -2207,13 +2192,13 @@ enum BOM {
 }
 
 private const int NBOMS = 5;
-Endian[NBOMS] BOMEndian = 
+immutable Endian[NBOMS] BOMEndian = 
 [ std.system.endian, 
   Endian.LittleEndian, Endian.BigEndian,
   Endian.LittleEndian, Endian.BigEndian
   ];
 
-ubyte[][NBOMS] ByteOrderMarks = 
+immutable ubyte[][NBOMS] ByteOrderMarks = 
 [ [0xEF, 0xBB, 0xBF],
   [0xFF, 0xFE],
   [0xFE, 0xFF],
@@ -2265,7 +2250,7 @@ class EndianStream : FilterStream {
     int result = -1; // the last match or -1
     for (int i=0; i < NBOMS; ++i) {
       int j;
-      ubyte[] bom = ByteOrderMarks[i];
+      immutable ubyte[] bom = ByteOrderMarks[i];
       for (j=0; j < bom.length; ++j) {
 	if (n <= j) { // have to read more
 	  if (eof())
@@ -2401,7 +2386,7 @@ class EndianStream : FilterStream {
 
   /// Write the specified BOM b to the source stream.
   void writeBOM(BOM b) {
-    ubyte[] bom = ByteOrderMarks[b];
+    immutable ubyte[] bom = ByteOrderMarks[b];
     writeBlock(bom.ptr, bom.length);
   }
 
@@ -2655,7 +2640,7 @@ class MemoryStream: TArrayStream!(ubyte[]) {
   /// Ensure the stream can hold count bytes.
   void reserve(size_t count) {
     if (cur + count > buf.length)
-      buf.length = cast(size_t)((cur + count) * 2);
+      buf.length = cast(uint)((cur + count) * 2);
   }
 
   override size_t writeBlock(const void* buffer, size_t size) {

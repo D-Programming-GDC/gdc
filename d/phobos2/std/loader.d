@@ -34,36 +34,6 @@
  *
  * ////////////////////////////////////////////////////////////////////////// */
 
-/*
-    Copyright for Darwin specific code
-
-    Copyright (c) 2002 Peter O'Gorman <ogorman@users.sourceforge.net>
-
-    Permission is hereby granted, free of charge, to any person obtaining
-    a copy of this software and associated documentation files (the
-    "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish,
-    distribute, sublicense, and/or sell copies of the Software, and to
-    permit persons to whom the Software is furnished to do so, subject to
-    the following conditions:
-
-    The above copyright notice and this permission notice shall be
-    included in all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-    LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-    WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, June 2006 (applied patches from Anders F Björklund.)
-*/
 
 
 /** \file D/std/loader.d This file contains the \c D standard library 
@@ -79,6 +49,7 @@ module std.loader;
  */
 
 private import std.string;
+import std.conv;
 private import std.c.string;
 private import std.c.stdlib;
 private import std.c.stdio;
@@ -92,11 +63,6 @@ public alias int                    boolean;
  * External function declarations
  */
 
-version(linux)
-    version = dlopen;
-else version (freebsd)
-    version = dlopen;
-
 version(Windows)
 {
     private import std.c.windows.windows;
@@ -107,113 +73,13 @@ version(Windows)
         alias HMODULE HModule_;
     }
 }
-else version(dlopen)
+else version(Posix)
 {
-    private import std.c.linux.linux;
+    private import core.sys.posix.dlfcn;
 
     extern(C)
     {
 	alias void* HModule_;
-    }
-}
-else version(darwin)
-{
-    extern(C)
-    {
-        // #include <mach-o/loader.h>
-
-        struct mach_header
-        {
-            uint    magic;      /* mach magic number identifier */
-            uint    cputype;    /* cpu specifier */
-            uint    cpusubtype; /* machine specifier */
-            uint    filetype;   /* type of file */
-            uint    ncmds;      /* number of load commands */
-            uint    sizeofcmds; /* the size of all the load commands */
-            uint    flags;      /* flags */
-        }
-        
-        /* Constant for the magic field of the mach_header */
-        const uint MH_MAGIC = 0xfeedface;   // the mach magic number
-        const uint MH_CIGAM = 0xcefaedfe;   // x86 variant
-	const uint MH_MAGIC_64 = 0xfeedfacf;  // the 64-bit mach magic number
-	const uint MH_CIGAM_64 = 0xcffaedfe;  // NXSwapInt(MH_MAGIC_64)
-
-        // #include <mach-o/dyld.h>
-        
-        typedef void *NSObjectFileImage;
-        
-        typedef void *NSModule;
-        
-        typedef void *NSSymbol;
-
-        enum // DYLD_BOOL: uint
-        {
-            FALSE,
-            TRUE
-        }
-        alias uint DYLD_BOOL;
-
-        enum // NSObjectFileImageReturnCode: uint
-        {
-            NSObjectFileImageFailure, /* for this a message is printed on stderr */
-            NSObjectFileImageSuccess,
-            NSObjectFileImageInappropriateFile,
-            NSObjectFileImageArch,
-            NSObjectFileImageFormat, /* for this a message is printed on stderr */
-            NSObjectFileImageAccess
-        }
-        alias uint NSObjectFileImageReturnCode;
-        
-        enum // NSLinkEditErrors: uint
-        {
-            NSLinkEditFileAccessError,
-            NSLinkEditFileFormatError,
-            NSLinkEditMachResourceError,
-            NSLinkEditUnixResourceError,
-            NSLinkEditOtherError,
-            NSLinkEditWarningError,
-            NSLinkEditMultiplyDefinedError,
-            NSLinkEditUndefinedError
-        }
-        alias uint NSLinkEditErrors;
-
-
-        alias NSModule HModule_;
-    
-        NSObjectFileImageReturnCode NSCreateObjectFileImageFromFile(in char *pathName, NSObjectFileImage* objectFileImage);
-        DYLD_BOOL NSDestroyObjectFileImage(NSObjectFileImage objectFileImage);
-   
-        mach_header * NSAddImage(in char *image_name, uint options);
-        const uint NSADDIMAGE_OPTION_NONE = 0x0;
-        const uint NSADDIMAGE_OPTION_RETURN_ON_ERROR = 0x1;
-        const uint NSADDIMAGE_OPTION_WITH_SEARCHING = 0x2;
-        const uint NSADDIMAGE_OPTION_RETURN_ONLY_IF_LOADED = 0x4;
-        const uint NSADDIMAGE_OPTION_MATCH_FILENAME_BY_INSTALLNAME = 0x8;
-
-        NSModule NSLinkModule(NSObjectFileImage objectFileImage, in char* moduleName, uint options);
-        const uint NSLINKMODULE_OPTION_NONE = 0x0;
-        const uint NSLINKMODULE_OPTION_BINDNOW = 0x01;
-        const uint NSLINKMODULE_OPTION_PRIVATE = 0x02;
-        const uint NSLINKMODULE_OPTION_RETURN_ON_ERROR = 0x04;
-        const uint NSLINKMODULE_OPTION_DONT_CALL_MOD_INIT_ROUTINES = 0x08;
-        const uint NSLINKMODULE_OPTION_TRAILING_PHYS_NAME = 0x10;
-        DYLD_BOOL NSUnLinkModule(NSModule module_, uint options);
-    
-        void NSLinkEditError(NSLinkEditErrors *c, int *errorNumber, char **fileName, char **errorString);
-   
-        DYLD_BOOL NSIsSymbolNameDefined(char *symbolName);
-        DYLD_BOOL NSIsSymbolNameDefinedInImage(mach_header *image, char *symbolName);
-        NSSymbol NSLookupAndBindSymbol(char *symbolName);
-        NSSymbol NSLookupSymbolInModule(NSModule module_, char* symbolName);
-        NSSymbol NSLookupSymbolInImage(mach_header *image, char *symbolName, uint options);
-        const uint NSLOOKUPSYMBOLINIMAGE_OPTION_BIND = 0x0;
-        const uint NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW = 0x1;
-        const uint NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_FULLY = 0x2;
-        const uint NSLOOKUPSYMBOLINIMAGE_OPTION_RETURN_ON_ERROR = 0x4;
-
-        void* NSAddressOfSymbol(NSSymbol symbol);
-        char* NSNameOfSymbol(NSSymbol symbol);
     }
 }
 else
@@ -295,8 +161,8 @@ public string ExeModule_Error()
 
 version(Windows)
 {
-    private int         s_init;
-    private int         s_lastError;    // This is NOT thread-specific
+    private __gshared int         s_init;
+    private __gshared int         s_lastError;    // This is NOT thread-specific
 
     private void record_error_()
     {
@@ -391,7 +257,7 @@ version(Windows)
         return szFileName[0 .. cch].idup;
     }
 }
-else version(dlopen)
+else version(Posix)
 {
     private class ExeModuleInfo
     {
@@ -408,9 +274,9 @@ else version(dlopen)
         }
     };
 
-    private int                     s_init;
-    private ExeModuleInfo [string]  s_modules;
-    private string                  s_lastError;    // This is NOT thread-specific
+    private __gshared int                     s_init;
+    private __gshared ExeModuleInfo [string]  s_modules;
+    private __gshared string                  s_lastError;    // This is NOT thread-specific
 
     private void record_error_()
     {
@@ -581,261 +447,6 @@ else version(dlopen)
         return mi.m_name;
     }
 }
-else version(darwin)
-{
-    private class ExeModuleInfo
-    {
-    public:
-        int         m_cRefs;
-        HModule_    m_hmod;
-        string      m_name;
-
-        this(HModule_ hmod, string name)
-        {
-            m_cRefs =   1;
-            m_hmod  =   hmod;
-            m_name  =   name;
-        }
-    };
-
-    private void record_error_()
-    {
-        NSLinkEditErrors error;
-        int errno;
-        char *fileName;
-        char *err = null;
-
-        NSLinkEditError(&error, &errno, &fileName, &err);
-        printf("NSLinkEditError: %d %d - %s %s\n", cast(uint) error, errno, fileName, err);
-        
-        s_lastError = (err == null) ? "" : err[0 .. std.string.strlen(err)].idup;
-    }
-
-    private int                     s_init;
-    private ExeModuleInfo [char[]]  s_modules;
-    private string                  s_lastError;    // This is NOT thread-specific
-
-    private int ExeModule_Init_()
-    {
-        if(1 == ++s_init)
-        {
-            return 0;
-        }
-
-        return 1;
-    }
-
-    private void ExeModule_Uninit_()
-    {
-        if(0 == --s_init)
-        {
-        }
-    }
-
-    private HXModule ExeModule_Load_(in string moduleName)
-    in
-    {
-        assert(null !is moduleName);
-    }
-    body
-    {
-        ExeModuleInfo   *p_mi = moduleName in s_modules;
-
-        if(p_mi != null)
-        {
-            return (++(*p_mi).m_cRefs, cast(HXModule)*p_mi);
-        }
-        else
-        {
-            NSModule handle = null;
-            NSObjectFileImage fileImage = null;
-            auto filename = toStringz(moduleName);
-            // printf("DEBUG Trying to load: %s\n", filename);
-
-            NSObjectFileImageReturnCode returnCode =
-                NSCreateObjectFileImageFromFile(filename, &fileImage);
-            if(returnCode == NSObjectFileImageSuccess)
-            {
-                handle = NSLinkModule(fileImage,filename, 
-                    NSLINKMODULE_OPTION_RETURN_ON_ERROR |
-                    NSLINKMODULE_OPTION_PRIVATE |
-                    NSLINKMODULE_OPTION_BINDNOW);
-                NSDestroyObjectFileImage(fileImage);
-            }
-            else if(returnCode == NSObjectFileImageInappropriateFile)
-            {
-                NSDestroyObjectFileImage(fileImage);
-                /* Could be dynamic library rather than a bundle */
-                handle = cast(NSModule) NSAddImage(filename,
-                    NSADDIMAGE_OPTION_RETURN_ON_ERROR);
-            }
-            else
-            {
-                // printf("Failed: %d\n", returnCode);
-                s_lastError = "NSCreateObjectFileImageFromFile failed";
-                return null;
-            }
-            
-            if (handle == null)
-            {
-                record_error_();
-        
-                return null;
-            }
-            else
-            {
-                ExeModuleInfo   mi  =   new ExeModuleInfo(handle, moduleName);
-
-                s_modules[moduleName]   =   mi;
-
-                return cast(HXModule)mi;
-            }        
-        }
-    }
-
-    private HXModule ExeModule_AddRef_(in HXModule hModule)
-    in
-    {
-        assert(null !is hModule);
-
-        ExeModuleInfo   mi = cast(ExeModuleInfo)hModule;
-
-        assert(0 < mi.m_cRefs);
-        assert(null !is mi.m_hmod);
-        assert(null !is mi.m_name);
-        assert(null !is s_modules[mi.m_name]);
-        assert(mi is s_modules[mi.m_name]);
-    }
-    body
-    {
-        ExeModuleInfo   mi = cast(ExeModuleInfo)hModule;
-
-        if(null !is mi)
-        {
-            return (++mi.m_cRefs, cast(HXModule)hModule);
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-    private void ExeModule_Release_(inout HXModule hModule)
-    in
-    {
-        assert(null !is hModule);
-
-        ExeModuleInfo   mi = cast(ExeModuleInfo)hModule;
-
-        assert(0 < mi.m_cRefs);
-        assert(null !is mi.m_hmod);
-        assert(null !is mi.m_name);
-        assert(null !is s_modules[mi.m_name]);
-        assert(mi is s_modules[mi.m_name]);
-    }
-    body
-    {
-        ExeModuleInfo   mi      =   cast(ExeModuleInfo)hModule;
-
-        if(0 == --mi.m_cRefs)
-        {
-            string      name    =   mi.m_name;
-            uint        magic;
-            
-            magic = (* cast(mach_header *) mi.m_hmod).magic;
-            if ( magic == MH_MAGIC || magic == MH_CIGAM ||
-		 magic == MH_MAGIC_64 || magic == MH_CIGAM_64)
-            {
-                // Can not unlink dynamic libraries on Darwin
-            }
-            else if (NSUnLinkModule(mi.m_hmod, 0) == FALSE)
-            {
-                // printf("DEBUG: Could not unlink module %.*s\n", name);
-            }
-            s_modules.remove(name);
-            delete mi;
-        }
-
-        hModule = null;
-    }
-
-    private void *ExeModule_GetSymbol_(inout HXModule hModule, in char[] symbolName)
-    in
-    {
-        assert(null !is hModule);
-
-        ExeModuleInfo   mi = cast(ExeModuleInfo)hModule;
-
-        assert(0 < mi.m_cRefs);
-        assert(null !is mi.m_hmod);
-        assert(null !is mi.m_name);
-        assert(null !is s_modules[mi.m_name]);
-        assert(mi is s_modules[mi.m_name]);
-    }
-    body
-    {
-        ExeModuleInfo   mi      =   cast(ExeModuleInfo)hModule;
-        
-        NSModule handle = mi.m_hmod;
-        uint magic = (* cast(mach_header *) handle).magic;
-        char *name = ("_" ~ symbolName ~ "\0").ptr;
-        NSSymbol symbol = null;
- 
-        if ( (handle == cast(NSModule) -1) &&
-            NSIsSymbolNameDefined(name))
-            /* Global context, use NSLookupAndBindSymbol */
-            symbol = NSLookupAndBindSymbol(name);
-        else if ( ( magic == MH_MAGIC || magic == MH_CIGAM ||
-		    magic == MH_MAGIC_64 || magic == MH_CIGAM_64
-		    ) &&
-            NSIsSymbolNameDefinedInImage(cast(mach_header *) handle, name))
-            symbol = NSLookupSymbolInImage(cast(mach_header *) handle, name,
-                NSLOOKUPSYMBOLINIMAGE_OPTION_BIND |
-                NSLOOKUPSYMBOLINIMAGE_OPTION_RETURN_ON_ERROR);
-        else
-            symbol = NSLookupSymbolInModule(handle, name);
-        
-        if (symbol == null)
-        {
-            // printf("DEBUG: Symbol not found: %s\n", name);
-            return null;
-        }
-        
-        void *address = NSAddressOfSymbol(symbol);
-
-        if(address == null)
-        {
-            record_error_();
-        }
-
-        return address;
-    }
-
-    private string ExeModule_Error_()
-    {
-        return s_lastError;
-    }
-
-    private string ExeModule_GetPath_(HXModule hModule)
-    in
-    {
-        assert(null !is hModule);
-
-        ExeModuleInfo   mi = cast(ExeModuleInfo)hModule;
-
-        assert(0 < mi.m_cRefs);
-        assert(null !is mi.m_hmod);
-        assert(null !is mi.m_name);
-        assert(null !is s_modules[mi.m_name]);
-        assert(mi is s_modules[mi.m_name]);
-    }
-    body
-    {
-        ExeModuleInfo   mi = cast(ExeModuleInfo)hModule;
-
-        return mi.m_name;
-    }
-}
 else
 {
 	const int platform_not_discriminated = 0;
@@ -860,12 +471,12 @@ public:
     {
       version (Posix)
       {
-	char[80] buf = void;
-	super(std.string.toString(_d_gnu_cbridge_strerror(errcode, buf.ptr, buf.length)).idup);
+          char[80] buf = void;
+          super(to!string(strerror_r(errcode, buf.ptr, buf.length)).idup);
       }
       else
       {
-	super(std.string.toString(strerror(errcode)).idup);
+          super(to!string(strerror(errcode)));
       }
     }
 }
@@ -897,11 +508,7 @@ public:
 		if (m_hModule == null)
 		    throw new ExeModuleException(GetLastError());
 	    }
-	    else version (dlopen)
-	    {
-		m_hModule = ExeModule_AddRef(hModule);
-	    }
-	    else version (darwin)
+	    else version (Posix)
 	    {
 		m_hModule = ExeModule_AddRef(hModule);
 	    }
@@ -923,13 +530,7 @@ public:
 	    if (null is m_hModule)
 		throw new ExeModuleException(GetLastError());
 	}
-	else version (dlopen)
-	{
-	    m_hModule = ExeModule_Load(moduleName);
-	    if (null is m_hModule)
-		throw new ExeModuleException(ExeModule_Error());
-	}
-	else version (darwin)
+	else version (Posix)
 	{
 	    m_hModule = ExeModule_Load(moduleName);
 	    if (null is m_hModule)
@@ -962,11 +563,7 @@ public:
 		if(!FreeLibrary(cast(HModule_)m_hModule))
 		    throw new ExeModuleException(GetLastError());
 	    }
-	    else version (dlopen)
-	    {
-		ExeModule_Release(m_hModule);
-	    }
-	    else version (darwin)
+	    else version (Posix)
 	    {
 		ExeModule_Release(m_hModule);
 	    }
@@ -994,16 +591,7 @@ public:
 		throw new ExeModuleException(GetLastError());
 	    }
 	}
-	else version (dlopen)
-	{
-	    void *symbol = ExeModule_GetSymbol(m_hModule, symbolName);
-
-	    if(null is symbol)
-	    {
-		throw new ExeModuleException(ExeModule_Error());
-	    }
-	}
-	else version (darwin)
+	else version (Posix)
 	{
 	    void *symbol = ExeModule_GetSymbol(m_hModule, symbolName);
 
@@ -1059,11 +647,7 @@ public:
 
 	    return szFileName[0 .. cch].idup;
 	}
-	else version (dlopen)
-	{
-	    return ExeModule_GetPath_(m_hModule);
-	}
-	else version (darwin)
+	else version (Posix)
 	{
 	    return ExeModule_GetPath_(m_hModule);
 	}
@@ -1095,8 +679,7 @@ version(TestMain)
             {
                 auto ExeModule xmod =   new ExeModule(moduleName);
 
-                printf("\"%.*s\" is loaded\n", cast(int) moduleName.length,
-		    moduleName.ptr);
+                printf("\"%.*s\" is loaded\n", moduleName);
 
                 void    *symbol =   xmod.getSymbol(symbolName);
 

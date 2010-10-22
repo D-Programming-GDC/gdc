@@ -1,28 +1,5 @@
 // Written in the D programming language
 
-/*
- *  Copyright (C) 1999-2004 by Digital Mars, http://www.digitalmars.com
- *  Written by Walter Bright
- *
- *  This software is provided 'as-is', without any express or implied
- *  warranty. In no event will the authors be held liable for any damages
- *  arising from the use of this software.
- *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
- *
- *  o  The origin of this software must not be misrepresented; you must not
- *     claim that you wrote the original software. If you use this software
- *     in a product, an acknowledgment in the product documentation would be
- *     appreciated but is not required.
- *  o  Altered source versions must be plainly marked as such, and must not
- *     be misrepresented as being the original software.
- *  o  This notice may not be removed or altered from any source
- *     distribution.
- */
-
-
 module std.dateparse;
 
 private
@@ -53,8 +30,7 @@ struct DateParse
 	//else
 	    //buffer = new char[s.length];
 
-	debug(dateparse) printf("DateParse.parse('%.*s')\n",
-	    cast(int) s.length, s.ptr);
+	debug(dateparse) printf("DateParse.parse('%.*s')\n", s);
 	if (!parseString(s))
 	{
 	    goto Lerror;
@@ -276,7 +252,7 @@ private:
 	    short value;
 	}
 
-	static DateID dateidtab[] =
+	static immutable DateID dateidtab[] =
 	[
 	    {   "january",	DP.month,	1},
 	    {   "february",	DP.month,	2},
@@ -424,113 +400,114 @@ private:
 
     int parseString(string s)
     {
-	int n1;
-	int dp;
-	int sisave;
-	int result;
+        int n1;
+        int dp;
+        int sisave;
+        int result;
 
-	//message(DTEXT("DateParse::parseString('%ls')\n"), s);
-	this.s = s;
-	si = 0;
-	dp = nextToken();
-	for (;;)
-	{
-	    //message(DTEXT("\tdp = %d\n"), dp);
-	    switch (dp)
-	    {
-		case DP.end:
-		    result = 1;
-		Lret:
-		    return result;
+        //message(DTEXT("DateParse::parseString('%ls')\n"), s);
+        this.s = s;
+        si = 0;
+        dp = nextToken();
+        for (;;)
+        {
+            //message(DTEXT("\tdp = %d\n"), dp);
+            switch (dp)
+            {
+            case DP.end:
+                result = 1;
+            Lret:
+                return result;
 
-		case DP.err:
-		case_error:
-		    //message(DTEXT("\terror\n"));
-		default:
-		    result = 0;
-		    goto Lret;
+            case DP.err:
+            case_error:
+                //message(DTEXT("\terror\n"));
+            default:
+                result = 0;
+                goto Lret;
 
-		case DP.minus:
-		    break;			// ignore spurious '-'
+            case DP.minus:
+                break;			// ignore spurious '-'
 
-		case DP.weekday:
-		    weekday = number;
-		    break;
+            case DP.weekday:
+                weekday = number;
+                break;
 
-		case DP.month:		// month day, [year]
-		    month = number;
-		    dp = nextToken();
-		    if (dp == DP.number)
-		    {
-			day = number;
-			sisave = si;
-			dp = nextToken();
-			if (dp == DP.number)
-			{
-			    n1 = number;
-			    dp = nextToken();
-			    if (dp == DP.colon)
-			    {   // back up, not a year
-				si = sisave;
-			    }
-			    else
-			    {   year = n1;
-				continue;
-			    }
-			    break;
-			}
-		    }
-		    continue;
+            case DP.month:		// month day, [year]
+                month = number;
+                dp = nextToken();
+                if (dp == DP.number)
+                {
+                    day = number;
+                    sisave = si;
+                    dp = nextToken();
+                    if (dp == DP.number)
+                    {
+                        n1 = number;
+                        dp = nextToken();
+                        if (dp == DP.colon)
+                        {   // back up, not a year
+                            si = sisave;
+                        }
+                        else
+                        {   year = n1;
+                            continue;
+                        }
+                        break;
+                    }
+                }
+                continue;
 
-		case DP.number:
-		    n1 = number;
-		    dp = nextToken();
-		    switch (dp)
-		    {
-			case DP.end:
-			    year = n1;
-			    break;
+            case DP.number:
+                n1 = number;
+                dp = nextToken();
+                switch (dp)
+                {
+                case DP.end:
+                    year = n1;
+                    break;
 
-			case DP.minus:
-			case DP.slash:	// n1/ ? ? ?
-			    dp = parseCalendarDate(n1);
-			    if (dp == DP.err)
-				goto case_error;
-			    break;
+                case DP.minus:
+                case DP.slash:	// n1/ ? ? ?
+                    dp = parseCalendarDate(n1);
+                    if (dp == DP.err)
+                        goto case_error;
+                    break;
 
-		       case DP.colon:	// hh:mm [:ss] [am | pm]
-			    dp = parseTimeOfDay(n1);
-			    if (dp == DP.err)
-				goto case_error;
-			    break;
+                case DP.colon:	// hh:mm [:ss] [am | pm]
+                    dp = parseTimeOfDay(n1);
+                    if (dp == DP.err)
+                        goto case_error;
+                    break;
 
-		       case DP.ampm:
-			    hours = n1;
-			    minutes = 0;
-			    seconds = 0;
-			    ampm = number;
-			    break;
+                case DP.ampm:
+                    hours = n1;
+                    minutes = 0;
+                    seconds = 0;
+                    ampm = number;
+                    break;
 
-			case DP.month:
-			    day = n1;
-			    month = number;
-			    dp = nextToken();
-			    if (dp == DP.number)
-			    {   // day month year
-				year = number;
-				dp = nextToken();
-			    }
-			    break;
+                case DP.month:
+                    day = n1;
+                    month = number;
+                    dp = nextToken();
+                    if (dp == DP.number)
+                    {   // day month year
+                        year = number;
+                        dp = nextToken();
+                    }
+                    break;
 
-			default:
-			    year = n1;
-			    break;
-		    }
-		    continue;
-	    }
-	    dp = nextToken();
-	}
-	assert(0);
+                default:
+                    year = n1;
+                    break;
+                }
+                continue;
+            }
+            dp = nextToken();
+        }
+        // @@@ bug in the compiler: this is never reachable
+        assert(0);
     }
 
     int parseCalendarDate(int n1)
@@ -787,3 +764,24 @@ unittest
 	d.weekday, d.tzcorrection);
 }
 
+/*
+ *  Copyright (C) 1999-2004 by Digital Mars, http://www.digitalmars.com
+ *  Written by Walter Bright
+ *
+ *  This software is provided 'as-is', without any express or implied
+ *  warranty. In no event will the authors be held liable for any damages
+ *  arising from the use of this software.
+ *
+ *  Permission is granted to anyone to use this software for any purpose,
+ *  including commercial applications, and to alter it and redistribute it
+ *  freely, subject to the following restrictions:
+ *
+ *  o  The origin of this software must not be misrepresented; you must not
+ *     claim that you wrote the original software. If you use this software
+ *     in a product, an acknowledgment in the product documentation would be
+ *     appreciated but is not required.
+ *  o  Altered source versions must be plainly marked as such, and must not
+ *     be misrepresented as being the original software.
+ *  o  This notice may not be removed or altered from any source
+ *     distribution.
+ */

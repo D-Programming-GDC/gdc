@@ -67,25 +67,26 @@ enum
     URI_Hash = 0x10,        // '#'
 }
 
-invariant char[16] hex2ascii = "0123456789ABCDEF";
+immutable char[16] hex2ascii = "0123456789ABCDEF";
 
-ubyte[128] uri_flags;       // indexed by character
+__gshared ubyte[128] uri_flags;       // indexed by character
 
 static this()
 {
     // Initialize uri_flags[]
 
     static void helper(invariant char[] p, uint flags)
-    {
-	foreach (c; p)
-	    uri_flags[c] |= flags;
+    {   int i;
+
+    for (i = 0; i < p.length; i++)
+        uri_flags[p[i]] |= flags;
     }
 
     uri_flags['#'] |= URI_Hash;
 
     for (int i = 'A'; i <= 'Z'; i++)
     {   uri_flags[i] |= URI_Alpha;
-        uri_flags[i + 0x20] |= URI_Alpha;   // lowercase letters
+    uri_flags[i + 0x20] |= URI_Alpha;   // lowercase letters
     }
     helper("0123456789", URI_Digit);
     helper(";/?:@&=+$,", URI_Reserved);
@@ -94,17 +95,17 @@ static this()
 
 
 private string URI_Encode(dstring string, uint unescapedSet)
-{   size_t len;
-    size_t j;
-    size_t k;
+{   uint len;
+    uint j;
+    uint k;
     dchar V;
     dchar C;
 
     // result buffer
     char[50] buffer = void;
     char* R;
-    size_t Rlen;
-    size_t Rsize; // alloc'd size
+    uint Rlen;
+    uint Rsize; // alloc'd size
 
     len = string.length;
 
@@ -233,9 +234,9 @@ uint ascii2hex(dchar c)
 }
 
 private dstring URI_Decode(string string, uint reservedSet)
-{   size_t len;
+{   uint len;
     uint j;
-    size_t k;
+    uint k;
     uint V;
     dchar C;
 
@@ -243,8 +244,8 @@ private dstring URI_Decode(string string, uint reservedSet)
 
     // Result array, allocated on stack
     dchar* R;
-    size_t Rlen;
-    size_t Rsize;	// alloc'd size
+    uint Rlen;
+    uint Rsize; // alloc'd size
 
     len = string.length;
     auto s = string.ptr;
@@ -252,87 +253,87 @@ private dstring URI_Decode(string string, uint reservedSet)
     // Preallocate result buffer R guaranteed to be large enough for result
     Rsize = len;
     if (Rsize > 1024 / dchar.sizeof)
-	R = (new dchar[Rsize]).ptr;
+    R = (new dchar[Rsize]).ptr;
     else
-    {	R = cast(dchar *)alloca(Rsize * dchar.sizeof);
-	if (!R)
-	    goto LthrowURIerror;
+    {   R = cast(dchar *)alloca(Rsize * dchar.sizeof);
+    if (!R)
+        goto LthrowURIerror;
     }
     Rlen = 0;
 
     for (k = 0; k != len; k++)
-    {	char B;
-	size_t start;
+    {   char B;
+    uint start;
 
-	C = s[k];
-	if (C != '%')
-	{   R[Rlen] = C;
-	    Rlen++;
-	    continue;
-	}
-	start = k;
-	if (k + 2 >= len)
-	    goto LthrowURIerror;
-	if (!isxdigit(s[k + 1]) || !isxdigit(s[k + 2]))
-	    goto LthrowURIerror;
-	B = cast(char)((ascii2hex(s[k + 1]) << 4) + ascii2hex(s[k + 2]));
-	k += 2;
-	if ((B & 0x80) == 0)
-	{
-	    C = B;
-	}
-	else
-	{   uint n;
-
-	    for (n = 1; ; n++)
-	    {
-		if (n > 4)
-		    goto LthrowURIerror;
-		if (((B << n) & 0x80) == 0)
-		{
-		    if (n == 1)
-			goto LthrowURIerror;
-		    break;
-		}
-	    }
-
-	    // Pick off (7 - n) significant bits of B from first byte of octet
-	    V = B & ((1 << (7 - n)) - 1);	// (!!!)
-
-	    if (k + (3 * (n - 1)) >= len)
-		goto LthrowURIerror;
-	    for (j = 1; j != n; j++)
-	    {
-		k++;
-		if (s[k] != '%')
-		    goto LthrowURIerror;
-		if (!isxdigit(s[k + 1]) || !isxdigit(s[k + 2]))
-		    goto LthrowURIerror;
-		B = cast(char)((ascii2hex(s[k + 1]) << 4) + ascii2hex(s[k + 2]));
-		if ((B & 0xC0) != 0x80)
-		    goto LthrowURIerror;
-		k += 2;
-		V = (V << 6) | (B & 0x3F);
-	    }
-	    if (V > 0x10FFFF)
-		goto LthrowURIerror;
-	    C = V;
-	}
-	if (C < uri_flags.length && uri_flags[C] & reservedSet)
-	{
-	    // R ~= s[start .. k + 1];
-	    int width = (k + 1) - start;
-	    for (int ii = 0; ii < width; ii++)
-		R[Rlen + ii] = s[start + ii];
-	    Rlen += width;
-	}
-	else
-	{
-	    R[Rlen] = C;
-	    Rlen++;
-	}
+    C = s[k];
+    if (C != '%')
+    {   R[Rlen] = C;
+        Rlen++;
+        continue;
     }
-    assert(Rlen <= Rsize);	// enforce our preallocation size guarantee
+    start = k;
+    if (k + 2 >= len)
+        goto LthrowURIerror;
+    if (!isxdigit(s[k + 1]) || !isxdigit(s[k + 2]))
+        goto LthrowURIerror;
+    B = cast(char)((ascii2hex(s[k + 1]) << 4) + ascii2hex(s[k + 2]));
+    k += 2;
+    if ((B & 0x80) == 0)
+    {
+        C = B;
+    }
+    else
+    {   uint n;
+
+        for (n = 1; ; n++)
+        {
+        if (n > 4)
+            goto LthrowURIerror;
+        if (((B << n) & 0x80) == 0)
+        {
+            if (n == 1)
+            goto LthrowURIerror;
+            break;
+        }
+        }
+
+        // Pick off (7 - n) significant bits of B from first byte of octet
+        V = B & ((1 << (7 - n)) - 1);   // (!!!)
+
+        if (k + (3 * (n - 1)) >= len)
+        goto LthrowURIerror;
+        for (j = 1; j != n; j++)
+        {
+        k++;
+        if (s[k] != '%')
+            goto LthrowURIerror;
+        if (!isxdigit(s[k + 1]) || !isxdigit(s[k + 2]))
+            goto LthrowURIerror;
+        B = cast(char)((ascii2hex(s[k + 1]) << 4) + ascii2hex(s[k + 2]));
+        if ((B & 0xC0) != 0x80)
+            goto LthrowURIerror;
+        k += 2;
+        V = (V << 6) | (B & 0x3F);
+        }
+        if (V > 0x10FFFF)
+        goto LthrowURIerror;
+        C = V;
+    }
+    if (C < uri_flags.length && uri_flags[C] & reservedSet)
+    {
+        // R ~= s[start .. k + 1];
+        int width = (k + 1) - start;
+        for (int ii = 0; ii < width; ii++)
+        R[Rlen + ii] = s[start + ii];
+        Rlen += width;
+    }
+    else
+    {
+        R[Rlen] = C;
+        Rlen++;
+    }
+    }
+    assert(Rlen <= Rsize);  // enforce our preallocation size guarantee
 
     // Copy array on stack to array in memory
     return R[0..Rlen].idup;
@@ -510,10 +511,10 @@ unittest
     string t = "http://www.digitalmars.com/~fred/fred's%20RX.html#foo";
 
     auto r = encode(s);
-    debug(uri) printf("r = '%.*s'\n", cast(int) r.length, r.ptr);
+    debug(uri) printf("r = '%.*s'\n", r);
     assert(r == t);
     r = decode(t);
-    debug(uri) printf("r = '%.*s'\n", cast(int) r.length, r.ptr);
+    debug(uri) printf("r = '%.*s'\n", r);
     assert(r == s);
 
     r = encode( decode("%E3%81%82%E3%81%82") );
@@ -523,8 +524,7 @@ unittest
     //printf("r = '%.*s'\n", r);
     assert(r == "c%2B%2B");
 
-    // char[] str = new char[10_000_000]; // Belongs in testgc.d? 8-\
-    auto str = new char[10_000];
+    auto str = new char[10_000_000];
     str[] = 'A';
     r = encodeComponent(assumeUnique(str));
     foreach (char c; r)

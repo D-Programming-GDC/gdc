@@ -1,23 +1,23 @@
-
 // Written in the D programming language.
 
 /**
- * String handling functions. Objects of types $(D string), $(D
- * wstring), and $(D dstring) are value types and cannot be mutated
- * element-by-element. For using mutation during building strings, use
- * $(D char[]), $(D wchar[]), or $(D dchar[]). The $(D *string) types
- * are preferable because they don't exhibit undesired aliasing, thus
- * making code more robust.
- *
- * Authors:
- *
- * $(WEB digitalmars.com, Walter Bright), $(WEB erdani.org, Andrei
+String handling functions. Objects of types $(D _string), $(D
+wstring), and $(D dstring) are value types and cannot be mutated
+element-by-element. For using mutation during building strings, use
+$(D char[]), $(D wchar[]), or $(D dchar[]). The $(D *_string) types
+are preferable because they don't exhibit undesired aliasing, thus
+making code more robust.
+
+Authors:
+
+$(WEB digitalmars.com, Walter Bright), $(WEB erdani.org, Andrei
 Alexandrescu)
- *
- * Macros:
- *  WIKI = Phobos/StdString
- * Copyright:
- *  Public Domain
+
+Macros:
+ WIKI = Phobos/StdString
+
+Copyright:
+ Public Domain
  */
 
 /* Author:
@@ -27,34 +27,20 @@ Alexandrescu)
 // The code is not optimized for speed, that will have to wait
 // until the design is solidified.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, September 2004
-*/
-
 module std.string;
 
 //debug=string;     // uncomment to turn on debugging printf's
 
-private import std.algorithm;
-private import std.stdio;
-private import std.c.stdio;
-private import std.c.stdlib;
-private import std.c.string;
-private import std.utf;
-private import std.encoding;
-private import std.uni;
-private import std.format;
-private import std.ctype;
-private import std.stdarg;
-private import std.contracts;
-private import std.typetuple;
-private import std.conv;
-private import std.traits;
 private import core.exception : onRangeError;
+import core.stdc.stdio, core.stdc.stdlib,
+    core.stdc.string, std.algorithm, std.array, 
+    std.contracts, std.conv, std.ctype, std.encoding, std.format,
+    std.metastrings, std.range, std.regex, std.stdarg, std.stdio, std.traits,
+    std.typetuple, std.uni, std.utf;
 
-extern (C)
+public import std.algorithm : startsWith, endsWith;
+
+version(Windows) extern (C)
 {
     size_t wcslen(in wchar *);
     int wcscmp(in wchar *, in wchar *);
@@ -63,7 +49,7 @@ extern (C)
 /* ************* Exceptions *************** */
 
 /// Thrown on errors in string functions.
-typedef object.Exception StringException;
+typedef Exception StringException;
 
 /* ************* Constants *************** */
 
@@ -73,7 +59,7 @@ invariant char[8]  octdigits = "01234567";          /// 0..7
 invariant char[26] lowercase = "abcdefghijklmnopqrstuvwxyz";    /// a..z
 invariant char[26] uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";    /// A..Z
 invariant char[52] letters   = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                   "abcdefghijklmnopqrstuvwxyz";    /// A..Za..z
+    "abcdefghijklmnopqrstuvwxyz";    /// A..Za..z
 invariant char[6] whitespace = " \t\v\r\n\f";           /// ASCII whitespace
 
 enum dchar LS = '\u2028';   /// UTF line separator
@@ -91,54 +77,20 @@ else version (Posix)
 
 bool iswhite(dchar c)
 {
-    return (c <= 0x7F)
-        ? find(whitespace, c) != -1
+    return c <= 0x7F
+        ? indexOf(whitespace, c) != -1
         : (c == PS || c == LS);
 }
 
-/*********************************
-Convert string $(D s) to integer. $(RED Scheduled for deprecation. Use
-the $(D to!(int)(s)) or $(D parse!(int)(s)) routines in $(WEB
-std_conv, std.conv)).
- */
-
-long atoi(C)(in C[] s)
-{
-    return to!(long)(s);//std.c.stdlib.atoi(toStringz(s));
-}
-
-/*************************************
-Convert string to real. $(RED Scheduled for deprecation. Use the $(D
-to!(real)(s)) or $(D parse!(real)(s)) routines in $(WEB std_conv,
-std.conv)).
- */
-
-real atof(C)(in C[] s)
-{
-    return parse!(real)(s);
-}
-
-unittest
-{
-    alias TypeTuple!(char, wchar, dchar,
-            const char, const wchar, const dchar,
-            invariant char, invariant wchar, invariant dchar)
-        AllChars;
-    foreach (Char; AllChars)
-    {
-        auto s = to!(Char[])("123");
-        assert(atoi(s) == 123);
-    }
-}
-
 /**********************************
- * Compare two strings. cmp is case sensitive, icmp is case insensitive.
- * Returns:
- *  <table border=1 cellpadding=4 cellspacing=0>
- *  $(TR $(TD < 0)  $(TD s1 < s2))
- *  $(TR $(TD = 0)  $(TD s1 == s2))
- *  $(TR $(TD > 0)  $(TD s1 > s2))
- *  </table>
+Compare two strings. $(D _cmp) is case sensitive, $(D icmp) is case
+insensitive.
+
+$(BOOKTABLE Returns:,
+$(TR $(TD < 0)  $(TD $(D s1 < s2)))
+$(TR $(TD = 0)  $(TD $(D s1 == s2)))
+$(TR $(TD > 0)  $(TD $(D s1 > s2)))
+)
  */
 
 int cmp(C1, C2)(in C1[] s1, in C2[] s2)
@@ -160,7 +112,6 @@ int cmp(C1, C2)(in C1[] s1, in C2[] s2)
                 c2 = std.utf.decode(s2, i2);
             if (c1 != c2) return cast(int) c1 - cast(int) c2;
         }
-	assert(0);
     }
 }
 
@@ -204,7 +155,6 @@ int icmp(in char[] s1, in char[] s2)
             c2 += cast(int)'a' - cast(int)'A';
         if (c1 != c2) return cast(int) c1 - cast(int) c2;
     }
-    assert(0);
 }
 
 unittest
@@ -230,30 +180,20 @@ unittest
     assert(result > 0);
 }
 
-/* ********************************
- * Converts a D array of chars to a C-style 0 terminated string.
- * Deprecated: replaced with toStringz().
- */
-
-deprecated const(char)* toCharz(string s)
-{
-    return toStringz(s);
-}
-
 /*********************************
- * Convert array of chars s[] to a C-style 0 terminated string.
- * s[] must not contain embedded 0's.
+ * Convert array of chars $(D s[]) to a C-style 0-terminated string.
+ * $(D s[]) must not contain embedded 0's.
  */
 
 const(char)* toStringz(const(char)[] s)
-    in
-    {
-        // The assert below contradicts the unittests!
+in
+{
+    // The assert below contradicts the unittests!
     //assert(memchr(s.ptr, 0, s.length) == null,
     //text(s.length, ": `", s, "'"));
-    }
-    out (result)
-    {
+}
+out (result)
+{
     if (result)
     {
         auto slen = s.length;
@@ -261,32 +201,32 @@ const(char)* toStringz(const(char)[] s)
         assert(strlen(result) == slen);
         assert(memcmp(result, s.ptr, slen) == 0);
     }
-    }
-    body
-    {
+}
+body
+{
     char[] copy;
-
+    
     /+ Unfortunately, this isn't reliable.
-       We could make this work if string literals are put
-       in read-only memory and we test if s[] is pointing into
-       that.
-
-        /* Peek past end of s[], if it's 0, no conversion necessary.
-         * Note that the compiler will put a 0 past the end of static
-         * strings, and the storage allocator will put a 0 past the end
-         * of newly allocated char[]'s.
-         */
-        char* p = &s[0] + s.length;
-        if (*p == 0)
-        return s;
-    +/
+     We could make this work if string literals are put
+     in read-only memory and we test if s[] is pointing into
+     that.
+     
+     /* Peek past end of s[], if it's 0, no conversion necessary.
+     * Note that the compiler will put a 0 past the end of static
+     * strings, and the storage allocator will put a 0 past the end
+     * of newly allocated char[]'s.
+     */
+     char* p = &s[0] + s.length;
+     if (*p == 0)
+     return s;
+     +/
 
     // Need to make a copy
     copy = new char[s.length + 1];
     copy[0..s.length] = s;
     copy[s.length] = 0;
     return copy.ptr;
-    }
+}
 
 // /// Ditto
 // const(char)* toStringz(invariant(char)[] s)
@@ -325,31 +265,63 @@ unittest
     assert(p[0] == 'f' && p[1] == 'o' && p[2] == 'o' && p[3] == 0);
 }
 
-/******************************************
- * find, ifind _find first occurrence of c in string s.
- * rfind, irfind _find last occurrence of c in string s.
- *
- * find, rfind are case sensitive; ifind, irfind are case insensitive.
- * Returns:
- *  Index in s where c is found, -1 if not found.
+/**
+Flag indicating whether a search is case-sensitive.
+ */
+enum CaseSensitive { no, yes }
+
+/**
+$(D indexOf): find first occurrence of c in string s.  $(D
+lastIndexOf): find last occurrence of c in string s. $(D
+CaseSensitive.yes) means the searches are case sensitive.
+
+Returns: Index in $(D s) where $(D c) is found, -1 if not found.
  */
 
-ptrdiff_t find(in char[] s, dchar c)
+int indexOf(in char[] s, dchar c, CaseSensitive cs = CaseSensitive.yes)
 {
-    if (c <= 0x7F)
-    {   // Plain old ASCII
-    auto p = cast(char*)memchr(s.ptr, c, s.length);
-    if (p)
-        return p - cast(char *)s;
-    else
-        return -1;
-    }
-
-    // c is a universal character
-    foreach (ptrdiff_t i, dchar c2; s)
+    if (cs == CaseSensitive.yes)
     {
-    if (c == c2)
-        return i;
+        if (c <= 0x7F)
+        {   // Plain old ASCII
+            auto p = cast(char*)memchr(s.ptr, c, s.length);
+            if (p)
+                return p - cast(char *)s;
+            else
+                return -1;
+        }
+        
+        // c is a universal character
+        foreach (int i, dchar c2; s)
+        {
+            if (c == c2)
+                return i;
+        }
+    }
+    else
+    {
+        if (c <= 0x7F)
+        {   // Plain old ASCII
+            auto c1 = cast(char) std.ctype.tolower(c);
+            
+            foreach (int i, char c2; s)
+            {
+                auto c3 = cast(char)std.ctype.tolower(c2);
+                if (c1 == c3)
+                    return i;
+            }
+        }
+        else
+        {   // c is a universal character
+            dchar c1 = std.uni.toUniLower(c);
+            
+            foreach (int i, dchar c2; s)
+            {
+                auto c3 = std.uni.toUniLower(c2);
+                if (c1 == c3)
+                    return i;
+            }
+        }
     }
     return -1;
 }
@@ -360,13 +332,13 @@ unittest
 
     int i;
 
-    i = find(null, cast(dchar)'a');
+    i = indexOf(null, cast(dchar)'a');
     assert(i == -1);
-    i = find("def", cast(dchar)'a');
+    i = indexOf("def", cast(dchar)'a');
     assert(i == -1);
-    i = find("abba", cast(dchar)'a');
+    i = indexOf("abba", cast(dchar)'a');
     assert(i == 0);
-    i = find("def", cast(dchar)'f');
+    i = indexOf("def", cast(dchar)'f');
     assert(i == 2);
 }
 
@@ -375,140 +347,113 @@ unittest
  * ditto
  */
 
-ptrdiff_t ifind(in char[] s, dchar c)
-{
-    if (c <= 0x7F)
-    {   // Plain old ASCII
-	char c1 = cast(char) std.ctype.tolower(c);
-
-	foreach (ptrdiff_t i, char c2; s)
-	{
-	    auto c3 = cast(char)std.ctype.tolower(c2);
-	    if (c1 == c3)
-		return i;
-	}
-    }
-    else
-    {	// c is a universal character
-	dchar c1 = std.uni.toUniLower(c);
-
-	foreach (ptrdiff_t i, dchar c2; s)
-	{
-	    auto c3 = std.uni.toUniLower(c2);
-	    if (c1 == c3)
-		return i;
-	}
-    }
-    return -1;
-}
-
 unittest
 {
-    debug(string) printf("string.ifind.unittest\n");
+    debug(string) printf("string.indexOf.unittest\n");
 
     int i;
 
-    i = ifind(null, cast(dchar)'a');
+    i = indexOf(null, cast(dchar)'a', CaseSensitive.no);
     assert(i == -1);
-    i = ifind("def", cast(dchar)'a');
+    i = indexOf("def", cast(dchar)'a', CaseSensitive.no);
     assert(i == -1);
-    i = ifind("Abba", cast(dchar)'a');
+    i = indexOf("Abba", cast(dchar)'a', CaseSensitive.no);
     assert(i == 0);
-    i = ifind("def", cast(dchar)'F');
+    i = indexOf("def", cast(dchar)'F', CaseSensitive.no);
     assert(i == 2);
 
     string sPlts = "Mars: the fourth Rock (Planet) from the Sun.";
 
-    i = ifind("def", cast(char)'f');
+    i = indexOf("def", cast(char)'f', CaseSensitive.no);
     assert(i == 2);
 
-    i = ifind(sPlts, cast(char)'P');
+    i = indexOf(sPlts, cast(char)'P', CaseSensitive.no);
     assert(i == 23);
-    i = ifind(sPlts, cast(char)'R');
+    i = indexOf(sPlts, cast(char)'R', CaseSensitive.no);
     assert(i == 2);
 }
 
+// @@@BUG@@@ This declaration shouldn't be needed
+//int lastIndexOf(in char[] s, in char[] c, CaseSensitive cs = CaseSensitive.yes);
 
 /******************************************
  * ditto
  */
 
-ptrdiff_t rfind(in char[] s, dchar c)
+int lastIndexOf(in char[] s, dchar c, CaseSensitive cs = CaseSensitive.yes)
 {
-    size_t i;
-
-    if (c <= 0x7F)
-    {   // Plain old ASCII
-    for (i = s.length; i-- != 0;)
+    if (cs == CaseSensitive.yes)
     {
-        if (s[i] == c)
-        break;
+        if (c <= 0x7F)
+        {
+            // Plain old ASCII
+            auto i = s.length;
+            while (i-- != 0)
+            {
+                if (s[i] == c)
+                    break;
+            }
+            return i;
+        }
+        
+        // c is a universal character
+        char[4] buf;
+        auto t = std.utf.toUTF8(buf, c);
+        return lastIndexOf(s, t, cs);
     }
-    return i;
-    }
+    else
+    {
+        size_t i;
 
-    // c is a universal character
-    char[4] buf;
-    auto t = std.utf.toUTF8(buf, c);
-    return rfind(s, t);
+        if (c <= 0x7F)
+        {   // Plain old ASCII
+            char c1 = cast(char) std.ctype.tolower(c);
+
+            for (i = s.length; i-- != 0;)
+            {   char c2 = s[i];
+
+                c2 = cast(char) std.ctype.tolower(c2);
+                if (c1 == c2)
+                    break;
+            }
+        }
+        else
+        {   // c is a universal character
+            dchar c1 = std.uni.toUniLower(c);
+
+            for (i = s.length; i-- != 0;)
+            {   char cx = s[i];
+
+                if (cx <= 0x7F)
+                    continue;       // skip, since c is not ASCII
+                if ((cx & 0xC0) == 0x80)
+                    continue;       // skip non-starting UTF-8 chars
+
+                size_t j = i;
+                dchar c2 = std.utf.decode(s, j);
+                c2 = std.uni.toUniLower(c2);
+                if (c1 == c2)
+                    break;
+            }
+        }
+        return i;
+    }
 }
-
+    
 unittest
 {
     debug(string) printf("string.rfind.unittest\n");
-
+    
     int i;
-
-    i = rfind(null, cast(dchar)'a');
+    
+    i = lastIndexOf(null, cast(dchar)'a');
     assert(i == -1);
-    i = rfind("def", cast(dchar)'a');
+    i = lastIndexOf("def", cast(dchar)'a');
     assert(i == -1);
-    i = rfind("abba", cast(dchar)'a');
+    i = lastIndexOf("abba", cast(dchar)'a');
     assert(i == 3);
-    i = rfind("def", cast(dchar)'f');
+    i = lastIndexOf("def", cast(dchar)'f');
     assert(i == 2);
-}
-
-/******************************************
- * ditto
- */
-
-ptrdiff_t irfind(in char[] s, dchar c)
-{
-    size_t i;
-
-    if (c <= 0x7F)
-    {   // Plain old ASCII
-    char c1 = cast(char) std.ctype.tolower(c);
-
-    for (i = s.length; i-- != 0;)
-    {   char c2 = s[i];
-
-        c2 = cast(char) std.ctype.tolower(c2);
-        if (c1 == c2)
-        break;
-    }
-    }
-    else
-    {   // c is a universal character
-    dchar c1 = std.uni.toUniLower(c);
-
-    for (i = s.length; i-- != 0;)
-    {   char cx = s[i];
-
-        if (cx <= 0x7F)
-        continue;       // skip, since c is not ASCII
-        if ((cx & 0xC0) == 0x80)
-        continue;       // skip non-starting UTF-8 chars
-
-        size_t j = i;
-        dchar c2 = std.utf.decode(s, j);
-        c2 = std.uni.toUniLower(c2);
-        if (c1 == c2)
-        break;
-    }
-    }
-    return i;
 }
 
 unittest
@@ -517,23 +462,23 @@ unittest
 
     int i;
 
-    i = irfind(null, cast(dchar)'a');
+    i = lastIndexOf(null, cast(dchar)'a', CaseSensitive.no);
     assert(i == -1);
-    i = irfind("def", cast(dchar)'a');
+    i = lastIndexOf("def", cast(dchar)'a', CaseSensitive.no);
     assert(i == -1);
-    i = irfind("AbbA", cast(dchar)'a');
+    i = lastIndexOf("AbbA", cast(dchar)'a', CaseSensitive.no);
     assert(i == 3);
-    i = irfind("def", cast(dchar)'F');
+    i = lastIndexOf("def", cast(dchar)'F', CaseSensitive.no);
     assert(i == 2);
 
     string sPlts = "Mars: the fourth Rock (Planet) from the Sun.";
 
-    i = irfind("def", cast(char)'f');
+    i = lastIndexOf("def", cast(char)'f', CaseSensitive.no);
     assert(i == 2);
 
-    i = irfind(sPlts, cast(char)'M');
+    i = lastIndexOf(sPlts, cast(char)'M', CaseSensitive.no);
     assert(i == 34);
-    i = irfind(sPlts, cast(char)'S');
+    i = lastIndexOf(sPlts, cast(char)'S', CaseSensitive.no);
     assert(i == 40);
 }
 
@@ -547,56 +492,105 @@ unittest
  *  Index in s where c is found, -1 if not found.
  */
 
-ptrdiff_t find(in char[] s, in char[] sub)
-    out (result)
+int indexOf(in char[] s, in char[] sub, CaseSensitive cs = CaseSensitive.yes)
+out (result)
+{
+    // if (result == -1)
+    // {
+    // }
+    // else
+    // {
+    //     assert(0 <= result && result < s.length - sub.length + 1);
+    //     assert(memcmp(&s[result], sub.ptr, sub.length) == 0);
+    // }
+}
+body
+{
+    if (cs == CaseSensitive.yes)
     {
-    if (result == -1)
-    {
+        auto sublength = sub.length;
+
+        if (sublength == 0)
+            return 0;
+        
+        if (s.length >= sublength)
+        {
+            auto c = sub[0];
+            if (sublength == 1)
+            {
+                auto p = cast(const char*)memchr(s.ptr, c, s.length);
+                if (p)
+                    return p - &s[0];
+            }
+            else
+            {
+                size_t imax = s.length - sublength + 1;
+                
+                // Remainder of sub[]
+                auto q = &sub[1];
+                sublength--;
+                
+                for (size_t i = 0; i < imax; i++)
+                {
+                    auto p = cast(const char*)memchr(&s[i], c, imax - i);
+                    if (!p)
+                        break;
+                    i = p - &s[0];
+                    if (memcmp(p + 1, q, sublength) == 0)
+                        return i;
+                }
+            }
+        }
+        return -1;
     }
     else
     {
-        assert(0 <= result && result < s.length - sub.length + 1);
-        assert(memcmp(&s[result], sub.ptr, sub.length) == 0);
-    }
-    }
-    body
-    {
-    auto sublength = sub.length;
+        auto sublength = sub.length;
+        int i;
 
-    if (sublength == 0)
-        return 0;
+        if (sublength == 0)
+            return 0;
 
-    if (s.length >= sublength)
-    {
+        if (s.length < sublength)
+            return -1;
+
         auto c = sub[0];
         if (sublength == 1)
         {
-        auto p = cast(const char*)memchr(s.ptr, c, s.length);
-        if (p)
-            return p - &s[0];
+            i = indexOf(s, c, CaseSensitive.no);
+        }
+        else if (c <= 0x7F)
+        {
+            size_t imax = s.length - sublength + 1;
+
+            // Remainder of sub[]
+            auto subn = sub[1 .. sublength];
+
+            for (i = 0; i < imax; i++)
+            {
+                auto j = indexOf(s[i .. imax], c, cs);
+                if (j == -1)
+                    return -1;
+                i += j;
+                if (icmp(s[i + 1 .. i + sublength], subn) == 0)
+                    return i;
+            }
+            i = -1;
         }
         else
         {
-        size_t imax = s.length - sublength + 1;
+            size_t imax = s.length - sublength;
 
-        // Remainder of sub[]
-        auto q = &sub[1];
-        sublength--;
-
-        for (size_t i = 0; i < imax; i++)
-        {
-            auto p = cast(const char*)memchr(&s[i], c, imax - i);
-            if (!p)
-            break;
-            i = p - &s[0];
-            if (memcmp(p + 1, q, sublength) == 0)
-            return i;
+            for (i = 0; i <= imax; i++)
+            {
+                if (icmp(s[i .. i + sublength], sub) == 0)
+                    return i;
+            }
+            i = -1;
         }
-        }
+        return i;
     }
-    return -1;
-    }
-
+}    
 
 unittest
 {
@@ -604,84 +598,23 @@ unittest
 
     int i;
 
-    i = find(null, "a");
+    i = indexOf(null, "a");
     assert(i == -1);
-    i = find("def", "a");
+    i = indexOf("def", "a");
     assert(i == -1);
-    i = find("abba", "a");
+    i = indexOf("abba", "a");
     assert(i == 0);
-    i = find("def", "f");
+    i = indexOf("def", "f");
     assert(i == 2);
-    i = find("dfefffg", "fff");
+    i = indexOf("dfefffg", "fff");
     assert(i == 3);
-    i = find("dfeffgfff", "fff");
+    i = indexOf("dfeffgfff", "fff");
     assert(i == 6);
 }
 
 /******************************************
  * ditto
  */
-
-ptrdiff_t ifind(in char[] s, in char[] sub)
-    out (result)
-    {
-    if (result == -1)
-    {
-    }
-    else
-    {
-        assert(0 <= result && result < s.length - sub.length + 1);
-        assert(icmp(s[result .. result + sub.length], sub) == 0);
-    }
-    }
-    body
-    {
-    auto sublength = sub.length;
-    ptrdiff_t i;
-
-    if (sublength == 0)
-        return 0;
-
-    if (s.length < sublength)
-        return -1;
-
-    auto c = sub[0];
-    if (sublength == 1)
-    {
-        i = ifind(s, c);
-    }
-    else if (c <= 0x7F)
-    {
-        size_t imax = s.length - sublength + 1;
-
-        // Remainder of sub[]
-        auto subn = sub[1 .. sublength];
-
-        for (i = 0; i < imax; i++)
-        {
-        auto j = ifind(s[i .. imax], c);
-        if (j == -1)
-            return -1;
-        i += j;
-        if (icmp(s[i + 1 .. i + sublength], subn) == 0)
-            return i;
-        }
-        i = -1;
-    }
-    else
-    {
-        size_t imax = s.length - sublength;
-
-        for (i = 0; i <= imax; i++)
-        {
-        if (icmp(s[i .. i + sublength], sub) == 0)
-            return i;
-        }
-        i = -1;
-    }
-    return i;
-    }
-
 
 unittest
 {
@@ -689,41 +622,41 @@ unittest
 
     int i;
 
-    i = ifind(null, "a");
+    i = indexOf(null, "a", CaseSensitive.no);
     assert(i == -1);
-    i = ifind("def", "a");
+    i = indexOf("def", "a", CaseSensitive.no);
     assert(i == -1);
-    i = ifind("abba", "a");
-    assert(i == 0);
-    i = ifind("def", "f");
+    i = indexOf("abba", "a", CaseSensitive.no);
+    assert(i == 0, text(i));
+    i = indexOf("def", "f", CaseSensitive.no);
     assert(i == 2);
-    i = ifind("dfefffg", "fff");
+    i = indexOf("dfefffg", "fff", CaseSensitive.no);
     assert(i == 3);
-    i = ifind("dfeffgfff", "fff");
+    i = indexOf("dfeffgfff", "fff", CaseSensitive.no);
     assert(i == 6);
 
     string sPlts = "Mars: the fourth Rock (Planet) from the Sun.";
     string sMars = "Who\'s \'My Favorite Maritian?\'";
 
-    i = ifind(sMars, "MY fAVe");
+    i = indexOf(sMars, "MY fAVe", CaseSensitive.no);
     assert(i == -1);
-    i = ifind(sMars, "mY fAVOriTe");
+    i = indexOf(sMars, "mY fAVOriTe", CaseSensitive.no);
     assert(i == 7);
-    i = ifind(sPlts, "mArS:");
+    i = indexOf(sPlts, "mArS:", CaseSensitive.no);
     assert(i == 0);
-    i = ifind(sPlts, "rOcK");
+    i = indexOf(sPlts, "rOcK", CaseSensitive.no);
     assert(i == 17);
-    i = ifind(sPlts, "Un.");
+    i = indexOf(sPlts, "Un.", CaseSensitive.no);
     assert(i == 41);
-    i = ifind(sPlts, sPlts);
+    i = indexOf(sPlts, sPlts, CaseSensitive.no);
     assert(i == 0);
 
-    i = ifind("\u0100", "\u0100");
+    i = indexOf("\u0100", "\u0100", CaseSensitive.no);
     assert(i == 0);
 
     // Thanks to Carlos Santander B. and zwang
-    i = ifind("sus mejores cortesanos. Se embarcaron en el puerto de Dubai y",
-    "page-break-before");
+    i = indexOf("sus mejores cortesanos. Se embarcaron en el puerto de Dubai y",
+            "page-break-before", CaseSensitive.no);
     assert(i == -1);
 }
 
@@ -731,52 +664,86 @@ unittest
  * ditto
  */
 
-ptrdiff_t rfind(in char[] s, in char[] sub)
-    out (result)
+int lastIndexOf(in char[] s, in char[] sub, CaseSensitive cs = CaseSensitive.yes)
+out (result)
+{
+    // if (result == -1)
+    // {
+    // }
+    // else
+    // {
+    //     assert(0 <= result && result < s.length - sub.length + 1);
+    //     assert(memcmp(&s[0] + result, sub.ptr, sub.length) == 0);
+    // }
+}
+body
+{
+    if (cs == CaseSensitive.yes)
     {
-    if (result == -1)
-    {
+        char c;
+        
+        if (sub.length == 0)
+            return s.length;
+        c = sub[0];
+        if (sub.length == 1)
+            return lastIndexOf(s, c);
+        for (int i = s.length - sub.length; i >= 0; i--)
+        {
+            if (s[i] == c)
+            {
+                if (memcmp(&s[i + 1], &sub[1], sub.length - 1) == 0)
+                    return i;
+            }
+        }
+        return -1;
     }
     else
     {
-        assert(0 <= result && result < s.length - sub.length + 1);
-        assert(memcmp(&s[0] + result, sub.ptr, sub.length) == 0);
-    }
-    }
-    body
-    {
-    char c;
+        dchar c;
 
-    if (sub.length == 0)
-        return s.length;
-    c = sub[0];
-    if (sub.length == 1)
-        return rfind(s, c);
-    for (ptrdiff_t i = s.length - sub.length; i >= 0; i--)
-    {
-        if (s[i] == c)
+        if (sub.length == 0)
+            return s.length;
+        c = sub[0];
+        if (sub.length == 1)
+            return lastIndexOf(s, c, cs);
+        if (c <= 0x7F)
         {
-        if (memcmp(&s[i + 1], &sub[1], sub.length - 1) == 0)
-            return i;
+            c = std.ctype.tolower(c);
+            for (int i = s.length - sub.length; i >= 0; i--)
+            {
+                if (std.ctype.tolower(s[i]) == c)
+                {
+                    if (icmp(s[i + 1 .. i + sub.length], sub[1 .. sub.length]) == 0)
+                        return i;
+                }
+            }
         }
+        else
+        {
+            for (int i = s.length - sub.length; i >= 0; i--)
+            {
+                if (icmp(s[i .. i + sub.length], sub) == 0)
+                    return i;
+            }
+        }
+        return -1;
     }
-    return -1;
-    }
+}
 
 unittest
 {
     int i;
 
-    debug(string) printf("string.rfind.unittest\n");
-    i = rfind("abcdefcdef", "c");
+    debug(string) printf("string.lastIndexOf.unittest\n");
+    i = lastIndexOf("abcdefcdef", "c");
     assert(i == 6);
-    i = rfind("abcdefcdef", "cd");
+    i = lastIndexOf("abcdefcdef", "cd");
     assert(i == 6);
-    i = rfind("abcdefcdef", "x");
+    i = lastIndexOf("abcdefcdef", "x");
     assert(i == -1);
-    i = rfind("abcdefcdef", "xy");
+    i = lastIndexOf("abcdefcdef", "xy");
     assert(i == -1);
-    i = rfind("abcdefcdef", "");
+    i = lastIndexOf("abcdefcdef", "");
     assert(i == 10);
 }
 
@@ -785,83 +752,39 @@ unittest
  * ditto
  */
 
-ptrdiff_t irfind(in char[] s, in char[] sub)
-    out (result)
-    {
-    if (result == -1)
-    {
-    }
-    else
-    {
-        assert(0 <= result && result < s.length - sub.length + 1);
-        assert(icmp(s[result .. result + sub.length], sub) == 0);
-    }
-    }
-    body
-    {
-    dchar c;
-
-    if (sub.length == 0)
-        return s.length;
-    c = sub[0];
-    if (sub.length == 1)
-        return irfind(s, c);
-    if (c <= 0x7F)
-    {
-        c = std.ctype.tolower(c);
-        for (ptrdiff_t i = s.length - sub.length; i >= 0; i--)
-        {
-        if (std.ctype.tolower(s[i]) == c)
-        {
-            if (icmp(s[i + 1 .. i + sub.length], sub[1 .. sub.length]) == 0)
-            return i;
-        }
-        }
-    }
-    else
-    {
-        for (ptrdiff_t i = s.length - sub.length; i >= 0; i--)
-        {
-        if (icmp(s[i .. i + sub.length], sub) == 0)
-            return i;
-        }
-    }
-    return -1;
-    }
-
 unittest
 {
     int i;
 
-    debug(string) printf("string.irfind.unittest\n");
-    i = irfind("abcdefCdef", "c");
+    debug(string) printf("string.lastIndexOf.unittest\n");
+    i = lastIndexOf("abcdefCdef", "c", CaseSensitive.no);
     assert(i == 6);
-    i = irfind("abcdefCdef", "cD");
+    i = lastIndexOf("abcdefCdef", "cD", CaseSensitive.no);
     assert(i == 6);
-    i = irfind("abcdefcdef", "x");
+    i = lastIndexOf("abcdefcdef", "x", CaseSensitive.no);
     assert(i == -1);
-    i = irfind("abcdefcdef", "xy");
+    i = lastIndexOf("abcdefcdef", "xy", CaseSensitive.no);
     assert(i == -1);
-    i = irfind("abcdefcdef", "");
+    i = lastIndexOf("abcdefcdef", "", CaseSensitive.no);
     assert(i == 10);
 
     string sPlts = "Mars: the fourth Rock (Planet) from the Sun.";
     string sMars = "Who\'s \'My Favorite Maritian?\'";
 
-    i = irfind("abcdefcdef", "c");
+    i = lastIndexOf("abcdefcdef", "c", CaseSensitive.no);
     assert(i == 6);
-    i = irfind("abcdefcdef", "cd");
+    i = lastIndexOf("abcdefcdef", "cd", CaseSensitive.no);
     assert(i == 6);
-    i = irfind( "abcdefcdef", "def" );
+    i = lastIndexOf( "abcdefcdef", "def", CaseSensitive.no);
     assert(i == 7);
 
-    i = irfind(sMars, "RiTE maR");
+    i = lastIndexOf(sMars, "RiTE maR", CaseSensitive.no);
     assert(i == 14);
-    i = irfind(sPlts, "FOuRTh");
+    i = lastIndexOf(sPlts, "FOuRTh", CaseSensitive.no);
     assert(i == 10);
-    i = irfind(sMars, "whO\'s \'MY");
+    i = lastIndexOf(sMars, "whO\'s \'MY", CaseSensitive.no);
     assert(i == 0);
-    i = irfind(sMars, sMars);
+    i = lastIndexOf(sMars, sMars, CaseSensitive.no);
     assert(i == 0);
 }
 
@@ -923,13 +846,13 @@ void tolowerInPlace(C)(ref C[] s)
 {
     for (size_t i = 0; i < s.length; )
     {
-    invariant c = s[i];
-    if ('A' <= c && c <= 'Z')
-    {
+        invariant c = s[i];
+        if ('A' <= c && c <= 'Z')
+        {
             s[i++] = cast(C) (c + (cast(C)'a' - 'A'));
-    }
-    else if (c > 0x7F)
-    {
+        }
+        else if (c > 0x7F)
+        {
             // wide character
             size_t j = i;
             dchar dc = decode(s, j);
@@ -942,7 +865,7 @@ void tolowerInPlace(C)(ref C[] s)
             auto toAdd = to!(C[])(std.uni.toUniLower(dc));
             s = s[0 .. i] ~ toAdd  ~ s[j .. $];
             i += toAdd.length;
-    }
+        }
         else
         {
             ++i;
@@ -1047,13 +970,13 @@ void toupperInPlace(C)(ref C[] s)
 {
     for (size_t i = 0; i < s.length; )
     {
-    invariant c = s[i];
-    if ('a' <= c && c <= 'z')
-    {
+        invariant c = s[i];
+        if ('a' <= c && c <= 'z')
+        {
             s[i++] = cast(C) (c - (cast(C)'a' - 'A'));
-    }
-    else if (c > 0x7F)
-    {
+        }
+        else if (c > 0x7F)
+        {
             // wide character
             size_t j = i;
             dchar dc = decode(s, j);
@@ -1066,7 +989,7 @@ void toupperInPlace(C)(ref C[] s)
             auto toAdd = to!(C[])(std.uni.toUniUpper(dc));
             s = s[0 .. i] ~ toAdd  ~ s[j .. $];
             i += toAdd.length;
-    }
+        }
         else
         {
             ++i;
@@ -1112,6 +1035,7 @@ unittest
 string capitalize(string s)
 {
     int changed;
+    int i;
     char[] r;
 
     changed = 0;
@@ -1237,19 +1161,19 @@ unittest
 string repeat(string s, size_t n)
 {
     if (n == 0)
-    return null;
+        return null;
     if (n == 1)
-    return s;
+        return s;
     char[] r = new char[n * s.length];
     if (s.length == 1)
-    r[] = s[0];
+        r[] = s[0];
     else
     {   auto len = s.length;
 
-    for (size_t i = 0; i < n * len; i += len)
-    {
-        r[i .. i + len] = s[];
-    }
+        for (size_t i = 0; i < n * len; i += len)
+        {
+            r[i .. i + len] = s[];
+        }
     }
     return assumeUnique(r);
 }
@@ -1281,37 +1205,28 @@ unittest
 
 string join(in string[] words, string sep)
 {
-    char[] result;
-
-    if (words.length)
-    {
-    size_t len = 0;
-    size_t i;
-
-    for (i = 0; i < words.length; i++)
+    if (!words.length) return null;
+    immutable seplen = sep.length;
+    size_t len = (words.length - 1) * seplen;
+    
+    foreach (i; 0 .. words.length)
         len += words[i].length;
-
-    auto seplen = sep.length;
-    len += (words.length - 1) * seplen;
-
-    result = new char[len];
-
+    
+    auto result = new char[len];
+    
     size_t j;
-    i = 0;
-    while (true)
+    foreach (i; 0 .. words.length)
     {
-        size_t wlen = words[i].length;
-
+        if (i > 0)
+        {
+            result[j .. j + seplen] = sep;
+            j += seplen;
+        }
+        immutable wlen = words[i].length;
         result[j .. j + wlen] = words[i];
         j += wlen;
-        i++;
-        if (i >= words.length)
-        break;
-        result[j .. j + seplen] = sep;
-        j += seplen;
     }
     assert(j == len);
-    }
     return assumeUnique(result);
 }
 
@@ -1340,7 +1255,7 @@ unittest
  * using whitespace as the delimiter.
  */
 
-string[] split(string s)
+S[] split(S)(S s) if (isSomeString!S)
 {
     size_t i;
     size_t istart = 0;
@@ -1395,19 +1310,32 @@ unittest
     assert(i == 0);
 }
 
+auto splitter(String)(String s) if (isSomeString!String)
+{
+    return std.regex.splitter(s, regex("[ \t\n\r]+"));
+}
+
+unittest
+{
+    auto a = " a     bcd   ef gh ";
+    //foreach (e; splitter(a)) writeln(e);
+    assert(equal(splitter(a), ["", "a", "bcd", "ef", "gh", ""][]));
+    a = "";
+    assert(splitter(a).empty);
+}
 
 /**************************************
  * Split s[] into an array of words,
  * using delim[] as the delimiter.
  */
 
-string[] split(string s, string delim)
-    in
-    {
+S1[] split(S1, S2)(S1 s, S2 delim) if (isSomeString!S1 && isSomeString!S2)
+in
+{
     assert(delim.length > 0);
-    }
-    body
-    {
+}
+body
+{
     size_t i;
     size_t j;
     string[] words;
@@ -1417,89 +1345,89 @@ string[] split(string s, string delim)
     {
         if (delim.length == 1)
         {   char c = delim[0];
-        size_t nwords = 0;
-        auto p = s.ptr;
-        auto pend = p + s.length;
+            size_t nwords = 0;
+            auto p = s.ptr;
+            auto pend = p + s.length;
 
-        while (true)
-        {
-            nwords++;
-            p = cast(typeof(p))memchr(p, c, pend - p);
-            if (!p)
-            break;
-            p++;
-            if (p == pend)
-            {   nwords++;
-            break;
+            while (true)
+            {
+                nwords++;
+                p = cast(typeof(p))memchr(p, c, pend - p);
+                if (!p)
+                    break;
+                p++;
+                if (p == pend)
+                {   nwords++;
+                    break;
+                }
             }
-        }
-        words.length = nwords;
+            words.length = nwords;
 
-        size_t wordi = 0;
-        i = 0;
-        while (true)
-        {
-            p = cast(typeof(p))memchr(&s[i], c, s.length - i);
-            if (!p)
+            int wordi = 0;
+            i = 0;
+            while (true)
             {
-            words[wordi] = s[i .. s.length];
-            break;
+                p = cast(typeof(p))memchr(&s[i], c, s.length - i);
+                if (!p)
+                {
+                    words[wordi] = s[i .. s.length];
+                    break;
+                }
+                j = p - &s[0];
+                words[wordi] = s[i .. j];
+                wordi++;
+                i = j + 1;
+                if (i == s.length)
+                {
+                    words[wordi] = "";
+                    break;
+                }
             }
-            j = p - &s[0];
-            words[wordi] = s[i .. j];
-            wordi++;
-            i = j + 1;
-            if (i == s.length)
-            {
-            words[wordi] = "";
-            break;
-            }
-        }
-        assert(wordi + 1 == nwords);
+            assert(wordi + 1 == nwords);
         }
         else
         {   size_t nwords = 0;
 
-        while (true)
-        {
-            nwords++;
-            j = find(s[i .. s.length], delim);
-            if (j == -1)
-            break;
-            i += j + delim.length;
-            if (i == s.length)
-            {   nwords++;
-            break;
+            while (true)
+            {
+                nwords++;
+                j = indexOf(s[i .. s.length], delim);
+                if (j == -1)
+                    break;
+                i += j + delim.length;
+                if (i == s.length)
+                {   nwords++;
+                    break;
+                }
+                assert(i < s.length);
             }
-            assert(i < s.length);
-        }
-        words.length = nwords;
+            words.length = nwords;
 
-        size_t wordi = 0;
-        i = 0;
-        while (true)
-        {
-            j = find(s[i .. s.length], delim);
-            if (j == -1)
+            int wordi = 0;
+            i = 0;
+            while (true)
             {
-            words[wordi] = s[i .. s.length];
-            break;
+                j = indexOf(s[i .. s.length], delim);
+                if (j == -1)
+                {
+                    words[wordi] = s[i .. s.length];
+                    break;
+                }
+                words[wordi] = s[i .. i + j];
+                wordi++;
+                i += j + delim.length;
+                if (i == s.length)
+                {
+                    words[wordi] = "";
+                    break;
+                }
+                assert(i < s.length);
             }
-            words[wordi] = s[i .. i + j];
-            wordi++;
-            i += j + delim.length;
-            if (i == s.length)
-            {
-            words[wordi] = "";
-            break;
-            }
-            assert(i < s.length);
-        }
-        assert(wordi + 1 == nwords);
+            assert(wordi + 1 == nwords);
         }
     }
     return words;
-    }
+}
 
 unittest
 {
@@ -1572,28 +1500,28 @@ unittest
 
 string[] splitlines(string s)
 {
-    size_t i;
-    size_t istart;
-    size_t nlines;
+    uint i;
+    uint istart;
+    uint nlines;
 
     nlines = 0;
     for (i = 0; i < s.length; i++)
     {   char c;
 
-    c = s[i];
-    if (c == '\r' || c == '\n')
-    {
-        nlines++;
-        istart = i + 1;
-        if (c == '\r' && i + 1 < s.length && s[i + 1] == '\n')
+        c = s[i];
+        if (c == '\r' || c == '\n')
         {
-        i++;
-        istart++;
+            nlines++;
+            istart = i + 1;
+            if (c == '\r' && i + 1 < s.length && s[i + 1] == '\n')
+            {
+                i++;
+                istart++;
+            }
         }
     }
-    }
     if (istart != i)
-    nlines++;
+        nlines++;
 
     auto lines = new string[nlines];
     nlines = 0;
@@ -1601,22 +1529,22 @@ string[] splitlines(string s)
     for (i = 0; i < s.length; i++)
     {   char c;
 
-    c = s[i];
-    if (c == '\r' || c == '\n')
-    {
-        lines[nlines] = s[istart .. i];
-        nlines++;
-        istart = i + 1;
-        if (c == '\r' && i + 1 < s.length && s[i + 1] == '\n')
+        c = s[i];
+        if (c == '\r' || c == '\n')
         {
-        i++;
-        istart++;
+            lines[nlines] = s[istart .. i];
+            nlines++;
+            istart = i + 1;
+            if (c == '\r' && i + 1 < s.length && s[i + 1] == '\n')
+            {
+                i++;
+                istart++;
+            }
         }
-    }
     }
     if (istart != i)
     {   lines[nlines] = s[istart .. i];
-    nlines++;
+        nlines++;
     }
 
     assert(nlines == lines.length);
@@ -1657,238 +1585,214 @@ unittest
  * Strips leading or trailing whitespace, or both.
  */
 
-string stripl(string s)
+String stripl(String)(String s)
 {
-    size_t i;
-
+    uint i;
     for (i = 0; i < s.length; i++)
     {
-    if (!std.ctype.isspace(s[i]))
-        break;
+        if (!std.ctype.isspace(s[i]))
+            break;
     }
     return s[i .. s.length];
 }
 
-string stripr(string s) /// ditto
+String stripr(String)(String s) /// ditto
 {
-    size_t i;
-
-    for (i = s.length; i > 0; i--)
+    for (auto i = s.length;;)
     {
-    if (!std.ctype.isspace(s[i - 1]))
-        break;
+        if (i == 0) return null;
+        --i;
+        if (!std.ctype.isspace(s[i]))
+            return s[0 .. i + 1];
     }
-    return s[0 .. i];
 }
 
-string strip(string s) /// ditto
+String strip(String)(String s) /// ditto
 {
     return stripr(stripl(s));
 }
 
 unittest
 {
-    debug(string) printf("string.strip.unittest\n");
-    string s;
-    int i;
-
-    s = strip("  foo\t ");
-    i = cmp(s, "foo");
-    assert(i == 0);
+    assert(strip("  foo\t ") == "foo");
+    assert(strip("1") == "1");
 }
 
-/**
+/+
  * Returns $(D_PARAM true) if and only if the array $(D_PARAM longer)
  * starts with array $(D_PARAM shorter).
  */
 bool startsWith(A1, A2)(A1 longer, A2 shorter)
 {
-    static if (is(typeof(longer[0 .. shorter.length] == shorter)))
+    static if (isSomeString!(A1) && isSomeString!(A2))
     {
-        // the easy way: arrays, directly comparable
-        return longer.length >= shorter.length &&
-            longer[0 .. shorter.length] == shorter;
-    }
-    else
-    {
-        // different element types, etc.
-        static if (isSomeString!(A1) && isSomeString!(A2))
+        // UTF-informed comparison
+        // find the largest character of the two
+        static if (longer[0].sizeof > shorter[0].sizeof)
         {
-            // UTF-informed comparison
-            // find the largest character of the two
-            static if (longer[0].sizeof > shorter[0].sizeof)
+            alias typeof(longer[0]) Char;
+            foreach (Char c; shorter)
             {
-                alias typeof(longer[0]) Char;
-                if (shorter.length / Char.sizeof > longer.length) return false;
-                size_t i = 0;
-                foreach (Char c; shorter)
-                {
-                    if (i == longer.length || longer[i] != c) return false;
-                    ++i;
-                }
+                if (longer.empty || longer.front != c) return false;
+                longer.popFront;
             }
-            else
+            return true;
+        }
+        else static if (longer[0].sizeof < shorter[0].sizeof)
+        {
+            alias typeof(shorter[0]) Char;
+            foreach (Char c; longer)
             {
-                static assert(longer[0].sizeof < shorter[0].sizeof,
-                    "Looks like there's a bug in the compiler");
-                alias typeof(shorter[0]) Char;
-                if (shorter.length > longer.length) return false;
-                size_t i = 0;
-                foreach (Char c; longer)
-                {
-                    if (i == shorter.length) return true;
-                    if (shorter[i] != c) return false;
-                    ++i;
-                }
+                if (shorter.empty) return true;
+                if (shorter.front != c) return false;
+                shorter.popFront;
             }
+            return shorter.empty;
         }
         else
         {
-            // raw element-by-element comparison
-            if (longer.length < shorter.length) return false;
-            foreach (i, e; shorter)
-            {
-                if (longer[i] != e) return false;
-            }
+            return longer.length >= shorter.length
+                && longer[0 .. shorter.length] == shorter;
         }
-        return true;
     }
-}
-
-unittest
-{
-version(none) // fails to compile with: Error: array equality comparison type mismatch, immutable(char)[] vs ubyte[]
-{
-    alias TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[])
-        StringTypes;
-    alias TypeTuple!(ubyte[], int[], double[]) OtherTypes;
-    foreach (T1 ; StringTypes)
+    else
     {
-        foreach (T2 ; StringTypes)
+        // raw element-by-element comparison
+        return std.algorithm.startsWith(longer, shorter) == 1;
+    }
+}+/
+
+// Too slow for release mode
+debug unittest
+{
+    // fails to compile with: Error: array equality comparison type
+    // mismatch, immutable(char)[] vs ubyte[]
+    version(none) 
+    {
+        alias TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[])
+            StringTypes;
+        alias TypeTuple!(ubyte[], int[], double[]) OtherTypes;
+        foreach (T1 ; StringTypes)
         {
-            foreach (T3 ; OtherTypes)
+            foreach (T2 ; StringTypes)
             {
-                auto a = to!(T1)("abcde"), b = to!(T2)("abcdefgh"),
-                    c = to!(T2)("");
-                auto d = to!(T3)([2, 3]);
-                assert(startsWith(b, a));
-                assert(!startsWith(a, b));
-                assert(startsWith(b, c));
-                assert(startsWith(a, c));
-                assert(!startsWith(c, b));
-                assert(!startsWith(c, a));
-                assert(!startsWith(a, d));
-                assert(!startsWith(d, a));
-                assert(!startsWith(b, d));
-                assert(!startsWith(d, b));
-                assert(!startsWith(c, d));
-                assert(startsWith(d, c));
+                foreach (T3 ; OtherTypes)
+                {
+                    auto a = to!(T1)("abcde"), b = to!(T2)("abcdefgh"),
+                        c = to!(T2)("");
+                    auto d = to!(T3)([2, 3]);
+                    assert(startsWith(b, a));
+                    assert(!startsWith(a, b));
+                    assert(startsWith(b, c));
+                    assert(startsWith(a, c));
+                    assert(!startsWith(c, b));
+                    assert(!startsWith(c, a));
+                    assert(!startsWith(a, d));
+                    assert(!startsWith(d, a));
+                    assert(!startsWith(b, d));
+                    assert(!startsWith(d, b));
+                    assert(!startsWith(c, d));
+                    assert(startsWith(d, c));
+                }
             }
         }
     }
 }
-}
 
-/**
+/+
  * Returns $(D_PARAM true) if and only if the array $(D_PARAM longer)
  * ends with array $(D_PARAM shorter).
  */
 bool endsWith(A1, A2)(A1 longer, A2 shorter)
 {
-    static if (is(typeof(longer[$ - shorter.length .. $] == shorter)))
+    // different element types, etc.
+    static if (isSomeString!(A1) && isSomeString!(A2))
     {
-        // the easy way: arrays, directly comparable
-        return longer.length >= shorter.length &&
-            longer[$ - shorter.length .. $] == shorter;
-    }
-    else
-    {
-        // different element types, etc.
-        static if (isSomeString!(A1) && isSomeString!(A2))
+        // UTF-informed comparison
+        // find the largest character of the two
+        static if (longer[0].sizeof > shorter[0].sizeof)
         {
-            // UTF-informed comparison
-            // find the largest character of the two
-            static if (longer[0].sizeof > shorter[0].sizeof)
+            alias typeof(longer[0]) Char;
+            foreach_reverse (Char c; shorter)
             {
-                alias typeof(longer[0]) Char;
-                if (shorter.length > longer.length * Char.sizeof) return false;
-                size_t i = longer.length - 1;
-                foreach_reverse (Char c; shorter)
-                {
-                    if (i == 0 || longer[i] != c) return false;
-                    --i;
-                }
+                if (longer.empty) return false;
+                if (longer.back != c) return false;
+                longer.popBack;
             }
-            else
+            return true;
+        }
+        else static if (longer[0].sizeof < shorter[0].sizeof)
+        {
+            alias typeof(shorter[0]) Char;
+            foreach_reverse (Char c; longer)
             {
-                static assert(longer[0].sizeof < shorter[0].sizeof,
-                    "Looks like there's a bug in the compiler");
-                alias typeof(shorter[0]) Char;
-                if (shorter.length > longer.length) return false;
-                if (!shorter.length) return true;
-                size_t i = shorter.length - 1;
-                foreach_reverse (Char c; longer)
-                {
-                    if (i == 0) return true;
-                    if (shorter[i] != c) return false;
-                    --i;
-                }
+                if (shorter.empty) return true;
+                if (shorter.back != c) return false;
+                shorter.popBack;
             }
+            return shorter.empty;
         }
         else
         {
-            // raw element-by-element comparison
-            if (longer.length < shorter.length) return false;
-            foreach (i, e; longer[$ - shorter.length .. $])
-            {
-                if (shorter[i] != e) return false;
-            }
+            return longer.length >= shorter.length
+                && longer[$ - shorter.length .. $] == shorter;
         }
-        return true;
     }
-}
+    else
+    {
+        //assert(0);
+        return std.algorithm.endsWith(longer, shorter) == 1;
+    }
+}+/
 
-unittest
+// Too slow for release mode
+debug unittest
 {
     alias TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[])
         TestTypes;
     alias TypeTuple!(ubyte[], int[], double[]) OtherTypes;
-version(none) // fails to compile with: Error: array equality comparison type mismatch, immutable(char)[] vs ubyte[]
-{
-    foreach (T1 ; TestTypes)
+     // fails to compile with: Error: array equality comparison type
+     // mismatch, immutable(char)[] vs ubyte[]
+    version(none)
     {
-        foreach (T2 ; TestTypes)
+        foreach (T1 ; TestTypes)
         {
-            foreach (T3 ; OtherTypes)
+            foreach (T2 ; TestTypes)
             {
-                auto a = to!(T1)("efgh"), b = to!(T2)("abcdefgh"),
-                    c = to!(T2)(""), d = to!(T3)([1, 2]);
-                assert(endsWith(b, a));
-                assert(!endsWith(a, b));
-                assert(endsWith(b, c));
-                assert(endsWith(a, c));
-                assert(!endsWith(c, b));
-                assert(!endsWith(c, a));
-                assert(!endsWith(a, d));
-                assert(!endsWith(d, a));
-                assert(!endsWith(b, d));
-                assert(!endsWith(d, b));
-                assert(!endsWith(c, d));
-                assert(endsWith(d, c));
+                foreach (T3 ; OtherTypes)
+                {
+                    auto a = to!(T1)("efgh"), b = to!(T2)("abcdefgh"),
+                        c = to!(T2)(""), d = to!(T3)([1, 2]);
+                    assert(endsWith(a, a));
+                    assert(endsWith(b, b));
+                    // writeln(T2.stringof);
+                    // writeln(T1.stringof);
+                    assert(endsWith(b, a));
+                    assert(!endsWith(a, b));
+                    assert(endsWith(b, c));
+                    assert(endsWith(a, c));
+                    assert(!endsWith(c, b));
+                    assert(!endsWith(c, a));
+                    assert(!endsWith(a, d));
+                    assert(!endsWith(d, a));
+                    assert(!endsWith(b, d));
+                    assert(!endsWith(d, b));
+                    assert(!endsWith(c, d));
+                    assert(endsWith(d, c));
+                }
+            }
+        }
+        foreach (T1; OtherTypes)
+        {
+            foreach (T2; OtherTypes)
+            {
+                auto a = to!(T1)([1, 2]);
+                auto b = to!(T2)([0, 1, 2]);
+                //assert(!std.string.endsWith(a, b));
+                // assert(endsWith(b, a));
             }
         }
     }
-    foreach (T1; OtherTypes)
-    {
-        foreach (T2; OtherTypes)
-        {
-            auto a = to!(T1)([1, 2]);
-            auto b = to!(T2)([0, 1, 2]);
-            assert(!endsWith(a, b));
-            assert(endsWith(b, a));
-        }
-    }
-}
 }
 
 /*******************************************
@@ -1901,24 +1805,24 @@ C[] chomp(C)(C[] s, in C[] delimiter = null)
     if (delimiter is null)
     {   auto len = s.length;
 
-    if (len)
-    {   auto c = s[len - 1];
+        if (len)
+        {   auto c = s[len - 1];
 
-        if (c == '\r')          // if ends in CR
-        len--;
-        else if (c == '\n')         // if ends in LF
-        {
-        len--;
-        if (len && s[len - 1] == '\r')
-            len--;          // remove CR-LF
+            if (c == '\r')          // if ends in CR
+                len--;
+            else if (c == '\n')         // if ends in LF
+            {
+                len--;
+                if (len && s[len - 1] == '\r')
+                    len--;          // remove CR-LF
+            }
         }
-    }
-    return s[0 .. len];
+        return s[0 .. len];
     }
     else if (s.length >= delimiter.length)
     {
-    if (s[length - delimiter.length .. length] == delimiter)
-        return s[0 .. length - delimiter.length];
+        if (s[length - delimiter.length .. length] == delimiter)
+            return s[0 .. length - delimiter.length];
     }
     return s;
 }
@@ -1984,24 +1888,21 @@ unittest
  */
 
 string chop(string s)
-{   auto len = s.length;
-
-    if (len)
-    {
+{
+    auto len = s.length;
+    if (!len) return s;
     if (len >= 2 && s[len - 1] == '\n' && s[len - 2] == '\r')
         return s[0 .. len - 2];
-
+    
     // If we're in a tail of a UTF-8 sequence, back up
     while ((s[len - 1] & 0xC0) == 0x80)
     {
         len--;
         if (len == 0)
-        throw new std.utf.UtfException("invalid UTF sequence", 0);
+            throw new std.utf.UtfException("invalid UTF sequence", 0);
     }
-
+    
     return s[0 .. len - 1];
-    }
-    return s;
 }
 
 
@@ -2026,7 +1927,7 @@ unittest
  * in field width chars wide.
  */
 
-string ljustify(string s, ptrdiff_t width)
+string ljustify(string s, int width)
 {
     if (s.length >= width)
     return s;
@@ -2037,7 +1938,7 @@ string ljustify(string s, ptrdiff_t width)
 }
 
 /// ditto
-string rjustify(string s, ptrdiff_t width)
+string rjustify(string s, int width)
 {
     if (s.length >= width)
     return s;
@@ -2048,12 +1949,12 @@ string rjustify(string s, ptrdiff_t width)
 }
 
 /// ditto
-string center(string s, ptrdiff_t width)
+string center(string s, int width)
 {
     if (s.length >= width)
     return s;
     char[] r = new char[width];
-    ptrdiff_t left = (width - s.length) / 2;
+    int left = (width - s.length) / 2;
     r[0 .. left] = cast(char)' ';
     r[left .. left + s.length] = s;
     r[left + s.length .. width] = cast(char)' ';
@@ -2090,7 +1991,7 @@ unittest
  * Same as rjustify(), but fill with '0's.
  */
 
-string zfill(string s, ptrdiff_t width)
+string zfill(string s, int width)
 {
     if (s.length >= width)
     return s;
@@ -2107,7 +2008,7 @@ string zfill(string s, ptrdiff_t width)
 string replace(string s, string from, string to)
 {
     char[] p;
-    ptrdiff_t i;
+    int i;
     size_t istart;
 
     //printf("replace('%.*s','%.*s','%.*s')\n", s, from, to);
@@ -2116,15 +2017,15 @@ string replace(string s, string from, string to)
     istart = 0;
     while (istart < s.length)
     {
-    i = find(s[istart .. s.length], from);
-    if (i == -1)
-    {
-        p ~= s[istart .. s.length];
-        break;
-    }
-    p ~= s[istart .. istart + i];
-    p ~= to;
-    istart += i + from.length;
+        i = indexOf(s[istart .. s.length], from);
+        if (i == -1)
+        {
+            p ~= s[istart .. s.length];
+            break;
+        }
+        p ~= s[istart .. istart + i];
+        p ~= to;
+        istart += i + from.length;
     }
     return assumeUnique(p);
 }
@@ -2156,21 +2057,23 @@ string replaceSlice(string s, in string slice, in string replacement)
 in
 {
     // Verify that slice[] really is a slice of s[]
-    ptrdiff_t so = cast(char*)slice - cast(char*)s;
+    int so = cast(char*)slice - cast(char*)s;
     assert(so >= 0);
-    //printf("s.length = %d, so = %d, slice.length = %d\n", s.length, so, slice.length);
+    //printf("s.length = %d, so = %d, slice.length = %d\n", s.length,
+    //so, slice.length);
     assert(s.length >= so + slice.length);
 }
 body
 {
     char[] result;
-    ptrdiff_t so = cast(char*)slice - cast(char*)s;
+    int so = cast(char*)slice - cast(char*)s;
 
     result.length = s.length - slice.length + replacement.length;
 
     result[0 .. so] = s[0 .. so];
     result[so .. so + replacement.length] = replacement;
-    result[so + replacement.length .. result.length] = s[so + slice.length .. s.length];
+    result[so + replacement.length .. result.length] =
+        s[so + slice.length .. s.length];
 
     return assumeUnique(result);
 }
@@ -2205,7 +2108,7 @@ body
     if (s.length == 0)
     return sub;
 
-    ptrdiff_t newlength = s.length + sub.length;
+    int newlength = s.length + sub.length;
     char[] result = new char[newlength];
 
     result[0 .. index] = s[0 .. index];
@@ -2249,15 +2152,15 @@ unittest
 size_t count(string s, string sub)
 {
     size_t i;
-    ptrdiff_t j;
+    int j;
     int count = 0;
 
     for (i = 0; i < s.length; i += j + sub.length)
     {
-    j = find(s[i .. s.length], sub);
-    if (j == -1)
-        break;
-    count++;
+        j = indexOf(s[i .. s.length], sub);
+        if (j == -1)
+            break;
+        count++;
     }
     return count;
 }
@@ -2284,8 +2187,8 @@ string expandtabs(string str, int tabsize = 8)
 {
     bool changes = false;
     char[] result;
-    size_t column;
-    size_t nspaces;
+    int column;
+    int nspaces;
 
     foreach (size_t i, dchar c; str)
     {
@@ -2303,7 +2206,7 @@ string expandtabs(string str, int tabsize = 8)
             result[i .. i + nspaces] = ' ';
         }
         else
-        {   size_t j = result.length;
+        {   int j = result.length;
             result.length = j + nspaces;
             result[j .. j + nspaces] = ' ';
         }
@@ -2369,99 +2272,99 @@ unittest
  *  tabsize = Tab columns are tabsize spaces apart. tabsize defaults to 8.
  */
 
-string entab(string s, ptrdiff_t tabsize = 8)
+string entab(string s, int tabsize = 8)
 {
     bool changes = false;
     char[] result;
 
-    ptrdiff_t nspaces = 0;
-    ptrdiff_t nwhite = 0;
-    ptrdiff_t column = 0;			// column number
+    int nspaces = 0;
+    int nwhite = 0;
+    int column = 0;         // column number
 
     foreach (size_t i, dchar c; s)
-    {   
+    {
 
-	void change()
-	{
-	    changes = true;
-	    result = null;
-	    result.length = s.length;
-	    result.length = i;
-	    result[0 .. i] = s[0 .. i];
-	}
+    void change()
+    {
+        changes = true;
+        result = null;
+        result.length = s.length;
+        result.length = i;
+        result[0 .. i] = s[0 .. i];
+    }
 
-	switch (c)
-	{   
-	    case '\t':
-		nwhite++;
-		if (nspaces)
-		{
-		    if (!changes)
-			change();
+    switch (c)
+    {
+        case '\t':
+        nwhite++;
+        if (nspaces)
+        {
+            if (!changes)
+            change();
 
-		    ptrdiff_t j = result.length - nspaces;
-		    ptrdiff_t ntabs = (((column - nspaces) % tabsize) + nspaces) / tabsize;
-		    result.length = j + ntabs;
-		    result[j .. j + ntabs] = '\t';
-		    nwhite += ntabs - nspaces;
-		    nspaces = 0;
-		}
-		column = (column + tabsize) / tabsize * tabsize;
-		break;
+            int j = result.length - nspaces;
+            int ntabs = (((column - nspaces) % tabsize) + nspaces) / tabsize;
+            result.length = j + ntabs;
+            result[j .. j + ntabs] = '\t';
+            nwhite += ntabs - nspaces;
+            nspaces = 0;
+        }
+        column = (column + tabsize) / tabsize * tabsize;
+        break;
 
-	    case '\r':
-	    case '\n':
-	    case PS:
-	    case LS:
-		// Truncate any trailing spaces or tabs
-		if (nwhite)
-		{
-		    if (!changes)
-			change();
-		    result = result[0 .. result.length - nwhite];
-		}
-		break;
+        case '\r':
+        case '\n':
+        case PS:
+        case LS:
+        // Truncate any trailing spaces or tabs
+        if (nwhite)
+        {
+            if (!changes)
+            change();
+            result = result[0 .. result.length - nwhite];
+        }
+        break;
 
-	    default:
-		if (nspaces >= 2 && (column % tabsize) == 0)
-		{
-		    if (!changes)
-			change();
+        default:
+        if (nspaces >= 2 && (column % tabsize) == 0)
+        {
+            if (!changes)
+            change();
 
-		    ptrdiff_t j = result.length - nspaces;
-		    ptrdiff_t ntabs = (nspaces + tabsize - 1) / tabsize;
-		    result.length = j + ntabs;
-		    result[j .. j + ntabs] = '\t';
-		    nwhite += ntabs - nspaces;
-		    nspaces = 0;
-		}
-		if (c == ' ')
-		{   nwhite++;
-		    nspaces++;
-		}
-		else
-		{   nwhite = 0;
-		    nspaces = 0;
-		}
-		column++;
-		break;
-	}
-	if (changes)
-	{
-	    if (c <= 0x7F)
-		result ~= cast(char)c;
-	    else
-		std.utf.encode(result, c);
-	}
+            int j = result.length - nspaces;
+            int ntabs = (nspaces + tabsize - 1) / tabsize;
+            result.length = j + ntabs;
+            result[j .. j + ntabs] = '\t';
+            nwhite += ntabs - nspaces;
+            nspaces = 0;
+        }
+        if (c == ' ')
+        {   nwhite++;
+            nspaces++;
+        }
+        else
+        {   nwhite = 0;
+            nspaces = 0;
+        }
+        column++;
+        break;
+    }
+    if (changes)
+    {
+        if (c <= 0x7F)
+        result ~= cast(char)c;
+        else
+        std.utf.encode(result, c);
+    }
     }
 
     // Truncate any trailing spaces or tabs
     if (nwhite)
     {
-	if (changes)
-	    result = result[0 .. result.length - nwhite];
-	else
-	    s = s[0 .. s.length - nwhite];
+    if (changes)
+        result = result[0 .. result.length - nwhite];
+    else
+        s = s[0 .. s.length - nwhite];
     }
     return changes ? assumeUnique(result) : s;
 }
@@ -2519,29 +2422,29 @@ unittest
 string maketrans(in string from, in string to)
     in
     {
-	assert(from.length == to.length);
-	assert(from.length <= 128);
-	foreach (char c; from)
-	{
-	    assert(c <= 0x7F);
-	}
-	foreach (char c; to)
-	{
-	    assert(c <= 0x7F);
-	}
+    assert(from.length == to.length);
+    assert(from.length <= 128);
+    foreach (char c; from)
+    {
+        assert(c <= 0x7F);
+    }
+    foreach (char c; to)
+    {
+        assert(c <= 0x7F);
+    }
     }
     body
     {
-	char[] t = new char[256];
-	ptrdiff_t i;
+    char[] t = new char[256];
+    int i;
 
-	for (i = 0; i < t.length; i++)
-	    t[i] = cast(char)i;
+    for (i = 0; i < t.length; i++)
+        t[i] = cast(char)i;
 
-	for (i = 0; i < from.length; i++)
-	    t[from[i]] = to[i];
+    for (i = 0; i < from.length; i++)
+        t[from[i]] = to[i];
 
-	return assumeUnique(t);
+    return assumeUnique(t);
     }
 
 /******************************************
@@ -2553,40 +2456,40 @@ string maketrans(in string from, in string to)
 string translate(string s, in string transtab, in string delchars)
     in
     {
-	assert(transtab.length == 256);
+    assert(transtab.length == 256);
     }
     body
     {
-	char[] r;
-	ptrdiff_t count;
-	bool[256] deltab;
+    char[] r;
+    int count;
+    bool[256] deltab;
 
-	deltab[] = false;
-	foreach (char c; delchars)
-	{
-	    deltab[c] = true;
-	}
+    deltab[] = false;
+    foreach (char c; delchars)
+    {
+        deltab[c] = true;
+    }
 
-	count = 0;
-	foreach (char c; s)
-	{
-	    if (!deltab[c])
-		count++;
-	    //printf("s[%d] = '%c', count = %d\n", i, s[i], count);
-	}
+    count = 0;
+    foreach (char c; s)
+    {
+        if (!deltab[c])
+        count++;
+        //printf("s[%d] = '%c', count = %d\n", i, s[i], count);
+    }
 
-	r = new char[count];
-	count = 0;
-	foreach (char c; s)
-	{
-	    if (!deltab[c])
-	    {
-		r[count] = transtab[c];
-		count++;
-	    }
-	}
+    r = new char[count];
+    count = 0;
+    foreach (char c; s)
+    {
+        if (!deltab[c])
+        {
+        r[count] = transtab[c];
+        count++;
+        }
+    }
 
-	return assumeUnique(r);
+    return assumeUnique(r);
     }
 
 unittest
@@ -2607,421 +2510,167 @@ unittest
     assert(i == 0);
 }
 
-/***********************************************
- * Convert to string.
+/**
+Convert to string. WARNING! This function has been deprecated. Instead
+ of $(D toString(x)), you may want to import $(D std.conv) and use $(D
+ to!string(x)) instead.
  */
-
-string toString(bool b)
+deprecated auto toString(T, string f = __FILE__, uint line = __LINE__)(T obj)
+    if (is(typeof(to!string(T.init))))
 {
-    return b ? "true" : "false";
+    pragma(msg, "toString("~T.stringof~") called from "~f~"("~ToString!(line)
+            ~") is deprecated."
+            " Instead you may want to"
+            " import std.conv and use to!string(x) instead of toString(x).");
+    return to!string(obj);
 }
 
-/// ditto
-string toString(char c)
+/**
+Convert string to integer. WARNING. This function has been
+ deprecated. Instead of $(D atoi(s)), you may want to import $(D
+ std.conv) and use $(D to!int(s)) instead.
+ */
+deprecated auto atoi(T, string f = __FILE__, uint line = __LINE__)(T obj)
+    if (isSomeString!T)
 {
-    char[] result = new char[2];
-    result[0] = c;
-    result[1] = 0;
-    return cast(string) result[0 .. 1];
-}
-
-/// ditto
-string toString(wchar c)
-{
-    char[] result;
-    encode(result, c);
-    return assumeUnique(result);
-}
-
-/// ditto
-string toString(dchar c)
-{
-    char[] result;
-    encode(result, c);
-    return assumeUnique(result);
+    pragma(msg, "atoi("~T.stringof~") called from "~f~"("~ToString!(line)
+            ~") is deprecated."
+            " Instead you may want to"
+            " import std.conv and use to!int(x) instead of atoi(x).");
+    return to!int(obj);
 }
 
 unittest
 {
-    debug(string) printf("string.toString(char).unittest\n");
-
     string s = "foo";
     string s2;
     foreach (char c; s)
     {
-    s2 ~= std.string.toString(c);
+        s2 ~= to!string(c);
     }
     //printf("%.*s", s2);
     assert(s2 == "foo");
 }
 
-string toString(ubyte ub)  { return toString(cast(uint) ub); } /// ditto
-string toString(ushort us) { return toString(cast(uint) us); } /// ditto
-
-/// ditto
-string toString(uint u)
-{   char[uint.sizeof * 3] buffer = void;
-    int ndigits;
-    char[] result;
-
-    ndigits = 0;
-    if (u < 10)
-    // Avoid storage allocation for simple stuff
-    return digits[u .. u + 1];
-    else
-    {
-    while (u)
-    {
-        uint c = (u % 10) + '0';
-        u /= 10;
-        ndigits++;
-        buffer[buffer.length - ndigits] = cast(char)c;
-    }
-    result = new char[ndigits];
-    result[] = buffer[buffer.length - ndigits .. buffer.length];
-    }
-    return assumeUnique(result);
-}
-
 unittest
 {
-    debug(string) printf("string.toString(uint).unittest\n");
+    debug(string) printf("string.to!string(uint).unittest\n");
 
     string r;
     int i;
 
-    r = toString(0u);
+    r = to!string(0u);
     i = cmp(r, "0");
     assert(i == 0);
 
-    r = toString(9u);
+    r = to!string(9u);
     i = cmp(r, "9");
     assert(i == 0);
 
-    r = toString(123u);
+    r = to!string(123u);
     i = cmp(r, "123");
     assert(i == 0);
-}
-
-/// ditto
-string toString(ulong u)
-{   char[ulong.sizeof * 3] buffer;
-    int ndigits;
-    char[] result;
-
-    if (u < 0x1_0000_0000)
-    return toString(cast(uint)u);
-    ndigits = 0;
-    while (u)
-    {
-    char c = cast(char)((u % 10) + '0');
-    u /= 10;
-    ndigits++;
-    buffer[buffer.length - ndigits] = c;
-    }
-    result = new char[ndigits];
-    result[] = buffer[buffer.length - ndigits .. buffer.length];
-    return assumeUnique(result);
 }
 
 unittest
 {
-    debug(string) printf("string.toString(ulong).unittest\n");
+    debug(string) printf("string.to!string(ulong).unittest\n");
 
     string r;
     int i;
 
-    r = toString(0uL);
+    r = to!string(0uL);
     i = cmp(r, "0");
     assert(i == 0);
 
-    r = toString(9uL);
+    r = to!string(9uL);
     i = cmp(r, "9");
     assert(i == 0);
 
-    r = toString(123uL);
+    r = to!string(123uL);
     i = cmp(r, "123");
     assert(i == 0);
-}
-
-string toString(byte b)  { return toString(cast(int) b); } /// ditto
-string toString(short s) { return toString(cast(int) s); } /// ditto
-
-/// ditto
-string toString(int i)
-{   char[1 + int.sizeof * 3] buffer;
-    char[] result;
-
-    if (i >= 0)
-    return toString(cast(uint)i);
-
-    uint u = -i;
-    int ndigits = 1;
-    while (u)
-    {
-    char c = cast(char)((u % 10) + '0');
-    u /= 10;
-    buffer[buffer.length - ndigits] = c;
-    ndigits++;
-    }
-    buffer[buffer.length - ndigits] = '-';
-    result = new char[ndigits];
-    result[] = buffer[buffer.length - ndigits .. buffer.length];
-    return assumeUnique(result);
 }
 
 unittest
 {
-    debug(string) printf("string.toString(int).unittest\n");
+    debug(string) printf("string.to!string(int).unittest\n");
 
     string r;
     int i;
 
-    r = toString(0);
+    r = to!string(0);
     i = cmp(r, "0");
     assert(i == 0);
 
-    r = toString(9);
+    r = to!string(9);
     i = cmp(r, "9");
     assert(i == 0);
 
-    r = toString(123);
+    r = to!string(123);
     i = cmp(r, "123");
     assert(i == 0);
 
-    r = toString(-0);
+    r = to!string(-0);
     i = cmp(r, "0");
     assert(i == 0);
 
-    r = toString(-9);
+    r = to!string(-9);
     i = cmp(r, "-9");
     assert(i == 0);
 
-    r = toString(-123);
+    r = to!string(-123);
     i = cmp(r, "-123");
     assert(i == 0);
 }
 
-/// ditto
-string toString(long i)
-{   char[1 + long.sizeof * 3] buffer;
-    char[] result;
-
-    if (i >= 0)
-    return toString(cast(ulong)i);
-    if (cast(int)i == i)
-    return toString(cast(int)i);
-
-    ulong u = cast(ulong)(-i);
-    int ndigits = 1;
-    while (u)
-    {
-    char c = cast(char)((u % 10) + '0');
-    u /= 10;
-    buffer[buffer.length - ndigits] = c;
-    ndigits++;
-    }
-    buffer[buffer.length - ndigits] = '-';
-    result = new char[ndigits];
-    result[] = buffer[buffer.length - ndigits .. buffer.length];
-    return assumeUnique(result);
-}
-
 unittest
 {
-    debug(string) printf("string.toString(long).unittest\n");
+    debug(string) printf("string.to!string(long).unittest\n");
 
     string r;
     int i;
 
-    r = toString(0L);
+    r = to!string(0L);
     i = cmp(r, "0");
     assert(i == 0);
 
-    r = toString(9L);
+    r = to!string(9L);
     i = cmp(r, "9");
     assert(i == 0);
 
-    r = toString(123L);
+    r = to!string(123L);
     i = cmp(r, "123");
     assert(i == 0);
 
-    r = toString(-0L);
+    r = to!string(-0L);
     i = cmp(r, "0");
     assert(i == 0);
 
-    r = toString(-9L);
+    r = to!string(-9L);
     i = cmp(r, "-9");
     assert(i == 0);
 
-    r = toString(-123L);
+    r = to!string(-123L);
     i = cmp(r, "-123");
     assert(i == 0);
 }
 
-/// ditto
-string toString(float f) { return toString(cast(double) f); }
-
-/// ditto
-string toString(double d)
-{
-    char[20] buffer;
-
-    int len = sprintf(buffer.ptr, "%g", d);
-    return buffer[0 .. len].idup;
-}
-
-/// ditto
-static if (real.sizeof != double.sizeof)
-    private static const char[] _longDoubleFormat = "L";
-else
-    private static const char[] _longDoubleFormat = "";
-    
-string toString(real r)
-{
-    char[20] buffer;
-
-    int len = sprintf(buffer.ptr, ("%"~_longDoubleFormat~"g").ptr, r);
-    return buffer[0 .. len].idup;
-}
-
-/// ditto
-string toString(ifloat f) { return toString(cast(idouble) f); }
-
-/// ditto
-string toString(idouble d)
-{
-    char[21] buffer;
-
-    int len = sprintf(buffer.ptr, "%gi", d);
-    return buffer[0 .. len].idup;
-}
-
-/// ditto
-string toString(ireal r)
-{
-    char[21] buffer;
-
-    int len = sprintf(buffer.ptr, ("%"~_longDoubleFormat~"gi").ptr, r);
-    return buffer[0 .. len].idup;
-}
-
-/// ditto
-string toString(cfloat f) { return toString(cast(cdouble) f); }
-
-/// ditto
-string toString(cdouble d)
-{
-    char[20 + 1 + 20 + 1] buffer;
-
-    int len = sprintf(buffer.ptr, "%g+%gi", d.re, d.im);
-    return buffer[0 .. len].idup;
-}
-
-/// ditto
-string toString(creal r)
-{
-    char[20 + 1 + 20 + 1] buffer;
-
-    int len = sprintf(buffer.ptr, ("%"~_longDoubleFormat~"g+%"~_longDoubleFormat~"gi").ptr, r.re, r.im);
-    return buffer[0 .. len].idup;
-}
-
-/******************************************
- * Convert value to string in _radix radix.
- *
- * radix must be a value from 2 to 36.
- * value is treated as a signed value only if radix is 10.
- * The characters A through Z are used to represent values 10 through 36.
- */
-string toString(long value, uint radix)
-in
-{
-    assert(radix >= 2 && radix <= 36);
-}
-body
-{
-    if (radix == 10)
-    return toString(value);     // handle signed cases only for radix 10
-    return toString(cast(ulong)value, radix);
-}
-
-/// ditto
-string toString(ulong value, uint radix)
-in
-{
-    assert(radix >= 2 && radix <= 36);
-}
-body
-{
-    char[value.sizeof * 8] buffer;
-    size_t i = buffer.length;
-
-    if (value < radix && value < hexdigits.length)
-    return hexdigits[cast(size_t)value .. cast(size_t)value + 1];
-
-    do
-    {   ubyte c;
-
-    c = cast(ubyte)(value % radix);
-    value = value / radix;
-    i--;
-    buffer[i] = cast(char)((c < 10) ? c + '0' : c + 'A' - 10);
-    } while (value);
-    return buffer[i .. length].idup;
-}
-
 unittest
 {
-    debug(string) printf("string.toString(ulong, uint).unittest\n");
+    debug(string) printf("string.to!string(char*).unittest\n");
 
     string r;
     int i;
 
-    r = toString(-10L, 10u);
-    assert(r == "-10");
-
-    r = toString(15L, 2u);
-    //writefln("r = '%s'", r);
-    assert(r == "1111");
-
-    r = toString(1L, 2u);
-    //writefln("r = '%s'", r);
-    assert(r == "1");
-
-    r = toString(0x1234AFL, 16u);
-    //writefln("r = '%s'", r);
-    assert(r == "1234AF");
-}
-
-/*************************************************
- * Convert C-style 0 terminated string s to string string.
- */
-
-// string toString(invariant char *s)
-// {
-//     return s ? cast(string) s[0 .. strlen(s)] : cast(string)null;
-// }
-
-string toString(const char *s)
-{
-    return s ? s[0 .. strlen(s)].idup : cast(string)null;
-}
-
-unittest
-{
-    debug(string) printf("string.toString(char*).unittest\n");
-
-    string r;
-    int i;
-
-    r = toString(null);
+    r = to!string(cast(char*) null);
     i = cmp(r, "");
     assert(i == 0);
 
-    r = toString("foo\0");
-    i = cmp(r, "foo");
-    assert(i == 0);
+    r = to!string("foo\0".ptr);
+    assert(r == "foo");
+    // i = cmp(r, "foo");
+    // assert(i == 0);
 }
 
 
@@ -3029,14 +2678,13 @@ unittest
  * Format arguments into a string.
  */
 
-
 string format(...)
 {
     char[] s;
 
     void putc(dchar c)
     {
-    std.utf.encode(s, c);
+        std.utf.encode(s, c);
     }
 
     std.format.doFormat(&putc, _arguments, _argptr);
@@ -3074,7 +2722,6 @@ char[] sformat(char[] s, ...)
     std.format.doFormat(&putc, _arguments, _argptr);
     return s[0 .. i];
 }
-
 
 unittest
 {
@@ -3244,7 +2891,7 @@ size_t countchars(string s, string pattern)
 
     foreach (dchar c; s)
     {
-    count += inPattern(c, pattern);
+        count += inPattern(c, pattern);
     }
     return count;
 }
@@ -3275,21 +2922,18 @@ string removechars(string s, in string pattern)
     //writefln("removechars(%s, %s)", s, pattern);
     foreach (size_t i, dchar c; s)
     {
-    if (!inPattern(c, pattern))
-    {
+        if (inPattern(c, pattern)) continue;
         if (!changed)
         {   changed = true;
-        r = s[0 .. i].dup;
+            r = s[0 .. i].dup;
         }
         if (changed)
         {
-        std.utf.encode(r, c);
+            std.utf.encode(r, c);
         }
-    }
     }
     return assumeUnique(r);
 }
-
 
 unittest
 {
@@ -3543,87 +3187,87 @@ string tr(string str, string from, string to, string modifiers = null)
     dchar lastc;
 
     foreach (dchar c; str)
-    {	dchar lastf;
-	dchar lastt;
-	dchar newc;
-	ptrdiff_t n = 0;
+    {   dchar lastf;
+    dchar lastt;
+    dchar newc;
+    int n = 0;
 
-	for (size_t i = 0; i < from.length; )
-	{
-	    dchar f = std.utf.decode(from, i);
-	    //writefln("\tf = '%s', c = '%s', lastf = '%x', '%x', i = %d, %d", f, c, lastf, dchar.init, i, from.length);
-	    if (f == '-' && lastf != dchar.init && i < from.length)
-	    {
-		dchar nextf = std.utf.decode(from, i);
-		//writefln("\tlastf = '%s', c = '%s', nextf = '%s'", lastf, c, nextf);
-		if (lastf <= c && c <= nextf)
-		{
-		    n += c - lastf - 1;
-		    if (mod_c)
-			goto Lnotfound;
-		    goto Lfound;
-		}
-		n += nextf - lastf;
-		lastf = lastf.init;
-		continue;
-	    }
+    for (size_t i = 0; i < from.length; )
+    {
+        dchar f = std.utf.decode(from, i);
+        //writefln("\tf = '%s', c = '%s', lastf = '%x', '%x', i = %d, %d", f, c, lastf, dchar.init, i, from.length);
+        if (f == '-' && lastf != dchar.init && i < from.length)
+        {
+        dchar nextf = std.utf.decode(from, i);
+        //writefln("\tlastf = '%s', c = '%s', nextf = '%s'", lastf, c, nextf);
+        if (lastf <= c && c <= nextf)
+        {
+            n += c - lastf - 1;
+            if (mod_c)
+            goto Lnotfound;
+            goto Lfound;
+        }
+        n += nextf - lastf;
+        lastf = lastf.init;
+        continue;
+        }
 
-	    if (c == f)
-	    {	if (mod_c)
-		    goto Lnotfound;
-		goto Lfound;
-	    }
-	    lastf = f;
-	    n++;
-	}
-	if (!mod_c)
-	    goto Lnotfound;
-	n = 0;			// consider it 'found' at position 0
+        if (c == f)
+        {   if (mod_c)
+            goto Lnotfound;
+        goto Lfound;
+        }
+        lastf = f;
+        n++;
+    }
+    if (!mod_c)
+        goto Lnotfound;
+    n = 0;          // consider it 'found' at position 0
 
     Lfound:
 
-	// Find the nth character in to[]
-	//writefln("\tc = '%s', n = %d", c, n);
-	dchar nextt;
-	for (size_t i = 0; i < to.length; )
-	{   dchar t = std.utf.decode(to, i);
-	    if (t == '-' && lastt != dchar.init && i < to.length)
-	    {
-		nextt = std.utf.decode(to, i);
-		//writefln("\tlastt = '%s', c = '%s', nextt = '%s', n = %d", lastt, c, nextt, n);
-		n -= nextt - lastt;
-		if (n < 0)
-		{
-		    newc = nextt + n + 1;
-		    goto Lnewc;
-		}
-		lastt = dchar.init;
-		continue;
-	    }
-	    if (n == 0)
-	    {	newc = t;
-		goto Lnewc;
-	    }
-	    lastt = t;
-	    nextt = t;
-	    n--;
-	}
-	if (mod_d)
-	    continue;
-	newc = nextt;
+    // Find the nth character in to[]
+    //writefln("\tc = '%s', n = %d", c, n);
+    dchar nextt;
+    for (size_t i = 0; i < to.length; )
+    {   dchar t = std.utf.decode(to, i);
+        if (t == '-' && lastt != dchar.init && i < to.length)
+        {
+        nextt = std.utf.decode(to, i);
+        //writefln("\tlastt = '%s', c = '%s', nextt = '%s', n = %d", lastt, c, nextt, n);
+        n -= nextt - lastt;
+        if (n < 0)
+        {
+            newc = nextt + n + 1;
+            goto Lnewc;
+        }
+        lastt = dchar.init;
+        continue;
+        }
+        if (n == 0)
+        {   newc = t;
+        goto Lnewc;
+        }
+        lastt = t;
+        nextt = t;
+        n--;
+    }
+    if (mod_d)
+        continue;
+    newc = nextt;
 
       Lnewc:
-	if (mod_s && m && newc == lastc)
-	    continue;
-	std.utf.encode(result, newc);
-	m = 1;
-	lastc = newc;
-	continue;
+    if (mod_s && m && newc == lastc)
+        continue;
+    std.utf.encode(result, newc);
+    m = 1;
+    lastc = newc;
+    continue;
 
       Lnotfound:
-	std.utf.encode(result, c);
-	lastc = c;
-	m = 0;
+    std.utf.encode(result, c);
+    lastc = c;
+    m = 0;
     }
     return assumeUnique(result);
 }
@@ -3719,7 +3363,7 @@ unittest
 
 final bool isNumeric(string s, in bool bAllowSep = false)
 {
-    ptrdiff_t iLen = s.length;
+    int    iLen = s.length;
     bool   bDecimalPoint = false;
     bool   bExponent = false;
     bool   bComplex = false;
@@ -3731,32 +3375,32 @@ final bool isNumeric(string s, in bool bAllowSep = false)
     // Empty string, return false
     if (iLen == 0)
         return false;
-    
+
     // Check for NaN (Not a Number)
     if (sx == "nan" || sx == "nani" || sx == "nan+nani")
         return true;
-        
+
     // Check for Infinity
     if (sx == "inf" || sx == "-inf")
         return true;
-     
-    // A sign is allowed only in the 1st character   
+
+    // A sign is allowed only in the 1st character
     if (sx[0] == '-' || sx[0] == '+')
         j++;
-            
-    for (ptrdiff_t i = j; i < iLen; i++)
+
+    for (int i = j; i < iLen; i++)
     {
         c = sx[i];
-    
-        // Digits are good, continue checking 
-        // with the next character... ;)
-        if (c >= '0' && c <= '9') 
+
+        // Digits are good, continue checking
+        // with the popFront character... ;)
+        if (c >= '0' && c <= '9')
             continue;
 
-        // Check for the complex type, and if found 
-        // reset the flags for checking the 2nd number.  
+        // Check for the complex type, and if found
+        // reset the flags for checking the 2nd number.
         else if (c == '+')
-            if (i > 0) 
+            if (i > 0)
             {
                 bDecimalPoint = false;
                 bExponent = false;
@@ -3981,9 +3625,9 @@ unittest
     assert(isNumeric("123f") == true);
     assert(isNumeric("123.u") == false);
 
-    assert(isNumeric(std.string.toString(real.nan)) == true);
-    assert(isNumeric(std.string.toString(-real.infinity)) == true);
-    assert(isNumeric(std.string.toString(123e+2+1234.78Li)) == true);
+    assert(isNumeric(to!string(real.nan)) == true);
+    assert(isNumeric(to!string(-real.infinity)) == true);
+    assert(isNumeric(to!string(123e+2+1234.78Li)) == true);
 
     s = "$250.99-";
     assert(isNumeric(s[1..s.length - 2]) == true);
@@ -4050,7 +3694,7 @@ out (result)
 }
 body
 {
-    static dex =
+    static immutable dex =
     // ABCDEFGHIJKLMNOPQRSTUVWXYZ
       "01230120022455012623010202";
 
@@ -4252,29 +3896,29 @@ unittest
  * leftmost column, which is numbered starting from 0.
  */
 
-size_t column(string str, ptrdiff_t tabsize = 8)
+size_t column(string str, int tabsize = 8)
 {
     size_t column;
 
     foreach (dchar c; str)
     {
-    switch (c)
-    {
+        switch (c)
+        {
         case '\t':
-        column = (column + tabsize) / tabsize * tabsize;
-        break;
+            column = (column + tabsize) / tabsize * tabsize;
+            break;
 
         case '\r':
         case '\n':
         case PS:
         case LS:
-        column = 0;
-        break;
+            column = 0;
+            break;
 
         default:
-        column++;
-        break;
-    }
+            column++;
+            break;
+        }
     }
     return column;
 }
@@ -4308,12 +3952,12 @@ unittest
  *  The resulting paragraph.
  */
 
-string wrap(string s, ptrdiff_t columns = 80, string firstindent = null,
-	string indent = null, ptrdiff_t tabsize = 8)
+string wrap(string s, int columns = 80, string firstindent = null,
+    string indent = null, int tabsize = 8)
 {
     char[] result;
-    ptrdiff_t col;
-    ptrdiff_t spaces;
+    int col;
+    int spaces;
     bool inword;
     bool first = true;
     size_t wordstart;
@@ -4389,137 +4033,154 @@ unittest
     assert(wrap("u u") == "u u\n");
 }
 
+/**
 
-/***************************
- * Does string s[] start with an email address?
- *
- * Deprecated: use std.uri.emailLength
  */
-deprecated string isEmail(string s)
-{   size_t i;
-
-    if (!isalpha(s[0]))
-    goto Lno;
-
-    for (i = 1; 1; i++)
-    {
-    if (i == s.length)
-        goto Lno;
-    auto c = s[i];
-    if (isalnum(c))
-        continue;
-    if (c == '-' || c == '_' || c == '.')
-        continue;
-    if (c != '@')
-        goto Lno;
-    i++;
-    break;
-    }
-    //writefln("test1 '%s'", s[0 .. i]);
-
-    /* Now do the part past the '@'
-     */
-    size_t lastdot;
-    for (; i < s.length; i++)
-    {
-    auto c = s[i];
-    if (isalnum(c))
-        continue;
-    if (c == '-' || c == '_')
-        continue;
-    if (c == '.')
-    {
-        lastdot = i;
-        continue;
-    }
-    break;
-    }
-    if (!lastdot || (i - lastdot != 3 && i - lastdot != 4))
-    goto Lno;
-
-    return s[0 .. i];
-
-Lno:
-    return null;
-}
-
-
-/***************************
- * Does string s[] start with a URL?
- *
- * Deprecated: use std.uri.uriLength
- */
-
-deprecated string isURL(string s)
+struct ByCodeUnit(Range, Unit)
+if (isInputRange!Range
+        && staticIndexOf!(Unqual!Unit, char, wchar, dchar) >= 0
+        && staticIndexOf!(Unqual!(ElementType!Range), char, wchar, dchar) >= 0
+        && !is(Unqual!(ElementType!Range) == Unqual!Unit))
 {
-    /* Must start with one of:
-     *  http://
-     *  https://
-     *  www.
-     */
+private:
+    alias Unqual!Unit ElementType;
+    alias Unqual!(.ElementType!Range) CodeType;
+    Range _input;
+    dchar _front;
 
-    size_t i;
-
-    if (s.length <= 4)
-    goto Lno;
-
-    //writefln("isURL(%s)", s);
-    if (s.length > 7 && std.string.icmp(s[0 .. 7], "http://") == 0)
-    i = 7;
-    else if (s.length > 8 && std.string.icmp(s[0 .. 8], "https://") == 0)
-    i = 8;
-//    if (icmp(s[0 .. 4], "www.") == 0)
-//  i = 4;
-    else
-    goto Lno;
-
-    size_t lastdot;
-    for (; i < s.length; i++)
+public:
+    this(Range input)
     {
-    auto c = s[i];
-    if (isalnum(c))
-        continue;
-    if (c == '-' || c == '_' || c == '?' ||
-        c == '=' || c == '%' || c == '&' ||
-        c == '/' || c == '+' || c == '#' ||
-        c == '~' || c == '$')
-        continue;
-    if (c == '.')
+        _input = input;
+        if (!input.empty) popFront;
+    }
+    
+    /// Range primitives
+    bool empty()
     {
-        lastdot = i;
-        continue;
+        return _front == _front.init && _input.empty;
     }
-    break;
+
+    /// Ditto
+    ElementType front()
+    {
+        assert(!empty);
+        return _front;
     }
-    //if (!lastdot || (i - lastdot != 3 && i - lastdot != 4))
-    if (!lastdot)
-    goto Lno;
 
-    return s[0 .. i];
+    void popFront()
+    {
+        assert(!empty);
+        if (_input.empty)
+        {
+            // yank the front
+            _front = _front.init;
+        }
+        else
+        {
+            _front = std.utf.decodeFront(_input);
+        }
+    }
 
-Lno:
-    return null;
+    static if (isBidirectionalRange!Range)
+    {
+        /// Ditto
+        ElementType back()
+        {
+            assert(!empty);
+            if (!_input.empty)
+            {
+                // Make a copy of the range so we don't consume it
+                auto copy = _input;
+                return std.utf.decodeBack(copy);
+            }
+            return _front;
+        }
+
+        /// Ditto
+        void popBack()
+        {
+            assert(!empty);
+            if (!_input.empty)
+                std.utf.decodeBack(_input);
+            else 
+                _front = _front.init;            
+        }
+    }
 }
 
-// Undocumented yet
-
-private S textImpl(S, T...)(T args)
+template ByCodeUnit(Range, Unit)
+if (staticIndexOf!(Unqual!Unit, char, wchar, dchar) >= 0
+        && staticIndexOf!(Unqual!(ElementType!Range), char, wchar, dchar) >= 0
+        && is(Unqual!(ElementType!Range) == Unqual!Unit))
 {
-    S result;
-    foreach (arg; args)
-    {
-        result ~= to!(S)(arg);
-    }
-    return result;
+    alias Range ByCodeUnit;
 }
 
-string text(T...)(T args) { return textImpl!(string, T)(args); }
-wstring wtext(T...)(T args) { return textImpl!(wstring, T)(args); }
-dstring dtext(T...)(T args) { return textImpl!(dstring, T)(args); }
+ByCodeUnit!(Range, dchar) byDchar(Range)(Range s)
+{
+    return typeof(return)(s);
+}
 
 unittest
 {
-    assert(text(42, ' ', 1.5, ": xyz") == "42 1.5: xyz");
-    assert(wtext(42, ' ', 1.5, ": xyz") == "42 1.5: xyz"w);
-    assert(dtext(42, ' ', 1.5, ": xyz") == "42 1.5: xyz"d);
+    string s = "abcde";
+    size_t i;
+    foreach (e; byDchar(s))
+    {
+        assert(s[i++] == e);
+    }
+    foreach (e; retro(byDchar(s)))
+    {
+        assert(s[--i] == e);
+    }
+}
+
+// For backwards compatibility
+
+deprecated int find(in char[] s, dchar c)
+{
+    return indexOf(s, c, CaseSensitive.yes);
+}
+
+deprecated int find(in char[] str, in char[] sub)
+{
+    return indexOf(str, sub, CaseSensitive.yes);
+}
+
+unittest
+{
+    string a = "abc";
+    string b = "bc";
+    assert(find(a, b) == 1);
+}
+
+deprecated int ifind(in char[] s, dchar c)
+{
+    return indexOf(s, c, CaseSensitive.no);
+}
+
+deprecated int rfind(in char[] s, dchar c)
+{
+    return lastIndexOf(s, c, CaseSensitive.yes);
+}
+
+deprecated int irfind(in char[] s, dchar c)
+{
+    return lastIndexOf(s, c, CaseSensitive.no);
+}
+
+deprecated int ifind(in char[] s, in char[] c)
+{
+    return indexOf(s, c, CaseSensitive.no);
+}
+
+deprecated int rfind(in char[] s, in char[] c)
+{
+    return lastIndexOf(s, c, CaseSensitive.yes);
+}
+
+deprecated int irfind(in char[] s, in char[] c)
+{
+    return lastIndexOf(s, c, CaseSensitive.no);
 }

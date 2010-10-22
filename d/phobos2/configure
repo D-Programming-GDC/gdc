@@ -5440,6 +5440,8 @@ case "$d_target_os" in
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     ;;
     mingw*)  #DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
+	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
+	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
 	     #DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
@@ -5470,10 +5472,13 @@ esac
 # in Make: .win.o maybe... to get a separate rule
 
 if test -n "$d_module_mach"; then
-  D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/mach/mach.o"
+  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_OSX_OBJS)"
+  D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OSX_OBJS)"
 fi
 
 if test "$enable_unix" = "yes"; then
+  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
+  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_POSIX_OBJS)"
   D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
 
 
@@ -5737,7 +5742,7 @@ fi
 
 
 
-D_EXTRA_OBJS="std/c/dirent.o std/c/unix/unix.o $D_EXTRA_OBJS"
+D_EXTRA_OBJS="std/c/unix/unix.o $D_EXTRA_OBJS"
 DRUNTIME_OBJS="gcc/config/unix.o gcc/cbridge_fdset.o $DRUNTIME_OBJS"
 # Add "linux" module for compatibility even if not Linux
 D_EXTRA_OBJS="std/c/linux/linux.o $D_EXTRA_OBJS"

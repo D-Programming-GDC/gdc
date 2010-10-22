@@ -14,15 +14,14 @@
 
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
+ */
 
-   Modified by David Friedman, February 2007
-*/
 
 module std.zlib;
 
 //debug=zlib;		// uncomment to turn on debugging printf's
 
-private import etc.c.zlib, std.stdint;
+private import etc.c.zlib;
 
 // Values for 'mode'
 
@@ -120,9 +119,8 @@ body
 {
     int err;
     ubyte[] destbuf;
-    Culong_t destlen;
 
-    destlen = srcbuf.length + ((srcbuf.length + 1023) / 1024) + 12;
+    auto destlen = srcbuf.length + ((srcbuf.length + 1023) / 1024) + 12;
     destbuf = new ubyte[destlen];
     err = etc.c.zlib.compress2(destbuf.ptr, &destlen, cast(ubyte *)srcbuf, srcbuf.length, level);
     if (err)
@@ -151,7 +149,7 @@ const(void)[] compress(const(void)[] buf)
  * Returns: the decompressed data.
  */
 
-const(void)[] uncompress(const(void)[] srcbuf, size_t destlen = 0u, int winbits = 15)
+const(void)[] uncompress(const(void)[] srcbuf, uint destlen = 0u, int winbits = 15)
 {
     int err;
     ubyte[] destbuf;
@@ -198,6 +196,7 @@ const(void)[] uncompress(const(void)[] srcbuf, size_t destlen = 0u, int winbits 
 		throw new ZlibException(err);
 	}
     }
+    assert(0);
 }
 
 unittest
@@ -570,10 +569,11 @@ unittest // by Dave
 
     // smallish buffers
     for(int idx = 0; idx < 25; idx++) {
-        char[] buf = new char[rand() % 100];
+        char[] buf = new char[uniform(0, 100)];
 
         // Alternate between more & less compressible
-        foreach(inout char c; buf) c = ' ' + (rand() % (idx % 2 ? 91 : 2));
+        foreach(ref char c; buf)
+            c = cast(char) (' ' + (uniform(0, idx % 2 ? 91 : 2)));
 
         if(CompressThenUncompress(cast(ubyte[])buf)) {
             debug(zlib) printf("; Success.\n");
@@ -584,10 +584,11 @@ unittest // by Dave
 
     // larger buffers
     for(int idx = 0; idx < 25; idx++) {
-        char[] buf = new char[rand() % 1000/*0000*/];
+        char[] buf = new char[uniform(0, 1000/*0000*/)];
 
         // Alternate between more & less compressible
-        foreach(inout char c; buf) c = ' ' + (rand() % (idx % 2 ? 91 : 10));
+        foreach(inout char c; buf)
+            c = cast(char) (' ' + (uniform(0, idx % 2 ? 91 : 10)));
 
         if(CompressThenUncompress(cast(ubyte[])buf)) {
             debug(zlib) printf("; Success.\n");

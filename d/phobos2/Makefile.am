@@ -32,7 +32,7 @@ all-local: libgphobos2.a libgdruntime.a
 SUFFIXES = .d
 
 %.o : %.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS)  \
+	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated \
 	-I $(srcdir) -I ./$(host_alias) -c $<
 
 # %.o : %.c
@@ -127,6 +127,12 @@ BASE_OBJS=compiler/aaA.o compiler/aApply.o compiler/aApplyR.o compiler/adi.o \
 	  compiler/monitor.o compiler/obj.o compiler/object_.o \
 	  compiler/qsort.o compiler/switch_.o
 
+CORE_OBJS=core/bitop.o core/exception.o core/memory.o core/runtime.o \
+	  core/thread.o core/vararg.o core/stdc/errno.o \
+	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
+	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
+	  core/sync/semaphore.o
+
 GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
 	 gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
 	 gcc/cbridge_time.o gcc/cbridge_strerror.o
@@ -147,9 +153,25 @@ DRUNTIME_OBJS+=$(subst compiler,compiler/gdc,$(BASE_OBJS)) \
 	       $(subst compiler,compiler/gdc,$(UTIL_OBJS)) \
 	       $(subst ti_,compiler/gdc/typeinfo/ti_,$(TI))
 
-COMMON_OBJS=common/core/bitop.o common/core/exception.o common/core/memory.o \
-	    common/core/runtime.o common/core/thread.o common/core/stdc/errno.o \
-	    common/core/vararg.o
+
+COMMON_OBJS=$(subst core,common/core,$(CORE_OBJS))
+
+# OS specific
+RT_STDC_OBJS=import/core/stdc/math.o import/core/stdc/stdarg.o \
+	     import/core/stdc/stdio.o import/core/stdc/wchar_.o
+
+RT_OSX_OBJS=import/core/sys/osx/mach/kern_return.o \
+	    import/core/sys/osx/mach/port.o \
+	    import/core/sys/osx/mach/semaphore.o \
+	    import/core/sys/osx/mach/thread_act.o
+
+RT_POSIX_OBJS=import/core/sys/posix/netinet/in_.o \
+	      import/core/sys/posix/sys/select.o \
+	      import/core/sys/posix/sys/socket.o \
+	      import/core/sys/posix/sys/stat.o \
+	      import/core/sys/posix/sys/wait.o
+
+RT_WINDOWS_OBJS=import/core/sys/windows/windows.o
 
 # This should not be linked into a shared library.
 #CMAIN_OBJS=compiler/gdc/cmain.o
@@ -179,37 +201,37 @@ std/boxer.t.o: std/boxer.o
 	cp $< $@
 
 unittest: unittest.o libgphobos2_t.a libgphobos2.a
-	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -lgphobos2_t $(LIBS)
+	$(GDC) -o $@ $(CFLAGS) -fdeprecated unittest.o -L./ -lgdruntime -lgphobos2_t $(LIBS) -ldl
 
-MAIN_OBJS=std/compiler.o std/system.o std/md5.o std/base64.o \
-	std/string.o std/math.o std/array.o \
-	std/outbuffer.o std/ctype.o std/regexp.o std/random.o \
-	std/stream.o std/cstream.o \
-	std/utf.o std/uri.o \
-	crc32.o std/conv.o \
-	std/syserror.o std/metastrings.o \
-	std/c/stdarg.o std/c/stdio.o std/stdio.o std/format.o \
-	std/openrj.o std/uni.o std/demangle.o std/bitarray.o \
-	std/date.o std/dateparse.o etc/c/zlib.o std/zlib.o std/zip.o \
-	std/stdarg.o \
-	std/signals.o std/cpuid.o std/traits.o std/typetuple.o std/bind.o \
-	std/algorithm.o std/bitmanip.o std/contracts.o std/functional.o \
-	std/getopt.o std/numeric.o std/typecons.o std/variant.o \
-	std/complex.o std/encoding.o std/iterator.o std/xml.o \
-	std/atomics.o std/bigint.o
+MAIN_OBJS=std/algorithm.o std/atomics.o std/array.o std/base64.o \
+	std/bigint.o std/bind.o std/bitarray.o std/bitmanip.o \
+	std/compiler.o std/complex.o std/contracts.o std/conv.o \
+	std/cpuid.o std/cstream.o std/ctype.o std/date.o std/dateparse.o \
+	std/demangle.o std/encoding.o std/format.o std/functional.o \
+	std/getopt.o std/iterator.o std/math.o std/md5.o std/metastrings.o \
+	std/numeric.o std/openrj.o std/outbuffer.o std/signals.o \
+	std/stdarg.o std/stdio.o std/stdiobase.o std/stream.o std/string.o \
+	std/syserror.o std/system.o std/random.o std/range.o std/regex.o std/regexp.o \
+	std/traits.o std/typecons.o std/typetuple.o std/uni.o std/uri.o \
+	std/utf.o std/variant.o std/xml.o std/zip.o std/zlib.o \
+	std/c/stdarg.o std/c/stdio.o crc32.o etc/c/zlib.o
 
-ZLIB_OBJS= zlib/adler32.o zlib/compress.o zlib/crc32.o \
+ZLIB_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o \
 	zlib/gzio.o zlib/uncompr.o zlib/deflate.o \
 	zlib/trees.o zlib/zutil.o zlib/inflate.o \
 	zlib/infback.o zlib/inftrees.o zlib/inffast.o
 
 # modules which require some kind of operating system	
-OS_OBJS = std/file.o std/mmfile.o std/path.o std/perf.o std/process.o std/socket.o std/socketstream.o
+OS_OBJS=std/file.o std/mmfile.o std/path.o std/perf.o std/process.o \
+	std/socket.o std/socketstream.o
+
+OSX_OBJS=std/c/osx/socket.o
 
 # std.c.linux.linux, std.loader, gcc.cbridge*
-WINDOWS_OBJS=std/c/windows/windows.o std/c/windows/com.o std/c/windows/winsock.o \
-	std/windows/iunknown.o std/windows/registry.o std/windows/syserror.o \
-	std/windows/charset.o
+WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/windows/windows.o \
+	     std/c/windows/winsock.o std/windows/charset.o \
+	     std/windows/iunknown.o std/windows/registry.o \
+	     std/windows/syserror.o
 
 D_EXTRA_OBJS=@D_EXTRA_OBJS@
 
@@ -243,16 +265,22 @@ install-exec-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
 
 install-data-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
-	for i in etc etc/c \
+	for i in etc/c \
 		gcc std std/c \
-                std/c/darwin std/c/linux std/c/mach std/c/skyos std/c/unix std/c/windows \
+                std/c/linux std/c/osx std/c/unix std/c/windows \
 		std/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done
-	for i in core; do \
+	for i in core core/sync; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/common/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+		for f in $(srcdir)/import/$$i/*.di; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+	done
+	for i in core/stdc core/sys/osx/mach core/sys/posix \
+		core/sys/posix/arpa core/sys/posix/net core/sys/posix/netinet \
+		core/sys/posix/sys core/sys/windows; do \
+		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
+		for f in $(srcdir)/import/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done
 	for i in crc32.d object.di; do \
 		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done

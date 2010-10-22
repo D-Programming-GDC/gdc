@@ -3,12 +3,6 @@
 // www.digitalmars.com
 // Placed into the public domain
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, May 2006
-*/
-
 /** These functions are built-in intrinsics to the compiler.
  *
 	Intrinsic functions are functions built in to the compiler,
@@ -49,7 +43,7 @@ pure nothrow int bsf(uint v)
     return i; // supposed to be undefined
 }
 else
-    pure nothrow int bsf(uint v);
+pure nothrow int bsf(uint v);
 
 /**
  * Scans the bits in v from the most significant bit
@@ -92,7 +86,7 @@ pure nothrow int bsr(uint v)
     return i; // supposed to be undefined
 }
 else
-    pure nothrow int bsr(uint v);
+pure nothrow int bsr(uint v);
 
 /**
  * Tests the bit.
@@ -103,7 +97,8 @@ pure nothrow int bt(in uint *p, uint bitnum)
     return (p[bitnum / (uint.sizeof*8)] & (1<<(bitnum & ((uint.sizeof*8)-1)))) ? -1 : 0 ;
 }
 else
-    pure nothrow int bt(in uint *p, uint bitnum);
+pure nothrow int bt(in uint *p, uint bitnum);
+
 /**
  * Tests and complements the bit.
  */
@@ -132,7 +127,7 @@ int btr(uint *p, uint bitnum)
     return result ? -1 : 0;
 }
 else
-    int btr(uint *p, uint bitnum);
+int btr(uint *p, uint bitnum);
 
 /**
  * Tests and sets the bit.
@@ -201,7 +196,7 @@ int bts(uint *p, uint bitnum)
     return result ? -1 : 0;
 }
 else
-    int bts(uint *p, uint bitnum);
+int bts(uint *p, uint bitnum);
 
 
 /**
@@ -215,7 +210,7 @@ pure nothrow uint bswap(uint v)
     return ((v&0xFF)<<24)|((v&0xFF00)<<8)|((v&0xFF0000)>>>8)|((v&0xFF000000)>>>24);
 }
 else
-    pure nothrow uint bswap(uint v);
+pure uint bswap(uint v);
 
 
 /**
@@ -224,7 +219,7 @@ else
 version (GNU)
     ubyte  inp(uint p) { return 0; }
 else
-    ubyte  inp(uint port_address);
+ubyte  inp(uint port_address);
 
 /**
  * ditto
@@ -232,7 +227,7 @@ else
 version (GNU)
     ushort inpw(uint p) { return 0; }
 else
-    ushort inpw(uint port_address);
+ushort inpw(uint port_address);
 
 /**
  * ditto
@@ -240,7 +235,7 @@ else
 version (GNU)
     uint   inpl(uint p) { return 0; }
 else
-    uint   inpl(uint port_address);
+uint   inpl(uint port_address);
 
 
 /**
@@ -249,7 +244,7 @@ else
 version (GNU)
     ubyte  outp(uint p, ubyte v) { return v; }
 else
-    ubyte  outp(uint port_address, ubyte value);
+ubyte  outp(uint port_address, ubyte value);
 
 /**
  * ditto
@@ -257,7 +252,7 @@ else
 version (GNU)
     ushort outpw(uint p, ushort v) { return v; }
 else
-    ushort outpw(uint port_address, ushort value);
+ushort outpw(uint port_address, ushort value);
 
 /**
  * ditto
@@ -265,6 +260,6 @@ else
 version (GNU)
     uint   outpl(uint p, uint v) { return v; }
 else
-    uint   outpl(uint port_address, uint value);
+uint   outpl(uint port_address, uint value);
 
 

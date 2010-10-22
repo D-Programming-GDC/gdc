@@ -4,7 +4,7 @@
  *  Copyright (C) 2003-2009 by Digital Mars, http://www.digitalmars.com
  *  Written by Matthew Wilson and Walter Bright
  *
- *  Incorporating idea (for execvpe() on Linux) from Russ Lewis
+ *  Incorporating idea (for execvpe() on Posix) from Russ Lewis
  *
  *  Updated: 21st August 2004
  *
@@ -25,11 +25,6 @@
  *  o  This notice may not be removed or altered from any source
  *     distribution.
  */
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, October 2004
-*/
 
 /**
 Authors:
@@ -42,22 +37,24 @@ Macros:
 WIKI=Phobos/StdProcess
 */
 
-
 module std.process;
 
 private import std.c.stdlib;
 private import std.c.string;
+private import std.conv;
 private import std.string;
 private import std.c.process;
+private import core.stdc.errno;
 private import std.contracts;
 version (Windows)
 {
+    import std.array, std.format, std.random, std.file;
     private import std.stdio : readln, fclose;
     private import std.c.windows.windows:GetCurrentProcessId;
 }
 version (Posix)
 {
-    private import std.stdio : popen, readln, fclose;
+    private import std.stdio;
 }
 
 /**
@@ -67,7 +64,7 @@ version (Posix)
    interpreter is found, and zero otherwise. If $(D command) is not
    null, returns -1 on error, or the exit status of command (which may
    in turn signal an error in command's execution).
- 
+
    Note: On Unix systems, the homonym C function (which is accessible
    to D programs as $(LINK2 std_c_process.html, std.c._system))
    returns a code in the same format as
@@ -84,7 +81,7 @@ int system(string command)
     const commandz = toStringz(command);
     invariant status = std.c.process.system(commandz);
     if (status == -1) return status;
-    version (linux)
+    version (Posix)
         return (status & 0x0000ff00) >>> 8;
     else
         return status;
@@ -114,7 +111,7 @@ private void toAStringz(in string[] a, const(char)**az)
 //    }
 //}
 
-// Incorporating idea (for spawnvp() on linux) from Dave Fladebo
+// Incorporating idea (for spawnvp() on Posix) from Dave Fladebo
 
 alias std.c.process._P_WAIT P_WAIT;
 alias std.c.process._P_NOWAIT P_NOWAIT;
@@ -125,7 +122,7 @@ int spawnvp(int mode, string pathname, string[] argv)
 
     toAStringz(argv, argv_);
 
-    version(Posix)
+    version (Posix)
     {
         return _spawnvp(mode, toStringz(pathname), argv_);
     }
@@ -135,9 +132,10 @@ int spawnvp(int mode, string pathname, string[] argv)
     }
 }
 
-version(Posix)
+version (Posix)
 {
-private import std.c.unix.unix;
+private import core.sys.posix.unistd;
+private import core.sys.posix.sys.wait;
 int _spawnvp(int mode, in char *pathname, in char **argv)
 {
     int retval = 0;
@@ -181,12 +179,12 @@ int _spawnvp(int mode, in char *pathname, in char **argv)
     }
 
 Lerror:
-    retval = getErrno;
+    retval = errno;
     char[80] buf = void;
     throw new Exception(
-        "Cannot spawn " ~ toString(pathname) ~ "; "
-                      ~ toString(_d_gnu_cbridge_strerror(retval, buf.ptr, buf.length))
-                      ~ " [errno " ~ toString(retval) ~ "]");
+        "Cannot spawn " ~ to!string(pathname) ~ "; "
+        ~ to!string(strerror_r(retval, buf.ptr, buf.length))
+        ~ " [errno " ~ to!string(retval) ~ "]");
 }   // _spawnvp
 private
 {
@@ -252,10 +250,11 @@ version(GNU_Need_execvpe)
     else
     {
         // No, so must traverse PATHs, looking for first match
-	string[]    envPaths    =   std.string.split(std.string.toString(std.c.stdlib.getenv("PATH")), ":");
+        string[]    envPaths    =   std.string.split(
+            to!string(std.c.stdlib.getenv("PATH")), ":");
         int         iRet        =   0;
 
-        // Note: if any call to execve() succeeds, this process will cease 
+        // Note: if any call to execve() succeeds, this process will cease
         // execution, so there's no need to check the execve() result through
         // the loop.
 
@@ -287,7 +286,8 @@ else
 
 version(Posix)
 {
-    alias std.c.process.getpid getpid;
+    //alias std.c.process.getpid getpid;
+    import core.sys.posix.unistd : getpid;
 }
 else version (Windows)
 {
@@ -312,37 +312,40 @@ else version (Windows)
    ... use f ...
    ----
 */
-string shell(string cmd)
+version (Posix) string shell(string cmd)
 {
-version (linux)
-{
-    auto f = enforce(popen(cmd, "r"), "Could not execute: "~cmd);
-    scope(failure) f is null || fclose(f);
+    File f;
+    f.popen(cmd, "r");
     char[] line;
     string result;
-    while (readln(f, line))
+    while (f.readln(line))
     {
         result ~= line;
     }
-    auto error = fclose(f) != 0;
-    f = null;
-    enforce(!error, "Process \""~cmd~"\" finished in error.");
+    f.close;
     return result;
 }
-else
+
+version (Windows) string shell(string cmd)
 {
-    enforce(false, "shell() function not yet implemented on Windows");
-    return null;
-}
+    // Generate a random filename
+    Appender!string a;
+    foreach (ref e; 0 .. 8)
+    {
+        formattedWrite(a, "%x", rndGen.front);
+        rndGen.popFront;
+    }
+    auto filename = a.data;
+    scope(exit) if (exists(filename)) remove(filename);
+    errnoEnforce(system(cmd ~ "> " ~ filename) == 0);
+    return readText(filename);
 }
 
 unittest
 {
-version (linux)
-{
     auto x = shell("echo wyda");
-    assert(x == "wyda\n");
-}
+    // @@@ This fails on wine
+    //assert(x == "wyda" ~ newline, text(x.length));
 }
 
 /**
@@ -352,9 +355,13 @@ internally. */
 
 string getenv(in char[] name)
 {
+    // Cache the last call's result
+    static string lastResult;
     auto p = std.c.stdlib.getenv(toStringz(name));
     if (!p) return null;
-    return p[0 .. strlen(p)].idup;
+    auto value = p[0 .. strlen(p)];
+    if (value == lastResult) return lastResult;
+    return lastResult = value.idup;
 }
 
 /**
@@ -364,7 +371,7 @@ overwrite) is false, returns normally. Otherwise, it throws an
 exception. Calls $(LINK2 std_c_stdlib.html#_setenv,
 std.c.stdlib._setenv) internally. */
 
-void setenv(in char[] name, in char[] value, bool overwrite)
+version(Posix) void setenv(in char[] name, in char[] value, bool overwrite)
 {
     errnoEnforce(
         std.c.stdlib.setenv(toStringz(name), toStringz(value), overwrite) == 0);
@@ -374,20 +381,19 @@ void setenv(in char[] name, in char[] value, bool overwrite)
 Removes variable $(D name) from the environment. Calls $(LINK2
 std_c_stdlib.html#_unsetenv, std.c.stdlib._unsetenv) internally. */
 
-void unsetenv(in char[] name)
+version(Posix) void unsetenv(in char[] name)
 {
     errnoEnforce(std.c.stdlib.unsetenv(toStringz(name)) == 0);
 }
 
-unittest
+version (Posix) unittest
 {
-  version (linux)
-  {
     setenv("wyda", "geeba", true);
+    assert(getenv("wyda") == "geeba");
+    // Get again to make sure caching works
     assert(getenv("wyda") == "geeba");
     unsetenv("wyda");
     assert(getenv("wyda") is null);
-  }
 }
 
 /* ////////////////////////////////////////////////////////////////////////// */
@@ -405,7 +411,7 @@ version(MainTest)
         else
         {
             string[]    dummy_env;
-            
+
             dummy_env ~= "VAL0=value";
             dummy_env ~= "VAL1=value";
 
@@ -420,7 +426,7 @@ version(MainTest)
 //          int i = execvp(args[1], args[1 .. args.length]);
             int i = execvpe(args[1], args[1 .. args.length], dummy_env);
 
-            printf("exec??() has returned! Error code: %d; errno: %d\n", i, /* std.c.stdlib.getErrno() */-1);
+            printf("exec??() has returned! Error code: %d; errno: %d\n", i, /* errno */-1);
 
             return 0;
         }

@@ -79,7 +79,7 @@ AC_CHECK_FUNC(mmap,DCFG_MMAP="GNU_Unix_Have_MMap",[])
 AC_CHECK_FUNC(getpwnam_r,DCFG_GETPWNAM_R="GNU_Unix_Have_getpwnam_r",[])
 
 
-D_EXTRA_OBJS="std/c/dirent.o std/c/unix/unix.o $D_EXTRA_OBJS"
+D_EXTRA_OBJS="std/c/unix/unix.o $D_EXTRA_OBJS"
 DRUNTIME_OBJS="gcc/config/unix.o gcc/cbridge_fdset.o $DRUNTIME_OBJS"
 # Add "linux" module for compatibility even if not Linux
 D_EXTRA_OBJS="std/c/linux/linux.o $D_EXTRA_OBJS"

@@ -73,8 +73,8 @@ class ArchiveMember
     {
     void print()
     {
-	printf("name = '%.*s'\n", cast(int) name.length, name.ptr);
-	printf("\tcomment = '%.*s'\n", cast(int) comment.length, comment.ptr);
+	printf("name = '%.*s'\n", name);
+	printf("\tcomment = '%.*s'\n", comment);
 	printf("\tmadeVersion = x%04x\n", madeVersion);
 	printf("\textractVersion = x%04x\n", extractVersion);
 	printf("\tflags = x%04x\n", flags);
@@ -126,7 +126,7 @@ class ZipArchive
 	printf("\tdiskStartDir = %u\n", diskStartDir);
 	printf("\tnumEntries = %u\n", numEntries);
 	printf("\ttotalEntries = %u\n", totalEntries);
-	printf("\tcomment = '%.*s'\n", cast(int) comment.length, comment.ptr);
+	printf("\tcomment = '%.*s'\n", comment);
     }
     }
 

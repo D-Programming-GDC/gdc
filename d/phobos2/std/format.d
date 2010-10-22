@@ -1,4 +1,3 @@
-
 // Written in the D programming language.
 
 /**
@@ -9,57 +8,34 @@
  *	WIKI = Phobos/StdFormat
  */
 
-/*
- *  Copyright (C) 2004-2006 by Digital Mars, www.digitalmars.com
- *  Written by Walter Bright and Andrei Alexandrescu
- *
- *  This software is provided 'as-is', without any express or implied
- *  warranty. In no event will the authors be held liable for any damages
- *  arising from the use of this software.
- *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
- *
- *  o  The origin of this software must not be misrepresented; you must not
- *     claim that you wrote the original software. If you use this software
- *     in a product, an acknowledgment in the product documentation would be
- *     appreciated but is not required.
- *  o  Altered source versions must be plainly marked as such, and must not
- *     be misrepresented as being the original software.
- *  o  This notice may not be removed or altered from any source
- *     distribution.
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
  */
 
 module std.format;
 
 //debug=format;		// uncomment to turn on debugging printf's
 
+import std.algorithm, std.array, std.bitmanip; 
 import std.stdarg;	// caller will need va_list
-
-private import std.utf;
-private import std.c.stdio;
-private import std.c.stdlib;
-private import std.c.string;
-private import std.string;
+import std.utf;
+import core.stdc.stdio, core.stdc.stdlib, core.stdc.string;
+import std.string;
 import std.ctype;
 import std.conv;
+import std.functional;
 import std.traits;
 import std.typetuple;
-import std.stdio; // for debugging only
 import std.contracts;
 import std.system;
+import std.range;
+version(unittest) {
+    import std.stdio, std.typecons;
+}
 
-version (Windows)
+version (Windows) version (DigitalMars)
 {
-    version (DigitalMars)
-    {
-	version = DigitalMarsC;
-    }
-    version (GNU)
-    {
-	version = GNU_MinGW_MSVCRT;
-    }
+    version = DigitalMarsC;
 }
 
 version (DigitalMarsC)
@@ -67,15 +43,16 @@ version (DigitalMarsC)
     // This is DMC's internal floating point formatting function
     extern (C)
     {
-	extern char* function(int c, int flags, int precision, real* pdval,
-	    char* buf, int* psl, int width) __pfloatfmt;
+	extern shared char* function(int c, int flags, int precision,
+                in real* pdval,
+                char* buf, size_t* psl, int width) __pfloatfmt;
     }
     alias std.c.stdio._snprintf snprintf;
 }
 else
 {
     // Use C99 snprintf
-    extern (C) int snprintf(char* s, size_t n, const char* format, ...);
+    extern (C) int snprintf(char* s, size_t n, in char* format, ...);
 }
 
 /**********************************************************************
@@ -138,90 +115,69 @@ enum Mangle : char
     Tinvariant = 'y',
 }
 
-// return the TypeInfo for a primitive type and null otherwise.
-// This is required since for arrays of ints we only have the mangled
-// char to work from. If arrays always subclassed TypeInfo_Array this
+// return the TypeInfo for a primitive type and null otherwise.  This
+// is required since for arrays of ints we only have the mangled char
+// to work from. If arrays always subclassed TypeInfo_Array this
 // routine could go away.
 private TypeInfo primitiveTypeInfo(Mangle m) 
 {
-  TypeInfo ti;
-
-  switch (m)
-    {
-    case Mangle.Tvoid:
-      ti = typeid(void);break;
-    case Mangle.Tbool:
-      ti = typeid(bool);break;
-    case Mangle.Tbyte:
-      ti = typeid(byte);break;
-    case Mangle.Tubyte:
-      ti = typeid(ubyte);break;
-    case Mangle.Tshort:
-      ti = typeid(short);break;
-    case Mangle.Tushort:
-      ti = typeid(ushort);break;
-    case Mangle.Tint:
-      ti = typeid(int);break;
-    case Mangle.Tuint:
-      ti = typeid(uint);break;
-    case Mangle.Tlong:
-      ti = typeid(long);break;
-    case Mangle.Tulong:
-      ti = typeid(ulong);break;
-    case Mangle.Tfloat:
-      ti = typeid(float);break;
-    case Mangle.Tdouble:
-      ti = typeid(double);break;
-    case Mangle.Treal:
-      ti = typeid(real);break;
-    case Mangle.Tifloat:
-      ti = typeid(ifloat);break;
-    case Mangle.Tidouble:
-      ti = typeid(idouble);break;
-    case Mangle.Tireal:
-      ti = typeid(ireal);break;
-    case Mangle.Tcfloat:
-      ti = typeid(cfloat);break;
-    case Mangle.Tcdouble:
-      ti = typeid(cdouble);break;
-    case Mangle.Tcreal:
-      ti = typeid(creal);break;
-    case Mangle.Tchar:
-      ti = typeid(char);break;
-    case Mangle.Twchar:
-      ti = typeid(wchar);break;
-    case Mangle.Tdchar:
-      ti = typeid(dchar);
-    default:
-      ti = null;
+    // BUG: should fix this in static this() to avoid double checked locking bug
+    __gshared TypeInfo[Mangle] dic;
+    if (!dic.length) {
+        dic = [
+            Mangle.Tvoid : typeid(void),
+            Mangle.Tbool : typeid(bool),
+            Mangle.Tbyte : typeid(byte),
+            Mangle.Tubyte : typeid(ubyte),
+            Mangle.Tshort : typeid(short),
+            Mangle.Tushort : typeid(ushort),
+            Mangle.Tint : typeid(int),
+            Mangle.Tuint : typeid(uint),
+            Mangle.Tlong : typeid(long),
+            Mangle.Tulong : typeid(ulong),
+            Mangle.Tfloat : typeid(float),
+            Mangle.Tdouble : typeid(double),
+            Mangle.Treal : typeid(real),
+            Mangle.Tifloat : typeid(ifloat),
+            Mangle.Tidouble : typeid(idouble),
+            Mangle.Tireal : typeid(ireal),
+            Mangle.Tcfloat : typeid(cfloat),
+            Mangle.Tcdouble : typeid(cdouble),
+            Mangle.Tcreal : typeid(creal),
+            Mangle.Tchar : typeid(char),
+            Mangle.Twchar : typeid(wchar),
+            Mangle.Tdchar : typeid(dchar)
+            ];
     }
-  return ti;
+    auto p = m in dic;
+    return p ? *p : null;
 }
 
 /************************************
- * Interprets variadic argument list pointed to by argptr whose types are given
- * by arguments[], formats them according to embedded format strings in the
- * variadic argument list, and sends the resulting characters to putc.
+ * Interprets variadic argument list pointed to by argptr whose types
+ * are given by arguments[], formats them according to embedded format
+ * strings in the variadic argument list, and sends the resulting
+ * characters to putc.
  *
- * The variadic arguments are consumed in order.
- * Each is formatted into a sequence of chars, using the default format
- * specification for its type, and the
- * characters are sequentially passed to putc.
- * If a char[], wchar[], or dchar[]
- * argument is encountered, it is interpreted as a format string. As many
- * arguments as specified in the format string are consumed and formatted
- * according to the format specifications in that string and passed to putc. If
- * there are too few remaining arguments, a FormatError is thrown. If there are
- * more remaining arguments than needed by the format specification, the default
- * processing of arguments resumes until they are all consumed.
+ * The variadic arguments are consumed in order.  Each is formatted
+ * into a sequence of chars, using the default format specification
+ * for its type, and the characters are sequentially passed to putc.
+ * If a $(D char[]), $(D wchar[]), or $(D dchar[]) argument is
+ * encountered, it is interpreted as a format string. As many
+ * arguments as specified in the format string are consumed and
+ * formatted according to the format specifications in that string and
+ * passed to putc. If there are too few remaining arguments, a
+ * FormatError is thrown. If there are more remaining arguments than
+ * needed by the format specification, the default processing of
+ * arguments resumes until they are all consumed.
  *
  * Params:
  *	putc =	Output is sent do this delegate, character by character.
- *	arguments = Array of TypeInfo's, one for each argument to be formatted.
+ *	arguments = Array of $(D TypeInfo)s, one for each argument to be formatted.
  *	argptr = Points to variadic argument list.
  *
  * Throws:
- *	Mismatched arguments and formats result in a FormatError being thrown.
+ *	Mismatched arguments and formats result in a $(D FormatError) being thrown.
  *
  * Format_String:
  *	<a name="format-string">$(I Format strings)</a>
@@ -461,8 +417,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
     doFormatPtr(putc, arguments, argptr, null);
 }
 
-void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr,
-	      void * p_args)
+void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr, void* p_args)
 {   int j;
     TypeInfo ti;
     Mangle m;
@@ -483,18 +438,18 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
     static TypeInfo skipCI(TypeInfo valti)
     {
-      while (1)
-      {
-	if (valti.classinfo.name.length == 18 &&
-	    valti.classinfo.name[9..18] == "Invariant")
-	    valti =	(cast(TypeInfo_Invariant)valti).next;
-	else if (valti.classinfo.name.length == 14 &&
-	    valti.classinfo.name[9..14] == "Const")
-	    valti =	(cast(TypeInfo_Const)valti).next;
-	else
-	    break;
-      }
-      return valti;
+        for (;;)
+        {
+            if (valti.classinfo.name.length == 18 &&
+                    valti.classinfo.name[9..18] == "Invariant")
+                valti =	(cast(TypeInfo_Invariant)valti).next;
+            else if (valti.classinfo.name.length == 14 &&
+                    valti.classinfo.name[9..14] == "Const")
+                valti =	(cast(TypeInfo_Const)valti).next;
+            else
+                break;
+        }
+        return valti;
     }
 
     void formatArg(char fc)
@@ -553,7 +508,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 	void putreal(real v)
 	{
 	    //printf("putreal %Lg\n", vreal);
-
+        
 	    switch (fc)
 	    {
 		case 's':
@@ -570,76 +525,68 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 	    }
 	    version (DigitalMarsC)
 	    {
-		int sl;
-		char[] fbuf = tmpbuf;
-		if (!(flags & FLprecision))
-		    precision = 6;
-		while (1)
-		{
-		    sl = fbuf.length;
-		    prefix = (*__pfloatfmt)(fc, flags | FLlngdbl,
-			    precision, &v, cast(char*)fbuf, &sl, field_width);
+            uint sl;
+            char[] fbuf = tmpbuf;
+            if (!(flags & FLprecision))
+                precision = 6;
+            while (1)
+            {
+                sl = fbuf.length;
+                prefix = (*__pfloatfmt)(fc, flags | FLlngdbl,
+                        precision, &v, cast(char*)fbuf, &sl, field_width);
 		    if (sl != -1)
-			break;
+                break;
 		    sl = fbuf.length * 2;
 		    fbuf = (cast(char*)alloca(sl * char.sizeof))[0 .. sl];
-		}
-		putstr(fbuf[0 .. sl]);
+            }
+            putstr(fbuf[0 .. sl]);
 	    }
 	    else
 	    {
-		int sl;
-		char[] fbuf = tmpbuf;
-		char[12] format;
-		format[0] = '%';
-		int i = 1;
-		if (flags & FLdash)
-		    format[i++] = '-';
-		if (flags & FLplus)
-		    format[i++] = '+';
-		if (flags & FLspace)
-		    format[i++] = ' ';
-		if (flags & FLhash)
-		    format[i++] = '#';
-		if (flags & FL0pad)
-		    format[i++] = '0';
-		format[i + 0] = '*';
-		format[i + 1] = '.';
-		format[i + 2] = '*';
-		i += 3;
-		version (GNU_MinGW_MSVCRT)
-		    { /* nothing: no support for long double */ }
-		else
-		    static if (real.sizeof > double.sizeof)
-			format[i++] = 'L';
-		format[i++] = fc;
-		format[i] = 0;
-		if (!(flags & FLprecision))
-		    precision = -1;
-		while (1)
-		{   int n;
-
-		    sl = fbuf.length;
-		    version (GNU_MinGW_MSVCRT)
-			n = snprintf(fbuf.ptr, sl, format.ptr, field_width, precision, cast(double) v);
-		    else
-			n = snprintf(fbuf.ptr, sl, format.ptr, field_width, precision, v);
-		    //printf("format = '%s', n = %d\n", cast(char*)format, n);
-		    if (n >= 0 && n < sl)
-		    {	sl = n;
-			break;
-		    }
-		    if (n < 0)
-			sl = sl * 2;
-		    else
-			sl = n + 1;
-		    fbuf = (cast(char*)alloca(sl * char.sizeof))[0 .. sl];
-		}
-		putstr(fbuf[0 .. sl]);
+            int sl;
+            char[] fbuf = tmpbuf;
+            char[12] format;
+            format[0] = '%';
+            int i = 1;
+            if (flags & FLdash)
+                format[i++] = '-';
+            if (flags & FLplus)
+                format[i++] = '+';
+            if (flags & FLspace)
+                format[i++] = ' ';
+            if (flags & FLhash)
+                format[i++] = '#';
+            if (flags & FL0pad)
+                format[i++] = '0';
+            format[i + 0] = '*';
+            format[i + 1] = '.';
+            format[i + 2] = '*';
+            format[i + 3] = 'L';
+            format[i + 4] = fc;
+            format[i + 5] = 0;
+            if (!(flags & FLprecision))
+                precision = -1;
+            while (1)
+            {   int n;
+                
+                sl = fbuf.length;
+                n = snprintf(fbuf.ptr, sl, format.ptr, field_width, precision, v);
+                //printf("format = '%s', n = %d\n", cast(char*)format, n);
+                if (n >= 0 && n < sl)
+                {	sl = n;
+                    break;
+                }
+                if (n < 0)
+                    sl = sl * 2;
+                else
+                    sl = n + 1;
+                fbuf = (cast(char*)alloca(sl * char.sizeof))[0 .. sl];
+            }
+            putstr(fbuf[0 .. sl]);
 	    }
 	    return;
 	}
-
+    
 	static Mangle getMan(TypeInfo ti)
 	{
 	  auto m = cast(Mangle)ti.classinfo.name[9];
@@ -678,14 +625,6 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
 	void putAArray(ubyte[long] vaa, TypeInfo valti, TypeInfo keyti)
 	{
-	    // Copied from aaA.d
-	    size_t aligntsize(size_t tsize)
-	    {
-		// Is pointer alignment on the x64 4 bytes or 8?
-		return (tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
-	    }
-
-	    
 	  putc('[');
 	  bool comma=false;
 	  auto argptrSave = p_args;
@@ -707,7 +646,9 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 	    formatArg('s');
 
 	    putc(':');
-	    ubyte* value = key + aligntsize(keyti.tsize);
+	    auto keysize = keyti.tsize;
+	    keysize = (keysize + 3) & ~3;
+	    ubyte* value = key + keysize;
 	    //doFormat(putc, (&valti)[0..1], value);
 	    p_args = value;
 	    ti = valti;
@@ -815,8 +756,8 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 		goto Lputstr;
 
 	    case Mangle.Tpointer:
-		vnumber = cast(size_t)va_arg!(void*)(argptr);
-		uc = 1;
+		vnumber = cast(ulong)va_arg!(void*)(argptr);
+		if (fc != 'x')  uc = 1;
 		flags |= FL0pad;
 		if (!(flags & FLprecision))
 		{   flags |= FLprecision;
@@ -829,22 +770,14 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 	    case Mangle.Tfloat:
 	    case Mangle.Tifloat:
 		if (fc == 'x' || fc == 'X')
-		{
-		    float f = va_arg!(float)(argptr);
-		    vnumber = *cast(uint*)&f;
-		    goto Lnumber;
-		}
+		    goto Luint;
 		vreal = va_arg!(float)(argptr);
 		goto Lreal;
 
 	    case Mangle.Tdouble:
 	    case Mangle.Tidouble:
 		if (fc == 'x' || fc == 'X')
-		{
-		    double f = va_arg!(double)(argptr);
-		    vnumber = *cast(ulong*)&f;
-		    goto Lnumber;
-		}
+		    goto Lulong;
 		vreal = va_arg!(double)(argptr);
 		goto Lreal;
 
@@ -961,23 +894,16 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 	    {	TypeInfo_Struct tis = cast(TypeInfo_Struct)ti;
 		if (tis.xtoString is null)
 		    throw new FormatError("Can't convert " ~ tis.toString() ~ " to string: \"string toString()\" not defined");
-		static if
-		    (
-		     is( typeof(argptr): void[] ) ||
-		     is( typeof(argptr) == struct ))
+		static if (is(typeof(argptr): void[]) || is(typeof(argptr) == struct))
 		{
 		    version(PPC)
 		    {
 			// Structs are pass-by-reference in V4 ABI
 			s = tis.xtoString(va_arg!(void*)(argptr));
 		    }
-		    else version(X86_64)
-		    {
-			throw new FormatError("cannot portably format a struct on this target");
-		    }
 		    else
 		    {
-			static assert(0, "unimplemented");
+			throw new FormatError("cannot portably format a struct on this target");
 		    }
 		}
 		else
@@ -1003,25 +929,25 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 		    }
 		    putstr(vbit ? "true" : "false");
 		    return;
-    
-    
+
+
 		case Mangle.Tchar:
 		    vchar = *cast(char*)(p_args); p_args += char.sizeof;
 		    if (fc != 's')
 		    {   vnumber = vchar;
 			goto Lnumber;
 		    }
-		PL2: // there is goto L2 outside of thise switch; it's okay to do that
+	    PL2:
 		    putstr((&vchar)[0 .. 1]);
 		    return;
-    
+
 		case Mangle.Twchar:
 		    vdchar = *cast(wchar*)(p_args); p_args += wchar.sizeof;
 		    goto PL1;
-    
+
 		case Mangle.Tdchar:
 		    vdchar = *cast(dchar*)(p_args); p_args += dchar.sizeof;
-		PL1:
+	    PL1:
 		    if (fc != 's')
 		    {   vnumber = vdchar;
 			goto Lnumber;
@@ -1032,59 +958,61 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 		    }
 		    else
 		    {   if (!isValidDchar(vdchar))
-			    throw new UtfException("invalid dchar in format", 0);
+			throw new UtfException("invalid dchar in format", 0);
 			char[4] vbuf;
 			putstr(toUTF8(vbuf, vdchar));
 		    }
 		    return;
-    
-    
+
+
 		case Mangle.Tbyte:
 		    signed = 1;
 		    vnumber = *cast(byte*)p_args; p_args += byte.sizeof;
 		    goto Lnumber;
-    
+
 		case Mangle.Tubyte:
 		    vnumber = *cast(ubyte*)p_args; p_args += ubyte.sizeof;
 		    goto Lnumber;
-    
+
 		case Mangle.Tshort:
 		    signed = 1;
 		    vnumber = *cast(short*)p_args; p_args += short.sizeof;
 		    goto Lnumber;
-    
+
 		case Mangle.Tushort:
 		    vnumber = *cast(ushort*)p_args; p_args += ushort.sizeof;
 		    goto Lnumber;
-    
+
 		case Mangle.Tint:
 		    signed = 1;
 		    vnumber = *cast(int*)p_args; p_args += int.sizeof;
 		    goto Lnumber;
-    
+
 		case Mangle.Tuint:
-		PLuint:
+	    PLuint:
 		    vnumber = *cast(uint*)p_args; p_args += uint.sizeof;
 		    goto Lnumber;
-    
+
 		case Mangle.Tlong:
 		    signed = 1;
 		    vnumber = cast(ulong)*cast(long*)p_args; p_args += long.sizeof;
 		    goto Lnumber;
-    
+
 		case Mangle.Tulong:
-		PLulong:
+	    PLulong:
 		    vnumber = *cast(ulong*)p_args; p_args += ulong.sizeof;
 		    goto Lnumber;
-    
+
 		case Mangle.Tclass:
 		    vobject = *cast(Object*)p_args; p_args += Object.sizeof;
-		    s = vobject.toString();
+		    if (vobject is null)
+			s = "null";
+		    else
+			s = vobject.toString();
 		    goto Lputstr;
-    
+
 		case Mangle.Tpointer:
-		    alias void * void_ponter_t;
-		    vnumber = cast(size_t)*cast(void**)p_args; p_args += void_ponter_t.sizeof;
+		    vnumber = cast(size_t)*cast(void**)p_args; p_args += (void*).sizeof;
 		    uc = 1;
 		    flags |= FL0pad;
 		    if (!(flags & FLprecision))
@@ -1093,40 +1021,40 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 		    }
 		    base = 16;
 		    goto Lnumber;
-    
-    
+
+
 		case Mangle.Tfloat:
 		case Mangle.Tifloat:
 		    if (fc == 'x' || fc == 'X')
 			goto PLuint;
 		    vreal = *cast(float*)p_args; p_args += float.sizeof;
 		    goto Lreal;
-    
+
 		case Mangle.Tdouble:
 		case Mangle.Tidouble:
 		    if (fc == 'x' || fc == 'X')
 			goto PLulong;
 		    vreal = *cast(double*)p_args; p_args += double.sizeof;
 		    goto Lreal;
-    
+
 		case Mangle.Treal:
 		case Mangle.Tireal:
 		    vreal = *cast(real*)p_args; p_args += real.sizeof;
 		    goto Lreal;
-    
-    
+
+
 		case Mangle.Tcfloat:
 		    vcreal = *cast(cfloat*)p_args; p_args += cfloat.sizeof;
 		    goto Lcomplex;
-    
+
 		case Mangle.Tcdouble:
 		    vcreal = *cast(cdouble*)p_args; p_args += cdouble.sizeof;
 		    goto Lcomplex;
-    
+
 		case Mangle.Tcreal:
 		    vcreal = *cast(creal*)p_args; p_args += creal.sizeof;
 		    goto Lcomplex;
-    
+
 		case Mangle.Tsarray:
 		    putArray(p_args, (cast(TypeInfo_StaticArray)ti).len, (cast(TypeInfo_StaticArray)ti).next);
 		    p_args += ti.tsize();
@@ -1134,55 +1062,54 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
 		case Mangle.Tarray:
 		    int mi = 10;
-		    alias void[] array_t;
 		    if (ti.classinfo.name.length == 14 &&
-			ti.classinfo.name[9..14] == "Array") 
+			    ti.classinfo.name[9..14] == "Array") 
 		    { // array of non-primitive types
-		      TypeInfo tn = (cast(TypeInfo_Array)ti).next;
-		      tn = skipCI(tn);
-		      switch (cast(Mangle)tn.classinfo.name[9])
-		      {
-			case Mangle.Tchar:  goto LarrayChar_p;
-			case Mangle.Twchar: goto LarrayWchar_p;
-			case Mangle.Tdchar: goto LarrayDchar_p;
-			default:
-			    break;
-		      }
-		      void[] va = *cast(void[]*)p_args; p_args += array_t.sizeof;
-		      putArray(va.ptr, va.length, tn);
-		      return;
+			TypeInfo tn = (cast(TypeInfo_Array)ti).next;
+			tn = skipCI(tn);
+			switch (cast(Mangle)tn.classinfo.name[9])
+			{
+			    case Mangle.Tchar:  goto LarrayChar;
+			    case Mangle.Twchar: goto LarrayWchar;
+			    case Mangle.Tdchar: goto LarrayDchar;
+			    default:
+				    		break;
+			}
+			void[] va = *cast(void[]*)p_args; p_args += (void[]).sizeof;
+			putArray(va.ptr, va.length, tn);
+			return;
 		    }
 		    if (ti.classinfo.name.length == 25 &&
-			ti.classinfo.name[9..25] == "AssociativeArray") 
+			    ti.classinfo.name[9..25] == "AssociativeArray") 
 		    { // associative array
-		      ubyte[long] vaa = *cast(ubyte[long]*)p_args; p_args += vaa.sizeof;
-		      putAArray(vaa,
-			    (cast(TypeInfo_AssociativeArray)ti).next,
-			    (cast(TypeInfo_AssociativeArray)ti).key);
-		      return;
+			ubyte[long] vaa = *cast(ubyte[long]*)p_args; p_args += (ubyte[long]).sizeof;
+			putAArray(vaa,
+				(cast(TypeInfo_AssociativeArray)ti).next,
+				(cast(TypeInfo_AssociativeArray)ti).key);
+			return;
 		    }
-		    
+
 		    while (1)
 		    {
-			m2 = cast(Mangle)ti.classinfo.name[10];
+			m2 = cast(Mangle)ti.classinfo.name[mi];
 			switch (m2)
 			{
 			    case Mangle.Tchar:
-				LarrayChar_p:
-				s = *cast(string*)p_args; p_args += array_t.sizeof;
+		    PLarrayChar:
+				s = *cast(string*)p_args; p_args += (string).sizeof;
 				goto PLputstr;
 
 			    case Mangle.Twchar:
-				LarrayWchar_p:
-				wchar[] sw = *cast(wchar[]*)p_args; p_args += array_t.sizeof;
+		    PLarrayWchar:
+				wchar[] sw = *cast(wchar[]*)p_args; p_args += (wchar[]).sizeof;
 				s = toUTF8(sw);
 				goto PLputstr;
 
 			    case Mangle.Tdchar:
-				LarrayDchar_p:
-				dchar[] sd = *cast(dchar[]*)p_args; p_args += array_t.sizeof;
+		    PLarrayDchar:
+				auto sd = *cast(dchar[]*)p_args; p_args += (dchar[]).sizeof;
 				s = toUTF8(sd);
-			    PLputstr:
+		    PLputstr:
 				if (fc != 's')
 				    throw new FormatError("string");
 				if (flags & FLprecision && precision < s.length)
@@ -1198,25 +1125,25 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 			    default:
 				TypeInfo ti2 = primitiveTypeInfo(m2);
 				if (!ti2)
-				  goto Lerror;
-				void[] va = *cast(void[]*)p_args; p_args += array_t.sizeof;
+				    goto Lerror;
+				void[] va = *cast(void[]*)p_args; p_args += (void[]).sizeof;
 				putArray(va.ptr, va.length, ti2);
 			}
 			return;
 		    }
-    
+
 		case Mangle.Ttypedef:
 		    ti = (cast(TypeInfo_Typedef)ti).base;
 		    m = cast(Mangle)ti.classinfo.name[9];
 		    formatArg(fc);
 		    return;
-    
+
 		case Mangle.Tenum:
 		    ti = (cast(TypeInfo_Enum)ti).base;
 		    m = cast(Mangle)ti.classinfo.name[9];
 		    formatArg(fc);
 		    return;
-		    
+
 		case Mangle.Tstruct:
 		{   TypeInfo_Struct tis = cast(TypeInfo_Struct)ti;
 		    if (tis.xtoString is null)
@@ -1359,259 +1286,220 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
 
     for (j = 0; j < arguments.length; )
-    {	ti = arguments[j++];
-	//printf("test1: '%.*s' %d\n", ti.classinfo.name, ti.classinfo.name.length);
-	//ti.print();
-
-	flags = 0;
-	precision = 0;
-	field_width = 0;
-
-	ti = skipCI(ti);
-	int mi = 9;
-	do
-	{
-	    if (ti.classinfo.name.length <= mi)
-		goto Lerror;
-	    m = cast(Mangle)ti.classinfo.name[mi++];
-	} while (m == Mangle.Tconst || m == Mangle.Tinvariant);
-
-	if (m == Mangle.Tarray)
-	{
-	    if (ti.classinfo.name.length == 14 &&
-		ti.classinfo.name[9..14] == "Array") 
-	    {
-	      TypeInfo tn = (cast(TypeInfo_Array)ti).next;
-	      tn = skipCI(tn);
-	      switch (cast(Mangle)tn.classinfo.name[9])
-	      {
-		case Mangle.Tchar:
-		case Mangle.Twchar:
-		case Mangle.Tdchar:
-		    ti = tn;
-		    mi = 9;
-		    break;
-		default:
-		    break;
-	      }
-	    }
-	L1:
-	    Mangle m2 = cast(Mangle)ti.classinfo.name[mi];
-	    string  fmt;			// format string
-	    wstring wfmt;
-	    dstring dfmt;
-
-	    /* For performance reasons, this code takes advantage of the
-	     * fact that most format strings will be ASCII, and that the
-	     * format specifiers are always ASCII. This means we only need
-	     * to deal with UTF in a couple of isolated spots.
-	     */
-
-	    if (! p_args)
-	    switch (m2)
-	    {
-		case Mangle.Tchar:
-		    fmt = va_arg!(string)(argptr);
-		    break;
-
-		case Mangle.Twchar:
-		    wfmt = va_arg!(wstring)(argptr);
-		    fmt = toUTF8(wfmt);
-		    break;
-
-		case Mangle.Tdchar:
-		    dfmt = va_arg!(dstring)(argptr);
-		    fmt = toUTF8(dfmt);
-		    break;
-
-		case Mangle.Tconst:
-		case Mangle.Tinvariant:
-		    mi++;
-		    goto L1;
-
-		default:
-		    formatArg('s');
-		    continue;
-	    }
-	    else
-	    {
-		alias void[] array_t;
-		switch (m2)
-		{
-		    case Mangle.Tchar:
-			fmt = *cast(string*)p_args; p_args += array_t.sizeof;
-			break;
-
-		    case Mangle.Twchar:
-			wfmt = *cast(wstring*)p_args; p_args += array_t.sizeof;
-			fmt = toUTF8(wfmt);
-			break;
-
-		    case Mangle.Tdchar:
-			dfmt = *cast(dstring*)p_args; p_args += array_t.sizeof;
-			fmt = toUTF8(dfmt);
-			break;
-
-		    case Mangle.Tconst:
-		    case Mangle.Tinvariant:
-			mi++;
-			goto L1;
-
-		    default:
-			formatArg('s');
-			continue;
-		}
-	    }
-
-	    for (size_t i = 0; i < fmt.length; )
-	    {	dchar c = fmt[i++];
-
-		dchar getFmtChar()
-		{   // Valid format specifier characters will never be UTF
-		    if (i == fmt.length)
-			throw new FormatError("invalid specifier");
-		    return fmt[i++];
-		}
-
-		int getFmtInt()
-		{   int n;
-
-		    while (1)
-		    {
-			n = n * 10 + (c - '0');
-			if (n < 0)	// overflow
-			    throw new FormatError("int overflow");
-			c = getFmtChar();
-			if (c < '0' || c > '9')
-			    break;
-		    }
-		    return n;
-		}
-
-		int getFmtStar()
-		{   Mangle m;
-		    TypeInfo ti;
-
-		    if (j == arguments.length)
-			throw new FormatError("too few arguments");
-		    ti = arguments[j++];
-		    m = cast(Mangle)ti.classinfo.name[9];
-		    if (m != Mangle.Tint)
-			throw new FormatError("int argument expected");
-		    if (! p_args)
-		    return va_arg!(int)(argptr);
-		    else
-		    {
-			int result = *cast(int*)(p_args); p_args += int.sizeof;
-			return result;
-		    }
-		}
-
-		if (c != '%')
-		{
-		    if (c > 0x7F)	// if UTF sequence
-		    {
-			i--;		// back up and decode UTF sequence
-			c = std.utf.decode(fmt, i);
-		    }
-		Lputc:
-		    putc(c);
-		    continue;
-		}
-
-		// Get flags {-+ #}
-		flags = 0;
-		while (1)
-		{
-		    c = getFmtChar();
-		    switch (c)
-		    {
-			case '-':	flags |= FLdash;	continue;
-			case '+':	flags |= FLplus;	continue;
-			case ' ':	flags |= FLspace;	continue;
-			case '#':	flags |= FLhash;	continue;
-			case '0':	flags |= FL0pad;	continue;
-
-			case '%':	if (flags == 0)
-					    goto Lputc;
-			default:	break;
-		    }
-		    break;
-		}
-
-		// Get field width
-		field_width = 0;
-		if (c == '*')
-		{
-		    field_width = getFmtStar();
-		    if (field_width < 0)
-		    {   flags |= FLdash;
-			field_width = -field_width;
-		    }
-
-		    c = getFmtChar();
-		}
-		else if (c >= '0' && c <= '9')
-		    field_width = getFmtInt();
-
-		if (flags & FLplus)
-		    flags &= ~FLspace;
-		if (flags & FLdash)
-		    flags &= ~FL0pad;
-
-		// Get precision
-		precision = 0;
-		if (c == '.')
-		{   flags |= FLprecision;
-		    //flags &= ~FL0pad;
-
-		    c = getFmtChar();
-		    if (c == '*')
-		    {
-			precision = getFmtStar();
-			if (precision < 0)
-			{   precision = 0;
-			    flags &= ~FLprecision;
-			}
-
-			c = getFmtChar();
-		    }
-		    else if (c >= '0' && c <= '9')
-			precision = getFmtInt();
-		}
-
-		if (j == arguments.length)
-		    goto Lerror;
-		ti = arguments[j++];
-		ti = skipCI(ti);
-		mi = 9;
-		do
-		{
-		    m = cast(Mangle)ti.classinfo.name[mi++];
-		} while (m == Mangle.Tconst || m == Mangle.Tinvariant);
-
-		if (c > 0x7F)		// if UTF sequence
-		    goto Lerror;	// format specifiers can't be UTF
-		formatArg(cast(char)c);
-	    }
-	}
-	else
-	{
-	    formatArg('s');
-	}
+    {
+        ti = arguments[j++];
+        //printf("test1: '%.*s' %d\n", ti.classinfo.name,
+        //ti.classinfo.name.length); ti.print();
+        
+        flags = 0;
+        precision = 0;
+        field_width = 0;
+        
+        ti = skipCI(ti);
+        int mi = 9;
+        do
+        {
+            if (ti.classinfo.name.length <= mi)
+                goto Lerror;
+            m = cast(Mangle)ti.classinfo.name[mi++];
+        } while (m == Mangle.Tconst || m == Mangle.Tinvariant);
+        
+        if (m == Mangle.Tarray)
+        {
+            if (ti.classinfo.name.length == 14 &&
+                    ti.classinfo.name[9..14] == "Array") 
+            {
+                TypeInfo tn = (cast(TypeInfo_Array)ti).next;
+                tn = skipCI(tn);
+                switch (cast(Mangle)tn.classinfo.name[9])
+                {
+                case Mangle.Tchar:
+                case Mangle.Twchar:
+                case Mangle.Tdchar:
+                    ti = tn;
+                    mi = 9;
+                    break;
+                default:
+                    break;
+                }
+            }
+          L1:
+            Mangle m2 = cast(Mangle)ti.classinfo.name[mi];
+            string  fmt;			// format string
+            wstring wfmt;
+            dstring dfmt;
+            
+            /* For performance reasons, this code takes advantage of the
+             * fact that most format strings will be ASCII, and that the
+             * format specifiers are always ASCII. This means we only need
+             * to deal with UTF in a couple of isolated spots.
+             */
+            
+            switch (m2)
+            {
+            case Mangle.Tchar:
+                fmt = va_arg!(string)(argptr);
+                break;
+                
+            case Mangle.Twchar:
+                wfmt = va_arg!(wstring)(argptr);
+                fmt = toUTF8(wfmt);
+                break;
+                
+            case Mangle.Tdchar:
+                dfmt = va_arg!(dstring)(argptr);
+                fmt = toUTF8(dfmt);
+                break;
+                
+            case Mangle.Tconst:
+            case Mangle.Tinvariant:
+                mi++;
+                goto L1;
+                
+            default:
+                formatArg('s');
+                continue;
+            }
+            
+            for (size_t i = 0; i < fmt.length; )
+            {	dchar c = fmt[i++];
+                
+                dchar getFmtChar()
+                {   // Valid format specifier characters will never be UTF
+                    if (i == fmt.length)
+                        throw new FormatError("invalid specifier");
+                    return fmt[i++];
+                }
+                
+                int getFmtInt()
+                {   int n;
+                    
+                    while (1)
+                    {
+                        n = n * 10 + (c - '0');
+                        if (n < 0)	// overflow
+                            throw new FormatError("int overflow");
+                        c = getFmtChar();
+                        if (c < '0' || c > '9')
+                            break;
+                    }
+                    return n;
+                }
+                
+                int getFmtStar()
+                {   Mangle m;
+                    TypeInfo ti;
+                    
+                    if (j == arguments.length)
+                        throw new FormatError("too few arguments");
+                    ti = arguments[j++];
+                    m = cast(Mangle)ti.classinfo.name[9];
+                    if (m != Mangle.Tint)
+                        throw new FormatError("int argument expected");
+                    return va_arg!(int)(argptr);
+                }
+                
+                if (c != '%')
+                {
+                    if (c > 0x7F)	// if UTF sequence
+                    {
+                        i--;		// back up and decode UTF sequence
+                        c = std.utf.decode(fmt, i);
+                    }
+                  Lputc:
+                    putc(c);
+                    continue;
+                }
+                
+                // Get flags {-+ #}
+                flags = 0;
+                while (1)
+                {
+                    c = getFmtChar();
+                    switch (c)
+                    {
+                    case '-':	flags |= FLdash;	continue;
+                    case '+':	flags |= FLplus;	continue;
+                    case ' ':	flags |= FLspace;	continue;
+                    case '#':	flags |= FLhash;	continue;
+                    case '0':	flags |= FL0pad;	continue;
+                        
+                    case '%':	if (flags == 0)
+                            goto Lputc;
+                    default:	break;
+                    }
+                    break;
+                }
+                
+                // Get field width
+                field_width = 0;
+                if (c == '*')
+                {
+                    field_width = getFmtStar();
+                    if (field_width < 0)
+                    {   flags |= FLdash;
+                        field_width = -field_width;
+                    }
+                    
+                    c = getFmtChar();
+                }
+                else if (c >= '0' && c <= '9')
+                    field_width = getFmtInt();
+                
+                if (flags & FLplus)
+                    flags &= ~FLspace;
+                if (flags & FLdash)
+                    flags &= ~FL0pad;
+                
+                // Get precision
+                precision = 0;
+                if (c == '.')
+                {   flags |= FLprecision;
+                    //flags &= ~FL0pad;
+                    
+                    c = getFmtChar();
+                    if (c == '*')
+                    {
+                        precision = getFmtStar();
+                        if (precision < 0)
+                        {   precision = 0;
+                            flags &= ~FLprecision;
+                        }
+                        
+                        c = getFmtChar();
+                    }
+                    else if (c >= '0' && c <= '9')
+                        precision = getFmtInt();
+                }
+                
+                if (j == arguments.length)
+                    goto Lerror;
+                ti = arguments[j++];
+                ti = skipCI(ti);
+                mi = 9;
+                do
+                {
+                    m = cast(Mangle)ti.classinfo.name[mi++];
+                } while (m == Mangle.Tconst || m == Mangle.Tinvariant);
+                
+                if (c > 0x7F)		// if UTF sequence
+                    goto Lerror;	// format specifiers can't be UTF
+                formatArg(cast(char)c);
+            }
+        }
+        else
+        {
+            formatArg('s');
+        }
     }
     return;
-
-Lerror:
+    
+  Lerror:
     throw new FormatError();
 }
 
 /* ======================== Unit Tests ====================================== */
 
-version (skyos)
-    version = no_hexfloat;
-
-import std.stdio;//xx
 unittest
 {
     int i;
@@ -1627,16 +1515,10 @@ unittest
      * C99 doesn't specify what the hex digit before the decimal point
      * is for %A.
      */
-    /*
-    printf("%.*s\n", s);
-    printf("d:   %A\n",  -1.28);
-    printf("r:   %LA\n", -1.28L);
-    */
-    version (no_hexfloat)
-	{ /*nothing*/ }
+    version (linux)
+	assert(s == "1.67 -0XA.3D70A3D70A3D8P-3 nan");
     else
-	assert(s == "1.67 -0XA.3D70A3D70A3D8P-3 nan" ||
-	       s == "1.67 -0X1.47AE147AE147BP+0 nan");
+	assert(s == "1.67 -0X1.47AE147AE147BP+0 nan");
 
     s = std.string.format("%x %X", 0x1234AF, 0xAFAFAFAF);
     assert(s == "1234af AFAFAFAF");
@@ -1889,10 +1771,8 @@ unittest
 
     invariant(char[5])[int] aa = ([3:"hello", 4:"betty"]);
     r = std.string.format("%s", aa.values);
-    writefln(aa);
     assert(r == "[[h,e,l,l,o],[b,e,t,t,y]]");
     r = std.string.format("%s", aa);
-    writefln(aa);
     assert(r == "[3:[h,e,l,l,o],4:[b,e,t,t,y]]");
 
     static const dchar[] ds = ['a','b'];
@@ -1913,44 +1793,7 @@ unittest
 }
 
 // Andrei
-//-------------------------------------------------------------------------------
-/**
- * Implements the static Writer interface for a string. Instantiate it
- * with the character type, e.g. StringWriter!(char),
- * StringWriter!(wchar), or StringWriter!(dchar). Regardless of
- * instantiation, StringWriter supports all character widths; it only
- * is the most efficient at accepting the character type it was
- * instantiated with.
- */
-struct StringWriter(Char)
-{
-    alias Char NativeChar;
-    Char[] backend;
-    void write(C)(in C[] s)
-    {
-        static if (C.sizeof == NativeChar.sizeof)
-        {
-            backend ~= s;
-        }
-        else
-        {
-            backend ~= to!(const(NativeChar)[])(s);
-        }
-    }
-    void putchar(C)(in C c)
-    {
-        static if (C.sizeof == NativeChar.sizeof)
-        {
-            backend ~= c;
-        }
-        else
-        {
-            backend ~= to!(const(NativeChar)[])(c);
-        }
-    }
-}
-
-import std.bitmanip;
+//------------------------------------------------------------------------------
 
 /*
  * A compiled version of an individual writef format
@@ -1958,126 +1801,178 @@ import std.bitmanip;
  * assigning any semantics to the fields. */
 struct FormatInfo
 {
-    /** minimum width, default 0. If width == width.max, then width
-     was specified as '*' in the format string.
-    */
-    short width = 0; 
-    /** precision, default ushort.max - 1. If precision ==
-     precision.max, then precision was specified as '*' in the format string.
-    */
-    short precision = short.max - 1; // by convention max-1 == "no precision"
+    /** Special values for width and precision, DYNAMIC width or
+     * precision means that they were specified with '*' in the format
+     * string. */
+    enum short DYNAMIC = short.max;
+    /** Special value for precision */
+    enum short UNSPECIFIED = DYNAMIC - 1;
+    /** minimum width, default 0.  */
+    short width = 0;
+    /** precision. */
+    short precision = UNSPECIFIED; 
     /** The actual format specifier, 's' by default. */
     char spec = 's';
-    /** Index of the argument, 1 .. ubyte.max. (0 means not used)*/
+    /** Index of the argument for positional parameters, from 1 to
+     * ubyte.max. (0 means not used) */
     ubyte index;
     /* Flags: flDash for '-', flZero for '0', flSpace for ' ', flPlus
      *  for '+', flHash for '#'. */
     mixin(bitfields!(
-              bool, "flDash", 1,
-              bool, "flZero", 1,
-              bool, "flSpace", 1,
-              bool, "flPlus", 1,
-              bool, "flHash", 1,
-              ubyte, "", 3));
-}
+                bool, "flDash", 1,
+                bool, "flZero", 1,
+                bool, "flSpace", 1,
+                bool, "flPlus", 1,
+                bool, "flHash", 1,
+                ubyte, "", 3));
+    /* For arrays only: the trailing  */    
+    const(char)[] innerTrailing;
 
 /*
  * Given a string format specification fmt, parses a format
  * specifier. The string is assumed to start with the character
  * immediately following the '%'. The string is advanced to right
  * after the end of the format specifier. */
-FormatInfo parseFormatSpec(S)(ref S fmt)
-{
-    FormatInfo result;
-    if (!fmt.length) return result;
-    size_t i = 0;
-    for (;;)
-        switch (fmt[i])
-        {
-        case '-': result.flDash = true; ++i; break;
-        case '+': result.flPlus = true; ++i; break;
-        case '#': result.flHash = true; ++i; break;
-        case '0': result.flZero = true; ++i; break;
-        case ' ': result.flSpace = true; ++i; break;
-        case '*':
-            if (isdigit(fmt[++i]))
+    static FormatInfo parse(S)(ref S fmt)
+    {
+        FormatInfo result;
+        if (fmt.empty) return result;
+        size_t i = 0;
+        for (;;)
+            switch (fmt[i])
             {
-                // a '*' followed by digits and '$' is a positional format
-                fmt = fmt[1 .. $];
-                result.width = -parse!(typeof(result.width))(fmt);
-                i = 0;
-                if (fmt[i++] != '$') throw new FormatError("$ expected");
+            case '(':
+            {
+                // embedded format specifier
+                auto j = i + 1;
+                void check(bool condition)
+                {
+                    enforce(
+                        condition,
+                        text("Incorrect format specifier: %", fmt[i .. $]));
+                }
+                for (int innerParens;; ++j)
+                {
+                    check(j < fmt.length);
+                    if (fmt[j] == ')')
+                    {
+                        if (innerParens-- == 0) break;
+                    }
+                    else if (fmt[j] == '(')
+                    {
+                        ++innerParens;
+                    }
+                    else if (fmt[j] == '%')
+                    {
+                        // skip the '%' and the character following
+                        // it, whatever it is
+                        ++j;
+                    }
+                }
+                auto innerFmtSpec = fmt[i + 1 .. j];
+                result = parse(innerFmtSpec);
+                result.innerTrailing = to!(typeof(innerTrailing))(innerFmtSpec);
+                // We practically found the format specifier
+                i = j + 1;
+                //result.raw = to!(const(char)[])(fmt[0 .. i]);
+                fmt = fmt[i .. $];
+                return result;
             }
-            else 
-            {
-                // read result
-                result.width = result.width.max;
-            }
-            break;
-        case '1': case '2': case '3': case '4':
-        case '5': case '6': case '7': case '8': case '9':
-            fmt = fmt[i .. $];
-            auto widthOrArgIndex = parse!(int)(fmt);
-            i = 0;
-            if (fmt[0] == '$')
-            {
-                // index!
-                result.index = to!(ubyte)(widthOrArgIndex);
-                ++i;
-            }
-            else
-            {
-                // width
-                result.width = cast(short)widthOrArgIndex;
-            }
-            break;
-        case '.':
-            if (fmt[++i] == '*')
-            {
+            case '-': result.flDash = true; ++i; break;
+            case '+': result.flPlus = true; ++i; break;
+            case '#': result.flHash = true; ++i; break;
+            case '0': result.flZero = true; ++i; break;
+            case ' ': result.flSpace = true; ++i; break;
+            case '*':
                 if (isdigit(fmt[++i]))
                 {
-                    // a '.*' followed by digits and '$' is a positional format
-                    fmt = fmt[i .. $];
+                    // a '*' followed by digits and '$' is a positional format
+                    fmt = fmt[1 .. $];
+                    result.width = -.parse!(typeof(result.width))(fmt);
                     i = 0;
-                    result.precision = cast(short)(-parse!(int)(fmt));
                     if (fmt[i++] != '$') throw new FormatError("$ expected");
+                }
+                else 
+                {
+                    // read result
+                    result.width = DYNAMIC;
+                }
+                break;
+            case '1': case '2': case '3': case '4':
+            case '5': case '6': case '7': case '8': case '9':
+                auto tmp = fmt[i .. $];
+                const widthOrArgIndex = .parse!(ushort)(tmp);
+                assert(tmp.length,
+                        text("Incorrect format specifier %", fmt[i .. $]));
+                i = tmp.ptr - fmt.ptr;
+                if (tmp.length && tmp[0] == '$')
+                {
+                    // index!
+                    result.index = to!(ubyte)(widthOrArgIndex);
+                    ++i;
                 }
                 else
                 {
-                    // read result
-                    result.precision = result.precision.max;
+                    // width
+                    result.width = cast(short) widthOrArgIndex;
                 }
-            }
-            else if (fmt[i] == '-')
-            {
-                // negative precision, as good as 0
-                result.precision = 0;
+                break;
+            case '.':
+                if (fmt[++i] == '*')
+                {
+                    if (isdigit(fmt[++i]))
+                    {
+                        // a '.*' followed by digits and '$' is a
+                        // positional precision
+                        fmt = fmt[i .. $];
+                        i = 0;
+                        result.precision = cast(short) -.parse!(int)(fmt);
+                        if (fmt[i++] != '$')
+                        {
+                            throw new FormatError("$ expected");
+                        }
+                    }
+                    else
+                    {
+                        // read result
+                        result.precision = DYNAMIC;
+                    }
+                }
+                else if (fmt[i] == '-')
+                {
+                    // negative precision, as good as 0
+                    result.precision = 0;
+                    auto tmp = fmt[i .. $];
+                    .parse!(int)(tmp); // skip digits
+                    i = tmp.ptr - fmt.ptr;
+                }
+                else if (isdigit(fmt[i]))
+                {
+                    auto tmp = fmt[i .. $];
+                    result.precision = .parse!(short)(tmp);
+                    i = tmp.ptr - fmt.ptr;
+                }
+                else
+                {
+                    // "." was specified, but nothing after it
+                    result.precision = 0;
+                }
+                break;
+            default:
+                // this is the format char
+                result.spec = cast(char)fmt[i++];
+                //result.raw = to!(const(char)[])(fmt[0 .. i]);
                 fmt = fmt[i .. $];
-                i = 0;
-                parse!(int)(fmt); // skip digits
-            }
-            else
-            {
-                fmt = fmt[i .. $];
-                i = 0;
-                result.precision =
-                    cast(short)(isdigit(fmt[0]) ? parse!(int)(fmt) : 0);
-            }
-            break;
-        default:
-            // this is the format char
-            result.spec = fmt[i];
-            fmt = fmt[i + 1 .. $];
-            return result;
-        }
-    //assert(false);
+                return result;
+            } // end switch and for
+    }
 }
 
-//-------------------------------------------------------------------------------
-// Writes characters in the format strings up to the first format specifier
-// and updates the format specifier to remove the written portion
-// The updated format fmt does not include the '%'
-private void writeUpToFormatSpec(Writer, S)(ref Writer w, ref S fmt)
+//------------------------------------------------------------------------------
+// Writes characters in the format strings up to the first format
+// specifier and updates the format specifier to remove the written
+// portion The updated format fmt does not include the '%'
+private void writeUpToFormatSpec(OutRange, S)(ref OutRange w, ref S fmt)
 {
     for (size_t i = 0; i < fmt.length; ++i)
     {
@@ -2085,44 +1980,46 @@ private void writeUpToFormatSpec(Writer, S)(ref Writer w, ref S fmt)
         if (fmt[++i] != '%')
         {
             // spec found, print and bailout
-            w.write(fmt[0 .. i - 1]);
+            w.put(fmt[0 .. i - 1]);
             fmt = fmt[i .. $];
             return;
         }
-        // doubled! Now print whatever we had, then update the string and move on
-        w.write(fmt[0 .. i]);
+        // doubled! Now print whatever we had, then update the string
+        // and move on
+        w.put(fmt[0 .. i]);
         fmt = fmt[i + 1 .. $];
         i = 0;
     }
     // no format spec found
-    w.write(fmt);
+    w.put(fmt);
     fmt = null;
 }
 
 unittest
 {
-    StringWriter!(char) w;
+    Appender!(string) w;
     string fmt = "abc%sdef%sghi";
     writeUpToFormatSpec(w, fmt);
-    assert(w.backend == "abc" && fmt == "sdef%sghi");
+    assert(w.data == "abc" && fmt == "sdef%sghi");
     writeUpToFormatSpec(w, fmt);
-    assert(w.backend == "abcsdef" && fmt == "sghi");
+    assert(w.data == "abcsdef" && fmt == "sghi");
     // test with embedded %%s
     fmt = "ab%%cd%%ef%sg%%h%sij";
-    w.backend = null;
+    w.clear;
     writeUpToFormatSpec(w, fmt);
-    assert(w.backend == "ab%cd%ef" && fmt == "sg%%h%sij");
+    assert(w.data == "ab%cd%ef" && fmt == "sg%%h%sij");
     writeUpToFormatSpec(w, fmt);
-    assert(w.backend == "ab%cd%efsg%h" && fmt == "sij");
+    assert(w.data == "ab%cd%efsg%h" && fmt == "sij");
 }
 
 /*
  * Formats an integral number 'arg' according to 'f' and writes it to
  * 'w'.
  */ 
-private void formatIntegral(Writer, D)(ref Writer w, D argx, FormatInfo f)
+private void formatImpl(Writer, D)(ref Writer w, D argx, FormatInfo f)
+if (isIntegral!(D))
 {
-    Mutable!(D) arg = argx;
+    Unqual!(D) arg = argx;
     if (f.spec == 'r')
     {
         // raw write, skip all else and write the thing
@@ -2132,16 +2029,16 @@ private void formatIntegral(Writer, D)(ref Writer w, D argx, FormatInfo f)
         {
             // must swap bytes
             foreach_reverse (i; 0 .. arg.sizeof)
-                w.putchar(begin[i]);
+                w.put(begin[i]);
         }
         else
         {
             foreach (i; 0 .. arg.sizeof)
-                w.putchar(begin[i]);
+                w.put(begin[i]);
         }
         return;
     }
-    if (f.precision == f.precision.max - 1)
+    if (f.precision == FormatInfo.UNSPECIFIED)
     {
         // default precision for integrals is 1
         f.precision = 1;
@@ -2163,7 +2060,7 @@ private void formatIntegral(Writer, D)(ref Writer w, D argx, FormatInfo f)
         f.spec == 'x' || f.spec == 'X' ? 16 :
         f.spec == 'o' ? 8 :
         f.spec == 'b' ? 2 :
-        f.spec == 's' || f.spec == 'd' ? 10 :
+        f.spec == 's' || f.spec == 'd' || f.spec == 'u' ? 10 :
         0;
     if (base == 0) throw new FormatError("integral");
     // figure out sign and continue in unsigned mode
@@ -2187,11 +2084,11 @@ private void formatIntegral(Writer, D)(ref Writer w, D argx, FormatInfo f)
     {
         char buffer[64]; // 64 bits in base 2 at most
         uint i = buffer.length;
-        auto n = cast(unsigned!(Mutable!(D))) arg;
+        auto n = cast(Unsigned!(Unqual!(D))) arg;
         do
         {
             --i;
-            buffer[i] = cast(char)(n % base);
+            buffer[i] = cast(char) (n % base);
             n /= base;
             if (buffer[i] < 10) buffer[i] += '0';
             else buffer[i] += (f.spec == 'x' ? 'a' : 'A') - 10;
@@ -2225,33 +2122,34 @@ private void formatIntegral(Writer, D)(ref Writer w, D argx, FormatInfo f)
                 cast(typeof(f.precision)) (spacesToPrint + digits.length);
                 //to!(typeof(f.precision))(spacesToPrint + digits.length);
         }
-        else if (leftPad) foreach (i ; 0 .. spacesToPrint) w.putchar(' ');
+        else if (leftPad) foreach (i ; 0 .. spacesToPrint) w.put(' ');
     }
     // write sign
-    if (forcedPrefix) w.putchar(forcedPrefix);
+    if (forcedPrefix) w.put(forcedPrefix);
     // write 0x or 0X
     if (base == 16 && f.flHash() && arg) {
         // @@@ overcome bug in dmd;
         //w.write(f.spec == 'x' ? "0x" : "0X"); //crashes the compiler
-        w.putchar('0');
-        w.putchar(f.spec == 'x' ? 'x' : 'X'); // x or X
+        w.put('0');
+        w.put(f.spec == 'x' ? 'x' : 'X'); // x or X
     }
     // write the digits
     if (arg || f.precision)
     {
         int zerosToPrint = f.precision - digits.length;
-        foreach (i ; 0 .. zerosToPrint) w.putchar('0');
-        w.write(digits);
+        foreach (i ; 0 .. zerosToPrint) w.put('0');
+        w.put(digits);
     }
     // write the spaces to the right if left-align
-    if (!leftPad) foreach (i ; 0 .. spacesToPrint) w.putchar(' ');
+    if (!leftPad) foreach (i ; 0 .. spacesToPrint) w.put(' ');
 }
 
 /*
  * Formats a floating point number 'arg' according to 'f' and writes
  * it to 'w'.
  */ 
-private void formatFloat(Writer, D)(ref Writer w, D obj, FormatInfo f)
+private void formatImpl(Writer, D)(ref Writer w, D obj, FormatInfo f)
+if (isFloatingPoint!(D))
 {
     if (f.spec == 'r')
     {
@@ -2262,16 +2160,16 @@ private void formatFloat(Writer, D)(ref Writer w, D obj, FormatInfo f)
         {
             // must swap bytes
             foreach_reverse (i; 0 .. obj.sizeof)
-                w.putchar(begin[i]);
+                w.put(begin[i]);
         }
         else
         {
             foreach (i; 0 .. obj.sizeof)
-                w.putchar(begin[i]);
+                w.put(begin[i]);
         }
         return;
     }
-    if (std.string.find("fgFGaAeEs", f.spec) < 0) {
+    if (std.string.indexOf("fgFGaAeEs", f.spec) < 0) {
         throw new FormatError("floating");
     }
     if (f.spec == 's') f.spec = 'g';
@@ -2286,19 +2184,29 @@ private void formatFloat(Writer, D)(ref Writer w, D obj, FormatInfo f)
     if (f.flHash) sprintfSpec[i++] = '#';
     sprintfSpec[i .. i + 3] = "*.*";
     i += 3;
-    if (is(const(D) == const(real))) sprintfSpec[i++] = 'L';
+    if (is(Unqual!D == real)) sprintfSpec[i++] = 'L';
     sprintfSpec[i++] = f.spec;
     sprintfSpec[i] = 0;
     //printf("format: '%s'; geeba: %g\n", sprintfSpec.ptr, obj);
     char[512] buf;
+    //writeln("Spec is: ", sprintfSpec);
     invariant n = snprintf(buf.ptr, buf.length,
-                       sprintfSpec.ptr,
-                       f.width,
-                       // negative precision is same as no precision specified
-                       f.precision == f.precision.max - 1 ? -1 : f.precision,
-                       obj);
+            sprintfSpec.ptr,
+            f.width,
+            // negative precision is same as no precision specified
+            f.precision == FormatInfo.UNSPECIFIED ? -1 : f.precision,
+            obj);
     if (n < 0) throw new FormatError("floating point formatting failure");
-    w.write(buf[0 .. strlen(buf.ptr)]);
+    w.put(buf[0 .. strlen(buf.ptr)]);
+}
+
+unittest
+{
+    Appender!(string) a;
+    invariant real x = 5.5;
+    FormatInfo f;
+    formatImpl(a, x, f);
+    assert(a.data == "5.5");
 }
 
 /*
@@ -2312,46 +2220,49 @@ private void formatGeneric(Writer, D)(ref Writer w, const(void)* arg,
     auto obj = *cast(D*) arg;
     static if (is(const(D) == const(void[]))) {
         auto s = cast(const char[]) obj;
-        w.write(s);
-    } else static if (is(D Original == typedef)) {
-        formatGeneric!(Writer, Original)(w, arg, f);
+        w.put(s);
     } else static if (is(D Original == enum)) {
         formatGeneric!(Writer, Original)(w, arg, f);
-    } else static if (is(const D == const(float))
-                      || is(const(D) == const(double))
-                      || is(const(D) == const(real))) {
-        formatFloat(w, obj, f);
+    } else static if (is(D Original == typedef)) {
+        formatGeneric!(Writer, Original)(w, arg, f);
+    } else static if (isFloatingPoint!(D)) {
+        formatImpl(w, obj, f);
     } else static if (is(const(D) == const ifloat)) {
-        formatFloat(w, *cast(float*) &obj, f);
+        formatImpl(w, *cast(float*) &obj, f);
     } else static if (is(const(D) == const idouble)) {
-        formatFloat(w, *cast(double*) &obj, f);
+        formatImpl(w, *cast(double*) &obj, f);
     } else static if (is(const(D) == const ireal)) {
-        formatFloat(w, *cast(real*) &obj, f);
+        formatImpl(w, *cast(real*) &obj, f);
     } else static if (is(const(D) == const cfloat)
                       || is(const(D) == const cdouble)
                       || is(const(D) == const creal)) {
-        formatFloat(w, obj.re, f);
-        w.write("+");
-        formatFloat(w, obj.im, f);
-        w.write("i");
-    } else static if (is(const(D) : const long) || is(const(D) : const ulong)) {
-        static if (is(const(D) == const bool)) {
-            if (f.spec == 's') {
-                w.write(obj ? "true" : "false");
-            } else {
-                formatIntegral(w, cast(int) obj, f);
-            }
-        } else static if (is(const(D) == const char)
-                          || is(const(D) == const wchar)
-                          || is(const(D) == const dchar)) {
-            if (f.spec == 's') {
-                w.putchar(obj);
-            } else {
-                formatIntegral(w, cast(uint) obj, f);
-            }
+        formatImpl(w, obj.re, f);
+        // @@@BUG 2367@@@
+        //w.write("+");
+        w.put('+');
+        formatImpl(w, obj.im, f);
+        // @@@BUG 2367@@@
+        //w.put("i");
+        w.put('i');
+    } else static if (is(const D == const bool)) {
+        if (f.spec == 's') {
+            //@@@BUG 2606
+            //w.put(obj ? "true" : "false");
+            auto s = obj ? "true" : "false";
+            w.put(s);
         } else {
-            formatIntegral(w, obj, f);
+            formatImpl(w, cast(int) obj, f);
         }
+    } else static if (is(const(D) == const char)
+            || is(const(D) == const wchar)
+            || is(const(D) == const dchar)) {
+        if (f.spec == 's') {
+            w.put(obj);
+        } else {
+            formatImpl(w, cast(uint) obj, f);
+        }
+    } else static if (isIntegral!(D)) {
+        formatImpl(w, obj, f);
     } else static if (is(D : const(char)[]) || is(D : const(wchar)[])
                       || is(D : const(dchar)[])) {
         auto s = obj[0 .. f.precision < $ ? f.precision : $];
@@ -2359,46 +2270,101 @@ private void formatGeneric(Writer, D)(ref Writer w, const(void)* arg,
         {
             // right align
             if (f.width > s.length)
-                foreach (i ; 0 .. f.width - s.length) w.putchar(' ');
-            w.write(s);
+                foreach (i ; 0 .. f.width - s.length) w.put(' ');
+            w.put(s);
         }
         else
         {
             // left align
-            w.write(s);
+            w.put(s);
             if (f.width > s.length)
-                foreach (i ; 0 .. f.width - s.length) w.putchar(' ');
+                foreach (i ; 0 .. f.width - s.length) w.put(' ');
         }
     } else static if (is(D == void[0])) {
-        w.putchar('[');
-        w.putchar(']');
+        w.put('[');
+        w.put(']');
     } else static if (isArray!(D)) {
-        if (f.spec != 'r') w.putchar('['); // only write the brackets if not raw
-	foreach (i, e; obj)
-	{
-	    if (f.spec != 'r' && i > 0) w.putchar(' ');
-	    formatGeneric!(Writer, typeof(e))(w, &e, f);
-	}
-        if (f.spec != 'r') w.putchar(']'); // only write the brackets if not raw
+        auto memberSpec = f;
+        memberSpec.innerTrailing = null;
+        if (f.spec == 'r')
+        {
+            // raw writes
+            foreach (i, e; obj) formatGeneric!(Writer, typeof(e))
+                                    (w, &e, memberSpec);
+        }
+        else
+        {
+            if (obj.length == 0) return;
+            // formatted writes
+            formatGeneric!(Writer, typeof(obj[0]))(w, &obj[0], memberSpec);
+            if (!f.innerTrailing)
+            {
+                foreach (i, e; obj[1 .. $])
+                {
+                    w.put(' ');
+                    formatGeneric!(Writer, typeof(e))(w, &e, f);
+                }
+            }
+            else
+            {
+                const hasEscapes = 
+                    std.algorithm.find(f.innerTrailing, '%').length > 0;
+                foreach (i, e; obj[1 .. $])
+                {
+                    if (hasEscapes)
+                    {
+                        foreach (dchar c; f.innerTrailing)
+                        {
+                            if (c == '%') continue;
+                            w.put(c);
+                        }
+                    }
+                    else
+                    {
+                        w.put(f.innerTrailing);
+                    }
+                    formatGeneric!(Writer, typeof(e))(w, &e, f);
+                }
+            }
+        }
     } else static if (is(const(D) : const void*)) {
-        f.spec = 'X';
-        ulong fake = cast(ulong) obj;
+        if (f.spec!='x') f.spec = 'X';
+        const fake = cast(ulong) obj;
         formatGeneric!(Writer, ulong)(w, &fake, f);
     } else static if (is(const(D) : const Object)) {
-        if (obj is null) w.write("null");
-        else w.write(obj.toString);
+        // @@@BUG 2367@@@
+        //if (obj is null) w.write("null");
+        if (obj is null) w.put("null"[]);
+        else w.put(obj.toString);
     } else static if (isAssociativeArray!(D)) {
         // somebody rid me of this hack
-        w.write(std.string.format("%s", obj));
-    } else {
-        // last resort: look for toString
+        w.put(std.string.format("%s", obj));
+    } else static if (is(D : const(char))) {
+        // somebody rid me of this hack
+        w.put(obj);
+    } else static if (is(typeof(to!string(obj)))) {
+        w.put(to!string(obj));
+    } else static if (is(typeof(&obj.toString))) {
         auto s = obj.toString;
-        w.write(s);                                        
-        //static assert(false, "Cannot format type " ~ D.stringof);
+        w.put(s);                                        
+    } else {
+        // last resort: just print type name
+        w.put(D.stringof);
     }
 }
 
-//-------------------------------------------------------------------------------
+unittest
+{
+    Appender!(immutable(char)[]) w;
+    int[] a = [ 1, 3, 2 ];
+   	formattedWrite(w, "testing %(s, ) embedded", a);
+   	assert(w.data == "testing 1, 3, 2 embedded", w.data);
+    w.clear;
+    formattedWrite(w, "testing (%(s%) %()) embedded", a);
+    assert(w.data == "testing (1) (3) (2) embedded", w.data);
+}
+
+//------------------------------------------------------------------------------
 // Fix for issue 1591
 private int getNthInt(A...)(uint index, A args)
 {
@@ -2424,37 +2390,35 @@ private int getNthInt(A...)(uint index, A args)
 }
 
 /*
-  (Not public yet.)  Formats arguments 'args' according to the format
-  string 'fmt' and writes the result to 'w'. 'F' must be char, wchar,
-  or dchar.
+(Not public yet.)  Formats arguments $(D args) according to the format
+string $(D fmt) and writes the result to $(D w). $(D F) must be $(D
+char), $(D wchar), or $(D dchar).
 
-  Example:
-  
+Example:
 -------------------------
 import std.c.stdio;
 import std.format;
 
 string myFormat(A...)(A args)
 {
-    StringWriter!(char) writer;
-    std.format.formattedWrite(writer, "%s et %s numeris romanis non sunt", args);
-    return writer.backend;
+    Appender!(string) writer;
+    std.format.formattedWrite(writer,
+        "%s et %s numeris romanis non sunt", args);
+    return writer.data;
 }
-
 ...
-
 int x = 42;
 assert(myFormat(x, 0) == "42 et 0 numeris romanis non sunt");
 ------------------------
  
-formattedWrite supports positional parameter syntax in $(WEB
+$(D formattedWrite) supports positional parameter syntax in $(WEB
 opengroup.org/onlinepubs/009695399/functions/printf.html, POSIX)
 style.  Example:
 
 -------------------------
-StringWriter!(char) writer;
+Appender!(string) writer;
 std.format.formattedWrite(writer, "Date: %2$s %1$s", "October", 5);
-assert(writer.backend == "Date: 5 October");
+assert(writer.data == "Date: 5 October");
 ------------------------
 
 The positional and non-positional styles can be mixed in the same
@@ -2463,30 +2427,42 @@ counter for non-positional parameters tracks the next parameter after
 the largest positional parameter already used.
 
 Warning:
-
 This is the function internally used by writef* but it's still
 undergoing active development. Do not rely on it.
-*/
+ */
 
 void formattedWrite(Writer, F, A...)(ref Writer w, const(F)[] fmt, A args)
 {
-    invariant len = args.length;
+    enum len = args.length;
     void function(ref Writer, const(void)*, FormatInfo) funs[len] = void;
     const(void)* argsAddresses[len] = void;
     foreach (i, arg; args)
     {
         funs[i] = &formatGeneric!(Writer, typeof(arg));
-	alias typeof(arg) T;
-        size_t sz = T.sizeof;
-	void* p = (new void[sz]).ptr;
-	p[0..sz] = (cast(void*) & arg)[0..sz];
-        argsAddresses[i] = p;
+	version (GNU)
+	{
+	    size_t sz = typeof(arg).sizeof;
+	    void* p = (new void[sz]).ptr;
+	    p[0 .. sz] = (cast(void*) & arg)[0 .. sz];
+	    argsAddresses[i] = p;
+	}
+	else
+	{
+	    argsAddresses[i] = &arg;
+	}
     }
+    // Are we already done with formats? Then just dump each parameter in turn
     uint currentArg = 0;
     for (;;)
     {
         writeUpToFormatSpec(w, fmt);
-        auto spec = parseFormatSpec(fmt);
+        if (fmt.length == 0) 
+        {
+            // New behavior: break if there are too few specifiers AND
+            // at least one specifier did exist
+            break;
+        }
+        auto spec = FormatInfo.parse(fmt);
         if (currentArg == funs.length && !spec.index)
         {
             // leftover spec?
@@ -2497,7 +2473,7 @@ void formattedWrite(Writer, F, A...)(ref Writer w, const(F)[] fmt, A args)
             }
             break;
         }
-        if (spec.width == spec.width.max)
+        if (spec.width == FormatInfo.DYNAMIC)
         {
             auto width = to!(typeof(spec.width))(getNthInt(currentArg, args));
             if (width < 0)
@@ -2521,13 +2497,13 @@ void formattedWrite(Writer, F, A...)(ref Writer w, const(F)[] fmt, A args)
             }
             spec.width = width;
         }
-        if (spec.precision == spec.precision.max)
+        if (spec.precision == FormatInfo.DYNAMIC)
         {
             auto precision = to!(typeof(spec.precision))(
                 getNthInt(currentArg, args));
             if (precision >= 0) spec.precision = precision;
             // else negative precision is same as no precision
-            else spec.precision = spec.precision.max - 1;
+            else spec.precision = FormatInfo.UNSPECIFIED;
             ++currentArg;
         }
         else if (spec.precision < 0)
@@ -2539,7 +2515,7 @@ void formattedWrite(Writer, F, A...)(ref Writer w, const(F)[] fmt, A args)
             if (currentArg < index) currentArg = index;
             if (precision >= 0) spec.precision = precision;
             // else negative precision is same as no precision
-            else spec.precision = spec.precision.max - 1;
+            else spec.precision = FormatInfo.UNSPECIFIED;
         }
         // Format!
         if (spec.index > 0)
@@ -2560,363 +2536,376 @@ void formattedWrite(Writer, F, A...)(ref Writer w, const(F)[] fmt, A args)
 
 unittest
 {
-    StringWriter!(char) stream;
+    Appender!(string) stream;
     formattedWrite(stream, "%s", 1.1);
-    assert(stream.backend == "1.1", stream.backend);
+    assert(stream.data == "1.1", stream.data);
+}
+
+unittest
+{
+    Appender!(string) stream;
+    formattedWrite(stream, "%u", 42);
+    assert(stream.data == "42", stream.data);
 }
 
 unittest
 {
     // testing raw writes
-    StringWriter!(char) w;
-    w.backend = null;
+    Appender!(string) w;
     uint a = 0x02030405;
     formattedWrite(w, "%+r", a);
-    assert(w.backend.length == 4 && w.backend[0] == 2 && w.backend[1] == 3
-        && w.backend[2] == 4 && w.backend[3] == 5);
-    w.backend = null;
+    assert(w.data.length == 4 && w.data[0] == 2 && w.data[1] == 3
+        && w.data[2] == 4 && w.data[3] == 5);
+    w.clear;
     formattedWrite(w, "%-r", a);
-    assert(w.backend.length == 4 && w.backend[0] == 5 && w.backend[1] == 4
-        && w.backend[2] == 3 && w.backend[3] == 2);
+    assert(w.data.length == 4 && w.data[0] == 5 && w.data[1] == 4
+        && w.data[2] == 3 && w.data[3] == 2);
 }
 
 unittest
 {
     // testing positional parameters
-    StringWriter!(char) w;
-    w.backend = null;
-    formattedWrite(w, "Numbers %2$s and %1$s are reversed and %1$s%2$s repeated",
-        42, 0);
-    assert(w.backend == "Numbers 0 and 42 are reversed and 420 repeated",
-        w.backend);
+    Appender!(string) w;
+    formattedWrite(w,
+            "Numbers %2$s and %1$s are reversed and %1$s%2$s repeated",
+            42, 0);
+    assert(w.data == "Numbers 0 and 42 are reversed and 420 repeated",
+            w.data);
+    w.clear;
+    formattedWrite(w, "asd%s", 23);
+    assert(w.data == "asd23", w.data);
+    w.clear;
+    formattedWrite(w, "%s%s", 23, 45);
+    assert(w.data == "2345", w.data);
 }
 
 unittest
 {
-  debug(format) printf("std.format.format.unittest\n");
+    debug(format) printf("std.format.format.unittest\n");
     
-  StringWriter!(char) stream;
-  //goto here;
-  
-  formattedWrite(stream, "hello world! %s %s ", true, 57, 1_000_000_000, 'x', " foo");
-  assert(stream.backend == "hello world! true 57 1000000000x foo");
-
-  stream.backend = null;
-  formattedWrite(stream, "%g %A ", 1.67, -1.28, float.nan);
-  //std.c.stdio.fwrite(stream.backend.ptr, stream.backend.length, 1, stderr);
+    Appender!(string) stream;
+    //goto here;
+    
+    formattedWrite(stream,
+            "hello world! %s %s ", true, 57, 1_000_000_000, 'x', " foo");
+    assert(stream.data == "hello world! true 57 ",
+        stream.data);
+    
+    stream.clear;
+    formattedWrite(stream, "%g %A %s", 1.67, -1.28, float.nan);
+  //std.c.stdio.fwrite(stream.data.ptr, stream.data.length, 1, stderr);
   /* The host C library is used to format floats.
    * C99 doesn't specify what the hex digit before the decimal point
    * is for %A.
    */
   version (linux)
-      assert(stream.backend == "1.67 -0X1.47AE147AE147BP+0 nan", stream.backend);
+      assert(stream.data == "1.67 -0X1.47AE147AE147BP+0 nan", stream.data);
   else
-      assert(stream.backend == "1.67 -0X1.47AE147AE147BP+0 nan");
-  stream.backend = null;
+      assert(stream.data == "1.67 -0X1.47AE147AE147BP+0 nan");
+  stream.clear;
 
   formattedWrite(stream, "%x %X", 0x1234AF, 0xAFAFAFAF);
-  assert(stream.backend == "1234af AFAFAFAF");
-  stream.backend = null;
+  assert(stream.data == "1234af AFAFAFAF");
+  stream.clear;
 
   formattedWrite(stream, "%b %o", 0x1234AF, 0xAFAFAFAF);
-  assert(stream.backend == "100100011010010101111 25753727657");
-  stream.backend = null;
+  assert(stream.data == "100100011010010101111 25753727657");
+  stream.clear;
 
   formattedWrite(stream, "%d %s", 0x1234AF, 0xAFAFAFAF);
-  assert(stream.backend == "1193135 2947526575");
-  stream.backend = null;
+  assert(stream.data == "1193135 2947526575");
+  stream.clear;
   
   formattedWrite(stream, "%s", 1.2 + 3.4i);
-  assert(stream.backend == "1.2+3.4i");
-  stream.backend = null;
+  assert(stream.data == "1.2+3.4i");
+  stream.clear;
   
   formattedWrite(stream, "%a %A", 1.32, 6.78f);
   //formattedWrite(stream, "%x %X", 1.32);
-  assert(stream.backend == "0x1.51eb851eb851fp+0 0X1.B1EB86P+2");
-  stream.backend = null;
+  assert(stream.data == "0x1.51eb851eb851fp+0 0X1.B1EB86P+2");
+  stream.clear;
 
   formattedWrite(stream, "%#06.*f",2,12.345);
-  assert(stream.backend == "012.35");
-  stream.backend = null;
+  assert(stream.data == "012.35");
+  stream.clear;
 
   formattedWrite(stream, "%#0*.*f",6,2,12.345);
-  assert(stream.backend == "012.35");
-  stream.backend = null;
+  assert(stream.data == "012.35");
+  stream.clear;
 
   const real constreal = 1;
   formattedWrite(stream, "%g",constreal);
-  assert(stream.backend == "1");
-  stream.backend = null;
+  assert(stream.data == "1");
+  stream.clear;
 
   formattedWrite(stream, "%7.4g:", 12.678);
-  assert(stream.backend == "  12.68:");
-  stream.backend = null;
+  assert(stream.data == "  12.68:");
+  stream.clear;
   
   formattedWrite(stream, "%7.4g:", 12.678L);
-  assert(stream.backend == "  12.68:");
-  stream.backend = null;
+  assert(stream.data == "  12.68:");
+  stream.clear;
   
   formattedWrite(stream, "%04f|%05d|%#05x|%#5x",-4.,-10,1,1);
-  assert(stream.backend == "-4.000000|-0010|0x001|  0x1",
-      stream.backend);
-  stream.backend = null;
+  assert(stream.data == "-4.000000|-0010|0x001|  0x1",
+      stream.data);
+  stream.clear;
   
   int i;
   string s;
   
   i = -10;
   formattedWrite(stream, "%d|%3d|%03d|%1d|%01.4f",i,i,i,i,cast(double) i);
-  assert(stream.backend == "-10|-10|-10|-10|-10.0000");
-  stream.backend = null;
+  assert(stream.data == "-10|-10|-10|-10|-10.0000");
+  stream.clear;
 
   i = -5;
   formattedWrite(stream, "%d|%3d|%03d|%1d|%01.4f",i,i,i,i,cast(double) i);
-  assert(stream.backend == "-5| -5|-05|-5|-5.0000");
-  stream.backend = null;
+  assert(stream.data == "-5| -5|-05|-5|-5.0000");
+  stream.clear;
 
   i = 0;
   formattedWrite(stream, "%d|%3d|%03d|%1d|%01.4f",i,i,i,i,cast(double) i);
-  assert(stream.backend == "0|  0|000|0|0.0000");
-  stream.backend = null;
+  assert(stream.data == "0|  0|000|0|0.0000");
+  stream.clear;
 
   i = 5;
   formattedWrite(stream, "%d|%3d|%03d|%1d|%01.4f",i,i,i,i,cast(double) i);
-  assert(stream.backend == "5|  5|005|5|5.0000");
-  stream.backend = null;
+  assert(stream.data == "5|  5|005|5|5.0000");
+  stream.clear;
 
   i = 10;
   formattedWrite(stream, "%d|%3d|%03d|%1d|%01.4f",i,i,i,i,cast(double) i);
-  assert(stream.backend == "10| 10|010|10|10.0000");
-  stream.backend = null;
+  assert(stream.data == "10| 10|010|10|10.0000");
+  stream.clear;
 
   formattedWrite(stream, "%.0d", 0);
-  assert(stream.backend == "");
-  stream.backend = null;
+  assert(stream.data == "");
+  stream.clear;
 
   formattedWrite(stream, "%.g", .34);
-  assert(stream.backend == "0.3");
-  stream.backend = null;
+  assert(stream.data == "0.3");
+  stream.clear;
   
-  stream.backend = null; formattedWrite(stream, "%.0g", .34);
-  assert(stream.backend == "0.3");
+  stream.clear; formattedWrite(stream, "%.0g", .34);
+  assert(stream.data == "0.3");
   
-  stream.backend = null; formattedWrite(stream, "%.2g", .34);
-  assert(stream.backend == "0.34");
+  stream.clear; formattedWrite(stream, "%.2g", .34);
+  assert(stream.data == "0.34");
   
-  stream.backend = null; formattedWrite(stream, "%0.0008f", 1e-08);
-  assert(stream.backend == "0.00000001");
+  stream.clear; formattedWrite(stream, "%0.0008f", 1e-08);
+  assert(stream.data == "0.00000001");
   
-  stream.backend = null; formattedWrite(stream, "%0.0008f", 1e-05);
-  assert(stream.backend == "0.00001000");
+  stream.clear; formattedWrite(stream, "%0.0008f", 1e-05);
+  assert(stream.data == "0.00001000");
   
   //return;
-  //std.c.stdio.fwrite(stream.backend.ptr, stream.backend.length, 1, stderr);
+  //std.c.stdio.fwrite(stream.data.ptr, stream.data.length, 1, stderr);
   
   s = "helloworld";
   string r;
-  stream.backend = null; formattedWrite(stream, "%.2s", s[0..5]);
-  assert(stream.backend == "he");
-  stream.backend = null; formattedWrite(stream, "%.20s", s[0..5]);
-  assert(stream.backend == "hello");
-  stream.backend = null; formattedWrite(stream, "%8s", s[0..5]);
-  assert(stream.backend == "   hello");
+  stream.clear; formattedWrite(stream, "%.2s", s[0..5]);
+  assert(stream.data == "he");
+  stream.clear; formattedWrite(stream, "%.20s", s[0..5]);
+  assert(stream.data == "hello");
+  stream.clear; formattedWrite(stream, "%8s", s[0..5]);
+  assert(stream.data == "   hello");
 
-  byte[] arrbyte = new byte[4];
-  arrbyte[0] = 100;
-  arrbyte[1] = -99;
-  arrbyte[3] = 0;
-  stream.backend = null; formattedWrite(stream, "", arrbyte);
-  assert(stream.backend == "[100 -99 0 0]");
+    byte[] arrbyte = new byte[4];
+    arrbyte[0] = 100;
+    arrbyte[1] = -99;
+    arrbyte[3] = 0;
+    stream.clear; formattedWrite(stream, "%s", arrbyte);
+    assert(stream.data == "100 -99 0 0", stream.data);
 
   ubyte[] arrubyte = new ubyte[4];
   arrubyte[0] = 100;
   arrubyte[1] = 200;
   arrubyte[3] = 0;
-  stream.backend = null; formattedWrite(stream, "", arrubyte);
-  assert(stream.backend == "[100 200 0 0]");
+  stream.clear; formattedWrite(stream, "%s", arrubyte);
+    assert(stream.data == "100 200 0 0");
 
   short[] arrshort = new short[4];
   arrshort[0] = 100;
   arrshort[1] = -999;
   arrshort[3] = 0;
-  stream.backend = null; formattedWrite(stream, "", arrshort);
-  assert(stream.backend == "[100 -999 0 0]");
-  stream.backend = null; formattedWrite(stream, "%s",arrshort);
-  assert(stream.backend == "[100 -999 0 0]");
+  stream.clear; formattedWrite(stream, "%s", arrshort);
+  assert(stream.data == "100 -999 0 0");
+  stream.clear; formattedWrite(stream, "%s",arrshort);
+  assert(stream.data == "100 -999 0 0");
 
   ushort[] arrushort = new ushort[4];
   arrushort[0] = 100;
   arrushort[1] = 20_000;
   arrushort[3] = 0;
-  stream.backend = null; formattedWrite(stream, "", arrushort);
-  assert(stream.backend == "[100 20000 0 0]");
+  stream.clear; formattedWrite(stream, "%s", arrushort);
+    assert(stream.data == "100 20000 0 0");
 
   int[] arrint = new int[4];
   arrint[0] = 100;
   arrint[1] = -999;
   arrint[3] = 0;
-  stream.backend = null; formattedWrite(stream, "", arrint);
-  assert(stream.backend == "[100 -999 0 0]");
-  stream.backend = null; formattedWrite(stream, "%s",arrint);
-  assert(stream.backend == "[100 -999 0 0]");
+  stream.clear; formattedWrite(stream, "%s", arrint);
+    assert(stream.data == "100 -999 0 0");
+  stream.clear; formattedWrite(stream, "%s",arrint);
+  assert(stream.data == "100 -999 0 0");
 
   long[] arrlong = new long[4];
   arrlong[0] = 100;
   arrlong[1] = -999;
   arrlong[3] = 0;
-  stream.backend = null; formattedWrite(stream, "", arrlong);
-  assert(stream.backend == "[100 -999 0 0]");
-  stream.backend = null; formattedWrite(stream, "%s",arrlong);
-  assert(stream.backend == "[100 -999 0 0]");
+  stream.clear; formattedWrite(stream, "%s", arrlong);
+  assert(stream.data == "100 -999 0 0");
+  stream.clear; formattedWrite(stream, "%s",arrlong);
+  assert(stream.data == "100 -999 0 0");
     
   ulong[] arrulong = new ulong[4];
   arrulong[0] = 100;
   arrulong[1] = 999;
   arrulong[3] = 0;
-  stream.backend = null; formattedWrite(stream, "", arrulong);
-  assert(stream.backend == "[100 999 0 0]");
+  stream.clear; formattedWrite(stream, "%s", arrulong);
+  assert(stream.data == "100 999 0 0");
   
   string[] arr2 = new string[4];
   arr2[0] = "hello";
   arr2[1] = "world";
   arr2[3] = "foo";
-  stream.backend = null; formattedWrite(stream, "", arr2);
-  assert(stream.backend == "[hello world  foo]");
+  stream.clear; formattedWrite(stream, "%s", arr2);
+  assert(stream.data == "hello world  foo");
 
-  stream.backend = null; formattedWrite(stream, "%.8d", 7);
-  assert(stream.backend == "00000007");
+  stream.clear; formattedWrite(stream, "%.8d", 7);
+  assert(stream.data == "00000007");
 
-  stream.backend = null; formattedWrite(stream, "%.8x", 10);
-  assert(stream.backend == "0000000a");
+  stream.clear; formattedWrite(stream, "%.8x", 10);
+  assert(stream.data == "0000000a");
 
-  stream.backend = null; formattedWrite(stream, "%-3d", 7);
-  assert(stream.backend == "7  ");
+  stream.clear; formattedWrite(stream, "%-3d", 7);
+  assert(stream.data == "7  ");
   
-  stream.backend = null; formattedWrite(stream, "%*d", -3, 7);
-  assert(stream.backend == "7  ");
+  stream.clear; formattedWrite(stream, "%*d", -3, 7);
+  assert(stream.data == "7  ");
 
-  stream.backend = null; formattedWrite(stream, "%.*d", -3, 7);
-  //writeln(stream.backend);
-  assert(stream.backend == "7");
+  stream.clear; formattedWrite(stream, "%.*d", -3, 7);
+  //writeln(stream.data);
+  assert(stream.data == "7");
 
 //  assert(false);
 //   typedef int myint;
 //   myint m = -7;
-//   stream.backend = null; formattedWrite(stream, "", m);
-//   assert(stream.backend == "-7");
+//   stream.clear; formattedWrite(stream, "", m);
+//   assert(stream.data == "-7");
   
-  stream.backend = null; formattedWrite(stream, "", "abc"c);
-  assert(stream.backend == "abc");
-  stream.backend = null; formattedWrite(stream, "", "def"w);
-  assert(stream.backend == "def");
-  stream.backend = null; formattedWrite(stream, "", "ghi"d);
-  assert(stream.backend == "ghi");
+    stream.clear; formattedWrite(stream, "%s", "abc"c);
+    assert(stream.data == "abc");
+    stream.clear; formattedWrite(stream, "%s", "def"w);
+    assert(stream.data == "def", text(stream.data.length));
+    stream.clear; formattedWrite(stream, "%s", "ghi"d);
+    assert(stream.data == "ghi");
   
  here:
   void* p = cast(void*)0xDEADBEEF;
-  stream.backend = null; formattedWrite(stream, "", p);
-  writefln("%s", stream.backend);
-  assert(stream.backend == "DEADBEEF");
+  stream.clear; formattedWrite(stream, "%s", p);
+  assert(stream.data == "DEADBEEF");
 
-  stream.backend = null; formattedWrite(stream, "%#x", 0xabcd);
-  assert(stream.backend == "0xabcd");
-  stream.backend = null; formattedWrite(stream, "%#X", 0xABCD);
-  assert(stream.backend == "0XABCD");
+  stream.clear; formattedWrite(stream, "%#x", 0xabcd);
+  assert(stream.data == "0xabcd");
+  stream.clear; formattedWrite(stream, "%#X", 0xABCD);
+  assert(stream.data == "0XABCD");
 
-  stream.backend = null; formattedWrite(stream, "%#o", 012345);
-  assert(stream.backend == "012345");
-  stream.backend = null; formattedWrite(stream, "%o", 9);
-  assert(stream.backend == "11");
+  stream.clear; formattedWrite(stream, "%#o", 012345);
+  assert(stream.data == "012345");
+  stream.clear; formattedWrite(stream, "%o", 9);
+  assert(stream.data == "11");
 
-  stream.backend = null; formattedWrite(stream, "%+d", 123);
-  assert(stream.backend == "+123");
-  stream.backend = null; formattedWrite(stream, "%+d", -123);
-  assert(stream.backend == "-123");
-  stream.backend = null; formattedWrite(stream, "% d", 123);
-  assert(stream.backend == " 123");
-  stream.backend = null; formattedWrite(stream, "% d", -123);
-  assert(stream.backend == "-123");
+  stream.clear; formattedWrite(stream, "%+d", 123);
+  assert(stream.data == "+123");
+  stream.clear; formattedWrite(stream, "%+d", -123);
+  assert(stream.data == "-123");
+  stream.clear; formattedWrite(stream, "% d", 123);
+  assert(stream.data == " 123");
+  stream.clear; formattedWrite(stream, "% d", -123);
+  assert(stream.data == "-123");
   
-  stream.backend = null; formattedWrite(stream, "%%");
-  assert(stream.backend == "%");
+  stream.clear; formattedWrite(stream, "%%");
+  assert(stream.data == "%");
   
-  stream.backend = null; formattedWrite(stream, "%d", true);
-  assert(stream.backend == "1");
-  stream.backend = null; formattedWrite(stream, "%d", false);
-  assert(stream.backend == "0");
+  stream.clear; formattedWrite(stream, "%d", true);
+  assert(stream.data == "1");
+  stream.clear; formattedWrite(stream, "%d", false);
+  assert(stream.data == "0");
     
-  stream.backend = null; formattedWrite(stream, "%d", 'a');
-  assert(stream.backend == "97");
-  wchar wc = 'a';
-  stream.backend = null; formattedWrite(stream, "%d", wc);
-  assert(stream.backend == "97");
-  dchar dc = 'a';
-  stream.backend = null; formattedWrite(stream, "%d", dc);
-  assert(stream.backend == "97");
+    stream.clear; formattedWrite(stream, "%d", 'a');
+    assert(stream.data == "97", stream.data);
+    wchar wc = 'a';
+    stream.clear; formattedWrite(stream, "%d", wc);
+    assert(stream.data == "97");
+    dchar dc = 'a';
+    stream.clear; formattedWrite(stream, "%d", dc);
+    assert(stream.data == "97");
 
   byte b = byte.max;
-  stream.backend = null; formattedWrite(stream, "%x", b);
-  assert(stream.backend == "7f");
-  stream.backend = null; formattedWrite(stream, "%x", ++b);
-  assert(stream.backend == "80");
-  stream.backend = null; formattedWrite(stream, "%x", ++b);
-  assert(stream.backend == "81");
+  stream.clear; formattedWrite(stream, "%x", b);
+  assert(stream.data == "7f");
+  stream.clear; formattedWrite(stream, "%x", ++b);
+  assert(stream.data == "80");
+  stream.clear; formattedWrite(stream, "%x", ++b);
+  assert(stream.data == "81");
 
   short sh = short.max;
-  stream.backend = null; formattedWrite(stream, "%x", sh);
-  assert(stream.backend == "7fff");
-  stream.backend = null; formattedWrite(stream, "%x", ++sh);
-  assert(stream.backend == "8000");
-  stream.backend = null; formattedWrite(stream, "%x", ++sh);
-  assert(stream.backend == "8001");
+  stream.clear; formattedWrite(stream, "%x", sh);
+  assert(stream.data == "7fff");
+  stream.clear; formattedWrite(stream, "%x", ++sh);
+  assert(stream.data == "8000");
+  stream.clear; formattedWrite(stream, "%x", ++sh);
+  assert(stream.data == "8001");
   
   i = int.max;
-  stream.backend = null; formattedWrite(stream, "%x", i);
-  assert(stream.backend == "7fffffff");
-  stream.backend = null; formattedWrite(stream, "%x", ++i);
-  assert(stream.backend == "80000000");
-  stream.backend = null; formattedWrite(stream, "%x", ++i);
-  assert(stream.backend == "80000001");
+  stream.clear; formattedWrite(stream, "%x", i);
+  assert(stream.data == "7fffffff");
+  stream.clear; formattedWrite(stream, "%x", ++i);
+  assert(stream.data == "80000000");
+  stream.clear; formattedWrite(stream, "%x", ++i);
+  assert(stream.data == "80000001");
 
-  stream.backend = null; formattedWrite(stream, "%x", 10);
-  assert(stream.backend == "a");
-  stream.backend = null; formattedWrite(stream, "%X", 10);
-  assert(stream.backend == "A");
-  stream.backend = null; formattedWrite(stream, "%x", 15);
-  assert(stream.backend == "f");
-  stream.backend = null; formattedWrite(stream, "%X", 15);
-  assert(stream.backend == "F");
+  stream.clear; formattedWrite(stream, "%x", 10);
+  assert(stream.data == "a");
+  stream.clear; formattedWrite(stream, "%X", 10);
+  assert(stream.data == "A");
+  stream.clear; formattedWrite(stream, "%x", 15);
+  assert(stream.data == "f");
+  stream.clear; formattedWrite(stream, "%X", 15);
+  assert(stream.data == "F");
 
   Object c = null;
-  stream.backend = null; formattedWrite(stream, "", c);
-  assert(stream.backend == "null");
+    stream.clear; formattedWrite(stream, "%s", c);
+    assert(stream.data == "null");
 
-  enum TestEnum
-  {
-    Value1, Value2
-  }
-  stream.backend = null; formattedWrite(stream, "%s", TestEnum.Value2);
-  assert(stream.backend == "1");
+    enum TestEnum
+    {
+        Value1, Value2
+    }
+    stream.clear; formattedWrite(stream, "%s", TestEnum.Value2);
+    assert(stream.data == "1", stream.data);
 
   //invariant(char[5])[int] aa = ([3:"hello", 4:"betty"]);
-  //stream.backend = null; formattedWrite(stream, "%s", aa.values);
-  //std.c.stdio.fwrite(stream.backend.ptr, stream.backend.length, 1, stderr);
-  //assert(stream.backend == "[[h,e,l,l,o],[b,e,t,t,y]]");
-  //stream.backend = null; formattedWrite(stream, "%s", aa);
-  //assert(stream.backend == "[3:[h,e,l,l,o],4:[b,e,t,t,y]]");
+  //stream.clear; formattedWrite(stream, "%s", aa.values);
+  //std.c.stdio.fwrite(stream.data.ptr, stream.data.length, 1, stderr);
+  //assert(stream.data == "[[h,e,l,l,o],[b,e,t,t,y]]");
+  //stream.clear; formattedWrite(stream, "%s", aa);
+  //assert(stream.data == "[3:[h,e,l,l,o],4:[b,e,t,t,y]]");
 
   static const dchar[] ds = ['a','b'];
   for (int j = 0; j < ds.length; ++j)
     {
-      stream.backend = null; formattedWrite(stream, " %d", ds[j]);
+      stream.clear; formattedWrite(stream, " %d", ds[j]);
       if (j == 0)
-	assert(stream.backend == " 97");
+	assert(stream.data == " 97");
       else
-	assert(stream.backend == " 98");
+	assert(stream.data == " 98");
     }
 
-  stream.backend = null; formattedWrite(stream, "%.-3d", 7);
-  assert(stream.backend == "7", ">" ~ stream.backend ~ "<");
+  stream.clear; formattedWrite(stream, "%.-3d", 7);
+  assert(stream.data == "7", ">" ~ stream.data ~ "<");
   
 
   // systematic test
@@ -2934,7 +2923,7 @@ unittest
                           foreach (prec; precs)
                               foreach (format; formats)
                               {
-                                  stream.backend = null; 
+                                  stream.clear; 
                                   auto fmt = "%" ~ flag1 ~ flag2  ~ flag3
                                       ~ flag4 ~ flag5 ~ width ~ prec ~ format
                                       ~ '\0';
@@ -3012,11 +3001,11 @@ unittest
                                       break;
                                   }
                                   auto exp = buf[0 .. strlen(buf.ptr)];
-                                  if (stream.backend != exp)
+                                  if (stream.data != exp)
                                   {
                                       writeln("Format: \"", fmt, '"');
                                       writeln("Expected: >", exp, "<");
-                                      writeln("Actual:   >", stream.backend,
+                                      writeln("Actual:   >", stream.data,
                                               "<");
                                       assert(false);
                                   }
@@ -3044,7 +3033,7 @@ unittest
        writefln(b);
    }
 
-   StringWriter!(char) stream;
+   Appender!(string) stream;
    alias TypeTuple!(byte, ubyte, short, ushort, int, uint, long, ulong,
        float, double, real,
        ifloat, idouble, ireal, cfloat, cdouble, creal) AllNumerics;
@@ -3056,21 +3045,276 @@ unittest
            T value = 1 + 1i;
        else
            T value = 1;
-       stream.backend = null; formattedWrite(stream, "%s", value);
+       stream.clear; formattedWrite(stream, "%s", value);
        static if (is(T : creal))
-           assert(stream.backend == "1+1i");
+           assert(stream.data == "1+1i");
        else
-           assert(stream.backend == "1");
+           assert(stream.data == "1");
        // test typedefs too
        typedef T Wyda;
        Wyda another = 1;
-       stream.backend = null; formattedWrite(stream, "%s", another);
-       assert(stream.backend == "1");
+       stream.clear; formattedWrite(stream, "%s", another);
+       assert(stream.data == "1");
    }
    
    //auto r = std.string.format("%s", aa.values);
-   stream.backend = null; formattedWrite(stream, "%s", aa);
-   assert(stream.backend == "[3:[h,e,l,l,o],4:[b,e,t,t,y]]", stream.backend);
+   stream.clear; formattedWrite(stream, "%s", aa);
+   assert(stream.data == "[3:[h,e,l,l,o],4:[b,e,t,t,y]]", stream.data);
 //    r = std.string.format("%s", aa);
 //   assert(r == "[3:[h,e,l,l,o],4:[b,e,t,t,y]]");
 }
+
+//------------------------------------------------------------------------------
+void formattedRead(R, S...)(ref R r, const(char)[] fmt, S args)
+{
+    static if (!S.length)
+    {
+        r = parseToFormatSpec(r, fmt);
+        enforce(fmt.length == 0);
+        return r;
+    }
+    else
+    {
+        FormatInfo spec;
+        // The loop below accounts for '*' == fields meant to be read
+        // and skipped
+        for (;;)
+        {
+            r = parseToFormatSpec(r, fmt);
+            spec = FormatInfo.parse(fmt);
+            if (spec.width != spec.DYNAMIC) break;
+            // must skip this field
+            skipData(r, spec);
+        }
+        alias typeof(*args[0]) A;
+        //@@@BUG 2725
+        //static if (is(A X == Tuple!(T), T))
+        static if (is(A.Types[0]))
+        {
+            //@@@BUG
+            //args[0].field[0] = parse!(A.Types[0])(r);
+            // static if (A.Types.length > 1)
+            //     return formattedRead(r, fmt,
+            //             args[0].slice!(1, A.Types.length)(),
+            //             args[1 .. $]);
+            // else
+            //     return formattedRead(r, fmt, args[1 .. $]);
+            // assume it's a tuple
+            foreach (i, T; A.Types)
+            {
+                //writeln("Parsing ", r, " with format ", fmt);
+                args[0].field[i] = unformat!(T)(r, spec);
+                for (;;)
+                {
+                    r = parseToFormatSpec(r, fmt);
+                    spec = FormatInfo.parse(fmt);
+                    if (spec.width != spec.DYNAMIC) break;
+                    // must skip this guy
+                    skipData(r, spec);
+                }
+            }
+            return formattedRead(r, fmt, args[1 .. $]);
+        }
+        else
+        {
+            *args[0] = unformat!(A)(r, spec);
+            return formattedRead(r, fmt, args[1 .. $]);
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+void skipData(Range)(ref Range input, FormatInfo spec)
+{
+    switch (spec.spec)
+    {
+    case 'c': input.popFront; break;
+    case 'd': assert(false, "Not implemented");
+    case 'u': while (!input.empty && isdigit(input.front)) input.popFront;
+        break;
+    default:
+        assert(false, text("Not understood: ", spec.spec));
+    }
+}
+
+//------------------------------------------------------------------------------
+T unformat(T, Range)(ref Range input, FormatInfo spec) if (isArray!T)
+{
+    Appender!(T) app;
+    for (;;)
+    {
+        auto e = parse!(ElementType!(T))(input);
+        app.put(e);
+        if (!std.string.startsWith(input, spec.innerTrailing)) break; // done
+        input = input[spec.innerTrailing.length .. $];
+        if (input.empty) break; // the trailing is terminator, not
+                                // separator
+    }
+    return app.data;
+}
+
+private template acceptedSpecs(T)
+{
+    static if (isIntegral!T) enum acceptedSpecs = "sdu";// + "coxX" (todo)
+    else static if (isFloatingPoint!T) enum acceptedSpecs = "seEfgG";
+    else enum acceptedSpecs = "";
+}
+
+//------------------------------------------------------------------------------
+T unformat(T, Range)(ref Range input, FormatInfo spec) if (isIntegral!T)
+{
+    enforce(std.algorithm.find("cdosuxX", spec.spec).length,
+            text("Wrong integral type specifier: `", spec.spec, "'"));
+    if (std.algorithm.find("dsu", spec.spec).length)
+    {
+        return parse!T(input);
+    }
+    assert(0, "Parsing spec '"~spec.spec~"' not implemented.");
+}
+
+//------------------------------------------------------------------------------
+T unformat(T, Range)(ref Range input, FormatInfo spec) if (isFloatingPoint!T)
+{
+    if (spec.spec == 'r')
+    {
+        // raw read
+        enforce(input.length >= T.sizeof);
+        enforce(ElementType!(Range).sizeof == 1);
+        union X
+        {
+            char[T.sizeof] raw;
+            T typed;
+        }
+        X x;
+        foreach (i; 0 .. T.sizeof)
+        {
+            x.raw[i] = input.front;
+            input.popFront;
+        }
+        return x.typed;
+    }
+    enforce(std.algorithm.find(acceptedSpecs!T, spec.spec).length,
+            text("Format specifier `", spec.spec,
+                    "' not accepted for floating point types"));
+    return parse!T(input);
+}
+
+//------------------------------------------------------------------------------
+T unformat(T, Range)(ref Range input, FormatInfo spec) if (is(T == typedef))
+{
+    static if (is(T Original == typedef))
+    {
+        return cast(T) unformat!Original(input, spec);
+    }
+    else
+    {
+        static assert(false);
+    }
+}
+
+unittest
+{
+    typedef int Int;
+    string s = "123";
+    Int x;
+    formattedRead(s, "%s", &x);
+    assert(x == 123);
+}
+
+unittest
+{
+    union A
+    {
+        char[float.sizeof] untyped;
+        float typed;
+    };
+    A a;
+    a.typed = 5.5;
+    char[] input = a.untyped[];
+    float witness;
+    formattedRead(input, "%r", &witness);
+    assert(witness == a.typed);
+}
+
+//------------------------------------------------------------------------------
+private R parseToFormatSpec(R)(R r, ref const(char)[] fmt)
+{
+    while (fmt.length)
+    {
+        if (fmt[0] == '%')
+        {
+            if (fmt.length > 1 && fmt[1] == '%')
+            {
+                assert(!r.empty);
+                // Require a '%'
+                if (r.front != '%') break;
+                fmt = fmt[1 .. $];
+                r.popFront();
+            }
+            else
+            {
+                fmt.popFront;
+                break;
+            }
+        }
+        else
+        {
+            if (fmt.front == ' ')
+            {
+                r = std.algorithm.find!(not!isspace)(r);
+            }
+            else
+            {
+                enforce(
+                    !r.empty,
+                    text("parseToFormatSpec: Cannot find character `",
+                            fmt.front, "' in the input string."));
+                //static assert(0);
+                if (r.front != fmt.front) break;
+                r.popFront;
+            }
+            fmt.popFront;
+        }
+    }
+    return r;
+}
+
+unittest
+{
+    char[] line = "1 2".dup;
+    string format = "%s %s";
+    int a, b;
+    formattedRead(line, format, &a, &b);
+    assert(a == 1 && b == 2);
+
+    Tuple!(int, float) t;
+    line = "1 2.125".dup;
+    formattedRead(line, format, &t);
+    assert(t.field[0] == 1 && t.field[1] == 2.125);
+
+    line = "1 7643 2.125".dup;
+    formattedRead(line, "%s %*u %s", &t);
+    assert(t.field[0] == 1 && t.field[1] == 2.125);
+}
+
+/*
+ *  Copyright (C) 2004-2006 by Digital Mars, www.digitalmars.com
+ *  Written by Walter Bright and Andrei Alexandrescu
+ *
+ *  This software is provided 'as-is', without any express or implied
+ *  warranty. In no event will the authors be held liable for any damages
+ *  arising from the use of this software.
+ *
+ *  Permission is granted to anyone to use this software for any purpose,
+ *  including commercial applications, and to alter it and redistribute it
+ *  freely, subject to the following restrictions:
+ *
+ *  o  The origin of this software must not be misrepresented; you must not
+ *     claim that you wrote the original software. If you use this software
+ *     in a product, an acknowledgment in the product documentation would be
+ *     appreciated but is not required.
+ *  o  Altered source versions must be plainly marked as such, and must not
+ *     be misrepresented as being the original software.
+ *  o  This notice may not be removed or altered from any source
+ *     distribution.
+ */

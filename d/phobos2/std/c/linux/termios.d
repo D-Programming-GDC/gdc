@@ -1,4 +1,7 @@
-// This is a compatibility module for the DMD std.c.linux.termios
 
-public import std.c.unix.unix;
 
+module std.c.linux.termios;
+
+extern (C):
+
+public import core.sys.posix.termios;

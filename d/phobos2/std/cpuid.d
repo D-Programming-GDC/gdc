@@ -45,6 +45,7 @@ COPYRIGHT:	Public Domain
 module std.cpuid;
 
 import std.string;
+import std.conv;
 
 version(D_InlineAsm_X86)
 {
@@ -213,6 +214,8 @@ private:
 	    AMD
     }
 
+    __gshared
+    {
     uint flags, misc, exflags, apic, signature;
     uint _stepping, _model, _family;
 
@@ -222,6 +225,7 @@ private:
     uint maxThreads=1;
     uint maxCores=1;
     uint manufac=OTHER;
+    }
 
     /* **
      * fetches the cpu vendor string
@@ -232,14 +236,14 @@ private:
 	// puts the vendor string into dst
 	asm
 	{
-	    push EBX                    ;
+	    push EBX			;
 	    mov EAX, 0			;
 	    cpuid			;
 	    mov EAX, dst		;
 	    mov [EAX], EBX		;
 	    mov [EAX+4], EDX		;
 	    mov [EAX+8], ECX		;
-	    db 0x5b  /* pop EBX */      ;
+	    db 0x5b /* pop EBX */	;
 	}
     }
 
@@ -250,7 +254,7 @@ private:
 	// puts the processor string into dst
 	asm
 	{
-	    push EBX                    ;
+	    push EBX			;
 	    mov EAX, 0x8000_0000	;
 	    cpuid			;
 	    cmp EAX, 0x8000_0004	;
@@ -277,14 +281,14 @@ private:
 	    mov [EDI+44], EDX		;
 	    pop EDI			;
 	PSLabel:			;
-	    db 0x5b  /* pop EBX */      ;
+	    db 0x5b /* pop EBX */	;
 	}
 
 	if (buffer[0] == char.init) // no support
 	    return;
 
 	// seems many intel processors prepend whitespace
-	processorStr = std.string.strip(std.string.toString(dst)).idup;
+	processorStr = std.string.strip(to!string(dst)).idup;
     }
 
     private void getFeatureFlags()
@@ -292,7 +296,7 @@ private:
 	uint f,m,e,a,s;
 	asm
 	{
-	    push EBX                    ;
+	    push EBX			;
 	    mov EAX, 0			;
 	    cpuid			;
 	    cmp EAX, 1			;
@@ -314,7 +318,7 @@ private:
 	    mov e, EDX			;
 
 	FeatLabel2:
-	    db 0x5b  /* pop EBX */      ;
+	    db 0x5b /* pop EBX */	;
 	    ;
 	}
 	flags = f;
@@ -330,7 +334,7 @@ private:
 	ubyte b = 0;
 	asm
 	{
-	    push EBX                    ;
+	    push EBX			;
 	    mov EAX, 0			;
 	    cpuid			;
 	    cmp EAX, 4			;
@@ -341,7 +345,7 @@ private:
 	    mov n, EAX			;
 	    mov b, 1			;
 	IntelSingle:			;
-	    db 0x5b  /* pop EBX */      ;
+	    db 0x5b /* pop EBX */	;
 	}
 	if (b != 0)
 	{
@@ -360,7 +364,7 @@ private:
 	ubyte b = 0;
 	asm
 	{
-	    push EBX                    ;
+	    push EBX			;
 	    mov EAX, 0x8000_0000	;
 	    cpuid			;
 	    cmp EAX, 0x8000_0008	;
@@ -370,7 +374,7 @@ private:
 	    mov n, CL			;
 	    mov b, 1			;
 	AMDSingle:			;
-	    db 0x5b  /* pop EBX */      ;
+	    db 0x5b /* pop EBX */	;
 	}
 	if (b != 0)
 	{

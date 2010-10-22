@@ -1,5 +1,5 @@
 
-private import std.c.linux.ldblcompat;
+private import gcc.ldblcompat;
 
 extern (C) {
 

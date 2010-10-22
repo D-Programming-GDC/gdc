@@ -20,7 +20,7 @@ module gcc.threadsem;
 
 version (GNU_Semaphore_POSIX)
 {
-    private import std.c.unix.unix;
+    private import core.sys.posix.semaphore;
     struct Semaphore {
 	sem_t sem;
 	bool create() {  return sem_init(& sem, 0, 0) == 0; }
@@ -31,7 +31,7 @@ version (GNU_Semaphore_POSIX)
 }
 else version (GNU_Semaphore_Mach)
 {
-    private import std.c.mach.mach;
+    private import core.sys.osx.mach.semaphore;
     struct Semaphore {
 	semaphore_t sem;
 	bool create() {
@@ -43,7 +43,7 @@ else version (GNU_Semaphore_Mach)
 }
 else version (GNU_Sempahore_Pthreads)
 {
-    private import std.c.unix.unix;
+    private import core.sys.posix.semaphore;
     struct Semaphore {
 	pthread_mutex_t lock;
 	pthread_cond_t  cond;

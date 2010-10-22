@@ -707,7 +707,7 @@ string decimal(Big b)
     while (b != Big.ZERO) {
         auto t = div(b, 10);
         b = t.q;
-        result ~= t.r + '0';
+        result ~= cast(char)(t.r + '0');
     }
     reverse(result);
     return assumeUnique(result);
@@ -904,10 +904,10 @@ void mulInner(Big a, UpPtr rp, WideDigit y)
         poke(rp,c);
         xp = next(xp);
         rp = next(rp);
-        c = updateShr(c);
+        c = updateUShr(c);
     }
 
-    mixin(runOnce(   "mulCore","updateShr","xs","y"));
+    mixin(runOnce(   "mulCore","updateUShr","xs","y"));
 }
 
 void divInner(DownPtr xp, DownPtr cachePtr, size_t len)
@@ -1439,9 +1439,8 @@ void diag(int line = __LINE__, string file = __FILE__)
 
 // Unittests
 
-unittest
+debug unittest
 {
-
     // This block of unittests demonstrates that we can shrink arrays correctly
     {
         auto a = makeBig( 0x00000000 );
@@ -1475,7 +1474,6 @@ unittest
         auto r = shrink(a);
         assert(r.digits == b.digits, hex(r));
     }
-
     // This block of unittests demonstrates that neg(Big) works
     {
         auto x = makeBig( 0x66666666, 0x66666660 );
@@ -1593,6 +1591,10 @@ unittest
         auto z = makeBig( 0x00012345, 0x6789ABCD, 0xEFEDCBA9, 0x87654321 );
         auto r = mul(x,y);
         assert(r.digits == z.digits, hex(r));
+	 // Bugzilla 2987
+        BigInt a = "871782912000";
+        BigInt b = "760005445655199744000000";
+        assert(a * a == b);
     }
 
     // This block of unittests demonstrates that mul(Big,uint) works

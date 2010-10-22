@@ -27,7 +27,6 @@
 
 public import std.base64;
 public import std.bind;
-public import std.bitarray;
 public import std.boxer;
 public import std.compiler;
 public import std.contracts;
@@ -75,16 +74,19 @@ public import std.zlib;
 
 int main(char[][] args)
 {
+
+version (all)
+{
     // Bring in unit test for module by referencing function in it
 
     cmp("foo", "bar");			// string
     fncharmatch('a', 'b');		// path
-    isnan(1.0);				// math
-    std.conv.toDouble("1.0");		// std.conv
+    isNaN(1.0);				// math
+    std.conv.to!double("1.0");		// std.conv
     OutBuffer b = new OutBuffer();	// outbuffer
     std.ctype.tolower('A');		// ctype
     RegExp r = new RegExp(null, null);	// regexp
-    std.random.rand();
+    uint ranseed = std.random.unpredictableSeed();
     int a[];
     a.reverse;				// adi
     a.sort;				// qsort
@@ -123,10 +125,6 @@ int main(char[][] args)
 
     std.demangle.demangle("hello");
 
-    BitArray ba;			// std.bitarray
-    ba.length = 3;
-    ba[0] = true;
-
     std.uni.isUniAlpha('A');
 
     std.file.exists("foo");
@@ -137,7 +135,7 @@ int main(char[][] args)
     std.signals.linkin();
 
     writefln(std.cpuid.toString());
-
+}
     printf("Success!\n");
     return 0;
 }

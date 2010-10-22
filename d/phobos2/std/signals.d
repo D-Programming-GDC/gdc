@@ -69,7 +69,6 @@ extern (C) Object _d_toObject(void* p);
 alias void delegate(Object) DisposeEvt;
 extern (C) void  rt_attachDisposeEvent( Object obj, DisposeEvt evt );
 extern (C) void  rt_detachDisposeEvent( Object obj, DisposeEvt evt );
-
 //debug=signal;
 
 /************************

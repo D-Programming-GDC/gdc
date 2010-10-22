@@ -12,7 +12,7 @@
  *
  * $(WEB digitalmars.com, Walter Bright), Grzegorz Adam Hankiewicz,
 Thomas K&uuml;hne, $(WEB erdani.org, Andrei Alexandrescu)
- * 
+ *
  * Macros:
  *	WIKI = Phobos/StdPath
  * Copyright:
@@ -21,25 +21,17 @@ Thomas K&uuml;hne, $(WEB erdani.org, Andrei Alexandrescu)
  *
  */
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, March 2006
-*/
-
 module std.path;
 
 //debug=path;		// uncomment to turn on debugging printf's
 //private import std.stdio;
 
-private import std.string;
-private import std.file;
-private import std.contracts;
+import std.contracts, std.conv, std.file, std.process, std.string, std.traits;
+import core.stdc.errno, core.stdc.stdlib;
 
 version(Posix)
 {
-    private import std.c.stdlib;
-    private import std.c.unix.unix;
+    private import core.sys.posix.pwd;
     private import core.exception : onOutOfMemoryError;
 }
 
@@ -61,7 +53,7 @@ version(Windows)
     invariant char[1] curdir = ".";	 /// String representing the current directory.
     invariant char[2] pardir = ".."; /// String representing the parent directory.
 }
-else version(Posix)
+version(Posix)
 {
     /** String used to separate directory names in a path. Under
      *  Windows this is a backslash, under Linux a slash. */
@@ -77,10 +69,6 @@ else version(Posix)
     invariant char[1] linesep = "\n";
     invariant char[1] curdir = ".";	 /// String representing the current directory.
     invariant char[2] pardir = ".."; /// String representing the parent directory.
-}
-else
-{
-    static assert(1);
 }
 
 /*****************************
@@ -140,7 +128,7 @@ string getExt(string fullname)
 	    if (fullname[i] == ':' || fullname[i] == '\\')
 		break;
 	}
-	else version(Posix)
+	version(Posix)
 	{
 	    if (fullname[i] == '/')
 		break;
@@ -304,7 +292,7 @@ string basename(string fullname, string extension = null)
 		if (fullname[i - 1] == ':' || fullname[i - 1] == '\\')
 		    break;
 	    }
-	    else version(Posix)
+	    version(Posix)
 	    {
 		if (fullname[i - 1] == '/')
 		    break;
@@ -341,9 +329,8 @@ unittest
     version (Posix)
 	result = basename("a/b.cde", ".cde");
     assert(result == "b");
- 
-}
 
+}
 
 /**************************
  * Extracts the directory part of a path.
@@ -395,7 +382,7 @@ Char[] dirname(Char)(Char[] fullname)
                 break;
             }
         }
-        else version(Posix)
+        version(Posix)
         {
             if (fullname[i - 1] == sep[0])
             {   i--;
@@ -403,7 +390,26 @@ Char[] dirname(Char)(Char[] fullname)
             }
         }
     }
-    return i == 0 ? "." : fullname[0 .. i];
+    return i == 0 ? to!(Char[])(".") : fullname[0 .. i];
+}
+
+unittest
+{
+    assert(dirname("") == ".");
+    assert(dirname("fileonly") == ".");
+    version (Posix)
+    {
+        assert(dirname("/path/to/file") == "/path/to");
+    }
+    else
+    {
+        version (Win32)
+        {
+            assert(dirname(r"\path\to\file") == r"\path\to");
+            assert(dirname(r"\foo") == r"\");
+            assert(dirname(r"c:\foo") == r"c:\");
+        }
+    }
 }
 
 /** Alias for $(D_PARAM dirname), kept for backward
@@ -415,13 +421,6 @@ unittest
     string filename = "foo/bar";
     auto d = getDirName(filename);
     assert(d == "foo");
-
-    version (Win32)
-    {
-	assert(dirname(r"\path\to\file") == r"\path\to");
-	assert(dirname(r"\foo") == r"\");
-	assert(dirname(r"c:\foo") == r"c:\");
-    }
 }
 
 /********************************
@@ -442,27 +441,28 @@ unittest
  * -----
  */
 
-string getDrive(string fullname)
-    out (result)
-    {
-	assert(result.length <= fullname.length);
-    }
-    body
-    {
+String getDrive(String)(String fullname) if (isSomeString!(String))
+// @@@ BUG 2799
+// out(result)
+// {
+//     assert(result.length <= fullname.length);
+// }
+body
+{
 	version(Win32)
 	{
-	    for (size_t i = 0; i < fullname.length; i++)
+	    foreach (i; 0 .. fullname.length)
 	    {
-		if (fullname[i] == ':')
-		    return fullname[0 .. i + 1];
+            if (fullname[i] == ':')
+                return fullname[0 .. i + 1];
 	    }
 	    return null;
 	}
-	else version(Posix)
+	version(Posix)
 	{
 	    return null;
 	}
-    }
+}
 
 /****************************
  * Appends a default extension to a filename.
@@ -571,7 +571,7 @@ string addExt(string filename, string ext)
  * -----
  */
 
-bool isabs(string path)
+bool isabs(in char[] path)
 {
     auto d = getDrive(path);
     version (Windows)
@@ -610,17 +610,17 @@ string rel2abs(string path)
         return path;
     }
     auto myDir = getcwd;
-    if (path.startsWith(curdir))
+    if (path.startsWith(curdir[]))
     {
         auto p = path[curdir.length .. $];
-        if (p.startsWith(sep))
+        if (p.startsWith(sep[]))
             path = p[sep.length .. $];
-        else if (altsep.length && p.startsWith(altsep))
+        else if (altsep.length && p.startsWith(altsep[]))
             path = p[altsep.length .. $];
         else if (!p.length)
             path = null;
     }
-    return myDir.endsWith(sep) || path.length
+    return myDir.endsWith(sep[]) || path.length
         ? join(myDir, path)
         : myDir;
 }
@@ -666,63 +666,63 @@ unittest
  * -----
  */
 
-string join(string p1, string p2, string[] more...)
+string join(in char[] p1, in char[] p2, in char[][] more...)
 {
-  version (Posix)
-  {
-    if (!more.length)
+    version (Posix)
     {
-        if (isabs(p2)) return p2;
-        if (p1.endsWith(sep) || altsep.length && p1.endsWith(altsep))
+        if (!more.length)
         {
-            return p1 ~ p2;
+            if (isabs(p2)) return p2.idup;
+            if (p1.endsWith(sep[]) || altsep.length && p1.endsWith(altsep[]))
+            {
+                return cast(string) (p1 ~ p2);
+            }
+            return cast(string) (p1 ~ sep ~ p2);
         }
-        return p1 ~ sep ~ p2;
+        // more components present
+        return join(join(p1, p2), more[0], more[1 .. $]);
     }
-    // more components present
-    return join(join(p1, p2), more[0], more[1 .. $]);
-  }
-  else version (Windows)
-  { // The other version fails unit testing when under windows
-    if (!p2.length)
-        return p1;
-    if (!p1.length)
-        return p2;
+    version (Windows)
+    { // The other version fails unit testing when under windows
+        if (!p2.length)
+            return p1.idup;
+        if (!p1.length)
+            return p2.idup;
 
-    string p;
-    string d1;
+        string p;
+        const(char)[] d1;
 
-    if (getDrive(p2))
-    {
-	p = p2;
+        if (getDrive(p2))
+        {
+            p = p2.idup;
+        }
+        else
+        {
+            d1 = getDrive(p1);
+            if (p1.length == d1.length)
+            {
+                p = cast(string) (p1 ~ p2);
+            }
+            else if (p2[0] == '\\')
+            {
+                if (d1.length == 0)
+                    p = p2.idup;
+                else if (p1[p1.length - 1] == '\\')
+                    p = cast(string) (p1 ~ p2[1 .. p2.length]);
+                else
+                    p = cast(string) (p1 ~ p2);
+            }
+            else if (p1[p1.length - 1] == '\\')
+            {
+                p = cast(string) (p1 ~ p2);
+            }
+            else
+            {
+                p = cast(string)(p1 ~ sep ~ p2);
+            }
+        }
+        return p;
     }
-    else
-    {
-	d1 = getDrive(p1);
-	if (p1.length == d1.length)
-	{
-	    p = p1 ~ p2;
-	}
-	else if (p2[0] == '\\')
-	{
-	    if (d1.length == 0)
-		p = p2;
-	    else if (p1[p1.length - 1] == '\\')
-		p = p1 ~ p2[1 .. p2.length];
-	    else
-		p = p1 ~ p2;
-	}
-	else if (p1[p1.length - 1] == '\\')
-	{
-	    p = p1 ~ p2;
-	}
-	else
-	{
-	    p = cast(string)(p1 ~ sep ~ p2);
-	}
-    }
-    return p;
-  }
 }
 
 unittest
@@ -845,17 +845,10 @@ bool fncharmatch(dchar c1, dchar c2)
 	}
 	return true;
     }
-    else version (Posix)
+    version (Posix)
     {
 	return c1 == c2;
     }
-    /* this is filesystem-dependent, figure out the filesystem?
-    else version (GNU)
-    {
-	// %% figure out filesystem?
-	return c1 == c2;
-    }
-    */
 }
 
 /************************************
@@ -905,7 +898,7 @@ bool fncharmatch(dchar c1, dchar c2)
  * -----
  */
 
-bool fnmatch(string filename, string pattern)
+bool fnmatch(in char[] filename, in char[] pattern)
     in
     {
 	// Verify that pattern[] is valid
@@ -932,9 +925,8 @@ bool fnmatch(string filename, string pattern)
     body
     {
 	char nc;
-	int not;
+        int not;
 	int anymatch;
-
 	int ni;       // ni == name index
 	foreach (pi; 0 .. pattern.length) // pi == pattern index
 	{
@@ -1116,37 +1108,33 @@ unittest
     version (Posix)
     {
 	// Retrieve the current home variable.
-	char* c_home = getenv("HOME");
+        auto c_home = std.process.getenv("HOME");
 
-	// Testing when there is no environment variable.
-	unsetenv("HOME");
-	assert(expandTilde("~/") == "~/");
-	assert(expandTilde("~") == "~");
-
-	// Testing when an environment variable is set.
-	int ret = setenv("HOME", "dmd/test\0", 1);
-	assert(ret == 0);
-	assert(expandTilde("~/") == "dmd/test/");
-	assert(expandTilde("~") == "dmd/test");
-
-	// The same, but with a variable ending in a slash.
-	ret = setenv("HOME", "dmd/test/\0", 1);
-	assert(ret == 0);
-	assert(expandTilde("~/") == "dmd/test/");
-	assert(expandTilde("~") == "dmd/test");
-
-	// Recover original HOME variable before continuing.
-	if (c_home)
-	    setenv("HOME", c_home, 1);
-	else
-	    unsetenv("HOME");
-
-	// Test user expansion for root. Are there unices without /root?
-	/*
-	assert(expandTilde("~root") == "/root");
-	assert(expandTilde("~root/") == "/root/");
-	*/
-	assert(expandTilde("~Idontexist/hey") == "~Idontexist/hey");
+        // Testing when there is no environment variable.
+        unsetenv("HOME");
+        assert(expandTilde("~/") == "~/");
+        assert(expandTilde("~") == "~");
+        
+        // Testing when an environment variable is set.
+        std.process.setenv("HOME", "dmd/test\0", 1);
+        assert(expandTilde("~/") == "dmd/test/");
+        assert(expandTilde("~") == "dmd/test");
+        
+        // The same, but with a variable ending in a slash.
+        std.process.setenv("HOME", "dmd/test/\0", 1);
+        assert(expandTilde("~/") == "dmd/test/");
+        assert(expandTilde("~") == "dmd/test");
+        
+        // Recover original HOME variable before continuing.
+        if (c_home)
+            std.process.setenv("HOME", c_home, 1);
+        else
+            unsetenv("HOME");
+        
+        // Test user expansion for root. Are there unices without /root?
+        assert(expandTilde("~root") == "/root");
+        assert(expandTilde("~root/") == "/root/");
+        assert(expandTilde("~Idontexist/hey") == "~Idontexist/hey");
     }
 }
 
@@ -1160,9 +1148,9 @@ private string expandFromEnvironment(string path)
 {
     assert(path.length >= 1);
     assert(path[0] == '~');
-    
+
     // Get HOME and use that to replace the tilde.
-    char* home = getenv("HOME");
+    auto home = core.stdc.stdlib.getenv("HOME");
     if (home == null)
         return path;
 
@@ -1211,7 +1199,7 @@ private string expandFromDatabase(string path)
 
     // Extract username, searching for path separator.
     string username;
-    ptrdiff_t last_char = find(path, sep[0]);
+    int last_char = indexOf(path, sep[0]);
 
     if (last_char == -1)
     {
@@ -1223,7 +1211,7 @@ private string expandFromDatabase(string path)
         username = path[1 .. last_char] ~ '\0';
     }
     assert(last_char > 1);
-    
+
     version (GNU_Unix_Have_getpwnam_r)
     {
     
@@ -1240,8 +1228,8 @@ private string expandFromDatabase(string path)
 
 	// Obtain info from database.
 	passwd *verify;
-	std.c.stdlib.setErrno(0);
-	if (getpwnam_r(username.ptr, &result, cast(char*) extra_memory, extra_memory_size,
+	setErrno(0);
+	if (getpwnam_r(cast(char*) username.ptr, &result, cast(char*) extra_memory, extra_memory_size,
 		&verify) == 0)
 	{
 	    // Failure if verify doesn't point at result.
@@ -1251,19 +1239,8 @@ private string expandFromDatabase(string path)
 	    break;
 	}
 
-	switch (std.c.stdlib.getErrno()) {
-	case 0:
-	case ENOENT:
-	case ESRCH:
-	case EBADF:
-	case EPERM:
-	    goto Lnotfound;
-	case ERANGE:
-	    break;
-	default:
-	    // not just out of memory: EMFILE, ENFILE too
+	if (errno != ERANGE)
 	    goto Lerror;
-	}
 
 	// extra_memory isn't large enough
 	std.c.stdlib.free(extra_memory);
@@ -1282,7 +1259,7 @@ Lerror:
 	std.c.stdlib.free(extra_memory);
     onOutOfMemoryError();
     return null;
-
+    
     }
     else
     {

@@ -1,5 +1,5 @@
 
-private import std.c.darwin.ldblcompat;
+private import gcc.ldblcompat;
 
 extern (C) {
 

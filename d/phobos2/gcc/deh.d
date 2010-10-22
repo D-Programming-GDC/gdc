@@ -27,7 +27,6 @@ private import gcc.builtins;
 
 private import core.memory;
 private import core.stdc.stdlib;
-//private import std.c.process;
 
 static if (Use_ARM_EABI_Unwinder)
     const _Unwind_Exception_Class GDC_Exception_Class =

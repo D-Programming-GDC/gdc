@@ -8,13 +8,6 @@
  *	WIKI = Phobos/StdSystem
  */
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, September 2007
-*/
-
-// Information about the target operating system, environment, and CPU
 
 module std.system;
 
@@ -26,8 +19,6 @@ const
     {
 	Win32 = 1,		// Microsoft 32 bit Windows systems
 	linux,			// all linux systems
-	Unix,			// Unix-like
-	NoSystem,		// No operating system
 	OSX,
     }
 
@@ -35,21 +26,13 @@ const
     {
 	Family family = Family.Win32;
     }
-    else version (linux)
+    else version (Posix)
     {
 	Family family = Family.linux;
     }
     else version (OSX)
     {
 	Family family = Family.OSX;
-    }
-    else version (Unix)
-    {
-	Family family = Family.Unix;
-    }	     
-    else version (NoSystem)
-    {
-	Family family = Family.NoSystem;
     }
     else
     {

@@ -1,7 +1,6 @@
 x3_out_text(""
     "module gcc.config.unix;\n"
-    "private import gcc.config.config;\n"
-    "private import std.stdint;\n");
+    "private import gcc.config.config;\n");
 
 x3_gi_push_header("\"config.h\"");
 x3_gi_push_header("<sys/types.h>"); // pretty much need this..

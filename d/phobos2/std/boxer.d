@@ -72,11 +72,10 @@ a = boxArray(arg_types, arg_data);
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, May 2005
-
    This module make not work on all GCC targets due to assumptions
    about the type of va_list.
 */
+
 module std.boxer;
 
 private import std.format;
@@ -156,11 +155,6 @@ private enum TypeClass
     Other, /**< Any other type, such as delegates, function pointers, struct, void... */
 }
 
-version (DigitalMars)
-    version = DigitalMars_TypeInfo;
-else version (GNU)
-    version = DigitalMars_TypeInfo;
-
 /**
  * Box is a generic container for objects (both value and heap), allowing the
  * user to box them in a generic form and recover them later.
@@ -178,7 +172,7 @@ struct Box
         void* p_longData; /**< An array of the contained object. */
         void[8] p_shortData; /**< Data used when the object is small. */
     }
-
+    
     private static TypeClass findTypeClass(TypeInfo type)
     {
         if (cast(TypeInfo_Class) type)
@@ -188,7 +182,7 @@ struct Box
         if (isArrayTypeInfo(type))
             return TypeClass.Array;
 
-        version (DigitalMars_TypeInfo)
+        version (DigitalMars)
         {
             /* Depend upon the name of the base type classes. */
             if (type.classinfo.name.length != "TypeInfo_?".length)
@@ -432,38 +426,7 @@ in
 }
 body
 {
-    version (GNU)
-    {
-	// Help for promoted types
-	TypeInfo ti_orig = _arguments[0]; 
-	TypeInfo ti = ti_orig;
-	TypeInfo_Typedef ttd;
-	
-	while ( (ttd = cast(TypeInfo_Typedef) ti) !is null )
-	    ti = ttd.base;
-
-	if (ti is typeid(float))
-	{
-	    float f = va_arg!(float)(_argptr);
-	    return box(ti_orig, cast(void *) & f);
-	}
-	else if (ti is typeid(char) || ti is typeid(byte) || ti is typeid(ubyte))
-	{
-	    byte b = va_arg!(byte)(_argptr);
-	    return box(ti_orig, cast(void *) & b);
-	}
-	else if (ti is typeid(wchar) || ti is typeid(short) || ti is typeid(ushort))
-	{
-	    short s = va_arg!(short)(_argptr);
-	    return box(ti_orig, cast(void *) & s);
-	}
-	else if (ti is typeid(bool))
-	{
-	    bool b = va_arg!(bool)(_argptr);
-	    return box(ti_orig, cast(void *) & b);
-	}
-    }
-    return box(_arguments[0], cast(void*) _argptr);
+    return box(_arguments[0], _argptr);
 }
 
 /**
@@ -517,46 +480,7 @@ Box[] boxArray(TypeInfo[] types, void* data)
  */    
 Box[] boxArray(...)
 {
-    version (GNU)
-    {
-	Box[] array = new Box[_arguments.length];
-	
-	foreach(size_t index, TypeInfo ti_orig; _arguments)
-	{
-	    TypeInfo ti = ti_orig;
-	    TypeInfo_Typedef ttd;
-
-	    while ( (ttd = cast(TypeInfo_Typedef) ti) !is null )
-		ti = ttd.base;
-
-	    if (ti is typeid(float))
-	    {
-		float f = va_arg!(float)(_argptr);
-		array[index] = box(ti_orig, cast(void *) & f);
-	    }
-	    else if (ti is typeid(char) || ti is typeid(byte) || ti is typeid(ubyte))
-	    {
-		byte b = va_arg!(byte)(_argptr);
-		array[index] = box(ti_orig, cast(void *) & b);
-	    }
-	    else if (ti is typeid(wchar) || ti is typeid(short) || ti is typeid(ushort))
-	    {
-		short s = va_arg!(short)(_argptr);
-		array[index] = box(ti_orig, cast(void *) & s);
-	    }
-	    else if (ti is typeid(bool))
-	    {
-		bool b = va_arg!(bool)(_argptr);
-		array[index] = box(ti_orig, cast(void *) & b);
-	    }
-	    else
-		array[index] = box(ti_orig, cast(void*) _argptr);
-	}
-
-	return array;
-    }
-    else
-	return boxArray(_arguments, cast(void *) _argptr);
+    return boxArray(_arguments, _argptr);
 }
 
 /**

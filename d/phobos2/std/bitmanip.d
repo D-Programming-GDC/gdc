@@ -35,6 +35,11 @@ private template createAccessors(
         // No need to create any accessor
         enum result = "";
     }
+    else static if (len == 0)
+    {
+        // Fields of length 0 are always zero
+        enum result = "enum "~T.stringof~" "~name~" = 0;\n";
+    }
     else
     {
         static if (len + offset <= uint.sizeof * 8)
@@ -61,7 +66,7 @@ private template createAccessors(
             static assert(len == 1);
             enum result = 
             // getter
-                "bool " ~ name ~ "(){ return "
+                "bool " ~ name ~ "() const { return "
                 ~"("~store~" & "~myToString!(maskAllElse)~") != 0;}\n"
             // setter
                 ~"void " ~ name ~ "(bool v){"
@@ -71,7 +76,7 @@ private template createAccessors(
         else
         {
             // getter
-            enum result = T.stringof~" "~name~"()const{ auto result = "
+            enum result = T.stringof~" "~name~"() const { auto result = "
                 "("~store~" & "
                 ~ myToString!(maskAllElse) ~ ") >>"
                 ~ myToString!(offset) ~ ";"
@@ -199,6 +204,7 @@ struct FloatRep
                   ubyte, "exponent",  8,
                   bool,  "sign",      1));
     }
+    enum uint bias = 127, fractionBits = 23, exponentBits = 8, signBits = 1;
 }
 ----
 */
@@ -213,6 +219,7 @@ struct FloatRep
                   ubyte, "exponent",  8,
                   bool,  "sign",      1));
     }
+    enum uint bias = 127, fractionBits = 23, exponentBits = 8, signBits = 1;
 }
 
 /**
@@ -230,6 +237,7 @@ struct DoubleRep
                   ushort,  "exponent", 11,
                   bool,    "sign",      1));
     }
+    enum uint bias = 1023, signBits = 1, fractionBits = 52, exponentBits = 11;
 }
 ----
 */
@@ -244,6 +252,7 @@ struct DoubleRep
                   ushort, "exponent", 11,
                   bool,   "sign",      1));
     }
+    enum uint bias = 1023, signBits = 1, fractionBits = 52, exponentBits = 11;
 }
 
 unittest
@@ -398,7 +407,7 @@ struct BitArray
         for (size_t i = 0; i < len; i++)
         {   bool b = opIndex(i);
             result = dg(b);
-            (this)[i] = b;
+            this[i] = b;
             if (result)
                 break;
         }
@@ -413,7 +422,7 @@ struct BitArray
         for (size_t i = 0; i < len; i++)
         {   bool b = opIndex(i);
             result = dg(i, b);
-            (this)[i] = b;
+            this[i] = b;
             if (result)
                 break;
         }
@@ -472,9 +481,9 @@ struct BitArray
                 hi = len - 1;
                 for (; lo < hi; lo++, hi--)
                 {
-                    t = (this)[lo];
-                    (this)[lo] = (this)[hi];
-                    (this)[hi] = t;
+                    t = this[lo];
+                    this[lo] = this[hi];
+                    this[hi] = t;
                 }
             }
             return this;
@@ -520,7 +529,7 @@ struct BitArray
                     {
                         if (lo >= hi)
                             goto Ldone;
-                        if ((this)[lo] == true)
+                        if (this[lo] == true)
                             break;
                         lo++;
                     }
@@ -529,13 +538,13 @@ struct BitArray
                     {
                         if (lo >= hi)
                             goto Ldone;
-                        if ((this)[hi] == false)
+                        if (this[hi] == false)
                             break;
                         hi--;
                     }
 
-                    (this)[lo] = false;
-                    (this)[hi] = true;
+                    this[lo] = false;
+                    this[hi] = true;
 
                     lo++;
                     hi--;
@@ -550,8 +559,8 @@ struct BitArray
     {
         debug(bitarray) printf("BitArray.sort.unittest\n");
 
-        static uint x = 0b1100011000;
-        static BitArray ba = { 10, &x };
+        __gshared uint x = 0b1100011000;
+        __gshared BitArray ba = { 10, &x };
         ba.sort;
         for (size_t i = 0; i < 6; i++)
             assert(ba[i] == false);
@@ -565,23 +574,23 @@ struct BitArray
      */
 
     bool opEquals(BitArray a2)
-    {   size_t i;
+    {   int i;
 
         if (this.length != a2.length)
             return 0;                // not equal
-	uint *p1 = cast(uint*)this.ptr;
-	uint *p2 = cast(uint*)a2.ptr;
-	size_t n = this.length / (8 * uint.sizeof);
+        byte *p1 = cast(byte*)this.ptr;
+        byte *p2 = cast(byte*)a2.ptr;
+        uint n = this.length / 8;
         for (i = 0; i < n; i++)
         {
             if (p1[i] != p2[i])
                 return 0;                // not equal
         }
 
-	uint mask;
+        ubyte mask;
 
-	n = this.length & ((8 * uint.sizeof) - 1);
-	mask = (1 << n) - 1;
+        n = this.length & 7;
+        mask = cast(ubyte)((1 << n) - 1);
         //printf("i = %d, n = %d, mask = %x, %x, %x\n", i, n, mask, p1[i], p2[i]);
         return (mask == 0) || (p1[i] & mask) == (p2[i] & mask);
     }
@@ -614,21 +623,20 @@ struct BitArray
 
     int opCmp(BitArray a2)
     {
-	size_t len;
-	size_t i;
+        uint len;
+        uint i;
 
         len = this.length;
         if (a2.length < len)
             len = a2.length;
-	uint* p1 = cast(uint*)this.ptr;
-	uint* p2 = cast(uint*)a2.ptr;
-	size_t n = len / (8 * uint.sizeof);
+        ubyte* p1 = cast(ubyte*)this.ptr;
+        ubyte* p2 = cast(ubyte*)a2.ptr;
+        uint n = len / 8;
         for (i = 0; i < n; i++)
         {
             if (p1[i] != p2[i])
                 break;                // not equal
         }
-	/*	
         for (uint j = i * 8; j < len; j++)
         {   ubyte mask = cast(ubyte)(1 << j);
             int c;
@@ -638,22 +646,6 @@ struct BitArray
                 return c;
         }
         return cast(int)this.len - cast(int)a2.length;
-	*/
-	uint mask = 1;
-	for (size_t j = i * (8 * uint.sizeof); j < len; j++)
-	{   int c;
-
-	    c = cast(int)(p1[i] & mask) - cast(int)(p2[i] & mask);
-	    if (c)
-		return c;
-	    mask <<= 1;
-	}
-	ptrdiff_t c = cast(ptrdiff_t)this.len - cast(ptrdiff_t)a2.length;
-	if (c < 0)
-	    return -1;
-	else if (c > 0)
-	    return 1;
-	return 0;
     }
 
     unittest
@@ -692,7 +684,7 @@ struct BitArray
         length = ba.length;
         foreach (i, b; ba)
         {
-            (this)[i] = b;
+            this[i] = b;
         }
     }
 
@@ -1106,7 +1098,7 @@ struct BitArray
     BitArray opCatAssign(bool b)
     {
         length = len + 1;
-        (this)[len - 1] = b;
+        this[len - 1] = b;
         return this;
     }
 
@@ -1139,7 +1131,7 @@ struct BitArray
         auto istart = len;
         length = len + b.length;
         for (auto i = istart; i < len; i++)
-            (this)[i] = b[i - istart];
+            this[i] = b[i - istart];
         return this;
     }
 
@@ -1186,7 +1178,7 @@ struct BitArray
         r.length = len + 1;
         r[0] = b;
         for (size_t i = 0; i < len; i++)
-            r[1 + i] = (this)[i];
+            r[1 + i] = this[i];
         return r;
     }
 

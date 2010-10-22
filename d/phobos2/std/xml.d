@@ -118,8 +118,11 @@ void main()
  */
 
 module std.xml;
+import std.array;
 import std.string;
 import std.encoding;
+
+immutable cdata = "<![CDATA[";
 
 /**
  * Returns true if the character is a character according to the XML standard
@@ -281,27 +284,42 @@ bool isExtender(dchar c)
  * writefln(encode("a > b")); // writes "a &gt; b"
  * --------------
  */
-string encode(string s)
+S encode(S)(S s, S buffer = null)
 {
-    // The ifs are (temprarily, we hope) necessary, because
-    // std.string.write.replace
-    // does not do copy-on-write, but instead copies always.
+    string r;
+    size_t lastI;
+    if (buffer) buffer.length = 0;
+    auto result = appender(&buffer);
 
-    if (s.find('&') != -1) s = replace(s,"&","&amp;");
-    if (s.find('"') != -1) s = replace(s,"\"","&quot;");
-    if (s.find("'") != -1) s = replace(s,"'","&apos;");
-    if (s.find('<') != -1) s = replace(s,"<","&lt;");
-    if (s.find('>') != -1) s = replace(s,">","&gt;");
-    return s;
+    foreach (i, c; s)
+    {
+        switch (c)
+        {
+        case '&':  r = "&amp;"; break;
+        case '"':  r = "&quot;"; break;
+        case '\'': r = "&apos;"; break;
+        case '<':  r = "&lt;"; break;
+        case '>':  r = "&gt;"; break;
+        default: continue;
+        }
+        // Replace with r
+        result.put(s[lastI .. i]);
+        result.put(r);
+        lastI = i + 1;
+    }
+
+    if (!result.data) return s;
+    result.put(s[lastI .. $]);
+    return result.data;
 }
 
 unittest
 {
     assert(encode("hello") is "hello");
-    assert(encode("a > b") == "a &gt; b");
+    assert(encode("a > b") == "a &gt; b", encode("a > b"));
     assert(encode("a < b") == "a &lt; b");
     assert(encode("don't") == "don&apos;t");
-    assert(encode("\"hi\"") == "&quot;hi&quot;");
+    assert(encode("\"hi\"") == "&quot;hi&quot;", encode("\"hi\""));
     assert(encode("cat & dog") == "cat &amp; dog");
 }
 
@@ -376,8 +394,9 @@ string decode(string s, DecodeMode mode=DecodeMode.LOOSE)
                 {
                     dchar d;
                     string t = s[i..$];
-                    checkCharRef(t,d);
-                    buffer ~= d;
+                    checkCharRef(t, d);
+                    char[4] temp;
+                    buffer ~= temp[0 .. std.utf.encode(temp, d)];
                     i = s.length - t.length - 1;
                 }
                 catch(Err e)
@@ -772,7 +791,6 @@ class Element : Item
             if (items[i] != element.items[i])
                 return items[i].opCmp(element.items[i]);
         }
-        assert(false);
     }
 
     /**
@@ -1135,7 +1153,7 @@ class Comment : Item
      */
     this(string content)
     {
-        if (content == "-" || content.find("==") != -1)
+        if (content == "-" || content.indexOf("==") != -1)
             throw new CommentException(content);
         this.content = content;
     }
@@ -1215,7 +1233,7 @@ class CData : Item
      */
     this(string content)
     {
-        if (content.find("]]>") != -1) throw new CDataException(content);
+        if (content.indexOf("]]>") != -1) throw new CDataException(content);
         this.content = content;
     }
 
@@ -1266,7 +1284,7 @@ class CData : Item
     /**
      * Returns a string representation of this CData section
      */
-    override const string toString() { return "<[CDATA[" ~ content ~ "]]>"; }
+    override const string toString() { return cdata ~ content ~ "]]>"; }
 
     override const bool isEmptyXML() { return false; } /// Returns false always
 }
@@ -1374,7 +1392,7 @@ class XMLInstruction : Item
      */
     this(string content)
     {
-        if (content.find(">") != -1) throw new XIException(content);
+        if (content.indexOf(">") != -1) throw new XIException(content);
         this.content = content;
     }
 
@@ -1453,7 +1471,7 @@ class ProcessingInstruction : Item
      */
     this(string content)
     {
-        if (content.find("?>") != -1) throw new PIException(content);
+        if (content.indexOf("?>") != -1) throw new PIException(content);
         this.content = content;
     }
 
@@ -1872,28 +1890,28 @@ class ElementParser
             if (startsWith(*s,"<!--"))
             {
                 chop(*s,4);
-                t = chop(*s,find(*s,"-->"));
+                t = chop(*s,indexOf(*s,"-->"));
                 if (commentHandler.funcptr !is null) commentHandler(t);
                 chop(*s,3);
             }
             else if (startsWith(*s,"<![CDATA["))
             {
                 chop(*s,9);
-                t = chop(*s,find(*s,"]]>"));
+                t = chop(*s,indexOf(*s,"]]>"));
                 if (cdataHandler.funcptr !is null) cdataHandler(t);
                 chop(*s,3);
             }
             else if (startsWith(*s,"<!"))
             {
                 chop(*s,2);
-                t = chop(*s,find(*s,">"));
+                t = chop(*s,indexOf(*s,">"));
                 if (xiHandler.funcptr !is null) xiHandler(t);
                 chop(*s,1);
             }
             else if (startsWith(*s,"<?"))
             {
                 chop(*s,2);
-                t = chop(*s,find(*s,"?>"));
+                t = chop(*s,indexOf(*s,"?>"));
                 if (piHandler.funcptr !is null) piHandler(t);
                 chop(*s,2);
             }
@@ -1944,6 +1962,12 @@ class ElementParser
                 {
                 	Tag startTag = new Tag(tag_.name);
 
+                    // FIX by hed010gy, for bug 2979
+                    // http://d.puremagic.com/issues/show_bug.cgi?id=2979
+                    if (tag_.attr.length > 0)
+                          foreach(tn,tv; tag_.attr) startTag.attr[tn]=tv;
+                    // END FIX
+
 					// Handle the pretend start tag
 					string s2;
 					auto parser = new ElementParser(startTag,&s2);
@@ -1968,7 +1992,7 @@ class ElementParser
             }
             else
             {
-                t = chop(*s,find(*s,"<"));
+                t = chop(*s,indexOf(*s,"<"));
                 if (rawTextHandler.funcptr !is null)
                     rawTextHandler(t);
                 else if (textHandler.funcptr !is null)
@@ -2126,7 +2150,7 @@ private
         mixin Check!("Comment");
 
         try { checkLiteral("<!--",s); } catch(Err e) { fail(e); }
-        int n = s.find("--");
+        int n = s.indexOf("--");
         if (n == -1) fail("unterminated comment");
         s = s[0..n];
         try { checkLiteral("-->",s); } catch(Err e) { fail(e); }
@@ -2150,7 +2174,7 @@ private
 
         try
         {
-            checkLiteral("<[CDATA[",s);
+            checkLiteral(cdata,s);
             checkEnd("]]>",s);
         }
         catch(Err e) { fail(e); }
@@ -2344,7 +2368,7 @@ private
                      if (s.startsWith("&"))        { checkReference(s); }
                 else if (s.startsWith("<!--"))     { checkComment(s); }
                 else if (s.startsWith("<?"))       { checkPI(s); }
-                else if (s.startsWith("<[CDATA[")) { checkCDSect(s); }
+                else if (s.startsWith(cdata)) { checkCDSect(s); }
                 else if (s.startsWith("</"))       { break; }
                 else if (s.startsWith("<"))        { checkElement(s); }
                 else                               { checkCharData(s); }
@@ -2466,7 +2490,7 @@ private
     {
         // Deliberately no mixin Check here.
 
-        int n = s.find(end);
+        int n = s.indexOf(end);
         if (n == -1) throw new Err(s,"Unable to find terminating \""~end~"\"");
         s = s[n..$];
         checkLiteral(end,s);
@@ -2587,7 +2611,7 @@ unittest
     }
     catch(CheckException e)
     {
-        int n = e.toString().find("end tag name \"genres\" differs"
+        int n = e.toString().indexOf("end tag name \"genres\" differs"
             " from start tag name \"genre\"");
         assert(n != -1);
     }
@@ -2657,7 +2681,7 @@ class CheckException : XMLException
     private void complete(string entire)
     {
         string head = entire[0..$-tail.length];
-        int n = head.rfind('\n') + 1;
+        int n = head.lastIndexOf('\n') + 1;
         line = head.count("\n") + 1;
         dstring t;
         transcode(head[n..$],t);

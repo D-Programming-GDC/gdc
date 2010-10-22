@@ -56,7 +56,7 @@ int isspace(dchar c)  { return (c <= 0x7F) ? _ctype[c] & (_SPC)      : 0; }
 /**
  * Returns !=0 if c is an upper case ascii character.
  */
-int isupper(dchar c)  { return (c <= 0x7F) ? _ctype[c] & (_UC)       : 0; }
+pure int isupper(dchar c)  { return (c <= 0x7F) ? _ctype[c] & (_UC)       : 0; }
 
 /**
  * Returns !=0 if c is a hex digit (0..9, a..f, A..F).
@@ -83,7 +83,7 @@ int isascii(dchar c)  { return c <= 0x7F; }
  * If c is an upper case ascii character,
  * return the lower case equivalent, otherwise return c.
  */
-dchar tolower(dchar c)
+pure dchar tolower(dchar c)
     out (result)
     {
 	assert(!isupper(result));
@@ -123,7 +123,7 @@ enum
     _ALP =	_UC|_LC,
 }
 
-ubyte _ctype[128] =
+immutable ubyte _ctype[128] =
 [
 	_CTL,_CTL,_CTL,_CTL,_CTL,_CTL,_CTL,_CTL,
 	_CTL,_CTL|_SPC,_CTL|_SPC,_CTL|_SPC,_CTL|_SPC,_CTL|_SPC,_CTL,_CTL,

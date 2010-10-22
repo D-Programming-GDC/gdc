@@ -17,11 +17,6 @@
  *
  * ////////////////////////////////////////////////////////////////////////// */
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, May 2008
-*/
 
 /** 
  * Platform-independent performance measurement and timing classes.
@@ -784,7 +779,20 @@ version(Windows)
 }
 else version(Posix)
 {
-    private import std.c.unix.unix; // for timeval, timezone, and gettimeofday
+    extern (C)
+    {
+	private struct timeval
+	{
+	    int tv_sec;	   // The number of seconds, since Jan. 1, 1970, in the time value.
+	    int tv_usec;   // The number of microseconds in the time value.
+	};
+	private struct timezone
+	{
+	    int tz_minuteswest; // minutes west of Greenwich.
+	    int tz_dsttime;	// type of dst corrections to apply.
+	};
+	private void gettimeofday(timeval *tv, timezone *tz);
+    }
 
     /* ////////////////////////////////////////////////////////////////////////// */
 

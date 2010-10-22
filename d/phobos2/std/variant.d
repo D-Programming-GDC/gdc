@@ -83,7 +83,7 @@
 
 module std.variant;
 
-import std.traits, std.conv, std.c.string, std.typetuple;
+import std.traits, std.c.string, std.typetuple, std.conv;
 import std.stdio; // for testing only
 import std.contracts; // for testing only
 
@@ -91,13 +91,52 @@ private template maxSize(T...)
 {
     static if (T.length == 1)
     {
-        static const size_t maxSize = T[0].sizeof;
+        enum size_t maxSize = T[0].sizeof;
     }
     else
     {
-        static const size_t maxSize = T[0].sizeof >= maxSize!(T[1 .. $])
+        enum size_t maxSize = T[0].sizeof >= maxSize!(T[1 .. $])
             ? T[0].sizeof : maxSize!(T[1 .. $]);
     }
+}
+
+struct This;
+
+template AssociativeArray(T)
+{
+    enum bool valid = false;
+    alias void Key;
+    alias void Value;
+}
+
+template AssociativeArray(T : V[K], K, V)
+{
+    enum bool valid = true;
+    alias K Key;
+    alias V Value;
+}
+
+template This2Variant(V, T...)
+{
+    static if (T.length == 0) alias TypeTuple!() This2Variant;
+    else static if (is(AssociativeArray!(T[0]).Key == This))
+    {
+        static if (is(AssociativeArray!(T[0]).Value == This))
+            alias TypeTuple!(V[V],
+                    This2Variant!(V, T[1 .. $])) This2Variant;
+        else
+            alias TypeTuple!(AssociativeArray!(T[0]).Value[V],
+                    This2Variant!(V, T[1 .. $])) This2Variant;
+    }
+    else static if (is(AssociativeArray!(T[0]).Value == This))
+        alias TypeTuple!(V[AssociativeArray!(T[0]).Key],
+                This2Variant!(V, T[1 .. $])) This2Variant;
+    else static if (is(T[0] == This[]))
+        alias TypeTuple!(V[], This2Variant!(V, T[1 .. $])) This2Variant;
+    else static if (is(T[0] == This*))
+        alias TypeTuple!(V*, This2Variant!(V, T[1 .. $])) This2Variant;
+    else
+       alias TypeTuple!(T[0], This2Variant!(V, T[1 .. $])) This2Variant;
 }
 
 /**
@@ -126,16 +165,19 @@ private template maxSize(T...)
  *
  */
 
-struct VariantN(size_t maxDataSize, AllowedTypes...)
+struct VariantN(size_t maxDataSize, AllowedTypesX...)
 {
 private:
+    alias This2Variant!(VariantN, AllowedTypesX) AllowedTypes;
+    
     // Compute the largest practical size from maxDataSize
     struct SizeChecker
     {
         int function() fptr;
         ubyte[maxDataSize] data;
     }
-    const size_t size = SizeChecker.sizeof - (int function()).sizeof;
+    enum size = SizeChecker.sizeof - (int function()).sizeof;
+    static assert(size >= (void*).sizeof);
 
     /** Tells whether a type $(D_PARAM T) is statically allowed for
      * storage inside a $(D_PARAM VariantN) object by looking
@@ -145,15 +187,18 @@ private:
      */
     public template allowed(T)
     {
-        static const bool allowed =
-            (T.sizeof <= size || is(T == VariantN))
-            && (!AllowedTypes.length || indexOf!(T, AllowedTypes) >= 0);
+        enum bool allowed
+            = is(T == VariantN)
+            ||
+            //T.sizeof <= size &&
+            (AllowedTypes.length == 0 || staticIndexOf!(T, AllowedTypes) >= 0);
     }
 
     // Each internal operation is encoded with an identifier. See
     // the "handler" function below.
     enum OpID { getTypeInfo, get, compare, testConversion, toString,
-                index, indexAssign, catAssign, copyOut, length }
+            index, indexAssign, catAssign, copyOut, length,
+            apply }
 
     // state
     int function(OpID selector, ubyte[size]* store, void* data) fptr
@@ -167,7 +212,7 @@ private:
     }
 
     // internals
-    // Handler for an initialized value
+    // Handler for an uninitialized value
     static int handler(A : void)(OpID selector, ubyte[size]*, void* parm)
     {
         switch (selector)
@@ -197,7 +242,7 @@ private:
         case OpID.length:
             throw new VariantException(
                 "Attempt to use an uninitialized VariantN");
-        default: assert(false);
+        default: assert(false, "Invalid OpID");
         }
         return 0;
     }
@@ -205,25 +250,42 @@ private:
     // Handler for all of a type's operations
     static int handler(A)(OpID selector, ubyte[size]* pStore, void* parm)
     {
+        static A* getPtr(void* untyped)
+        {
+            static if (A.sizeof <= size)
+            {
+                return cast(A*) untyped;
+            }
+            else
+            {
+                return *cast(A**) untyped;
+            }
+        }
+        auto zis = getPtr(pStore);
         // Input: TypeInfo object
         // Output: target points to a copy of *me, if me was not null
         // Returns: true iff the A can be converted to the type represented
         // by the incoming TypeInfo 
-        static bool tryPutting(A* me, TypeInfo targetType, void* target)
+        static bool tryPutting(A* src, TypeInfo targetType, void* target)
         {
             alias TypeTuple!(A, ImplicitConversionTargets!(A)) AllTypes;
             foreach (T ; AllTypes)
             {
                 if (targetType != typeid(T)) continue;
                 // found!!!
-                static if (is(typeof(*cast(T*) target = *me)))
+                static if (is(typeof(*cast(T*) target = *src)))
                 {
-                    if (me) *cast(T*) target = *me;
+                    auto zat = cast(T*) target;
+                    if (src)
+                    {
+                        assert(target, "target must be non-null");
+                        *zat = *src;
+                    }
                 }
                 else
                 {
                     // type is not assignable
-                    if (me) assert(false, A.stringof);
+                    if (src) assert(false, A.stringof);
                 }
                 return true;
             }
@@ -237,29 +299,30 @@ private:
             break;
         case OpID.copyOut:
             auto target = cast(VariantN *) parm;
-            memcpy(&target.store, pStore, A.sizeof);
+            assert(target);
+            tryPutting(zis, typeid(A), cast(void*) getPtr(&target.store))
+                || assert(false);
             target.fptr = &handler!(A);
             break;
         case OpID.get:
-            return !tryPutting(cast(A*) pStore, *cast(TypeInfo*) parm, parm);
+            return !tryPutting(zis, *cast(TypeInfo*) parm, parm);
         case OpID.testConversion:
             return !tryPutting(null, *cast(TypeInfo*) parm, null);
         case OpID.compare:
-            auto me = cast(A*) pStore;
             auto rhsP = cast(VariantN *) parm;
             auto rhsType = rhsP.type;
             // Are we the same?
             if (rhsType == typeid(A))
             {
                 // cool! Same type!
-                auto rhsPA = cast(A*) &rhsP.store;
-                if (*rhsPA == *me)
+                auto rhsPA = getPtr(&rhsP.store);
+                if (*rhsPA == *zis)
                 {
                     return 0;
                 }
                 static if (is(typeof(A.init < A.init)))
                 {
-                    return *me < *rhsPA ? -1 : 1;
+                    return *zis < *rhsPA ? -1 : 1;
                 }
                 else
                 {
@@ -269,7 +332,7 @@ private:
             }
             VariantN temp;
             // Do I convert to rhs?
-            if (tryPutting(me, rhsType, &temp.store))
+            if (tryPutting(zis, rhsType, &temp.store))
             {
                 // cool, I do; temp's store contains my data in rhs's type!
                 // also fix up its fptr
@@ -277,19 +340,19 @@ private:
                 // now lhsWithRhsType is a full-blown VariantN of rhs's type
                 return temp.opCmp(*rhsP);
             }
-            // Does rhs convert to me?
+            // Does rhs convert to zis?
             *cast(TypeInfo*) &temp.store = typeid(A);
             if (rhsP.fptr(OpID.get, &rhsP.store, &temp.store) == 0)
             {
                 // cool! Now temp has rhs in my type!
-                auto rhsPA = cast(A*) temp.store;
-                if (*rhsPA == *me)
+                auto rhsPA = getPtr(&temp.store);
+                if (*rhsPA == *zis)
                 {
                     return 0;
                 }
                 static if (is(typeof(A.init < A.init)))
                 {
-                    return *me < *rhsPA ? -1 : 1;
+                    return *zis < *rhsPA ? -1 : 1;
                 }
                 else
                 {
@@ -300,10 +363,14 @@ private:
             return int.min; // dunno
         case OpID.toString:
             auto target = cast(string*) parm;
-            auto me = cast(A*) pStore;
-            static if (is(typeof(to!(string)(*me))))
+            static if (is(typeof(to!(string)(*zis))))
             {
-                *target = to!(string)(*me);
+                *target = to!(string)(*zis);
+                break;
+            }
+            else static if (is(typeof((*zis).toString)))
+            {
+                *target = (*zis).toString;
                 break;
             }
             else
@@ -312,21 +379,23 @@ private:
             }
 
         case OpID.index:
-            auto me = cast(A*) pStore;
-            static if (isArray!(A))
+            // Added allowed!(...) prompted by a bug report by Chris
+            // Nicholson-Sauls.
+            static if (isArray!(A) && allowed!(typeof(A.init[0])))
             {
                 // array type; input and output are the same VariantN 
                 auto result = cast(VariantN*) parm;
                 size_t index = result.convertsTo!(int)
                     ? result.get!(int) : result.get!(size_t);
-                *result = (*me)[index];
-		break;
+                *result = (*zis)[index];
+                break;
             }
-            else static if (isAssociativeArray!(A))
+            else static if (isAssociativeArray!(A)
+                    && allowed!(typeof(A.init.values[0])))
             {
                 auto result = cast(VariantN*) parm;
-                *result = (*me)[result.get!(typeof(A.keys[0]))];
-		break;
+                *result = (*zis)[result.get!(typeof(A.keys[0]))];
+                break;
             }
             else
             {
@@ -334,22 +403,21 @@ private:
             }
 
         case OpID.indexAssign:
-            auto me = cast(A*) pStore;
-            static if (isArray!(A) && is(typeof((*me)[0] = (*me)[0])))
+            static if (isArray!(A) && is(typeof((*zis)[0] = (*zis)[0])))
             {
                 // array type; result comes first, index comes second
                 auto args = cast(VariantN*) parm;
                 size_t index = args[1].convertsTo!(int)
                     ? args[1].get!(int) : args[1].get!(size_t);
-                (*me)[index] = args[0].get!(typeof((*me)[0]));
-		break;
+                (*zis)[index] = args[0].get!(typeof((*zis)[0]));
+                break;
             }
             else static if (isAssociativeArray!(A))
             {
                 auto args = cast(VariantN*) parm;
-                (*me)[args[1].get!(typeof(A.keys[0]))]
+                (*zis)[args[1].get!(typeof(A.keys[0]))]
                     = args[0].get!(typeof(A.values[0]));
-		break;
+                break;
             }
             else
             {
@@ -357,21 +425,20 @@ private:
             }
 
         case OpID.catAssign:
-            auto me = cast(A*) pStore;
-            static if (is(typeof((*me)[0])) && !is(typeof(me.keys)))
+            static if (is(typeof((*zis)[0])) && is(typeof((*zis) ~= *zis)))
             {
                 // array type; parm is the element to append
                 auto arg = cast(VariantN*) parm;
-                alias typeof((*me)[0]) E;
+                alias typeof((*zis)[0]) E;
                 if (arg[0].convertsTo!(E))
                 {
                     // append one element to the array
-                    (*me) ~= [ arg[0].get!(E) ];
+                    (*zis) ~= [ arg[0].get!(E) ];
                 }
                 else
                 {
                     // append a whole array to the array
-                    (*me) ~= arg[0].get!(A);
+                    (*zis) ~= arg[0].get!(A);
                 }
 		break;
             }
@@ -381,15 +448,17 @@ private:
             }
 
         case OpID.length:
-            auto me = cast(A*) pStore;
-            static if (is(typeof(me.length)))
+            static if (is(typeof(zis.length)))
             {
-                return me.length;
+                return zis.length;
             }
             else
             {
                 throw new VariantException(typeid(A), typeid(void[]));
             }
+
+        case OpID.apply:
+            assert(0);
 
         default: assert(false);
         }
@@ -405,7 +474,7 @@ public:
     {
         static assert(allowed!(T), "Cannot store a " ~ T.stringof
             ~ " in a " ~ VariantN.stringof);
-        VariantN result = void;
+        VariantN result;
         result.opAssign(value);
         return result;
     }
@@ -415,8 +484,10 @@ public:
 
     VariantN opAssign(T)(T rhs)
     {
+        assert(&this !is null); // weird bug in hashtables
         static assert(allowed!(T), "Cannot store a " ~ T.stringof
-            ~ " in a " ~ VariantN.stringof);
+            ~ " in a " ~ VariantN.stringof ~ ". Valid types are "
+                ~ AllowedTypes.stringof);
         static if (isStaticArray!(T))
         {
             // Fix for Brad's bug
@@ -425,18 +496,28 @@ public:
         }
         else
         {
-            static if (is(T : const(VariantN)))
+            static if (is(T : VariantN))
             {
                 rhs.fptr(OpID.copyOut, &rhs.store, &this);
             }
+            else static if (is(T : const(VariantN)))
+            {
+                static assert(false,
+                        "Assigning Variant objects from const Variant"
+                        " objects is currently not supported.");
+            }
             else
             {
-                static assert(T.sizeof <= size, "Cannot store type "
-                    ~ T.stringof ~ " in a " ~ VariantN.stringof
-                    ~ "; it's too large. Try storing a pointer, or using"
-                    " VariantN with a larger size.");
-                //*cast(U*) &store = rhs;
-                memcpy(&store, &rhs, rhs.sizeof);
+                static if (T.sizeof <= size)
+                {
+                    memcpy(&store, &rhs, rhs.sizeof);
+                }
+                else
+                {
+                    auto p = new T;
+                    *p = rhs;
+                    memcpy(&store, &p, p.sizeof);
+                }
                 fptr = &handler!(T);
             }
             return this;
@@ -458,9 +539,10 @@ public:
      * ----
      */
     
-    bool hasValue()
+    bool hasValue() const
     {
-        return fptr != &handler!(void);
+        // @@@BUG@@@ in compiler, the cast shouldn't be needed
+        return cast(typeof(&handler!(void))) fptr != &handler!(void);
     }
 
     /**
@@ -481,8 +563,9 @@ public:
      */
     T * peek(T)()
     {
-        static assert(allowed!(T), "Cannot store a " ~ T.stringof
-            ~ " in a " ~ VariantN.stringof);
+        static if (!is(T == void))
+            static assert(allowed!(T), "Cannot store a " ~ T.stringof
+                    ~ " in a " ~ VariantN.stringof);
         return type == typeid(T) ? cast(T*) &store : null;
     }
 
@@ -490,7 +573,7 @@ public:
      * Returns the $(D_PARAM typeid) of the currently held value.
      */
     
-    TypeInfo type()
+    TypeInfo type() const
     {
         TypeInfo result;
         fptr(OpID.getTypeInfo, null, &result);
@@ -544,15 +627,32 @@ public:
      * VariantException).
      */
     
-    DecayStaticToDynamicArray!(T) get(T)()
+    DecayStaticToDynamicArray!(T) get(T)() if (!is(T == const))
     {
         union Buf
         {
             TypeInfo info;
             DecayStaticToDynamicArray!(T) result;
         };
+        auto p = *cast(T**) &store;
         Buf buf = { typeid(DecayStaticToDynamicArray!(T)) };
         if (fptr(OpID.get, &store, &buf))
+        {
+            throw new VariantException(type, typeid(T));
+        }
+        return buf.result;
+    }
+
+    DecayStaticToDynamicArray!(T) get(T)() const if (is(T == const))
+    {
+        union Buf
+        {
+            TypeInfo info;
+            DecayStaticToDynamicArray!(Unqual!T) result;
+        };
+        auto p = *cast(T**) &store;
+        Buf buf = { typeid(DecayStaticToDynamicArray!(T)) };
+        if (fptr(OpID.get, cast(Unqual!(typeof(&store))) &store, &buf))
         {
             throw new VariantException(type, typeid(T));
         }
@@ -867,7 +967,7 @@ public:
     /// ditto
     VariantN opIndexAssign(T, N)(T value, N i)
     {
-        VariantN args[2] = [ VariantN(value), VariantN(i) ];
+        VariantN[2] args = [ VariantN(value), VariantN(i) ];
         fptr(OpID.indexAssign, &store, &args) == 0 || assert(false);
         return args[0];
     }
@@ -879,6 +979,22 @@ public:
     size_t length()
     {
         return cast(size_t) fptr(OpID.length, &store, null);
+    }
+
+    /**
+       If the $(D VariantN) contains an array, applies $(D dg) to each
+       element of the array in turn. Otherwise, throws an exception.
+     */
+    int opApply(Delegate)(Delegate dg)
+    {
+        // @@@TODO@@@ make this much more general.
+        alias ParameterTypeTuple!(Delegate)[0] A;
+        auto arr = get!(A[]);
+        foreach (ref e; arr)
+        {
+            if (dg(e)) return 1;
+        }
+        return 0;
     }
 }
 
@@ -917,13 +1033,13 @@ template Algebraic(T...)
 }
 
 /**
- * $(D_PARAM Variant) is an alias for $(D_PARAM VariantN) instantiated
- * with the largest of $(D_PARAM creal), $(D_PARAM char[]), and
- * $(D_PARAM void delegate()). This ensures that $(D_PARAM Variant) is
- * large enough to hold all of D's predefined types, including all
- * numeric types, pointers, delegates, and class references.  You may
- * want to use $(D_PARAM VariantN) directly with a different maximum
- * size either for storing larger types, or for saving memory.
+$(D_PARAM Variant) is an alias for $(D_PARAM VariantN) instantiated
+with the largest of $(D_PARAM creal), $(D_PARAM char[]), and $(D_PARAM
+void delegate()). This ensures that $(D_PARAM Variant) is large enough
+to hold all of D's predefined types, including all numeric types,
+pointers, delegates, and class references.  You may want to use
+$(D_PARAM VariantN) directly with a different maximum size either for
+storing larger types, or for saving memory.
  */
 
 alias VariantN!(maxSize!(creal, char[], void delegate())) Variant;
@@ -1004,6 +1120,31 @@ static class VariantException : Exception
 }
 
 unittest
+{
+    // alias This2Variant!(char, int, This[int]) W1;
+    // alias TypeTuple!(int, char[int]) W2;
+    // static assert(is(W1 == W2));
+
+    // alias Algebraic!(void, string) var_t;
+    // var_t foo = "quux";
+}
+
+unittest
+{
+    // alias Algebraic!(real, This[], This[int], This[This]) A;
+    // A v1, v2, v3;
+    // v2 = 5.0L;
+    // v3 = 42.0L;
+    // //v1 = [ v2 ][];
+    //  auto v = v1.peek!(A[]);
+    //writeln(v[0]);
+    //v1 = [ 9 : v3 ];
+    // //writeln(v1);
+    // v1 = [ v3 : v3 ];
+    //writeln(v1);
+}
+
+version(none) unittest
 {
     // try it with an oddly small size
     VariantN!(1) test;
@@ -1090,7 +1231,7 @@ unittest
     assert( v.get!(int) == 42 );
     assert( v.get!(long) == 42L );
     assert( v.get!(ulong) == 42uL );
- 	
+
     // should be string... @@@BUG IN COMPILER
     v = "Hello, World!"c;
     assert( v.peek!(string) );
@@ -1103,14 +1244,14 @@ unittest
     v = [1,2,3,4,5];
     assert( v.peek!(int[]) );
     assert( v.get!(int[]) == [1,2,3,4,5] );
- 	
+
     v = 3.1413;
     assert( v.peek!(double) );
     assert( v.convertsTo!(real) );
     //@@@ BUG IN COMPILER: DOUBLE SHOULD NOT IMPLICITLY CONVERT TO FLOAT
     assert( !v.convertsTo!(float) );
     assert( *v.peek!(double) == 3.1413 );
-
+    
     auto u = Variant(v);
     assert( u.peek!(double) );
     assert( *u.peek!(double) == 3.1413 ); 	
@@ -1219,3 +1360,32 @@ unittest
 }
 
 
+unittest
+{
+    struct Huge {
+        real a, b, c, d, e, f, g;
+    }
+    
+    Huge huge;
+    huge.e = 42;
+    Variant v;
+    v = huge;  // Compile time error.
+    assert(v.get!(Huge).e == 42);
+}
+
+unittest
+{
+    const x = Variant(42);
+    auto y = x.get!(const int)();
+}
+
+// test iteration
+unittest
+{
+    auto v = Variant([ 1, 2, 3, 4 ][]);
+    auto j = 0;
+    foreach (int i; v)
+    {
+        assert(i == ++j);
+    }
+}

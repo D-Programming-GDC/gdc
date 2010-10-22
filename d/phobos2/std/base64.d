@@ -61,14 +61,14 @@ class Base64CharException: Base64Exception
 }
 
 
-auto array = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+immutable array = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 
 /**
  * Returns the number of bytes needed to encode a string of length slen.
  */
 
-size_t encodeLength(size_t slen)
+uint encodeLength(uint slen)
 {
 	uint result;
 	result = slen / 3;
@@ -96,9 +96,9 @@ body
 	if(!str.length)
 		return buf[0 .. 0];
 	
-	size_t stri;
-	size_t strmax = str.length / 3;
-	size_t strleft = str.length % 3;
+	uint stri;
+	uint strmax = str.length / 3;
+	uint strleft = str.length % 3;
 	uint x;
 	const(char)* sp;
 	char* bp;
@@ -168,7 +168,7 @@ unittest
  * Returns the number of bytes needed to decode an encoded string of this
  * length.
  */
-size_t decodeLength(size_t elen)
+uint decodeLength(uint elen)
 {
 	return elen / 4 * 3;
 }
@@ -228,8 +228,8 @@ body
 	if(estr.length % 4)
 		throw new Base64Exception("Invalid encoded base64 string");
 	
-	size_t estri;
-	size_t estrmax = estr.length / 4;
+	uint estri;
+	uint estrmax = estr.length / 4;
 	uint x;
 	const(char)* sp;
 	char* bp;

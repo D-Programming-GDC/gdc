@@ -82,12 +82,6 @@ These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, September 2004
-*/
-
 module std.md5;
 
 //debug=md5;		// uncomment to turn on debugging printf's
@@ -95,10 +89,6 @@ module std.md5;
 import std.string;
 import std.contracts;
 import std.c.stdio : printf;
-
-version(D_InlineAsm)
-    version(X86)
-	version = Asm86;
 
 /***************************************
  * Computes MD5 digest of several arrays of data.
@@ -115,14 +105,14 @@ void sum(ubyte[16] digest, in void[][] data...)
     context.finish(digest);
 }
 
-/******************
- * Prints a message digest in hexadecimal to stdout.
- */
-void printDigest(const ubyte digest[16])
-{
-    foreach (ubyte u; digest)
-	printf("%02x", u);
-}
+// /******************
+//  * Prints a message digest in hexadecimal to stdout.
+//  */
+// void printDigest(const ubyte digest[16])
+// {
+//     foreach (ubyte u; digest)
+//         printf("%02x", u);
+// }
 
 /****************************************
  * Converts MD5 digest to a string.
@@ -130,14 +120,14 @@ void printDigest(const ubyte digest[16])
 
 string digestToString(const ubyte[16] digest)
 {
-    char[] result = new char[32];
+    auto result = new char[32];
     int i;
-
+    
     foreach (ubyte u; digest)
     {
-	result[i] = std.string.hexdigits[u >> 4];
-	result[i + 1] = std.string.hexdigits[u & 15];
-	i += 2;
+        result[i] = std.string.hexdigits[u >> 4];
+        result[i + 1] = std.string.hexdigits[u & 15];
+        i += 2;
     }
     return assumeUnique(result);
 }
@@ -209,28 +199,14 @@ struct MD5_CTX
      */
     static uint ROTATE_LEFT(uint x, uint n)
     {
-	version (Asm86)
+	version (X86)
 	{
-	    version (GNU)
-	    {
-		asm
-		{
-		    naked ;
-		    mov ECX, n ;
-		    mov EAX, x ;
-		    rol EAX, CL ;
-		    ret ;
-		}
-	    }
-	    else
-	    {
-		asm
-		{   naked			;
-		    mov	ECX,EAX		;
-		    mov	EAX,4[ESP]	;
-		    rol	EAX,CL		;
-		    ret	4		;
-		}
+	    asm
+	    {   naked			;
+		mov	ECX,EAX		;
+		mov	EAX,4[ESP]	;
+		rol	EAX,CL		;
+		ret	4		;
 	    }
 	}
 	else
@@ -284,9 +260,8 @@ struct MD5_CTX
      */
     void update(const void[] input)
     {
-      uint index, partLen;
-      size_t i;
-      size_t inputLen = input.length;
+      uint i, index, partLen;
+      uint inputLen = input.length;
 
       /* Compute number of bytes mod 64 */
       index = (cast(uint)count >> 3) & (64 - 1);
