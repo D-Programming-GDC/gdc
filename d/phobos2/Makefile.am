@@ -58,8 +58,8 @@ config_fpcls_d_src    =$(host_alias)/gcc/config/fpcls.d
 config_mathfuncs_d_src=$(host_alias)/gcc/config/mathfuncs.d
 config_unix_d_src     =$(host_alias)/gcc/config/unix.d
 
-X3=CC_FOR_BUILD="$(CC_FOR_BUILD) $(MULTIFLAGS) -I $(srcdir)/config" BUILD_LIBIBERTY=$(BUILD_LIBIBERTY) $(srcdir)/config/x3
-X3_GCC_COMMAND=$(CC) $(OUR_CFLAGS)
+X3=CC_FOR_BUILD="$(CC_FOR_BUILD) -I $(srcdir)/config" BUILD_LIBIBERTY=$(BUILD_LIBIBERTY) $(srcdir)/config/x3
+X3_GCC_COMMAND=$(CC) $(OUR_CFLAGS) $(MULTIFLAGS)
 X3_DEPS=config/x3.o config/x3main.o
 
 config/x3.o: config/x3.c config/x3.h
