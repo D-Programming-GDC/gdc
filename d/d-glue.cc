@@ -4659,7 +4659,7 @@ gcc_d_backend_init()
 	abort();
     }
 #if V2
-    CLASSINFO_SIZE = (19 * PTRSIZE) + PTRSIZE;
+    CLASSINFO_SIZE = 20 * PTRSIZE;
 #else
     CLASSINFO_SIZE = 19 * PTRSIZE;
 #endif
