@@ -38,11 +38,13 @@ version(X86_64)
 {
     alias ulong size_t;
     alias long  ptrdiff_t;
+    alias long  sizediff_t;
 }
 else
 {
     alias uint  size_t;
     alias int   ptrdiff_t;
+    alias int   sizediff_t;
 }
 
 alias size_t hash_t;

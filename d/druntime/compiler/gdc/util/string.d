@@ -15,7 +15,7 @@ module rt.util.string;
 
 private import core.stdc.string;
 
-char[] intToString( char[] buf, uint val )
+char[] intToString( char[] buf, size_t val )
 {
     assert( buf.length > 9 );
     auto p = buf.ptr + buf.length;

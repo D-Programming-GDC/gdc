@@ -74,6 +74,7 @@ version (NO_SIZE_OF_ENCODED_VALUE) {
 	  return 8;
 	}
       abort ();
+      return -1;
     }
 }
 
@@ -105,6 +106,7 @@ version (NO_BASE_OF_ENCODED_VALUE) {
 	  return _Unwind_GetRegionStart (context);
 	}
       abort ();
+      return cast(_Unwind_Ptr)-1;
     }
 }
 

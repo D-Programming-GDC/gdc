@@ -56,8 +56,8 @@ extern (C) Array _adSort(Array a, TypeInfo ti)
   byte*[40] stack;              // stack
   byte** sp;                    // stack pointer
   byte* i, j, limit;            // scan and limit pointers
-  uint thresh;                  // size of _maxspan elements in bytes
-  uint width = ti.tsize();
+  size_t thresh;                // size of _maxspan elements in bytes
+  size_t width = ti.tsize();
 
   base = cast(byte *)a.ptr;
   thresh = _maxspan * width;             // init threshold

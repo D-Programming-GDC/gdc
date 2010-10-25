@@ -71,7 +71,7 @@ extern (C) int _d_run_main(int argc, char **argv, main_type main_func)
 
         for (i = 0; i < argc; i++)
         {
-            int len = strlen(argv[i]);
+            auto len = strlen(argv[i]);
             am[i] = argv[i][0 .. len];
         }
 

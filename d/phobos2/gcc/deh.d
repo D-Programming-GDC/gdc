@@ -38,7 +38,7 @@ else
 
 struct Phase1Info
 {
-    int handlerSwitchValue;
+    _Unwind_Word handlerSwitchValue;
     ubyte *languageSpecificData;
     _Unwind_Ptr landingPad;
 }

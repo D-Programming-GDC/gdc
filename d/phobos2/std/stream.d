@@ -1472,10 +1472,10 @@ class FilterStream : Stream {
  */
 class BufferedStream : FilterStream {
   ubyte[] buffer;       // buffer, if any
-  uint bufferCurPos;    // current position in buffer
-  uint bufferLen;       // amount of data in buffer
+  size_t bufferCurPos;    // current position in buffer
+  size_t bufferLen;       // amount of data in buffer
   bool bufferDirty = false;
-  uint bufferSourcePos; // position in buffer of source stream position
+  size_t bufferSourcePos; // position in buffer of source stream position
   ulong streamPos;      // absolute position in source stream
 
   /* Example of relationship between fields:
@@ -1647,7 +1647,7 @@ class BufferedStream : FilterStream {
 
         L0:
           for(;;) {
-              uint start = bufferCurPos;
+              size_t start = bufferCurPos;
             L1:
               foreach(ubyte b; buffer[start .. bufferLen]) {
                   bufferCurPos++;
@@ -2263,7 +2263,7 @@ class EndianStream : FilterStream {
       if (j == bom.length) // found a match
 	result = i;
     }
-    int m = 0;
+    sizediff_t m = 0;
     if (result != -1) {
       endian = BOMEndian[result]; // set stream endianness
       m = ByteOrderMarks[result].length;
@@ -2288,7 +2288,7 @@ class EndianStream : FilterStream {
    * Correct the byte order of buffer to match native endianness.
    * size must be even.
    */
-  final void fixBO(const(void)* buffer, uint size) {
+  final void fixBO(const(void)* buffer, size_t size) {
     if (endian != std.system.endian) {
       ubyte* startb = cast(ubyte*)buffer;
       uint* start = cast(uint*)buffer;
@@ -2315,7 +2315,7 @@ class EndianStream : FilterStream {
 	}
 	startb = cast(ubyte*)start;
 	ubyte* endb = cast(ubyte*)end;
-	int len = uint.sizeof - (startb - endb);
+	auto len = uint.sizeof - (startb - endb);
 	if (len > 0)
 	  fixBO(startb,len);
       }

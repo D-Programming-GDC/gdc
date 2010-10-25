@@ -231,6 +231,7 @@ extern (C) Array _d_newarrayT(TypeInfo ti, size_t length)
 
 Loverflow:
     onOutOfMemoryError();
+    assert(0);
 }
 
 /**
@@ -298,6 +299,7 @@ extern (C) Array _d_newarrayiT(TypeInfo ti, size_t length)
 
 Loverflow:
     onOutOfMemoryError();
+    assert(0);
 }
 
 /**
@@ -644,6 +646,7 @@ body
 
 Loverflow:
     onOutOfMemoryError();
+    assert(0);
 }
 
 
@@ -769,6 +772,7 @@ body
 
 Loverflow:
     onOutOfMemoryError();
+    assert(0);
 }
 
 
@@ -1008,10 +1012,7 @@ extern (C) byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
         }
     }
 
-    byte[] result;
-    *cast(int *)&result = length;       // jam length
-    (cast(void **)&result)[1] = a;      // jam ptr
-    return result;
+    return (cast(byte*)a)[0..length];
 }
 
 

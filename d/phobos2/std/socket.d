@@ -36,7 +36,8 @@
 
 module std.socket;
 
-import core.stdc.stdint, std.string, std.c.string, std.c.stdlib, std.conv;
+import core.stdc.stdint, std.string, std.c.string, std.c.stdlib, std.conv,
+    std.traits;
 
 version(unittest)
 {
@@ -901,14 +902,14 @@ class SocketSet
 		remove(s.sock);
 	}
 
-	int isSet(socket_t s)
+	sizediff_t isSet(socket_t s)
 	{
 		return FD_ISSET(s, &set);
 	}
 
 
 	/// Returns nonzero if this Socket is in the collection.
-	int isSet(Socket s)
+	sizediff_t isSet(Socket s)
 	{
 		return isSet(s.sock);
 	}
@@ -1322,15 +1323,15 @@ class Socket
 	 * buffer space left, send waits.
 	 */
 	//returns number of bytes actually sent, or -1 on error
-	int send(const(void)[] buf, SocketFlags flags)
+	sizediff_t send(const(void)[] buf, SocketFlags flags)
 	{
                 flags |= SocketFlags.NOSIGNAL;
-		int sent = .send(sock, buf.ptr, buf.length, cast(int)flags);
+		auto sent = .send(sock, buf.ptr, buf.length, cast(int)flags);
 		return sent;
 	}
 
 	/// ditto
-	int send(const(void)[] buf)
+	sizediff_t send(const(void)[] buf)
 	{
 		return send(buf, SocketFlags.NOSIGNAL);
 	}
@@ -1338,15 +1339,15 @@ class Socket
 	/**
 	 * Send data to a specific destination Address. If the destination address is not specified, a connection must have been made and that address is used. If the socket is blocking and there is no buffer space left, sendTo waits.
 	 */
-	int sendTo(const(void)[] buf, SocketFlags flags, Address to)
+	sizediff_t sendTo(const(void)[] buf, SocketFlags flags, Address to)
 	{
                 flags |= SocketFlags.NOSIGNAL;
-		int sent = .sendto(sock, buf.ptr, buf.length, cast(int)flags, to.name(), to.nameLen());
+		auto sent = .sendto(sock, buf.ptr, buf.length, cast(int)flags, to.name(), to.nameLen());
 		return sent;
 	}
 
 	/// ditto
-	int sendTo(const(void)[] buf, Address to)
+	sizediff_t sendTo(const(void)[] buf, Address to)
 	{
 		return sendTo(buf, SocketFlags.NONE, to);
 	}
@@ -1354,17 +1355,17 @@ class Socket
 
 	//assumes you connect()ed
 	/// ditto
-	int sendTo(const(void)[] buf, SocketFlags flags)
+	sizediff_t sendTo(const(void)[] buf, SocketFlags flags)
 	{
                 flags |= SocketFlags.NOSIGNAL;
-		int sent = .sendto(sock, buf.ptr, buf.length, cast(int)flags, null, 0);
+		auto sent = .sendto(sock, buf.ptr, buf.length, cast(int)flags, null, 0);
 		return sent;
 	}
 
 
 	//assumes you connect()ed
 	/// ditto
-	int sendTo(const(void)[] buf)
+	sizediff_t sendTo(const(void)[] buf)
 	{
 		return sendTo(buf, SocketFlags.NONE);
 	}
@@ -1377,17 +1378,15 @@ class Socket
 	 * to be received.
 	 */
 	//returns number of bytes actually received, 0 on connection closure, or -1 on error
-	int receive(void[] buf, SocketFlags flags)
+	ptrdiff_t receive(void[] buf, SocketFlags flags)
 	{
-		if(!buf.length) //return 0 and don't think the connection closed
-			return 0;
-		int read = .recv(sock, buf.ptr, buf.length, cast(int)flags);
-		// if(!read) //connection closed
-		return read;
+		return buf.length
+		    ? recv(sock, buf.ptr, buf.length, cast(int)flags)
+		    : 0;
 	}
 
 	/// ditto
-	int receive(void[] buf)
+	ptrdiff_t receive(void[] buf)
 	{
 		return receive(buf, SocketFlags.NONE);
 	}
@@ -1399,13 +1398,13 @@ class Socket
 	 * Returns: the number of bytes actually received,
 	 * 0 if the remote side has closed the connection, or ERROR on failure.
 	 */
-	int receiveFrom(void[] buf, SocketFlags flags, out Address from)
+	sizediff_t receiveFrom(void[] buf, SocketFlags flags, out Address from)
 	{
 		if(!buf.length) //return 0 and don't think the connection closed
 			return 0;
 		from = newFamilyObject();
 		socklen_t nameLen = cast(socklen_t) from.nameLen();
-		int read = .recvfrom(sock, buf.ptr, buf.length, cast(int)flags, from.name(), &nameLen);
+		auto read = .recvfrom(sock, buf.ptr, buf.length, cast(int)flags, from.name(), &nameLen);
 		assert(from.addressFamily() == _family);
 		// if(!read) //connection closed
 		return read;
@@ -1413,7 +1412,7 @@ class Socket
 
 
 	/// ditto
-	int receiveFrom(void[] buf, out Address from)
+	ptrdiff_t receiveFrom(void[] buf, out Address from)
 	{
 		return receiveFrom(buf, SocketFlags.NONE, from);
 	}
@@ -1421,11 +1420,11 @@ class Socket
 
 	//assumes you connect()ed
 	/// ditto
-	int receiveFrom(void[] buf, SocketFlags flags)
+	sizediff_t receiveFrom(void[] buf, SocketFlags flags)
 	{
 		if(!buf.length) //return 0 and don't think the connection closed
 			return 0;
-		int read = .recvfrom(sock, buf.ptr, buf.length, cast(int)flags, null, null);
+		auto read = .recvfrom(sock, buf.ptr, buf.length, cast(int)flags, null, null);
 		// if(!read) //connection closed
 		return read;
 	}
@@ -1433,7 +1432,7 @@ class Socket
 
 	//assumes you connect()ed
 	/// ditto
-	int receiveFrom(void[] buf)
+	ptrdiff_t receiveFrom(void[] buf)
 	{
 		return receiveFrom(buf, SocketFlags.NONE);
 	}
@@ -1467,7 +1466,8 @@ class Socket
 	// Set a socket option.
 	void setOption(SocketOptionLevel level, SocketOption option, void[] value)
 	{
-		if(_SOCKET_ERROR == .setsockopt(sock, cast(int)level, cast(int)option, value.ptr, value.length))
+		if(_SOCKET_ERROR == .setsockopt(sock, cast(int)level,
+			cast(int)option, value.ptr, cast(uint)value.length))
 			throw new SocketException("Unable to set socket option", _lasterr());
 	}
 

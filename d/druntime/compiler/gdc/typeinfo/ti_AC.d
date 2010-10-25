@@ -87,7 +87,7 @@ class TypeInfo_AC : TypeInfo
             c = -1;
         else if (c > 0)
             c = 1;
-        return c;
+        return cast(int)c;
     }
 
     override size_t tsize()

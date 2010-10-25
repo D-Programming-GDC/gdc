@@ -577,11 +577,10 @@ Unequal:
   }
   else
   {
-    int len;
     int c;
 
     debug(adi) printf("adCmpChar()\n");
-    len = a1.length;
+    size_t len = a1.length;
     if (a2.length < len)
         len = a2.length;
     c = memcmp(cast(char *)a1.ptr, cast(char *)a2.ptr, len);

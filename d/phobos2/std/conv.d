@@ -2353,7 +2353,7 @@ version (none)
  */
 private bool getComplexStrings(in string s, out string s1, out string s2)
 {
-    int len = s.length;
+    sizediff_t len = s.length;
 
     if (!len)
         goto Lerr;

@@ -472,9 +472,9 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 	void putstr(const char[] s)
 	{
 	    //printf("flags = x%x\n", flags);
-	    int prepad = 0;
-	    int postpad = 0;
-	    int padding = field_width - (strlen(prefix) + toUCSindex(s, s.length));
+	    sizediff_t prepad = 0;
+	    sizediff_t postpad = 0;
+	    sizediff_t padding = field_width - (strlen(prefix) + toUCSindex(s, s.length));
 	    if (padding > 0)
 	    {
 		if (flags & FLdash)
@@ -543,7 +543,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 	    }
 	    else
 	    {
-            int sl;
+            sizediff_t sl;
             char[] fbuf = tmpbuf;
             char[12] format;
             format[0] = '%';
@@ -1246,7 +1246,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 	    }
 	}
 
-	int n = tmpbuf.length;
+	sizediff_t n = tmpbuf.length;
 	char c;
 	int hexoffset = uc ? ('A' - ('9' + 1)) : ('a' - ('9' + 1));
 
@@ -1260,7 +1260,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 	}
 	if (tmpbuf.length - n < precision && precision < tmpbuf.length)
 	{
-	    int m = tmpbuf.length - precision;
+	    sizediff_t m = tmpbuf.length - precision;
 	    tmpbuf[m .. n] = '0';
 	    n = m;
 	}
@@ -1804,13 +1804,13 @@ struct FormatInfo
     /** Special values for width and precision, DYNAMIC width or
      * precision means that they were specified with '*' in the format
      * string. */
-    enum short DYNAMIC = short.max;
+    enum int DYNAMIC = int.max;
     /** Special value for precision */
-    enum short UNSPECIFIED = DYNAMIC - 1;
+    enum int UNSPECIFIED = DYNAMIC - 1;
     /** minimum width, default 0.  */
-    short width = 0;
+    int width = 0;
     /** precision. */
-    short precision = UNSPECIFIED; 
+    int precision = UNSPECIFIED; 
     /** The actual format specifier, 's' by default. */
     char spec = 's';
     /** Index of the argument for positional parameters, from 1 to
@@ -2105,12 +2105,13 @@ if (isIntegral!(D))
     // write left pad; write sign; write 0x or 0X; write digits;
     //   write right pad
     // Writing left pad
-    int spacesToPrint = 
+    Select!(size_t.sizeof > 4, long, int)
+    spacesToPrint =
         f.width // start with the minimum width
         - digits.length  // take away digits to print
         - (forcedPrefix != 0) // take away the sign if any
         - (base == 16 && f.flHash() && arg ? 2 : 0); // 0x or 0X
-    int delta = f.precision - digits.length;
+    const int delta = cast(int)(f.precision - digits.length);
     if (delta > 0) spacesToPrint -= delta;
     //writeln(spacesToPrint);
     if (spacesToPrint > 0) // need to do some padding
@@ -2136,7 +2137,7 @@ if (isIntegral!(D))
     // write the digits
     if (arg || f.precision)
     {
-        int zerosToPrint = f.precision - digits.length;
+        int zerosToPrint = cast(int)(f.precision - digits.length);
         foreach (i ; 0 .. zerosToPrint) w.put('0');
         w.put(digits);
     }

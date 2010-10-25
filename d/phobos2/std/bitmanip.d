@@ -335,7 +335,7 @@ struct BitArray
     }
     body
     {
-        return cast(bool) bt(ptr, i);
+        return cast(bool) bt(ptr, cast(uint)i);
     }
 
     unittest
@@ -360,9 +360,9 @@ struct BitArray
     body
     {
         if (b)
-            bts(ptr, i);
+            bts(ptr, cast(uint)i);
         else
-            btr(ptr, i);
+            btr(ptr, cast(uint)i);
         return b;
     }
 
@@ -580,7 +580,7 @@ struct BitArray
             return 0;                // not equal
         byte *p1 = cast(byte*)this.ptr;
         byte *p2 = cast(byte*)a2.ptr;
-        uint n = this.length / 8;
+        auto n = this.length / 8;
         for (i = 0; i < n; i++)
         {
             if (p1[i] != p2[i])
@@ -623,15 +623,14 @@ struct BitArray
 
     int opCmp(BitArray a2)
     {
-        uint len;
         uint i;
 
-        len = this.length;
+        auto len = this.length;
         if (a2.length < len)
             len = a2.length;
         ubyte* p1 = cast(ubyte*)this.ptr;
         ubyte* p2 = cast(ubyte*)a2.ptr;
-        uint n = len / 8;
+        auto n = len / 8;
         for (i = 0; i < n; i++)
         {
             if (p1[i] != p2[i])

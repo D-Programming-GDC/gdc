@@ -1984,6 +1984,9 @@ NewExp::toElem(IRState * irs)
 	    // Constructor call
 	    if ( member ) {
 		new_call = irs->call(member, new_call, arguments);
+#if STRUCTTHISREF
+		new_call = irs->addressOf(new_call);
+#endif
 	    }
 #if V2
 	    // %% D2.0 nested structs
@@ -4656,7 +4659,7 @@ gcc_d_backend_init()
 	abort();
     }
 #if V2
-    CLASSINFO_SIZE = (19 * PTRSIZE) + 4;
+    CLASSINFO_SIZE = (19 * PTRSIZE) + PTRSIZE;
 #else
     CLASSINFO_SIZE = 19 * PTRSIZE;
 #endif

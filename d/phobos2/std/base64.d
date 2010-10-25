@@ -68,10 +68,9 @@ immutable array = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678
  * Returns the number of bytes needed to encode a string of length slen.
  */
 
-uint encodeLength(uint slen)
+size_t encodeLength(size_t slen)
 {
-	uint result;
-	result = slen / 3;
+	auto result = slen / 3;
 	if(slen % 3)
 		result++;
 	return result * 4;
@@ -97,8 +96,8 @@ body
 		return buf[0 .. 0];
 	
 	uint stri;
-	uint strmax = str.length / 3;
-	uint strleft = str.length % 3;
+	auto strmax = str.length / 3;
+	auto strleft = str.length % 3;
 	uint x;
 	const(char)* sp;
 	char* bp;
@@ -168,7 +167,7 @@ unittest
  * Returns the number of bytes needed to decode an encoded string of this
  * length.
  */
-uint decodeLength(uint elen)
+size_t decodeLength(size_t elen)
 {
 	return elen / 4 * 3;
 }
@@ -229,7 +228,7 @@ body
 		throw new Base64Exception("Invalid encoded base64 string");
 	
 	uint estri;
-	uint estrmax = estr.length / 4;
+	auto estrmax = estr.length / 4;
 	uint x;
 	const(char)* sp;
 	char* bp;

@@ -3111,7 +3111,7 @@ body
     }
     else
     {
-        int i = A.length - 1;
+        sizediff_t i = A.length - 1;
         real r = A[i];
         while (--i >= 0)
         {

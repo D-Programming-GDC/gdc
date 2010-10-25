@@ -1409,7 +1409,7 @@ string hex(in Digit[] x)
     {
         auto array = x.dup.reverse;
     }
-    for (int i=array.length; i<4; ++i)
+    for (auto i=array.length; i<4; ++i)
     {
         r ~= "----------, ";
     }

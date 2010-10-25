@@ -38,8 +38,8 @@ in
 
     for (j = 1; j < table.length; j++)
     {
-        int len1 = table[j - 1].length;
-        int len2 = table[j].length;
+        auto len1 = table[j - 1].length;
+        auto len2 = table[j].length;
 
         assert(len1 <= len2);
         if (len1 == len2)
@@ -89,14 +89,8 @@ out (result)
 body
 {
     //printf("body _d_switch_string(%.*s)\n", ca);
-    int low;
-    int high;
-    int mid;
-    int c;
-    char[] pca;
-
-    low = 0;
-    high = table.length;
+    size_t low = 0;
+    auto high = table.length;
 
     version (none)
     {
@@ -121,9 +115,9 @@ body
         // Do binary search
         while (low < high)
         {
-            mid = (low + high) >> 1;
-            pca = table[mid];
-            c = ca.length - pca.length;
+            auto mid = (low + high) >> 1;
+            auto pca = table[mid];
+            int c = cast(int)(ca.length - pca.length);
             if (c == 0)
             {
                 c = cast(ubyte)c1 - cast(ubyte)pca[0];
@@ -132,7 +126,7 @@ body
                     c = memcmp(ca.ptr, pca.ptr, ca.length);
                     if (c == 0)
                     {   //printf("found %d\n", mid);
-                        return mid;
+                        return cast(int)mid;
                     }
                 }
             }
@@ -177,15 +171,13 @@ in
 
     for (j = 1; j < table.length; j++)
     {
-        int len1 = table[j - 1].length;
-        int len2 = table[j].length;
+        auto len1 = table[j - 1].length;
+        auto len2 = table[j].length;
 
         assert(len1 <= len2);
         if (len1 == len2)
         {
-            int c;
-
-            c = memcmp(table[j - 1].ptr, table[j].ptr, len1 * wchar.sizeof);
+            auto c = memcmp(table[j - 1].ptr, table[j].ptr, len1 * wchar.sizeof);
             assert(c < 0);  // c==0 means a duplicate
         }
     }
@@ -228,14 +220,8 @@ out (result)
 body
 {
     //printf("body _d_switch_ustring()\n");
-    int low;
-    int high;
-    int mid;
-    int c;
-    wchar[] pca;
-
-    low = 0;
-    high = table.length;
+    size_t low = 0;
+    auto high = table.length;
 
 /*
     // Print table
@@ -250,15 +236,15 @@ body
     // Do binary search
     while (low < high)
     {
-        mid = (low + high) >> 1;
-        pca = table[mid];
-        c = ca.length - pca.length;
+        auto mid = (low + high) >> 1;
+        auto pca = table[mid];
+        int c = cast(int)(ca.length - pca.length);
         if (c == 0)
         {
             c = memcmp(ca.ptr, pca.ptr, ca.length * wchar.sizeof);
             if (c == 0)
             {   //printf("found %d\n", mid);
-                return mid;
+                return cast(int)mid;
             }
         }
         if (c < 0)
@@ -302,15 +288,13 @@ in
 
     for (j = 1; j < table.length; j++)
     {
-        int len1 = table[j - 1].length;
-        int len2 = table[j].length;
+        auto len1 = table[j - 1].length;
+        auto len2 = table[j].length;
 
         assert(len1 <= len2);
         if (len1 == len2)
         {
-            int c;
-
-            c = memcmp(table[j - 1].ptr, table[j].ptr, len1 * dchar.sizeof);
+            auto c = memcmp(table[j - 1].ptr, table[j].ptr, len1 * dchar.sizeof);
             assert(c < 0);  // c==0 means a duplicate
         }
     }
@@ -353,14 +337,8 @@ out (result)
 body
 {
     //printf("body _d_switch_ustring()\n");
-    int low;
-    int high;
-    int mid;
-    int c;
-    dchar[] pca;
-
-    low = 0;
-    high = table.length;
+    size_t low = 0;
+    auto high = table.length;
 
 /*
     // Print table
@@ -375,15 +353,15 @@ body
     // Do binary search
     while (low < high)
     {
-        mid = (low + high) >> 1;
-        pca = table[mid];
-        c = ca.length - pca.length;
+        auto mid = (low + high) >> 1;
+        auto pca = table[mid];
+        int c = cast(int)(ca.length - pca.length);
         if (c == 0)
         {
             c = memcmp(ca.ptr, pca.ptr, ca.length * dchar.sizeof);
             if (c == 0)
             {   //printf("found %d\n", mid);
-                return mid;
+                return cast(int)mid;
             }
         }
         if (c < 0)
