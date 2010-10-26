@@ -1,4 +1,4 @@
-// Written in the D programming language
+// Written in the D programming language.
 
 /**
  * This module is a set of types and functions for converting any object (value
@@ -56,17 +56,22 @@ a = boxArray(arg_types, arg_data);
  * simply call "boxArray(_arguments, _argptr)", then do whatever you need to do
  * with the array.
  *
- * Authors:
- *	Burton Radons
- * License:
- *	Public Domain
  * Bugs:
- *	$(UL
- *	$(LI $(BUGZILLA 309))
- *	$(LI $(BUGZILLA 1968))
- *	)
+ *      $(UL
+ *      $(LI $(BUGZILLA 309))
+ *      $(LI $(BUGZILLA 1968))
+ *      )
  * Macros:
- *	WIKI=Phobos/StdBoxer
+ *      WIKI=Phobos/StdBoxer
+ *
+ * Copyright: Copyright Burton Radons 2007 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Authors:   Burton Radons
+ *
+ *          Copyright Burton Radons 2007 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
@@ -75,7 +80,6 @@ a = boxArray(arg_types, arg_data);
    This module make not work on all GCC targets due to assumptions
    about the type of va_list.
 */
-
 module std.boxer;
 
 private import std.format;
@@ -144,7 +148,7 @@ private bool isArrayTypeInfo(TypeInfo type)
 private enum TypeClass
 {
     Bool, /**< bool */
-    Bit = Bool,	// for backwards compatibility
+    Bit = Bool, // for backwards compatibility
     Integer, /**< byte, ubyte, short, ushort, int, uint, long, ulong */
     Float, /**< float, double, real */
     Complex, /**< cfloat, cdouble, creal */
@@ -513,7 +517,7 @@ void boxArrayToArguments(Box[] arguments, out TypeInfo[] types, out void* data)
  */    
 class UnboxException : Exception
 {
-    Box object;	/// This is the box that the user attempted to unbox.
+    Box object; /// This is the box that the user attempted to unbox.
 
     TypeInfo outputType; /// This is the type that the user attempted to unbox the value as.
 

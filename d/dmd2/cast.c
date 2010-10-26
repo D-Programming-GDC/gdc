@@ -1934,7 +1934,10 @@ IntRange Expression::getIntRange()
 {
     IntRange ir;
     ir.imin = 0;
-    ir.imax = type->sizemask();
+    if (type->isintegral())
+	ir.imax = type->sizemask();
+    else
+	ir.imax = 0xFFFFFFFFFFFFFFFFULL; // assume the worst
     return ir;
 }
 
@@ -1966,8 +1969,11 @@ IntRange CastExp::getIntRange()
 		ir.imax |= 0xFFFFFFFF00000000ULL;
 	    break;
     }
-    ir.imin &= type->sizemask();
-    ir.imax &= type->sizemask();
+    if (type->isintegral())
+    {
+	ir.imin &= type->sizemask();
+	ir.imax &= type->sizemask();
+    }
 //printf("CastExp: imin = x%llx, imax = x%llx\n", ir.imin, ir.imax);
     return ir;
 }

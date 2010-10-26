@@ -1098,10 +1098,20 @@ Lagain:
 		    }
 #endif
 		    if (!ei->exp->implicitConvTo(type))
-		    {	Type *ti = ei->exp->type->toBasetype();
+		    {
+			/* Look for opCall
+			 * See bugzilla 2702 for more discussion
+			 */
+			Type *ti = ei->exp->type->toBasetype();
 			// Don't cast away invariant or mutability in initializer
-			if (!(ti->ty == Tstruct && t->toDsymbol(sc) == ti->toDsymbol(sc)))
-			    ei->exp = new CastExp(loc, ei->exp, type);
+			if (search_function(sd, Id::call) &&
+			    /* Initializing with the same type is done differently
+			     */
+			    !(ti->ty == Tstruct && t->toDsymbol(sc) == ti->toDsymbol(sc)))
+			{   // Rewrite as e1.call(arguments)
+			    Expression * eCall = new DotIdExp(loc, e1, Id::call);
+			    ei->exp = new CallExp(loc, eCall, ei->exp);
+			}
 		    }
 		}
 		ei->exp = new AssignExp(loc, e1, ei->exp);
@@ -1609,6 +1619,7 @@ void TypeInfoDeclaration::semantic(Scope *sc)
 TypeInfoConstDeclaration::TypeInfoConstDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfoconst->type;
 }
 #endif
 
@@ -1618,6 +1629,7 @@ TypeInfoConstDeclaration::TypeInfoConstDeclaration(Type *tinfo)
 TypeInfoInvariantDeclaration::TypeInfoInvariantDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfoinvariant->type;
 }
 #endif
 
@@ -1627,6 +1639,7 @@ TypeInfoInvariantDeclaration::TypeInfoInvariantDeclaration(Type *tinfo)
 TypeInfoSharedDeclaration::TypeInfoSharedDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfoshared->type;
 }
 #endif
 
@@ -1635,6 +1648,7 @@ TypeInfoSharedDeclaration::TypeInfoSharedDeclaration(Type *tinfo)
 TypeInfoStructDeclaration::TypeInfoStructDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfostruct->type;
 }
 
 /***************************** TypeInfoClassDeclaration ***********************/
@@ -1642,6 +1656,7 @@ TypeInfoStructDeclaration::TypeInfoStructDeclaration(Type *tinfo)
 TypeInfoClassDeclaration::TypeInfoClassDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfoclass->type;
 }
 
 /***************************** TypeInfoInterfaceDeclaration *******************/
@@ -1649,6 +1664,7 @@ TypeInfoClassDeclaration::TypeInfoClassDeclaration(Type *tinfo)
 TypeInfoInterfaceDeclaration::TypeInfoInterfaceDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfointerface->type;
 }
 
 /***************************** TypeInfoTypedefDeclaration *********************/
@@ -1656,6 +1672,7 @@ TypeInfoInterfaceDeclaration::TypeInfoInterfaceDeclaration(Type *tinfo)
 TypeInfoTypedefDeclaration::TypeInfoTypedefDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfotypedef->type;
 }
 
 /***************************** TypeInfoPointerDeclaration *********************/
@@ -1663,6 +1680,7 @@ TypeInfoTypedefDeclaration::TypeInfoTypedefDeclaration(Type *tinfo)
 TypeInfoPointerDeclaration::TypeInfoPointerDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfopointer->type;
 }
 
 /***************************** TypeInfoArrayDeclaration ***********************/
@@ -1670,6 +1688,7 @@ TypeInfoPointerDeclaration::TypeInfoPointerDeclaration(Type *tinfo)
 TypeInfoArrayDeclaration::TypeInfoArrayDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfoarray->type;
 }
 
 /***************************** TypeInfoStaticArrayDeclaration *****************/
@@ -1677,6 +1696,7 @@ TypeInfoArrayDeclaration::TypeInfoArrayDeclaration(Type *tinfo)
 TypeInfoStaticArrayDeclaration::TypeInfoStaticArrayDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfostaticarray->type;
 }
 
 /***************************** TypeInfoAssociativeArrayDeclaration ************/
@@ -1684,6 +1704,7 @@ TypeInfoStaticArrayDeclaration::TypeInfoStaticArrayDeclaration(Type *tinfo)
 TypeInfoAssociativeArrayDeclaration::TypeInfoAssociativeArrayDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfoassociativearray->type;
 }
 
 /***************************** TypeInfoEnumDeclaration ***********************/
@@ -1691,6 +1712,7 @@ TypeInfoAssociativeArrayDeclaration::TypeInfoAssociativeArrayDeclaration(Type *t
 TypeInfoEnumDeclaration::TypeInfoEnumDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfoenum->type;
 }
 
 /***************************** TypeInfoFunctionDeclaration ********************/
@@ -1698,6 +1720,7 @@ TypeInfoEnumDeclaration::TypeInfoEnumDeclaration(Type *tinfo)
 TypeInfoFunctionDeclaration::TypeInfoFunctionDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfofunction->type;
 }
 
 /***************************** TypeInfoDelegateDeclaration ********************/
@@ -1705,6 +1728,7 @@ TypeInfoFunctionDeclaration::TypeInfoFunctionDeclaration(Type *tinfo)
 TypeInfoDelegateDeclaration::TypeInfoDelegateDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfodelegate->type;
 }
 
 /***************************** TypeInfoTupleDeclaration **********************/
@@ -1712,6 +1736,7 @@ TypeInfoDelegateDeclaration::TypeInfoDelegateDeclaration(Type *tinfo)
 TypeInfoTupleDeclaration::TypeInfoTupleDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    type = Type::typeinfotypelist->type;
 }
 
 /********************************* ThisDeclaration ****************************/

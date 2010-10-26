@@ -3361,6 +3361,7 @@ printf("index->ito->ito = x%x\n", index->ito->ito);
 	case Tfunction:
 	case Tvoid:
 	case Tnone:
+	case Ttuple:
 	    error(loc, "can't have associative array key of %s", index->toBasetype()->toChars());
 	    break;
     }
@@ -3783,6 +3784,9 @@ TypeFunction::TypeFunction(Arguments *parameters, Type *treturn, int varargs, en
     this->ispure = false;
     this->isproperty = false;
     this->isref = false;
+#if IN_GCC
+    this->isnoreturn = false;
+#endif
 }
 
 Type *TypeFunction::syntaxCopy()
@@ -4050,10 +4054,10 @@ void TypeFunction::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
 	switch (linkage)
 	{
 	    case LINKd:		p = NULL;	break;
-	    case LINKc:		p = "C ";	break;
-	    case LINKwindows:	p = "Windows ";	break;
-	    case LINKpascal:	p = "Pascal ";	break;
-	    case LINKcpp:	p = "C++ ";	break;
+	    case LINKc:		p = " C";	break;
+	    case LINKwindows:	p = " Windows";	break;
+	    case LINKpascal:	p = " Pascal";	break;
+	    case LINKcpp:	p = " C++";	break;
 	    default:
 		assert(0);
 	}
@@ -4136,13 +4140,19 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
     }
 
     if (tf->parameters)
-    {	size_t dim = Argument::dim(tf->parameters);
+    {
+	/* Create a scope for evaluating the default arguments for the parameters
+	 */
+	Scope *argsc = sc->push();
+	argsc->stc = 0;			// don't inherit storage class
+	argsc->protection = PROTpublic;
 
+	size_t dim = Argument::dim(tf->parameters);
 	for (size_t i = 0; i < dim; i++)
 	{   Argument *arg = Argument::getNth(tf->parameters, i);
 
 	    tf->inuse++;
-	    arg->type = arg->type->semantic(loc,sc);
+	    arg->type = arg->type->semantic(loc, argsc);
 	    if (tf->inuse == 1) tf->inuse--;
 
 	    arg->type = arg->type->addStorageClass(arg->storageClass);
@@ -4167,9 +4177,9 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 
 	    if (arg->defaultArg)
 	    {
-		arg->defaultArg = arg->defaultArg->semantic(sc);
-		arg->defaultArg = resolveProperties(sc, arg->defaultArg);
-		arg->defaultArg = arg->defaultArg->implicitCastTo(sc, arg->type);
+		arg->defaultArg = arg->defaultArg->semantic(argsc);
+		arg->defaultArg = resolveProperties(argsc, arg->defaultArg);
+		arg->defaultArg = arg->defaultArg->implicitCastTo(argsc, arg->type);
 	    }
 
 	    /* If arg turns out to be a tuple, the number of parameters may
@@ -4180,6 +4190,7 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 		i--;
 	    }
 	}
+	argsc->pop();
     }
     if (tf->next)
 	tf->deco = tf->merge()->deco;
@@ -4615,6 +4626,19 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
 			goto Lerror;
 		    goto L3;
 		}
+		else if (v && id == Id::stringof)
+		{
+		    e = new DsymbolExp(loc, s, 0);
+		    do
+		    {
+			id = (Identifier *)idents.data[i];
+			e = new DotIdExp(loc, e, id);
+		    } while (++i < idents.dim);
+		    e = e->semantic(sc);
+		    *pe = e;
+		    return;
+		}
+
 		t = s->getType();
 		if (!t && s->isDeclaration())
 		    t = s->isDeclaration()->type;
@@ -4717,19 +4741,27 @@ L1:
 	{
 	    if (t->reliesOnTident())
 	    {
-		Scope *scx;
-
-		for (scx = sc; 1; scx = scx->enclosing)
+		if (s->scope)
+		    t = t->semantic(loc, s->scope);
+		else
 		{
-		    if (!scx)
-		    {   error(loc, "forward reference to '%s'", t->toChars());
-			return;
+		    /* Attempt to find correct scope in which to evaluate t.
+		     * Not sure if this is right or not, or if we should just
+		     * give forward reference error if s->scope is not set.
+		     */
+		    for (Scope *scx = sc; 1; scx = scx->enclosing)
+		    {
+			if (!scx)
+			{   error(loc, "forward reference to '%s'", t->toChars());
+			    return;
+			}
+			if (scx->scopesym == scopesym)
+			{
+			    t = t->semantic(loc, scx);
+			    break;
+			}
 		    }
-		    if (scx->scopesym == scopesym)
-			break;
 		}
-		t = t->semantic(loc, scx);
-		//((TypeIdentifier *)t)->resolve(loc, scx, pe, &t, ps);
 	    }
 	}
 	if (t->ty == Ttuple)
@@ -5386,12 +5418,27 @@ Lfwd:
 
 int TypeEnum::isintegral()
 {
-    return 1;
+    return sym->memtype->isintegral();
 }
 
 int TypeEnum::isfloating()
 {
-    return 0;
+    return sym->memtype->isfloating();
+}
+
+int TypeEnum::isreal()
+{
+    return sym->memtype->isreal();
+}
+
+int TypeEnum::isimaginary()
+{
+    return sym->memtype->isimaginary();
+}
+
+int TypeEnum::iscomplex()
+{
+    return sym->memtype->iscomplex();
 }
 
 int TypeEnum::isunsigned()
@@ -5401,8 +5448,17 @@ int TypeEnum::isunsigned()
 
 int TypeEnum::isscalar()
 {
-    return 1;
-    //return sym->memtype->isscalar();
+    return sym->memtype->isscalar();
+}
+
+int TypeEnum::isAssignable()
+{
+    return sym->memtype->isAssignable();
+}
+
+int TypeEnum::checkBoolean()
+{
+    return sym->memtype->checkBoolean();
 }
 
 MATCH TypeEnum::implicitConvTo(Type *to)
@@ -6442,7 +6498,7 @@ L1:
 	    e = e->semantic(sc);
 	    return e;
 	}
-	else if (d->needThis() && (hasThis(sc) || !d->isFuncDeclaration()))
+	else if (d->needThis() && (hasThis(sc) || !(sc->intypeof || d->isFuncDeclaration())))
 	{
 	    if (sc->func)
 	    {

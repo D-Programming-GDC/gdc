@@ -3,16 +3,19 @@
 /**
 Utilities for manipulating files and scanning directories.
 
-Authors:
-
-$(WEB digitalmars.com, Walter Bright), $(WEB erdani.org, Andrei
-Alexandrescu)
-
 Macros:
+ WIKI = Phobos/StdFile
 
-WIKI = Phobos/StdFile
+Copyright: Copyright Digital Mars 2007 - 2009.
+License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+Authors:   $(WEB digitalmars.com, Walter Bright),
+           $(WEB erdani.org, Andrei Alexandrescu)
+
+         Copyright Digital Mars 2007 - 2009.
+Distributed under the Boost Software License, Version 1.0.
+   (See accompanying file LICENSE_1_0.txt or copy at
+         http://www.boost.org/LICENSE_1_0.txt)
 */
-
 module std.file;
 
 import core.memory;
@@ -44,29 +47,65 @@ version (Posix)
 // {{{
 version (Posix)
 {
-    struct struct_stat64        // distinguish it from the stat() function
+    version (OSX)
     {
-        ulong st_dev;        /// device
-        uint __pad1;
-        uint st_ino;        /// file serial number
-        uint st_mode;        /// file mode
-        uint st_nlink;        /// link count
-        uint st_uid;        /// user ID of file's owner
-        uint st_gid;        /// user ID of group's owner
-        ulong st_rdev;        /// if device then device number
-        uint __pad2;
-        align(4) ulong st_size;
-        int st_blksize;        /// optimal I/O block size
-        ulong st_blocks;        /// number of allocated 512 byte blocks
-        int st_atime;
-        uint st_atimensec;
-        int st_mtime;
-        uint st_mtimensec;
-        int st_ctime;
-        uint st_ctimensec;
+        struct struct_stat64        // distinguish it from the stat() function
+        {
+            uint st_dev;        /// device
+            ushort st_mode;
+            ushort st_nlink;        /// link count
+            ulong st_ino;        /// file serial number
+            uint st_uid;        /// user ID of file's owner
+            uint st_gid;        /// user ID of group's owner
+            uint st_rdev;        /// if device then device number
 
-        ulong st_ino64;
+            int st_atime;
+            uint st_atimensec;
+            int st_mtime;
+            uint st_mtimensec;
+            int st_ctime;
+            uint st_ctimensec;
+            int st_birthtime;
+            uint st_birthtimensec;
+
+            ulong st_size;
+            long st_blocks;        /// number of allocated 512 byte blocks
+            int st_blksize;        /// optimal I/O block size
+
+            ulong st_ino64;
+            uint st_flags;
+            uint st_gen;
+            int st_lspare; /* RESERVED: DO NOT USE! */
+            long st_qspare[2]; /* RESERVED: DO NOT USE! */
+        }
     }
+    else
+    {
+        struct struct_stat64        // distinguish it from the stat() function
+        {
+            ulong st_dev;        /// device
+            uint __pad1;
+            uint st_ino;        /// file serial number
+            uint st_mode;        /// file mode
+            uint st_nlink;        /// link count
+            uint st_uid;        /// user ID of file's owner
+            uint st_gid;        /// user ID of group's owner
+            ulong st_rdev;        /// if device then device number
+            uint __pad2;
+            align(4) ulong st_size;
+            int st_blksize;        /// optimal I/O block size
+            ulong st_blocks;        /// number of allocated 512 byte blocks
+            int st_atime;
+            uint st_atimensec;
+            int st_mtime;
+            uint st_mtimensec;
+            int st_ctime;
+            uint st_ctimensec;
+
+            ulong st_ino64;
+        }
+    }
+    
     extern(C) int fstat64(int, struct_stat64*);
     extern(C) int stat64(in char*, struct_stat64*);
 }
@@ -686,14 +725,14 @@ void mkdirRecurse(in char[] pathname)
     const left = dirname(pathname);
     if (!exists(left))
     {
-	version (Windows)
-	{   /* Prevent infinite recursion if left is "d:\" and
-	     * drive d does not exist.
-	     */
-	    if (left.length >= 3 && left[length - 2] == ':')
-		throw new FileException(left.idup);
-	}
-	mkdirRecurse(left);
+        version (Windows)
+        {   /* Prevent infinite recursion if left is "d:\" and
+             * drive d does not exist.
+             */
+            if (left.length >= 3 && left[length - 2] == ':')
+                throw new FileException(left.idup);
+        }
+        mkdirRecurse(left);
     }
     mkdir(pathname);
 }
@@ -1537,26 +1576,3 @@ void listdir(in char[] pathname, bool delegate(string filename) callback)
     
     listdir(pathname, &listing);
 }
-
-/*
- *  Copyright (C) 2001-2004 by Digital Mars, www.digitalmars.com
- * Written by Walter Bright, Christopher E. Miller, Andre Fornacon
- *
- *  This software is provided 'as-is', without any express or implied
- *  warranty. In no event will the authors be held liable for any damages
- *  arising from the use of this software.
- *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
- *
- *  o  The origin of this software must not be misrepresented; you must not
- *     claim that you wrote the original software. If you use this software
- *     in a product, an acknowledgment in the product documentation would be
- *     appreciated but is not required.
- *  o  Altered source versions must be plainly marked as such, and must not
- *     be misrepresented as being the original software.
- *  o  This notice may not be removed or altered from any source
- *     distribution.
- */
-

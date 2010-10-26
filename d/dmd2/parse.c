@@ -2455,6 +2455,10 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 			    Identifier *id = token.ident;
 			    if (id == Id::property)
 				((TypeFunction *)tf)->ispure = 1;
+#if IN_GCC
+			    else if (id == Id::noreturn)
+				((TypeFunction *)tf)->isnoreturn = 1;
+#endif
 			    else
 				error("valid attribute identifiers are property, not %s", id->toChars());
 			    nextToken();

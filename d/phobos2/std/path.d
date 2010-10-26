@@ -8,19 +8,20 @@
  * if it was a file. To differentiate these cases, use the std.file
  * module first (i.e. $(D std.file.isDir())).
  *
- * Authors:
- *
- * $(WEB digitalmars.com, Walter Bright), Grzegorz Adam Hankiewicz,
-Thomas K&uuml;hne, $(WEB erdani.org, Andrei Alexandrescu)
- *
  * Macros:
  *	WIKI = Phobos/StdPath
- * Copyright:
- *	Placed into public domain.
- *	www.digitalmars.com
  *
+ * Copyright: Copyright Digital Mars 2000 - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Authors:   $(WEB digitalmars.com, Walter Bright),
+ *	      Grzegorz Adam Hankiewicz, Thomas K&uuml;hne,
+ * 	      $(WEB erdani.org, Andrei Alexandrescu)
+ *
+ *          Copyright Digital Mars 2000 - 2009.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
 module std.path;
 
 //debug=path;		// uncomment to turn on debugging printf's
@@ -668,22 +669,23 @@ unittest
 
 string join(in char[] p1, in char[] p2, in char[][] more...)
 {
-    version (Posix)
+    if (more.length)
     {
-        if (!more.length)
-        {
-            if (isabs(p2)) return p2.idup;
-            if (p1.endsWith(sep[]) || altsep.length && p1.endsWith(altsep[]))
-            {
-                return cast(string) (p1 ~ p2);
-            }
-            return cast(string) (p1 ~ sep ~ p2);
-        }
-        // more components present
+        // more than two components present
         return join(join(p1, p2), more[0], more[1 .. $]);
     }
+    // Focus on exactly two components
+    version (Posix)
+    {
+        if (isabs(p2)) return p2.idup;
+        if (p1.endsWith(sep[]) || altsep.length && p1.endsWith(altsep[]))
+        {
+            return cast(string) (p1 ~ p2);
+        }
+        return cast(string) (p1 ~ sep ~ p2);
+    }
     version (Windows)
-    { // The other version fails unit testing when under windows
+    { 
         if (!p2.length)
             return p1.idup;
         if (!p1.length)
@@ -771,37 +773,39 @@ unittest
 
     version(Win32)
     {
-	p = join("d:", "bar");
-	i = cmp(p, "d:bar");
-	assert(i == 0);
+        p = join("d:", "bar");
+        i = cmp(p, "d:bar");
+        assert(i == 0);
+        
+        p = join("d:\\", "bar");
+        i = cmp(p, "d:\\bar");
+        assert(i == 0);
 
-	p = join("d:\\", "bar");
-	i = cmp(p, "d:\\bar");
-	assert(i == 0);
+        p = join("d:\\", "\\bar");
+        i = cmp(p, "d:\\bar");
+        assert(i == 0);
 
-	p = join("d:\\", "\\bar");
-	i = cmp(p, "d:\\bar");
-	assert(i == 0);
+        p = join("d:\\foo", "bar");
+        i = cmp(p, "d:\\foo\\bar");
+        assert(i == 0);
 
-	p = join("d:\\foo", "bar");
-	i = cmp(p, "d:\\foo\\bar");
-	assert(i == 0);
+        p = join("d:", "\\bar");
+        i = cmp(p, "d:\\bar");
+        assert(i == 0);
 
-	p = join("d:", "\\bar");
-	i = cmp(p, "d:\\bar");
-	assert(i == 0);
+        p = join("foo", "d:");
+        i = cmp(p, "d:");
+        assert(i == 0);
 
-	p = join("foo", "d:");
-	i = cmp(p, "d:");
-	assert(i == 0);
+        p = join("foo", "d:\\");
+        i = cmp(p, "d:\\");
+        assert(i == 0);
 
-	p = join("foo", "d:\\");
-	i = cmp(p, "d:\\");
-	assert(i == 0);
+        p = join("foo", "d:\\bar");
+        i = cmp(p, "d:\\bar");
+        assert(i == 0);
 
-	p = join("foo", "d:\\bar");
-	i = cmp(p, "d:\\bar");
-	assert(i == 0);
+        assert(join("d","dmd","src") == "d\\dmd\\src");
     }
 }
 

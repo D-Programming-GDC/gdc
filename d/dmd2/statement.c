@@ -272,6 +272,15 @@ int ExpStatement::blockExit()
 	    if (a->e1->isBool(FALSE))	// if it's an assert(0)
 		return BEhalt;
 	}
+#if IN_GCC
+	if (exp->op == TOKcall)
+	{   CallExp *c = (CallExp *)exp;
+	    TypeFunction *tf = (TypeFunction *)c->e1->type->toBasetype();
+
+	    if (tf->isnoreturn)		// if call is not expected to return.
+		return BEhalt;
+	}
+#endif
 	if (exp->canThrow())
 	    result |= BEthrow;
     }
@@ -1838,7 +1847,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		    default:		assert(0);
 		}
 		const char *r = (op == TOKforeach_reverse) ? "R" : "";
-		int j = sprintf(fdname, "_aApply%s%.*s%ld", r, 2, fntab[flag], dim);
+		int j = sprintf(fdname, "_aApply%s%.*s%zd", r, 2, fntab[flag], dim);
 		assert(j < sizeof(fdname));
 		fdapply = FuncDeclaration::genCfunc(Type::tint32, fdname,
 		    Type::tvoid->arrayOf(), flde->type); // flde->type is not generic
@@ -3473,16 +3482,22 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	return gs;
     }
 
-    if (exp && tbret->ty == Tvoid && !fd->isMain())
+    if (exp && tbret->ty == Tvoid && !implicit0)
     {
 	/* Replace:
 	 *	return exp;
 	 * with:
 	 *	exp; return;
+	 * or, if main():
+	 *	exp; return 0;
 	 */
 	Statement *s = new ExpStatement(loc, exp);
+	//s = s->semantic(sc);
 	loc = 0;
-	exp = NULL;
+	if (fd->isMain())
+	    exp = new IntegerExp(0);
+	else
+	    exp = NULL;
 	return new CompoundStatement(loc, s, this);
     }
 

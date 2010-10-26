@@ -1,25 +1,26 @@
 // Written in the D programming language.
 
-/* Written by Walter Bright and Andrei Alexandrescu
- * http://www.digitalmars.com/d
- * Placed in the Public Domain.
- */
-
-/********************************
+/**
 Standard I/O functions that extend $(B std.c.stdio).  $(B std.c.stdio)
 is $(D_PARAM public)ally imported when importing $(B std.stdio).
-
-Authors: $(WEB digitalmars.com, Walter Bright), $(WEB erdani.org,
-Andrei Alexandrescu)
   
 Macros:
 WIKI=Phobos/StdStdio
+
+Copyright: Copyright Digital Mars 2007 - 2009.
+License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+Authors:   $(WEB digitalmars.com, Walter Bright),
+           $(WEB erdani.org, Andrei Alexandrescu)
+
+         Copyright Digital Mars 2007 - 2009.
+Distributed under the Boost Software License, Version 1.0.
+   (See accompanying file LICENSE_1_0.txt or copy at
+         http://www.boost.org/LICENSE_1_0.txt)
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
  */
-
 module std.stdio;
 
 public import core.stdc.stdio;
@@ -64,8 +65,8 @@ version (DIGITAL_MARS_STDIO)
     {
         /* **
          * Digital Mars under-the-hood C I/O functions.
-	 * Use _iobuf* for the unshared version of FILE*,
-	 * usable when the FILE is locked.
+     * Use _iobuf* for the unshared version of FILE*,
+     * usable when the FILE is locked.
          */
         int _fputc_nlock(int, _iobuf*);
         int _fputwc_nlock(int, _iobuf*);
@@ -610,16 +611,17 @@ import std.stdio;
 int main()
 {
     char[] buf;
-    while (readln(stdin, buf))
+    while (stdin.readln(buf))
         write(buf);
     return 0;
 }
 ---
-    This method is more efficient than the one in the previous example
-because $(D readln(stdin, buf)) reuses (if possible) memory
-allocated by $(D buf), whereas $(D buf = readln()) makes a
-new memory allocation with every line.
-*/
+
+This method is more efficient than the one in the previous example
+because $(D stdin.readln(buf)) reuses (if possible) memory allocated
+by $(D buf), whereas $(D buf = stdin.readln()) makes a new memory allocation
+with every line.  */
+
     size_t readln(ref char[] buf, dchar terminator = '\n')
     {
         enforce(p && p.handle, "Attempt to read from an unopened file.");
@@ -866,8 +868,8 @@ $(D Range) that locks the file and allows fast writing to it.
     {
         //@@@ Hacky implementation due to bugs, see the correct
         //implementation at the end of this struct
-        FILE* fps;		    // the shared file handle
-        _iobuf* handle;		// the unshared version of fps
+        FILE* fps;          // the shared file handle
+        _iobuf* handle;     // the unshared version of fps
         int orientation;
 
         this(ref File f)
@@ -1091,7 +1093,7 @@ unittest
 private
 void writefx(FILE* fps, TypeInfo[] arguments, va_list argptr, int newline=false)
 {
-    int orientation = fwide(fps, 0);	// move this inside the lock?
+    int orientation = fwide(fps, 0);    // move this inside the lock?
 
     /* Do the file stream locking at the outermost level
      * rather than character by character.
@@ -1099,7 +1101,7 @@ void writefx(FILE* fps, TypeInfo[] arguments, va_list argptr, int newline=false)
     FLOCK(fps);
     scope(exit) FUNLOCK(fps);
 
-    auto fp = cast(_iobuf*)fps;		// fp is locked version
+    auto fp = cast(_iobuf*)fps;     // fp is locked version
 
     if (orientation <= 0)                // byte orientation or no orientation
     {
@@ -1909,10 +1911,10 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
         FLOCK(fps);
         scope(exit) FUNLOCK(fps);
 
-	/* Since fps is now locked, we can create an "unshared" version
-	 * of fp.
-	 */
-	auto fp = cast(_iobuf*)fps;
+    /* Since fps is now locked, we can create an "unshared" version
+     * of fp.
+     */
+    auto fp = cast(_iobuf*)fps;
 
         if (__fhnd_info[fp._file] & FHND_WCHAR)
         {   /* Stream is in wide characters.
@@ -1980,7 +1982,7 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
                     buf = p[0 .. i];
                     {
                         char[] buf2;
-			// This recursively does an unnecessary lock
+            // This recursively does an unnecessary lock
                         readlnImpl(fps, buf2, terminator);
                         buf ~= buf2;
                     }
@@ -2068,7 +2070,7 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
              */
             FLOCK(fps);
             scope(exit) FUNLOCK(fps);
-	    auto fp = cast(_iobuf*)fps;
+        auto fp = cast(_iobuf*)fps;
             version (Windows)
             {
                 buf.length = 0;
@@ -2145,9 +2147,9 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
     }
     else version (GENERIC_IO)
     {
-	FLOCK(fps);
-	scope(exit) FUNLOCK(fps);
-	auto fp = cast(_iobuf*)fps;
+    FLOCK(fps);
+    scope(exit) FUNLOCK(fps);
+    auto fp = cast(_iobuf*)fps;
         if (fwide(fps, 0) > 0)
         {   /* Stream is in wide characters.
              * Read them and convert to chars.

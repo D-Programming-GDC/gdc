@@ -2,7 +2,7 @@
  * D header file for C99.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt>Boost License 1.0</a>.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Sean Kelly
  * Standards: ISO/IEC 9899:1999 (E)
  *
@@ -56,19 +56,19 @@ alias c_long clock_t;
 
 version( Windows )
 {
-    clock_t CLOCKS_PER_SEC = 1000;
+    enum clock_t CLOCKS_PER_SEC = 1000;
 }
 else version( OSX )
 {
-    clock_t CLOCKS_PER_SEC = 100;
+    enum clock_t CLOCKS_PER_SEC = 100;
 }
 else version( freebsd )
 {
-    clock_t CLOCKS_PER_SEC = 128;
+    enum clock_t CLOCKS_PER_SEC = 128;
 }
 else
 {
-    clock_t CLOCKS_PER_SEC = 1000000;
+    enum clock_t CLOCKS_PER_SEC = 1000000;
 }
 
 clock_t clock();
