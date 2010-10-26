@@ -54,6 +54,7 @@ struct AttribDeclaration : Dsymbol
     void checkCtorConstInit();
     void addLocalClass(ClassDeclarations *);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+    void toJsonBuffer(OutBuffer *buf);
     AttribDeclaration *isAttribDeclaration() { return this; }
 
     void toObjFile(int multiobj);			// compile to .obj file
@@ -92,6 +93,7 @@ struct ProtDeclaration : AttribDeclaration
 
     ProtDeclaration(enum PROT p, Array *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
+    void importAll(Scope *sc);
     void setScope(Scope *sc);
     void semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -148,6 +150,9 @@ struct ConditionalDeclaration : AttribDeclaration
     Array *include(Scope *sc, ScopeDsymbol *s);
     void addComment(unsigned char *comment);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+    void toJsonBuffer(OutBuffer *buf);
+    void importAll(Scope *sc);
+    void setScope(Scope *sc);
 };
 
 struct StaticIfDeclaration : ConditionalDeclaration
@@ -159,6 +164,8 @@ struct StaticIfDeclaration : ConditionalDeclaration
     Dsymbol *syntaxCopy(Dsymbol *s);
     int addMember(Scope *sc, ScopeDsymbol *s, int memnum);
     void semantic(Scope *sc);
+    void importAll(Scope *sc);
+    void setScope(Scope *sc);
     const char *kind();
 };
 

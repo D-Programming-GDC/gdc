@@ -90,7 +90,7 @@ D_DMD_H := d/dmd/aggregate.h d/dmd/arraytypes.h d/dmd/attrib.h \
 	d/dmd/parse.h d/dmd/root.h d/dmd/scope.h d/dmd/aliasthis.h \
 	d/dmd/statement.h d/dmd/staticassert.h d/dmd/stringtable.h \
 	d/dmd/template.h d/dmd/total.h d/dmd/utf.h d/dmd/version.h \
-	d/id.h d/d-dmd-gcc.h d/d-gcc-real.h
+	d/id.h d/d-dmd-gcc.h d/d-gcc-real.h d/dmd/json.h
 D_DMD_H := $(subst d/dmd,$(D_dmd_srcdir),$(D_DMD_H))
 else
 D_DMD_H := d/dmd/aav.h d/dmd/aggregate.h d/dmd/aliasthis.h d/dmd/arraytypes.h \
@@ -203,7 +203,7 @@ D_DMD_OBJS = \
     d/root.dmd.o d/scope.dmd.o d/statement.dmd.o d/staticassert.dmd.o \
     d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o d/todt.dmd.o \
     d/toobj.dmd.o d/typinf.dmd.o d/unialpha.dmd.o d/utf.dmd.o d/version.dmd.o \
-    d/aliasthis.dmd.o
+    d/aliasthis.dmd.o d/json.dmd.o
 else
 D_DMD_OBJS = \
     d/aav.dmd.o d/access.dmd.o d/aliasthis.dmd.o d/array.dmd.o d/arrayop.dmd.o \

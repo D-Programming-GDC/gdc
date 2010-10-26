@@ -39,6 +39,7 @@
 #include "lexer.h"
 #ifndef IN_GCC
 #include "lib.h"
+#include "json.h"
 
 #if WINDOWS_SEH
 #include <windows.h>
@@ -62,6 +63,7 @@ Global::Global()
     hdr_ext  = "di";
     doc_ext  = "html";
     ddoc_ext = "ddoc";
+    json_ext = "json";
 
 #ifndef IN_GCC
 #if TARGET_WINDOS
@@ -95,7 +97,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates."
 #endif
     ;
-    version = "v2.033";
+    version = "v2.035";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -247,7 +249,7 @@ Usage:\n\
   -g             add symbolic debug info\n\
   -gc            add symbolic debug info, pretend to be C\n\
   -H             generate 'header' file\n\
-  -Hdhdrdir      write 'header' file to hdrdir directory\n\
+  -Hddirectory   write 'header' file to directory\n\
   -Hffilename    write 'header' file to filename\n\
   --help         print help\n\
   -Ipath         where to look for imports\n\
@@ -274,6 +276,8 @@ Usage:\n\
   -version=ident compile in version code identified by ident\n\
   -vtls          list all variables going into thread local storage\n\
   -w             enable warnings\n\
+  -X             generate JSON file\n\
+  -Xffilename    write JSON file to filename\n\
 ");
 }
 
@@ -519,6 +523,23 @@ int main(int argc, char *argv[])
 		}
 	    }
 #endif
+	    else if (p[1] == 'X')
+	    {	global.params.doXGeneration = 1;
+		switch (p[2])
+		{
+		    case 'f':
+			if (!p[3])
+			    goto Lnoarg;
+			global.params.xfilename = p + 3;
+			break;
+
+		    case 0:
+			break;
+
+		    default:
+			goto Lerror;
+		}
+	    }
 	    else if (strcmp(p + 1, "ignore") == 0)
 		global.params.ignoreUnsupportedPragmas = 1;
 	    else if (strcmp(p + 1, "inline") == 0)
@@ -902,6 +923,13 @@ int main(int argc, char *argv[])
 		continue;
 	    }
 
+	    if (FileName::equals(ext, global.json_ext))
+	    {
+		global.params.doXGeneration = 1;
+		global.params.xfilename = (char *)files.data[i];
+		continue;
+	    }
+
 #if TARGET_WINDOS
 	    if (FileName::equals(ext, "res"))
 	    {
@@ -1069,6 +1097,17 @@ int main(int argc, char *argv[])
 	fatal();
 #endif
 
+    // load all unconditional imports for better symbol resolving
+    for (i = 0; i < modules.dim; i++)
+    {
+       m = (Module *)modules.data[i];
+       if (global.params.verbose)
+           printf("importall %s\n", m->toChars());
+       m->importAll(0);
+    }
+    if (global.errors)
+       fatal();
+
     // Do semantic analysis
     for (i = 0; i < modules.dim; i++)
     {
@@ -1162,6 +1201,10 @@ int main(int argc, char *argv[])
     }
 
     // Generate output files
+
+    if (global.params.doXGeneration)
+	json_generate(&modules);
+
     if (global.params.oneobj)
     {
 	for (i = 0; i < modules.dim; i++)
@@ -1264,34 +1307,29 @@ int main(int argc, char *argv[])
 
 void getenv_setargv(const char *envvar, int *pargc, char** *pargv)
 {
-    char *env;
     char *p;
-    Array *argv;
-    int argc;
 
-    int wildcard;		// do wildcard expansion
     int instring;
     int slash;
     char c;
-    int j;
 
-    env = getenv(envvar);
+    char *env = getenv(envvar);
     if (!env)
 	return;
 
     env = mem.strdup(env);	// create our own writable copy
 
-    argc = *pargc;
-    argv = new Array();
+    int argc = *pargc;
+    Array *argv = new Array();
     argv->setDim(argc);
 
     for (int i = 0; i < argc; i++)
 	argv->data[i] = (void *)(*pargv)[i];
 
-    j = 1;			// leave argv[0] alone
+    int j = 1;			// leave argv[0] alone
     while (1)
     {
-	wildcard = 1;
+	int wildcard = 1;	// do wildcard expansion
 	switch (*env)
 	{
 	    case ' ':

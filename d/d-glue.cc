@@ -2239,29 +2239,9 @@ ArrayLiteralExp::toElem(IRState * irs)
 elem *
 AssocArrayLiteralExp::toElem(IRState * irs)
 {
-#if ! V2
     TypeAArray * aa_type = (TypeAArray *)type->toBasetype();
+
     assert(aa_type->ty == Taarray);
-#else
-    Type * a_type = type->toBasetype()->mutableOf();
-    assert(a_type->ty == Taarray);
-    TypeAArray * aa_type = (TypeAArray *)a_type;
-    /* As of 2.020, the hash function for Aa (array of chars) is custom
-     * and different from Axa and Aya, which get the generic hash function.
-     * So, rewrite the type of the AArray so that if it's key type is an
-     * array of const or invariant, make it an array of mutable.
-     *
-     * This gets fixed around 2.035, so we won't need this afterwards.
-     */
-    Type * tkey = aa_type->index->toBasetype();
-    if (tkey->ty == Tarray)
-    {
-	tkey = tkey->nextOf()->mutableOf()->arrayOf();
-	tkey = tkey->semantic(0, NULL);
-	aa_type = new TypeAArray(aa_type->nextOf(), tkey);
-	aa_type = (TypeAArray *)aa_type->merge();
-    }
-#endif
     assert(keys != NULL);
     assert(values != NULL);
 

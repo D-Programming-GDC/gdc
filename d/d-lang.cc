@@ -32,9 +32,7 @@
 #include "mars.h"
 
 #include "async.h"
-#if ! V2
 #include "json.h"
-#endif
 
 #include <assert.h>
 #include "d-gcc-includes.h"
@@ -746,10 +744,8 @@ d_handle_option (size_t scode, const char *arg, int value)
 	  gen.warnSignCompare = value;
 	  break;
       case OPT_fXf_:
-#if V1
 	  global.params.doXGeneration = 1;
 	  global.params.xfilename = (char*)arg;
-#endif
 	  break;
       default:
 	  break;
@@ -1116,7 +1112,6 @@ d_parse_file (int /*set_yydebug*/)
 	 fatal();
 #endif
 
-#if ! V2
     // load all unconditional imports for better symbol resolving
     for (i = 0; i < modules.dim; i++)
     {
@@ -1127,7 +1122,6 @@ d_parse_file (int /*set_yydebug*/)
     }
     if (global.errors)
 	goto had_errors;
-#endif
 
     // Do semantic analysis
     for (i = 0; i < modules.dim; i++)
@@ -1227,11 +1221,8 @@ d_parse_file (int /*set_yydebug*/)
     g.irs = & gen; // needed for FuncDeclaration::toObjFile shouldDefer check
 
     // Generate output files
-
-#if V1
     if (global.params.doXGeneration)
 	json_generate(&modules);
-#endif
 
     for (i = 0; i < modules.dim; i++)
     {

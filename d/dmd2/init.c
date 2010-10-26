@@ -48,6 +48,7 @@ Initializer *Initializer::semantic(Scope *sc, Type *t)
 Type *Initializer::inferType(Scope *sc)
 {
     error(loc, "cannot infer type from initializer");
+halt();
     return Type::terror;
 }
 
@@ -410,6 +411,9 @@ Expression *ArrayInitializer::toExpression()
     Type *t = NULL;
     if (type)
     {
+	if (type == Type::terror)
+	    return new ErrorExp();
+
 	t = type->toBasetype();
 	switch (t->ty)
 	{
@@ -531,7 +535,7 @@ Type *ArrayInitializer::inferType(Scope *sc)
     for (size_t i = 0; i < value.dim; i++)
     {
 	if (index.data[i])
-	    goto Lno;
+	    goto Laa;
     }
     for (size_t i = 0; i < value.dim; i++)
     {
@@ -547,9 +551,21 @@ Type *ArrayInitializer::inferType(Scope *sc)
     }
     return type;
 
-Lno:
-    error(loc, "cannot infer type from this array initializer");
-    return Type::terror;
+Laa:
+    /* It's possibly an associative array initializer
+     */
+    Initializer *iz = (Initializer *)value.data[0];
+    Expression *indexinit = (Expression *)index.data[0];
+    if (iz && indexinit)
+    {   Type *t = iz->inferType(sc);
+	indexinit = indexinit->semantic(sc);
+	Type *indext = indexinit->type;
+	t = new TypeAArray(t, indext);
+	type = t->semantic(loc, sc);
+    }
+    else
+	error(loc, "cannot infer type from this array initializer");
+    return type;
 }
 
 

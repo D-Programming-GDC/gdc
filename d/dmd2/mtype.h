@@ -516,9 +516,6 @@ struct TypeFunction : TypeNext
     bool ispure;	// true: pure
     bool isproperty;	// can be called without parentheses
     bool isref;		// true: returns a reference
-#if IN_GCC
-    bool isnoreturn;	// true: noreturn
-#endif
     enum LINK linkage;	// calling convention
 
     int inuse;
@@ -812,6 +809,12 @@ struct TypeSlice : TypeNext
     Type *syntaxCopy();
     Type *semantic(Loc loc, Scope *sc);
     void resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol **ps);
+    void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
+};
+
+struct TypeNewArray : TypeNext
+{
+    TypeNewArray(Type *next);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
 };
 

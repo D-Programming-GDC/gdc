@@ -146,7 +146,6 @@ struct Msgtable msgtable[] =
     { "idup" },
 
     { "property" },
-    { "noreturn" },
 
     // For inline assembler
     { "___out", "out" },

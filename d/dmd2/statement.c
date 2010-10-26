@@ -272,19 +272,15 @@ int ExpStatement::blockExit()
 	    if (a->e1->isBool(FALSE))	// if it's an assert(0)
 		return BEhalt;
 	}
-#if IN_GCC
-	if (exp->op == TOKcall)
-	{   CallExp *c = (CallExp *)exp;
-	    TypeFunction *tf = (TypeFunction *)c->e1->type->toBasetype();
-
-	    if (tf->isnoreturn)		// if call is not expected to return.
-		return BEhalt;
-	}
-#endif
 	if (exp->canThrow())
 	    result |= BEthrow;
     }
     return result;
+}
+
+int ExpStatement::isEmpty()
+{
+    return exp == NULL;
 }
 
 
@@ -630,12 +626,14 @@ int CompoundStatement::blockExit()
 //printf("%s\n", s->toChars());
 	    if (!(result & BEfallthru) && !s->comeFrom())
 	    {
-		if (s->blockExit() != BEhalt)
+		if (s->blockExit() != BEhalt && !s->isEmpty())
 		    s->warning("statement is not reachable");
 	    }
-
-	    result &= ~BEfallthru;
-	    result |= s->blockExit();
+	    else
+	    {
+		result &= ~BEfallthru;
+		result |= s->blockExit();
+	    }
 	}
     }
     return result;
@@ -1110,7 +1108,8 @@ int DoStatement::blockExit()
     else
 	result = BEfallthru;
     if (result & BEfallthru)
-    {	if (condition->canThrow())
+    {
+	if (condition->canThrow())
 	    result |= BEthrow;
 	if (!(result & BEbreak) && condition->isBool(TRUE))
 	    result &= ~BEfallthru;
@@ -1182,6 +1181,7 @@ Statement *ForStatement::semantic(Scope *sc)
     if (increment)
     {	increment = increment->semantic(sc);
 	increment = resolveProperties(sc, increment);
+	increment = increment->optimize(0);
     }
 
     sc->sbreak = this;
@@ -2647,6 +2647,11 @@ Statement *StaticAssertStatement::semantic(Scope *sc)
     return NULL;
 }
 
+int StaticAssertStatement::blockExit()
+{
+    return BEfallthru;
+}
+
 void StaticAssertStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     sa->toCBuffer(buf, hgs);
@@ -3488,16 +3493,11 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	 *	return exp;
 	 * with:
 	 *	exp; return;
-	 * or, if main():
-	 *	exp; return 0;
 	 */
 	Statement *s = new ExpStatement(loc, exp);
-	//s = s->semantic(sc);
+	exp = NULL;
+	s = s->semantic(sc);
 	loc = 0;
-	if (fd->isMain())
-	    exp = new IntegerExp(0);
-	else
-	    exp = NULL;
 	return new CompoundStatement(loc, s, this);
     }
 

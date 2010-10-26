@@ -3784,9 +3784,6 @@ TypeFunction::TypeFunction(Arguments *parameters, Type *treturn, int varargs, en
     this->ispure = false;
     this->isproperty = false;
     this->isref = false;
-#if IN_GCC
-    this->isnoreturn = false;
-#endif
 }
 
 Type *TypeFunction::syntaxCopy()
@@ -3875,6 +3872,9 @@ int Type::covariant(Type *t)
     // Return types
     Type *t1n = t1->next;
     Type *t2n = t2->next;
+
+    if (!t1n || !t2n)		// happens with return type inference
+	goto Lnotcovariant;
 
     if (t1n->equals(t2n))
 	goto Lcovariant;
@@ -3978,6 +3978,7 @@ void TypeFunction::toDecoBuffer(OutBuffer *buf, int flag)
     Argument::argsToDecoBuffer(buf, parameters);
     //if (buf->data[buf->offset - 1] == '@') halt();
     buf->writeByte('Z' - varargs);	// mark end of arg list
+    assert(next);
     next->toDecoBuffer(buf);
     inuse--;
 }
@@ -6947,6 +6948,27 @@ void TypeSlice::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
 
     buf->printf("[%s .. ", lwr->toChars());
     buf->printf("%s]", upr->toChars());
+}
+
+/***************************** TypeNewArray *****************************/
+
+/* T[new]
+ */
+
+TypeNewArray::TypeNewArray(Type *next)
+    : TypeNext(Tnarray, next)
+{
+    //printf("TypeNewArray\n");
+}
+
+void TypeNewArray::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
+{
+    if (mod != this->mod)
+    {	toCBuffer3(buf, hgs, mod);
+	return;
+    }
+    next->toCBuffer2(buf, hgs, this->mod);
+    buf->writestring("[new]");
 }
 
 /***************************** Argument *****************************/

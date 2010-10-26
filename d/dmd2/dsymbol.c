@@ -276,6 +276,10 @@ void Dsymbol::setScope(Scope *sc)
     scope = sc;
 }
 
+void Dsymbol::importAll(Scope *sc)
+{
+}
+
 /*************************************
  * Does semantic analysis on the public face of declarations.
  */
@@ -472,7 +476,7 @@ int Dsymbol::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
     parent = sd;
     if (!isAnonymous())		// no name, so can't add it to symbol table
     {
-	if (!sd->symtab->insert(this))	// if name is already defined
+	if (!sd->symtabInsert(this))	// if name is already defined
 	{
 	    Dsymbol *s2;
 
@@ -709,6 +713,7 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
 
     // Look in symbols declared in this module
     Dsymbol *s = symtab ? symtab->lookup(ident) : NULL;
+    //printf("\ts = %p, imports = %p, %d\n", s, imports, imports ? imports->dim : 0);
     if (s)
     {
 	//printf("\ts = '%s.%s'\n",toChars(),s->toChars());
@@ -902,11 +907,16 @@ const char *ScopeDsymbol::kind()
     return "ScopeDsymbol";
 }
 
+Dsymbol *ScopeDsymbol::symtabInsert(Dsymbol *s)
+{
+    return symtab->insert(s);
+}
 
 /***************************************
  * Determine number of Dsymbols, folding in AttribDeclaration members.
  */
 
+#if DMDV2
 size_t ScopeDsymbol::dim(Array *members)
 {
     size_t n = 0;
@@ -926,6 +936,7 @@ size_t ScopeDsymbol::dim(Array *members)
     }
     return n;
 }
+#endif
 
 /***************************************
  * Get nth Dsymbol, folding in AttribDeclaration members.
@@ -935,6 +946,7 @@ size_t ScopeDsymbol::dim(Array *members)
  *			of Dsymbols
  */
 
+#if DMDV2
 Dsymbol *ScopeDsymbol::getNth(Array *members, size_t nth, size_t *pn)
 {
     if (!members)
@@ -961,6 +973,7 @@ Dsymbol *ScopeDsymbol::getNth(Array *members, size_t nth, size_t *pn)
 	*pn += n;
     return NULL;
 }
+#endif
 
 /*******************************************
  * Look for member of the form:

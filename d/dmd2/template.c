@@ -806,10 +806,9 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(Loc loc, Objects *targsi,
     nargsi = 0;
     if (targsi)
     {	// Set initial template arguments
-	size_t n;
 
 	nargsi = targsi->dim;
-	n = parameters->dim;
+	size_t n = parameters->dim;
 	if (tp)
 	    n--;
 	if (nargsi > n)
@@ -889,7 +888,7 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(Loc loc, Objects *targsi,
      */
     if (tp)				// if variadic
     {
-	if (nfparams == 0)		// if no function parameters
+	if (nfparams == 0 && nfargs != 0)		// if no function parameters
 	{
 	    Tuple *t = new Tuple();
 	    //printf("t = %p\n", t);
@@ -3677,7 +3676,28 @@ void TemplateInstance::semantic(Scope *sc)
 
     if (sc->func || dosemantic3)
     {
-	semantic3(sc2);
+#if WINDOWS_SEH
+	__try
+	{
+#endif
+	    static int nest;
+	    if (++nest > 300)
+	    {
+		global.gag = 0;            // ensure error message gets printed
+		error("recursive expansion");
+		fatal();
+	    }
+	    semantic3(sc2);
+	    --nest;
+#if WINDOWS_SEH
+	}
+	__except (__ehfilter(GetExceptionInformation()))
+	{
+	    global.gag = 0;            // ensure error message gets printed
+	    error("recursive expansion");
+	    fatal();
+	}
+#endif
     }
 
   Laftersemantic:
@@ -4432,6 +4452,7 @@ Dsymbol *TemplateInstance::toAlias()
 #endif
     if (!inst)
     {	error("cannot resolve forward reference");
+	errors = 1;
 	return this;
     }
 
@@ -4628,6 +4649,8 @@ void TemplateMixin::semantic(Scope *sc)
 
     // Run semantic on each argument, place results in tiargs[]
     semanticTiargs(sc);
+    if (errors)
+	return;
 
     tempdecl = findBestMatch(sc);
     if (!tempdecl)

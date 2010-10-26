@@ -2237,6 +2237,12 @@ Type *Parser::parseBasicType2(Type *t)
 		    t = new TypeDArray(t);			// []
 		    nextToken();
 		}
+		else if (token.value == TOKnew && peekNext() == TOKrbracket)
+		{
+		    t = new TypeNewArray(t);			// [new]
+		    nextToken();
+		    nextToken();
+		}
 		else if (isDeclaration(&token, 0, TOKrbracket, NULL))
 		{   // It's an associative array declaration
 
@@ -2359,6 +2365,12 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 		    ta = new TypeDArray(t);		// []
 		    nextToken();
 		}
+		else if (token.value == TOKnew && peekNext() == TOKrbracket)
+		{
+		    t = new TypeNewArray(t);		// [new]
+		    nextToken();
+		    nextToken();
+		}
 		else if (isDeclaration(&token, 0, TOKrbracket, NULL))
 		{   // It's an associative array
 
@@ -2455,10 +2467,6 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
 			    Identifier *id = token.ident;
 			    if (id == Id::property)
 				((TypeFunction *)tf)->ispure = 1;
-#if IN_GCC
-			    else if (id == Id::noreturn)
-				((TypeFunction *)tf)->isnoreturn = 1;
-#endif
 			    else
 				error("valid attribute identifiers are property, not %s", id->toChars());
 			    nextToken();
@@ -3382,11 +3390,10 @@ Statement *Parser::parseStatement(int flags)
 	}
 
 	case TOKlcurly:
-	{   Statements *statements;
-
+	{
 	    nextToken();
-	    statements = new Statements();
-	    while (token.value != TOKrcurly)
+	    Statements *statements = new Statements();
+	    while (token.value != TOKrcurly && token.value != TOKeof)
 	    {
 		statements->push(parseStatement(PSsemi | PScurlyscope));
 	    }
@@ -3738,6 +3745,7 @@ Statement *Parser::parseStatement(int flags)
 	    statements = new Statements();
 	    while (token.value != TOKcase &&
 		   token.value != TOKdefault &&
+		   token.value != TOKeof &&
 		   token.value != TOKrcurly)
 	    {
 		statements->push(parseStatement(PSsemi | PScurlyscope));
@@ -3773,6 +3781,7 @@ Statement *Parser::parseStatement(int flags)
 	    statements = new Statements();
 	    while (token.value != TOKcase &&
 		   token.value != TOKdefault &&
+		   token.value != TOKeof &&
 		   token.value != TOKrcurly)
 	    {
 		statements->push(parseStatement(PSsemi | PScurlyscope));
@@ -4409,6 +4418,11 @@ int Parser::isDeclarator(Token **pt, int *haveId, enum TOK endtok)
 		t = peek(t);
 		if (t->value == TOKrbracket)
 		{
+		    t = peek(t);
+		}
+		else if (t->value == TOKnew && peek(t)->value == TOKrbracket)
+		{
+		    t = peek(t);
 		    t = peek(t);
 		}
 		else if (isDeclaration(t, 0, TOKrbracket, &t))
