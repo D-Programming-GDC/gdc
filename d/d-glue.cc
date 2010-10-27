@@ -1003,11 +1003,9 @@ AssignExp::toElem(IRState* irs) {
 	    elem_type = ae->type->toBasetype()->nextOf(); // don't want ->toBasetype for the element type
 	    array_exp = irs->addressOf( ae->toElem( irs ));
 	}
-
 #if ! V2
 	gcc_assert(! elem_type->isbit());
 #endif
-
 	args[0] = irs->typeinfoReference(array_type);
 	args[1] = irs->convertTo(e2, Type::tsize_t);
 	args[2] = array_exp;
@@ -1052,7 +1050,6 @@ AssignExp::toElem(IRState* irs) {
 		}
 	    }
 #endif
-
 	    tree set_exp = array_set_expr( irs, irs->darrayPtrRef(dyn_array_exp),
 		e2->toElem(irs), irs->darrayLenRef(dyn_array_exp));
 	    return irs->compound(set_exp, dyn_array_exp);
@@ -1105,6 +1102,15 @@ AssignExp::toElem(IRState* irs) {
     } else {
 	// Simple assignment
 
+	// Check for reference assignments, just pass the address.
+	if (op == TOKconstruct && e1->op == TOKvar) {
+	    VarDeclaration * var_decl = ((VarExp *)e1)->var->isVarDeclaration();
+	    if (var_decl->storage_class & STCref) {
+		e1 = e1->addressOf(NULL);
+		e2 = e2->addressOf(NULL);
+	    }
+	}
+
 	tree lhs = irs->toElemLvalue(e1);
 	tree result = build2(MODIFY_EXPR, type->toCtype(),
 	    lhs, irs->convertForAssignment(e2, e1->type));
@@ -1122,9 +1128,9 @@ AssignExp::toElem(IRState* irs) {
 	    }
 	}
 #endif
-
 	return result;
     }
+    gcc_unreachable();
 }
 
 elem *
@@ -2240,7 +2246,6 @@ elem *
 AssocArrayLiteralExp::toElem(IRState * irs)
 {
     TypeAArray * aa_type = (TypeAArray *)type->toBasetype();
-
     assert(aa_type->ty == Taarray);
     assert(keys != NULL);
     assert(values != NULL);
@@ -2394,7 +2399,6 @@ ThisExp::toElem(IRState * irs)
     if (type->ty == Tstruct)
 	this_tree = irs->indirect(this_tree);
 #endif
-
     return this_tree;
 }
 

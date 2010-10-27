@@ -606,7 +606,6 @@ Symbol *FuncDeclaration::toSymbol()
 		TREE_READONLY( fn_decl ) = 1;
 	    if (storage_class & STCconst)
 		TREE_CONSTANT( fn_decl ) = 1;
-
 #endif
 
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
