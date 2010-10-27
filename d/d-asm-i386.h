@@ -1766,7 +1766,7 @@ struct AsmProcessor
 	if (opInfo->implicitClobbers & Clb_Flags)
 	    asmcode->moreRegs |= (1 << (Reg_EFLAGS - 32));
 	if (op == Op_cpuid)
-	    stmt->regs |= (1 << Reg_EAX)|
+	    stmt->regs |= (1 << Reg_EAX)|(1 << Reg_EBX)|
 		(1 << Reg_ECX)|(1 << Reg_EDX);
 
 	insnTemplate->writebyte(' ');
