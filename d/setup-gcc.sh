@@ -56,18 +56,23 @@ fi
 gcc_patch_key=${gcc_ver}.x
 
 # 0.1. Find out if this is Apple's GCC
-if grep version_string gcc/version.c | grep -qF '(Apple'; then
+if grep -qF '(Apple' gcc/version.c; then
     gcc_apple=apple-
-    gcc_apple_build_ver=`grep version_string gcc/version.c | sed -e 's/^.*build \([0-9][0-9]*\).*$/\1/'`
-    if test "$gcc_apple_build_ver" -ge 5465; then
+    gcc_apple_build_ver=`grep '(Apple' gcc/version.c | sed -e 's/^.*build \([0-9][0-9]*\).*$/\1/'`
+    if test "$gcc_apple_build_ver" -eq 5465; then
 	gcc_patch_key=5465
+    elif test "$gcc_apple_build_ver" -eq 5664; then
+	gcc_patch_key=5664
+    else
+	echo "This version of Apple GCC ($gcc_apple_build_ver) is not supported."
+	exit 1
     fi
 fi
 
 # 0.2. Determine if this version of GCC is supported
 gcc_patch_fn=d/patches/patch-${gcc_apple}gcc-$gcc_patch_key
 if test ! -f gcc/"$gcc_patch_fn"; then
-    echo "This version of GCC is not supported."
+    echo "This version of GCC ($gcc_ver) is not supported."
     exit 1
 fi
 
@@ -127,9 +132,15 @@ cd gcc || exit 1
 patch -p1 < "$gcc_patch_fn" || exit 1
 
 # 3.1 Patch the gcc version string
-if test "$gcc_ver" = 4.1; then
+d_gcc_ver=`echo $gcc_ver | sed -e 's/\.//g'`
+
+if test "$d_gcc_ver" -ge 41; then
     cur_DEV_PHASE=`cat DEV-PHASE`
-    echo "$cur_DEV_PHASE $gdc_ver_msg" > DEV-PHASE
+    if test -z "$cur_DEV_PHASE"; then
+	echo "$gdc_ver_msg" > DEV-PHASE
+    else
+	echo "$cur_DEV_PHASE $gdc_ver_msg" > DEV-PHASE
+    fi
 else
     sed -e 's/ *(gdc.*using dmd [0-9\.]*)//' \
 	-e 's/\(, *\)gdc.*using dmd [0-9\.]*/\1/' \
