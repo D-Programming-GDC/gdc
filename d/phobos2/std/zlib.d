@@ -123,9 +123,10 @@ body
     ubyte[] destbuf;
     uint destlen;
 
-    destlen = srcbuf.length + ((srcbuf.length + 1023) / 1024) + 12;
+    destlen = to!uint(srcbuf.length) + ((to!uint(srcbuf.length) + 1023) / 1024) + 12;
     destbuf = new ubyte[destlen];
-    err = etc.c.zlib.compress2(destbuf.ptr, &destlen, cast(ubyte *)srcbuf, srcbuf.length, level);
+    err = etc.c.zlib.compress2(destbuf.ptr, &destlen, cast(ubyte *)srcbuf,
+            to!uint(srcbuf.length), level);
     if (err)
     {   delete destbuf;
     throw new ZlibException(err);
@@ -310,7 +311,7 @@ class Compress
     zs.avail_out = to!uint(destbuf.length);
 
     if (zs.avail_in)
-        buf = cast(void[])zs.next_in[0 .. zs.avail_in] ~ buf;
+        buf = zs.next_in[0 .. zs.avail_in] ~ cast(ubyte[]) buf;
 
     zs.next_in = cast(ubyte*) buf.ptr;
     zs.avail_in = to!uint(buf.length);
@@ -349,7 +350,7 @@ class Compress
     }
     body
     {
-    void[] destbuf;
+    ubyte[] destbuf;
     ubyte[512] tmpbuf = void;
     int err;
 
@@ -475,7 +476,7 @@ class UnCompress
     zs.avail_out = to!uint(destbuf.length);
 
     if (zs.avail_in)
-        buf = cast(void[])zs.next_in[0 .. zs.avail_in] ~ buf;
+        buf = zs.next_in[0 .. zs.avail_in] ~ cast(ubyte[]) buf;
 
     zs.next_in = cast(ubyte*) buf;
     zs.avail_in = to!uint(buf.length);
@@ -590,7 +591,7 @@ unittest // by Dave
         char[] buf = new char[uniform(0, 1000/*0000*/)];
 
         // Alternate between more & less compressible
-        foreach(inout char c; buf)
+        foreach(ref char c; buf)
             c = cast(char) (' ' + (uniform(0, idx % 2 ? 91 : 10)));
 
         if(CompressThenUncompress(cast(ubyte[])buf)) {
