@@ -91,9 +91,18 @@ int cmp(C1, C2)(in C1[] s1, in C2[] s2)
 {
     static if (C1.sizeof == C2.sizeof)
     {
-        invariant len = min(s1.length, s2.length);
-        invariant result = std.c.string.memcmp(s1.ptr, s2.ptr, len * C1.sizeof);
-        return result ? result : s1.length - s2.length;
+        immutable len = min(s1.length, s2.length);
+        immutable result = std.c.string.memcmp(s1.ptr, s2.ptr, len * C1.sizeof);
+        static if (size_t.sizeof == int.sizeof)
+        {
+            return result ? result : s1.length - s2.length;
+        }
+        else
+        {
+            return result
+                ? result
+                : s1.length == s2.length ? 0 : s1.length > s2.length ? 1 : -1;
+        }
     }
     else
     {
