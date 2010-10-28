@@ -3185,6 +3185,16 @@ TypedefDeclaration::toDebug()
 type *
 TypeEnum::toCtype()
 {
+#if V2
+    /* Enums in D2 can have a base type that is not necessarily integral.
+       This caused several problems in both the glue and backend when
+       trying to maintain all assignment, casting and boolean operations
+       you can do with this type. So now instead of building an enum,
+       we just return the memtype.
+     */
+    return sym->memtype->toCtype();
+
+#else
     if (! ctype) {
 	tree enum_mem_type_node = sym->memtype->toCtype();
 
@@ -3194,7 +3204,7 @@ TypeEnum::toCtype()
 	TYPE_SIZE( ctype ) = 0; // as in c-decl.c
 	TREE_TYPE( ctype ) = enum_mem_type_node;
 	apply_type_attributes(sym->attributes, ctype, true);
-#if V2
+#if 0
 	/* Because minval and maxval are of this type,
 	   ctype needs to be completed enough for
 	   build_int_cst to work properly. */
@@ -3219,7 +3229,7 @@ TypeEnum::toCtype()
 			member->ident->string, NULL);
 		else
 		    ident = (char *) member->ident->string;
-#if V2
+#if 0
 		/* Enums in D2 can be any data type, not just integers. */
 		enum_values.cons(get_identifier(ident), member->value->toElem(& gen));
 #else
@@ -3236,6 +3246,7 @@ TypeEnum::toCtype()
 	g.ofile->declareType(ctype, sym);
     }
     return ctype;
+#endif
 }
 
 type *
