@@ -949,8 +949,6 @@ Expression *StringExp::castTo(Scope *sc, Type *t)
      * will result in a copy.
      * The this->string member is considered immutable.
      */
-    StringExp *se;
-    Type *tb;
     int copied = 0;
 
     //printf("StringExp::castTo(t = %s), '%s' committed = %d\n", t->toChars(), toChars(), committed);
@@ -960,7 +958,7 @@ Expression *StringExp::castTo(Scope *sc, Type *t)
 	error("cannot convert string literal to void*");
     }
 
-    se = this;
+    StringExp *se = this;
     if (!committed)
     {   se = (StringExp *)copy();
 	se->committed = 1;
@@ -972,7 +970,7 @@ Expression *StringExp::castTo(Scope *sc, Type *t)
 	return se;
     }
 
-    tb = t->toBasetype();
+    Type *tb = t->toBasetype();
     //printf("\ttype = %s\n", type->toChars());
     if (tb->ty == Tdelegate && type->toBasetype()->ty != Tdelegate)
 	return Expression::castTo(sc, t);
@@ -1762,13 +1760,13 @@ Lagain:
     {
 	assert(0);
     }
-    else if (e1->op == TOKslice && t1->ty == Tarray &&
+    else if (e1->isArrayOperand() && t1->ty == Tarray &&
 	     e2->implicitConvTo(t1->nextOf()))
     {	// T[] op T
 	e2 = e2->castTo(sc, t1->nextOf());
 	t = t1->nextOf()->arrayOf();
     }
-    else if (e2->op == TOKslice && t2->ty == Tarray &&
+    else if (e2->isArrayOperand() && t2->ty == Tarray &&
 	     e1->implicitConvTo(t2->nextOf()))
     {	// T op T[]
 	e1 = e1->castTo(sc, t2->nextOf());

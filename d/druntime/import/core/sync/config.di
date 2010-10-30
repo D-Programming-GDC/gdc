@@ -1,12 +1,12 @@
-// D import file generated from 'core\sync\config.d'
+// D import file generated from 'src\common\core\sync\config.d'
 module core.sync.config;
 version (Posix)
 {
-    private
+    private 
 {
     import core.sys.posix.time;
 }
-    private
+    private 
 {
     import core.sys.posix.sys.time;
 }

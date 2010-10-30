@@ -1,6 +1,6 @@
-// D import file generated from 'core\runtime.d'
+// D import file generated from 'src\common\core\runtime.d'
 module core.runtime;
-private
+private 
 {
     extern (C) 
 {
@@ -93,7 +93,7 @@ rt_setCollectHandler(h);
 sm_moduleUnitTester = h;
 }
 }
-    private
+    private 
 {
     __gshared 
 {

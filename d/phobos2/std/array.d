@@ -36,8 +36,8 @@ ElementType!Range[] array(Range)(Range r) if (isForwardRange!Range)
     {
         if (r.empty) return null;
         auto result = (cast(E*) enforce(GC.malloc(r.length * E.sizeof),
-                text("Out of memory while allocating an array of ",
-                        r.length, " objects of type ", E.stringof)))[0 .. r.length];
+                text("Out of memory while allocating an array of ", r.length,
+                        " objects of type ", E.stringof)))[0 .. r.length];
         foreach (ref e; result)
         {
             // hacky
@@ -740,7 +740,7 @@ $(D T.init).
         immutable oldLength = length;
         _b = cast(T*) core.memory.GC.realloc(_b, newLength * T.sizeof);
         _e = _b + newLength;
-        this[oldLength .. length] = T.init;
+        this[oldLength .. $] = T.init;
     }
 
 /// Concatenation.

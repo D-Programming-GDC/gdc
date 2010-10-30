@@ -266,11 +266,7 @@ void TypeInfoSharedDeclaration::toDt(dt_t **pdt)
     //printf("TypeInfoSharedDeclaration::toDt() %s\n", toChars());
     dtxoff(pdt, Type::typeinfoshared->toVtblSymbol(), 0, TYnptr); // vtbl for TypeInfo_Shared
     dtdword(pdt, 0);			    // monitor
-    Type *tm;
-    if (tinfo->isConst())		// it was 'shared const'
-	tm = tinfo->constOf();
-    else				// it was just 'shared'
-	tm = tinfo->mutableOf();
+    Type *tm = tinfo->unSharedOf();
     tm = tm->merge();
     tm->getTypeInfo(NULL);
     dtxoff(pdt, tm->vtinfo->toSymbol(), 0, TYnptr);
@@ -420,6 +416,9 @@ void TypeInfoAssociativeArrayDeclaration::toDt(dt_t **pdt)
 
     tc->index->getTypeInfo(NULL);
     dtxoff(pdt, tc->index->vtinfo->toSymbol(), 0, TYnptr); // TypeInfo for array of type
+
+    tc->getImpl()->type->getTypeInfo(NULL);
+    dtxoff(pdt, tc->getImpl()->type->vtinfo->toSymbol(), 0, TYnptr);    // impl
 }
 
 void TypeInfoFunctionDeclaration::toDt(dt_t **pdt)

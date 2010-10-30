@@ -15,7 +15,7 @@
 #include <assert.h>
 
 #if _WIN32
-#elif linux || __APPLE__
+#elif linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
 #define USE_PTHREADS    1
 #else
 #endif
@@ -124,11 +124,9 @@ void _d_monitor_unlock(Object *h)
     //printf("-_d_monitor_release(%p)\n", h);
 }
 
-#endif
-
 /* =============================== linux ============================ */
 
-#if USE_PTHREADS
+#elif USE_PTHREADS
 
 #ifndef PTHREAD_MUTEX_RECURSIVE
 #    define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
@@ -210,6 +208,43 @@ void _d_monitor_unlock(Object *h)
     assert(h && h->monitor && !(((Monitor*)h->monitor)->impl));
     pthread_mutex_unlock(MONPTR(h));
     //printf("-_d_monitor_release(%p)\n", h);
+}
+
+/* ================================= No System ============================ */
+
+#else
+
+void _STI_monitor_staticctor() { }
+void _STD_monitor_staticdtor() { }
+
+void _d_monitor_create(Object *h)
+{
+    assert(h);
+    Monitor *cs = NULL;
+    if (!h->monitor)
+    {
+        cs = (Monitor *)calloc(sizeof(Monitor), 1);
+        assert(cs);
+        h->monitor = (void *)cs;
+        cs = NULL;
+    }
+}
+
+void _d_monitor_destroy(Object *h)
+{
+    assert(h && h->monitor && !(((Monitor*)h->monitor)->impl));
+    free((void *)h->monitor);
+    h->monitor = NULL;
+}
+
+int _d_monitor_lock(Object *h)
+{
+    assert(h && h->monitor && !(((Monitor*)h->monitor)->impl));
+}
+
+void _d_monitor_unlock(Object *h)
+{
+    assert(h && h->monitor && !(((Monitor*)h->monitor)->impl));
 }
 
 #endif

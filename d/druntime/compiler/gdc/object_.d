@@ -21,7 +21,8 @@ private
 {
     import core.stdc.string;
     import core.stdc.stdlib;
-    import util.string;
+    import rt.util.hash;
+    import rt.util.string;
     debug(PRINTF) import core.stdc.stdio;
 
     extern (C) void onOutOfMemoryError();
@@ -232,11 +233,8 @@ class TypeInfo
 {
     override hash_t toHash()
     {
-        hash_t hash;
-
-        foreach (char c; this.toString())
-            hash = hash * 9 + c;
-        return hash;
+        auto data = this.toString();
+        return hashOf(data.ptr, data.length);
     }
 
     override int opCmp(Object o)
@@ -400,12 +398,8 @@ class TypeInfo_Array : TypeInfo
 
     override hash_t getHash(in void* p)
     {
-        size_t sz = value.tsize();
-        hash_t hash = 0;
         void[] a = *cast(void[]*)p;
-        for (size_t i = 0; i < a.length; i++)
-            hash += value.getHash(a.ptr + i * sz) * 11;
-        return hash;
+        return hashOf(a.ptr, a.length);
     }
 
     override equals_t equals(in void* p1, in void* p2)
@@ -598,6 +592,8 @@ class TypeInfo_AssociativeArray : TypeInfo
 
     TypeInfo value;
     TypeInfo key;
+
+    TypeInfo impl;
 }
 
 class TypeInfo_Function : TypeInfo
@@ -803,18 +799,8 @@ class TypeInfo_Struct : TypeInfo
         }
         else
         {
-            hash_t h;
             debug(PRINTF) printf("getHash() using default hash\n");
-            // A sorry hash algorithm.
-            // Should use the one for strings.
-            // BUG: relies on the GC not moving objects
-            auto q = cast(const(ubyte)*)p;
-            for (size_t i = 0; i < init.length; i++)
-            {
-                h = h * 9 + *q;
-                q++;
-            }
-            return h;
+            return hashOf(p, init.length);
         }
     }
 
@@ -1614,5 +1600,244 @@ extern (C) void rt_detachDisposeEvent(Object h, DEvent e)
                 return;
             }
         }
+    }
+}
+
+extern (C)
+{
+    // from druntime/compiler/gdc/rt/aaA.d
+
+    size_t _aaLen(void* p);
+    void* _aaGetp(void** pp, TypeInfo keyti, size_t valuesize, void* pkey);
+    void* _aaGetRvaluep(void* p, TypeInfo keyti, size_t valuesize, void* pkey);
+    void* _aaInp(void* p, TypeInfo keyti, void* pkey);
+    void _aaDelp(void* p, TypeInfo keyti, void* pkey);
+    void[] _aaValues(void* p, size_t keysize, size_t valuesize);
+    void[] _aaKeys(void* p, size_t keysize, size_t valuesize);
+    void* _aaRehash(void** pp, TypeInfo keyti);
+
+    extern (D) typedef int delegate(void *) _dg_t;
+    int _aaApply(void* aa, size_t keysize, _dg_t dg);
+
+    extern (D) typedef int delegate(void *, void *) _dg2_t;
+    int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
+
+    void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, void* keys, void* values);
+}
+
+struct AssociativeArray(Key, Value)
+{
+    void* p;
+
+    size_t length() @property { return _aaLen(p); }
+
+    Value[Key] rehash() @property
+    {
+	return cast(Value[Key]) _aaRehash(&p, typeid(Value[Key]));
+    }
+
+    Value[] values() @property
+    {
+	auto a = _aaValues(p, Key.sizeof, Value.sizeof);
+	return *cast(Value[]*) &a;
+    }
+
+    Key[] keys() @property
+    {
+	auto a = _aaKeys(p, Key.sizeof, Value.sizeof);
+	return *cast(Key[]*) &a;
+    }
+
+    int opApply(int delegate(inout Key, inout Value) dg)
+    {
+	return _aaApply2(p, Key.sizeof, cast(_dg2_t)dg);
+    }
+
+    int opApply(int delegate(inout Value) dg)
+    {
+	return _aaApply(p, Key.sizeof, cast(_dg_t)dg);
+    }
+}
+
+
+void clear(T)(T obj) if (is(T == class))
+{
+    auto defaultCtor =
+        cast(void function(Object)) obj.classinfo.defaultConstructor;
+    version(none) // enforce isn't available in druntime
+        _enforce(defaultCtor || (obj.classinfo.flags & 8) == 0);
+    immutable size = obj.classinfo.init.length;
+    static if (is(typeof(obj.__dtor())))
+    {
+        obj.__dtor();
+    }
+    auto buf = (cast(void*) obj)[0 .. size];
+    buf[] = obj.classinfo.init;
+    if (defaultCtor)
+        defaultCtor(obj);
+}
+
+unittest
+{
+   {
+       class A { string s = "A"; this() {} }
+       auto a = new A;
+       a.s = "asd";
+       clear(a);
+       assert(a.s == "A");
+   }
+   {
+       static bool destroyed = false;
+       class B
+       {
+           string s = "B";
+           this() {}
+           ~this()
+           {
+               destroyed = true;
+           }
+       }
+       auto a = new B;
+       a.s = "asd";
+       clear(a);
+       assert(destroyed);
+       assert(a.s == "B");
+   }
+   {
+       class C
+       {
+           string s;
+           this()
+           {
+               s = "C";
+           }
+       }
+       auto a = new C;
+       a.s = "asd";
+       clear(a);
+       assert(a.s == "C");
+   }
+}
+
+void clear(T)(ref T obj) if (is(T == struct))
+{
+   static if (is(typeof(obj.__dtor())))
+   {
+       obj.__dtor();
+   }
+   auto buf = (cast(void*) &obj)[0 .. T.sizeof];
+   auto init = (cast(void*) &T.init)[0 .. T.sizeof];
+   buf[] = init[];
+}
+
+unittest
+{
+   {
+       struct A { string s = "A";  }
+       A a;
+       a.s = "asd";
+       clear(a);
+       assert(a.s == "A");
+   }
+   {
+       static bool destroyed = false;
+       struct B
+       {
+           string s = "B";
+           ~this()
+           {
+               destroyed = true;
+           }
+       }
+       B a;
+       a.s = "asd";
+       clear(a);
+       assert(destroyed);
+       assert(a.s == "B");
+   }
+}
+
+void clear(T : U[n], U, size_t n)(/*ref*/ T obj)
+{
+    obj = T.init;
+}
+
+unittest
+{
+    int[2] a;
+    a[0] = 1;
+    a[1] = 2;
+    clear(a);
+    assert(a == [ 0, 0 ]);
+}
+
+void clear(T)(ref T obj)
+    if (!is(T == struct) && !is(T == class) && !_isStaticArray!T)
+{
+    obj = T.init;
+}
+
+template _isStaticArray(T : U[N], U, size_t N)
+{
+    enum bool _isStaticArray = true;
+}
+
+template _isStaticArray(T)
+{
+    enum bool _isStaticArray = false;
+}
+
+unittest
+{
+   {
+       int a = 42;
+       clear(a);
+       assert(a == 0);
+   }
+   {
+       float a = 42;
+       clear(a);
+       assert(isnan(a));
+   }
+}
+
+version (unittest)
+{
+    bool isnan(float x)
+    {
+        return x != x;
+    }
+}
+
+version (none)
+{
+    // enforce() copied from Phobos std.contracts for clear(), left out until
+    // we decide whether to use it.
+    
+
+    T _enforce(T, string file = __FILE__, int line = __LINE__)
+        (T value, lazy const(char)[] msg = null)
+    {
+        if (!value) bailOut(file, line, msg);
+        return value;
+    }
+
+    T _enforce(T, string file = __FILE__, int line = __LINE__)
+        (T value, scope void delegate() dg)
+    {
+        if (!value) dg();
+        return value;
+    }
+
+    T _enforce(T)(T value, lazy Exception ex)
+    {
+        if (!value) throw ex();
+        return value;
+    }
+
+    private void _bailOut(string file, int line, in char[] msg)
+    {
+        char[21] buf;
+        throw new Exception(cast(string)(file ~ "(" ~ intToString(buf[], line) ~ "): " ~ (msg ? msg : "Enforcement failed")));
     }
 }

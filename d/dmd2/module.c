@@ -888,6 +888,7 @@ void Module::gensymfile()
 
 int Module::needModuleInfo()
 {
+    //printf("needModuleInfo() %s, %d, %d\n", toChars(), needmoduleinfo, global.params.cov);
     return needmoduleinfo || global.params.cov;
 }
 

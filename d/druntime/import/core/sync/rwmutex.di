@@ -1,20 +1,20 @@
-// D import file generated from 'core\sync\rwmutex.d'
+// D import file generated from 'src\common\core\sync\rwmutex.d'
 module core.sync.rwmutex;
-public
+public 
 {
     import core.sync.exception;
 }
-private
+private 
 {
     import core.sync.condition;
 }
-private
+private 
 {
     import core.sync.mutex;
 }
 version (Win32)
 {
-    private
+    private 
 {
     import core.sys.windows.windows;
 }
@@ -23,7 +23,7 @@ else
 {
     version (Posix)
 {
-    private
+    private 
 {
     import core.sys.posix.pthread;
 }
@@ -59,7 +59,7 @@ m_proxy.link = this;
     void lock();
     void unlock();
     bool tryLock();
-    private
+    private 
 {
     bool shouldQueueReader();
     struct MonitorProxy
@@ -79,7 +79,7 @@ m_proxy.link = this;
     void lock();
     void unlock();
     bool tryLock();
-    private
+    private 
 {
     bool shouldQueueWriter();
     struct MonitorProxy
@@ -89,7 +89,7 @@ m_proxy.link = this;
     MonitorProxy m_proxy;
 }
 }
-    private
+    private 
 {
     Policy m_policy;
     Reader m_reader;
@@ -107,7 +107,7 @@ version (unittest)
 {
     static if(!is(typeof(Thread)))
 {
-    private
+    private 
 {
     import core.thread;
 }

@@ -1316,6 +1316,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 		e = new AssignExp(0, e1, e);
 		e->type = t;
 		a->push(new ExpStatement(0, e));
+		p->isargptr = TRUE;
 #endif
 	    }
 
@@ -1572,7 +1573,7 @@ Statement *FuncDeclaration::mergeFrequire(Statement *sf)
     {
 	FuncDeclaration *fdv = (FuncDeclaration *)foverrides.data[i];
 	sf = fdv->mergeFrequire(sf);
-	if (fdv->frequire)
+	if (fdv->fdrequire)
 	{
 	    //printf("fdv->frequire: %s\n", fdv->frequire->toChars());
 	    /* Make the call:
@@ -1616,7 +1617,7 @@ Statement *FuncDeclaration::mergeFensure(Statement *sf)
     {
 	FuncDeclaration *fdv = (FuncDeclaration *)foverrides.data[i];
 	sf = fdv->mergeFensure(sf);
-	if (fdv->fensure)
+	if (fdv->fdensure)
 	{
 	    //printf("fdv->fensure: %s\n", fdv->fensure->toChars());
 	    // Make the call: __ensure(result)
@@ -1912,7 +1913,7 @@ int fp2(void *param, FuncDeclaration *f)
 	m->anyf = f;
 	TypeFunction *tf = (TypeFunction *)f->type;
 	match = (MATCH) tf->callMatch(f->needThis() ? p->ethis : NULL, arguments);
-	//printf("match = %d\n", match);
+	//printf("test: match = %d\n", match);
 	if (match != MATCHnomatch)
 	{
 	    if (match > m->last)
@@ -2835,9 +2836,7 @@ int PostBlitDeclaration::isVirtual()
 
 void PostBlitDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-    if (hgs->hdrgen)
-	return;
-    buf->writestring("=this()");
+    buf->writestring("this(this)");
     bodyToCBuffer(buf, hgs);
 }
 #endif
@@ -2925,8 +2924,6 @@ int DtorDeclaration::isVirtual()
 
 void DtorDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-    if (hgs->hdrgen)
-	return;
     buf->writestring("~this()");
     bodyToCBuffer(buf, hgs);
 }
@@ -2991,6 +2988,7 @@ void StaticCtorDeclaration::semantic(Scope *sc)
 	m = sc->module;
     if (m)
     {	m->needmoduleinfo = 1;
+	//printf("module1 %s needs moduleinfo\n", m->toChars());
 #ifdef IN_GCC
 	m->strictlyneedmoduleinfo = 1;
 #endif
@@ -3100,6 +3098,7 @@ void StaticDtorDeclaration::semantic(Scope *sc)
 	m = sc->module;
     if (m)
     {	m->needmoduleinfo = 1;
+	//printf("module2 %s needs moduleinfo\n", m->toChars());
 #ifdef IN_GCC
 	m->strictlyneedmoduleinfo = 1;
 #endif
@@ -3249,14 +3248,20 @@ void UnitTestDeclaration::semantic(Scope *sc)
 	sc2->pop();
     }
 
+#if 0
     // We're going to need ModuleInfo even if the unit tests are not
     // compiled in, because other modules may import this module and refer
     // to this ModuleInfo.
+    // (This doesn't make sense to me?)
     Module *m = getModule();
     if (!m)
 	m = sc->module;
     if (m)
+    {
+	//printf("module3 %s needs moduleinfo\n", m->toChars());
 	m->needmoduleinfo = 1;
+    }
+#endif
 }
 
 AggregateDeclaration *UnitTestDeclaration::isThis()

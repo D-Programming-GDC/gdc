@@ -1,4 +1,4 @@
-// D import file generated from 'core\thread.d'
+// D import file generated from 'src\common\core\thread.d'
 module core.thread;
 version = StackGrowsDown;
 class ThreadException : Exception
@@ -200,7 +200,8 @@ m_sz = sz;
 m_call = Call.DG;
 m_curr = &m_main;
 }
-        final 
+    ~this();
+    final 
 {
     void start();
 }
@@ -590,7 +591,11 @@ class ThreadLocal
 m_def = def;
 m_key = Thread.createLocal();
 }
-        T val()
+    ~this()
+{
+Thread.deleteLocal(m_key);
+}
+    T val()
 {
 Wrap* wrap = cast(Wrap*)Thread.getLocal(m_key);
 return wrap ? wrap.val : m_def;
@@ -761,7 +766,11 @@ m_state = State.HOLD;
 allocStack(sz);
 initStack();
 }
-        final 
+    ~this()
+{
+freeStack();
+}
+    final 
 {
     Object call(bool rethrow = true);
 }

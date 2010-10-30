@@ -1,6 +1,6 @@
-// D import file generated from 'core\memory.d'
+// D import file generated from 'src\common\core\memory.d'
 module core.memory;
-private
+private 
 {
     extern (C) 
 {

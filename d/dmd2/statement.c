@@ -1453,6 +1453,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 
     sc->noctor++;
 
+Lagain:
     switch (tab->ty)
     {
 	case Tarray:
@@ -1620,12 +1621,18 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		error("only one or two arguments for associative array foreach");
 		break;
 	    }
+#if SARRAYVALUE
+	    /* This only works if Key or Value is a static array.
+	     */
+	    tab = taa->getImpl()->type;
+	    goto Lagain;
+#else
 	    if (op == TOKforeach_reverse)
 	    {
 		error("no reverse iteration on associative arrays");
 	    }
 	    goto Lapply;
-
+#endif
 	case Tclass:
 	case Tstruct:
 #if DMDV2
@@ -2510,10 +2517,10 @@ Statement *PragmaStatement::semantic(Scope *sc)
                 if (e->op == TOKstring)
                 {
                     StringExp *se = (StringExp *)e;
-                    fprintf(stdmsg, "%.*s", (int)se->len, (char*)se->string);
+                    fprintf(stdmsg, "%.*s", (int)se->len, (char *)se->string);
                 }
                 else
-		    error("string expected for message, not '%s'", e->toChars());
+		    fprintf(stdmsg, e->toChars());
             }
             fprintf(stdmsg, "\n");
         }

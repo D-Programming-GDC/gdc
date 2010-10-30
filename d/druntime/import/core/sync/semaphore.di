@@ -1,4 +1,4 @@
-// D import file generated from 'core\sync\semaphore.d'
+// D import file generated from 'src\common\core\sync\semaphore.d'
 module core.sync.semaphore;
 public 
 {
@@ -58,7 +58,8 @@ else
 class Semaphore
 {
     this(uint count = 0);
-        void wait();
+    ~this();
+    void wait();
     bool wait(long period);
     void notify();
     bool tryWait();

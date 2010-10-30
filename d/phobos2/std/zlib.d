@@ -121,12 +121,10 @@ body
 {
     int err;
     ubyte[] destbuf;
-    uint destlen;
 
-    destlen = to!uint(srcbuf.length) + ((to!uint(srcbuf.length) + 1023) / 1024) + 12;
+    auto destlen = srcbuf.length + ((srcbuf.length + 1023) / 1024) + 12;
     destbuf = new ubyte[destlen];
-    err = etc.c.zlib.compress2(destbuf.ptr, &destlen, cast(ubyte *)srcbuf,
-            to!uint(srcbuf.length), level);
+    err = etc.c.zlib.compress2(destbuf.ptr, &destlen, cast(ubyte *)srcbuf, srcbuf.length, level);
     if (err)
     {   delete destbuf;
     throw new ZlibException(err);

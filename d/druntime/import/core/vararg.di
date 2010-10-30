@@ -1,4 +1,4 @@
-// D import file generated from 'core\vararg.d'
+// D import file generated from 'src\common\core\vararg.d'
 module core.vararg;
 alias void* va_list;
 template va_start(T)

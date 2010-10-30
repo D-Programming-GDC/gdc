@@ -1003,7 +1003,7 @@ AssignExp::toElem(IRState* irs) {
 	    elem_type = ae->type->toBasetype()->nextOf(); // don't want ->toBasetype for the element type
 	    array_exp = irs->addressOf( ae->toElem( irs ));
 	}
-#if ! V2
+#if V1
 	gcc_assert(! elem_type->isbit());
 #endif
 	args[0] = irs->typeinfoReference(array_type);
@@ -1116,9 +1116,9 @@ AssignExp::toElem(IRState* irs) {
 	    lhs, irs->convertForAssignment(e2, e1->type));
 #if V2
 	// Maybe setup hidden pointer to outer scope context.
-	if (e1->type->ty == Tstruct) {
+	if (op == TOKconstruct && e1->type->ty == Tstruct) {
 	    StructDeclaration * sd = ((TypeStruct *)e1->type)->sym;
-	    if (sd->isNested() && op == TOKconstruct) {
+	    if (sd->isNested()) {
 		tree vthis_field = sd->vthis->toSymbol()->Stree;
 		tree vthis_value = irs->getVThis(sd, this);
 
@@ -1301,11 +1301,9 @@ SliceExp::toElem(IRState * irs)
 			    upr_tree ? irs->checkedIndex(loc, lwr_tree, upr_tree, true) // implements check upr < lwr
 				     : NULL_TREE);
 	}
-
-#if ! V2
+#if V1
 	gcc_assert(! orig_array_type->next->isbit());
 #endif
-
 	final_ptr_expr = irs->pointerIntSum(irs->pvoidOkay(final_ptr_expr), lwr_tree);
 	final_ptr_expr = irs->nop(final_ptr_expr, TREE_TYPE( orig_pointer_expr ));
     }
@@ -1925,8 +1923,7 @@ NewExp::toElem(IRState * irs)
 		    vthis_value = thisexp->toElem(irs);
 		    if (outer != thisexp_cd) {
 			ClassDeclaration * outer_cd = outer->isClassDeclaration();
-			int i = outer_cd->isBaseOf(thisexp_cd, & offset);
-			assert(i);
+			assert( outer_cd->isBaseOf(thisexp_cd, & offset) );
 			// could just add offset
 			vthis_value = irs->convertTo(vthis_value, thisexp->type, outer_cd->type);
 		    }
@@ -2026,7 +2023,7 @@ NewExp::toElem(IRState * irs)
 	       allocated by this call. */
 	    for (unsigned i = 0; i < arguments->dim; i++)
 		elem_init_type = elem_init_type->toBasetype()->nextOf(); // assert ty == Tarray
-#if ! V2
+#if V1
 	    gcc_assert(! elem_init_type->isbit());
 #endif
 	    if (arguments->dim == 1)
@@ -3417,11 +3414,9 @@ TypeSArray::toCtype()
     if (! ctype) {
 	if (dim->isConst() && dim->type->isintegral()) {
 	    uinteger_t size = dim->toUInteger();
-
-#if ! V2
+#if V1
 	    gcc_assert(! next->isbit());
 #endif
-
 	    if (next->toBasetype()->ty == Tvoid)
 		ctype = gen.arrayType(Type::tuns8, size);
 	    else

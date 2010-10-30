@@ -345,10 +345,9 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 		// conversions to different sizes
 		// Assumes tvoid->size() == 1
 		// %% TODO: handle misalign like _d_arraycast_xxx ?
-#if ! V2
+#if V1
 		gcc_assert(a_type->next->isbit() == target_type->next->isbit());
 #endif
-
 		if (sz_a != sz_b)
 		    array_len = array_len * sz_a / sz_b;
 
@@ -380,7 +379,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 
 	    if (sz_a  != sz_b) {
 		unsigned mult = 1;
-#if ! V2
+#if V1
 		if (dst_elem_type->isbit())
 		    mult = 8;
 #endif
@@ -410,6 +409,9 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 	   to a signed type. */
 	if (target_type->isintegral())
 	    exp = d_convert_basic(d_type_for_size(POINTER_SIZE, 1), exp);
+	// Can convert void pointers to associative arrays too...
+	else if (target_type->ty == Taarray && exp_type == exp_type->tvoidptr)
+	    return build1(NOP_EXPR, target_type->toCtype(), exp);
 	break;
     default:
 	if (( exp_type->isreal() && target_type->isimaginary() )
@@ -1596,11 +1598,9 @@ IRState::arrayElemRef(IndexExp * aer_exp, ArrayScope * aryscp)
 
     Type * base_type = e1->type->toBasetype();
     TY base_type_ty = base_type->ty;
-
-#if ! V2
+#if V1
     gcc_assert(! base_type->next->isbit());
 #endif
-
     tree index_expr; // logical index
     tree subscript_expr; // expr that indexes the array data
     tree ptr_exp;  // base pointer to the elements
@@ -2058,7 +2058,7 @@ tree
 IRState::assignValue(Expression * e, VarDeclaration * v)
 {
     // Construct structs with an init expression.
-    if (v->type->ty == Tstruct)
+    if (e->op == TOKconstruct && v->type->ty == Tstruct)
 	return NULL_TREE;
 
     if (e->op == TOKassign || e->op == TOKconstruct || e->op == TOKblit)
@@ -2294,8 +2294,11 @@ IRState::isDeclarationReferenceType(Declaration * decl)
 	return true;
     }
 
-    if (  decl->isOut() || decl->isRef() ||
-	( decl->isParameter() && base_type->ty == Tsarray ) ) {
+    if (  decl->isOut() || decl->isRef()
+#if !SARRAYVALUE
+	|| ( decl->isParameter() && base_type->ty == Tsarray )
+#endif
+       ) {
 	return true;
     }
 

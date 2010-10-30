@@ -127,6 +127,7 @@ class TypeInfo_AssociativeArray : TypeInfo
 {
     TypeInfo value;
     TypeInfo key;
+    TypeInfo impl;
 }
 
 class TypeInfo_Function : TypeInfo
@@ -266,4 +267,109 @@ class Error : Throwable
 {
     this(string msg, Throwable next = null);
     this(string msg, string file, size_t line, Throwable next = null);
+}
+
+extern (C)
+{
+    // from druntime/src/compiler/dmd/aaA.d
+
+    size_t _aaLen(void* p);
+    void*  _aaGet(void** pp, TypeInfo keyti, size_t valuesize, ...);
+    void*  _aaGetRvalue(void* p, TypeInfo keyti, size_t valuesize, ...);
+    void*  _aaIn(void* p, TypeInfo keyti);
+    void   _aaDel(void* p, TypeInfo keyti, ...);
+    void[] _aaValues(void* p, size_t keysize, size_t valuesize);
+    void[] _aaKeys(void* p, size_t keysize, size_t valuesize);
+    void*  _aaRehash(void** pp, TypeInfo keyti);
+
+    extern (D) typedef int delegate(void *) _dg_t;
+    int _aaApply(void* aa, size_t keysize, _dg_t dg);
+
+    extern (D) typedef int delegate(void *, void *) _dg2_t;
+    int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
+
+    void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...);
+}
+
+struct AssociativeArray(Key, Value)
+{
+    void* p;
+
+    size_t length() @property { return _aaLen(p); }
+
+    Value[Key] rehash() @property
+    {
+        return cast(Value[Key]) _aaRehash(&p, typeid(Value[Key]));
+    }
+
+    Value[] values() @property
+    {
+        auto a = _aaValues(p, Key.sizeof, Value.sizeof);
+        return *cast(Value[]*) &a;
+    }
+
+    Key[] keys() @property
+    {
+        auto a = _aaKeys(p, Key.sizeof, Value.sizeof);
+        return *cast(Key[]*) &a;
+    }
+
+    int opApply(int delegate(inout Key, inout Value) dg)
+    {
+        return _aaApply2(p, Key.sizeof, cast(_dg2_t)dg);
+    }
+
+    int opApply(int delegate(inout Value) dg)
+    {
+        return _aaApply(p, Key.sizeof, cast(_dg_t)dg);
+    }
+}
+
+void clear(T)(T obj) if (is(T == class))
+{
+    auto defaultCtor =
+        cast(void function(Object)) obj.classinfo.defaultConstructor;
+    version(none) // enforce isn't available in druntime
+        _enforce(defaultCtor || (obj.classinfo.flags & 8) == 0);
+    immutable size = obj.classinfo.init.length;
+    static if (is(typeof(obj.__dtor())))
+    {
+        obj.__dtor();
+    }
+    auto buf = (cast(void*) obj)[0 .. size];
+    buf[] = obj.classinfo.init;
+    if (defaultCtor)
+        defaultCtor(obj);
+}
+
+void clear(T)(ref T obj) if (is(T == struct))
+{
+    static if (is(typeof(obj.__dtor())))
+    {
+        obj.__dtor();
+    }
+    auto buf = (cast(void*) &obj)[0 .. T.sizeof];
+    auto init = (cast(void*) &T.init)[0 .. T.sizeof];
+    buf[] = init[];
+}
+
+void clear(T : U[n], U, size_t n)(/*ref*/ T obj)
+{
+    obj = T.init;
+}
+
+void clear(T)(ref T obj)
+    if (!is(T == struct) && !is(T == class) && !_isStaticArray!T)
+{
+    obj = T.init;
+}
+
+template _isStaticArray(T : U[N], U, size_t N)
+{
+    enum bool _isStaticArray = true;
+}
+
+template _isStaticArray(T)
+{
+    enum bool _isStaticArray = false;
 }

@@ -78,11 +78,9 @@ void _STD_critical_term()
     }
 }
 
-#endif
-
 /* ================================= linux ============================ */
 
-#if linux || __APPLE__
+#elif linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -167,6 +165,25 @@ void _STD_critical_term()
             dcs_list = dcs_list->next;
         }
     }
+}
+
+/* ================================= No System ============================ */
+
+#else
+
+typedef struct D_CRITICAL_SECTION
+{
+} D_CRITICAL_SECTION;
+
+void _STI_critical_init() { }
+void _STD_critical_term() { }
+
+void _d_criticalenter(D_CRITICAL_SECTION *dcs)
+{
+}
+
+void _d_criticalexit(D_CRITICAL_SECTION *dcs)
+{
 }
 
 #endif

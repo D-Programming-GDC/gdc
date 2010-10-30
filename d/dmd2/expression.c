@@ -345,6 +345,10 @@ Expression *resolveProperties(Scope *sc, Expression *e)
 
 	if (t->ty == Tfunction || e->op == TOKoverloadset)
 	{
+#if 0
+	    if (t->ty == Tfunction && !((TypeFunction *)t)->isproperty)
+		error(e->loc, "not a property %s\n", e->toChars());
+#endif
 	    e = new CallExp(e->loc, e);
 	    e = e->semantic(sc);
 	}
@@ -674,6 +678,8 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 		if (p->type != arg->type)
 		{
 		    //printf("arg->type = %s, p->type = %s\n", arg->type->toChars(), p->type->toChars());
+		    if (arg->op == TOKtype)
+			arg->error("cannot pass type %s as function argument", arg->toChars());
 		    arg = arg->implicitCastTo(sc, p->type);
 		    arg = arg->optimize(WANTvalue);
 		}
@@ -687,12 +693,14 @@ void functionArguments(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argume
 		arg = arg->modifiableLvalue(sc, arg);
 	    }
 
-	    // Convert static arrays to pointers
 	    tb = arg->type->toBasetype();
+#if !SARRAYVALUE
+	    // Convert static arrays to pointers
 	    if (tb->ty == Tsarray)
 	    {
 		arg = arg->checkToPointer();
 	    }
+#endif
 #if DMDV2
 	    if (tb->ty == Tstruct && !(p->storageClass & (STCref | STCout)))
 	    {
@@ -1218,14 +1226,12 @@ Expression *Expression::checkToBoolean()
 
 Expression *Expression::checkToPointer()
 {
-    Expression *e;
-    Type *tb;
-
     //printf("Expression::checkToPointer()\n");
-    e = this;
+    Expression *e = this;
 
+#if !SARRAYVALUE
     // If C static array, convert to pointer
-    tb = type->toBasetype();
+    Type *tb = type->toBasetype();
     if (tb->ty == Tsarray)
     {	TypeSArray *ts = (TypeSArray *)tb;
 	if (ts->size(loc) == 0)
@@ -1234,6 +1240,7 @@ Expression *Expression::checkToPointer()
 	    e = new AddrExp(loc, this);
 	e->type = ts->next->pointerTo();
     }
+#endif
     return e;
 }
 
@@ -1416,8 +1423,6 @@ dinteger_t IntegerExp::toInteger()
 		 */
 		if (!global.errors)
 		{
-printf("ty = %d, %d\n", type->ty, t->ty);
-if (type->ty == Tenum) printf("test1\n");
 		    type->print();
 		    assert(0);
 		}
@@ -2852,6 +2857,19 @@ int StringExp::isBool(int result)
     return result ? TRUE : FALSE;
 }
 
+#if DMDV2
+int StringExp::isLvalue()
+{
+    return 1;
+}
+#endif
+
+Expression *StringExp::toLvalue(Scope *sc, Expression *e)
+{
+    //printf("StringExp::toLvalue(%s)\n", toChars());
+    return this;
+}
+
 unsigned StringExp::charAt(size_t i)
 {   unsigned value;
 
@@ -3107,6 +3125,9 @@ Expression *AssocArrayLiteralExp::semantic(Scope *sc)
     printf("AssocArrayLiteralExp::semantic('%s')\n", toChars());
 #endif
 
+    if (type)
+	return this;
+
     // Run semantic() on each element
     for (size_t i = 0; i < keys->dim; i++)
     {	Expression *key = (Expression *)keys->data[i];
@@ -3304,7 +3325,16 @@ Expression *StructLiteralExp::semantic(Scope *sc)
 	    if (v->init)
 	    {   e = v->init->toExpression();
 		if (!e)
-		    error("cannot make expression out of initializer for %s", v->toChars());
+		{   error("cannot make expression out of initializer for %s", v->toChars());
+		    e = new ErrorExp();
+		}
+		else if (v->scope)
+		{   // Do deferred semantic anaylsis
+		    Initializer *i2 = v->init->syntaxCopy();
+		    i2 = i2->semantic(v->scope, v->type);
+		    e = i2->toExpression();
+		    v->scope = NULL;
+		}
 	    }
 	    else
 	    {	e = v->type->defaultInit();
@@ -4273,8 +4303,8 @@ Expression *VarExp::toLvalue(Scope *sc, Expression *e)
 Expression *VarExp::modifiableLvalue(Scope *sc, Expression *e)
 {
     //printf("VarExp::modifiableLvalue('%s')\n", var->toChars());
-    if (type && type->toBasetype()->ty == Tsarray)
-	error("cannot change reference to static array '%s'", var->toChars());
+    //if (type && type->toBasetype()->ty == Tsarray)
+	//error("cannot change reference to static array '%s'", var->toChars());
 
     var->checkModify(loc, sc, type);
 
@@ -4778,6 +4808,7 @@ Expression *IsExp::semantic(Scope *sc)
 {   Type *tded;
 
     /* is(targ id tok tspec)
+     * is(targ id :  tok2)
      * is(targ id == tok2)
      */
 
@@ -4930,14 +4961,16 @@ Expression *IsExp::semantic(Scope *sc)
 	 * If TRUE, declare id as an alias for the specialized type.
 	 */
 
-	MATCH m;
 	assert(parameters && parameters->dim);
 
 	Objects dedtypes;
 	dedtypes.setDim(parameters->dim);
 	dedtypes.zero();
 
-	m = targ->deduceType(NULL, tspec, parameters, &dedtypes);
+	MATCH m = targ->deduceType(NULL, tspec, parameters, &dedtypes);
+//printf("targ: %s\n", targ->toChars());
+//printf("tspec: %s\n", tspec->toChars());
+//printf("test1 %d\n", m);
 	if (m == MATCHnomatch ||
 	    (m != MATCHexact && tok == TOKequal))
 	{
@@ -5780,11 +5813,13 @@ Expression *DotIdExp::semantic(Scope *sc)
          */
 	unsigned errors = global.errors;
 	global.gag++;
+	Type *t1 = e1->type;
 	e = e1->type->dotExp(sc, e1, ident);
 	global.gag--;
 	if (errors != global.errors)	// if failed to find the property
 	{
 	    global.errors = errors;
+	    e1->type = t1;		// kludge to restore type
 	    e = new DotIdExp(loc, new IdentifierExp(loc, Id::empty), ident);
 	    e = new CallExp(loc, e, e1);
 	}
@@ -6305,7 +6340,8 @@ Expression *CallExp::semantic(Scope *sc)
 
 		return new RemoveExp(loc, dotid->e1, key);
 	    }
-	    else if (e1ty == Tarray || e1ty == Tsarray || e1ty == Taarray)
+	    else if (e1ty == Tarray || e1ty == Tsarray ||
+		     (e1ty == Taarray && dotid->ident != Id::apply && dotid->ident != Id::applyReverse))
 	    {
 		if (!arguments)
 		    arguments = new Expressions();
@@ -7000,7 +7036,6 @@ Expression *AddrExp::semantic(Scope *sc)
 	    return new ErrorExp();
 	}
 
-//printf("test3 deco = %p\n", e1->type->deco);
 	type = e1->type->pointerTo();
 
 	// See if this should really be a delegate
@@ -7173,7 +7208,7 @@ Expression *NegExp::semantic(Scope *sc)
 	    return e;
 
 	e1->checkNoBool();
-	if (e1->op != TOKslice)
+	if (!e1->isArrayOperand())
 	    e1->checkArithmetic();
 	type = e1->type;
     }
@@ -7223,7 +7258,7 @@ Expression *ComExp::semantic(Scope *sc)
 	    return e;
 
 	e1->checkNoBool();
-	if (e1->op != TOKslice)
+	if (!e1->isArrayOperand())
 	    e1 = e1->checkIntegral();
 	type = e1->type;
     }
@@ -7464,6 +7499,12 @@ Expression *CastExp::semantic(Scope *sc)
 	    {
 		return e->implicitCastTo(sc, to);
 	    }
+	}
+
+	if (e1->op == TOKtemplate)
+	{
+	    error("cannot cast template %s to type %s", e1->toChars(), to->toChars());
+	    return new ErrorExp();
 	}
 
 	Type *t1b = e1->type->toBasetype();
@@ -9358,10 +9399,10 @@ Expression *MulExp::semantic(Scope *sc)
 	return e;
 
     typeCombine(sc);
-    if (e1->op != TOKslice && e2->op != TOKslice)
-    {	e1->checkArithmetic();
+    if (!e1->isArrayOperand())
+	e1->checkArithmetic();
+    if (!e2->isArrayOperand())
 	e2->checkArithmetic();
-    }
     if (type->isfloating())
     {	Type *t1 = e1->type;
 	Type *t2 = e2->type;
@@ -9424,10 +9465,10 @@ Expression *DivExp::semantic(Scope *sc)
 	return e;
 
     typeCombine(sc);
-    if (e1->op != TOKslice && e2->op != TOKslice)
-    {	e1->checkArithmetic();
+    if (!e1->isArrayOperand())
+	e1->checkArithmetic();
+    if (!e2->isArrayOperand())
 	e2->checkArithmetic();
-    }
     if (type->isfloating())
     {	Type *t1 = e1->type;
 	Type *t2 = e2->type;
@@ -9491,10 +9532,10 @@ Expression *ModExp::semantic(Scope *sc)
 	return e;
 
     typeCombine(sc);
-    if (e1->op != TOKslice && e2->op != TOKslice)
-    {	e1->checkArithmetic();
+    if (!e1->isArrayOperand())
+	e1->checkArithmetic();
+    if (!e2->isArrayOperand())
 	e2->checkArithmetic();
-    }
     if (type->isfloating())
     {	type = e1->type;
 	if (e2->type->iscomplex())
@@ -9602,10 +9643,10 @@ Expression *AndExp::semantic(Scope *sc)
 	else
 	{
 	    typeCombine(sc);
-	    if (e1->op != TOKslice && e2->op != TOKslice)
-	    {   e1->checkIntegral();
+	    if (!e1->isArrayOperand())
+		e1->checkIntegral();
+	    if (!e2->isArrayOperand())
 		e2->checkIntegral();
-	    }
 	}
     }
     return this;
@@ -9635,10 +9676,10 @@ Expression *OrExp::semantic(Scope *sc)
 	else
 	{
 	    typeCombine(sc);
-	    if (e1->op != TOKslice && e2->op != TOKslice)
-	    {   e1->checkIntegral();
+	    if (!e1->isArrayOperand())
+		e1->checkIntegral();
+	    if (!e2->isArrayOperand())
 		e2->checkIntegral();
-	    }
 	}
     }
     return this;
@@ -9668,10 +9709,10 @@ Expression *XorExp::semantic(Scope *sc)
 	else
 	{
 	    typeCombine(sc);
-	    if (e1->op != TOKslice && e2->op != TOKslice)
-	    {   e1->checkIntegral();
+	    if (!e1->isArrayOperand())
+		e1->checkIntegral();
+	    if (!e2->isArrayOperand())
 		e2->checkIntegral();
-	    }
 	}
     }
     return this;

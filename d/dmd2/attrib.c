@@ -908,7 +908,7 @@ void PragmaDeclaration::semantic(Scope *sc)
 		    fprintf(stdmsg, "%.*s", (int)se->len, (char *)se->string);
 		}
 		else
-		    error("string expected for message, not '%s'", e->toChars());
+		    fprintf(stdmsg, e->toChars());
 	    }
 	    fprintf(stdmsg, "\n");
 	}

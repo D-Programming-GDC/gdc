@@ -129,7 +129,8 @@ struct Type : Object
 	/* pick this order of numbers so switch statements work better
 	 */
 	#define MODconst     1	// type is const
-	#define MODinvariant 4	// type is invariant
+	#define MODinvariant 4	// type is immutable
+	#define MODimmutable 4  // type is immutable
 	#define MODshared    2	// type is shared
     char *deco;
 
@@ -184,6 +185,7 @@ struct Type : Object
     #define tboolean	tbool		// result of boolean expression
     #define tindex	basic[Tindex]	// array/ptr index
     static Type *tvoidptr;		// void*
+    static Type *tstring;		// immutable(char)[]
     #define terror	basic[Terror]	// for error recovery
 
     #define tsize_t	basic[Tsize_t]		// matches size_t alias
@@ -266,6 +268,7 @@ struct Type : Object
     Type *mutableOf();
     Type *sharedOf();
     Type *sharedConstOf();
+    Type *unSharedOf();
     void fixTo(Type *t);
     void check();
     Type *castMod(unsigned mod);
@@ -437,11 +440,16 @@ struct TypeDArray : TypeArray
 struct TypeAArray : TypeArray
 {
     Type *index;		// key type
+    Loc loc;
+    Scope *sc;
+
+    StructDeclaration *impl;	// implementation
 
     TypeAArray(Type *t, Type *index);
     Type *syntaxCopy();
     d_uns64 size(Loc loc);
     Type *semantic(Loc loc, Scope *sc);
+    StructDeclaration *getImpl();
     void resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol **ps);
     void toDecoBuffer(OutBuffer *buf, int flag);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
@@ -549,6 +557,7 @@ struct TypeDelegate : TypeNext
     Type *syntaxCopy();
     Type *semantic(Loc loc, Scope *sc);
     d_uns64 size(Loc loc);
+    MATCH implicitConvTo(Type *to);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     Expression *defaultInit(Loc loc);
     int isZeroInit(Loc loc);

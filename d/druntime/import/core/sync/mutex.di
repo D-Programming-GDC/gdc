@@ -1,12 +1,12 @@
-// D import file generated from 'core\sync\mutex.d'
+// D import file generated from 'src\common\core\sync\mutex.d'
 module core.sync.mutex;
-public
+public 
 {
     import core.sync.exception;
 }
 version (Win32)
 {
-    private
+    private 
 {
     import core.sys.windows.windows;
 }
@@ -15,7 +15,7 @@ else
 {
     version (Posix)
 {
-    private
+    private 
 {
     import core.sys.posix.pthread;
 }
@@ -34,14 +34,15 @@ body
 this();
 (cast(void**)o)[1] = &m_proxy;
 }
-        void lock();
+    ~this();
+    void lock();
     void unlock();
     bool tryLock();
     version (Posix)
 {
     static this();
     }
-    private
+    private 
 {
     version (Win32)
 {
@@ -63,7 +64,7 @@ else
     Object.Monitor link;
 }
     MonitorProxy m_proxy;
-    package
+    package 
 {
     version (Posix)
 {
@@ -77,7 +78,7 @@ return &m_hndl;
 }
 version (unittest)
 {
-    private
+    private 
 {
     import core.thread;
 }

@@ -1,20 +1,20 @@
-// D import file generated from 'core\sync\condition.d'
+// D import file generated from 'src\common\core\sync\condition.d'
 module core.sync.condition;
-public
+public 
 {
     import core.sync.exception;
 }
-public
+public 
 {
     import core.sync.mutex;
 }
 version (Win32)
 {
-    private
+    private 
 {
     import core.sync.semaphore;
 }
-    private
+    private 
 {
     import core.sys.windows.windows;
 }
@@ -23,19 +23,19 @@ else
 {
     version (Posix)
 {
-    private
+    private 
 {
     import core.sync.config;
 }
-    private
+    private 
 {
     import core.stdc.errno;
 }
-    private
+    private 
 {
     import core.sys.posix.pthread;
 }
-    private
+    private 
 {
     import core.sys.posix.time;
 }
@@ -44,11 +44,12 @@ else
 class Condition
 {
     this(Mutex m);
-        void wait();
+    ~this();
+    void wait();
     bool wait(long period);
     void notify();
     void notifyAll();
-    private
+    private 
 {
     version (Win32)
 {
@@ -74,15 +75,15 @@ else
 }
 version (unittest)
 {
-    private
+    private 
 {
     import core.thread;
 }
-    private
+    private 
 {
     import core.sync.mutex;
 }
-    private
+    private 
 {
     import core.sync.semaphore;
 }

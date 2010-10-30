@@ -211,6 +211,7 @@ Type *TupleDeclaration::getType()
 	Arguments *args = new Arguments();
 	args->setDim(objects->dim);
 	OutBuffer buf;
+	int hasdeco = 1;
 	for (size_t i = 0; i < objects->dim; i++)
 	{   Type *t = (Type *)objects->data[i];
 
@@ -224,9 +225,13 @@ Type *TupleDeclaration::getType()
 	    Argument *arg = new Argument(0, t, NULL, NULL);
 #endif
 	    args->data[i] = (void *)arg;
+	    if (!t->deco)
+		hasdeco = 0;
 	}
 
 	tupletype = new TypeTuple(args);
+	if (hasdeco)
+	    return tupletype->semantic(0, NULL);
     }
 
     return tupletype;
@@ -472,11 +477,11 @@ void AliasDeclaration::semantic(Scope *sc)
 	goto L2;			// it's a symbolic alias
 
 #if DMDV2
-    if (storage_class & STCref)
+    if (storage_class & (STCref | STCnothrow | STCpure))
     {	// For 'ref' to be attached to function types, and picked
 	// up by Type::resolve(), it has to go into sc.
 	sc = sc->push();
-	sc->stc |= STCref;
+	sc->stc |= storage_class & (STCref | STCnothrow | STCpure);
 	type->resolve(loc, sc, &e, &t, &s);
 	sc = sc->pop();
     }
@@ -643,6 +648,9 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     this->loc = loc;
     offset = 0;
     noauto = 0;
+#if DMDV2
+    isargptr = FALSE;
+#endif
 #if DMDV1
     nestedref = 0;
 #endif
@@ -1059,10 +1067,11 @@ Lagain:
 		else if (t->ty == Tstruct)
 		{
 		    ei->exp = ei->exp->semantic(sc);
+		    ei->exp = resolveProperties(sc, ei->exp);
+		    StructDeclaration *sd = ((TypeStruct *)t)->sym;
 #if DMDV2
 		    /* Look to see if initializer is a call to the constructor
 		     */
-		    StructDeclaration *sd = ((TypeStruct *)t)->sym;
 		    if (sd->ctor &&		// there are constructors
 			ei->exp->type->ty == Tstruct &&	// rvalue is the same struct
 			((TypeStruct *)ei->exp->type)->sym == sd &&
@@ -1106,10 +1115,21 @@ Lagain:
 #endif
 		    if (!ei->exp->implicitConvTo(type))
 		    {
+			Type *ti = ei->exp->type->toBasetype();
+			// Look for constructor first
+			if (sd->ctor &&
+			    /* Initializing with the same type is done differently
+			     */
+			    !(ti->ty == Tstruct && t->toDsymbol(sc) == ti->toDsymbol(sc)))
+			{
+			   // Rewrite as e1.ctor(arguments)
+			    Expression *ector = new DotIdExp(loc, e1, Id::ctor);
+			    ei->exp = new CallExp(loc, ector, ei->exp);
+			} 
+			else
 			/* Look for opCall
 			 * See bugzilla 2702 for more discussion
 			 */
-			Type *ti = ei->exp->type->toBasetype();
 			// Don't cast away invariant or mutability in initializer
 			if (search_function(sd, Id::call) &&
 			    /* Initializing with the same type is done differently
@@ -1134,7 +1154,8 @@ Lagain:
 	    }
 	}
 	else if (storage_class & (STCconst | STCimmutable | STCmanifest) ||
-		 type->isConst() || type->isInvariant())
+		 type->isConst() || type->isInvariant() ||
+		 parent->isAggregateDeclaration())
 	{
 	    /* Because we may need the results of a const declaration in a
 	     * subsequent type, such as an array dimension, before semantic2()

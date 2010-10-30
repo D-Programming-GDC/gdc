@@ -68,6 +68,7 @@ struct Msgtable msgtable[] =
     { "typeinfo" },
     { "outer" },
     { "Exception" },
+    { "AssociativeArray" },
     { "Throwable" },
     { "withSym", "__withSym" },
     { "result", "__result" },
@@ -123,6 +124,7 @@ struct Msgtable msgtable[] =
     { "max_exp" },
     { "min_10_exp" },
     { "min_exp" },
+    { "min_normal" },
     { "re" },
     { "im" },
 

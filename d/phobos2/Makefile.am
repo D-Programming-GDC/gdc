@@ -116,16 +116,17 @@ common/core/thread.o: common/core/thread.d
 gcc/cbridge_math.o: gcc/cbridge_math.c
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
 
-BASE_OBJS=compiler/aaA.o compiler/aApply.o compiler/aApplyR.o compiler/adi.o \
-	  compiler/arrayassign.o compiler/arraybyte.o compiler/arraycast.o \
-	  compiler/arraycat.o compiler/arraydouble.o compiler/arrayfloat.o \
-	  compiler/arrayint.o compiler/arrayreal.o compiler/arrayshort.o \
-	  compiler/cast_.o compiler/complex.o \
-	  compiler/critical.o compiler/dgccmain2.o \
-	  compiler/invariant.o compiler/invariant_.o compiler/lifetime.o \
-	  compiler/gccmemory.o \
-	  compiler/monitor.o compiler/obj.o compiler/object_.o \
-	  compiler/qsort.o compiler/switch_.o
+BASE_OBJS=compiler/complex.o compiler/critical.o compiler/monitor.o \
+	  compiler/object_.o
+
+RUNTIME_OBJS=compiler/aaA.o compiler/aApply.o compiler/aApplyR.o \
+	     compiler/adi.o compiler/arrayassign.o compiler/arraybyte.o \
+	     compiler/arraycast.o compiler/arraycat.o compiler/arraydouble.o \
+	     compiler/arrayfloat.o compiler/arrayint.o compiler/arrayreal.o \
+	     compiler/arrayshort.o compiler/cast_.o compiler/dgccmain2.o \
+	     compiler/invariant.o compiler/invariant_.o compiler/lifetime.o \
+	     compiler/gccmemory.o compiler/obj.o compiler/qsort.o \
+	     compiler/switch_.o
 
 CORE_OBJS=core/bitop.o core/exception.o core/memory.o core/runtime.o \
 	  core/thread.o core/vararg.o core/stdc/errno.o \
@@ -138,7 +139,7 @@ GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
 	 gcc/cbridge_time.o gcc/cbridge_strerror.o
 
 UTIL_OBJS=compiler/util/console.o compiler/util/cpuid.o compiler/util/ctype.o \
-	  compiler/util/string.o compiler/util/utf.o
+	  compiler/util/hash.o compiler/util/string.o compiler/util/utf.o
 
 TI=ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
    ti_Ag.o ti_Aint.o ti_Along.o ti_Areal.o ti_Ashort.o ti_byte.o ti_C.o \
@@ -150,8 +151,9 @@ TI=ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
 DRUNTIME_OBJS=@DRUNTIME_OBJS@
 
 DRUNTIME_OBJS+=$(subst compiler,compiler/gdc,$(BASE_OBJS)) \
-	       $(subst compiler,compiler/gdc,$(UTIL_OBJS)) \
-	       $(subst ti_,compiler/gdc/typeinfo/ti_,$(TI))
+	       $(subst compiler,compiler/gdc/rt,$(RUNTIME_OBJS)) \
+	       $(subst compiler,compiler/gdc/rt,$(UTIL_OBJS)) \
+	       $(subst ti_,compiler/gdc/rt/typeinfo/ti_,$(TI))
 
 
 COMMON_OBJS=$(subst core,common/core,$(CORE_OBJS))
@@ -175,7 +177,7 @@ RT_WINDOWS_OBJS=import/core/sys/windows/windows.o
 
 # This should not be linked into a shared library.
 #CMAIN_OBJS=compiler/gdc/cmain.o
-CMAIN_OBJS=compiler/gdc/dmain2.o
+CMAIN_OBJS=compiler/gdc/rt/dmain2.o
 
 D_GC_MODULES=@D_GC_MODULES@
 

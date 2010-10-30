@@ -449,7 +449,7 @@ Symbol *FuncDeclaration::toSymbol()
 	    tree id;
 	    //struct prod_token_parm_item* parm;
 	    //tree type_node;
-	    Type * func_type = tintro ? tintro : type;
+	    TypeFunction * func_type = (TypeFunction *)(tintro ? tintro : type);
 	    tree fn_decl;
 	    char * mangled_ident_str = 0;
 	    AggregateDeclaration * agg_decl;
@@ -563,7 +563,7 @@ Symbol *FuncDeclaration::toSymbol()
 		if (is_template_member && outer_func)
 		{
 		    Symbol * outer_sym = outer_func->toSymbol();
-#if 0
+#if 1
 		    // TODO: This could fail in some corner cases.
 		    assert(outer_sym->outputStage != Finished);
 #endif
@@ -597,15 +597,12 @@ Symbol *FuncDeclaration::toSymbol()
 		DECL_UNINLINABLE( fn_decl ) = 1;
 	    }
 #if V2
-	    if (storage_class & STCpure)
-		DECL_PURE_P( fn_decl ) = 1;
-	    if (storage_class & STCnothrow)
-		TREE_NOTHROW( fn_decl ) = 1;
+	    // %% pure functions don't imply nothrow
+	    DECL_PURE_P( fn_decl ) = (func_type->ispure && func_type->isnothrow);
+	    TREE_NOTHROW( fn_decl ) = func_type->isnothrow;
 	    // TODO: check 'immutable' means arguments are readonly...
-	    if (storage_class & STCimmutable)
-		TREE_READONLY( fn_decl ) = 1;
-	    if (storage_class & STCconst)
-		TREE_CONSTANT( fn_decl ) = 1;
+	    TREE_READONLY( fn_decl ) = func_type->isInvariant();
+	    TREE_CONSTANT( fn_decl ) = func_type->isConst();
 #endif
 
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
@@ -632,7 +629,7 @@ Symbol *FuncDeclaration::toSymbol()
 		case LINKwindows:
 		    gen.addDeclAttribute(fn_decl, "stdcall");
 		    // The stdcall attribute also needs to be set on the function type.
-		    assert( ((TypeFunction *) func_type)->linkage == LINKwindows );
+		    assert(func_type->linkage == LINKwindows);
 		    break;
 		case LINKpascal:
 		    // stdcall and reverse params?

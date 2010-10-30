@@ -1598,40 +1598,96 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 	Type *tt = this;
 	Type *at = (Type *)dedtypes->data[i];
 
-	// 3*3 == 9 cases
-	if (tparam->isMutable())
-	{   // foo(U:U) T            => T
-	    // foo(U:U) const(T)     => const(T)
-	    // foo(U:U) invariant(T) => invariant(T)
-	    if (!at)
-	    {   dedtypes->data[i] = (void *)this;
-		goto Lexact;
-	    }
+	// 5*5 == 25 cases
+
+	#define X(U,T)	((U) << 3) | (T)
+	switch (X(tparam->mod, mod))
+	{
+	    case X(0, 0):
+	    case X(0, MODconst):
+	    case X(0, MODinvariant):
+	    case X(0, MODshared):
+	    case X(0, MODconst | MODshared):
+		// foo(U:U) T                              => T
+		// foo(U:U) const(T)                       => const(T)
+		// foo(U:U) immutable(T)                   => immutable(T)
+		// foo(U:U) shared(T)                      => shared(T)
+		// foo(U:U) const(shared(T))               => const(shared(T))
+		if (!at)
+		{   dedtypes->data[i] = (void *)tt;
+		    goto Lexact;
+		}
+		break;
+
+	    case X(MODconst, MODconst):
+	    case X(MODinvariant, MODinvariant):
+	    case X(MODshared, MODshared):
+	    case X(MODconst | MODshared, MODconst | MODshared):
+		// foo(U:const(U))        const(T)         => T
+		// foo(U:immutable(U))    immutable(T)     => T
+		// foo(U:shared(U))       shared(T)        => T
+		// foo(U:const(shared(U)) const(shared(T)) => T
+		tt = mutableOf()->unSharedOf();
+		if (!at)
+		{   dedtypes->data[i] = (void *)tt;
+		    goto Lexact;
+		}
+		break;
+
+	    case X(MODconst, 0):
+	    case X(MODconst, MODimmutable):
+	    case X(MODconst, MODconst | MODshared):
+	    case X(MODconst | MODshared, MODimmutable):
+		// foo(U:const(U)) T                       => T
+		// foo(U:const(U)) immutable(T)            => T
+		// foo(U:const(U)) const(shared(T))        => shared(T)
+		// foo(U:const(shared(U)) immutable(T)     => T
+		tt = mutableOf();
+		if (!at)
+		{   dedtypes->data[i] = (void *)tt;
+		    goto Lconst;
+		}
+		break;
+
+	    case X(MODshared, MODconst | MODshared):
+	    case X(MODconst | MODshared, MODshared):
+		// foo(U:shared(U)) const(shared(T))       => const(T)
+		// foo(U:const(shared(U)) shared(T)        => T
+		tt = unSharedOf();
+		if (!at)
+		{   dedtypes->data[i] = (void *)tt;
+		    goto Lconst;
+		}
+		break;
+
+	    case X(MODimmutable,         0):
+	    case X(MODimmutable,         MODconst):
+	    case X(MODimmutable,         MODshared):
+	    case X(MODimmutable,         MODconst | MODshared):
+	    case X(MODconst,             MODshared):
+	    case X(MODshared,            0):
+	    case X(MODshared,            MODconst):
+	    case X(MODshared,            MODimmutable):
+	    case X(MODconst | MODshared, 0):
+	    case X(MODconst | MODshared, MODconst):
+		// foo(U:immutable(U)) T                   => nomatch
+		// foo(U:immutable(U)) const(T)            => nomatch
+		// foo(U:immutable(U)) shared(T)           => nomatch
+		// foo(U:immutable(U)) const(shared(T))    => nomatch
+		// foo(U:const(U)) shared(T)               => nomatch
+		// foo(U:shared(U)) T                      => nomatch
+		// foo(U:shared(U)) const(T)               => nomatch
+		// foo(U:shared(U)) immutable(T)           => nomatch
+		// foo(U:const(shared(U)) T                => nomatch
+		// foo(U:const(shared(U)) const(T)         => nomatch
+		//if (!at)
+		    goto Lnomatch;
+		break;
+
+	    default:
+		assert(0);
 	}
-	else if (mod == tparam->mod)
-	{   // foo(U:const(U))     const(T)     => T
-	    // foo(U:invariant(U)) invariant(T) => T
-	    tt = mutableOf();
-	    if (!at)
-	    {   dedtypes->data[i] = (void *)tt;
-		goto Lexact;
-	    }
-	}
-	else if (tparam->isConst())
-	{   // foo(U:const(U)) T            => T
-	    // foo(U:const(U)) invariant(T) => T
-	    tt = mutableOf();
-	    if (!at)
-	    {   dedtypes->data[i] = (void *)tt;
-		goto Lconst;
-	    }
-	}
-	else
-	{   // foo(U:invariant(U)) T        => nomatch
-	    // foo(U:invariant(U)) const(T) => nomatch
-	    if (!at)
-		goto Lnomatch;
-	}
+	#undef X
 
 	if (tt->equals(at))
 	    goto Lexact;
@@ -4131,21 +4187,17 @@ int TemplateInstance::hasNestedArgs(Objects *args)
 	else if (sa)
 	{
 	  Lsa:
-	    Declaration *d = NULL;
 	    TemplateDeclaration *td = sa->isTemplateDeclaration();
-	    if (td && td->literal)
-	    {
-		goto L2;
-	    }
-	    d = sa->isDeclaration();
-	    if (d && !d->isDataseg() &&
+	    Declaration *d = sa->isDeclaration();
+	    if ((td && td->literal) ||
+	        (d && !d->isDataseg() &&
 #if DMDV2
-		!(d->storage_class & STCmanifest) &&
+		 !(d->storage_class & STCmanifest) &&
 #endif
-		(!d->isFuncDeclaration() || d->isFuncDeclaration()->isNested()) &&
-		!isTemplateMixin())
+		 (!d->isFuncDeclaration() || d->isFuncDeclaration()->isNested()) &&
+		 !isTemplateMixin()
+		))
 	    {
-	     L2:
 		// if module level template
 		if (tempdecl->toParent()->isModule())
 		{   Dsymbol *dparent = sa->toParent();
@@ -4176,7 +4228,7 @@ int TemplateInstance::hasNestedArgs(Objects *args)
 		    nested |= 1;
 		}
 		else
-		    error("cannot use local '%s' as parameter to non-global template %s", d->toChars(), tempdecl->toChars());
+		    error("cannot use local '%s' as parameter to non-global template %s", sa->toChars(), tempdecl->toChars());
 	    }
 	}
 	else if (va)
@@ -4195,13 +4247,11 @@ int TemplateInstance::hasNestedArgs(Objects *args)
 
 Identifier *TemplateInstance::genIdent()
 {   OutBuffer buf;
-    char *id;
-    Objects *args;
 
     //printf("TemplateInstance::genIdent('%s')\n", tempdecl->ident->toChars());
-    id = tempdecl->ident->toChars();
+    char *id = tempdecl->ident->toChars();
     buf.printf("__T%"PRIuSIZE"%s", strlen(id), id);
-    args = tiargs;
+    Objects *args = tiargs;
     for (int i = 0; i < args->dim; i++)
     {   Object *o = (Object *)args->data[i];
 	Type *ta = isType(o);
@@ -4539,15 +4589,19 @@ void TemplateMixin::semantic(Scope *sc)
     printf("+TemplateMixin::semantic('%s', this=%p)\n", toChars(), this);
     fflush(stdout);
 #endif
-    if (semanticRun &&
+    if (semanticRun)
+    {
 	// This for when a class/struct contains mixin members, and
 	// is done over because of forward references
-	(!parent || !toParent()->isAggregateDeclaration()))
-    {
+	if (parent && toParent()->isAggregateDeclaration())
+	    semanticRun = 1;		// do over
+	else
+	{
 #if LOG
-	printf("\tsemantic done\n");
+	    printf("\tsemantic done\n");
 #endif
-	return;
+	    return;
+	}
     }
     if (!semanticRun)
 	semanticRun = 1;

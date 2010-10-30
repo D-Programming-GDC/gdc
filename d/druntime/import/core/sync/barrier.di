@@ -1,20 +1,20 @@
-// D import file generated from 'core\sync\barrier.d'
+// D import file generated from 'src\common\core\sync\barrier.d'
 module core.sync.barrier;
-public
+public 
 {
     import core.sync.exception;
 }
-private
+private 
 {
     import core.sync.condition;
 }
-private
+private 
 {
     import core.sync.mutex;
 }
 version (Win32)
 {
-    private
+    private 
 {
     import core.sys.windows.windows;
 }
@@ -23,11 +23,11 @@ else
 {
     version (Posix)
 {
-    private
+    private 
 {
     import core.stdc.errno;
 }
-    private
+    private 
 {
     import core.sys.posix.pthread;
 }
@@ -49,7 +49,7 @@ m_limit = limit;
 m_count = limit;
 }
     void wait();
-    private
+    private 
 {
     Mutex m_lock;
     Condition m_cond;
@@ -60,7 +60,7 @@ m_count = limit;
 }
 version (unittest)
 {
-    private
+    private 
 {
     import core.thread;
 }

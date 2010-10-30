@@ -299,7 +299,7 @@ struct Box
         }
         
         args[0..(char[]).sizeof] = (cast(void*) &format)[0..(char[]).sizeof];
-        args[(char[]).sizeof..length] = data;
+        args[(char[]).sizeof..$] = data;
 	version (GNU)
 	{
 	    va_list dummy = void;

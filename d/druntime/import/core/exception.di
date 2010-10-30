@@ -1,6 +1,6 @@
-// D import file generated from 'core\exception.d'
+// D import file generated from 'src\common\core\exception.d'
 module core.exception;
-private
+private 
 {
     alias void function(string file, size_t line, string msg = null) assertHandlerType;
     __gshared 
