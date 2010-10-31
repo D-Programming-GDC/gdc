@@ -11,12 +11,17 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+*/
 module core.stdc.math;
+
+version(GNU) import gcc.builtins;
 
 private import core.stdc.config;
 
 extern (C):
-pure:
 nothrow:
 
 alias float  float_t;
@@ -469,9 +474,239 @@ extern (D)
     int isunordered(real x, real y)        { return (x !<>= y); }
 }
 
+version( GNU )
+{
+    alias __builtin_acos  acos;
+    alias __builtin_acosf acosf;
+    alias __builtin_acosl acosl;
+
+    alias __builtin_asin  asin;
+    alias __builtin_asinf asinf;
+    alias __builtin_asinl asinl;
+
+    alias __builtin_atan  atan;
+    alias __builtin_atanf atanf;
+    alias __builtin_atanl atanl;
+
+    alias __builtin_atan2  atan2;
+    alias __builtin_atan2f atan2f;
+    alias __builtin_atan2l atan2l;
+
+    alias __builtin_cos  cos;
+    alias __builtin_cosf cosf;
+    alias __builtin_cosl cosl;
+
+    alias __builtin_sin  sin;
+    alias __builtin_sinf sinf;
+    alias __builtin_sinl sinl;
+
+    alias __builtin_tan  tan;
+    alias __builtin_tanf tanf;
+    alias __builtin_tanl tanl;
+
+    alias __builtin_acosh  acosh;
+    alias __builtin_acoshf acoshf;
+    alias __builtin_acoshl acoshl;
+
+    alias __builtin_asinh  asinh;
+    alias __builtin_asinhf asinhf;
+    alias __builtin_asinhl asinhl;
+
+    alias __builtin_atanh  atanh;
+    alias __builtin_atanhf atanhf;
+    alias __builtin_atanhl atanhl;
+
+    alias __builtin_cosh  cosh;
+    alias __builtin_coshf coshf;
+    alias __builtin_coshl coshl;
+
+    alias __builtin_sinh  sinh;
+    alias __builtin_sinhf sinhf;
+    alias __builtin_sinhl sinhl;
+
+    alias __builtin_tanh  tanh;
+    alias __builtin_tanhf tanhf;
+    alias __builtin_tanhl tanhl;
+
+    alias __builtin_exp  exp;
+    alias __builtin_expf expf;
+    alias __builtin_expl expl;
+
+    alias __builtin_exp2  exp2;
+    alias __builtin_exp2f exp2f;
+    alias __builtin_exp2l exp2l;
+
+    alias __builtin_expm1  expm1;
+    alias __builtin_expm1f expm1f;
+    alias __builtin_expm1l expm1l;
+
+    alias __builtin_frexp  frexp;
+    alias __builtin_frexpf frexpf;
+    alias __builtin_frexpl frexpl;
+
+    alias __builtin_ilogb  ilogb;
+    alias __builtin_ilogbf ilogbf;
+    alias __builtin_ilogbl ilogbl;
+
+    alias __builtin_ldexp  ldexp;
+    alias __builtin_ldexpf ldexpf;
+    alias __builtin_ldexpl ldexpl;
+
+    alias __builtin_log  log;
+    alias __builtin_logf logf;
+    alias __builtin_logl logl;
+
+    alias __builtin_log10  log10;
+    alias __builtin_log10f log10f;
+    alias __builtin_log10l log10l;
+
+    alias __builtin_log1p  log1p;
+    alias __builtin_log1pf log1pf;
+    alias __builtin_log1pl log1pl;
+
+    alias __builtin_log2  log2;
+    alias __builtin_log2f log2f;
+    alias __builtin_log2l log2l;
+
+    alias __builtin_logb  logb;
+    alias __builtin_logbf logbf;
+    alias __builtin_logbl logbl;
+
+    alias __builtin_modf  modf;
+    alias __builtin_modff modff;
+    alias __builtin_modfl modfl;
+
+    alias __builtin_scalbn  scalbn;
+    alias __builtin_scalbnf scalbnf;
+    alias __builtin_scalbnl scalbnl;
+
+    alias __builtin_scalbln  scalbln;
+    alias __builtin_scalblnf scalblnf;
+    alias __builtin_scalblnl scalblnl;
+
+    alias __builtin_cbrt  cbrt;
+    alias __builtin_cbrtf cbrtf;
+    alias __builtin_cbrtl cbrtl;
+
+    alias __builtin_fabs  fabs;
+    alias __builtin_fabsf fabsf;
+    alias __builtin_fabsl fabsl;
+
+    alias __builtin_hypot  hypot;
+    alias __builtin_hypotf hypotf;
+    alias __builtin_hypotl hypotl;
+
+    alias __builtin_pow  pow;
+    alias __builtin_powf powf;
+    alias __builtin_powl powl;
+
+    alias __builtin_sqrt  sqrt;
+    alias __builtin_sqrtf sqrtf;
+    alias __builtin_sqrtl sqrtl;
+
+    alias __builtin_erf  erf;
+    alias __builtin_erff erff;
+    alias __builtin_erfl erfl;
+
+    alias __builtin_erfc  erfc;
+    alias __builtin_erfcf erfcf;
+    alias __builtin_erfcl erfcl;
+
+    alias __builtin_lgamma  lgamma;
+    alias __builtin_lgammaf lgammaf;
+    alias __builtin_lgammal lgammal;
+
+    alias __builtin_tgamma  tgamma;
+    alias __builtin_tgammaf tgammaf;
+    alias __builtin_tgammal tgammal;
+
+    alias __builtin_ceil  ceil;
+    alias __builtin_ceilf ceilf;
+    alias __builtin_ceill ceill;
+
+    alias __builtin_floor  floor;
+    alias __builtin_floorf floorf;
+    alias __builtin_floorl floorl;
+
+    alias __builtin_nearbyint  nearbyint;
+    alias __builtin_nearbyintf nearbyintf;
+    alias __builtin_nearbyintl nearbyintl;
+
+    alias __builtin_rint  rint;
+    alias __builtin_rintf rintf;
+    alias __builtin_rintl rintl;
+
+    alias __builtin_lrint  lrint;
+    alias __builtin_lrintf lrintf;
+    alias __builtin_lrintl lrintl;
+
+    alias __builtin_llrint  llrint;
+    alias __builtin_llrintf llrintf;
+    alias __builtin_llrintl llrintl;
+
+    alias __builtin_round  round;
+    alias __builtin_roundf roundf;
+    alias __builtin_roundl roundl;
+
+    alias __builtin_lround  lround;
+    alias __builtin_lroundf lroundf;
+    alias __builtin_lroundl lroundl;
+
+    alias __builtin_llround  llround;
+    alias __builtin_llroundf llroundf;
+    alias __builtin_llroundl llroundl;
+
+    alias __builtin_trunc  trunc;
+    alias __builtin_truncf truncf;
+    alias __builtin_truncl truncl;
+
+    alias __builtin_fmod  fmod;
+    alias __builtin_fmodf fmodf;
+    alias __builtin_fmodl fmodl;
+
+    alias __builtin_remainder  remainder;
+    alias __builtin_remainderf remainderf;
+    alias __builtin_remainderl remainderl;
+
+    alias __builtin_remquo  remquo;
+    alias __builtin_remquof remquof;
+    alias __builtin_remquol remquol;
+
+    alias __builtin_copysign  copysign;
+    alias __builtin_copysignf copysignf;
+    alias __builtin_copysignl copysignl;
+
+    alias __builtin_nan  nan;
+    alias __builtin_nanf nanf;
+    alias __builtin_nanl nanl;
+
+    alias __builtin_nextafter  nextafter;
+    alias __builtin_nextafterf nextafterf;
+    alias __builtin_nextafterl nextafterl;
+
+    alias __builtin_nexttoward  nexttoward;
+    alias __builtin_nexttowardf nexttowardf;
+    alias __builtin_nexttowardl nexttowardl;
+
+    alias __builtin_fdim  fdim;
+    alias __builtin_fdimf fdimf;
+    alias __builtin_fdiml fdiml;
+
+    alias __builtin_fmax  fmax;
+    alias __builtin_fmaxf fmaxf;
+    alias __builtin_fmaxl fmaxl;
+
+    alias __builtin_fmin  fmin;
+    alias __builtin_fminf fminf;
+    alias __builtin_fminl fminl;
+
+    alias __builtin_fma  fma;
+    alias __builtin_fmaf fmaf;
+    alias __builtin_fmal fmal;
+}
 // NOTE: freebsd < 8-CURRENT doesn't appear to support *l, but we can
 //       approximate.
-version( freebsd )
+else version( freebsd )
 {
     double  acos(double x);
     float   acosf(float x);

@@ -348,6 +348,10 @@ d_gcc_magic_builtins_module(Module *m)
 	    //warning("one-arg va problem: %s", name);
 	    continue;
 	}
+#if V2
+	dtf->ispure = 1;
+	dtf->isnothrow = TREE_NOTHROW(decl);
+#endif
 	FuncDeclaration * func = new FuncDeclaration(0, 0,
 	    Lexer::idPool(name), STCextern, dtf);
 	func->isym = new Symbol;
