@@ -269,13 +269,13 @@ d_bi_builtin_func(tree decl)
   This function should be sufficient in looking through all members.
 */
 static void
-d_gcc_magic_stdarg_member(Dsymbol *m, bool is_c_std_arg)
+d_gcc_magic_stdarg_check(Dsymbol *m, bool is_c_std_arg)
 {
     Identifier * id_arg = Lexer::idPool("va_arg");
     Identifier * id_start = Lexer::idPool("va_start");
 
-    AttribDeclaration * ad;
-    TemplateDeclaration * td;
+    AttribDeclaration * ad = NULL;
+    TemplateDeclaration * td = NULL;
 
     if ( (ad = m->isAttribDeclaration()) )
     {
@@ -286,7 +286,7 @@ d_gcc_magic_stdarg_member(Dsymbol *m, bool is_c_std_arg)
 	    for (size_t i = 0; i < decl->dim; i++)
 	    {
 		Dsymbol * sym = (Dsymbol *)decl->data[i];
-		d_gcc_magic_stdarg_member(sym, is_c_std_arg);
+		d_gcc_magic_stdarg_check(sym, is_c_std_arg);
 	    }
 	}
     }
@@ -301,8 +301,11 @@ d_gcc_magic_stdarg_member(Dsymbol *m, bool is_c_std_arg)
 	}
 	else if (td->ident == id_start && is_c_std_arg)
 	    IRState::setCStdArgStart(td);
+	else
+	    td = NULL;
     }
-    else	// Not a template, don't do anything else.
+
+    if (td == NULL)	// Not handled.
 	return;
 
     if ( TREE_CODE( va_list_type_node ) == ARRAY_TYPE )
@@ -345,7 +348,7 @@ d_gcc_magic_stdarg_module(Module *m, bool is_c_std_arg)
     for (unsigned i = 0; i < members->dim; i++)
     {
 	Dsymbol * sym = (Dsymbol *) members->data[i];
-	d_gcc_magic_stdarg_member(sym, is_c_std_arg);
+	d_gcc_magic_stdarg_check(sym, is_c_std_arg);
     }
 }
 
