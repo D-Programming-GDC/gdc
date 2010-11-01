@@ -270,16 +270,16 @@ class Error : Throwable
 
 extern (C)
 {
-    // from druntime/src/compiler/dmd/aaA.d
+    // from druntime/compiler/gdc/rt/aaA.d
 
     size_t _aaLen(void* p);
-    void*  _aaGet(void** pp, TypeInfo keyti, size_t valuesize, ...);
-    void*  _aaGetRvalue(void* p, TypeInfo keyti, size_t valuesize, ...);
-    void*  _aaIn(void* p, TypeInfo keyti);
-    void   _aaDel(void* p, TypeInfo keyti, ...);
+    void* _aaGetp(void** pp, TypeInfo keyti, size_t valuesize, void* pkey);
+    void* _aaGetRvaluep(void* p, TypeInfo keyti, size_t valuesize, void* pkey);
+    void* _aaInp(void* p, TypeInfo keyti, void* pkey);
+    void _aaDelp(void* p, TypeInfo keyti, void* pkey);
     void[] _aaValues(void* p, size_t keysize, size_t valuesize);
     void[] _aaKeys(void* p, size_t keysize, size_t valuesize);
-    void*  _aaRehash(void** pp, TypeInfo keyti);
+    void* _aaRehash(void** pp, TypeInfo keyti);
 
     extern (D) typedef int delegate(void *) _dg_t;
     int _aaApply(void* aa, size_t keysize, _dg_t dg);
@@ -287,7 +287,7 @@ extern (C)
     extern (D) typedef int delegate(void *, void *) _dg2_t;
     int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...);
+    void* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length, void* keys, void* values);
 }
 
 struct AssociativeArray(Key, Value)

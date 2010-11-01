@@ -789,7 +789,7 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
     auto keysize = keyti.tsize();               // key size
     BB* result;
 
-    //printf("_d_assocarrayliteralT(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
+    //printf("_d_assocarrayliteralTp(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
     //printf("tivalue = %.*s\n", ti.next.classinfo.name);
     if (length == 0 || valuesize == 0 || keysize == 0)
     {

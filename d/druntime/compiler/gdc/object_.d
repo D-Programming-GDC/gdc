@@ -1624,7 +1624,7 @@ extern (C)
     extern (D) typedef int delegate(void *, void *) _dg2_t;
     int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, void* keys, void* values);
+    void* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length, void* keys, void* values);
 }
 
 struct AssociativeArray(Key, Value)
