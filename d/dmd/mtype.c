@@ -108,7 +108,8 @@ int REALALIGNSIZE = 2;
 int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
 int Tindex = Tint32;
-int CLASSINFO_SIZE = 0x3c+12;
+int CLASSINFO_SIZE = (0x3c+12+4);
+int CLASSINFO_SIZE_64 = (0x98);
 
 /***************************** Type *****************************/
 
@@ -286,7 +287,8 @@ void Type::init()
         Tsize_t = Tuns32;
         Tptrdiff_t = Tint32;
     }
-    CLASSINFO_SIZE = 18 * PTRSIZE;
+    CLASSINFO_SIZE = 19 * PTRSIZE;
+    CLASSINFO_SIZE_64 = 19 * PTRSIZE;
 }
 
 d_uns64 Type::size()

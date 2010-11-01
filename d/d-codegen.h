@@ -71,6 +71,8 @@ typedef enum {
     LIBCALL_ARRAYAPPENDT,
     //LIBCALL_ARRAYAPPENDCT,
     LIBCALL_ARRAYAPPENDCTP,
+    LIBCALL_ARRAYAPPENDCD,
+    LIBCALL_ARRAYAPPENDWD,
 #if V2
     LIBCALL_ARRAYASSIGN,
     LIBCALL_ARRAYCTOR,
@@ -150,11 +152,7 @@ struct IRState : IRBase
 
     tree convertForAssignment(Expression * exp, Type * target_type);
     tree convertForAssignment(tree exp_tree, Type * exp_type, Type * target_type);
-#if V2 //NOTE: When the dmd frontend for D2 is up to 2.037, the #if V2 can be taken out
-    tree convertForArgument(Expression * exp, Argument * arg);
-#else
     tree convertForArgument(Expression * exp, Parameter * arg);
-#endif
     tree convertForCondition(Expression * exp) {
 	return convertForCondition(exp->toElem(this), exp->type); }
     tree convertForCondition(tree exp_tree, Type * exp_type);
@@ -189,13 +187,8 @@ struct IRState : IRBase
     // Routines to handle variables that are references.
     static bool isDeclarationReferenceType(Declaration * decl);
     static tree trueDeclarationType(Declaration * decl);
-#if V2 //Until 2.037
-    static bool isArgumentReferenceType(Argument * arg);
-    static tree trueArgumentType(Argument * arg);
-#else
     static bool isArgumentReferenceType(Parameter * arg);
     static tree trueArgumentType(Parameter * arg);
-#endif
 
     static tree arrayType(Type * d_type, uinteger_t size) // %% use of dinteger_t
     { return arrayType(d_type->toCtype(), size); }
@@ -340,6 +333,7 @@ struct IRState : IRBase
 
     tree checkedIndex(Loc loc, tree index, tree upper_bound, bool inclusive);
     tree boundsCond(tree index, tree upper_bound, bool inclusive);
+    int arrayBoundsCheck();
 
     tree arrayElemRef(IndexExp * aer_exp, ArrayScope * aryscp);
 

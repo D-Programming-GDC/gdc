@@ -513,34 +513,16 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
 	tftostring = (TypeFunction *)tftostring->semantic(0, &sc);
     }
 
-    TypeFunction *tfeqptr;
-    {	// bool opEqual(const T*) const;
-	Scope sc;
-	Arguments *arguments = new Arguments;
-#if STRUCTTHISREF
-	// arg type is ref const T
-	Argument *arg = new Argument(STCref, tc->constOf(), NULL, NULL);
-#else
-	// arg type is const T*
-	Argument *arg = new Argument(STCin, tc->pointerTo(), NULL, NULL);
-#endif
-
-	arguments->push(arg);
-	tfeqptr = new TypeFunction(arguments, Type::tbool, 0, LINKd);
-	tfeqptr->mod = MODconst;
-	tfeqptr = (TypeFunction *)tfeqptr->semantic(0, &sc);
-    }
-
     TypeFunction *tfcmpptr;
     {
 	Scope sc;
-	Arguments *arguments = new Arguments;
+	Parameters *arguments = new Parameters;
 #if STRUCTTHISREF
 	// arg type is ref const T
-	Argument *arg = new Argument(STCref, tc->constOf(), NULL, NULL);
+	Parameter *arg = new Parameter(STCref, tc->constOf(), NULL, NULL);
 #else
 	// arg type is const T*
-	Argument *arg = new Argument(STCin, tc->pointerTo(), NULL, NULL);
+	Parameter *arg = new Parameter(STCin, tc->pointerTo(), NULL, NULL);
 #endif
 
 	arguments->push(arg);
@@ -562,22 +544,8 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
     else
 	dtdword(pdt, 0);
 
-    s = search_function(sd, Id::eq);
-    fdx = s ? s->isFuncDeclaration() : NULL;
-    if (fdx)
-    {
-	//printf("test1 %s, %s, %s\n", fdx->toChars(), fdx->type->toChars(), tfeqptr->toChars());
-	fd = fdx->overloadExactMatch(tfeqptr);
-	if (fd)
-	    dtxoff(pdt, fd->toSymbol(), 0, TYnptr);
-	else
-	{   fd = fdx->overloadExactMatch(tfcmpptr);
-	    if (fd)
-		fdx->error("must return bool, not int");
-	    //fdx->error("must be declared as extern (D) int %s(%s*)", fdx->toChars(), sd->toChars());
-	    dtdword(pdt, 0);
-	}
-    }
+    if (sd->eq)
+	dtxoff(pdt, sd->eq->toSymbol(), 0, TYnptr);
     else
 	dtdword(pdt, 0);
 
@@ -643,6 +611,8 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
 void TypeInfoClassDeclaration::toDt(dt_t **pdt)
 {
     //printf("TypeInfoClassDeclaration::toDt() %s\n", tinfo->toChars());
+    assert(0);
+#if 0
     dtxoff(pdt, Type::typeinfoclass->toVtblSymbol(), 0, TYnptr); // vtbl for TypeInfoClass
     dtdword(pdt, 0);			    // monitor
 
@@ -655,6 +625,7 @@ void TypeInfoClassDeclaration::toDt(dt_t **pdt)
 	tc->sym->vclassinfo = new ClassInfoDeclaration(tc->sym);
     s = tc->sym->vclassinfo->toSymbol();
     dtxoff(pdt, s, 0, TYnptr);		// ClassInfo for tinfo
+#endif
 }
 
 void TypeInfoInterfaceDeclaration::toDt(dt_t **pdt)
@@ -669,7 +640,7 @@ void TypeInfoInterfaceDeclaration::toDt(dt_t **pdt)
     Symbol *s;
 
     if (!tc->sym->vclassinfo)
-	tc->sym->vclassinfo = new ClassInfoDeclaration(tc->sym);
+	tc->sym->vclassinfo = new TypeInfoClassDeclaration(tc);
     s = tc->sym->vclassinfo->toSymbol();
     dtxoff(pdt, s, 0, TYnptr);		// ClassInfo for tinfo
 }
@@ -689,7 +660,7 @@ void TypeInfoTupleDeclaration::toDt(dt_t **pdt)
 
     dt_t *d = NULL;
     for (size_t i = 0; i < dim; i++)
-    {	Argument *arg = (Argument *)tu->arguments->data[i];
+    {	Parameter *arg = (Parameter *)tu->arguments->data[i];
 	Expression *e = arg->type->getTypeInfo(NULL);
 	e = e->optimize(WANTvalue);
 	e->toDt(&d);
@@ -812,10 +783,10 @@ Expression *createTypeInfoArray(Scope *sc, Expression *exps[], int dim)
 
     /* Create the TypeTuple corresponding to the types of args[]
      */
-    Arguments *args = new Arguments;
+    Parameters *args = new Parameters;
     args->setDim(dim);
     for (size_t i = 0; i < dim; i++)
-    {	Argument *arg = new Argument(STCin, exps[i]->type, NULL, NULL);
+    {	Parameter *arg = new Parameter(STCin, exps[i]->type, NULL, NULL);
 	args->data[i] = (void *)arg;
     }
     TypeTuple *tup = new TypeTuple(args);

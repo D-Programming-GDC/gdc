@@ -40,9 +40,9 @@ frelease
 D
 Compile release version
 
-fsafe
+fnoboundscheck
 D
-Safe memory model
+Turns off array bounds checking for all functions
 
 funittest
 D
@@ -158,6 +158,10 @@ Make \"char\" unsigned by default (silently ignored in D)
 fsigned-char
 D
 Make \"char\" signed by default (silently ignored in D)
+
+imultilib
+D Joined Separate
+-imultilib <dir> Set <dir> to be the multilib include subdirectory
 
 iprefix
 D Joined Separate

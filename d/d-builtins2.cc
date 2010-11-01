@@ -219,11 +219,8 @@ gcc_type_to_d_type(tree t)
 
 	    tree t_arg_types = TYPE_ARG_TYPES(t);
 	    int varargs = t_arg_types != NULL_TREE;
-#if V2 //Until 2.037
-	    Arguments * args = new Arguments;
-#else
 	    Parameters * args = new Parameters;
-#endif
+
 	    args->reserve(list_length(t_arg_types));
 	    for (tree tl = t_arg_types; tl != NULL_TREE; tl = TREE_CHAIN(tl))
 	    {
@@ -241,11 +238,8 @@ gcc_type_to_d_type(tree t)
 		    Type * d_arg_type = gcc_type_to_d_type(ta);
 		    if (! d_arg_type)
 			return NULL;
-#if V2 //Until 2.037
-		    args->push(new Argument(io, d_arg_type, NULL, NULL));
-#else
+
 		    args->push(new Parameter(io, d_arg_type, NULL, NULL));
-#endif
 		}
 		else
 		    varargs = 0;
@@ -269,7 +263,74 @@ d_bi_builtin_func(tree decl)
 }
 
 
+// helper function for d_gcc_magic_stdarg_module
+/*
+  In D2, the members of std.stdarg are hidden via @system attributes.
+  This function should be sufficient in looking through all members.
+*/
+static void
+d_gcc_magic_stdarg_member(Dsymbol *m, bool is_c_std_arg)
+{
+    Identifier * id_arg = Lexer::idPool("va_arg");
+    Identifier * id_start = Lexer::idPool("va_start");
 
+    AttribDeclaration * ad;
+    TemplateDeclaration * td;
+
+    if ( (ad = m->isAttribDeclaration()) )
+    {
+	// Recursively search through attribute decls
+	Array * decl = ad->include(NULL, NULL);
+	if (decl && decl->dim)
+	{
+	    for (size_t i = 0; i < decl->dim; i++)
+	    {
+		Dsymbol * sym = (Dsymbol *)decl->data[i];
+		d_gcc_magic_stdarg_member(sym, is_c_std_arg);
+	    }
+	}
+    }
+    else if ( (td = m->isTemplateDeclaration()) )
+    {
+	if (td->ident == id_arg)
+	{
+	    if (is_c_std_arg)
+		IRState::setCStdArgArg(td);
+	    else
+		IRState::setStdArg(td);
+	}
+	else if (td->ident == id_start && is_c_std_arg)
+	    IRState::setCStdArgStart(td);
+    }
+    else	// Not a template, don't do anything else.
+	return;
+
+    if ( TREE_CODE( va_list_type_node ) == ARRAY_TYPE )
+    {
+	/* For GCC, a va_list can be an array.  D static arrays are
+	   automatically passed by reference, but the 'inout'
+	   modifier is not allowed. */
+	assert(td->members);
+	for (unsigned j = 0; j < td->members->dim; j++)
+	{
+	    FuncDeclaration * fd =
+		((Dsymbol *) td->members->data[j])->isFuncDeclaration();
+	    if (fd && (fd->ident == id_arg || fd->ident == id_start))
+	    {
+		TypeFunction * tf;
+
+		// Should have nice error message instead of ICE in case some tries
+		// to tweak the file.
+		assert( ! fd->parameters );
+		tf = (TypeFunction *) fd->type;
+		assert( tf->ty == Tfunction &&
+			tf->parameters && tf->parameters->dim >= 1 );
+		((Parameter*) tf->parameters->data[0])->storageClass &= ~(STCin|STCout|STCref);
+		((Parameter*) tf->parameters->data[0])->storageClass |= STCin;
+	    }
+	}
+    }
+}
 
 // std.stdarg is different: it expects pointer types (i.e. _argptr)
 /*
@@ -281,50 +342,10 @@ static void
 d_gcc_magic_stdarg_module(Module *m, bool is_c_std_arg)
 {
     Array * members = m->members;
-    Identifier * id = Lexer::idPool("va_arg");
-    Identifier * id_start = Lexer::idPool("va_start");
-    for (unsigned i = 0; i < members->dim; i++) {
-	TemplateDeclaration * td =
-	    ((Dsymbol *) members->data[i])->isTemplateDeclaration();
-	if (td) {
-	    if (td->ident == id) {
-		if (is_c_std_arg)
-		    IRState::setCStdArgArg(td);
-		else
-		    IRState::setStdArg(td);
-	    } else if (td->ident == id_start && is_c_std_arg) {
-		IRState::setCStdArgStart(td);
-	    } else
-		continue;
-
-	    if ( TREE_CODE( va_list_type_node ) == ARRAY_TYPE ) {
-		/* For GCC, a va_list can be an array.  D static arrays are
-		   automatically passed by reference, but the 'inout'
-		   modifier is not allowed. */
-		assert(td->members);
-		for (unsigned j = 0; j < td->members->dim; j++) {
-		    FuncDeclaration * fd =
-			((Dsymbol *) td->members->data[j])->isFuncDeclaration();
-		    if (fd && (fd->ident == id || fd->ident == id_start)) {
-			TypeFunction * tf;
-
-			// Should have nice error message instead of ICE in case some tries
-			// to tweak the file.
-			assert( ! fd->parameters );
-			tf = (TypeFunction *) fd->type;
-			assert( tf->ty == Tfunction &&
-			    tf->parameters && tf->parameters->dim >= 1 );
-#if V2 //Until 2.037
-			((Argument*) tf->parameters->data[0])->storageClass &= ~(STCin|STCout|STCref);
-			((Argument*) tf->parameters->data[0])->storageClass |= STCin;
-#else
-			((Parameter*) tf->parameters->data[0])->storageClass &= ~(STCin|STCout|STCref);
-			((Parameter*) tf->parameters->data[0])->storageClass |= STCin;
-#endif
-		    }
-		}
-	    }
-	}
+    for (unsigned i = 0; i < members->dim; i++)
+    {
+	Dsymbol * sym = (Dsymbol *) members->data[i];
+	d_gcc_magic_stdarg_member(sym, is_c_std_arg);
     }
 }
 
@@ -349,6 +370,7 @@ d_gcc_magic_builtins_module(Module *m)
 	    continue;
 	}
 #if V2
+	// %% D2 - all builtins are pure and optionally nothrow
 	dtf->ispure = 1;
 	dtf->isnothrow = TREE_NOTHROW(decl);
 #endif

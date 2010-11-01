@@ -113,7 +113,8 @@ d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4)
 static unsigned d_priv_asm_label_serial = 0;
 
 // may need to make this target-specific
-static void d_format_priv_asm_label(char * buf, unsigned n)
+static void
+d_format_priv_asm_label(char * buf, unsigned n)
 {
     //ASM_GENERATE_INTERNAL_LABEL(buf, "LDASM", n);//inserts a '*' for use with assemble_name
     sprintf(buf, ".LDASM%u", n);
@@ -148,7 +149,8 @@ ExtAsmStatement::ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions 
     this->clobbers = clobbers;
 }
 
-Statement *ExtAsmStatement::syntaxCopy()
+Statement *
+ExtAsmStatement::syntaxCopy()
 {
     /* insnTemplate, argConstraints, and clobbers would be
        semantically static in GNU C. */
@@ -161,10 +163,15 @@ Statement *ExtAsmStatement::syntaxCopy()
 	argConstraints, nOutputArgs, clobbers);
 }
 
-Statement *ExtAsmStatement::semantic(Scope *sc)
+Statement *
+ExtAsmStatement::semantic(Scope *sc)
 {
     insnTemplate = insnTemplate->semantic(sc);
     insnTemplate = insnTemplate->optimize(WANTvalue);
+#if V2
+    if (sc->func && sc->func->isSafe())
+	error("extended assembler not allowed in @safe function %s", sc->func->toChars());
+#endif
     if (insnTemplate->op != TOKstring || ((StringExp *)insnTemplate)->sz != 1)
 	error("instruction template must be a constant char string");
     if (args)
@@ -196,8 +203,6 @@ Statement *ExtAsmStatement::semantic(Scope *sc)
     return this;
 }
 
-//#if V2
-
 int
 ExtAsmStatement::blockExit()
 {
@@ -205,7 +210,6 @@ ExtAsmStatement::blockExit()
     return BEany;
 }
 
-//#endif
 
 // StringExp::toIR usually adds a NULL.  We don't want that...
 
@@ -260,9 +264,13 @@ void ExtAsmStatement::toIR(IRState *irs)
 
 bool d_have_inline_asm() { return true; }
 
-Statement *AsmStatement::semantic(Scope *sc)
+Statement *
+AsmStatement::semantic(Scope *sc)
 {
-
+#if V2
+    if (sc->func && sc->func->isSafe())
+	error("inline assembler not allowed in @safe function %s", sc->func->toChars());
+#endif
     sc->func->inlineAsm = 1;
     sc->func->inlineStatus = ILSno; // %% not sure
     // %% need to set DECL_UNINLINABLE too?

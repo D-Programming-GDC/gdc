@@ -430,6 +430,19 @@ Symbol *TypeInfoDeclaration::toSymbol()
 
 /*************************************
  */
+#if V2
+
+Symbol *TypeInfoClassDeclaration::toSymbol()
+{
+    assert(tinfo->ty == Tclass);
+    TypeClass *tc = (TypeClass *)tinfo;
+    return tc->sym->toSymbol();
+}
+
+#endif
+
+/*************************************
+ */
 
 Symbol *FuncAliasDeclaration::toSymbol()
 {

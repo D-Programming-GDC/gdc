@@ -87,6 +87,8 @@ struct TemplateDeclaration : ScopeDsymbol
 
     TemplateTupleParameter *isVariadic();
     int isOverloadable();
+
+    void makeParamNamesVisibleInConstraint(Scope *paramscope);
 };
 
 struct TemplateParameter
@@ -302,6 +304,7 @@ struct TemplateInstance : ScopeDsymbol
     Dsymbol *toAlias();			// resolve real symbol
     const char *kind();
     int oneMember(Dsymbol **ps);
+    int needsTypeInference(Scope *sc);
     char *toChars();
     char *mangle();
     void printInstantiationTrace();
@@ -351,5 +354,6 @@ Type *getType(Object *o);
 Dsymbol *getDsymbol(Object *o);
 
 void ObjectToCBuffer(OutBuffer *buf, HdrGenState *hgs, Object *oarg);
+Object *objectSyntaxCopy(Object *o);
 
 #endif /* DMD_TEMPLATE_H */

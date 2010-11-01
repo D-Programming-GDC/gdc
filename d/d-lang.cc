@@ -165,7 +165,7 @@ d_init_options (unsigned int, const char ** argv)
     global.params.useInvariants = 1;
     global.params.useIn = 1;
     global.params.useOut = 1;
-    global.params.useArrayBounds = 1;
+    global.params.useArrayBounds = 2;
     flag_bounds_check = global.params.useArrayBounds; // keep in synch with existing -fbounds-check flag
     global.params.useSwitchError = 1;
     global.params.useInline = 0;
@@ -606,12 +606,18 @@ d_handle_option (size_t scode, const char *arg, int value)
 	  global.params.useIn = ! value;
 	  global.params.useOut = ! value;
 	  global.params.useAssert = ! value;
+#if V2
+	  // release mode doesn't turn off bounds checking for safe functions.
+	  global.params.useArrayBounds = ! value ? 2 : 1;
+	  flag_bounds_check = ! value;
+#else
 	  flag_bounds_check = global.params.useArrayBounds = ! value;
+#endif
 	  global.params.useSwitchError = ! value;
 	  break;
 #if V2
-      case OPT_fsafe:
-	  global.params.safe = value;
+      case OPT_fnoboundscheck:
+	  global.params.noboundscheck = value;
 	  break;
 #endif
       case OPT_funittest:
@@ -788,9 +794,9 @@ bool d_post_options(const char ** fn)
 #endif
 
 #if V2
-    /* -safe implies array bounds checking */
-    if (global.params.safe)
-	flag_bounds_check = global.params.useArrayBounds = 1;
+    /* array bounds checking */
+    if (global.params.noboundscheck)
+	flag_bounds_check = global.params.useArrayBounds = 0;
 #endif
     return false;
 }
@@ -917,7 +923,9 @@ d_parse_file (int /*set_yydebug*/)
 
     if (global.params.useUnitTests)
 	global.params.useAssert = 1;
+#if V1
     global.params.useArrayBounds = flag_bounds_check;
+#endif
     if (gen.emitTemplates == TEauto) {
 	gen.emitTemplates = (supports_one_only()) ? TEnormal : TEprivate;
     }
@@ -1173,6 +1181,9 @@ d_parse_file (int /*set_yydebug*/)
 	deps.writev();
     }
 
+    /* This is not used for GDC
+     */
+#if 0
     // Scan for functions to inline
     if (global.params.useInline)
     {
@@ -1204,6 +1215,7 @@ d_parse_file (int /*set_yydebug*/)
 	    m->inlineScan();
 	}
     }
+#endif
 
     // Do not attempt to generate output files if errors or warnings occurred
     if (global.errors

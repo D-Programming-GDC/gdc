@@ -1292,7 +1292,7 @@ void ForStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /******************************** ForeachStatement ***************************/
 
-ForeachStatement::ForeachStatement(Loc loc, enum TOK op, Arguments *arguments,
+ForeachStatement::ForeachStatement(Loc loc, enum TOK op, Parameters *arguments,
 	Expression *aggr, Statement *body)
     : Statement(loc)
 {
@@ -1309,7 +1309,7 @@ ForeachStatement::ForeachStatement(Loc loc, enum TOK op, Arguments *arguments,
 
 Statement *ForeachStatement::syntaxCopy()
 {
-    Arguments *args = Argument::arraySyntaxCopy(arguments);
+    Parameters *args = Parameter::arraySyntaxCopy(arguments);
     Expression *exp = aggr->syntaxCopy();
     ForeachStatement *s = new ForeachStatement(loc, op, args, exp,
 	body ? body->syntaxCopy() : NULL);
@@ -1372,7 +1372,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 	}
 	else if (aggr->op == TOKtype)	// type tuple
 	{
-	    n = Argument::dim(tuple->arguments);
+	    n = Parameter::dim(tuple->arguments);
 	}
 	else
 	    assert(0);
@@ -1383,8 +1383,8 @@ Statement *ForeachStatement::semantic(Scope *sc)
 	    if (te)
 		e = (Expression *)te->exps->data[k];
 	    else
-		t = Argument::getNth(tuple->arguments, k)->type;
-	    Argument *arg = (Argument *)arguments->data[0];
+		t = Parameter::getNth(tuple->arguments, k)->type;
+	    Parameter *arg = (Parameter *)arguments->data[0];
 	    Statements *st = new Statements();
 
 	    if (dim == 2)
@@ -1407,7 +1407,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		var->storage_class |= STCmanifest;
 		DeclarationExp *de = new DeclarationExp(loc, var);
 		st->push(new ExpStatement(loc, de));
-		arg = (Argument *)arguments->data[1];	// value
+		arg = (Parameter *)arguments->data[1];	// value
 	    }
 	    // Declare value
 	    if (arg->storageClass & (STCout | STCref | STClazy))
@@ -1472,10 +1472,10 @@ Lagain:
 	     */
 	    tn = tab->nextOf()->toBasetype();
 	    if (tn->ty == Tchar || tn->ty == Twchar || tn->ty == Tdchar)
-	    {	Argument *arg;
+	    {	Parameter *arg;
 
 		int i = (dim == 1) ? 0 : 1;	// index of value
-		arg = (Argument *)arguments->data[i];
+		arg = (Parameter *)arguments->data[i];
 		arg->type = arg->type->semantic(loc, sc);
 		tnv = arg->type->toBasetype();
 		if (tnv->ty != tn->ty &&
@@ -1484,7 +1484,7 @@ Lagain:
 		    if (arg->storageClass & STCref)
 			error("foreach: value of UTF conversion cannot be ref");
 		    if (dim == 2)
-		    {	arg = (Argument *)arguments->data[0];
+		    {	arg = (Parameter *)arguments->data[0];
 			if (arg->storageClass & STCref)
 			    error("foreach: key cannot be ref");
 		    }
@@ -1494,7 +1494,7 @@ Lagain:
 
 	    for (size_t i = 0; i < dim; i++)
 	    {	// Declare args
-		Argument *arg = (Argument *)arguments->data[i];
+		Parameter *arg = (Parameter *)arguments->data[i];
 		Type *argtype = arg->type->semantic(loc, sc);
 		VarDeclaration *var;
 
@@ -1692,7 +1692,7 @@ Lagain:
 	    e = new VarExp(loc, r);
 	    Expression *einit = new DotIdExp(loc, e, idhead);
 //	    einit = einit->semantic(sc);
-	    Argument *arg = (Argument *)arguments->data[0];
+	    Parameter *arg = (Parameter *)arguments->data[0];
 	    VarDeclaration *ve = new VarDeclaration(loc, arg->type, arg->ident, new ExpInitializer(loc, einit));
 	    ve->storage_class |= STCforeach;
 	    ve->storage_class |= arg->storageClass & (STCin | STCout | STCref | STC_TYPECTOR);
@@ -1716,11 +1716,11 @@ Lagain:
 	case Tdelegate:
 	Lapply:
 	{   FuncDeclaration *fdapply;
-	    Arguments *args;
+	    Parameters *args;
 	    Expression *ec;
 	    Expression *e;
 	    FuncLiteralDeclaration *fld;
-	    Argument *a;
+	    Parameter *a;
 	    Type *t;
 	    Expression *flde;
 	    Identifier *id;
@@ -1749,9 +1749,9 @@ Lagain:
 	    /* Turn body into the function literal:
 	     *	int delegate(ref T arg) { body }
 	     */
-	    args = new Arguments();
+	    args = new Parameters();
 	    for (size_t i = 0; i < dim; i++)
-	    {	Argument *arg = (Argument *)arguments->data[i];
+	    {	Parameter *arg = (Parameter *)arguments->data[i];
 
 		arg->type = arg->type->semantic(loc, sc);
 		if (arg->storageClass & STCref)
@@ -1769,7 +1769,7 @@ Lagain:
 		    s = new DeclarationStatement(0, v);
 		    body = new CompoundStatement(loc, s, body);
 		}
-		a = new Argument(STCref, arg->type, id, NULL);
+		a = new Parameter(STCref, arg->type, id, NULL);
 		args->push(a);
 	    }
 	    t = new TypeFunction(args, Type::tint32, 0, LINKd);
@@ -1795,14 +1795,14 @@ Lagain:
 	    if (tab->ty == Taarray)
 	    {
 		// Check types
-		Argument *arg = (Argument *)arguments->data[0];
+		Parameter *arg = (Parameter *)arguments->data[0];
 		if (dim == 2)
 		{
 		    if (arg->storageClass & STCref)
 			error("foreach: index cannot be ref");
 		    if (!arg->type->equals(taa->index))
 			error("foreach: index must be type %s, not %s", taa->index->toChars(), arg->type->toChars());
-		    arg = (Argument *)arguments->data[1];
+		    arg = (Parameter *)arguments->data[1];
 		}
 		if (!arg->type->equals(taa->nextOf()))
 		    error("foreach: value must be type %s, not %s", taa->nextOf()->toChars(), arg->type->toChars());
@@ -1894,11 +1894,9 @@ Lagain:
 		{   /* Call:
 		     *	aggr.apply!(fld)()
 		     */
-		    TemplateInstance *ti = new TemplateInstance(loc, idapply);
 		    Objects *tiargs = new Objects();
 		    tiargs->push(fld);
-		    ti->tiargs = tiargs;
-		    ec = new DotTemplateInstanceExp(loc, aggr, ti);
+		    ec = new DotTemplateInstanceExp(loc, aggr, idapply, tiargs);
 		}
 		else
 #endif
@@ -1957,7 +1955,7 @@ bool ForeachStatement::checkForArgTypes()
 {   bool result = TRUE;
 
     for (size_t i = 0; i < arguments->dim; i++)
-    {	Argument *arg = (Argument *)arguments->data[i];
+    {	Parameter *arg = (Parameter *)arguments->data[i];
 	if (!arg->type)
 	{
 	    error("cannot infer type for %s", arg->ident->toChars());
@@ -2010,7 +2008,7 @@ void ForeachStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writestring(" (");
     for (int i = 0; i < arguments->dim; i++)
     {
-	Argument *a = (Argument *)arguments->data[i];
+	Parameter *a = (Parameter *)arguments->data[i];
 	if (i)
 	    buf->writestring(", ");
 	if (a->storageClass & STCref)
@@ -2037,7 +2035,7 @@ void ForeachStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 #if DMDV2
 
-ForeachRangeStatement::ForeachRangeStatement(Loc loc, enum TOK op, Argument *arg,
+ForeachRangeStatement::ForeachRangeStatement(Loc loc, enum TOK op, Parameter *arg,
 	Expression *lwr, Expression *upr, Statement *body)
     : Statement(loc)
 {
@@ -2245,7 +2243,7 @@ void ForeachRangeStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /******************************** IfStatement ***************************/
 
-IfStatement::IfStatement(Loc loc, Argument *arg, Expression *condition, Statement *ifbody, Statement *elsebody)
+IfStatement::IfStatement(Loc loc, Parameter *arg, Expression *condition, Statement *ifbody, Statement *elsebody)
     : Statement(loc)
 {
     this->arg = arg;
@@ -2265,7 +2263,7 @@ Statement *IfStatement::syntaxCopy()
     if (elsebody)
 	e = elsebody->syntaxCopy();
 
-    Argument *a = arg ? arg->syntaxCopy() : NULL;
+    Parameter *a = arg ? arg->syntaxCopy() : NULL;
     IfStatement *s = new IfStatement(loc, a, condition->syntaxCopy(), i, e);
     return s;
 }
@@ -4332,8 +4330,11 @@ Statement *ThrowStatement::semantic(Scope *sc)
     FuncDeclaration *fd = sc->parent->isFuncDeclaration();
     fd->hasReturnExp |= 2;
 
+#if DMDV1
+    // See bugzilla 3388. Should this be or not?
     if (sc->incontract)
 	error("Throw statements cannot be in contracts");
+#endif
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
     if (!exp->type->toBasetype()->isClassHandle())

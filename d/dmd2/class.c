@@ -178,7 +178,8 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
 	    object = this;
 	}
 
-	if (id == Id::ClassInfo)
+	//if (id == Id::ClassInfo)
+	if (id == Id::TypeInfo_Class)
 	{   if (classinfo)
 		classinfo->error("%s", msg);
 	    classinfo = this;
@@ -291,9 +292,9 @@ void ClassDeclaration::semantic(Scope *sc)
 	{   TypeTuple *tup = (TypeTuple *)tb;
 	    enum PROT protection = b->protection;
 	    baseclasses.remove(i);
-	    size_t dim = Argument::dim(tup->arguments);
+	    size_t dim = Parameter::dim(tup->arguments);
 	    for (size_t j = 0; j < dim; j++)
-	    {	Argument *arg = Argument::getNth(tup->arguments, j);
+	    {	Parameter *arg = Parameter::getNth(tup->arguments, j);
 		b = new BaseClass(arg->type, protection);
 		baseclasses.insert(i + j, b);
 	    }
@@ -1122,9 +1123,9 @@ void InterfaceDeclaration::semantic(Scope *sc)
 	{   TypeTuple *tup = (TypeTuple *)tb;
 	    enum PROT protection = b->protection;
 	    baseclasses.remove(i);
-	    size_t dim = Argument::dim(tup->arguments);
+	    size_t dim = Parameter::dim(tup->arguments);
 	    for (size_t j = 0; j < dim; j++)
-	    {	Argument *arg = Argument::getNth(tup->arguments, j);
+	    {	Parameter *arg = Parameter::getNth(tup->arguments, j);
 		b = new BaseClass(arg->type, protection);
 		baseclasses.insert(i + j, b);
 	    }
@@ -1210,7 +1211,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
 	// Skip if b has already appeared
 	for (int k = 0; k < i; k++)
 	{
-	    if (b == interfaces[i])
+	    if (b == interfaces[k])
 		goto Lcontinue;
 	}
 

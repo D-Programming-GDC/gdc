@@ -134,22 +134,22 @@ Usage:
   -Jpath         where to look for string imports
   -Llinkerflag   pass linkerflag to link
   -lib           generate library rather than object files
+  -m...          pass an -m... option to gdc
   -man           open web browser on manual page
+  -map           generate linker .map file
+  -noboundscheck turns off array bounds checking for all functions
   -nofloat       do not emit reference to floating point
   -O             optimize
   -o-            do not write object file
   -odobjdir      write object files to directory objdir
   -offilename    name output file to filename
   -op            do not strip paths from source file
-  -m...          pass an -m... option to gdc
-  -map           generate linker .map file
-  -pipe          Use pipes rather than intermediate files
+  -pipe          use pipes rather than intermediate files
   -profile       profile runtime performance of generated code
   -quiet         suppress unnecessary messages
   -q,arg1,...    pass arg1, arg2, etc. to to gdc
   -release       compile release version
   -run srcfile args...   run resulting program, passing args
-  -safe          safe memory model
   -unittest      compile in unit tests
   -v             verbose
   -v1            D language version 1
@@ -347,8 +347,8 @@ while ( $arg_i < scalar(@ARGV) ) {
 
 	push @run_args, @ARGV[$arg_i..$#ARGV];
 	last;
-    } elsif ( $arg =~ m/^-safe$/ ) {
-	push @out, '-fsafe';
+    } elsif ( $arg =~ m/^-noboundscheck$/ ) {
+	push @out, '-fnoboundscheck';
     } elsif ( $arg =~ m/^-unittest$/ ) {
 	push @out, '-funittest';
     } elsif ( $arg =~ m/^-v$/ ) {

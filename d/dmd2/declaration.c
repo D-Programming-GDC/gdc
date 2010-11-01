@@ -208,7 +208,7 @@ Type *TupleDeclaration::getType()
 
 	/* We know it's a type tuple, so build the TypeTuple
 	 */
-	Arguments *args = new Arguments();
+	Parameters *args = new Parameters();
 	args->setDim(objects->dim);
 	OutBuffer buf;
 	int hasdeco = 1;
@@ -220,9 +220,9 @@ Type *TupleDeclaration::getType()
 	    buf.printf("_%s_%d", ident->toChars(), i);
 	    char *name = (char *)buf.extractData();
 	    Identifier *id = new Identifier(name, TOKidentifier);
-	    Argument *arg = new Argument(STCin, t, id, NULL);
+	    Parameter *arg = new Parameter(STCin, t, id, NULL);
 #else
-	    Argument *arg = new Argument(0, t, NULL, NULL);
+	    Parameter *arg = new Parameter(0, t, NULL, NULL);
 #endif
 	    args->data[i] = (void *)arg;
 	    if (!t->deco)
@@ -724,9 +724,29 @@ void VarDeclaration::semantic(Scope *sc)
     int inferred = 0;
     if (!type)
     {	inuse++;
-	type = init->inferType(sc);
+
+	ArrayInitializer *ai = init->isArrayInitializer();
+	if (ai)
+	{   Expression *e;
+	    if (ai->isAssociativeArray())
+		e = ai->toAssocArrayLiteral();
+	    else
+		e = init->toExpression();
+	    init = new ExpInitializer(e->loc, e);
+	    type = init->inferType(sc);
+	    if (type->ty == Tsarray)
+		type = type->nextOf()->arrayOf();
+	}
+	else
+	    type = init->inferType(sc);
+
 	inuse--;
 	inferred = 1;
+
+	if (init->isArrayInitializer() && type->toBasetype()->ty == Tsarray)
+	{   // Prefer array literals to give a T[] type rather than a T[dim]
+	    type = type->toBasetype()->nextOf()->arrayOf();
+	}
 
 	/* This is a kludge to support the existing syntax for RAII
 	 * declarations.
@@ -754,10 +774,17 @@ void VarDeclaration::semantic(Scope *sc)
     //printf("storage_class = x%x\n", storage_class);
 
 #if DMDV2
+#if 1
+    if (storage_class & STCgshared && sc->func && sc->func->isSafe())
+    {
+	error("__gshared not allowed in safe functions; use shared");
+    }
+#else
     if (storage_class & STCgshared && global.params.safe && !sc->module->safe)
     {
 	error("__gshared not allowed in safe mode; use shared");
     }
+#endif
 #endif
 
     Dsymbol *parent = toParent();
@@ -788,13 +815,13 @@ void VarDeclaration::semantic(Scope *sc)
 	 * and add those.
 	 */
 	TypeTuple *tt = (TypeTuple *)tb;
-	size_t nelems = Argument::dim(tt->arguments);
+	size_t nelems = Parameter::dim(tt->arguments);
 	Objects *exps = new Objects();
 	exps->setDim(nelems);
 	Expression *ie = init ? init->toExpression() : NULL;
 
 	for (size_t i = 0; i < nelems; i++)
-	{   Argument *arg = Argument::getNth(tt->arguments, i);
+	{   Parameter *arg = Parameter::getNth(tt->arguments, i);
 
 	    OutBuffer buf;
 	    buf.printf("_%s_field_%"PRIuSIZE, ident->toChars(), i);
@@ -1000,7 +1027,8 @@ Lagain:
 	ArrayInitializer *ai = init->isArrayInitializer();
 	if (ai && tb->ty == Taarray)
 	{
-	    init = ai->toAssocArrayInitializer();
+	    Expression *e = ai->toAssocArrayLiteral();
+	    init = new ExpInitializer(e->loc, e);
 	}
 
 	StructInitializer *si = init->isStructInitializer();

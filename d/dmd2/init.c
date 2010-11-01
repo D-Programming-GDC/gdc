@@ -48,7 +48,6 @@ Initializer *Initializer::semantic(Scope *sc, Type *t)
 Type *Initializer::inferType(Scope *sc)
 {
     error(loc, "cannot infer type from initializer");
-halt();
     return Type::terror;
 }
 
@@ -220,7 +219,7 @@ Initializer *StructInitializer::semantic(Scope *sc, Type *t)
     else if (t->ty == Tdelegate && value.dim == 0)
     {	/* Rewrite as empty delegate literal { }
 	 */
-	Arguments *arguments = new Arguments;
+	Parameters *arguments = new Parameters;
 	Type *tf = new TypeFunction(arguments, NULL, 0, LINKd);
 	FuncLiteralDeclaration *fd = new FuncLiteralDeclaration(loc, 0, tf, TOKdelegate, NULL);
 	fd->fbody = new CompoundStatement(loc, new Statements());
@@ -369,10 +368,8 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t)
 
     length = 0;
     for (i = 0; i < index.dim; i++)
-    {	Expression *idx;
-	Initializer *val;
-
-	idx = (Expression *)index.data[i];
+    {
+	Expression *idx = (Expression *)index.data[i];
 	if (idx)
 	{   idx = idx->semantic(sc);
 	    idx = idx->optimize(WANTvalue | WANTinterpret);
@@ -380,7 +377,7 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t)
 	    length = idx->toInteger();
 	}
 
-	val = (Initializer *)value.data[i];
+	Initializer *val = (Initializer *)value.data[i];
 	val = val->semantic(sc, t->nextOf());
 	value.data[i] = (void *)val;
 	length++;
@@ -490,16 +487,15 @@ Lno:
  * If possible, convert array initializer to associative array initializer.
  */
 
-Initializer *ArrayInitializer::toAssocArrayInitializer()
-{   Expressions *keys;
-    Expressions *values;
+Expression *ArrayInitializer::toAssocArrayLiteral()
+{
     Expression *e;
 
     //printf("ArrayInitializer::toAssocArrayInitializer()\n");
     //static int i; if (++i == 2) halt();
-    keys = new Expressions();
+    Expressions *keys = new Expressions();
     keys->setDim(value.dim);
-    values = new Expressions();
+    Expressions *values = new Expressions();
     values->setDim(value.dim);
 
     for (size_t i = 0; i < value.dim; i++)
@@ -518,19 +514,31 @@ Initializer *ArrayInitializer::toAssocArrayInitializer()
 	values->data[i] = (void *)e;
     }
     e = new AssocArrayLiteralExp(loc, keys, values);
-    return new ExpInitializer(loc, e);
+    return e;
 
 Lno:
     delete keys;
     delete values;
     error(loc, "not an associative array initializer");
-    return this;
+    return new ErrorExp();
 }
 
+int ArrayInitializer::isAssociativeArray()
+{
+    for (size_t i = 0; i < value.dim; i++)
+    {
+	if (index.data[i])
+	    return 1;
+    }
+    return 0;
+}
 
 Type *ArrayInitializer::inferType(Scope *sc)
 {
     //printf("ArrayInitializer::inferType() %s\n", toChars());
+    assert(0);
+    return NULL;
+#if 0
     type = Type::terror;
     for (size_t i = 0; i < value.dim; i++)
     {
@@ -543,7 +551,10 @@ Type *ArrayInitializer::inferType(Scope *sc)
 	if (iz)
 	{   Type *t = iz->inferType(sc);
 	    if (i == 0)
-	    {	t = new TypeSArray(t, new IntegerExp(value.dim));
+	    {	/* BUG: This gets the type from the first element.
+		 * Fix to use all the elements to figure out the type.
+		 */
+		t = new TypeSArray(t, new IntegerExp(value.dim));
 		t = t->semantic(loc, sc);
 		type = t;
 	    }
@@ -552,7 +563,8 @@ Type *ArrayInitializer::inferType(Scope *sc)
     return type;
 
 Laa:
-    /* It's possibly an associative array initializer
+    /* It's possibly an associative array initializer.
+     * BUG: inferring type from first member.
      */
     Initializer *iz = (Initializer *)value.data[0];
     Expression *indexinit = (Expression *)index.data[0];
@@ -566,6 +578,7 @@ Laa:
     else
 	error(loc, "cannot infer type from this array initializer");
     return type;
+#endif
 }
 
 

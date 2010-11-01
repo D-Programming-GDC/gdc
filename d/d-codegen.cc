@@ -478,11 +478,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 }
 
 tree
-#if V2 //Until 2.037
-IRState::convertForArgument(Expression * exp, Argument * arg)
-#else
 IRState::convertForArgument(Expression * exp, Parameter * arg)
-#endif
 {
     if ( isArgumentReferenceType(arg) ) {
 	tree exp_tree = this->toElemLvalue(exp);
@@ -752,7 +748,7 @@ IRState::pointerOffset(tree ptr_node, tree byte_offset)
 tree
 IRState::checkedIndex(Loc loc, tree index, tree upper_bound, bool inclusive)
 {
-    if (global.params.useArrayBounds) {
+    if ( arrayBoundsCheck() ) {
 	return build3(COND_EXPR, TREE_TYPE(index),
 	    boundsCond(index, upper_bound, inclusive),
 	    index,
@@ -780,6 +776,27 @@ IRState::boundsCond(tree index, tree upper_bound, bool inclusive)
     }
 
     return bound_check;
+}
+
+// Return != 0 if do array bounds checking
+int
+IRState::arrayBoundsCheck()
+{
+    int result = global.params.useArrayBounds;
+#if V2
+    if (result == 1)
+    {
+	// For D2 safe functions only
+	result = 0;
+	if (func && func->type->ty == Tfunction)
+	{
+	    TypeFunction * tf = (TypeFunction *)func->type;
+	    if (tf->trust == TRUSTsafe)
+		result = 1;
+	}
+    }
+#endif
+    return result;
 }
 
 tree
@@ -1011,13 +1028,8 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     if (object != NULL_TREE)
 	actual_arg_list.cons( object );
 
-#if V2 //Until 2.037
-    Arguments * formal_args = func_type->parameters; // can be NULL for genCfunc decls
-    size_t n_formal_args = formal_args ? (int) Argument::dim(formal_args) : 0;
-#else
     Parameters * formal_args = func_type->parameters; // can be NULL for genCfunc decls
     size_t n_formal_args = formal_args ? (int) Parameter::dim(formal_args) : 0;
-#endif
     size_t n_actual_args = arguments ? arguments->dim : 0;
     size_t fi = 0;
 
@@ -1031,11 +1043,7 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
 	    actual_arg_tree = actual_arg_exp->toElem(this);
 	} else if (fi < n_formal_args) {
 	    // Actual arguments for declared formal arguments
-#if V2 //Until 2.037
-	    Argument * formal_arg = Argument::getNth(formal_args, fi);
-#else
 	    Parameter * formal_arg = Parameter::getNth(formal_args, fi);
-#endif
 	    actual_arg_tree = convertForArgument(actual_arg_exp, formal_arg);
 
 	    // from c-typeck.c: convert_arguments, default_conversion, ...
@@ -1081,7 +1089,7 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
 
 static const char * libcall_ids[LIBCALL_count] =
     { "_d_assert", "_d_assert_msg", "_d_array_bounds", "_d_switch_error",
-      "_D9invariant12_d_invariantFC6ObjectZv",
+      "_d_invariant", /*"_D9invariant12_d_invariantFC6ObjectZv", */
       "_d_newclass", "_d_newarrayT",
       "_d_newarrayiT",
       "_d_newarraymTp", "_d_newarraymiTp", "_d_allocmemory",
@@ -1098,6 +1106,7 @@ static const char * libcall_ids[LIBCALL_count] =
       "_d_arraycatT", "_d_arraycatnT",
       "_d_arrayappendT",
       /*"_d_arrayappendc", */"_d_arrayappendcTp",
+      "_d_arrayappendcd", "_d_arrayappendwd",
 #if V2
       "_d_arrayassign", "_d_arrayctor", "_d_arraysetassign",
       "_d_arraysetctor",
@@ -1147,7 +1156,6 @@ IRState::getLibCallDecl(LibCall lib_call)
 {
     FuncDeclaration * decl = libcall_decls[lib_call];
     Array arg_types;
-    Type * t = NULL;
     bool varargs = false;
 
     if (! decl) {
@@ -1191,17 +1199,17 @@ IRState::getLibCallDecl(LibCall lib_call)
 	    break;
 	case LIBCALL_DELCLASS:
 	case LIBCALL_DELINTERFACE:
-	    arg_types.push(Type::tvoid->pointerTo());
+	    arg_types.push( Type::tvoid->pointerTo() );
 	    break;
 	case LIBCALL_DELARRAY:
-	    arg_types.push(Type::tvoid->arrayOf()->pointerTo());
+	    arg_types.push( Type::tvoid->arrayOf()->pointerTo() );
 	    break;
 	case LIBCALL_DELMEMORY:
-	    arg_types.push(Type::tvoid->pointerTo()->pointerTo());
+	    arg_types.push( Type::tvoid->pointerTo()->pointerTo() );
 	    break;
 	case LIBCALL_CALLFINALIZER:
 	case LIBCALL_CALLINTERFACEFINALIZER:
-	    arg_types.push(Type::tvoid->pointerTo());
+	    arg_types.push( Type::tvoid->pointerTo() );
 	    break;
 	case LIBCALL_ARRAYSETLENGTHT:
 	case LIBCALL_ARRAYSETLENGTHIT:
@@ -1219,15 +1227,15 @@ IRState::getLibCallDecl(LibCall lib_call)
 	case LIBCALL_ADEQ:
 	case LIBCALL_ADCMP:
 	    arg_types.reserve(3);
-	    arg_types.push(Type::tvoid->arrayOf());
-	    arg_types.push(Type::tvoid->arrayOf());
-	    arg_types.push(Type::typeinfo->type);
+	    arg_types.push( Type::tvoid->arrayOf() );
+	    arg_types.push( Type::tvoid->arrayOf() );
+	    arg_types.push( Type::typeinfo->type );
 	    return_type = Type::tint32;
 	    break;
 	case LIBCALL_ADCMPCHAR:
 	    arg_types.reserve(2);
-	    arg_types.push(Type::tchar->arrayOf());
-	    arg_types.push(Type::tchar->arrayOf());
+	    arg_types.push( Type::tchar->arrayOf() );
+	    arg_types.push( Type::tchar->arrayOf() );
 	    return_type = Type::tint32;
 	    break;
 // 	case LIBCALL_AAIN:
@@ -1247,7 +1255,7 @@ IRState::getLibCallDecl(LibCall lib_call)
 
 		if (lib_call == LIBCALL_AALEN)
 		{
-		    arg_types.push(aa_type);
+		    arg_types.push( aa_type );
 		    return_type = Type::tsize_t;
 		    break;
 		}
@@ -1256,12 +1264,12 @@ IRState::getLibCallDecl(LibCall lib_call)
 		    aa_type = aa_type->pointerTo();
 
 		arg_types.reserve(3);
-		arg_types.push(aa_type);
-		arg_types.push(Type::typeinfo->type); // typeinfo reference
+		arg_types.push( aa_type );
+		arg_types.push( Type::typeinfo->type ); // typeinfo reference
 		if ( lib_call == LIBCALL_AAGETP || lib_call == LIBCALL_AAGETRVALUEP)
-		    arg_types.push(Type::tsize_t);
+		    arg_types.push( Type::tsize_t );
 
-		arg_types.push(Type::tvoid->pointerTo());
+		arg_types.push( Type::tvoid->pointerTo() );
 
 		switch (lib_call) {
 		case LIBCALL_AAINP:
@@ -1278,61 +1286,66 @@ IRState::getLibCallDecl(LibCall lib_call)
 	    }
 	    break;
 	case LIBCALL_ARRAYCAST:
-	    t = Type::tvoid->arrayOf();
-	    arg_types.push(Type::tsize_t);
-	    arg_types.push(Type::tsize_t);
-	    arg_types.push(t);
-	    return_type = t;
+	    arg_types.push( Type::tsize_t );
+	    arg_types.push( Type::tsize_t );
+	    arg_types.push( Type::tvoid->arrayOf() );
+	    return_type = Type::tvoid->arrayOf();
 	    break;
 	case LIBCALL_ARRAYCOPY:
-	    t = Type::tvoid->arrayOf();
-	    arg_types.push(Type::tsize_t);
-	    arg_types.push(t);
-	    arg_types.push(t);
-	    return_type = t;
+	    arg_types.push( Type::tsize_t );
+	    arg_types.push( Type::tvoid->arrayOf() );
+	    arg_types.push( Type::tvoid->arrayOf() );
+	    return_type = Type::tvoid->arrayOf();
 	    break;
 	case LIBCALL_ARRAYCATT:
-	    arg_types.push(Type::typeinfo->type);
-	    t = Type::tvoid->arrayOf();
-	    arg_types.push(t);
-	    arg_types.push(t);
-	    return_type = t;
+	    arg_types.push( Type::typeinfo->type );
+	    arg_types.push( Type::tvoid->arrayOf() );
+	    arg_types.push( Type::tvoid->arrayOf() );
+	    return_type = Type::tvoid->arrayOf();
 	    break;
 	case LIBCALL_ARRAYCATNT:
-	    arg_types.push(Type::typeinfo->type);
-	    arg_types.push(Type::tuns32); // Currently 'uint', even if 64-bit
+	    arg_types.push( Type::typeinfo->type );
+	    arg_types.push( Type::tuns32 ); // Currently 'uint', even if 64-bit
 	    varargs = true;
 	    return_type = Type::tvoid->arrayOf();
 	    break;
 	case LIBCALL_ARRAYAPPENDT:
-	    arg_types.push(Type::typeinfo->type);
-	    t = Type::tuns8->arrayOf();
-	    arg_types.push(t->pointerTo());
-	    arg_types.push(t);
+	    arg_types.push( Type::typeinfo->type );
+	    arg_types.push( Type::tuns8->arrayOf()->pointerTo() );
+	    arg_types.push( Type::tuns8->arrayOf() );
 	    return_type = Type::tvoid->arrayOf();
 	    break;
 // 	case LIBCALL_ARRAYAPPENDCT:
 	case LIBCALL_ARRAYAPPENDCTP:
-	    arg_types.push(Type::typeinfo->type);
-	    t = Type::tuns8->arrayOf();
-	    arg_types.push(t);
-	    arg_types.push(Type::tvoid->pointerTo()); // varargs = true;
+	    arg_types.push( Type::typeinfo->type );
+	    arg_types.push( Type::tuns8->arrayOf() );
+	    arg_types.push( Type::tvoid->pointerTo() ); // varargs = true;
 	    return_type = Type::tvoid->arrayOf();
+	    break;
+	case LIBCALL_ARRAYAPPENDCD:
+	    arg_types.push( Type::tchar->arrayOf() );
+	    arg_types.push( Type::tdchar );
+	    return_type = Type::tchar->arrayOf();
+	    break;
+	case LIBCALL_ARRAYAPPENDWD:
+	    arg_types.push( Type::twchar->arrayOf() );
+	    arg_types.push( Type::tdchar );
+	    return_type = Type::tchar->arrayOf();
 	    break;
 #if V2
 	case LIBCALL_ARRAYASSIGN:
 	case LIBCALL_ARRAYCTOR:
-	    arg_types.push(Type::typeinfo->type);
-	    arg_types.push(Type::tvoid->arrayOf());
-	    arg_types.push(Type::tvoid->arrayOf());
+	    arg_types.push( Type::typeinfo->type );
+	    arg_types.push( Type::tvoid->arrayOf() );
+	    arg_types.push( Type::tvoid->arrayOf() );
 	    return_type = Type::tvoid->arrayOf();
 	    break;
 	case LIBCALL_ARRAYSETASSIGN:
 	case LIBCALL_ARRAYSETCTOR:
-	    arg_types.push(Type::tvoid->pointerTo());
-	    arg_types.push(Type::tvoid->pointerTo());
-	    arg_types.push(Type::tsize_t);
-	    arg_types.push(Type::typeinfo->type);
+	    arg_types.push( Type::tvoid->pointerTo() );
+	    arg_types.push( Type::tvoid->pointerTo() );
+	    arg_types.push( Type::tsize_t );
+	    arg_types.push( Type::typeinfo->type );
 	    return_type = Type::tvoid->pointerTo();
 	    break;
 #endif
@@ -1340,31 +1353,32 @@ IRState::getLibCallDecl(LibCall lib_call)
 	case LIBCALL_MONITOREXIT:
 	case LIBCALL_THROW:
 	case LIBCALL_INVARIANT:
-	    arg_types.push(getObjectType());
+	    arg_types.push( getObjectType() );
 	    break;
 	case LIBCALL_CRITICALENTER:
 	case LIBCALL_CRITICALEXIT:
-	    arg_types.push(Type::tvoid->pointerTo());
+	    arg_types.push( Type::tvoid->pointerTo() );
 	    break;
 	case LIBCALL_SWITCH_USTRING:
-	    t = Type::twchar;
-	    goto do_switch_string;
+	    arg_types.push( Type::twchar->arrayOf()->arrayOf() );
+	    arg_types.push( Type::twchar->arrayOf() );
+	    return_type = Type::tint32;
+	    break;
 	case LIBCALL_SWITCH_DSTRING:
-	    t = Type::tdchar;
-	    goto do_switch_string;
+	    arg_types.push( Type::tdchar->arrayOf()->arrayOf() );
+	    arg_types.push( Type::tdchar->arrayOf() );
+	    return_type = Type::tint32;
+	    break;
 	case LIBCALL_SWITCH_STRING:
-	    t = Type::tchar;
-	do_switch_string:
-	    t = t->arrayOf();
-	    arg_types.push(t->arrayOf());
-	    arg_types.push(t);
+	    arg_types.push( Type::tchar->arrayOf()->arrayOf() );
+	    arg_types.push( Type::tchar->arrayOf() );
 	    return_type = Type::tint32;
 	    break;
 	case LIBCALL_ASSOCARRAYLITERALTP:
-	    arg_types.push(Type::typeinfo->type);
-	    arg_types.push(Type::tsize_t);
-	    arg_types.push(Type::tvoid->pointerTo());
-	    arg_types.push(Type::tvoid->pointerTo());
+	    arg_types.push( Type::typeinfo->type );
+	    arg_types.push( Type::tsize_t );
+	    arg_types.push( Type::tvoid->pointerTo() );
+	    arg_types.push( Type::tvoid->pointerTo() );
 	    return_type = Type::tvoid->pointerTo();
 	    break;
 #if V2
@@ -1372,7 +1386,7 @@ IRState::getLibCallDecl(LibCall lib_call)
 	    /* Argument is an Object, but can't use that as
 	       LIBCALL_HIDDEN_FUNC is needed before the Object type is
 	       created. */
-	    arg_types.push(Type::tvoid->pointerTo());
+	    arg_types.push( Type::tvoid->pointerTo() );
 	    break;
 #endif
 	default:
@@ -1382,18 +1396,10 @@ IRState::getLibCallDecl(LibCall lib_call)
 	{
 	    TypeFunction * tf = (TypeFunction *) decl->type;
 	    tf->varargs = varargs ? 1 : 0;
-#if V2 //Until 2.037
-	    Arguments * args = new Arguments;
-#else
 	    Parameters * args = new Parameters;
-#endif
 	    args->setDim( arg_types.dim );
 	    for (unsigned i = 0; i < arg_types.dim; i++)
-#if V2 //Until 2.037
-		args->data[i] = new Argument( STCin, (Type *) arg_types.data[i],
-#else
 		args->data[i] = new Parameter( STCin, (Type *) arg_types.data[i],
-#endif
 		    NULL, NULL);
 	    tf->parameters = args;
 	}
@@ -1617,7 +1623,7 @@ IRState::arrayElemRef(IndexExp * aer_exp, ArrayScope * aryscp)
 
 	    e1_tree = aryscp->setArrayExp(e1_tree, e1->type);
 
-	    if ( global.params.useArrayBounds &&
+	    if ( arrayBoundsCheck() &&
 		// If it's a static array and the index is
 		// constant, the front end has already
 		// checked the bounds.
@@ -2325,11 +2331,7 @@ IRState::trueDeclarationType(Declaration * decl)
 
 // These should match the Declaration versions above
 bool
-#if V2 //Until 2.037
-IRState::isArgumentReferenceType(Argument * arg)
-#else
 IRState::isArgumentReferenceType(Parameter * arg)
-#endif
 {
     Type * base_type = arg->type->toBasetype();
 
@@ -2345,11 +2347,7 @@ IRState::isArgumentReferenceType(Parameter * arg)
 }
 
 tree
-#if V2 //Until 2.037
-IRState::trueArgumentType(Argument * arg)
-#else
 IRState::trueArgumentType(Parameter * arg)
-#endif
 {
     tree arg_type = arg->type->toCtype();
     if ( isArgumentReferenceType( arg )) {

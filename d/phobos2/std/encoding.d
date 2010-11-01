@@ -55,7 +55,7 @@ import std.range;
 
 unittest
 {
-    ubyte[][] validStrings =
+    static ubyte[][] validStrings =
     [
         // Plain ASCII
         cast(ubyte[])"hello",
@@ -94,7 +94,7 @@ unittest
         [ 0xDF, 0xBF ],                 // U+0000FFFF
     ];
 
-    ubyte[][] invalidStrings =
+    static ubyte[][] invalidStrings =
     [
         // First possible sequence of a certain length, but greater
         // than U+10FFFF
@@ -208,7 +208,7 @@ unittest
         [ 0xED, 0xBF, 0xBF ],       // U+DFFF
     ];
 
-    string[] sanitizedStrings =
+    static string[] sanitizedStrings =
     [
         "\uFFFD","\uFFFD",
         "\uFFFD","\uFFFD","\uFFFD","\uFFFD","\uFFFD","\uFFFD"," \uFFFD ",
@@ -324,7 +324,7 @@ unittest
         auto s = "\u20AC100";
         Windows1252String t;
         transcode(s,t);
-        assert(t == [cast(Windows1252Char)0x80, '1', '0', '0']);
+        assert(t == cast(Windows1252Char[])[0x80, '1', '0', '0']);
         string u;
         transcode(s,u);
         assert(s == u);

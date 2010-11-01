@@ -194,7 +194,7 @@ struct BaseClass
 };
 
 extern int CLASSINFO_SIZE;              // value of ClassInfo.size
-#define CLASSINFO_SIZE_64 CLASSINFO_SIZE // value of ClassInfo.size
+extern int CLASSINFO_SIZE_64;           // value of ClassInfo.size
 
 struct ClassDeclaration : AggregateDeclaration
 {

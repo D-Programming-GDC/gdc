@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 #include <assert.h>
 
 struct Msgtable
@@ -80,7 +79,6 @@ struct Msgtable msgtable[] =
     { "coverage", "__coverage" },
     { "__vptr" },
     { "__monitor" },
-    { "system" },
 
     { "TypeInfo" },
     { "TypeInfo_Class" },
@@ -148,6 +146,9 @@ struct Msgtable msgtable[] =
     { "idup" },
 
     { "property" },
+    { "safe" },
+    { "trusted" },
+    { "system" },
 
     // For inline assembler
     { "___out", "out" },
@@ -213,7 +214,11 @@ struct Msgtable msgtable[] =
     { "opIn_r" },
     { "opStar" },
     { "opDot" },
+    { "opDispatch" },
     { "opImplicitCast" },
+    { "pow", "opPow" },
+    { "pow_r", "opPow_r" },
+    //{ "powass", "opPowAssign" },
 
     { "classNew", "new" },
     { "classDelete", "delete" },
@@ -276,6 +281,7 @@ struct Msgtable msgtable[] =
     { "cos" },
     { "tan" },
     { "_sqrt", "sqrt" },
+    { "_pow", "pow" },
     { "fabs" },
 
     // Traits

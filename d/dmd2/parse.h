@@ -68,9 +68,10 @@ struct Parser : Lexer
 
     Array *parseModule();
     Array *parseDeclDefs(int once);
-    Array *parseAutoDeclarations(unsigned storageClass, unsigned char *comment);
+    Array *parseAutoDeclarations(StorageClass storageClass, unsigned char *comment);
     Array *parseBlock();
-    void composeStorageClass(unsigned stc);
+    void composeStorageClass(StorageClass stc);
+    StorageClass parseAttribute();
     Expression *parseConstraint();
     TemplateDeclaration *parseTemplateDeclaration();
     TemplateParameters *parseTemplateParameterList(int flag = 0);
@@ -93,7 +94,7 @@ struct Parser : Lexer
     UnitTestDeclaration *parseUnitTest();
     NewDeclaration *parseNew();
     DeleteDeclaration *parseDelete();
-    Arguments *parseParameters(int *pvarargs);
+    Parameters *parseParameters(int *pvarargs);
     EnumDeclaration *parseEnum();
     Dsymbol *parseAggregate();
     BaseClasses *parseBaseClasses();
@@ -102,7 +103,7 @@ struct Parser : Lexer
     Type *parseBasicType();
     Type *parseBasicType2(Type *t);
     Type *parseDeclarator(Type *t, Identifier **pident, TemplateParameters **tpl = NULL);
-    Array *parseDeclarations(unsigned storage_class);
+    Array *parseDeclarations(StorageClass storage_class);
     void parseContracts(FuncDeclaration *f);
     Statement *parseStatement(int flags);
     Statement *parseExtAsm(int expect_rparen);

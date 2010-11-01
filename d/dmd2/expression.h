@@ -70,7 +70,7 @@ Expression *resolveProperties(Scope *sc, Expression *e);
 void accessCheck(Loc loc, Scope *sc, Expression *e, Declaration *d);
 Expression *build_overload(Loc loc, Scope *sc, Expression *ethis, Expression *earg, Identifier *id);
 Dsymbol *search_function(ScopeDsymbol *ad, Identifier *funcid);
-void inferApplyArgTypes(enum TOK op, Arguments *arguments, Expression *aggr);
+void inferApplyArgTypes(enum TOK op, Parameters *arguments, Expression *aggr);
 void argExpTypesToCBuffer(OutBuffer *buf, Expressions *arguments, HdrGenState *hgs);
 void argsToCBuffer(OutBuffer *buf, Expressions *arguments, HdrGenState *hgs);
 void expandTuples(Expressions *exps);
@@ -123,12 +123,14 @@ struct Expression : Object
     virtual IntRange getIntRange();
     virtual Expression *castTo(Scope *sc, Type *t);
     virtual void checkEscape();
+    virtual Expression *resolveLoc(Loc loc, Scope *sc);
     void checkScalar();
     void checkNoBool();
     Expression *checkIntegral();
     Expression *checkArithmetic();
     void checkDeprecated(Scope *sc, Dsymbol *s);
     void checkPurity(Scope *sc, FuncDeclaration *f);
+    void checkSafety(Scope *sc, FuncDeclaration *f);
     virtual Expression *checkToBoolean();
     Expression *checkToPointer();
     Expression *addressOf(Scope *sc);
@@ -162,7 +164,7 @@ struct Expression : Object
 
     // For array ops
     virtual void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    virtual Expression *buildArrayLoop(Arguments *fparams);
+    virtual Expression *buildArrayLoop(Parameters *fparams);
     int isArrayOperand();
 
     // Back end
@@ -669,9 +671,9 @@ struct DeclarationExp : Expression
 
 struct TypeidExp : Expression
 {
-    Type *typeidType;
+    Object *obj;
 
-    TypeidExp(Loc loc, Type *typeidType);
+    TypeidExp(Loc loc, Object *obj);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -734,6 +736,7 @@ struct UnaExp : Expression
     void scanForNestedRef(Scope *sc);
     Expression *interpretCommon(InterState *istate, Expression *(*fp)(Type *, Expression *));
     int canThrow();
+    Expression *resolveLoc(Loc loc, Scope *sc);
 
     int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
@@ -826,6 +829,7 @@ struct DotIdExp : UnaExp
 
     DotIdExp(Loc loc, Expression *e, Identifier *ident);
     Expression *semantic(Scope *sc);
+    Expression *semantic(Scope *sc, int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void dump(int i);
 };
@@ -859,8 +863,9 @@ struct DotTemplateInstanceExp : UnaExp
 {
     TemplateInstance *ti;
 
-    DotTemplateInstanceExp(Loc loc, Expression *e, TemplateInstance *ti);
+    DotTemplateInstanceExp(Loc loc, Expression *e, Identifier *name, Objects *tiargs);
     Expression *syntaxCopy();
+    TemplateDeclaration *getTempdecl(Scope *sc);
     Expression *semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void dump(int indent);
@@ -953,7 +958,7 @@ struct NegExp : UnaExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
 
     // For operator overloading
     Identifier *opId();
@@ -977,7 +982,7 @@ struct ComExp : UnaExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
 
     // For operator overloading
     Identifier *opId();
@@ -1033,7 +1038,7 @@ struct CastExp : UnaExp
     void checkEscape();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
     elem *toElem(IRState *irs);
 
     // For operator overloading
@@ -1061,7 +1066,7 @@ struct SliceExp : UnaExp
     elem *toElem(IRState *irs);
     void scanForNestedRef(Scope *sc);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
 
     int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
@@ -1076,6 +1081,8 @@ struct ArrayLengthExp : UnaExp
     Expression *interpret(InterState *istate);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     elem *toElem(IRState *irs);
+
+    static Expression *rewriteOpAssign(BinExp *exp);
 };
 
 // e1[a0,a1,a2,a3,...]
@@ -1166,7 +1173,7 @@ struct AssignExp : BinExp
     Expression *interpret(InterState *istate);
     Identifier *opId();    // For operator overloading
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
     elem *toElem(IRState *irs);
 };
 
@@ -1177,7 +1184,7 @@ struct op##AssignExp : BinExp					\
     Expression *semantic(Scope *sc);				\
     Expression *interpret(InterState *istate);			\
     X(void buildArrayIdent(OutBuffer *buf, Expressions *arguments);) \
-    X(Expression *buildArrayLoop(Arguments *fparams);)		\
+    X(Expression *buildArrayLoop(Parameters *fparams);)		\
 								\
     Identifier *opId();    /* For operator overloading */	\
 								\
@@ -1212,7 +1219,7 @@ struct AddExp : BinExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
 
     // For operator overloading
     int isCommutative();
@@ -1229,7 +1236,7 @@ struct MinExp : BinExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
 
     // For operator overloading
     Identifier *opId();
@@ -1259,7 +1266,7 @@ struct MulExp : BinExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
 
     // For operator overloading
     int isCommutative();
@@ -1276,7 +1283,7 @@ struct DivExp : BinExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
     IntRange getIntRange();
 
     // For operator overloading
@@ -1293,7 +1300,7 @@ struct ModExp : BinExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
 
     // For operator overloading
     Identifier *opId();
@@ -1301,6 +1308,18 @@ struct ModExp : BinExp
 
     elem *toElem(IRState *irs);
 };
+
+#if DMDV2
+struct PowExp : BinExp
+{
+    PowExp(Loc loc, Expression *e1, Expression *e2);
+    Expression *semantic(Scope *sc);
+
+    // For operator overloading
+    Identifier *opId();
+    Identifier *opId_r();
+};
+#endif
 
 struct ShlExp : BinExp
 {
@@ -1354,7 +1373,7 @@ struct AndExp : BinExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
     IntRange getIntRange();
 
     // For operator overloading
@@ -1372,7 +1391,7 @@ struct OrExp : BinExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
     MATCH implicitConvTo(Type *t);
     IntRange getIntRange();
 
@@ -1391,7 +1410,7 @@ struct XorExp : BinExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Arguments *fparams);
+    Expression *buildArrayLoop(Parameters *fparams);
     MATCH implicitConvTo(Type *t);
     IntRange getIntRange();
 
@@ -1528,7 +1547,6 @@ struct DefaultInitExp : Expression
     enum TOK subop;		// which of the derived classes this is
 
     DefaultInitExp(Loc loc, enum TOK subop, int size);
-    virtual Expression *resolve(Loc loc, Scope *sc) = 0;
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 };
 
@@ -1536,14 +1554,14 @@ struct FileInitExp : DefaultInitExp
 {
     FileInitExp(Loc loc);
     Expression *semantic(Scope *sc);
-    Expression *resolve(Loc loc, Scope *sc);
+    Expression *resolveLoc(Loc loc, Scope *sc);
 };
 
 struct LineInitExp : DefaultInitExp
 {
     LineInitExp(Loc loc);
     Expression *semantic(Scope *sc);
-    Expression *resolve(Loc loc, Scope *sc);
+    Expression *resolveLoc(Loc loc, Scope *sc);
 };
 #endif
 

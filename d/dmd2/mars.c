@@ -97,7 +97,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates."
 #endif
     ;
-    version = "v2.036";
+    version = "v2.037";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -259,6 +259,7 @@ Usage:\n\
   -Llinkerflag   pass linkerflag to link\n\
   -lib           generate library rather than object files\n\
   -man           open web browser on manual page\n\
+  -noboundscheck turns off array bounds checking for all functions\n\
   -nofloat       do not emit reference to floating point\n\
   -O             optimize\n\
   -o-            do not write object file\n\
@@ -269,7 +270,6 @@ Usage:\n\
   -quiet         suppress unnecessary messages\n\
   -release	 compile release version\n\
   -run srcfile args...   run resulting program, passing args\n\
-  -safe          safe memory model\n\
   -unittest      compile in unit tests\n\
   -v             verbose\n\
   -version=level compile in version code >= level\n\
@@ -291,6 +291,7 @@ int main(int argc, char *argv[])
     int status = EXIT_SUCCESS;
     int argcstart = argc;
     int setdebuglib = 0;
+    char noboundscheck = 0;
 
     // Check for malformed input
     if (argc < 1 || !argv)
@@ -317,7 +318,7 @@ int main(int argc, char *argv[])
     global.params.useInvariants = 1;
     global.params.useIn = 1;
     global.params.useOut = 1;
-    global.params.useArrayBounds = 1;
+    global.params.useArrayBounds = 2;	// default to all functions
     global.params.useSwitchError = 1;
     global.params.useInline = 0;
     global.params.obj = 1;
@@ -553,8 +554,8 @@ int main(int argc, char *argv[])
 	    else if (strcmp(p + 1, "release") == 0)
 		global.params.release = 1;
 #if DMDV2
-	    else if (strcmp(p + 1, "safe") == 0)
-		global.params.safe = 1;
+	    else if (strcmp(p + 1, "noboundscheck") == 0)
+		noboundscheck = 1;
 #endif
 	    else if (strcmp(p + 1, "unittest") == 0)
 		global.params.useUnitTests = 1;
@@ -749,9 +750,11 @@ int main(int argc, char *argv[])
 	global.params.useIn = 0;
 	global.params.useOut = 0;
 	global.params.useAssert = 0;
-	global.params.useArrayBounds = 0;
+	global.params.useArrayBounds = 1;
 	global.params.useSwitchError = 0;
     }
+    if (noboundscheck)
+	global.params.useArrayBounds = 0;
 
     if (global.params.run)
 	global.params.quiet = 1;

@@ -102,9 +102,9 @@ cpp_mangle_arguments(TypeFunction * tf, OutBuffer * buf, CppMangleState *cms)
 
     if (tf->parameters)
     {
-	size_t dim = Argument::dim(tf->parameters);
+	size_t dim = Parameter::dim(tf->parameters);
 	for (size_t i = 0; i < dim; i++)
-	{   Argument *arg = Argument::getNth(tf->parameters, i);
+	{   Parameter *arg = Parameter::getNth(tf->parameters, i);
 
 	    have_some_args = true;
 	    if (arg->storageClass & (STClazy))

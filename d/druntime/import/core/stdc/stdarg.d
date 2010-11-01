@@ -17,6 +17,8 @@
  */
 module core.stdc.stdarg;
 
+@system:
+
 version (GNU)
 {
     private import gcc.builtins;

@@ -880,27 +880,45 @@ elem *
 MulAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
 
 elem *
-CatAssignExp::toElem(IRState * irs) {
-    tree args[3];
+CatAssignExp::toElem(IRState * irs)
+{
+    unsigned n_args;
+    tree * args;
     Type * elem_type = e1->type->toBasetype()->nextOf()->toBasetype();
+    Type * value_type = e2->type->toBasetype();
     LibCall lib_call;
     AddrOfExpr aoe;
 
-    args[0] = irs->typeinfoReference( type );
-    args[1] = irs->addressOf( irs->toElemLvalue(e1) );
-
     gcc_assert(elem_type->ty != Tbit);
 
-    if (irs->typesCompatible(elem_type, e2->type->toBasetype())) {
-	// append an element
-	args[2] = aoe.set(irs, e2->toElem(irs) );
-	lib_call = LIBCALL_ARRAYAPPENDCTP;
+    if (e1->type->toBasetype()->ty == Tarray && value_type->ty == Tdchar &&
+	(elem_type->ty == Tchar || elem_type->ty == Twchar)) {
+	// append a dchar to a char[] or wchar[]
+	n_args = 2;
+	args = new tree[n_args];
+
+	args[0] = aoe.set(irs, e1->toElem(irs));
+	args[1] = irs->toElemLvalue(e2);
+	lib_call = elem_type->ty == Tchar ?
+	    LIBCALL_ARRAYAPPENDCD : LIBCALL_ARRAYAPPENDWD;
     } else {
-	// append an array
-	args[2] = irs->toDArray(e2);
-	lib_call = LIBCALL_ARRAYAPPENDT;
+	n_args = 3;
+	args = new tree[n_args];
+
+	args[0] = irs->typeinfoReference( type );
+	args[1] = irs->addressOf( irs->toElemLvalue(e1) );
+
+	if (irs->typesCompatible(elem_type, value_type)) {
+	    // append an element
+	    args[2] = aoe.set(irs, e2->toElem(irs));
+	    lib_call = LIBCALL_ARRAYAPPENDCTP;
+	} else {
+	    // append an array
+	    args[2] = irs->toDArray(e2);
+	    lib_call = LIBCALL_ARRAYAPPENDT;
+	}
     }
-    return aoe.finish(irs, irs->libCall(lib_call, 3, args, type->toCtype()));
+    return aoe.finish(irs, irs->libCall(lib_call, n_args, args, type->toCtype()));
 }
 
 elem *
@@ -1068,7 +1086,7 @@ AssignExp::toElem(IRState* irs) {
 	    }
 	    else
 #endif
-	    if (global.params.useArrayBounds)
+	    if (irs->arrayBoundsCheck())
 	    {
 		tree args[3] = {
 		    irs->integerConstant(elem_type->size(), Type::tsize_t),
@@ -1174,7 +1192,7 @@ IndexExp::toElem(IRState* irs)
 	args[3] = aoe.set(irs, irs->convertTo( e2, key_type ) );
 	t = irs->libCall(LIBCALL_AAGETRVALUEP, 4, args, type->pointerTo()->toCtype());
 	t = aoe.finish(irs, t);
-	if (global.params.useArrayBounds) {
+	if (irs->arrayBoundsCheck()) {
 	    t = save_expr(t);
 	    t = build3(COND_EXPR, TREE_TYPE(t), t, t,
 		irs->assertCall(loc, LIBCALL_ARRAY_BOUNDS));
@@ -1268,7 +1286,7 @@ SliceExp::toElem(IRState * irs)
     }
     if (upr) {
 	upr_tree = upr->toElem(irs);
-	if (global.params.useArrayBounds && array_len_expr) {
+	if (irs->arrayBoundsCheck() && array_len_expr) {
 	    upr_tree = irs->maybeMakeTemp(upr_tree);
 	    final_len_expr = irs->checkedIndex(loc, upr_tree, array_len_expr, true);
 	} else {
@@ -1295,7 +1313,7 @@ SliceExp::toElem(IRState * irs)
 	}
     }
     if (lwr_tree) {
-	if (global.params.useArrayBounds && array_len_expr) { // %% && ! is zero
+	if (irs->arrayBoundsCheck() && array_len_expr) { // %% && ! is zero
 	    lwr_tree = irs->maybeCompound(
 			    irs->checkedIndex(loc, lwr_tree, array_len_expr, true), // lower bound can equal length
 			    upr_tree ? irs->checkedIndex(loc, lwr_tree, upr_tree, true) // implements check upr < lwr
@@ -2821,8 +2839,13 @@ FuncDeclaration::toObjFile(int multiobj)
 		VarExp * ve = new VarExp(fbody->loc, vthis);
 		the_body = new SynchronizedStatement(fbody->loc, ve, fbody);
 	    } else {
-		if (!sym->vclassinfo)
+		if (!sym->vclassinfo) {
+#if V2
+		    sym->vclassinfo = new TypeInfoClassDeclaration(sym->type);
+#else
 		    sym->vclassinfo = new ClassInfoDeclaration(sym);
+#endif
+		}
 		Expression * e = new VarExp(fbody->loc, sym->vclassinfo);
 		e = new AddrExp(fbody->loc, e);
 		e->type = sym->type;
@@ -3338,17 +3361,9 @@ TypeFunction::toCtype() {
 	}
 
 	if (parameters) {
-#if V2 //Until 2.037
-	    size_t n_args = Argument::dim(parameters);
-#else
 	    size_t n_args = Parameter::dim(parameters);
-#endif
 	    for (size_t i = 0; i < n_args; i++) {
-#if V2 //Until 2.037
-		Argument * arg = Argument::getNth(parameters, i);
-#else
 		Parameter * arg = Parameter::getNth(parameters, i);
-#endif
 		type_list.cons( IRState::trueArgumentType(arg) );
 	    }
 	}
@@ -4648,11 +4663,10 @@ gcc_d_backend_init()
     default:
 	abort();
     }
-#if V2
-    CLASSINFO_SIZE = 20 * PTRSIZE;
-#else
-    CLASSINFO_SIZE = 19 * PTRSIZE;
+#if V1
+    CLASSINFO_SIZE_64 = 19 * PTRSIZE;
 #endif
+    CLASSINFO_SIZE = 19 * PTRSIZE;
 
     d_init_builtins();
 
