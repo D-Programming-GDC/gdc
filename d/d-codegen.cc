@@ -360,7 +360,11 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 		// DMD apparently allows casting a static array to any static array type
 		return indirect(addressOf(exp), target_type->toCtype());
 	    }
-	    // %% else error?
+	    else
+	    {
+		::error( "cannot cast expression of type %s to type %s", exp_type->toChars(), target_type->toChars());
+		return error_mark_node;
+	    }
 	}
 	break;
     case Tarray:
