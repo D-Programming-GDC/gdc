@@ -580,7 +580,11 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
 	dtdword(pdt, 0);
 
     // uint m_flags;
+#if DMDV2
+    dtdword(pdt, tc->hasPointers());
+#else
     dti32(pdt, tc->hasPointers(), false);
+#endif
 
 #if DMDV2
     // xgetMembers
