@@ -353,7 +353,8 @@ real_t::isIdenticalTo(const real_t & r) const
 void
 real_t::format(char * buf, unsigned buf_size) const
 {
-    real_to_decimal(buf, & rv(), buf_size, 0, 1);
+    // %% restricting the precision of significant digits to 18.
+    real_to_decimal(buf, & rv(), buf_size, 18, 1);
 }
 
 void
