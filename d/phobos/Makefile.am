@@ -111,10 +111,10 @@ MAIN_OBJS=std/asserterror.o internal/switch.o gcstats.o \
 # This should not be linked into a shared library.
 CMAIN_OBJS=internal/cmain.o
 
-ZLIB_OBJS= zlib/adler32.o zlib/compress.o zlib/crc32.o \
-	zlib/gzio.o zlib/uncompr.o zlib/deflate.o \
-	zlib/trees.o zlib/zutil.o zlib/inflate.o \
-	zlib/infback.o zlib/inftrees.o zlib/inffast.o
+ZLIB_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
+	  zlib/gzclose.o zlib/gzlib.o zlib/gzread.o zlib/gzwrite.o \
+	  zlib/infback.o zlib/inffast.o zlib/inflate.o zlib/inftrees.o \
+	  zlib/trees.o zlib/uncompr.o zlib/zutil.o
 
 GC_OBJS= internal/gc/gc.o internal/gc/gcx.o internal/gc/gcosxc.o \
 	internal/gc/gcbits.o

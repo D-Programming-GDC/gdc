@@ -1,10 +1,5 @@
 /* zlib.d: modified from zlib.h by Walter Bright */
 /* updated from 1.2.1 to 1.2.3 by Thomas Kuehne */
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, February 2007
- */
 
 module etc.c.zlib;
 
@@ -37,8 +32,6 @@ module etc.c.zlib;
   Comments) 1950 to 1952 in the files http://www.ietf.org/rfc/rfc1950.txt
   (zlib format), rfc1951.txt (deflate format) and rfc1952.txt (gzip format).
 */
-
-private import std.stdint;
 
 extern (C):
 
@@ -86,11 +79,11 @@ struct z_stream
 {
     ubyte    *next_in;  /* next input byte */
     uint     avail_in;  /* number of bytes available at next_in */
-    Culong_t total_in;  /* total nb of input bytes read so far */
+    uint     total_in;  /* total nb of input bytes read so far */
 
     ubyte    *next_out; /* next output byte should be put there */
     uint     avail_out; /* remaining free space at next_out */
-    Culong_t total_out; /* total nb of bytes output so far */
+    uint     total_out; /* total nb of bytes output so far */
 
     char     *msg;      /* last error message, NULL if no error */
     void*    state;     /* not visible by applications */
@@ -99,9 +92,9 @@ struct z_stream
     free_func  zfree;   /* used to free the internal state */
     void*      opaque;  /* private data object passed to zalloc and zfree */
 
-    int      data_type;  /* best guess about the data type: ascii or binary */
-    Culong_t adler;      /* adler32 value of the uncompressed data */
-    Culong_t reserved;   /* reserved for future use */
+    int    data_type;  /* best guess about the data type: binary or text */
+    uint   adler;      /* adler32 value of the uncompressed data */
+    uint   reserved;   /* reserved for future use */
 }
 
 alias z_stream* z_streamp;
@@ -713,7 +706,7 @@ int deflateTune(z_streamp strm, int good_length, int max_lazy, int nice_length,
    returns Z_OK on success, or Z_STREAM_ERROR for an invalid deflate stream.
  */
 
-int deflateBound(z_streamp strm, Culong_t sourceLen);
+int deflateBound(z_streamp strm, uint sourceLen);
 /*
      deflateBound() returns an upper bound on the compressed size after
    deflation of sourceLen bytes.  It must be called after deflateInit()
@@ -800,7 +793,7 @@ int inflateInit2(z_streamp strm, int windowBits)
    any decompression apart from reading the zlib header if present: this will
    be done by inflate(). (So next_in and avail_in may be modified, but next_out
    and avail_out are unchanged.)
-*/
+/
 
 int inflateSetDictionary(z_streamp strm, ubyte* dictionary, uint  dictLength);
 /*
@@ -1020,9 +1013,9 @@ uint zlibCompileFlags();
 */
 
 int compress(ubyte* dest,
-             Culong_t* destLen,
+             uint* destLen,
              ubyte* source,
-             Culong_t sourceLen);
+             uint sourceLen);
 /*
      Compresses the source buffer into the destination buffer.  sourceLen is
    the byte length of the source buffer. Upon entry, destLen is the total
@@ -1037,9 +1030,9 @@ int compress(ubyte* dest,
 */
 
 int compress2(ubyte* dest,
-              Culong_t* destLen,
+              uint* destLen,
               ubyte* source,
-              Culong_t sourceLen,
+              uint sourceLen,
               int level);
 /*
      Compresses the source buffer into the destination buffer. The level
@@ -1054,7 +1047,7 @@ int compress2(ubyte* dest,
    Z_STREAM_ERROR if the level parameter is invalid.
 */
 
-uint compressBound(Culong_t sourceLen);
+uint compressBound(uint sourceLen);
 /*
      compressBound() returns an upper bound on the compressed size after
    compress() or compress2() on sourceLen bytes.  It would be used before
@@ -1062,9 +1055,9 @@ uint compressBound(Culong_t sourceLen);
 */
 
 int uncompress(ubyte* dest,
-               uint* Culong_t,
+               uint* destLen,
                ubyte* source,
-               uint Culong_t);
+               uint sourceLen);
 /*
      Decompresses the source buffer into the destination buffer.  sourceLen is
    the byte length of the source buffer. Upon entry, destLen is the total
@@ -1275,7 +1268,7 @@ void gzclearerr (gzFile file);
    compression library.
 */
 
- Culong_t adler32  (Culong_t adler, ubyte *buf, uint len);
+ uint adler32  (uint adler, ubyte *buf, uint len);
 
 /*
      Update a running Adler-32 checksum with the bytes buf[0..len-1] and
@@ -1300,7 +1293,7 @@ uint adler32_combine(uint adler1, uint adler2, z_off_t len2);
    seq1 and seq2 concatenated, requiring only adler1, adler2, and len2.
 */
 
-Culong_t crc32(Culong_t crc, ubyte *buf, uint len);
+uint crc32(uint crc, ubyte *buf, uint len);
 /*
      Update a running CRC-32 with the bytes buf[0..len-1] and return the
    updated CRC-32. If buf is NULL, this function returns the required initial
@@ -1363,4 +1356,4 @@ int inflateInit2_(z_streamp strm,
 
 char* zError(int err);
 int inflateSyncPoint(z_streamp z);
-Culong_t* get_crc_table();
+uint* get_crc_table();

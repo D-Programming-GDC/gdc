@@ -22,7 +22,7 @@ module std.zlib;
 
 //debug=zlib;       // uncomment to turn on debugging printf's
 
-private import etc.c.zlib, std.conv, std.stdint;
+private import etc.c.zlib, std.conv;
 
 // Values for 'mode'
 
@@ -64,7 +64,7 @@ class ZlibException : Exception
  * value when computing a cumulative checksum.
  */
 
-Culong_t adler32(Culong_t adler, const(void)[] buf)
+uint adler32(uint adler, const(void)[] buf)
 {
     return etc.c.zlib.adler32(adler, cast(ubyte *)buf.ptr,
             to!uint(buf.length));
@@ -87,7 +87,7 @@ unittest
  * when computing a cumulative checksum.
  */
 
-Culong_t crc32(Culong_t crc, const(void)[] buf)
+uint crc32(uint crc, const(void)[] buf)
 {
     return etc.c.zlib.crc32(crc, cast(ubyte *)buf.ptr, to!uint(buf.length));
 }
@@ -121,10 +121,12 @@ body
 {
     int err;
     ubyte[] destbuf;
+    uint destlen;
 
-    auto destlen = srcbuf.length + ((srcbuf.length + 1023) / 1024) + 12;
+    destlen = to!uint(srcbuf.length) + ((to!uint(srcbuf.length) + 1023) / 1024) + 12;
     destbuf = new ubyte[destlen];
-    err = etc.c.zlib.compress2(destbuf.ptr, &destlen, cast(ubyte *)srcbuf, srcbuf.length, level);
+    err = etc.c.zlib.compress2(destbuf.ptr, &destlen, cast(ubyte *)srcbuf,
+            to!uint(srcbuf.length), level);
     if (err)
     {   delete destbuf;
     throw new ZlibException(err);
@@ -164,7 +166,7 @@ const(void)[] uncompress(const(void)[] srcbuf, uint destlen = 0u, int winbits = 
     etc.c.zlib.z_stream zs;
 
     destbuf = new ubyte[destlen];
-    
+
     zs.next_in = cast(ubyte*) srcbuf;
     zs.avail_in = to!uint(srcbuf.length);
 
@@ -327,7 +329,7 @@ class Compress
      * Compress and return any remaining data.
      * The returned data should be appended to that returned by compress().
      * Params:
-     *  mode = one of the following: 
+     *  mode = one of the following:
      *      $(DL
             $(DT Z_SYNC_FLUSH )
             $(DD Syncs up flushing to the next byte boundary.

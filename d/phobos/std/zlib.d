@@ -10,17 +10,12 @@
  *      WIKI = Phobos/StdZlib
  */
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, February 2007
-*/
 
 module std.zlib;
 
 //debug=zlib;           // uncomment to turn on debugging printf's
 
-private import etc.c.zlib, std.stdint;
+private import etc.c.zlib;
 
 // Values for 'mode'
 
@@ -120,7 +115,7 @@ body
 {
     int err;
     ubyte[] destbuf;
-    Culong_t destlen;
+    uint destlen;
 
     destlen = cast(uint)(srcbuf.length + ((srcbuf.length + 1023) / 1024) + 12);
     destbuf = new ubyte[destlen];
