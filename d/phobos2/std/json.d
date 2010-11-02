@@ -350,7 +350,7 @@ string toJSON(in JSONValue* root) {
 
 		case JSON_TYPE.ARRAY:
 			json.put('[');
-			int length = value.array.length;
+			auto length = value.array.length;
 			for(int i; i != length; i++) {
 				if(i) json.put(',');
 				toValue(&value.array[i]);
