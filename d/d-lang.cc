@@ -903,8 +903,6 @@ Symbol* rtlsym[N_RTLSYM];
 void
 d_parse_file (int /*set_yydebug*/)
 {
-    Identifier * id;
-    //Module * m;
     char * p, * e;
     char * name;
     unsigned i;
@@ -1030,7 +1028,11 @@ d_parse_file (int /*set_yydebug*/)
 		goto Linvalid;
 	}
 
-	id = new Identifier(name, 0);
+#if V1
+	Identifier * id = Lexer::idPool(name);
+#else
+	Identifier * id = new Identifier(name, 0);
+#endif
 	Module * m = new Module(the_fname, id, global.params.doDocComments, global.params.doHdrGeneration);
 	if (! strcmp(in_fnames[i], main_input_filename))
 	    an_output_module = m;
