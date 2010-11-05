@@ -263,17 +263,20 @@ void StructDeclaration::semantic(Scope *sc)
 {
     Scope *sc2;
 
-    //printf("+StructDeclaration::semantic(this=%p, '%s')\n", this, toChars());
+    //printf("+StructDeclaration::semantic(this=%p, '%s', sizeok = %d)\n", this, toChars(), sizeok);
 
-    //static int count; if (++count == 20) *(char*)0=0;
+    //static int count; if (++count == 20) halt();
 
     assert(type);
     if (!members)			// if forward reference
 	return;
 
     if (symtab)
-    {   if (!scope)
+    {   if (sizeok == 1 || !scope)
+	{   //printf("already completed\n");
+	    scope = NULL;
             return;             // semantic() already completed
+	}
     }
     else
         symtab = new DsymbolTable();

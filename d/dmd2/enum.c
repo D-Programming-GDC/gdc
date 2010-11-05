@@ -39,6 +39,7 @@ EnumDeclaration::EnumDeclaration(Loc loc, Identifier *id, Type *memtype)
     sinit = NULL;
     attributes = NULL;
     isdeprecated = 0;
+    isdone = 0;
 }
 
 Dsymbol *EnumDeclaration::syntaxCopy(Dsymbol *s)
@@ -74,7 +75,7 @@ void EnumDeclaration::semantic(Scope *sc)
     }
 
     if (symtab)			// if already done
-    {	if (!scope)
+    {	if (isdone || !scope)
 	    return;		// semantic() already completed
     }
     else
@@ -116,7 +117,7 @@ void EnumDeclaration::semantic(Scope *sc)
 		scope = scx ? scx : new Scope(*sc);
 		scope->setNoFree();
 		scope->module->addDeferredSemantic(this);
-		printf("\tdeferring %s\n", toChars());
+		//printf("\tdeferring %s\n", toChars());
 		return;
 	    }
 	}
@@ -127,6 +128,8 @@ void EnumDeclaration::semantic(Scope *sc)
 	}
 #endif
     }
+
+    isdone = 1;
 
     type = type->semantic(loc, sc);
     if (isAnonymous())

@@ -578,9 +578,9 @@ make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * ex
 	    e1 = irs->convertTo(e1, e1_type, e2_type);
 #if ENABLE_CHECKING
 	else {
-	    if (!irs->typesSame(e1_type, exp_type))
+	    if (!irs->typesCompatible(e1_type, exp_type))
 		e1 = irs->convertTo(e1, e1_type, exp_type);
-	    if (!irs->typesSame(e2_type, exp_type))
+	    if (!irs->typesCompatible(e2_type, exp_type))
 		e2 = irs->convertTo(e2, e2_type, exp_type);
 	}
 #endif
@@ -1853,7 +1853,7 @@ SymbolExp::toElem(IRState * irs)
 	    }
 	}
 #if ENABLE_CHECKING
-	if (var->type->isTypeBasic() && !irs->typesSame(var->type, type))
+	if (var->type->isTypeBasic() && !irs->typesCompatible(var->type, type))
 	    e = irs->convertTo(e, var->type, type);
 #endif
 	return e;
@@ -1915,7 +1915,7 @@ VarExp::toElem(IRState* irs)
 	}
     }
 #if ENABLE_CHECKING
-    if (!irs->typesSame(var->type, type))
+    if (!irs->typesCompatible(var->type, type))
 	e = irs->convertTo(e, var->type, type);
 #endif
     return e;

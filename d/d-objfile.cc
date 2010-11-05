@@ -1136,9 +1136,9 @@ outdata(Symbol * sym)
 	// % Possibly doing something wrong with StructDeclaration::toDt to need this.
 	// t is a RECORD_TYPE, yet init is an incompatible ARRAY_TYPE.
 	tree init = dt2tree( sym->Sdt );
-	if (TREE_CODE( TREE_TYPE(init) ) != TREE_CODE( TREE_TYPE(t) ))
+	if (!lhd_types_compatible_p( TREE_TYPE(t), TREE_TYPE(init) ))
 	    init = fold (build1 (NOP_EXPR, TREE_TYPE( t ), init));
-	DECL_INITIAL( t );
+	DECL_INITIAL( t ) = init;
 #else
 	DECL_INITIAL( t ) = dt2tree( sym->Sdt );
 #endif
