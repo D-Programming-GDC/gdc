@@ -54,7 +54,7 @@ Expression *expandVar(int result, VarDeclaration *v)
     if (!v)
 	return e;
 
-    if (v->isConst() || v->isInvariant() || v->storage_class & STCmanifest)
+    if (v->isConst() || v->isImmutable() || v->storage_class & STCmanifest)
     {
 	if (!v->type)
 	{
@@ -846,12 +846,11 @@ Expression *EqualExp::optimize(int result)
 }
 
 Expression *IdentityExp::optimize(int result)
-{   Expression *e;
-
+{
     //printf("IdentityExp::optimize(result = %d) %s\n", result, toChars());
     e1 = e1->optimize(WANTvalue | (result & WANTinterpret));
     e2 = e2->optimize(WANTvalue | (result & WANTinterpret));
-    e = this;
+    Expression *e = this;
 
     if ((this->e1->isConst()     && this->e2->isConst()) ||
 	(this->e1->op == TOKnull && this->e2->op == TOKnull))

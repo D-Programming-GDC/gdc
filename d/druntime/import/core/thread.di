@@ -1,4 +1,4 @@
-// D import file generated from 'src\common\core\thread.d'
+// D import file generated from 'src\core\thread.d'
 module core.thread;
 version = StackGrowsDown;
 class ThreadException : Exception
@@ -552,7 +552,7 @@ private
 }
 extern (C) 
 {
-    bool thread_needLock()
+    nothrow bool thread_needLock()
 {
 return multiThreadedFlag;
 }

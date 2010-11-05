@@ -21,7 +21,7 @@ ACLOCAL_AMFLAGS = -I . -I ..
 
 OUR_CFLAGS=@DEFS@ -I . -I $(srcdir)/gcc
 D_EXTRA_DFLAGS=-nostdinc -pipe
-D_RT_FLAGS = -I $(srcdir)/compiler/gdc -I $(srcdir)/gc/basic -I $(srcdir)/import
+D_RT_FLAGS = -I $(srcdir)/import -I $(srcdir)/gc
 ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_RT_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
@@ -116,20 +116,17 @@ common/core/thread.o: common/core/thread.d
 gcc/cbridge_math.o: gcc/cbridge_math.c
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
 
-BASE_OBJS=compiler/complex.o compiler/critical.o compiler/monitor.o \
-	  compiler/object_.o
+BASE_OBJS=object_.o
 
-RUNTIME_OBJS=compiler/aaA.o compiler/aApply.o compiler/aApplyR.o \
-	     compiler/adi.o compiler/arrayassign.o compiler/arraybyte.o \
-	     compiler/arraycast.o compiler/arraycat.o compiler/arraydouble.o \
-	     compiler/arrayfloat.o compiler/arrayint.o compiler/arrayreal.o \
-	     compiler/arrayshort.o compiler/cast_.o compiler/dgccmain2.o \
-	     compiler/invariant.o compiler/invariant_.o compiler/lifetime.o \
-	     compiler/gccmemory.o compiler/obj.o compiler/qsort.o \
-	     compiler/switch_.o
+RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
+	     rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
+	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
+	     rt/cast_.o rt/complex.o rt/critical.o rt/dgccmain2.o \
+	     rt/gccmemory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
+	     rt/monitor.o rt/obj.o rt/qsort.o rt/switch_.o
 
-CORE_OBJS=core/bitop.o core/exception.o core/memory.o core/runtime.o \
-	  core/thread.o core/vararg.o core/stdc/errno.o \
+CORE_OBJS=core/bitop.o core/cpuid.o core/exception.o core/memory.o \
+	  core/runtime.o core/thread.o core/vararg.o core/stdc/errno.o \
 	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
 	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
 	  core/sync/semaphore.o
@@ -138,8 +135,8 @@ GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
 	 gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
 	 gcc/cbridge_time.o gcc/cbridge_strerror.o
 
-UTIL_OBJS=compiler/util/console.o compiler/util/cpuid.o compiler/util/ctype.o \
-	  compiler/util/hash.o compiler/util/string.o compiler/util/utf.o
+UTIL_OBJS=rt/util/console.o rt/util/ctype.o rt/util/hash.o rt/util/string.o \
+	  rt/util/utf.o
 
 TI=ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
    ti_Ag.o ti_Aint.o ti_Along.o ti_Areal.o ti_Ashort.o ti_byte.o ti_C.o \
@@ -150,13 +147,9 @@ TI=ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
 
 DRUNTIME_OBJS=@DRUNTIME_OBJS@
 
-DRUNTIME_OBJS+=$(subst compiler,compiler/gdc,$(BASE_OBJS)) \
-	       $(subst compiler,compiler/gdc/rt,$(RUNTIME_OBJS)) \
-	       $(subst compiler,compiler/gdc/rt,$(UTIL_OBJS)) \
-	       $(subst ti_,compiler/gdc/rt/typeinfo/ti_,$(TI))
+DRUNTIME_OBJS+=$(BASE_OBJS) $(RUNTIME_OBJS) $(UTIL_OBJS) \
+	       $(subst ti_,rt/typeinfo/ti_,$(TI))
 
-
-COMMON_OBJS=$(subst core,common/core,$(CORE_OBJS))
 
 # OS specific
 RT_STDC_OBJS=import/core/stdc/math.o import/core/stdc/stdarg.o \
@@ -177,17 +170,15 @@ RT_WINDOWS_OBJS=import/core/sys/windows/windows.o
 
 # This should not be linked into a shared library.
 #CMAIN_OBJS=compiler/gdc/cmain.o
-CMAIN_OBJS=compiler/gdc/rt/dmain2.o
+CMAIN_OBJS=rt/dmain2.o
 
 D_GC_MODULES=@D_GC_MODULES@
 
-# Underscore added for subst to correctly work
-D_GC_MODULES+=gc_/gc.o gc_/gcalloc.o gc_/gcbits.o \
-	      gc_/gcstats.o gc_/gcx.o
+# TODO: support for using gcstub instead.
+D_GC_MODULES+=gc/gc.o gc/gcalloc.o gc/gcbits.o \
+	      gc/gcstats.o gc/gcx.o
 
-GC_OBJS=$(subst gc_,gc/basic,$(D_GC_MODULES))
-
-ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(COMMON_OBJS) $(GC_OBJS) $(GCC_OBJS)
+ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 
 libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
 	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)

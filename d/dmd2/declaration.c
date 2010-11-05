@@ -147,7 +147,7 @@ void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
 	    const char *p = NULL;
 	    if (isConst())
 		p = "const";
-	    else if (isInvariant())
+	    else if (isImmutable())
 		p = "immutable";
 	    else if (storage_class & STCmanifest)
 		p = "enum";
@@ -314,6 +314,9 @@ void TypedefDeclaration::semantic(Scope *sc)
     {	sem = 1;
 	basetype = basetype->semantic(loc, sc);
 	sem = 2;
+#if DMDV2
+	type = type->addStorageClass(storage_class);
+#endif
 	type = type->semantic(loc, sc);
 	if (attributes)
 	    attributes->append(sc->attributes);
@@ -449,8 +452,10 @@ void AliasDeclaration::semantic(Scope *sc)
     }
     this->inSemantic = 1;
 
+#if DMDV1   // don't really know why this is here
     if (storage_class & STCconst)
 	error("cannot be const");
+#endif
 
     storage_class |= sc->stc & STCdeprecated;
 
@@ -477,11 +482,12 @@ void AliasDeclaration::semantic(Scope *sc)
 	goto L2;			// it's a symbolic alias
 
 #if DMDV2
+    type = type->addStorageClass(storage_class);
     if (storage_class & (STCref | STCnothrow | STCpure))
     {	// For 'ref' to be attached to function types, and picked
 	// up by Type::resolve(), it has to go into sc.
 	sc = sc->push();
-	sc->stc |= storage_class & (STCref | STCnothrow | STCpure);
+	sc->stc |= storage_class & (STCref | STCnothrow | STCpure | STCshared);
 	type->resolve(loc, sc, &e, &t, &s);
 	sc = sc->pop();
     }
@@ -869,10 +875,12 @@ Lagain:
 	if (type->isShared())
 	    storage_class |= STCshared;
     }
-    else if (type->isInvariant())
+    else if (type->isImmutable())
 	storage_class |= STCimmutable;
     else if (type->isShared())
 	storage_class |= STCshared;
+    else if (type->isWild())
+	storage_class |= STCwild;
 
     if (isSynchronized())
     {
@@ -949,6 +957,13 @@ Lagain:
     {
 	error("only parameters or foreach declarations can be ref");
     }
+
+    if ((storage_class & (STCstatic | STCextern | STCtls | STCgshared | STCmanifest) ||
+	isDataseg()) &&
+	type->hasWild())
+    {
+	error("only fields, parameters or stack based variables can be inout");
+    }
 #endif
 
     if (type->isauto() && !noauto)
@@ -965,7 +980,7 @@ Lagain:
 	}
     }
 
-    if ((isConst() || isInvariant()) && !init && !fd)
+    if ((isConst() || isImmutable()) && !init && !fd)
     {	// Initialize by constructor only
 	storage_class |= STCctorinit;
     }
@@ -1182,7 +1197,7 @@ Lagain:
 	    }
 	}
 	else if (storage_class & (STCconst | STCimmutable | STCmanifest) ||
-		 type->isConst() || type->isInvariant() ||
+		 type->isConst() || type->isImmutable() ||
 		 parent->isAggregateDeclaration())
 	{
 	    /* Because we may need the results of a const declaration in a
@@ -1403,7 +1418,7 @@ ExpInitializer *VarDeclaration::getExpInitializer()
 
 Expression *VarDeclaration::getConstInitializer()
 {
-    if ((isConst() || isInvariant() || storage_class & STCmanifest) &&
+    if ((isConst() || isImmutable() || storage_class & STCmanifest) &&
 	storage_class & STCinit)
     {
 	ExpInitializer *ei = getExpInitializer();
@@ -1425,7 +1440,7 @@ int VarDeclaration::canTakeAddressOf()
      *	const int x = 3;
      * are not stored and hence cannot have their address taken.
      */
-    if ((isConst() || isInvariant()) &&
+    if ((isConst() || isImmutable()) &&
 	storage_class & STCinit &&
 	(!(storage_class & (STCstatic | STCextern)) || (storage_class & STCfield)) &&
 	(!parent || toParent()->isModule() || toParent()->isTemplateInstance()) &&
@@ -1450,7 +1465,7 @@ int VarDeclaration::isDataseg()
 {
 #if 0
     printf("VarDeclaration::isDataseg(%p, '%s')\n", this, toChars());
-    printf("%x, %p, %p\n", storage_class & (STCstatic | STCconst), parent->isModule(), parent->isTemplateInstance());
+    printf("%llx, isModule: %p, isTemplateInstance: %p\n", storage_class & (STCstatic | STCconst), parent->isModule(), parent->isTemplateInstance());
     printf("parent = '%s'\n", parent->toChars());
 #endif
     if (storage_class & STCmanifest)
@@ -1489,6 +1504,15 @@ int VarDeclaration::isThreadlocal()
     //printf("\treturn %d\n", i);
     return i;
 #endif
+}
+
+/********************************************
+ * Can variable be read and written by CTFE?
+ */
+
+int VarDeclaration::isCTFE()
+{
+    return (storage_class & STCctfe) || !isDataseg();
 }
 
 int VarDeclaration::hasPointers()
@@ -1696,6 +1720,16 @@ TypeInfoSharedDeclaration::TypeInfoSharedDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
     type = Type::typeinfoshared->type;
+}
+#endif
+
+/***************************** TypeInfoWildDeclaration **********************/
+
+#if DMDV2
+TypeInfoWildDeclaration::TypeInfoWildDeclaration(Type *tinfo)
+    : TypeInfoDeclaration(tinfo, 0)
+{
+    type = Type::typeinfowild->type;
 }
 #endif
 

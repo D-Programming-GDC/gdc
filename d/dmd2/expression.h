@@ -123,6 +123,7 @@ struct Expression : Object
     virtual IntRange getIntRange();
     virtual Expression *castTo(Scope *sc, Type *t);
     virtual void checkEscape();
+    virtual void checkEscapeRef();
     virtual Expression *resolveLoc(Loc loc, Scope *sc);
     void checkScalar();
     void checkNoBool();
@@ -324,7 +325,7 @@ struct NullExp : Expression
 {
     unsigned char committed;	// !=0 if type is committed
 
-    NullExp(Loc loc);
+    NullExp(Loc loc, Type *t = NULL);
     Expression *semantic(Scope *sc);
     int isBool(int result);
     int isConst();
@@ -605,6 +606,7 @@ struct VarExp : SymbolExp
     char *toChars();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void checkEscape();
+    void checkEscapeRef();
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);
@@ -928,6 +930,7 @@ struct AddrExp : UnaExp
 {
     AddrExp(Loc loc, Expression *e);
     Expression *semantic(Scope *sc);
+    void checkEscape();
     elem *toElem(IRState *irs);
     MATCH implicitConvTo(Type *t);
     Expression *castTo(Scope *sc, Type *t);
@@ -940,6 +943,7 @@ struct PtrExp : UnaExp
     PtrExp(Loc loc, Expression *e, Type *t);
     Expression *semantic(Scope *sc);
     int isLvalue();
+    void checkEscapeRef();
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -1056,6 +1060,7 @@ struct SliceExp : UnaExp
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
     void checkEscape();
+    void checkEscapeRef();
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);
@@ -1120,6 +1125,7 @@ struct CommaExp : BinExp
     CommaExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     void checkEscape();
+    void checkEscapeRef();
     IntRange getIntRange();
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
@@ -1211,6 +1217,16 @@ ASSIGNEXP(Cat)
 
 #undef X
 #undef ASSIGNEXP
+
+// Only a reduced subset of operations for now.
+struct PowAssignExp : BinExp
+{
+    PowAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Expression *semantic(Scope *sc);
+    
+    // For operator overloading
+    Identifier *opId();    
+};
 
 struct AddExp : BinExp
 {
@@ -1318,6 +1334,9 @@ struct PowExp : BinExp
     // For operator overloading
     Identifier *opId();
     Identifier *opId_r();
+#if IN_GCC
+    elem *toElem(IRState *irs);
+#endif
 };
 #endif
 
@@ -1521,6 +1540,7 @@ struct CondExp : BinExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate);
     void checkEscape();
+    void checkEscapeRef();
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);

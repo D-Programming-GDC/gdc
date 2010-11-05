@@ -310,7 +310,7 @@ case "$target_cpu" in
 esac
 
 if test $d_use_ieee_fpsb -gt 0; then
-    DRUNTIME_OBJS="$DRUNTIME_OBJS compiler/gdc/rt/fpmath.o"
+    DRUNTIME_OBJS="$DRUNTIME_OBJS rt/fpmath.o"
 fi
 
 DCFG_USE_IEEE_FPSB=$d_use_ieee_fpsb

@@ -984,6 +984,14 @@ class TypeInfo_Shared : TypeInfo_Const
     }
 }
 
+class TypeInfo_Inout : TypeInfo_Const
+{
+    override string toString()
+    {
+        return cast(string) ("inout(" ~ base.toString() ~ ")");
+    }
+}
+
 abstract class MemberInfo
 {
     string name();
@@ -1038,7 +1046,7 @@ class Throwable : Object
 {
     interface TraceInfo
     {
-        int opApply(int delegate(inout char[]));
+        int opApply(int delegate(ref char[]));
     }
 
     string      msg;
@@ -1189,7 +1197,7 @@ class ModuleInfo
 
     void*[4] reserved;          // for future expansion
 
-    static int opApply(int delegate(inout ModuleInfo) dg)
+    static int opApply(int delegate(ref ModuleInfo) dg)
     {
         int ret = 0;
 
@@ -1564,7 +1572,7 @@ extern (C) void rt_attachDisposeEvent(Object h, DEvent e)
         Monitor* m = getMonitor(h);
         assert(m.impl is null);
 
-        foreach (inout v; m.devt)
+        foreach (ref v; m.devt)
         {
             if (v is null || v == e)
             {
@@ -1650,12 +1658,12 @@ struct AssociativeArray(Key, Value)
         return *cast(Key[]*) &a;
     }
 
-    int opApply(int delegate(inout Key, inout Value) dg)
+    int opApply(int delegate(ref Key, ref Value) dg)
     {
         return _aaApply2(p, Key.sizeof, cast(_dg2_t)dg);
     }
 
-    int opApply(int delegate(inout Value) dg)
+    int opApply(int delegate(ref Value) dg)
     {
         return _aaApply(p, Key.sizeof, cast(_dg_t)dg);
     }

@@ -1131,8 +1131,18 @@ outdata(Symbol * sym)
 
     assert( t );
 
-    if (sym->Sdt && DECL_INITIAL( t ) == NULL_TREE)
+    if (sym->Sdt && DECL_INITIAL( t ) == NULL_TREE) {
+#if ENABLE_CHECKING
+	// % Possibly doing something wrong with StructDeclaration::toDt to need this.
+	// t is a RECORD_TYPE, yet init is an incompatible ARRAY_TYPE.
+	tree init = dt2tree( sym->Sdt );
+	if (TREE_CODE( TREE_TYPE(init) ) != TREE_CODE( TREE_TYPE(t) ))
+	    init = fold (build1 (NOP_EXPR, TREE_TYPE( t ), init));
+	DECL_INITIAL( t );
+#else
 	DECL_INITIAL( t ) = dt2tree( sym->Sdt );
+#endif
+    }
 
     if (! g.ofile->shouldEmit(sym))
 	return;

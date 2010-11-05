@@ -148,37 +148,59 @@ void FuncDeclaration::semantic(Scope *sc)
 	originalType = type;
     if (!type->deco)
     {
+	sc = sc->push();
+	sc->stc |= storage_class & STCref;	// forward refness to function type
+	type = type->semantic(loc, sc);
+	sc = sc->pop();
+
 	/* Apply const, immutable and shared storage class
 	 * to the function type
 	 */
-	type = type->semantic(loc, sc);
 	StorageClass stc = storage_class;
-	if (type->isInvariant())
+	if (type->isImmutable())
 	    stc |= STCimmutable;
 	if (type->isConst())
 	    stc |= STCconst;
 	if (type->isShared() || storage_class & STCsynchronized)
 	    stc |= STCshared;
+	if (type->isWild())
+	    stc |= STCwild;
 	switch (stc & STC_TYPECTOR)
 	{
 	    case STCimmutable:
 	    case STCimmutable | STCconst:
 	    case STCimmutable | STCconst | STCshared:
 	    case STCimmutable | STCshared:
+	    case STCimmutable | STCwild:
+	    case STCimmutable | STCconst | STCwild:
+	    case STCimmutable | STCconst | STCshared | STCwild:
+	    case STCimmutable | STCshared | STCwild:
 		// Don't use toInvariant(), as that will do a merge()
 		type = type->makeInvariant();
 		goto Lmerge;
 
 	    case STCconst:
+	    case STCconst | STCwild:
 		type = type->makeConst();
 		goto Lmerge;
 
 	    case STCshared | STCconst:
+	    case STCshared | STCconst | STCwild:
 		type = type->makeSharedConst();
 		goto Lmerge;
 
 	    case STCshared:
 		type = type->makeShared();
+		goto Lmerge;
+
+	    case STCwild:
+		type = type->makeWild();
+		goto Lmerge;
+
+	    case STCshared | STCwild:
+		type = type->makeSharedWild();
+		goto Lmerge;
+
 	    Lmerge:
 		if (!(type->ty == Tfunction && !type->nextOf()))
 		    /* Can't do merge if return type is not known yet
@@ -193,7 +215,7 @@ void FuncDeclaration::semantic(Scope *sc)
 		assert(0);
 	}
     }
-    //type->print();
+    storage_class &= ~STCref;
     if (type->ty != Tfunction)
     {
 	error("%s must be a function", toChars());
@@ -221,7 +243,7 @@ void FuncDeclaration::semantic(Scope *sc)
     if (isAbstract() && !isVirtual())
 	error("non-virtual functions cannot be abstract");
 
-    if ((f->isConst() || f->isInvariant()) && !isThis())
+    if ((f->isConst() || f->isImmutable()) && !isThis())
 	error("without 'this' cannot be const/immutable");
 
     if (isAbstract() && isFinal())
@@ -806,7 +828,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 			thandle = thandle->nextOf()->constOf()->pointerTo();
 		    }
 		}
-		else if (storage_class & STCimmutable || type->isInvariant())
+		else if (storage_class & STCimmutable || type->isImmutable())
 		{
 		    if (thandle->ty == Tclass)
 			thandle = thandle->invariantOf();
@@ -900,6 +922,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 #endif
 	}
 
+#if 0
 	// Propagate storage class from tuple parameters to their element-parameters.
 	if (f->parameters)
 	{
@@ -917,6 +940,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 		}
 	    }
 	}
+#endif
 
 	/* Declare all the function parameters as variables
 	 * and install them in parameters[]
@@ -2597,6 +2621,34 @@ Lyes:
     return 1;
 }
 #endif
+
+/*********************************************
+ * Return the function's parameter list, and whether
+ * it is variadic or not.
+ */
+
+Parameters *FuncDeclaration::getParameters(int *pvarargs)
+{   Parameters *fparameters;
+    int fvarargs;
+
+    if (type)
+    {
+	assert(type->ty == Tfunction);
+	TypeFunction *fdtype = (TypeFunction *)type;
+	fparameters = fdtype->parameters;
+	fvarargs = fdtype->varargs;
+    }
+    else // Constructors don't have type's
+    {   CtorDeclaration *fctor = isCtorDeclaration();
+	assert(fctor);
+	fparameters = fctor->arguments;
+	fvarargs = fctor->varargs;
+    }
+    if (pvarargs)
+	*pvarargs = fvarargs;
+    return fparameters;
+}
+
 
 /****************************** FuncAliasDeclaration ************************/
 

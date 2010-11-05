@@ -1,4 +1,4 @@
-// D import file generated from 'src\common\core\sync\mutex.d'
+// D import file generated from 'src\core\sync\mutex.d'
 module core.sync.mutex;
 public 
 {

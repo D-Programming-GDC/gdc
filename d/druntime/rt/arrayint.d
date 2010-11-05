@@ -1,6 +1,6 @@
 /**
- * Contains SSE2 and MMX versions of certain operations for wchar, short,
- * and ushort ('u', 's' and 't' suffixes).
+ * Contains MMX versions of certain operations for dchar, int, and uint ('w',
+ * 'i' and 'k' suffixes).
  *
  * Copyright: Copyright Digital Mars 2008 - 2009.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
@@ -11,9 +11,9 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-module rt.arrayshort;
+module rt.arrayint;
 
-private import rt.util.cpuid;
+private import core.cpuid;
 
 version (unittest)
 {
@@ -22,17 +22,17 @@ version (unittest)
      */
     int cpuid;
     const int CPUID_MAX = 4;
-    bool mmx()      { return cpuid == 1 && rt.util.cpuid.mmx(); }
-    bool sse()      { return cpuid == 2 && rt.util.cpuid.sse(); }
-    bool sse2()     { return cpuid == 3 && rt.util.cpuid.sse2(); }
-    bool amd3dnow() { return cpuid == 4 && rt.util.cpuid.amd3dnow(); }
+    bool mmx()      { return cpuid == 1 && core.cpuid.mmx(); }
+    bool sse()      { return cpuid == 2 && core.cpuid.sse(); }
+    bool sse2()     { return cpuid == 3 && core.cpuid.sse2(); }
+    bool amd3dnow() { return cpuid == 4 && core.cpuid.amd3dnow(); }
 }
 else
 {
-    alias rt.util.cpuid.mmx mmx;
-    alias rt.util.cpuid.sse sse;
-    alias rt.util.cpuid.sse2 sse2;
-    alias rt.util.cpuid.sse2 sse2;
+    alias core.cpuid.mmx mmx;
+    alias core.cpuid.sse sse;
+    alias core.cpuid.sse2 sse2;
+    alias core.cpuid.amd3dnow amd3dnow;
 }
 
 //version = log;
@@ -42,7 +42,7 @@ bool disjoint(T)(T[] a, T[] b)
     return (a.ptr + a.length <= b.ptr || b.ptr + b.length <= a.ptr);
 }
 
-alias short T;
+alias int T;
 
 extern (C):
 
@@ -53,17 +53,17 @@ extern (C):
  *      a[] = b[] + value
  */
 
-T[] _arraySliceExpAddSliceAssign_u(T[] a, T value, T[] b)
+T[] _arraySliceExpAddSliceAssign_w(T[] a, T value, T[] b)
 {
-    return _arraySliceExpAddSliceAssign_s(a, value, b);
+    return _arraySliceExpAddSliceAssign_i(a, value, b);
 }
 
-T[] _arraySliceExpAddSliceAssign_t(T[] a, T value, T[] b)
+T[] _arraySliceExpAddSliceAssign_k(T[] a, T value, T[] b)
 {
-    return _arraySliceExpAddSliceAssign_s(a, value, b);
+    return _arraySliceExpAddSliceAssign_i(a, value, b);
 }
 
-T[] _arraySliceExpAddSliceAssign_s(T[] a, T value, T[] b)
+T[] _arraySliceExpAddSliceAssign_i(T[] a, T value, T[] b)
 in
 {
     assert(a.length == b.length);
@@ -71,20 +71,19 @@ in
 }
 body
 {
-    //printf("_arraySliceExpAddSliceAssign_s()\n");
+    //printf("_arraySliceExpAddSliceAssign_i()\n");
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 3343% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 380% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
-            uint l = cast(ushort) value;
-            l |= (l << 16);
+            uint l = value;
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
@@ -102,8 +101,8 @@ body
                     movdqu XMM0, [EAX];
                     movdqu XMM1, [EAX+16];
                     add EAX, 32;
-                    paddw XMM0, XMM2;
-                    paddw XMM1, XMM2;
+                    paddd XMM0, XMM2;
+                    paddd XMM1, XMM2;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -129,8 +128,8 @@ body
                     movdqa XMM0, [EAX];
                     movdqa XMM1, [EAX+16];
                     add EAX, 32;
-                    paddw XMM0, XMM2;
-                    paddw XMM1, XMM2;
+                    paddd XMM0, XMM2;
+                    paddd XMM1, XMM2;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -142,20 +141,19 @@ body
             }
         }
         else
-        // MMX version is 3343% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 298% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
-            uint l = cast(ushort) value;
+            ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
             asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
                 mov EAX, bptr;
-                movd MM2, l;
-                pshufw MM2, MM2, 0;
+                movq MM2, l;
 
                 align 4;
             startmmx:
@@ -163,8 +161,8 @@ body
                 movq MM0, [EAX];
                 movq MM1, [EAX+8];
                 add EAX, 16;
-                paddw MM0, MM2;
-                paddw MM1, MM2;
+                paddd MM0, MM2;
+                paddd MM1, MM2;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
@@ -175,17 +173,46 @@ body
                 mov bptr, EAX;
             }
         }
+        else
+        if (a.length >= 2)
+        {
+            auto n = aptr + (a.length & ~1);
+
+            asm
+            {
+                mov ESI, aptr;
+                mov EDI, n;
+                mov EAX, bptr;
+                mov EDX, value;
+
+                align 4;
+            start386:
+                add ESI, 8;
+                mov EBX, [EAX];
+                mov ECX, [EAX+4];
+                add EAX, 8;
+                add EBX, EDX;
+                add ECX, EDX;
+                mov [ESI  -8], EBX;
+                mov [ESI+4-8], ECX;
+                cmp ESI, EDI;
+                jb start386;
+
+                mov aptr, ESI;
+                mov bptr, EAX;
+            }
+        }
     }
 
     while (aptr < aend)
-        *aptr++ = cast(T)(*bptr++ + value);
+        *aptr++ = *bptr++ + value;
 
     return a;
 }
 
 unittest
 {
-    printf("_arraySliceExpAddSliceAssign_s unittest\n");
+    printf("_arraySliceExpAddSliceAssign_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -229,17 +256,17 @@ unittest
  *      a[] = b[] + c[]
  */
 
-T[] _arraySliceSliceAddSliceAssign_u(T[] a, T[] c, T[] b)
+T[] _arraySliceSliceAddSliceAssign_w(T[] a, T[] c, T[] b)
 {
-    return _arraySliceSliceAddSliceAssign_s(a, c, b);
+    return _arraySliceSliceAddSliceAssign_i(a, c, b);
 }
 
-T[] _arraySliceSliceAddSliceAssign_t(T[] a, T[] c, T[] b)
+T[] _arraySliceSliceAddSliceAssign_k(T[] a, T[] c, T[] b)
 {
-    return _arraySliceSliceAddSliceAssign_s(a, c, b);
+    return _arraySliceSliceAddSliceAssign_i(a, c, b);
 }
 
-T[] _arraySliceSliceAddSliceAssign_s(T[] a, T[] c, T[] b)
+T[] _arraySliceSliceAddSliceAssign_i(T[] a, T[] c, T[] b)
 in
 {
         assert(a.length == b.length && b.length == c.length);
@@ -249,7 +276,7 @@ in
 }
 body
 {
-    //printf("_arraySliceSliceAddSliceAssign_s()\n");
+    //printf("_arraySliceSliceAddSliceAssign_i()\n");
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
@@ -257,10 +284,10 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 3777% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 1710% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
             if (((cast(uint) aptr | cast(uint) bptr | cast(uint) cptr) & 15) != 0)
             {
@@ -275,13 +302,13 @@ body
                 startsse2u:
                     add ESI, 32;
                     movdqu XMM0, [EAX];
-                    movdqu XMM1, [EAX+16];
-                    add EAX, 32;
                     movdqu XMM2, [ECX];
+                    movdqu XMM1, [EAX+16];
                     movdqu XMM3, [ECX+16];
+                    add EAX, 32;
                     add ECX, 32;
-                    paddw XMM0, XMM2;
-                    paddw XMM1, XMM3;
+                    paddd XMM0, XMM2;
+                    paddd XMM1, XMM3;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -305,13 +332,13 @@ body
                 startsse2a:
                     add ESI, 32;
                     movdqa XMM0, [EAX];
-                    movdqa XMM1, [EAX+16];
-                    add EAX, 32;
                     movdqa XMM2, [ECX];
+                    movdqa XMM1, [EAX+16];
                     movdqa XMM3, [ECX+16];
+                    add EAX, 32;
                     add ECX, 32;
-                    paddw XMM0, XMM2;
-                    paddw XMM1, XMM3;
+                    paddd XMM0, XMM2;
+                    paddd XMM1, XMM3;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -324,10 +351,10 @@ body
             }
         }
         else
-        // MMX version is 2068% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 995% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
             asm
             {
@@ -340,13 +367,13 @@ body
             startmmx:
                 add ESI, 16;
                 movq MM0, [EAX];
-                movq MM1, [EAX+8];
-                add EAX, 16;
                 movq MM2, [ECX];
+                movq MM1, [EAX+8];
                 movq MM3, [ECX+8];
+                add EAX, 16;
                 add ECX, 16;
-                paddw MM0, MM2;
-                paddw MM1, MM3;
+                paddd MM0, MM2;
+                paddd MM1, MM3;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
@@ -360,15 +387,16 @@ body
         }
     }
 
+normal:
     while (aptr < aend)
-        *aptr++ = cast(T)(*bptr++ + *cptr++);
+        *aptr++ = *bptr++ + *cptr++;
 
     return a;
 }
 
 unittest
 {
-    printf("_arraySliceSliceAddSliceAssign_s unittest\n");
+    printf("_arraySliceSliceAddSliceAssign_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -412,31 +440,30 @@ unittest
  *      a[] += value
  */
 
-T[] _arrayExpSliceAddass_u(T[] a, T value)
+T[] _arrayExpSliceAddass_w(T[] a, T value)
 {
-    return _arrayExpSliceAddass_s(a, value);
+    return _arrayExpSliceAddass_i(a, value);
 }
 
-T[] _arrayExpSliceAddass_t(T[] a, T value)
+T[] _arrayExpSliceAddass_k(T[] a, T value)
 {
-    return _arrayExpSliceAddass_s(a, value);
+    return _arrayExpSliceAddass_i(a, value);
 }
 
-T[] _arrayExpSliceAddass_s(T[] a, T value)
+T[] _arrayExpSliceAddass_i(T[] a, T value)
 {
-    //printf("_arrayExpSliceAddass_s(a.length = %d, value = %Lg)\n", a.length, cast(real)value);
+    //printf("_arrayExpSliceAddass_i(a.length = %d, value = %Lg)\n", a.length, cast(real)value);
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 832% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 83% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
-            uint l = cast(ushort) value;
-            l |= (l << 16);
+            uint l = value;
 
             if (((cast(uint) aptr) & 15) != 0)
             {
@@ -452,8 +479,8 @@ T[] _arrayExpSliceAddass_s(T[] a, T value)
                     movdqu XMM0, [ESI];
                     movdqu XMM1, [ESI+16];
                     add ESI, 32;
-                    paddw XMM0, XMM2;
-                    paddw XMM1, XMM2;
+                    paddd XMM0, XMM2;
+                    paddd XMM1, XMM2;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -476,8 +503,8 @@ T[] _arrayExpSliceAddass_s(T[] a, T value)
                     movdqa XMM0, [ESI];
                     movdqa XMM1, [ESI+16];
                     add ESI, 32;
-                    paddw XMM0, XMM2;
-                    paddw XMM1, XMM2;
+                    paddd XMM0, XMM2;
+                    paddd XMM1, XMM2;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -488,33 +515,58 @@ T[] _arrayExpSliceAddass_s(T[] a, T value)
             }
         }
         else
-        // MMX version is 826% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 81% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
-            uint l = cast(ushort) value;
+            ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
             asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
-                movd MM2, l;
-                pshufw MM2, MM2, 0;
+                movq MM2, l;
 
                 align 4;
             startmmx:
                 movq MM0, [ESI];
                 movq MM1, [ESI+8];
                 add ESI, 16;
-                paddw MM0, MM2;
-                paddw MM1, MM2;
+                paddd MM0, MM2;
+                paddd MM1, MM2;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
                 jb startmmx;
 
                 emms;
+                mov aptr, ESI;
+            }
+        }
+        else
+        if (a.length >= 2)
+        {
+            auto n = aptr + (a.length & ~1);
+
+            asm
+            {
+                mov ESI, aptr;
+                mov EDI, n;
+                mov EDX, value;
+
+                align 4;
+            start386:
+                mov EBX, [ESI];
+                mov ECX, [ESI+4];
+                add ESI, 8;
+                add EBX, EDX;
+                add ECX, EDX;
+                mov [ESI  -8], EBX;
+                mov [ESI+4-8], ECX;
+                cmp ESI, EDI;
+                jb start386;
+
                 mov aptr, ESI;
             }
         }
@@ -528,7 +580,7 @@ T[] _arrayExpSliceAddass_s(T[] a, T value)
 
 unittest
 {
-    printf("_arrayExpSliceAddass_s unittest\n");
+    printf("_arrayExpSliceAddass_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -573,17 +625,17 @@ unittest
  *      a[] += b[]
  */
 
-T[] _arraySliceSliceAddass_u(T[] a, T[] b)
+T[] _arraySliceSliceAddass_w(T[] a, T[] b)
 {
-    return _arraySliceSliceAddass_s(a, b);
+    return _arraySliceSliceAddass_i(a, b);
 }
 
-T[] _arraySliceSliceAddass_t(T[] a, T[] b)
+T[] _arraySliceSliceAddass_k(T[] a, T[] b)
 {
-    return _arraySliceSliceAddass_s(a, b);
+    return _arraySliceSliceAddass_i(a, b);
 }
 
-T[] _arraySliceSliceAddass_s(T[] a, T[] b)
+T[] _arraySliceSliceAddass_i(T[] a, T[] b)
 in
 {
     assert (a.length == b.length);
@@ -591,17 +643,17 @@ in
 }
 body
 {
-    //printf("_arraySliceSliceAddass_s()\n");
+    //printf("_arraySliceSliceAddass_i()\n");
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 2085% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 695% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
@@ -614,13 +666,13 @@ body
                     align 4;
                 startsse2u:
                     movdqu XMM0, [ESI];
-                    movdqu XMM1, [ESI+16];
-                    add ESI, 32;
                     movdqu XMM2, [ECX];
+                    movdqu XMM1, [ESI+16];
                     movdqu XMM3, [ECX+16];
+                    add ESI, 32;
                     add ECX, 32;
-                    paddw XMM0, XMM2;
-                    paddw XMM1, XMM3;
+                    paddd XMM0, XMM2;
+                    paddd XMM1, XMM3;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -641,13 +693,13 @@ body
                     align 4;
                 startsse2a:
                     movdqa XMM0, [ESI];
-                    movdqa XMM1, [ESI+16];
-                    add ESI, 32;
                     movdqa XMM2, [ECX];
+                    movdqa XMM1, [ESI+16];
                     movdqa XMM3, [ECX+16];
+                    add ESI, 32;
                     add ECX, 32;
-                    paddw XMM0, XMM2;
-                    paddw XMM1, XMM3;
+                    paddd XMM0, XMM2;
+                    paddd XMM1, XMM3;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -659,10 +711,10 @@ body
             }
         }
         else
-        // MMX version is 1022% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 471% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
             asm
             {
@@ -671,19 +723,19 @@ body
                 mov ECX, bptr;
 
                 align 4;
-            start:
+            startmmx:
                 movq MM0, [ESI];
-                movq MM1, [ESI+8];
-                add ESI, 16;
                 movq MM2, [ECX];
+                movq MM1, [ESI+8];
                 movq MM3, [ECX+8];
+                add ESI, 16;
                 add ECX, 16;
-                paddw MM0, MM2;
-                paddw MM1, MM3;
+                paddd MM0, MM2;
+                paddd MM1, MM3;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
-                jb start;
+                jb startmmx;
 
                 emms;
                 mov aptr, ESI;
@@ -692,6 +744,7 @@ body
         }
     }
 
+normal:
     while (aptr < aend)
         *aptr++ += *bptr++;
 
@@ -700,7 +753,7 @@ body
 
 unittest
 {
-    printf("_arraySliceSliceAddass_s unittest\n");
+    printf("_arraySliceSliceAddass_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -745,17 +798,17 @@ unittest
  *      a[] = b[] - value
  */
 
-T[] _arraySliceExpMinSliceAssign_u(T[] a, T value, T[] b)
+T[] _arraySliceExpMinSliceAssign_w(T[] a, T value, T[] b)
 {
-    return _arraySliceExpMinSliceAssign_s(a, value, b);
+    return _arraySliceExpMinSliceAssign_i(a, value, b);
 }
 
-T[] _arraySliceExpMinSliceAssign_t(T[] a, T value, T[] b)
+T[] _arraySliceExpMinSliceAssign_k(T[] a, T value, T[] b)
 {
-    return _arraySliceExpMinSliceAssign_s(a, value, b);
+    return _arraySliceExpMinSliceAssign_i(a, value, b);
 }
 
-T[] _arraySliceExpMinSliceAssign_s(T[] a, T value, T[] b)
+T[] _arraySliceExpMinSliceAssign_i(T[] a, T value, T[] b)
 in
 {
     assert(a.length == b.length);
@@ -763,20 +816,19 @@ in
 }
 body
 {
-    //printf("_arraySliceExpMinSliceAssign_s()\n");
+    //printf("_arraySliceExpMinSliceAssign_i()\n");
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 3695% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 400% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
-            uint l = cast(ushort) value;
-            l |= (l << 16);
+            uint l = value;
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
@@ -794,8 +846,8 @@ body
                     movdqu XMM0, [EAX];
                     movdqu XMM1, [EAX+16];
                     add EAX, 32;
-                    psubw XMM0, XMM2;
-                    psubw XMM1, XMM2;
+                    psubd XMM0, XMM2;
+                    psubd XMM1, XMM2;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -821,8 +873,8 @@ body
                     movdqa XMM0, [EAX];
                     movdqa XMM1, [EAX+16];
                     add EAX, 32;
-                    psubw XMM0, XMM2;
-                    psubw XMM1, XMM2;
+                    psubd XMM0, XMM2;
+                    psubd XMM1, XMM2;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -834,20 +886,19 @@ body
             }
         }
         else
-        // MMX version is 3049% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 315% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
-            uint l = cast(ushort) value;
+            ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
             asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
                 mov EAX, bptr;
-                movd MM2, l;
-                pshufw MM2, MM2, 0;
+                movq MM2, l;
 
                 align 4;
             startmmx:
@@ -855,8 +906,8 @@ body
                 movq MM0, [EAX];
                 movq MM1, [EAX+8];
                 add EAX, 16;
-                psubw MM0, MM2;
-                psubw MM1, MM2;
+                psubd MM0, MM2;
+                psubd MM1, MM2;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
@@ -867,17 +918,46 @@ body
                 mov bptr, EAX;
             }
         }
+        else
+        if (a.length >= 2)
+        {
+            auto n = aptr + (a.length & ~1);
+
+            asm
+            {
+                mov ESI, aptr;
+                mov EDI, n;
+                mov EAX, bptr;
+                mov EDX, value;
+
+                align 4;
+            start386:
+                add ESI, 8;
+                mov EBX, [EAX];
+                mov ECX, [EAX+4];
+                add EAX, 8;
+                sub EBX, EDX;
+                sub ECX, EDX;
+                mov [ESI  -8], EBX;
+                mov [ESI+4-8], ECX;
+                cmp ESI, EDI;
+                jb start386;
+
+                mov aptr, ESI;
+                mov bptr, EAX;
+            }
+        }
     }
 
     while (aptr < aend)
-        *aptr++ = cast(T)(*bptr++ - value);
+        *aptr++ = *bptr++ - value;
 
     return a;
 }
 
 unittest
 {
-    printf("_arraySliceExpMinSliceAssign_s unittest\n");
+    printf("_arraySliceExpMinSliceAssign_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -921,17 +1001,17 @@ unittest
  *      a[] = value - b[]
  */
 
-T[] _arrayExpSliceMinSliceAssign_u(T[] a, T[] b, T value)
+T[] _arrayExpSliceMinSliceAssign_w(T[] a, T[] b, T value)
 {
-    return _arrayExpSliceMinSliceAssign_s(a, b, value);
+    return _arrayExpSliceMinSliceAssign_i(a, b, value);
 }
 
-T[] _arrayExpSliceMinSliceAssign_t(T[] a, T[] b, T value)
+T[] _arrayExpSliceMinSliceAssign_k(T[] a, T[] b, T value)
 {
-    return _arrayExpSliceMinSliceAssign_s(a, b, value);
+    return _arrayExpSliceMinSliceAssign_i(a, b, value);
 }
 
-T[] _arrayExpSliceMinSliceAssign_s(T[] a, T[] b, T value)
+T[] _arrayExpSliceMinSliceAssign_i(T[] a, T[] b, T value)
 in
 {
     assert(a.length == b.length);
@@ -939,20 +1019,19 @@ in
 }
 body
 {
-    //printf("_arrayExpSliceMinSliceAssign_s()\n");
+    //printf("_arrayExpSliceMinSliceAssign_i()\n");
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 4995% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 1812% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
-            uint l = cast(ushort) value;
-            l |= (l << 16);
+            uint l = value;
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
@@ -961,21 +1040,21 @@ body
                     mov ESI, aptr;
                     mov EDI, n;
                     mov EAX, bptr;
+                    movd XMM4, l;
+                    pshufd XMM4, XMM4, 0;
 
                     align 4;
                 startaddsse2u:
-                    movd XMM2, l;
-                    pshufd XMM2, XMM2, 0;
-                    movd XMM3, l;
-                    pshufd XMM3, XMM3, 0;
                     add ESI, 32;
-                    movdqu XMM0, [EAX];
-                    movdqu XMM1, [EAX+16];
+                    movdqu XMM2, [EAX];
+                    movdqu XMM3, [EAX+16];
+                    movdqa XMM0, XMM4;
+                    movdqa XMM1, XMM4;
                     add EAX, 32;
-                    psubw XMM2, XMM0;
-                    psubw XMM3, XMM1;
-                    movdqu [ESI   -32], XMM2;
-                    movdqu [ESI+16-32], XMM3;
+                    psubd XMM0, XMM2;
+                    psubd XMM1, XMM3;
+                    movdqu [ESI   -32], XMM0;
+                    movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
                     jb startaddsse2u;
 
@@ -990,21 +1069,21 @@ body
                     mov ESI, aptr;
                     mov EDI, n;
                     mov EAX, bptr;
+                    movd XMM4, l;
+                    pshufd XMM4, XMM4, 0;
 
                     align 4;
                 startaddsse2a:
-                    movd XMM2, l;
-                    pshufd XMM2, XMM2, 0;
-                    movd XMM3, l;
-                    pshufd XMM3, XMM3, 0;
                     add ESI, 32;
-                    movdqa XMM0, [EAX];
-                    movdqa XMM1, [EAX+16];
+                    movdqa XMM2, [EAX];
+                    movdqa XMM3, [EAX+16];
+                    movdqa XMM0, XMM4;
+                    movdqa XMM1, XMM4;
                     add EAX, 32;
-                    psubw XMM2, XMM0;
-                    psubw XMM3, XMM1;
-                    movdqa [ESI   -32], XMM2;
-                    movdqa [ESI+16-32], XMM3;
+                    psubd XMM0, XMM2;
+                    psubd XMM1, XMM3;
+                    movdqa [ESI   -32], XMM0;
+                    movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
                     jb startaddsse2a;
 
@@ -1014,20 +1093,19 @@ body
             }
         }
         else
-        // MMX version is 4562% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 1077% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
-            uint l = cast(ushort) value;
+            ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
             asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
                 mov EAX, bptr;
-                movd MM4, l;
-                pshufw MM4, MM4, 0;
+                movq MM4, l;
 
                 align 4;
             startmmx:
@@ -1037,8 +1115,8 @@ body
                 movq MM0, MM4;
                 movq MM1, MM4;
                 add EAX, 16;
-                psubw MM0, MM2;
-                psubw MM1, MM3;
+                psubd MM0, MM2;
+                psubd MM1, MM3;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
@@ -1052,14 +1130,14 @@ body
     }
 
     while (aptr < aend)
-        *aptr++ = cast(T)(value - *bptr++);
+        *aptr++ = value - *bptr++;
 
     return a;
 }
 
 unittest
 {
-    printf("_arrayExpSliceMinSliceAssign_s unittest\n");
+    printf("_arrayExpSliceMinSliceAssign_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -1103,17 +1181,17 @@ unittest
  *      a[] = b[] - c[]
  */
 
-T[] _arraySliceSliceMinSliceAssign_u(T[] a, T[] c, T[] b)
+T[] _arraySliceSliceMinSliceAssign_w(T[] a, T[] c, T[] b)
 {
-    return _arraySliceSliceMinSliceAssign_s(a, c, b);
+    return _arraySliceSliceMinSliceAssign_i(a, c, b);
 }
 
-T[] _arraySliceSliceMinSliceAssign_t(T[] a, T[] c, T[] b)
+T[] _arraySliceSliceMinSliceAssign_k(T[] a, T[] c, T[] b)
 {
-    return _arraySliceSliceMinSliceAssign_s(a, c, b);
+    return _arraySliceSliceMinSliceAssign_i(a, c, b);
 }
 
-T[] _arraySliceSliceMinSliceAssign_s(T[] a, T[] c, T[] b)
+T[] _arraySliceSliceMinSliceAssign_i(T[] a, T[] c, T[] b)
 in
 {
         assert(a.length == b.length && b.length == c.length);
@@ -1130,10 +1208,10 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 4129% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 1721% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
             if (((cast(uint) aptr | cast(uint) bptr | cast(uint) cptr) & 15) != 0)
             {
@@ -1148,13 +1226,13 @@ body
                 startsse2u:
                     add ESI, 32;
                     movdqu XMM0, [EAX];
-                    movdqu XMM1, [EAX+16];
-                    add EAX, 32;
                     movdqu XMM2, [ECX];
+                    movdqu XMM1, [EAX+16];
                     movdqu XMM3, [ECX+16];
+                    add EAX, 32;
                     add ECX, 32;
-                    psubw XMM0, XMM2;
-                    psubw XMM1, XMM3;
+                    psubd XMM0, XMM2;
+                    psubd XMM1, XMM3;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -1178,13 +1256,13 @@ body
                 startsse2a:
                     add ESI, 32;
                     movdqa XMM0, [EAX];
-                    movdqa XMM1, [EAX+16];
-                    add EAX, 32;
                     movdqa XMM2, [ECX];
+                    movdqa XMM1, [EAX+16];
                     movdqa XMM3, [ECX+16];
+                    add EAX, 32;
                     add ECX, 32;
-                    psubw XMM0, XMM2;
-                    psubw XMM1, XMM3;
+                    psubd XMM0, XMM2;
+                    psubd XMM1, XMM3;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -1197,10 +1275,10 @@ body
             }
         }
         else
-        // MMX version is 2018% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 1002% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
             asm
             {
@@ -1213,13 +1291,13 @@ body
             startmmx:
                 add ESI, 16;
                 movq MM0, [EAX];
-                movq MM1, [EAX+8];
-                add EAX, 16;
                 movq MM2, [ECX];
+                movq MM1, [EAX+8];
                 movq MM3, [ECX+8];
+                add EAX, 16;
                 add ECX, 16;
-                psubw MM0, MM2;
-                psubw MM1, MM3;
+                psubd MM0, MM2;
+                psubd MM1, MM3;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
@@ -1234,14 +1312,14 @@ body
     }
 
     while (aptr < aend)
-        *aptr++ = cast(T)(*bptr++ - *cptr++);
+        *aptr++ = *bptr++ - *cptr++;
 
     return a;
 }
 
 unittest
 {
-    printf("_arraySliceSliceMinSliceAssign_s unittest\n");
+    printf("_arraySliceSliceMinSliceAssign_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -1285,31 +1363,30 @@ unittest
  *      a[] -= value
  */
 
-T[] _arrayExpSliceMinass_u(T[] a, T value)
+T[] _arrayExpSliceMinass_w(T[] a, T value)
 {
-    return _arrayExpSliceMinass_s(a, value);
+    return _arrayExpSliceMinass_i(a, value);
 }
 
-T[] _arrayExpSliceMinass_t(T[] a, T value)
+T[] _arrayExpSliceMinass_k(T[] a, T value)
 {
-    return _arrayExpSliceMinass_s(a, value);
+    return _arrayExpSliceMinass_i(a, value);
 }
 
-T[] _arrayExpSliceMinass_s(T[] a, T value)
+T[] _arrayExpSliceMinass_i(T[] a, T value)
 {
-    //printf("_arrayExpSliceMinass_s(a.length = %d, value = %Lg)\n", a.length, cast(real)value);
+    //printf("_arrayExpSliceMinass_i(a.length = %d, value = %Lg)\n", a.length, cast(real)value);
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 835% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 81% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
-            uint l = cast(ushort) value;
-            l |= (l << 16);
+            uint l = value;
 
             if (((cast(uint) aptr) & 15) != 0)
             {
@@ -1325,8 +1402,8 @@ T[] _arrayExpSliceMinass_s(T[] a, T value)
                     movdqu XMM0, [ESI];
                     movdqu XMM1, [ESI+16];
                     add ESI, 32;
-                    psubw XMM0, XMM2;
-                    psubw XMM1, XMM2;
+                    psubd XMM0, XMM2;
+                    psubd XMM1, XMM2;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -1349,8 +1426,8 @@ T[] _arrayExpSliceMinass_s(T[] a, T value)
                     movdqa XMM0, [ESI];
                     movdqa XMM1, [ESI+16];
                     add ESI, 32;
-                    psubw XMM0, XMM2;
-                    psubw XMM1, XMM2;
+                    psubd XMM0, XMM2;
+                    psubd XMM1, XMM2;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -1361,33 +1438,58 @@ T[] _arrayExpSliceMinass_s(T[] a, T value)
             }
         }
         else
-        // MMX version is 835% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 81% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
-            uint l = cast(ushort) value;
+            ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
             asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
-                movd MM2, l;
-                pshufw MM2, MM2, 0;
+                movq MM2, l;
 
                 align 4;
             startmmx:
                 movq MM0, [ESI];
                 movq MM1, [ESI+8];
                 add ESI, 16;
-                psubw MM0, MM2;
-                psubw MM1, MM2;
+                psubd MM0, MM2;
+                psubd MM1, MM2;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
                 jb startmmx;
 
                 emms;
+                mov aptr, ESI;
+            }
+        }
+        else
+        if (a.length >= 2)
+        {
+            auto n = aptr + (a.length & ~1);
+
+            asm
+            {
+                mov ESI, aptr;
+                mov EDI, n;
+                mov EDX, value;
+
+                align 4;
+            start386:
+                mov EBX, [ESI];
+                mov ECX, [ESI+4];
+                add ESI, 8;
+                sub EBX, EDX;
+                sub ECX, EDX;
+                mov [ESI  -8], EBX;
+                mov [ESI+4-8], ECX;
+                cmp ESI, EDI;
+                jb start386;
+
                 mov aptr, ESI;
             }
         }
@@ -1401,7 +1503,7 @@ T[] _arrayExpSliceMinass_s(T[] a, T value)
 
 unittest
 {
-    printf("_arrayExpSliceMinass_s unittest\n");
+    printf("_arrayExpSliceMinass_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -1446,17 +1548,17 @@ unittest
  *      a[] -= b[]
  */
 
-T[] _arraySliceSliceMinass_u(T[] a, T[] b)
+T[] _arraySliceSliceMinass_w(T[] a, T[] b)
 {
-    return _arraySliceSliceMinass_s(a, b);
+    return _arraySliceSliceMinass_i(a, b);
 }
 
-T[] _arraySliceSliceMinass_t(T[] a, T[] b)
+T[] _arraySliceSliceMinass_k(T[] a, T[] b)
 {
-    return _arraySliceSliceMinass_s(a, b);
+    return _arraySliceSliceMinass_i(a, b);
 }
 
-T[] _arraySliceSliceMinass_s(T[] a, T[] b)
+T[] _arraySliceSliceMinass_i(T[] a, T[] b)
 in
 {
     assert (a.length == b.length);
@@ -1464,17 +1566,17 @@ in
 }
 body
 {
-    //printf("_arraySliceSliceMinass_s()\n");
+    //printf("_arraySliceSliceMinass_i()\n");
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 2121% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 731% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
@@ -1487,13 +1589,13 @@ body
                     align 4;
                 startsse2u:
                     movdqu XMM0, [ESI];
-                    movdqu XMM1, [ESI+16];
-                    add ESI, 32;
                     movdqu XMM2, [ECX];
+                    movdqu XMM1, [ESI+16];
                     movdqu XMM3, [ECX+16];
+                    add ESI, 32;
                     add ECX, 32;
-                    psubw XMM0, XMM2;
-                    psubw XMM1, XMM3;
+                    psubd XMM0, XMM2;
+                    psubd XMM1, XMM3;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -1514,13 +1616,13 @@ body
                     align 4;
                 startsse2a:
                     movdqa XMM0, [ESI];
-                    movdqa XMM1, [ESI+16];
-                    add ESI, 32;
                     movdqa XMM2, [ECX];
+                    movdqa XMM1, [ESI+16];
                     movdqa XMM3, [ECX+16];
+                    add ESI, 32;
                     add ECX, 32;
-                    psubw XMM0, XMM2;
-                    psubw XMM1, XMM3;
+                    psubd XMM0, XMM2;
+                    psubd XMM1, XMM3;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -1532,10 +1634,10 @@ body
             }
         }
         else
-        // MMX version is 1116% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 441% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
             asm
             {
@@ -1544,19 +1646,19 @@ body
                 mov ECX, bptr;
 
                 align 4;
-            start:
+            startmmx:
                 movq MM0, [ESI];
-                movq MM1, [ESI+8];
-                add ESI, 16;
                 movq MM2, [ECX];
+                movq MM1, [ESI+8];
                 movq MM3, [ECX+8];
+                add ESI, 16;
                 add ECX, 16;
-                psubw MM0, MM2;
-                psubw MM1, MM3;
+                psubd MM0, MM2;
+                psubd MM1, MM3;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
-                jb start;
+                jb startmmx;
 
                 emms;
                 mov aptr, ESI;
@@ -1573,7 +1675,7 @@ body
 
 unittest
 {
-    printf("_arraySliceSliceMinass_s unittest\n");
+    printf("_arraySliceSliceMinass_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -1618,17 +1720,17 @@ unittest
  *      a[] = b[] * value
  */
 
-T[] _arraySliceExpMulSliceAssign_u(T[] a, T value, T[] b)
+T[] _arraySliceExpMulSliceAssign_w(T[] a, T value, T[] b)
 {
-    return _arraySliceExpMulSliceAssign_s(a, value, b);
+    return _arraySliceExpMulSliceAssign_i(a, value, b);
 }
 
-T[] _arraySliceExpMulSliceAssign_t(T[] a, T value, T[] b)
+T[] _arraySliceExpMulSliceAssign_k(T[] a, T value, T[] b)
 {
-    return _arraySliceExpMulSliceAssign_s(a, value, b);
+    return _arraySliceExpMulSliceAssign_i(a, value, b);
 }
 
-T[] _arraySliceExpMulSliceAssign_s(T[] a, T value, T[] b)
+T[] _arraySliceExpMulSliceAssign_i(T[] a, T value, T[] b)
 in
 {
     assert(a.length == b.length);
@@ -1636,20 +1738,21 @@ in
 }
 body
 {
-    //printf("_arraySliceExpMulSliceAssign_s()\n");
+    //printf("_arraySliceExpMulSliceAssign_i()\n");
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
+  version (none)        // multiplying a pair is not supported by MMX
+  {
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 3733% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 1380% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
-            uint l = cast(ushort) value;
-            l |= l << 16;
+            uint l = value;
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
@@ -1667,8 +1770,8 @@ body
                     movdqu XMM0, [EAX];
                     movdqu XMM1, [EAX+16];
                     add EAX, 32;
-                    pmullw XMM0, XMM2;
-                    pmullw XMM1, XMM2;
+                    pmuludq XMM0, XMM2;
+                    pmuludq XMM1, XMM2;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -1694,8 +1797,8 @@ body
                     movdqa XMM0, [EAX];
                     movdqa XMM1, [EAX+16];
                     add EAX, 32;
-                    pmullw XMM0, XMM2;
-                    pmullw XMM1, XMM2;
+                    pmuludq XMM0, XMM2;
+                    pmuludq XMM1, XMM2;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -1707,20 +1810,20 @@ body
             }
         }
         else
-        // MMX version is 3733% faster
-        if (mmx() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~7);
+        // MMX version is 1380% faster
+        if (mmx() && a.length >= 4)
+        {
+            auto n = aptr + (a.length & ~3);
 
-            uint l = cast(ushort) value;
+            ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
             asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
                 mov EAX, bptr;
-                movd MM2, l;
-                pshufw MM2, MM2, 0;
+                movq MM2, l;
 
                 align 4;
             startmmx:
@@ -1728,8 +1831,8 @@ body
                 movq MM0, [EAX];
                 movq MM1, [EAX+8];
                 add EAX, 16;
-                pmullw MM0, MM2;
-                pmullw MM1, MM2;
+                pmuludq MM0, MM2;       // only multiplies low 32 bits
+                pmuludq MM1, MM2;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
@@ -1741,9 +1844,11 @@ body
             }
         }
     }
+        }
+  }
 
     while (aptr < aend)
-        *aptr++ = cast(T)(*bptr++ * value);
+        *aptr++ = *bptr++ * value;
 
     return a;
 }
@@ -1776,6 +1881,7 @@ unittest
 
             for (int i = 0; i < dim; i++)
             {
+                //printf("[%d]: %d ?= %d * 6\n", i, c[i], a[i]);
                 if (c[i] != cast(T)(a[i] * 6))
                 {
                     printf("[%d]: %d != %d * 6\n", i, c[i], a[i]);
@@ -1794,17 +1900,17 @@ unittest
  *      a[] = b[] * c[]
  */
 
-T[] _arraySliceSliceMulSliceAssign_u(T[] a, T[] c, T[] b)
+T[] _arraySliceSliceMulSliceAssign_w(T[] a, T[] c, T[] b)
 {
-    return _arraySliceSliceMulSliceAssign_s(a, c, b);
+    return _arraySliceSliceMulSliceAssign_i(a, c, b);
 }
 
-T[] _arraySliceSliceMulSliceAssign_t(T[] a, T[] c, T[] b)
+T[] _arraySliceSliceMulSliceAssign_k(T[] a, T[] c, T[] b)
 {
-    return _arraySliceSliceMulSliceAssign_s(a, c, b);
+    return _arraySliceSliceMulSliceAssign_i(a, c, b);
 }
 
-T[] _arraySliceSliceMulSliceAssign_s(T[] a, T[] c, T[] b)
+T[] _arraySliceSliceMulSliceAssign_i(T[] a, T[] c, T[] b)
 in
 {
         assert(a.length == b.length && b.length == c.length);
@@ -1814,18 +1920,20 @@ in
 }
 body
 {
-    //printf("_arraySliceSliceMulSliceAssign_s()\n");
+    //printf("_arraySliceSliceMulSliceAssign_i()\n");
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
     auto cptr = c.ptr;
 
+  version (none)
+  {
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 2515% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 1407% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
             if (((cast(uint) aptr | cast(uint) bptr | cast(uint) cptr) & 15) != 0)
             {
@@ -1845,8 +1953,8 @@ body
                     movdqu XMM3, [ECX+16];
                     add EAX, 32;
                     add ECX, 32;
-                    pmullw XMM0, XMM2;
-                    pmullw XMM1, XMM3;
+                    pmuludq XMM0, XMM2;
+                    pmuludq XMM1, XMM3;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -1875,8 +1983,8 @@ body
                     movdqa XMM3, [ECX+16];
                     add EAX, 32;
                     add ECX, 32;
-                    pmullw XMM0, XMM2;
-                    pmullw XMM1, XMM3;
+                    pmuludq XMM0, XMM2;
+                    pmuludq XMM1, XMM3;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -1889,10 +1997,10 @@ body
             }
         }
         else
-        // MMX version is 2515% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 1029% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
             asm
             {
@@ -1910,8 +2018,8 @@ body
                 movq MM3, [ECX+8];
                 add EAX, 16;
                 add ECX, 16;
-                pmullw MM0, MM2;
-                pmullw MM1, MM3;
+                pmuludq MM0, MM2;
+                pmuludq MM1, MM3;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
@@ -1924,16 +2032,17 @@ body
             }
         }
     }
+  }
 
     while (aptr < aend)
-        *aptr++ = cast(T)(*bptr++ * *cptr++);
+        *aptr++ = *bptr++ * *cptr++;
 
     return a;
 }
 
 unittest
 {
-    printf("_arraySliceSliceMulSliceAssign_s unittest\n");
+    printf("_arraySliceSliceMulSliceAssign_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -1977,31 +2086,32 @@ unittest
  *      a[] *= value
  */
 
-T[] _arrayExpSliceMulass_u(T[] a, T value)
+T[] _arrayExpSliceMulass_w(T[] a, T value)
 {
-    return _arrayExpSliceMulass_s(a, value);
+    return _arrayExpSliceMulass_i(a, value);
 }
 
-T[] _arrayExpSliceMulass_t(T[] a, T value)
+T[] _arrayExpSliceMulass_k(T[] a, T value)
 {
-    return _arrayExpSliceMulass_s(a, value);
+    return _arrayExpSliceMulass_i(a, value);
 }
 
-T[] _arrayExpSliceMulass_s(T[] a, T value)
+T[] _arrayExpSliceMulass_i(T[] a, T value)
 {
-    //printf("_arrayExpSliceMulass_s(a.length = %d, value = %Lg)\n", a.length, cast(real)value);
+    //printf("_arrayExpSliceMulass_i(a.length = %d, value = %Lg)\n", a.length, cast(real)value);
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
 
+  version (none)
+  {
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 2044% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 400% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
-            uint l = cast(ushort) value;
-            l |= l << 16;
+            uint l = value;
 
             if (((cast(uint) aptr) & 15) != 0)
             {
@@ -2017,8 +2127,8 @@ T[] _arrayExpSliceMulass_s(T[] a, T value)
                     movdqu XMM0, [ESI];
                     movdqu XMM1, [ESI+16];
                     add ESI, 32;
-                    pmullw XMM0, XMM2;
-                    pmullw XMM1, XMM2;
+                    pmuludq XMM0, XMM2;
+                    pmuludq XMM1, XMM2;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -2041,8 +2151,8 @@ T[] _arrayExpSliceMulass_s(T[] a, T value)
                     movdqa XMM0, [ESI];
                     movdqa XMM1, [ESI+16];
                     add ESI, 32;
-                    pmullw XMM0, XMM2;
-                    pmullw XMM1, XMM2;
+                    pmuludq XMM0, XMM2;
+                    pmuludq XMM1, XMM2;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -2053,27 +2163,26 @@ T[] _arrayExpSliceMulass_s(T[] a, T value)
             }
         }
         else
-        // MMX version is 2056% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 402% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
-            uint l = cast(ushort) value;
+            ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
             asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
-                movd MM2, l;
-                pshufw MM2, MM2, 0;
+                movq MM2, l;
 
                 align 4;
             startmmx:
                 movq MM0, [ESI];
                 movq MM1, [ESI+8];
                 add ESI, 16;
-                pmullw MM0, MM2;
-                pmullw MM1, MM2;
+                pmuludq MM0, MM2;
+                pmuludq MM1, MM2;
                 movq [ESI  -16], MM0;
                 movq [ESI+8-16], MM1;
                 cmp ESI, EDI;
@@ -2084,6 +2193,7 @@ T[] _arrayExpSliceMulass_s(T[] a, T value)
             }
         }
     }
+  }
 
     while (aptr < aend)
         *aptr++ *= value;
@@ -2093,7 +2203,7 @@ T[] _arrayExpSliceMulass_s(T[] a, T value)
 
 unittest
 {
-    printf("_arrayExpSliceMulass_s unittest\n");
+    printf("_arrayExpSliceMulass_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {
@@ -2138,17 +2248,17 @@ unittest
  *      a[] *= b[]
  */
 
-T[] _arraySliceSliceMulass_u(T[] a, T[] b)
+T[] _arraySliceSliceMulass_w(T[] a, T[] b)
 {
-    return _arraySliceSliceMulass_s(a, b);
+    return _arraySliceSliceMulass_i(a, b);
 }
 
-T[] _arraySliceSliceMulass_t(T[] a, T[] b)
+T[] _arraySliceSliceMulass_k(T[] a, T[] b)
 {
-    return _arraySliceSliceMulass_s(a, b);
+    return _arraySliceSliceMulass_i(a, b);
 }
 
-T[] _arraySliceSliceMulass_s(T[] a, T[] b)
+T[] _arraySliceSliceMulass_i(T[] a, T[] b)
 in
 {
     assert (a.length == b.length);
@@ -2156,17 +2266,19 @@ in
 }
 body
 {
-    //printf("_arraySliceSliceMulass_s()\n");
+    //printf("_arraySliceSliceMulass_i()\n");
     auto aptr = a.ptr;
     auto aend = aptr + a.length;
     auto bptr = b.ptr;
 
+  version (none)
+  {
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 2519% faster
-        if (sse2() && a.length >= 16)
+        // SSE2 aligned version is 873% faster
+        if (sse2() && a.length >= 8)
         {
-            auto n = aptr + (a.length & ~15);
+            auto n = aptr + (a.length & ~7);
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
@@ -2184,8 +2296,8 @@ body
                     movdqu XMM3, [ECX+16];
                     add ESI, 32;
                     add ECX, 32;
-                    pmullw XMM0, XMM2;
-                    pmullw XMM1, XMM3;
+                    pmuludq XMM0, XMM2;
+                    pmuludq XMM1, XMM3;
                     movdqu [ESI   -32], XMM0;
                     movdqu [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -2211,8 +2323,8 @@ body
                     movdqa XMM3, [ECX+16];
                     add ESI, 32;
                     add ECX, 32;
-                    pmullw XMM0, XMM2;
-                    pmullw XMM1, XMM3;
+                    pmuludq XMM0, XMM2;
+                    pmuludq XMM1, XMM3;
                     movdqa [ESI   -32], XMM0;
                     movdqa [ESI+16-32], XMM1;
                     cmp ESI, EDI;
@@ -2223,11 +2335,14 @@ body
                }
             }
         }
+/+ BUG: comment out this section until we figure out what is going
+   wrong with the invalid pshufd instructions.
+
         else
-        // MMX version is 1712% faster
-        if (mmx() && a.length >= 8)
+        // MMX version is 573% faster
+        if (mmx() && a.length >= 4)
         {
-            auto n = aptr + (a.length & ~7);
+            auto n = aptr + (a.length & ~3);
 
             asm
             {
@@ -2241,12 +2356,22 @@ body
                 movq MM2, [ECX];
                 movq MM1, [ESI+8];
                 movq MM3, [ECX+8];
+                pxor MM4, MM4;
+                pxor MM5, MM5;
+                punpckldq MM4, MM0;
+                punpckldq MM5, MM2;
                 add ESI, 16;
                 add ECX, 16;
-                pmullw MM0, MM2;
-                pmullw MM1, MM3;
-                movq [ESI  -16], MM0;
-                movq [ESI+8-16], MM1;
+                pmuludq MM4, MM5;
+                pshufd MM4, MM4, 8;     // ?
+                movq [ESI  -16], MM4;
+                pxor MM4, MM4;
+                pxor MM5, MM5;
+                punpckldq MM4, MM1;
+                punpckldq MM5, MM3;
+                pmuludq MM4, MM5;
+                pshufd MM4, MM4, 8;     // ?
+                movq [ESI+8-16], MM4;
                 cmp ESI, EDI;
                 jb startmmx;
 
@@ -2255,7 +2380,9 @@ body
                 mov bptr, ECX;
             }
         }
++/
     }
+  }
 
     while (aptr < aend)
         *aptr++ *= *bptr++;
@@ -2265,7 +2392,7 @@ body
 
 unittest
 {
-    printf("_arraySliceSliceMulass_s unittest\n");
+    printf("_arraySliceSliceMulass_i unittest\n");
 
     for (cpuid = 0; cpuid < CPUID_MAX; cpuid++)
     {

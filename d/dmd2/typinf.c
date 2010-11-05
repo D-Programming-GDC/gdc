@@ -131,8 +131,10 @@ Expression *Type::getTypeInfo(Scope *sc)
 	    t->vtinfo = new TypeInfoSharedDeclaration(t);
 	else if (t->isConst())
 	    t->vtinfo = new TypeInfoConstDeclaration(t);
-	else if (t->isInvariant())
+	else if (t->isImmutable())
 	    t->vtinfo = new TypeInfoInvariantDeclaration(t);
+	else if (t->isWild())
+	    t->vtinfo = new TypeInfoWildDeclaration(t);
 	else
 #endif
 	    t->vtinfo = t->getTypeInfoDeclaration();
@@ -271,6 +273,18 @@ void TypeInfoSharedDeclaration::toDt(dt_t **pdt)
     tm->getTypeInfo(NULL);
     dtxoff(pdt, tm->vtinfo->toSymbol(), 0, TYnptr);
 }
+
+void TypeInfoWildDeclaration::toDt(dt_t **pdt)
+{
+    //printf("TypeInfoWildDeclaration::toDt() %s\n", toChars());
+    dtxoff(pdt, Type::typeinfowild->toVtblSymbol(), 0, TYnptr); // vtbl for TypeInfo_Wild
+    dtdword(pdt, 0);			    // monitor
+    Type *tm = tinfo->mutableOf();
+    tm = tm->merge();
+    tm->getTypeInfo(NULL);
+    dtxoff(pdt, tm->vtinfo->toSymbol(), 0, TYnptr);
+}
+
 #endif
 
 void TypeInfoTypedefDeclaration::toDt(dt_t **pdt)
@@ -752,7 +766,7 @@ int TypeDArray::builtinTypeInfo()
 #if DMDV2
     return !mod && (next->isTypeBasic() != NULL && !next->mod ||
 	// strings are so common, make them builtin
-	next->ty == Tchar && next->mod == MODinvariant);
+	next->ty == Tchar && next->mod == MODimmutable);
 #else
     return next->isTypeBasic() != NULL;
 #endif

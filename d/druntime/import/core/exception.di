@@ -1,4 +1,4 @@
-// D import file generated from 'src\common\core\exception.d'
+// D import file generated from 'src\core\exception.d'
 module core.exception;
 private 
 {

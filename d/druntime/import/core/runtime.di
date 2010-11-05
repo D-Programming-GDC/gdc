@@ -1,4 +1,4 @@
-// D import file generated from 'src\common\core\runtime.d'
+// D import file generated from 'src\core\runtime.d'
 module core.runtime;
 private 
 {

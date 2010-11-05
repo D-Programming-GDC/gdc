@@ -1,4 +1,4 @@
-// D import file generated from 'src\common\core\sync\semaphore.d'
+// D import file generated from 'src\core\sync\semaphore.d'
 module core.sync.semaphore;
 public 
 {

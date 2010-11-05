@@ -1,4 +1,4 @@
-// D import file generated from 'src\common\core\sync\condition.d'
+// D import file generated from 'src\core\sync\condition.d'
 module core.sync.condition;
 public 
 {

@@ -32,7 +32,7 @@ else
 // va_arg is handled magically by the compiler
 template va_arg(T)
 {
-    T va_arg(inout va_list _argptr)
+    T va_arg(ref va_list _argptr)
     {
         T t;
         return t;

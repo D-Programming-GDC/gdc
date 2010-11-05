@@ -42,7 +42,7 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-module rt.util.cpuid;
+module core.cpuid;
 
 // If optimizing for a particular processor, it is generally better
 // to identify based on features rather than model. NOTE: Normally
@@ -290,7 +290,7 @@ version(X86_64) {
 version(D_InlineAsm_X86) {
 // Note that this code will also work for Itanium in x86 mode.
 
-shared uint max_cpuid, max_extended_cpuid;
+__gshared uint max_cpuid, max_extended_cpuid;
 
 // CPUID2: "cache and tlb information"
 void getcacheinfoCPUID2()

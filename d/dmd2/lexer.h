@@ -164,11 +164,13 @@ enum TOK
 	TOKshared,
 	TOKat,
 	TOKpow,
-	//TOKpowass,
+	TOKpowass,
 #endif
 
 	TOKMAX
 };
+
+#define TOKwild TOKinout
 
 #define BASIC_TYPES			\
 	TOKwchar: case TOKdchar:		\

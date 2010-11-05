@@ -1,4 +1,4 @@
-// D import file generated from 'src\common\core\sync\config.d'
+// D import file generated from 'src\core\sync\config.d'
 module core.sync.config;
 version (Posix)
 {

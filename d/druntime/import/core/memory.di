@@ -1,4 +1,4 @@
-// D import file generated from 'src\common\core\memory.d'
+// D import file generated from 'src\core\memory.d'
 module core.memory;
 private 
 {
@@ -28,15 +28,15 @@ private
 }
     extern (C) 
 {
-    uint gc_getAttr(void* p);
+    uint gc_getAttr(in void* p);
 }
     extern (C) 
 {
-    uint gc_setAttr(void* p, uint a);
+    uint gc_setAttr(in void* p, uint a);
 }
     extern (C) 
 {
-    uint gc_clrAttr(void* p, uint a);
+    uint gc_clrAttr(in void* p, uint a);
 }
     extern (C) 
 {
@@ -64,11 +64,11 @@ private
 }
     extern (C) 
 {
-    void* gc_addrOf(void* p);
+    void* gc_addrOf(in void* p);
 }
     extern (C) 
 {
-    size_t gc_sizeOf(void* p);
+    size_t gc_sizeOf(in void* p);
 }
     struct BlkInfo_
 {
@@ -78,23 +78,23 @@ private
 }
     extern (C) 
 {
-    BlkInfo_ gc_query(void* p);
+    BlkInfo_ gc_query(in void* p);
 }
     extern (C) 
 {
-    void gc_addRoot(void* p);
+    void gc_addRoot(in void* p);
 }
     extern (C) 
 {
-    void gc_addRange(void* p, size_t sz);
+    void gc_addRange(in void* p, size_t sz);
 }
     extern (C) 
 {
-    void gc_removeRoot(void* p);
+    void gc_removeRoot(in void* p);
 }
     extern (C) 
 {
-    void gc_removeRange(void* p);
+    void gc_removeRange(in void* p);
 }
 }
 struct GC
@@ -136,21 +136,21 @@ NO_MOVE = 4,
     alias BlkInfo_ BlkInfo;
     static 
 {
-    uint getAttr(void* p)
+    uint getAttr(in void* p)
 {
 return gc_getAttr(p);
 }
 }
     static 
 {
-    uint setAttr(void* p, uint a)
+    uint setAttr(in void* p, uint a)
 {
 return gc_setAttr(p,a);
 }
 }
     static 
 {
-    uint clrAttr(void* p, uint a)
+    uint clrAttr(in void* p, uint a)
 {
 return gc_clrAttr(p,a);
 }
@@ -199,49 +199,49 @@ gc_free(p);
 }
     static 
 {
-    void* addrOf(void* p)
+    void* addrOf(in void* p)
 {
 return gc_addrOf(p);
 }
 }
     static 
 {
-    size_t sizeOf(void* p)
+    size_t sizeOf(in void* p)
 {
 return gc_sizeOf(p);
 }
 }
     static 
 {
-    BlkInfo query(void* p)
+    BlkInfo query(in void* p)
 {
 return gc_query(p);
 }
 }
     static 
 {
-    void addRoot(void* p)
+    void addRoot(in void* p)
 {
 gc_addRoot(p);
 }
 }
     static 
 {
-    void addRange(void* p, size_t sz)
+    void addRange(in void* p, size_t sz)
 {
 gc_addRange(p,sz);
 }
 }
     static 
 {
-    void removeRoot(void* p)
+    void removeRoot(in void* p)
 {
 gc_removeRoot(p);
 }
 }
     static 
 {
-    void removeRange(void* p)
+    void removeRange(in void* p)
 {
 gc_removeRange(p);
 }

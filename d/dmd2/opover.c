@@ -154,7 +154,7 @@ Identifier * ShlAssignExp::opId()  { return Id::shlass;  }
 Identifier * ShrAssignExp::opId()  { return Id::shrass;  }
 Identifier *UshrAssignExp::opId()  { return Id::ushrass; }
 Identifier * CatAssignExp::opId()  { return Id::catass;  }
-//Identifier * PowAssignExp::opId()  { return Id::powass;  }
+Identifier * PowAssignExp::opId()  { return Id::powass;  }
 
 int EqualExp::isCommutative()  { return TRUE; }
 Identifier *EqualExp::opId()   { return Id::eq; }
@@ -557,6 +557,7 @@ void inferApplyArgTypes(enum TOK op, Parameters *arguments, Expression *aggr)
 	    break;
     }
 
+    Dsymbol *s;
     AggregateDeclaration *ad;
 
     Parameter *arg = (Parameter *)arguments->data[0];
@@ -602,6 +603,12 @@ void inferApplyArgTypes(enum TOK op, Parameters *arguments, Expression *aggr)
 	    goto Laggr;
 
 	Laggr:
+	    s = search_function(ad,
+			(op == TOKforeach_reverse) ? Id::applyReverse
+						   : Id::apply);
+	    if (s)
+		goto Lapply;			// prefer opApply
+
 	    if (arguments->dim == 1)
 	    {
 		if (!arg->type)
@@ -626,9 +633,6 @@ void inferApplyArgTypes(enum TOK op, Parameters *arguments, Expression *aggr)
 	     *	int opApply(int delegate(ref Type [, ...]) dg);
 	     * overload
 	     */
-	    Dsymbol *s = search_function(ad,
-			(op == TOKforeach_reverse) ? Id::applyReverse
-						   : Id::apply);
 	    if (s)
 	    {
 		FuncDeclaration *fd = s->isFuncDeclaration();

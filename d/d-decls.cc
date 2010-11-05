@@ -251,12 +251,7 @@ Symbol *VarDeclaration::toSymbol()
 	    decl_kind = PARM_DECL;
 	else if (
 #if V2
-# if 0
-		 // from VarDeclaration::getConstInitializer
-		 (isConst() || isInvariant()) && (storage_class & STCinit)
-# else
 		 (storage_class & STCmanifest)
-# endif
 #else
 		 is_template_const ||
 		 (
@@ -324,7 +319,7 @@ Symbol *VarDeclaration::toSymbol()
 	// %% (out const X x) doesn't mean the reference is const...
 	if (
 #if V2
-	    (isConst() || isInvariant()) && (storage_class & STCinit)
+	    (isConst() || isImmutable()) && (storage_class & STCinit)
 #else
 	    isConst()
 #endif
@@ -614,7 +609,7 @@ Symbol *FuncDeclaration::toSymbol()
 	    DECL_PURE_P( fn_decl ) = (func_type->ispure && func_type->isnothrow);
 	    TREE_NOTHROW( fn_decl ) = func_type->isnothrow;
 	    // TODO: check 'immutable' means arguments are readonly...
-	    TREE_READONLY( fn_decl ) = func_type->isInvariant();
+	    TREE_READONLY( fn_decl ) = func_type->isImmutable();
 	    TREE_CONSTANT( fn_decl ) = func_type->isConst();
 #endif
 

@@ -1323,6 +1323,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
     Statement *s = this;
     size_t dim = arguments->dim;
     TypeAArray *taa = NULL;
+    Dsymbol *sapply = NULL;
 
     Type *tn = NULL;
     Type *tnv = NULL;
@@ -1454,6 +1455,9 @@ Statement *ForeachStatement::semantic(Scope *sc)
     sc->noctor++;
 
 Lagain:
+    Identifier *idapply = (op == TOKforeach_reverse)
+		    ? Id::applyReverse : Id::apply;
+    sapply = NULL;
     switch (tab->ty)
     {
 	case Tarray:
@@ -1636,6 +1640,15 @@ Lagain:
 	case Tclass:
 	case Tstruct:
 #if DMDV2
+	    /* Prefer using opApply, if it exists
+	     */
+	    if (dim != 1)	// only one argument allowed with ranges
+		goto Lapply;
+
+	    sapply = search_function((AggregateDeclaration *)tab->toDsymbol(sc), idapply);
+	    if (sapply)
+		goto Lapply;
+
 	{   /* Look for range iteration, i.e. the properties
 	     * .empty, .next, .retreat, .head and .rear
 	     *    foreach (e; aggr) { ... }
@@ -1645,8 +1658,6 @@ Lagain:
 	     *        ...
 	     *    }
 	     */
-	    if (dim != 1)	// only one argument allowed with ranges
-		goto Lapply;
 	    AggregateDeclaration *ad = (tab->ty == Tclass)
 			? (AggregateDeclaration *)((TypeClass  *)tab)->sym
 			: (AggregateDeclaration *)((TypeStruct *)tab)->sym;
@@ -1715,29 +1726,22 @@ Lagain:
 #endif
 	case Tdelegate:
 	Lapply:
-	{   FuncDeclaration *fdapply;
-	    Parameters *args;
+	{
 	    Expression *ec;
 	    Expression *e;
-	    FuncLiteralDeclaration *fld;
 	    Parameter *a;
-	    Type *t;
-	    Expression *flde;
-	    Identifier *id;
-	    Type *tret;
 
 	    if (!checkForArgTypes())
 	    {	body = body->semantic(sc);
 		return this;
 	    }
 
-	    tret = func->type->nextOf();
+	    Type *tret = func->type->nextOf();
 
 	    // Need a variable to hold value from any return statements in body.
 	    if (!sc->func->vresult && tret && tret != Type::tvoid)
-	    {	VarDeclaration *v;
-
-		v = new VarDeclaration(loc, tret, Id::result, NULL);
+	    {
+		VarDeclaration *v = new VarDeclaration(loc, tret, Id::result, NULL);
 		v->noauto = 1;
 		v->semantic(sc);
 		if (!sc->insert(v))
@@ -1749,9 +1753,10 @@ Lagain:
 	    /* Turn body into the function literal:
 	     *	int delegate(ref T arg) { body }
 	     */
-	    args = new Parameters();
+	    Parameters *args = new Parameters();
 	    for (size_t i = 0; i < dim; i++)
 	    {	Parameter *arg = (Parameter *)arguments->data[i];
+		Identifier *id;
 
 		arg->type = arg->type->semantic(loc, sc);
 		if (arg->storageClass & STCref)
@@ -1759,28 +1764,25 @@ Lagain:
 		else
 		{   // Make a copy of the ref argument so it isn't
 		    // a reference.
-		    VarDeclaration *v;
-		    Initializer *ie;
 
 		    id = Lexer::uniqueId("__applyArg", i);
-
-		    ie = new ExpInitializer(0, new IdentifierExp(0, id));
-		    v = new VarDeclaration(0, arg->type, arg->ident, ie);
+		    Initializer *ie = new ExpInitializer(0, new IdentifierExp(0, id));
+		    VarDeclaration *v = new VarDeclaration(0, arg->type, arg->ident, ie);
 		    s = new DeclarationStatement(0, v);
 		    body = new CompoundStatement(loc, s, body);
 		}
 		a = new Parameter(STCref, arg->type, id, NULL);
 		args->push(a);
 	    }
-	    t = new TypeFunction(args, Type::tint32, 0, LINKd);
-	    fld = new FuncLiteralDeclaration(loc, 0, t, TOKdelegate, this);
+	    Type *t = new TypeFunction(args, Type::tint32, 0, LINKd);
+	    FuncLiteralDeclaration *fld = new FuncLiteralDeclaration(loc, 0, t, TOKdelegate, this);
 	    fld->fbody = body;
-	    flde = new FuncExp(loc, fld);
+	    Expression *flde = new FuncExp(loc, fld);
 	    flde = flde->semantic(sc);
 	    fld->tookAddressOf = 0;
 
 	    // Resolve any forward referenced goto's
-	    for (int i = 0; i < gotos.dim; i++)
+	    for (size_t i = 0; i < gotos.dim; i++)
 	    {	CompoundStatement *cs = (CompoundStatement *)gotos.data[i];
 		GotoStatement *gs = (GotoStatement *)cs->statements->data[0];
 
@@ -1810,6 +1812,7 @@ Lagain:
 		/* Call:
 		 *	_aaApply(aggr, keysize, flde)
 		 */
+		FuncDeclaration *fdapply;
 		if (dim == 2)
 		    fdapply = FuncDeclaration::genCfunc(Type::tint32, "_aaApply2",
 			Type::tvoid->arrayOf(), Type::tsize_t, flde->type); // flde->type is not generic
@@ -1856,7 +1859,7 @@ Lagain:
 		const char *r = (op == TOKforeach_reverse) ? "R" : "";
 		int j = sprintf(fdname, "_aApply%s%.*s%zd", r, 2, fntab[flag], dim);
 		assert(j < sizeof(fdname));
-		fdapply = FuncDeclaration::genCfunc(Type::tint32, fdname,
+		FuncDeclaration *fdapply = FuncDeclaration::genCfunc(Type::tint32, fdname,
 		    Type::tvoid->arrayOf(), flde->type); // flde->type is not generic
 
 		ec = new VarExp(0, fdapply);
@@ -1883,10 +1886,9 @@ Lagain:
 	    else
 	    {
 		assert(tab->ty == Tstruct || tab->ty == Tclass);
-		Identifier *idapply = (op == TOKforeach_reverse)
-				? Id::applyReverse : Id::apply;
-		Dsymbol *sapply = search_function((AggregateDeclaration *)tab->toDsymbol(sc), idapply);
 	        Expressions *exps = new Expressions();
+		if (!sapply)
+		    sapply = search_function((AggregateDeclaration *)tab->toDsymbol(sc), idapply);
 #if 0
 		TemplateDeclaration *td;
 		if (sapply &&
@@ -3332,17 +3334,47 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	{
 	}
 	else if (fd->inferRetType)
-	{
-	    if (fd->type->nextOf())
+	{   TypeFunction *tf = (TypeFunction *)fd->type;
+	    assert(tf->ty == Tfunction);
+	    Type *tfret = tf->nextOf();
+	    if (tfret)
 	    {
-		if (!exp->type->equals(fd->type->nextOf()))
+		if (!exp->type->equals(tfret))
 		    error("mismatched function return type inference of %s and %s",
-			exp->type->toChars(), fd->type->nextOf()->toChars());
+			exp->type->toChars(), tfret->toChars());
+
+		/* The "refness" is determined by the first return statement,
+		 * not all of them. This means:
+		 *    return 3; return x;  // ok, x can be a value
+		 *    return x; return 3;  // error, 3 is not an lvalue
+		 */
 	    }
 	    else
 	    {
-		((TypeFunction *)fd->type)->next = exp->type;
-		fd->type = fd->type->semantic(loc, sc);
+		if (tf->isref)
+		{   /* Determine "refness" of function return:
+		     * if it's an lvalue, return by ref, else return by value
+		     */
+		    if (exp->isLvalue())
+		    {
+			/* Return by ref
+			 * (but first ensure it doesn't fail the "check for
+			 * escaping reference" test)
+			 */
+			unsigned errors = global.errors;
+			global.gag++;
+			exp->checkEscapeRef();
+			global.gag--;
+			if (errors != global.errors)
+			{   tf->isref = FALSE;	// return by value
+			    global.errors = errors;
+			}
+		    }
+		    else
+			tf->isref = FALSE;	// return by value
+		}
+		tf->next = exp->type;
+		fd->type = tf->semantic(loc, sc);
 		if (!fd->tintro)
 		{   tret = fd->type->nextOf();
 		    tbret = tret->toBasetype();
@@ -3450,17 +3482,14 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	    else
 		exp = exp->toLvalue(sc, exp);
 
-	    if (exp->op == TOKvar)
-	    {	VarExp *ve = (VarExp *)exp;
-		VarDeclaration *v = ve->var->isVarDeclaration();
-		if (v && !v->isDataseg() && !(v->storage_class & (STCref | STCout)))
-		    error("escaping reference to local variable %s", v->toChars());
-	    }
+	    exp->checkEscapeRef();
 	}
-
-	//exp->dump(0);
-	//exp->print();
-	exp->checkEscape();
+	else
+	{
+	    //exp->dump(0);
+	    //exp->print();
+	    exp->checkEscape();
+	}
     }
 
     /* BUG: need to issue an error on:

@@ -1,4 +1,4 @@
-// D import file generated from 'src\common\core\sync\rwmutex.d'
+// D import file generated from 'src\core\sync\rwmutex.d'
 module core.sync.rwmutex;
 public 
 {

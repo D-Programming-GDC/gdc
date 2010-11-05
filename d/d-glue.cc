@@ -630,33 +630,87 @@ OrOrExp::toElem(IRState * irs)
 }
 
 elem *
-XorExp::toElem(IRState * irs) { return make_math_op(this, irs); }
+XorExp::toElem(IRState * irs)
+{
+    return make_math_op(this, irs);
+}
+
 elem *
-OrExp::toElem(IRState * irs) { return make_math_op(this, irs); }
+OrExp::toElem(IRState * irs)
+{
+    return make_math_op(this, irs);
+}
+
 elem *
-AndExp::toElem(IRState * irs) { return make_math_op(this, irs); }
+AndExp::toElem(IRState * irs)
+{
+    return make_math_op(this, irs);
+}
+
 elem *
-UshrExp::toElem(IRState* irs) { return make_math_op(this, irs); }
+UshrExp::toElem(IRState* irs)
+{
+    return make_math_op(this, irs);
+}
+
 elem *
-ShrExp::toElem(IRState * irs) { return make_math_op(this, irs); }
+ShrExp::toElem(IRState * irs)
+{
+    return make_math_op(this, irs);
+}
+
 elem *
-ShlExp::toElem(IRState * irs) { return make_math_op(this, irs); }
+ShlExp::toElem(IRState * irs)
+{
+    return make_math_op(this, irs);
+}
 
 elem *
 ModExp::toElem(IRState * irs)
 {
     return make_math_op(this, irs);
 }
+
 elem *
 DivExp::toElem(IRState * irs)
 {
     return make_math_op(this, irs);
 }
+
 elem *
 MulExp::toElem(IRState * irs)
 {
     return make_math_op(this, irs);
 }
+
+#if V2
+elem *
+PowExp::toElem(IRState * irs)
+{
+    tree e1_t, e2_t;
+    tree powtype, powfn;
+
+    // Dictates what version of pow() we call.
+    powtype = type->toBasetype()->toCtype();
+    // If type is int, implicitly convert to double.
+    // This allows backend to fold the call into a constant return value.
+    if (!type->isfloating() && type->isintegral())
+	powtype = double_type_node;
+
+    // Lookup compatible builtin.
+    e1_t = convert(powtype, e1->toElem(irs));
+    e2_t = convert(powtype, e2->toElem(irs));
+    powfn = mathfn_built_in (powtype, BUILT_IN_POW);
+
+    if (powfn == NULL_TREE)
+    {
+	error("%s ^^ %s is not supported", e1->type->toChars(), e2->type->toChars() );
+	return irs->errorMark(type);
+    }
+
+    return convert(type->toCtype(), build_call_expr (powfn, 2, e1_t, e2_t));
+}
+#endif
 
 static tree
 one_elem_array(IRState * irs, Expression * value, tree & var_decl_out)
@@ -1799,7 +1853,7 @@ SymbolExp::toElem(IRState * irs)
 	    }
 	}
 #if ENABLE_CHECKING
-	if (!irs->typesSame(var->type, type))
+	if (var->type->isTypeBasic() && !irs->typesSame(var->type, type))
 	    e = irs->convertTo(e, var->type, type);
 #endif
 	return e;
@@ -2987,7 +3041,6 @@ FuncDeclaration::toObjFile(int multiobj)
 }
 
 #if V2
-
 void
 FuncDeclaration::buildClosure(IRState * irs)
 {
@@ -3050,7 +3103,6 @@ FuncDeclaration::buildClosure(IRState * irs)
 
     irs->useClosure(this, closure_ptr);
 }
-
 #endif
 
 void
@@ -4307,7 +4359,6 @@ ForeachStatement::toIR(IRState* irs)
 }
 
 #if V2
-
 void
 ForeachRangeStatement::toIR(IRState * irs)
 {
@@ -4376,7 +4427,6 @@ ForeachRangeStatement::toIR(IRState * irs)
     irs->endScope();
 #endif
 }
-
 #endif
 
 void

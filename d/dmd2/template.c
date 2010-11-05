@@ -514,21 +514,8 @@ void TemplateDeclaration::makeParamNamesVisibleInConstraint(Scope *paramscope)
     if (fd)
     {
 	paramscope->parent = fd;
-	Parameters *fparameters;		// function parameter list
 	int fvarargs;				// function varargs
-	if (fd->type)
-	{
-	    assert(fd->type->ty == Tfunction);
-	    TypeFunction *fdtype = (TypeFunction *)fd->type;
-	    fparameters = fdtype->parameters;
-	    fvarargs = fdtype->varargs;
-	}
-	else // Constructors don't have type's
-	{   CtorDeclaration *fctor = fd->isCtorDeclaration();
-	    assert(fctor);
-	    fparameters = fctor->arguments;
-	    fvarargs = fctor->varargs;
-	}
+	Parameters *fparameters = fd->getParameters(&fvarargs);
 	size_t nfparams = Parameter::dim(fparameters); // Num function parameters
 	for (int i = 0; i < nfparams; i++)
 	{
@@ -922,20 +909,7 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(Loc loc, Objects *targsi,
     }
 #endif
 
-    if (fd->type)
-    {
-	assert(fd->type->ty == Tfunction);
-	TypeFunction *fdtype = (TypeFunction *)fd->type;
-	fparameters = fdtype->parameters;
-	fvarargs = fdtype->varargs;
-    }
-    else
-    {	CtorDeclaration *fctor = fd->isCtorDeclaration();
-	assert(fctor);
-	fparameters = fctor->arguments;
-	fvarargs = fctor->varargs;
-    }
-
+    fparameters = fd->getParameters(&fvarargs);
     nfparams = Parameter::dim(fparameters);	// number of function parameters
     nfargs = fargs ? fargs->dim : 0;		// number of function arguments
 
@@ -1465,7 +1439,7 @@ FuncDeclaration *TemplateDeclaration::deduceFunctionTemplate(Scope *sc, Loc loc,
      */
     assert((size_t)td_best->scope > 0x10000);
     ti = new TemplateInstance(loc, td_best, tdargs);
-    ti->semantic(sc);
+    ti->semantic(sc, fargs);
     fd = ti->toAlias()->isFuncDeclaration();
     if (!fd)
 	goto Lerror;
@@ -1663,21 +1637,25 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 	Type *tt = this;
 	Type *at = (Type *)dedtypes->data[i];
 
-	// 5*5 == 25 cases
+	// 7*7 == 49 cases
 
-	#define X(U,T)	((U) << 3) | (T)
+	#define X(U,T)	((U) << 4) | (T)
 	switch (X(tparam->mod, mod))
 	{
 	    case X(0, 0):
 	    case X(0, MODconst):
-	    case X(0, MODinvariant):
+	    case X(0, MODimmutable):
 	    case X(0, MODshared):
 	    case X(0, MODconst | MODshared):
+	    case X(0, MODwild):
+	    case X(0, MODwild | MODshared):
 		// foo(U:U) T                              => T
 		// foo(U:U) const(T)                       => const(T)
 		// foo(U:U) immutable(T)                   => immutable(T)
 		// foo(U:U) shared(T)                      => shared(T)
 		// foo(U:U) const(shared(T))               => const(shared(T))
+		// foo(U:U) wild(T)                        => wild(T)
+		// foo(U:U) wild(shared(T))                => wild(shared(T))
 		if (!at)
 		{   dedtypes->data[i] = (void *)tt;
 		    goto Lexact;
@@ -1685,13 +1663,17 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 		break;
 
 	    case X(MODconst, MODconst):
-	    case X(MODinvariant, MODinvariant):
+	    case X(MODimmutable, MODimmutable):
 	    case X(MODshared, MODshared):
 	    case X(MODconst | MODshared, MODconst | MODshared):
+	    case X(MODwild, MODwild):
+	    case X(MODwild | MODshared, MODwild | MODshared):
 		// foo(U:const(U))        const(T)         => T
 		// foo(U:immutable(U))    immutable(T)     => T
 		// foo(U:shared(U))       shared(T)        => T
 		// foo(U:const(shared(U)) const(shared(T)) => T
+		// foo(U:wild(U))         wild(T)          => T
+		// foo(U:wild(shared(U))  wild(shared(T)) => T
 		tt = mutableOf()->unSharedOf();
 		if (!at)
 		{   dedtypes->data[i] = (void *)tt;
@@ -1703,10 +1685,13 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 	    case X(MODconst, MODimmutable):
 	    case X(MODconst, MODconst | MODshared):
 	    case X(MODconst | MODshared, MODimmutable):
+	    case X(MODconst, MODwild):
+	    case X(MODconst, MODwild | MODshared):
 		// foo(U:const(U)) T                       => T
 		// foo(U:const(U)) immutable(T)            => T
 		// foo(U:const(U)) const(shared(T))        => shared(T)
 		// foo(U:const(shared(U)) immutable(T)     => T
+		// foo(U:const(U)) wild(shared(T))         => shared(T)
 		tt = mutableOf();
 		if (!at)
 		{   dedtypes->data[i] = (void *)tt;
@@ -1716,8 +1701,10 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 
 	    case X(MODshared, MODconst | MODshared):
 	    case X(MODconst | MODshared, MODshared):
+	    case X(MODshared, MODwild | MODshared):
 		// foo(U:shared(U)) const(shared(T))       => const(T)
 		// foo(U:const(shared(U)) shared(T)        => T
+		// foo(U:shared(U)) wild(shared(T))        => wild(T)
 		tt = unSharedOf();
 		if (!at)
 		{   dedtypes->data[i] = (void *)tt;
@@ -1735,6 +1722,24 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 	    case X(MODshared,            MODimmutable):
 	    case X(MODconst | MODshared, 0):
 	    case X(MODconst | MODshared, MODconst):
+	    case X(MODimmutable,	 MODwild):
+	    case X(MODshared,		 MODwild):
+	    case X(MODconst | MODshared, MODwild):
+	    case X(MODwild,		 0):
+	    case X(MODwild,		 MODconst):
+	    case X(MODwild,		 MODimmutable):
+	    case X(MODwild,		 MODshared):
+	    case X(MODwild,		 MODconst | MODshared):
+	    case X(MODwild | MODshared,	 0):
+	    case X(MODwild | MODshared,	 MODconst):
+	    case X(MODwild | MODshared,  MODimmutable):
+	    case X(MODwild | MODshared,  MODshared):
+	    case X(MODwild | MODshared,  MODconst | MODshared):
+	    case X(MODwild | MODshared,  MODwild):
+	    case X(MODimmutable,	 MODwild | MODshared):
+	    case X(MODconst | MODshared, MODwild | MODshared):
+	    case X(MODwild,		 MODwild | MODshared):
+
 		// foo(U:immutable(U)) T                   => nomatch
 		// foo(U:immutable(U)) const(T)            => nomatch
 		// foo(U:immutable(U)) shared(T)           => nomatch
@@ -1745,6 +1750,23 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
 		// foo(U:shared(U)) immutable(T)           => nomatch
 		// foo(U:const(shared(U)) T                => nomatch
 		// foo(U:const(shared(U)) const(T)         => nomatch
+		// foo(U:immutable(U)) wild(T)             => nomatch
+		// foo(U:shared(U)) wild(T)                => nomatch
+		// foo(U:const(shared(U)) wild(T)          => nomatch
+		// foo(U:wild(U)) T                        => nomatch
+		// foo(U:wild(U)) const(T)                 => nomatch
+		// foo(U:wild(U)) immutable(T)             => nomatch
+		// foo(U:wild(U)) shared(T)                => nomatch
+		// foo(U:wild(U)) const(shared(T))         => nomatch
+		// foo(U:wild(shared(U)) T 		   => nomatch
+		// foo(U:wild(shared(U)) const(T)	   => nomatch
+		// foo(U:wild(shared(U)) immutable(T)	   => nomatch
+		// foo(U:wild(shared(U)) shared(T)         => nomatch
+		// foo(U:wild(shared(U)) const(shared(T))  => nomatch
+		// foo(U:wild(shared(U)) wild(T)	   => nomatch
+		// foo(U:immutable(U)) wild(shared(T))     => nomatch
+		// foo(U:const(shared(U))) wild(shared(T)) => nomatch
+		// foo(U:wild(U)) wild(shared(T))          => nomatch
 		//if (!at)
 		    goto Lnomatch;
 		break;
@@ -3423,6 +3445,11 @@ Dsymbol *TemplateInstance::syntaxCopy(Dsymbol *s)
 
 void TemplateInstance::semantic(Scope *sc)
 {
+    semantic(sc, NULL);
+}
+
+void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
+{
     if (global.errors)
     {
 	if (!global.gag)
@@ -3535,6 +3562,34 @@ void TemplateInstance::semantic(Scope *sc)
 		if(id1 != id2)
 #endif
 		goto L1;
+	    }
+	}
+
+	/* Template functions may have different instantiations based on
+	 * "auto ref" parameters.
+	 */
+	if (fargs)
+	{
+	    FuncDeclaration *fd = ti->toAlias()->isFuncDeclaration();
+	    if (fd)
+	    {
+		Parameters *fparameters = fd->getParameters(NULL);
+		size_t nfparams = Parameter::dim(fparameters); // Num function parameters
+		for (int i = 0; i < nfparams && i < fargs->dim; i++)
+		{   Parameter *fparam = Parameter::getNth(fparameters, i);
+		    Expression *farg = (Expression *)fargs->data[i];
+		    if (fparam->storageClass & STCauto)		// if "auto ref"
+		    {
+			if (farg->isLvalue())
+			{   if (!(fparam->storageClass & STCref))
+				goto L1;			// auto ref's don't match
+			}
+			else
+			{   if (fparam->storageClass & STCref)
+				goto L1;			// auto ref's don't match
+			}
+		    }
+		}
 	    }
 	}
 
@@ -3720,6 +3775,22 @@ void TemplateInstance::semantic(Scope *sc)
 	}
     }
 
+    /* If function template declaration
+     */
+    if (fargs && aliasdecl)
+    {
+	FuncDeclaration *fd = aliasdecl->toAlias()->isFuncDeclaration();
+	if (fd)
+	{
+	    /* Transmit fargs to type so that TypeFunction::semantic() can
+	     * resolve any "auto ref" storage classes.
+	     */
+	    TypeFunction *tf = (TypeFunction *)fd->type;
+	    if (tf && tf->ty == Tfunction)
+		tf->fargs = fargs;
+	}
+    }
+
     // Do semantic() analysis on template instance members
 #if LOG
     printf("\tdo semantic() on template instance members '%s'\n", toChars());
@@ -3827,9 +3898,8 @@ void TemplateInstance::semantic(Scope *sc)
     if (global.errors != errorsave)
     {
 	error("error instantiating");
-	if (tinst && !global.gag)
+	if (tinst)
 	{   tinst->printInstantiationTrace();
-	    fatal();
 	}
 	errors = 1;
 	if (global.gag)
@@ -4000,9 +4070,30 @@ TemplateDeclaration *TemplateInstance::findTemplateDeclaration(Scope *sc)
 	id = name;
 	s = sc->search(loc, id, &scopesym);
 	if (!s)
-	{   error("identifier '%s' is not defined", id->toChars());
+	{   error("template '%s' is not defined", id->toChars());
 	    return NULL;
 	}
+
+	/* If an OverloadSet, look for a unique member that is a template declaration
+	 */
+	OverloadSet *os = s->isOverloadSet();
+	if (os)
+	{   s = NULL;
+	    for (int i = 0; i < os->a.dim; i++)
+	    {	Dsymbol *s2 = (Dsymbol *)os->a.data[i];
+		if (s2->isTemplateDeclaration())
+		{
+		    if (s)
+			error("ambiguous template declaration %s and %s", s->toPrettyChars(), s2->toPrettyChars());
+		    s = s2;
+		}
+	    }
+	    if (!s)
+	    {   error("template '%s' is not defined", id->toChars());
+		return NULL;
+	    }
+	}
+
 #if LOG
 	printf("It's an instance of '%s' kind '%s'\n", s->toChars(), s->kind());
 	if (s->parent)
@@ -4529,10 +4620,81 @@ void TemplateInstance::semantic3(Scope *sc)
     }
 }
 
+/**************************************
+ * Given an error instantiating the TemplateInstance,
+ * give the nested TemplateInstance instantiations that got
+ * us here. Those are a list threaded into the nested scopes.
+ */
 void TemplateInstance::printInstantiationTrace()
 {
     if (global.gag)
 	return;
+
+    const int max_shown = 6;
+    const char format[] = "%s:        instantiated from here: %s\n";
+
+    // determine instantiation depth and number of recursive instantiations
+    int n_instantiations = 1;
+    int n_totalrecursions = 0;
+    for (TemplateInstance *cur = this; cur; cur = cur->tinst)
+    {
+	++n_instantiations;
+	// If two instantiations use the same declaration, they are recursive.
+	// (this works even if they are instantiated from different places in the
+	// same template).
+	// In principle, we could also check for multiple-template recursion, but it's
+	// probably not worthwhile.
+	if (cur->tinst && cur->tempdecl && cur->tinst->tempdecl
+	    && cur->tempdecl->loc.equals(cur->tinst->tempdecl->loc))
+	    ++n_totalrecursions;
+    }
+
+    // show full trace only if it's short or verbose is on
+    if (n_instantiations <= max_shown || global.params.verbose)
+    {
+	for (TemplateInstance *cur = this; cur; cur = cur->tinst)
+	{
+	    fprintf(stdmsg, format, cur->loc.toChars(), cur->toChars());
+	}
+    }
+    else if (n_instantiations - n_totalrecursions <= max_shown)
+    {
+	// By collapsing recursive instantiations into a single line,
+	// we can stay under the limit.
+	int recursionDepth=0;
+	for (TemplateInstance *cur = this; cur; cur = cur->tinst)
+	{
+	    if (cur->tinst && cur->tempdecl && cur->tinst->tempdecl
+		    && cur->tempdecl->loc.equals(cur->tinst->tempdecl->loc))
+	    {
+		++recursionDepth;
+	    }
+	    else
+	    {
+		if (recursionDepth)
+		    fprintf(stdmsg, "%s:        %d recursive instantiations from here: %s\n", cur->loc.toChars(), recursionDepth+2, cur->toChars());
+		else 
+		    fprintf(stdmsg,format, cur->loc.toChars(), cur->toChars());
+		recursionDepth = 0;
+	    }
+	}
+    }
+    else
+    {
+	// Even after collapsing the recursions, the depth is too deep.
+	// Just display the first few and last few instantiations.
+	size_t i = 0;
+	for (TemplateInstance *cur = this; cur; cur = cur->tinst)
+	{
+	    if (i == max_shown / 2)
+		fprintf(stdmsg,"    ... (%d instantiations, -v to show) ...\n", n_instantiations - max_shown);
+
+	    if (i < max_shown / 2 ||
+		i >= n_instantiations - max_shown + max_shown / 2)
+		fprintf(stdmsg, format, cur->loc.toChars(), cur->toChars());
+	    ++i;
+	}
+    }
 }
 
 void TemplateInstance::toObjFile(int multiobj)

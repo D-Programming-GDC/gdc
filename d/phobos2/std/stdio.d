@@ -24,10 +24,10 @@ Distributed under the Boost Software License, Version 1.0.
 module std.stdio;
 
 public import core.stdc.stdio;
-import core.memory, core.stdc.errno, core.stdc.stddef,
+private import core.memory, core.stdc.errno, core.stdc.stddef,
     core.stdc.stdlib, core.stdc.string, core.stdc.wchar_;
-import std.stdiobase;
-import std.algorithm, std.array, std.contracts, std.conv, std.file, std.format,
+private import std.stdiobase;
+private import std.algorithm, std.array, std.contracts, std.conv, std.file, std.format,
     /*std.metastrings,*/ std.range, std.string, std.traits, std.typecons,
     std.typetuple, std.utf;
 
@@ -244,9 +244,9 @@ struct File
 {
     /*private*/ struct Impl
     {
-        FILE * handle;
-        uint refs;
-        string name;
+        FILE * handle = null;
+        uint refs = uint.max / 2;
+        string name = null;
         this(FILE* h, uint r, string n)
         {
             handle = h;
@@ -642,7 +642,7 @@ with every line.  */
     
 /** ditto */
     // TODO: optimize this
-    size_t readln(inout wchar[] buf, dchar terminator = '\n')
+    size_t readln(ref wchar[] buf, dchar terminator = '\n')
     {
         string s = readln(terminator);
         if (!s.length) return 0;
@@ -656,7 +656,7 @@ with every line.  */
 
 /** ditto */
 // TODO: fold this together with wchar
-    size_t readln(inout dchar[] buf, dchar terminator = '\n')
+    size_t readln(ref dchar[] buf, dchar terminator = '\n')
     {
         string s = readln(terminator);
         if (!s.length) return 0;
@@ -1383,7 +1383,7 @@ string readln(dchar terminator = '\n')
 }
 
 /** ditto */
-size_t readln(inout char[] buf, dchar terminator = '\n')
+size_t readln(ref char[] buf, dchar terminator = '\n')
 {
     return stdin.readln(buf, terminator);
 }
@@ -1847,15 +1847,15 @@ extern(C) void std_stdio_static_this()
     //printf("std_stdio_static_this()\n");
 
     //Bind stdin, stdout, stderr
-    __gshared File.Impl stdinImpl = { null, uint.max / 2, null };
+    __gshared File.Impl stdinImpl;
     stdinImpl.handle = core.stdc.stdio.stdin;
     .stdin.p = &stdinImpl;
     // stdout
-    __gshared File.Impl stdoutImpl = { null, uint.max / 2, null };
+    __gshared File.Impl stdoutImpl;
     stdoutImpl.handle = core.stdc.stdio.stdout;
     .stdout.p = &stdoutImpl;
     // stderr
-    __gshared File.Impl stderrImpl = { null, uint.max / 2, null };
+    __gshared File.Impl stderrImpl;
     stderrImpl.handle = core.stdc.stdio.stderr;
     .stderr.p = &stderrImpl;
 }
