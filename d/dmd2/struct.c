@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -291,6 +291,8 @@ void StructDeclaration::semantic(Scope *sc)
     methods.setDim(0);
 #endif
 
+    unsigned dprogress_save = Module::dprogress;
+
     parent = sc->parent;
     type = type->semantic(loc, sc);
 #if STRUCTTHISREF
@@ -527,6 +529,8 @@ void StructDeclaration::semantic(Scope *sc)
 	scope = scx ? scx : new Scope(*sc);
 	scope->setNoFree();
 	scope->module->addDeferredSemantic(this);
+
+	Module::dprogress = dprogress_save;
 	//printf("\tdeferring %s\n", toChars());
 	return;
     }

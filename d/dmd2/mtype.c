@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -102,8 +102,6 @@ int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
 int Tindex = Tint32;
 int CLASSINFO_SIZE = (0x3c+12+4);
-
-int MODimplicitConv(unsigned char modfrom, unsigned char modto);
 
 /***************************** Type *****************************/
 
@@ -3934,11 +3932,17 @@ StructDeclaration *TypeAArray::getImpl()
 	     * But the instantiation can fail if it is a template specialization field
 	     * which has Tident's instead of real types.
 	     */
-	    TemplateInstance *ti = new TemplateInstance(loc, Id::AssociativeArray);
 	    Objects *tiargs = new Objects();
 	    tiargs->push(index);
 	    tiargs->push(next);
-	    ti->tiargs = tiargs;
+
+	    // Create .AssociativeArray!(index, next)
+	    DotTemplateInstanceExp *dti = new DotTemplateInstanceExp(loc,
+			new IdentifierExp(loc, Id::empty),
+			Id::AssociativeArray,
+			tiargs);
+	    dti->semantic(sc);
+            TemplateInstance *ti = dti->ti;
 
 	    ti->semantic(sc);
 	    ti->semantic2(sc);
@@ -6067,8 +6071,15 @@ Dsymbol *TypeEnum::toDsymbol(Scope *sc)
 Type *TypeEnum::toBasetype()
 {
     if (sym->scope)
-    {
-	sym->semantic(NULL);	// attempt to resolve forward reference
+    {	// Enum is forward referenced. We don't need to resolve the whole thing,
+	// just the base type
+	if (sym->memtype)
+	{   sym->memtype = sym->memtype->semantic(sym->loc, sym->scope);
+	}
+	else
+	{   if (!sym->isAnonymous())
+		sym->memtype = Type::tint32;
+	}
     }
     if (!sym->memtype)
     {

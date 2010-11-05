@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -94,6 +94,7 @@ the target object file format:
 #define STRUCTTHISREF DMDV2	// if 'this' for struct is a reference, not a pointer
 #define SNAN_DEFAULT_INIT DMDV2	// if floats are default initialized to signalling NaN
 #define SARRAYVALUE DMDV2	// static arrays are value types
+#define MODULEINFO_IS_STRUCT DMDV2   // if ModuleInfo is a struct rather than a class
 
 // Set if C++ mangling is done by the front end
 #define CPP_MANGLE (DMDV2 && (TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS))
@@ -138,6 +139,7 @@ struct Param
     char vtls;		// identify thread local variables
     char symdebug;	// insert debug symbolic information
     char optimize;	// run optimizer
+    char map;		// generate linker .map file
     char cpu;		// target CPU
     char isX86_64;	// generate X86_64 bit code
     char isLinux;	// generate code for linux
@@ -221,6 +223,7 @@ struct Param
     char *deffile;
     char *resfile;
     char *exefile;
+    char *mapfile;
 };
 
 struct Global
@@ -233,6 +236,7 @@ struct Global
     const char *ddoc_ext;	// for Ddoc macro include files
     const char *hdr_ext;	// for D 'header' import files
     const char *json_ext;	// for JSON files
+    const char *map_ext;	// for .map files
     const char *copyright;
     const char *written;
     Array *path;	// Array of char*'s which form the import lookup path

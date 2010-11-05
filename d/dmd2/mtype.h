@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2007 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -895,6 +895,7 @@ extern int Tptrdiff_t;
 
 int arrayTypeCompatible(Loc loc, Type *t1, Type *t2);
 void MODtoBuffer(OutBuffer *buf, unsigned char mod);
+int MODimplicitConv(unsigned char modfrom, unsigned char modto);
 
 #endif
 

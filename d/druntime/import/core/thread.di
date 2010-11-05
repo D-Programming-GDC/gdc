@@ -19,11 +19,23 @@ private
 {
     extern (C) 
 {
+    void* memcpy(void*, const void*, size_t);
+}
+    extern (C) 
+{
     void* rt_stackBottom();
 }
     extern (C) 
 {
     void* rt_stackTop();
+}
+    extern (C) 
+{
+    void rt_moduleTlsCtor();
+}
+    extern (C) 
+{
+    void rt_moduleTlsDtor();
 }
     void* getStackBottom()
 {
@@ -129,11 +141,25 @@ else
 }
 else
 {
+    version (OSX)
+{
+    extern (C) 
+{
+    extern __gshared 
+{
+    void* _tls_beg;
+    void* _tls_end;
+}
+}
+}
+else
+{
     __gshared 
 {
     int _tlsstart;
 }
     alias _tlsstart _tlsend;
+}
 }
 }
 else
@@ -207,15 +233,15 @@ m_curr = &m_main;
 }
     final 
 {
-    Object join(bool rethrow = true);
+    Throwable join(bool rethrow = true);
 }
     final 
 {
-    char[] name();
+    string name();
 }
     final 
 {
-    void name(char[] val);
+    void name(string val);
 }
     final 
 {
@@ -265,55 +291,10 @@ m_curr = &m_main;
 {
     int opApply(int delegate(ref Thread) dg);
 }
-    static const 
-{
-    uint LOCAL_MAX = 64;
-}
-    deprecated 
-{
-    static 
-{
-    uint createLocal();
-}
-}
-    deprecated 
-{
-    static 
-{
-    void deleteLocal(uint key);
-}
-}
-    deprecated 
-{
-    static 
-{
-    void* getLocal(uint key)
-{
-return getThis().m_local[key];
-}
-}
-}
-    deprecated 
-{
-    static 
-{
-    void* setLocal(uint key, void* val)
-{
-return getThis().m_local[key] = val;
-}
-}
-}
     static this();
     private 
 {
-    this()
-{
-m_call = Call.NO;
-m_curr = &m_main;
-void* pstart = cast(void*)&_tlsstart;
-void* pend = cast(void*)&_tlsend;
-m_tls = pstart[0..pend - pstart];
-}
+    this();
     final 
 {
     void run();
@@ -341,13 +322,8 @@ else
 }
     __gshared 
 {
-    bool[LOCAL_MAX] sm_local;
-}
-    __gshared 
-{
     TLSKey sm_this;
 }
-    void*[LOCAL_MAX] m_local;
     version (Windows)
 {
     HANDLE m_hndl;
@@ -361,7 +337,7 @@ else
 }
     ThreadAddr m_addr;
     Call m_call;
-    char[] m_name;
+    string m_name;
     union
 {
 void function() m_fn;
@@ -373,7 +349,7 @@ void delegate() m_dg;
     bool m_isRunning;
 }
     bool m_isDaemon;
-    Object m_unhandled;
+    Throwable m_unhandled;
     private 
 {
     static 
@@ -580,49 +556,6 @@ extern (C)
 {
     void thread_scanAll(scanAllThreadsFn scan, void* curStackTop = null);
 }
-deprecated 
-{
-    template ThreadLocal(T)
-{
-class ThreadLocal
-{
-    this(T def = T.init)
-{
-m_def = def;
-m_key = Thread.createLocal();
-}
-    ~this()
-{
-Thread.deleteLocal(m_key);
-}
-    T val()
-{
-Wrap* wrap = cast(Wrap*)Thread.getLocal(m_key);
-return wrap ? wrap.val : m_def;
-}
-    T val(T newval)
-{
-Wrap* wrap = cast(Wrap*)Thread.getLocal(m_key);
-if (wrap is null)
-{
-wrap = new Wrap;
-Thread.setLocal(m_key,wrap);
-}
-wrap.val = newval;
-return newval;
-}
-    private 
-{
-    struct Wrap
-{
-    T val;
-}
-    T m_def;
-    uint m_key;
-}
-}
-}
-}
 class ThreadGroup
 {
     final 
@@ -808,7 +741,7 @@ return m_state;
 }
     static 
 {
-    void yieldAndThrow(Object obj);
+    void yieldAndThrow(Throwable t);
 }
     static 
 {
@@ -840,7 +773,7 @@ void function() m_fn;
 void delegate() m_dg;
 }
     bool m_isRunning;
-    Object m_unhandled;
+    Throwable m_unhandled;
     State m_state;
     private 
 {
@@ -859,7 +792,7 @@ void delegate() m_dg;
     Thread.Context* m_ctxt;
     size_t m_size;
     void* m_pmem;
-    static if(is(ucontext_t))
+    static if(__traits(compiles,ucontext_t))
 {
     static 
 {
@@ -900,7 +833,10 @@ version (OSX)
 {
     void* ___tls_get_addr(void* p)
 {
-return p;
+if (p < cast(void*)&_tls_beg || p >= cast(void*)&_tls_end)
+assert(false);
+auto obj = Thread.getThis();
+return obj.m_tls.ptr + (p - cast(void*)&_tls_beg);
 }
 }
 }

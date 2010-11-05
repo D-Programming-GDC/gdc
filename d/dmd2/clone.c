@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2008 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -151,6 +151,7 @@ FuncDeclaration *StructDeclaration::buildOpAssign(Scope *sc)
 	{
 	    tmp = new VarDeclaration(0, type, idtmp, new VoidInitializer(0));
 	    tmp->noauto = 1;
+	    tmp->storage_class |= STCctfe;
 	    e = new DeclarationExp(0, tmp);
 	    ec = new AssignExp(0,
 		new VarExp(0, tmp),
@@ -328,6 +329,7 @@ FuncDeclaration *StructDeclaration::buildCpCtor(Scope *sc)
 	Type *ftype = new TypeFunction(fparams, Type::tvoid, FALSE, LINKd);
 
 	fcp = new FuncDeclaration(0, 0, Id::cpctor, STCundefined, ftype);
+	fcp->storage_class |= postblit->storage_class & STCdisable;
 
 	// Build *this = p;
 	Expression *e = new ThisExp(0);
@@ -372,6 +374,7 @@ FuncDeclaration *StructDeclaration::buildPostBlit(Scope *sc)
 {
     //printf("StructDeclaration::buildPostBlit() %s\n", toChars());
     Expression *e = NULL;
+    StorageClass stc = 0;
 
     for (size_t i = 0; i < fields.dim; i++)
     {
@@ -392,6 +395,8 @@ FuncDeclaration *StructDeclaration::buildPostBlit(Scope *sc)
 	    StructDeclaration *sd = ts->sym;
 	    if (sd->postblit)
 	    {	Expression *ex;
+
+		stc |= sd->postblit->storage_class & STCdisable;
 
 		// this.v
 		ex = new ThisExp(0);
@@ -423,6 +428,7 @@ FuncDeclaration *StructDeclaration::buildPostBlit(Scope *sc)
     if (e)
     {	//printf("Building __fieldPostBlit()\n");
 	PostBlitDeclaration *dd = new PostBlitDeclaration(0, 0, Lexer::idPool("__fieldPostBlit"));
+	dd->storage_class |= stc;
 	dd->fbody = new ExpStatement(0, e);
 	postblits.shift(dd);
 	members->push(dd);
@@ -441,12 +447,14 @@ FuncDeclaration *StructDeclaration::buildPostBlit(Scope *sc)
 	    e = NULL;
 	    for (size_t i = 0; i < postblits.dim; i++)
 	    {	FuncDeclaration *fd = (FuncDeclaration *)postblits.data[i];
+		stc |= fd->storage_class & STCdisable;
 		Expression *ex = new ThisExp(0);
 		ex = new DotVarExp(0, ex, fd, 0);
 		ex = new CallExp(0, ex);
 		e = Expression::combine(e, ex);
 	    }
 	    PostBlitDeclaration *dd = new PostBlitDeclaration(0, 0, Lexer::idPool("__aggrPostBlit"));
+	    dd->storage_class |= stc;
 	    dd->fbody = new ExpStatement(0, e);
 	    members->push(dd);
 	    dd->semantic(sc);

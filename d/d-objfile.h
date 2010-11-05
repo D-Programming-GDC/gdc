@@ -23,6 +23,10 @@ struct ModuleInfo {
     Array classes; // Array of ClassDeclaration*
     Array ctors; // Arrays of FuncDeclaration*
     Array dtors;
+#if V2
+    Array sharedctors;
+    Array shareddtors;
+#endif
     Array unitTests;
 };
 

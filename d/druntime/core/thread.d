@@ -54,10 +54,17 @@ class FiberException : Exception
 private
 {
     //
+    // from core.stdc.string
+    //
+    extern (C) void* memcpy(void*, const void*, size_t);
+
+    //
     // exposed by compiler runtime
     //
     extern (C) void* rt_stackBottom();
     extern (C) void* rt_stackTop();
+    extern (C) void  rt_moduleTlsCtor();
+    extern (C) void  rt_moduleTlsDtor();
 
 
     void* getStackBottom()
@@ -136,14 +143,44 @@ version( Windows )
             // TODO: Consider putting an auto exception object here (using
             //       alloca) forOutOfMemoryError plus something to track
             //       whether an exception is in-flight?
+            
+            void append( Throwable t )
+            {
+                if( obj.m_unhandled is null )
+                    obj.m_unhandled = t;
+                else
+                {
+                    Throwable last = obj.m_unhandled;
+                    while( last.next !is null )
+                        last = last.next;
+                    last.next = t;
+                }
+            }
 
             try
             {
-                obj.run();
+                rt_moduleTlsCtor();
+                try
+                {
+                    obj.run();
+                }
+                catch( Throwable t )
+                {
+                    append( t );
+                }
+                catch( Object o )
+                {
+                    // TODO: Remove this once the compiler prevents it.
+                }
+                rt_moduleTlsDtor();
+            }
+            catch( Throwable t )
+            {
+                append( t );
             }
             catch( Object o )
             {
-                obj.m_unhandled = o;
+                // TODO: Remove this once the compiler prevents it.
             }
             return 0;
         }
@@ -199,6 +236,17 @@ else version( Posix )
                     extern __thread int _tlsend;
                 }
             }
+            else version( OSX )
+            {
+                extern (C)
+                {
+                    extern __gshared
+                    {
+                        void* _tls_beg;
+                        void* _tls_end;
+                    }
+                }
+            }
             else
             {
                 __gshared int   _tlsstart;
@@ -247,19 +295,18 @@ else version( Posix )
             //       implementation actually requires default initialization
             //       then pthread_cleanup should be restructured to maintain
             //       the current lack of a link dependency.
-            version( linux )
+            static if( __traits( compiles, pthread_cleanup ) )
             {
                 pthread_cleanup cleanup = void;
                 cleanup.push( &thread_cleanupHandler, cast(void*) obj );
             }
-            else version( OSX )
+            else static if( __traits( compiles, pthread_cleanup_push ) )
             {
-                pthread_cleanup cleanup = void;
-                cleanup.push( &thread_cleanupHandler, cast(void*) obj );
+                pthread_cleanup_push( &thread_cleanupHandler, cast(void*) obj );
             }
             else
             {
-                pthread_cleanup_push( &thread_cleanupHandler, cast(void*) obj );
+                static assert( false, "Platform not supported." );
             }
 
             // NOTE: For some reason this does not always work for threads.
@@ -287,9 +334,24 @@ else version( Posix )
             Thread.add( &obj.m_main );
             Thread.setThis( obj );
 
-            void* pstart = cast(void*) &_tlsstart;
-            void* pend   = cast(void*) &_tlsend;
-            obj.m_tls = pstart[0 .. pend - pstart];
+            version( OSX )
+            {
+                // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
+                //       data output by the compiler is bracketed by _tls_beg and
+                //       _tls_end, so make a copy of it for each thread.
+                const sz = cast(void*) &_tls_end - cast(void*) &_tls_beg;
+                auto p = malloc( sz );
+                assert( p );
+                obj.m_tls = p[0 .. sz];
+                memcpy( p, &_tls_beg, sz );
+                scope (exit) { free( p ); obj.m_tls = null; }
+            }
+            else
+            {
+                auto pstart = cast(void*) &_tlsstart;
+                auto pend   = cast(void*) &_tlsend;
+                obj.m_tls = pstart[0 .. pend - pstart];
+            }
 
             // NOTE: No GC allocations may occur until the stack pointers have
             //       been set and Thread.getThis returns a valid reference to
@@ -301,14 +363,54 @@ else version( Posix )
             //       alloca) forOutOfMemoryError plus something to track
             //       whether an exception is in-flight?
 
+            void append( Throwable t )
+            {
+                if( obj.m_unhandled is null )
+                    obj.m_unhandled = t;
+                else
+                {
+                    Throwable last = obj.m_unhandled;
+                    while( last.next !is null )
+                        last = last.next;
+                    last.next = t;
+                }
+            }
+
             try
             {
-                obj.run();
+                rt_moduleTlsCtor();
+                try
+                {
+                    obj.run();
+                }
+                catch( Throwable t )
+                {
+                    append( t );
+                }
+                catch( Object o )
+                {
+                    // TODO: Remove this once the compiler prevents it.
+                }
+                rt_moduleTlsDtor();
+            }
+            catch( Throwable t )
+            {
+                append( t );
             }
             catch( Object o )
             {
-                obj.m_unhandled = o;
+                // TODO: Remove this once the compiler prevents it.
             }
+
+            static if( __traits( compiles, pthread_cleanup ) )
+            {
+                cleanup.pop( 1 );
+            }
+            else static if( __traits( compiles, pthread_cleanup_push ) )
+            {
+                pthread_cleanup_pop( 1 );
+            }
+
             return null;
         }
 
@@ -639,7 +741,7 @@ class Thread
      *  Any exception not handled by this thread if rethrow = false, null
      *  otherwise.
      */
-    final Object join( bool rethrow = true )
+    final Throwable join( bool rethrow = true )
     {
         version( Windows )
         {
@@ -683,7 +785,7 @@ class Thread
      * Returns:
      *  The name of this thread.
      */
-    final char[] name()
+    final string name()
     {
         synchronized( this )
         {
@@ -698,11 +800,11 @@ class Thread
      * Params:
      *  val = The new name of this thread.
      */
-    final void name( char[] val )
+    final void name( string val )
     {
         synchronized( this )
         {
-            m_name = val.dup;
+            m_name = val;
         }
     }
 
@@ -1044,101 +1146,6 @@ class Thread
 
 
     ///////////////////////////////////////////////////////////////////////////
-    // Local Storage Actions
-    ///////////////////////////////////////////////////////////////////////////
-
-
-    /**
-     * Indicates the number of local storage pointers available at program
-     * startup.  It is recommended that this number be at least 64.
-     */
-    static const uint LOCAL_MAX = 64;
-
-
-    /**
-     * Reserves a local storage pointer for use and initializes this location
-     * to null for all running threads.
-     *
-     * Returns:
-     *  A key representing the array offset of this memory location.
-     */
-    deprecated static uint createLocal()
-    {
-        synchronized( slock )
-        {
-            foreach( uint key, ref bool set; sm_local )
-            {
-                if( !set )
-                {
-                    for( Thread t = sm_tbeg; t; t = t.next )
-                    {
-                        t.m_local[key] = null;
-                    }
-                    set = true;
-                    return key;
-                }
-            }
-            throw new ThreadException( "No more local storage slots available" );
-        }
-    }
-
-
-    /**
-     * Marks the supplied key as available and sets the associated location
-     * to null for all running threads.  It is assumed that any key passed
-     * to this function is valid.  The result of calling this function for
-     * a key which is still in use is undefined.
-     *
-     * Params:
-     *  key = The key to delete.
-     */
-    deprecated static void deleteLocal( uint key )
-    {
-        synchronized( slock )
-        {
-            sm_local[key] = false;
-            for( Thread t = sm_tbeg; t; t = t.next )
-            {
-                t.m_local[key] = null;
-            }
-        }
-    }
-
-
-    /**
-     * Loads the value stored at key within a thread-local static array.  It is
-     * assumed that any key passed to this function is valid.
-     *
-     * Params:
-     *  key = The location which holds the desired data.
-     *
-     * Returns:
-     *  The data associated with the supplied key.
-     */
-    deprecated static void* getLocal( uint key )
-    {
-        return getThis().m_local[key];
-    }
-
-
-    /**
-     * Stores the supplied value at key within a thread-local static array.  It
-     * is assumed that any key passed to this function is valid.
-     *
-     * Params:
-     *  key = The location to store the supplied data.
-     *  val = The data to store.
-     *
-     * Returns:
-     *  A copy of the data which has just been stored.
-     */
-    deprecated static void* setLocal( uint key, void* val )
-    {
-        return getThis().m_local[key] = val;
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////
     // Static Initalizer
     ///////////////////////////////////////////////////////////////////////////
 
@@ -1182,9 +1189,24 @@ private:
         m_call = Call.NO;
         m_curr = &m_main;
 
-        void* pstart = cast(void*) &_tlsstart;
-        void* pend   = cast(void*) &_tlsend;
-        m_tls = pstart[0 .. pend - pstart];
+        version( OSX )
+        {
+            // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
+            //       data output by the compiler is bracketed by _tls_beg and
+            //       _tls_end, so make a copy of it for each thread.
+            const sz = cast(void*) &_tls_end - cast(void*) &_tls_beg;
+            auto p = malloc( sz );
+            assert( p );
+            m_tls = p[0 .. sz];
+            memcpy( p, &_tls_beg, sz );
+            // The free must happen at program end, if anywhere.
+        }
+        else
+        {
+            auto pstart = cast(void*) &_tlsstart;
+            auto pend   = cast(void*) &_tlsend;
+            m_tls = pstart[0 .. pend - pstart];
+        }
     }
 
 
@@ -1238,10 +1260,7 @@ private:
     //
     // Local storage
     //
-    __gshared bool[LOCAL_MAX]   sm_local;
-    __gshared TLSKey            sm_this;
-
-    void*[LOCAL_MAX]            m_local;
+    __gshared TLSKey    sm_this;
 
 
     //
@@ -1257,7 +1276,7 @@ private:
     }
     ThreadAddr          m_addr;
     Call                m_call;
-    char[]              m_name;
+    string              m_name;
     union
     {
         void function() m_fn;
@@ -1269,7 +1288,7 @@ private:
         bool            m_isRunning;
     }
     bool                m_isDaemon;
-    Object              m_unhandled;
+    Throwable           m_unhandled;
 
 
 private:
@@ -1603,6 +1622,13 @@ extern (C) void thread_init()
         Thread.sm_this = TlsAlloc();
         assert( Thread.sm_this != TLS_OUT_OF_INDEXES );
     }
+    else version( OSX )
+    {
+        int status;
+
+        status = pthread_key_create( &Thread.sm_this, null );
+        assert( status == 0 );
+    }
     else version( Posix )
     {
         int         status;
@@ -1617,7 +1643,7 @@ extern (C) void thread_init()
         // NOTE: SA_RESTART indicates that system calls should restart if they
         //       are interrupted by a signal, but this is not available on all
         //       Posix systems, even those that support multithreading.
-        static if( is( typeof( SA_RESTART ) ) )
+        static if( __traits( compiles, SA_RESTART ) )
             sigusr1.sa_flags = SA_RESTART;
         else
             sigusr1.sa_flags   = 0;
@@ -2172,106 +2198,6 @@ body
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Thread Local
-///////////////////////////////////////////////////////////////////////////////
-
-
-/**
- * This class encapsulates the operations required to initialize, access, and
- * destroy thread local data.
- */
-deprecated class ThreadLocal( T )
-{
-    ///////////////////////////////////////////////////////////////////////////
-    // Initialization
-    ///////////////////////////////////////////////////////////////////////////
-
-
-    /**
-     * Initializes thread local storage for the indicated value which will be
-     * initialized to def for all threads.
-     *
-     * Params:
-     *  def = The default value to return if no value has been explicitly set.
-     */
-    this( T def = T.init )
-    {
-        m_def = def;
-        m_key = Thread.createLocal();
-    }
-
-
-    ~this()
-    {
-        Thread.deleteLocal( m_key );
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Accessors
-    ///////////////////////////////////////////////////////////////////////////
-
-
-    /**
-     * Gets the value last set by the calling thread, or def if no such value
-     * has been set.
-     *
-     * Returns:
-     *  The stored value or def if no value is stored.
-     */
-    T val()
-    {
-        Wrap* wrap = cast(Wrap*) Thread.getLocal( m_key );
-
-        return wrap ? wrap.val : m_def;
-    }
-
-
-    /**
-     * Copies newval to a location specific to the calling thread, and returns
-     * newval.
-     *
-     * Params:
-     *  newval = The value to set.
-     *
-     * Returns:
-     *  The value passed to this function.
-     */
-    T val( T newval )
-    {
-        Wrap* wrap = cast(Wrap*) Thread.getLocal( m_key );
-
-        if( wrap is null )
-        {
-            wrap = new Wrap;
-            Thread.setLocal( m_key, wrap );
-        }
-        wrap.val = newval;
-        return newval;
-    }
-
-
-private:
-    //
-    // A wrapper for the stored data.  This is needed for determining whether
-    // set has ever been called for this thread (and therefore whether the
-    // default value should be returned) and also to flatten the differences
-    // between data that is smaller and larger than (void*).sizeof.  The
-    // obvious tradeoff here is an extra per-thread allocation for each
-    // ThreadLocal value as compared to calling the Thread routines directly.
-    //
-    struct Wrap
-    {
-        T   val;
-    }
-
-
-    T       m_def;
-    uint    m_key;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
 // Thread Group
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -2480,7 +2406,7 @@ private
 
 static this()
 {
-    static if( is( typeof( GetSystemInfo ) ) )
+    static if( __traits( compiles, GetSystemInfo ) )
     {
         SYSTEM_INFO info;
         GetSystemInfo( &info );
@@ -2488,8 +2414,8 @@ static this()
         PAGESIZE = info.dwPageSize;
         assert( PAGESIZE < int.max );
     }
-    else static if( is( typeof( sysconf ) ) &&
-                    is( typeof( _SC_PAGESIZE ) ) )
+    else static if( __traits( compiles, sysconf ) &&
+                    __traits( compiles, _SC_PAGESIZE ) )
     {
         PAGESIZE = cast(size_t) sysconf( _SC_PAGESIZE );
         assert( PAGESIZE < int.max );
@@ -2525,12 +2451,16 @@ private
         {
             obj.run();
         }
+        catch( Throwable t )
+        {
+            obj.m_unhandled = t;
+        }
         catch( Object o )
         {
-            obj.m_unhandled = o;
+            // TODO: Remove this once the compiler prevents it.
         }
 
-        static if( is( ucontext_t ) )
+        static if( __traits( compiles, ucontext_t ) )
           obj.m_ucur = &obj.m_utxt;
 
         obj.m_state = Fiber.State.TERM;
@@ -2617,7 +2547,7 @@ private
                 ret;
             }
         }
-        else static if( is( ucontext_t ) )
+        else static if( __traits( compiles, ucontext_t ) )
         {
             Fiber   cfib = Fiber.getThis();
             void*   ucur = cfib.m_ucur;
@@ -2802,14 +2732,14 @@ class Fiber
     {
         Fiber   cur = getThis();
 
-        static if( is( ucontext_t ) )
+        static if( __traits( compiles, ucontext_t ) )
           m_ucur = cur ? &cur.m_utxt : &Fiber.sm_utxt;
 
         setThis( this );
         this.switchIn();
         setThis( cur );
 
-        static if( is( ucontext_t ) )
+        static if( __traits( compiles, ucontext_t ) )
           m_ucur = null;
 
         // NOTE: If the fiber has terminated then the stack pointers must be
@@ -2825,11 +2755,11 @@ class Fiber
         }
         if( m_unhandled )
         {
-            Object obj  = m_unhandled;
+            Throwable t = m_unhandled;
             m_unhandled = null;
             if( rethrow )
-                throw obj;
-            return obj;
+                throw t;
+            return t;
         }
         return null;
     }
@@ -2905,7 +2835,7 @@ class Fiber
         assert( cur, "Fiber.yield() called with no active fiber" );
         assert( cur.m_state == State.EXEC );
 
-        static if( is( ucontext_t ) )
+        static if( __traits( compiles, ucontext_t ) )
           cur.m_ucur = &cur.m_utxt;
 
         cur.m_state = State.HOLD;
@@ -2919,15 +2849,15 @@ class Fiber
      * throws obj in the calling fiber.
      *
      * Params:
-     *  obj = The object to throw.
+     *  t = The object to throw.
      *
      * In:
-     *  obj must not be null.
+     *  t must not be null.
      */
-    static void yieldAndThrow( Object obj )
+    static void yieldAndThrow( Throwable t )
     in
     {
-        assert( obj );
+        assert( t );
     }
     body
     {
@@ -2935,10 +2865,10 @@ class Fiber
         assert( cur, "Fiber.yield() called with no active fiber" );
         assert( cur.m_state == State.EXEC );
 
-        static if( is( ucontext_t ) )
+        static if( __traits( compiles, ucontext_t ) )
           cur.m_ucur = &cur.m_utxt;
 
-        cur.m_unhandled = obj;
+        cur.m_unhandled = t;
         cur.m_state = State.HOLD;
         cur.switchOut();
         cur.m_state = State.EXEC;
@@ -2990,7 +2920,7 @@ class Fiber
             status = pthread_key_create( &sm_this, null );
             assert( status == 0 );
 
-          static if( is( ucontext_t ) )
+          static if( __traits( compiles, ucontext_t ) )
           {
             status = getcontext( &sm_utxt );
             assert( status == 0 );
@@ -3051,7 +2981,7 @@ private:
         void delegate() m_dg;
     }
     bool                m_isRunning;
-    Object              m_unhandled;
+    Throwable           m_unhandled;
     State               m_state;
 
 
@@ -3085,7 +3015,7 @@ private:
         //       requires too much special logic to be worthwhile.
         m_ctxt = new Thread.Context;
 
-        static if( is( typeof( VirtualAlloc ) ) )
+        static if( __traits( compiles, VirtualAlloc ) )
         {
             // reserve memory for stack
             m_pmem = VirtualAlloc( null,
@@ -3135,7 +3065,7 @@ private:
             m_size = sz;
         }
         else
-        {   static if( is( typeof( mmap ) ) )
+        {   static if( __traits( compiles, mmap ) )
             {
                 m_pmem = mmap( null,
                                sz,
@@ -3146,11 +3076,11 @@ private:
                 if( m_pmem == MAP_FAILED )
                     m_pmem = null;
             }
-            else static if( is( typeof( valloc ) ) )
+            else static if( __traits( compiles, valloc ) )
             {
                 m_pmem = valloc( sz );
             }
-            else static if( is( typeof( malloc ) ) )
+            else static if( __traits( compiles, malloc ) )
             {
                 m_pmem = malloc( sz );
             }
@@ -3198,19 +3128,19 @@ private:
         //       global context list.
         Thread.remove( m_ctxt );
 
-        static if( is( typeof( VirtualAlloc ) ) )
+        static if( __traits( compiles, VirtualAlloc ) )
         {
             VirtualFree( m_pmem, 0, MEM_RELEASE );
         }
-        else static if( is( typeof( mmap ) ) )
+        else static if( __traits( compiles, mmap ) )
         {
             munmap( m_pmem, m_size );
         }
-        else static if( is( typeof( valloc ) ) )
+        else static if( __traits( compiles, valloc ) )
         {
             free( m_pmem );
         }
-        else static if( is( typeof( malloc ) ) )
+        else static if( __traits( compiles, malloc ) )
         {
             free( m_pmem );
         }
@@ -3317,7 +3247,7 @@ private:
 
             assert( cast(uint) pstack & 0x0f == 0 );
         }
-        else static if( is( ucontext_t ) )
+        else static if( __traits( compiles, ucontext_t ) )
         {
             getcontext( &m_utxt );
             m_utxt.uc_stack.ss_sp   = m_ctxt.bstack;
@@ -3334,7 +3264,7 @@ private:
     size_t          m_size;
     void*           m_pmem;
 
-    static if( is( ucontext_t ) )
+    static if( __traits( compiles, ucontext_t ) )
     {
         // NOTE: The static ucontext instance is used to represent the context
         //       of the main application thread.
@@ -3441,16 +3371,22 @@ private:
     }
 }
 
-version (OSX)
+version( OSX )
 {
-    /* The Mach-O object file format does not allow for thread local storage
-     * declarations. So, instead we roll our own by putting tls into
-     * the sections __tlsdata and __tlscoal_nt.
-     */
-
-    extern (D)
-    void* ___tls_get_addr(void* p)
+    // NOTE: The Mach-O object file format does not allow for thread local
+    //       storage declarations. So instead we roll our own by putting tls
+    //       into the sections bracketed by _tls_beg and _tls_end.
+    //
+    //       This function is called by the code emitted by the compiler.  It
+    //       is expected to translate an address into the TLS static data to
+    //       the corresponding address in the TLS dynamic per-thread data.
+    extern (D) void* ___tls_get_addr( void* p )
     {
-        return p;
+        // NOTE: p is an address in the TLS static data emitted by the
+        //       compiler.  If it isn't, something is disastrously wrong.
+        if( p < cast(void*) &_tls_beg || p >= cast(void*) &_tls_end )
+            assert( false );
+        auto obj = Thread.getThis();
+        return obj.m_tls.ptr + (p - cast(void*) &_tls_beg);
     }
 }

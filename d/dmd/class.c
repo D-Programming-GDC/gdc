@@ -270,11 +270,12 @@ void ClassDeclaration::semantic(Scope *sc)
         scx = scope;            // save so we don't make redundant copies
         scope = NULL;
     }
+    unsigned dprogress_save = Module::dprogress;
+
     if (attributes)
         attributes->append(sc->attributes);
     else
         attributes = sc->attributes;
-        unsigned dprogress_save = Module::dprogress;
 #ifdef IN_GCC
     methods.setDim(0);
 #endif

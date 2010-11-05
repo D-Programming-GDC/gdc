@@ -62,10 +62,21 @@ IRBase::startFunction(FuncDeclaration * decl)
     g.irs = (IRState*) new_irs;
 
     ModuleInfo & mi = * g.mi();
+#if V2
+    if (decl->isStaticCtorDeclaration())
+	mi.ctors.push(decl);
+    else if (decl->isStaticDtorDeclaration())
+	mi.dtors.push(decl);
+    else if (decl->isSharedStaticCtorDeclaration())
+	mi.sharedctors.push(decl);
+    else if (decl->isSharedStaticDtorDeclaration())
+	mi.shareddtors.push(decl);
+#else
     if (decl->isStaticConstructor())
 	mi.ctors.push(decl);
     else if (decl->isStaticDestructor())
 	mi.dtors.push(decl);
+#endif
     else if (decl->isUnitTestDeclaration())
 	mi.unitTests.push(decl);
 

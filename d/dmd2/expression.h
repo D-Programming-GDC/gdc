@@ -533,6 +533,7 @@ struct NewExp : Expression
 	Type *newtype, Expressions *arguments);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
+    Expression *interpret(InterState *istate);
     Expression *optimize(int result);
     elem *toElem(IRState *irs);
     int checkSideEffect(int flag);
@@ -581,6 +582,7 @@ struct SymOffExp : SymbolExp
 
     SymOffExp(Loc loc, Declaration *var, target_size_t offset, int hasOverloads = 0);
     Expression *semantic(Scope *sc);
+    Expression *interpret(InterState *istate);
     void checkEscape();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     int isConst();
@@ -640,6 +642,7 @@ struct FuncExp : Expression
     FuncExp(Loc loc, FuncLiteralDeclaration *fd);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
+    Expression *interpret(InterState *istate);
     void scanForNestedRef(Scope *sc);
     char *toChars();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -880,6 +883,7 @@ struct DelegateExp : UnaExp
 
     DelegateExp(Loc loc, Expression *e, FuncDeclaration *func, int hasOverloads = 0);
     Expression *semantic(Scope *sc);
+    Expression *interpret(InterState *istate);
     MATCH implicitConvTo(Type *t);
     Expression *castTo(Scope *sc, Type *t);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);

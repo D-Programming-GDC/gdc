@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -621,6 +621,7 @@ Expression *callCpCtor(Loc loc, Scope *sc, Expression *e)
 	 */
 	Identifier *idtmp = Lexer::uniqueId("__tmp");
 	VarDeclaration *tmp = new VarDeclaration(loc, tb, idtmp, new ExpInitializer(0, e));
+	tmp->storage_class |= STCctfe;
 	Expression *ae = new DeclarationExp(loc, tmp);
 	e = new CommaExp(loc, ae, new VarExp(loc, tmp));
 	e = e->semantic(sc);
@@ -1482,7 +1483,8 @@ Expressions *Expression::arraySyntaxCopy(Expressions *exps)
 	for (int i = 0; i < a->dim; i++)
 	{   Expression *e = (Expression *)exps->data[i];
 
-	    e = e->syntaxCopy();
+	    if (e)
+		e = e->syntaxCopy();
 	    a->data[i] = e;
 	}
     }
@@ -2265,6 +2267,13 @@ Expression *IdentifierExp::semantic(Scope *sc)
 	}
 	return e->semantic(sc);
     }
+    if (ident == Id::ctfe)
+    {  // Create the magic __ctfe bool variable
+       VarDeclaration *vd = new VarDeclaration(loc, Type::tbool, Id::ctfe, NULL);
+       Expression *e = new VarExp(loc, vd);
+       e = e->semantic(sc);
+       return e;
+    }
     error("undefined identifier %s", ident->toChars());
     type = Type::terror;
     return this;
@@ -2393,7 +2402,11 @@ Lagain:
 	if ((v->storage_class & STCmanifest) && v->init)
 	{
 	    e = v->init->toExpression();
-	    e->semantic(sc);
+            if (!e)
+            {   error("cannot make expression out of initializer for %s", v->toChars());
+	        e = new ErrorExp();
+	    }
+	    e = e->semantic(sc);
 	    return e;
 	}
 
@@ -6694,6 +6707,7 @@ Lagain:
 		// Create variable that will get constructed
 		Identifier *idtmp = Lexer::uniqueId("__ctmp");
 		VarDeclaration *tmp = new VarDeclaration(loc, t1, idtmp, NULL);
+		tmp->storage_class |= STCctfe;		
 		Expression *av = new DeclarationExp(loc, tmp);
 		av = new CommaExp(loc, av, new VarExp(loc, tmp));
 
@@ -10022,23 +10036,28 @@ Expression *PowExp::semantic(Scope *sc)
 
 	return this;
 #else
+	// Determine if we're raising to an integer power.
+	sinteger_t intpow = 0;
+	if (e2->op == TOKint64 && ((sinteger_t)e2->toInteger() == 2 || (sinteger_t)e2->toInteger() == 3))
+	    intpow = e2->toInteger();
+	else if (e2->op == TOKfloat64 && (e2->toReal() == (sinteger_t)(e2->toReal())))
+	    intpow = (sinteger_t)(e2->toReal());
+
 	// Deal with x^^2, x^^3 immediately, since they are of practical importance.
-	// Don't bother if x is a literal, since it will be constant-folded anyway.
-	if ( (  (e2->op == TOKint64 && (e2->toInteger() == 2 || e2->toInteger() == 3))
-	     || (e2->op == TOKfloat64 && (e2->toReal() == 2.0 || e2->toReal() == 3.0))
-	     ) && (e1->op == TOKint64 || e1->op == TOKfloat64)
-	   )
+	if (intpow == 2 || intpow == 3)
 	{
 	    typeCombine(sc);
 	    // Replace x^^2 with (tmp = x, tmp*tmp)
 	    // Replace x^^3 with (tmp = x, tmp*tmp*tmp) 
 	    Identifier *idtmp = Lexer::uniqueId("__tmp");
 	    VarDeclaration *tmp = new VarDeclaration(loc, e1->type->toBasetype(), idtmp, new ExpInitializer(0, e1));
-	    VarExp * ve = new VarExp(loc, tmp);
+	    tmp->storage_class = STCctfe;
+	    Expression *ve = new VarExp(loc, tmp);
 	    Expression *ae = new DeclarationExp(loc, tmp);
+	    /* Note that we're reusing ve. This should be ok.
+	     */
 	    Expression *me = new MulExp(loc, ve, ve);
-	    if ( (e2->op == TOKint64 && e2->toInteger() == 3) 
-	      || (e2->op == TOKfloat64 && e2->toReal() == 3.0))
+	    if (intpow == 3)
 		me = new MulExp(loc, me, ve);
 	    e = new CommaExp(loc, ae, me);
 	    e = e->semantic(sc);
@@ -10077,6 +10096,9 @@ Expression *PowExp::semantic(Scope *sc)
 	    // integer powers are treated specially by std.math.pow).
 	    if (!e2->type->isintegral())
 		typeCombine(sc);
+	    // In fact, if it *could* have been an integer, make it one.
+	    if (e2->op == TOKfloat64 && intpow != 0)
+		e2 = new IntegerExp(loc, intpow, Type::tint64);
 	    e = new CallExp(loc, new DotIdExp(loc, e, Id::_pow), e1, e2);
 	}
 	e = e->semantic(sc);

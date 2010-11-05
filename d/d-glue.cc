@@ -1828,6 +1828,10 @@ SymbolExp::toElem(IRState * irs)
 	    return irs->errorMark(type);
 	}
 
+	// __ctfe is always false at runtime
+	if (var->ident == Id::ctfe)
+	    return integer_zero_node;
+
 	// For variables that are references (currently only out/inout arguments;
 	// objects don't count), evaluating the variable means we want what it refers to.
 
@@ -3122,17 +3126,21 @@ Module::genobjfile(int multiobj)
 	}
     }
 
-    if (needModuleInfo()) {
-	{
-	    ModuleInfo & mi = * g.mi();
-
-	    if (mi.ctors.dim)
-		sctor = g.ofile->doFunctionToCallFunctions("*__modctor", & mi.ctors)->toSymbol();
-	    if (mi.dtors.dim)
-		sdtor = g.ofile->doFunctionToCallFunctions("*__moddtor", & mi.dtors)->toSymbol();
-	    if (mi.unitTests.dim)
-		stest = g.ofile->doFunctionToCallFunctions("*__modtest", & mi.unitTests)->toSymbol();
-	}
+    if (needModuleInfo())
+    {
+	ModuleInfo & mi = * g.mi();
+	if (mi.ctors.dim)
+	    sctor = g.ofile->doFunctionToCallFunctions("*__modctor", & mi.ctors)->toSymbol();
+	if (mi.dtors.dim)
+	    sdtor = g.ofile->doFunctionToCallFunctions("*__moddtor", & mi.dtors)->toSymbol();
+#if V2
+	if (mi.sharedctors.dim)
+	    ssharedctor = g.ofile->doFunctionToCallFunctions("*__modsharedctor", & mi.sharedctors)->toSymbol();
+	if (mi.shareddtors.dim)
+	    sshareddtor = g.ofile->doFunctionToCallFunctions("*__modshareddtor", & mi.shareddtors)->toSymbol();
+#endif
+	if (mi.unitTests.dim)
+	    stest = g.ofile->doFunctionToCallFunctions("*__modtest", & mi.unitTests)->toSymbol();
 
 	genmoduleinfo();
     }

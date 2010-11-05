@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -64,6 +64,7 @@ Global::Global()
     doc_ext  = "html";
     ddoc_ext = "ddoc";
     json_ext = "json";
+    map_ext  = "map";
 
 #ifndef IN_GCC
 #if TARGET_WINDOS
@@ -97,7 +98,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates."
 #endif
     ;
-    version = "v2.039";
+    version = "v2.040";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -259,6 +260,7 @@ Usage:\n\
   -Llinkerflag   pass linkerflag to link\n\
   -lib           generate library rather than object files\n\
   -man           open web browser on manual page\n\
+  -map           generate linker .map file\n\
   -noboundscheck turns off array bounds checking for all functions\n\
   -nofloat       do not emit reference to floating point\n\
   -O             optimize\n\
@@ -410,6 +412,8 @@ int main(int argc, char *argv[])
 	    else if (strcmp(p + 1, "fPIC") == 0)
 		global.params.pic = 1;
 #endif
+	    else if (strcmp(p + 1, "map") == 0)
+		global.params.map = 1;
 	    else if (strcmp(p + 1, "multiobj") == 0)
 		global.params.multiobj = 1;
 	    else if (strcmp(p + 1, "g") == 0)
@@ -933,6 +937,12 @@ int main(int argc, char *argv[])
 		continue;
 	    }
 
+	    if (FileName::equals(ext, global.map_ext))
+	    {
+		global.params.mapfile = (char *)files.data[i];
+		continue;
+	    }
+
 #if TARGET_WINDOS
 	    if (FileName::equals(ext, "res"))
 	    {
@@ -1121,6 +1131,9 @@ int main(int argc, char *argv[])
     }
     if (global.errors)
 	fatal();
+
+    Module::dprogress = 1;
+    Module::runDeferredSemantic();
 
     // Do pass 2 semantic analysis
     for (i = 0; i < modules.dim; i++)

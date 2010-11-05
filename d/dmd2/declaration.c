@@ -58,16 +58,6 @@ target_size_t Declaration::size(Loc loc)
     return type->size();
 }
 
-int Declaration::isStaticConstructor()
-{
-    return FALSE;
-}
-
-int Declaration::isStaticDestructor()
-{
-    return FALSE;
-}
-
 int Declaration::isDelete()
 {
     return FALSE;
@@ -483,11 +473,11 @@ void AliasDeclaration::semantic(Scope *sc)
 
 #if DMDV2
     type = type->addStorageClass(storage_class);
-    if (storage_class & (STCref | STCnothrow | STCpure))
+    if (storage_class & (STCref | STCnothrow | STCpure | STCdisable))
     {	// For 'ref' to be attached to function types, and picked
 	// up by Type::resolve(), it has to go into sc.
 	sc = sc->push();
-	sc->stc |= storage_class & (STCref | STCnothrow | STCpure | STCshared);
+	sc->stc |= storage_class & (STCref | STCnothrow | STCpure | STCshared | STCdisable);
 	type->resolve(loc, sc, &e, &t, &s);
 	sc = sc->pop();
     }
@@ -1037,7 +1027,7 @@ Lagain:
     if (init)
     {
 	sc = sc->push();
-	sc->stc &= ~(STC_TYPECTOR | STCpure | STCnothrow | STCref);
+	sc->stc &= ~(STC_TYPECTOR | STCpure | STCnothrow | STCref | STCdisable);
 
 	ArrayInitializer *ai = init->isArrayInitializer();
 	if (ai && tb->ty == Taarray)
@@ -1218,6 +1208,50 @@ Lagain:
 		{
 		    e = ei->exp->syntaxCopy();
 		    e = e->semantic(sc);
+		    e = resolveProperties(sc, e);
+#if DMDV2
+		    /* The problem is the following code:
+		     *	struct CopyTest {
+		     *	   double x;
+		     *	   this(double a) { x = a * 10.0;}
+		     *	   this(this) { x += 2.0; }
+		     *	}
+		     *	const CopyTest z = CopyTest(5.3);  // ok
+		     *	const CopyTest w = z;              // not ok, postblit not run
+		     *	static assert(w.x == 55.0);
+		     * because the postblit doesn't get run on the initialization of w.
+		     */
+
+		    Type *tb = e->type->toBasetype();
+		    if (tb->ty == Tstruct)
+		    {	StructDeclaration *sd = ((TypeStruct *)tb)->sym;
+			Type *typeb = type->toBasetype();
+			/* Look to see if initializer involves a copy constructor
+			 * (which implies a postblit)
+			 */
+			if (sd->cpctor &&		// there is a copy constructor
+			    typeb->equals(tb))		// rvalue is the same struct
+			{
+			    // The only allowable initializer is a (non-copy) constructor
+			    if (e->op == TOKcall)
+			    {
+				CallExp *ce = (CallExp *)e;
+				if (ce->e1->op == TOKdotvar)
+				{
+				    DotVarExp *dve = (DotVarExp *)ce->e1;
+				    if (dve->var->isCtorDeclaration())
+				        goto LNoCopyConstruction;
+				}
+			    }
+			    global.gag--;
+			    error("of type struct %s uses this(this), which is not allowed in static initialization", typeb->toChars());
+			    global.gag++;
+
+			  LNoCopyConstruction:
+			    ;
+			}
+		    }
+#endif
 		    e = e->implicitCastTo(sc, type);
 		}
 		else if (si || ai)
@@ -1489,7 +1523,7 @@ int VarDeclaration::isDataseg()
 int VarDeclaration::isThreadlocal()
 {
     //printf("VarDeclaration::isThreadlocal(%p, '%s')\n", this, toChars());
-#if 0 || TARGET_OSX
+#if 0 //|| TARGET_OSX
     /* To be thread-local, must use the __thread storage class.
      * BUG: OSX doesn't support thread local yet.
      */

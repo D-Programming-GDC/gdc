@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -64,10 +64,14 @@ void Module::genmoduleinfo()
     Symbol *msym = toSymbol();
     unsigned offset;
 #if DMDV2
-    unsigned sizeof_ModuleInfo = 18 * PTRSIZE;
+    unsigned sizeof_ModuleInfo = 16 * PTRSIZE;
 #else
     unsigned sizeof_ModuleInfo = 14 * PTRSIZE;
 #endif
+#if !MODULEINFO_IS_STRUCT
+    sizeof_ModuleInfo -= 2 * PTRSIZE;
+#endif
+    //printf("moduleinfo size = x%x\n", sizeof_ModuleInfo);
 
     //////////////////////////////////////////////
 
@@ -87,11 +91,15 @@ void Module::genmoduleinfo()
 	    void *unitTest;
 	    const(MemberInfo[]) function(string) xgetMembers;	// module getMembers() function
 	    void *ictor;
-	    void*[4] reserved;
+	    void *sharedctor;
+	    void *shareddtor;
+	    uint index;
+	    void*[1] reserved;
        }
      */
     dt_t *dt = NULL;
 
+#if !MODULEINFO_IS_STRUCT
     if (moduleinfo)
 	dtxoff(&dt, moduleinfo->toVtblSymbol(), 0, TYnptr); // vtbl for ModuleInfo
     else
@@ -99,6 +107,7 @@ void Module::genmoduleinfo()
 	dtdword(&dt, 0);		// BUG: should be an assert()
     }
     dtdword(&dt, 0);			// monitor
+#endif
 
     // name[]
     const char *name = toPrettyChars();
@@ -141,13 +150,13 @@ void Module::genmoduleinfo()
     else
 	dti32(&dt, 8|4, true);		// flags (4 means MIstandalone)
 
-    if (sctor)
-	dtxoff(&dt, sctor, 0, TYnptr);
+    if (ssharedctor)
+	dtxoff(&dt, ssharedctor, 0, TYnptr);
     else
 	dtdword(&dt, 0);
 
-    if (sdtor)
-	dtxoff(&dt, sdtor, 0, TYnptr);
+    if (sshareddtor)
+	dtxoff(&dt, sshareddtor, 0, TYnptr);
     else
 	dtdword(&dt, 0);
 
@@ -170,10 +179,19 @@ void Module::genmoduleinfo()
 	dtdword(&dt, 0);
 
 #if DMDV2
-    // void*[4] reserved;
-    dtdword(&dt, 0);
-    dtdword(&dt, 0);
-    dtdword(&dt, 0);
+    if (sctor)
+	dtxoff(&dt, sctor, 0, TYnptr);
+    else
+	dtdword(&dt, 0);
+
+    if (sdtor)
+	dtxoff(&dt, sdtor, 0, TYnptr);
+    else
+	dtdword(&dt, 0);
+
+    dtdword(&dt, 0);				// index
+
+    // void*[1] reserved;
     dtdword(&dt, 0);
 #endif
     //////////////////////////////////////////////

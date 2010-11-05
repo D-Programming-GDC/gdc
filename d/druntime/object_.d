@@ -5,7 +5,7 @@
  * Macros:
  *      WIKI = Object
  *
- * Copyright: Copyright Digital Mars 2000 - 2009.
+ * Copyright: Copyright Digital Mars 2000 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
  *
@@ -16,6 +16,8 @@
  */
 
 module object;
+
+//debug=PRINTF;
 
 private
 {
@@ -1180,24 +1182,29 @@ enum
 }
 
 
-class ModuleInfo
+struct ModuleInfo
 {
     string          name;
-    ModuleInfo[]    importedModules;
+    ModuleInfo*[]    importedModules;
     TypeInfo_Class[]     localClasses;
     uint            flags;
 
-    void function() ctor;       // module static constructor (order dependent)
-    void function() dtor;       // module static destructor
+    void function() ctor;       // module shared static constructor (order dependent)
+    void function() dtor;       // module shared static destructor
     void function() unitTest;   // module unit tests
 
     void* xgetMembers;          // module getMembers() function
 
-    void function() ictor;      // module static constructor (order independent)
+    void function() ictor;      // module shared static constructor (order independent)
 
-    void*[4] reserved;          // for future expansion
+    void function() tlsctor;	// module thread local static constructor (order dependent)
+    void function() tlsdtor;	// module thread local static destructor
 
-    static int opApply(int delegate(ref ModuleInfo) dg)
+    uint index;			// index into _moduleinfo_array[]
+
+    void*[1] reserved;          // for future expansion
+
+    static int opApply(int delegate(ref ModuleInfo*) dg)
     {
         int ret = 0;
 
@@ -1214,7 +1221,7 @@ class ModuleInfo
 
 // Windows: this gets initialized by minit.asm
 // Posix: this gets initialized in _moduleCtor()
-extern (C) __gshared ModuleInfo[] _moduleinfo_array;
+extern (C) __gshared ModuleInfo*[] _moduleinfo_array;
 
 
 version (linux)
@@ -1224,7 +1231,7 @@ version (linux)
     struct ModuleReference
     {
         ModuleReference* next;
-        ModuleInfo       mod;
+        ModuleInfo*      mod;
     }
 
     extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
@@ -1237,7 +1244,7 @@ version (FreeBSD)
     struct ModuleReference
     {
         ModuleReference* next;
-        ModuleInfo       mod;
+        ModuleInfo*      mod;
     }
 
     extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
@@ -1250,7 +1257,7 @@ version (Solaris)
     struct ModuleReference
     {
         ModuleReference* next;
-        ModuleInfo       mod;
+        ModuleInfo*      mod;
     }
 
     extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
@@ -1265,8 +1272,11 @@ version (OSX)
     }
 }
 
-__gshared ModuleInfo[] _moduleinfo_dtors;
-__gshared uint         _moduleinfo_dtors_i;
+__gshared ModuleInfo*[] _moduleinfo_dtors;
+__gshared uint          _moduleinfo_dtors_i;
+
+ModuleInfo*[] _moduleinfo_tlsdtors;
+uint          _moduleinfo_tlsdtors_i;
 
 // Register termination function pointers
 extern (C) int _fatexit(void*);
@@ -1285,7 +1295,7 @@ extern (C) void _moduleCtor()
 
         for (mr = _Dmodule_ref; mr; mr = mr.next)
             len++;
-        _moduleinfo_array = new ModuleInfo[len];
+        _moduleinfo_array = new ModuleInfo*[len];
         len = 0;
         for (mr = _Dmodule_ref; mr; mr = mr.next)
         {   _moduleinfo_array[len] = mr.mod;
@@ -1300,7 +1310,7 @@ extern (C) void _moduleCtor()
 
         for (mr = _Dmodule_ref; mr; mr = mr.next)
             len++;
-        _moduleinfo_array = new ModuleInfo[len];
+        _moduleinfo_array = new ModuleInfo*[len];
         len = 0;
         for (mr = _Dmodule_ref; mr; mr = mr.next)
         {   _moduleinfo_array[len] = mr.mod;
@@ -1315,7 +1325,7 @@ extern (C) void _moduleCtor()
 
         for (mr = _Dmodule_ref; mr; mr = mr.next)
             len++;
-        _moduleinfo_array = new ModuleInfo[len];
+        _moduleinfo_array = new ModuleInfo*[len];
         len = 0;
         for (mr = _Dmodule_ref; mr; mr = mr.next)
         {   _moduleinfo_array[len] = mr.mod;
@@ -1331,8 +1341,8 @@ extern (C) void _moduleCtor()
          * are of zero size and are in the two bracketing segments,
          * respectively.
          */
-         size_t length = cast(ModuleInfo*)&_minfo_end - cast(ModuleInfo*)&_minfo_beg;
-         _moduleinfo_array = (cast(ModuleInfo*)&_minfo_beg)[0 .. length];
+         size_t length = cast(ModuleInfo**)&_minfo_end - cast(ModuleInfo**)&_minfo_beg;
+         _moduleinfo_array = (cast(ModuleInfo**)&_minfo_beg)[0 .. length];
          debug printf("moduleinfo: ptr = %p, length = %d\n", _moduleinfo_array.ptr, _moduleinfo_array.length);
 
          debug foreach (m; _moduleinfo_array)
@@ -1348,10 +1358,11 @@ extern (C) void _moduleCtor()
         //_fatexit(&_STD_moduleDtor);
     }
 
-    _moduleinfo_dtors = new ModuleInfo[_moduleinfo_array.length];
+    _moduleinfo_dtors = new ModuleInfo*[_moduleinfo_array.length];
     debug(PRINTF) printf("_moduleinfo_dtors = x%x\n", cast(void*)_moduleinfo_dtors);
     _moduleIndependentCtors();
     _moduleCtor2(_moduleinfo_array, 0);
+    _moduleTlsCtor();
 }
 
 extern (C) void _moduleIndependentCtors()
@@ -1366,14 +1377,17 @@ extern (C) void _moduleIndependentCtors()
     }
 }
 
-void _moduleCtor2(ModuleInfo[] mi, int skip)
+/********************************************
+ * Run static constructors for shared global data.
+ */
+void _moduleCtor2(ModuleInfo*[] mi, int skip)
 {
     debug(PRINTF) printf("_moduleCtor2(): %d modules\n", mi.length);
     for (uint i = 0; i < mi.length; i++)
     {
-        ModuleInfo m = mi[i];
+        ModuleInfo* m = mi[i];
 
-        debug(PRINTF) printf("\tmodule[%d] = '%p'\n", i, m);
+        debug(PRINTF) printf("\tmodule[%d] = %p\n", i, m);
         if (!m)
             continue;
         debug(PRINTF) printf("\tmodule[%d] = '%.*s'\n", i, m.name);
@@ -1386,7 +1400,7 @@ void _moduleCtor2(ModuleInfo[] mi, int skip)
             if (m.flags & MIctorstart)
             {   if (skip || m.flags & MIstandalone)
                     continue;
-                    throw new Exception("Cyclic dependency in module " ~ m.name);
+		throw new Exception("Cyclic dependency in module " ~ m.name);
             }
 
             m.flags |= MIctorstart;
@@ -1409,6 +1423,71 @@ void _moduleCtor2(ModuleInfo[] mi, int skip)
     }
 }
 
+/********************************************
+ * Run static constructors for thread local global data.
+ */
+
+extern (C) void _moduleTlsCtor()
+{
+    debug(PRINTF) printf("_moduleTlsCtor()\n");
+
+    void* p = alloca(_moduleinfo_array.length * ubyte.sizeof);
+    auto flags = cast(ubyte[])p[0 .. _moduleinfo_array.length];
+    flags[] = 0;
+
+    foreach (i, m; _moduleinfo_array)
+    {
+	if (m)
+	    m.index = i;
+    }
+
+    _moduleinfo_tlsdtors = new ModuleInfo*[_moduleinfo_array.length];
+
+    void _moduleTlsCtor2(ModuleInfo*[] mi, int skip)
+    {
+	debug(PRINTF) printf("_moduleTlsCtor2(skip = %d): %d modules\n", skip, mi.length);
+	foreach (i, m; mi)
+	{
+	    debug(PRINTF) printf("\tmodule[%d] = '%p'\n", i, m);
+	    if (!m)
+		continue;
+	    debug(PRINTF) printf("\tmodule[%d] = '%.*s'\n", i, m.name);
+	    if (flags[m.index] & MIctordone)
+		continue;
+	    debug(PRINTF) printf("\tmodule[%d] = '%.*s', m = x%x\n", i, m.name, m);
+
+	    if (m.tlsctor || m.tlsdtor)
+	    {
+		if (flags[m.index] & MIctorstart)
+		{   if (skip || m.flags & MIstandalone)
+			continue;
+		    throw new Exception("Cyclic dependency in module " ~ m.name);
+		}
+
+		flags[m.index] |= MIctorstart;
+		_moduleTlsCtor2(m.importedModules, 0);
+		if (m.tlsctor)
+		    (*m.tlsctor)();
+		flags[m.index] &= ~MIctorstart;
+		flags[m.index] |= MIctordone;
+
+		// Now that construction is done, register the destructor
+		//printf("**** adding module tlsdtor %p, [%d]\n", m, _moduleinfo_tlsdtors_i);
+		assert(_moduleinfo_tlsdtors_i < _moduleinfo_tlsdtors.length);
+		_moduleinfo_tlsdtors[_moduleinfo_tlsdtors_i++] = m;
+	    }
+	    else
+	    {
+		flags[m.index] |= MIctordone;
+		_moduleTlsCtor2(m.importedModules, 1);
+	    }
+	}
+    }
+
+    _moduleTlsCtor2(_moduleinfo_array, 0);
+}
+
+
 /**
  * Destruct the modules.
  */
@@ -1420,9 +1499,10 @@ extern (C) void _moduleDtor()
 {
     debug(PRINTF) printf("_moduleDtor(): %d modules\n", _moduleinfo_dtors_i);
 
+    _moduleTlsDtor();
     for (uint i = _moduleinfo_dtors_i; i-- != 0;)
     {
-        ModuleInfo m = _moduleinfo_dtors[i];
+        ModuleInfo* m = _moduleinfo_dtors[i];
 
         debug(PRINTF) printf("\tmodule[%d] = '%.*s', x%x\n", i, m.name, m);
         if (m.dtor)
@@ -1433,27 +1513,40 @@ extern (C) void _moduleDtor()
     debug(PRINTF) printf("_moduleDtor() done\n");
 }
 
-/**********************************
- * Run unit tests.
- */
-
-extern (C) void _moduleUnitTests()
+extern (C) void _moduleTlsDtor()
 {
-    debug (PRINTF) printf("_moduleUnitTests()\n");
-    for (uint i = 0; i < _moduleinfo_array.length; i++)
+    debug(PRINTF) printf("_moduleTlsDtor(): %d modules\n", _moduleinfo_tlsdtors_i);
+    version(none)
     {
-        ModuleInfo m = _moduleinfo_array[i];
+        printf("_moduleinfo_tlsdtors = %d,%p\n", _moduleinfo_tlsdtors);
+        foreach (i,m; _moduleinfo_tlsdtors[0..11])
+            printf("[%d] = %p\n", i, m);
+    }
 
-        if (!m)
-            continue;
+    for (uint i = _moduleinfo_tlsdtors_i; i-- != 0;)
+    {
+        ModuleInfo* m = _moduleinfo_tlsdtors[i];
 
-        debug (PRINTF) printf("\tmodule[%d] = '%.*s'\n", i,
-            cast(int) m.name.length, m.name.ptr);
-        if (m.unitTest)
+        debug(PRINTF) printf("\tmodule[%d] = '%.*s', x%x\n", i, m.name, m);
+        if (m.tlsdtor)
         {
-            (*m.unitTest)();
+            (*m.tlsdtor)();
         }
     }
+    debug(PRINTF) printf("_moduleTlsDtor() done\n");
+}
+
+// Alias the TLS ctor and dtor using "rt_" prefixes, since these routines
+// must be called by core.thread.
+
+extern (C) void rt_moduleTlsCtor()
+{
+    _moduleTlsCtor();
+}
+
+extern (C) void rt_moduleTlsDtor()
+{
+    _moduleTlsDtor();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1643,7 +1736,8 @@ struct AssociativeArray(Key, Value)
 
     Value[Key] rehash() @property
     {
-        return cast(Value[Key]) _aaRehash(&p, typeid(Value[Key]));
+        auto p = _aaRehash(&p, typeid(Value[Key]));
+        return *cast(Value[Key]*)(&p);
     }
 
     Value[] values() @property
