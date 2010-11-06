@@ -226,50 +226,24 @@ class MemberInfo_function : MemberInfo
 
 struct ModuleInfo
 {
-    struct New
-    {
-        uint flags;
-        uint index;
-    }
+/+
+    string          name;
+    ModuleInfo*[]   importedModules;
+    ClassInfo[]     localClasses;
+    uint            flags;
 
-    struct Old
-    {
-        string name;
-        ModuleInfo*[] importedModules;
-        TypeInfo_Class[] localClasses;
-        uint flags;
-        void function() ctor;
-        void function() dtor;
-        void function() unitTest;
-        void* xgetMembers;
-        void function() ictor;
-        void function() tlsctor;
-        void function() tlsdtor;
-        uint index;
-        void*[1] reserved;
-    }
+    void function() ctor;
+    void function() dtor;
+    void function() unitTest;
 
-    union
-    {
-        New n;
-        Old o;
-    }
-
-    @property bool isNew();
-    @property uint index();
-    @property void index(uint i);
-    @property uint flags();
-    @property void flags(uint f);
-    @property void function() tlsctor();
-    @property void function() tlsdtor();
-    @property void* xgetMembers();
-    @property void function() ctor();
-    @property void function() dtor();
-    @property void function() ictor();
-    @property void function() unitTest();
-    @property ModuleInfo*[] importedModules();
-    @property TypeInfo_Class[] localClasses();
+    void*           xgetMembers;
+    void function() ictor;
+    void function() tlsctor;
+    void function() tlsdtor;
+    void*[2] reserved;
++/
     @property string name();
+    @property void function() unitTest();
 
     static int opApply(int delegate(ref ModuleInfo*));
 }
@@ -431,7 +405,7 @@ void clear(T)(ref T obj) if (is(T == struct))
     buf[] = init[];
 }
 
-void clear(T : U[n], U, size_t n)(/*ref*/ T obj)
+void clear(T : U[n], U, size_t n)(ref T obj)
 {
     obj = T.init;
 }

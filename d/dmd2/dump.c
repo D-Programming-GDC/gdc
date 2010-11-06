@@ -29,7 +29,7 @@ static void indent(int indent)
     int i;
 
     for (i = 0; i < indent; i++)
-	printf(" ");
+        printf(" ");
 }
 
 static char *type_print(Type *type)
@@ -40,12 +40,12 @@ static char *type_print(Type *type)
 void dumpExpressions(int i, Expressions *exps)
 {
     for (size_t j = 0; j < exps->dim; j++)
-    {	Expression *e = (Expression *)exps->data[j];
-	indent(i);
-	printf("(\n");
-	e->dump(i + 2);
-	indent(i);
-	printf(")\n");
+    {   Expression *e = (Expression *)exps->data[j];
+        indent(i);
+        printf("(\n");
+        e->dump(i + 2);
+        indent(i);
+        printf(")\n");
     }
 }
 
@@ -84,7 +84,7 @@ void UnaExp::dump(int i)
     indent(i);
     printf("%p %s type=%s e1=%p\n", this, Token::toChars(op), type_print(type), e1);
     if (e1)
-	e1->dump(i + 2);
+        e1->dump(i + 2);
 }
 
 void CallExp::dump(int i)
@@ -98,11 +98,11 @@ void SliceExp::dump(int i)
     indent(i);
     printf("%p %s type=%s e1=%p\n", this, Token::toChars(op), type_print(type), e1);
     if (e1)
-	e1->dump(i + 2);
+        e1->dump(i + 2);
     if (lwr)
-	lwr->dump(i + 2);
+        lwr->dump(i + 2);
     if (upr)
-	upr->dump(i + 2);
+        upr->dump(i + 2);
 }
 
 void DotIdExp::dump(int i)
@@ -110,7 +110,7 @@ void DotIdExp::dump(int i)
     indent(i);
     printf("%p %s type=%s ident=%s e1=%p\n", this, Token::toChars(op), type_print(type), ident->toChars(), e1);
     if (e1)
-	e1->dump(i + 2);
+        e1->dump(i + 2);
 }
 
 void DotVarExp::dump(int i)
@@ -118,7 +118,7 @@ void DotVarExp::dump(int i)
     indent(i);
     printf("%p %s type=%s var='%s' e1=%p\n", this, Token::toChars(op), type_print(type), var->toChars(), e1);
     if (e1)
-	e1->dump(i + 2);
+        e1->dump(i + 2);
 }
 
 void DotTemplateInstanceExp::dump(int i)
@@ -126,7 +126,7 @@ void DotTemplateInstanceExp::dump(int i)
     indent(i);
     printf("%p %s type=%s ti='%s' e1=%p\n", this, Token::toChars(op), type_print(type), ti->toChars(), e1);
     if (e1)
-	e1->dump(i + 2);
+        e1->dump(i + 2);
 }
 
 void DelegateExp::dump(int i)
@@ -134,7 +134,7 @@ void DelegateExp::dump(int i)
     indent(i);
     printf("%p %s func=%s type=%s e1=%p\n", this, Token::toChars(op), func->toChars(), type_print(type), e1);
     if (e1)
-	e1->dump(i + 2);
+        e1->dump(i + 2);
 }
 
 void BinExp::dump(int i)
@@ -142,9 +142,9 @@ void BinExp::dump(int i)
     indent(i);
     printf("%p %s type=%s e1=%p e2=%p\n", this, Token::toChars(op), type_print(type), e1, e2);
     if (e1)
-	e1->dump(i + 2);
+        e1->dump(i + 2);
     if (e2)
-	e2->dump(i + 2);
+        e2->dump(i + 2);
 }
 
 

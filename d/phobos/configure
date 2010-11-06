@@ -5755,7 +5755,7 @@ fi
 
 
 if test -z "$DFLAGS"; then
-    DFLAGS="-g -frelease -O2"
+    DFLAGS="-Wall -g -frelease -O2"
 fi
 
 

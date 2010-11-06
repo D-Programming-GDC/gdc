@@ -900,7 +900,7 @@ pure nothrow real exp(real x)
 {
     version(Naked_D_InlineAsm_X86)
     {
-        //  e^x = 2^(LOG2E*x)
+        //  e^^x = 2^^(LOG2E*x)
         // (This is valid because the overflow & underflow limits for exp
         // and exp2 are so similar).
         return exp2(LOG2E*x);
@@ -937,9 +937,9 @@ pure nothrow real expm1(real x)
             /*  expm1() for x87 80-bit reals, IEEE754-2008 conformant.
              * Author: Don Clugston.
              * 
-             *    expm1(x) = 2^(rndint(y))* 2^(y-rndint(y)) - 1 where y = LN2*x.
-             *    = 2rndy * 2ym1 + 2rndy - 1, where 2rndy = 2^(rndint(y))
-             *     and 2ym1 = (2^(y-rndint(y))-1).
+             *    expm1(x) = 2^^(rndint(y))* 2^^(y-rndint(y)) - 1 where y = LN2*x.
+             *    = 2rndy * 2ym1 + 2rndy - 1, where 2rndy = 2^^(rndint(y))
+             *     and 2ym1 = (2^^(y-rndint(y))-1).
              *    If 2rndy  < 0.5*real.epsilon, result is -1.
              *    Implementation is otherwise the same as for exp2()
              */
@@ -966,8 +966,8 @@ pure nothrow real expm1(real x)
             cmp EAX,0x8000;
             jge short L_largepositive;
             mov [ESP+8+8],AX;        
-            f2xm1; // 2ym1 = 2^(y-rndint(y)) -1
-            fld real ptr [ESP+8] ; // 2rndy = 2^rndint(y)
+            f2xm1; // 2ym1 = 2^^(y-rndint(y)) -1
+            fld real ptr [ESP+8] ; // 2rndy = 2^^rndint(y)
             fmul ST(1), ST;  // ST=2rndy, ST(1)=2rndy*2ym1
             fld1;
             fsubp ST(1), ST; // ST = 2rndy-1, ST(1) = 2rndy * 2ym1 - 1
@@ -1025,7 +1025,7 @@ pure nothrow real exp2(real x)
             /*  exp2() for x87 80-bit reals, IEEE754-2008 conformant.
              * Author: Don Clugston.
              * 
-             * exp2(x) = 2^(rndint(x))* 2^(y-rndint(x))
+             * exp2(x) = 2^^(rndint(x))* 2^^(y-rndint(x))
              * The trick for high performance is to avoid the fscale(28cycles on core2),
              * frndint(19 cycles), leaving f2xm1(19 cycles) as the only slow instruction.
              * 
@@ -1061,8 +1061,8 @@ pure nothrow real exp2(real x)
 L_normal:
             f2xm1;
             fld1;
-            faddp ST(1), ST; // 2^(x-rndint(x))
-            fld real ptr [ESP+8] ; // 2^rndint(x)
+            faddp ST(1), ST; // 2^^(x-rndint(x))
+            fld real ptr [ESP+8] ; // 2^^rndint(x)
             add ESP,12+8;        
             fmulp ST(1), ST;
             ret PARAMSIZE;
@@ -1074,7 +1074,7 @@ L_subnormal:
             fild dword ptr [ESP];  // scratchint
             fld1;
             fscale;
-            fstp real ptr [ESP+8]; // scratchreal = 2^scratchint
+            fstp real ptr [ESP+8]; // scratchreal = 2^^scratchint
             fstp ST(0),ST;         // drop scratchint        
             jmp L_normal;
         
@@ -1632,31 +1632,39 @@ pure nothrow real hypot(real x, real y)
     assert(real.min_normal*real.max>2 && real.min_normal*real.max<=4); // Proves that sqrt(real.max) ~~  0.5/sqrt(real.min_normal)
 
     real u = fabs(x);
-    real v = fabs(y);    
-    if (u >= SQRTMAX*0.5)
+    real v = fabs(y);
+    if (!(u >= v))  // check for NaN as well.
     {
-        if (v < SQRTMAX*real.epsilon)   return u; // hypot(huge, tiny) == huge
-        if (u == real.infinity && v!=v) return u; // hypot(inf, nan) == inf
-    }
-    else if (v >= SQRTMAX*0.5)
-    { 
-        if (u < SQRTMAX*real.epsilon)   return v; // hypot(tiny, huge) == huge        
-        if (v == real.infinity && u!=u) return v; // hypot(nan, inf) == inf
-    }
-    else if (u<=SQRTMIN || v<=SQRTMIN)
+        v = u;
+        u = fabs(y);
+        if (u == real.infinity) return u; // hypot(inf, nan) == inf
+        if (v == real.infinity) return v; // hypot(nan, inf) == inf
+    }    
+    // Now u >= v, or else one is NaN.
+    if (v >= SQRTMAX*0.5)
     {
-        // at least one is tiny, avoid underflow
-        u *= SQRTMAX / real.epsilon; v *= SQRTMAX/real.epsilon;
+            // hypot(huge, huge) -- avoid overflow
+        u *= SQRTMIN*0.5;
+        v *= SQRTMIN*0.5;    
+        return sqrt(u*u + v*v) * SQRTMAX * 2.0;
+    }
+    if (u <= SQRTMIN)
+    {
+        // hypot (tiny, tiny) -- avoid underflow
+        // This is only necessary to avoid setting the underflow
+        // flag.
+        u *= SQRTMAX / real.epsilon;
+        v *= SQRTMAX/real.epsilon;
         return sqrt(u*u + v*v) * SQRTMIN * real.epsilon;
     }
-    else
+    if (u * real.epsilon > v)
     {
-        // both are in the normal range
-        return sqrt(u*u + v*v);
+        // hypot (huge, tiny) = huge
+        return u;    
     }
-    // hypot(huge, huge) -- avoid overflow
-    u *= SQRTMIN*0.5; v *= SQRTMIN*0.5;    
-    return sqrt(u*u + v*v) * SQRTMAX * 2.0;
+    
+    // both are in the normal range
+    return sqrt(u*u + v*v);
 }
 
 unittest
@@ -1668,6 +1676,8 @@ unittest
             [ -0.0,   -0.0,   0.0],
             [ 3.0,     4.0,   5.0],
             [ -300,   -400,   500],
+            [0.0,      7.0,   7.0],
+            [9.0,   9*real.epsilon,   9.0],
             [88/(64*sqrt(real.min_normal)), 105/(64*sqrt(real.min_normal)), 137/(64*sqrt(real.min_normal))],
             [88/(128*sqrt(real.min_normal)), 105/(128*sqrt(real.min_normal)), 137/(128*sqrt(real.min_normal))],
             [3*real.min_normal*real.epsilon, 4*real.min_normal*real.epsilon, 5*real.min_normal*real.epsilon],
@@ -3267,7 +3277,7 @@ pure nothrow int feqrel(X)(X x, X y)  if (isFloatingPoint!(X))
         {   // Difference is denormal
             // For denormals, we need to add the number of zeros that
             // lie at the start of diff's significand.
-            // We do this by multiplying by 2^real.mant_dig
+            // We do this by multiplying by 2^^real.mant_dig
             diff *= F.RECIP_EPSILON;
             return bitsdiff + X.mant_dig - pd[F.EXPPOS_SHORT];
         }

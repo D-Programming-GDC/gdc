@@ -31,47 +31,47 @@
  */
 enum BUILTIN FuncDeclaration::isBuiltin()
 {
-    static const char FeZe[] = "FNaNbeZe";	// pure nothrow real function(real)
+    static const char FeZe[] = "FNaNbeZe";      // pure nothrow real function(real)
 
     //printf("FuncDeclaration::isBuiltin() %s\n", toChars());
     if (builtin == BUILTINunknown)
     {
-	builtin = BUILTINnot;
+        builtin = BUILTINnot;
 #ifndef IN_GCC
-	if (parent && parent->isModule())
-	{
-	    // If it's in the std.math package
-	    if (parent->ident == Id::math &&
-		parent->parent && parent->parent->ident == Id::std &&
-		!parent->parent->parent)
-	    {
-		//printf("deco = %s\n", type->deco);
-		if (strcmp(type->deco, FeZe) == 0)
-		{
-		    if (ident == Id::sin)
-			builtin = BUILTINsin;
-		    else if (ident == Id::cos)
-			builtin = BUILTINcos;
-		    else if (ident == Id::tan)
-			builtin = BUILTINtan;
-		    else if (ident == Id::_sqrt)
-			builtin = BUILTINsqrt;
-		    else if (ident == Id::fabs)
-			builtin = BUILTINfabs;
-		    //printf("builtin = %d\n", builtin);
-		}
-		// if float or double versions
-		else if (strcmp(type->deco, "FNaNbdZd") == 0 ||
-			 strcmp(type->deco, "FNaNbfZf") == 0)
-		{
-		    if (ident == Id::_sqrt)
-			builtin = BUILTINsqrt;
-		}
-	    }
-	}
+        if (parent && parent->isModule())
+        {
+            // If it's in the std.math package
+            if (parent->ident == Id::math &&
+                parent->parent && parent->parent->ident == Id::std &&
+                !parent->parent->parent)
+            {
+                //printf("deco = %s\n", type->deco);
+                if (strcmp(type->deco, FeZe) == 0)
+                {
+                    if (ident == Id::sin)
+                        builtin = BUILTINsin;
+                    else if (ident == Id::cos)
+                        builtin = BUILTINcos;
+                    else if (ident == Id::tan)
+                        builtin = BUILTINtan;
+                    else if (ident == Id::_sqrt)
+                        builtin = BUILTINsqrt;
+                    else if (ident == Id::fabs)
+                        builtin = BUILTINfabs;
+                    //printf("builtin = %d\n", builtin);
+                }
+                // if float or double versions
+                else if (strcmp(type->deco, "FNaNbdZd") == 0 ||
+                         strcmp(type->deco, "FNaNbfZf") == 0)
+                {
+                    if (ident == Id::_sqrt)
+                        builtin = BUILTINsqrt;
+                }
+            }
+        }
 #else
-	/* Maybe in GCC 4.3... */
-#endif	
+        /* Maybe in GCC 4.3... */
+#endif  
     }
     return builtin;
 }
@@ -90,30 +90,30 @@ Expression *eval_builtin(enum BUILTIN builtin, Expressions *arguments)
     switch (builtin)
     {
 #ifndef IN_GCC
-	case BUILTINsin:
-	    if (arg0->op == TOKfloat64)
-		e = new RealExp(0, sinl(arg0->toReal()), arg0->type);
-	    break;
+        case BUILTINsin:
+            if (arg0->op == TOKfloat64)
+                e = new RealExp(0, sinl(arg0->toReal()), arg0->type);
+            break;
 
-	case BUILTINcos:
-	    if (arg0->op == TOKfloat64)
-		e = new RealExp(0, cosl(arg0->toReal()), arg0->type);
-	    break;
+        case BUILTINcos:
+            if (arg0->op == TOKfloat64)
+                e = new RealExp(0, cosl(arg0->toReal()), arg0->type);
+            break;
 
-	case BUILTINtan:
-	    if (arg0->op == TOKfloat64)
-		e = new RealExp(0, tanl(arg0->toReal()), arg0->type);
-	    break;
+        case BUILTINtan:
+            if (arg0->op == TOKfloat64)
+                e = new RealExp(0, tanl(arg0->toReal()), arg0->type);
+            break;
 
-	case BUILTINsqrt:
-	    if (arg0->op == TOKfloat64)
-		e = new RealExp(0, sqrtl(arg0->toReal()), arg0->type);
-	    break;
+        case BUILTINsqrt:
+            if (arg0->op == TOKfloat64)
+                e = new RealExp(0, sqrtl(arg0->toReal()), arg0->type);
+            break;
 
-	case BUILTINfabs:
-	    if (arg0->op == TOKfloat64)
-		e = new RealExp(0, fabsl(arg0->toReal()), arg0->type);
-	    break;
+        case BUILTINfabs:
+            if (arg0->op == TOKfloat64)
+                e = new RealExp(0, fabsl(arg0->toReal()), arg0->type);
+            break;
 #endif
     }
     return e;

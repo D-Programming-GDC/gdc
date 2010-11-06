@@ -249,9 +249,9 @@ body
         if (szelem > 16)
         {
             //version (Windows)
-            tmp = cast(byte*) alloca(szelem);
+                tmp = cast(byte*) alloca(szelem);
             //else
-            //tmp = gc_malloc(szelem);
+                //tmp = gc_malloc(szelem);
         }
 
         for (; lo < hi; lo += szelem, hi -= szelem)

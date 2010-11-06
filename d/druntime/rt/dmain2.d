@@ -143,6 +143,16 @@ extern (C) static void _d_assert_msg(string msg, string file, uint line)
 {
     onAssertErrorMsg(file, line, msg);
 }
+    
+extern (C) void _d_array_bounds(string file, uint line)
+{
+    onRangeError(file, line);
+}
+
+extern (C) void _d_switch_error(string file, uint line)
+{
+    onSwitchError(file, line);
+}
 
 extern (C)
 {
@@ -153,12 +163,12 @@ extern (C)
 	onAssertError(m.name, line);
     }
 
-    void _d_array_bounds(ModuleInfo* m, uint line)
+    void _d_array_boundsm(ModuleInfo* m, uint line)
     {
 	onRangeError(m.name, line);
     }
 
-    void _d_switch_error(ModuleInfo* m, uint line)
+    void _d_switch_errorm(ModuleInfo* m, uint line)
     {
 	onSwitchError(m.name, line);
     }

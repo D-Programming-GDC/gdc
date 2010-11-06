@@ -48,6 +48,10 @@ private
 }
     extern (C) 
 {
+    BlkInfo_ gc_qalloc(size_t sz, uint ba = 0);
+}
+    extern (C) 
+{
     void* gc_realloc(void* p, size_t sz, uint ba = 0);
 }
     extern (C) 
@@ -160,6 +164,13 @@ return gc_clrAttr(p,a);
     void* malloc(size_t sz, uint ba = 0)
 {
 return gc_malloc(sz,ba);
+}
+}
+    static 
+{
+    BlkInfo qalloc(size_t sz, uint ba = 0)
+{
+return gc_qalloc(sz,ba);
 }
 }
     static 

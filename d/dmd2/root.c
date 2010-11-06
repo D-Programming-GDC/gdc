@@ -70,7 +70,7 @@ char *wchar2ascii(wchar_t *us, unsigned len)
 
     p = (char *)mem.malloc(len + 1);
     for (i = 0; i <= len; i++)
-	p[i] = (char) us[i];
+        p[i] = (char) us[i];
     return p;
 }
 
@@ -85,8 +85,8 @@ int wcharIsAscii(wchar_t *us, unsigned len)
 
     for (i = 0; i <= len; i++)
     {
-	if (us[i] & ~0xFF)	// if high bits set
-	    return 0;		// it's not ascii
+        if (us[i] & ~0xFF)      // if high bits set
+            return 0;           // it's not ascii
     }
     return 1;
 }
@@ -246,34 +246,34 @@ hash_t String::calcHash(const char *str, size_t len)
 
     for (;;)
     {
-	switch (len)
-	{
-	    case 0:
-		return hash;
+        switch (len)
+        {
+            case 0:
+                return hash;
 
-	    case 1:
-		hash *= 37;
-		hash += *(uint8_t *)str;
-		return hash;
+            case 1:
+                hash *= 37;
+                hash += *(uint8_t *)str;
+                return hash;
 
-	    case 2:
-		hash *= 37;
-		hash += *(uint16_t *)str;
-		return hash;
+            case 2:
+                hash *= 37;
+                hash += *(uint16_t *)str;
+                return hash;
 
-	    case 3:
-		hash *= 37;
-		hash += (*(uint16_t *)str << 8) +
-			((uint8_t *)str)[2];
-		return hash;
+            case 3:
+                hash *= 37;
+                hash += (*(uint16_t *)str << 8) +
+                        ((uint8_t *)str)[2];
+                return hash;
 
-	    default:
-		hash *= 37;
-		hash += *(uint32_t *)str;
-		str += 4;
-		len -= 4;
-		break;
-	}
+            default:
+                hash *= 37;
+                hash += *(uint32_t *)str;
+                str += 4;
+                len -= 4;
+                break;
+        }
     }
 }
 
@@ -326,23 +326,23 @@ char *FileName::combine(const char *path, const char *name)
     size_t namelen;
 
     if (!path || !*path)
-	return (char *)name;
+        return (char *)name;
     pathlen = strlen(path);
     namelen = strlen(name);
     f = (char *)mem.malloc(pathlen + 1 + namelen + 1);
     memcpy(f, path, pathlen);
 #ifndef _WIN32
     if (path[pathlen - 1] != '/')
-    {	f[pathlen] = '/';
-	pathlen++;
+    {   f[pathlen] = '/';
+        pathlen++;
     }
 #endif
 #if _WIN32
     if (path[pathlen - 1] != '\\' &&
-	path[pathlen - 1] != ':'  &&
-	path[pathlen - 1] != '/')
-    {	f[pathlen] = '\\';
-	pathlen++;
+        path[pathlen - 1] != ':'  &&
+        path[pathlen - 1] != '/')
+    {   f[pathlen] = '\\';
+        pathlen++;
     }
 #endif
     memcpy(f + pathlen, name, namelen + 1);
@@ -357,7 +357,7 @@ FileName::FileName(char *path, char *name)
 // Split a path into an Array of paths
 Array *FileName::splitPath(const char *path)
 {
-    char c = 0;				// unnecessary initializer is for VC /W4
+    char c = 0;                         // unnecessary initializer is for VC /W4
     const char *p;
     OutBuffer buf;
     Array *array;
@@ -365,66 +365,66 @@ Array *FileName::splitPath(const char *path)
     array = new Array();
     if (path)
     {
-	p = path;
-	do
-	{   char instring = 0;
+        p = path;
+        do
+        {   char instring = 0;
 
-	    while (isspace(*p))		// skip leading whitespace
-		p++;
-	    buf.reserve(strlen(p) + 1);	// guess size of path
-	    for (; ; p++)
-	    {
-		c = *p;
-		switch (c)
-		{
-		    case '"':
-			instring ^= 1;	// toggle inside/outside of string
-			continue;
+            while (isspace(*p))         // skip leading whitespace
+                p++;
+            buf.reserve(strlen(p) + 1); // guess size of path
+            for (; ; p++)
+            {
+                c = *p;
+                switch (c)
+                {
+                    case '"':
+                        instring ^= 1;  // toggle inside/outside of string
+                        continue;
 
 #if MACINTOSH
-		    case ',':
+                    case ',':
 #endif
 #if _WIN32
-		    case ';':
+                    case ';':
 #endif
 #ifndef _WIN32
-		    case ':':
+                    case ':':
 #endif
-			p++;
-			break;		// note that ; cannot appear as part
-					// of a path, quotes won't protect it
+                        p++;
+                        break;          // note that ; cannot appear as part
+                                        // of a path, quotes won't protect it
 
-		    case 0x1A:		// ^Z means end of file
-		    case 0:
-			break;
+                    case 0x1A:          // ^Z means end of file
+                    case 0:
+                        break;
 
-		    case '\r':
-			continue;	// ignore carriage returns
+                    case '\r':
+                        continue;       // ignore carriage returns
 
 #ifndef _WIN32
-		    case '~':
-			buf.writestring(getenv("HOME"));
-			continue;
+                    case '~':
+                        buf.writestring(getenv("HOME"));
+                        continue;
 #endif
 
 #if 0
-		    case ' ':
-		    case '\t':		// tabs in filenames?
-			if (!instring)	// if not in string
-			    break;	// treat as end of path
+                    case ' ':
+                    case '\t':          // tabs in filenames?
+                        if (!instring)  // if not in string
+                            break;      // treat as end of path
 #endif
-		    default:
-			buf.writeByte(c);
-			continue;
-		}
-		break;
-	    }
-	    if (buf.offset)		// if path is not empty
-	    {
-		buf.writeByte(0);	// to asciiz
-		array->push(buf.extractData());
-	    }
-	} while (c);
+                    default:
+                        buf.writeByte(c);
+                        continue;
+                }
+                break;
+            }
+            if (buf.offset)             // if path is not empty
+            {
+                buf.writeByte(0);       // to asciiz
+                array->push(buf.extractData());
+            }
+        } while (c);
     }
     return array;
 }
@@ -439,34 +439,34 @@ hash_t FileName::hashCode()
 
     for (;;)
     {
-	switch (len)
-	{
-	    case 0:
-		return hash;
+        switch (len)
+        {
+            case 0:
+                return hash;
 
-	    case 1:
-		hash *= 37;
-		hash += *(uint8_t *)s | 0x20;
-		return hash;
+            case 1:
+                hash *= 37;
+                hash += *(uint8_t *)s | 0x20;
+                return hash;
 
-	    case 2:
-		hash *= 37;
-		hash += *(uint16_t *)s | 0x2020;
-		return hash;
+            case 2:
+                hash *= 37;
+                hash += *(uint16_t *)s | 0x2020;
+                return hash;
 
-	    case 3:
-		hash *= 37;
-		hash += ((*(uint16_t *)s << 8) +
-			 ((uint8_t *)s)[2]) | 0x202020;
-		break;
+            case 3:
+                hash *= 37;
+                hash += ((*(uint16_t *)s << 8) +
+                         ((uint8_t *)s)[2]) | 0x202020;
+                break;
 
-	    default:
-		hash *= 37;
-		hash += *(uint32_t *)s | 0x20202020;
-		s += 4;
-		len -= 4;
-		break;
-	}
+            default:
+                hash *= 37;
+                hash += *(uint32_t *)s | 0x20202020;
+                s += 4;
+                len -= 4;
+                break;
+        }
     }
 #else
     // darwin HFS is case insensitive, though...
@@ -506,8 +506,8 @@ int FileName::absolute(const char *name)
 {
 #if _WIN32
     return (*name == '\\') ||
-	   (*name == '/')  ||
-	   (*name && name[1] == ':');
+           (*name == '/')  ||
+           (*name && name[1] == ':');
 #endif
 #ifndef _WIN32
     return (*name == '/');
@@ -528,26 +528,26 @@ char *FileName::ext(const char *str)
     e = (char *)str + len;
     for (;;)
     {
-	switch (*e)
-	{   case '.':
-		return e + 1;
+        switch (*e)
+        {   case '.':
+                return e + 1;
 #ifndef _WIN32
-	    case '/':
-	        break;
+            case '/':
+                break;
 #endif
 #if _WIN32
-	    case '\\':
-	    case ':':
-	    case '/':
-		break;
+            case '\\':
+            case ':':
+            case '/':
+                break;
 #endif
-	    default:
-		if (e == str)
-		    break;
-		e--;
-		continue;
-	}
-	return NULL;
+            default:
+                if (e == str)
+                    break;
+                e--;
+                continue;
+        }
+        return NULL;
     }
 }
 
@@ -564,11 +564,11 @@ char *FileName::removeExt(const char *str)
 {
     const char *e = ext(str);
     if (e)
-    {	size_t len = (e - str) - 1;
-	char *n = (char *)mem.malloc(len + 1);
-	memcpy(n, str, len);
-	n[len] = 0;
-	return n;
+    {   size_t len = (e - str) - 1;
+        char *n = (char *)mem.malloc(len + 1);
+        memcpy(n, str, len);
+        n[len] = 0;
+        return n;
     }
     return mem.strdup(str);
 }
@@ -585,32 +585,32 @@ char *FileName::name(const char *str)
     e = (char *)str + len;
     for (;;)
     {
-	switch (*e)
-	{
+        switch (*e)
+        {
 #ifndef _WIN32
-	    case '/':
-	       return e + 1;
+            case '/':
+               return e + 1;
 #endif
 #if _WIN32
-	    case '/':
-	    case '\\':
-		return e + 1;
-	    case ':':
-		/* The ':' is a drive letter only if it is the second
-		 * character or the last character,
-		 * otherwise it is an ADS (Alternate Data Stream) separator.
-		 * Consider ADS separators as part of the file name.
-		 */
-		if (e == str + 1 || e == str + len - 1)
-		    return e + 1;
+            case '/':
+            case '\\':
+                return e + 1;
+            case ':':
+                /* The ':' is a drive letter only if it is the second
+                 * character or the last character,
+                 * otherwise it is an ADS (Alternate Data Stream) separator.
+                 * Consider ADS separators as part of the file name.
+                 */
+                if (e == str + 1 || e == str + len - 1)
+                    return e + 1;
 #endif
-	    default:
-		if (e == str)
-		    break;
-		e--;
-		continue;
-	}
-	return e;
+            default:
+                if (e == str)
+                    break;
+                e--;
+                continue;
+        }
+        return e;
     }
 }
 
@@ -633,12 +633,12 @@ char *FileName::path(const char *str)
     if (n > str)
     {
 #ifndef _WIN32
-	if (n[-1] == '/')
-	    n--;
+        if (n[-1] == '/')
+            n--;
 #endif
 #if _WIN32
-	if (n[-1] == '\\' || n[-1] == '/')
-	    n--;
+        if (n[-1] == '\\' || n[-1] == '/')
+            n--;
 #endif
     }
     pathlen = n - str;
@@ -659,27 +659,27 @@ const char *FileName::replaceName(const char *path, const char *name)
     size_t namelen;
 
     if (absolute(name))
-	return name;
+        return name;
 
     n = FileName::name(path);
     if (n == path)
-	return name;
+        return name;
     pathlen = n - path;
     namelen = strlen(name);
     f = (char *)mem.malloc(pathlen + 1 + namelen + 1);
     memcpy(f, path, pathlen);
 #ifndef _WIN32
     if (path[pathlen - 1] != '/')
-    {	f[pathlen] = '/';
-	pathlen++;
+    {   f[pathlen] = '/';
+        pathlen++;
     }
 #endif
 #if _WIN32
     if (path[pathlen - 1] != '\\' &&
-	path[pathlen - 1] != '/' &&
-	path[pathlen - 1] != ':')
-    {	f[pathlen] = '\\';
-	pathlen++;
+        path[pathlen - 1] != '/' &&
+        path[pathlen - 1] != ':')
+    {   f[pathlen] = '\\';
+        pathlen++;
     }
 #endif
     memcpy(f + pathlen, name, namelen + 1);
@@ -697,8 +697,8 @@ FileName *FileName::defaultExt(const char *name, const char *ext)
     size_t extlen;
 
     e = FileName::ext(name);
-    if (e)				// if already has an extension
-	return new FileName((char *)name, 0);
+    if (e)                              // if already has an extension
+        return new FileName((char *)name, 0);
 
     len = strlen(name);
     extlen = strlen(ext);
@@ -720,18 +720,18 @@ FileName *FileName::forceExt(const char *name, const char *ext)
     size_t extlen;
 
     e = FileName::ext(name);
-    if (e)				// if already has an extension
+    if (e)                              // if already has an extension
     {
-	len = e - name;
-	extlen = strlen(ext);
+        len = e - name;
+        extlen = strlen(ext);
 
-	s = (char *)alloca(len + extlen + 1);
-	memcpy(s,name,len);
-	memcpy(s + len, ext, extlen + 1);
-	return new FileName(s, 0);
+        s = (char *)alloca(len + extlen + 1);
+        memcpy(s,name,len);
+        memcpy(s + len, ext, extlen + 1);
+        return new FileName(s, 0);
     }
     else
-	return defaultExt(name, ext);	// doesn't have one
+        return defaultExt(name, ext);   // doesn't have one
 }
 
 /******************************
@@ -743,9 +743,9 @@ int FileName::equalsExt(const char *ext)
 
     e = FileName::ext();
     if (!e && !ext)
-	return 1;
+        return 1;
     if (!e || !ext)
-	return 0;
+        return 0;
 #ifndef _WIN32
     return strcmp(e,ext) == 0;
 #endif
@@ -764,7 +764,7 @@ void FileName::CopyTo(FileName *to)
     File file(this);
 
 #if _WIN32
-    file.touchtime = mem.malloc(sizeof(WIN32_FIND_DATAA));	// keep same file time
+    file.touchtime = mem.malloc(sizeof(WIN32_FIND_DATAA));      // keep same file time
 #endif
 #ifndef _WIN32
     file.touchtime = mem.malloc(sizeof(struct stat)); // keep same file time
@@ -777,31 +777,31 @@ void FileName::CopyTo(FileName *to)
 /*************************************
  * Search Path for file.
  * Input:
- *	cwd	if !=0, search current directory before searching path
+ *      cwd     if !=0, search current directory before searching path
  */
 
 char *FileName::searchPath(Array *path, const char *name, int cwd)
 {
     if (absolute(name))
     {
-	return exists(name) ? (char *)name : NULL;
+        return exists(name) ? (char *)name : NULL;
     }
     if (cwd)
     {
-	if (exists(name))
-	    return (char *)name;
+        if (exists(name))
+            return (char *)name;
     }
     if (path)
-    {	unsigned i;
+    {   unsigned i;
 
-	for (i = 0; i < path->dim; i++)
-	{
-	    char *p = (char *)path->data[i];
-	    char *n = combine(p, name);
+        for (i = 0; i < path->dim; i++)
+        {
+            char *p = (char *)path->data[i];
+            char *n = combine(p, name);
 
-	    if (exists(n))
-		return n;
-	}
+            if (exists(n))
+                return n;
+        }
     }
     return NULL;
 }
@@ -812,12 +812,12 @@ char *FileName::searchPath(Array *path, const char *name, int cwd)
  *
  * Be wary of CWE-22: Improper Limitation of a Pathname to a Restricted Directory
  * ('Path Traversal') attacks.
- *	http://cwe.mitre.org/data/definitions/22.html
+ *      http://cwe.mitre.org/data/definitions/22.html
  * More info:
- *	https://www.securecoding.cert.org/confluence/display/seccode/FIO02-C.+Canonicalize+path+names+originating+from+untrusted+sources
+ *      https://www.securecoding.cert.org/confluence/display/seccode/FIO02-C.+Canonicalize+path+names+originating+from+untrusted+sources
  * Returns:
- *	NULL	file not found
- *	!=NULL	mem.malloc'd file name
+ *      NULL    file not found
+ *      !=NULL  mem.malloc'd file name
  */
 
 char *FileName::safeSearchPath(Array *path, const char *name)
@@ -827,12 +827,12 @@ char *FileName::safeSearchPath(Array *path, const char *name)
      */
     for (const char *p = name; *p; p++)
     {
-	char c = *p;
-	if (c == '\\' || c == '/' || c == ':' || c == '%' ||
-	    (c == '.' && p[1] == '.'))
-	{
-	    return NULL;
-	}
+        char c = *p;
+        if (c == '\\' || c == '/' || c == ':' || c == '%' ||
+            (c == '.' && p[1] == '.'))
+        {
+            return NULL;
+        }
     }
 
     return FileName::searchPath(path, name, 0);
@@ -841,48 +841,48 @@ char *FileName::safeSearchPath(Array *path, const char *name)
      */
     for (const char *p = name; *p; p++)
     {
-	char c = *p;
-	if (c == '/' && p[1] == '/')
-	{
-	    return NULL;
-	}
+        char c = *p;
+        if (c == '/' && p[1] == '/')
+        {
+            return NULL;
+        }
     }
 
     if (path)
-    {	unsigned i;
+    {   unsigned i;
 
-	/* Each path is converted to a cannonical name and then a check is done to see
-	 * that the searched name is really a child one of the the paths searched.
-	 */
-	for (i = 0; i < path->dim; i++)
-	{
-	    char *cname = NULL;
-	    char *cpath = canonicalName((char *)path->data[i]);
-	    //printf("FileName::safeSearchPath(): name=%s; path=%s; cpath=%s\n",
-	    //	    name, (char *)path->data[i], cpath);
-	    if (cpath == NULL)
-		goto cont;
-	    cname = canonicalName(combine(cpath, name));
-	    //printf("FileName::safeSearchPath(): cname=%s\n", cname);
-	    if (cname == NULL)
-		goto cont;
-	    //printf("FileName::safeSearchPath(): exists=%i "
-	    //	    "strncmp(cpath, cname, %i)=%i\n", exists(cname),
-	    //	    strlen(cpath), strncmp(cpath, cname, strlen(cpath)));
-	    // exists and name is *really* a "child" of path
-	    if (exists(cname) && strncmp(cpath, cname, strlen(cpath)) == 0)
-	    {
-		free(cpath);
-		char *p = mem.strdup(cname);
-		free(cname);
-		return p;
-	    }
+        /* Each path is converted to a cannonical name and then a check is done to see
+         * that the searched name is really a child one of the the paths searched.
+         */
+        for (i = 0; i < path->dim; i++)
+        {
+            char *cname = NULL;
+            char *cpath = canonicalName((char *)path->data[i]);
+            //printf("FileName::safeSearchPath(): name=%s; path=%s; cpath=%s\n",
+            //      name, (char *)path->data[i], cpath);
+            if (cpath == NULL)
+                goto cont;
+            cname = canonicalName(combine(cpath, name));
+            //printf("FileName::safeSearchPath(): cname=%s\n", cname);
+            if (cname == NULL)
+                goto cont;
+            //printf("FileName::safeSearchPath(): exists=%i "
+            //      "strncmp(cpath, cname, %i)=%i\n", exists(cname),
+            //      strlen(cpath), strncmp(cpath, cname, strlen(cpath)));
+            // exists and name is *really* a "child" of path
+            if (exists(cname) && strncmp(cpath, cname, strlen(cpath)) == 0)
+            {
+                free(cpath);
+                char *p = mem.strdup(cname);
+                free(cname);
+                return p;
+            }
 cont:
-	    if (cpath)
-		free(cpath);
-	    if (cname)
-		free(cname);
-	}
+            if (cpath)
+                free(cpath);
+            if (cname)
+                free(cname);
+        }
     }
     return NULL;
 #else
@@ -897,9 +897,9 @@ int FileName::exists(const char *name)
     struct stat st;
 
     if (stat(name, &st) < 0)
-	return 0;
+        return 0;
     if (S_ISDIR(st.st_mode))
-	return 2;
+        return 2;
     return 1;
 #elif _WIN32
     DWORD dw;
@@ -907,11 +907,11 @@ int FileName::exists(const char *name)
 
     dw = GetFileAttributesA(name);
     if (dw == -1L)
-	result = 0;
+        result = 0;
     else if (dw & FILE_ATTRIBUTE_DIRECTORY)
-	result = 2;
+        result = 2;
     else
-	result = 1;
+        result = 1;
     return result;
 #else
     assert(0);
@@ -923,37 +923,37 @@ void FileName::ensurePathExists(const char *path)
     //printf("FileName::ensurePathExists(%s)\n", path ? path : "");
     if (path && *path)
     {
-	if (!exists(path))
-	{
-	    char *p = FileName::path(path);
-	    if (*p)
-	    {
+        if (!exists(path))
+        {
+            char *p = FileName::path(path);
+            if (*p)
+            {
 #if _WIN32
-		size_t len = strlen(path);
-		if (len > 2 && p[-1] == ':' && path + 2 == p)
-		{   mem.free(p);
-		    return;
-		}
+                size_t len = strlen(path);
+                if (len > 2 && p[-1] == ':' && path + 2 == p)
+                {   mem.free(p);
+                    return;
+                }
 #endif
-		ensurePathExists(p);
-		mem.free(p);
-	    }
+                ensurePathExists(p);
+                mem.free(p);
+            }
 #if _WIN32
-	    if (path[strlen(path) - 1] != '\\')
+            if (path[strlen(path) - 1] != '\\')
 #endif
 #if POSIX
-	    if (path[strlen(path) - 1] != '\\')
+            if (path[strlen(path) - 1] != '\\')
 #endif
-	    {
-		//printf("mkdir(%s)\n", path);
+            {
+                //printf("mkdir(%s)\n", path);
 #if _WIN32
-		if (mkdir(path))
+                if (mkdir(path))
 #else
-		if (mkdir(path, 0777))
+                if (mkdir(path, 0777))
 #endif
-		    error("cannot create directory %s", path);
-	    }
-	}
+                    error("cannot create directory %s", path);
+            }
+        }
     }
 }
 
@@ -974,19 +974,19 @@ char *FileName::canonicalName(const char *name)
   #else
     char *cname = NULL;
     #if PATH_MAX
-	/* PATH_MAX must be defined as a constant in <limits.h>,
-	 * otherwise using it is unsafe due to TOCTOU
-	 */
-	size_t path_max = (size_t)PATH_MAX;
-	if (path_max > 0)
-	{
-	    /* Need to add one to PATH_MAX because of realpath() buffer overflow bug:
-	     * http://isec.pl/vulnerabilities/isec-0011-wu-ftpd.txt
-	     */
-	    cname = (char *)malloc(path_max + 1);
-	    if (cname == NULL)
-		return NULL;
-	}
+        /* PATH_MAX must be defined as a constant in <limits.h>,
+         * otherwise using it is unsafe due to TOCTOU
+         */
+        size_t path_max = (size_t)PATH_MAX;
+        if (path_max > 0)
+        {
+            /* Need to add one to PATH_MAX because of realpath() buffer overflow bug:
+             * http://isec.pl/vulnerabilities/isec-0011-wu-ftpd.txt
+             */
+            cname = (char *)malloc(path_max + 1);
+            if (cname == NULL)
+                return NULL;
+        }
     #endif
     return realpath(name, cname);
   #endif
@@ -1027,15 +1027,15 @@ File::~File()
 {
     if (buffer)
     {
-	if (ref == 0)
-	    mem.free(buffer);
+        if (ref == 0)
+            mem.free(buffer);
 #if _WIN32
-	else if (ref == 2)
-	    UnmapViewOfFile(buffer);
+        else if (ref == 2)
+            UnmapViewOfFile(buffer);
 #endif
     }
     if (touchtime)
-	mem.free(touchtime);
+        mem.free(touchtime);
 }
 
 void File::mark()
@@ -1062,34 +1062,34 @@ int File::read()
     //printf("File::read('%s')\n",name);
     fd = open(name, O_RDONLY);
     if (fd == -1)
-    {	result = errno;
-	//printf("\topen error, errno = %d\n",errno);
-	goto err1;
+    {   result = errno;
+        //printf("\topen error, errno = %d\n",errno);
+        goto err1;
     }
 
     if (!ref)
-	mem.free(buffer);
+        mem.free(buffer);
     ref = 0;       // we own the buffer now
 
     //printf("\tfile opened\n");
     if (fstat(fd, &buf))
     {
-	fprintf(stderr, "\tfstat error, errno = %d\n",errno);
+        fprintf(stderr, "\tfstat error, errno = %d\n",errno);
         goto err2;
     }
     size = buf.st_size;
     buffer = (unsigned char *) mem.malloc(size + 2);
     if (!buffer)
     {
-	fprintf(stderr, "\tmalloc error, errno = %d\n",errno);
-	goto err2;
+        fprintf(stderr, "\tmalloc error, errno = %d\n",errno);
+        goto err2;
     }
 
     numread = ::read(fd, buffer, size);
     if (numread != size)
     {
-	fprintf(stderr, "\tread error, errno = %d\n",errno);
-	goto err2;
+        fprintf(stderr, "\tread error, errno = %d\n",errno);
+        goto err2;
     }
 
     if (touchtime)
@@ -1097,14 +1097,14 @@ int File::read()
 
     if (close(fd) == -1)
     {
-	fprintf(stderr, "\tclose error, errno = %d\n",errno);
-	goto err;
+        fprintf(stderr, "\tclose error, errno = %d\n",errno);
+        goto err;
     }
 
     len = size;
 
     // Always store a wchar ^Z past end of buffer so scanner has a sentinel
-    buffer[size] = 0;		// ^Z is obsolete, use 0
+    buffer[size] = 0;           // ^Z is obsolete, use 0
     buffer[size + 1] = 0;
     return 0;
 
@@ -1127,38 +1127,38 @@ err1:
 
     name = this->name->toChars();
     h = CreateFileA(name,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,
-	FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,0);
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,0);
     if (h == INVALID_HANDLE_VALUE)
-	goto err1;
+        goto err1;
 
     if (!ref)
-	mem.free(buffer);
+        mem.free(buffer);
     ref = 0;
 
     size = GetFileSize(h,NULL);
     buffer = (unsigned char *) mem.malloc(size + 2);
     if (!buffer)
-	goto err2;
+        goto err2;
 
     if (ReadFile(h,buffer,size,&numread,NULL) != TRUE)
-	goto err2;
+        goto err2;
 
     if (numread != size)
-	goto err2;
+        goto err2;
 
     if (touchtime)
     {
-	if (!GetFileTime(h, NULL, NULL, &((WIN32_FIND_DATAA *)touchtime)->ftLastWriteTime))
-	    goto err2;
+        if (!GetFileTime(h, NULL, NULL, &((WIN32_FIND_DATAA *)touchtime)->ftLastWriteTime))
+            goto err2;
     }
 
     if (!CloseHandle(h))
-	goto err;
+        goto err;
 
     len = size;
 
     // Always store a wchar ^Z past end of buffer so scanner has a sentinel
-    buffer[size] = 0;		// ^Z is obsolete, use 0
+    buffer[size] = 0;           // ^Z is obsolete, use 0
     buffer[size + 1] = 0;
     return 0;
 
@@ -1194,30 +1194,30 @@ int File::mmread()
 
     name = this->name->toChars();
     hFile = CreateFile(name, GENERIC_READ,
-			FILE_SHARE_READ, NULL,
-			OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                        FILE_SHARE_READ, NULL,
+                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
-	goto Lerr;
+        goto Lerr;
     size = GetFileSize(hFile, NULL);
     //printf(" file created, size %d\n", size);
 
     hFileMap = CreateFileMapping(hFile,NULL,PAGE_READONLY,0,size,NULL);
     if (CloseHandle(hFile) != TRUE)
-	goto Lerr;
+        goto Lerr;
 
     if (hFileMap == NULL)
-	goto Lerr;
+        goto Lerr;
 
     //printf(" mapping created\n");
 
     if (!ref)
-	mem.free(buffer);
+        mem.free(buffer);
     ref = 2;
     buffer = (unsigned char *)MapViewOfFileEx(hFileMap, FILE_MAP_READ,0,0,size,NULL);
     if (CloseHandle(hFileMap) != TRUE)
-	goto Lerr;
-    if (buffer == NULL)			// mapping view failed
-	goto Lerr;
+        goto Lerr;
+    if (buffer == NULL)                 // mapping view failed
+        goto Lerr;
 
     len = size;
     //printf(" buffer = %p\n", buffer);
@@ -1225,7 +1225,7 @@ int File::mmread()
     return 0;
 
 Lerr:
-    return GetLastError();			// failure
+    return GetLastError();                      // failure
 #else
     assert(0);
 #endif
@@ -1234,7 +1234,7 @@ Lerr:
 /*********************************************
  * Write a file.
  * Returns:
- *	0	success
+ *      0       success
  */
 
 int File::write()
@@ -1247,22 +1247,22 @@ int File::write()
     name = this->name->toChars();
     fd = open(name, O_CREAT | O_WRONLY | O_TRUNC, 0644);
     if (fd == -1)
-	goto err;
+        goto err;
 
     numwritten = ::write(fd, buffer, len);
     if (len != numwritten)
-	goto err2;
-    
+        goto err2;
+
     if (close(fd) == -1)
-	goto err;
+        goto err;
 
     if (touchtime)
     {   struct utimbuf ubuf;
 
         ubuf.actime = ((struct stat *)touchtime)->st_atime;
         ubuf.modtime = ((struct stat *)touchtime)->st_mtime;
-	if (utime(name, &ubuf))
-	    goto err;
+        if (utime(name, &ubuf))
+            goto err;
     }
     return 0;
 
@@ -1278,21 +1278,21 @@ err:
 
     name = this->name->toChars();
     h = CreateFileA(name,GENERIC_WRITE,0,NULL,CREATE_ALWAYS,
-	FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,NULL);
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,NULL);
     if (h == INVALID_HANDLE_VALUE)
-	goto err;
+        goto err;
 
     if (WriteFile(h,buffer,len,&numwritten,NULL) != TRUE)
-	goto err2;
+        goto err2;
 
     if (len != numwritten)
-	goto err2;
-    
+        goto err2;
+
     if (touchtime) {
         SetFileTime(h, NULL, NULL, &((WIN32_FIND_DATAA *)touchtime)->ftLastWriteTime);
     }
     if (!CloseHandle(h))
-	goto err;
+        goto err;
     return 0;
 
 err2:
@@ -1308,7 +1308,7 @@ err:
 /*********************************************
  * Append to a file.
  * Returns:
- *	0	success
+ *      0       success
  */
 
 int File::append()
@@ -1323,28 +1323,28 @@ int File::append()
 
     name = this->name->toChars();
     h = CreateFileA(name,GENERIC_WRITE,0,NULL,OPEN_ALWAYS,
-	FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,NULL);
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,NULL);
     if (h == INVALID_HANDLE_VALUE)
-	goto err;
+        goto err;
 
 #if 1
     SetFilePointer(h, 0, NULL, FILE_END);
 #else // INVALID_SET_FILE_POINTER doesn't seem to have a definition
     if (SetFilePointer(h, 0, NULL, FILE_END) == INVALID_SET_FILE_POINTER)
-	goto err;
+        goto err;
 #endif
 
     if (WriteFile(h,buffer,len,&numwritten,NULL) != TRUE)
-	goto err2;
+        goto err2;
 
     if (len != numwritten)
-	goto err2;
-    
+        goto err2;
+
     if (touchtime) {
         SetFileTime(h, NULL, NULL, &((WIN32_FIND_DATAA *)touchtime)->ftLastWriteTime);
     }
     if (!CloseHandle(h))
-	goto err;
+        goto err;
     return 0;
 
 err2:
@@ -1362,7 +1362,7 @@ err:
 void File::readv()
 {
     if (read())
-	error("Error reading file '%s'\n",name->toChars());
+        error("Error reading file '%s'\n",name->toChars());
 }
 
 /**************************************
@@ -1371,26 +1371,26 @@ void File::readv()
 void File::mmreadv()
 {
     if (mmread())
-	readv();
+        readv();
 }
 
 void File::writev()
 {
     if (write())
-	error("Error writing file '%s'\n",name->toChars());
+        error("Error writing file '%s'\n",name->toChars());
 }
 
 void File::appendv()
 {
     if (write())
-	error("Error appending to file '%s'\n",name->toChars());
+        error("Error appending to file '%s'\n",name->toChars());
 }
 
 /*******************************************
  * Return !=0 if file exists.
- *	0:	file doesn't exist
- *	1:	normal file
- *	2:	directory
+ *      0:      file doesn't exist
+ *      1:      normal file
+ *      2:      directory
  */
 
 int File::exists()
@@ -1405,15 +1405,15 @@ int File::exists()
 
     name = this->name->toChars();
     if (touchtime)
-	dw = ((WIN32_FIND_DATAA *)touchtime)->dwFileAttributes;
+        dw = ((WIN32_FIND_DATAA *)touchtime)->dwFileAttributes;
     else
-	dw = GetFileAttributesA(name);
+        dw = GetFileAttributesA(name);
     if (dw == -1L)
-	result = 0;
+        result = 0;
     else if (dw & FILE_ATTRIBUTE_DIRECTORY)
-	result = 2;
+        result = 2;
     else
-	result = 1;
+        result = 1;
     return result;
 #endif
 }
@@ -1451,21 +1451,21 @@ Array *File::match(FileName *n)
     h = FindFirstFileA(c,&fileinfo);
     if (h != INVALID_HANDLE_VALUE)
     {
-	do
-	{
-	    // Glue path together with name
-	    char *fn;
-	    File *f;
+        do
+        {
+            // Glue path together with name
+            char *fn;
+            File *f;
 
-	    fn = (char *)mem.malloc(name - c + strlen(fileinfo.cFileName) + 1);
-	    memcpy(fn, c, name - c);
-	    strcpy(fn + (name - c), fileinfo.cFileName);
-	    f = new File(fn);
-	    f->touchtime = mem.malloc(sizeof(WIN32_FIND_DATAA));
-	    memcpy(f->touchtime, &fileinfo, sizeof(fileinfo));
-	    a->push(f);
-	} while (FindNextFileA(h,&fileinfo) != FALSE);
-	FindClose(h);
+            fn = (char *)mem.malloc(name - c + strlen(fileinfo.cFileName) + 1);
+            memcpy(fn, c, name - c);
+            strcpy(fn + (name - c), fileinfo.cFileName);
+            f = new File(fn);
+            f->touchtime = mem.malloc(sizeof(WIN32_FIND_DATAA));
+            memcpy(f->touchtime, &fileinfo, sizeof(fileinfo));
+            a->push(f);
+        } while (FindNextFileA(h,&fileinfo) != FALSE);
+        FindClose(h);
     }
     return a;
 #endif
@@ -1478,9 +1478,9 @@ int File::compareTime(File *f)
 #endif
 #if _WIN32
     if (!touchtime)
-	stat();
+        stat();
     if (!f->touchtime)
-	f->stat();
+        f->stat();
     return CompareFileTime(&((WIN32_FIND_DATAA *)touchtime)->ftLastWriteTime, &((WIN32_FIND_DATAA *)f->touchtime)->ftLastWriteTime);
 #endif
 }
@@ -1490,7 +1490,7 @@ void File::stat()
 #ifndef _WIN32
     if (!touchtime)
     {
-	touchtime = mem.calloc(1, sizeof(struct stat));
+        touchtime = mem.calloc(1, sizeof(struct stat));
     }
 #endif
 #if _WIN32
@@ -1498,12 +1498,12 @@ void File::stat()
 
     if (!touchtime)
     {
-	touchtime = mem.calloc(1, sizeof(WIN32_FIND_DATAA));
+        touchtime = mem.calloc(1, sizeof(WIN32_FIND_DATAA));
     }
     h = FindFirstFileA(name->toChars(),(WIN32_FIND_DATAA *)touchtime);
     if (h != INVALID_HANDLE_VALUE)
     {
-	FindClose(h);
+        FindClose(h);
     }
 #else
     assert(0);
@@ -1513,7 +1513,7 @@ void File::stat()
 void File::checkoffset(size_t offset, size_t nbytes)
 {
     if (offset > len || offset + nbytes > len)
-	error("Corrupt file '%s': offset x%"PRIxSIZE" off end of file",toChars(),offset);
+        error("Corrupt file '%s': offset x%"PRIxSIZE" off end of file",toChars(),offset);
 }
 
 char *File::toChars()
@@ -1557,8 +1557,8 @@ void OutBuffer::reserve(unsigned nbytes)
     //printf("OutBuffer::reserve: size = %d, offset = %d, nbytes = %d\n", size, offset, nbytes);
     if (size - offset < nbytes)
     {
-	size = (offset + nbytes) * 2;
-	data = (unsigned char *)mem.realloc(data, size);
+        size = (offset + nbytes) * 2;
+        data = (unsigned char *)mem.realloc(data, size);
     }
 }
 
@@ -1594,7 +1594,7 @@ void OutBuffer::writedstring(const char *string)
 #if M_UNICODE
     for (; *string; string++)
     {
-	writedchar(*string);
+        writedchar(*string);
     }
 #else
     write(string,strlen(string));
@@ -1608,7 +1608,7 @@ void OutBuffer::writedstring(const wchar_t *string)
 #else
     for (; *string; string++)
     {
-	writedchar(*string);
+        writedchar(*string);
     }
 #endif
 }
@@ -1627,9 +1627,9 @@ void OutBuffer::writenl()
 {
 #if _WIN32
 #if M_UNICODE
-    write4(0x000A000D);		// newline is CR,LF on Microsoft OS's
+    write4(0x000A000D);         // newline is CR,LF on Microsoft OS's
 #else
-    writeword(0x0A0D);		// newline is CR,LF on Microsoft OS's
+    writeword(0x0A0D);          // newline is CR,LF on Microsoft OS's
 #endif
 #else
 #if M_UNICODE
@@ -1652,58 +1652,58 @@ void OutBuffer::writeUTF8(unsigned b)
     reserve(6);
     if (b <= 0x7F)
     {
-	this->data[offset] = (unsigned char)b;
-	offset++;
+        this->data[offset] = (unsigned char)b;
+        offset++;
     }
     else if (b <= 0x7FF)
     {
-	this->data[offset + 0] = (unsigned char)((b >> 6) | 0xC0);
-	this->data[offset + 1] = (unsigned char)((b & 0x3F) | 0x80);
-	offset += 2;
+        this->data[offset + 0] = (unsigned char)((b >> 6) | 0xC0);
+        this->data[offset + 1] = (unsigned char)((b & 0x3F) | 0x80);
+        offset += 2;
     }
     else if (b <= 0xFFFF)
     {
-	this->data[offset + 0] = (unsigned char)((b >> 12) | 0xE0);
-	this->data[offset + 1] = (unsigned char)(((b >> 6) & 0x3F) | 0x80);
-	this->data[offset + 2] = (unsigned char)((b & 0x3F) | 0x80);
-	offset += 3;
+        this->data[offset + 0] = (unsigned char)((b >> 12) | 0xE0);
+        this->data[offset + 1] = (unsigned char)(((b >> 6) & 0x3F) | 0x80);
+        this->data[offset + 2] = (unsigned char)((b & 0x3F) | 0x80);
+        offset += 3;
     }
     else if (b <= 0x1FFFFF)
     {
-	this->data[offset + 0] = (unsigned char)((b >> 18) | 0xF0);
-	this->data[offset + 1] = (unsigned char)(((b >> 12) & 0x3F) | 0x80);
-	this->data[offset + 2] = (unsigned char)(((b >> 6) & 0x3F) | 0x80);
-	this->data[offset + 3] = (unsigned char)((b & 0x3F) | 0x80);
-	offset += 4;
+        this->data[offset + 0] = (unsigned char)((b >> 18) | 0xF0);
+        this->data[offset + 1] = (unsigned char)(((b >> 12) & 0x3F) | 0x80);
+        this->data[offset + 2] = (unsigned char)(((b >> 6) & 0x3F) | 0x80);
+        this->data[offset + 3] = (unsigned char)((b & 0x3F) | 0x80);
+        offset += 4;
     }
     else if (b <= 0x3FFFFFF)
     {
-	this->data[offset + 0] = (unsigned char)((b >> 24) | 0xF8);
-	this->data[offset + 1] = (unsigned char)(((b >> 18) & 0x3F) | 0x80);
-	this->data[offset + 2] = (unsigned char)(((b >> 12) & 0x3F) | 0x80);
-	this->data[offset + 3] = (unsigned char)(((b >> 6) & 0x3F) | 0x80);
-	this->data[offset + 4] = (unsigned char)((b & 0x3F) | 0x80);
-	offset += 5;
+        this->data[offset + 0] = (unsigned char)((b >> 24) | 0xF8);
+        this->data[offset + 1] = (unsigned char)(((b >> 18) & 0x3F) | 0x80);
+        this->data[offset + 2] = (unsigned char)(((b >> 12) & 0x3F) | 0x80);
+        this->data[offset + 3] = (unsigned char)(((b >> 6) & 0x3F) | 0x80);
+        this->data[offset + 4] = (unsigned char)((b & 0x3F) | 0x80);
+        offset += 5;
     }
     else if (b <= 0x7FFFFFFF)
     {
-	this->data[offset + 0] = (unsigned char)((b >> 30) | 0xFC);
-	this->data[offset + 1] = (unsigned char)(((b >> 24) & 0x3F) | 0x80);
-	this->data[offset + 2] = (unsigned char)(((b >> 18) & 0x3F) | 0x80);
-	this->data[offset + 3] = (unsigned char)(((b >> 12) & 0x3F) | 0x80);
-	this->data[offset + 4] = (unsigned char)(((b >> 6) & 0x3F) | 0x80);
-	this->data[offset + 5] = (unsigned char)((b & 0x3F) | 0x80);
-	offset += 6;
+        this->data[offset + 0] = (unsigned char)((b >> 30) | 0xFC);
+        this->data[offset + 1] = (unsigned char)(((b >> 24) & 0x3F) | 0x80);
+        this->data[offset + 2] = (unsigned char)(((b >> 18) & 0x3F) | 0x80);
+        this->data[offset + 3] = (unsigned char)(((b >> 12) & 0x3F) | 0x80);
+        this->data[offset + 4] = (unsigned char)(((b >> 6) & 0x3F) | 0x80);
+        this->data[offset + 5] = (unsigned char)((b & 0x3F) | 0x80);
+        offset += 6;
     }
     else
-	assert(0);
+        assert(0);
 }
 
 void OutBuffer::writedchar(unsigned b)
 {
     reserve(Dchar_mbmax * sizeof(dchar));
     offset = (unsigned char *)Dchar::put((dchar *)(this->data + offset), (dchar)b) -
-		this->data;
+                this->data;
 }
 
 void OutBuffer::prependbyte(unsigned b)
@@ -1726,17 +1726,17 @@ void OutBuffer::writeUTF16(unsigned w)
     reserve(4);
     if (w <= 0xFFFF)
     {
-	*(unsigned short *)(this->data + offset) = (unsigned short)w;
-	offset += 2;
+        *(unsigned short *)(this->data + offset) = (unsigned short)w;
+        offset += 2;
     }
     else if (w <= 0x10FFFF)
     {
-	*(unsigned short *)(this->data + offset) = (unsigned short)((w >> 10) + 0xD7C0);
-	*(unsigned short *)(this->data + offset + 2) = (unsigned short)((w & 0x3FF) | 0xDC00);
-	offset += 4;
+        *(unsigned short *)(this->data + offset) = (unsigned short)((w >> 10) + 0xD7C0);
+        *(unsigned short *)(this->data + offset + 2) = (unsigned short)((w & 0x3FF) | 0xDC00);
+        offset += 4;
     }
     else
-	assert(0);
+        assert(0);
 }
 
 void OutBuffer::write4(unsigned w)
@@ -1749,9 +1749,9 @@ void OutBuffer::write4(unsigned w)
 void OutBuffer::write(OutBuffer *buf)
 {
     if (buf)
-    {	reserve(buf->offset);
-	memcpy(data + offset, buf->data, buf->offset);
-	offset += buf->offset;
+    {   reserve(buf->offset);
+        memcpy(data + offset, buf->data, buf->offset);
+        offset += buf->offset;
     }
 }
 
@@ -1759,7 +1759,7 @@ void OutBuffer::write(Object *obj)
 {
     if (obj)
     {
-	writestring(obj->toChars());
+        writestring(obj->toChars());
     }
 }
 
@@ -1787,12 +1787,12 @@ using std::string;
 using std::wstring;
 
 template<typename S>
-inline void 
+inline void
 search_and_replace(S& str, const S& what, const S& replacement)
 {
     assert(!what.empty());
     size_t pos = str.find(what);
-    while (pos != S::npos) 
+    while (pos != S::npos)
     {
         str.replace(pos, what.size(), replacement);
         pos = str.find(what, pos + replacement.size());
@@ -1821,14 +1821,14 @@ void OutBuffer::vprintf(const char *format, va_list args)
     for (;;)
     {
 #if _WIN32
-	count = _vsnprintf(p,psize,format,args);
-	if (count != -1)
-	    break;
-	psize *= 2;
+        count = _vsnprintf(p,psize,format,args);
+        if (count != -1)
+            break;
+        psize *= 2;
 #endif
 #ifndef _WIN32
-	va_list va;
-	va_copy(va, args);
+        va_list va;
+        va_copy(va, args);
 /*
   The functions vprintf(), vfprintf(), vsprintf(), vsnprintf()
   are equivalent to the functions printf(), fprintf(), sprintf(),
@@ -1838,18 +1838,18 @@ void OutBuffer::vprintf(const char *format, va_list args)
   of ap is undefined after the call. The application should call
   va_end(ap) itself afterwards.
  */
-	count = vsnprintf(p,psize,format,va);
-	va_end(va);
-	if (count == -1)
-	    psize *= 2;
-	else if (count >= psize)
-	    psize = count + 1;
-	else
-	    break;
+        count = vsnprintf(p,psize,format,va);
+        va_end(va);
+        if (count == -1)
+            psize *= 2;
+        else if (count >= psize)
+            psize = count + 1;
+        else
+            break;
 #else
     assert(0);
 #endif
-	p = (char *) alloca(psize);	// buffer too small, try again with larger size
+        p = (char *) alloca(psize);     // buffer too small, try again with larger size
     }
     write(p,count);
 }
@@ -1869,27 +1869,27 @@ void OutBuffer::vprintf(const wchar_t *format, va_list args)
     for (;;)
     {
 #if _WIN32
-	count = _vsnwprintf(p,psize,format,args);
-	if (count != -1)
-	    break;
-	psize *= 2;
+        count = _vsnwprintf(p,psize,format,args);
+        if (count != -1)
+            break;
+        psize *= 2;
 #endif
 #ifndef _WIN32
-	va_list va;
-	va_copy(va, args);
-	count = vsnwprintf(p,psize,format,va);
-	va_end(va);
+        va_list va;
+        va_copy(va, args);
+        count = vsnwprintf(p,psize,format,va);
+        va_end(va);
 
-	if (count == -1)
-	    psize *= 2;
-	else if (count >= psize)
-	    psize = count + 1;
-	else
-	    break;
+        if (count == -1)
+            psize *= 2;
+        else if (count >= psize)
+            psize = count + 1;
+        else
+            break;
 #else
     assert(0);
 #endif
-	p = (dchar *) alloca(psize * 2);	// buffer too small, try again with larger size
+        p = (dchar *) alloca(psize * 2);        // buffer too small, try again with larger size
     }
     write(p,count * 2);
 }
@@ -1941,7 +1941,7 @@ void OutBuffer::spread(unsigned offset, unsigned nbytes)
 {
     reserve(nbytes);
     memmove(data + offset + nbytes, data + offset,
-	this->offset - offset);
+        this->offset - offset);
     this->offset += nbytes;
 }
 
@@ -1995,12 +1995,12 @@ void Bits::resize(unsigned bitdim)
     allocdim = (bitdim + 31) / 32;
     data = (unsigned *)mem.realloc(data, allocdim * sizeof(data[0]));
     if (this->allocdim < allocdim)
-	memset(data + this->allocdim, 0, (allocdim - this->allocdim) * sizeof(data[0]));
+        memset(data + this->allocdim, 0, (allocdim - this->allocdim) * sizeof(data[0]));
 
     // Clear other bits in last word
     mask = (1 << (bitdim & 31)) - 1;
     if (mask)
-	data[allocdim - 1] &= ~mask;
+        data[allocdim - 1] &= ~mask;
 
     this->bitdim = bitdim;
     this->allocdim = allocdim;
@@ -2029,7 +2029,7 @@ void Bits::set()
     // Clear other bits in last word
     mask = (1 << (bitdim & 31)) - 1;
     if (mask)
-	data[allocdim - 1] &= mask;
+        data[allocdim - 1] &= mask;
 }
 
 void Bits::clear()
@@ -2058,7 +2058,7 @@ void Bits::sub(Bits *b)
     unsigned u;
 
     for (u = 0; u < allocdim; u++)
-	data[u] &= ~b->data[u];
+        data[u] &= ~b->data[u];
 }
 
 

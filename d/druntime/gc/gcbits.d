@@ -78,8 +78,15 @@ struct GCBits
     }
     body
     {
-        //return (cast(bit *)(data + 1))[i];
-        return data[1 + (i >> BITS_SHIFT)] & (1 << (i & BITS_MASK));
+        version (none)
+        {
+            return std.intrinsic.bt(data + 1, i);   // this is actually slower! don't use
+        }
+	else
+	{
+	    //return (cast(bit *)(data + 1))[i];
+	    return data[1 + (i >> BITS_SHIFT)] & (1 << (i & BITS_MASK));
+	}
     }
 
     void set(size_t i)
@@ -108,7 +115,7 @@ struct GCBits
     {
         version (bitops)
         {
-            return std.intrinsic.btr(data + 1, i);
+            return std.intrinsic.btr(data + 1, i);   // this is faster!
         }
         else version (Asm86)
         {
@@ -132,6 +139,38 @@ struct GCBits
             uint  mask = (1 << (i & BITS_MASK));
             result = *p & mask;
             *p &= ~mask;
+            return result;
+        }
+    }
+
+    uint testSet(size_t i)
+    {
+        version (bitops)
+        {
+            return std.intrinsic.bts(data + 1, i);   // this is faster!
+        }
+        else version (Asm86)
+        {
+            asm
+            {
+                naked                   ;
+                mov     EAX,data[EAX]   ;
+                mov     ECX,i-4[ESP]    ;
+                bts     4[EAX],ECX      ;
+                sbb     EAX,EAX         ;
+                ret     4               ;
+            }
+        }
+        else
+        {   uint result;
+
+            //result = (cast(bit *)(data + 1))[i];
+            //(cast(bit *)(data + 1))[i] = 0;
+
+            uint* p = &data[1 + (i >> BITS_SHIFT)];
+            uint  mask = (1 << (i & BITS_MASK));
+            result = *p & mask;
+            *p |= mask;
             return result;
         }
     }

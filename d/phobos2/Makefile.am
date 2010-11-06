@@ -198,17 +198,18 @@ unittest: unittest.o libgphobos2_t.a libgphobos2.a
 	$(GDC) -o $@ $(CFLAGS) -fdeprecated unittest.o -L./ -lgdruntime -lgphobos2_t $(LIBS) -ldl
 
 MAIN_OBJS=std/algorithm.o std/atomics.o std/array.o std/base64.o \
-	std/bigint.o std/bind.o std/bitarray.o std/bitmanip.o \
-	std/compiler.o std/complex.o std/concurrency.o std/contracts.o std/conv.o \
+	std/bigint.o std/biguintcore.o std/biguintnoasm.o std/biguintx86.o \
+	std/bind.o std/bitarray.o std/bitmanip.o std/compiler.o \
+	std/complex.o std/concurrency.o std/contracts.o std/conv.o \
 	std/cpuid.o std/cstream.o std/ctype.o std/date.o std/dateparse.o \
 	std/demangle.o std/encoding.o std/format.o std/functional.o \
-	std/getopt.o std/iterator.o std/json.o std/math.o std/md5.o std/metastrings.o \
-	std/numeric.o std/openrj.o std/outbuffer.o std/signals.o \
-	std/stdarg.o std/stdio.o std/stdiobase.o std/stream.o std/string.o \
-	std/syserror.o std/system.o std/random.o std/range.o std/regex.o std/regexp.o \
-	std/traits.o std/typecons.o std/typetuple.o std/uni.o std/uri.o \
-	std/utf.o std/variant.o std/xml.o std/zip.o std/zlib.o \
-	std/c/stdarg.o std/c/stdio.o crc32.o etc/c/zlib.o
+	std/getopt.o std/iterator.o std/json.o std/math.o std/md5.o \
+	std/metastrings.o std/numeric.o std/openrj.o std/outbuffer.o \
+	std/signals.o std/stdarg.o std/stdio.o std/stdiobase.o std/stream.o \
+	std/string.o std/syserror.o std/system.o std/random.o std/range.o \
+	std/regex.o std/regexp.o std/traits.o std/typecons.o std/typetuple.o \
+	std/uni.o std/uri.o std/utf.o std/variant.o std/xml.o std/zip.o \
+	std/zlib.o std/c/stdarg.o std/c/stdio.o crc32.o etc/c/zlib.o
 
 ZLIB_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/gzclose.o zlib/gzlib.o zlib/gzread.o zlib/gzwrite.o \
