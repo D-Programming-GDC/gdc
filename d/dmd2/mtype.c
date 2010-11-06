@@ -1284,6 +1284,68 @@ int MODimplicitConv(unsigned char modfrom, unsigned char modto)
     #undef X
 }
 
+/***************************
+ * Merge mod bits to form common mod.
+ */
+int MODmerge(unsigned char mod1, unsigned char mod2)
+{
+    if (mod1 == mod2)
+        return mod1;
+
+    //printf("MODmerge(1 = %x, 2 = %x)\n", modfrom, modto);
+    #define X(m, n) (((m) << 4) | (n))
+    // cases are commutative
+    #define Y(m, n) X(m, n): case X(n, m)
+    switch (X(mod1, mod2))
+    {
+#if 0
+        case X(0, 0):
+        case X(MODconst, MODconst):
+        case X(MODimmutable, MODimmutable):
+        case X(MODshared, MODshared):
+        case X(MODshared | MODconst, MODshared | MODconst):
+        case X(MODwild, MODwild):
+        case X(MODshared | MODwild, MODshared | MODwild):
+#endif
+
+        case Y(0, MODconst):
+        case Y(0, MODimmutable):
+        case Y(MODconst, MODimmutable):
+        case Y(MODconst, MODwild):
+        case Y(0, MODwild):
+        case Y(MODimmutable, MODwild):
+            return MODconst;
+
+        case Y(0, MODshared):
+            return MODshared;
+
+        case Y(0, MODshared | MODconst):
+        case Y(MODconst, MODshared):
+        case Y(MODconst, MODshared | MODconst):
+        case Y(MODimmutable, MODshared):
+        case Y(MODimmutable, MODshared | MODconst):
+        case Y(MODshared, MODshared | MODconst):
+        case Y(0, MODshared | MODwild):
+        case Y(MODconst, MODshared | MODwild):
+        case Y(MODimmutable, MODshared | MODwild):
+        case Y(MODshared, MODwild):
+        case Y(MODshared, MODshared | MODwild):
+        case Y(MODshared | MODconst, MODwild):
+        case Y(MODshared | MODconst, MODshared | MODwild):
+            return MODshared | MODconst;
+
+        case Y(MODwild, MODshared | MODwild):
+            return MODshared | MODwild;
+
+        default:
+            assert(0);
+    }
+    #undef Y
+    #undef X
+    assert(0);
+    return 0;
+}
+
 /*********************************
  * Mangling for mod.
  */
@@ -1631,7 +1693,7 @@ Expression *Type::getProperty(Loc loc, Identifier *ident)
         error(loc, ".size property should be replaced with .sizeof");
         e = new ErrorExp();
     }
-    else if (ident == Id::alignof)
+    else if (ident == Id::__xalignof)
     {
         e = new IntegerExp(loc, alignsize(), Type::tsize_t);
     }
@@ -1781,7 +1843,7 @@ Expression *Type::noMember(Scope *sc, Expression *e, Identifier *ident)
     assert(sym);
 
     if (ident != Id::__sizeof &&
-        ident != Id::alignof &&
+        ident != Id::__xalignof &&
         ident != Id::init &&
         ident != Id::mangleof &&
         ident != Id::stringof &&
@@ -3950,42 +4012,47 @@ StructDeclaration *TypeAArray::getImpl()
     // Do it lazily
     if (!impl)
     {
-        if (!index->reliesOnTident() && !next->reliesOnTident())
+        Type *index = this->index;
+        Type *next = this->next;
+        if (index->reliesOnTident() || next->reliesOnTident())
         {
-            /* This is really a proxy for the template instance AssocArray!(index, next)
-             * But the instantiation can fail if it is a template specialization field
-             * which has Tident's instead of real types.
-             */
-            Objects *tiargs = new Objects();
-            tiargs->push(index);
-            tiargs->push(next);
-
-            // Create AssociativeArray!(index, next)
-#if 1
-            TemplateInstance *ti = new TemplateInstance(loc, Type::associativearray, tiargs);
-#else
-            //Expression *e = new IdentifierExp(loc, Id::object);
-            Expression *e = new IdentifierExp(loc, Id::empty);
-            //e = new DotIdExp(loc, e, Id::object);
-            DotTemplateInstanceExp *dti = new DotTemplateInstanceExp(loc,
-                        e,
-                        Id::AssociativeArray,
-                        tiargs);
-            dti->semantic(sc);
-            TemplateInstance *ti = dti->ti;
-#endif
-            ti->semantic(sc);
-            ti->semantic2(sc);
-            ti->semantic3(sc);
-            impl = ti->toAlias()->isStructDeclaration();
-#ifdef DEBUG
-            if (!impl)
-            {   Dsymbol *s = ti->toAlias();
-                printf("%s %s\n", s->kind(), s->toChars());
-            }
-#endif
-            assert(impl);
+            error(loc, "cannot create associative array %s", toChars());
+            index = terror;
+            next = terror;
         }
+        /* This is really a proxy for the template instance AssocArray!(index, next)
+         * But the instantiation can fail if it is a template specialization field
+         * which has Tident's instead of real types.
+         */
+        Objects *tiargs = new Objects();
+        tiargs->push(index);
+        tiargs->push(next);
+
+        // Create AssociativeArray!(index, next)
+#if 1
+        TemplateInstance *ti = new TemplateInstance(loc, Type::associativearray, tiargs);
+#else
+        //Expression *e = new IdentifierExp(loc, Id::object);
+        Expression *e = new IdentifierExp(loc, Id::empty);
+        //e = new DotIdExp(loc, e, Id::object);
+        DotTemplateInstanceExp *dti = new DotTemplateInstanceExp(loc,
+                    e,
+                    Id::AssociativeArray,
+                    tiargs);
+        dti->semantic(sc);
+        TemplateInstance *ti = dti->ti;
+#endif
+        ti->semantic(sc);
+        ti->semantic2(sc);
+        ti->semantic3(sc);
+        impl = ti->toAlias()->isStructDeclaration();
+#ifdef DEBUG
+        if (!impl)
+        {   Dsymbol *s = ti->toAlias();
+            printf("%s %s\n", s->kind(), s->toChars());
+        }
+#endif
+        assert(impl);
     }
     return impl;
 }
@@ -5678,7 +5745,7 @@ Type *TypeIdentifier::semantic(Loc loc, Scope *sc)
         }
         else
             error(loc, "%s is used as a type", toChars());
-        t = tvoid;
+        t = terror;
     }
     //t->print();
     return t;

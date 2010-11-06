@@ -349,6 +349,7 @@ void ArrayInitializer::addInit(Expression *index, Initializer *value)
 Initializer *ArrayInitializer::semantic(Scope *sc, Type *t)
 {   unsigned i;
     unsigned length;
+    uintmax_t amax = 0x80000000;
 
     //printf("ArrayInitializer::semantic(%s)\n", t->toChars());
     if (sem)                            // if semantic() already run
@@ -365,7 +366,7 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t)
 
         default:
             error(loc, "cannot use array to initialize %s", type->toChars());
-            return this;
+            goto Lerr;
     }
 
     length = 0;
@@ -384,14 +385,30 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t)
         value.data[i] = (void *)val;
         length++;
         if (length == 0)
-            error(loc, "array dimension overflow");
+        {   error(loc, "array dimension overflow");
+            goto Lerr;
+        }
         if (length > dim)
             dim = length;
     }
-    uintmax_t amax = 0x80000000;
+    if (t->ty == Tsarray)
+    {
+        dinteger_t edim = ((TypeSArray *)t)->dim->toInteger();
+        if (dim > edim)
+        {
+            error(loc, "array initializer has %"PRIuTSIZE" elements, but array length is %"PRIdMAX, dim, edim);
+            goto Lerr;
+        }
+    }
+
     if ((uintmax_t) dim * t->nextOf()->size() >= amax)
-        error(loc, "array dimension %"PRIuTSIZE" exceeds max of %"PRIuMAX, dim, amax / t->nextOf()->size());
+    {	error(loc, "array dimension %"PRIuTSIZE" exceeds max of %"PRIuMAX, dim, amax / t->nextOf()->size());
+	goto Lerr;
+    }
     return this;
+
+Lerr:
+    return new ExpInitializer(loc, new ErrorExp());
 }
 
 /********************************

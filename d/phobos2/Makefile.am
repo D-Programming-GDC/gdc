@@ -125,11 +125,11 @@ RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/gccmemory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
 	     rt/monitor.o rt/obj.o rt/qsort.o rt/switch_.o
 
-CORE_OBJS=core/bitop.o core/cpuid.o core/exception.o core/memory.o \
-	  core/runtime.o core/thread.o core/vararg.o core/stdc/errno.o \
-	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
-	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
-	  core/sync/semaphore.o
+CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/exception.o \
+	  core/memory.o core/runtime.o core/thread.o core/vararg.o \
+	  core/stdc/errno.o core/sync/barrier.o core/sync/condition.o \
+	  core/sync/config.o core/sync/exception.o core/sync/mutex.o \
+	  core/sync/rwmutex.o core/sync/semaphore.o
 
 GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
 	 gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \

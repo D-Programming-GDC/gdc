@@ -8,7 +8,7 @@ private
 }
     alias bool function() ModuleUnitTester;
     alias bool function(Object) CollectHandler;
-    alias Exception.TraceInfo function(void* ptr = null) TraceHandler;
+    alias Throwable.TraceInfo function(void* ptr = null) TraceHandler;
     extern (C) 
 {
     void rt_setCollectHandler(CollectHandler h);
@@ -33,6 +33,46 @@ private
     extern (C) 
 {
     bool rt_unloadLibrary(void* ptr);
+}
+    extern (C) 
+{
+    void onAssertErrorMsg(string file, size_t line, string msg);
+}
+    extern (C) 
+{
+    __gshared 
+{
+    void function(string file, size_t line, string msg) unittestHandler = null;
+}
+}
+    version (linux)
+{
+    import core.stdc.stdlib;
+    import core.stdc.string;
+    extern (C) 
+{
+    int backtrace(void**, size_t);
+}
+    extern (C) 
+{
+    char** backtrace_symbols(void**, int);
+}
+}
+else
+{
+    version (OSX)
+{
+    import core.stdc.stdlib;
+    import core.stdc.string;
+    extern (C) 
+{
+    int backtrace(void**, size_t);
+}
+    extern (C) 
+{
+    char** backtrace_symbols(void**, int);
+}
+}
 }
 }
 struct Runtime
@@ -101,7 +141,19 @@ sm_moduleUnitTester = h;
 }
 }
 }
+__gshared unittest_errors = false;
 extern (C) 
 {
     bool runModuleUnitTests();
 }
+extern (C) 
+{
+    void onUnittestErrorMsg(string file, size_t line, string msg)
+{
+unittest_errors = true;
+if (unittestHandler)
+unittestHandler(file,line,msg);
+onAssertErrorMsg(file,line,msg);
+}
+}
+Throwable.TraceInfo defaultTraceHandler(void* ptr = null);

@@ -813,6 +813,10 @@ IRState::assertCall(Loc loc, LibCall libcall)
 {
     tree args[2] = { darrayString(loc.filename ? loc.filename : ""),
 		     integerConstant(loc.linnum, Type::tuns32) };
+#if V2
+    if (libcall == LIBCALL_ASSERT && func->isUnitTestDeclaration())
+	libcall = LIBCALL_UNITTEST;
+#endif
     return libCall(libcall, 2, args);
 }
 
@@ -822,7 +826,13 @@ IRState::assertCall(Loc loc, Expression * msg)
     tree args[3] = { msg->toElem(this),
 		     darrayString(loc.filename ? loc.filename : ""),
 		     integerConstant(loc.linnum, Type::tuns32) };
-    return libCall(LIBCALL_ASSERT_MSG, 3, args);
+#if V2
+    LibCall libcall = func->isUnitTestDeclaration() ?
+	LIBCALL_UNITTEST_MSG : LIBCALL_ASSERT_MSG;
+#else
+    LibCall libcall = LIBCALL_ASSERT_MSG;
+#endif
+    return libCall(libcall, 3, args);
 }
 
 tree
@@ -1127,6 +1137,7 @@ static const char * libcall_ids[LIBCALL_count] =
       "_d_assocarrayliteralTp"
 #if V2
       ,
+      "_d_unittest", "_d_unittest_msg",
       "_d_hidden_func"
 #endif
     };
@@ -1185,6 +1196,19 @@ IRState::getLibCallDecl(LibCall lib_call)
 	    arg_types.push( Type::tchar->arrayOf() );
 	    arg_types.push( Type::tuns32 );
 	    break;
+#if V2
+	case LIBCALL_UNITTEST:
+	    arg_types.reserve(2);
+	    arg_types.push( Type::tchar->arrayOf() );
+	    arg_types.push( Type::tuns32 );
+	    break;
+	case LIBCALL_UNITTEST_MSG:
+	    arg_types.reserve(3);
+	    arg_types.push( Type::tchar->arrayOf() );
+	    arg_types.push( Type::tchar->arrayOf() );
+	    arg_types.push( Type::tuns32 );
+	    break;
+#endif
 	case LIBCALL_NEWCLASS:
 	    arg_types.push( ClassDeclaration::classinfo->type );
 	    return_type = getObjectType();

@@ -26,6 +26,7 @@ private
         import rt.memory;
 
     import rt.util.console;
+    import rt.util.string;
     import core.stdc.stddef;
     import core.stdc.stdlib;
     import core.stdc.string;
@@ -79,6 +80,17 @@ extern (C)
     alias void  function()      gcClrFn;
 }
 
+extern (C) extern __gshared void function ( string file, size_t line, string msg) unittestHandler;
+
+extern (C) void unittestHandlerFunc( string file, size_t line, string msg )
+{
+    char[10] tmp = void;
+    char[] buf;
+    buf = file ~ "(" ~ tmp.intToString(line) ~ "): " ~ msg;
+    console(cast(string)buf)("\n");
+}
+
+
 extern (C) void* rt_loadLibrary(in char[] name)
 {
     version (Windows)
@@ -122,6 +134,7 @@ extern (C) bool rt_unloadLibrary(void* ptr)
  */
 extern (C) void onAssertError(string file, size_t line);
 extern (C) void onAssertErrorMsg(string file, size_t line, string msg);
+extern (C) void onUnittestErrorMsg(string file, size_t line, string msg);
 extern (C) void onRangeError(string file, size_t line);
 extern (C) void onHiddenFuncError(Object o);
 extern (C) void onSwitchError(string file, size_t line);
@@ -134,33 +147,38 @@ extern (C) bool runModuleUnitTests();
  * These are internal callbacks for various language errors.
  */
 
-extern (C) void _d_assert(string file, uint line)
-{
-    onAssertError(file, line);
-}
-
-extern (C) static void _d_assert_msg(string msg, string file, uint line)
-{
-    onAssertErrorMsg(file, line, msg);
-}
-    
-extern (C) void _d_array_bounds(string file, uint line)
-{
-    onRangeError(file, line);
-}
-
-extern (C) void _d_switch_error(string file, uint line)
-{
-    onSwitchError(file, line);
-}
-
 extern (C)
 {
-    // Use ModuleInfo to get file name
+    // Use ModuleInfo to get file name for "m" versions.
 
     void _d_assertm(ModuleInfo* m, uint line)
     {
 	onAssertError(m.name, line);
+    }
+    
+    void _d_assert_msg(string msg, string file, uint line)
+    {
+	onAssertErrorMsg(file, line, msg);
+    }
+
+    void _d_assert(string file, uint line)
+    {
+	onAssertError(file, line);
+    }
+
+    void _d_unittestm(ModuleInfo* m, uint line)
+    {
+	_d_unittest(m.name, line);
+    }
+    
+    void _d_unittest_msg(string msg, string file, uint line)
+    {
+	onUnittestErrorMsg(file, line, msg);
+    }
+
+    void _d_unittest(string file, uint line)
+    {
+	_d_unittest_msg("unittest failure", file, line);
     }
 
     void _d_array_boundsm(ModuleInfo* m, uint line)
@@ -168,10 +186,21 @@ extern (C)
 	onRangeError(m.name, line);
     }
 
+    void _d_array_bounds(string file, uint line)
+    {
+	onRangeError(file, line);
+    }
+
     void _d_switch_errorm(ModuleInfo* m, uint line)
     {
 	onSwitchError(m.name, line);
     }
+
+    void _d_switch_error(string file, uint line)
+    {
+	onSwitchError(file, line);
+    }
+
 }
 
 version(GNU)
@@ -227,6 +256,7 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
         version (Windows)
             _minit();
         _moduleCtor();
+	unittestHandler = &unittestHandlerFunc;
         runModuleUnitTests();
         return true;
     }
@@ -422,8 +452,11 @@ extern (C) int main(int argc, char **argv)
         version (Windows)
             _minit();
         _moduleCtor();
+	unittestHandler = &unittestHandlerFunc;
         if (runModuleUnitTests())
             tryExec(&runMain);
+	else
+	    result = EXIT_FAILURE;
         thread_joinAll();
         _d_isHalting = true;
         _moduleDtor();

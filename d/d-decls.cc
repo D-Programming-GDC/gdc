@@ -1034,6 +1034,16 @@ Symbol *Module::toModuleAssert()
 
 /******************************************
  */
+#if V2
+Symbol *Module::toModuleUnittest()
+{
+    // Not used in GCC
+    return 0;
+}
+#endif
+
+/******************************************
+ */
 
 Symbol *Module::toModuleArray()
 {

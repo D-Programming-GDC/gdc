@@ -901,7 +901,7 @@ Lagain:
         error("final cannot be applied to variable");
     }
 
-    if (storage_class & (STCstatic | STCextern | STCmanifest | STCtemplateparameter | STCtls | STCgshared))
+    if (storage_class & (STCstatic | STCextern | STCmanifest | STCtemplateparameter | STCtls | STCgshared | STCctfe))
     {
     }
     else

@@ -82,6 +82,11 @@ the target object file format:
 #endif
 #endif
 
+#ifdef DEBUG
+#define UNITTEST 1
+#endif
+void unittests();
+
 #ifdef IN_GCC
 /* Changes for the GDC compiler by David Friedman */
 #define V1      DMDV1

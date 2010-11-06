@@ -294,7 +294,7 @@ m_curr = &m_main;
 }
     static 
 {
-    int opApply(int delegate(ref Thread) dg);
+    int opApply(scope int delegate(ref Thread) dg);
 }
     shared static this();
     private 
@@ -616,7 +616,7 @@ class ThreadGroup
 }
     final 
 {
-    int opApply(int delegate(ref Thread) dg);
+    int opApply(scope int delegate(ref Thread) dg);
 }
     final 
 {

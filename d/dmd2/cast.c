@@ -103,7 +103,7 @@ fflush(stdout);
 
     error("cannot implicitly convert expression (%s) of type %s to %s",
         toChars(), type->toChars(), t->toChars());
-    return castTo(sc, t);
+    return new ErrorExp();
 }
 
 Expression *StringExp::implicitCastTo(Scope *sc, Type *t)
@@ -117,6 +117,11 @@ Expression *StringExp::implicitCastTo(Scope *sc, Type *t)
         ((StringExp *)e)->committed = committed;
     }
     return e;
+}
+
+Expression *ErrorExp::implicitCastTo(Scope *sc, Type *t)
+{
+    return this;
 }
 
 /*******************************************
@@ -956,6 +961,7 @@ Expression *StringExp::castTo(Scope *sc, Type *t)
     if (!committed && t->ty == Tpointer && t->nextOf()->ty == Tvoid)
     {
         error("cannot convert string literal to void*");
+        return new ErrorExp();
     }
 
     StringExp *se = this;
@@ -1366,11 +1372,11 @@ Expression *SymOffExp::castTo(Scope *sc, Type *t)
                         }
                         else if (f->needThis())
                         {   error("no 'this' to create delegate for %s", f->toChars());
-                            e = new ErrorExp();
+                            return new ErrorExp();
                         }
                         else
                         {   error("cannot cast from function pointer to delegate");
-                            e = new ErrorExp();
+                            return new ErrorExp();
                         }
                     }
                     else
@@ -1678,21 +1684,30 @@ Lagain:
              (t2->ty == Tsarray || t2->ty == Tarray || t2->ty == Tpointer) &&
              t1->nextOf()->mod != t2->nextOf()->mod
             )
-    {
+    {   unsigned char mod = MODmerge(t1->nextOf()->mod, t2->nextOf()->mod);
+
         if (t1->ty == Tpointer)
-            t1 = t1->nextOf()->mutableOf()->constOf()->pointerTo();
+            t1 = t1->nextOf()->castMod(mod)->pointerTo();
         else
-            t1 = t1->nextOf()->mutableOf()->constOf()->arrayOf();
+            t1 = t1->nextOf()->castMod(mod)->arrayOf();
 
         if (t2->ty == Tpointer)
-            t2 = t2->nextOf()->mutableOf()->constOf()->pointerTo();
+            t2 = t2->nextOf()->castMod(mod)->pointerTo();
         else
-            t2 = t2->nextOf()->mutableOf()->constOf()->arrayOf();
+            t2 = t2->nextOf()->castMod(mod)->arrayOf();
         t = t1;
         goto Lagain;
     }
     else if (t1->ty == Tclass || t2->ty == Tclass)
     {
+        if (t1->mod != t2->mod)
+        {   unsigned char mod = MODmerge(t1->mod, t2->mod);
+            t1 = t1->castMod(mod);
+            t2 = t2->castMod(mod);
+            t = t1;
+            goto Lagain;
+        }
+
         while (1)
         {
             int i1 = e2->implicitConvTo(t1);
@@ -1877,7 +1892,7 @@ Expression *Expression::integralPromotions(Scope *sc)
     {
         case Tvoid:
             error("void has no value");
-            break;
+            return new ErrorExp();
 
         case Tint8:
         case Tuns8:

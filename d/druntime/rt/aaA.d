@@ -516,13 +516,14 @@ body
 
     if (aa.a)
     {
+      Loop:
         foreach (e; aa.a.b)
         {
             while (e)
             {
 	        result = dg(cast(void *)(e + 1) + keysize);
                 if (result)
-                    break;
+                    break Loop;
 		e = e.next;
             }
         }
@@ -545,13 +546,14 @@ body
 
     if (aa.a)
     {
+      Loop:
         foreach (e; aa.a.b)
         {
             while (e)
             {
 		result = dg(cast(void *)(e + 1), cast(void *)(e + 1) + keysize);
                 if (result)
-                    break;
+                    break Loop;
 		e = e.next;
             }
         }

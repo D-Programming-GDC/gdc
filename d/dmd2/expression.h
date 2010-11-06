@@ -157,6 +157,7 @@ struct Expression : Object
     virtual int inlineCost(InlineCostState *ics);
     virtual Expression *doInline(InlineDoState *ids);
     virtual Expression *inlineScan(InlineScanState *iss);
+    Expression *inlineCopy(Scope *sc);
 
     // For operator overloading
     virtual int isCommutative();
@@ -203,6 +204,7 @@ struct ErrorExp : IntegerExp
 {
     ErrorExp();
 
+    Expression *implicitCastTo(Scope *sc, Type *t);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 };
 
@@ -565,6 +567,7 @@ struct NewAnonClassExp : Expression
     int canThrow();
 };
 
+#if DMDV2
 struct SymbolExp : Expression
 {
     Declaration *var;
@@ -574,6 +577,7 @@ struct SymbolExp : Expression
 
     elem *toElem(IRState *irs);
 };
+#endif
 
 // Offset from symbol
 

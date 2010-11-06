@@ -202,14 +202,15 @@ D_DMD_OBJS := \
     d/rmem.dmd.o d/root.dmd.o d/scope.dmd.o d/speller.dmd.o \
     d/statement.dmd.o d/staticassert.dmd.o d/stringtable.dmd.o \
     d/struct.dmd.o d/template.dmd.o d/todt.dmd.o d/toobj.dmd.o \
-    d/typinf.dmd.o d/unialpha.dmd.o d/utf.dmd.o d/version.dmd.o
+    d/typinf.dmd.o d/unialpha.dmd.o d/utf.dmd.o d/unittests.dmd.o \
+    d/version.dmd.o
 
 ifeq ($(D_LANGUAGE_VERSION),2)
 # D2 specific sources 
   D_DMD_OBJS += d/builtin.dmd.o d/traits.dmd.o
 else
 # D1 specific sources
-  D_DMD_OBJS += d/aav.dmd.o d/imphint.dmd.o d/unittests.dmd.o
+  D_DMD_OBJS += d/aav.dmd.o d/imphint.dmd.o
 endif
 
 
