@@ -29,6 +29,7 @@ class Object
     hash_t   toHash();
     int      opCmp(Object o);
     equals_t opEquals(Object o);
+    equals_t opEquals(Object lhs, Object rhs);
 
     interface Monitor
     {
@@ -273,6 +274,12 @@ struct ModuleInfo
     static int opApply(int delegate(ref ModuleInfo*));
 }
 
+ModuleInfo*[] _moduleinfo_tlsdtors;
+uint          _moduleinfo_tlsdtors_i;
+
+extern (C) void _moduleTlsCtor();
+extern (C) void _moduleTlsDtor();
+
 class Throwable : Object
 {
     interface TraceInfo
@@ -391,17 +398,24 @@ struct AssociativeArray(Key, Value)
 
 void clear(T)(T obj) if (is(T == class))
 {
+    auto ci = obj.classinfo;
     auto defaultCtor =
-        cast(void function(Object)) obj.classinfo.defaultConstructor;
+        cast(void function(Object)) ci.defaultConstructor;
     version(none) // enforce isn't available in druntime
-        _enforce(defaultCtor || (obj.classinfo.flags & 8) == 0);
-    immutable size = obj.classinfo.init.length;
-    static if (is(typeof(obj.__dtor())))
+        _enforce(defaultCtor || (ci.flags & 8) == 0);
+    immutable size = ci.init.length;
+
+    auto ci2 = ci;
+    do
     {
-        obj.__dtor();
-    }
+        auto dtor = cast(void function(Object))ci2.destructor;
+        if (dtor)
+            dtor(obj);
+        ci2 = ci2.base;
+    } while (ci2)
+
     auto buf = (cast(void*) obj)[0 .. size];
-    buf[] = obj.classinfo.init;
+    buf[] = ci.init;
     if (defaultCtor)
         defaultCtor(obj);
 }
@@ -449,12 +463,12 @@ private
     return _d_arraysetcapacity(typeid(T[]), 0, cast(void *)&arr);
 }
 
-size_t setCapacity(T)(ref T[] arr, size_t newcapacity)
+size_t reserve(T)(ref T[] arr, size_t newcapacity)
 {
     return _d_arraysetcapacity(typeid(T[]), newcapacity, cast(void *)&arr);
 }
 
-void shrinkToFit(T)(T[] arr)
+void assumeSafeAppend(T)(T[] arr)
 {
     _d_arrayshrinkfit(typeid(T[]), *(cast(void[]*)&arr));
 }

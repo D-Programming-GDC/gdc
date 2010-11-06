@@ -79,11 +79,12 @@ private
 
 enum : size_t
        {
-           LENGTHMASK = ~(cast(size_t)0x0ff),
            BIGLENGTHMASK = ~(cast(size_t)PAGESIZE - 1),
            SMALLPAD = 1,
            MEDPAD = ushort.sizeof,
            LARGEPAD = size_t.sizeof * 2 + 1,
+           MAXSMALLSIZE = 256-SMALLPAD,
+           MAXMEDSIZE = (PAGESIZE / 2) - MEDPAD
        }
 }
 
@@ -359,7 +360,7 @@ void *__arrayStart(BlkInfo info)
 
 size_t __arrayPad(size_t size)
 {
-    return (size & BIGLENGTHMASK) ? LARGEPAD : (size & LENGTHMASK) ? MEDPAD : SMALLPAD;
+    return size > MAXMEDSIZE ? LARGEPAD : (size > MAXSMALLSIZE ? MEDPAD : SMALLPAD);
 }
 
 /**
@@ -595,18 +596,33 @@ body
 
     // step 4, if extending doesn't work, allocate a new array with at least the requested allocated size.
     auto datasize = p.length * size;
-    info = gc_malloc_bi(reqsize + __arrayPad(reqsize), info.attr);
+    reqsize += __arrayPad(reqsize);
+    // copy attributes from original block, or from the typeinfo if the
+    // original block doesn't exist.
+    info = gc_malloc_bi(reqsize, info.base ? info.attr : (!(ti.next.flags() & 1) ? BlkAttr.NO_SCAN : 0));
     if(info.base is null)
         goto Loverflow;
+    // copy the data over.
+    // note that malloc will have initialized the data we did not request to 0.
+    auto tgt = __arrayStart(info);
+    memcpy(tgt, p.data, datasize);
+    if(!(info.attr & BlkAttr.NO_SCAN))
+    {
+        // need to memset the newly requested data, except for the data that
+        // malloc returned that we didn't request.
+        void *endptr = info.base + reqsize;
+        void *begptr = tgt + datasize;
+
+        // sanity check
+        assert(endptr >= begptr);
+        memset(begptr, 0, endptr - begptr);
+    }
+
+    // set up the correct length
     __setArrayAllocLength(info, datasize, isshared);
     if(!isshared)
         __insertBlkInfoCache(info, bic);
 
-    // copy the data over.
-    // note that malloc will have initialized the unallocated data to 0 if
-    // necessary, we do not need to do it here.
-    auto tgt = __arrayStart(info);
-    memcpy(tgt, p.data, datasize);
     p.data = cast(byte *)tgt;
     curcapacity = info.size - __arrayPad(info.size);
     return curcapacity / size;
@@ -713,7 +729,6 @@ extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length)
         auto info = gc_malloc_bi(size + __arrayPad(size), !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN : 0);
         debug(PRINTF) printf(" p = %p\n", info.base);
         auto arrstart = __arrayStart(info);
-        
         if (isize == 1)
             memset(arrstart, *cast(ubyte*)q, size);
         else if (isize == int.sizeof)
@@ -1636,7 +1651,6 @@ body
             return y;
     }
 
-    debug(PRINTF) printf("_d_arraycatT(%d,%p ~ %d,%p)\n", x.length, x.ptr, y.length, y.ptr);
     auto sizeelem = ti.next.tsize();            // array element size
     debug(PRINTF) printf("_d_arraycatT(%d,%p ~ %d,%p sizeelem = %d)\n", x.length, x.ptr, y.length, y.ptr, sizeelem);
     size_t xlen = x.length * sizeelem;
@@ -1794,4 +1808,22 @@ unittest
     assert(b.length == 3);
     for (i = 0; i < 3; i++)
         assert(b[i] == i + 1);
+
+    // test slice appending
+    b = a[0..1];
+    b ~= 4;
+    for(i = 0; i < 3; i++)
+        assert(a[i] == i + 1);
+
+    // test reserving
+    char[] arr = new char[4093];
+    for(i = 0; i < arr.length; i++)
+        arr[i] = cast(char)(i % 256);
+
+    // note that these two commands used to cause corruption, which may not be
+    // detected.
+    arr.reserve(4094);
+    auto arr2 = arr ~ "123";
+    assert(arr2[0..arr.length] == arr);
+    assert(arr2[arr.length..$] == "123");
 }

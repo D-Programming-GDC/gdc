@@ -291,7 +291,9 @@ RT_POSIX_OBJS = import/core/sys/posix/netinet/in_.o \
 	      import/core/sys/posix/sys/stat.o \
 	      import/core/sys/posix/sys/wait.o
 
-RT_WINDOWS_OBJS = import/core/sys/windows/windows.o
+RT_WINDOWS_OBJS = import/core/sys/windows/windows.o \
+		core/dll_helper.o core/thread_helper.o
+
 
 # This should not be linked into a shared library.
 #CMAIN_OBJS=compiler/gdc/cmain.o

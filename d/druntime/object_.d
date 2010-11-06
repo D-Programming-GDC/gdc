@@ -8,8 +8,9 @@
  * Copyright: Copyright Digital Mars 2000 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
- *
- *          Copyright Digital Mars 2000 - 2009.
+ */
+
+/*          Copyright Digital Mars 2000 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -105,6 +106,18 @@ class Object
     equals_t opEquals(Object o)
     {
         return this is o;
+    }
+    
+    equals_t opEquals(Object lhs, Object rhs)
+    {
+        if (lhs is rhs)
+            return true;
+        if (lhs is null || rhs is null)
+            return false;
+        if (typeid(lhs) == typeid(rhs))
+            return lhs.opEquals(rhs);
+        return lhs.opEquals(rhs) &&
+               rhs.opEquals(lhs);
     }
 
     interface Monitor
@@ -2141,17 +2154,24 @@ struct AssociativeArray(Key, Value)
 
 void clear(T)(T obj) if (is(T == class))
 {
+    auto ci = obj.classinfo;
     auto defaultCtor =
-        cast(void function(Object)) obj.classinfo.defaultConstructor;
+        cast(void function(Object)) ci.defaultConstructor;
     version(none) // enforce isn't available in druntime
-        _enforce(defaultCtor || (obj.classinfo.flags & 8) == 0);
-    immutable size = obj.classinfo.init.length;
-    static if (is(typeof(obj.__dtor())))
+        _enforce(defaultCtor || (ci.flags & 8) == 0);
+    immutable size = ci.init.length;
+
+    auto ci2 = ci;
+    do
     {
-        obj.__dtor();
-    }
+        auto dtor = cast(void function(Object))ci2.destructor;
+        if (dtor)
+            dtor(obj);
+        ci2 = ci2.base;
+    } while (ci2)
+
     auto buf = (cast(void*) obj)[0 .. size];
-    buf[] = obj.classinfo.init;
+    buf[] = ci.init;
     if (defaultCtor)
         defaultCtor(obj);
 }
@@ -2289,8 +2309,9 @@ version (unittest)
 }
 
 /**
- * Get the current capacity of an array.  The capacity is the number of
- * elements that can be appended before the array must be extended/reallocated.
+ * (Property) Get the current capacity of an array.  The capacity is the number
+ * of elements that the array can grow to before the array must be
+ * extended/reallocated.
  */
 @property size_t capacity(T)(T[] arr)
 {
@@ -2298,25 +2319,31 @@ version (unittest)
 }
 
 /**
- * Set the capacity of an array.  The capacity is the number of elements that
- * can be appended before the array must be extended/reallocated.
+ * Try to reserve capacity for an array.  The capacity is the number of
+ * elements that the array can grow to before the array must be
+ * extended/reallocated.
  *
  * The return value is the new capacity of the array (which may be larger than
  * the requested capacity).
  */
-size_t setCapacity(T)(ref T[] arr, size_t newcapacity)
+size_t reserve(T)(ref T[] arr, size_t newcapacity)
 {
     return _d_arraysetcapacity(typeid(T[]), newcapacity, cast(void *)&arr);
 }
 
 /**
- * Shrink the allocated elements to the given array.  This is useful if you
- * would like to reuse a buffer with the append operator.  Use this only when
- * you are sure no elements are in use beyond the array in the memory block.
- * If there are, those elements could be overwritten by appending to this
- * array.
+ * Assume that it is safe to append to this array.  Appends made to this array
+ * after calling this function may append in place, even if the array was a
+ * slice of a larger array to begin with.
+ *
+ * Use this only when you are sure no elements are in use beyond the array in
+ * the memory block.  If there are, those elements could be overwritten by
+ * appending to this array.
+ *
+ * Calling this function, and then using references to data located after the
+ * given array results in undefined behavior.
  */
-void shrinkToFit(T)(T[] arr)
+void assumeSafeAppend(T)(T[] arr)
 {
     _d_arrayshrinkfit(typeid(T[]), *(cast(void[]*)&arr));
 }
@@ -2325,7 +2352,7 @@ version (unittest) unittest
 {
     {
         int[] arr;
-        auto newcap = arr.setCapacity(2000);
+        auto newcap = arr.reserve(2000);
         assert(newcap >= 2000);
         assert(newcap == arr.capacity);
         auto ptr = arr.ptr;
@@ -2333,7 +2360,7 @@ version (unittest) unittest
             arr ~= i;
         assert(ptr == arr.ptr);
         arr = arr[0..1];
-        arr.shrinkToFit();
+        arr.assumeSafeAppend();
         arr ~= 5;
         assert(ptr == arr.ptr);
     }

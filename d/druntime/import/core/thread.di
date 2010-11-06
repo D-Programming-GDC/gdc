@@ -49,6 +49,7 @@ version (Windows)
 {
     import core.stdc.stdint;
     import core.sys.windows.windows;
+    import core.thread_helper;
     const 
 {
     DWORD TLS_OUT_OF_INDEXES = -1u;
@@ -289,6 +290,10 @@ m_curr = &m_main;
 }
     static 
 {
+    Thread findThread(ThreadAddr addr);
+}
+    static 
+{
     int opApply(int delegate(ref Thread) dg);
 }
     shared static this();
@@ -484,11 +489,19 @@ return Thread.classinfo;
 }
     static 
 {
+    void add_nolock(Context* c);
+}
+    static 
+{
     void remove(Context* c);
 }
     static 
 {
     void add(Thread t);
+}
+    static 
+{
+    void add_nolock(Thread t);
 }
     static 
 {
@@ -508,11 +521,31 @@ extern (C)
 {
     void thread_attachThis();
 }
+version (Windows)
+{
+    extern (C) 
+{
+    Thread thread_attach(Thread.ThreadAddr addr);
+}
+}
+extern (C) 
+{
+    Thread thread_attach_nolock(Thread.ThreadAddr addr, void* bstack);
+}
 extern (C) 
 {
     void thread_detachThis()
 {
 Thread.remove(Thread.getThis());
+}
+}
+extern (C) 
+{
+    void thread_detach(Thread.ThreadAddr addr)
+{
+Thread t = Thread.findThread(addr);
+if (t)
+Thread.remove(t);
 }
 }
 extern (C) 
@@ -531,6 +564,13 @@ extern (C)
     nothrow bool thread_needLock()
 {
 return multiThreadedFlag;
+}
+}
+extern (C) 
+{
+    nothrow void thread_setNeedLock(bool need)
+{
+multiThreadedFlag = need;
 }
 }
 private 
