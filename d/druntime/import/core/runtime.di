@@ -153,6 +153,7 @@ extern (C)
 unittest_errors = true;
 if (unittestHandler)
 unittestHandler(file,line,msg);
+else
 onAssertErrorMsg(file,line,msg);
 }
 }
