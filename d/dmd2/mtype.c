@@ -123,6 +123,8 @@ ClassDeclaration *Type::typeinfoinvariant;
 ClassDeclaration *Type::typeinfoshared;
 ClassDeclaration *Type::typeinfowild;
 
+TemplateDeclaration *Type::associativearray;
+
 Type *Type::tvoidptr;
 Type *Type::tstring;
 Type *Type::basic[TMAX];
@@ -1665,7 +1667,15 @@ Expression *Type::getProperty(Loc loc, Identifier *ident)
     }
     else
     {
-	error(loc, "no property '%s' for type '%s'", ident->toChars(), toChars());
+	Dsymbol *s = NULL;
+	if (ty == Tstruct || ty == Tclass || ty == Tenum || ty == Ttypedef)
+	    s = toDsymbol(NULL);
+	if (s)
+	    s = s->search_correct(ident);
+	if (s)
+	    error(loc, "no property '%s' for type '%s', did you mean '%s'?", ident->toChars(), toChars(), s->toChars());
+	else
+	    error(loc, "no property '%s' for type '%s'", ident->toChars(), toChars());
 	e = new ErrorExp();
     }
     return e;
@@ -1746,7 +1756,10 @@ Expression *Type::dotExp(Scope *sc, Expression *e, Identifier *ident)
 	e = getTypeInfo(sc);
     }
     else if (ident == Id::stringof)
-    {	char *s = e->toChars();
+    {	/* Bugzilla 3796: this should demangle e->type->deco rather than
+	 * pretty-printing the type.
+	 */
+	char *s = e->toChars();
 	e = new StringExp(e->loc, s, strlen(s), 'c');
     }
     else
@@ -1841,14 +1854,10 @@ void Type::error(Loc loc, const char *format, ...)
 
 void Type::warning(Loc loc, const char *format, ...)
 {
-    if (global.params.warnings && !global.gag)
-    {
-	fprintf(stdmsg, "warning - ");
-	va_list ap;
-	va_start(ap, format);
-	::verror(loc, format, ap);
-	va_end( ap );
-    }
+    va_list ap;
+    va_start(ap, format);
+    ::vwarning(loc, format, ap);
+    va_end( ap );
 }
 
 Identifier *Type::getTypeInfoIdent(int internal)
@@ -3936,14 +3945,20 @@ StructDeclaration *TypeAArray::getImpl()
 	    tiargs->push(index);
 	    tiargs->push(next);
 
-	    // Create .AssociativeArray!(index, next)
+	    // Create AssociativeArray!(index, next)
+#if 1
+	    TemplateInstance *ti = new TemplateInstance(loc, Type::associativearray, tiargs);
+#else
+	    //Expression *e = new IdentifierExp(loc, Id::object);
+	    Expression *e = new IdentifierExp(loc, Id::empty);
+	    //e = new DotIdExp(loc, e, Id::object);
 	    DotTemplateInstanceExp *dti = new DotTemplateInstanceExp(loc,
-			new IdentifierExp(loc, Id::empty),
+			e,
 			Id::AssociativeArray,
 			tiargs);
 	    dti->semantic(sc);
             TemplateInstance *ti = dti->ti;
-
+#endif
 	    ti->semantic(sc);
 	    ti->semantic2(sc);
 	    ti->semantic3(sc);
@@ -3991,7 +4006,7 @@ void TypeAArray::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
 
 Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 {
-#if  LOGDOTEXP
+#if LOGDOTEXP
     printf("TypeAArray::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
 #endif
 #if 0
@@ -4346,7 +4361,7 @@ int TypeReference::isZeroInit(Loc loc)
 
 /***************************** TypeFunction *****************************/
 
-TypeFunction::TypeFunction(Parameters *parameters, Type *treturn, int varargs, enum LINK linkage)
+TypeFunction::TypeFunction(Parameters *parameters, Type *treturn, int varargs, enum LINK linkage, StorageClass stc)
     : TypeNext(Tfunction, treturn)
 {
 //if (!treturn) *(char*)0=0;
@@ -4360,8 +4375,22 @@ TypeFunction::TypeFunction(Parameters *parameters, Type *treturn, int varargs, e
     this->ispure = false;
     this->isproperty = false;
     this->isref = false;
-    this->trust = TRUSTdefault;
     this->fargs = NULL;
+
+    if (stc & STCpure)
+	this->ispure = true;
+    if (stc & STCnothrow)
+	this->isnothrow = true;
+    if (stc & STCproperty)
+	this->isproperty = true;
+
+    this->trust = TRUSTdefault;
+    if (stc & STCsafe)
+	this->trust = TRUSTsafe;
+    if (stc & STCsystem)
+	this->trust = TRUSTsystem;
+    if (stc & STCtrusted)
+	this->trust = TRUSTtrusted;
 }
 
 Type *TypeFunction::syntaxCopy()
@@ -4909,11 +4938,13 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
 /********************************
  * 'args' are being matched to function 'this'
  * Determine match level.
+ * Input:
+ *	flag	1	performing a partial ordering match
  * Returns:
  *	MATCHxxxx
  */
 
-int TypeFunction::callMatch(Expression *ethis, Expressions *args)
+int TypeFunction::callMatch(Expression *ethis, Expressions *args, int flag)
 {
     //printf("TypeFunction::callMatch() %s\n", toChars());
     MATCH match = MATCHexact;		// assume exact match
@@ -4989,7 +5020,13 @@ int TypeFunction::callMatch(Expression *ethis, Expressions *args)
 	    m = MATCHconvert;
 	else
 	{
-	    m = arg->implicitConvTo(p->type);
+	    //printf("%s of type %s implicitConvTo %s\n", arg->toChars(), arg->type->toChars(), p->type->toChars());
+	    if (flag)
+		// for partial ordering, value is an irrelevant mockup, just look at the type
+		m = arg->type->implicitConvTo(p->type);
+	    else
+		m = arg->implicitConvTo(p->type);
+	    //printf("match %d\n", m);
 	    if (p->type->isWild())
 	    {
 		if (m == MATCHnomatch)
@@ -6695,7 +6732,11 @@ L1:
     TemplateInstance *ti = s->isTemplateInstance();
     if (ti)
     {	if (!ti->semanticRun)
+	{
+	    if (global.errors)
+		return new ErrorExp();	// TemplateInstance::semantic() will fail anyway
 	    ti->semantic(sc);
+	}
 	s = ti->inst->toAlias();
 	if (!s->isTemplateInstance())
 	    goto L1;
@@ -6880,6 +6921,9 @@ MATCH TypeStruct::implicitConvTo(Type *to)
 {   MATCH m;
 
     //printf("TypeStruct::implicitConvTo(%s => %s)\n", toChars(), to->toChars());
+    if (to->ty == Taarray)
+	to = ((TypeAArray*)to)->getImpl()->type;
+
     if (ty == to->ty && sym == ((TypeStruct *)to)->sym)
     {	m = MATCHexact;		// exact match
 	if (mod != to->mod)
@@ -7183,7 +7227,11 @@ L1:
     TemplateInstance *ti = s->isTemplateInstance();
     if (ti)
     {	if (!ti->semanticRun)
+	{
+	    if (global.errors)
+		return new ErrorExp();	// TemplateInstance::semantic() will fail anyway
 	    ti->semantic(sc);
+	}
 	s = ti->inst->toAlias();
 	if (!s->isTemplateInstance())
 	    goto L1;
@@ -7777,7 +7825,7 @@ void Parameter::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Parameters *argu
 		buf->writestring("out ");
 	    else if (arg->storageClass & STCref)
 		buf->writestring((global.params.Dversion == 1)
-			? (char *)"inout " : (char *)"ref ");
+			? "inout " : "ref ");
 	    else if (arg->storageClass & STCin)
 		buf->writestring("in ");
 	    else if (arg->storageClass & STClazy)

@@ -42,6 +42,7 @@ struct TypeInfoDeclaration;
 struct Dsymbol;
 struct TemplateInstance;
 struct CppMangleState;
+struct TemplateDeclaration;
 enum LINK;
 
 struct TypeBasic;
@@ -71,10 +72,10 @@ enum ENUMTY
     Tident,
     Tclass,
     Tstruct,
+
     Tenum,
     Ttypedef,
     Tdelegate,
-
     Tnone,
     Tvoid,
     Tint8,
@@ -82,30 +83,29 @@ enum ENUMTY
     Tint16,
     Tuns16,
     Tint32,
+
     Tuns32,
     Tint64,
     Tuns64,
     Tfloat32,
     Tfloat64,
     Tfloat80,
-
     Timaginary32,
     Timaginary64,
     Timaginary80,
-
     Tcomplex32,
+
     Tcomplex64,
     Tcomplex80,
-
     Tbit,
     Tbool,
     Tchar,
     Twchar,
     Tdchar,
-
     Terror,
     Tinstance,
     Ttypeof,
+
     Ttuple,
     Tslice,
     Treturn,
@@ -213,6 +213,8 @@ struct Type : Object
     static ClassDeclaration *typeinfoinvariant;
     static ClassDeclaration *typeinfoshared;
     static ClassDeclaration *typeinfowild;
+
+    static TemplateDeclaration *associativearray;
 
     static Type *basic[TMAX];
     static unsigned char mangleChar[TMAX];
@@ -560,7 +562,7 @@ struct TypeFunction : TypeNext
 
     int inuse;
 
-    TypeFunction(Parameters *parameters, Type *treturn, int varargs, enum LINK linkage);
+    TypeFunction(Parameters *parameters, Type *treturn, int varargs, enum LINK linkage, StorageClass stc = 0);
     Type *syntaxCopy();
     Type *semantic(Loc loc, Scope *sc);
     void toDecoBuffer(OutBuffer *buf, int flag);
@@ -574,7 +576,7 @@ struct TypeFunction : TypeNext
 #endif
     bool parameterEscapes(Parameter *p);
 
-    int callMatch(Expression *ethis, Expressions *toargs);
+    int callMatch(Expression *ethis, Expressions *toargs, int flag = 0);
     type *toCtype();
     enum RET retStyle();
 

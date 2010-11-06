@@ -198,7 +198,7 @@ unittest: unittest.o libgphobos2_t.a libgphobos2.a
 
 MAIN_OBJS=std/algorithm.o std/atomics.o std/array.o std/base64.o \
 	std/bigint.o std/bind.o std/bitarray.o std/bitmanip.o \
-	std/compiler.o std/complex.o std/contracts.o std/conv.o \
+	std/compiler.o std/complex.o std/concurrency.o std/contracts.o std/conv.o \
 	std/cpuid.o std/cstream.o std/ctype.o std/date.o std/dateparse.o \
 	std/demangle.o std/encoding.o std/format.o std/functional.o \
 	std/getopt.o std/iterator.o std/json.o std/math.o std/md5.o std/metastrings.o \

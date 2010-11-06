@@ -113,6 +113,8 @@ void initPrecedence()
 //  precedence[TOKarrow] = PREC_primary;
     precedence[TOKplusplus] = PREC_primary;
     precedence[TOKminusminus] = PREC_primary;
+    precedence[TOKpreplusplus] = PREC_primary;
+    precedence[TOKpreminusminus] = PREC_primary;
     precedence[TOKcall] = PREC_primary;
     precedence[TOKslice] = PREC_primary;
     precedence[TOKarray] = PREC_primary;
@@ -388,17 +390,19 @@ Expression *resolveProperties(Scope *sc, Expression *e)
  * Perform semantic() on an array of Expressions.
  */
 
-void arrayExpressionSemantic(Expressions *exps, Scope *sc)
+Expressions *arrayExpressionSemantic(Expressions *exps, Scope *sc)
 {
     if (exps)
     {
 	for (size_t i = 0; i < exps->dim; i++)
 	{   Expression *e = (Expression *)exps->data[i];
-
-	    e = e->semantic(sc);
-	    exps->data[i] = (void *)e;
+	    if (e)
+	    {	e = e->semantic(sc);
+		exps->data[i] = (void *)e;
+	    }
 	}
     }
+    return exps;
 }
 
 
@@ -1111,14 +1115,10 @@ void Expression::error(const char *format, ...)
 
 void Expression::warning(const char *format, ...)
 {
-    if (global.params.warnings && !global.gag)
-    {
-	fprintf(stdmsg, "warning - ");
-	va_list ap;
-	va_start(ap, format);
-	::verror(loc, format, ap);
-	va_end( ap );
-    }
+    va_list ap;
+    va_start(ap, format);
+    ::vwarning(loc, format, ap);
+    va_end( ap );
 }
 
 void Expression::rvalue()
@@ -1361,7 +1361,7 @@ int Expression::checkSideEffect(int flag)
  * Check that expression can be tested for true or false.
  */
 
-Expression *Expression::checkToBoolean()
+Expression *Expression::checkToBoolean(Scope *sc)
 {
     // Default is 'yes' - do nothing
 
@@ -1369,6 +1369,22 @@ Expression *Expression::checkToBoolean()
     if (!type)
 	dump(0);
 #endif
+
+    // Structs can be converted to bool using opCast(bool)()
+    Type *tb = type->toBasetype();
+    if (tb->ty == Tstruct)
+    {	AggregateDeclaration *ad = ((TypeStruct *)tb)->sym;
+	/* Don't really need to check for opCast first, but by doing so we
+	 * get better error messages if it isn't there.
+	 */
+	Dsymbol *fd = search_function(ad, Id::cast);
+	if (fd)
+	{
+	    Expression *e = new CastExp(loc, this, Type::tbool);
+	    e = e->semantic(sc);
+	    return e;
+	}
+    }
 
     if (!type->checkBoolean())
     {
@@ -1772,7 +1788,18 @@ void IntegerExp::toMangleBuffer(OutBuffer *buf)
     if ((sinteger_t)value < 0)
 	buf->printf("N%"PRIdMAX, -value);
     else
+    {
+	/* This is an awful hack to maintain backwards compatibility.
+	   * There really always should be an 'i' before a number, but
+	   * there wasn't in earlier implementations, so to maintain
+	   * backwards compatibility it is only done if necessary to disambiguate.
+	   * See bugzilla 3029
+	   */
+	if (buf->offset > 0 && isdigit(buf->data[buf->offset - 1]))
+	    buf->writeByte('i');
+
 	buf->printf("%"PRIdMAX, value);
+    }
 }
 
 /******************************** ErrorExp **************************/
@@ -2274,7 +2301,12 @@ Expression *IdentifierExp::semantic(Scope *sc)
        e = e->semantic(sc);
        return e;
     }
-    error("undefined identifier %s", ident->toChars());
+
+    s = sc->search_correct(ident);
+    if (s)
+	error("undefined identifier %s, did you mean %s %s?", ident->toChars(), s->kind(), s->toChars());
+    else
+	error("undefined identifier %s", ident->toChars());
     type = Type::terror;
     return this;
 }
@@ -3186,13 +3218,17 @@ Expression *ArrayLiteralExp::semantic(Scope *sc)
     if (type)
 	return this;
 
+    /* Perhaps an empty array literal [ ] should be rewritten as null?
+     */
+
     arrayExpressionSemantic(elements, sc);    // run semantic() on each element
     expandTuples(elements);
 
     Type *t0;
     elements = arrayExpressionToCommonType(sc, elements, &t0);
 
-    type = new TypeSArray(t0, new IntegerExp(elements->dim));
+    type = t0->arrayOf();
+    //type = new TypeSArray(t0, new IntegerExp(elements->dim));
     type = type->semantic(loc, sc);
     return this;
 }
@@ -3352,11 +3388,12 @@ void AssocArrayLiteralExp::toMangleBuffer(OutBuffer *buf)
 
 // sd( e1, e2, e3, ... )
 
-StructLiteralExp::StructLiteralExp(Loc loc, StructDeclaration *sd, Expressions *elements)
+StructLiteralExp::StructLiteralExp(Loc loc, StructDeclaration *sd, Expressions *elements, Type *stype)
     : Expression(loc, TOKstructliteral, sizeof(StructLiteralExp))
 {
     this->sd = sd;
     this->elements = elements;
+    this->stype = stype;
     this->sym = NULL;
     this->soffset = 0;
     this->fillHoles = 1;
@@ -3364,7 +3401,7 @@ StructLiteralExp::StructLiteralExp(Loc loc, StructDeclaration *sd, Expressions *
 
 Expression *StructLiteralExp::syntaxCopy()
 {
-    return new StructLiteralExp(loc, sd, arraySyntaxCopy(elements));
+    return new StructLiteralExp(loc, sd, arraySyntaxCopy(elements), stype);
 }
 
 Expression *StructLiteralExp::semantic(Scope *sc)
@@ -3377,14 +3414,7 @@ Expression *StructLiteralExp::semantic(Scope *sc)
     if (type)
 	return this;
 
-    // Run semantic() on each element
-    for (size_t i = 0; i < elements->dim; i++)
-    {	e = (Expression *)elements->data[i];
-	if (!e)
-	    continue;
-	e = e->semantic(sc);
-	elements->data[i] = (void *)e;
-    }
+    elements = arrayExpressionSemantic(elements, sc);	// run semantic() on each element
     expandTuples(elements);
     size_t offset = 0;
     for (size_t i = 0; i < elements->dim; i++)
@@ -3407,6 +3437,8 @@ Expression *StructLiteralExp::semantic(Scope *sc)
 	offset = v->offset + v->type->size();
 
 	Type *telem = v->type;
+	if (stype)
+	    telem = telem->addMod(stype->mod);
 	while (!e->implicitConvTo(telem) && telem->toBasetype()->ty == Tsarray)
 	{   /* Static array initialization, as in:
 	     *	T[3][5] = e;
@@ -3454,7 +3486,7 @@ Expression *StructLiteralExp::semantic(Scope *sc)
 	elements->push(e);
     }
 
-    type = sd->type;
+    type = stype ? stype : sd->type;
     return this;
 }
 
@@ -3934,6 +3966,8 @@ Lagain:
 	    if (!arguments)
 		arguments = new Expressions();
 	    functionParameters(loc, sc, tf, arguments);
+
+	    type = type->addMod(tf->nextOf()->mod);
 	}
 	else
 	{
@@ -3980,7 +4014,7 @@ Lagain:
 	    sd->accessCheck(loc, sc, member);
 
 	    tf = (TypeFunction *)f->type;
-//	    type = tf->next;
+	    type = tf->next;
 
 	    if (!arguments)
 		arguments = new Expressions();
@@ -5375,96 +5409,6 @@ Expression *BinExp::semanticp(Scope *sc)
     return this;
 }
 
-/***************************
- * Common semantic routine for some xxxAssignExp's.
- */
-
-Expression *BinExp::commonSemanticAssign(Scope *sc)
-{   Expression *e;
-
-    if (!type)
-    {
-	BinExp::semantic(sc);
-	e2 = resolveProperties(sc, e2);
-
-	e = op_overload(sc);
-	if (e)
-	    return e;
-
-	if (e1->op == TOKarraylength)
-	{
-	    e = ArrayLengthExp::rewriteOpAssign(this);
-	    e = e->semantic(sc);
-	    return e;
-	}
-
-	if (e1->op == TOKslice)
-	{   // T[] op= ...
-	    typeCombine(sc);
-	    type = e1->type;
-	    return arrayOp(sc);
-	}
-
-	e1 = e1->modifiableLvalue(sc, e1);
-	e1->checkScalar();
-	type = e1->type;
-	if (type->toBasetype()->ty == Tbool)
-	{
-	    error("operator not allowed on bool expression %s", toChars());
-	}
-	typeCombine(sc);
-	e1->checkArithmetic();
-	e2->checkArithmetic();
-
-	if (op == TOKmodass && e2->type->iscomplex())
-	{   error("cannot perform modulo complex arithmetic");
-	    return new ErrorExp();
-	}
-    }
-    return this;
-}
-
-Expression *BinExp::commonSemanticAssignIntegral(Scope *sc)
-{   Expression *e;
-
-    if (!type)
-    {
-	BinExp::semantic(sc);
-	e2 = resolveProperties(sc, e2);
-
-	e = op_overload(sc);
-	if (e)
-	    return e;
-
-	if (e1->op == TOKarraylength)
-	{
-	    e = ArrayLengthExp::rewriteOpAssign(this);
-	    e = e->semantic(sc);
-	    return e;
-	}
-
-	if (e1->op == TOKslice)
-	{   // T[] op= ...
-	    typeCombine(sc);
-	    type = e1->type;
-	    return arrayOp(sc);
-	}
-
-	e1 = e1->modifiableLvalue(sc, e1);
-	e1->checkScalar();
-	type = e1->type;
-	if (type->toBasetype()->ty == Tbool)
-	{
-	    e2 = e2->implicitCastTo(sc, type);
-	}
-
-	typeCombine(sc);
-	e1->checkIntegral();
-	e2->checkIntegral();
-    }
-    return this;
-}
-
 int BinExp::checkSideEffect(int flag)
 {
     if (op == TOKplusplus ||
@@ -5559,6 +5503,139 @@ void BinExp::incompatibleTypes()
          e1->type->toChars(), e2->type->toChars());
 }
 
+/********************** BinAssignExp **************************************/
+
+/***************************
+ * Common semantic routine for some xxxAssignExp's.
+ */
+
+Expression *BinAssignExp::commonSemanticAssign(Scope *sc)
+{   Expression *e;
+
+    if (!type)
+    {
+	if (e1->op == TOKarraylength)
+	{
+	    e = ArrayLengthExp::rewriteOpAssign(this);
+	    e = e->semantic(sc);
+	    return e;
+	}
+
+	if (e1->op == TOKslice)
+	{   // T[] op= ...
+	    typeCombine(sc);
+	    type = e1->type;
+	    return arrayOp(sc);
+	}
+
+	e1 = e1->modifiableLvalue(sc, e1);
+	e1->checkScalar();
+	type = e1->type;
+	if (type->toBasetype()->ty == Tbool)
+	{
+	    error("operator not allowed on bool expression %s", toChars());
+	}
+	typeCombine(sc);
+	e1->checkArithmetic();
+	e2->checkArithmetic();
+
+	if (op == TOKmodass && e2->type->iscomplex())
+	{   error("cannot perform modulo complex arithmetic");
+	    return new ErrorExp();
+	}
+    }
+    return this;
+}
+
+Expression *BinAssignExp::commonSemanticAssignIntegral(Scope *sc)
+{   Expression *e;
+
+    if (!type)
+    {
+	e = op_overload(sc);
+	if (e)
+	    return e;
+
+	if (e1->op == TOKarraylength)
+	{
+	    e = ArrayLengthExp::rewriteOpAssign(this);
+	    e = e->semantic(sc);
+	    return e;
+	}
+
+	if (e1->op == TOKslice)
+	{   // T[] op= ...
+	    typeCombine(sc);
+	    type = e1->type;
+	    return arrayOp(sc);
+	}
+
+	e1 = e1->modifiableLvalue(sc, e1);
+	e1->checkScalar();
+	type = e1->type;
+	if (type->toBasetype()->ty == Tbool)
+	{
+	    e2 = e2->implicitCastTo(sc, type);
+	}
+
+	typeCombine(sc);
+	e1->checkIntegral();
+	e2->checkIntegral();
+    }
+    return this;
+}
+
+#if DMDV2
+int BinAssignExp::isLvalue()
+{
+    return 1;
+}
+
+Expression *BinAssignExp::toLvalue(Scope *sc, Expression *ex)
+{   Expression *e;
+
+    if (e1->op == TOKvar)
+    {
+	/* Convert (e1 op= e2) to
+	 *    e1 op= e2;
+	 *    e1
+	 */
+	e = e1->copy();
+	e = new CommaExp(loc, this, e);
+	e = e->semantic(sc);
+    }
+    else
+    {
+	/* Convert (e1 op= e2) to
+	 *    ref v = e1;
+	 *    v op= e2;
+	 *    v
+	 */
+
+	// ref v = e1;
+	Identifier *id = Lexer::uniqueId("__assignop");
+	ExpInitializer *ei = new ExpInitializer(loc, e1);
+	VarDeclaration *v = new VarDeclaration(loc, e1->type, id, ei);
+	v->storage_class |= STCref | STCforeach;
+	Expression *de = new DeclarationExp(loc, v);
+
+	// v op= e2
+	e1 = new VarExp(e1->loc, v);
+
+	e = new CommaExp(loc, de, this);
+	e = new CommaExp(loc, e, new VarExp(loc, v));
+	e = e->semantic(sc);
+    }
+    return e;
+}
+
+Expression *BinAssignExp::modifiableLvalue(Scope *sc, Expression *e)
+{
+    return toLvalue(sc, this);
+}
+
+#endif
+
 /************************************************************/
 
 CompileExp::CompileExp(Loc loc, Expression *e)
@@ -5628,14 +5705,14 @@ Expression *FileExp::semantic(Scope *sc)
 	goto Lerror;
     }
 
-    if (name != FileName::name(name))
-    {	error("use -Jpath switch to provide path for filename %s", name);
-	goto Lerror;
-    }
+    /* Be wary of CWE-22: Improper Limitation of a Pathname to a Restricted Directory
+     * ('Path Traversal') attacks.
+     * http://cwe.mitre.org/data/definitions/22.html
+     */
 
-    name = FileName::searchPath(global.filePath, name, 0);
+    name = FileName::safeSearchPath(global.filePath, name);
     if (!name)
-    {	error("file %s cannot be found, check -Jpath", se->toChars());
+    {	error("file %s cannot be found or not in a path specified with -J", se->toChars());
 	goto Lerror;
     }
 
@@ -5692,7 +5769,7 @@ Expression *AssertExp::semantic(Scope *sc)
     e1 = resolveProperties(sc, e1);
     // BUG: see if we can do compile time elimination of the Assert
     e1 = e1->optimize(WANTvalue);
-    e1 = e1->checkToBoolean();
+    e1 = e1->checkToBoolean(sc);
     if (msg)
     {
 	msg = msg->semantic(sc);
@@ -5883,7 +5960,7 @@ Expression *DotIdExp::semantic(Scope *sc, int flag)
 	 * The check for 'is sds our current module' is because
 	 * the current module should have access to its own imports.
 	 */
-	Dsymbol *s = ie->sds->search(loc, ident, //0);
+	Dsymbol *s = ie->sds->search(loc, ident,
 	    (ie->sds->isModule() && ie->sds != sc->module) ? 1 : 0);
 	if (s)
 	{
@@ -6188,56 +6265,56 @@ Expression *DotVarExp::modifiableLvalue(Scope *sc, Expression *e)
     printf("var->type = %s\n", var->type->toChars());
 #endif
 
-    if (var->isCtorinit())
-    {	// It's only modifiable if inside the right constructor
-	Dsymbol *s = sc->func;
-	while (1)
-	{
-	    FuncDeclaration *fd = NULL;
-	    if (s)
-		fd = s->isFuncDeclaration();
-	    if (fd &&
-		((fd->isCtorDeclaration() && var->storage_class & STCfield) ||
-		 (fd->isStaticCtorDeclaration() && !(var->storage_class & STCfield))) &&
-		fd->toParent() == var->toParent() &&
-		e1->op == TOKthis
-	       )
+    Type *t1 = e1->type->toBasetype();
+
+    if (!t1->isMutable() ||
+	(t1->ty == Tpointer && !t1->nextOf()->isMutable()) ||
+	!var->type->isMutable() ||
+	!var->type->isAssignable() ||
+	var->storage_class & STCmanifest
+       )
+    {
+	if (var->isCtorinit())
+	{   // It's only modifiable if inside the right constructor
+	    Dsymbol *s = sc->func;
+	    while (1)
 	    {
-		VarDeclaration *v = var->isVarDeclaration();
-		assert(v);
-		v->ctorinit = 1;
-		//printf("setting ctorinit\n");
-	    }
-	    else
-	    {
+		FuncDeclaration *fd = NULL;
 		if (s)
-		{   s = s->toParent2();
-		    continue;
+		    fd = s->isFuncDeclaration();
+		if (fd &&
+		    ((fd->isCtorDeclaration() && var->storage_class & STCfield) ||
+		     (fd->isStaticCtorDeclaration() && !(var->storage_class & STCfield))) &&
+		    fd->toParent() == var->toParent() &&
+		    e1->op == TOKthis
+		   )
+		{
+		    VarDeclaration *v = var->isVarDeclaration();
+		    assert(v);
+		    v->ctorinit = 1;
+		    //printf("setting ctorinit\n");
 		}
 		else
 		{
-		    const char *p = var->isStatic() ? "static " : "";
-		    error("can only initialize %sconst member %s inside %sconstructor",
-			p, var->toChars(), p);
+		    if (s)
+		    {   s = s->toParent2();
+			continue;
+		    }
+		    else
+		    {
+			const char *p = var->isStatic() ? "static " : "";
+			error("can only initialize %sconst member %s inside %sconstructor",
+			    p, var->toChars(), p);
+		    }
 		}
+		break;
 	    }
-	    break;
+	}
+	else
+	{
+	    error("cannot modify const/immutable/inout expression %s", toChars());
 	}
     }
-#if DMDV2
-    else
-    {
-	Type *t1 = e1->type->toBasetype();
-
-	if (!t1->isMutable() ||
-	    (t1->ty == Tpointer && !t1->nextOf()->isMutable()) ||
-	    !var->type->isMutable() ||
-	    !var->type->isAssignable() ||
-	    var->storage_class & STCmanifest
-	   )
-	    error("cannot modify const/immutable/inout expression %s", toChars());
-    }
-#endif
     return this;
 }
 
@@ -6304,11 +6381,15 @@ L1:
     e = e->semantic(sc);
     if (e->op == TOKdottd)
     {
+	if (global.errors)
+	    return new ErrorExp();	// TemplateInstance::semantic() will fail anyway
 	DotTemplateExp *dte = (DotTemplateExp *)e;
 	TemplateDeclaration *td = dte->td;
 	eleft = dte->e1;
 	ti->tempdecl = td;
 	ti->semantic(sc);
+	if (!ti->inst)			// if template failed to expand
+	    return new ErrorExp();
 	Dsymbol *s = ti->inst->toAlias();
 	Declaration *v = s->isDeclaration();
 	if (v)
@@ -6528,6 +6609,14 @@ Expression *CallExp::semantic(Scope *sc)
 	    else if (e1ty == Tarray || e1ty == Tsarray ||
 		     (e1ty == Taarray && dotid->ident != Id::apply && dotid->ident != Id::applyReverse))
 	    {
+		if (e1ty == Taarray)
+		{   TypeAArray *taa = (TypeAArray *)dotid->e1->type->toBasetype();
+		    assert(taa->ty == Taarray);
+		    StructDeclaration *sd = taa->getImpl();
+		    Dsymbol *s = sd->search(0, dotid->ident, 2);
+		    if (s)
+			goto L2;
+		}
 		if (!arguments)
 		    arguments = new Expressions();
 		arguments->shift(dotid->e1);
@@ -6537,6 +6626,8 @@ Expression *CallExp::semantic(Scope *sc)
 		e1 = new IdentifierExp(dotid->loc, dotid->ident);
 #endif
 	    }
+	 L2:
+	    ;
 	}
     }
 
@@ -6736,11 +6827,11 @@ Lagain:
 
 	    if (e1->op != TOKtype)
 		error("%s %s does not overload ()", ad->kind(), ad->toChars());
+
 	    /* It's a struct literal
 	     */
-	    Expression *e = new StructLiteralExp(loc, (StructDeclaration *)ad, arguments);
+	    Expression *e = new StructLiteralExp(loc, (StructDeclaration *)ad, arguments, e1->type);
 	    e = e->semantic(sc);
-	    e->type = e1->type;		// in case e1->type was a typedef
 	    return e;
 	}
 	else if (t1->ty == Tclass)
@@ -6756,7 +6847,7 @@ Lagain:
 	}
     }
 
-    arrayExpressionSemantic(arguments, sc);
+    arguments = arrayExpressionSemantic(arguments, sc);
     preFunctionParameters(loc, sc, arguments);
 
     if (e1->op == TOKdotvar && t1->ty == Tfunction ||
@@ -7350,10 +7441,6 @@ Expression *PtrExp::semantic(Scope *sc)
 #endif
     if (!type)
     {
-	UnaExp::semantic(sc);
-	e1 = resolveProperties(sc, e1);
-	if (!e1->type)
-	    printf("PtrExp::semantic('%s')\n", toChars());
 	Expression *e = op_overload(sc);
 	if (e)
 	    return e;
@@ -7439,8 +7526,6 @@ Expression *NegExp::semantic(Scope *sc)
 #endif
     if (!type)
     {
-	UnaExp::semantic(sc);
-	e1 = resolveProperties(sc, e1);
 	e = op_overload(sc);
 	if (e)
 	    return e;
@@ -7467,8 +7552,6 @@ Expression *UAddExp::semantic(Scope *sc)
     printf("UAddExp::semantic('%s')\n", toChars());
 #endif
     assert(!type);
-    UnaExp::semantic(sc);
-    e1 = resolveProperties(sc, e1);
     e = op_overload(sc);
     if (e)
 	return e;
@@ -7489,8 +7572,6 @@ Expression *ComExp::semantic(Scope *sc)
 
     if (!type)
     {
-	UnaExp::semantic(sc);
-	e1 = resolveProperties(sc, e1);
 	e = op_overload(sc);
 	if (e)
 	    return e;
@@ -7512,10 +7593,13 @@ NotExp::NotExp(Loc loc, Expression *e)
 
 Expression *NotExp::semantic(Scope *sc)
 {
-    UnaExp::semantic(sc);
-    e1 = resolveProperties(sc, e1);
-    e1 = e1->checkToBoolean();
-    type = Type::tboolean;
+    if (!type)
+    {	// Note there is no operator overload
+	UnaExp::semantic(sc);
+	e1 = resolveProperties(sc, e1);
+	e1 = e1->checkToBoolean(sc);
+	type = Type::tboolean;
+    }
     return this;
 }
 
@@ -7536,10 +7620,13 @@ BoolExp::BoolExp(Loc loc, Expression *e, Type *t)
 
 Expression *BoolExp::semantic(Scope *sc)
 {
-    UnaExp::semantic(sc);
-    e1 = resolveProperties(sc, e1);
-    e1 = e1->checkToBoolean();
-    type = Type::tboolean;
+    if (!type)
+    {	// Note there is no operator overload
+	UnaExp::semantic(sc);
+	e1 = resolveProperties(sc, e1);
+	e1 = e1->checkToBoolean(sc);
+	type = Type::tboolean;
+    }
     return this;
 }
 
@@ -7664,7 +7751,7 @@ int DeleteExp::checkSideEffect(int flag)
     return 1;
 }
 
-Expression *DeleteExp::checkToBoolean()
+Expression *DeleteExp::checkToBoolean(Scope *sc)
 {
     error("delete does not give a boolean result");
     return this;
@@ -7781,6 +7868,11 @@ Expression *CastExp::semantic(Scope *sc)
     else if (!to)
     {	error("cannot cast tuple");
 	to = Type::terror;
+    }
+
+    if (!e1->type)
+    {	error("cannot cast %s", e1->toChars());
+	return new ErrorExp();
     }
 
 #if 1
@@ -8566,14 +8658,57 @@ Expression *PostExp::semantic(Scope *sc)
     if (!type)
     {
 	BinExp::semantic(sc);
-	e2 = resolveProperties(sc, e2);
+	e1 = resolveProperties(sc, e1);
 
 	e = op_overload(sc);
 	if (e)
 	    return e;
 
-	e = this;
 	e1 = e1->modifiableLvalue(sc, e1);
+
+	Type *t1 = e1->type->toBasetype();
+	if (t1->ty == Tclass || t1->ty == Tstruct)
+	{   /* Check for operator overloading,
+	     * but rewrite in terms of ++e instead of e++
+	     */
+
+	    /* If e1 is not trivial, take a reference to it
+	     */
+	    Expression *de = NULL;
+	    if (e1->op != TOKvar)
+	    {
+		// ref v = e1;
+		Identifier *id = Lexer::uniqueId("__postref");
+		ExpInitializer *ei = new ExpInitializer(loc, e1);
+		VarDeclaration *v = new VarDeclaration(loc, e1->type, id, ei);
+		v->storage_class |= STCref | STCforeach;
+		de = new DeclarationExp(loc, v);
+		e1 = new VarExp(e1->loc, v);
+	    }
+
+	    /* Rewrite as:
+	     * auto tmp = e1; ++e1; tmp
+	     */
+	    Identifier *id = Lexer::uniqueId("__tmp");
+	    ExpInitializer *ei = new ExpInitializer(loc, e1);
+	    VarDeclaration *tmp = new VarDeclaration(loc, e1->type, id, ei);
+	    Expression *ea = new DeclarationExp(loc, tmp);
+
+	    Expression *eb = e1->syntaxCopy();
+	    eb = new PreExp(op == TOKplusplus ? TOKpreplusplus : TOKpreminusminus, loc, eb);
+
+	    Expression *ec = new VarExp(loc, tmp);
+
+	    // Combine de,ea,eb,ec
+	    if (de)
+		ea = new CommaExp(loc, de, ea);
+	    e = new CommaExp(loc, ea, eb);
+	    e = new CommaExp(loc, e, ec);
+	    e = e->semantic(sc);
+	    return e;
+	}
+
+	e = this;
 	e1->checkScalar();
 	e1->checkNoBool();
 	if (e1->type->ty == Tpointer)
@@ -8588,7 +8723,36 @@ Expression *PostExp::semantic(Scope *sc)
 void PostExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     expToCBuffer(buf, hgs, e1, precedence[op]);
-    buf->writestring((op == TOKplusplus) ? (char *)"++" : (char *)"--");
+    buf->writestring(Token::toChars(op));
+}
+
+/************************* PreExp ***********************************/
+
+PreExp::PreExp(enum TOK op, Loc loc, Expression *e)
+	: UnaExp(loc, op, sizeof(PreExp), e)
+{
+}
+
+Expression *PreExp::semantic(Scope *sc)
+{
+    Expression *e;
+
+    e = op_overload(sc);
+    if (e)
+	return e;
+
+    // Rewrite as e1+=1 or e1-=1
+    if (op == TOKpreplusplus)
+	e = new AddAssignExp(loc, e1, new IntegerExp(loc, 1, Type::tint32));
+    else
+	e = new MinAssignExp(loc, e1, new IntegerExp(loc, 1, Type::tint32));
+    return e->semantic(sc);
+}
+
+void PreExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
+{
+    buf->writestring(Token::toChars(op));
+    expToCBuffer(buf, hgs, e1, precedence[op]);
 }
 
 /************************************************************/
@@ -8692,7 +8856,7 @@ Expression *AssignExp::semantic(Scope *sc)
 	{
 	    ad = ((TypeClass *)t1)->sym;
 	  L2:
-	    // Rewrite (a[i..j] = value) to (a.opIndexAssign(value, i, j))
+	    // Rewrite (a[i..j] = value) to (a.opSliceAssign(value, i, j))
 	    if (search_function(ad, Id::sliceass))
 	    {	Expression *e = new DotIdExp(loc, ae->e1, Id::sliceass);
 		Expressions *a = new Expressions();
@@ -8897,7 +9061,7 @@ Expression *AssignExp::semantic(Scope *sc)
     return this;
 }
 
-Expression *AssignExp::checkToBoolean()
+Expression *AssignExp::checkToBoolean(Scope *sc)
 {
     // Things like:
     //	if (a = b) ...
@@ -8910,7 +9074,7 @@ Expression *AssignExp::checkToBoolean()
 /************************************************************/
 
 AddAssignExp::AddAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKaddass, sizeof(AddAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKaddass, sizeof(AddAssignExp), e1, e2)
 {
 }
 
@@ -8919,9 +9083,6 @@ Expression *AddAssignExp::semantic(Scope *sc)
 
     if (type)
 	return this;
-
-    BinExp::semantic(sc);
-    e2 = resolveProperties(sc, e2);
 
     e = op_overload(sc);
     if (e)
@@ -9024,7 +9185,7 @@ Expression *AddAssignExp::semantic(Scope *sc)
 /************************************************************/
 
 MinAssignExp::MinAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKminass, sizeof(MinAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKminass, sizeof(MinAssignExp), e1, e2)
 {
 }
 
@@ -9033,9 +9194,6 @@ Expression *MinAssignExp::semantic(Scope *sc)
 
     if (type)
 	return this;
-
-    BinExp::semantic(sc);
-    e2 = resolveProperties(sc, e2);
 
     e = op_overload(sc);
     if (e)
@@ -9080,15 +9238,12 @@ Expression *MinAssignExp::semantic(Scope *sc)
 /************************************************************/
 
 CatAssignExp::CatAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKcatass, sizeof(CatAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKcatass, sizeof(CatAssignExp), e1, e2)
 {
 }
 
 Expression *CatAssignExp::semantic(Scope *sc)
 {   Expression *e;
-
-    BinExp::semantic(sc);
-    e2 = resolveProperties(sc, e2);
 
     e = op_overload(sc);
     if (e)
@@ -9155,15 +9310,12 @@ Expression *CatAssignExp::semantic(Scope *sc)
 /************************************************************/
 
 MulAssignExp::MulAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKmulass, sizeof(MulAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKmulass, sizeof(MulAssignExp), e1, e2)
 {
 }
 
 Expression *MulAssignExp::semantic(Scope *sc)
 {   Expression *e;
-
-    BinExp::semantic(sc);
-    e2 = resolveProperties(sc, e2);
 
     e = op_overload(sc);
     if (e)
@@ -9228,15 +9380,12 @@ Expression *MulAssignExp::semantic(Scope *sc)
 /************************************************************/
 
 DivAssignExp::DivAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKdivass, sizeof(DivAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKdivass, sizeof(DivAssignExp), e1, e2)
 {
 }
 
 Expression *DivAssignExp::semantic(Scope *sc)
 {   Expression *e;
-
-    BinExp::semantic(sc);
-    e2 = resolveProperties(sc, e2);
 
     e = op_overload(sc);
     if (e)
@@ -9303,21 +9452,28 @@ Expression *DivAssignExp::semantic(Scope *sc)
 /************************************************************/
 
 ModAssignExp::ModAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKmodass, sizeof(ModAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKmodass, sizeof(ModAssignExp), e1, e2)
 {
 }
 
 Expression *ModAssignExp::semantic(Scope *sc)
 {
-    BinExp::semantic(sc);
-    checkComplexMulAssign();
-    return commonSemanticAssign(sc);
+    if (!type)
+    {
+	Expression *e = op_overload(sc);
+	if (e)
+	    return e;
+
+	checkComplexMulAssign();
+	return commonSemanticAssign(sc);
+    }
+    return this;
 }
 
 /************************************************************/
 
 ShlAssignExp::ShlAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKshlass, sizeof(ShlAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKshlass, sizeof(ShlAssignExp), e1, e2)
 {
 }
 
@@ -9325,8 +9481,6 @@ Expression *ShlAssignExp::semantic(Scope *sc)
 {   Expression *e;
 
     //printf("ShlAssignExp::semantic()\n");
-    BinExp::semantic(sc);
-    e2 = resolveProperties(sc, e2);
 
     e = op_overload(sc);
     if (e)
@@ -9353,15 +9507,12 @@ Expression *ShlAssignExp::semantic(Scope *sc)
 /************************************************************/
 
 ShrAssignExp::ShrAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKshrass, sizeof(ShrAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKshrass, sizeof(ShrAssignExp), e1, e2)
 {
 }
 
 Expression *ShrAssignExp::semantic(Scope *sc)
 {   Expression *e;
-
-    BinExp::semantic(sc);
-    e2 = resolveProperties(sc, e2);
 
     e = op_overload(sc);
     if (e)
@@ -9388,15 +9539,12 @@ Expression *ShrAssignExp::semantic(Scope *sc)
 /************************************************************/
 
 UshrAssignExp::UshrAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKushrass, sizeof(UshrAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKushrass, sizeof(UshrAssignExp), e1, e2)
 {
 }
 
 Expression *UshrAssignExp::semantic(Scope *sc)
 {   Expression *e;
-
-    BinExp::semantic(sc);
-    e2 = resolveProperties(sc, e2);
 
     e = op_overload(sc);
     if (e)
@@ -9423,7 +9571,7 @@ Expression *UshrAssignExp::semantic(Scope *sc)
 /************************************************************/
 
 AndAssignExp::AndAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKandass, sizeof(AndAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKandass, sizeof(AndAssignExp), e1, e2)
 {
 }
 
@@ -9435,7 +9583,7 @@ Expression *AndAssignExp::semantic(Scope *sc)
 /************************************************************/
 
 OrAssignExp::OrAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKorass, sizeof(OrAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKorass, sizeof(OrAssignExp), e1, e2)
 {
 }
 
@@ -9447,7 +9595,7 @@ Expression *OrAssignExp::semantic(Scope *sc)
 /************************************************************/
 
 XorAssignExp::XorAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKxorass, sizeof(XorAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKxorass, sizeof(XorAssignExp), e1, e2)
 {
 }
 
@@ -9459,7 +9607,7 @@ Expression *XorAssignExp::semantic(Scope *sc)
 /***************** PowAssignExp *******************************************/
  
 PowAssignExp::PowAssignExp(Loc loc, Expression *e1, Expression *e2)
-	: BinExp(loc, TOKpowass, sizeof(PowAssignExp), e1, e2)
+	: BinAssignExp(loc, TOKpowass, sizeof(PowAssignExp), e1, e2)
 {
 }
 
@@ -9469,9 +9617,6 @@ Expression *PowAssignExp::semantic(Scope *sc)
 
     if (type)
 	return this;
-
-    BinExp::semantic(sc);
-    e2 = resolveProperties(sc, e2);
 
     e = op_overload(sc);
     if (e)
@@ -10302,7 +10447,7 @@ Expression *OrOrExp::semantic(Scope *sc)
     e1 = e1->semantic(sc);
     e1 = resolveProperties(sc, e1);
     e1 = e1->checkToPointer();
-    e1 = e1->checkToBoolean();
+    e1 = e1->checkToBoolean(sc);
     cs1 = sc->callSuper;
 
     if (sc->flags & SCOPEstaticif)
@@ -10329,9 +10474,9 @@ Expression *OrOrExp::semantic(Scope *sc)
     return this;
 }
 
-Expression *OrOrExp::checkToBoolean()
+Expression *OrOrExp::checkToBoolean(Scope *sc)
 {
-    e2 = e2->checkToBoolean();
+    e2 = e2->checkToBoolean(sc);
     return this;
 }
 
@@ -10367,7 +10512,7 @@ Expression *AndAndExp::semantic(Scope *sc)
     e1 = e1->semantic(sc);
     e1 = resolveProperties(sc, e1);
     e1 = e1->checkToPointer();
-    e1 = e1->checkToBoolean();
+    e1 = e1->checkToBoolean(sc);
     cs1 = sc->callSuper;
 
     if (sc->flags & SCOPEstaticif)
@@ -10394,9 +10539,9 @@ Expression *AndAndExp::semantic(Scope *sc)
     return this;
 }
 
-Expression *AndAndExp::checkToBoolean()
+Expression *AndAndExp::checkToBoolean(Scope *sc)
 {
-    e2 = e2->checkToBoolean();
+    e2 = e2->checkToBoolean(sc);
     return this;
 }
 
@@ -10625,6 +10770,30 @@ Expression *EqualExp::semantic(Scope *sc)
 		Token::toChars(op));
     }
 
+    if ((t1->ty == Tarray || t1->ty == Tsarray) &&
+	(t2->ty == Tarray || t2->ty == Tsarray))
+    {	Type *t1n = t1->nextOf()->toBasetype();
+	Type *t2n = t2->nextOf()->toBasetype();
+	if (t1n->constOf() != t2n->constOf() &&
+	    !((t1n->ty == Tchar || t1n->ty == Twchar || t1n->ty == Tdchar) &&
+	      (t2n->ty == Tchar || t2n->ty == Twchar || t2n->ty == Tdchar)) &&
+	    !(t1n->ty == Tvoid || t2n->ty == Tvoid)
+	   )
+	{   /* Rewrite as:
+	     * _ArrayEq(e1, e2)
+	     */
+	    Expression *eq = new IdentifierExp(loc, Id::_ArrayEq);
+	    Expressions *args = new Expressions();
+	    args->push(e1);
+	    args->push(e2);
+	    e = new CallExp(loc, eq, args);
+	    if (op == TOKnotequal)
+		e = new NotExp(loc, e);
+	    e = e->semantic(sc);
+	    return e;
+	}
+    }
+
     //if (e2->op != TOKnull)
     {
 	e = op_overload(sc);
@@ -10730,7 +10899,7 @@ Expression *CondExp::semantic(Scope *sc)
     econd = econd->semantic(sc);
     econd = resolveProperties(sc, econd);
     econd = econd->checkToPointer();
-    econd = econd->checkToBoolean();
+    econd = econd->checkToBoolean(sc);
 
 #if 0	/* this cannot work right because the types of e1 and e2
  	 * both contribute to the type of the result.
@@ -10853,10 +11022,10 @@ void CondExp::checkEscapeRef()
 }
 
 
-Expression *CondExp::checkToBoolean()
+Expression *CondExp::checkToBoolean(Scope *sc)
 {
-    e1 = e1->checkToBoolean();
-    e2 = e2->checkToBoolean();
+    e1 = e1->checkToBoolean(sc);
+    e2 = e2->checkToBoolean(sc);
     return this;
 }
 

@@ -136,7 +136,7 @@ struct Dsymbol : Object
 
     int dyncast() { return DYNCAST_DSYMBOL; }	// kludge for template.isSymbol()
 
-    static Array *arraySyntaxCopy(Array *a);
+    static Dsymbols *arraySyntaxCopy(Dsymbols *a);
 
     virtual const char *toPrettyChars();
     virtual const char *kind();
@@ -149,6 +149,7 @@ struct Dsymbol : Object
     virtual void semantic3(Scope *sc);
     virtual void inlineScan();
     virtual Dsymbol *search(Loc loc, Identifier *ident, int flags);
+    Dsymbol *search_correct(Identifier *id);
     Dsymbol *searchX(Loc loc, Scope *sc, Identifier *id);
     virtual int overloadInsert(Dsymbol *s);
 #ifdef _DH
@@ -248,7 +249,7 @@ struct Dsymbol : Object
 
 struct ScopeDsymbol : Dsymbol
 {
-    Array *members;		// all Dsymbol's in this scope
+    Dsymbols *members;		// all Dsymbol's in this scope
     DsymbolTable *symtab;	// members[] sorted into table
 
     Array *imports;		// imported ScopeDsymbol's

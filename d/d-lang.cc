@@ -1218,11 +1218,7 @@ d_parse_file (int /*set_yydebug*/)
 #endif
 
     // Do not attempt to generate output files if errors or warnings occurred
-    if (global.errors
-#if V1
-	|| global.warnings
-#endif
-       )
+    if (global.errors || global.warnings)
     {
 	fatal();
     }

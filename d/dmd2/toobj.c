@@ -78,6 +78,118 @@ void Module::genmoduleinfo()
     csym->Sclass = SCglobal;
     csym->Sfl = FLdata;
 
+#if 1
+    dt_t *dt = NULL;
+    ClassDeclarations aclasses;
+
+    //printf("members->dim = %d\n", members->dim);
+    for (int i = 0; i < members->dim; i++)
+    {	Dsymbol *member = (Dsymbol *)members->data[i];
+
+	//printf("\tmember '%s'\n", member->toChars());
+	member->addLocalClass(&aclasses);
+    }
+
+    // importedModules[]
+    int aimports_dim = aimports.dim;
+    for (int i = 0; i < aimports.dim; i++)
+    {	Module *m = (Module *)aimports.data[i];
+	if (!m->needModuleInfo())
+	    aimports_dim--;
+    }
+
+    FuncDeclaration *sgetmembers = findGetMembers();
+
+    // These must match the values in druntime/src/object_.d
+    #define MIstandalone      4
+    #define MItlsctor         8
+    #define MItlsdtor         0x10
+    #define MIctor            0x20
+    #define MIdtor            0x40
+    #define MIxgetMembers     0x80
+    #define MIictor           0x100
+    #define MIunitTest        0x200
+    #define MIimportedModules 0x400
+    #define MIlocalClasses    0x800
+    #define MInew             0x80000000   // it's the "new" layout
+
+    unsigned flags = MInew;
+    if (sctor)
+	flags |= MItlsctor;
+    if (sdtor)
+	flags |= MItlsdtor;
+    if (ssharedctor)
+	flags |= MIctor;
+    if (sshareddtor)
+	flags |= MIdtor;
+    if (sgetmembers)
+	flags |= MIxgetMembers;
+    if (sictor)
+	flags |= MIictor;
+    if (stest)
+	flags |= MIunitTest;
+    if (aimports_dim)
+	flags |= MIimportedModules;
+    if (aclasses.dim)
+	flags |= MIlocalClasses;
+
+    if (!needmoduleinfo)
+	flags |= MIstandalone;
+
+    dtdword(&dt, flags);	// n.flags
+    dtdword(&dt, 0);		// n.index
+
+    if (flags & MItlsctor)
+	dtxoff(&dt, sctor, 0, TYnptr);
+    if (flags & MItlsdtor)
+	dtxoff(&dt, sdtor, 0, TYnptr);
+    if (flags & MIctor)
+	dtxoff(&dt, ssharedctor, 0, TYnptr);
+    if (flags & MIdtor)
+	dtxoff(&dt, sshareddtor, 0, TYnptr);
+    if (flags & MIxgetMembers)
+	dtxoff(&dt, sgetmembers->toSymbol(), 0, TYnptr);
+    if (flags & MIictor)
+	dtxoff(&dt, sictor, 0, TYnptr);
+    if (flags & MIunitTest)
+	dtxoff(&dt, stest, 0, TYnptr);
+    if (flags & MIimportedModules)
+    {
+	dtdword(&dt, aimports_dim);
+	for (int i = 0; i < aimports.dim; i++)
+	{   Module *m = (Module *)aimports.data[i];
+
+	    if (m->needModuleInfo())
+	    {   Symbol *s = m->toSymbol();
+
+		/* Weak references don't pull objects in from the library,
+		 * they resolve to 0 if not pulled in by something else.
+		 * Don't pull in a module just because it was imported.
+		 */
+#if !OMFOBJ // Optlink crashes with weak symbols at EIP 41AFE7, 402000
+		s->Sflags |= SFLweak;
+#endif
+		dtxoff(&dt, s, 0, TYnptr);
+	    }
+	}
+    }
+    if (flags & MIlocalClasses)
+    {
+	dtdword(&dt, aclasses.dim);
+	for (int i = 0; i < aclasses.dim; i++)
+	{
+	    ClassDeclaration *cd = (ClassDeclaration *)aclasses.data[i];
+	    dtxoff(&dt, cd->toSymbol(), 0, TYnptr);
+	}
+    }
+
+    // Put out module name as a 0-terminated string, to save bytes
+    nameoffset = dt_size(dt);
+    const char *name = toPrettyChars();
+    namelen = strlen(name);
+    dtnbytes(&dt, namelen + 1, name);
+    //printf("nameoffset = x%x\n", nameoffset);
+#else
     /* The layout is:
        {
 	    void **vptr;
@@ -146,9 +258,9 @@ void Module::genmoduleinfo()
 	dtdword(&dt, 0);
 
     if (needmoduleinfo)
-	dti32(&dt, 8|0, true);		// flags (4 means MIstandalone)
+	dti32(&dt, 8, true);			// flags
     else
-	dti32(&dt, 8|4, true);		// flags (4 means MIstandalone)
+	dti32(&dt, 8 | MIstandalone, true);	// flags
 
     if (ssharedctor)
 	dtxoff(&dt, ssharedctor, 0, TYnptr);
@@ -218,6 +330,7 @@ void Module::genmoduleinfo()
 	ClassDeclaration *cd = (ClassDeclaration *)aclasses.data[i];
 	dtxoff(&dt, cd->toSymbol(), 0, TYnptr);
     }
+#endif
 
     csym->Sdt = dt;
 #if ELFOBJ || MACHOBJ
@@ -727,9 +840,9 @@ void ClassDeclaration::toObjFile(int multiobj)
 			{
 			    TypeFunction *tf = (TypeFunction *)fd->type;
 			    if (tf->ty == Tfunction)
-				warning("%s%s is hidden by %s\n", fd->toPrettyChars(), Parameter::argsTypesToChars(tf->parameters, tf->varargs), toChars());
+				error("%s%s is hidden by %s\n", fd->toPrettyChars(), Parameter::argsTypesToChars(tf->parameters, tf->varargs), toChars());
 			    else
-				warning("%s is hidden by %s\n", fd->toPrettyChars(), toChars());
+				error("%s is hidden by %s\n", fd->toPrettyChars(), toChars());
 			}
 			s = rtlsym[RTLSYM_DHIDDENFUNC];
 			break;
@@ -849,12 +962,9 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 
     // Put out the members
     for (i = 0; i < members->dim; i++)
-    {
-	Dsymbol *member;
+    {	Dsymbol *member = (Dsymbol *)members->data[i];
 
-	member = (Dsymbol *)members->data[i];
-	if (!member->isFuncDeclaration())
-	    member->toObjFile(0);
+	member->toObjFile(0);
     }
 
     // Generate C symbols

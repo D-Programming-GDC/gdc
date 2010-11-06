@@ -218,7 +218,14 @@ struct Msgtable msgtable[] =
     { "opStar" },
     { "opDot" },
     { "opDispatch" },
-    { "opImplicitCast" },
+    { "opUnary" },
+    { "opIndexUnary" },
+    { "opSliceUnary" },
+    { "opBinary" },
+    { "opBinaryRight" },
+    { "opOpAssign" },
+    { "opIndexOpAssign" },
+    { "opSliceOpAssign" },
     { "pow", "opPow" },
     { "pow_r", "opPow_r" },
     { "powass", "opPowAssign" },
@@ -256,6 +263,7 @@ struct Msgtable msgtable[] =
     { "monitorexit", "_d_monitorexit" },
     { "criticalenter", "_d_criticalenter" },
     { "criticalexit", "_d_criticalexit" },
+    { "_ArrayEq" },
 
     // For pragma's
     { "GNU_asm" },

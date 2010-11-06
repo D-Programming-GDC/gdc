@@ -92,13 +92,13 @@ Global::Global()
     lib_ext = "a";
 #endif
 
-    copyright = "Copyright (c) 1999-2009 by Digital Mars";
+    copyright = "Copyright (c) 1999-2010 by Digital Mars";
     written = "written by Walter Bright"
 #if TARGET_NET
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates."
 #endif
     ;
-    version = "v2.040";
+    version = "v2.041";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -159,14 +159,10 @@ void error(const char *filename, unsigned linnum, const char *format, ...)
 
 void warning(Loc loc, const char *format, ...)
 {
-    if (global.params.warnings && !global.gag)
-    {
-	fprintf(stdmsg, "warning - ");
-	va_list ap;
-	va_start(ap, format);
-	verror(loc, format, ap);
-	va_end( ap );
-    }
+    va_list ap;
+    va_start(ap, format);
+    vwarning(loc, format, ap);
+    va_end( ap );
 }
 
 void verror(Loc loc, const char *format, va_list ap)
@@ -193,6 +189,33 @@ void verror(Loc loc, const char *format, va_list ap)
 //halt();
     }
     global.errors++;
+}
+
+void vwarning(Loc loc, const char *format, va_list ap)
+{
+    if (global.params.warnings && !global.gag)
+    {
+	char *p = loc.toChars();
+
+	if (*p)
+	    fprintf(stdmsg, "%s: ", p);
+	mem.free(p);
+
+	fprintf(stdmsg, "Warning: ");
+#if _MSC_VER
+	// MS doesn't recognize %zu format
+	OutBuffer tmp;
+	tmp.vprintf(format, ap);
+	fprintf(stdmsg, "%s", tmp.toChars());
+#else
+	vfprintf(stdmsg, format, ap);
+#endif
+	fprintf(stdmsg, "\n");
+	fflush(stdmsg);
+//halt();
+	if (global.params.warnings == 1)
+	    global.warnings++;	// warnings don't count if gagged
+    }
 }
 
 /***************************************
@@ -226,6 +249,13 @@ extern void backend_term();
 
 void usage()
 {
+#if TARGET_LINUX
+    const char fpic[] ="\
+  -fPIC          generate position independent code\n\
+";
+#else
+    const char fpic[] = "";
+#endif
     printf("Digital Mars D Compiler %s\n%s %s\n",
 	global.version, global.copyright, global.written);
     printf("\
@@ -246,7 +276,7 @@ Usage:\n\
   -debug=ident   compile in debug code identified by ident\n\
   -debuglib=name    set symbolic debug library to name\n\
   -defaultlib=name  set default library to name\n\
-  -deps=filename write module dependencies to filename\n\
+  -deps=filename write module dependencies to filename\n%s\
   -g             add symbolic debug info\n\
   -gc            add symbolic debug info, pretend to be C\n\
   -H             generate 'header' file\n\
@@ -278,9 +308,10 @@ Usage:\n\
   -version=ident compile in version code identified by ident\n\
   -vtls          list all variables going into thread local storage\n\
   -w             enable warnings\n\
+  -wi            enable informational warnings\n\
   -X             generate JSON file\n\
   -Xffilename    write JSON file to filename\n\
-");
+", fpic);
 }
 
 int main(int argc, char *argv[])
@@ -445,6 +476,8 @@ int main(int argc, char *argv[])
             }
 	    else if (strcmp(p + 1, "w") == 0)
 		global.params.warnings = 1;
+	    else if (strcmp(p + 1, "wi") == 0)
+		global.params.warnings = 2;
 	    else if (strcmp(p + 1, "O") == 0)
 		global.params.optimize = 1;
 	    else if (p[1] == 'o')
@@ -1199,7 +1232,9 @@ int main(int argc, char *argv[])
 	    m->inlineScan();
 	}
     }
-    if (global.errors)
+
+    // Do not attempt to generate output files if errors or warnings occurred
+    if (global.errors || global.warnings)
 	fatal();
 
     Library *library = NULL;

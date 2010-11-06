@@ -246,14 +246,19 @@ tree
 IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 {
     tree result = NULL_TREE;
-    Type * orig_exp_type = exp_type;
 
     assert(exp_type && target_type);
     target_type = target_type->toBasetype();
     exp_type = exp_type->toBasetype();
 
-    if (typesSame(exp_type, target_type) &&
-	typesSame(orig_exp_type, target_type))
+#if V2
+    if (exp_type->ty == Taarray)
+	exp_type = ((TypeAArray*)exp_type)->getImpl()->type;
+    if (target_type->ty == Taarray)
+	target_type = ((TypeAArray*)target_type)->getImpl()->type;
+#endif
+
+    if (typesSame(exp_type, target_type))
 	return exp;
 
     switch (exp_type->ty) {
@@ -1102,7 +1107,7 @@ static const char * libcall_ids[LIBCALL_count] =
       "_d_arraysetlengthT", "_d_arraysetlengthiT",
       "_d_dynamic_cast", "_d_interface_cast",
       "_adEq", "_adCmp", "_adCmpChar",
-      "_aaLen",
+      "_aaEqual", "_aaLen", 
       //"_aaIn", "_aaGet", "_aaGetRvalue", "_aaDel",
       "_aaInp", "_aaGetp", "_aaGetRvaluep", "_aaDelp",
       "_d_arraycast",
@@ -1246,6 +1251,7 @@ IRState::getLibCallDecl(LibCall lib_call)
 // 	case LIBCALL_AAGET:
 // 	case LIBCALL_AAGETRVALUE:
 // 	case LIBCALL_AADEL:
+	case LIBCALL_AAEQUAL:
 	case LIBCALL_AALEN:
 	case LIBCALL_AAINP:
 	case LIBCALL_AAGETP:
@@ -1256,6 +1262,15 @@ IRState::getLibCallDecl(LibCall lib_call)
 		if (! aa_type)
 		    aa_type = new TypeAArray(Type::tvoid->pointerTo(),
 			Type::tvoid->pointerTo());
+
+		if (lib_call == LIBCALL_AAEQUAL)
+		{
+		    arg_types.push( Type::typeinfo->type );
+		    arg_types.push( aa_type );
+		    arg_types.push( aa_type );
+		    return_type = Type::tint32;
+		    break;
+		}
 
 		if (lib_call == LIBCALL_AALEN)
 		{
@@ -1329,12 +1344,12 @@ IRState::getLibCallDecl(LibCall lib_call)
 	case LIBCALL_ARRAYAPPENDCD:
 	    arg_types.push( Type::tchar->arrayOf() );
 	    arg_types.push( Type::tdchar );
-	    return_type = Type::tchar->arrayOf();
+	    return_type = Type::tvoid->arrayOf();
 	    break;
 	case LIBCALL_ARRAYAPPENDWD:
 	    arg_types.push( Type::twchar->arrayOf() );
 	    arg_types.push( Type::tdchar );
-	    return_type = Type::tchar->arrayOf();
+	    return_type = Type::tvoid->arrayOf();
 	    break;
 #if V2
 	case LIBCALL_ARRAYASSIGN:
@@ -3032,7 +3047,8 @@ IRState::functionNeedsChain(FuncDeclaration *f)
 
     if (f->isNested()
 #if V2
-	&& ! getFrameInfo(f->toParent2()->isFuncDeclaration())->creates_closure
+	&& (pf = f->toParent2()->isFuncDeclaration())
+	    && ! getFrameInfo(pf)->creates_closure
 #endif
 	)
 	return true;

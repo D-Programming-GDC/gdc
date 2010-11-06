@@ -159,7 +159,7 @@ void FuncDeclaration::semantic(Scope *sc)
     foverrides.setDim(0);	// reset in case semantic() is being retried for this function
 
     storage_class |= sc->stc & ~STCref;
-    //printf("function storage_class = x%llx, sc->stc = x%llx\n", storage_class, sc->stc);
+    //printf("function storage_class = x%llx, sc->stc = x%llx, %x\n", storage_class, sc->stc, Declaration::isFinal());
 
     if (!originalType)
 	originalType = type;
@@ -167,6 +167,8 @@ void FuncDeclaration::semantic(Scope *sc)
     {
 	sc = sc->push();
 	sc->stc |= storage_class & STCref;	// forward to function type
+	if (isCtorDeclaration())
+	    sc->flags |= SCOPEctor;
 	type = type->semantic(loc, sc);
 	sc = sc->pop();
 
@@ -332,6 +334,11 @@ void FuncDeclaration::semantic(Scope *sc)
 	if (fbody && isVirtual())
 	    error("function body is not abstract in interface %s", id->toChars());
     }
+
+    /* Contracts can only appear without a body when they are virtual interface functions
+     */
+    if (!fbody && (fensure || frequire) && !(id && isVirtual()))
+	error("in and out contracts require function body");
 
     /* Template member functions aren't virtual:
      *   interface TestInterface { void tpl(T)(); }
@@ -713,15 +720,15 @@ void FuncDeclaration::semantic(Scope *sc)
 	    fdrequire = fd;
 	}
 
+	if (!outId && f->nextOf() && f->nextOf()->toBasetype()->ty != Tvoid)
+	    outId = Id::result;	// provide a default
+
 	if (fensure)
 	{   /*   out (result) { ... }
 	     * becomes:
 	     *   tret __ensure(ref tret result) { ... }
 	     *   __ensure(result);
 	     */
-	    if (!outId && f->nextOf()->toBasetype()->ty != Tvoid)
-		outId = Id::result;	// provide a default
-
 	    Loc loc = fensure->loc;
 	    Parameters *arguments = new Parameters();
 	    Parameter *a = NULL;
@@ -797,6 +804,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 	return;
     f = (TypeFunction *)(type);
 
+#if 0
     // Check the 'throws' clause
     if (fthrows)
     {
@@ -809,11 +817,12 @@ void FuncDeclaration::semantic3(Scope *sc)
 		error("can only throw classes, not %s", t->toChars());
 	}
     }
+#endif
 
     frequire = mergeFrequire(frequire);
     fensure = mergeFensure(fensure);
 
-    if (fbody || frequire)
+    if (fbody || frequire || fensure)
     {
 	/* Symbol table into which we place parameters and nested functions,
 	 * solely to diagnose name collisions.
@@ -848,14 +857,14 @@ void FuncDeclaration::semantic3(Scope *sc)
 	if (ad)
 	{   VarDeclaration *v;
 
-	    if (isFuncLiteralDeclaration() && isNested())
+	    if (isFuncLiteralDeclaration() && isNested() && !sc->intypeof)
 	    {
-		error("literals cannot be class members");
+		error("function literals cannot be class members");
 		return;
 	    }
 	    else
 	    {
-		assert(!isNested());	// can't be both member and nested
+		assert(!isNested() || sc->intypeof);	// can't be both member and nested
 		assert(ad->handle);
 		Type *thandle = ad->handle;
 #if STRUCTTHISREF
@@ -889,6 +898,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 		}
 #endif
 		v = new ThisDeclaration(loc, thandle);
+		//v = new ThisDeclaration(loc, isCtorDeclaration() ? ad->handle : thandle);
 		v->storage_class |= STCparameter;
 #if STRUCTTHISREF
 		if (thandle->ty == Tstruct)
@@ -1264,7 +1274,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 		    for (int i = 0; i < cd->fields.dim; i++)
 		    {   VarDeclaration *v = (VarDeclaration *)cd->fields.data[i];
 
-			if (v->ctorinit == 0 && v->isCtorinit())
+			if (v->ctorinit == 0 && v->isCtorinit() && !v->type->isMutable())
 			    error("missing initializer for final field %s", v->toChars());
 		    }
 		}
@@ -1296,7 +1306,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 		assert(!returnLabel);
 	    }
 	    else if (!hasReturnExp && type->nextOf()->ty != Tvoid)
-		error("expected to return a value of type %s", type->nextOf()->toChars());
+		error("has no return statement, but is expected to return a value of type %s", type->nextOf()->toChars());
 	    else if (!inlineAsm)
 	    {
 #if DMDV2
@@ -2009,8 +2019,13 @@ int fp2(void *param, FuncDeclaration *f)
 	else if (p->property != property)
 	    error(f->loc, "cannot overload both property and non-property functions");
 
-	match = (MATCH) tf->callMatch(f->needThis() ? p->ethis : NULL, arguments);
-	//printf("test: match = %d\n", match);
+	/* For constructors, don't worry about the right type of ethis. It's a problem
+	 * anyway, because the constructor attribute may not match the ethis attribute,
+	 * but we don't care because the attribute on the ethis doesn't matter until
+	 * after it's constructed.
+	 */
+	match = (MATCH) tf->callMatch(f->needThis() && !f->isCtorDeclaration() ? p->ethis : NULL, arguments);
+	//printf("test1: match = %d\n", match);
 	if (match != MATCHnomatch)
 	{
 	    if (match > m->last)
@@ -2172,6 +2187,7 @@ MATCH FuncDeclaration::leastAsSpecialized(FuncDeclaration *g)
 
 #if LOG_LEASTAS
     printf("%s.leastAsSpecialized(%s)\n", toChars(), g->toChars());
+    printf("%s, %s\n", type->toChars(), g->type->toChars());
 #endif
 
     /* This works by calling g() with f()'s parameters, and
@@ -2217,7 +2233,7 @@ MATCH FuncDeclaration::leastAsSpecialized(FuncDeclaration *g)
 	args.data[u] = e;
     }
 
-    MATCH m = (MATCH) tg->callMatch(NULL, &args);
+    MATCH m = (MATCH) tg->callMatch(NULL, &args, 1);
     if (m)
     {
         /* A variadic parameter list is less specialized than a
@@ -2475,13 +2491,19 @@ int FuncDeclaration::isFinal()
 {
     ClassDeclaration *cd;
 #if 0
-    printf("FuncDeclaration::isFinal(%s)\n", toChars());
-    printf("%p %d %d %d %d\n", isMember(), isStatic(), protection == PROTprivate, isCtorDeclaration(), linkage != LINKd);
+    printf("FuncDeclaration::isFinal(%s), %x\n", toChars(), Declaration::isFinal());
+    printf("%p %d %d %d\n", isMember(), isStatic(), Declaration::isFinal(), ((cd = toParent()->isClassDeclaration()) != NULL && cd->storage_class & STCfinal));
     printf("result is %d\n",
 	isMember() &&
+	(Declaration::isFinal() ||
+	 ((cd = toParent()->isClassDeclaration()) != NULL && cd->storage_class & STCfinal)));
+    if (cd)
+	printf("\tmember of %s\n", cd->toChars());
+#if 0
 	!(isStatic() || protection == PROTprivate || protection == PROTpackage) &&
 	(cd = toParent()->isClassDeclaration()) != NULL &&
 	cd->storage_class & STCfinal);
+#endif
 #endif
     return isMember() &&
 	(Declaration::isFinal() ||
@@ -2781,23 +2803,17 @@ const char *FuncLiteralDeclaration::kind()
 
 void FuncLiteralDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-    static Identifier *idfunc;
-    static Identifier *iddel;
-
-    if (!idfunc)
-	idfunc = new Identifier("function", 0);
-    if (!iddel)
-	iddel = new Identifier("delegate", 0);
-
-    type->toCBuffer(buf, ((tok == TOKdelegate) ? iddel : idfunc), hgs);
+    buf->writestring(kind());
+    buf->writeByte(' ');
+    type->toCBuffer(buf, NULL, hgs);
     bodyToCBuffer(buf, hgs);
 }
 
 
 /********************************* CtorDeclaration ****************************/
 
-CtorDeclaration::CtorDeclaration(Loc loc, Loc endloc, Parameters *arguments, int varargs)
-    : FuncDeclaration(loc, endloc, Id::ctor, STCundefined, NULL)
+CtorDeclaration::CtorDeclaration(Loc loc, Loc endloc, Parameters *arguments, int varargs, StorageClass stc)
+    : FuncDeclaration(loc, endloc, Id::ctor, stc, NULL)
 {
     this->arguments = arguments;
     this->varargs = varargs;
@@ -2806,9 +2822,7 @@ CtorDeclaration::CtorDeclaration(Loc loc, Loc endloc, Parameters *arguments, int
 
 Dsymbol *CtorDeclaration::syntaxCopy(Dsymbol *s)
 {
-    CtorDeclaration *f;
-
-    f = new CtorDeclaration(loc, endloc, NULL, varargs);
+    CtorDeclaration *f = new CtorDeclaration(loc, endloc, NULL, varargs, storage_class);
 
     f->outId = outId;
     f->frequire = frequire ? frequire->syntaxCopy() : NULL;
@@ -2839,9 +2853,11 @@ void CtorDeclaration::semantic(Scope *sc)
     else
     {	tret = ad->handle;
 	assert(tret);
+	tret = tret->addStorageClass(storage_class | sc->stc);
     }
     if (!type)
-	type = new TypeFunction(arguments, tret, varargs, LINKd);
+	type = new TypeFunction(arguments, tret, varargs, LINKd, storage_class | sc->stc);
+
 #if STRUCTTHISREF
     if (ad && ad->isStructDeclaration())
 	((TypeFunction *)type)->isref = 1;
@@ -2849,16 +2865,14 @@ void CtorDeclaration::semantic(Scope *sc)
     if (!originalType)
 	originalType = type;
 
-    sc->flags |= SCOPEctor;
-    type = type->semantic(loc, sc);
-    sc->flags &= ~SCOPEctor;
-
     // Append:
     //	return this;
     // to the function body
     if (fbody && semanticRun < PASSsemantic)
     {
 	Expression *e = new ThisExp(loc);
+	if (parent->isClassDeclaration())
+	    e->type = tret;
 	Statement *s = new ReturnStatement(loc, e);
 	fbody = new CompoundStatement(loc, fbody, s);
     }

@@ -502,6 +502,7 @@ void getCpuInfo0B()
             else if (level==1) maxCores = b & 0xFFFF;
             
         }
+        ++level;
     } while (a!=0 || b!=0);
 
 }
@@ -741,7 +742,7 @@ void cpuidSparc()
 }
 
 
-static this()
+shared static this()
 {
     if (hasCPUID()) {
         cpuidX86();

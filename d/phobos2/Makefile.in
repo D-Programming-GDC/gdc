@@ -251,7 +251,7 @@ BASE_OBJS = object_.o
 RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
 	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
-	     rt/cast_.o rt/complex.o rt/critical.o rt/dgccmain2.o \
+	     rt/cast_.o rt/complex.o rt/critical.o \
 	     rt/gccmemory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
 	     rt/monitor.o rt/obj.o rt/qsort.o rt/switch_.o
 
@@ -299,7 +299,7 @@ CMAIN_OBJS = rt/dmain2.o
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 MAIN_OBJS = std/algorithm.o std/atomics.o std/array.o std/base64.o \
 	std/bigint.o std/bind.o std/bitarray.o std/bitmanip.o \
-	std/compiler.o std/complex.o std/contracts.o std/conv.o \
+	std/compiler.o std/complex.o std/concurrency.o std/contracts.o std/conv.o \
 	std/cpuid.o std/cstream.o std/ctype.o std/date.o std/dateparse.o \
 	std/demangle.o std/encoding.o std/format.o std/functional.o \
 	std/getopt.o std/iterator.o std/json.o std/math.o std/md5.o std/metastrings.o \

@@ -40,7 +40,7 @@ this();
     bool tryLock();
     version (Posix)
 {
-    static this();
+    shared static this();
     }
     private 
 {

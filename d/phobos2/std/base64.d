@@ -63,7 +63,6 @@ class Base64CharException: Base64Exception
 
 immutable array = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-
 /**
  * Returns the number of bytes needed to encode a string of length slen.
  */
@@ -162,7 +161,6 @@ unittest
 	assert(encode("all your base64 are belong to foo") == "YWxsIHlvdXIgYmFzZTY0IGFyZSBiZWxvbmcgdG8gZm9v");
 }
 
-
 /**
  * Returns the number of bytes needed to decode an encoded string of this
  * length.
@@ -171,7 +169,6 @@ size_t decodeLength(size_t elen)
 {
 	return elen / 4 * 3;
 }
-
 
 /**
  * Decodes str[] and places the result in buf[].
@@ -202,7 +199,8 @@ body
 	uint arrayIndex(char ch)
 	out(result)
 	{
-		assert(ch == array[result]);
+        //@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=3667");
+		//assert(ch == array[result]);
 	}
 	body
 	{
@@ -219,7 +217,6 @@ body
 		badc(ch);
 		assert(0);
 	}
-	
 	
 	if(!estr.length)
 		return buf[0 .. 0];

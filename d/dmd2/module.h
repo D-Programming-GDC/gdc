@@ -108,6 +108,9 @@ struct Module : Package
     Escape *escapetable;	// document comment escapes
     bool safe;			// TRUE if module is marked as 'safe'
 
+    size_t nameoffset;		// offset of module name from start of ModuleInfo
+    size_t namelen;		// length of module name in characters
+
     Module(char *arg, Identifier *ident, int doDocComment, int doHdrGen);
     ~Module();
 
@@ -141,6 +144,7 @@ struct Module : Package
     void deleteObjFile();
     void addDeferredSemantic(Dsymbol *s);
     static void runDeferredSemantic();
+    static void clearCache();
     int imports(Module *m);
 
     // Back end
@@ -167,7 +171,6 @@ struct Module : Package
 
     static Symbol *gencritsec();
     elem *toEfilename();
-    elem *toEmodulename();
 
     Symbol *toSymbol();
     void genmoduleinfo();

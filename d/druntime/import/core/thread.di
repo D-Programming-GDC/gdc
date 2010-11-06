@@ -255,11 +255,11 @@ m_curr = &m_main;
 {
     bool isRunning();
 }
-    static const 
+    const __gshared 
 {
     int PRIORITY_MIN;
 }
-    static const 
+    const __gshared 
 {
     int PRIORITY_MAX;
 }
@@ -291,7 +291,7 @@ m_curr = &m_main;
 {
     int opApply(int delegate(ref Thread) dg);
 }
-    static this();
+    shared static this();
     private 
 {
     this();
@@ -644,12 +644,12 @@ else
 }
 }
 }
-    const 
+    const __gshared 
 {
     size_t PAGESIZE;
 }
 }
-static this();
+shared static this();
 private 
 {
     extern (C) 
@@ -747,7 +747,7 @@ return m_state;
 {
     Fiber getThis();
 }
-    static this();
+    shared static this();
     private 
 {
     this()

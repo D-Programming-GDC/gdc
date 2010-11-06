@@ -116,6 +116,9 @@ Module::Module(char *filename, Identifier *ident, int doDocComment, int doHdrGen
     cov = NULL;
     covb = NULL;
 
+    nameoffset = 0;
+    namelen = 0;
+
     srcfilename = FileName::defaultExt(filename, global.mars_ext);
     if (!srcfilename->equalsExt(global.mars_ext) &&
         !srcfilename->equalsExt(global.hdr_ext) &&
@@ -929,6 +932,13 @@ Dsymbol *Module::symtabInsert(Dsymbol *s)
     return Package::symtabInsert(s);
 }
 
+void Module::clearCache()
+{
+    for (int i = 0; i < amodules.dim; i++)
+    {	Module *m = (Module *)amodules.data[i];
+	m->searchCacheIdent = NULL;
+    }
+}
 
 /*******************************************
  * Can't run semantic on s now, try again later.

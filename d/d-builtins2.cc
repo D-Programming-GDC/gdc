@@ -202,7 +202,11 @@ gcc_type_to_d_type(tree t)
 	    /* Does not seem necessary to convert fields, but the
 	       members field must be non-null for the above size
 	       setting to stick. */
+#if V2
+	    sd->members = new Dsymbols;
+#else
 	    sd->members = new Array;
+#endif
 
 	    d->ctype = t;
 
@@ -355,7 +359,11 @@ d_gcc_magic_stdarg_module(Module *m, bool is_c_std_arg)
 static void
 d_gcc_magic_builtins_module(Module *m)
 {
+#if V2
+    Dsymbols * funcs = new Dsymbols;
+#else
     Array * funcs = new Array;
+#endif
 
     for (tree n = bi_fn_list.head; n; n = TREE_CHAIN(n))
     {

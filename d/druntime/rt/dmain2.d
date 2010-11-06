@@ -29,6 +29,7 @@ private
     import core.stdc.stddef;
     import core.stdc.stdlib;
     import core.stdc.string;
+    //import core.stdc.stdio;	// for printf()
 }
 
 version (Windows)
@@ -132,6 +133,7 @@ extern (C) bool runModuleUnitTests();
 /***********************************
  * These are internal callbacks for various language errors.
  */
+
 extern (C) void _d_assert(string file, uint line)
 {
     onAssertError(file, line);
@@ -142,14 +144,24 @@ extern (C) static void _d_assert_msg(string msg, string file, uint line)
     onAssertErrorMsg(file, line, msg);
 }
 
-extern (C) void _d_array_bounds(string file, uint line)
+extern (C)
 {
-    onRangeError(file, line);
-}
+    // Use ModuleInfo to get file name
 
-extern (C) void _d_switch_error(string file, uint line)
-{
-    onSwitchError(file, line);
+    void _d_assertm(ModuleInfo* m, uint line)
+    {
+	onAssertError(m.name, line);
+    }
+
+    void _d_array_bounds(ModuleInfo* m, uint line)
+    {
+	onRangeError(m.name, line);
+    }
+
+    void _d_switch_error(ModuleInfo* m, uint line)
+    {
+	onSwitchError(m.name, line);
+    }
 }
 
 version(GNU)

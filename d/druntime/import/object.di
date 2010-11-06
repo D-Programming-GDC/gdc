@@ -39,6 +39,9 @@ class Object
     static Object factory(string classname);
 }
 
+bool opEquals(Object lhs, Object rhs);
+//bool opEquals(TypeInfo lhs, TypeInfo rhs);
+
 struct Interface
 {
     TypeInfo_Class   classinfo;
@@ -222,20 +225,50 @@ class MemberInfo_function : MemberInfo
 
 struct ModuleInfo
 {
-    string          name;
-    ModuleInfo*[]   importedModules;
-    ClassInfo[]     localClasses;
-    uint            flags;
+    struct New
+    {
+        uint flags;
+        uint index;
+    }
 
-    void function() ctor;
-    void function() dtor;
-    void function() unitTest;
+    struct Old
+    {
+        string name;
+        ModuleInfo*[] importedModules;
+        TypeInfo_Class[] localClasses;
+        uint flags;
+        void function() ctor;
+        void function() dtor;
+        void function() unitTest;
+        void* xgetMembers;
+        void function() ictor;
+        void function() tlsctor;
+        void function() tlsdtor;
+        uint index;
+        void*[1] reserved;
+    }
 
-    void*           xgetMembers;
-    void function() ictor;
-    void function() tlsctor;
-    void function() tlsdtor;
-    void*[2] reserved;
+    union
+    {
+        New n;
+        Old o;
+    }
+
+    @property bool isNew();
+    @property uint index();
+    @property void index(uint i);
+    @property uint flags();
+    @property void flags(uint f);
+    @property void function() tlsctor();
+    @property void function() tlsdtor();
+    @property void* xgetMembers();
+    @property void function() ctor();
+    @property void function() dtor();
+    @property void function() ictor();
+    @property void function() unitTest();
+    @property ModuleInfo*[] importedModules();
+    @property TypeInfo_Class[] localClasses();
+    @property string name();
 
     static int opApply(int delegate(ref ModuleInfo*));
 }
@@ -328,6 +361,32 @@ struct AssociativeArray(Key, Value)
     {
         return _aaApply(p, Key.sizeof, cast(_dg_t)dg);
     }
+
+    int delegate(int delegate(ref Key) dg) byKey()
+    {
+	int foo(int delegate(ref Key) dg)
+	{
+	    int byKeydg(ref Key key, ref Value value)
+	    {
+		return dg(key);
+	    }
+
+	    return _aaApply2(p, Key.sizeof, cast(_dg2_t)&byKeydg);
+	}
+
+	return &foo;
+    }
+
+    int delegate(int delegate(ref Value) dg) byValue()
+    {
+	return &opApply;
+    }
+
+    Value get(Key key, lazy Value defaultValue)
+    {
+	auto p = key in *cast(Value[Key]*)(&p);
+	return p ? *p : defaultValue;
+    }
 }
 
 void clear(T)(T obj) if (is(T == class))
@@ -378,3 +437,36 @@ template _isStaticArray(T)
 {
     enum bool _isStaticArray = false;
 }
+
+private
+{
+    extern (C) void _d_arrayshrinkfit(TypeInfo ti, void[] arr);
+    extern (C) size_t _d_arraysetcapacity(TypeInfo ti, size_t newcapacity, void *arrptr);
+}
+
+@property size_t capacity(T)(T[] arr)
+{
+    return _d_arraysetcapacity(typeid(T[]), 0, cast(void *)&arr);
+}
+
+size_t setCapacity(T)(ref T[] arr, size_t newcapacity)
+{
+    return _d_arraysetcapacity(typeid(T[]), newcapacity, cast(void *)&arr);
+}
+
+void shrinkToFit(T)(T[] arr)
+{
+    _d_arrayshrinkfit(typeid(T[]), *(cast(void[]*)&arr));
+}
+
+bool _ArrayEq(T1, T2)(T1[] a1, T2[] a2)
+{
+    if (a1.length != a2.length)
+	return false;
+    foreach(i, a; a1)
+    {	if (a != a2[i])
+	    return false;
+    }
+    return true;
+}
+

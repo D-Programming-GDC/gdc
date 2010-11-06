@@ -751,8 +751,9 @@ unittest
 
 S tolower(S)(S s) if (isSomeString!S)
 {
+    alias typeof(s[0]) Char;
     int changed;
-    Unqual!(ElementType!S)[] r;
+    Unqual!(Char)[] r;
 
     for (size_t i = 0; i < s.length; i++)
     {
@@ -764,7 +765,7 @@ S tolower(S)(S s) if (isSomeString!S)
                 r = s.dup;
                 changed = 1;
             }
-            r[i] = cast(Unqual!(ElementType!S)) (c + ('a' - 'A'));
+            r[i] = cast(Unqual!Char) (c + ('a' - 'A'));
         }
         else if (c > 0x7F)
         {
@@ -875,8 +876,9 @@ unittest
 
 S toupper(S)(S s) if (isSomeString!S)
 {
+    alias typeof(s[0]) Char;
     int changed;
-    Unqual!(ElementType!S)[] r;
+    Unqual!(Char)[] r;
 
     foreach (i; 0 .. s.length)
     {
@@ -888,7 +890,7 @@ S toupper(S)(S s) if (isSomeString!S)
                 r = to!(typeof(r))(s);
                 changed = 1;
             }
-            r[i] = cast(Unqual!(ElementType!S)) (c - ('a' - 'A'));
+            r[i] = cast(Unqual!(Char)) (c - ('a' - 'A'));
         }
         else if (c > 0x7F)
         {

@@ -284,7 +284,7 @@ datacache[2].lineSize = datacache[0].lineSize;
     void cpuidSparc()
 {
 }
-    static this();
+    shared static this();
 }
 }
 }

@@ -306,7 +306,8 @@ EqualExp::toElem(IRState* irs)
     TY base_ty_2 = e2->type->toBasetype()->ty;
 
     if ( (base_ty_1 == Tsarray || base_ty_1 == Tarray ||
-	     base_ty_2 == Tsarray || base_ty_2 == Tarray) ) {
+	     base_ty_2 == Tsarray || base_ty_2 == Tarray) )
+    {
 
 	Type * elem_type = base_type_1->nextOf()->toBasetype();
 
@@ -372,8 +373,26 @@ EqualExp::toElem(IRState* irs)
 
 	    return convert(type->toCtype(), result);
 	}
-    } else {
-	// Taarray case not defined in spec, probably should be a library call
+    }
+    else if (base_ty_1 == Taarray && base_ty_2 == Taarray)
+    {
+	TypeAArray * aatype_1 = (TypeAArray *)base_type_1;
+	tree args[3] = {
+	    irs->typeinfoReference(aatype_1),
+	    e1->toElem(irs),
+	    e2->toElem(irs)
+	};
+	tree result = irs->libCall(LIBCALL_AAEQUAL, 3, args);
+	result = convert(type->toCtype(), result);
+
+	if (op == TOKnotequal)
+	    result = build1(TRUTH_NOT_EXPR, type->toCtype(), result);
+
+	return convert(type->toCtype(), result);
+    }
+    else
+    {
+	// Tstruct case not defined in spec, probably should be a library call
 	return make_bool_binop(this, irs);
     }
 }

@@ -1182,7 +1182,7 @@ dt_t **TypeSArray::toDtElem(dt_t **pdt, Expression *e)
 	    (*padt)->DTazeros = len;
 	    pdt = dtcat(pdt, adt);
 	}
-	else if (e->op != TOKstring)
+	else if (e->op != TOKstring && e->op != TOKarrayliteral)
 	{
 #ifdef IN_GCC
 	    pdt = dtcat(pdt, createTsarrayDt(adt, this));

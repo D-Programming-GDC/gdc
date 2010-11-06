@@ -887,7 +887,7 @@ class Thread
      * represents the minimum valid priority for the scheduling policy of
      * the process.
      */
-    static const int PRIORITY_MIN;
+    __gshared const int PRIORITY_MIN;
 
 
     /**
@@ -896,7 +896,7 @@ class Thread
      * represents the minimum valid priority for the scheduling policy of
      * the process.
      */
-    static const int PRIORITY_MAX;
+    __gshared const int PRIORITY_MAX;
 
 
     /**
@@ -1154,7 +1154,7 @@ class Thread
      * This initializer is used to set thread constants.  All functional
      * initialization occurs within thread_init().
      */
-    static this()
+    shared static this()
     {
         version( Windows )
         {
@@ -1767,7 +1767,7 @@ extern (C) void thread_joinAll()
 /**
  * Performs intermediate shutdown of the thread module.
  */
-static ~this()
+shared static ~this()
 {
     // NOTE: The functionality related to garbage collection must be minimally
     //       operable after this dtor completes.  Therefore, only minimal
@@ -2400,11 +2400,11 @@ private
         }
     }
 
-    const size_t PAGESIZE;
+    __gshared const size_t PAGESIZE;
 }
 
 
-static this()
+shared static this()
 {
     static if( __traits( compiles, GetSystemInfo ) )
     {
@@ -2906,7 +2906,7 @@ class Fiber
     ///////////////////////////////////////////////////////////////////////////
 
 
-    static this()
+    shared static this()
     {
         version( Windows )
         {

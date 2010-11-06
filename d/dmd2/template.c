@@ -37,6 +37,7 @@
 #include "dsymbol.h"
 #include "identifier.h"
 #include "hdrgen.h"
+#include "id.h"
 
 #if WINDOWS_SEH
 #include <windows.h>
@@ -291,7 +292,7 @@ Object *objectSyntaxCopy(Object *o)
 /* ======================== TemplateDeclaration ============================= */
 
 TemplateDeclaration::TemplateDeclaration(Loc loc, Identifier *id,
-	TemplateParameters *parameters, Expression *constraint, Array *decldefs)
+	TemplateParameters *parameters, Expression *constraint, Dsymbols *decldefs, int ismixin)
     : ScopeDsymbol(id)
 {
 #if LOG
@@ -320,6 +321,7 @@ TemplateDeclaration::TemplateDeclaration(Loc loc, Identifier *id,
     this->semanticRun = 0;
     this->onemember = NULL;
     this->literal = 0;
+    this->ismixin = ismixin;
 }
 
 Dsymbol *TemplateDeclaration::syntaxCopy(Dsymbol *)
@@ -327,7 +329,6 @@ Dsymbol *TemplateDeclaration::syntaxCopy(Dsymbol *)
     //printf("TemplateDeclaration::syntaxCopy()\n");
     TemplateDeclaration *td;
     TemplateParameters *p;
-    Array *d;
 
     p = NULL;
     if (parameters)
@@ -342,8 +343,8 @@ Dsymbol *TemplateDeclaration::syntaxCopy(Dsymbol *)
     Expression *e = NULL;
     if (constraint)
 	e = constraint->syntaxCopy();
-    d = Dsymbol::arraySyntaxCopy(members);
-    td = new TemplateDeclaration(loc, ident, p, e, d);
+    Dsymbols *d = Dsymbol::arraySyntaxCopy(members);
+    td = new TemplateDeclaration(loc, ident, p, e, d, ismixin);
     return td;
 }
 
@@ -352,10 +353,15 @@ void TemplateDeclaration::semantic(Scope *sc)
 #if LOG
     printf("TemplateDeclaration::semantic(this = %p, id = '%s')\n", this, ident->toChars());
     printf("sc->stc = %llx\n", sc->stc);
+    printf("sc->module = %s\n", sc->module->toChars());
 #endif
     if (semanticRun)
 	return;		// semantic() already run
     semanticRun = 1;
+
+    if (sc->module && sc->module->ident == Id::object && ident == Id::AssociativeArray)
+    {	Type::associativearray = this;
+    }
 
     if (sc->func)
     {
@@ -3565,6 +3571,10 @@ void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
 	}
     }
 
+    // If tempdecl is a mixin, disallow it
+    if (tempdecl->ismixin)
+	error("mixin templates are not regular templates");
+
     hasNestedArgs(tiargs);
 
     /* See if there is an existing TemplateInstantiation that already
@@ -4109,7 +4119,12 @@ TemplateDeclaration *TemplateInstance::findTemplateDeclaration(Scope *sc)
 	id = name;
 	s = sc->search(loc, id, &scopesym);
 	if (!s)
-	{   error("template '%s' is not defined", id->toChars());
+	{
+	    s = sc->search_correct(id);
+	    if (s)
+		error("template '%s' is not defined, did you mean %s?", id->toChars(), s->toChars());
+	    else
+		error("template '%s' is not defined", id->toChars());
 	    return NULL;
 	}
 

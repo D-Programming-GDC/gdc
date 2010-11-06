@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -117,14 +117,10 @@ void Statement::error(const char *format, ...)
 
 void Statement::warning(const char *format, ...)
 {
-    if (global.params.warnings && !global.gag)
-    {
-	fprintf(stdmsg, "warning - ");
-	va_list ap;
-	va_start(ap, format);
-	::verror(loc, format, ap);
-	va_end( ap );
-    }
+    va_list ap;
+    va_start(ap, format);
+    ::vwarning(loc, format, ap);
+    va_end( ap );
 }
 
 int Statement::hasBreak()
@@ -246,6 +242,22 @@ Statement *ExpStatement::semantic(Scope *sc)
     if (exp)
     {
 	//printf("ExpStatement::semantic() %s\n", exp->toChars());
+
+#if 0	// Doesn't work because of difficulty dealing with things like a.b.c!(args).Foo!(args)
+	// See if this should be rewritten as a TemplateMixin
+	if (exp->op == TOKdeclaration)
+	{   DeclarationExp *de = (DeclarationExp *)exp;
+	    Dsymbol *s = de->declaration;
+
+	    printf("s: %s %s\n", s->kind(), s->toChars());
+	    VarDeclaration *v = s->isVarDeclaration();
+	    if (v)
+	    {
+		printf("%s, %d\n", v->type->toChars(), v->type->ty);
+	    }
+	}
+#endif
+
 	exp = exp->semantic(sc);
 	exp = resolveProperties(sc, exp);
 	exp->checkSideEffect(0);
@@ -778,6 +790,7 @@ Statement *UnrolledLoopStatement::semantic(Scope *sc)
 	Statement *s = (Statement *) statements->data[i];
 	if (s)
 	{
+	    //printf("[%d]: %s\n", i, s->toChars());
 	    s = s->semantic(scd);
 	    statements->data[i] = s;
 	}
@@ -1075,7 +1088,7 @@ Statement *DoStatement::semantic(Scope *sc)
     condition = resolveProperties(sc, condition);
     condition = condition->optimize(WANTvalue);
 
-    condition = condition->checkToBoolean();
+    condition = condition->checkToBoolean(sc);
 
     return this;
 }
@@ -1176,7 +1189,7 @@ Statement *ForStatement::semantic(Scope *sc)
 	condition = condition->semantic(sc);
 	condition = resolveProperties(sc, condition);
 	condition = condition->optimize(WANTvalue);
-	condition = condition->checkToBoolean();
+	condition = condition->checkToBoolean(sc);
     }
     if (increment)
     {	increment = increment->semantic(sc);
@@ -1425,7 +1438,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 		    arg->type = e->type;
 		    Initializer *ie = new ExpInitializer(0, e);
 		    VarDeclaration *v = new VarDeclaration(loc, arg->type, arg->ident, ie);
-		    if (e->isConst())
+		    if (e->isConst() || e->op == TOKstring)
 			v->storage_class |= STCconst;
 		    var = v;
 		}
@@ -2094,11 +2107,21 @@ Statement *ForeachRangeStatement::semantic(Scope *sc)
     {
 	/* Must infer types from lwr and upr
 	 */
-	AddExp ea(loc, lwr, upr);
-	ea.typeCombine(sc);
-	arg->type = ea.type->mutableOf();
-	lwr = ea.e1;
-	upr = ea.e2;
+	Type *tlwr = lwr->type->toBasetype();
+	if (tlwr->ty == Tstruct || tlwr->ty == Tclass)
+	{
+	    /* Just picking the first really isn't good enough.
+	     */
+	    arg->type = lwr->type->mutableOf();
+	}
+	else
+	{
+	    AddExp ea(loc, lwr, upr);
+	    ea.typeCombine(sc);
+	    arg->type = ea.type->mutableOf();
+	    lwr = ea.e1;
+	    upr = ea.e2;
+	}
     }
 #if 1
     /* Convert to a for loop:
@@ -2132,18 +2155,30 @@ Statement *ForeachRangeStatement::semantic(Scope *sc)
 
     Expression *cond;
     if (op == TOKforeach_reverse)
-    {	// key-- > tmp
+    {
 	cond = new PostExp(TOKminusminus, loc, new VarExp(loc, key));
-	cond = new CmpExp(TOKgt, loc, cond, new VarExp(loc, tmp));
+	if (arg->type->isscalar())
+	    // key-- > tmp
+	    cond = new CmpExp(TOKgt, loc, cond, new VarExp(loc, tmp));
+	else
+	    // key-- != tmp
+	    cond = new EqualExp(TOKnotequal, loc, cond, new VarExp(loc, tmp));
     }
     else
-	// key < tmp
-	cond = new CmpExp(TOKlt, loc, new VarExp(loc, key), new VarExp(loc, tmp));
+    {
+	if (arg->type->isscalar())
+	    // key < tmp
+	    cond = new CmpExp(TOKlt, loc, new VarExp(loc, key), new VarExp(loc, tmp));
+	else
+	    // key != tmp
+	    cond = new EqualExp(TOKnotequal, loc, new VarExp(loc, key), new VarExp(loc, tmp));
+    }
 
     Expression *increment = NULL;
     if (op == TOKforeach)
 	// key += 1
-	increment = new AddAssignExp(loc, new VarExp(loc, key), new IntegerExp(1));
+	//increment = new AddAssignExp(loc, new VarExp(loc, key), new IntegerExp(1));
+	increment = new PreExp(TOKpreplusplus, loc, new VarExp(loc, key));
 
     ForStatement *fs = new ForStatement(loc, forinit, cond, increment, body);
     s = fs->semantic(sc);
@@ -2274,7 +2309,7 @@ Statement *IfStatement::semantic(Scope *sc)
 {
     condition = condition->semantic(sc);
     condition = resolveProperties(sc, condition);
-    condition = condition->checkToBoolean();
+    condition = condition->checkToBoolean(sc);
 
     // If we can short-circuit evaluate the if statement, don't do the
     // semantic analysis of the skipped code.
@@ -3291,6 +3326,7 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	if (exp && exp->op != TOKthis)
 	    error("cannot return expression from constructor");
 	exp = new ThisExp(0);
+	exp->type = tret;
     }
 
     if (!exp)
@@ -3531,7 +3567,6 @@ Statement *ReturnStatement::semantic(Scope *sc)
 	Statement *s = new ExpStatement(loc, exp);
 	exp = NULL;
 	s = s->semantic(sc);
-	loc = 0;
 	return new CompoundStatement(loc, s, this);
     }
 
