@@ -1533,7 +1533,7 @@ else
 {
     extern (C) Array _d_arrayappendcTp(TypeInfo ti, ref byte[] x, byte* argp)
     {
-        return _d_arrayappendT(ti, cast(Array*)x, argp[0..1]);
+        return _d_arrayappendT(ti, cast(Array*)&x, argp[0..1]);
     }
 }
 

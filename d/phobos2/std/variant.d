@@ -608,9 +608,9 @@ public:
     //     }
     // }
 
-    // static assert(is(DecayStaticToDynamicArray!(invariant(char)[21]) ==
-    //                  invariant(char)[]),
-    //               DecayStaticToDynamicArray!(invariant(char)[21]).stringof);
+    // static assert(is(DecayStaticToDynamicArray!(immutable(char)[21]) ==
+    //                  immutable(char)[]),
+    //               DecayStaticToDynamicArray!(immutable(char)[21]).stringof);
 
     /**
      * Returns the value stored in the $(D_PARAM VariantN) object,
@@ -969,7 +969,7 @@ public:
      * returns the length of that array. Otherwise, throws an
      * exception.
      */
-    size_t length()
+    @property size_t length()
     {
         return cast(size_t) fptr(OpID.length, &store, null);
     }

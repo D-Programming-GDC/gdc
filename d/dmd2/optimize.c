@@ -53,6 +53,8 @@ Expression *expandVar(int result, VarDeclaration *v)
     Expression *e = NULL;
     if (!v)
         return e;
+    if (!v->originalType && v->scope)   // semantic() not yet run
+        v->semantic (v->scope);
 
     if (v->isConst() || v->isImmutable() || v->storage_class & STCmanifest)
     {
@@ -141,7 +143,7 @@ Expression *fromConstInitializer(int result, Expression *e1)
         VarDeclaration *v = ve->var->isVarDeclaration();
         e = expandVar(result, v);
         if (e)
-        {   if (e->type != e1->type)
+        {   if (e->type != e1->type && e1->type)
             {   // Type 'paint' operation
                 e = e->copy();
                 e->type = e1->type;

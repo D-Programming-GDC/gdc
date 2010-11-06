@@ -441,7 +441,7 @@ file handle and throws on error.
     T[] rawRead(T)(T[] buffer)
     {
         enforce(buffer.length);
-        invariant result =
+        immutable result =
             .fread(buffer.ptr, T.sizeof, buffer.length, p.handle);
         errnoEnforce(!error);
         return result ? buffer[0 .. result] : null;
@@ -1677,7 +1677,7 @@ unittest
     // test with ubyte[] inputs
     //@@@BUG 2612@@@
     //alias TypeTuple!(immutable(ubyte)[], ubyte[]) TestedWith2;
-    alias TypeTuple!(invariant(ubyte)[], ubyte[]) TestedWith2;
+    alias TypeTuple!(immutable(ubyte)[], ubyte[]) TestedWith2;
     foreach (T; TestedWith2) {
         // test looping with an empty file
         std.file.write(file, "");

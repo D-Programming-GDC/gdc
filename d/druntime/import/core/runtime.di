@@ -34,17 +34,6 @@ private
 {
     bool rt_unloadLibrary(void* ptr);
 }
-    extern (C) 
-{
-    void onAssertErrorMsg(string file, size_t line, string msg);
-}
-    extern (C) 
-{
-    __gshared 
-{
-    void function(string file, size_t line, string msg) unittestHandler = null;
-}
-}
     version (linux)
 {
     import core.stdc.stdlib;
@@ -57,6 +46,11 @@ private
 {
     char** backtrace_symbols(void**, int);
 }
+    extern (C) 
+{
+    void backtrace_symbols_fd(void**, int, int);
+}
+    import core.sys.posix.signal;
 }
 else
 {
@@ -72,6 +66,11 @@ else
 {
     char** backtrace_symbols(void**, int);
 }
+    extern (C) 
+{
+    void backtrace_symbols_fd(void**, int, int);
+}
+    import core.sys.posix.signal;
 }
 }
 }
@@ -141,20 +140,8 @@ sm_moduleUnitTester = h;
 }
 }
 }
-__gshared unittest_errors = false;
 extern (C) 
 {
     bool runModuleUnitTests();
-}
-extern (C) 
-{
-    void onUnittestErrorMsg(string file, size_t line, string msg)
-{
-unittest_errors = true;
-if (unittestHandler)
-unittestHandler(file,line,msg);
-else
-onAssertErrorMsg(file,line,msg);
-}
 }
 Throwable.TraceInfo defaultTraceHandler(void* ptr = null);

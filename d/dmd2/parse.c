@@ -676,6 +676,8 @@ StorageClass Parser::parsePostfix()
         {
             case TOKconst:              stc |= STCconst;                break;
             case TOKinvariant:
+                if (!global.params.useDeprecated)
+                    error("use of 'invariant' rather than 'immutable' is deprecated");
             case TOKimmutable:          stc |= STCimmutable;            break;
             case TOKshared:             stc |= STCshared;               break;
             case TOKwild:               stc |= STCwild;                 break;
@@ -2347,6 +2349,8 @@ Type *Parser::parseBasicType()
             break;
 
         case TOKinvariant:
+            if (!global.params.useDeprecated)
+                error("use of 'invariant' rather than 'immutable' is deprecated");
         case TOKimmutable:
             // invariant(type)
             nextToken();

@@ -226,26 +226,53 @@ class MemberInfo_function : MemberInfo
 
 struct ModuleInfo
 {
-/+
-    string          name;
-    ModuleInfo*[]   importedModules;
-    ClassInfo[]     localClasses;
-    uint            flags;
+    struct New
+    {
+	    uint flags;
+    	uint index;
+    }
 
-    void function() ctor;
-    void function() dtor;
-    void function() unitTest;
+    struct Old
+    {
+	    string           name;
+	    ModuleInfo*[]    importedModules;
+	    TypeInfo_Class[] localClasses;
+	    uint             flags;
 
-    void*           xgetMembers;
-    void function() ictor;
-    void function() tlsctor;
-    void function() tlsdtor;
-    void*[2] reserved;
-+/
-    @property string name();
+	    void function() ctor;
+	    void function() dtor;
+	    void function() unitTest;
+	    void* xgetMembers;
+	    void function() ictor;
+	    void function() tlsctor;
+	    void function() tlsdtor;
+	    uint index;
+	    void*[1] reserved;
+    }
+
+    union
+    {
+	    New n;
+	    Old o;
+    }
+
+    @property bool isNew();
+    @property uint index();
+    @property void index(uint i);
+    @property uint flags();
+    @property void flags(uint f);
+    @property void function() tlsctor();
+    @property void function() tlsdtor();
+    @property void* xgetMembers();
+    @property void function() ctor();
+    @property void function() dtor();
+    @property void function() ictor();
     @property void function() unitTest();
+    @property ModuleInfo*[] importedModules();
+    @property TypeInfo_Class[] localClasses();
+    @property string name();
 
-    static int opApply(scope int delegate(ref ModuleInfo*));
+    static int opApply(scope int delegate(ref ModuleInfo*) dg);
 }
 
 ModuleInfo*[] _moduleinfo_tlsdtors;
@@ -313,6 +340,12 @@ struct AssociativeArray(Key, Value)
 {
     void* p;
 
+    size_t aligntsize(size_t tsize)
+    {
+	// Is pointer alignment on the x64 4 bytes or 8?
+	return (tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+    }
+
     size_t length() @property { return _aaLen(p); }
 
     Value[Key] rehash() @property
@@ -323,24 +356,24 @@ struct AssociativeArray(Key, Value)
 
     Value[] values() @property
     {
-        auto a = _aaValues(p, Key.sizeof, Value.sizeof);
+        auto a = _aaValues(p, aligntsize(Key.sizeof), Value.sizeof);
         return *cast(Value[]*) &a;
     }
 
     Key[] keys() @property
     {
-        auto a = _aaKeys(p, Key.sizeof, Value.sizeof);
+        auto a = _aaKeys(p, aligntsize(Key.sizeof), Value.sizeof);
         return *cast(Key[]*) &a;
     }
 
     int opApply(scope int delegate(ref Key, ref Value) dg)
     {
-        return _aaApply2(p, Key.sizeof, cast(_dg2_t)dg);
+        return _aaApply2(p, aligntsize(Key.sizeof), cast(_dg2_t)dg);
     }
 
     int opApply(scope int delegate(ref Value) dg)
     {
-        return _aaApply(p, Key.sizeof, cast(_dg_t)dg);
+        return _aaApply(p, aligntsize(Key.sizeof), cast(_dg_t)dg);
     }
 
     int delegate(int delegate(ref Key) dg) byKey()
@@ -352,7 +385,7 @@ struct AssociativeArray(Key, Value)
 		return dg(key);
 	    }
 
-	    return _aaApply2(p, Key.sizeof, cast(_dg2_t)&byKeydg);
+	    return _aaApply2(p, aligntsize(Key.sizeof), cast(_dg2_t)&byKeydg);
 	}
 
 	return &foo;

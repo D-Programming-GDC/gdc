@@ -2,10 +2,21 @@
 module core.exception;
 private 
 {
-    alias void function(string file, size_t line, string msg = null) assertHandlerType;
+    alias void function(string file, size_t line, string msg = null) errorHandlerType;
     __gshared 
 {
-    assertHandlerType assertHandler = null;
+    errorHandlerType assertHandler = null;
+}
+    version (Windows)
+{
+    import core.sys.windows.windows;
+}
+else
+{
+    version (Posix)
+{
+    import core.sys.posix.unistd;
+}
 }
 }
 class RangeError : Error
@@ -79,7 +90,7 @@ super(msg);
 this.idx = idx;
 }
 }
-void setAssertHandler(assertHandlerType h)
+void setAssertHandler(errorHandlerType h)
 {
 assertHandler = h;
 }
@@ -90,6 +101,10 @@ extern (C)
 extern (C) 
 {
     void onAssertErrorMsg(string file, size_t line, string msg);
+}
+extern (C) 
+{
+    void onUnittestErrorMsg(string file, size_t line, string msg);
 }
 extern (C) 
 {

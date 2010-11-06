@@ -98,7 +98,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates."
 #endif
     ;
-    version = "v2.045";
+    version = "v2.046";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -1044,7 +1044,7 @@ int main(int argc, char *argv[])
          * its path and extension.
          */
 
-        Identifier *id = new Identifier(name, 0);
+        Identifier *id = Lexer::idPool(name);
         m = new Module((char *) files.data[i], id, global.params.doDocComments, global.params.doHdrGeneration);
         modules.push(m);
 

@@ -111,7 +111,7 @@ int cmp(C1, C2)(in C1[] s1, in C2[] s2)
         {
             if (i1 == s1.length) return s2.length - i2;
             if (i2 == s2.length) return s1.length - i1;
-            invariant c1 = std.utf.decode(s1, i1),
+            immutable c1 = std.utf.decode(s1, i1),
                 c2 = std.utf.decode(s2, i2);
             if (c1 != c2) return cast(int) c1 - cast(int) c2;
         }
@@ -232,14 +232,14 @@ body
 }
 
 // /// Ditto
-// const(char)* toStringz(invariant(char)[] s)
+// const(char)* toStringz(immutable(char)[] s)
 // {
 //     /* Peek past end of s[], if it's 0, no conversion necessary.
 //      * Note that the compiler will put a 0 past the end of static
 //      * strings, and the storage allocator will put a 0 past the end
 //      * of newly allocated char[]'s.
 //      */
-//     invariant p = &s[0] + s.length;
+//     immutable p = &s[0] + s.length;
 //     if (*p == 0)
 //         return s.ptr;
 //     return toStringz(cast(const char[]) s);
@@ -803,7 +803,7 @@ void tolowerInPlace(C)(ref C[] s)
 {
     for (size_t i = 0; i < s.length; )
     {
-        invariant c = s[i];
+        immutable c = s[i];
         if ('A' <= c && c <= 'Z')
         {
             s[i++] = cast(C) (c + (cast(C)'a' - 'A'));
@@ -928,7 +928,7 @@ void toupperInPlace(C)(ref C[] s)
 {
     for (size_t i = 0; i < s.length; )
     {
-        invariant c = s[i];
+        immutable c = s[i];
         if ('a' <= c && c <= 'z')
         {
             s[i++] = cast(C) (c - (cast(C)'a' - 'A'));
