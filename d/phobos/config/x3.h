@@ -23,9 +23,9 @@ void  x3_array_init(X3_Array *ma);
 void  x3_array_fini(X3_Array *ma);
 void  x3_array_push(X3_Array *ma, void *data);
 void  x3_array_pop(X3_Array *ma, X3_Size count);
-void  x3_array_copy(X3_Array *ma, X3_Array *from); 
-void* x3_array_first(X3_Array *ma); 
-void* x3_array_list(X3_Array *ma); 
+void  x3_array_copy(X3_Array *ma, X3_Array *from);
+void* x3_array_first(X3_Array *ma);
+void* x3_array_list(X3_Array *ma);
 #define x3ae(ma,idx,type) ((type)(ma)->data[(idx)])
 #define x3al(ma) ((ma)->length)
 
@@ -97,7 +97,7 @@ X3_InputGroup * x3_input_group_new();
 
 typedef struct {
     int error_count;
-    
+
     X3_Array gcc_command;
     X3_Array input_groups;
     X3_InputGroup * current_group;

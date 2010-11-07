@@ -5,8 +5,8 @@ time_t _d_gnu_cbridge_tza()
 {
     time_t t;
     struct tm * p_tm;
-    
-    time(&t);    
+
+    time(&t);
     p_tm = localtime(&t);       /* this will set timezone */
 
 #if defined(HAVE_TIMEZONE)

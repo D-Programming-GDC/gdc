@@ -70,7 +70,7 @@ x3_gi_pop_header();
     x3_out_struct("struct timeval", NULL, "i:tv_sec", "i:tv_usec", NULL);
     x3_out_struct("struct timezone", NULL, "i:tz_minuteswest", "i:tz_dsttime", NULL);
     x3_out_type_ex("clockid_t",NULL, "Culong_t");
-    
+
     x3_gi_pop_headers(pop_count); // sys/time.h
     x3_gi_pop_header();
 }
@@ -105,9 +105,9 @@ x3_out_struct_ex("siginfo_t", NULL, 1, "i:si_signo", "i:si_errno", "i:si_code", 
 {
     X3_Struct * s = x3_struct_new_c_name("struct sigaction");
     X3_Field * f;
-    
+
     s->struct_type.out_name = "sigaction_t";
-    
+
     f = x3_struct_new_field(s);
     f->c_name = f->out_name = "sa_handler";
     f->field_type.kind = X3_TYPE_KIND_NAME;
@@ -179,7 +179,7 @@ if (x3_compile_test())
     x3_out_type_ex("pthread_spinlock_t", NULL, X3_STRUCT_FALLBACK);
     //x3_pop_optional();
     x3_out_enum(NULL, NULL, "^PTHREAD_CANCEL_.*", NULL);
-    
+
 }
 x3_gi_pop_header();
 
@@ -233,7 +233,7 @@ x3_out_struct("struct sockaddr", NULL, "oib:sa_len", "ib:sa_family", "ob:sa_data
 {
     X3_Struct * s = x3_struct_new_c_name("struct sockaddr_in");
     X3_Field * f;
-    
+
     f = x3_struct_new_field(s);
     f->c_name = f->out_name = "sin_len";
     f->flags = X3_FLAG_OPTIONAL|X3_FLAG_INT_TYPE|X3_FLAG_USE_BYTE;

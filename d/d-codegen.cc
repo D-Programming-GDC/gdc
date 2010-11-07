@@ -1117,7 +1117,7 @@ static const char * libcall_ids[LIBCALL_count] =
       "_d_arraysetlengthT", "_d_arraysetlengthiT",
       "_d_dynamic_cast", "_d_interface_cast",
       "_adEq", "_adCmp", "_adCmpChar",
-      "_aaEqual", "_aaLen", 
+      "_aaEqual", "_aaLen",
       //"_aaIn", "_aaGet", "_aaGetRvalue", "_aaDel",
       "_aaInp", "_aaGetp", "_aaGetRvaluep", "_aaDelp",
       "_d_arraycast",

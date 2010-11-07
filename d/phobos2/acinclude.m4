@@ -113,7 +113,7 @@ case "$d_target_os" in
 	    d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    dnl maybe just GC_Use_Stack_ExternC
 	    ;;
-  linux*)   
+  linux*)
   	    #d_gc_stack=GC_Use_Stack_Proc_Stat
 	    d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    #have_proc_maps=1

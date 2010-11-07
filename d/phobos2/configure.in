@@ -205,7 +205,7 @@ dnl while test ! -f "$BUILD_LIBIBERTY" && test "$d_count" != 'xxx'; do
 dnl     BUILD_LIBIBERTY=../$BUILD_LIBIBERTY
 dnl     d_count="x$d_count"
 dnl done
-dnl 
+dnl
 dnl # GCC 3.x does not use the 'build-' dir, so we have so search
 dnl # for plain 'libiberty' with some kind of check it is not a target dir
 dnl if test ! -f "$BUILD_LIBIBERTY"; then
@@ -229,7 +229,7 @@ while test "$d_count" != 'xxx'; do
     if test -f $BUILD_LIBIBERTY && test -d $d_libiberty_dir/gcc; then
 	break
     fi
-    
+
     d_libiberty_dir=../$d_libiberty_dir
     d_count="x$d_count"
 done
@@ -327,13 +327,13 @@ if test "$with_newlib" = yes; then
     DCFG_TGAMMA=""
     DCFG_NAN=""
     DCFG_EXP2_LOG2="GNU_Need_exp2_log2"
-    
+
     AC_DEFINE(HAVE_FP_CLASSIFY_SIGNBIT,1,[Define to 1 fpclassify and signbit are available])
     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_math.o"
     D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_fpcls_d_src)'
-    
+
     # TODO: exec stuff
-    
+
     DCFG_FWIDE=0
     # Have getdelim, but it may not be unix (need ssize_t)... TODO
     DCFG_HAVE_GETDELIM=0
@@ -397,7 +397,7 @@ AC_SUBST(DCFG_ROUND)
 
 AC_CHECK_FUNC(tgamma,DCFG_TGAMMA="",[
 	DCFG_TGAMMA="GNU_Need_tgamma"
-	D_EXTRA_OBJS="$D_EXTRA_OBJS etc/gamma.o"	
+	D_EXTRA_OBJS="$D_EXTRA_OBJS etc/gamma.o"
 	])
 AC_SUBST(DCFG_TGAMMA)
 
@@ -628,7 +628,7 @@ AC_SUBST(DCFG_GETPWNAM_R)
 
 AC_SUBST(DCFG_UNIX)
 AC_SUBST(DCFG_POSIX)
-	
+
 if test -z "$DFLAGS"; then
     DFLAGS="-Wall -g -frelease -O2"
 fi
@@ -655,7 +655,7 @@ AC_SUBST(srcdir)
 
 # Cross stuff
 # if test -n "$d_cross_comp"; then
-#	
+#
 # fi
 
 # Garbage collection configuration

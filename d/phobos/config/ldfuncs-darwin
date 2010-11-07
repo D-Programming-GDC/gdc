@@ -124,7 +124,7 @@ pragma(GNU_asm,"_fdiml" ~ __LIBMLDBL_COMPAT) real fdiml( real, real );
 pragma(GNU_asm,"_fmaxl" ~ __LIBMLDBL_COMPAT) real fmaxl( real, real );
 pragma(GNU_asm,"_fminl" ~ __LIBMLDBL_COMPAT) real fminl( real, real );
 pragma(GNU_asm,"_fmal" ~ __LIBMLDBL_COMPAT) real fmal( real, real, real );
-*/  
+*/
 
 alias __builtin_sqrt sqrt;
 }

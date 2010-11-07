@@ -82,7 +82,7 @@ x3_array_first(X3_Array *ma)
         return NULL;
 }
 
-void* 
+void*
 x3_array_last(X3_Array *ma)
 {
     if (ma->length)
@@ -121,7 +121,7 @@ x3_result_read_from_file(X3_Result * r, const char *filename)
     FILE * f;
     X3_Size f_size;
     int result = 0;
-    
+
     free(r->data);
     r->data = NULL;
 
@@ -249,7 +249,7 @@ x3_result_read_integer(X3_Result * r, int size, int is_signed)
 
     if (! size)
         return 0;
-    
+
     r->pos += size;
     if (! r->target_info->is_big_endian)
         p += size - 1;
@@ -326,15 +326,15 @@ x3_global_init(X3_Global * global)
     x3_assert(sizeof(X3_Int) >= 8); /* maybe not for 32-bit targets */
     x3_assert(sizeof(int) >= 4);
     x3_assert(sizeof(int) * 2 >= sizeof(X3_Int));
-    
+
     memset(global, 0, sizeof(*global));
     x3_array_init(& global->gcc_command);
 
     x3_array_init(& global->input_groups);
-    
+
     global->header_group = x3_input_group_new();
     x3_array_push(& global->input_groups, global->header_group);
-    
+
     global->current_group = x3_input_group_new();
     x3_array_push(& global->input_groups, global->current_group);
 
@@ -420,7 +420,7 @@ void
 x3_error(const char *fmt, ...)
 {
     va_list va, va2;
-    
+
     fputs("x3: ", stderr);
     va_start(va, fmt);
     va_copy(va2, va);
@@ -464,12 +464,12 @@ x3_gcc_execute(X3_Array extra_args)
         global->log_path ? global->log_path : "", // TODO: assumptions about charaters in the path
         global->log_path ? " 2>&1" : "",
         NULL);
-        
+
     char**args = (char**)malloc(sizeof(char*) *
         (global->gcc_command.length + extra_args.length + 4 + 1));
     int argi = 0;
     char * shell = getenv("SHELL");
-    
+
     if (! shell)
         shell = "sh";
 
@@ -481,7 +481,7 @@ x3_gcc_execute(X3_Array extra_args)
     memcpy(args + argi, global->gcc_command.data,
         global->gcc_command.length * sizeof(char*));
     argi += global->gcc_command.length;
-    
+
     memcpy(args + argi, extra_args.data,
         extra_args.length * sizeof(char*));
     argi += extra_args.length;
@@ -519,7 +519,7 @@ x3_gcc_execute(X3_Array extra_args)
     {
         char * errmsg_arg;
         char * rr;
-        
+
         int pid = pexecute(args[0], args, "x3", NULL,
             & rr, & errmsg_arg, PEXECUTE_SEARCH | PEXECUTE_ONE);
         result = rr;
@@ -534,7 +534,7 @@ x3_gcc_execute(X3_Array extra_args)
     }
 #endif
     free(cmd);
-    
+
     x3_error("failed to run compiler: %s", result);
     return 0;
 }
@@ -544,7 +544,7 @@ x3_gcc_execute_l(const char * extra, ...)
 {
     va_list va;
     X3_Array extra_args;
-    
+
     va_start(va, extra);
     x3_array_init(& extra_args);
     x3_array_push(& extra_args, (/*!!*/ char *) extra);
@@ -572,7 +572,7 @@ x3_compile_test(void)
 
     x3_result_delete(global->result);
     global->result = NULL;
-    
+
     /* TODO: errors */
     x3_gi_write_to_FILE(f);
     fclose(f);
@@ -580,14 +580,14 @@ x3_compile_test(void)
     gcc_result = x3_gcc_execute_l("-c", src_fn, "-o", obj_fn, NULL);
     if (gcc_result) {
         int i1, i2;
-        
+
         /* open blob... */
         global->result = x3_result_new();
         global->result->target_info = & global->target_info;
         if (! x3_result_read_from_file(global->result, obj_fn))
             /* TODO print error? */
             goto cleanup;
-            
+
         for (i1 = 0; i1 < x3al(& global->input_groups); ++i1) {
             X3_InputGroup * ig = x3ae(& global->input_groups, i1, X3_InputGroup *);
             for (i2 = 0; i2 < x3al(ig); ++i2) {
@@ -599,7 +599,7 @@ x3_compile_test(void)
 
         result = 1;
     }
-    
+
  cleanup:
     if (! x3_global_keep_temps()) {
         unlink(src_fn);
@@ -641,7 +641,7 @@ _x3_get_macros_regex() {
                 REG_EXTENDED) != 0) {
             x3_assert("failed to compile regex"==0);
             return NULL;
-        } 
+        }
     }
     return & macros_regex;
 }
@@ -678,7 +678,7 @@ x3_compile_get_macros(X3_Array * out_macros)
         X3_Array macros;
         char buf[1024];
         char *line;
-        
+
         result = 0;
         f = fopen(mac_fn, "r");
         if (!f) {
@@ -687,7 +687,7 @@ x3_compile_get_macros(X3_Array * out_macros)
         }
 
         x3_array_init(& macros);
-        
+
         while ( (line = _x3_read_line(f, buf, sizeof(buf))) ) {
             regmatch_t matches[4];
             if (regexec(re, line, 4, matches, 0) == 0) {
@@ -701,7 +701,7 @@ x3_compile_get_macros(X3_Array * out_macros)
         }
 
         *out_macros = macros;
-        result = 1;     
+        result = 1;
     }
 
  cleanup:
@@ -738,7 +738,7 @@ x3_gi_write_to_FILE(FILE *f)
 {
     int i1, i2;
     unsigned uid = 1;
-    
+
     for (i1 = 0; i1 < x3al(& global->input_groups); ++i1) {
         X3_InputGroup * ig = x3ae(& global->input_groups, i1, X3_InputGroup *);
         for (i2 = 0; i2 < x3al(ig); ++i2) {
@@ -762,7 +762,7 @@ void
 x3_gi_push_headers_l(const char * hdr, ...)
 {
     x3_gi_push_header(hdr);
-    
+
     va_list va;
     va_start(va, hdr);
     while (1) {
@@ -918,7 +918,7 @@ x3_query_target_info(X3_TargetInfo *ti)
     int ok;
 
     x3_gi_push_group();
-    
+
     x3_gi_push_text("struct { char sig[4]; char what[4];"
         "unsigned char sz_char; unsigned char sz_short; "
         "unsigned char sz_int; unsigned char sz_long_long; "
@@ -987,7 +987,7 @@ x3_query_type(const char *name, X3_Type * type)
     unsigned my_uid = ++uid_counter;
 
     type->ok = 0;
-    
+
     x3_gi_push_group();
 
     /* test if type is even valid */
@@ -995,7 +995,7 @@ x3_query_type(const char *name, X3_Type * type)
     x3_gi_push_text(p = x3f("typedef %s %s;\n", name, td_name));
     if (! x3_compile_test())
         goto cleanup;
-    
+
     /* is it just void? */
     if (x3_query_int_value(x3f("__builtin_types_compatible_p(void,%s)", name),
             "int", & int_val, & dummy) && int_val) {
@@ -1005,7 +1005,7 @@ x3_query_type(const char *name, X3_Type * type)
         if (! x3_query_int_value(x3f("sizeof(%s)", name), "x3i_size_t", & int_val, & dummy))
             goto cleanup;
         type->type_size = (X3_UInt) int_val;
-        
+
         /* test if scalarish (or array...) */
         int result1;
         x3_gi_push_subst_text(x3f("\n"
@@ -1022,7 +1022,7 @@ x3_query_type(const char *name, X3_Type * type)
                     "typedef typeof(* _x3i_qt_inst_@) %s;", name, sub_td_name));
             result2 = x3_compile_test();
             if (result2) {
-                
+
                 if (x3_query_int_value(x3f(""
                             "__builtin_types_compatible_p(%s[],%s)",
                             sub_td_name, td_name),
@@ -1040,10 +1040,10 @@ x3_query_type(const char *name, X3_Type * type)
                         type->u.array_length = 0;
                     type->next->out_name = NULL;
                     type->ok = 1;
-                    
+
                 } else { /* It is pointer. */
                     int is_ptr_to_func = 0;
-                    
+
                     type->kind = X3_TYPE_KIND_POINTER;
                     type->next = x3_type_new();
 
@@ -1057,7 +1057,7 @@ x3_query_type(const char *name, X3_Type * type)
                             sub_td_name, my_uid),
                         "int", & int_val, & dummy) && int_val;
                     x3_gi_pop_items(1);
-                    if (! is_ptr_to_func)                   
+                    if (! is_ptr_to_func)
                         x3_query_type(sub_td_name, type->next);
                     if (! type->next->ok || type->next->kind == X3_TYPE_KIND_RECORD) {
                         /* void* is good enough... */
@@ -1082,7 +1082,7 @@ x3_query_type(const char *name, X3_Type * type)
 
                also a problem if an instance...
             */
-            
+
             X3_Struct * s = x3_struct_new();
             X3_Field * f;
 
@@ -1103,7 +1103,7 @@ x3_query_type(const char *name, X3_Type * type)
             s->struct_type = *type;
         }
     }
-    
+
  cleanup:
     --uid_counter;
     x3_gi_pop_group();
@@ -1257,7 +1257,7 @@ x3_type_out(X3_Type * type)
     const char * out_name = type->out_name ? type->out_name : type->c_name;
     if (! out_name)
         return; // !!?
-    
+
     switch (type->kind)
     {
     case X3_TYPE_KIND_NAME:
@@ -1312,7 +1312,7 @@ void
 x3_out_type_ex(const char* c_name, const char * out_name, const char * fallback)
 {
     X3_Type type;
-    
+
     x3_log("checking for type '%s'", c_name);
     out_name = type.out_name = out_name ? out_name : c_name;
     if (x3_query_type(c_name, & type))
@@ -1346,7 +1346,7 @@ x3_out_int_value_ex(const char *name, const char* expr, const char *in_type,
         in_type = "int";
     if (! out_type)
         out_type = in_type;
-    
+
     if (x3_query_int_value(expr, in_type, & value, & type)) {
         fprintf(global->output_stream, "const %s %s = ",
             out_type, name);
@@ -1389,20 +1389,20 @@ x3_out_enum(const char *name, const char *type, ...)
         while ( (p = va_arg(va, const char *)) ) {
             /*
             if (strcpsn(p, "-+()[]{}.*?/\\$^") == strlen(p)) { //!! should be ident reg or ident chars..
-                x3_marray_push(& 
+                x3_marray_push(&
             } else {
             }
             */
             if (excl_patterns.length || incl_patterns.length)
                 fputs(", ", global->log_stream);
             fputs(p, global->log_stream);
-            
+
             int is_excl = *p == '-';
             regex_t * pre = x3_new0(regex_t);
-                
+
             if (is_excl)
                 ++p;
-            
+
             if (regcomp(pre, p, REG_EXTENDED) != 0) {
                 x3_error("invalid pattern '%s'", p);
                 exit(1);
@@ -1418,11 +1418,11 @@ x3_out_enum(const char *name, const char *type, ...)
         regmatch_t matches[1];
 
         x3_gi_push_group();
-        
+
         for (i = 0; i < macros.length; i++) {
             X3_Macro * macro = (X3_Macro *) macros.data[i];
             int incl = 0, excl = 0;
-            
+
             if (strlen(macro->args))
                 continue;
 
@@ -1508,7 +1508,7 @@ int
 {
     X3_InputItem * ii = x3_input_item_new();
     int result = 0;
-    
+
     ii->input_text = expr;
     ii->write_func = & _x3_query_cpp_if_write_func;
     x3_gi_push_input_item(ii);
@@ -1516,7 +1516,7 @@ int
         result = x3_result_find_item(global->result, ii->uid);
     else if (! x3_is_optional())
         x3_error("failed to test conditional...");
-    
+
     x3_gi_pop_items(1);
 
     return result;
@@ -1583,13 +1583,13 @@ _x3_struct_add_fields_v(X3_Struct * s, va_list va)
         const char * name;
         const char * flag_end;
         X3_Field * field;
-        
+
         if (! p)
             break;
         field = x3_struct_new_field(s);
         if ( (flag_end = strchr(p, ':')) ) {
             name = flag_end + 1;
-            
+
             while (p < flag_end) {
                 switch (*p++) {
                 case 'i': field->flags |= X3_FLAG_INT_TYPE; break;
@@ -1603,7 +1603,7 @@ _x3_struct_add_fields_v(X3_Struct * s, va_list va)
                         char * tn = (char*) malloc(e-p);
                         strncpy(tn, p, e-p);
                         tn[e-p] = 0;
-                        
+
                         field->field_type.kind = X3_TYPE_KIND_NAME;
                         field->field_type.out_name = tn;
                         p = e + 1;
@@ -1644,13 +1644,13 @@ void
 x3_struct_finish(X3_Struct * s)
 {
     int i;
-    
+
     x3_log("translating struct '%s'", s->struct_type.c_name);
     x3_gi_push_group();
 
     X3_Array cur_fields = s->fields;
     X3_Array next_fields;
-    
+
     x3_array_init(& next_fields);
     for (i = 0; i < cur_fields.length; ++i) {
         X3_Field * field = (X3_Field *) cur_fields.data[i];
@@ -1710,7 +1710,7 @@ x3_struct_finish(X3_Struct * s)
         else
             s->record_kind = X3_RECORD_STRUCT;
     }
-    
+
     s->struct_type.kind = X3_TYPE_KIND_RECORD;
     {
         X3_Int sz;
@@ -1720,7 +1720,7 @@ x3_struct_finish(X3_Struct * s)
             goto cleanup;
         s->struct_type.type_size = sz;
     }
-    
+
     s->struct_type.ok = 1;
  cleanup:
     x3_gi_pop_group();
@@ -1745,7 +1745,7 @@ _x3_struct_write_to_FILE(X3_Struct * s, FILE * f)
     fprintf(f, "%s %s\n{\n",
         s->record_kind == X3_RECORD_UNION ? "union" : "struct",
         s->struct_type.out_name);
-    
+
     for (i = 0; i < n_fields; ++i) {
         X3_Field * field = (X3_Field *) all_fields[i];
         if (field->field_offset == last_offset) {
@@ -1783,7 +1783,7 @@ _x3_struct_write_to_FILE(X3_Struct * s, FILE * f)
         fputs((const char *) s->extra.data[i], f);
         fputc('\n', f);
     }
-    
+
     fprintf(f, "}\n\n");
 }
 
@@ -1814,7 +1814,7 @@ x3_out_struct(const char * c_name, const char *out_name, ...)
 
     va_start(va, out_name);
     _x3_struct_add_fields_v(s, va);
-    
+
     x3_struct_out(s);
 }
 
@@ -1831,6 +1831,6 @@ void x3_out_struct_ex(const char * c_name, const char *out_name, int fallback, .
 
     va_start(va, fallback);
     _x3_struct_add_fields_v(s, va);
-    
+
     x3_struct_out(s);
 }

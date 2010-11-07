@@ -43,9 +43,9 @@ int main(int argc, char **argv)
         }
         ++i;
     }
-    
+
     unlink(output_fn);
-        
+
     x3_array_init(& gcc_cmd);
     for (; i < argc; i++)
         x3_array_push(& gcc_cmd, argv[i]);
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
     global->output_stream = fopen(output_fn, "w");
     if (! global->output_stream)
         x3_error("cannot open %s: %s", output_fn, strerror(errno));
-    
+
     g_output_fn = output_fn;
 
     x3_go();

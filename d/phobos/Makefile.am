@@ -123,8 +123,8 @@ GC_OBJS += @D_GC_MODULES@
 GCC_OBJS = gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
 	gcc/cbridge_time.o gcc/cbridge_strerror.o
 
-# modules which require some kind of operating system	
-OS_OBJS = std/file.o std/mmfile.o std/path.o std/perf.o std/process.o std/socket.o std/socketstream.o 
+# modules which require some kind of operating system
+OS_OBJS = std/file.o std/mmfile.o std/path.o std/perf.o std/process.o std/socket.o std/socketstream.o
 
 # std.c.linux.linux, std.loader, gcc.cbridge*
 WINDOWS_OBJS=std/c/windows/windows.o std/c/windows/com.o std/c/windows/winsock.o \

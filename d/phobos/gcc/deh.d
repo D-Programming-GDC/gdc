@@ -1,16 +1,16 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2004 David Friedman
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -95,16 +95,16 @@ struct OurUnwindException {
 
     static if (Use_ARM_EABI_Unwinder)
         int _pad; // to place 'obj' behind unwindHeader
-    
+
     Object obj;
-    
+
     /* The exception object must be directly behind unwindHeader. (See
        IRState::exceptionObject.) */
     static assert(unwindHeader.offsetof - obj.offsetof == obj.sizeof);
 
     // The generic exception header
     _Unwind_Exception unwindHeader;
-    
+
     static OurUnwindException * fromHeader(_Unwind_Exception * p_ue) {
         return cast(OurUnwindException *)
             (cast(void*) p_ue - OurUnwindException.unwindHeader.offsetof);
@@ -153,7 +153,7 @@ _d_throw(Object obj)
     else
         exc.unwindHeader.exception_class[] = GDC_Exception_Class[];
     exc.unwindHeader.exception_cleanup = & _gdc_cleanupException;
-    
+
     version (GNU_SjLj_Exceptions) {
         _Unwind_SjLj_RaiseException (&exc.unwindHeader);
     } else {
@@ -180,7 +180,7 @@ version (GNU_SjLj_Exceptions) {
             exception_class != GDC_Exception_Class,
             ue_header, context);
     }
-    
+
     private int __builtin_eh_return_data_regno(int x) { return x; }
 } else {
     static if (Use_ARM_EABI_Unwinder)
@@ -193,32 +193,32 @@ version (GNU_SjLj_Exceptions) {
             case _US_VIRTUAL_UNWIND_FRAME:
                 actions = _UA_SEARCH_PHASE;
                 break;
-                
+
             case _US_UNWIND_FRAME_STARTING:
                 actions = _UA_CLEANUP_PHASE;
                 if (!(state & _US_FORCE_UNWIND)
                     && ue_header.barrier_cache.sp == _Unwind_GetGR(context, 13))
                     actions |= _UA_HANDLER_FRAME;
                 break;
-                
+
             case _US_UNWIND_FRAME_RESUME:
                 //static if (Use_ARM_EABI_Unwinder)...
                 if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
                     return _URC_FAILURE;
                 return _URC_CONTINUE_UNWIND;
                 break;
-                
+
             default:
                 abort();
             }
             actions |= state & _US_FORCE_UNWIND;
             return personalityImpl(1, actions,
-                
+
                 // We don't know which runtime we're working with, so can't check this.
                 // However the ABI routines hide this from us, and we don't actually need
                 // to know.
                 false,
-                
+
                 ue_header, context);
         }
     else
@@ -259,7 +259,7 @@ private _Unwind_Reason_Code personalityImpl(int iversion,
 
     static if (Use_ARM_EABI_Unwinder)
     {
-        
+
         // The dwarf unwinder assumes the context structure holds things like the
         // function and LSDA pointers.  The ARM implementation caches these in
         // the exception header (UCB).  To avoid rewriting everything we make the
@@ -283,7 +283,7 @@ private _Unwind_Reason_Code personalityImpl(int iversion,
     }
 
     phase1.languageSpecificData = cast(ubyte *) _Unwind_GetLanguageSpecificData( context );
-    
+
     // If no LSDA, then there are no handlers or cleanups.
     if ( ! phase1.languageSpecificData )
     {
@@ -482,7 +482,7 @@ private _Unwind_Reason_Code personalityImpl(int iversion,
           xh.save(context, phase1);
       return _URC_HANDLER_FOUND;
     }
-    
+
  install_context:
     if ( (actions & _UA_FORCE_UNWIND)
         || foreign_exception) {
@@ -492,7 +492,7 @@ private _Unwind_Reason_Code personalityImpl(int iversion,
         } else if (phase1.handlerSwitchValue < 0) {
             dehUnexpected();
         }
-        
+
     } else {
       if (found_type == Found.terminate)
         {
@@ -512,7 +512,7 @@ private _Unwind_Reason_Code personalityImpl(int iversion,
     _Unwind_SetGR (context, __builtin_eh_return_data_regno (1),
         phase1.handlerSwitchValue);
     _Unwind_SetIP (context, phase1.landingPad);
-    
+
     return _URC_INSTALL_CONTEXT;
 }
 

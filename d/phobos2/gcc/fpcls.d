@@ -17,7 +17,7 @@ static if (Use_IEEE_fpsb)
 }
 else
     public import gcc.config.fpcls;
-        
+
 int signbit(float f);
 int signbit(double f);
 int signbit(real f);

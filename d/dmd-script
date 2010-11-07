@@ -386,7 +386,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         exit 0;
     } elsif ( $arg =~ m/^-map$/ ) {
         # Check for Mac (Untested)
-        if ($^O =~ m/darwin/i) 
+        if ($^O =~ m/darwin/i)
         {
             push @link_out, '-Wl,-map=' . substr($first_input_file, 0, length($first_input_file)-2) . ".map";
         }
@@ -579,7 +579,6 @@ foreach my $srcf_i (@sources) {
 }
 
 if ($ok && $link) {
-        
     my @cmd = ($gdc, @out, @dobjects, @objects, @link_out);
     if ( $output_file ) {
         push @cmd, '-o', $output_file;

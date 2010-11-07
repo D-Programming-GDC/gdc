@@ -59,7 +59,7 @@ struct _Unwind_Control_Block
 {
   char exception_class[8] = '\0';
   extern(C) void function(_Unwind_Reason_Code, _Unwind_Control_Block *) exception_cleanup;
-  
+
   /* Unwinder cache, private fields for the unwinder's use */
   struct _unwinder_cache
     {

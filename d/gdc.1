@@ -16,7 +16,7 @@ gdc accepts mostly the same options as gcc.
 D source files
 .IP files.di
 D interface files
-.IP files.o  
+.IP files.o
 Object files to link in
 .IP files.a
 Library files to link in
@@ -37,12 +37,12 @@ Controls whether or not template code is emitted.
 .IP "full"
 Emit templates, expecting multiple copies to be merged by the linker.
 .IP "private"
-Emit templates, but make them private to the translation unit. 
+Emit templates, but make them private to the translation unit.
 The executable will have multiple copies of code and data.
 .IP "none"
 Do not emit templates at all.
 .IP "auto"
-For targets that support templates, the "full" mode is used. 
+For targets that support templates, the "full" mode is used.
 Otherwise, the "private" mode is used.
 .RE
 

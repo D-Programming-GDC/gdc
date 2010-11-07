@@ -486,7 +486,7 @@ public:
 public:
     static bool functionNeedsChain(FuncDeclaration *f);
 
-    // Check for nested functions/class/structs 
+    // Check for nested functions/class/structs
     static bool isClassNestedIn(ClassDeclaration *inner, ClassDeclaration *outer);
     static bool isFuncNestedIn(FuncDeclaration * inner, FuncDeclaration * outer);
     static FuncDeclaration * isClassNestedInFunction(ClassDeclaration * cd);

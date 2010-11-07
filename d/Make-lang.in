@@ -96,7 +96,7 @@ D_DMD_H := \
 
 ifeq ($(D_LANGUAGE_VERSION),2)
 # D2 specific headers
-  D_DMD_H += 
+  D_DMD_H +=
 else
 # D1 specific headers
   D_DMD_H +=
@@ -206,7 +206,7 @@ D_DMD_OBJS := \
     d/unittests.dmd.o d/version.dmd.o
 
 ifeq ($(D_LANGUAGE_VERSION),2)
-# D2 specific sources 
+# D2 specific sources
   D_DMD_OBJS += d/builtin.dmd.o d/traits.dmd.o
 else
 # D1 specific sources

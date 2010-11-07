@@ -216,7 +216,7 @@ ZLIB_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/infback.o zlib/inffast.o zlib/inflate.o zlib/inftrees.o \
 	  zlib/trees.o zlib/uncompr.o zlib/zutil.o
 
-# modules which require some kind of operating system	
+# modules which require some kind of operating system
 OS_OBJS=std/file.o std/mmfile.o std/path.o std/perf.o std/process.o \
 	std/socket.o std/socketstream.o
 
