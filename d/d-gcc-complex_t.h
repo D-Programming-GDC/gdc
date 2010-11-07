@@ -40,24 +40,24 @@ struct complex_t
 
     complex_t operator / (complex_t y)
     {
-	real_t abs_y_re = y.re.isNegative() ? -y.re : y.re;
-	real_t abs_y_im = y.im.isNegative() ? -y.im : y.im;
-	real_t r, den;
+        real_t abs_y_re = y.re.isNegative() ? -y.re : y.re;
+        real_t abs_y_im = y.im.isNegative() ? -y.im : y.im;
+        real_t r, den;
 
-	if (abs_y_re < abs_y_im)
-	{
-	    r = y.re / y.im;
-	    den = y.im + r * y.re;
-	    return complex_t((re * r + im) / den,
-			     (im * r - re) / den);
-	}
-	else
-	{
-	    r = y.im / y.re;
-	    den = y.re + r * y.im;
-	    return complex_t((re + r * im) / den,
-			     (im - r * re) / den);
-	}
+        if (abs_y_re < abs_y_im)
+        {
+            r = y.re / y.im;
+            den = y.im + r * y.re;
+            return complex_t((re * r + im) / den,
+                             (im * r - re) / den);
+        }
+        else
+        {
+            r = y.im / y.re;
+            den = y.re + r * y.im;
+            return complex_t((re + r * im) / den,
+                             (im - r * re) / den);
+        }
     }
 
     operator bool () { return !re.isZero() || !im.isZero(); }

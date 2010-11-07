@@ -35,9 +35,9 @@ kopensolaris*-gnu) d_os_versym=solaris; d_unix=1 ;;
 linux*) d_os_versym=linux ; d_unix=1 ;;
 mingw32*) d_os_versym=Win32; d_windows=1 ;;
 pe*)    case "$target" in
-	    *-skyos*-*) d_os_versym=skyos ; d_unix=1 ;;
-	esac
-	;;
+            *-skyos*-*) d_os_versym=skyos ; d_unix=1 ;;
+        esac
+        ;;
 skyos*) d_os_versym=skyos ; d_unix=1 ;; # Doesn't actually work because SkyOS uses i386-skyos-pe
 solaris*) d_os_versym=solaris; d_unix=1 ;;
 sysv3*) d_os_versym=sysv3; d_unix=1 ;;

@@ -27,16 +27,16 @@ struct real_t {
     // just statically allocate enough space for
     // REAL_VALUE_TYPE.
     typedef enum {
-	Float,
-	Double,
-	LongDouble,
-	NumModes
+        Float,
+        Double,
+        LongDouble,
+        NumModes
     } MyMode;
     typedef struct {
-	int c;
-	int s;
-	int e;
-	long m[ (16 + sizeof(long))/sizeof(long) + 1 ];
+        int c;
+        int s;
+        int e;
+        long m[ (16 + sizeof(long))/sizeof(long) + 1 ];
     } fake_t;
 
     fake_t frv;

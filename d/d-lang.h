@@ -58,7 +58,7 @@ union lang_tree_node
        chain_next ("(union lang_tree_node *)GENERIC_NEXT (&%h.generic)")))
 {
   union tree_node GTY ((tag ("0"),
-			desc ("tree_node_structure (&%h)")))
+                        desc ("tree_node_structure (&%h)")))
     generic;
   struct lang_identifier GTY ((tag ("1"))) identifier;
 };
@@ -214,7 +214,7 @@ extern GTY(()) tree d_keep_list;
 #include "d-dmd-gcc.h"
 
 #if D_GCC_VER >= 40
-#define build_type_copy	build_variant_type_copy
+#define build_type_copy build_variant_type_copy
 #else
 #define TYPE_UNSIGNED TREE_UNSIGNED
 #endif

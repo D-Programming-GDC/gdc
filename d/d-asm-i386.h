@@ -327,26 +327,26 @@ typedef unsigned char Opr;
 typedef struct {
     Opr operands[3];
     unsigned char
-	needsType : 3,
-	implicitClobbers : 8,
+        needsType : 3,
+        implicitClobbers : 8,
         linkType : 2;
     unsigned link;
 
     /*
     bool takesLabel() {
-	return operands[0] & Opr_Label;
+        return operands[0] & Opr_Label;
     }
     */
 
     unsigned nOperands() {
-	if (!operands[0])
-	    return 0;
-	else if (!operands[1])
-	    return 1;
-	else if (!operands[2])
-	    return 2;
-	else
-	    return 3;
+        if (!operands[0])
+            return 0;
+        else if (!operands[1])
+            return 1;
+        else if (!operands[2])
+            return 2;
+        else
+            return 3;
     }
 } AsmOpInfo;
 
@@ -1185,22 +1185,22 @@ static Identifier * ident_seg;
 struct AsmProcessor
 {
     typedef struct {
-	int inBracket;
-	int hasBracket;
-	int hasNumber;
-	int isOffset;
+        int inBracket;
+        int hasBracket;
+        int hasNumber;
+        int isOffset;
 
-	Reg segmentPrefix;
-	Reg reg;
-	sinteger_t constDisplacement; // use to build up.. should be int constant in the end..
-	Array      symbolDisplacement; // array of expressions or..
-	Reg baseReg;
-	Reg indexReg;
-	int scale;
+        Reg segmentPrefix;
+        Reg reg;
+        sinteger_t constDisplacement; // use to build up.. should be int constant in the end..
+        Array      symbolDisplacement; // array of expressions or..
+        Reg baseReg;
+        Reg indexReg;
+        int scale;
 
-	OperandClass cls;
-	PtrType dataSize;
-	PtrType dataSizeHint; // DMD can use the type of a referenced variable
+        OperandClass cls;
+        PtrType dataSize;
+        PtrType dataSizeHint; // DMD can use the type of a referenced variable
     } Operand;
 
     static const unsigned Max_Operands = 3;
@@ -1219,244 +1219,244 @@ struct AsmProcessor
 
     AsmProcessor(Scope * sc, AsmStatement * stmt)
     {
-	this->sc = sc;
-	this->stmt = stmt;
-	token = stmt->tokens;
-	insnTemplate = new OutBuffer;
+        this->sc = sc;
+        this->stmt = stmt;
+        token = stmt->tokens;
+        insnTemplate = new OutBuffer;
 
-	opInfo = NULL;
+        opInfo = NULL;
 
-	if ( ! regInfo[0].ident ) {
-	    char buf[8], *p;
+        if ( ! regInfo[0].ident ) {
+            char buf[8], *p;
 
-	    for (int i = 0; i < N_Regs; i++) {
-		strncpy(buf, regInfo[i].name, sizeof(buf) - 1);
-		for (p = buf; *p; p++)
-		    *p = TOLOWER(*p);
-		regInfo[i].gccName = build_string(p - buf, buf);
-		dkeep(regInfo[i].gccName);
-		if ( (i <= Reg_ST || i > Reg_ST7) && i != Reg_EFLAGS )
-		    regInfo[i].ident = Lexer::idPool(regInfo[i].name);
-	    }
+            for (int i = 0; i < N_Regs; i++) {
+                strncpy(buf, regInfo[i].name, sizeof(buf) - 1);
+                for (p = buf; *p; p++)
+                    *p = TOLOWER(*p);
+                regInfo[i].gccName = build_string(p - buf, buf);
+                dkeep(regInfo[i].gccName);
+                if ( (i <= Reg_ST || i > Reg_ST7) && i != Reg_EFLAGS )
+                    regInfo[i].ident = Lexer::idPool(regInfo[i].name);
+            }
 
-	    for (int i = 0; i < N_PtrNames; i++)
-		ptrTypeIdentTable[i] = Lexer::idPool(ptrTypeNameTable[i]);
+            for (int i = 0; i < N_PtrNames; i++)
+                ptrTypeIdentTable[i] = Lexer::idPool(ptrTypeNameTable[i]);
 
-	    Handled = new Expression(0, TOKvoid, sizeof(Expression));
+            Handled = new Expression(0, TOKvoid, sizeof(Expression));
 
-	    ident_seg = Lexer::idPool("seg");
+            ident_seg = Lexer::idPool("seg");
 
-	    eof_tok.value = TOKeof;
-	    eof_tok.next = 0;
-	}
+            eof_tok.value = TOKeof;
+            eof_tok.next = 0;
+        }
     }
 
     void run()
     {
-	parse();
+        parse();
     }
 
     void nextToken() {
-	if (token->next)
-	    token = token->next;
-	else
-	    token = & eof_tok;
+        if (token->next)
+            token = token->next;
+        else
+            token = & eof_tok;
     }
 
     Token * peekToken() {
-	if (token->next)
-	    return token->next;
-	else
-	    return & eof_tok;
+        if (token->next)
+            return token->next;
+        else
+            return & eof_tok;
     }
 
     void expectEnd() {
-	if (token->value != TOKeof)
-	    stmt->error("expected end of statement"); // %% extra at end...
+        if (token->value != TOKeof)
+            stmt->error("expected end of statement"); // %% extra at end...
     }
 
     void parse() {
-	op = parseOpcode();
+        op = parseOpcode();
 
-	switch (op) {
-	case Op_Align:
-	    doAlign();
-	    expectEnd();
-	    break;
-	case Op_Even:
-	    doEven();
-	    expectEnd();
-	    break;
-	case Op_Naked:
-	    doNaked();
-	    expectEnd();
-	    break;
-	case Op_Invalid:
-	    break;
-	default:
-	    if (op >= Op_db && op <= Op_de)
-		doData();
-	    else
-		doInstruction();
-	}
+        switch (op) {
+        case Op_Align:
+            doAlign();
+            expectEnd();
+            break;
+        case Op_Even:
+            doEven();
+            expectEnd();
+            break;
+        case Op_Naked:
+            doNaked();
+            expectEnd();
+            break;
+        case Op_Invalid:
+            break;
+        default:
+            if (op >= Op_db && op <= Op_de)
+                doData();
+            else
+                doInstruction();
+        }
     }
 
     AsmOp parseOpcode() {
-	static const int N_ents = sizeof(opData)/sizeof(AsmOpEnt);
+        static const int N_ents = sizeof(opData)/sizeof(AsmOpEnt);
 
-	switch (token->value) {
-	case TOKalign:
-	    nextToken();
-	    return Op_Align;
-	case TOKin:
-	    nextToken();
-	    opIdent = Id::___in;
-	    return Op_in;
+        switch (token->value) {
+        case TOKalign:
+            nextToken();
+            return Op_Align;
+        case TOKin:
+            nextToken();
+            opIdent = Id::___in;
+            return Op_in;
         case TOKint32: // "int"
             nextToken();
             opIdent = Id::__int;
             return Op_SrcImm;
-	case TOKout:
-	    nextToken();
-	    opIdent = Id::___out;
-	    return Op_out;
-	case TOKidentifier:
-	    // search for mnemonic below
-	    break;
-	default:
-	    stmt->error("expected opcode");
-	    return Op_Invalid;
-	}
+        case TOKout:
+            nextToken();
+            opIdent = Id::___out;
+            return Op_out;
+        case TOKidentifier:
+            // search for mnemonic below
+            break;
+        default:
+            stmt->error("expected opcode");
+            return Op_Invalid;
+        }
 
-	opIdent = token->ident;
-	const char * opcode = token->ident->string;
+        opIdent = token->ident;
+        const char * opcode = token->ident->string;
 
-	nextToken();
+        nextToken();
 
-	// %% okay to use bsearch?
-	int i = 0, j = N_ents, k, l;
-	do {
-	    k = (i + j) / 2;
-	    l = strcmp(opcode, opData[k].inMnemonic);
-	    if (! l)
-		return opData[k].asmOp;
-	    else if (l < 0)
-		j = k;
-	    else
-		i = k + 1;
-	} while (i != j);
+        // %% okay to use bsearch?
+        int i = 0, j = N_ents, k, l;
+        do {
+            k = (i + j) / 2;
+            l = strcmp(opcode, opData[k].inMnemonic);
+            if (! l)
+                return opData[k].asmOp;
+            else if (l < 0)
+                j = k;
+            else
+                i = k + 1;
+        } while (i != j);
 
-	stmt->error("unknown opcode '%s'", opcode);
+        stmt->error("unknown opcode '%s'", opcode);
 
-	return Op_Invalid;
+        return Op_Invalid;
     }
 
     // need clobber information.. use information is good too...
     void doInstruction() {
-	bool ok = true;
-	unsigned operand_i = 0;
+        bool ok = true;
+        unsigned operand_i = 0;
 
-	opInfo = & asmOpInfo[op];
-	memset(operands, 0, sizeof(operands));
+        opInfo = & asmOpInfo[op];
+        memset(operands, 0, sizeof(operands));
 
-	while (token->value != TOKeof) {
-	    if (operand_i < Max_Operands) {
-		operand = & operands[operand_i];
-		operand->reg = operand->baseReg = operand->indexReg =
-		    operand->segmentPrefix = Reg_Invalid;
-		parseOperand();
-		operand_i++;
-	    } else {
-		ok = false;
-		stmt->error("too many operands for instruction");
-		break;
-	    }
+        while (token->value != TOKeof) {
+            if (operand_i < Max_Operands) {
+                operand = & operands[operand_i];
+                operand->reg = operand->baseReg = operand->indexReg =
+                    operand->segmentPrefix = Reg_Invalid;
+                parseOperand();
+                operand_i++;
+            } else {
+                ok = false;
+                stmt->error("too many operands for instruction");
+                break;
+            }
 
-	    if (token->value == TOKcomma)
-		nextToken();
-	    else if (token->value != TOKeof) {
-		ok = false;
-		stmt->error("expected comma after operand");
-		return;
-	    }
-	}
-// 	if (operand_i < opInfo->minOperands) {
-// 	    ok = false;
-// 	    stmt->error("too few operands for instruction");
-// 	}
+            if (token->value == TOKcomma)
+                nextToken();
+            else if (token->value != TOKeof) {
+                ok = false;
+                stmt->error("expected comma after operand");
+                return;
+            }
+        }
+//      if (operand_i < opInfo->minOperands) {
+//          ok = false;
+//          stmt->error("too few operands for instruction");
+//      }
 
-	if ( matchOperands(operand_i) ) {
-	    AsmCode * asmcode = new AsmCode;
+        if ( matchOperands(operand_i) ) {
+            AsmCode * asmcode = new AsmCode;
 
-	    if (formatInstruction(operand_i, asmcode))
-		stmt->asmcode = (code *) asmcode;
-	}
+            if (formatInstruction(operand_i, asmcode))
+                stmt->asmcode = (code *) asmcode;
+        }
     }
 
     void setAsmCode() {
-	AsmCode * asmcode = new AsmCode;
-	asmcode->insnTemplateLen = insnTemplate->offset;
-	asmcode->insnTemplate = (char*) insnTemplate->extractData();
-	stmt->asmcode = (code*) asmcode;
+        AsmCode * asmcode = new AsmCode;
+        asmcode->insnTemplateLen = insnTemplate->offset;
+        asmcode->insnTemplate = (char*) insnTemplate->extractData();
+        stmt->asmcode = (code*) asmcode;
     }
 
     // note: doesn't update AsmOp op
     bool matchOperands(unsigned nOperands) {
-	bool wrong_number = true;
+        bool wrong_number = true;
 
-	for (unsigned i = 0; i < nOperands; i++)
-	    classifyOperand(& operands[i]);
+        for (unsigned i = 0; i < nOperands; i++)
+            classifyOperand(& operands[i]);
 
-	while (1) {
-	    if (nOperands == opInfo->nOperands()) {
-		wrong_number = false;
-		/*  Cases in which number of operands is not
-		    enough for a match: Op_FCmp/Op_FCmp1,
-		    Op_FCmpP/Op_FCmpP1 */
-		for (unsigned i = 0; i < nOperands; i++) {
-		    Operand * operand = & operands[i];
+        while (1) {
+            if (nOperands == opInfo->nOperands()) {
+                wrong_number = false;
+                /*  Cases in which number of operands is not
+                    enough for a match: Op_FCmp/Op_FCmp1,
+                    Op_FCmpP/Op_FCmpP1 */
+                for (unsigned i = 0; i < nOperands; i++) {
+                    Operand * operand = & operands[i];
 
-		    switch (opInfo->operands[i] & Opr_ClassMask) {
-		    case OprC_Mem: // no FPMem currently
-			if (operand->cls != Opr_Mem)
-			    goto no_match;
-			break;
-		    case OprC_RFP:
-			if (! (operand->reg >= Reg_ST && operand->reg <= Reg_ST7))
-			    goto no_match;
-			break;
-		    default:
-			break;
-		    }
-		}
+                    switch (opInfo->operands[i] & Opr_ClassMask) {
+                    case OprC_Mem: // no FPMem currently
+                        if (operand->cls != Opr_Mem)
+                            goto no_match;
+                        break;
+                    case OprC_RFP:
+                        if (! (operand->reg >= Reg_ST && operand->reg <= Reg_ST7))
+                            goto no_match;
+                        break;
+                    default:
+                        break;
+                    }
+                }
 
-		return true;
-	    }
-	    no_match:
-	    if (opInfo->linkType == Next_Form)
-		opInfo = & asmOpInfo[ op = (AsmOp) opInfo->link ];
-	    else
-		break;
-	}
-	if (wrong_number)
-	    stmt->error("wrong number of operands");
-	else
-	    stmt->error("wrong operand types");
-	return false;
+                return true;
+            }
+            no_match:
+            if (opInfo->linkType == Next_Form)
+                opInfo = & asmOpInfo[ op = (AsmOp) opInfo->link ];
+            else
+                break;
+        }
+        if (wrong_number)
+            stmt->error("wrong number of operands");
+        else
+            stmt->error("wrong operand types");
+        return false;
     }
 
     void addOperand(const char * fmt, AsmArgType type, Expression * e, AsmCode * asmcode, AsmArgMode mode = Mode_Input) {
-	insnTemplate->writestring(fmt);
-	insnTemplate->printf("%d", asmcode->args.dim);
-	asmcode->args.push( new AsmArg(type, e, mode) );
+        insnTemplate->writestring(fmt);
+        insnTemplate->printf("%d", asmcode->args.dim);
+        asmcode->args.push( new AsmArg(type, e, mode) );
     }
 
     void addLabel(unsigned n) {
-	// No longer taking the address of the actual label -- doesn't seem like it would help.
-	char buf[64];
+        // No longer taking the address of the actual label -- doesn't seem like it would help.
+        char buf[64];
 
-	d_format_priv_asm_label(buf, n);
-	insnTemplate->writestring(buf);
+        d_format_priv_asm_label(buf, n);
+        insnTemplate->writestring(buf);
     }
 
     /* Determines whether the operand is a register, memory reference
@@ -1464,1231 +1464,1231 @@ struct AsmProcessor
        memory.  This function is called before the exact instructions
        is known and thus, should not use opInfo. */
     void classifyOperand(Operand * operand) {
-	operand->cls = classifyOperand1(operand);
+        operand->cls = classifyOperand1(operand);
     }
 
     OperandClass classifyOperand1(Operand * operand) {
-	bool is_localsize = false;
-	bool really_have_symbol = false;
+        bool is_localsize = false;
+        bool really_have_symbol = false;
 
-	if (operand->symbolDisplacement.dim) {
-	    is_localsize = isLocalSize( (Expression *) operand->symbolDisplacement.data[0] );
-	    really_have_symbol = ! is_localsize;
-	}
+        if (operand->symbolDisplacement.dim) {
+            is_localsize = isLocalSize( (Expression *) operand->symbolDisplacement.data[0] );
+            really_have_symbol = ! is_localsize;
+        }
 
-	if (operand->isOffset && ! operand->hasBracket)
-	    return Opr_Immediate;
+        if (operand->isOffset && ! operand->hasBracket)
+            return Opr_Immediate;
 
-	if (operand->hasBracket || really_have_symbol) { // %% redo for 'offset' function
-	    if (operand->reg != Reg_Invalid) {
-		invalidExpression();
-		return Opr_Invalid;
-	    }
+        if (operand->hasBracket || really_have_symbol) { // %% redo for 'offset' function
+            if (operand->reg != Reg_Invalid) {
+                invalidExpression();
+                return Opr_Invalid;
+            }
 
-	    return Opr_Mem;
-	}
+            return Opr_Mem;
+        }
 
-	if (operand->reg != Reg_Invalid && operand->constDisplacement != 0) {
-	    invalidExpression();
-	    return Opr_Invalid;
-	}
+        if (operand->reg != Reg_Invalid && operand->constDisplacement != 0) {
+            invalidExpression();
+            return Opr_Invalid;
+        }
 
-	if (operand->segmentPrefix != Reg_Invalid) {
-	    if (operand->reg != Reg_Invalid) {
-		invalidExpression();
-		return Opr_Invalid;
-	    }
+        if (operand->segmentPrefix != Reg_Invalid) {
+            if (operand->reg != Reg_Invalid) {
+                invalidExpression();
+                return Opr_Invalid;
+            }
 
-	    return Opr_Mem;
-	}
+            return Opr_Mem;
+        }
 
-	if (operand->reg != Reg_Invalid && ! operand->hasNumber)
-	    return Opr_Reg;
+        if (operand->reg != Reg_Invalid && ! operand->hasNumber)
+            return Opr_Reg;
 
-	// should check immediate given (operand->hasNumber);
-	//
-	if (operand->hasNumber || is_localsize) {
-	    // size determination not correct if there are symbols Opr_Immediate
-	    if (operand->dataSize == Default_Ptr) {
-		if (operand->constDisplacement < 0x100)
-		    operand->dataSize = Byte_Ptr;
-		else if (operand->constDisplacement < 0x10000)
-		    operand->dataSize = Short_Ptr;
-		else
-		    operand->dataSize = Int_Ptr;
-	    }
-	    return Opr_Immediate;
-	}
+        // should check immediate given (operand->hasNumber);
+        //
+        if (operand->hasNumber || is_localsize) {
+            // size determination not correct if there are symbols Opr_Immediate
+            if (operand->dataSize == Default_Ptr) {
+                if (operand->constDisplacement < 0x100)
+                    operand->dataSize = Byte_Ptr;
+                else if (operand->constDisplacement < 0x10000)
+                    operand->dataSize = Short_Ptr;
+                else
+                    operand->dataSize = Int_Ptr;
+            }
+            return Opr_Immediate;
+        }
 
-	// probably a bug,?
-	stmt->error("invalid operand");
-	return Opr_Invalid;
+        // probably a bug,?
+        stmt->error("invalid operand");
+        return Opr_Invalid;
     }
 
     void writeReg(Reg reg) {
-	insnTemplate->writestring("%%");
-	insnTemplate->write(TREE_STRING_POINTER( regInfo[reg].gccName ),
-	    TREE_STRING_LENGTH( regInfo[reg].gccName ));
+        insnTemplate->writestring("%%");
+        insnTemplate->write(TREE_STRING_POINTER( regInfo[reg].gccName ),
+            TREE_STRING_LENGTH( regInfo[reg].gccName ));
     }
 
     bool opTakesLabel() {
-	switch(op) {
-	case Op_Branch:
-	case Op_CBranch:
-	case Op_Loop:
-	    return true;
-	default:
-	    return false;
-	}
+        switch(op) {
+        case Op_Branch:
+        case Op_CBranch:
+        case Op_Loop:
+            return true;
+        default:
+            return false;
+        }
     }
 
     bool getTypeChar(TypeNeeded needed, PtrType ptrtype, char & type_char)
     {
-	switch (needed) {
-	case Byte_NoType:
-	    return ptrtype == Byte_Ptr;
-	case Word_Types:
-	    if (ptrtype == Byte_Ptr)
-		return false;
-	    // drop through
-	case Int_Types:
-	    switch (ptrtype) {
-	    case Byte_Ptr:  type_char = 'b'; break;
-	    case Short_Ptr: type_char = 'w'; break;
-	    case Int_Ptr:   type_char = 'l'; break;
-	    default:
-		// %% these may be too strict
-		return false;
-	    }
-	    break;
-	case FPInt_Types:
-	    switch (ptrtype) {
-	    case Short_Ptr: type_char = 0;   break;
-	    case Int_Ptr:   type_char = 'l'; break;
-	    case QWord_Ptr: type_char = 'q'; break;
-	    default:
-		return false;
-	    }
-	    break;
-	case FP_Types:
-	    switch (ptrtype) {
-	    case Float_Ptr:    type_char = 's'; break;
-	    case Double_Ptr:   type_char = 'l'; break;
-	    case Extended_Ptr: type_char = 't'; break;
-	    default:
-		return false;
-	    }
-	    break;
-	default:
-	    return false;
-	}
-	return true;
+        switch (needed) {
+        case Byte_NoType:
+            return ptrtype == Byte_Ptr;
+        case Word_Types:
+            if (ptrtype == Byte_Ptr)
+                return false;
+            // drop through
+        case Int_Types:
+            switch (ptrtype) {
+            case Byte_Ptr:  type_char = 'b'; break;
+            case Short_Ptr: type_char = 'w'; break;
+            case Int_Ptr:   type_char = 'l'; break;
+            default:
+                // %% these may be too strict
+                return false;
+            }
+            break;
+        case FPInt_Types:
+            switch (ptrtype) {
+            case Short_Ptr: type_char = 0;   break;
+            case Int_Ptr:   type_char = 'l'; break;
+            case QWord_Ptr: type_char = 'q'; break;
+            default:
+                return false;
+            }
+            break;
+        case FP_Types:
+            switch (ptrtype) {
+            case Float_Ptr:    type_char = 's'; break;
+            case Double_Ptr:   type_char = 'l'; break;
+            case Extended_Ptr: type_char = 't'; break;
+            default:
+                return false;
+            }
+            break;
+        default:
+            return false;
+        }
+        return true;
     }
 
     // also set impl clobbers
     bool formatInstruction(int nOperands, AsmCode * asmcode) {
-	const char *fmt;
-	const char *mnemonic;
-	char type_char = 0;
-	bool use_star;
-	AsmArgMode mode;
+        const char *fmt;
+        const char *mnemonic;
+        char type_char = 0;
+        bool use_star;
+        AsmArgMode mode;
 
-	insnTemplate = new OutBuffer;
-	if (opInfo->linkType == Out_Mnemonic)
-	    mnemonic = alternateMnemonics[opInfo->link];
-	else
-	    mnemonic = opIdent->string;
+        insnTemplate = new OutBuffer;
+        if (opInfo->linkType == Out_Mnemonic)
+            mnemonic = alternateMnemonics[opInfo->link];
+        else
+            mnemonic = opIdent->string;
 
-	if (opInfo->needsType) {
-	    PtrType exact_type = Default_Ptr;
-	    PtrType min_type = Default_Ptr;
-	    PtrType hint_type = Default_Ptr;
+        if (opInfo->needsType) {
+            PtrType exact_type = Default_Ptr;
+            PtrType min_type = Default_Ptr;
+            PtrType hint_type = Default_Ptr;
 
-	    /* Default types: This attempts to match the observed behavior of DMD */
-	    switch (opInfo->needsType) {
-	    case Int_Types:   min_type = Byte_Ptr; break;
-	    case Word_Types:  min_type = Short_Ptr; break;
-	    case FPInt_Types:
-		if (op == Op_Fis_ST) // integer math instructions
-		    min_type = Int_Ptr;
-		else // compare, load, store
-		    min_type = Short_Ptr;
-		break;
-	    case FP_Types:    min_type = Float_Ptr; break;
-	    }
-	    if (op == Op_push && operands[0].cls == Opr_Immediate)
-		min_type = Int_Ptr;
+            /* Default types: This attempts to match the observed behavior of DMD */
+            switch (opInfo->needsType) {
+            case Int_Types:   min_type = Byte_Ptr; break;
+            case Word_Types:  min_type = Short_Ptr; break;
+            case FPInt_Types:
+                if (op == Op_Fis_ST) // integer math instructions
+                    min_type = Int_Ptr;
+                else // compare, load, store
+                    min_type = Short_Ptr;
+                break;
+            case FP_Types:    min_type = Float_Ptr; break;
+            }
+            if (op == Op_push && operands[0].cls == Opr_Immediate)
+                min_type = Int_Ptr;
 
-	    for (int i = 0; i < nOperands; i++) {
-		if (hint_type == Default_Ptr &&
-		    ! (opInfo->operands[i] & Opr_NoType))
-		    hint_type = operands[i].dataSizeHint;
+            for (int i = 0; i < nOperands; i++) {
+                if (hint_type == Default_Ptr &&
+                    ! (opInfo->operands[i] & Opr_NoType))
+                    hint_type = operands[i].dataSizeHint;
 
-		if ((opInfo->operands[i] & Opr_NoType) ||
-		    operands[i].dataSize == Default_Ptr)
-		    continue;
-		if (operands[i].cls == Opr_Immediate) {
-		    min_type = operands[i].dataSize > min_type ?
-			operands[i].dataSize : min_type;
-		} else {
-		    exact_type = operands[i].dataSize; // could check for conflicting types
-		    break;
-		}
-	    }
+                if ((opInfo->operands[i] & Opr_NoType) ||
+                    operands[i].dataSize == Default_Ptr)
+                    continue;
+                if (operands[i].cls == Opr_Immediate) {
+                    min_type = operands[i].dataSize > min_type ?
+                        operands[i].dataSize : min_type;
+                } else {
+                    exact_type = operands[i].dataSize; // could check for conflicting types
+                    break;
+                }
+            }
 
-	    bool type_ok;
-	    if (exact_type == Default_Ptr) {
-		type_ok = getTypeChar((TypeNeeded) opInfo->needsType, hint_type, type_char);
-		if (! type_ok)
-		    type_ok = getTypeChar((TypeNeeded) opInfo->needsType, min_type, type_char);
-	    } else
-		type_ok = getTypeChar((TypeNeeded) opInfo->needsType, exact_type, type_char);
+            bool type_ok;
+            if (exact_type == Default_Ptr) {
+                type_ok = getTypeChar((TypeNeeded) opInfo->needsType, hint_type, type_char);
+                if (! type_ok)
+                    type_ok = getTypeChar((TypeNeeded) opInfo->needsType, min_type, type_char);
+            } else
+                type_ok = getTypeChar((TypeNeeded) opInfo->needsType, exact_type, type_char);
 
-	    if (! type_ok) {
-		stmt->error("invalid operand size");
-		return false;
-	    }
-	} else if (op == Op_Branch) {
-	    if (operands[0].dataSize == Far_Ptr) // %% type=Far_Ptr not set by Seg:Ofss OTOH, we don't support that..
-		insnTemplate->writebyte('l');
-	} else if (op == Op_fxch) {
-	    // gas won't accept the two-operand form
-	    if (operands[1].cls == Opr_Reg && operands[1].reg == Reg_ST) {
-		nOperands = 1;
-	    } else {
-		stmt->error("invalid operands");
-		return false;
-	    }
-	}
+            if (! type_ok) {
+                stmt->error("invalid operand size");
+                return false;
+            }
+        } else if (op == Op_Branch) {
+            if (operands[0].dataSize == Far_Ptr) // %% type=Far_Ptr not set by Seg:Ofss OTOH, we don't support that..
+                insnTemplate->writebyte('l');
+        } else if (op == Op_fxch) {
+            // gas won't accept the two-operand form
+            if (operands[1].cls == Opr_Reg && operands[1].reg == Reg_ST) {
+                nOperands = 1;
+            } else {
+                stmt->error("invalid operands");
+                return false;
+            }
+        }
 
-	switch (op) {
-	case Op_SizedStack:
-	    {
-		int mlen = strlen(mnemonic);
-		if (mnemonic[mlen-1] == 'd')
-		    insnTemplate->write(mnemonic, mlen-1);
-		else {
-		    insnTemplate->writestring(mnemonic);
-		    insnTemplate->writebyte('w');
-		}
-	    }
-	    break;
-	case Op_cmpsd:
-	case Op_insX:
-	case Op_lodsX:
-	case Op_movsd:
-	case Op_outsX:
-	case Op_scasX:
-	case Op_stosX:
-	    {
-		int mlen = strlen(mnemonic);
-		if (mnemonic[mlen-1] == 'd') {
-		    insnTemplate->write(mnemonic, mlen-1);
-		    insnTemplate->writebyte('l');
-		} else {
-		    insnTemplate->writestring(mnemonic);
-		}
-	    }
-	    break;
-	case Op_movsx:
-	case Op_movzx:
-	    {
-		char tc_1;
-		int mlen = strlen(mnemonic);
-		PtrType op1_size = operands[1].dataSize;
-		if (op1_size == Default_Ptr)
-		    op1_size = operands[1].dataSizeHint;
-		// Need type char for source arg
-		switch (op1_size) {
-		case Byte_Ptr:
-		case Default_Ptr:
-		    tc_1 = 'b';
-		    break;
-		case Short_Ptr:
-		    tc_1 = 'w';
-		    break;
-		default:
-		    stmt->error("invalid operand size/type");
-		    return false;
-		}
-		assert(type_char != 0);
-		insnTemplate->write(mnemonic, mlen-1);
-		insnTemplate->writebyte(tc_1);
-		insnTemplate->writebyte(type_char);
-	    }
-	    break;
-	default:
-	    insnTemplate->writestring(mnemonic);
-	    if (type_char)
-		insnTemplate->writebyte(type_char);
-	    break;
-	}
+        switch (op) {
+        case Op_SizedStack:
+            {
+                int mlen = strlen(mnemonic);
+                if (mnemonic[mlen-1] == 'd')
+                    insnTemplate->write(mnemonic, mlen-1);
+                else {
+                    insnTemplate->writestring(mnemonic);
+                    insnTemplate->writebyte('w');
+                }
+            }
+            break;
+        case Op_cmpsd:
+        case Op_insX:
+        case Op_lodsX:
+        case Op_movsd:
+        case Op_outsX:
+        case Op_scasX:
+        case Op_stosX:
+            {
+                int mlen = strlen(mnemonic);
+                if (mnemonic[mlen-1] == 'd') {
+                    insnTemplate->write(mnemonic, mlen-1);
+                    insnTemplate->writebyte('l');
+                } else {
+                    insnTemplate->writestring(mnemonic);
+                }
+            }
+            break;
+        case Op_movsx:
+        case Op_movzx:
+            {
+                char tc_1;
+                int mlen = strlen(mnemonic);
+                PtrType op1_size = operands[1].dataSize;
+                if (op1_size == Default_Ptr)
+                    op1_size = operands[1].dataSizeHint;
+                // Need type char for source arg
+                switch (op1_size) {
+                case Byte_Ptr:
+                case Default_Ptr:
+                    tc_1 = 'b';
+                    break;
+                case Short_Ptr:
+                    tc_1 = 'w';
+                    break;
+                default:
+                    stmt->error("invalid operand size/type");
+                    return false;
+                }
+                assert(type_char != 0);
+                insnTemplate->write(mnemonic, mlen-1);
+                insnTemplate->writebyte(tc_1);
+                insnTemplate->writebyte(type_char);
+            }
+            break;
+        default:
+            insnTemplate->writestring(mnemonic);
+            if (type_char)
+                insnTemplate->writebyte(type_char);
+            break;
+        }
 
-	switch (opInfo->implicitClobbers & Clb_DXAX_Mask) {
-	case Clb_SizeAX:
-	case Clb_EAX:
-	    stmt->regs |= (1<<Reg_EAX);
-	    break;
-	case Clb_SizeDXAX:
-	    stmt->regs |= (1<<Reg_EAX);
-	    if (type_char != 'b')
-		stmt->regs |= (1<<Reg_EDX);
-	    break;
-	default:
-	    // nothing
-	    break;
-	}
+        switch (opInfo->implicitClobbers & Clb_DXAX_Mask) {
+        case Clb_SizeAX:
+        case Clb_EAX:
+            stmt->regs |= (1<<Reg_EAX);
+            break;
+        case Clb_SizeDXAX:
+            stmt->regs |= (1<<Reg_EAX);
+            if (type_char != 'b')
+                stmt->regs |= (1<<Reg_EDX);
+            break;
+        default:
+            // nothing
+            break;
+        }
 
-	if (opInfo->implicitClobbers & Clb_DI)
-	    stmt->regs |= (1 << Reg_EDI);
-	if (opInfo->implicitClobbers & Clb_SI)
-	    stmt->regs |= (1 << Reg_ESI);
-	if (opInfo->implicitClobbers & Clb_CX)
-	    stmt->regs |= (1 << Reg_ECX);
-	if (opInfo->implicitClobbers & Clb_SP)
-	    stmt->regs |= (1 << Reg_ESP);
-	if (opInfo->implicitClobbers & Clb_ST)
-	{
-	    /* Can't figure out how to tell GCC that an
-	       asm statement leaves an arg pushed on the stack.
-	       Maybe if the statment had and input or output
-	       operand it would work...  In any case, clobbering
-	       all FP prevents incorrect code generation. */
-	    stmt->regs |= (1 << Reg_ST);
-	    stmt->regs |= (1 << Reg_ST1);
-	    stmt->regs |= (1 << Reg_ST2);
-	    stmt->regs |= (1 << Reg_ST3);
-	    stmt->regs |= (1 << Reg_ST4);
-	    stmt->regs |= (1 << Reg_ST5);
-	    stmt->regs |= (1 << Reg_ST6);
-	    stmt->regs |= (1 << Reg_ST7);
-	}
-	if (opInfo->implicitClobbers & Clb_Flags)
-	    asmcode->moreRegs |= (1 << (Reg_EFLAGS - 32));
-	if (op == Op_cpuid)
-	    stmt->regs |= (1 << Reg_EAX)|(1 << Reg_EBX)|
-		(1 << Reg_ECX)|(1 << Reg_EDX);
+        if (opInfo->implicitClobbers & Clb_DI)
+            stmt->regs |= (1 << Reg_EDI);
+        if (opInfo->implicitClobbers & Clb_SI)
+            stmt->regs |= (1 << Reg_ESI);
+        if (opInfo->implicitClobbers & Clb_CX)
+            stmt->regs |= (1 << Reg_ECX);
+        if (opInfo->implicitClobbers & Clb_SP)
+            stmt->regs |= (1 << Reg_ESP);
+        if (opInfo->implicitClobbers & Clb_ST)
+        {
+            /* Can't figure out how to tell GCC that an
+               asm statement leaves an arg pushed on the stack.
+               Maybe if the statment had and input or output
+               operand it would work...  In any case, clobbering
+               all FP prevents incorrect code generation. */
+            stmt->regs |= (1 << Reg_ST);
+            stmt->regs |= (1 << Reg_ST1);
+            stmt->regs |= (1 << Reg_ST2);
+            stmt->regs |= (1 << Reg_ST3);
+            stmt->regs |= (1 << Reg_ST4);
+            stmt->regs |= (1 << Reg_ST5);
+            stmt->regs |= (1 << Reg_ST6);
+            stmt->regs |= (1 << Reg_ST7);
+        }
+        if (opInfo->implicitClobbers & Clb_Flags)
+            asmcode->moreRegs |= (1 << (Reg_EFLAGS - 32));
+        if (op == Op_cpuid)
+            stmt->regs |= (1 << Reg_EAX)|(1 << Reg_EBX)|
+                (1 << Reg_ECX)|(1 << Reg_EDX);
 
-	insnTemplate->writebyte(' ');
-	for (int i__ = 0; i__ < nOperands; i__++) {
-	    int i;
-	    if (i__ != 0)
-		insnTemplate->writestring(", ");
+        insnTemplate->writebyte(' ');
+        for (int i__ = 0; i__ < nOperands; i__++) {
+            int i;
+            if (i__ != 0)
+                insnTemplate->writestring(", ");
 
-	    fmt = "%";
+            fmt = "%";
 
-	    switch (op) {
-	    case Op_mul:
-		// gas won't accept the two-operand form; skip to the source operand
-		i__ = 1;
-		// drop through
-	    case Op_bound:
-	    case Op_enter:
-		i = i__;
-		break;
-	    default:
-		i = nOperands - 1 - i__; // operand = & operands[ nOperands - 1 - i ];
-		break;
-	    }
-	    operand = & operands[ i ];
+            switch (op) {
+            case Op_mul:
+                // gas won't accept the two-operand form; skip to the source operand
+                i__ = 1;
+                // drop through
+            case Op_bound:
+            case Op_enter:
+                i = i__;
+                break;
+            default:
+                i = nOperands - 1 - i__; // operand = & operands[ nOperands - 1 - i ];
+                break;
+            }
+            operand = & operands[ i ];
 
-	    switch (operand->cls) {
-	    case Opr_Immediate:
-		// for implementing offset:
-		// $var + $7 // fails
-		// $var + 7  // ok
-		// $7 + $var // ok
+            switch (operand->cls) {
+            case Opr_Immediate:
+                // for implementing offset:
+                // $var + $7 // fails
+                // $var + 7  // ok
+                // $7 + $var // ok
 
-		// DMD doesn't seem to allow this
-		/*
-		if (opInfo->takesLabel())  tho... (near ptr <Number> would be abs?)
-		    fmt = "%a"; // GAS won't accept "jmp $42"; must be "jmp 42" (rel) or "jmp *42" (abs)
-		*/
-		if (opTakesLabel()/*opInfo->takesLabel()*/) {
-		    // "relative addressing not allowed in branch instructions" ..
-		    stmt->error("integer constant not allowed in branch instructions");
-		    return false;
-		}
+                // DMD doesn't seem to allow this
+                /*
+                if (opInfo->takesLabel())  tho... (near ptr <Number> would be abs?)
+                    fmt = "%a"; // GAS won't accept "jmp $42"; must be "jmp 42" (rel) or "jmp *42" (abs)
+                */
+                if (opTakesLabel()/*opInfo->takesLabel()*/) {
+                    // "relative addressing not allowed in branch instructions" ..
+                    stmt->error("integer constant not allowed in branch instructions");
+                    return false;
+                }
 
-		if (operand->symbolDisplacement.dim &&
-		    isLocalSize( (Expression *) operand->symbolDisplacement.data[0] )) {
-		    // handle __LOCAL_SIZE, which in this constant, is an immediate
-		    // should do this in slotexp..
-		    addOperand("%", Arg_LocalSize,
-			(Expression *) operand->symbolDisplacement.data[0], asmcode);
-		    if (operand->constDisplacement)
-			insnTemplate->writebyte('+');
-		    else
-			break;
-		}
+                if (operand->symbolDisplacement.dim &&
+                    isLocalSize( (Expression *) operand->symbolDisplacement.data[0] )) {
+                    // handle __LOCAL_SIZE, which in this constant, is an immediate
+                    // should do this in slotexp..
+                    addOperand("%", Arg_LocalSize,
+                        (Expression *) operand->symbolDisplacement.data[0], asmcode);
+                    if (operand->constDisplacement)
+                        insnTemplate->writebyte('+');
+                    else
+                        break;
+                }
 
-		if (operand->symbolDisplacement.dim) {
-		    fmt = "%a";
-		    addOperand("%", Arg_Pointer,
-			(Expression *) operand->symbolDisplacement.data[0],
-			asmcode);
+                if (operand->symbolDisplacement.dim) {
+                    fmt = "%a";
+                    addOperand("%", Arg_Pointer,
+                        (Expression *) operand->symbolDisplacement.data[0],
+                        asmcode);
 
-		    if (operand->constDisplacement)
-			insnTemplate->writebyte('+');
-		    else
-			// skip the addOperand(fmt, Arg_Integer...) below
-			break;
-		}
-		addOperand(fmt, Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
-		break;
-	    case Opr_Reg:
-		if (opInfo->operands[i] & Opr_Dest) {
-		    Reg clbr_reg = (Reg) regInfo[operand->reg].baseReg;
-		    if (clbr_reg != Reg_Invalid) {
-			if (clbr_reg < 32)
-			    stmt->regs |= (1 << clbr_reg);
-			else
-			    asmcode->moreRegs |= (1 << (clbr_reg - 32));
-		    }
-		}
-		if (opTakesLabel()/*opInfo->takesLabel()*/)
-		    insnTemplate->writebyte('*');
-		writeReg(operand->reg);
-		/*
-		insnTemplate->writestring("%%");
-		insnTemplate->writestring(regInfo[operand->reg].name);
-		*/
-		break;
-	    case Opr_Mem:
-		// better: use output operands for simple variable references
-		if ( (opInfo->operands[i] & Opr_Update) == Opr_Update) {
-		    mode = Mode_Update;
-		} else if (opInfo->operands[i] & Opr_Dest) {
-		    mode = Mode_Output;
-		} else {
-		    mode = Mode_Input;
-		}
+                    if (operand->constDisplacement)
+                        insnTemplate->writebyte('+');
+                    else
+                        // skip the addOperand(fmt, Arg_Integer...) below
+                        break;
+                }
+                addOperand(fmt, Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
+                break;
+            case Opr_Reg:
+                if (opInfo->operands[i] & Opr_Dest) {
+                    Reg clbr_reg = (Reg) regInfo[operand->reg].baseReg;
+                    if (clbr_reg != Reg_Invalid) {
+                        if (clbr_reg < 32)
+                            stmt->regs |= (1 << clbr_reg);
+                        else
+                            asmcode->moreRegs |= (1 << (clbr_reg - 32));
+                    }
+                }
+                if (opTakesLabel()/*opInfo->takesLabel()*/)
+                    insnTemplate->writebyte('*');
+                writeReg(operand->reg);
+                /*
+                insnTemplate->writestring("%%");
+                insnTemplate->writestring(regInfo[operand->reg].name);
+                */
+                break;
+            case Opr_Mem:
+                // better: use output operands for simple variable references
+                if ( (opInfo->operands[i] & Opr_Update) == Opr_Update) {
+                    mode = Mode_Update;
+                } else if (opInfo->operands[i] & Opr_Dest) {
+                    mode = Mode_Output;
+                } else {
+                    mode = Mode_Input;
+                }
 
-		use_star = opTakesLabel();//opInfo->takesLabel();
-		if (operand->segmentPrefix != Reg_Invalid) {
-		    writeReg(operand->segmentPrefix);
-		    insnTemplate->writebyte(':');
-		}
-		if (operand->symbolDisplacement.dim)
-		{
-		    Expression * e = (Expression *) operand->symbolDisplacement.data[0];
-		    Declaration * decl = 0;
+                use_star = opTakesLabel();//opInfo->takesLabel();
+                if (operand->segmentPrefix != Reg_Invalid) {
+                    writeReg(operand->segmentPrefix);
+                    insnTemplate->writebyte(':');
+                }
+                if (operand->symbolDisplacement.dim)
+                {
+                    Expression * e = (Expression *) operand->symbolDisplacement.data[0];
+                    Declaration * decl = 0;
 
-		    /* We are generating a memory reference, but the
-		       operand could be a floating point constant.  If this
-		       is the case, it will be turned into a const static
-		       VAR_DECL later in AsmStatement::toIR. */
+                    /* We are generating a memory reference, but the
+                       operand could be a floating point constant.  If this
+                       is the case, it will be turned into a const static
+                       VAR_DECL later in AsmStatement::toIR. */
 
-		    if (e->op == TOKvar)
-			decl = ((VarExp *) e)->var;
+                    if (e->op == TOKvar)
+                        decl = ((VarExp *) e)->var;
 
-		    /* The GCC will error (or just warn) on references to
-		       nonlocal vars, but it cannot catch closure vars. */
+                    /* The GCC will error (or just warn) on references to
+                       nonlocal vars, but it cannot catch closure vars. */
 
-		    /* TODO: Could allow this for the frame-relative
-		       case if it's a closure var.  We do not know if
-		       it is a closure var at this point, however.
-		       Just accept it for now and return false from
-		       getFrameRelativeOffset if it turns out not to be.
-		    */
-		    if (decl && !(decl->isDataseg() || decl->isCodeseg()) &&
-			decl->toParent2() != sc->func)
-			stmt->error("cannot access nonlocal variable %s", decl->toChars());
+                    /* TODO: Could allow this for the frame-relative
+                       case if it's a closure var.  We do not know if
+                       it is a closure var at this point, however.
+                       Just accept it for now and return false from
+                       getFrameRelativeOffset if it turns out not to be.
+                    */
+                    if (decl && !(decl->isDataseg() || decl->isCodeseg()) &&
+                        decl->toParent2() != sc->func)
+                        stmt->error("cannot access nonlocal variable %s", decl->toChars());
 
-		    if (operand->baseReg != Reg_Invalid &&
-			decl && ! decl->isDataseg())
-		    {
-			// Use the offset from frame pointer
+                    if (operand->baseReg != Reg_Invalid &&
+                        decl && ! decl->isDataseg())
+                    {
+                        // Use the offset from frame pointer
 
-			/* GCC doesn't give the front end access to stack offsets
-			   when optimization is turned on (3.x) or at all (4.x).
+                        /* GCC doesn't give the front end access to stack offsets
+                           when optimization is turned on (3.x) or at all (4.x).
 
-			   Try to convert var[EBP] (or var[ESP] for naked funcs) to
-			   a memory expression that does not require us to know
-			   the stack offset.
-			*/
+                           Try to convert var[EBP] (or var[ESP] for naked funcs) to
+                           a memory expression that does not require us to know
+                           the stack offset.
+                        */
 
-			if (operand->indexReg == Reg_Invalid &&
-			    decl->isVarDeclaration() &&
-			    ((operand->baseReg == Reg_EBP && ! sc->func->naked ) ||
-				(operand->baseReg == Reg_ESP && sc->func->naked)) )
-			{
-			    e = new AddrExp(0, e);
-			    e->type = decl->type->pointerTo();
+                        if (operand->indexReg == Reg_Invalid &&
+                            decl->isVarDeclaration() &&
+                            ((operand->baseReg == Reg_EBP && ! sc->func->naked ) ||
+                                (operand->baseReg == Reg_ESP && sc->func->naked)) )
+                        {
+                            e = new AddrExp(0, e);
+                            e->type = decl->type->pointerTo();
 
-			    /* DMD uses the same frame offsets for naked functions. */
-			    if (sc->func->naked)
-				operand->constDisplacement += 4;
+                            /* DMD uses the same frame offsets for naked functions. */
+                            if (sc->func->naked)
+                                operand->constDisplacement += 4;
 
-			    if (operand->constDisplacement) {
-				e = new AddExp(0, e,
-				    new IntegerExp(0, operand->constDisplacement,
-					Type::tint32));
-				e->type = decl->type->pointerTo();
-			    }
-			    e = new PtrExp(0, e);
-			    e->type = decl->type;
+                            if (operand->constDisplacement) {
+                                e = new AddExp(0, e,
+                                    new IntegerExp(0, operand->constDisplacement,
+                                        Type::tint32));
+                                e->type = decl->type->pointerTo();
+                            }
+                            e = new PtrExp(0, e);
+                            e->type = decl->type;
 
-			    operand->constDisplacement = 0;
-			    operand->baseReg = Reg_Invalid;
+                            operand->constDisplacement = 0;
+                            operand->baseReg = Reg_Invalid;
 
-			    addOperand(fmt, Arg_Memory, e, asmcode, mode);
+                            addOperand(fmt, Arg_Memory, e, asmcode, mode);
 
-			} else {
-			    addOperand("%a", Arg_FrameRelative, e, asmcode);
-			}
-			if (opInfo->operands[i] & Opr_Dest)
-			    asmcode->clobbersMemory = 1;
-		    }
-		    else
-		    {
-			// Plain memory reference to variable
+                        } else {
+                            addOperand("%a", Arg_FrameRelative, e, asmcode);
+                        }
+                        if (opInfo->operands[i] & Opr_Dest)
+                            asmcode->clobbersMemory = 1;
+                    }
+                    else
+                    {
+                        // Plain memory reference to variable
 
-			/* If in a reg, DMD moves to memory.. even with -O, so we'll do the same
-			   by always using the "m" contraint.
+                        /* If in a reg, DMD moves to memory.. even with -O, so we'll do the same
+                           by always using the "m" contraint.
 
-			   In order to get the correct output for function and label symbols,
-			   the %an format must be used with the "p" constraint.
-			*/
-			if (operand->constDisplacement) {
-			    addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
-			    insnTemplate->writebyte('+');
-			    operand->constDisplacement = 0;
-			}
+                           In order to get the correct output for function and label symbols,
+                           the %an format must be used with the "p" constraint.
+                        */
+                        if (operand->constDisplacement) {
+                            addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
+                            insnTemplate->writebyte('+');
+                            operand->constDisplacement = 0;
+                        }
 
-			if (isDollar(e)) {
-			    unsigned lbl_num = ++d_priv_asm_label_serial;
-			    addLabel(lbl_num);
-			    asmcode->dollarLabel = lbl_num; // could make the dollar label part of the same asm..
-			} else if (e->op == TOKdsymbol) {
-			    LabelDsymbol * lbl = (LabelDsymbol *) ((DsymbolExp *) e)->s;
-			    if (! lbl->asmLabelNum)
-				lbl->asmLabelNum = ++d_priv_asm_label_serial;
+                        if (isDollar(e)) {
+                            unsigned lbl_num = ++d_priv_asm_label_serial;
+                            addLabel(lbl_num);
+                            asmcode->dollarLabel = lbl_num; // could make the dollar label part of the same asm..
+                        } else if (e->op == TOKdsymbol) {
+                            LabelDsymbol * lbl = (LabelDsymbol *) ((DsymbolExp *) e)->s;
+                            if (! lbl->asmLabelNum)
+                                lbl->asmLabelNum = ++d_priv_asm_label_serial;
 
-			    use_star = false;
-			    addLabel(lbl->asmLabelNum);
-			} else if ((decl && decl->isCodeseg())) { // if function or label
-			    use_star = false;
-			    addOperand("%a", Arg_Pointer, e, asmcode);
-			} else {
-			    if (use_star) {
-				insnTemplate->writebyte('*');
-				use_star = false;
-			    }
-			    addOperand(fmt, Arg_Memory, e, asmcode, mode);
-			}
-		    }
-		}
-		if (use_star)
-		    insnTemplate->writebyte('*');
-		if (operand->constDisplacement)
-		    addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
+                            use_star = false;
+                            addLabel(lbl->asmLabelNum);
+                        } else if ((decl && decl->isCodeseg())) { // if function or label
+                            use_star = false;
+                            addOperand("%a", Arg_Pointer, e, asmcode);
+                        } else {
+                            if (use_star) {
+                                insnTemplate->writebyte('*');
+                                use_star = false;
+                            }
+                            addOperand(fmt, Arg_Memory, e, asmcode, mode);
+                        }
+                    }
+                }
+                if (use_star)
+                    insnTemplate->writebyte('*');
+                if (operand->constDisplacement)
+                    addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
 
-		if (operand->segmentPrefix != Reg_Invalid) {
-		    if (opInfo->operands[i] & Opr_Dest)
-			asmcode->clobbersMemory = 1;
-		}
-		if (operand->baseReg != Reg_Invalid || operand->indexReg != Reg_Invalid) {
-		    insnTemplate->writebyte('(');
-		    if (operand->baseReg != Reg_Invalid)
-			writeReg(operand->baseReg);
-		    if (operand->indexReg != Reg_Invalid) {
-			insnTemplate->writebyte(',');
-			writeReg(operand->indexReg);
-			if (operand->scale) {
-			    insnTemplate->printf(",%d", operand->scale);
-			}
-		    }
-		    insnTemplate->writebyte(')');
-		    if (opInfo->operands[i] & Opr_Dest)
-			asmcode->clobbersMemory = 1;
-		}
-		break;
-	    case Opr_Invalid:
-		return false;
-	    }
-	}
+                if (operand->segmentPrefix != Reg_Invalid) {
+                    if (opInfo->operands[i] & Opr_Dest)
+                        asmcode->clobbersMemory = 1;
+                }
+                if (operand->baseReg != Reg_Invalid || operand->indexReg != Reg_Invalid) {
+                    insnTemplate->writebyte('(');
+                    if (operand->baseReg != Reg_Invalid)
+                        writeReg(operand->baseReg);
+                    if (operand->indexReg != Reg_Invalid) {
+                        insnTemplate->writebyte(',');
+                        writeReg(operand->indexReg);
+                        if (operand->scale) {
+                            insnTemplate->printf(",%d", operand->scale);
+                        }
+                    }
+                    insnTemplate->writebyte(')');
+                    if (opInfo->operands[i] & Opr_Dest)
+                        asmcode->clobbersMemory = 1;
+                }
+                break;
+            case Opr_Invalid:
+                return false;
+            }
+        }
 
-	asmcode->insnTemplateLen = insnTemplate->offset;
-	asmcode->insnTemplate = (char*) insnTemplate->extractData();
-	return true;
+        asmcode->insnTemplateLen = insnTemplate->offset;
+        asmcode->insnTemplate = (char*) insnTemplate->extractData();
+        return true;
     }
 
     bool isIntExp(Expression * exp) {
-	if (exp->op == TOKint64)
-	    return 1;
-	if (exp->op == TOKvar) {
-	    Declaration * v = ((VarExp *) exp)->var;
-	    if (v->isConst() && v->type->isintegral())
-		return 1;
-	}
-	return 0;
+        if (exp->op == TOKint64)
+            return 1;
+        if (exp->op == TOKvar) {
+            Declaration * v = ((VarExp *) exp)->var;
+            if (v->isConst() && v->type->isintegral())
+                return 1;
+        }
+        return 0;
     }
     bool isRegExp(Expression * exp) { return exp->op == TOKmod; } // ewww.%%
     bool isLocalSize(Expression * exp) {
-	// cleanup: make a static var
-	return exp->op == TOKidentifier && ((IdentifierExp *) exp)->ident == Id::__LOCAL_SIZE;
+        // cleanup: make a static var
+        return exp->op == TOKidentifier && ((IdentifierExp *) exp)->ident == Id::__LOCAL_SIZE;
     }
     bool isDollar(Expression * exp) {
-	return exp->op == TOKidentifier && ((IdentifierExp *) exp)->ident == Id::__dollar;
+        return exp->op == TOKidentifier && ((IdentifierExp *) exp)->ident == Id::__dollar;
     }
 
     Expression * newRegExp(int regno) {
-	IntegerExp * e = new IntegerExp(regno);
-	e->op = TOKmod;
-	return e;
+        IntegerExp * e = new IntegerExp(regno);
+        e->op = TOKmod;
+        return e;
     }
 
     Expression * newIntExp(int v /* %% type */) {
-	// Only handles 32-bit numbers as this is IA-32.
-	return new IntegerExp(stmt->loc, v, Type::tint32);
+        // Only handles 32-bit numbers as this is IA-32.
+        return new IntegerExp(stmt->loc, v, Type::tint32);
     }
 
     void slotExp(Expression * exp) {
-	/*
-	  if offset, make a note
+        /*
+          if offset, make a note
 
-	  if integer, add to immediate
-	  if reg:
-	      if not in bracket, set reg (else error)
-	      if in bracket:
-		 if not base, set base
-		 if not index, set index
-		 else, error
-	  if symbol:
-	    set symbol field
-	 */
+          if integer, add to immediate
+          if reg:
+              if not in bracket, set reg (else error)
+              if in bracket:
+                 if not base, set base
+                 if not index, set index
+                 else, error
+          if symbol:
+            set symbol field
+         */
 
-	bool is_offset = false;
-	if (exp->op == TOKaddress) {
-	    exp = ((AddrExp *) exp)->e1;
-	    is_offset = true;
-	}
+        bool is_offset = false;
+        if (exp->op == TOKaddress) {
+            exp = ((AddrExp *) exp)->e1;
+            is_offset = true;
+        }
 
-	if (isIntExp(exp)) {
-	    if (is_offset)
-		invalidExpression();
-	    operand->constDisplacement += exp->toInteger();
-	    if (! operand->inBracket)
-		operand->hasNumber = 1;
-	} else if (isRegExp(exp)) {
-	    if (is_offset)
-		invalidExpression();
-	    if (! operand->inBracket) {
-		if (operand->reg == Reg_Invalid)
-		    operand->reg = (Reg) exp->toInteger();
-		else
-		    stmt->error("too many registers in operand (use brackets)");
-	    } else {
-		if (operand->baseReg == Reg_Invalid)
-		    operand->baseReg = (Reg) exp->toInteger();
-		else if (operand->indexReg == Reg_Invalid) {
-		    operand->indexReg = (Reg) exp->toInteger();
-		    operand->scale = 1;
-		} else {
-		    stmt->error("too many registers memory operand");
-		}
-	    }
-	} else if (exp->op == TOKvar) {
-	    VarDeclaration * v = ((VarExp *) exp)->var->isVarDeclaration();
+        if (isIntExp(exp)) {
+            if (is_offset)
+                invalidExpression();
+            operand->constDisplacement += exp->toInteger();
+            if (! operand->inBracket)
+                operand->hasNumber = 1;
+        } else if (isRegExp(exp)) {
+            if (is_offset)
+                invalidExpression();
+            if (! operand->inBracket) {
+                if (operand->reg == Reg_Invalid)
+                    operand->reg = (Reg) exp->toInteger();
+                else
+                    stmt->error("too many registers in operand (use brackets)");
+            } else {
+                if (operand->baseReg == Reg_Invalid)
+                    operand->baseReg = (Reg) exp->toInteger();
+                else if (operand->indexReg == Reg_Invalid) {
+                    operand->indexReg = (Reg) exp->toInteger();
+                    operand->scale = 1;
+                } else {
+                    stmt->error("too many registers memory operand");
+                }
+            }
+        } else if (exp->op == TOKvar) {
+            VarDeclaration * v = ((VarExp *) exp)->var->isVarDeclaration();
 
-	    if (v && v->storage_class & STCfield) {
-		operand->constDisplacement += v->offset;
-		if (! operand->inBracket)
-		    operand->hasNumber = 1;
-	    } else {
-		if (v && v->type->isscalar())
-		{
-		    // DMD doesn't check Tcomplex*, and counts Tcomplex32 as Tfloat64
-		    TY ty = v->type->toBasetype()->ty;
-		    operand->dataSizeHint = ty == Tfloat80 || ty == Timaginary80 ?
-			Extended_Ptr : (PtrType) v->type->size(0);
-		}
+            if (v && v->storage_class & STCfield) {
+                operand->constDisplacement += v->offset;
+                if (! operand->inBracket)
+                    operand->hasNumber = 1;
+            } else {
+                if (v && v->type->isscalar())
+                {
+                    // DMD doesn't check Tcomplex*, and counts Tcomplex32 as Tfloat64
+                    TY ty = v->type->toBasetype()->ty;
+                    operand->dataSizeHint = ty == Tfloat80 || ty == Timaginary80 ?
+                        Extended_Ptr : (PtrType) v->type->size(0);
+                }
 
-		if (! operand->symbolDisplacement.dim) {
-		    if (is_offset && ! operand->inBracket)
-			operand->isOffset = 1;
-		    operand->symbolDisplacement.push( exp );
-		} else {
-		    stmt->error("too many symbols in operand");
-		}
-	    }
-	} else if (exp->op == TOKidentifier || exp->op == TOKdsymbol) {
-	    // %% localsize could be treated as a simple constant..
-	    // change to addSymbolDisp(e)
-	    if (! operand->symbolDisplacement.dim) {
-		operand->symbolDisplacement.push( exp );
-	    } else {
-		stmt->error("too many symbols in operand");
-	    }
-	} else if (exp->op == TOKfloat64) {
-	    if (exp->type && exp->type->isscalar())
-	    {
-		// DMD doesn't check Tcomplex*, and counts Tcomplex32 as Tfloat64
-		TY ty = exp->type->toBasetype()->ty;
-		operand->dataSizeHint = ty == Tfloat80 || ty == Timaginary80 ?
-		    Extended_Ptr : (PtrType) exp->type->size(0);
-	    }
-	    // Will be converted to a VAR_DECL in AsmStatement::toIR
-	    operand->symbolDisplacement.push( exp );
-	} else if (exp == Handled) {
-	    // nothing
-	} else {
-	    stmt->error("invalid operand");
-	}
+                if (! operand->symbolDisplacement.dim) {
+                    if (is_offset && ! operand->inBracket)
+                        operand->isOffset = 1;
+                    operand->symbolDisplacement.push( exp );
+                } else {
+                    stmt->error("too many symbols in operand");
+                }
+            }
+        } else if (exp->op == TOKidentifier || exp->op == TOKdsymbol) {
+            // %% localsize could be treated as a simple constant..
+            // change to addSymbolDisp(e)
+            if (! operand->symbolDisplacement.dim) {
+                operand->symbolDisplacement.push( exp );
+            } else {
+                stmt->error("too many symbols in operand");
+            }
+        } else if (exp->op == TOKfloat64) {
+            if (exp->type && exp->type->isscalar())
+            {
+                // DMD doesn't check Tcomplex*, and counts Tcomplex32 as Tfloat64
+                TY ty = exp->type->toBasetype()->ty;
+                operand->dataSizeHint = ty == Tfloat80 || ty == Timaginary80 ?
+                    Extended_Ptr : (PtrType) exp->type->size(0);
+            }
+            // Will be converted to a VAR_DECL in AsmStatement::toIR
+            operand->symbolDisplacement.push( exp );
+        } else if (exp == Handled) {
+            // nothing
+        } else {
+            stmt->error("invalid operand");
+        }
     }
 
     void invalidExpression() {
-	// %% report operand number
-	stmt->error("invalid expression");
+        // %% report operand number
+        stmt->error("invalid expression");
     }
 
     Expression * intOp(TOK op, Expression * e1, Expression * e2) {
-	Expression * e;
-	if (isIntExp(e1) && (! e2 || isIntExp(e2))) {
-	    switch (op) {
-	    case TOKadd:
-		if (e2)
-		    e = new AddExp(stmt->loc, e1, e2);
-		else
-		    e = e1;
-		break;
-	    case TOKmin:
-		if (e2)
-		    e = new MinExp(stmt->loc, e1, e2);
-		else
-		    e = new NegExp(stmt->loc, e1);
-		break;
-	    case TOKmul:
-		e = new MulExp(stmt->loc, e1, e2);
-		break;
-	    case TOKdiv:
-		e = new DivExp(stmt->loc, e1, e2);
-		break;
-	    case TOKmod:
-		e = new ModExp(stmt->loc, e1, e2);
-		break;
-	    case TOKshl:
-		e = new ShlExp(stmt->loc, e1, e2);
-		break;
-	    case TOKshr:
-		e = new ShrExp(stmt->loc, e1, e2);
-		break;
-	    case TOKushr:
-		e = new UshrExp(stmt->loc, e1, e2);
-		break;
-	    case TOKnot:
-		e = new NotExp(stmt->loc, e1);
-		break;
-	    case TOKtilde:
-		e = new ComExp(stmt->loc, e1);
-		break;
-	    default:
-		assert(0);
-	    }
-	    e = e->semantic(sc);
-	    return e->optimize(WANTvalue | WANTinterpret);
-	} else {
-	    stmt->error("expected integer operand(s) for '%s'", Token::tochars[op]);
-	    return newIntExp(0);
-	}
+        Expression * e;
+        if (isIntExp(e1) && (! e2 || isIntExp(e2))) {
+            switch (op) {
+            case TOKadd:
+                if (e2)
+                    e = new AddExp(stmt->loc, e1, e2);
+                else
+                    e = e1;
+                break;
+            case TOKmin:
+                if (e2)
+                    e = new MinExp(stmt->loc, e1, e2);
+                else
+                    e = new NegExp(stmt->loc, e1);
+                break;
+            case TOKmul:
+                e = new MulExp(stmt->loc, e1, e2);
+                break;
+            case TOKdiv:
+                e = new DivExp(stmt->loc, e1, e2);
+                break;
+            case TOKmod:
+                e = new ModExp(stmt->loc, e1, e2);
+                break;
+            case TOKshl:
+                e = new ShlExp(stmt->loc, e1, e2);
+                break;
+            case TOKshr:
+                e = new ShrExp(stmt->loc, e1, e2);
+                break;
+            case TOKushr:
+                e = new UshrExp(stmt->loc, e1, e2);
+                break;
+            case TOKnot:
+                e = new NotExp(stmt->loc, e1);
+                break;
+            case TOKtilde:
+                e = new ComExp(stmt->loc, e1);
+                break;
+            default:
+                assert(0);
+            }
+            e = e->semantic(sc);
+            return e->optimize(WANTvalue | WANTinterpret);
+        } else {
+            stmt->error("expected integer operand(s) for '%s'", Token::tochars[op]);
+            return newIntExp(0);
+        }
     }
 
     void parseOperand() {
-	Expression * exp = parseAsmExp();
-	slotExp(exp);
-	if (isRegExp(exp))
-	    operand->dataSize = (PtrType) regInfo[exp->toInteger()].size;
+        Expression * exp = parseAsmExp();
+        slotExp(exp);
+        if (isRegExp(exp))
+            operand->dataSize = (PtrType) regInfo[exp->toInteger()].size;
     }
 
     Expression * parseAsmExp() {
-	return parseShiftExp();
+        return parseShiftExp();
     }
 
     Expression * parseShiftExp() {
-	Expression * e1 = parseAddExp();
-	Expression * e2;
+        Expression * e1 = parseAddExp();
+        Expression * e2;
 
-	while (1) {
-	    TOK tv = token->value;
-	    switch (tv) {
-	    case TOKshl:
-	    case TOKshr:
-	    case TOKushr:
-		nextToken();
-		e2 = parseAddExp();
-		e1 = intOp(tv, e1, e2);
-		continue;
-	    default:
-		break;
-	    }
-	    break;
-	}
-	return e1;
+        while (1) {
+            TOK tv = token->value;
+            switch (tv) {
+            case TOKshl:
+            case TOKshr:
+            case TOKushr:
+                nextToken();
+                e2 = parseAddExp();
+                e1 = intOp(tv, e1, e2);
+                continue;
+            default:
+                break;
+            }
+            break;
+        }
+        return e1;
     }
 
     Expression * parseAddExp() {
-	Expression * e1 = parseMultExp();
-	Expression * e2;
+        Expression * e1 = parseMultExp();
+        Expression * e2;
 
-	while (1) {
-	    TOK tv = token->value;
-	    switch (tv) {
-	    case TOKadd:
-		nextToken();
-		e2 = parseMultExp();
-		if (isIntExp(e1) && isIntExp(e2))
-		    e1 = intOp(tv, e1, e2);
-		else {
-		    slotExp(e1);
-		    slotExp(e2);
-		    e1 = Handled;
-		}
-		continue;
-	    case TOKmin:
-		// Note: no support for symbol address difference
-		nextToken();
-		e2 = parseMultExp();
-		if (isIntExp(e1) && isIntExp(e2))
-		    e1 = intOp(tv, e1, e2);
-		else {
-		    slotExp(e1);
-		    e2 = intOp(TOKmin, e2, NULL); // verifies e2 is an int
-		    slotExp(e2);
-		    e1 = Handled;
-		}
-		continue;
-	    default:
-		break;
-	    }
-	    break;
-	}
-	return e1;
+        while (1) {
+            TOK tv = token->value;
+            switch (tv) {
+            case TOKadd:
+                nextToken();
+                e2 = parseMultExp();
+                if (isIntExp(e1) && isIntExp(e2))
+                    e1 = intOp(tv, e1, e2);
+                else {
+                    slotExp(e1);
+                    slotExp(e2);
+                    e1 = Handled;
+                }
+                continue;
+            case TOKmin:
+                // Note: no support for symbol address difference
+                nextToken();
+                e2 = parseMultExp();
+                if (isIntExp(e1) && isIntExp(e2))
+                    e1 = intOp(tv, e1, e2);
+                else {
+                    slotExp(e1);
+                    e2 = intOp(TOKmin, e2, NULL); // verifies e2 is an int
+                    slotExp(e2);
+                    e1 = Handled;
+                }
+                continue;
+            default:
+                break;
+            }
+            break;
+        }
+        return e1;
     }
 
     bool tryScale(Expression * e1, Expression * e2) {
-	Expression * et;
-	if (isIntExp(e1) && isRegExp(e2)) {
-	    et = e1;
-	    e1 = e2;
-	    e2 = et;
-	    goto do_scale;
-	} else if (isRegExp(e1) && isIntExp(e2)) {
-	do_scale:
-	    if (! operand->inBracket) {
-		invalidExpression(); // maybe should allow, e.g. DS:EBX+EAX*4
-	    }
+        Expression * et;
+        if (isIntExp(e1) && isRegExp(e2)) {
+            et = e1;
+            e1 = e2;
+            e2 = et;
+            goto do_scale;
+        } else if (isRegExp(e1) && isIntExp(e2)) {
+        do_scale:
+            if (! operand->inBracket) {
+                invalidExpression(); // maybe should allow, e.g. DS:EBX+EAX*4
+            }
 
-	    if (operand->scale || operand->indexReg != Reg_Invalid) {
-		invalidExpression();
-		return true;
-	    }
+            if (operand->scale || operand->indexReg != Reg_Invalid) {
+                invalidExpression();
+                return true;
+            }
 
-	    operand->indexReg = (Reg) e1->toInteger();
-	    operand->scale = e2->toInteger();
-	    switch (operand->scale) {
-	    case 1:
-	    case 2:
-	    case 4:
-	    case 8:
-		// ok; do nothing
-		break;
-	    default:
-		stmt->error("invalid index register scale '%d'", operand->scale);
-		return true;
-	    }
+            operand->indexReg = (Reg) e1->toInteger();
+            operand->scale = e2->toInteger();
+            switch (operand->scale) {
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+                // ok; do nothing
+                break;
+            default:
+                stmt->error("invalid index register scale '%d'", operand->scale);
+                return true;
+            }
 
-	    return true;
-	}
-	return false;
+            return true;
+        }
+        return false;
     }
 
     Expression * parseMultExp() {
-	Expression * e1 = parseBrExp();
-	Expression * e2;
+        Expression * e1 = parseBrExp();
+        Expression * e2;
 
-	while (1) {
-	    TOK tv = token->value;
-	    switch (tv) {
-	    case TOKmul:
-		nextToken();
-		e2 = parseMultExp();
-		if (isIntExp(e1) && isIntExp(e2))
-		    e1 = intOp(tv, e1, e2);
-		else if (tryScale(e1,e2))
-		    e1 = Handled;
-		else
-		    invalidExpression();
-		continue;
-	    case TOKdiv:
-	    case TOKmod:
-		nextToken();
-		e2 = parseMultExp();
-		e1 = intOp(tv, e1, e2);
-		continue;
-	    default:
-		break;
-	    }
-	    break;
-	}
-	return e1;
+        while (1) {
+            TOK tv = token->value;
+            switch (tv) {
+            case TOKmul:
+                nextToken();
+                e2 = parseMultExp();
+                if (isIntExp(e1) && isIntExp(e2))
+                    e1 = intOp(tv, e1, e2);
+                else if (tryScale(e1,e2))
+                    e1 = Handled;
+                else
+                    invalidExpression();
+                continue;
+            case TOKdiv:
+            case TOKmod:
+                nextToken();
+                e2 = parseMultExp();
+                e1 = intOp(tv, e1, e2);
+                continue;
+            default:
+                break;
+            }
+            break;
+        }
+        return e1;
     }
 
     Expression * parseBrExp() {
-	// %% check (why is bracket lower precends..)
-	// 3+4[eax] -> 3 + (4 [EAX]) ..
+        // %% check (why is bracket lower precends..)
+        // 3+4[eax] -> 3 + (4 [EAX]) ..
 
-	// only one bracked allowed, so this doesn't quite handle
-	// the spec'd syntax
-	Expression * e;
+        // only one bracked allowed, so this doesn't quite handle
+        // the spec'd syntax
+        Expression * e;
 
-	if (token->value == TOKlbracket)
-	    e = Handled;
-	else
-	    e = parseUnaExp();
+        if (token->value == TOKlbracket)
+            e = Handled;
+        else
+            e = parseUnaExp();
 
-	// DMD allows multiple bracket expressions.
-	while (token->value == TOKlbracket) {
-	    nextToken();
+        // DMD allows multiple bracket expressions.
+        while (token->value == TOKlbracket) {
+            nextToken();
 
-	    operand->inBracket = operand->hasBracket = 1;
-	    slotExp(parseAsmExp());
-	    operand->inBracket = 0;
+            operand->inBracket = operand->hasBracket = 1;
+            slotExp(parseAsmExp());
+            operand->inBracket = 0;
 
-	    if (token->value == TOKrbracket)
-		nextToken();
-	    else
-		stmt->error("missing ']'");
-	}
+            if (token->value == TOKrbracket)
+                nextToken();
+            else
+                stmt->error("missing ']'");
+        }
 
-	return e;
+        return e;
     }
 
     PtrType isPtrType(Token * tok) {
-	switch (tok->value) {
-	case TOKint8: return Byte_Ptr;
-	case TOKint16: return Short_Ptr;
-	case TOKint32: return Int_Ptr;
-	    // 'long ptr' isn't accepted?
-	case TOKfloat32: return Float_Ptr;
-	case TOKfloat64: return Double_Ptr;
-	case TOKfloat80: return Extended_Ptr;
-	case TOKidentifier:
-	    for (int i = 0; i < N_PtrNames; i++)
-		if (tok->ident == ptrTypeIdentTable[i])
-		    return ptrTypeValueTable[i];
-	    break;
-	default:
-	    break;
-	}
-	return Default_Ptr;
+        switch (tok->value) {
+        case TOKint8: return Byte_Ptr;
+        case TOKint16: return Short_Ptr;
+        case TOKint32: return Int_Ptr;
+            // 'long ptr' isn't accepted?
+        case TOKfloat32: return Float_Ptr;
+        case TOKfloat64: return Double_Ptr;
+        case TOKfloat80: return Extended_Ptr;
+        case TOKidentifier:
+            for (int i = 0; i < N_PtrNames; i++)
+                if (tok->ident == ptrTypeIdentTable[i])
+                    return ptrTypeValueTable[i];
+            break;
+        default:
+            break;
+        }
+        return Default_Ptr;
     }
 
     Expression * parseUnaExp() {
-	Expression * e = NULL;
-	PtrType ptr_type;
+        Expression * e = NULL;
+        PtrType ptr_type;
 
-	// First, check for type prefix.
-	if (token->value != TOKeof &&
-	    peekToken()->value == TOKidentifier &&
-	    peekToken()->ident == Id::ptr) {
+        // First, check for type prefix.
+        if (token->value != TOKeof &&
+            peekToken()->value == TOKidentifier &&
+            peekToken()->ident == Id::ptr) {
 
-	    ptr_type = isPtrType(token);
-	    if (ptr_type != Default_Ptr) {
-		if (operand->dataSize == Default_Ptr)
-		    operand->dataSize = ptr_type;
-		else
-		    stmt->error("multiple specifications of operand size");
-	    } else
-		stmt->error("unknown operand size '%s'", token->toChars());
-	    nextToken();
-	    nextToken();
-	    return parseAsmExp();
-	}
+            ptr_type = isPtrType(token);
+            if (ptr_type != Default_Ptr) {
+                if (operand->dataSize == Default_Ptr)
+                    operand->dataSize = ptr_type;
+                else
+                    stmt->error("multiple specifications of operand size");
+            } else
+                stmt->error("unknown operand size '%s'", token->toChars());
+            nextToken();
+            nextToken();
+            return parseAsmExp();
+        }
 
-	TOK tv = token->value;
-	switch (tv) {
-	case TOKidentifier:
-	    if (token->ident == ident_seg) {
-		nextToken();
-		stmt->error("'seg' not supported");
-		e = parseAsmExp();
-	    } else if (token->ident == Id::offset ||
-		       token->ident == Id::offsetof) {
-		if (token->ident == Id::offset && ! global.params.useDeprecated)
-		    stmt->error("offset deprecated, use offsetof");
-		nextToken();
-		e = parseAsmExp();
-		e = new AddrExp(stmt->loc, e);
-	    } else {
-		// primary exp
-		break;
-	    }
-	    return e;
-	case TOKadd:
-	case TOKmin:
-	case TOKnot:
-	case TOKtilde:
-	    nextToken();
-	    e = parseUnaExp();
-	    return intOp(tv, e, NULL);
-	default:
-	    // primary exp
-	    break;
-	}
-	return parsePrimaryExp();
+        TOK tv = token->value;
+        switch (tv) {
+        case TOKidentifier:
+            if (token->ident == ident_seg) {
+                nextToken();
+                stmt->error("'seg' not supported");
+                e = parseAsmExp();
+            } else if (token->ident == Id::offset ||
+                       token->ident == Id::offsetof) {
+                if (token->ident == Id::offset && ! global.params.useDeprecated)
+                    stmt->error("offset deprecated, use offsetof");
+                nextToken();
+                e = parseAsmExp();
+                e = new AddrExp(stmt->loc, e);
+            } else {
+                // primary exp
+                break;
+            }
+            return e;
+        case TOKadd:
+        case TOKmin:
+        case TOKnot:
+        case TOKtilde:
+            nextToken();
+            e = parseUnaExp();
+            return intOp(tv, e, NULL);
+        default:
+            // primary exp
+            break;
+        }
+        return parsePrimaryExp();
     }
 
     Expression * parsePrimaryExp() {
-	Expression * e;
-	Identifier * ident = NULL;
+        Expression * e;
+        Identifier * ident = NULL;
 
-	switch (token->value) {
-	case TOKint32v:
-	case TOKuns32v:
-	case TOKint64v:
-	case TOKuns64v:
-	    // semantic here?
-	    // %% for tok64 really should use 64bit type
-	    e = new IntegerExp(stmt->loc, token->uns64value, Type::tint32);
-	    nextToken();
-	    break;
-	case TOKfloat32v:
-	case TOKfloat64v:
-	case TOKfloat80v:
-	    // %% need different types?
-	    e = new RealExp(stmt->loc, token->float80value, Type::tfloat80);
-	    nextToken();
-	    break;
-	case TOKidentifier:
-	    {
-		ident = token->ident;
-		nextToken();
+        switch (token->value) {
+        case TOKint32v:
+        case TOKuns32v:
+        case TOKint64v:
+        case TOKuns64v:
+            // semantic here?
+            // %% for tok64 really should use 64bit type
+            e = new IntegerExp(stmt->loc, token->uns64value, Type::tint32);
+            nextToken();
+            break;
+        case TOKfloat32v:
+        case TOKfloat64v:
+        case TOKfloat80v:
+            // %% need different types?
+            e = new RealExp(stmt->loc, token->float80value, Type::tfloat80);
+            nextToken();
+            break;
+        case TOKidentifier:
+            {
+                ident = token->ident;
+                nextToken();
 
-		if (ident == Id::__LOCAL_SIZE) {
-		    return new IdentifierExp(stmt->loc, ident);
-		} else if (ident == Id::__dollar) {
-		do_dollar:
-		    return new IdentifierExp(stmt->loc, ident);
-		} else {
-		    e = new IdentifierExp(stmt->loc, ident);
-		}
+                if (ident == Id::__LOCAL_SIZE) {
+                    return new IdentifierExp(stmt->loc, ident);
+                } else if (ident == Id::__dollar) {
+                do_dollar:
+                    return new IdentifierExp(stmt->loc, ident);
+                } else {
+                    e = new IdentifierExp(stmt->loc, ident);
+                }
 
-		// If this is more than one component ref, it gets complicated: *(&Field + n)
-		// maybe just do one step at a time..
-		// simple case is Type.f -> VarDecl(field)
-		// actually, DMD only supports on level...
-		// X.y+Y.z[EBX] is supported, tho..
-		// %% doesn't handle properties (check%%)
-		while (token->value == TOKdot) {
-		    nextToken();
-		    if (token->value == TOKidentifier) {
-			e = new DotIdExp(stmt->loc, e, token->ident);
-			nextToken();
-		    } else {
-			stmt->error("expected identifier");
-			return Handled;
-		    }
-		}
+                // If this is more than one component ref, it gets complicated: *(&Field + n)
+                // maybe just do one step at a time..
+                // simple case is Type.f -> VarDecl(field)
+                // actually, DMD only supports on level...
+                // X.y+Y.z[EBX] is supported, tho..
+                // %% doesn't handle properties (check%%)
+                while (token->value == TOKdot) {
+                    nextToken();
+                    if (token->value == TOKidentifier) {
+                        e = new DotIdExp(stmt->loc, e, token->ident);
+                        nextToken();
+                    } else {
+                        stmt->error("expected identifier");
+                        return Handled;
+                    }
+                }
 
-		// check for reg first then dotexp is an error?
-		if (e->op == TOKidentifier) {
-		    for (int i = 0; i < N_Regs; i++) {
-			if (ident == regInfo[i].ident) {
-			    if ( (Reg) i == Reg_ST && token->value == TOKlparen) {
-				nextToken();
-				switch (token->value) {
-				case TOKint32v: case TOKuns32v:
-				case TOKint64v: case TOKuns64v:
-				    if (token->uns64value < 8)
-					e = newRegExp( (Reg) (Reg_ST + token->uns64value) );
-				    else {
-					stmt->error("invalid floating point register index");
-					e = Handled;
-				    }
-				    nextToken();
-				    if (token->value == TOKrparen)
-					nextToken();
-				    else
-					stmt->error("expected ')'");
-				    return e;
-				default:
-				    break;
-				}
-				invalidExpression();
-				return Handled;
-			    } else if (token->value == TOKcolon) {
-				nextToken();
-				if (operand->segmentPrefix != Reg_Invalid)
-				    stmt->error("too many segment prefixes");
-				else if (i >= Reg_CS && i <= Reg_GS)
-				    operand->segmentPrefix = (Reg) i;
-				else
-				    stmt->error("'%s' is not a segment register", ident->string);
-				return parseAsmExp();
-			    } else {
-				return newRegExp( (Reg) i );
-			    }
-			}
-		    }
-		}
+                // check for reg first then dotexp is an error?
+                if (e->op == TOKidentifier) {
+                    for (int i = 0; i < N_Regs; i++) {
+                        if (ident == regInfo[i].ident) {
+                            if ( (Reg) i == Reg_ST && token->value == TOKlparen) {
+                                nextToken();
+                                switch (token->value) {
+                                case TOKint32v: case TOKuns32v:
+                                case TOKint64v: case TOKuns64v:
+                                    if (token->uns64value < 8)
+                                        e = newRegExp( (Reg) (Reg_ST + token->uns64value) );
+                                    else {
+                                        stmt->error("invalid floating point register index");
+                                        e = Handled;
+                                    }
+                                    nextToken();
+                                    if (token->value == TOKrparen)
+                                        nextToken();
+                                    else
+                                        stmt->error("expected ')'");
+                                    return e;
+                                default:
+                                    break;
+                                }
+                                invalidExpression();
+                                return Handled;
+                            } else if (token->value == TOKcolon) {
+                                nextToken();
+                                if (operand->segmentPrefix != Reg_Invalid)
+                                    stmt->error("too many segment prefixes");
+                                else if (i >= Reg_CS && i <= Reg_GS)
+                                    operand->segmentPrefix = (Reg) i;
+                                else
+                                    stmt->error("'%s' is not a segment register", ident->string);
+                                return parseAsmExp();
+                            } else {
+                                return newRegExp( (Reg) i );
+                            }
+                        }
+                    }
+                }
 
-		if (opTakesLabel()/*opInfo->takesLabel()*/ && e->op == TOKidentifier) {
-		    // DMD uses labels secondarily to other symbols, so check
-		    // if IdentifierExp::semantic won't find anything.
-		    Dsymbol *scopesym;
+                if (opTakesLabel()/*opInfo->takesLabel()*/ && e->op == TOKidentifier) {
+                    // DMD uses labels secondarily to other symbols, so check
+                    // if IdentifierExp::semantic won't find anything.
+                    Dsymbol *scopesym;
 
-		    if ( ! sc->search(stmt->loc, ident, & scopesym) )
-			return new DsymbolExp(stmt->loc,
-			    sc->func->searchLabel( ident ));
-		}
+                    if ( ! sc->search(stmt->loc, ident, & scopesym) )
+                        return new DsymbolExp(stmt->loc,
+                            sc->func->searchLabel( ident ));
+                }
 
-		e = e->semantic(sc);
+                e = e->semantic(sc);
 
-		/* Special case for floating point literals: Try to
-		   resolve to a memory reference.  If not possible,
-		   leave it as a literal and generate an anonymous
-		   var in AsmStatement::toIR.
-		*/
-		if (e->op == TOKfloat64) {
-		    Dsymbol * sym = sc->search(stmt->loc, ident, NULL);
-		    if ( sym ) {
-			VarDeclaration *v = sym->isVarDeclaration();
-			if ( v && v->isDataseg() ) {
-			    Expression *ve = new VarExp(stmt->loc, v);
-			    ve->type = e->type;
-			    e = ve;
-			}
-		    }
-		}
-		return e;
-	    }
-	    break;
-	case TOKdollar:
-	    nextToken();
-	    ident = Id::__dollar;
-	    goto do_dollar;
-	    break;
-	default:
-	    invalidExpression();
-	    return Handled;
-	}
-	return e;
+                /* Special case for floating point literals: Try to
+                   resolve to a memory reference.  If not possible,
+                   leave it as a literal and generate an anonymous
+                   var in AsmStatement::toIR.
+                */
+                if (e->op == TOKfloat64) {
+                    Dsymbol * sym = sc->search(stmt->loc, ident, NULL);
+                    if ( sym ) {
+                        VarDeclaration *v = sym->isVarDeclaration();
+                        if ( v && v->isDataseg() ) {
+                            Expression *ve = new VarExp(stmt->loc, v);
+                            ve->type = e->type;
+                            e = ve;
+                        }
+                    }
+                }
+                return e;
+            }
+            break;
+        case TOKdollar:
+            nextToken();
+            ident = Id::__dollar;
+            goto do_dollar;
+            break;
+        default:
+            invalidExpression();
+            return Handled;
+        }
+        return e;
     }
 
     void doAlign() {
-	// .align bits vs. bytes...
-	// apparently a.out platforms use bits instead of bytes...
+        // .align bits vs. bytes...
+        // apparently a.out platforms use bits instead of bytes...
 
-	// parse primary: DMD allows 'MyAlign' (const int) but not '2+2'
-	// GAS is padding with NOPs last time I checked.
-	Expression * e = parseAsmExp()->optimize(WANTvalue | WANTinterpret);
-	dinteger_t align = e->toInteger();
+        // parse primary: DMD allows 'MyAlign' (const int) but not '2+2'
+        // GAS is padding with NOPs last time I checked.
+        Expression * e = parseAsmExp()->optimize(WANTvalue | WANTinterpret);
+        dinteger_t align = e->toInteger();
 
-	if ((align & -align) == align) {
-	    // %% is this printf portable?
+        if ((align & -align) == align) {
+            // %% is this printf portable?
 #ifdef HAVE_GAS_BALIGN_AND_P2ALIGN
-	    insnTemplate->printf(".balign %u", (unsigned) align);
+            insnTemplate->printf(".balign %u", (unsigned) align);
 #else
-	    insnTemplate->printf(".align %u", (unsigned) align);
+            insnTemplate->printf(".align %u", (unsigned) align);
 #endif
-	} else {
-	    stmt->error("alignment must be a power of 2");
-	}
+        } else {
+            stmt->error("alignment must be a power of 2");
+        }
 
-	setAsmCode();
+        setAsmCode();
     }
 
     void doEven() {
-	// .align for GAS is in bits, others probably use bytes..
+        // .align for GAS is in bits, others probably use bytes..
 #ifdef HAVE_GAS_BALIGN_AND_P2ALIGN
-	insnTemplate->writestring(".balign 2");
+        insnTemplate->writestring(".balign 2");
 #else
-	insnTemplate->writestring(".align 2");
+        insnTemplate->writestring(".align 2");
 #endif
-	setAsmCode();
+        setAsmCode();
     }
 
     void doNaked() {
-	// %% can we assume sc->func != 0?
-	sc->func->naked = 1;
+        // %% can we assume sc->func != 0?
+        sc->func->naked = 1;
     }
 
     void doData() {
-	static const char * directives[] = { ".byte", ".short", ".long", ".long",
-					     "", "", "" };
+        static const char * directives[] = { ".byte", ".short", ".long", ".long",
+                                             "", "", "" };
 
-	machine_mode mode;
+        machine_mode mode;
 
-	insnTemplate->writestring(directives[op - Op_db]);
-	insnTemplate->writebyte(' ');
+        insnTemplate->writestring(directives[op - Op_db]);
+        insnTemplate->writebyte(' ');
 
-	do {
-	    // DMD is pretty strict here, not even constant expressions are allowed..
-	    switch (op) {
-	    case Op_db:
-	    case Op_ds:
-	    case Op_di:
-	    case Op_dl:
-		if (token->value == TOKint32v || token->value == TOKuns32v ||
-		    token->value == TOKint64v || token->value == TOKuns64v) {
-		    // As per usual with GNU, assume at least 32-bit host
-		    if (op != Op_dl)
-			insnTemplate->printf("%u", (d_uns32) token->uns64value);
-		    else {
-			// Output two .longS.  GAS has .quad, but would have to rely on 'L' format ..
-			// just need to use HOST_WIDE_INT_PRINT_DEC
-			insnTemplate->printf("%u,%u",
-			    (d_uns32) token->uns64value, (d_uns32) (token->uns64value >> 32));
-		    }
-		} else {
-		    stmt->error("expected integer constant");
-		}
-		break;
-	    case Op_df:
-		mode = SFmode;
-		goto do_float;
-	    case Op_dd:
-		mode = DFmode;
-		goto do_float;
-	    case Op_de:
+        do {
+            // DMD is pretty strict here, not even constant expressions are allowed..
+            switch (op) {
+            case Op_db:
+            case Op_ds:
+            case Op_di:
+            case Op_dl:
+                if (token->value == TOKint32v || token->value == TOKuns32v ||
+                    token->value == TOKint64v || token->value == TOKuns64v) {
+                    // As per usual with GNU, assume at least 32-bit host
+                    if (op != Op_dl)
+                        insnTemplate->printf("%u", (d_uns32) token->uns64value);
+                    else {
+                        // Output two .longS.  GAS has .quad, but would have to rely on 'L' format ..
+                        // just need to use HOST_WIDE_INT_PRINT_DEC
+                        insnTemplate->printf("%u,%u",
+                            (d_uns32) token->uns64value, (d_uns32) (token->uns64value >> 32));
+                    }
+                } else {
+                    stmt->error("expected integer constant");
+                }
+                break;
+            case Op_df:
+                mode = SFmode;
+                goto do_float;
+            case Op_dd:
+                mode = DFmode;
+                goto do_float;
+            case Op_de:
 #ifndef TARGET_80387
 #define XFmode TFmode
 #endif
-		mode = XFmode; // not TFmode
-		// drop through
-	    do_float:
-		if (token->value == TOKfloat32v || token->value == TOKfloat64v ||
-		    token->value == TOKfloat80v) {
-		    long words[3];
-		    real_to_target(words, & token->float80value.rv(), mode);
-		    // don't use directives..., just use .long like GCC
-		    insnTemplate->printf(".long %u", words[0]);
-		    if (mode != SFmode)
-			insnTemplate->printf(",%u", words[1]);
-		    // DMD outputs 10 bytes, so we need to switch to .short here
-		    if (mode == XFmode)
-			insnTemplate->printf("\n .short %u", words[2]);
-		} else {
-		    stmt->error("expected float constant");
-		}
-		break;
-	    default:
-		abort();
-	    }
+                mode = XFmode; // not TFmode
+                // drop through
+            do_float:
+                if (token->value == TOKfloat32v || token->value == TOKfloat64v ||
+                    token->value == TOKfloat80v) {
+                    long words[3];
+                    real_to_target(words, & token->float80value.rv(), mode);
+                    // don't use directives..., just use .long like GCC
+                    insnTemplate->printf(".long %u", words[0]);
+                    if (mode != SFmode)
+                        insnTemplate->printf(",%u", words[1]);
+                    // DMD outputs 10 bytes, so we need to switch to .short here
+                    if (mode == XFmode)
+                        insnTemplate->printf("\n .short %u", words[2]);
+                } else {
+                    stmt->error("expected float constant");
+                }
+                break;
+            default:
+                abort();
+            }
 
-	    nextToken();
-	    if (token->value == TOKcomma) {
-		insnTemplate->writebyte(',');
-		nextToken();
-	    } else if (token->value == TOKeof) {
-		break;
-	    } else {
-		stmt->error("expected comma");
-	    }
-	} while (1);
+            nextToken();
+            if (token->value == TOKcomma) {
+                insnTemplate->writebyte(',');
+                nextToken();
+            } else if (token->value == TOKeof) {
+                break;
+            } else {
+                stmt->error("expected comma");
+            }
+        } while (1);
 
-	setAsmCode();
+        setAsmCode();
     }
 };
 
@@ -2696,7 +2696,7 @@ struct AsmProcessor
 // struct rtx was modified for c++; this macro from rtl.h needs to
 // be modified accordingly.
 #undef XEXP
-#define XEXP(RTX, N)	(RTL_CHECK2 (RTX, N, 'e', 'u').rt_rtx)
+#define XEXP(RTX, N)    (RTL_CHECK2 (RTX, N, 'e', 'u').rt_rtx)
 #endif
 
 bool getFrameRelativeValue(tree decl, HOST_WIDE_INT * result)
@@ -2709,25 +2709,25 @@ bool getFrameRelativeValue(tree decl, HOST_WIDE_INT * result)
 
     // Local variables don't have DECL_INCOMING_RTL
     if (r == NULL_RTX)
-	r = DECL_RTL(decl);
+        r = DECL_RTL(decl);
 
     if (r != NULL_RTX && GET_CODE(r) == MEM /* && r->frame_related */ ) {
-	r = XEXP(r, 0);
-	if (GET_CODE(r) == PLUS) {
-	    e1 = XEXP(r, 0);
-	    e2 = XEXP(r, 1);
-	    if (e1 == virtual_incoming_args_rtx && GET_CODE(e2) == CONST_INT) {
-		*result = INTVAL(e2) + 8; // %% 8 is 32-bit specific...
-		return true;
-	    } else if (e1 == virtual_stack_vars_rtx && GET_CODE(e2) == CONST_INT) {
-		*result = INTVAL(e2); // %% 8 is 32-bit specific...
-		return true;
-	    }
-	} else if (r == virtual_incoming_args_rtx) {
-	    *result = 8;
-	    return true; // %% same as above
-	}
-	// shouldn't have virtual_stack_vars_rtx by itself
+        r = XEXP(r, 0);
+        if (GET_CODE(r) == PLUS) {
+            e1 = XEXP(r, 0);
+            e2 = XEXP(r, 1);
+            if (e1 == virtual_incoming_args_rtx && GET_CODE(e2) == CONST_INT) {
+                *result = INTVAL(e2) + 8; // %% 8 is 32-bit specific...
+                return true;
+            } else if (e1 == virtual_stack_vars_rtx && GET_CODE(e2) == CONST_INT) {
+                *result = INTVAL(e2); // %% 8 is 32-bit specific...
+                return true;
+            }
+        } else if (r == virtual_incoming_args_rtx) {
+            *result = 8;
+            return true; // %% same as above
+        }
+        // shouldn't have virtual_stack_vars_rtx by itself
     }
 
     return false;

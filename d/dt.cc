@@ -40,7 +40,7 @@ dtcat(dt_t** pdt, dt_t * d)
     assert(d);
     // wasted time and mem touching... shortcut DTend field?
     while (*pdt)
-	pdt = & (*pdt)->DTnext;
+        pdt = & (*pdt)->DTnext;
     *pdt = d;
     return & d->DTnext;
 }
@@ -54,23 +54,23 @@ dtnbits(dt_t** pdt, size_t count, char * pbytes, unsigned unit_size)
     assert(count % unit_size == 0);
 
     bitunit_t * p_unit = (bitunit_t *) pbytes,
-	* p_unit_end = (bitunit_t *) (pbytes + count);
+        * p_unit_end = (bitunit_t *) (pbytes + count);
     char * pbits = new char[count];
     char * p_out = pbits;
     unsigned b = 0;
     char outv = 0;
 
     while (p_unit < p_unit_end) {
-	bitunit_t inv = *p_unit++;
+        bitunit_t inv = *p_unit++;
 
-	for (unsigned i = 0; i < sizeof(bitunit_t)*8; i++) {
-	    outv |= ((inv >> i) & 1) << b;
-	    if (++b == 8) {
-		*p_out++ = outv;
-		b = 0;
-		outv = 0;
-	    }
-	}
+        for (unsigned i = 0; i < sizeof(bitunit_t)*8; i++) {
+            outv |= ((inv >> i) & 1) << b;
+            if (++b == 8) {
+                *p_out++ = outv;
+                b = 0;
+                outv = 0;
+            }
+        }
     }
     assert( (unsigned)(p_out - pbits) == count);
 

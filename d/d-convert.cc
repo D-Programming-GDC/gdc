@@ -36,34 +36,34 @@ build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1, int /*convert
     tree type0 = TREE_TYPE (op0);
     tree type1 = TREE_TYPE (op1);
     if (POINTER_TYPE_P(type0) && TREE_CODE(op1) == INTEGER_CST
-	&& integer_zerop (op1))
+        && integer_zerop (op1))
     {
-	result_type = type0;
+        result_type = type0;
     }
     else if (POINTER_TYPE_P(type1) && TREE_CODE(op0) == INTEGER_CST
-	&& integer_zerop (op0))
+        && integer_zerop (op0))
     {
-	result_type = type1;
+        result_type = type1;
     }
 #if ENABLE_CHECKING
     /* If integral, need to convert unsigned/signed comparison for GCC >= 4.4.x
        Will also need to convert if type precisions differ. */
     else if (INTEGRAL_TYPE_P (type0) && INTEGRAL_TYPE_P (type1))
     {
-	if (TYPE_PRECISION(type0) > TYPE_PRECISION(type1))
-	    result_type = type0;
-	else if (TYPE_PRECISION(type0) < TYPE_PRECISION(type1))
-	    result_type = type1;
-	else if (TYPE_UNSIGNED(type0) != TYPE_UNSIGNED(type1))
-	    result_type = TYPE_UNSIGNED(type0) ? type0 : type1;
+        if (TYPE_PRECISION(type0) > TYPE_PRECISION(type1))
+            result_type = type0;
+        else if (TYPE_PRECISION(type0) < TYPE_PRECISION(type1))
+            result_type = type1;
+        else if (TYPE_UNSIGNED(type0) != TYPE_UNSIGNED(type1))
+            result_type = TYPE_UNSIGNED(type0) ? type0 : type1;
     }
 #endif
     if (result_type)
     {
-	if (TREE_TYPE (op0) != result_type)
-	    op0 = convert (result_type, op0);
-	if (TREE_TYPE (op1) != result_type)
-	    op1 = convert (result_type, op1);
+        if (TREE_TYPE (op0) != result_type)
+            op0 = convert (result_type, op0);
+        if (TREE_TYPE (op1) != result_type)
+            op1 = convert (result_type, op1);
     }
 
     return build2(code, boolean_type_node, op0, op1);
@@ -117,11 +117,11 @@ d_convert_basic (tree type, tree expr)
     {
       tree t = d_truthvalue_conversion (expr);
       /* If it returns a NOP_EXPR, we must fold it here to avoid
-	 infinite recursion between fold () and convert ().  */
+         infinite recursion between fold () and convert ().  */
       if (TREE_CODE (t) == NOP_EXPR)
-	return fold (build1 (NOP_EXPR, type, TREE_OPERAND (t, 0)));
+        return fold (build1 (NOP_EXPR, type, TREE_OPERAND (t, 0)));
       else
-	return fold (build1 (NOP_EXPR, type, t));
+        return fold (build1 (NOP_EXPR, type, t));
     }
   if (code == POINTER_TYPE || code == REFERENCE_TYPE)
     return fold (convert_to_pointer (type, e));
@@ -166,96 +166,96 @@ d_truthvalue_conversion (tree expr)
 
     case ADDR_EXPR:
       /* If we are taking the address of an external decl, it might be zero
-	 if it is weak, so we cannot optimize.  */
+         if it is weak, so we cannot optimize.  */
       if (DECL_P (TREE_OPERAND (expr, 0))
-	  && DECL_EXTERNAL (TREE_OPERAND (expr, 0)))
-	break;
+          && DECL_EXTERNAL (TREE_OPERAND (expr, 0)))
+        break;
 
       if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 0)))
-	return build2 (COMPOUND_EXPR, boolean_type_node,
-		      TREE_OPERAND (expr, 0), boolean_true_node);
+        return build2 (COMPOUND_EXPR, boolean_type_node,
+                      TREE_OPERAND (expr, 0), boolean_true_node);
       else
-	return boolean_true_node;
+        return boolean_true_node;
 
     case COMPLEX_EXPR:
       return build_buul_binary_op ((TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1))
-				  ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-	  d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
-	  d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
-	  0);
+                                  ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
+          d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
+          d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
+          0);
 
     case NEGATE_EXPR:
     case ABS_EXPR:
     case FLOAT_EXPR:
-	// %% there may be other things wrong...
+        // %% there may be other things wrong...
       /* These don't change whether an object is nonzero or zero.  */
       return d_truthvalue_conversion (TREE_OPERAND (expr, 0));
 
     case LROTATE_EXPR:
     case RROTATE_EXPR:
       /* These don't change whether an object is zero or nonzero, but
-	 we can't ignore them if their second arg has side-effects.  */
+         we can't ignore them if their second arg has side-effects.  */
       if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1)))
-	return build2 (COMPOUND_EXPR, boolean_type_node, TREE_OPERAND (expr, 1),
-		      d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
+        return build2 (COMPOUND_EXPR, boolean_type_node, TREE_OPERAND (expr, 1),
+                      d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
       else
-	return d_truthvalue_conversion (TREE_OPERAND (expr, 0));
+        return d_truthvalue_conversion (TREE_OPERAND (expr, 0));
 
     case COND_EXPR:
       /* Distribute the conversion into the arms of a COND_EXPR.  */
       return fold (build3 (COND_EXPR, boolean_type_node, TREE_OPERAND (expr, 0),
-		d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
-		d_truthvalue_conversion (TREE_OPERAND (expr, 2))));
+                d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
+                d_truthvalue_conversion (TREE_OPERAND (expr, 2))));
 
     case CONVERT_EXPR:
       /* Don't cancel the effect of a CONVERT_EXPR from a REFERENCE_TYPE,
-	 since that affects how `default_conversion' will behave.  */
+         since that affects how `default_conversion' will behave.  */
       if (TREE_CODE (TREE_TYPE (expr)) == REFERENCE_TYPE
-	  || TREE_CODE (TREE_TYPE (TREE_OPERAND (expr, 0))) == REFERENCE_TYPE)
-	break;
+          || TREE_CODE (TREE_TYPE (TREE_OPERAND (expr, 0))) == REFERENCE_TYPE)
+        break;
       /* fall through...  */
     case NOP_EXPR:
       /* If this is widening the argument, we can ignore it.  */
       if (TYPE_PRECISION (TREE_TYPE (expr))
-	  >= TYPE_PRECISION (TREE_TYPE (TREE_OPERAND (expr, 0))))
-	return d_truthvalue_conversion (TREE_OPERAND (expr, 0));
+          >= TYPE_PRECISION (TREE_TYPE (TREE_OPERAND (expr, 0))))
+        return d_truthvalue_conversion (TREE_OPERAND (expr, 0));
       break;
 
     case MINUS_EXPR:
       /* Perhaps reduce (x - y) != 0 to (x != y).  The expressions
-	 aren't guaranteed to the be same for modes that can represent
-	 infinity, since if x and y are both +infinity, or both
-	 -infinity, then x - y is not a number.
+         aren't guaranteed to the be same for modes that can represent
+         infinity, since if x and y are both +infinity, or both
+         -infinity, then x - y is not a number.
 
-	 Note that this transformation is safe when x or y is NaN.
-	 (x - y) is then NaN, and both (x - y) != 0 and x != y will
-	 be false.  */
+         Note that this transformation is safe when x or y is NaN.
+         (x - y) is then NaN, and both (x - y) != 0 and x != y will
+         be false.  */
       if (HONOR_INFINITIES (TYPE_MODE (TREE_TYPE (TREE_OPERAND (expr, 0)))))
-	break;
+        break;
       /* fall through...  */
     case BIT_XOR_EXPR:
       /* This and MINUS_EXPR can be changed into a comparison of the
-	 two objects.  */
+         two objects.  */
       if (TREE_TYPE (TREE_OPERAND (expr, 0))
-	  == TREE_TYPE (TREE_OPERAND (expr, 1)))
-	  return build_buul_binary_op (NE_EXPR, TREE_OPERAND (expr, 0),
-	      TREE_OPERAND (expr, 1), 1);
+          == TREE_TYPE (TREE_OPERAND (expr, 1)))
+          return build_buul_binary_op (NE_EXPR, TREE_OPERAND (expr, 0),
+              TREE_OPERAND (expr, 1), 1);
       return build_buul_binary_op (NE_EXPR, TREE_OPERAND (expr, 0),
-	  fold (build1 (NOP_EXPR,
-		    TREE_TYPE (TREE_OPERAND (expr, 0)),
-		    TREE_OPERAND (expr, 1))), 1);
+          fold (build1 (NOP_EXPR,
+                    TREE_TYPE (TREE_OPERAND (expr, 0)),
+                    TREE_OPERAND (expr, 1))), 1);
     case BIT_AND_EXPR:
       if (integer_onep (TREE_OPERAND (expr, 1))
-	  && TREE_TYPE (expr) != boolean_type_node)
-	/* Using convert here would cause infinite recursion.  */
-	return build1 (NOP_EXPR, boolean_type_node, expr);
+          && TREE_TYPE (expr) != boolean_type_node)
+        /* Using convert here would cause infinite recursion.  */
+        return build1 (NOP_EXPR, boolean_type_node, expr);
       break;
 
     case MODIFY_EXPR:
-	/*
+        /*
       if (warn_parentheses && C_EXP_ORIGINAL_CODE (expr) == MODIFY_EXPR)
-	warning ("suggest parentheses around assignment used as truth value");
-	*/
+        warning ("suggest parentheses around assignment used as truth value");
+        */
       break;
 
     default:
@@ -269,11 +269,11 @@ d_truthvalue_conversion (tree expr)
       tree t = save_expr (expr);
       tree compon_type = TREE_TYPE( TREE_TYPE( expr ));
       return (build_buul_binary_op
-	      ((TREE_SIDE_EFFECTS (expr)
-		? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-	d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
-	d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)),
-	       0));
+              ((TREE_SIDE_EFFECTS (expr)
+                ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
+        d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
+        d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)),
+               0));
     }
 
 #if D_GCC_VER >= 40
@@ -281,7 +281,7 @@ d_truthvalue_conversion (tree expr)
      value with fails (on i386 and rs6000, at least). */
   else if ( SCALAR_FLOAT_TYPE_P( TREE_TYPE( expr )))
     {
-	t_zero = convert( TREE_TYPE(expr), t_zero );
+        t_zero = convert( TREE_TYPE(expr), t_zero );
     }
 #endif
 

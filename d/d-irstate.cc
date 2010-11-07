@@ -64,21 +64,21 @@ IRBase::startFunction(FuncDeclaration * decl)
     ModuleInfo & mi = * g.mi();
 #if V2
     if (decl->isSharedStaticCtorDeclaration())
-	mi.sharedctors.push(decl);
+        mi.sharedctors.push(decl);
     else if (decl->isStaticCtorDeclaration())
-	mi.ctors.push(decl);
+        mi.ctors.push(decl);
     else if (decl->isSharedStaticDtorDeclaration())
-	mi.shareddtors.push(decl);
+        mi.shareddtors.push(decl);
     else if (decl->isStaticDtorDeclaration())
-	mi.dtors.push(decl);
+        mi.dtors.push(decl);
 #else
     if (decl->isStaticConstructor())
-	mi.ctors.push(decl);
+        mi.ctors.push(decl);
     else if (decl->isStaticDestructor())
-	mi.dtors.push(decl);
+        mi.dtors.push(decl);
 #endif
     else if (decl->isUnitTestDeclaration())
-	mi.unitTests.push(decl);
+        mi.unitTests.push(decl);
 
     return new_irs;
 }
@@ -94,19 +94,19 @@ IRBase::endFunction()
     g.irs = (IRState *) parent;
 
     if (g.irs == & gen) {
-	Array a;
-	a.append(& deferredFuncDecls);
-	deferredFuncDecls.setDim(0);
-	for (unsigned i = 0; i < a.dim; i++) {
-	    FuncDeclaration * f = (FuncDeclaration *) a.data[i];
-	    f->toObjFile(false);
-	}
+        Array a;
+        a.append(& deferredFuncDecls);
+        deferredFuncDecls.setDim(0);
+        for (unsigned i = 0; i < a.dim; i++) {
+            FuncDeclaration * f = (FuncDeclaration *) a.data[i];
+            f->toObjFile(false);
+        }
     }
 
     // %%TODO
     /*
     if (can_delete)
-	delete this;
+        delete this;
     */
 }
 
@@ -115,10 +115,10 @@ IRBase::shouldDeferFunction(FuncDeclaration * decl)
 {
 #if D_GCC_VER < 40
     if (! func || gen.functionNeedsChain(decl)) {
-	return false;
+        return false;
     } else {
-	deferredFuncDecls.push(decl);
-	return true;
+        deferredFuncDecls.push(decl);
+        return true;
     }
 #else
     /* There is no need to defer functions for 4.0.  In fact, deferring
@@ -160,7 +160,7 @@ IRBase::addExp(tree e)
        Maybe should filter those out anyway... */
     // C doesn't do this for label_exprs %% why?
     if (EXPR_P(e) && ! EXPR_HAS_LOCATION (e))
-	SET_EXPR_LOCATION (e, input_location);
+        SET_EXPR_LOCATION (e, input_location);
 
     append_to_statement_list_force (e, & statementList);
 }
@@ -191,19 +191,19 @@ IRBase::popStatementList()
        using the STATEMENT_LIST avoids pathological buildup of EMPTY_STMT_P
        statements.  */
     if (TREE_SIDE_EFFECTS (t))
-	{
-	    tree_stmt_iterator i = tsi_start (t);
+        {
+            tree_stmt_iterator i = tsi_start (t);
 
-	    /* If the statement list contained exactly one statement, then
-	       extract it immediately.  */
-	    if (tsi_one_before_end_p (i))
-		{
-		    u = tsi_stmt (i);
-		    tsi_delink (&i);
-		    free_stmt_list (t);
-		    t = u;
-		}
-	}
+            /* If the statement list contained exactly one statement, then
+               extract it immediately.  */
+            if (tsi_one_before_end_p (i))
+                {
+                    u = tsi_stmt (i);
+                    tsi_delink (&i);
+                    free_stmt_list (t);
+                    t = u;
+                }
+        }
 
     return t;
 }
@@ -214,20 +214,20 @@ tree
 IRBase::getLabelTree(LabelDsymbol * label)
 {
     if (! label->statement)
-	return NULL_TREE;
+        return NULL_TREE;
 
     if (! label->statement->lblock)
     {
-	tree label_decl = build_decl (LABEL_DECL, get_identifier(label->ident->string), void_type_node);
+        tree label_decl = build_decl (LABEL_DECL, get_identifier(label->ident->string), void_type_node);
 
-	assert(func != 0);
-	DECL_CONTEXT( label_decl ) = getLocalContext();
-	DECL_MODE( label_decl ) = VOIDmode; // Not sure why or if this is needed
-	D_LABEL_IS_USED( label_decl ) = 1;
-	// Not setting this doesn't seem to cause problems (unlike VAR_DECLs)
-	if (label->statement->loc.filename)
-	    g.ofile->setDeclLoc( label_decl, label->statement->loc ); // %% label->loc okay?
-	label->statement->lblock = label_decl;
+        assert(func != 0);
+        DECL_CONTEXT( label_decl ) = getLocalContext();
+        DECL_MODE( label_decl ) = VOIDmode; // Not sure why or if this is needed
+        D_LABEL_IS_USED( label_decl ) = 1;
+        // Not setting this doesn't seem to cause problems (unlike VAR_DECLs)
+        if (label->statement->loc.filename)
+            g.ofile->setDeclLoc( label_decl, label->statement->loc ); // %% label->loc okay?
+        label->statement->lblock = label_decl;
     }
     return label->statement->lblock;
 }
@@ -243,19 +243,19 @@ IRBase::getLabelBlock(LabelDsymbol * label, Statement * from)
 
     for (int i = loops.dim - 1; i >= 0; i--)
     {
-	Flow * flow = (Flow *)loops.data[i];
+        Flow * flow = (Flow *)loops.data[i];
 
-	if (flow->kind != level_block &&
-	    flow->kind != level_switch)
-	{
-	    l->block = flow->statement;
-	    l->kind  = flow->kind;
-	    l->level = i + 1;
-	    break;
-	}
+        if (flow->kind != level_block &&
+            flow->kind != level_switch)
+        {
+            l->block = flow->statement;
+            l->kind  = flow->kind;
+            l->level = i + 1;
+            break;
+        }
     }
     if (from)
-	l->from = from;
+        l->from = from;
 
     l->label = label;
     return l;
@@ -266,33 +266,33 @@ IRBase::Flow *
 IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 {
     if (ident) {
-	LabelStatement * lbl_stmt = func->searchLabel(ident)->statement;
-	assert(lbl_stmt != 0);
-	Statement * stmt = lbl_stmt->statement;
-	ScopeStatement * scope_stmt = stmt->isScopeStatement();
+        LabelStatement * lbl_stmt = func->searchLabel(ident)->statement;
+        assert(lbl_stmt != 0);
+        Statement * stmt = lbl_stmt->statement;
+        ScopeStatement * scope_stmt = stmt->isScopeStatement();
 
-	if (scope_stmt)
-	    stmt = scope_stmt->statement;
+        if (scope_stmt)
+            stmt = scope_stmt->statement;
 
-	for (int i = loops.dim - 1; i >= 0; i--) {
-	    Flow * flow = (Flow *) loops.data[i];
+        for (int i = loops.dim - 1; i >= 0; i--) {
+            Flow * flow = (Flow *) loops.data[i];
 
-	    if (flow->statement == stmt) {
-		if (want_continue)
-		    assert(stmt->hasContinue());
-		return flow;
-	    }
-	}
-	assert(0);
+            if (flow->statement == stmt) {
+                if (want_continue)
+                    assert(stmt->hasContinue());
+                return flow;
+            }
+        }
+        assert(0);
     } else {
-	for (int i = loops.dim - 1; i >= 0; i--) {
-	    Flow * flow = (Flow *) loops.data[i];
+        for (int i = loops.dim - 1; i >= 0; i--) {
+            Flow * flow = (Flow *) loops.data[i];
 
-	    if (( ! want_continue && flow->statement->hasBreak() ) ||
-		flow->statement->hasContinue())
-		return flow;
-	}
-	assert(0);
+            if (( ! want_continue && flow->statement->hasBreak() ) ||
+                flow->statement->hasContinue())
+                return flow;
+        }
+        assert(0);
     }
 }
 
@@ -323,7 +323,7 @@ IRBase::endFlow()
 
     flow = (Flow *) loops.pop();
     if (flow->exitLabel)
-	expand_label(flow->exitLabel); // %% need a statement after this?
+        expand_label(flow->exitLabel); // %% need a statement after this?
     //%% delete flow;
 }
 
@@ -362,7 +362,7 @@ IRBase::endFlow()
 
     flow = (Flow *) loops.pop();
     if (flow->exitLabel)
-	doLabel(flow->exitLabel);
+        doLabel(flow->exitLabel);
     //%% delete flow;
 }
 
@@ -374,7 +374,7 @@ IRBase::doLabel(tree t_label)
        The only excemption to this is in LabelStatement::toIR, in which
        all computed labels are marked regardless.  */
     if(D_LABEL_IS_USED(t_label))
-	addExp(build1(LABEL_EXPR, void_type_node, t_label));
+        addExp(build1(LABEL_EXPR, void_type_node, t_label));
 }
 
 #endif
@@ -405,7 +405,7 @@ void IRBase::endScope()
 
     //printf("%*s  ending scope with %d left \n", scopes.dim, "", *p_count);
     while ( *p_count )
-	endBindings();
+        endBindings();
     scopes.pop();
     //printf("%*sendScope\n", scopes.dim, "");
 }
@@ -444,7 +444,7 @@ void IRBase::endBindings()
 #else
     tree t_body = popStatementList();
     addExp(build3(BIND_EXPR, void_type_node,
-	       BLOCK_VARS( block ), t_body, block));
+               BLOCK_VARS( block ), t_body, block));
 #endif
 
     // Because we used set_block, the popped level/block is not automatically recorded

@@ -81,11 +81,11 @@ build_function_call (tree function, tree params)
       name = DECL_NAME (function);
 
       /* Differs from default_conversion by not setting TREE_ADDRESSABLE
-	 (because calling an inline function does not mean the function
-	 needs to be separately compiled).  */
+         (because calling an inline function does not mean the function
+         needs to be separately compiled).  */
       fntype = build_type_variant (TREE_TYPE (function),
-				   TREE_READONLY (function),
-				   TREE_THIS_VOLATILE (function));
+                                   TREE_READONLY (function),
+                                   TREE_THIS_VOLATILE (function));
       fundecl = function;
       function = build1 (ADDR_EXPR, build_pointer_type (fntype), function);
     }
@@ -103,7 +103,7 @@ build_function_call (tree function, tree params)
     return error_mark_node;
 
   if (!(TREE_CODE (fntype) == POINTER_TYPE
-	&& TREE_CODE (TREE_TYPE (fntype)) == FUNCTION_TYPE))
+        && TREE_CODE (TREE_TYPE (fntype)) == FUNCTION_TYPE))
     {
       error ("called object %qE is not a function", function);
       return error_mark_node;
@@ -112,7 +112,7 @@ build_function_call (tree function, tree params)
   fntype = TREE_TYPE (fntype);
 
   result = build3 (CALL_EXPR, TREE_TYPE (fntype),
-		   function, params, NULL_TREE);
+                   function, params, NULL_TREE);
   TREE_SIDE_EFFECTS (result) = 1;
 
   result = fold (result);
@@ -209,8 +209,8 @@ iasm_constraint_for (const char *opcode, unsigned argnum, unsigned ARG_UNUSED (n
 
 static void
 iasm_process_arg (const char *opcodename, int op_num,
-		  tree *outputsp, tree *inputsp, tree *uses, unsigned num_args,
-		  iasm_md_extra_info *e)
+                  tree *outputsp, tree *inputsp, tree *uses, unsigned num_args,
+                  iasm_md_extra_info *e)
 {
     gcc_assert(0);
 }
@@ -301,15 +301,15 @@ iasm_maybe_force_mem (tree arg, char *buf, unsigned argnum, bool must_be_reg, ia
 
 void
 iasm_print_operand (char *buf, tree arg, unsigned argnum,
-		    tree *uses,
-		    bool must_be_reg, bool must_not_be_reg, iasm_md_extra_info *e)
+                    tree *uses,
+                    bool must_be_reg, bool must_not_be_reg, iasm_md_extra_info *e)
 {
     gcc_assert(0);
 }
 
 void
 iasm_get_register_var (tree var, const char *modifier, char *buf, unsigned argnum,
-		       bool must_be_reg, iasm_md_extra_info *e)
+                       bool must_be_reg, iasm_md_extra_info *e)
 {
     gcc_assert(0);
 }

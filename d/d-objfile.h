@@ -123,9 +123,9 @@ public:
     static void rodc(tree decl, int top_level)
     {
 #if D_GCC_VER < 40
-	rest_of_decl_compilation(decl, NULL, top_level, 0);
+        rest_of_decl_compilation(decl, NULL, top_level, 0);
 #else
-	rest_of_decl_compilation(decl, top_level, 0);
+        rest_of_decl_compilation(decl, top_level, 0);
 #endif
     }
 };

@@ -185,6 +185,6 @@ extern void     obj_moduleinfo(Symbol *sym);
 extern Symbol * symbol_tree(tree);
 extern Symbol * static_sym();
 
-extern void	slist_add(Symbol *);
-extern void	slist_reset();
+extern void     slist_add(Symbol *);
+extern void     slist_reset();
 #endif

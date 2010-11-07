@@ -67,7 +67,7 @@ build_binary_op (location_t location, enum tree_code code,
 
 tree
 build_unary_op (location_t location,
-		enum tree_code code, tree xarg, int flag)
+                enum tree_code code, tree xarg, int flag)
 {
 #if D_GCC_VER >= 40
     gcc_assert(0);

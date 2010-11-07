@@ -43,9 +43,9 @@ alias __builtin_pointer_uint _Unwind_Internal_Ptr;
 
 version (IA64) {
     version (HPUX) {
-	alias __builtin_machine_uint _Unwind_Ptr;
+        alias __builtin_machine_uint _Unwind_Ptr;
     } else {
-	alias __builtin_pointer_uint _Unwind_Ptr;
+        alias __builtin_pointer_uint _Unwind_Ptr;
     }
 } else {
     alias __builtin_pointer_uint _Unwind_Ptr;
@@ -82,7 +82,7 @@ alias uint _Unwind_Reason_Code;
    understood by the unwind interface.  */
 
 extern(C) typedef void (*_Unwind_Exception_Cleanup_Fn) (_Unwind_Reason_Code,
-					      _Unwind_Exception *);
+                                              _Unwind_Exception *);
 
 align struct _Unwind_Exception // D Note: this may not be "maxium alignment required by any type"?
 {
@@ -103,11 +103,11 @@ typedef int _Unwind_Action;
 
 enum
 {
-    _UA_SEARCH_PHASE  =	1,
-    _UA_CLEANUP_PHASE =	2,
-    _UA_HANDLER_FRAME =	4,
-    _UA_FORCE_UNWIND  =	8,
-    _UA_END_OF_STACK  =	16
+    _UA_SEARCH_PHASE  = 1,
+    _UA_CLEANUP_PHASE = 2,
+    _UA_HANDLER_FRAME = 4,
+    _UA_FORCE_UNWIND  = 8,
+    _UA_END_OF_STACK  = 16
 }
 
 /* This is an opaque type used to refer to a system-specific data
@@ -126,8 +126,8 @@ extern(C) typedef _Unwind_Reason_Code (*_Unwind_Stop_Fn)
       _Unwind_Exception *, _Unwind_Context *, void *);
 
 _Unwind_Reason_Code _Unwind_ForcedUnwind (_Unwind_Exception *,
-						 _Unwind_Stop_Fn,
-						 void *);
+                                                 _Unwind_Stop_Fn,
+                                                 void *);
 
 /* Helper to invoke the exception_cleanup routine.  */
 void _Unwind_DeleteException (_Unwind_Exception *);

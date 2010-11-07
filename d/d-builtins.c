@@ -121,22 +121,22 @@ static void
 d_init_attributes (void)
 {
   /* Fill in the built_in_attributes array.  */
-#define DEF_ATTR_NULL_TREE(ENUM)		\
+#define DEF_ATTR_NULL_TREE(ENUM)                \
   built_in_attributes[(int) ENUM] = NULL_TREE;
 #if D_GCC_VER < 40
-# define DEF_ATTR_INT(ENUM, VALUE)					     \
+# define DEF_ATTR_INT(ENUM, VALUE)                                           \
   built_in_attributes[(int) ENUM] = build_int_2 (VALUE, VALUE < 0 ? -1 : 0);
 #else
-# define DEF_ATTR_INT(ENUM, VALUE)					     \
+# define DEF_ATTR_INT(ENUM, VALUE)                                           \
   built_in_attributes[(int) ENUM] = build_int_cst (NULL_TREE, VALUE);
 #endif
-#define DEF_ATTR_IDENT(ENUM, STRING)				\
+#define DEF_ATTR_IDENT(ENUM, STRING)                            \
   built_in_attributes[(int) ENUM] = get_identifier (STRING);
-#define DEF_ATTR_TREE_LIST(ENUM, PURPOSE, VALUE, CHAIN)	\
-  built_in_attributes[(int) ENUM]			\
-    = tree_cons (built_in_attributes[(int) PURPOSE],	\
-		 built_in_attributes[(int) VALUE],	\
-		 built_in_attributes[(int) CHAIN]);
+#define DEF_ATTR_TREE_LIST(ENUM, PURPOSE, VALUE, CHAIN) \
+  built_in_attributes[(int) ENUM]                       \
+    = tree_cons (built_in_attributes[(int) PURPOSE],    \
+                 built_in_attributes[(int) VALUE],      \
+                 built_in_attributes[(int) CHAIN]);
 #include "builtin-attrs.def"
 #undef DEF_ATTR_NULL_TREE
 #undef DEF_ATTR_INT
@@ -184,28 +184,28 @@ void do_build_builtin_fn(enum built_in_function fncode,
     const char *libname;
 
     if (fntype == error_mark_node)
-	return;
+        return;
 
     gcc_assert ((!both_p && !fallback_p)
-	|| !strncmp (name, "__builtin_",
-	    strlen ("__builtin_")));
+        || !strncmp (name, "__builtin_",
+            strlen ("__builtin_")));
     libname = name + strlen ("__builtin_");
 
     /*if (!BOTH_P)*/
 #if D_GCC_VER >= 43
     decl = add_builtin_function(name, fntype, fncode, fnclass,
-	fallback_p ?libname : NULL, fnattrs);
+        fallback_p ?libname : NULL, fnattrs);
 #else
     decl = lang_hooks.builtin_function (name, fntype,
-	fncode,
-	fnclass,
-	fallback_p ?libname : NULL,
-	fnattrs);
+        fncode,
+        fnclass,
+        fallback_p ?libname : NULL,
+        fnattrs);
 #endif
 
     built_in_decls[(int) fncode] = decl;
     if (implicit_p)
-	implicit_built_in_decls[(int) fncode] = decl;
+        implicit_built_in_decls[(int) fncode] = decl;
 }
 #endif
 
@@ -273,21 +273,21 @@ def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
     va_start (list, n);
     for (i = 0; i < n; ++i)
     {
-	builtin_type a = va_arg (list, builtin_type);
-	t = builtin_types[(int) a];
-	if (t == error_mark_node)
-	    goto egress;
-	args = tree_cons (NULL_TREE, t, args);
+        builtin_type a = va_arg (list, builtin_type);
+        t = builtin_types[(int) a];
+        if (t == error_mark_node)
+            goto egress;
+        args = tree_cons (NULL_TREE, t, args);
     }
     va_end (list);
 
     args = nreverse (args);
     if (!var)
-	args = chainon (args, void_list_node);
+        args = chainon (args, void_list_node);
 
     t = builtin_types[(int) ret];
     if (t == error_mark_node)
-	goto egress;
+        goto egress;
     t = build_function_type (t, args);
 
 egress:
@@ -305,15 +305,15 @@ void d_init_builtins(void)
 
   if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
     {
-	/* It might seem natural to make the reference type a pointer,
-	   but this will not work in D: There is no implicit casting from
-	   an array to a pointer. */
-	va_list_arg_type_node = va_list_ref_type_node = va_list_type_node;
+        /* It might seem natural to make the reference type a pointer,
+           but this will not work in D: There is no implicit casting from
+           an array to a pointer. */
+        va_list_arg_type_node = va_list_ref_type_node = va_list_type_node;
     }
   else
     {
-	va_list_arg_type_node = va_list_type_node;
-	va_list_ref_type_node = build_reference_type (va_list_type_node);
+        va_list_arg_type_node = va_list_type_node;
+        va_list_ref_type_node = build_reference_type (va_list_type_node);
     }
 
 
@@ -322,7 +322,7 @@ void d_init_builtins(void)
   signed_size_type_node  = d_signed_type(size_type_node);
   string_type_node       = build_pointer_type (char_type_node);
   const_string_type_node = build_pointer_type(build_qualified_type
-					      (char_type_node, TYPE_QUAL_CONST));
+                                              (char_type_node, TYPE_QUAL_CONST));
 
   void_list_node = tree_cons(NULL_TREE, void_type_node, NULL_TREE);
 
@@ -345,13 +345,13 @@ void d_init_builtins(void)
   def_fn_type (ENUM, RETURN, 0, 3, ARG1, ARG2, ARG3);
 #define DEF_FUNCTION_TYPE_4(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4) \
   def_fn_type (ENUM, RETURN, 0, 4, ARG1, ARG2, ARG3, ARG4);
-#define DEF_FUNCTION_TYPE_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5)	\
+#define DEF_FUNCTION_TYPE_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5) \
   def_fn_type (ENUM, RETURN, 0, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
 #define DEF_FUNCTION_TYPE_6(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-			    ARG6)					\
+                            ARG6)                                       \
   def_fn_type (ENUM, RETURN, 0, 6, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
 #define DEF_FUNCTION_TYPE_7(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-			    ARG6, ARG7)					\
+                            ARG6, ARG7)                                 \
   def_fn_type (ENUM, RETURN, 0, 7, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 #define DEF_FUNCTION_TYPE_VAR_0(ENUM, RETURN) \
   def_fn_type (ENUM, RETURN, 1, 0);
@@ -386,76 +386,76 @@ void d_init_builtins(void)
   d_init_attributes ();
 
 #if D_GCC_VER == 34
-#define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE,			\
-		    BOTH_P, FALLBACK_P, NONANSI_P, ATTRS, IMPLICIT)	\
-  if (NAME)								\
-    {									\
-      tree decl;							\
-									\
-      if (strncmp (NAME, "__builtin_", strlen ("__builtin_")) != 0)	\
-	abort ();							\
-									\
-      /*if (!BOTH_P)*/							\
-	decl = builtin_function (NAME, builtin_types[TYPE], ENUM,	\
-				 CLASS,					\
-				 (FALLBACK_P				\
-				  ? (NAME + strlen ("__builtin_"))	\
-				  : NULL),				\
-				 built_in_attributes[(int) ATTRS]);	\
-      /*else*/  			        			\
-	/*decl = builtin_function_2 (NAME,*/      			\
-	/*        		   NAME + strlen ("__builtin_"),*/	\
-	/*        		   builtin_types[TYPE],*/		        \
-	/*        		   builtin_types[LIBTYPE],*/		\
-	/*        		   ENUM,*/        	        	\
-	/*        		   CLASS,*/       			\
-	/*        		   FALLBACK_P,*/				\
-	/*        		   NONANSI_P,*/			        \
-	/*        		   built_in_attributes[(int) ATTRS]);*/	\
-									\
-      built_in_decls[(int) ENUM] = decl;				\
-      if (IMPLICIT)							\
-        implicit_built_in_decls[(int) ENUM] = decl;			\
+#define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE,                   \
+                    BOTH_P, FALLBACK_P, NONANSI_P, ATTRS, IMPLICIT)     \
+  if (NAME)                                                             \
+    {                                                                   \
+      tree decl;                                                        \
+                                                                        \
+      if (strncmp (NAME, "__builtin_", strlen ("__builtin_")) != 0)     \
+        abort ();                                                       \
+                                                                        \
+      /*if (!BOTH_P)*/                                                  \
+        decl = builtin_function (NAME, builtin_types[TYPE], ENUM,       \
+                                 CLASS,                                 \
+                                 (FALLBACK_P                            \
+                                  ? (NAME + strlen ("__builtin_"))      \
+                                  : NULL),                              \
+                                 built_in_attributes[(int) ATTRS]);     \
+      /*else*/                                                          \
+        /*decl = builtin_function_2 (NAME,*/                            \
+        /*                         NAME + strlen ("__builtin_"),*/      \
+        /*                         builtin_types[TYPE],*/                       \
+        /*                         builtin_types[LIBTYPE],*/            \
+        /*                         ENUM,*/                              \
+        /*                         CLASS,*/                             \
+        /*                         FALLBACK_P,*/                                \
+        /*                         NONANSI_P,*/                         \
+        /*                         built_in_attributes[(int) ATTRS]);*/ \
+                                                                        \
+      built_in_decls[(int) ENUM] = decl;                                \
+      if (IMPLICIT)                                                     \
+        implicit_built_in_decls[(int) ENUM] = decl;                     \
     }
 #elif D_GCC_VER == 40
 #define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE, BOTH_P, FALLBACK_P, \
-		    NONANSI_P, ATTRS, IMPLICIT, COND)			\
-  if (NAME && COND)							\
-    {									\
-      tree decl;							\
-									\
-      gcc_assert (!strncmp (NAME, "__builtin_",				\
-			    strlen ("__builtin_")));			\
-									\
-      /*if (!BOTH_P)*/							\
-	decl = lang_hooks.builtin_function (NAME, builtin_types[TYPE],	\
-				 ENUM,					\
-				 CLASS,					\
-				 (FALLBACK_P				\
-				  ? (NAME + strlen ("__builtin_"))	\
-				  : NULL),				\
-				 built_in_attributes[(int) ATTRS]);	\
-      /*else*/								\
-	/*decl = builtin_function_2 (NAME,*/				\
-	/*			   NAME + strlen ("__builtin_"),*/	\
-	/*			   builtin_types[TYPE],*/			\
-	/*			   builtin_types[LIBTYPE],*/		\
-	/*			   ENUM,*/				\
-	/*			   CLASS,*/				\
-	/*			   FALLBACK_P,*/				\
-	/*			   NONANSI_P,*/				\
-	/*			   built_in_attributes[(int) ATTRS]);*/	\
-									\
-      built_in_decls[(int) ENUM] = decl;				\
-      if (IMPLICIT)							\
-	implicit_built_in_decls[(int) ENUM] = decl;			\
+                    NONANSI_P, ATTRS, IMPLICIT, COND)                   \
+  if (NAME && COND)                                                     \
+    {                                                                   \
+      tree decl;                                                        \
+                                                                        \
+      gcc_assert (!strncmp (NAME, "__builtin_",                         \
+                            strlen ("__builtin_")));                    \
+                                                                        \
+      /*if (!BOTH_P)*/                                                  \
+        decl = lang_hooks.builtin_function (NAME, builtin_types[TYPE],  \
+                                 ENUM,                                  \
+                                 CLASS,                                 \
+                                 (FALLBACK_P                            \
+                                  ? (NAME + strlen ("__builtin_"))      \
+                                  : NULL),                              \
+                                 built_in_attributes[(int) ATTRS]);     \
+      /*else*/                                                          \
+        /*decl = builtin_function_2 (NAME,*/                            \
+        /*                         NAME + strlen ("__builtin_"),*/      \
+        /*                         builtin_types[TYPE],*/                       \
+        /*                         builtin_types[LIBTYPE],*/            \
+        /*                         ENUM,*/                              \
+        /*                         CLASS,*/                             \
+        /*                         FALLBACK_P,*/                                \
+        /*                         NONANSI_P,*/                         \
+        /*                         built_in_attributes[(int) ATTRS]);*/ \
+                                                                        \
+      built_in_decls[(int) ENUM] = decl;                                \
+      if (IMPLICIT)                                                     \
+        implicit_built_in_decls[(int) ENUM] = decl;                     \
     }
 #elif D_GCC_VER >= 41
 #define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE, BOTH_P, FALLBACK_P, \
-		    NONANSI_P, ATTRS, IMPLICIT, COND)			\
-  if (NAME && COND)							\
+                    NONANSI_P, ATTRS, IMPLICIT, COND)                   \
+  if (NAME && COND)                                                     \
       do_build_builtin_fn(ENUM, NAME, CLASS, TYPE, builtin_types[TYPE], LIBTYPE, BOTH_P, \
-	  FALLBACK_P, NONANSI_P, built_in_attributes[(int) ATTRS], IMPLICIT);
+          FALLBACK_P, NONANSI_P, built_in_attributes[(int) ATTRS], IMPLICIT);
 #endif
 
 #include "builtins.def"
@@ -501,8 +501,8 @@ d_builtin_function43 (tree decl)
 
 tree
 d_builtin_function (const char *name, tree type, int function_code,
-		    enum built_in_class klass, const char *library_name,
-		    tree attrs)
+                    enum built_in_class klass, const char *library_name,
+                    tree attrs)
 {
   // As of 4.3.x, this is done by add_builtin_fucntion
     //%% for D, just use library_name?
@@ -543,11 +543,11 @@ d_builtin_function (const char *name, tree type, int function_code,
 /* GCC expects this function to be provided by each language frontend.  */
 tree
 builtin_function (const char *name, tree type, int function_code,
-		    enum built_in_class klass, const char *library_name,
-		    tree attrs)
+                    enum built_in_class klass, const char *library_name,
+                    tree attrs)
 {
     return d_builtin_function(name, type, function_code,
-			      klass, library_name, attrs);
+                              klass, library_name, attrs);
 }
 #endif
 

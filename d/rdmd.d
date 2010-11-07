@@ -221,9 +221,9 @@ bool compile(string tmpdir, string compiler, bool force, string dfilepath, strin
     // append MD5 sum of the compiler arguments onto the file name to force recompile if they have changed
     string uid_str;
     version(Windows)
-    	uid_str = getuid();
+        uid_str = getuid();
     else
-    	uid_str = toString(getuid());
+        uid_str = toString(getuid());
     exepath = tmpdir ~ exefile ~ "-" ~ uid_str ~ "-" ~ toString(dfilestat.st_dev) ~ "-" ~ toString(dfilestat.st_ino) ~ "-" ~ digestToString(digest) ~ exeExtension;
 
     struct_stat exestat;    // temp. executable status info.

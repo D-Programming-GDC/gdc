@@ -44,16 +44,16 @@ struct dt_t {
     enum DT dt;
     struct dt_t * DTnext;
     union {
-	dinteger_t DTint;
-	dinteger_t DTazeros;
-	dinteger_t DTonebyte;
-	struct dt_t * DTvalues;
+        dinteger_t DTint;
+        dinteger_t DTazeros;
+        dinteger_t DTonebyte;
+        struct dt_t * DTvalues;
     };
     union {
-	Symbol * DTsym;
-	tree DTtree;
-	void * DTpointer;
-	Type * DTtype;
+        Symbol * DTsym;
+        tree DTtree;
+        void * DTpointer;
+        Type * DTtype;
     };
 };
 

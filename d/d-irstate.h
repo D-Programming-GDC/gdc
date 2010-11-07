@@ -75,22 +75,22 @@ public:
 
     /* The kinds of levels we recognize. */
     typedef enum LevelKind {
-	level_block = 0,    /* An ordinary block scope. */
-	level_switch,	    /* A switch-block */
-	level_try,	    /* A try-block. */
-	level_catch,	    /* A catch-block. */
-	level_finally,	    /* A finally-block. */
+        level_block = 0,    /* An ordinary block scope. */
+        level_switch,       /* A switch-block */
+        level_try,          /* A try-block. */
+        level_catch,        /* A catch-block. */
+        level_finally,      /* A finally-block. */
     } LevelKind;
 
     // ** Labels
 
     typedef struct
     {
-	LabelDsymbol * label;
-	Statement * block;
-	Statement * from;
-	LevelKind kind;
-	unsigned level;
+        LabelDsymbol * label;
+        Statement * block;
+        Statement * from;
+        LevelKind kind;
+        unsigned level;
     } Label;
 
     Array Labels; // of Label.
@@ -100,41 +100,41 @@ public:
     tree    getLabelTree(LabelDsymbol * label);
     Label * getLabelBlock(LabelDsymbol * label, Statement * from = NULL);
     bool    isReturnLabel(Identifier * ident) {
-	return func->returnLabel ? ident == func->returnLabel->ident : 0;
+        return func->returnLabel ? ident == func->returnLabel->ident : 0;
     }
 
     // ** Loops (and case statements)
 #if D_GCC_VER < 40
     typedef struct
     {
-	Statement * statement;
-	LevelKind   kind;
-	// expand_start_case doesn't return a nesting structure, so
-	// we have to generate our own label for 'break'
-	nesting * loop;
-	tree      exitLabel;
-	tree      overrideContinueLabel;
+        Statement * statement;
+        LevelKind   kind;
+        // expand_start_case doesn't return a nesting structure, so
+        // we have to generate our own label for 'break'
+        nesting * loop;
+        tree      exitLabel;
+        tree      overrideContinueLabel;
     } Flow;
 #else
     typedef struct
     {
-	Statement * statement;
-	LevelKind   kind;
-	tree exitLabel;
-	union {
-	    struct {
-		tree continueLabel;
-		tree unused;
-	    };
-	    struct {
-		tree condition; // only need this if it is not okay to convert an IfStatement's condition after converting it's branches...
-		tree trueBranch;
-	    };
-	    struct {
-		tree tryBody;
-		tree catchType;
-	    };
-	};
+        Statement * statement;
+        LevelKind   kind;
+        tree exitLabel;
+        union {
+            struct {
+                tree continueLabel;
+                tree unused;
+            };
+            struct {
+                tree condition; // only need this if it is not okay to convert an IfStatement's condition after converting it's branches...
+                tree trueBranch;
+            };
+            struct {
+                tree tryBody;
+                tree catchType;
+            };
+        };
     } Flow;
 #endif
 

@@ -21,15 +21,15 @@ d_update_phobos=0
 # Read command line arguments
 for arg in "$@"; do
     case "$arg" in
-	--d-language-version=*) d_lang_version=${arg##--d-language-version=} ;;
-	--update) d_update_phobos=1 ;;
-	-v1) d_lang_version=1 ;;
-	-v2) d_lang_version=2 ;;
-	*)
-	    echo "Usage: $0 [OPTION]"
-	    echo "error: invalid option '$arg'"
-	    exit 1
-	    ;;
+        --d-language-version=*) d_lang_version=${arg##--d-language-version=} ;;
+        --update) d_update_phobos=1 ;;
+        -v1) d_lang_version=1 ;;
+        -v2) d_lang_version=2 ;;
+        *)
+            echo "Usage: $0 [OPTION]"
+            echo "error: invalid option '$arg'"
+            exit 1
+            ;;
     esac
 done
 
@@ -65,12 +65,12 @@ if grep -qF '(Apple' gcc/version.c; then
     gcc_apple=apple-
     gcc_apple_build_ver=`grep '(Apple' gcc/version.c | sed -e 's/^.*build \([0-9][0-9]*\).*$/\1/'`
     if test "$gcc_apple_build_ver" -eq 5465; then
-	gcc_patch_key=5465
+        gcc_patch_key=5465
     elif test "$gcc_apple_build_ver" -eq 5664; then
-	gcc_patch_key=5664
+        gcc_patch_key=5664
     else
-	echo "This version of Apple GCC ($gcc_apple_build_ver) is not supported."
-	exit 1
+        echo "This version of Apple GCC ($gcc_apple_build_ver) is not supported."
+        exit 1
     fi
 fi
 
@@ -160,22 +160,22 @@ d_gcc_ver=`echo $gcc_ver | sed -e 's/\.//g'`
 if test "$d_gcc_ver" -ge 41; then
     cur_DEV_PHASE=`cat DEV-PHASE`
     if test -z "$cur_DEV_PHASE"; then
-	echo "$gdc_ver_msg" > DEV-PHASE
+        echo "$gdc_ver_msg" > DEV-PHASE
     else
-	echo "$cur_DEV_PHASE $gdc_ver_msg" > DEV-PHASE
+        echo "$cur_DEV_PHASE $gdc_ver_msg" > DEV-PHASE
     fi
 else
     sed -e 's/ *(gdc.*using dmd [0-9\.]*)//' \
-	-e 's/\(, *\)gdc.*using dmd [0-9\.]*/\1/' \
-	-e 's/\(version_string[^"]*"[^"]*\)"/\1 ('"$gdc_ver_msg"')"/' \
-	version.c > version.c.tmp && mv -f version.c.tmp version.c
+        -e 's/\(, *\)gdc.*using dmd [0-9\.]*/\1/' \
+        -e 's/\(version_string[^"]*"[^"]*\)"/\1 ('"$gdc_ver_msg"')"/' \
+        version.c > version.c.tmp && mv -f version.c.tmp version.c
 fi
 
 
 # 4. Maybe apply Darwin patches
 if test -z "$gcc_apple" && test "`uname`" = Darwin; then
     if test -f d/patches/patch-gcc-darwin-eh-$gcc_patch_key; then
-	patch -p1 < d/patches/patch-gcc-darwin-eh-$gcc_patch_key || exit 1
+        patch -p1 < d/patches/patch-gcc-darwin-eh-$gcc_patch_key || exit 1
     fi
 fi
 

@@ -23,7 +23,7 @@ module gcc.support;
 extern (C) {
     void _D9invariant12_d_invariantFC6ObjectZv(Object o);
     void _d_invariant(Object o) {
-	_D9invariant12_d_invariantFC6ObjectZv(o);
+        _D9invariant12_d_invariantFC6ObjectZv(o);
     }
 }
 

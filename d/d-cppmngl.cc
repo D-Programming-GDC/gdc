@@ -38,8 +38,8 @@ to_base36(unsigned n, OutBuffer * buf)
 
     if (! n)
     {
-	buf->writeByte('0');
-	return;
+        buf->writeByte('0');
+        return;
     }
 
     char cbuf[64];
@@ -47,9 +47,9 @@ to_base36(unsigned n, OutBuffer * buf)
 
     while (n && p > cbuf)
     {
-	unsigned d = n / 36;
-	*--p = base_36_digits[n - d * 36];
-	n = d;
+        unsigned d = n / 36;
+        *--p = base_36_digits[n - d * 36];
+        n = d;
     }
     buf->write(p, sizeof(cbuf) - (p - cbuf));
 }
@@ -62,36 +62,36 @@ struct CppMangleState
 private:
     bool _hasSubstitute(void * p, OutBuffer * buf)
     {
-	for (unsigned i = 0; i < substitutions.dim; ++i)
-	    if ( substitutions.data[i] == p )
-	    {
-		if (buf)
-		{
-		    buf->writeByte('S');
-		    if (i)
-			to_base36(i - 1, buf);
-		    buf->writeByte('_');
-		}
-		return true;
-	    }
-	return false;
+        for (unsigned i = 0; i < substitutions.dim; ++i)
+            if ( substitutions.data[i] == p )
+            {
+                if (buf)
+                {
+                    buf->writeByte('S');
+                    if (i)
+                        to_base36(i - 1, buf);
+                    buf->writeByte('_');
+                }
+                return true;
+            }
+        return false;
     }
 public:
     bool hasSubstitute(Type * type, OutBuffer * buf)
     {
-	return _hasSubstitute(type, buf);
+        return _hasSubstitute(type, buf);
     }
     bool hasSubstitute(Dsymbol * sym, OutBuffer * buf)
     {
-	return _hasSubstitute(sym, buf);
+        return _hasSubstitute(sym, buf);
     }
     void add(Dsymbol * sym)
     {
-	substitutions.push(sym);
+        substitutions.push(sym);
     }
     void add(Type * typ)
     {
-	substitutions.push(typ);
+        substitutions.push(typ);
     }
 };
 
@@ -102,45 +102,45 @@ cpp_mangle_arguments(TypeFunction * tf, OutBuffer * buf, CppMangleState *cms)
 
     if (tf->parameters)
     {
-	size_t dim = Parameter::dim(tf->parameters);
-	for (size_t i = 0; i < dim; i++)
-	{   Parameter *arg = Parameter::getNth(tf->parameters, i);
+        size_t dim = Parameter::dim(tf->parameters);
+        for (size_t i = 0; i < dim; i++)
+        {   Parameter *arg = Parameter::getNth(tf->parameters, i);
 
-	    have_some_args = true;
-	    if (arg->storageClass & (STClazy))
-	    {
-		// DMD does not report an error...
-		cms->topSymbol->error("cannot represent lazy parameter in C++");
-	    }
-	    else if (arg->storageClass & (STCout | STCref))
-	    {
-		arg->type->referenceTo()->toCppMangle(buf, cms);
-		continue;
-	    }
-	    else if (arg->type->ty == Tsarray)
-	    {
-		/* C++ would encode as pointer-to-elem-type, but DMD encodes
-		   as pointer-to-array-type. */
-		arg->type->pointerTo()->toCppMangle(buf, cms);
-		continue;
-	    }
+            have_some_args = true;
+            if (arg->storageClass & (STClazy))
+            {
+                // DMD does not report an error...
+                cms->topSymbol->error("cannot represent lazy parameter in C++");
+            }
+            else if (arg->storageClass & (STCout | STCref))
+            {
+                arg->type->referenceTo()->toCppMangle(buf, cms);
+                continue;
+            }
+            else if (arg->type->ty == Tsarray)
+            {
+                /* C++ would encode as pointer-to-elem-type, but DMD encodes
+                   as pointer-to-array-type. */
+                arg->type->pointerTo()->toCppMangle(buf, cms);
+                continue;
+            }
 
-	    // %% const/invariant not translated?
+            // %% const/invariant not translated?
 
-	    arg->type->toCppMangle(buf, cms);
-	}
+            arg->type->toCppMangle(buf, cms);
+        }
     }
     if (tf->varargs == 1)
-	buf->writeByte('z');
+        buf->writeByte('z');
     else if (! have_some_args)
-	buf->writeByte('v');
+        buf->writeByte('v');
 }
 
 static void
 cpp_mangle1(Dsymbol *sthis, OutBuffer * buf, CppMangleState * cms)
 {
     if (cms->hasSubstitute(sthis, buf))
-	return;
+        return;
 
     Dsymbol * s = sthis;
     bool is_nested_ident = false;
@@ -150,50 +150,50 @@ cpp_mangle1(Dsymbol *sthis, OutBuffer * buf, CppMangleState * cms)
     do
     {
 
-	if ( s != sthis && s->isFuncDeclaration() )
-	{
-	    buf->writeByte('Z');
-	    cpp_mangle1(s, buf, cms);
-	    buf->writeByte('E');
-	    break;
-	}
-	if (s != sthis)
-	    is_nested_ident = true;
-	pfxs.push(s);
+        if ( s != sthis && s->isFuncDeclaration() )
+        {
+            buf->writeByte('Z');
+            cpp_mangle1(s, buf, cms);
+            buf->writeByte('E');
+            break;
+        }
+        if (s != sthis)
+            is_nested_ident = true;
+        pfxs.push(s);
 
-	s = s->parent; // %% ?
+        s = s->parent; // %% ?
     } while (s && ! s->isModule());
 
     if (is_nested_ident)
-	buf->writeByte('N');
+        buf->writeByte('N');
 
     unsigned ii;
     for (ii = 0; ii < pfxs.dim; ++ii)
     {
-	s = (Dsymbol *) pfxs.data[ii];
-	if (cms->hasSubstitute(s, buf))
-	    break;
+        s = (Dsymbol *) pfxs.data[ii];
+        if (cms->hasSubstitute(s, buf))
+            break;
     }
     while (ii > 0)
     {
-	s = (Dsymbol *) pfxs.data[--ii];
-	if (s->ident)
-	{
-	    buf->printf("%d", (int) s->ident->len);
-	    buf->write(s->ident->string, s->ident->len);
-	}
-	else
-	    buf->writeByte('0');
-	if (! s->isFuncDeclaration())
-	    cms->add(s);
+        s = (Dsymbol *) pfxs.data[--ii];
+        if (s->ident)
+        {
+            buf->printf("%d", (int) s->ident->len);
+            buf->write(s->ident->string, s->ident->len);
+        }
+        else
+            buf->writeByte('0');
+        if (! s->isFuncDeclaration())
+            cms->add(s);
     }
 
     if (is_nested_ident)
-	buf->writeByte('E');
+        buf->writeByte('E');
 
     if ( (fd = sthis->isFuncDeclaration()) )
     {
-	cpp_mangle_arguments((TypeFunction *) fd->type, buf, cms);
+        cpp_mangle_arguments((TypeFunction *) fd->type, buf, cms);
     }
 }
 
@@ -220,12 +220,12 @@ Type::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 
     if (! cms->hasSubstitute(this, buf))
     {
-	OutBuffer o;
-	toDecoBuffer(& o, 0);
-	buf->printf("%d", (int) o.offset);
-	buf->write(& o);
+        OutBuffer o;
+        toDecoBuffer(& o, 0);
+        buf->printf("%d", (int) o.offset);
+        buf->write(& o);
 
-	cms->add(this);
+        cms->add(this);
     }
 }
 
@@ -234,9 +234,9 @@ cpp_mangle_fp(Type * t, const char * mngl, OutBuffer *buf, CppMangleState *cms)
 {
     if (! cms->hasSubstitute(t, buf))
     {
-	buf->writestring(mngl);
+        buf->writestring(mngl);
 
-	cms->add(t);
+        cms->add(t);
     }
 }
 
@@ -247,7 +247,7 @@ TypeBasic::toCppMangle(OutBuffer *buf, CppMangleState *cms)
     const char * s;
 
     if (isConst())
-	buf->writeByte('K');
+        buf->writeByte('K');
 
     switch (ty)
     {
@@ -271,33 +271,33 @@ TypeBasic::toCppMangle(OutBuffer *buf, CppMangleState *cms)
     case Tcomplex64: s = "Cd"; goto do_fp;
     case Tcomplex80: s = "Ce";  // %% ditto
     do_fp:
-	cpp_mangle_fp(this, s, buf, cms);
-	return;
+        cpp_mangle_fp(this, s, buf, cms);
+        return;
 
     case Tbool: c = 'b'; break;
 
     case Tchar: c = 'c'; break;
 #ifdef WCHAR_TYPE_SIZE
     case Twchar:
-	if (WCHAR_TYPE_SIZE == 16)
-	    c = 'w';
-	else
-	    c = 't';
-	break;
+        if (WCHAR_TYPE_SIZE == 16)
+            c = 'w';
+        else
+            c = 't';
+        break;
     case Tdchar:
-	if (WCHAR_TYPE_SIZE == 32)
-	    c = 'w';
-	else
-	    c = 'j';
-	break;
+        if (WCHAR_TYPE_SIZE == 32)
+            c = 'w';
+        else
+            c = 'j';
+        break;
 #else
     case Twchar: c = 't'; break;
     case Tdchar: c = 'j'; break;
 #endif
 
     default:
-	Type::toCppMangle(buf, cms);
-	return;
+        Type::toCppMangle(buf, cms);
+        return;
     }
     buf->writeByte(c);
 }
@@ -307,15 +307,15 @@ TypeSArray::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
     if (! cms->hasSubstitute(this, buf))
     {
-	if (dim)
-	    buf->printf("A%"PRIuMAX, dim->toInteger());
-	buf->writeByte('_');
-	if (next)
-	    next->toCppMangle(buf, cms);
+        if (dim)
+            buf->printf("A%"PRIuMAX, dim->toInteger());
+        buf->writeByte('_');
+        if (next)
+            next->toCppMangle(buf, cms);
 
-	assert(! cms->hasSubstitute(this, NULL));
+        assert(! cms->hasSubstitute(this, NULL));
 
-	cms->add(this);
+        cms->add(this);
     }
 }
 
@@ -336,13 +336,13 @@ TypePointer::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
     if (! cms->hasSubstitute(this, buf))
     {
-	buf->writeByte('P');
-	if (next)
-	    next->toCppMangle(buf, cms);
+        buf->writeByte('P');
+        if (next)
+            next->toCppMangle(buf, cms);
 
-	assert(! cms->hasSubstitute(this, NULL));
+        assert(! cms->hasSubstitute(this, NULL));
 
-	cms->add(this);
+        cms->add(this);
     }
 }
 
@@ -351,13 +351,13 @@ TypeReference::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
     if (! cms->hasSubstitute(this, buf))
     {
-	buf->writeByte('R');
-	if (next)
-	    next->toCppMangle(buf, cms);
+        buf->writeByte('R');
+        if (next)
+            next->toCppMangle(buf, cms);
 
-	assert(! cms->hasSubstitute(this, NULL));
+        assert(! cms->hasSubstitute(this, NULL));
 
-	cms->add(this);
+        cms->add(this);
     }
 }
 
@@ -366,15 +366,15 @@ TypeFunction::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
     if (! cms->hasSubstitute(this, buf))
     {
-	buf->writeByte('F');
-	if (next)
-	    next->toCppMangle(buf, cms);
-	cpp_mangle_arguments(this, buf, cms);
-	buf->writeByte('E');
+        buf->writeByte('F');
+        if (next)
+            next->toCppMangle(buf, cms);
+        cpp_mangle_arguments(this, buf, cms);
+        buf->writeByte('E');
 
-	assert(! cms->hasSubstitute(this, NULL));
+        assert(! cms->hasSubstitute(this, NULL));
 
-	cms->add(this);
+        cms->add(this);
     }
 }
 
@@ -408,11 +408,11 @@ TypeClass::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
     if (! cms->hasSubstitute(this, buf))
     {
-	buf->writeByte('P');
-	cpp_mangle1(sym, buf, cms);
+        buf->writeByte('P');
+        cpp_mangle1(sym, buf, cms);
 
-	assert(! cms->hasSubstitute(this, NULL));
+        assert(! cms->hasSubstitute(this, NULL));
 
-	cms->add(this);
+        cms->add(this);
     }
 }
