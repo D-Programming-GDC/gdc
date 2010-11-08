@@ -206,6 +206,7 @@ struct ErrorExp : IntegerExp
 
     Expression *implicitCastTo(Scope *sc, Type *t);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+    Expression *toLvalue(Scope *sc, Expression *e);
 };
 
 struct RealExp : Expression
@@ -1211,6 +1212,11 @@ struct AssignExp : BinExp
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
     Expression *buildArrayLoop(Parameters *fparams);
     elem *toElem(IRState *irs);
+};
+
+struct ConstructExp : AssignExp
+{
+    ConstructExp(Loc loc, Expression *e1, Expression *e2);
 };
 
 #define ASSIGNEXP(op)   \

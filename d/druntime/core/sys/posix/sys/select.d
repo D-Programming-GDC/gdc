@@ -48,14 +48,14 @@ version( linux )
     private
     {
         alias c_long __fd_mask;
-        enum uint __NFDBITS = 8 * __fd_mask.sizeof;
+        enum __NFDBITS = 8 * __fd_mask.sizeof;
 
-        extern (D) auto __FDELT( int d )
+        extern (D) int __FDELT( int d )
         {
             return d / __NFDBITS;
         }
 
-        extern (D) auto __FDMASK( int d )
+        extern (D) int __FDMASK( int d )
         {
             return cast(__fd_mask) 1 << ( d % __NFDBITS );
         }

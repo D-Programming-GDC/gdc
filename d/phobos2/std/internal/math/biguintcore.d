@@ -29,11 +29,19 @@ Idioms:
   in order to disable implicit conversion.
     
 */ 
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+ */
 module std.internal.math.biguintcore;
 
-version(D_InlineAsm_X86)
+version(none)
 {
-    import std.internal.math.biguintx86;
+    // Disable ASM in GDC until things improve.
+    version(D_InlineAsm_X86)
+    {
+        import std.internal.math.biguintx86;
+    }
 }
 else
 {
@@ -79,8 +87,7 @@ public:
 struct BigUint {
 private:
     invariant() {
-    // @@@BUG@@@ Compiler bug 3986:
-        //assert( data.length == 1 || data[$-1] != 0 );
+        assert( data.length == 1 || data[$-1] != 0 );
     }
     BigDigit [] data = ZERO; 
     this(BigDigit [] x) {

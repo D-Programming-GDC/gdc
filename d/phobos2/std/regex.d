@@ -27,7 +27,7 @@ $(TR $(TD $(B i)) $(TD case insensitive))
 $(TR $(TD $(B m)) $(TD treat as multiple lines separated by newlines)))
 
 The $(D format[]) string has the formatting characters:
-    
+
 $(BOOKTABLE Formatting Characters,
 $(TR $(TH Format) $(TH Replaced With))
 $(TR  $(TD $(B $$)) $(TD $))
@@ -191,7 +191,7 @@ private:
         dotmatchlf      = 8,    // if . matches \n
     }
     enum uint inf = ~0u;
-    
+
     uint re_nsub;        // number of parenthesized subexpression matches
     ubyte attributes;
     immutable(ubyte)[] program; // pattern[] compiled into regular
@@ -254,24 +254,9 @@ attributes = The _attributes (g, i, and m accepted)
 
 Throws: $(D Exception) if there are any compilation errors.
  */
-    public static Regex opCall(String)
-    (String pattern, string attributes = null)
+    this(String)(String pattern, string attributes = null)
     {
-        static Tuple!(String, string) lastReq;
-        static typeof(return) lastResult;
-        if (lastReq.field[0] == pattern && lastReq.field[1] == attributes)
-        {
-            // cache hit
-            return lastResult;
-        }
-        // cache miss        
-        Regex result;
-        result.initialize(pattern, attributes);
-        lastReq.field[0] = cast(String) pattern.dup;
-        lastReq.field[1] = cast(string) attributes.dup;
-        lastResult = result;
-        return result;
-        //return new RegexImpl(pattern, attributes);
+        compile(pattern, attributes);
     }
 
     unittest
@@ -289,7 +274,7 @@ Throws: $(D Exception) if there are any compilation errors.
             msg = ree.toString();
             //writefln("message: %s", ree);
         }
-        assert(msg == "object.Exception: unrecognized attribute");
+        assert(std.algorithm.indexOf(msg, "unrecognized attribute") >= 0);
     }
 
 /**
@@ -641,7 +626,7 @@ Returns the number of parenthesized captures
             case 'S':    op = REnotspace;        goto Lop;
             case 'w':    op = REword;            goto Lop;
             case 'W':    op = REnotword;         goto Lop;
-                
+
             Lop:
                 buf.write(op);
                 p++;
@@ -762,7 +747,7 @@ Returns the number of parenthesized captures
         }
         return 1;
     }
-    
+
     class Range
     {
         uint maxc;
@@ -779,7 +764,7 @@ Returns the number of parenthesized captures
         }
 
         void setbitmax(uint u)
-        {   
+        {
             //printf("setbitmax(x%x), maxc = x%x\n", u, maxc);
             if (u <= maxc)
                 return;
@@ -787,7 +772,7 @@ Returns the number of parenthesized captures
             uint b = u / 8;
             if (b >= maxb)
             {   uint u2;
-                
+
                 u2 = base ? base - &buf.data[0] : 0;
                 buf.fill0(b - maxb + 1);
                 base = &buf.data[u2];
@@ -1519,7 +1504,21 @@ Returns the number of parenthesized captures
 Regex!(Unqual!(typeof(String.init[0]))) regex(String)
 (String pattern, string flags = null)
 {
-    return typeof(return)(pattern, flags);
+    static Tuple!(String, string) lastReq;
+    static typeof(return) lastResult;
+    if (lastReq.field[0] == pattern && lastReq.field[1] == flags)
+    {
+        // cache hit
+        return lastResult;
+    }
+
+    auto result = typeof(return)(pattern, flags);
+
+    lastReq.field[0] = cast(String) pattern.dup;
+    lastReq.field[1] = cast(string) flags.dup;
+    lastResult = result;
+
+    return result;
 }
 
 /**
@@ -1575,7 +1574,7 @@ Copy zis.
     {
         pmatch = pmatch.dup;
     }
-    
+
     // ref auto opSlice()
     // {
     //     return this;
@@ -1583,7 +1582,7 @@ Copy zis.
 
 /**
 Range primitives that allow incremental matching against a string.
-   
+
 Example:
 ---
 import std.stdio;
@@ -1668,7 +1667,7 @@ void main()
         {
             return matches.empty;
         }
-        
+
         Range front()
         {
             return input[matches[0].startIdx .. matches[0].endIdx];
@@ -1748,7 +1747,7 @@ The matched portion of the input.
                         " vs. ", input.length));
         return input[pmatch[0].startIdx .. pmatch[0].endIdx];
     }
-    
+
 /*******************
 Returns the slice of the input that follows the matched substring.
  */
@@ -1756,7 +1755,7 @@ Returns the slice of the input that follows the matched substring.
     {
         return input[pmatch[0].endIdx < $ ? pmatch[0].endIdx : $ .. $];
     }
-    
+
 /**
 Returns $(D hit) (converted to $(D string) if necessary).
 */
@@ -1764,7 +1763,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
     {
         return to!string(hit);
     }
-    
+
 /* ************************************************
  * Find regular expression matches in s[]. Replace those matches
  * with a new string composed of format[] merged with the result of the
@@ -1823,7 +1822,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
         return result;
     }
 
-/* 
+/*
  * Test s[] starting at startindex against regular expression.
  * Returns: 0 for no match, !=0 for match
  */
@@ -1852,7 +1851,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
             if (engine.attributes & engine.REA.ignoreCase && isalpha(firstc))
                 firstc = 0;
         }
-        
+
         for (;; ++startindex)
         {
             if (firstc)
@@ -1983,7 +1982,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 if (src == input.length)
                     goto Lnomatch;
                 debug(regex) printf("\tREchar '%c', src = '%c'\n",
-                        program[pc + 1], input[src]);
+                                    engine.program[pc + 1], input[src]);
                 if (engine.program[pc + 1] != input[src])
                     goto Lnomatch;
                 src++;
@@ -1991,11 +1990,11 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 break;
 
             case engine.REichar:
-                
+
                 if (src == input.length)
                     goto Lnomatch;
                 debug(regex) printf("\tREichar '%c', src = '%c'\n",
-                        program[pc + 1], input[src]);
+                                    engine.program[pc + 1], input[src]);
                 c1 = engine.program[pc + 1];
                 c2 = input[src];
                 if (c1 != c2)
@@ -2012,10 +2011,10 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 break;
 
             case engine.REdchar:
-                debug(regex) printf("\tREdchar '%c', src = '%c'\n",
-                        *(cast(dchar *)&program[pc + 1]), input[src]);
                 if (src == input.length)
                     goto Lnomatch;
+                debug(regex) printf("\tREdchar '%c', src = '%c'\n",
+                                    *(cast(dchar *)&engine.program[pc + 1]), input[src]);
                 if (*(cast(dchar *)&engine.program[pc + 1]) != input[src])
                     goto Lnomatch;
                 src++;
@@ -2023,10 +2022,10 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 break;
 
             case engine.REidchar:
-                debug(regex) printf("\tREidchar '%c', src = '%c'\n",
-                        *(cast(dchar *)&program[pc + 1]), input[src]);
                 if (src == input.length)
                     goto Lnomatch;
+                debug(regex) printf("\tREidchar '%c', src = '%c'\n",
+                                    *(cast(dchar *)&engine.program[pc + 1]), input[src]);
                 c1 = *(cast(dchar *)&engine.program[pc + 1]);
                 c2 = input[src];
                 if (c1 != c2)
@@ -2057,7 +2056,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 assert(len % E.sizeof == 0);
                 len /= E.sizeof;
                 debug(regex) printf("\tREstring x%x, '%.*s'\n", len,
-                        (&program[pc + 1 + uint.sizeof])[0 .. len]);
+                                    (&engine.program[pc + 1 + uint.sizeof])[0 .. len]);
                 if (src + len > input.length)
                     goto Lnomatch;
                 if (memcmp(&engine.program[pc + 1 + uint.sizeof],
@@ -2072,7 +2071,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 assert(len % E.sizeof == 0);
                 len /= E.sizeof;
                 debug(regex) printf("\tREistring x%x, '%.*s'\n", len,
-                        (&program[pc + 1 + uint.sizeof])[0 .. len]);
+                                    (&engine.program[pc + 1 + uint.sizeof])[0 .. len]);
                 if (src + len > input.length)
                     goto Lnomatch;
                 // version (Win32)
@@ -2094,10 +2093,10 @@ Returns $(D hit) (converted to $(D string) if necessary).
 
             case engine.REtestbit:
                 pu = (cast(ushort *)&engine.program[pc + 1]);
-                debug(regex) printf("\tREtestbit %d, %d, '%c', x%02x\n",
-                        pu[0], pu[1], input[src], input[src]);
                 if (src == input.length)
                     goto Lnomatch;
+                debug(regex) printf("\tREtestbit %d, %d, '%c', x%02x\n",
+                                    pu[0], pu[1], input[src], input[src]);
                 len = pu[1];
                 c1 = input[src];
                 if (c1 <= pu[0] &&
@@ -2107,11 +2106,11 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 break;
 
             case engine.REbit:
-                pu = (cast(ushort *)&engine.program[pc + 1]);
-                debug(regex) printf("\tREbit %d, %d, '%c'\n",
-                        pu[0], pu[1], input[src]);
                 if (src == input.length)
                     goto Lnomatch;
+                pu = (cast(ushort *)&engine.program[pc + 1]);
+                debug(regex) printf("\tREbit %d, %d, '%c'\n",
+                                    pu[0], pu[1], input[src]);
                 len = pu[1];
                 c1 = input[src];
                 if (c1 > pu[0])
@@ -2123,11 +2122,11 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 break;
 
             case engine.REnotbit:
-                pu = (cast(ushort *)&engine.program[pc + 1]);
-                debug(regex) printf("\tREnotbit %d, %d, '%c'\n",
-                        pu[0], pu[1], input[src]);
                 if (src == input.length)
                     goto Lnomatch;
+                pu = (cast(ushort *)&engine.program[pc + 1]);
+                debug(regex) printf("\tREnotbit %d, %d, '%c'\n",
+                                    pu[0], pu[1], input[src]);
                 len = pu[1];
                 c1 = input[src];
                 if (c1 <= pu[0] &&
@@ -2274,7 +2273,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 n = puint[1];
                 m = puint[2];
                 debug(regex) printf("\tREnm%s len=%d, n=%u, m=%u\n",
-                        (engine.program[pc] == REnmq) ? cast(char*)"q"
+                        (engine.program[pc] == engine.REnmq) ? cast(char*)"q"
                         : cast(char*)"", len, n, m);
                 pop = pc + 1 + uint.sizeof * 3;
                 for (count = 0; count < n; count++)
@@ -2502,7 +2501,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
 // p is following the \ char
 /* ==================== replace ======================= */
 
-/* 
+/*
 After a match was found, this function will take the match results
 and, using the format string, generate and return a new string.
  */
@@ -2706,7 +2705,7 @@ inspection or for iterating over all matches (if the regular
 expression was built with the "g" option).
  */
 RegexMatch!(Range) match(Range, Engine)(Range r, Engine engine)
-if (is(Engine == Regex!(Unqual!(typeof(Range.init[0])))))
+if (is(Unqual!Engine == Regex!(Unqual!(typeof(Range.init[0])))))
 {
     return typeof(return)(engine, r);
 }
@@ -2788,7 +2787,7 @@ assert(replace("noon", regex("^n"), "[$&]") == "[n]oon");
  */
 
 Range replace(Range, Engine, String)(Range input, Engine regex, String format)
-if (is(Engine == Regex!(Unqual!(typeof(Range.init[0])))))
+if (is(Unqual!Engine == Regex!(Unqual!(typeof(Range.init[0])))))
 {
     return RegexMatch!(Range)(regex, input).replaceAll(format);
 }
@@ -2887,7 +2886,7 @@ unittest
     string bar(RegexMatch!(string) r) { return "l"; }
     r = replace!(bar)("hello", regex("l", "g"));
     assert(r == "hello");
-    
+
     string baz(RegexMatch!(string) m)
     {
         return std.string.toupper(m.hit);
@@ -2907,7 +2906,7 @@ Example:
 ----
 auto s1 = ", abc, de,  fg, hi, ";
 assert(equal(splitter(s1, regex(", *")),
-    ["", "abc", "de", "fg", "hi"][]));
+    ["", "abc", "de", "fg", "hi", ""][]));
 ----
  */
 struct Splitter(Range)

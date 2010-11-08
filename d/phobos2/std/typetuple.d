@@ -27,6 +27,8 @@
  */
 module std.typetuple;
 
+import std.traits;
+
 /**
  * Creates a typetuple out of a sequence of zero or more types.
  * Example:
@@ -73,7 +75,7 @@ template staticIndexOf(T, TList...)
 {
     enum staticIndexOf = genericIndexOf!(T, TList).index;
 }
- 
+
 /// Ditto
 template staticIndexOf(alias T, TList...)
 {
@@ -185,7 +187,7 @@ private template GenericErase(args...)
         alias TypeTuple!() result;
     }
  }
- 
+
 unittest
 {
     static assert(Pack!(Erase!(int,
@@ -244,7 +246,7 @@ private template GenericEraseAll(args...)
         alias TypeTuple!() result;
     }
  }
- 
+
 unittest
 {
     static assert(Pack!(EraseAll!(int,
@@ -345,7 +347,7 @@ private template GenericReplace(args...)
         alias TypeTuple!() result;
     }
  }
- 
+
 unittest
 {
     static assert(Pack!(Replace!(byte, ubyte,
@@ -424,7 +426,7 @@ private template GenericReplaceAll(args...)
         alias TypeTuple!() result;
     }
 }
- 
+
 unittest
 {
     static assert(Pack!(ReplaceAll!(byte, ubyte,
@@ -512,6 +514,60 @@ template DerivedToFront(TList...)
                             TList[1 .. $]))) DerivedToFront;
 }
 
+
+/**
+Evaluates to $(D TypeTuple!(F[T[0]], F[T[1]], ..., F[T[$ - 1]])).
+
+Example:
+----
+alias staticMap!(Unqual, int, const int, immutable int) T;
+static assert(is(T == TypeTuple!(int, int, int)));
+----
+ */
+template staticMap(alias F, T...)
+{
+    static if (T.length == 1)
+    {
+        alias F!(T[0]) staticMap;
+    }
+    else
+    {
+        alias TypeTuple!(F!(T[0]), staticMap!(F, T[1 .. $])) staticMap;
+    }
+}
+
+unittest
+{
+    alias staticMap!(Unqual, int, const int, immutable int) T;
+    static assert(is(T == TypeTuple!(int, int, int)));
+}
+
+/**
+Evaluates to $(D F[T[0]] && F[T[1]] && ... && F[T[$ - 1]]).
+
+Example:
+----
+static assert(!allSatisfy!(isIntegral, int, double));
+static assert(allSatisfy!(isIntegral, int, long));
+----
+ */
+template allSatisfy(alias F, T...)
+{
+    static if (T.length == 1)
+    {
+        alias F!(T[0]) allSatisfy;
+    }
+    else
+    {
+        enum bool allSatisfy = F!(T[0]) && allSatisfy!(F, T[1 .. $]);
+    }
+}
+
+unittest
+{
+    static assert(!allSatisfy!(isIntegral, int, double));
+    static assert(allSatisfy!(isIntegral, int, long));
+}
 
 // : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : //
 private:

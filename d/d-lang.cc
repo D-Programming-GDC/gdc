@@ -616,7 +616,7 @@ d_handle_option (size_t scode, const char *arg, int value)
           global.params.useSwitchError = ! value;
           break;
 #if V2
-      case OPT_fnoboundscheck:
+      case OPT_fnobounds_check:
           global.params.noboundscheck = value;
           break;
 #endif

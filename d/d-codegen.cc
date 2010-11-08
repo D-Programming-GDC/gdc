@@ -601,7 +601,7 @@ IRState::convertForAssignment(tree expr, Type * expr_type, Type * target_type)
 
 tree
 IRState::convertForCondition(tree exp_tree, Type * exp_type) {
-    tree result = exp_tree;
+    tree result = NULL_TREE;
     tree a, b, tmp;
 
     switch (exp_type->toBasetype()->ty) {
@@ -613,7 +613,7 @@ IRState::convertForCondition(tree exp_tree, Type * exp_type) {
         break;
     case Tarray:
         // DMD checks (length || ptr) (i.e ary !is null)
-        tmp = maybeMakeTemp(result);
+        tmp = maybeMakeTemp(exp_tree);
         a = delegateObjectRef(tmp);
         b = delegateMethodRef(tmp);
         if (TYPE_MODE(TREE_TYPE(a)) == TYPE_MODE(TREE_TYPE(b)))
@@ -629,10 +629,10 @@ IRState::convertForCondition(tree exp_tree, Type * exp_type) {
     case Tdelegate:
         // DMD checks (function || object), but what good
         // is if if there is a null function pointer?
-        if ( D_IS_METHOD_CALL_EXPR(result) ) {
-            extractMethodCallExpr(result, a, b);
+        if ( D_IS_METHOD_CALL_EXPR(exp_tree) ) {
+            extractMethodCallExpr(exp_tree, a, b);
         } else {
-            tmp = maybeMakeTemp(result);
+            tmp = maybeMakeTemp(exp_tree);
             a = delegateObjectRef(tmp);
             b = delegateMethodRef(tmp);
         }
@@ -641,6 +641,7 @@ IRState::convertForCondition(tree exp_tree, Type * exp_type) {
         result = build2(BIT_IOR_EXPR, TREE_TYPE(a), a, b);
         break;
     default:
+        result = exp_tree;
         break;
     }
     // see expr.c:do_jump for the types of trees that can be passed to expand_start_cond
@@ -2343,13 +2344,15 @@ IRState::isDeclarationReferenceType(Declaration * decl)
         return true;
     }
 
-    if (  decl->isOut() || decl->isRef()
-#if !SARRAYVALUE
-        || ( decl->isParameter() && base_type->ty == Tsarray )
-#endif
-       ) {
+    if ( decl->isOut() || decl->isRef() ) {
         return true;
     }
+
+#if !SARRAYVALUE
+    if ( decl->isParameter() && base_type->ty == Tsarray ) {
+        return true;
+    }
+#endif
 
     return false;
 }
@@ -2382,9 +2385,15 @@ IRState::isArgumentReferenceType(Parameter * arg)
         return true;
     }
 
-    if ( (arg->storageClass & (STCout | STCref)) || base_type->ty == Tsarray ) {
+    if ( arg->storageClass & (STCout | STCref) ) {
         return true;
     }
+
+#if !SARRAYVALUE
+    if ( base_type->ty == Tsarray ) {
+        return true;
+    }
+#endif
 
     return false;
 }

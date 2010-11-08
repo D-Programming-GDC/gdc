@@ -634,7 +634,7 @@ AndAndExp::toElem(IRState * irs)
         return make_bool_binop(this, irs);
     else
         return build3(COND_EXPR, type->toCtype(),
-            e1->toElem(irs), e2->toElem(irs), d_void_zero_node);
+            irs->convertForCondition(e1), e2->toElem(irs), d_void_zero_node);
 }
 
 elem *
@@ -644,7 +644,7 @@ OrOrExp::toElem(IRState * irs)
         return make_bool_binop(this, irs);
     else
         return build3(COND_EXPR, type->toCtype(),
-            build1(TRUTH_NOT_EXPR, boolean_type_node, e1->toElem(irs)),
+            build1(TRUTH_NOT_EXPR, boolean_type_node, irs->convertForCondition(e1)),
             e2->toElem(irs), d_void_zero_node);
 }
 
@@ -3145,7 +3145,8 @@ Module::genobjfile(int multiobj)
         }
     }
 
-    if (needModuleInfo())
+    // Always generate module info
+    if (1 || needModuleInfo())
     {
         ModuleInfo & mi = * g.mi();
         if (mi.ctors.dim)
@@ -3655,34 +3656,27 @@ binfo_for(tree tgt_binfo, ClassDeclaration * cls)
 static tree
 intfc_binfo_for(tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offset)
 {
-#if V1
-#define BASECLASSES_DIM  iface->baseclasses->dim
-#define BASECLASSES_DATA iface->baseclasses->data
-#else
-#define BASECLASSES_DIM  iface->baseclasses.dim
-#define BASECLASSES_DATA iface->baseclasses.data
-#endif
     tree binfo =
 #if D_GCC_VER < 40
         make_tree_vec(BINFO_ELTS)
 #else
-        make_tree_binfo(BASECLASSES_DIM)
+        make_tree_binfo(iface->baseclasses->dim)
 #endif
         ;
     TREE_TYPE              (binfo) = TREE_TYPE( iface->type->toCtype() ); // RECORD_TYPE, not REFERENCE_TYPE
     BINFO_INHERITANCE_CHAIN(binfo) = tgt_binfo;
     BINFO_OFFSET           (binfo) = size_int(inout_offset * PTRSIZE);
 
-    if (BASECLASSES_DIM) {
+    if (iface->baseclasses->dim) {
 #if D_GCC_VER < 40
-        BINFO_BASETYPES(binfo)    = make_tree_vec(BASECLASSES_DIM);
+        BINFO_BASETYPES(binfo)    = make_tree_vec(iface->baseclasses->dim);
 #endif
 #ifdef BINFO_BASEACCESSES
-        BINFO_BASEACCESSES(binfo) = make_tree_vec(BASECLASSES_DIM);
+        BINFO_BASEACCESSES(binfo) = make_tree_vec(iface->baseclasses->dim);
 #endif
     }
-    for (unsigned i = 0; i < BASECLASSES_DIM; i++) {
-        BaseClass * bc = (BaseClass *) BASECLASSES_DATA[i];
+    for (unsigned i = 0; i < iface->baseclasses->dim; i++) {
+        BaseClass * bc = (BaseClass *) iface->baseclasses->data[i];
 
         if (i)
             inout_offset++;
@@ -3711,8 +3705,6 @@ intfc_binfo_for(tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offse
         BINFO_BASEACCESS(binfo, i) = prot_tree;
 #endif
     }
-#undef BASECLASSES_DIM
-#undef BASECLASSES_DATA
 
     return binfo;
 }
@@ -3777,15 +3769,9 @@ TypeClass::toCtype()
             agg_layout.go();
         } else {
             ClassDeclaration * p = sym;
-#if V1
             while (p->baseclasses->dim) {
                 p = ((BaseClass *) p->baseclasses->data[0])->base;
             }
-#else
-            while (p->baseclasses.dim) {
-                p = ((BaseClass *) p->baseclasses.data[0])->base;
-            }
-#endif
             DECL_FCONTEXT( vfield ) = TREE_TYPE( p->type->toCtype() );
         }
 

@@ -170,6 +170,28 @@ unittest
 }
 
 /**
+Implements the range interface primitive $(D save) for built-in
+arrays. Due to the fact that nonmember functions can be called with
+the first argument using the dot notation, $(D array.save) is
+equivalent to $(D save(array)).
+
+Example:
+----
+void main()
+{
+    auto a = [ 1, 2, 3 ];
+    auto b = a.save;
+    assert(b is a);
+}
+----
+ */
+
+@property T[] save(T)(T[] a)
+{
+    return a;
+}
+
+/**
 Implements the range interface primitive $(D popFront) for built-in
 arrays. Due to the fact that nonmember functions can be called with
 the first argument using the dot notation, $(D array.popFront) is
@@ -288,8 +310,9 @@ unittest
     assert(s == "hello", s);
 
     string s3 = "\xE2\x89\xA0";
-    auto c = decodeBack(s3);
+    auto c = s3.back;
     assert(c == cast(dchar)'\u2260');
+    s3.popBack();
     assert(s3 == "");
 }
 
@@ -302,7 +325,7 @@ void popBack(T)(ref T[] a) if (is(Unqual!T == wchar))
         return;
     }
     immutable c = a[$ - 2];
-    a = a[0 .. $ - 1 - (c >= 0xD800 && c <= 0xDBFF)]; 
+    a = a[0 .. $ - 1 - (c >= 0xD800 && c <= 0xDBFF)];
 }
 
 unittest
@@ -556,8 +579,8 @@ Replaces elements from $(D array) with indices ranging from $(D from)
 (inclusive) to $(D to) (exclusive) with the range $(D stuff). Expands
 or shrinks the array as needed.
  */
-void replace(T, Range)(ref T[] array, size_t from, size_t to,
-        Range stuff)
+void replace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff)
+    if (is(ElementType!Range == T))
 {
     // container = container[0 .. from] ~ stuff ~ container[to .. $];
     if (overlap(array, stuff))
@@ -572,7 +595,7 @@ void replace(T, Range)(ref T[] array, size_t from, size_t to,
         //immutable stuffEnd = from + stuff.length;
         auto stuffEnd = from + stuff.length;
         array[from .. stuffEnd] = stuff;
-        remove(array, tuple(stuffEnd, to));
+        array = remove(array, tuple(stuffEnd, to));
     }
     else
     {
@@ -584,11 +607,24 @@ void replace(T, Range)(ref T[] array, size_t from, size_t to,
     }
 }
 
+
+void replace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff)
+    if (!is(ElementType!Range == T) && is(Unqual!Range == void*))
+{
+    replace(array, from, to, cast(T[])[]);
+}
+
+
+
 unittest
 {
     int[] a = [1, 4, 5];
     replace(a, 1u, 2u, [2, 3, 4]);
     assert(a == [1, 2, 3, 4, 5]);
+    replace(a, 1u, 2u, cast(int[])[]);
+    assert(a == [1, 3, 4, 5]);
+    replace(a, 1u, 2u, null);
+    assert(a == [1, 4, 5]);
 }
 
 /**

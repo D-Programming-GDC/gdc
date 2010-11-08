@@ -744,10 +744,7 @@ Type *functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
 
                             Expression *e = new VarExp(loc, v);
                             e = new IndexExp(loc, e, new IntegerExp(u + 1 - nparams));
-                            AssignExp *ae = new AssignExp(loc, e, a);
-#if DMDV2
-                            ae->op = TOKconstruct;
-#endif
+                            ConstructExp *ae = new ConstructExp(loc, e, a);
                             if (c)
                                 c = new CommaExp(loc, c, ae);
                             else
@@ -1116,18 +1113,24 @@ char *Expression::toChars()
 
 void Expression::error(const char *format, ...)
 {
-    va_list ap;
-    va_start(ap, format);
-    ::verror(loc, format, ap);
-    va_end( ap );
+    if (type != Type::terror)
+    {
+        va_list ap;
+        va_start(ap, format);
+        ::verror(loc, format, ap);
+        va_end( ap );
+    }
 }
 
 void Expression::warning(const char *format, ...)
 {
-    va_list ap;
-    va_start(ap, format);
-    ::vwarning(loc, format, ap);
-    va_end( ap );
+    if (type != Type::terror)
+    {
+        va_list ap;
+        va_start(ap, format);
+        ::vwarning(loc, format, ap);
+        va_end( ap );
+    }
 }
 
 void Expression::rvalue()
@@ -1257,7 +1260,7 @@ void Expression::checkEscapeRef()
 
 void Expression::checkScalar()
 {
-    if (!type->isscalar())
+    if (!type->isscalar() && type->toBasetype() != Type::terror)
         error("'%s' is not a scalar, it is a %s", toChars(), type->toChars());
     rvalue();
 }
@@ -1271,7 +1274,8 @@ void Expression::checkNoBool()
 Expression *Expression::checkIntegral()
 {
     if (!type->isintegral())
-    {   error("'%s' is not of integral type, it is a %s", toChars(), type->toChars());
+    {   if (type->toBasetype() != Type::terror)
+            error("'%s' is not of integral type, it is a %s", toChars(), type->toChars());
         return new ErrorExp();
     }
     rvalue();
@@ -1281,7 +1285,8 @@ Expression *Expression::checkIntegral()
 Expression *Expression::checkArithmetic()
 {
     if (!type->isintegral() && !type->isfloating())
-    {   error("'%s' is not of arithmetic type, it is a %s", toChars(), type->toChars());
+    {   if (type->toBasetype() != Type::terror)
+            error("'%s' is not of arithmetic type, it is a %s", toChars(), type->toChars());
         return new ErrorExp();
     }
     rvalue();
@@ -1411,8 +1416,8 @@ Expression *Expression::checkToBoolean(Scope *sc)
     }
 
     if (!type->checkBoolean())
-    {
-        error("expression %s of type %s does not have a boolean value", toChars(), type->toChars());
+    {   if (type->toBasetype() != Type::terror)
+            error("expression %s of type %s does not have a boolean value", toChars(), type->toChars());
         return new ErrorExp();
     }
     return this;
@@ -1541,7 +1546,8 @@ IntegerExp::IntegerExp(Loc loc, dinteger_t value, Type *type)
     if (type && !type->isscalar())
     {
         //printf("%s, loc = %d\n", toChars(), loc.linnum);
-        error("integral constant must be scalar type, not %s", type->toChars());
+        if (type->ty != Terror)
+            error("integral constant must be scalar type, not %s", type->toChars());
         type = Type::terror;
     }
     this->type = type;
@@ -1628,6 +1634,7 @@ dinteger_t IntegerExp::toInteger()
                  */
                 if (!global.errors)
                 {
+                    printf("e = %p, ty = %d\n", this, type->ty);
                     type->print();
                     assert(0);
                 }
@@ -1837,6 +1844,11 @@ ErrorExp::ErrorExp()
     : IntegerExp(0, 0, Type::terror)
 {
     op = TOKerror;
+}
+
+Expression *ErrorExp::toLvalue(Scope *sc, Expression *e)
+{
+    return this;
 }
 
 void ErrorExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -4369,6 +4381,8 @@ Expression *VarExp::semantic(Scope *sc)
 #if LOGSEMANTIC
     printf("VarExp::semantic(%s)\n", toChars());
 #endif
+//    if (var->sem == SemanticStart && var->scope)      // if forward referenced
+//      var->semantic(sc);
     if (!type)
     {   type = var->type;
 #if 0
@@ -5187,9 +5201,9 @@ Expression *IsExp::semantic(Scope *sc)
                 else
                 {   ClassDeclaration *cd = ((TypeClass *)targ)->sym;
                     Parameters *args = new Parameters;
-                    args->reserve(cd->baseclasses.dim);
-                    for (size_t i = 0; i < cd->baseclasses.dim; i++)
-                    {   BaseClass *b = (BaseClass *)cd->baseclasses.data[i];
+                    args->reserve(cd->baseclasses->dim);
+                    for (size_t i = 0; i < cd->baseclasses->dim; i++)
+                    {   BaseClass *b = (BaseClass *)cd->baseclasses->data[i];
                         args->push(new Parameter(STCin, b->type, NULL, NULL));
                     }
                     tded = new TypeTuple(args);
@@ -5320,8 +5334,8 @@ Expression *IsExp::semantic(Scope *sc)
          * is(targ : tspec)
          */
         tspec = tspec->semantic(loc, sc);
-        //printf("targ  = %s\n", targ->toChars());
-        //printf("tspec = %s\n", tspec->toChars());
+        //printf("targ  = %s, %s\n", targ->toChars(), targ->deco);
+        //printf("tspec = %s, %s\n", tspec->toChars(), tspec->deco);
         if (tok == TOKcolon)
         {   if (targ->implicitConvTo(tspec))
                 goto Lyes;
@@ -5346,11 +5360,11 @@ Lyes:
         if (sc->sd)
             s->addMember(sc, sc->sd, 1);
     }
-//printf("Lyes\n");
+    //printf("Lyes\n");
     return new IntegerExp(loc, 1, Type::tbool);
 
 Lno:
-//printf("Lno\n");
+    //printf("Lno\n");
     return new IntegerExp(loc, 0, Type::tbool);
 
 Lerr:
@@ -5570,9 +5584,12 @@ int BinExp::canThrow()
 
 void BinExp::incompatibleTypes()
 {
-    error("incompatible types for ((%s) %s (%s)): '%s' and '%s'",
-         e1->toChars(), Token::toChars(op), e2->toChars(),
-         e1->type->toChars(), e2->type->toChars());
+    if (e1->type->toBasetype() != Type::terror &&
+        e2->type->toBasetype() != Type::terror
+       )
+        error("incompatible types for ((%s) %s (%s)): '%s' and '%s'",
+             e1->toChars(), Token::toChars(op), e2->toChars(),
+             e1->type->toChars(), e2->type->toChars());
 }
 
 /********************** BinAssignExp **************************************/
@@ -6472,7 +6489,27 @@ L1:
         Dsymbol *s = ti->inst->toAlias();
         Declaration *v = s->isDeclaration();
         if (v)
-        {   e = new DotVarExp(loc, eleft, v);
+        {
+            /* Fix for Bugzilla 4003
+             * The problem is a class template member function v returning a reference to the same
+             * type as the enclosing template instantiation. This results in a nested instantiation,
+             * which of course gets short circuited. The return type then gets set to
+             * the template instance type before instantiation, rather than after.
+             * We can detect this by the deco not being set. If so, go ahead and retry
+             * the return type semantic.
+             * The offending code is the return type from std.typecons.Tuple.slice:
+             *    ref Tuple!(Types[from .. to]) slice(uint from, uint to)()
+             *    {
+             *        return *cast(typeof(return) *) &(field[from]);
+             *    }
+             * and this line from the following unittest:
+             *    auto s = a.slice!(1, 3);
+             * where s's type wound up not having semantic() run on it.
+             */
+            if (v->type && !v->type->deco)
+                v->type = v->type->semantic(v->loc, sc);
+
+            e = new DotVarExp(loc, eleft, v);
             e = e->semantic(sc);
             return e;
         }
@@ -7554,6 +7591,7 @@ Expression *PtrExp::semantic(Scope *sc)
 
             default:
                 error("can only * a pointer, not a '%s'", e1->type->toChars());
+            case Terror:
                 return new ErrorExp();
         }
         rvalue();
@@ -8173,11 +8211,15 @@ Expression *SliceExp::semantic(Scope *sc)
     {   lwr = lwr->semantic(sc2);
         lwr = resolveProperties(sc2, lwr);
         lwr = lwr->implicitCastTo(sc2, Type::tsize_t);
+        if (lwr->type == Type::terror)
+            goto Lerr;
     }
     if (upr)
     {   upr = upr->semantic(sc2);
         upr = resolveProperties(sc2, upr);
         upr = upr->implicitCastTo(sc2, Type::tsize_t);
+        if (upr->type == Type::terror)
+            goto Lerr;
     }
 
     if (sc2 != sc)
@@ -8233,7 +8275,7 @@ Expression *SliceExp::semantic(Scope *sc)
         else
         {
             error("string slice [%"PRIuMAX" .. %"PRIuMAX"] is out of bounds", i1, i2);
-            e = new ErrorExp();
+            goto Lerr;
         }
         return e;
     }
@@ -8255,6 +8297,7 @@ Lerror:
     else
         s = t->toChars();
     error("%s cannot be sliced with []", s);
+Lerr:
     e = new ErrorExp();
     return e;
 }
@@ -8437,6 +8480,8 @@ Expression *ArrayExp::semantic(Scope *sc)
         {   error("%s has no value", e->toChars());
             goto Lerr;
         }
+        else if (e->type == Type::terror)
+            goto Lerr;
         arguments->data[i] = (void *)e;
     }
 
@@ -8563,6 +8608,21 @@ int CommaExp::isBool(int result)
 
 int CommaExp::checkSideEffect(int flag)
 {
+    /* Check for compiler-generated code of the form  auto __tmp, e, __tmp;
+     * In such cases, only check e for side effect (it's OK for __tmp to have
+     * no side effect).
+     * See Bugzilla 4231 for discussion
+     */
+    CommaExp* firstComma = this;
+    while (firstComma->e1->op == TOKcomma)
+        firstComma = (CommaExp *)firstComma->e1;
+    if (firstComma->e1->op == TOKdeclaration &&
+        e2->op == TOKvar &&
+        ((DeclarationExp *)firstComma->e1)->declaration == ((VarExp*)e2)->var)
+    {
+        return e1->checkSideEffect(flag);
+    }
+
     if (flag == 2)
         return e1->checkSideEffect(2) || e2->checkSideEffect(2);
     else
@@ -8617,9 +8677,11 @@ Expression *IndexExp::semantic(Scope *sc)
     if (!e2->type)
     {
         error("%s has no value", e2->toChars());
-        return new ErrorExp();
+        goto Lerr;
     }
     e2 = resolveProperties(sc, e2);
+    if (e2->type == Type::terror)
+        goto Lerr;
 
     if (t1->ty == Tsarray || t1->ty == Tarray || t1->ty == Ttuple)
         sc = sc->pop();
@@ -8709,9 +8771,13 @@ Expression *IndexExp::semantic(Scope *sc)
         default:
             error("%s must be an array or pointer type, not %s",
                 e1->toChars(), e1->type->toChars());
-            return new ErrorExp();
+        case Terror:
+            goto Lerr;
     }
     return e;
+
+Lerr:
+    return new ErrorExp();
 }
 
 #if DMDV2
@@ -9184,6 +9250,14 @@ Expression *AssignExp::checkToBoolean(Scope *sc)
 
 /************************************************************/
 
+ConstructExp::ConstructExp(Loc loc, Expression *e1, Expression *e2)
+    : AssignExp(loc, e1, e2)
+{
+    op = TOKconstruct;
+}
+
+/************************************************************/
+
 AddAssignExp::AddAssignExp(Loc loc, Expression *e1, Expression *e2)
         : BinAssignExp(loc, TOKaddass, sizeof(AddAssignExp), e1, e2)
 {
@@ -9414,7 +9488,8 @@ Expression *CatAssignExp::semantic(Scope *sc)
     }
     else
     {
-        error("cannot append type %s to type %s", tb2->toChars(), tb1->toChars());
+        if (tb1 != Type::terror && tb2 != Type::terror)
+            error("cannot append type %s to type %s", tb2->toChars(), tb1->toChars());
         e = new ErrorExp();
     }
     return e;
@@ -9760,7 +9835,7 @@ Expression *PowAssignExp::semantic(Scope *sc)
         e = e->semantic(sc);
         return e;
     }
-    error("%s ^^= %s is not supported", e1->type->toChars(), e2->type->toChars() );
+    incompatibleTypes();
     return new ErrorExp();
 }
 
@@ -10042,8 +10117,7 @@ Expression *CatExp::semantic(Scope *sc)
         else
         {
             //printf("(%s) ~ (%s)\n", e1->toChars(), e2->toChars());
-            error("Can only concatenate arrays, not (%s ~ %s)",
-                e1->type->toChars(), e2->type->toChars());
+            incompatibleTypes();
             return new ErrorExp();
         }
         e->type = e->type->semantic(loc, sc);
@@ -10369,7 +10443,7 @@ Expression *PowExp::semantic(Scope *sc)
         return e;
 #endif
     }
-    error("%s ^^ %s is not supported", e1->type->toChars(), e2->type->toChars() );
+    incompatibleTypes();
     return new ErrorExp();
 }
 
@@ -10701,28 +10775,34 @@ Expression *InExp::semantic(Scope *sc)
 
     //type = Type::tboolean;
     Type *t2b = e2->type->toBasetype();
-    if (t2b->ty != Taarray)
+    switch (t2b->ty)
     {
-        error("rvalue of in expression must be an associative array, not %s", e2->type->toChars());
-        return new ErrorExp();
-    }
-    else
-    {
-        TypeAArray *ta = (TypeAArray *)t2b;
+        case Taarray:
+        {
+            TypeAArray *ta = (TypeAArray *)t2b;
 
-        // Special handling for array keys
-        if (!arrayTypeCompatible(e1->loc, e1->type, ta->index)
+#if DMDV2
+            // Special handling for array keys
+            if (!arrayTypeCompatible(e1->loc, e1->type, ta->index)
 #if IN_GCC
                 || e1->op == TOKnull // NULL implicitly converts to any pointer type or dynamic array
 #endif
-           )
-        {
-            // Convert key to type of key
-            e1 = e1->implicitCastTo(sc, ta->index);
-        }
+               )
+#endif
+            {
+                // Convert key to type of key
+                e1 = e1->implicitCastTo(sc, ta->index);
+            }
 
-        // Return type is pointer to value
-        type = ta->nextOf()->pointerTo();
+            // Return type is pointer to value
+            type = ta->nextOf()->pointerTo();
+            break;
+       }
+
+        default:
+            error("rvalue of in expression must be an associative array, not %s", e2->type->toChars());
+        case Terror:
+            return new ErrorExp();
     }
     return this;
 }

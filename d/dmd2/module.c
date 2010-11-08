@@ -141,6 +141,7 @@ Module::Module(char *filename, Identifier *ident, int doDocComment, int doHdrGen
     char *argobj;
     if (global.params.objname)
         argobj = global.params.objname;
+#if 0
     else if (global.params.preservePaths)
         argobj = filename;
     else
@@ -149,6 +150,19 @@ Module::Module(char *filename, Identifier *ident, int doDocComment, int doHdrGen
     {
         argobj = FileName::combine(global.params.objdir, argobj);
     }
+#else // Bugzilla 3547
+    else
+    {
+        if (global.params.preservePaths)
+            argobj = filename;
+        else
+            argobj = FileName::name(filename);
+        if (!FileName::absolute(argobj))
+        {
+            argobj = FileName::combine(global.params.objdir, argobj);
+        }
+    }
+#endif
 
     if (global.params.objname)
         objfilename = new FileName(argobj, 0);
@@ -638,9 +652,16 @@ void Module::parse()
         Dsymbol *prev = dst->lookup(ident);
         assert(prev);
         Module *mprev = prev->isModule();
-        assert(mprev);
-        error(loc, "from file %s conflicts with another module %s from file %s",
-            srcname, mprev->toChars(), mprev->srcfile->toChars());
+        if (mprev)
+            error(loc, "from file %s conflicts with another module %s from file %s",
+                srcname, mprev->toChars(), mprev->srcfile->toChars());
+        else
+        {
+            Package *pkg = prev->isPackage();
+            assert(pkg);
+            error(loc, "from file %s conflicts with package name %s",
+                srcname, pkg->toChars());
+        }
     }
     else
     {

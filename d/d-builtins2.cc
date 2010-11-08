@@ -381,8 +381,9 @@ d_gcc_magic_builtins_module(Module *m)
             continue;
         }
 #if V2
-        // %% D2 - all builtins are pure and optionally nothrow
+        // %% D2 - all builtins are pure, safe and optionally nothrow
         dtf->ispure = 1;
+        dtf->trust = TRUSTsafe;
         dtf->isnothrow = TREE_NOTHROW(decl);
 #endif
         FuncDeclaration * func = new FuncDeclaration(0, 0,

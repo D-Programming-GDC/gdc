@@ -54,6 +54,7 @@ Expression *interpret_values(InterState *istate, Expression *earg, FuncDeclarati
 
 ArrayLiteralExp *createBlockDuplicatedArrayLiteral(Type *type, Expression *elem, size_t dim);
 Expression * resolveReferences(Expression *e, Expression *thisval, bool *isReference = NULL);
+Expression *getVarExp(Loc loc, InterState *istate, Declaration *d);
 
 /*************************************
  * Attempt to interpret a function given the arguments.
@@ -129,6 +130,11 @@ Expression *FuncDeclaration::interpret(InterState *istate, Expressions *argument
         error("need 'this' to access member %s", toChars());
         return NULL;
     }
+    if (thisarg && !istate)
+    {   // Check that 'this' aleady has a value
+        if (thisarg->interpret(istate) == EXP_CANT_INTERPRET)
+            return NULL;
+    }
     if (arguments)
     {
         dim = arguments->dim;
@@ -145,7 +151,15 @@ Expression *FuncDeclaration::interpret(InterState *istate, Expressions *argument
         {   Expression *earg = (Expression *)arguments->data[i];
             Parameter *arg = Parameter::getNth(tf->parameters, i);
 
-            if (arg->storageClass & (STCout | STCref | STClazy))
+            if (arg->storageClass & (STCout | STCref))
+            {
+                if (!istate)
+                {
+                    earg->error("%s cannot be passed by reference at compile time", earg->toChars());
+                    return NULL;
+                }
+            }
+            else if (arg->storageClass & STClazy)
             {
             }
             else
@@ -159,7 +173,7 @@ Expression *FuncDeclaration::interpret(InterState *istate, Expressions *argument
                      */
                     earg = ((AddrExp *)earg)->e1;
                 }
-                earg = earg->interpret(istate ? istate : &istatex);
+                earg = earg->interpret(istate); // ? istate : &istatex);
                 if (earg == EXP_CANT_INTERPRET)
                 {   cantInterpret = 1;
                     return NULL;
@@ -1236,7 +1250,7 @@ Expression *getVarExp(Loc loc, InterState *istate, Declaration *d)
             if (e && !e->type)
                 e->type = v->type;
         }
-        else if (v->isCTFE() && !v->value)
+        else if ((v->isCTFE() || (!v->isDataseg() && istate)) && !v->value)
         {
             if (v->init)
             {
@@ -1251,9 +1265,13 @@ Expression *getVarExp(Loc loc, InterState *istate, Declaration *d)
             else
                 e = v->type->defaultInitLiteral(loc);
         }
+        else if (!v->isDataseg() && !istate) {
+            error(loc, "variable %s cannot be read at compile time", v->toChars());
+            return EXP_CANT_INTERPRET;
+        }
         else
         {   e = v->value;
-            if (!v->isCTFE())
+             if (!v->isCTFE() && v->isDataseg())
             {   error(loc, "static variable %s cannot be read at compile time", v->toChars());
                 e = EXP_CANT_INTERPRET;
             }
@@ -1577,7 +1595,8 @@ Expression *NewExp::interpret(InterState *istate)
         if (lenExpr == EXP_CANT_INTERPRET)
             return EXP_CANT_INTERPRET;
         return createBlockDuplicatedArrayLiteral(newtype,
-            newtype->defaultInitLiteral(), lenExpr->toInteger());
+            ((TypeArray *)newtype)->next->defaultInitLiteral(),
+            lenExpr->toInteger());
     }
     error("Cannot interpret %s at compile time", toChars());
     return EXP_CANT_INTERPRET;
@@ -1845,7 +1864,7 @@ Expression * modifyStructField(Type *type, StructLiteralExp *se, size_t offset, 
  * set arr[index] = newval and return the new array.
  *
  */
-Expression * assignArrayElement(Expression *arr, Expression *index, Expression *newval)
+Expression * assignArrayElement(Loc loc, Expression *arr, Expression *index, Expression *newval)
 {
         ArrayLiteralExp *ae = NULL;
         AssocArrayLiteralExp *aae = NULL;
@@ -1863,7 +1882,7 @@ Expression * assignArrayElement(Expression *arr, Expression *index, Expression *
             int elemi = index->toInteger();
             if (elemi >= ae->elements->dim)
             {
-                error("array index %d is out of bounds %s[0..%d]", elemi,
+                error(loc, "array index %d is out of bounds %s[0..%d]", elemi,
                     arr->toChars(), ae->elements->dim);
                 return EXP_CANT_INTERPRET;
             }
@@ -1878,6 +1897,12 @@ Expression * assignArrayElement(Expression *arr, Expression *index, Expression *
             /* Create new string literal reflecting updated elem
              */
             int elemi = index->toInteger();
+            if (elemi >= se->len)
+            {
+                error(loc, "array index %d is out of bounds %s[0..%d]", elemi,
+                    arr->toChars(), se->len);
+                return EXP_CANT_INTERPRET;
+            }
             unsigned char *s;
             s = (unsigned char *)mem.calloc(se->len + 1, se->sz);
             memcpy(s, se->string, se->len * se->sz);
@@ -2091,6 +2116,8 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, fp_t fp, int post)
     if (e1 == EXP_CANT_INTERPRET)
         return e1;
 
+    assert(istate);
+
     // ----------------------------------------------------
     //  Deal with read-modify-write assignments.
     //  Set 'newval' to the final assignment value
@@ -2101,7 +2128,7 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, fp_t fp, int post)
     if (newval == EXP_CANT_INTERPRET)
         return newval;
 
-    if (fp)
+    if (fp || e1->op == TOKarraylength)
     {
         // If it isn't a simple assignment, we need the existing value
         Expression * oldval = e1->interpret(istate);
@@ -2109,17 +2136,72 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, fp_t fp, int post)
             return EXP_CANT_INTERPRET;
         while (oldval->op == TOKvar)
         {
-          oldval = resolveReferences(oldval, istate->localThis);
-          oldval = oldval->interpret(istate);
-          if (oldval == EXP_CANT_INTERPRET) return oldval;
+            oldval = resolveReferences(oldval, istate->localThis);
+            oldval = oldval->interpret(istate);
+            if (oldval == EXP_CANT_INTERPRET)
+                return oldval;
         }
-        newval = (*fp)(type, oldval, newval);
-        if (newval == EXP_CANT_INTERPRET)
-            return EXP_CANT_INTERPRET;
-        // Determine the return value
-        e = Cast(type, type, post ? oldval : newval);
-        if (e == EXP_CANT_INTERPRET)
-            return e;
+
+        if (fp)
+        {
+            newval = (*fp)(type, oldval, newval);
+            if (newval == EXP_CANT_INTERPRET)
+            {
+                error("Cannot interpret %s at compile time", toChars());
+                return EXP_CANT_INTERPRET;
+            }
+            // Determine the return value
+            e = Cast(type, type, post ? oldval : newval);
+            if (e == EXP_CANT_INTERPRET)
+                return e;
+        }
+        else
+            e = newval;
+
+        if (e1->op == TOKarraylength)
+        {
+            size_t oldlen = oldval->toInteger();
+            size_t newlen = newval->toInteger();
+            if (oldlen == newlen) // no change required -- we're done!
+                return e;
+            // Now change the assignment from arr.length = n into arr = newval
+            e1 = ((ArrayLengthExp *)e1)->e1;
+            if (oldlen != 0)
+            {   // Get the old array literal.
+                oldval = e1->interpret(istate);
+                while (oldval->op == TOKvar)
+                {   oldval = resolveReferences(oldval, istate->localThis);
+                    oldval = oldval->interpret(istate);
+                }
+            }
+            Type *t = e1->type->toBasetype();
+            if (t->ty == Tarray)
+            {
+                Type *elemType= NULL;
+                elemType = ((TypeArray *)t)->next;
+                assert(elemType);
+                Expression *defaultElem = elemType->defaultInitLiteral();
+
+                Expressions *elements = new Expressions();
+                elements->setDim(newlen);
+                size_t copylen = oldlen < newlen ? oldlen : newlen;
+                ArrayLiteralExp *ae = (ArrayLiteralExp *)oldval;
+                for (size_t i = 0; i < copylen; i++)
+                     elements->data[i] = ae->elements->data[i];
+
+                for (size_t i = copylen; i < newlen; i++)
+                    elements->data[i] = defaultElem;
+                ArrayLiteralExp *aae = new ArrayLiteralExp(0, elements);
+                aae->type = t;
+                newval = aae;
+            }
+            else
+            {
+                error("%s is not yet supported at compile time", toChars());
+                return EXP_CANT_INTERPRET;
+            }
+
+        }
     }
     else if (e1->op != TOKslice)
     {   /* Look for special case of struct being initialized with 0.
@@ -2140,7 +2222,7 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, fp_t fp, int post)
     // Make sure we're not trying to modify a global or static variable
     // We do this by locating the ultimate parent variable which gets modified.
     VarDeclaration * ultimateVar = findParentVar(e1, istate->localThis);
-    if (ultimateVar && !ultimateVar->isCTFE())
+    if (ultimateVar && ultimateVar->isDataseg() && !ultimateVar->isCTFE())
     {   // Can't modify global or static data
         error("%s cannot be modified at compile time", ultimateVar->toChars());
         return EXP_CANT_INTERPRET;
@@ -2287,7 +2369,9 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, fp_t fp, int post)
             Expression *index = ie->e2->interpret(istate);
             if (index == EXP_CANT_INTERPRET)
                 return EXP_CANT_INTERPRET;
-            newval = assignArrayElement(v->value, index, newval);
+            newval = assignArrayElement(loc, v->value, index, newval);
+            if (newval == EXP_CANT_INTERPRET)
+                return EXP_CANT_INTERPRET;
             v->value = newval;
             return e;
         }
@@ -2448,7 +2532,7 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, fp_t fp, int post)
         if (((PtrExp *)e1)->e1->op == TOKsymoff)
         {   SymOffExp *soe = (SymOffExp *)((PtrExp *)e1)->e1;
             VarDeclaration *v = soe->var->isVarDeclaration();
-            if (!v->isCTFE())
+            if (v->isDataseg() && !v->isCTFE())
             {
                 error("%s cannot be modified at compile time", v->toChars());
                 return EXP_CANT_INTERPRET;
@@ -2747,17 +2831,22 @@ Expression *CommaExp::interpret(InterState *istate)
 #if LOG
     printf("CommaExp::interpret() %s\n", toChars());
 #endif
+
+    CommaExp * firstComma = this;
+    while (firstComma->e1->op == TOKcomma)
+        firstComma = (CommaExp *)firstComma->e1;
+
+    // If it creates a variable, and there's no context for
+    // the variable to be created in, we need to create one now.
+    InterState istateComma;
+    if (!istate &&  firstComma->e1->op == TOKdeclaration)
+        istate = &istateComma;
+
     // If the comma returns a temporary variable, it needs to be an lvalue
     // (this is particularly important for struct constructors)
     if (e1->op == TOKdeclaration && e2->op == TOKvar
        && ((DeclarationExp *)e1)->declaration == ((VarExp*)e2)->var)
     {
-        // If there's no context for the variable to be created in,
-        // we need to create one now.
-        InterState istateComma;
-        if (!istate)
-            istate = &istateComma;
-
         VarExp* ve = (VarExp *)e2;
         VarDeclaration *v = ve->var->isVarDeclaration();
         if (!v->init && !v->value)
@@ -2772,7 +2861,6 @@ Expression *CommaExp::interpret(InterState *istate)
             v->value = newval;
         return e2;
     }
-
     Expression *e = e1->interpret(istate);
     if (e != EXP_CANT_INTERPRET)
         e = e2->interpret(istate);
@@ -2849,7 +2937,10 @@ Expression *IndexExp::interpret(InterState *istate)
     e2 = this->e2->interpret(istate);
     if (e2 == EXP_CANT_INTERPRET)
         goto Lcant;
-    return Index(type, e1, e2);
+    e = Index(type, e1, e2);
+    if (e == EXP_CANT_INTERPRET)
+        error("%s cannot be interpreted at compile time", toChars());
+    return e;
 
 Lcant:
     return EXP_CANT_INTERPRET;
@@ -2891,7 +2982,10 @@ Expression *SliceExp::interpret(InterState *istate)
     if (upr == EXP_CANT_INTERPRET)
         goto Lcant;
 
-    return Slice(type, e1, lwr, upr);
+    e = Slice(type, e1, lwr, upr);
+    if (e == EXP_CANT_INTERPRET)
+        error("%s cannot be interpreted at compile time", toChars());
+    return e;
 
 Lcant:
     return EXP_CANT_INTERPRET;
@@ -2914,7 +3008,10 @@ Expression *CatExp::interpret(InterState *istate)
     e2 = this->e2->interpret(istate);
     if (e2 == EXP_CANT_INTERPRET)
         goto Lcant;
-    return Cat(type, e1, e2);
+    e = Cat(type, e1, e2);
+    if (e == EXP_CANT_INTERPRET)
+        error("%s cannot be interpreted at compile time", toChars());
+    return e;
 
 Lcant:
 #if LOG
@@ -2934,7 +3031,10 @@ Expression *CastExp::interpret(InterState *istate)
     e1 = this->e1->interpret(istate);
     if (e1 == EXP_CANT_INTERPRET)
         goto Lcant;
-    return Cast(type, to, e1);
+    e = Cast(type, to, e1);
+    if (e == EXP_CANT_INTERPRET)
+        error("%s cannot be interpreted at compile time", toChars());
+    return e;
 
 Lcant:
 #if LOG

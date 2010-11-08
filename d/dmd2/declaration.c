@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2009 by Digital Mars
+// Copyright (c) 1999-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -40,6 +40,7 @@ Declaration::Declaration(Identifier *id)
     protection = PROTundefined;
     linkage = LINKdefault;
     inuse = 0;
+    sem = SemanticStart;
     attributes = NULL;
 }
 
@@ -93,6 +94,9 @@ void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
 {
     if (sc->incontract && isParameter())
         error(loc, "cannot modify parameter '%s' in contract", toChars());
+
+    if (sc->incontract && isResult())
+        error(loc, "cannot modify result '%s' in contract", toChars());
 
     if (isCtorinit() && !t->isMutable())
     {   // It's only modifiable if inside the right constructor
@@ -259,7 +263,6 @@ TypedefDeclaration::TypedefDeclaration(Loc loc, Identifier *id, Type *basetype, 
     this->htype = NULL;
     this->hbasetype = NULL;
 #endif
-    this->sem = 0;
     this->loc = loc;
     this->sinit = NULL;
 }
@@ -300,10 +303,10 @@ Dsymbol *TypedefDeclaration::syntaxCopy(Dsymbol *s)
 void TypedefDeclaration::semantic(Scope *sc)
 {
     //printf("TypedefDeclaration::semantic(%s) sem = %d\n", toChars(), sem);
-    if (sem == 0)
-    {   sem = 1;
+    if (sem == SemanticStart)
+    {   sem = SemanticIn;
         basetype = basetype->semantic(loc, sc);
-        sem = 2;
+        sem = SemanticDone;
 #if DMDV2
         type = type->addStorageClass(storage_class);
 #endif
@@ -316,7 +319,7 @@ void TypedefDeclaration::semantic(Scope *sc)
             semantic2(sc);
         storage_class |= sc->stc & STCdeprecated;
     }
-    else if (sem == 1)
+    else if (sem == SemanticIn)
     {
         error("circular definition");
     }
@@ -325,8 +328,8 @@ void TypedefDeclaration::semantic(Scope *sc)
 void TypedefDeclaration::semantic2(Scope *sc)
 {
     //printf("TypedefDeclaration::semantic2(%s) sem = %d\n", toChars(), sem);
-    if (sem == 2)
-    {   sem = 3;
+    if (sem == SemanticDone)
+    {   sem = Semantic2Done;
         if (init)
         {
             init = init->semantic(sc, basetype);
@@ -468,7 +471,11 @@ void AliasDeclaration::semantic(Scope *sc)
      * try to alias y to 3.
      */
     s = type->toDsymbol(sc);
-    if (s && ((s->getType() && type->equals(s->getType())) || s->isEnumMember()))
+    if (s
+#if DMDV2
+        && ((s->getType() && type->equals(s->getType())) || s->isEnumMember())
+#endif
+        )
         goto L2;                        // it's a symbolic alias
 
 #if DMDV2
@@ -501,6 +508,7 @@ void AliasDeclaration::semantic(Scope *sc)
     else if (t)
     {
         type = t;
+        //printf("\talias resolved to type %s\n", type->toChars());
     }
     if (overnext)
         ScopeDsymbol::multiplyDefined(0, this, overnext);
@@ -721,6 +729,15 @@ void VarDeclaration::semantic(Scope *sc)
     //if (strcmp(toChars(), "mul") == 0) halt();
 #endif
 
+//    if (sem > SemanticStart)
+//      return;
+//    sem = SemanticIn;
+
+    if (scope)
+    {   sc = scope;
+        scope = NULL;
+    }
+
     /* Pick up storage classes from context, but skip synchronized
      */
     storage_class |= (sc->stc & ~STCsynchronized);
@@ -747,6 +764,9 @@ void VarDeclaration::semantic(Scope *sc)
         }
         else
             type = init->inferType(sc);
+
+//printf("test2: %s, %s, %s\n", toChars(), type->toChars(), type->deco);
+//      type = type->semantic(loc, sc);
 
         inuse--;
         inferred = 1;
@@ -994,7 +1014,8 @@ Lagain:
 
     enum TOK op = TOKconstruct;
     if (!init && !sc->inunion && !isStatic() && fd &&
-        (!(storage_class & (STCfield | STCin | STCforeach | STCparameter)) || (storage_class & STCout)) &&
+        (!(storage_class & (STCfield | STCin | STCforeach | STCparameter | STCresult))
+         || (storage_class & STCout)) &&
         type->size() != 0)
     {
         // Provide a default initializer
@@ -1010,8 +1031,7 @@ Lagain:
             Expression *e = new IntegerExp(loc, 0, Type::tint32);
             Expression *e1;
             e1 = new VarExp(loc, this);
-            e = new AssignExp(loc, e1, e);
-            e->op = TOKconstruct;
+            e = new ConstructExp(loc, e1, e);
             e->type = e1->type;         // don't type check this, it would fail
             init = new ExpInitializer(loc, e);
             return;
@@ -1320,6 +1340,7 @@ Lagain:
         }
         sc = sc->pop();
     }
+    sem = SemanticDone;
 }
 
 void VarDeclaration::semantic2(Scope *sc)
@@ -1338,6 +1359,7 @@ void VarDeclaration::semantic2(Scope *sc)
         init = init->semantic(sc, type);
         inuse--;
     }
+    sem = Semantic2Done;
 }
 
 const char *VarDeclaration::kind()
@@ -1566,7 +1588,7 @@ int VarDeclaration::isThreadlocal()
 
 int VarDeclaration::isCTFE()
 {
-    return (storage_class & STCctfe) || !isDataseg();
+    return (storage_class & STCctfe) != 0; // || !isDataseg();
 }
 
 int VarDeclaration::hasPointers()

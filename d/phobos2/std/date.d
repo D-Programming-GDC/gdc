@@ -86,6 +86,7 @@ deprecated alias ticksPerMinute TicksPerMinute;
 deprecated alias ticksPerHour TicksPerHour;
 deprecated alias ticksPerDay TicksPerDay;
 
+deprecated
 unittest
 {
     //assert(ticksPerSecond == TicksPerSecond);
@@ -931,6 +932,12 @@ version (Posix)
         
         time(&t);
         version (OSX)
+        {
+            tm result;
+            localtime_r(&t, &result);
+            return result.tm_gmtoff * ticksPerSecond;
+        }
+        else version (FreeBSD)
         {
             tm result;
             localtime_r(&t, &result);

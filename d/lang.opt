@@ -40,8 +40,8 @@ frelease
 D
 Compile release version
 
-fnoboundscheck
-D
+fnobounds-check
+D RejectNegative
 Turns off array bounds checking for all functions
 
 funittest

@@ -1,7 +1,7 @@
 /**
  * This is a low-level messaging API upon which more structured or restrictive
  * APIs may be built.  The general idea is that every messageable entity is
- * represtented by a common handle type (called a Cid in this implementation),
+ * represented by a common handle type (called a Cid in this implementation),
  * which allows messages to be sent to in-process threads, on-host processes,
  * and foreign-host processes using the same interface.  This is an important
  * aspect of scalability because it allows the components of a program to be
@@ -38,13 +38,51 @@ private
     import core.thread;
     //import core.sync.condition;
     //import core.sync.mutex;
+    import std.algorithm;
+    import std.contracts;
+    import std.range;
     import std.stdio;
     import std.range;
     import std.traits;
     import std.typecons;
     import std.typetuple;
+    
+    enum MsgType
+    {
+        User,
+        LinkDead,
+    }
+    
+    struct Message
+    {
+        MsgType type;
+        Variant data;
+        
+        this( MsgType t )
+        {
+            type = t;
+        }
+    }
 
-    alias SyncList!(Variant) MessageBox;
+    MessageBox mbox;
+    Tid[]      owned;
+    Tid        owner;
+}
+
+
+static this()
+{
+    mbox = new MessageBox;
+}
+
+
+static ~this()
+{
+    auto me = thisTid;
+    foreach( tid; owned )
+        _send( MsgType.LinkDead, tid, me );
+    if( owner != Tid.init )
+        _send( MsgType.LinkDead, owner, me );
 }
 
 
@@ -61,22 +99,34 @@ class MessageMismatch : Exception
 
 
 /**
+ *
+ */
+class OwnerTerminated : Exception
+{
+    this( string msg = "Owner terminated" )
+    {
+        super( msg );
+    }
+}
+
+
+/**
  * An opaque type used to represent a logical local process.
  */
 struct Tid
 {
-    void send(T...)( Tid tid, T vals )
+    void send(T...)( T vals )
     {
-        _send( tid, vals );
+        _send( this, vals );
     }
-    
+
 
 private:
     this( MessageBox m )
     {
         mbox = m;
     }
-    
+
 
     MessageBox  mbox;
 }
@@ -104,18 +154,21 @@ private:
 Tid spawn(T...)( void function(T) fn, T args )
 {
     // TODO: MessageList and &exec should be shared.
-    auto tid = Tid( new MessageBox );
-    
+    auto spawnTid = Tid( new MessageBox );
+    auto ownerTid = thisTid;
+
     void exec()
     {
-        mbox = tid.mbox;
+        mbox  = spawnTid.mbox;
+        owner = ownerTid;
         fn( args );
     }
-    
-    auto t = new Thread( &exec );
 
+    auto t = new Thread( &exec );
+    
     t.start();
-    return tid;
+    owned ~= spawnTid;
+    return spawnTid;
 }
 
 
@@ -132,27 +185,38 @@ void send(T...)( Tid tid, T vals )
  * Implementation of send.  This allows parameter checking to be different for
  * both Tid.send() and .send().
  */
-private void _send(T...)( Tid tid, T vals )
+private void _send(T...)( MsgType type, Tid tid, T vals )
 {
     alias Tuple!(T) Wrap;
 
     static if( Variant.allowed!(Wrap) )
     {
-        Wrap wrap;
+        Wrap    wrap;
+        Message msg  = Message( type );
 
-        foreach( i, e; vals )
-            wrap.field[i] = e;
-        tid.mbox.put( Variant( wrap ) );
+        wrap.field = vals;
+        msg.data   = wrap;
+        tid.mbox.put( msg );
     }
     else
     {
         // TODO: This should be shared.
-        Wrap* wrap = cast(Wrap*) (new void[Wrap.sizeof]).ptr;
-        
-        foreach( i, e; vals )
-            wrap.field[i] = e;
-        tid.mbox.put( Variant( wrap ) );
+        Wrap*   wrap = cast(Wrap*) (new void[Wrap.sizeof]).ptr;
+        Message msg  = Message( type );
+
+        wrap.field = vals;
+        msg.data   = wrap;
+        tid.mbox.put( msg );
     }
+}
+
+
+/*
+ * ditto
+ */
+private void _send(T...)( Tid tid, T vals )
+{
+    _send( MsgType.User, tid, vals );
 }
 
 
@@ -161,27 +225,38 @@ private void _send(T...)( Tid tid, T vals )
  */
 void receive(T...)( T ops )
 {
-    _receive( ops );
+    mbox.get( ops );
 }
 
+
+private template receiveOnlyRet(T...)
+{
+    static if( T.length == 1 )
+        alias T[0] receiveOnlyRet;
+    else
+        alias Tuple!(T) receiveOnlyRet;
+}
 
 /**
  *
  */
-Tuple!(T) receiveOnly(T...)()
+receiveOnlyRet!(T) receiveOnly(T...)()
 {
     Tuple!(T) ret;
 
-    _receive( ( T val )
+    mbox.get( ( T val )
               {
-                  foreach( i, v; ret.Types )
-                      ret.field[i] = val[i];
+                  static if( T.length )
+                      ret.field = val;
               },
               ( Variant val )
               {
                   throw new MessageMismatch;
               } );
-    return ret;
+    static if( T.length == 1 )
+        return ret.field[0];
+    else
+        return ret;
 }
 
 
@@ -191,99 +266,54 @@ Tuple!(T) receiveOnly(T...)()
 bool receiveTimeout(T...)( long ms, T ops )
 {
     static enum long TICKS_PER_MILLI = 10_000;
-    return _receive( ms * TICKS_PER_MILLI, ops );
+    return mbox.get( ms * TICKS_PER_MILLI, ops );
 }
 
 
-/*
+/**
  *
  */
-private bool _receive(T...)( T ops )
+enum OnCrowding
 {
-    static assert( T.length );
-
-    static if( isImplicitlyConvertible!(T[0], long) )
-    {
-        alias TypeTuple!(T[1 .. $]) Ops;
-        ops = ops[1 .. $];
-    }
-    else
-    {
-        alias TypeTuple!(T) Ops;
-    }
-
-    bool get( Variant val )
-    {
-        foreach( i, t; Ops )
-        {
-            alias Tuple!(ParameterTypeTuple!(t)) Vals;
-            auto op = ops[i];
-
-            static if( is( Vals == Tuple!(Variant) ) )
-            {
-                static if( is( ReturnType!(t) == bool ) )
-                    return op( val );
-                op( val );
-                return true;
-            }
-            static if( Variant.allowed!(Vals) )
-            {
-                if( val.convertsTo!(Vals) )
-                {
-                    static if( is( ReturnType!(t) == bool ) )
-                        return op( val.get!(Vals).expand );
-                    op( val.get!(Vals).expand );
-                    return true;
-                }
-            }
-            else
-            {
-                if( val.convertsTo!(Vals*) )
-                {
-                    static if( is( ReturnType!(t) == bool ) )
-                        return op( val.get!(Vals*).expand );
-                    op( val.get!(Vals*).expand );
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-    
-    static if( isImplicitlyConvertible!(T[0], long) )
-    {
-        return mbox.get( ops[0], &get );
-    }
-    else
-    {
-        mbox.get( &get );
-        return true;
-    }
+    block,          ///
+    throwException, ///
+    ignore          ///
 }
 
 
-static this()
+/**
+ *
+ */
+void setMaxMailboxSize( Tid tid, size_t messages, OnCrowding doThis )
 {
-    mbox = new MessageBox;
+
+}
+
+
+/**
+ *
+ */
+void setMaxMailboxSize( Tid tid, size_t messages, bool function(Tid) onCrowdingDoThis )
+{
+
 }
 
 
 private
 {
-    MessageBox mbox;
-
-
-    class SyncList(T)
+    /*
+     *
+     */
+    class MessageBox
     {
         this()
         {
             m_sharedLock = new Mutex;
             m_sharedRecv = new Condition( m_sharedLock );
         }
-    
-    
-    private:
-        final void put( T val )
+        
+        
+        final void put( Message val )
         {
             synchronized( m_sharedLock )
             {
@@ -291,79 +321,229 @@ private
                 m_sharedRecv.notify();
             }
         }
-    
-    
-        final void get( scope bool delegate(T) op )
-        {
-            if( m_local.get( op ) )
-                return;
-            while( true )
-            { 
-                ListT newvals;
         
+        
+        final void get(T...)( T ops )
+        {
+            static assert( T.length );
+
+            static if( isImplicitlyConvertible!(T[0], long) )
+            {
+                alias TypeTuple!(T[1 .. $]) Ops;
+                assert( ops[0] >= 0 );
+                long period = ops[0];
+                ops = ops[1 .. $];
+            }
+            else
+            {
+                alias TypeTuple!(T) Ops;
+            }
+            
+            bool onUserMsg( Message msg )
+            {
+                Variant data = msg.data;
+
+                foreach( i, t; Ops )
+                {
+                    alias Tuple!(ParameterTypeTuple!(t)) Wrap;
+                    auto op = ops[i];
+
+                    static if( is( Wrap == Tuple!(Variant) ) )
+                    {
+                        static if( is( ReturnType!(t) == bool ) )
+                            return op( data );
+                        op( data );
+                        return true;
+                    }
+                    else static if( Variant.allowed!(Wrap) )
+                    {
+                        if( data.convertsTo!(Wrap) )
+                        {
+                            static if( is( ReturnType!(t) == bool ) )
+                            {
+                                return op( data.get!(Wrap).expand );
+                            }
+                            else
+                            {
+                                op( data.get!(Wrap).expand );
+                                return true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if( data.convertsTo!(Wrap*) )
+                        {
+                            static if( is( ReturnType!(t) == bool ) )
+                                return op( data.get!(Wrap*).expand );
+                            op( data.get!(Wrap*).expand );
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            bool ownerDead = false;
+            
+            bool onLinkDeadMsg( Variant data )
+            {
+                alias Tuple!(Tid) Wrap;
+
+                static if( Variant.allowed!(Wrap) )
+                {
+                    assert( data.convertsTo!(Wrap) );
+                    auto wrap = data.get!(Wrap);
+                }
+                else
+                {
+                    assert( data.convertsTo!(Wrap*) );
+                    auto wrap = data.get!(Wrap*);
+                }
+                if( wrap.field[0] == owner )
+                {
+                    ownerDead = true;
+                    return false;
+                }
+                foreach( i, e; owned )
+                {
+                    if( wrap.field[0] == e )
+                    {
+                        owned[i]   = owned[$-1];
+                        owned[$-1] = Tid.init;
+                        owned = owned[0 .. $-1];
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            bool onControlMsg( Message msg )
+            {
+                switch( msg.type )
+                {
+                case MsgType.LinkDead:
+                    return onLinkDeadMsg( msg.data );
+                default:
+                    return false;
+                }
+            }
+            
+            bool isControlMsg( Message msg )
+            {
+                return msg.type != MsgType.User;
+            }
+            
+            bool scan( ref ListT list )
+            {
+                for( auto range = list[]; !range.empty; )
+                {
+                    if( isControlMsg( range.front ) )
+                    {
+                        if( onControlMsg( range.front ) )
+                            list.removeAt( range );
+                        else
+                            range.popFront();
+                        continue;
+                    }
+                    if( onUserMsg( range.front ) )
+                    {
+                        list.removeAt( range );
+                        return true;
+                    }
+                    range.popFront();
+                }
+                return false;
+            }
+            
+            while( true )
+            {
+                ListT newvals;
+
+                if( scan( m_local ) )
+                    return;
                 synchronized( m_sharedLock )
                 {
-                    while( m_shared.isEmpty )
-                        m_sharedRecv.wait();
+                    while( m_shared.empty )
+                    {
+                        if( ownerDead )
+                            throw new OwnerTerminated;
+                        static if( isImplicitlyConvertible!(T[0], long) )
+                            m_sharedRecv.wait( period );
+                        else
+                            m_sharedRecv.wait();
+                    }
                     newvals.put( m_shared );
                 }
-                bool ok = newvals.get( op );
+                bool ok = scan( newvals );
                 m_local.put( newvals );
                 if( ok ) return;
             }
         }
         
-        
-        final bool get( scope bool delegate(T) op, long period )
-        in
-        {
-            assert( period >= 0 );
-        }
-        body
-        {
-            if( m_local.get( op ) )
-                return true;
-            while( true )
-            { 
-                ListT newvals;
-        
-                synchronized( m_sharedLock )
-                {
-                    while( m_shared.isEmpty )
-                    {
-                        if( !m_sharedRecv.wait( period ) )
-                            return false;
-                    }
-                    newvals.put( m_shared );
-                }
-                bool ok = newvals.get( op );
-                m_local.put( newvals );
-                if( ok ) return true;
-            }
-        }
-    
     
     private:
-        alias List!(T) ListT;
-
+        alias List!(Message) ListT;
+        
         ListT       m_local;
         ListT       m_shared;
         Mutex       m_sharedLock;
         Condition   m_sharedRecv;
     }
-    
-    
+
+
     struct List(T)
-    {    
+    {
+        struct Range
+        {
+
+            bool empty() const
+            {
+                return !m_prev.next;
+            }
+
+            @property T front()
+            {
+                enforce( m_prev.next ); 
+                return m_prev.next.val;
+            }
+
+            @property void front( T val )
+            {
+                enforce( m_prev.next );
+                m_prev.next.val = val;
+            }
+
+            void popFront()
+            {
+                enforce( m_prev.next );
+                m_prev = m_prev.next;
+            }
+
+            //T moveFront()
+            //{
+            //    enforce( m_prev.next );
+            //    return move( m_prev.next.val );
+            //}
+
+            private this( Node* p )
+            {
+                m_prev = p;
+            }
+
+            private Node* m_prev;
+        }
+
+
         void put( T val )
         {
             put( new Node( val ) );
         }
-    
-    
+
+
         void put( ref List!(T) rhs )
         {
-            if( !rhs.isEmpty )
+            if( !rhs.empty )
             {
                 put( rhs.m_first );
                 while( m_last.next !is null )
@@ -372,52 +552,51 @@ private
                 rhs.m_last = null;
             }
         }
-    
-    
-        bool get( scope bool delegate(T) op )
+
+
+        Range opSlice()
         {
-            Node* n = cast(Node*) &m_first;
-        
-            for( ; n.next; n = n.next )
-            {
-                if( op( n.next.val ) )
-                {
-                    if( m_last is m_first )
-                        m_last = null;
-                    else if( m_last is n.next )
-                        m_last = n;
-                    Node* todelete = n.next;
-                    n.next = n.next.next;
-                    delete todelete;
-                    return true;
-                }
-            }
-            return false;
+            return Range( cast(Node*) &m_first );
         }
-    
-    
-        bool isEmpty()
+
+
+        void removeAt( Range r )
+        {
+            Node* n = r.m_prev;
+            enforce( n && n.next );
+
+            if( m_last is m_first )
+                m_last = null;
+            else if( m_last is n.next )
+                m_last = n;
+            Node* todelete = n.next;
+            n.next = n.next.next;
+            //delete todelete;
+        }
+
+
+        bool empty()
         {
             return m_first is null;
         }
-    
+
 
     private:
         struct Node
         {
             Node*   next;
             T       val;
-        
+
             this( T v )
             {
                 val = v;
             }
         }
-    
-    
+
+
         void put( Node* n )
         {
-            if( !isEmpty )
+            if( !empty )
             {
                 m_last.next = n;
                 m_last = n;
@@ -426,8 +605,8 @@ private
             m_first = n;
             m_last = n;
         }
-    
-    
+
+
         Node* m_first;
         Node* m_last;
     }
@@ -438,20 +617,21 @@ version( unittest )
 {
     void testfn( Tid tid )
     {
-        receive( (float val) { writefln( "got float: %s", val ); },
-                 (int val, int val2) { writefln( "got int: %s, %s", val, val2 ); } );
-        receive( (Tuple!(int, int) val) { writefln( "got tuple: %s", val ); } );
-        receive( (Variant val) { writefln( "got something: %s", val ); } );
+        receive( (float val) { assert(0); },
+                (int val, int val2) { assert(val == 42 && val2 == 86); } );
+        receive( (Tuple!(int, int) val) { assert(val.field[0] == 42
+                            && val.field[1] == 86 ); } );
+        receive( (Variant val) {  } );
         receive( (string val)
                  {
                      if( "the quick brown fox" != val )
                          return false;
-                     writefln( "matched string: %s", val );
                      return true;
                  },
                  (string val)
                  {
                      writefln( "got string: %s", val );
+                     assert(0);
                  } );
         send( tid, "done" );
     }
@@ -465,6 +645,6 @@ version( unittest )
         send( tid, tuple(42, 86) );
         send( tid, "hello", "there" );
         send( tid, "the quick brown fox" );
-        receive( (string val) { writefln( "spawned thread returned: %s", val ); } );
+        receive( (string val) { assert(val == "done"); } );
     }
 }

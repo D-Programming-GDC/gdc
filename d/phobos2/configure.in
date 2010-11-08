@@ -428,7 +428,7 @@ AC_TRY_COMPILE([
    d_have_fpsb=1],
   [AC_MSG_RESULT([no])])
 
-# Currently can only have either itnernal/fpmath or gcc/cbridge_math
+# Currently can only have either internal/fpmath or gcc/cbridge_math
 if test $d_use_ieee_fpsb -eq 0; then
     if test -n "$d_have_fpsb"; then
 	AC_DEFINE(HAVE_FP_CLASSIFY_SIGNBIT,1,[Define to 1 fpclassify and signbit are available])

@@ -21,7 +21,7 @@ ACLOCAL_AMFLAGS = -I . -I ..
 
 OUR_CFLAGS=@DEFS@ -I . -I $(srcdir)/gcc
 D_EXTRA_DFLAGS=-nostdinc -pipe
-D_RT_FLAGS = -I $(srcdir)/import -I $(srcdir)/gc
+D_RT_FLAGS = -I $(srcdir)/gc
 ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_RT_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
@@ -127,9 +127,9 @@ RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 
 CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/exception.o \
 	  core/memory.o core/runtime.o core/thread.o core/vararg.o \
-	  core/stdc/errno.o core/sync/barrier.o core/sync/condition.o \
-	  core/sync/config.o core/sync/exception.o core/sync/mutex.o \
-	  core/sync/rwmutex.o core/sync/semaphore.o
+	  core/stdc/errno.o core/stdc/errno_.o core/sync/barrier.o \
+          core/sync/condition.o core/sync/config.o core/sync/exception.o \
+          core/sync/mutex.o core/sync/rwmutex.o core/sync/semaphore.o
 
 GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
 	 gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
@@ -152,21 +152,17 @@ DRUNTIME_OBJS+=$(BASE_OBJS) $(RUNTIME_OBJS) $(UTIL_OBJS) \
 
 
 # OS specific
-RT_STDC_OBJS=import/core/stdc/math.o import/core/stdc/stdarg.o \
-	     import/core/stdc/stdio.o import/core/stdc/wchar_.o
+RT_STDC_OBJS=core/stdc/math.o core/stdc/stdarg.o core/stdc/stdio.o \
+             core/stdc/wchar_.o
 
-RT_OSX_OBJS=import/core/sys/osx/mach/kern_return.o \
-	    import/core/sys/osx/mach/port.o \
-	    import/core/sys/osx/mach/semaphore.o \
-	    import/core/sys/osx/mach/thread_act.o
+RT_OSX_OBJS=core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
+	    core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o
 
-RT_POSIX_OBJS=import/core/sys/posix/netinet/in_.o \
-	      import/core/sys/posix/sys/select.o \
-	      import/core/sys/posix/sys/socket.o \
-	      import/core/sys/posix/sys/stat.o \
-	      import/core/sys/posix/sys/wait.o
+RT_POSIX_OBJS=core/sys/posix/netinet/in_.o core/sys/posix/sys/select.o \
+	      core/sys/posix/sys/socket.o core/sys/posix/sys/stat.o \
+	      core/sys/posix/sys/wait.o
 
-RT_WINDOWS_OBJS=import/core/sys/windows/windows.o \
+RT_WINDOWS_OBJS=core/sys/windows/windows.o \
 		core/dll_helper.o core/thread_helper.o
 
 # This should not be linked into a shared library.
@@ -197,19 +193,21 @@ std/boxer.t.o: std/boxer.o
 unittest: unittest.o libgphobos2_t.a libgphobos2.a
 	$(GDC) -o $@ $(CFLAGS) -fdeprecated unittest.o -L./ -lgdruntime -lgphobos2_t $(LIBS) -ldl
 
-MAIN_OBJS=std/algorithm.o std/atomics.o std/array.o std/base64.o \
-	std/bigint.o std/biguintcore.o std/biguintnoasm.o std/biguintx86.o \
+MAIN_OBJS=std/algorithm.o std/array.o std/base64.o std/bigint.o \
 	std/bind.o std/bitarray.o std/bitmanip.o std/compiler.o \
-	std/complex.o std/concurrency.o std/contracts.o std/conv.o \
-	std/cpuid.o std/cstream.o std/ctype.o std/date.o std/dateparse.o \
-	std/demangle.o std/encoding.o std/format.o std/functional.o \
-	std/getopt.o std/iterator.o std/json.o std/math.o std/md5.o \
-	std/metastrings.o std/numeric.o std/openrj.o std/outbuffer.o \
-	std/signals.o std/stdarg.o std/stdio.o std/stdiobase.o std/stream.o \
-	std/string.o std/syserror.o std/system.o std/random.o std/range.o \
-	std/regex.o std/regexp.o std/traits.o std/typecons.o std/typetuple.o \
-	std/uni.o std/uri.o std/utf.o std/variant.o std/xml.o std/zip.o \
-	std/zlib.o std/c/stdarg.o std/c/stdio.o crc32.o etc/c/zlib.o
+        std/container.o std/complex.o std/concurrency.o std/contracts.o \
+        std/conv.o std/cpuid.o std/cstream.o std/ctype.o std/date.o \
+        std/dateparse.o std/demangle.o std/encoding.o std/format.o \
+        std/functional.o std/getopt.o std/gregorian.o std/json.o std/math.o \
+        std/md5.o std/metastrings.o std/numeric.o std/openrj.o \
+        std/outbuffer.o std/signals.o std/stdarg.o std/stdio.o \
+        std/stdiobase.o std/stream.o std/string.o std/syserror.o \
+        std/system.o std/random.o std/range.o std/regex.o std/regexp.o \
+        std/traits.o std/typecons.o std/typetuple.o std/uni.o std/uri.o \
+        std/utf.o std/variant.o std/xml.o std/zip.o std/zlib.o \
+        std/c/stdarg.o std/c/stdio.o std/internal/math/biguintcore.o \
+        std/internal/math/biguintnoasm.o std/internal/math/biguintx86.o \
+        crc32.o etc/c/zlib.o
 
 ZLIB_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/gzclose.o zlib/gzlib.o zlib/gzread.o zlib/gzwrite.o \
@@ -263,19 +261,15 @@ install-data-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 	for i in etc/c \
 		gcc std std/c \
                 std/c/linux std/c/osx std/c/unix std/c/windows \
-		std/windows; do \
+		std/internal/math std/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done
-	for i in core core/sync; do \
-		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/import/$$i/*.di; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
-	done
-	for i in core/stdc core/sys/osx/mach core/sys/posix \
+	for i in core core/stdc core/sync core/sys/osx/mach core/sys/posix \
 		core/sys/posix/arpa core/sys/posix/net core/sys/posix/netinet \
 		core/sys/posix/sys core/sys/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/import/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done
 	for i in crc32.d object.di; do \
 		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done

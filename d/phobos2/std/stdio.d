@@ -38,7 +38,7 @@ version (DigitalMars) version (Windows)
 {
     // Specific to the way Digital Mars C does stdio
     version = DIGITAL_MARS_STDIO;
-    import std.c.stdio : __fhnd_info, FHND_WCHAR;
+    import std.c.stdio : __fhnd_info, FHND_WCHAR, FHND_TEXT;
 }
 
 version (linux)
@@ -49,6 +49,12 @@ version (linux)
 }
 
 version (OSX)
+{
+    version = GENERIC_IO;
+    alias core.stdc.stdio.fopen fopen64;
+}
+
+version (FreeBSD)
 {
     version = GENERIC_IO;
     alias core.stdc.stdio.fopen fopen64;
@@ -74,6 +80,8 @@ version (DIGITAL_MARS_STDIO)
         int _fgetwc_nlock(_iobuf*);
         int __fp_lock(FILE*);
         void __fp_unlock(FILE*);
+
+        int setmode(int, int);
     }
     alias _fputc_nlock FPUTC;
     alias _fputwc_nlock FPUTWC;
@@ -82,6 +90,10 @@ version (DIGITAL_MARS_STDIO)
 
     alias __fp_lock FLOCK;
     alias __fp_unlock FUNLOCK;
+
+    alias setmode _setmode;
+    enum _O_BINARY = 0x8000;
+    int _fileno(FILE* f) { return f._file; }
 }
 else version (GCC_IO)
 {
@@ -437,23 +449,69 @@ file handle and throws on error.
 If the file is not opened, throws an exception. Otherwise, calls $(WEB
 cplusplus.com/reference/clibrary/cstdio/fread.html, fread) for the
 file handle and throws on error.
+
+$(D rawRead) always read in binary mode on Windows.
  */
     T[] rawRead(T)(T[] buffer)
     {
-        enforce(buffer.length);
+        enforce(buffer.length, "rawRead must take a non-empty buffer");
+        version(Windows)
+        {
+            immutable fd = ._fileno(p.handle);
+            immutable mode = ._setmode(fd, _O_BINARY);
+            scope(exit) ._setmode(fd, mode);
+            version(DIGITAL_MARS_STDIO)
+            {
+                // @@@BUG@@@ 4243
+                immutable info = __fhnd_info[fd];
+                __fhnd_info[fd] &= ~FHND_TEXT;
+                scope(exit) __fhnd_info[fd] = info;
+            }
+        }
         immutable result =
             .fread(buffer.ptr, T.sizeof, buffer.length, p.handle);
         errnoEnforce(!error);
         return result ? buffer[0 .. result] : null;
     }
 
+    unittest
+    {
+        std.file.write("deleteme", "\r\n\n\r\n");
+        scope(exit) std.file.remove("deleteme");
+        auto f = File("deleteme", "r");
+        auto buf = f.rawRead(new char[5]);
+        f.close();
+        assert(buf == "\r\n\n\r\n");
+        /+
+        buf = stdin.rawRead(new char[5]);
+        assert(buf == "\r\n\n\r\n");
+        +/
+    }
+
 /**
 If the file is not opened, throws an exception. Otherwise, calls $(WEB
 cplusplus.com/reference/clibrary/cstdio/fwrite.html, fwrite) for the
 file handle and throws on error.
+
+$(D rawWrite) always write in binary mode on Windows.
  */
     void rawWrite(T)(in T[] buffer)
     {
+        version(Windows)
+        {
+            flush(); // before changing translation mode
+            immutable fd = ._fileno(p.handle);
+            immutable mode = ._setmode(fd, _O_BINARY);
+            scope(exit) ._setmode(fd, mode);
+            version(DIGITAL_MARS_STDIO)
+            {
+                // @@@BUG@@@ 4243
+                immutable info = __fhnd_info[fd];
+                __fhnd_info[fd] &= ~FHND_TEXT;
+                scope(exit) __fhnd_info[fd] = info;
+            }
+            scope(exit) flush(); // before restoring translation mode
+        }
         auto result =
             .fwrite(buffer.ptr, T.sizeof, buffer.length, p.handle);
         if (result == result.max) result = 0;
@@ -461,6 +519,18 @@ file handle and throws on error.
                 text("Wrote ", result, " instead of ", buffer.length,
                         " objects of type ", T.stringof, " to file `",
                         p.name, "'"));
+    }
+
+    unittest
+    {
+        auto f = File("deleteme", "w");
+        scope(exit) std.file.remove("deleteme");
+        f.rawWrite("\r\n\n\r\n");
+        f.close();
+        assert(std.file.read("deleteme") == "\r\n\n\r\n");
+        /+
+        stdout.rawWrite("\r\n\n\r\n");
+        +/
     }
 
 /**
@@ -1251,7 +1321,33 @@ unittest
  * arguments is valid and just prints a newline to the standard
  * output.
  */
+void writeln(T...)(T args) if (T.length == 0)
+{
+    enforce(fputc('\n', .stdout.p.handle) == '\n');
+}
+
+unittest
+{
+    // Just make sure the call compiles
+    if (false) writeln();
+}
+
+/// ditto
 void writeln(T...)(T args)
+if (T.length == 1 && is(typeof(args[0]) : const(char)[]))
+{
+    enforce(fprintf(.stdout.p.handle, "%.*s\n",
+                    cast(int) args[0].length, args[0].ptr) >= 0);
+}
+
+unittest
+{
+    if (false) writeln("wyda");
+}
+
+/// Ditto
+void writeln(T...)(T args)
+if (T.length > 1 || T.length == 1 && !is(typeof(args[0]) : const(char)[]))
 {
     stdout.write(args, '\n');
 }
@@ -1516,14 +1612,12 @@ struct lines
 {
     private File f;
     private dchar terminator = '\n';
-    private string fileName;
+    // private string fileName;  // Curretly, no use
 
-    static lines opCall(File f, dchar terminator = '\n')
+    this(File f, dchar terminator = '\n')
     {
-        lines result;
-        result.f = f;
-        result.terminator = terminator;
-        return result;
+        this.f = f;
+        this.terminator = terminator;
     }
 
     // Keep these commented lines for later, when Walter fixes the
@@ -1538,7 +1632,7 @@ struct lines
 //         return result;
 //     }
 
-    int opApply(D)(D dg)
+    int opApply(D)(scope D dg)
     {
 //         scope(exit) {
 //             if (fileName.length && fclose(f))
@@ -1583,7 +1677,7 @@ struct lines
         }
     }
     // no UTF checking
-    int opApplyRaw(D)(D dg)
+    int opApplyRaw(D)(scope D dg)
     {
         alias ParameterTypeTuple!(dg) Parms;
         enum duplicate = is(Parms[$ - 1] : immutable(ubyte)[]);
@@ -1766,15 +1860,17 @@ struct chunks
 {
     private File f;
     private size_t size;
-    private string fileName;
+    // private string fileName; // Currently, no use
 
-    static chunks opCall(File f, size_t size)
+    this(File f, size_t size)
+    in
     {
-        assert(size);
-        chunks result;
-        result.f = f;
-        result.size = size;
-        return result;
+        assert(size, "size must be larger than 0");
+    }
+    body
+    {
+        this.f = f;
+        this.size = size;
     }
 
 //     static chunks opCall(string fName, size_t size)
@@ -1786,7 +1882,7 @@ struct chunks
 //         return result;
 //     }
 
-    int opApply(D)(D dg)
+    int opApply(D)(scope D dg)
     {
         const maxStackSize = 1024 * 16;
         ubyte[] buffer = void;
@@ -1864,7 +1960,15 @@ Initialize with a message and an error code. */
         version (Posix)
         {
             char[256] buf = void;
-            auto s = std.c.string.strerror_r(errno, buf.ptr, buf.length);
+            version (linux)
+            {
+                auto s = std.c.string.strerror_r(errno, buf.ptr, buf.length);
+            }
+            else
+            {
+                std.c.string.strerror_r(errno, buf.ptr, buf.length);
+                auto s = buf.ptr;
+            }
         }
         else
         {

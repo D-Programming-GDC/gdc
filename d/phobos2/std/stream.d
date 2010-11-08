@@ -172,10 +172,10 @@ interface InputStream {
    */
 
   // iterate through the stream line-by-line
-  int opApply(int delegate(ref char[] line) dg);
-  int opApply(int delegate(ref ulong n, ref char[] line) dg);  /// ditto
-  int opApply(int delegate(ref wchar[] line) dg);		   /// ditto
-  int opApply(int delegate(ref ulong n, ref wchar[] line) dg); /// ditto
+  int opApply(scope int delegate(ref char[] line) dg);
+  int opApply(scope int delegate(ref ulong n, ref char[] line) dg);  /// ditto
+  int opApply(scope int delegate(ref wchar[] line) dg);		   /// ditto
+  int opApply(scope int delegate(ref ulong n, ref wchar[] line) dg); /// ditto
 
   /// Read a string of the given length,
   /// throwing ReadException if there was a problem.
@@ -551,7 +551,7 @@ class Stream : InputStream, OutputStream {
   }
 
   // iterate through the stream line-by-line - due to Regan Heath
-  int opApply(int delegate(ref char[] line) dg) {
+  int opApply(scope int delegate(ref char[] line) dg) {
     int res = 0;
     char[128] buf;
     while (!eof()) {
@@ -563,7 +563,7 @@ class Stream : InputStream, OutputStream {
   }
 
   // iterate through the stream line-by-line with line count and string
-  int opApply(int delegate(ref ulong n, ref char[] line) dg) {
+  int opApply(scope int delegate(ref ulong n, ref char[] line) dg) {
     int res = 0;
     ulong n = 1;
     char[128] buf;
@@ -577,7 +577,7 @@ class Stream : InputStream, OutputStream {
   }
 
   // iterate through the stream line-by-line with wchar[]
-  int opApply(int delegate(ref wchar[] line) dg) {
+  int opApply(scope int delegate(ref wchar[] line) dg) {
     int res = 0;
     wchar[128] buf;
     while (!eof()) {
@@ -589,7 +589,7 @@ class Stream : InputStream, OutputStream {
   }
 
   // iterate through the stream line-by-line with line count and wchar[]
-  int opApply(int delegate(ref ulong n, ref wchar[] line) dg) {
+  int opApply(scope int delegate(ref ulong n, ref wchar[] line) dg) {
     int res = 0;
     ulong n = 1;
     wchar[128] buf;

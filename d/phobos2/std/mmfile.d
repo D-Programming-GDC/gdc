@@ -368,9 +368,7 @@ class MmFile
             else
             {
                 fd = -1;
-                //assert(false, "@@@Sean, please fix the MAP_ANONYMOUS thing.");
-                enum MAP_ANONYMOUS = 0x20;
-                flags |= MAP_ANONYMOUS;
+                flags |= MAP_ANON;
             }
             this.size = size;
             size_t initial_map = (window && 2*window<size)

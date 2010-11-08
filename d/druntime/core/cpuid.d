@@ -115,8 +115,6 @@ public:
     bool sse42()        {return (miscfeatures&SSE42_BIT)!=0;}
     /// Is SSE4a supported?
     bool sse4a()        {return (amdmiscfeatures&SSE4A_BIT)!=0;}
-    /// Is SSE5 supported?
-    bool sse5()         {return (amdmiscfeatures&SSE5_BIT)!=0;}
     /// Is AMD 3DNOW supported?
     bool amd3dnow()     {return (amdfeatures&AMD_3DNOW_BIT)!=0;}
     /// Is AMD 3DNOW Ext supported?
@@ -284,7 +282,6 @@ version(X86_64) {
         LZCNT_BIT = 1<<5,
         SSE4A_BIT = 1<<6,       
         AMD_3DNOW_PREFETCH_BIT = 1<<8,
-        SSE5_BIT = 1<<11
     }
 
 version(D_InlineAsm_X86) {
@@ -510,40 +507,47 @@ void getCpuInfo0B()
 void cpuidX86()
 {
     char * venptr = vendorID.ptr;
+    uint a, b, c, d, a2;
     asm {
         mov EAX, 0;
         cpuid;
-        mov max_cpuid, EAX;
+        mov a, EAX;
         mov EAX, venptr;
         mov [EAX], EBX;
         mov [EAX + 4], EDX;
         mov [EAX + 8], ECX;
         mov EAX, 0x8000_0000;
         cpuid;
-        mov max_extended_cpuid, EAX;
+        mov a2, EAX;
     }
+    max_cpuid = a;
+    max_extended_cpuid = a2;
+    
     
     probablyIntel = vendorID == "GenuineIntel";
     probablyAMD = vendorID == "AuthenticAMD";
-    uint a, b, c, d;
     uint apic = 0; // brand index, apic id
     asm {
         mov EAX, 1; // model, stepping
         cpuid;
         mov a, EAX;
         mov apic, EBX;
-        mov miscfeatures, ECX;
-        mov features, EDX;
+        mov c, ECX;
+        mov d, EDX;
     }
+    features = d;
+    miscfeatures = c;
     amdfeatures = 0;
-    amdmiscfeatures = 0;
+    amdmiscfeatures = 0;    
     if (max_extended_cpuid >= 0x8000_0001) {
         asm {
             mov EAX, 0x8000_0001;
             cpuid;
-            mov amdmiscfeatures, ECX;
-            mov amdfeatures, EDX;
+            mov c, ECX;
+            mov d, EDX;
         }
+        amdmiscfeatures = c;
+        amdfeatures = d;            
     }
     // Try to detect fraudulent vendorIDs
     if (amd3dnow) probablyIntel = false;

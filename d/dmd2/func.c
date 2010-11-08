@@ -145,7 +145,9 @@ void FuncDeclaration::semantic(Scope *sc)
     if (semanticRun >= PASSsemanticdone)
     {
         if (!parent->isClassDeclaration())
+        {
             return;
+        }
         // need to re-run semantic() in order to set the class's vtbl[]
     }
     else
@@ -1125,6 +1127,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 
                 VarDeclaration *v = new VarDeclaration(loc, type->nextOf(), outId, NULL);
                 v->noauto = 1;
+                v->storage_class |= STCresult;
 #if DMDV2
                 if (!isVirtual())
                     v->storage_class |= STCconst;
@@ -1368,6 +1371,8 @@ void FuncDeclaration::semantic3(Scope *sc)
                         assert(v->init);
                         ExpInitializer *ie = v->init->isExpInitializer();
                         assert(ie);
+                        if (ie->exp->op == TOKconstruct)
+                            ie->exp->op = TOKassign; // construction occured in parameter processing
                         a->push(new ExpStatement(0, ie->exp));
                     }
                 }
@@ -1396,6 +1401,8 @@ void FuncDeclaration::semantic3(Scope *sc)
                     offset = p->type->size();
                 offset = (offset + 3) & ~3;     // assume stack aligns on 4
                 Expression *e = new SymOffExp(0, p, offset);
+                e->type = Type::tvoidptr;
+                //e = e->semantic(sc);
                 e = new AssignExp(0, e1, e);
                 e->type = t;
                 a->push(new ExpStatement(0, e));
@@ -1415,8 +1422,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                 Expression *e = new VarExp(0, v_arguments);
                 e = new DotIdExp(0, e, Id::elements);
                 Expression *e1 = new VarExp(0, _arguments);
-                e = new AssignExp(0, e1, e);
-                e->op = TOKconstruct;
+                e = new ConstructExp(0, e1, e);
                 e = e->semantic(sc2);
                 a->push(new ExpStatement(0, e));
             }
@@ -2333,12 +2339,12 @@ AggregateDeclaration *FuncDeclaration::isMember2()
 //printf("\ts = '%s', parent = '%s', kind = %s\n", s->toChars(), s->parent->toChars(), s->parent->kind());
         ad = s->isMember();
         if (ad)
-{   //printf("test4\n");
+{
             break;
 }
         if (!s->parent ||
             (!s->parent->isTemplateInstance()))
-{   //printf("test5\n");
+{
             break;
 }
     }

@@ -348,7 +348,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @run_args, @ARGV[$arg_i..$#ARGV];
         last;
     } elsif ( $arg =~ m/^-noboundscheck$/ ) {
-        push @out, '-fnoboundscheck';
+        push @out, '-fnobounds-check';
     } elsif ( $arg =~ m/^-unittest$/ ) {
         push @out, '-funittest';
     } elsif ( $arg =~ m/^-v$/ ) {

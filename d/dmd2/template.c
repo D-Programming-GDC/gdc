@@ -83,6 +83,36 @@ Tuple *isTuple(Object *o)
     return (Tuple *)o;
 }
 
+/**************************************
+ * Is this Object an error?
+ */
+int isError(Object *o)
+{
+    Type *t = isType(o);
+    if (t)
+        return (t->ty == Terror);
+    Expression *e = isExpression(o);
+    if (e)
+        return (e->op == TOKerror);
+    Tuple *v = isTuple(o);
+    if (v)
+        return arrayObjectIsError(&v->objects);
+    return 0;
+}
+
+/**************************************
+ * Are any of the Objects an error?
+ */
+int arrayObjectIsError(Objects *args)
+{
+    for (size_t i = 0; i < args->dim; i++)
+    {
+        Object *o = (Object *)args->data[i];
+        if (isError(o))
+            return 1;
+    }
+    return 0;
+}
 
 /***********************
  * Try to get arg as a type.
@@ -1523,8 +1553,10 @@ FuncDeclaration *TemplateDeclaration::deduceFunctionTemplate(Scope *sc, Loc loc,
     }
     if (td_ambig)
     {
-        error(loc, "matches more than one function template declaration:\n  %s\nand:\n  %s",
-                td_best->toChars(), td_ambig->toChars());
+        error(loc, "%s matches more than one template declaration, %s(%d):%s and %s(%d):%s",
+                toChars(),
+                td_best->loc.filename,  td_best->loc.linnum,  td_best->toChars(),
+                td_ambig->loc.filename, td_ambig->loc.linnum, td_ambig->toChars());
     }
 
     /* The best match is td_best with arguments tdargs.
@@ -3048,7 +3080,18 @@ Object *TemplateAliasParameter::specialization()
 
 Object *TemplateAliasParameter::defaultArg(Loc loc, Scope *sc)
 {
-    Object *o = aliasParameterSemantic(loc, sc, defaultAlias);
+    Object *da = defaultAlias;
+    Type *ta = isType(defaultAlias);
+    if (ta)
+    {
+       if (ta->ty == Tinstance)
+       {
+           // If the default arg is a template, instantiate for each type
+           da = ta->syntaxCopy();
+       }
+    }
+
+    Object *o = aliasParameterSemantic(loc, sc, da);
     return o;
 }
 
@@ -3543,7 +3586,7 @@ void TemplateInstance::semantic(Scope *sc)
 
 void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
 {
-    //printf("TemplateInstance::semantic('%s', this=%p)\n", toChars(), this);
+    //printf("TemplateInstance::semantic('%s', this=%p, gag = %d)\n", toChars(), this, global.gag);
     if (global.errors && name != Id::AssociativeArray)
     {
         //printf("not instantiating %s due to %d errors\n", toChars(), global.errors);
@@ -3613,6 +3656,11 @@ void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
          * (if we havetempdecl, then tiargs is already evaluated)
          */
         semanticTiargs(sc);
+        if (arrayObjectIsError(tiargs))
+        {   inst = this;
+            //printf("error return %p, %d\n", tempdecl, global.errors);
+            return;             // error recovery
+        }
 
         tempdecl = findTemplateDeclaration(sc);
         if (tempdecl)
@@ -4100,7 +4148,7 @@ void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int f
         {
             if (!ea)
             {   assert(global.errors);
-                ea = new IntegerExp(0);
+                ea = new ErrorExp();
             }
             assert(ea);
             ea = ea->semantic(sc);
@@ -4380,8 +4428,10 @@ TemplateDeclaration *TemplateInstance::findBestMatch(Scope *sc)
     }
     if (td_ambig)
     {
-        error("%s matches more than one template declaration, %s and %s",
-                toChars(), td_best->toChars(), td_ambig->toChars());
+        error("%s matches more than one template declaration, %s(%d):%s and %s(%d):%s",
+                toChars(),
+                td_best->loc.filename,  td_best->loc.linnum,  td_best->toChars(),
+                td_ambig->loc.filename, td_ambig->loc.linnum, td_ambig->toChars());
     }
 
     /* The best match is td_best

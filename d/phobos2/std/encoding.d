@@ -540,19 +540,17 @@ struct CodePoints(E)
 {
     const(E)[] s;
 
-    static CodePoints opCall(const(E)[] s)
+    this(const(E)[] s)
     in
     {
         assert(isValid(s));
     }
     body
     {
-        CodePoints codePoints;
-        codePoints.s = s;
-        return codePoints;
+        this.s = s;
     }
 
-    int opApply(int delegate(ref dchar) dg)
+    int opApply(scope int delegate(ref dchar) dg)
     {
         int result = 0;
         while (s.length != 0)
@@ -564,7 +562,7 @@ struct CodePoints(E)
         return result;
     }
 
-    int opApply(int delegate(ref uint, ref dchar) dg)
+    int opApply(scope int delegate(ref uint, ref dchar) dg)
     {
         uint i = 0;
         int result = 0;
@@ -580,7 +578,7 @@ struct CodePoints(E)
         return result;
     }
 
-    int opApplyReverse(int delegate(ref dchar) dg)
+    int opApplyReverse(scope int delegate(ref dchar) dg)
     {
         int result = 0;
         while (s.length != 0)
@@ -592,7 +590,7 @@ struct CodePoints(E)
         return result;
     }
 
-    int opApplyReverse(int delegate(ref uint, ref dchar) dg)
+    int opApplyReverse(scope int delegate(ref uint, ref dchar) dg)
     {
         int result = 0;
         while (s.length != 0)
@@ -610,19 +608,17 @@ struct CodeUnits(E)
 {
     E[] s;
 
-    static CodeUnits opCall(dchar d)
+    this(dchar d)
     in
     {
         assert(isValidCodePoint(d));
     }
     body
     {
-        CodeUnits codeUnits;
-        codeUnits.s = encode!(E)(d);
-        return codeUnits;
+        s = encode!(E)(d);
     }
 
-    int opApply(int delegate(ref E) dg)
+    int opApply(scope int delegate(ref E) dg)
     {
         int result = 0;
         foreach(E c;s)
@@ -633,7 +629,7 @@ struct CodeUnits(E)
         return result;
     }
 
-    int opApplyReverse(int delegate(ref E) dg)
+    int opApplyReverse(scope int delegate(ref E) dg)
     {
         int result = 0;
         foreach_reverse(E c;s)

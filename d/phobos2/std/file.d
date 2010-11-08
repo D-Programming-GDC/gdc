@@ -78,6 +78,15 @@ version (Posix)
             int st_lspare; /* RESERVED: DO NOT USE! */
             long st_qspare[2]; /* RESERVED: DO NOT USE! */
         }
+
+        extern(C) int fstat64(int, struct_stat64*);
+        extern(C) int stat64(in char*, struct_stat64*);
+    }
+    else version (FreeBSD)
+    {
+        alias core.sys.posix.sys.stat.stat_t struct_stat64;
+        alias core.sys.posix.sys.stat.fstat  fstat64;
+        alias core.sys.posix.sys.stat.stat   stat64;
     }
     else
     {
@@ -104,10 +113,10 @@ version (Posix)
 
             ulong st_ino64;
         }
+
+        extern(C) int fstat64(int, struct_stat64*);
+        extern(C) int stat64(in char*, struct_stat64*);
     }
-    
-    extern(C) int fstat64(int, struct_stat64*);
-    extern(C) int stat64(in char*, struct_stat64*);
 }
 // }}}
 
@@ -158,7 +167,7 @@ private T cenforce(T, string file = __FILE__, uint line = __LINE__)
     if (!condition)
     {
         throw new FileException(
-            text("In ", file, "(", line, "), data file ", name), .getErrno);
+            text("In ", file, "(", line, "), data file ", name));
     }
     return condition;
 }
@@ -219,9 +228,9 @@ version(Posix) void[] read(in char[] name, in size_t upTo = size_t.max)
     cenforce(fstat64(fd, &statbuf) == 0, name);
     //cenforce(core.sys.posix.sys.stat.fstat(fd, &statbuf) == 0, name);
     
-    immutable initialAlloc = statbuf.st_size
+    immutable initialAlloc = to!size_t(statbuf.st_size
         ? min(statbuf.st_size + 1, maxInitialAlloc)
-        : minInitialAlloc;
+        : minInitialAlloc);
     auto result = GC.malloc(initialAlloc, GC.BlkAttr.NO_SCAN)
         [0 .. initialAlloc];
     scope(failure) delete result;
@@ -1072,7 +1081,8 @@ version(Posix) void copy(in char[] from, in char[] to)
         if (!buf)
         {
             BUFSIZ = 4096;
-            buf = enforce(std.c.stdlib.malloc(BUFSIZ), "Out of memory");
+            buf = std.c.stdlib.malloc(BUFSIZ);
+            buf || assert(false, "Out of memory in std.file.copy");
         }
         scope(exit) std.c.stdlib.free(buf);
             
@@ -1254,7 +1264,7 @@ struct DirIterator
         }
     }
 
-    int opApply(D)(D dg)
+    int opApply(D)(scope D dg)
     {
         int result = 0;
         // worklist used only in breadth-first traversal

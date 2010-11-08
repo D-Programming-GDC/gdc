@@ -91,18 +91,28 @@ Statement *Statement::semantic(Scope *sc)
     return this;
 }
 
-// Same as semantic(), but do create a new scope
+Statement *Statement::semanticNoScope(Scope *sc)
+{
+    //printf("Statement::semanticNoScope() %s\n", toChars());
+    Statement *s = this;
+    if (!s->isCompoundStatement() && !s->isScopeStatement())
+    {
+        s = new CompoundStatement(loc, this);           // so scopeCode() gets called
+    }
+    s = s->semantic(sc);
+    return s;
+}
+
+// Same as semanticNoScope(), but do create a new scope
 
 Statement *Statement::semanticScope(Scope *sc, Statement *sbreak, Statement *scontinue)
-{   Scope *scd;
-    Statement *s;
-
-    scd = sc->push();
+{
+    Scope *scd = sc->push();
     if (sbreak)
         scd->sbreak = sbreak;
     if (scontinue)
         scd->scontinue = scontinue;
-    s = semantic(scd);
+    Statement *s = semanticNoScope(scd);
     scd->pop();
     return s;
 }
@@ -443,6 +453,13 @@ CompoundStatement::CompoundStatement(Loc loc, Statement *s1, Statement *s2)
     statements->reserve(2);
     statements->push(s1);
     statements->push(s2);
+}
+
+CompoundStatement::CompoundStatement(Loc loc, Statement *s1)
+    : Statement(loc)
+{
+    statements = new Statements();
+    statements->push(s1);
 }
 
 Statement *CompoundStatement::syntaxCopy()
@@ -915,6 +932,7 @@ Statement *ScopeStatement::semantic(Scope *sc)
             if (sfinally)
             {
                 //printf("adding sfinally\n");
+                sfinally = sfinally->semantic(sc);
                 statement = new CompoundStatement(loc, statement, sfinally);
             }
         }
@@ -1200,7 +1218,7 @@ Statement *ForStatement::semantic(Scope *sc)
     sc->sbreak = this;
     sc->scontinue = this;
     if (body)
-        body = body->semantic(sc);
+        body = body->semanticNoScope(sc);
     sc->noctor--;
 
     sc->pop();
@@ -1318,6 +1336,9 @@ ForeachStatement::ForeachStatement(Loc loc, enum TOK op, Parameters *arguments,
     this->value = NULL;
 
     this->func = NULL;
+
+    this->cases = NULL;
+    this->gotos = NULL;
 }
 
 Statement *ForeachStatement::syntaxCopy()
@@ -1745,7 +1766,7 @@ Lagain:
             Parameter *a;
 
             if (!checkForArgTypes())
-            {   body = body->semantic(sc);
+            {   body = body->semanticNoScope(sc);
                 return this;
             }
 
@@ -1788,6 +1809,8 @@ Lagain:
                 args->push(a);
             }
             Type *t = new TypeFunction(args, Type::tint32, 0, LINKd);
+            cases = new Array();
+            gotos = new Array();
             FuncLiteralDeclaration *fld = new FuncLiteralDeclaration(loc, 0, t, TOKdelegate, this);
             fld->fbody = body;
             Expression *flde = new FuncExp(loc, fld);
@@ -1795,14 +1818,14 @@ Lagain:
             fld->tookAddressOf = 0;
 
             // Resolve any forward referenced goto's
-            for (size_t i = 0; i < gotos.dim; i++)
-            {   CompoundStatement *cs = (CompoundStatement *)gotos.data[i];
+            for (size_t i = 0; i < gotos->dim; i++)
+            {   CompoundStatement *cs = (CompoundStatement *)gotos->data[i];
                 GotoStatement *gs = (GotoStatement *)cs->statements->data[0];
 
                 if (!gs->label->statement)
                 {   // 'Promote' it to this scope, and replace with a return
-                    cases.push(gs);
-                    s = new ReturnStatement(0, new IntegerExp(cases.dim + 1));
+                    cases->push(gs);
+                    s = new ReturnStatement(0, new IntegerExp(cases->dim + 1));
                     cs->statements->data[0] = (void *)s;
                 }
             }
@@ -1928,7 +1951,7 @@ Lagain:
                     error("opApply() function for %s must return an int", tab->toChars());
             }
 
-            if (!cases.dim)
+            if (!cases->dim)
                 // Easy case, a clean exit from the loop
                 s = new ExpStatement(loc, e);
             else
@@ -1942,9 +1965,9 @@ Lagain:
                 a->push(s);
 
                 // cases 2...
-                for (int i = 0; i < cases.dim; i++)
+                for (int i = 0; i < cases->dim; i++)
                 {
-                    s = (Statement *)cases.data[i];
+                    s = (Statement *)cases->data[i];
                     s = new CaseStatement(0, new IntegerExp(i + 2), s);
                     a->push(s);
                 }
@@ -2117,7 +2140,9 @@ Statement *ForeachRangeStatement::semantic(Scope *sc)
         else
         {
             AddExp ea(loc, lwr, upr);
-            ea.typeCombine(sc);
+            Expression *e = ea.typeCombine(sc);
+            if (e->op == TOKerror)
+                return this;
             arg->type = ea.type->mutableOf();
             lwr = ea.e1;
             upr = ea.e2;
@@ -2346,7 +2371,8 @@ Statement *IfStatement::semantic(Scope *sc)
     }
     else
         scd = sc->push();
-    ifbody = ifbody->semantic(scd);
+
+    ifbody = ifbody->semanticNoScope(scd);
     scd->pop();
 
     cs1 = sc->callSuper;
@@ -2555,7 +2581,7 @@ Statement *PragmaStatement::semantic(Scope *sc)
                     fprintf(stdmsg, "%.*s", (int)se->len, (char *)se->string);
                 }
                 else
-                    fprintf(stdmsg, e->toChars());
+                    fprintf(stdmsg, "%s", e->toChars());
             }
             fprintf(stdmsg, "\n");
         }
@@ -3045,15 +3071,23 @@ Statement *CaseRangeStatement::semantic(Scope *sc)
     first = first->semantic(sc);
     first = first->implicitCastTo(sc, sw->condition->type);
     first = first->optimize(WANTvalue | WANTinterpret);
-    dinteger_t fval = first->toInteger();
+    uinteger_t fval = first->toInteger();
 
     last = last->semantic(sc);
     last = last->implicitCastTo(sc, sw->condition->type);
     last = last->optimize(WANTvalue | WANTinterpret);
-    dinteger_t lval = last->toInteger();
+    uinteger_t lval = last->toInteger();
+
+    if ( (first->type->isunsigned()  &&  fval > lval) ||
+        (!first->type->isunsigned()  &&  (sinteger_t)fval > (sinteger_t)lval))
+    {
+        error("first case %s is greater than last case %s",
+            first->toChars(), last->toChars());
+        lval = fval;
+    }
 
     if (lval - fval > 256)
-    {   error("more than 256 cases in case range");
+    {   error("had %llu cases which is more than 256 cases in case range", lval - fval);
         lval = fval + 256;
     }
 
@@ -3068,10 +3102,10 @@ Statement *CaseRangeStatement::semantic(Scope *sc)
      */
 
     Statements *statements = new Statements();
-    for (dinteger_t i = fval; i <= lval; i++)
+    for (uinteger_t i = fval; i != lval + 1; i++)
     {
         Statement *s = statement;
-        if (i != lval)
+        if (i != lval)                          // if not last case
             s = new ExpStatement(loc, NULL);
         Expression *e = new IntegerExp(loc, i, first->type);
         Statement *cs = new CaseStatement(loc, e, s);
@@ -3457,18 +3491,18 @@ Statement *ReturnStatement::semantic(Scope *sc)
             exp->op == TOKthis || exp->op == TOKsuper || exp->op == TOKnull ||
             exp->op == TOKstring)
         {
-            sc->fes->cases.push(this);
-            // Construct: return cases.dim+1;
-            s = new ReturnStatement(0, new IntegerExp(sc->fes->cases.dim + 1));
+            sc->fes->cases->push(this);
+            // Construct: return cases->dim+1;
+            s = new ReturnStatement(0, new IntegerExp(sc->fes->cases->dim + 1));
         }
         else if (fd->type->nextOf()->toBasetype() == Type::tvoid)
         {
             s = new ReturnStatement(0, NULL);
-            sc->fes->cases.push(s);
+            sc->fes->cases->push(s);
 
-            // Construct: { exp; return cases.dim + 1; }
+            // Construct: { exp; return cases->dim + 1; }
             Statement *s1 = new ExpStatement(loc, exp);
-            Statement *s2 = new ReturnStatement(0, new IntegerExp(sc->fes->cases.dim + 1));
+            Statement *s2 = new ReturnStatement(0, new IntegerExp(sc->fes->cases->dim + 1));
             s = new CompoundStatement(loc, s1, s2);
         }
         else
@@ -3478,6 +3512,7 @@ Statement *ReturnStatement::semantic(Scope *sc)
             {   // Declare vresult
                 VarDeclaration *v = new VarDeclaration(loc, tret, Id::result, NULL);
                 v->noauto = 1;
+                v->storage_class |= STCresult;
                 v->semantic(scx);
                 if (!scx->insert(v))
                     assert(0);
@@ -3486,14 +3521,13 @@ Statement *ReturnStatement::semantic(Scope *sc)
             }
 
             s = new ReturnStatement(0, new VarExp(0, fd->vresult));
-            sc->fes->cases.push(s);
+            sc->fes->cases->push(s);
 
-            // Construct: { vresult = exp; return cases.dim + 1; }
-            exp = new AssignExp(loc, new VarExp(0, fd->vresult), exp);
-            exp->op = TOKconstruct;
+            // Construct: { vresult = exp; return cases->dim + 1; }
+            exp = new ConstructExp(loc, new VarExp(0, fd->vresult), exp);
             exp = exp->semantic(sc);
             Statement *s1 = new ExpStatement(loc, exp);
-            Statement *s2 = new ReturnStatement(0, new IntegerExp(sc->fes->cases.dim + 1));
+            Statement *s2 = new ReturnStatement(0, new IntegerExp(sc->fes->cases->dim + 1));
             s = new CompoundStatement(loc, s1, s2);
         }
         return s;
@@ -3506,8 +3540,7 @@ Statement *ReturnStatement::semantic(Scope *sc)
             assert(fd->vresult);
             VarExp *v = new VarExp(0, fd->vresult);
 
-            exp = new AssignExp(loc, v, exp);
-            exp->op = TOKconstruct;
+            exp = new ConstructExp(loc, v, exp);
             exp = exp->semantic(sc);
         }
 
@@ -3631,8 +3664,8 @@ Statement *BreakStatement::semantic(Scope *sc)
                      * and 1 is break.
                      */
                     Statement *s;
-                    sc->fes->cases.push(this);
-                    s = new ReturnStatement(0, new IntegerExp(sc->fes->cases.dim + 1));
+                    sc->fes->cases->push(this);
+                    s = new ReturnStatement(0, new IntegerExp(sc->fes->cases->dim + 1));
                     return s;
                 }
                 break;                  // can't break to it
@@ -3732,8 +3765,8 @@ Statement *ContinueStatement::semantic(Scope *sc)
                      * and 1 is break.
                      */
                     Statement *s;
-                    sc->fes->cases.push(this);
-                    s = new ReturnStatement(0, new IntegerExp(sc->fes->cases.dim + 1));
+                    sc->fes->cases->push(this);
+                    s = new ReturnStatement(0, new IntegerExp(sc->fes->cases->dim + 1));
                     return s;
                 }
                 break;                  // can't continue to it
@@ -4184,7 +4217,7 @@ void Catch::semantic(Scope *sc)
         type = new TypeIdentifier(0, Id::Object);
     type = type->semantic(loc, sc);
     if (!type->toBasetype()->isClassHandle())
-        error("can only catch class objects, not '%s'", type->toChars());
+        error(loc, "can only catch class objects, not '%s'", type->toChars());
     else if (ident)
     {
         var = new VarDeclaration(loc, type, ident, NULL);
@@ -4242,7 +4275,7 @@ Statement *TryFinallyStatement::semantic(Scope *sc)
     sc->tf = this;
     sc->sbreak = NULL;
     sc->scontinue = NULL;       // no break or continue out of finally block
-    finalbody = finalbody->semantic(sc);
+    finalbody = finalbody->semanticNoScope(sc);
     sc->pop();
     if (!body)
         return finalbody;
@@ -4513,7 +4546,7 @@ Statement *GotoStatement::semantic(Scope *sc)
 
         a->push(this);
         s = new CompoundStatement(loc, a);
-        sc->fes->gotos.push(s);         // 'look at this later' list
+        sc->fes->gotos->push(s);         // 'look at this later' list
         return s;
     }
     if (label->statement && label->statement->tf != sc->tf)
@@ -4570,7 +4603,7 @@ Statement *LabelStatement::semantic(Scope *sc)
     sc->callSuper |= CSXlabel;
     sc->slabel = this;
     if (statement)
-        statement = statement->semantic(sc);
+        statement = statement->semanticNoScope(sc);
     sc->pop();
     return this;
 }
