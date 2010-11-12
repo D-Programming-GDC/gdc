@@ -48,7 +48,7 @@ version( linux )
     private
     {
         alias c_long __fd_mask;
-        enum uint __NFDBITS = 8 * __fd_mask.sizeof;
+        enum __NFDBITS = 8 * __fd_mask.sizeof;
 
         extern (D) auto __FDELT( int d )
         {
@@ -75,7 +75,7 @@ version( linux )
 
     extern (D) int FD_ISSET( int fd, fd_set* fdset )
     {
-        return fdset.fds_bits[__FDELT( fd )] & __FDMASK( fd );
+        return cast(int) fdset.fds_bits[__FDELT( fd )] & __FDMASK( fd );
     }
 
     extern (D) void FD_SET( int fd, fd_set* fdset )
@@ -130,8 +130,8 @@ else version( OSX )
 {
     private
     {
-        enum uint __DARWIN_NBBY    = 8;                            /* bits in a byte */
-        enum uint __DARWIN_NFDBITS = (int.sizeof * __DARWIN_NBBY); /* bits per mask */
+        enum __DARWIN_NBBY    = 8;                            /* bits in a byte */
+        enum __DARWIN_NFDBITS = (int.sizeof * __DARWIN_NBBY); /* bits per mask */
     }
 
     enum FD_SETSIZE = 1024;
@@ -148,7 +148,7 @@ else version( OSX )
 
     extern (D) int  FD_ISSET( int fd, fd_set* fdset )
     {
-        return fdset.fds_bits[fd / __DARWIN_NFDBITS] & (1 << (fd % __DARWIN_NFDBITS));
+        return cast(int) fdset.fds_bits[fd / __DARWIN_NFDBITS] & (1 << (fd % __DARWIN_NFDBITS));
     }
 
     extern (D) void FD_SET( int fd, fd_set* fdset )
