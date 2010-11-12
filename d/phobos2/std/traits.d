@@ -27,6 +27,8 @@ import std.typetuple;
 //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::://
 
 // Petit demangler
+// (this or similar thing will eventually go to std.demangle if necessary
+//  ctfe stuffs are available)
 private
 {
     struct Demangle(T)
@@ -95,6 +97,13 @@ private
     }
 }
 
+// workaround @@@BUG4333@@@
+private template staticLength(tuple...)
+{
+    enum size_t staticLength = tuple.length;
+}
+
+
 /***
  * Get the type of the return value from a function,
  * a pointer to function, a delegate, a struct
@@ -107,10 +116,10 @@ private
  * ReturnType!(foo) x;   // x is declared as int
  * ---
  */
-template ReturnType(dg...)
-    if (dg.length == 1 && isCallable!(dg))
+template ReturnType(/+@@@BUG4217@@@+/func...)
+    if (/+@@@BUG4333@@@+/staticLength!(func) == 1)
 {
-    static if (is(FunctionTypeOf!(dg) R == return))
+    static if (is(FunctionTypeOf!(func) R == return))
         alias R ReturnType;
     else
         static assert(0, "argument has no return type");
@@ -149,6 +158,9 @@ unittest
     }
     alias ReturnType!(Test.prop) R_Test_prop;
     static assert(is(R_Test_prop == int));
+
+    alias ReturnType!((int a) { return a; }) R_dglit;
+    static assert(is(R_dglit == int));
 }
 
 /***
@@ -164,8 +176,8 @@ void bar(ParameterTypeTuple!(foo));      // declares void bar(int, long);
 void abc(ParameterTypeTuple!(foo)[1]);   // declares void abc(long);
 ---
 */
-template ParameterTypeTuple(dg...)
-    if (dg.length == 1 && isCallable!(dg))
+template ParameterTypeTuple(/+@@@BUG4217@@@+/dg...)
+    if (/+@@@BUG4333@@@+/staticLength!(dg) == 1)
 {
     static if (is(FunctionTypeOf!(dg) P == function))
         alias P ParameterTypeTuple;
@@ -191,6 +203,10 @@ unittest
     }
     alias ParameterTypeTuple!(Test.prop) P_Test_prop;
     static assert(P_Test_prop.length == 0);
+
+    alias ParameterTypeTuple!((int a){}) P_dglit;
+    static assert(P_dglit.length == 1);
+    static assert(is(P_dglit[0] == int));
 }
 
 
@@ -226,11 +242,14 @@ enum ParameterStorageClass : uint
 }
 
 /// ditto
-template ParameterStorageClassTuple(func...)
-    if (func.length == 1 && isCallable!(func))
+template ParameterStorageClassTuple(/+@@@BUG4217@@@+/func...)
+    if (/+@@@BUG4333@@@+/staticLength!(func) == 1)
 {
-    alias ParameterStorageClassTupleImpl!(Unqual!(FunctionTypeOf!(func))).Result
-            ParameterStorageClassTuple;
+    static if (is(FunctionTypeOf!(func) F))
+        alias ParameterStorageClassTupleImpl!(Unqual!(F)).Result
+                ParameterStorageClassTuple;
+    else
+        static assert(0, "argument has no parameters");
 }
 
 private template ParameterStorageClassTupleImpl(Func)
@@ -296,6 +315,10 @@ unittest
     alias ParameterStorageClassTuple!(testi.test_sharedconst) test_sharedconst_pstc;
     static assert(test_sharedconst_pstc.length == 1);
     static assert(test_sharedconst_pstc[0] == STC.NONE);
+
+    alias ParameterStorageClassTuple!((ref int a) {}) dglit_pstc;
+    static assert(dglit_pstc.length == 1);
+    static assert(dglit_pstc[0] == STC.REF);
 }
 
 
@@ -330,11 +353,14 @@ enum FunctionAttribute : uint
 }
 
 /// ditto
-template functionAttributes(func...)
-    if (func.length == 1 && isCallable!(func))
+template functionAttributes(/+@@@BUG4217@@@+/func...)
+    if (/+@@@BUG4333@@@+/staticLength!(func) == 1)
 {
-    enum uint functionAttributes = demangleFunctionAttributes(
-            mangledName!(Unqual!(FunctionTypeOf!(func)))[1 .. $] ).value;
+    static if (is(FunctionTypeOf!(func) F))
+        enum uint functionAttributes = demangleFunctionAttributes(
+                mangledName!(Unqual!(F))[1 .. $] ).value;
+    else
+        static assert(0, "argument is not a function");
 }
 
 unittest
@@ -358,11 +384,11 @@ unittest
     static assert(!(functionAttributes!(Set.safeF) & FA.TRUSTED));
 
     int pure_nothrow() pure nothrow { return 0; }
-    static assert(functionAttributes!(pure_nothrow) == FA.PURE | FA.NOTHROW);
-    //ref int ref_property() @property { return *(new int); } // [BUG 2509]
-    //static assert(functionAttributes!(ref_property) == FA.REF | FA.PROPERTY);
+    static assert(functionAttributes!(pure_nothrow) == (FA.PURE | FA.NOTHROW));
+    //ref int ref_property() @property { return *(new int); } // @@@BUG2509@@@
+    //static assert(functionAttributes!(ref_property) == (FA.REF | FA.PROPERTY));
     void safe_nothrow() @safe nothrow { }
-    static assert(functionAttributes!(safe_nothrow) == FA.SAFE | FA.NOTHROW);
+    static assert(functionAttributes!(safe_nothrow) == (FA.SAFE | FA.NOTHROW));
 
     interface Test2
     {
@@ -371,6 +397,8 @@ unittest
     }
     static assert(functionAttributes!(Test2.pure_const) == FA.PURE);
     static assert(functionAttributes!(Test2.pure_sharedconst) == FA.PURE);
+
+    static assert(functionAttributes!((int a) {}) == FA.NONE);
 }
 
 
@@ -387,11 +415,14 @@ string b = functionLinkage!(fp);
 assert(b == "C"); // extern(C)
 --------------------
  */
-template functionLinkage(func...)
-    if (func.length == 1 && isCallable!(func))
+template functionLinkage(/+@@@BUG4217@@@+/func...)
+    if (/+@@@BUG4333@@@+/staticLength!(func) == 1)
 {
-    enum string functionLinkage =
-        LOOKUP_LINKAGE[ mangledName!(Unqual!(FunctionTypeOf!(func)))[0] ];
+    static if (is(FunctionTypeOf!(func) F))
+        enum string functionLinkage =
+            LOOKUP_LINKAGE[ mangledName!(Unqual!(F))[0] ];
+    else
+        static assert(0, "argument is not a function");
 }
 
 private enum LOOKUP_LINKAGE =
@@ -417,6 +448,8 @@ unittest
     }
     static assert(functionLinkage!(Test.const_func) == "D");
     static assert(functionLinkage!(Test.sharedconst_func) == "D");
+
+    static assert(functionLinkage!((int a){}) == "D");
 }
 
 
@@ -442,11 +475,14 @@ enum Variadic
 }
 
 /// ditto
-template variadicFunctionStyle(func...)
-    if (func.length == 1 && isCallable!(func))
+template variadicFunctionStyle(/+@@@BUG4217@@@+/func...)
+    if (/+@@@BUG4333@@@+/staticLength!(func) == 1)
 {
-    enum Variadic variadicFunctionStyle =
-        determineVariadicity!( Unqual!(FunctionTypeOf!(func)) )();
+    static if (is(FunctionTypeOf!(func) F))
+        enum Variadic variadicFunctionStyle =
+            determineVariadicity!(Unqual!(F))();
+    else
+        static assert(0, "argument is not a function");
 }
 
 private Variadic determineVariadicity(Func)()
@@ -477,6 +513,8 @@ unittest
     static assert(variadicFunctionStyle!(cstyle) == Variadic.C);
     static assert(variadicFunctionStyle!(dstyle) == Variadic.D);
     static assert(variadicFunctionStyle!(typesafe) == Variadic.TYPESAFE);
+
+    static assert(variadicFunctionStyle!((int[] a...) {}) == Variadic.TYPESAFE);
 }
 
 
@@ -498,9 +536,15 @@ Note:
 Do not confuse function types with function pointer types; function types are
 usually used for compile-time reflection purposes.
  */
-template FunctionTypeOf(func...)
-    if (func.length == 1 && isCallable!(func))
+template FunctionTypeOf(/+@@@BUG4217@@@+/func...)
+    if (/+@@@BUG4333@@@+/staticLength!(func) == 1)
 {
+    alias FunctionTypeOf_bug4333!(func).FunctionTypeOf FunctionTypeOf;
+}
+private template FunctionTypeOf_bug4333(func...)
+{
+    /+@@@BUG4333@@@+/enum dummy__ = func.length;
+
     static if (is(typeof(& func[0]) Fsym : Fsym*) && is(Fsym == function))
     {
         alias Fsym FunctionTypeOf; // HIT: function symbol
@@ -522,7 +566,7 @@ template FunctionTypeOf(func...)
         else static if (is(T Fdlg == delegate))
             alias Fdlg FunctionTypeOf; // HIT: delegate
     }
-    else static assert(0);
+    else static assert(0, "argument is not a callable object");
 }
 
 unittest
@@ -565,6 +609,9 @@ unittest
     static assert(is(F_ov1* == real function(real)));
     static assert(is(F_ov2* == int function()));
     static assert(is(F_ov3* == int function() @property));
+
+    alias FunctionTypeOf!((int a){ return a; }) F_dglit;
+    static assert(is(F_dglit* == int function(int)));
 }
 
 
@@ -791,7 +838,7 @@ RepresentationOffsets
 
 // hasRawAliasing
 
-private template HasRawPointerImpl(T...)
+private template hasRawPointerImpl(T...)
 {
     static if (T.length == 0)
     {
@@ -801,11 +848,29 @@ private template HasRawPointerImpl(T...)
     {
         static if (is(T[0] foo : U*, U))
             enum hasRawAliasing = !is(U == immutable);
-        else static if (is(T[0] foo : U[], U))
+        else static if (is(T[0] foo : U[], U) && !isStaticArray!(T[0]))
             enum hasRawAliasing = !is(U == immutable);
         else
             enum hasRawAliasing = false;
-        enum result = hasRawAliasing || HasRawPointerImpl!(T[1 .. $]).result;
+        enum result = hasRawAliasing || hasRawPointerImpl!(T[1 .. $]).result;
+    }
+}
+
+private template HasRawLocalPointerImpl(T...)
+{
+    static if (T.length == 0)
+    {
+        enum result = false;
+    }
+    else
+    {
+        static if (is(T[0] foo : U*, U))
+            enum hasRawLocalAliasing = !is(U == immutable) && !is(U == shared);
+        else static if (is(T[0] foo : U[], U) && !isStaticArray!(T[0]))
+            enum hasRawLocalAliasing = !is(U == immutable) && !is(U == shared);
+        else
+            enum hasRawLocalAliasing = false;
+        enum result = hasRawLocalAliasing || HasRawLocalPointerImpl!(T[1 .. $]).result;
     }
 }
 
@@ -841,7 +906,7 @@ static assert(hasRawAliasing!(S4));
 private template hasRawAliasing(T...)
 {
     enum hasRawAliasing
-        = HasRawPointerImpl!(RepresentationTypeTuple!(T)).result;
+        = hasRawPointerImpl!(RepresentationTypeTuple!(T)).result;
 }
 
 unittest
@@ -879,6 +944,92 @@ unittest
 
 /*
 Statically evaluates to $(D true) if and only if $(D T)'s
+representation contains at least one non-shared field of pointer or
+array type.  Members of class types are not considered raw pointers.
+Pointers to immutable objects are not considered raw aliasing.
+
+Example:
+---
+// simple types
+static assert(!hasRawLocalAliasing!(int));
+static assert(hasRawLocalAliasing!(char*));
+static assert(!hasRawLocalAliasing!(shared char*));
+// references aren't raw pointers
+static assert(!hasRawLocalAliasing!(Object));
+// built-in arrays do contain raw pointers
+static assert(hasRawLocalAliasing!(int[]));
+static assert(!hasRawLocalAliasing!(shared int[]));
+// aggregate of simple types
+struct S1 { int a; double b; }
+static assert(!hasRawLocalAliasing!(S1));
+// indirect aggregation
+struct S2 { S1 a; double b; }
+static assert(!hasRawLocalAliasing!(S2));
+// struct with a pointer member
+struct S3 { int a; double * b; }
+static assert(hasRawLocalAliasing!(S3));
+struct S4 { int a; shared double * b; }
+static assert(hasRawLocalAliasing!(S4));
+// struct with an indirect pointer member
+struct S5 { S3 a; double b; }
+static assert(hasRawLocalAliasing!(S5));
+struct S6 { S4 a; double b; }
+static assert(!hasRawLocalAliasing!(S6));
+----
+*/
+
+private template hasRawLocalAliasing(T...)
+{
+    enum hasRawLocalAliasing
+        = HasRawLocalPointerImpl!(RepresentationTypeTuple!(T)).result;
+}
+
+unittest
+{
+// simple types
+    static assert(!hasRawLocalAliasing!(int));
+    static assert(hasRawLocalAliasing!(char*));
+    static assert(!hasRawLocalAliasing!(shared char*));
+// references aren't raw pointers
+    static assert(!hasRawLocalAliasing!(Object));
+    static assert(!hasRawLocalAliasing!(int));
+    struct S1 { int z; }
+    static assert(!hasRawLocalAliasing!(S1));
+    struct S2 { int* z; }
+    static assert(hasRawLocalAliasing!(S2));
+    struct S3 { shared int* z; }
+    static assert(!hasRawLocalAliasing!(S3));
+    struct S4 { int a; int* z; int c; }
+    static assert(hasRawLocalAliasing!(S4));
+    struct S5 { int a; shared int* z; int c; }
+    static assert(!hasRawLocalAliasing!(S5));
+    struct S6 { int a; int z; int c; }
+    static assert(!hasRawLocalAliasing!(S6));
+    struct S7 { int a; Object z; int c; }
+    static assert(!hasRawLocalAliasing!(S7));
+    union S8 { int a; int b; }
+    static assert(!hasRawLocalAliasing!(S8));
+    union S9 { int a; int * b; }
+    static assert(hasRawLocalAliasing!(S9));
+    union S10 { int a; shared int * b; }
+    static assert(!hasRawLocalAliasing!(S10));
+    typedef int* S11;
+    static assert(hasRawLocalAliasing!(S11));
+    typedef shared int* S12;
+    static assert(hasRawLocalAliasing!(S12));
+    enum S13 { a };
+    static assert(!hasRawLocalAliasing!(S13));
+    // indirect members
+    struct S14 { S9 a; int b; }
+    static assert(hasRawLocalAliasing!(S14));
+    struct S15 { S10 a; int b; }
+    static assert(!hasRawLocalAliasing!(S15));
+    struct S16 { S6 a; int b; }
+    static assert(!hasRawLocalAliasing!(S16));
+}
+
+/*
+Statically evaluates to $(D true) if and only if $(D T)'s
 representation includes at least one non-immutable object reference.
 */
 
@@ -904,6 +1055,35 @@ private template hasObjects(T...)
     }
 }
 
+/*
+Statically evaluates to $(D true) if and only if $(D T)'s
+representation includes at least one non-immutable non-shared object
+reference.
+*/
+
+private template hasLocalObjects(T...)
+{
+    static if (T.length == 0)
+    {
+        enum hasLocalObjects = false;
+    }
+    else static if (is(T[0] U == typedef))
+    {
+        enum hasLocalObjects = hasLocalObjects!(U, T[1 .. $]);
+    }
+    else static if (is(T[0] == struct))
+    {
+        enum hasLocalObjects = hasLocalObjects!(
+            RepresentationTypeTuple!(T[0]), T[1 .. $]);
+    }
+    else
+    {
+        enum hasLocalObjects = (is(T[0] == class) &&
+                                !is(T[0] == immutable) && !is(T[0] == shared)) ||
+            hasLocalObjects!(T[1 .. $]);
+    }
+}
+
 /**
 Returns $(D true) if and only if $(D T)'s representation includes at
 least one of the following: $(OL $(LI a raw pointer $(D U*) and $(D U)
@@ -925,6 +1105,147 @@ unittest
     static assert(!hasAliasing!(S2));
     struct S3 { int a; immutable Object b; }
     static assert(!hasAliasing!(S3));
+    struct X { float[3] vals; }
+    static assert(!hasAliasing!X);
+}
+
+/**
+Returns $(D true) if and only if $(D T)'s representation includes at
+least one of the following: $(OL $(LI a raw pointer $(D U*);) $(LI an
+array $(D U[]);) $(LI a reference to a class type $(D C).))
+ */
+
+template hasIndirections(T)
+{
+    enum hasIndirections = hasIndirectionsImpl!(RepresentationTypeTuple!T);
+}
+
+template hasIndirectionsImpl(T...)
+{
+    static if (!T.length)
+    {
+        enum hasIndirectionsImpl = false;
+    }
+    else
+    {
+        enum hasIndirectionsImpl = isPointer!(T[0]) || isDynamicArray!(T[0]) ||
+            is (T[0] : const(Object)) || hasIndirectionsImpl!(T[1 .. $]);
+    }
+}
+
+unittest
+{
+    struct S1 { int a; Object b; }
+    static assert(hasIndirections!(S1));
+    struct S2 { string a; }
+    static assert(hasIndirections!(S2));
+    struct S3 { int a; immutable Object b; }
+    static assert(hasIndirections!(S3));
+}
+
+/**
+Returns $(D true) if and only if $(D T)'s representation includes at
+least one of the following: $(OL $(LI a raw pointer $(D U*) and $(D U)
+is not immutable or shared;) $(LI an array $(D U[]) and $(D U) is not
+immutable or shared;) $(LI a reference to a class type $(D C) and
+$(D C) is not immutable or shared.))
+*/
+
+template hasLocalAliasing(T...)
+{
+    enum hasLocalAliasing = hasRawLocalAliasing!(T) || hasLocalObjects!(T);
+}
+
+unittest
+{
+    struct S1 { int a; Object b; }
+    static assert(hasLocalAliasing!(S1));
+    struct S2 { string a; }
+    static assert(!hasLocalAliasing!(S2));
+    struct S3 { int a; immutable Object b; }
+    static assert(!hasLocalAliasing!(S3));
+
+    struct S4 { int a; shared Object b; }
+    static assert(!hasLocalAliasing!(S4));
+    struct S5 { char[] a; }
+    static assert(hasLocalAliasing!(S5));
+    struct S6 { shared char[] b; }
+    static assert(!hasLocalAliasing!(S6));
+    struct S7 { float[3] vals; }
+    static assert(!hasLocalAliasing!(S7));
+}
+
+/**
+ True if a type defines an elaborate copy constructor. Elaborate copy
+ constructors are introduced by defining $(D this(this)) for a $(D
+ struct). (Non-struct types do not have elaborate copy constructors.)
+ */
+template hasElaborateCopyConstructor(T)
+{
+    enum hasElaborateCopyConstructor = is(typeof(&T.__postblit));
+}
+
+unittest
+{
+    static assert(!hasElaborateCopyConstructor!int);
+    struct S
+    {
+        this(this) {}
+    }
+    static assert(hasElaborateCopyConstructor!S);
+}
+
+/**
+   True if a type defines an elaborate assignmentq. Elaborate
+   assignments are introduced by defining $(D opAssign(typeof(this)))
+   or $(D opAssign(ref typeof(this))) for a $(D struct). (Non-struct
+   types do not have elaborate assignments.)
+ */
+template hasElaborateAssign(T)
+{
+    enum hasElaborateAssign = is(typeof(T.init.opAssign(T.init)));
+}
+
+unittest
+{
+    static assert(!hasElaborateAssign!int);
+    struct S { void opAssign(S) {} }
+    static assert(hasElaborateAssign!S);
+    struct S1 { void opAssign(ref S1) {} }
+    static assert(hasElaborateAssign!S1);
+    struct S2 { void opAssign(S1) {} }
+    static assert(!hasElaborateAssign!S2);
+}
+
+/**
+   Yields $(D true) if and only if $(D T) is a $(D struct) or a $(D
+   class) that defines a symbol called $(D name).
+ */
+template hasMember(T, string name)
+{
+    static if (is(T == struct) || is(T == class))
+    {
+        enum bool hasMember =
+            staticIndexOf!(name, __traits(allMembers, T)) != -1;
+    }
+    else
+    {
+        enum bool hasMember = false;
+    }
+}
+
+unittest
+{
+    //pragma(msg, __traits(allMembers, void delegate()));
+    static assert(!hasMember!(int, "blah"));
+    struct S1 { int blah; }
+    static assert(hasMember!(S1, "blah"));
+    struct S2 { int blah(); }
+    static assert(hasMember!(S2, "blah"));
+    struct C1 { int blah; }
+    static assert(hasMember!(C1, "blah"));
+    struct C2 { int blah(); }
+    static assert(hasMember!(C2, "blah"));
 }
 
 //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::://
@@ -1857,6 +2178,7 @@ unittest
     static assert(!isSomeChar!(wstring));
     static assert(!isSomeChar!(dstring));
     static assert(!isSomeChar!(char[4]));
+    static assert(isSomeChar!(immutable(char)));
 }
 
 /**
@@ -1865,12 +2187,22 @@ unittest
 
 template isAssociativeArray(T)
 {
-    enum bool isAssociativeArray =
-        is(typeof(T.keys)) && is(typeof(T.values));
+    enum bool isAssociativeArray = __traits(isAssociativeArray, T);
 }
 
 unittest
 {
+    struct Foo {
+        @property uint[] keys() {
+            return null;
+        }
+
+        @property uint[] values() {
+            return null;
+        }
+    }
+
+    static assert(!isAssociativeArray!(Foo));
     static assert(!isAssociativeArray!(int));
     static assert(!isAssociativeArray!(int[]));
     static assert(isAssociativeArray!(int[int]));
@@ -2037,7 +2369,7 @@ unittest
 Detect whether symbol or type $(D T) is a function pointer.
  */
 template isFunctionPointer(T...)
-    if (T.length == 1)
+    if (/+@@@BUG4333@@@+/staticLength!(T) == 1)
 {
     static if (is(T[0] U) || is(typeof(T[0]) U))
     {
@@ -2064,15 +2396,23 @@ unittest
     static assert(! isFunctionPointer!(void delegate()));
     static assert(! isFunctionPointer!(foo));
     static assert(! isFunctionPointer!(bar));
+
+    static assert(!isFunctionPointer!((int a) {}));
 }
 
 
 /**
 Detect whether symbol or type $(D T) is a function, a function pointer or a delegate.
  */
-template isSomeFunction(T...)
-    if (T.length == 1)
+template isSomeFunction(/+@@@BUG4217@@@+/T...)
+    if (/+@@@BUG4333@@@+/staticLength!(T) == 1)
 {
+    enum bool isSomeFunction = isSomeFunction_bug4333!(T).isSomeFunction;
+}
+private template isSomeFunction_bug4333(T...)
+{
+    /+@@@BUG4333@@@+/enum dummy__ = T.length;
+
     static if (is(typeof(& T[0]) U : U*) && is(U == function))
     {
         // T is a function symbol.
@@ -2117,6 +2457,8 @@ unittest
     static assert(! isSomeFunction!(int));
     static assert(! isSomeFunction!(val));
     static assert(! isSomeFunction!(isSomeFunction));
+
+    static assert(isSomeFunction!((int a) { return a; }));
 }
 
 
@@ -2124,9 +2466,15 @@ unittest
 Detect whether $(D T) is a callable object, which can be called with the
 function call operator $(D $(LPAREN)...$(RPAREN)).
  */
-template isCallable(T...)
-    if (T.length == 1)
+template isCallable(/+@@@BUG4217@@@+/T...)
+    if (/+@@@BUG4333@@@+/staticLength!(T) == 1)
 {
+    enum bool isCallable = isCallable_bug4333!(T).isCallable;
+}
+private template isCallable_bug4333(T...)
+{
+    /+@@@BUG4333@@@+/enum dummy__ = T.length;
+
     static if (is(typeof(& T[0].opCall) == delegate))
         // T is a object which has a member function opCall().
         enum bool isCallable = true;
@@ -2149,6 +2497,8 @@ unittest
     static assert( isCallable!(c.opCall));
     static assert( isCallable!(I.value));
     static assert(!isCallable!(I));
+
+    static assert(isCallable!((int a) { return a; }));
 }
 
 
@@ -2156,9 +2506,10 @@ unittest
 Exactly the same as the builtin traits:
 $(D ___traits(_isAbstractFunction, method)).
  */
-template isAbstractFunction(alias method)
+template isAbstractFunction(/+@@@BUG4217@@@+/method...)
+    if (/+@@@BUG4333@@@+/staticLength!(method) == 1)
 {
-    enum bool isAbstractFunction  = __traits(isAbstractFunction, method);
+    enum bool isAbstractFunction  = __traits(isAbstractFunction, method[0]);
 }
 
 
@@ -2181,7 +2532,7 @@ static assert(is(Unqual!(shared(const int)) == int));
  */
 template Unqual(T)
 {
-    version (none) // Error: recursive alias declaration [BUG 1308]
+    version (none) // Error: recursive alias declaration @@@BUG1308@@@
     {
              static if (is(T U ==     const U)) alias Unqual!U Unqual;
         else static if (is(T U == immutable U)) alias Unqual!U Unqual;
@@ -2375,7 +2726,7 @@ pragma(msg, mangledName!(C.value)); // prints "_D4test1C5valueMFNdZi"
 --------------------
  */
 template mangledName(sth...)
-    if (sth.length == 1)
+    if (/+@@@BUG4333@@@+/staticLength!(sth) == 1)
 {
     enum string mangledName = removeDummyEnvelope(Dummy!(sth).Hook.mangleof);
 }
@@ -2436,18 +2787,19 @@ unittest
     class C { int value() @property { return 0; } }
     static assert(mangledName!(int) == int.mangleof);
     static assert(mangledName!(C) == C.mangleof);
-    static assert(mangledName!(MyInt)[$ - 7 .. $] == "T5MyInt");
+    //static assert(mangledName!(MyInt)[$ - 7 .. $] == "T5MyInt"); // XXX depends on bug 4237
     //static assert(mangledName!(test)[$ - 7 .. $] == "T5MyInt");
-        // seems bug in dmd: the preceding T is omitted
     static assert(mangledName!(C.value)[$ - 12 .. $] == "5valueMFNdZi");
     static assert(mangledName!(mangledName) == "3std6traits11mangledName");
     static assert(mangledName!(removeDummyEnvelope) ==
             "_D3std6traits19removeDummyEnvelopeFAyaZAya");
+    int x;
+    static assert(mangledName!((int a) { return a+x; })[$ - 5 .. $] == "MFiZi");
 }
 
 
 /*
-workaround for [BUG 2234] "allMembers does not return interface members"
+workaround for @@@BUG2234@@@ "allMembers does not return interface members"
  */
 package template traits_allMembers(Agg)
 {

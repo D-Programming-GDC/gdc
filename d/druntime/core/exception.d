@@ -23,16 +23,6 @@ private
     //       is __gshared for now based on the assumption that it will only
     //       set by the main thread during program initialization.
     __gshared errorHandlerType assertHandler = null;
-
-    // For onUnittestErrorMsg implementation.
-    version (Windows)
-    {
-        import core.sys.windows.windows;
-    }
-    else version( Posix )
-    {
-        import core.sys.posix.unistd;
-    }
 }
 
 
@@ -152,7 +142,7 @@ class UnicodeException : Exception
  * Params:
  *  h = The new assert handler.  Set to null to use the default handler.
  */
-void setAssertHandler( errorHandlerType h )
+deprecated void setAssertHandler( errorHandlerType h )
 {
     assertHandler = h;
 }
@@ -208,46 +198,7 @@ extern (C) void onAssertErrorMsg( string file, size_t line, string msg )
  */
 extern (C) void onUnittestErrorMsg( string file, size_t line, string msg )
 {
-    static char[] intToString( char[] buf, uint val )
-    {
-        assert( buf.length > 9 );
-        auto p = buf.ptr + buf.length;
-
-        do
-        {
-            *--p = cast(char)(val % 10 + '0');
-        } while( val /= 10 );
-
-        return buf[p - buf.ptr .. $];
-    }
-
-    static struct Console
-    {
-        Console opCall( in char[] val )
-        {
-            version( Windows )
-            {
-                uint count = void;
-                WriteFile( GetStdHandle( 0xfffffff5 ), val.ptr, val.length, &count, null );
-            }
-            else version( Posix )
-            {
-                write( 2, val.ptr, val.length );
-            }
-            return this;
-        }
-
-
-        Console opCall( uint val )
-        {
-            char[10] tmp = void;
-            return opCall( intToString( tmp, val ) );
-        }
-    }
-
-    static __gshared Console console;
-
-    console( file )( "(" )( line )( "): " )( msg )( "\n" );
+    onAssertErrorMsg( file, line, msg );
 }
 
 
@@ -310,8 +261,17 @@ extern (C) void onHiddenFuncError( Object o )
 extern (C) void onOutOfMemoryError()
 {
     // NOTE: Since an out of memory condition exists, no allocation must occur
-    //       while generating this object.
-    throw cast(OutOfMemoryError) cast(void*) OutOfMemoryError.classinfo.init;
+    //       while generating this object, so place it in a static buffer.
+    //
+    // TODO: This won't work with chaining, since all threads share a single
+    //       instance.  Should probably just revert to using the init instance
+    //       and special casing the handling of an OOME in the chaining code.
+    __gshared void[10 * size_t.sizeof] buffer = void;
+    auto len = OutOfMemoryError.classinfo.init.length;
+    if( len > buffer.sizeof )
+	    assert( false ); // HLT even in release mode
+    buffer[0 .. len] = OutOfMemoryError.classinfo.init[];
+    throw cast(OutOfMemoryError) buffer.ptr;
 }
 
 

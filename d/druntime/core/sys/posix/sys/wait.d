@@ -89,11 +89,10 @@ else version( OSX )
     extern (D) int  WSTOPSIG( int status )     { return status >> 8;                     }
     extern (D) int  WTERMSIG( int status )     { return _WSTATUS( status );              }
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     enum WNOHANG        = 1;
     enum WUNTRACED      = 2;
-    enum WCONTINUED     = 4;
 
     private
     {
@@ -112,13 +111,12 @@ else version( freebsd )
     extern (D) int  WSTOPSIG( int status )     { return status >> 8;                     }
     extern (D) int  WTERMSIG( int status )     { return _WSTATUS( status );              }
 }
-else
-{
-    static assert( false );
-}
 
-pid_t wait(int*);
-pid_t waitpid(pid_t, int*, int);
+version( Posix )
+{
+    pid_t wait(int*);
+    pid_t waitpid(pid_t, int*, int);
+}
 
 //
 // XOpen (XSI)
@@ -171,3 +169,12 @@ else version( OSX )
 
     int waitid(idtype_t, id_t, siginfo_t*, int);    
 }
+else version (FreeBSD)
+{
+    enum WSTOPPED       = WUNTRACED;
+    enum WCONTINUED     = 4;
+    enum WNOWAIT        = 8;
+
+    // http://www.freebsd.org/projects/c99/
+}
+

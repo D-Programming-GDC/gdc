@@ -2222,8 +2222,8 @@ unittest
         ctrl.enableExceptions(FloatingPointControl.divByZeroException 
                            | FloatingPointControl.overflowException);
         assert(ctrl.enabledExceptions() == 
-            FloatingPointControl.divByZeroException 
-          | FloatingPointControl.overflowException);
+            (FloatingPointControl.divByZeroException 
+          | FloatingPointControl.overflowException));
         
         ctrl.rounding = FloatingPointControl.roundUp;
         assert(FloatingPointControl.rounding == FloatingPointControl.roundUp);
@@ -2243,7 +2243,7 @@ pure nothrow bool isNaN(real x)
     alias floatTraits!(real) F;
     static if (real.mant_dig==53) { // double
         ulong*  p = cast(ulong *)&x;
-        return (*p & 0x7FF0_0000_0000_0000 == 0x7FF0_0000_0000_0000)
+        return ((*p & 0x7FF0_0000_0000_0000) == 0x7FF0_0000_0000_0000)
         && *p & 0x000F_FFFF_FFFF_FFFF;
     } else static if (real.mant_dig==64) {     // real80
         ushort e = F.EXPMASK & (cast(ushort *)&x)[F.EXPPOS_SHORT];
@@ -2967,7 +2967,7 @@ pure nothrow real fma(real x, real y, real z) { return (x * y) + z; }
 pure nothrow F pow(F, G)(F x, G n) if (isFloatingPoint!(F) && isIntegral!(G))
 {
     real p = 1.0, v = void;
-    G m = n;
+    Unsigned!G m = n;
     if (n < 0)
     {
         switch (n)

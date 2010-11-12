@@ -127,7 +127,7 @@ int     setsockopt(int, int, int, in void*, socklen_t);
 int     shutdown(int, int);
 int     socket(int, int, int);
 int     sockatmark(int);
-int     socketpair(int, int, int, int[2]);
+int     socketpair(int, int, int, ref int[2]);
 */
 
 version( linux )
@@ -285,7 +285,7 @@ version( linux )
     int     shutdown(int, int);
     int     socket(int, int, int);
     int     sockatmark(int);
-    int     socketpair(int, int, int, int[2]);
+    int     socketpair(int, int, int, ref int[2]);
 }
 else version( OSX )
 {
@@ -434,9 +434,9 @@ else version( OSX )
     int     shutdown(int, int);
     int     socket(int, int, int);
     int     sockatmark(int);
-    int     socketpair(int, int, int, int[2]);
+    int     socketpair(int, int, int, ref int[2]);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     alias uint   socklen_t;
     alias ubyte  sa_family_t;
@@ -488,17 +488,37 @@ else version( freebsd )
         SCM_RIGHTS = 0x01
     }
 
-    /+
-    CMSG_DATA(cmsg)     ((unsigned char *)(cmsg) + \
-                         ALIGN(sizeof(struct cmsghdr)))
-    CMSG_NXTHDR(mhdr, cmsg) \
-                        (((unsigned char *)(cmsg) + ALIGN((cmsg)->cmsg_len) + \
-                         ALIGN(sizeof(struct cmsghdr)) > \
-                         (unsigned char *)(mhdr)->msg_control +(mhdr)->msg_controllen) ? \
-                         (struct cmsghdr *)0 /* NULL */ : \
-                         (struct cmsghdr *)((unsigned char *)(cmsg) + ALIGN((cmsg)->cmsg_len)))
-    CMSG_FIRSTHDR(mhdr) ((struct cmsghdr *)(mhdr)->msg_control)
-    +/
+    private // <machine/param.h>
+    {
+        enum _ALIGNBYTES = /+c_int+/ int.sizeof - 1;
+        extern (D) size_t _ALIGN( size_t p ) { return (p + _ALIGNBYTES) & ~_ALIGNBYTES; }
+    }
+
+    extern (D) ubyte* CMSG_DATA( cmsghdr* cmsg )
+    {
+        return cast(ubyte*) cmsg + _ALIGN( cmsghdr.sizeof );
+    }
+
+    extern (D) cmsghdr* CMSG_NXTHDR( msghdr* mhdr, cmsghdr* cmsg )
+    {
+        if( cmsg == null )
+        {
+           return CMSG_FIRSTHDR( mhdr );
+        }
+        else
+        {
+            if( cast(ubyte*) cmsg + _ALIGN( cmsg.cmsg_len ) + _ALIGN( cmsghdr.sizeof ) > 
+                    cast(ubyte*) mhdr.msg_control + mhdr.msg_controllen )
+                return null;
+            else
+                return cast(cmsghdr*) (cast(ubyte*) cmsg + _ALIGN( cmsg.cmsg_len ));
+        }
+    }
+
+    extern (D) cmsghdr* CMSG_FIRSTHDR( msghdr* mhdr )
+    {
+        return mhdr.msg_controllen >= cmsghdr.sizeof ? cast(cmsghdr*) mhdr.msg_control : null;
+    }
 
     struct linger
     {
@@ -526,7 +546,7 @@ else version( freebsd )
         SO_DONTROUTE    = 0x0010,
         SO_ERROR        = 0x1007,
         SO_KEEPALIVE    = 0x0008,
-        SO_LINGER       = 0x1080,
+        SO_LINGER       = 0x0080,
         SO_OOBINLINE    = 0x0100,
         SO_RCVBUF       = 0x1002,
         SO_RCVLOWAT     = 0x1004,
@@ -585,7 +605,7 @@ else version( freebsd )
     int     shutdown(int, int);
     int     socket(int, int, int);
     int     sockatmark(int);
-    int     socketpair(int, int, int, int[2]);
+    int     socketpair(int, int, int, ref int[2]);
 }
 
 //
@@ -609,7 +629,7 @@ else version( OSX )
         AF_INET6    = 30
     }
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     enum
     {
@@ -638,7 +658,7 @@ else version( OSX )
         SOCK_RAW    = 3
     }
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     enum
     {

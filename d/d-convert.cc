@@ -24,7 +24,7 @@
 
 // copied this over just to support d_truthvalue_conversion, so assumes bool
 static tree
-build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1, int /*convert_p*/)
+build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1) 
 {
     tree op0, op1;
     tree result_type = NULL_TREE;
@@ -181,8 +181,7 @@ d_truthvalue_conversion (tree expr)
       return build_buul_binary_op ((TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1))
                                   ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
           d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
-          d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
-          0);
+          d_truthvalue_conversion (TREE_OPERAND (expr, 1)));
 
     case NEGATE_EXPR:
     case ABS_EXPR:
@@ -239,11 +238,11 @@ d_truthvalue_conversion (tree expr)
       if (TREE_TYPE (TREE_OPERAND (expr, 0))
           == TREE_TYPE (TREE_OPERAND (expr, 1)))
           return build_buul_binary_op (NE_EXPR, TREE_OPERAND (expr, 0),
-              TREE_OPERAND (expr, 1), 1);
+              TREE_OPERAND (expr, 1));
       return build_buul_binary_op (NE_EXPR, TREE_OPERAND (expr, 0),
           fold (build1 (NOP_EXPR,
                     TREE_TYPE (TREE_OPERAND (expr, 0)),
-                    TREE_OPERAND (expr, 1))), 1);
+                    TREE_OPERAND (expr, 1))));
     case BIT_AND_EXPR:
       if (integer_onep (TREE_OPERAND (expr, 1))
           && TREE_TYPE (expr) != boolean_type_node)
@@ -272,8 +271,7 @@ d_truthvalue_conversion (tree expr)
               ((TREE_SIDE_EFFECTS (expr)
                 ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
         d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
-        d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)),
-               0));
+        d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t))));
     }
 
 #if D_GCC_VER >= 40
@@ -286,6 +284,6 @@ d_truthvalue_conversion (tree expr)
 #endif
 
 
-  return build_buul_binary_op (NE_EXPR, expr, t_zero, 1);
+  return build_buul_binary_op (NE_EXPR, expr, t_zero);
 }
 

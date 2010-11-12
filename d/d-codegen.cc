@@ -483,6 +483,10 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 
     if (! result)
         result = d_convert_basic(target_type->toCtype(), exp);
+#if ENABLE_CHECKING
+    if (isErrorMark(result))
+       error("type: %s, target: %s", exp_type->toChars(), target_type->toChars());
+#endif
     return result;
 }
 
@@ -1730,7 +1734,6 @@ IRState::darrayPtrRef(tree exp)
     if ( isErrorMark(exp) )
         return exp; // backend will ICE otherwise
 
-    gcc_assert(AGGREGATE_TYPE_P( TREE_TYPE( exp )));
     // Get the backend type for the array and pick out the array data
     // pointer field (assumed to be the second field.)
     tree ptr_field = TREE_CHAIN( TYPE_FIELDS( TREE_TYPE( exp )));
@@ -1744,7 +1747,6 @@ IRState::darrayLenRef(tree exp)
     if ( isErrorMark(exp) )
         return exp; // backend will ICE otherwise
 
-    gcc_assert(AGGREGATE_TYPE_P( TREE_TYPE( exp )));
     // Get the backend type for the array and pick out the array length
     // field (assumed to be the first field.)
     tree len_field = TYPE_FIELDS( TREE_TYPE( exp ));
@@ -1756,8 +1758,6 @@ tree
 IRState::darrayVal(tree type, tree len, tree data)
 {
     // %% assert type is a darray
-    gcc_assert(AGGREGATE_TYPE_P( type ));
-
     tree ctor = make_node( CONSTRUCTOR );
     tree len_field, ptr_field;
     CtorEltMaker ce;
@@ -1780,8 +1780,6 @@ tree
 IRState::darrayVal(tree type, uinteger_t len, tree data)
 {
     // %% assert type is a darray
-    gcc_assert(AGGREGATE_TYPE_P( type ));
-
     tree ctor = make_node( CONSTRUCTOR );
     tree len_value, ptr_value, len_field, ptr_field;
     CtorEltMaker ce;
@@ -2577,7 +2575,8 @@ IRState::exceptionObject()
 }
 
 tree
-IRState::label(Loc loc, Identifier * ident) {
+IRState::label(Loc loc, Identifier * ident)
+{
     tree t_label = build_decl(LABEL_DECL,
         ident ? get_identifier(ident->string) : NULL_TREE, void_type_node);
     DECL_CONTEXT( t_label ) = current_function_decl;
@@ -2986,9 +2985,9 @@ IRState::getFrameInfo(FuncDeclaration *fd)
 
             if (ff != fd && getFrameInfo(ff)->creates_closure)
             {
-                for (int i = 0; i < ff->closureVars.dim; i++)
+                for (unsigned i = 0; i < ff->closureVars.dim; i++)
                 {   VarDeclaration *v = (VarDeclaration *)ff->closureVars.data[i];
-                    for (int j = 0; j < v->nestedrefs.dim; j++)
+                    for (unsigned j = 0; j < v->nestedrefs.dim; j++)
                     {   FuncDeclaration *fi = (FuncDeclaration *)v->nestedrefs.data[j];
                         if (isFuncNestedIn(fi, fd))
                         {

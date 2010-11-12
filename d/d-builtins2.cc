@@ -96,6 +96,10 @@ gcc_type_to_d_type(tree t)
             return d;
         }
         break;
+    case BOOLEAN_TYPE:
+        // Should be no need for size checking.
+        return Type::tbool;
+        break;
     case INTEGER_TYPE:
         {
             unsigned sz = tree_low_cst( TYPE_SIZE_UNIT( t ), 1 );
@@ -241,7 +245,7 @@ gcc_type_to_d_type(tree t)
 
                     Type * d_arg_type = gcc_type_to_d_type(ta);
                     if (! d_arg_type)
-                        return NULL;
+                        goto Lfail;
 
                     args->push(new Parameter(io, d_arg_type, NULL, NULL));
                 }

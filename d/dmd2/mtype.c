@@ -92,10 +92,12 @@ int REALALIGNSIZE = 16;
 int REALSIZE = 12;
 int REALPAD = 2;
 int REALALIGNSIZE = 4;
-#else
+#elif TARGET_WINDOS
 int REALSIZE = 10;
 int REALPAD = 0;
 int REALALIGNSIZE = 2;
+#else
+#error "fix this"
 #endif
 
 int Tsize_t = Tuns32;
@@ -287,9 +289,11 @@ void Type::init()
     {
         PTRSIZE = 8;
         if (global.params.isLinux || global.params.isFreeBSD || global.params.isSolaris)
-            REALSIZE = 10;
-        else
-            REALSIZE = 8;
+        {
+            REALSIZE = 16;
+            REALPAD = 6;
+            REALALIGNSIZE = 16;
+        }
         Tsize_t = Tuns64;
         Tptrdiff_t = Tint64;
         Tindex = Tint64;
@@ -2593,7 +2597,11 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tfloat64:      fvalue = DBL_MAX;       goto Lfvalue;
             case Tcomplex80:
             case Timaginary80:
+#if IN_GCC
             case Tfloat80:      fvalue = LDBL_MAX;      goto Lfvalue;
+#else
+            case Tfloat80:      fvalue = Port::ldbl_max; goto Lfvalue;
+#endif
         }
     }
     else if (ident == Id::min)
@@ -4812,7 +4820,12 @@ void TypeFunction::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
         buf->writestring(p);
     buf->writestring(" function");
     Parameter::argsToCBuffer(buf, hgs, parameters, varargs);
+    attributesToCBuffer(buf, mod);
+    inuse--;
+}
 
+void TypeFunction::attributesToCBuffer(OutBuffer *buf, int mod)
+{
     /* Use postfix style for attributes
      */
     if (mod != this->mod)
@@ -4831,7 +4844,7 @@ void TypeFunction::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
     switch (trust)
     {
         case TRUSTsystem:
-            buf->writestring("@system ");
+            buf->writestring(" @system");
             break;
 
         case TRUSTtrusted:
@@ -4842,7 +4855,6 @@ void TypeFunction::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
             buf->writestring(" @safe");
             break;
     }
-    inuse--;
 }
 
 Type *TypeFunction::semantic(Loc loc, Scope *sc)
@@ -5348,6 +5360,7 @@ void TypeDelegate::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
     tf->next->toCBuffer2(buf, hgs, 0);
     buf->writestring(" delegate");
     Parameter::argsToCBuffer(buf, hgs, tf->parameters, tf->varargs);
+    tf->attributesToCBuffer(buf, mod);
 }
 
 Expression *TypeDelegate::defaultInit(Loc loc)
@@ -6412,6 +6425,10 @@ Expression *TypeEnum::defaultInit(Loc loc)
 
 int TypeEnum::isZeroInit(Loc loc)
 {
+    if (!sym->defaultval && sym->scope)
+    {   // Enum is forward referenced. We need to resolve the whole thing.
+        sym->semantic(NULL);
+    }
     if (!sym->defaultval)
     {
 #ifdef DEBUG
@@ -7211,6 +7228,9 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident)
         exps->reserve(sym->fields.dim);
         for (size_t i = 0; i < sym->fields.dim; i++)
         {   VarDeclaration *v = (VarDeclaration *)sym->fields.data[i];
+            // Don't include hidden 'this' pointer
+            if (v->isThisDeclaration())
+                continue;
             Expression *fe = new DotVarExp(e->loc, e, v);
             exps->push(fe);
         }

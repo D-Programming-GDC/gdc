@@ -365,7 +365,7 @@ void Module::read(Loc loc)
              */
             if (global.path)
             {
-                for (size_t i = 0; i < global.path->dim; i++)
+                for (int i = 0; i < global.path->dim; i++)
                 {
                     char *p = (char *)global.path->data[i];
                     fprintf(stdmsg, "import path[%d] = %s\n", i, p);
@@ -790,6 +790,14 @@ void Module::semantic()
         s->setScope(sc);
     }
 #endif
+
+    // Do semantic() on members that don't depend on others
+    for (int i = 0; i < members->dim; i++)
+    {   Dsymbol *s = (Dsymbol *)members->data[i];
+
+        //printf("\tModule('%s'): '%s'.semantic0()\n", toChars(), s->toChars());
+        s->semantic0(sc);
+    }
 
     // Pass 1 semantic routines: do public side of the definition
     for (int i = 0; i < members->dim; i++)

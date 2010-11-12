@@ -77,9 +77,9 @@ else version( OSX )
 {
 
 }
-else version( freebsd )
+else version( FreeBSD )
 {
-    struct ipc_perm
+    struct ipc_perm_old // <= FreeBSD7
     {
         ushort cuid;
         ushort cguid;
@@ -88,6 +88,17 @@ else version( freebsd )
         ushort mode;
         ushort seq;
         key_t key;
+    }
+
+    struct ipc_perm
+    {
+        uid_t   cuid;
+        gid_t   cgid;
+        uid_t   uid;
+        gid_t   gid;
+        mode_t  mode;
+        ushort  seq;
+        key_t   key;
     }
 
     enum IPC_CREAT      = 01000;

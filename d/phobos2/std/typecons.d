@@ -51,8 +51,9 @@ Authors:   $(WEB erdani.org, Andrei Alexandrescu),
            Shin Fujishiro
  */
 module std.typecons;
-import core.stdc.stdlib, std.algorithm, std.array, std.contracts, std.conv,
-    std.metastrings, std.traits, std.typetuple, core.memory;
+import core.memory, core.stdc.stdlib;
+import std.algorithm, std.array, std.conv, std.exception, std.metastrings,
+    std.stdio, std.traits, std.typetuple;
 
 /**
 Encapsulates unique ownership of a resource.  Resource of type T is
@@ -277,7 +278,7 @@ point.field[0] = 5;
 point.field[1] = 6;
 // read coordinates
 auto x = point.field[0];
-auto y = point.[1];
+auto y = point.field[1];
 ----
 
 Tuple members can be named. It is legal to mix named and unnamed
@@ -322,6 +323,14 @@ public:
     alias field expand;
     // @@@BUG 2800
     //alias field this;
+
+/**
+   Default constructor.
+ */
+    this(U...)(U values) if (U.length == 0)
+    {
+    }
+
 /**
    Constructor taking one value for each field. Each argument must be
    implicitly assignable to the respective element of the target.
@@ -339,11 +348,9 @@ public:
    must be implicitly assignable to the respective element of the
    target.
  */
-    // @@@BUG@@@
-    //this(U)(Tuple!(U) another)
-    this(U)(U another)
+    this(V=void, U...)(Tuple!(U) another)
     {
-        static assert(U.Types.length == Types.length);
+        static assert(U.length == Types.length);
         foreach (i, Unused; Types)
         {
             field[i] = another.field[i];
@@ -359,9 +366,9 @@ public:
                 "Length mismatch in attempting to compare a "
                 ~typeof(this).stringof
                 ~" with a "~typeof(rhs).stringof);
-        foreach (i, f; field)
+        foreach (i, Unused; Types)
         {
-            if (f != rhs.field[i]) return false;
+            if (field[i] != rhs.field[i]) return false;
         }
         return true;
     }
@@ -375,24 +382,29 @@ public:
                 "Length mismatch in attempting to compare a "
                 ~typeof(this).stringof
                 ~" with a "~typeof(rhs).stringof);
-        foreach (i, f; field)
+        foreach (i, Unused; Types)
         {
-            if (f != rhs.field[i]) return f < rhs.field[i] ? -1 : 1;
+            if (field[i] != rhs.field[i])
+            {
+                return field[i] < rhs.field[i] ? -1 : 1;
+            }
         }
         return 0;
     }
 
+// Should really be opAssign, not assign
 /**
    Assignment from another tuple. Each element of the source must be
    implicitly assignable to the respective element of the target.
  */
-    void opAssign(U)(U rhs) if (is(typeof(U.init.field[0])))
+    void assign(U)(U rhs) if (is(typeof(U.init.field[0])))
     {
-        foreach (i, Unused; noStrings!(T).Result)
+        foreach (i, Unused; Types)
         {
             field[i] = rhs.field[i];
         }
     }
+
 /**
    Takes a slice of the tuple.
 
@@ -473,7 +485,7 @@ unittest
     // assert(!is(typeof(nosh) == typeof(nosh1)));
     assert(nosh.toString == "Tuple!(int,int)(5, 0)", nosh.toString);
     Tuple!(int, short) yessh;
-    nosh = yessh;
+    nosh.assign(yessh);
 
     Tuple!(int, "a", float, "b") x;
     static assert(x.a.offsetof == x.field[0].offsetof);
@@ -2024,37 +2036,64 @@ struct RefCounted(T, RefCountedAutoInitialize autoInit =
         RefCountedAutoInitialize.yes)
 if (!is(T == class))
 {
-    private Tuple!(T, "payload_", size_t, "count_") * refCountedStore_;
-
-    private void refCountedInitialize(A...)(A args)
+    struct _RefCounted
     {
-	const sz = (*refCountedStore_).sizeof;
-        auto p = malloc(sz)[0 .. sz];
-	if (sz >= size_t.sizeof && p.ptr)
-	    GC.addRange(p.ptr, sz);
-        emplace!T(p[0 .. T.sizeof], args);
-        refCountedStore_ = cast(typeof(refCountedStore_)) p;
-        refCountedStore_.count_ = 1;
-    }
+        private Tuple!(T, "_payload", size_t, "_count") * _store;
+        debug(RefCounted)
+        {
+            private bool _debugging = false;
+            @property bool debugging() const
+            {
+                return _debugging;
+            }
+            @property void debugging(bool d)
+            {
+                if (d != _debugging)
+                {
+                    writeln(typeof(this).stringof, "@",
+                            cast(void*) _store,
+                            d ? ": starting debug" : ": ending debug");
+                }
+                _debugging = d;
+            }
+        }
 
-/**
-Returns $(D true) if and only if the underlying store has been
-allocated and initialized.
- */
-    @property bool refCountedIsInitialized() const
-    {
-        return refCountedStore_ !is null;
-    }
+        private void initialize(A...)(A args)
+        {
+            const sz = (*_store).sizeof;
+            auto p = malloc(sz)[0 .. sz];
+            if (sz >= size_t.sizeof && p.ptr)
+            {
+                GC.addRange(p.ptr, sz);
+            }
+            emplace!T(p[0 .. T.sizeof], args);
+            _store = cast(typeof(_store)) p.ptr;
+            _store._count = 1;
+            debug(RefCounted) if (debugging) writeln(typeof(this).stringof,
+                "@", cast(void*) _store, ": initialized with ",
+                    A.stringof);
+        }
 
-/**
-Makes sure the payload was properly initialized. Such a call is
-typically inserted before using the payload.
- */
-    void refCountedEnsureInitialized()
-    {
-        if (refCountedIsInitialized()) return;
-        refCountedInitialize();
+        /**
+           Returns $(D true) if and only if the underlying store has been
+           allocated and initialized.
+        */
+        @property bool isInitialized() const
+        {
+            return _store !is null;
+        }
+
+        /**
+           Makes sure the payload was properly initialized. Such a
+           call is typically inserted before using the payload.
+        */
+        void ensureInitialized()
+        {
+            if (!isInitialized) initialize();
+        }
+
     }
+    _RefCounted RefCounted;
 
 /**
 Constructor that initializes the payload.
@@ -2063,7 +2102,7 @@ Postcondition: $(D refCountedIsInitialized)
  */
     this(A...)(A args) if (A.length > 0)
     {
-        refCountedInitialize(args);
+        RefCounted.initialize(args);
     }
 
 /**
@@ -2072,8 +2111,12 @@ Constructor that tracks the reference count appropriately. If $(D
  */
     this(this)
     {
-        if (!refCountedIsInitialized) return;
-        ++refCountedStore_.count_;
+        if (!RefCounted.isInitialized) return;
+        ++RefCounted._store._count;
+        debug(RefCounted) if (RefCounted.debugging)
+                 writeln(typeof(this).stringof,
+                "@", cast(void*) RefCounted._store, ": bumped refcount to ",
+                RefCounted._store._count);
     }
 
 /**
@@ -2084,27 +2127,44 @@ to deallocate the corresponding resource.
  */
     ~this()
     {
-        if (!refCountedStore_ || --refCountedStore_.count_) return;
+        if (!RefCounted._store) return;
+        assert(RefCounted._store._count > 0);
+        if (--RefCounted._store._count)
+        {
+            debug(RefCounted) if (RefCounted.debugging)
+                     writeln(typeof(this).stringof,
+                    "@", cast(void*)RefCounted._store,
+                    ": decrement refcount to ", RefCounted._store._count);
+            return;
+        }
+        debug(RefCounted) if (RefCounted.debugging)
+        {
+            write(typeof(this).stringof,
+                    "@", cast(void*)RefCounted._store, ": freeing... ");
+            stdout.flush();
+        }
         // Done, deallocate
-        clear(*refCountedStore_);
-	if ((*refCountedStore_).sizeof >= size_t.sizeof && refCountedStore_)
-	    GC.removeRange(refCountedStore_);
-        free(refCountedStore_);
-        refCountedStore_ = null;
+        assert(RefCounted._store);
+        clear(RefCounted._store._payload);
+        if (hasIndirections!T && RefCounted._store)
+            GC.removeRange(RefCounted._store);
+        free(RefCounted._store);
+        RefCounted._store = null;
+        debug(RefCounted) if (RefCounted.debugging) writeln("done!");
     }
 
 /**
 Assignment operators
  */
-    void opAssign(RefCounted!T rhs)
+    void opAssign(typeof(this) rhs)
     {
-        swap(refCountedStore_, rhs.refCountedStore_);
+        swap(RefCounted._store, rhs.RefCounted._store);
     }
 
 /// Ditto
     void opAssign(T rhs)
     {
-        refCountedPayload() = move(rhs);
+        RefCounted._store._payload = move(rhs);
     }
 
 /**
@@ -2123,16 +2183,33 @@ assert(refCountedIsInitialized)). Used with $(D alias
 refCountedPayload this;), so callers can just use the $(D RefCounted)
 object as a $(D T).
  */
-    @property ref T refCountedPayload() {
+    @property ref T refCountedPayload()
+    {
         static if (autoInit == RefCountedAutoInitialize.yes)
         {
-            refCountedEnsureInitialized();
+            RefCounted.ensureInitialized();
         }
         else
         {
-            assert(refCountedIsInitialized);
+            assert(RefCounted.isInitialized);
         }
-        return refCountedStore_.payload_;
+        return RefCounted._store._payload;
+    }
+
+//
+    @property ref const(T) refCountedPayload() const
+    {
+        static if (autoInit == RefCountedAutoInitialize.yes)
+        {
+            // @@@
+            //refCountedEnsureInitialized();
+            assert(RefCounted.isInitialized);
+        }
+        else
+        {
+            assert(RefCounted.isInitialized);
+        }
+        return RefCounted._store._payload;
     }
 }
 
@@ -2143,17 +2220,163 @@ unittest
         auto rc1 = RefCounted!int(5);
         p = &rc1;
         assert(rc1 == 5);
-        assert(rc1.refCountedStore_.count_ == 1);
+        assert(rc1.RefCounted._store._count == 1);
         auto rc2 = rc1;
-        assert(rc1.refCountedStore_.count_ == 2);
+        assert(rc1.RefCounted._store._count == 2);
         // Reference semantics
         rc2 = 42;
         assert(rc1 == 42);
         rc2 = rc2;
-        assert(rc2.refCountedStore_.count_ == 2);
+        assert(rc2.RefCounted._store._count == 2);
         rc1 = rc2;
-        assert(rc1.refCountedStore_.count_ == 2);
+        assert(rc1.RefCounted._store._count == 2);
     }
-    assert(p.refCountedStore_ == null);
+    assert(p.RefCounted._store == null);
+
+    // RefCounted as a member
+    struct A
+    {
+        RefCounted!int x;
+        this(int y)
+        {
+            x.RefCounted.initialize(y);
+        }
+        A copy()
+        {
+            auto another = this;
+            return another;
+        }
+    }
+    auto a = A(4);
+    auto b = a.copy();
+    if (a.x.RefCounted._store._count != 2) {
+        stderr.writeln("*** BUG 4356 still unfixed");
+    }
 }
 
+/**
+Allocates a $(D class) object right inside the current scope,
+therefore avoiding the overhead of $(D new). This facility is unsafe;
+it is the responsibility of the user to not escape a reference to the
+object outside the scope.
+
+Example:
+----
+unittest
+{
+    class A { int x; }
+    auto a1 = scoped!A();
+    auto a2 = scoped!A();
+    a1.x = 42;
+    a2.x = 53;
+    assert(a1.x == 42);
+}
+----
+ */
+@system auto scoped(T, Args...)(Args args) if (is(T == class))
+{
+    static struct Scoped
+    {
+        private ubyte[__traits(classInstanceSize, T)] Scoped_store = void;
+        @property T Scoped_payload()
+        {
+            return cast(T) (Scoped_store.ptr);
+        }
+        alias Scoped_payload this;
+
+        @disable this(this)
+        {
+            writeln("Illegal call to Scoped this(this)");
+            assert(false);
+        }
+
+        ~this()
+        {
+            destroy(Scoped_payload);
+            if ((cast(void**) Scoped_store.ptr)[1]) // if monitor is not null
+            {
+                _d_monitordelete(Scoped_payload, true);
+            }
+        }
+    }
+
+    byte[__traits(classInstanceSize, T)] result;
+    static if (Args.length == 0)
+    {
+        result[] = typeid(T).init[];
+        static if (is(typeof(T.init.__ctor())))
+        {
+            (cast(T) result.ptr).__ctor();
+        }
+    }
+    else
+    {
+        emplace!T(cast(void[]) result, args);
+    }
+    return cast(Scoped) result;
+}
+
+// Used by scoped() above
+private extern (C) static void _d_monitordelete(Object h, bool det);
+
+/*
+  Used by scoped() above.  Calls the destructors of an object
+  transitively up the inheritance path, but work properly only if the
+  static type of the object (T) is known.
+ */
+private void destroy(T)(T obj) if (is(T == class))
+{
+    static if (is(typeof(obj.__dtor())))
+    {
+        obj.__dtor();
+    }
+    static if (!is(T == Object) && is(T Base == super))
+    {
+        Base b = obj;
+        destroy(b);
+    }
+}
+
+unittest
+{
+    class A { int x = 1; }
+    auto a1 = scoped!A();
+    assert(a1.x == 1);
+    auto a2 = scoped!A();
+    a1.x = 42;
+    a2.x = 53;
+    assert(a1.x == 42);
+}
+
+unittest
+{
+    class A { int x = 1; this() { x = 2; } }
+    auto a1 = scoped!A();
+    assert(a1.x == 2);
+    auto a2 = scoped!A();
+    a1.x = 42;
+    a2.x = 53;
+    assert(a1.x == 42);
+}
+
+unittest
+{
+    class A { int x = 1; this(int y) { x = y; } ~this() {} }
+    auto a1 = scoped!A(5);
+    assert(a1.x == 5);
+    auto a2 = scoped!A();
+    a1.x = 42;
+    a2.x = 53;
+    assert(a1.x == 42);
+}
+
+unittest
+{
+    class A { static bool dead; ~this() { dead = true; } }
+    class B : A { static bool dead; ~this() { dead = true; } }
+    {
+        auto b = scoped!B;
+    }
+    assert(B.dead, "asdasd");
+    assert(A.dead, "asdasd");
+}

@@ -108,7 +108,7 @@ else version( OSX )
 
     dirent* readdir(DIR*);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     enum
     {
@@ -129,36 +129,26 @@ else version( freebsd )
         uint      d_fileno;
         ushort    d_reclen;
         ubyte     d_type;
-        ubyte     d_namelen;
+        ubyte     d_namlen;
         char[256] d_name;
     }
 
-    struct _telldir;
-    struct DIR
-    {
-        int       dd_fd;
-        c_long    dd_loc;
-        c_long    dd_size;
-        char*     dd_buf;
-        int       dd_len;
-        c_long    dd_seek;
-        c_long    dd_rewind;
-        int       dd_flags;
-        void*     dd_lock;
-        _telldir* dd_td;
-    }
+    typedef void* DIR;
 
     dirent* readdir(DIR*);
 }
-else
+else version( Posix )
 {
     dirent* readdir(DIR*);
 }
 
-int     closedir(DIR*);
-DIR*    opendir(in char*);
-//dirent* readdir(DIR*);
-void    rewinddir(DIR*);
+version( Posix )
+{
+    int     closedir(DIR*);
+    DIR*    opendir(in char*);
+    //dirent* readdir(DIR*);
+    void    rewinddir(DIR*);
+}
 
 //
 // Thread-Safe Functions (TSF)
@@ -183,7 +173,7 @@ else version( OSX )
 {
     int readdir_r(DIR*, dirent*, dirent**);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     int readdir_r(DIR*, dirent*, dirent**);
 }
@@ -201,3 +191,9 @@ version( linux )
     void   seekdir(DIR*, c_long);
     c_long telldir(DIR*);
 }
+else version( FreeBSD )
+{
+    void   seekdir(DIR*, c_long);
+    c_long telldir(DIR*);
+}
+

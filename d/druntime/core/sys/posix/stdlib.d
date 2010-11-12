@@ -83,6 +83,10 @@ version( linux )
 {
     int posix_memalign(void**, size_t, size_t);
 }
+else version( FreeBSD )
+{
+    int posix_memalign(void**, size_t, size_t);
+}
 
 //
 // C Extension (CX)
@@ -106,7 +110,7 @@ else version( OSX )
 
     void* valloc(size_t); // LEGACY non-standard
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     int setenv(in char*, in char*, int);
     int unsetenv(in char*);
@@ -129,7 +133,7 @@ else version( OSX )
 {
     int rand_r(uint*);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     int rand_r(uint*);
 }
@@ -268,7 +272,7 @@ else version( OSX )
     void   srandom(uint);
     int    unlockpt(int);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     //WNOHANG     (defined in core.sys.posix.sys.wait)
     //WUNTRACED   (defined in core.sys.posix.sys.wait)

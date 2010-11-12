@@ -34,6 +34,8 @@ private
     extern (C) void* rt_loadLibrary( in char[] name );
     extern (C) bool  rt_unloadLibrary( void* ptr );
     
+    extern (C) string[] rt_args();
+    
     version( linux )
     {
         import core.stdc.stdlib : free;
@@ -51,6 +53,16 @@ private
         extern (C) char** backtrace_symbols(void**, int);
         extern (C) void   backtrace_symbols_fd(void**,int,int);
         import core.sys.posix.signal; // segv handler
+    }
+    
+    // For runModuleUnitTests error reporting.
+    version( Windows )
+    {
+        import core.sys.windows.windows;
+    }
+    else version( Posix )
+    {
+        import core.sys.posix.unistd;
     }
 }
 
@@ -122,9 +134,21 @@ struct Runtime
      * Returns:
      *  true if the runtime is halting.
      */
-    static @property bool isHalting()
+    deprecated static @property bool isHalting()
     {
         return rt_isHalting();
+    }
+    
+    
+    /**
+     * Returns the arguments supplied when the process was started.
+     *
+     * Returns:
+     *  The arguments supplied when this process was started.
+     */
+    static @property string[] args()
+    {
+        return rt_args();
     }
 
 
@@ -218,8 +242,8 @@ struct Runtime
     /**
      * Overrides the default module unit tester with a user-supplied version.
      * This routine will be called once on program initialization.  The return
-     * value of this routine indicates to the runtime whether the body of the
-     * program will be executed.
+     * value of this routine indicates to the runtime whether the tests ran
+     * without error.
      *
      * Params:
      *  h = The new unit tester.  Set to null to use the default unit tester.
@@ -296,8 +320,28 @@ extern (C) bool runModuleUnitTests()
         }
     }
 
+    static struct Console
+    {
+        Console opCall( in char[] val )
+        {
+            version( Windows )
+            {
+                uint count = void;
+                WriteFile( GetStdHandle( 0xfffffff5 ), val.ptr, val.length, &count, null );
+            }
+            else version( Posix )
+            {
+                write( 2, val.ptr, val.length );
+            }
+            return this;
+        }
+    }
+
+    static __gshared Console console;
+
     if( Runtime.sm_moduleUnitTester is null )
     {
+        size_t failed = 0;
         foreach( m; ModuleInfo )
         {
             if( m )
@@ -305,10 +349,20 @@ extern (C) bool runModuleUnitTests()
                 auto fp = m.unitTest;
                 
                 if( fp )
-                    fp();
+                {
+                    try
+                    {
+                        fp();
+                    }
+                    catch( Throwable e )
+                    {
+                        console( e.toString )( "\n" );
+                        failed++;
+                    }
+                }
             }
         }
-        return true;
+        return failed == 0;
     }
     return Runtime.sm_moduleUnitTester();
 }

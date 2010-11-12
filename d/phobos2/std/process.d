@@ -28,7 +28,7 @@ private import std.conv;
 private import std.string;
 private import std.c.process;
 private import core.stdc.errno;
-private import std.contracts;
+private import std.exception;
 version (Windows)
 {
     import std.array, std.format, std.random, std.file;
@@ -312,7 +312,7 @@ version (Posix) string shell(string cmd)
 version (Windows) string shell(string cmd)
 {
     // Generate a random filename
-    Appender!string a;
+    auto a = appender!string();
     foreach (ref e; 0 .. 8)
     {
         formattedWrite(a, "%x", rndGen.front);

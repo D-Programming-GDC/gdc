@@ -54,10 +54,11 @@ private
 
     enum BlkAttr : uint
     {
-        FINALIZE = 0b0000_0001,
-        NO_SCAN  = 0b0000_0010,
-        NO_MOVE  = 0b0000_0100,
-        ALL_BITS = 0b1111_1111
+        FINALIZE    = 0b0000_0001,
+        NO_SCAN     = 0b0000_0010,
+        NO_MOVE     = 0b0000_0100,
+        APPENDABLE  = 0b0000_1000,
+        ALL_BITS    = 0b1111_1111
     }
 
     struct BlkInfo
@@ -776,10 +777,17 @@ class GC
         }
         else if (pagenum + psz + sz == pool.ncommitted)
         {
-            auto u = pool.extendPages(minsz - sz);
+            /* This used to only allocate as little as possible,
+               now we try to allocate up to maxsz pages*/
+            /*auto u = pool.extendPages(minsz - sz);
             if (u == OPFAIL)
                 return 0;
-            sz = minsz;
+            sz = minsz;*/
+            auto u = pool.extendPagesUpTo(maxsz - sz);
+            if (u == OPFAIL || (u + sz < minsz))
+                return 0;
+            sz += u;
+            if(sz > maxsz) sz = maxsz;
         }
         else
             return 0;
@@ -1696,8 +1704,8 @@ struct Gcx
 	    /* The pooltable[] is sorted by address, so do a binary search
 	     */
 	    auto pt = pooltable;
-	    int low = 0;
-	    int high = npools - 1;
+	    size_t low = 0;
+	    size_t high = npools - 1;
 	    while (low <= high)
 	    {
 		size_t mid = (low + high) >> 1;
@@ -1854,6 +1862,9 @@ struct Gcx
             // getBits
             ////////////////////////////////////////////////////////////////////
 
+            // reset the offset to the base pointer, otherwise the bits
+            // are the bits for the pointer, which may be garbage
+            offset = cast(size_t)(info.base - pool.baseAddr);
             info.attr = getBits(pool, cast(size_t)(offset / 16));
             
             cached_info_key = p;
@@ -1946,18 +1957,16 @@ struct Gcx
                     break;
             }
             if (pn < ncommitted)
-            {
-                n++;
                 continue;
-            }
             pool.Dtor();
             cstdlib.free(pool);
             memmove(pooltable + n,
                     pooltable + n + 1,
                     (--npools - n) * (Pool*).sizeof);
-            minAddr = pooltable[0].baseAddr;
-            maxAddr = pooltable[npools - 1].topAddr;
+            n--;
         }
+        minAddr = pooltable[0].baseAddr;
+        maxAddr = pooltable[npools - 1].topAddr;
     }
 
 
@@ -2263,26 +2272,80 @@ struct Gcx
             __builtin_unwind_init();
             sp = & sp;
         }
-        else
+        else version( D_InlineAsm_X86 )
         {
-        asm
-        {
-            pushad              ;
-            mov sp[EBP],ESP     ;
+	    asm
+	    {
+		pushad              ;
+		mov sp[EBP],ESP     ;
+	    }
         }
-        }
+	else version ( D_InlineAsm_X86_64 )
+	{
+	    asm
+	    {
+		push RAX ;
+		push RBX ;
+		push RCX ;
+		push RDX ;
+		push RSI ;
+		push RDI ;
+		push RBP ;
+		push R8  ;
+		push R9  ;
+		push R10  ;
+		push R11  ;
+		push R12  ;
+		push R13  ;
+		push R14  ;
+		push R15  ;
+		push EAX ;   // 16 byte align the stack
+	    }
+	}
+	else
+	{
+	    static assert( false, "Architecture not supported." );
+	}
+
         result = fullcollect(sp);
-        version (GNU)
-        {
-            // nothing to do
-        }
-        else
-        {
-        asm
-        {
-            popad               ;
-        }
-        }
+
+	version( GNU )
+	{
+	    // registers will be popped automatically
+	}
+	else version( D_InlineAsm_X86 )
+	{
+	    asm
+	    {
+		popad;
+	    }
+	}
+	else version ( D_InlineAsm_X86_64 )
+	{
+	    asm
+	    {
+		pop EAX ;   // 16 byte align the stack
+		pop R15  ;
+		pop R14  ;
+		pop R13  ;
+		pop R12  ;
+		pop R11  ;
+		pop R10  ;
+		pop R9  ;
+		pop R8  ;
+		pop RBP ;
+		pop RDI ;
+		pop RSI ;
+		pop RDX ;
+		pop RCX ;
+		pop RBX ;
+		pop RAX ;
+	    }
+	}
+	else
+	{
+	    static assert( false, "Architecture not supported." );
+	}
         return result;
     }
 
@@ -2433,12 +2496,10 @@ struct Gcx
         size_t freed = 0;
         for (n = 0; n < npools; n++)
         {   size_t pn;
-            size_t ncommitted;
-            uint*  bbase;
 
             pool = pooltable[n];
-            bbase = pool.mark.base();
-            ncommitted = pool.ncommitted;
+            auto bbase = pool.mark.base();
+            auto ncommitted = pool.ncommitted;
             for (pn = 0; pn < ncommitted; pn++, bbase += PAGESIZE / (32 * 16))
             {
                 Bins bin = cast(Bins)pool.pagetable[pn];
@@ -2611,6 +2672,8 @@ struct Gcx
 //        if (pool.nomove.nbits &&
 //            pool.nomove.test(biti))
 //            bits |= BlkAttr.NO_MOVE;
+        if (pool.appendable.test(biti))
+            bits |= BlkAttr.APPENDABLE;
         return bits;
     }
 
@@ -2641,6 +2704,10 @@ struct Gcx
 //                pool.nomove.alloc(pool.mark.nbits);
 //            pool.nomove.set(biti);
 //        }
+        if (mask & BlkAttr.APPENDABLE)
+        {
+            pool.appendable.set(biti);
+        }
     }
 
 
@@ -2660,6 +2727,8 @@ struct Gcx
             pool.noscan.clear(biti);
 //        if (mask & BlkAttr.NO_MOVE && pool.nomove.nbits)
 //            pool.nomove.clear(biti);
+        if (mask & BlkAttr.APPENDABLE)
+            pool.appendable.clear(biti);
     }
 
 
@@ -2809,6 +2878,7 @@ struct Pool
     GCBits freebits;    // entries that are on the free list
     GCBits finals;      // entries that need finalizer run on them
     GCBits noscan;      // entries that should not be scanned
+    GCBits appendable;  // entries that are appendable
 
     size_t npages;
     size_t ncommitted;    // ncommitted <= npages
@@ -2842,6 +2912,7 @@ struct Pool
         scan.alloc(cast(size_t)poolsize / 16);
         freebits.alloc(cast(size_t)poolsize / 16);
         noscan.alloc(cast(size_t)poolsize / 16);
+        appendable.alloc(cast(size_t)poolsize / 16);
 
         pagetable = cast(ubyte*)cstdlib.malloc(npages);
         if (!pagetable)
@@ -2884,6 +2955,7 @@ struct Pool
         freebits.Dtor();
         finals.Dtor();
         noscan.Dtor();
+        appendable.Dtor();
     }
 
 
@@ -2897,6 +2969,7 @@ struct Pool
         //freebits.Invariant();
         //finals.Invariant();
         //noscan.Invariant();
+        //appendable.Invariant();
 
         if (baseAddr)
         {
@@ -2969,6 +3042,36 @@ struct Pool
             }
             //debug(PRINTF) printf("\tfailed to commit %d pages\n", tocommit);
         }
+
+        return OPFAIL;
+    }
+
+    /**
+     * extends pages up to at least n pages.  Returns the number of pages
+     * added.
+     */
+    size_t extendPagesUpTo(size_t n)
+    {
+        //debug(PRINTF) printf("Pool::extendPagesUpTo(n = %d)\n", n);
+        if (ncommitted + n > npages)
+            n = npages - ncommitted;
+        size_t tocommit;
+
+        tocommit = (n + (COMMITSIZE/PAGESIZE) - 1) & ~(COMMITSIZE/PAGESIZE - 1);
+        if (ncommitted + tocommit > npages)
+            tocommit = npages - ncommitted;
+        if(tocommit == 0)
+            return 0;
+        //debug(PRINTF) printf("\tlooking to commit %d more pages\n", tocommit);
+            //fflush(stdout);
+        if (os_mem_commit(baseAddr, ncommitted * PAGESIZE, tocommit * PAGESIZE) == 0)
+        {
+            memset(pagetable + ncommitted, B_FREE, tocommit);
+            ncommitted += tocommit;
+
+            return tocommit > n;
+        }
+        //debug(PRINTF) printf("\tfailed to commit %d pages\n", tocommit);
 
         return OPFAIL;
     }

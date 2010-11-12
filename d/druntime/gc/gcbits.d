@@ -10,6 +10,10 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+ */
 module gc.gcbits;
 
 
@@ -28,7 +32,7 @@ version (DigitalMars)
 }
 else version (GNU)
 {
-    // use the unoptimized version
+    // use own bitop implementation
 }
 else version (D_InlineAsm_X86)
 {
@@ -37,11 +41,14 @@ else version (D_InlineAsm_X86)
 
 struct GCBits
 {
-    const int BITS_PER_WORD = 32;
-    const int BITS_SHIFT = 5;
-    const int BITS_MASK = 31;
+    alias size_t wordtype;
 
-    uint*  data = null;
+    const BITS_PER_WORD = (wordtype.sizeof * 8);
+    const BITS_SHIFT = (wordtype.sizeof == 8 ? 6 : 5);
+    const BITS_MASK = (BITS_PER_WORD - 1);
+    const BITS_1 = cast(wordtype)1;
+
+    wordtype*  data = null;
     size_t nwords = 0;    // allocated words in data[] excluding sentinals
     size_t nbits = 0;     // number of bits in data[] excluding sentinals
 
@@ -66,26 +73,30 @@ struct GCBits
     {
         this.nbits = nbits;
         nwords = (nbits + (BITS_PER_WORD - 1)) >> BITS_SHIFT;
-        data = cast(uint*)calloc(nwords + 2, uint.sizeof);
+        data = cast(typeof(data[0])*)calloc(nwords + 2, data[0].sizeof);
         if (!data)
             onOutOfMemoryError();
     }
 
-    uint test(size_t i)
+    wordtype test(size_t i)
     in
     {
         assert(i < nbits);
     }
     body
     {
-        version (none)
+        version (GNU)
+        {
+            return gcc.bitmanip.bt(data + 1, i);
+        }
+        else version (none)
         {
             return std.intrinsic.bt(data + 1, i);   // this is actually slower! don't use
         }
 	else
 	{
 	    //return (cast(bit *)(data + 1))[i];
-	    return data[1 + (i >> BITS_SHIFT)] & (1 << (i & BITS_MASK));
+	    return data[1 + (i >> BITS_SHIFT)] & (BITS_1 << (i & BITS_MASK));
 	}
     }
 
@@ -97,7 +108,7 @@ struct GCBits
     body
     {
         //(cast(bit *)(data + 1))[i] = 1;
-        data[1 + (i >> BITS_SHIFT)] |= (1 << (i & BITS_MASK));
+        data[1 + (i >> BITS_SHIFT)] |= (BITS_1 << (i & BITS_MASK));
     }
 
     void clear(size_t i)
@@ -108,44 +119,51 @@ struct GCBits
     body
     {
         //(cast(bit *)(data + 1))[i] = 0;
-        data[1 + (i >> BITS_SHIFT)] &= ~(1 << (i & BITS_MASK));
+        data[1 + (i >> BITS_SHIFT)] &= ~(BITS_1 << (i & BITS_MASK));
     }
 
-    uint testClear(size_t i)
+    wordtype testClear(size_t i)
     {
-        version (bitops)
+        version (GNU)
+        {
+            return gcc.bitmanip.btr(data + 1, i);
+        }
+        else version (bitops)
         {
             return std.intrinsic.btr(data + 1, i);   // this is faster!
         }
         else version (Asm86)
         {
-            asm
-            {
-                naked                   ;
-                mov     EAX,data[EAX]   ;
-                mov     ECX,i-4[ESP]    ;
-                btr     4[EAX],ECX      ;
-                sbb     EAX,EAX         ;
-                ret     4               ;
-            }
+	    asm
+	    {
+		naked                   ;
+		mov     EAX,data[EAX]   ;
+		mov     ECX,i-4[ESP]    ;
+		btr     4[EAX],ECX      ;
+		sbb     EAX,EAX         ;
+		ret     4               ;
+	    }
         }
         else
-        {   uint result;
-
+        {
             //result = (cast(bit *)(data + 1))[i];
             //(cast(bit *)(data + 1))[i] = 0;
 
-            uint* p = &data[1 + (i >> BITS_SHIFT)];
-            uint  mask = (1 << (i & BITS_MASK));
-            result = *p & mask;
+            auto p = &data[1 + (i >> BITS_SHIFT)];
+            auto mask = (BITS_1 << (i & BITS_MASK));
+            auto result = *p & mask;
             *p &= ~mask;
             return result;
         }
     }
 
-    uint testSet(size_t i)
+    wordtype testSet(size_t i)
     {
-        version (bitops)
+        version (GNU)
+        {
+            return gcc.bitmanip.bts(data + 1, i);
+        }
+        else version (bitops)
         {
             return std.intrinsic.bts(data + 1, i);   // this is faster!
         }
@@ -162,14 +180,13 @@ struct GCBits
             }
         }
         else
-        {   uint result;
-
+        {
             //result = (cast(bit *)(data + 1))[i];
             //(cast(bit *)(data + 1))[i] = 0;
 
-            uint* p = &data[1 + (i >> BITS_SHIFT)];
-            uint  mask = (1 << (i & BITS_MASK));
-            result = *p & mask;
+            auto p = &data[1 + (i >> BITS_SHIFT)];
+            auto  mask = (BITS_1 << (i & BITS_MASK));
+            auto result = *p & mask;
             *p |= mask;
             return result;
         }
@@ -177,7 +194,7 @@ struct GCBits
 
     void zero()
     {
-        memset(data + 1, 0, nwords * uint.sizeof);
+        memset(data + 1, 0, nwords * wordtype.sizeof);
     }
 
     void copy(GCBits *f)
@@ -187,10 +204,10 @@ struct GCBits
     }
     body
     {
-        memcpy(data + 1, f.data + 1, nwords * uint.sizeof);
+        memcpy(data + 1, f.data + 1, nwords * wordtype.sizeof);
     }
 
-    uint* base()
+    wordtype* base()
     in
     {
         assert(data);

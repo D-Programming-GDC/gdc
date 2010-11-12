@@ -20,8 +20,8 @@ module std.file;
 
 import core.memory;
 import core.stdc.stdio, core.stdc.stdlib, core.stdc.string,
-    core.stdc.errno, std.algorithm, std.array, 
-    std.contracts, std.conv, std.date, std.format, std.path, std.process,
+    core.stdc.errno, std.algorithm, std.array,
+    std.conv, std.date, std.exception, std.format, std.path, std.process,
     std.range, std.regexp, std.stdio, std.string, std.traits, std.typecons,
     std.typetuple, std.utf;
 version (Win32)
@@ -41,6 +41,19 @@ version (Posix)
 {
     import core.sys.posix.dirent, core.sys.posix.fcntl, core.sys.posix.sys.stat,
         core.sys.posix.sys.time, core.sys.posix.unistd, core.sys.posix.utime;
+}
+
+version (unittest)
+{
+    private string deleteme = "deleteme.dmd.unittest";
+
+    static this()
+    {
+        version(Windows)
+            deleteme = std.path.join(std.process.getenv("TEMP"), deleteme);
+        else
+            deleteme = "/tmp/" ~ deleteme;
+    }
 }
 
 // @@@@ TEMPORARY - THIS SHOULD BE IN THE CORE @@@
@@ -128,17 +141,22 @@ class FileException : Exception
 {
 /**
 OS error code.
- */ 
+ */
     immutable uint errno;
-    
+
 /**
-Constructor taking the name of the file where error happened and the
-error number ($(LUCKY GetLastError) in Windows, $(D getErrno) in
-Posix).
- */ 
+Constructor taking the name of the file where error happened and a
+message describing the error.
+ */
     this(in char[] name, in char[] message)
     {
         super(text(name, ": ", message));
+        errno = 0;
+    }
+
+    this(in char[] name, in char[] message, string sourceFile, int sourceLine)
+    {
+        super(text(name, ": ", message), sourceFile, sourceLine);
         errno = 0;
     }
 
@@ -146,8 +164,8 @@ Posix).
 Constructor taking the name of the file where error happened and the
 error number ($(LUCKY GetLastError) in Windows, $(D getErrno) in
 Posix).
- */ 
-    version(Windows) this(string name, uint errno = GetLastError)
+ */
+    version(Windows) this(in char[] name, uint errno = GetLastError)
     {
         this(name, sysErrorString(errno));
         this.errno = errno;
@@ -159,6 +177,21 @@ Posix).
         this(name, to!string(s));
         this.errno = errno;
     }
+
+    version(Windows) this(in char[] name, string sourceFile, int sourceLine,
+        uint errno = GetLastError)
+    {
+        this(name, sysErrorString(errno), sourceFile, sourceLine);
+        this.errno = errno;
+    }
+
+    version(Posix) this(in char[] name, string sourceFile, int sourceLine,
+        uint errno = .getErrno)
+    {
+        auto s = strerror(errno);
+        this(name, to!string(s), sourceFile, sourceLine);
+        this.errno = errno;
+    }
 }
 
 private T cenforce(T, string file = __FILE__, uint line = __LINE__)
@@ -166,8 +199,7 @@ private T cenforce(T, string file = __FILE__, uint line = __LINE__)
 {
     if (!condition)
     {
-        throw new FileException(
-            text("In ", file, "(", line, "), data file ", name));
+        throw new FileException(name, file, line);
     }
     return condition;
 }
@@ -194,7 +226,7 @@ version(Windows) void[] read(in char[] name, size_t upTo = size_t.max)
     auto h = useWfuncs
         ? CreateFileW(std.utf.toUTF16z(name), defaults)
         : CreateFileA(toMBSz(name), defaults);
-    
+
     cenforce(h != INVALID_HANDLE_VALUE, name);
     scope(exit) cenforce(CloseHandle(h), name);
     auto size = GetFileSize(h, null);
@@ -202,7 +234,7 @@ version(Windows) void[] read(in char[] name, size_t upTo = size_t.max)
     size = min(upTo, size);
     auto buf = GC.malloc(size, GC.BlkAttr.NO_SCAN)[0 .. size];
     scope(failure) delete buf;
-    
+
     DWORD numread = void;
     cenforce(ReadFile(h,buf.ptr, size, &numread, null) == 1
             && numread == size, name);
@@ -218,16 +250,16 @@ version(Posix) void[] read(in char[] name, in size_t upTo = size_t.max)
         sizeIncrement = 1024 * 16,
         maxSlackMemoryAllowed = 1024;
     // }
-    
+
     immutable fd = core.sys.posix.fcntl.open(toStringz(name),
             core.sys.posix.fcntl.O_RDONLY);
     cenforce(fd != -1, name);
     scope(exit) core.sys.posix.unistd.close(fd);
-    
+
     struct_stat64 statbuf = void;
     cenforce(fstat64(fd, &statbuf) == 0, name);
     //cenforce(core.sys.posix.sys.stat.fstat(fd, &statbuf) == 0, name);
-    
+
     immutable initialAlloc = to!size_t(statbuf.st_size
         ? min(statbuf.st_size + 1, maxInitialAlloc)
         : minInitialAlloc);
@@ -235,7 +267,7 @@ version(Posix) void[] read(in char[] name, in size_t upTo = size_t.max)
         [0 .. initialAlloc];
     scope(failure) delete result;
     size_t size = 0;
-    
+
     for (;;)
     {
         immutable actual = core.sys.posix.unistd.read(fd, result.ptr + size,
@@ -248,7 +280,7 @@ version(Posix) void[] read(in char[] name, in size_t upTo = size_t.max)
         result = GC.realloc(result.ptr, newAlloc, GC.BlkAttr.NO_SCAN)
             [0 .. newAlloc];
     }
-    
+
     return result.length - size >= maxSlackMemoryAllowed
         ? GC.realloc(result.ptr, size, GC.BlkAttr.NO_SCAN)[0 .. size]
         : result[0 .. size];
@@ -256,12 +288,14 @@ version(Posix) void[] read(in char[] name, in size_t upTo = size_t.max)
 
 unittest
 {
-    write("std.file.deleteme", "1234");
-    assert(read("std.file.deleteme", 2) == "12");
+    write(deleteme, "1234");
+    scope(exit) { assert(exists(deleteme)); remove(deleteme); }
+    assert(read(deleteme, 2) == "12");
+    assert(read(deleteme) == "1234");
 }
 
 version (linux) unittest
-{    
+{
     // A file with "zero" length that doesn't have 0 length at all
     auto s = std.file.readText("/proc/sys/kernel/osrelease");
     assert(s.length > 0);
@@ -298,9 +332,9 @@ S readText(S = string)(in char[] name)
 
 unittest
 {
-    enforce(std.process.system("echo abc>deleteme") == 0);
-    scope(exit) remove("deleteme");
-    enforce(chomp(readText("deleteme")) == "abc");
+    write(deleteme, "abc\n");
+    scope(exit) { assert(exists(deleteme)); remove(deleteme); }
+    enforce(chomp(readText(deleteme)) == "abc");
 }
 
 /*********************************************
@@ -317,7 +351,7 @@ version(Windows) void write(in char[] name, const void[] buffer)
     auto h = useWfuncs
         ? CreateFileW(std.utf.toUTF16z(name), defaults)
         : CreateFileA(toMBSz(name), defaults);
-   
+
     cenforce(h != INVALID_HANDLE_VALUE, name);
     scope(exit) cenforce(CloseHandle(h), name);
     DWORD numwritten;
@@ -341,11 +375,11 @@ version(Windows) void append(in char[] name, in void[] buffer)
     alias TypeTuple!(GENERIC_WRITE,0,null,OPEN_ALWAYS,
             FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,HANDLE.init)
         defaults;
-    
+
     auto h = useWfuncs
         ? CreateFileW(std.utf.toUTF16z(name), defaults)
         : CreateFileA(toMBSz(name), defaults);
-    
+
     cenforce(h != INVALID_HANDLE_VALUE, name);
     scope(exit) cenforce(CloseHandle(h), name);
     DWORD numwritten;
@@ -366,7 +400,7 @@ version(Posix) private void writeImpl(in char[] name,
         in void[] buffer, in uint mode)
 {
     immutable fd = core.sys.posix.fcntl.open(toStringz(name),
-            mode, 0660);
+            mode, octal!666);
     cenforce(fd != -1, name);
     {
         scope(failure) core.sys.posix.unistd.close(fd);
@@ -427,11 +461,11 @@ version(Windows) ulong getSize(in char[] name)
     HANDLE findhndl = void;
     uint resulth = void;
     uint resultl = void;
-    
+
     if (useWfuncs)
     {
         WIN32_FIND_DATAW filefindbuf;
-        
+
         findhndl = FindFirstFileW(std.utf.toUTF16z(name), &filefindbuf);
         resulth = filefindbuf.nFileSizeHigh;
         resultl = filefindbuf.nFileSizeLow;
@@ -439,12 +473,12 @@ version(Windows) ulong getSize(in char[] name)
     else
     {
         WIN32_FIND_DATA filefindbuf;
-        
+
         findhndl = FindFirstFileA(toMBSz(name), &filefindbuf);
         resulth = filefindbuf.nFileSizeHigh;
         resultl = filefindbuf.nFileSizeLow;
     }
-    
+
     cenforce(findhndl != cast(HANDLE)-1 && FindClose(findhndl), name);
     return (cast(ulong) resulth << 32) + resultl;
 }
@@ -455,22 +489,18 @@ version(Posix) ulong getSize(in char[] name)
     cenforce(stat64(toStringz(name), &statbuf) == 0, name);
     return statbuf.st_size;
 }
-    
+
 unittest
 {
-    version(Windows)
-        auto deleteme = std.path.join(std.process.getenv("TEMP"), "deleteme");
-    else
-        auto deleteme = "/tmp/deleteme";
-    scope(exit) if (exists(deleteme)) remove(deleteme);
     // create a file of size 1
     write(deleteme, "a");
+    scope(exit) { assert(exists(deleteme)); remove(deleteme); }
     assert(getSize(deleteme) == 1);
     // create a file of size 3
     write(deleteme, "abc");
     assert(getSize(deleteme) == 3);
 }
-    
+
 /*************************
  * Get creation/access/modified times of file $(D name).
  * Throws: $(D FileException) on error.
@@ -480,11 +510,11 @@ version(Windows) void getTimes(in char[] name,
         out d_time ftc, out d_time fta, out d_time ftm)
 {
     HANDLE findhndl = void;
-    
+
     if (useWfuncs)
     {
         WIN32_FIND_DATAW filefindbuf;
-        
+
         findhndl = FindFirstFileW(std.utf.toUTF16z(name), &filefindbuf);
         ftc = std.date.FILETIME2d_time(&filefindbuf.ftCreationTime);
         fta = std.date.FILETIME2d_time(&filefindbuf.ftLastAccessTime);
@@ -493,13 +523,13 @@ version(Windows) void getTimes(in char[] name,
     else
     {
         WIN32_FIND_DATA filefindbuf;
-        
+
         findhndl = FindFirstFileA(toMBSz(name), &filefindbuf);
         ftc = std.date.FILETIME2d_time(&filefindbuf.ftCreationTime);
         fta = std.date.FILETIME2d_time(&filefindbuf.ftLastAccessTime);
         ftm = std.date.FILETIME2d_time(&filefindbuf.ftLastWriteTime);
     }
-    
+
     if (findhndl == cast(HANDLE)-1)
     {
         throw new FileException(name.idup);
@@ -553,11 +583,11 @@ version(Posix) d_time lastModified(in char[] name)
     cenforce(stat64(toStringz(name), &statbuf) == 0, name);
     return cast(d_time) statbuf.st_mtime * std.date.ticksPerSecond;
 }
-    
+
 /**
 Returns the time of the last modification of file $(D name). If the
 file does not exist, returns $(D returnIfMissing).
-   
+
 A frequent usage pattern occurs in build automation tools such as
 $(WEB gnu.org/software/make, make) or $(WEB
 en.wikipedia.org/wiki/Apache_Ant, ant). To check whether file $(D
@@ -598,10 +628,12 @@ version(Posix) d_time lastModified(in char[] name, d_time returnIfMissing)
 
 unittest
 {
-    std.process.system("echo a>deleteme") == 0 || assert(false);
-    scope(exit) remove("deleteme");
-    assert(lastModified("deleteme") >
-            lastModified("this file does not exist", d_time.min));
+    //std.process.system("echo a>deleteme") == 0 || assert(false);
+    if (exists(deleteme)) remove(deleteme);
+    write(deleteme, "a\n");
+    scope(exit) { assert(exists(deleteme)); remove(deleteme); }
+    // assert(lastModified("deleteme") >
+    //         lastModified("this file does not exist", d_time.min));
     //assert(lastModified("deleteme") > lastModified(__FILE__));
 }
 
@@ -623,14 +655,14 @@ version(Posix) bool exists(in char[] name)
 {
     return access(toStringz(name), 0) == 0;
 }
-    
+
 unittest
 {
     assert(exists("."));
     assert(!exists("this file does not exist"));
-    std.process.system("echo a >deleteme") == 0 || assert(false);
-    scope(exit) remove("deleteme");
-    assert(exists("deleteme"));
+    write(deleteme, "a\n");
+    scope(exit) { assert(exists(deleteme)); remove(deleteme); }
+    assert(exists(deleteme));
 }
 
 /***************************************************
@@ -685,7 +717,7 @@ version(Posix) bool isfile(in char[] name)
 {
     return (getAttributes(name) & S_IFMT) == S_IFREG;        // regular file
 }
-    
+
 /****************************************************
  * Change directory to $(D pathname).
  * Throws: $(D FileException) on error.
@@ -704,7 +736,7 @@ version(Posix) void chdir(in char[] pathname)
     cenforce(core.sys.posix.unistd.chdir(toStringz(pathname)) == 0,
             pathname);
 }
-    
+
 /****************************************************
 Make directory $(D pathname).
 
@@ -820,11 +852,11 @@ version(Windows) struct DirEntry
     d_time lastAccessTime = d_time_nan;        /// time file was last accessed
     d_time lastWriteTime = d_time_nan;        /// time file was last written to
     uint attributes;                // Windows file attributes OR'd together
-    
+
     void init(in char[] path, in WIN32_FIND_DATA *fd)
     {
         auto clength = std.c.string.strlen(fd.cFileName.ptr);
-            
+
         // Convert cFileName[] to unicode
         const wlength = MultiByteToWideChar(0, 0, fd.cFileName.ptr,
                 clength, null,0);
@@ -834,14 +866,14 @@ version(Windows) struct DirEntry
         assert(n == wlength);
         // toUTF8() returns a new buffer
         name = std.path.join(path, std.utf.toUTF8(wbuf[0 .. wlength]));
-            
+
         size = (cast(ulong)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
         creationTime = std.date.FILETIME2d_time(&fd.ftCreationTime);
         lastAccessTime = std.date.FILETIME2d_time(&fd.ftLastAccessTime);
         lastWriteTime = std.date.FILETIME2d_time(&fd.ftLastWriteTime);
         attributes = fd.dwFileAttributes;
     }
-        
+
     void init(in char[] path, in WIN32_FIND_DATAW *fd)
     {
         size_t clength = std.string.wcslen(fd.cFileName.ptr);
@@ -853,7 +885,7 @@ version(Windows) struct DirEntry
         lastWriteTime = std.date.FILETIME2d_time(&fd.ftLastWriteTime);
         attributes = fd.dwFileAttributes;
     }
-        
+
     /****
      * Return $(D true) if DirEntry is a directory.
      */
@@ -861,7 +893,7 @@ version(Windows) struct DirEntry
     {
         return (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
     }
-        
+
     /****
      * Return !=0 if DirEntry is a file.
      */
@@ -881,7 +913,7 @@ version(Posix) struct DirEntry
     ubyte d_type;
     struct_stat64 statbuf;
     bool didstat;                        // done lazy evaluation of stat()
-        
+
     void init(in char[] path, core.sys.posix.dirent.dirent *fd)
     {
         immutable len = std.c.string.strlen(fd.d_name.ptr);
@@ -889,45 +921,45 @@ version(Posix) struct DirEntry
         d_type = fd.d_type;
         didstat = false;
     }
-        
+
     bool isdir() const
     {
         return (d_type & DT_DIR) != 0;
     }
-        
+
     bool isfile() const
     {
         return (d_type & DT_REG) != 0;
     }
-        
+
     ulong size()
     {
         ensureStatDone;
         return _size;
     }
-        
+
     d_time creationTime()
     {
         ensureStatDone;
         return _creationTime;
     }
-        
+
     d_time lastAccessTime()
     {
         ensureStatDone;
         return _lastAccessTime;
     }
-        
+
     d_time lastWriteTime()
     {
         ensureStatDone;
         return _lastWriteTime;
     }
-        
+
     /* This is to support lazy evaluation, because doing stat's is
      * expensive and not always needed.
      */
-        
+
     void ensureStatDone()
     {
         if (didstat) return;
@@ -988,7 +1020,7 @@ version(Windows) void listdir(in char[] pathname,
     if (useWfuncs)
     {
         WIN32_FIND_DATAW fileinfo;
-        
+
         auto h = FindFirstFileW(std.utf.toUTF16z(c), &fileinfo);
         if (h == INVALID_HANDLE_VALUE)
             return;
@@ -999,7 +1031,7 @@ version(Windows) void listdir(in char[] pathname,
             if (std.string.wcscmp(fileinfo.cFileName.ptr, ".") == 0 ||
                     std.string.wcscmp(fileinfo.cFileName.ptr, "..") == 0)
                 continue;
-            
+
             de.init(pathname, &fileinfo);
             if (!callback(&de))
                 break;
@@ -1008,11 +1040,11 @@ version(Windows) void listdir(in char[] pathname,
     else
     {
         WIN32_FIND_DATA fileinfo;
-        
+
         auto h = FindFirstFileA(toMBSz(c), &fileinfo);
         if (h == INVALID_HANDLE_VALUE)
             return;
-        
+
         scope(exit) FindClose(h);
         do
         {
@@ -1020,7 +1052,7 @@ version(Windows) void listdir(in char[] pathname,
             if (std.c.string.strcmp(fileinfo.cFileName.ptr, ".") == 0 ||
                     std.c.string.strcmp(fileinfo.cFileName.ptr, "..") == 0)
                 continue;
-            
+
             de.init(pathname, &fileinfo);
             if (!callback(&de))
                 break;
@@ -1064,14 +1096,14 @@ version(Posix) void copy(in char[] from, in char[] to)
     immutable fd = core.sys.posix.fcntl.open(toStringz(from), O_RDONLY);
     cenforce(fd != -1, from);
     scope(exit) core.sys.posix.unistd.close(fd);
-        
+
     struct_stat64 statbuf = void;
     cenforce(fstat64(fd, &statbuf) == 0, from);
     //cenforce(core.sys.posix.sys.stat.fstat(fd, &statbuf) == 0, from);
-        
+
     auto toz = toStringz(to);
     immutable fdw = core.sys.posix.fcntl.open(toz,
-            O_CREAT | O_WRONLY | O_TRUNC, 0660);
+            O_CREAT | O_WRONLY | O_TRUNC, octal!666);
     cenforce(fdw != -1, from);
     scope(failure) std.c.stdio.remove(toz);
     {
@@ -1085,7 +1117,7 @@ version(Posix) void copy(in char[] from, in char[] to)
             buf || assert(false, "Out of memory in std.file.copy");
         }
         scope(exit) std.c.stdlib.free(buf);
-            
+
         for (auto size = statbuf.st_size; size; )
         {
             immutable toxfer = (size > BUFSIZ) ? BUFSIZ : cast(size_t) size;
@@ -1097,13 +1129,13 @@ version(Posix) void copy(in char[] from, in char[] to)
             size -= toxfer;
         }
     }
-        
+
     cenforce(core.sys.posix.unistd.close(fdw) != -1, from);
-        
+
     utimbuf utim = void;
     utim.actime = cast(time_t)statbuf.st_atime;
     utim.modtime = cast(time_t)statbuf.st_mtime;
-        
+
     cenforce(utime(toz, &utim) != -1, from);
 }
 
@@ -1144,19 +1176,19 @@ version(Posix) void setTimes(in char[] name, d_time fta, d_time ftm)
 /+
 unittest
 {
-    system("echo a>deleteme") == 0 || assert(false);
-    scope(exit) remove("deleteme");
+    write(deleteme, "a\n");
+    scope(exit) { assert(exists(deleteme)); remove(deleteme); }
     d_time ftc1, fta1, ftm1;
-    getTimes("deleteme", ftc1, fta1, ftm1);
+    getTimes(deleteme, ftc1, fta1, ftm1);
     enforce(collectException(setTimes("nonexistent", fta1, ftm1)));
-    setTimes("deleteme", fta1 + 1000, ftm1 + 1000);
+    setTimes(deleteme, fta1 + 1000, ftm1 + 1000);
     d_time ftc2, fta2, ftm2;
-    getTimes("deleteme", ftc2, fta2, ftm2);
+    getTimes(deleteme, ftc2, fta2, ftm2);
     assert(fta1 + 1000 == fta2, text(fta1 + 1000, "!=", fta2));
     assert(ftm1 + 1000 == ftm2);
 }
 +/
-    
+
 /****************************************************
 Remove directory and all of its content and subdirectories,
 recursively.
@@ -1175,10 +1207,10 @@ void rmdirRecurse(in char[] pathname)
 
 version(Windows) unittest
 {
-    auto d = r"\deleteme\a\b\c\d\e\f\g";
+    auto d = deleteme ~ r".dir\a\b\c\d\e\f\g";
     mkdirRecurse(d);
-    rmdirRecurse(r"\deleteme");
-    enforce(!exists(r"\deleteme"));
+    rmdirRecurse(deleteme ~ ".dir");
+    enforce(!exists(deleteme ~ ".dir"));
 }
 
 version(Posix) unittest
@@ -1268,7 +1300,7 @@ struct DirIterator
     {
         int result = 0;
         // worklist used only in breadth-first traversal
-        string[] worklist = [ pathname ]; 
+        string[] worklist = [ pathname ];
 
         bool callback(DirEntry* de)
         {
@@ -1406,9 +1438,9 @@ unittest
 {
     // Tuple!(int, double)[] x;
     // auto app = appender(&x);
-    write("deleteme", "12 12.25\n345 1.125");
-    scope(exit) remove("deleteme");
-    auto a = slurp!(int, double)("deleteme", "%s %s");
+    write(deleteme, "12 12.25\n345 1.125");
+    scope(exit) { assert(exists(deleteme)); remove(deleteme); }
+    auto a = slurp!(int, double)(deleteme, "%s %s");
     assert(a.length == 2);
     assert(a[0] == tuple(12, 12.25));
     assert(a[1] == tuple(345, 1.125));
@@ -1437,14 +1469,14 @@ unittest
 
 string[] listdir(in char[] pathname)
 {
-    Appender!(string[]) result;
-    
+    auto result = appender!(string[])();
+
     bool listing(string filename)
     {
         result.put(filename);
         return true; // continue
     }
-    
+
     listdir(pathname, &listing);
     return result.data;
 }
@@ -1497,8 +1529,8 @@ unittest
 
 string[] listdir(in char[] pathname, in char[] pattern)
 {
-    Appender!(string[]) result;
-    
+    auto result = appender!(string[])();
+
     bool callback(DirEntry* de)
     {
         if (de.isdir)
@@ -1510,17 +1542,17 @@ string[] listdir(in char[] pathname, in char[] pattern)
         }
         return true; // continue
     }
-    
+
     listdir(pathname, &callback);
     return result.data;
 }
-    
+
 /** Ditto */
-    
+
 string[] listdir(in char[] pathname, RegExp r)
 {
-    Appender!(string[]) result;
-    
+    auto result = appender!(string[])();
+
     bool callback(DirEntry* de)
     {
         if (de.isdir)
@@ -1532,11 +1564,11 @@ string[] listdir(in char[] pathname, RegExp r)
         }
         return true; // continue
     }
-    
+
     listdir(pathname, &callback);
     return result.data;
 }
-    
+
 /******************************************************
  * For each file and directory name in pathname[],
  * pass it to the callback delegate.
@@ -1583,6 +1615,6 @@ void listdir(in char[] pathname, bool delegate(string filename) callback)
     {
         return callback(std.path.getBaseName(de.name));
     }
-    
+
     listdir(pathname, &listing);
 }

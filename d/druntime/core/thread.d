@@ -18,6 +18,7 @@
 */
 module core.thread;
 
+
 // this should be true for most architectures
 version = StackGrowsDown;
 
@@ -54,6 +55,13 @@ class FiberException : Exception
 private
 {
     //
+    // from core.memory
+    //
+    extern (C) void  gc_enable();
+    extern (C) void  gc_disable();
+    extern (C) void* gc_malloc(size_t sz, uint ba = 0);
+
+    //
     // from core.stdc.string
     //
     extern (C) void* memcpy(void*, const void*, size_t);
@@ -77,6 +85,10 @@ private
     {
         return rt_stackTop();
     }
+    
+    
+    alias scope void delegate() gc_atom;
+    extern (C) void function(gc_atom) gc_atomic;
 }
 
 
@@ -91,7 +103,7 @@ version( Windows )
     {
         import core.stdc.stdint : uintptr_t; // for _beginthreadex decl below
         import core.sys.windows.windows;
-        import core.thread_helper;
+        import core.thread_helper; // for OpenThreadHandle
 
         const DWORD TLS_OUT_OF_INDEXES  = 0xFFFFFFFF;
 
@@ -244,6 +256,14 @@ else version( Posix )
                     }
                 }
             }
+            else version( FreeBSD )
+            {
+                extern (C)
+                {
+                    extern void* _tlsstart;
+                    extern void* _tlsend;
+                }
+            }
             else
             {
                 __gshared int   _tlsstart;
@@ -316,6 +336,20 @@ else version( Posix )
                     {
                         naked;
                         mov EAX, EBP;
+                        ret;
+                    }
+                }
+
+                obj.m_main.bstack = getBasePtr();
+            }
+            version( D_InlineAsm_X86_64 )
+            {
+                static void* getBasePtr()
+                {
+                    asm
+                    {
+                        naked;
+                        mov RAX, RBP;
                         ret;
                     }
                 }
@@ -425,16 +459,39 @@ else version( Posix )
         }
         body
         {
-            version( D_InlineAsm_X86 )
+            version( GNU )
+            {
+                __builtin_unwind_init();
+            }
+            else version( D_InlineAsm_X86 )
             {
                 asm
                 {
                     pushad;
                 }
             }
-            else version( GNU )
+            else version( D_InlineAsm_X86_64 )
             {
-                __builtin_unwind_init();
+                asm
+                {
+                    // Not sure what goes here, pushad is invalid in 64 bit code
+                    push RAX ;
+                    push RBX ;
+                    push RCX ;
+                    push RDX ;
+                    push RSI ;
+                    push RDI ;
+                    push RBP ;
+                    push R8  ;
+                    push R9  ;
+                    push R10  ;
+                    push R11  ;
+                    push R12  ;
+                    push R13  ;
+                    push R14  ;
+                    push R15  ;
+                    push EAX ;   // 16 byte align the stack
+                }
             }
             else
             {
@@ -478,16 +535,39 @@ else version( Posix )
                 }
             }
 
-            version( D_InlineAsm_X86 )
+            version( GNU )
+            {
+                // registers will be popped automatically
+            }
+            else version( D_InlineAsm_X86 )
             {
                 asm
                 {
                     popad;
                 }
             }
-            else version( GNU )
+            else version( D_InlineAsm_X86_64 )
             {
-                // registers will be popped automatically
+                asm
+                {
+                    // Not sure what goes here, popad is invalid in 64 bit code
+                    pop EAX ;   // 16 byte align the stack
+                    pop R15  ;
+                    pop R14  ;
+                    pop R13  ;
+                    pop R12  ;
+                    pop R11  ;
+                    pop R10  ;
+                    pop R9  ;
+                    pop R8  ;
+                    pop RBP ;
+                    pop RDI ;
+                    pop RSI ;
+                    pop RDX ;
+                    pop RCX ;
+                    pop RBX ;
+                    pop RAX ;
+                }
             }
             else
             {
@@ -1082,15 +1162,31 @@ class Thread
         //       on why this might occur.
         version( Windows )
         {
-            Thread t = cast(Thread) TlsGetValue( sm_this );
-	    if( t is null )
-		// if the thread has been attached from another thread, the tls value was not set
-		setThis( t = findThread( GetCurrentThreadId() ) );
-	    return t;
+            auto t = cast(Thread) TlsGetValue( sm_this );
+            
+            // NOTE: If this thread was attached via thread_attachByAddr then
+            //       this TLS lookup won't initially be set, so when the TLS
+            //       lookup fails, try an exhaustive search.
+            if( t is null )
+            {
+                t = thread_findByAddr( GetCurrentThreadId() );
+                setThis( t );
+            }
+            return t;
         }
         else version( Posix )
         {
-            return cast(Thread) pthread_getspecific( sm_this );
+            auto t = cast(Thread) pthread_getspecific( sm_this );
+            
+            // NOTE: If this thread was attached via thread_attachByAddr then
+            //       this TLS lookup won't initially be set, so when the TLS
+            //       lookup fails, try an exhaustive search.
+            if( t is null )
+            {
+                t = thread_findByAddr( pthread_self() );
+                setThis( t );
+            }
+            return t;
         }
     }
 
@@ -1118,24 +1214,6 @@ class Thread
         }
     }
 
-    /**
-     * Search the list of all threads for a thread with the given thread identifier
-     *
-     * Params:
-     *  addr = The thread identifier to search for
-     * Returns:
-     *  the thread object associated with the thread identifier, null if not found
-     */
-    static Thread findThread( ThreadAddr addr )
-    {
-        synchronized( slock )
-        {
-	    foreach( Thread t; Thread )
-		if( t.m_addr == addr )
-		    return t;
-	}
-	return null;
-    }
 
     /**
      * Operates on all threads currently being tracked by the system.  The
@@ -1196,6 +1274,14 @@ class Thread
             assert( PRIORITY_MAX != -1 );
         }
     }
+    
+    
+    ///////////////////////////////////////////////////////////////////////////
+    // Stuff That Should Go Away
+    ///////////////////////////////////////////////////////////////////////////
+    
+    
+    deprecated alias thread_findByAddr findThread;
 
 
 private:
@@ -1280,6 +1366,12 @@ private:
     // Local storage
     //
     __gshared TLSKey    sm_this;
+    
+    
+    //
+    // Main process thread
+    //
+    __gshared Thread    sm_main;
 
 
     //
@@ -1490,14 +1582,6 @@ private:
     // Add a context to the global context list.
     //
     static void add( Context* c )
-    {
-        synchronized( slock )
-        {
-	    add_nolock( c );
-	}
-    }
-
-    static void add_nolock( Context* c )
     in
     {
         assert( c );
@@ -1505,13 +1589,16 @@ private:
     }
     body
     {
-        if( sm_cbeg )
+        synchronized( slock )
         {
-            c.next = sm_cbeg;
-            sm_cbeg.prev = c;
+            if( sm_cbeg )
+            {
+                c.next = sm_cbeg;
+                sm_cbeg.prev = c;
+            }
+            sm_cbeg = c;
+            ++sm_clen;
         }
-        sm_cbeg = c;
-        ++sm_clen;
     }
 
 
@@ -1554,14 +1641,6 @@ private:
     // Add a thread to the global thread list.
     //
     static void add( Thread t )
-    {
-        synchronized( slock )
-	{
-	    add_nolock( t );
-	}
-    }
-
-    static void add_nolock( Thread t )
     in
     {
         assert( t );
@@ -1570,13 +1649,16 @@ private:
     }
     body
     {
-	if( sm_tbeg )
+        synchronized( slock )
         {
-            t.next = sm_tbeg;
-            sm_tbeg.prev = t;
+            if( sm_tbeg )
+            {
+                t.next = sm_tbeg;
+                sm_tbeg.prev = t;
+            }
+            sm_tbeg = t;
+            ++sm_tlen;
         }
-        sm_tbeg = t;
-        ++sm_tlen;
     }
 
 
@@ -1588,14 +1670,6 @@ private:
     {
         assert( t );
         assert( t.next || t.prev );
-        version( none )
-        {
-            // NOTE: This doesn't work for Posix as m_isRunning must be set to
-            //       false after the thread is removed during normal execution.
-            // NOTE: This doesn't work for Windows either because remove is called
-	    //       from the thread itself
-            assert( !t.isRunning );
-        }
     }
     body
     {
@@ -1706,8 +1780,16 @@ extern (C) void thread_init()
         status = pthread_key_create( &Thread.sm_this, null );
         assert( status == 0 );
     }
+    Thread.sm_main = thread_attachThis();
+}
 
-    thread_attachThis();
+
+/**
+ *
+ */
+extern (C) bool thread_isMainThread()
+{
+    return Thread.getThis() is Thread.sm_main;
 }
 
 
@@ -1715,107 +1797,173 @@ extern (C) void thread_init()
  * Registers the calling thread for use with the D Runtime.  If this routine
  * is called for a thread which is already registered, the result is undefined.
  */
-extern (C) void thread_attachThis()
+extern (C) Thread thread_attachThis()
 {
-    synchronized( Thread.slock )
-    {
-	version( Windows )
-	{
-	    Thread thisThread = thread_attach_nolock( GetCurrentThreadId(), getStackBottom() );
-	}
-	else version( Posix )
-	{
-	    Thread thisThread = thread_attach_nolock( pthread_self(), getStackBottom() );
-	}
-	Thread.setThis( thisThread );
-    }
-}
-
-/**
- * Registers the thread with the given identifier for use with the D Runtime.  If this routine
- * is called for a thread which is already registered, the result is undefined.
- */
-version (Windows)
-{
-extern (C) Thread thread_attach( Thread.ThreadAddr addr )
-{
-    synchronized( Thread.slock )
-    {
-	version( Windows )
-	{
-	    void* bstack = getThreadStackBottom( addr );
-	}
-	else version( Posix )
-	{
-	    void* bstack = null;
-	    assert( false ); // not implemented
-	}
-	return thread_attach_nolock( addr, bstack );
-	// setThis cannot be called, because it sets the value in the current thread, 
-	//  not in the thread ew just attached to
-    }
-}
-}
-
-extern (C) Thread thread_attach_nolock( Thread.ThreadAddr addr, void* bstack )
-{
-    // the gc should not be touched before attaching to the thread, because
-    //  it might interfere with threads that use the GC, but won't suspend
-    //  this thread. So we use a Thread object created by an attached thread.
-    // This is not necessary for the main (first) thread, because there is no
-    // concurrent thread.
-    static __gshared Thread nextThread;
-    Thread thisThread = nextThread ? nextThread : new Thread();
+    gc_disable(); scope(exit) gc_enable();
+    
+    Thread          thisThread  = new Thread();
+    Thread.Context* thisContext = &thisThread.m_main;
+    assert( thisContext == thisThread.m_curr );
 
     version( Windows )
     {
-	Thread.Context* thisContext = &thisThread.m_main;
-	assert( thisContext == thisThread.m_curr );
-
-	thisThread.m_addr  = addr;
-	thisContext.bstack = bstack;
-	thisContext.tstack = thisContext.bstack;
-
-	auto pstart = cast(void*) &_tlsstart;
-	auto pend   = cast(void*) &_tlsend;
-	if( addr == GetCurrentThreadId() )
-	{
-	    thisThread.m_tls = pstart[0 .. pend - pstart];
-	    thisThread.m_hndl = GetCurrentThreadHandle();
-	}
-	else
-	{
-	    thisThread.m_hndl = OpenThreadHandle( addr );
-	    thisThread.m_tls = GetTlsDataAddress( thisThread.m_hndl )[0 .. pend - pstart];
-	}
-
-	thisThread.m_isDaemon = true;
+        thisThread.m_addr  = GetCurrentThreadId();
+        thisThread.m_hndl  = GetCurrentThreadHandle();
+        thisContext.bstack = getStackBottom();
+        thisContext.tstack = thisContext.bstack;
     }
     else version( Posix )
     {
-	Thread.Context* thisContext = thisThread.m_curr;
-	assert( thisContext == &thisThread.m_main );
-
-	thisThread.m_addr  = addr;
-	thisContext.bstack = bstack;
-	thisContext.tstack = thisContext.bstack;
-
-	thisThread.m_isRunning = true;
-	thisThread.m_isDaemon  = true;
+        thisThread.m_addr  = pthread_self();
+        thisContext.bstack = getStackBottom();
+        thisContext.tstack = thisContext.bstack;
+        
+        thisThread.m_isRunning = true;
     }
+    thisThread.m_isDaemon = true;
+    Thread.setThis( thisThread );
+
     version( OSX )
     {
-	thisThread.m_tmach = pthread_mach_thread_np( thisThread.m_addr );
-	assert( thisThread.m_tmach != thisThread.m_tmach.init );
+        thisThread.m_tmach = pthread_mach_thread_np( thisThread.m_addr );
+        assert( thisThread.m_tmach != thisThread.m_tmach.init );
     }
 
-    Thread.add_nolock( thisThread );
-    Thread.add_nolock( thisContext );
+    version( OSX )
+    {
+        // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
+        //       data output by the compiler is bracketed by _tls_beg and
+        //       _tls_end, so make a copy of it for each thread.
+        const sz = cast(void*) &_tls_end - cast(void*) &_tls_beg;
+        auto p = gc_malloc(sz);
+        thisThread.m_tls = p[0 .. sz];
+        memcpy( p, &_tls_beg, sz );
+        // used gc_malloc so no need to free
+    }
+    else
+    {
+        auto pstart = cast(void*) &_tlsstart;
+        auto pend   = cast(void*) &_tlsend;
+        thisThread.m_tls = pstart[0 .. pend - pstart];
+    }
 
-    // Now it is safe to alloc anything from the GC
-    nextThread = new Thread();
-
+    Thread.add( thisThread );
+    Thread.add( thisContext );
+    if( Thread.sm_main !is null )
+        multiThreadedFlag = true;
     return thisThread;
+}
+
+
+version( Windows )
+{
+    /// ditto
+    extern (C) Thread thread_attachByAddr( Thread.ThreadAddr addr )
+    {
+        return thread_attachByAddrB( addr, getThreadStackBottom( addr ) );
+    }
+
+
+    /// ditto
+    extern (C) Thread thread_attachByAddrB( Thread.ThreadAddr addr, void* bstack )
+    {
+        gc_disable(); scope(exit) gc_enable();
+
+        Thread          thisThread  = new Thread();
+        Thread.Context* thisContext = &thisThread.m_main;
+        assert( thisContext == thisThread.m_curr );
+
+        version( Windows )
+        {
+            thisThread.m_addr  = addr;
+            thisContext.bstack = bstack;
+            thisContext.tstack = thisContext.bstack;
+            
+            if( addr == GetCurrentThreadId() )
+            {
+                thisThread.m_hndl = GetCurrentThreadHandle();
+            }
+            else
+            {
+                thisThread.m_hndl = OpenThreadHandle( addr );
+            }
+        }
+        else version( Posix )
+        {
+            thisThread.m_addr  = addr;
+            thisContext.bstack = bstack;
+            thisContext.tstack = thisContext.bstack;
+
+            thisThread.m_isRunning = true;
+        }
+        thisThread.m_isDaemon = true;
+        Thread.setThis( thisThread );
+
+        version( OSX )
+        {
+            thisThread.m_tmach = pthread_mach_thread_np( thisThread.m_addr );
+            assert( thisThread.m_tmach != thisThread.m_tmach.init );
+        }
+        
+        version( OSX )
+        {
+            // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
+            //       data output by the compiler is bracketed by _tls_beg and
+            //       _tls_end, so make a copy of it for each thread.
+            const sz = cast(void*) &_tls_end - cast(void*) &_tls_beg;
+            auto p = gc_malloc(sz);
+            assert( p );
+            obj.m_tls = p[0 .. sz];
+            memcpy( p, &_tls_beg, sz );
+            // used gc_malloc so no need to free
+        }
+        else version( Windows )
+        {
+            if( addr == GetCurrentThreadId() )
+            {
+                auto pstart = cast(void*) &_tlsstart;
+                auto pend   = cast(void*) &_tlsend;
+                thisThread.m_tls = pstart[0 .. pend - pstart];
+            }
+            else
+            {
+                // TODO: This seems wrong.  If we're binding threads from
+                //       a DLL, will they always have space reserved for
+                //       the TLS chunk we expect?  I don't know Windows
+                //       well enough to say.
+                auto pstart = cast(void*) &_tlsstart;
+                auto pend   = cast(void*) &_tlsend;
+                auto pos    = GetTlsDataAddress( thisThread.m_hndl );
+                thisThread.m_tls = pos[0 .. pend - pstart];
+            }
+        }
+        else
+        {
+            static assert( false, "Platform not supported." );
+        }
+
+        Thread.add( thisThread );
+        Thread.add( thisContext );
+        if( Thread.sm_main !is null )
+            multiThreadedFlag = true;
+        return thisThread;
+    }
+    
+    
+    /// This should be handled automatically by thread_attach.
+    deprecated extern (C) void thread_setNeedLock( bool need ) nothrow
+    {
+        if( need )
+            multiThreadedFlag = true;
+    }
+    
+    
+    /// Renamed to be more consistent with other extern (C) routines.
+    deprecated alias thread_attachByAddr thread_attach;
+    
+
+    /// ditto
+    deprecated alias thread_detachByAddr thread_detach;
 }
 
 
@@ -1828,15 +1976,34 @@ extern (C) void thread_detachThis()
     Thread.remove( Thread.getThis() );
 }
 
-/**
- * Deregisters the thread with the given thread identifier from use with the runtime.
- * If this routine is called for a thread which is not registered, it does nothing.
- */
-extern (C) void thread_detach( Thread.ThreadAddr addr )
+
+/// ditto
+extern (C) void thread_detachByAddr( Thread.ThreadAddr addr )
 {
-    Thread t = Thread.findThread( addr );
-    if( t )
-	Thread.remove( t );
+    if( auto t = thread_findByAddr( addr ) )
+        Thread.remove( t );
+}
+
+
+/**
+ * Search the list of all threads for a thread with the given thread identifier.
+ *
+ * Params:
+ *  addr = The thread identifier to search for.
+ * Returns:
+ *  The thread object associated with the thread identifier, null if not found.
+ */
+static Thread thread_findByAddr( Thread.ThreadAddr addr )
+{
+    synchronized( Thread.slock )
+    {
+        foreach( t; Thread )
+        {
+	        if( t.m_addr == addr )
+	            return t;
+        }
+    }
+    return null;
 }
 
 
@@ -1887,6 +2054,7 @@ shared static ~this()
 // Used for needLock below.
 private __gshared bool multiThreadedFlag = false;
 
+
 /**
  * This function is used to determine whether the the process is
  * multi-threaded.  Optimizations may only be performed on this
@@ -1901,12 +2069,6 @@ extern (C) bool thread_needLock() nothrow
     return multiThreadedFlag;
 }
 
-// a DLL needs to set multiThreadedFlag, because threads might be
-//  created from other parts of the program that are not under our control
-extern (C) void thread_setNeedLock(bool need) nothrow
-{
-    multiThreadedFlag = need;
-}
 
 // Used for suspendAll/resumeAll below.
 private __gshared uint suspendDepth = 0;
@@ -3353,7 +3515,7 @@ private:
                 pstack += int.sizeof * 20;
             }
 
-            assert( cast(uint) pstack & 0x0f == 0 );
+            assert( (cast(uint) pstack & 0x0f) == 0 );
         }
         else static if( __traits( compiles, ucontext_t ) )
         {
@@ -3376,9 +3538,9 @@ private:
     {
         // NOTE: The static ucontext instance is used to represent the context
         //       of the main application thread.
-        static ucontext_t   sm_utxt = void;
-        ucontext_t          m_utxt  = void;
-        ucontext_t*         m_ucur  = null;
+        __gshared ucontext_t    sm_utxt = void;
+        ucontext_t              m_utxt  = void;
+        ucontext_t*             m_ucur  = null;
     }
 
 

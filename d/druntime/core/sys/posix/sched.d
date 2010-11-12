@@ -70,7 +70,7 @@ else version( OSX )
         byte[__PTHREAD_MUTEX_SIZE__]    __opaque;
     }
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     struct sched_param
     {
@@ -80,13 +80,15 @@ else version( freebsd )
     enum SCHED_FIFO     = 1;
     enum SCHED_OTHER    = 2;
     enum SCHED_RR       = 3;
-    //SCHED_SPORADIC (SS|TSP)
 }
 
-int sched_getparam(pid_t, sched_param*);
-int sched_getscheduler(pid_t);
-int sched_setparam(pid_t, in sched_param*);
-int sched_setscheduler(pid_t, int, in sched_param*);
+version( Posix )
+{
+    int sched_getparam(pid_t, sched_param*);
+    int sched_getscheduler(pid_t);
+    int sched_setparam(pid_t, in sched_param*);
+    int sched_setscheduler(pid_t, int, in sched_param*);
+}
 
 //
 // Thread (THR)
@@ -103,7 +105,7 @@ else version( OSX )
 {
     int sched_yield();
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     int sched_yield();
 }
@@ -129,7 +131,7 @@ else version( OSX )
     int sched_get_priority_max(int);
     //int sched_rr_get_interval(pid_t, timespec*); // FIXME: unavailable?
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     int sched_get_priority_min(int);
     int sched_get_priority_max(int);

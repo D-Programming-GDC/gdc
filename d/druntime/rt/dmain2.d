@@ -30,7 +30,7 @@ private
     import core.stdc.stddef;
     import core.stdc.stdlib;
     import core.stdc.string;
-    //import core.stdc.stdio;	// for printf()
+    //import core.stdc.stdio;   // for printf()
 }
 
 version (Windows)
@@ -46,6 +46,26 @@ version (Windows)
     extern (Windows) wchar_t**  CommandLineToArgvW(wchar_t*, int*);
     extern (Windows) export int WideCharToMultiByte(uint, uint, wchar_t*, int, char*, int, char*, int);
     pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
+}
+
+version (all)
+{
+    Throwable _d_unhandled = null;
+
+    // TODO: Make this accept Throwable instead.
+    extern (C) void _d_setunhandled(Object* o)
+    {
+        auto t = cast(Throwable) o;
+        
+        if (t !is null)
+            t.next = _d_unhandled;
+        _d_unhandled = t;
+    }
+}
+
+version (FreeBSD)
+{
+    import core.stdc.fenv;
 }
 
 extern (C) void _STI_monitor_staticctor();
@@ -142,52 +162,52 @@ extern (C)
 
     void _d_assertm(ModuleInfo* m, uint line)
     {
-	onAssertError(m.name, line);
+        onAssertError(m.name, line);
     }
     
     void _d_assert_msg(string msg, string file, uint line)
     {
-	onAssertErrorMsg(file, line, msg);
+        onAssertErrorMsg(file, line, msg);
     }
 
     void _d_assert(string file, uint line)
     {
-	onAssertError(file, line);
+        onAssertError(file, line);
     }
 
     void _d_unittestm(ModuleInfo* m, uint line)
     {
-	_d_unittest(m.name, line);
+        _d_unittest(m.name, line);
     }
     
     void _d_unittest_msg(string msg, string file, uint line)
     {
-	onUnittestErrorMsg(file, line, msg);
+        onUnittestErrorMsg(file, line, msg);
     }
 
     void _d_unittest(string file, uint line)
     {
-	_d_unittest_msg("unittest failure", file, line);
+        _d_unittest_msg("unittest failure", file, line);
     }
 
     void _d_array_boundsm(ModuleInfo* m, uint line)
     {
-	onRangeError(m.name, line);
+        onRangeError(m.name, line);
     }
 
     void _d_array_bounds(string file, uint line)
     {
-	onRangeError(file, line);
+        onRangeError(file, line);
     }
 
     void _d_switch_errorm(ModuleInfo* m, uint line)
     {
-	onSwitchError(m.name, line);
+        onSwitchError(m.name, line);
     }
 
     void _d_switch_error(string file, uint line)
     {
-	onSwitchError(file, line);
+        onSwitchError(file, line);
     }
 
 }
@@ -217,6 +237,13 @@ shared bool _d_isHalting = false;
 extern (C) bool rt_isHalting()
 {
     return _d_isHalting;
+}
+
+__gshared string[] _d_args = null;
+
+extern (C) string[] rt_args()
+{
+    return _d_args;
 }
 
 // This variable is only ever set by a debugger on initialization so it should
@@ -307,7 +334,7 @@ int main(char[][] args);
  * function and catch any unhandled exceptions.
  */
 
-extern (C) int main(int argc, char **argv)
+extern (C) int main(int argc, char** argv)
 {
     char[][] args;
     int result;
@@ -319,6 +346,22 @@ extern (C) int main(int argc, char **argv)
          * of the main thread's stack, so save the address of that.
          */
         __osx_stack_end = cast(void*)&argv;
+    }
+
+    version (FreeBSD) version (D_InlineAsm_X86)
+    {
+        /*
+         * FreeBSD/i386 sets the FPU precision mode to 53 bit double.
+         * Make it 64 bit extended.
+         */
+        ushort fpucw;
+        asm
+        {
+            fstsw   fpucw;
+            or      fpucw, 0b11_00_111111; // 11: use 64 bit extended-precision
+                                           // 111111: mask all FP exceptions
+            fldcw   fpucw;
+        }
     }
 
     version (Posix)
@@ -365,6 +408,7 @@ extern (C) int main(int argc, char **argv)
         }
         args = am[0 .. argc];
     }
+    _d_args = cast(string[]) args;
 
     bool trapExceptions = rt_trapExceptions;
 
@@ -440,10 +484,12 @@ extern (C) int main(int argc, char **argv)
         version (Windows)
             _minit();
         _moduleCtor();
+        _moduleTlsCtor();
         if (runModuleUnitTests())
             tryExec(&runMain);
-	else
-	    result = EXIT_FAILURE;
+        else
+            result = EXIT_FAILURE;
+        _moduleTlsDtor();
         thread_joinAll();
         _d_isHalting = true;
         _moduleDtor();

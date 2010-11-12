@@ -133,7 +133,7 @@ CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/exception.o \
 
 GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
 	 gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
-	 gcc/cbridge_time.o gcc/cbridge_strerror.o
+	 gcc/cbridge_time.o gcc/cbridge_strerror.o gcc/bitmanip.o
 
 UTIL_OBJS=rt/util/console.o rt/util/ctype.o rt/util/hash.o rt/util/string.o \
 	  rt/util/utf.o
@@ -197,7 +197,7 @@ MAIN_OBJS=std/algorithm.o std/array.o std/base64.o std/bigint.o \
 	std/bind.o std/bitarray.o std/bitmanip.o std/compiler.o \
         std/container.o std/complex.o std/concurrency.o std/contracts.o \
         std/conv.o std/cpuid.o std/cstream.o std/ctype.o std/date.o \
-        std/dateparse.o std/demangle.o std/encoding.o std/format.o \
+        std/dateparse.o std/demangle.o std/encoding.o std/exception.o std/format.o \
         std/functional.o std/getopt.o std/gregorian.o std/json.o std/math.o \
         std/md5.o std/metastrings.o std/numeric.o std/openrj.o \
         std/outbuffer.o std/signals.o std/stdarg.o std/stdio.o \
@@ -227,9 +227,6 @@ WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/windows/windows.o \
 	     std/windows/syserror.o
 
 D_EXTRA_OBJS=@D_EXTRA_OBJS@
-
-# needed until instrinsics are implemented
-D_EXTRA_OBJS+=std/intrinsic.o
 
 std/stream.o: std/stream.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -I $(srcdir) -I ./$(host_alias) -c $<

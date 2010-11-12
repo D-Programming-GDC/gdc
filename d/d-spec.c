@@ -56,6 +56,16 @@
 #define LIBPHOBOS_PROFILE "-lgphobos"
 #endif
 
+/* This macro allows casting away const-ness to pass -Wcast-qual
+   warnings.  DO NOT USE THIS UNLESS YOU REALLY HAVE TO!  It should
+   only be used in certain specific cases.  One valid case is where
+   the C standard definitions or prototypes force you to.  E.g. if you
+   need to free a const object, or if you pass a const string to
+   execv, et al. */
+#ifndef CONST_CAST
+#define CONST_CAST(TYPE,X) ((__extension__(union {const TYPE _q; TYPE _nq;})(X))._nq)
+#endif
+
 static char** all_d_sources = NULL;
 static unsigned n_all_d_sources = 0;
 static char * output_directory_option = NULL;
@@ -146,7 +156,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     int num_args = 1;
 
     /* If we add libraries, should we read $(libdir)/phobos-threadlib and add that */
-    int add_thread_lib = 1;
+    //int add_thread_lib = 1; // Unused
 
     argc = *in_argc;
     argv = *in_argv;
@@ -190,15 +200,15 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                             phobos = 0;
                             args[i] |= REMOVE_ARG;
                             if (defaultlib != NULL)
-                                free(defaultlib);
+                                free(CONST_CAST(char*, defaultlib));
                             if (i + 1 == argc)
                             {
                                 error ("missing argument to '%s' option", argv[i] + 1);
                                 break;
                             }
                             defaultlib = xmalloc(sizeof(char) * (strlen(argv[++i]) + 3));
-                            strcpy(defaultlib, "-l");
-                            strcat(defaultlib, argv[i]);
+                            strcpy(CONST_CAST(char*, defaultlib), "-l");
+                            strcat(CONST_CAST(char*, defaultlib), argv[i]);
                             args[i] |= REMOVE_ARG;
                         }
                     else if (strcmp (argv[i], "-debuglib") == 0)
@@ -207,15 +217,15 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                             phobos = 0;
                             args[i] |= REMOVE_ARG;
                             if (debuglib != NULL)
-                                free(debuglib);
+                                free(CONST_CAST(char*, debuglib));
                             if (i + 1 == argc)
                             {
                                 error ("missing argument to '%s' option", argv[i] + 1);
                                 break;
                             }
                             debuglib = xmalloc(sizeof(char) * (strlen(argv[++i]) + 3));
-                            strcpy(debuglib, "-l");
-                            strcat(debuglib, argv[i]);
+                            strcpy(CONST_CAST(char*, debuglib), "-l");
+                            strcat(CONST_CAST(char*, debuglib), argv[i]);
                             args[i] |= REMOVE_ARG;
                         }
                     else if (strcmp (argv[i], "-lm") == 0

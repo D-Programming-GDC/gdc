@@ -61,25 +61,25 @@ else version( OSX )
 
     enum SEM_FAILED = cast(sem_t*) null;
 }
-else version( freebsd )
+else version( FreeBSD )
 {
-    enum SEM_MAGIC  = 0x09fa4012;
-    enum SEM_USER   = 0;
-
     alias void* sem_t;
 
     enum SEM_FAILED = cast(sem_t*) null;
 }
 
-int sem_close(sem_t*);
-int sem_destroy(sem_t*);
-int sem_getvalue(sem_t*, int*);
-int sem_init(sem_t*, int, uint);
-sem_t* sem_open(in char*, int, ...);
-int sem_post(sem_t*);
-int sem_trywait(sem_t*);
-int sem_unlink(in char*);
-int sem_wait(sem_t*);
+version( Posix )
+{
+    int sem_close(sem_t*);
+    int sem_destroy(sem_t*);
+    int sem_getvalue(sem_t*, int*);
+    int sem_init(sem_t*, int, uint);
+    sem_t* sem_open(in char*, int, ...);
+    int sem_post(sem_t*);
+    int sem_trywait(sem_t*);
+    int sem_unlink(in char*);
+    int sem_wait(sem_t*);
+}
 
 //
 // Timeouts (TMO)
@@ -96,7 +96,7 @@ else version( OSX )
 {
     int sem_timedwait(sem_t*, in timespec*);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     int sem_timedwait(sem_t*, in timespec*);
 }

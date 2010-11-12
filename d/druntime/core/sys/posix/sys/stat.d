@@ -250,33 +250,24 @@ else version( OSX )
     extern (D) bool S_ISLNK( mode_t mode )  { return S_ISTYPE( mode, S_IFLNK );  }
     extern (D) bool S_ISSOCK( mode_t mode ) { return S_ISTYPE( mode, S_IFSOCK ); }
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     struct stat_t
     {
-        dev_t   st_dev;
-        ino_t   st_ino;
-        mode_t  st_mode;
-        nlink_t st_nlink;
-        uid_t   st_uid;
-        gid_t   st_gid;
-        dev_t   st_rdev;
+        dev_t       st_dev;
+        ino_t       st_ino;
+        mode_t      st_mode;
+        nlink_t     st_nlink;
+        uid_t       st_uid;
+        gid_t       st_gid;
+        dev_t       st_rdev;
 
-        timespec st_atimespec;
-        timespec st_mtimespec;
-        timespec st_ctimespec;
-        time_t st_atime()
-        {
-            return st_atimespec.tv_sec;
-        }
-        time_t st_mtime()
-        {
-            return st_mtimespec.tv_sec;
-        }
-        time_t st_ctime()
-        {
-            return st_ctimespec.tv_sec;
-        }
+        time_t      st_atime;
+        c_long      __st_atimensec;
+        time_t      st_mtime;
+        c_long      __st_mtimensec;
+        time_t      st_ctime;
+        c_long      __st_ctimensec;
 
         off_t       st_size;
         blkcnt_t    st_blocks;
@@ -284,9 +275,11 @@ else version( freebsd )
         fflags_t    st_flags;
         uint        st_gen;
         int         st_lspare;
-        timespec    st_birthtimespec;
 
-        byte[16 - timespec.sizeof] padding;
+        time_t      st_birthtime;
+        c_long      st_birthtimensec;
+
+        ubyte[16 - timespec.sizeof] padding;
     }
 
     enum S_IRUSR    = 0000400;
@@ -325,14 +318,17 @@ else version( freebsd )
     extern (D) bool S_ISSOCK( mode_t mode ) { return S_ISTYPE( mode, S_IFSOCK ); }
 }
 
-int    chmod(in char*, mode_t);
-int    fchmod(int, mode_t);
-//int    fstat(int, stat_t*);
-//int    lstat(in char*, stat_t*);
-int    mkdir(in char*, mode_t);
-int    mkfifo(in char*, mode_t);
-//int    stat(in char*, stat_t*);
-mode_t umask(mode_t);
+version( Posix )
+{
+    int    chmod(in char*, mode_t);
+    int    fchmod(int, mode_t);
+    //int    fstat(int, stat_t*);
+    //int    lstat(in char*, stat_t*);
+    int    mkdir(in char*, mode_t);
+    int    mkfifo(in char*, mode_t);
+    //int    stat(in char*, stat_t*);
+    mode_t umask(mode_t);
+}
 
 version( linux )
 {
@@ -354,7 +350,7 @@ version( linux )
     int   stat(in char*, stat_t*);
   }
 }
-else
+else version( Posix )
 {
     int   fstat(int, stat_t*);
     int   lstat(in char*, stat_t*);
@@ -410,7 +406,7 @@ else version( OSX )
 
     int mknod(in char*, mode_t, dev_t);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     enum S_IFMT     = 0170000;
     enum S_IFBLK    = 0060000;

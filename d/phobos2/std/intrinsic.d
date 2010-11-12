@@ -20,7 +20,17 @@
  *	WIKI=Phobos/StdIntrinsic
  */
 
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+ */
 module std.intrinsic;
+
+version (GNU)
+{
+    public import gcc.bitmanip;
+}
+else
+{
 
 nothrow:
 
@@ -31,18 +41,6 @@ nothrow:
  *	The bit number of the first bit set.
  *	The return value is undefined if v is zero.
  */
-version (GNU)
-pure nothrow int bsf(uint v)
-{
-    uint m = 1;
-    uint i;
-    for (i = 0; i < 32; i++,m<<=1) {
-	if (v&m)
-	    return i;
-    }
-    return i; // supposed to be undefined
-}
-else
 pure nothrow int bsf(uint v);
 
 /**
@@ -74,59 +72,21 @@ pure nothrow int bsf(uint v);
  *  bsf(x21) = 0<br>
  *  bsr(x21) = 5
  */
-version (GNU)
-pure nothrow int bsr(uint v)
-{
-    uint m = 0x80000000;
-    uint i;
-    for (i = 32; i ; i--,m>>>=1) {
-	if (v&m)
-	    return i-1;
-    }
-    return i; // supposed to be undefined
-}
-else
 pure nothrow int bsr(uint v);
 
 /**
  * Tests the bit.
  */
-version (GNU)
-pure nothrow int bt(in uint *p, uint bitnum)
-{
-    return (p[bitnum / (uint.sizeof*8)] & (1<<(bitnum & ((uint.sizeof*8)-1)))) ? -1 : 0 ;
-}
-else
 pure nothrow int bt(in uint *p, uint bitnum);
 
 /**
  * Tests and complements the bit.
  */
-version (GNU)
-int btc(uint *p, uint bitnum)
-{
-    uint * q = p + (bitnum / (uint.sizeof*8));
-    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
-    int result = *q & mask;
-    *q ^= mask;
-    return result ? -1 : 0;
-}
-else
 int btc(uint *p, uint bitnum);
 
 /**
  * Tests and resets (sets to 0) the bit.
  */
-version (GNU)
-int btr(uint *p, uint bitnum)
-{
-    uint * q = p + (bitnum / (uint.sizeof*8));
-    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
-    int result = *q & mask;
-    *q &= ~mask;
-    return result ? -1 : 0;
-}
-else
 int btr(uint *p, uint bitnum);
 
 /**
@@ -186,16 +146,6 @@ bt(array, 1) = -1
 array = [0]:x2, [1]:x100
 </pre>
  */
-version (GNU)
-int bts(uint *p, uint bitnum)
-{
-    uint * q = p + (bitnum / (uint.sizeof*8));
-    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
-    int result = *q & mask;
-    *q |= mask;
-    return result ? -1 : 0;
-}
-else
 int bts(uint *p, uint bitnum);
 
 
@@ -204,62 +154,38 @@ int bts(uint *p, uint bitnum);
 	byte 3, byte 1 becomes byte 2, byte 2 becomes byte 1, byte 3
 	becomes byte 0.
  */
-version (GNU)
-pure nothrow uint bswap(uint v)
-{
-    return ((v&0xFF)<<24)|((v&0xFF00)<<8)|((v&0xFF0000)>>>8)|((v&0xFF000000)>>>24);
-}
-else
 pure uint bswap(uint v);
 
 
 /**
  * Reads I/O port at port_address.
  */
-version (GNU)
-    ubyte  inp(uint p) { return 0; }
-else
 ubyte  inp(uint port_address);
 
 /**
  * ditto
  */
-version (GNU)
-    ushort inpw(uint p) { return 0; }
-else
 ushort inpw(uint port_address);
 
 /**
  * ditto
  */
-version (GNU)
-    uint   inpl(uint p) { return 0; }
-else
 uint   inpl(uint port_address);
 
 
 /**
  * Writes and returns value to I/O port at port_address.
  */
-version (GNU)
-    ubyte  outp(uint p, ubyte v) { return v; }
-else
 ubyte  outp(uint port_address, ubyte value);
 
 /**
  * ditto
  */
-version (GNU)
-    ushort outpw(uint p, ushort v) { return v; }
-else
 ushort outpw(uint port_address, ushort value);
 
 /**
  * ditto
  */
-version (GNU)
-    uint   outpl(uint p, uint v) { return v; }
-else
 uint   outpl(uint port_address, uint value);
 
-
+}

@@ -20,7 +20,7 @@ module std.functional;
 
 import std.metastrings, std.stdio, std.traits, std.typecons, std.typetuple;
 // for making various functions visible in *naryFun
-import std.algorithm, std.contracts, std.conv, std.math, std.range, std.string; 
+import std.algorithm, std.conv, std.exception, std.math, std.range, std.string;
 
 /**
 Transforms a string representing an expression into a unary
@@ -48,7 +48,7 @@ template unaryFunImpl(alias fun, bool byRef, string parmName = "a")
             // enum testAsExpression = "{"~ElementType.stringof
             //     ~" "~parmName~"; return ("~fun~");}()";
             enum testAsExpression = "{ ElementType "~parmName
-                ~"; return ("~fun~");}()"; 
+                ~"; return ("~fun~");}()";
             enum testAsStmts = "{"~ElementType.stringof
                 ~" "~parmName~"; "~fun~"}()";
             // pragma(msg, "Expr: "~testAsExpression);
@@ -162,7 +162,7 @@ template binaryFunImpl(alias fun,
             else
             {
                 // Credit for this idea goes to Don Clugston
-                enum string msg = 
+                enum string msg =
                     "Bad binary function q{" ~ fun ~ "}."
                     ~" You need to use a valid D expression using symbols "
                     ~parm1Name~" of type "~ElementType1.stringof~" and "
@@ -326,33 +326,6 @@ unittest
     assert(f3(6) == 11);
 }
 
-/*private*/ template Adjoin(F...)
-{
-    template For(V...)
-    {
-        static if (F.length == 0)
-        {
-            alias TypeTuple!() Result;
-        }
-        else
-        {
-            alias F[0] headFun;
-            alias typeof({ V values; return headFun(values); }()) Head;
-            alias TypeTuple!(Head, Adjoin!(F[1 .. $]).For!(V).Result) Result;
-        }
-
-        // Tuple!(Result) fun(V...)(V a)
-        // {
-        //     typeof(return) result;
-        //     foreach (i, Unused; Result)
-        //     {
-        //         result.field[i] = F[i](a);
-        //     }
-        //     return result;
-        // }
-    }
-}
-
 /**
 Takes multiple functions and adjoins them together. The result is a
 $(XREF typecons, Tuple) with one element per passed-in function. Upon
@@ -369,27 +342,56 @@ assert(is(typeof(x) == Tuple!(bool, int)));
 assert(x._0 == true && x.field[1] == 2);
 ----
 */
-template adjoin(F...)
+template adjoin(F...) if (F.length)
 {
-    Tuple!(Adjoin!(F).For!(V).Result) adjoin(V...)(V a)
+    auto adjoin(V...)(V a)
     {
-        typeof(return) result;
-        foreach (i, Unused; Adjoin!(F).For!(V).Result)
+        static if (F.length == 1)
         {
-            result.field[i] = F[i](a);
+            return F[0](a);
         }
-        return result;
+        else static if (F.length == 2)
+        {
+            return tuple(F[0](a), F[1](a));
+        }
+        else
+        {
+            alias typeof(F[0](a)) Head;
+            Tuple!(Head, typeof(.adjoin!(F[1..$])(a)).Types) result = void;
+            foreach (i, Unused; result.Types)
+            {
+                auto store = (cast(void*) &result.field[i])
+                    [0 .. result.field[i].sizeof];
+                emplace!(typeof(result.field[i]))(store, F[i](a));
+            }
+            return result;
+        }
     }
 }
 
 unittest
 {
     static bool F1(int a) { return a != 0; }
+    auto x1 = adjoin!(F1)(5);
     static int F2(int a) { return a / 2; }
-    auto x = adjoin!(F1, F2)(5);
-    alias Adjoin!(F1, F2).For!(int).Result R;
-    assert(is(typeof(x) == Tuple!(bool, int)));
-    assert(x.field[0] && x.field[1] == 2);
+    auto x2 = adjoin!(F1, F2)(5);
+    assert(is(typeof(x2) == Tuple!(bool, int)));
+    assert(x2.field[0] && x2.field[1] == 2);
+    auto x3 = adjoin!(F1, F2, F2)(5);
+    assert(is(typeof(x3) == Tuple!(bool, int, int)));
+    assert(x3.field[0] && x3.field[1] == 2 && x3.field[2] == 2);
+
+    bool F4(int a) { return a != x1; }
+    alias adjoin!(F4) eff4;
+    static struct S
+    {
+        bool delegate(int) store;
+        int fun() { return 42 + store(5); }
+    }
+    S s;
+    s.store = (int a) { return eff4(a); };
+    auto x4 = s.fun();
+    assert(x4 == 43);
 }
 
 // /*private*/ template NaryFun(string fun, string letter, V...)
@@ -413,7 +415,7 @@ unittest
 // }
 
 // /**
-// naryFun 
+// naryFun
 //  */
 // template naryFun(string fun)
 // {
@@ -451,7 +453,14 @@ template compose(fun...) { alias composeImpl!(fun).doIt compose; }
 // Implementation of compose
 template composeImpl(fun...)
 {
-    static if (fun.length == 2)
+	static if (fun.length == 1)
+	{
+        static if (is(typeof(fun[0]) : string))
+            alias unaryFun!(fun[0]) doIt;
+        else
+            alias fun[0] doIt;
+	}
+    else static if (fun.length == 2)
     {
         // starch
         static if (is(typeof(fun[0]) : string))
@@ -482,7 +491,7 @@ template composeImpl(fun...)
    execution is the same as lexical order.
 
    Example:
-   
+
 ----
 // Read an entire text file, split the resulting string in
 // whitespace-separated tokens, and then convert each token into an
@@ -503,10 +512,10 @@ unittest
     // double baz(int a) { return a + 0.5; }
     // assert(compose!(baz, bar, foo)(1) == 2.5);
     // assert(pipe!(foo, bar, baz)(1) == 2.5);
-    
+
     // assert(compose!(baz, `to!(int)(a) + 1`, foo)(1) == 2.5);
     // assert(compose!(baz, bar)("1"[]) == 2.5);
-    
+
     // @@@BUG@@@
     //assert(compose!(baz, bar)("1") == 2.5);
 
@@ -636,24 +645,24 @@ unittest {
     static assert(is(typeof(incMyNumDel) == int delegate(ref uint)));
     auto returnVal = incMyNumDel(myNum);
     assert(myNum == 1);
-    
+
     interface I { int opCall(); }
     class C: I { int opCall() { inc(myNum); return myNum;} }
     auto c = new C;
     auto i = cast(I) c;
-    
+
     auto getvalc = toDelegate(c);
     assert(getvalc() == 2);
-    
+
     auto getvali = toDelegate(i);
     assert(getvali() == 3);
-    
+
     struct S1 { int opCall() { inc(myNum); return myNum; } }
     static assert(!is(typeof(&s1.opCall) == delegate));
     S1 s1;
     auto getvals1 = toDelegate(s1);
     assert(getvals1() == 4);
-    
+
     struct S2 { static int opCall() { return 123456; } }
     static assert(!is(typeof(&S2.opCall) == delegate));
     S2 s2;

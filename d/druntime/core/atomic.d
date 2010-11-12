@@ -20,21 +20,22 @@
  */
 module core.atomic;
 
-
-version( D_InlineAsm_X86 )
+version( GNU )
 {
-    version( X86 )
-    {
-        version = AsmX86;
-        version = AsmX86_32;
-        enum has64BitCAS = true;
-    }
-    else version( X86_64 )
-    {
-        version = AsmX86;
-        version = AsmX86_64;
-        enum has64BitCAS = true;
-    }
+    // %% TODO: Add detection in configure
+    version = GNU_Need_Atomics;
+}
+else version( D_InlineAsm_X86 )
+{
+    version = AsmX86;
+    version = AsmX86_32;
+    enum has64BitCAS = true;
+}
+else version( D_InlineAsm_X86_64 )
+{
+    version = AsmX86;
+    version = AsmX86_64;
+    enum has64BitCAS = true;
 }
 
 
@@ -49,15 +50,12 @@ private
 }
 
 
-version( AsmX86 )
+// NOTE: Strictly speaking, the x86 supports atomic operations on
+//       unaligned values.  However, this is far slower than the
+//       common case, so such behavior should be prohibited.
+private bool atomicValueIsProperlyAligned(T)( size_t addr )
 {
-    // NOTE: Strictly speaking, the x86 supports atomic operations on
-    //       unaligned values.  However, this is far slower than the
-    //       common case, so such behavior should be prohibited.
-    private bool atomicValueIsProperlyAligned(T)( size_t addr )
-    {
-        return addr % T.sizeof == 0;
-    }
+    return addr % T.sizeof == 0;
 }
 
 
@@ -98,6 +96,187 @@ version( ddoc )
      {
          return false;
      }
+}
+else version( GNU )
+{
+    public import gcc.builtins;
+
+    T atomicOp(string op, T, V1)( ref shared T val, V1 mod )
+        if( is( NakedType!(V1) == NakedType!(T) ) )
+    in
+    {
+        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
+        //       4 byte alignment, so use size_t as the align type here.
+        static if( T.sizeof > size_t.sizeof )
+            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) &val ) );
+        else
+            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) &val ) );
+    }
+    body
+    {
+        // binary operators
+        //
+        // +    -   *   /   %   ^^  &
+        // |    ^   <<  >>  >>> ~   in
+        // ==   !=  <   <=  >   >=
+        static if( op == "+"  || op == "-"  || op == "*"  || op == "/"   ||
+                   op == "%"  || op == "^^" || op == "&"  || op == "|"   ||
+                   op == "^"  || op == "<<" || op == ">>" || op == ">>>" ||
+                   op == "~"  || // skip "in"
+                   op == "==" || op == "!=" || op == "<"  || op == "<="  ||
+                   op == ">"  || op == ">=" )
+        {
+            T get = val; // compiler can do atomic load
+            mixin( "return get " ~ op ~ " mod;" );
+        }
+        else
+        // assignment operators
+        //
+        // +=   -=  *=  /=  %=  ^^= &=
+        // |=   ^=  <<= >>= >>>=    ~=
+        static if( op == "+=" || op == "-="  || op == "*="  || op == "/=" ||
+                   op == "%=" || op == "^^=" || op == "&="  || op == "|=" ||
+                   op == "^=" || op == "<<=" || op == ">>=" || op == ">>>=" ) // skip "~="
+        {
+            T get, set;
+            
+            do
+            {
+                get = set = atomicLoad!(T)( val );
+                mixin( "set " ~ op ~ " mod;" );
+            } while( !cas( &val, get, set ) );
+            return set;
+        }
+        else
+        {
+            static assert( false, "Operation not supported." );
+        }
+    }
+    
+    
+    bool cas(T,V1,V2)( shared(T)* val, const V1 oldval, const V2 newval )
+        if( is( NakedType!(V1) == NakedType!(T) ) &&
+            is( NakedType!(V2) == NakedType!(T) ) )
+    in
+    {
+        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
+        //       4 byte alignment, so use size_t as the align type here.
+        static if( T.sizeof > size_t.sizeof )
+            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) val ) );
+        else
+            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) val ) );
+    }
+    body
+    {
+    version( GNU_Need_Atomics )
+    {
+        synchronized
+        {
+            if (*val == oldval)
+                *val = newval;
+        }
+        return oldval is *val;
+    }
+    else
+    {
+        static if( T.sizeof == byte.sizeof )
+        {
+            //////////////////////////////////////////////////////////////////
+            // 1 Byte CAS
+            //////////////////////////////////////////////////////////////////
+
+            return __sync_bool_compare_and_swap_1(cast(void*)val, oldval, newval);
+
+        }
+        else static if( T.sizeof == short.sizeof )
+        {
+            //////////////////////////////////////////////////////////////////
+            // 2 Byte CAS
+            //////////////////////////////////////////////////////////////////
+
+            return __sync_bool_compare_and_swap_2(cast(void*)val, oldval, newval);
+
+        }
+        else static if( T.sizeof == int.sizeof )
+        {
+            //////////////////////////////////////////////////////////////////
+            // 4 Byte CAS
+            //////////////////////////////////////////////////////////////////
+
+            return __sync_bool_compare_and_swap_4(cast(void*)val, oldval, newval);
+
+        }
+        else static if( T.sizeof == long.sizeof )
+        {
+            //////////////////////////////////////////////////////////////////
+            // 8 Byte CAS on a 32-Bit Processor
+            //////////////////////////////////////////////////////////////////
+
+            return __sync_bool_compare_and_swap_8(cast(void*)val, oldval, newval);
+
+        }
+        else
+        {
+            static assert( false, "Invalid template type specified." );
+        }
+    } // GNU_Need_Atomics
+    }
+    
+    
+    private
+    {
+        T atomicLoad(T)( const ref shared T val )
+        {
+        version( GNU_Need_Atomics )
+        {
+            volatile T result = val;
+            return result;
+        }
+        else
+        {
+            static if( T.sizeof == byte.sizeof )
+            {
+                //////////////////////////////////////////////////////////////////
+                // 1 Byte Load
+                //////////////////////////////////////////////////////////////////
+
+                return __sync_fetch_and_add_1(cast(void*)val, 0);
+
+            }
+            else static if( T.sizeof == short.sizeof )
+            {
+                //////////////////////////////////////////////////////////////////
+                // 2 Byte Load
+                //////////////////////////////////////////////////////////////////
+
+                return __sync_fetch_and_add_2(cast(void*)val, 0);
+
+            }
+            else static if( T.sizeof == int.sizeof )
+            {
+                //////////////////////////////////////////////////////////////////
+                // 4 Byte Load
+                //////////////////////////////////////////////////////////////////
+
+                return __sync_fetch_and_add_4(cast(void*)val, 0);
+
+            }
+            else static if( T.sizeof == long.sizeof )
+            {
+                //////////////////////////////////////////////////////////////////
+                // 8 Byte Load on a 32-Bit Processor
+                //////////////////////////////////////////////////////////////////
+
+                return __sync_fetch_and_add_8(cast(void*)val, 0);
+
+            }
+            else
+            {
+                static assert( false, "Invalid template type specified." );
+            }
+        } // GNU_Need_Atomics
+        }
+    }
 }
 else version( AsmX86_32 )
 {

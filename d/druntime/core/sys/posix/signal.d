@@ -21,9 +21,6 @@ public import core.sys.posix.sys.types; // for pid_t
 
 extern (C):
 
-private alias void function(int) sigfn_t;
-private alias void function(int, siginfo_t*, void*) sigactfn_t;
-
 //
 // Required
 //
@@ -86,24 +83,30 @@ int raise(int sig);                    (defined in core.stdc.signal)
 
 //sig_atomic_t (defined in core.stdc.signal)
 
-enum
+version( Posix )
 {
-  SIGEV_SIGNAL,
-  SIGEV_NONE,
-  SIGEV_THREAD
+    private alias void function(int) sigfn_t;
+    private alias void function(int, siginfo_t*, void*) sigactfn_t;
+    
+    enum
+    {
+      SIGEV_SIGNAL,
+      SIGEV_NONE,
+      SIGEV_THREAD
+    }
+
+    union sigval
+    {
+        int     sival_int;
+        void*   sival_ptr;
+    }
+
+    private extern (C) int __libc_current_sigrtmin();
+    private extern (C) int __libc_current_sigrtmax();
+
+    alias __libc_current_sigrtmin SIGRTMIN;
+    alias __libc_current_sigrtmax SIGRTMAX;
 }
-
-union sigval
-{
-    int     sival_int;
-    void*   sival_ptr;
-}
-
-private extern (C) int __libc_current_sigrtmin();
-private extern (C) int __libc_current_sigrtmax();
-
-alias __libc_current_sigrtmin SIGRTMIN;
-alias __libc_current_sigrtmax SIGRTMAX;
 
 version( linux )
 {
@@ -153,7 +156,7 @@ else version( OSX )
     enum SIGUSR2    = 31;
     enum SIGURG     = 16;
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     //SIGABRT (defined in core.stdc.signal)
     enum SIGALRM    = 14;
@@ -178,25 +181,42 @@ else version( freebsd )
     enum SIGURG     = 16;
 }
 
-struct sigaction_t
+version( FreeBSD )
 {
-    static if( true /* __USE_POSIX199309 */ )
+    struct sigaction_t
     {
         union
         {
             sigfn_t     sa_handler;
             sigactfn_t  sa_sigaction;
         }
+        int      sa_flags;
+        sigset_t sa_mask;
     }
-    else
+}
+else
+version( Posix )
+{
+    struct sigaction_t
     {
-        sigfn_t     sa_handler;
-    }
-    sigset_t        sa_mask;
-    int             sa_flags;
+        static if( true /* __USE_POSIX199309 */ )
+        {
+            union
+            {
+                sigfn_t     sa_handler;
+                sigactfn_t  sa_sigaction;
+            }
+        }
+        else
+        {
+            sigfn_t     sa_handler;
+        }
+        sigset_t        sa_mask;
+        int             sa_flags;
 
-    version( OSX ) {} else {
-    void function() sa_restorer;
+        version( OSX ) {} else {
+        void function() sa_restorer;
+        }
     }
 }
 
@@ -433,7 +453,7 @@ else version( OSX )
     int sigsuspend(in sigset_t*);
     int sigwait(in sigset_t*, int*);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     struct sigset_t
     {
@@ -484,7 +504,7 @@ else version( freebsd )
     }
 
     int kill(pid_t, int);
-    int sigaction(int, in sigaction_t*, sigaction_t);
+    int sigaction(int, in sigaction_t*, sigaction_t*);
     int sigaddset(sigset_t*, int);
     int sigdelset(sigset_t*, int);
     int sigemptyset(sigset_t *);
@@ -806,6 +826,125 @@ else version( OSX )
     int sigpause(int);
     int sigrelse(int);
 }
+else version( FreeBSD )
+{
+    // No SIGPOLL on *BSD
+    enum SIGPROF        = 27;
+    enum SIGSYS         = 12;
+    enum SIGTRAP        = 5;
+    enum SIGVTALRM      = 26;
+    enum SIGXCPU        = 24;
+    enum SIGXFSZ        = 25;
+
+    enum
+    {
+        SA_ONSTACK      = 0x0001,
+        SA_RESTART      = 0x0002,
+        SA_RESETHAND    = 0x0004,
+        SA_NODEFER      = 0x0010,
+        SA_NOCLDWAIT    = 0x0020,
+        SA_SIGINFO      = 0x0040,
+    }
+
+    enum
+    {
+        SS_ONSTACK = 0x0001,
+        SS_DISABLE = 0x0004,
+    }
+
+    enum MINSIGSTKSZ = 512 * 4;
+    enum SIGSTKSZ    = (MINSIGSTKSZ + 32768);
+;
+    //ucontext_t (defined in core.sys.posix.ucontext)
+    //mcontext_t (defined in core.sys.posix.ucontext)
+
+    struct stack_t
+    {
+        void*   ss_sp;
+        size_t  ss_size;
+        int     ss_flags;
+    }
+
+    struct sigstack
+    {
+        void*   ss_sp;
+        int     ss_onstack;
+    }
+
+    enum
+    {
+        ILL_ILLOPC = 1,
+        ILL_ILLOPN,
+        ILL_ILLADR,
+        ILL_ILLTRP,
+        ILL_PRVOPC,
+        ILL_PRVREG,
+        ILL_COPROC,
+        ILL_BADSTK,
+    }
+
+    enum
+    {
+        BUS_ADRALN = 1,
+        BUS_ADRERR,
+        BUS_OBJERR,
+    }
+
+    enum
+    {
+        SEGV_MAPERR = 1,
+        SEGV_ACCERR,
+    }
+
+    enum
+    {
+        FPE_INTOVF = 1,
+        FPE_INTDIV,
+        FPE_FLTDIV,
+        FPE_FLTOVF,
+        FPE_FLTUND,
+        FPE_FLTRES,
+        FPE_FLTINV,
+        FPE_FLTSUB,
+    }
+
+    enum
+    {
+        TRAP_BRKPT = 1,
+        TRAP_TRACE,
+    }
+
+    enum
+    {
+        CLD_EXITED = 1,
+        CLD_KILLED,
+        CLD_DUMPED,
+        CLD_TRAPPED,
+        CLD_STOPPED,
+        CLD_CONTINUED,
+    }
+
+    enum
+    {
+        POLL_IN = 1,
+        POLL_OUT,
+        POLL_MSG,
+        POLL_ERR,
+        POLL_PRI,
+        POLL_HUP,
+    }
+
+    //sigfn_t bsd_signal(int sig, sigfn_t func);
+    sigfn_t sigset(int sig, sigfn_t func);
+
+    int killpg(pid_t, int);
+    int sigaltstack(in stack_t*, stack_t*);
+    int sighold(int);
+    int sigignore(int);
+    int siginterrupt(int, int);
+    int sigpause(int);
+    int sigrelse(int);
+}
 
 //
 // Timer (TMR)
@@ -837,7 +976,7 @@ else version( OSX )
         c_long  tv_nsec;
     }
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     struct timespec
     {
@@ -900,7 +1039,7 @@ version( linux )
     int sigtimedwait(in sigset_t*, siginfo_t*, in timespec*);
     int sigwaitinfo(in sigset_t*, siginfo_t*);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     struct sigevent
     {
@@ -941,7 +1080,7 @@ else version( OSX )
     int pthread_kill(pthread_t, int);
     int pthread_sigmask(int, in sigset_t*, sigset_t*);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     int pthread_kill(pthread_t, int);
     int pthread_sigmask(int, in sigset_t*, sigset_t*);

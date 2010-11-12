@@ -105,16 +105,16 @@ else version( OSX )
 
     int poll(pollfd*, nfds_t, int);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
+    alias uint nfds_t;
+
     struct pollfd
     {
         int     fd;
         short   events;
         short   revents;
     };
-
-    alias uint nfds_t;
 
     enum
     {

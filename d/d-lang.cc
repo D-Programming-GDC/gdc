@@ -271,22 +271,29 @@ prefixed_path(const char * path)
         return xstrdup(path);
 }
 
-static int
-d_cpp_forall_callback(cpp_reader *, cpp_hashnode * hn, void *)
+static void
+add_gnu_version_condition(const char * ident, unsigned int len)
 {
-    const char * str = (const char *) hn->ident.str;
-    unsigned int len = hn->ident.len;
     char * d_ident = new char[4 + len + 1];
-    if (len > 4 && str[0] == '_' && str[1] == '_' &&
-        str[len - 1] == '_' && str[len - 2] == '_')
+    if (len > 4 && ident[0] == '_' && ident[1] == '_' &&
+        ident[len - 1] == '_' && ident[len - 2] == '_')
     {
-        str += 2;
+        ident += 2;
         len -= 4;
     }
     strcpy(d_ident, "GNU_");
-    strncpy(d_ident + 4, str, len);
+    strncpy(d_ident + 4, ident, len);
     d_ident[len + 4] = '\0';
     VersionCondition::addPredefinedGlobalIdent(d_ident);
+}
+
+static int
+d_cpp_forall_callback(cpp_reader *, cpp_hashnode * hn, void *)
+{
+    const char * str = (const char *)hn->ident.str;
+    // Filter out unneeded builtin defines.
+    if (hn->type == NT_MACRO)
+        add_gnu_version_condition(str, hn->ident.len);
     return 1;
 }
 
@@ -295,7 +302,9 @@ cpp_reader * parse_in;
 extern "C" void
 builtin_define_std (const char *macro)
 {
-    // Do nothing.  No need for these (yet).
+    assert(macro);
+    unsigned int len = strlen(macro);
+    add_gnu_version_condition(macro, len);
 }
 
 static bool
@@ -971,7 +980,8 @@ d_parse_file (int /*set_yydebug*/)
     an_output_module = NULL;
     Array modules; // vs. outmodules... = [an_output_module] or modules
     modules.reserve(num_in_fnames);
-    AsyncRead *aw;
+    AsyncRead * aw = NULL;
+    Module * m = NULL;
 
     // %% FIX
     if ( ! main_input_filename ) {
@@ -1029,7 +1039,7 @@ d_parse_file (int /*set_yydebug*/)
         }
 
         Identifier * id = Lexer::idPool(name);
-        Module * m = new Module(the_fname, id, global.params.doDocComments, global.params.doHdrGeneration);
+        m = new Module(the_fname, id, global.params.doDocComments, global.params.doHdrGeneration);
         if (! strcmp(in_fnames[i], main_input_filename))
             an_output_module = m;
         modules.push(m);
@@ -1051,8 +1061,6 @@ d_parse_file (int /*set_yydebug*/)
     // to know the current module...
 
     assert(an_output_module);
-
-    Module * m;
 
     //global.params.verbose = 1;
 

@@ -24,10 +24,11 @@ module std.numeric;
 import std.algorithm;
 import std.array;
 import std.bitmanip;
+import std.conv;
 import std.typecons;
 import std.math;
 import std.traits;
-import std.contracts;
+import std.exception;
 import std.random;
 import std.string;
 import std.range;
@@ -39,7 +40,6 @@ import std.intrinsic;
 version(unittest)
 {
     import std.stdio;
-    import std.conv;
 }
 /// Format flags for CustomFloat.
 public enum CustomFloatFlags {
@@ -179,9 +179,12 @@ struct CustomFloat(
         alias CustomFloatFlags Flags;
 
         // Facilitate converting numeric types to custom float
-        union ToBinary(F) if(is(CustomFloat!(F.sizeof*8))) {
+        union ToBinary(F) if(is(CustomFloat!(F.sizeof*8)) || is(F == real)) {
             F set;
-            CustomFloat!(F.sizeof*8) get;
+
+            // If on Linux or Mac, where 80-bit reals are padded, ignore the
+            // padding.
+            CustomFloat!(min(F.sizeof*8, 80)) get;
 
             // Convert F to the correct binary type.
             static typeof(get) opCall(F value) {
@@ -359,7 +362,7 @@ struct CustomFloat(
 
     /// Returns: number of decimal digits of precision
     static @property size_t dig(){
-        return cast(size_t) log10( 1uL << precision - (flags&Flags.storeNormalized != 0));
+        return cast(size_t) log10( 1uL << precision - ((flags&Flags.storeNormalized) != 0));
     }
 
     /// Returns: smallest increment to the value 1
@@ -382,7 +385,7 @@ struct CustomFloat(
     }
 
     /// the number of bits in mantissa
-    enum mant_dig = precision + (flags&Flags.storeNormalized != 0);
+    enum mant_dig = precision + ((flags&Flags.storeNormalized) != 0);
 
     /// Returns: maximum int value such that 10<sup>max_10_exp</sup> is representable
     static @property int max_10_exp(){ return cast(int) log10( +max ); }

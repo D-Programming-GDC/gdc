@@ -14,7 +14,7 @@ module std.array;
 
 import std.c.stdio;
 import core.memory;
-import std.algorithm, std.contracts, std.conv, std.encoding, std.range,
+import std.algorithm, std.conv, std.encoding, std.exception, std.range,
     std.string, std.traits, std.typecons, std.utf;
 version(unittest) private import std.stdio;
 
@@ -29,7 +29,7 @@ auto a = array([1, 2, 3, 4, 5][]);
 assert(a == [ 1, 2, 3, 4, 5 ]);
 ----
  */
-ElementType!Range[] array(Range)(Range r) if (isForwardRange!Range)
+ElementType!Range[] array(Range)(Range r) if (isInputRange!Range)
 {
     alias ElementType!Range E;
     static if (hasLength!Range)
@@ -62,7 +62,7 @@ ElementType!Range[] array(Range)(Range r) if (isForwardRange!Range)
     }
     else
     {
-        auto a = Appender!(E[])();
+        auto a = appender!(E[])();
         foreach (e; r)
         {
             a.put(e);
@@ -381,15 +381,32 @@ Example:
 void main()
 {
     int[] a = [ 1, 2, 3 ];
-    assert(a.front == 1);
+    assert(a.back == 3);
 }
 ----
 */
-ref typeof(A.init[0]) back(A)(A a) if (is(typeof(A.init[0]))
-        && !isNarrowString!A)
+ref typeof(A.init[0]) back(A)(A a)
+if (is(typeof(A.init[0])) && !isNarrowString!A)
 {
-    enforce(a.length, "Attempting to fetch the back of an empty array");
+    // @@@BUG@@@ The assert below crashes the unittest due to a bug in
+    //   the compiler
+    version (bug4426)
+    {
+        assert(a.length, "Attempting to fetch the back of an empty array");
+    }
+    else
+    {
+        assert(a.length);
+    }
     return a[$ - 1];
+}
+
+unittest
+{
+    int[] a = [ 1, 2, 3 ];
+    assert(a.back == 3);
+    a.back += 4;
+    assert(a.back == 7);
 }
 
 dchar back(A)(A a)
@@ -423,27 +440,6 @@ if (is(typeof(A.init[0])) && isNarrowString!A && a[0].sizeof < 4)
         throw new UtfException("Invalid UTF character at end of string");
     }
 }
-
-
-/**
-Implements the range interface primitive $(D put) for built-in
-arrays. Due to the fact that nonmember functions can be called with
-the first argument using the dot notation, $(D array.put(e)) is
-equivalent to $(D put(array, e)).
-
-Example:
-----
-void main()
-{
-    int[] a = [ 1, 2, 3 ];
-    int[] b = a;
-    a.put(5);
-    assert(a == [ 2, 3 ]);
-    assert(b == [ 5, 2, 3 ]);
-}
-----
-*/
-void put(T, E)(ref T[] a, E e) { assert(a.length); a[0] = e; a = a[1 .. $]; }
 
 // overlap
 /*
@@ -651,7 +647,105 @@ struct Appender(A : T[], T)
 {
 private:
     Unqual!(T)[] * pArray;
-    size_t _capacity;
+
+    void allocateAndWriteCapacity()
+    {
+        immutable chunkSize = GC.sizeOf(pArray.ptr);
+        immutable cap = chunkSize / T.sizeof;
+        immutable surplus = chunkSize - pArray.length * T.sizeof;
+        immutable capRepSize = cap < ubyte.max ? 1 : cap < ushort.max ? 3
+            : cap < uint.max ? 7 : 15;
+        if (surplus >= capRepSize)
+        {
+            // Enough room
+            writeCapacity(cap);
+        }
+        else
+        {
+            immutable len = pArray.length;
+            *pArray = (cast(Unqual!(T)*) GC.realloc(pArray.ptr,
+                            chunkSize + capRepSize))[0 .. len];
+            return allocateAndWriteCapacity();
+        }
+    }
+
+    void writeCapacity(size_t cap)
+    {
+        assert(pArray);
+        assert(pArray.ptr);
+        auto p = cast(ubyte*) (pArray.ptr + pArray.length);
+        if (cap < ubyte.max)
+        {
+            *p = cast(ubyte) cap;
+        }
+        else if (cap < ushort.max)
+        {
+            *p++ = ubyte.max;
+            *p++ = cast(ubyte) cap;
+            *p++ = cast(ubyte) (cap >> 8);
+        }
+        else if (cap < uint.max)
+        {
+            *p++ = ubyte.max;
+            *p++ = ubyte.max;
+            *p++ = ubyte.max;
+            *p++ = cast(ubyte) cap;
+            *p++ = cast(ubyte) (cap >> 8);
+            *p++ = cast(ubyte) (cap >> 16);
+            *p++ = cast(ubyte) (cap >> 24);
+        }
+        else
+        {
+            static if (size_t.max == ulong.max)
+            {
+                *p++ = ubyte.max;
+                *p++ = ubyte.max;
+                *p++ = ubyte.max;
+                *p++ = ubyte.max;
+                *p++ = ubyte.max;
+                *p++ = ubyte.max;
+                *p++ = ubyte.max;
+                *p++ = cast(ubyte) cap;
+                *p++ = cast(ubyte) (cap >> 8);
+                *p++ = cast(ubyte) (cap >> 16);
+                *p++ = cast(ubyte) (cap >> 24);
+                *p++ = cast(ubyte) (cap >> 32L);
+                *p++ = cast(ubyte) (cap >> 40L);
+                *p++ = cast(ubyte) (cap >> 48L);
+                *p++ = cast(ubyte) (cap >> 56L);
+            }
+        }
+    }
+
+    size_t readCapacity()
+    {
+        assert(pArray);
+        assert(pArray.ptr);
+        auto p = cast(ubyte*) (pArray.ptr + pArray.length);
+        if (*p < ubyte.max)
+        {
+            return *p;
+        }
+        if (p[1] < ubyte.max && p[2] < ubyte.max)
+        {
+            return p[1] + (p[2] << 8);
+        }
+        if (p[3] < ubyte.max && p[4] < ubyte.max && p[5] < ubyte.max &&
+                p[6] < ubyte.max)
+        {
+            return p[3] + (p[4] << 8) + (p[5] << 16) + (p[6] << 24);
+        }
+        else
+        {
+            static if (size_t.max == ulong.max)
+            {
+                return p[7] + (p[8] << 8) + (p[9] << 16) + (p[10] << 24)
+                    + (p[11] << 32) + (p[12] << 40) + (p[13] << 48) +
+                    (p[14] << 56);
+            }
+        }
+        assert(0);
+    }
 
 public:
 /**
@@ -664,7 +758,7 @@ will allocate and use a new array.
     {
         pArray = cast(Unqual!(T)[] *) p;
         if (!pArray) pArray = (new typeof(*pArray)[1]).ptr;
-        _capacity = GC.sizeOf(pArray.ptr) / T.sizeof;
+        allocateAndWriteCapacity();
     }
 
 /**
@@ -679,7 +773,10 @@ Returns the managed array.
 Returns the capacity of the array (the maximum number of elements the
 managed array can accommodate before triggering a reallocation).
  */
-    size_t capacity() const { return _capacity; }
+    size_t capacity()
+    {
+        return pArray && pArray.ptr ? readCapacity() : 0;
+    }
 
 /**
 Appends one item to the managed array.
@@ -698,7 +795,7 @@ Appends one item to the managed array.
         {
             if (!pArray) pArray = (new typeof(*pArray)[1]).ptr;
             immutable len = pArray.length;
-            if (len < _capacity)
+            if (len < capacity)
             {
                 // Should do in-place construction here
                 pArray.ptr[len] = item;
@@ -708,7 +805,7 @@ Appends one item to the managed array.
             {
                 // Time to reallocate, do it and cache capacity
                 *pArray ~= item;
-                _capacity = GC.sizeOf(pArray.ptr) / T.sizeof;
+                allocateAndWriteCapacity();
             }
         }
     }
@@ -742,8 +839,7 @@ Clears the managed array.
     {
         if (!pArray) return;
         pArray.length = 0;
-        //_capacity = .capacity(pArray.ptr) / T.sizeof;
-        _capacity = GC.sizeOf(pArray.ptr) / T.sizeof;
+        writeCapacity(GC.sizeOf(pArray.ptr) / T.sizeof);
     }
 }
 
@@ -766,6 +862,7 @@ unittest
 
     int[] a = [ 1, 2 ];
     auto app2 = appender(&a);
+    assert(app2.data == [ 1, 2 ]);
     app2.put(3);
     app2.put([ 4, 5, 6 ][]);
     assert(app2.data == [ 1, 2, 3, 4, 5, 6 ]);

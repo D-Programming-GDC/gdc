@@ -48,14 +48,14 @@ version( linux )
     private
     {
         alias c_long __fd_mask;
-        enum __NFDBITS = 8 * __fd_mask.sizeof;
+        enum uint __NFDBITS = 8 * __fd_mask.sizeof;
 
-        extern (D) int __FDELT( int d )
+        extern (D) auto __FDELT( int d )
         {
             return d / __NFDBITS;
         }
 
-        extern (D) int __FDMASK( int d )
+        extern (D) auto __FDMASK( int d )
         {
             return cast(__fd_mask) 1 << ( d % __NFDBITS );
         }
@@ -73,7 +73,7 @@ version( linux )
         fdset.fds_bits[__FDELT( fd )] &= ~__FDMASK( fd );
     }
 
-    extern (D) sizediff_t FD_ISSET( int fd, fd_set* fdset )
+    extern (D) int FD_ISSET( int fd, fd_set* fdset )
     {
         return fdset.fds_bits[__FDELT( fd )] & __FDMASK( fd );
     }
@@ -164,17 +164,52 @@ else version( OSX )
     int pselect(int, fd_set*, fd_set*, fd_set*, in timespec*, in sigset_t*);
     int select(int, fd_set*, fd_set*, fd_set*, timeval*);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     private
     {
-        enum uint _NFDBITS   = c_ulong.sizeof * 8;
+        alias c_ulong __fd_mask;
+        enum _NFDBITS = __fd_mask.sizeof * 8;
     }
 
     enum uint FD_SETSIZE = 1024;
 
     struct fd_set
     {
-        c_ulong fds_bits[(FD_SETSIZE + (_NFDBITS - 1)) / _NFDBITS];
+        __fd_mask __fds_bits[(FD_SETSIZE + (_NFDBITS - 1)) / _NFDBITS];
     }
+
+    extern (D) __fd_mask __fdset_mask(uint n)
+    {
+        return cast(__fd_mask) 1 << (n % _NFDBITS);
+    }
+
+    extern (D) void FD_CLR( int n, fd_set* p )
+    {
+        p.__fds_bits[n / _NFDBITS] &= ~__fdset_mask(n);
+    }
+
+    extern (D) bool FD_ISSET( int n, fd_set* p )
+    {
+        return (p.__fds_bits[n / _NFDBITS] & __fdset_mask(n)) != 0;
+    }
+
+    extern (D) void FD_SET( int n, fd_set* p )
+    {
+        p.__fds_bits[n / _NFDBITS] |= __fdset_mask(n);
+    }
+
+    extern (D) void FD_ZERO( fd_set* p )
+    {
+        fd_set *_p;
+        size_t _n;
+
+        _p = p;
+        _n = (FD_SETSIZE + (_NFDBITS - 1)) / _NFDBITS;
+        while (_n > 0)
+            _p.__fds_bits[--_n] = 0;
+    }
+
+    int pselect(int, fd_set*, fd_set*, fd_set*, in timespec*, in sigset_t*);
+    int select(int, fd_set*, fd_set*, fd_set*, timeval*);
 }

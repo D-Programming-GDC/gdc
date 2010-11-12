@@ -22,11 +22,13 @@ module object;
 
 private
 {
+    import core.atomic;
     import core.stdc.string;
     import core.stdc.stdlib;
     import rt.util.hash;
     import rt.util.string;
     debug(PRINTF) import core.stdc.stdio;
+    import core.stdc.stdio; // ib
 
     extern (C) void onOutOfMemoryError();
     extern (C) Object _d_newclass(TypeInfo_Class ci);
@@ -156,7 +158,8 @@ bool opEquals(Object lhs, Object rhs)
     if (lhs is null || rhs is null) return false;
 
     // If same exact type => one call to method opEquals
-    if (typeid(lhs) == typeid(rhs)) return lhs.opEquals(rhs);
+    if (typeid(lhs) is typeid(rhs) || typeid(lhs).opEquals(typeid(rhs)))
+        return lhs.opEquals(rhs);
 
     // General case => symmetric calls to method opEquals
     return lhs.opEquals(rhs) && rhs.opEquals(lhs);
@@ -454,8 +457,8 @@ class TypeInfo_StaticArray : TypeInfo
 {
     override string toString()
     {
-        char[10] tmp = void;
-        return cast(string)(value.toString() ~ "[" ~ tmp.intToString(len) ~ "]");
+        char[20] tmp = void;
+        return cast(string)(value.toString() ~ "[" ~ tmp.ulongToString(len) ~ "]");
     }
 
     override equals_t opEquals(Object o)
@@ -1149,14 +1152,14 @@ class Throwable : Object
 
     override string toString()
     {
-        char[10] tmp = void;
+        char[20] tmp = void;
         char[]   buf;
 
         for (Throwable e = this; e !is null; e = e.next)
         {
             if (e.file)
             {
-               buf ~= e.classinfo.name ~ "@" ~ e.file ~ "(" ~ tmp.intToString(e.line) ~ "): " ~ e.msg;
+               buf ~= e.classinfo.name ~ "@" ~ e.file ~ "(" ~ tmp.ulongToString(e.line) ~ "): " ~ e.msg;
             }
             else
             {
@@ -1731,7 +1734,8 @@ extern (C) void _moduleCtor()
     debug(PRINTF) printf("_moduleinfo_dtors = x%x\n", cast(void*)_moduleinfo_dtors);
     _moduleIndependentCtors();
     _moduleCtor2(_moduleinfo_array, 0);
-    _moduleTlsCtor();
+    // NOTE: _moduleTlsCtor is now called manually by dmain2
+    //_moduleTlsCtor();
 }
 
 extern (C) void _moduleIndependentCtors()
@@ -1798,12 +1802,14 @@ void _moduleCtor2(ModuleInfo*[] mi, int skip)
 extern (C) void _moduleTlsCtor()
 {
     debug(PRINTF) printf("_moduleTlsCtor()\n");
+    printf("_moduleTlsCtor()\n");
+    fflush(stdout);
 
     void* p = alloca(_moduleinfo_array.length * ubyte.sizeof);
     auto flags = cast(ubyte[])p[0 .. _moduleinfo_array.length];
     flags[] = 0;
 
-    foreach (i, m; _moduleinfo_array)
+    foreach (uint i, m; _moduleinfo_array)
     {
 	if (m)
 	    m.index = i;
@@ -1867,7 +1873,8 @@ extern (C) void _moduleDtor()
 {
     debug(PRINTF) printf("_moduleDtor(): %d modules\n", _moduleinfo_dtors_i);
 
-    _moduleTlsDtor();
+    // NOTE: _moduleTlsDtor is now called manually by dmain2
+    //_moduleTlsDtor();
     for (uint i = _moduleinfo_dtors_i; i-- != 0;)
     {
         ModuleInfo* m = _moduleinfo_dtors[i];
@@ -1935,17 +1942,45 @@ struct Monitor
     IMonitor impl;
     /* internal */
     DEvent[] devt;
+    size_t   refs;
     /* stuff */
 }
 
 Monitor* getMonitor(Object h)
 {
-    return cast(Monitor*) (cast(void**) h)[1];
+    return cast(Monitor*) h.__monitor;
 }
 
 void setMonitor(Object h, Monitor* m)
 {
-    (cast(void**) h)[1] = m;
+    h.__monitor = m;
+}
+
+void setSameMutex(shared Object ownee, shared Object owner)
+in
+{
+    assert(ownee.__monitor is null);
+}
+body
+{
+    auto m = cast(shared(Monitor)*) owner.__monitor;
+
+    if (m is null)
+    {
+        _d_monitor_create(cast(Object) owner);
+        m = cast(shared(Monitor)*) owner.__monitor;
+    }
+    
+    auto i = m.impl;
+    if (i is null)
+    {
+        atomicOp!("+=")(m.refs, cast(size_t)1);
+        ownee.__monitor = owner.__monitor;
+        return;
+    }
+    // If m.impl is set (ie. if this is a user-created monitor), assume
+    // the monitor is garbage collected and simply copy the reference.
+    ownee.__monitor = owner.__monitor;
 }
 
 extern (C) void _d_monitor_create(Object);
@@ -1955,6 +1990,8 @@ extern (C) int  _d_monitor_unlock(Object);
 
 extern (C) void _d_monitordelete(Object h, bool det)
 {
+    // det is true when the object is being destroyed deterministically (ie.
+    // when it is explicitly deleted or is a scope object whose time is up).
     Monitor* m = getMonitor(h);
 
     if (m !is null)
@@ -1962,13 +1999,22 @@ extern (C) void _d_monitordelete(Object h, bool det)
         IMonitor i = m.impl;
         if (i is null)
         {
-            _d_monitor_devt(m, h);
-            _d_monitor_destroy(h);
-            setMonitor(h, null);
+            auto s = cast(shared(Monitor)*) m;
+            if(!atomicOp!("-=")(s.refs, cast(size_t) 1))
+            {
+                _d_monitor_devt(m, h);
+                _d_monitor_destroy(h);
+                setMonitor(h, null);
+            }
             return;
         }
+        // NOTE: Since a monitor can be shared via setSameMutex it isn't safe
+        //       to explicitly delete user-created monitors--there's no
+        //       refcount and it may have multiple owners.
+        /+
         if (det && (cast(void*) i) !is (cast(void*) h))
             delete i;
+        +/
         setMonitor(h, null);
     }
 }
@@ -2409,7 +2455,7 @@ version (none)
     private void _bailOut(string file, int line, in char[] msg)
     {
         char[21] buf;
-        throw new Exception(cast(string)(file ~ "(" ~ intToString(buf[], line) ~ "): " ~ (msg ? msg : "Enforcement failed")));
+        throw new Exception(cast(string)(file ~ "(" ~ ulongToString(buf[], line) ~ "): " ~ (msg ? msg : "Enforcement failed")));
     }
 }
 

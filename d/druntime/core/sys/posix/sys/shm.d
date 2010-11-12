@@ -80,7 +80,7 @@ version( linux )
     int   shmdt(in void*);
     int   shmget(key_t, size_t, int);
 }
-else version( freebsd )
+else version( FreeBSD )
 {
     enum SHM_RDONLY     = 010000;
     enum SHM_RND        = 020000;
@@ -88,21 +88,29 @@ else version( freebsd )
 
     alias c_ulong   shmatt_t;
 
+    struct shmid_ds_old // <= FreeBSD7
+    {
+        ipc_perm_old    shm_perm;
+        int             shm_segsz;
+        pid_t           shm_lpid;
+        pid_t           shm_cpid;
+        short           shm_nattch;
+        time_t          shm_atime;
+        time_t          shm_dtime;
+        time_t          shm_ctime;
+        void*           shm_internal;
+    }
+
     struct shmid_ds
     {
-        ipc_perm    shm_perm;
-        size_t      shm_segsz;
-        time_t      shm_atime;
-        c_ulong     __unused1;
-        time_t      shm_dtime;
-        c_ulong     __unused2;
-        time_t      shm_ctime;
-        c_ulong     __unused3;
-        pid_t       shm_cpid;
-        pid_t       shm_lpid;
-        shmatt_t    shm_nattch;
-        c_ulong     __unused4;
-        c_ulong     __unused5;
+         ipc_perm    shm_perm;
+         int         shm_segsz;
+         pid_t       shm_lpid;
+         pid_t       shm_cpid;
+         short       shm_nattch;
+         time_t      shm_atime;
+         time_t      shm_dtime;
+         time_t      shm_ctime;
     }
 
     void* shmat(int, in void*, int);

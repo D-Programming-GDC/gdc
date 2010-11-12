@@ -56,7 +56,6 @@
  * Copyright: Copyright Andrei Alexandrescu 2007 - 2009.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   $(WEB erdani.org, Andrei Alexandrescu)
- * Credits:   Brad Roberts came up with the name $(D_PARAM contracts).
  *
  *          Copyright Andrei Alexandrescu 2007 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
@@ -68,7 +67,7 @@ module std.variant;
 import std.traits, std.c.string, std.typetuple, std.conv;
 version(unittest)
 {
-    import std.contracts, std.stdio;
+    import std.exception, std.stdio;
 }
 
 private template maxSize(T...)
@@ -189,7 +188,7 @@ private:
         = &handler!(void);
     union
     {
-        ubyte[size] store = void;
+        ubyte[size] store;
         // conservatively mark the region as pointers
         static if (size >= (void*).sizeof)
             void* p[size / (void*).sizeof];
@@ -236,14 +235,14 @@ private:
     {
         static A* getPtr(void* untyped)
         {
-            static if (A.sizeof <= size)
+            if (untyped)
             {
-                return cast(A*) untyped;
+                static if (A.sizeof <= size)
+                    return cast(A*) untyped;
+                else
+                    return *cast(A**) untyped;
             }
-            else
-            {
-                return *cast(A**) untyped;
-            }
+            return null;
         }
         auto zis = getPtr(pStore);
         // Input: TypeInfo object

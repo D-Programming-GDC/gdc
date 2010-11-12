@@ -32,6 +32,10 @@
 tree
 convert (tree type, tree expr)
 {
+    // Check this first before passing to getDType.
+    if (g.irs->isErrorMark(type) || g.irs->isErrorMark(TREE_TYPE(expr)))
+        return error_mark_node;
+            
     Type * target_type = g.irs->getDType(type);
     Type * expr_type = g.irs->getDType(TREE_TYPE(expr));
     if (target_type && expr_type)
@@ -4241,7 +4245,7 @@ IfStatement::toIR(IRState * irs)
 }
 
 void
-ForeachStatement::toIR(IRState* irs)
+ForeachStatement::toIR(IRState *)
 {
     ::error("ForeachStatement::toIR: we shouldn't emit this (%s)", toChars());
     abort();
@@ -4373,7 +4377,7 @@ ForeachStatement::toIR(IRState* irs)
 
 #if V2
 void
-ForeachRangeStatement::toIR(IRState * irs)
+ForeachRangeStatement::toIR(IRState *)
 {
     ::error("ForeachRangeStatement::toIR: we shouldn't emit this (%s)", toChars());
     abort();
@@ -4473,7 +4477,7 @@ DoStatement::toIR(IRState * irs)
 }
 
 void
-WhileStatement::toIR(IRState* irs)
+WhileStatement::toIR(IRState *)
 {
     ::error("WhileStatement::toIR: we shouldn't emit this (%s)", toChars());
     abort();

@@ -24,7 +24,7 @@ module std.date;
 
 private import std.stdio;
 private import std.dateparse;
-import std.c.stdlib, std.contracts, std.conv;
+import std.c.stdlib, std.conv, std.exception;
 
 /**
  * $(D d_time) is a signed arithmetic type giving the time elapsed
@@ -578,11 +578,11 @@ unittest
   // Grab the date and time relative to UTC
   lNow = std.date.getUTCtime();
   // Convert this into the local date and time for display.
-  lNowString = std.date.toString(lNow);
+  lNowString = std.date.UTCtoString(lNow);
  * ------------------------------------
  */
 
-string toString(d_time time)
+string UTCtoString(d_time time)
 {
     // Years are supposed to be -285616 .. 285616, or 7 digits
     // "Tue Apr 02 02:04:57 GMT-0800 1996"
@@ -615,13 +615,16 @@ string toString(d_time time)
             hourFromTime(t), minFromTime(t), secFromTime(t),
             sign, hr, mn,
             cast(long)yearFromTime(t));
-    
+
     // Ensure no buggy buffer overflows
     //printf("len = %d, buffer.length = %d\n", len, buffer.length);
     assert(len < buffer.length);
     buffer = buffer[0 .. len];
     return assumeUnique(buffer);
 }
+
+/// Alias for UTCtoString (deprecated).
+deprecated alias UTCtoString toString;
 
 /***********************************
  * Converts t into a text string of the form: "Www, dd Mmm yyyy hh:mm:ss UTC".
@@ -642,10 +645,10 @@ string toUTCString(d_time t)
             &monstr[monthFromTime(t) * 3],
             yearFromTime(t),
             hourFromTime(t), minFromTime(t), secFromTime(t));
-    
+
     // Ensure no buggy buffer overflows
     assert(len < buffer.length);
-    
+
     return cast(string) buffer[0 .. len];
 }
 
@@ -929,7 +932,7 @@ version (Posix)
     d_time getLocalTZA()
     {
         time_t t;
-        
+
         time(&t);
         version (OSX)
         {

@@ -952,13 +952,13 @@ void FileName::ensurePathExists(const char *path)
 #else
                 if (mkdir(path, 0777))
 #endif
-		{
-		    /* Don't error out if another instance of dmd just created
-		     * this directory
-		     */
-		    if (errno != EEXIST)
-			error("cannot create directory %s", path);
-		}
+                {
+                    /* Don't error out if another instance of dmd just created
+                     * this directory
+                     */
+                    if (errno != EEXIST)
+                        error("cannot create directory %s", path);
+                }
             }
         }
     }
