@@ -260,7 +260,7 @@ struct Type : Object
     virtual int iscomplex();
     virtual int isscalar();
     virtual int isunsigned();
-    virtual int isauto();
+    virtual int isscope();
     virtual int isString();
     virtual int isAssignable();
     virtual int checkBoolean(); // if can be converted to boolean value
@@ -606,6 +606,7 @@ struct TypeDelegate : TypeNext
     Type *syntaxCopy();
     Type *semantic(Loc loc, Scope *sc);
     d_uns64 size(Loc loc);
+    unsigned alignsize();
     MATCH implicitConvTo(Type *to);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     Expression *defaultInit(Loc loc);
@@ -827,7 +828,7 @@ struct TypeClass : Type
     Expression *defaultInit(Loc loc);
     int isZeroInit(Loc loc);
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
-    int isauto();
+    int isscope();
     int checkBoolean();
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();

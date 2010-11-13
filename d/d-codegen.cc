@@ -3595,7 +3595,6 @@ IRState::checkGoto(Statement * stmt, LabelDsymbol * label)
             break;
         }
     }
-#if V1
     // Push forward referenced gotos.
     if (! found)
     {
@@ -3603,7 +3602,6 @@ IRState::checkGoto(Statement * stmt, LabelDsymbol * label)
             label->statement->fwdrefs = new Array();
         label->statement->fwdrefs->push(getLabelBlock(label, stmt));
     }
-#endif
 }
 
 void

@@ -402,7 +402,7 @@ void DeclarationStatement::scopeCode(Scope *sc, Statement **sentry, Statement **
             if (v)
             {   Expression *e;
 
-                e = v->callAutoDtor(sc);
+                e = v->callScopeDtor(sc);
                 if (e)
                 {
                     //printf("dtor is: "); e->print();
@@ -1776,7 +1776,7 @@ Lagain:
             if (!sc->func->vresult && tret && tret != Type::tvoid)
             {
                 VarDeclaration *v = new VarDeclaration(loc, tret, Id::result, NULL);
-                v->noauto = 1;
+                v->noscope = 1;
                 v->semantic(sc);
                 if (!sc->insert(v))
                     assert(0);
@@ -2146,8 +2146,6 @@ Statement *ForeachRangeStatement::semantic(Scope *sc)
         {
             AddExp ea(loc, lwr, upr);
             Expression *e = ea.typeCombine(sc);
-            if (e->op == TOKerror)
-                return this;
             arg->type = ea.type->mutableOf();
             lwr = ea.e1;
             upr = ea.e2;
@@ -2361,7 +2359,7 @@ Statement *IfStatement::semantic(Scope *sc)
 
         Type *t = arg->type ? arg->type : condition->type;
         match = new VarDeclaration(loc, t, arg->ident, NULL);
-        match->noauto = 1;
+        match->noscope = 1;
         match->semantic(scd);
         if (!scd->insert(match))
             assert(0);
@@ -3127,6 +3125,7 @@ void CaseRangeStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     first->toCBuffer(buf, hgs);
     buf->writestring(": .. case ");
     last->toCBuffer(buf, hgs);
+    buf->writebyte(':');
     buf->writenl();
     statement->toCBuffer(buf, hgs);
 }
@@ -3516,7 +3515,7 @@ Statement *ReturnStatement::semantic(Scope *sc)
             if (!fd->vresult)
             {   // Declare vresult
                 VarDeclaration *v = new VarDeclaration(loc, tret, Id::result, NULL);
-                v->noauto = 1;
+                v->noscope = 1;
                 v->storage_class |= STCresult;
                 v->semantic(scx);
                 if (!scx->insert(v))
@@ -4121,6 +4120,7 @@ Statement *TryCatchStatement::semantic(Scope *sc)
                 error("catch at %s hides catch at %s", sj, si);
         }
     }
+
 #ifndef IN_GCC
     if (!body || body->isEmpty())
     {

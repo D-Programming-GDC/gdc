@@ -402,6 +402,104 @@ unittest
 }
 
 
+private @safe void dummySafeFunc(alias FN)()
+{
+        alias ParameterTypeTuple!FN Params;
+        static if (Params.length)
+        {
+                Params args;
+                FN(args);
+        }
+        else
+        {
+                FN();
+        }
+}
+
+
+/**
+Checks the func that is @safe or @trusted
+
+Example:
+--------------------
+@system int add(int a, int b) {return a+b;}
+@safe int sub(int a, int b) {return a-b;}
+@trusted int mul(int a, int b) {return a*b;}
+
+bool a = isSafe!(add);
+assert(a == false);
+bool b = isSafe!(sub);
+assert(b == true);
+bool c = isSafe!(mul);
+assert(c == true);
+--------------------
+ */
+template isSafe(alias FN)
+{
+    static if (is(typeof(FN) == function))
+    {
+        enum isSafe = (functionAttributes!(FN) == FunctionAttribute.SAFE
+                    || functionAttributes!(FN) == FunctionAttribute.TRUSTED);
+    }
+    else
+    {
+        enum isSafe = is(typeof({dummySafeFunc!FN();}()));
+    }
+}
+
+@safe
+unittest
+{
+    interface Set
+    {
+        int systemF() @system;
+        int trustedF() @trusted;
+        int safeF() @safe;
+    }
+    static assert(isSafe!((int a){}));
+    static assert(isSafe!(Set.safeF));
+    static assert(isSafe!(Set.trustedF));
+    static assert(!isSafe!(Set.systemF));
+}
+
+
+/**
+Checks the func that is @system
+
+Example:
+--------------------
+@system int add(int a, int b) {return a+b;}
+@safe int sub(int a, int b) {return a-b;}
+@trusted int mul(int a, int b) {return a*b;}
+
+bool a = isUnsafe!(add);
+assert(a == true);
+bool b = isUnsafe!(sub);
+assert(b == false);
+bool c = isUnsafe!(mul);
+assert(c == false);
+--------------------
+ */
+template isUnsafe(alias FN)
+{
+        enum isUnsafe = !isSafe!FN;
+}
+
+@safe
+unittest
+{
+    interface Set
+    {
+        int systemF() @system;
+        int trustedF() @trusted;
+        int safeF() @safe;
+    }
+    static assert(!isUnsafe!((int a){}));
+    static assert(!isUnsafe!(Set.safeF));
+    static assert(!isUnsafe!(Set.trustedF));
+    static assert(isUnsafe!(Set.systemF));
+}
+
 /**
 Returns the calling convention of function as a string.
 
@@ -850,6 +948,8 @@ private template hasRawPointerImpl(T...)
             enum hasRawAliasing = !is(U == immutable);
         else static if (is(T[0] foo : U[], U) && !isStaticArray!(T[0]))
             enum hasRawAliasing = !is(U == immutable);
+        else static if (isAssociativeArray!(T[0]))
+            enum hasRawAliasing = !is(T[0] == immutable);
         else
             enum hasRawAliasing = false;
         enum result = hasRawAliasing || hasRawPointerImpl!(T[1 .. $]).result;
@@ -868,6 +968,8 @@ private template HasRawLocalPointerImpl(T...)
             enum hasRawLocalAliasing = !is(U == immutable) && !is(U == shared);
         else static if (is(T[0] foo : U[], U) && !isStaticArray!(T[0]))
             enum hasRawLocalAliasing = !is(U == immutable) && !is(U == shared);
+        else static if (isAssociativeArray!(T[0]))
+            enum hasRawLocalAliasing = !is(T[0] == immutable) && !is(T[0] == shared);
         else
             enum hasRawLocalAliasing = false;
         enum result = hasRawLocalAliasing || HasRawLocalPointerImpl!(T[1 .. $]).result;
@@ -940,6 +1042,8 @@ unittest
     static assert(hasRawAliasing!(S10));
     struct S11 { S6 a; int b; }
     static assert(!hasRawAliasing!(S11));
+    static assert(hasRawAliasing!(int[string]));
+    static assert(!hasRawAliasing!(immutable(int[string])));
 }
 
 /*
@@ -978,54 +1082,57 @@ static assert(!hasRawLocalAliasing!(S6));
 ----
 */
 
-private template hasRawLocalAliasing(T...)
+private template hasRawUnsharedAliasing(T...)
 {
-    enum hasRawLocalAliasing
+    enum hasRawUnsharedAliasing
         = HasRawLocalPointerImpl!(RepresentationTypeTuple!(T)).result;
 }
 
 unittest
 {
 // simple types
-    static assert(!hasRawLocalAliasing!(int));
-    static assert(hasRawLocalAliasing!(char*));
-    static assert(!hasRawLocalAliasing!(shared char*));
+    static assert(!hasRawUnsharedAliasing!(int));
+    static assert(hasRawUnsharedAliasing!(char*));
+    static assert(!hasRawUnsharedAliasing!(shared char*));
 // references aren't raw pointers
-    static assert(!hasRawLocalAliasing!(Object));
-    static assert(!hasRawLocalAliasing!(int));
+    static assert(!hasRawUnsharedAliasing!(Object));
+    static assert(!hasRawUnsharedAliasing!(int));
     struct S1 { int z; }
-    static assert(!hasRawLocalAliasing!(S1));
+    static assert(!hasRawUnsharedAliasing!(S1));
     struct S2 { int* z; }
-    static assert(hasRawLocalAliasing!(S2));
+    static assert(hasRawUnsharedAliasing!(S2));
     struct S3 { shared int* z; }
-    static assert(!hasRawLocalAliasing!(S3));
+    static assert(!hasRawUnsharedAliasing!(S3));
     struct S4 { int a; int* z; int c; }
-    static assert(hasRawLocalAliasing!(S4));
+    static assert(hasRawUnsharedAliasing!(S4));
     struct S5 { int a; shared int* z; int c; }
-    static assert(!hasRawLocalAliasing!(S5));
+    static assert(!hasRawUnsharedAliasing!(S5));
     struct S6 { int a; int z; int c; }
-    static assert(!hasRawLocalAliasing!(S6));
+    static assert(!hasRawUnsharedAliasing!(S6));
     struct S7 { int a; Object z; int c; }
-    static assert(!hasRawLocalAliasing!(S7));
+    static assert(!hasRawUnsharedAliasing!(S7));
     union S8 { int a; int b; }
-    static assert(!hasRawLocalAliasing!(S8));
+    static assert(!hasRawUnsharedAliasing!(S8));
     union S9 { int a; int * b; }
-    static assert(hasRawLocalAliasing!(S9));
+    static assert(hasRawUnsharedAliasing!(S9));
     union S10 { int a; shared int * b; }
-    static assert(!hasRawLocalAliasing!(S10));
+    static assert(!hasRawUnsharedAliasing!(S10));
     typedef int* S11;
-    static assert(hasRawLocalAliasing!(S11));
+    static assert(hasRawUnsharedAliasing!(S11));
     typedef shared int* S12;
-    static assert(hasRawLocalAliasing!(S12));
+    static assert(hasRawUnsharedAliasing!(S12));
     enum S13 { a };
-    static assert(!hasRawLocalAliasing!(S13));
+    static assert(!hasRawUnsharedAliasing!(S13));
     // indirect members
     struct S14 { S9 a; int b; }
-    static assert(hasRawLocalAliasing!(S14));
+    static assert(hasRawUnsharedAliasing!(S14));
     struct S15 { S10 a; int b; }
-    static assert(!hasRawLocalAliasing!(S15));
+    static assert(!hasRawUnsharedAliasing!(S15));
     struct S16 { S6 a; int b; }
-    static assert(!hasRawLocalAliasing!(S16));
+    static assert(!hasRawUnsharedAliasing!(S16));
+    static assert(hasRawUnsharedAliasing!(int[string]));
+    static assert(!hasRawUnsharedAliasing!(shared(int[string])));
+    static assert(!hasRawUnsharedAliasing!(immutable(int[string])));
 }
 
 /*
@@ -1061,26 +1168,26 @@ representation includes at least one non-immutable non-shared object
 reference.
 */
 
-private template hasLocalObjects(T...)
+private template hasUnsharedObjects(T...)
 {
     static if (T.length == 0)
     {
-        enum hasLocalObjects = false;
+        enum hasUnsharedObjects = false;
     }
     else static if (is(T[0] U == typedef))
     {
-        enum hasLocalObjects = hasLocalObjects!(U, T[1 .. $]);
+        enum hasUnsharedObjects = hasUnsharedObjects!(U, T[1 .. $]);
     }
     else static if (is(T[0] == struct))
     {
-        enum hasLocalObjects = hasLocalObjects!(
+        enum hasUnsharedObjects = hasUnsharedObjects!(
             RepresentationTypeTuple!(T[0]), T[1 .. $]);
     }
     else
     {
-        enum hasLocalObjects = (is(T[0] == class) &&
+        enum hasUnsharedObjects = (is(T[0] == class) &&
                                 !is(T[0] == immutable) && !is(T[0] == shared)) ||
-            hasLocalObjects!(T[1 .. $]);
+            hasUnsharedObjects!(T[1 .. $]);
     }
 }
 
@@ -1089,12 +1196,14 @@ Returns $(D true) if and only if $(D T)'s representation includes at
 least one of the following: $(OL $(LI a raw pointer $(D U*) and $(D U)
 is not immutable;) $(LI an array $(D U[]) and $(D U) is not
 immutable;) $(LI a reference to a class type $(D C) and $(D C) is not
-immutable.))
+immutable.) $(LI an associative array that is not immutable.)
+$(LI a delegate.))
 */
 
 template hasAliasing(T...)
 {
-    enum hasAliasing = hasRawAliasing!(T) || hasObjects!(T);
+    enum hasAliasing = hasRawAliasing!(T) || hasObjects!(T) ||
+        anySatisfy!(isDelegate, T);
 }
 
 unittest
@@ -1107,12 +1216,16 @@ unittest
     static assert(!hasAliasing!(S3));
     struct X { float[3] vals; }
     static assert(!hasAliasing!X);
+    static assert(hasAliasing!(uint[uint]));
+    static assert(!hasAliasing!(immutable(uint[uint])));
+    static assert(hasAliasing!(void delegate()));
 }
 
 /**
 Returns $(D true) if and only if $(D T)'s representation includes at
 least one of the following: $(OL $(LI a raw pointer $(D U*);) $(LI an
-array $(D U[]);) $(LI a reference to a class type $(D C).))
+array $(D U[]);) $(LI a reference to a class type $(D C).)
+$(LI an associative array.) $(LI a delegate.))
  */
 
 template hasIndirections(T)
@@ -1129,7 +1242,8 @@ template hasIndirectionsImpl(T...)
     else
     {
         enum hasIndirectionsImpl = isPointer!(T[0]) || isDynamicArray!(T[0]) ||
-            is (T[0] : const(Object)) || hasIndirectionsImpl!(T[1 .. $]);
+            is (T[0] : const(Object)) || isAssociativeArray!(T[0]) ||
+            isDelegate!(T[0]) || hasIndirectionsImpl!(T[1 .. $]);
     }
 }
 
@@ -1141,48 +1255,78 @@ unittest
     static assert(hasIndirections!(S2));
     struct S3 { int a; immutable Object b; }
     static assert(hasIndirections!(S3));
+    static assert(hasIndirections!(int[string]));
+    static assert(hasIndirections!(void delegate()));
 }
+
+// These are for backwards compatibility, are intentionally lacking ddoc,
+// and should eventually be deprecated.
+alias hasUnsharedAliasing hasLocalAliasing;
+alias hasRawUnsharedAliasing hasRawLocalAliasing;
+alias hasUnsharedObjects hasLocalObjects;
 
 /**
 Returns $(D true) if and only if $(D T)'s representation includes at
 least one of the following: $(OL $(LI a raw pointer $(D U*) and $(D U)
 is not immutable or shared;) $(LI an array $(D U[]) and $(D U) is not
 immutable or shared;) $(LI a reference to a class type $(D C) and
-$(D C) is not immutable or shared.))
+$(D C) is not immutable or shared.) $(LI an associative array that is not
+immutable or shared.) $(LI a delegate that is not shared.))
 */
 
-template hasLocalAliasing(T...)
+template hasUnsharedAliasing(T...)
 {
-    enum hasLocalAliasing = hasRawLocalAliasing!(T) || hasLocalObjects!(T);
+    enum hasUnsharedAliasing = hasRawUnsharedAliasing!(T) ||
+        anySatisfy!(unsharedDelegate, T) || hasUnsharedObjects!(T);
+}
+
+private template unsharedDelegate(T)
+{
+    enum bool unsharedDelegate = isDelegate!T && !is(T == shared);
 }
 
 unittest
 {
     struct S1 { int a; Object b; }
-    static assert(hasLocalAliasing!(S1));
+    static assert(hasUnsharedAliasing!(S1));
     struct S2 { string a; }
-    static assert(!hasLocalAliasing!(S2));
+    static assert(!hasUnsharedAliasing!(S2));
     struct S3 { int a; immutable Object b; }
-    static assert(!hasLocalAliasing!(S3));
+    static assert(!hasUnsharedAliasing!(S3));
 
     struct S4 { int a; shared Object b; }
-    static assert(!hasLocalAliasing!(S4));
+    static assert(!hasUnsharedAliasing!(S4));
     struct S5 { char[] a; }
-    static assert(hasLocalAliasing!(S5));
+    static assert(hasUnsharedAliasing!(S5));
     struct S6 { shared char[] b; }
-    static assert(!hasLocalAliasing!(S6));
+    static assert(!hasUnsharedAliasing!(S6));
     struct S7 { float[3] vals; }
-    static assert(!hasLocalAliasing!(S7));
+    static assert(!hasUnsharedAliasing!(S7));
+
+    static assert(hasUnsharedAliasing!(uint[uint]));
+    static assert(hasUnsharedAliasing!(void delegate()));
+    static assert(!hasUnsharedAliasing!(shared(void delegate())));
 }
 
 /**
- True if a type defines an elaborate copy constructor. Elaborate copy
- constructors are introduced by defining $(D this(this)) for a $(D
- struct). (Non-struct types do not have elaborate copy constructors.)
+ True if $(D S) or any type embedded directly in the representation of $(D S)
+ defines an elaborate copy constructor. Elaborate copy constructors are
+ introduced by defining $(D this(this)) for a $(D struct). (Non-struct types
+ never have elaborate copy constructors.)
  */
-template hasElaborateCopyConstructor(T)
+template hasElaborateCopyConstructor(S)
 {
-    enum hasElaborateCopyConstructor = is(typeof(&T.__postblit));
+    static if(!is(S == struct))
+    {
+        enum bool hasElaborateCopyConstructor = false;
+    }
+    else
+    {
+        enum hasElaborateCopyConstructor = is(typeof({
+            S s;
+            return &s.__postblit;
+        })) || anySatisfy!(.hasElaborateCopyConstructor, typeof(S.tupleof));
+    }
 }
 
 unittest
@@ -1193,17 +1337,39 @@ unittest
         this(this) {}
     }
     static assert(hasElaborateCopyConstructor!S);
+
+    struct S2
+    {
+        uint num;
+    }
+
+    struct S3
+    {
+        uint num;
+        S s;
+    }
+
+    static assert(!hasElaborateCopyConstructor!S2);
+    static assert(hasElaborateCopyConstructor!S3);
 }
 
 /**
-   True if a type defines an elaborate assignmentq. Elaborate
-   assignments are introduced by defining $(D opAssign(typeof(this)))
-   or $(D opAssign(ref typeof(this))) for a $(D struct). (Non-struct
-   types do not have elaborate assignments.)
+   True if $(D S) or any type directly embedded in the representation of $(D S)
+   defines an elaborate assignmentq. Elaborate assignments are introduced by
+   defining $(D opAssign(typeof(this))) or $(D opAssign(ref typeof(this)))
+   for a $(D struct). (Non-struct types never have elaborate assignments.)
  */
-template hasElaborateAssign(T)
+template hasElaborateAssign(S)
 {
-    enum hasElaborateAssign = is(typeof(T.init.opAssign(T.init)));
+    static if(!is(S == struct))
+    {
+        enum bool hasElaborateAssign = false;
+    }
+    else
+    {
+        enum hasElaborateAssign = is(typeof(S.init.opAssign(S.init))) ||
+            anySatisfy!(.hasElaborateAssign, typeof(S.tupleof));
+    }
 }
 
 unittest
@@ -1215,6 +1381,8 @@ unittest
     static assert(hasElaborateAssign!S1);
     struct S2 { void opAssign(S1) {} }
     static assert(!hasElaborateAssign!S2);
+    struct S3 { S s; }
+    static assert(hasElaborateAssign!S3);
 }
 
 /**
@@ -1247,6 +1415,147 @@ unittest
     struct C2 { int blah(); }
     static assert(hasMember!(C2, "blah"));
 }
+
+
+/**
+Retrieves the members of an enumerated type $(D enum E).
+
+Params:
+ E = An enumerated type. $(D E) may have duplicated values.
+
+Returns:
+ Static tuple composed of the members of the enumerated type $(D E).
+ The members are arranged in the same order as declared in $(D E).
+
+Note:
+ Returned values are strictly typed with $(D E). Thus, the following code
+ does not work without the explicit cast:
+--------------------
+enum E : int { a, b, c }
+int[] abc = cast(int[]) [ EnumMembers!E ];
+--------------------
+ Cast is not necessary if the type of the variable is inferred. See the
+ example below.
+
+Examples:
+ Creating an array of enumerated values:
+--------------------
+enum Sqrts : real
+{
+    one   = 1,
+    two   = 1.41421,
+    three = 1.73205,
+}
+auto sqrts = [ EnumMembers!Sqrts ];
+assert(sqrts == [ Sqrts.one, Sqrts.two, Sqrts.three ]);
+--------------------
+
+ A generic function $(D rank(v)) in the following example uses this
+ template for finding a member $(D e) in an enumerated type $(D E).
+--------------------
+// Returns i if e is the i-th enumerator of E.
+size_t rank(E)(E e)
+    if (is(E == enum))
+{
+    foreach (i, member; EnumMembers!E)
+    {
+        if (e == member)
+            return i;
+    }
+    assert(0, "Not an enum member");
+}
+
+enum Mode
+{
+    read  = 1,
+    write = 2,
+    map   = 4,
+}
+assert(rank(Mode.read ) == 0);
+assert(rank(Mode.write) == 1);
+assert(rank(Mode.map  ) == 2);
+--------------------
+ */
+template EnumMembers(E)
+    if (is(E == enum))
+{
+    alias EnumSpecificMembers!(E, __traits(allMembers, E)) EnumMembers;
+}
+
+private template EnumSpecificMembers(Enum, names...)
+{
+    static if (names.length > 0)
+    {
+        alias TypeTuple!(
+                WithIdentifier!(names[0])
+                    .Symbolize!(__traits(getMember, Enum, names[0])),
+                EnumSpecificMembers!(Enum, names[1 .. $])
+            ) EnumSpecificMembers;
+    }
+    else
+    {
+        alias TypeTuple!() EnumSpecificMembers;
+    }
+}
+
+unittest
+{
+    enum A { a }
+    static assert([ EnumMembers!A ] == [ A.a ]);
+    enum B { a, b, c, d, e }
+    static assert([ EnumMembers!B ] == [ B.a, B.b, B.c, B.d, B.e ]);
+}
+
+unittest    // typed enums
+{
+    enum A : string { a = "alpha", b = "beta" }
+    static assert([ EnumMembers!A ] == [ A.a, A.b ]);
+
+    static struct S
+    {
+        int value;
+        int opCmp(S rhs) const nothrow { return value - rhs.value; }
+    }
+    enum B : S { a = S(1), b = S(2), c = S(3) }
+    static assert([ EnumMembers!B ] == [ B.a, B.b, B.c ]);
+}
+
+unittest    // duplicated values
+{
+    enum A
+    {
+        a = 0, b = 0,
+        c = 1, d = 1, e
+    }
+    static assert([ EnumMembers!A ] == [ A.a, A.b, A.c, A.d, A.e ]);
+}
+
+// Supply the specified identifier to an constant value.
+//
+// The identifier of each enum member will be exposed via this template
+// once the BUG4732 is fixed.
+//
+//   enum E { member }
+//   assert(__traits(identifier, EnumMembers!E[0]) == "member");
+//
+private template WithIdentifier(string ident)
+{
+    static if (ident == "Symbolize")
+    {
+        template Symbolize(alias value)
+        {
+            enum Symbolize = value;
+        }
+    }
+    else
+    {
+        mixin("template Symbolize(alias "~ ident ~")"
+             ~"{"
+                 ~"alias "~ ident ~" Symbolize;"
+             ~"}");
+    }
+}
+
 
 //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::://
 // Classes and Interfaces
@@ -1659,7 +1968,16 @@ template CommonType(T...)
     static if (!T.length)
         alias void CommonType;
     else static if (T.length == 1)
-        alias T[0] CommonType;
+    {
+        static if(is(typeof(T[0])))
+        {
+            alias typeof(T[0]) CommonType;
+        }
+        else
+        {
+            alias T[0] CommonType;
+        }
+    }
     else static if (is(typeof(true ? T[0].init : T[1].init) U))
         alias CommonType!(U, T[2 .. $]) CommonType;
     else
@@ -1669,10 +1987,15 @@ template CommonType(T...)
 unittest
 {
     alias CommonType!(int, long, short) X;
-    assert(is(X == long));
+    static assert(is(X == long));
     alias CommonType!(char[], int, long, short) Y;
-    assert(is(Y == void), Y.stringof);
+    static assert(is(Y == void), Y.stringof);
+    static assert(is(CommonType!(3) == int));
+    static assert(is(CommonType!(double, 4, float) == double));
+    static assert(is(CommonType!(string, char[]) == const(char)[]));
+    static assert(is(CommonType!(3, 3U) == uint));
 }
+
 
 /**
  * Returns a tuple with all possible target types of an implicit
@@ -1769,6 +2092,34 @@ unittest
     static assert(isImplicitlyConvertible!(const(char), char));
     static assert(isImplicitlyConvertible!(char, wchar));
     static assert(!isImplicitlyConvertible!(wchar, char));
+}
+
+/**
+Returns $(D true) iff a value of type $(D Rhs) can be assigned to a variable of
+type $(D Lhs).
+
+Examples:
+---
+static assert(isAssignable!(long, int));
+static assert(!isAssignable!(int, long));
+static assert(isAssignable!(const(char)[], string));
+static assert(!isAssignable!(string, char[]));
+---
+*/
+template isAssignable(Lhs, Rhs) {
+    enum bool isAssignable = is(typeof({
+        Lhs l;
+        Rhs r;
+        l = r;
+        return l;
+    }));
+}
+
+unittest {
+    static assert(isAssignable!(long, int));
+    static assert(!isAssignable!(int, long));
+    static assert(isAssignable!(const(char)[], string));
+    static assert(!isAssignable!(string, char[]));
 }
 
 
@@ -2303,6 +2654,55 @@ unittest
 }
 
 /**
+Returns the target type of a pointer.
+*/
+template pointerTarget(T : T*) {
+    alias T pointerTarget;
+}
+
+unittest {
+    static assert(is(pointerTarget!(int*) == int));
+    static assert(!is(pointerTarget!int));
+    static assert(is(pointerTarget!(long*) == long));
+}
+
+/**
+ * Returns $(D true) if T can be iterated over using a $(D foreach) loop with
+ * a single loop variable of automatically inferred type, regardless of how
+ * the $(D foreach) loop is implemented.  This includes ranges, structs/classes
+ * that define $(D opApply) with a single loop variable, and builtin dynamic,
+ * static and associative arrays.
+ */
+template isIterable(T)
+{
+    static if (is(typeof({foreach(elem; T.init) {}}))) {
+        enum bool isIterable = true;
+    } else {
+        enum bool isIterable = false;
+    }
+}
+
+unittest {
+    struct OpApply
+    {
+        int opApply(int delegate(ref uint) dg) { assert(0); }
+    }
+
+    struct Range
+    {
+        uint front() { assert(0); }
+        void popFront() { assert(0); }
+        enum bool empty = false;
+    }
+
+    static assert(isIterable!(uint[]));
+    static assert(!isIterable!(uint));
+    static assert(isIterable!(OpApply));
+    static assert(isIterable!(uint[string]));
+    static assert(isIterable!(Range));
+}
+
+/**
  * Tells whether the tuple T is an expression tuple.
  */
 template isExpressionTuple(T ...)
@@ -2398,6 +2798,24 @@ unittest
     static assert(! isFunctionPointer!(bar));
 
     static assert(!isFunctionPointer!((int a) {}));
+}
+
+/**
+Detect whether $(D T) is a delegate.
+*/
+template isDelegate(T...)
+if(staticLength!T == 1)
+{
+    enum bool isDelegate = is(T[0] == delegate);
+}
+
+unittest
+{
+    static assert(isDelegate!(void delegate()));
+    static assert(isDelegate!(uint delegate(uint)));
+    static assert(isDelegate!(shared uint delegate(uint)));
+    static assert(!isDelegate!(uint));
+    static assert(!isDelegate!(void function()));
 }
 
 
@@ -2579,6 +2997,31 @@ unittest
 }
 version (unittest) private template Intify(T) { alias int Intify; }
 
+/**
+Returns the inferred type of the loop variable when a variable of type T
+is iterated over using a $(D foreach) loop with a single loop variable and
+automatically inferred return type.  Note that this may not be the same as
+$(D std.range.ElementType!(Range)) in the case of narrow strings, or if T
+has both opApply and a range interface.
+*/
+template ForeachType(T)
+{
+    alias ReturnType!(typeof(
+    {
+        foreach(elem; T.init) {
+            return elem;
+        }
+        assert(0);
+    })) ForeachType;
+}
+
+unittest
+{
+    static assert(is(ForeachType!(uint[]) == uint));
+    static assert(is(ForeachType!(string) == immutable(char)));
+    static assert(is(ForeachType!(string[string]) == string));
+}
+
 
 /**
 Strips off all $(D typedef)s (including $(D enum) ones) from type $(D T).
@@ -2654,6 +3097,31 @@ unittest
     //alias Unsigned!(double) U3;
 }
 
+/**
+Returns the largest type, i.e. T such that T.sizeof is the largest.  If more
+than one type is of the same size, the leftmost argument of these in will be
+returned.
+*/
+template Largest(T...) if(T.length >= 1) {
+    static if(T.length == 1) {
+        alias T[0] Largest;
+    } static if(T.length == 2) {
+        static if(T[0].sizeof >= T[1].sizeof) {
+            alias T[0] Largest;
+        } else {
+            alias T[1] Largest;
+        }
+    } else {
+        alias Largest!(Largest!(T[0], T[1]), T[2..$]) Largest;
+    }
+}
+
+unittest {
+    static assert(is(Largest!(uint, ubyte, ulong, real) == real));
+    static assert(is(Largest!(ulong, double) == ulong));
+    static assert(is(Largest!(double, ulong) == double));
+    static assert(is(Largest!(uint, byte, double, short) == double));
+}
 
 /**
 Returns the corresponding signed type for T. T must be a numeric integral type,

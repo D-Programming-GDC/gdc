@@ -1897,7 +1897,6 @@ version( Windows )
             thisThread.m_isRunning = true;
         }
         thisThread.m_isDaemon = true;
-        Thread.setThis( thisThread );
 
         version( OSX )
         {
@@ -1916,6 +1915,9 @@ version( Windows )
             obj.m_tls = p[0 .. sz];
             memcpy( p, &_tls_beg, sz );
             // used gc_malloc so no need to free
+
+           if( t.m_addr == pthread_self() )
+                Thread.setThis( thisThread );
         }
         else version( Windows )
         {
@@ -1924,6 +1926,7 @@ version( Windows )
                 auto pstart = cast(void*) &_tlsstart;
                 auto pend   = cast(void*) &_tlsend;
                 thisThread.m_tls = pstart[0 .. pend - pstart];
+                Thread.setThis( thisThread );
             }
             else
             {
@@ -3085,7 +3088,7 @@ class Fiber
      * Returns:
      *  The state of this fiber as an enumerated value.
      */
-    final @property State state()
+    final @property State state() const
     {
         return m_state;
     }

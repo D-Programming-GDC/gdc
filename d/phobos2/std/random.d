@@ -267,9 +267,15 @@ $(D x0).
 /**
    Returns the current number in the random sequence.
 */
-    UIntType front()
+    @property UIntType front()
     {
         return _x;
+    }
+
+///
+    @property typeof(this) save()
+    {
+        return this;
     }
 
 /**
@@ -314,6 +320,8 @@ alias LinearCongruentialEngine!(uint, 48271, 0, 2147483647) MinstdRand;
 
 unittest
 {
+    static assert(isForwardRange!MinstdRand);
+
     // The correct numbers are taken from The Database of Integer Sequences
     // http://www.research.att.com/~njas/sequences/eisBTfry00128.txt
     auto checking0 = [
@@ -323,6 +331,7 @@ unittest
         823378840,143542612 ];
     //auto rnd0 = MinstdRand0(1);
     MinstdRand0 rnd0;
+
     foreach (e; checking0)
     {
         assert(rnd0.front == e);
@@ -483,10 +492,16 @@ Parameter for the generator.
 /**
    Returns the current random value.
  */
-    UIntType front()
+    @property UIntType front()
     {
         if (mti == size_t.max) seed();
         return _y;
+    }
+
+///
+    @property typeof(this) save()
+    {
+        return this;
     }
 
 /**
@@ -637,24 +652,24 @@ if (is(CommonType!(T1, UniformRandomNumberGenerator) == void) &&
     alias Unqual!(CommonType!(T1, T2)) NumberType;
     NumberType _a, _b;
     static if (boundaries[0] == '(')
-	{
+        {
         static if (isIntegral!(NumberType) || is(Unqual!NumberType : dchar))
-		{
+                {
             _a = a;
-			_a++;
+                        _a++;
         }
-		else {
+                else {
             _a = nextafter(a, a.infinity);
-		}
+                }
     }
-	else
-	{
+        else
+        {
         _a = a;
-	}
+        }
     static if (boundaries[1] == ')')
         static if (isIntegral!(NumberType) || is(Unqual!NumberType : dchar))
         {
-		    _b = b;
+                    _b = b;
             static if (_b.min == 0)
             {
                 if (b == 0)
@@ -665,7 +680,7 @@ if (is(CommonType!(T1, UniformRandomNumberGenerator) == void) &&
                     _b++;
                 }
             }
-			_b--;
+                        _b--;
         }
         else
         {
@@ -735,23 +750,25 @@ unittest
         //writeln(x);
     }
 
-	foreach (i; 0 .. 20)
+        foreach (i; 0 .. 20)
     {
         auto x = uniform('a', 'z', gen);
         assert('a' <= x && x < 'z');
     }
 
-	foreach(i; 0 .. 20) {
-	    immutable ubyte a = 0;
-		immutable ubyte b = 15;
-	    auto x = uniform(a, b, gen);
-		assert(a <= x && x < b);
-	}
+        foreach(i; 0 .. 20) {
+            immutable ubyte a = 0;
+                immutable ubyte b = 15;
+            auto x = uniform(a, b, gen);
+                assert(a <= x && x < b);
+        }
 }
 
 unittest
 {
     auto gen = Mt19937(unpredictableSeed);
+    static assert(isForwardRange!(typeof(gen)));
+
     auto a = uniform(0, 1024, gen);
     assert(0 <= a && a <= 1024);
     auto b = uniform(0.0f, 1.0f, gen);
@@ -797,7 +814,7 @@ void randomShuffle(Range, RandomGen = Random)(Range r,
 {
     foreach (i; 0 .. r.length)
     {
-        swap(r[i], r[i + uniform(0, r.length - i, gen)]);
+        swapAt(r, i, i + uniform(0, r.length - i, gen));
     }
 }
 
@@ -825,26 +842,63 @@ auto z = dice(70, 20, 10); // z is 0 70% of the time, 1 30% of the time,
                            // and 2 10% of the time
 ----
 */
+size_t dice(R, Num)(ref R rnd, Num[] proportions...)
+if(isNumeric!Num) {
+    return diceImpl(rnd, proportions);
+}
 
-size_t dice(R)(ref R rnd, double[] proportions...) {
-    immutable sum = reduce!("(assert(b >= 0), a + b)")(0.0, proportions);
+/// Ditto
+size_t dice(R, Range)(ref R rnd, Range proportions)
+if(isForwardRange!Range && isNumeric!(ElementType!Range) && !isArray!Range) {
+    return diceImpl(rnd, proportions);
+}
+
+/// Ditto
+size_t dice(Num)(Num[] proportions...)
+if(isNumeric!Num) {
+    return diceImpl(rndGen(), proportions);
+}
+
+/// Ditto
+size_t dice(Range)(Range proportions)
+if(isForwardRange!Range && isNumeric!(ElementType!Range) && !isArray!Range) {
+    return diceImpl(rndGen(), proportions);
+}
+
+private size_t diceImpl(R, Range)(ref R rnd, Range proportions)
+if(isForwardRange!Range && isNumeric!(ElementType!Range)) {
+    immutable sum = reduce!("(assert(b >= 0), a + b)")(0.0, proportions.save);
     enforce(sum > 0, "Proportions in a dice cannot sum to zero");
     immutable point = uniform(0.0, sum, rnd);
     assert(point < sum);
     auto mass = 0.0;
-    foreach (i, e; proportions) {
+
+    size_t i = 0;
+    foreach (e; proportions) {
         mass += e;
         if (point < mass) return i;
+        i++;
     }
     // this point should not be reached
     assert(false);
 }
+
+
 
 unittest {
     auto rnd = Random(unpredictableSeed);
     auto i = dice(rnd, 0.0, 100.0);
     assert(i == 1);
     i = dice(rnd, 100.0, 0.0);
+    assert(i == 0);
+
+    i = dice([100U, 0U]);
+    assert(i == 0);
+
+    i = dice(filter!"a >= 0"([100U, 0U]));
+    assert(i == 0);
+
+    i = dice(rnd, filter!"a >= 0"([100U, 0U]));
     assert(i == 0);
 }
 
@@ -885,7 +939,7 @@ struct RandomCover(Range, Random)
             return (1 + _input.length) - _alreadyChosen;
         }
 
-    ref ElementType!(Range) front()
+    @property auto ref front()
     {
         return _input[_current];
     }
@@ -919,7 +973,15 @@ struct RandomCover(Range, Random)
         assert(false);
     }
 
-    bool empty() { return _alreadyChosen > _input.length; }
+    @property typeof(this) save()
+    {
+        auto ret = this;
+        ret._input = _input.save;
+        ret._rnd = _rnd.save;
+        return ret;
+    }
+
+    @property bool empty() { return _alreadyChosen > _input.length; }
 }
 
 /// Ditto
@@ -933,6 +995,8 @@ unittest
     int[] a = [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ];
     auto rnd = Random(unpredictableSeed);
     RandomCover!(int[], Random) rc = randomCover(a, rnd);
+    static assert(isForwardRange!(typeof(rc)));
+
     int[] b = new int[9];
     uint i;
     foreach (e; rc)
@@ -998,7 +1062,7 @@ Constructor.
 /**
    Range primitives.
 */
-    bool empty() const
+    @property bool empty() const
     {
         return _toSelect == 0;
     }
@@ -1018,6 +1082,14 @@ Constructor.
         --_toSelect;
         ++_index;
         prime;
+    }
+
+/// Ditto
+    @property typeof(this) save()
+    {
+        auto ret = this;
+        ret._input = _input.save;
+        return ret;
     }
 
 /// Ditto
@@ -1071,6 +1143,8 @@ RandomSample!R randomSample(R)(R r, size_t n) //if (hasLength!R) // @@@BUG@@@
 unittest
 {
     int[] a = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ];
+    static assert(isForwardRange!(typeof(randomSample(a, 5))));
+
     //int[] a = [ 0, 1, 2 ];
     assert(randomSample(a, 5).length == 5);
     uint i;

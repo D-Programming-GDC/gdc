@@ -4,6 +4,7 @@
 Standard I/O functions that extend $(B std.c.stdio).  $(B std.c.stdio)
 is $(D_PARAM public)ally imported when importing $(B std.stdio).
 
+Source: $(PHOBOSSRC std/_stdio.d)
 Macros:
 WIKI=Phobos/StdStdio
 
@@ -35,6 +36,12 @@ version (DigitalMars) version (Windows)
     // Specific to the way Digital Mars C does stdio
     version = DIGITAL_MARS_STDIO;
     import std.c.stdio : __fhnd_info, FHND_WCHAR, FHND_TEXT;
+}
+
+version (Posix)
+{
+    import core.sys.posix.stdio;
+    alias core.sys.posix.stdio.fileno fileno;
 }
 
 version (linux)
@@ -90,6 +97,7 @@ version (DIGITAL_MARS_STDIO)
     alias setmode _setmode;
     enum _O_BINARY = 0x8000;
     int _fileno(FILE* f) { return f._file; }
+    alias _fileno fileno;
 }
 else version (GCC_IO)
 {
@@ -97,7 +105,6 @@ else version (GCC_IO)
      * Gnu under-the-hood C I/O functions; see
      * http://gnu.org/software/libc/manual/html_node/I_002fO-on-Streams.html
      */
-    private import core.sys.posix.stdio;
     extern (C)
     {
         int fputc_unlocked(int, _iobuf*);
@@ -528,12 +535,42 @@ file handle. Throws on error.
  */
     void seek(long offset, int origin = SEEK_SET)
     {
-        enforce(p && p.handle,
-                "Attempting to seek() in an unopened file");
-        // @@@ Dubious: why is fseek in std.c.stdio taking an int???
-        errnoEnforce(core.stdc.stdio.fseek(
-                    p.handle, to!int(offset), origin) == 0,
-                "Could not seek in file `"~p.name~"'");
+        enforce(isOpen, "Attempting to seek() in an unopened file");
+        version (Windows)
+        {
+            errnoEnforce(fseek(p.handle, to!int(offset), origin) == 0,
+                    "Could not seek in file `"~p.name~"'");
+        }
+        else
+        {
+            static assert(off_t.sizeof == 8);
+            errnoEnforce(fseeko(p.handle, offset, origin) == 0,
+                    "Could not seek in file `"~p.name~"'");
+        }
+    }
+
+    unittest
+    {
+        auto f = File("deleteme", "w+");
+        scope(exit) { f.close(); std.file.remove("deleteme"); }
+        f.rawWrite("abcdefghijklmnopqrstuvwxyz");
+        f.seek(7);
+        assert(f.readln() == "hijklmnopqrstuvwxyz");
+        version (Windows)
+        {
+            // No test for large files yet
+        }
+        else
+        {
+            auto bigOffset = cast(ulong) int.max + 100;
+            f.seek(bigOffset);
+            assert(f.tell == bigOffset, text(f.tell));
+            // Uncomment the tests below only if you want to wait for
+            // a long time
+            // f.rawWrite("abcdefghijklmnopqrstuvwxyz");
+            // f.seek(-3, SEEK_END);
+            // assert(f.readln() == "xyz");
+        }
     }
 
 /**
@@ -541,14 +578,30 @@ If the file is not opened, throws an exception. Otherwise, calls $(WEB
 cplusplus.com/reference/clibrary/cstdio/ftell.html, ftell) for the
 managed file handle. Throws on error.
  */
-    ulong tell() const
+    @property ulong tell() const
     {
-        enforce(p && p.handle,
-                "Attempting to tell() in an unopened file");
-        immutable result = .ftell(cast(FILE*) p.handle);
+        enforce(isOpen, "Attempting to tell() in an unopened file");
+        version (Windows)
+        {
+            immutable result = ftell(cast(FILE*) p.handle);
+        }
+        else
+        {
+            immutable result = ftello(cast(FILE*) p.handle);
+        }
         errnoEnforce(result != -1,
                 "Query ftell() failed for file `"~p.name~"'");
         return result;
+    }
+
+    unittest
+    {
+        std.file.write("deleteme", "abcdefghijklmnopqrstuvwqxyz");
+        scope(exit) { std.file.remove("deleteme"); }
+        auto f = File("deleteme");
+        auto a = new ubyte[4];
+        f.rawRead(a);
+        assert(f.tell == 4, text(f.tell));
     }
 
 /**
@@ -825,11 +878,10 @@ Returns the $(D FILE*) corresponding to this object.
 /**
 Returns the file number corresponding to this object.
  */
-    version(Posix) int fileno() const
+    /*version(Posix) */int fileno() const
     {
-        enforce(p && p.handle,
-                "Attempting to call fileno() on an unopened file");
-        return core.stdc.stdio.fileno(cast(FILE*) p.handle);
+        enforce(isOpen, "Attempting to call fileno() on an unopened file");
+        return .fileno(cast(FILE*) p.handle);
     }
 
 /**
@@ -973,8 +1025,6 @@ $(D Range) that locks the file and allows fast writing to it.
  */
     struct LockingTextWriter
     {
-        //@@@ Hacky implementation due to bugs, see the correct
-        //implementation at the end of this struct
         FILE* fps;          // the shared file handle
         _iobuf* handle;     // the unshared version of fps
         int orientation;
@@ -995,10 +1045,11 @@ $(D Range) that locks the file and allows fast writing to it.
             handle = null;
         }
 
-	this(this)
-	{
-	    FLOCK(fps);
-	}
+        this(this)
+        {
+            enforce(fps);
+            FLOCK(fps);
+        }
 
         /// Range primitive implementations.
         void put(A)(A writeme) if (is(ElementType!A : const(dchar)))
@@ -1008,15 +1059,12 @@ $(D Range) that locks the file and allows fast writing to it.
             else
                 alias ElementType!A C;
             static assert(!is(C == void));
-            // writeln("typeof(A.init[0]) = ", typeof(A.init[0]),
-            //         ", ElementType!A = ", ElementType!A);
             if (writeme[0].sizeof == 1 && orientation <= 0)
             {
                 //file.write(writeme); causes infinite recursion!!!
                 //file.rawWrite(writeme);
                 auto result =
                     .fwrite(writeme.ptr, C.sizeof, writeme.length, fps);
-                //if (result == result.max) result = 0;
                 if (result != writeme.length) errnoEnforce(0);
             }
             else
@@ -1107,38 +1155,6 @@ $(D Range) that locks the file and allows fast writing to it.
                 }
             }
         }
-
-        //@@@BUG correct implementation is below:
-
-        // File file;
-        // int orientation;
-
-        // this(File f)
-        // {
-        //     enforce(f.isOpen);
-        //     swap(file, f);
-        //     // @@@BUG@@@ This line should NOT be there!
-        //     file.p.refs++;
-        //     orientation = fwide(file.p.handle, 0);
-        //     //FLOCK(file.p.handle);
-        // }
-
-        // // @@@BUG@@@ uncomment and you get a linker error
-        // // this(this)
-        // // {
-        // //     //FLOCK(file.p.handle);
-        // // }
-
-        // ~this()
-        // {
-        //     if (!file.p.handle) return;
-        //     //FUNLOCK(file.p.handle);
-        // }
-
-        // void opAssign(LockingTextWriter rhs)
-        // {
-        //     swap(this, rhs);
-        // }
     }
 
 /// Convenience function.
@@ -2093,8 +2109,8 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
          * Read them and convert to chars.
          */
         static assert(wchar_t.sizeof == 2);
-        auto app = appender(&buf);
-        buf.length = 0;
+        auto app = appender(buf);
+        app.clear();
         for (int c = void; (c = FGETWC(fp)) != -1; )
         {
             if ((c & ~0x7F) == 0)
@@ -2114,11 +2130,13 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
                     }
                     c = ((c - 0xD7C0) << 10) + (c2 - 0xDC00);
                 }
-                std.utf.encode(buf, c);
+                //std.utf.encode(buf, c);
+                app.put(cast(dchar)c);
             }
         }
         if (ferror(fps))
             StdioException();
+        buf = app.data;
         return buf.length;
     }
 
@@ -2132,20 +2150,16 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
          * cases.
          */
       L1:
-        if(buf.ptr is null)
-        {
-            sz = 128;
-            auto p = cast(char*) GC.malloc(sz, GC.BlkAttr.NO_SCAN);
-            buf = p[0 .. 0];
-        } else {
-            buf.length = 0;
-        }
+        auto app = appender(buf);
+        app.clear();
+        if(app.capacity == 0)
+            app.reserve(128); // get at least 128 bytes available
 
-        auto app = appender(&buf);
         int c;
         while((c = FGETC(fp)) != -1) {
             app.put(cast(char) c);
-            if(buf[$ - 1] == terminator) {
+            if(c == terminator) {
+                buf = app.data;
                 return buf.length;
             }
 
@@ -2153,6 +2167,7 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
 
         if (ferror(fps))
             StdioException();
+        buf = app.data;
         return buf.length;
     }
     else
@@ -2377,3 +2392,54 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
         StdioException();
     return buf.length;
 }
+
+
+/** Experimental network access via the File interface
+
+        Opens a TCP connection to the given host and port, then returns
+        a File struct with read and write access through the same interface
+        as any other file (meaning writef and the byLine ranges work!).
+
+        Authors:
+                Adam D. Ruppe
+
+        Bugs:
+                Only works on Linux
+*/
+version(linux) {
+    static import linux = std.c.linux.linux;
+    static import sock = std.c.linux.socket;
+
+    File openNetwork(string host, ushort port) {
+        auto h = enforce( sock.gethostbyname(std.string.toStringz(host)),
+            new StdioException("gethostbyname"));
+
+        int s = sock.socket(sock.AF_INET, sock.SOCK_STREAM, 0);
+        enforce(s != -1, new StdioException("socket"));
+
+        scope(failure) {
+            linux.close(s); // want to make sure it doesn't dangle if
+                            // something throws. Upon normal exit, the
+                            // File struct's reference counting takes
+                            // care of closing, so we don't need to
+                            // worry about success
+        }
+
+        sock.sockaddr_in addr;
+
+        addr.sin_family = sock.AF_INET;
+        addr.sin_port = sock.htons(port);
+        std.c.string.memcpy(&addr.sin_addr.s_addr, h.h_addr, h.h_length);
+
+        enforce(sock.connect(s, cast(sock.sockaddr*) &addr, addr.sizeof) != -1,
+            new StdioException("Connect failed"));
+
+        FILE* fp = enforce(fdopen(s, "w+".ptr));
+
+        File f;
+        f.p = new File.Impl(fp, 1, host ~ ":" ~ to!string(port));
+
+        return f;
+    }
+}
+

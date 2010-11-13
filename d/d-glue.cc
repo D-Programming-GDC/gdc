@@ -3825,14 +3825,12 @@ LabelStatement::toIR(IRState* irs)
             func->fensure->toIR(irs);
         else if (statement)
             statement->toIR(irs);
-#if V1
         if (fwdrefs)
         {
             irs->checkPreviousGoto(fwdrefs);
             delete fwdrefs;
             fwdrefs = NULL;
         }
-#endif
     }
     // else, there was an error
 }
@@ -4247,6 +4245,7 @@ IfStatement::toIR(IRState * irs)
 void
 ForeachStatement::toIR(IRState *)
 {
+    // Frontend rewrites this to ForStatement
     ::error("ForeachStatement::toIR: we shouldn't emit this (%s)", toChars());
     abort();
 #if 0
@@ -4379,6 +4378,7 @@ ForeachStatement::toIR(IRState *)
 void
 ForeachRangeStatement::toIR(IRState *)
 {
+    // Frontend rewrites this to ForStatement
     ::error("ForeachRangeStatement::toIR: we shouldn't emit this (%s)", toChars());
     abort();
 #if 0
@@ -4479,6 +4479,7 @@ DoStatement::toIR(IRState * irs)
 void
 WhileStatement::toIR(IRState *)
 {
+    // Frontend rewrites this to ForStatement
     ::error("WhileStatement::toIR: we shouldn't emit this (%s)", toChars());
     abort();
 #if 0
@@ -4730,9 +4731,8 @@ gcc_d_backend_init()
     default:
         abort();
     }
-#if V1
+
     CLASSINFO_SIZE_64 = 19 * PTRSIZE;
-#endif
     CLASSINFO_SIZE = 19 * PTRSIZE;
 
     d_init_builtins();

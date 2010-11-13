@@ -38,8 +38,9 @@ private
     
     version( linux )
     {
+        import core.demangle;
         import core.stdc.stdlib : free;
-        import core.stdc.string : strlen;
+        import core.stdc.string : strlen, memchr;
         extern (C) int    backtrace(void**, size_t);
         extern (C) char** backtrace_symbols(void**, int);
         extern (C) void   backtrace_symbols_fd(void**,int,int);
@@ -47,6 +48,7 @@ private
     }
     else version( OSX )
     {
+        import core.demangle;
         import core.stdc.stdlib : free;
         import core.stdc.string : strlen;
         extern (C) int    backtrace(void**, size_t);
@@ -411,7 +413,9 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 
                 for( int i = FIRSTFRAME; i < numframes; ++i )
                 {
-                    ret = dg( framelist[i][0 .. strlen(framelist[i])] );
+                    auto buf = framelist[i][0 .. strlen(framelist[i])];
+                    buf = fixline( buf );
+                    ret = dg( buf );
                     if( ret )
                         break;
                 }
@@ -421,6 +425,61 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         private:
             int     numframes; 
             char**  framelist;
+            
+        private:
+            char[4096] fixbuf;
+            char[] fixline( char[] buf )
+            {
+                version( OSX )
+                {
+                    // format is:
+                    //  1  module    0x00000000 D6module4funcAFZv + 0
+                    for( size_t i = 0, n = 0; i < buf.length; i++ )
+                    {
+                        if( ' ' == buf[i] )
+                        {
+                            n++;
+                            while( i < buf.length && ' ' == buf[i] )
+                                i++;
+                            if( 3 > n )
+                                continue;
+                            auto bsym = i;
+                            while( i < buf.length && ' ' != buf[i] )
+                                i++;
+                            auto esym = i;
+                            auto tail = buf.length - esym;
+                            fixbuf[0 .. bsym] = buf[0 .. bsym];
+                            auto m = demangle( buf[bsym .. esym], fixbuf[bsym .. $] );
+                            fixbuf[bsym + m.length .. bsym + m.length + tail] = buf[esym .. $];
+                            return fixbuf[0 .. bsym + m.length + tail];
+                        }
+                    }
+                    return buf;
+                }
+                else version( linux )
+                {
+                    // format is:
+                    // module(_D6module4funcAFZv) [0x00000000]
+                    auto bptr = cast(char*) memchr( buf.ptr, '(', buf.length );
+                    auto eptr = cast(char*) memchr( buf.ptr, ')', buf.length );
+                    
+                    if( bptr++ && eptr )
+                    {
+                        size_t bsym = bptr - buf.ptr;
+                        size_t esym = eptr - buf.ptr;
+                        auto tail = buf.length - esym;
+                        fixbuf[0 .. bsym] = buf[0 .. bsym];
+                        auto m = demangle( buf[bsym .. esym], fixbuf[bsym .. $] );
+                        fixbuf[bsym + m.length .. bsym + m.length + tail] = buf[esym .. $];
+                        return fixbuf[0 .. bsym + m.length + tail];
+                    }
+                    return buf;
+                }
+                else
+                {
+                    return buf;
+                }
+            }
         }
         
         return new DefaultTraceInfo;

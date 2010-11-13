@@ -482,7 +482,7 @@ public:
 }
 
 /// This class represents an executable image
-public auto class ExeModule
+public scope class ExeModule
 {
 /// \name Construction
 /// @{

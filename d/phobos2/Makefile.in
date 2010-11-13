@@ -247,24 +247,25 @@ X3_GCC_COMMAND = $(CC) $(OUR_CFLAGS) $(MULTIFLAGS)
 X3_DEPS = config/x3.o config/x3main.o
 BASE_OBJS = object_.o
 RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
-	     rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
-	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
-	     rt/cast_.o rt/complex.o rt/critical.o \
-	     rt/gccmemory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
-	     rt/monitor.o rt/obj.o rt/qsort.o rt/switch_.o
+             rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
+             rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
+             rt/cast_.o rt/complex.o rt/critical.o \
+             rt/gccmemory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
+             rt/monitor.o rt/obj.o rt/qsort.o rt/switch_.o
 
 CORE_OBJS = core/atomic.o core/bitop.o core/cpuid.o core/exception.o \
-	  core/memory.o core/runtime.o core/thread.o core/vararg.o \
-	  core/stdc/errno.o core/stdc/errno_.o core/sync/barrier.o \
-          core/sync/condition.o core/sync/config.o core/sync/exception.o \
-          core/sync/mutex.o core/sync/rwmutex.o core/sync/semaphore.o
+          core/demangle.o core/memory.o core/runtime.o core/thread.o \
+          core/vararg.o core/stdc/errno.o core/stdc/errno_.o \
+          core/sync/barrier.o core/sync/condition.o core/sync/config.o \
+          core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
+          core/sync/semaphore.o
 
 GCC_OBJS = gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
-	 gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
-	 gcc/cbridge_time.o gcc/cbridge_strerror.o gcc/bitmanip.o
+         gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
+         gcc/cbridge_time.o gcc/cbridge_strerror.o gcc/bitmanip.o
 
 UTIL_OBJS = rt/util/console.o rt/util/ctype.o rt/util/hash.o rt/util/string.o \
-	  rt/util/utf.o
+          rt/util/utf.o
 
 TI = ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
    ti_Ag.o ti_Aint.o ti_Along.o ti_Areal.o ti_Ashort.o ti_byte.o ti_C.o \
@@ -279,14 +280,14 @@ RT_STDC_OBJS = core/stdc/math.o core/stdc/stdarg.o core/stdc/stdio.o \
              core/stdc/wchar_.o
 
 RT_OSX_OBJS = core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
-	    core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o
+            core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o
 
 RT_POSIX_OBJS = core/sys/posix/netinet/in_.o core/sys/posix/sys/select.o \
-	      core/sys/posix/sys/socket.o core/sys/posix/sys/stat.o \
-	      core/sys/posix/sys/wait.o
+              core/sys/posix/sys/socket.o core/sys/posix/sys/stat.o \
+              core/sys/posix/sys/wait.o
 
 RT_WINDOWS_OBJS = core/sys/windows/windows.o \
-		core/dll_helper.o core/thread_helper.o
+                core/dll_helper.o core/thread_helper.o
 
 
 # This should not be linked into a shared library.
@@ -294,7 +295,7 @@ RT_WINDOWS_OBJS = core/sys/windows/windows.o \
 CMAIN_OBJS = rt/dmain2.o
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 MAIN_OBJS = std/algorithm.o std/array.o std/base64.o std/bigint.o \
-	std/bind.o std/bitarray.o std/bitmanip.o std/compiler.o \
+        std/bind.o std/bitarray.o std/bitmanip.o std/compiler.o \
         std/container.o std/complex.o std/concurrency.o std/contracts.o \
         std/conv.o std/cpuid.o std/cstream.o std/ctype.o std/date.o \
         std/dateparse.o std/demangle.o std/encoding.o std/exception.o std/format.o \
@@ -310,22 +311,23 @@ MAIN_OBJS = std/algorithm.o std/array.o std/base64.o std/bigint.o \
         crc32.o etc/c/zlib.o
 
 ZLIB_OBJS = zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
-	  zlib/gzclose.o zlib/gzlib.o zlib/gzread.o zlib/gzwrite.o \
-	  zlib/infback.o zlib/inffast.o zlib/inflate.o zlib/inftrees.o \
-	  zlib/trees.o zlib/uncompr.o zlib/zutil.o
+          zlib/gzclose.o zlib/gzlib.o zlib/gzread.o zlib/gzwrite.o \
+          zlib/infback.o zlib/inffast.o zlib/inflate.o zlib/inftrees.o \
+          zlib/trees.o zlib/uncompr.o zlib/zutil.o
 
 
 # modules which require some kind of operating system
 OS_OBJS = std/file.o std/mmfile.o std/path.o std/perf.o std/process.o \
-	std/socket.o std/socketstream.o
+        std/socket.o std/socketstream.o
 
+LINUX_OBJS = std/c/linux/socket.o
 OSX_OBJS = std/c/osx/socket.o
 
 # std.c.linux.linux, std.loader, gcc.cbridge*
 WINDOWS_OBJS = std/c/windows/com.o std/c/windows/stat.o std/c/windows/windows.o \
-	     std/c/windows/winsock.o std/windows/charset.o \
-	     std/windows/iunknown.o std/windows/registry.o \
-	     std/windows/syserror.o
+             std/c/windows/winsock.o std/windows/charset.o \
+             std/windows/iunknown.o std/windows/registry.o \
+             std/windows/syserror.o
 
 ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS) $(WEAK_OBJS)
 

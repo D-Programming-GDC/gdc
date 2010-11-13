@@ -39,12 +39,6 @@ Distributed under the Boost Software License, Version 1.0.
    (See accompanying file LICENSE_1_0.txt or copy at
          http://www.boost.org/LICENSE_1_0.txt)
  */
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, November 2006
-*/
 module std.cpuid;
 
 import std.string;
@@ -382,10 +376,10 @@ private:
 }
 else
 {
-    string toString() { return "unknown CPU\n"; }
+    auto toString() { return "unknown CPU\n"; }
 
-    string vendor()             {return "unknown vendor"; }
-    string processor()          {return "unknown processor"; }
+    auto vendor()             {return "unknown vendor"; }
+    auto processor()          {return "unknown processor"; }
 
     bool mmx()                  {return false; }
     bool fxsr()                 {return false; }

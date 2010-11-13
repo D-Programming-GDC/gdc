@@ -28,7 +28,6 @@ private
     import rt.util.hash;
     import rt.util.string;
     debug(PRINTF) import core.stdc.stdio;
-    import core.stdc.stdio; // ib
 
     extern (C) void onOutOfMemoryError();
     extern (C) Object _d_newclass(TypeInfo_Class ci);
@@ -1802,8 +1801,6 @@ void _moduleCtor2(ModuleInfo*[] mi, int skip)
 extern (C) void _moduleTlsCtor()
 {
     debug(PRINTF) printf("_moduleTlsCtor()\n");
-    printf("_moduleTlsCtor()\n");
-    fflush(stdout);
 
     void* p = alloca(_moduleinfo_array.length * ubyte.sizeof);
     auto flags = cast(ubyte[])p[0 .. _moduleinfo_array.length];

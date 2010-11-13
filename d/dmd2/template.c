@@ -1096,19 +1096,26 @@ L2:
 #endif
 
     // Loop through the function parameters
-    for (i = 0; i < nfparams; i++)
+    for (size_t parami = 0; parami < nfparams; parami++)
     {
         /* Skip over function parameters which wound up
          * as part of a template tuple parameter.
          */
-        if (i == fptupindex)
-        {   if (fptupindex == nfparams - 1)
-                break;
-            i += tuple_dim - 1;
+        if (parami == fptupindex)
             continue;
-        }
+        /* Set i = index into function arguments
+         * Function parameters correspond to function arguments as follows.
+         * Note that tuple_dim may be zero, and there may be default or
+         * variadic arguments at the end.
+         *  arg [0..fptupindex] == param[0..fptupindex]
+         *  arg [fptupindex..fptupindex+tuple_dim] == param[fptupindex]
+         *  arg[fputupindex+dim.. ] == param[fptupindex+1.. ]
+         */
+        i = parami;
+        if (fptupindex >= 0 && parami > fptupindex)
+            i += tuple_dim - 1;
 
-        Parameter *fparam = Parameter::getNth(fparameters, i);
+        Parameter *fparam = Parameter::getNth(fparameters, parami);
 
         if (i >= nfargs)                // if not enough arguments
         {
@@ -1917,8 +1924,14 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
     }
 
     if (ty != tparam->ty)
-        return implicitConvTo(tparam);
-//      goto Lnomatch;
+    {
+#if DMDV2
+        // Can't instantiate AssociativeArray!() without a scope
+        if (tparam->ty == Taarray && !((TypeAArray*)tparam)->sc)
+            ((TypeAArray*)tparam)->sc = sc;
+#endif
+       return implicitConvTo(tparam);
+    }
 
     if (nextOf())
         return nextOf()->deduceType(sc, tparam->nextOf(), parameters, dedtypes);
@@ -2477,6 +2490,63 @@ MATCH TypeTypedef::deduceType(Scope *sc, Type *tparam, TemplateParameters *param
     return Type::deduceType(sc, tparam, parameters, dedtypes);
 }
 
+/* Helper for TypeClass::deduceType().
+ * Classes can match with implicit conversion to a base class or interface.
+ * This is complicated, because there may be more than one base class which
+ * matches. In such cases, one or more parameters remain ambiguous.
+ * For example,
+ *
+ *   interface I(X, Y) {}
+ *   class C : I(uint, double), I(char, double) {}
+ *   C x;
+ *   foo(T, U)( I!(T, U) x)
+ *
+ *   deduces that U is double, but T remains ambiguous (could be char or uint).
+ *
+ * Given a baseclass b, and initial deduced types 'dedtypes', this function
+ * tries to match tparam with b, and also tries all base interfaces of b.
+ * If a match occurs, numBaseClassMatches is incremented, and the new deduced
+ * types are ANDed with the current 'best' estimate for dedtypes.
+ */
+void deduceBaseClassParameters(BaseClass *b,
+    Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes,
+    Objects *best, int &numBaseClassMatches)
+{
+    TemplateInstance *parti = b->base->parent->isTemplateInstance();
+    if (parti)
+    {
+        // Make a temporary copy of dedtypes so we don't destroy it
+        Objects *tmpdedtypes = new Objects();
+        tmpdedtypes->setDim(dedtypes->dim);
+        memcpy(tmpdedtypes->data, dedtypes->data, dedtypes->dim * sizeof(void *));
+
+        TypeInstance *t = new TypeInstance(0, parti);
+        MATCH m = t->deduceType(sc, tparam, parameters, tmpdedtypes);
+        if (m != MATCHnomatch)
+        {
+            // If this is the first ever match, it becomes our best estimate
+            if (numBaseClassMatches==0)
+                memcpy(best->data, tmpdedtypes->data, tmpdedtypes->dim * sizeof(void *));
+            else for (size_t k = 0; k < tmpdedtypes->dim; ++k)
+            {
+                // If we've found more than one possible type for a parameter,
+                // mark it as unknown.
+                if (tmpdedtypes->data[k] != best->data[k])
+                    best->data[k] = dedtypes->data[k];
+            }
+            ++numBaseClassMatches;
+        }
+    }
+    // Now recursively test the inherited interfaces
+    for (size_t j = 0; j < b->baseInterfaces_dim; ++j)
+    {
+        deduceBaseClassParameters( &(b->baseInterfaces)[j],
+            sc, tparam, parameters, dedtypes,
+            best, numBaseClassMatches);
+    }
+
+}
+
 MATCH TypeClass::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes)
 {
     //printf("TypeClass::deduceType(this = %s)\n", toChars());
@@ -2492,7 +2562,11 @@ MATCH TypeClass::deduceType(Scope *sc, Type *tparam, TemplateParameters *paramet
         if (ti && ti->toAlias() == sym)
         {
             TypeInstance *t = new TypeInstance(0, ti);
-            return t->deduceType(sc, tparam, parameters, dedtypes);
+            MATCH m = t->deduceType(sc, tparam, parameters, dedtypes);
+            // Even if the match fails, there is still a chance it could match
+            // a base class.
+            if (m != MATCHnomatch)
+                return m;
         }
 
         /* Match things like:
@@ -2515,6 +2589,47 @@ MATCH TypeClass::deduceType(Scope *sc, Type *tparam, TemplateParameters *paramet
                 }
             }
         }
+
+        // If it matches exactly or via implicit conversion, we're done
+        MATCH m = Type::deduceType(sc, tparam, parameters, dedtypes);
+        if (m != MATCHnomatch)
+            return m;
+
+        /* There is still a chance to match via implicit conversion to
+         * a base class or interface. Because there could be more than one such
+         * match, we need to check them all.
+         */
+
+        int numBaseClassMatches = 0; // Have we found an interface match?
+
+        // Our best guess at dedtypes
+        Objects *best = new Objects();
+        best->setDim(dedtypes->dim);
+
+        ClassDeclaration *s = sym;
+        while(s && s->baseclasses->dim > 0)
+        {
+            // Test the base class
+            deduceBaseClassParameters((BaseClass *)(s->baseclasses->data[0]),
+                sc, tparam, parameters, dedtypes,
+                best, numBaseClassMatches);
+
+            // Test the interfaces inherited by the base class
+            for (size_t i = 0; i < s->interfaces_dim; ++i)
+            {
+                BaseClass *b = s->interfaces[i];
+                deduceBaseClassParameters(b, sc, tparam, parameters, dedtypes,
+                    best, numBaseClassMatches);
+            }
+            s = ((BaseClass *)(s->baseclasses->data[0]))->base;
+        }
+
+        if (numBaseClassMatches == 0)
+            return MATCHnomatch;
+
+        // If we got at least one match, copy the known types into dedtypes
+        memcpy(dedtypes->data, best->data, best->dim * sizeof(void *));
+        return MATCHconvert;
     }
 
     // Extra check
@@ -4051,8 +4166,11 @@ void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
         if (global.gag)
         {   // Try to reset things so we can try again later to instantiate it
             tempdecl->instances.remove(tempdecl_instance_idx);
-            semanticRun = 0;
-            inst = NULL;
+            if (!(sc->flags & SCOPEstaticif))
+            {   // Bugzilla 4302 for discussion
+                semanticRun = 0;
+                inst = NULL;
+            }
         }
     }
 
@@ -4690,6 +4808,7 @@ int TemplateInstance::needsTypeInference(Scope *sc)
     //printf("TemplateInstance::needsTypeInference() %s\n", toChars());
     if (!tempdecl)
         tempdecl = findTemplateDeclaration(sc);
+    int multipleMatches = FALSE;
     for (TemplateDeclaration *td = tempdecl; td; td = td->overnext)
     {
         /* If any of the overloaded template declarations need inference,
@@ -4715,9 +4834,14 @@ int TemplateInstance::needsTypeInference(Scope *sc)
         if (Parameter::dim(fdtype->parameters) &&
             (tp || tiargs->dim < td->parameters->dim))
             return TRUE;
+        /* If there is more than one function template which matches, we may
+         * need type inference (see Bugzilla 4430)
+         */
+        if (td != tempdecl)
+            multipleMatches = TRUE;
     }
     //printf("false\n");
-    return FALSE;
+    return multipleMatches;
 }
 
 void TemplateInstance::semantic2(Scope *sc)

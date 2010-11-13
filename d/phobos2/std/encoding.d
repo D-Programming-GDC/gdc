@@ -335,7 +335,7 @@ unittest
         transcode(v,w);
         assert(cast(string)w == "?100");
     }
-    
+
     // Make sure we can count properly
     {
         assert(encodedLength!(char)('A') == 1);
@@ -345,11 +345,11 @@ unittest
         assert(encodedLength!(wchar)('A') == 1);
         assert(encodedLength!(wchar)('\U0010FFF0') == 2);
     }
-    
+
     // Make sure we can write into mutable arrays
     {
         char[4] buffer;
-        uint n = encode(cast(dchar)'\u00E3',buffer);
+        auto n = encode(cast(dchar)'\u00E3',buffer);
         assert(n == 2);
         assert(buffer[0] == 0xC3);
         assert(buffer[1] == 0xA3);
@@ -386,7 +386,7 @@ template EncoderFunctions()
         E[] s;
         void write(E c) { s ~= c; }
     }
-    
+
     template WriteToArray()
     {
         void write(E c) { array[0] = c; array = array[1..$]; }
@@ -441,7 +441,7 @@ template EncoderFunctions()
         mixin WriteToString;
         mixin EncodeViaWrite;
     }
-    
+
     template EncodeToArray()
     {
         mixin WriteToArray;
@@ -489,7 +489,7 @@ template EncoderFunctions()
     //=========================================================================
 
     // Below are the functions we will ultimately expose to the user
-    
+
     E[] encode(dchar c)
     {
         mixin EncodeToString e;
@@ -562,15 +562,15 @@ struct CodePoints(E)
         return result;
     }
 
-    int opApply(scope int delegate(ref uint, ref dchar) dg)
+    int opApply(scope int delegate(ref size_t, ref dchar) dg)
     {
-        uint i = 0;
+        size_t i = 0;
         int result = 0;
         while (s.length != 0)
         {
-            uint len = s.length;
+            size_t len = s.length;
             dchar c = decode(s);
-            uint j = i; // We don't want the delegate corrupting i
+            size_t j = i; // We don't want the delegate corrupting i
             result = dg(j,c);
             if (result != 0) break;
             i += len - s.length;
@@ -590,13 +590,13 @@ struct CodePoints(E)
         return result;
     }
 
-    int opApplyReverse(scope int delegate(ref uint, ref dchar) dg)
+    int opApplyReverse(scope int delegate(ref size_t, ref dchar) dg)
     {
         int result = 0;
         while (s.length != 0)
         {
             dchar c = decodeReverse(s);
-            uint i = s.length;
+            size_t i = s.length;
             result = dg(i,c);
             if (result != 0) break;
         }
@@ -656,7 +656,7 @@ template EncoderInstance(E)
 /** Defines various character sets. */
 typedef ubyte AsciiChar;
 /// Ditto
-alias immutable(AsciiChar)[] AsciiString; 
+alias immutable(AsciiChar)[] AsciiString;
 
 template EncoderInstance(CharType : AsciiChar)
 {
@@ -677,7 +677,7 @@ template EncoderInstance(CharType : AsciiChar)
     {
         return c < 0x80;
     }
-    
+
     size_t encodedLength(dchar c)
     in
     {
@@ -865,7 +865,7 @@ template EncoderInstance(CharType : Windows1252Char)
         else
         {
             sizediff_t n = -1;
-            foreach(i,wchar d;charMap)
+            foreach (i, wchar d; charMap)
             {
                 if (c == d)
                 {
@@ -873,7 +873,7 @@ template EncoderInstance(CharType : Windows1252Char)
                     break;
                 }
             }
-            c = n == -1 ? '?' : 0x80 + cast(dchar)n;
+            c = n == -1 ? '?' : 0x80 + cast(dchar) n;
         }
         write(cast(Windows1252Char)c);
     }
@@ -1000,7 +1000,7 @@ template EncoderInstance(CharType : char)
         auto c = read;
         if (c < 0xC0) return;
         int n = tails(cast(char) c);
-        for (uint i=0; i<n; ++i)
+        for (size_t i=0; i<n; ++i)
         {
             read();
         }
@@ -1012,7 +1012,7 @@ template EncoderInstance(CharType : char)
         if (c < 0xC0) return c;
         int n = tails(cast(char) c);
         c &= (1 << (6 - n)) - 1;
-        for (uint i=0; i<n; ++i)
+        for (size_t i=0; i<n; ++i)
         {
             c = (c << 6) + (read & 0x3F);
         }
@@ -1027,7 +1027,7 @@ template EncoderInstance(CharType : char)
         if (n == 0) return INVALID_SEQUENCE;
 
         if (!canRead) return INVALID_SEQUENCE;
-        uint d = peek;
+        size_t d = peek;
         bool err =
         (
             (c < 0xC2)                              // fail overlong 2-byte sequences
@@ -1039,7 +1039,7 @@ template EncoderInstance(CharType : char)
         );
 
         c &= (1 << (6 - n)) - 1;
-        for (uint i=0; i<n; ++i)
+        for (size_t i=0; i<n; ++i)
         {
             if (!canRead) return INVALID_SEQUENCE;
             d = peek;
@@ -1054,14 +1054,14 @@ template EncoderInstance(CharType : char)
     {
         dchar c = read;
         if (c < 0x80) return c;
-        uint shift = 0;
+        size_t shift = 0;
         c &= 0x3F;
-        for (uint i=0; i<4; ++i)
+        for (size_t i=0; i<4; ++i)
         {
             shift += 6;
             auto d = read;
-            uint n = tails(cast(char) d);
-            uint mask = n == 0 ? 0x3F : (1 << (6 - n)) - 1;
+            size_t n = tails(cast(char) d);
+            size_t mask = n == 0 ? 0x3F : (1 << (6 - n)) - 1;
             c += ((d & mask) << shift);
             if (n != 0) break;
         }
@@ -1118,7 +1118,7 @@ template EncoderInstance(CharType : wchar)
         }
         else
         {
-            uint n = c - 0x10000;
+            size_t n = c - 0x10000;
             write(cast(wchar)(0xD800 + (n >> 10)));
             write(cast(wchar)(0xDC00 + (n & 0x3FF)));
         }
@@ -1409,14 +1409,14 @@ size_t validLength(E)(const(E)[] s)
  */
 immutable(E)[] sanitize(E)(immutable(E)[] s)
 {
-    uint n = validLength(s);
+    size_t n = validLength(s);
     if (n == s.length) return s;
 
     auto repSeq = EncoderInstance!(E).replacementSequence;
 
     // Count how long the string needs to be.
     // Overestimating is not a problem
-    uint len = s.length;
+    size_t len = s.length;
     const(E)[] t = s[n..$];
     while (t.length != 0)
     {
@@ -1429,7 +1429,7 @@ immutable(E)[] sanitize(E)(immutable(E)[] s)
     // Now do the write
     E[] array = new E[len];
     array[0..n] = s[0..n];
-    uint offset = n;
+    size_t offset = n;
 
     t = s[n..$];
     while (t.length != 0)
@@ -1462,7 +1462,7 @@ Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 Params:
 s = the string to be sliced
  */
-uint firstSequence(E)(const(E)[] s)
+size_t firstSequence(E)(const(E)[] s)
 in
 {
     assert(s.length != 0);
@@ -1533,7 +1533,7 @@ in
 body
 {
     const(E)[] t = s;
-    for (uint i=0; i<n; ++i) EncoderInstance!(E).skip(s);
+    for (size_t i=0; i<n; ++i) EncoderInstance!(E).skip(s);
     return t.length - s.length;
 }
 
@@ -1709,7 +1709,7 @@ in
 }
 body
 {
-        E[] t = array;
+    E[] t = array;
     EncoderInstance!(E).encode(c,t);
     return array.length - t.length;
 }
@@ -1952,7 +1952,7 @@ output range $(D R). Returns the number of $(D E)s written.
 
 size_t encode(Tgt, Src, R)(in Src[] s, R range)
 {
-    uint result;
+    size_t result;
     foreach (c; s)
     {
         result += encode!(Tgt)(c, range);
@@ -2249,41 +2249,41 @@ abstract class EncodingScheme
      */
     immutable(ubyte)[] sanitize(immutable(ubyte)[] s)
     {
-                auto n = validLength(s);
-                if (n == s.length) return s;
+        auto n = validLength(s);
+        if (n == s.length) return s;
 
-                auto repSeq = replacementSequence;
+        auto repSeq = replacementSequence;
 
-                // Count how long the string needs to be.
-                // Overestimating is not a problem
-                auto len = s.length;
-                const(ubyte)[] t = s[n..$];
-                while (t.length != 0)
-                {
-                        dchar c = safeDecode(t);
-                        assert(c == INVALID_SEQUENCE);
-                        len += repSeq.length;
-                        t = t[validLength(t)..$];
-                }
+        // Count how long the string needs to be.
+        // Overestimating is not a problem
+        auto len = s.length;
+        const(ubyte)[] t = s[n..$];
+        while (t.length != 0)
+        {
+            dchar c = safeDecode(t);
+            assert(c == INVALID_SEQUENCE);
+            len += repSeq.length;
+            t = t[validLength(t)..$];
+        }
 
-                // Now do the write
-                ubyte[] array = new ubyte[len];
-                array[0..n] = s[0..n];
-                auto offset = n;
+        // Now do the write
+        ubyte[] array = new ubyte[len];
+        array[0..n] = s[0..n];
+        auto offset = n;
 
-                t = s[n..$];
-                while (t.length != 0)
-                {
-                        dchar c = safeDecode(t);
-                        assert(c == INVALID_SEQUENCE);
-                        array[offset..offset+repSeq.length] = repSeq[];
-                        offset += repSeq.length;
-                        n = validLength(t);
-                        array[offset..offset+n] = t[0..n];
-                        offset += n;
-                        t = t[n..$];
-                }
-                return cast(immutable(ubyte)[])array[0..offset];
+        t = s[n..$];
+        while (t.length != 0)
+        {
+            dchar c = safeDecode(t);
+            assert(c == INVALID_SEQUENCE);
+            array[offset..offset+repSeq.length] = repSeq[];
+            offset += repSeq.length;
+            n = validLength(t);
+            array[offset..offset+n] = t[0..n];
+            offset += n;
+            t = t[n..$];
+        }
+        return cast(immutable(ubyte)[])array[0..offset];
     }
 
     /**
@@ -2318,14 +2318,14 @@ abstract class EncodingScheme
      * Params:
      *    s = the string to be counted
      */
-    uint count(const(ubyte)[] s)
+    size_t count(const(ubyte)[] s)
     in
     {
         assert(isValid(s));
     }
     body
     {
-        uint n = 0;
+        size_t n = 0;
         while (s.length != 0)
         {
             decode(s);
@@ -2343,7 +2343,7 @@ abstract class EncodingScheme
      * Params:
      *    s = the string to be counted
      */
-    sizediff_t index(const(ubyte)[] s,int n)
+    sizediff_t index(const(ubyte)[] s, size_t n)
     in
     {
         assert(isValid(s));
@@ -2352,7 +2352,7 @@ abstract class EncodingScheme
     body
     {
         const(ubyte)[] t = s;
-        for (uint i=0; i<n; ++i) decode(s);
+        for (size_t i=0; i<n; ++i) decode(s);
         return t.length - s.length;
     }
 
@@ -2412,7 +2412,7 @@ class EncodingSchemeASCII : EncodingScheme
         {
             return std.encoding.canEncode!(AsciiChar)(c);
         }
-        
+
         override size_t encodedLength(dchar c)
         {
                 return std.encoding.encodedLength!(AsciiChar)(c);
@@ -2420,7 +2420,7 @@ class EncodingSchemeASCII : EncodingScheme
 
         override size_t encode(dchar c, ubyte[] buffer)
         {
-                auto r = cast(AsciiChar[])buffer;
+            auto r = cast(AsciiChar[])buffer;
             return std.encoding.encode(c,r);
         }
 

@@ -66,8 +66,8 @@ private import std.internal.math.biguintcore;
 struct BigInt
 {
 private:
-	BigUint data;     // BigInt adds signed arithmetic to BigUint.
-	bool sign = false;
+        BigUint data;     // BigInt adds signed arithmetic to BigUint.
+        bool sign = false;
 public:
     /// Construct a BigInt from a decimal or hexadecimal string.
     /// The number must be in the form of a D decimal or hex literal:
@@ -318,10 +318,10 @@ public:
     }
     /// Number of significant uints which are used in storing this number.
     /// The absolute value of this BigInt is always < 2^(32*uintLength)
-    int uintLength() { return data.uintLength(); }
+    size_t uintLength() { return data.uintLength(); }
     /// Number of significant ulongs which are used in storing this number.
     /// The absolute value of this BigInt is always < 2^(64*ulongLength)
-    int ulongLength() { return data.ulongLength(); }
+    size_t ulongLength() { return data.ulongLength(); }
 
     /** Convert the BigInt to string, passing it to 'sink'.
      *
@@ -395,6 +395,6 @@ unittest {
     assert(BigInt(-0x1234_5678_9ABC_5A5AL).toLong() == -0x1234_5678_9ABC_5A5AL);
     assert(BigInt(0xF234_5678_9ABC_5A5AL).toLong() == long.max);
     assert(BigInt(-0x123456789ABCL).toInt() == -int.max);
-
+    assert((BigInt(-2) + BigInt(1)) == BigInt(-1));
 }
 }

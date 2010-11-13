@@ -202,7 +202,7 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
     }
 
     com = 0;
-    isauto = 0;
+    isscope = 0;
     isabstract = 0;
     inuse = 0;
 }
@@ -489,7 +489,7 @@ void ClassDeclaration::semantic(Scope *sc)
 
         // Inherit properties from base class
         com = baseClass->isCOMclass();
-        isauto = baseClass->isauto;
+        isscope = baseClass->isscope;
         vthis = baseClass->vthis;
         storage_class |= baseClass->storage_class & STC_TYPECTOR;
     }
@@ -573,8 +573,10 @@ void ClassDeclaration::semantic(Scope *sc)
         }
     }
 
-    if (storage_class & (STCauto | STCscope))
-        isauto = 1;
+    if (storage_class & STCauto)
+        error("storage class 'auto' is invalid when declaring a class, did you mean to use 'scope'?");
+    if (storage_class & STCscope)
+        isscope = 1;
     if (storage_class & STCabstract)
         isabstract = 1;
     if (storage_class & STCimmutable)
@@ -845,6 +847,23 @@ int ClassDeclaration::isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset)
         cd = cd->baseClass;
     }
     return 0;
+}
+
+/*********************************************
+ * Determine if 'this' has complete base class information.
+ * This is used to detect forward references in covariant overloads.
+ */
+
+int ClassDeclaration::isBaseInfoComplete()
+{
+    if (!baseClass)
+        return ident == Id::Object;
+    for (int i = 0; i < baseclasses->dim; i++)
+    {   BaseClass *b = (BaseClass *)baseclasses->data[i];
+        if (!b->base || !b->base->isBaseInfoComplete())
+            return 0;
+    }
+    return 1;
 }
 
 Dsymbol *ClassDeclaration::search(Loc loc, Identifier *ident, int flags)
@@ -1370,6 +1389,22 @@ int InterfaceDeclaration::isBaseOf(BaseClass *bc, target_ptrdiff_t *poffset)
     if (poffset)
         *poffset = 0;
     return 0;
+}
+
+/*********************************************
+ * Determine if 'this' has clomplete base class information.
+ * This is used to detect forward references in covariant overloads.
+ */
+
+int InterfaceDeclaration::isBaseInfoComplete()
+{
+    assert(!baseClass);
+    for (int i = 0; i < baseclasses->dim; i++)
+    {   BaseClass *b = (BaseClass *)baseclasses->data[i];
+        if (!b->base || !b->base->isBaseInfoComplete ())
+            return 0;
+    }
+    return 1;
 }
 
 /****************************************

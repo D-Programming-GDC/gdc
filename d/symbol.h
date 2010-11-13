@@ -178,6 +178,7 @@ extern Symbol * symbol_name(const char * id, int sclass, TYPE * t);
 extern Symbol * struct_calloc();
 extern Symbol * symbol_generate(SymbolStorageClass sc, TYPE * type);
 extern void     symbol_func(Symbol * sym);
+extern tree     check_static_sym(Symbol * sym);
 extern void     outdata(Symbol * sym);
 inline void     obj_export(Symbol *, int) { }
 extern void     obj_moduleinfo(Symbol *sym);

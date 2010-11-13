@@ -4,7 +4,7 @@
  * Read/write data in the $(LINK2 http://www.info-_zip.org, zip archive) format.
  * Makes use of the etc.c.zlib compression library.
  *
- * Bugs: 
+ * Bugs:
  *      $(UL
  *      $(LI Multi-disk zips not supported.)
  *      $(LI Only Zip version 20 formats are supported.)
@@ -200,7 +200,7 @@ class ZipArchive
                     throw new ZipException("unsupported compression method");
             }
             de.compressedSize = to!uint(de.compressedData.length);
-            de.crc32 = to!uint(std.zlib.crc32(0, cast(void[])de.expandedData));
+            de.crc32 = std.zlib.crc32(0, cast(void[])de.expandedData);
 
             archiveSize += 30 + de.name.length +
                                 de.extra.length +
@@ -318,10 +318,10 @@ class ZipArchive
         this.data = cast(ubyte[]) buffer;
 
         // Find 'end record index' by searching backwards for signature
-        iend = to!uint(data.length - 66000);
+        iend = to!uint(data.length) - 66000;
         if (iend < 0)
             iend = 0;
-        for (i = to!uint(data.length - 22); 1; i--)
+        for (i = to!uint(data.length) - 22; 1; i--)
         {
             if (i < iend)
                 throw new ZipException("no end record");

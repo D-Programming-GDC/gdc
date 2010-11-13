@@ -5433,6 +5433,7 @@ case "$d_target_os" in
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     ;;
     linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"
+	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
 	     d_sem_impl="posix"
 	     d_have_loader=1 # should check for <dlfcn.h>, and use verion(GNU_Have_dlopen)
              ;;

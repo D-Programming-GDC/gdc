@@ -110,12 +110,6 @@ if test "$d_lang_version" = 2; then
     cd libphobos && \
     ../symlink-tree ../gcc/d/druntime > /dev/null && \
     cd "$top" || exit 1
-
-    # object file better off being in the top directory.
-#   cd libphobos && \
-#   ln -s ../gcc/d/druntime/import/object.di object.di && \
-#   unlink import/object.di && \
-#   cd "$top" || exit 1
 fi
 
 # 1.2 Create a directory of links to the Zlib sources in the libphobos

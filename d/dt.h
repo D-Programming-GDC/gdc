@@ -32,6 +32,7 @@ enum DT {
     DT_nbytes,
     DT_abytes,
     DT_word,
+    DT_ptrsize,
     DT_xoff,
     DT_1byte,
     DT_tree,
@@ -80,7 +81,7 @@ dtdword(dt_t** pdt, target_size_t val) {
 
 inline dt_t**
 dtsize_t(dt_t** pdt, target_size_t val) {
-    return dtval(pdt, DT_word, val, 0); }
+    return dtval(pdt, DT_ptrsize, val, 0); }
 
 inline dt_t**
 dtxoff(dt_t** pdt, Symbol * sym, target_size_t offset, TypeType) {
@@ -103,5 +104,8 @@ extern dt_t** dti32(dt_t** pdt, unsigned val, int pad_to_word);
 
 // Added for GCC to match types for SRA pass
 extern dt_t** dtcontainer(dt_t** pdt, Type * type, dt_t* values);
+
+//
+extern tree dt2tree(dt_t * dt);
 
 #endif

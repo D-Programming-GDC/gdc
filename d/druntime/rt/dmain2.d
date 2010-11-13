@@ -58,7 +58,11 @@ version (all)
         auto t = cast(Throwable) o;
         
         if (t !is null)
+        {
+            if (cast(byte*) t is t.classinfo.init.ptr)
+                return;
             t.next = _d_unhandled;
+        }
         _d_unhandled = t;
     }
 }
@@ -272,6 +276,7 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
         version (Windows)
             _minit();
         _moduleCtor();
+        _moduleTlsCtor();
         runModuleUnitTests();
         return true;
     }
@@ -301,6 +306,7 @@ extern (C) bool rt_term(ExceptionHandler dg = null)
 {
     try
     {
+        _moduleTlsDtor();
         thread_joinAll();
         _d_isHalting = true;
         _moduleDtor();

@@ -79,7 +79,8 @@ private template implicitlyConverts(S, T)
 
 unittest
 {
-    debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
+    debug(conv) scope(success) writeln("unittest @",
+            __FILE__, ":", __LINE__, " succeeded.");
     assert(!implicitlyConverts!(const(char)[], string));
     assert(implicitlyConverts!(string, const(char)[]));
 }
@@ -102,46 +103,56 @@ combination of qualifiers (mutable, $(D const), or $(D immutable)).
 Example:
 ----
 char[] a = "abc";
-auto b = to!(immutable(dchar)[])(a);
+auto b = to!dstring(a);
 assert(b == "abc"w);
 ----
  */
-T toImpl(T, S)(S s) if (!implicitlyConverts!(S, T) && isSomeString!(T)
-        && isSomeString!(S))
+T toImpl(T, S)(S s) if (!implicitlyConverts!(S, T) && isSomeString!T
+        && isInputRange!S && isSomeChar!(ElementType!S))
 {
-    // string-to-string conversion
-    static if (s[0].sizeof == T[0].sizeof) {
-        // same width, only qualifier conversion
-        enum tIsConst = is(T == const(char)[]) || is(T == const(wchar)[])
-            || is(T == const(dchar)[]);
-        enum tIsInvariant = is(T == immutable(char)[])
-            || is(T == immutable(wchar)[]) || is(T == immutable(dchar)[]);
-        static if (tIsConst) {
-            return s;
-        } else static if (tIsInvariant) {
-            // conversion (mutable|const) -> immutable
-            return s.idup;
+    static if (isSomeString!S)
+    {
+        // string-to-string conversion
+        static if (s[0].sizeof == T[0].sizeof) {
+            // same width, only qualifier conversion
+            enum tIsConst = is(T == const(char)[]) || is(T == const(wchar)[])
+                || is(T == const(dchar)[]);
+            enum tIsInvariant = is(T == immutable(char)[])
+                || is(T == immutable(wchar)[]) || is(T == immutable(dchar)[]);
+            static if (tIsConst) {
+                return s;
+            } else static if (tIsInvariant) {
+                // conversion (mutable|const) -> immutable
+                return s.idup;
+            } else {
+                // conversion (immutable|const) -> mutable
+                return s.dup;
+            }
         } else {
-            // conversion (immutable|const) -> mutable
-            return s.dup;
+            // width conversion
+            // we can cast because toUTFX always produces a fresh string
+            static if (T[0].sizeof == 1) {
+                return cast(T) toUTF8(s);
+            } else static if (T[0].sizeof == 2) {
+                return cast(T) toUTF16(s);
+            } else {
+                static assert(T[0].sizeof == 4);
+                return cast(T) toUTF32(s);
+            }
         }
-    } else {
-        // width conversion
-        // we can cast because toUTFX always produces a fresh string
-        static if (T[0].sizeof == 1) {
-            return cast(T) toUTF8(s);
-        } else static if (T[0].sizeof == 2) {
-            return cast(T) toUTF16(s);
-        } else {
-            static assert(T[0].sizeof == 4);
-            return cast(T) toUTF32(s);
-        }
+    }
+    else
+    {
+        Appender!T result;
+        result.put(s);
+        return result.data;
     }
 }
 
 unittest
 {
-    debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
+    debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__,
+            " succeeded.");
     alias TypeTuple!(char, wchar, dchar) Chars;
     foreach (LhsC; Chars)
     {
@@ -171,56 +182,82 @@ converted by calling $(D to!T).
  */
 T toImpl(T, S)(S s, in T leftBracket = "[", in T separator = " ",
     in T rightBracket = "]")
-if (isSomeString!(T) && !isSomeString!(S) && isArray!(S))
+if (isSomeString!T && !isSomeChar!(ElementType!S) && isInputRange!S)
 {
     alias Unqual!(typeof(T.init[0])) Char;
-    // array-to-string conversion
-    static if (is(S == void[])
-            || is(S == const(void)[]) || is(S == immutable(void)[])) {
-        auto raw = cast(const(ubyte)[]) s;
-        enforce(raw.length % Char.sizeof == 0,
-                new ConvError("Alignment mismatch in converting a "
-                        ~ S.stringof ~ " to a "
-                        ~ T.stringof));
-        auto result = new Char[raw.length / Char.sizeof];
-        memcpy(result.ptr, s.ptr, s.length);
-        return cast(T) result;
-    } else {
-        auto result = appender!(Char[])();
-        result.put(leftBracket);
-        foreach (i, e; s) {
-            if (i) result.put(separator);
-            result.put(to!T(e));
+// array-to-string conversion
+    auto result = appender!(Char[])();
+    result.put(leftBracket);
+    bool first = true;
+    for (; !s.empty; s.popFront())
+    {
+        if (!first)
+        {
+            result.put(separator);
         }
-        result.put(rightBracket);
-        return cast(T) result.data;
+        else
+        {
+            first = false;
+        }
+        result.put(to!T(s.front));
     }
+    result.put(rightBracket);
+    return cast(T) result.data;
+}
+
+/*
+  Converting static arrays forwards to their dynamic counterparts.
+ */
+T toImpl(T, S)(ref S s)
+if (isStaticArray!S)
+{
+    return toImpl!(T, typeof(s[0])[])(s);
+}
+
+/*
+ Converting arrays of void
+*/
+T toImpl(T, S)(ref S s, in T leftBracket = "[", in T separator = " ",
+    in T rightBracket = "]")
+if (isSomeString!T && (is(S == void[]) || is(S == const(void)[]) ||
+                is(S == immutable(void)[])))
+{
+    alias Unqual!(typeof(T.init[0])) Char;
+    auto raw = cast(const(ubyte)[]) s;
+    enforce(raw.length % Char.sizeof == 0,
+            new ConvError("Alignment mismatch in converting a "
+                    ~ S.stringof ~ " to a "
+                    ~ T.stringof));
+    auto result = new Char[raw.length / Char.sizeof];
+    memcpy(result.ptr, s.ptr, s.length);
+    return cast(T) result;
 }
 
 unittest
 {
-    debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
+    debug(conv) scope(success) writeln("unittest @",
+            __FILE__, ":", __LINE__, " succeeded.");
     long[] b = [ 1, 3, 5 ];
     auto s = to!string(b);
-    //printf("%d, |%*s|\n", s.length, s.length, s.ptr);
+//printf("%d, |%*s|\n", s.length, s.length, s.ptr);
     assert(to!string(b) == "[1 3 5]", s);
     double[2] a = [ 1.5, 2.5 ];
-    //writeln(to!string(a));
+//writeln(to!string(a));
     assert(to!string(a) == "[1.5 2.5]");
 }
 
 /**
-Associative array to string conversion. The left bracket, key-value
-separator, element separator, and right bracket are configurable.
-Each element is printed by calling $(D to!T).
- */
+   Associative array to string conversion. The left bracket, key-value
+   separator, element separator, and right bracket are configurable.
+   Each element is printed by calling $(D to!T).
+*/
 T toImpl(T, S)(S s, in T leftBracket = "[", in T keyval = ":",
         in T separator = ", ", in T rightBracket = "]")
-if (isAssociativeArray!(S) && isSomeString!(T))
+if (isAssociativeArray!S && isSomeString!T)
 {
     alias Unqual!(typeof(T.init[0])) Char;
     auto result = appender!(Char[])();
-    // hash-to-string conversion
+// hash-to-string conversion
     result.put(leftBracket);
     bool first = true;
     foreach (k, v; s) {
@@ -235,11 +272,11 @@ if (isAssociativeArray!(S) && isSomeString!(T))
 }
 
 /**
-Object to string conversion calls $(D toString) against the object or
-returns $(D nullstr) if the object is null.
- */
+   Object to string conversion calls $(D toString) against the object or
+   returns $(D nullstr) if the object is null.
+*/
 T toImpl(T, S)(S s, in T nullstr = "null")
-if (is(S : Object) && isSomeString!(T))
+if (is(S : Object) && isSomeString!T)
 {
     if (!s) return nullstr;
     return to!(T)(s.toString);
@@ -256,11 +293,11 @@ unittest
 }
 
 /**
-Struct to string conversion calls $(D toString) against the struct if
-it is defined.
- */
+   Struct to string conversion calls $(D toString) against the struct if
+   it is defined.
+*/
 T toImpl(T, S)(S s)
-if (is(S == struct) && isSomeString!(T) && is(typeof(&S.init.toString)))
+if (is(S == struct) && isSomeString!T && is(typeof(&S.init.toString)))
 {
     return to!T(s.toString);
 }
@@ -273,12 +310,13 @@ unittest
 }
 
 /**
-For structs that do not define $(D toString), the conversion to string
-produces the list of fields.
- */
+   For structs that do not define $(D toString), the conversion to string
+   produces the list of fields.
+*/
 T toImpl(T, S)(S s, in T left = S.stringof~"(", in T separator = ", ",
         in T right = ")")
-if (is(S == struct) && isSomeString!(T) && !is(typeof(&S.init.toString)))
+if (is(S == struct) && isSomeString!T && !is(typeof(&S.init.toString)) &&
+        !isInputRange!S)
 {
     Tuple!(FieldTypeTuple!(S)) * t = void;
     static if ((*t).sizeof == S.sizeof)
@@ -317,29 +355,17 @@ Enumerated types are converted to strings as their symbolic names.
 T toImpl(T, S)(S s) if (is(S == enum) && isSomeString!(T)
         && !implicitlyConverts!(S, T))
 {
-    mixin (enumToStringImpl!(S).code);
-}
-
-// internal
-private template enumToStringImpl(Enum)
-{
-    template generate(alias members)
+    foreach (i, e; EnumMembers!S)
     {
-        static if (members.length)
-        {
-            enum m = members[0];
-            enum code =
-                "if (s == S." ~ m ~ ") return `" ~ m ~ "`;" ~
-                generate!(members[1 .. $]).code;
-        }
-        else
-        {
-            enum code = "throw new ConvError(`"
-                "There is no corresponding enum member name in " ~
-                Enum.stringof ~ "`);";
-        }
+        if (s == e)
+            return __traits(allMembers, S)[i];
     }
-    enum code = generate!([__traits(allMembers, Enum)]).code;
+
+    // Embed the actual value encountered into the error message.
+    static assert(!is(OriginalType!S == S));
+    OriginalType!S v = s;
+    throw new ConvError(
+        "value '" ~ to!string(v) ~ "' is not enumerated in " ~ S.stringof);
 }
 
 unittest
@@ -379,7 +405,8 @@ if (is(S == typedef) && isSomeString!(T))
 
 unittest
 {
-    debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
+    debug(conv) scope(success) writeln("unittest @",
+            __FILE__, ":", __LINE__, " succeeded.");
     typedef double Km;
     Km km = 42;
     assert(to!string(km) == "Km(42)");
@@ -387,7 +414,8 @@ unittest
 
 unittest
 {
-    debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
+    debug(conv) scope(success) writeln("unittest @",
+            __FILE__, ":", __LINE__, " succeeded.");
     auto a = "abcx"w;
     const(void)[] b = a;
     assert(b.length == 8);
@@ -515,7 +543,8 @@ Macros: WIKI=Phobos/StdConv
 If the source type is implicitly convertible to the target type, $(D
 to) simply performs the implicit conversion.
  */
-Target toImpl(Target, Source)(Source value) if (implicitlyConverts!(Source, Target))
+Target toImpl(Target, Source)(Source value)
+if (implicitlyConverts!(Source, Target))
 {
     return value;
 }
@@ -531,7 +560,7 @@ unittest
 /**
 Boolean values are printed as $(D "true") or $(D "false").
  */
-T toImpl(T, S)(S b) if (is(Unqual!S == bool) && isSomeString!(T))
+T toImpl(T, S)(S b) if (is(Unqual!S == bool) && isSomeString!T)
 {
     return to!T(b ? "true" : "false");
 }
@@ -551,7 +580,7 @@ When the source is a wide string, it is first converted to a narrow
 string and then parsed.
  */
 T toImpl(T, S)(S value) if ((is(S : const(wchar)[]) || is(S : const(dchar)[]))
-        && !isSomeString!(T))
+        && !isSomeString!T)
 {
     // todo: improve performance
     return parseString!(T)(toUTF8(value));
@@ -560,7 +589,8 @@ T toImpl(T, S)(S value) if ((is(S : const(wchar)[]) || is(S : const(dchar)[]))
 /**
 When the source is a narrow string, normal text parsing occurs.
  */
-T toImpl(T, S)(S value) if (is(S : const(char)[]) && !isSomeString!(T))
+T toImpl(T, S)(S value) if (isDynamicArray!S &&
+        is(S : const(char)[]) && !isSomeString!T)
 {
     return parseString!(T)(value);
 }
@@ -691,15 +721,15 @@ private T parseString(T)(const(char)[] v)
 Array-to-array conversion (except when target is a string type)
 converts each element in turn by using $(D to).
  */
-T toImpl(T, S)(S src) if (isArray!(S) && isArray!(T) && !isSomeString!(T)
+T toImpl(T, S)(S src) if (isDynamicArray!(S) && isArray!(T) && !isSomeString!(T)
         && !implicitlyConverts!(S, T))
 {
     alias typeof(T.init[0]) E;
     auto result = new E[src.length];
     foreach (i, e; src) {
-	/* Temporarily cast to mutable type, so we can get it initialized,
-	 * this is ok because there are no other references to result[]
-	 */
+        /* Temporarily cast to mutable type, so we can get it initialized,
+         * this is ok because there are no other references to result[]
+         */
         cast()(result[i]) = to!(E)(e);
     }
     return result;
@@ -1127,58 +1157,44 @@ unittest
 {
     debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
     // @@@BUG@@@ the size of China
-	// foreach (i; 2..37) {
-	// 	assert(parse!int("0",i) == 0);
-	// 	assert(parse!int("1",i) == 1);
-	// 	assert(parse!byte("10",i) == i);
-	// }
-	foreach (i; 2..37) {
+        // foreach (i; 2..37) {
+        //      assert(parse!int("0",i) == 0);
+        //      assert(parse!int("1",i) == 1);
+        //      assert(parse!byte("10",i) == i);
+        // }
+        foreach (i; 2..37) {
         string s = "0";
-		assert(parse!int(s,i) == 0);
+                assert(parse!int(s,i) == 0);
         s = "1";
-		assert(parse!int(s,i) == 1);
+                assert(parse!int(s,i) == 1);
         s = "10";
-		assert(parse!byte(s,i) == i);
-	}
+                assert(parse!byte(s,i) == i);
+        }
     // Same @@@BUG@@@ as above
-	//assert(parse!int("0011001101101", 2) == 0b0011001101101);
-	// assert(parse!int("765",8) == 0765);
-	// assert(parse!int("fCDe",16) == 0xfcde);
+        //assert(parse!int("0011001101101", 2) == 0b0011001101101);
+        // assert(parse!int("765",8) == 0765);
+        // assert(parse!int("fCDe",16) == 0xfcde);
     auto s = "0011001101101";
-	assert(parse!int(s, 2) == 0b0011001101101);
+        assert(parse!int(s, 2) == 0b0011001101101);
     s = "765";
-	assert(parse!int(s, 8) == octal!765);
+        assert(parse!int(s, 8) == octal!765);
     s = "fCDe";
-	assert(parse!int(s, 16) == 0xfcde);
+        assert(parse!int(s, 16) == 0xfcde);
 }
 
 Target parse(Target, Source)(ref Source s)
 if (isSomeString!Source && is(Target == enum))
 {
-    mixin(enumFromStringImpl!Target.code);
-}
-
-private template enumFromStringImpl(Enum)
-{
-    template generate(alias members)
+    // TODO: BUG4744
+    foreach (i, e; EnumMembers!Target)
     {
-        static if (members.length)
-        {
-            enum m = members[0];
-            enum code =
-                "if (s.length >= `"~m~"`.length && s[0 .. `"~m~"`.length] == `"
-                ~ m ~ "`) { s = s[`"~m~"`.length .. $]; return Target."
-                ~ m ~ "; }" ~
-                generate!(members[1 .. $]).code;
-        }
-        else
-        {
-            enum code = "throw new ConvError(`"
-                "There is no corresponding enum member value in " ~
-                Enum.stringof ~ "`);";
-        }
+        auto ident = __traits(allMembers, Target)[i];
+        if (s.skipOver(ident))
+            return e;
     }
-    enum code = generate!([__traits(allMembers, Enum)]).code;
+    throw new ConvError(
+        Target.stringof ~ " does not have a member named '"
+        ~ to!string(s) ~ "'");
 }
 
 unittest
@@ -1202,6 +1218,17 @@ unittest
     catch (ConvError e)
     {
     }
+}
+
+version (none)  // TODO: BUG4744
+unittest
+{
+    enum A { member1, member11, member111 }
+    assert(to!A("member1"  ) == A.member1  );
+    assert(to!A("member11" ) == A.member11 );
+    assert(to!A("member111") == A.member111);
+    auto s = "member1111";
+    assert(parse!A(s) == A.member111 && s == "1");
 }
 
 Target parse(Target, Source)(ref Source p)
@@ -1232,8 +1259,17 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
         default: {}
     }
 
-    const bool isHex = p.front == '0'
-        && (p.popFront(), p.front == 'x' || p.front == 'X');
+    bool isHex = p.front == '0';
+    if(isHex)
+    {
+        p.popFront();
+        if(p.empty)
+        {
+            return (sign) ? -0 : 0;
+        }
+
+        isHex = isHex && (p.front == 'x' || p.front == 'X');
+    }
 
     real ldval = 0.0;
     char dot = 0;                        /* if decimal point has been seen */
@@ -1471,6 +1507,7 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
 
 unittest
 {
+    errno = 0;  // In case it was set by another unittest in a different module.
     debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
     struct longdouble
     {
@@ -2287,6 +2324,9 @@ unittest
     f = to!float( ".456" );
     assert( f == .456f );
 
+    assert(to!float("0") == 0f);
+    assert(to!float("-0") == -0f);
+
     // min and max
     try
     {
@@ -2344,6 +2384,9 @@ unittest
     assert( d == .456 );
     d = to!double( "1.23456E+2" );
     assert( d == 1.23456E+2 );
+
+    assert(to!double("0") == 0.0);
+    assert(to!double("-0") == -0.0);
 
     // min and max
     try
@@ -2406,6 +2449,9 @@ unittest
     assert(feq(r,  1.23456e+2L));
     r = to!real(to!string(real.max / 2L));
     assert(to!string(r) == to!string(real.max / 2L));
+
+    assert(to!real("0") == 0.0L);
+    assert(to!real("-0") == -0.0L);
 
     // min and max
     try
@@ -3496,7 +3542,8 @@ unittest
 Pointer to string conversions prints the pointer as a $(D size_t) value.
  */
 T toImpl(T, S)(S value)
-if (isPointer!S && !isSomeChar!(typeof(*S.init)) && isSomeString!T)
+if (isPointer!S && (!is(typeof(*S.init)) || !isSomeChar!(typeof(*S.init)))
+    && isSomeString!T)
 {
     return to!T(cast(size_t) value, 16u);
 }
@@ -3553,37 +3600,37 @@ Take a look at int.max and int.max+1 in octal and the logic for this
 function follows directly.
  */
 template octalFitsInInt(string octalNum) {
-	// note it is important to strip the literal of all
-	// non-numbers. kill the suffix and underscores lest they mess up
-	// the number of digits here that we depend on.
+        // note it is important to strip the literal of all
+        // non-numbers. kill the suffix and underscores lest they mess up
+        // the number of digits here that we depend on.
     enum bool octalFitsInInt = strippedOctalLiteral(octalNum).length < 11 ||
         strippedOctalLiteral(octalNum).length == 11 &&
         strippedOctalLiteral(octalNum)[0] == '1';
 }
 
 string strippedOctalLiteral(string original) {
-	string stripped;
-	foreach (c; original)
-		if (c >= '0' && c <= '7')
-			stripped ~= c;
-	return stripped;
+        string stripped = "";
+        foreach (c; original)
+                if (c >= '0' && c <= '7')
+                        stripped ~= c;
+        return stripped;
 }
 
 template literalIsLong(string num) {
-	static if (num.length > 1)
+        static if (num.length > 1)
         // can be xxL or xxLu according to spec
-		enum literalIsLong = (num[$-1] == 'L' || num[$-2] == 'L');
-	else
-		enum literalIsLong = false;
+                enum literalIsLong = (num[$-1] == 'L' || num[$-2] == 'L');
+        else
+                enum literalIsLong = false;
 }
 
 template literalIsUnsigned(string num) {
-	static if (num.length > 1)
+        static if (num.length > 1)
         // can be xxL or xxLu according to spec
-		enum literalIsUnsigned = (num[$-1] == 'u' || num[$-2] == 'u')
+                enum literalIsUnsigned = (num[$-1] == 'u' || num[$-2] == 'u')
             // both cases are allowed too
             || (num[$-1] == 'U' || num[$-2] == 'U');
-	else
+        else
         enum literalIsUnsigned = false;
 }
 
@@ -3614,25 +3661,25 @@ auto z = octal!"1_000_000u";
  */
 int octal(string num)()
 if((octalFitsInInt!(num) && !literalIsLong!(num)) && !literalIsUnsigned!(num)) {
-	return octal!(int, num);
+        return octal!(int, num);
 }
 
 /// Ditto
 long octal(string num)()
 if((!octalFitsInInt!(num) || literalIsLong!(num)) && !literalIsUnsigned!(num)) {
-	return octal!(long, num);
+        return octal!(long, num);
 }
 
 /// Ditto
 uint octal(string num)()
 if((octalFitsInInt!(num) && !literalIsLong!(num)) && literalIsUnsigned!(num)) {
-	return octal!(int, num);
+        return octal!(int, num);
 }
 
 /// Ditto
 ulong octal(string num)()
 if((!octalFitsInInt!(num) || literalIsLong!(num)) && literalIsUnsigned!(num)) {
-	return octal!(long, num);
+        return octal!(long, num);
 }
 
 /*
@@ -3642,54 +3689,54 @@ The format is specified in lex.html. The leading zero is allowed, but
 not required.
  */
 bool isOctalLiteralString(string num) {
-	if (num.length == 0)
-		return false;
+        if (num.length == 0)
+                return false;
 
-	// Must start with a number. To avoid confusion, literals that
+        // Must start with a number. To avoid confusion, literals that
     // start with a '0' are not allowed
     if (num[0] == '0' && num.length > 1)
         return false;
-	if (num[0] < '0' || num[0] > '7')
-		return false;
+        if (num[0] < '0' || num[0] > '7')
+                return false;
 
-	foreach (i, c; num) {
-		if ((c < '0' || c > '7') && c != '_') // not a legal character
-			if (i < num.length - 2)
-				return false;
-			else { // gotta check for those suffixes
-				if (c != 'U' && c != 'u' && c != 'L')
-					return false;
-				if (i != num.length - 1) {
+        foreach (i, c; num) {
+                if ((c < '0' || c > '7') && c != '_') // not a legal character
+                        if (i < num.length - 2)
+                                return false;
+                        else { // gotta check for those suffixes
+                                if (c != 'U' && c != 'u' && c != 'L')
+                                        return false;
+                                if (i != num.length - 1) {
                     // if we're not the last one, the next one must
                     // also be a suffix to be valid
-					char c2 = num[$-1];
-					if (c2 != 'U' && c2 != 'u' && c2 != 'L')
-						return false; // spam at the end of the string
-					if (c2 == c)
-						return false; // repeats are disallowed
-				}
-			}
-	}
+                                        char c2 = num[$-1];
+                                        if (c2 != 'U' && c2 != 'u' && c2 != 'L')
+                                                return false; // spam at the end of the string
+                                        if (c2 == c)
+                                                return false; // repeats are disallowed
+                                }
+                        }
+        }
 
-	return true;
+        return true;
 }
 
 /*
-	Returns true if the given compile time string is an octal literal.
+        Returns true if the given compile time string is an octal literal.
 */
 template isOctalLiteral(string num) {
-	enum bool isOctalLiteral = isOctalLiteralString(num);
+        enum bool isOctalLiteral = isOctalLiteralString(num);
 }
 
 /*
-	Takes a string, num, which is an octal literal, and returns its
-	value, in the type T specified.
+        Takes a string, num, which is an octal literal, and returns its
+        value, in the type T specified.
 
-	So:
+        So:
 
-	int a = octal!(int, "10");
+        int a = octal!(int, "10");
 
-	assert(a == 8);
+        assert(a == 8);
 */
 T octal(T, string num)() {
     static assert(isOctalLiteral!num, num ~ " is not a valid octal literal");
@@ -3699,13 +3746,13 @@ T octal(T, string num)() {
 
     for (int pos = num.length - 1; pos >= 0; pos--) {
         char s = num[pos];
-	if (s < '0' || s > '7') // we only care about digits; skip the rest
+        if (s < '0' || s > '7') // we only care about digits; skip the rest
         // safe to skip - this is checked out in the assert so these
         // are just suffixes
-		continue;
+                continue;
 
-	value += pow * (s - '0');
-	pow *= 8;
+        value += pow * (s - '0');
+        pow *= 8;
   }
 
   return value;
@@ -3713,17 +3760,17 @@ T octal(T, string num)() {
 
 /// Ditto
 template octal(alias s) if (isIntegral!(typeof(s))) {
-	enum auto octal = octal!(typeof(s), toStringNow!(s));
+        enum auto octal = octal!(typeof(s), toStringNow!(s));
 }
 
 unittest
 {
     debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
-	// ensure that you get the right types, even with embedded underscores
-	auto w = octal!"100_000_000_000";
-	static assert(!is(typeof(w) == int));
-	auto w2 = octal!"1_000_000_000";
-	static assert(is(typeof(w2) == int));
+        // ensure that you get the right types, even with embedded underscores
+        auto w = octal!"100_000_000_000";
+        static assert(!is(typeof(w) == int));
+        auto w2 = octal!"1_000_000_000";
+        static assert(is(typeof(w2) == int));
 
     static assert(octal!"45" == 37);
     static assert(octal!"0" == 0);
@@ -3806,37 +3853,47 @@ T* emplace(T, Args...)(void[] chunk, Args args) if (!is(T == class))
     enforce(chunk.length >= T.sizeof,
             new ConvError("emplace: target size too small"));
     auto a = cast(size_t) chunk.ptr;
-    version (OSX)	// for some reason, breaks on other platforms
+    version (OSX)       // for some reason, breaks on other platforms
         enforce(a % T.alignof == 0, new ConvError("misalignment"));
     auto result = cast(typeof(return)) chunk.ptr;
 
-    static void initialize(void * p)
+    void initialize()
     {
         static T i;
-        memcpy(p, &i, T.sizeof);
+        memcpy(chunk.ptr, &i, T.sizeof);
     }
 
-    static if (is(typeof(result.__ctor(args))))
-    {
-        // T defines a genuine constructor accepting args
-        // Go the classic route: write .init first, then call ctor
-        initialize(chunk.ptr);
-        result.__ctor(args);
-    }
-    else static if (Args.length == 1)
-    {
-        // T doesn't define a constructor, must be a primitive type
-        static if (is(typeof(result.opAssign(args))))
-        {
-            static init = T.init;
-            memcpy(p, &init, T.sizeof);
-        }
-        *result = args[0];
-    }
-    else static if (Args.length == 0)
+    static if (Args.length == 0)
     {
         // Just initialize the thing
-        initialize(chunk.ptr);
+        initialize();
+    }
+    else static if (is(T == struct))
+    {
+        static if (is(typeof(result.__ctor(args))))
+        {
+            // T defines a genuine constructor accepting args
+            // Go the classic route: write .init first, then call ctor
+            initialize();
+            result.__ctor(args);
+        }
+        else static if (is(typeof(T(args))))
+        {
+            // Struct without constructor that has one matching field for
+            // each argument
+            initialize();
+            *result = T(args);
+        }
+        else static if (Args.length == 1 && is(Args[0] : T))
+        {
+            initialize();
+            *result = args[0];
+        }
+    }
+    else static if (Args.length == 1 && is(Args[0] : T))
+    {
+        // Primitive type. Assignment is fine for initialization.
+        *result = args[0];
     }
     else
     {
@@ -3863,6 +3920,20 @@ unittest
     auto s2 = S(42, 43);
     assert(*emplace!S(s1, s2) == s2);
     assert(*emplace!S(s1, 44, 45) == S(44, 45));
+}
+
+// emplace
+/**
+Similar to $(D emplace) above, except it receives a pointer to an
+uninitialized object of type $(D T). This overload is useful for
+e.g. initializing member variables or stack variables defined with $(D
+T variable = void).
+
+Returns: A pointer to the newly constructed object.
+ */
+T* emplace(T, Args...)(T* chunk, Args args) if (!is(T == class))
+{
+    return emplace!T((cast(void*) chunk)[0 .. T.sizeof], args);
 }
 
 // emplace
@@ -3928,3 +3999,15 @@ unittest
     assert(equal(map!(to!int)(["42", "34", "345"]), [42, 34, 345]));
 }
 
+unittest
+{
+    struct Foo
+    {
+        uint num;
+    }
+
+    Foo foo;
+    auto voidArr = (cast(void*) &foo)[0..Foo.sizeof];
+    emplace!Foo(voidArr, 2U);
+    assert(foo.num == 2);
+}

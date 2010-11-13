@@ -555,13 +555,11 @@ Expression *Shl(Type *type, Expression *e1, Expression *e2)
 }
 
 Expression *Shr(Type *type, Expression *e1, Expression *e2)
-{   Expression *e;
+{
     Loc loc = e1->loc;
-    unsigned count;
-    dinteger_t value;
 
-    value = e1->toInteger();
-    count = e2->toInteger();
+    dinteger_t value = e1->toInteger();
+    unsigned count = e2->toInteger();
     switch (e1->type->toBasetype()->ty)
     {
         case Tint8:
@@ -596,21 +594,22 @@ Expression *Shr(Type *type, Expression *e1, Expression *e2)
                 value = (d_uns64)(value) >> count;
                 break;
 
+        case Terror:
+                return e1;
+
         default:
                 assert(0);
     }
-    e = new IntegerExp(loc, value, type);
+    Expression *e = new IntegerExp(loc, value, type);
     return e;
 }
 
 Expression *Ushr(Type *type, Expression *e1, Expression *e2)
-{   Expression *e;
+{
     Loc loc = e1->loc;
-    unsigned count;
-    dinteger_t value;
 
-    value = e1->toInteger();
-    count = e2->toInteger();
+    dinteger_t value = e1->toInteger();
+    unsigned count = e2->toInteger();
     switch (e1->type->toBasetype()->ty)
     {
         case Tint8:
@@ -635,10 +634,13 @@ Expression *Ushr(Type *type, Expression *e1, Expression *e2)
                 value = (d_uns64)(value) >> count;
                 break;
 
+        case Terror:
+                return e1;
+
         default:
                 assert(0);
     }
-    e = new IntegerExp(loc, value, type);
+    Expression *e = new IntegerExp(loc, value, type);
     return e;
 }
 
@@ -847,7 +849,7 @@ Expression *Equal(enum TOK op, Type *type, Expression *e1, Expression *e2)
     {
         cmp = e1->toComplex() == e2->toComplex();
     }
-    else if (e1->type->isintegral() || e1->type->ty == Tpointer)
+    else if (e1->type->isintegral() || e1->type->toBasetype()->ty == Tpointer)
     {
         cmp = (e1->toInteger() == e2->toInteger());
     }

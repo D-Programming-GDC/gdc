@@ -104,6 +104,7 @@ int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
 int Tindex = Tint32;
 int CLASSINFO_SIZE = (0x3c+12+4);
+int CLASSINFO_SIZE_64 = (0x98);
 
 /***************************** Type *****************************/
 
@@ -1597,7 +1598,7 @@ ClassDeclaration *Type::isClassHandle()
     return NULL;
 }
 
-int Type::isauto()
+int Type::isscope()
 {
     return FALSE;
 }
@@ -3472,8 +3473,8 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
             tbn = next = tint32;
             break;
     }
-    if (tbn->isauto())
-        error(loc, "cannot have array of auto %s", tbn->toChars());
+    if (tbn->isscope())
+        error(loc, "cannot have array of scope %s", tbn->toChars());
     return merge();
 }
 
@@ -3701,8 +3702,8 @@ Type *TypeDArray::semantic(Loc loc, Scope *sc)
             break;
         }
     }
-    if (tn->isauto())
-        error(loc, "cannot have array of auto %s", tn->toChars());
+    if (tn->isscope())
+        error(loc, "cannot have array of scope %s", tn->toChars());
 
     next = tn;
     transitive();
@@ -3904,8 +3905,8 @@ Type *TypeNewArray::semantic(Loc loc, Scope *sc)
             break;
         }
     }
-    if (tn->isauto())
-        error(loc, "cannot have array of auto %s", tn->toChars());
+    if (tn->isscope())
+        error(loc, "cannot have array of scope %s", tn->toChars());
 
     next = tn;
     transitive();
@@ -4032,8 +4033,8 @@ printf("index->ito->ito = x%x\n", index->ito->ito);
             error(loc, "can't have associative array of %s", next->toChars());
             return Type::terror;
     }
-    if (next->isauto())
-    {   error(loc, "cannot have array of auto %s", next->toChars());
+    if (next->isscope())
+    {   error(loc, "cannot have array of scope %s", next->toChars());
         return Type::terror;
     }
     return merge();
@@ -4051,6 +4052,12 @@ StructDeclaration *TypeAArray::getImpl()
             error(loc, "cannot create associative array %s", toChars());
             index = terror;
             next = terror;
+
+            // Head off future failures
+            StructDeclaration *s = new StructDeclaration(0, NULL);
+            s->type = terror;
+            impl = s;
+            return impl;
         }
         /* This is really a proxy for the template instance AssocArray!(index, next)
          * But the instantiation can fail if it is a template specialization field
@@ -4617,9 +4624,13 @@ int Type::covariant(Type *t)
 
         // If t1n is forward referenced:
         ClassDeclaration *cd = ((TypeClass *)t1n)->sym;
+#if 0
         if (!cd->baseClass && cd->baseclasses->dim && !cd->isInterfaceDeclaration())
+#else
+        if (!cd->isBaseInfoComplete())
+#endif
         {
-            return 3;
+            return 3;   // forward references
         }
     }
     if (t1n->implicitConvTo(t2n))
@@ -4930,7 +4941,7 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
         {   error(loc, "functions cannot return a tuple");
             tf->next = Type::terror;
         }
-        if (tf->next->isauto() && !(sc->flags & SCOPEctor))
+        if (tf->next->isscope() && !(sc->flags & SCOPEctor))
             error(loc, "functions cannot return scope %s", tf->next->toChars());
         if (tf->next->toBasetype()->ty == Tvoid)
             tf->isref = FALSE;                  // rewrite "ref void" as just "void"
@@ -5333,6 +5344,16 @@ Type *TypeDelegate::semantic(Loc loc, Scope *sc)
 d_uns64 TypeDelegate::size(Loc loc)
 {
     return PTRSIZE * 2;
+}
+
+unsigned TypeDelegate::alignsize()
+{
+#if DMDV1
+    // See Bugzilla 942 for discussion
+    if (!global.params.isX86_64)
+        return PTRSIZE * 2;
+#endif
+    return PTRSIZE;
 }
 
 MATCH TypeDelegate::implicitConvTo(Type *to)
@@ -7077,7 +7098,19 @@ MATCH TypeStruct::implicitConvTo(Type *to)
 
     //printf("TypeStruct::implicitConvTo(%s => %s)\n", toChars(), to->toChars());
     if (to->ty == Taarray)
+    {
+        /* If there is an error instantiating AssociativeArray!(), it shouldn't
+         * be reported -- it just means implicit conversion is impossible.
+         */
+        ++global.gag;
+        int errs = global.errors;
         to = ((TypeAArray*)to)->getImpl()->type;
+        --global.gag;
+        if (errs != global.errors)
+        {   global.errors = errs;
+            return MATCHnomatch;
+        }
+    }
 
     if (ty == to->ty && sym == ((TypeStruct *)to)->sym)
     {   m = MATCHexact;         // exact match
@@ -7494,9 +7527,9 @@ ClassDeclaration *TypeClass::isClassHandle()
     return sym;
 }
 
-int TypeClass::isauto()
+int TypeClass::isscope()
 {
-    return sym->isauto;
+    return sym->isscope;
 }
 
 int TypeClass::isBaseOf(Type *t, target_ptrdiff_t *poffset)

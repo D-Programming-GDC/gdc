@@ -147,7 +147,7 @@ struct Declaration : Dsymbol
     int isConst()        { return storage_class & STCconst; }
     int isImmutable()    { return storage_class & STCimmutable; }
     int isAuto()         { return storage_class & STCauto; }
-    int isScope()        { return storage_class & (STCscope | STCauto); }
+    int isScope()        { return storage_class & STCscope; }
     int isSynchronized() { return storage_class & STCsynchronized; }
     int isParameter()    { return storage_class & STCparameter; }
     int isDeprecated()   { return storage_class & STCdeprecated; }
@@ -246,7 +246,7 @@ struct VarDeclaration : Declaration
 {
     Initializer *init;
     target_size_t offset;
-    int noauto;                 // no auto semantics
+    int noscope;                 // no auto semantics
 #if DMDV2
     FuncDeclarations nestedrefs; // referenced by these lexically nested functions
     bool isargptr;              // if parameter that _argptr points to
@@ -286,7 +286,7 @@ struct VarDeclaration : Declaration
     int canTakeAddressOf();
     int needsAutoDtor();
 #endif
-    Expression *callAutoDtor(Scope *sc);
+    Expression *callScopeDtor(Scope *sc);
     ExpInitializer *getExpInitializer();
     Expression *getConstInitializer();
     void checkCtorConstInit();

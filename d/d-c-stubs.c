@@ -31,20 +31,34 @@
    link against function in the C front end.  These definitions
    satisfy the link requirements, but should never be executed. */
 
+void add_cpp_dir_path (cpp_dir *p, int chain);
+void add_path (char *path, int chain, int cxx_aware, bool user_supplied_p);
+void builtin_define_with_value (const char *macro, const char *expansion, int is_str);
+tree default_conversion (tree exp);
+tree build_binary_op (location_t location, enum tree_code code, tree orig_op0, tree orig_op1, int convert_p);
+tree build_unary_op (location_t location, enum tree_code code, tree xarg, int flag);
+tree build_indirect_ref (location_t loc, tree ptr, const char *errorstring);
+enum cpp_ttype c_lex (tree *value);
+enum cpp_ttype pragma_lex (tree *value);
+tree lookup_name (tree name);
+
+
 void
-add_cpp_dir_path (cpp_dir *p, int chain)
+add_cpp_dir_path (cpp_dir *p ATTRIBUTE_UNUSED, int chain ATTRIBUTE_UNUSED)
 {
     /* nothing */
 }
 
 void
-add_path (char *path, int chain, int cxx_aware, bool user_supplied_p)
+add_path (char *path ATTRIBUTE_UNUSED, int chain ATTRIBUTE_UNUSED,
+          int cxx_aware ATTRIBUTE_UNUSED, bool user_supplied_p ATTRIBUTE_UNUSED)
 {
     /* nothing */
 }
 
 void
-builtin_define_with_value (const char *macro, const char *expansion, int is_str)
+builtin_define_with_value (const char *macro ATTRIBUTE_UNUSED, const char *expansion ATTRIBUTE_UNUSED,
+                           int is_str ATTRIBUTE_UNUSED)
 {
     /* nothing */
 }
@@ -56,8 +70,8 @@ default_conversion (tree exp)
 }
 
 tree
-build_binary_op (location_t location, enum tree_code code,
-                 tree orig_op0, tree orig_op1, int convert_p)
+build_binary_op (location_t location ATTRIBUTE_UNUSED, enum tree_code code ATTRIBUTE_UNUSED,
+                 tree orig_op0 ATTRIBUTE_UNUSED, tree orig_op1 ATTRIBUTE_UNUSED, int convert_p ATTRIBUTE_UNUSED)
 {
 #if D_GCC_VER >= 40
     gcc_assert(0);
@@ -66,8 +80,8 @@ build_binary_op (location_t location, enum tree_code code,
 }
 
 tree
-build_unary_op (location_t location,
-                enum tree_code code, tree xarg, int flag)
+build_unary_op (location_t location ATTRIBUTE_UNUSED, enum tree_code code ATTRIBUTE_UNUSED,
+                tree xarg ATTRIBUTE_UNUSED, int flag ATTRIBUTE_UNUSED)
 {
 #if D_GCC_VER >= 40
     gcc_assert(0);
@@ -76,7 +90,8 @@ build_unary_op (location_t location,
 }
 
 tree
-build_indirect_ref (location_t loc, tree ptr, const char *errorstring)
+build_indirect_ref (location_t loc ATTRIBUTE_UNUSED, tree ptr ATTRIBUTE_UNUSED,
+                    const char *errorstring ATTRIBUTE_UNUSED)
 {
 #if D_GCC_VER >= 40
     gcc_assert(0);
@@ -87,7 +102,7 @@ build_indirect_ref (location_t loc, tree ptr, const char *errorstring)
 enum { unused } c_language;
 
 enum cpp_ttype
-c_lex (tree *value)
+c_lex (tree *value ATTRIBUTE_UNUSED)
 {
 #if D_GCC_VER >= 40
     gcc_assert(0);
@@ -96,7 +111,7 @@ c_lex (tree *value)
 }
 
 enum cpp_ttype
-pragma_lex (tree *value)
+pragma_lex (tree *value ATTRIBUTE_UNUSED)
 {
 #if D_GCC_VER >= 40
     gcc_assert(0);
@@ -105,7 +120,7 @@ pragma_lex (tree *value)
 }
 
 tree
-lookup_name (tree name)
+lookup_name (tree name ATTRIBUTE_UNUSED)
 {
 #if D_GCC_VER >= 40
     gcc_assert(0);

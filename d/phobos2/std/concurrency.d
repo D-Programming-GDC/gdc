@@ -26,6 +26,7 @@ module std.concurrency;
 
 public
 {
+    import core.atomic;
     import core.sync.barrier;
     import core.sync.condition;
     import core.sync.mutex;
@@ -103,6 +104,32 @@ private
             else
             {
                 fail = new PriorityMessageException!(T)( vals );
+            }
+        }
+    }
+
+    void checkops(T...)( T ops )
+    {
+        foreach( i, t1; T )
+        {
+            static assert( is( t1 == function ) || is( t1 == delegate ) );
+            alias ParameterTypeTuple!(t1) a1;
+
+            static if( i < T.length - 1 )
+            {
+                static assert( a1.length != 1 || !is( a1[0] == Variant ),
+                               "function with arguments " ~ a1.stringof ~
+                               " occludes successive function" );
+
+                foreach( t2; T[i+1 .. $] )
+                {
+                    static assert( is( t2 == function ) || is( t2 == delegate ) );
+                    alias ParameterTypeTuple!(t2) a2;
+
+                    static assert( !is( a1 == a2 ),
+                                   "function with arguments " ~ a1.stringof ~
+                                   " occludes successive function" );
+                }
             }
         }
     }
@@ -374,30 +401,28 @@ private void _send(T...)( MsgType type, Tid tid, T vals )
  */
 void receive(T...)( T ops )
 {
-    foreach( i, t1; T )
-    {
-        static assert( is( t1 == function ) || is( t1 == delegate ) );
-        alias ParameterTypeTuple!(t1) a1;
-        
-        if( i < T.length )
-        {
-            static assert( a1.length != 1 || !is( a1[0] == Variant ),
-                           "function with arguments " ~ a1.stringof ~
-                           " occludes successive function" );
-
-            foreach( t2; T[i+1 .. $] )
-            {
-                static assert( is( t2 == function ) || is( t2 == delegate ) );
-                alias ParameterTypeTuple!(t2) a2;
-
-                static assert( !is( a1 == a2 ),
-                               "function with arguments " ~ a1.stringof ~
-                               " occludes successive function" );
-            }
-        }
-    }
-
+    checkops( ops );
     mbox.get( ops );
+}
+
+
+unittest
+{
+    assert( __traits( compiles,
+                      {
+                          receive( (Variant x) {} );
+                          receive( (int x) {}, (Variant x) {} );
+                      } ) );
+
+    assert( !__traits( compiles,
+                       {
+                           receive( (Variant x) {}, (int x) {} );
+                       } ) );
+
+    assert( !__traits( compiles,
+                       {
+                           receive( (int x) {}, (int x) {} );
+                       } ) );
 }
 
 
@@ -437,8 +462,29 @@ receiveOnlyRet!(T) receiveOnly(T...)()
  */
 bool receiveTimeout(T...)( long ms, T ops )
 {
+    checkops( ops );
     static enum long TICKS_PER_MILLI = 10_000;
     return mbox.get( ms * TICKS_PER_MILLI, ops );
+}
+
+
+unittest
+{
+    assert( __traits( compiles,
+                      {
+                          receiveTimeout( 0, (Variant x) {} );
+                          receiveTimeout( 0, (int x) {}, (Variant x) {} );
+                      } ) );
+
+    assert( !__traits( compiles,
+                       {
+                           receiveTimeout( 0, (Variant x) {}, (int x) {} );
+                       } ) );
+
+    assert( !__traits( compiles,
+                       {
+                           receiveTimeout( 0, (int x) {}, (int x) {} );
+                       } ) );
 }
 
 

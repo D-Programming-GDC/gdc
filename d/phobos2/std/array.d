@@ -16,11 +16,15 @@ import std.c.stdio;
 import core.memory;
 import std.algorithm, std.conv, std.encoding, std.exception, std.range,
     std.string, std.traits, std.typecons, std.utf;
+private import std.c.string : memcpy;
+private import std.intrinsic : bsr;
 version(unittest) private import std.stdio;
 
 /**
-Returns a newly-allocated array consisting of a copy of the input
-range $(D r).
+Returns a newly-allocated dynamic array consisting of a copy of the input
+range, static array, dynamic array, or class or struct with an $(D opApply)
+function $(D r).  Note that narrow strings are handled
+as a special case in an overload.
 
 Example:
 
@@ -29,12 +33,13 @@ auto a = array([1, 2, 3, 4, 5][]);
 assert(a == [ 1, 2, 3, 4, 5 ]);
 ----
  */
-ElementType!Range[] array(Range)(Range r) if (isInputRange!Range)
+ForeachType!Range[] array(Range)(Range r)
+if (isIterable!Range && !isNarrowString!Range)
 {
-    alias ElementType!Range E;
+    alias ForeachType!Range E;
     static if (hasLength!Range)
     {
-        if (r.empty) return null;
+        if(r.length == 0) return null;
 
         // Determines whether the GC should scan the array.
         auto blkInfo = (typeid(E).flags & 1) ?
@@ -44,19 +49,21 @@ ElementType!Range[] array(Range)(Range r) if (isInputRange!Range)
         auto result = (cast(E*) enforce(GC.malloc(r.length * E.sizeof, blkInfo),
                 text("Out of memory while allocating an array of ", r.length,
                         " objects of type ", E.stringof)))[0 .. r.length];
-        foreach (ref e; result)
+        size_t i = 0;
+        foreach (e; r)
         {
             // hacky
-            static if (is(typeof(&e.opAssign)))
+            static if (is(typeof(e.opAssign(e))))
             {
                 // this should be in-place construction
-                new(&e) E(r.front);
+                auto voidArr = (cast(void*) (result.ptr + i))[0..E.sizeof];
+                emplace!E(voidArr, e);
             }
             else
             {
-                e = r.front;
+                result[i] = e;
             }
-            r.popFront;
+            i++;
         }
         return result;
     }
@@ -104,9 +111,56 @@ ElementType!Range[] array(Range)(Range r) if (isInputRange!Range)
     // return result[0 .. constructedElements];
 }
 
+/**
+Convert a narrow string to an array type that fully supports random access.
+This is handled as a special case and always returns a $(D dchar[]),
+$(D const(dchar)[]), or $(D immutable(dchar)[]) depending on the constness of
+the input.
+*/
+ElementType!String[] array(String)(String str) if(isNarrowString!String)
+{
+    static if(is(typeof(return) == immutable))
+    {
+        return to!(immutable(dchar)[])(str);
+    }
+    else static if(is(typeof(return) == const))
+    {
+        return to!(const(dchar)[])(str);
+    }
+    else
+    {
+        return to!(dchar[])(str);
+    }
+}
+
 version(unittest)
 {
     struct TestArray { int x; string toString() { return .to!string(x); } }
+
+    struct OpAssign
+    {
+        uint num;
+        this(uint num) { this.num = num; }
+
+        // Templating opAssign to make sure the bugs with opAssign being
+        // templated are fixed.
+        void opAssign(T)(T rhs) { this.num = rhs.num; }
+    }
+
+    struct OpApply
+    {
+        int opApply(int delegate(ref int) dg)
+        {
+            int res;
+            foreach(i; 0..10)
+            {
+                res = dg(i);
+                if(res) break;
+            }
+
+            return res;
+        }
+    }
 }
 
 unittest
@@ -130,6 +184,14 @@ unittest
     auto d = array([1., 2.2, 3][]);
     assert(is(typeof(d) == double[]));
     //writeln(d);
+
+    auto e = [OpAssign(1), OpAssign(2)];
+    auto f = array(e);
+    assert(e == f);
+
+    assert(array(OpApply.init) == [0,1,2,3,4,5,6,7,8,9]);
+    assert(array("ABC") == "ABC"d);
+    assert(array("ABC".dup) == "ABC"d.dup);
 }
 
 template IndexType(C : T[], T)
@@ -625,18 +687,18 @@ unittest
 
 /**
 Implements an output range that appends data to an array. This is
-recommended over $(D a ~= data) because it is more efficient.
+recommended over $(D a ~= data) when appending many elements because it is more
+efficient.
 
 Example:
 ----
-string arr;
-auto app = appender(&arr);
+auto app = appender!string();
 string b = "abcdefg";
 foreach (char c; b) app.put(c);
 assert(app.data == "abcdefg");
 
 int[] a = [ 1, 2 ];
-auto app2 = appender(&a);
+auto app2 = appender(a);
 app2.put(3);
 app2.put([ 4, 5, 6 ]);
 assert(app2.data == [ 1, 2, 3, 4, 5, 6 ]);
@@ -645,137 +707,73 @@ assert(app2.data == [ 1, 2, 3, 4, 5, 6 ]);
 
 struct Appender(A : T[], T)
 {
-private:
-    Unqual!(T)[] * pArray;
-
-    void allocateAndWriteCapacity()
+    private struct Data
     {
-        immutable chunkSize = GC.sizeOf(pArray.ptr);
-        immutable cap = chunkSize / T.sizeof;
-        immutable surplus = chunkSize - pArray.length * T.sizeof;
-        immutable capRepSize = cap < ubyte.max ? 1 : cap < ushort.max ? 3
-            : cap < uint.max ? 7 : 15;
-        if (surplus >= capRepSize)
-        {
-            // Enough room
-            writeCapacity(cap);
-        }
-        else
-        {
-            immutable len = pArray.length;
-            *pArray = (cast(Unqual!(T)*) GC.realloc(pArray.ptr,
-                            chunkSize + capRepSize))[0 .. len];
-            return allocateAndWriteCapacity();
-        }
+        size_t capacity;
+        Unqual!(T)[] arr;
     }
 
-    void writeCapacity(size_t cap)
-    {
-        assert(pArray);
-        assert(pArray.ptr);
-        auto p = cast(ubyte*) (pArray.ptr + pArray.length);
-        if (cap < ubyte.max)
-        {
-            *p = cast(ubyte) cap;
-        }
-        else if (cap < ushort.max)
-        {
-            *p++ = ubyte.max;
-            *p++ = cast(ubyte) cap;
-            *p++ = cast(ubyte) (cap >> 8);
-        }
-        else if (cap < uint.max)
-        {
-            *p++ = ubyte.max;
-            *p++ = ubyte.max;
-            *p++ = ubyte.max;
-            *p++ = cast(ubyte) cap;
-            *p++ = cast(ubyte) (cap >> 8);
-            *p++ = cast(ubyte) (cap >> 16);
-            *p++ = cast(ubyte) (cap >> 24);
-        }
-        else
-        {
-            static if (size_t.max == ulong.max)
-            {
-                *p++ = ubyte.max;
-                *p++ = ubyte.max;
-                *p++ = ubyte.max;
-                *p++ = ubyte.max;
-                *p++ = ubyte.max;
-                *p++ = ubyte.max;
-                *p++ = ubyte.max;
-                *p++ = cast(ubyte) cap;
-                *p++ = cast(ubyte) (cap >> 8);
-                *p++ = cast(ubyte) (cap >> 16);
-                *p++ = cast(ubyte) (cap >> 24);
-                *p++ = cast(ubyte) (cap >> 32L);
-                *p++ = cast(ubyte) (cap >> 40L);
-                *p++ = cast(ubyte) (cap >> 48L);
-                *p++ = cast(ubyte) (cap >> 56L);
-            }
-        }
-    }
+    private Data* _data;
 
-    size_t readCapacity()
-    {
-        assert(pArray);
-        assert(pArray.ptr);
-        auto p = cast(ubyte*) (pArray.ptr + pArray.length);
-        if (*p < ubyte.max)
-        {
-            return *p;
-        }
-        if (p[1] < ubyte.max && p[2] < ubyte.max)
-        {
-            return p[1] + (p[2] << 8);
-        }
-        if (p[3] < ubyte.max && p[4] < ubyte.max && p[5] < ubyte.max &&
-                p[6] < ubyte.max)
-        {
-            return p[3] + (p[4] << 8) + (p[5] << 16) + (p[6] << 24);
-        }
-        else
-        {
-            static if (size_t.max == ulong.max)
-            {
-                return p[7] + (p[8] << 8) + (p[9] << 16) + (p[10] << 24)
-                    + (p[11] << 32) + (p[12] << 40) + (p[13] << 48) +
-                    (p[14] << 56);
-            }
-        }
-        assert(0);
-    }
-
-public:
 /**
-Initialize an $(D Appender) with a pointer to an existing array. The
-$(D Appender) object will append to this array. If $(D null) is passed
-(or the default constructor gets called), the $(D Appender) object
-will allocate and use a new array.
- */
-    this(T[] * p)
+Construct an appender with a given array.  Note that this does not copy the
+data.  If the array has a larger capacity as determined by arr.capacity,
+it will be used by the appender.  After initializing an appender on an array,
+appending to the original array will reallocate.
+*/
+    this(T[] arr)
     {
-        pArray = cast(Unqual!(T)[] *) p;
-        if (!pArray) pArray = (new typeof(*pArray)[1]).ptr;
-        allocateAndWriteCapacity();
+        // initialize to a given array.
+        _data = new Data;
+        _data.arr = cast(Unqual!(T)[])arr;
+
+        // We want to use up as much of the block the array is in as possible.
+        // if we consume all the block that we can, then array appending is
+        // safe WRT built-in append, and we can use the entire block.
+        auto cap = arr.capacity;
+        if(cap > arr.length)
+            arr.length = cap;
+        // we assume no reallocation occurred
+        assert(arr.ptr is _data.arr.ptr);
+        _data.capacity = arr.length;
+    }
+
+/**
+Reserve at least newCapacity elements for appending.  Note that more elements
+may be reserved than requested.  If newCapacity < capacity, then nothing is
+done.
+*/
+    void reserve(size_t newCapacity)
+    {
+        if(!_data)
+            _data = new Data;
+        if(_data.capacity < newCapacity)
+        {
+            // need to increase capacity
+            auto bi = GC.qalloc(newCapacity * T.sizeof, (typeid(T[]).next.flags & 1) ? 0 : GC.BlkAttr.NO_SCAN);
+            _data.capacity = bi.size / T.sizeof;
+            if(_data.arr.length)
+                memcpy(bi.base, _data.arr.ptr, _data.arr.length * T.sizeof);
+            _data.arr = (cast(Unqual!(T)*)bi.base)[0.._data.arr.length];
+        }
+    }
+
+/**
+Returns the capacity of the array (the maximum number of elements the
+managed array can accommodate before triggering a reallocation).  If any
+appending will reallocate, capacity returns 0.
+ */
+    @property size_t capacity()
+    {
+        return _data ? _data.capacity : 0;
     }
 
 /**
 Returns the managed array.
  */
-    T[] data()
+    @property T[] data()
     {
-        return cast(typeof(return)) (pArray ? *pArray : null);
-    }
-
-/**
-Returns the capacity of the array (the maximum number of elements the
-managed array can accommodate before triggering a reallocation).
- */
-    size_t capacity()
-    {
-        return pArray && pArray.ptr ? readCapacity() : 0;
+        return cast(typeof(return))(_data ? _data.arr : null);
     }
 
 /**
@@ -793,63 +791,207 @@ Appends one item to the managed array.
         }
         else
         {
-            if (!pArray) pArray = (new typeof(*pArray)[1]).ptr;
-            immutable len = pArray.length;
-            if (len < capacity)
+            if (!_data)
+                _data = new Data;
+            immutable len = _data.arr.length;
+            if (len >= _data.capacity)
             {
-                // Should do in-place construction here
-                pArray.ptr[len] = item;
-                *pArray = pArray.ptr[0 .. len + 1];
+                // Time to reallocate.
+                // We need to almost duplicate what's in druntime, except we
+                // have better access to the capacity field.
+                auto newlen = newCapacity(len + 1);
+                // first, try extending the current block
+                auto u = GC.extend(_data.arr.ptr, T.sizeof, (newlen - len) * T.sizeof);
+                if(u)
+                {
+                    // extend worked, update the capacity
+                    _data.capacity = u / T.sizeof;
+                    _data.arr = _data.arr.ptr[0..len + 1];
+                }
+                else
+                {
+                    // didn't work, must reallocate
+                    auto bi = GC.qalloc(newlen * T.sizeof, (typeid(T[]).next.flags & 1) ? 0 : GC.BlkAttr.NO_SCAN);
+                    _data.capacity = bi.size / T.sizeof;
+                    if(len)
+                        memcpy(bi.base, _data.arr.ptr, len * T.sizeof);
+                    _data.arr = (cast(Unqual!(T)*)bi.base)[0..len + 1];
+                    // leave the old data, for safety reasons
+                }
             }
             else
             {
-                // Time to reallocate, do it and cache capacity
-                *pArray ~= item;
-                allocateAndWriteCapacity();
+                _data.arr = _data.arr.ptr[0 .. len + 1];
             }
+            _data.arr.ptr[len] = cast(Unqual!T)item;
         }
+    }
+
+    private static size_t newCapacity(size_t newlength)
+    {
+        long mult = 100 + (1000L) / (bsr(newlength * T.sizeof) + 1);
+        // limit to doubling the length, we don't want to grow too much
+        if(mult > 200)
+            mult = 200;
+        auto newext = cast(size_t)((newlength * mult + 99) / 100);
+        return newext > newlength ? newext : newlength;
     }
 
 /**
 Appends an entire range to the managed array.
  */
-    void put(Range)(Range items) if (isForwardRange!Range
+    void put(Range)(Range items) if (isInputRange!Range
             && is(typeof(Appender.init.put(items.front))))
     {
-        static if (is(typeof(*pArray ~= items)))
+        // note, we disable this branch for appending one type of char to
+        // another because we can't trust the length portion.
+        static if (!(isSomeChar!T && isSomeChar!(ElementType!Range) &&
+                     !is(Range == Unqual!(T)[])) &&
+                   is(typeof(items.length) == size_t))
         {
-            if (!pArray) pArray = (new typeof(*pArray)[1]).ptr;
-            *pArray ~= items;
+            // make sure we have enough space, then add the items
+            immutable len = _data ? _data.arr.length : 0;
+            immutable newlen = len + items.length;
+            reserve(newlen);
+            _data.arr = _data.arr.ptr[0..newlen];
+            static if(is(typeof(_data.arr[] = items)))
+            {
+                _data.arr.ptr[len..newlen] = items;
+            }
+            else
+            {
+                for(size_t i = len; !items.empty; items.popFront(), ++i)
+                    _data.arr.ptr[i] = items.front;
+            }
         }
         else
         {
             //pragma(msg, Range.stringof);
             // Generic input range
-            for (; !items.empty; items.popFront)
+            for (; !items.empty; items.popFront())
             {
-                put(items.front());
+                put(items.front);
             }
         }
     }
 
+    // only allow overwriting data on non-immutable and non-const data
+    static if(!is(T == immutable) && !is(T == const))
+    {
 /**
 Clears the managed array.
 */
-    void clear()
-    {
-        if (!pArray) return;
-        pArray.length = 0;
-        writeCapacity(GC.sizeOf(pArray.ptr) / T.sizeof);
+        void clear()
+        {
+            if (_data)
+            {
+                _data.arr = _data.arr.ptr[0..0];
+            }
+        }
+
+/**
+Shrinks the managed array to the given length.  Passing in a length that's
+greater than the current array length throws an enforce exception.
+*/
+        void shrinkTo(size_t newlength)
+        {
+            if(_data)
+            {
+                enforce(newlength <= _data.arr.length);
+                _data.arr = _data.arr.ptr[0..newlength];
+            }
+            else
+                enforce(newlength == 0);
+        }
     }
 }
 
 /**
-Convenience function that returns an $(D Appender!(T)) object
-initialized with $(D t).
+An appender that can update an array in-place.  It forwards all calls to an
+underlying appender implementation.  Any calls made to the appender also update
+the pointer to the original array passed in.
+*/
+struct RefAppender(A : T[], T)
+{
+    private
+    {
+        Appender!(A, T) impl;
+        T[] *arr;
+    }
+
+/**
+Construct a ref appender with a given array reference.  This does not copy the
+data.  If the array has a larger capacity as determined by arr.capacity, it
+will be used by the appender.  $(D RefAppender) assumes that arr is a non-null value.
+
+Note, do not use builtin appending (i.e. ~=) on the original array passed in
+until you are done with the appender, because calls to the appender override
+those appends.
+*/
+    this(T[] *arr)
+    {
+        impl = Appender!(A, T)(*arr);
+        this.arr = arr;
+    }
+
+    auto opDispatch(string fn, Args...)(Args args) if (is(typeof(mixin("impl." ~ fn ~ "(args)"))))
+    {
+        // we do it this way because we can't cache a void return
+        scope(exit) *this.arr = impl.data;
+        mixin("return impl." ~ fn ~ "(args);");
+    }
+
+/**
+Returns the capacity of the array (the maximum number of elements the
+managed array can accommodate before triggering a reallocation).  If any
+appending will reallocate, capacity returns 0.
  */
-Appender!(E[]) appender(A : E[], E)(A * array = null)
+    @property size_t capacity()
+    {
+        return impl.capacity;
+    }
+
+/**
+Returns the managed array.
+ */
+    @property T[] data()
+    {
+        return impl.data;
+    }
+}
+
+/**
+Convenience function that returns an $(D Appender!(A)) object
+initialized with $(D array).
+ */
+Appender!(E[]) appender(A : E[], E)(A array = null)
 {
     return Appender!(E[])(array);
+}
+
+unittest
+{
+    auto app = appender!(char[])();
+    string b = "abcdefg";
+    foreach (char c; b) app.put(c);
+    assert(app.data == "abcdefg");
+
+    int[] a = [ 1, 2 ];
+    auto app2 = appender(a);
+    assert(app2.data == [ 1, 2 ]);
+    app2.put(3);
+    app2.put([ 4, 5, 6 ][]);
+    assert(app2.data == [ 1, 2, 3, 4, 5, 6 ]);
+}
+
+/**
+Convenience function that returns a $(D RefAppender!(A)) object
+initialized with $(D array).  Don't use null for the array pointer, use the
+other version of appender instead.
+ */
+RefAppender!(E[]) appender(A : E[]*, E)(A array)
+{
+    return RefAppender!(E[])(array);
 }
 
 unittest
@@ -859,13 +1001,16 @@ unittest
     string b = "abcdefg";
     foreach (char c; b) app.put(c);
     assert(app.data == "abcdefg");
+    assert(arr == "abcdefg");
 
     int[] a = [ 1, 2 ];
     auto app2 = appender(&a);
     assert(app2.data == [ 1, 2 ]);
+    assert(a == [ 1, 2 ]);
     app2.put(3);
     app2.put([ 4, 5, 6 ][]);
     assert(app2.data == [ 1, 2, 3, 4, 5, 6 ]);
+    assert(a == [ 1, 2, 3, 4, 5, 6 ]);
 }
 
 /*

@@ -2,7 +2,7 @@
 
 /**
 Bit-level manipulation facilities.
-   
+
 Macros:
 
 WIKI = StdBitarray
@@ -69,7 +69,7 @@ private template createAccessors(
         static if (is(T == bool))
         {
             static assert(len == 1);
-            enum result = 
+            enum result =
             // getter
                 "bool " ~ name ~ "() const { return "
                 ~"("~store~" & "~myToString!(maskAllElse)~") != 0;}\n"
@@ -86,7 +86,7 @@ private template createAccessors(
                 ~ myToString!(maskAllElse) ~ ") >>"
                 ~ myToString!(offset) ~ ";"
                 ~ (T.min < 0
-                   ? "if (result >= " ~ myToString!(signBitCheck) 
+                   ? "if (result >= " ~ myToString!(signBitCheck)
                    ~ ") result |= " ~ myToString!(extendSign) ~ ";"
                    : "")
                 ~ " return cast("~T.stringof~") result;}\n"
@@ -343,7 +343,8 @@ struct BitArray
     }
     body
     {
-        return cast(bool) bt(ptr, cast(uint)i);
+        // Andrei: review for @@@64-bit@@@
+        return cast(bool) bt(ptr, i);
     }
 
     unittest
@@ -368,9 +369,9 @@ struct BitArray
     body
     {
         if (b)
-            bts(ptr, cast(uint)i);
+            bts(ptr, i);
         else
-            btr(ptr, cast(uint)i);
+            btr(ptr, i);
         return b;
     }
 

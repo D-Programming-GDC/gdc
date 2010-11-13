@@ -345,12 +345,11 @@ bool isExtender(dchar c)
  * writefln(encode("a > b")); // writes "a &gt; b"
  * --------------
  */
-S encode(S)(S s, S buffer = null)
+S encode(S)(S s)
 {
     string r;
     size_t lastI;
-    if (buffer.length) buffer.length = 0;
-    Appender!S result;
+    auto result = appender!S();
 
     foreach (i, c; s)
     {
@@ -364,10 +363,6 @@ S encode(S)(S s, S buffer = null)
         default: continue;
         }
         // Replace with r
-        if (!result.data)
-        {
-            result = appender(&buffer);
-        }
         result.put(s[lastI .. i]);
         result.put(r);
         lastI = i + 1;
@@ -944,7 +939,7 @@ class Element : Item
             if (isEmptyXML) return tag.toEmptyString;
 
             string buffer = tag.toStartString;
-            foreach(item;items) { buffer ~= item.toString; }
+            foreach (item;items) { buffer ~= item.toString; }
             buffer ~= tag.toEndString;
             return buffer;
         }

@@ -149,7 +149,8 @@ unittest
  * ditto
  */
 
-sizediff_t icmp(C1, C2)(in C1[] s1, in C2[] s2)
+sizediff_t
+icmp(C1, C2)(in C1[] s1, in C2[] s2)
 {
     size_t i1, i2;
     for (;;)
@@ -306,8 +307,8 @@ CaseSensitive.yes) means the searches are case sensitive.
 
 Returns: Index in $(D s) where $(D c) is found, -1 if not found.
  */
-
-sizediff_t indexOf(Char)(in Char[] s, dchar c, CaseSensitive cs = CaseSensitive.yes)
+sizediff_t
+indexOf(Char)(in Char[] s, dchar c, CaseSensitive cs = CaseSensitive.yes)
 if (isSomeString!(Char[]))
 {
     if (cs == CaseSensitive.yes)
@@ -424,7 +425,8 @@ unittest
  * ditto
  */
 
-ptrdiff_t lastIndexOf(in char[] s, dchar c, CaseSensitive cs = CaseSensitive.yes)
+ptrdiff_t lastIndexOf(in char[] s, dchar c,
+        CaseSensitive cs = CaseSensitive.yes)
 {
     if (cs == CaseSensitive.yes)
     {
@@ -538,7 +540,8 @@ Returns:
 Index in $(D s) where $(D sub) is found, $(D -1) if not found.
  */
 
-sizediff_t indexOf(Char1, Char2)(in Char1[] s, in Char2[] sub,
+sizediff_t
+indexOf(Char1, Char2)(in Char1[] s, in Char2[] sub,
         CaseSensitive cs = CaseSensitive.yes)
 {
     if (cs == CaseSensitive.yes)
@@ -659,7 +662,8 @@ unittest
  * ditto
  */
 
-ptrdiff_t lastIndexOf(in char[] s, in char[] sub, CaseSensitive cs = CaseSensitive.yes)
+ptrdiff_t lastIndexOf(in char[] s, in char[] sub,
+        CaseSensitive cs = CaseSensitive.yes)
 {
     if (cs == CaseSensitive.yes)
     {
@@ -670,7 +674,7 @@ ptrdiff_t lastIndexOf(in char[] s, in char[] sub, CaseSensitive cs = CaseSensiti
         c = sub[0];
         if (sub.length == 1)
             return lastIndexOf(s, c);
-        for (auto i = s.length - sub.length; i >= 0; i--)
+        for (ptrdiff_t i = s.length - sub.length; i >= 0; i--)
         {
             if (s[i] == c)
             {
@@ -692,7 +696,7 @@ ptrdiff_t lastIndexOf(in char[] s, in char[] sub, CaseSensitive cs = CaseSensiti
         if (c <= 0x7F)
         {
             c = std.ctype.tolower(c);
-            for (auto i = s.length - sub.length; i >= 0; i--)
+            for (ptrdiff_t i = s.length - sub.length; i >= 0; i--)
             {
                 if (std.ctype.tolower(s[i]) == c)
                 {
@@ -703,7 +707,7 @@ ptrdiff_t lastIndexOf(in char[] s, in char[] sub, CaseSensitive cs = CaseSensiti
         }
         else
         {
-            for (auto i = s.length - sub.length; i >= 0; i--)
+            for (ptrdiff_t i = s.length - sub.length; i >= 0; i--)
             {
                 if (icmp(s[i .. i + sub.length], sub) == 0)
                     return i;
@@ -778,9 +782,9 @@ unittest
 
 S tolower(S)(S s) if (isSomeString!S)
 {
-    foreach (i, dchar c; s)
+    foreach (i, dchar cOuter; s)
     {
-        if (!std.uni.isUniUpper(c)) continue;
+        if (!std.uni.isUniUpper(cOuter)) continue;
         auto result = s[0.. i].dup;
         foreach (dchar c; s[i .. $])
         {
@@ -908,6 +912,10 @@ unittest
     assert(s2 !is s1);
     tolowerInPlace(s3);
     assert(s3 == s2, s3);
+
+    // Test on wchar and dchar strings.
+    assert(tolower("Some String"w) == "some string"w);
+    assert(tolower("Some String"d) == "some string"d);
 }
 
 /************************************
@@ -1830,7 +1838,7 @@ unittest
 string ljustify(string s, size_t width)
 {
     if (s.length >= width)
-    return s;
+        return s;
     char[] r = new char[width];
     r[0..s.length] = s;
     r[s.length .. width] = cast(char)' ';
@@ -1841,7 +1849,7 @@ string ljustify(string s, size_t width)
 string rjustify(string s, size_t width)
 {
     if (s.length >= width)
-    return s;
+        return s;
     char[] r = new char[width];
     r[0 .. width - s.length] = cast(char)' ';
     r[width - s.length .. width] = s;
@@ -2051,7 +2059,7 @@ unittest
  * Count up all instances of sub[] in s[].
  */
 
-size_t count(string s, string sub)
+size_t count(in char[] s, in char[] sub)
 {
     size_t i;
     ptrdiff_t j;
@@ -2108,7 +2116,8 @@ string expandtabs(string str, int tabsize = 8)
             result[i .. i + nspaces] = ' ';
         }
         else
-        {   sizediff_t j = result.length;
+        {
+            sizediff_t j = result.length;
             result.length = j + nspaces;
             result[j .. j + nspaces] = ' ';
         }
@@ -2233,7 +2242,7 @@ string entab(string s, int tabsize = 8)
             if (!changes)
             change();
 
-            sizediff_t j = result.length - nspaces;
+            auto j = result.length - nspaces;
             int ntabs = (nspaces + tabsize - 1) / tabsize;
             result.length = j + ntabs;
             result[j .. j + ntabs] = '\t';
@@ -4083,7 +4092,6 @@ ByCodeUnit!(Range, dchar) byDchar(Range)(Range s)
     }
 }
 
-deprecated
 unittest
 {
     string s = "abcde";

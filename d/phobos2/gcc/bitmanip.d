@@ -39,7 +39,7 @@ version (X86_32_or_64) {
 
     private template gen_bt_variant(string suffix, bool locked) {
         const gen_bt_variant = `
-            int ` ~ (locked ? "locked_" : "") ~ `bt` ~ suffix ~ `(in uint* p, uint bit) {
+            int ` ~ (locked ? "locked_" : "") ~ `bt` ~ suffix ~ `(in uint* p, size_t bit) {
                 bool retval = void;
                 asm {"` ~ (locked ? "lock " : "") ~ `
                      bt` ~ suffix ~ ` %[bit], (%[addr])
@@ -98,8 +98,8 @@ version (X86_32_or_64) {
  *      The bit number of the first bit set.
  *      The return value is undefined if v is zero.
  */
-version (X86_32_or_64) mixin(gen_bs_variant!("f", "uint")); else
-int bsf(uint v)
+version (X86_32_or_64) mixin(gen_bs_variant!("f", "size_t")); else
+int bsf(size_t v)
 {
     uint m = 1;
     uint i;
@@ -155,7 +155,7 @@ int bsr(uint v)
  * Tests the bit.
  */
 version (X86_32_or_64) mixin(gen_bt_variant!("", false)); else
-int bt(in uint *p, uint bitnum)
+int bt(in uint *p, size_t bitnum)
 {
     return (p[bitnum / (uint.sizeof*8)] & (1<<(bitnum & ((uint.sizeof*8)-1)))) ? -1 : 0 ;
 }
@@ -164,7 +164,7 @@ int bt(in uint *p, uint bitnum)
  * Tests and complements the bit.
  */
 version (X86_32_or_64) mixin(gen_bt_variant!("c", false)); else
-int btc(uint *p, uint bitnum)
+int btc(uint *p, size_t bitnum)
 {
     uint * q = p + (bitnum / (uint.sizeof*8));
     uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
@@ -177,7 +177,7 @@ int btc(uint *p, uint bitnum)
  * Tests and resets (sets to 0) the bit.
  */
 version (X86_32_or_64) mixin(gen_bt_variant!("r", false)); else
-int btr(uint *p, uint bitnum)
+int btr(uint *p, size_t bitnum)
 {
     uint * q = p + (bitnum / (uint.sizeof*8));
     uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
@@ -244,7 +244,7 @@ array = [0]:x2, [1]:x100
 </pre>
  */
 version (X86_32_or_64) mixin(gen_bt_variant!("s", false)); else
-int bts(uint *p, uint bitnum)
+int bts(uint *p, size_t bitnum)
 {
     uint * q = p + (bitnum / (uint.sizeof*8));
     uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));

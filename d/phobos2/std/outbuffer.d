@@ -27,7 +27,7 @@ private
     import std.string;
     import std.c.stdio;
     import std.c.stdlib;
-    import std.stdarg;
+    import std.c.stdarg;
 }
 
 /*********************************************

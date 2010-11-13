@@ -316,7 +316,16 @@ void formattedWrite(Writer, Char, A...)(Writer w, in Char[] fmt, A args)
         }
         else
         {
-            argsAddresses[i] = &arg;
+            static if(hasAliasing!(typeof(arg)))
+            {
+                argsAddresses[i] = &arg;
+            }
+            else
+            {
+                // We can safely cast away shared because all data is either
+                // immutable or completely owned by this function.
+                argsAddresses[i] = cast(const(void*)) &arg;
+            }
         }
     }
     // Are we already done with formats? Then just dump each parameter in turn
@@ -597,8 +606,7 @@ struct FormatSpec(Char)
 
     unittest
     {
-        string s;
-        auto w = appender(&s);
+        auto w = appender!(char[])();
         auto f = FormatSpec("abc%sdef%sghi");
         f.writeUpToNextSpec(w);
         assert(w.data == "abc", w.data);
@@ -1090,6 +1098,7 @@ void formatValue(Writer, T, Char)(Writer w, T val,
         ref FormatSpec!Char f)
 if (isSomeString!T && !isStaticArray!T)
 {
+    enforce(f.spec == 's');
     auto s = val[0 .. f.precision < $ ? f.precision : $];
     if (!f.flDash)
     {
@@ -1247,19 +1256,49 @@ void formatValue(Writer, T, Char)(Writer w, T val,
 if (isPointer!T)
 {
     const void * p = val;
-    f.spec = 'X';
+    if (f.spec == 's')
+    {
+        f.spec = 'X';
+    }
+    else
+    {
+        enforce(f.spec == 'X' || f.spec == 'x');
+    }
     formatValue(w, cast(ulong) p, f);
 }
 
 /**
    Objects are formatted by calling $(D toString).
  */
-void formatValue(Writer, T, Char)(Writer w, T val,
-        ref FormatSpec!Char f)
+void formatValue(Writer, T, Char)(Writer w, T val, ref FormatSpec!Char f)
 if (is(T == class))
 {
     if (val is null) put(w, "null");
     else put(w, val.toString);
+}
+
+/**
+   Interfaces are formatted by casting to $(D Object) and then calling
+   $(D toString).
+ */
+void formatValue(Writer, T, Char)(Writer w, T val, ref FormatSpec!Char f)
+if (is(T == interface))
+{
+    return formatValue(w, cast(Object) val, f);
+}
+
+unittest
+{
+    FormatSpec!char f;
+    auto a = appender!string();
+    interface Whatever {};
+    class C : Whatever
+    {
+        override @property string toString() { return "ab"; }
+    }
+    Whatever val = new C;
+    formatValue(a, val, f);
+    assert(a.data == "ab");
 }
 
 /**
@@ -1380,8 +1419,7 @@ private void formatGeneric(Writer, D, Char)(Writer w, const(void)* arg,
 
 unittest
 {
-    string s;
-    auto w = appender(&s);
+    auto w = appender!(char[])();
     int[] a = [ 1, 3, 2 ];
     formattedWrite(w, "testing %(%s & %) embedded", a);
     assert(w.data == "testing 1 & 3 & 2 embedded", w.data);
@@ -1431,6 +1469,12 @@ unittest
     stream = appender!string();
     formattedWrite(stream, "%s", map!"a*a"([2, 3, 5]));
     assert(stream.data == "[4, 9, 25]", stream.data);
+
+    // Test shared data.
+    stream = appender!string();
+    shared int s = 6;
+    formattedWrite(stream, "%s", s);
+    assert(stream.data == "6");
 }
 
 unittest
@@ -1443,8 +1487,7 @@ unittest
 unittest
 {
     // testing raw writes
-    string s;
-    auto w = appender(&s);
+    auto w = appender!(char[])();
     uint a = 0x02030405;
     formattedWrite(w, "%+r", a);
     assert(w.data.length == 4 && w.data[0] == 2 && w.data[1] == 3
@@ -1458,7 +1501,7 @@ unittest
 unittest
 {
     // testing positional parameters
-    auto w = appender!string();
+    auto w = appender!(char[])();
     formattedWrite(w,
             "Numbers %2$s and %1$s are reversed and %1$s%2$s repeated",
             42, 0);
@@ -1476,7 +1519,7 @@ unittest
 {
     debug(format) printf("std.format.format.unittest\n");
 
-    auto stream = appender!string();
+    auto stream = appender!(char[])();
     //goto here;
 
     formattedWrite(stream,
@@ -1938,7 +1981,7 @@ unittest
     //     writefln(b);
     // }
 
-    auto stream = appender!string();
+    auto stream = appender!(char[])();
     alias TypeTuple!(byte, ubyte, short, ushort, int, uint, long, ulong,
             float, double, real) AllNumerics;
     foreach (T; AllNumerics)
@@ -2542,10 +2585,10 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
         void putstr(const char[] s)
         {
             //printf("flags = x%x\n", flags);
-            int prepad = 0;
-            int postpad = 0;
-            int padding = field_width -
+            sizediff_t padding = field_width -
                 (strlen(prefix) + toUCSindex(s, s.length));
+            sizediff_t prepad = 0;
+            sizediff_t postpad = 0;
             if (padding > 0)
             {
                 if (flags & FLdash)
@@ -2614,7 +2657,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
             }
             else
             {
-                int sl;
+                sizediff_t sl;
                 char[] fbuf = tmpbuf;
                 char[12] format;
                 format[0] = '%';
@@ -3321,7 +3364,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
             }
         }
 
-        int n = tmpbuf.length;
+        sizediff_t n = tmpbuf.length;
         char c;
         int hexoffset = uc ? ('A' - ('9' + 1)) : ('a' - ('9' + 1));
 
@@ -3335,7 +3378,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
         }
         if (tmpbuf.length - n < precision && precision < tmpbuf.length)
         {
-            int m = tmpbuf.length - precision;
+            sizediff_t m = tmpbuf.length - precision;
             tmpbuf[m .. n] = '0';
             n = m;
         }

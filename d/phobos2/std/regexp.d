@@ -163,8 +163,8 @@ class RegExpException : Exception
 
 struct regmatch_t
 {
-    sizediff_t rm_so;       // index of start of match
-    sizediff_t rm_eo;       // index past end of match
+    sizediff_t rm_so; // index of start of match
+    sizediff_t rm_eo; // index past end of match
 }
 
 private alias char rchar;   // so we can make a wchar version
@@ -351,7 +351,8 @@ unittest
    find(s, RegExp(p, a))).
 */
 
-sizediff_t find(string s, string pattern, string attributes = null)
+sizediff_t
+find(string s, string pattern, string attributes = null)
 {
     auto r = new RegExp(pattern, attributes);
     scope(exit) delete r;
@@ -388,7 +389,8 @@ sizediff_t rfind(string s, RegExp pattern)
     sizediff_t i = -1, lastindex = 0;
 
     while (pattern.test(s, lastindex))
-    {   auto eo = pattern.pmatch[0].rm_eo;
+    {
+        auto eo = pattern.pmatch[0].rm_eo;
         i = pattern.pmatch[0].rm_so;
         if (lastindex == eo)
             lastindex++;        // always consume some source
@@ -428,13 +430,15 @@ $(D_PARAM std.regexp.rfind(s, p, a)), you may want to use $(D_PARAM
 rfind(s, RegExp(p, a))).
 */
 
-sizediff_t rfind(string s, string pattern, string attributes = null)
+sizediff_t
+rfind(string s, string pattern, string attributes = null)
 {
-    sizediff_t i = -1, lastindex = 0;
+    typeof(return) i = -1, lastindex = 0;
 
     auto r = new RegExp(pattern, attributes);
     while (r.test(s, lastindex))
-    {   auto eo = r.pmatch[0].rm_eo;
+    {
+        auto eo = r.pmatch[0].rm_eo;
         i = r.pmatch[0].rm_so;
         if (lastindex == eo)
             lastindex++;        // always consume some source
@@ -1036,13 +1040,11 @@ private:
  *  index of match if successful, -1 if not found
  */
 
-    public sizediff_t find(string string)
+    public int find(string string)
     {
-        sizediff_t i;
-
-        i = test(string);
+        int i = test(string);
         if (i)
-            i = pmatch[0].rm_so;
+            i = pmatch[0].rm_so != 0;
         else
             i = -1;         // no match
         return i;
@@ -1079,7 +1081,8 @@ private:
             sizediff_t lastindex = 0;
 
             while (test(s, lastindex))
-            {   auto eo = pmatch[0].rm_eo;
+            {
+                auto eo = pmatch[0].rm_eo;
 
                 result ~= input[pmatch[0].rm_so .. eo];
                 if (lastindex == eo)
@@ -1265,9 +1268,9 @@ void main()
 * which prints: 1
 */
                 //@@@
-public int test(string s)
+public bool test(string s)
     {
-        return test(s, 0 /*pmatch[0].rm_eo*/);
+        return test(s, 0 /*pmatch[0].rm_eo*/) != 0;
     }
 
 /************************************************
@@ -1904,7 +1907,8 @@ public int test(string s)
                 {
                     for (; count < m; count++)
                     {
-                        memcpy(psave, pmatch.ptr, (re_nsub + 1) * regmatch_t.sizeof);
+                        memcpy(psave, pmatch.ptr,
+                                (re_nsub + 1) * regmatch_t.sizeof);
                         auto s1 = src;
 
                         if (trymatch(pop + len, program.length))
@@ -1931,7 +1935,8 @@ public int test(string s)
                 {
                     for (; count < m; count++)
                     {
-                        memcpy(psave, pmatch.ptr, (re_nsub + 1) * regmatch_t.sizeof);
+                        memcpy(psave, pmatch.ptr,
+                                (re_nsub + 1) * regmatch_t.sizeof);
                         auto s1 = src;
                         if (!trymatch(pop, pop + len))
                         {   debug(regexp) printf("\tdoesn't match subexpression\n");
@@ -2153,7 +2158,8 @@ public int test(string s)
     }
 
     int parsePiece()
-    {   uint offset;
+    {
+        uint offset;
         uint len;
         uint n;
         uint m;
@@ -3144,7 +3150,8 @@ private:
                 {
                     c2 = format[f + 1];
                     if (c2 >= '0' && c2 <= '9')
-                    {   i = (c - '0') * 10 + (c2 - '0');
+                    {
+                        i = (c - '0') * 10 + (c2 - '0');
                         f++;
                     }
                     if (i == 0)
