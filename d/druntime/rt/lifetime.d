@@ -671,6 +671,7 @@ body
 
 Loverflow:
     onOutOfMemoryError();
+    assert(0);
 }
 
 /**
@@ -1445,7 +1446,7 @@ extern (C) Array _d_arrayappendT(TypeInfo ti, Array *px, byte[] y)
                 if(*(cast(size_t*)info.base) == size + offset)
                 {
                     // not enough space, try extending
-                    int extendoffset = offset + LARGEPAD - info.size;
+                    auto extendoffset = offset + LARGEPAD - info.size;
                     auto u = gc_extend(px.data, newsize + extendoffset, newcap + extendoffset);
                     if(u)
                     {

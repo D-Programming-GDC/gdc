@@ -295,7 +295,7 @@ unittest
 struct BitArray
 {
     size_t len;
-    uint* ptr;
+    size_t* ptr;
 
     const size_t dim()
     {
@@ -319,7 +319,7 @@ struct BitArray
                 if (newdim != olddim)
                 {
                     // Create a fake array so we can use D's realloc machinery
-                    uint[] b = ptr[0 .. olddim];
+                    size_t[] b = ptr[0 .. olddim];
                     b.length = newdim;                // realloc
                     ptr = b.ptr;
                     if (newdim & 31)
@@ -382,7 +382,7 @@ struct BitArray
     {
         BitArray ba;
 
-        uint[] b = ptr[0 .. dim].dup;
+        size_t[] b = ptr[0 .. dim].dup;
         ba.len = len;
         ba.ptr = b.ptr;
         return ba;
@@ -711,7 +711,7 @@ struct BitArray
     }
     body
     {
-        ptr = cast(uint*)v.ptr;
+        ptr = cast(size_t*)v.ptr;
         len = numbits;
     }
 
