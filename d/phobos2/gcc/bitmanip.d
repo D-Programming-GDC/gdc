@@ -26,10 +26,8 @@ version (X86_32_or_64) {
             int bs` ~ suffix ~ `(size_t v) {
                 int retval = void;
                 asm {"bs` ~ suffix ~ ` %[val], %[result]"
-                     :
-                     [result] "=r" retval
-                     :
-                     [val] "rm" v
+                     : [result] "=r" retval
+                     : [val] "rm" v
                      ;
                 }
                 return retval;
@@ -39,7 +37,7 @@ version (X86_32_or_64) {
 
     private template gen_bt_variant(string suffix, bool locked) {
         const gen_bt_variant = `
-            int ` ~ (locked ? "locked_" : "") ~ `bt` ~ suffix ~ `(in size_t * p, size_t bit) {
+            int ` ~ (locked ? "locked_" : "") ~ `bt` ~ suffix ~ `(in uint * p, size_t bit) {
                 bool retval = void;
                 asm {"` ~ (locked ? "lock " : "") ~ `
                      bt` ~ suffix ~ ` %[bit], (%[addr])
@@ -101,10 +99,10 @@ version (X86_32_or_64) {
 version (X86_32_or_64) mixin(gen_bs_variant!("f")); else
 int bsf(size_t v)
 {
-    uint m = 1;
+    size_t m = 1;
     uint i;
-    for (i = 0; i < 32; i++,m<<=1) {
-        if (v&m)
+    for (i = 0; i < 32; i++, m <<= 1) {
+        if (v & m)
             return i;
     }
     return i; // supposed to be undefined
@@ -124,7 +122,7 @@ int bsf(size_t v)
  *
  * int main()
  * {
- *     uint v;
+ *     size_t v;
  *     int x;
  *
  *     v = 0x21;
@@ -142,11 +140,12 @@ int bsf(size_t v)
 version (X86_32_or_64) mixin(gen_bs_variant!("r")); else
 int bsr(size_t v)
 {
-    uint m = 0x80000000;
+    size_t m = 0x80000000;
     uint i;
-    for (i = 32; i; i--,m>>>=1) {
-        if (v&m)
-            return i-1;
+    for (i = 32; i; i--, m >>>= 1)
+    {
+        if (v & m)
+            return i - 1;
     }
     return i; // supposed to be undefined
 }
@@ -177,10 +176,10 @@ int btc(uint *p, size_t bitnum)
  * Tests and resets (sets to 0) the bit.
  */
 version (X86_32_or_64) mixin(gen_bt_variant!("r", false)); else
-int btr(size_t *p, size_t bitnum)
+int btr(uint *p, size_t bitnum)
 {
-    size_t * q = p + (bitnum / (size_t.sizeof*8));
-    size_t mask = 1 << (bitnum & ((size_t.sizeof*8) - 1));
+    uint * q = p + (bitnum / (uint.sizeof*8));
+    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
     int result = *q & mask;
     *q &= ~mask;
     return result ? -1 : 0;
@@ -189,11 +188,11 @@ int btr(size_t *p, size_t bitnum)
 /**
  * Tests and sets the bit.
  * Params:
- * p = a non-NULL pointer to an array of size_ts.
+ * p = a non-NULL pointer to an array of uints.
  * index = a bit number, starting with bit 0 of p[0],
  * and progressing. It addresses bits like the expression:
 ---
-p[index / (size_t.sizeof*8)] & (1 << (index & ((size_t.sizeof*8) - 1)))
+p[index / (uint.sizeof*8)] & (1 << (index & ((uint.sizeof*8) - 1)))
 ---
  * Returns:
  *      A non-zero value if the bit was set, and a zero
@@ -206,7 +205,7 @@ import gcc.bitmanip;
 
 int main()
 {
-    size_t array[2];
+    uint array[2];
 
     array[0] = 2;
     array[1] = 0x100;
@@ -244,10 +243,10 @@ array = [0]:x2, [1]:x100
 </pre>
  */
 version (X86_32_or_64) mixin(gen_bt_variant!("s", false)); else
-int bts(size_t *p, size_t bitnum)
+int bts(uint *p, size_t bitnum)
 {
-    size_t * q = p + (bitnum / (size_t.sizeof*8));
-    size_t mask = 1 << (bitnum & ((size_t.sizeof*8) - 1));
+    uint * q = p + (bitnum / (uint.sizeof*8));
+    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
     int result = *q & mask;
     *q |= mask;
     return result ? -1 : 0;

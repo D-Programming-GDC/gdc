@@ -10,10 +10,6 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
- */
 module gc.gcbits;
 
 
@@ -32,7 +28,7 @@ version (DigitalMars)
 }
 else version (GNU)
 {
-    // use own bitop implementation
+    // use the unoptimized version
 }
 else version (D_InlineAsm_X86)
 {
@@ -85,11 +81,7 @@ struct GCBits
     }
     body
     {
-        version (GNU)
-        {
-            return gcc.bitmanip.bt(data + 1, i);
-        }
-        else version (none)
+        version (none)
         {
             return std.intrinsic.bt(data + 1, i);   // this is actually slower! don't use
         }
@@ -124,11 +116,7 @@ struct GCBits
 
     wordtype testClear(size_t i)
     {
-        version (GNU)
-        {
-            return gcc.bitmanip.btr(data + 1, i);
-        }
-        else version (bitops)
+        version (bitops)
         {
             return std.intrinsic.btr(data + 1, i);   // this is faster!
         }
@@ -159,11 +147,7 @@ struct GCBits
 
     wordtype testSet(size_t i)
     {
-        version (GNU)
-        {
-            return gcc.bitmanip.bts(data + 1, i);
-        }
-        else version (bitops)
+        version (bitops)
         {
             return std.intrinsic.bts(data + 1, i);   // this is faster!
         }

@@ -10,6 +10,10 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+*/
 module gc.gcx;
 
 // D Programming Language Garbage Collector implementation
@@ -34,15 +38,14 @@ version = MULTI_THREADED;       // produce multithreaded version
 
 /***************************************************/
 
-private import gcbits;
-private import gcstats;
-private import gcalloc;
+private import gc.gcbits;
+private import gc.gcstats;
+private import gc.gcalloc;
 
 private import cstdlib = core.stdc.stdlib : calloc, free, malloc, realloc;
 private import core.stdc.string;
 
-version (GNU)
-    private import gcc.builtins;
+version(GNU) import gcc.builtins;
 
 debug (PRINTF) import core.stdc.stdio : printf;
 debug (COLLECT_PRINTF) import core.stdc.stdio : printf;
@@ -1413,8 +1416,8 @@ struct Range
 
 
 immutable uint binsize[B_MAX] = [ 16,32,64,128,256,512,1024,2048,4096 ];
-immutable uint notbinsize[B_MAX] = [ ~(16u-1),~(32u-1),~(64u-1),~(128u-1),~(256u-1),
-                                ~(512u-1),~(1024u-1),~(2048u-1),~(4096u-1) ];
+immutable size_t notbinsize[B_MAX] = [ ~(16-1),~(32-1),~(64-1),~(128-1),~(256-1),
+                                ~(512-1),~(1024-1),~(2048-1),~(4096-1) ];
 
 /* ============================ Gcx =============================== */
 

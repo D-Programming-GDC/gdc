@@ -55,7 +55,7 @@ dtcat(dt_t** pdt, dt_t * d)
 typedef unsigned bitunit_t;
 
 dt_t**
-dtnbits(dt_t** pdt, size_t count, char * pbytes, unsigned unit_size)
+dtnbits(dt_t** pdt, target_size_t count, char * pbytes, unsigned unit_size)
 {
     assert(unit_size == sizeof(bitunit_t));
     assert(count % unit_size == 0);
@@ -88,14 +88,14 @@ dtnbits(dt_t** pdt, size_t count, char * pbytes, unsigned unit_size)
 }
 
 dt_t**
-dtnwords(dt_t** pdt, size_t word_count, void * pwords, unsigned word_size)
+dtnwords(dt_t** pdt, target_size_t word_count, void * pwords, unsigned word_size)
 {
     return dtnbytes(pdt, word_count * word_size,
         gen.hostToTargetString((char*) pwords, word_count, word_size));
 }
 
 dt_t**
-dtawords(dt_t** pdt, size_t word_count, void * pwords, unsigned word_size)
+dtawords(dt_t** pdt, target_size_t word_count, void * pwords, unsigned word_size)
 {
     return dtabytes(pdt, TYnptr, 0, word_count * word_size,
         gen.hostToTargetString((char*) pwords, word_count, word_size));
@@ -142,12 +142,8 @@ dt_size(dt_t * dt)
                 size += dt->DTint;
                 break;
             case DT_abytes:
+            case DT_ibytes:
             case DT_xoff:
-                size += PTRSIZE;
-                break;
-            case DT_word:
-                size += 4;
-            case DT_ptrsize:
                 size += PTRSIZE;
                 break;
             case DT_tree:
@@ -203,8 +199,7 @@ dt2node(dt_t * dt)
             TREE_STATIC( s ) = 1;
             return gen.addressOf( s );
         }
-    case DT_ptrsize:
-    case DT_word:
+    case DT_ibytes:
         // %% make sure this is the target word type
         return gen.integerConstant(dt->DTint, Type::tsize_t);
     case DT_xoff:

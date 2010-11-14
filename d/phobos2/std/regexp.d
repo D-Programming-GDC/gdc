@@ -2486,7 +2486,7 @@ private:
                     base = &buf.data[u2];
                     maxb = b + 1;
                     //bits = (cast(bit*)this.base)[0 .. maxc + 1];
-                    bits.ptr = cast(size_t*)this.base;
+                    bits.ptr = cast(uint*)this.base;
                 }
                 bits.len = maxc + 1;
             }

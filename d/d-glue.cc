@@ -1825,7 +1825,7 @@ FuncExp::toElem(IRState * irs)
 #endif
             type);
     default:
-        ::error("Unexpected FunExp type");
+        ::error("Unexpected FuncExp type");
         return irs->errorMark(type);
     }
 

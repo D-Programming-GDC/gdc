@@ -671,7 +671,6 @@ body
 
 Loverflow:
     onOutOfMemoryError();
-    assert(0);
 }
 
 /**
@@ -725,7 +724,6 @@ extern (C) void[] _d_newarrayT(TypeInfo ti, size_t length)
 
 Loverflow:
     onOutOfMemoryError();
-    assert(0);
 }
 
 /**
@@ -796,7 +794,6 @@ extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length)
 
 Loverflow:
     onOutOfMemoryError();
-    assert(0);
 }
 
 /**
@@ -1223,7 +1220,6 @@ body
 
 Loverflow:
     onOutOfMemoryError();
-    assert(0);
 }
 
 
@@ -1411,7 +1407,6 @@ body
 
 Loverflow:
     onOutOfMemoryError();
-    assert(0);
 }
 
 

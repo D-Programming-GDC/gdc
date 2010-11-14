@@ -607,7 +607,7 @@ void ClassDeclaration::toObjFile(int multiobj)
     }
     flags |= 2;                 // no pointers
   L2:
-    dtsize_t(&dt, flags);
+    dti32(&dt, flags, true);
 
 
     // deallocator
@@ -1057,7 +1057,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     dtsize_t(&dt, 0);
 
     // flags
-    dtsize_t(&dt, 4 | isCOMinterface() | 32);
+    dti32(&dt, 4 | isCOMinterface() | 32, true);
 
     // deallocator
     dtsize_t(&dt, 0);
