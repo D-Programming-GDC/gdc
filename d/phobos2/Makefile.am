@@ -122,7 +122,7 @@ RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
              rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
              rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
              rt/cast_.o rt/complex.o rt/critical.o \
-             rt/gccmemory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
+             rt/memory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
              rt/monitor.o rt/obj.o rt/qsort.o rt/switch_.o
 
 CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/exception.o \

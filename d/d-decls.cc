@@ -183,12 +183,14 @@ static void uniqueName(Declaration * d, tree t, const char * asm_name) {
 
 Symbol *VarDeclaration::toSymbol()
 {
-    if (! csym) {
+    if (! csym)
+    {
         tree var_decl;
 
         // For field declaration, it is possible for toSymbol to be called
         // before the parent's toCtype()
-        if (storage_class & STCfield) {
+        if (storage_class & STCfield)
+        {
             AggregateDeclaration * parent_decl = toParent()->isAggregateDeclaration();
             assert(parent_decl);
             parent_decl->type->toCtype();
@@ -271,7 +273,8 @@ Symbol *VarDeclaration::toSymbol()
         csym = new Symbol();
         csym->Stree = var_decl;
 
-        if (decl_kind != CONST_DECL) {
+        if (decl_kind != CONST_DECL)
+        {
             if (isDataseg())
                 uniqueName(this, var_decl, ident_to_use);
             if (c_ident)
@@ -279,17 +282,28 @@ Symbol *VarDeclaration::toSymbol()
         }
         dkeep(var_decl);
         g.ofile->setDeclLoc(var_decl, this);
-        if ( decl_kind == VAR_DECL ) {
+        if (decl_kind == VAR_DECL)
+        {
             g.ofile->setupSymbolStorage(this, var_decl);
+#if V2
+            // %% If not marked, variable will be accessible
+            // from multiple threads, which is not what we want.
+            if (isThreadlocal())
+                DECL_TLS_MODEL(var_decl) = decl_default_tls_model(var_decl);
+#endif
             //DECL_CONTEXT( var_decl ) = gen.declContext(this);//EXPERkinda
-        } else if (decl_kind == PARM_DECL)  {
+        }
+        else if (decl_kind == PARM_DECL)
+        {
             /* from gcc code: Some languages have different nominal and real types.  */
             // %% What about DECL_ORIGINAL_TYPE, DECL_ARG_TYPE_AS_WRITTEN, DECL_ARG_TYPE ?
             DECL_ARG_TYPE( var_decl ) = TREE_TYPE (var_decl);
 
             DECL_CONTEXT( var_decl ) = gen.declContext(this);
             assert( TREE_CODE(DECL_CONTEXT( var_decl )) == FUNCTION_DECL );
-        } else if (decl_kind == CONST_DECL) {
+        }
+        else if (decl_kind == CONST_DECL)
+        {
             /* Not sure how much of an optimization this is... It is needed
                for foreach loops on tuples which 'declare' the index variable
                as a constant for each iteration. */
@@ -323,7 +337,8 @@ Symbol *VarDeclaration::toSymbol()
 #else
             isConst()
 #endif
-            && ! gen.isDeclarationReferenceType( this )) {
+            && ! gen.isDeclarationReferenceType( this ))
+        {
             // %% CONST_DECLS don't have storage, so we can't use those,
             // but it would be nice to get the benefit of them (could handle in
             // VarExp -- makeAddressOf could switch back to the VAR_DECL
@@ -333,7 +348,8 @@ Symbol *VarDeclaration::toSymbol()
 
             // can at least do this...
             //  const doesn't seem to matter for aggregates, so prevent problems..
-            if ( type->isscalar() || type->isString() ) {
+            if ( type->isscalar() || type->isString() )
+            {
                 TREE_CONSTANT( var_decl ) = 1;
             }
         }
@@ -346,7 +362,8 @@ Symbol *VarDeclaration::toSymbol()
 #else
             nestedref
 #endif
-            && decl_kind != CONST_DECL) {
+            && decl_kind != CONST_DECL)
+        {
             DECL_NONLOCAL( var_decl ) = 1;
             TREE_ADDRESSABLE( var_decl ) = 1;
         }

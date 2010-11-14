@@ -2362,15 +2362,17 @@ IRState::trueDeclarationType(Declaration * decl)
     //   (out T &) -- disallow, maybe or make isDeclarationReferenceType return
     //   the number of levels to reference
     tree decl_type = decl->type->toCtype();
-    if ( isDeclarationReferenceType( decl )) {
+    if ( isDeclarationReferenceType( decl ))
+    {
         return build_reference_type( decl_type );
-    } else if (decl->storage_class & STClazy) {
+    }
+    else if (decl->storage_class & STClazy)
+    {
         TypeFunction *tf = new TypeFunction(NULL, decl->type, 0, LINKd);
         TypeDelegate *t = new TypeDelegate(tf);
         return t->merge()->toCtype();
-    } else {
-        return decl_type;
     }
+    return decl_type;
 }
 
 // These should match the Declaration versions above
@@ -2379,18 +2381,15 @@ IRState::isArgumentReferenceType(Parameter * arg)
 {
     Type * base_type = arg->type->toBasetype();
 
-    if ( base_type->ty == Treference ) {
+    if ( base_type->ty == Treference )
         return true;
-    }
 
-    if ( arg->storageClass & (STCout | STCref) ) {
+    if ( arg->storageClass & (STCout | STCref) )
         return true;
-    }
 
 #if !SARRAYVALUE
-    if ( base_type->ty == Tsarray ) {
+    if ( base_type->ty == Tsarray )
         return true;
-    }
 #endif
 
     return false;
@@ -2400,15 +2399,17 @@ tree
 IRState::trueArgumentType(Parameter * arg)
 {
     tree arg_type = arg->type->toCtype();
-    if ( isArgumentReferenceType( arg )) {
+    if ( isArgumentReferenceType( arg ))
+    {
         return build_reference_type( arg_type );
-    } else if (arg->storageClass & STClazy) {
+    }
+    else if (arg->storageClass & STClazy)
+    {
         TypeFunction *tf = new TypeFunction(NULL, arg->type, 0, LINKd);
         TypeDelegate *t = new TypeDelegate(tf);
         return t->merge()->toCtype();
-    } else {
-        return arg_type;
     }
+    return arg_type;
 }
 
 tree

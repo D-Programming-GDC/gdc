@@ -68,9 +68,16 @@ IRBase::startFunction(FuncDeclaration * decl)
     else if (decl->isStaticCtorDeclaration())
         mi.ctors.push(decl);
     else if (decl->isSharedStaticDtorDeclaration())
+    {
+        // %% NOTE: this is not implemented.
+        assert(! decl->isSharedStaticDtorDeclaration()->vgate);
         mi.shareddtors.push(decl);
+    }
     else if (decl->isStaticDtorDeclaration())
+    {
+        assert(! decl->isStaticDtorDeclaration()->vgate);
         mi.dtors.push(decl);
+    }
 #else
     if (decl->isStaticConstructor())
         mi.ctors.push(decl);

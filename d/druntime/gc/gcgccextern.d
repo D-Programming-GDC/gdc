@@ -1,18 +1,24 @@
 module gcc.gccextern;
 
 version(GC_Use_Stack_GLibC)
-    extern (C) void * __libc_stack_end;
+    extern (C) __gshared void * __libc_stack_end;
 
 version(GC_Use_Data_Fixed)
 {
-    extern (C) int _data;
-    extern (C) int __data_start;
-    extern (C) int _end;
-    extern (C) int _data_start__;
-    extern (C) int _data_end__;
-    extern (C) int _bss_start__;
-    extern (C) int _bss_end__;
-    extern (C) int __fini_array_end;
+    extern (C)
+    {
+        extern __gshared
+        {
+            int _data;
+            int __data_start;
+            int _end;
+            int _data_start__;
+            int _data_end__;
+            int _bss_start__;
+            int _bss_end__;
+            int __fini_array_end;
+        }
+    }
 
     /* %% Move all this to configure script to test if it actually works?
        --enable-gc-data-fixed=Mode,s1,e1,s2,e2
