@@ -10,6 +10,10 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+*/
 module rt.memory;
 
 
@@ -118,7 +122,11 @@ extern (C) void* rt_stackTop()
     }
     else
     {
-        static assert( false, "Architecture not supported." );
+        // TODO: add builtin for using stack pointer rtx
+        int dummy;
+        void * p = & dummy + 1; // +1 doesn't help much; also assume stack grows down
+        p = cast(void*)( (cast(size_t) p) & ~(size_t.sizeof - 1));
+        return p;
     }
 }
 

@@ -960,32 +960,51 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
     tree callee = expr->toElem(this);
     tree object = NULL_TREE;
 
-    if ( D_IS_METHOD_CALL_EXPR( callee ) ) {
+    if ( D_IS_METHOD_CALL_EXPR( callee ) )
+    {
         /* This could be a delegate expression (TY == Tdelegate), but not
            actually a delegate variable. */
-        tf = get_function_type(t);
+        // %% Is this ever not a DotVarExp ?
+        if (expr->op == TOKdotvar)
+        {
+            /* This gets the true function type, the latter way can sometimes
+               be incorrect. Example: ref functions in D2. */
+            tf = get_function_type(((DotVarExp *)expr)->var->type);
+        }
+        else
+            tf = get_function_type(t);
+
         extractMethodCallExpr(callee, callee, object);
-    } else if ( t->ty == Tdelegate) {
+    }
+    else if (t->ty == Tdelegate)
+    {
         tf = (TypeFunction*) ((TypeDelegate *) t)->next;
         callee = maybeMakeTemp(callee);
         object = delegateObjectRef(callee);
         callee = delegateMethodRef(callee);
-    } else if (expr->op == TOKvar) {
+    }
+    else if (expr->op == TOKvar)
+    {
         FuncDeclaration * fd = ((VarExp *) expr)->var->isFuncDeclaration();
         assert(fd);
         tf = (TypeFunction *) fd->type;
-        if (fd->isNested()) {
+        if (fd->isNested())
+        {
 #if D_NO_TRAMPOLINES
             object = getFrameForFunction(fd);
 #else
             // Pass fake argument for nested functions
             object = d_null_pointer;
 #endif
-        } else if (fd->needThis()) {
+        }
+        else if (fd->needThis())
+        {
             expr->error("need 'this' to access member %s", fd->toChars());
             object = d_null_pointer; // continue processing...
         }
-    } else {
+    }
+    else
+    {
         tf = get_function_type(t);
     }
     return call(tf, callee, object, arguments);

@@ -1678,33 +1678,42 @@ DotVarExp::toElem(IRState * irs)
     VarDeclaration * var_decl;
     Type * obj_basetype = e1->type->toBasetype();
     TY obj_basetype_ty = obj_basetype->ty;
-    switch (obj_basetype_ty) {
-    case Tpointer:
-        if (obj_basetype->nextOf()->toBasetype()->ty != Tstruct) {
-            break;
-        }
-        // drop through
-    case Tstruct:
-        // drop through
-    case Tclass:
-        if ( (func_decl = var->isFuncDeclaration()) ) {
-            // if Tstruct, objInstanceMethod will use the address of e1
-            return irs->objectInstanceMethod(e1, func_decl, type);
-        } else if ( (var_decl = var->isVarDeclaration()) ) {
-            if (var_decl->storage_class & STCfield) {
-                tree this_tree = e1->toElem(irs);
-                if ( obj_basetype_ty != Tstruct )
-                    this_tree = irs->indirect(this_tree);
-                return irs->component(this_tree, var_decl->toSymbol()->Stree);
-            } else {
-                return irs->var(var_decl);
+    switch (obj_basetype_ty)
+    {
+        case Tpointer:
+            if (obj_basetype->nextOf()->toBasetype()->ty != Tstruct)
+                break;
+
+            // drop through
+        case Tstruct:
+            // drop through
+        case Tclass:
+            if ( (func_decl = var->isFuncDeclaration()) )
+            {
+                // if Tstruct, objInstanceMethod will use the address of e1
+                return irs->objectInstanceMethod(e1, func_decl, type);
             }
-        } else {
-            error("%s is not a field, but a %s", var->toChars(), var->kind());
-        }
-        break;
-    default:
-        break;
+            else if ( (var_decl = var->isVarDeclaration()) )
+            {
+                if (var_decl->storage_class & STCfield)
+                {
+                    tree this_tree = e1->toElem(irs);
+                    if ( obj_basetype_ty != Tstruct )
+                        this_tree = irs->indirect(this_tree);
+                    return irs->component(this_tree, var_decl->toSymbol()->Stree);
+                }
+                else
+                {
+                    return irs->var(var_decl);
+                }
+            }
+            else
+            {
+                error("%s is not a field, but a %s", var->toChars(), var->kind());
+            }
+            break;
+        default:
+            break;
     }
     ::error("Don't know how to handle %s", toChars());
     return irs->errorMark(type);
