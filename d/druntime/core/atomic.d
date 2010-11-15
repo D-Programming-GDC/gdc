@@ -222,8 +222,11 @@ else version( GNU )
         {
         version( GNU_Need_Atomics )
         {
-            volatile T result = val;
-            return result;
+            synchronized
+            {
+                T result = val;
+                return result;
+            }
         }
         else
         {

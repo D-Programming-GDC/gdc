@@ -20,9 +20,8 @@ AUTOMAKE_OPTIONS = 1.9.4 foreign no-dependencies
 ACLOCAL_AMFLAGS = -I . -I ..
 
 OUR_CFLAGS=@DEFS@ -I . -I $(srcdir)/gcc
-D_EXTRA_DFLAGS=-nostdinc -pipe
-D_RT_FLAGS = -I $(srcdir)/gc
-ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_RT_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
+D_EXTRA_DFLAGS=-nostdinc -pipe -I $(srcdir) -I ./$(host_alias)
+ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -31,9 +30,12 @@ all-local: libgphobos2.a libgdruntime.a
 
 SUFFIXES = .d
 
+# For core objects, generate .di headers
+core/%.o : core/%.d $(D_PREREQ_SRCS)
+	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -fintfc-file=$(@:.o=.di) -c $<
+
 %.o : %.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated \
-	-I $(srcdir) -I ./$(host_alias) -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
 
 # %.o : %.c
 # Use .c.o to override Automake
@@ -41,7 +43,7 @@ SUFFIXES = .d
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 %.t.o : %.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fno-release -funittest -fversion=Unittest -I $(srcdir) -I ./$(host_alias) -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -fno-release -funittest -fversion=Unittest -c $<
 
 %.t.o : %.o
 	cp $< $@
@@ -88,12 +90,12 @@ $(config_unix_d_src): config/unix.x3 $(X3_DEPS) stamp-tgtdir
 
 # because these are in the $(host_alias) subdir, pattern match rules will not work
 gcc/config/unix.o: $(config_unix_d_src) $(config_d_src) $(config_libc_d_src)
-	$(GDC) -o $@ $(ALL_DFLAGS) -I $(srcdir) -I ./$(host_alias) -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
 gcc/config/unix.t.o: gcc/config/unix.o
 	cp $< $@
 
 gcc/config/mathfuncs.o: $(config_mathfuncs_d_src) $(config_d_src) $(config_libc_d_src)
-	$(GDC) -o $@ $(ALL_DFLAGS) -I $(srcdir) -I ./$(host_alias) -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
 gcc/config/mathfuncs.t.o: gcc/config/mathfuncs.o
 	cp $< $@
 
@@ -108,10 +110,6 @@ stamp-tgtdir:
 #-------------------#
 #-    D Runtime    -#
 #-------------------#
-
-# core.thread uses deprecated 'volatile'
-common/core/thread.o: common/core/thread.d
-	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -I $(srcdir) -I ./$(host_alias) -c $<
 
 gcc/cbridge_math.o: gcc/cbridge_math.c
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
@@ -232,9 +230,9 @@ WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/windows/windows.o \
 D_EXTRA_OBJS=@D_EXTRA_OBJS@
 
 std/stream.o: std/stream.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -I $(srcdir) -I ./$(host_alias) -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
 std/stream.t.o: std/stream.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -I $(srcdir) -I ./$(host_alias) -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
 
 ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS) $(WEAK_OBJS)
 
@@ -260,7 +258,7 @@ install-exec-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 install-data-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 	for i in etc/c \
 		gcc std std/c \
-                std/c/linux std/c/osx std/c/unix std/c/windows \
+		std/c/linux std/c/osx std/c/unix std/c/windows \
 		std/internal/math std/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
@@ -271,6 +269,7 @@ install-data-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done
+	find ./core -name "*.di" -exec $(INSTALL_HEADER) '{}' $(DESTDIR)$(gdc_include_dir)/'{}' \;
 	for i in crc32.d object.di; do \
 		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done
 	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/gcc/config
@@ -286,6 +285,7 @@ clean-local:
 	rm -f unittest$(EXEEXT) testgc$(EXEEXT)
 	rm -f $(config_d_src) $(config_errno_d_src) $(config_libc_d_src)
 	rm -f $(config_unix_d_src)
+	find ./core -name "*.di" -exec rm -f '{}' \;
 	rm -f libgdruntime.a
 	rm -f libgphobos2.a
 	rm -f libgphobos2_t.a

@@ -20,11 +20,7 @@ module rt.dmain2;
 
 private
 {
-    version (GNU)
-        import rt.gccmemory;
-    else
-        import rt.memory;
-
+    import rt.memory;
     import rt.util.console;
     import rt.util.string;
     import core.stdc.stddef;
