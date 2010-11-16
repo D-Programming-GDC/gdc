@@ -168,7 +168,7 @@ else version( GNU )
             if (*val == oldval)
                 *val = newval;
         }
-        return oldval is *val;
+        return *val == newval;
     }
     else
     {

@@ -126,14 +126,13 @@ void _d_monitor_unlock(Object *h)
     //printf("-_d_monitor_release(%p)\n", h);
 }
 
+
 /* =============================== linux ============================ */
 
 #elif USE_PTHREADS
 
-#ifdef linux
-#  ifndef PTHREAD_MUTEX_RECURSIVE
-#    define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
-#  endif
+#ifndef PTHREAD_MUTEX_RECURSIVE
+#define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif
 
 // Includes attribute fixes from David Friedman's GDC port
@@ -145,8 +144,10 @@ void _STI_monitor_staticctor()
 {
     if (!inited)
     {
+#ifndef PTHREAD_MUTEX_ALREADY_RECURSIVE
         pthread_mutexattr_init(&_monitors_attr);
         pthread_mutexattr_settype(&_monitors_attr, PTHREAD_MUTEX_RECURSIVE);
+#endif
         pthread_mutex_init(&_monitor_critsec, &_monitors_attr);
         inited = 1;
     }
@@ -156,8 +157,10 @@ void _STD_monitor_staticdtor()
 {
     if (inited)
     {   inited = 0;
+#ifndef PTHREAD_MUTEX_ALREADY_RECURSIVE
         pthread_mutex_destroy(&_monitor_critsec);
         pthread_mutexattr_destroy(&_monitors_attr);
+#endif
     }
 }
 
@@ -178,7 +181,11 @@ void _d_monitor_create(Object *h)
     {
         cs = (Monitor *)calloc(sizeof(Monitor), 1);
         assert(cs);
+#ifndef PTHREAD_MUTEX_ALREADY_RECURSIVE
         pthread_mutex_init(&cs->mon, & _monitors_attr);
+#else
+        pthread_mutex_init(&cs->mon, NULL);
+#endif
         h->monitor = (void *)cs;
         cs->refs = 1;
         cs = NULL;
@@ -224,6 +231,7 @@ void _STD_monitor_staticdtor() { }
 
 void _d_monitor_create(Object *h)
 {
+    //printf("+_d_monitor_create(%p)\n", h);
     assert(h);
     Monitor *cs = NULL;
     if (!h->monitor)
@@ -233,23 +241,32 @@ void _d_monitor_create(Object *h)
         h->monitor = (void *)cs;
         cs = NULL;
     }
+    if (cs)
+        free(cs);
+    //printf("-_d_monitor_create(%p)\n", h);
 }
 
 void _d_monitor_destroy(Object *h)
 {
+    //printf("+_d_monitor_destroy(%p)\n", h);
     assert(h && h->monitor && !(((Monitor*)h->monitor)->impl));
     free((void *)h->monitor);
     h->monitor = NULL;
+    //printf("-_d_monitor_destroy(%p)\n", h);
 }
 
 int _d_monitor_lock(Object *h)
 {
+    //printf("+_d_monitor_acquire(%p)\n", h);
     assert(h && h->monitor && !(((Monitor*)h->monitor)->impl));
+    //printf("-_d_monitor_acquire(%p)\n", h);
 }
 
 void _d_monitor_unlock(Object *h)
 {
+    //printf("+_d_monitor_release(%p)\n", h);
     assert(h && h->monitor && !(((Monitor*)h->monitor)->impl));
+    //printf("-_d_monitor_release(%p)\n", h);
 }
 
 #endif
