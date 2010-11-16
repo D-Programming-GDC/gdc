@@ -420,6 +420,21 @@ struct IRState : IRBase
         return t;
     }
 
+    // Conveniently construct the function arguments for passing
+    // to the real buildCall function.
+    static tree buildCall(tree callee, int n_args, ...) {
+        va_list ap;
+        tree arg_list = NULL_TREE;
+        tree fntype = TREE_TYPE(callee);
+
+        va_start (ap, n_args);
+        for (int i = n_args - 1; i >= 0; i--)
+            arg_list = tree_cons(NULL_TREE, va_arg(ap, tree), arg_list);
+        va_end (ap);
+
+        return buildCall(TREE_TYPE(fntype), addressOf(callee), nreverse(arg_list));
+    }
+
     tree assignValue(Expression * e, VarDeclaration * v);
 
     static TemplateEmission emitTemplates;

@@ -1635,11 +1635,9 @@ tree IRState::maybeExpandSpecialCall(tree call_exp)
                     if ( TREE_CODE( t ) == ADDR_EXPR ) {
                         t = TREE_OPERAND(t, 0);
                     }
-
-                    return buildCall( void_type_node, // assuming nobody tries to change the return type
-                        addressOf( built_in_decls[BUILT_IN_VA_START] ),
-                        tree_cons( NULL_TREE, val_arg,
-                        tree_cons( NULL_TREE, t, NULL_TREE )));
+                    // assuming nobody tries to change the return type
+                    return buildCall(built_in_decls[BUILT_IN_VA_START], 2,
+                                     val_arg, t);
                 }
             default:
                 abort();
@@ -1938,35 +1936,53 @@ tree
 IRState::floatMod(tree a, tree b, Type * d_type)
 {
     enum built_in_function fn;
-    switch (d_type->toBasetype()->ty) {
-    case Tfloat32:
-    case Timaginary32:
-        fn = BUILT_IN_FMODF;
-        break;
-    case Tfloat64:
-    case Timaginary64:
-    no_long_double:
-        fn = BUILT_IN_FMOD;
-        break;
-    case Tfloat80:
-    case Timaginary80:
-        if (! haveLongDouble())
-            goto no_long_double;
-        fn = BUILT_IN_FMODL;
-        break;
-    default:
-        ::error("tried to perform floating-point modulo division on %s",
-            d_type->toChars());
-        return error_mark_node;
+
+    switch (d_type->toBasetype()->ty)
+    {
+        case Tcomplex32:
+        case Tfloat32:
+        case Timaginary32:
+            fn = BUILT_IN_FMODF;
+            break;
+
+        case Tcomplex64:
+        case Tfloat64:
+        case Timaginary64:
+        no_long_double:
+            fn = BUILT_IN_FMOD;
+            break;
+
+        case Tcomplex80:
+        case Tfloat80:
+        case Timaginary80:
+            if (! haveLongDouble())
+                goto no_long_double;
+            fn = BUILT_IN_FMODL;
+            break;
+
+        default:
+            ::error("tried to perform floating-point modulo division on %s",
+                    d_type->toChars());
+            return error_mark_node;
     }
+    
     tree decl = built_in_decls[fn];
-    // %% assuming no arg conversion needed
-    // %% bypassing buildCall since this shouldn't have
-    // side effects
-    return buildCall(TREE_TYPE(TREE_TYPE(decl)),
-        addressOf(decl),
-        tree_cons(NULL_TREE, a,
-            tree_cons(NULL_TREE, b, NULL_TREE)));
+    if (d_type->iscomplex())
+    {
+        return build2(COMPLEX_EXPR, d_type->toCtype(),
+                buildCall(decl, 2, TREE_REALPART(a), b),
+                buildCall(decl, 2, TREE_IMAGPART(a), b));
+    }
+    else if (d_type->isfloating() || d_type->isimaginary())
+    {   // %% assuming no arg conversion needed
+        // %% bypassing buildCall since this shouldn't have
+        // side effects
+        return buildCall(decl, 2, a, b);
+    }
+    else
+    {   // Should have caught this above.
+        abort();
+    }
 }
 
 tree
@@ -2693,38 +2709,45 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
         if (func != outer_func)
         {
             Dsymbol * this_func = func;
-            Dsymbol * parent_sym = nested_sym->toParent2();
             if (!func->vthis) // if no frame pointer for this function
             {
-                nested_func->error("is a nested function and cannot be accessed from %s", func->toChars());
+                error("is a nested function and cannot be accessed from %s", func->toChars());
                 return d_null_pointer;
             }
-            /* Search for frame pointer, make sure we can reach it,
+            /* Make sure we can get the frame pointer to the outer function,
                else we'll ICE later in tree-ssa.  */
             while (nested_func != this_func)
             {
-                FuncDeclaration * fndecl;
-                StructDeclaration * scdecl;
+                FuncDeclaration * fd;
+                ClassDeclaration * cd;
+                StructDeclaration * sd;
 
-                if ( (fndecl = this_func->isFuncDeclaration()) )
+                if ( (fd = this_func->isFuncDeclaration()) )
                 {
-                    if (parent_sym == fndecl->toParent2())
+                    if (outer_func == fd->toParent2())
                         break;
-                    assert(fndecl->isNested() || fndecl->vthis);
+                    assert(fd->isNested() || fd->vthis);
+                }
+                else if ( (cd = this_func->isClassDeclaration()) )
+                {
+                    if (!cd->isNested() || !cd->vthis)
+                        goto cannot_get_frame;
+                    if (outer_func == cd->toParent2())
+                        break;
                 }
 #if V2
-                else if ( (scdecl = this_func->isStructDeclaration()) )
+                else if ( (sd = this_func->isStructDeclaration()) )
                 {
-                    if (!scdecl->isNested() || !scdecl->vthis)
+                    if (!sd->isNested() || !sd->vthis)
                         goto cannot_get_frame;
-                    if (parent_sym == scdecl->toParent2())
+                    if (outer_func == sd->toParent2())
                         break;
                 }
 #endif
                 else
                 {
                   cannot_get_frame:
-                    func->error("cannot get frame pointer to %s", nested_sym->toChars());
+                    error("cannot get frame pointer to %s", nested_sym->toChars());
                     return d_null_pointer;
                 }
                 this_func = this_func->toParent2();

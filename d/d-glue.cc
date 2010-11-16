@@ -365,11 +365,7 @@ EqualExp::toElem(IRState* irs)
                 size_int(elem_type->size()));
             size = fold( size );
 
-            result = irs->buildCall( TREE_TYPE(TREE_TYPE( t_memcmp )),
-                irs->addressOf( t_memcmp ),
-                tree_cons( NULL_TREE, data_expr[0],
-                    tree_cons( NULL_TREE, data_expr[1],
-                        tree_cons( NULL_TREE, size, NULL_TREE ))));
+            result = irs->buildCall(t_memcmp, 3, data_expr[0], data_expr[1], size);
 
             result = irs->boolOp(op == TOKequal ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR,
                 irs->boolOp(op == TOKequal ? EQ_EXPR : NE_EXPR, len_expr[0], len_expr[1]),
@@ -731,7 +727,7 @@ PowExp::toElem(IRState * irs)
         return irs->errorMark(type);
     }
 
-    return convert(type->toCtype(), build_call_expr (powfn, 2, e1_t, e2_t));
+    return convert(type->toCtype(), irs->buildCall(powfn, 2, e1_t, e2_t));
 }
 #endif
 
@@ -1185,11 +1181,8 @@ AssignExp::toElem(IRState* irs) {
                     size_int(elem_type->size()));
                 size = fold( size );
 
-                result = irs->buildCall( TREE_TYPE(TREE_TYPE( t_memcpy )),
-                    irs->addressOf( t_memcpy ),
-                    tree_cons( NULL_TREE, irs->darrayPtrRef(array[0]),
-                        tree_cons( NULL_TREE, irs->darrayPtrRef(array[1]),
-                            tree_cons( NULL_TREE, size, NULL_TREE))));
+                result = irs->buildCall(t_memcpy, 3, irs->darrayPtrRef(array[0]),
+                                        irs->darrayPtrRef(array[1]), size);
 
                 return irs->compound( result, array[0], type->toCtype() );
             }
@@ -1834,8 +1827,7 @@ HaltExp::toElem(IRState* irs)
 {
     // Needs improvement.  Avoid library calls if possible..
     tree t_abort = built_in_decls[BUILT_IN_ABORT];
-    return irs->buildCall( TREE_TYPE(TREE_TYPE(t_abort)),
-        irs->addressOf(t_abort), NULL_TREE);
+    return irs->buildCall(t_abort, 0);
 }
 
 #if V2
@@ -2879,13 +2871,10 @@ FuncDeclaration::toObjFile(int multiobj)
     if (v_argptr) {
 #if D_GCC_VER < 40
         tree var = irs->var(v_argptr);
-        tree init_exp = irs->buildCall(void_type_node,
-            irs->addressOf( built_in_decls[BUILT_IN_VA_START] ),
-            tree_cons(NULL_TREE, irs->addressOf(var),
-                tree_cons( NULL_TREE, parm_decl, NULL_TREE)));
-        tree cleanup = irs->buildCall(void_type_node,
-            irs->addressOf( built_in_decls[BUILT_IN_VA_END] ),
-            tree_cons(NULL_TREE, irs->addressOf(var), NULL_TREE));
+        tree init_exp = irs->buildCall(built_in_decls[BUILT_IN_VA_START], 2,
+                                       irs->addressOf(var), parm_decl);
+        tree cleanup = irs->buildCall(built_in_decls[BUILT_IN_VA_END], 1,
+                                      irs->addressOf(var));
         v_argptr->init = NULL; // VoidInitializer?
         irs->emitLocalVar(v_argptr, true);
 
@@ -2980,17 +2969,14 @@ FuncDeclaration::toObjFile(int multiobj)
     if (v_argptr) {
         tree body = irs->popStatementList();
         tree var = irs->var(v_argptr);
-        tree init_exp = irs->buildCall(void_type_node,
-            irs->addressOf( built_in_decls[BUILT_IN_VA_START] ),
-            tree_cons(NULL_TREE, irs->addressOf(var),
-                tree_cons( NULL_TREE, parm_decl, NULL_TREE)));
+        tree init_exp = irs->buildCall(built_in_decls[BUILT_IN_VA_START], 2,
+                                       irs->addressOf(var), parm_decl);
         v_argptr->init = NULL; // VoidInitializer?
         irs->emitLocalVar(v_argptr, true);
         irs->addExp(init_exp);
 
-        tree cleanup = irs->buildCall(void_type_node,
-            irs->addressOf( built_in_decls[BUILT_IN_VA_END] ),
-            tree_cons(NULL_TREE, irs->addressOf(var), NULL_TREE));
+        tree cleanup = irs->buildCall(built_in_decls[BUILT_IN_VA_END], 1,
+                                      irs->addressOf(var));
         irs->addExp( build2( TRY_FINALLY_EXPR, void_type_node, body, cleanup ));
     }
 #endif
