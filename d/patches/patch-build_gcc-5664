@@ -19,6 +19,30 @@ diff -cr gcc-5664.orig/build_gcc gcc-5664/build_gcc
   # The B&I build script (~rc/bin/buildit) accepts an '-othercflags'
   # command-line flag, and captures the argument to that flag in
 ***************
+*** 40,47 ****
+  
+  CFLAGS="-g -O2 ${RC_NONARCH_CFLAGS/-pipe/}"
+  
+  # This isn't a parameter; it is the architecture of the current machine.
+! BUILD=`arch | $TRANSLATE_ARCH`
+  
+  # The third parameter is the path to the compiler sources.  There should
+  # be a shell script named 'configure' in this directory.  This script
+--- 40,52 ----
+  
+  CFLAGS="-g -O2 ${RC_NONARCH_CFLAGS/-pipe/}"
+  
++ ARCH="`arch`"
++ if [ "x$ARCH" = "xi386" -a "`sysctl -n hw.cpu64bit_capable`" = "1" ]; then
++   ARCH="x86_64"
++ fi
++ 
+  # This isn't a parameter; it is the architecture of the current machine.
+! BUILD=`echo $ARCH | $TRANSLATE_ARCH`
+  
+  # The third parameter is the path to the compiler sources.  There should
+  # be a shell script named 'configure' in this directory.  This script
+***************
 *** 220,226 ****
   # comparable to the native built libraries.
   unset RC_DEBUG_OPTIONS

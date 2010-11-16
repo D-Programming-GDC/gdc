@@ -92,7 +92,7 @@ diff -cr gcc.orig/convert.c gcc/convert.c
 --- gcc/convert.c	2010-10-27 18:31:59.272795002 +0100
 ***************
 *** 30,39 ****
---- 30,41 ----
+--- 30,43 ----
   #include "tree.h"
   #include "flags.h"
   #include "convert.h"
@@ -101,6 +101,8 @@ diff -cr gcc.orig/convert.c gcc/convert.c
   #include "c-tree.h"
   #include "c-common.h"
   /* APPLE LOCAL end AltiVec */
++ #else
++ #include "c-common.h"
 + #endif
   #include "toplev.h"
   #include "langhooks.h"
