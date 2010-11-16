@@ -147,6 +147,24 @@ decl_constant_value (tree decl)
     gcc_assert(0);
 }
 
+void
+finish_decl (tree decl, tree init, tree asmspec_tree)
+{
+    gcc_assert(0);
+}
+
+enum cpp_ttype
+pragma_lex (tree *value)
+{
+    gcc_assert(0);
+}
+
+tree
+lookup_name (tree name)
+{
+    gcc_assert(0);
+}
+
 tree
 lookup_name_two (tree name, int ARG_UNUSED (prefer_type))
 {

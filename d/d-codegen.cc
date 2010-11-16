@@ -407,7 +407,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 
                 gcc_assert((src_elem_type->ty == Tbit) == (dst_elem_type->ty == Tbit));
 
-                if (sz_a != sz_b && src_elem_type->ty != Tvoid)
+                if (sz_a != sz_b)
                 {
                     unsigned mult = 1;
 #if V1

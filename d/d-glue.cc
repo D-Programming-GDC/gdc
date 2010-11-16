@@ -1609,18 +1609,6 @@ CallExp::toElem(IRState* irs)
     tree call_exp = irs->call(e1, arguments);
     // Some library calls are defined to return a generic type.
     // this->type is the real type. (See crash2.d)
-#if ENABLE_CHECKING
-    Type * e1_type = NULL;
-
-    if (e1->type->ty == Tfunction)
-        e1_type = e1->type->nextOf();
-    else if (e1->type->ty == Tdelegate)
-        e1_type = e1->type->nextOf()->nextOf();
-
-    if (e1_type && e1_type->ty != Taarray && type->ty != Taarray)
-        call_exp = irs->convertTo(call_exp, e1_type, type);
-    else
-#endif
     TREE_TYPE(call_exp) = type->toCtype();
 
     return call_exp;

@@ -121,6 +121,9 @@ D_gcc_main_ver:=$(shell echo $(version) | sed -e 's/\([0-9]*\.[0-9]*\).*/\1/')
 ifeq ($(D_gcc_main_ver),4.0)
   D_is_apple_ver:=$(shell grep version_string $(gcc_version_trigger) | grep 'Apple')
 endif
+ifeq ($(D_gcc_main_ver),4.2)
+  D_is_apple_ver:=$(shell grep VERSUFFIX $(srcdir)/../gcc/version.c | grep 'Apple')
+endif
 
 gcc_d_target_include_dir=$(gcc_d_include_dir)/$(target_noncanonical)
 
@@ -232,6 +235,11 @@ ifdef D_is_apple_ver
   ifeq ($(D_gcc_main_ver),4.0)
     D_GLUE_OBJS += d/d-apple-gcc.cglue.o
     D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+  endif
+  ifeq ($(D_gcc_main_ver),4.2)
+    D_GLUE_OBJS += d/d-apple-gcc.cglue.o
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_DRIVER_OBJS += opts-common.o gcc-options.o
   endif
 else
   ifeq ($(D_gcc_main_ver),3.4)
