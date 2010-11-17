@@ -23,9 +23,6 @@
 #define GCC_DCMPLR_CODEGEN_H
 
 #include "d-irstate.h"
-
-typedef dinteger_t xdmd_integer_t;
-
 #include "d-objfile.h"
 
 typedef enum {
@@ -209,14 +206,14 @@ struct IRState : IRBase
     // ** Simple constants
 
     static tree nullPointer() { return d_null_pointer; }
-    static tree integerConstant(xdmd_integer_t value, tree type = 0);
-    static tree integerConstant(xdmd_integer_t value, Type * type) {
+    static tree integerConstant(dinteger_t value, tree type = 0);
+    static tree integerConstant(dinteger_t value, Type * type) {
         return integerConstant(value, type->toCtype());
     }
 
     static tree floatConstant(const real_t & value, TypeBasic * target_type );
 
-    static xdmd_integer_t hwi2toli(HOST_WIDE_INT low, HOST_WIDE_INT high);
+    static dinteger_t hwi2toli(HOST_WIDE_INT low, HOST_WIDE_INT high);
 
     // ** Routines for built in structured types
 

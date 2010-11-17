@@ -61,21 +61,22 @@ CondExp::toElem(IRState * irs)
 static void
 signed_compare_check(tree * e1, tree * e2)
 {
-    tree t1 = TREE_TYPE( *e1 );
-    tree t2 = TREE_TYPE( *e2 );
-    if (INTEGRAL_TYPE_P( t1 ) &&
-        INTEGRAL_TYPE_P( t2 )) {
-        int u1 = TYPE_UNSIGNED( t1 );
-        int u2 = TYPE_UNSIGNED( t2 );
+    tree t1 = TREE_TYPE(*e1);
+    tree t2 = TREE_TYPE(*e2);
+    if (INTEGRAL_TYPE_P(t1) && INTEGRAL_TYPE_P(t2))
+    {
+        int u1 = TYPE_UNSIGNED(t1);
+        int u2 = TYPE_UNSIGNED(t2);
 
-        if (u1 ^ u2) {
-            if (gen.warnSignCompare) {
+        if (u1 ^ u2)
+        {
+            if (gen.warnSignCompare)
                 d_warning (0, "unsigned comparison with signed operand");
-            }
+
             if (! u1)
-                * e1 = convert( d_unsigned_type( t1 ), * e1 );
+                *e1 = convert(d_unsigned_type(t1), *e1);
             if (! u2)
-                * e2 = convert( d_unsigned_type( t2 ), * e2 );
+                *e2 = convert(d_unsigned_type(t2), *e2);
         }
     }
 }
@@ -86,173 +87,202 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
     bool is_compare = false; // %% should this be true for unordered comparisons?
     tree_code out_code;
 
-    switch (op) {
-    case TOKidentity: // fall through
-    case TOKequal:
+    if (op == TOKidentity || op == TOKequal)
+    {
         is_compare = true;
         out_code = EQ_EXPR;
-        break;
-    case TOKnotidentity: // fall through
-    case TOKnotequal:
+    }
+    else if (op == TOKnotidentity || op == TOKnotequal)
+    {
         is_compare = true;
         out_code = NE_EXPR;
-        break;
-    case TOKandand:
+    }
+    else if (op == TOKandand)
+    {
         out_code = TRUTH_ANDIF_EXPR;
-        break;
-    case TOKoror:
+    }
+    else if (op == TOKoror)
+    {
         out_code = TRUTH_ORIF_EXPR;
-        break;
-    default:
-        /*
-            // ordering for complex isn't defined, all that is guaranteed is the 'unordered part'
-            case TOKule:
-            case TOKul:
-            case TOKuge:
-            case TOKug:
-                */
-        if ( COMPLEX_FLOAT_TYPE_P( TREE_TYPE( e1 )) ) {
-            // GCC doesn't handle these.
-            e1 = irs->maybeMakeTemp(e1);
-            e2 = irs->maybeMakeTemp(e2);
-            switch (op) {
-            case TOKleg:
-                return irs->boolOp(TRUTH_ANDIF_EXPR,
+    }
+    else if ( COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)) )
+    {   // GCC doesn't handle these.
+        // ordering for complex isn't defined, all that is guaranteed is the 'unordered part'
+        e1 = irs->maybeMakeTemp(e1);
+        e2 = irs->maybeMakeTemp(e2);
+        if (op == TOKleg)
+        {
+            return irs->boolOp(TRUTH_ANDIF_EXPR,
                     make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
                     make_bool_binop(TOKleg, irs->imagPart(e1), irs->imagPart(e2), irs));
-            case TOKunord:
-                return irs->boolOp(TRUTH_ORIF_EXPR,
+        }
+        else if (op == TOKunord)
+        {
+            return irs->boolOp(TRUTH_ORIF_EXPR,
                     make_bool_binop(TOKunord, irs->realPart(e1), irs->realPart(e2), irs),
                     make_bool_binop(TOKunord, irs->imagPart(e1), irs->imagPart(e2), irs));
-            case TOKlg:
-                return irs->boolOp(TRUTH_ANDIF_EXPR,
+        }
+        else if (op == TOKlg)
+        {
+            return irs->boolOp(TRUTH_ANDIF_EXPR,
                     make_bool_binop(TOKleg, e1, e2, irs),
                     make_bool_binop(TOKnotequal, e1, e2, irs));
-            case TOKue:
-                return irs->boolOp(TRUTH_ORIF_EXPR,
+        }
+        else if (op == TOKue)
+        {
+            return irs->boolOp(TRUTH_ORIF_EXPR,
                     make_bool_binop(TOKunord, e1, e2, irs),
                     make_bool_binop(TOKequal, e1, e2, irs));
-            default:
-                {
-                    // From cmath2.d: if imaginary parts are equal,
-                    // result is comparison of real parts; otherwise, result false
-                    //
-                    // Does D define an ordering for complex numbers?
-
-                    // make a target-independent _cmplxCmp ?
-                    tree it, rt;
-                    TOK hard, soft;
-                    bool unordered = false;
-                    switch (op) {
-                    case TOKule:
-                    case TOKul:
-                    case TOKuge:
-                    case TOKug:
-                        unordered = true;
-                    default:
-                        break;
-                    }
-
-                    switch (op) {
-                    case TOKule:
-                    case TOKle:
-                        hard = TOKlt;
-                        soft = TOKle;
-                        break;
-                    case TOKul:
-                    case TOKlt:
-                        hard = soft = TOKlt;
-                        break;
-                    case TOKuge:
-                    case TOKge:
-                        hard = TOKlt;
-                        soft = TOKle;
-                        break;
-                    case TOKug:
-                    case TOKgt:
-                        hard = soft = TOKgt;
-                        break;
-                    default:
-                        assert(0);
-                    }
-
-                    it = make_bool_binop(hard, irs->imagPart(e2), irs->imagPart(e1), irs);
-                    if (! unordered)
-                        it = irs->boolOp(TRUTH_ANDIF_EXPR,
-                            make_bool_binop(TOKleg, irs->realPart(e2), irs->realPart(e1), irs),
-                            it);
-                    rt = irs->boolOp(TRUTH_ANDIF_EXPR,
-                        make_bool_binop(TOKequal, irs->imagPart(e2), irs->imagPart(e1), irs),
-                        make_bool_binop(soft, irs->realPart(e2), irs->realPart(e1), irs));
-                    it = irs->boolOp(TRUTH_ANDIF_EXPR, it, rt);
-                    if (unordered)
-                        it = irs->boolOp(TRUTH_ORIF_EXPR,
-                            make_bool_binop(TOKunord, e1, e2, irs),
-                            it);
-                    return it;
-                }
-            }
         }
-        // else, normal
+        else
+        {   // From cmath2.d: if imaginary parts are equal,
+            // result is comparison of real parts; otherwise, result false
+            //
+            // Does D define an ordering for complex numbers?
 
-        switch (op) {
-        case TOKlt: out_code = LT_EXPR; is_compare = true; break;
-        case TOKgt: out_code = GT_EXPR; is_compare = true; break;
-        case TOKle: out_code = LE_EXPR; is_compare = true; break;
-        case TOKge: out_code = GE_EXPR; is_compare = true; break;
-        case TOKunord: out_code = UNORDERED_EXPR; break;
-        case TOKlg:
+            // make a target-independent _cmplxCmp ?
+            tree it, rt;
+            TOK hard, soft;
+            bool unordered = false;
+
+            switch (op)
             {
-                e1 = irs->maybeMakeTemp(e1);
-                e2 = irs->maybeMakeTemp(e2);
-                return irs->boolOp(TRUTH_ORIF_EXPR,
-                    build2(LT_EXPR, boolean_type_node, e1, e2),
-                    build2(GT_EXPR, boolean_type_node, e1, e2));
-            }
-            break;
-        default:
-            /* GCC 3.4 (others?) chokes on these unless
-               at least one operand is floating point. */
-            if (FLOAT_TYPE_P( TREE_TYPE( e1 )) &&
-                FLOAT_TYPE_P( TREE_TYPE( e2 ))) {
-                switch (op) {
-                case TOKleg: out_code = ORDERED_EXPR; break;
-                case TOKule: out_code = UNLE_EXPR; break;
-                case TOKul:  out_code = UNLT_EXPR; break;
-                case TOKuge: out_code = UNGE_EXPR; break;
-                case TOKug:  out_code = UNGT_EXPR; break;
-                case TOKue:  out_code = UNEQ_EXPR; break;
-                default:
-                    abort();
-                }
-            } else {
-                switch (op) {
-                case TOKleg:
-                    // %% is this properly optimized away?
-                    return irs->voidCompound(irs->compound(e1,e2),
-                        convert(boolean_type_node, integer_one_node));
+                case TOKule:
+                    unordered = true;
+                case TOKle:
+                    hard = TOKlt;
+                    soft = TOKle;
                     break;
-                case TOKule: out_code = LE_EXPR; break;
-                case TOKul:  out_code = LT_EXPR; break;
-                case TOKuge: out_code = GE_EXPR; break;
-                case TOKug:  out_code = GT_EXPR; break;
-                case TOKue:  out_code = EQ_EXPR; break;
+                case TOKul:
+                    unordered = true;
+                case TOKlt:
+                    hard = soft = TOKlt;
+                    break;
+                case TOKuge:
+                    unordered = true;
+                case TOKge:
+                    hard = TOKlt;
+                    soft = TOKle;
+                    break;
+                case TOKug:
+                    unordered = true;
+                case TOKgt:
+                    hard = soft = TOKgt;
+                    break;
                 default:
-                    abort();
-                }
+                    assert(0);
             }
+
+            it = make_bool_binop(hard, irs->imagPart(e2), irs->imagPart(e1), irs);
+            if (! unordered)
+                it = irs->boolOp(TRUTH_ANDIF_EXPR,
+                        make_bool_binop(TOKleg, irs->realPart(e2), irs->realPart(e1), irs),
+                        it);
+            rt = irs->boolOp(TRUTH_ANDIF_EXPR,
+                    make_bool_binop(TOKequal, irs->imagPart(e2), irs->imagPart(e1), irs),
+                    make_bool_binop(soft, irs->realPart(e2), irs->realPart(e1), irs));
+            it = irs->boolOp(TRUTH_ANDIF_EXPR, it, rt);
+            if (unordered)
+                it = irs->boolOp(TRUTH_ORIF_EXPR,
+                        make_bool_binop(TOKunord, e1, e2, irs),
+                        it);
+            return it;
+        }
+    } // else, normal
+    else if (op == TOKlt)
+    {
+        is_compare = true;
+        out_code = LT_EXPR;
+    }
+    else if (op == TOKgt)
+    {
+        is_compare = true;
+        out_code = GT_EXPR;
+    }
+    else if (op == TOKle)
+    {
+        is_compare = true;
+        out_code = LE_EXPR;
+    }
+    else if (op == TOKge)
+    {
+        is_compare = true;
+        out_code = GE_EXPR;
+    }
+    else if (op == TOKunord)
+    {
+        out_code = UNORDERED_EXPR;
+    }
+    else if (op == TOKlg)
+    {
+        e1 = irs->maybeMakeTemp(e1);
+        e2 = irs->maybeMakeTemp(e2);
+        return irs->boolOp(TRUTH_ORIF_EXPR,
+                build2(LT_EXPR, boolean_type_node, e1, e2),
+                build2(GT_EXPR, boolean_type_node, e1, e2));
+    }
+    else if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
+    {   /* GCC 3.4 (others?) chokes on these unless
+           at least one operand is floating point. */
+        switch (op) {
+            case TOKleg:
+                out_code = ORDERED_EXPR;
+                break;
+            case TOKule:
+                out_code = UNLE_EXPR;
+                break;
+            case TOKul:
+                out_code = UNLT_EXPR;
+                break;
+            case TOKuge:
+                out_code = UNGE_EXPR;
+                break;
+            case TOKug:
+                out_code = UNGT_EXPR;
+                break;
+            case TOKue:
+                out_code = UNEQ_EXPR;
+                break;
+            default:
+                abort();
+        }
+    }
+    else
+    {
+        switch (op)
+        {
+            case TOKleg:
+                // %% is this properly optimized away?
+                return convert(boolean_type_node, integer_one_node);
+                break;
+            case TOKule:
+                out_code = LE_EXPR;
+                break;
+            case TOKul:
+                out_code = LT_EXPR;
+                break;
+            case TOKuge:
+                out_code = GE_EXPR;
+                break;
+            case TOKug:
+                out_code = GT_EXPR;
+                break;
+            case TOKue:
+                out_code = EQ_EXPR;
+                break;
+            default:
+                abort();
         }
     }
 
     if (is_compare)
         signed_compare_check(& e1, & e2);
 
-    tree t = build2(out_code, boolean_type_node, // exp->type->toCtype(),
-        e1, e2);
+    tree t = build2(out_code, boolean_type_node, e1, e2);
+
 #if D_GCC_VER >= 40
     /* Need to use fold().  Otherwise, complex-var == complex-cst is not
        gimplified correctly. */
-
     if (COMPLEX_FLOAT_TYPE_P( TREE_TYPE( e1 )) ||
         COMPLEX_FLOAT_TYPE_P( TREE_TYPE( e2 )))
         t = fold(t);
@@ -265,7 +295,8 @@ make_bool_binop(BinExp * exp, IRState * irs)
 {
     tree t1 = exp->e1->toElem(irs);
     tree t2 = exp->e2->toElem(irs);
-    if (exp->op == TOKandand || exp->op == TOKoror) {
+    if (exp->op == TOKandand || exp->op == TOKoror)
+    {
         t1 = irs->convertForCondition(t1, exp->e1->type);
         t2 = irs->convertForCondition(t2, exp->e2->type);
     }

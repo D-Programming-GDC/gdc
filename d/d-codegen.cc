@@ -886,13 +886,13 @@ IRState::floatConstant(const real_t & value, TypeBasic * target_type )
     return build_real(type_node, converted_val);
 }
 
-xdmd_integer_t
+dinteger_t
 IRState::hwi2toli(HOST_WIDE_INT low, HOST_WIDE_INT high)
 {
     uinteger_t result;
-    if (sizeof(HOST_WIDE_INT) < sizeof(xdmd_integer_t))
+    if (sizeof(HOST_WIDE_INT) < sizeof(dinteger_t))
     {
-        gcc_assert(sizeof(HOST_WIDE_INT) * 2 == sizeof(xdmd_integer_t));
+        gcc_assert(sizeof(HOST_WIDE_INT) * 2 == sizeof(dinteger_t));
         result = (unsigned HOST_WIDE_INT) low;
         result += ((uinteger_t) (unsigned HOST_WIDE_INT) high) << HOST_BITS_PER_WIDE_INT;
     }
@@ -2583,14 +2583,14 @@ IRState::attributes(Expressions * in_attrs)
 }
 
 tree
-IRState::integerConstant(xdmd_integer_t value, tree type)
+IRState::integerConstant(dinteger_t value, tree type)
 {
     // The type is error_mark_node, we can't do anything.
     if ( isErrorMark(type) )
         return type;
 
 #if D_GCC_VER < 40
-    // Assuming xdmd_integer_t is 64 bits
+    // Assuming dinteger_t is 64 bits
 # if HOST_BITS_PER_WIDE_INT == 32
     tree tree_value = build_int_2(value & 0xffffffff, (value >> 32) & 0xffffffff);
 # elif HOST_BITS_PER_WIDE_INT == 64
