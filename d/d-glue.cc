@@ -2495,7 +2495,12 @@ StructLiteralExp::toElem(IRState *irs)
                 {
                     // %% This could be simplified down (and sped up)... use memset?
                     // Create a temporary static array and cast to dynamic.
-                    Type * dyn_array_type = fld_type->nextOf()->arrayOf();
+                    Type * dyn_array_type = fld_type;
+
+                    while (dyn_array_type->nextOf())
+                        dyn_array_type = dyn_array_type->nextOf();
+                    dyn_array_type = dyn_array_type->arrayOf();
+
                     tree dyn_array_exp = irs->convertTo(irs->localVar(fld_type),
                             fld_type, dyn_array_type);
                     dyn_array_exp = irs->maybeMakeTemp(dyn_array_exp);
