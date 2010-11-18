@@ -88,48 +88,49 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
     tree_code out_code;
 
     if (op == TOKidentity || op == TOKequal)
-    {
+    {   // (e1 == e2)
         is_compare = true;
         out_code = EQ_EXPR;
     }
     else if (op == TOKnotidentity || op == TOKnotequal)
-    {
+    {   // (e1 != e2)
         is_compare = true;
         out_code = NE_EXPR;
     }
     else if (op == TOKandand)
-    {
+    {   // (e1 && e2)
         out_code = TRUTH_ANDIF_EXPR;
     }
     else if (op == TOKoror)
-    {
+    {   // (e1 || e2)
         out_code = TRUTH_ORIF_EXPR;
     }
     else if ( COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)) )
     {   // GCC doesn't handle these.
         // ordering for complex isn't defined, all that is guaranteed is the 'unordered part'
+        // %% Frontend emits error "compare not defined for complex operands" for these?
         e1 = irs->maybeMakeTemp(e1);
         e2 = irs->maybeMakeTemp(e2);
         if (op == TOKleg)
-        {
+        {   // (e1.re <>= e2.re) && (e1.im <>= e2.im)
             return irs->boolOp(TRUTH_ANDIF_EXPR,
                     make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
                     make_bool_binop(TOKleg, irs->imagPart(e1), irs->imagPart(e2), irs));
         }
         else if (op == TOKunord)
-        {
+        {   // (e1.re !<>= e2.re) || (e1.im !<>= e2.im)
             return irs->boolOp(TRUTH_ORIF_EXPR,
                     make_bool_binop(TOKunord, irs->realPart(e1), irs->realPart(e2), irs),
                     make_bool_binop(TOKunord, irs->imagPart(e1), irs->imagPart(e2), irs));
         }
         else if (op == TOKlg)
-        {
+        {   // (e1 <>= e2) && (e1 != e2)
             return irs->boolOp(TRUTH_ANDIF_EXPR,
                     make_bool_binop(TOKleg, e1, e2, irs),
                     make_bool_binop(TOKnotequal, e1, e2, irs));
         }
         else if (op == TOKue)
-        {
+        {   // (e1 !<>= e2) || (e1 == e2)
             return irs->boolOp(TRUTH_ORIF_EXPR,
                     make_bool_binop(TOKunord, e1, e2, irs),
                     make_bool_binop(TOKequal, e1, e2, irs));
@@ -141,80 +142,99 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
             // Does D define an ordering for complex numbers?
 
             // make a target-independent _cmplxCmp ?
-            tree it, rt;
-            TOK hard, soft;
-            bool unordered = false;
 
-            switch (op)
-            {
-                case TOKule:
-                    unordered = true;
-                case TOKle:
-                    hard = TOKlt;
-                    soft = TOKle;
-                    break;
-                case TOKul:
-                    unordered = true;
-                case TOKlt:
-                    hard = soft = TOKlt;
-                    break;
-                case TOKuge:
-                    unordered = true;
-                case TOKge:
-                    hard = TOKlt;
-                    soft = TOKle;
-                    break;
-                case TOKug:
-                    unordered = true;
-                case TOKgt:
-                    hard = soft = TOKgt;
-                    break;
-                default:
-                    assert(0);
-            }
-
-            it = make_bool_binop(hard, irs->imagPart(e2), irs->imagPart(e1), irs);
-            if (! unordered)
-                it = irs->boolOp(TRUTH_ANDIF_EXPR,
-                        make_bool_binop(TOKleg, irs->realPart(e2), irs->realPart(e1), irs),
-                        it);
-            rt = irs->boolOp(TRUTH_ANDIF_EXPR,
-                    make_bool_binop(TOKequal, irs->imagPart(e2), irs->imagPart(e1), irs),
-                    make_bool_binop(soft, irs->realPart(e2), irs->realPart(e1), irs));
-            it = irs->boolOp(TRUTH_ANDIF_EXPR, it, rt);
-            if (unordered)
-                it = irs->boolOp(TRUTH_ORIF_EXPR,
+            if (op == TOKule)
+            {   // (e1 !<>= e2) || ((e1.re > e2.re) && (e1.im > e2.im))
+                return irs->boolOp(TRUTH_ORIF_EXPR,
                         make_bool_binop(TOKunord, e1, e2, irs),
-                        it);
-            return it;
+                        irs->boolOp(TRUTH_ANDIF_EXPR,
+                            make_bool_binop(TOKgt, irs->realPart(e1), irs->realPart(e2), irs),
+                            make_bool_binop(TOKgt, irs->imagPart(e1), irs->imagPart(e2), irs)));
+            }
+            else if (op == TOKle)
+            {   // (e1 <>= e2) && (e1.re <= e2.re) && (e1.im <= e2.im)
+                return irs->boolOp(TRUTH_ANDIF_EXPR,
+                        make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
+                        irs->boolOp(TRUTH_ANDIF_EXPR,
+                            make_bool_binop(TOKle, irs->realPart(e1), irs->realPart(e2), irs),
+                            make_bool_binop(TOKle, irs->imagPart(e1), irs->imagPart(e2), irs)));
+            }
+            else if (op == TOKul)
+            {   // (e1 !<>= e2) || ((e1.re >= e2.re) && (e1.im >= e2.im))
+                return irs->boolOp(TRUTH_ORIF_EXPR,
+                        make_bool_binop(TOKunord, e1, e2, irs),
+                        irs->boolOp(TRUTH_ANDIF_EXPR,
+                            make_bool_binop(TOKge, irs->realPart(e1), irs->realPart(e2), irs),
+                            make_bool_binop(TOKge, irs->imagPart(e1), irs->imagPart(e2), irs)));
+            }
+            else if (op == TOKlt)
+            {   // (e1.re <>= e2.re) && (e1.re < e2.re) && (e1.im < e2.im)
+                return irs->boolOp(TRUTH_ANDIF_EXPR,
+                        make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
+                        irs->boolOp(TRUTH_ANDIF_EXPR,
+                            make_bool_binop(TOKlt, irs->realPart(e1), irs->realPart(e2), irs),
+                            make_bool_binop(TOKlt, irs->imagPart(e1), irs->imagPart(e2), irs)));
+            }
+            else if (op == TOKuge)
+            {   // (e1 !<>= e2) || ((e1.re < e2.re) && (e1.im < e2.im))
+                return irs->boolOp(TRUTH_ORIF_EXPR,
+                        make_bool_binop(TOKunord, e1, e2, irs),
+                        irs->boolOp(TRUTH_ANDIF_EXPR,
+                            make_bool_binop(TOKlt, irs->realPart(e1), irs->realPart(e2), irs),
+                            make_bool_binop(TOKlt, irs->imagPart(e1), irs->imagPart(e2), irs)));
+            }
+            else if (op == TOKge)
+            {   // (e1.re <>= e2.re) && (e1.re >= e2.re) && (e1.im >= e2.im)
+                return irs->boolOp(TRUTH_ANDIF_EXPR,
+                        make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
+                        irs->boolOp(TRUTH_ANDIF_EXPR,
+                            make_bool_binop(TOKge, irs->realPart(e1), irs->realPart(e2), irs),
+                            make_bool_binop(TOKge, irs->imagPart(e1), irs->imagPart(e2), irs)));
+            }
+            else if (op == TOKug)
+            {   // (e1 !<>= e2) || ((e1.re <= e2.re) && (e1.im <= e2.im))
+                return irs->boolOp(TRUTH_ORIF_EXPR,
+                        make_bool_binop(TOKunord, e1, e2, irs),
+                        irs->boolOp(TRUTH_ANDIF_EXPR,
+                            make_bool_binop(TOKle, irs->realPart(e1), irs->realPart(e2), irs),
+                            make_bool_binop(TOKle, irs->imagPart(e1), irs->imagPart(e2), irs)));
+            }
+            else if (op == TOKgt)
+            {   // (e1.re <>= e2.re) && (e1.re > e2.re) && (e1.im > e2.im)
+                return irs->boolOp(TRUTH_ANDIF_EXPR,
+                        make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
+                        irs->boolOp(TRUTH_ANDIF_EXPR,
+                            make_bool_binop(TOKgt, irs->realPart(e1), irs->realPart(e2), irs),
+                            make_bool_binop(TOKgt, irs->imagPart(e1), irs->imagPart(e2), irs)));
+            }
+            else
+            {   
+                gcc_unreachable();
+            }
         }
     } // else, normal
     else if (op == TOKlt)
-    {
+    {   // (e1 < e2)
         is_compare = true;
         out_code = LT_EXPR;
     }
     else if (op == TOKgt)
-    {
+    {   // (e1 > e2)
         is_compare = true;
         out_code = GT_EXPR;
     }
     else if (op == TOKle)
-    {
+    {   // (e1 <= e2)
         is_compare = true;
         out_code = LE_EXPR;
     }
     else if (op == TOKge)
-    {
+    {   // (e1 >= e2)
         is_compare = true;
         out_code = GE_EXPR;
     }
-    else if (op == TOKunord)
-    {
-        out_code = UNORDERED_EXPR;
-    }
     else if (op == TOKlg)
-    {
+    {   // (e1 < e2) || (e1 > e2)
         e1 = irs->maybeMakeTemp(e1);
         e2 = irs->maybeMakeTemp(e2);
         return irs->boolOp(TRUTH_ORIF_EXPR,
@@ -224,9 +244,13 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
     else if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
     {   /* GCC 3.4 (others?) chokes on these unless
            at least one operand is floating point. */
-        switch (op) {
+        switch (op)
+        {
             case TOKleg:
                 out_code = ORDERED_EXPR;
+                break;
+            case TOKunord:
+                out_code = UNORDERED_EXPR;
                 break;
             case TOKule:
                 out_code = UNLE_EXPR;
@@ -244,7 +268,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
                 out_code = UNEQ_EXPR;
                 break;
             default:
-                abort();
+                gcc_unreachable();
         }
     }
     else
@@ -254,6 +278,9 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
             case TOKleg:
                 // %% is this properly optimized away?
                 return convert(boolean_type_node, integer_one_node);
+                break;
+            case TOKunord:
+                return convert(boolean_type_node, integer_zero_node);
                 break;
             case TOKule:
                 out_code = LE_EXPR;
@@ -271,23 +298,24 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
                 out_code = EQ_EXPR;
                 break;
             default:
-                abort();
+                gcc_unreachable();
         }
     }
 
     if (is_compare)
         signed_compare_check(& e1, & e2);
 
-    tree t = build2(out_code, boolean_type_node, e1, e2);
+    // Build compare expression.
+    tree cmp = build2(out_code, boolean_type_node, e1, e2);
 
 #if D_GCC_VER >= 40
     /* Need to use fold().  Otherwise, complex-var == complex-cst is not
        gimplified correctly. */
     if (COMPLEX_FLOAT_TYPE_P( TREE_TYPE( e1 )) ||
         COMPLEX_FLOAT_TYPE_P( TREE_TYPE( e2 )))
-        t = fold(t);
+        cmp = fold(cmp);
 #endif
-    return t;
+    return cmp;
 }
 
 static tree
@@ -2422,46 +2450,85 @@ StructLiteralExp::toElem(IRState *irs)
     TREE_TYPE( ctor ) = type->toCtype();
 
     if (elements)
+    {
+        assert(elements->dim <= sd->fields.dim);
+
         for (unsigned i = 0; i < elements->dim; ++i)
         {
-            Expression * e = (Expression *) elements->data[i];
-            if (e)
+            if (! elements->data[i])
+                continue;
+
+            Expression * exp = (Expression *) elements->data[i];
+            Type * exp_type = exp->type->toBasetype();
+            tree exp_tree = NULL_TREE;
+            tree call_exp = NULL_TREE;
+
+            VarDeclaration * fld = (VarDeclaration *) sd->fields.data[i];
+            Type * fld_type = fld->type->toBasetype();
+
+            if (fld_type->ty == Tsarray)
             {
-                VarDeclaration * fld = (VarDeclaration *) sd->fields.data[i];
-#if V2
-                Type * tb = fld->type->toBasetype();
-                StructDeclaration * sd;
-                if ((sd = needsPostblit(tb)) != NULL)
+                if (irs->typesCompatible(exp_type, fld_type))
                 {
-                    tree ec;
-                    if (tb->ty == Tsarray)
+#if V2
+                    StructDeclaration * sd;
+                    if ((sd = needsPostblit(fld_type)) != NULL)
                     {
-                        /* Generate _d_arrayctor(ti, from = e, to = ec) */
-                        Type * ti = tb->nextOf();
-                        ec = irs->localVar(e->type->toCtype());
+                        /* Generate _d_arrayctor(ti, from = exp, to = exp_tree) */
+                        Type * ti = fld_type->nextOf();
+                        exp_tree = irs->localVar(exp_type->toCtype());
                         tree args[3] = {
                             irs->typeinfoReference(ti),
-                            irs->toDArray(e),
-                            irs->convertTo(ec, e->type, ti->arrayOf())
+                            irs->toDArray(exp),
+                            irs->convertTo(exp_tree, exp_type, ti->arrayOf())
                         };
-                        irs->doExp(irs->libCall(LIBCALL_ARRAYCTOR, 3, args));
+                        call_exp = irs->libCall(LIBCALL_ARRAYCTOR, 3, args);
                     }
                     else
+#endif
                     {
-                        /* Call __postblit(&ec) */
-                        Array args;
-                        FuncDeclaration * fd = sd->postblit;
-                        ec = e->toElem(irs);
-                        irs->doExp(irs->call(fd, irs->addressOf(ec), & args));
+                        // %% This would call _d_newarrayT ... use memcpy?
+                        exp_tree = irs->convertTo(exp, fld->type);
                     }
-                    ce.cons(fld->csym->Stree, irs->convertTo(ec, e->type, fld->type));
                 }
                 else
-#endif
-                ce.cons(fld->csym->Stree, irs->convertTo(e, fld->type));
+                {
+                    // %% This could be simplified down (and sped up)... use memset?
+                    // Create a temporary static array and cast to dynamic.
+                    Type * dyn_array_type = fld_type->nextOf()->arrayOf();
+                    tree dyn_array_exp = irs->convertTo(irs->localVar(fld_type),
+                            fld_type, dyn_array_type);
+                    dyn_array_exp = irs->maybeMakeTemp(dyn_array_exp);
+                    // Walk the entire array setting each value.
+                    tree set_exp = array_set_expr(irs, irs->darrayPtrRef(dyn_array_exp),
+                            exp->toElem(irs), irs->darrayLenRef(dyn_array_exp));
+                    set_exp = irs->compound(set_exp, dyn_array_exp);
+                    // cast dynamic back to static array
+                    exp_tree = irs->convertTo(irs->darrayPtrRef(set_exp),
+                            dyn_array_type->pointerTo(), fld_type->pointerTo());
+                    exp_tree = irs->indirect(exp_tree);
+                }
             }
-        }
+            else
+            {
+                exp_tree = irs->convertTo(exp, fld->type);
+#if V2
+                StructDeclaration * sd;
+                if ((sd = needsPostblit(fld_type)) != NULL)
+                {
+                    /* Call __postblit(&exp_tree) */
+                    Array args;
+                    call_exp = irs->call(sd->postblit, irs->addressOf(exp_tree), & args);
+                }
+#endif
+            }
+            
+            if (call_exp)
+                irs->addExp(call_exp);
 
+            ce.cons(fld->csym->Stree, exp_tree);
+        }
+    }
     CONSTRUCTOR_ELTS( ctor ) = ce.head;
     return ctor;
 }
@@ -2561,7 +2628,8 @@ genericize_function(tree fndecl)
       fprintf (dump_file, "\n;; Function %s",
                lang_hooks.decl_printable_name (fndecl, 2));
       fprintf (dump_file, " (%s)\n",
-               IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl)));
+	       (!DECL_ASSEMBLER_NAME_SET_P (fndecl) ? "null"
+		: IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl))));
       fprintf (dump_file, ";; enabled by -%s\n", dump_flag_name (TDI_original));
       fprintf (dump_file, "\n");
 
