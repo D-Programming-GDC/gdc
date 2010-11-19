@@ -876,7 +876,14 @@ class TypeInfo_Struct : TypeInfo
         else if (!p1 || !p2)
             return false;
         else if (xopEquals)
-            return (*xopEquals)(p1, p2);
+        {
+            version(GNU)
+            {   // BUG: GDC and DMD use different calling conventions
+                return (*xopEquals)(p2, p1);
+            }
+            else
+                return (*xopEquals)(p1, p2);
+        }
         else
             // BUG: relies on the GC not moving objects
             return memcmp(p1, p2, init.length) == 0;
@@ -892,7 +899,14 @@ class TypeInfo_Struct : TypeInfo
                 if (!p2)
                     return true;
                 else if (xopCmp)
-                    return (*xopCmp)(p2, p1);
+                {
+                    version(GNU)
+                    {   // BUG: GDC and DMD use different calling conventions
+                        return (*xopCmp)(p1, p2);
+                    }
+                    else
+                        return (*xopCmp)(p2, p1);
+                }
                 else
                     // BUG: relies on the GC not moving objects
                     return memcmp(p1, p2, init.length);
