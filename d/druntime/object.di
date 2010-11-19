@@ -70,6 +70,8 @@ class TypeInfo
     OffsetTypeInfo[] offTi();
     void destroy(void* p);
     void postblit(void* p);
+    size_t talign();
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2);
 }
 
 class TypeInfo_Typedef : TypeInfo
@@ -128,7 +130,7 @@ class TypeInfo_Class : TypeInfo
     Interface[] interfaces;
     TypeInfo_Class   base;
     void*       destructor;
-    void(*classInvariant)(Object);
+    void function(Object) classInvariant;
     uint        m_flags;
     //  1:      // is IUnknown or is derived from IUnknown
     //  2:      // has no possible pointers into GC memory
@@ -168,6 +170,14 @@ class TypeInfo_Struct : TypeInfo
     const(MemberInfo[]) function(in char[]) xgetMembers;
     void function(void*)                    xdtor;
     void function(void*)                    xpostblit;
+
+    uint m_align;
+
+    version (X86_64)
+    {
+        TypeInfo m_arg1;
+        TypeInfo m_arg2;
+    }
 }
 
 class TypeInfo_Tuple : TypeInfo

@@ -166,7 +166,7 @@ extern (C) void _d_delinterface(void** p)
 
 
 // used for deletion
-private extern (D) alias void (*fp_t)(Object);
+private extern (D) alias void function (Object) fp_t;
 
 
 /**
@@ -685,7 +685,7 @@ extern (C) void[] _d_newarrayT(TypeInfo ti, size_t length)
 
     debug(PRINTF) printf("_d_newarrayT(length = x%x, size = %d)\n", length, size);
     if (length == 0 || size == 0)
-        { }
+        result = null;
     else
     {
         result.length = length;
@@ -737,7 +737,7 @@ extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length)
     debug(PRINTF) printf("_d_newarrayiT(length = %d, size = %d)\n", length, size);
 
     if (length == 0 || size == 0)
-        { }
+        result = null;
     else
     {
         auto initializer = ti.next.init();
@@ -799,18 +799,18 @@ Loverflow:
 /**
  *
  */
-extern (C) void[] _d_newarraymTp(TypeInfo ti, int ndims, size_t* pdim)
+extern (C) void[] _d_newarraymTp(TypeInfo ti, size_t ndims, size_t* pdim)
 {
     void[] result = void;
 
-    debug(PRINTF) printf("_d_newarraymT(ndims = %d)\n", ndims);
+    debug(PRINTF) printf("_d_newarraymTp(ndims = %d)\n", ndims);
     if (ndims == 0)
         result = null;
     else
     {
-        void[] foo(TypeInfo ti, size_t* pdim, int ndims)
+        void[] foo(TypeInfo ti, size_t* pdim, size_t ndims)
         {
-            size_t dim = *pdim;
+            auto dim = *pdim;
             void[] p;
 
             debug(PRINTF) printf("foo(ti = %p, ti.next = %p, dim = %d, ndims = %d\n", ti, ti.next, dim, ndims);
@@ -826,7 +826,7 @@ extern (C) void[] _d_newarraymTp(TypeInfo ti, int ndims, size_t* pdim)
                 auto isshared = ti.classinfo is TypeInfo_Shared.classinfo;
                 __setArrayAllocLength(info, allocsize, isshared);
                 p = __arrayStart(info)[0 .. dim];
-                for (int i = 0; i < dim; i++)
+                for (size_t i = 0; i < dim; i++)
                 {
                     (cast(void[]*)p.ptr)[i] = foo(ti.next, pdim + 1, ndims - 1);
                 }
@@ -839,7 +839,7 @@ extern (C) void[] _d_newarraymTp(TypeInfo ti, int ndims, size_t* pdim)
 
         version (none)
         {
-            for (int i = 0; i < ndims; i++)
+            for (size_t i = 0; i < ndims; i++)
             {
                 printf("index %d: %d\n", i, pdim[i]);
             }
@@ -852,16 +852,16 @@ extern (C) void[] _d_newarraymTp(TypeInfo ti, int ndims, size_t* pdim)
 /**
  *
  */
-extern (C) void[] _d_newarraymiTp(TypeInfo ti, int ndims, size_t* pdim)
+extern (C) void[] _d_newarraymiTp(TypeInfo ti, size_t ndims, size_t* pdim)
 {
-    void[] result = void;
+    void[] result;
 
     debug(PRINTF) printf("_d_newarraymiTp(ndims = %d)\n", ndims);
     if (ndims == 0)
         result = null;
     else
     {
-        void[] foo(TypeInfo ti, size_t* pdim, int ndims)
+        void[] foo(TypeInfo ti, size_t* pdim, size_t ndims)
         {
             size_t dim = *pdim;
             void[] p;
@@ -878,7 +878,7 @@ extern (C) void[] _d_newarraymiTp(TypeInfo ti, int ndims, size_t* pdim)
                 auto isshared = ti.classinfo is TypeInfo_Shared.classinfo;
                 __setArrayAllocLength(info, allocsize, isshared);
                 p = __arrayStart(info)[0 .. dim];
-                for (int i = 0; i < dim; i++)
+                for (size_t i = 0; i < dim; i++)
                 {
                     (cast(void[]*)p.ptr)[i] = foo(ti.next, pdim + 1, ndims - 1);
                 }
@@ -891,7 +891,7 @@ extern (C) void[] _d_newarraymiTp(TypeInfo ti, int ndims, size_t* pdim)
 
         version (none)
         {
-            for (int i = 0; i < ndims; i++)
+            for (size_t i = 0; i < ndims; i++)
             {
                 printf("index %d: %d\n", i, pdim[i]);
                 printf("init = %d\n", *cast(int*)pinit);

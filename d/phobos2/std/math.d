@@ -3800,6 +3800,10 @@ bool approxEqual(T, U, V)(T lhs, U rhs, V maxRelDiff, V maxAbsDiff = 1e-5)
             {
                 return fabs(lhs) <= maxAbsDiff;
             }
+            static if (is(typeof(lhs.infinity)) && is(typeof(rhs.infinity)))
+            {
+                if (lhs == lhs.infinity && rhs == rhs.infinity) return true;
+            }
             return fabs((lhs - rhs) / rhs) <= maxRelDiff
                 || maxAbsDiff != 0 && fabs(lhs - rhs) <= maxAbsDiff;
         }
@@ -3848,4 +3852,11 @@ unittest
         assert(yl2x(1024, 1) == 10);
         assert(yl2xp1(1023, 1) == 10);
     }
+}
+
+unittest
+{
+    real num = real.infinity;
+    assert(num == real.infinity);  // Passes.
+    assert(approxEqual(num, real.infinity));  // Fails.
 }

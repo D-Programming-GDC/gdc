@@ -615,7 +615,6 @@ Symbol *FuncDeclaration::toSymbol()
             if (naked) {
                 D_DECL_NO_FRAME_POINTER( fn_decl ) = 1;
                 DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT( fn_decl ) = 1;
-
                 /* Need to do this or GCC will set up a frame pointer with -finline-functions.
                    Must have something to do with defered processing -- after we turn
                    flag_omit_frame_pointer back on. */
@@ -623,7 +622,7 @@ Symbol *FuncDeclaration::toSymbol()
             }
 #if V2
             // %% pure functions don't imply nothrow
-            DECL_PURE_P( fn_decl ) = (func_type->ispure && func_type->isnothrow);
+            DECL_PURE_P( fn_decl ) = (func_type->purity == PUREstrong && func_type->isnothrow);
             TREE_NOTHROW( fn_decl ) = func_type->isnothrow;
             // TODO: check 'immutable' means arguments are readonly...
             TREE_READONLY( fn_decl ) = func_type->isImmutable();

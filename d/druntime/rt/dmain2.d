@@ -49,7 +49,7 @@ version (all)
     Throwable _d_unhandled = null;
 
     // TODO: Make this accept Throwable instead.
-    extern (C) void _d_setunhandled(Object* o)
+    extern (C) void _d_setUnhandled(Object* o)
     {
         auto t = cast(Throwable) o;
         
@@ -57,9 +57,23 @@ version (all)
         {
             if (cast(byte*) t is t.classinfo.init.ptr)
                 return;
-            t.next = _d_unhandled;
+            if (t !is _d_unhandled)
+                t.next = _d_unhandled;
         }
         _d_unhandled = t;
+    }
+
+    extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null);
+
+    extern (C) void _d_createTrace(Object *o)
+    {
+        auto t = cast(Throwable) o;
+
+        if (t !is null && t.info is null &&
+            cast(byte*) t !is t.classinfo.init.ptr)
+        {
+            t.info = _d_traceContext();
+        }
     }
 }
 

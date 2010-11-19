@@ -5610,6 +5610,11 @@ Expression *CompileExp::semantic(Scope *sc)
 #endif
     UnaExp::semantic(sc);
     e1 = resolveProperties(sc, e1);
+    if (!e1->type->isString())
+    {
+        error("argument to mixin must be a string type, not %s\n", e1->type->toChars());
+        return new ErrorExp();
+    }
     e1 = e1->optimize(WANTvalue | WANTinterpret);
     if (e1->op != TOKstring)
     {   error("argument to mixin must be a string, not (%s)", e1->toChars());
@@ -5740,7 +5745,8 @@ Expression *AssertExp::semantic(Scope *sc)
     if (e1->isBool(FALSE))
     {
         FuncDeclaration *fd = sc->parent->isFuncDeclaration();
-        fd->hasReturnExp |= 4;
+        if (fd)
+            fd->hasReturnExp |= 4;
 
         if (!global.params.useAssert)
         {   Expression *e = new HaltExp(loc);
@@ -7120,7 +7126,7 @@ Lagain:
         {   TypeDelegate *td = (TypeDelegate *)t1;
             assert(td->next->ty == Tfunction);
             tf = (TypeFunction *)(td->next);
-            if (sc->func && sc->func->isPure() && !tf->ispure)
+            if (sc->func && sc->func->isPure() && !tf->purity)
             {
                 error("pure function '%s' cannot call impure delegate '%s'", sc->func->toChars(), e1->toChars());
             }
@@ -7134,7 +7140,7 @@ Lagain:
         {
             Expression *e = new PtrExp(loc, e1);
             t1 = ((TypePointer *)t1)->next;
-            if (sc->func && sc->func->isPure() && !((TypeFunction *)t1)->ispure)
+            if (sc->func && sc->func->isPure() && !((TypeFunction *)t1)->purity)
             {
                 error("pure function '%s' cannot call impure function pointer '%s'", sc->func->toChars(), e1->toChars());
             }
@@ -7257,9 +7263,9 @@ int CallExp::checkSideEffect(int flag)
      * then this expression has no side effects.
      */
     Type *t = e1->type->toBasetype();
-    if (t->ty == Tfunction && ((TypeFunction *)t)->ispure)
+    if (t->ty == Tfunction && ((TypeFunction *)t)->purity)
         return 0;
-    if (t->ty == Tdelegate && ((TypeFunction *)((TypeDelegate *)t)->next)->ispure)
+    if (t->ty == Tdelegate && ((TypeFunction *)((TypeDelegate *)t)->next)->purity)
         return 0;
 #endif
     return 1;
@@ -8077,6 +8083,8 @@ Expression *SliceExp::semantic(Scope *sc)
             goto Lerror;
         }
     }
+    else if (t == Type::terror)
+        goto Lerr;
     else
         goto Lerror;
 
@@ -8111,8 +8119,8 @@ Expression *SliceExp::semantic(Scope *sc)
 
     if (t->ty == Ttuple)
     {
-        lwr = lwr->optimize(WANTvalue);
-        upr = upr->optimize(WANTvalue);
+        lwr = lwr->optimize(WANTvalue | WANTinterpret);
+        upr = upr->optimize(WANTvalue | WANTinterpret);
         uinteger_t i1 = lwr->toUInteger();
         uinteger_t i2 = upr->toUInteger();
 
@@ -9003,7 +9011,26 @@ Expression *AssignExp::semantic(Scope *sc)
         if (op == TOKassign)
         {
             Expression *e = op_overload(sc);
-            if (e)
+            if (e && e1->op == TOKindex &&
+                ((IndexExp *)e1)->e1->type->toBasetype()->ty == Taarray)
+            {
+                // Deal with AAs (Bugzilla 2451)
+                // Rewrite as:
+                // e1 = (typeof(e2) tmp = void, tmp = e2, tmp);
+                Identifier *id = Lexer::uniqueId("__aatmp");
+                VarDeclaration *v = new VarDeclaration(loc, e2->type,
+                    id, new VoidInitializer(NULL));
+                v->storage_class |= STCctfe;
+
+                Expression *de = new DeclarationExp(loc, v);
+                VarExp *ve = new VarExp(loc, v);
+
+                AssignExp *ae = new AssignExp(loc, ve, e2);
+                e = ae->op_overload(sc);
+                e2 = new CommaExp(loc, new CommaExp(loc, de, e), ve);
+                e2 = e2->semantic(sc);
+            }
+            else if (e)
                 return e;
         }
         else if (op == TOKconstruct && !refinit)
@@ -9319,6 +9346,7 @@ CatAssignExp::CatAssignExp(Loc loc, Expression *e1, Expression *e2)
 Expression *CatAssignExp::semantic(Scope *sc)
 {   Expression *e;
 
+    //printf("CatAssignExp::semantic() %s\n", toChars());
     e = op_overload(sc);
     if (e)
         return e;
@@ -10711,6 +10739,14 @@ RemoveExp::RemoveExp(Loc loc, Expression *e1, Expression *e2)
         : BinExp(loc, TOKremove, sizeof(RemoveExp), e1, e2)
 {
     type = Type::tvoid;
+}
+
+void RemoveExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
+{
+    expToCBuffer(buf, hgs, e1, PREC_primary);
+    buf->writestring(".remove(");
+    expToCBuffer(buf, hgs, e2, PREC_assign);
+    buf->writestring(")");
 }
 
 /************************************************************/

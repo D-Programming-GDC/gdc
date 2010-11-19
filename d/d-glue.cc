@@ -105,7 +105,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
     {   // (e1 || e2)
         out_code = TRUTH_ORIF_EXPR;
     }
-    else if ( COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)) )
+    else if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
     {   // GCC doesn't handle these.
         // ordering for complex isn't defined, all that is guaranteed is the 'unordered part'
         // %% Frontend emits error "compare not defined for complex operands" for these?
@@ -311,8 +311,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
 #if D_GCC_VER >= 40
     /* Need to use fold().  Otherwise, complex-var == complex-cst is not
        gimplified correctly. */
-    if (COMPLEX_FLOAT_TYPE_P( TREE_TYPE( e1 )) ||
-        COMPLEX_FLOAT_TYPE_P( TREE_TYPE( e2 )))
+    if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)) || COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e2)))
         cmp = fold(cmp);
 #endif
     return cmp;
@@ -781,7 +780,7 @@ PowExp::toElem(IRState * irs)
 
     if (powfn == NULL_TREE)
     {
-        error("%s ^^ %s is not supported", e1->type->toChars(), e2->type->toChars() );
+        error("%s ^^ %s is not supported", e1->type->toChars(), e2->type->toChars());
         return irs->errorMark(type);
     }
 
@@ -820,7 +819,6 @@ CatExp::toElem(IRState * irs)
     }
 
     // Flatten multiple concatenations
-
     unsigned n_operands = 2;
     unsigned n_args;
     tree * args;
@@ -937,36 +935,37 @@ make_assign_math_op(BinExp * exp, IRState * irs)
     TOK out_code;
     Array lhs_casts; // no more than two casts?
 
-    switch (exp->op) {
-    case TOKaddass:  out_code = TOKadd; break;
-    case TOKminass:  out_code = TOKmin; break;
-    case TOKmulass:  out_code = TOKmul; break;
-    case TOKxorass:  out_code = TOKxor; break;
-    case TOKorass:   out_code = TOKor; break;
-    case TOKandass:  out_code = TOKand; break;
-    case TOKshlass:  out_code = TOKshl; break;
-    case TOKushrass: out_code = TOKushr; break;
-    case TOKshrass:  out_code = TOKshr; break;
-    case TOKmodass:  out_code = TOKmod; break;
-    case TOKdivass:  out_code = TOKdiv; break;
-    default:
-        abort();
+    switch (exp->op)
+    {
+        case TOKaddass:  out_code = TOKadd; break;
+        case TOKminass:  out_code = TOKmin; break;
+        case TOKmulass:  out_code = TOKmul; break;
+        case TOKxorass:  out_code = TOKxor; break;
+        case TOKorass:   out_code = TOKor; break;
+        case TOKandass:  out_code = TOKand; break;
+        case TOKshlass:  out_code = TOKshl; break;
+        case TOKushrass: out_code = TOKushr; break;
+        case TOKshrass:  out_code = TOKshr; break;
+        case TOKmodass:  out_code = TOKmod; break;
+        case TOKdivass:  out_code = TOKdiv; break;
+        default:
+            abort();
     }
 
     e1_to_use = exp->e1;
     lhs_type = e1_to_use->type;
-    while (e1_to_use->op == TOKcast) {
+    while (e1_to_use->op == TOKcast)
+    {
         CastExp * cast_exp = (CastExp *) e1_to_use;
         assert(irs->typesCompatible(cast_exp->type, cast_exp->to)); // %% check, basetype?
         lhs_casts.push(cast_exp->to);
         e1_to_use = cast_exp->e1;
     }
 
-    tree tgt = stabilize_reference( irs->toElemLvalue(e1_to_use) );
+    tree tgt = stabilize_reference(irs->toElemLvalue(e1_to_use));
     tree lhs = chain_cvt(tgt, e1_to_use->type, lhs_casts, irs);
 
-    Type * src_type     = lhs_type;
-
+    Type * src_type = lhs_type;
     {
         /* Determine the correct combined type from BinExp::typeCombine.  */
         TY ty = (TY) Type::impcnvResult[lhs_type->toBasetype()->ty][exp->e2->type->toBasetype()->ty];
@@ -975,40 +974,75 @@ make_assign_math_op(BinExp * exp, IRState * irs)
     }
     if ((out_code == TOKmul || out_code == TOKdiv) && exp->e1->type->isimaginary())
     {
-        assert( exp->e2->type->isfloating() );
-        if ( ! exp->e2->type->isimaginary() && ! exp->e2->type->iscomplex() )
+        assert(exp->e2->type->isfloating());
+        if (! exp->e2->type->isimaginary() && ! exp->e2->type->iscomplex())
         {
-            assert( exp->e1->type->size() == exp->e2->type->size() );
+            assert(exp->e1->type->size() == exp->e2->type->size());
             src_type = exp->e1->type;
         }
     }
     tree src = make_math_op(out_code, lhs, lhs_type,
-        exp->e2->toElem(irs), exp->e2->type,
-        src_type, irs);
+                            exp->e2->toElem(irs), exp->e2->type,
+                            src_type, irs);
     result = build2(MODIFY_EXPR, exp->type->toCtype(),
-        tgt, irs->convertForAssignment(src, src_type, e1_to_use->type));
+                    tgt, irs->convertForAssignment(src, src_type, e1_to_use->type));
 
     return result;
 }
 
 elem *
-XorAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+XorAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
+
 elem *
-OrAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+OrAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
+
 elem *
-AndAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+AndAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
+
 elem *
-UshrAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+UshrAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
+
 elem *
-ShrAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+ShrAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
+
 elem *
-ShlAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+ShlAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
+
 elem *
-ModAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+ModAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
+
 elem *
-DivAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+DivAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
+
 elem *
-MulAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+MulAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
 
 elem *
 CatAssignExp::toElem(IRState * irs)
@@ -1023,8 +1057,8 @@ CatAssignExp::toElem(IRState * irs)
     gcc_assert(elem_type->ty != Tbit);
 
     if (e1->type->toBasetype()->ty == Tarray && value_type->ty == Tdchar &&
-        (elem_type->ty == Tchar || elem_type->ty == Twchar)) {
-        // append a dchar to a char[] or wchar[]
+        (elem_type->ty == Tchar || elem_type->ty == Twchar))
+    {   // append a dchar to a char[] or wchar[]
         n_args = 2;
         args = new tree[n_args];
 
@@ -1032,19 +1066,22 @@ CatAssignExp::toElem(IRState * irs)
         args[1] = irs->toElemLvalue(e2);
         lib_call = elem_type->ty == Tchar ?
             LIBCALL_ARRAYAPPENDCD : LIBCALL_ARRAYAPPENDWD;
-    } else {
+    }
+    else
+    {
         n_args = 3;
         args = new tree[n_args];
 
-        args[0] = irs->typeinfoReference( type );
-        args[1] = irs->addressOf( irs->toElemLvalue(e1) );
+        args[0] = irs->typeinfoReference(type);
+        args[1] = irs->addressOf(irs->toElemLvalue(e1));
 
-        if (irs->typesCompatible(elem_type, value_type)) {
-            // append an element
+        if (irs->typesCompatible(elem_type, value_type))
+        {   // append an element
             args[2] = aoe.set(irs, e2->toElem(irs));
             lib_call = LIBCALL_ARRAYAPPENDCTP;
-        } else {
-            // append an array
+        }
+        else
+        {   // append an array
             args[2] = irs->toDArray(e2);
             lib_call = LIBCALL_ARRAYAPPENDT;
         }
@@ -1053,12 +1090,21 @@ CatAssignExp::toElem(IRState * irs)
 }
 
 elem *
-MinAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+MinAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
+
 elem *
-AddAssignExp::toElem(IRState * irs) { return make_assign_math_op(this, irs); }
+AddAssignExp::toElem(IRState * irs)
+{
+    return make_assign_math_op(this, irs);
+}
 
 
-void do_array_set(IRState * irs, tree in_ptr, tree in_val, tree in_cnt) {
+void
+do_array_set(IRState * irs, tree in_ptr, tree in_val, tree in_cnt)
+{
     irs->startBindings(); // %%maybe not
 
     tree count_var = irs->localVar(Type::tsize_t);
@@ -1421,6 +1467,7 @@ SliceExp::toElem(IRState * irs)
 #if V1
             gcc_assert(! orig_array_type->next->isbit());
 #endif
+            // Adjust .ptr offset
             final_ptr_expr = irs->pointerIntSum(irs->pvoidOkay(final_ptr_expr), lwr_tree);
             final_ptr_expr = irs->nop(final_ptr_expr, TREE_TYPE(orig_pointer_expr));
         }
@@ -1435,16 +1482,11 @@ SliceExp::toElem(IRState * irs)
 
         if (irs->arrayBoundsCheck() && array_len_expr)
         {   // %% && ! is zero
-            upr_tree = irs->maybeMakeTemp(upr_tree);
             final_len_expr = irs->checkedIndex(loc, upr_tree, array_len_expr, true);
-
             if (lwr_tree)
-            {
-                tree lwr_bounds_check = irs->compound(
-                        // lower bound can equal length
-                        irs->checkedIndex(loc, lwr_tree, array_len_expr, true),
-                        // implements check upr < lwr
-                        irs->checkedIndex(loc, lwr_tree, upr_tree, true));
+            {   // Enforces lwr <= upr. No need to check lwr <= length as
+                // we've already ensured that upr <= length.
+                tree lwr_bounds_check = irs->checkedIndex(loc, lwr_tree, upr_tree, true);
                 final_len_expr = irs->compound(lwr_bounds_check, final_len_expr);
             }
         }
@@ -1453,8 +1495,7 @@ SliceExp::toElem(IRState * irs)
             final_len_expr = upr_tree;
         }
         if (lwr_tree)
-        {
-            // %% Need to ensure lwr always gets evaluated first, as it may be a function call.
+        {   // %% Need to ensure lwr always gets evaluated first, as it may be a function call.
             // Does (-lwr + upr) rather than (upr - lwr)
             final_len_expr = build2(PLUS_EXPR, TREE_TYPE(final_len_expr),
                     build1(NEGATE_EXPR, TREE_TYPE(lwr_tree), lwr_tree),
@@ -1462,8 +1503,7 @@ SliceExp::toElem(IRState * irs)
         }
     }
     else
-    {
-        // If this is the case, than there is no lower bound specified and
+    {   // If this is the case, than there is no lower bound specified and
         // there is no need to subtract.
         switch (orig_array_type->ty)
         {
@@ -1592,11 +1632,13 @@ RemoveExp::toElem(IRState * irs)
 {
     Expression * e_array = e1;
     Expression * e_index = e2;
-
     // Check that the array is actually an associative array
-    if (e_array->type->toBasetype()->ty == Taarray) {
+    if (e_array->type->toBasetype()->ty == Taarray)
+    {
         return make_aa_del(irs, e_array, e_index);
-    } else {
+    }
+    else
+    {
         error("%s is not an associative array", e_array->toChars());
         return irs->errorMark(type);
     }
@@ -1738,7 +1780,6 @@ DotTypeExp::toElem(IRState *irs)
     // The only case in which this seems to be a valid expression is when
     // it is used to specify a non-virtual call ( SomeClass.func(...) ).
     // This case is handled in IRState::objectInstanceMethod.
-
     error("cannot use \"%s\" as an expression", toChars());
 
     // Can cause ICEs later; should just exit now.
@@ -2056,7 +2097,8 @@ VarExp::toElem(IRState* irs)
 }
 
 elem *
-SymOffExp::toElem(IRState * irs) {
+SymOffExp::toElem(IRState * irs)
+{
     //tree a = irs->var(var);
     tree a;
     VarDeclaration * v = var->isVarDeclaration();
@@ -4671,9 +4713,10 @@ WhileStatement::toIR(IRState *)
 void
 ScopeStatement::toIR(IRState* irs)
 {
-    if (statement) {
+    if (statement)
+    {
         irs->startScope();
-        statement->toIR( irs );
+        statement->toIR(irs);
         irs->endScope();
     }
 }
@@ -4681,8 +4724,10 @@ ScopeStatement::toIR(IRState* irs)
 void
 CompoundStatement::toIR(IRState* irs)
 {
-    if (statements) {
-        for (unsigned i = 0; i < statements->dim; i++) {
+    if (statements)
+    {
+        for (unsigned i = 0; i < statements->dim; i++)
+        {
             Statement * statement = (Statement *) statements->data[i];
 
             if (statement)
@@ -4694,10 +4739,12 @@ CompoundStatement::toIR(IRState* irs)
 void
 UnrolledLoopStatement::toIR(IRState* irs)
 {
-    if (statements) {
+    if (statements)
+    {
         irs->startLoop(this);
         irs->continueHere();
-        for (unsigned i = 0; i < statements->dim; i++) {
+        for (unsigned i = 0; i < statements->dim; i++)
+        {
             Statement * statement = (Statement *) statements->data[i];
 
             if (statement)
@@ -4715,14 +4762,14 @@ UnrolledLoopStatement::toIR(IRState* irs)
 void
 ExpStatement::toIR(IRState * irs)
 {
-    if (exp) {
+    if (exp)
+    {
         gen.doLineNote(loc);
-
         tree exp_tree = exp->toElem(irs);
-
         irs->doExp(exp_tree);
-    } else {
-        // nothing
+    }
+    else
+    {   // nothing
     }
 }
 
@@ -4737,7 +4784,7 @@ PragmaStatement::toIR(IRState *)
 void
 EnumDeclaration::toDebug()
 {
-
+    // nothing
 }
 
 int

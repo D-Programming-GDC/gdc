@@ -257,7 +257,7 @@ Expression *UnaExp::op_overload(Scope *sc)
                 ((ArrayExp *)e1)->e1 = new DotIdExp(loc, ae->e1, ad->aliasthis->ident);
                 Expression *e = copy();
                 ((UnaExp *)e)->e1 = e1;
-                e = e->semantic(sc);
+                e = e->trySemantic(sc);
                 return e;
             }
         }
@@ -300,7 +300,7 @@ Expression *UnaExp::op_overload(Scope *sc)
                 ((SliceExp *)e1)->e1 = new DotIdExp(loc, se->e1, ad->aliasthis->ident);
                 Expression *e = copy();
                 ((UnaExp *)e)->e1 = e1;
-                e = e->semantic(sc);
+                e = e->trySemantic(sc);
                 return e;
             }
         }
@@ -362,7 +362,7 @@ Expression *UnaExp::op_overload(Scope *sc)
             Expression *e1 = new DotIdExp(loc, this->e1, ad->aliasthis->ident);
             Expression *e = copy();
             ((UnaExp *)e)->e1 = e1;
-            e = e->semantic(sc);
+            e = e->trySemantic(sc);
             return e;
         }
 #endif
@@ -397,7 +397,7 @@ Expression *ArrayExp::op_overload(Scope *sc)
             Expression *e1 = new DotIdExp(loc, this->e1, ad->aliasthis->ident);
             Expression *e = copy();
             ((UnaExp *)e)->e1 = e1;
-            e = e->semantic(sc);
+            e = e->trySemantic(sc);
             return e;
         }
     }
@@ -444,7 +444,7 @@ Expression *CastExp::op_overload(Scope *sc)
             Expression *e1 = new DotIdExp(loc, this->e1, ad->aliasthis->ident);
             Expression *e = copy();
             ((UnaExp *)e)->e1 = e1;
-            e = e->semantic(sc);
+            e = e->trySemantic(sc);
             return e;
         }
     }
@@ -689,7 +689,8 @@ L1:
 
 #if DMDV2
     // Try alias this on first operand
-    if (ad1 && ad1->aliasthis)
+    if (ad1 && ad1->aliasthis &&
+        !(op == TOKassign && ad2 && ad1 == ad2))   // See Bugzilla 2943
     {
         /* Rewrite (e1 op e2) as:
          *      (e1.aliasthis op e2)
@@ -697,12 +698,16 @@ L1:
         Expression *e1 = new DotIdExp(loc, this->e1, ad1->aliasthis->ident);
         Expression *e = copy();
         ((BinExp *)e)->e1 = e1;
-        e = e->semantic(sc);
+        e = e->trySemantic(sc);
         return e;
     }
 
     // Try alias this on second operand
-    if (ad2 && ad2->aliasthis)
+    if (ad2 && ad2->aliasthis &&
+        /* Bugzilla 2943: make sure that when we're copying the struct, we don't
+         * just copy the alias this member
+         */
+        !(op == TOKassign && ad1 && ad1 == ad2))
     {
         /* Rewrite (e1 op e2) as:
          *      (e1 op e2.aliasthis)
@@ -710,7 +715,7 @@ L1:
         Expression *e2 = new DotIdExp(loc, this->e2, ad2->aliasthis->ident);
         Expression *e = copy();
         ((BinExp *)e)->e2 = e2;
-        e = e->semantic(sc);
+        e = e->trySemantic(sc);
         return e;
     }
 #endif
@@ -866,7 +871,7 @@ Expression *BinExp::compare_overload(Scope *sc, Identifier *id)
         Expression *e1 = new DotIdExp(loc, this->e1, ad1->aliasthis->ident);
         Expression *e = copy();
         ((BinExp *)e)->e1 = e1;
-        e = e->semantic(sc);
+        e = e->trySemantic(sc);
         return e;
     }
 
@@ -879,7 +884,7 @@ Expression *BinExp::compare_overload(Scope *sc, Identifier *id)
         Expression *e2 = new DotIdExp(loc, this->e2, ad2->aliasthis->ident);
         Expression *e = copy();
         ((BinExp *)e)->e2 = e2;
-        e = e->semantic(sc);
+        e = e->trySemantic(sc);
         return e;
     }
 
@@ -960,7 +965,7 @@ Expression *BinAssignExp::op_overload(Scope *sc)
                 ((ArrayExp *)e1)->e1 = new DotIdExp(loc, ae->e1, ad->aliasthis->ident);
                 Expression *e = copy();
                 ((UnaExp *)e)->e1 = e1;
-                e = e->semantic(sc);
+                e = e->trySemantic(sc);
                 return e;
             }
         }
@@ -1004,7 +1009,7 @@ Expression *BinAssignExp::op_overload(Scope *sc)
                 ((SliceExp *)e1)->e1 = new DotIdExp(loc, se->e1, ad->aliasthis->ident);
                 Expression *e = copy();
                 ((UnaExp *)e)->e1 = e1;
-                e = e->semantic(sc);
+                e = e->trySemantic(sc);
                 return e;
             }
         }
@@ -1105,7 +1110,7 @@ L1:
         Expression *e1 = new DotIdExp(loc, this->e1, ad1->aliasthis->ident);
         Expression *e = copy();
         ((BinExp *)e)->e1 = e1;
-        e = e->semantic(sc);
+        e = e->trySemantic(sc);
         return e;
     }
 
@@ -1119,7 +1124,7 @@ L1:
         Expression *e2 = new DotIdExp(loc, this->e2, ad2->aliasthis->ident);
         Expression *e = copy();
         ((BinExp *)e)->e2 = e2;
-        e = e->semantic(sc);
+        e = e->trySemantic(sc);
         return e;
     }
 #endif

@@ -108,7 +108,7 @@ assert(b == "abc"w);
 ----
  */
 T toImpl(T, S)(S s) if (!implicitlyConverts!(S, T) && isSomeString!T
-        && isInputRange!S && isSomeChar!(ElementType!S))
+        && isInputRange!(Unqual!S) && isSomeChar!(ElementType!S))
 {
     static if (isSomeString!S)
     {
@@ -180,29 +180,38 @@ Converts array (other than strings) to string. The left bracket,
 separator, and right bracket are configurable. Each element is
 converted by calling $(D to!T).
  */
-T toImpl(T, S)(S s, in T leftBracket = "[", in T separator = " ",
+T toImpl(T, S)(S s, in T leftBracket = "[", in T separator = ", ",
     in T rightBracket = "]")
-if (isSomeString!T && !isSomeChar!(ElementType!S) && isInputRange!S)
+if (isSomeString!T && !isSomeChar!(ElementType!S) &&
+(isInputRange!S || isInputRange!(Unqual!S)))
 {
-    alias Unqual!(typeof(T.init[0])) Char;
-// array-to-string conversion
-    auto result = appender!(Char[])();
-    result.put(leftBracket);
-    bool first = true;
-    for (; !s.empty; s.popFront())
+    static if (!isInputRange!S)
     {
-        if (!first)
-        {
-            result.put(separator);
-        }
-        else
-        {
-            first = false;
-        }
-        result.put(to!T(s.front));
+        alias toImpl!(T, Unqual!S) ti;
+        return ti(s, leftBracket, separator, rightBracket);
     }
-    result.put(rightBracket);
-    return cast(T) result.data;
+    else
+    {
+        alias Unqual!(typeof(T.init[0])) Char;
+        // array-to-string conversion
+        auto result = appender!(Char[])();
+        result.put(leftBracket);
+        bool first = true;
+        for (; !s.empty; s.popFront())
+        {
+            if (!first)
+            {
+                result.put(separator);
+            }
+            else
+            {
+                first = false;
+            }
+            result.put(to!T(s.front));
+        }
+        result.put(rightBracket);
+        return cast(T) result.data;
+    }
 }
 
 /*
@@ -240,10 +249,10 @@ unittest
     long[] b = [ 1, 3, 5 ];
     auto s = to!string(b);
 //printf("%d, |%*s|\n", s.length, s.length, s.ptr);
-    assert(to!string(b) == "[1 3 5]", s);
+    assert(to!string(b) == "[1, 3, 5]", s);
     double[2] a = [ 1.5, 2.5 ];
 //writeln(to!string(a));
-    assert(to!string(a) == "[1.5 2.5]");
+    assert(to!string(a) == "[1.5, 2.5]");
 }
 
 /**
@@ -950,7 +959,7 @@ unittest
     // test array to string conversion
     foreach (T ; AllNumerics) {
         auto a = [to!(T)(1), 2, 3];
-        assert(to!(string)(a) == "[1 2 3]");
+        assert(to!string(a) == "[1, 2, 3]");
     }
     // test enum to int conversion
     // enum Testing { Test1, Test2 };
@@ -1022,7 +1031,7 @@ assert(test == "");
  */
 
 Target parse(Target, Source)(ref Source s)
-if (isSomeChar!(ElementType!Source) && isIntegral!Target)
+if (isSomeChar!(ElementType!Source) && isIntegral!Target && !isSomeChar!Target)
 {
     static if (Target.sizeof < int.sizeof)
     {
@@ -1259,8 +1268,9 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
         default: {}
     }
 
-    bool isHex = p.front == '0';
-    if(isHex)
+    bool isHex = false;
+    bool startsWithZero = p.front == '0';
+    if(startsWithZero)
     {
         p.popFront();
         if(p.empty)
@@ -1268,7 +1278,7 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
             return (sign) ? -0 : 0;
         }
 
-        isHex = isHex && (p.front == 'x' || p.front == 'X');
+        isHex = p.front == 'x' || p.front == 'X';
     }
 
     real ldval = 0.0;
@@ -1394,7 +1404,7 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
     }
     else // not hex
     {
-        if (toupper(p.front) == 'N')
+        if (toupper(p.front) == 'N' && !startsWithZero)
         {
             // nan
             enforce((p.popFront(), !p.empty && toupper(p.front) == 'A')
@@ -1405,7 +1415,7 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
             return typeof(return).nan;
         }
 
-        bool sawDigits = false;
+        bool sawDigits = startsWithZero;
 
         while (!p.empty)
         {
@@ -1549,13 +1559,55 @@ unittest
     // printf("\n");
 }
 
+// Unittest for bug 4959
 unittest
 {
-    debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
+    auto s = "0 ";
+    auto x = parse!double(s);
+    assert(s == " ");
+    assert(x == 0.0);
+}
+
+unittest
+{
+    debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__,
+            " succeeded.");
     string s = "123";
     auto a = parse!int(s);
 }
 
+/**
+Parsing one character off a string returns the character and bumps the
+string up one position.
+ */
+Target parse(Target, Source)(ref Source s)
+if (isInputRange!Source && isSomeChar!(ElementType!Source) &&
+        isSomeChar!Target && Target.sizeof >= ElementType!Source.sizeof)
+{
+    Target result = s.front;
+    s.popFront();
+    return result;
+}
+
+// Special case: okay so parse a char off a char[] or a wchar off a
+// wchar[]
+Target parse(Target, Source)(ref Source s)
+if (isSomeString!Source && is(Source : const(Target)[]))
+{
+    Target result = s[0];
+    s = s[1 .. $];
+    return result;
+}
+
+unittest
+{
+    string s = "aaa";
+    assert(parse!char(s) == 'a');
+    assert(s == "aa");
+    wstring s1 = "aaa";
+    assert(parse!wchar(s1) == 'a');
+    assert(s1 == "aa");
+}
 
 // string to bool conversions
 Target parse(Target, Source)(ref Source s)
@@ -3933,7 +3985,9 @@ Returns: A pointer to the newly constructed object.
  */
 T* emplace(T, Args...)(T* chunk, Args args) if (!is(T == class))
 {
-    return emplace!T((cast(void*) chunk)[0 .. T.sizeof], args);
+    // Since we're treating the memory pointed to by chunk as a raw memory
+    // block, we need to cast away any qualifiers.
+    return cast(T*) emplace!(Unqual!T)((cast(void*) chunk)[0 .. T.sizeof], args);
 }
 
 // emplace

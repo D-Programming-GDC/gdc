@@ -2,20 +2,21 @@
  * The thread module provides support for thread creation and management.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
- * Authors:   Sean Kelly
+ * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * Authors:   Sean Kelly, Walter Bright
  *
  *          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
+ * Source: $(LINK http://www.dsource.org/projects/druntime/browser/trunk/src/core/thread.d)
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
    Modified by Iain Buclaw, September 2010.
-*/
+ */
 module core.thread;
 
 
@@ -135,17 +136,22 @@ version( Windows )
         {
             Thread  obj = cast(Thread) arg;
             assert( obj );
-            scope( exit ) Thread.remove( obj );
 
             assert( obj.m_curr is &obj.m_main );
             obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
-            Thread.add( &obj.m_main );
-            Thread.setThis( obj );
 
             void* pstart = cast(void*) &_tlsstart;
             void* pend   = cast(void*) &_tlsend;
             obj.m_tls = pstart[0 .. pend - pstart];
+
+            Thread.setThis( obj );
+            Thread.add( obj );
+            scope( exit )
+            {
+                Thread.remove( obj );
+            }
+            Thread.add( &obj.m_main );
 
             // NOTE: No GC allocations may occur until the stack pointers have
             //       been set and Thread.getThis returns a valid reference to
@@ -156,7 +162,7 @@ version( Windows )
             // TODO: Consider putting an auto exception object here (using
             //       alloca) forOutOfMemoryError plus something to track
             //       whether an exception is in-flight?
-            
+
             void append( Throwable t )
             {
                 if( obj.m_unhandled is null )
@@ -275,7 +281,7 @@ else version( Posix )
             __gshared int   _tlsstart;
             alias _tlsstart _tlsend;
         }
-
+        
 
         //
         // Entry point for POSIX threads
@@ -284,6 +290,66 @@ else version( Posix )
         {
             Thread  obj = cast(Thread) arg;
             assert( obj );
+
+            assert( obj.m_curr is &obj.m_main );
+            // NOTE: For some reason this does not always work for threads.
+            //obj.m_main.bstack = getStackBottom();
+            version( D_InlineAsm_X86 )
+            {
+                static void* getBasePtr()
+                {
+                    asm
+                    {
+                        naked;
+                        mov EAX, EBP;
+                        ret;
+                    }
+                }
+
+                obj.m_main.bstack = getBasePtr();
+            }
+            else version( D_InlineAsm_X86_64 )
+            {
+                static void* getBasePtr()
+                {
+                    asm
+                    {
+                        naked;
+                        mov RAX, RBP;
+                        ret;
+                    }
+                }
+
+                obj.m_main.bstack = getBasePtr();
+            }
+            else version( StackGrowsDown )
+                obj.m_main.bstack = &obj + 1;
+            else
+                obj.m_main.bstack = &obj;
+            obj.m_main.tstack = obj.m_main.bstack;
+
+            version( OSX )
+            {
+                // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
+                //       data output by the compiler is bracketed by _tls_beg and
+                //       _tls_end, so make a copy of it for each thread.
+                const sz = cast(void*) &_tls_end - cast(void*) &_tls_beg;
+                auto p = malloc( sz );
+                assert( p );
+                obj.m_tls = p[0 .. sz];
+                memcpy( p, &_tls_beg, sz );
+                scope (exit) { free( p ); obj.m_tls = null; }
+            }
+            else
+            {
+                auto pstart = cast(void*) &_tlsstart;
+                auto pend   = cast(void*) &_tlsend;
+                obj.m_tls = pstart[0 .. pend - pstart];
+            }
+            
+            obj.m_isRunning = true;
+            Thread.setThis( obj );
+            Thread.add( obj );
             scope( exit )
             {
                 // NOTE: isRunning should be set to false after the thread is
@@ -292,7 +358,8 @@ else version( Posix )
                 Thread.remove( obj );
                 obj.m_isRunning = false;
             }
-
+            Thread.add( &obj.m_main );
+            
             static extern (C) void thread_cleanupHandler( void* arg )
             {
                 Thread  obj = cast(Thread) arg;
@@ -324,64 +391,6 @@ else version( Posix )
             else
             {
                 static assert( false, "Platform not supported." );
-            }
-
-            // NOTE: For some reason this does not always work for threads.
-            //obj.m_main.bstack = getStackBottom();
-            version( D_InlineAsm_X86 )
-            {
-                static void* getBasePtr()
-                {
-                    asm
-                    {
-                        naked;
-                        mov EAX, EBP;
-                        ret;
-                    }
-                }
-
-                obj.m_main.bstack = getBasePtr();
-            }
-            version( D_InlineAsm_X86_64 )
-            {
-                static void* getBasePtr()
-                {
-                    asm
-                    {
-                        naked;
-                        mov RAX, RBP;
-                        ret;
-                    }
-                }
-
-                obj.m_main.bstack = getBasePtr();
-            }
-            else version( StackGrowsDown )
-                obj.m_main.bstack = &obj + 1;
-            else
-                obj.m_main.bstack = &obj;
-            obj.m_main.tstack = obj.m_main.bstack;
-            assert( obj.m_curr == &obj.m_main );
-            Thread.add( &obj.m_main );
-            Thread.setThis( obj );
-
-            version( OSX )
-            {
-                // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
-                //       data output by the compiler is bracketed by _tls_beg and
-                //       _tls_end, so make a copy of it for each thread.
-                const sz = cast(void*) &_tls_end - cast(void*) &_tls_beg;
-                auto p = malloc( sz );
-                assert( p );
-                obj.m_tls = p[0 .. sz];
-                memcpy( p, &_tls_beg, sz );
-                scope (exit) { free( p ); obj.m_tls = null; }
-            }
-            else
-            {
-                auto pstart = cast(void*) &_tlsstart;
-                auto pend   = cast(void*) &_tlsend;
-                obj.m_tls = pstart[0 .. pend - pstart];
             }
 
             // NOTE: No GC allocations may occur until the stack pointers have
@@ -433,13 +442,15 @@ else version( Posix )
                 // TODO: Remove this once the compiler prevents it.
             }
 
+            // NOTE: Normal cleanup is handled by scope(exit).
+            
             static if( __traits( compiles, pthread_cleanup ) )
             {
-                cleanup.pop( 1 );
+                cleanup.pop( 0 );
             }
             else static if( __traits( compiles, pthread_cleanup_push ) )
             {
-                pthread_cleanup_pop( 1 );
+                pthread_cleanup_pop( 0 );
             }
 
             return null;
@@ -470,7 +481,7 @@ else version( Posix )
                     pushad;
                 }
             }
-            else version( D_InlineAsm_X86_64 )
+            else version ( D_InlineAsm_X86_64 )
             {
                 asm
                 {
@@ -484,12 +495,12 @@ else version( Posix )
                     push RBP ;
                     push R8  ;
                     push R9  ;
-                    push R10  ;
-                    push R11  ;
-                    push R12  ;
-                    push R13  ;
-                    push R14  ;
-                    push R15  ;
+                    push R10 ;
+                    push R11 ;
+                    push R12 ;
+                    push R13 ;
+                    push R14 ;
+                    push R15 ;
                     push EAX ;   // 16 byte align the stack
                 }
             }
@@ -546,18 +557,18 @@ else version( Posix )
                     popad;
                 }
             }
-            else version( D_InlineAsm_X86_64 )
+            else version ( D_InlineAsm_X86_64 )
             {
                 asm
                 {
                     // Not sure what goes here, popad is invalid in 64 bit code
                     pop EAX ;   // 16 byte align the stack
-                    pop R15  ;
-                    pop R14  ;
-                    pop R13  ;
-                    pop R12  ;
-                    pop R11  ;
-                    pop R10  ;
+                    pop R15 ;
+                    pop R14 ;
+                    pop R13 ;
+                    pop R12 ;
+                    pop R11 ;
+                    pop R10 ;
                     pop R9  ;
                     pop R8  ;
                     pop RBP ;
@@ -770,34 +781,28 @@ class Thread
                 throw new ThreadException( "Error setting thread joinable" );
         }
 
-        // NOTE: This operation needs to be synchronized to avoid a race
-        //       condition with the GC.  Without this lock, the thread
-        //       could start and allocate memory before being added to
-        //       the global thread list, preventing it from being scanned
-        //       and causing memory to be collected that is still in use.
-        synchronized( slock )
+        version( Windows )
         {
-            version( Windows )
-            {
-                m_hndl = cast(HANDLE) _beginthreadex( null, m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
-                if( cast(size_t) m_hndl == 0 )
-                    throw new ThreadException( "Error creating thread" );
-            }
-            else version( Posix )
-            {
-                m_isRunning = true;
-                scope( failure ) m_isRunning = false;
+            m_hndl = cast(HANDLE) _beginthreadex( null, m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
+            if( cast(size_t) m_hndl == 0 )
+                throw new ThreadException( "Error creating thread" );
+        }
+        else version( Posix )
+        {
+            // NOTE: This is also set to true by thread_entryPoint, but set it
+            //       here as well so the calling thread will see the isRunning
+            //       state immediately.
+            m_isRunning = true;
+            scope( failure ) m_isRunning = false;
 
-                if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
-                    throw new ThreadException( "Error creating thread" );
-            }
-            version( OSX )
-            {
-                m_tmach = pthread_mach_thread_np( m_addr );
-                if( m_tmach == m_tmach.init )
-                    throw new ThreadException( "Error creating thread" );
-            }
-            add( this );
+            if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
+                throw new ThreadException( "Error creating thread" );
+        }
+        version( OSX )
+        {
+            m_tmach = pthread_mach_thread_np( m_addr );
+            if( m_tmach == m_tmach.init )
+                throw new ThreadException( "Error creating thread" );
         }
     }
 
@@ -1178,14 +1183,10 @@ class Thread
         {
             auto t = cast(Thread) pthread_getspecific( sm_this );
             
-            // NOTE: If this thread was attached via thread_attachByAddr then
-            //       this TLS lookup won't initially be set, so when the TLS
-            //       lookup fails, try an exhaustive search.
-            if( t is null )
-            {
-                t = thread_findByAddr( pthread_self() );
-                setThis( t );
-            }
+            // NOTE: See the comment near thread_findByAddr() for why the
+            //       secondary thread_findByAddr lookup can't be done on
+            //       Posix.  However, because thread_attachByAddr() is for
+            //       Windows only, the secondary lookup is pointless anyway.
             return t;
         }
     }
@@ -1857,6 +1858,16 @@ extern (C) Thread thread_attachThis()
 
 version( Windows )
 {
+    // NOTE: These calls are not safe on Posix systems that use signals to
+    //       perform garbage collection.  The suspendHandler uses getThis()
+    //       to get the thread handle so getThis() must be a simple call.
+    //       Mutexes can't safely be acquired inside signal handlers, and
+    //       even if they could, the mutex needed (Thread.slock) is held by
+    //       thread_suspendAll().  So in short, these routines will remain
+    //       Windows-specific.  If they are truly needed elsewhere, the
+    //       suspendHandler will need a way to call a version of getThis()
+    //       that only does the TLS lookup without the fancy fallback stuff.
+    
     /// ditto
     extern (C) Thread thread_attachByAddr( Thread.ThreadAddr addr )
     {
@@ -2002,8 +2013,8 @@ static Thread thread_findByAddr( Thread.ThreadAddr addr )
     {
         foreach( t; Thread )
         {
-	        if( t.m_addr == addr )
-	            return t;
+                if( t.m_addr == addr )
+                    return t;
         }
     }
     return null;

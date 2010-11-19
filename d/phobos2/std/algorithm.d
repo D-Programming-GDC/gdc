@@ -84,7 +84,7 @@ Example:
 auto arr1 = [ 1, 2, 3, 4 ];
 foreach (e; map!("a + a", "a * a")(arr1))
 {
-    writeln(e.field[0], " ", e.field[1]);
+    writeln(e[0], " ", e[1]);
 }
 ----
 
@@ -111,14 +111,15 @@ template map(fun...)
     }
 }
 
-struct Map(alias fun, Range) if (isInputRange!(Range))
+struct Map(alias fun, Range) if (isInputRange!(Unqual!Range))
 {
+    alias Unqual!Range R;
     alias fun _fun;
-    alias typeof({ return _fun(.ElementType!(Range).init); }()) ElementType;
-    Unqual!Range _input;
+    alias typeof({ return _fun(.ElementType!(R).init); }()) ElementType;
+    R _input;
     Unqual!ElementType _cache;
 
-    static if (isBidirectionalRange!(Range))
+    static if (isBidirectionalRange!(R))
     {
     // Using a second cache would lead to at least 1 extra function evaluation
     // and wasted space when 99% of the time this range will only be iterated
@@ -152,29 +153,29 @@ struct Map(alias fun, Range) if (isInputRange!(Range))
     {
         if (!_input.empty) _cache = _fun(_input.front);
 
-        static if(isBidirectionalRange!(Range))
+        static if(isBidirectionalRange!(R))
         {
             cacheIsBack_ = false;
         }
     }
 
-    this(Range input)
+    this(R input)
     {
         _input = input;
         fillCache;
     }
 
-        static if (isInfinite!Range)
+    static if (isInfinite!R)
     {
-                // Propagate infinite-ness.
-                enum bool empty = false;
-        }
+        // Propagate infinite-ness.
+        enum bool empty = false;
+    }
     else
     {
-                @property bool empty()
+        @property bool empty()
         {
-                        return _input.empty;
-                }
+                return _input.empty;
+            }
         }
 
     void popFront()
@@ -185,7 +186,7 @@ struct Map(alias fun, Range) if (isInputRange!(Range))
 
     @property ElementType front()
     {
-        static if (isBidirectionalRange!(Range))
+        static if (isBidirectionalRange!(R))
         {
             if (cacheIsBack_)
             {
@@ -195,7 +196,7 @@ struct Map(alias fun, Range) if (isInputRange!(Range))
         return _cache;
     }
 
-    static if (isRandomAccessRange!Range)
+    static if (isRandomAccessRange!R)
     {
         ElementType opIndex(size_t index)
         {
@@ -213,7 +214,7 @@ struct Map(alias fun, Range) if (isInputRange!(Range))
         }
     }
 
-    static if (hasSlicing!(Range))
+    static if (hasSlicing!(R))
     {
         typeof(this) opSlice(size_t lowerBound, size_t upperBound)
         {
@@ -221,13 +222,13 @@ struct Map(alias fun, Range) if (isInputRange!(Range))
         }
     }
 
-        static if (isForwardRange!Range)
-        @property Map save()
-        {
-            auto result = this;
-            result._input = result._input.save;
-            return result;
-        }
+    static if (isForwardRange!R)
+    @property Map save()
+    {
+        auto result = this;
+        result._input = result._input.save;
+        return result;
+    }
 }
 
 unittest
@@ -273,8 +274,8 @@ unittest
     uint i;
     foreach (e; map!("a", "a * a")(arr1))
     {
-        assert(e.field[0] == ++i);
-        assert(e.field[1] == i * i);
+        assert(e[0] == ++i);
+        assert(e[1] == i * i);
     }
 
     // Test length.
@@ -379,16 +380,16 @@ double[] a = [ 3.0, 4, 7, 11, 3, 2, 5 ];
 // Compute minimum and maximum in one pass
 auto r = reduce!(min, max)(a);
 // The type of r is Tuple!(double, double)
-assert(r.field[0] == 2);  // minimum
-assert(r.field[1] == 11); // maximum
+assert(r[0] == 2);  // minimum
+assert(r[1] == 11); // maximum
 
 // Compute sum and sum of squares in one pass
 r = reduce!("a + b", "a + b * b")(tuple(0.0, 0.0), a);
-assert(r.field[0] == 35);  // sum
-assert(r.field[1] == 233); // sum of squares
+assert(r[0] == 35);  // sum
+assert(r[1] == 233); // sum of squares
 // Compute average and standard deviation from the above
-auto avg = r.field[0] / a.length;
-auto stdev = sqrt(r.field[1] / a.length - avg * avg);
+auto avg = r[0] / a.length;
+auto stdev = sqrt(r[1] / a.length - avg * avg);
 ----
  */
 
@@ -414,8 +415,7 @@ template reduce(fun...)
                     {
                         foreach (i, Unused; Args[0].Types)
                         {
-                            result.field[i] = binaryFun!(fun[i])(result.field[i],
-                                    r.front);
+                            result[i] = binaryFun!(fun[i])(result[i], r.front);
                         }
                     }
                 }
@@ -437,8 +437,7 @@ template reduce(fun...)
                         result = void;
                     foreach (i, T; result.Types)
                     {
-                        auto p = (cast(void*) &result.field[i])
-                            [0 .. result.field[i].sizeof];
+                        auto p = (cast(void*) &result[i])[0 .. result[i].sizeof];
                         emplace!T(p, r.front);
                     }
                     r.popFront();
@@ -489,8 +488,7 @@ template reduce(fun...)
                 {
                     foreach(i, T; result.Types)
                     {
-                        result.field[i] =
-                            binaryFun!(fun[i])(result.field[i], elem);
+                        result[i] = binaryFun!(fun[i])(result[i], elem);
                     }
                 }
                 else
@@ -502,8 +500,8 @@ template reduce(fun...)
 
                     foreach (i, T; result.Types)
                     {
-                        auto p = (cast(void*) &result.field[i])
-                            [0 .. result.field[i].sizeof];
+                        auto p = (cast(void*) &result[i])
+                            [0 .. result[i].sizeof];
                         emplace!T(p, elem);
                     }
                 }
@@ -514,7 +512,7 @@ template reduce(fun...)
 
             static if(fun.length == 1)
             {
-                return result.field[0];
+                return result[0];
             }
             else
             {
@@ -541,9 +539,9 @@ unittest
 
     // two funs
     auto r2 = reduce!("a + b", "a - b")(tuple(0., 0.), a);
-    assert(r2.field[0] == 7 && r2.field[1] == -7);
+    assert(r2[0] == 7 && r2[1] == -7);
     auto r3 = reduce!("a + b", "a - b")(a);
-    assert(r3.field[0] == 7 && r3.field[1] == -1);
+    assert(r3[0] == 7 && r3[1] == -1);
 
     a = [ 1, 2, 3, 4, 5 ];
     // Stringize with commas
@@ -832,29 +830,28 @@ assert(small == [ 1, 2 ]);
 int[] a = [ 3, -2, 400 ];
 int[] b = [ 100, -101, 102 ];
 auto r = filter!("a > 0")(chain(a, b));
-assert(equals(r, [ 3, 400, 100, 102 ]));
+assert(equal(r, [ 3, 400, 100, 102 ]));
 // Mixing convertible types is fair game, too
 double[] c = [ 2.5, 3.0 ];
 auto r1 = filter!("cast(int) a != a")(chain(c, a, b));
 assert(r1 == [ 2.5 ]);
 ----
  */
-
-version (all)
+template filter(alias pred)
 {
-/* This is the older version. Too many problems with the newer one.
- */
-Filter!(unaryFun!(pred), Range)
-filter(alias pred, Range)(Range rs)
-{
-    return typeof(return)(rs);
+    Filter!(unaryFun!(pred), Range)
+    filter(Range)(Range rs)
+    {
+        return typeof(return)(rs);
+    }
 }
 
-struct Filter(alias pred, Range) if (isInputRange!(Range))
+struct Filter(alias pred, Range) if (isInputRange!(Unqual!Range))
 {
-    Unqual!Range _input;
+    alias Unqual!Range R;
+    R _input;
 
-    this(Range r)
+    this(R r)
     {
         _input = r;
         while (!_input.empty && !pred(_input.front)) _input.popFront;
@@ -879,7 +876,7 @@ struct Filter(alias pred, Range) if (isInputRange!(Range))
         return _input.front;
     }
 
-    static if(isForwardRange!Range)
+    static if(isForwardRange!R)
     {
         @property typeof(this) save()
         {
@@ -905,133 +902,12 @@ unittest
     auto m = map!"a + 1"(filter!"a < 4"(arr));
 }
 
-}
-else
-{
-template filter(alias predicate)
-{
-    auto filter(Range)(Range rs) if (isInputRange!(Range))
-    {
-        alias unaryFun!predicate pred;
-
-        struct Filter
-        {
-            Range _input;
-
-            this(Range r)
-            {
-                _input = r;
-                while (!_input.empty && !pred(_input.front)) _input.popFront;
-                static if (isBidirectionalRange!Range) {
-                    while (!_input.empty && !pred(_input.back)) _input.popBack;
-                }
-
-            }
-
-            ref Filter opSlice()
-            {
-                return this;
-            }
-
-            static if (isInfinite!Range) {
-                enum bool empty = false;  // Propagate infiniteness.
-            } else {
-                bool empty() { return _input.empty; }
-            }
-
-            void popFront()
-            {
-                do
-                {
-                    _input.popFront;
-                } while (!_input.empty && !pred(_input.front));
-            }
-
-            ElementType!(Range) front()
-            {
-                return _input.front;
-            }
-
-            static if (isBidirectionalRange!Range) {
-                void popBack()
-                {
-                    do
-                    {
-                        _input.popBack;
-                    } while (!_input.empty && !pred(_input.back));
-                }
-
-                ElementType!(Range) back() { return _input.back;}
-            }
-
-
-            static if (isForwardRange!Range)
-            {
-                @property typeof(this) save()
-                {
-                    return typeof(this)(_input.save);
-                }
-            }
-        }
-
-        return Filter(rs);
-    }
-}
-
 unittest
 {
-    debug(std_algorithm) scope(success)
-        writeln("unittest @", __FILE__, ":", __LINE__, " done.");
-    int[] a = [ 3, 4, 2 ];
-    auto r = filter!("a > 3")(a);
-    static assert(isForwardRange!(typeof(r)));
-    assert(equal(r, [ 4 ][]));
-
-    a = [ 1, 22, 3, 42, 5 ];
-    auto under10 = filter!("a < 10")(a);
-    assert(equal(under10, [1, 3, 5][]));
-    static assert(isForwardRange!(typeof(under10)));
-
-        auto infinite = filter!"a > 2"(repeat(3));
-        static assert(isInfinite!(typeof(infinite)));
-        static assert(isForwardRange!(typeof(infinite)));
-
-    auto nums = [0,1,2,3,4];
-    auto forward = filter!"a % 2 == 0"(nums);
-    assert(equal(retro(forward), [4,2,0][])); // f is a bidirectional range
-
-        foreach(DummyType; AllDummyRanges) {
-            DummyType d;
-            auto f = filter!"a & 1"(d);
-            assert(equal(f, [1,3,5,7,9]));
-
-            static if (isForwardRange!DummyType) {
-                static assert(isForwardRange!(typeof(f)));
-            }
-
-            static if (isBidirectionalRange!DummyType) {
-                static assert(isBidirectionalRange!(typeof(f)));
-                assert(equal(retro(f), [9,7,5,3,1]));
-            }
-        }
-
-    // With delegates
-    int x = 10;
-    int overX(int a) { return a > x; }
-    typeof(filter!overX(a)) getFilter()
-    {
-        return filter!overX(a);
-    }
-    auto r1 = getFilter();
-    assert(equal(r1, [22, 42]));
-
-    // With chain
-    assert(equal(filter!overX(chain(a, nums)), [22, 42]));
-
-    // With copying of inner struct Filter to Map
-    auto arr = [1,2,3,4,5];
-    auto m = map!"a + 1"(filter!"a < 4"(arr));
-}
+    assert(equal(compose!(map!"2 * a", filter!"a & 1")([1,2,3,4,5]),
+                    [2,6,10]));
+    assert(equal(pipe!(filter!"a & 1", map!"2 * a")([1,2,3,4,5]),
+            [2,6,10]));
 }
 
 unittest
@@ -1170,7 +1046,7 @@ unittest
         writeln("unittest @", __FILE__, ":", __LINE__, " done.");
     int[] a = [ 1, 2, 3, 4, 5 ];
     int[] b = new int[3];
-    assert(moveSome(a, b).field[0] is a[3 .. $]);
+    assert(moveSome(a, b)[0] is a[3 .. $]);
     assert(a[0 .. 3] == b);
     assert(a == [ 1, 2, 3, 4, 5 ]);
 }
@@ -1241,6 +1117,21 @@ unittest
     assert(s2.x == 0);
     assert(s2.c == 'z');
     assert(s2.y == [ 1, 2 ]);
+}
+
+void swapFront(R1, R2)(R1 r1, R2 r2)
+    if (isInputRange!R1 && isInputRange!R2)
+{
+    static if (is(typeof(swap(r1.front, r2.front))))
+    {
+        swap(r1.front, r2.front);
+    }
+    else
+    {
+        auto t1 = moveFront(r1), t2 = moveFront(r2);
+        r1.front = move(t2);
+        r2.front = move(t1);
+    }
 }
 
 // splitter
@@ -2034,15 +1925,15 @@ struct Group(alias pred, R) if (isInputRange!R)
     {
         if (_input.empty)
         {
-            _current.field[1] = 0;
+            _current[1] = 0;
         }
         else
         {
             _current = tuple(_input.front, 1u);
             _input.popFront;
-            while (!_input.empty && comp(_current.field[0], _input.front))
+            while (!_input.empty && comp(_current[0], _input.front))
             {
-                ++_current.field[1];
+                ++_current[1];
                 _input.popFront;
             }
         }
@@ -2056,7 +1947,7 @@ struct Group(alias pred, R) if (isInputRange!R)
     {
         @property bool empty()
         {
-            return _current.field[1] == 0;
+            return _current[1] == 0;
         }
     }
 
@@ -3365,8 +3256,7 @@ Example:
 ----
 int[] a = [ -1, 0, 1, 2, 3, 4, 5 ];
 int[] b = [ 3, 1, 2 ];
-assert(findAmong(a, b) == begin(a) + 2);
-assert(findAmong(b, a) == begin(b));
+assert(findAmong(a, b) == a[2 .. $]);
 ----
 */
 Range1 findAmong(alias pred = "a == b", Range1, Range2)(
@@ -3446,6 +3336,60 @@ unittest
         writeln("unittest @", __FILE__, ":", __LINE__, " done.");
     int[] a = [ 1, 2, 4, 3, 2, 5, 3, 2, 4 ];
     assert(count!("a == 3")(a) == 2);
+}
+
+// balancedParens
+/**
+Checks whether $(D r) has "balanced parentheses", i.e. all instances
+of $(D lPar) are closed by corresponding instances of $(D rPar). The
+parameter $(D maxNestingLevel) controls the nesting level allowed. The
+most common uses are the default or $(D 0). In the latter case, no
+nesting is allowed.
+
+Example:
+----
+auto s = "1 + (2 * (3 + 1 / 2)";
+assert(!balancedParens(s, '(', ')'));
+s = "1 + (2 * (3 + 1) / 2)";
+assert(balancedParens(s, '(', ')'));
+s = "1 + (2 * (3 + 1) / 2)";
+assert(!balancedParens(s, '(', ')', 1));
+s = "1 + (2 * 3 + 1) / (2 - 5)";
+assert(balancedParens(s, '(', ')', 1));
+----
+*/
+
+bool balancedParens(Range, E)(Range r, E lPar, E rPar,
+        size_t maxNestingLevel = size_t.max)
+if (isInputRange!(Range) && is(typeof(r.front == lPar)))
+{
+    size_t count;
+    for (; !r.empty; r.popFront())
+    {
+        if (r.front == lPar)
+        {
+            if (count > maxNestingLevel) return false;
+            ++count;
+        }
+        else if (r.front == rPar)
+        {
+            if (!count) return false;
+            --count;
+        }
+    }
+    return count == 0;
+}
+
+unittest
+{
+    auto s = "1 + (2 * (3 + 1 / 2)";
+    assert(!balancedParens(s, '(', ')'));
+    s = "1 + (2 * (3 + 1) / 2)";
+    assert(balancedParens(s, '(', ')'));
+    s = "1 + (2 * (3 + 1) / 2)";
+    assert(!balancedParens(s, '(', ')', 0));
+    s = "1 + (2 * 3 + 1) / (2 - 5)";
+    assert(balancedParens(s, '(', ')', 0));
 }
 
 // equal
@@ -3695,7 +3639,7 @@ unittest
     assert(minCount!("a > b")(a) == tuple(4, 2));
     int[][] b = [ [4], [2, 4], [4], [4] ];
     auto c = minCount!("a[0] < b[0]")(b);
-    assert(c == tuple([2, 4], 1), text(c.field[0]));
+    assert(c == tuple([2, 4], 1), text(c[0]));
 }
 
 // minPos
@@ -3754,8 +3698,8 @@ Example:
 int[]    x = [ 1,  5, 2, 7,   4, 3 ];
 double[] y = [ 1., 5, 2, 7.3, 4, 8 ];
 auto m = mismatch(x, y);
-assert(m.field[0] == begin(x) + 3);
-assert(m.field[1] == begin(y) + 3);
+assert(m[0] == x[3 .. $]);
+assert(m[1] == y[3 .. $]);
 ----
 */
 
@@ -3778,14 +3722,14 @@ unittest
     int[]    x = [ 1,  5, 2, 7,   4, 3 ];
     double[] y = [ 1., 5, 2, 7.3, 4, 8 ];
     auto m = mismatch(x, y);
-    assert(m.field[0] == [ 7, 4, 3 ]);
-    assert(m.field[1] == [ 7.3, 4, 8 ]);
+    assert(m[0] == [ 7, 4, 3 ]);
+    assert(m[1] == [ 7.3, 4, 8 ]);
 
     int[] a = [ 1, 2, 3 ];
     int[] b = [ 1, 2, 4, 5 ];
     auto mm = mismatch(a, b);
-    assert(mm.field[0] == [3]);
-    assert(mm.field[1] == [4, 5]);
+    assert(mm[0] == [3]);
+    assert(mm[1] == [4, 5]);
 }
 
 // levenshteinDistance
@@ -3974,8 +3918,8 @@ Example:
 ---
 string a = "Saturday", b = "Sunday";
 auto p = levenshteinDistanceAndPath(a, b);
-assert(p.field[0], 3);
-assert(equals(p.field[1], "nrrnsnnn"));
+assert(p[0] == 3);
+assert(equal(p[1], "nrrnsnnn"));
 ---
 */
 Tuple!(size_t, EditOp[])
@@ -4004,7 +3948,7 @@ unittest
     // @@@BUG@@@
     //auto p = levenshteinDistanceAndPath(a, b);
     //writefln(p);
-    //assert(cast(string) p.field[1] == "nrrnsnnn", cast(string) p);
+    //assert(cast(string) p[1] == "nrrnsnnn", cast(string) p);
 }
 
 // copy
@@ -4093,7 +4037,7 @@ Example:
 int[] a = [ 100, 101, 102, 103 ];
 int[] b = [ 0, 1, 2, 3 ];
 auto c = swapRanges(a[1 .. 3], b[2 .. 4]);
-assert(c.at!(0).empty && c.at!(1).empty);
+assert(c[0].empty && c[1].empty);
 assert(a == [ 100, 2, 3, 103 ]);
 assert(b == [ 0, 1, 101, 102 ]);
 ----
@@ -4118,7 +4062,7 @@ unittest
     int[] a = [ 100, 101, 102, 103 ];
     int[] b = [ 0, 1, 2, 3 ];
     auto c = swapRanges(a[1 .. 3], b[2 .. 4]);
-    assert(c.field[0].empty && c.field[1].empty);
+    assert(c[0].empty && c[1].empty);
     assert(a == [ 100, 2, 3, 103 ]);
     assert(b == [ 0, 1, 101, 102 ]);
 }
@@ -4190,14 +4134,15 @@ assert(arr == [ 1, 2, 3, 4, 5, 6, 7 ]);
 The $(D front) range may actually "step over" the $(D back)
 range. This is very useful with forward ranges that cannot compute
 comfortably right-bounded subranges like $(D arr[0 .. 4]) above. In
-the example below, $(D list1) is a right subrange of $(D list).
+the example below, $(D r2) is a right subrange of $(D r1).
 
 ----
 auto list = SList!(int)(4, 5, 6, 7, 1, 2, 3);
-auto list1 = list.drop(4);
-assert(equal(list1, [ 1, 2, 3 ][]));
-bringToFront(list, list1);
-assert(equal(list, [ 1, 2, 3, 4, 5, 6, 7 ][]));
+auto r1 = list[];
+auto r2 = list[]; popFrontN(r2, 4);
+assert(equal(r2, [ 1, 2, 3 ]));
+bringToFront(r1, r2);
+assert(equal(list[], [ 1, 2, 3, 4, 5, 6, 7 ]));
 ----
 
 Elements can be swapped across ranges of different types:
@@ -4205,9 +4150,9 @@ Elements can be swapped across ranges of different types:
 ----
 auto list = SList!(int)(4, 5, 6, 7);
 auto vec = [ 1, 2, 3 ];
-bringToFront(list, vec);
-assert(equal(list, [ 1, 2, 3, 4 ][]));
-assert(equal(vec, [ 5, 6, 7 ][]));
+bringToFront(list[], vec);
+assert(equal(list[], [ 1, 2, 3, 4 ]));
+assert(equal(vec, [ 5, 6, 7 ]));
 ----
 
 Performs $(BIGOH max(front.length, back.length)) evaluations of $(D
@@ -4223,111 +4168,149 @@ Returns:
 
 The number of elements brought to the front, i.e., the length of $(D
 back).
-
-Example:
-
-----
-auto arr = [4, 5, 6, 7, 1, 2, 3];
-auto p = rotate(arr, begin(arr) + 4);
-assert(p - begin(arr) == 3);
-assert(arr == [ 1, 2, 3, 4, 5, 6, 7 ]);
-----
 */
 size_t bringToFront(Range1, Range2)(Range1 front, Range2 back)
-    if (isForwardRange!Range1 && isForwardRange!Range2)
+    if (isInputRange!Range1 && isForwardRange!Range2)
 {
     enum bool sameHeadExists = is(typeof(front.sameHead(back)));
     size_t result;
-    for (;;)
+    for (bool semidone; !front.empty && !back.empty; )
     {
-        if (back.empty || front.empty) return result;
         static if (sameHeadExists)
-            if (front.sameHead(back)) return result;
-
-        auto front2 = front.save;
-        auto back2 = back.save;
-
-        for (;;)
         {
-            // make progress for this pass through the loop
-            static if (is(typeof(swap(front2.front, back2.front))))
+            if (front.sameHead(back)) break; // shortcut
+        }
+        // Swap elements until front and/or back ends.
+        auto back0 = back.save;
+        size_t nswaps;
+        do
+        {
+            static if (sameHeadExists)
             {
-                swap(front2.front, back2.front);
+                // Detect the stepping-over condition.
+                if (front.sameHead(back0)) back0 = back.save;
+            }
+            swapFront(front, back);
+            ++nswaps;
+            front.popFront();
+            back.popFront();
+        }
+        while (!front.empty && !back.empty);
+
+        if (!semidone) result += nswaps;
+
+        // Now deal with the remaining elements.
+        if (back.empty)
+        {
+            if (front.empty) break;
+            // Right side was shorter, which means that we've brought
+            // all the back elements to the front.
+            semidone = true;
+            // Next pass: bringToFront(front, back0) to adjust the rest.
+            back = back0;
+        }
+        else
+        {
+            assert(front.empty);
+            // Left side was shorter. Let's step into the back.
+            static if (is(Range1 == Take!Range2))
+            {
+                front = take(back0, nswaps);
             }
             else
             {
-                auto t1 = moveFront(front2), t2 = moveFront(back2);
-                front2.front = move(t2);
-                back2.front = move(t1);
-            }
-
-            front2.popFront;
-            back2.popFront;
-            ++result;
-            bool leftShorter = front2.empty;
-            static if (sameHeadExists)
-                if (!leftShorter)
-                    leftShorter = front2.sameHead(back);
-            if (leftShorter)
-            {
-                // Left side was shorter than the right one
-                static if (is(Range1 == Range2))
-                {
-                    front = back;
-                    back = back2;
-                    break;
-                }
-                else
-                {
-                    return result + bringToFront(back, back2);
-                }
-            }
-            if (back2.empty)
-            {
-                // Right side was shorter than the left one
-                front = front2;
-                break;
-                ///*return*/ bringToFront(front2, back);
-                //return front2;
+                immutable subresult = bringToFront(take(back0, nswaps),
+                                                   back);
+                if (!semidone) result += subresult;
+                break; // done
             }
         }
     }
+    return result;
 }
 
 unittest
 {
     debug(std_algorithm) scope(success)
         writeln("unittest @", __FILE__, ":", __LINE__, " done.");
-    // // doc example
-    int[] arr = [4, 5, 6, 7, 1, 2, 3];
-    // auto p = rotate(arr, arr.ptr + 4);
-    auto p = bringToFront(arr[0 .. 4], arr[4 .. $]);
-    //assert(p - arr.ptr == 3);
-    assert(arr == [ 1, 2, 3, 4, 5, 6, 7 ], text(arr));
-    //assert(p is arr[3 .. $], text(p));
+    // doc example
+    {
+        int[] arr = [4, 5, 6, 7, 1, 2, 3];
+        auto p = bringToFront(arr[0 .. 4], arr[4 .. $]);
+        assert(p == arr.length - 4);
+        assert(arr == [ 1, 2, 3, 4, 5, 6, 7 ], text(arr));
+    }
+    {
+        auto list = SList!(int)(4, 5, 6, 7, 1, 2, 3);
+        auto r1 = list[];
+        auto r2 = list[]; popFrontN(r2, 4);
+        assert(equal(r2, [ 1, 2, 3 ]));
+        bringToFront(r1, r2);
+        assert(equal(list[], [ 1, 2, 3, 4, 5, 6, 7 ]));
+    }
+    {
+        auto list = SList!(int)(4, 5, 6, 7);
+        auto vec = [ 1, 2, 3 ];
+        bringToFront(list[], vec);
+        assert(equal(list[], [ 1, 2, 3, 4 ]));
+        assert(equal(vec, [ 5, 6, 7 ]));
+    }
+    // a more elaborate test
+    {
+        auto rnd = Random(unpredictableSeed);
+        int[] a = new int[uniform(100, 200, rnd)];
+        int[] b = new int[uniform(100, 200, rnd)];
+        foreach (ref e; a) e = uniform(-100, 100, rnd);
+        foreach (ref e; b) e = uniform(-100, 100, rnd);
+        int[] c = a ~ b;
+        // writeln("a= ", a);
+        // writeln("b= ", b);
+        auto n = bringToFront(c[0 .. a.length], c[a.length .. $]);
+        //writeln("c= ", c);
+        assert(n == b.length);
+        assert(c == b ~ a, text(c, "\n", a, "\n", b));
+    }
+    // different types, moveFront, no sameHead
+    {
+        static struct R(T)
+        {
+            T[] data;
+            size_t i;
+            @property
+            {
+                R save() { return this; }
+                bool empty() { return i >= data.length; }
+                T front() { return data[i]; }
+                T front(real e) { return data[i] = cast(T) e; }
+                alias front moveFront;
+            }
+            void popFront() { ++i; }
+        }
+        auto a = R!int([1, 2, 3, 4, 5]);
+        auto b = R!real([6, 7, 8, 9]);
+        auto n = bringToFront(a, b);
+        assert(n == 4);
+        assert(a.data == [6, 7, 8, 9, 1]);
+        assert(b.data == [2, 3, 4, 5]);
+    }
+    // front steps over back
+    {
+        int[] arr, r1, r2;
 
-    // // The signature taking range and mid
-    arr[] = [4, 5, 6, 7, 1, 2, 3];
-    // p = rotate(arr, arr.ptr + 4);
-    p = bringToFront(arr[0 .. 4], arr[4 .. $]);
-    //assert(p - arr.ptr == 3);
-    //assert(p is arr[3 .. $]);
-    assert(arr == [ 1, 2, 3, 4, 5, 6, 7 ]);
+        // back is shorter
+        arr = [4, 5, 6, 7, 1, 2, 3];
+        r1 = arr;
+        r2 = arr[4 .. $];
+        bringToFront(r1, r2) == 3 || assert(0);
+        assert(equal(arr, [1, 2, 3, 4, 5, 6, 7]));
 
-    // // a more elaborate test
-    auto rnd = Random(unpredictableSeed);
-    int[] a = new int[uniform(100, 200, rnd)];
-    int[] b = new int[uniform(100, 200, rnd)];
-    foreach (ref e; a) e = uniform(-100, 100, rnd);
-    foreach (ref e; b) e = uniform(-100, 100, rnd);
-    int[] c = a ~ b;
-    // writeln("a= ", a);
-    // writeln("b= ", b);
-    auto n = bringToFront(c[0 .. a.length], c[a.length .. $]);
-    //writeln("c= ", c);
-    // assert(n == c.ptr + b.length);
-    //assert(n is c[b.length .. $]);
-    assert(c == b ~ a, text(c));
+        // front is shorter
+        arr = [5, 6, 7, 1, 2, 3, 4];
+        r1 = arr;
+        r2 = arr[3 .. $];
+        bringToFront(r1, r2) == 4 || assert(0);
+        assert(equal(arr, [1, 2, 3, 4, 5, 6, 7]));
+    }
 }
 
 // SwapStrategy
@@ -4460,10 +4443,10 @@ Range remove
 (Range range, Offset offset)
 if (isBidirectionalRange!Range && hasLength!Range && s != SwapStrategy.stable)
 {
-    enum bool tupleLeft = is(typeof(offset[0].field[0]))
-        && is(typeof(offset[0].field[1]));
-    enum bool tupleRight = is(typeof(offset[$ - 1].field[0]))
-        && is(typeof(offset[$ - 1].field[1]));
+    enum bool tupleLeft = is(typeof(offset[0][0]))
+        && is(typeof(offset[0][1]));
+    enum bool tupleRight = is(typeof(offset[$ - 1][0]))
+        && is(typeof(offset[$ - 1][1]));
     static if (!tupleLeft)
     {
         alias offset[0] lStart;
@@ -4471,8 +4454,8 @@ if (isBidirectionalRange!Range && hasLength!Range && s != SwapStrategy.stable)
     }
     else
     {
-        auto lStart = offset[0].field[0];
-        auto lEnd = offset[0].field[1];
+        auto lStart = offset[0][0];
+        auto lEnd = offset[0][1];
     }
     static if (!tupleRight)
     {
@@ -4481,8 +4464,8 @@ if (isBidirectionalRange!Range && hasLength!Range && s != SwapStrategy.stable)
     }
     else
     {
-        auto rStart = offset[$ - 1].field[0];
-        auto rEnd = offset[$ - 1].field[1];
+        auto rStart = offset[$ - 1][0];
+        auto rEnd = offset[$ - 1][1];
     }
     // Begin. Test first to see if we need to remove the rightmost
     // element(s) in the range. In that case, life is simple - chop
@@ -4571,9 +4554,9 @@ if (isForwardRange!Range && !isBidirectionalRange!Range
     size_t pos;
     foreach (i; offset)
     {
-        static if (is(typeof(i.field[0])) && is(typeof(i.field[1])))
+        static if (is(typeof(i[0])) && is(typeof(i[1])))
         {
-            auto from = i.field[0], delta = i.field[1] - i.field[0];
+            auto from = i[0], delta = i[1] - i[0];
         }
         else
         {
@@ -4788,7 +4771,7 @@ If $(D ss == SwapStrategy.stable), $(D partition) preserves the
 relative ordering of all elements $(D a), $(D b) in $(D r) for which
 $(D pred(a) == pred(b)). If $(D ss == SwapStrategy.semistable), $(D
 partition) preserves the relative ordering of all elements $(D a), $(D
-b) in $(D begin(r) .. p) for which $(D pred(a) == pred(b)).
+b) in the left part of $(D r) for which $(D pred(a) == pred(b)).
 
 Example:
 
@@ -4796,34 +4779,34 @@ Example:
 auto Arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 auto arr = Arr.dup;
 static bool even(int a) { return (a & 1) == 0; }
-// Partition a such that even numbers come first
-auto p = partition!(even)(arr);
+// Partition arr such that even numbers come first
+auto r = partition!(even)(arr);
 // Now arr is separated in evens and odds.
 // Numbers may have become shuffled due to instability
-assert(p == arr.ptr + 5);
-assert(count!(even)(range(begin(arr), p)) == p - begin(arr));
-assert(find!(even)(range(p, end(arr))) == end(arr));
+assert(r == arr[5 .. $]);
+assert(count!(even)(arr[0 .. 5]) == 5);
+assert(find!(even)(r).empty);
 
 // Can also specify the predicate as a string.
 // Use 'a' as the predicate argument name
 arr[] = Arr[];
-p = partition!(q{(a & 1) == 0})(arr);
-assert(p == arr.ptr + 5);
+r = partition!(q{(a & 1) == 0})(arr);
+assert(r == arr[5 .. $]);
 
 // Now for a stable partition:
 arr[] = Arr[];
-p = partition!(q{(a & 1) == 0}, SwapStrategy.stable)(arr);
-// Now arr is [2 4 6 8 10 1 3 5 7 9], and p points to 1
-assert(arr == [2, 4, 6, 8, 10, 1, 3, 5, 7, 9] && p == arr.ptr + 5);
+r = partition!(q{(a & 1) == 0}, SwapStrategy.stable)(arr);
+// Now arr is [2 4 6 8 10 1 3 5 7 9], and r points to 1
+assert(arr == [2, 4, 6, 8, 10, 1, 3, 5, 7, 9] && r == arr[5 .. $]);
 
 // In case the predicate needs to hold its own state, use a delegate:
 arr[] = Arr[];
 int x = 3;
 // Put stuff greater than 3 on the left
 bool fun(int a) { return a > x; }
-p = partition!(fun, SwapStrategy.semistable)(arr);
-// Now arr is [4 5 6 7 8 9 10 2 3 1] and p points to 2
-assert(arr == [4, 5, 6, 7, 8, 9, 10, 2, 3, 1] && p == arr.ptr + 7);
+r = partition!(fun, SwapStrategy.semistable)(arr);
+// Now arr is [4 5 6 7 8 9 10 2 3 1] and r points to 2
+assert(arr == [4, 5, 6, 7, 8, 9, 10, 2, 3, 1] && r == arr[7 .. $]);
 ----
 */
 Range partition(alias predicate,
@@ -4905,18 +4888,15 @@ Range partition(alias predicate,
     }
 }
 
-unittest // partitionold
+unittest // partition
 {
     auto Arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     auto arr = Arr.dup;
     static bool even(int a) { return (a & 1) == 0; }
-// Partitionold a such that even numbers come first
-    //auto p = partitionold!(even)(arr);
+// Partition a such that even numbers come first
     auto p1 = partition!(even)(arr);
 // Now arr is separated in evens and odds.
-    //assert(p == arr.ptr + 5);
     assert(p1 == arr[5 .. $], text(p1));
-    //assert(count!(even)(range(begin(arr), p)) == p - begin(arr));
     assert(count!(even)(arr[0 .. $ - p1.length]) == p1.length);
     assert(find!(even)(p1).empty);
 // Notice that numbers have become shuffled due to instability
@@ -4925,7 +4905,7 @@ unittest // partitionold
 // Use 'a' as the predicate argument name
     p1 = partition!(q{(a & 1) == 0})(arr);
     assert(p1 == arr[5 .. $]);
-// Same result as above. Now for a stable partitionold:
+// Same result as above. Now for a stable partition:
     arr[] = Arr[];
     p1 = partition!(q{(a & 1) == 0}, SwapStrategy.stable)(arr);
 // Now arr is [2 4 6 8 10 1 3 5 7 9], and p points to 1
@@ -5451,7 +5431,7 @@ void schwartzSort(alias transform, alias less = "a < b",
     alias typeof(z.front()) ProxyType;
     bool myLess(ProxyType a, ProxyType b)
     {
-        return binaryFun!(less)(a.field[0], b.field[0]);
+        return binaryFun!(less)(a[0], b[0]);
     }
     sort!(myLess, ss)(z);
 }
@@ -6994,8 +6974,7 @@ void largestPartialIntersectionWeighted
     alias ElementType!Range InfoType;
     bool heapComp(InfoType a, InfoType b)
     {
-        return weights[a.field[0]] * a.field[1] >
-            weights[b.field[0]] * b.field[1];
+        return weights[a[0]] * a[1] > weights[b[0]] * b[1];
     }
     topNCopy!heapComp(group(nWayUnion!less(ror)), tgt, sorted);
 }

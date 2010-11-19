@@ -25,9 +25,10 @@ module std.format;
 import core.stdc.stdio, core.stdc.stdlib, core.stdc.string;
 import std.algorithm, std.array, std.bitmanip, std.conv,
     std.ctype, std.exception, std.functional, std.range, std.stdarg,
-    std.string, std.system, std.traits, std.typetuple, std.utf;
+    std.string, std.system, std.traits, std.typecons, std.typetuple,
+    std.utf;
 version(unittest) {
-    import std.stdio, std.typecons;
+    import std.stdio;
 }
 
 version (Windows) version (DigitalMars)
@@ -438,14 +439,12 @@ void formattedRead(R, Char, S...)(ref R r, const(Char)[] fmt, S args)
 
         skipUnstoredFields();
         alias typeof(*args[0]) A;
-        //@@@BUG 2725
-        //static if (is(A X == Tuple!(T), T))
-        static if (is(A.Types[0]))             // Is it a tuple?
+        static if (isTuple!A)
         {
             foreach (i, T; A.Types)
             {
                 //writeln("Parsing ", r, " with format ", fmt);
-                args[0].field[i] = unformatValue!(T)(r, spec);
+                (*args[0])[i] = unformatValue!(T)(r, spec);
                 skipUnstoredFields();
             }
         }
@@ -594,8 +593,8 @@ struct FormatSpec(Char)
             }
             // Doubled! Now print whatever we had, then update the
             // string and move on
-            put(writer, trailing[0 .. i]);
-            trailing = trailing[i + 1 .. $];
+            put(writer, trailing[0 .. i - 1]);
+            trailing = trailing[i .. $];
             i = 0;
         }
         // no format spec found
@@ -621,6 +620,15 @@ struct FormatSpec(Char)
         assert(w.data == "ab%cd%ef" && f.trailing == "g%%h%sij", w.data);
         f.writeUpToNextSpec(w);
         assert(w.data == "ab%cd%efg%h" && f.trailing == "ij");
+        // bug4775
+        f = FormatSpec("%%%s");
+        w.clear;
+        f.writeUpToNextSpec(w);
+        assert(w.data == "%" && f.trailing == "");
+        f = FormatSpec("%%%%%s%%");
+        w.clear;
+        while (f.writeUpToNextSpec(w)) continue;
+        assert(w.data == "%%%");
     }
 
     private void fillUp()
@@ -1116,6 +1124,15 @@ if (isSomeString!T && !isStaticArray!T)
     }
 }
 
+unittest
+{
+    FormatSpec!char f;
+    auto w = appender!(string);
+    string s = "abc";
+    formatValue(w, s, f);
+    assert(w.data == "abc");
+}
+
 /**
    Input ranges are formatted like arrays.
  */
@@ -1237,6 +1254,26 @@ if (isInputRange!T && !isSomeString!T && isSomeChar!(ElementType!T))
     }
 }
 
+void formatValue(Writer, T, Char)(Writer w, T val,
+        ref FormatSpec!Char f)
+if (!isInputRange!T && isDynamicArray!T && !isSomeString!T &&
+    !is(const(T) == const(void[])))
+{
+    alias Unqual!T U;
+    static assert(isInputRange!U);
+    U unq = val;
+    formatValue(w, unq, f);
+}
+
+unittest
+{
+    FormatSpec!char f;
+    auto w = appender!string();
+    const short[] a = [1, 2, 3];
+    formatValue(w, a, f);
+    assert(w.data == "[1, 2, 3]");
+}
+
 /**
    $(D void[0]) is formatted as "[]".
  */
@@ -1273,6 +1310,8 @@ if (isPointer!T)
 void formatValue(Writer, T, Char)(Writer w, T val, ref FormatSpec!Char f)
 if (is(T == class))
 {
+    // TODO: Change this once toString() works for shared objects.
+    static assert(!is(T == shared), "unable to format shared objects");
     if (val is null) put(w, "null");
     else put(w, val.toString);
 }
@@ -1310,15 +1349,27 @@ void formatValue(Writer, T, Char)(Writer w, T val,
 if (isAssociativeArray!T)
 {
     bool firstTime = true;
+    auto vf = f;
     foreach (ref k, v; val)
     {
         if (firstTime) firstTime = false;
         else put(w, ' ');
         formatValue(w, k, f);
         put(w, ':');
-        formatValue(w, v, f);
+        formatValue(w, v, vf);
     }
 }
+
+
+unittest
+{
+    FormatSpec!char f;
+    auto a = appender!string();
+    int[string] aa = ["aaa": 1, "bbb": 2, "ccc": 3];
+    formatValue(a, aa, f);
+    assert(a.data == "aaa:1 bbb:2 ccc:3");
+}
+
 
 /**
    Associative arrays are formatted by using $(D ':') and $(D ' ') as
@@ -2176,11 +2227,11 @@ unittest
     Tuple!(int, float) t;
     line = "1 2.125".dup;
     formattedRead(line, "%d %g", &t);
-    assert(t.field[0] == 1 && t.field[1] == 2.125);
+    assert(t[0] == 1 && t[1] == 2.125);
 
     line = "1 7643 2.125".dup;
     formattedRead(line, "%s %*u %s", &t);
-    assert(t.field[0] == 1 && t.field[1] == 2.125);
+    assert(t[0] == 1 && t[1] == 2.125);
 }
 
 // Legacy implementation

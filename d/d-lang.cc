@@ -159,7 +159,7 @@ static unsigned int
 d_init_options (unsigned int, const char ** argv)
 {
     // Set default values
-    global.params.argv0 = (char *) argv[0]; //progname
+    global.params.argv0 = (char *) progname;
     global.params.link = 1;
     global.params.useAssert = 1;
     global.params.useInvariants = 1;

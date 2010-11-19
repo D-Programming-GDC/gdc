@@ -266,11 +266,13 @@ struct File
         FILE * handle = null;
         uint refs = uint.max / 2;
         string name = null;
-        this(FILE* h, uint r, string n)
+        bool isPipe;
+        this(FILE* h, uint r, string n, bool pipe = false)
         {
             handle = h;
             refs = r;
             name = n;
+            isPipe = pipe;
         }
     }
     private Impl * p;
@@ -343,7 +345,7 @@ opengroup.org/onlinepubs/007908799/xsh/_popen.html, _popen).
         detach;
         p = new Impl(errnoEnforce(.popen(command, stdioOpenmode),
                         "Cannot run command `"~command~"'"),
-                1, command);
+                1, command, true);
     }
 
 /** Returns $(D true) if the file is opened. */
@@ -415,9 +417,19 @@ referring to the same handle will see a closed file henceforth.
             --p.refs;
             p = null;
         }
+        version (Posix)
+        {
+            if (p.isPipe)
+            {
+                // Ignore the result of the command
+                errnoEnforce(.pclose(p.handle) == 0,
+                        "Could not close pipe `"~p.name~"'");
+                return;
+            }
+        }
         //fprintf(std.c.stdio.stderr, ("Closing file `"~name~"`.\n\0").ptr);
         errnoEnforce(.fclose(p.handle) == 0,
-                    "Could not close file `"~p.name~"'");
+                "Could not close file `"~p.name~"'");
     }
 
 /**
@@ -993,6 +1005,59 @@ to this file. */
         // }
     }
 
+
+    /**
+     * Range that reads a chunk at a time.
+     */
+    struct ByChunk
+    {
+      private:
+        File    file_;
+        ubyte[] chunk_;
+ 
+ 
+      public:
+        this(File file, size_t size)
+        in
+        {
+            assert(size, "size must be larger than 0");
+        }
+        body
+        {
+            file_  = file;
+            chunk_ = new ubyte[](size);
+ 
+            popFront();
+        }
+ 
+
+        /// Range primitive operations.
+        @property
+        bool empty() const
+        {
+            return !file_.isOpen;
+        }
+ 
+
+        /// Ditto
+        @property
+        nothrow ubyte[] front()
+        {
+            return chunk_;
+        }
+ 
+
+        /// Ditto
+        void popFront()
+        {
+            enforce(!empty, "Cannot call popFront on empty range");
+ 
+            chunk_ = file_.rawRead(chunk_);
+            if (chunk_.length == 0)
+                file_.detach();
+        }
+    }
+
 /**
 Iterates through a file a chunk at a time by using $(D foreach).
 
@@ -1015,9 +1080,31 @@ always greater than zero).
 
 In case of an I/O error, an $(D StdioException) is thrown.
  */
-    chunks byChunk(size_t chunkSize)
+    ByChunk byChunk(size_t chunkSize)
     {
-        return chunks(this, chunkSize);
+        return ByChunk(this, chunkSize);
+    }
+
+    unittest
+    {
+        scope(failure) printf("Failed test at line %d\n", __LINE__);
+
+        std.file.write("testingByChunk", "asd\ndef\nasdf");
+
+        auto witness = ["asd\n", "def\n", "asdf" ];
+        auto f = File("testingByChunk");
+        scope(exit)
+        {
+            f.close;
+            assert(!f.isOpen);
+            std.file.remove("testingByChunk");
+        }
+
+        uint i;
+        foreach (chunk; f.byChunk(4))
+            assert(chunk == cast(ubyte[])witness[i++]);
+
+        assert(i == witness.length);
     }
 
 /**

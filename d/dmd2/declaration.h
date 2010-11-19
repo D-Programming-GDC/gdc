@@ -43,6 +43,7 @@ enum PROT;
 enum LINK;
 enum TOK;
 enum MATCH;
+enum PURE;
 
 #define STCundefined    0LL
 #define STCstatic       1LL
@@ -536,6 +537,7 @@ struct FuncDeclaration : Declaration
     VarDeclaration *v_arguments_var;    // '_arguments' variable
     VarDeclaration *v_argptr;           // '_argptr' variable
 #endif
+    VarDeclaration *v_argsave;          // save area for args passed in registers for variadic functions
     Dsymbols *parameters;               // Array of VarDeclaration's for parameters
     DsymbolTable *labtab;               // statement label symbol table
     Declaration *overnext;              // next in overload list
@@ -613,7 +615,7 @@ struct FuncDeclaration : Declaration
     int isAbstract();
     int isCodeseg();
     int isOverloadable();
-    int isPure();
+    enum PURE isPure();
     int isSafe();
     int isTrusted();
     virtual int isNested();

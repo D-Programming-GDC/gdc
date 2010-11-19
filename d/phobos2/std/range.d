@@ -469,9 +469,11 @@ unittest
 
 /**
 Returns $(D true) if $(D R) is a random-access range. A random-access
-range is a forward range that also offers the primitive $(D
-opIndex), OR an infinite input range that offers $(D opIndex). The
-following code should compile for any random-access range.
+range is a bidirectional range that also offers the primitive $(D
+opIndex), OR an infinite forward range that offers $(D opIndex). In
+either case, the range must either offer $(D length) or be
+infinite. The following code should compile for any random-access
+range.
 
 ----
 R r;
@@ -490,7 +492,7 @@ element in the range.))
 template isRandomAccessRange(R)
 {
     enum bool isRandomAccessRange =
-        (isBidirectionalRange!(R) || isInfinite!(R))
+        (isBidirectionalRange!R || isForwardRange!R && isInfinite!R)
         && is(typeof(R.init[1]))
         && !isNarrowString!R
         && (hasLength!R || isInfinite!R);
@@ -807,9 +809,10 @@ int[] a = [ 1, 2, 3, 4, 5 ];
 assert(equal(retro(a), [ 5, 4, 3, 2, 1 ][]));
 ----
  */
-struct Retro(R) if (isBidirectionalRange!(R) && !isRetro!R)
+struct Retro(Range) if (isBidirectionalRange!(Unqual!Range) && !isRetro!Range)
 {
 private:
+    alias Unqual!Range R;
     R _input;
     enum bool byRef = is(typeof(&(R.init.front())));
 
@@ -944,7 +947,7 @@ is a random access range and if $(D R) defines $(D R.length).
         static if (hasSlicing!R)
             typeof(this) opSlice(size_t a, size_t b)
             {
-                return retro(_input[_input.length - b .. _input.length - a]);
+                return typeof(this)(_input[_input.length - b .. _input.length - a]);
             }
     }
 
@@ -966,7 +969,7 @@ template Retro(R) if (isRetro!R)
 }
 
 /// Ditto
-Retro!(R) retro(R)(R input) if (isBidirectionalRange!(R))
+Retro!(R) retro(R)(R input) if (isBidirectionalRange!(Unqual!R))
 {
     static if (isRetro!R)
         return input._input;
@@ -993,6 +996,10 @@ unittest
     test([ 1, 2, 3, 4 ], [ 4, 3, 2, 1 ]);
     test([ 1, 2, 3, 4, 5 ], [ 5, 4, 3, 2, 1 ]);
     test([ 1, 2, 3, 4, 5, 6 ], [ 6, 5, 4, 3, 2, 1 ]);
+
+   // static assert(is(Retro!(immutable int[])));
+   immutable foo = [1,2,3].idup;
+   retro(foo);
 
     foreach(DummyType; AllDummyRanges) {
         static if(!isBidirectionalRange!DummyType) {
@@ -1055,9 +1062,10 @@ int[] a = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ];
 assert(equal(stride(a, 3), [ 1, 4, 7, 10 ][]));
 ----
  */
-struct Stride(R) if (isInputRange!(R))
+struct Stride(Range) if (isInputRange!(Unqual!Range))
 {
 private:
+    alias Unqual!Range R;
     R _input;
     size_t _n;
 
@@ -1072,7 +1080,18 @@ Initializes the stride.
         static if (hasLength!(R))
         {
             auto slack = _input.length % _n;
-            if (slack) slack--;
+
+            if (slack)
+            {
+                slack--;
+            } else if(input.length > 0)
+            {
+                slack = min(n, input.length) - 1;
+            } else
+            {
+                slack = 0;
+            }
+
             if (!slack) return;
             static if (isRandomAccessRange!(R) && hasSlicing!(R))
             {
@@ -1164,15 +1183,19 @@ Forwards to $(D moveFront(_input)).
     }
 
 /**
-Forwards to $(D _input.popFront).
+Forwards to $(D _input.popBack).
  */
     static if (isBidirectionalRange!(R) && hasLength!(R))
         void popBack()
         {
-            assert(_input.length >= _n);
+            assert(_input.length >= 1);
             static if (isRandomAccessRange!(R) && hasSlicing!(R))
             {
-                _input = _input[0 .. _input.length - _n];
+                if(_input.length < _n) {
+                    _input = _input[0 .. 0];
+                } else {
+                    _input = _input[0 .. _input.length - _n];
+                }
             }
             else
             {
@@ -1272,7 +1295,7 @@ hasLength!(R)).
 
 /// Ditto
 Stride!(R) stride(R)(R input, size_t n)
-    if (isInputRange!(R))
+    if (isInputRange!(Unqual!R))
 {
     enforce(n > 0);
     return Stride!(R)(input, n);
@@ -1306,6 +1329,15 @@ unittest
     assert(equal(s2[1..5], [3, 5, 7, 9]));
     assert(s2[1..5].length == 4);
     assert(s2[0..0].empty);
+
+    // Test fix for Bug 5035
+    auto m = [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4]; // 3 rows, 4 columns
+    auto col = stride(m, 4);
+    assert(equal(col, [1, 1, 1]));
+    assert(equal(retro(col), [1, 1, 1]));
+
+
+    static assert(is(Stride!(immutable int[])));
 
     // Check for infiniteness propagation.
     static assert(isInfinite!(typeof(stride(repeat(1), 3))));
@@ -1410,7 +1442,8 @@ assert(equal(s, [1, 2, 3, 4, 5, 6, 7][]));
 ----
  */
 
-template Chain(R...) if (allSatisfy!(isInputRange, R))
+template Chain(R...)
+if(allSatisfy!(isInputRange, staticMap!(Unqual, R)))
 {
     static if (R.length > 1)
         alias ChainImpl!(R) Chain;
@@ -1418,9 +1451,10 @@ template Chain(R...) if (allSatisfy!(isInputRange, R))
         alias R[0] Chain;
 }
 
-struct ChainImpl(R...)
+struct ChainImpl(Ranges...)
 {
 private:
+    alias staticMap!(Unqual, Ranges) R;
     alias CommonType!(staticMap!(.ElementType, R)) RvalueElementType;
     private template sameET(A)
     {
@@ -1458,7 +1492,7 @@ public:
     {
         foreach (i, v; input)
         {
-            _input.field[i] = v;
+            _input[i] = v;
         }
     }
 
@@ -1473,7 +1507,7 @@ public:
         {
             foreach (i, Unused; R)
             {
-                if (!_input.field[i].empty) return false;
+                if (!_input[i].empty) return false;
             }
             return true;
         }
@@ -1485,7 +1519,7 @@ public:
             auto result = ChainImpl();
             foreach (i, Unused; R)
             {
-                result._input.field[i] = _input.field[i].save;
+                result._input[i] = _input[i].save;
             }
             return result;
         }
@@ -1494,8 +1528,8 @@ public:
     {
         foreach (i, Unused; R)
         {
-            if (_input.field[i].empty) continue;
-            _input.field[i].popFront;
+            if (_input[i].empty) continue;
+            _input[i].popFront;
             return;
         }
     }
@@ -1504,8 +1538,8 @@ public:
     {
         foreach (i, Unused; R)
         {
-            if (_input.field[i].empty) continue;
-            return fixRef(_input.field[i].front);
+            if (_input[i].empty) continue;
+            return fixRef(_input[i].front);
         }
         assert(false);
     }
@@ -1520,8 +1554,8 @@ public:
         {
             foreach (i, Unused; R)
             {
-                if (_input.field[i].empty) continue;
-                _input.field[i].front = v;
+                if (_input[i].empty) continue;
+                _input[i].front = v;
                 return;
             }
             assert(false);
@@ -1534,8 +1568,8 @@ public:
         {
             foreach (i, Unused; R)
             {
-                if (_input.field[i].empty) continue;
-                return .moveFront(_input.field[i]);
+                if (_input[i].empty) continue;
+                return .moveFront(_input[i]);
             }
             assert(false);
         }
@@ -1547,8 +1581,8 @@ public:
         {
             foreach_reverse (i, Unused; R)
             {
-                if (_input.field[i].empty) continue;
-                return fixRef(_input.field[i].back);
+                if (_input[i].empty) continue;
+                return fixRef(_input[i].back);
             }
             assert(false);
         }
@@ -1557,8 +1591,8 @@ public:
         {
             foreach_reverse (i, Unused; R)
             {
-                if (_input.field[i].empty) continue;
-                _input.field[i].popBack;
+                if (_input[i].empty) continue;
+                _input[i].popBack;
                 return;
             }
         }
@@ -1569,8 +1603,8 @@ public:
             {
                 foreach_reverse (i, Unused; R)
                 {
-                    if (_input.field[i].empty) continue;
-                    return .moveBack(_input.field[i]);
+                    if (_input[i].empty) continue;
+                    return .moveBack(_input[i]);
                 }
                 assert(false);
             }
@@ -1584,8 +1618,8 @@ public:
             {
                 foreach_reverse (i, Unused; R)
                 {
-                    if (_input.field[i].empty) continue;
-                    _input.field[i].back = v;
+                    if (_input[i].empty) continue;
+                    _input[i].back = v;
                     return;
                 }
                 assert(false);
@@ -1599,7 +1633,7 @@ public:
             size_t result;
             foreach (i, Unused; R)
             {
-                result += _input.field[i].length;
+                result += _input[i].length;
             }
             return result;
         }
@@ -1612,12 +1646,12 @@ public:
             {
                 static if(isInfinite!(Range))
                 {
-                    return _input.field[i][index];
+                    return _input[i][index];
                 }
                 else
                 {
-                    immutable length = _input.field[i].length;
-                    if (index < length) return fixRef(_input.field[i][index]);
+                    immutable length = _input[i].length;
+                    if (index < length) return fixRef(_input[i][index]);
                     index -= length;
                 }
             }
@@ -1632,12 +1666,12 @@ public:
                 {
                     static if(isInfinite!(Range))
                     {
-                        return .moveAt(_input.field[i], index);
+                        return .moveAt(_input[i], index);
                     }
                     else
                     {
-                        immutable length = _input.field[i].length;
-                        if (index < length) return .moveAt(_input.field[i], index);
+                        immutable length = _input[i].length;
+                        if (index < length) return .moveAt(_input[i], index);
                         index -= length;
                     }
                 }
@@ -1652,14 +1686,14 @@ public:
             {
                 static if(isInfinite!(Range))
                 {
-                    _input.field[i][index] = v;
+                    _input[i][index] = v;
                 }
                 else
                 {
-                    immutable length = _input.field[i].length;
+                    immutable length = _input[i].length;
                     if (index < length)
                     {
-                        _input.field[i][index] = v;
+                        _input[i][index] = v;
                         return;
                     }
                     index -= length;
@@ -1675,16 +1709,16 @@ public:
             auto result = this;
             foreach (i, Unused; R)
             {
-                immutable len = result._input.field[i].length;
+                immutable len = result._input[i].length;
                 if (len < begin)
                 {
-                    result._input.field[i] = result._input.field[i]
+                    result._input[i] = result._input[i]
                         [len .. len];
                     begin -= len;
                 }
                 else
                 {
-                    result._input.field[i] = result._input.field[i]
+                    result._input[i] = result._input[i]
                         [begin .. len];
                     break;
                 }
@@ -1693,16 +1727,16 @@ public:
             cut = cut <= end ? 0 : cut - end;
             foreach_reverse (i, Unused; R)
             {
-                immutable len = result._input.field[i].length;
+                immutable len = result._input[i].length;
                 if (cut > len)
                 {
-                    result._input.field[i] = result._input.field[i]
+                    result._input[i] = result._input[i]
                         [0 .. 0];
                     cut -= len;
                 }
                 else
                 {
-                    result._input.field[i] = result._input.field[i]
+                    result._input[i] = result._input[i]
                         [0 .. len - cut];
                     break;
                 }
@@ -1767,6 +1801,8 @@ unittest
     assert(inf[7] == 5);
     static assert(isInfinite!(typeof(inf)));
 
+    static assert(is(Chain!(immutable int[], immutable float[])));
+
 
     // Check that chain at least instantiates and compiles with every possible
     // pair of DummyRange types, in either order.
@@ -1826,9 +1862,11 @@ a = [ 1, 2, 3, 4 ];
 assert(equal(radial(a), [ 2, 3, 1, 4 ][]));
 ----
  */
-struct Radial(R) if (isRandomAccessRange!(R) && hasLength!(R))
+struct Radial(Range)
+if(isRandomAccessRange!(Unqual!Range) && hasLength!(Unqual!Range))
 {
 private:
+    alias Unqual!Range R;
     R _low, _up;
     bool _upIsActive;
 
@@ -1974,14 +2012,14 @@ element. Throws if the range is empty.
 
 /// Ditto
 Radial!(R) radial(R)(R r)
-    if (isRandomAccessRange!(R) && hasLength!(R))
+    if (isRandomAccessRange!(Unqual!R) && hasLength!(Unqual!R))
 {
     return Radial!(R)(r);
 }
 
 /// Ditto
 Radial!(R) radial(R)(R r, size_t startingIndex)
-    if (isRandomAccessRange!(R) && hasLength!(R))
+    if (isRandomAccessRange!(Unqual!R) && hasLength!(Unqual!R))
 {
     return Radial!(R)(r, startingIndex);
 }
@@ -2014,6 +2052,8 @@ unittest
     // Test instantiation without lvalue elements.
     DummyRange!(ReturnBy.Value, Length.Yes, RangeType.Random) dummy;
     assert(equal(radial(dummy, 4), [5, 6, 4, 7, 3, 8, 2, 9, 1, 10]));
+
+    static assert(is(Radial!(immutable int[])));
 }
 
 /**
@@ -2030,8 +2070,11 @@ assert(s[4] == 5);
 assert(equal(s, [ 1, 2, 3, 4, 5 ][]));
 ----
  */
-struct Take(R) if (isInputRange!(R) && (!hasSlicing!(R) || isNarrowString!(R)))
+struct Take(Range)
+if(isInputRange!(Unqual!Range) &&
+(!hasSlicing!(Unqual!Range) || isNarrowString!(Unqual!Range)))
 {
+    alias Unqual!Range R;
     R original;
     private size_t _maxAvailable;
     enum bool byRef = is(typeof(&_input.front) == ElementType!(R)*);
@@ -2166,21 +2209,31 @@ public:
 
 // This template simply aliases itself to R and is useful for consistency in
 // generic code.
-template Take(R) if(isInputRange!R && hasSlicing!R && !isNarrowString!R)
+template Take(R)
+if(isInputRange!(Unqual!R) && hasSlicing!(Unqual!R) && !isNarrowString!(Unqual!R))
 {
     alias R Take;
 }
 
 /// Ditto
+R take(R)(R input, size_t n)
+if((isInputRange!(Unqual!R) && (!hasSlicing!(Unqual!R) || isNarrowString!(Unqual!R)))
+    && is (R T == Take!T))
+{
+    return R(input.original, min(n, input.maxLength));
+}
+
+/// Ditto
 Take!(R) take(R)(R input, size_t n)
-if (isInputRange!R && (!hasSlicing!R || isNarrowString!R))
+if((isInputRange!(Unqual!R) && (!hasSlicing!(Unqual!R) || isNarrowString!(Unqual!R)))
+    && !is (R T == Take!T))
 {
     return Take!(R)(input, n);
 }
 
 /// Ditto
 Take!(R) take(R)(R input, size_t n)
-if (isInputRange!R && hasSlicing!R && !isNarrowString!R)
+if(isInputRange!(Unqual!R) && hasSlicing!(Unqual!R) && !isNarrowString!(Unqual!R))
 {
     static if (hasLength!R)
     {
@@ -2211,7 +2264,16 @@ unittest
 
     // Test using narrow strings.
     auto myStr = "This is a string.";
-    assert(equal(take(myStr, 7), "This is"));
+    auto takeMyStr = take(myStr, 7);
+    assert(equal(takeMyStr, "This is"));
+
+    // Test fix for bug 5052.
+    auto takeMyStrAgain = take(takeMyStr, 4);
+    assert(equal(takeMyStrAgain, "This"));
+    static assert (is (typeof(takeMyStrAgain) == typeof(takeMyStr)));
+    takeMyStrAgain = take(takeMyStr, 10);
+    assert(equal(takeMyStrAgain, "This is"));
+    
 
     foreach(DummyType; AllDummyRanges) {
         DummyType dummy;
@@ -2238,6 +2300,9 @@ unittest
 
         assert(equal(t, [1,2,3,4,5]));
     }
+
+    immutable myRepeat = repeat(1);
+    static assert(is(Take!(typeof(myRepeat))));
 }
 
 /**
@@ -2384,8 +2449,11 @@ assert(equal(take(cycle([1, 2][]), 5), [ 1, 2, 1, 2, 1 ][]));
 
 Tip: This is a great way to implement simple circular buffers.
  */
-struct Cycle(R) if (isForwardRange!(R) && !isInfinite!(R))
+struct Cycle(Range)
+if (isForwardRange!(Unqual!Range) && !isInfinite!(Unqual!Range))
 {
+    alias Unqual!Range R;
+
     static if (isRandomAccessRange!(R) && hasLength!(R))
     {
         R _original;
@@ -2462,7 +2530,7 @@ struct Cycle(R) if (isForwardRange!(R) && !isInfinite!(R))
 }
 
 /// Ditto
-template Cycle(R) if (isInfinite!(R))
+template Cycle(R) if(isInfinite!(R))
 {
     alias R Cycle;
 }
@@ -2499,13 +2567,15 @@ struct Cycle(R) if (isStaticArray!(R))
 }
 
 /// Ditto
-Cycle!(R) cycle(R)(R input) if (isForwardRange!(R) && !isInfinite!(R))
+Cycle!(R) cycle(R)(R input)
+if(isForwardRange!(Unqual!R) && !isInfinite!(Unqual!R))
 {
     return Cycle!(R)(input);
 }
 
 /// Ditto
-Cycle!(R) cycle(R)(R input, size_t index) if (isRandomAccessRange!(R) && !isInfinite!(R))
+Cycle!(R) cycle(R)(R input, size_t index)
+if(isRandomAccessRange!(Unqual!R) && !isInfinite!(Unqual!R))
 {
     return Cycle!(R)(input, index);
 }
@@ -2539,6 +2609,8 @@ unittest
     auto c2 = cycle(nums);
     c2[3]++;
     assert(nums[0] == 2);
+
+    static assert(is(Cycle!(immutable int[])));
 
     foreach(DummyType; AllDummyRanges) {
         static if(isForwardRange!(DummyType)) {
@@ -2586,7 +2658,7 @@ unittest // For infinite ranges
 /**
 Iterate several ranges in lockstep. The element type is a proxy tuple
 that allows accessing the current element in the $(D n)th range by
-using $(D e.at!(n)).
+using $(D e[n]).
 
 Example:
 ----
@@ -2595,7 +2667,7 @@ string[] b = [ "a", "b", "c" ];
 // prints 1:a 2:b 3:c
 foreach (e; zip(a, b))
 {
-    write(e.at!(0), ':', e.at!(1), ' ');
+    write(e[0], ':', e[1], ' ');
 }
 ----
 
@@ -2609,13 +2681,15 @@ in parallel:
 ----
 int[] a = [ 1, 2, 3 ];
 string[] b = [ "a", "b", "c" ];
-sort!("a.at!(0) > b.at!(0)")(zip(a, b));
+sort!("a[0] > b[0]")(zip(a, b));
 assert(a == [ 3, 2, 1 ]);
 assert(b == [ "c", "b", "a" ]);
 ----
  */
-struct Zip(R...) if (R.length && allSatisfy!(isInputRange, R))
+struct Zip(Ranges...)
+if(Ranges.length && allSatisfy!(isInputRange, staticMap!(Unqual, Ranges)))
 {
+    alias staticMap!(Unqual, Ranges) R;
     Tuple!R ranges;
     alias Tuple!(staticMap!(.ElementType, R)) ElementType;
     StoppingPolicy stoppingPolicy = StoppingPolicy.shortest;
@@ -2629,7 +2703,7 @@ struct Zip(R...) if (R.length && allSatisfy!(isInputRange, R))
         stoppingPolicy = s;
         foreach (i, Unused; R)
         {
-            ranges.field[i] = rs[i];
+            ranges[i] = rs[i];
         }
     }
 
@@ -2653,19 +2727,19 @@ stopping policy.
                 case StoppingPolicy.shortest:
                     foreach (i, Unused; R)
                     {
-                        if (ranges.field[i].empty) return true;
+                        if (ranges[i].empty) return true;
                     }
                     break;
                 case StoppingPolicy.longest:
                     foreach (i, Unused; R)
                     {
-                        if (!ranges.field[i].empty) return false;
+                        if (!ranges[i].empty) return false;
                     }
                     break;
                 case StoppingPolicy.requireSameLength:
                     foreach (i, Unused; R[1 .. $])
                     {
-                        enforce(ranges.field[0].empty ==
+                        enforce(ranges[0].empty ==
                                 ranges.field[i + 1].empty,
                                 "Inequal-length ranges passed to Zip");
                     }
@@ -2682,7 +2756,7 @@ stopping policy.
             result.stoppingPolicy = stoppingPolicy;
             foreach (i, Unused; R)
             {
-                result.ranges.field[i] = ranges.field[i].save;
+                result.ranges[i] = ranges[i].save;
             }
             return result;
         }
@@ -2695,13 +2769,13 @@ stopping policy.
         ElementType result = void;
         foreach (i, Unused; R)
         {
-            if (!ranges.field[i].empty)
+            if (!ranges[i].empty)
             {
-                emplace(&result.field[i], ranges.field[i].front);
+                emplace(&result[i], ranges[i].front);
             }
             else
             {
-                emplace(&result.field[i]);
+                emplace(&result[i]);
             }
         }
         return result;
@@ -2716,9 +2790,9 @@ stopping policy.
         {
             foreach (i, Unused; R)
             {
-                if (!ranges.field[i].empty)
+                if (!ranges[i].empty)
                 {
-                    ranges.field[i].front = v.field[i];
+                    ranges[i].front = v[i];
                 }
             }
         }
@@ -2734,13 +2808,13 @@ stopping policy.
             ElementType result = void;
             foreach (i, Unused; R)
             {
-                if (!ranges.field[i].empty)
+                if (!ranges[i].empty)
                 {
-                    emplace(&result.field[i], .moveFront(ranges.field[i]));
+                    emplace(&result[i], .moveFront(ranges[i]));
                 }
                 else
                 {
-                    emplace(&result.field[i]);
+                    emplace(&result[i]);
                 }
             }
             return result;
@@ -2757,13 +2831,13 @@ stopping policy.
             ElementType result = void;
             foreach (i, Unused; R)
             {
-                if (!ranges.field[i].empty)
+                if (!ranges[i].empty)
                 {
-                    emplace(&result.field[i], ranges.field[i].back);
+                    emplace(&result[i], ranges[i].back);
                 }
                 else
                 {
-                    emplace(&result.field[i]);
+                    emplace(&result[i]);
                 }
             }
             return result;
@@ -2779,13 +2853,13 @@ stopping policy.
                 ElementType result = void;
                 foreach (i, Unused; R)
                 {
-                    if (!ranges.field[i].empty)
+                    if (!ranges[i].empty)
                     {
-                        emplace(&result.field[i], .moveBack(ranges.field[i]));
+                        emplace(&result[i], .moveBack(ranges[i]));
                     }
                     else
                     {
-                        emplace(&result.field[i]);
+                        emplace(&result[i]);
                     }
                 }
                 return result;
@@ -2801,9 +2875,9 @@ stopping policy.
             {
                 foreach (i, Unused; R)
                 {
-                    if (!ranges.field[i].empty)
+                    if (!ranges[i].empty)
                     {
-                        ranges.field[i].back = v.field[i];
+                        ranges[i].back = v[i];
                     }
                 }
             }
@@ -2820,21 +2894,21 @@ stopping policy.
             case StoppingPolicy.shortest:
                 foreach (i, Unused; R)
                 {
-                    assert(!ranges.field[i].empty);
-                    ranges.field[i].popFront();
+                    assert(!ranges[i].empty);
+                    ranges[i].popFront();
                 }
                 break;
             case StoppingPolicy.longest:
                 foreach (i, Unused; R)
                 {
-                    if (!ranges.field[i].empty) ranges.field[i].popFront();
+                    if (!ranges[i].empty) ranges[i].popFront();
                 }
                 break;
             case StoppingPolicy.requireSameLength:
                 foreach (i, Unused; R)
                 {
-                    enforce(!ranges.field[i].empty, "Invalid Zip object");
-                    ranges.field[i].popFront();
+                    enforce(!ranges[i].empty, "Invalid Zip object");
+                    ranges[i].popFront();
                 }
                 break;
         }
@@ -2851,21 +2925,21 @@ stopping policy.
                 case StoppingPolicy.shortest:
                     foreach (i, Unused; R)
                     {
-                        assert(!ranges.field[i].empty);
-                        ranges.field[i].popBack();
+                        assert(!ranges[i].empty);
+                        ranges[i].popBack();
                     }
                     break;
                 case StoppingPolicy.longest:
                     foreach (i, Unused; R)
                     {
-                        if (!ranges.field[i].empty) ranges.field[i].popBack();
+                        if (!ranges[i].empty) ranges[i].popBack();
                     }
                     break;
                 case StoppingPolicy.requireSameLength:
                     foreach (i, Unused; R)
                     {
-                        enforce(!ranges.field[0].empty, "Invalid Zip object");
-                        ranges.field[i].popBack();
+                        enforce(!ranges[0].empty, "Invalid Zip object");
+                        ranges[i].popBack();
                     }
                     break;
             }
@@ -2878,7 +2952,7 @@ stopping policy.
     static if (allSatisfy!(hasLength, R))
         @property size_t length()
         {
-            auto result = ranges.field[0].length;
+            auto result = ranges[0].length;
             if (stoppingPolicy == StoppingPolicy.requireSameLength)
                 return result;
             foreach (i, Unused; R[1 .. $])
@@ -2907,7 +2981,7 @@ stopping policy.
             emplace(&result.stoppingPolicy, stoppingPolicy);
             foreach (i, Unused; R)
             {
-                emplace(&result.ranges.field[i], ranges.field[i][from .. to]);
+                emplace(&result.ranges[i], ranges[i][from .. to]);
             }
             return result;
         }
@@ -2923,7 +2997,7 @@ stopping policy.
             ElementType result = void;
             foreach (i, Range; R)
             {
-                emplace(&result.field[i], ranges.field[i][n]);
+                emplace(&result[i], ranges[i][n]);
             }
             return result;
         }
@@ -2938,7 +3012,7 @@ stopping policy.
             {
                 foreach (i, Range; R)
                 {
-                    ranges.field[i][n] = v.field[i];
+                    ranges[i][n] = v[i];
                 }
             }
         }
@@ -2954,7 +3028,7 @@ stopping policy.
                 ElementType result = void;
                 foreach (i, Range; R)
                 {
-                    emplace(&result.field[i], .moveAt(ranges.field[i], n));
+                    emplace(&result[i], .moveAt(ranges[i], n));
                 }
                 return result;
             }
@@ -2964,13 +3038,14 @@ stopping policy.
 
 /// Ditto
 Zip!(R) zip(R...)(R ranges)
-if (allSatisfy!(isInputRange, R))
+if (allSatisfy!(isInputRange, staticMap!(Unqual, R)))
 {
     return Zip!(R)(ranges);
 }
 
 /// Ditto
-Zip!(R) zip(R...)(StoppingPolicy sp, R ranges) if (allSatisfy!(isInputRange, R))
+Zip!(R) zip(R...)(StoppingPolicy sp, R ranges)
+if(allSatisfy!(isInputRange, staticMap!(Unqual, R)))
 {
     return Zip!(R)(ranges, sp);
 }
@@ -2995,13 +3070,13 @@ unittest
     float[] b = [ 1., 2, 3 ];
     foreach (e; zip(a, b))
     {
-        assert(e.field[0] == e.field[1]);
+        assert(e[0] == e[1]);
     }
 
     swap(a[0], a[1]);
     auto z = zip(a, b);
     //swap(z.front(), z.back());
-    sort!("a.field[0] < b.field[0]")(zip(a, b));
+    sort!("a[0] < b[0]")(zip(a, b));
     assert(a == [1, 2, 3]);
     assert(b == [2., 1, 3]);
 
@@ -3014,12 +3089,14 @@ unittest
     // Test infiniteness propagation.
     static assert(isInfinite!(typeof(zip(repeat(1), repeat(1)))));
 
+    alias Zip!(immutable int[], immutable float[]) FOO;
+
     foreach(t; stuff.expand) {
-        auto arr1 = t.field[0];
-        auto arr2 = t.field[1];
+        auto arr1 = t[0];
+        auto arr2 = t[1];
         auto zShortest = zip(arr1, arr2);
-        assert(equal(map!"a.field[0]"(zShortest), [1, 2]));
-        assert(equal(map!"a.field[1]"(zShortest), [1, 2]));
+        assert(equal(map!"a[0]"(zShortest), [1, 2]));
+        assert(equal(map!"a[1]"(zShortest), [1, 2]));
 
         try {
             auto zSame = zip(StoppingPolicy.requireSameLength, arr1, arr2);
@@ -3028,14 +3105,17 @@ unittest
         } catch { /* It's supposed to throw.*/ }
 
         auto zLongest = zip(StoppingPolicy.requireSameLength, arr1, arr2);
-        assert(!zLongest.ranges.field[0].empty);
-        assert(!zLongest.ranges.field[1].empty);
+        assert(!zLongest.ranges[0].empty);
+        assert(!zLongest.ranges[1].empty);
 
         zLongest.popFront();
         zLongest.popFront();
-        assert(zLongest.ranges.field[0].empty);
-        assert(!zLongest.ranges.field[1].empty);
+        assert(zLongest.ranges[0].empty);
+        assert(!zLongest.ranges[1].empty);
     }
+
+    // Doesn't work yet.  Issues w/ emplace.
+    // static assert(is(Zip!(immutable int[], immutable float[])));
 
 
     // These unittests pass, but make the compiler consume an absurd amount
@@ -3050,8 +3130,8 @@ unittest
             DummyType2 d2;
             auto r = zip(d1, d2);
 
-            assert(equal(map!"a.at!0"(r), [1,2,3,4,5,6,7,8,9,10]));
-            assert(equal(map!"a.at!1"(r), [1,2,3,4,5,6,7,8,9,10]));
+            assert(equal(map!"a[0]"(r), [1,2,3,4,5,6,7,8,9,10]));
+            assert(equal(map!"a[1]"(r), [1,2,3,4,5,6,7,8,9,10]));
 
             static if(isForwardRange!DummyType1 && isForwardRange!DummyType2) {
                 static assert(isForwardRange!(typeof(r)));
@@ -3077,7 +3157,7 @@ unittest
     auto b = [3,1,2,5,6];
     auto z = zip(a, b);
 
-    sort!"a.field[0] < b.field[0]"(z);
+    sort!"a[0] < b[0]"(z);
 }
 
 /* CTFE function to generate opApply loop for Lockstep.*/
@@ -3117,7 +3197,7 @@ private string lockstepApply(Ranges...)(bool withIndex) if(Ranges.length > 0)
     {
         static if(!hasLvalueElements!Range) {
             // Don't have lvalue access.
-            ret ~= "\tElementType!(Ranges[" ~ to!string(ti) ~ "]) front" ~
+            ret ~= "\tElementType!(R[" ~ to!string(ti) ~ "]) front" ~
                    to!string(ti) ~ ";\n";
         }
     }
@@ -3217,10 +3297,11 @@ foreach(index, a, b; lockstep(arr1, arr2)) {
 ---
 */
 struct Lockstep(Ranges...)
-if(Ranges.length > 1 && allSatisfy!(isInputRange, Ranges))
+if(Ranges.length > 1 && allSatisfy!(isInputRange, staticMap!(Unqual, Ranges)))
 {
 private:
-    Ranges _ranges;
+    alias staticMap!(Unqual, Ranges) R;
+    R _ranges;
     StoppingPolicy _s;
 
     void enforceAllEmpty() {
@@ -3230,7 +3311,7 @@ private:
     }
 
 public:
-    this(Ranges ranges, StoppingPolicy s = StoppingPolicy.shortest)
+    this(R ranges, StoppingPolicy s = StoppingPolicy.shortest)
     {
         _ranges = ranges;
         enforce(s != StoppingPolicy.longest,
@@ -3263,8 +3344,8 @@ else
 {
     // Work around DMD bugs 4676, 4652.
     auto lockstep(Args...)(Args args)
-    if(allSatisfy!(isInputRange, Args) || (
-       allSatisfy!(isInputRange, Args[0..$ - 1]) &&
+    if(allSatisfy!(isInputRange, staticMap!(Unqual, Args)) || (
+       allSatisfy!(isInputRange, staticMap!(Unqual, Args[0..$ - 1])) &&
        is(Args[$ - 1] == StoppingPolicy))
     )
     {
@@ -3296,7 +3377,7 @@ unittest {
     // The filters are to make these the lowest common forward denominator ranges,
     // i.e. w/o ref return, random access, length, etc.
     auto foo = filter!"a"([1,2,3,4,5]);
-    auto bar = [6f,7f,8f,9f,10f];
+    immutable bar = [6f,7f,8f,9f,10f].idup;
     auto l = lockstep(foo, bar);
 
     // Should work twice.  These are forward ranges with implicit save.
@@ -3495,7 +3576,7 @@ public:
 
     ElementType moveFront()
     {
-        return move(_cache);
+        return move(this._cache);
     }
 
     void popFront()
@@ -3525,27 +3606,39 @@ Sequence!(fun, Tuple!(State)) sequence
 
 unittest
 {
-    // alias Sequence!("a.field[0] += a.field[1]",
+    // alias Sequence!("a[0] += a[1]",
     //         Tuple!(int, int)) Gen;
     // Gen x = Gen(tuple(0, 5));
     // foreach (e; take(x, 15))
     // {}//writeln(e);
 
-    auto y = Sequence!("a.field[0] + n * a.field[1]", Tuple!(int, int))
+    auto y = Sequence!("a[0] + n * a[1]", Tuple!(int, int))
         (tuple(0, 4));
     static assert(isForwardRange!(typeof(y)));
 
     //@@BUG
-    //auto y = sequence!("a.field[0] + n * a.field[1]")(0, 4);
+    //auto y = sequence!("a[0] + n * a[1]")(0, 4);
     //foreach (e; take(y, 15))
     {}//writeln(e);
 
-    auto odds = Sequence!("a.field[0] + n * a.field[1]", Tuple!(int, int))(tuple(1, 2));
+    auto odds = Sequence!("a[0] + n * a[1]", Tuple!(int, int))(
+        tuple(1, 2));
     for(int currentOdd = 1; currentOdd <= 21; currentOdd += 2) {
         assert(odds.front == odds[0]);
         assert(odds[0] == currentOdd);
         odds.popFront();
     }
+}
+
+unittest
+{
+    // documentation example
+    auto odds = sequence!("a[0] + n * a[1]")(1, 2);
+    assert(odds.front == 1);
+    odds.popFront();
+    assert(odds.front == 3);
+    odds.popFront();
+    assert(odds.front == 5);
 }
 
 /**
@@ -3867,12 +3960,13 @@ int[][] x = new int[][2];
 x[0] = [1, 2];
 x[1] = [3, 4];
 auto ror = frontTransversal(x);
-assert(equals(ror, [ 1, 3 ][]));
+assert(equal(ror, [ 1, 3 ][]));
 ---
  */
-struct FrontTransversal(RangeOfRanges,
+struct FrontTransversal(Ror,
         TransverseOptions opt = TransverseOptions.assumeJagged)
 {
+    alias Unqual!(Ror) RangeOfRanges;
     alias typeof(RangeOfRanges.init.front().front()) ElementType;
 
     private void prime()
@@ -4069,6 +4163,8 @@ FrontTransversal!(RangeOfRanges, opt) frontTransversal(
 }
 
 unittest {
+    static assert(is(FrontTransversal!(immutable int[][])));
+
     foreach(DummyType; AllDummyRanges) {
         auto dummies =
             [DummyType.init, DummyType.init, DummyType.init, DummyType.init];
@@ -4136,12 +4232,13 @@ int[][] x = new int[][2];
 x[0] = [1, 2];
 x[1] = [3, 4];
 auto ror = transversal(x, 1);
-assert(equals(ror, [ 2, 4 ][]));
+assert(equal(ror, [ 2, 4 ][]));
 ---
  */
-struct Transversal(RangeOfRanges,
+struct Transversal(Ror,
         TransverseOptions opt = TransverseOptions.assumeJagged)
 {
+    private alias Unqual!Ror RangeOfRanges;
     private alias ElementType!RangeOfRanges InnerRange;
     private alias ElementType!InnerRange E;
 
@@ -4352,6 +4449,8 @@ unittest
     uint i;
     foreach (e; ror) assert(e == witness[i++]);
     assert(i == 2);
+
+    static assert(is(Transversal!(immutable int[][])));
 
     // Make sure ref, assign is being propagated.
     {
@@ -4769,8 +4868,8 @@ class OutputRangeObject(R, E...) : staticMap!(OutputRange, E) {
 
 
 /**Returns the interface type that best matches $(D R).*/
-template MostDerivedInputRange(R) if(isInputRange!R) {
-    alias MostDerivedInputRangeImpl!(R).ret MostDerivedInputRange;
+template MostDerivedInputRange(R) if(isInputRange!(Unqual!R)) {
+    alias MostDerivedInputRangeImpl!(Unqual!R).ret MostDerivedInputRange;
 }
 
 private template MostDerivedInputRangeImpl(R) {
@@ -4809,9 +4908,11 @@ private template MostDerivedInputRangeImpl(R) {
  * all relevant range primitives in virtual functions.  If $(D R) is already
  * derived from the $(D InputRange) interface, aliases itself away.
  */
-template InputRangeObject(R) if(isInputRange!R) {
+template InputRangeObject(R) if(isInputRange!(Unqual!R)) {
     static if(is(R : InputRange!(ElementType!R))) {
         alias R InputRangeObject;
+    } else static if(!is(Unqual!R == R)) {
+        alias InputRangeObject!(Unqual!R) InputRangeObject;
     } else {
 
         ///
@@ -5032,8 +5133,10 @@ swap(a[2], a[5]); // illegal to break sortedness of original range
 assert(!r.canFind(42)); // passes although it shouldn't
 ----
  */
-struct SortedRange(R, alias pred = "a < b") if (isRandomAccessRange!R)
+struct SortedRange(Range, alias pred = "a < b")
+if(isRandomAccessRange!(Unqual!Range))
 {
+    alias Unqual!Range R;
     private R _input;
 
     this(R input)
@@ -5299,7 +5402,8 @@ unsorted range failing the test is very high (however, an
 almost-sorted range is likely to pass it). To check for sortedness at
 cost $(BIGOH n), use $(XREF algorithm, isSorted).
  */
-auto assumeSorted(alias pred = "a < b", R)(R r) if (isRandomAccessRange!R)
+auto assumeSorted(alias pred = "a < b", R)(R r)
+if(isRandomAccessRange!(Unqual!R))
 {
     return SortedRange!(R, pred)(r);
 }

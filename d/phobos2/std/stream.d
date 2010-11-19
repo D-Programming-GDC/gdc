@@ -302,8 +302,8 @@ interface OutputStream {
    * and should only be used in conjunction with read.
    * Throw WriteException on error.
    */
-  void write(char[] s);
-  void write(const(wchar)[] s); /// ditto
+    void write(const(char)[] s);
+    void write(const(wchar)[] s); /// ditto
 
   /***
    * Write a line of text,
@@ -341,8 +341,8 @@ interface OutputStream {
    * Print a formatted string into the stream using printf-style syntax,
    * returning the number of bytes written.
    */
-  size_t vprintf(char[] format, va_list args);
-  size_t printf(char[] format, ...);    /// ditto
+  size_t vprintf(const(char)[] format, va_list args);
+  size_t printf(const(char)[] format, ...);    /// ditto
 
   /***
    * Print a formatted string into the stream using writef-style syntax.
@@ -1081,7 +1081,7 @@ class Stream : InputStream, OutputStream {
   void write(dchar x) { writeExact(&x, x.sizeof); }
 
   // writes a string, together with its length
-  void write(char[] s) {
+  void write(const(char)[] s) {
     write(s.length);
     writeString(s);
   }
@@ -1126,7 +1126,7 @@ class Stream : InputStream, OutputStream {
 
   // writes data to stream using vprintf() syntax,
   // returns number of bytes written
-  size_t vprintf(char[] format, va_list args) {
+  size_t vprintf(const(char)[] format, va_list args) {
     // shamelessly stolen from OutBuffer,
     // by Walter's permission
     char[1024] buffer;
@@ -1159,7 +1159,7 @@ class Stream : InputStream, OutputStream {
 
   // writes data to stream using printf() syntax,
   // returns number of bytes written
-  size_t printf(char[] format, ...) {
+  size_t printf(const(char)[] format, ...) {
     version (GNU) {
       return vprintf(format, _argptr);
     } else {

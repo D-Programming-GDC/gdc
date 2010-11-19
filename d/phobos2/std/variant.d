@@ -64,11 +64,11 @@
  */
 module std.variant;
 
-import std.traits, std.c.string, std.typetuple, std.conv;
-version(unittest)
-{
+import std.traits, std.c.string, std.typetuple, std.conv, std.exception;
+// version(unittest)
+// {
     import std.exception, std.stdio;
-}
+//}
 
 private template maxSize(T...)
 {
@@ -251,7 +251,7 @@ private:
         // by the incoming TypeInfo
         static bool tryPutting(A* src, TypeInfo targetType, void* target)
         {
-            alias TypeTuple!(A, ImplicitConversionTargets!(A)) AllTypes;
+            alias TypeTuple!(A, ImplicitConversionTargets!A) AllTypes;
             foreach (T ; AllTypes)
             {
                 if (targetType != typeid(T) &&
@@ -365,7 +365,10 @@ private:
                 *target = to!(string)(*zis);
                 break;
             }
-            else static if (is(typeof((*zis).toString)))
+            // TODO: The following test evaluates to true for shared objects.
+            //       Use __traits for now until this is sorted out.
+            // else static if (is(typeof((*zis).toString)))
+            else static if (__traits(compiles, {(*zis).toString;}))
             {
                 *target = (*zis).toString;
                 break;
@@ -501,12 +504,28 @@ public:
         {
             static if (T.sizeof <= size)
             {
-                memcpy(&store, &rhs, rhs.sizeof);
+                // If T is a class we're only copying the reference, so it
+                // should be safe to cast away shared so the memcpy will work.
+                //
+                // TODO: If a shared class has an atomic reference then using
+                //       an atomic load may be more correct.  Just make sure
+                //       to use the fastest approach for the load op.
+                static if (is(T == class) && is(T == shared))
+                    memcpy(&store, cast(const(void*)) &rhs, rhs.sizeof);
+                else
+                    memcpy(&store, &rhs, rhs.sizeof);
             }
             else
             {
-                auto p = new T;
-                *p = rhs;
+                static if (__traits(compiles, {new T(rhs);}))
+                {
+                    auto p = new T(rhs);
+                }
+                else
+                {
+                    auto p = new T;
+                    *p = rhs;
+                }
                 memcpy(&store, &p, p.sizeof);
             }
             fptr = &handler!(T);
@@ -663,8 +682,21 @@ public:
     {
         static if (isNumeric!(T))
         {
-            // maybe optimize this fella; handle ints separately
-            return to!(T)(get!(real));
+            if (convertsTo!real())
+            {
+                // maybe optimize this fella; handle ints separately
+                return to!T(get!real);
+            }
+            else if (convertsTo!(const(char)[]))
+            {
+                return to!T(get!(const(char)[]));
+            }
+            else
+            {
+                enforce(false, text("Type ", type(), " does not convert to ",
+                                typeid(T)));
+                assert(0);
+            }
         }
         else static if (is(T : Object))
         {
@@ -975,14 +1007,34 @@ public:
        If the $(D VariantN) contains an array, applies $(D dg) to each
        element of the array in turn. Otherwise, throws an exception.
      */
-    int opApply(Delegate)(scope Delegate dg)
+    int opApply(Delegate)(scope Delegate dg) if (is(Delegate == delegate))
     {
-        // @@@TODO@@@ make this much more general.
         alias ParameterTypeTuple!(Delegate)[0] A;
-        auto arr = get!(A[]);
-        foreach (ref e; arr)
+        if (type() == typeid(A[]))
         {
-            if (dg(e)) return 1;
+            auto arr = get!(A[]);
+            foreach (ref e; arr)
+            {
+                if (dg(e)) return 1;
+            }
+        }
+        else static if (is(A == VariantN))
+        {
+            foreach (i; 0 .. length)
+            {
+                // @@@TODO@@@: find a better way to not confuse
+                // clients who think they change values stored in the
+                // Variant when in fact they are only changing tmp.
+                auto tmp = this[i];
+                debug scope(exit) assert(tmp == this[i]);
+                if (dg(tmp)) return 1;
+            }
+        }
+        else
+        {
+            enforce(false, text("Variant type ", type(),
+                            " not iterable with values of type ",
+                            A.stringof));
         }
         return 0;
     }
@@ -1395,4 +1447,11 @@ unittest
         assert(i == ++j);
     }
     assert(j == 4);
+}
+
+// test convertibility
+unittest
+{
+    auto v = Variant("abc".dup);
+    assert(v.convertsTo!(char[]));
 }

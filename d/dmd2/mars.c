@@ -4,6 +4,7 @@
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
+// http://www.dsource.org/projects/dmd/browser/trunk/src/mars.c
 // License for redistribution is by either the Artistic License
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
@@ -112,7 +113,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates."
 #endif
     ;
-    version = "v2.049";
+    version = "v2.050";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -210,6 +211,9 @@ void vwarning(Loc loc, const char *format, va_list ap)
     if (global.params.warnings && !global.gag)
     {
         char *p = loc.toChars();
+
+        if (global.params.warnings == 1)
+            fprintf(stdmsg, "%s: warnings being treated as errors\n", global.params.argv0);
 
         if (*p)
             fprintf(stdmsg, "%s: ", p);
@@ -330,6 +334,8 @@ Usage:\n\
   -Xffilename    write JSON file to filename\n\
 ", fpic);
 }
+
+extern signed char tyalignsize[];
 
 int main(int argc, char *argv[])
 {
