@@ -733,6 +733,7 @@ unittest
  * greater than long.max, the result is
  * indeterminate.
  */
+version(GNU) alias std.c.math.llroundl rndtol; else
 long rndtol(real x);    /* intrinsic */
 
 
@@ -742,6 +743,7 @@ long rndtol(real x);    /* intrinsic */
  * greater than long.max, the result is
  * indeterminate.
  */
+version(GNU) alias std.c.math.roundl rndtonl; else
 extern (C) real rndtonl(real x);
 
 /***************************************

@@ -811,6 +811,7 @@ unittest
  * greater than long.max, the result is
  * indeterminate.
  */
+version(GNU) alias core.stdc.math.llroundl rndtol; else
 @safe pure nothrow long rndtol(real x);    /* intrinsic */
 
 
@@ -820,6 +821,7 @@ unittest
  * greater than long.max, the result is
  * indeterminate.
  */
+version(GNU) alias core.stdc.math.roundl rndtonl; else
 extern (C) real rndtonl(real x);
 
 /***************************************
