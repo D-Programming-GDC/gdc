@@ -603,11 +603,9 @@ IRState::convertForAssignment(Expression * exp, Type * target_type)
         return ctor;
     }
     else if (! target_type->isscalar() && exp_base_type->isintegral())
-    {
-        // D Front end uses IntegerExp(0) to mean zero-init a structure
+    {   // D Front end uses IntegerExp(0) to mean zero-init a structure
         // This could go in convert for assignment, but we only see this for
         // internal init code -- this also includes default init for _d_newarrayi...
-
         if (exp->toInteger() == 0)
         {
             CtorEltMaker ce;
@@ -800,18 +798,19 @@ IRState::pointerOffset(tree ptr_node, tree byte_offset)
 }
 
 
-// Doesn't do some of the omptimizations in ::makeArrayElemRef
+// Doesn't do some of the optimizations in ::makeArrayElemRef
 tree
 IRState::checkedIndex(Loc loc, tree index, tree upper_bound, bool inclusive)
 {
-    if ( arrayBoundsCheck() ) {
+    if (arrayBoundsCheck())
+    {
         return build3(COND_EXPR, TREE_TYPE(index),
-            boundsCond(index, upper_bound, inclusive),
-            index,
-            assertCall(loc, LIBCALL_ARRAY_BOUNDS));
-    } else {
-        return index;
+                boundsCond(index, upper_bound, inclusive),
+                index,
+                assertCall(loc, LIBCALL_ARRAY_BOUNDS));
     }
+    else
+        return index;
 }
 
 
@@ -822,15 +821,15 @@ IRState::boundsCond(tree index, tree upper_bound, bool inclusive)
     tree bound_check;
 
     bound_check = build2(inclusive ? LE_EXPR : LT_EXPR, boolean_type_node,
-        convert( d_unsigned_type(TREE_TYPE(index)), index ),
-        upper_bound);
+            convert(d_unsigned_type(TREE_TYPE(index)), index),
+            upper_bound);
 
-    if (! TYPE_UNSIGNED( TREE_TYPE( index ))) {
+    if (! TYPE_UNSIGNED(TREE_TYPE(index)))
+    {
         bound_check = build2(TRUTH_ANDIF_EXPR, boolean_type_node, bound_check,
-            // %% conversions
-            build2(GE_EXPR, boolean_type_node, index, integer_zero_node));
+                // %% conversions
+                build2(GE_EXPR, boolean_type_node, index, integer_zero_node));
     }
-
     return bound_check;
 }
 
@@ -1983,8 +1982,8 @@ IRState::floatMod(tree a, tree b, Type * d_type)
     if (d_type->iscomplex())
     {
         return build2(COMPLEX_EXPR, d_type->toCtype(),
-                buildCall(decl, 2, TREE_REALPART(a), b),
-                buildCall(decl, 2, TREE_IMAGPART(a), b));
+                buildCall(decl, 2, realPart(a), b),
+                buildCall(decl, 2, imagPart(a), b));
     }
     else if (d_type->isfloating() || d_type->isimaginary())
     {   // %% assuming no arg conversion needed
@@ -3878,8 +3877,8 @@ void AggLayout::finish(Expressions * attrs)
 ArrayScope::ArrayScope(IRState * ini_irs, VarDeclaration * ini_v, const Loc & loc) :
     v(ini_v), irs(ini_irs)
 {
-    if (v) {
-        /* Need to set the location or the expand_decl in the BIND_EXPR will
+    if (v)
+    {   /* Need to set the location or the expand_decl in the BIND_EXPR will
            cause the line numbering for the statement to be incorrect. */
         /* The variable itself is not included in the debugging information. */
         v->loc = loc;
@@ -3914,14 +3913,17 @@ ArrayScope::finish(tree e)
         {
 #if V2
             if (s->SclosureField)
-                return irs->compound( irs->vmodify(irs->var(v),
-                        DECL_INITIAL(t) ), e);
+            {
+                return irs->compound(irs->vmodify(irs->var(v),
+                            DECL_INITIAL(t)), e);
+            }
             else
 #endif
-            return gen.binding(v->toSymbol()->Stree, e);
+            {
+                return gen.binding(v->toSymbol()->Stree, e);
+            }
         }
     }
-
     return e;
 }
 
