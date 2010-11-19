@@ -578,18 +578,20 @@ IRState::convertForAssignment(Expression * exp, Type * target_type)
 {
     Type * exp_base_type = exp->type->toBasetype();
     Type * target_base_type = target_type->toBasetype();
+    tree exp_tree = NULL_TREE;
 
     // Assuming this only has to handle converting a non Tsarray type to
     // arbitrarily dimensioned Tsarrays.
     if (target_base_type->ty == Tsarray &&
-        typesCompatible(final_sa_elem_type(target_base_type), exp_base_type)) { // %% what about implicit converions...?
-
+        typesCompatible(final_sa_elem_type(target_base_type), exp_base_type))
+    {   // %% what about implicit converions...?
         TypeSArray * sa_type = (TypeSArray *) target_base_type;
         uinteger_t count = sa_type->dim->toUInteger();
 
         tree ctor = make_node( CONSTRUCTOR );
         TREE_TYPE( ctor ) = target_type->toCtype();
-        if (count) {
+        if (count)
+        {
             CtorEltMaker ce;
             ce.cons( build2(RANGE_EXPR, Type::tsize_t->toCtype(),
                     integer_zero_node, integerConstant( count - 1 )),
@@ -599,12 +601,15 @@ IRState::convertForAssignment(Expression * exp, Type * target_type)
         TREE_READONLY( ctor ) = 1;
         TREE_CONSTANT( ctor ) = 1;
         return ctor;
-    } else if (! target_type->isscalar() && exp_base_type->isintegral()) {
+    }
+    else if (! target_type->isscalar() && exp_base_type->isintegral())
+    {
         // D Front end uses IntegerExp(0) to mean zero-init a structure
         // This could go in convert for assignment, but we only see this for
         // internal init code -- this also includes default init for _d_newarrayi...
 
-        if (exp->toInteger() == 0) {
+        if (exp->toInteger() == 0)
+        {
             CtorEltMaker ce;
             tree empty = make_node( CONSTRUCTOR );
             TREE_TYPE( empty ) = target_type->toCtype();
@@ -613,12 +618,14 @@ IRState::convertForAssignment(Expression * exp, Type * target_type)
             TREE_STATIC( empty ) = 1;
             return empty;
             // %%TODO: Use a code (lang_specific in decl or flag) to memset instead?
-        } else {
+        }
+        else
+        {
             abort();
         }
     }
 
-    tree exp_tree = exp->toElem(this);
+    exp_tree = exp->toElem(this);
     return convertForAssignment(exp_tree, exp->type, target_type);
 }
 
@@ -1187,7 +1194,7 @@ static const char * libcall_ids[LIBCALL_count] =
       "_d_arrayappendcd", "_d_arrayappendwd",
 #if V2
       "_d_arrayassign", "_d_arrayctor", "_d_arraysetassign",
-      "_d_arraysetctor",
+      "_d_arraysetctor", "_d_delarray_t",
 #endif
       "_d_monitorenter", "_d_monitorexit",
       "_d_criticalenter", "_d_criticalexit",
@@ -1296,6 +1303,12 @@ IRState::getLibCallDecl(LibCall lib_call)
         case LIBCALL_DELARRAY:
             arg_types.push( Type::tvoid->arrayOf()->pointerTo() );
             break;
+#if V2
+        case LIBCALL_DELARRAYT:
+            arg_types.push( Type::tvoid->arrayOf()->pointerTo() );
+            arg_types.push( Type::typeinfo->type );
+            break;
+#endif
         case LIBCALL_DELMEMORY:
             arg_types.push( Type::tvoid->pointerTo()->pointerTo() );
             break;
@@ -2164,22 +2177,25 @@ IRState::objectInstanceMethod(Expression * obj_exp, FuncDeclaration * func, Type
 
 
 tree
-IRState::realPart(tree c) {
+IRState::realPart(tree c)
+{
     return build1(REALPART_EXPR, TREE_TYPE(TREE_TYPE(c)), c);
 }
+
 tree
-IRState::imagPart(tree c) {
+IRState::imagPart(tree c)
+{
     return build1(IMAGPART_EXPR, TREE_TYPE(TREE_TYPE(c)), c);
 }
 
 tree
 IRState::assignValue(Expression * e, VarDeclaration * v)
 {
-    // Construct structs with an init expression.
     if (e->op == TOKconstruct && v->type->ty == Tstruct)
+    {   // Construct structs with an init expression.
         return NULL_TREE;
-
-    if (e->op == TOKassign || e->op == TOKconstruct || e->op == TOKblit)
+    }
+    else if (e->op == TOKassign || e->op == TOKconstruct || e->op == TOKblit)
     {
         AssignExp * a_exp = (AssignExp *) e;
         if (a_exp->e1->op == TOKvar && ((VarExp *) a_exp->e1)->var == v)
