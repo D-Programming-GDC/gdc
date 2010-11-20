@@ -20,7 +20,7 @@ AUTOMAKE_OPTIONS = 1.9.4 foreign no-dependencies
 ACLOCAL_AMFLAGS = -I . -I ..
 
 OUR_CFLAGS=@DEFS@ -I . -I $(srcdir)/gcc
-D_EXTRA_DFLAGS=-nostdinc -pipe -I $(srcdir) -I ./$(host_alias)
+D_EXTRA_DFLAGS=-nostdinc -pipe -fdeprecated -I $(srcdir) -I ./$(host_alias)
 ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
@@ -30,12 +30,12 @@ all-local: libgphobos2.a libgdruntime.a
 
 SUFFIXES = .d
 
-# For core objects, generate .di headers
-core/%.o : core/%.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -fintfc-file=$(@:.o=.di) -c $<
-
 %.o : %.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
+
+# For core objects, generate .di headers
+%.di: %.d $(D_PREREQ_SRCS)
+	$(GDC) $(ALL_DFLAGS) -fintfc-file=$@ -fsyntax-only $<
 
 # %.o : %.c
 # Use .c.o to override Automake
@@ -49,9 +49,8 @@ core/%.o : core/%.d $(D_PREREQ_SRCS)
 	cp $< $@
 
 
-#-------------------#
-#-    X3 Config    -#
-#-------------------#
+#--------------------------------------#
+# X3 Config
 
 config_d_src          =$(host_alias)/gcc/config/config.d
 config_libc_d_src     =$(host_alias)/gcc/config/libc.d
@@ -107,9 +106,8 @@ stamp-tgtdir:
 	touch $@
 
 
-#-------------------#
-#-    D Runtime    -#
-#-------------------#
+#--------------------------------------#
+# GDC Runtime
 
 gcc/cbridge_math.o: gcc/cbridge_math.c
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
@@ -123,12 +121,11 @@ RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
              rt/memory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
              rt/monitor.o rt/obj.o rt/qsort.o rt/switch_.o
 
-CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/exception.o \
-          core/demangle.o core/memory.o core/runtime.o core/thread.o \
-          core/vararg.o core/stdc/errno.o core/stdc/errno_.o \
-          core/sync/barrier.o core/sync/condition.o core/sync/config.o \
-          core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
-          core/sync/semaphore.o
+CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
+          core/exception.o core/memory.o core/runtime.o core/thread.o \
+          core/vararg.o core/sync/barrier.o core/sync/condition.o \
+          core/sync/config.o core/sync/exception.o core/sync/mutex.o \
+          core/sync/rwmutex.o core/sync/semaphore.o
 
 GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
          gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
@@ -151,8 +148,11 @@ DRUNTIME_OBJS+=$(BASE_OBJS) $(RUNTIME_OBJS) $(UTIL_OBJS) \
 
 
 # OS specific
-RT_STDC_OBJS=core/stdc/math.o core/stdc/stdarg.o core/stdc/stdio.o \
-             core/stdc/wchar_.o
+RT_STDC_OBJS=core/stdc/config.o core/stdc/ctype.o core/stdc/errno.o \
+             core/stdc/errno_.o core/stdc/math.o core/stdc/signal.o \
+             core/stdc/stdarg.o core/stdc/stdio.o core/stdc/stdlib.o \
+             core/stdc/stdint.o core/stdc/stddef.o core/stdc/string.o \
+             core/stdc/time.o core/stdc/wchar_.o
 
 RT_OSX_OBJS=core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
             core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o
@@ -174,16 +174,49 @@ D_GC_MODULES=@D_GC_MODULES@
 D_GC_MODULES+=gc/gc.o gc/gcalloc.o gc/gcbits.o \
               gc/gcstats.o gc/gcx.o
 
+# Regardless of OS, all import headers are generated.
+CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
+             core/dll_helper.di core/exception.di core/memory.di \
+             core/runtime.di core/thread.di core/thread_helper.di \
+             core/vararg.di core/stdc/complex.di core/stdc/config.di \
+             core/stdc/ctype.di core/stdc/errno.di core/stdc/fenv.di \
+             core/stdc/float_.di core/stdc/inttypes.di core/stdc/limits.di \
+             core/stdc/locale.di core/stdc/math.di core/stdc/signal.di \
+             core/stdc/stdarg.di core/stdc/stddef.di core/stdc/stdint.di \
+             core/stdc/stdio.di core/stdc/stdlib.di core/stdc/string.di \
+             core/stdc/tgmath.di core/stdc/time.di core/stdc/wchar_.di \
+             core/stdc/wctype.di core/sync/barrier.di core/sync/condition.di \
+             core/sync/config.di core/sync/exception.di core/sync/mutex.di \
+             core/sync/rwmutex.di core/sync/semaphore.di \
+             core/sys/osx/mach/kern_return.di core/sys/osx/mach/port.di \
+             core/sys/osx/mach/semaphore.di core/sys/osx/mach/thread_act.di \
+             core/sys/posix/arpa/inet.di core/sys/posix/config.di \
+             core/sys/posix/dirent.di core/sys/posix/dlfcn.di \
+             core/sys/posix/fcntl.di core/sys/posix/inttypes.di \
+             core/sys/posix/poll.di core/sys/posix/pthread.di \
+             core/sys/posix/pwd.di core/sys/posix/sched.di \
+             core/sys/posix/semaphore.di core/sys/posix/setjmp.di \
+             core/sys/posix/signal.di core/sys/posix/stdio.di \
+             core/sys/posix/stdlib.di core/sys/posix/termios.di \
+             core/sys/posix/time.di core/sys/posix/ucontext.di \
+             core/sys/posix/unistd.di core/sys/posix/utime.di \
+             core/sys/posix/net/if_.di core/sys/posix/netinet/in_.di \
+             core/sys/posix/netinet/tcp.di core/sys/posix/sys/ipc.di \
+             core/sys/posix/sys/mman.di core/sys/posix/sys/select.di \
+             core/sys/posix/sys/shm.di core/sys/posix/sys/socket.di \
+             core/sys/posix/sys/stat.di core/sys/posix/sys/time.di \
+             core/sys/posix/sys/types.di core/sys/posix/sys/uio.di \
+             core/sys/posix/sys/wait.di core/sys/windows/windows.di
+
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 
-libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
+libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(CORE_IMPORTS)
 	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
 	$(RANLIB) $@
 
 
-#-------------------#
-#-    LibPhobos    -#
-#-------------------#
+#--------------------------------------#
+# GDC LibPhobos
 
 # boxer is currently broken
 std/boxer.t.o: std/boxer.o
@@ -268,9 +301,8 @@ install-data-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 		core/sys/posix/arpa core/sys/posix/net core/sys/posix/netinet \
 		core/sys/posix/sys core/sys/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+		for f in $$i/*.di; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done
-	find ./core -name "*.di" -exec $(INSTALL_HEADER) '{}' $(DESTDIR)$(gdc_include_dir)/'{}' \;
 	for i in crc32.d object.di; do \
 		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done
 	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/gcc/config
@@ -282,11 +314,11 @@ clean-local:
 	rm -f $(ALL_PHOBOS_OBJS) $(CMAIN_OBJS)
 	rm -f $(ALL_PHOBOS_OBJS:.o=.t.o)
 	rm -f $(ALL_DRUNTIME_OBJS)
+	rm -f $(CORE_IMPORTS)
 	rm -f unittest.o
 	rm -f unittest$(EXEEXT) testgc$(EXEEXT)
 	rm -f $(config_d_src) $(config_errno_d_src) $(config_libc_d_src)
 	rm -f $(config_unix_d_src)
-	find ./core -name "*.di" -exec rm -f '{}' \;
 	rm -f libgdruntime.a
 	rm -f libgphobos2.a
 	rm -f libgphobos2_t.a

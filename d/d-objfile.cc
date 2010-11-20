@@ -65,7 +65,8 @@ ObjectFile::beginModule(Module * m)
 void
 ObjectFile::endModule()
 {
-    for (unsigned i = 0; i < deferredThunks.dim; i++) {
+    for (unsigned i = 0; i < deferredThunks.dim; i++)
+    {
         DeferredThunk * t = (DeferredThunk *) deferredThunks.data[i];
         outputThunk(t->decl, t->target, t->offset);
     }
@@ -82,8 +83,10 @@ ObjectFile::hasModule(Module *m)
 
     if (modules.data[moduleSearchIndex] == m)
         return true;
-    for (unsigned i = 0; i < modules.dim; i++) {
-        if ( (Module*) modules.data[i] == m ) {
+    for (unsigned i = 0; i < modules.dim; i++)
+    {
+        if ((Module*) modules.data[i] == m)
+        {
             moduleSearchIndex = i;
             return true;
         }
@@ -105,28 +108,30 @@ ObjectFile::finish()
        staticCtorList contains a list of all static constructors defined
        so far.  This routine will create a function to call all of those
        and is picked up by collect2. */
-    if (staticCtorList.dim) {
+    if (staticCtorList.dim)
+    {
         doFunctionToCallFunctions(IDENTIFIER_POINTER(get_file_function_name(D_FFN_I)),
-            & staticCtorList, true);
+                & staticCtorList, true);
     }
-    if (staticDtorList.dim) {
+    if (staticDtorList.dim)
+    {
         doFunctionToCallFunctions(IDENTIFIER_POINTER(get_file_function_name(D_FFN_D)),
-            & staticDtorList, true);
+                & staticDtorList, true);
     }
 }
 
-void
+    void
 ObjectFile::doLineNote(const Loc & loc)
 {
-    if (loc.filename) {
+    if (loc.filename)
+    {
         setLoc(loc);
 #if D_GCC_VER < 40
         location_t gcc_loc = { loc.filename, loc.linnum };
         emit_line_note (gcc_loc);
 #endif
-    } else {
-        // do nothing
     }
+    // else do nothing
 }
 
 #ifdef D_USE_MAPPED_LOCATION
@@ -157,26 +162,24 @@ cvtLocToloc_t(const Loc loc)
         linemap_add(line_table, LC_LEAVE, 0, NULL, 0);
         lm = linemap_lookup(line_table, sv->intvalue);
     }
-
     // cheat...
-    return
-        lm->start_location + ((loc.linnum - lm->to_line) << lm->column_bits);
+    return lm->start_location + ((loc.linnum - lm->to_line) << lm->column_bits);
 }
 #endif
 
 void
 ObjectFile::setLoc(const Loc & loc)
 {
-    if (loc.filename) {
+    if (loc.filename)
+    {
 #ifdef D_USE_MAPPED_LOCATION
         input_location = cvtLocToloc_t(loc);
 #else
         location_t gcc_loc = { loc.filename, loc.linnum };
         input_location = gcc_loc;
 #endif
-    } else {
-        // do nothing
     }
+    // else do nothing
 }
 
 void
@@ -197,8 +200,10 @@ void
 ObjectFile::setDeclLoc(tree t, Dsymbol * decl)
 {
     Dsymbol * dsym = decl;
-    while (dsym) {
-        if (dsym->loc.filename) {
+    while (dsym)
+    {
+        if (dsym->loc.filename)
+        {
             setDeclLoc(t, dsym->loc);
             return;
         }
@@ -210,11 +215,11 @@ ObjectFile::setDeclLoc(tree t, Dsymbol * decl)
     Loc l;
 
     Module * m = decl->getModule();
-    if (m && m->srcfile && m->srcfile->name) {
+    if (m && m->srcfile && m->srcfile->name)
         l.filename = m->srcfile->name->str;
-    } else {
+    else
         l.filename = "<no_file>"; // Emptry string can mess up debug info
-    }
+   
     l.linnum = 1;
     setDeclLoc(t, l);
 }
@@ -230,10 +235,13 @@ ObjectFile::setCfunEndLoc(const Loc & loc)
     else
         cfun->function_end_locus = DECL_SOURCE_LOCATION(fn_decl);
 # else
-    if (loc.filename) {
+    if (loc.filename)
+    {
         cfun->function_end_locus.file = loc.filename;
         cfun->function_end_locus.line = loc.linnum;
-    } else {
+    }
+    else
+    {
         cfun->function_end_locus.file = DECL_SOURCE_FILE (fn_decl);
         cfun->function_end_locus.line = DECL_SOURCE_LINE (fn_decl);
     }
@@ -250,7 +258,6 @@ ObjectFile::giveDeclUniqueName(tree decl, const char * prefix)
 
        Maybe this is fixed in later versions of GCC.
     */
-
     const char *name;
     if (prefix)
         name = prefix;
@@ -275,7 +282,7 @@ is_function_nested_in_function(Dsymbol * dsym)
         return false;
     else if (fd->isNested())
         return true;
-    else if ( (ad = fd->isThis()) && (cd = ad->isClassDeclaration()) )
+    else if ((ad = fd->isThis()) && (cd = ad->isClassDeclaration()))
     {
         while (cd && cd->isNested())
         {
@@ -286,7 +293,6 @@ is_function_nested_in_function(Dsymbol * dsym)
                 cd = dsym->isClassDeclaration();
         }
     }
-
     return false;
 }
 #endif
@@ -298,39 +304,42 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
 
        If user has specified -femit-templates=private, honor that
        even if the target supports one-only. */
-    if ( ! D_DECL_IS_TEMPLATE( decl_tree ) || gen.emitTemplates != TEprivate ) {
-        /* Weak definitions have to be public.  Nested functions may or
+    if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates != TEprivate)
+    {   /* Weak definitions have to be public.  Nested functions may or
            may not be emitted as public even if TREE_PUBLIC is set.
            There is no way to tell if the back end implements
            make_decl_one_only with DECL_WEAK, so this check is
            done first.  */
-        if ( (TREE_CODE(decl_tree) == FUNCTION_DECL &&
-                decl_function_context(decl_tree) != NULL_TREE &&
-                ! DECL_NO_STATIC_CHAIN(decl_tree))
+        if ((TREE_CODE(decl_tree) == FUNCTION_DECL &&
+                    decl_function_context(decl_tree) != NULL_TREE &&
+                    ! DECL_NO_STATIC_CHAIN(decl_tree))
 #if V2
-            || ( dsym && is_function_nested_in_function(dsym) )
+                || (dsym && is_function_nested_in_function(dsym))
 #endif
-             ) {
-
+           )
+        {
             return;
         }
 
 #ifdef MAKE_DECL_COALESCED
         // %% TODO: check if available like SUPPORTS_ONE_ONLY
         // for Apple gcc...
-        MAKE_DECL_COALESCED( decl_tree );
+        MAKE_DECL_COALESCED(decl_tree);
         return;
 #endif
         /* The following makes assumptions about the behavior
            of make_decl_one_only */
-        if (SUPPORTS_ONE_ONLY) { // Must check, otherwise backend will abort
-            make_decl_one_only( decl_tree );
+        if (SUPPORTS_ONE_ONLY)
+        {   // Must check, otherwise backend will abort
+            make_decl_one_only(decl_tree);
             return;
-        } else if (SUPPORTS_WEAK) {
-            tree orig_init = DECL_INITIAL( decl_tree );
-            DECL_INITIAL( decl_tree ) = integer_zero_node;
-            make_decl_one_only( decl_tree );
-            DECL_INITIAL( decl_tree ) = orig_init;
+        }
+        else if (SUPPORTS_WEAK)
+        {
+            tree orig_init = DECL_INITIAL(decl_tree);
+            DECL_INITIAL(decl_tree) = integer_zero_node;
+            make_decl_one_only(decl_tree);
+            DECL_INITIAL(decl_tree) = orig_init;
             return;
         }
     }
@@ -339,12 +348,16 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
 
        For RTTI, we can always make a private copy.  For templates, only do
        this if the user specified -femit-templates=private. */
-    if ( ! D_DECL_IS_TEMPLATE( decl_tree ) || gen.emitTemplates == TEprivate ) {
+    if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates == TEprivate)
+    {
         TREE_PRIVATE(decl_tree) = 1;
         TREE_PUBLIC(decl_tree) = 0;
-    } else {
+    }
+    else
+    {
         static bool warned = false;
-        if (! warned) {
+        if (! warned)
+        {
             warned = true;
             ::warning(0, "system does not support one-only linkage");
         }
@@ -358,16 +371,18 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
     FuncDeclaration * func_decl = real_decl ? real_decl->isFuncDeclaration() : 0;
 
     if (force_static_public ||
-        ( TREE_CODE( decl_tree ) == VAR_DECL && (real_decl && real_decl->isDataseg()) ) ||
-        ( TREE_CODE( decl_tree ) == FUNCTION_DECL ) ) {
-
+        (TREE_CODE(decl_tree) == VAR_DECL && (real_decl && real_decl->isDataseg())) ||
+        (TREE_CODE(decl_tree) == FUNCTION_DECL))
+    {
         bool is_template = false;
         Dsymbol * sym = dsym->toParent();
         Module * ti_obj_file_mod;
 
-        while (sym) {
+        while (sym)
+        {
             TemplateInstance * ti = sym->isTemplateInstance();
-            if (ti) {
+            if (ti)
+            {
                 ti_obj_file_mod = ti->objFileModule;
                 is_template = true;
                 break;
@@ -377,13 +392,14 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
 
         bool is_static;
 
-        if (is_template) {
-            D_DECL_ONE_ONLY( decl_tree ) = 1;
-            D_DECL_IS_TEMPLATE( decl_tree ) = 1;
+        if (is_template)
+        {
+            D_DECL_ONE_ONLY(decl_tree) = 1;
+            D_DECL_IS_TEMPLATE(decl_tree) = 1;
             is_static = hasModule(ti_obj_file_mod) && gen.emitTemplates != TEnone;
-        } else {
-            is_static = hasModule(dsym->getModule());
         }
+        else
+            is_static = hasModule(dsym->getModule());
         /*
         if (func_decl)
             fprintf(stderr, "%s: is_template = %d is_static = %d te = %d m = %s cur = %s\n",
@@ -391,57 +407,70 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
                 dsym->getModule() ? dsym->getModule()->toChars() : "none",
                 getCurrentModule()->toChars());
         */
-        if (TREE_CODE( decl_tree ) == VAR_DECL &&
-            (real_decl && (real_decl->storage_class & STCextern)) )
+        if (TREE_CODE(decl_tree) == VAR_DECL &&
+                (real_decl && (real_decl->storage_class & STCextern)))
             is_static = false;
 
-        if ( is_static ) {
-            DECL_EXTERNAL( decl_tree ) = 0;
-            TREE_STATIC( decl_tree ) = 1; // %% don't set until there is a body?
+        if (is_static)
+        {
+            DECL_EXTERNAL(decl_tree) = 0;
+            TREE_STATIC(decl_tree) = 1; // %% don't set until there is a body?
             if (real_decl && (real_decl->storage_class & STCcomdat))
-                D_DECL_ONE_ONLY( decl_tree ) = 1;
-        } else {
-            DECL_EXTERNAL( decl_tree ) = 1;
-            TREE_STATIC( decl_tree ) = 0;
+                D_DECL_ONE_ONLY(decl_tree) = 1;
+        }
+        else
+        {
+            DECL_EXTERNAL(decl_tree) = 1;
+            TREE_STATIC(decl_tree) = 0;
         }
 
-        if ( ( real_decl ) ) {
-            switch (real_decl->prot()) {
-            case PROTexport:
-            case PROTpublic:
-            case PROTpackage:
-            case PROTprotected:
-                // %% set for specials like init,vtbl ? -- otherwise,special case
-                // for reverse the default
-                TREE_PUBLIC( decl_tree ) = 1;
-                break;
-            default:
-                if ( (func_decl && (func_decl->isMain() || func_decl->isWinMain() ||
-                          func_decl->isDllMain())) ||
-                    (real_decl->isMember() && ! real_decl->isThis())) { // %% check this -- static members/
-                    // DMD seems to ignore private in this case...
-                    TREE_PUBLIC( decl_tree ) = 1;
-                } else {
-                    // From DMD:
-                    /* private statics should still get a global symbol, in case
-                     * another module inlines a function that references it.
-                     */
-
-                    // TREE_PUBLIC( decl_tree ) = 0;
-                    TREE_PUBLIC( decl_tree ) = 1;
+        if ((real_decl))
+        {
+            switch (real_decl->prot())
+            {
+                case PROTexport:
+                case PROTpublic:
+                case PROTpackage:
+                case PROTprotected:
+                {
+                    // %% set for specials like init,vtbl ? -- otherwise,special case
+                    // for reverse the default
+                    TREE_PUBLIC(decl_tree) = 1;
+                    break;
+                }
+                default:
+                {
+                    if ((func_decl && (func_decl->isMain() || func_decl->isWinMain() ||
+                                    func_decl->isDllMain())) ||
+                            (real_decl->isMember() && ! real_decl->isThis()))
+                    {   // %% check this -- static members/
+                        // DMD seems to ignore private in this case...
+                        TREE_PUBLIC(decl_tree) = 1;
+                    }
+                    else
+                    {
+                        // From DMD:
+                        /* private statics should still get a global symbol, in case
+                         * another module inlines a function that references it.
+                         */
+                        // TREE_PUBLIC(decl_tree) = 0;
+                        TREE_PUBLIC(decl_tree) = 1;
+                    }
                 }
             }
         }
 
-        if (D_DECL_ONE_ONLY( decl_tree ))
+        if (D_DECL_ONE_ONLY(decl_tree))
             makeDeclOneOnly(decl_tree, dsym);
 
-        if ( func_decl && func_decl->isNested() )
-            TREE_PUBLIC( decl_tree ) = 0;
-    } else {
-        TREE_STATIC( decl_tree ) = 0;
-        DECL_EXTERNAL( decl_tree ) = 0;
-        TREE_PUBLIC( decl_tree ) = 0;
+        if (func_decl && func_decl->isNested())
+            TREE_PUBLIC(decl_tree) = 0;
+    }
+    else
+    {
+        TREE_STATIC(decl_tree) = 0;
+        DECL_EXTERNAL(decl_tree) = 0;
+        TREE_PUBLIC(decl_tree) = 0;
     }
 
     if (real_decl && real_decl->attributes)
@@ -451,12 +480,13 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
 void
 ObjectFile::setupStaticStorage(Dsymbol * dsym, tree decl_tree)
 {
-    TREE_PUBLIC( decl_tree ) = 1; // Do this by default, but allow private templates to override
+    TREE_PUBLIC(decl_tree) = 1; // Do this by default, but allow private templates to override
     setupSymbolStorage(dsym, decl_tree, true);
 }
 
 void
-ObjectFile::outputStaticSymbol(tree t) {
+ObjectFile::outputStaticSymbol(tree t)
+{
     d_add_global_function(t);
 
     // %%TODO: flags
@@ -470,7 +500,8 @@ ObjectFile::outputStaticSymbol(tree t) {
     // %%TODO: could move this to lang_hooks.decls.prepare_assemble_variable to
     // make this check less precarious. -- or finish_incomplete_decl (from
     // wrapup_global_declarations
-    if ( DECL_SIZE(t) == 0 ) {
+    if (DECL_SIZE(t) == 0)
+    {
         DECL_SIZE(t) = bitsize_int(0);
         DECL_SIZE_UNIT(t) = size_int(0);
     } // Otherwise, if DECL_SIZE == 0, just let it fail...
@@ -486,32 +517,37 @@ ObjectFile::outputFunction(FuncDeclaration * f)
 
     if (TREE_CODE(t) == FUNCTION_DECL)
     {
-        if (DECL_STATIC_CONSTRUCTOR( t ))
+        if (DECL_STATIC_CONSTRUCTOR(t))
         {
             // %% check for nested function -- error
             // otherwise, shouldn't be in a function, so safe to do asm_out
 
-            if (targetm.have_ctors_dtors) {
+            if (targetm.have_ctors_dtors) 
+            {
 #if D_GCC_VER < 40
                 (* targetm.asm_out.constructor) (XEXP (DECL_RTL (t), 0),
                     DEFAULT_INIT_PRIORITY);
 #endif
                 // #else, handled in d_expand_function
-            } else {
-                // %% assert FuncDeclaration
+            }
+            else
+            {   // %% assert FuncDeclaration
                 staticCtorList.push(f);
                 // %%TODO: fallback if ! targetm.have_ctors_dtors
             }
         }
-        if (DECL_STATIC_DESTRUCTOR( t )) {
-            if (targetm.have_ctors_dtors) {
+        if (DECL_STATIC_DESTRUCTOR(t))
+        {
+            if (targetm.have_ctors_dtors)
+            {
 #if D_GCC_VER < 40
                 (* targetm.asm_out.destructor) (XEXP (DECL_RTL (t), 0),
                     DEFAULT_INIT_PRIORITY);
 #endif
                 // #else, handled in d_expand_function
-            } else {
-                // %% assert FuncDeclaration
+            }
+            else
+            {   // %% assert FuncDeclaration
                 staticDtorList.push(f);
                 // %%TODO: fallback if ! targetm.have_ctors_dtors
             }
@@ -534,8 +570,10 @@ ObjectFile::shouldEmit(Dsymbol * d_sym)
         return true;
 
     Dsymbol * sym = d_sym->toParent();
-    while (sym) {
-        if (sym->isTemplateInstance()) {
+    while (sym)
+    {
+        if (sym->isTemplateInstance())
+        {
             return false;
             break;
         }
@@ -553,26 +591,27 @@ ObjectFile::shouldEmit(Symbol * sym)
 void
 ObjectFile::addAggMethods(tree rec_type, AggregateDeclaration * agg)
 {
-    if (write_symbols != NO_DEBUG) {
+    if (write_symbols != NO_DEBUG)
+    {
         ListMaker methods;
-        for (unsigned i = 0; i < agg->methods.dim; i++) {
+        for (unsigned i = 0; i < agg->methods.dim; i++)
+        {
             FuncDeclaration * fd = (FuncDeclaration *) agg->methods.data[i];
-
             methods.chain(fd->toSymbol()->Stree);
         }
-        TYPE_METHODS( rec_type ) = methods.head;
+        TYPE_METHODS(rec_type) = methods.head;
     }
 }
 
 void
 ObjectFile::initTypeDecl(tree t, Dsymbol * d_sym)
 {
-    assert( ! POINTER_TYPE_P( t ) );
+    assert(! POINTER_TYPE_P(t));
     if (! TYPE_STUB_DECL(t))
     {
         const char * name = d_sym->ident ? d_sym->ident->string : "fix";
         tree decl = build_decl(TYPE_DECL, get_identifier(name), t);
-        DECL_CONTEXT( decl ) = gen.declContext(d_sym);
+        DECL_CONTEXT(decl) = gen.declContext(d_sym);
         setDeclLoc(decl, d_sym);
         initTypeDecl(t, decl);
     }
@@ -603,32 +642,34 @@ ObjectFile::declareType(tree t, Dsymbol * d_sym)
 void
 ObjectFile::initTypeDecl(tree t, tree decl)
 {
-    if ( ! TYPE_STUB_DECL(t))
+    if (! TYPE_STUB_DECL(t))
     {
-        assert( ! POINTER_TYPE_P( t ) );
+        assert(! POINTER_TYPE_P(t));
 
-        TYPE_CONTEXT( t ) = DECL_CONTEXT( decl );
-        TYPE_NAME( t ) = decl;
+        TYPE_CONTEXT(t) = DECL_CONTEXT(decl);
+        TYPE_NAME(t) = decl;
         switch (TREE_CODE(t))
         {
-        case ENUMERAL_TYPE:
-        case RECORD_TYPE:
-        case UNION_TYPE:
-            /* Not sure if there is a need for separate TYPE_DECLs in
-               TYPE_NAME and TYPE_STUB_DECL. */
-            TYPE_STUB_DECL( t ) = build_decl(TYPE_DECL, DECL_NAME(decl), t);
+            case ENUMERAL_TYPE:
+            case RECORD_TYPE:
+            case UNION_TYPE:
+            {   /* Not sure if there is a need for separate TYPE_DECLs in
+                   TYPE_NAME and TYPE_STUB_DECL. */
+                TYPE_STUB_DECL(t) = build_decl(TYPE_DECL, DECL_NAME(decl), t);
 #if D_GCC_VER >= 43
-            DECL_ARTIFICIAL( TYPE_STUB_DECL( t ) ) = 1; // dunno...
-            // code now assumes...
-            DECL_SOURCE_LOCATION(TYPE_STUB_DECL(t)) = DECL_SOURCE_LOCATION(decl);
+                DECL_ARTIFICIAL(TYPE_STUB_DECL(t)) = 1; // dunno...
+                // code now assumes...
+                DECL_SOURCE_LOCATION(TYPE_STUB_DECL(t)) = DECL_SOURCE_LOCATION(decl);
 #else
-            // g++ does this and the debugging code assumes it:
-            DECL_ARTIFICIAL( TYPE_STUB_DECL( t ) ) = 1;
+                // g++ does this and the debugging code assumes it:
+                DECL_ARTIFICIAL(TYPE_STUB_DECL(t)) = 1;
 #endif
-            break;
-        default:
-            // nothing
-            break;
+                break;
+            }
+            default:
+            {   // nothing
+                break;
+            }
         }
     }
 }
@@ -638,39 +679,45 @@ ObjectFile::declareType(tree t, tree decl)
 {
     bool top_level = /*DECL_CONTEXT(decl) == fileContext || */
         ! DECL_CONTEXT(decl);
-
     // okay to do this?
     rodc(decl, top_level);
 }
 
 tree
-ObjectFile::stripVarDecl(tree value) {
-    if ( TREE_CODE( value ) != VAR_DECL ) {
+ObjectFile::stripVarDecl(tree value)
+{
+    if (TREE_CODE(value) != VAR_DECL)
+    {
         return value;
-    } else if ( DECL_INITIAL(value) ) {
+    }
+    else if (DECL_INITIAL(value))
+    {
         return DECL_INITIAL(value);
-    } else {
-        Type * d_type = gen.getDType( TREE_TYPE( value ));
-        if (d_type) {
+    }
+    else
+    {
+        Type * d_type = gen.getDType(TREE_TYPE(value));
+        if (d_type)
+        {
             d_type = d_type->toBasetype();
-            switch (d_type->ty) {
-            case Tstruct:
-                {
-                    //tree t = gen.aggregateInitializer(((TypeStruct *) d_type)->sym, NULL, NULL, NULL_TREE);
+            switch (d_type->ty)
+            {
+                case Tstruct:
+                {   //tree t = gen.aggregateInitializer(((TypeStruct *) d_type)->sym, NULL, NULL, NULL_TREE);
                     // %% maker sure this is doing the right thing...
                     // %% better do get rid of it..
 
                     // need to VIEW_CONVERT?
                     dt_t * dt = NULL;
                     d_type->toDt(& dt);
-                    tree t = dt2tree( dt );
+                    tree t = dt2tree(dt);
                     TREE_CONSTANT(t) = 1;
                     return t;
                 }
-                break;
-            default:
-                // error below
-                break;
+                default:
+                {   // error below
+                    break;
+                }
             }
         }
         abort();
@@ -680,15 +727,16 @@ ObjectFile::stripVarDecl(tree value) {
 void
 ObjectFile::doThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offset)
 {
-    if (current_function_decl) {
+    if (current_function_decl)
+    {
         DeferredThunk * t = new DeferredThunk;
         t->decl = thunk_decl;
         t->target = target_decl;
         t->offset = offset;
         deferredThunks.push(t);
-    } else {
-        outputThunk(thunk_decl, target_decl, offset);
     }
+    else
+        outputThunk(thunk_decl, target_decl, offset);
 }
 
 /* Thunk code is based on g++ */
@@ -701,42 +749,42 @@ static int thunk_labelno;
 static tree
 make_alias_for_thunk (tree function)
 {
-  tree alias;
-  char buf[256];
+    tree alias;
+    char buf[256];
 
 #if defined (TARGET_IS_PE_COFF)
-  /* make_alias_for_thunk does not seem to be needed for TARGET_IS_PE_COFF
-     at all, and apparently causes problems... */
-  //if (DECL_ONE_ONLY (function))
+    /* make_alias_for_thunk does not seem to be needed for TARGET_IS_PE_COFF
+       at all, and apparently causes problems... */
+    //if (DECL_ONE_ONLY (function))
     return function;
 #endif
-  // For gdc: Thunks may reference extern functions which cannot be aliased.
-  if (DECL_EXTERNAL(function))
-      return function;
+    // For gdc: Thunks may reference extern functions which cannot be aliased.
+    if (DECL_EXTERNAL(function))
+        return function;
 
-  ASM_GENERATE_INTERNAL_LABEL (buf, "LTHUNK", thunk_labelno);
-  thunk_labelno++;
-  alias = build_decl (FUNCTION_DECL, get_identifier (buf),
-                      TREE_TYPE (function));
-  DECL_CONTEXT (alias) = NULL;
-  TREE_READONLY (alias) = TREE_READONLY (function);
-  TREE_THIS_VOLATILE (alias) = TREE_THIS_VOLATILE (function);
-  TREE_PUBLIC (alias) = 0;
-  DECL_EXTERNAL (alias) = 0;
-  DECL_ARTIFICIAL (alias) = 1;
-  DECL_NO_STATIC_CHAIN (alias) = 1;
+    ASM_GENERATE_INTERNAL_LABEL (buf, "LTHUNK", thunk_labelno);
+    thunk_labelno++;
+    alias = build_decl (FUNCTION_DECL, get_identifier (buf),
+            TREE_TYPE (function));
+    DECL_CONTEXT (alias) = NULL;
+    TREE_READONLY (alias) = TREE_READONLY (function);
+    TREE_THIS_VOLATILE (alias) = TREE_THIS_VOLATILE (function);
+    TREE_PUBLIC (alias) = 0;
+    DECL_EXTERNAL (alias) = 0;
+    DECL_ARTIFICIAL (alias) = 1;
+    DECL_NO_STATIC_CHAIN (alias) = 1;
 #if D_GCC_VER < 44
-  DECL_INLINE (alias) = 0;
+    DECL_INLINE (alias) = 0;
 #endif
-  DECL_DECLARED_INLINE_P (alias) = 0;
-  //DECL_INITIAL (alias) = error_mark_node;
-  TREE_ADDRESSABLE (alias) = 1;
-  TREE_USED (alias) = 1;
-  SET_DECL_ASSEMBLER_NAME (alias, DECL_NAME (alias));
-  TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (alias)) = 1;
-  if (!flag_syntax_only)
-    assemble_alias (alias, DECL_ASSEMBLER_NAME (function));
-  return alias;
+    DECL_DECLARED_INLINE_P (alias) = 0;
+    //DECL_INITIAL (alias) = error_mark_node;
+    TREE_ADDRESSABLE (alias) = 1;
+    TREE_USED (alias) = 1;
+    SET_DECL_ASSEMBLER_NAME (alias, DECL_NAME (alias));
+    TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (alias)) = 1;
+    if (!flag_syntax_only)
+        assemble_alias (alias, DECL_ASSEMBLER_NAME (function));
+    return alias;
 }
 #endif
 
@@ -755,33 +803,32 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
     TREE_ADDRESSABLE(target_decl) = 1;
     TREE_USED(target_decl) = 1;
     DECL_VISIBILITY (thunk_decl) = DECL_VISIBILITY (target_decl);
-#if ASM_OUTPUT_DEF \
-   && !defined (TARGET_IS_PE_COFF)
-  if (targetm.have_named_sections)
+#if ASM_OUTPUT_DEF && !defined (TARGET_IS_PE_COFF)
+    if (targetm.have_named_sections)
     {
-      resolve_unique_section (target_decl, 0, flag_function_sections);
+        resolve_unique_section (target_decl, 0, flag_function_sections);
 
-      if (DECL_SECTION_NAME (target_decl) != NULL && DECL_ONE_ONLY (target_decl))
+        if (DECL_SECTION_NAME (target_decl) != NULL && DECL_ONE_ONLY (target_decl))
         {
-          resolve_unique_section (thunk_decl, 0, flag_function_sections);
-
-          /* Output the thunk into the same section as function.  */
-          DECL_SECTION_NAME (thunk_decl) = DECL_SECTION_NAME (target_decl);
+            resolve_unique_section (thunk_decl, 0, flag_function_sections);
+            /* Output the thunk into the same section as function.  */
+            DECL_SECTION_NAME (thunk_decl) = DECL_SECTION_NAME (target_decl);
         }
     }
 #endif
-  // cp/method.c:
-  /* The back-end expects DECL_INITIAL to contain a BLOCK, so we
-     create one.  */
-  // ... actually doesn't seem to be the case for output_mi_thunk
-  DECL_INITIAL (thunk_decl) = make_node (BLOCK);
-  BLOCK_VARS (DECL_INITIAL (thunk_decl)) = DECL_ARGUMENTS (thunk_decl);
+    // cp/method.c:
+    /* The back-end expects DECL_INITIAL to contain a BLOCK, so we
+       create one.  */
+    // ... actually doesn't seem to be the case for output_mi_thunk
+    DECL_INITIAL (thunk_decl) = make_node (BLOCK);
+    BLOCK_VARS (DECL_INITIAL (thunk_decl)) = DECL_ARGUMENTS (thunk_decl);
 
-    if (targetm.asm_out.can_output_mi_thunk(thunk_decl, delta, 0, alias)) {
+    if (targetm.asm_out.can_output_mi_thunk(thunk_decl, delta, 0, alias))
+    {
         const char *fnname;
 
         current_function_decl = thunk_decl;
-        DECL_RESULT( thunk_decl ) = build_decl(RESULT_DECL, 0, integer_type_node);
+        DECL_RESULT(thunk_decl) = build_decl(RESULT_DECL, 0, integer_type_node);
 
         fnname = XSTR(XEXP(DECL_RTL(thunk_decl), 0), 0);
         gen.initFunctionStart(thunk_decl, 0);
@@ -798,7 +845,9 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
         immediate_size_expand--;
 #endif
         TREE_ASM_WRITTEN (thunk_decl) = 1;
-    } else {
+    }
+    else
+    {
         sorry("backend for this target machine does not support thunks");
     }
 }
@@ -810,7 +859,8 @@ ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, boo
     if (! mod)
         mod = d_gcc_get_output_module();
 
-    if (name[0] == '*') {
+    if (name[0] == '*')
+    {
         Symbol * s = mod->toSymbolX(name + 1, 0, 0, "FZv");
         name = s->Sident;
     }
@@ -825,11 +875,11 @@ ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, boo
 
     tree func_decl = func->toSymbol()->Stree;
     if (static_ctor)
-        DECL_STATIC_CONSTRUCTOR( func_decl ) = 1; // apparently, the back end doesn't do anything with this
+        DECL_STATIC_CONSTRUCTOR(func_decl) = 1; // apparently, the back end doesn't do anything with this
 
     // D static ctors, dtors, unittests, and the ModuleInfo chain function
     // are always private (see ObjectFile::setupSymbolStorage, default case)
-    TREE_PUBLIC( func_decl ) = public_fn;
+    TREE_PUBLIC(func_decl) = public_fn;
 
     // %% maybe remove the identifier
 
@@ -850,49 +900,49 @@ ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool
     Module * mod = g.mod;
 
     // If there is only one function, just return that
-    if (functions->dim == 1 && ! force_and_public) {
+    if (functions->dim == 1 && ! force_and_public)
+    {
         return (FuncDeclaration *) functions->data[0];
-    } else if (functions->dim >= 1) {
-        // %% shouldn't front end build these?
+    }
+    else if (functions->dim >= 1)
+    {   // %% shouldn't front end build these?
         tree exp = NULL_TREE;
         tree call_exp = NULL_TREE;
-        for (unsigned i = 0; i < functions->dim; i++) {
+        for (unsigned i = 0; i < functions->dim; i++)
+        {
             FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
             call_exp = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
             if (! exp)
                 exp = call_exp;
-            else {
+            else
                 exp = build2(COMPOUND_EXPR, void_type_node, exp, call_exp);
-            }
         }
-
         return doSimpleFunction(name, exp, false, force_and_public);
-    } else {
-        return NULL;
     }
+    else
+        return NULL;
 }
 
 
 tree
 check_static_sym(Symbol * sym)
 {
-    if (! sym->Stree) {
-        //assert( sym->Sdt );// Unfortunately cannot check for this; it might be an empty dt_t list...
-
-        tree t_ini = dt2tree( sym->Sdt ); // %% recursion problems?
-        tree t_var = build_decl( VAR_DECL, NULL_TREE, TREE_TYPE( t_ini ));
+    if (! sym->Stree)
+    {   //assert(sym->Sdt);// Unfortunately cannot check for this; it might be an empty dt_t list...
+        tree t_ini = dt2tree(sym->Sdt); // %% recursion problems?
+        tree t_var = build_decl(VAR_DECL, NULL_TREE, TREE_TYPE(t_ini));
         g.ofile->giveDeclUniqueName(t_var);
-        DECL_INITIAL( t_var ) = t_ini;
-        TREE_STATIC( t_var ) = 1;
-        if (sym->Sseg == CDATA) {
-            TREE_CONSTANT( t_var ) = TREE_CONSTANT( t_ini ) = 1;
-            TREE_READONLY( t_var ) = TREE_READONLY( t_ini ) = 1;
+        DECL_INITIAL(t_var) = t_ini;
+        TREE_STATIC(t_var) = 1;
+        if (sym->Sseg == CDATA)
+        {
+            TREE_CONSTANT(t_var) = TREE_CONSTANT(t_ini) = 1;
+            TREE_READONLY(t_var) = TREE_READONLY(t_ini) = 1;
         }
         // %% need to check SCcomdat?
-
-        TREE_PRIVATE( t_var ) = 1;
-        DECL_IGNORED_P( t_var ) = 1;
-        DECL_ARTIFICIAL( t_var ) = 1;
+        TREE_PRIVATE(t_var) = 1;
+        DECL_IGNORED_P(t_var) = 1;
+        DECL_ARTIFICIAL(t_var) = 1;
         sym->Stree = t_var;
     }
     return sym->Stree;
@@ -901,38 +951,39 @@ check_static_sym(Symbol * sym)
 void
 outdata(Symbol * sym)
 {
-    tree t = check_static_sym( sym );
+    tree t = check_static_sym(sym);
+    assert(t);
 
-    assert( t );
-
-    if (sym->Sdt && DECL_INITIAL( t ) == NULL_TREE) {
+    if (sym->Sdt && DECL_INITIAL(t) == NULL_TREE)
+    {
 #if ENABLE_CHECKING
         // % Possibly doing something wrong with StructDeclaration::toDt to need this.
         // t is a RECORD_TYPE, yet init is an incompatible ARRAY_TYPE.
-        tree init = dt2tree( sym->Sdt );
-        if (!lhd_types_compatible_p( TREE_TYPE(t), TREE_TYPE(init) ))
-            init = fold (build1 (NOP_EXPR, TREE_TYPE( t ), init));
-        DECL_INITIAL( t ) = init;
+        tree init = dt2tree(sym->Sdt);
+        if (!lhd_types_compatible_p(TREE_TYPE(t), TREE_TYPE(init)))
+            init = fold (build1 (NOP_EXPR, TREE_TYPE(t), init));
+        DECL_INITIAL(t) = init;
 #else
-        DECL_INITIAL( t ) = dt2tree( sym->Sdt );
+        DECL_INITIAL(t) = dt2tree(sym->Sdt);
 #endif
     }
 
     if (! g.ofile->shouldEmit(sym))
         return;
 
-    if ( DECL_EXTERNAL( t ) ) {
-        // %% Oops, this was supposed to be static.
+    if (DECL_EXTERNAL(t))
+    {   // %% Oops, this was supposed to be static.
         // This is for typeinfo decls ... may
         // insert into module instead?
-        DECL_EXTERNAL( t ) = 0;
-        TREE_STATIC( t ) = 1;
+        DECL_EXTERNAL(t) = 0;
+        TREE_STATIC(t) = 1;
     }
 
     layout_decl(t, 0);
 
     // from outputStaticSymbol:
-    if ( DECL_SIZE(t) == NULL_TREE ) {
+    if (DECL_SIZE(t) == NULL_TREE)
+    {
         DECL_SIZE(t) = bitsize_int(0);
         DECL_SIZE_UNIT(t) = size_int(0);
     } // Otherwise, if DECL_SIZE == 0, just let it fail...
@@ -981,8 +1032,8 @@ obj_moduleinfo(Symbol *sym)
     // struct ModuleReference in moduleinit.d
     tree mod_ref_type = gen.twoFieldType(Type::tvoid->pointerTo(), gen.getObjectType(),
         NULL, "next", "mod");
-    tree f0 = TYPE_FIELDS( mod_ref_type );
-    tree f1 = TREE_CHAIN( f0 );
+    tree f0 = TYPE_FIELDS(mod_ref_type);
+    tree f1 = TREE_CHAIN(f0);
 
     tree our_mod_ref = build_decl(VAR_DECL, NULL_TREE, mod_ref_type);
     dkeep(our_mod_ref);
@@ -991,23 +1042,23 @@ obj_moduleinfo(Symbol *sym)
 
     tree init = make_node(CONSTRUCTOR);
     CtorEltMaker ce;
-    TREE_TYPE( init ) = mod_ref_type;
+    TREE_TYPE(init) = mod_ref_type;
     ce.cons(f0, d_null_pointer);
     ce.cons(f1, gen.addressOf(sym->Stree));
-    CONSTRUCTOR_ELTS( init ) = ce.head;
-    TREE_STATIC( init ) = 1;
-    DECL_ARTIFICIAL( our_mod_ref ) = 1;
-    DECL_IGNORED_P( our_mod_ref ) = 1;
-    TREE_PRIVATE( our_mod_ref ) = 1;
-    TREE_STATIC( our_mod_ref ) = 1;
-    DECL_INITIAL( our_mod_ref ) = init;
+    CONSTRUCTOR_ELTS(init) = ce.head;
+    TREE_STATIC(init) = 1;
+    DECL_ARTIFICIAL(our_mod_ref) = 1;
+    DECL_IGNORED_P(our_mod_ref) = 1;
+    TREE_PRIVATE(our_mod_ref) = 1;
+    TREE_STATIC(our_mod_ref) = 1;
+    DECL_INITIAL(our_mod_ref) = init;
     g.ofile->rodc(our_mod_ref, 1);
 
     tree the_mod_ref = build_decl(VAR_DECL, get_identifier("_Dmodule_ref"),
-        build_pointer_type( mod_ref_type ));
+        build_pointer_type(mod_ref_type));
     dkeep(the_mod_ref);
-    DECL_EXTERNAL( the_mod_ref ) = 1;
-    TREE_PUBLIC( the_mod_ref ) = 1;
+    DECL_EXTERNAL(the_mod_ref) = 1;
+    TREE_PUBLIC(the_mod_ref) = 1;
 
     tree m1 = build2(MODIFY_EXPR, void_type_node,
         gen.component(our_mod_ref, f0),

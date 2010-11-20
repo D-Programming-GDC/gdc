@@ -43,6 +43,8 @@ class Object
 bool opEquals(Object lhs, Object rhs);
 //bool opEquals(TypeInfo lhs, TypeInfo rhs);
 
+void setSameMutex(shared Object ownee, shared Object owner);
+
 struct Interface
 {
     TypeInfo_Class   classinfo;
@@ -444,7 +446,10 @@ void clear(T)(ref T obj) if (is(T == struct))
         obj.__dtor();
     }
     auto buf = (cast(void*) &obj)[0 .. T.sizeof];
-    auto init = (cast(void*) &T.init)[0 .. T.sizeof];
+    // @@@BUG4436@@@ workaround
+    //auto init = (cast(void*) &T.init)[0 .. T.sizeof];
+    static T empty;
+    auto init = (cast(void*) &empty)[0 .. T.sizeof];
     buf[] = init[];
 }
 
