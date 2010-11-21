@@ -187,7 +187,7 @@ d_init_options (unsigned int, const char ** argv)
 
     // extra D-specific options
     gen.splitDynArrayVarArgs = true;
-    gen.emitTemplates = TEauto;
+    gen.emitTemplates = TEnormal;
     gen.useBuiltins = true;
     std_inc = true;
 
@@ -625,8 +625,8 @@ d_handle_option (size_t scode, const char *arg, int value)
           global.params.useSwitchError = ! value;
           break;
 #if V2
-      case OPT_fnobounds_check:
-          global.params.noboundscheck = value;
+      case OPT_fbounds_check:
+          global.params.noboundscheck = ! value;
           break;
 #endif
       case OPT_funittest:
@@ -934,7 +934,7 @@ d_parse_file (int /*set_yydebug*/)
     global.params.useArrayBounds = flag_bounds_check;
 #endif
     if (gen.emitTemplates == TEauto) {
-        gen.emitTemplates = (supports_one_only()) ? TEnormal : TEprivate;
+        gen.emitTemplates = (supports_one_only()) ? TEall : TEprivate;
     }
     global.params.symdebug = write_symbols != NO_DEBUG;
     //global.params.useInline = flag_inline_functions;

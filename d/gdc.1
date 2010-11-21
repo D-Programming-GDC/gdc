@@ -1,78 +1,164 @@
-.TH gdc 1
-.SH NAME
+.IX Title "GDC 1"
+.TH GDC 1
+.\" Always turn off hypenation; it makes way too many mistakes 
+.\" in technical documents. :~)
+.nh
+.SH "NAME"
 gdc - D Front End for GCC
-.SH SYNOPSIS
-.B gdc
-.I [ -switch ]
-files.d
-...
-
-Only the new options are listed here;
-gdc accepts mostly the same options as gcc.
-.SH OPTIONS
-.IP files.d
-.IP files.htm
-.IP files.html
+.SH "SYNOPSIS"
+.IX Header "SYNOPSIS"
+gdc [-switches] [-o outfile] files.d ...
+.PP
+For any given input file, the file name suffix determines what kind of
+compilation is done:
+.IP "\fIfile\fR.d" 4
+.IX Item "file.d"
+.PD 0
+.IP "\fIfile\fR.htm" 4
+.IX Item "file.htm"
+.IP "\fIfile\fR.html" 4
+.IX Item "file.html"
+.PD
 D source files
-.IP files.di
+.IP "\fIfiles\fR.di" 4
+.IX Item "file.di"
 D interface files
-.IP files.o
+.IP "\fIfiles\fR.o" 4
+.IX Item "files.o"
 Object files to link in
-.IP files.a
+.IP "\fIfiles\fR.a" 4
+.IX Item "files.a"
 Library files to link in
-.IP -fall-sources
-For each source file on the command line, semantically process each file
-preceding it.  Use this if compilation errors occur due to complicated
-.IP -f[no-]bounds-check
-Controls array bounds checking
-circular module references.  This will slow compilation noticeably.
-.IP  -fdeprecated
-allow deprecated features
-.IP  -fdeps=<filename>
-output module dependencies to <filename>
-.IP -femit-templates[=full|private|none|auto]
-Controls whether or not template code is emitted.
-
-.RS
-.IP "full"
+.SH OPTIONS
+.IX Header "OPTIONS"
+.SS "Option Summary"
+.IX Subsection "Option Summary"
+Only the new options are listed here; gdc accepts mostly the same
+options as gcc.  Most of these have both positive and negative forms;
+the negative form of -ffoo would be -fno-foo.
+This manual documents only one of these two forms, whichever one is
+not the default.
+.IP "\fBD Language Options\fR" 4
+.IX Item "D Language Options"
+.\" TODO: write longer/more concise descriptions for each option.
+.IP "\fB-frelease\fR" 4
+.IX Item "-frelease"
+Compile release version.
+.IP "\fB-funittest\fR" 4
+.IX Item "-funittest"
+Compile in unittest code.
+.IP "\fB-fno-assert\fR" 4
+.IX Item "-fno-assert"
+Generate runtime code for assert()'s.
+.IP "\fB-fno-bounds-check\fR" 4
+.IX Item "-fno-bounds-check"
+Turns off array bounds checking for all functions.
+.IP "\fB-fdebug-c\fR" 4
+.IX Item "-fdebug-c"
+With -g, generate C debug information.
+.IP "\fB-fdeprecated\fR" 4
+.IX Item "-fdeprecated"
+Allow use of deprecated features.
+.IP "\fB-fd-verbose\fR" 4
+.IX Item "-fd-verbose"
+Print information about D language processing to stdout.
+.IP "\fB-fd-version=1\fR" 4
+.IX Item "-fd-version=1"
+Compile as D language version 1.
+.IP "\fB-fd-vtls\fR" 4
+.IX Item "-fd-vtls"
+List all variables going into thread local storage.
+.IP "\fB-fignore-unknown-pragmas\fR" 4
+.IX Item "-fignore-unknown-pragmas"
+Ignore unsupported pragmas.
+.IP "\fB-femit-templates\fR[=all|normal|private|none|auto]" 4
+.IX Item "-femit-templates[=all|normal|private|none|auto]"
+Control template emission.
+These are the supported options:
+.RS 4
+.IP "\fBall\fR" 2
+.IX Item "all"
 Emit templates, expecting multiple copies to be merged by the linker.
-.IP "private"
+.IP "\fBnormal\fR" 2
+.IX Item "normal"
+Emits templates, but only if the compiler determines that it needs to.
+.IP "\fBprivate\fR" 2
+.IX Item "private"
 Emit templates, but make them private to the translation unit.
 The executable will have multiple copies of code and data.
-.IP "none"
+.IP "\fBnone\fR" 2
+.IX Item "none"
 Do not emit templates at all.
-.IP "auto"
-For targets that support templates, the "full" mode is used.
+.IP "\fBauto\fR" 2
+.IX Item "auto"
+For targets that support templates, the "all" mode is used.
 Otherwise, the "private" mode is used.
 .RE
-
-.IP  -fintfc
-generate D interface files
-.IP  -fintfc-dir=<dir>
-write D interface files to directory <dir>
-.IP -fintfc-file=<filename>
-wite D interface file to <filename>
-.IP  -frelease
-compile release version
-.IP  -funittest
-compile in unit tests
-.IP  -fversion=ident
-compile in version code identified by ident
-.IP  -fXf=<filename>
-output JSON to <filename>
-
-.SH SEE ALSO
+.IP "\fB-fdebug\fR[=level|ident]" 4
+.IX Item "-fdebug[=level|ident]"
+Compile in debug code into the program.
+These are supported options:
+.RS 4
+.IP "\fBlevel\fR" 2
+.IX Item "level"
+Compile in debug code <= level.
+.IP "\fBident\fR" 2
+.IX Item "ident"
+Compile in debug code identified by ident.
+.RE
+.IP "\fB-fdeps=\fR<filename>" 4
+.IX Item "-fdeps=<filename>"
+Write module dependencies to filename.
+.IP "\fB-fonly=\fR<filename>" 4
+.IX Item "-fonly=<filename>"
+Process all modules specified on the command line,
+but only generate code for the module specified by the argument.
+.IP "\fB-fversion=\fR<level|ident>" 4
+.IX Item "-fversion=<level|ident>"
+Compile in version code >= level or identified by ident.
+.IP "\fB-fintfc\fR" 4
+.IX Item "-fintfc"
+Generate D interface files.
+.IP "\fB-fintfc-dir=\fR<directory>" 4
+.IX Item "-fintfc-dir=<directory>"
+Write D interface files to directory.
+.IP "\fB-fintfc-file=\fR<filename>" 4
+.IX Item "-fintfc-file=<filename>"
+Write D interface file to filename.
+.IP "\fB-fdoc\fR" 4
+.IX Item "-fdoc"
+Generate documentation.
+.IP "\fB-fdoc-dir=\fR<directory>" 4
+.IX Item "-fdoc-dir=<directory>"
+Write documentation file in directory.
+.IP "\fB-fdoc-file=\fR<filename>" 4
+.IX Item "-fdoc-file=<filename>"
+Write documentation file to filename.
+.IP "\fB-fdoc-inc=\fR<filename>" 4
+.IX Item "-fdoc-inc=<filename>"
+Include a Ddoc macro file.
+.IP "\fB-fXf=\fR<filename>" 4
+.IX Item "-fXf=<filename>"
+Write JSON file to filename.
+.IP "\fB-fdump-source\fR" 4
+.IX Item "-fdump-source"
+Dump decoded UTF-8 text and source from HTML.
+.IP "\fB-fd-all-sources\fR" 4
+.IX Item "-fd-all-sources"
+For each source file on the command line, semantically process each file
+preceding it.  Use this if compilation errors occur due to complicated
+circular module references.  This will slow compilation noticeably.
+.SH "SEE ALSO"
+.IX Item "SEE ALSO"
 .BR gcc(1)
+.SH "AUTHOR"
+.IX Header "AUTHOR"
+.PD 0
+GDC was written by, and copyright:
+  David Friedman (C) 2004-2007
 
-.SH AUTHOR
-Copyright
-
-(C) 2004 David Friedman
-
-Modified by
-
-(C) 2010 Iain Buclaw
-
-(C) 2010 Michael Parrott
-
-(C) 2010 Vincenzo Ampolo
+Maintained by:
+  Iain Buclaw (C) 2010
+  Michael Parrott (C) 2010
+  Vincenzo Ampolo (C) 2010
+.PD

@@ -31,7 +31,7 @@ all-local: libgphobos2.a libgdruntime.a
 SUFFIXES = .d
 
 %.o : %.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
 # For core objects, generate .di headers
 %.di: %.d $(D_PREREQ_SRCS)
@@ -263,12 +263,12 @@ WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/windows/windows.o \
 
 D_EXTRA_OBJS=@D_EXTRA_OBJS@
 
-std/stream.o: std/stream.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
 std/stream.t.o: std/stream.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
 
-ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS) $(WEAK_OBJS)
+
+ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
+
 
 libgphobos2.a : libgdruntime.a $(ALL_PHOBOS_OBJS)
 	$(AR) -r $@ $(ALL_PHOBOS_OBJS)

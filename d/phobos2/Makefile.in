@@ -365,7 +365,7 @@ WINDOWS_OBJS = std/c/windows/com.o std/c/windows/stat.o std/c/windows/windows.o 
              std/windows/iunknown.o std/windows/registry.o \
              std/windows/syserror.o
 
-ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS) $(WEAK_OBJS)
+ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
 # values defined in terms of make variables, as is the case for CC and
@@ -720,7 +720,7 @@ uninstall-am: uninstall-info-am
 all-local: libgphobos2.a libgdruntime.a
 
 %.o : %.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
 # For core objects, generate .di headers
 %.di: %.d $(D_PREREQ_SRCS)
@@ -799,8 +799,6 @@ std/boxer.t.o: std/boxer.o
 unittest: unittest.o libgphobos2_t.a libgphobos2.a
 	$(GDC) -o $@ $(CFLAGS) -fdeprecated unittest.o -L./ -lgdruntime -lgphobos2_t $(LIBS) -ldl
 
-std/stream.o: std/stream.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
 std/stream.t.o: std/stream.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
 

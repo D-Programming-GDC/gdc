@@ -40,9 +40,10 @@ frelease
 D
 Compile release version
 
-fnobounds-check
-D RejectNegative
-Turns off array bounds checking for all functions
+; For D: defaults to on
+fbounds-check
+D
+Generate code to check bounds before indexing arrays
 
 funittest
 D
