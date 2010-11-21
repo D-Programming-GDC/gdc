@@ -60,8 +60,8 @@ dtnbits(dt_t** pdt, target_size_t count, char * pbytes, unsigned unit_size)
     assert(unit_size == sizeof(bitunit_t));
     assert(count % unit_size == 0);
 
-    bitunit_t * p_unit = (bitunit_t *) pbytes,
-        * p_unit_end = (bitunit_t *) (pbytes + count);
+    bitunit_t * p_unit = (bitunit_t *) pbytes;
+    bitunit_t * p_unit_end = (bitunit_t *) (pbytes + count);
     char * pbits = new char[count];
     char * p_out = pbits;
     unsigned b = 0;
@@ -82,7 +82,7 @@ dtnbits(dt_t** pdt, target_size_t count, char * pbytes, unsigned unit_size)
             }
         }
     }
-    assert( (unsigned)(p_out - pbits) == count);
+    assert((unsigned)(p_out - pbits) == count);
 
     return dtnbytes(pdt, count, pbits);
 }
@@ -91,14 +91,14 @@ dt_t**
 dtnwords(dt_t** pdt, target_size_t word_count, void * pwords, unsigned word_size)
 {
     return dtnbytes(pdt, word_count * word_size,
-        gen.hostToTargetString((char*) pwords, word_count, word_size));
+            gen.hostToTargetString((char*) pwords, word_count, word_size));
 }
 
 dt_t**
 dtawords(dt_t** pdt, target_size_t word_count, void * pwords, unsigned word_size)
 {
     return dtabytes(pdt, TYnptr, 0, word_count * word_size,
-        gen.hostToTargetString((char*) pwords, word_count, word_size));
+            gen.hostToTargetString((char*) pwords, word_count, word_size));
 }
 
 /* Add a 32-bit value to a dt.  If pad_to_word is true, adds any
@@ -139,24 +139,30 @@ dt_size(dt_t * dt)
             case DT_azeros:
             case DT_common:
             case DT_nbytes:
+            {
                 size += dt->DTint;
                 break;
+            }
             case DT_abytes:
             case DT_ibytes:
             case DT_xoff:
+            {
                 size += PTRSIZE;
                 break;
+            }
             case DT_tree:
-                {
-                    tree t_size = TYPE_SIZE_UNIT( TREE_TYPE( dt->DTtree ));
-                    size += gen.getTargetSizeConst(t_size);
-                }
+            {
+                tree t_size = TYPE_SIZE_UNIT(TREE_TYPE(dt->DTtree));
+                size += gen.getTargetSizeConst(t_size);
                 break;
+            }
             case DT_container:
+            {
                 size += dt_size(dt->DTvalues);
                 break;
+            }
             default:
-                assert(0);
+                gcc_unreachable();
         }
         dt = dt->DTnext;
     }
@@ -176,9 +182,10 @@ dt2tree(dt_t * dt)
 static tree
 dt2node(dt_t * dt)
 {
-    switch (dt->dt) {
-    case DT_azeros:
-    case DT_common:
+    switch (dt->dt)
+    {
+        case DT_azeros:
+        case DT_common:
         {
             tree a = make_node(CONSTRUCTOR);
             TREE_TYPE(a) = gen.arrayType(Type::tuns8, dt->DTint);
@@ -186,31 +193,35 @@ dt2node(dt_t * dt)
             TREE_CONSTANT(a) = 1;
             return a;
         }
-    case DT_nbytes:
+        case DT_nbytes:
         {
             tree s = build_string(dt->DTint, (char *) dt->DTpointer);
-            TREE_TYPE( s ) = gen.arrayType(Type::tuns8, dt->DTint);
+            TREE_TYPE(s) = gen.arrayType(Type::tuns8, dt->DTint);
             return s;
         }
-    case DT_abytes:
+        case DT_abytes:
         {
             tree s = build_string(dt->DTint, (char *) dt->DTpointer);
-            TREE_TYPE( s ) = gen.arrayType(Type::tuns8, dt->DTint);
-            TREE_STATIC( s ) = 1;
-            return gen.addressOf( s );
+            TREE_TYPE(s) = gen.arrayType(Type::tuns8, dt->DTint);
+            TREE_STATIC(s) = 1;
+            return gen.addressOf(s);
         }
-    case DT_ibytes:
-        // %% make sure this is the target word type
-        return gen.integerConstant(dt->DTint, Type::tsize_t);
-    case DT_xoff:
-        return gen.pointerOffset(
-            gen.addressOf(check_static_sym(dt->DTsym)),
-            gen.integerConstant(dt->DTint, Type::tsize_t) );
-    case DT_tree:
-        return dt->DTtree;
-    case DT_container:
+        case DT_ibytes:
+        {   // %% make sure this is the target word type
+            return gen.integerConstant(dt->DTint, Type::tsize_t);
+        }
+        case DT_xoff:
         {
-            /* It is necessary to give static array data its original
+            return gen.pointerOffset(
+                    gen.addressOf(check_static_sym(dt->DTsym)),
+                    gen.integerConstant(dt->DTint, Type::tsize_t));
+        }
+        case DT_tree:
+        {
+            return dt->DTtree;
+        }
+        case DT_container:
+        {   /* It is necessary to give static array data its original
                type.  Otherwise, the SRA pass will not find the array
                elements.
 
@@ -231,7 +242,7 @@ dt2node(dt_t * dt)
                 while (dte)
                 {
                     ctor_elts.cons(gen.integerConstant(i++, size_type_node),
-                        dt2node(dte));
+                            dt2node(dte));
                     dte = dte->DTnext;
                 }
                 tree ctor = make_node(CONSTRUCTOR);
@@ -239,7 +250,6 @@ dt2node(dt_t * dt)
 
                 // DT data should always be constant.  If the decl is not TREE_CONSTANT, fine.
                 TREE_CONSTANT(ctor) = 1;
-
                 TREE_READONLY(ctor) = 1;
                 TREE_STATIC(ctor) = 1;
                 CONSTRUCTOR_ELTS(ctor) = ctor_elts.head;
@@ -250,8 +260,8 @@ dt2node(dt_t * dt)
             else
                 return dt2tree(dt->DTvalues);
         }
-    default:
-        abort();
+        default:
+            gcc_unreachable();
     }
     return NULL;
 }
@@ -266,27 +276,28 @@ dt2tree_list_of_elems(dt_t * dt)
 
     tree aggtype = make_node(RECORD_TYPE);
 
-    while (dt) {
+    while (dt)
+    {
         tree value = dt2node(dt);
         tree field = build_decl(FIELD_DECL, NULL_TREE, TREE_TYPE(value));
         DECL_CONTEXT(field) = aggtype;
         DECL_FIELD_OFFSET(field) = offset;
         DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;
-        SET_DECL_OFFSET_ALIGN(field, TYPE_ALIGN( TREE_TYPE( field )));
+        SET_DECL_OFFSET_ALIGN(field, TYPE_ALIGN(TREE_TYPE(field)));
         DECL_ARTIFICIAL(field) = 1;
         DECL_IGNORED_P(field) = 1;
         layout_decl(field, 0);
 
         fields.chain(field);
         elts.cons(field, value);
-        offset = size_binop(PLUS_EXPR, offset, TYPE_SIZE_UNIT( TREE_TYPE( value )));
+        offset = size_binop(PLUS_EXPR, offset, TYPE_SIZE_UNIT(TREE_TYPE(value)));
 
         dt = dt->DTnext;
     }
 
     TYPE_FIELDS(aggtype) = fields.head; // or finish_laout
-    TYPE_SIZE(aggtype) = convert( bitsizetype,
-        size_binop( MULT_EXPR, offset, size_int( BITS_PER_UNIT )));
+    TYPE_SIZE(aggtype) = convert(bitsizetype,
+        size_binop(MULT_EXPR, offset, size_int(BITS_PER_UNIT)));
     TYPE_SIZE_UNIT(aggtype) = offset;
     // okay no alignment -- decl (which has the correct type) should take care of it..
     // align=bits per word?

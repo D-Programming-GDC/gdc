@@ -1199,6 +1199,7 @@ static const char * libcall_ids[LIBCALL_count] =
       "_d_criticalenter", "_d_criticalexit",
       "_d_throw",
       "_d_switch_string", "_d_switch_ustring", "_d_switch_dstring",
+      "_d_arrayliteralT",
       "_d_assocarrayliteralTp"
 #if V2
       ,
@@ -1492,6 +1493,12 @@ IRState::getLibCallDecl(LibCall lib_call)
             arg_types.push( Type::tchar->arrayOf()->arrayOf() );
             arg_types.push( Type::tchar->arrayOf() );
             return_type = Type::tint32;
+            break;
+        case LIBCALL_ARRAYLITERALT:
+            arg_types.push( Type::typeinfo->type );
+            arg_types.push( Type::tsize_t );
+            varargs = true;
+            return_type = Type::tvoid->pointerTo();
             break;
         case LIBCALL_ASSOCARRAYLITERALTP:
             arg_types.push( Type::typeinfo->type );

@@ -38,19 +38,16 @@ max_float_mode()
 static enum machine_mode
 myMode_to_machineMode(real_t::MyMode mode)
 {
-    switch (mode) {
-        /*
-    case real_t::Float: return SFmode;
-    case real_t::Double: return DFmode;
-    case real_t::LongDouble: return max_float_mode();
-        */
-    case real_t::Float: return TYPE_MODE(float_type_node);
-    case real_t::Double: return TYPE_MODE(double_type_node);
-    case real_t::LongDouble: return TYPE_MODE(long_double_type_node);
-
-    default:
-        abort();
-        return VOIDmode;
+    switch (mode)
+    {
+        case real_t::Float:
+            return TYPE_MODE(float_type_node);
+        case real_t::Double:
+            return TYPE_MODE(double_type_node);
+        case real_t::LongDouble:
+            return TYPE_MODE(long_double_type_node);
+        default:
+            gcc_unreachable();
     }
 }
 
@@ -62,7 +59,8 @@ void
 real_t::init()
 {
     assert(sizeof(real_t) >= sizeof(REAL_VALUE_TYPE));
-    for (int i = (int) Float; i < (int) NumModes; i++) {
+    for (int i = (int) Float; i < (int) NumModes; i++)
+    {
         real_t_Properties & p = real_t_properties[i];
 
         enum machine_mode mode = myMode_to_machineMode((MyMode) i);
@@ -144,11 +142,11 @@ real_t::real_t(d_uns64 v)
 {
 # if HOST_BITS_PER_WIDE_INT == 32
     REAL_VALUE_FROM_UNSIGNED_INT(rv(),
-        v & 0xffffffff, (v >> 32) & 0xffffffff,
-        max_float_mode());
+            v & 0xffffffff, (v >> 32) & 0xffffffff,
+            max_float_mode());
 # elif HOST_BITS_PER_WIDE_INT == 64
     REAL_VALUE_FROM_UNSIGNED_INT(rv(), v, 0,
-        max_float_mode());
+            max_float_mode());
 # else
 #  error Fix This
 # endif
@@ -159,11 +157,11 @@ real_t::real_t(d_int64 v)
 {
 # if HOST_BITS_PER_WIDE_INT == 32
     REAL_VALUE_FROM_INT(rv(), v & 0xffffffff,
-        (v >> 32) & 0xffffffff, max_float_mode());
+            (v >> 32) & 0xffffffff, max_float_mode());
 # elif HOST_BITS_PER_WIDE_INT == 64
     REAL_VALUE_FROM_INT(rv(), v,
-        (v & 0x8000000000000000ULL) ? ~(unsigned HOST_WIDE_INT) 0 : 0,
-        max_float_mode());
+            (v & 0x8000000000000000ULL) ? ~(unsigned HOST_WIDE_INT) 0 : 0,
+            max_float_mode());
 # else
 #  error Fix This
 # endif
@@ -223,19 +221,18 @@ real_t real_t::operator% (const real_t & r)
     // %% inf cases..
 
     // %% signal error?
-    if (r.rv().cl == rvc_zero || REAL_VALUE_ISINF(rv())) {
+    if (r.rv().cl == rvc_zero || REAL_VALUE_ISINF(rv()))
+    {
         REAL_VALUE_TYPE rvt;
         real_nan(& rvt, "", 1, max_float_mode());
         return real_t(rvt);
     }
 
-    if ( rv().cl == rvc_zero ) {
+    if ( rv().cl == rvc_zero )
         return *this;
-    }
 
-    if ( REAL_VALUE_ISINF(r.rv()) ) {
+    if ( REAL_VALUE_ISINF(r.rv()) )
         return *this;
-    }
 
     // %% need to check for NaN?
     REAL_ARITHMETIC(quot, RDIV_EXPR, rv(), r.rv());
@@ -297,7 +294,7 @@ d_uns64
 real_t::toInt(Type * real_type, Type * int_type) const
 {
     tree t = fold( build1(FIX_TRUNC_EXPR, int_type->toCtype(),
-            gen.floatConstant(rv(), real_type->toBasetype()->isTypeBasic())) );
+                gen.floatConstant(rv(), real_type->toBasetype()->isTypeBasic())) );
     // can't use tree_low_cst as it asserts !TREE_OVERFLOW
     return gen.hwi2toli(TREE_INT_CST_LOW(t), TREE_INT_CST_HIGH(t));
 }
@@ -327,19 +324,42 @@ real_t::floatCompare(int op, const real_t & r)
 {
     enum tree_code out;
 
-    switch ( (enum TOK) op ) {
-    case TOKleg: out = ORDERED_EXPR; break; //n = r1 <>= r2;    break;
-    case TOKlg:
-        return *this < r || * this > r;
-        // n = r1 <> r2;        break;
-    case TOKunord: out = UNORDERED_EXPR; break; // n = r1 !<>= r2; break;
-    case TOKue:  out = UNEQ_EXPR; break; // n = r1 !<> r2;      break;
-    case TOKug:  out = UNGT_EXPR; break; // n = r1 !<= r2; break;
-    case TOKuge: out = UNGE_EXPR; break; // n = r1 !< r2;       break;
-    case TOKul:  out = UNLT_EXPR; break; // n = r1 !>= r2;      break;
-    case TOKule: out = UNLE_EXPR; break; // n = r1 !> r2;       break;
-    default:
-        abort();
+    switch ( (enum TOK) op )
+    {
+        case TOKleg:
+        {   //n = r1 <>= r2;
+            out = ORDERED_EXPR; break;
+        }
+        case TOKlg:
+        {   // n = r1 <> r2;
+            return *this < r || * this > r;
+        }
+        case TOKunord:
+        {   // n = r1 !<>= r2;
+            out = UNORDERED_EXPR; break;
+        }
+        case TOKue:
+        {   // n = r1 !<> r2;
+            out = UNEQ_EXPR; break;
+        }
+        case TOKug:
+        {   // n = r1 !<= r2;
+            out = UNGT_EXPR; break;
+        }
+        case TOKuge:
+        {   // n = r1 !< r2;
+            out = UNGE_EXPR; break;
+        }
+        case TOKul:
+        {   // n = r1 !>= r2;
+            out = UNLT_EXPR; break;
+        }
+        case TOKule:
+        {   // n = r1 !> r2;
+            out = UNLE_EXPR; break;
+        }
+        default:
+            gcc_unreachable();
     }
     return real_compare(out, & rv(), & r.rv());
 }
@@ -375,10 +395,10 @@ real_t::isNan()
     return REAL_VALUE_ISNAN(rv());
 }
 
-// Same as isNan, but also check if is signalling.
 bool
 real_t::isSignallingNan()
 {
+    // Same as isNan, but also check if is signalling.
     return REAL_VALUE_ISNAN(rv()) && rv().signalling;
 }
 
@@ -404,9 +424,11 @@ real_t::toBytes(unsigned char * buf, unsigned buf_size)
     assert( ld_size <= 16 );
 
     real_to_target (data, & rv(), TYPE_MODE(long_double_type_node));
-    while (count) {
+    while (count)
+    {
         long l = *src++;
-        for (int i = 4; i && count; i--) {
+        for (int i = 4; i && count; i--)
+        {
             *dest++ = l & 0xff;
             l >>= 8;
             count--;

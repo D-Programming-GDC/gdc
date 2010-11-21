@@ -1774,7 +1774,7 @@ extern (C) byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
 /**
  *
  */
-version (GNU) { } else
+//version (GNU) { } else
 extern (C) void* _d_arrayliteralT(TypeInfo ti, size_t length, ...)
 {
     auto sizeelem = ti.next.tsize();            // array element size

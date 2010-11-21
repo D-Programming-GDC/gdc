@@ -53,18 +53,16 @@ Symbol *
 symbol_calloc(const char * string)
 {
     // Need to dup the string because sometimes the string is alloca()'d
-
     Symbol * s = new Symbol;
     s->Sident = mem.strdup(string);
     return s;
 }
 
 Symbol *
-symbol_name(const char * id, int /*sclass*/, TYPE * /*t*/)
+symbol_name(const char * id, int , TYPE *)
 {
     // %% Nothing special, just do the same as symbol_calloc
     // we don't even bother using sclass and t
-
     return symbol_calloc(id);
 }
 
@@ -75,7 +73,7 @@ struct_calloc()
 }
 
 Symbol *
-symbol_generate(SymbolStorageClass /*sc*/, TYPE * /*type*/)
+symbol_generate(SymbolStorageClass, TYPE *)
 {
     return 0;
 }
@@ -87,11 +85,9 @@ Thunk::Thunk()
 }
 
 void
-symbol_func(Symbol * /*sym*/)
+symbol_func(Symbol *)
 {
-
 }
-
 
 Symbol *
 symbol_tree(tree t)
@@ -101,7 +97,7 @@ symbol_tree(tree t)
     return s;
 }
 
-void slist_add(Symbol * /*s*/)
+void slist_add(Symbol *)
 {
 }
 

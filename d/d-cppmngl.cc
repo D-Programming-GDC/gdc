@@ -95,8 +95,7 @@ cpp_mangle_arguments(TypeFunction * tf, OutBuffer * buf, CppMangleState *cms)
 
             have_some_args = true;
             if (arg->storageClass & (STClazy))
-            {
-                // DMD does not report an error...
+            {   // DMD does not report an error...
                 cms->topSymbol->error("cannot represent lazy parameter in C++");
             }
             else if (arg->storageClass & (STCout | STCref))
@@ -105,8 +104,7 @@ cpp_mangle_arguments(TypeFunction * tf, OutBuffer * buf, CppMangleState *cms)
                 continue;
             }
             else if (arg->type->ty == Tsarray)
-            {
-                /* C++ would encode as pointer-to-elem-type, but DMD encodes
+            {   /* C++ would encode as pointer-to-elem-type, but DMD encodes
                    as pointer-to-array-type. */
                 arg->type->pointerTo()->toCppMangle(buf, cms);
                 continue;
@@ -210,7 +208,6 @@ Type::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
     //error("cannot represent type '%s' in C++", toChars());
     // DMD uses D type mangle.
-
     if (! cms->hasSubstitute(this, buf))
     {
         OutBuffer o;
@@ -282,7 +279,6 @@ TypeBasic::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         case Twchar: c = 't'; break;
         case Tdchar: c = 'j'; break;
 #endif
-
         default:
             Type::toCppMangle(buf, cms);
             return;
@@ -307,7 +303,6 @@ TypeSArray::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         buf->writeByte('_');
         if (next)
             next->toCppMangle(buf, cms);
-
         assert(! cms->hasSubstitute(this, NULL));
         cms->add(this);
     }
@@ -333,7 +328,6 @@ TypePointer::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         buf->writeByte('P');
         if (next)
             next->toCppMangle(buf, cms);
-
         assert(! cms->hasSubstitute(this, NULL));
         cms->add(this);
     }
@@ -347,7 +341,6 @@ TypeReference::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         buf->writeByte('R');
         if (next)
             next->toCppMangle(buf, cms);
-
         assert(! cms->hasSubstitute(this, NULL));
         cms->add(this);
     }
@@ -365,7 +358,6 @@ TypeFunction::toCppMangle(OutBuffer *buf, CppMangleState *cms)
             next->toCppMangle(buf, cms);
         cpp_mangle_arguments(this, buf, cms);
         buf->writeByte('E');
-
         assert(! cms->hasSubstitute(this, NULL));
         cms->add(this);
     }
@@ -403,7 +395,6 @@ TypeClass::toCppMangle(OutBuffer *buf, CppMangleState *cms)
     {
         buf->writeByte('P');
         cpp_mangle1(sym, buf, cms);
-
         assert(! cms->hasSubstitute(this, NULL));
         cms->add(this);
     }

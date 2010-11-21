@@ -2469,15 +2469,14 @@ array_literal_assign(IRState * irs, tree mem, ArrayLiteralExp * ale)
 {
     tree result = NULL_TREE;
     tree offset = size_int(0);
-    tree elem_size = size_int( ale->type->toBasetype()->nextOf()->size() );
+    tree elem_size = size_int(ale->type->toBasetype()->nextOf()->size());
 
-    for (unsigned i = 0; i < ale->elements->dim; i++) {
+    for (unsigned i = 0; i < ale->elements->dim; i++)
+    {
         Expression * e = (Expression *) ale->elements->data[i];
         tree elemp_e = irs->pointerOffset(mem, offset);
-        tree assgn_e = irs->vmodify( irs->indirect(elemp_e),
-            e->toElem(irs));
+        tree assgn_e = irs->vmodify(irs->indirect(elemp_e), e->toElem(irs));
         result = irs->maybeCompound(result, assgn_e);
-
         offset = size_binop(PLUS_EXPR, offset, elem_size);
     }
     return result;
@@ -2486,31 +2485,57 @@ array_literal_assign(IRState * irs, tree mem, ArrayLiteralExp * ale)
 elem *
 ArrayLiteralExp::toElem(IRState * irs)
 {
+#if 0
+    // WIP: Use _d_arrayliteralT instead on _d_newarray
     Type * array_type = type->toBasetype();
-    assert( array_type->ty == Tarray || array_type->ty == Tsarray ||
-            array_type->ty == Tpointer );
+    tree ptr_type = array_type->nextOf()->pointerTo()->toCtype();
+    assert(array_type->ty == Tarray || array_type->ty == Tsarray ||
+            array_type->ty == Tpointer);
+
+    tree * args;
+    unsigned n_args = 2 + elements->dim;
+    args = new tree[n_args];
+
+    args[0] = irs->typeinfoReference(array_type->nextOf()->arrayOf());
+    args[1] = irs->integerConstant(elements->dim, size_type_node);
+
+    for (unsigned i = 0; i < elements->dim; i++)
+    {
+        Expression * e = (Expression *) elements->data[i];
+        args[i+2] = e->toElem(irs);
+    }
+    tree result = irs->libCall(LIBCALL_ARRAYLITERALT, n_args, args, ptr_type);
+    return irs->darrayVal(array_type->toCtype(), size_int(elements->dim), result);
+#else
+    Type * array_type = type->toBasetype();
+    assert(array_type->ty == Tarray || array_type->ty == Tsarray ||
+            array_type->ty == Tpointer);
     tree elem_type = array_type->nextOf()->toCtype();
     tree d_array_type = array_type->nextOf()->arrayOf()->toCtype();
 
-    tree args[2] = { irs->typeinfoReference(array_type->nextOf()->arrayOf()),
-                     irs->integerConstant(elements->dim, size_type_node) };
+    tree args[2] = {
+        irs->typeinfoReference(array_type->nextOf()->arrayOf()),
+        irs->integerConstant(elements->dim, size_type_node)
+    };
     // Unfortunately, this does a useles initialization
     LibCall lib_call = array_type->nextOf()->isZeroInit() ?
         LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
     tree d_array = irs->libCall(lib_call, 2, args, d_array_type);
 
-    tree mem = irs->maybeMakeTemp( irs->darrayPtrRef( d_array ));
-    tree result = irs->maybeCompound( array_literal_assign(irs, mem, this),
-        mem );
-    if ( array_type->ty == Tarray ) {
+    tree mem = irs->maybeMakeTemp(irs->darrayPtrRef(d_array));
+    tree result = irs->maybeCompound(array_literal_assign(irs, mem, this), mem);
+    if (array_type->ty == Tarray)
+    {
         result = irs->darrayVal(d_array_type, elements->dim, result);
-    } else {
+    }
+    else
+    {
         tree s_array_type = irs->arrayType(elem_type, elements->dim);
         if (array_type->ty == Tsarray)
             result = irs->indirect(result, s_array_type);
     }
-
     return result;
+#endif
 }
 
 elem *
@@ -2524,13 +2549,13 @@ AssocArrayLiteralExp::toElem(IRState * irs)
     tree keys_var = irs->exprVar(irs->arrayType(aa_type->index, keys->dim)); //?
     tree vals_var = irs->exprVar(irs->arrayType(aa_type->next, keys->dim));
     tree keys_ptr = irs->nop(irs->addressOf(keys_var),
-        aa_type->index->pointerTo()->toCtype());
+            aa_type->index->pointerTo()->toCtype());
     tree vals_ptr = irs->nop(irs->addressOf(vals_var),
-        aa_type->next->pointerTo()->toCtype());
+            aa_type->next->pointerTo()->toCtype());
     tree keys_offset = size_int(0);
     tree vals_offset = size_int(0);
-    tree keys_size = size_int( aa_type->index->size() );
-    tree vals_size = size_int( aa_type->next->size() );
+    tree keys_size = size_int(aa_type->index->size());
+    tree vals_size = size_int(aa_type->next->size());
     tree result = NULL_TREE;
 
     for (unsigned i = 0; i < keys->dim; i++)
@@ -2540,28 +2565,30 @@ AssocArrayLiteralExp::toElem(IRState * irs)
 
         e = (Expression *) keys->data[i];
         elemp_e = irs->pointerOffset(keys_ptr, keys_offset);
-        assgn_e = irs->vmodify( irs->indirect(elemp_e), e->toElem(irs) );
+        assgn_e = irs->vmodify(irs->indirect(elemp_e), e->toElem(irs));
         keys_offset = size_binop(PLUS_EXPR, keys_offset, keys_size);
         result = irs->maybeCompound(result, assgn_e);
 
         e = (Expression *) values->data[i];
         elemp_e = irs->pointerOffset(vals_ptr, vals_offset);
-        assgn_e = irs->vmodify( irs->indirect(elemp_e), e->toElem(irs) );
+        assgn_e = irs->vmodify(irs->indirect(elemp_e), e->toElem(irs));
         vals_offset = size_binop(PLUS_EXPR, vals_offset, vals_size);
         result = irs->maybeCompound(result, assgn_e);
     }
 
-    tree args[4] = { irs->typeinfoReference(aa_type),
-                     irs->integerConstant(keys->dim, Type::tsize_t),
-                     keys_ptr, vals_ptr };
+    tree args[4] = {
+        irs->typeinfoReference(aa_type),
+        irs->integerConstant(keys->dim, Type::tsize_t),
+        keys_ptr, vals_ptr
+    };
     result = irs->maybeCompound(result,
-        irs->libCall(LIBCALL_ASSOCARRAYLITERALTP, 4, args));
+            irs->libCall(LIBCALL_ASSOCARRAYLITERALTP, 4, args));
 
-    tree ctor = make_node( CONSTRUCTOR );
+    tree ctor = make_node(CONSTRUCTOR);
     CtorEltMaker ce;
-    TREE_TYPE( ctor ) = aa_type->toCtype();
-    ce.cons(TYPE_FIELDS(TREE_TYPE( ctor )), result);
-    CONSTRUCTOR_ELTS( ctor ) = ce.head;
+    TREE_TYPE(ctor) = aa_type->toCtype();
+    ce.cons(TYPE_FIELDS(TREE_TYPE(ctor)), result);
+    CONSTRUCTOR_ELTS(ctor) = ce.head;
 
     result = irs->binding(keys_var, irs->binding(vals_var, ctor));
     return irs->nop(result, type->toCtype());
@@ -2572,9 +2599,9 @@ StructLiteralExp::toElem(IRState *irs)
 {
     // %% Brings false positives on D2, maybe uncomment for debug builds...
     //assert(irs->typesSame(type->toBasetype(), sd->type->toBasetype()));
-    tree ctor = make_node( CONSTRUCTOR );
+    tree ctor = make_node(CONSTRUCTOR);
     CtorEltMaker ce;
-    TREE_TYPE( ctor ) = type->toCtype();
+    TREE_TYPE(ctor) = type->toCtype();
 
     if (elements)
     {
@@ -2653,7 +2680,7 @@ StructLiteralExp::toElem(IRState *irs)
             ce.cons(fld->toSymbol()->Stree, exp_tree);
         }
     }
-    CONSTRUCTOR_ELTS( ctor ) = ce.head;
+    CONSTRUCTOR_ELTS(ctor) = ce.head;
     return ctor;
 }
 
