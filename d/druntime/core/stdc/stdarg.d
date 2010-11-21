@@ -25,6 +25,11 @@ version (GNU)
     alias __builtin_va_list va_list;
     alias __builtin_va_end va_end;
     alias __builtin_va_copy va_copy;
+
+    version(x86_64)
+    {   // TODO: implement this?
+        alias __builtin_va_list __va_argsave_t;
+    }
 }
 else
 {

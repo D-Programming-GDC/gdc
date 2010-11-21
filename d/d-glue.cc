@@ -2570,8 +2570,8 @@ AssocArrayLiteralExp::toElem(IRState * irs)
 elem *
 StructLiteralExp::toElem(IRState *irs)
 {
-    assert(irs->typesSame(type->toBasetype(), sd->type->toBasetype()));
-
+    // %% Brings false positives on D2, maybe uncomment for debug builds...
+    //assert(irs->typesSame(type->toBasetype(), sd->type->toBasetype()));
     tree ctor = make_node( CONSTRUCTOR );
     CtorEltMaker ce;
     TREE_TYPE( ctor ) = type->toCtype();
@@ -2650,7 +2650,7 @@ StructLiteralExp::toElem(IRState *irs)
             if (call_exp)
                 irs->addExp(call_exp);
 
-            ce.cons(fld->csym->Stree, exp_tree);
+            ce.cons(fld->toSymbol()->Stree, exp_tree);
         }
     }
     CONSTRUCTOR_ELTS( ctor ) = ce.head;

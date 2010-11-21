@@ -1686,11 +1686,11 @@ void IntegerExp::toMangleBuffer(OutBuffer *buf)
     else
     {
         /* This is an awful hack to maintain backwards compatibility.
-           * There really always should be an 'i' before a number, but
-           * there wasn't in earlier implementations, so to maintain
-           * backwards compatibility it is only done if necessary to disambiguate.
-           * See bugzilla 3029
-           */
+         * There really always should be an 'i' before a number, but
+         * there wasn't in earlier implementations, so to maintain
+         * backwards compatibility it is only done if necessary to disambiguate.
+         * See bugzilla 3029
+         */
         if (buf->offset > 0 && isdigit(buf->data[buf->offset - 1]))
             buf->writeByte('i');
 
@@ -10714,7 +10714,7 @@ Expression *InExp::semantic(Scope *sc)
             // Return type is pointer to value
             type = ta->nextOf()->pointerTo();
             break;
-       }
+        }
 
         default:
             error("rvalue of in expression must be an associative array, not %s", e2->type->toChars());
