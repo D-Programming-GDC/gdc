@@ -52,7 +52,7 @@ struct dt_t {
     union {
         Symbol * DTsym;
         tree DTtree;
-        void * DTpointer;
+        const void * DTpointer;
         Type * DTtype;
     };
 };

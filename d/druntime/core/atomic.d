@@ -166,9 +166,12 @@ else version( GNU )
         synchronized
         {
             if (*val == oldval)
-                *val = newval;
+            {
+                if((*val = newval) == newval)
+                    return true;
+            }
         }
-        return *val == newval;
+        return false;
     }
     else
     {

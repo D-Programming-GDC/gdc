@@ -2485,8 +2485,13 @@ array_literal_assign(IRState * irs, tree mem, ArrayLiteralExp * ale)
 elem *
 ArrayLiteralExp::toElem(IRState * irs)
 {
+    if (var)
+    {   // Just reference the array we came from, saves useless initialization.
+        tree var_tree = irs->var(var);
+        return irs->convertTo(var_tree, var->type, type);
+    }
 #if 0
-    // WIP: Use _d_arrayliteralT instead on _d_newarray
+    // WIP: Use _d_arrayliteralT instead of _d_newarray
     Type * array_type = type->toBasetype();
     tree ptr_type = array_type->nextOf()->pointerTo()->toCtype();
     assert(array_type->ty == Tarray || array_type->ty == Tsarray ||

@@ -377,6 +377,10 @@ d_gcc_magic_stdarg_module(Module *m, bool is_c_std_arg)
 static void
 d_gcc_magic_builtins_module(Module *m)
 {
+    if(! gen.useBuiltins)
+    {   // %% Building with -fno-builtin option.
+        return;
+    }
 #if V2
     Dsymbols * funcs = new Dsymbols;
 #else

@@ -3104,6 +3104,9 @@ ArrayLiteralExp::ArrayLiteralExp(Loc loc, Expressions *elements)
     : Expression(loc, TOKarrayliteral, sizeof(ArrayLiteralExp))
 {
     this->elements = elements;
+#if IN_GCC
+    this->var = NULL;
+#endif
 }
 
 ArrayLiteralExp::ArrayLiteralExp(Loc loc, Expression *e)
@@ -3111,6 +3114,9 @@ ArrayLiteralExp::ArrayLiteralExp(Loc loc, Expression *e)
 {
     elements = new Expressions;
     elements->push(e);
+#if IN_GCC
+    this->var = NULL;
+#endif
 }
 
 Expression *ArrayLiteralExp::syntaxCopy()

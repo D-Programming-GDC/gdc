@@ -37,7 +37,7 @@ dtval(dt_t** pdt, DT t, dinteger_t i, const void * p)
     d->dt = t;
     d->DTnext = 0;
     d->DTint = i;
-    d->DTpointer = (void*)p;
+    d->DTpointer = p;
     return dtcat(pdt, d);
 }
 

@@ -425,6 +425,9 @@ struct ArrayLiteralExp : Expression
     int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
+#if IN_GCC
+    VarDeclaration *var;
+#endif
 };
 
 struct AssocArrayLiteralExp : Expression
