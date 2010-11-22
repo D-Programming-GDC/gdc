@@ -2458,89 +2458,86 @@ TupleExp::toElem(IRState * irs)
     return result;
 }
 
-/* Returns an expression that assignes the expressions in ALE to static
-   array pointed to by MEM. */
-
-// probably will need to pass the D array element type to get assignmets correct...
-// [ [1,2,3], 4 ]; // doesn't work, so maybe not..
-// opt: if all/most constant, should make a var and do array copy
-tree
-array_literal_assign(IRState * irs, tree mem, ArrayLiteralExp * ale)
-{
-    tree result = NULL_TREE;
-    tree offset = size_int(0);
-    tree elem_size = size_int(ale->type->toBasetype()->nextOf()->size());
-
-    for (unsigned i = 0; i < ale->elements->dim; i++)
-    {
-        Expression * e = (Expression *) ale->elements->data[i];
-        tree elemp_e = irs->pointerOffset(mem, offset);
-        tree assgn_e = irs->vmodify(irs->indirect(elemp_e), e->toElem(irs));
-        result = irs->maybeCompound(result, assgn_e);
-        offset = size_binop(PLUS_EXPR, offset, elem_size);
-    }
-    return result;
-}
-
 elem *
 ArrayLiteralExp::toElem(IRState * irs)
 {
+    Type * typeb = type->toBasetype();
+    assert(typeb->ty == Tarray || typeb->ty == Tsarray || typeb->ty == Tpointer);
+    Type * etype = typeb->nextOf();
+    Type * datype = etype->arrayOf();
+    tree d_array = NULL_TREE;
+    tree result = NULL_TREE;
+#if V2
     if (var)
-    {   // Just reference the array we came from, saves useless initialization.
+    {   // Just copy the array we are referencing, saves useless initialization.
+        assert(var->type->ty == Tarray || var->type->ty == Tsarray);
+        d_array = irs->localVar(irs->arrayType(typeb->nextOf(), elements->dim));
+
         tree var_tree = irs->var(var);
-        return irs->convertTo(var_tree, var->type, type);
-    }
-#if 0
-    // WIP: Use _d_arrayliteralT instead of _d_newarray
-    Type * array_type = type->toBasetype();
-    tree ptr_type = array_type->nextOf()->pointerTo()->toCtype();
-    assert(array_type->ty == Tarray || array_type->ty == Tsarray ||
-            array_type->ty == Tpointer);
+        if (var->type->ty == Tarray)
+            var_tree = irs->darrayPtrRef(var_tree);
+        else
+            var_tree = irs->addressOf(var_tree);
 
-    tree * args;
-    unsigned n_args = 2 + elements->dim;
-    args = new tree[n_args];
+        tree size = build2(MULT_EXPR, size_type_node,
+                size_int(elements->dim), size_int(typeb->nextOf()->size()));
+        size = fold(size);
+        // memcpy(d_array, var_tree, size)
+        result = irs->buildCall(built_in_decls[BUILT_IN_MEMCPY], 3,
+                irs->addressOf(d_array), var_tree, size);
+        result = irs->compound(result, d_array, TREE_TYPE(d_array));
 
-    args[0] = irs->typeinfoReference(array_type->nextOf()->arrayOf());
-    args[1] = irs->integerConstant(elements->dim, size_type_node);
-
-    for (unsigned i = 0; i < elements->dim; i++)
-    {
-        Expression * e = (Expression *) elements->data[i];
-        args[i+2] = e->toElem(irs);
-    }
-    tree result = irs->libCall(LIBCALL_ARRAYLITERALT, n_args, args, ptr_type);
-    return irs->darrayVal(array_type->toCtype(), size_int(elements->dim), result);
-#else
-    Type * array_type = type->toBasetype();
-    assert(array_type->ty == Tarray || array_type->ty == Tsarray ||
-            array_type->ty == Tpointer);
-    tree elem_type = array_type->nextOf()->toCtype();
-    tree d_array_type = array_type->nextOf()->arrayOf()->toCtype();
-
-    tree args[2] = {
-        irs->typeinfoReference(array_type->nextOf()->arrayOf()),
-        irs->integerConstant(elements->dim, size_type_node)
-    };
-    // Unfortunately, this does a useles initialization
-    LibCall lib_call = array_type->nextOf()->isZeroInit() ?
-        LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
-    tree d_array = irs->libCall(lib_call, 2, args, d_array_type);
-
-    tree mem = irs->maybeMakeTemp(irs->darrayPtrRef(d_array));
-    tree result = irs->maybeCompound(array_literal_assign(irs, mem, this), mem);
-    if (array_type->ty == Tarray)
-    {
-        result = irs->darrayVal(d_array_type, elements->dim, result);
+        if (typeb->ty == Tarray)
+            result = irs->darrayVal(datype->toCtype(), elements->dim, irs->addressOf(result));
     }
     else
-    {
-        tree s_array_type = irs->arrayType(elem_type, elements->dim);
-        if (array_type->ty == Tsarray)
-            result = irs->indirect(result, s_array_type);
+#endif
+    {   /* BUG: This method performs:
+            *var = a; var += ptrsize;
+            *var = b; var += ptrsize;
+           Because arrays can get very large, the compounding of all these
+           statements can cause the stack to blow up while the backend walks
+           over them.
+          */
+        tree args[2] = {
+            irs->typeinfoReference(typeb->nextOf()->arrayOf()),
+            irs->integerConstant(elements->dim, size_type_node)
+        };
+        // Unfortunately, this does a useless initialization
+        LibCall lib_call = typeb->nextOf()->isZeroInit() ?
+            LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
+        d_array = irs->libCall(lib_call, 2, args, datype->toCtype());
+
+        tree mem = irs->maybeMakeTemp(irs->darrayPtrRef(d_array));
+        {   /* Returns an expression that assignes the expressions in ELEMENTS to static
+               array pointed to by MEM. */
+            // probably will need to pass the D array element type to get assignments correct...
+            // [ [1,2,3], 4 ]; // doesn't work, so maybe not..
+            // opt: if all/most constant, should make a var and do array copy
+            tree offset = size_int(0);
+            tree elem_size = size_int(etype->size());
+
+            for (unsigned i = 0; i < elements->dim; i++)
+            {
+                Expression * e = (Expression *) elements->data[i];
+                tree elemp_e = irs->pointerOffset(mem, offset);
+                tree assgn_e = irs->vmodify(irs->indirect(elemp_e), e->toElem(irs));
+                result = irs->maybeCompound(result, assgn_e);
+                offset = size_binop(PLUS_EXPR, offset, elem_size);
+            }
+        }
+        result = irs->maybeCompound(result, mem);
+        
+        if (typeb->ty == Tarray)
+            result = irs->darrayVal(datype->toCtype(), elements->dim, result);
+        else
+        {
+            tree sarray_type = irs->arrayType(etype->toCtype(), elements->dim);
+            if (typeb->ty == Tsarray)
+                result = irs->indirect(result, sarray_type);
+        }
     }
     return result;
-#endif
 }
 
 elem *
