@@ -4049,7 +4049,7 @@ LabelStatement::toIR(IRState* irs)
     LabelDsymbol * label = irs->isReturnLabel(ident) ? func->returnLabel : func->searchLabel(ident);
     tree t_label;
 
-    if ( (t_label = irs->getLabelTree(label)) )
+    if ((t_label = irs->getLabelTree(label)))
     {
         irs->pushLabel(label);
         irs->doLabel(t_label);
@@ -4083,7 +4083,7 @@ GotoStatement::toIR(IRState* irs)
     else
         irs->checkGoto(this, label);
 
-    if ( (t_label = irs->getLabelTree(label)) )
+    if ((t_label = irs->getLabelTree(label)))
         irs->doJump(this, t_label);
     // else, there was an error
 }
@@ -4105,16 +4105,19 @@ GotoDefaultStatement::toIR(IRState * irs)
 void
 SwitchErrorStatement::toIR(IRState* irs)
 {
-    irs->doLineNote( loc );
-    irs->doExp( irs->assertCall(loc, LIBCALL_SWITCH_ERROR) );
+    irs->doLineNote(loc);
+    irs->doExp(irs->assertCall(loc, LIBCALL_SWITCH_ERROR));
 }
 
 void
 VolatileStatement::toIR(IRState* irs)
 {
-    irs->pushVolatile();
-    statement->toIR( irs );
-    irs->popVolatile();
+    if (statement)
+    {
+        irs->pushVolatile();
+        statement->toIR(irs);
+        irs->popVolatile();
+    }
 }
 
 void
@@ -4123,19 +4126,21 @@ ThrowStatement::toIR(IRState* irs)
     ClassDeclaration * class_decl = exp->type->toBasetype()->isClassHandle();
     // Front end already checks for isClassHandle
     InterfaceDeclaration * intfc_decl = class_decl->isInterfaceDeclaration();
-
     tree arg = exp->toElem(irs);
 
-    if (intfc_decl) {
-        if ( ! intfc_decl->isCOMclass()) {
+    if (intfc_decl)
+    {
+        if (! intfc_decl->isCOMclass()) 
+        {
             arg = irs->convertTo(arg, exp->type, irs->getObjectType());
-        } else {
+        }
+        else
+        {
             error("cannot throw COM interfaces");
         }
     }
-
     irs->doLineNote(loc);
-    irs->doExp( irs->libCall(LIBCALL_THROW, 1, & arg) );
+    irs->doExp(irs->libCall(LIBCALL_THROW, 1, & arg));
     // %%TODO: somehow indicate flow stops here? -- set attribute noreturn on _d_throw
 }
 
@@ -4156,10 +4161,14 @@ TryFinallyStatement::toIR(IRState * irs)
     irs->doLineNote(loc);
     irs->startTry(this);
     if (body)
+    {
         body->toIR(irs);
+    }
     irs->startFinally();
     if (finalbody)
+    {
         finalbody->toIR(irs);
+    }
     irs->endFinally();
 #endif
 }
@@ -4170,18 +4179,22 @@ TryCatchStatement::toIR(IRState * irs)
     irs->doLineNote(loc);
     irs->startTry(this);
     if (body)
+    {
         body->toIR(irs);
+    }
     irs->startCatches();
-    if (catches) {
-        for (unsigned i = 0; i < catches->dim; i++) {
+    if (catches)
+    {
+        for (unsigned i = 0; i < catches->dim; i++)
+        {
             Catch * a_catch = (Catch *) catches->data[i];
 
             irs->startCatch(a_catch->type->toCtype()); //expand_start_catch( xxx );
-
             irs->doLineNote(a_catch->loc);
             irs->startScope();
 
-            if ( a_catch->var ) {
+            if (a_catch->var)
+            {
                 tree exc_obj = irs->convertTo(irs->exceptionObject(),
                                               irs->getObjectType(), a_catch->type);
                 // need to override initializer...
@@ -4208,12 +4221,17 @@ OnScopeStatement::toIR(IRState *)
 void
 WithStatement::toIR(IRState * irs)
 {
-    if (wthis) {
+    if (wthis)
+    {
         irs->startScope();
         irs->emitLocalVar(wthis);
     }
-    body->toIR(irs);
-    if (wthis) {
+    if (body)
+    {
+        body->toIR(irs);
+    }
+    if (wthis)
+    {
         irs->endScope();
     }
 }
@@ -4221,34 +4239,38 @@ WithStatement::toIR(IRState * irs)
 void
 SynchronizedStatement::toIR(IRState * irs)
 {
-    if (exp) {
+    if (exp)
+    {
         InterfaceDeclaration * iface;
 
         irs->startBindings();
         tree decl = irs->localVar(IRState::getObjectType());
 
-        DECL_IGNORED_P( decl ) = 1;
+        DECL_IGNORED_P(decl) = 1;
         tree cleanup = irs->libCall(LIBCALL_MONITOREXIT, 1, & decl);
         // assuming no conversions needed
         tree init_exp;
 
         assert(exp->type->toBasetype()->ty == Tclass);
         iface = ((TypeClass *) exp->type->toBasetype())->sym->isInterfaceDeclaration();
-        if (iface) {
-            if (! iface->isCOMclass()) {
+        if (iface)
+        {
+            if (! iface->isCOMclass())
+            {
                 init_exp = irs->convertTo(exp, irs->getObjectType());
-            } else {
+            }
+            else
+            {
                 error("cannot synchronize on a COM interface");
                 init_exp = error_mark_node;
             }
-        } else {
+        }
+        else
+        {
             init_exp = exp->toElem(irs);
         }
-
         DECL_INITIAL(decl) = init_exp;
-
         irs->doLineNote(loc);
-
 #if D_GCC_VER < 40
         irs->expandDecl(decl);
         irs->doExp( irs->libCall(LIBCALL_MONITORENTER, 1, & decl));
@@ -4257,25 +4279,29 @@ SynchronizedStatement::toIR(IRState * irs)
             body->toIR( irs );
 #else
         irs->expandDecl(decl);
-        irs->doExp( irs->libCall(LIBCALL_MONITORENTER, 1, & decl));
+        irs->doExp(irs->libCall(LIBCALL_MONITORENTER, 1, & decl));
         irs->startTry(this);
         if (body)
-            body->toIR( irs );
+        {
+            body->toIR(irs);
+        }
         irs->startFinally();
-        irs->doExp( cleanup );
+        irs->doExp(cleanup);
         irs->endFinally();
 #endif
         irs->endBindings();
-    } else {
+    }
+    else
+    {
 #ifndef D_CRITSEC_SIZE
 #define D_CRITSEC_SIZE 64
 #endif
         static tree critsec_type = 0;
 
-        if (! critsec_type ) {
+        if (! critsec_type )
+        {
             critsec_type = irs->arrayType(Type::tuns8, D_CRITSEC_SIZE);
         }
-
         tree critsec_decl = build_decl(VAR_DECL, NULL_TREE, critsec_type);
         // name is only used to prevent ICEs
         g.ofile->giveDeclUniqueName(critsec_decl, "__critsec");
@@ -4298,11 +4324,13 @@ SynchronizedStatement::toIR(IRState * irs)
         expand_eh_region_end_cleanup(irs->libCall(LIBCALL_CRITICALEXIT, 1, & critsec_ref));
 #else
         irs->startTry(this);
-        irs->doExp( irs->libCall(LIBCALL_CRITICALENTER, 1, & critsec_ref) );
+        irs->doExp(irs->libCall(LIBCALL_CRITICALENTER, 1, & critsec_ref));
         if (body)
-            body->toIR( irs );
+        {
+            body->toIR(irs);
+        }
         irs->startFinally();
-        irs->doExp( irs->libCall(LIBCALL_CRITICALEXIT, 1, & critsec_ref) );
+        irs->doExp(irs->libCall(LIBCALL_CRITICALEXIT, 1, & critsec_ref));
         irs->endFinally();
 #endif
     }
@@ -4376,7 +4404,9 @@ DefaultStatement::toIR(IRState * irs)
     irs->checkSwitchCase(this, 1);
     irs->doCase(NULL_TREE, cblock);
     if (statement)
-        statement->toIR( irs );
+    {
+        statement->toIR(irs);
+    }
 }
 
 void
@@ -4384,7 +4414,7 @@ CaseStatement::toIR(IRState * irs)
 {
     tree case_value;
 
-    if ( exp->type->isscalar() )
+    if (exp->type->isscalar())
         case_value = exp->toElem(irs);
     else
         case_value = irs->integerConstant(index, Type::tint32);
@@ -4392,7 +4422,9 @@ CaseStatement::toIR(IRState * irs)
     irs->checkSwitchCase(this);
     irs->doCase(case_value, cblock);
     if (statement)
-        statement->toIR( irs );
+    {
+        statement->toIR(irs);
+    }
 }
 
 void
@@ -4400,21 +4432,24 @@ SwitchStatement::toIR(IRState * irs)
 {
     tree cond_tree;
     // %% also what about c-semantics doing emit_nop() ?
-    irs->doLineNote( loc );
+    irs->doLineNote(loc);
 
-    cond_tree = condition->toElem( irs );
+    cond_tree = condition->toElem(irs);
 
     Type * cond_type = condition->type->toBasetype();
-    if (cond_type->ty == Tarray) {
+    if (cond_type->ty == Tarray)
+    {
         Type * elem_type = cond_type->nextOf()->toBasetype();
         LibCall lib_call;
-        switch (elem_type->ty) {
-        case Tchar:  lib_call = LIBCALL_SWITCH_STRING; break;
-        case Twchar: lib_call = LIBCALL_SWITCH_USTRING; break;
-        case Tdchar: lib_call = LIBCALL_SWITCH_DSTRING; break;
-        default:
-            ::error("switch statement value must be an array of some character type, not %s", elem_type->toChars());
-            abort();
+        switch (elem_type->ty)
+        {
+            case Tchar:  lib_call = LIBCALL_SWITCH_STRING; break;
+            case Twchar: lib_call = LIBCALL_SWITCH_USTRING; break;
+            case Tdchar: lib_call = LIBCALL_SWITCH_DSTRING; break;
+            default:
+                ::error("switch statement value must be an array of some character type, not %s",
+                        elem_type->toChars());
+                abort();
         }
 
         // Apparently the backend is supposed to sort and set the indexes
@@ -4425,28 +4460,33 @@ SwitchStatement::toIR(IRState * irs)
         Symbol * s = static_sym();
         dt_t **  pdt = & s->Sdt;
         s->Sseg = CDATA;
-        for (unsigned case_i = 0; case_i < cases->dim; case_i++) {
+        for (unsigned case_i = 0; case_i < cases->dim; case_i++)
+        {
             CaseStatement * case_stmt = (CaseStatement *) cases->data[case_i];
-            pdt = case_stmt->exp->toDt( pdt );
+            pdt = case_stmt->exp->toDt(pdt);
             case_stmt->index = case_i;
         }
         outdata(s);
         tree p_table = irs->addressOf(s->Stree);
 
         tree args[2] = {
-            irs->darrayVal(cond_type->arrayOf()->toCtype(), cases->dim,
-                p_table),
-            cond_tree };
+            irs->darrayVal(cond_type->arrayOf()->toCtype(),
+                            cases->dim, p_table),
+            cond_tree
+        };
 
         cond_tree = irs->libCall(lib_call, 2, args);
-    } else if (! cond_type->isscalar()) {
+    }
+    else if (! cond_type->isscalar())
+    {
         ::error("cannot handle switch condition of type %s", cond_type->toChars());
         abort();
     }
-
     // Build LABEL_DECLs now so they can be refered to by goto case
-    if (cases) {
-        for (unsigned i = 0; i < cases->dim; i++) {
+    if (cases)
+    {
+        for (unsigned i = 0; i < cases->dim; i++)
+        {
             CaseStatement * case_stmt = (CaseStatement *) cases->data[i];
             case_stmt->cblock = irs->label(case_stmt->loc); //make_case_label(case_stmt->loc);
         }
@@ -4457,7 +4497,9 @@ SwitchStatement::toIR(IRState * irs)
     cond_tree = fold(cond_tree);
     irs->startCase(this, cond_tree);
     if (body)
-        body->toIR( irs );
+    {
+        body->toIR(irs);
+    }
     irs->endCase(cond_tree);
 }
 
@@ -4472,20 +4514,26 @@ Statement::toIR(IRState*)
 void
 IfStatement::toIR(IRState * irs)
 {
-    if (match) {
+    if (match)
+    {
         irs->startScope();
         irs->emitLocalVar(match);
     }
     irs->startCond(this, condition);
     if (ifbody)
-        ifbody->toIR( irs );
-    if ( elsebody ) {
+    {
+        ifbody->toIR(irs);
+    }
+    if (elsebody)
+    {
         irs->startElse();
-        elsebody->toIR ( irs );
+        elsebody->toIR(irs);
     }
     irs->endCond();
     if (match)
+    {
         irs->endScope();
+    }
 }
 
 void
@@ -4696,17 +4744,24 @@ void
 ForStatement::toIR(IRState * irs)
 {
     irs->doLineNote(loc);
-    // %% scope
     if (init)
-        init->toIR( irs );
+    {   // %% scope
+        init->toIR(irs);
+    }
     irs->startLoop(this);
     if (condition)
+    {
         irs->exitIfFalse(condition);
+    }
     if (body)
-        body->toIR( irs );
+    {
+        body->toIR(irs);
+    }
     irs->continueHere();
     if (increment)
-        irs->doExp(increment->toElem(irs)); // force side effects?
+    {   // force side effects?
+        irs->doExp(increment->toElem(irs));
+    }
     irs->endLoop();
 }
 
@@ -4716,7 +4771,9 @@ DoStatement::toIR(IRState * irs)
     irs->doLineNote(loc);
     irs->startLoop(this);
     if (body)
-        body->toIR( irs );
+    {
+        body->toIR(irs);
+    }
     irs->continueHere();
     irs->exitIfFalse(condition);
     irs->endLoop();
@@ -4753,14 +4810,15 @@ ScopeStatement::toIR(IRState* irs)
 void
 CompoundStatement::toIR(IRState* irs)
 {
-    if (statements)
-    {
-        for (unsigned i = 0; i < statements->dim; i++)
-        {
-            Statement * statement = (Statement *) statements->data[i];
+    if (! statements)
+        return;
 
-            if (statement)
-                statement->toIR(irs);
+    for (unsigned i = 0; i < statements->dim; i++)
+    {
+        Statement * statement = (Statement *) statements->data[i];
+        if (statement)
+        {
+            statement->toIR(irs);
         }
     }
 }
@@ -4768,24 +4826,23 @@ CompoundStatement::toIR(IRState* irs)
 void
 UnrolledLoopStatement::toIR(IRState* irs)
 {
-    if (statements)
-    {
-        irs->startLoop(this);
-        irs->continueHere();
-        for (unsigned i = 0; i < statements->dim; i++)
-        {
-            Statement * statement = (Statement *) statements->data[i];
+    if (! statements)
+        return;
 
-            if (statement)
-            {
-                irs->setContinueLabel( irs->label(loc) );
-                statement->toIR(irs);
-                irs->continueHere();
-            }
+    irs->startLoop(this);
+    irs->continueHere();
+    for (unsigned i = 0; i < statements->dim; i++)
+    {
+        Statement * statement = (Statement *) statements->data[i];
+        if (statement)
+        {
+            irs->setContinueLabel( irs->label(loc) );
+            statement->toIR(irs);
+            irs->continueHere();
         }
-        irs->exitLoop(NULL);
-        irs->endLoop();
     }
+    irs->exitLoop(NULL);
+    irs->endLoop();
 }
 
 void
@@ -4796,9 +4853,6 @@ ExpStatement::toIR(IRState * irs)
         gen.doLineNote(loc);
         tree exp_tree = exp->toElem(irs);
         irs->doExp(exp_tree);
-    }
-    else
-    {   // nothing
     }
 }
 
