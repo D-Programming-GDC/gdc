@@ -2591,49 +2591,6 @@ unittest
     // assert(i == 0);
 }
 
-private:
-
-// @@@BUG@@@ workaround for bugzilla 2479
-string bug2479format(TypeInfo[] arguments, va_list argptr)
-{
-    char[] s;
-
-    void putc(dchar c)
-    {
-        std.utf.encode(s, c);
-    }
-    std.format.doFormat(&putc, arguments, argptr);
-    return assumeUnique(s);
-}
-
-// @@@BUG@@@ workaround for bugzilla 2479
-char[] bug2479sformat(char[] s, TypeInfo[] arguments, va_list argptr)
-{   size_t i;
-
-    void putc(dchar c)
-    {
-    if (c <= 0x7F)
-    {
-        if (i >= s.length)
-            onRangeError("std.string.sformat", 0);
-        s[i] = cast(char)c;
-        ++i;
-    }
-    else
-    {   char[4] buf;
-        auto b = std.utf.toUTF8(buf, c);
-        if (i + b.length > s.length)
-            onRangeError("std.string.sformat", 0);
-        s[i..i+b.length] = b[];
-        i += b.length;
-    }
-    }
-
-    std.format.doFormat(&putc, arguments, argptr);
-    return s[0 .. i];
-}
-public:
-
 
 /*****************************************************
  * Format arguments into a string.
@@ -2641,7 +2598,6 @@ public:
 
 string format(...)
 {
-/+ // @@@BUG@@@ Fails due to regression bug 2479.
     char[] s;
 
     void putc(dchar c)
@@ -2651,8 +2607,6 @@ string format(...)
 
     std.format.doFormat(&putc, _arguments, _argptr);
     return assumeUnique(s);
-    +/
-    return bug2479format(_arguments, _argptr);
 }
 
 
@@ -2663,8 +2617,6 @@ string format(...)
  */
 char[] sformat(char[] s, ...)
 {
-/+ // @@@BUG@@@ Fails due to regression bug 2479.
-
   size_t i;
 
     void putc(dchar c)
@@ -2688,8 +2640,6 @@ char[] sformat(char[] s, ...)
 
     std.format.doFormat(&putc, _arguments, _argptr);
     return s[0 .. i];
-    +/
-    return bug2479sformat(s, _arguments, _argptr);
 }
 
 unittest

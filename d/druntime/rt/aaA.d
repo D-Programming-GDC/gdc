@@ -600,16 +600,13 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
         auto len = prime_list[i];
         result.b = new aaA*[len];
 
-        size_t keystacksize   = (keysize   + int.sizeof - 1) & ~(int.sizeof - 1);
-        size_t valuestacksize = (valuesize + int.sizeof - 1) & ~(int.sizeof - 1);
-
         size_t keytsize = aligntsize(keysize);
 
         for (size_t j = 0; j < length; j++)
         {   void* pkey = qkey;
-            qkey += keystacksize;
+            qkey += keysize;
             void* pvalue = qval;
-            qval += valuestacksize;
+            qval += valuesize;
             aaA* e;
 
             auto key_hash = keyti.getHash(pkey);

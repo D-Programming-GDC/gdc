@@ -2839,7 +2839,6 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 putstr(vbit ? "true" : "false");
                 return;
 
-
             case Mangle.Tchar:
                 vchar = va_arg!(char)(argptr);
                 if (fc != 's')
@@ -2872,7 +2871,6 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                     putstr(toUTF8(vbuf, vdchar));
                 }
                 return;
-
 
             case Mangle.Tbyte:
                 signed = 1;
@@ -2921,7 +2919,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 goto Lputstr;
 
             case Mangle.Tpointer:
-                vnumber = cast(ulong)va_arg!(void*)(argptr);
+                vnumber = cast(size_t)va_arg!(void*)(argptr);
                 if (fc != 'x')  uc = 1;
                 flags |= FL0pad;
                 if (!(flags & FLprecision))
@@ -3325,7 +3323,6 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                     goto Lerror;
             }
         }
-
 
     Lnumber:
         switch (fc)
