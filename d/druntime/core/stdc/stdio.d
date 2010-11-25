@@ -377,10 +377,6 @@ int fsetpos(FILE* stream, in fpos_t* pos);
 int    fseek(FILE* stream, c_long offset, int whence);
 c_long ftell(FILE* stream);
 
-version(PPC)
-    version(Linux)
-	version=PPCLinux;
-
 version( Windows )
 {
   extern (D)

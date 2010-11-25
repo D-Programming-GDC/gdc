@@ -20,12 +20,14 @@
 #define GCC_DCMPLR_OBFILE_H
 
 struct ModuleInfo {
-    Array classes; // Array of ClassDeclaration*
-    Array ctors; // Arrays of FuncDeclaration*
+    Array classes;  // Array of ClassDeclaration*
+    Array ctors;    // Arrays of FuncDeclaration*
     Array dtors;
+    Array ctorgates;
 #if V2
     Array sharedctors;
     Array shareddtors;
+    Array sharedctorgates;
 #endif
     Array unitTests;
 };
@@ -113,6 +115,9 @@ public:
 
     static FuncDeclaration * doSimpleFunction(const char * name, tree expr, bool static_ctor, bool public_fn = false);
     static FuncDeclaration * doFunctionToCallFunctions(const char * name, Array * functions, bool force_and_public = false);
+    static FuncDeclaration * doCtorFunction(const char * name, Array * functions, Array * gates);
+    static FuncDeclaration * doDtorFunction(const char * name, Array * functions);
+    static FuncDeclaration * doUnittestFunction(const char * name, Array * functions);
 
     // ** Module info.  Assuming only one module per run of the compiler.
 

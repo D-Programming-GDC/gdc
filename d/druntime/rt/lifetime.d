@@ -688,8 +688,6 @@ extern (C) void[] _d_newarrayT(TypeInfo ti, size_t length)
         result = null;
     else
     {
-        result.length = length;
-        
         version (GNU)
         {
             // required to output the label;

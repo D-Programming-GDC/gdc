@@ -266,7 +266,6 @@ D_EXTRA_OBJS=@D_EXTRA_OBJS@
 std/stream.t.o: std/stream.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
 
-
 ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
 
 

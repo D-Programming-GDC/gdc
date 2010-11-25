@@ -389,7 +389,8 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             }
             else
             {
-                ::error( "cannot cast expression of type %s to type %s", exp_type->toChars(), target_type->toChars());
+                ::error("cannot cast expression of type %s to type %s",
+                        exp_type->toChars(), target_type->toChars());
                 return error_mark_node;
             }
             break;
@@ -428,6 +429,13 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                     return build1(NOP_EXPR, target_type->toCtype(), exp);
                 }
             }
+#if V2
+            else if (target_type->ty == Tsarray)
+            {   // %% Strings are treated as dynamic arrays D2.
+                if (exp_type->isString() && target_type->isString())
+                    return indirect(darrayPtrRef(exp), target_type->toCtype());
+            }
+#endif
             // else, default conversion, which should produce an error
             break;
         case Taarray:

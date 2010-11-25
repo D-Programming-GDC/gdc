@@ -60,7 +60,6 @@ IRBase::startFunction(FuncDeclaration * decl)
     d_add_global_function( decl_tree );
 
     g.irs = (IRState*) new_irs;
-
     ModuleInfo & mi = * g.mi();
 #if V2
     if (decl->isSharedStaticCtorDeclaration())
@@ -69,13 +68,16 @@ IRBase::startFunction(FuncDeclaration * decl)
         mi.ctors.push(decl);
     else if (decl->isSharedStaticDtorDeclaration())
     {
-        // %% NOTE: this is not implemented.
-        assert(! decl->isSharedStaticDtorDeclaration()->vgate);
+        VarDeclaration * vgate;
+        if ((vgate = decl->isSharedStaticDtorDeclaration()->vgate))
+            mi.sharedctorgates.push(vgate);
         mi.shareddtors.push(decl);
     }
     else if (decl->isStaticDtorDeclaration())
     {
-        assert(! decl->isStaticDtorDeclaration()->vgate);
+        VarDeclaration * vgate;
+        if ((vgate = decl->isStaticDtorDeclaration()->vgate))
+            mi.ctorgates.push(vgate);
         mi.dtors.push(decl);
     }
 #else
@@ -177,6 +179,9 @@ IRBase::pushStatementList()
 {
     tree t;
     t = alloc_stmt_list ();
+#if ENABLE_GC_CHECKING
+    dkeep(t);   // %% Must be doing something wrong to need this.
+#endif
     TREE_CHAIN (t) = statementList;
     statementList = t;
 }
@@ -198,20 +203,19 @@ IRBase::popStatementList()
        using the STATEMENT_LIST avoids pathological buildup of EMPTY_STMT_P
        statements.  */
     if (TREE_SIDE_EFFECTS (t))
+    {
+        tree_stmt_iterator i = tsi_start (t);
+
+        /* If the statement list contained exactly one statement, then
+           extract it immediately.  */
+        if (tsi_one_before_end_p (i))
         {
-            tree_stmt_iterator i = tsi_start (t);
-
-            /* If the statement list contained exactly one statement, then
-               extract it immediately.  */
-            if (tsi_one_before_end_p (i))
-                {
-                    u = tsi_stmt (i);
-                    tsi_delink (&i);
-                    free_stmt_list (t);
-                    t = u;
-                }
+            u = tsi_stmt (i);
+            tsi_delink (&i);
+            free_stmt_list (t);
+            t = u;
         }
-
+    }
     return t;
 }
 #endif

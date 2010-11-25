@@ -521,7 +521,6 @@ ObjectFile::outputFunction(FuncDeclaration * f)
         {
             // %% check for nested function -- error
             // otherwise, shouldn't be in a function, so safe to do asm_out
-
             if (targetm.have_ctors_dtors) 
             {
 #if D_GCC_VER < 40
@@ -923,6 +922,61 @@ ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool
         return NULL;
 }
 
+
+/* Same as doFunctionToCallFunctions, but includes a gate to
+   protect static ctors in templates getting called multiple times.
+*/
+FuncDeclaration *
+ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
+{
+    Module * mod = g.mod;
+    IRState * irs = g.irs;
+    tree expr_list = NULL_TREE;
+
+    // If there is only one function, just return that
+    if (functions->dim == 1 && ! gates->dim)
+    {
+        return (FuncDeclaration *) functions->data[0];
+    }
+    else
+    {   // Write out gates first.
+        for (unsigned i = 0; i < gates->dim; i++)
+        {
+            VarDeclaration * var = (VarDeclaration *) gates->data[i];
+            tree var_decl = var->toSymbol()->Stree;
+            tree var_expr = build2(MODIFY_EXPR, void_type_node, var_decl,
+                                build2(PLUS_EXPR, TREE_TYPE(var_decl), var_decl, integer_one_node));
+            expr_list = irs->maybeVoidCompound(expr_list, var_expr);
+        }
+        // Functions...
+        for (unsigned i = 0; i < functions->dim; i++)
+        {
+            FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
+            tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
+            expr_list = irs->maybeVoidCompound(expr_list, call_expr);
+        }
+    }
+    if (expr_list)
+        return doSimpleFunction(name, expr_list, false, false);
+
+    return NULL;
+}
+
+/* Currently just calls doFunctionToCallFunctions
+*/
+FuncDeclaration *
+ObjectFile::doDtorFunction(const char * name, Array * functions)
+{
+    return doFunctionToCallFunctions(name, functions);
+}
+
+/* Currently just calls doFunctionToCallFunctions
+*/
+FuncDeclaration *
+ObjectFile::doUnittestFunction(const char * name, Array * functions)
+{
+    return doFunctionToCallFunctions(name, functions);
+}
 
 tree
 check_static_sym(Symbol * sym)

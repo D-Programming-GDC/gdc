@@ -172,13 +172,13 @@ extern (C) bool runModuleUnitTests();
 
 extern (C)
 {
-    // Use ModuleInfo to get file name for "m" versions.
+    // Use ModuleInfo to get file name for "m" versions
 
     void _d_assertm(ModuleInfo* m, uint line)
     {
         onAssertError(m.name, line);
     }
-    
+
     void _d_assert_msg(string msg, string file, uint line)
     {
         onAssertErrorMsg(file, line, msg);
@@ -193,7 +193,7 @@ extern (C)
     {
         _d_unittest(m.name, line);
     }
-    
+
     void _d_unittest_msg(string msg, string file, uint line)
     {
         onUnittestErrorMsg(file, line, msg);

@@ -57,7 +57,6 @@ tree null_node;
 extern void dkeep(tree t);
 #endif
 
-
 #if D_GCC_VER == 34
 #include "d-bi-attrs-34.h"
 #elif D_GCC_VER == 40
@@ -74,19 +73,15 @@ extern void dkeep(tree t);
 #error "Version of GCC is not supported."
 #endif
 
-
 /* Nonzero if an ISO standard was selected.  It rejects macros in the
    user's namespace.  */
-
-/*extern*/ int flag_iso;
+int flag_iso;
 
 /* Nonzero means enable C89 Amendment 1 features.  */
-
-/*extern*/ int flag_isoc94;
+int flag_isoc94;
 
 /* Nonzero means use the ISO C99 dialect of C.  */
-
-/*extern*/ int flag_isoc99;
+int flag_isoc99;
 
 
 /* Used to help initialize the builtin-types.def table.  When a type of
@@ -97,8 +92,8 @@ extern void dkeep(tree t);
 tree
 builtin_type_for_size (int size, bool unsignedp)
 {
-  tree type = lang_hooks.types.type_for_size (size, unsignedp);
-  return type ? type : error_mark_node;
+    tree type = lang_hooks.types.type_for_size (size, unsignedp);
+    return type ? type : error_mark_node;
 }
 
 enum built_in_attribute
@@ -112,7 +107,7 @@ enum built_in_attribute
 #undef DEF_ATTR_INT
 #undef DEF_ATTR_IDENT
 #undef DEF_ATTR_TREE_LIST
-  ATTR_LAST
+    ATTR_LAST
 };
 
 static GTY(()) tree built_in_attributes[(int) ATTR_LAST];
@@ -120,23 +115,23 @@ static GTY(()) tree built_in_attributes[(int) ATTR_LAST];
 static void
 d_init_attributes (void)
 {
-  /* Fill in the built_in_attributes array.  */
+    /* Fill in the built_in_attributes array.  */
 #define DEF_ATTR_NULL_TREE(ENUM)                \
-  built_in_attributes[(int) ENUM] = NULL_TREE;
+    built_in_attributes[(int) ENUM] = NULL_TREE;
 #if D_GCC_VER < 40
 # define DEF_ATTR_INT(ENUM, VALUE)                                           \
-  built_in_attributes[(int) ENUM] = build_int_2 (VALUE, VALUE < 0 ? -1 : 0);
+    built_in_attributes[(int) ENUM] = build_int_2 (VALUE, VALUE < 0 ? -1 : 0);
 #else
 # define DEF_ATTR_INT(ENUM, VALUE)                                           \
-  built_in_attributes[(int) ENUM] = build_int_cst (NULL_TREE, VALUE);
+    built_in_attributes[(int) ENUM] = build_int_cst (NULL_TREE, VALUE);
 #endif
 #define DEF_ATTR_IDENT(ENUM, STRING)                            \
-  built_in_attributes[(int) ENUM] = get_identifier (STRING);
+    built_in_attributes[(int) ENUM] = get_identifier (STRING);
 #define DEF_ATTR_TREE_LIST(ENUM, PURPOSE, VALUE, CHAIN) \
-  built_in_attributes[(int) ENUM]                       \
+    built_in_attributes[(int) ENUM]                       \
     = tree_cons (built_in_attributes[(int) PURPOSE],    \
-                 built_in_attributes[(int) VALUE],      \
-                 built_in_attributes[(int) CHAIN]);
+            built_in_attributes[(int) VALUE],      \
+            built_in_attributes[(int) CHAIN]);
 #include "builtin-attrs.def"
 #undef DEF_ATTR_NULL_TREE
 #undef DEF_ATTR_INT
@@ -187,20 +182,20 @@ void do_build_builtin_fn(enum built_in_function fncode,
         return;
 
     gcc_assert ((!both_p && !fallback_p)
-        || !strncmp (name, "__builtin_",
-            strlen ("__builtin_")));
+            || !strncmp (name, "__builtin_",
+                strlen ("__builtin_")));
     libname = name + strlen ("__builtin_");
 
     /*if (!BOTH_P)*/
 #if D_GCC_VER >= 43
     decl = add_builtin_function(name, fntype, fncode, fnclass,
-        fallback_p ?libname : NULL, fnattrs);
+            fallback_p ?libname : NULL, fnattrs);
 #else
     decl = lang_hooks.builtin_function (name, fntype,
-        fncode,
-        fnclass,
-        fallback_p ?libname : NULL,
-        fnattrs);
+            fncode,
+            fnclass,
+            fallback_p ?libname : NULL,
+            fnattrs);
 #endif
 
     built_in_decls[(int) fncode] = decl;
@@ -297,76 +292,76 @@ egress:
 
 void d_init_builtins(void)
 {
-  tree va_list_ref_type_node;
-  tree va_list_arg_type_node;
+    tree va_list_ref_type_node;
+    tree va_list_arg_type_node;
 
-  d_bi_init((int) BT_LAST, (int) END_BUILTINS);
+    d_bi_init((int) BT_LAST, (int) END_BUILTINS);
 
 
-  if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
+    if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
     {
         /* It might seem natural to make the reference type a pointer,
            but this will not work in D: There is no implicit casting from
            an array to a pointer. */
         va_list_arg_type_node = va_list_ref_type_node = va_list_type_node;
     }
-  else
+    else
     {
         va_list_arg_type_node = va_list_type_node;
         va_list_ref_type_node = build_reference_type (va_list_type_node);
     }
 
 
-  intmax_type_node       = intDI_type_node;
-  uintmax_type_node      = unsigned_intDI_type_node;
-  signed_size_type_node  = d_signed_type(size_type_node);
-  string_type_node       = build_pointer_type (char_type_node);
-  const_string_type_node = build_pointer_type(build_qualified_type
-                                              (char_type_node, TYPE_QUAL_CONST));
+    intmax_type_node       = intDI_type_node;
+    uintmax_type_node      = unsigned_intDI_type_node;
+    signed_size_type_node  = d_signed_type(size_type_node);
+    string_type_node       = build_pointer_type (char_type_node);
+    const_string_type_node = build_pointer_type(build_qualified_type
+            (char_type_node, TYPE_QUAL_CONST));
 
-  void_list_node = tree_cons(NULL_TREE, void_type_node, NULL_TREE);
+    void_list_node = tree_cons(NULL_TREE, void_type_node, NULL_TREE);
 
 #if D_GCC_VER >= 40
-  /* WINT_TYPE is a C type name, not an itk_ constant or something useful
-     like that... */
-  tree wint_type_node = lookup_C_type_name(WINT_TYPE);
-  pid_type_node = lookup_C_type_name(PID_TYPE);
+    /* WINT_TYPE is a C type name, not an itk_ constant or something useful
+       like that... */
+    tree wint_type_node = lookup_C_type_name(WINT_TYPE);
+    pid_type_node = lookup_C_type_name(PID_TYPE);
 #endif
 
 #define DEF_PRIMITIVE_TYPE(ENUM, VALUE) \
-  builtin_types[(int) ENUM] = VALUE;
+    builtin_types[(int) ENUM] = VALUE;
 #define DEF_FUNCTION_TYPE_0(ENUM, RETURN) \
-  def_fn_type (ENUM, RETURN, 0, 0);
+    def_fn_type (ENUM, RETURN, 0, 0);
 #define DEF_FUNCTION_TYPE_1(ENUM, RETURN, ARG1) \
-  def_fn_type (ENUM, RETURN, 0, 1, ARG1);
+    def_fn_type (ENUM, RETURN, 0, 1, ARG1);
 #define DEF_FUNCTION_TYPE_2(ENUM, RETURN, ARG1, ARG2) \
-  def_fn_type (ENUM, RETURN, 0, 2, ARG1, ARG2);
+    def_fn_type (ENUM, RETURN, 0, 2, ARG1, ARG2);
 #define DEF_FUNCTION_TYPE_3(ENUM, RETURN, ARG1, ARG2, ARG3) \
-  def_fn_type (ENUM, RETURN, 0, 3, ARG1, ARG2, ARG3);
+    def_fn_type (ENUM, RETURN, 0, 3, ARG1, ARG2, ARG3);
 #define DEF_FUNCTION_TYPE_4(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4) \
-  def_fn_type (ENUM, RETURN, 0, 4, ARG1, ARG2, ARG3, ARG4);
+    def_fn_type (ENUM, RETURN, 0, 4, ARG1, ARG2, ARG3, ARG4);
 #define DEF_FUNCTION_TYPE_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5) \
-  def_fn_type (ENUM, RETURN, 0, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
+    def_fn_type (ENUM, RETURN, 0, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
 #define DEF_FUNCTION_TYPE_6(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-                            ARG6)                                       \
-  def_fn_type (ENUM, RETURN, 0, 6, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+        ARG6)                                       \
+    def_fn_type (ENUM, RETURN, 0, 6, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
 #define DEF_FUNCTION_TYPE_7(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-                            ARG6, ARG7)                                 \
-  def_fn_type (ENUM, RETURN, 0, 7, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
+        ARG6, ARG7)                                 \
+    def_fn_type (ENUM, RETURN, 0, 7, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 #define DEF_FUNCTION_TYPE_VAR_0(ENUM, RETURN) \
-  def_fn_type (ENUM, RETURN, 1, 0);
+    def_fn_type (ENUM, RETURN, 1, 0);
 #define DEF_FUNCTION_TYPE_VAR_1(ENUM, RETURN, ARG1) \
-  def_fn_type (ENUM, RETURN, 1, 1, ARG1);
+    def_fn_type (ENUM, RETURN, 1, 1, ARG1);
 #define DEF_FUNCTION_TYPE_VAR_2(ENUM, RETURN, ARG1, ARG2) \
-  def_fn_type (ENUM, RETURN, 1, 2, ARG1, ARG2);
+    def_fn_type (ENUM, RETURN, 1, 2, ARG1, ARG2);
 #define DEF_FUNCTION_TYPE_VAR_3(ENUM, RETURN, ARG1, ARG2, ARG3) \
-  def_fn_type (ENUM, RETURN, 1, 3, ARG1, ARG2, ARG3);
+    def_fn_type (ENUM, RETURN, 1, 3, ARG1, ARG2, ARG3);
 #define DEF_FUNCTION_TYPE_VAR_4(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4) \
-  def_fn_type (ENUM, RETURN, 1, 4, ARG1, ARG2, ARG3, ARG4);
+    def_fn_type (ENUM, RETURN, 1, 4, ARG1, ARG2, ARG3, ARG4);
 #define DEF_FUNCTION_TYPE_VAR_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5) \
-  def_fn_type (ENUM, RETURN, 1, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
+    def_fn_type (ENUM, RETURN, 1, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
 #define DEF_POINTER_TYPE(ENUM, TYPE) \
-  builtin_types[(int) ENUM] = build_pointer_type (builtin_types[(int) TYPE]);
+    builtin_types[(int) ENUM] = build_pointer_type (builtin_types[(int) TYPE]);
 #include "builtin-types.def"
 #undef DEF_PRIMITIVE_TYPE
 #undef DEF_FUNCTION_TYPE_1
@@ -383,7 +378,7 @@ void d_init_builtins(void)
 #undef DEF_FUNCTION_TYPE_VAR_5
 #undef DEF_POINTER_TYPE
 
-  d_init_attributes ();
+    d_init_attributes ();
 
 #if D_GCC_VER == 34
 #define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE,                   \
@@ -462,19 +457,19 @@ void d_init_builtins(void)
 #undef DEF_BUILTIN
 
 #if D_GCC_VER >= 40
-  build_common_builtin_nodes ();
+    build_common_builtin_nodes ();
 #endif
 
-  (*targetm.init_builtins) ();
+    (*targetm.init_builtins) ();
 
-  main_identifier_node = get_identifier ("main");
+    main_identifier_node = get_identifier ("main");
 
 #if D_GCC_VER >= 41
-  /* Create the built-in __null node.  It is important that this is
-     not shared.  */
-  null_node = make_node (INTEGER_CST);
-  TREE_TYPE (null_node) = d_type_for_size (POINTER_SIZE, 0);
-  dkeep(null_node);
+    /* Create the built-in __null node.  It is important that this is
+       not shared.  */
+    null_node = make_node (INTEGER_CST);
+    TREE_TYPE (null_node) = d_type_for_size (POINTER_SIZE, 0);
+    dkeep(null_node);
 #endif
 }
 
@@ -489,12 +484,12 @@ void d_init_builtins(void)
 
 #if D_GCC_VER >= 43
 
-tree
+    tree
 d_builtin_function43 (tree decl)
 {
-  d_bi_builtin_func(decl);
+    d_bi_builtin_func(decl);
 
-  return decl;
+    return decl;
 }
 
 #else
@@ -504,39 +499,39 @@ d_builtin_function (const char *name, tree type, int function_code,
                     enum built_in_class klass, const char *library_name,
                     tree attrs)
 {
-  // As of 4.3.x, this is done by add_builtin_fucntion
+    // As of 4.3.x, this is done by add_builtin_fucntion
     //%% for D, just use library_name?
-  tree decl = build_decl (FUNCTION_DECL, get_identifier (name), type);
-  DECL_EXTERNAL (decl) = 1;
-  TREE_PUBLIC (decl) = 1;
-  if (library_name)
-    SET_DECL_ASSEMBLER_NAME (decl, get_identifier (library_name));
+    tree decl = build_decl (FUNCTION_DECL, get_identifier (name), type);
+    DECL_EXTERNAL (decl) = 1;
+    TREE_PUBLIC (decl) = 1;
+    if (library_name)
+        SET_DECL_ASSEMBLER_NAME (decl, get_identifier (library_name));
 #if D_GCC_VER < 40
-  make_decl_rtl (decl, NULL);
+    make_decl_rtl (decl, NULL);
 #endif
-  // %% gcc4 -- is make_decl_rtl needed? why are we doing it in gcc3?
-  // shouldn't it go after attributes?
+    // %% gcc4 -- is make_decl_rtl needed? why are we doing it in gcc3?
+    // shouldn't it go after attributes?
 
-  pushdecl (decl);
-  DECL_BUILT_IN_CLASS (decl) = klass;
-  DECL_FUNCTION_CODE (decl) = function_code;
+    pushdecl (decl);
+    DECL_BUILT_IN_CLASS (decl) = klass;
+    DECL_FUNCTION_CODE (decl) = function_code;
 
-  /* Warn if a function in the namespace for users
-     is used without an occasion to consider it declared.  */
-  /*
-  if (name[0] != '_' || name[1] != '_')
-    C_DECL_INVISIBLE (decl) = 1;
-  */
+    /* Warn if a function in the namespace for users
+       is used without an occasion to consider it declared.  */
+    /*
+       if (name[0] != '_' || name[1] != '_')
+       C_DECL_INVISIBLE (decl) = 1;
+     */
 
-  /* Possibly apply some default attributes to this built-in function.  */
-  if (attrs)
-    decl_attributes (&decl, attrs, ATTR_FLAG_BUILT_IN);
-  else
-    decl_attributes (&decl, NULL_TREE, 0);
+    /* Possibly apply some default attributes to this built-in function.  */
+    if (attrs)
+        decl_attributes (&decl, attrs, ATTR_FLAG_BUILT_IN);
+    else
+        decl_attributes (&decl, NULL_TREE, 0);
 
-  d_bi_builtin_func(decl);
+    d_bi_builtin_func(decl);
 
-  return decl;
+    return decl;
 }
 
 #if D_GCC_VER < 40

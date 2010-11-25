@@ -224,7 +224,7 @@ void Module::genmoduleinfo()
     // name[]
     const char *name = toPrettyChars();
     size_t namelen = strlen(name);
-    dtdword(&dt, namelen);
+    dtsize_t(&dt, namelen);
     dtabytes(&dt, TYnptr, 0, namelen + 1, name);
 
     ClassDeclarations aclasses;

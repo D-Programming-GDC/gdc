@@ -28,6 +28,12 @@ private import gcc.builtins;
 private import core.memory;
 private import core.stdc.stdlib;
 
+extern (C)
+{
+    void _d_setUnhandled(Object *);
+    void _d_createTrace(Object *);
+}
+
 static if (Use_ARM_EABI_Unwinder)
     const _Unwind_Exception_Class GDC_Exception_Class =
         ['G','N','U','C',
@@ -152,6 +158,10 @@ _d_throw(Object obj)
     else
         exc.unwindHeader.exception_class[] = GDC_Exception_Class[];
     exc.unwindHeader.exception_cleanup = & _gdc_cleanupException;
+
+    // Runtime now expects us to do this first before unwinding.
+    _d_createTrace (&exc.obj);
+    _d_setUnhandled (&exc.obj);
 
     version (GNU_SjLj_Exceptions) {
         _Unwind_SjLj_RaiseException (&exc.unwindHeader);

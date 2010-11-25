@@ -165,20 +165,31 @@ D_BORROWED_C_OBJS=attribs.o cppdefault.o
 D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/$(D_dmd_srcdir) -Id
 # -Wno-long-double is for MacOS X -- needs to be configurated
 D_CC_FLAGS = -Wno-missing-braces
-D_CC_FLAGS += -fmessage-length=0
-#ifeq ($(if $(findstring darwin,$(build)),T,$(if $(findstring darwin,$(host)),T)),T)
-#
-#D_CC_FLAGS += -Wno-long-double
-#endif
+
+# d-bi-attrs-xx.h
+D_CC_FLAGS += -Wno-format
+# d-asm-i386.h
+D_CC_FLAGS += -Wno-missing-field-initializers
+# d-gcc-real.h
+D_CC_FLAGS += -fno-strict-aliasing
+
 ifeq ($(if $(findstring solaris,$(build)),T,$(if $(findstring solaris,$(host)),T)),T)
 D_CC_FLAGS += -Wcast-align
 endif
 
+D_CC_FLAGS += -fmessage-length=0
+
 #D_CC_FLAGS += -O0 -g
 
-ALL_D_COMPILER_FLAGS = $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+# These are not valid C++ flags remove them before assigning.
+FILTER_CFLAGS = -Wstrict-prototypes -Wmissing-prototypes
+
+ALL_D_COMPILER_FLAGS = $(filter-out $(FILTER_CFLAGS), $(ALL_CFLAGS)) $(ALL_CPPFLAGS) \
+                        $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 # Somehow, I started getting problems with the C++ <complex.h> being included..
-ALL_DMD_COMPILER_FLAGS = $(ALL_CFLAGS) $(ALL_CPPFLAGS) -Id -I$(srcdir)/$(D_dmd_srcdir) -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+ALL_DMD_COMPILER_FLAGS = $(filter-out $(FILTER_CFLAGS), $(ALL_CFLAGS)) $(ALL_CPPFLAGS) \
+                        -Id -I$(srcdir)/$(D_dmd_srcdir) -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+
 
 # Create the compiler driver for D.
 $(D_DRIVER_NAME)$(exeext): $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(LIBDEPS)
