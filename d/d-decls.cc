@@ -467,10 +467,12 @@ Symbol *FuncAliasDeclaration::toSymbol()
 // returns a FUNCTION_DECL tree
 Symbol *FuncDeclaration::toSymbol()
 {
-    if (! csym) {
+    if (! csym)
+    {
         csym  = new Symbol();
 
-        if (! isym) {
+        if (! isym)
+        {
             tree id;
             //struct prod_token_parm_item* parm;
             //tree type_node;
@@ -479,10 +481,12 @@ Symbol *FuncDeclaration::toSymbol()
             char * mangled_ident_str = 0;
             AggregateDeclaration * agg_decl;
 
-            if (ident) {
+            if (ident)
+            {
                 id = get_identifier(ident->string);
-            } else {
-                // This happens for assoc array foreach bodies
+            }
+            else
+            {   // This happens for assoc array foreach bodies
 
                 // Not sure if idents are strictly necc., but announce_function
                 //  dies without them.
@@ -501,16 +505,18 @@ Symbol *FuncDeclaration::toSymbol()
                                unreferenced. maybe lang_specific.based_on */
 
             tree vindex = NULL_TREE;
-            if (isNested()) {
-                /* Even if DMD-style nested functions are not implemented, add an
+            if (isNested())
+            {   /* Even if DMD-style nested functions are not implemented, add an
                    extra argument to be compatible with delegates. */
 
                 // irs->functionType(func_type, Type::tvoid);
                 fn_type = build_method_type(void_type_node, fn_type);
-            } else if ( ( agg_decl = isMember() ) ) {
-                // Do this even if there is no debug info.  It is needed to make
+            }
+            else if ((agg_decl = isMember()))
+            {   // Do this even if there is no debug info.  It is needed to make
                 // sure member functions are not called statically
-                if (isThis()) {
+                if (isThis())
+                {
                     tree method_type = NULL_TREE;
                     tree handle = agg_decl->handle->toCtype();
 #if STRUCTTHISREF
@@ -521,22 +527,23 @@ Symbol *FuncDeclaration::toSymbol()
 #endif
                     method_type = build_method_type(TREE_TYPE(handle), fn_type);
 
-                    TYPE_ATTRIBUTES( method_type ) = TYPE_ATTRIBUTES( fn_type );
+                    TYPE_ATTRIBUTES(method_type) = TYPE_ATTRIBUTES(fn_type);
                     fn_type = method_type;
 
                     if (isVirtual())
                         vindex = size_int(vtblIndex);
                 }
-            } else if (isMain() && func_type->nextOf()->toBasetype()->ty == Tvoid) {
+            }
+            else if (isMain() && func_type->nextOf()->toBasetype()->ty == Tvoid)
+            {
                 fn_type = build_function_type(integer_type_node, TYPE_ARG_TYPES(fn_type));
             }
-
             // %%CHECK: is it okay for static nested functions to have a FUNC_DECL context?
             // seems okay so far...
-
-            fn_decl = build_decl( FUNCTION_DECL, id, fn_type );
+            fn_decl = build_decl(FUNCTION_DECL, id, fn_type);
             dkeep(fn_decl);
-            if (ident) {
+            if (ident)
+            {
                 mangled_ident_str = mangle();
                 uniqueName(this, fn_decl, mangled_ident_str);
             }
@@ -545,23 +552,20 @@ Symbol *FuncDeclaration::toSymbol()
             // %% What about DECL_SECTION_NAME ?
             //DECL_ARGUMENTS(fn_decl) = NULL_TREE; // Probably don't need to do this until toObjFile
             DECL_CONTEXT (fn_decl) = gen.declContext(this); //context;
-            if (vindex) {
+            if (vindex)
+            {
                 DECL_VINDEX    (fn_decl) = vindex;
                 DECL_VIRTUAL_P (fn_decl) = 1;
             }
             if (! gen.functionNeedsChain(this)
-#if D_GCC_VER >= 40
                 // gcc 4.0: seems to be an error to set DECL_NO_STATIC_CHAIN on a toplevel function
                 // (tree-nest.c:1282:convert_all_function_calls)
-                && decl_function_context(fn_decl)
-#endif
-                ) {
-                // Prevent backend from thinking this is a nested function.
-                DECL_NO_STATIC_CHAIN( fn_decl ) = 1;
+                && decl_function_context(fn_decl))
+            {   // Prevent backend from thinking this is a nested function.
+                DECL_NO_STATIC_CHAIN(fn_decl) = 1;
             }
             else
-            {
-                /* If a template instance has a nested function (because
+            {   /* If a template instance has a nested function (because
                    a template argument is a local variable), the nested
                    function may not have its toObjFile called before the
                    outer function is finished.  GCC requires that nested
@@ -581,7 +585,7 @@ Symbol *FuncDeclaration::toSymbol()
                     {
                         is_template_member = true;
                     }
-                    else if ( (outer_func = p->isFuncDeclaration()) )
+                    else if ((outer_func = p->isFuncDeclaration()))
                         break;
                     p = p->parent;
                 }
@@ -601,9 +605,12 @@ Symbol *FuncDeclaration::toSymbol()
                what was expected and LDASM labels aren't unique.)
                TODO: If the asm consists entirely
                of extended asm, we can allow inlining. */
-            if (inlineAsm) {
+            if (inlineAsm)
+            {
                 DECL_UNINLINABLE(fn_decl) = 1;
-            } else {
+            }
+            else
+            {
 #if D_GCC_VER >= 40 && D_GCC_VER <= 43
                 // see grokdeclarator in c-decl.c
                 if (flag_inline_trees == 2 && fbody /* && should_emit? */)
@@ -611,37 +618,38 @@ Symbol *FuncDeclaration::toSymbol()
 #endif
             }
 
-            if (naked) {
-                D_DECL_NO_FRAME_POINTER( fn_decl ) = 1;
-                DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT( fn_decl ) = 1;
+            if (naked)
+            {
+                D_DECL_NO_FRAME_POINTER(fn_decl) = 1;
+                DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT(fn_decl) = 1;
                 /* Need to do this or GCC will set up a frame pointer with -finline-functions.
                    Must have something to do with defered processing -- after we turn
                    flag_omit_frame_pointer back on. */
-                DECL_UNINLINABLE( fn_decl ) = 1;
+                DECL_UNINLINABLE(fn_decl) = 1;
             }
 #if V2
-            // %% pure functions don't imply nothrow
-            DECL_PURE_P( fn_decl ) = (func_type->purity == PUREstrong && func_type->isnothrow);
-            TREE_NOTHROW( fn_decl ) = func_type->isnothrow;
+            // %% Pure functions don't imply nothrow
+            DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && func_type->isnothrow);
+            TREE_NOTHROW(fn_decl) = func_type->isnothrow;
             // TODO: check 'immutable' means arguments are readonly...
-            TREE_READONLY( fn_decl ) = func_type->isImmutable();
-            TREE_CONSTANT( fn_decl ) = func_type->isConst();
+            TREE_READONLY(fn_decl) = func_type->isImmutable();
+            TREE_CONSTANT(fn_decl) = func_type->isConst();
 #endif
 
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
             // Have to test for import first
             if (isImportedSymbol())
             {
-                gen.addDeclAttribute( fn_decl, "dllimport" );
-                DECL_DLLIMPORT_P( fn_decl ) = 1;
+                gen.addDeclAttribute(fn_decl, "dllimport");
+                DECL_DLLIMPORT_P(fn_decl) = 1;
             }
             else if (isExport())
-                gen.addDeclAttribute( fn_decl, "dllexport" );
+                gen.addDeclAttribute(fn_decl, "dllexport");
 #endif
             g.ofile->setDeclLoc(fn_decl, this);
             g.ofile->setupSymbolStorage(this, fn_decl);
             if (! ident)
-                TREE_PUBLIC( fn_decl ) = 0;
+                TREE_PUBLIC(fn_decl) = 0;
 
             TREE_USED (fn_decl) = 1; // %% Probably should be a little more intelligent about this
 
@@ -680,7 +688,9 @@ Symbol *FuncDeclaration::toSymbol()
             csym->Stree = fn_decl;
 
             gen.maybeSetUpBuiltin(this);
-        } else {
+        }
+        else
+        {
             csym->Stree = isym->Stree;
         }
     }
