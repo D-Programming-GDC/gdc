@@ -517,6 +517,7 @@ public:
 #endif
 
     // ** Instruction stream manipulation
+    void startCond(Statement * stmt, tree t_cond);
     void startCond(Statement * stmt, Expression * e_cond);
     void startElse();
     void endCond();
@@ -528,7 +529,7 @@ public:
         exitIfFalse(convertForCondition(e_cond), is_top_cond);
     }
     void endLoop();
-    void startCase(Statement * stmt, tree t_cond);
+    void startCase(Statement * stmt, tree t_cond, int has_vars = 0);
     void doCase(tree t_value, tree t_label);
     void endCase(tree t_cond);
     void continueLoop(Identifier * ident);

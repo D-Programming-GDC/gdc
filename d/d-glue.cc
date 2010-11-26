@@ -4587,7 +4587,27 @@ SwitchStatement::toIR(IRState * irs)
         }
     }
     cond_tree = fold(cond_tree);
+#if V2
+    if (hasVars)
+    {   // Write cases as a series of if-then-else blocks.
+        for (unsigned i = 0; i < cases->dim; i++)
+        {
+            CaseStatement * case_stmt = (CaseStatement *) cases->data[i];
+            tree case_cond = build2(EQ_EXPR, cond_type->toCtype(), cond_tree,
+                                    case_stmt->exp->toElem(irs));
+            irs->startCond(this, case_cond);
+            irs->doJump(NULL, case_stmt->cblock);
+            irs->endCond();
+        }
+        if (sdefault)
+        {
+            irs->doJump(NULL, sdefault->cblock);
+        }
+    }
+    irs->startCase(this, cond_tree, hasVars);
+#else
     irs->startCase(this, cond_tree);
+#endif
     if (body)
     {
         body->toIR(irs);

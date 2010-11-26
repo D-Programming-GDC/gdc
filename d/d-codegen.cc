@@ -3300,7 +3300,7 @@ IRState::exitIfFalse(tree t_cond, bool is_top_cond) {
 }
 
 void
-IRState::startCase(Statement * stmt, tree t_cond)
+IRState::startCase(Statement * stmt, tree t_cond, int var_cases)
 {
     clear_last_expr ();
     g.ofile->doLineNote(stmt->loc);
@@ -3451,12 +3451,16 @@ IRState::retrieveStmtExpr(tree t, Statement ** s_out, IRState ** i_out)
 #else
 
 void
-IRState::startCond(Statement * stmt, Expression * e_cond)
+IRState::startCond(Statement * stmt, tree t_cond)
 {
-    tree t_cond = convertForCondition(e_cond);
-
     Flow * f = beginFlow(stmt);
     f->condition = t_cond;
+}
+
+void
+IRState::startCond(Statement * stmt, Expression * e_cond)
+{
+    startCond(stmt, convertForCondition(e_cond));
 }
 
 void
@@ -3509,18 +3513,34 @@ IRState::exitIfFalse(tree t_cond, bool /*unused*/) {
 }
 
 void
-IRState::startCase(Statement * stmt, tree t_cond)
+IRState::startCase(Statement * stmt, tree t_cond, int has_vars)
 {
     Flow * f = beginFlow(stmt);
     f->condition = t_cond;
     f->kind = level_switch;
+#if V2
+    if (has_vars)
+    {   // %% dummy value so the tree is not NULL
+        f->hasVars = integer_one_node;
+    }
+#endif
 }
 
 void
 IRState::doCase(tree t_value, tree t_label)
 {
-    addExp(build3(CASE_LABEL_EXPR, void_type_node,
-               t_value, NULL_TREE, t_label));
+    Flow * f = currentFlow();
+#if V2
+    if (f->hasVars)
+    {   // SwitchStatement has already taken care of label jumps.
+        doLabel(t_label);
+    }
+    else
+#endif
+    {
+        addExp(build3(CASE_LABEL_EXPR, void_type_node,
+                    t_value, NULL_TREE, t_label));
+    }
 }
 
 void
@@ -3528,9 +3548,18 @@ IRState::endCase(tree /*t_cond*/)
 {
     Flow * f = currentFlow();
     tree t_body = popStatementList();
-    tree t_stmt = build3(SWITCH_EXPR, void_type_node, f->condition,
-        t_body, NULL_TREE);
-    addExp(t_stmt);
+#if V2
+    if (f->hasVars)
+    {   // %% switch was converted to if-then-else expression
+        addExp(t_body);
+    }
+    else
+#endif
+    {
+        tree t_stmt = build3(SWITCH_EXPR, void_type_node, f->condition,
+                t_body, NULL_TREE);
+        addExp(t_stmt);
+    }
     endFlow();
 }
 

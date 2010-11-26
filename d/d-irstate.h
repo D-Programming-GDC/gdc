@@ -124,7 +124,7 @@ public:
         union {
             struct {
                 tree continueLabel;
-                tree unused;
+                tree hasVars; // D2 specific, != NULL_TREE if switch uses Lvalues for cases.
             };
             struct {
                 tree condition; // only need this if it is not okay to convert an IfStatement's condition after converting it's branches...
