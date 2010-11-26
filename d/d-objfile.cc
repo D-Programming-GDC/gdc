@@ -939,7 +939,7 @@ ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
         return (FuncDeclaration *) functions->data[0];
     }
     else
-    {   // Write out gates first.
+    {   // Increment gates first.
         for (unsigned i = 0; i < gates->dim; i++)
         {
             VarDeclaration * var = (VarDeclaration *) gates->data[i];
@@ -948,7 +948,7 @@ ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
                                 build2(PLUS_EXPR, TREE_TYPE(var_decl), var_decl, integer_one_node));
             expr_list = irs->maybeVoidCompound(expr_list, var_expr);
         }
-        // Functions...
+        // Call Ctor Functions
         for (unsigned i = 0; i < functions->dim; i++)
         {
             FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];

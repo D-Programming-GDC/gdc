@@ -1516,9 +1516,17 @@ SliceExp::toElem(IRState * irs)
         upr_tree = upr->toElem(irs);
         upr_tree = irs->maybeMakeTemp(upr_tree);
 
-        if (irs->arrayBoundsCheck() && array_len_expr)
+        if (irs->arrayBoundsCheck())
         {   // %% && ! is zero
-            final_len_expr = irs->checkedIndex(loc, upr_tree, array_len_expr, true);
+            if (array_len_expr)
+            {
+                final_len_expr = irs->checkedIndex(loc, upr_tree, array_len_expr, true);
+            }
+            else
+            {   // Still need to check bounds lwr <= upr for pointers.
+                assert(orig_array_type->ty == Tpointer);
+                final_len_expr = upr_tree;
+            }
             if (lwr_tree)
             {   // Enforces lwr <= upr. No need to check lwr <= length as
                 // we've already ensured that upr <= length.
@@ -1900,54 +1908,60 @@ AssertExp::toElem(IRState* irs)
 {
     // %% todo: Do we call a Tstruct's invariant if
     // e1 is a pointer to the struct?
-    if (global.params.useAssert) {
+    if (global.params.useAssert)
+    {
         Type * base_type = e1->type->toBasetype();
         TY ty = base_type->ty;
         tree assert_call = msg ?
             irs->assertCall(loc, msg) : irs->assertCall(loc);
 
-        if (ty == Tclass) {
+        if (ty == Tclass)
+        {
             ClassDeclaration * cd = base_type->isClassHandle();
             tree arg = e1->toElem(irs);
             if (cd->isCOMclass())
             {
                 return build3(COND_EXPR, void_type_node,
-                    irs->boolOp(NE_EXPR, arg, d_null_pointer),
-                    d_void_zero_node, assert_call);
+                        irs->boolOp(NE_EXPR, arg, d_null_pointer),
+                        d_void_zero_node, assert_call);
             }
             else if (cd->isInterfaceDeclaration())
             {
                 arg = irs->convertTo(arg, base_type, irs->getObjectType());
             }
             return irs->libCall(LIBCALL_INVARIANT, 1, & arg);  // this does a null pointer check
-        } else {
-            // build: ( (bool) e1  ? (void)0 : _d_assert(...) )
+        }
+        else
+        {   // build: ( (bool) e1  ? (void)0 : _d_assert(...) )
             //    or: ( e1 != null ? (void)0 : _d_assert(...), e1._invariant() )
             tree result;
             tree invc = NULL_TREE;
             tree e1_t = e1->toElem(irs);
 
-            if (ty == Tpointer) {
+            if (ty == Tpointer)
+            {
                 Type * sub_type = base_type->nextOf()->toBasetype();
-                if (sub_type->ty == Tstruct) {
+                if (sub_type->ty == Tstruct)
+                {
                     AggregateDeclaration * agg_decl = ((TypeStruct *) sub_type)->sym;
-                    if (agg_decl->inv) {
+                    if (agg_decl->inv)
+                    {
                         Array args;
                         e1_t = irs->maybeMakeTemp(e1_t);
-                        invc = irs->call(agg_decl->inv, e1_t, & args );
+                        invc = irs->call(agg_decl->inv, e1_t, & args);
                     }
                 }
             }
-
             result = build3(COND_EXPR, void_type_node,
-                irs->convertForCondition( e1_t, e1->type ),
-                d_void_zero_node, assert_call);
+                    irs->convertForCondition(e1_t, e1->type),
+                    d_void_zero_node, assert_call);
             if (invc)
                 result = build2(COMPOUND_EXPR, void_type_node, result, invc);
             return result;
         }
-    } else
-        return d_void_zero_node;
+    }
+
+    return d_void_zero_node;
 }
 
 elem *
@@ -2575,8 +2589,13 @@ ArrayLiteralExp::toElem(IRState * irs)
 elem *
 AssocArrayLiteralExp::toElem(IRState * irs)
 {
-    TypeAArray * aa_type = (TypeAArray *)type->toBasetype();
-    assert(aa_type->ty == Taarray);
+    Type * tb = type->toBasetype();
+    assert (tb->ty == Taarray);
+#if V2
+    // %% want mutable type for typeinfo reference.
+    tb = tb->mutableOf();
+#endif
+    TypeAArray * aa_type = (TypeAArray *)tb;
     assert(keys != NULL);
     assert(values != NULL);
 
@@ -2857,11 +2876,12 @@ FuncDeclaration::toObjFile(int multiobj)
 
     tree fn_decl = this_sym->Stree;
 
-    if (! fbody) {
-        if (! isNested()) {
-            // %% Should set this earlier...
-            DECL_EXTERNAL (fn_decl) = 1;
-            TREE_PUBLIC( fn_decl ) = 1;
+    if (! fbody)
+    {
+        if (! isNested())
+        {   // %% Should set this earlier...
+            DECL_EXTERNAL(fn_decl) = 1;
+            TREE_PUBLIC(fn_decl) = 1;
         }
         g.ofile->rodc(fn_decl, 1);
         return;
@@ -2882,7 +2902,7 @@ FuncDeclaration::toObjFile(int multiobj)
 #endif
     AggregateDeclaration * ad = NULL;
 
-    announce_function( fn_decl );
+    announce_function(fn_decl);
     IRState * irs = IRState::startFunction(this);
 #if V2
     TypeFunction * tf = (TypeFunction *)type;
@@ -2903,7 +2923,7 @@ FuncDeclaration::toObjFile(int multiobj)
 
     current_function_decl = fn_decl;
 
-    TREE_STATIC( fn_decl ) = 1;
+    TREE_STATIC(fn_decl) = 1;
     {
         Type * func_type = tintro ? tintro : type;
         Type * ret_type = func_type->nextOf()->toBasetype();
@@ -2920,15 +2940,15 @@ FuncDeclaration::toObjFile(int multiobj)
         result_decl = build_decl(RESULT_DECL, NULL_TREE, result_decl);
     }
     g.ofile->setDeclLoc(result_decl, this);
-    DECL_RESULT( fn_decl ) = result_decl;
-    DECL_CONTEXT( result_decl ) = fn_decl;
-    //layout_decl( result_decl, 0 );
+    DECL_RESULT(fn_decl) = result_decl;
+    DECL_CONTEXT(result_decl) = fn_decl;
+    //layout_decl(result_decl, 0);
 
 #if D_GCC_VER >= 40
 # if D_GCC_VER >= 43
-    allocate_struct_function( fn_decl, false );
+    allocate_struct_function(fn_decl, false);
 # else
-    allocate_struct_function( fn_decl );
+    allocate_struct_function(fn_decl);
 # endif
     // assuming the above sets cfun
     g.ofile->setCfunEndLoc(endloc);
@@ -2946,25 +2966,29 @@ FuncDeclaration::toObjFile(int multiobj)
     static const int VTHIS = -2;
     static const int VARGUMENTS = -1;
 
-    for (int i = VTHIS; i < (int) n_parameters; i++) {
+    for (int i = VTHIS; i < (int) n_parameters; i++)
+    {
         VarDeclaration * param = 0;
         tree parm_type = 0;
 
         parm_decl = 0;
 
-        if (i == VTHIS) {
-            if ( (ad = isThis()) )
+        if (i == VTHIS)
+        {
+            if ((ad = isThis()))
+            {
                 param = vthis;
-            else if (isNested()) {
-                /* DMD still generates a vthis, but it should not be
+            }
+            else if (isNested())
+            {   /* DMD still generates a vthis, but it should not be
                    referenced in any expression.
 
                    This parameter is hidden from the debugger.
                 */
                 parm_type = ptr_type_node;
                 parm_decl = build_decl(PARM_DECL, NULL_TREE, parm_type);
-                DECL_ARTIFICIAL( parm_decl ) = 1;
-                DECL_IGNORED_P( parm_decl ) = 1;
+                DECL_ARTIFICIAL(parm_decl) = 1;
+                DECL_IGNORED_P(parm_decl) = 1;
                 DECL_ARG_TYPE (parm_decl) = TREE_TYPE (parm_decl); // %% doc need this arg silently disappears
 #if D_NO_TRAMPOLINES
 #if V2
@@ -2979,24 +3003,31 @@ FuncDeclaration::toObjFile(int multiobj)
                     static_chain_expr = parm_decl;
                 }
 #endif
-            } else
-                continue;
-        } else if (i == VARGUMENTS) {
-            if (v_arguments /*varargs && linkage == LINKd*/)
-                param = v_arguments;
+            }
             else
                 continue;
-        } else {
+        }
+        else if (i == VARGUMENTS)
+        {
+            if (v_arguments /*varargs && linkage == LINKd*/)
+            {
+                param = v_arguments;
+            }
+            else
+                continue;
+        }
+        else
+        {
             param = (VarDeclaration *) parameters->data[i];
         }
-        if (param) {
+        if (param)
+        {
             parm_decl = param->toSymbol()->Stree;
         }
-
         DECL_CONTEXT (parm_decl) = fn_decl;
         // param->loc is not set, so use the function's loc
         // %%doc not setting this crashes debug generating code
-        g.ofile->setDeclLoc( parm_decl, param ? (Dsymbol*) param : (Dsymbol*) this );
+        g.ofile->setDeclLoc(parm_decl, param ? (Dsymbol*) param : (Dsymbol*) this);
 
         // chain them in the correct order
         param_list = chainon (param_list, parm_decl);
@@ -3004,7 +3035,7 @@ FuncDeclaration::toObjFile(int multiobj)
 
     // param_list is a number of PARM_DECL trees chained together (*not* a TREE_LIST of PARM_DECLs).
     // The leftmost parameter is the first in the chain.  %% varargs?
-    DECL_ARGUMENTS( fn_decl ) = param_list; // %% in treelang, useless ? because it just sets them to getdecls() later
+    DECL_ARGUMENTS(fn_decl) = param_list; // %% in treelang, useless ? because it just sets them to getdecls() later
 
 #if D_GCC_VER < 40
     rest_of_decl_compilation(fn_decl, NULL, /*toplevel*/1, /*atend*/0); // http://www.tldp.org/HOWTO/GCC-Frontend-HOWTO-7.html
@@ -3014,7 +3045,7 @@ FuncDeclaration::toObjFile(int multiobj)
 #endif
     // ... has this here, but with more args...
 
-    DECL_INITIAL( fn_decl ) = error_mark_node; // Just doing what they tell me to do...
+    DECL_INITIAL(fn_decl) = error_mark_node; // Just doing what they tell me to do...
 
     IRState::initFunctionStart(fn_decl, loc);
 #if D_NO_TRAMPOLINES
@@ -3026,30 +3057,38 @@ FuncDeclaration::toObjFile(int multiobj)
 #if V2
             || closure_expr
 #endif
-        ) {
+       )
+    {
         if (ad && (cd = ad->isClassDeclaration()))
         {
             /* D 2.0 Closures: this->vthis is passed as a normal parameter and
                is valid to access as Stree before the closure frame is created. */
             tree t = vthis->toSymbol()->Stree;
-            while ( cd->isNested() ) {
+            while (cd->isNested())
+            {
                 Dsymbol * d = cd->toParent2();
                 tree vthis_field = cd->vthis->toSymbol()->Stree;
                 t = irs->component(irs->indirect(t), vthis_field);
                 FuncDeclaration * f;
-                if ( (f = d->isFuncDeclaration() )) {
+                if ((f = d->isFuncDeclaration()))
+                {
 #if V2
-                    if (! needs_static_chain) {
+                    if (! needs_static_chain)
+                    {
                         closure_expr = t;
                         closure_func = f;
-                    } else
+                    }
+                    else
 #endif
+                    {
                         static_chain_expr = t;
+                    }
                     break;
-                } else if ( (cd = d->isClassDeclaration()) ) {
-                    // nothing
-                } else
+                }
+                else if (! (cd = d->isClassDeclaration()))
+                {
                     assert(0);
+                }
             }
         }
 #if V2
@@ -3058,22 +3097,29 @@ FuncDeclaration::toObjFile(int multiobj)
             /* D 2.0 Closures: this->vthis is passed as a normal parameter and
                is valid to access as Stree before the closure frame is created. */
             tree t = vthis->toSymbol()->Stree;
-            while ( sd->isNested() ) {
+            while (sd->isNested())
+            {
                 Dsymbol * d = sd->toParent2();
                 tree vthis_field = sd->vthis->toSymbol()->Stree;
                 t = irs->component(irs->indirect(t), vthis_field);
                 FuncDeclaration * f;
-                if ( (f = d->isFuncDeclaration() )) {
-                    if (! needs_static_chain) {
+                if ((f = d->isFuncDeclaration()))
+                {
+                    if (! needs_static_chain)
+                    {
                         closure_expr = t;
                         closure_func = f;
-                    } else
+                    }
+                    else
+                    {
                         static_chain_expr = t;
+                    }
                     break;
-                } else if ( (sd = d->isStructDeclaration()) ) {
-                    // nothing
-                } else
+                }
+                else if (! (sd = d->isStructDeclaration()))
+                {
                     assert(0);
+                }
             }
         }
 #endif
@@ -3095,7 +3141,7 @@ FuncDeclaration::toObjFile(int multiobj)
         DECL_ASSEMBLER_NAME (fn_decl)
         && MAIN_NAME_P (DECL_ASSEMBLER_NAME (fn_decl)) // other langs use DECL_NAME..
         && DECL_FILE_SCOPE_P (fn_decl)
-        )
+       )
         expand_main_function ();
 
 
@@ -3108,7 +3154,7 @@ FuncDeclaration::toObjFile(int multiobj)
     expand_start_bindings (2);
 
     // Add the argument declarations to the symbol table for the back end
-    set_decl_binding_chain( DECL_ARGUMENTS( fn_decl ));
+    set_decl_binding_chain( DECL_ARGUMENTS(fn_decl));
 
     // %% TREE_ADDRESSABLE and TREE_USED...
 
@@ -3123,10 +3169,11 @@ FuncDeclaration::toObjFile(int multiobj)
     irs->doLineNote(loc);
 
 #if D_GCC_VER >= 40
-    if (static_chain_expr) {
+    if (static_chain_expr)
+    {
         cfun->custom_static_chain = 1;
-        irs->doExp( build2(MODIFY_EXPR, ptr_type_node,
-                build0( STATIC_CHAIN_DECL, ptr_type_node ), static_chain_expr) );
+        irs->doExp(build2(MODIFY_EXPR, ptr_type_node,
+                build0(STATIC_CHAIN_DECL, ptr_type_node), static_chain_expr));
     }
 #endif
 
@@ -3136,7 +3183,8 @@ FuncDeclaration::toObjFile(int multiobj)
 
     if (closure_expr)
     {
-        if (! DECL_P(closure_expr)) {
+        if (! DECL_P(closure_expr))
+        {
             tree c = irs->localVar(ptr_type_node);
             DECL_INITIAL(c) = closure_expr;
             irs->expandDecl(c);
@@ -3180,16 +3228,22 @@ FuncDeclaration::toObjFile(int multiobj)
         irs->emitLocalVar(v_arguments_var, true);
 
     Statement * the_body = fbody;
-    if (isSynchronized()) {
+    if (isSynchronized())
+    {
         AggregateDeclaration * asym;
         ClassDeclaration * sym;
 
-        if ( (asym = isMember()) && (sym = asym->isClassDeclaration()) ) {
-            if (vthis != NULL) {
+        if ((asym = isMember()) && (sym = asym->isClassDeclaration()))
+        {
+            if (vthis != NULL)
+            {
                 VarExp * ve = new VarExp(fbody->loc, vthis);
                 the_body = new SynchronizedStatement(fbody->loc, ve, fbody);
-            } else {
-                if (!sym->vclassinfo) {
+            }
+            else
+            {
+                if (!sym->vclassinfo)
+                {
 #if V2
                     sym->vclassinfo = new TypeInfoClassDeclaration(sym->type);
 #else
@@ -3201,10 +3255,13 @@ FuncDeclaration::toObjFile(int multiobj)
                 e->type = sym->type;
                 the_body = new SynchronizedStatement(fbody->loc, e, fbody);
             }
-        } else {
+        }
+        else
+        {
             error("synchronized function %s must be a member of a class", toChars());
         }
     }
+
     the_body->toIR(irs);
 
     if (this_sym->otherNestedFuncs)
@@ -3242,14 +3299,15 @@ FuncDeclaration::toObjFile(int multiobj)
 
         irs->expandDecl(result_var);
         irs->doAsm(nop_str, out_arg, NULL_TREE, NULL_TREE);
-        irs->doReturn( build2(MODIFY_EXPR, TREE_TYPE(result_decl),
-                           result_decl, result_var) );
+        irs->doReturn(build2(MODIFY_EXPR, TREE_TYPE(result_decl),
+                           result_decl, result_var));
     }
 #endif
 
 
 #if D_GCC_VER >= 40
-    if (v_argptr) {
+    if (v_argptr)
+    {
         tree body = irs->popStatementList();
         tree var = irs->var(v_argptr);
         tree init_exp = irs->buildCall(built_in_decls[BUILT_IN_VA_START], 2,
@@ -3260,7 +3318,7 @@ FuncDeclaration::toObjFile(int multiobj)
 
         tree cleanup = irs->buildCall(built_in_decls[BUILT_IN_VA_END], 1,
                                       irs->addressOf(var));
-        irs->addExp( build2( TRY_FINALLY_EXPR, void_type_node, body, cleanup ));
+        irs->addExp(build2( TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
 #endif
 
@@ -3284,25 +3342,26 @@ FuncDeclaration::toObjFile(int multiobj)
         gcc_assert(TREE_CODE(body) == BIND_EXPR);
 
         t = TREE_OPERAND(body, 1);
-        if (TREE_CODE(t) != STATEMENT_LIST) {
+        if (TREE_CODE(t) != STATEMENT_LIST)
+        {
             tree sl = alloc_stmt_list();
             append_to_statement_list_force(t, & sl);
             TREE_OPERAND(body, 1) = sl;
-        } else if (! STATEMENT_LIST_HEAD(t)) {
-            /* For empty functions: Without this, there is a
+        }
+        else if (! STATEMENT_LIST_HEAD(t))
+        {   /* For empty functions: Without this, there is a
                segfault when inlined.  Seen on build=ppc-linux but
                not others (why?). */
             append_to_statement_list_force(
                build1(RETURN_EXPR,void_type_node,NULL_TREE), & t);
         }
     }
-
     //block = (*lang_hooks.decls.poplevel) (1, 0, 1);
     block = poplevel(1, 0, 1);
 #endif
 
     DECL_INITIAL (fn_decl) = block; // %% redundant, see poplevel
-    BLOCK_SUPERCONTEXT( DECL_INITIAL (fn_decl) ) = fn_decl; // done in C, don't know effect
+    BLOCK_SUPERCONTEXT(DECL_INITIAL (fn_decl)) = fn_decl; // done in C, don't know effect
 
 #if D_GCC_VER < 40
     expand_end_bindings (NULL_TREE, 0, 1);
@@ -3316,7 +3375,7 @@ FuncDeclaration::toObjFile(int multiobj)
         g.ofile->outputFunction(this);
 
 #if D_GCC_VER < 40
-    //rest_of_compilation( fn_decl );
+    //rest_of_compilation(fn_decl);
     if (gen.functionNeedsChain(this))
         pop_function_context();
     else
@@ -4515,18 +4574,18 @@ SwitchStatement::toIR(IRState * irs)
         ::error("cannot handle switch condition of type %s", cond_type->toChars());
         abort();
     }
-    // Build LABEL_DECLs now so they can be refered to by goto case
     if (cases)
-    {
+    {   // Build LABEL_DECLs now so they can be refered to by goto case
         for (unsigned i = 0; i < cases->dim; i++)
         {
             CaseStatement * case_stmt = (CaseStatement *) cases->data[i];
             case_stmt->cblock = irs->label(case_stmt->loc); //make_case_label(case_stmt->loc);
         }
         if (sdefault)
+        {
             sdefault->cblock = irs->label(sdefault->loc); //make_case_label(sdefault->loc);
+        }
     }
-
     cond_tree = fold(cond_tree);
     irs->startCase(this, cond_tree);
     if (body)

@@ -119,7 +119,9 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
                     {
                         //printf("rewriting e1 to %s's this\n", f->toChars());
                         n++;
+#ifndef IN_GCC
                         e1 = new VarExp(loc, f->vthis);
+#endif
                     }
                 }
                 if (s && s->isClassDeclaration())
