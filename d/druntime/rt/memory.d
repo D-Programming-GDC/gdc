@@ -19,6 +19,10 @@ module rt.memory;
 
 private
 {
+    version( GNU )
+    {
+        import gcc.builtins;
+    }
     version( linux )
     {
         version = SimpleLibcStackEnd;
@@ -137,13 +141,14 @@ extern (C) void* rt_stackTop()
             ret;
         }
     }
+    else version( GNU )
+    {
+        // This works even if frame pointer is omitted.
+        return __builtin_frame_address(0);
+    }
     else
     {
-        // TODO: add builtin for using stack pointer rtx
-        int dummy;
-        void * p = & dummy + 1; // +1 doesn't help much; also assume stack grows down
-        p = cast(void*)( (cast(size_t) p) & ~(size_t.sizeof - 1));
-        return p;
+        static assert( false, "Operating system not supported." );
     }
 }
 

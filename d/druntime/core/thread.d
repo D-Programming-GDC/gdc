@@ -276,6 +276,14 @@ else version( Posix )
                 alias _tlsstart _tlsend;
             }
         }
+        else version( GNU )
+        {   // %% TODO: Make these compiler-generated.
+            extern (C)
+            {
+                __thread int _tlsstart = 3;
+                __thread int _tlsend;
+            }
+        }
         else
         {
             __gshared int   _tlsstart;

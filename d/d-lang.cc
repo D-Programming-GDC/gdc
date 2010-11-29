@@ -1185,42 +1185,6 @@ d_parse_file (int /*set_yydebug*/)
         deps.writev();
     }
 
-    /* This is not used for GDC
-     */
-#if 0
-    // Scan for functions to inline
-    if (global.params.useInline)
-    {
-        /* The problem with useArrayBounds and useAssert is that the
-         * module being linked to may not have generated them, so if
-         * we inline functions from those modules, the symbols for them will
-         * not be found at link time.
-         */
-        if (!global.params.useArrayBounds && !global.params.useAssert)
-        {
-            // Do pass 3 semantic analysis on all imported modules,
-            // since otherwise functions in them cannot be inlined
-            for (i = 0; i < Module::amodules.dim; i++)
-            {
-                m = (Module *)Module::amodules.data[i];
-                if (global.params.verbose)
-                    printf("semantic3 %s\n", m->toChars());
-                m->semantic3();
-            }
-            if (global.errors)
-                goto had_errors;
-        }
-
-        for (i = 0; i < modules.dim; i++)
-        {
-            m = (Module *)modules.data[i];
-            if (global.params.verbose)
-                printf("inline scan %s\n", m->toChars());
-            m->inlineScan();
-        }
-    }
-#endif
-
     // Do not attempt to generate output files if errors or warnings occurred
     if (global.errors || global.warnings)
     {

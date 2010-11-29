@@ -285,12 +285,6 @@ Symbol *VarDeclaration::toSymbol()
         if (decl_kind == VAR_DECL)
         {
             g.ofile->setupSymbolStorage(this, var_decl);
-#if V2
-            // %% If not marked, variable will be accessible
-            // from multiple threads, which is not what we want.
-            if (isThreadlocal())
-                DECL_TLS_MODEL(var_decl) = decl_default_tls_model(var_decl);
-#endif
             //DECL_CONTEXT( var_decl ) = gen.declContext(this);//EXPERkinda
         }
         else if (decl_kind == PARM_DECL)
@@ -376,19 +370,27 @@ Symbol *VarDeclaration::toSymbol()
         if (isImportedSymbol())
         {
             gen.addDeclAttribute( var_decl, "dllimport" );
-            DECL_DLLIMPORT_P( var_decl ) = 1;
+            DECL_DLLIMPORT_P(var_decl) = 1;
         }
         else if (isExport())
-            gen.addDeclAttribute( var_decl, "dllexport" );
+            gen.addDeclAttribute(var_decl, "dllexport");
 #endif
 
 #if V2
-        if (global.params.vtls && isDataseg() && isThreadlocal())
+        if (isDataseg() && isThreadlocal())
         {
-            char *p = loc.toChars();
-            fprintf(stderr, "%s: %s is thread local\n", p ? p : "", toChars());
-            if (p)
-                free(p);
+            if (TREE_CODE(var_decl) == VAR_DECL)
+            {   // %% If not marked, variable will be accessible
+                // from multiple threads, which is not what we want.
+                DECL_TLS_MODEL(var_decl) = decl_default_tls_model(var_decl);
+            }
+            if (global.params.vtls)
+            {
+                char *p = loc.toChars();
+                fprintf(stderr, "%s: %s is thread local\n", p ? p : "", toChars());
+                if (p)
+                    free(p);
+            }
         }
 #endif
     }
@@ -520,13 +522,15 @@ Symbol *FuncDeclaration::toSymbol()
                     tree method_type = NULL_TREE;
                     tree handle = agg_decl->handle->toCtype();
 #if STRUCTTHISREF
-                    // Handle not a pointer type
                     if (agg_decl->isStructDeclaration())
+                    {   // Handle not a pointer type
                         method_type = build_method_type(handle, fn_type);
+                    }
                     else
 #endif
-                    method_type = build_method_type(TREE_TYPE(handle), fn_type);
-
+                    {
+                        method_type = build_method_type(TREE_TYPE(handle), fn_type);
+                    }
                     TYPE_ATTRIBUTES(method_type) = TYPE_ATTRIBUTES(fn_type);
                     fn_type = method_type;
 
@@ -592,9 +596,10 @@ Symbol *FuncDeclaration::toSymbol()
                 if (is_template_member && outer_func)
                 {
                     Symbol * outer_sym = outer_func->toSymbol();
+#if 0
                     // TODO: This could fail in some corner cases.
                     assert(outer_sym->outputStage != Finished);
-
+#endif
                     if (! outer_sym->otherNestedFuncs)
                         outer_sym->otherNestedFuncs = new FuncDeclarations;
                     outer_sym->otherNestedFuncs->push(this);
