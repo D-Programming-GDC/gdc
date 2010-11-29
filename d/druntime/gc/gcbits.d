@@ -10,10 +10,6 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-*/
 module gc.gcbits;
 
 
@@ -32,7 +28,7 @@ version (DigitalMars)
 }
 else version (GNU)
 {
-    import gcc.bitmanip;
+    // use the unoptimized version
 }
 else version (D_InlineAsm_X86)
 {
@@ -124,10 +120,6 @@ struct GCBits
         {
             return std.intrinsic.btr(data + 1, i);   // this is faster!
         }
-        else version (GNU)
-        {
-            return gcc.bitmanip.btr(data + 1, i);
-        }
         else version (Asm86)
         {
 	    asm
@@ -158,10 +150,6 @@ struct GCBits
         version (bitops)
         {
             return std.intrinsic.bts(data + 1, i);   // this is faster!
-        }
-        else version (GNU)
-        {
-            return gcc.bitmanip.bts(data + 1, i);
         }
         else version (Asm86)
         {

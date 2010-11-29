@@ -119,7 +119,26 @@ mkdir libphobos/zlib && \
     ../../symlink-tree ../../gcc/d/zlib > /dev/null && \
     cd "$top" || exit 1
 
-# 1.3 Exit early if we are just updating d-make-include and the
+# 1.3 Patch the gcc version string
+cd gcc || exit 1
+d_gcc_ver=`echo $gcc_ver | sed -e 's/\.//g'`
+
+if test "$d_gcc_ver" -ge 41; then
+    cur_DEV_PHASE=`cat DEV-PHASE`
+    if test -z "$cur_DEV_PHASE"; then
+        echo "$gdc_ver_msg" > DEV-PHASE
+    else
+        echo "$cur_DEV_PHASE $gdc_ver_msg" > DEV-PHASE
+    fi
+else
+    sed -e 's/ *(gdc.*using dmd [0-9\.]*)//' \
+        -e 's/\(, *\)gdc.*using dmd [0-9\.]*/\1/' \
+        -e 's/\(version_string[^"]*"[^"]*\)"/\1 ('"$gdc_ver_msg"')"/' \
+        version.c > version.c.tmp && mv -f version.c.tmp version.c
+fi
+cd "$top" || exit 1
+
+# 1.4 Exit early if we are just updating d-make-include and the
 # directory of links to the Phobos sources.
 if test "$d_update_phobos" = 1; then
     echo
@@ -147,23 +166,6 @@ fi
 # 3. Patch the gcc subdirectory
 cd gcc || exit 1
 patch -p1 < "$gcc_patch_fn" || exit 1
-
-# 3.1 Patch the gcc version string
-d_gcc_ver=`echo $gcc_ver | sed -e 's/\.//g'`
-
-if test "$d_gcc_ver" -ge 41; then
-    cur_DEV_PHASE=`cat DEV-PHASE`
-    if test -z "$cur_DEV_PHASE"; then
-        echo "$gdc_ver_msg" > DEV-PHASE
-    else
-        echo "$cur_DEV_PHASE $gdc_ver_msg" > DEV-PHASE
-    fi
-else
-    sed -e 's/ *(gdc.*using dmd [0-9\.]*)//' \
-        -e 's/\(, *\)gdc.*using dmd [0-9\.]*/\1/' \
-        -e 's/\(version_string[^"]*"[^"]*\)"/\1 ('"$gdc_ver_msg"')"/' \
-        version.c > version.c.tmp && mv -f version.c.tmp version.c
-fi
 
 
 # 4. Maybe apply Darwin patches
