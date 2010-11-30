@@ -484,7 +484,7 @@ void d_init_builtins(void)
 
 #if D_GCC_VER >= 43
 
-    tree
+tree
 d_builtin_function43 (tree decl)
 {
     d_bi_builtin_func(decl);
@@ -499,7 +499,7 @@ d_builtin_function (const char *name, tree type, int function_code,
                     enum built_in_class klass, const char *library_name,
                     tree attrs)
 {
-    // As of 4.3.x, this is done by add_builtin_fucntion
+    // As of 4.3.x, this is done by add_builtin_function
     //%% for D, just use library_name?
     tree decl = build_decl (FUNCTION_DECL, get_identifier (name), type);
     DECL_EXTERNAL (decl) = 1;

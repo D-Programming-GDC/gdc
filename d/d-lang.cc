@@ -912,18 +912,14 @@ Symbol* rtlsym[N_RTLSYM];
 void
 d_parse_file (int /*set_yydebug*/)
 {
-    char * p, * e;
-    char * name;
-    unsigned i;
-
     if (global.params.verbose)
-    {   printf("binary    %s\n", global.params.argv0);
+    {   
+        printf("binary    %s\n", global.params.argv0);
         printf("version   %s\n", global.version);
     }
 
     if (global.params.verbose && asm_out_file == stdout)
-    {
-        // Really, driver should see the option and turn off -pipe
+    {   // Really, driver should see the option and turn off -pipe
         error("Cannot use -fd-verbose with -pipe");
         return;
     }
@@ -933,7 +929,8 @@ d_parse_file (int /*set_yydebug*/)
 #if V1
     global.params.useArrayBounds = flag_bounds_check;
 #endif
-    if (gen.emitTemplates == TEauto) {
+    if (gen.emitTemplates == TEauto)
+    {
         gen.emitTemplates = (supports_one_only()) ? TEall : TEprivate;
     }
     global.params.symdebug = write_symbols != NO_DEBUG;
@@ -960,7 +957,8 @@ d_parse_file (int /*set_yydebug*/)
     Type::twchar->toCtype();
     Type::tdchar->toCtype();
 
-    for (TY ty = (TY) 0; ty < TMAX; ty = (TY)(ty + 1)) {
+    for (TY ty = (TY) 0; ty < TMAX; ty = (TY)(ty + 1))
+    {
         if (Type::basic[ty] && ty != Terror)
             nametype(Type::basic[ty]);
     }
@@ -984,48 +982,49 @@ d_parse_file (int /*set_yydebug*/)
     Module * m = NULL;
 
     // %% FIX
-    if ( ! main_input_filename ) {
+    if ( ! main_input_filename )
+    {
         ::error("input file name required; cannot use stdin");
         goto had_errors;
     }
 
-    if (fonly_arg) {
-        /* In this mode, the first file name is supposed to be
+    if (fonly_arg)
+    {   /* In this mode, the first file name is supposed to be
            a duplicate of one of the input file. */
         if (strcmp(fonly_arg, main_input_filename))
             ::error("-fonly= argument is different from main input file name");
         if (strcmp(fonly_arg, in_fnames[0]))
             ::error("-fonly= argument is different from first input file name");
     }
-
     //fprintf (stderr, "***** %d files  main=%s\n", num_in_fnames, input_filename);
 
-    for (i = 0; i < num_in_fnames; i++) {
-        if (fonly_arg) {
+    for (unsigned i = 0; i < num_in_fnames; i++)
+    {
+        if (fonly_arg)
+        {
             if (i == 0)
                 continue;
             /* %% Do the other modules really need to be processed?
-            else if (an_output_module)
-                break;
-            */
+               else if (an_output_module)
+               break;
+             */
         }
-
         //fprintf(stderr, "fn %d = %s\n", i, in_fnames[i]);
-
         char * the_fname = (char*) in_fnames[i];
-
-        p = FileName::name(the_fname);
-        e = FileName::ext(p);
-        if (e) {
+        char * p = FileName::name(the_fname);
+        char * e = FileName::ext(p);
+        char * name;
+        if (e)
+        {
             e--;
-            assert( *e == '.' );
+            assert(*e == '.');
             name = (char *) xmalloc((e - p) + 1);
             memcpy(name, p, e - p);
             name[e - p] = 0;
 
             if (name[0] == 0 ||
-                strcmp(name, "..") == 0 ||
-                strcmp(name, ".") == 0)
+                    strcmp(name, "..") == 0 ||
+                    strcmp(name, ".") == 0)
             {
             Linvalid:
                 ::error("invalid file name '%s'", the_fname);
@@ -1033,7 +1032,8 @@ d_parse_file (int /*set_yydebug*/)
             }
         }
         else
-        {   name = p;
+        {
+            name = p;
             if (!*name)
                 goto Linvalid;
         }
@@ -1066,13 +1066,13 @@ d_parse_file (int /*set_yydebug*/)
 
     // Read files
     aw = AsyncRead::create(modules.dim);
-    for (i = 0; i < modules.dim; i++)
+    for (unsigned i = 0; i < modules.dim; i++)
     {
         m = (Module *)modules.data[i];
         aw->addFile(m->srcfile);
     }
     aw->start();
-    for (i = 0; i < modules.dim; i++)
+    for (unsigned i = 0; i < modules.dim; i++)
     {
         if (aw->read(i))
         {
@@ -1083,7 +1083,7 @@ d_parse_file (int /*set_yydebug*/)
     AsyncRead::dispose(aw);
 
     // Parse files
-    for (i = 0; i < modules.dim; i++)
+    for (unsigned i = 0; i < modules.dim; i++)
     {
         m = (Module *)modules.data[i];
         if (global.params.verbose)
@@ -1097,7 +1097,6 @@ d_parse_file (int /*set_yydebug*/)
         if (m->isDocFile)
         {
             m->gendocfile();
-
             // Remove m from list of modules
             modules.remove(i);
             i--;
@@ -1114,7 +1113,7 @@ d_parse_file (int /*set_yydebug*/)
           * line switches and what else is imported, they are generated
           * before any semantic analysis.
           */
-         for (i = 0; i < modules.dim; i++)
+         for (unsigned i = 0; i < modules.dim; i++)
          {
              m = (Module *)modules.data[i];
              if (fonly_arg && m != an_output_module)
@@ -1129,7 +1128,7 @@ d_parse_file (int /*set_yydebug*/)
 #endif
 
     // load all unconditional imports for better symbol resolving
-    for (i = 0; i < modules.dim; i++)
+    for (unsigned i = 0; i < modules.dim; i++)
     {
         m = (Module *)modules.data[i];
         if (global.params.verbose)
@@ -1140,7 +1139,7 @@ d_parse_file (int /*set_yydebug*/)
         goto had_errors;
 
     // Do semantic analysis
-    for (i = 0; i < modules.dim; i++)
+    for (unsigned i = 0; i < modules.dim; i++)
     {
         m = (Module *)modules.data[i];
         if (global.params.verbose)
@@ -1154,7 +1153,7 @@ d_parse_file (int /*set_yydebug*/)
     Module::runDeferredSemantic();
 
     // Do pass 2 semantic analysis
-    for (i = 0; i < modules.dim; i++)
+    for (unsigned i = 0; i < modules.dim; i++)
     {
         m = (Module *)modules.data[i];
         if (global.params.verbose)
@@ -1165,7 +1164,7 @@ d_parse_file (int /*set_yydebug*/)
         goto had_errors;
 
     // Do pass 3 semantic analysis
-    for (i = 0; i < modules.dim; i++)
+    for (unsigned i = 0; i < modules.dim; i++)
     {
         m = (Module *)modules.data[i];
         if (global.params.verbose)
@@ -1187,9 +1186,7 @@ d_parse_file (int /*set_yydebug*/)
 
     // Do not attempt to generate output files if errors or warnings occurred
     if (global.errors || global.warnings)
-    {
         fatal();
-    }
 
     g.ofile = new ObjectFile();
     if (fonly_arg)
@@ -1202,7 +1199,7 @@ d_parse_file (int /*set_yydebug*/)
     if (global.params.doXGeneration)
         json_generate(&modules);
 
-    for (i = 0; i < modules.dim; i++)
+    for (unsigned i = 0; i < modules.dim; i++)
     {
         m = (Module *)modules.data[i];
         if (fonly_arg && m != an_output_module)
