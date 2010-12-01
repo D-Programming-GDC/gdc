@@ -227,7 +227,7 @@ typedef enum {
     Op_FMath0,
     Op_FMath2,
     Op_FdSTiSTi,
-    Op_FdSTiST1,
+    Op_FdST0ST1,
     Op_FPMath,
     Op_FCmp,
     Op_FCmp1,
@@ -455,9 +455,9 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_FdST      */  { D|rfp, 0,    0  },
     /* Op_FMath     */  {   mfp, 0,    0,    FP_Types, Clb_ST, Next_Form, Op_FMath0  }, // and only single or double prec
     /* Op_FMath0    */  { 0,     0,    0,    0,        Clb_ST, Next_Form, Op_FMath2  },
-    /* Op_FMath2    */  { D|rfp, rfp,  0,    0,        Clb_ST, Next_Form, Op_FdSTiST1 },
+    /* Op_FMath2    */  { D|rfp, rfp,  0,    0,        Clb_ST, Next_Form, Op_FdST0ST1 },
     /* Op_FdSTiSTi  */  { D|rfp, rfp,  0  },
-    /* Op_FdSTiST1  */  { 0,     0,    0  },
+    /* Op_FdST0ST1  */  { 0,     0,    0  },
     /* Op_FPMath    */  { D|rfp, rfp,  0,    0,        Clb_ST, Next_Form, Op_F0_P }, // pops
     /* Op_FCmp      */  {   mfp, 0,    0,    FP_Types, 0,      Next_Form, Op_FCmp1 }, // DMD defaults to float ptr
     /* Op_FCmp1     */  {   rfp, 0,    0,    0,        0,      Next_Form, Op_0 },
@@ -1373,6 +1373,9 @@ struct AsmProcessor
         opInfo = & asmOpInfo[op];
         memset(operands, 0, sizeof(operands));
 
+        if (token->value == TOKeof && op == Op_FMath0)
+            return;
+
         while (token->value != TOKeof)
         {
             if (operand_i < Max_Operands)
@@ -1637,6 +1640,16 @@ struct AsmProcessor
         else
             mnemonic = opIdent->string;
 
+        // handle two-operand form where second arg is ignored.
+        // must be done before type_char detection
+        if (op == Op_FidR_P || op == Op_fxch || op == Op_FfdRR_P)
+        {
+            if (operands[1].cls == Opr_Reg && operands[1].reg == Reg_ST)
+                nOperands = 1;
+            else
+                stmt->error("instruction allows only ST as second argument");
+        }
+
         if (opInfo->needsType)
         {
             PtrType exact_type = Default_Ptr;
@@ -1711,6 +1724,14 @@ struct AsmProcessor
             if (operands[0].dataSize == Far_Ptr) // %% type=Far_Ptr not set by Seg:Ofss OTOH, we don't support that..
                 insnTemplate->writebyte('l');
         }
+        else if (op == Op_FMath0 || op == Op_FdST0ST1)
+        {
+            operands[0].cls = Opr_Reg;
+            operands[0].reg = Reg_ST1;
+            operands[1].cls = Opr_Reg;
+            operands[1].reg = Reg_ST;
+            nOperands = 2;
+        }
         else if (op == Op_fxch)
         {   // gas won't accept the two-operand form
             if (operands[1].cls == Opr_Reg && operands[1].reg == Reg_ST)
@@ -1783,11 +1804,14 @@ struct AsmProcessor
                 insnTemplate->write(mnemonic, mlen-1);
                 insnTemplate->writebyte(tc_1);
                 insnTemplate->writebyte(type_char);
+                break;
             }
-            break;
             default:
             {
                 insnTemplate->writestring(mnemonic);
+                // the no-operand versions of floating point ops always pop
+                if (op == Op_FMath0)
+                    insnTemplate->writebyte('p');
                 if (type_char)
                     insnTemplate->writebyte(type_char);
                 break;
@@ -2775,6 +2799,10 @@ struct AsmProcessor
             }
             default:
             {
+                if (op == Op_FMath0 || op == Op_FdST0ST1 || op == Op_FMath)
+                {
+                    return Handled;
+                }
                 invalidExpression();
                 return Handled;
             }

@@ -5,6 +5,7 @@
 #include <assert.h>
 
 #include "speller.h"
+#include "gdc_alloca.h"
 
 const char idchars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
 

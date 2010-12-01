@@ -1345,7 +1345,7 @@ real frexp(real value, out int exp)
             // denormal
             value *= F.RECIP_EPSILON;
             ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
-            exp = (ex - F.EXPBIAS)>>> 4 - real.mant_dig + 1;
+            exp = ((ex - F.EXPBIAS)>>> 4) - real.mant_dig + 1;
             vu[F.EXPPOS_SHORT] =
                 cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FE0);
         }
@@ -2028,7 +2028,7 @@ private:
             DIVBYZERO_MASK = 0x020,
             INVALID_MASK   = 0xF80 // PowerPC has five types of invalid exceptions.
         }
-    } else version(Sparc) { // SPARC FSR is a 32bit register
+    } else version (SPARC) { // SPARC FSR is a 32bit register
              //(64 bits for Sparc 7 & 8, but high 32 bits are uninteresting).
         enum : int {
             INEXACT_MASK   = 0x020,
@@ -2037,7 +2037,16 @@ private:
             DIVBYZERO_MASK = 0x040,
             INVALID_MASK   = 0x200
         }
-    }
+    } else version (ARM) {
+        enum : int {
+            INEXACT_MASK   = 0x00001000,
+            UNDERFLOW_MASK = 0x00000800,
+            OVERFLOW_MASK  = 0x00000400,
+            DIVBYZERO_MASK = 0x00000200,
+            INVALID_MASK   = 0x00000100
+        }
+    } else
+        static assert(0);
 private:
     static uint getIeeeFlags()
     {
@@ -2219,30 +2228,66 @@ private:
     // Clear all pending exceptions
     static void clearExceptions()
     {
-        asm
+        version (D_InlineAsm_X86)
         {
-            fclex;
+            asm
+            {
+                fclex;
+            }
         }
+        else
+            assert(0, "Not yet supported");
     }
     // Read from the control register
     static ushort getControlState()
     {
         short cont;
-        asm
+        version (D_InlineAsm_X86)
         {
-            xor EAX, EAX;
-            fstcw cont;
+            asm
+            {
+                xor EAX, EAX;
+                fstcw cont;
+            }
         }
+        else version (ARM)
+        {
+            asm
+            {
+                "mrc p10, 7, %[cw], cr1, cr0, 0"
+                :
+                [cw] "=r" cont
+                ;
+            }
+        }
+        else
+            assert(0, "Not yet supported");
         return cont;
     }
     // Set the control register
     static void setControlState(ushort newState)
     {
-        asm
+        version (D_InlineAsm_X86)
         {
-             fclex;
-             fldcw newState;
+            asm
+            {
+                fclex;
+                fldcw newState;
+            }
         }
+        else version (ARM)
+        {
+            asm
+            {
+                "mcr p10, 7, %[cw], cr1, cr0, 0"
+                :
+                :
+                [cw] "r" newState
+                ;
+            }
+        }
+        else
+            assert(0, "Not yet supported");
     }
 }
 

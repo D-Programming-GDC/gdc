@@ -385,7 +385,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     /* NOTE: We start at 1 now, not 0.  */
     while (i < argc)
         {
-            if ( args[i] & REMOVE_ARG )
+            if (args[i] & REMOVE_ARG)
                 {
                     ++i;
                     continue;

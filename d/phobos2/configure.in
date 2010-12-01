@@ -181,6 +181,7 @@ if test $r -eq 0; then
 else
   AC_MSG_RESULT([no])
   AC_MSG_ERROR([can't compile D sources!])
+  dnl fix vi syntax highlight bug. '
 fi
 
 AC_SUBST(GDC)
@@ -666,7 +667,6 @@ D_GC_FLAGS=
 
 case "$target_os" in
   mingw*)
-	    D_GC_MODULES=gc/win32.o
 	    need_to_cfgr_gc=''
 	    ;;
   *)        if test "$with_newlib"; then

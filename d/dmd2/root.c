@@ -1853,8 +1853,6 @@ void OutBuffer::vprintf(const char *format, va_list args)
             psize = count + 1;
         else
             break;
-#else
-    assert(0);
 #endif
         p = (char *) alloca(psize);     // buffer too small, try again with larger size
     }

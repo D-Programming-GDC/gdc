@@ -60,7 +60,12 @@ version( linux )
     {
         alias int[3] __jmp_buf;
     }
-
+    else version ( ARM )
+    {
+        alias int[64] __jmp_buf;
+    }
+    else
+        static assert(0);
     struct __jmp_buf_tag
     {
         __jmp_buf   __jmpbuf;
@@ -81,7 +86,7 @@ else version( FreeBSD )
         enum _JBLEN = 11;
         struct _jmp_buf { int[_JBLEN + 1] _jb; }
     }
-    else version( X86_64)
+    else version( X86_64 )
     {
         enum _JBLEN = 12;
         struct _jmp_buf { c_long[_JBLEN] _jb; }
