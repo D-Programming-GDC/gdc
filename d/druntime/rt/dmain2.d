@@ -271,6 +271,12 @@ void _d_criticalInit()
         _STI_monitor_staticctor();
         _STI_critical_init();
     }
+
+    version (MinGW)
+    {
+        _STI_monitor_staticctor();
+        _STI_critical_init();
+    }
 }
 
 alias void delegate(Throwable) ExceptionHandler;
@@ -284,7 +290,10 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
         gc_init();
         initStaticDataGC();
         version (Windows)
+        {
+            version (MinGW) {} else
             _minit();
+        }
         _moduleCtor();
         _moduleTlsCtor();
         runModuleUnitTests();
@@ -306,6 +315,12 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
 void _d_criticalTerm()
 {
     version (Posix)
+    {
+        _STD_critical_term();
+        _STD_monitor_staticdtor();
+    }
+
+    version (MinGW)
     {
         _STD_critical_term();
         _STD_monitor_staticdtor();
@@ -381,6 +396,12 @@ extern (C) int main(int argc, char** argv)
     }
 
     version (Posix)
+    {
+        _STI_monitor_staticctor();
+        _STI_critical_init();
+    }
+
+    version (MinGW)
     {
         _STI_monitor_staticctor();
         _STI_critical_init();
@@ -498,7 +519,10 @@ extern (C) int main(int argc, char** argv)
         gc_init();
         initStaticDataGC();
         version (Windows)
+        {
+            version (MinGW) {} else
             _minit();
+        }
         _moduleCtor();
         _moduleTlsCtor();
         if (runModuleUnitTests())
@@ -515,6 +539,12 @@ extern (C) int main(int argc, char** argv)
     tryExec(&runAll);
 
     version (Posix)
+    {
+        _STD_critical_term();
+        _STD_monitor_staticdtor();
+    }
+
+    version (MinGW)
     {
         _STD_critical_term();
         _STD_monitor_staticdtor();

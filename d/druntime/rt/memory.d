@@ -155,7 +155,20 @@ extern (C) void* rt_stackTop()
 
 private
 {
-    version( Windows )
+    version( MinGW )
+    {
+        extern (C)
+        {
+            extern __gshared
+            {
+                int _data_start__;
+                int _data_end__;
+                int _bss_start__;
+                int _bss_end__;
+            }
+        }
+    }
+    else version( Windows )
     {
         extern (C)
         {
@@ -218,7 +231,11 @@ private
 
 void initStaticDataGC()
 {
-    version( Windows )
+    version( MinGW )
+    {
+        gc_addRange( &_data_start__, cast(size_t) &_bss_end__ - cast(size_t) &_data_start__ );
+    }
+    else version( Windows )
     {
         gc_addRange( &_xi_a, cast(size_t) &_end - cast(size_t) &_xi_a );
     }

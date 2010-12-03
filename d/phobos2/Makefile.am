@@ -259,7 +259,7 @@ OSX_OBJS=std/c/osx/socket.o
 WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/windows/windows.o \
              std/c/windows/winsock.o std/windows/charset.o \
              std/windows/iunknown.o std/windows/registry.o \
-             std/windows/syserror.o
+             std/windows/syserror.o std/__fileinit.o
 
 D_EXTRA_OBJS=@D_EXTRA_OBJS@
 

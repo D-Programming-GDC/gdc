@@ -1748,6 +1748,19 @@ version (OSX)
     }
 }
 
+version (MinGW)
+{
+    // This linked list is created by a compiler generated function inserted
+    // into the .ctor list by the compiler.
+    struct ModuleReference
+    {
+        ModuleReference* next;
+        ModuleInfo*      mod;
+    }
+
+    extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
+}
+
 __gshared ModuleInfo*[] _moduleinfo_dtors;
 __gshared uint          _moduleinfo_dtors_i;
 
@@ -1828,6 +1841,21 @@ extern (C) void _moduleCtor()
          }
     }    
 
+    version (MinGW)
+    {
+        int len = 0;
+        ModuleReference *mr;
+
+        for (mr = _Dmodule_ref; mr; mr = mr.next)
+            len++;
+        _moduleinfo_array = new ModuleInfo*[len];
+        len = 0;
+        for (mr = _Dmodule_ref; mr; mr = mr.next)
+        {   _moduleinfo_array[len] = mr.mod;
+            len++;
+        }
+    }
+    
     version (Windows)
     {
         // Ensure module destructors also get called on program termination

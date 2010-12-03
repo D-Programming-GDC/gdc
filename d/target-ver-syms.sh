@@ -33,7 +33,7 @@ freebsd*) d_os_versym=freebsd ; d_unix=1 ;;
 k*bsd*-gnu) d_os_versym=freebsd ; d_unix=1 ;;
 kopensolaris*-gnu) d_os_versym=solaris; d_unix=1 ;;
 linux*) d_os_versym=linux ; d_unix=1 ;;
-mingw32*) d_os_versym=Win32; d_windows=1 ;;
+mingw32*) d_os_versym=Win32; d_os_versym2=MinGW; d_windows=1 ;;
 pe*)    case "$target" in
             *-skyos*-*) d_os_versym=skyos ; d_unix=1 ;;
         esac
@@ -78,6 +78,9 @@ if test -n "$d_cpu_versym64"; then
 fi
 if test -n "$d_os_versym"; then
     echo "#define D_OS_VERSYM \"$d_os_versym\""
+fi
+if test -n "$d_os_versym2"; then
+    echo "#define D_OS_VERSYM2 \"$d_os_versym2\""
 fi
 
 # In DMD, this is usually defined in the target's Makefile.
