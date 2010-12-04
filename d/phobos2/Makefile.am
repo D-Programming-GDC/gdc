@@ -42,6 +42,9 @@ SUFFIXES = .d
 .c.o:
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
+.S.o:
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+
 %.t.o : %.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -fno-release -funittest -fversion=Unittest -c $<
 

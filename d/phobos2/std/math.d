@@ -1335,7 +1335,7 @@ real frexp(real value, out int exp)
                     exp = int.min;
                 }
             } else {
-                exp = (ex - F.EXPBIAS) >>> 4;
+                exp = (ex - F.EXPBIAS) >> 4;
                 vu[F.EXPPOS_SHORT] = cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FE0);
             }
         } else if (!(*vl & 0x7FFF_FFFF_FFFF_FFFF)) {
@@ -1345,7 +1345,7 @@ real frexp(real value, out int exp)
             // denormal
             value *= F.RECIP_EPSILON;
             ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
-            exp = ((ex - F.EXPBIAS)>>> 4) - real.mant_dig + 1;
+            exp = ((ex - F.EXPBIAS)>> 4) - real.mant_dig + 1;
             vu[F.EXPPOS_SHORT] =
                 cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FE0);
         }
@@ -2228,7 +2228,7 @@ private:
     // Clear all pending exceptions
     static void clearExceptions()
     {
-        version (D_InlineAsm_X86)
+        version (X86_Any)
         {
             asm
             {
@@ -2242,7 +2242,7 @@ private:
     static ushort getControlState()
     {
         short cont;
-        version (D_InlineAsm_X86)
+        version (X86_Any)
         {
             asm
             {
@@ -2267,7 +2267,7 @@ private:
     // Set the control register
     static void setControlState(ushort newState)
     {
-        version (D_InlineAsm_X86)
+        version (X86_Any)
         {
             asm
             {

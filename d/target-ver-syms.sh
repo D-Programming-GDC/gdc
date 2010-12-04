@@ -29,9 +29,9 @@ coff*) ;;
 cygwin*) d_os_versym=cygwin ; d_unix=1 ;;
 darwin*) d_os_versym=darwin ; d_unix=1 ;;
 elf*) ;;
-freebsd*) d_os_versym=freebsd ; d_unix=1 ;;
-k*bsd*-gnu) d_os_versym=freebsd ; d_unix=1 ;;
-kopensolaris*-gnu) d_os_versym=solaris; d_unix=1 ;;
+freebsd*) d_os_versym=FreeBSD ; d_unix=1 ;;
+k*bsd*-gnu) d_os_versym=FreeBSD ; d_unix=1 ;;
+kopensolaris*-gnu) d_os_versym=Solaris; d_unix=1 ;;
 linux*) d_os_versym=linux ; d_unix=1 ;;
 mingw32*) d_os_versym=Win32; d_os_versym2=MinGW; d_windows=1 ;;
 pe*)    case "$target" in
@@ -39,12 +39,10 @@ pe*)    case "$target" in
         esac
         ;;
 skyos*) d_os_versym=skyos ; d_unix=1 ;; # Doesn't actually work because SkyOS uses i386-skyos-pe
-solaris*) d_os_versym=solaris; d_unix=1 ;;
+solaris*) d_os_versym=Solaris; d_unix=1 ;;
 sysv3*) d_os_versym=sysv3; d_unix=1 ;;
 sysv4*) d_os_versym=sysv4; d_unix=1 ;;
-
 *bsd*) d_os_versym=bsd; d_unix=1 ;;
-
 gnu*) d_os_versym=hurd; d_unix=1 ;;
 
 *) d_os_versym="$d_target_os"
@@ -58,7 +56,7 @@ parisc* | hppa*) gdc_target_cpu=hppa ;;
 esac
 
 case "$gdc_target_cpu" in
-alpha*)                       d_cpu_versym64=Alpha ;;
+alpha*)                       d_cpu_versym64=ALPHA ;;
 arm*)    d_cpu_versym=ARM  ;;
 hppa)    d_cpu_versym=HPPA  ; d_cpu_versym64=HPPA64 ;;
 ia64*)                        d_cpu_versym64=IA64 ;;

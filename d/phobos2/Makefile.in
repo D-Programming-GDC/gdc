@@ -415,7 +415,7 @@ all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
-.SUFFIXES: .d .c .o
+.SUFFIXES: .d .S .c .o
 am--refresh:
 	@:
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
@@ -729,6 +729,9 @@ all-local: libgphobos2.a libgdruntime.a
 # %.o : %.c
 # Use .c.o to override Automake
 .c.o:
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+
+.S.o:
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 %.t.o : %.d $(D_PREREQ_SRCS)

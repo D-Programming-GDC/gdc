@@ -275,12 +275,17 @@ static void
 add_gnu_version_condition(const char * ident, unsigned int len)
 {
     char * d_ident = new char[4 + len + 1];
-    if (len > 4 && ident[0] == '_' && ident[1] == '_' &&
-        ident[len - 1] == '_' && ident[len - 2] == '_')
+    // Strip all leading and trailing underscores.
+    while (len > 0 && ident[0] == '_')
     {
-        ident += 2;
-        len -= 4;
+        ident += 1;
+        len -= 1;
     }
+    while (len > 0 && ident[len - 1] == '_')
+    {
+        len -= 1;
+    }
+    assert(len);
     strcpy(d_ident, "GNU_");
     strncpy(d_ident + 4, ident, len);
     d_ident[len + 4] = '\0';
@@ -401,10 +406,6 @@ d_init ()
         VersionCondition::addPredefinedGlobalIdent("Windows");
         is_target_win32 = true;
     }
-    if (strcmp(D_OS_VERSYM, "freebsd") == 0)
-        VersionCondition::addPredefinedGlobalIdent("FreeBSD");
-    if (strcmp(D_OS_VERSYM, "solaris") == 0)
-        VersionCondition::addPredefinedGlobalIdent("Solaris");
 #endif
 #ifdef D_OS_VERSYM2
     VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM2);

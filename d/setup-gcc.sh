@@ -124,6 +124,7 @@ cd gcc || exit 1
 d_gcc_ver=`echo $gcc_ver | sed -e 's/\.//g'`
 
 if test "$d_gcc_ver" -ge 41; then
+    sed -i 's/gdc [a-z0-9. ]*, using dmd [0-9. ]*//g' DEV-PHASE
     cur_DEV_PHASE=`cat DEV-PHASE`
     if test -z "$cur_DEV_PHASE"; then
         echo "$gdc_ver_msg" > DEV-PHASE
