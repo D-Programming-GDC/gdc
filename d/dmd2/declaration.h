@@ -501,14 +501,22 @@ enum BUILTIN
 {
     BUILTINunknown = -1,        // not known if this is a builtin
     BUILTINnot,                 // this is not a builtin
+#if IN_GCC
+    BUILTINgcc,                 // GCC builtin
+#else
     BUILTINsin,                 // std.math.sin
     BUILTINcos,                 // std.math.cos
     BUILTINtan,                 // std.math.tan
     BUILTINsqrt,                // std.math.sqrt
     BUILTINfabs,                // std.math.fabs
+#endif
 };
 
+#ifdef IN_GCC
+Expression *eval_builtin(CallExp *ce, Expressions *arguments);
+#else
 Expression *eval_builtin(enum BUILTIN builtin, Expressions *arguments);
+#endif
 
 #else
 enum BUILTIN { };

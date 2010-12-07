@@ -2802,7 +2802,11 @@ Expression *CallExp::interpret(InterState *istate)
                     return earg;
                 args.data[i] = (void *)earg;
             }
+#if IN_GCC
+            e = eval_builtin(this, &args);
+#else
             e = eval_builtin(b, &args);
+#endif
             if (!e)
                 e = EXP_CANT_INTERPRET;
         }

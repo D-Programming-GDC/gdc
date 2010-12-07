@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <assert.h>
+#ifndef IN_GCC
 #include <math.h>
 
 #if __FreeBSD__
@@ -20,6 +21,7 @@ extern "C"
     long double tanl(long double);
     long double sqrtl(long double);
 }
+#endif
 #endif
 
 #include "mars.h"
@@ -41,6 +43,23 @@ extern "C"
  */
 enum BUILTIN FuncDeclaration::isBuiltin()
 {
+#ifdef IN_GCC
+    //printf("FuncDeclaration::isBuiltin() %s\n", toChars());
+    if (builtin == BUILTINunknown)
+    {
+        builtin = BUILTINnot;
+        if (parent && parent->isModule())
+        {
+            // If it's in the gcc.builtins package
+            if (strcmp(parent->ident->string, "builtins") == 0 && parent->parent &&
+                strcmp(parent->parent->ident->string, "gcc") == 0 &&
+                !parent->parent->parent)
+            {
+                //printf("deco = %s\n", type->deco);
+                builtin = BUILTINgcc;
+            }
+        }
+#else
     static const char FeZe [] = "FNaNbNfeZe";      // @safe pure nothrow real function(real)
     static const char FeZe2[] = "FNaNbNeeZe";      // @trusted pure nothrow real function(real)
 
@@ -48,7 +67,6 @@ enum BUILTIN FuncDeclaration::isBuiltin()
     if (builtin == BUILTINunknown)
     {
         builtin = BUILTINnot;
-#ifndef IN_GCC
         if (parent && parent->isModule())
         {
             // If it's in the std.math package
@@ -80,8 +98,6 @@ enum BUILTIN FuncDeclaration::isBuiltin()
                 }
             }
         }
-#else
-        /* Maybe in GCC 4.3... */
 #endif  
     }
     return builtin;
@@ -92,7 +108,7 @@ enum BUILTIN FuncDeclaration::isBuiltin()
  * Evaluate builtin function.
  * Return result; NULL if cannot evaluate it.
  */
-
+#ifndef IN_GCC
 Expression *eval_builtin(enum BUILTIN builtin, Expressions *arguments)
 {
     assert(arguments && arguments->dim);
@@ -100,7 +116,6 @@ Expression *eval_builtin(enum BUILTIN builtin, Expressions *arguments)
     Expression *e = NULL;
     switch (builtin)
     {
-#ifndef IN_GCC
         case BUILTINsin:
             if (arg0->op == TOKfloat64)
                 e = new RealExp(0, sinl(arg0->toReal()), arg0->type);
@@ -125,9 +140,9 @@ Expression *eval_builtin(enum BUILTIN builtin, Expressions *arguments)
             if (arg0->op == TOKfloat64)
                 e = new RealExp(0, fabsl(arg0->toReal()), arg0->type);
             break;
-#endif
     }
     return e;
 }
+#endif
 
 #endif

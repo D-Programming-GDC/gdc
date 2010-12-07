@@ -890,7 +890,7 @@ IRState::assertCall(Loc loc, Expression * msg)
 }
 
 tree
-IRState::floatConstant(const real_t & value, TypeBasic * target_type )
+IRState::floatConstant(const real_t & value, TypeBasic * target_type)
 {
     REAL_VALUE_TYPE converted_val;
 
@@ -999,7 +999,7 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
         expr = ce->e2;
 
         VarExp * ve;
-        gcc_assert( ce->e2->op == TOKvar );
+        gcc_assert(ce->e2->op == TOKvar);
         ve = (VarExp *) ce->e2;
         gcc_assert(ve->var->isFuncDeclaration() && ! ve->var->needThis());
     }
@@ -1009,14 +1009,13 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
     tree callee = expr->toElem(this);
     tree object = NULL_TREE;
 
-    if ( D_IS_METHOD_CALL_EXPR( callee ) )
+    if (D_IS_METHOD_CALL_EXPR(callee))
     {
         /* This could be a delegate expression (TY == Tdelegate), but not
            actually a delegate variable. */
         // %% Is this ever not a DotVarExp ?
         if (expr->op == TOKdotvar)
-        {
-            /* This gets the true function type, the latter way can sometimes
+        {   /* This gets the true function type, the latter way can sometimes
                be incorrect. Example: ref functions in D2. */
             tf = get_function_type(((DotVarExp *)expr)->var->type);
         }
@@ -1070,44 +1069,49 @@ tree
 IRState::call(FuncDeclaration * func_decl, tree object, Array * args)
 {
     return call((TypeFunction *)func_decl->type, functionPointer(func_decl),
-        object, args);
+            object, args);
 }
 
 tree
 IRState::call(TypeFunction *func_type, tree callable, tree object, Array * arguments)
 {
-    // Using TREE_TYPE( callable ) instead of func_type->toCtype can save a build_method_type
-    tree func_type_node = TREE_TYPE( callable );
+    // Using TREE_TYPE(callable) instead of func_type->toCtype can save a build_method_type
+    tree func_type_node = TREE_TYPE(callable);
     tree actual_callee  = callable;
 
-    if ( POINTER_TYPE_P( func_type_node ) )
-        func_type_node = TREE_TYPE( func_type_node );
+    if (POINTER_TYPE_P(func_type_node))
+        func_type_node = TREE_TYPE(func_type_node);
     else
-        actual_callee = addressOf( callable );
+        actual_callee = addressOf(callable);
 
-    assert( function_type_p( func_type_node ) );
-    assert( func_type != NULL );
-    assert( func_type->ty == Tfunction );
+    assert(function_type_p(func_type_node));
+    assert(func_type != NULL);
+    assert(func_type->ty == Tfunction);
 
     bool is_d_vararg = func_type->varargs == 1 && func_type->linkage == LINKd;
 
     // Account for the hidden object/frame pointer argument
 
-    if ( TREE_CODE( func_type_node ) == FUNCTION_TYPE ) {
-        if ( object != NULL_TREE ) {
-            // Happens when a delegate value is called
-            tree method_type = build_method_type( TREE_TYPE( object ), func_type_node );
-            TYPE_ATTRIBUTES( method_type ) = TYPE_ATTRIBUTES( func_type_node );
+    if (TREE_CODE(func_type_node) == FUNCTION_TYPE)
+    {
+        if (object != NULL_TREE)
+        {   // Happens when a delegate value is called
+            tree method_type = build_method_type(TREE_TYPE(object), func_type_node);
+            TYPE_ATTRIBUTES(method_type) = TYPE_ATTRIBUTES(func_type_node);
             func_type_node = method_type;
         }
-    } else /* METHOD_TYPE */ {
-        if ( ! object ) {
-            // Front-end apparently doesn't check this.
-            if (TREE_CODE(callable) == FUNCTION_DECL ) {
-                error("need 'this' to access member %s", IDENTIFIER_POINTER( DECL_NAME( callable )));
+    }
+    else
+    {   /* METHOD_TYPE */
+        if (! object)
+        {   // Front-end apparently doesn't check this.
+            if (TREE_CODE(callable) == FUNCTION_DECL)
+            {
+                error("need 'this' to access member %s", IDENTIFIER_POINTER(DECL_NAME(callable)));
                 return error_mark_node;
-            } else {
-                // Probably an internal error
+            }
+            else
+            {   // Probably an internal error
                 assert(object != NULL_TREE);
             }
         }
@@ -1118,7 +1122,7 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     /* If this is a delegate call or a nested function being called as
        a delegate, the object should not be NULL. */
     if (object != NULL_TREE)
-        actual_arg_list.cons( object );
+        actual_arg_list.cons(object);
 
     Parameters * formal_args = func_type->parameters; // can be NULL for genCfunc decls
     size_t n_formal_args = formal_args ? (int) Parameter::dim(formal_args) : 0;
@@ -1126,48 +1130,51 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     size_t fi = 0;
 
     // assumes arguments->dim <= formal_args->dim if (! this->varargs)
-    for (size_t ai = 0; ai < n_actual_args; ++ai) {
+    for (size_t ai = 0; ai < n_actual_args; ++ai)
+    {
         tree actual_arg_tree;
 
         Expression * actual_arg_exp = (Expression *) arguments->data[ai];
-        if (ai == 0 && is_d_vararg) {
-            // The hidden _arguments parameter
+        if (ai == 0 && is_d_vararg)
+        {   // The hidden _arguments parameter
             actual_arg_tree = actual_arg_exp->toElem(this);
-        } else if (fi < n_formal_args) {
-            // Actual arguments for declared formal arguments
+        }
+        else if (fi < n_formal_args)
+        {   // Actual arguments for declared formal arguments
             Parameter * formal_arg = Parameter::getNth(formal_args, fi);
             actual_arg_tree = convertForArgument(actual_arg_exp, formal_arg);
 
             // from c-typeck.c: convert_arguments, default_conversion, ...
             if (INTEGRAL_TYPE_P (TREE_TYPE(actual_arg_tree))
-                && (TYPE_PRECISION (TREE_TYPE(actual_arg_tree)) <
-                    TYPE_PRECISION (integer_type_node))) {
-
+                    && (TYPE_PRECISION (TREE_TYPE(actual_arg_tree)) <
+                        TYPE_PRECISION (integer_type_node)))
+            {
                 actual_arg_tree = d_convert_basic(integer_type_node, actual_arg_tree);
             }
             ++fi;
-        } else {
+        }
+        else
+        {
             if (splitDynArrayVarArgs && actual_arg_exp->type->toBasetype()->ty == Tarray)
             {
-                tree da_exp = maybeMakeTemp( actual_arg_exp->toElem(this) );
-                actual_arg_list.cons( darrayLenRef( da_exp ) );
-                actual_arg_list.cons( darrayPtrRef( da_exp ) );
+                tree da_exp = maybeMakeTemp(actual_arg_exp->toElem(this));
+                actual_arg_list.cons(darrayLenRef(da_exp));
+                actual_arg_list.cons(darrayPtrRef(da_exp));
                 continue;
             }
             else
             {
-                actual_arg_tree = actual_arg_exp->toElem( this );
-
+                actual_arg_tree = actual_arg_exp->toElem(this);
                 /* Not all targets support passing unpromoted types, so
                    promote anyway. */
-                tree prom_type = d_type_promotes_to( TREE_TYPE( actual_arg_tree ));
-                if (prom_type != TREE_TYPE( actual_arg_tree ))
+                tree prom_type = d_type_promotes_to(TREE_TYPE(actual_arg_tree));
+                if (prom_type != TREE_TYPE(actual_arg_tree))
                     actual_arg_tree = d_convert_basic(prom_type, actual_arg_tree);
             }
         }
 
-        //TREE_USED( actual_arg_tree ) = 1; // needed ?
-        actual_arg_list.cons( actual_arg_tree );
+        //TREE_USED(actual_arg_tree) = 1; // needed ?
+        actual_arg_list.cons(actual_arg_tree);
     }
 
     tree result = buildCall(TREE_TYPE(func_type_node), actual_callee, actual_arg_list.head);

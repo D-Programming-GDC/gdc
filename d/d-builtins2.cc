@@ -480,7 +480,8 @@ d_gcc_magic_builtins_module(Module *m)
 }
 
 
-void d_gcc_magic_module(Module *m)
+void
+d_gcc_magic_module(Module *m)
 {
     ModuleDeclaration * md = m->md;
     if (!md || !md->packages || !md->id)
@@ -519,3 +520,61 @@ void d_gcc_magic_module(Module *m)
 #endif
     }
 }
+
+#if V2
+/*
+   Evaluate builtin function.
+   Return result; NULL if cannot evaluate it.
+ */
+Expression *
+eval_builtin(CallExp *ce, Expressions *arguments)
+{
+    if (ce->e1->op == TOKvar)
+    {   // %% This is called too early for us to just use g.irs->call()
+        IRState * irs = new IRState;
+
+        FuncDeclaration * fd = ((VarExp *) ce->e1)->var->isFuncDeclaration();
+        assert(fd);
+        TypeFunction * tf = (TypeFunction *) fd->type;
+        tree callee = fd->toSymbol()->Stree;
+
+        tree result = irs->call(tf, callee, NULL, arguments);
+        result = fold(result);
+
+        if (TREE_CONSTANT(result) && TREE_CODE(result) != CALL_EXPR)
+        {   // Builtin should be successfully evaluated.
+            STRIP_TYPE_NOPS(result);
+            Loc loc = ce->loc;
+            Type * type = gcc_type_to_d_type(TREE_TYPE(result));
+
+            if (type)
+            {   /* Convert our GCC CST tree into a D Expression. This is kinda exper,
+                   as it will only be converted back to a tree again later, but this
+                   satisifies a need to have gcc builtins CTFE'able.
+                 */
+                tree_code code = TREE_CODE(result);
+                if (code == INTEGER_CST)
+                {
+                    HOST_WIDE_INT low = TREE_INT_CST_LOW(result);
+                    HOST_WIDE_INT high = TREE_INT_CST_HIGH(result);
+                    return new IntegerExp(loc, irs->hwi2toli(low, high), type);
+                }
+                else if (code == REAL_CST)
+                {
+                    real_t value = TREE_REAL_CST(result);
+                    return new RealExp(loc, value, type);
+                }
+                else if (code == STRING_CST)
+                {
+                    const void * string = TREE_STRING_POINTER(result);
+                    size_t len = TREE_STRING_LENGTH(result);
+                    return new StringExp(loc, (void *)string, len);
+                }
+                // COMPLEX... VECTOR...
+            }
+        }
+        delete irs;
+    }
+    return NULL;
+}
+#endif
