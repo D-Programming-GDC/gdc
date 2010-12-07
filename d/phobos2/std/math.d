@@ -313,7 +313,13 @@ unittest
  *      Results are undefined if |x| >= $(POWER 2,64).
  */
 
-version(GNU) alias core.stdc.math.cosl cos; else
+version(GNU)
+{
+    @safe pure nothrow real cos(real x)
+    {
+        return core.stdc.math.cosl(x);
+    }
+} else
 @safe pure nothrow real cos(real x);       /* intrinsic */
 
 /***********************************
@@ -329,7 +335,13 @@ version(GNU) alias core.stdc.math.cosl cos; else
  *      Results are undefined if |x| >= $(POWER 2,64).
  */
 
-version(GNU) alias core.stdc.math.sinl sin; else
+version(GNU)
+{
+    @safe pure nothrow real sin(real x)
+    {
+        return core.stdc.math.sinl(x);
+    }
+} else
 @safe pure nothrow real sin(real x);       /* intrinsic */
 
 
@@ -810,7 +822,13 @@ unittest
  * greater than long.max, the result is
  * indeterminate.
  */
-version(GNU) alias core.stdc.math.llroundl rndtol; else
+version(GNU)
+{
+    @safe pure nothrow long rndtol(real x)
+    {
+        return core.stdc.math.llroundl(x);
+    }
+} else
 @safe pure nothrow long rndtol(real x);    /* intrinsic */
 
 
@@ -838,9 +856,18 @@ extern (C) real rndtonl(real x);
 {
     version(GNU)
     {
-        float sqrt(float x)   { return core.stdc.math.sqrtf(x); }
-        double sqrt(double x) { return core.stdc.math.sqrt(x);  } // ditto
-        real sqrt(real x)     { return core.stdc.math.sqrtl(x); } // ditto
+        float sqrt(float x)
+        {
+            return core.stdc.math.sqrtf(x);
+        }
+        double sqrt(double x)
+        {
+            return core.stdc.math.sqrt(x);
+        }
+        real sqrt(real x)
+        {
+            return core.stdc.math.sqrtl(x);
+        }
     }
     else
     {
@@ -1428,7 +1455,13 @@ alias core.stdc.math.FP_ILOGBNAN FP_ILOGBNAN;
  * References: frexp
  */
 
-version(GNU) alias core.stdc.math.ldexpl ldexp; else
+version(GNU)
+{
+    @safe pure nothrow real ldexp(real n, int exp)
+    {
+        return core.stdc.math.ldexpl(n, exp);
+    }
+} else
 @safe pure nothrow real ldexp(real n, int exp);    /* intrinsic */
 
 unittest {
@@ -1625,7 +1658,13 @@ real cbrt(real x)               { return core.stdc.math.cbrtl(x); }
  *      $(TR $(TD $(PLUSMN)$(INFIN)) $(TD +$(INFIN)) )
  *      )
  */
-version(GNU) alias core.stdc.math.fabsl fabs; else
+version(GNU)
+{
+    @safe pure nothrow real fabs(real x)
+    {
+        return core.stdc.math.fabsl(x);
+    }
+} else
 @safe pure nothrow real fabs(real x);      /* intrinsic */
 
 
@@ -1825,7 +1864,13 @@ real nearbyint(real x) { return core.stdc.math.nearbyintl(x); }
  * $(B nearbyint) performs
  * the same operation, but does not set the FE_INEXACT exception.
  */
-version(GNU) alias core.stdc.math.rintl rint; else
+version(GNU)
+{
+    @safe pure nothrow real rint(real x)
+    {
+        return core.stdc.math.rintl(x);
+    }
+} else
 @safe pure nothrow real rint(real x);      /* intrinsic */
 
 /***************************************
