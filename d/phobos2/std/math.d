@@ -60,9 +60,9 @@ version(unittest) {
     import std.typetuple;
 }
 
-version(GNU){
-    // GDC can't actually do inline asm.
-} else version(D_InlineAsm_X86) {
+version(GNU) {
+    // Use builtins where naked asm not supported.
+} else version (D_InlineAsm_X86) {
     version = Naked_D_InlineAsm_X86;
 }
 version(LDC) {
@@ -574,7 +574,7 @@ pure nothrow float atan(float x)     { return atan(cast(real)x); }
  */
 pure nothrow real atan2(real y, real x)
 {
-    version(Naked_D_InlineAsm_X86)
+    version(D_InlineAsm_X86)
     {
         asm {
             fld y;
@@ -929,7 +929,7 @@ pure nothrow creal sqrt(creal z)
  */
 pure nothrow real exp(real x)
 {
-    version(Naked_D_InlineAsm_X86)
+    version(D_InlineAsm_X86)
     {
         //  e^^x = 2^^(LOG2E*x)
         // (This is valid because the overflow & underflow limits for exp
@@ -1221,7 +1221,7 @@ unittest
  */
 pure nothrow creal expi(real y)
 {
-    version(Naked_D_InlineAsm_X86)
+    version(D_InlineAsm_X86)
     {
         asm
         {
@@ -1587,7 +1587,7 @@ real modf(real x, ref real y) { return core.stdc.math.modfl(x,&y); }
  */
 real scalbn(real x, int n)
 {
-    version(Naked_D_InlineAsm_X86) {
+    version(D_InlineAsm_X86) {
         // scalbnl is not supported on DMD-Windows, so use asm.
         asm {
             fild n;
@@ -1656,11 +1656,11 @@ pure nothrow real hypot(real x, real y)
     // If both are huge, avoid overflow by scaling by 1/sqrt(real.max/2).
     // If both are tiny, avoid underflow by scaling by sqrt(real.min_normal*real.epsilon).
 
-    real SQRTMIN = 0.5*sqrt(real.min_normal); // This is a power of 2.
-    real SQRTMAX = 1.0L/SQRTMIN; // 2^^((max_exp)/2) = nextUp(sqrt(real.max))
+    enum real SQRTMIN = 0.5*sqrt(real.min_normal); // This is a power of 2.
+    enum real SQRTMAX = 1.0L/SQRTMIN; // 2^^((max_exp)/2) = nextUp(sqrt(real.max))
 
-    assert(2*(SQRTMAX/2)*(SQRTMAX/2) <= real.max);
-    assert(real.min_normal*real.max>2 && real.min_normal*real.max<=4); // Proves that sqrt(real.max) ~~  0.5/sqrt(real.min_normal)
+    static assert(2*(SQRTMAX/2)*(SQRTMAX/2) <= real.max);
+    static assert(real.min_normal*real.max>2 && real.min_normal*real.max<=4); // Proves that sqrt(real.max) ~~  0.5/sqrt(real.min_normal)
 
     real u = fabs(x);
     real v = fabs(y);

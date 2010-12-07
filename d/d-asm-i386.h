@@ -2643,6 +2643,10 @@ struct AsmProcessor
         Expression * e;
         Identifier * ident = NULL;
 
+        // get rid of short/long prefixes for branches
+        if (opTakesLabel() && (token->value == TOKint16 || token->value == TOKint64))
+            nextToken();
+
         switch (token->value)
         {
             case TOKint32v:

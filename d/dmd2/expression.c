@@ -10255,16 +10255,22 @@ Expression *PowExp::semantic(Scope *sc)
         real_t value = real_t::parse("1.0", real_t::LongDouble);
         if ((e1->op == TOKint64 && e1->toInteger() == 1) ||
                 (e1->op == TOKfloat64 && value.isIdenticalTo( e1->toReal() )))
-#else
-        if ((e1->op == TOKint64 && e1->toInteger() == 1) ||
-                (e1->op == TOKfloat64 && e1->toReal() == 1.0))
-#endif
         {
             typeCombine(sc);
             e = new CommaExp(loc, e2, e1);
             e = e->semantic(sc);
             return e;
         }
+#else
+        if ((e1->op == TOKint64 && e1->toInteger() == 1) ||
+                (e1->op == TOKfloat64 && e1->toReal() == 1.0))
+        {
+            typeCombine(sc);
+            e = new CommaExp(loc, e2, e1);
+            e = e->semantic(sc);
+            return e;
+        }
+#endif
         // Replace -1 ^^ x by (x&1) ? -1 : 1, where x is integral
         if (e2->type->isintegral() && e1->op == TOKint64 && (sinteger_t)e1->toInteger() == -1L)
         {
