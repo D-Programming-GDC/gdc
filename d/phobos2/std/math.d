@@ -60,11 +60,6 @@ version(unittest) {
     import std.typetuple;
 }
 
-version(GNU) {
-    // Use builtins where naked asm not supported.
-} else version (D_InlineAsm_X86) {
-    version = Naked_D_InlineAsm_X86;
-}
 version(LDC) {
     import ldc.intrinsics;
 }
@@ -402,7 +397,11 @@ unittest{
 
 @trusted pure nothrow real tan(real x)
 {
-    version(Naked_D_InlineAsm_X86) {
+    version(GNU) {
+        // %% problems outputting Lret label.
+        return core.stdc.math.tanl(x);
+    } else
+    version(D_InlineAsm_X86) {
     asm
     {
         fld     x[EBP]                  ; // load theta
@@ -962,7 +961,7 @@ pure nothrow float exp(float x)               { return exp(cast(real)x); }
  */
 pure nothrow real expm1(real x)
 {
-    version(Naked_D_InlineAsm_X86) {
+    version(D_InlineAsm_X86) {
         enum { PARAMSIZE = (real.sizeof+3)&(0xFFFF_FFFC) } // always a multiple of 4
         asm {
             /*  expm1() for x87 80-bit reals, IEEE754-2008 conformant.
@@ -1050,7 +1049,7 @@ L_largenegative:
  */
 pure nothrow real exp2(real x)
 {
-    version(Naked_D_InlineAsm_X86) {
+    version(D_InlineAsm_X86) {
         enum { PARAMSIZE = (real.sizeof+3)&(0xFFFF_FFFC) } // always a multiple of 4
         asm {
             /*  exp2() for x87 80-bit reals, IEEE754-2008 conformant.
@@ -3884,11 +3883,8 @@ alias isInfinity isinf;
  * translate to a single x87 instruction.
  */
 
-version (INLINE_YL2X)
-{
-    @safe pure nothrow real yl2x(real x, real y);         // y * log2(x)
-    @safe pure nothrow real yl2xp1(real x, real y);       // y * log2(x + 1)
-}
+@safe pure nothrow real yl2x(real x, real y);         // y * log2(x)
+@safe pure nothrow real yl2xp1(real x, real y);       // y * log2(x + 1)
 
 unittest
 {

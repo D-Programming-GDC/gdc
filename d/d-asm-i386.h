@@ -1830,7 +1830,29 @@ struct AsmProcessor
             }
             default:
             {
-                insnTemplate->writestring(mnemonic);
+                // special case for fdiv, fsub
+                if ((strncmp(mnemonic, "fsub", 4) == 0 ||
+                     strncmp(mnemonic, "fdiv", 4) == 0) &&
+                    operands[0].reg != Reg_ST && op != Op_FMath)
+                {
+                    // replace:
+                    //  f{sub,div}r{p,} <-> f{sub,div}{p,}
+                    if (mnemonic[4] == 'r')
+                    {
+                        insnTemplate->write(mnemonic, 4);
+                        insnTemplate->write(mnemonic + 5, strlen(mnemonic) - 5);
+                    }
+                    else
+                    {
+                        insnTemplate->write(mnemonic, 4);
+                        insnTemplate->writebyte('r');
+                        insnTemplate->write(mnemonic + 4, strlen(mnemonic) - 4);
+                    }
+                }
+                else
+                {
+                    insnTemplate->writestring(mnemonic);
+                }
                 // the no-operand versions of floating point ops always pop
                 if (op == Op_FMath0)
                     insnTemplate->writebyte('p');
