@@ -20,7 +20,8 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-typedef enum {
+typedef enum
+{
     Reg_Invalid = -1,
     Reg_EAX = 0,
     Reg_EBX,
@@ -53,7 +54,8 @@ typedef enum {
 static const int N_Regs = /*gp*/ 8 + /*fp*/ 8 + /*mmx*/ 8 + /*sse*/ 8 +
 /*seg*/ 6 + /*16bit*/ 8 + /*8bit*/ 8 + /*sys*/ 4+6+5 + /*flags*/ + 1;
 
-static struct {
+static struct
+{
     const char * name;
     tree gccName; // GAS will take upper case, but GCC won't (needed for the clobber list)
     Identifier * ident;
@@ -132,7 +134,8 @@ static struct {
     { "TR7", NULL_TREE, NULL, 0, -1 }
 };
 
-typedef enum {
+typedef enum
+{
     No_Type_Needed,
     Int_Types,
     Word_Types, // same as Int_Types, but byte is not allowed
@@ -141,13 +144,15 @@ typedef enum {
     Byte_NoType, // byte only, but no type suffix
 } TypeNeeded;
 
-typedef enum {
+typedef enum
+{
     No_Link,
     Out_Mnemonic,
     Next_Form
 } OpLink;
 
-typedef enum {
+typedef enum
+{
     Clb_SizeAX   = 0x01,
     Clb_SizeDXAX = 0x02,
     Clb_EAX      = 0x03,
@@ -162,7 +167,8 @@ typedef enum {
 } ImplicitClober;
 
 // "^ +/..\([A-Za-z_0-9]+\).*" -> "    \1,"
-typedef enum {
+typedef enum
+{
     Op_Invalid,
     Op_Adjust,
     Op_Dst,
@@ -294,7 +300,8 @@ typedef enum {
     Op_de
 } AsmOp;
 
-typedef enum {
+typedef enum
+{
     Opr_None = 0,
     OprC_MRI  = 1,
     OprC_MR   = 2,
@@ -326,7 +333,8 @@ typedef enum {
 
 typedef unsigned char Opr;
 
-typedef struct {
+typedef struct
+{
     Opr operands[3];
     unsigned char
         needsType : 3,
@@ -347,7 +355,8 @@ typedef struct {
     }
 } AsmOpInfo;
 
-typedef enum {
+typedef enum
+{
     Mn_fdisi,
     Mn_feni,
     Mn_fsetpm,
@@ -541,7 +550,8 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
 #undef N
 //#undef L
 
-typedef struct {
+typedef struct
+{
     const char  * inMnemonic;
     AsmOp   asmOp;
 } AsmOpEnt;
@@ -1137,7 +1147,8 @@ static AsmOpEnt opData[] = {
     { "xorps",  Op_DstSrcSSE },
 };
 
-typedef enum {
+typedef enum
+{
     Default_Ptr = 0,
     Byte_Ptr = 1,
     Short_Ptr = 2,
@@ -1165,7 +1176,8 @@ static PtrType ptrTypeValueTable[N_PtrNames] = {
     Near_Ptr, Far_Ptr
 };
 
-typedef enum {
+typedef enum
+{
     Opr_Invalid,
     Opr_Immediate,
     Opr_Reg,
@@ -1189,7 +1201,8 @@ static Identifier * ident_seg;
 
 struct AsmProcessor
 {
-    typedef struct {
+    typedef struct
+    {
         int inBracket;
         int hasBracket;
         int hasNumber;
@@ -1289,26 +1302,31 @@ struct AsmProcessor
     {
         op = parseOpcode();
 
-        switch (op) {
-        case Op_Align:
-            doAlign();
-            expectEnd();
-            break;
-        case Op_Even:
-            doEven();
-            expectEnd();
-            break;
-        case Op_Naked:
-            doNaked();
-            expectEnd();
-            break;
-        case Op_Invalid:
-            break;
-        default:
-            if (op >= Op_db && op <= Op_de)
-                doData();
-            else
-                doInstruction();
+        switch (op)
+        {
+            case Op_Align:
+                doAlign();
+                expectEnd();
+                break;
+
+            case Op_Even:
+                doEven();
+                expectEnd();
+                break;
+
+            case Op_Naked:
+                doNaked();
+                expectEnd();
+                break;
+
+            case Op_Invalid:
+                break;
+
+            default:
+                if (op >= Op_db && op <= Op_de)
+                    doData();
+                else
+                    doInstruction();
         }
     }
 
@@ -1348,7 +1366,8 @@ struct AsmProcessor
 
         // %% okay to use bsearch?
         int i = 0, j = N_ents, k, l;
-        do {
+        do
+        {
             k = (i + j) / 2;
             l = strcmp(opcode, opData[k].inMnemonic);
             if (! l)
@@ -1394,7 +1413,9 @@ struct AsmProcessor
             }
 
             if (token->value == TOKcomma)
+            {
                 nextToken();
+            }
             else if (token->value != TOKeof)
             {
                 ok = false;
@@ -1460,7 +1481,7 @@ struct AsmProcessor
                 }
                 return true;
             }
-            no_match:
+        no_match:
             if (opInfo->linkType == Next_Form)
                 opInfo = & asmOpInfo[ op = (AsmOp) opInfo->link ];
             else
@@ -1693,7 +1714,7 @@ struct AsmProcessor
                 if (operands[i].cls == Opr_Immediate)
                 {
                     min_type = operands[i].dataSize > min_type ?
-                        operands[i].dataSize : min_type;
+                               operands[i].dataSize : min_type;
                 }
                 else
                 {
@@ -1752,7 +1773,8 @@ struct AsmProcessor
                 int mlen = strlen(mnemonic);
                 if (mnemonic[mlen-1] == 'd')
                     insnTemplate->write(mnemonic, mlen-1);
-                else {
+                else
+                {
                     insnTemplate->writestring(mnemonic);
                     insnTemplate->writebyte('w');
                 }
