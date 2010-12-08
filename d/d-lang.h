@@ -74,7 +74,8 @@ union lang_tree_node
 #undef DEFTREECODE
 #define DEFTREECODE(SYM, NAME, TYPE, LENGTH) SYM,
 
-enum d_tree_code {
+enum d_tree_code
+{
   D_DUMMY_TREE_CODE = LAST_AND_UNUSED_TREE_CODE,
 #include "d-tree.def"
   LAST_D_TREE_CODE

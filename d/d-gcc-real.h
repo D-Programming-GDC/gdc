@@ -22,17 +22,21 @@
 struct real_value;
 struct Type;
 
-struct real_t {
+struct real_t
+{
     // Including gcc/real.h presents too many problems, so
     // just statically allocate enough space for
     // REAL_VALUE_TYPE.
-    typedef enum {
+    typedef enum
+    {
         Float,
         Double,
         LongDouble,
         NumModes
     } MyMode;
-    typedef struct {
+
+    typedef struct
+    {
         int c;
         int s;
         int e;
@@ -95,7 +99,8 @@ private:
     // real_t & operator=(long double v) { return *this; }
 };
 
-typedef struct {
+typedef struct
+{
     real_t maxval, minval, epsilonval/*, nanval, infval*/;
     d_int64 dig, mant_dig;
     d_int64 max_10_exp, min_10_exp;

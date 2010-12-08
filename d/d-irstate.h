@@ -74,7 +74,8 @@ public:
     // ** Scope kinds.
 
     /* The kinds of levels we recognize. */
-    typedef enum LevelKind {
+    typedef enum LevelKind
+    {
         level_block = 0,    /* An ordinary block scope. */
         level_switch,       /* A switch-block */
         level_try,          /* A try-block. */
@@ -99,7 +100,9 @@ public:
     // is being compiled.
     tree    getLabelTree(LabelDsymbol * label);
     Label * getLabelBlock(LabelDsymbol * label, Statement * from = NULL);
-    bool    isReturnLabel(Identifier * ident) {
+
+    bool    isReturnLabel(Identifier * ident)
+    {
         return func->returnLabel ? ident == func->returnLabel->ident : 0;
     }
 
@@ -121,16 +124,20 @@ public:
         Statement * statement;
         LevelKind   kind;
         tree exitLabel;
-        union {
-            struct {
+        union
+        {
+            struct
+            {
                 tree continueLabel;
                 tree hasVars; // D2 specific, != NULL_TREE if switch uses Lvalues for cases.
             };
-            struct {
-                tree condition; // only need this if it is not okay to convert an IfStatement's condition after converting it's branches...
-                tree trueBranch;
+            struct
+            {
+                tree condition;  // Only need this if it is not okay to convert an IfStatement's 
+                tree trueBranch; // condition after converting it's branches...
             };
-            struct {
+            struct
+            {
                 tree tryBody;
                 tree catchType;
             };
@@ -141,19 +148,27 @@ public:
     Array loops; // of Flow
 
     // These routines don't generate code.  They are for tracking labeled loops.
-    Flow *    getLoopForLabel(Identifier * ident, bool want_continue = false);
+    Flow * getLoopForLabel(Identifier * ident, bool want_continue = false);
 #if D_GCC_VER < 40
-    Flow *    beginFlow(Statement * stmt, nesting * loop);
+    Flow * beginFlow(Statement * stmt, nesting * loop);
 #else
-    Flow *    beginFlow(Statement * stmt);
+    Flow * beginFlow(Statement * stmt);
 #endif
-    void      endFlow();
-    Flow *    currentFlow() { return (Flow *) loops.tos(); }
-    void      doLabel(tree t_label);
+    void endFlow();
+
+    Flow * currentFlow()
+    {
+        return (Flow *) loops.tos();
+    }
+
+    void doLabel(tree t_label);
 
     // ** DECL_CONTEXT support
 
-    tree getLocalContext() { return func ? func->toSymbol()->Stree : NULL_TREE; }
+    tree getLocalContext()
+    {
+        return func ? func->toSymbol()->Stree : NULL_TREE;
+    }
 
     // ** "Binding contours"
 
@@ -169,21 +184,36 @@ public:
     */
     Array      scopes; // of unsigned*
 
-    void       startScope();
-    void       endScope();
-    unsigned * currentScope() { return (unsigned *) scopes.tos(); }
+    void startScope();
+    void endScope();
 
-    void       startBindings();
-    void       endBindings();
+    unsigned * currentScope()
+    {
+        return (unsigned *) scopes.tos();
+    }
+
+    void startBindings();
+    void endBindings();
 
 
     // ** Volatile state
 
     unsigned volatileDepth;
-    bool inVolatile() { return volatileDepth != 0; }
-    void pushVolatile() { ++volatileDepth; }
-    void popVolatile() { --volatileDepth; }
 
+    bool inVolatile()
+    {
+        return volatileDepth != 0;
+    }
+
+    void pushVolatile()
+    {
+        ++volatileDepth;
+    }
+
+    void popVolatile()
+    {
+        --volatileDepth;
+    }
 };
 
 

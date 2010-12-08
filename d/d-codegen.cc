@@ -1971,7 +1971,9 @@ IRState::darrayVal(tree type, uinteger_t len, tree data)
         ptr_value = data;
     }
     else
+    {
         ptr_value = convert(TREE_TYPE(ptr_field), d_null_pointer);
+    }
 
     len_value = integerConstant(len, TREE_TYPE(len_field));
     ce.cons(len_field, len_value);

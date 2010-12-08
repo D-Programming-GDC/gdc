@@ -26,7 +26,8 @@
 #include "symbol.h"
 #include "d-gcc-tree.h"
 
-enum DT {
+enum DT
+{
     DT_azeros,
     DT_common,
     DT_nbytes,
@@ -40,16 +41,19 @@ enum DT {
 
 struct Type;
 
-struct dt_t {
+struct dt_t
+{
     enum DT dt;
     struct dt_t * DTnext;
-    union {
+    union
+    {
         dinteger_t DTint;
         dinteger_t DTazeros;
         dinteger_t DTonebyte;
         struct dt_t * DTvalues;
     };
-    union {
+    union
+    {
         Symbol * DTsym;
         tree DTtree;
         const void * DTpointer;
@@ -77,32 +81,46 @@ extern dt_t** dtcontainer(dt_t** pdt, Type * type, dt_t* values);
 
 
 inline dt_t**
-dtnbytes(dt_t** pdt, target_size_t count, const char * pbytes) {
-    return dtval(pdt, DT_nbytes, count, pbytes); }
+dtnbytes(dt_t** pdt, target_size_t count, const char * pbytes)
+{
+    return dtval(pdt, DT_nbytes, count, pbytes);
+}
 
 inline dt_t**
-dtabytes(dt_t** pdt, TypeType, int, target_size_t count, const char * pbytes) {
-    return dtval(pdt, DT_abytes, count, pbytes); }
+dtabytes(dt_t** pdt, TypeType, int, target_size_t count, const char * pbytes)
+{
+    return dtval(pdt, DT_abytes, count, pbytes);
+}
 
 inline dt_t**
-dtnzeros(dt_t** pdt, target_size_t count) {
-    return dtval(pdt, DT_azeros, count, 0); }
+dtnzeros(dt_t** pdt, target_size_t count)
+{
+    return dtval(pdt, DT_azeros, count, 0);
+}
 
 inline dt_t**
-dtdword(dt_t** pdt, target_size_t val) {
-    return dti32(pdt, val, false); }
+dtdword(dt_t** pdt, target_size_t val)
+{
+    return dti32(pdt, val, false);
+}
 
 inline dt_t**
-dtsize_t(dt_t** pdt, target_size_t val) {
-    return dtval(pdt, DT_ibytes, val, 0); }
+dtsize_t(dt_t** pdt, target_size_t val)
+{
+    return dtval(pdt, DT_ibytes, val, 0);
+}
 
 inline dt_t**
-dtxoff(dt_t** pdt, Symbol * sym, target_size_t offset, TypeType) {
-    return dtval(pdt, DT_xoff, offset, sym); }
+dtxoff(dt_t** pdt, Symbol * sym, target_size_t offset, TypeType)
+{
+    return dtval(pdt, DT_xoff, offset, sym);
+}
 
 inline dt_t**
-dttree(dt_t** pdt, tree t) {
-    return dtval(pdt, DT_tree, 0, t); }
+dttree(dt_t** pdt, tree t)
+{
+    return dtval(pdt, DT_tree, 0, t);
+}
 
 inline void
 dt_optimize(dt_t *) { }

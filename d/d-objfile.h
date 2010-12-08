@@ -19,7 +19,8 @@
 #ifndef GCC_DCMPLR_OBFILE_H
 #define GCC_DCMPLR_OBFILE_H
 
-struct ModuleInfo {
+struct ModuleInfo
+{
     Array classes;  // Array of ClassDeclaration*
     Array ctors;    // Arrays of FuncDeclaration*
     Array dtors;
@@ -32,7 +33,8 @@ struct ModuleInfo {
     Array unitTests;
 };
 
-typedef enum {
+typedef enum
+{
     TEnone,
     TEnormal,
     TEall,
@@ -42,7 +44,8 @@ typedef enum {
 
 /* nearly everything is static for effeciency since there is
    only one object per run of the backend */
-struct ObjectFile {
+struct ObjectFile
+{
     static ModuleInfo * moduleInfo; // of ModuleInfo*
 
     ObjectFile(); // constructor is *NOT* static
