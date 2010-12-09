@@ -1749,19 +1749,23 @@ PtrExp::toElem(IRState * irs)
     target_size_t the_offset;
     tree rec_tree;
 
-    if (e1->op == TOKadd) {
+    if (e1->op == TOKadd)
+    {
         BinExp * add_exp = (BinExp *) e1;
         if (add_exp->e1->op == TOKaddress &&
-            add_exp->e2->isConst() && add_exp->e2->type->isintegral()) {
+            add_exp->e2->isConst() && add_exp->e2->type->isintegral())
+        {
             Expression * rec_exp = ((AddrExp*) add_exp->e1)->e1;
             rec_type = rec_exp->type->toBasetype();
             rec_tree = rec_exp->toElem(irs);
             the_offset = add_exp->e2->toUInteger();
         }
-    } else if (e1->op == TOKsymoff) {
-        // is this ever not a VarDeclaration?
+    }
+    else if (e1->op == TOKsymoff)
+    {   // is this ever not a VarDeclaration?
         SymOffExp * sym_exp = (SymOffExp *) e1;
-        if ( ! irs->isDeclarationReferenceType(sym_exp->var)) {
+        if ( ! irs->isDeclarationReferenceType(sym_exp->var))
+        {
             rec_type = sym_exp->var->type->toBasetype();
             VarDeclaration * v = sym_exp->var->isVarDeclaration();
             if (v)
@@ -1773,16 +1777,21 @@ PtrExp::toElem(IRState * irs)
         // otherwise, no real benefit?
     }
 
-    if (rec_type && rec_type->ty == Tstruct) {
+    if (rec_type && rec_type->ty == Tstruct)
+    {
         StructDeclaration * sd = ((TypeStruct *)rec_type)->sym;
-        for (unsigned i = 0; i < sd->fields.dim; i++) {
+        for (unsigned i = 0; i < sd->fields.dim; i++)
+        {
             VarDeclaration * field = (VarDeclaration *) sd->fields.data[i];
             if (field->offset == the_offset &&
-                irs->typesSame(field->type, this->type)) {
+                irs->typesSame(field->type, this->type))
+            {
                 if (irs->isErrorMark(rec_tree))
                     return rec_tree; // backend will ICE otherwise
                 return irs->component(rec_tree, field->toSymbol()->Stree);
-            } else if (field->offset > the_offset) {
+            }
+            else if (field->offset > the_offset)
+            {
                 break;
             }
         }
@@ -1790,7 +1799,8 @@ PtrExp::toElem(IRState * irs)
 
     tree e = irs->indirect(e1->toElem(irs), type->toCtype());
     if (irs->inVolatile())
-        TREE_THIS_VOLATILE( e ) = 1;
+        TREE_THIS_VOLATILE(e) = 1;
+
     return e;
 }
 
@@ -2114,7 +2124,8 @@ SymbolExp::toElem(IRState * irs)
 elem *
 VarExp::toElem(IRState* irs)
 {
-    if (var->storage_class & STCfield) {
+    if (var->storage_class & STCfield)
+    {
         /*::*/error("Need 'this' to access member %s", var->ident->string);
         return irs->errorMark(type);
     }
@@ -2129,13 +2140,18 @@ VarExp::toElem(IRState* irs)
     else
         e = var->toSymbol()->Stree;
 
-    if ( irs->isDeclarationReferenceType(var) ) {
+    if (irs->isDeclarationReferenceType(var))
+    {
         e = irs->indirect(e, var->type->toCtype());
-        if (irs->inVolatile()) {
+        if (irs->inVolatile())
+        {
             TREE_THIS_VOLATILE(e) = 1;
         }
-    } else {
-        if (irs->inVolatile()) {
+    }
+    else
+    {
+        if (irs->inVolatile())
+        {
             e = irs->addressOf(e);
             TREE_THIS_VOLATILE(e) = 1;
             e = irs->indirect(e);
@@ -2160,7 +2176,7 @@ SymOffExp::toElem(IRState * irs)
     else
         a = var->toSymbol()->Stree;
 
-    if ( irs->isDeclarationReferenceType(var) )
+    if (irs->isDeclarationReferenceType(var))
         assert(POINTER_TYPE_P(TREE_TYPE(a)));
     else
         a = irs->addressOf(var);

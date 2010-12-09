@@ -317,19 +317,21 @@ struct IRState : IRBase
     static tree addressOf(tree exp)
     {
         tree t;
+        tree exp_type = TREE_TYPE(exp);
         d_mark_addressable(exp);
+
 #if ENABLE_CHECKING
         // Gimplify doesn't like &(*(ptr-to-array-type)) with static arrays
         if (TREE_CODE(exp) == INDIRECT_REF)
-            t = nop(TREE_OPERAND(exp, 0), build_pointer_type(TREE_TYPE(exp)));
+            t = nop(TREE_OPERAND(exp, 0), build_pointer_type(exp_type));
         else
 #endif
-        {   /* Just convert arrays (struct[]) to pointers (struct *), rather than
-               creating a new pointer to the array (struct[] *)  */
-            if (TREE_CODE (TREE_TYPE (exp)) == ARRAY_TYPE)
-                t = build1(ADDR_EXPR, build_pointer_type(TREE_TYPE(TREE_TYPE(exp))), exp);
+        {   /* Just convert string literals (char[]) to C-style strings (char *), otherwise
+               the latter method (char[]*) causes conversion problems during gimplification. */
+            if (TREE_CODE (exp) == STRING_CST)
+                t = build1(ADDR_EXPR, build_pointer_type(TREE_TYPE(exp_type)), exp);
             else
-                t = build1(ADDR_EXPR, build_pointer_type(TREE_TYPE(exp)), exp);
+                t = build1(ADDR_EXPR, build_pointer_type(exp_type), exp);
         }
 #if D_NO_TRAMPOLINES
         if (TREE_CODE(exp) == FUNCTION_DECL)

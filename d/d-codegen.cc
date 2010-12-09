@@ -115,8 +115,10 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
         }
         else
 #endif
-        if (! init_exp && init_val)
-            init_exp = vmodify(var_exp, init_val);
+        {
+            if (! init_exp && init_val)
+                init_exp = vmodify(var_exp, init_val);
+        }
 
         if (init_exp)
             addExp(init_exp);
@@ -2583,7 +2585,7 @@ IRState::isDeclarationReferenceType(Declaration * decl)
         return true;
 
 #if !SARRAYVALUE
-    if (decl->isParameter() && base_type->ty == Tsarray)
+    if (base_type->ty == Tsarray)
         return true;
 #endif
     return false;
