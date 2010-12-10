@@ -104,11 +104,11 @@ enum BUILTIN FuncDeclaration::isBuiltin()
 }
 
 
+#ifndef IN_GCC
 /**************************************
  * Evaluate builtin function.
  * Return result; NULL if cannot evaluate it.
  */
-#ifndef IN_GCC
 Expression *eval_builtin(enum BUILTIN builtin, Expressions *arguments)
 {
     assert(arguments && arguments->dim);

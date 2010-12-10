@@ -512,9 +512,7 @@ enum BUILTIN
 #endif
 };
 
-#ifdef IN_GCC
-Expression *eval_builtin(CallExp *ce, Expressions *arguments);
-#else
+#ifndef IN_GCC
 Expression *eval_builtin(enum BUILTIN builtin, Expressions *arguments);
 #endif
 

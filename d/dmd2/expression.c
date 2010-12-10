@@ -51,6 +51,10 @@ extern "C" char * __cdecl __locale_decpoint;
 #include "hdrgen.h"
 #include "parse.h"
 
+#ifdef IN_GCC
+#include "d-dmd-gcc.h"
+#endif
+
 
 Expression *createTypeInfoArray(Scope *sc, Expression *args[], int dim);
 Expression *expandVar(int result, VarDeclaration *v);
@@ -10252,9 +10256,8 @@ Expression *PowExp::semantic(Scope *sc)
 
         // Replace 1 ^^ x or 1.0^^x by (x, 1)
 #if IN_GCC
-        real_t value = real_t::parse("1.0", real_t::LongDouble);
         if ((e1->op == TOKint64 && e1->toInteger() == 1) ||
-                (e1->op == TOKfloat64 && value.isIdenticalTo( e1->toReal() )))
+                (e1->op == TOKfloat64 && e1->toReal() == (real_t)(d_int64)1))
         {
             typeCombine(sc);
             e = new CommaExp(loc, e2, e1);
@@ -10289,22 +10292,20 @@ Expression *PowExp::semantic(Scope *sc)
             return new ErrorExp();
         }
 
-#if IN_GCC
-        // GDC handles PowExp in backend.
-        typeCombine(sc);
-
-        // Always constant fold integer powers of literals.
-        if ((e1->op == TOKfloat64 || e1->op == TOKint64) && (e2->op == TOKint64))
-            return optimize(WANTvalue | WANTinterpret);
-
-        return this;
-#else
         // Determine if we're raising to an integer power.
+#if IN_GCC
+        sinteger_t intpow = 0;
+        if (e2->op == TOKint64 && ((sinteger_t)e2->toInteger() == 2 || (sinteger_t)e2->toInteger() == 3))
+            intpow = e2->toInteger();
+        else if (e2->op == TOKfloat64 && e2->toReal() == (real_t)e2->toInteger())
+            intpow = e2->toInteger();
+#else
         sinteger_t intpow = 0;
         if (e2->op == TOKint64 && ((sinteger_t)e2->toInteger() == 2 || (sinteger_t)e2->toInteger() == 3))
             intpow = e2->toInteger();
         else if (e2->op == TOKfloat64 && (e2->toReal() == (sinteger_t)(e2->toReal())))
             intpow = (sinteger_t)(e2->toReal());
+#endif
 
         // Deal with x^^2, x^^3 immediately, since they are of practical importance.
         if (intpow == 2 || intpow == 3)
@@ -10327,6 +10328,7 @@ Expression *PowExp::semantic(Scope *sc)
             return e;
         }
 
+        static int hasImportMath = 0;
         static int importMathChecked = 0;
         if (!importMathChecked)
         {
@@ -10337,14 +10339,56 @@ Expression *PowExp::semantic(Scope *sc)
                 if (mi->ident == Id::math &&
                     mi->parent->ident == Id::std &&
                     !mi->parent->parent)
+                {
+                    hasImportMath = 1;
                     goto L1;
+                }
             }
+#ifndef IN_GCC
             error("must import std.math to use ^^ operator");
             return new ErrorExp();
-
+#endif
          L1: ;
         }
 
+#if IN_GCC
+        if (hasImportMath)
+        {
+            e = new IdentifierExp(loc, Id::empty);
+            e = new DotIdExp(loc, e, Id::std);
+            e = new DotIdExp(loc, e, Id::math);
+
+            real_t value = real_t::parse("0.5", real_t::LongDouble);
+            if (e2->op == TOKfloat64 && e2->toReal() == value)
+            {   // Replace e1 ^^ 0.5 with .std.math.sqrt(x)
+                typeCombine(sc);
+                e = new CallExp(loc, new DotIdExp(loc, e, Id::_sqrt), e1);
+            }
+            else
+            {
+                // Replace e1 ^^ e2 with .std.math.pow(e1, e2)
+                // We don't combine the types if raising to an integer power (because
+                // integer powers are treated specially by std.math.pow).
+                if (!e2->type->isintegral())
+                    typeCombine(sc);
+                // In fact, if it *could* have been an integer, make it one.
+                if (e2->op == TOKfloat64 && intpow != 0)
+                    e2 = new IntegerExp(loc, intpow, Type::tint64);
+                e = new CallExp(loc, new DotIdExp(loc, e, Id::_pow), e1, e2);
+            }
+            e = e->semantic(sc);
+        }
+        else
+        {   // GDC handles PowExp in backend.
+            typeCombine(sc);
+            e = this;
+        }
+        // Always constant fold integer powers of literals.
+        if ((e1->op == TOKfloat64 || e1->op == TOKint64) && (e2->op == TOKint64))
+            return e->optimize(WANTvalue | WANTinterpret);
+
+        return e;
+#else
         e = new IdentifierExp(loc, Id::empty);
         e = new DotIdExp(loc, e, Id::std);
         e = new DotIdExp(loc, e, Id::math);

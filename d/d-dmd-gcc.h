@@ -55,6 +55,11 @@ extern Symbol* rtlsym[N_RTLSYM];
 extern bool d_gcc_force_templates();
 extern Module * d_gcc_get_output_module();
 
+#if V2
+/* used in interpret.c */
+extern Expression * d_gcc_eval_builtin(CallExp *ce, Expressions *arguments);
+#endif
+
 #endif
 
 #endif

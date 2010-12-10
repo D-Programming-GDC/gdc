@@ -24,6 +24,10 @@
 #include "aggregate.h"
 #include "id.h"
 
+#ifdef IN_GCC
+#include "d-dmd-gcc.h"
+#endif
+
 #define LOG     0
 
 struct InterState
@@ -2803,7 +2807,7 @@ Expression *CallExp::interpret(InterState *istate)
                 args.data[i] = (void *)earg;
             }
 #if IN_GCC
-            e = eval_builtin(this, &args);
+            e = d_gcc_eval_builtin(this, &args);
 #else
             e = eval_builtin(b, &args);
 #endif
