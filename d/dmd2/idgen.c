@@ -268,11 +268,14 @@ struct Msgtable msgtable[] =
 
     // For pragma's
     { "GNU_asm" },
-    { "GNU_attribute" },
-    { "GNU_set_attribute" },
     { "lib" },
     { "msg" },
     { "startaddress" },
+    { "GNU_attribute", "attribute" },
+    { "GNU_set_attribute", "set_attribute" },
+    // Deprecated in GDC
+    { "_GNU_attribute", "GNU_attribute" },
+    { "_GNU_set_attribute", "GNU_set_attribute" },
 
     // For special functions
     { "tohash", "toHash" },

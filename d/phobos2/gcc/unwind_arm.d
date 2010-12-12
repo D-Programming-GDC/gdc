@@ -166,7 +166,7 @@ _Unwind_Ptr _Unwind_GetTextRelBase (_Unwind_Context *);
 
 /* Interface functions: */
 _Unwind_Reason_Code _Unwind_RaiseException(_Unwind_Control_Block *ucbp);
-pragma(GNU_attribute, noreturn)
+pragma(attribute, noreturn)
     void _Unwind_Resume(_Unwind_Control_Block *ucbp);
 _Unwind_Reason_Code _Unwind_Resume_or_Rethrow (_Unwind_Control_Block *ucbp);
 

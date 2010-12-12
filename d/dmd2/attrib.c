@@ -1005,8 +1005,11 @@ void PragmaDeclaration::semantic(Scope *sc)
         }
         goto Lnodecl;
     }
-    else if (ident == Id::GNU_attribute)
+    else if (ident == Id::GNU_attribute || ident == Id::_GNU_attribute)
     {
+        if (!global.params.useDeprecated && ident == Id::_GNU_attribute)
+            error("pragma(GNU_attribute) is deprecated, use pragma(attribute) instead");
+
         sc_save = *sc;
         
         // An empty list is allowed.
@@ -1047,8 +1050,11 @@ void PragmaDeclaration::semantic(Scope *sc)
             }
         }
     }
-    else if (ident == Id::GNU_set_attribute)
+    else if (ident == Id::GNU_set_attribute || ident == Id::_GNU_set_attribute)
     {
+        if (!global.params.useDeprecated && ident == Id::_GNU_set_attribute)
+            error("pragma(GNU_set_attribute) is deprecated, use pragma(set_attribute) instead");
+
         if (!args || args->dim < 1)
             error("declaration expected for setting attributes");
         else
@@ -1191,7 +1197,7 @@ void PragmaDeclaration::semantic(Scope *sc)
 
 #if IN_GCC
     if (decl)
-        if (ident == Id::GNU_attribute)
+        if (ident == Id::GNU_attribute || ident == Id::_GNU_attribute)
             *sc = sc_save;
 #endif
     return;

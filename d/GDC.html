@@ -474,9 +474,12 @@ Example:<br>
 <br>
 GDC implements the GCC <span style="font-family: monospace;">__attribute__</span> extension with two pragmas:<br>
 <br>
-<span style="font-family: monospace;"><span style="font-weight: bold;">pragma</span>(<span style="font-weight: bold;">GNU_attribute</span>,<span style="font-style: italic;"> name1</span>(<span style="font-style: italic;">arg1</span>, <span style="font-style: italic;">arg2</span>, ...), ...) <span style="font-style: italic;">declarations</span>...</span><br style="font-family: monospace;">
+<span style="font-family: monospace;"><span style="font-weight: bold;">pragma</span>(<span style="font-weight: bold;">attribute</span>,<span style="font-style: italic;"> name1</span>(<span style="font-style: italic;">arg1</span>, <span style="font-style: italic;">arg2</span>, ...), ...) <span style="font-style: italic;">declarations</span>...</span><br style="font-family: monospace;">
 <br>
-<span style="font-family: monospace;"><span style="font-weight: bold;">pragma</span>(<span style="font-weight: bold;">GNU_set_attribute</span>, <span style="font-style: italic;">symbol</span>, <span style="font-style: italic;">name1</span>(<span style="font-style: italic;">arg1</span>, <span style="font-style: italic;">arg2</span>...), ...);</span><br>
+<span style="font-family: monospace;"><span style="font-weight: bold;">pragma</span>(<span style="font-weight: bold;">set_attribute</span>, <span style="font-style: italic;">symbol</span>, <span style="font-style: italic;">name1</span>(<span style="font-style: italic;">arg1</span>, <span style="font-style: italic;">arg2</span>...), ...);</span><br>
+<br>
+The deprecated form of these pragmas are <span style="font-family: monospace;">GNU_attribute</span>
+and <span style="font-family: monospace;">GNU_set_attribute</span> respectively.<br>
 <br>
 If an attribute has no arguments, the argument list may be omitted.<br>
 <br>

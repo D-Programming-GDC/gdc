@@ -223,8 +223,11 @@ struct Msgtable msgtable[] =
     { "GNU_asm" },
     { "lib" },
     { "msg" },
-    { "GNU_attribute" },
-    { "GNU_set_attribute" },
+    { "GNU_attribute", "attribute" },
+    { "GNU_set_attribute", "set_attribute" },
+    // Deprecated in GDC
+    { "_GNU_attribute", "GNU_attribute" },
+    { "_GNU_set_attribute", "GNU_set_attribute" },
 
     // For special functions
     { "tohash", "toHash" },
