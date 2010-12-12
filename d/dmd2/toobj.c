@@ -1324,7 +1324,7 @@ void VarDeclaration::toObjFile(int multiobj)
         else
             s->Sseg = DATA;
 #endif
-        if (sz)
+        if (1 || sz)
         {   outdata(s);
             if (isExport())
                 obj_export(s,0);

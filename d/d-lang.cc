@@ -776,9 +776,12 @@ bool d_post_options(const char ** fn)
     // The front end considers the first input file to be the main one.
     if (num_in_fnames)
         *fn = in_fnames[0];
-#if D_GCC_VER >= 40
+
     // Save register names for restoring later.
     memcpy (saved_reg_names, reg_names, sizeof reg_names);
+
+    // Unlike C, there is no global 'errno' variable.
+    flag_errno_math = 0;
 
 #if D_GCC_VER >= 43
     // Workaround for embedded functions, don't inline if debugging is on.
@@ -801,7 +804,6 @@ bool d_post_options(const char ** fn)
        unit-at-a-time mode.  */
     if (num_in_fnames > 1)
         flag_unit_at_a_time = 1;
-#endif
 
 #if V2
     /* array bounds checking */

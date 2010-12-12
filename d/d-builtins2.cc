@@ -397,10 +397,16 @@ d_gcc_magic_builtins_module(Module *m)
             continue;
         }
 #if V2
-        // %% D2 - all builtins are pure, safe and optionally nothrow
-        dtf->purity = PUREstrong;
+        /* %% D2 - builtins are safe and optionally nothrow.
+           The purity of a builtins can vary depending on compiler flags set at
+           init, or by the -foptions passed, such as flag_unsafe_math_optimizations
+         */
         dtf->trust = TRUSTsafe;
         dtf->isnothrow = TREE_NOTHROW(decl);
+        dtf->purity = DECL_PURE_P(decl) ?   PUREstrong :
+                      TREE_READONLY(decl) ? PUREconst :
+                      DECL_IS_NOVOPS(decl) ? PUREweak :
+                      PUREimpure;
 #endif
         FuncDeclaration * func = new FuncDeclaration(0, 0,
             Lexer::idPool(name), STCextern, dtf);
