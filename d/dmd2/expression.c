@@ -51,10 +51,6 @@ extern "C" char * __cdecl __locale_decpoint;
 #include "hdrgen.h"
 #include "parse.h"
 
-#ifdef IN_GCC
-#include "d-dmd-gcc.h"
-#endif
-
 
 Expression *createTypeInfoArray(Scope *sc, Expression *args[], int dim);
 Expression *expandVar(int result, VarDeclaration *v);

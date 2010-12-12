@@ -3326,14 +3326,15 @@ FuncDeclaration::toObjFile(int multiobj)
     {
         tree body = irs->popStatementList();
         tree var = irs->var(v_argptr);
-        tree init_exp = irs->buildCall(built_in_decls[BUILT_IN_VA_START], 2,
-                                       irs->addressOf(var), parm_decl);
+        // %% Backend should know to correctly handle array types.
+        if (TREE_CODE(TREE_TYPE(var)) != ARRAY_TYPE)
+            var = irs->addressOf(var);
+        tree init_exp = irs->buildCall(built_in_decls[BUILT_IN_VA_START], 2, var, parm_decl);
         v_argptr->init = NULL; // VoidInitializer?
         irs->emitLocalVar(v_argptr, true);
         irs->addExp(init_exp);
 
-        tree cleanup = irs->buildCall(built_in_decls[BUILT_IN_VA_END], 1,
-                                      irs->addressOf(var));
+        tree cleanup = irs->buildCall(built_in_decls[BUILT_IN_VA_END], 1, var);
         irs->addExp(build2( TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
 #endif

@@ -897,29 +897,27 @@ FuncDeclaration *
 ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool force_and_public)
 {
     Module * mod = g.mod;
+    IRState * irs = g.irs;
+    tree expr_list = NULL_TREE;
 
     // If there is only one function, just return that
     if (functions->dim == 1 && ! force_and_public)
     {
         return (FuncDeclaration *) functions->data[0];
     }
-    else if (functions->dim >= 1)
+    else
     {   // %% shouldn't front end build these?
-        tree exp = NULL_TREE;
-        tree call_exp = NULL_TREE;
         for (unsigned i = 0; i < functions->dim; i++)
         {
             FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
-            call_exp = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
-            if (! exp)
-                exp = call_exp;
-            else
-                exp = build2(COMPOUND_EXPR, void_type_node, exp, call_exp);
+            tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
+            expr_list = irs->maybeVoidCompound(expr_list, call_expr);
         }
-        return doSimpleFunction(name, exp, false, force_and_public);
     }
-    else
-        return NULL;
+    if (expr_list)
+        return doSimpleFunction(name, expr_list, false, false);
+
+    return NULL;
 }
 
 
@@ -962,12 +960,34 @@ ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
     return NULL;
 }
 
-/* Currently just calls doFunctionToCallFunctions
+/* Same as doFunctionToCallFunctions, but calls all functions in
+   the reverse order that the constructors were called in.
 */
 FuncDeclaration *
 ObjectFile::doDtorFunction(const char * name, Array * functions)
 {
-    return doFunctionToCallFunctions(name, functions);
+    Module * mod = g.mod;
+    IRState * irs = g.irs;
+    tree expr_list = NULL_TREE;
+
+    // If there is only one function, just return that
+    if (functions->dim == 1)
+    {
+        return (FuncDeclaration *) functions->data[0];
+    }
+    else
+    {
+        for (int i = functions->dim - 1; i >= 0; i--) 
+        {
+            FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
+            tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
+            expr_list = irs->maybeVoidCompound(expr_list, call_expr);
+        }
+    }
+    if (expr_list)
+        return doSimpleFunction(name, expr_list, false, false);
+
+    return NULL;
 }
 
 /* Currently just calls doFunctionToCallFunctions
@@ -977,6 +997,7 @@ ObjectFile::doUnittestFunction(const char * name, Array * functions)
 {
     return doFunctionToCallFunctions(name, functions);
 }
+
 
 tree
 check_static_sym(Symbol * sym)
@@ -1009,18 +1030,7 @@ outdata(Symbol * sym)
     assert(t);
 
     if (sym->Sdt && DECL_INITIAL(t) == NULL_TREE)
-    {
-#if ENABLE_CHECKING
-        // % Possibly doing something wrong with StructDeclaration::toDt to need this.
-        // t is a RECORD_TYPE, yet init is an incompatible ARRAY_TYPE.
-        tree init = dt2tree(sym->Sdt);
-        if (!lhd_types_compatible_p(TREE_TYPE(t), TREE_TYPE(init)))
-            init = fold (build1 (NOP_EXPR, TREE_TYPE(t), init));
-        DECL_INITIAL(t) = init;
-#else
         DECL_INITIAL(t) = dt2tree(sym->Sdt);
-#endif
-    }
 
     if (! g.ofile->shouldEmit(sym))
         return;
