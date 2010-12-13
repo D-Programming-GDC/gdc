@@ -134,6 +134,9 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     /* By default, we throw on the math library if we have one.  */
     int need_math = (MATH_LIBRARY[0] != '\0');
 
+    /* True if we should add -ldl to the command-line.  */
+    int need_dl = 1;
+
     /* True if we should add -shared-libgcc to the command-line.  */
     int shared_libgcc = 1;
 
@@ -373,7 +376,8 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     /* There is one extra argument added here for the runtime
        library: -lgphobos.  The -pthread argument is added by
        setting need_pthreads. */
-    num_args = argc + added + need_math + shared_libgcc + (druntime > 0 ? 1 : 0) + (library > 0 ? 1 : 0) + 1;
+    added += (druntime > 0 ? 1 : 0) + (library > 0 ? 1 : 0);
+    num_args = argc + added + need_math + need_dl + shared_libgcc + 1;
     arglist = xmalloc (num_args * sizeof (char *));
 
     i = 0;
@@ -463,6 +467,11 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     else if (library > 0 && need_math)
         {
             arglist[j++] = saw_profile_flag ? MATH_LIBRARY_PROFILE : MATH_LIBRARY;
+            added_libraries++;
+        }
+    if (library > 0 && need_dl)
+        {
+            arglist[j++] = "-ldl";
             added_libraries++;
         }
     if (saw_libc)

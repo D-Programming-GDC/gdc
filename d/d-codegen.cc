@@ -2585,7 +2585,7 @@ IRState::isDeclarationReferenceType(Declaration * decl)
         return true;
 
 #if !SARRAYVALUE
-    if (base_type->ty == Tsarray)
+    if (decl->isParameter() && base_type->ty == Tsarray)
         return true;
 #endif
     return false;
