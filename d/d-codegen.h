@@ -316,22 +316,37 @@ struct IRState : IRBase
 
     static tree addressOf(tree exp)
     {
-        tree t;
+        tree t, ptrtype;
         tree exp_type = TREE_TYPE(exp);
         d_mark_addressable(exp);
 
-#if ENABLE_CHECKING
         // Gimplify doesn't like &(*(ptr-to-array-type)) with static arrays
         if (TREE_CODE(exp) == INDIRECT_REF)
-            t = nop(TREE_OPERAND(exp, 0), build_pointer_type(exp_type));
+        {
+            t = TREE_OPERAND(exp, 0);
+            ptrtype = build_pointer_type(exp_type);
+            t = nop(t, ptrtype); 
+        }
         else
-#endif
         {   /* Just convert string literals (char[]) to C-style strings (char *), otherwise
                the latter method (char[]*) causes conversion problems during gimplification. */
             if (TREE_CODE (exp) == STRING_CST)
-                t = build1(ADDR_EXPR, build_pointer_type(TREE_TYPE(exp_type)), exp);
+            {
+                ptrtype = build_pointer_type(TREE_TYPE(exp_type));
+            }
+            /* Special case for va_list. The backends will be expecting a pointer to vatype,
+               but some targets use an array. So fix it.  */
+            else if (TYPE_MAIN_VARIANT(exp_type) == TYPE_MAIN_VARIANT(va_list_type_node))
+            {
+                if (TREE_CODE(exp_type) == ARRAY_TYPE)
+                    ptrtype = build_pointer_type(TREE_TYPE(exp_type));
+                else
+                    ptrtype = build_pointer_type(exp_type);
+            }
             else
-                t = build1(ADDR_EXPR, build_pointer_type(exp_type), exp);
+                ptrtype = build_pointer_type(exp_type);
+
+            t = build1(ADDR_EXPR, ptrtype, exp);
         }
 #if D_NO_TRAMPOLINES
         if (TREE_CODE(exp) == FUNCTION_DECL)

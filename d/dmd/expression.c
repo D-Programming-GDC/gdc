@@ -120,14 +120,12 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
                     {
                         //printf("rewriting e1 to %s's this\n", f->toChars());
                         n++;
-#ifndef IN_GCC
                         e1 = new VarExp(loc, f->vthis);
-#endif
                     }
                     s = s->toParent();
                 }
                 if (s && s->isClassDeclaration())
-                    {   e1->type = s->isClassDeclaration()->type;
+                {   e1->type = s->isClassDeclaration()->type;
                     if (n > 1)
                         e1 = e1->semantic(sc);
                 }

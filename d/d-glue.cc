@@ -1882,17 +1882,17 @@ DotVarExp::toElem(IRState * irs)
         case Tstruct:
             // drop through
         case Tclass:
-            if ( (func_decl = var->isFuncDeclaration()) )
+            if ((func_decl = var->isFuncDeclaration()))
             {
                 // if Tstruct, objInstanceMethod will use the address of e1
                 return irs->objectInstanceMethod(e1, func_decl, type);
             }
-            else if ( (var_decl = var->isVarDeclaration()) )
+            else if ((var_decl = var->isVarDeclaration()))
             {
                 if (var_decl->storage_class & STCfield)
                 {
                     tree this_tree = e1->toElem(irs);
-                    if ( obj_basetype_ty != Tstruct )
+                    if (obj_basetype_ty != Tstruct)
                         this_tree = irs->indirect(this_tree);
                     return irs->component(this_tree, var_decl->toSymbol()->Stree);
                 }
@@ -3326,9 +3326,8 @@ FuncDeclaration::toObjFile(int multiobj)
     {
         tree body = irs->popStatementList();
         tree var = irs->var(v_argptr);
-        // %% Backend should know to correctly handle array types.
-        if (TREE_CODE(TREE_TYPE(var)) != ARRAY_TYPE)
-            var = irs->addressOf(var);
+        var = irs->addressOf(var);
+
         tree init_exp = irs->buildCall(built_in_decls[BUILT_IN_VA_START], 2, var, parm_decl);
         v_argptr->init = NULL; // VoidInitializer?
         irs->emitLocalVar(v_argptr, true);
