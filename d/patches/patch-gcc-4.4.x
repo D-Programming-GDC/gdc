@@ -924,6 +924,27 @@ diff -cr gcc-orig/tree-dump.c gcc/tree-dump.c
       case CONSTRUCTOR:
         {
   	unsigned HOST_WIDE_INT cnt;
+diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
+*** gcc.orig/tree-inline.c	2010-02-08 15:50:59.000000000 +0000
+--- gcc/tree-inline.c	2010-12-14 01:25:52.483647002 +0000
+***************
+*** 2199,2205 ****
+    /* Initialize the static chain.  */
+    p = DECL_STRUCT_FUNCTION (fn)->static_chain_decl;
+    gcc_assert (fn != current_function_decl);
+!   if (p)
+      {
+        /* No static chain?  Seems like a bug in tree-nested.c.  */
+        gcc_assert (static_chain);
+--- 2199,2206 ----
+    /* Initialize the static chain.  */
+    p = DECL_STRUCT_FUNCTION (fn)->static_chain_decl;
+    gcc_assert (fn != current_function_decl);
+!   /* Custom static chain has already been dealt with.  */
+!   if (p && !DECL_STRUCT_FUNCTION (fn)->custom_static_chain)
+      {
+        /* No static chain?  Seems like a bug in tree-nested.c.  */
+        gcc_assert (static_chain);
 diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
 *** gcc-orig/tree-nested.c	2010-10-11 13:56:32.239107241 -0400
 --- gcc/tree-nested.c	2010-10-11 13:59:09.219107241 -0400

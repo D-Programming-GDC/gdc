@@ -794,11 +794,11 @@ bool d_post_options(const char ** fn)
     flag_inline_trees = 1;
 
     /* Use tree inlining.  */
+    if (!flag_no_inline)
+        flag_no_inline = 1;
     if (flag_inline_functions)
         flag_inline_trees = 2;
 #endif
-    if (!flag_no_inline)
-        flag_no_inline = 1;
 
     /* If we are given more than one input file, we must use
        unit-at-a-time mode.  */
