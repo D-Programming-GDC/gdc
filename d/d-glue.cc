@@ -3613,7 +3613,7 @@ TypeTypedef::toCtype()
     apply_type_attributes(sym->attributes, type_node);
     return type_node;
     /*
-    tree type_decl = d_build_decl(TYPE_DECL, get_identifier( sym->ident->string ),
+    tree type_decl = d_build_decl(TYPE_DECL, get_identifier(sym->ident->string),
         type_node);
     DECL_CONTEXT(type_decl) =
     rest_of_decl_compilation(type_decl, NULL, ?context?, 0); //%% flag

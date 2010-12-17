@@ -774,7 +774,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
         //sthunk->Sflags |= SFLimplem;
 
         tree target_func_decl = csym->Stree;
-        tree thunk_decl = d_build_decl(FUNCTION_DECL, get_identifier(id), TREE_TYPE( target_func_decl ));
+        tree thunk_decl = d_build_decl(FUNCTION_DECL, get_identifier(id), TREE_TYPE(target_func_decl));
         dkeep(thunk_decl);
         sthunk->Stree = thunk_decl;
 

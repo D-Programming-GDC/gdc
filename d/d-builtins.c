@@ -57,9 +57,7 @@ tree null_node;
 extern void dkeep(tree t);
 #endif
 
-#if D_GCC_VER == 34
-#include "d-bi-attrs-34.h"
-#elif D_GCC_VER == 40
+#if D_GCC_VER == 40
 #include "d-bi-attrs-40.h"
 #elif D_GCC_VER == 41
 #include "d-bi-attrs-41.h"

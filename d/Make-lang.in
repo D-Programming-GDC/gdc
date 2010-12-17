@@ -129,31 +129,10 @@ gcc_d_target_include_dir=$(gcc_d_include_dir)/$(target_noncanonical)
 
 D_EXTRA_DEFINES += -DD_GCC_VER=$(subst .,,$(D_gcc_main_ver))
 
-#ifeq ($(D_gcc_main_ver),3.4)
-#  D_EXTRA_DEFINES += -DD_GCC_VER=34
-#else
-#  ifeq ($(D_gcc_main_ver),4.0)
-#   D_EXTRA_DEFINES += -DD_GCC_VER=40
-#  else
-#    ifeq
-#  else
-#   D_EXTRA_DEFINES += -DD_GCC_VER=41
-#  endif
-#endif
-
 # Actual names to use when installing a cross-compiler.
 D_CROSS_NAME = $(D_INSTALL_NAME)
 DMD_CROSS_NAME = $(DMD_INSTALL_NAME)
 GDMD_CROSS_NAME = $(GDMD_INSTALL_NAME)
-
-ifeq ($(version),3.4.1)
-# need for Cygwin which does not have 3.4.x, x>1 yet...
-D_EXTRA_DEFINES += -DD_GCC_VER341=1
-endif
-ifeq ($(version),3.4.0)
-# similar: needed for SkyOS which uses 3.4.0
-D_EXTRA_DEFINES += -DD_GCC_VER341=1
-endif
 
 D d: $(D_COMPILER_NAME)$(exeext) d/pkgvars
 
@@ -239,9 +218,8 @@ ifeq ($(D_LANGUAGE_VERSION),2)
 D_GLUE_OBJS += d/d-cppmngl.glue.o
 endif
 
-D_BI_ATTRS = d/d-bi-attrs-34.h d/d-bi-attrs-40.h d/d-bi-attrs-41.h \
-             d/d-bi-attrs-42.h d/d-bi-attrs-43.h d/d-bi-attrs-44.h \
-             d/d-bi-attrs-45.h
+D_BI_ATTRS = d/d-bi-attrs-40.h d/d-bi-attrs-41.h d/d-bi-attrs-42.h \
+             d/d-bi-attrs-43.h d/d-bi-attrs-44.h d/d-bi-attrs-45.h
 
 ifdef D_is_apple_ver
   ifeq ($(D_gcc_main_ver),4.0)
@@ -254,11 +232,6 @@ ifdef D_is_apple_ver
     D_DRIVER_OBJS += opts-common.o gcc-options.o
   endif
 else
-  ifeq ($(D_gcc_main_ver),3.4)
-    D_GLUE_OBJS += d/d-c-stubs.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
-    D_EXTRA_LIBS += libcpp.a
-  endif
   ifeq ($(D_gcc_main_ver),4.1)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
     D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
@@ -284,7 +257,6 @@ else
   ifeq ($(D_gcc_main_ver),4.5)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
     D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
-#    D_BORROWED_C_OBJS += gimplify.o tree-iterator.o
     D_EXTRA_LIBS += $(BACKENDLIBS)
     D_DRIVER_OBJS += opts-common.o gcc-options.o
   endif

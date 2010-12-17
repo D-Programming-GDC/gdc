@@ -138,6 +138,7 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_EH_PERSONALITY d_eh_personality
 #undef LANG_HOOKS_EH_RUNTIME_TYPE
 #define LANG_HOOKS_EH_RUNTIME_TYPE d_build_eh_type_type
+
 #undef LANG_HOOKS_EH_USE_CXA_END_CLEANUP
 #define LANG_HOOKS_EH_USE_CXA_END_CLEANUP true
 #endif

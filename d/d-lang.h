@@ -61,10 +61,10 @@ union lang_tree_node
   GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
        chain_next ("(union lang_tree_node *)GENERIC_NEXT (&%h.generic)")))
 {
-  union tree_node GTY ((tag ("0"),
-                        desc ("tree_node_structure (&%h)")))
-    generic;
-  struct lang_identifier GTY ((tag ("1"))) identifier;
+    union tree_node GTY ((tag ("0"),
+                          desc ("tree_node_structure (&%h)")))
+      generic;
+    struct lang_identifier GTY ((tag ("1"))) identifier;
 };
 
 /* GENERIC_NEXT is needed for 4.3.x only, to prevent ICEs in gtype-d.
@@ -80,9 +80,9 @@ union lang_tree_node
 
 enum d_tree_code
 {
-  D_DUMMY_TREE_CODE = LAST_AND_UNUSED_TREE_CODE,
+    D_DUMMY_TREE_CODE = LAST_AND_UNUSED_TREE_CODE,
 #include "d-tree.def"
-  LAST_D_TREE_CODE
+    LAST_D_TREE_CODE
 };
 #endif
 
@@ -110,25 +110,24 @@ enum d_tree_code
    otherwise support the backend. */
 struct binding_level GTY(())
 {
-  /* A chain of declarations. These are in the reverse of the order supplied. */
-  tree names;
+    /* A chain of declarations. These are in the reverse of the order supplied. */
+    tree names;
 
-  /* A pointer to the end of the names chain. Only needed to facilitate
-     a quick test if a decl is in the list by checking if its TREE_CHAIN
-     is not NULL or it is names_end (in pushdecl_nocheck()). */
-  tree names_end;
+    /* A pointer to the end of the names chain. Only needed to facilitate
+       a quick test if a decl is in the list by checking if its TREE_CHAIN
+       is not NULL or it is names_end (in pushdecl_nocheck()). */
+    tree names_end;
 
-  /* For each level (except the global one), a chain of BLOCK nodes for
-     all the levels that were entered and exited one level down. */
-  tree blocks;
+    /* For each level (except the global one), a chain of BLOCK nodes for
+       all the levels that were entered and exited one level down. */
+    tree blocks;
 
-  /* The BLOCK node for this level, if one has been preallocated.
-     If NULL_TREE, the BLOCK is allocated (if needed) when the level is popped. */
-  tree this_block;
+    /* The BLOCK node for this level, if one has been preallocated.
+       If NULL_TREE, the BLOCK is allocated (if needed) when the level is popped. */
+    tree this_block;
 
-  /* The binding level this one is contained in. */
-  struct binding_level *level_chain;
-
+    /* The binding level this one is contained in. */
+    struct binding_level *level_chain;
 };
 
 extern GTY(()) struct binding_level * current_binding_level;
