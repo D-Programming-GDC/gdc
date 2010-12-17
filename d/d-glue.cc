@@ -1993,7 +1993,11 @@ DeclarationExp::toElem(IRState* irs)
        can cause an empty STMT_LIST here.  This can causes problems
        during gimplification. */
     if (TREE_CODE(t) == STATEMENT_LIST && ! STATEMENT_LIST_HEAD(t))
+#if D_GCC_VER >= 45
+       return build_empty_stmt(input_location);
+#else
         return build_empty_stmt();
+#endif
 #endif
     return t;
 #endif
@@ -2953,7 +2957,7 @@ FuncDeclaration::toObjFile(int multiobj)
         if (tf->isref)
             result_decl = build_reference_type(result_decl);
 #endif
-        result_decl = build_decl(RESULT_DECL, NULL_TREE, result_decl);
+        result_decl = d_build_decl(RESULT_DECL, NULL_TREE, result_decl);
     }
     g.ofile->setDeclLoc(result_decl, this);
     DECL_RESULT(fn_decl) = result_decl;
@@ -3002,7 +3006,7 @@ FuncDeclaration::toObjFile(int multiobj)
                    This parameter is hidden from the debugger.
                 */
                 parm_type = ptr_type_node;
-                parm_decl = build_decl(PARM_DECL, NULL_TREE, parm_type);
+                parm_decl = d_build_decl(PARM_DECL, NULL_TREE, parm_type);
                 DECL_ARTIFICIAL(parm_decl) = 1;
                 DECL_IGNORED_P(parm_decl) = 1;
                 DECL_ARG_TYPE (parm_decl) = TREE_TYPE (parm_decl); // %% doc need this arg silently disappears
@@ -3417,7 +3421,7 @@ FuncDeclaration::buildClosure(IRState * irs)
         return;
 
     tree closure_rec_type = make_node(RECORD_TYPE);
-    tree ptr_field = build_decl(FIELD_DECL, get_identifier("__closptr"), ptr_type_node);
+    tree ptr_field = d_build_decl(FIELD_DECL, get_identifier("__closptr"), ptr_type_node);
     DECL_CONTEXT(ptr_field) = closure_rec_type;
     ListMaker fields;
     fields.chain(ptr_field);
@@ -3425,7 +3429,7 @@ FuncDeclaration::buildClosure(IRState * irs)
     for (unsigned i = 0; i < closureVars.dim; ++i)
     {
         VarDeclaration *v = (VarDeclaration *)closureVars.data[i];
-        tree field = build_decl(FIELD_DECL,
+        tree field = d_build_decl(FIELD_DECL,
             v->ident ? get_identifier(v->ident->string) : NULL_TREE,
             gen.trueDeclarationType(v));
         v->toSymbol()->SclosureField = field;
@@ -3609,7 +3613,7 @@ TypeTypedef::toCtype()
     apply_type_attributes(sym->attributes, type_node);
     return type_node;
     /*
-    tree type_decl = build_decl(TYPE_DECL, get_identifier(sym->ident->string),
+    tree type_decl = d_build_decl(TYPE_DECL, get_identifier( sym->ident->string ),
         type_node);
     DECL_CONTEXT(type_decl) =
     rest_of_decl_compilation(type_decl, NULL, ?context?, 0); //%% flag
@@ -3740,7 +3744,7 @@ TypeStruct::toCtype()
                 ++ofs;
             while (ofs < sym->structsize && sym->structsize - ofs >= 4)
             {
-                tree f = build_decl(FIELD_DECL, get_identifier("_pad"), d_type_for_size(32, 1));
+                tree f = d_build_decl(FIELD_DECL, get_identifier("_pad"), d_type_for_size(32, 1));
                 DECL_FCONTEXT(f) = ctype;
                 DECL_ARTIFICIAL(f) = DECL_IGNORED_P(f) = 1;
                 DECL_IGNORED_P(f) = 1;
@@ -3905,11 +3909,9 @@ TypeAArray::toCtype()
         if (! aa_type)
         {
             aa_type = make_node(RECORD_TYPE);
-            tree f0 = build_decl(FIELD_DECL, get_identifier("ptr"), ptr_type_node);
+            tree f0 = d_build_decl(FIELD_DECL, get_identifier("ptr"),
+                                   ptr_type_node, BUILTINS_LOCATION);
             DECL_CONTEXT(f0) = aa_type;
-#if D_USE_MAPPED_LOCATION
-            DECL_SOURCE_LOCATION(f0) = BUILTINS_LOCATION;
-#endif
             TYPE_FIELDS(aa_type) = f0;
             layout_type(aa_type);
 
@@ -4091,7 +4093,7 @@ TypeClass::toCtype()
         /* update: annoying messages might not appear anymore after making
            other changes */
         // Add the virtual table pointer
-        tree decl = build_decl(FIELD_DECL, get_identifier("_vptr$"), /*vtbl_type*/d_vtbl_ptr_type_node);
+        tree decl = d_build_decl(FIELD_DECL, get_identifier("_vptr$"), /*vtbl_type*/d_vtbl_ptr_type_node);
         agg_layout.addField(decl, 0); // %% target stuff..
 
         if (inherited) {
@@ -4108,7 +4110,7 @@ TypeClass::toCtype()
 
             // Add the monitor
             // %% target type
-            decl = build_decl(FIELD_DECL, get_identifier("_monitor"), ptr_type_node);
+            decl = d_build_decl(FIELD_DECL, get_identifier("_monitor"), ptr_type_node);
             DECL_FCONTEXT(decl) = obj_rec_type;
             DECL_ARTIFICIAL(decl) = DECL_IGNORED_P(decl) = inherited;
             agg_layout.addField(decl, PTRSIZE);
@@ -4412,7 +4414,7 @@ SynchronizedStatement::toIR(IRState * irs)
         {
             critsec_type = irs->arrayType(Type::tuns8, D_CRITSEC_SIZE);
         }
-        tree critsec_decl = build_decl(VAR_DECL, NULL_TREE, critsec_type);
+        tree critsec_decl = d_build_decl(VAR_DECL, NULL_TREE, critsec_type);
         // name is only used to prevent ICEs
         g.ofile->giveDeclUniqueName(critsec_decl, "__critsec");
         tree critsec_ref = irs->addressOf(critsec_decl); // %% okay to use twice?
@@ -5077,18 +5079,9 @@ d_expand_expr(tree exp, rtx target , enum machine_mode tmode, int modifier, rtx 
 #endif
 
 
-static tree
-d_build_eh_type_type(tree type)
-{
-    TypeClass * d_type = (TypeClass *) IRState::getDType(type);
-    assert(d_type);
-    d_type = (TypeClass *) d_type->toBasetype();
-    assert(d_type->ty == Tclass);
-    return IRState::addressOf(d_type->sym->toSymbol()->Stree);
-}
+// Backend init
 
 tree d_void_zero_node;
-
 tree d_null_pointer;
 tree d_vtbl_ptr_type_node;
 
@@ -5136,8 +5129,8 @@ gcc_d_backend_init()
 
     d_null_pointer = convert(ptr_type_node, integer_zero_node);
 
-    TYPE_NAME(integer_type_node) = build_decl(TYPE_DECL, get_identifier("int"), integer_type_node);
-    TYPE_NAME(char_type_node) = build_decl(TYPE_DECL, get_identifier("char"), char_type_node);
+    TYPE_NAME(integer_type_node) = d_build_decl(TYPE_DECL, get_identifier("int"), integer_type_node);
+    TYPE_NAME(char_type_node) = d_build_decl(TYPE_DECL, get_identifier("char"), char_type_node);
 
     REALSIZE = int_size_in_bytes(long_double_type_node);
     REALPAD = 0;
@@ -5172,16 +5165,8 @@ gcc_d_backend_init()
 
     d_init_builtins();
 
-    if (flag_exceptions) {
-        eh_personality_libfunc = init_one_libfunc(d_using_sjlj_exceptions()
-            ? "__gdc_personality_sj0" : "__gdc_personality_v0");
-#if D_GCC_VER >= 41
-        default_init_unwind_resume_libfunc ();
-#endif
-        lang_eh_runtime_type = d_build_eh_type_type;
-        using_eh_for_cleanups ();
-        // lang_proctect_cleanup_actions = ...; // no need? ... probably needed for autos
-    }
+    if (flag_exceptions)
+        d_init_exceptions();
 
     /* copied and modified from cp/decl.c; only way for vtable to work in gdb... */
     // or not, I'm feeling very confused...

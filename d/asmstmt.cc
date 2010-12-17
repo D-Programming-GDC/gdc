@@ -382,7 +382,7 @@ AsmStatement::toIR(IRState * irs)
                 {
                     /* Constant scalar value.  In order to reference it as memory,
                        create an anonymous static var. */
-                    tree cnst = build_decl(VAR_DECL, NULL_TREE, arg->expr->type->toCtype());
+                    tree cnst = d_build_decl(VAR_DECL, NULL_TREE, arg->expr->type->toCtype());
                     g.ofile->giveDeclUniqueName(cnst);
                     DECL_INITIAL(cnst) = arg->expr->toElem(irs);
                     TREE_STATIC(cnst) = TREE_CONSTANT(cnst) = TREE_READONLY(cnst) =
@@ -429,7 +429,7 @@ AsmStatement::toIR(IRState * irs)
                 /* OLD
                    case Arg_Dollar:
                    if (! dollar_label)
-                   dollar_label = build_decl(LABEL_DECL, NULL_TREE, void_type_node);
+                   dollar_label = d_build_decl(LABEL_DECL, NULL_TREE, void_type_node);
                    arg_val = dollar_label;
                    goto do_pointer;
                  */

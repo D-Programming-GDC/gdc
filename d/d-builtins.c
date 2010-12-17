@@ -69,6 +69,8 @@ extern void dkeep(tree t);
 #include "d-bi-attrs-43.h"
 #elif D_GCC_VER == 44
 #include "d-bi-attrs-44.h"
+#elif D_GCC_VER == 45
+#include "d-bi-attrs-45.h"
 #else
 #error "Version of GCC is not supported."
 #endif
@@ -268,8 +270,8 @@ def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
     va_start (list, n);
     for (i = 0; i < n; ++i)
     {
-        builtin_type a = va_arg (list, builtin_type);
-        t = builtin_types[(int) a];
+        builtin_type a = (builtin_type) va_arg (list, int);
+        t = builtin_types[a];
         if (t == error_mark_node)
             goto egress;
         args = tree_cons (NULL_TREE, t, args);
@@ -280,13 +282,13 @@ def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
     if (!var)
         args = chainon (args, void_list_node);
 
-    t = builtin_types[(int) ret];
+    t = builtin_types[ret];
     if (t == error_mark_node)
         goto egress;
     t = build_function_type (t, args);
 
 egress:
-    builtin_types[(int) def] = t;
+    builtin_types[def] = t;
 }
 
 
@@ -501,7 +503,7 @@ d_builtin_function (const char *name, tree type, int function_code,
 {
     // As of 4.3.x, this is done by add_builtin_function
     //%% for D, just use library_name?
-    tree decl = build_decl (FUNCTION_DECL, get_identifier (name), type);
+    tree decl = d_build_decl (FUNCTION_DECL, get_identifier (name), type);
     DECL_EXTERNAL (decl) = 1;
     TREE_PUBLIC (decl) = 1;
     if (library_name)

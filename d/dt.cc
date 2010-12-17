@@ -279,7 +279,7 @@ dt2tree_list_of_elems(dt_t * dt)
     while (dt)
     {
         tree value = dt2node(dt);
-        tree field = build_decl(FIELD_DECL, NULL_TREE, TREE_TYPE(value));
+        tree field = d_build_decl(FIELD_DECL, NULL_TREE, TREE_TYPE(value));
         DECL_CONTEXT(field) = aggtype;
         DECL_FIELD_OFFSET(field) = offset;
         DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;

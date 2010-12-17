@@ -1,39 +1,34 @@
 /* GDC -- D front-end for GCC
-   Copyright (C) 2004 David Friedman
-
-   Modified by
-    Iain Buclaw, (C) 2010
+   Copyright (C) 2010 Iain Buclaw
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
-
+ 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
+ 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#if D_GCC_VER >= 45
-#include "d-lang-45.h"
-#else
+/* Same as d-lang.h, but updated to support GCC-4.5's new GTY(()) convention */
 
 #ifndef GCC_DCMPLR_DC_LANG_H
 #define GCC_DCMPLR_DC_LANG_H
 
 /* Nothing is added to tree_identifier; */
-struct lang_identifier GTY(())
+struct GTY(()) lang_identifier
 {
     struct tree_identifier ignore;
 };
 
 /* This is required to be defined, but we do not use it. */
-struct language_function GTY(())
+struct GTY(()) language_function
 {
     int unused;
 };
@@ -42,7 +37,7 @@ struct language_function GTY(())
    collection system.  Handle this by using the "skip" attribute. */
 struct Declaration;
 typedef struct Declaration *DeclarationGTYP;
-struct lang_decl GTY(())
+struct GTY(()) lang_decl
 {
     DeclarationGTYP GTY ((skip(""))) d_decl;
 };
@@ -50,41 +45,24 @@ struct lang_decl GTY(())
 /* The lang_type field is not set for every GCC type. */
 struct Type;
 typedef struct Type *TypeGTYP;
-struct lang_type GTY(())
+struct GTY(()) lang_type
 {
     TypeGTYP GTY((skip(""))) d_type;
 };
 
 /* Another required, but unused declaration.  This could be simplified, since
    there is no special lang_identifier */
-union lang_tree_node
-  GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
-       chain_next ("(union lang_tree_node *)GENERIC_NEXT (&%h.generic)")))
+union GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
+           chain_next ("(union lang_tree_node *)TREE_CHAIN (&%h.generic)")))
+lang_tree_node 
 {
-  union tree_node GTY ((tag ("0"),
-                        desc ("tree_node_structure (&%h)")))
+  union tree_node GTY ((tag ("0"), 
+                        desc ("tree_node_structure (&%h)"))) 
     generic;
   struct lang_identifier GTY ((tag ("1"))) identifier;
 };
 
-/* GENERIC_NEXT is needed for 4.3.x only, to prevent ICEs in gtype-d.
-   For everyone else, just alias to TREE_CHAIN. */
-#if D_GCC_VER != 43
-#define GENERIC_NEXT(NODE) TREE_CHAIN(NODE)
-#endif
-
-// These special tree codes are not needed for 4.x
-#if D_GCC_VER < 40
-#undef DEFTREECODE
-#define DEFTREECODE(SYM, NAME, TYPE, LENGTH) SYM,
-
-enum d_tree_code
-{
-  D_DUMMY_TREE_CODE = LAST_AND_UNUSED_TREE_CODE,
-#include "d-tree.def"
-  LAST_D_TREE_CODE
-};
-#endif
+static GTY(()) tree d_eh_personality_decl;
 
 /* True if the Tdelegate typed expression is not really a variable,
    but a literal function / method reference */
@@ -108,7 +86,7 @@ enum d_tree_code
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and
    otherwise support the backend. */
-struct binding_level GTY(())
+struct GTY(()) binding_level
 {
   /* A chain of declarations. These are in the reverse of the order supplied. */
   tree names;
@@ -144,10 +122,7 @@ extern GTY(()) tree d_null_pointer;
 extern GTY(()) tree d_void_zero_node;
 extern GTY(()) tree d_vtbl_ptr_type_node;
 
-#if D_GCC_VER >= 41
-/* not GTY'd because gtype does not actually understand #if */
-extern tree null_node;
-#endif
+extern GTY(()) tree null_node;
 
 #ifdef __cplusplus
 /* In d-lang.cc.  These are called through function pointers
@@ -195,7 +170,7 @@ tree d_signed_type(tree);
 tree d_type_for_size(unsigned bits, int unsignedp);
 tree d_type_for_mode(enum machine_mode mode, int unsignedp);
 void dkeep(tree t);
-
+    
 /* In d-builtins.c */
 extern void d_init_builtins PARAMS ((void));
 extern const struct attribute_spec d_common_attribute_table[];
@@ -220,41 +195,11 @@ extern GTY(()) tree d_keep_list;
 
 #include "d-dmd-gcc.h"
 
-#if D_GCC_VER >= 40
 #define build_type_copy build_variant_type_copy
-#else
-#define TYPE_UNSIGNED TREE_UNSIGNED
-#endif
-
-#if D_GCC_VER < 44
-#define DECL_PURE_P DECL_IS_PURE
-#endif
 
 typedef HOST_WIDE_INT hwint;
 typedef unsigned HOST_WIDE_INT uhwint;
 
-#if D_GCC_VER < 40
-static inline tree build0(enum tree_code o, tree t) { return build(o, t); }
-//static inline tree build1(enum tree_code o, tree t, tree a) { return build(o, t, a); }
-static inline tree build2(enum tree_code o, tree t, tree a, tree b) { return build(o, t, a, b); }
-static inline tree build3(enum tree_code o, tree t, tree a, tree b, tree c) { return build(o, t, a, b, c); }
-static inline tree build4(enum tree_code o, tree t, tree a, tree b, tree c, tree d) { return build(o, t, a, b, c, d); }
-#define gcc_assert(x) (assert(x))
-#define gcc_unreachable(x) (assert(0))
-#endif
-
-#if D_GCC_VER < 41
-//#define d_warning(option, xformat, ...) warning(format, __VA_ARGS__)
-#define d_warning(option, ...) warning(__VA_ARGS__)
-#else
-//#define d_warning(option, format, ...) warning(option, format, __VA_ARGS__)
 #define d_warning(option, ...) warning(option, __VA_ARGS__)
-#endif
-
-#if D_GCC_VER < 43
-#define set_cfun(x) (cfun = (x))
-#endif
 
 #endif
-
-#endif  /* D_GCC_VER >= 45 */

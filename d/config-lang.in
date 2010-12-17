@@ -21,6 +21,11 @@ language="d"
 compilers="cc1d\$(exeext)"
 stagestuff="gdc\$(exeext) gdc-cross\$(exeext) cc1d\$(exeext)"
 
-gtfiles="\$(srcdir)/d/d-lang.h \$(srcdir)/d/d-builtins.c"
+d_gcc_version=$(echo ${gcc_version} | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1\2/')
+if [ ${d_gcc_version} -ge 45 ]; then
+  gtfiles="\$(srcdir)/d/d-lang-45.h \$(srcdir)/d/d-builtins.c"
+else
+  gtfiles="\$(srcdir)/d/d-lang.h \$(srcdir)/d/d-builtins.c"
+fi
 
 target_libs="target-libphobos"

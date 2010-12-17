@@ -22,6 +22,8 @@
 #ifndef GCC_DCMPLR_DC_GCC_INCLUDES_H
 #define GCC_DCMPLR_DC_GCC_INCLUDES_H
 
+// Better to define this here
+#define __STDC_FORMAT_MACROS 1
 
 #if D_GCC_VER >= 43
 // GMP is C++-aware, so we cannot included it in an extern "C" block.

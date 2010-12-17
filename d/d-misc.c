@@ -20,6 +20,9 @@
 #include "system.h"
 #include "coretypes.h"
 #include "tm.h"
+#if D_GCC_VER >= 45
+#include "function.h"
+#endif
 #include "except.h"
 #include "tree.h"
 

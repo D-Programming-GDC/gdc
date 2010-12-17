@@ -130,7 +130,7 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
 tree
 IRState::localVar(tree t_type)
 {
-    tree t_decl = build_decl(VAR_DECL, NULL_TREE, t_type);
+    tree t_decl = d_build_decl(VAR_DECL, NULL_TREE, t_type);
     DECL_CONTEXT(t_decl) = getLocalContext();
     DECL_ARTIFICIAL(t_decl) = 1;
     DECL_IGNORED_P(t_decl) = 1;
@@ -141,7 +141,7 @@ IRState::localVar(tree t_type)
 tree
 IRState::exprVar(tree t_type)
 {
-    tree t_decl = build_decl(VAR_DECL, NULL_TREE, t_type);
+    tree t_decl = d_build_decl(VAR_DECL, NULL_TREE, t_type);
     DECL_CONTEXT(t_decl) = getLocalContext();
     DECL_ARTIFICIAL(t_decl) = 1;
     DECL_IGNORED_P(t_decl) = 1;
@@ -2354,8 +2354,8 @@ IRState::assignValue(Expression * e, VarDeclaration * v)
 tree
 IRState::twoFieldType(tree rec_type, tree ft1, tree ft2, Type * d_type, const char * n1, const char * n2)
 {
-    tree f0 = build_decl(FIELD_DECL, get_identifier(n1), ft1);
-    tree f1 = build_decl(FIELD_DECL, get_identifier(n2), ft2);
+    tree f0 = d_build_decl(FIELD_DECL, get_identifier(n1), ft1, BUILTINS_LOCATION);
+    tree f1 = d_build_decl(FIELD_DECL, get_identifier(n2), ft2, BUILTINS_LOCATION);
     DECL_CONTEXT(f0) = rec_type;
     DECL_CONTEXT(f1) = rec_type;
     TYPE_FIELDS(rec_type) = chainon(f0, f1);
@@ -2367,15 +2367,11 @@ IRState::twoFieldType(tree rec_type, tree ft1, tree ft2, Type * d_type, const ch
 
         /* ObjectFile::declareType will try to declare it as top-level type
            which can break debugging info for element types. */
-        tree stub_decl = build_decl(TYPE_DECL, get_identifier(d_type->toChars()), rec_type);
+        tree stub_decl = d_build_decl(TYPE_DECL, get_identifier(d_type->toChars()),
+                rec_type, BUILTINS_LOCATION);
         TYPE_STUB_DECL(rec_type) = stub_decl;
         TYPE_NAME(rec_type) = stub_decl;
         DECL_ARTIFICIAL(stub_decl) = 1;
-#if D_USE_MAPPED_LOCATION
-        DECL_SOURCE_LOCATION(stub_decl) = BUILTINS_LOCATION;
-        DECL_SOURCE_LOCATION(f0) = BUILTINS_LOCATION;
-        DECL_SOURCE_LOCATION(f1) = BUILTINS_LOCATION;
-#endif
         g.ofile->rodc(stub_decl, 0);
     }
     return rec_type;
@@ -2812,9 +2808,13 @@ IRState::exceptionObject()
     tree obj_type = getObjectType()->toCtype();
     // Like gjc, the actual D exception object is one
     // pointer behind the exception header
-    tree t = build0 (EXC_PTR_EXPR, ptr_type_node);
+#if D_GCC_VER >= 45
+    tree t = buildCall(built_in_decls[BUILT_IN_EH_POINTER],
+                       1, integer_zero_node);
+#else
+    tree t = build0(EXC_PTR_EXPR, ptr_type_node);
+#endif
     t = build1(NOP_EXPR, build_pointer_type(obj_type), t); // treat exception header as (Object*)
-    //t = build2(MINUS_EXPR, TREE_TYPE(t), t, TYPE_SIZE_UNIT(TREE_TYPE(t)));
     t = pointerOffsetOp(MINUS_EXPR, t, TYPE_SIZE_UNIT(TREE_TYPE(t)));
     t = build1(INDIRECT_REF, obj_type, t);
     return t;
@@ -2823,7 +2823,7 @@ IRState::exceptionObject()
 tree
 IRState::label(Loc loc, Identifier * ident)
 {
-    tree t_label = build_decl(LABEL_DECL,
+    tree t_label = d_build_decl(LABEL_DECL,
             ident ? get_identifier(ident->string) : NULL_TREE, void_type_node);
     DECL_CONTEXT(t_label) = current_function_decl;
     DECL_MODE(t_label) = VOIDmode;
@@ -4032,7 +4032,7 @@ void AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
         assert(var_decl->storage_class & STCfield);
 
         tree ident = var_decl->ident ? get_identifier(var_decl->ident->string) : NULL_TREE;
-        tree field_decl = build_decl(FIELD_DECL, ident,
+        tree field_decl = d_build_decl(FIELD_DECL, ident,
             gen.trueDeclarationType(var_decl));
         g.ofile->setDeclLoc(field_decl, var_decl);
         var_decl->csym = new Symbol;
@@ -4072,7 +4072,7 @@ void AggLayout::doInterfaces(Array * bases, AggregateDeclaration * /*agg*/)
     for (unsigned i = 0; i < bases->dim; i++)
     {
         BaseClass * bc = (BaseClass *) bases->data[i];
-        tree decl = build_decl(FIELD_DECL, NULL_TREE,
+        tree decl = d_build_decl(FIELD_DECL, NULL_TREE,
             Type::tvoid->pointerTo()->pointerTo()->toCtype() /* %% better */);
         //DECL_VIRTUAL_P(decl) = 1; %% nobody cares, boo hoo
         DECL_ARTIFICIAL(decl) =

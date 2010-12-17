@@ -312,7 +312,12 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
            done first.  */
         if ((TREE_CODE(decl_tree) == FUNCTION_DECL &&
                     decl_function_context(decl_tree) != NULL_TREE &&
-                    ! DECL_NO_STATIC_CHAIN(decl_tree))
+#if D_GCC_VER >= 45
+                    DECL_STATIC_CHAIN(decl_tree)
+#else
+                    ! DECL_NO_STATIC_CHAIN(decl_tree)
+#endif
+             )
 #if V2
                 || (dsym && is_function_nested_in_function(dsym))
 #endif
@@ -331,14 +336,22 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
            of make_decl_one_only */
         if (SUPPORTS_ONE_ONLY)
         {   // Must check, otherwise backend will abort
+#if D_GCC_VER >= 45
+            make_decl_one_only(decl_tree, DECL_ASSEMBLER_NAME (decl_tree));
+#else
             make_decl_one_only(decl_tree);
+#endif
             return;
         }
         else if (SUPPORTS_WEAK)
         {
             tree orig_init = DECL_INITIAL(decl_tree);
             DECL_INITIAL(decl_tree) = integer_zero_node;
+#if D_GCC_VER >= 45
+            make_decl_one_only(decl_tree, DECL_ASSEMBLER_NAME (decl_tree));
+#else
             make_decl_one_only(decl_tree);
+#endif
             DECL_INITIAL(decl_tree) = orig_init;
             return;
         }
@@ -609,7 +622,7 @@ ObjectFile::initTypeDecl(tree t, Dsymbol * d_sym)
     if (! TYPE_STUB_DECL(t))
     {
         const char * name = d_sym->ident ? d_sym->ident->string : "fix";
-        tree decl = build_decl(TYPE_DECL, get_identifier(name), t);
+        tree decl = d_build_decl(TYPE_DECL, get_identifier(name), t);
         DECL_CONTEXT(decl) = gen.declContext(d_sym);
         setDeclLoc(decl, d_sym);
         initTypeDecl(t, decl);
@@ -622,7 +635,7 @@ ObjectFile::declareType(tree t, Type * d_type)
 {
     // Note: It is not safe to call d_type->toCtype().
     Loc l;
-    tree decl = build_decl(TYPE_DECL, get_identifier(d_type->toChars()), t);
+    tree decl = d_build_decl(TYPE_DECL, get_identifier(d_type->toChars()), t);
     l.filename = "<internal>";
     l.linnum = 1;
     setDeclLoc(decl, l);
@@ -654,7 +667,7 @@ ObjectFile::initTypeDecl(tree t, tree decl)
             case UNION_TYPE:
             {   /* Not sure if there is a need for separate TYPE_DECLs in
                    TYPE_NAME and TYPE_STUB_DECL. */
-                TYPE_STUB_DECL(t) = build_decl(TYPE_DECL, DECL_NAME(decl), t);
+                TYPE_STUB_DECL(t) = d_build_decl(TYPE_DECL, DECL_NAME(decl), t);
 #if D_GCC_VER >= 43
                 DECL_ARTIFICIAL(TYPE_STUB_DECL(t)) = 1; // dunno...
                 // code now assumes...
@@ -763,7 +776,7 @@ make_alias_for_thunk (tree function)
 
     ASM_GENERATE_INTERNAL_LABEL (buf, "LTHUNK", thunk_labelno);
     thunk_labelno++;
-    alias = build_decl (FUNCTION_DECL, get_identifier (buf),
+    alias = d_build_decl (FUNCTION_DECL, get_identifier (buf),
             TREE_TYPE (function));
     DECL_CONTEXT (alias) = NULL;
     TREE_READONLY (alias) = TREE_READONLY (function);
@@ -771,7 +784,9 @@ make_alias_for_thunk (tree function)
     TREE_PUBLIC (alias) = 0;
     DECL_EXTERNAL (alias) = 0;
     DECL_ARTIFICIAL (alias) = 1;
+#if D_GCC_VER < 45
     DECL_NO_STATIC_CHAIN (alias) = 1;
+#endif
 #if D_GCC_VER < 44
     DECL_INLINE (alias) = 0;
 #endif
@@ -827,7 +842,7 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
         const char *fnname;
 
         current_function_decl = thunk_decl;
-        DECL_RESULT(thunk_decl) = build_decl(RESULT_DECL, 0, integer_type_node);
+        DECL_RESULT(thunk_decl) = d_build_decl(RESULT_DECL, 0, integer_type_node);
 
         fnname = XSTR(XEXP(DECL_RTL(thunk_decl), 0), 0);
         gen.initFunctionStart(thunk_decl, 0);
@@ -836,13 +851,15 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
         targetm.asm_out.output_mi_thunk (asm_out_file, thunk_decl,
             delta, 0, alias);
         assemble_end_function(thunk_decl, fnname);
-        current_function_decl = 0;
-        set_cfun(0);
 #if D_GCC_VER < 40
         /* Because init_function_start increments this, we must
            decrement it.  */
         immediate_size_expand--;
+#else
+        free_after_compilation (cfun);
 #endif
+        set_cfun(0);
+        current_function_decl = 0;
         TREE_ASM_WRITTEN (thunk_decl) = 1;
     }
     else
@@ -1005,7 +1022,7 @@ check_static_sym(Symbol * sym)
     if (! sym->Stree)
     {   //assert(sym->Sdt);// Unfortunately cannot check for this; it might be an empty dt_t list...
         tree t_ini = dt2tree(sym->Sdt); // %% recursion problems?
-        tree t_var = build_decl(VAR_DECL, NULL_TREE, TREE_TYPE(t_ini));
+        tree t_var = d_build_decl(VAR_DECL, NULL_TREE, TREE_TYPE(t_ini));
         g.ofile->giveDeclUniqueName(t_var);
         DECL_INITIAL(t_var) = t_ini;
         TREE_STATIC(t_var) = 1;
@@ -1099,7 +1116,7 @@ obj_moduleinfo(Symbol *sym)
     tree f0 = TYPE_FIELDS(mod_ref_type);
     tree f1 = TREE_CHAIN(f0);
 
-    tree our_mod_ref = build_decl(VAR_DECL, NULL_TREE, mod_ref_type);
+    tree our_mod_ref = d_build_decl(VAR_DECL, NULL_TREE, mod_ref_type);
     dkeep(our_mod_ref);
     g.ofile->giveDeclUniqueName(our_mod_ref, "__mod_ref");
     g.ofile->setDeclLoc(our_mod_ref, g.mod);
@@ -1118,7 +1135,7 @@ obj_moduleinfo(Symbol *sym)
     DECL_INITIAL(our_mod_ref) = init;
     g.ofile->rodc(our_mod_ref, 1);
 
-    tree the_mod_ref = build_decl(VAR_DECL, get_identifier("_Dmodule_ref"),
+    tree the_mod_ref = d_build_decl(VAR_DECL, get_identifier("_Dmodule_ref"),
         build_pointer_type(mod_ref_type));
     dkeep(the_mod_ref);
     DECL_EXTERNAL(the_mod_ref) = 1;

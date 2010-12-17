@@ -277,7 +277,7 @@ Symbol *VarDeclaration::toSymbol()
             decl_kind = VAR_DECL;
         }
 
-        var_decl = build_decl(decl_kind, get_identifier(ident_to_use),
+        var_decl = d_build_decl(decl_kind, get_identifier(ident_to_use),
             gen.trueDeclarationType(this));
 
         csym = new Symbol();
@@ -553,7 +553,7 @@ Symbol *FuncDeclaration::toSymbol()
             }
             // %%CHECK: is it okay for static nested functions to have a FUNC_DECL context?
             // seems okay so far...
-            fn_decl = build_decl(FUNCTION_DECL, id, fn_type);
+            fn_decl = d_build_decl(FUNCTION_DECL, id, fn_type);
             dkeep(fn_decl);
             if (ident)
             {
@@ -575,10 +575,17 @@ Symbol *FuncDeclaration::toSymbol()
                 // (tree-nest.c:1282:convert_all_function_calls)
                 && decl_function_context(fn_decl))
             {   // Prevent backend from thinking this is a nested function.
+#if D_GCC_VER < 45
                 DECL_NO_STATIC_CHAIN(fn_decl) = 1;
+#endif
             }
             else
-            {   /* If a template instance has a nested function (because
+            {
+#if D_GCC_VER >= 45
+                // %% GCC-4.5: we do the opposite.
+                DECL_STATIC_CHAIN(fn_decl) = 1;
+#endif
+                /* If a template instance has a nested function (because
                    a template argument is a local variable), the nested
                    function may not have its toObjFile called before the
                    outer function is finished.  GCC requires that nested
@@ -767,7 +774,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
         //sthunk->Sflags |= SFLimplem;
 
         tree target_func_decl = csym->Stree;
-        tree thunk_decl = build_decl(FUNCTION_DECL, get_identifier(id), TREE_TYPE(target_func_decl));
+        tree thunk_decl = d_build_decl(FUNCTION_DECL, get_identifier(id), TREE_TYPE( target_func_decl ));
         dkeep(thunk_decl);
         sthunk->Stree = thunk_decl;
 
@@ -791,7 +798,9 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
 
         DECL_ARTIFICIAL(thunk_decl) = 1;
         DECL_IGNORED_P(thunk_decl) = 1;
+#if D_GCC_VER < 45
         DECL_NO_STATIC_CHAIN(thunk_decl) = 1;
+#endif
 #if D_GCC_VER < 44
         DECL_INLINE(thunk_decl) = 0;
 #endif
@@ -858,7 +867,7 @@ Symbol *ClassDeclaration::toSymbol()
         tree decl;
         csym = toSymbolX("__Class", SCextern, 0, "Z");
         slist_add(csym);
-        decl = build_decl(VAR_DECL, get_identifier(csym->Sident),
+        decl = d_build_decl(VAR_DECL, get_identifier(csym->Sident),
             TREE_TYPE(ClassDeclaration::classinfo != NULL
                 ? ClassDeclaration::classinfo->type->toCtype() // want the RECORD_TYPE, not the REFERENCE_TYPE
                 : error_mark_node));
@@ -919,7 +928,7 @@ Symbol *Module::toSymbol()
         csym = toSymbolX("__ModuleInfo", SCextern, 0, "Z");
         slist_add(csym);
 
-        tree decl = build_decl(VAR_DECL, get_identifier(csym->Sident),
+        tree decl = d_build_decl(VAR_DECL, get_identifier(csym->Sident),
             TREE_TYPE(some_type->toCtype())); // want the RECORD_TYPE, not the REFERENCE_TYPE
         g.ofile->setDeclLoc(decl, this);
         csym->Stree = decl;
@@ -953,7 +962,7 @@ Symbol *ClassDeclaration::toVtblSymbol()
         TypeSArray * vtbl_type = new TypeSArray(Type::tvoid->pointerTo(),
             new IntegerExp(loc, vtbl.dim, Type::tindex));
 
-        decl = build_decl(VAR_DECL, get_identifier(vtblsym->Sident), vtbl_type->toCtype());
+        decl = d_build_decl(VAR_DECL, get_identifier(vtblsym->Sident), vtbl_type->toCtype());
         vtblsym->Stree = decl;
         dkeep(decl);
 
@@ -1000,7 +1009,7 @@ Symbol *AggregateDeclaration::toInitializer()
         tree struct_type = type->toCtype();
         if (POINTER_TYPE_P(struct_type))
             struct_type = TREE_TYPE(struct_type); // for TypeClass, want the RECORD_TYPE, not the REFERENCE_TYPE
-        tree t = build_decl(VAR_DECL, get_identifier(sinit->Sident), struct_type);
+        tree t = d_build_decl(VAR_DECL, get_identifier(sinit->Sident), struct_type);
         sinit->Stree = t;
         dkeep(t);
 
@@ -1056,7 +1065,7 @@ Symbol *EnumDeclaration::toInitializer()
     }
     if (! sinit->Stree && g.ofile != NULL)
     {
-        tree t = build_decl(VAR_DECL, get_identifier(sinit->Sident), type->toCtype());
+        tree t = d_build_decl(VAR_DECL, get_identifier(sinit->Sident), type->toCtype());
         sinit->Stree = t;
         dkeep(t);
 

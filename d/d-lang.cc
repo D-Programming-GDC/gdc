@@ -133,6 +133,15 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_INIT_TS d_init_ts
 #endif
 
+#if D_GCC_VER >= 45
+#undef LANG_HOOKS_EH_PERSONALITY
+#define LANG_HOOKS_EH_PERSONALITY d_eh_personality
+#undef LANG_HOOKS_EH_RUNTIME_TYPE
+#define LANG_HOOKS_EH_RUNTIME_TYPE d_build_eh_type_type
+#undef LANG_HOOKS_EH_USE_CXA_END_CLEANUP
+#define LANG_HOOKS_EH_USE_CXA_END_CLEANUP true
+#endif
+
 
 ////static tree d_type_for_size PARAMS ((unsigned, int));
 static tree d_signed_or_unsigned_type(int, tree);
@@ -810,6 +819,13 @@ bool d_post_options(const char ** fn)
     if (global.params.noboundscheck)
         flag_bounds_check = global.params.useArrayBounds = 0;
 #endif
+
+#if D_GCC_VER >= 45
+    /* Excess precision other than "fast" requires front-end
+       support that we don't offer. */
+    if (flag_excess_precision_cmdline == EXCESS_PRECISION_DEFAULT)
+       flag_excess_precision_cmdline = EXCESS_PRECISION_FAST;
+#endif
     return false;
 }
 
@@ -831,7 +847,8 @@ d_write_global_declarations()
     check_global_declarations(vec, globalFunctions.dim);
 #if D_GCC_VER >= 40
 
-#if D_GCC_VER >= 41
+    /* In 4.5.x, don't call cgraph_optimize() */
+#if D_GCC_VER >= 41 && D_GCC_VER < 45
     cgraph_optimize();
 #endif
 
@@ -897,7 +914,7 @@ static void
 nametype(tree type, const char * name)
 {
     tree ident = get_identifier(name);
-    tree decl = build_decl(TYPE_DECL, ident, type);
+    tree decl = d_build_decl(TYPE_DECL, ident, type);
     TYPE_NAME(type) = decl;
     ObjectFile::rodc(decl, 1);
 }
@@ -1267,6 +1284,21 @@ d_gcc_dump_source(const char * srcname, const char * ext, unsigned char * data, 
     errno=0;
 }
 
+
+tree
+d_build_decl(tree_code code, tree name, tree type, location_t loc)
+{
+    tree t;
+#if D_GCC_VER >= 45
+    t = build_decl(loc, code, name, type);
+#else
+    t = build_decl(code, name, type);
+#if D_USE_MAPPED_LOCATION
+    DECL_SOURCE_LOCATION(t) = loc;
+#endif
+#endif
+    return t;
+}
 
 bool
 d_mark_addressable (tree t)
@@ -1956,5 +1988,48 @@ dkeep(tree t)
     d_keep_list = tree_cons(NULL_TREE, t, d_keep_list);
 }
 
+#if D_GCC_VER >= 45
+/* Return the GDC personality function decl.  */
+static tree
+d_eh_personality (void)
+{
+    if (!d_eh_personality_decl)
+    {
+       d_eh_personality_decl
+           = build_personality_function (d_using_sjlj_exceptions()
+                                         ? "__gdc_personality_sj0"
+                                         : "__gdc_personality_v0");
+    }
+    return d_eh_personality_decl;
+}
+#endif
 
-const struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;
+static tree
+d_build_eh_type_type(tree type)
+{
+    TypeClass * d_type = (TypeClass *) IRState::getDType(type);
+    assert(d_type);
+    d_type = (TypeClass *) d_type->toBasetype();
+    assert(d_type->ty == Tclass);
+    return IRState::addressOf(d_type->sym->toSymbol()->Stree);
+}
+
+void
+d_init_exceptions(void)
+{
+#if D_GCC_VER >= 45
+    // Handled with langhooks eh_personality and eh_runtime_type
+#else
+    eh_personality_libfunc = init_one_libfunc(d_using_sjlj_exceptions()
+            ? "__gdc_personality_sj0" : "__gdc_personality_v0");
+    default_init_unwind_resume_libfunc ();
+    lang_eh_runtime_type = d_build_eh_type_type;
+#endif
+    using_eh_for_cleanups ();
+    // lang_protect_cleanup_actions = ...; // no need? ... probably needed for autos
+}
+
+#if D_GCC_VER < 45
+const
+#endif
+struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;

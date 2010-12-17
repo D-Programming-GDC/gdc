@@ -229,7 +229,7 @@ IRBase::getLabelTree(LabelDsymbol * label)
 
     if (! label->statement->lblock)
     {
-        tree label_decl = build_decl (LABEL_DECL, get_identifier(label->ident->string), void_type_node);
+        tree label_decl = d_build_decl (LABEL_DECL, get_identifier(label->ident->string), void_type_node);
 
         assert(func != 0);
         DECL_CONTEXT( label_decl ) = getLocalContext();
