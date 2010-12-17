@@ -47,13 +47,13 @@ convert (tree type, tree expr)
 elem *
 CondExp::toElem(IRState * irs)
 {
-    tree cn = irs->convertForCondition( econd );
+    tree cn = irs->convertForCondition(econd);
 #if ENABLE_CHECKING
     tree t1 = irs->convertTo(e1, type);
     tree t2 = irs->convertTo(e2, type);
 #else
-    tree t1 = e1->toElem( irs );
-    tree t2 = e2->toElem( irs );
+    tree t1 = e1->toElem(irs);
+    tree t2 = e2->toElem(irs);
 #endif
     return build3(COND_EXPR, type->toCtype(), cn, t1, t2);
 }
@@ -390,8 +390,8 @@ EqualExp::toElem(IRState* irs)
     TY base_ty_1 = base_type_1->ty;
     TY base_ty_2 = e2->type->toBasetype()->ty;
 
-    if ( (base_ty_1 == Tsarray || base_ty_1 == Tarray ||
-             base_ty_2 == Tsarray || base_ty_2 == Tarray) )
+    if ((base_ty_1 == Tsarray || base_ty_1 == Tarray ||
+             base_ty_2 == Tsarray || base_ty_2 == Tarray))
     {
 
         Type * elem_type = base_type_1->nextOf()->toBasetype();
@@ -426,13 +426,13 @@ EqualExp::toElem(IRState* irs)
                 Expression * e = i == 0 ? e1 : e2;
                 TY e_base_ty = i == 0 ? base_ty_1 : base_ty_2;
 
-                if ( e_base_ty == Tarray ) {
-                    tree array_expr = irs->maybeMakeTemp( e->toElem(irs) );
+                if (e_base_ty == Tarray) {
+                    tree array_expr = irs->maybeMakeTemp(e->toElem(irs));
 
-                    data_expr[i] = irs->darrayPtrRef( array_expr );
-                    len_expr[i]  = irs->darrayLenRef( array_expr ); // may be used twice -- should be okay
+                    data_expr[i] = irs->darrayPtrRef(array_expr);
+                    len_expr[i]  = irs->darrayLenRef(array_expr); // may be used twice -- should be okay
                 } else {
-                    data_expr[i] = irs->addressOf( e->toElem(irs) );
+                    data_expr[i] = irs->addressOf(e->toElem(irs));
                     len_expr[i]  = ((TypeSArray *) e->type->toBasetype())->dim->toElem(irs);
                 }
             }
@@ -444,7 +444,7 @@ EqualExp::toElem(IRState* irs)
             size = build2(MULT_EXPR, size_type_node,
                 convert(size_type_node, len_expr[0]), // should be size_type already, though
                 size_int(elem_type->size()));
-            size = fold( size );
+            size = fold(size);
 
             result = irs->buildCall(t_memcmp, 3, data_expr[0], data_expr[1], size);
 
@@ -482,15 +482,15 @@ InExp::toElem(IRState * irs)
 {
     Type * e2_base_type = e2->type->toBasetype();
     AddrOfExpr aoe;
-    assert( e2_base_type->ty == Taarray );
+    assert(e2_base_type->ty == Taarray);
 
     tree args[3];
     Type * key_type = ((TypeAArray *) e2_base_type)->index->toBasetype();
     args[0] = e2->toElem(irs);
     args[1] = irs->typeinfoReference(key_type);
-    args[2] = aoe.set(irs, irs->convertTo( e1, key_type ) );
+    args[2] = aoe.set(irs, irs->convertTo(e1, key_type));
     return d_convert_basic(type->toCtype(),
-        aoe.finish(irs, irs->libCall(LIBCALL_AAINP, 3, args) ));
+        aoe.finish(irs, irs->libCall(LIBCALL_AAINP, 3, args)));
 }
 
 elem *
@@ -500,8 +500,8 @@ CmpExp::toElem(IRState* irs)
     TY base_ty_1 = base_type_1->ty;
     TY base_ty_2 = e2->type->toBasetype()->ty;
 
-    if ( (base_ty_1 == Tsarray || base_ty_1 == Tarray ||
-             base_ty_2 == Tsarray || base_ty_2 == Tarray) ) {
+    if ((base_ty_1 == Tsarray || base_ty_1 == Tarray ||
+             base_ty_2 == Tsarray || base_ty_2 == Tarray)) {
 
         Type * elem_type = base_type_1->nextOf()->toBasetype();
         tree args[3];
@@ -548,7 +548,7 @@ CmpExp::toElem(IRState* irs)
             // %% Could do a check for side effects and drop the unused condition
             return build2(COMPOUND_EXPR, boolean_type_node,
                 result,
-                d_truthvalue_conversion( this->op == TOKunord ? integer_zero_node : integer_one_node ));
+                d_truthvalue_conversion(this->op == TOKunord ? integer_zero_node : integer_one_node));
         case TOKule: out_code = LE_EXPR; break;
         case TOKul:  out_code = LT_EXPR; break;
         case TOKuge: out_code = GE_EXPR; break;
@@ -1167,16 +1167,16 @@ do_array_set(IRState * irs, tree in_ptr, tree in_val, tree in_cnt)
 
     irs->continueHere();
 
-    irs->exitIfFalse( build2(NE_EXPR, boolean_type_node,
-                      convert(TREE_TYPE(count_var), integer_zero_node), count_var) );
+    irs->exitIfFalse(build2(NE_EXPR, boolean_type_node,
+                      convert(TREE_TYPE(count_var), integer_zero_node), count_var));
 
-    irs->doExp( build2(MODIFY_EXPR, void_type_node, irs->indirect(ptr_var), value_to_use));
-    irs->doExp( build2(MODIFY_EXPR, void_type_node, ptr_var,
+    irs->doExp(build2(MODIFY_EXPR, void_type_node, irs->indirect(ptr_var), value_to_use));
+    irs->doExp(build2(MODIFY_EXPR, void_type_node, ptr_var,
                     irs->pointerOffset(ptr_var,
-                        TYPE_SIZE_UNIT(TREE_TYPE(TREE_TYPE(ptr_var)))) ));
-    irs->doExp( build2(MODIFY_EXPR, void_type_node, count_var,
+                        TYPE_SIZE_UNIT(TREE_TYPE(TREE_TYPE(ptr_var))))));
+    irs->doExp(build2(MODIFY_EXPR, void_type_node, count_var,
                     build2(MINUS_EXPR, TREE_TYPE(count_var), count_var,
-                        convert(TREE_TYPE(count_var), integer_one_node))) );
+                        convert(TREE_TYPE(count_var), integer_one_node))));
 
     irs->endLoop();
 
@@ -1187,9 +1187,9 @@ do_array_set(IRState * irs, tree in_ptr, tree in_val, tree in_cnt)
 // Create a tree node to set multiple elements to a single value
 tree array_set_expr(IRState * irs, tree ptr, tree src, tree count) {
 #if D_GCC_VER < 40
-    tree exp = build3( (enum tree_code) D_ARRAY_SET_EXPR, void_type_node,
+    tree exp = build3((enum tree_code) D_ARRAY_SET_EXPR, void_type_node,
         ptr, src, count);
-    TREE_SIDE_EFFECTS( exp ) = 1;
+    TREE_SIDE_EFFECTS(exp) = 1;
     return exp;
 #else
     irs->pushStatementList();
@@ -1230,7 +1230,7 @@ AssignExp::toElem(IRState* irs)
             Expression * ae = ((ArrayLengthExp *) e1)->e1;
             array_type = ae->type;
             elem_type = ae->type->toBasetype()->nextOf(); // don't want ->toBasetype for the element type
-            array_exp = irs->addressOf( ae->toElem( irs ));
+            array_exp = irs->addressOf(ae->toElem(irs));
         }
 #if V1
         gcc_assert(! elem_type->isbit());
@@ -1243,7 +1243,7 @@ AssignExp::toElem(IRState* irs)
             LIBCALL_ARRAYSETLENGTHT : LIBCALL_ARRAYSETLENGTHIT;
 
         result = irs->libCall(lib_call, 3, args);
-        result = irs->darrayLenRef( result );
+        result = irs->darrayLenRef(result);
 
         return result;
     }
@@ -1258,7 +1258,7 @@ AssignExp::toElem(IRState* irs)
             // %% This is used for initing on-stack static arrays..
             // should optimize with memset if possible
             // %% vararg issues
-            tree dyn_array_exp = irs->maybeMakeTemp( e1->toElem(irs) );
+            tree dyn_array_exp = irs->maybeMakeTemp(e1->toElem(irs));
 #if V2
             if (op != TOKblit)
             {
@@ -1279,7 +1279,7 @@ AssignExp::toElem(IRState* irs)
                 }
             }
 #endif
-            tree set_exp = array_set_expr( irs, irs->darrayPtrRef(dyn_array_exp),
+            tree set_exp = array_set_expr(irs, irs->darrayPtrRef(dyn_array_exp),
                 e2->toElem(irs), irs->darrayLenRef(dyn_array_exp));
             return irs->compound(set_exp, dyn_array_exp);
         }
@@ -1310,7 +1310,7 @@ AssignExp::toElem(IRState* irs)
             else
             {
                 tree array[2] = {
-                    irs->maybeMakeTemp( irs->toDArray(e1) ),
+                    irs->maybeMakeTemp(irs->toDArray(e1)),
                     irs->toDArray(e2) };
                 tree t_memcpy = built_in_decls[BUILT_IN_MEMCPY];
                 tree result;
@@ -1319,12 +1319,12 @@ AssignExp::toElem(IRState* irs)
                 size = build2(MULT_EXPR, size_type_node,
                     convert(size_type_node, irs->darrayLenRef(array[0])),
                     size_int(elem_type->size()));
-                size = fold( size );
+                size = fold(size);
 
                 result = irs->buildCall(t_memcpy, 3, irs->darrayPtrRef(array[0]),
                                         irs->darrayPtrRef(array[1]), size);
 
-                return irs->compound( result, array[0], type->toCtype() );
+                return irs->compound(result, array[0], type->toCtype());
             }
         }
     }
@@ -1392,7 +1392,7 @@ IndexExp::toElem(IRState* irs)
         /* arrayElemRef will call aryscp.finish.  This result
            of this function may be used as an lvalue and we
            do not want it to be a BIND_EXPR. */
-        return irs->arrayElemRef( this, & aryscp );
+        return irs->arrayElemRef(this, & aryscp);
     } else {
         Type * key_type = ((TypeAArray *) array_type)->index->toBasetype();
         AddrOfExpr aoe;
@@ -1400,8 +1400,8 @@ IndexExp::toElem(IRState* irs)
         tree t;
         args[0] = e1->toElem(irs);
         args[1] = irs->typeinfoReference(key_type);
-        args[2] = irs->integerConstant( array_type->nextOf()->size(), Type::tsize_t );
-        args[3] = aoe.set(irs, irs->convertTo( e2, key_type ) );
+        args[2] = irs->integerConstant(array_type->nextOf()->size(), Type::tsize_t);
+        args[3] = aoe.set(irs, irs->convertTo(e2, key_type));
         t = irs->libCall(LIBCALL_AAGETRVALUEP, 4, args, type->pointerTo()->toCtype());
         t = aoe.finish(irs, t);
         if (irs->arrayBoundsCheck()) {
@@ -1424,12 +1424,12 @@ CommaExp::toElem(IRState * irs)
         FuncDeclaration * fd;
         /* Handle references to static variable and functions.  Otherwise,
            just let the DotTypeExp report an error. */
-        if (( (vd = ve->var->isVarDeclaration()) && ! vd->needThis() ) ||
-            ( (fd = ve->var->isFuncDeclaration()) && ! fd->isThis() ))
+        if (((vd = ve->var->isVarDeclaration()) && ! vd->needThis()) ||
+            ((fd = ve->var->isFuncDeclaration()) && ! fd->isThis()))
             return e2->toElem(irs);
     }
-    tree t1 = e1->toElem( irs );
-    tree t2 = e2->toElem( irs );
+    tree t1 = e1->toElem(irs);
+    tree t2 = e2->toElem(irs);
 
     assert(type);
     return build2(COMPOUND_EXPR, type->toCtype(), t1, t2);
@@ -1585,8 +1585,8 @@ make_aa_del(IRState * irs, Expression * e_array, Expression * e_index)
 
     args[0] = e_array->toElem(irs);
     args[1] = irs->typeinfoReference(key_type);
-    args[2] = aoe.set(irs, irs->convertTo( e_index, key_type ));
-    return aoe.finish(irs, irs->libCall(LIBCALL_AADELP, 3, args) );
+    args[2] = aoe.set(irs, irs->convertTo(e_index, key_type));
+    return aoe.finish(irs, irs->libCall(LIBCALL_AADELP, 3, args));
 }
 
 elem *
@@ -1713,7 +1713,7 @@ NotExp::toElem(IRState * irs)
 elem *
 ComExp::toElem(IRState * irs)
 {
-    return build1(BIT_NOT_EXPR, type->toCtype(), e1->toElem( irs ));
+    return build1(BIT_NOT_EXPR, type->toCtype(), e1->toElem(irs));
 }
 
 elem *
@@ -1764,7 +1764,7 @@ PtrExp::toElem(IRState * irs)
     else if (e1->op == TOKsymoff)
     {   // is this ever not a VarDeclaration?
         SymOffExp * sym_exp = (SymOffExp *) e1;
-        if ( ! irs->isDeclarationReferenceType(sym_exp->var))
+        if (! irs->isDeclarationReferenceType(sym_exp->var))
         {
             rec_type = sym_exp->var->type->toBasetype();
             VarDeclaration * v = sym_exp->var->isVarDeclaration();
@@ -1832,7 +1832,7 @@ elem *
 DotTypeExp::toElem(IRState *irs)
 {
     // The only case in which this seems to be a valid expression is when
-    // it is used to specify a non-virtual call ( SomeClass.func(...) ).
+    // it is used to specify a non-virtual call (SomeClass.func(...)).
     // This case is handled in IRState::objectInstanceMethod.
     error("cannot use \"%s\" as an expression", toChars());
 
@@ -1942,8 +1942,8 @@ AssertExp::toElem(IRState* irs)
             return irs->libCall(LIBCALL_INVARIANT, 1, & arg);  // this does a null pointer check
         }
         else
-        {   // build: ( (bool) e1  ? (void)0 : _d_assert(...) )
-            //    or: ( e1 != null ? (void)0 : _d_assert(...), e1._invariant() )
+        {   // build: ((bool) e1  ? (void)0 : _d_assert(...))
+            //    or: (e1 != null ? (void)0 : _d_assert(...), e1._invariant())
             tree result;
             tree invc = NULL_TREE;
             tree e1_t = e1->toElem(irs);
@@ -2491,15 +2491,15 @@ StringExp::toElem(IRState * irs)
     TREE_CONSTANT (value) = 1;
     TREE_READONLY (value) = 1;
     // %% array type doesn't match string length if null term'd...
-    TREE_TYPE( value ) = irs->arrayType(base_ty != Tvoid ?
+    TREE_TYPE(value) = irs->arrayType(base_ty != Tvoid ?
         base_type->nextOf() : Type::tchar, len);
 
     switch (base_ty) {
     case Tarray:
-        value = irs->darrayVal(type, len, irs->addressOf( value ));
+        value = irs->darrayVal(type, len, irs->addressOf(value));
         break;
     case Tpointer:
-        value = irs->addressOf( value );
+        value = irs->addressOf(value);
         break;
     case Tsarray:
         // %% needed?
@@ -2761,7 +2761,7 @@ NullExp::toElem(IRState * irs)
     // Move to convert for convertTo if it shows up elsewhere.
     switch (base_ty) {
     case Tarray:
-        return irs->darrayVal( type, 0, NULL );
+        return irs->darrayVal(type, 0, NULL);
     case Taarray:
         {
             tree ctor = make_node(CONSTRUCTOR);
@@ -2779,7 +2779,7 @@ NullExp::toElem(IRState * irs)
         // makeDelegateExpression ?
         return irs->delegateVal(d_null_pointer, d_null_pointer, type);
     default:
-        return convert( type->toCtype(), integer_zero_node );
+        return convert(type->toCtype(), integer_zero_node);
     }
 }
 
@@ -3170,7 +3170,7 @@ FuncDeclaration::toObjFile(int multiobj)
     expand_start_bindings (2);
 
     // Add the argument declarations to the symbol table for the back end
-    set_decl_binding_chain( DECL_ARGUMENTS(fn_decl));
+    set_decl_binding_chain(DECL_ARGUMENTS(fn_decl));
 
     // %% TREE_ADDRESSABLE and TREE_USED...
 
@@ -3334,7 +3334,7 @@ FuncDeclaration::toObjFile(int multiobj)
         irs->addExp(init_exp);
 
         tree cleanup = irs->buildCall(built_in_decls[BUILT_IN_VA_END], 1, var);
-        irs->addExp(build2( TRY_FINALLY_EXPR, void_type_node, body, cleanup));
+        irs->addExp(build2(TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
 #endif
 
@@ -3429,7 +3429,7 @@ FuncDeclaration::buildClosure(IRState * irs)
             v->ident ? get_identifier(v->ident->string) : NULL_TREE,
             gen.trueDeclarationType(v));
         v->toSymbol()->SclosureField = field;
-        g.ofile->setDeclLoc( field, v );
+        g.ofile->setDeclLoc(field, v);
         DECL_CONTEXT(field) = closure_rec_type;
         fields.chain(field);
     }
@@ -3537,32 +3537,32 @@ Type::toCtype() {
         case Tcomplex64: return complex_double_type_node;
         case Tcomplex80: return complex_long_double_type_node;
         case Tbool:
-            if (int_size_in_bytes( boolean_type_node ) == 1)
+            if (int_size_in_bytes(boolean_type_node) == 1)
                 return boolean_type_node;
             // else, drop through
         case Tbit:
             ctype = make_unsigned_type(1);
             TREE_SET_CODE(ctype, BOOLEAN_TYPE);
-            assert(int_size_in_bytes( ctype ) == 1);
+            assert(int_size_in_bytes(ctype) == 1);
             dkeep(ctype);
             return ctype;
         case Tchar:
-            ctype = build_type_copy( unsigned_intQI_type_node );
+            ctype = build_type_copy(unsigned_intQI_type_node);
             return ctype;
         case Twchar:
-            ctype = build_type_copy( unsigned_intHI_type_node );
+            ctype = build_type_copy(unsigned_intHI_type_node);
             return ctype;
         case Tdchar:
-            ctype = build_type_copy( unsigned_intSI_type_node );
+            ctype = build_type_copy(unsigned_intSI_type_node);
             return ctype;
         case Timaginary32:
-            ctype = build_type_copy( float_type_node );
+            ctype = build_type_copy(float_type_node);
             return ctype;
         case Timaginary64:
-            ctype = build_type_copy( double_type_node );
+            ctype = build_type_copy(double_type_node);
             return ctype;
         case Timaginary80:
-            ctype = build_type_copy( long_double_type_node );
+            ctype = build_type_copy(long_double_type_node);
             return ctype;
 
         case Terror: return error_mark_node;
@@ -3609,9 +3609,9 @@ TypeTypedef::toCtype()
     apply_type_attributes(sym->attributes, type_node);
     return type_node;
     /*
-    tree type_decl = build_decl(TYPE_DECL, get_identifier( sym->ident->string ),
+    tree type_decl = build_decl(TYPE_DECL, get_identifier(sym->ident->string),
         type_node);
-    DECL_CONTEXT( type_decl ) =
+    DECL_CONTEXT(type_decl) =
     rest_of_decl_compilation(type_decl, NULL, ?context?, 0); //%% flag
     */
 }
@@ -3644,24 +3644,24 @@ TypeEnum::toCtype()
     if (! ctype) {
         tree enum_mem_type_node = sym->memtype->toCtype();
 
-        ctype = make_node( ENUMERAL_TYPE );
+        ctype = make_node(ENUMERAL_TYPE);
         // %% c-decl.c: if (flag_short_enums) TYPE_PACKED(enumtype) = 1;
-        TYPE_PRECISION( ctype ) = size(0) * 8;
-        TYPE_SIZE( ctype ) = 0; // as in c-decl.c
-        TREE_TYPE( ctype ) = enum_mem_type_node;
+        TYPE_PRECISION(ctype) = size(0) * 8;
+        TYPE_SIZE(ctype) = 0; // as in c-decl.c
+        TREE_TYPE(ctype) = enum_mem_type_node;
         apply_type_attributes(sym->attributes, ctype, true);
 #if V2
         /* Because minval and maxval are of this type,
            ctype needs to be completed enough for
            build_int_cst to work properly. */
-        TYPE_MIN_VALUE( ctype ) = sym->minval->toElem(& gen);
-        TYPE_MAX_VALUE( ctype ) = sym->maxval->toElem(& gen);
+        TYPE_MIN_VALUE(ctype) = sym->minval->toElem(& gen);
+        TYPE_MAX_VALUE(ctype) = sym->maxval->toElem(& gen);
 #else
-        TYPE_MIN_VALUE( ctype ) = gen.integerConstant(sym->minval, enum_mem_type_node);
-        TYPE_MAX_VALUE( ctype ) = gen.integerConstant(sym->maxval, enum_mem_type_node);
+        TYPE_MIN_VALUE(ctype) = gen.integerConstant(sym->minval, enum_mem_type_node);
+        TYPE_MAX_VALUE(ctype) = gen.integerConstant(sym->maxval, enum_mem_type_node);
 #endif
-        layout_type( ctype );
-        TYPE_UNSIGNED( ctype ) = isunsigned() != 0; // layout_type can change this
+        layout_type(ctype);
+        TYPE_UNSIGNED(ctype) = isunsigned() != 0; // layout_type can change this
 
         // Move this to toDebug() ?
         ListMaker enum_values;
@@ -3679,14 +3679,14 @@ TypeEnum::toCtype()
                 /* Enums in D2 can be any data type, not just integers. */
                 enum_values.cons(get_identifier(ident), member->value->toElem(& gen));
 #else
-                enum_values.cons( get_identifier(ident),
-                    gen.integerConstant(member->value->toInteger(), ctype) );
+                enum_values.cons(get_identifier(ident),
+                    gen.integerConstant(member->value->toInteger(), ctype));
 #endif
                 if (sym->ident)
                     free(ident);
             }
         }
-        TYPE_VALUES( ctype ) = enum_values.head;
+        TYPE_VALUES(ctype) = enum_values.head;
 
         g.ofile->initTypeDecl(ctype, sym);
         g.ofile->declareType(ctype, sym);
@@ -3700,9 +3700,9 @@ TypeStruct::toCtype()
 {
     if (! ctype) {
         // need to set this right away in case of self-references
-        ctype = make_node( sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE );
+        ctype = make_node(sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE);
 
-        TYPE_LANG_SPECIFIC( ctype ) = build_d_type_lang_specific(this);
+        TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
 
         /* %% copied from AggLayout::finish -- also have to set the size
            for (indirect) self-references. */
@@ -3710,17 +3710,17 @@ TypeStruct::toCtype()
         /* Must set up the overall size, etc. before determining the
            context or laying out fields as those types may make references
            to this type. */
-        TYPE_SIZE( ctype ) = bitsize_int( sym->structsize * BITS_PER_UNIT );
-        TYPE_SIZE_UNIT( ctype ) = size_int( sym->structsize );
-        TYPE_ALIGN( ctype ) = sym->alignsize * BITS_PER_UNIT; // %%doc int, not a tree
+        TYPE_SIZE(ctype) = bitsize_int(sym->structsize * BITS_PER_UNIT);
+        TYPE_SIZE_UNIT(ctype) = size_int(sym->structsize);
+        TYPE_ALIGN(ctype) = sym->alignsize * BITS_PER_UNIT; // %%doc int, not a tree
         // TYPE_ALIGN_UNIT is not an lvalue
-        TYPE_PACKED ( ctype ) = TYPE_PACKED ( ctype ); // %% todo
+        TYPE_PACKED (ctype) = TYPE_PACKED (ctype); // %% todo
         apply_type_attributes(sym->attributes, ctype, true);
-        compute_record_mode ( ctype );
+        compute_record_mode (ctype);
 
         // %%  stor-layout.c:finalize_type_size ... it's private to that file
 
-        TYPE_CONTEXT( ctype ) = gen.declContext(sym);
+        TYPE_CONTEXT(ctype) = gen.declContext(sym);
 
         g.ofile->initTypeDecl(ctype, sym);
 
@@ -3741,9 +3741,9 @@ TypeStruct::toCtype()
             while (ofs < sym->structsize && sym->structsize - ofs >= 4)
             {
                 tree f = build_decl(FIELD_DECL, get_identifier("_pad"), d_type_for_size(32, 1));
-                DECL_FCONTEXT( f ) = ctype;
-                DECL_ARTIFICIAL( f ) = DECL_IGNORED_P( f ) = 1;
-                DECL_IGNORED_P( f ) = 1;
+                DECL_FCONTEXT(f) = ctype;
+                DECL_ARTIFICIAL(f) = DECL_IGNORED_P(f) = 1;
+                DECL_IGNORED_P(f) = 1;
                 agg_layout.addField(f, ofs);
                 ofs += 4;
             }
@@ -3767,22 +3767,24 @@ Symbol * TypeClass::toSymbol() { return sym->toSymbol(); }
 unsigned TypeFunction::totym() { return 0; } // Unused
 
 type *
-TypeFunction::toCtype() {
+TypeFunction::toCtype()
+{
     // %%TODO: If x86, and D linkage, use regparm(1)
 
-    if (! ctype) {
+    if (! ctype)
+    {
         ListMaker type_list;
         tree ret_type;
 
         // Function type can be reference by parameters, etc.  Set ctype early.
         ctype = make_node(FUNCTION_TYPE);
 
-        if (varargs == 1 && linkage == LINKd) {
-            // hidden _arguments parameter
+        if (varargs == 1 && linkage == LINKd)
+        {   // hidden _arguments parameter
 #if BREAKABI
-            type_list.cons( Type::typeinfotypelist->type->toCtype() );
+            type_list.cons(Type::typeinfotypelist->type->toCtype());
 #else
-            type_list.cons( Type::typeinfo->type->arrayOf()->toCtype() );
+            type_list.cons(Type::typeinfo->type->arrayOf()->toCtype());
 #endif
         }
 
@@ -3790,14 +3792,14 @@ TypeFunction::toCtype() {
             size_t n_args = Parameter::dim(parameters);
             for (size_t i = 0; i < n_args; i++) {
                 Parameter * arg = Parameter::getNth(parameters, i);
-                type_list.cons( IRState::trueArgumentType(arg) );
+                type_list.cons(IRState::trueArgumentType(arg));
             }
         }
 
         /* Last parm if void indicates fixed length list (as opposed to
            printf style va_* list). */
         if (varargs != 1)
-            type_list.cons( void_type_node );
+            type_list.cons(void_type_node);
 
         if (next) {
             ret_type = next->toCtype();
@@ -3809,8 +3811,8 @@ TypeFunction::toCtype() {
             ret_type = build_reference_type(ret_type);
 #endif
 
-        TREE_TYPE( ctype ) = ret_type;
-        TYPE_ARG_TYPES( ctype ) = type_list.head;
+        TREE_TYPE(ctype) = ret_type;
+        TYPE_ARG_TYPES(ctype) = type_list.head;
         layout_type(ctype);
 
         if (linkage == LINKwindows)
@@ -3821,7 +3823,7 @@ TypeFunction::toCtype() {
         /* Setting this on all targets.  TARGET_RETURN_IN_MEMORY has precedence
            over this attribute.  So, only targets on which flag_pcc_struct_return
            is considered will be affected. */
-        if ( (linkage == LINKd && next->size() <= 8) ||
+        if ((linkage == LINKd && next->size() <= 8) ||
              (next && next->toBasetype()->ty == Tarray))
             ctype = gen.addTypeAttribute(ctype, "no_pcc_struct_return");
 
@@ -3902,7 +3904,7 @@ TypeAArray::toCtype()
         static tree aa_type = NULL_TREE;
         if (! aa_type)
         {
-            aa_type = make_node( RECORD_TYPE );
+            aa_type = make_node(RECORD_TYPE);
             tree f0 = build_decl(FIELD_DECL, get_identifier("ptr"), ptr_type_node);
             DECL_CONTEXT(f0) = aa_type;
 #if D_USE_MAPPED_LOCATION
@@ -3922,7 +3924,7 @@ type *
 TypePointer::toCtype()
 {
     if (! ctype)
-        ctype = build_pointer_type( next->toCtype() );
+        ctype = build_pointer_type(next->toCtype());
     return ctype;
 }
 
@@ -3950,7 +3952,7 @@ binfo_for(tree tgt_binfo, ClassDeclaration * cls)
         make_tree_binfo(1)
 #endif
         ;
-    TREE_TYPE              (binfo) = TREE_TYPE( cls->type->toCtype() ); // RECORD_TYPE, not REFERENCE_TYPE
+    TREE_TYPE              (binfo) = TREE_TYPE(cls->type->toCtype()); // RECORD_TYPE, not REFERENCE_TYPE
     BINFO_INHERITANCE_CHAIN(binfo) = tgt_binfo;
     BINFO_OFFSET           (binfo) = size_zero_node; // %% type?, otherwize, integer_zero_node
 
@@ -4009,7 +4011,7 @@ intfc_binfo_for(tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offse
         make_tree_binfo(iface->baseclasses->dim)
 #endif
         ;
-    TREE_TYPE              (binfo) = TREE_TYPE( iface->type->toCtype() ); // RECORD_TYPE, not REFERENCE_TYPE
+    TREE_TYPE              (binfo) = TREE_TYPE(iface->type->toCtype()); // RECORD_TYPE, not REFERENCE_TYPE
     BINFO_INHERITANCE_CHAIN(binfo) = tgt_binfo;
     BINFO_OFFSET           (binfo) = size_int(inout_offset * PTRSIZE);
 
@@ -4034,7 +4036,7 @@ intfc_binfo_for(tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offse
 #endif
 #ifdef BINFO_BASEACCESSES
         tree prot_tree;
-        switch ( bc->protection ) {
+        switch (bc->protection) {
         case PROTpublic:
             prot_tree = access_public_node;
             break;
@@ -4067,16 +4069,16 @@ TypeClass::toCtype()
 
         /* Need to set ctype right away in case of self-references to
            the type during this call. */
-        rec_type = make_node( RECORD_TYPE );
+        rec_type = make_node(RECORD_TYPE);
         //apply_type_attributes(sym->attributes, rec_type, true);
-        ctype = build_reference_type( rec_type );
+        ctype = build_reference_type(rec_type);
         dkeep(ctype); // because BINFO moved out to toDebug
         g.ofile->initTypeDecl(rec_type, sym);
 
-        obj_rec_type = TREE_TYPE( gen.getObjectType()->toCtype() );
+        obj_rec_type = TREE_TYPE(gen.getObjectType()->toCtype());
 
         // Note that this is set on the reference type, not the record type.
-        TYPE_LANG_SPECIFIC( ctype ) = build_d_type_lang_specific( this );
+        TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
 
         AggLayout agg_layout(sym, rec_type);
 
@@ -4090,26 +4092,26 @@ TypeClass::toCtype()
            other changes */
         // Add the virtual table pointer
         tree decl = build_decl(FIELD_DECL, get_identifier("_vptr$"), /*vtbl_type*/d_vtbl_ptr_type_node);
-        agg_layout.addField( decl, 0 ); // %% target stuff..
+        agg_layout.addField(decl, 0); // %% target stuff..
 
         if (inherited) {
-            vfield = copy_node( decl );
-            DECL_ARTIFICIAL( decl ) = DECL_IGNORED_P( decl ) = 1;
+            vfield = copy_node(decl);
+            DECL_ARTIFICIAL(decl) = DECL_IGNORED_P(decl) = 1;
         } else {
             vfield = decl;
         }
-        DECL_VIRTUAL_P( vfield ) = 1;
-        TYPE_VFIELD( rec_type ) = vfield; // This only seems to affect debug info
+        DECL_VIRTUAL_P(vfield) = 1;
+        TYPE_VFIELD(rec_type) = vfield; // This only seems to affect debug info
 
         if (! sym->isInterfaceDeclaration()) {
-            DECL_FCONTEXT( vfield ) = obj_rec_type;
+            DECL_FCONTEXT(vfield) = obj_rec_type;
 
             // Add the monitor
             // %% target type
             decl = build_decl(FIELD_DECL, get_identifier("_monitor"), ptr_type_node);
-            DECL_FCONTEXT( decl ) = obj_rec_type;
-            DECL_ARTIFICIAL( decl ) = DECL_IGNORED_P( decl ) = inherited;
-            agg_layout.addField( decl, PTRSIZE);
+            DECL_FCONTEXT(decl) = obj_rec_type;
+            DECL_ARTIFICIAL(decl) = DECL_IGNORED_P(decl) = inherited;
+            agg_layout.addField(decl, PTRSIZE);
 
             // Add the fields of each base class
             agg_layout.go();
@@ -4118,10 +4120,10 @@ TypeClass::toCtype()
             while (p->baseclasses->dim) {
                 p = ((BaseClass *) p->baseclasses->data[0])->base;
             }
-            DECL_FCONTEXT( vfield ) = TREE_TYPE( p->type->toCtype() );
+            DECL_FCONTEXT(vfield) = TREE_TYPE(p->type->toCtype());
         }
 
-        TYPE_CONTEXT( rec_type ) = gen.declContext(sym);
+        TYPE_CONTEXT(rec_type) = gen.declContext(sym);
 
         agg_layout.finish(sym->attributes);
 
@@ -4132,19 +4134,19 @@ TypeClass::toCtype()
 void
 ClassDeclaration::toDebug()
 {
-    tree rec_type = TREE_TYPE( type->toCtype() );
+    tree rec_type = TREE_TYPE(type->toCtype());
     /* Used to create BINFO even if debugging was off.  This was needed to keep
        references to inherited types. */
 
     g.ofile->addAggMethods(rec_type, this);
 
-    if ( ! isInterfaceDeclaration() )
-        TYPE_BINFO( rec_type ) = binfo_for(NULL_TREE, this);
+    if (! isInterfaceDeclaration())
+        TYPE_BINFO(rec_type) = binfo_for(NULL_TREE, this);
     else {
         unsigned offset = 0;
         BaseClass bc;
         bc.base = this;
-        TYPE_BINFO( rec_type ) = intfc_binfo_for(NULL_TREE, this, offset);
+        TYPE_BINFO(rec_type) = intfc_binfo_for(NULL_TREE, this, offset);
     }
 
     g.ofile->declareType(rec_type, this);
@@ -4297,7 +4299,7 @@ TryCatchStatement::toIR(IRState * irs)
         {
             Catch * a_catch = (Catch *) catches->data[i];
 
-            irs->startCatch(a_catch->type->toCtype()); //expand_start_catch( xxx );
+            irs->startCatch(a_catch->type->toCtype()); //expand_start_catch(xxx);
             irs->doLineNote(a_catch->loc);
             irs->startScope();
 
@@ -4381,10 +4383,10 @@ SynchronizedStatement::toIR(IRState * irs)
         irs->doLineNote(loc);
 #if D_GCC_VER < 40
         irs->expandDecl(decl);
-        irs->doExp( irs->libCall(LIBCALL_MONITORENTER, 1, & decl));
+        irs->doExp(irs->libCall(LIBCALL_MONITORENTER, 1, & decl));
         expand_decl_cleanup(decl, cleanup); // nope,nope just do it diffrent ways or just jump the cleanup like below..
         if (body)
-            body->toIR( irs );
+            body->toIR(irs);
 #else
         irs->expandDecl(decl);
         irs->doExp(irs->libCall(LIBCALL_MONITORENTER, 1, & decl));
@@ -4406,7 +4408,7 @@ SynchronizedStatement::toIR(IRState * irs)
 #endif
         static tree critsec_type = 0;
 
-        if (! critsec_type )
+        if (! critsec_type)
         {
             critsec_type = irs->arrayType(Type::tuns8, D_CRITSEC_SIZE);
         }
@@ -4427,7 +4429,7 @@ SynchronizedStatement::toIR(IRState * irs)
         expand_eh_region_start();
         expand_expr_stmt_value(irs->libCall(LIBCALL_CRITICALENTER, 1, & critsec_ref), 0, 1);
         if (body)
-            body->toIR( irs );
+            body->toIR(irs);
         expand_expr_stmt_value(irs->libCall(LIBCALL_CRITICALEXIT, 1, & critsec_ref), 0, 1);
         expand_eh_region_end_cleanup(irs->libCall(LIBCALL_CRITICALEXIT, 1, & critsec_ref));
 #else
@@ -4474,7 +4476,7 @@ ReturnStatement::toIR(IRState* irs)
         if (func->isMain() && ret_type->toBasetype()->ty == Tvoid)
             ret_type = Type::tint32;
 
-        tree result_decl = DECL_RESULT( irs->func->toSymbol()->Stree );
+        tree result_decl = DECL_RESULT(irs->func->toSymbol()->Stree);
         tree result_value = irs->convertForAssignment(exp, ret_type);
 #if V2
         // %% convert for init -- if we were returning a reference,
@@ -4680,7 +4682,7 @@ ForeachStatement::toIR(IRState *)
     tree iter_decl;
     tree bound_expr;
     tree iter_init_expr;
-    tree aggr_expr = irs->maybeMakeTemp( aggr->toElem(irs) );
+    tree aggr_expr = irs->maybeMakeTemp(aggr->toElem(irs));
 
     assert(value);
 
@@ -4690,7 +4692,7 @@ ForeachStatement::toIR(IRState *)
     irs->startBindings(); /* Variables created by the function will probably
                              end up in a contour created by emitLocalVar.  This
                              startBindings call is just to be safe */
-    irs->doLineNote( loc );
+    irs->doLineNote(loc);
 
     Loc default_loc;
     if (loc.filename)
@@ -4701,15 +4703,15 @@ ForeachStatement::toIR(IRState *)
     }
 
     if (! value->loc.filename)
-        g.ofile->setDeclLoc( value->toSymbol()->Stree, default_loc );
+        g.ofile->setDeclLoc(value->toSymbol()->Stree, default_loc);
 
     irs->emitLocalVar(value, true);
 
     if (key) {
         if (! key->loc.filename)
-            g.ofile->setDeclLoc( key->toSymbol()->Stree, default_loc );
+            g.ofile->setDeclLoc(key->toSymbol()->Stree, default_loc);
         if (! key->init)
-            DECL_INITIAL( key->toSymbol()->Stree ) = op == TOKforeach ?
+            DECL_INITIAL(key->toSymbol()->Stree) = op == TOKforeach ?
                 irs->integerConstant(0, key->type) :
                 irs->arrayLength(aggr_expr, agg_type);
 
@@ -4726,21 +4728,21 @@ ForeachStatement::toIR(IRState *)
         irs->expandDecl(iter_decl);
     }
 
-    if ( agg_type->ty == Tsarray) {
+    if (agg_type->ty == Tsarray) {
         bound_expr = ((TypeSArray *) agg_type)->dim->toElem(irs);
-        iter_init_expr = irs->addressOf( aggr_expr );
+        iter_init_expr = irs->addressOf(aggr_expr);
         // Type needs to be pointer-to-element to get pointerIntSum
         // to work
         iter_init_expr = irs->nop(iter_init_expr,
             agg_type->nextOf()->pointerTo()->toCtype());
     } else {
-        bound_expr = irs->darrayLenRef( aggr_expr );
-        iter_init_expr = irs->darrayPtrRef( aggr_expr );
+        bound_expr = irs->darrayLenRef(aggr_expr);
+        iter_init_expr = irs->darrayPtrRef(aggr_expr);
     }
-    iter_init_expr = save_expr( iter_init_expr );
+    iter_init_expr = save_expr(iter_init_expr);
     bound_expr = irs->pointerIntSum(iter_init_expr, bound_expr);
     // aggr. isn't supposed to be modified, so...
-    bound_expr = save_expr( bound_expr );
+    bound_expr = save_expr(bound_expr);
 
     enum tree_code iter_op = PLUS_EXPR;
 
@@ -4773,21 +4775,21 @@ ForeachStatement::toIR(IRState *)
         incr_expr = irs->compound(incr_expr, key_incr_expr);
     }
 
-    irs->doExp( build2(MODIFY_EXPR, void_type_node, iter_decl, iter_init_expr) );
+    irs->doExp(build2(MODIFY_EXPR, void_type_node, iter_decl, iter_init_expr));
 
     irs->startLoop(this);
     irs->exitIfFalse(condition);
-    if ( op == TOKforeach_reverse )
-        irs->doExp( incr_expr );
-    if ( ! iter_is_value )
-        irs->doExp( build2(MODIFY_EXPR, void_type_node, irs->var(value),
-                        irs->indirect(iter_decl)) );
+    if (op == TOKforeach_reverse)
+        irs->doExp(incr_expr);
+    if (! iter_is_value)
+        irs->doExp(build2(MODIFY_EXPR, void_type_node, irs->var(value),
+                        irs->indirect(iter_decl)));
     if (body)
-        body->toIR( irs );
+        body->toIR(irs);
     irs->continueHere();
 
-    if ( op == TOKforeach )
-        irs->doExp( incr_expr );
+    if (op == TOKforeach)
+        irs->doExp(incr_expr);
 
     irs->endLoop();
 
@@ -4811,7 +4813,7 @@ ForeachRangeStatement::toIR(IRState *)
     irs->startBindings(); /* Variables created by the function will probably
                              end up in a contour created by emitLocalVar.  This
                              startBindings call is just to be safe */
-    irs->doLineNote( loc );
+    irs->doLineNote(loc);
 
     gcc_assert(key != NULL);
     gcc_assert(lwr != NULL);
@@ -4826,7 +4828,7 @@ ForeachRangeStatement::toIR(IRState *)
     tree condition;
 
 #if D_GCC_VER >= 43
-    if ( POINTER_TYPE_P (TREE_TYPE (key_decl)) )
+    if (POINTER_TYPE_P (TREE_TYPE (key_decl)))
     {
         iter_expr = irs->vmodify(key_decl,
             irs->pointerOffsetOp(fwd ? PLUS_EXPR : MINUS_EXPR,
@@ -4840,13 +4842,13 @@ ForeachRangeStatement::toIR(IRState *)
 
     irs->expandDecl(lwr_decl);
     irs->expandDecl(upr_decl);
-    irs->doExp( irs->vmodify(lwr_decl, lwr->toElem(irs)) );
-    irs->doExp( irs->vmodify(upr_decl, upr->toElem(irs)) );
+    irs->doExp(irs->vmodify(lwr_decl, lwr->toElem(irs)));
+    irs->doExp(irs->vmodify(upr_decl, upr->toElem(irs)));
 
     condition = build2(fwd ? LT_EXPR : GT_EXPR, boolean_type_node,
         key_decl, fwd ? upr_decl : lwr_decl);
 
-    irs->doExp( irs->vmodify(key_decl, fwd ? lwr_decl : upr_decl) );
+    irs->doExp(irs->vmodify(key_decl, fwd ? lwr_decl : upr_decl));
 
     irs->startLoop(this);
     if (! fwd)
@@ -4855,8 +4857,8 @@ ForeachRangeStatement::toIR(IRState *)
     if (! fwd)
         irs->doExp(iter_expr);
     if (body)
-        body->toIR( irs );
-    if ( fwd ) {
+        body->toIR(irs);
+    if (fwd) {
         irs->continueHere();
         irs->doExp(iter_expr);
     }
@@ -4918,7 +4920,7 @@ WhileStatement::toIR(IRState *)
     irs->startLoop(this);
     irs->exitIfFalse(condition, 1); // 1 == is topcond .. good as deprecated..
     if (body)
-        body->toIR( irs );
+        body->toIR(irs);
     irs->continueHere();
     irs->endLoop();
 #endif
@@ -4964,7 +4966,7 @@ UnrolledLoopStatement::toIR(IRState* irs)
         Statement * statement = (Statement *) statements->data[i];
         if (statement)
         {
-            irs->setContinueLabel( irs->label(loc) );
+            irs->setContinueLabel(irs->label(loc));
             statement->toIR(irs);
             irs->continueHere();
         }
@@ -5029,7 +5031,7 @@ TypedefDeclaration::cvMember(unsigned char*)
 rtx
 d_expand_expr(tree exp, rtx target , enum machine_mode tmode, int modifier, rtx *)
 {
-    if ( TREE_CODE(exp) == (enum tree_code) D_STMT_EXPR ) {
+    if (TREE_CODE(exp) == (enum tree_code) D_STMT_EXPR) {
         IRState * irs;
         Statement * stmt;
 
@@ -5050,11 +5052,11 @@ d_expand_expr(tree exp, rtx target , enum machine_mode tmode, int modifier, rtx 
         rtx result = expand_expr (rtl_expr, target, tmode, (enum expand_modifier) modifier);
         pop_temp_slots();
         return result;
-    } else if ( TREE_CODE(exp) == (enum tree_code) D_ARRAY_SET_EXPR ){
+    } else if (TREE_CODE(exp) == (enum tree_code) D_ARRAY_SET_EXPR){
         // %% if single byte element, expand to memset
 
-        assert( POINTER_TYPE_P( TREE_TYPE( TREE_OPERAND( exp, 0 ))));
-        assert( INTEGRAL_TYPE_P( TREE_TYPE( TREE_OPERAND( exp, 2 ))));
+        assert(POINTER_TYPE_P(TREE_TYPE(TREE_OPERAND(exp, 0))));
+        assert(INTEGRAL_TYPE_P(TREE_TYPE(TREE_OPERAND(exp, 2))));
         // assuming unsigned source is unsigned
 
         push_temp_slots (); // will this work? maybe expand_start_binding
@@ -5082,7 +5084,7 @@ d_build_eh_type_type(tree type)
     assert(d_type);
     d_type = (TypeClass *) d_type->toBasetype();
     assert(d_type->ty == Tclass);
-    return IRState::addressOf( d_type->sym->toSymbol()->Stree );
+    return IRState::addressOf(d_type->sym->toSymbol()->Stree);
 }
 
 tree d_void_zero_node;
@@ -5134,8 +5136,8 @@ gcc_d_backend_init()
 
     d_null_pointer = convert(ptr_type_node, integer_zero_node);
 
-    TYPE_NAME( integer_type_node ) = build_decl(TYPE_DECL, get_identifier("int"), integer_type_node);
-    TYPE_NAME( char_type_node ) = build_decl(TYPE_DECL, get_identifier("char"), char_type_node);
+    TYPE_NAME(integer_type_node) = build_decl(TYPE_DECL, get_identifier("int"), integer_type_node);
+    TYPE_NAME(char_type_node) = build_decl(TYPE_DECL, get_identifier("char"), char_type_node);
 
     REALSIZE = int_size_in_bytes(long_double_type_node);
     REALPAD = 0;
@@ -5152,7 +5154,7 @@ gcc_d_backend_init()
     default:
         abort();
     }
-    switch ( PTRSIZE ) {
+    switch (PTRSIZE) {
     case 4:
         assert(POINTER_SIZE == 32);
         Tptrdiff_t = Tint32;

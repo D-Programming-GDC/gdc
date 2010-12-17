@@ -856,7 +856,9 @@ IRState::checkedIndex(Loc loc, tree index, tree upper_bound, bool inclusive)
                 assertCall(loc, LIBCALL_ARRAY_BOUNDS));
     }
     else
+    {
         return index;
+    }
 }
 
 

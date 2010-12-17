@@ -60,7 +60,8 @@ SymbolDeclaration::SymbolDeclaration(Loc loc, Symbol *s, StructDeclaration *dsym
 Symbol *SymbolDeclaration::toSymbol()
 {
     // Create the actual back-end value if not yet done
-    if (! sym->Stree) {
+    if (! sym->Stree)
+    {
         if (dsym)
             dsym->toInitializer();
         assert(sym->Stree);
@@ -126,7 +127,10 @@ Symbol *Dsymbol::toImport(Symbol * /*sym*/)
    Otherwise, duplicate names are an error. */
 
 static StringTable * uniqueNames = 0;
-static void uniqueName(Declaration * d, tree t, const char * asm_name) {
+
+static void
+uniqueName(Declaration * d, tree t, const char * asm_name)
+{
     Dsymbol * p = d->toParent2();
     const char * out_name = asm_name;
     char * alloc_name = 0;
@@ -142,9 +146,8 @@ static void uniqueName(Declaration * d, tree t, const char * asm_name) {
         (
          // Static declarations in different scope statements
          (p && p->isFuncDeclaration()) ||
-
          // Top-level duplicate names are okay if private.
-         ((!p || p->isModule()) && d->protection == PROTprivate) ))
+         ((!p || p->isModule()) && d->protection == PROTprivate)))
     {
         StringValue * sv;
 
@@ -153,9 +156,9 @@ static void uniqueName(Declaration * d, tree t, const char * asm_name) {
         if (! uniqueNames)
             uniqueNames = new StringTable;
         sv = uniqueNames->update(asm_name, strlen(asm_name));
-        if (sv->intvalue) {
-            out_name = alloc_name = d_asm_format_private_name(asm_name, sv->intvalue );
-        }
+
+        if (sv->intvalue)
+            out_name = alloc_name = d_asm_format_private_name(asm_name, sv->intvalue);
         sv->intvalue++;
     }
 
@@ -164,12 +167,15 @@ static void uniqueName(Declaration * d, tree t, const char * asm_name) {
     /* In 4.3.x, it is now the job of the front-end to ensure decls get mangled for their target.
        We'll only allow FUNCTION_DECLs and VAR_DECLs for variables with static storage duration
        to get a mangled DECL_ASSEMBLER_NAME. And the backend should handle the rest. */
-    if (f || (v && (v->protection == PROTpublic || v->storage_class & (STCstatic | STCextern)))) {
+    if (f || (v && (v->protection == PROTpublic || v->storage_class & (STCstatic | STCextern))))
+    {
         id = targetm.mangle_decl_assembler_name(t, get_identifier(out_name));
     }
     else
 #endif
-    id = get_identifier(out_name);
+    {
+        id = get_identifier(out_name);
+    }
 
     SET_DECL_ASSEMBLER_NAME(t, id);
 
@@ -258,17 +264,21 @@ Symbol *VarDeclaration::toSymbol()
                  is_template_const ||
                  (
                    isConst()
-                   && ! gen.isDeclarationReferenceType( this ) &&
+                   && ! gen.isDeclarationReferenceType(this) &&
                    type->isscalar() && ! isDataseg()
                  )
 #endif
                  )
+        {
             decl_kind = CONST_DECL;
+        }
         else
+        {
             decl_kind = VAR_DECL;
+        }
 
         var_decl = build_decl(decl_kind, get_identifier(ident_to_use),
-            gen.trueDeclarationType( this ));
+            gen.trueDeclarationType(this));
 
         csym = new Symbol();
         csym->Stree = var_decl;
@@ -285,16 +295,16 @@ Symbol *VarDeclaration::toSymbol()
         if (decl_kind == VAR_DECL)
         {
             g.ofile->setupSymbolStorage(this, var_decl);
-            //DECL_CONTEXT( var_decl ) = gen.declContext(this);//EXPERkinda
+            //DECL_CONTEXT(var_decl) = gen.declContext(this);//EXPERkinda
         }
         else if (decl_kind == PARM_DECL)
         {
             /* from gcc code: Some languages have different nominal and real types.  */
             // %% What about DECL_ORIGINAL_TYPE, DECL_ARG_TYPE_AS_WRITTEN, DECL_ARG_TYPE ?
-            DECL_ARG_TYPE( var_decl ) = TREE_TYPE (var_decl);
+            DECL_ARG_TYPE(var_decl) = TREE_TYPE (var_decl);
 
-            DECL_CONTEXT( var_decl ) = gen.declContext(this);
-            assert( TREE_CODE(DECL_CONTEXT( var_decl )) == FUNCTION_DECL );
+            DECL_CONTEXT(var_decl) = gen.declContext(this);
+            assert(TREE_CODE(DECL_CONTEXT(var_decl)) == FUNCTION_DECL);
         }
         else if (decl_kind == CONST_DECL)
         {
@@ -316,9 +326,9 @@ Symbol *VarDeclaration::toSymbol()
 
             if (e)
             {
-                DECL_INITIAL( var_decl ) = g.irs->assignValue(e, this);
+                DECL_INITIAL(var_decl) = g.irs->assignValue(e, this);
                 if (! DECL_INITIAL(var_decl))
-                    DECL_INITIAL( var_decl ) = e->toElem(g.irs);
+                    DECL_INITIAL(var_decl) = e->toElem(g.irs);
             }
         }
 
@@ -331,20 +341,20 @@ Symbol *VarDeclaration::toSymbol()
 #else
             isConst()
 #endif
-            && ! gen.isDeclarationReferenceType( this ))
+            && ! gen.isDeclarationReferenceType(this))
         {
             // %% CONST_DECLS don't have storage, so we can't use those,
             // but it would be nice to get the benefit of them (could handle in
             // VarExp -- makeAddressOf could switch back to the VAR_DECL
 
-            // if ( typs->isscalar() ) CONST_DECL...
-            TREE_READONLY( var_decl ) = 1;
+            // if (typs->isscalar()) CONST_DECL...
+            TREE_READONLY(var_decl) = 1;
 
             // can at least do this...
             //  const doesn't seem to matter for aggregates, so prevent problems..
-            if ( type->isscalar() || type->isString() )
+            if (type->isscalar() || type->isString())
             {
-                TREE_CONSTANT( var_decl ) = 1;
+                TREE_CONSTANT(var_decl) = 1;
             }
         }
 
@@ -358,18 +368,18 @@ Symbol *VarDeclaration::toSymbol()
 #endif
             && decl_kind != CONST_DECL)
         {
-            DECL_NONLOCAL( var_decl ) = 1;
-            TREE_ADDRESSABLE( var_decl ) = 1;
+            DECL_NONLOCAL(var_decl) = 1;
+            TREE_ADDRESSABLE(var_decl) = 1;
         }
 
-        TREE_USED( var_decl ) = 1;
+        TREE_USED(var_decl) = 1;
 #endif
 
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
         // Have to test for import first
         if (isImportedSymbol())
         {
-            gen.addDeclAttribute( var_decl, "dllimport" );
+            gen.addDeclAttribute(var_decl, "dllimport");
             DECL_DLLIMPORT_P(var_decl) = 1;
         }
         else if (isExport())
@@ -418,13 +428,14 @@ Symbol *ModuleInfoDeclaration::toSymbol()
 
 Symbol *TypeInfoDeclaration::toSymbol()
 {
-    if ( ! csym ) {
+    if (! csym)
+    {
         VarDeclaration::toSymbol();
 
         // This variable is the static initialization for the
         // given TypeInfo.  It is the actual data, not a reference
-        assert( TREE_CODE( TREE_TYPE( csym->Stree )) == REFERENCE_TYPE );
-        TREE_TYPE( csym->Stree ) = TREE_TYPE( TREE_TYPE( csym->Stree ));
+        assert(TREE_CODE(TREE_TYPE(csym->Stree)) == REFERENCE_TYPE);
+        TREE_TYPE(csym->Stree) = TREE_TYPE(TREE_TYPE(csym->Stree));
 
         /* DMD makes typeinfo decls one-only by doing:
 
@@ -434,10 +445,8 @@ Symbol *TypeInfoDeclaration::toSymbol()
            that, in gdc, built-in typeinfo will be referenced as
            one-only.
         */
-
-
-        D_DECL_ONE_ONLY( csym->Stree ) = 1;
-        g.ofile->makeDeclOneOnly( csym->Stree );
+        D_DECL_ONE_ONLY(csym->Stree) = 1;
+        g.ofile->makeDeclOneOnly(csym->Stree);
     }
     return csym;
 }
@@ -720,26 +729,30 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
     /* If the thunk is to be static (that is, it is being emitted in this
        module, there can only be one FUNCTION_DECL for it.   Thus, there
        is a list of all thunks for a given function. */
-    if ( ! csym->thunks )
+    if (! csym->thunks)
         csym->thunks = new Array;
     Array & thunks = * csym->thunks;
     bool found = false;
 
-    for (unsigned i = 0; i < thunks.dim; i++) {
+    for (unsigned i = 0; i < thunks.dim; i++)
+    {
         thunk = (Thunk *) thunks.data[i];
-        if (thunk->offset == offset) {
+        if (thunk->offset == offset)
+        {
             found = true;
             break;
         }
     }
 
-    if (! found) {
+    if (! found)
+    {
         thunk = new Thunk;
         thunk->offset = offset;
         thunks.push(thunk);
     }
 
-    if ( ! thunk->symbol ) {
+    if (! thunk->symbol)
+    {
         char *id;
         char *n;
         //type *t;
@@ -754,7 +767,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
         //sthunk->Sflags |= SFLimplem;
 
         tree target_func_decl = csym->Stree;
-        tree thunk_decl = build_decl(FUNCTION_DECL, get_identifier(id), TREE_TYPE( target_func_decl ));
+        tree thunk_decl = build_decl(FUNCTION_DECL, get_identifier(id), TREE_TYPE(target_func_decl));
         dkeep(thunk_decl);
         sthunk->Stree = thunk_decl;
 
@@ -785,7 +798,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
         DECL_DECLARED_INLINE_P(thunk_decl) = 0;
         //needed on some targets to avoid "causes a section type conflict"
         D_DECL_ONE_ONLY(thunk_decl) = D_DECL_ONE_ONLY(target_func_decl);
-        if ( D_DECL_ONE_ONLY(thunk_decl) )
+        if (D_DECL_ONE_ONLY(thunk_decl))
             g.ofile->makeDeclOneOnly(thunk_decl);
 
         TREE_ADDRESSABLE(thunk_decl) = 1;
@@ -795,7 +808,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
         //g.ofile->prepareSymbolOutput(sthunk);
         g.ofile->doThunk(thunk_decl, target_func_decl, offset);
 #else
-        if ( TREE_STATIC(thunk_decl) )
+        if (TREE_STATIC(thunk_decl))
             g.ofile->doThunk(thunk_decl, target_func_decl, offset);
 #endif
 
@@ -855,8 +868,8 @@ Symbol *ClassDeclaration::toSymbol()
         g.ofile->setupStaticStorage(this, decl);
         g.ofile->setDeclLoc(decl, this);
 
-        TREE_CONSTANT( decl ) = 0; // DMD puts this into .data, not .rodata...
-        TREE_READONLY( decl ) = 0;
+        TREE_CONSTANT(decl) = 0; // DMD puts this into .data, not .rodata...
+        TREE_READONLY(decl) = 0;
     }
     return csym;
 }
@@ -873,10 +886,10 @@ Symbol *InterfaceDeclaration::toSymbol()
         tree decl = csym->Stree;
 
         Symbol * temp_sym = toSymbolX("__Interface", SCextern, 0, "Z");
-        DECL_NAME( decl ) = get_identifier( temp_sym->Sident );
+        DECL_NAME(decl) = get_identifier(temp_sym->Sident);
         delete temp_sym;
 
-        TREE_CONSTANT( decl ) = 1; // Interface ClassInfo images are in .rodata, but classes arent..?
+        TREE_CONSTANT(decl) = 1; // Interface ClassInfo images are in .rodata, but classes arent..?
     }
     return csym;
 }
@@ -915,8 +928,8 @@ Symbol *Module::toSymbol()
 
         g.ofile->setupStaticStorage(this, decl);
 
-        TREE_CONSTANT( decl ) = 0; // *not* readonly, moduleinit depends on this
-        TREE_READONLY( decl ) = 0; // Not an lvalue, tho
+        TREE_CONSTANT(decl) = 0; // *not* readonly, moduleinit depends on this
+        TREE_READONLY(decl) = 0; // Not an lvalue, tho
     }
     return csym;
 }
@@ -940,18 +953,18 @@ Symbol *ClassDeclaration::toVtblSymbol()
         TypeSArray * vtbl_type = new TypeSArray(Type::tvoid->pointerTo(),
             new IntegerExp(loc, vtbl.dim, Type::tindex));
 
-        decl = build_decl( VAR_DECL, get_identifier( vtblsym->Sident ), vtbl_type->toCtype() );
+        decl = build_decl(VAR_DECL, get_identifier(vtblsym->Sident), vtbl_type->toCtype());
         vtblsym->Stree = decl;
         dkeep(decl);
 
         g.ofile->setupStaticStorage(this, decl);
         g.ofile->setDeclLoc(decl, this);
 
-        TREE_READONLY( decl ) = 1;
-        TREE_CONSTANT( decl ) = 1;
-        TREE_ADDRESSABLE( decl ) = 1;
+        TREE_READONLY(decl) = 1;
+        TREE_CONSTANT(decl) = 1;
+        TREE_ADDRESSABLE(decl) = 1;
         // from cp/class.c
-        DECL_CONTEXT (decl) =  TREE_TYPE( type->toCtype() );
+        DECL_CONTEXT (decl) =  TREE_TYPE(type->toCtype());
         DECL_VIRTUAL_P (decl) = 1;
         DECL_ALIGN (decl) = TARGET_VTABLE_ENTRY_ALIGN;
     }
@@ -985,8 +998,8 @@ Symbol *AggregateDeclaration::toInitializer()
     if (! sinit->Stree && g.ofile != NULL)
     {
         tree struct_type = type->toCtype();
-        if ( POINTER_TYPE_P( struct_type ) )
-            struct_type = TREE_TYPE( struct_type ); // for TypeClass, want the RECORD_TYPE, not the REFERENCE_TYPE
+        if (POINTER_TYPE_P(struct_type))
+            struct_type = TREE_TYPE(struct_type); // for TypeClass, want the RECORD_TYPE, not the REFERENCE_TYPE
         tree t = build_decl(VAR_DECL, get_identifier(sinit->Sident), struct_type);
         sinit->Stree = t;
         dkeep(t);
@@ -997,10 +1010,10 @@ Symbol *AggregateDeclaration::toInitializer()
         // %% what's the diff between setting this stuff on the DECL and the
         // CONSTRUCTOR itself?
 
-        TREE_ADDRESSABLE( t ) = 1;
-        TREE_READONLY( t ) = 1;
-        TREE_CONSTANT( t ) = 1;
-        DECL_CONTEXT( t ) = 0; // These are always global
+        TREE_ADDRESSABLE(t) = 1;
+        TREE_READONLY(t) = 1;
+        TREE_CONSTANT(t) = 1;
+        DECL_CONTEXT(t) = 0; // These are always global
     }
     return sinit;
 }
@@ -1049,9 +1062,9 @@ Symbol *EnumDeclaration::toInitializer()
 
         g.ofile->setupStaticStorage(this, t);
         g.ofile->setDeclLoc(t, this);
-        TREE_CONSTANT( t ) = 1;
-        TREE_READONLY( t ) = 1;
-        DECL_CONTEXT( t ) = 0;
+        TREE_CONSTANT(t) = 1;
+        TREE_READONLY(t) = 1;
+        DECL_CONTEXT(t) = 0;
     }
     return sinit;
 }

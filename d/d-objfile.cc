@@ -120,7 +120,7 @@ ObjectFile::finish()
     }
 }
 
-    void
+void
 ObjectFile::doLineNote(const Loc & loc)
 {
     if (loc.filename)
