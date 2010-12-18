@@ -842,8 +842,8 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
         const char *fnname;
 
         current_function_decl = thunk_decl;
-        DECL_RESULT(thunk_decl) = d_build_decl(RESULT_DECL, 0, integer_type_node);
-
+        DECL_RESULT(thunk_decl) = d_build_decl(RESULT_DECL, 0, integer_type_node,
+                                               DECL_SOURCE_LOCATION(thunk_decl));
         fnname = XSTR(XEXP(DECL_RTL(thunk_decl), 0), 0);
         gen.initFunctionStart(thunk_decl, 0);
         cfun->is_thunk = 1;

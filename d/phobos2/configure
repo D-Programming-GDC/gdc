@@ -726,6 +726,7 @@ enable_option_checking
 enable_multilib
 enable_thread_lib
 enable_unix
+enable_druntime_gc
 enable_loader
 enable_proc_maps
 enable_phobos_config_dir
@@ -1361,8 +1362,9 @@ Optional Features:
                           (default: autodetect)
   --enable-unix           enables Unix runtime (default: yes, for Unix
                           targets)
+  --enable-druntime-gc    enable D runtime garbage collector (default: yes)
   --enable-loader         builds the std.loader module (default: yes, if
-                          supported on taret)
+                          supported on target)
   --enable-proc-maps      use /proc/self/maps to find data segments for
                           garbage collection (default: yes, if supported on
                           target)
@@ -4578,6 +4580,14 @@ else
 fi
 
 
+# Check whether --enable-druntime-gc was given.
+if test "${enable_druntime_gc+set}" = set; then :
+  enableval=$enable_druntime_gc; :
+else
+  enable_druntime_gc=yes
+fi
+
+
 # Check whether --enable-loader was given.
 if test "${enable_loader+set}" = set; then :
   enableval=$enable_loader; :
@@ -5792,6 +5802,12 @@ done
 
 D_GC_MODULES=
 D_GC_FLAGS=
+
+if test "$enable_druntime_gc" = "yes"; then
+    D_GC_MODULES="gc/gc.o gc/gcalloc.o gc/gcbits.o gc/gcstats.o gc/gcx.o"
+else
+    D_GC_MODULES="gcstub/gc.o"
+fi
 
 case "$target_os" in
   mingw*)

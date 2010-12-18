@@ -139,10 +139,7 @@ DRUNTIME_OBJS = @DRUNTIME_OBJS@ $(BASE_OBJS) $(RUNTIME_OBJS) \
 	$(UTIL_OBJS) $(subst ti_,rt/typeinfo/ti_,$(TI))
 D_EXTRA_OBJS = @D_EXTRA_OBJS@
 D_GC_FLAGS = @D_GC_FLAGS@
-
-# TODO: support for using gcstub instead.
-D_GC_MODULES = @D_GC_MODULES@ gc/gc.o gc/gcalloc.o gc/gcbits.o \
-	gc/gcstats.o gc/gcx.o
+D_GC_MODULES = @D_GC_MODULES@
 D_PREREQ_SRCS = @D_PREREQ_SRCS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@

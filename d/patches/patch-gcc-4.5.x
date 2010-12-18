@@ -1,6 +1,6 @@
 diff -cr gcc.orig/cgraph.c gcc/cgraph.c
 *** gcc.orig/cgraph.c	2010-07-01 12:03:31.000000000 +0100
---- gcc/cgraph.c	2010-12-17 00:02:54.339729001 +0000
+--- gcc/cgraph.c	2010-12-17 18:25:03.443968543 +0000
 ***************
 *** 464,469 ****
 --- 464,470 ----
@@ -42,7 +42,7 @@ diff -cr gcc.orig/cgraph.c gcc/cgraph.c
       {
 diff -cr gcc.orig/cgraphunit.c gcc/cgraphunit.c
 *** gcc.orig/cgraphunit.c	2010-06-30 14:17:35.000000000 +0100
---- gcc/cgraphunit.c	2010-08-18 10:39:39.101853564 +0100
+--- gcc/cgraphunit.c	2010-12-17 18:25:03.447968543 +0000
 ***************
 *** 1560,1565 ****
 --- 1560,1569 ----
@@ -79,11 +79,11 @@ diff -cr gcc.orig/cgraphunit.c gcc/cgraphunit.c
     gcc_assert (TREE_ASM_WRITTEN (decl));
     current_function_decl = NULL;
 diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
-*** gcc.orig/config/i386/i386.c	2010-07-22 07:42:02.000000000 +0100
---- gcc/config/i386/i386.c	2010-08-18 10:41:01.761854133 +0100
+*** gcc.orig/config/i386/i386.c	2010-09-30 21:24:54.000000000 +0100
+--- gcc/config/i386/i386.c	2010-12-17 18:25:03.479968543 +0000
 ***************
-*** 8135,8140 ****
---- 8135,8144 ----
+*** 8131,8136 ****
+--- 8131,8140 ----
       frame->red_zone_size = 0;
     frame->to_allocate -= frame->red_zone_size;
     frame->stack_pointer_offset -= frame->red_zone_size;
@@ -95,7 +95,7 @@ diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
   
   /* Emit code to save registers in the prologue.  */
 ***************
-*** 26340,26346 ****
+*** 26366,26372 ****
   	  output_set_got (tmp, NULL_RTX);
   
   	  xops[1] = tmp;
@@ -103,7 +103,7 @@ diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
   	  output_asm_insn ("jmp\t{*}%1", xops);
   	}
       }
---- 26344,26350 ----
+--- 26370,26376 ----
   	  output_set_got (tmp, NULL_RTX);
   
   	  xops[1] = tmp;
@@ -112,11 +112,11 @@ diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
   	}
       }
 diff -cr gcc.orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
-*** gcc.orig/config/rs6000/rs6000.c	2010-06-04 05:56:54.000000000 +0100
---- gcc/config/rs6000/rs6000.c	2010-08-18 10:41:48.610861970 +0100
+*** gcc.orig/config/rs6000/rs6000.c	2010-11-17 06:09:53.000000000 +0000
+--- gcc/config/rs6000/rs6000.c	2010-12-17 18:25:03.507968543 +0000
 ***************
-*** 20380,20385 ****
---- 20380,20386 ----
+*** 20365,20370 ****
+--- 20365,20371 ----
   	 a number, so for now use 9.  LTO isn't assigned a number either,
   	 so for now use 0.  */
         if (! strcmp (language_string, "GNU C")
@@ -124,13 +124,12 @@ diff -cr gcc.orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
   	  || ! strcmp (language_string, "GNU GIMPLE"))
   	i = 0;
         else if (! strcmp (language_string, "GNU F77")
-Only in gcc: d
 diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
-*** gcc.orig/dwarf2out.c	2010-07-01 13:31:19.000000000 +0100
---- gcc/dwarf2out.c	2010-08-18 10:47:05.121862669 +0100
+*** gcc.orig/dwarf2out.c	2010-12-07 15:12:45.000000000 +0000
+--- gcc/dwarf2out.c	2010-12-17 18:25:03.527968543 +0000
 ***************
-*** 18721,18726 ****
---- 18721,18728 ----
+*** 18729,18734 ****
+--- 18729,18736 ----
     language = DW_LANG_C89;
     if (strcmp (language_string, "GNU C++") == 0)
       language = DW_LANG_C_plus_plus;
@@ -140,7 +139,7 @@ diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
       language = DW_LANG_Fortran77;
     else if (strcmp (language_string, "GNU Pascal") == 0)
 ***************
-*** 19951,19957 ****
+*** 19967,19973 ****
   
         /* For local statics lookup proper context die.  */
         if (TREE_STATIC (decl) && decl_function_context (decl))
@@ -148,7 +147,7 @@ diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
   
         /* If we are in terse mode, don't generate any DIEs to represent any
   	 variable declarations or definitions.  */
---- 19953,19959 ----
+--- 19969,19975 ----
   
         /* For local statics lookup proper context die.  */
         if (TREE_STATIC (decl) && decl_function_context (decl))
@@ -157,11 +156,11 @@ diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
         /* If we are in terse mode, don't generate any DIEs to represent any
   	 variable declarations or definitions.  */
 diff -cr gcc.orig/expr.c gcc/expr.c
-*** gcc.orig/expr.c	2010-05-31 16:45:06.000000000 +0100
---- gcc/expr.c	2010-08-18 10:52:59.437860800 +0100
+*** gcc.orig/expr.c	2010-09-21 15:18:34.000000000 +0100
+--- gcc/expr.c	2010-12-17 18:25:03.539968543 +0000
 ***************
-*** 9595,9600 ****
---- 9595,9605 ----
+*** 9625,9630 ****
+--- 9625,9635 ----
         /* Lowered by gimplify.c.  */
         gcc_unreachable ();
   
@@ -174,8 +173,8 @@ diff -cr gcc.orig/expr.c gcc/expr.c
         /* Function descriptors are not valid except for as
   	 initialization constants, and should not be expanded.  */
 diff -cr gcc.orig/function.c gcc/function.c
-*** gcc.orig/function.c	2010-02-26 15:58:57.000000000 +0000
---- gcc/function.c	2010-08-18 10:58:10.853854375 +0100
+*** gcc.orig/function.c	2010-08-16 21:18:08.000000000 +0100
+--- gcc/function.c	2010-12-17 18:25:03.551968543 +0000
 ***************
 *** 3202,3208 ****
         FUNCTION_ARG_ADVANCE (all.args_so_far, data.promoted_mode,
@@ -225,7 +224,7 @@ diff -cr gcc.orig/function.c gcc/function.c
     fnargs = assign_parms_augmented_arg_list (&all);
   
 ***************
-*** 4474,4484 ****
+*** 4472,4482 ****
         local = gen_reg_rtx (Pmode);
         chain = targetm.calls.static_chain (current_function_decl, true);
   
@@ -237,7 +236,7 @@ diff -cr gcc.orig/function.c gcc/function.c
   
         /* Mark the register as eliminable, similar to parameters.  */
         if (MEM_P (chain)
---- 4479,4493 ----
+--- 4477,4491 ----
         local = gen_reg_rtx (Pmode);
         chain = targetm.calls.static_chain (current_function_decl, true);
   
@@ -254,8 +253,8 @@ diff -cr gcc.orig/function.c gcc/function.c
         /* Mark the register as eliminable, similar to parameters.  */
         if (MEM_P (chain)
 ***************
-*** 5017,5022 ****
---- 5026,5034 ----
+*** 5015,5020 ****
+--- 5024,5032 ----
   #endif
     edge_iterator ei;
   
@@ -267,7 +266,7 @@ diff -cr gcc.orig/function.c gcc/function.c
     if (HAVE_prologue)
 diff -cr gcc.orig/function.h gcc/function.h
 *** gcc.orig/function.h	2009-11-25 10:55:54.000000000 +0000
---- gcc/function.h	2010-08-18 10:59:14.101862853 +0100
+--- gcc/function.h	2010-12-17 18:25:03.551968543 +0000
 ***************
 *** 596,601 ****
 --- 596,609 ----
@@ -287,7 +286,7 @@ diff -cr gcc.orig/function.h gcc/function.h
   /* If va_list_[gf]pr_size is set to this, it means we don't know how
 diff -cr gcc.orig/gcc.c gcc/gcc.c
 *** gcc.orig/gcc.c	2010-04-18 18:46:08.000000000 +0100
---- gcc/gcc.c	2010-11-07 10:04:54.660192101 +0000
+--- gcc/gcc.c	2010-12-17 18:25:03.559968543 +0000
 ***************
 *** 139,144 ****
 --- 139,147 ----
@@ -401,7 +400,7 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
   	  case '{':
 diff -cr gcc.orig/gimple.c gcc/gimple.c
 *** gcc.orig/gimple.c	2010-06-22 19:23:11.000000000 +0100
---- gcc/gimple.c	2010-08-18 11:06:50.025853477 +0100
+--- gcc/gimple.c	2010-12-17 18:25:03.567968543 +0000
 ***************
 *** 2404,2409 ****
 --- 2404,2411 ----
@@ -444,11 +443,11 @@ diff -cr gcc.orig/gimple.c gcc/gimple.c
   }
   
 diff -cr gcc.orig/gimplify.c gcc/gimplify.c
-*** gcc.orig/gimplify.c	2010-06-15 13:17:16.000000000 +0100
---- gcc/gimplify.c	2010-08-18 11:08:49.465856538 +0100
+*** gcc.orig/gimplify.c	2010-11-11 20:36:49.000000000 +0000
+--- gcc/gimplify.c	2010-12-17 18:25:03.575968543 +0000
 ***************
-*** 6630,6635 ****
---- 6630,6641 ----
+*** 6646,6651 ****
+--- 6646,6657 ----
   	    }
   	  break;
   
@@ -463,7 +462,7 @@ diff -cr gcc.orig/gimplify.c gcc/gimplify.c
   
 diff -cr gcc.orig/tree.def gcc/tree.def
 *** gcc.orig/tree.def	2010-04-02 20:54:46.000000000 +0100
---- gcc/tree.def	2010-08-18 11:10:51.221875866 +0100
+--- gcc/tree.def	2010-12-17 18:25:03.575968543 +0000
 ***************
 *** 543,548 ****
 --- 543,555 ----
@@ -482,7 +481,7 @@ diff -cr gcc.orig/tree.def gcc/tree.def
      The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
 diff -cr gcc.orig/tree-dump.c gcc/tree-dump.c
 *** gcc.orig/tree-dump.c	2009-12-31 10:52:56.000000000 +0000
---- gcc/tree-dump.c	2010-08-18 11:11:19.941852718 +0100
+--- gcc/tree-dump.c	2010-12-17 18:25:03.579968543 +0000
 ***************
 *** 639,644 ****
 --- 639,648 ----
@@ -497,10 +496,10 @@ diff -cr gcc.orig/tree-dump.c gcc/tree-dump.c
         {
   	unsigned HOST_WIDE_INT cnt;
 diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
-*** gcc.orig/tree-inline.c	2010-06-22 19:23:11.000000000 +0100
---- gcc/tree-inline.c	2010-12-16 12:13:55.815974924 +0000
+*** gcc.orig/tree-inline.c	2010-09-25 22:38:56.000000000 +0100
+--- gcc/tree-inline.c	2010-12-17 18:25:03.587968543 +0000
 ***************
-*** 2599,2605 ****
+*** 2607,2613 ****
     /* Initialize the static chain.  */
     p = DECL_STRUCT_FUNCTION (fn)->static_chain_decl;
     gcc_assert (fn != current_function_decl);
@@ -508,7 +507,7 @@ diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
       {
         /* No static chain?  Seems like a bug in tree-nested.c.  */
         gcc_assert (static_chain);
---- 2599,2606 ----
+--- 2607,2614 ----
     /* Initialize the static chain.  */
     p = DECL_STRUCT_FUNCTION (fn)->static_chain_decl;
     gcc_assert (fn != current_function_decl);
@@ -518,8 +517,8 @@ diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
         /* No static chain?  Seems like a bug in tree-nested.c.  */
         gcc_assert (static_chain);
 diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
-*** gcc.orig/tree-nested.c	2010-04-20 09:36:45.000000000 +0100
---- gcc/tree-nested.c	2010-08-18 11:20:26.277853862 +0100
+*** gcc.orig/tree-nested.c	2010-08-31 22:08:15.000000000 +0100
+--- gcc/tree-nested.c	2010-12-17 18:25:03.591968543 +0000
 ***************
 *** 750,755 ****
 --- 750,757 ----
@@ -573,7 +572,7 @@ diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
         /* Keep looking for other operands.  */
         *handled_ops_p = false;
 ***************
-*** 2371,2378 ****
+*** 2366,2373 ****
         gimple bind;
         annotate_all_with_location (stmt_list, DECL_SOURCE_LOCATION (context));
         bind = gimple_seq_first_stmt (gimple_body (context));
@@ -582,7 +581,7 @@ diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
       }
   
     /* If a chain_decl was created, then it needs to be registered with
---- 2396,2433 ----
+--- 2391,2428 ----
         gimple bind;
         annotate_all_with_location (stmt_list, DECL_SOURCE_LOCATION (context));
         bind = gimple_seq_first_stmt (gimple_body (context));
@@ -623,7 +622,7 @@ diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
     /* If a chain_decl was created, then it needs to be registered with
 diff -cr gcc.orig/tree-pretty-print.c gcc/tree-pretty-print.c
 *** gcc.orig/tree-pretty-print.c	2009-11-30 10:36:54.000000000 +0000
---- gcc/tree-pretty-print.c	2010-08-18 11:21:06.369853478 +0100
+--- gcc/tree-pretty-print.c	2010-12-17 18:25:03.595968543 +0000
 ***************
 *** 1410,1415 ****
 --- 1410,1425 ----
@@ -644,11 +643,11 @@ diff -cr gcc.orig/tree-pretty-print.c gcc/tree-pretty-print.c
         NIY;
         break;
 diff -cr gcc.orig/tree-sra.c gcc/tree-sra.c
-*** gcc.orig/tree-sra.c	2010-07-21 14:57:12.000000000 +0100
---- gcc/tree-sra.c	2010-08-18 18:24:03.270461386 +0100
+*** gcc.orig/tree-sra.c	2010-08-03 10:52:46.000000000 +0100
+--- gcc/tree-sra.c	2010-12-17 18:25:03.599968543 +0000
 ***************
-*** 1509,1514 ****
---- 1509,1516 ----
+*** 1505,1510 ****
+--- 1505,1512 ----
   /* The very first phase of intraprocedural SRA.  It marks in candidate_bitmap
      those with type which is suitable for scalarization.  */
   
@@ -659,7 +658,7 @@ diff -cr gcc.orig/tree-sra.c gcc/tree-sra.c
   {
 diff -cr gcc.orig/tree-ssa-operands.c gcc/tree-ssa-operands.c
 *** gcc.orig/tree-ssa-operands.c	2010-04-02 20:54:46.000000000 +0100
---- gcc/tree-ssa-operands.c	2010-10-03 15:56:08.697983002 +0100
+--- gcc/tree-ssa-operands.c	2010-12-17 18:25:03.603968543 +0000
 ***************
 *** 1001,1006 ****
 --- 1001,1012 ----

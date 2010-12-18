@@ -118,11 +118,17 @@ AC_ARG_ENABLE(unix,
                  [enables Unix runtime (default: yes, for Unix targets)]),
   :,[enable_unix=auto])
 
+dnl switch between gc and gcstub
+AC_ARG_ENABLE(druntime-gc,
+  AC_HELP_STRING([--enable-druntime-gc],
+                 [enable D runtime garbage collector (default: yes)]),
+  :,[enable_druntime_gc=yes])
+
 dnl If Phobos is built as a shared library, the loader module may add a library
 dnl dependency (-ldl on Linux).  So, make it optional for now.
 AC_ARG_ENABLE(loader,
   AC_HELP_STRING([--enable-loader],
-                 [builds the std.loader module (default: yes, if supported on taret)]),
+                 [builds the std.loader module (default: yes, if supported on target)]),
   :,[enable_loader=yes])
 
 AC_ARG_ENABLE(proc-maps,
@@ -664,6 +670,12 @@ AC_SUBST(srcdir)
 
 D_GC_MODULES=
 D_GC_FLAGS=
+
+if test "$enable_druntime_gc" = "yes"; then
+    D_GC_MODULES="gc/gc.o gc/gcalloc.o gc/gcbits.o gc/gcstats.o gc/gcx.o"
+else
+    D_GC_MODULES="gcstub/gc.o"
+fi
 
 case "$target_os" in
   mingw*)

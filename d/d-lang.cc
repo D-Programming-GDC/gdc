@@ -194,6 +194,8 @@ d_init_options (unsigned int, const char ** argv)
 
     // GCC options
     flag_exceptions = 1;
+    flag_complex_method = 2;
+    flag_errno_math = 0;
 
     // extra D-specific options
     gen.splitDynArrayVarArgs = true;
@@ -790,9 +792,6 @@ bool d_post_options(const char ** fn)
     // Save register names for restoring later.
     memcpy (saved_reg_names, reg_names, sizeof reg_names);
 
-    // Unlike C, there is no global 'errno' variable.
-    flag_errno_math = 0;
-
 #if D_GCC_VER >= 43
     // Workaround for embedded functions, don't inline if debugging is on.
     // See Issue #38 for why.
@@ -1290,6 +1289,10 @@ tree
 d_build_decl(tree_code code, tree name, tree type, location_t loc)
 {
     tree t;
+    if (!loc)
+    {   // Prefer input location if location is unknown.
+        loc = input_location;
+    }
 #if D_GCC_VER >= 45
     t = build_decl(loc, code, name, type);
 #else

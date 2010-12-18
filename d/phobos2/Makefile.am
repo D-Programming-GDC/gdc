@@ -173,10 +173,6 @@ CMAIN_OBJS=rt/dmain2.o
 
 D_GC_MODULES=@D_GC_MODULES@
 
-# TODO: support for using gcstub instead.
-D_GC_MODULES+=gc/gc.o gc/gcalloc.o gc/gcbits.o \
-              gc/gcstats.o gc/gcx.o
-
 # Regardless of OS, all import headers are generated.
 CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
              core/dll_helper.di core/exception.di core/memory.di \
