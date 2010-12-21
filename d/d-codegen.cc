@@ -70,9 +70,6 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
     {
         var_exp = var_decl;
         pushdecl(var_decl);
-#if D_GCC_VER < 40
-        expand_decl(var_decl);
-#endif
     }
 
     tree init_exp = NULL_TREE; // complete initializer expression (include MODIFY_EXPR, e.g.)
@@ -102,23 +99,8 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
             init_val = DECL_INITIAL(var_decl);
             DECL_INITIAL(var_decl) = NULL_TREE; // %% from expandDecl
         }
-#if D_GCC_VER < 40
-        if (init_val
-#if V2
-            && ! sym->SclosureField
-#endif
-            )
-        {
-            // not sure if there is any advantage to doing this...
-            DECL_INITIAL(var_decl) = init_val;
-            expand_decl_init(var_decl);
-        }
-        else
-#endif
-        {
-            if (! init_exp && init_val)
-                init_exp = vmodify(var_exp, init_val);
-        }
+        if (! init_exp && init_val)
+            init_exp = vmodify(var_exp, init_val);
 
         if (init_exp)
             addExp(init_exp);
@@ -220,18 +202,12 @@ IRState::declContext(Dsymbol * d_sym)
 void
 IRState::expandDecl(tree t_decl)
 {
-#if D_GCC_VER < 40
-    expand_decl(t_decl);
-    if (DECL_INITIAL(t_decl))
-        expand_decl_init(t_decl);
-#else
     // nothing, pushdecl will add t_decl to a BIND_EXPR
     if (DECL_INITIAL(t_decl))
     {   // void_type_node%%?
         doExp(build2(MODIFY_EXPR, void_type_node, t_decl, DECL_INITIAL(t_decl)));
         DECL_INITIAL(t_decl) = NULL_TREE;
     }
-#endif
 }
 
 #if V2
@@ -960,7 +936,6 @@ IRState::hwi2toli(HOST_WIDE_INT low, HOST_WIDE_INT high)
 }
 
 
-#if D_GCC_VER >= 40
 tree
 IRState::binding(tree var_chain, tree body)
 {
@@ -989,7 +964,6 @@ IRState::binding(tree var_chain, tree body)
     return build3(BIND_EXPR, TREE_TYPE(body), var_chain, body, NULL_TREE);
 #endif
 }
-#endif
 
 tree
 IRState::libCall(LibCall lib_call, unsigned n_args, tree *args, tree force_result_type)
@@ -2672,12 +2646,12 @@ IRState::arrayType(tree type_node, uinteger_t size)
 tree
 IRState::addTypeAttribute(tree type, const char * attrname, tree value)
 {
-    // use build_type_copy / build_type_attribute_variant
+    // use build_variant_type_copy / build_type_attribute_variant
 
     // types built by functions in tree.c need to be treated as immutable
     if (! TYPE_ATTRIBUTES(type))
     {   // ! TYPE_ATTRIBUTES -- need a better check
-        type = build_type_copy(type);
+        type = build_variant_type_copy(type);
         // TYPE_STUB_DECL(type) = .. if we need this for structs, etc.. since
         // TREE_CHAIN is cleared by COPY_NODE
     }
@@ -2759,25 +2733,7 @@ IRState::integerConstant(dinteger_t value, tree type)
     if (isErrorMark(type))
         return type;
 
-#if D_GCC_VER < 40
-    // Assuming dinteger_t is 64 bits
-# if HOST_BITS_PER_WIDE_INT == 32
-    tree tree_value = build_int_2(value & 0xffffffff, (value >> 32) & 0xffffffff);
-# elif HOST_BITS_PER_WIDE_INT == 64
-    tree tree_value = build_int_2(value,
-            type && ! TYPE_UNSIGNED(type) && (value & 0x8000000000000000ULL) ?
-            ~(unsigned HOST_WIDE_INT) 0 : 0);
-# else
-#  error Fix This
-# endif
-    if (type)
-    {
-        TREE_TYPE(tree_value) = type;
-        // May not to call force_fit_type for 3.3.x and 3.4.x, but being safe.
-        force_fit_type(tree_value, 0);
-    }
-#else
-# if HOST_BITS_PER_WIDE_INT == 32
+#if HOST_BITS_PER_WIDE_INT == 32
 #  if D_GCC_VER >= 43
     tree tree_value = build_int_cst_wide_type(type, value & 0xffffffff,
                                               (value >> 32) & 0xffffffff);
@@ -2785,20 +2741,19 @@ IRState::integerConstant(dinteger_t value, tree type)
     tree tree_value = build_int_cst_wide(type, value & 0xffffffff,
                                          (value >> 32) & 0xffffffff);
 #  endif
-# elif HOST_BITS_PER_WIDE_INT == 64
+#elif HOST_BITS_PER_WIDE_INT == 64
     tree tree_value = build_int_cst_type(type, value);
-# else
+#else
 #  error Fix This
-# endif
+#endif
 
-# if D_GCC_VER < 43
+#if D_GCC_VER < 43
     /* VALUE may be an incorrect representation for TYPE.  Example:
        uint x = cast(uint) -3; // becomes "-3u" -- value=0xfffffffffffffd type=Tuns32
        Constant folding will not work correctly unless this is done. */
     tree_value = force_fit_type(tree_value, 0, 0, 0);
 #endif
 
-#endif
     return tree_value;
 }
 
@@ -3004,19 +2959,10 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
         return getClosureRef(outer_func);
 #endif
 
-#if D_GCC_VER < 40
-    tree result = make_node (RTL_EXPR);
-    TREE_TYPE (result) = ptr_type_node;
-    RTL_EXPR_RTL (result) = nested_func ?
-        lookup_static_chain(nested_func->toSymbol()->Stree) :
-        virtual_stack_vars_rtx;
-    return result;
-#else
     if (! outer_func)
         outer_func = nested_func->toParent2()->isFuncDeclaration();
     gcc_assert(outer_func != NULL);
     return build1(STATIC_CHAIN_EXPR, ptr_type_node, outer_func->toSymbol()->Stree);
-#endif
 }
 
 bool
@@ -3440,216 +3386,6 @@ IRState::toElemLvalue(Expression * e)
 }
 
 
-#if D_GCC_VER < 40
-
-void
-IRState::startCond(Statement * stmt, Expression * e_cond)
-{
-    clear_last_expr ();
-    g.ofile->doLineNote(stmt->loc);
-    expand_start_cond(convertForCondition(e_cond), 0);
-}
-
-void
-IRState::startElse()
-{
-    expand_start_else();
-}
-
-void
-IRState::endCond()
-{
-    expand_end_cond();
-}
-
-void
-IRState::startLoop(Statement * stmt)
-{
-    beginFlow(stmt, expand_start_loop_continue_elsewhere(1));
-}
-
-void
-IRState::continueHere()
-{
-    Flow * f = currentFlow();
-    if (f->overrideContinueLabel)
-        doLabel(f->overrideContinueLabel);
-    else
-        expand_loop_continue_here();
-}
-
-void
-IRState::setContinueLabel(tree lbl)
-{
-    currentFlow()->overrideContinueLabel = lbl;
-}
-
-void
-IRState::exitIfFalse(tree t_cond, bool is_top_cond)
-{
-    // %% topcond compaitble with continue_elswehre?
-    expand_exit_loop_if_false(currentFlow()->loop, t_cond);
-}
-
-void
-IRState::startCase(Statement * stmt, tree t_cond, int var_cases)
-{
-    clear_last_expr ();
-    g.ofile->doLineNote(stmt->loc);
-    expand_start_case(1, t_cond, TREE_TYPE(t_cond), "switch statement");
-    Flow * f = beginFlow(stmt, NULL);
-    f->kind = level_switch;
-}
-
-void
-IRState::doCase(tree t_value, tree t_label)
-{
-    tree dummy;
-    // %% not the same convert that is in d-glue!!
-    pushcase(t_value, convert, t_label, & dummy);
-}
-
-void
-IRState::endCase(tree t_cond)
-{
-    expand_end_case(t_cond);
-    endFlow();
-}
-
-void
-IRState::endLoop()
-{
-    expand_end_loop();
-    endFlow();
-}
-
-void
-IRState::continueLoop(Identifier * ident)
-{
-    Flow * f = getLoopForLabel(ident, true);
-    if (f->overrideContinueLabel)
-        doJump(NULL, f->overrideContinueLabel);
-    else
-        expand_continue_loop(f->loop);
-}
-
-void
-IRState::exitLoop(Identifier * ident)
-{
-    if (ident)
-    {
-        Flow * flow = getLoopForLabel(ident);
-        if (flow->loop)
-            expand_exit_loop(flow->loop);
-        else
-        {
-            if (! flow->exitLabel)
-                flow->exitLabel = label(flow->statement->loc);
-            expand_goto(flow->exitLabel);
-        }
-    }
-    else
-    {
-        expand_exit_something();
-    }
-}
-
-void
-IRState::startTry(Statement * stmt)
-{
-    beginFlow(stmt, NULL);
-    currentFlow()->kind = level_try;
-    expand_eh_region_start();
-}
-
-void
-IRState::startCatches()
-{
-    currentFlow()->kind = level_catch;
-    expand_start_all_catch();
-}
-
-void
-IRState::startCatch(tree t_type)
-{
-    expand_start_catch(t_type);
-}
-
-void
-IRState::endCatch()
-{
-    expand_end_catch();
-}
-
-void
-IRState::endCatches()
-{
-    expand_end_all_catch();
-    endFlow();
-}
-
-void
-IRState::startFinally()
-{
-    abort();
-}
-
-void
-IRState::endFinally()
-{
-    abort();
-}
-
-void
-IRState::doReturn(tree t_value)
-{
-    if (t_value)
-        expand_return(t_value);
-    else
-        expand_null_return();
-}
-
-void
-IRState::doJump(Statement * stmt, tree t_label)
-{
-    // %%TODO: c-semantics.c:expand_stmt GOTO_STMT branch prediction
-    if (stmt)
-        g.ofile->doLineNote(stmt->loc);
-    expand_goto(t_label);
-    D_LABEL_IS_USED(t_label) = 1;
-}
-
-tree
-IRState::makeStmtExpr(Statement * statement)
-{
-    tree t = build1((enum tree_code) D_STMT_EXPR, void_type_node, NULL_TREE);
-    TREE_SIDE_EFFECTS(t) = 1; // %%
-    stmtExprList.push(t);
-    stmtExprList.push(statement);
-    stmtExprList.push(this);
-    return t;
-}
-
-void
-IRState::retrieveStmtExpr(tree t, Statement ** s_out, IRState ** i_out)
-{
-    for (int i = stmtExprList.dim - 3; i >= 0 ; i -= 3)
-    {
-        if ((tree) stmtExprList.data[i] == t)
-        {
-            *s_out = (Statement *) stmtExprList.data[i + 1];
-            *i_out = (IRState *)   stmtExprList.data[i + 2];
-            // The expression could be evaluated multiples times, so we must
-            // keep the values forever --- %% go back to per-function list
-            return;
-        }
-    }
-    abort();
-    return;
-}
-
-#else
-
 void
 IRState::startCond(Statement * stmt, tree t_cond)
 {
@@ -3883,18 +3619,13 @@ IRState::makeStmtExpr(Statement * statement)
     return t_list;
 }
 
-#endif
 
 void
 IRState::doAsm(tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
 {
-#if D_GCC_VER < 40
-    expand_asm_operands(insn_tmpl, outputs, inputs, clobbers, 1, input_location);
-#else
     tree t = d_build_asm_stmt(insn_tmpl, outputs, inputs, clobbers);
     ASM_VOLATILE_P(t) = 1;
     addExp(t);
-#endif
 }
 
 

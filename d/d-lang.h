@@ -73,18 +73,6 @@ union lang_tree_node
 #define GENERIC_NEXT(NODE) TREE_CHAIN(NODE)
 #endif
 
-// These special tree codes are not needed for 4.x
-#if D_GCC_VER < 40
-#undef DEFTREECODE
-#define DEFTREECODE(SYM, NAME, TYPE, LENGTH) SYM,
-
-enum d_tree_code
-{
-    D_DUMMY_TREE_CODE = LAST_AND_UNUSED_TREE_CODE,
-#include "d-tree.def"
-    LAST_D_TREE_CODE
-};
-#endif
 
 /* True if the Tdelegate typed expression is not really a variable,
    but a literal function / method reference */
@@ -219,12 +207,6 @@ extern GTY(()) tree d_keep_list;
 
 #include "d-dmd-gcc.h"
 
-#if D_GCC_VER >= 40
-#define build_type_copy build_variant_type_copy
-#else
-#define TYPE_UNSIGNED TREE_UNSIGNED
-#endif
-
 #if D_GCC_VER < 44
 #define DECL_PURE_P DECL_IS_PURE
 #endif
@@ -232,15 +214,6 @@ extern GTY(()) tree d_keep_list;
 typedef HOST_WIDE_INT hwint;
 typedef unsigned HOST_WIDE_INT uhwint;
 
-#if D_GCC_VER < 40
-static inline tree build0(enum tree_code o, tree t) { return build(o, t); }
-//static inline tree build1(enum tree_code o, tree t, tree a) { return build(o, t, a); }
-static inline tree build2(enum tree_code o, tree t, tree a, tree b) { return build(o, t, a, b); }
-static inline tree build3(enum tree_code o, tree t, tree a, tree b, tree c) { return build(o, t, a, b, c); }
-static inline tree build4(enum tree_code o, tree t, tree a, tree b, tree c, tree d) { return build(o, t, a, b, c, d); }
-#define gcc_assert(x) (assert(x))
-#define gcc_unreachable(x) (assert(0))
-#endif
 
 #if D_GCC_VER < 41
 //#define d_warning(option, xformat, ...) warning(format, __VA_ARGS__)

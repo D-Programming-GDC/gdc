@@ -82,11 +82,6 @@ static char lang_name[6] = "GNU D";
 # define LANG_HOOKS_BUILTIN_FUNCTION d_builtin_function
 #endif
 
-#if D_GCC_VER < 40
-#undef LANG_HOOKS_EXPAND_EXPR
-#define LANG_HOOKS_EXPAND_EXPR d_expand_expr
-#endif
-
 #define LANG_HOOKS_UNSIGNED_TYPE d_unsigned_type
 #define LANG_HOOKS_SIGNED_TYPE d_signed_type
 #define LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE d_signed_or_unsigned_type
@@ -102,30 +97,22 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_GET_ALIAS_SET
 #define LANG_HOOKS_GET_ALIAS_SET d_hook_get_alias_set
 
-// Needed for try/finally -- statements cannont be re-evaluated
-#if D_GCC_VER < 40
-#undef LANG_HOOKS_UNSAFE_FOR_REEVAL
-#define LANG_HOOKS_UNSAFE_FOR_REEVAL d_unsafe_for_reeval
-#endif
-
 #undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
 #define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE d_common_attribute_table
 #undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
 #define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE d_common_format_attribute_table
 
-#if D_GCC_VER >= 40 && D_GCC_VER < 43
+#if D_GCC_VER < 43
 #undef LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION
 #define LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION d_expand_function
 #endif
 
-#if D_GCC_VER >= 40
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
 #define LANG_HOOKS_TYPES_COMPATIBLE_P d_types_compatible_p
 
 #if V2
 #undef LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING
 #define LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING d_convert_parm_for_inlining
-#endif
 #endif
 
 #if D_GCC_VER >= 44
@@ -329,11 +316,9 @@ d_init ()
 {
     const char * cpu_versym = NULL;
 
-#if D_GCC_VER >= 40
     /* Restore register names if any were cleared during backend init */
     if (memcmp (reg_names, saved_reg_names, sizeof reg_names))
         memcpy (reg_names, saved_reg_names, sizeof reg_names);
-#endif
 
     /* Currently, isX86_64 indicates a 64-bit target in general and is not
        Intel-specific. */
@@ -476,11 +461,7 @@ d_init ()
 #if D_GCC_VER >= 43
         lm.reallocator = NULL;
 #endif
-        parse_in = pfile = cpp_create_reader(CLK_STDC89, NULL
-#if D_GCC_VER >= 40
-            , & lm
-#endif
-                                             );
+        parse_in = pfile = cpp_create_reader(CLK_STDC89, NULL, & lm);
         cpp_change_file(pfile, LC_ENTER, "<built-in>");
 
         // from c-cppbuiltin.c
@@ -845,13 +826,11 @@ d_write_global_declarations()
     tree * vec = (tree *) globalFunctions.data;
     wrapup_global_declarations(vec, globalFunctions.dim);
     check_global_declarations(vec, globalFunctions.dim);
-#if D_GCC_VER >= 40
 
     /* In 4.5.x, don't call cgraph_optimize() */
 #if D_GCC_VER >= 41 && D_GCC_VER < 45
     cgraph_optimize();
 #endif
-
 
     for (unsigned i = 0; i < globalFunctions.dim; i++)
         debug_hooks->global_decl(vec[i]);
@@ -868,8 +847,6 @@ d_write_global_declarations()
        problems.
     */
     cgraph_optimize();
-#endif
-
 #endif
 }
 
@@ -888,19 +865,6 @@ d_hook_get_alias_set(tree)
     return 0;
 }
 
-#if D_GCC_VER < 40
-// taken from c_common_unsafe_for_reeval
-int
-d_unsafe_for_reeval (tree exp)
-{
-  /* Statement expressions may not be reevaluated.  */
-  if (TREE_CODE (exp) == (enum tree_code) D_STMT_EXPR)
-      return 2;
-
-  /* Walk all other expressions.  */
-  return -1;
-}
-#endif
 
 static Module * an_output_module = 0;
 
@@ -1242,11 +1206,7 @@ d_parse_file (int /*set_yydebug*/)
     errorcount += global.errors;
 
     g.ofile->finish();
-
-#if D_GCC_VER >= 40
     cgraph_finalize_compilation_unit();
-#endif
-
     an_output_module = 0;
 
     gcc_d_backend_term();
@@ -1356,11 +1316,6 @@ d_mark_addressable (tree t)
       case CONST_DECL:
       case PARM_DECL:
       case RESULT_DECL:
-#if D_GCC_VER < 40
-          if ( ! TREE_STATIC(x) ) // %% C doesn't do this check
-              put_var_into_stack(x, 1);
-#endif
-          // drop through
       case FUNCTION_DECL:
         TREE_ADDRESSABLE (x) = 1;
         /* drops through */
@@ -1429,39 +1384,6 @@ d_type_for_mode (enum machine_mode mode, int unsignedp)
   if (mode == TYPE_MODE (build_pointer_type (integer_type_node)))
     return build_pointer_type (integer_type_node);
 
-#if D_GCC_VER < 40
-  switch (mode)
-    {
-    case V16QImode:
-      return unsignedp ? unsigned_V16QI_type_node : V16QI_type_node;
-    case V8HImode:
-      return unsignedp ? unsigned_V8HI_type_node : V8HI_type_node;
-    case V4SImode:
-      return unsignedp ? unsigned_V4SI_type_node : V4SI_type_node;
-    case V2DImode:
-      return unsignedp ? unsigned_V2DI_type_node : V2DI_type_node;
-    case V2SImode:
-      return unsignedp ? unsigned_V2SI_type_node : V2SI_type_node;
-    case V2HImode:
-      return unsignedp ? unsigned_V2HI_type_node : V2HI_type_node;
-    case V4HImode:
-      return unsignedp ? unsigned_V4HI_type_node : V4HI_type_node;
-    case V8QImode:
-      return unsignedp ? unsigned_V8QI_type_node : V8QI_type_node;
-    case V1DImode:
-      return unsignedp ? unsigned_V1DI_type_node : V1DI_type_node;
-    case V16SFmode:
-      return V16SF_type_node;
-    case V4SFmode:
-      return V4SF_type_node;
-    case V2SFmode:
-      return V2SF_type_node;
-    case V2DFmode:
-      return V2DF_type_node;
-    default:
-      break;
-    }
-#else
   if (COMPLEX_MODE_P (mode))
     {
       enum machine_mode inner_mode;
@@ -1489,7 +1411,6 @@ d_type_for_mode (enum machine_mode mode, int unsignedp)
       if (inner_type != NULL_TREE)
         return build_vector_type_for_mode (inner_type, mode);
     }
-#endif
 
   return 0;
 }
@@ -1831,15 +1752,7 @@ getdecls ()
 #undef DEFTREECODE
 #define DEFTREECODE(SYM, NAME, TYPE, LENGTH) TYPE,
 
-#if D_GCC_VER < 40
-const char
-tree_code_type[] = {
-#include "tree.def"
- 'x',
-#include "d/d-tree.def"
-};
-
-#elif D_GCC_VER < 44
+#if D_GCC_VER < 44
 
 const enum tree_code_class
 tree_code_type[] = {
@@ -1879,7 +1792,7 @@ const char *const tree_code_name[] = {
 
 #endif
 
-#if D_GCC_VER >= 40 && D_GCC_VER < 43
+#if D_GCC_VER < 43
 
 static void
 d_expand_function(tree fndecl)
@@ -1908,7 +1821,6 @@ d_expand_function(tree fndecl)
 
 #endif
 
-#if D_GCC_VER >= 40
 static int
 d_types_compatible_p (tree t1, tree t2)
 {
@@ -1966,7 +1878,6 @@ d_convert_parm_for_inlining  (tree parm, tree value, tree fndecl, int argnum)
 }
 #endif
 
-#endif // D_GCC_VER < 44
 
 #if D_GCC_VER >= 44
 static void

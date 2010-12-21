@@ -2990,12 +2990,6 @@ struct AsmProcessor
     }
 };
 
-#if D_GCC_VER < 40
-// struct rtx was modified for c++; this macro from rtl.h needs to
-// be modified accordingly.
-#undef XEXP
-#define XEXP(RTX, N)    (RTL_CHECK2 (RTX, N, 'e', 'u').rt_rtx)
-#endif
 
 bool getFrameRelativeValue(tree decl, HOST_WIDE_INT * result)
 {

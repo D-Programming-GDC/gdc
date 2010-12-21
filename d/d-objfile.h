@@ -71,13 +71,9 @@ public:
     // Some DMD Declarations don't have the loc set, this searches decl's parents
     // until a valid loc is found.
     static void setDeclLoc(tree t, Dsymbol * decl);
-
-#if D_GCC_VER >= 40
     static void setCfunEndLoc(const Loc & loc);
-#endif
-
     static void giveDeclUniqueName(tree decl, const char * prefix = NULL);
-public:
+
     // Set a DECL's STATIC and EXTERN based on the decl's storage class
     // and if it is to be emitted in this module.
     static void setupSymbolStorage(Dsymbol * decl, tree decl_tree, bool force_static_public = false);
@@ -130,11 +126,7 @@ public:
 
     static void rodc(tree decl, int top_level)
     {
-#if D_GCC_VER < 40
-        rest_of_decl_compilation(decl, NULL, top_level, 0);
-#else
         rest_of_decl_compilation(decl, top_level, 0);
-#endif
     }
 };
 

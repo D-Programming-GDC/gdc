@@ -31,12 +31,6 @@
 #include "symbol.h"
 #include "dt.h"
 
-#if D_GCC_VER < 40
-/* struct rtx was modified for c++; this macro from rtl.h needs to
-   be modified accordingly. */
-#undef XEXP
-#define XEXP(RTX, N)    (RTL_CHECK2 (RTX, N, 'e', 'u').rt_rtx)
-#endif
 
 ModuleInfo * ObjectFile::moduleInfo;
 Array ObjectFile::modules;
@@ -124,13 +118,7 @@ void
 ObjectFile::doLineNote(const Loc & loc)
 {
     if (loc.filename)
-    {
         setLoc(loc);
-#if D_GCC_VER < 40
-        location_t gcc_loc = { loc.filename, loc.linnum };
-        emit_line_note (gcc_loc);
-#endif
-    }
     // else do nothing
 }
 
@@ -224,7 +212,6 @@ ObjectFile::setDeclLoc(tree t, Dsymbol * decl)
     setDeclLoc(t, l);
 }
 
-#if D_GCC_VER >= 40
 void
 ObjectFile::setCfunEndLoc(const Loc & loc)
 {
@@ -247,7 +234,6 @@ ObjectFile::setCfunEndLoc(const Loc & loc)
     }
 # endif
 }
-#endif
 
 void
 ObjectFile::giveDeclUniqueName(tree decl, const char * prefix)
@@ -536,11 +522,7 @@ ObjectFile::outputFunction(FuncDeclaration * f)
             // otherwise, shouldn't be in a function, so safe to do asm_out
             if (targetm.have_ctors_dtors) 
             {
-#if D_GCC_VER < 40
-                (* targetm.asm_out.constructor) (XEXP (DECL_RTL (t), 0),
-                    DEFAULT_INIT_PRIORITY);
-#endif
-                // #else, handled in d_expand_function
+                // handled in d_expand_function
             }
             else
             {   // %% assert FuncDeclaration
@@ -552,11 +534,7 @@ ObjectFile::outputFunction(FuncDeclaration * f)
         {
             if (targetm.have_ctors_dtors)
             {
-#if D_GCC_VER < 40
-                (* targetm.asm_out.destructor) (XEXP (DECL_RTL (t), 0),
-                    DEFAULT_INIT_PRIORITY);
-#endif
-                // #else, handled in d_expand_function
+                // handled in d_expand_function
             }
             else
             {   // %% assert FuncDeclaration
@@ -566,13 +544,11 @@ ObjectFile::outputFunction(FuncDeclaration * f)
         }
     }
 
-#if D_GCC_VER < 40
-    rest_of_compilation(t);
-#else
     if (! gen.functionNeedsChain(f))
+    {
         cgraph_finalize_function(t,
             decl_function_context(t) != NULL);
-#endif
+    }
 }
 
 bool
@@ -851,13 +827,7 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
         targetm.asm_out.output_mi_thunk (asm_out_file, thunk_decl,
             delta, 0, alias);
         assemble_end_function(thunk_decl, fnname);
-#if D_GCC_VER < 40
-        /* Because init_function_start increments this, we must
-           decrement it.  */
-        immediate_size_expand--;
-#else
         free_after_compilation (cfun);
-#endif
         set_cfun(0);
         current_function_decl = 0;
         TREE_ASM_WRITTEN (thunk_decl) = 1;

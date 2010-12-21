@@ -415,14 +415,7 @@ struct IRState : IRBase
 
     tree arrayElemRef(IndexExp * aer_exp, ArrayScope * aryscp);
 
-#if D_GCC_VER < 40
-    static tree binding(tree var_chain, tree body)
-    {
-        return build3(BIND_EXPR, TREE_TYPE(body), var_chain, body, NULL_TREE);
-    }
-#else
     static tree binding(tree var_chain, tree body);
-#endif
 
     static tree compound(tree a, tree b, tree type = 0)
     {
@@ -456,11 +449,7 @@ struct IRState : IRBase
 
     static tree component(tree v, tree f)
     {
-#if D_GCC_VER < 40
-        return build2(COMPONENT_REF, TREE_TYPE(f), v, f);
-#else
         return build3(COMPONENT_REF, TREE_TYPE(f), v, f, NULL_TREE);
-#endif
     }
 
     // Giving error_mark_node a type allows for some assumptions about

@@ -194,8 +194,6 @@ extern GTY(()) tree d_keep_list;
 
 #include "d-dmd-gcc.h"
 
-#define build_type_copy build_variant_type_copy
-
 typedef HOST_WIDE_INT hwint;
 typedef unsigned HOST_WIDE_INT uhwint;
 

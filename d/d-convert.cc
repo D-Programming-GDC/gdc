@@ -270,15 +270,12 @@ d_truthvalue_conversion (tree expr)
                  d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
                  d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t))));
     }
-
-#if D_GCC_VER >= 40
     /* Without this, the backend tries to load a float reg with and integer
        value with fails (on i386 and rs6000, at least). */
     else if ( SCALAR_FLOAT_TYPE_P( TREE_TYPE( expr )))
     {
         t_zero = convert( TREE_TYPE(expr), t_zero );
     }
-#endif
     return build_buul_binary_op (NE_EXPR, expr, t_zero);
 }
 

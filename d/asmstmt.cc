@@ -77,7 +77,6 @@ struct AsmCode
     }
 };
 
-#if D_GCC_VER >= 40
 /* Apple GCC extends ASM_EXPR to five operands; cannot use build4. */
 tree
 d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4)
@@ -92,7 +91,6 @@ d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4)
     TREE_SIDE_EFFECTS(t) = 1;
     return t;
 }
-#endif
 
 
 /* GCC does not support jumps from asm statements.  When optimization
@@ -135,14 +133,10 @@ d_expand_priv_asm_label(IRState * irs, unsigned n)
     d_format_priv_asm_label(buf, n);
     strcat(buf, ":");
     tree insnt = build_string(strlen(buf), buf);
-#if D_GCC_VER < 40
-    expand_asm(insnt, 1);
-#else
     tree t = d_build_asm_stmt(insnt, NULL_TREE, NULL_TREE, NULL_TREE);
     ASM_VOLATILE_P(t) = 1;
     ASM_INPUT_P(t) = 1; // what is this doing?
     irs->addExp(t);
-#endif
 }
 
 ExtAsmStatement::ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Array *argNames,
@@ -504,14 +498,9 @@ AsmStatement::toIR(IRState * irs)
 
     //printf("final: %.*s\n", code->insnTemplateLen, code->insnTemplate);
     tree insnt = build_string(code->insnTemplateLen, code->insnTemplate);
-#if D_GCC_VER == 34
-    location_t gcc_loc = { loc.filename, loc.linnum };
-    expand_asm_operands(insnt, outputs.head, inputs.head, clobbers.head, 1, gcc_loc);
-#else
     tree t = d_build_asm_stmt(insnt, outputs.head, inputs.head, clobbers.head);
     ASM_VOLATILE_P(t) = 1;
     irs->addExp(t);
-#endif
     //if (dollar_label)//OLD
     // expand_label(dollar_label);
     if (code->dollarLabel)

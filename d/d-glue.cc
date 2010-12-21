@@ -330,13 +330,11 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
 
     // Build compare expression.
     tree cmp = build2(out_code, boolean_type_node, e1, e2);
-
-#if D_GCC_VER >= 40
     /* Need to use fold().  Otherwise, complex-var == complex-cst is not
        gimplified correctly. */
     if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)) || COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e2)))
         cmp = fold(cmp);
-#endif
+
     return cmp;
 }
 
@@ -1185,17 +1183,12 @@ do_array_set(IRState * irs, tree in_ptr, tree in_val, tree in_cnt)
 
 
 // Create a tree node to set multiple elements to a single value
-tree array_set_expr(IRState * irs, tree ptr, tree src, tree count) {
-#if D_GCC_VER < 40
-    tree exp = build3((enum tree_code) D_ARRAY_SET_EXPR, void_type_node,
-        ptr, src, count);
-    TREE_SIDE_EFFECTS(exp) = 1;
-    return exp;
-#else
+tree
+array_set_expr(IRState * irs, tree ptr, tree src, tree count)
+{
     irs->pushStatementList();
     do_array_set(irs, ptr, src, count);
     return irs->popStatementList();
-#endif
 }
 
 #if V2
@@ -1979,12 +1972,6 @@ DeclarationExp::toElem(IRState* irs)
 {
     // VarDeclaration::toObjFile was modified to call d_gcc_emit_local_variable
     // if needed.  This assumes irs == g.irs
-#if D_GCC_VER < 40
-    tree rtl_expr = expand_start_stmt_expr(0);
-    declaration->toObjFile(false);
-    expand_end_stmt_expr (rtl_expr);
-    return rtl_expr;
-#else
     irs->pushStatementList();
     declaration->toObjFile(false);
     tree t = irs->popStatementList();
@@ -1994,13 +1981,12 @@ DeclarationExp::toElem(IRState* irs)
        during gimplification. */
     if (TREE_CODE(t) == STATEMENT_LIST && ! STATEMENT_LIST_HEAD(t))
 #if D_GCC_VER >= 45
-       return build_empty_stmt(input_location);
+        return build_empty_stmt(input_location);
 #else
         return build_empty_stmt();
 #endif
 #endif
     return t;
-#endif
 }
 
 void
@@ -2836,7 +2822,6 @@ IntegerExp::toElem(IRState * irs)
     return irs->integerConstant(value, type);
 }
 
-#if D_GCC_VER >= 40
 
 static void
 genericize_function(tree fndecl)
@@ -2875,7 +2860,6 @@ genericize_function(tree fndecl)
   dump_function (TDI_generic, fndecl);
 }
 
-#endif
 
 void
 FuncDeclaration::toObjFile(int multiobj)
@@ -2964,7 +2948,6 @@ FuncDeclaration::toObjFile(int multiobj)
     DECL_CONTEXT(result_decl) = fn_decl;
     //layout_decl(result_decl, 0);
 
-#if D_GCC_VER >= 40
 # if D_GCC_VER >= 43
     allocate_struct_function(fn_decl, false);
 # else
@@ -2972,7 +2955,6 @@ FuncDeclaration::toObjFile(int multiobj)
 # endif
     // assuming the above sets cfun
     g.ofile->setCfunEndLoc(endloc);
-#endif
 
     param_list = NULL_TREE;
 
@@ -3057,12 +3039,9 @@ FuncDeclaration::toObjFile(int multiobj)
     // The leftmost parameter is the first in the chain.  %% varargs?
     DECL_ARGUMENTS(fn_decl) = param_list; // %% in treelang, useless ? because it just sets them to getdecls() later
 
-#if D_GCC_VER < 40
-    rest_of_decl_compilation(fn_decl, NULL, /*toplevel*/1, /*atend*/0); // http://www.tldp.org/HOWTO/GCC-Frontend-HOWTO-7.html
-    make_decl_rtl (fn_decl, NULL); // %% needed?
-#else
+    // http://www.tldp.org/HOWTO/GCC-Frontend-HOWTO-7.html
     rest_of_decl_compilation(fn_decl, /*toplevel*/1, /*atend*/0);
-#endif
+
     // ... has this here, but with more args...
 
     DECL_INITIAL(fn_decl) = error_mark_node; // Just doing what they tell me to do...
@@ -3146,56 +3125,19 @@ FuncDeclaration::toObjFile(int multiobj)
     }
 #endif
 
-#if D_GCC_VER >= 40
     cfun->naked = naked ? 1 : 0;
-#endif
-#if D_GCC_VER < 40
-    // Must be done before expand_function_start.
-    cfun->static_chain_expr = static_chain_expr;
-
-    expand_function_start (fn_decl, 0);
-
-    /* If this function is the C `main', emit a call to `__main'
-       to run global initializers, etc.  */
-    if (linkage == LINKc &&
-        DECL_ASSEMBLER_NAME (fn_decl)
-        && MAIN_NAME_P (DECL_ASSEMBLER_NAME (fn_decl)) // other langs use DECL_NAME..
-        && DECL_FILE_SCOPE_P (fn_decl)
-       )
-        expand_main_function ();
-
-
-    //cfun->x_whole_function_mode_p = 1; // %% I gues...
-    //cfun->function_frequency = ; // %% it'd be nice to do something with this..
-    //need DECL_RESULT ?
-
-    // Start a binding level for the function/arguments
-    (*lang_hooks.decls.pushlevel) (0);
-    expand_start_bindings (2);
-
-    // Add the argument declarations to the symbol table for the back end
-    set_decl_binding_chain(DECL_ARGUMENTS(fn_decl));
-
-    // %% TREE_ADDRESSABLE and TREE_USED...
-
-    // Start a binding level for the function body
-    //(*lang_hooks.decls.pushlevel) (0);
-#else
     pushlevel(0);
     irs->pushStatementList();
-#endif
 
     irs->startScope();
     irs->doLineNote(loc);
 
-#if D_GCC_VER >= 40
     if (static_chain_expr)
     {
         cfun->custom_static_chain = 1;
         irs->doExp(build2(MODIFY_EXPR, ptr_type_node,
                 build0(STATIC_CHAIN_DECL, ptr_type_node), static_chain_expr));
     }
-#endif
 
 #if V2
     if (static_chain_expr || closure_expr)
@@ -3219,31 +3161,8 @@ FuncDeclaration::toObjFile(int multiobj)
     if (vresult)
         irs->emitLocalVar(vresult);
 
-    if (v_argptr) {
-#if D_GCC_VER < 40
-        tree var = irs->var(v_argptr);
-        tree init_exp = irs->buildCall(built_in_decls[BUILT_IN_VA_START], 2,
-                                       irs->addressOf(var), parm_decl);
-        tree cleanup = irs->buildCall(built_in_decls[BUILT_IN_VA_END], 1,
-                                      irs->addressOf(var));
-        v_argptr->init = NULL; // VoidInitializer?
-        irs->emitLocalVar(v_argptr, true);
-
-#if V2
-        /* Note: cleanup will not run if v_argptr is a closure variable.
-           Probably okay for now because va_end doesn't do anything for any
-           GCC 3.3.x target.
-        */
-        if (! v_argptr->toSymbol()->SclosureField)
-#endif
-        {
-            expand_decl_cleanup(var, cleanup);
-            expand_expr_stmt_value(init_exp, 0, 1);
-        }
-#else
+    if (v_argptr)
         irs->pushStatementList();
-#endif
-    }
     if (v_arguments_var)
         irs->emitLocalVar(v_arguments_var, true);
 
@@ -3325,7 +3244,6 @@ FuncDeclaration::toObjFile(int multiobj)
 #endif
 
 
-#if D_GCC_VER >= 40
     if (v_argptr)
     {
         tree body = irs->popStatementList();
@@ -3340,14 +3258,9 @@ FuncDeclaration::toObjFile(int multiobj)
         tree cleanup = irs->buildCall(built_in_decls[BUILT_IN_VA_END], 1, var);
         irs->addExp(build2(TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
-#endif
 
     irs->endScope();
 
-#if D_GCC_VER < 40
-    expand_function_end ();
-    block = (*lang_hooks.decls.poplevel) (1, 0, 1);
-#else
     DECL_SAVED_TREE(fn_decl) = irs->popStatementList();
 
     /* In tree-nested.c, init_tmp_var expects a statement list to come
@@ -3378,17 +3291,12 @@ FuncDeclaration::toObjFile(int multiobj)
     }
     //block = (*lang_hooks.decls.poplevel) (1, 0, 1);
     block = poplevel(1, 0, 1);
-#endif
 
     DECL_INITIAL (fn_decl) = block; // %% redundant, see poplevel
     BLOCK_SUPERCONTEXT(DECL_INITIAL (fn_decl)) = fn_decl; // done in C, don't know effect
 
-#if D_GCC_VER < 40
-    expand_end_bindings (NULL_TREE, 0, 1);
-#else
     if (! errorcount && ! global.errors)
         genericize_function (fn_decl);
-#endif
 
     this_sym->outputStage = Finished;
     if (! errorcount && ! global.errors)
@@ -3551,22 +3459,22 @@ Type::toCtype() {
             dkeep(ctype);
             return ctype;
         case Tchar:
-            ctype = build_type_copy(unsigned_intQI_type_node);
+            ctype = build_variant_type_copy(unsigned_intQI_type_node);
             return ctype;
         case Twchar:
-            ctype = build_type_copy(unsigned_intHI_type_node);
+            ctype = build_variant_type_copy(unsigned_intHI_type_node);
             return ctype;
         case Tdchar:
-            ctype = build_type_copy(unsigned_intSI_type_node);
+            ctype = build_variant_type_copy(unsigned_intSI_type_node);
             return ctype;
         case Timaginary32:
-            ctype = build_type_copy(float_type_node);
+            ctype = build_variant_type_copy(float_type_node);
             return ctype;
         case Timaginary64:
-            ctype = build_type_copy(double_type_node);
+            ctype = build_variant_type_copy(double_type_node);
             return ctype;
         case Timaginary80:
-            ctype = build_type_copy(long_double_type_node);
+            ctype = build_variant_type_copy(long_double_type_node);
             return ctype;
 
         case Terror: return error_mark_node;
@@ -3947,28 +3855,16 @@ TypeDelegate::toCtype()
 static tree
 binfo_for(tree tgt_binfo, ClassDeclaration * cls)
 {
-    tree binfo =
-#if D_GCC_VER < 40
-        make_tree_vec(BINFO_ELTS)
-#else
-        make_tree_binfo(1)
-#endif
-        ;
+    tree binfo = make_tree_binfo(1);
     TREE_TYPE              (binfo) = TREE_TYPE(cls->type->toCtype()); // RECORD_TYPE, not REFERENCE_TYPE
     BINFO_INHERITANCE_CHAIN(binfo) = tgt_binfo;
     BINFO_OFFSET           (binfo) = size_zero_node; // %% type?, otherwize, integer_zero_node
 
-    if (cls->baseClass) {
-#if D_GCC_VER < 40
-        BINFO_BASETYPES(binfo)    = make_tree_vec(1);
-        BINFO_BASETYPE(binfo, 0)  = binfo_for(binfo, cls->baseClass);
-#else
+    if (cls->baseClass)
+    {
         BINFO_BASE_APPEND(binfo, binfo_for(binfo, cls->baseClass));
-#endif
 #ifdef BINFO_BASEACCESSES
-#if D_GCC_VER >= 40
 #error update vector stuff
-#endif
         tree prot_tree;
 
         BINFO_BASEACCESSES(binfo) = make_tree_vec(1);
@@ -3977,19 +3873,20 @@ binfo_for(tree tgt_binfo, ClassDeclaration * cls)
 #else
         BaseClass * bc = (BaseClass *) cls->baseclasses.data[0];
 #endif
-        switch (bc->protection) {
-        case PROTpublic:
-            prot_tree = access_public_node;
-            break;
-        case PROTprotected:
-            prot_tree = access_protected_node;
-            break;
-        case PROTprivate:
-            prot_tree = access_private_node;
-            break;
-        default:
-            prot_tree = access_public_node;
-            break;
+        switch (bc->protection)
+        {
+            case PROTpublic:
+                prot_tree = access_public_node;
+                break;
+            case PROTprotected:
+                prot_tree = access_protected_node;
+                break;
+            case PROTprivate:
+                prot_tree = access_private_node;
+                break;
+            default:
+                prot_tree = access_public_node;
+                break;
         }
         BINFO_BASEACCESS(binfo,0) = prot_tree;
 #endif
@@ -4006,51 +3903,42 @@ binfo_for(tree tgt_binfo, ClassDeclaration * cls)
 static tree
 intfc_binfo_for(tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offset)
 {
-    tree binfo =
-#if D_GCC_VER < 40
-        make_tree_vec(BINFO_ELTS)
-#else
-        make_tree_binfo(iface->baseclasses->dim)
-#endif
-        ;
+    tree binfo = make_tree_binfo(iface->baseclasses->dim);
+
     TREE_TYPE              (binfo) = TREE_TYPE(iface->type->toCtype()); // RECORD_TYPE, not REFERENCE_TYPE
     BINFO_INHERITANCE_CHAIN(binfo) = tgt_binfo;
     BINFO_OFFSET           (binfo) = size_int(inout_offset * PTRSIZE);
 
-    if (iface->baseclasses->dim) {
-#if D_GCC_VER < 40
-        BINFO_BASETYPES(binfo)    = make_tree_vec(iface->baseclasses->dim);
-#endif
+    if (iface->baseclasses->dim)
+    {
 #ifdef BINFO_BASEACCESSES
         BINFO_BASEACCESSES(binfo) = make_tree_vec(iface->baseclasses->dim);
 #endif
     }
-    for (unsigned i = 0; i < iface->baseclasses->dim; i++) {
+    for (unsigned i = 0; i < iface->baseclasses->dim; i++)
+    {
         BaseClass * bc = (BaseClass *) iface->baseclasses->data[i];
 
         if (i)
             inout_offset++;
 
-#if D_GCC_VER < 40
-        BINFO_BASETYPE(binfo, i)  = intfc_binfo_for(binfo, bc->base, inout_offset);
-#else
         BINFO_BASE_APPEND(binfo, intfc_binfo_for(binfo, bc->base, inout_offset));
-#endif
 #ifdef BINFO_BASEACCESSES
         tree prot_tree;
-        switch (bc->protection) {
-        case PROTpublic:
-            prot_tree = access_public_node;
-            break;
-        case PROTprotected:
-            prot_tree = access_protected_node;
-            break;
-        case PROTprivate:
-            prot_tree = access_private_node;
-            break;
-        default:
-            prot_tree = access_public_node;
-            break;
+        switch (bc->protection)
+        {
+            case PROTpublic:
+                prot_tree = access_public_node;
+                break;
+            case PROTprotected:
+                prot_tree = access_protected_node;
+                break;
+            case PROTprivate:
+                prot_tree = access_private_node;
+                break;
+            default:
+                prot_tree = access_public_node;
+                break;
         }
         BINFO_BASEACCESS(binfo, i) = prot_tree;
 #endif
@@ -4062,7 +3950,8 @@ intfc_binfo_for(tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offse
 type *
 TypeClass::toCtype()
 {
-    if (! ctype) {
+    if (! ctype)
+    {
         tree rec_type;
         Array base_class_decls;
         bool inherited = sym->baseClass != 0;
@@ -4259,17 +4148,6 @@ ThrowStatement::toIR(IRState* irs)
 void
 TryFinallyStatement::toIR(IRState * irs)
 {
-#if D_GCC_VER < 40
-    // %% doc: this is not the same as a start_eh/end_eh_cleanup sequence
-    tree t_body = body ? irs->makeStmtExpr(body) : d_void_zero_node;
-    tree t_finl = finalbody ? irs->makeStmtExpr(finalbody) : d_void_zero_node;
-    tree tf = build2(TRY_FINALLY_EXPR, void_type_node, t_body, t_finl);
-    // TREE_SIDE_EFFECTS(tf) = 1; // probably not needed
-    irs->doLineNote(loc);
-    irs->beginFlow(this, NULL);
-    irs->doExp(tf);
-    irs->endFlow();
-#else
     irs->doLineNote(loc);
     irs->startTry(this);
     if (body)
@@ -4282,7 +4160,6 @@ TryFinallyStatement::toIR(IRState * irs)
         finalbody->toIR(irs);
     }
     irs->endFinally();
-#endif
 }
 
 void
@@ -4383,13 +4260,7 @@ SynchronizedStatement::toIR(IRState * irs)
         }
         DECL_INITIAL(decl) = init_exp;
         irs->doLineNote(loc);
-#if D_GCC_VER < 40
-        irs->expandDecl(decl);
-        irs->doExp(irs->libCall(LIBCALL_MONITORENTER, 1, & decl));
-        expand_decl_cleanup(decl, cleanup); // nope,nope just do it diffrent ways or just jump the cleanup like below..
-        if (body)
-            body->toIR(irs);
-#else
+
         irs->expandDecl(decl);
         irs->doExp(irs->libCall(LIBCALL_MONITORENTER, 1, & decl));
         irs->startTry(this);
@@ -4400,7 +4271,6 @@ SynchronizedStatement::toIR(IRState * irs)
         irs->startFinally();
         irs->doExp(cleanup);
         irs->endFinally();
-#endif
         irs->endBindings();
     }
     else
@@ -4427,14 +4297,6 @@ SynchronizedStatement::toIR(IRState * irs)
 
         g.ofile->rodc(critsec_decl, 1);
 
-#if D_GCC_VER < 40
-        expand_eh_region_start();
-        expand_expr_stmt_value(irs->libCall(LIBCALL_CRITICALENTER, 1, & critsec_ref), 0, 1);
-        if (body)
-            body->toIR(irs);
-        expand_expr_stmt_value(irs->libCall(LIBCALL_CRITICALEXIT, 1, & critsec_ref), 0, 1);
-        expand_eh_region_end_cleanup(irs->libCall(LIBCALL_CRITICALEXIT, 1, & critsec_ref));
-#else
         irs->startTry(this);
         irs->doExp(irs->libCall(LIBCALL_CRITICALENTER, 1, & critsec_ref));
         if (body)
@@ -4444,7 +4306,6 @@ SynchronizedStatement::toIR(IRState * irs)
         irs->startFinally();
         irs->doExp(irs->libCall(LIBCALL_CRITICALEXIT, 1, & critsec_ref));
         irs->endFinally();
-#endif
     }
 }
 
@@ -5028,56 +4889,6 @@ TypedefDeclaration::cvMember(unsigned char*)
     return 0;
 }
 
-#if D_GCC_VER < 40
-
-rtx
-d_expand_expr(tree exp, rtx target , enum machine_mode tmode, int modifier, rtx *)
-{
-    if (TREE_CODE(exp) == (enum tree_code) D_STMT_EXPR) {
-        IRState * irs;
-        Statement * stmt;
-
-        gen.retrieveStmtExpr(exp, & stmt, & irs);
-        // need push_temp_slots()?
-
-        tree rtl_expr = expand_start_stmt_expr(1);
-        // This startBindings call is needed so get_last_insn() doesn't return NULL
-        // in expand_start_case().
-        irs->startBindings();
-        // preserve_temp_slots as in c-common.c:c_expand_expr
-
-        stmt->toIR(irs);
-        irs->endBindings();
-
-        expand_end_stmt_expr (rtl_expr);
-
-        rtx result = expand_expr (rtl_expr, target, tmode, (enum expand_modifier) modifier);
-        pop_temp_slots();
-        return result;
-    } else if (TREE_CODE(exp) == (enum tree_code) D_ARRAY_SET_EXPR){
-        // %% if single byte element, expand to memset
-
-        assert(POINTER_TYPE_P(TREE_TYPE(TREE_OPERAND(exp, 0))));
-        assert(INTEGRAL_TYPE_P(TREE_TYPE(TREE_OPERAND(exp, 2))));
-        // assuming unsigned source is unsigned
-
-        push_temp_slots (); // will this work? maybe expand_start_binding
-        tree rtl_expr = expand_start_stmt_expr(1);
-
-        do_array_set(g.irs,   // %% fix!
-            TREE_OPERAND(exp, 0), TREE_OPERAND(exp, 1), TREE_OPERAND(exp, 2));
-
-        expand_end_stmt_expr(rtl_expr);
-        rtx result = expand_expr(rtl_expr, target, tmode, (enum expand_modifier) modifier);
-        pop_temp_slots ();
-        return result;
-    } else {
-        abort();
-    }
-}
-
-#endif
-
 
 // Backend init
 
@@ -5096,11 +4907,7 @@ gcc_d_backend_init()
     // built-in functions.
     flag_signed_char = 0;
     // This is required or we'll crash pretty early on. %%log
-#if D_GCC_VER >= 40
     build_common_tree_nodes (flag_signed_char, false);
-#else
-    build_common_tree_nodes (flag_signed_char);
-#endif
 
     // This is also required (or the manual equivalent) or crashes
     // will occur later
@@ -5118,13 +4925,9 @@ gcc_d_backend_init()
     build_common_tree_nodes_2 (0 /* %% support the option */);
 
     // Specific to D (but so far all taken from C)
-#if D_GCC_VER < 40
-    d_void_zero_node = build_int_2 (0, 0);
-    TREE_TYPE (d_void_zero_node) = void_type_node;
-#else
     d_void_zero_node = make_node(INTEGER_CST);
     TREE_TYPE(d_void_zero_node) = void_type_node;
-#endif
+
     // %%TODO: we are relying on default boolean_type_node being 8bit / same as Tbit
 
     d_null_pointer = convert(ptr_type_node, integer_zero_node);

@@ -39,10 +39,8 @@
 #include "langhooks.h"
 #include "tree-inline.h"
 #include "toplev.h"
-#if D_GCC_VER >= 40
 /* Only used in >= 4.1.x */
 #include "cgraph.h"
-#endif
 
 #include "d-lang.h"
 
@@ -118,13 +116,8 @@ d_init_attributes (void)
     /* Fill in the built_in_attributes array.  */
 #define DEF_ATTR_NULL_TREE(ENUM)                \
     built_in_attributes[(int) ENUM] = NULL_TREE;
-#if D_GCC_VER < 40
-# define DEF_ATTR_INT(ENUM, VALUE)                                           \
-    built_in_attributes[(int) ENUM] = build_int_2 (VALUE, VALUE < 0 ? -1 : 0);
-#else
 # define DEF_ATTR_INT(ENUM, VALUE)                                           \
     built_in_attributes[(int) ENUM] = build_int_cst (NULL_TREE, VALUE);
-#endif
 #define DEF_ATTR_IDENT(ENUM, STRING)                            \
     built_in_attributes[(int) ENUM] = get_identifier (STRING);
 #define DEF_ATTR_TREE_LIST(ENUM, PURPOSE, VALUE, CHAIN) \
@@ -140,7 +133,6 @@ d_init_attributes (void)
 }
 
 
-#if D_GCC_VER >= 40
 #ifndef WINT_TYPE
 #define WINT_TYPE "unsigned int"
 #endif
@@ -165,7 +157,6 @@ lookup_C_type_name(const char * p)
     else if (strcmp(p,"long long unsigned int")) return long_unsigned_type_node; // cxx!
     internal_error("unsigned C type '%s'", p);
 }
-#endif
 
 #if D_GCC_VER >= 41
 void do_build_builtin_fn(enum built_in_function fncode,
@@ -321,12 +312,10 @@ void d_init_builtins(void)
 
     void_list_node = tree_cons(NULL_TREE, void_type_node, NULL_TREE);
 
-#if D_GCC_VER >= 40
     /* WINT_TYPE is a C type name, not an itk_ constant or something useful
        like that... */
     tree wint_type_node = lookup_C_type_name(WINT_TYPE);
     pid_type_node = lookup_C_type_name(PID_TYPE);
-#endif
 
 #define DEF_PRIMITIVE_TYPE(ENUM, VALUE) \
     builtin_types[(int) ENUM] = VALUE;
@@ -380,39 +369,7 @@ void d_init_builtins(void)
 
     d_init_attributes ();
 
-#if D_GCC_VER == 34
-#define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE,                   \
-                    BOTH_P, FALLBACK_P, NONANSI_P, ATTRS, IMPLICIT)     \
-  if (NAME)                                                             \
-    {                                                                   \
-      tree decl;                                                        \
-                                                                        \
-      if (strncmp (NAME, "__builtin_", strlen ("__builtin_")) != 0)     \
-        abort ();                                                       \
-                                                                        \
-      /*if (!BOTH_P)*/                                                  \
-        decl = builtin_function (NAME, builtin_types[TYPE], ENUM,       \
-                                 CLASS,                                 \
-                                 (FALLBACK_P                            \
-                                  ? (NAME + strlen ("__builtin_"))      \
-                                  : NULL),                              \
-                                 built_in_attributes[(int) ATTRS]);     \
-      /*else*/                                                          \
-        /*decl = builtin_function_2 (NAME,*/                            \
-        /*                         NAME + strlen ("__builtin_"),*/      \
-        /*                         builtin_types[TYPE],*/                       \
-        /*                         builtin_types[LIBTYPE],*/            \
-        /*                         ENUM,*/                              \
-        /*                         CLASS,*/                             \
-        /*                         FALLBACK_P,*/                                \
-        /*                         NONANSI_P,*/                         \
-        /*                         built_in_attributes[(int) ATTRS]);*/ \
-                                                                        \
-      built_in_decls[(int) ENUM] = decl;                                \
-      if (IMPLICIT)                                                     \
-        implicit_built_in_decls[(int) ENUM] = decl;                     \
-    }
-#elif D_GCC_VER == 40
+#if D_GCC_VER == 40
 #define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE, BOTH_P, FALLBACK_P, \
                     NONANSI_P, ATTRS, IMPLICIT, COND)                   \
   if (NAME && COND)                                                     \
@@ -456,9 +413,7 @@ void d_init_builtins(void)
 #include "builtins.def"
 #undef DEF_BUILTIN
 
-#if D_GCC_VER >= 40
     build_common_builtin_nodes ();
-#endif
 
     (*targetm.init_builtins) ();
 
@@ -506,9 +461,6 @@ d_builtin_function (const char *name, tree type, int function_code,
     TREE_PUBLIC (decl) = 1;
     if (library_name)
         SET_DECL_ASSEMBLER_NAME (decl, get_identifier (library_name));
-#if D_GCC_VER < 40
-    make_decl_rtl (decl, NULL);
-#endif
     // %% gcc4 -- is make_decl_rtl needed? why are we doing it in gcc3?
     // shouldn't it go after attributes?
 
@@ -533,18 +485,6 @@ d_builtin_function (const char *name, tree type, int function_code,
 
     return decl;
 }
-
-#if D_GCC_VER < 40
-/* GCC expects this function to be provided by each language frontend.  */
-tree
-builtin_function (const char *name, tree type, int function_code,
-                    enum built_in_class klass, const char *library_name,
-                    tree attrs)
-{
-    return d_builtin_function(name, type, function_code,
-                              klass, library_name, attrs);
-}
-#endif
 
 #endif
 

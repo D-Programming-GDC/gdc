@@ -46,9 +46,7 @@ extern "C" {
    it is always defined as "unsigned char" unless __cplusplus.  Have to make
    sure the "bool" under c++ is the same so that structs are laid out
    correctly. */
-#if D_GCC_VER >= 40
 #define bool unsigned char
-#endif
 
 #include "coretypes.h"
 #include "tm.h"
@@ -74,7 +72,6 @@ extern "C" {
 #include "opts.h"
 #include "tm_p.h"
 
-#if D_GCC_VER >= 40
 #include "cgraph.h"
 #include "tree-iterator.h"
 #if D_GCC_VER >= 44
@@ -84,7 +81,6 @@ extern "C" {
 #endif
 #include "tree-dump.h"
 #include "tree-inline.h"
-#endif
 
 #if D_GCC_VER >= 41
 #include "vec.h"

@@ -64,12 +64,10 @@ public:
     // ** Statement Lists
 
     void addExp(tree e);
-#if D_GCC_VER >= 40
     tree statementList;
 
     void pushStatementList();
     tree popStatementList();
-#endif
 
     // ** Scope kinds.
 
@@ -107,18 +105,6 @@ public:
     }
 
     // ** Loops (and case statements)
-#if D_GCC_VER < 40
-    typedef struct
-    {
-        Statement * statement;
-        LevelKind   kind;
-        // expand_start_case doesn't return a nesting structure, so
-        // we have to generate our own label for 'break'
-        nesting * loop;
-        tree      exitLabel;
-        tree      overrideContinueLabel;
-    } Flow;
-#else
     typedef struct
     {
         Statement * statement;
@@ -143,17 +129,13 @@ public:
             };
         };
     } Flow;
-#endif
 
     Array loops; // of Flow
 
     // These routines don't generate code.  They are for tracking labeled loops.
     Flow * getLoopForLabel(Identifier * ident, bool want_continue = false);
-#if D_GCC_VER < 40
-    Flow * beginFlow(Statement * stmt, nesting * loop);
-#else
     Flow * beginFlow(Statement * stmt);
-#endif
+
     void endFlow();
 
     Flow * currentFlow()

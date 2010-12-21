@@ -39,11 +39,8 @@ IRBase::IRBase()
     parent = 0;
     func = 0;
     volatileDepth = 0;
-
     // declContextStack is composed... choose one..
-#if D_GCC_VER >= 40
     statementList = NULL_TREE;
-#endif
 }
 
 IRState *
@@ -153,13 +150,6 @@ IRBase::initFunctionStart(tree fn_decl, const Loc & loc)
     init_function_start (fn_decl);
 }
 
-#if D_GCC_VER < 40
-void
-IRBase::addExp(tree e)
-{
-    expand_expr_stmt_value(e, 0, 1);
-}
-#else
 
 void
 IRBase::addExp(tree e)
@@ -218,7 +208,6 @@ IRBase::popStatementList()
     }
     return t;
 }
-#endif
 
 
 tree
@@ -307,44 +296,6 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
     }
 }
 
-#if D_GCC_VER < 40
-
-IRBase::Flow *
-IRBase::beginFlow(Statement * stmt, nesting * loop)
-{
-    Flow * flow = new Flow;
-
-    flow->statement = stmt;
-    flow->loop = loop;
-    flow->kind = level_block;
-    flow->exitLabel = NULL;
-    flow->overrideContinueLabel = NULL;
-
-    loops.push(flow);
-
-    return flow;
-}
-
-void
-IRBase::endFlow()
-{
-    Flow * flow;
-
-    assert(loops.dim);
-
-    flow = (Flow *) loops.pop();
-    if (flow->exitLabel)
-        expand_label(flow->exitLabel); // %% need a statement after this?
-    //%% delete flow;
-}
-
-void
-IRBase::doLabel(tree t_label)
-{
-    expand_label(t_label);
-}
-
-#else
 
 IRBase::Flow *
 IRBase::beginFlow(Statement * stmt)
@@ -388,7 +339,6 @@ IRBase::doLabel(tree t_label)
         addExp(build1(LABEL_EXPR, void_type_node, t_label));
 }
 
-#endif
 
 extern "C" void pushlevel PARAMS ((int));
 extern "C" tree poplevel PARAMS ((int, int, int));
@@ -428,14 +378,7 @@ void IRBase::startBindings()
     tree block = make_node(BLOCK);
     set_block(block);
 
-#if D_GCC_VER < 40
-    // This is the key to getting local variables recorded for debugging.
-    // Simplying having the whole tree of BLOCKs doesn't matter as
-    // reorder_blocks will discard the whole thing.
-    expand_start_bindings_and_block(0, block);
-#else
     pushStatementList();
-#endif
 
     assert(scopes.dim);
     ++( * currentScope() );
@@ -448,15 +391,9 @@ void IRBase::endBindings()
     // %%TODO: reversing list causes problems with inf loops in unshare_all_decls
     tree block = poplevel(1,0,0);
 
-#if D_GCC_VER < 40
-    // %%TODO: DONT_JUMP_IN flag -- don't think DMD checks for
-    // jumping past initializations yet..
-    expand_end_bindings(NULL_TREE, 1, 0);
-#else
     tree t_body = popStatementList();
     addExp(build3(BIND_EXPR, void_type_node,
                BLOCK_VARS( block ), t_body, block));
-#endif
 
     // Because we used set_block, the popped level/block is not automatically recorded
     insert_block(block);
