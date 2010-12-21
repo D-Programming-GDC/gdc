@@ -370,7 +370,7 @@ struct IRState : IRBase
 
     static tree indirect(tree exp)
     {
-        return build1(INDIRECT_REF, TREE_TYPE(TREE_TYPE(exp)), exp); 
+        return indirect(exp, TREE_TYPE(TREE_TYPE(exp)));
     }
 
     static tree vmodify(tree dst, tree src)

@@ -2378,9 +2378,7 @@ NewExp::toElem(IRState * irs)
                         elms.cons(irs->integerConstant(i, size_type_node),
                                 ((Expression*) arguments->data[i])->toElem(irs));
                     //elms.cons(final_length);
-                    dims_init = make_node(CONSTRUCTOR);
-                    TREE_TYPE(dims_init) = TREE_TYPE(dims_var);
-                    CONSTRUCTOR_ELTS(dims_init) = elms.head;
+                    dims_init = build_constructor(TREE_TYPE(dims_var), elms.head);
                     DECL_INITIAL(dims_var) = dims_init;
                 }
 
@@ -2643,11 +2641,10 @@ AssocArrayLiteralExp::toElem(IRState * irs)
     result = irs->maybeCompound(result,
             irs->libCall(LIBCALL_ASSOCARRAYLITERALTP, 4, args));
 
-    tree ctor = make_node(CONSTRUCTOR);
     CtorEltMaker ce;
-    TREE_TYPE(ctor) = aa_type->toCtype();
-    ce.cons(TYPE_FIELDS(TREE_TYPE(ctor)), result);
-    CONSTRUCTOR_ELTS(ctor) = ce.head;
+    tree aat_type = aa_type->toCtype();
+    ce.cons(TYPE_FIELDS(aat_type), result);
+    tree ctor = build_constructor(aat_type, ce.head);
 
     result = irs->binding(keys_var, irs->binding(vals_var, ctor));
     return irs->nop(result, type->toCtype());
@@ -2658,9 +2655,7 @@ StructLiteralExp::toElem(IRState *irs)
 {
     // %% Brings false positives on D2, maybe uncomment for debug builds...
     //assert(irs->typesSame(type->toBasetype(), sd->type->toBasetype()));
-    tree ctor = make_node(CONSTRUCTOR);
     CtorEltMaker ce;
-    TREE_TYPE(ctor) = type->toCtype();
 
     if (elements)
     {
@@ -2739,7 +2734,7 @@ StructLiteralExp::toElem(IRState *irs)
             ce.cons(fld->toSymbol()->Stree, exp_tree);
         }
     }
-    CONSTRUCTOR_ELTS(ctor) = ce.head;
+    tree ctor = build_constructor(type->toCtype(), ce.head);
     return ctor;
 }
 
@@ -2754,14 +2749,14 @@ NullExp::toElem(IRState * irs)
         return irs->darrayVal(type, 0, NULL);
     case Taarray:
         {
-            tree ctor = make_node(CONSTRUCTOR);
-            tree fa;
             CtorEltMaker ce;
+            tree ttype = type->toCtype();
+            tree fa;
 
-            TREE_TYPE(ctor) = type->toCtype();
-            fa = TYPE_FIELDS(TREE_TYPE(ctor));
+            fa = TYPE_FIELDS(ttype);
             ce.cons(fa, convert(TREE_TYPE(fa), integer_zero_node));
-            CONSTRUCTOR_ELTS(ctor) = ce.head;
+
+            tree ctor = build_constructor(ttype, ce.head);
             return ctor;
         }
         break;
@@ -3688,9 +3683,6 @@ TypeFunction::toCtype()
         ListMaker type_list;
         tree ret_type;
 
-        // Function type can be reference by parameters, etc.  Set ctype early.
-        ctype = make_node(FUNCTION_TYPE);
-
         if (varargs == 1 && linkage == LINKd)
         {   // hidden _arguments parameter
 #if BREAKABI
@@ -3700,9 +3692,11 @@ TypeFunction::toCtype()
 #endif
         }
 
-        if (parameters) {
+        if (parameters)
+        {
             size_t n_args = Parameter::dim(parameters);
-            for (size_t i = 0; i < n_args; i++) {
+            for (size_t i = 0; i < n_args; i++)
+            {
                 Parameter * arg = Parameter::getNth(parameters, i);
                 type_list.cons(IRState::trueArgumentType(arg));
             }
@@ -3713,19 +3707,17 @@ TypeFunction::toCtype()
         if (varargs != 1)
             type_list.cons(void_type_node);
 
-        if (next) {
+        if (next)
             ret_type = next->toCtype();
-        } else {
+        else
             ret_type = void_type_node;
-        }
 #if V2
         if (isref)
             ret_type = build_reference_type(ret_type);
 #endif
 
-        TREE_TYPE(ctype) = ret_type;
-        TYPE_ARG_TYPES(ctype) = type_list.head;
-        layout_type(ctype);
+        // Function type can be reference by parameters, etc.  Set ctype earlier?
+        ctype = build_function_type(ret_type, type_list.head);
 
         if (linkage == LINKwindows)
             ctype = gen.addTypeAttribute(ctype, "stdcall");
@@ -4976,10 +4968,7 @@ gcc_d_backend_init()
     {
         /* Make sure we get a unique function type, so we can give
            its pointer type a name.  (This wins for gdb.) */
-        tree vfunc_type = make_node (FUNCTION_TYPE);
-        TREE_TYPE (vfunc_type) = Type::tint32->toCtype(); // integer_type_node; messed up built in types?
-        TYPE_ARG_TYPES (vfunc_type) = NULL_TREE;
-        layout_type (vfunc_type);
+        tree vfunc_type = build_function_type(Type::tint32->toCtype(), NULL_TREE); // integer_type_node; messed up built in types?
 
         tree vtable_entry_type = build_pointer_type (vfunc_type);
         d_vtbl_ptr_type_node = build_pointer_type(vtable_entry_type);

@@ -1091,12 +1091,12 @@ obj_moduleinfo(Symbol *sym)
     g.ofile->giveDeclUniqueName(our_mod_ref, "__mod_ref");
     g.ofile->setDeclLoc(our_mod_ref, g.mod);
 
-    tree init = make_node(CONSTRUCTOR);
     CtorEltMaker ce;
-    TREE_TYPE(init) = mod_ref_type;
     ce.cons(f0, d_null_pointer);
     ce.cons(f1, gen.addressOf(sym->Stree));
-    CONSTRUCTOR_ELTS(init) = ce.head;
+
+    tree init = build_constructor(mod_ref_type, ce.head);
+
     TREE_STATIC(init) = 1;
     DECL_ARTIFICIAL(our_mod_ref) = 1;
     DECL_IGNORED_P(our_mod_ref) = 1;

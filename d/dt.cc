@@ -187,8 +187,8 @@ dt2node(dt_t * dt)
         case DT_azeros:
         case DT_common:
         {
-            tree a = make_node(CONSTRUCTOR);
-            TREE_TYPE(a) = gen.arrayType(Type::tuns8, dt->DTint);
+            tree type = gen.arrayType(Type::tuns8, dt->DTint);
+            tree a = build_constructor(type, 0);
             TREE_READONLY(a) = 1;
             TREE_CONSTANT(a) = 1;
             return a;
@@ -245,14 +245,11 @@ dt2node(dt_t * dt)
                             dt2node(dte));
                     dte = dte->DTnext;
                 }
-                tree ctor = make_node(CONSTRUCTOR);
-                TREE_TYPE(ctor) = dt->DTtype->toCtype();
-
+                tree ctor = build_constructor(dt->DTtype->toCtype(), ctor_elts.head);
                 // DT data should always be constant.  If the decl is not TREE_CONSTANT, fine.
                 TREE_CONSTANT(ctor) = 1;
                 TREE_READONLY(ctor) = 1;
                 TREE_STATIC(ctor) = 1;
-                CONSTRUCTOR_ELTS(ctor) = ctor_elts.head;
                 return ctor;
             }
             else if (tb && tb->ty == Tstruct)
@@ -303,16 +300,14 @@ dt2tree_list_of_elems(dt_t * dt)
     // align=bits per word?
     compute_record_mode(aggtype);
 
-    tree ctor = make_node(CONSTRUCTOR);
-    TREE_TYPE(ctor) = aggtype;
+    // DT data should always be constant.  If the decl is not TREE_CONSTANT, fine.
+    tree ctor = build_constructor(aggtype, elts.head);
     TREE_READONLY(ctor) = 1;
     // dt created data is always static
     TREE_STATIC(ctor) = 1;
     // should always be constant
     TREE_CONSTANT(ctor) = 1;
 
-    // DT data should always be constant.  If the decl is not TREE_CONSTANT, fine.
-    CONSTRUCTOR_ELTS(ctor) = elts.head;
     return ctor;
 }
 

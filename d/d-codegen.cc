@@ -595,8 +595,7 @@ IRState::convertForAssignment(Expression * exp, Type * target_type)
         TypeSArray * sa_type = (TypeSArray *) target_base_type;
         uinteger_t count = sa_type->dim->toUInteger();
 
-        tree ctor = make_node(CONSTRUCTOR);
-        TREE_TYPE(ctor) = target_type->toCtype();
+        tree ctor = build_constructor(target_type->toCtype(), 0);
         if (count)
         {
             CtorEltMaker ce;
@@ -616,9 +615,7 @@ IRState::convertForAssignment(Expression * exp, Type * target_type)
         if (exp->toInteger() == 0)
         {
             CtorEltMaker ce;
-            tree empty = make_node(CONSTRUCTOR);
-            TREE_TYPE(empty) = target_type->toCtype();
-            CONSTRUCTOR_ELTS(empty) = ce.head; // %% will this zero-init?
+            tree empty = build_constructor(target_type->toCtype(), ce.head); // %% will this zero init?
             TREE_CONSTANT(empty) = 1;
             TREE_STATIC(empty) = 1;
             return empty;
@@ -1911,20 +1908,18 @@ tree
 IRState::darrayVal(tree type, tree len, tree data)
 {
     // %% assert type is a darray
-    tree ctor = make_node(CONSTRUCTOR);
     tree len_field, ptr_field;
     CtorEltMaker ce;
 
-    TREE_TYPE(ctor) = type;
-    TREE_STATIC(ctor) = 0;   // can be set by caller if needed
-    TREE_CONSTANT(ctor) = 0; // "
-    len_field = TYPE_FIELDS(TREE_TYPE(ctor));
+    len_field = TYPE_FIELDS(type);
     ptr_field = TREE_CHAIN(len_field);
 
     ce.cons(len_field, len);
     ce.cons(ptr_field, data); // shouldn't need to convert the pointer...
 
-    CONSTRUCTOR_ELTS(ctor) = ce.head;
+    tree ctor = build_constructor(type, ce.head);
+    TREE_STATIC(ctor) = 0;   // can be set by caller if needed
+    TREE_CONSTANT(ctor) = 0; // "
 
     return ctor;
 }
@@ -1933,14 +1928,10 @@ tree
 IRState::darrayVal(tree type, uinteger_t len, tree data)
 {
     // %% assert type is a darray
-    tree ctor = make_node(CONSTRUCTOR);
     tree len_value, ptr_value, len_field, ptr_field;
     CtorEltMaker ce;
 
-    TREE_TYPE(ctor) = type;
-    TREE_STATIC(ctor) = 0;   // can be set by caller if needed
-    TREE_CONSTANT(ctor) = 0; // "
-    len_field = TYPE_FIELDS(TREE_TYPE(ctor));
+    len_field = TYPE_FIELDS(type);
     ptr_field = TREE_CHAIN(len_field);
 
     if (data)
@@ -1956,7 +1947,10 @@ IRState::darrayVal(tree type, uinteger_t len, tree data)
     len_value = integerConstant(len, TREE_TYPE(len_field));
     ce.cons(len_field, len_value);
     ce.cons(ptr_field, ptr_value); // shouldn't need to convert the pointer...
-    CONSTRUCTOR_ELTS(ctor) = ce.head;
+
+    tree ctor = build_constructor(type, ce.head);
+    TREE_STATIC(ctor) = 0;   // can be set by caller if needed
+    TREE_CONSTANT(ctor) = 0; // "
 
     return ctor;
 }
@@ -2361,20 +2355,14 @@ IRState::twoFieldType(Type * ft1, Type * ft2, Type * d_type, const char * n1, co
 tree
 IRState::twoFieldCtor(tree rec_type, tree f1, tree f2, int storage_class)
 {
-    tree ctor = make_node(CONSTRUCTOR);
-    tree ft1, ft2;
     CtorEltMaker ce;
+    ce.cons(TYPE_FIELDS(rec_type), f1);
+    ce.cons(TREE_CHAIN(TYPE_FIELDS(rec_type)), f2);
 
-    TREE_TYPE(ctor) = rec_type;
+    tree ctor = build_constructor(rec_type, ce.head);
     TREE_STATIC(ctor) = (storage_class & STCstatic) != 0;
     TREE_CONSTANT(ctor) = (storage_class & STCconst) != 0;
     TREE_READONLY(ctor) = (storage_class & STCconst) != 0;
-    ft1 = TYPE_FIELDS(rec_type);
-    ft2 = TREE_CHAIN(ft1);
-
-    ce.cons(ft1, f1);
-    ce.cons(ft2, f2);
-    CONSTRUCTOR_ELTS(ctor) = ce.head;
 
     return ctor;
 }
