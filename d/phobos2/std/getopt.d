@@ -22,7 +22,8 @@ Credits:   This module and its documentation are inspired by Perl's $(WEB
                    D's $(D getopt) is simpler than its Perl counterpart because $(D
                    getopt) infers the expected parameter types from the static types of
                    the passed-in pointers.
-
+*/
+/*
          Copyright Andrei Alexandrescu 2008 - 2009.
 Distributed under the Boost Software License, Version 1.0.
    (See accompanying file LICENSE_1_0.txt or copy at
@@ -74,7 +75,7 @@ void main(string[] args)
  to their defaults and then invoke $(D getopt). If a
  command-line argument is recognized as an option with a parameter and
  the parameter cannot be parsed properly (e.g. a number is expected
- but not present), a $(D ConvError) exception is thrown.
+ but not present), a $(D ConvException) exception is thrown.
 
  Depending on the type of the pointer being bound, $(D getopt)
  recognizes the following kinds of options:
@@ -152,7 +153,7 @@ getopt(args, "tune", &tuningParms);
 
 Invoking the program with e.g. "--tune=alpha=0.5 --tune beta=0.6" will
 set $(D tuningParms) to [ "alpha" : 0.5, "beta" : 0.6 ].)  In general,
-keys and values can be of any parsable types.
+keys and values can be of any parsable types.)
 
 $(LI $(I Delegate options.) An option can be bound to a delegate with
 the signature $(D void delegate()), $(D void delegate(string option))
@@ -260,7 +261,7 @@ $(B "Short" versus "long" options)
 
 Traditionally, programs accepted single-letter options preceded by
 only one dash (e.g. $(D -t)). $(D getopt) accepts such parameters
-seamlessly. When used with a double-dash (e.g. $(D --t), a
+seamlessly. When used with a double-dash (e.g. $(D --t)), a
 single-letter option behaves the same as a multi-letter option. When
 used with a single dash, a single-letter option is accepted. If the
 option has a parameter, that must be "stuck" to the option without

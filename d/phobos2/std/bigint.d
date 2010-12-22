@@ -12,6 +12,9 @@
  * )
  *
  * For very large numbers, consider using the $(WEB gmplib.org, GMP library) instead.
+ *
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Authors:   Don Clugston
  */
 /*          Copyright Don Clugston 2008 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
@@ -22,7 +25,6 @@
 module std.bigint;
 
 private import std.internal.math.biguintcore;
-import core.stdc.stdio;
 
 /** A struct representing an arbitrary precision integer
  *
@@ -479,7 +481,6 @@ unittest {
     assert(BigInt(-0x12345678).toInt() == -0x12345678);
     assert(BigInt(-0x12345678).toLong() == -0x12345678);
     assert(BigInt(0x1234_5678_9ABC_5A5AL).ulongLength == 1); 
-    printf("%Lx%Lx\n", BigInt(0x1234_5678_9ABC_5A5AL).data.peekUlong(0));
     assert(BigInt(0x1234_5678_9ABC_5A5AL).toLong() == 0x1234_5678_9ABC_5A5AL);
     assert(BigInt(-0x1234_5678_9ABC_5A5AL).toLong() == -0x1234_5678_9ABC_5A5AL);
     assert(BigInt(0xF234_5678_9ABC_5A5AL).toLong() == long.max);

@@ -1060,35 +1060,38 @@ Preconditions:
 $(D !pointsTo(lhs, lhs) && !pointsTo(lhs, rhs) && !pointsTo(rhs, lhs)
 && !pointsTo(rhs, rhs))
  */
-void swap(T)(ref T a, ref T b) if (!is(typeof(T.init.proxySwap(T.init))))
+void swap(T)(ref T lhs, ref T rhs) @trusted pure nothrow
+if (isMutable!T && !is(typeof(T.init.proxySwap(T.init))))
 {
-   static if (is(T == struct))
-   {
-      // For structs, move memory directly
-      // First check for undue aliasing
-      assert(!pointsTo(a, b) && !pointsTo(b, a)
-         && !pointsTo(a, a) && !pointsTo(b, b));
-      // Swap bits
-      ubyte[T.sizeof] t = void;
-      memcpy(&t, &a, T.sizeof);
-      memcpy(&a, &b, T.sizeof);
-      memcpy(&b, &t, T.sizeof);
-   }
-   else
-   {
-      // Temporary fix Bug 4789.  Wor around the fact that assigning a static
-      // array to itself doesn't work properly.
-      static if(isStaticArray!T) {
-          if(a.ptr is b.ptr) {
-              return;
-          }
-      }
+    static if (hasElaborateAssign!T)
+    {
+        // For structs with non-trivial assignment, move memory directly
+        // First check for undue aliasing
+        assert(!pointsTo(lhs, rhs) && !pointsTo(rhs, lhs)
+            && !pointsTo(lhs, lhs) && !pointsTo(rhs, rhs));
+        // Swap bits
+        ubyte[T.sizeof] t = void;
+        auto a = (cast(ubyte*) &lhs)[0 .. T.sizeof];
+        auto b = (cast(ubyte*) &rhs)[0 .. T.sizeof];
+        t[] = a[];
+        a[] = b[];
+        b[] = t[];
+    }
+    else
+    {
+        // Temporary fix Bug 4789.  Wor around the fact that assigning a static
+        // array to itself doesn't work properly.
+        static if(isStaticArray!T) {
+            if(lhs.ptr is rhs.ptr) {
+                return;
+            }
+        }
 
-      // For non-struct types, suffice to do the classic swap
-      auto t = a;
-      a = b;
-      b = t;
-   }
+        // For non-struct types, suffice to do the classic swap
+        auto tmp = lhs;
+        lhs = rhs;
+        rhs = tmp;
+    }
 }
 
 // Not yet documented
@@ -1117,6 +1120,39 @@ unittest
     assert(s2.x == 0);
     assert(s2.c == 'z');
     assert(s2.y == [ 1, 2 ]);
+
+    immutable int imm1, imm2;
+    static assert(!__traits(compiles, swap(imm1, imm2)));
+}
+
+unittest
+{
+    struct NoCopy
+    {
+        this(this) { assert(0); }
+        int n;
+        string s;
+    }
+    NoCopy nc1, nc2;
+    nc1.n = 127; nc1.s = "abc";
+    nc2.n = 513; nc2.s = "uvwxyz";
+    swap(nc1, nc2);
+    assert(nc1.n == 513 && nc1.s == "uvwxyz");
+    assert(nc2.n == 127 && nc2.s == "abc");
+
+    struct NoCopyHolder
+    {
+        NoCopy noCopy;
+    }
+    NoCopyHolder h1, h2;
+    h1.noCopy.n = 31; h1.noCopy.s = "abc";
+    h2.noCopy.n = 65; h2.noCopy.s = null;
+    swap(h1, h2);
+    assert(h1.noCopy.n == 65 && h1.noCopy.s == null);
+    assert(h2.noCopy.n == 31 && h2.noCopy.s == "abc");
+
+    const NoCopy const1, const2;
+    static assert(!__traits(compiles, swap(const1, const2)));
 }
 
 void swapFront(R1, R2)(R1 r1, R2 r2)
@@ -1148,7 +1184,7 @@ with two empty elements.
 
 Example:
 ---
-assert(equal(splitter("hello  world", ' ') == [ "hello", "", "world" ]));
+assert(equal(splitter("hello  world", ' '), [ "hello", "", "world" ]));
 int[] a = [ 1, 2, 0, 0, 3, 0, 4, 5, 0 ];
 int[][] w = [ [1, 2], [], [3], [4, 5] ];
 assert(equal(splitter(a, 0), w));
@@ -1172,7 +1208,7 @@ private:
 
     static if(isBidirectionalRange!Range)
     {
-        static int lastIndexOf(Range haystack, Separator needle)
+        static sizediff_t lastIndexOf(Range haystack, Separator needle)
         {
             immutable index = indexOf(retro(haystack), needle);
             return (index == -1) ? -1 : haystack.length - 1 - index;
@@ -2431,7 +2467,7 @@ if (Ranges.length > 1 && allSatisfy!(isForwardRange, Ranges))
 {
     for (;; haystack.popFront)
     {
-        auto r = startsWith!pred(haystack, needles);
+        size_t r = startsWith!pred(haystack, needles);
         if (r || haystack.empty)
         {
             return tuple(haystack, r);
@@ -2515,10 +2551,10 @@ struct BoyerMooreFinder(alias pred, Range)
 {
 private:
     size_t skip[];
-    int[ElementType!(Range)] occ;
+    sizediff_t[ElementType!(Range)] occ;
     Range needle;
 
-    int occurrence(ElementType!(Range) c)
+    sizediff_t occurrence(ElementType!(Range) c)
     {
         auto p = c in occ;
         return p ? *p : -1;
@@ -2535,8 +2571,8 @@ is ignored.
     static bool needlematch(R)(R needle,
                               size_t portion, size_t offset)
     {
-        int virtual_begin = needle.length - offset - portion;
-        int ignore = 0;
+        sizediff_t virtual_begin = needle.length - offset - portion;
+        sizediff_t ignore = 0;
         if (virtual_begin < 0) {
             ignore = -virtual_begin;
             virtual_begin = 0;
@@ -3308,6 +3344,15 @@ unittest
     int[] a = [ 1, 2, 4, 3, 2, 5, 3, 2, 4 ];
     assert(count(a, 2) == 3, text(count(a, 2)));
     assert(count!("a > b")(a, 2) == 5, text(count!("a > b")(a, 2)));
+
+    // check strings
+    assert(count("日本語")  == 3);
+    assert(count("日本語"w) == 3);
+    assert(count("日本語"d) == 3);
+
+    assert(count!("a == '日'")("日本語")  == 1);
+    assert(count!("a == '本'")("日本語"w) == 1);
+    assert(count!("a == '語'")("日本語"d) == 1);
 }
 
 /**
@@ -3320,12 +3365,12 @@ int[] a = [ 1, 2, 4, 3, 2, 5, 3, 2, 4 ];
 assert(count!("a > 1")(a) == 8);
 ----
 */
-size_t count(alias pred, Range)(Range r) if (isInputRange!(Range))
+size_t count(alias pred = "true", Range)(Range r) if (isInputRange!(Range))
 {
     size_t result;
-    foreach (e; r)
+    for (; !r.empty; r.popFront())
     {
-        if (unaryFun!(pred)(e)) ++result;
+        if (unaryFun!pred(r.front)) ++result;
     }
     return result;
 }
@@ -3815,7 +3860,7 @@ struct Levenshtein(Range, alias equals, CostType = size_t)
     EditOp[] path()
     {
         EditOp[] result;
-        uint i = rows - 1, j = cols - 1;
+        size_t i = rows - 1, j = cols - 1;
         // restore the path
         while (i || j) {
             auto cIns = j == 0 ? CostType.max : _matrix[i][j - 1];
@@ -3850,9 +3895,9 @@ private:
         _insertionIncrement = 1,
         _substitutionIncrement = 1;
     CostType[][] _matrix;
-    uint rows, cols;
+    size_t rows, cols;
 
-    void AllocMatrix(uint r, uint c) {
+    void AllocMatrix(size_t r, size_t c) {
         rows = r;
         cols = c;
         if (!_matrix || _matrix.length < r || _matrix[0].length < c) {
@@ -3906,7 +3951,7 @@ size_t levenshteinDistance(alias equals = "a == b", Range1, Range2)
     (Range1 s, Range2 t)
     if (isForwardRange!(Range1) && isForwardRange!(Range2))
 {
-    Levenshtein!(Range1, binaryFun!(equals), uint) lev;
+    Levenshtein!(Range1, binaryFun!(equals), size_t) lev;
     return lev.distance(s, t);
 }
 
@@ -5036,7 +5081,7 @@ unittest
     //scope(failure) writeln(stderr, "Failure testing algorithm");
     //auto v = ([ 25, 7, 9, 2, 0, 5, 21 ]).dup;
     int[] v = [ 7, 6, 5, 4, 3, 2, 1, 0 ];
-    auto n = 3;
+    sizediff_t n = 3;
     topN!("a < b")(v, n);
     assert(reduce!max(v[0 .. n]) <= v[n]);
     assert(reduce!min(v[n + 1 .. $]) >= v[n]);
@@ -5431,7 +5476,7 @@ void schwartzSort(alias transform, alias less = "a < b",
     alias typeof(z.front()) ProxyType;
     bool myLess(ProxyType a, ProxyType b)
     {
-        return binaryFun!(less)(a[0], b[0]);
+        return binaryFun!less(a[0], b[0]);
     }
     sort!(myLess, ss)(z);
 }
@@ -6224,11 +6269,11 @@ unittest
     debug(std_algorithm) scope(success)
         writeln("unittest @", __FILE__, ":", __LINE__, " done.");
     auto r = Random(unpredictableSeed);
-    int[] a = new int[uniform(1, 1000, r)];
+    sizediff_t[] a = new sizediff_t[uniform(1, 1000, r)];
     foreach (i, ref e; a) e = i;
     randomShuffle(a, r);
     auto n = uniform(0, a.length, r);
-    int[] b = new int[n];
+    sizediff_t[] b = new sizediff_t[n];
     topNCopy!(binaryFun!("a < b"))(a, b, SortOutput.yes);
     assert(isSorted!(binaryFun!("a < b"))(b));
 }

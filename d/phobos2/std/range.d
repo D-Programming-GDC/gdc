@@ -282,6 +282,11 @@ void put(R, E)(ref R r, E e)
         {
             r.put((&e)[0..1]);
         }
+        else
+        {
+            static assert(false,
+                    "Cannot put a "~E.stringof~" into a "~R.stringof);
+        }
     }
     else
     {
@@ -296,6 +301,11 @@ void put(R, E)(ref R r, E e)
             else static if (isInputRange!E && is(typeof(put(r, e.front))))
             {
                 for (; !e.empty; e.popFront()) put(r, e.front);
+            }
+            else
+            {
+                static assert(false,
+                        "Cannot put a "~E.stringof~" into a "~R.stringof);
             }
         }
         else
@@ -354,6 +364,30 @@ unittest
     put(r, 'a');
 }
 
+unittest
+{
+    int[] a = new int[10];
+    static assert(!__traits(compiles, put(a, 1.0L)));
+    static assert( __traits(compiles, put(a, 1)));
+    /*
+     * a[0] = 65;       // OK
+     * a[0] = 'A';      // OK
+     * a[0] = "ABC"[0]; // OK
+     * put(a, "ABC");   // OK
+     */
+    static assert( __traits(compiles, put(a, "ABC")));
+}
+
+unittest
+{
+    char[] a = new char[10];
+    static assert(!__traits(compiles, put(a, 1.0L)));
+    static assert(!__traits(compiles, put(a, 1)));
+    // char[] is NOT output range.
+    static assert(!__traits(compiles, put(a, 'a')));
+    static assert(!__traits(compiles, put(a, "ABC")));
+}
+
 /**
 Returns $(D true) if $(D R) is an output range for elements of type
 $(D E). An output range can be defined functionally as a range that
@@ -371,8 +405,14 @@ unittest
 
     auto app = appender!string();
     string s;
-    static assert(isOutputRange!(Appender!string, string));
-    static assert(isOutputRange!(Appender!string*, string));
+    static assert( isOutputRange!(Appender!string, string));
+    static assert( isOutputRange!(Appender!string*, string));
+    static assert(!isOutputRange!(Appender!string, int));
+    static assert(!isOutputRange!(char[], char));
+    static assert(!isOutputRange!(wchar[], wchar));
+    static assert( isOutputRange!(dchar[], char));
+    static assert( isOutputRange!(dchar[], wchar));
+    static assert( isOutputRange!(dchar[], dchar));
 }
 
 /**
@@ -2273,7 +2313,7 @@ unittest
     static assert (is (typeof(takeMyStrAgain) == typeof(takeMyStr)));
     takeMyStrAgain = take(takeMyStr, 10);
     assert(equal(takeMyStrAgain, "This is"));
-    
+
 
     foreach(DummyType; AllDummyRanges) {
         DummyType dummy;
@@ -2407,7 +2447,7 @@ struct Repeat(T)
     /// Ditto
     @property Repeat!(T) save() { return this; }
     /// Ditto
-    ref T opIndex(uint) { return _value; }
+    ref T opIndex(size_t) { return _value; }
 }
 
 /// Ditto
@@ -3481,7 +3521,10 @@ struct Recurrence(alias fun, StateType, size_t stateSize)
 
     void popFront()
     {
-        _state[_n % stateSize] = binaryFun!(fun, "a", "n")(
+        // The cast here is reasonable because fun may cause integer
+        // promotion, but needs to return a StateType to make its operation
+        // closed.  Therefore, we have no other choice.
+        _state[_n % stateSize] = cast(StateType) binaryFun!(fun, "a", "n")(
             cycle(_state), _n + stateSize);
         ++_n;
     }
@@ -3555,7 +3598,7 @@ struct Sequence(alias fun, State)
 {
 private:
     alias binaryFun!(fun, "a", "n") compute;
-    alias typeof(compute(State.init, 1u)) ElementType;
+    alias typeof(compute(State.init, cast(size_t) 1)) ElementType;
     State _state;
     size_t _n;
     ElementType _cache;
@@ -3725,7 +3768,9 @@ struct Iota(N, S) if ((isIntegral!N || isPointer!N) && isIntegral!S) {
     /// Ditto
     N opIndex(size_t n)
     {
-        return current + step * n;
+        // Just cast to N here because doing so gives overflow behavior
+        // consistent with calling popFront() n times.
+        return cast(N) (current + step * n);
     }
     /// Ditto
     typeof(this) opSlice()
@@ -4935,7 +4980,7 @@ template InputRangeObject(R) if(isInputRange!(Unqual!R)) {
 
             static if(isForwardRange!R) {
                 @property typeof(this) save() {
-                    return new typeof(this)(_range);
+                    return new typeof(this)(_range.save);
                 }
             }
 
@@ -5029,7 +5074,11 @@ template InputRangeObject(R) if(isInputRange!(Unqual!R)) {
 
 /**Convenience function for creating a $(D InputRangeObject) of the proper type.*/
 InputRangeObject!R inputRangeObject(R)(R range) if(isInputRange!R) {
-    return new InputRangeObject!R(range);
+    static if(is(R : InputRange!(ElementType!R))) {
+        return range;
+    } else {
+        return new InputRangeObject!R(range);
+    }
 }
 
 /**Convenience function for creating a $(D OutputRangeObject) with a base range
@@ -5070,6 +5119,8 @@ unittest {
 
     foreach(elem; arrWrapped) {}
     foreach(i, elem; arrWrapped) {}
+
+    assert(inputRangeObject(arrWrapped) is arrWrapped);
 
     foreach(DummyType; AllDummyRanges) {
         auto d = DummyType.init;
@@ -5248,7 +5299,7 @@ Releases the controlled range and returns it.
 */
     typeof(this) lowerBound(V)(V value)
     {
-        auto first = 0, count = this._input.length;
+        size_t first = 0, count = this._input.length;
         while (count > 0)
         {
             immutable step = count / 2;
@@ -5294,7 +5345,7 @@ Releases the controlled range and returns it.
 */
     typeof(this) upperBound(V)(V value)
     {
-        auto first = 0;
+        size_t first = 0;
         size_t count = length;
         while (count > 0)
         {

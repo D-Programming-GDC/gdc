@@ -117,6 +117,7 @@ Dsymbol *FuncDeclaration::syntaxCopy(Dsymbol *s)
 
 void FuncDeclaration::semantic(Scope *sc)
 {   TypeFunction *f;
+    AggregateDeclaration *ad;
     StructDeclaration *sd;
     ClassDeclaration *cd;
     InterfaceDeclaration *id;
@@ -162,6 +163,10 @@ void FuncDeclaration::semantic(Scope *sc)
     foverrides.setDim(0);       // reset in case semantic() is being retried for this function
 
     storage_class |= sc->stc & ~STCref;
+    ad = isThis();
+    if (ad)
+        storage_class |= ad->storage_class & (STC_TYPECTOR | STCsynchronized);
+
     //printf("function storage_class = x%llx, sc->stc = x%llx, %x\n", storage_class, sc->stc, Declaration::isFinal());
 
     if (!originalType)
@@ -169,7 +174,9 @@ void FuncDeclaration::semantic(Scope *sc)
     if (!type->deco)
     {
         sc = sc->push();
-        sc->stc |= storage_class & STCref;      // forward to function type
+        sc->stc |= storage_class & (STCref | STCnothrow | STCpure | STCdisable
+            | STCsafe | STCtrusted | STCsystem);      // forward to function type
+
         if (isCtorDeclaration())
             sc->flags |= SCOPEctor;
         type = type->semantic(loc, sc);
@@ -282,11 +289,11 @@ void FuncDeclaration::semantic(Scope *sc)
 #endif
 
 #ifdef IN_GCC
-    AggregateDeclaration *ad;
-
-    ad = parent->isAggregateDeclaration();
-    if (ad)
-        ad->methods.push(this);
+    {
+        AggregateDeclaration *ad = parent->isAggregateDeclaration();
+        if (ad)
+            ad->methods.push(this);
+    }
 #endif
     sd = parent->isStructDeclaration();
     if (sd)
@@ -1328,8 +1335,10 @@ void FuncDeclaration::semantic3(Scope *sc)
             else if (!inlineAsm)
             {
 #if DMDV2
-                int blockexit = fbody ? fbody->blockExit() : BEfallthru;
-                if (f->isnothrow && blockexit & BEthrow)
+                // Check for errors related to 'nothrow'.
+                int nothrowErrors = global.errors;
+                int blockexit = fbody ? fbody->blockExit(f->isnothrow) : BEfallthru;
+                if (f->isnothrow && (global.errors != nothrowErrors) )
                     error("'%s' is nothrow yet may throw", toChars());
 
                 int offend = blockexit & BEfallthru;
@@ -1558,7 +1567,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                     if (e)
                     {   Statement *s = new ExpStatement(0, e);
                         s = s->semantic(sc2);
-                        if (fbody->blockExit() == BEfallthru)
+                        if (fbody->blockExit(f->isnothrow) == BEfallthru)
                             fbody = new CompoundStatement(0, fbody, s);
                         else
                             fbody = new TryFinallyStatement(0, fbody, s);
@@ -1615,6 +1624,8 @@ void FuncDeclaration::semantic3(Scope *sc)
         semanticRun = PASSsemanticdone; // Ensure errors get reported again
     else
         semanticRun = PASSsemantic3done;
+    //printf("-FuncDeclaration::semantic3('%s.%s', sc = %p, loc = %s)\n", parent->toChars(), toChars(), sc, loc.toChars());
+    //fflush(stdout);
 }
 
 void FuncDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -1626,6 +1637,23 @@ void FuncDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     bodyToCBuffer(buf, hgs);
 }
 
+int FuncDeclaration::equals(Object *o)
+{
+    if (this == o)
+        return TRUE;
+
+    Dsymbol *s = isDsymbol(o);
+    if (s)
+    {
+        FuncDeclaration *fd = s->isFuncDeclaration();
+        if (fd)
+        {
+            return toParent()->equals(fd->toParent()) &&
+                ident->equals(fd->ident) && type->equals(fd->type);
+        }
+    }
+    return FALSE;
+}
 
 void FuncDeclaration::bodyToCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
@@ -1703,7 +1731,10 @@ Statement *FuncDeclaration::mergeFrequire(Statement *sf)
         if (fdv->fdrequire && fdv->fdrequire->semanticRun != PASSsemantic3done)
         {
             assert(fdv->scope);
-            fdv->semantic3(fdv->scope);
+            Scope *sc = fdv->scope->push();
+            sc->stc &= ~STCoverride;
+            fdv->semantic3(sc);
+            sc->pop();
         }
 
         sf = fdv->mergeFrequire(sf);
@@ -1750,6 +1781,19 @@ Statement *FuncDeclaration::mergeFensure(Statement *sf)
     for (int i = 0; i < foverrides.dim; i++)
     {
         FuncDeclaration *fdv = (FuncDeclaration *)foverrides.data[i];
+
+        /* The semantic pass on the contracts of the overridden functions must
+         * be completed before code generation occurs (bug 3602 and 5230).
+         */
+        if (fdv->fdensure && fdv->fdensure->semanticRun != PASSsemantic3done)
+        {
+            assert(fdv->scope);
+            Scope *sc = fdv->scope->push();
+            sc->stc &= ~STCoverride;
+            fdv->semantic3(sc);
+            sc->pop();
+        }
+
         sf = fdv->mergeFensure(sf);
         if (fdv->fdensure)
         {
@@ -2924,7 +2968,11 @@ void CtorDeclaration::semantic(Scope *sc)
 
 #if STRUCTTHISREF
     if (ad && ad->isStructDeclaration())
-        ((TypeFunction *)type)->isref = 1;
+    {   ((TypeFunction *)type)->isref = 1;
+        if (!originalType)
+            // Leave off the "ref"
+            originalType = new TypeFunction(arguments, tret, varargs, LINKd, storage_class | sc->stc);
+    }
 #endif
     if (!originalType)
         originalType = type;
@@ -2982,6 +3030,8 @@ int CtorDeclaration::addPostInvariant()
 
 void CtorDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
+    if (originalType && originalType->ty == Tfunction)
+        ((TypeFunction *)originalType)->attributesToCBuffer(buf, 0);
     buf->writestring("this");
     Parameter::argsToCBuffer(buf, hgs, arguments, varargs);
     bodyToCBuffer(buf, hgs);
@@ -3505,6 +3555,8 @@ void UnitTestDeclaration::semantic(Scope *sc)
         if (!type)
             type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
         Scope *sc2 = sc->push();
+        // It makes no sense for unit tests to be pure or nothrow.
+        sc2->stc &= ~(STCnothrow | STCpure);
         sc2->linkage = LINKd;
         FuncDeclaration::semantic(sc2);
         sc2->pop();

@@ -264,13 +264,13 @@ Expressions *arrayExpressionSemantic(Expressions *exps, Scope *sc)
  */
 
 #if DMDV2
-int arrayExpressionCanThrow(Expressions *exps)
+int arrayExpressionCanThrow(Expressions *exps, bool mustNotThrow)
 {
     if (exps)
     {
         for (size_t i = 0; i < exps->dim; i++)
         {   Expression *e = (Expression *)exps->data[i];
-            if (e && e->canThrow())
+            if (e && e->canThrow(mustNotThrow))
                 return 1;
         }
     }
@@ -1277,6 +1277,15 @@ Expression *Expression::checkToBoolean(Scope *sc)
             e = e->semantic(sc);
             return e;
         }
+
+        // Forward to aliasthis.
+        if (ad->aliasthis)
+        {
+            Expression *e = new DotIdExp(loc, this, ad->aliasthis->ident);
+            e = e->semantic(sc);
+            e = e->checkToBoolean(sc);
+            return e;
+        }
     }
 
     if (!type->checkBoolean())
@@ -1363,9 +1372,11 @@ int Expression::isBit()
 /********************************
  * Can this expression throw an exception?
  * Valid only after semantic() pass.
+ *
+ * If 'mustNotThrow' is true, generate an error if it throws
  */
 
-int Expression::canThrow()
+int Expression::canThrow(bool mustNotThrow)
 {
 #if DMDV2
     return FALSE;
@@ -2331,7 +2342,7 @@ Lagain:
     {
         //printf("Identifier '%s' is a variable, type '%s'\n", toChars(), v->type->toChars());
         if (!type)
-        {   if (!v->type && v->scope)
+        {   if ((!v->type || !v->type->deco) && v->scope)
                 v->semantic(v->scope);
             type = v->type;
             if (!v->type)
@@ -2368,6 +2379,11 @@ Lagain:
 
         if (!f->originalType && f->scope)       // semantic not yet run
             f->semantic(f->scope);
+        if (f->isUnitTestDeclaration())
+        {
+            error("cannot call unittest function %s", toChars());
+            return new ErrorExp();
+        }
         if (!f->type->deco)
         {
             error("forward reference to %s", toChars());
@@ -2749,7 +2765,7 @@ Expression *StringExp::syntaxCopy()
 
 int StringExp::equals(Object *o)
 {
-    //printf("StringExp::equals('%s')\n", o->toChars());
+    //printf("StringExp::equals('%s') %s\n", o->toChars(), toChars());
     if (o && o->dyncast() == DYNCAST_EXPRESSION)
     {   Expression *e = (Expression *)o;
 
@@ -2918,6 +2934,7 @@ StringExp *StringExp::toUTF8(Scope *sc)
 
 int StringExp::compare(Object *obj)
 {
+    //printf("StringExp::compare()\n");
     // Used to sort case statement expressions so we can do an efficient lookup
     StringExp *se2 = (StringExp *)(obj);
 
@@ -2931,12 +2948,13 @@ int StringExp::compare(Object *obj)
     int len1 = len;
     int len2 = se2->len;
 
+    //printf("sz = %d, len1 = %d, len2 = %d\n", sz, len1, len2);
     if (len1 == len2)
     {
         switch (sz)
         {
             case 1:
-                return strcmp((char *)string, (char *)se2->string);
+                return memcmp((char *)string, (char *)se2->string, len1);
 
             case 2:
             {   unsigned u;
@@ -3167,7 +3185,7 @@ int ArrayLiteralExp::isBool(int result)
 }
 
 #if DMDV2
-int ArrayLiteralExp::canThrow()
+int ArrayLiteralExp::canThrow(bool mustNotThrow)
 {
     return 1;   // because it can fail allocating memory
 }
@@ -3262,7 +3280,7 @@ int AssocArrayLiteralExp::isBool(int result)
 }
 
 #if DMDV2
-int AssocArrayLiteralExp::canThrow()
+int AssocArrayLiteralExp::canThrow(bool mustNotThrow)
 {
     return 1;
 }
@@ -3511,9 +3529,9 @@ int StructLiteralExp::checkSideEffect(int flag)
 }
 
 #if DMDV2
-int StructLiteralExp::canThrow()
+int StructLiteralExp::canThrow(bool mustNotThrow)
 {
-    return arrayExpressionCanThrow(elements);
+    return arrayExpressionCanThrow(elements, mustNotThrow);
 }
 #endif
 
@@ -4049,9 +4067,9 @@ int NewExp::checkSideEffect(int flag)
 }
 
 #if DMDV2
-int NewExp::canThrow()
+int NewExp::canThrow(bool mustNotThrow)
 {
-    return 1;
+    return 0;           // regard storage allocation failures as not recoverable
 }
 #endif
 
@@ -4123,7 +4141,7 @@ int NewAnonClassExp::checkSideEffect(int flag)
 }
 
 #if DMDV2
-int NewAnonClassExp::canThrow()
+int NewAnonClassExp::canThrow(bool mustNotThrow)
 {
     return 1;
 }
@@ -4597,9 +4615,9 @@ int TupleExp::checkSideEffect(int flag)
 }
 
 #if DMDV2
-int TupleExp::canThrow()
+int TupleExp::canThrow(bool mustNotThrow)
 {
-    return arrayExpressionCanThrow(exps);
+    return arrayExpressionCanThrow(exps, mustNotThrow);
 }
 #endif
 
@@ -4785,12 +4803,12 @@ int DeclarationExp::checkSideEffect(int flag)
 }
 
 #if DMDV2
-int DeclarationExp::canThrow()
+int DeclarationExp::canThrow(bool mustNotThrow)
 {
     VarDeclaration *v = declaration->isVarDeclaration();
     if (v && v->init)
     {   ExpInitializer *ie = v->init->isExpInitializer();
-        return ie && ie->exp->canThrow();
+        return ie && ie->exp->canThrow(mustNotThrow);
     }
     return 0;
 }
@@ -5138,6 +5156,17 @@ Expression *IsExp::semantic(Scope *sc)
                     goto Lno;
                 break;
 
+            case TOKargTypes:
+                /* Generate a type tuple of the equivalent types used to determine if a
+                 * function argument of this type can be passed in registers.
+                 * The results of this are highly platform dependent, and intended
+                 * primarly for use in implementing va_arg().
+                 */
+                tded = targ->toArgTypes();
+                if (!tded)
+                    goto Lno;           // not valid for a parameter
+                break;
+
             default:
                 assert(0);
         }
@@ -5168,7 +5197,7 @@ Expression *IsExp::semantic(Scope *sc)
             tded = (Type *)dedtypes.data[0];
             if (!tded)
                 tded = targ;
-
+#if DMDV2
             Objects tiargs;
             tiargs.setDim(1);
             tiargs.data[0] = (void *)targ;
@@ -5183,16 +5212,16 @@ Expression *IsExp::semantic(Scope *sc)
                 if (m == MATCHnomatch)
                     goto Lno;
                 s->semantic(sc);
-                if (!sc->insert(s))
-                    error("declaration %s is already defined", s->toChars());
 #if 0
                 Object *o = (Object *)dedtypes.data[i];
                 Dsymbol *s = TemplateDeclaration::declareParameter(loc, sc, tp, o);
 #endif
                 if (sc->sd)
                     s->addMember(sc, sc->sd, 1);
+                else if (!sc->insert(s))
+                    error("declaration %s is already defined", s->toChars());
             }
-
+#endif
             goto Lyes;
         }
     }
@@ -5306,9 +5335,9 @@ Expression *UnaExp::semantic(Scope *sc)
 }
 
 #if DMDV2
-int UnaExp::canThrow()
+int UnaExp::canThrow(bool mustNotThrow)
 {
-    return e1->canThrow();
+    return e1->canThrow(mustNotThrow);
 }
 #endif
 
@@ -5452,9 +5481,9 @@ int BinExp::isunsigned()
 }
 
 #if DMDV2
-int BinExp::canThrow()
+int BinExp::canThrow(bool mustNotThrow)
 {
-    return e1->canThrow() || e2->canThrow();
+    return e1->canThrow(mustNotThrow) || e2->canThrow(mustNotThrow);
 }
 #endif
 
@@ -5488,7 +5517,9 @@ Expression *BinAssignExp::commonSemanticAssign(Scope *sc)
 
         if (e1->op == TOKslice)
         {   // T[] op= ...
-            typeCombine(sc);
+            e = typeCombine(sc);
+            if (e->op == TOKerror)
+                return e;
             type = e1->type;
             return arrayOp(sc);
         }
@@ -5531,7 +5562,9 @@ Expression *BinAssignExp::commonSemanticAssignIntegral(Scope *sc)
 
         if (e1->op == TOKslice)
         {   // T[] op= ...
-            typeCombine(sc);
+            e = typeCombine(sc);
+            if (e->op == TOKerror)
+                return e;
             type = e1->type;
             return arrayOp(sc);
         }
@@ -5770,7 +5803,7 @@ int AssertExp::checkSideEffect(int flag)
 }
 
 #if DMDV2
-int AssertExp::canThrow()
+int AssertExp::canThrow(bool mustNotThrow)
 {
     /* assert()s are non-recoverable errors, so functions that
      * use them can be considered "nothrow"
@@ -7278,10 +7311,10 @@ int CallExp::checkSideEffect(int flag)
 }
 
 #if DMDV2
-int CallExp::canThrow()
+int CallExp::canThrow(bool mustNotThrow)
 {
     //printf("CallExp::canThrow() %s\n", toChars());
-    if (e1->canThrow())
+    if (e1->canThrow(mustNotThrow))
         return 1;
 
     /* If any of the arguments can throw, then this expression can throw
@@ -7289,7 +7322,7 @@ int CallExp::canThrow()
     for (size_t i = 0; i < arguments->dim; i++)
     {   Expression *e = (Expression *)arguments->data[i];
 
-        if (e && e->canThrow())
+        if (e && e->canThrow(mustNotThrow))
             return 1;
     }
 
@@ -7305,7 +7338,8 @@ int CallExp::canThrow()
         return 0;
     if (t->ty == Tdelegate && ((TypeFunction *)((TypeDelegate *)t)->next)->isnothrow)
         return 0;
-
+    if (mustNotThrow)
+        error("%s is not nothrow", e1->toChars());
     return 1;
 }
 #endif
@@ -8620,9 +8654,12 @@ Expression *IndexExp::semantic(Scope *sc)
 
         case Taarray:
         {   TypeAArray *taa = (TypeAArray *)t1;
-            if (!arrayTypeCompatible(e2->loc, e2->type, taa->index)
+            /* We can skip the implicit conversion if they differ only by
+               * constness (Bugzilla 2684, see also bug 2954b)
+               */
+            if (!arrayTypeCompatibleWithoutCasting(e2->loc, e2->type, taa->index)
 #if IN_GCC
-                    || e2->op == TOKnull // NULL implicitly converts to any pointer type or dynamic array
+                || e1->op == TOKnull // NULL implicitly converts to any pointer type or dynamic array
 #endif
                )
             {
@@ -8704,8 +8741,14 @@ Expression *IndexExp::modifiableLvalue(Scope *sc, Expression *e)
         error("string literals are immutable");
     if (type && !type->isMutable())
         error("%s isn't mutable", e->toChars());
-    if (e1->type->toBasetype()->ty == Taarray)
+    Type *t1 = e1->type->toBasetype();
+    if (t1->ty == Taarray)
+    {   TypeAArray *taa = (TypeAArray *)t1;
+        Type *t2b = e2->type->toBasetype();
+        if (t2b->ty == Tarray && t2b->nextOf()->isMutable())
+            error("associative arrays can only be assigned values with immutable keys, not %s", e2->type->toChars());
         e1 = e1->modifiableLvalue(sc, e1);
+    }
     return toLvalue(sc, e);
 }
 
@@ -9022,9 +9065,10 @@ Expression *AssignExp::semantic(Scope *sc)
             {
                 // Deal with AAs (Bugzilla 2451)
                 // Rewrite as:
-                // e1 = (typeof(e2) tmp = void, tmp = e2, tmp);
+                // e1 = (typeof(aa.value) tmp = void, tmp = e2, tmp);
+                Type * aaValueType = ((TypeAArray *)((IndexExp*)e1)->e1->type->toBasetype())->next;
                 Identifier *id = Lexer::uniqueId("__aatmp");
-                VarDeclaration *v = new VarDeclaration(loc, e2->type,
+                VarDeclaration *v = new VarDeclaration(loc, aaValueType,
                     id, new VoidInitializer(NULL));
                 v->storage_class |= STCctfe;
 
@@ -9207,7 +9251,9 @@ Expression *AddAssignExp::semantic(Scope *sc)
 
     if (e1->op == TOKslice)
     {
-        typeCombine(sc);
+        e = typeCombine(sc);
+        if (e->op == TOKerror)
+            return e;
         type = e1->type;
         return arrayOp(sc);
     }
@@ -9315,7 +9361,9 @@ Expression *MinAssignExp::semantic(Scope *sc)
 
     if (e1->op == TOKslice)
     {   // T[] -= ...
-        typeCombine(sc);
+        e = typeCombine(sc);
+        if (e->op == TOKerror)
+            return e;
         type = e1->type;
         return arrayOp(sc);
     }
@@ -9442,9 +9490,10 @@ Expression *MulAssignExp::semantic(Scope *sc)
 #endif
 
     if (e1->op == TOKslice)
-    {   // T[] -= ...
-        typeCombine(sc);
-        type = e1->type;
+    {   // T[] *= ...
+        e = typeCombine(sc);
+        if (e->op == TOKerror)
+            return e;
         return arrayOp(sc);
     }
 
@@ -9512,8 +9561,10 @@ Expression *DivAssignExp::semantic(Scope *sc)
 #endif
 
     if (e1->op == TOKslice)
-    {   // T[] -= ...
-        typeCombine(sc);
+    {   // T[] /= ...
+        e = typeCombine(sc);
+        if (e->op == TOKerror)
+            return e;
         type = e1->type;
         return arrayOp(sc);
     }
@@ -11223,9 +11274,9 @@ int CondExp::checkSideEffect(int flag)
 }
 
 #if DMDV2
-int CondExp::canThrow()
+int CondExp::canThrow(bool mustNotThrow)
 {
-    return econd->canThrow() || e1->canThrow() || e2->canThrow();
+    return econd->canThrow(mustNotThrow) || e1->canThrow(mustNotThrow) || e2->canThrow(mustNotThrow);
 }
 #endif
 

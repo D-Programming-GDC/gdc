@@ -328,11 +328,11 @@ void StructDeclaration::semantic(Scope *sc)
         error("structs, unions cannot be abstract");
 #if DMDV2
     if (storage_class & STCimmutable)
-        type = type->invariantOf();
-    else if (storage_class & STCconst)
-        type = type->constOf();
-    else if (storage_class & STCshared)
-        type = type->sharedOf();
+        type = type->addMod(MODimmutable);
+    if (storage_class & STCconst)
+        type = type->addMod(MODconst);
+    if (storage_class & STCshared)
+        type = type->addMod(MODshared);
 #endif
     if (attributes)
         attributes->append(sc->attributes);
@@ -387,7 +387,7 @@ void StructDeclaration::semantic(Scope *sc)
 
     sizeok = 0;
     sc2 = sc->push(this);
-    sc2->stc &= storage_class & STC_TYPECTOR;
+    sc2->stc &= STCsafe | STCtrusted | STCsystem;
     sc2->attributes = NULL;
     sc2->parent = this;
     if (isUnionDeclaration())

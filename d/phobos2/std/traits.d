@@ -13,8 +13,8 @@
  *            Tomasz Stachowiak ($(D isExpressionTuple)),
  *            $(WEB erdani.org, Andrei Alexandrescu),
  *            Shin Fujishiro
- *
- *          Copyright Digital Mars 2005 - 2009.
+ */
+/*          Copyright Digital Mars 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -2772,6 +2772,27 @@ unittest {
     static assert(isIterable!(OpApply));
     static assert(isIterable!(uint[string]));
     static assert(isIterable!(Range));
+}
+
+/*
+ * Returns true if T is not const or immutable.  Note that isMutable is true for
+ * string, or immutable(char)[], because the 'head' is mutable.
+ */
+template isMutable(T)
+{
+    enum isMutable = !is(T == const) && !is(T == immutable);
+}
+
+unittest
+{
+    static assert(isMutable!int);
+    static assert(isMutable!string);
+    static assert(isMutable!(shared int));
+    static assert(isMutable!(shared const(int)[]));
+
+    static assert(!isMutable!(const int));
+    static assert(!isMutable!(shared(const int)));
+    static assert(!isMutable!(immutable string));
 }
 
 /**

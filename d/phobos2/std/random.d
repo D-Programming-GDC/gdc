@@ -46,7 +46,8 @@ Credits:   The entire random number library architecture is derived from the
            excellent $(WEB open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2461.pdf, C++0X)
            random number facility proposed by Jens Maurer and contributed to by
            researchers at the Fermi laboratory.
-
+*/
+/*
          Copyright Andrei Alexandrescu 2008 - 2009.
 Distributed under the Boost Software License, Version 1.0.
    (See accompanying file LICENSE_1_0.txt or copy at
@@ -952,7 +953,7 @@ struct RandomCover(Range, Random)
             ++_alreadyChosen; // means we're done
             return;
         }
-        uint k = _input.length - _alreadyChosen;
+        size_t k = _input.length - _alreadyChosen;
         uint i;
         foreach (e; _input)
         {
@@ -1231,6 +1232,10 @@ deprecated uint rand()
     return hiword;
 }
 
+// disabling because it's commented out anyways, and this causes a cyclic
+// dependency with std.encoding.
+version(none)
+{
 shared static this()
 {
     ulong s;
@@ -1255,6 +1260,7 @@ shared static this()
         }
     }
     //rand_seed(cast(uint) s, cast(uint)(s >> 32));
+}
 }
 
 deprecated

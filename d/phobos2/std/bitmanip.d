@@ -11,7 +11,8 @@ Copyright: Copyright Digital Mars 2007 - 2009.
 License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
 Authors:   $(WEB digitalmars.com, Walter Bright),
            $(WEB erdani.org, Andrei Alexandrescu)
-
+*/
+/*
          Copyright Digital Mars 2007 - 2009.
 Distributed under the Boost Software License, Version 1.0.
    (See accompanying file LICENSE_1_0.txt or copy at
@@ -23,13 +24,17 @@ module std.bitmanip;
 
 private import std.intrinsic;
 
-private template myToString(ulong n, string suffix = n > uint.max ? "UL" : "U")
-{
-    static if (n < 10)
-        enum myToString = cast(char) (n + '0') ~ suffix;
+string myToStringx(ulong n)
+{   enum s = "0123456789";
+    if (n < 10)
+	return s[cast(size_t)n..cast(size_t)n+1];
     else
-        enum myToString = .myToString!(n / 10, "")
-            ~ .myToString!(n % 10, "") ~ suffix;
+	return myToStringx(n / 10) ~ myToStringx(n % 10);
+}
+
+string myToString(ulong n)
+{
+    return myToStringx(n) ~ (n > uint.max ? "UL" : "U");
 }
 
 private template createAccessors(
@@ -72,22 +77,22 @@ private template createAccessors(
             enum result =
             // getter
                 "bool " ~ name ~ "() const { return "
-                ~"("~store~" & "~myToString!(maskAllElse)~") != 0;}\n"
+                ~"("~store~" & "~myToString(maskAllElse)~") != 0;}\n"
             // setter
                 ~"void " ~ name ~ "(bool v){"
-                ~"if (v) "~store~" |= "~myToString!(maskAllElse)~";"
-                ~"else "~store~" &= ~"~myToString!(maskAllElse)~";}\n";
+                ~"if (v) "~store~" |= "~myToString(maskAllElse)~";"
+                ~"else "~store~" &= ~"~myToString(maskAllElse)~";}\n";
         }
         else
         {
             // getter
             enum result = T.stringof~" "~name~"() const { auto result = "
                 "("~store~" & "
-                ~ myToString!(maskAllElse) ~ ") >>"
-                ~ myToString!(offset) ~ ";"
+                ~ myToString(maskAllElse) ~ ") >>"
+                ~ myToString(offset) ~ ";"
                 ~ (T.min < 0
-                   ? "if (result >= " ~ myToString!(signBitCheck)
-                   ~ ") result |= " ~ myToString!(extendSign) ~ ";"
+                   ? "if (result >= " ~ myToString(signBitCheck)
+                   ~ ") result |= " ~ myToString(extendSign) ~ ";"
                    : "")
                 ~ " return cast("~T.stringof~") result;}\n"
             // setter
@@ -95,14 +100,14 @@ private template createAccessors(
                 ~"assert(v >= "~name~"_min); "
                 ~"assert(v <= "~name~"_max); "
                 ~store~" = cast(typeof("~store~"))"
-                " (("~store~" & ~"~myToString!(maskAllElse)~")"
-                " | ((cast(typeof("~store~")) v << "~myToString!(offset)~")"
-                " & "~myToString!(maskAllElse)~"));}\n"
+                " (("~store~" & ~"~myToString(maskAllElse)~")"
+                " | ((cast(typeof("~store~")) v << "~myToString(offset)~")"
+                " & "~myToString(maskAllElse)~"));}\n"
             // constants
                 ~"enum "~T.stringof~" "~name~"_min = cast("~T.stringof~")"
-                ~myToString!(minVal)~"; "
+                ~myToString(minVal)~"; "
                 ~" enum "~T.stringof~" "~name~"_max = cast("~T.stringof~")"
-                ~myToString!(maxVal)~"; ";
+                ~myToString(maxVal)~"; ";
         }
     }
 }
@@ -295,11 +300,17 @@ unittest
 struct BitArray
 {
     size_t len;
-    uint* ptr;
+    size_t* ptr;
+version(X86)
+    enum bitsPerSizeT = 32;
+else version(X86_64)
+    enum bitsPerSizeT = 64;
+else
+    static assert(false, "unknown platform");
 
     const size_t dim()
     {
-        return (len + 31) / 32;
+        return (len + (bitsPerSizeT-1)) / bitsPerSizeT;
     }
 
     @property
@@ -314,17 +325,17 @@ struct BitArray
             if (newlen != len)
             {
                 size_t olddim = dim();
-                size_t newdim = (newlen + 31) / 32;
+                size_t newdim = (newlen + (bitsPerSizeT-1)) / bitsPerSizeT;
 
                 if (newdim != olddim)
                 {
                     // Create a fake array so we can use D's realloc machinery
-                    uint[] b = ptr[0 .. olddim];
+                    auto b = ptr[0 .. olddim];
                     b.length = newdim;                // realloc
                     ptr = b.ptr;
-                    if (newdim & 31)
+                    if (newdim & (bitsPerSizeT-1))
                     {   // Set any pad bits to 0
-                        ptr[newdim - 1] &= ~(~0 << (newdim & 31));
+                        ptr[newdim - 1] &= ~(~0 << (newdim & (bitsPerSizeT-1)));
                     }
                 }
 
@@ -382,7 +393,7 @@ struct BitArray
     {
         BitArray ba;
 
-        uint[] b = ptr[0 .. dim].dup;
+        auto b = ptr[0 .. dim].dup;
         ba.len = len;
         ba.ptr = b.ptr;
         return ba;
@@ -711,7 +722,7 @@ struct BitArray
     }
     body
     {
-        ptr = cast(uint*)v.ptr;
+        ptr = cast(size_t*)v.ptr;
         len = numbits;
     }
 
@@ -772,8 +783,8 @@ struct BitArray
         result.length = len;
         for (size_t i = 0; i < dim; i++)
             result.ptr[i] = ~this.ptr[i];
-        if (len & 31)
-            result.ptr[dim - 1] &= ~(~0 << (len & 31));
+        if (len & (bitsPerSizeT-1))
+            result.ptr[dim - 1] &= ~(~0 << (len & (bitsPerSizeT-1)));
         return result;
     }
 

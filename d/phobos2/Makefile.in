@@ -250,7 +250,7 @@ RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 
 CORE_OBJS = core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
           core/exception.o core/memory.o core/runtime.o core/thread.o \
-          core/vararg.o core/sync/barrier.o core/sync/condition.o \
+          core/time.o core/vararg.o core/sync/barrier.o core/sync/condition.o \
           core/sync/config.o core/sync/exception.o core/sync/mutex.o \
           core/sync/rwmutex.o core/sync/semaphore.o
 
@@ -295,18 +295,23 @@ CMAIN_OBJS = rt/dmain2.o
 CORE_IMPORTS = core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
              core/dll_helper.di core/exception.di core/memory.di \
              core/runtime.di core/thread.di core/thread_helper.di \
-             core/vararg.di core/stdc/complex.di core/stdc/config.di \
-             core/stdc/ctype.di core/stdc/errno.di core/stdc/fenv.di \
-             core/stdc/float_.di core/stdc/inttypes.di core/stdc/limits.di \
-             core/stdc/locale.di core/stdc/math.di core/stdc/signal.di \
-             core/stdc/stdarg.di core/stdc/stddef.di core/stdc/stdint.di \
-             core/stdc/stdio.di core/stdc/stdlib.di core/stdc/string.di \
-             core/stdc/tgmath.di core/stdc/time.di core/stdc/wchar_.di \
-             core/stdc/wctype.di core/sync/barrier.di core/sync/condition.di \
-             core/sync/config.di core/sync/exception.di core/sync/mutex.di \
-             core/sync/rwmutex.di core/sync/semaphore.di \
+             core/time.di core/vararg.di \
+             \
+             core/stdc/complex.di core/stdc/config.di core/stdc/ctype.di \
+             core/stdc/errno.di core/stdc/fenv.di core/stdc/float_.di \
+             core/stdc/inttypes.di core/stdc/limits.di core/stdc/locale.di \
+             core/stdc/math.di core/stdc/signal.di core/stdc/stdarg.di \
+             core/stdc/stddef.di core/stdc/stdint.di core/stdc/stdio.di \
+             core/stdc/stdlib.di core/stdc/string.di core/stdc/tgmath.di \
+             core/stdc/time.di core/stdc/wchar_.di core/stdc/wctype.di \
+             \
+             core/sync/barrier.di core/sync/condition.di core/sync/config.di \
+             core/sync/exception.di core/sync/mutex.di core/sync/rwmutex.di \
+             core/sync/semaphore.di \
+             \
              core/sys/osx/mach/kern_return.di core/sys/osx/mach/port.di \
              core/sys/osx/mach/semaphore.di core/sys/osx/mach/thread_act.di \
+             \
              core/sys/posix/arpa/inet.di core/sys/posix/config.di \
              core/sys/posix/dirent.di core/sys/posix/dlfcn.di \
              core/sys/posix/fcntl.di core/sys/posix/inttypes.di \
@@ -323,7 +328,9 @@ CORE_IMPORTS = core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
              core/sys/posix/sys/shm.di core/sys/posix/sys/socket.di \
              core/sys/posix/sys/stat.di core/sys/posix/sys/time.di \
              core/sys/posix/sys/types.di core/sys/posix/sys/uio.di \
-             core/sys/posix/sys/wait.di core/sys/windows/windows.di
+             core/sys/posix/sys/wait.di \
+             \
+             core/sys/windows/windows.di
 
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 MAIN_OBJS = std/algorithm.o std/array.o std/base64.o std/bigint.o \
@@ -333,14 +340,15 @@ MAIN_OBJS = std/algorithm.o std/array.o std/base64.o std/bigint.o \
         std/datebase.o std/dateparse.o std/datetime.o \
         std/demangle.o std/encoding.o std/exception.o std/format.o \
         std/functional.o std/getopt.o std/gregorian.o std/json.o std/math.o \
-        std/md5.o std/metastrings.o std/numeric.o std/openrj.o \
-        std/outbuffer.o std/signals.o std/stdarg.o std/stdio.o \
+        std/mathspecial.o std/md5.o std/metastrings.o std/numeric.o \
+        std/openrj.o std/outbuffer.o std/signals.o std/stdarg.o std/stdio.o \
         std/stdiobase.o std/stream.o std/string.o std/syserror.o \
         std/system.o std/random.o std/range.o std/regex.o std/regexp.o \
         std/traits.o std/typecons.o std/typetuple.o std/uni.o std/uri.o \
         std/utf.o std/variant.o std/xml.o std/zip.o std/zlib.o \
         std/c/stdarg.o std/c/stdio.o std/internal/math/biguintcore.o \
         std/internal/math/biguintnoasm.o std/internal/math/biguintx86.o \
+        std/internal/math/gammafunction.o std/internal/math/errorfunction.o \
         crc32.o etc/c/zlib.o
 
 ZLIB_OBJS = zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \

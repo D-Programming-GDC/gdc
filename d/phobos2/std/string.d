@@ -15,7 +15,8 @@ Copyright: Copyright Digital Mars 2007 - 2009.
 License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
 Authors:   $(WEB digitalmars.com, Walter Bright),
            $(WEB erdani.org, Andrei Alexandrescu)
-
+*/
+/*
          Copyright Digital Mars 2007 - 2009.
 Distributed under the Boost Software License, Version 1.0.
    (See accompanying file LICENSE_1_0.txt or copy at
@@ -89,6 +90,13 @@ $(TR $(TD > 0)  $(TD $(D s1 > s2)))
 
 int cmp(C1, C2)(in C1[] s1, in C2[] s2)
 {
+    static int toZeroOne(sizediff_t num)
+    {
+        if(num > 0) return 1;
+        if(num < 0) return -1;
+        return 0;
+    }
+
     static if (C1.sizeof == C2.sizeof)
     {
         immutable len = min(s1.length, s2.length);
@@ -109,8 +117,8 @@ int cmp(C1, C2)(in C1[] s1, in C2[] s2)
         size_t i1, i2;
         for (;;)
         {
-            if (i1 == s1.length) return i2 - s2.length;
-            if (i2 == s2.length) return s1.length - i1;
+            if (i1 == s1.length) return toZeroOne(i2 - s2.length);
+            if (i2 == s2.length) return toZeroOne(s1.length - i1);
             immutable c1 = std.utf.decode(s1, i1),
                 c2 = std.utf.decode(s2, i2);
             if (c1 != c2) return cast(int) c1 - cast(int) c2;
@@ -169,7 +177,7 @@ icmp(C1, C2)(in C1[] s1, in C2[] s2)
 
 unittest
 {
-    int result;
+    sizediff_t result;
 
     debug(string) printf("string.icmp.unittest\n");
     result = icmp("abc", "abc");
@@ -371,7 +379,7 @@ unittest
 {
     debug(string) printf("string.find.unittest\n");
 
-    int i;
+    sizediff_t i;
 
     foreach (S; TypeTuple!(string, wstring, dstring))
     {
@@ -399,7 +407,7 @@ unittest
 {
     debug(string) printf("string.indexOf.unittest\n");
 
-    int i;
+    sizediff_t i;
 
     foreach (S; TypeTuple!(string, wstring, dstring))
     {
@@ -497,7 +505,7 @@ unittest
 {
     debug(string) printf("string.rfind.unittest\n");
 
-    int i;
+    sizediff_t i;
 
     i = lastIndexOf(null, cast(dchar)'a');
     assert(i == -1);
@@ -513,7 +521,7 @@ unittest
 {
     debug(string) printf("string.irfind.unittest\n");
 
-    int i;
+    sizediff_t i;
 
     i = lastIndexOf(null, cast(dchar)'a', CaseSensitive.no);
     assert(i == -1);
@@ -597,7 +605,7 @@ unittest
 {
     debug(string) printf("string.find.unittest\n");
 
-    int i;
+    sizediff_t i;
 
     foreach (S; TypeTuple!(string, wstring, dstring))
     {
@@ -621,7 +629,7 @@ unittest
 {
     debug(string) printf("string.ifind.unittest\n");
 
-    int i;
+    sizediff_t i;
 
     foreach (S; TypeTuple!(string, wstring, dstring))
     {
@@ -726,7 +734,7 @@ ptrdiff_t lastIndexOf(in char[] s, in char[] sub,
 
 unittest
 {
-    int i;
+    sizediff_t i;
 
     debug(string) printf("string.lastIndexOf.unittest\n");
     i = lastIndexOf("abcdefcdef", "c");
@@ -748,7 +756,7 @@ unittest
 
 unittest
 {
-    int i;
+    sizediff_t i;
 
     debug(string) printf("string.lastIndexOf.unittest\n");
     i = lastIndexOf("abcdefCdef", "c", CaseSensitive.no);
@@ -2088,7 +2096,7 @@ unittest
 
     string s = "This is a fofofof list";
     string sub = "fof";
-    int i;
+    size_t i;
 
     i = count(s, sub);
     assert(i == 2);

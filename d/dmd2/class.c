@@ -580,16 +580,16 @@ void ClassDeclaration::semantic(Scope *sc)
     if (storage_class & STCabstract)
         isabstract = 1;
     if (storage_class & STCimmutable)
-        type = type->invariantOf();
+        type = type->addMod(MODimmutable);
     else if (storage_class & STCconst)
-        type = type->constOf();
+        type = type->addMod(MODconst);
     else if (storage_class & STCshared)
-        type = type->sharedOf();
+        type = type->addMod(MODshared);
 
     sc = sc->push(this);
-    sc->stc &= ~(STCfinal | STCauto | STCscope | STCstatic |
-                 STCabstract | STCdeprecated | STC_TYPECTOR | STCtls | STCgshared);
-    sc->stc |= storage_class & STC_TYPECTOR;
+    //sc->stc &= ~(STCfinal | STCauto | STCscope | STCstatic | STCabstract | STCdeprecated | STC_TYPECTOR | STCtls | STCgshared);
+    //sc->stc |= storage_class & STC_TYPECTOR;
+    sc->stc &= STCsafe | STCtrusted | STCsystem;
     sc->attributes = NULL;
     sc->parent = this;
     sc->inunion = 0;

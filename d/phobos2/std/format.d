@@ -1138,6 +1138,21 @@ unittest
  */
 void formatValue(Writer, T, Char)(Writer w, T val,
         ref FormatSpec!Char f)
+if (isInputRange!T && !isSomeString!T)
+{
+    static if (is(T == class) || is(T == interface) || isPointer!T)
+    {
+        if (val is null)
+        {
+            put(w, "null");
+            return;
+        }
+    }
+    formatRange(w, val, f);
+}
+
+private void formatRange(Writer, T, Char)(Writer w, T val,
+        ref FormatSpec!Char f)
 if (isInputRange!T && !isSomeChar!(ElementType!T))
 {
     auto arr = val;
@@ -1214,9 +1229,9 @@ if (isInputRange!T && !isSomeChar!(ElementType!T))
     }
 }
 
-void formatValue(Writer, T, Char)(Writer w, T val,
+private void formatRange(Writer, T, Char)(Writer w, T val,
         ref FormatSpec!Char f)
-if (isInputRange!T && !isSomeString!T && isSomeChar!(ElementType!T))
+if (isInputRange!T && isSomeChar!(ElementType!T))
 {
     if (!f.flDash)
     {
@@ -1274,6 +1289,40 @@ unittest
     assert(w.data == "[1, 2, 3]");
 }
 
+unittest
+{
+    FormatSpec!char f;
+    auto w = appender!(char[])();
+
+    // class range (issue 5154)
+    auto c = inputRangeObject([1,2,3,4]);
+    w.clear();
+    formatValue(w, c, f);
+    assert(w.data == "[1, 2, 3, 4]");
+    assert(c.empty);
+
+    // interface
+    InputRange!int i = inputRangeObject([1,2,3,4]);
+    w.clear();
+    formatValue(w, i, f);
+    assert(w.data == "[1, 2, 3, 4]");
+    assert(i.empty);
+
+    // pointer
+    auto r = retro([1,2,3,4]);
+    w.clear();
+    formatValue(w, &r, f);
+    assert(w.data == "[4, 3, 2, 1]");
+    assert(r.empty);
+
+    // null
+    c = null;
+    w.clear();
+    formatValue(w, c, f);
+    assert(w.data == "null");
+    assert(r.empty);
+}
+
 /**
    $(D void[0]) is formatted as "[]".
  */
@@ -1290,7 +1339,7 @@ if (is(D == void[0]))
  */
 void formatValue(Writer, T, Char)(Writer w, T val,
         ref FormatSpec!Char f)
-if (isPointer!T)
+if (isPointer!T && !isInputRange!T)
 {
     const void * p = val;
     if (f.spec == 's')
@@ -1308,7 +1357,7 @@ if (isPointer!T)
    Objects are formatted by calling $(D toString).
  */
 void formatValue(Writer, T, Char)(Writer w, T val, ref FormatSpec!Char f)
-if (is(T == class))
+if (is(T == class) && !isInputRange!T)
 {
     // TODO: Change this once toString() works for shared objects.
     static assert(!is(T == shared), "unable to format shared objects");
@@ -1321,7 +1370,7 @@ if (is(T == class))
    $(D toString).
  */
 void formatValue(Writer, T, Char)(Writer w, T val, ref FormatSpec!Char f)
-if (is(T == interface))
+if (is(T == interface) && !isInputRange!T)
 {
     return formatValue(w, cast(Object) val, f);
 }
@@ -1370,16 +1419,48 @@ unittest
     assert(a.data == "aaa:1 bbb:2 ccc:3");
 }
 
+// @@@ BUG @@@
+// Workaround for a closure scoped destruction problem.
+struct WriterSink(Writer)
+{
+    Writer* w;
+    void sink(const(char)[] s) { put(*w, s); }
+}
+
 
 /**
-   Associative arrays are formatted by using $(D ':') and $(D ' ') as
-   separators.
+   Structs are formatted using by calling toString member function
+   of the struct. toString must have one of the following signatures:
+   ---
+   void toString(void delegate(const(char)[]) sink, FormatSpec fmt);
+   void toString(void delegate(const(char)[]) sink, string fmt);
+   ---
  */
 void formatValue(Writer, T, Char)(Writer w, T val,
         ref FormatSpec!Char f)
 if (is(T == struct) && !isInputRange!T)
 {
-    static if (is(typeof(val.toString() == string)))
+    alias void delegate(const (char)[]) SinkType;
+    static if (is(typeof(val.toString(SinkType, f))))
+    {   // Support toString( delegate(const(char)[]) sink, FormatSpec)
+        WriterSink!(Writer) sinker;
+        sinker.w = &w;
+        string outbuff = "";
+        void sink(const(char)[] s) { outbuff ~= s; }
+        val.toString(&sink, f);
+        put (w, outbuff);        
+    }
+    else static if (is(typeof(val.toString(SinkType, "s"))))
+    {   // Support toString( delegate(const(char)[]) sink, string fmt)
+        WriterSink!(Writer) sinker;
+        sinker.w = &w;
+        // @@@ BUG @@@
+        // Need to recreate the entire format string, eg "%.16f" rather than
+        // just "%f"
+        string fmt = "%" ~ f.spec;
+        val.toString(&sinker.sink, fmt);
+    }
+    else static if (is(typeof(val.toString()) S) && isSomeString!S)
     {
         put(w, val.toString());
     }
@@ -1387,6 +1468,22 @@ if (is(T == struct) && !isInputRange!T)
     {
         put(w, T.stringof);
     }
+}
+
+unittest
+{
+    // bug 4638
+    struct U8  {  string toString() { return "blah"; } }
+    struct U16 { wstring toString() { return "blah"; } }
+    struct U32 { dstring toString() { return "blah"; } }
+
+    FormatSpec!char f;
+    auto w = appender!string();
+
+    formatValue(w, U8(), f);
+    formatValue(w, U16(), f);
+    formatValue(w, U32(), f);
+    assert(w.data() == "blahblahblah");
 }
 
 /**
@@ -1434,6 +1531,31 @@ unittest
     auto a = appender!string();
     ireal val = 1i;
     formatValue(a, val, f);
+}
+
+/**
+   Delegates are formatted by 'Attributes ReturnType delegate(Parameters)'
+ */
+void formatValue(Writer, T, Char)(Writer w, T val, ref FormatSpec!Char f)
+if (is(T == delegate))
+{
+    alias FunctionAttribute FA;
+    if (functionAttributes!T & FA.PURE)     formatValue(w, "pure ", f);
+    if (functionAttributes!T & FA.NOTHROW)  formatValue(w, "nothrow ", f);
+    if (functionAttributes!T & FA.REF)      formatValue(w, "ref ", f);
+    if (functionAttributes!T & FA.PROPERTY) formatValue(w, "@property ", f);
+    if (functionAttributes!T & FA.TRUSTED)  formatValue(w, "@trusted ", f);
+    if (functionAttributes!T & FA.SAFE)     formatValue(w, "@safe ", f);
+    formatValue(w, ReturnType!(T).stringof,f);
+    formatValue(w, " delegate",f);
+    formatValue(w, ParameterTypeTuple!(T).stringof,f);
+}
+
+unittest
+{
+    FormatSpec!char f;
+    auto a = appender!string();
+    formatValue(a, {}, f);
 }
 
 /*

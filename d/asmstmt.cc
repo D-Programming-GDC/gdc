@@ -211,12 +211,25 @@ ExtAsmStatement::semantic(Scope *sc)
     return this;
 }
 
+#if V2
+int 
+ExtAsmStatement::blockExit(bool mustNotThrow)
+{
+    if (mustNotThrow)
+        error("asm statements are assumed to throw", toChars());
+    // TODO: Be smarter about this
+    return BEany;
+}
+
+#else
+
 int
 ExtAsmStatement::blockExit()
 {
     // TODO: Be smarter about this
     return BEany;
 }
+#endif
 
 
 // StringExp::toIR usually adds a NULL.  We don't want that...

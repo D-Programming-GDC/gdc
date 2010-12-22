@@ -1,11 +1,12 @@
 /**
  * Implementation of dynamic array property support routines.
  *
- * Copyright: Copyright Digital Mars 2000 - 2009.
+ * Copyright: Copyright Digital Mars 2000 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright
- *
- *          Copyright Digital Mars 2000 - 2009.
+ */
+
+/*          Copyright Digital Mars 2000 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -207,7 +208,7 @@ extern (C) wchar[] _adReverseWchar(wchar[] a)
             hi = hi - 1 + (stridehi - stridelo);
         }
     }
-    return a;
+    return *cast(wchar[]*)(&a);
 }
 
 unittest
@@ -231,10 +232,10 @@ unittest
  * Support for array.reverse property.
  */
 
-extern (C) Array _adReverse(Array a, size_t szelem)
+extern (C) void[] _adReverse(Array a, size_t szelem)
 out (result)
 {
-    assert(result is a);
+    assert(result is *cast(void[]*)(&a));
 }
 body
 {
@@ -273,7 +274,7 @@ body
                 //gc_free(tmp);
         }
     }
-    return a;
+    return *cast(void[]*)(&a);
 }
 
 unittest
@@ -282,13 +283,12 @@ unittest
 
     int[] a = new int[5];
     int[] b;
-    size_t i;
 
-    for (i = 0; i < 5; i++)
+    for (auto i = 0; i < 5; i++)
         a[i] = i;
     b = a.reverse;
     assert(b is a);
-    for (i = 0; i < 5; i++)
+    for (auto i = 0; i < 5; i++)
         assert(a[i] == 4 - i);
 
     struct X20
@@ -300,13 +300,13 @@ unittest
     X20[] c = new X20[5];
     X20[] d;
 
-    for (i = 0; i < 5; i++)
+    for (auto i = 0; i < 5; i++)
     {   c[i].a = i;
         c[i].e = 10;
     }
     d = c.reverse;
     assert(d is c);
-    for (i = 0; i < 5; i++)
+    for (auto i = 0; i < 5; i++)
     {
         assert(c[i].a == 4 - i);
         assert(c[i].e == 10);
@@ -332,7 +332,7 @@ extern (C) char[] _adSortChar(char[] a)
         }
         delete da;
     }
-    return a;
+    return *cast(char[]*)(&a);
 }
 
 /**********************************************
@@ -354,7 +354,7 @@ extern (C) wchar[] _adSortWchar(wchar[] a)
         }
         delete da;
     }
-    return a;
+    return *cast(wchar[]*)(&a);
 }
 
 /***************************************

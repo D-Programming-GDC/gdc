@@ -57,6 +57,7 @@ typedef TYPE type;
 typedef struct TYPE type;
 #endif
 struct Symbol;
+struct TypeTuple;
 
 #endif
 
@@ -323,6 +324,7 @@ struct Type : Object
     virtual unsigned wildMatch(Type *targ);
     virtual Expression *toExpression();
     virtual int hasPointers();
+    virtual TypeTuple *toArgTypes();
     virtual Type *nextOf();
     uinteger_t sizemask();
 
@@ -402,6 +404,7 @@ struct TypeBasic : Type
     Expression *defaultInit(Loc loc);
     int isZeroInit(Loc loc);
     int builtinTypeInfo();
+    TypeTuple *toArgTypes();
 
     // For eliminating dynamic_cast
     TypeBasic *isTypeBasic();
@@ -440,6 +443,7 @@ struct TypeSArray : TypeArray
     TypeInfoDeclaration *getTypeInfoDeclaration();
     Expression *toExpression();
     int hasPointers();
+    TypeTuple *toArgTypes();
 #if IN_GCC || CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
@@ -468,6 +472,7 @@ struct TypeDArray : TypeArray
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
+    TypeTuple *toArgTypes();
 #if IN_GCC || CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
@@ -498,6 +503,7 @@ struct TypeAArray : TypeArray
     int checkBoolean();
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
+    TypeTuple *toArgTypes();
     MATCH implicitConvTo(Type *to);
     MATCH constConv(Type *to);
 #if IN_GCC || CPP_MANGLE
@@ -523,6 +529,7 @@ struct TypePointer : TypeNext
     int isZeroInit(Loc loc);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
+    TypeTuple *toArgTypes();
 #if IN_GCC || CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
@@ -625,6 +632,7 @@ struct TypeDelegate : TypeNext
     TypeInfoDeclaration *getTypeInfoDeclaration();
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
     int hasPointers();
+    TypeTuple *toArgTypes();
 #if IN_GCC || CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
@@ -725,6 +733,7 @@ struct TypeStruct : Type
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
+    TypeTuple *toArgTypes();
     MATCH implicitConvTo(Type *to);
     MATCH constConv(Type *to);
     Type *toHeadMutable();
@@ -767,6 +776,7 @@ struct TypeEnum : Type
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
+    TypeTuple *toArgTypes();
 #if IN_GCC || CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
@@ -809,6 +819,7 @@ struct TypeTypedef : Type
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
+    TypeTuple *toArgTypes();
     int hasWild();
     Type *toHeadMutable();
 #if IN_GCC || CPP_MANGLE
@@ -842,6 +853,7 @@ struct TypeClass : Type
     int checkBoolean();
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
+    TypeTuple *toArgTypes();
     int builtinTypeInfo();
 #if DMDV2
     Type *toHeadMutable();
@@ -862,6 +874,9 @@ struct TypeTuple : Type
 
     TypeTuple(Parameters *arguments);
     TypeTuple(Expressions *exps);
+    TypeTuple();
+    TypeTuple(Type *t1);
+    TypeTuple(Type *t1, Type *t2);
     Type *syntaxCopy();
     Type *semantic(Loc loc, Scope *sc);
     int equals(Object *o);
@@ -923,6 +938,7 @@ extern int Tsize_t;
 extern int Tptrdiff_t;
 
 int arrayTypeCompatible(Loc loc, Type *t1, Type *t2);
+int arrayTypeCompatibleWithoutCasting(Loc loc, Type *t1, Type *t2);
 void MODtoBuffer(OutBuffer *buf, unsigned char mod);
 int MODimplicitConv(unsigned char modfrom, unsigned char modto);
 int MODmerge(unsigned char mod1, unsigned char mod2);

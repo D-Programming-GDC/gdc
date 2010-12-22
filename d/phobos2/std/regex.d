@@ -58,7 +58,8 @@ Copyright: Copyright Digital Mars 2000 - 2009.
 License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
 Authors:   $(WEB digitalmars.com, Walter Bright),
            $(WEB erdani.org, Andrei Alexandrescu)
-
+*/
+/*
          Copyright Digital Mars 2000 - 2009.
 Distributed under the Boost Software License, Version 1.0.
    (See accompanying file LICENSE_1_0.txt or copy at
@@ -181,7 +182,7 @@ auto s = regex(r"p[1-5]\s*"w, "g");
 struct Regex(E) if (is(E == Unqual!E))
 {
 private:
-    alias Tuple!(uint, "startIdx", uint, "endIdx") regmatch_t;
+    alias Tuple!(size_t, "startIdx", size_t, "endIdx") regmatch_t;
     enum REA
     {
         global          = 1,    // has the g attribute
@@ -387,8 +388,8 @@ Returns the number of parenthesized captures
             case REgoto:
             {
                 auto bitbuf = new OutBuffer;
-                auto r = new Range(bitbuf);
-                uint offset = i;
+                auto r = Range(bitbuf);
+                size_t offset = i;
                 if (starrchars(r, prog[i .. prog.length]))
                 {
                     debug(regex) printf("\tfilter built\n");
@@ -432,11 +433,12 @@ Returns the number of parenthesized captures
                 auto gotooffset = buf.offset;
                 buf.write(REgoto);
                 buf.write(cast(uint)0);
-                immutable len1 = buf.offset - offset;
+                immutable uint len1 = cast(uint) (buf.offset - offset);
                 buf.spread(offset, 1 + uint.sizeof);
                 gotooffset += 1 + uint.sizeof;
                 parseRegex(pattern, p, buf);
-                immutable len2 = buf.offset - (gotooffset + 1 + uint.sizeof);
+                immutable len2 = cast(uint)
+                    (buf.offset - (gotooffset + 1 + uint.sizeof));
                 buf.data[offset] = REor;
                 (cast(uint *)&buf.data[offset + 1])[0] = len1;
                 (cast(uint *)&buf.data[gotooffset + 1])[0] = len2;
@@ -456,7 +458,7 @@ Returns the number of parenthesized captures
         uint n;
         uint m;
         ubyte op;
-        int plength = pattern.length;
+        sizediff_t plength = pattern.length;
 
         //printf("parsePiece() '%.*s'\n", pattern[p .. pattern.length]);
         offset = buf.offset;
@@ -585,7 +587,7 @@ Returns the number of parenthesized captures
             re_nsub++;
             parseRegex(pattern, p, buf);
             *cast(uint *)&buf.data[offset] =
-                buf.offset - (offset + uint.sizeof * 2);
+                cast(uint) (buf.offset - (offset + uint.sizeof * 2));
             if (p == pattern.length || pattern[p] != ')')
             {
                 error("')' expected");
@@ -686,8 +688,8 @@ Returns the number of parenthesized captures
             {
                 // Look ahead and see if we can make this into
                 // an REstring
-                int q = p;
-                int len;
+                sizediff_t q = p;
+                sizediff_t len;
 
                 for (; q < pattern.length; ++q)
                 {       auto qc = pattern[q];
@@ -754,7 +756,7 @@ Returns the number of parenthesized captures
         return 1;
     }
 
-    class Range
+    struct Range
     {
         uint maxc;
         uint maxb;
@@ -777,7 +779,7 @@ Returns the number of parenthesized captures
             maxc = u;
             uint b = u / 8;
             if (b >= maxb)
-            {   uint u2;
+            {   size_t u2;
 
                 u2 = base ? base - &buf.data[0] : 0;
                 buf.fill0(b - maxb + 1);
@@ -820,7 +822,7 @@ Returns the number of parenthesized captures
         offset = buf.offset;
         buf.write(cast(uint)0);         // reserve space for length
         buf.reserve(128 / 8);
-        auto r = new Range(buf);
+        auto r = Range(buf);
         if (op == REnotbit)
             r.setbit2(0);
         switch (pattern[p])
@@ -993,7 +995,7 @@ Returns the number of parenthesized captures
 // Return 1 if success, 0 if we can't build a filter or if there is no
 // point to one.
 
-    bool starrchars(Range r, const(ubyte)[] prog)
+    bool starrchars(ref Range r, const(ubyte)[] prog)
     {
         E c;
         uint maxc;
@@ -1807,8 +1809,8 @@ Returns $(D hit) (converted to $(D string) if necessary).
     private Range replaceAll(String)(String format)
     {
         auto result = input;
-        uint lastindex = 0;
-        uint offset = 0;
+        size_t lastindex = 0;
+        size_t offset = 0;
         for (;;)
         {
             if (!test(lastindex))
@@ -1936,7 +1938,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
     */
     //alias test opEquals;
 
-    private bool chr(ref uint si, E c)
+    private bool chr(ref size_t si, E c)
     {
         for (; si < input.length; si++)
         {
@@ -1946,7 +1948,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
         return 0;
     }
 
-    private static int icmp(E[] a, E[] b)
+    private static sizediff_t icmp(E[] a, E[] b)
     {
         static if (is(Unqual!(E) == char))
         {
@@ -1984,16 +1986,16 @@ Returns $(D hit) (converted to $(D string) if necessary).
  *      0 no match
  */
 
-    private bool trymatch(uint pc, uint pcend)
+    private bool trymatch(size_t pc, size_t pcend)
     {
-        uint len;
-        uint n;
-        uint m;
-        uint count;
-        uint pop;
-        uint ss;
-        uint c1;
-        uint c2;
+        size_t len;
+        size_t n;
+        size_t m;
+        size_t count;
+        size_t pop;
+        size_t ss;
+        size_t c1;
+        size_t c2;
         ushort* pu;
         uint* puint;
 
@@ -2231,7 +2233,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 if (trymatch(pop, pcend))
                 {
                     if (pcend != engine.program.length)
-                    {   int s;
+                    {   sizediff_t s;
 
                         s = src;
                         if (trymatch(pcend, engine.program.length))
@@ -2322,7 +2324,7 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 if (engine.program[pc] == engine.REnmq) // if minimal munch
                 {
                     for (; count < m; count++)
-                    {   int s1;
+                    {   sizediff_t s1;
 
                         memcpy(psave, pmatch.ptr,
                                 (engine.re_nsub + 1) * regmatch_t.sizeof);
@@ -2551,8 +2553,8 @@ and, using the format string, generate and return a new string.
     {
         string result;
         uint c2;
-        int startIdx;
-        int endIdx;
+        sizediff_t startIdx;
+        sizediff_t endIdx;
         int i;
 
         result.length = format.length;
@@ -2881,8 +2883,8 @@ Range replace(alias fun, Range, Regex)
     auto r = match(s, rx);
 
     auto result = s;
-    auto lastindex = 0;
-    auto offset = 0;
+    size_t lastindex = 0;
+    size_t offset = 0;
     // @@@BUG@@@ workaround for bug 5003
     while (_dummyTest(r, lastindex))
     {
@@ -3319,10 +3321,10 @@ unittest
         ];
 
     int i;
-    int a;
+    sizediff_t a;
     uint c;
-    int start;
-    int end;
+    sizediff_t start;
+    sizediff_t end;
     TestVectors tvd;
 
     foreach (Char; TypeTuple!(char, wchar, dchar))

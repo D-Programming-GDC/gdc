@@ -326,7 +326,7 @@ unittest
  *
  */
 
-immutable(T)[] assumeUnique(T)(ref T[] array)
+immutable(T)[] assumeUnique(T)(ref T[] array) pure nothrow
 {
     auto result = cast(immutable(T)[]) array;
     array = null;
@@ -340,7 +340,7 @@ unittest
     assert(is(typeof(arr1) == immutable(int)[]) && arr == null);
 }
 
-immutable(T[U]) assumeUnique(T, U)(ref T[U] array)
+immutable(T[U]) assumeUnique(T, U)(ref T[U] array) pure nothrow
 {
     auto result = cast(immutable(T[U])) array;
     array = null;
@@ -361,11 +361,12 @@ that points to $(D target)'s representation or somewhere inside
 it. Note that evaluating $(D pointsTo(x, x)) checks whether $(D x) has
 internal pointers.
 */
-bool pointsTo(S, T)(ref S source, ref T target)
+bool pointsTo(S, T)(ref const S source, ref const T target) @trusted pure nothrow
 {
     static if (is(S P : U*, U))
     {
-        const void * m = source, b = &target, e = b + target.sizeof;
+        const m = cast(void*) source,
+              b = cast(void*) &target, e = b + target.sizeof;
         return b <= m && m < e;
     }
     else static if (is(S == struct))
@@ -379,8 +380,8 @@ bool pointsTo(S, T)(ref S source, ref T target)
     }
     else static if (isDynamicArray!(S))
     {
-        const void* p1 = source.ptr, p2 = p1 + source.length,
-            b = &target, e = b + target.sizeof;
+        const p1 = cast(void*) source.ptr, p2 = p1 + source.length,
+              b = cast(void*) &target, e = b + target.sizeof;
         return overlap(p1[0 .. p2 - p1], b[0 .. e - b]).length != 0;
     }
     else
@@ -421,6 +422,10 @@ unittest
         Holder h;
         pointsTo(h, h);
     }
+
+    shared S3 sh3;
+    shared sh3sub = sh3.a[];
+    assert(pointsTo(sh3sub, sh3));
 }
 
 /*********************

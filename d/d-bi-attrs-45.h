@@ -1320,52 +1320,6 @@ handle_visibility_attribute (tree *node, tree name, tree args,
   return NULL_TREE;
 }
 
-/* Determine the ELF symbol visibility for DECL, which is either a
-   variable or a function.  It is an error to use this function if a
-   definition of DECL is not available in this translation unit.
-   Returns true if the final visibility has been determined by this
-   function; false if the caller is free to make additional
-   modifications.  */
-
-bool
-c_determine_visibility (tree decl)
-{
-  gcc_assert (TREE_CODE (decl) == VAR_DECL
-              || TREE_CODE (decl) == FUNCTION_DECL);
-
-  /* If the user explicitly specified the visibility with an
-     attribute, honor that.  DECL_VISIBILITY will have been set during
-     the processing of the attribute.  We check for an explicit
-     attribute, rather than just checking DECL_VISIBILITY_SPECIFIED,
-     to distinguish the use of an attribute from the use of a "#pragma
-     GCC visibility push(...)"; in the latter case we still want other
-     considerations to be able to overrule the #pragma.  */
-  if (lookup_attribute ("visibility", DECL_ATTRIBUTES (decl))
-      || (TARGET_DLLIMPORT_DECL_ATTRIBUTES
-          && (lookup_attribute ("dllimport", DECL_ATTRIBUTES (decl))
-              || lookup_attribute ("dllexport", DECL_ATTRIBUTES (decl)))))
-    return true;
-
-  /* Set default visibility to whatever the user supplied with
-     visibility_specified depending on #pragma GCC visibility.  */
-  if (!DECL_VISIBILITY_SPECIFIED (decl))
-    {
-      if (visibility_options.inpragma
-          || DECL_VISIBILITY (decl) != default_visibility)
-        {
-          DECL_VISIBILITY (decl) = default_visibility;
-          DECL_VISIBILITY_SPECIFIED (decl) = visibility_options.inpragma;
-          /* If visibility changed and DECL already has DECL_RTL, ensure
-             symbol flags are updated.  */
-          if (((TREE_CODE (decl) == VAR_DECL && TREE_STATIC (decl))
-               || TREE_CODE (decl) == FUNCTION_DECL)
-              && DECL_RTL_SET_P (decl))
-            make_decl_rtl (decl);
-        }
-    }
-  return false;
-}
-
 /* Handle an "tls_model" attribute; arguments as in
    struct attribute_spec.handler.  */
 
@@ -1926,6 +1880,8 @@ typedef const char *const_char_p;               /* For DEF_VEC_P.  */
 DEF_VEC_P(const_char_p);
 DEF_VEC_ALLOC_P(const_char_p, gc);
 static GTY(()) VEC(const_char_p, gc) *optimize_args;
+
+extern void decode_options (unsigned int argc, const char **argv);
 
 
 /* Inner function to convert a TREE_LIST to argv string to parse the optimize

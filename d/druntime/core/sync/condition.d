@@ -3,10 +3,12 @@
  * checking.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Sean Kelly
- *
- *          Copyright Sean Kelly 2005 - 2009.
+ * Source:    $(DRUNTIMESRC core/sync/_condition.d)
+ */
+
+/*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -16,6 +18,7 @@ module core.sync.condition;
 
 public import core.sync.exception;
 public import core.sync.mutex;
+public import core.time;
 
 version( Win32 )
 {
@@ -133,6 +136,57 @@ class Condition
                 throw new SyncException( "Unable to wait for condition" );
         }
     }
+    
+    
+    /**
+     * Suspends the calling thread until a notification occurs or until the
+     * supplied time period has elapsed.
+     *
+     * Params:
+     *  val = The time to wait.
+     *
+     * In:
+     *  val must be non-negative.
+     *
+     * Throws:
+     *  SyncException on error.
+     *
+     * Returns:
+     *  true if notified before the timeout and false if not.
+     */
+    bool wait( Duration val )
+    in
+    {
+        assert( !val.isNegative );
+    }
+    body
+    {
+        version( Win32 )
+        {
+            auto maxWaitMillis = milliseconds( uint.max - 1 );
+
+            while( val > maxWaitMillis )
+            {
+                if( timedWait( cast(uint)
+                               maxWaitMillis.totalMilliseconds ) )
+                    return true;
+                val -= maxWaitMillis;
+            }
+            return timedWait( cast(uint) val.totalMilliseconds );
+        }
+        else version( Posix )
+        {
+            timespec t = void;
+            mktspec( t, val );
+
+            int rc = pthread_cond_timedwait( &m_hndl, m_mutexAddr, &t );
+            if( !rc )
+                return true;
+            if( rc == ETIMEDOUT )
+                return false;
+            throw new SyncException( "Unable to wait for condition" );
+        }
+    }
 
 
     /**
@@ -160,32 +214,14 @@ class Condition
     }
     body
     {
-        version( Win32 )
+        enum : uint
         {
-            enum : uint
-            {
-                TICKS_PER_MILLI = 10_000,
-                MAX_WAIT_MILLIS = uint.max - 1
-            }
-
-            period /= TICKS_PER_MILLI;
-            if( period > MAX_WAIT_MILLIS )
-                period = MAX_WAIT_MILLIS;
-            return timedWait( cast(uint) period );
+            NANOS_PER_TICK = 100,
         }
-        else version( Posix )
-        {
-            timespec t = void;
-            mktspec( t, period );
 
-            int rc = pthread_cond_timedwait( &m_hndl, m_mutexAddr, &t );
-            if( !rc )
-                return true;
-            if( rc == ETIMEDOUT )
-                return false;
-            throw new SyncException( "Unable to wait for condition" );
-        }
+        return wait( nanoseconds( period * NANOS_PER_TICK ) );
     }
+
 
     /**
      * Notifies one waiter.

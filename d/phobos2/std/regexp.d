@@ -81,8 +81,8 @@
  * Copyright: Copyright Digital Mars 2000 - 2009.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   $(WEB digitalmars.com, Walter Bright)
- *
- *          Copyright Digital Mars 2000 - 2009.
+ */
+/*          Copyright Digital Mars 2000 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -402,7 +402,7 @@ sizediff_t rfind(string s, RegExp pattern)
 
 unittest
 {
-    int i;
+    sizediff_t i;
 
     debug(regexp) printf("regexp.rfind.unittest\n");
     i = rfind("abcdefcdef", RegExp("c"));
@@ -451,7 +451,7 @@ rfind(string s, string pattern, string attributes = null)
 
 unittest
 {
-    int i;
+    sizediff_t i;
 
     debug(regexp) printf("regexp.rfind.unittest\n");
     i = rfind("abcdefcdef", "c");
@@ -1041,11 +1041,11 @@ private:
  *  index of match if successful, -1 if not found
  */
 
-    public int find(string string)
+    public size_t find(string string)
     {
-        int i = test(string);
+        size_t i = test(string);
         if (i)
-            i = pmatch[0].rm_so != 0;
+            i = pmatch[0].rm_so;
         else
             i = -1;         // no match
         return i;
@@ -2487,7 +2487,7 @@ private:
                     base = &buf.data[u2];
                     maxb = b + 1;
                     //bits = (cast(bit*)this.base)[0 .. maxc + 1];
-                    bits.ptr = cast(uint*)this.base;
+                    bits.ptr = cast(size_t*)this.base;
                 }
                 bits.len = maxc + 1;
             }

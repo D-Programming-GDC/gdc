@@ -62,7 +62,7 @@ lang_tree_node
     struct lang_identifier GTY ((tag ("1"))) identifier;
 };
 
-static GTY(()) tree d_eh_personality_decl;
+extern GTY(()) tree d_eh_personality_decl;
 
 /* True if the Tdelegate typed expression is not really a variable,
    but a literal function / method reference */

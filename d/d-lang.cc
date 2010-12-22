@@ -1904,6 +1904,8 @@ dkeep(tree t)
 }
 
 #if D_GCC_VER >= 45
+tree d_eh_personality_decl;
+
 /* Return the GDC personality function decl.  */
 static tree
 d_eh_personality (void)

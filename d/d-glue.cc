@@ -2457,45 +2457,48 @@ StringExp::toElem(IRState * irs)
     TY base_ty = type ? base_type->ty : (TY) Tvoid;
     tree value;
 
-    switch (base_ty) {
-    case Tarray:
-    case Tpointer:
-        // Assuming this->string is null terminated
-        // .. need to terminate with more nulls for wchar and dchar?
-        value = build_string((len + 1) * sz,
-            gen.hostToTargetString((char *) string, len + 1, sz));
-        break;
-    case Tsarray:
-    case Tvoid:
-        value = build_string(len * sz,
-            gen.hostToTargetString((char *) string, len, sz));
-        break;
-    default:
-        error("Invalid type for string constant: %s", type->toChars());
-        return irs->errorMark(type);
+    switch (base_ty)
+    {
+        case Tarray:
+        case Tpointer:
+            // Assuming this->string is null terminated
+            // .. need to terminate with more nulls for wchar and dchar?
+            value = build_string((len + 1) * sz,
+                    gen.hostToTargetString((char *) string, len + 1, sz));
+            break;
+        case Tsarray:
+        case Tvoid:
+            value = build_string(len * sz,
+                    gen.hostToTargetString((char *) string, len, sz));
+            break;
+        default:
+            error("Invalid type for string constant: %s", type->toChars());
+            return irs->errorMark(type);
     }
 
     // %% endianess of wchar and dchar
     TREE_CONSTANT (value) = 1;
     TREE_READONLY (value) = 1;
     // %% array type doesn't match string length if null term'd...
-    TREE_TYPE(value) = irs->arrayType(base_ty != Tvoid ?
-        base_type->nextOf() : Type::tchar, len);
+    Type * elem_type = base_ty != Tvoid ?
+        base_type->nextOf() : Type::tchar;
+    TREE_TYPE(value) = irs->arrayType(elem_type, len);
 
-    switch (base_ty) {
-    case Tarray:
-        value = irs->darrayVal(type, len, irs->addressOf(value));
-        break;
-    case Tpointer:
-        value = irs->addressOf(value);
-        break;
-    case Tsarray:
-        // %% needed?
-        TREE_TYPE(value) = type->toCtype();
-        break;
-    default:
-        // nothing
-        break;
+    switch (base_ty)
+    {
+        case Tarray:
+            value = irs->darrayVal(type, len, irs->addressOf(value));
+            break;
+        case Tpointer:
+            value = irs->addressOf(value);
+            break;
+        case Tsarray:
+            // %% needed?
+            TREE_TYPE(value) = type->toCtype();
+            break;
+        default:
+            // nothing
+            break;
     }
     return value;
 }
@@ -2742,30 +2745,39 @@ elem *
 NullExp::toElem(IRState * irs)
 {
     TY base_ty = type->toBasetype()->ty;
+    tree null_exp;
     // 0 -> dynamic array.  This is a special case conversion.
     // Move to convert for convertTo if it shows up elsewhere.
-    switch (base_ty) {
-    case Tarray:
-        return irs->darrayVal(type, 0, NULL);
-    case Taarray:
+    switch (base_ty)
+    {
+        case Tarray:
+        {
+            null_exp = irs->darrayVal(type, 0, NULL);
+            break;
+        }
+        case Taarray:
         {
             CtorEltMaker ce;
             tree ttype = type->toCtype();
-            tree fa;
+            tree fa = TYPE_FIELDS(ttype);
 
-            fa = TYPE_FIELDS(ttype);
             ce.cons(fa, convert(TREE_TYPE(fa), integer_zero_node));
-
-            tree ctor = build_constructor(ttype, ce.head);
-            return ctor;
+            null_exp = build_constructor(ttype, ce.head);
+            break;
         }
-        break;
-    case Tdelegate:
-        // makeDelegateExpression ?
-        return irs->delegateVal(d_null_pointer, d_null_pointer, type);
-    default:
-        return convert(type->toCtype(), integer_zero_node);
+        case Tdelegate:
+        {   // makeDelegateExpression ?
+            null_exp = irs->delegateVal(d_null_pointer, d_null_pointer, type);
+            break;
+        }
+        default:
+        {
+            null_exp = convert(type->toCtype(), integer_zero_node);
+            break;
+        }
     }
+
+    return null_exp;
 }
 
 elem *
@@ -2773,9 +2785,12 @@ ThisExp::toElem(IRState * irs)
 {
     tree this_tree = NULL_TREE;
 
-    if (var) {
+    if (var)
+    {
         this_tree = irs->var(var->isVarDeclaration());
-    } else {
+    }
+    else
+    {
         // %% DMD issue -- creates ThisExp without setting var to vthis
         // %%TODO: updated in 0.79-0.81?
         assert(irs->func);
@@ -2793,16 +2808,17 @@ elem *
 ComplexExp::toElem(IRState * irs)
 {
     TypeBasic * compon_type;
-    switch (type->toBasetype()->ty) {
-    case Tcomplex32: compon_type = (TypeBasic *) Type::tfloat32; break;
-    case Tcomplex64: compon_type = (TypeBasic *) Type::tfloat64; break;
-    case Tcomplex80: compon_type = (TypeBasic *) Type::tfloat80; break;
-    default:
-        abort();
+    switch (type->toBasetype()->ty)
+    {
+        case Tcomplex32: compon_type = (TypeBasic *) Type::tfloat32; break;
+        case Tcomplex64: compon_type = (TypeBasic *) Type::tfloat64; break;
+        case Tcomplex80: compon_type = (TypeBasic *) Type::tfloat80; break;
+        default:
+            abort();
     }
     return build_complex(type->toCtype(),
-        irs->floatConstant(creall(value), compon_type),
-        irs->floatConstant(cimagl(value), compon_type));
+            irs->floatConstant(creall(value), compon_type),
+            irs->floatConstant(cimagl(value), compon_type));
 }
 
 elem *
@@ -3538,68 +3554,66 @@ TypedefDeclaration::toDebug()
 type *
 TypeEnum::toCtype()
 {
-#if 1
-    /* Enums in D2 can have a base type that is not necessarily integral.
-       This caused several problems in both the glue and backend when
-       trying to maintain all assignment, casting and boolean operations
-       you can do with this type. So now instead of building an enum,
-       we just return the memtype.
-     */
-    return sym->memtype->toCtype();
+    if (! ctype)
+    {
+        /* Enums in D2 can have a base type that is not necessarily integral.
+           So don't bother trying to make an ENUMERAL_TYPE using them.  */
+        if (sym->memtype->isintegral())
+        {
+            tree enum_mem_type_node = sym->memtype->toCtype();
 
-#else
-    if (! ctype) {
-        tree enum_mem_type_node = sym->memtype->toCtype();
-
-        ctype = make_node(ENUMERAL_TYPE);
-        // %% c-decl.c: if (flag_short_enums) TYPE_PACKED(enumtype) = 1;
-        TYPE_PRECISION(ctype) = size(0) * 8;
-        TYPE_SIZE(ctype) = 0; // as in c-decl.c
-        TREE_TYPE(ctype) = enum_mem_type_node;
-        apply_type_attributes(sym->attributes, ctype, true);
+            ctype = make_node(ENUMERAL_TYPE);
+            // %% c-decl.c: if (flag_short_enums) TYPE_PACKED(enumtype) = 1;
+            TYPE_PRECISION(ctype) = size(0) * 8;
+            TYPE_SIZE(ctype) = 0; // as in c-decl.c
+            TREE_TYPE(ctype) = enum_mem_type_node;
+            apply_type_attributes(sym->attributes, ctype, true);
 #if V2
-        /* Because minval and maxval are of this type,
-           ctype needs to be completed enough for
-           build_int_cst to work properly. */
-        TYPE_MIN_VALUE(ctype) = sym->minval->toElem(& gen);
-        TYPE_MAX_VALUE(ctype) = sym->maxval->toElem(& gen);
+            /* Because minval and maxval are of this type,
+               ctype needs to be completed enough for
+               build_int_cst to work properly. */
+            TYPE_MIN_VALUE(ctype) = sym->minval->toElem(& gen);
+            TYPE_MAX_VALUE(ctype) = sym->maxval->toElem(& gen);
 #else
-        TYPE_MIN_VALUE(ctype) = gen.integerConstant(sym->minval, enum_mem_type_node);
-        TYPE_MAX_VALUE(ctype) = gen.integerConstant(sym->maxval, enum_mem_type_node);
+            TYPE_MIN_VALUE(ctype) = gen.integerConstant(sym->minval, enum_mem_type_node);
+            TYPE_MAX_VALUE(ctype) = gen.integerConstant(sym->maxval, enum_mem_type_node);
 #endif
-        layout_type(ctype);
-        TYPE_UNSIGNED(ctype) = isunsigned() != 0; // layout_type can change this
+            layout_type(ctype);
+            TYPE_UNSIGNED(ctype) = isunsigned() != 0; // layout_type can change this
 
-        // Move this to toDebug() ?
-        ListMaker enum_values;
-        if (sym->members) {
-            for (unsigned i = 0; i < sym->members->dim; i++) {
-                EnumMember * member = (EnumMember *) sym->members->data[i];
-                char * ident;
+            // Move this to toDebug() ?
+            ListMaker enum_values;
+            if (sym->members)
+            {
+                for (unsigned i = 0; i < sym->members->dim; i++)
+                {
+                    EnumMember * member = (EnumMember *) sym->members->data[i];
+                    char * ident;
 
-                if (sym->ident)
-                    ident = concat(sym->ident->string, ".",
-                        member->ident->string, NULL);
-                else
-                    ident = (char *) member->ident->string;
-#if V2
-                /* Enums in D2 can be any data type, not just integers. */
-                enum_values.cons(get_identifier(ident), member->value->toElem(& gen));
-#else
-                enum_values.cons(get_identifier(ident),
-                    gen.integerConstant(member->value->toInteger(), ctype));
-#endif
-                if (sym->ident)
-                    free(ident);
+                    if (sym->ident)
+                        ident = concat(sym->ident->string, ".",
+                                member->ident->string, NULL);
+                    else
+                        ident = (char *) member->ident->string;
+
+                    enum_values.cons(get_identifier(ident),
+                            gen.integerConstant(member->value->toInteger(), ctype));
+
+                    if (sym->ident)
+                        free(ident);
+                }
             }
-        }
-        TYPE_VALUES(ctype) = enum_values.head;
+            TYPE_VALUES(ctype) = enum_values.head;
 
-        g.ofile->initTypeDecl(ctype, sym);
-        g.ofile->declareType(ctype, sym);
+            g.ofile->initTypeDecl(ctype, sym);
+            g.ofile->declareType(ctype, sym);
+        }
+        else
+        {
+            ctype = sym->memtype->toCtype();
+        }
     }
     return ctype;
-#endif
 }
 
 type *

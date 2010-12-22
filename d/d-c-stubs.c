@@ -73,7 +73,6 @@ tree
 build_binary_op (location_t location ATTRIBUTE_UNUSED, enum tree_code code ATTRIBUTE_UNUSED,
                  tree orig_op0 ATTRIBUTE_UNUSED, tree orig_op1 ATTRIBUTE_UNUSED, int convert_p ATTRIBUTE_UNUSED)
 {
-    gcc_assert(0);
     return NULL_TREE;
 }
 
@@ -81,7 +80,6 @@ tree
 build_unary_op (location_t location ATTRIBUTE_UNUSED, enum tree_code code ATTRIBUTE_UNUSED,
                 tree xarg ATTRIBUTE_UNUSED, int flag ATTRIBUTE_UNUSED)
 {
-    gcc_assert(0);
     return NULL_TREE;
 }
 
@@ -89,30 +87,26 @@ tree
 build_indirect_ref (location_t loc ATTRIBUTE_UNUSED, tree ptr ATTRIBUTE_UNUSED,
                     const char *errorstring ATTRIBUTE_UNUSED)
 {
-    gcc_assert(0);
     return NULL_TREE;
 }
 
-enum { unused } c_language;
+typedef enum { unused } c_language;
 
 enum cpp_ttype
 c_lex (tree *value ATTRIBUTE_UNUSED)
 {
-    gcc_assert(0);
-    return 0;
+    return (enum cpp_ttype)0;
 }
 
 enum cpp_ttype
 pragma_lex (tree *value ATTRIBUTE_UNUSED)
 {
-    gcc_assert(0);
-    return 0;
+    return (enum cpp_ttype)0;
 }
 
 tree
 lookup_name (tree name ATTRIBUTE_UNUSED)
 {
-    gcc_assert(0);
     return NULL_TREE;
 }
 

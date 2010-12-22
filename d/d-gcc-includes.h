@@ -42,12 +42,6 @@ extern "C" {
 #include "config.h"
 #include "system.h"
 
-/* Before gcc 4.0, <stdbool.h> was included before defining bool.  In 4.0,
-   it is always defined as "unsigned char" unless __cplusplus.  Have to make
-   sure the "bool" under c++ is the same so that structs are laid out
-   correctly. */
-#define bool unsigned char
-
 #include "coretypes.h"
 #include "tm.h"
 #include "cpplib.h"

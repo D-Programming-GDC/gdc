@@ -160,6 +160,8 @@ Expression *Type::getTypeInfo(Scope *sc)
             }
         }
     }
+    if (!vtinfo)
+        vtinfo = t->vtinfo;     // Types aren't merged, but we can share the vtinfo's
     Expression *e = new VarExp(0, t->vtinfo);
     e = e->addressOf(sc);
     e->type = t->vtinfo->type;          // do this so we don't get redundant dereference
@@ -637,8 +639,20 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
 
     if (global.params.isX86_64)
     {
-        dtsize_t(pdt, 0);                        // m_arg1
-        dtsize_t(pdt, 0);                        // m_arg2
+        TypeTuple *tup = tc->toArgTypes();
+        assert(tup->arguments->dim <= 2);
+        for (int i = 0; i < 2; i++)
+        {
+            if (i < tup->arguments->dim)
+            {
+                Type *targ = ((Parameter *)tup->arguments->data[i])->type;
+                targ = targ->merge();
+                targ->getTypeInfo(NULL);
+                dtxoff(pdt, targ->vtinfo->toSymbol(), 0, TYnptr);       // m_argi
+            }
+            else
+                dtsize_t(pdt, 0);                    // m_argi
+        }
     }
 
     // name[]

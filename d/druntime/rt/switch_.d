@@ -1,11 +1,12 @@
 /**
  * Contains support code for switch blocks using string constants.
  *
- * Copyright: Copyright Digital Mars 2004 - 2009.
+ * Copyright: Copyright Digital Mars 2004 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
- *
- *          Copyright Digital Mars 2004 - 2009.
+ */
+
+/*          Copyright Digital Mars 2004 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -90,16 +91,16 @@ body
 {
     //printf("body _d_switch_string(%.*s)\n", ca);
     size_t low = 0;
-    auto high = table.length;
+    size_t high = table.length;
 
     version (none)
     {
         // Print table
         printf("ca[] = '%s'\n", cast(char *)ca);
-        for (mid = 0; mid < high; mid++)
+        for (auto i = 0; i < high; i++)
         {
-            pca = table[mid];
-            printf("table[%d] = %d, '%.*s'\n", mid, pca.length, pca);
+            auto pca = table[i];
+            printf("table[%d] = %d, '%.*s'\n", i, pca.length, pca);
         }
     }
     if (high &&
@@ -117,7 +118,7 @@ body
         {
             auto mid = (low + high) >> 1;
             auto pca = table[mid];
-            int c = cast(int)(ca.length - pca.length);
+            auto c   = cast(sizediff_t)(ca.length - pca.length);
             if (c == 0)
             {
                 c = cast(ubyte)c1 - cast(ubyte)pca[0];
@@ -284,9 +285,7 @@ in
     assert(ca.length >= 0);
 
     // Make sure table[] is sorted correctly
-    int j;
-
-    for (j = 1; j < table.length; j++)
+    for (auto j = 1; j < table.length; j++)
     {
         auto len1 = table[j - 1].length;
         auto len2 = table[j].length;
@@ -301,17 +300,14 @@ in
 }
 out (result)
 {
-    int i;
-    int c;
-
     //printf("out _d_switch_string()\n");
     if (result == -1)
     {
         // Not found
-        for (i = 0; i < table.length; i++)
+        for (auto i = 0; i < table.length; i++)
         {
             if (table[i].length == ca.length)
-            {   c = memcmp(table[i].ptr, ca.ptr, ca.length * dchar.sizeof);
+            {   auto c = memcmp(table[i].ptr, ca.ptr, ca.length * dchar.sizeof);
                 assert(c != 0);
             }
         }
@@ -319,12 +315,12 @@ out (result)
     else
     {
         assert(0 <= result && result < table.length);
-        for (i = 0; 1; i++)
+        for (auto i = 0; 1; i++)
         {
             assert(i < table.length);
             if (table[i].length == ca.length)
             {
-                c = memcmp(table[i].ptr, ca.ptr, ca.length * dchar.sizeof);
+                auto c = memcmp(table[i].ptr, ca.ptr, ca.length * dchar.sizeof);
                 if (c == 0)
                 {
                     assert(i == result);
@@ -338,15 +334,15 @@ body
 {
     //printf("body _d_switch_ustring()\n");
     size_t low = 0;
-    auto high = table.length;
+    size_t high = table.length;
 
 /*
     // Print table
     wprintf("ca[] = '%.*s'\n", ca);
-    for (mid = 0; mid < high; mid++)
+    for (auto i = 0; i < high; i++)
     {
-        pca = table[mid];
-        wprintf("table[%d] = %d, '%.*s'\n", mid, pca.length, pca);
+        auto pca = table[i];
+        wprintf("table[%d] = %d, '%.*s'\n", i, pca.length, pca);
     }
 */
 
@@ -355,7 +351,7 @@ body
     {
         auto mid = (low + high) >> 1;
         auto pca = table[mid];
-        int c = cast(int)(ca.length - pca.length);
+        auto c = cast(sizediff_t)(ca.length - pca.length);
         if (c == 0)
         {
             c = memcmp(ca.ptr, pca.ptr, ca.length * dchar.sizeof);

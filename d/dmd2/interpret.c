@@ -59,6 +59,7 @@ Expression *interpret_values(InterState *istate, Expression *earg, FuncDeclarati
 ArrayLiteralExp *createBlockDuplicatedArrayLiteral(Type *type, Expression *elem, size_t dim);
 Expression * resolveReferences(Expression *e, Expression *thisval, bool *isReference = NULL);
 Expression *getVarExp(Loc loc, InterState *istate, Declaration *d);
+VarDeclaration *findParentVar(Expression *e, Expression *thisval);
 
 /*************************************
  * Attempt to interpret a function given the arguments.
@@ -224,9 +225,11 @@ Expression *FuncDeclaration::interpret(InterState *istate, Expressions *argument
         }
     }
     // Don't restore the value of 'this' upon function return
-    if (needThis() && thisarg->op == TOKvar && istate)
+    if (needThis() && istate)
     {
-        VarDeclaration *thisvar = ((VarExp *)(thisarg))->var->isVarDeclaration();
+        VarDeclaration *thisvar = findParentVar(thisarg, istate->localThis);
+        if (!thisvar) // it's a reference. Find which variable it refers to.
+            thisvar = findParentVar(thisarg->interpret(istate), istate->localThis);
         for (size_t i = 0; i < istate->vars.dim; i++)
         {   VarDeclaration *v = (VarDeclaration *)istate->vars.data[i];
             if (v == thisvar)
@@ -1334,6 +1337,11 @@ Expression *DeclarationExp::interpret(InterState *istate)
                 e = ie->exp->interpret(istate);
             else if (v->init->isVoidInitializer())
                 e = NULL;
+            else
+            {
+                error("Declaration %s is not yet implemented in CTFE", toChars());
+                e = EXP_CANT_INTERPRET;
+            }
         }
 #if DMDV2
         else if (s == v && (v->isConst() || v->isImmutable()) && v->init)
@@ -1346,13 +1354,19 @@ Expression *DeclarationExp::interpret(InterState *istate)
             else if (!e->type)
                 e->type = v->type;
         }
+        else if (s->isTupleDeclaration() && !v->init)
+            e = NULL;
+        else
+        {
+            error("Declaration %s is not yet implemented in CTFE", toChars());
+            e = EXP_CANT_INTERPRET;
+        }
     }
     else if (declaration->isAttribDeclaration() ||
              declaration->isTemplateMixin() ||
              declaration->isTupleDeclaration())
     {   // These can be made to work, too lazy now
-    error("Declaration %s is not yet implemented in CTFE", toChars());
-
+        error("Declaration %s is not yet implemented in CTFE", toChars());
         e = EXP_CANT_INTERPRET;
     }
     else
@@ -2711,11 +2725,15 @@ Expression *CallExp::interpret(InterState *istate)
             VarDeclaration *vd = ((VarExp *)((PtrExp*)ecall)->e1)->var->isVarDeclaration();
             if (vd && vd->value && vd->value->op == TOKsymoff)
                 fd = ((SymOffExp *)vd->value)->var->isFuncDeclaration();
-            else {
-                ecall = vd->value->interpret(istate);
+            else
+            {
+                ecall = getVarExp(loc, istate, vd);
+                if (ecall == EXP_CANT_INTERPRET)
+                    return ecall;
+
                 if (ecall->op == TOKsymoff)
-                        fd = ((SymOffExp *)ecall)->var->isFuncDeclaration();
-                }
+                    fd = ((SymOffExp *)ecall)->var->isFuncDeclaration();
+            }
         }
         else
             ecall = ((PtrExp*)ecall)->e1->interpret(istate);

@@ -92,6 +92,7 @@ cpp_mangle_arguments(TypeFunction * tf, OutBuffer * buf, CppMangleState *cms)
         size_t dim = Parameter::dim(tf->parameters);
         for (size_t i = 0; i < dim; i++)
         {   Parameter *arg = Parameter::getNth(tf->parameters, i);
+            Type * type = arg->type;
 
             have_some_args = true;
             if (arg->storageClass & (STClazy))
@@ -100,19 +101,24 @@ cpp_mangle_arguments(TypeFunction * tf, OutBuffer * buf, CppMangleState *cms)
             }
             else if (arg->storageClass & (STCout | STCref))
             {
-                arg->type->referenceTo()->toCppMangle(buf, cms);
+                type->referenceTo()->toCppMangle(buf, cms);
                 continue;
             }
-            else if (arg->type->ty == Tsarray)
+            else if (type->ty == Tsarray)
             {   /* C++ would encode as pointer-to-elem-type, but DMD encodes
                    as pointer-to-array-type. */
-                arg->type->pointerTo()->toCppMangle(buf, cms);
+                type->pointerTo()->toCppMangle(buf, cms);
                 continue;
             }
-
-            // %% const/invariant not translated?
-
-            arg->type->toCppMangle(buf, cms);
+#if V2
+            // %% basic, enum and struct types not marked as const.
+            if ((type->ty == Tenum || type->ty == Tstruct || type->isTypeBasic()) && type->isConst())
+                type->mutableOf()->toCppMangle(buf, cms);
+            else
+#endif
+            {
+                arg->type->toCppMangle(buf, cms);
+            }
         }
     }
     if (tf->varargs == 1)
@@ -372,13 +378,31 @@ TypeDelegate::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 void
 TypeStruct::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
-    cpp_mangle1(sym, buf, cms);
+    if (! cms->hasSubstitute(this, buf))
+    {
+        if (isConst())
+            buf->writeByte('K');
+
+        cpp_mangle1(sym, buf, cms);
+
+        if (isConst())
+            cms->add(this);
+    }
 }
 
 void
 TypeEnum::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
-    cpp_mangle1(sym, buf, cms);
+    if (! cms->hasSubstitute(this, buf))
+    {
+        if (isConst())
+            buf->writeByte('K');
+
+        cpp_mangle1(sym, buf, cms);
+
+        if (isConst())
+            cms->add(this);
+    }
 }
 
 void

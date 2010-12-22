@@ -4,7 +4,8 @@
 Copyright: Copyright Andrei Alexandrescu 2008 - 2009.
 License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
 Authors:   $(WEB erdani.org, Andrei Alexandrescu)
-
+*/
+/*
          Copyright Andrei Alexandrescu 2008 - 2009.
 Distributed under the Boost Software License, Version 1.0.
    (See accompanying file LICENSE_1_0.txt or copy at
@@ -222,7 +223,10 @@ void main()
 ----
  */
 
-@property bool empty(T)(in T[] a) { return !a.length; }
+@property bool empty(T)(in T[] a) @safe pure nothrow
+{
+    return !a.length;
+}
 
 unittest
 {
@@ -248,13 +252,9 @@ void main()
 ----
  */
 
-@property T[] save(T)(T[] a)
+@property T[] save(T)(T[] a) @safe pure nothrow
 {
     return a;
-}
-
-private template notConst(T) {
-    enum notConst = !is(T == const) && !is(T == immutable);
 }
 
 /**
@@ -276,7 +276,7 @@ void main()
 */
 
 void popFront(A)(ref A a)
-if(!isNarrowString!A && isDynamicArray!A && notConst!A)
+if(!isNarrowString!A && isDynamicArray!A && isMutable!A && !is(A == void[]))
 {
     alias typeof(A[0]) T;
     assert(a.length, "Attempting to popFront() past the end of an array of "
@@ -296,7 +296,7 @@ unittest
 }
 
 void popFront(A)(ref A a)
-if(isNarrowString!A && notConst!A)
+if(isNarrowString!A && isMutable!A)
 {
     alias typeof(a[0]) T;
     assert(a.length, "Attempting to popFront() past the end of an array of "
@@ -337,7 +337,7 @@ void main()
 */
 
 void popBack(A)(ref A a)
-if(isDynamicArray!A && !isNarrowString!A && notConst!A)
+if(isDynamicArray!A && !isNarrowString!A && isMutable!A && !is(A == void[]))
 {
     assert(a.length);
     a = a[0 .. $ - 1];
@@ -355,7 +355,7 @@ unittest
 }
 
 void popBack(A)(ref A a)
-if(is(A : const(char)[]) && notConst!A)
+if(is(A : const(char)[]) && isMutable!A)
 {
     immutable n = a.length;
     const p = a.ptr + n;
@@ -397,7 +397,7 @@ unittest
 }
 
 void popBack(A)(ref A a)
-if(is(A : const(wchar)[]) && notConst!A)
+if(is(A : const(wchar)[]) && isMutable!A)
 {
     assert(a.length);
     if (a.length == 1)
@@ -434,7 +434,8 @@ void main()
 }
 ----
 */
-ref typeof(A[0]) front(A)(A a) if (is(typeof(A[0])) && !isNarrowString!A)
+ref typeof(A[0]) front(A)(A a)
+if (is(typeof(A[0])) && !isNarrowString!A && !is(typeof(A[0]) : const(void)))
 {
     assert(a.length, "Attempting to fetch the front of an empty array");
     return a[0];
@@ -469,7 +470,8 @@ void main()
 ----
 */
 ref typeof(A.init[0]) back(A)(A a)
-if (is(typeof(A.init[0])) && !isNarrowString!A)
+if (is(typeof(A.init[0])) && !isNarrowString!A
+    && !is(typeof(A.init[0]) : const(void)))
 {
     // @@@BUG@@@ The assert below crashes the unittest due to a bug in
     //   the compiler
@@ -538,13 +540,15 @@ int[] b = a[1 .. 3];
 assert(overlap(a, b) == [ 11, 12 ]);
 b = b.dup;
 // overlap disappears even though the content is the same
-assert(isEmpty(overlap(a, b)));
+assert(overlap(a, b).empty);
 ----
 */
-T[] overlap(T)(T[] r1, T[] r2)
+T[] overlap(T)(T[] r1, T[] r2) @trusted pure nothrow
 {
+    T* max(T* a, T* b) nothrow { return a > b ? a : b; }
+    T* min(T* a, T* b) nothrow { return a < b ? a : b; }
     auto b = max(r1.ptr, r2.ptr);
-    auto e = min(&(r1.ptr[r1.length - 1]) + 1, &(r2.ptr[r2.length - 1]) + 1);
+    auto e = min(r1.ptr + r1.length, r2.ptr + r2.length);
     return b < e ? b[0 .. e - b] : null;
 }
 
@@ -554,6 +558,13 @@ unittest
     int[] b = a[1 .. 3];
     a[1] = 100;
     assert(overlap(a, b) == [ 100, 12 ]);
+
+    assert(overlap(a, a[0 .. 2]) is a[0 .. 2]);
+    assert(overlap(a, a[3 .. 5]) is a[3 .. 5]);
+    assert(overlap(a[0 .. 2], a) is a[0 .. 2]);
+    assert(overlap(a[3 .. 5], a) is a[3 .. 5]);
+
+    assert(overlap(a, b.dup).empty);
 }
 
 /**

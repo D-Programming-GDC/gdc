@@ -5,8 +5,9 @@
  * Copyright: Copyright Digital Mars 2000 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly, Steven Schveighoffer
- *
- *          Copyright Digital Mars 2000 - 2010.
+ */
+
+/*          Copyright Digital Mars 2000 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -21,9 +22,6 @@
 
 module rt.lifetime;
 
-//debug=PRINTF;
-import core.stdc.stdio;
-
 private
 {
     import core.stdc.stdlib;
@@ -32,7 +30,6 @@ private
     import core.bitop;
     debug(PRINTF) import core.stdc.stdio;
 }
-
 
 private
 {
@@ -79,16 +76,16 @@ private
     alias bool function(Object) CollectHandler;
     __gshared CollectHandler collectHandler = null;
 
-enum : size_t
-       {
-           BIGLENGTHMASK = ~(cast(size_t)PAGESIZE - 1),
-           SMALLPAD = 1,
-           MEDPAD = ushort.sizeof,
-           LARGEPREFIX = 16, // 16 bytes padding at the front of the array
-           LARGEPAD = LARGEPREFIX + 1,
-           MAXSMALLSIZE = 256-SMALLPAD,
-           MAXMEDSIZE = (PAGESIZE / 2) - MEDPAD
-       }
+		enum : size_t
+    {
+        BIGLENGTHMASK = ~(cast(size_t)PAGESIZE - 1),
+        SMALLPAD = 1,
+        MEDPAD = ushort.sizeof,
+        LARGEPREFIX = 16, // 16 bytes padding at the front of the array
+        LARGEPAD = LARGEPREFIX + 1,
+        MAXSMALLSIZE = 256-SMALLPAD,
+        MAXMEDSIZE = (PAGESIZE / 2) - MEDPAD
+    }
 }
 
 
@@ -557,7 +554,7 @@ body
     {
         size_t reqsize = size * newcapacity;
 
-        if (reqsize / newcapacity != size)
+        if (newcapacity > 0 && reqsize / newcapacity != size)
             goto Loverflow;
     }
 
@@ -671,6 +668,7 @@ body
 
 Loverflow:
     onOutOfMemoryError();
+    assert(0);
 }
 
 /**
@@ -706,8 +704,19 @@ extern (C) void[] _d_newarrayT(TypeInfo ti, size_t length)
                 jc      Loverflow       ;
             }
         }
+        else version(D_InlineAsm_X86_64)
+        {
+            asm
+            {
+                mov     RAX,size        ;
+                mul     RAX,length      ;
+                mov     size,RAX        ;
+                jc      Loverflow       ;
+            }
+        }
         else
             size *= length;
+
         // increase the size by the array pad.
         auto info = gc_qalloc(size + __arrayPad(size), !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN | BlkAttr.APPENDABLE : BlkAttr.APPENDABLE);
         debug(PRINTF) printf(" p = %p\n", info.base);
@@ -722,6 +731,7 @@ extern (C) void[] _d_newarrayT(TypeInfo ti, size_t length)
 
 Loverflow:
     onOutOfMemoryError();
+    assert(0);
 }
 
 /**
@@ -760,6 +770,16 @@ extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length)
                 jc      Loverflow       ;
             }
         }
+        else version (D_InlineAsm_X86_64)
+        {
+            asm
+            {
+                mov     RAX,size        ;
+                mul     RAX,length      ;
+                mov     size,RAX        ;
+                jc      Loverflow       ;
+            }
+        }
         else
             size *= length;
 
@@ -792,6 +812,7 @@ extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length)
 
 Loverflow:
     onOutOfMemoryError();
+    assert(0);
 }
 
 /**
@@ -1106,6 +1127,18 @@ body
                 jc  Loverflow;
             }
         }
+        else version (D_InlineAsm_X86_64)
+        {
+            size_t newsize = void;
+
+            asm
+            {
+                mov RAX, newlength;
+                mul RAX, sizeelem;
+                mov newsize, RAX;
+                jc  Loverflow;
+            }
+        }
         else
         {
             size_t newsize = sizeelem * newlength;
@@ -1218,6 +1251,7 @@ body
 
 Loverflow:
     onOutOfMemoryError();
+    assert(0);
 }
 
 
@@ -1272,6 +1306,18 @@ body
                 mov     EAX,newlength   ;
                 mul     EAX,sizeelem    ;
                 mov     newsize,EAX     ;
+                jc      Loverflow       ;
+            }
+        }
+        else version (D_InlineAsm_X86_64)
+        {
+            size_t newsize = void;
+
+            asm
+            {
+                mov     RAX,newlength   ;
+                mul     RAX,sizeelem    ;
+                mov     newsize,RAX     ;
                 jc      Loverflow       ;
             }
         }
@@ -1405,6 +1451,7 @@ body
 
 Loverflow:
     onOutOfMemoryError();
+    assert(0);
 }
 
 
@@ -1412,7 +1459,7 @@ Loverflow:
  * Append y[] to array pointed to by px
  * size is size of each array element.
  */
-extern (C) Array _d_arrayappendT(TypeInfo ti, Array *px, byte[] y)
+extern (C) void[] _d_arrayappendT(TypeInfo ti, Array *px, byte[] y)
 {
     // only optimize array append where ti is not a shared type
     auto sizeelem = ti.next.tsize();            // array element size
@@ -1499,7 +1546,7 @@ extern (C) Array _d_arrayappendT(TypeInfo ti, Array *px, byte[] y)
   L1:
     px.length = newlength;
     memcpy(px.data + length * sizeelem, y.ptr, y.length * sizeelem);
-    return *px;
+    return *cast(void[]*)px;
 }
 
 
@@ -1587,7 +1634,7 @@ size_t newCapacity(size_t newlength, size_t size)
 /**
  *
  */
-extern (C) Array _d_arrayappendcTp(TypeInfo ti, ref byte[] x, byte* argp)
+extern (C) void[] _d_arrayappendcTp(TypeInfo ti, ref byte[] x, byte* argp)
 {
     return _d_arrayappendT(ti, cast(Array*)&x, argp[0..1]);
 }
@@ -1596,7 +1643,7 @@ extern (C) Array _d_arrayappendcTp(TypeInfo ti, ref byte[] x, byte* argp)
 /**
  * Append dchar to char[]
  */
-extern (C) Array _d_arrayappendcd(ref char[] x, dchar c)
+extern (C) void[] _d_arrayappendcd(ref char[] x, dchar c)
 {
     // c could encode into from 1 to 4 characters
     char[4] buf = void;
@@ -1628,7 +1675,7 @@ extern (C) Array _d_arrayappendcd(ref char[] x, dchar c)
         appendthis = (cast(byte *)buf.ptr)[0..4];
     }
     else
-	assert(0);	// invalid utf character - should we throw an exception instead?
+        assert(0);      // invalid utf character - should we throw an exception instead?
 
     //
     // TODO: This always assumes the array type is shared, because we do not
@@ -1642,7 +1689,7 @@ extern (C) Array _d_arrayappendcd(ref char[] x, dchar c)
 /**
  * Append dchar to wchar[]
  */
-extern (C) Array _d_arrayappendwd(ref wchar[] x, dchar c)
+extern (C) void[] _d_arrayappendwd(ref wchar[] x, dchar c)
 {
     // c could encode into from 1 to 2 w characters
     wchar[2] buf = void;
@@ -1730,18 +1777,16 @@ body
  *
  */
 extern (C) byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
-{   void* a;
+{
     size_t length;
-    uint i;
-    byte[] b;
     va_list va;
     auto size = ti.next.tsize(); // array element size
 
     va_start!(typeof(n))(va, n);
 
-    for (i = 0; i < n; i++)
+    for (auto i = 0; i < n; i++)
     {
-        b = va_arg!(typeof(b))(va);
+        auto b = va_arg!(byte[])(va);
         length += b.length;
     }
     if (!length)
@@ -1751,13 +1796,14 @@ extern (C) byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
     auto info = gc_qalloc(allocsize + __arrayPad(allocsize), !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN | BlkAttr.APPENDABLE : BlkAttr.APPENDABLE);
     auto isshared = ti.classinfo is TypeInfo_Shared.classinfo;
     __setArrayAllocLength(info, allocsize, isshared);
-    a = __arrayStart(info);
+    void *a = __arrayStart (info);
+
     va_start!(typeof(n))(va, n);
 
-    uint j = 0;
-    for (i = 0; i < n; i++)
+    size_t j = 0;
+    for (auto i = 0; i < n; i++)
     {
-        b = va_arg!(typeof(b))(va);
+        auto b = va_arg!(byte[])(va);
         if (b.length)
         {
             memcpy(a + j, b.ptr, b.length * size);
@@ -1765,7 +1811,10 @@ extern (C) byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
         }
     }
 
-    return (cast(byte*)a)[0..length];
+    Array2 result;
+    result.length = length;
+    result.ptr = a;
+    return *cast(byte[]*)&result;
 }
 
 
@@ -1789,25 +1838,38 @@ extern (C) void* _d_arrayliteralT(TypeInfo ti, size_t length, ...)
         __setArrayAllocLength(info, allocsize, isshared);
         result = __arrayStart(info);
 
-        va_list q;
-        va_start!(size_t)(q, length);
-
-        size_t stacksize = (sizeelem + int.sizeof - 1) & ~(int.sizeof - 1);
-
-        if (stacksize == sizeelem)
+        version(X86)
         {
-            memcpy(result, q, length * sizeelem);
+            va_list q;
+            va_start(q, length);
+
+            size_t stacksize = (sizeelem + int.sizeof - 1) & ~(int.sizeof - 1);
+
+            if (stacksize == sizeelem)
+            {
+                memcpy(result, q, length * sizeelem);
+            }
+            else
+            {
+                for (size_t i = 0; i < length; i++)
+                {
+                    memcpy(result + i * sizeelem, q, sizeelem);
+                    q += stacksize;
+                }
+            }
+
+            va_end(q);
         }
         else
         {
+            va_list q;
+            va_start(q, __va_argsave);
             for (size_t i = 0; i < length; i++)
             {
-                memcpy(result + i * sizeelem, q, sizeelem);
-                q += stacksize;
+                va_arg(q, ti.next, result + i * sizeelem);
             }
+            va_end(q);
         }
-
-        va_end(q);
     }
     return result;
 }
@@ -1826,7 +1888,7 @@ struct Array2
 /**
  *
  */
-extern (C) Array2 _adDupT(TypeInfo ti, Array2 a)
+extern (C) void[] _adDupT(TypeInfo ti, Array2 a)
 out (result)
 {
     auto sizeelem = ti.next.tsize();            // array element size
@@ -1847,7 +1909,7 @@ body
         r.length = a.length;
         memcpy(r.ptr, a.ptr, size);
     }
-    return r;
+    return *cast(void[]*)(&r);
 }
 
 

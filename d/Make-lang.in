@@ -161,12 +161,18 @@ D_CC_FLAGS += -fmessage-length=0
 #D_CC_FLAGS += -O0 -g
 
 # These are not valid C++ flags remove them before assigning.
-FILTER_CFLAGS = -Wstrict-prototypes -Wmissing-prototypes
+FILTER_CFLAGS = -Wstrict-prototypes -Wmissing-prototypes -Wold-style-definition -Wc++-compat
 
-ALL_D_COMPILER_FLAGS = $(filter-out $(FILTER_CFLAGS), $(ALL_CFLAGS)) $(ALL_CPPFLAGS) \
+ALL_D_CFLAGS = $(ALL_CFLAGS) $(ALL_CPPFLAGS) \
+                        $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+# %% Ditto
+ALL_D_CXXFLAGS = $(filter-out $(FILTER_CFLAGS), $(ALL_CFLAGS)) $(ALL_CPPFLAGS) \
                         $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 # Somehow, I started getting problems with the C++ <complex.h> being included..
-ALL_DMD_COMPILER_FLAGS = $(filter-out $(FILTER_CFLAGS), $(ALL_CFLAGS)) $(ALL_CPPFLAGS) \
+ALL_DMD_CFLAGS = $(ALL_CFLAGS) $(ALL_CPPFLAGS) \
+                        -Id -I$(srcdir)/$(D_dmd_srcdir) -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+# %% Ditto
+ALL_DMD_CXXFLAGS = $(filter-out $(FILTER_CFLAGS), $(ALL_CFLAGS)) $(ALL_CPPFLAGS) \
                         -Id -I$(srcdir)/$(D_dmd_srcdir) -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 
 
@@ -200,7 +206,7 @@ D_DMD_OBJS := \
 
 ifeq ($(D_LANGUAGE_VERSION),2)
 # D2 specific sources
-  D_DMD_OBJS += d/builtin.dmd.o d/traits.dmd.o
+  D_DMD_OBJS += d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o
 else
 # D1 specific sources
   D_DMD_OBJS +=
@@ -268,26 +274,26 @@ D_BORROWED_C_OBJS +=
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
 d/%.dmd.o: $(srcdir)/$(D_dmd_srcdir)/%.c $(D_DMD_H) d/d-confdefs.h
-	$(CXX) $(ALL_DMD_COMPILER_FLAGS) -include $(srcdir)/$(D_dmd_srcdir)/total.h -o d/$*.dmd.o -c $<
+	$(CXX) $(ALL_DMD_CXXFLAGS) -include $(srcdir)/$(D_dmd_srcdir)/total.h -o d/$*.dmd.o -c $<
 
 # For generator programs, can't implicitly include "total.h" which includes "id.h"
 d/%.dmdgen.o: $(srcdir)/$(D_dmd_srcdir)/%.c
-	$(CC_FOR_BUILD) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmdgen.o -c $<
+	$(CC_FOR_BUILD) $(ALL_DMD_CFLAGS) -o d/$*.dmdgen.o -c $<
 
 d/%.gen.o: d/%.c
-	$(CXX) $(ALL_DMD_COMPILER_FLAGS)  -o d/$*.gen.o -c $<
+	$(CXX) $(ALL_DMD_CXXFLAGS)  -o d/$*.gen.o -c $<
 
 d/%.glue.o: $(srcdir)/d/%.cc $(D_TREE_H)
-	$(CXX) $(ALL_D_COMPILER_FLAGS) -DGCC_SAFE_DMD=1 -o d/$*.glue.o -c $<
+	$(CXX) $(ALL_D_CXXFLAGS) -DGCC_SAFE_DMD=1 -o d/$*.glue.o -c $<
 
 d/%.cglue.o: $(srcdir)/d/%.c $(D_TREE_H)
-	$(CC) $(ALL_D_COMPILER_FLAGS) -o d/$*.cglue.o -c $<
+	$(CC) $(ALL_D_CFLAGS) -o d/$*.cglue.o -c $<
 
 d/impcvgen: d/impcnvgen.dmdgen.o
-	$(CC_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
+	$(CC_FOR_BUILD) $(ALL_D_CFLAGS) $(BUILD_LDFLAGS) -o $@ $^
 
 d/idgen: d/idgen.dmdgen.o
-	$(CC_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS)  -o $@ $^
+	$(CC_FOR_BUILD) $(ALL_D_CFLAGS) $(BUILD_LDFLAGS)  -o $@ $^
 
 d/impcnvtab.c: d/impcvgen
 	cd d && ./impcvgen
@@ -341,13 +347,13 @@ d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) $(D_CORETYPES) $(TM_H) $(GCC_H) $(C
 	(SHLIB_LINK='$(SHLIB_LINK)' \
 	SHLIB_MULTILIB='$(SHLIB_MULTILIB)'; \
 	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(DRIVER_DEFINES) \
-		$(ALL_D_COMPILER_FLAGS) \
+		$(ALL_D_CFLAGS) \
 		$(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
 
 D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_BORROWED_C_OBJS) $(D_DMD_OBJS) $(D_GLUE_OBJS)
 
 $(D_COMPILER_NAME)$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
-	$(CXX) $(ALL_D_COMPILER_FLAGS) $(LDFLAGS) -o $@ \
+	$(CXX) $(ALL_D_CXXFLAGS) $(LDFLAGS) -o $@ \
 		$(D_ALL_OBJS) $(BACKEND) $(D_EXTRA_LIBS) $(LIBS)
 
 # Stage hooks:
