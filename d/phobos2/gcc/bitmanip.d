@@ -19,76 +19,6 @@ version (X86)       version = X86_32_or_64;
 version (X86_64)    version = X86_32_or_64;
 
 
-// Some helper functions for similar functions:
-version (X86_32_or_64) {    
-    private template gen_bs_variant(string suffix) {
-        const gen_bs_variant = `
-            int bs` ~ suffix ~ `(size_t v) {
-                int retval = void;
-                asm {"bs` ~ suffix ~ ` %[val], %[result]"
-                     : [result] "=r" retval
-                     : [val] "rm" v
-                     ;
-                }
-                return retval;
-            }
-        `;
-    }
-
-    private template gen_bt_variant(string suffix, bool locked) {
-        const gen_bt_variant = `
-            int ` ~ (locked ? "locked_" : "") ~ `bt` ~ suffix ~ `(in uint * p, size_t bit) {
-                bool retval = void;
-                asm {"` ~ (locked ? "lock " : "") ~ `
-                     bt` ~ suffix ~ ` %[bit], (%[addr])
-                     setc %[result]
-                     "
-                     :
-                     [result] "=g" retval
-                     :
-                     [addr] "p" p,
-                     [bit] "rI" bit
-                     ;
-                }
-                return retval ? -1 : 0;
-            }
-        `;
-    }
-
-    private template gen_in_variant(string suffix, string type) {
-        const gen_in_variant = `
-            ` ~ type ~ ` inp` ~ suffix ~ `(uint p) {
-                ` ~ type ~ ` retval = void;
-                asm {"in` ~ (suffix.length ? suffix : "b") ~ ` %[port], %[result]"
-                     :
-                     [result] "=a" retval
-                     :
-                     [port] "Nd" cast(ushort)p
-                     ;
-                }
-                return retval;
-            }
-        `;
-    }
-    
-    private template gen_out_variant(string suffix, string type) {
-        const gen_out_variant = `
-            ` ~ type ~ ` outp` ~ suffix ~ `(uint p, ` ~ type ~ ` v) {
-                ` ~ type ~ ` retval = void;
-                asm {"out` ~ (suffix.length ? suffix : "b") ~ ` %[val], %[port]"
-                     :
-                     :
-                     [port] "Nd" cast(ushort)p,
-                     [val] "a" v
-                     ;
-                }
-                return v;
-            }
-        `;
-    }
-}
-
-
 /**
  * Scans the bits in v starting with bit 0, looking
  * for the first set bit.
@@ -96,12 +26,12 @@ version (X86_32_or_64) {
  *      The bit number of the first bit set.
  *      The return value is undefined if v is zero.
  */
-version (X86_32_or_64) mixin(gen_bs_variant!("f")); else
-int bsf(size_t v)
+pure int bsf(size_t v)
 {
     size_t m = 1;
     uint i;
-    for (i = 0; i < 32; i++, m <<= 1) {
+    for (i = 0; i < 32; i++, m <<= 1)
+    {
         if (v & m)
             return i;
     }
@@ -137,8 +67,7 @@ int bsf(size_t v)
  *  bsf(x21) = 0<br>
  *  bsr(x21) = 5
  */
-version (X86_32_or_64) mixin(gen_bs_variant!("r")); else
-int bsr(size_t v)
+pure int bsr(size_t v)
 {
     size_t m = 0x80000000;
     uint i;
@@ -153,21 +82,19 @@ int bsr(size_t v)
 /**
  * Tests the bit.
  */
-version (X86_32_or_64) mixin(gen_bt_variant!("", false)); else
-int bt(in uint *p, size_t bitnum)
+pure int bt(in size_t *p, size_t bitnum)
 {
-    return (p[bitnum / (uint.sizeof*8)] & (1<<(bitnum & ((uint.sizeof*8)-1)))) ? -1 : 0 ;
+    return (p[bitnum / (size_t.sizeof*8)] & (1<<(bitnum & ((size_t.sizeof*8)-1)))) ? -1 : 0 ;
 }
 
 /**
  * Tests and complements the bit.
  */
-version (X86_32_or_64) mixin(gen_bt_variant!("c", false)); else
-int btc(uint *p, size_t bitnum)
+int btc(size_t *p, size_t bitnum)
 {
-    uint * q = p + (bitnum / (uint.sizeof*8));
-    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
-    int result = *q & mask;
+    size_t * q = p + (bitnum / (size_t.sizeof*8));
+    size_t mask = 1 << (bitnum & ((size_t.sizeof*8) - 1));
+    sizediff_t result = *q & mask;
     *q ^= mask;
     return result ? -1 : 0;
 }
@@ -175,12 +102,11 @@ int btc(uint *p, size_t bitnum)
 /**
  * Tests and resets (sets to 0) the bit.
  */
-version (X86_32_or_64) mixin(gen_bt_variant!("r", false)); else
-int btr(uint *p, size_t bitnum)
+int btr(size_t *p, size_t bitnum)
 {
-    uint * q = p + (bitnum / (uint.sizeof*8));
-    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
-    int result = *q & mask;
+    size_t * q = p + (bitnum / (size_t.sizeof*8));
+    size_t mask = 1 << (bitnum & ((size_t .sizeof*8) - 1));
+    sizediff_t result = *q & mask;
     *q &= ~mask;
     return result ? -1 : 0;
 }
@@ -188,11 +114,11 @@ int btr(uint *p, size_t bitnum)
 /**
  * Tests and sets the bit.
  * Params:
- * p = a non-NULL pointer to an array of uints.
+ * p = a non-NULL pointer to an array of size_ts.
  * index = a bit number, starting with bit 0 of p[0],
  * and progressing. It addresses bits like the expression:
 ---
-p[index / (uint.sizeof*8)] & (1 << (index & ((uint.sizeof*8) - 1)))
+p[index / (size_t.sizeof*8)] & (1 << (index & ((size_t.sizeof*8) - 1)))
 ---
  * Returns:
  *      A non-zero value if the bit was set, and a zero
@@ -205,7 +131,7 @@ import gcc.bitmanip;
 
 int main()
 {
-    uint array[2];
+    size_t array[2];
 
     array[0] = 2;
     array[1] = 0x100;
@@ -242,12 +168,11 @@ bt(array, 1) = -1
 array = [0]:x2, [1]:x100
 </pre>
  */
-version (X86_32_or_64) mixin(gen_bt_variant!("s", false)); else
-int bts(uint *p, size_t bitnum)
+int bts(size_t *p, size_t bitnum)
 {
-    uint * q = p + (bitnum / (uint.sizeof*8));
-    uint mask = 1 << (bitnum & ((uint.sizeof*8) - 1));
-    int result = *q & mask;
+    size_t * q = p + (bitnum / (size_t.sizeof*8));
+    size_t mask = 1 << (bitnum & ((size_t.sizeof*8) - 1));
+    sizediff_t result = *q & mask;
     *q |= mask;
     return result ? -1 : 0;
 }
@@ -255,16 +180,20 @@ int bts(uint *p, size_t bitnum)
 
 /**
  * Swaps bytes in a 4 byte uint end-to-end, i.e. byte 0 becomes
-        byte 3, byte 1 becomes byte 2, byte 2 becomes byte 1, byte 3
-        becomes byte 0.
+ * byte 3, byte 1 becomes byte 2, byte 2 becomes byte 1, byte 3
+ * becomes byte 0.
  */
 version (X86_32_or_64)
-    uint bswap(uint v)
-    {
-        uint retval = void;
-        asm {"bswap %[val]" : [val] "=r" retval : "0" v; }
-        return retval;
+uint bswap(uint v)
+{
+    uint retval = void;
+    asm {
+        "bswap %[val]"
+        : [val] "=r" retval
+        : "0" v;
     }
+    return retval;
+}
 else
 uint bswap(uint v)
 {
@@ -275,36 +204,105 @@ uint bswap(uint v)
 /**
  * Reads I/O port at port_address.
  */
-version (X86_32_or_64) mixin(gen_in_variant!("", "ubyte")); else
+version (X86_32_or_64)
+ubyte inp (uint p)
+{
+    ubyte retval = void;
+    asm {
+        "inb %[port], %[result]"
+        : [result] "=a" retval
+        : [port] "Nd" cast(ushort)p;
+    }
+    return retval;
+}
+else
 ubyte inp(uint p) { return 0; }
 
 /**
  * ditto
  */
-version (X86_32_or_64) mixin(gen_in_variant!("w", "ushort")); else
+version (X86_32_or_64)
+ushort inpw (uint p)
+{
+    ushort retval = void;
+    asm {
+        "inw %[port], %[result]"
+        : [result] "=a" retval
+        : [port] "Nd" cast(ushort)p;
+    }
+    return retval;
+}
+else
 ushort inpw(uint p) { return 0; }
 
 /**
  * ditto
  */
-version (X86_32_or_64) mixin(gen_in_variant!("l", "uint")); else
+version (X86_32_or_64)
+uint inpl (uint p)
+{
+    uint retval = void;
+    asm {
+        "inl %[port], %[result]"
+        : [result] "=a" retval
+        : [port] "Nd" cast(ushort)p;
+    }
+    return retval;
+}
+else
 uint inpl(uint p) { return 0; }
 
 
 /**
  * Writes and returns value to I/O port at port_address.
  */
-version (X86_32_or_64) mixin(gen_out_variant!("", "ubyte")); else
+version (X86_32_or_64)
+ubyte outp (uint p, ubyte v)
+{
+    ubyte retval = void;
+    asm {
+        "outb %[val], %[port]"
+        :
+        : [port] "Nd" cast(ushort)p,
+          [val] "a" v;
+    }
+    return v;
+}
+else
 ubyte outp(uint p, ubyte v) { return v; }
 
 /**
  * ditto
  */
-version (X86_32_or_64) mixin(gen_out_variant!("w", "ushort")); else
+version (X86_32_or_64)
+ushort outpw (uint p, ushort v)
+{
+    ushort retval = void;
+    asm {
+        "outw %[val], %[port]"
+        :
+        : [port] "Nd" cast(ushort)p,
+          [val] "a" v;
+    }
+    return v;
+}
+else
 ushort outpw(uint p, ushort v) { return v; }
 
 /**
  * ditto
  */
-version (X86_32_or_64) mixin(gen_out_variant!("l", "uint")); else
+version (X86_32_or_64)
+uint outpl (uint p, uint v)
+{
+    uint retval = void;
+    asm {
+        "outl %[val], %[port]"
+        :
+        : [port] "Nd" cast(ushort)p,
+          [val] "a" v;
+    }
+    return v;
+}
+else
 uint outpl(uint p, uint v) { return v; }

@@ -244,7 +244,7 @@ BASE_OBJS = object_.o
 RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
              rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
              rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
-             rt/cast_.o rt/complex.o rt/critical.o \
+             rt/cast_.o rt/complex.o rt/critical.o rt/dmain2.o \
              rt/memory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
              rt/monitor.o rt/obj.o rt/qsort.o rt/switch_.o
 
@@ -288,8 +288,7 @@ RT_WINDOWS_OBJS = core/sys/windows/windows.o \
 
 
 # This should not be linked into a shared library.
-#CMAIN_OBJS=compiler/gdc/cmain.o
-CMAIN_OBJS = rt/dmain2.o
+CMAIN_OBJS = rt/cmain.o
 
 # Regardless of OS, all import headers are generated.
 CORE_IMPORTS = core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \

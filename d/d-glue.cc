@@ -66,9 +66,6 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
     if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
     {   // GCC doesn't handle these.
         // ordering for complex isn't defined, all that is guaranteed is the 'unordered part'
-
-        // %% Frontend emits error "compare not defined for complex operands" for these?
-        // So code here to handle them may be in vain...
         e1 = irs->maybeMakeTemp(e1);
         e2 = irs->maybeMakeTemp(e2);
     }
@@ -99,13 +96,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
         }
         case TOKleg:
         {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1.re <>= e2.re) && (e1.im <>= e2.im)
-                return irs->boolOp(TRUTH_ANDIF_EXPR,
-                        make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
-                        make_bool_binop(TOKleg, irs->imagPart(e1), irs->imagPart(e2), irs));
-            }
-            else if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
+            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 <>= e2)
                 out_code = ORDERED_EXPR;
                 break;
@@ -117,13 +108,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
         }
         case TOKunord:
         {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1.re !<>= e2.re) || (e1.im !<>= e2.im)
-                return irs->boolOp(TRUTH_ORIF_EXPR,
-                        make_bool_binop(TOKunord, irs->realPart(e1), irs->realPart(e2), irs),
-                        make_bool_binop(TOKunord, irs->imagPart(e1), irs->imagPart(e2), irs));
-            }
-            else if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
+            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !<>= e2)
                 out_code = UNORDERED_EXPR;
                 break;
@@ -134,32 +119,17 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
             }
         }
         case TOKlg:
-        {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1 <>= e2) && (e1 != e2)
-                return irs->boolOp(TRUTH_ANDIF_EXPR,
-                        make_bool_binop(TOKleg, e1, e2, irs),
-                        make_bool_binop(TOKnotequal, e1, e2, irs));
-            }
-            else
-            {   // (e1 < e2) || (e1 > e2)
-                e1 = irs->maybeMakeTemp(e1);
-                e2 = irs->maybeMakeTemp(e2);
-                // %% Write instead as (e1 != e2) ?
-                return irs->boolOp(TRUTH_ORIF_EXPR,
-                        build2(LT_EXPR, boolean_type_node, e1, e2),
-                        build2(GT_EXPR, boolean_type_node, e1, e2));
-            }
+        {   // (e1 < e2) || (e1 > e2)
+            e1 = irs->maybeMakeTemp(e1);
+            e2 = irs->maybeMakeTemp(e2);
+            // %% Write instead as (e1 != e2) ?
+            return irs->boolOp(TRUTH_ORIF_EXPR,
+                    build2(LT_EXPR, boolean_type_node, e1, e2),
+                    build2(GT_EXPR, boolean_type_node, e1, e2));
         }
         case TOKue:
         {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1 !<>= e2) || (e1 == e2)
-                return irs->boolOp(TRUTH_ORIF_EXPR,
-                        make_bool_binop(TOKunord, e1, e2, irs),
-                        make_bool_binop(TOKequal, e1, e2, irs));
-            }
-            else if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
+            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !<> e2)
                 out_code = UNEQ_EXPR;
                 break;
@@ -178,15 +148,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
         // make a target-independent _cmplxCmp ?
         case TOKule:
         {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1 !<>= e2) || ((e1.re > e2.re) && (e1.im > e2.im))
-                return irs->boolOp(TRUTH_ORIF_EXPR,
-                        make_bool_binop(TOKunord, e1, e2, irs),
-                        irs->boolOp(TRUTH_ANDIF_EXPR,
-                            make_bool_binop(TOKgt, irs->realPart(e1), irs->realPart(e2), irs),
-                            make_bool_binop(TOKgt, irs->imagPart(e1), irs->imagPart(e2), irs)));
-            }
-            else if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
+            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !> e2)
                 out_code = UNLE_EXPR;
                 break;
@@ -198,32 +160,13 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
             }
         }
         case TOKle:
-        {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1 <>= e2) && (e1.re <= e2.re) && (e1.im <= e2.im)
-                return irs->boolOp(TRUTH_ANDIF_EXPR,
-                        make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
-                        irs->boolOp(TRUTH_ANDIF_EXPR,
-                            make_bool_binop(TOKle, irs->realPart(e1), irs->realPart(e2), irs),
-                            make_bool_binop(TOKle, irs->imagPart(e1), irs->imagPart(e2), irs)));
-            }
-            else
-            {   // (e1 <= e2)
-                out_code = LE_EXPR;
-                break;
-            }
+        {   // (e1 <= e2)
+            out_code = LE_EXPR;
+            break;
         }
         case TOKul:
         {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1 !<>= e2) || ((e1.re >= e2.re) && (e1.im >= e2.im))
-                return irs->boolOp(TRUTH_ORIF_EXPR,
-                        make_bool_binop(TOKunord, e1, e2, irs),
-                        irs->boolOp(TRUTH_ANDIF_EXPR,
-                            make_bool_binop(TOKge, irs->realPart(e1), irs->realPart(e2), irs),
-                            make_bool_binop(TOKge, irs->imagPart(e1), irs->imagPart(e2), irs)));
-            }
-            else if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
+            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !>= e2)
                 out_code = UNLT_EXPR;
                 break;
@@ -235,32 +178,13 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
             }
         }
         case TOKlt:
-        {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1.re <>= e2.re) && (e1.re < e2.re) && (e1.im < e2.im)
-                return irs->boolOp(TRUTH_ANDIF_EXPR,
-                        make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
-                        irs->boolOp(TRUTH_ANDIF_EXPR,
-                            make_bool_binop(TOKlt, irs->realPart(e1), irs->realPart(e2), irs),
-                            make_bool_binop(TOKlt, irs->imagPart(e1), irs->imagPart(e2), irs)));
-            }
-            else
-            {   // (e1 < e2)
-                out_code = LT_EXPR;
-                break;
-            }
+        {   // (e1 < e2)
+            out_code = LT_EXPR;
+            break;
         }
         case TOKuge:
         {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1 !<>= e2) || ((e1.re < e2.re) && (e1.im < e2.im))
-                return irs->boolOp(TRUTH_ORIF_EXPR,
-                        make_bool_binop(TOKunord, e1, e2, irs),
-                        irs->boolOp(TRUTH_ANDIF_EXPR,
-                            make_bool_binop(TOKlt, irs->realPart(e1), irs->realPart(e2), irs),
-                            make_bool_binop(TOKlt, irs->imagPart(e1), irs->imagPart(e2), irs)));
-            }
-            else if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
+            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !< e2)
                 out_code = UNGE_EXPR;
                 break;
@@ -272,32 +196,13 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
             }
         }
         case TOKge:
-        {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1.re <>= e2.re) && (e1.re >= e2.re) && (e1.im >= e2.im)
-                return irs->boolOp(TRUTH_ANDIF_EXPR,
-                        make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
-                        irs->boolOp(TRUTH_ANDIF_EXPR,
-                            make_bool_binop(TOKge, irs->realPart(e1), irs->realPart(e2), irs),
-                            make_bool_binop(TOKge, irs->imagPart(e1), irs->imagPart(e2), irs)));
-            }
-            else
-            {   // (e1 >= e2)
-                out_code = GE_EXPR;
-                break;
-            }
+        {   // (e1 >= e2)
+            out_code = GE_EXPR;
+            break;
         }
         case TOKug:
         {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1 !<>= e2) || ((e1.re <= e2.re) && (e1.im <= e2.im))
-                return irs->boolOp(TRUTH_ORIF_EXPR,
-                        make_bool_binop(TOKunord, e1, e2, irs),
-                        irs->boolOp(TRUTH_ANDIF_EXPR,
-                            make_bool_binop(TOKle, irs->realPart(e1), irs->realPart(e2), irs),
-                            make_bool_binop(TOKle, irs->imagPart(e1), irs->imagPart(e2), irs)));
-            }
-            else if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
+            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !<= e2)
                 out_code = UNGT_EXPR;
                 break;
@@ -309,20 +214,9 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
             }
         }
         case TOKgt:
-        {
-            if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-            {   // (e1.re <>= e2.re) && (e1.re > e2.re) && (e1.im > e2.im)
-                return irs->boolOp(TRUTH_ANDIF_EXPR,
-                        make_bool_binop(TOKleg, irs->realPart(e1), irs->realPart(e2), irs),
-                        irs->boolOp(TRUTH_ANDIF_EXPR,
-                            make_bool_binop(TOKgt, irs->realPart(e1), irs->realPart(e2), irs),
-                            make_bool_binop(TOKgt, irs->imagPart(e1), irs->imagPart(e2), irs)));
-            }
-            else
-            {   // (e1 > e2)
-                out_code = GT_EXPR;
-                break;
-            }
+        {   // (e1 > e2)
+            out_code = GT_EXPR;
+            break;
         }
         default:
             gcc_unreachable();
@@ -333,7 +227,12 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
     /* Need to use fold().  Otherwise, complex-var == complex-cst is not
        gimplified correctly. */
     if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)) || COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e2)))
+    {   // All other operations are not defined for complex types.
+        assert(op == TOKidentity || op == TOKequal ||
+               op == TOKnotidentity || op == TOKnotequal ||
+               op == TOKandand || op == TOKoror);
         cmp = fold(cmp);
+    }
 
     return cmp;
 }
@@ -2507,12 +2406,15 @@ elem *
 TupleExp::toElem(IRState * irs)
 {
     tree result = NULL_TREE;
-    if (exps && exps->dim) {
-        for (unsigned i = 0; i < exps->dim; ++i) {
+    if (exps && exps->dim)
+    {
+        for (unsigned i = 0; i < exps->dim; ++i)
+        {
             Expression * e = (Expression *) exps->data[i];
             result = irs->maybeVoidCompound(result, e->toElem(irs));
         }
-    } else
+    }
+    else
         result = d_void_zero_node;
 
     return result;
@@ -2524,17 +2426,17 @@ ArrayLiteralExp::toElem(IRState * irs)
     Type * typeb = type->toBasetype();
     assert(typeb->ty == Tarray || typeb->ty == Tsarray || typeb->ty == Tpointer);
     Type * etype = typeb->nextOf();
-    Type * datype = etype->arrayOf();
+    tree sa_type = irs->arrayType(etype->toCtype(), elements->dim);
     tree result = NULL_TREE;
 
     tree args[2] = {
-        irs->typeinfoReference(typeb->nextOf()->arrayOf()),
+        irs->typeinfoReference(etype->arrayOf()),
         irs->integerConstant(elements->dim, size_type_node)
     };
     // Unfortunately, this does a useless initialization
     LibCall lib_call = typeb->nextOf()->isZeroInit() ?
         LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
-    tree d_array = irs->libCall(lib_call, 2, args, datype->toCtype());
+    tree d_array = irs->libCall(lib_call, 2, args, etype->arrayOf()->toCtype());
     tree mem = irs->maybeMakeTemp(irs->darrayPtrRef(d_array));
 #if V2
     if (var)
@@ -2542,54 +2444,52 @@ ArrayLiteralExp::toElem(IRState * irs)
         assert(var->type->ty == Tarray || var->type->ty == Tsarray);
         tree var_tree = irs->var(var);
         if (var->type->ty == Tarray)
-            var_tree = irs->darrayPtrRef(var_tree);
+            result = irs->darrayPtrRef(var_tree);
         else
-            var_tree = irs->addressOf(var_tree);
-
-        tree size = build2(MULT_EXPR, size_type_node,
-                size_int(elements->dim), size_int(typeb->nextOf()->size()));
-        size = fold(size);
-        // memcpy(mem, var_tree, size)
-        result = irs->buildCall(built_in_decls[BUILT_IN_MEMCPY], 3,
-                                mem, var_tree, size);
+            result = irs->addressOf(var_tree);
     }
     else
 #endif
-    {   /* BUG: This method performs:
-            *var = a; var += elemsize;
-            *var = b; var += elemsize;
-           Because arrays can get very large, the compounding of all these
-           statements can cause the stack to blow up while the backend walks
-           over them. Need a better way to gently pass these down.
-          */
+    {   /* Build an expression that assigns the expressions in ELEMENTS to a static
+           constructor. */
+        CtorEltMaker elms;
 
-        /* Returns an expression that assignes the expressions in ELEMENTS to static
-           array pointed to by MEM. */
-        // probably will need to pass the D array element type to get assignments correct...
-        // [ [1,2,3], 4 ]; // doesn't work, so maybe not..
-        // opt: if all/most constant, should make a var and do array copy
-        tree offset = size_int(0);
-        tree elem_size = size_int(etype->size());
-
+        elms.reserve(elements->dim);
         for (unsigned i = 0; i < elements->dim; i++)
         {
-            Expression * e = (Expression *) elements->data[i];
-            tree elemp_e = irs->pointerOffset(mem, offset);
-            tree assgn_e = irs->vmodify(irs->indirect(elemp_e), e->toElem(irs));
-            result = irs->maybeCompound(result, assgn_e);
-            offset = size_binop(PLUS_EXPR, offset, elem_size);
+            elms.cons(irs->integerConstant(i, size_type_node),
+                    ((Expression*) elements->data[i])->toElem(irs));
         }
+        tree ctor = build_constructor(sa_type, elms.head);
+        TREE_STATIC(ctor) = 1;
+        TREE_CONSTANT(ctor) = 1;
+
+        result = irs->addressOf(ctor);
     }
+    // memcpy(mem, &ctor, size)
+    tree size = build2(MULT_EXPR, size_type_node,
+            size_int(elements->dim), size_int(typeb->nextOf()->size()));
+    size = fold(size);
+    result = irs->buildCall(built_in_decls[BUILT_IN_MEMCPY], 3,
+                            mem, result, size);
+
+    // Returns array pointed to by MEM.
     result = irs->maybeCompound(result, mem);
 
-    if (typeb->ty == Tarray)
-        result = irs->darrayVal(datype->toCtype(), elements->dim, result);
-    else
+    switch (typeb->ty)
     {
-        tree sarray_type = irs->arrayType(etype->toCtype(), elements->dim);
-        if (typeb->ty == Tsarray)
-            result = irs->indirect(result, sarray_type);
+        case Tarray:
+            result = irs->darrayVal(type, elements->dim, result);
+            break;
+        case Tsarray:
+            result = irs->indirect(result, sa_type);
+            break;
+        case Tpointer:
+            break;
+        default:
+            gcc_unreachable();
     }
+
     return result;
 }
 
@@ -2837,38 +2737,38 @@ IntegerExp::toElem(IRState * irs)
 static void
 genericize_function(tree fndecl)
 {
-  FILE *dump_file;
-  int local_dump_flags;
+    FILE *dump_file;
+    int local_dump_flags;
 
-  /* Dump the C-specific tree IR.  */
-  dump_file = dump_begin (TDI_original, &local_dump_flags);
-  if (dump_file)
+    /* Dump the C-specific tree IR.  */
+    dump_file = dump_begin (TDI_original, &local_dump_flags);
+    if (dump_file)
     {
-      fprintf (dump_file, "\n;; Function %s",
-               lang_hooks.decl_printable_name (fndecl, 2));
-      fprintf (dump_file, " (%s)\n",
-	       (!DECL_ASSEMBLER_NAME_SET_P (fndecl) ? "null"
-		: IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl))));
-      fprintf (dump_file, ";; enabled by -%s\n", dump_flag_name (TDI_original));
-      fprintf (dump_file, "\n");
+        fprintf (dump_file, "\n;; Function %s",
+                lang_hooks.decl_printable_name (fndecl, 2));
+        fprintf (dump_file, " (%s)\n",
+                (!DECL_ASSEMBLER_NAME_SET_P (fndecl) ? "null"
+                 : IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl))));
+        fprintf (dump_file, ";; enabled by -%s\n", dump_flag_name (TDI_original));
+        fprintf (dump_file, "\n");
 
-      //if (local_dump_flags & TDF_RAW)
+        //if (local_dump_flags & TDF_RAW)
         dump_node (DECL_SAVED_TREE (fndecl),
-                   TDF_SLIM | local_dump_flags, dump_file);
+                TDF_SLIM | local_dump_flags, dump_file);
         //else
         //print_c_tree (dump_file, DECL_SAVED_TREE (fndecl));
-      fprintf (dump_file, "\n");
+        fprintf (dump_file, "\n");
 
-      dump_end (TDI_original, dump_file);
+        dump_end (TDI_original, dump_file);
     }
 
-  /* Go ahead and gimplify for now.  */
-  //push_context ();
-  gimplify_function_tree (fndecl);
-  //pop_context ();
+    /* Go ahead and gimplify for now.  */
+    //push_context ();
+    gimplify_function_tree (fndecl);
+    //pop_context ();
 
-  /* Dump the genericized tree IR.  */
-  dump_function (TDI_generic, fndecl);
+    /* Dump the genericized tree IR.  */
+    dump_function (TDI_generic, fndecl);
 }
 
 
@@ -2924,17 +2824,9 @@ FuncDeclaration::toObjFile(int multiobj)
     irs->useClosure(NULL, NULL_TREE);
 #endif
 
-#if D_GCC_VER < 40
-    bool saved_omit_frame_pointer = flag_omit_frame_pointer;
-    flag_omit_frame_pointer = gen.originalOmitFramePointer || naked;
-
-    if (gen.functionNeedsChain(this))
-        push_function_context();
-#else
     // in 4.0, doesn't use push_function_context
     tree old_current_function_decl = current_function_decl;
     function * old_cfun = cfun;
-#endif
 
     current_function_decl = fn_decl;
 
@@ -3313,22 +3205,10 @@ FuncDeclaration::toObjFile(int multiobj)
     if (! errorcount && ! global.errors)
         g.ofile->outputFunction(this);
 
-#if D_GCC_VER < 40
-    //rest_of_compilation(fn_decl);
-    if (gen.functionNeedsChain(this))
-        pop_function_context();
-    else
-        current_function_decl = NULL_TREE; // must come before endFunction
-
-    g.irs->endFunction();
-
-    flag_omit_frame_pointer = saved_omit_frame_pointer;
-#else
     current_function_decl = old_current_function_decl; // must come before endFunction
     set_cfun(old_cfun);
 
     irs->endFunction();
-#endif
 }
 
 #if V2
@@ -3438,83 +3318,138 @@ Module::genobjfile(int multiobj)
 }
 
 // This is not used for GCC
-unsigned Type::totym() { return 0; }
+unsigned
+Type::totym()
+{
+    return 0;
+}
 
 type *
-Type::toCtype() {
-    if (! ctype) {
-        switch (ty) {
-        case Tvoid: return void_type_node;
-        case Tint8: return intQI_type_node;
-        case Tuns8: return unsigned_intQI_type_node;
-        case Tint16: return intHI_type_node;
-        case Tuns16: return unsigned_intHI_type_node;
-        case Tint32: return intSI_type_node;
-        case Tuns32: return unsigned_intSI_type_node;
-        case Tint64: return intDI_type_node;
-        case Tuns64: return unsigned_intDI_type_node;
-        case Tfloat32: return float_type_node;
-        case Tfloat64: return double_type_node;
-        case Tfloat80: return long_double_type_node;
-        case Tcomplex32: return complex_float_type_node;
-        case Tcomplex64: return complex_double_type_node;
-        case Tcomplex80: return complex_long_double_type_node;
-        case Tbool:
-            if (int_size_in_bytes(boolean_type_node) == 1)
-                return boolean_type_node;
-            // else, drop through
-        case Tbit:
-            ctype = make_unsigned_type(1);
-            TREE_SET_CODE(ctype, BOOLEAN_TYPE);
-            assert(int_size_in_bytes(ctype) == 1);
-            dkeep(ctype);
-            return ctype;
-        case Tchar:
-            ctype = build_variant_type_copy(unsigned_intQI_type_node);
-            return ctype;
-        case Twchar:
-            ctype = build_variant_type_copy(unsigned_intHI_type_node);
-            return ctype;
-        case Tdchar:
-            ctype = build_variant_type_copy(unsigned_intSI_type_node);
-            return ctype;
-        case Timaginary32:
-            ctype = build_variant_type_copy(float_type_node);
-            return ctype;
-        case Timaginary64:
-            ctype = build_variant_type_copy(double_type_node);
-            return ctype;
-        case Timaginary80:
-            ctype = build_variant_type_copy(long_double_type_node);
-            return ctype;
+Type::toCtype()
+{
+    if (! ctype)
+    {
+        switch (ty)
+        {
+            case Tvoid:
+                ctype = void_type_node;
+                break;
+            case Tint8:
+                ctype = intQI_type_node;
+                break;
+            case Tuns8:
+                ctype = unsigned_intQI_type_node;
+                break;
+            case Tint16:
+                ctype = intHI_type_node;
+                break;
+            case Tuns16:
+                ctype = unsigned_intHI_type_node;
+                break;
+            case Tint32:
+                ctype = intSI_type_node;
+                break;
+            case Tuns32:
+                ctype = unsigned_intSI_type_node;
+                break;
+            case Tint64:
+                ctype = intDI_type_node;
+                break;
+            case Tuns64:
+                ctype = unsigned_intDI_type_node;
+                break;
+            case Tfloat32:
+                ctype = float_type_node;
+                break;
+            case Tfloat64:
+                ctype = double_type_node;
+                break;
+            case Tfloat80:
+                ctype = long_double_type_node;
+                break;
+            case Tcomplex32:
+                ctype = complex_float_type_node;
+                break;
+            case Tcomplex64:
+                ctype = complex_double_type_node;
+                break;
+            case Tcomplex80:
+                ctype = complex_long_double_type_node;
+                break;
+            case Tbool:
+                if (int_size_in_bytes(boolean_type_node) == 1)
+                {
+                    ctype = boolean_type_node;
+                    break;
+                }
+                // else, drop through
+            case Tbit:
+                ctype = make_unsigned_type(1);
+                TREE_SET_CODE(ctype, BOOLEAN_TYPE);
+                assert(int_size_in_bytes(ctype) == 1);
+                dkeep(ctype);
+                break;
+            case Tchar:
+                ctype = build_variant_type_copy(unsigned_intQI_type_node);
+                break;
+            case Twchar:
+                ctype = build_variant_type_copy(unsigned_intHI_type_node);
+                break;
+            case Tdchar:
+                ctype = build_variant_type_copy(unsigned_intSI_type_node);
+                break;
+            case Timaginary32:
+                ctype = build_variant_type_copy(float_type_node);
+                break;
+            case Timaginary64:
+                ctype = build_variant_type_copy(double_type_node);
+                break;
+            case Timaginary80:
+                ctype = build_variant_type_copy(long_double_type_node);
+                break;
 
-        case Terror: return error_mark_node;
+            case Terror:
+                ctype = error_mark_node;
+                break;
 
-        /* We can get Tident with forward references.  There seems to
-           be a legitame case (dstress:debug_info_03).  I have not seen this
-           happen for an error, so maybe it's okay...
+                /* We can get Tident with forward references.  There seems to
+                   be a legitame case (dstress:debug_info_03).  I have not seen this
+                   happen for an error, so maybe it's okay...
 
-           A way to handle this would be to partially construct
-           function types and not complete it until it was actually
-           used in a call. */
-        case Tident: return void_type_node;
+                   A way to handle this would be to partially construct
+                   function types and not complete it until it was actually
+                   used in a call. */
+            case Tident:
+                ctype = void_type_node;
+                break;
 
-        /* We can get Ttuple from void (T...)(T t) */
-        case Ttuple: return void_type_node;
+                /* We can get Ttuple from void (T...)(T t) */
+            case Ttuple:
+                ctype = void_type_node;
+                break;
 
-        default:
-            ::error("unexpected call to Type::toCtype() for %s\n", this->toChars());
-            abort();
-            return NULL_TREE;
+            default:
+                ::error("unexpected call to Type::toCtype() for %s\n", this->toChars());
+                abort();
+                return NULL_TREE;
         }
     }
     return ctype;
 }
 
 // This is not used for GCC
-type * Type::toCParamtype() { return 0; }
+type *
+Type::toCParamtype()
+{
+    return 0;
+}
+
 // This is not used for GCC
-Symbol * Type::toSymbol() { return 0; }
+Symbol *
+Type::toSymbol()
+{
+    return 0;
+}
 
 static void
 apply_type_attributes(Expressions * attrs, tree & type_node, bool in_place = false)
@@ -3619,8 +3554,8 @@ TypeEnum::toCtype()
 type *
 TypeStruct::toCtype()
 {
-    if (! ctype) {
-        // need to set this right away in case of self-references
+    if (! ctype)
+    {   // need to set this right away in case of self-references
         ctype = make_node(sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE);
 
         TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
@@ -3683,9 +3618,17 @@ StructDeclaration::toDebug()
     g.ofile->declareType(ctype, this);
 }
 
-Symbol * TypeClass::toSymbol() { return sym->toSymbol(); }
+Symbol *
+TypeClass::toSymbol()
+{
+    return sym->toSymbol();
+}
 
-unsigned TypeFunction::totym() { return 0; } // Unused
+unsigned
+TypeFunction::totym()
+{
+    return 0;   // Unused
+}
 
 type *
 TypeFunction::toCtype()
@@ -3772,8 +3715,10 @@ TypeFunction::retStyle()
 type *
 TypeSArray::toCtype()
 {
-    if (! ctype) {
-        if (dim->isConst() && dim->type->isintegral()) {
+    if (! ctype)
+    {
+        if (dim->isConst() && dim->type->isintegral())
+        {
             uinteger_t size = dim->toUInteger();
 #if V1
             gcc_assert(! next->isbit());
@@ -3783,7 +3728,9 @@ TypeSArray::toCtype()
             else
                 ctype = gen.arrayType(next, size);
 
-        } else {
+        }
+        else
+        {
             ::error("invalid expressions for static array dimension: %s", dim->toChars());
             abort();
         }
@@ -3791,7 +3738,11 @@ TypeSArray::toCtype()
     return ctype;
 }
 
-type *TypeSArray::toCParamtype() { return 0; }
+type *
+TypeSArray::toCParamtype()
+{
+    return 0;
+}
 
 type *
 TypeDArray::toCtype()
@@ -3847,7 +3798,8 @@ TypePointer::toCtype()
 type *
 TypeDelegate::toCtype()
 {
-    if (! ctype) {
+    if (! ctype)
+    {
         assert(next->toBasetype()->ty == Tfunction);
         ctype = gen.twoFieldType(Type::tvoid->pointerTo(), next->pointerTo(),
             this, "object", "func");
@@ -3991,16 +3943,20 @@ TypeClass::toCtype()
         tree decl = d_build_decl(FIELD_DECL, get_identifier("_vptr$"), /*vtbl_type*/d_vtbl_ptr_type_node);
         agg_layout.addField(decl, 0); // %% target stuff..
 
-        if (inherited) {
+        if (inherited)
+        {
             vfield = copy_node(decl);
             DECL_ARTIFICIAL(decl) = DECL_IGNORED_P(decl) = 1;
-        } else {
+        }
+        else
+        {
             vfield = decl;
         }
         DECL_VIRTUAL_P(vfield) = 1;
         TYPE_VFIELD(rec_type) = vfield; // This only seems to affect debug info
 
-        if (! sym->isInterfaceDeclaration()) {
+        if (! sym->isInterfaceDeclaration())
+        {
             DECL_FCONTEXT(vfield) = obj_rec_type;
 
             // Add the monitor
@@ -4012,11 +3968,13 @@ TypeClass::toCtype()
 
             // Add the fields of each base class
             agg_layout.go();
-        } else {
+        }
+        else
+        {
             ClassDeclaration * p = sym;
-            while (p->baseclasses->dim) {
+            while (p->baseclasses->dim)
                 p = ((BaseClass *) p->baseclasses->data[0])->base;
-            }
+
             DECL_FCONTEXT(vfield) = TREE_TYPE(p->type->toCtype());
         }
 

@@ -181,7 +181,9 @@ d_init_options (unsigned int, const char ** argv)
 
     // GCC options
     flag_exceptions = 1;
+    // Avoid range issues for complex multiply and divide.
     flag_complex_method = 2;
+    // Unlike C, there is no global 'errno' variable.
     flag_errno_math = 0;
 
     // extra D-specific options
@@ -343,7 +345,8 @@ d_init ()
 #    else
         /* If none of D_CPU_VERSYM and D_CPU_VERSYM64 defined check size_t
          * length instead. */
-        switch (sizeof(size_t)) {
+        switch (sizeof(size_t))
+        {
             case 4:
                 global.params.isX86_64 = 0;
                 break;
@@ -448,6 +451,10 @@ d_init ()
     //if (global.params.cov)
     if (flag_test_coverage)
         VersionCondition::addPredefinedGlobalIdent("D_Coverage");
+    if (flag_pic)
+        VersionCondition::addPredefinedGlobalIdent("D_PIC");
+    if (global.params.doDocComments)
+        VersionCondition::addPredefinedGlobalIdent("D_Ddoc");
     if (global.params.useUnitTests)
         VersionCondition::addPredefinedGlobalIdent("unittest");
 
@@ -492,7 +499,6 @@ d_init ()
     }
 
     VersionCondition::addPredefinedGlobalIdent("all");
-
 
     // %%TODO: front or back?
     if (std_inc)
@@ -540,12 +546,15 @@ d_init ()
 
     {
         char * path = FileName::searchPath(global.path, "phobos-ver-syms", 1);
-        if (path) {
+        if (path)
+        {
             FILE * f = fopen(path, "r");
             char buf[256];
             char *p, *q;
-            if (f) {
-                while ( ! feof(f) && fgets(buf, 256, f) ) {
+            if (f)
+            {
+                while ( ! feof(f) && fgets(buf, 256, f) )
+                {
                     p = buf;
                     while (*p && ISSPACE(*p))
                         p++;
@@ -553,17 +562,21 @@ d_init ()
                     while (*q && ! ISSPACE(*q))
                         q++;
                     *q = 0;
-                    if (p != q) {
-                        /* Needs to be predefined because we define
+                    if (p != q)
+                    {   /* Needs to be predefined because we define
                            Unix/Windows this way. */
                         VersionCondition::addPredefinedGlobalIdent(xstrdup(p));
                     }
                 }
                 fclose(f);
-            } else {
+            }
+            else
+            {
                 //printf("failed\n");
             }
-        } else {
+        }
+        else
+        {
             //printf("no p-v-s found\n");
         }
     }
