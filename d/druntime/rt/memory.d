@@ -158,7 +158,7 @@ extern (C) void* rt_stackTop()
     }
     else
     {
-        static assert( false, "Operating system not supported." );
+        static assert( false, "Architecture not supported." );
     }
 }
 

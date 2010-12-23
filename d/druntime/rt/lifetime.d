@@ -1706,7 +1706,7 @@ extern (C) void[] _d_arrayappendwd(ref wchar[] x, dchar c)
     {
         buf.ptr[0] = cast(wchar) ((((c - 0x10000) >> 10) & 0x3FF) + 0xD800);
         buf.ptr[1] = cast(wchar) (((c - 0x10000) & 0x3FF) + 0xDC00);
-        // ditto from above
+        // ditto from above.
         appendthis = (cast(byte *)buf.ptr)[0..2];
     }
 

@@ -90,7 +90,7 @@ out (result)
 body
 {
     //printf("body _d_switch_string(%.*s)\n", ca);
-    size_t low = 0;
+    size_t low  = 0;
     size_t high = table.length;
 
     version (none)
@@ -227,10 +227,10 @@ body
 /*
     // Print table
     wprintf("ca[] = '%.*s'\n", ca);
-    for (mid = 0; mid < high; mid++)
+    for (auto i = 0; i < high; i++)
     {
-        pca = table[mid];
-        wprintf("table[%d] = %d, '%.*s'\n", mid, pca.length, pca);
+        auto pca = table[i];
+        wprintf("table[%d] = %d, '%.*s'\n", i, pca.length, pca);
     }
 */
 
@@ -239,7 +239,7 @@ body
     {
         auto mid = (low + high) >> 1;
         auto pca = table[mid];
-        int c = cast(int)(ca.length - pca.length);
+        auto c = ca.length - pca.length;
         if (c == 0)
         {
             c = memcmp(ca.ptr, pca.ptr, ca.length * wchar.sizeof);
@@ -334,7 +334,7 @@ body
 {
     //printf("body _d_switch_ustring()\n");
     size_t low = 0;
-    size_t high = table.length;
+    auto high = table.length;
 
 /*
     // Print table
@@ -351,7 +351,7 @@ body
     {
         auto mid = (low + high) >> 1;
         auto pca = table[mid];
-        auto c = cast(sizediff_t)(ca.length - pca.length);
+        auto c = ca.length - pca.length;
         if (c == 0)
         {
             c = memcmp(ca.ptr, pca.ptr, ca.length * dchar.sizeof);

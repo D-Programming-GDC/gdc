@@ -115,7 +115,7 @@ extern (C) char[] _adReverseChar(char[] a)
             hi = hi - 1 + (stridehi - stridelo);
         }
     }
-    return a;
+    return *cast(char[]*)(&a);
 }
 
 unittest
@@ -578,13 +578,11 @@ Unequal:
   }
   else
   {
-    int c;
-
     debug(adi) printf("adCmpChar()\n");
-    size_t len = a1.length;
+    auto len = a1.length;
     if (a2.length < len)
         len = a2.length;
-    c = memcmp(cast(char *)a1.ptr, cast(char *)a2.ptr, len);
+    auto c = memcmp(cast(char *)a1.ptr, cast(char *)a2.ptr, len);
     if (!c)
         c = cast(int)a1.length - cast(int)a2.length;
     return c;

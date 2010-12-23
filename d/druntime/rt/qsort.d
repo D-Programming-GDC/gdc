@@ -127,7 +127,7 @@ extern (C) Array _adSort(Array a, TypeInfo ti)
       limit = sp[1];
     }
     else                                // else stack empty, all done
-      return a;
+      return *cast(Array*)(&a);
   }
   assert(0);
 }

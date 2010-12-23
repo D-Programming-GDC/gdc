@@ -202,6 +202,11 @@ body
  * Add entry for key if it is not already there.
  */
 
+void* _aaGet(AA* aa, TypeInfo keyti, size_t valuesize, ...)
+{
+    return _aaGetp(aa, keyti, valuesize, cast(void*)(&valuesize + 1));
+}
+
 void* _aaGetp(AA* aa, TypeInfo keyti, size_t valuesize, void* pkey)
 in
 {
@@ -271,6 +276,11 @@ Lret:
  * Returns null if it is not already there.
  */
 
+void* _aaGetRvalue(AA aa, TypeInfo keyti, size_t valuesize, ...)
+{
+    return _aaGetRvaluep(aa, keyti, valuesize, cast(void*)(&valuesize + 1));
+}
+
 void* _aaGetRvaluep(AA aa, TypeInfo keyti, size_t valuesize, void* pkey)
 {
     //printf("_aaGetRvalue(valuesize = %u)\n", valuesize);
@@ -307,6 +317,11 @@ void* _aaGetRvaluep(AA aa, TypeInfo keyti, size_t valuesize, void* pkey)
  *      null    not in aa
  *      !=null  in aa, return pointer to value
  */
+
+void* _aaIn(AA aa, TypeInfo keyti, ...)
+{
+    return _aaInp(aa, keyti, cast(void*)(&keyti + 1));
+}
 
 void* _aaInp(AA aa, TypeInfo keyti, void* pkey)
 in
@@ -350,6 +365,11 @@ body
  * Delete key entry in aa[].
  * If key is not in aa[], do nothing.
  */
+
+void _aaDel(AA aa, TypeInfo keyti, ...)
+{
+    return _aaDelp(aa, keyti, cast(void*)(&keyti + 1));
+}
 
 void _aaDelp(AA aa, TypeInfo keyti, void* pkey)
 {
@@ -413,7 +433,7 @@ body
         }
         assert(resi == a.length);
     }
-    return a;
+    return *cast(Array*)(&a);
 }
 
 
@@ -499,7 +519,7 @@ Array _aaKeys(AA aa, size_t keysize)
 
     a.length = len;
     a.ptr = res.ptr;
-    return a;
+    return *cast(Array*)(&a);
 }
 
 
@@ -594,7 +614,7 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
         void * qval = values;
 
         result = new BB();
-	result.keyti = keyti;
+        result.keyti = keyti;
         size_t i;
 
         for (i = 0; i < prime_list.length - 1; i++)
