@@ -537,7 +537,14 @@ gcc_cst_to_d_expr(Loc loc, tree cst)
            satisifies a need to have gcc builtins CTFE'able.
          */
         tree_code code = TREE_CODE(cst);
-        if (code == INTEGER_CST)
+        if (code == COMPLEX_CST)
+        {
+            complex_t value;
+            value.re = TREE_REAL_CST(TREE_REALPART(cst));
+            value.im = TREE_REAL_CST(TREE_IMAGPART(cst));
+            return new ComplexExp(loc, value, type);
+        }
+        else if (code == INTEGER_CST)
         {
             HOST_WIDE_INT low = TREE_INT_CST_LOW(cst);
             HOST_WIDE_INT high = TREE_INT_CST_HIGH(cst);
@@ -555,7 +562,7 @@ gcc_cst_to_d_expr(Loc loc, tree cst)
             size_t len = TREE_STRING_LENGTH(cst);
             return new StringExp(loc, (void *)string, len);
         }
-        // TODO: COMPLEX... VECTOR...
+        // TODO: VECTOR... ?
     }
     return NULL;
 }
