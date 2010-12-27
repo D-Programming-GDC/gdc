@@ -545,24 +545,6 @@ IRState::convertForArgument(Expression * exp, Parameter * arg)
     }
     else
     {   // Lazy arguments: exp should already be a delegate
-        /*
-        Type * et = exp->type->toBasetype();
-        Type * at = arg->type->toBasetype();
-        if (et != at) {
-            if ((et->ty == Taarray && at == Type::tvoid->arrayOf()) ||
-                (et->ty == Tarray && at == Type::tvoid->arrayOf()) ||
-                (et->ty == Tdelegate && at->ty == Tdelegate) ||
-                (et->ty == Tclass && at->ty == Tpointer) ||
-                (et->ty == Tpointer && at->ty == Tpointer)
-                ) {
-            } else {
-                g.ofile->setLoc(exp->loc);
-                ::warning("ackthpbpt: must convert %s to %s\n",
-                    exp->type->toChars(), arg->type->toChars());
-            }
-        }
-        else
-        */
         return exp->toElem(this);
     }
 }
@@ -2583,10 +2565,10 @@ IRState::isArgumentReferenceType(Parameter * arg)
     if (arg->storageClass & (STCout | STCref))
         return true;
 
-#if !SARRAYVALUE
+    // %% if !SARRAYVALUE? Doesn't seem to work...
     if (base_type->ty == Tsarray)
         return true;
-#endif
+
     return false;
 }
 

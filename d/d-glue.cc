@@ -3321,7 +3321,7 @@ Module::genobjfile(int multiobj)
 unsigned
 Type::totym()
 {
-    return 0;
+    return NULL;
 }
 
 type *
@@ -3441,14 +3441,14 @@ Type::toCtype()
 type *
 Type::toCParamtype()
 {
-    return 0;
+    return toCtype();
 }
 
 // This is not used for GCC
 Symbol *
 Type::toSymbol()
 {
-    return 0;
+    return NULL;
 }
 
 static void
@@ -3741,7 +3741,11 @@ TypeSArray::toCtype()
 type *
 TypeSArray::toCParamtype()
 {
-    return 0;
+#if SARRAYVALUE
+    return toCtype();
+#else
+    return next->pointerTo()->toCtype();
+#endif
 }
 
 type *
