@@ -139,7 +139,7 @@ extern void d_add_global_function PARAMS(( tree ));
 extern tree d_type_promotes_to(tree);
 
 extern rtx d_expand_expr(tree, rtx, enum machine_mode, int, rtx *);
-extern tree d_build_decl(tree_code code, tree name, tree type, location_t loc = 0);
+extern tree d_build_decl(tree_code code, tree name, tree type, location_t loc = input_location);
 
 extern void gcc_d_backend_init();
 extern void gcc_d_backend_term();

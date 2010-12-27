@@ -456,7 +456,7 @@ d_builtin_function (const char *name, tree type, int function_code,
 {
     // As of 4.3.x, this is done by add_builtin_function
     //%% for D, just use library_name?
-    tree decl = d_build_decl (FUNCTION_DECL, get_identifier (name), type);
+    tree decl = d_build_decl42 (FUNCTION_DECL, get_identifier (name), type);
     DECL_EXTERNAL (decl) = 1;
     TREE_PUBLIC (decl) = 1;
     if (library_name)

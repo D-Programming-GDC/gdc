@@ -91,7 +91,7 @@ ObjectFile::hasModule(Module *m)
 void
 ObjectFile::finish()
 {
-#if D_GCC_VER < 43
+#if D_GCC_VER < 43 && !(defined(__APPLE__) && D_GCC_VER == 42)
 #define D_FFN_I 'I'
 #define D_FFN_D 'D'
 #else

@@ -1262,19 +1262,21 @@ tree
 d_build_decl(tree_code code, tree name, tree type, location_t loc)
 {
     tree t;
-    if (!loc)
-    {   // Prefer input location if location is unknown.
-        loc = input_location;
-    }
 #if D_GCC_VER >= 45
     t = build_decl(loc, code, name, type);
 #else
     t = build_decl(code, name, type);
-#if D_USE_MAPPED_LOCATION
+#ifdef D_USE_MAPPED_LOCATION
     DECL_SOURCE_LOCATION(t) = loc;
 #endif
 #endif
     return t;
+}
+
+tree
+d_build_decl42(tree_code code, tree name, tree type)
+{
+    return d_build_decl(code, name, type);
 }
 
 bool
