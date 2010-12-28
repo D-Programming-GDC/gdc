@@ -505,22 +505,6 @@ diff -cr gcc-orig/tree.def gcc/tree.def
   /* Specify a value to compute along with its corresponding cleanup.
      Operand 0 is the cleanup expression.
      The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
-diff -cr gcc-orig/tree-dump.c gcc/tree-dump.c
-*** gcc-orig/tree-dump.c	2007-09-01 11:28:30.000000000 -0400
---- gcc/tree-dump.c	2010-08-22 20:09:26.110318756 -0400
-***************
-*** 605,610 ****
---- 605,614 ----
-        dump_child ("args", TREE_OPERAND (t, 1));
-        break;
-  
-+     case STATIC_CHAIN_EXPR:
-+       dump_child ("func", TREE_OPERAND (t, 0));
-+       break;
-+ 
-      case CONSTRUCTOR:
-        {
-  	unsigned HOST_WIDE_INT cnt;
 diff -cr gcc-orig/tree-gimple.c gcc/tree-gimple.c
 *** gcc-orig/tree-gimple.c	2007-09-01 11:28:30.000000000 -0400
 --- gcc/tree-gimple.c	2010-08-22 20:09:26.110318756 -0400

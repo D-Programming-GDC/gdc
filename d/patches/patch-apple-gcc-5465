@@ -459,22 +459,6 @@ diff -cr gcc.orig/tree.def gcc/tree.def
   /* APPLE LOCAL end AV vmul_uch --haifa  */
   
   /* Value handles.  Artificial nodes to represent expressions in
-diff -cr gcc.orig/tree-dump.c gcc/tree-dump.c
-*** gcc.orig/tree-dump.c	2005-02-15 15:53:52.000000000 +0000
---- gcc/tree-dump.c	2010-10-27 17:11:22.488795001 +0100
-***************
-*** 577,582 ****
---- 577,586 ----
-        dump_child ("args", TREE_OPERAND (t, 1));
-        break;
-  
-+     case STATIC_CHAIN_EXPR:
-+       dump_child ("func", TREE_OPERAND (t, 0));
-+       break;
-+ 
-      case CONSTRUCTOR:
-        dump_child ("elts", CONSTRUCTOR_ELTS (t));
-        break;
 diff -cr gcc.orig/tree-gimple.c gcc/tree-gimple.c
 *** gcc.orig/tree-gimple.c	2005-07-09 23:14:08.000000000 +0100
 --- gcc/tree-gimple.c	2010-10-27 17:11:22.492795001 +0100

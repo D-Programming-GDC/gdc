@@ -44,9 +44,11 @@
 
 static char lang_name[6] = "GNU D";
 
+/* Lang Hooks */
 #undef LANG_HOOKS_NAME
 #undef LANG_HOOKS_INIT
 #undef LANG_HOOKS_INIT_OPTIONS
+#undef LANG_HOOKS_INIT_TS
 #undef LANG_HOOKS_HANDLE_OPTION
 #undef LANG_HOOKS_POST_OPTIONS
 #undef LANG_HOOKS_PARSE_FILE
@@ -55,20 +57,13 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_GET_ALIAS_SET
 #undef LANG_HOOKS_GIMPLIFY_EXPR
 #undef LANG_HOOKS_MARK_ADDRESSABLE
-#undef LANG_HOOKS_TYPE_FOR_MODE
-#undef LANG_HOOKS_TYPE_FOR_SIZE
-#undef LANG_HOOKS_TYPE_PROMOTES_TO
-#undef LANG_HOOKS_WRITE_GLOBALS
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
-#undef LANG_HOOKS_UNSIGNED_TYPE
-#undef LANG_HOOKS_SIGNED_TYPE
-#undef LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE
-#undef LANG_HOOKS_TYPE_FOR_SIZE
-#undef LANG_HOOKS_TYPE_FOR_MODE
+#undef LANG_HOOKS_BUILTIN_FUNCTION
 
 #define LANG_HOOKS_NAME                     lang_name
 #define LANG_HOOKS_INIT                     d_init
 #define LANG_HOOKS_INIT_OPTIONS             d_init_options
+#define LANG_HOOKS_INIT_TS                  d_init_ts
 #define LANG_HOOKS_HANDLE_OPTION            d_handle_option
 #define LANG_HOOKS_POST_OPTIONS             d_post_options
 #define LANG_HOOKS_PARSE_FILE               d_parse_file
@@ -77,43 +72,17 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_GET_ALIAS_SET            d_hook_get_alias_set
 #define LANG_HOOKS_GIMPLIFY_EXPR            d_gimplify_expr
 #define LANG_HOOKS_MARK_ADDRESSABLE         d_mark_addressable
-#define LANG_HOOKS_TYPE_FOR_MODE            d_type_for_mode
-#define LANG_HOOKS_TYPE_FOR_SIZE            d_type_for_size
-#define LANG_HOOKS_TYPE_PROMOTES_TO         d_type_promotes_to
-#define LANG_HOOKS_WRITE_GLOBALS            d_write_global_declarations
 #define LANG_HOOKS_TYPES_COMPATIBLE_P       d_types_compatible_p
-#define LANG_HOOKS_UNSIGNED_TYPE            d_unsigned_type
-#define LANG_HOOKS_SIGNED_TYPE              d_signed_type
-#define LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE  d_signed_or_unsigned_type
-#define LANG_HOOKS_TYPE_FOR_SIZE            d_type_for_size
-#define LANG_HOOKS_TYPE_FOR_MODE            d_type_for_mode
 
 #if D_GCC_VER < 41
 #undef LANG_HOOKS_TRUTHVALUE_CONVERSION
 #define LANG_HOOKS_TRUTHVALUE_CONVERSION    d_truthvalue_conversion
 #endif
 
-#if D_GCC_VER < 43
-#undef LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION
-#define LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION d_expand_function
-#endif
-
 #if D_GCC_VER >= 43
-#undef LANG_HOOKS_BUILTIN_FUNCTION
 #define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function43
 #else
-#undef LANG_HOOKS_BUILTIN_FUNCTION
 #define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function
-#endif
-
-#if V2
-#undef LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING
-#define LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING  d_convert_parm_for_inlining
-#endif
-
-#if D_GCC_VER >= 44
-#undef LANG_HOOKS_INIT_TS
-#define LANG_HOOKS_INIT_TS                  d_init_ts
 #endif
 
 #if D_GCC_VER >= 45
@@ -124,6 +93,41 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_EH_PERSONALITY           d_eh_personality
 #define LANG_HOOKS_EH_RUNTIME_TYPE          d_build_eh_type_type
 #define LANG_HOOKS_EH_USE_CXA_END_CLEANUP   true
+#endif
+
+/* Lang Hooks for decls */
+#undef LANG_HOOKS_WRITE_GLOBALS
+#define LANG_HOOKS_WRITE_GLOBALS            d_write_global_declarations
+
+/* Lang Hooks for types */
+#undef LANG_HOOKS_TYPE_FOR_MODE
+#undef LANG_HOOKS_TYPE_FOR_SIZE
+#undef LANG_HOOKS_TYPE_PROMOTES_TO
+#undef LANG_HOOKS_UNSIGNED_TYPE
+#undef LANG_HOOKS_SIGNED_TYPE
+#undef LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE
+
+#define LANG_HOOKS_TYPE_FOR_MODE            d_type_for_mode
+#define LANG_HOOKS_TYPE_FOR_SIZE            d_type_for_size
+#define LANG_HOOKS_TYPE_PROMOTES_TO         d_type_promotes_to
+#define LANG_HOOKS_UNSIGNED_TYPE            d_unsigned_type
+#define LANG_HOOKS_SIGNED_TYPE              d_signed_type
+#define LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE  d_signed_or_unsigned_type
+
+/* Lang Hooks for tree-dump.c */
+#undef LANG_HOOKS_TREE_DUMP_DUMP_TREE_FN
+#define LANG_HOOKS_TREE_DUMP_DUMP_TREE_FN   d_dump_tree
+
+/* Lang Hooks for callgraph */
+#if D_GCC_VER < 43
+#undef LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION
+#define LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION d_expand_function
+#endif
+
+/* Lang Hooks for tree inlining */
+#if V2
+#undef LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING
+#define LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING  d_convert_parm_for_inlining
 #endif
 
 
@@ -224,27 +228,29 @@ maybe_fixup_cygwin()
     static char *d_cvt_to_mingw[] = {
         cygwin_d_phobos_dir,
         cygwin_d_target_dir,
-        NULL };
-    if (!strcmp(cygwin_d_os_versym,"cygwin") && env && *env == '1') {
+        NULL
+    };
+    if (!strcmp(cygwin_d_os_versym,"cygwin") && env && *env == '1')
+    {
         cygwin_d_os_versym = "Win32";
 
         for (av = d_cvt_to_mingw; *av; av++)
+        {
+            int sawcygwin = 0;
+            while ((p = strstr (*av, "-cygwin")))
             {
-                int sawcygwin = 0;
-                while ((p = strstr (*av, "-cygwin")))
-                    {
-                        char *over = p + sizeof ("-cygwin") - 1;
-                        memmove (over + 1, over, strlen (over));
-                        memcpy (p, "-mingw32", sizeof("-mingw32") - 1);
-                        p = ++over;
-                        while (ISALNUM (*p))
-                            p++;
-                        strcpy (over, p);
-                        sawcygwin = 1;
-                    }
-                if (!sawcygwin && !strstr (*av, "mingw"))
-                    strcat (*av, CYGWIN_MINGW_SUBDIR);
+                char *over = p + sizeof ("-cygwin") - 1;
+                memmove (over + 1, over, strlen (over));
+                memcpy (p, "-mingw32", sizeof("-mingw32") - 1);
+                p = ++over;
+                while (ISALNUM (*p))
+                    p++;
+                strcpy (over, p);
+                sawcygwin = 1;
             }
+            if (!sawcygwin && !strstr (*av, "mingw"))
+                strcat (*av, CYGWIN_MINGW_SUBDIR);
+        }
     }
 #endif
 }
@@ -875,22 +881,38 @@ d_hook_get_alias_set(tree)
 }
 
 
+bool
+d_dump_tree (void *dump_info , tree t)
+{
+    enum tree_code code = TREE_CODE (t);
+    dump_info_p di = (dump_info_p) dump_info;
+    switch (code)
+    {
+        case STATIC_CHAIN_EXPR:
+            dump_child("func", TREE_OPERAND (t, 0));
+            return true;
+
+        default:
+            return false;
+    }
+}
+
 /* Gimplification of expression trees.  */
 int
 d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 		 gimple_seq *post_p ATTRIBUTE_UNUSED)
 {
-  enum tree_code code = TREE_CODE (*expr_p);
-  switch (code)
-  {
-      case STATIC_CHAIN_EXPR:
-          /* The argument is used as information only.  No need to gimplify */
-      case STATIC_CHAIN_DECL:
-          return GS_ALL_DONE;
+    enum tree_code code = TREE_CODE (*expr_p);
+    switch (code)
+    {
+        case STATIC_CHAIN_EXPR:
+            /* The argument is used as information only.  No need to gimplify */
+        case STATIC_CHAIN_DECL:
+            return GS_ALL_DONE;
 
-      default:
-        return GS_UNHANDLED;
-  }
+        default:
+            return GS_UNHANDLED;
+    }
 }
 
 static Module * an_output_module = 0;
@@ -1908,13 +1930,11 @@ d_convert_parm_for_inlining  (tree parm, tree value, tree fndecl, int argnum)
 #endif
 
 
-#if D_GCC_VER >= 44
 static void
 d_init_ts (void)
 {
     tree_contains_struct[STATIC_CHAIN_DECL][TS_DECL_COMMON] = 1;
 }
-#endif
 
 struct lang_type *
 build_d_type_lang_specific(Type * t)
