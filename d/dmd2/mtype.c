@@ -1960,7 +1960,7 @@ Identifier *Type::getTypeInfoIdent(int internal)
     len = buf.offset;
     name = (char *)alloca(19 + sizeof(len) * 3 + len + 1);
     buf.writeByte(0);
-#if TARGET_OSX
+#if TARGET_OSX && !defined(IN_GCC)
     // The LINKc will prepend the _
     sprintf(name, "D%dTypeInfo_%s6__initZ", 9 + len, buf.data);
 #else
