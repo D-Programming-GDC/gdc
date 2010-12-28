@@ -45,89 +45,85 @@
 static char lang_name[6] = "GNU D";
 
 #undef LANG_HOOKS_NAME
-#define LANG_HOOKS_NAME lang_name
-
 #undef LANG_HOOKS_INIT
-#define LANG_HOOKS_INIT d_init
-
 #undef LANG_HOOKS_INIT_OPTIONS
-#define LANG_HOOKS_INIT_OPTIONS d_init_options
-
 #undef LANG_HOOKS_HANDLE_OPTION
-#define LANG_HOOKS_HANDLE_OPTION d_handle_option
 #undef LANG_HOOKS_POST_OPTIONS
-#define LANG_HOOKS_POST_OPTIONS d_post_options
-
 #undef LANG_HOOKS_PARSE_FILE
-#define LANG_HOOKS_PARSE_FILE d_parse_file
+#undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
+#undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
+#undef LANG_HOOKS_GET_ALIAS_SET
+#undef LANG_HOOKS_GIMPLIFY_EXPR
+#undef LANG_HOOKS_MARK_ADDRESSABLE
+#undef LANG_HOOKS_TYPE_FOR_MODE
+#undef LANG_HOOKS_TYPE_FOR_SIZE
+#undef LANG_HOOKS_TYPE_PROMOTES_TO
+#undef LANG_HOOKS_WRITE_GLOBALS
+#undef LANG_HOOKS_TYPES_COMPATIBLE_P
+#undef LANG_HOOKS_UNSIGNED_TYPE
+#undef LANG_HOOKS_SIGNED_TYPE
+#undef LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE
+#undef LANG_HOOKS_TYPE_FOR_SIZE
+#undef LANG_HOOKS_TYPE_FOR_MODE
+
+#define LANG_HOOKS_NAME                     lang_name
+#define LANG_HOOKS_INIT                     d_init
+#define LANG_HOOKS_INIT_OPTIONS             d_init_options
+#define LANG_HOOKS_HANDLE_OPTION            d_handle_option
+#define LANG_HOOKS_POST_OPTIONS             d_post_options
+#define LANG_HOOKS_PARSE_FILE               d_parse_file
+#define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE   d_common_attribute_table
+#define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE   d_common_format_attribute_table
+#define LANG_HOOKS_GET_ALIAS_SET            d_hook_get_alias_set
+#define LANG_HOOKS_GIMPLIFY_EXPR            d_gimplify_expr
+#define LANG_HOOKS_MARK_ADDRESSABLE         d_mark_addressable
+#define LANG_HOOKS_TYPE_FOR_MODE            d_type_for_mode
+#define LANG_HOOKS_TYPE_FOR_SIZE            d_type_for_size
+#define LANG_HOOKS_TYPE_PROMOTES_TO         d_type_promotes_to
+#define LANG_HOOKS_WRITE_GLOBALS            d_write_global_declarations
+#define LANG_HOOKS_TYPES_COMPATIBLE_P       d_types_compatible_p
+#define LANG_HOOKS_UNSIGNED_TYPE            d_unsigned_type
+#define LANG_HOOKS_SIGNED_TYPE              d_signed_type
+#define LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE  d_signed_or_unsigned_type
+#define LANG_HOOKS_TYPE_FOR_SIZE            d_type_for_size
+#define LANG_HOOKS_TYPE_FOR_MODE            d_type_for_mode
 
 #if D_GCC_VER < 41
 #undef LANG_HOOKS_TRUTHVALUE_CONVERSION
-#define LANG_HOOKS_TRUTHVALUE_CONVERSION d_truthvalue_conversion
+#define LANG_HOOKS_TRUTHVALUE_CONVERSION    d_truthvalue_conversion
 #endif
-
-#undef LANG_HOOKS_MARK_ADDRESSABLE
-#define LANG_HOOKS_MARK_ADDRESSABLE d_mark_addressable
-
-#undef LANG_HOOKS_TYPE_FOR_MODE
-#define LANG_HOOKS_TYPE_FOR_MODE d_type_for_mode
-
-#undef LANG_HOOKS_TYPE_FOR_SIZE
-#define LANG_HOOKS_TYPE_FOR_SIZE d_type_for_size
-
-#undef LANG_HOOKS_BUILTIN_FUNCTION
-#if D_GCC_VER >= 43
-# define LANG_HOOKS_BUILTIN_FUNCTION d_builtin_function43
-#else
-# define LANG_HOOKS_BUILTIN_FUNCTION d_builtin_function
-#endif
-
-#define LANG_HOOKS_UNSIGNED_TYPE d_unsigned_type
-#define LANG_HOOKS_SIGNED_TYPE d_signed_type
-#define LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE d_signed_or_unsigned_type
-#define LANG_HOOKS_TYPE_FOR_SIZE d_type_for_size
-#define LANG_HOOKS_TYPE_FOR_MODE d_type_for_mode
-
-#undef  LANG_HOOKS_TYPE_PROMOTES_TO
-#define LANG_HOOKS_TYPE_PROMOTES_TO d_type_promotes_to
-
-#undef LANG_HOOKS_WRITE_GLOBALS
-#define LANG_HOOKS_WRITE_GLOBALS d_write_global_declarations
-
-#undef LANG_HOOKS_GET_ALIAS_SET
-#define LANG_HOOKS_GET_ALIAS_SET d_hook_get_alias_set
-
-#undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
-#define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE d_common_attribute_table
-#undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
-#define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE d_common_format_attribute_table
 
 #if D_GCC_VER < 43
 #undef LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION
 #define LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION d_expand_function
 #endif
 
-#undef LANG_HOOKS_TYPES_COMPATIBLE_P
-#define LANG_HOOKS_TYPES_COMPATIBLE_P d_types_compatible_p
+#if D_GCC_VER >= 43
+#undef LANG_HOOKS_BUILTIN_FUNCTION
+#define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function43
+#else
+#undef LANG_HOOKS_BUILTIN_FUNCTION
+#define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function
+#endif
 
 #if V2
 #undef LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING
-#define LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING d_convert_parm_for_inlining
+#define LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING  d_convert_parm_for_inlining
 #endif
 
 #if D_GCC_VER >= 44
 #undef LANG_HOOKS_INIT_TS
-#define LANG_HOOKS_INIT_TS d_init_ts
+#define LANG_HOOKS_INIT_TS                  d_init_ts
 #endif
 
 #if D_GCC_VER >= 45
 #undef LANG_HOOKS_EH_PERSONALITY
-#define LANG_HOOKS_EH_PERSONALITY d_eh_personality
 #undef LANG_HOOKS_EH_RUNTIME_TYPE
-#define LANG_HOOKS_EH_RUNTIME_TYPE d_build_eh_type_type
-
 #undef LANG_HOOKS_EH_USE_CXA_END_CLEANUP
-#define LANG_HOOKS_EH_USE_CXA_END_CLEANUP true
+
+#define LANG_HOOKS_EH_PERSONALITY           d_eh_personality
+#define LANG_HOOKS_EH_RUNTIME_TYPE          d_build_eh_type_type
+#define LANG_HOOKS_EH_USE_CXA_END_CLEANUP   true
 #endif
 
 
@@ -878,6 +874,24 @@ d_hook_get_alias_set(tree)
     return 0;
 }
 
+
+/* Gimplification of expression trees.  */
+int
+d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
+		 gimple_seq *post_p ATTRIBUTE_UNUSED)
+{
+  enum tree_code code = TREE_CODE (*expr_p);
+  switch (code)
+  {
+      case STATIC_CHAIN_EXPR:
+          /* The argument is used as information only.  No need to gimplify */
+      case STATIC_CHAIN_DECL:
+          return GS_ALL_DONE;
+
+      default:
+        return GS_UNHANDLED;
+  }
+}
 
 static Module * an_output_module = 0;
 

@@ -33,12 +33,11 @@ SUFFIXES = .d
 %.o : %.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
+IMPORT = import
+$(IMPORT): $(D_PREREQ_SRCS)
+	mkdir -p $(IMPORT)
 # For core objects, generate .di headers
-IMPORT_DIR = import
-$(IMPORT_DIR): $(D_PREREQ_SRCS)
-	mkdir $(IMPORT_DIR)
-
-$(IMPORT_DIR)/%.di: %.d $(D_PREREQ_SRCS) $(IMPORT_DIR)
+$(IMPORT)/%.di: %.d $(D_PREREQ_SRCS) $(IMPORT)
 	$(GDC) $(ALL_DFLAGS) -fintfc-file=$@ -fsyntax-only $<
 
 # %.o : %.c
@@ -219,7 +218,7 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 
-libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT_DIR)/core/,$(CORE_IMPORTS))
+libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
 	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
 	$(RANLIB) $@
 
@@ -310,7 +309,7 @@ install-data-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 		core/sys/posix/arpa core/sys/posix/net core/sys/posix/netinet \
 		core/sys/posix/sys core/sys/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in import/$$i/*.di; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+		for f in $(IMPORT)/$$i/*.di; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done
 	for i in crc32.d object.di; do \
 		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done
@@ -324,7 +323,7 @@ clean-local:
 	rm -f $(ALL_PHOBOS_OBJS:.o=.t.o)
 	rm -f $(ALL_DRUNTIME_OBJS)
 	rm -f $(CORE_IMPORTS)
-	rm -rf $(IMPORT_DIR)
+	rm -rf $(IMPORT)
 	rm -f unittest.o
 	rm -f unittest$(EXEEXT) testgc$(EXEEXT)
 	rm -f $(config_d_src) $(config_errno_d_src) $(config_libc_d_src)

@@ -442,24 +442,6 @@ diff -cr gcc.orig/gimple.c gcc/gimple.c
   	  || TREE_CODE (t) == SSA_NAME);
   }
   
-diff -cr gcc.orig/gimplify.c gcc/gimplify.c
-*** gcc.orig/gimplify.c	2010-11-11 20:36:49.000000000 +0000
---- gcc/gimplify.c	2010-12-17 18:25:03.575968543 +0000
-***************
-*** 6646,6651 ****
---- 6646,6657 ----
-  	    }
-  	  break;
-  
-+ 	case STATIC_CHAIN_EXPR:
-+ 	  /* The argument is used as information only.  No need to gimplify */
-+ 	case STATIC_CHAIN_DECL:
-+ 	  ret = GS_ALL_DONE;
-+ 	  break;
-+ 
-  	case TREE_LIST:
-  	  gcc_unreachable ();
-  
 diff -cr gcc.orig/tree.def gcc/tree.def
 *** gcc.orig/tree.def	2010-04-02 20:54:46.000000000 +0100
 --- gcc/tree.def	2010-12-17 18:25:03.575968543 +0000

@@ -473,24 +473,6 @@ diff -cr gcc-orig/gcc.h gcc/gcc.h
   
   /* This defines which multi-letter switches take arguments.  */
   
-diff -cr gcc-orig/gimplify.c gcc/gimplify.c
-*** gcc-orig/gimplify.c	2008-05-01 07:15:32.000000000 -0400
---- gcc/gimplify.c	2010-08-22 20:09:26.106318526 -0400
-***************
-*** 5506,5511 ****
---- 5506,5517 ----
-  	    }
-  	  break;
-  
-+ 	case STATIC_CHAIN_EXPR:
-+ 	  /* The argument is used as information only.  No need to gimplify */
-+ 	case STATIC_CHAIN_DECL:  
-+ 	  ret = GS_ALL_DONE;
-+ 	  break;
-+ 	  
-  	case TREE_LIST:
-  	  gcc_unreachable ();
-  
 diff -cr gcc-orig/predict.c gcc/predict.c
 *** gcc-orig/predict.c	2008-01-24 10:59:18.000000000 -0500
 --- gcc/predict.c	2010-08-22 20:09:26.110318756 -0400

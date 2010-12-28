@@ -681,24 +681,6 @@ diff -cr gcc-orig/gimple.h gcc/gimple.h
   }
   
   
-diff -cr gcc-orig/gimplify.c gcc/gimplify.c
-*** gcc-orig/gimplify.c	2010-10-11 13:56:32.299107241 -0400
---- gcc/gimplify.c	2010-10-11 13:59:09.211107241 -0400
-***************
-*** 6486,6491 ****
---- 6486,6497 ----
-  	    }
-  	  break;
-  
-+ 	case STATIC_CHAIN_EXPR:
-+ 	  /* The argument is used as information only.  No need to gimplify */
-+ 	case STATIC_CHAIN_DECL:
-+ 	  ret = GS_ALL_DONE;
-+ 	  break;
-+ 
-  	case TREE_LIST:
-  	  gcc_unreachable ();
-  
 diff -cr gcc-orig/ipa-cp.c gcc/ipa-cp.c
 *** gcc-orig/ipa-cp.c	2010-10-11 13:56:32.239107241 -0400
 --- gcc/ipa-cp.c	2010-10-11 13:59:09.211107241 -0400
