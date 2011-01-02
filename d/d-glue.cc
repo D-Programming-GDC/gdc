@@ -1220,23 +1220,39 @@ AssignExp::toElem(IRState* irs)
             }
         }
     }
-    else
-    {   // Simple assignment
-        if (op == TOKconstruct && e1->op == TOKvar)
-        {   // Check for reference assignments, just pass the address.
-            VarDeclaration * var_decl = ((VarExp *)e1)->var->isVarDeclaration();
-            if (var_decl->storage_class & STCref)
-            {
-                e1 = e1->addressOf(NULL);
-                e2 = e2->addressOf(NULL);
+    else if (op == TOKconstruct)
+    {
+        tree lhs = irs->toElemLvalue(e1);
+        tree rhs = irs->convertForAssignment(e2, e1->type);
+        tree init = NULL_TREE;
+
+        if (e1->op == TOKvar)
+        {
+            Declaration * decl = ((VarExp *)e1)->var;
+            // Look for reference initializations
+            if (decl->storage_class & (STCout | STCref))
+            {   // Want reference to lhs, not indirect ref.
+                lhs = TREE_OPERAND(lhs, 0);
+                rhs = irs->addressOf(rhs);
+            }
+
+            if (e2->op == TOKstructliteral)
+            {   // Initialize all alignment 'holes' to zero.
+                StructLiteralExp * sle = ((StructLiteralExp *)e2);
+                if (sle->fillHoles)
+                {
+                    unsigned sz = sle->type->size();
+                    init = irs->buildCall(built_in_decls[BUILT_IN_MEMSET], 3,
+                            irs->addressOf(lhs), size_int(0), size_int(sz));
+                }
             }
         }
-        tree lhs = irs->toElemLvalue(e1);
-        tree result = build2(MODIFY_EXPR, type->toCtype(),
-            lhs, irs->convertForAssignment(e2, e1->type));
+
+        tree result = build2(MODIFY_EXPR, type->toCtype(), lhs, rhs);
+        result = irs->maybeCompound(init, result);
 #if V2
         // Maybe setup hidden pointer to outer scope context.
-        if (op == TOKconstruct && e1->type->ty == Tstruct)
+        if (e1->type->ty == Tstruct)
         {
             StructDeclaration * sd = ((TypeStruct *)e1->type)->sym;
             if (sd->isNested())
@@ -1251,6 +1267,12 @@ AssignExp::toElem(IRState* irs)
         }
 #endif
         return result;
+    }
+    else
+    {   // Simple assignment
+        tree lhs = irs->toElemLvalue(e1);
+        return build2(MODIFY_EXPR, type->toCtype(),
+            lhs, irs->convertForAssignment(e2, e1->type));
     }
     gcc_unreachable();
 }
@@ -3322,7 +3344,7 @@ Module::genobjfile(int multiobj)
 unsigned
 Type::totym()
 {
-    return NULL;
+    return 0;
 }
 
 type *

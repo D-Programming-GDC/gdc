@@ -81,7 +81,7 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
         {
             ExpInitializer * exp_init = v->init->isExpInitializer();
             Expression * ie = exp_init->toExpression();
-            if (! (init_val = assignValue(ie, v)))
+            if (ie->op == TOKconstruct || ! (init_val = assignValue(ie, v)))
                 init_exp = ie->toElem(this);
         }
         else
@@ -112,7 +112,7 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
 tree
 IRState::localVar(tree t_type)
 {
-    tree t_decl = d_build_decl(VAR_DECL, NULL_TREE, t_type);
+    tree t_decl = d_build_decl_loc(BUILTINS_LOCATION, VAR_DECL, NULL_TREE, t_type);
     DECL_CONTEXT(t_decl) = getLocalContext();
     DECL_ARTIFICIAL(t_decl) = 1;
     DECL_IGNORED_P(t_decl) = 1;
@@ -123,7 +123,7 @@ IRState::localVar(tree t_type)
 tree
 IRState::exprVar(tree t_type)
 {
-    tree t_decl = d_build_decl(VAR_DECL, NULL_TREE, t_type);
+    tree t_decl = d_build_decl_loc(BUILTINS_LOCATION, VAR_DECL, NULL_TREE, t_type);
     DECL_CONTEXT(t_decl) = getLocalContext();
     DECL_ARTIFICIAL(t_decl) = 1;
     DECL_IGNORED_P(t_decl) = 1;
@@ -2278,21 +2278,13 @@ IRState::imagPart(tree c)
 tree
 IRState::assignValue(Expression * e, VarDeclaration * v)
 {
-    if (e->op == TOKconstruct && v->type->ty == Tstruct)
-    {   // Construct structs with an init expression.
-        return NULL_TREE;
-    }
-    else if (e->op == TOKassign || e->op == TOKconstruct || e->op == TOKblit)
+    if (e->op == TOKassign || e->op == TOKconstruct || e->op == TOKblit)
     {
         AssignExp * a_exp = (AssignExp *) e;
         if (a_exp->e1->op == TOKvar && ((VarExp *) a_exp->e1)->var == v)
         {
             tree a_val = convertForAssignment(a_exp->e2, v->type);
-            // Look for reference initializations
-            if (e->op == TOKconstruct && v->storage_class & (STCout | STCref))
-                return addressOf(a_val);
-            else
-                return a_val;
+            return a_val;
         }
         //else
             //return e->toElem(this);
