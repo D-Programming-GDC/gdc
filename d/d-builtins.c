@@ -71,6 +71,9 @@ extern void dkeep(tree t);
 #error "Version of GCC is not supported."
 #endif
 
+/* Nonzero if preprocessing only.  */
+int flag_preprocess_only;
+
 /* Nonzero if an ISO standard was selected.  It rejects macros in the
    user's namespace.  */
 int flag_iso;

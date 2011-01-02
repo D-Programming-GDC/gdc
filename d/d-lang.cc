@@ -468,9 +468,11 @@ d_init ()
     {
         line_maps lm;
         cpp_reader * pfile; // Target macros below expect this identifier.
-        extern int flag_iso;// ditto
+        extern int flag_iso;             // ditto
+        extern int flag_preprocess_only; // ditto
 
         flag_iso = 0;
+        flag_preprocess_only = 0;
         linemap_init(& lm);
 #if D_GCC_VER >= 43
         lm.reallocator = NULL;

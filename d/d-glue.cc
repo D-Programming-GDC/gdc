@@ -3699,7 +3699,7 @@ TypeFunction::toCtype()
         // Function type can be reference by parameters, etc.  Set ctype earlier?
         ctype = build_function_type(ret_type, type_list.head);
 
-        if (linkage == LINKwindows)
+        if (linkage == LINKwindows && ! global.params.isX86_64)
             ctype = gen.addTypeAttribute(ctype, "stdcall");
 
 #ifdef D_DMD_CALLING_CONVENTIONS

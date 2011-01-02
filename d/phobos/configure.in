@@ -580,10 +580,13 @@ case "$d_target_os" in
     cygwin*) D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_stdio.o"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     ;;
-    mingw*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_stdio.o"
+    mingw*)
+	     if test "$target_cpu" = "x86_64"; then
+	         D_EXTRA_OBJS="$D_EXTRA_OBJS gcc/cbridge_stdio.o"
+	         DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
+	     fi
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-	     #DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     DCFG_UNIX=Windows
 	     d_have_loader=1
 	     ;;

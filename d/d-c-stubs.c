@@ -90,7 +90,7 @@ build_indirect_ref (location_t loc ATTRIBUTE_UNUSED, tree ptr ATTRIBUTE_UNUSED,
     return NULL_TREE;
 }
 
-typedef enum { unused } c_language;
+enum { unused } c_language;
 
 enum cpp_ttype
 c_lex (tree *value ATTRIBUTE_UNUSED)
@@ -108,5 +108,14 @@ tree
 lookup_name (tree name ATTRIBUTE_UNUSED)
 {
     return NULL_TREE;
+}
+
+typedef void (*pragma_handler)(struct cpp_reader *);
+
+void
+c_register_pragma (const char *space ATTRIBUTE_UNUSED,
+                   const char *name ATTRIBUTE_UNUSED,
+                   pragma_handler handler ATTRIBUTE_UNUSED)
+{
 }
 

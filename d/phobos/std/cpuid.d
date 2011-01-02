@@ -38,18 +38,75 @@ COPYRIGHT:      Public Domain
    work with the GDC compiler.
 
    Modified by David Friedman, November 2006
+   Updated by Iain Buclaw, January 2011
 */
 
 module std.cpuid;
 
 import std.string;
+import std.conv;
 
 version(D_InlineAsm_X86)
     version = Asm;
 version(D_InlineAsm_X86_64)
     version = Asm;
 
-version(Asm)
+version (darwin)
+{
+    extern(C) int sysctlbyname(char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen);
+
+    char[] sysctl(string name)
+    {
+        char* namez = toStringz(name);
+        size_t len;
+        sysctlbyname(namez, null, &len, null, 0);
+        char[] buffer = new char[len];
+        sysctlbyname(namez, buffer.ptr, &len, null, 0);
+        return buffer[0..len].dup;
+    }
+
+    /// Returns everything as a printable string
+    char[] toString()
+    {
+        char[] feats = sysctl("machdep.cpu.features");
+
+        return format(
+                "Vendor string:    %s\n", vendor,
+                "Processor string: %s\n", processor,
+                "Signature:        Family=%d Model=%d Stepping=%d\n", family, model, stepping,
+                "Features:         %s\n", feats,
+                "Multithreading:   %d threads / %d cores\n", threadsPerCPU, coresPerCPU);
+    }
+
+    char[] vendor()             {return sysctl("machdep.cpu.vendor"); }
+    char[] processor()          {return sysctl("machdep.cpu.brand_string"); }
+
+    bool mmx()                  {return sysctl("hw.optional.mmx") == "1"; }
+    bool fxsr()                 {return false; }
+    bool sse()                  {return sysctl("hw.optional.sse") == "1"; }
+    bool sse2()                 {return sysctl("hw.optional.sse2") == "1"; }
+    bool sse3()                 {return sysctl("hw.optional.sse3") == "1"; }
+    bool ssse3()                {return sysctl("hw.optional.supplementalsse3") == "1"; }
+
+    bool amd3dnow()             {return false; }
+    bool amd3dnowExt()          {return false; }
+    bool amdMmx()               {return false; }
+
+    bool ia64()                 {return false; }
+    bool amd64()                {return sysctl("hw.optional.x86_64") == "1"; }
+
+    bool hyperThreading()       {return false; }
+    uint threadsPerCPU()        {return toInt(sysctl("machdep.cpu.thread_count")); }
+    uint coresPerCPU()          {return toInt(sysctl("machdep.cpu.core_count")); }
+
+    bool intel()                {return false; }
+    bool amd()                  {return false; }
+
+    uint stepping()             {return toInt(sysctl("machdep.cpu.stepping")); }
+    uint model()                {return toInt(sysctl("machdep.cpu.model")); }
+    uint family()               {return toInt(sysctl("machdep.cpu.family")); }
+}
+else version(Asm)
 {
     /// Returns everything as a printable string
     char[] toString()
