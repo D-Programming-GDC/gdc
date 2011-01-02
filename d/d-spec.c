@@ -134,9 +134,6 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     /* By default, we throw on the math library if we have one.  */
     int need_math = (MATH_LIBRARY[0] != '\0');
 
-    /* True if we should add -ldl to the command-line.  */
-    int need_dl = 1;
-
     /* True if we should add -shared-libgcc to the command-line.  */
     int shared_libgcc = 1;
 
@@ -165,7 +162,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     argv = *in_argv;
     added_libraries = *in_added_libraries;
 
-    args = xcalloc (argc, sizeof (int));
+    args = (int *) xcalloc (argc, sizeof (int));
 
     /* Keep track of all source files */
     n_all_d_sources = 0;
@@ -203,15 +200,15 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                             phobos = 0;
                             args[i] |= REMOVE_ARG;
                             if (defaultlib != NULL)
-                                free(CONST_CAST(char*, defaultlib));
+                                free(CONST_CAST(char *, defaultlib));
                             if (i + 1 == argc)
                             {
                                 error ("missing argument to '%s' option", argv[i] + 1);
                                 break;
                             }
-                            defaultlib = xmalloc(sizeof(char) * (strlen(argv[++i]) + 3));
-                            strcpy(CONST_CAST(char*, defaultlib), "-l");
-                            strcat(CONST_CAST(char*, defaultlib), argv[i]);
+                            defaultlib = (const char *) xmalloc(sizeof(char) * (strlen(argv[++i]) + 3));
+                            strcpy(CONST_CAST(char *, defaultlib), "-l");
+                            strcat(CONST_CAST(char *, defaultlib), argv[i]);
                             args[i] |= REMOVE_ARG;
                         }
                     else if (strcmp (argv[i], "-debuglib") == 0)
@@ -220,15 +217,15 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                             phobos = 0;
                             args[i] |= REMOVE_ARG;
                             if (debuglib != NULL)
-                                free(CONST_CAST(char*, debuglib));
+                                free(CONST_CAST(char *, debuglib));
                             if (i + 1 == argc)
                             {
                                 error ("missing argument to '%s' option", argv[i] + 1);
                                 break;
                             }
-                            debuglib = xmalloc(sizeof(char) * (strlen(argv[++i]) + 3));
-                            strcpy(CONST_CAST(char*, debuglib), "-l");
-                            strcat(CONST_CAST(char*, debuglib), argv[i]);
+                            debuglib = (const char *) xmalloc(sizeof(char) * (strlen(argv[++i]) + 3));
+                            strcpy(CONST_CAST(char *, debuglib), "-l");
+                            strcat(CONST_CAST(char *, debuglib), argv[i]);
                             args[i] |= REMOVE_ARG;
                         }
                     else if (strcmp (argv[i], "-lm") == 0
@@ -286,14 +283,14 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                             int len;
 
                             args[i] |= REMOVE_ARG;
-                            only_source_option = argv[i]; //%%TODO: copy/const
+                            const char * only_source_arg = argv[i];
 
-                            len = strlen(only_source_option);
-                            if (len <= 2 || only_source_option[len-1] != 'd' ||
-                                only_source_option[len-2] != '.') {
-                                only_source_option = concat(only_source_option, ".d", NULL);
+                            len = strlen(only_source_arg);
+                            if (len <= 2 || only_source_arg[len-1] != 'd' ||
+                                only_source_arg[len-2] != '.') {
+                                only_source_option = concat(only_source_arg, ".d", NULL);
                             } else {
-                                only_source_option = xstrdup(only_source_option);
+                                only_source_option = xstrdup(only_source_arg);
                             }
                         }
                     else if (strncmp (argv[i], "-fod=", 5) == 0)
@@ -377,8 +374,8 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
        library: -lgphobos.  The -pthread argument is added by
        setting need_pthreads. */
     added += (druntime > 0 ? 1 : 0) + (library > 0 ? 1 : 0);
-    num_args = argc + added + need_math + need_dl + shared_libgcc + 1;
-    arglist = xmalloc (num_args * sizeof (char *));
+    num_args = argc + added + need_math + shared_libgcc + 1;
+    arglist = (const char **) xmalloc (num_args * sizeof (char *));
 
     i = 0;
     j = 0;
@@ -467,11 +464,6 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     else if (library > 0 && need_math)
         {
             arglist[j++] = saw_profile_flag ? MATH_LIBRARY_PROFILE : MATH_LIBRARY;
-            added_libraries++;
-        }
-    if (library > 0 && need_dl)
-        {
-            arglist[j++] = "-ldl";
             added_libraries++;
         }
     if (saw_libc)
