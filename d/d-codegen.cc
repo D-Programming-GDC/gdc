@@ -2814,7 +2814,7 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
             Dsymbol * this_func = func;
             if (!func->vthis) // if no frame pointer for this function
             {
-                error("is a nested function and cannot be accessed from %s", func->toChars());
+                nested_sym->error("is a nested function and cannot be accessed from %s", func->toChars());
                 return d_null_pointer;
             }
             /* Make sure we can get the frame pointer to the outer function,
@@ -2850,7 +2850,7 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
                 else
                 {
                   cannot_get_frame:
-                    error("cannot get frame pointer to %s", nested_sym->toChars());
+                    func->error("cannot get frame pointer to %s", nested_sym->toChars());
                     return d_null_pointer;
                 }
                 this_func = this_func->toParent2();
