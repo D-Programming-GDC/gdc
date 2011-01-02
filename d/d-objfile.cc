@@ -752,11 +752,11 @@ make_alias_for_thunk (tree function)
 
     ASM_GENERATE_INTERNAL_LABEL (buf, "LTHUNK", thunk_labelno);
     thunk_labelno++;
-    alias = d_build_decl (FUNCTION_DECL, get_identifier (buf),
-            TREE_TYPE (function));
+    alias = build_fn_decl (buf, TREE_TYPE (function));
     DECL_CONTEXT (alias) = NULL;
     TREE_READONLY (alias) = TREE_READONLY (function);
     TREE_THIS_VOLATILE (alias) = TREE_THIS_VOLATILE (function);
+    TREE_NOTHROW (alias) = TREE_NOTHROW (function);
     TREE_PUBLIC (alias) = 0;
     DECL_EXTERNAL (alias) = 0;
     DECL_ARTIFICIAL (alias) = 1;
@@ -818,8 +818,8 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
         const char *fnname;
 
         current_function_decl = thunk_decl;
-        DECL_RESULT(thunk_decl) = d_build_decl(RESULT_DECL, 0, integer_type_node,
-                                               DECL_SOURCE_LOCATION(thunk_decl));
+        DECL_RESULT(thunk_decl) = d_build_decl_loc(DECL_SOURCE_LOCATION(thunk_decl),
+                                               RESULT_DECL, 0, integer_type_node);
         fnname = XSTR(XEXP(DECL_RTL(thunk_decl), 0), 0);
         gen.initFunctionStart(thunk_decl, 0);
         cfun->is_thunk = 1;

@@ -85,6 +85,11 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function
 #endif
 
+#if D_GCC_VER >= 44
+#undef LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE
+#define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE d_builtin_function43
+#endif
+
 #if D_GCC_VER >= 45
 #undef LANG_HOOKS_EH_PERSONALITY
 #undef LANG_HOOKS_EH_RUNTIME_TYPE
@@ -898,6 +903,7 @@ d_dump_tree (void *dump_info , tree t)
 }
 
 /* Gimplification of expression trees.  */
+#if D_GCC_VER >= 44
 int
 d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 		 gimple_seq *post_p ATTRIBUTE_UNUSED)
@@ -914,6 +920,24 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
             return GS_UNHANDLED;
     }
 }
+#else
+int
+d_gimplify_expr (tree *expr_p, tree *pre_p ATTRIBUTE_UNUSED,
+		 tree *post_p ATTRIBUTE_UNUSED)
+{
+    enum tree_code code = TREE_CODE (*expr_p);
+    switch (code)
+    {
+        case STATIC_CHAIN_EXPR:
+        case STATIC_CHAIN_DECL:
+            return GS_ALL_DONE;
+
+        default:
+            return GS_UNHANDLED;
+    }
+    return GS_UNHANDLED;
+}
+#endif
 
 static Module * an_output_module = 0;
 
@@ -1293,26 +1317,31 @@ d_gcc_dump_source(const char * srcname, const char * ext, unsigned char * data, 
     errno=0;
 }
 
+#ifdef D_USE_MAPPED_LOCATION
+/* Create a DECL_... node of code CODE, name NAME and data type TYPE.
+   LOC is the location of the decl.  */
 
 tree
-d_build_decl(tree_code code, tree name, tree type, location_t loc)
+d_build_decl_loc(location_t loc, tree_code code, tree name, tree type)
 {
     tree t;
 #if D_GCC_VER >= 45
     t = build_decl(loc, code, name, type);
 #else
     t = build_decl(code, name, type);
-#ifdef D_USE_MAPPED_LOCATION
     DECL_SOURCE_LOCATION(t) = loc;
-#endif
 #endif
     return t;
 }
+#endif
+
+/* Same as d_build_decl_loc, except location of DECL is unknown.
+   This is really for backwards compatibility with old code.  */
 
 tree
-d_build_decl42(tree_code code, tree name, tree type)
+d_build_decl(tree_code code, tree name, tree type)
 {
-    return d_build_decl(code, name, type);
+    return d_build_decl_loc(UNKNOWN_LOCATION, code, name, type); 
 }
 
 bool

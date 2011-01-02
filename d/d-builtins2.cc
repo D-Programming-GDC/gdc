@@ -434,7 +434,9 @@ d_gcc_magic_builtins_module(Module *m)
         }
     }
 
-    Type * d = gcc_type_to_d_type(va_list_type_node);
+    Type * d = NULL;
+
+    d = gcc_type_to_d_type(va_list_type_node);
     if (d)
     {
         funcs->push(new AliasDeclaration(0,

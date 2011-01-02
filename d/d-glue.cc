@@ -1461,7 +1461,7 @@ SliceExp::toElem(IRState * irs)
 elem *
 CastExp::toElem(IRState * irs)
 {
-    if (to->ty == Tvoid)
+    if (e1->op == TOKcall && to->ty == Tvoid)
     {   // Just evaluate e1 if it has any side effects
         return build1(NOP_EXPR, void_type_node, e1->toElem(irs));
     }
@@ -3220,7 +3220,8 @@ FuncDeclaration::buildClosure(IRState * irs)
         return;
 
     tree closure_rec_type = make_node(RECORD_TYPE);
-    tree ptr_field = d_build_decl(FIELD_DECL, get_identifier("__closptr"), ptr_type_node);
+    tree ptr_field = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
+                                      get_identifier("__closptr"), ptr_type_node);
     DECL_CONTEXT(ptr_field) = closure_rec_type;
     ListMaker fields;
     fields.chain(ptr_field);
@@ -3778,12 +3779,11 @@ TypeAArray::toCtype()
         if (! aa_type)
         {
             aa_type = make_node(RECORD_TYPE);
-            tree f0 = d_build_decl(FIELD_DECL, get_identifier("ptr"),
-                                   ptr_type_node, BUILTINS_LOCATION);
+            tree f0 = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
+                                       get_identifier("ptr"), ptr_type_node);
             DECL_CONTEXT(f0) = aa_type;
             TYPE_FIELDS(aa_type) = f0;
             layout_type(aa_type);
-
             dkeep(aa_type);
         }
         ctype = aa_type;

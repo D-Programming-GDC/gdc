@@ -2304,8 +2304,8 @@ IRState::assignValue(Expression * e, VarDeclaration * v)
 tree
 IRState::twoFieldType(tree rec_type, tree ft1, tree ft2, Type * d_type, const char * n1, const char * n2)
 {
-    tree f0 = d_build_decl(FIELD_DECL, get_identifier(n1), ft1, BUILTINS_LOCATION);
-    tree f1 = d_build_decl(FIELD_DECL, get_identifier(n2), ft2, BUILTINS_LOCATION);
+    tree f0 = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL, get_identifier(n1), ft1);
+    tree f1 = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL, get_identifier(n2), ft2);
     DECL_CONTEXT(f0) = rec_type;
     DECL_CONTEXT(f1) = rec_type;
     TYPE_FIELDS(rec_type) = chainon(f0, f1);
@@ -2317,8 +2317,8 @@ IRState::twoFieldType(tree rec_type, tree ft1, tree ft2, Type * d_type, const ch
 
         /* ObjectFile::declareType will try to declare it as top-level type
            which can break debugging info for element types. */
-        tree stub_decl = d_build_decl(TYPE_DECL, get_identifier(d_type->toChars()),
-                rec_type, BUILTINS_LOCATION);
+        tree stub_decl = d_build_decl_loc(BUILTINS_LOCATION, TYPE_DECL,
+                get_identifier(d_type->toChars()), rec_type);
         TYPE_STUB_DECL(rec_type) = stub_decl;
         TYPE_NAME(rec_type) = stub_decl;
         DECL_ARTIFICIAL(stub_decl) = 1;

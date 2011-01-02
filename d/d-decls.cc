@@ -774,7 +774,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
         //sthunk->Sflags |= SFLimplem;
 
         tree target_func_decl = csym->Stree;
-        tree thunk_decl = d_build_decl(FUNCTION_DECL, get_identifier(id), TREE_TYPE(target_func_decl));
+        tree thunk_decl = build_fn_decl(id, TREE_TYPE(target_func_decl));
         dkeep(thunk_decl);
         sthunk->Stree = thunk_decl;
 
@@ -782,9 +782,13 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
         DECL_CONTEXT(thunk_decl) = DECL_CONTEXT(target_func_decl); // from c++...
         TREE_READONLY(thunk_decl) = TREE_READONLY(target_func_decl);
         TREE_THIS_VOLATILE(thunk_decl) = TREE_THIS_VOLATILE(target_func_decl);
+        TREE_NOTHROW(thunk_decl) = TREE_NOTHROW(target_func_decl);
 
 #ifdef D_PRIVATE_THUNKS
+        DECL_EXTERNAL(thunk_decl) = 0;
+        TREE_STATIC(thunk_decl) = 0;
         TREE_PRIVATE(thunk_decl) = 1;
+        TREE_PUBLIC(thunk_decl) = 0;
 #else
         /* Due to changes in the assembler, it is not possible to emit
            a private thunk that refers to an external symbol.

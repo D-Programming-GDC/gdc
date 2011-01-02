@@ -151,9 +151,6 @@ extern void d_add_global_function PARAMS(( tree ));
 
 extern tree d_type_promotes_to(tree);
 
-extern rtx d_expand_expr(tree, rtx, enum machine_mode, int, rtx *);
-extern tree d_build_decl(tree_code code, tree name, tree type, location_t loc = input_location);
-
 extern void gcc_d_backend_init();
 extern void gcc_d_backend_term();
 
@@ -181,8 +178,14 @@ tree d_unsigned_type(tree);
 tree d_signed_type(tree);
 tree d_type_for_size(unsigned bits, int unsignedp);
 tree d_type_for_mode(enum machine_mode mode, int unsignedp);
-tree d_build_decl42(enum tree_code code, tree name, tree type);
+tree d_build_decl(enum tree_code code, tree name, tree type);
 void dkeep(tree t);
+
+#ifdef D_USE_MAPPED_LOCATION
+tree d_build_decl_loc(location_t loc, enum tree_code code, tree name, tree type);
+#else
+#define d_build_decl_loc(l,c,n,t)   build_decl(c,n,t)
+#endif
 
 /* In d-builtins.c */
 extern void d_init_builtins PARAMS ((void));

@@ -379,30 +379,19 @@ void d_init_builtins(void)
       gcc_assert (!strncmp (NAME, "__builtin_",                         \
                             strlen ("__builtin_")));                    \
                                                                         \
-      /*if (!BOTH_P)*/                                                  \
-        decl = lang_hooks.builtin_function (NAME, builtin_types[TYPE],  \
-                                 ENUM,                                  \
-                                 CLASS,                                 \
-                                 (FALLBACK_P                            \
-                                  ? (NAME + strlen ("__builtin_"))      \
-                                  : NULL),                              \
-                                 built_in_attributes[(int) ATTRS]);     \
-      /*else*/                                                          \
-        /*decl = builtin_function_2 (NAME,*/                            \
-        /*                         NAME + strlen ("__builtin_"),*/      \
-        /*                         builtin_types[TYPE],*/                       \
-        /*                         builtin_types[LIBTYPE],*/            \
-        /*                         ENUM,*/                              \
-        /*                         CLASS,*/                             \
-        /*                         FALLBACK_P,*/                                \
-        /*                         NONANSI_P,*/                         \
-        /*                         built_in_attributes[(int) ATTRS]);*/ \
+      decl = lang_hooks.builtin_function (NAME, builtin_types[TYPE],    \
+                               ENUM,                                    \
+                               CLASS,                                   \
+                               (FALLBACK_P                              \
+                                ? (NAME + strlen ("__builtin_"))        \
+                                : NULL),                                \
+                               built_in_attributes[(int) ATTRS]);       \
                                                                         \
       built_in_decls[(int) ENUM] = decl;                                \
       if (IMPLICIT)                                                     \
         implicit_built_in_decls[(int) ENUM] = decl;                     \
     }
-#elif D_GCC_VER >= 41
+#else
 #define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE, BOTH_P, FALLBACK_P, \
                     NONANSI_P, ATTRS, IMPLICIT, COND)                   \
   if (NAME && COND)                                                     \
@@ -414,9 +403,7 @@ void d_init_builtins(void)
 #undef DEF_BUILTIN
 
     build_common_builtin_nodes ();
-
     (*targetm.init_builtins) ();
-
     main_identifier_node = get_identifier ("main");
 
 #if D_GCC_VER >= 41
@@ -427,6 +414,7 @@ void d_init_builtins(void)
     dkeep(null_node);
 #endif
 }
+
 
 /* Return a definition for a builtin function named NAME and whose data type
    is TYPE.  TYPE should be a function type with argument types.
@@ -443,7 +431,6 @@ tree
 d_builtin_function43 (tree decl)
 {
     d_bi_builtin_func(decl);
-
     return decl;
 }
 
@@ -451,29 +438,27 @@ d_builtin_function43 (tree decl)
 
 tree
 d_builtin_function (const char *name, tree type, int function_code,
-                    enum built_in_class klass, const char *library_name,
+                    enum built_in_class cl, const char *library_name,
                     tree attrs)
 {
     // As of 4.3.x, this is done by add_builtin_function
     //%% for D, just use library_name?
-    tree decl = d_build_decl42 (FUNCTION_DECL, get_identifier (name), type);
-    DECL_EXTERNAL (decl) = 1;
+    tree id = get_identifier (name);
+    tree decl = d_build_decl_loc (BUILTINS_LOCATION, FUNCTION_DECL, id, type);
     TREE_PUBLIC (decl) = 1;
+    DECL_EXTERNAL (decl) = 1;
+    DECL_BUILT_IN_CLASS (decl) = cl;
+
+    DECL_FUNCTION_CODE (decl) = (enum built_in_function) function_code;
+
+    /* DECL_FUNCTION_CODE is a bitfield; verify that the value fits.  */
+    gcc_assert (DECL_FUNCTION_CODE (decl) == function_code);
+
     if (library_name)
-        SET_DECL_ASSEMBLER_NAME (decl, get_identifier (library_name));
-    // %% gcc4 -- is make_decl_rtl needed? why are we doing it in gcc3?
-    // shouldn't it go after attributes?
-
-    pushdecl (decl);
-    DECL_BUILT_IN_CLASS (decl) = klass;
-    DECL_FUNCTION_CODE (decl) = function_code;
-
-    /* Warn if a function in the namespace for users
-       is used without an occasion to consider it declared.  */
-    /*
-       if (name[0] != '_' || name[1] != '_')
-       C_DECL_INVISIBLE (decl) = 1;
-     */
+    {
+        tree libname = get_identifier (library_name);
+        SET_DECL_ASSEMBLER_NAME (decl, libname);
+    }
 
     /* Possibly apply some default attributes to this built-in function.  */
     if (attrs)
@@ -482,7 +467,6 @@ d_builtin_function (const char *name, tree type, int function_code,
         decl_attributes (&decl, NULL_TREE, 0);
 
     d_bi_builtin_func(decl);
-
     return decl;
 }
 
