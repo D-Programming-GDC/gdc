@@ -84,8 +84,7 @@ build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1)
 tree
 d_convert_basic (tree type, tree expr)
 {
-    // take from c-convert.c
-
+    // taken from c-convert.c
     tree e = expr;
     enum tree_code code = TREE_CODE (type);
 
@@ -96,6 +95,12 @@ d_convert_basic (tree type, tree expr)
 
     if (type == TREE_TYPE (expr))
         return expr;
+#if D_GCC_VER >= 45
+    tree ret = targetm.convert_to_type (type, expr);
+    if (ret)
+        return ret;
+#endif
+    STRIP_TYPE_NOPS (e);
 
     if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (TREE_TYPE (expr)))
         return fold_convert (type, expr);
@@ -112,13 +117,17 @@ d_convert_basic (tree type, tree expr)
         return fold (convert_to_integer (type, e));
     if (code == BOOLEAN_TYPE)
     {
-        tree t = d_truthvalue_conversion (expr);
+        tree t = d_truthvalue_conversion (e);
+#if D_GCC_VER >= 42
+        return fold_convert(type, t);
+#else
         /* If it returns a NOP_EXPR, we must fold it here to avoid
            infinite recursion between fold () and convert ().  */
         if (TREE_CODE (t) == NOP_EXPR)
             return fold (build1 (NOP_EXPR, type, TREE_OPERAND (t, 0)));
         else
             return fold (build1 (NOP_EXPR, type, t));
+#endif
     }
     if (code == POINTER_TYPE || code == REFERENCE_TYPE)
         return fold (convert_to_pointer (type, e));
