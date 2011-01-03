@@ -30,8 +30,12 @@ all-local: libgphobos2.a libgdruntime.a
 
 SUFFIXES = .d
 
-%.o : %.d $(D_PREREQ_SRCS)
+# Special-case for phobos, need to emit all templates.
+std/%.o : std/%.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
+
+%.o : %.d $(D_PREREQ_SRCS)
+	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
 
 IMPORT = import
 $(IMPORT): $(D_PREREQ_SRCS)
