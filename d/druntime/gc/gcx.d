@@ -516,6 +516,11 @@ class GC
 
             gcx.setBits(pool, cast(size_t)(p - pool.baseAddr) / 16, bits);
         }
+
+        version (GNU)
+        {
+            gcx.addRoot(p);
+        }
         return p;
     }
 
@@ -866,6 +871,10 @@ class GC
     private void freeNoSync(void *p)
     {
         assert (p);
+        version (GNU)
+        {
+            gcx.removeRoot(p);
+        }
 
         Pool*  pool;
         size_t pagenum;
