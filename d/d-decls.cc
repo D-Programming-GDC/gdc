@@ -1044,6 +1044,18 @@ Symbol *TypedefDeclaration::toInitializer()
         sinit = s;
         sinit->Sdt = ((TypeTypedef *)type)->sym->init->toDt();
     }
+    if (! sinit->Stree && g.ofile != NULL)
+    {
+        tree t = d_build_decl(VAR_DECL, get_identifier(sinit->Sident), type->toCtype());
+        sinit->Stree = t;
+        dkeep(t);
+
+        g.ofile->setupStaticStorage(this, t);
+        g.ofile->setDeclLoc(t, this);
+        TREE_CONSTANT(t) = 1;
+        TREE_READONLY(t) = 1;
+        DECL_CONTEXT(t) = 0;
+    }
     return sinit;
 }
 

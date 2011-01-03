@@ -990,7 +990,8 @@ tree
 check_static_sym(Symbol * sym)
 {
     if (! sym->Stree)
-    {   //assert(sym->Sdt);// Unfortunately cannot check for this; it might be an empty dt_t list...
+    {   //assert(sym->Sdt);    // Unfortunately cannot check for this; it might be an empty dt_t list...
+        assert(! sym->Sident); // Can enforce that sym is anonymous though.
         tree t_ini = dt2tree(sym->Sdt); // %% recursion problems?
         tree t_var = d_build_decl(VAR_DECL, NULL_TREE, TREE_TYPE(t_ini));
         g.ofile->giveDeclUniqueName(t_var);
