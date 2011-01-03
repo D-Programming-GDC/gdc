@@ -24,3 +24,13 @@ version( linux )
     enum bool  __USE_FILE_OFFSET64  = __USE_LARGEFILE64;
     enum bool  __REDIRECT           = false;
 }
+
+/// %% FIXME: Probably not consistent for all architectures.
+static if(size_t.sizeof == 8)
+{
+    enum uint __WORDSIZE            = 64;
+}
+else
+{
+    enum uint __WORDSIZE            = 32;
+}

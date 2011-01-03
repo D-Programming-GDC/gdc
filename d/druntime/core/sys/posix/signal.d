@@ -309,7 +309,7 @@ version( linux )
 
     private enum __SI_MAX_SIZE = 128;
 
-    static if( false /* __WORDSIZE == 64 */ )
+    static if( __WORDSIZE == 64 )
     {
         private enum __SI_PAD_SIZE = ((__SI_MAX_SIZE / int.sizeof) - 4);
     }
@@ -1008,7 +1008,7 @@ version( linux )
 {
     private enum __SIGEV_MAX_SIZE = 64;
 
-    static if( false /* __WORDSIZE == 64 */ )
+    static if( __WORDSIZE == 64 )
     {
         private enum __SIGEV_PAD_SIZE = ((__SIGEV_MAX_SIZE / int.sizeof) - 4);
     }
