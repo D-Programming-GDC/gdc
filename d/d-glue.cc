@@ -3639,6 +3639,7 @@ StructDeclaration::toDebug()
     tree ctype = type->toCtype();
     g.ofile->addAggMethods(ctype, this);
     g.ofile->declareType(ctype, this);
+    rest_of_type_compilation(ctype, /*toplevel*/1);
 }
 
 Symbol *
@@ -3852,11 +3853,7 @@ binfo_for(tree tgt_binfo, ClassDeclaration * cls)
         tree prot_tree;
 
         BINFO_BASEACCESSES(binfo) = make_tree_vec(1);
-#if V1
         BaseClass * bc = (BaseClass *) cls->baseclasses->data[0];
-#else
-        BaseClass * bc = (BaseClass *) cls->baseclasses.data[0];
-#endif
         switch (bc->protection)
         {
             case PROTpublic:
@@ -4850,7 +4847,8 @@ PragmaStatement::toIR(IRState *)
 void
 EnumDeclaration::toDebug()
 {
-    // nothing
+    tree ctype = type->toCtype();
+    rest_of_type_compilation(ctype, /*toplevel*/1);
 }
 
 int
