@@ -1169,7 +1169,7 @@ L_was_nan:
             add ESP,12+8;
             ret PARAMSIZE;
         }
-    } else version(GNU_Need2_exp2_log2) {
+    } else version(GNU_Need_exp2) {
         return core.stdc.math.powl(2, x);
     } else {
         return core.stdc.math.exp2(x);
@@ -1577,7 +1577,7 @@ real log1p(real x) @safe pure nothrow
  */
 real log2(real x) @safe pure nothrow
 {
-    version (GNU_Need_exp2_log2)
+    version (GNU_Need_log2)
         return core.stdc.math.logl(x) / LOG2;
     else version (INLINE_YL2X)
         return yl2x(x, 1);

@@ -144,7 +144,55 @@ version( linux )
 else version( FreeBSD )
 {
     // <machine/ucontext.h>
-    version( X86 )
+    version( X86_64 )
+    {
+        alias long __register_t;
+
+        struct mcontext_t
+        {
+            __register_t    mc_onstack;
+            __register_t    mc_rdi;
+            __register_t    mc_rsi;
+            __register_t    mc_rdx;
+            __register_t    mc_rcx;
+            __register_t    mc_r8;
+            __register_t    mc_r9;
+            __register_t    mc_rax;
+            __register_t    mc_rbx;
+            __register_t    mc_rbp;
+            __register_t    mc_r10;
+            __register_t    mc_r11;
+            __register_t    mc_r12;
+            __register_t    mc_r13;
+            __register_t    mc_r14;
+            __register_t    mc_r15;
+            uint            mc_trapno;
+            ushort          mc_fs;
+            ushort          mc_gs;
+            __register_t    mc_addr;
+            uint            mc_flags;
+            ushort          mc_es;
+            ushort          mc_ds;
+            __register_t    mc_err;
+            __register_t    mc_rip;
+            __register_t    mc_cs;
+            __register_t    mc_rflags;
+            __register_t    mc_rsp;
+            __register_t    mc_ss;
+
+            long            mc_len;
+            long            mc_fpformat;            
+            long            mc_ownedfp;
+
+            align(16)
+            long[64]        mc_fpstate;
+
+            __register_t    mc_fsbase;
+            __register_t    mc_gsbase;
+            long[6]         mc_spare;
+        } 
+    }
+    else version( X86 )
     {
         alias int __register_t;
 

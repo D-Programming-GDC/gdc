@@ -614,7 +614,8 @@ DCFG_HAVE_GETDELIM
 DCFG_FWIDE
 DCFG_SPAWNVP
 DCFG_EXECVPE
-DCFG_EXP2_LOG2
+DCFG_LOG2
+DCFG_EXP2
 DCFG_NAN
 DCFG_TGAMMA
 DCFG_ROUND
@@ -4822,7 +4823,8 @@ if test "$with_newlib" = yes; then
     DCFG_ROUND=""
     DCFG_TGAMMA=""
     DCFG_NAN=""
-    DCFG_EXP2_LOG2="GNU_Need_exp2_log2"
+    DCFG_EXP2="GNU_Need_exp2"
+    DCFG_LOG2="GNU_Need_log2"
 
 
 $as_echo "#define HAVE_FP_CLASSIFY_SIGNBIT 1" >>confdefs.h
@@ -5029,10 +5031,7 @@ ac_fn_c_check_func "$LINENO" "tgamma" "ac_cv_func_tgamma"
 if test "x$ac_cv_func_tgamma" = x""yes; then :
   DCFG_TGAMMA=""
 else
-
-	DCFG_TGAMMA="GNU_Need_tgamma"
-	D_EXTRA_OBJS="$D_EXTRA_OBJS etc/gamma.o"
-
+  DCFG_TGAMMA="GNU_Need_tgamma"
 fi
 
 
@@ -5046,25 +5045,22 @@ fi
 
 
 
-for ac_func in exp2 log2
-do :
-  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
-ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
-if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
-  cat >>confdefs.h <<_ACEOF
-#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
-_ACEOF
- :
+ac_fn_c_check_func "$LINENO" "exp2" "ac_cv_func_exp2"
+if test "x$ac_cv_func_exp2" = x""yes; then :
+  DCFG_EXP2=""
 else
-  :
+  DCFG_EXP2="GNU_Need_exp2"
 fi
-done
 
-if test "$ac_cv_func_exp2" = "yes" && test "$ac_cv_func_log2" = "yes"; then
-    DCFG_EXP2_LOG2=""
+
+
+ac_fn_c_check_func "$LINENO" "log2" "ac_cv_func_log2"
+if test "x$ac_cv_func_log2" = x""yes; then :
+  DCFG_LOG2=""
 else
-    DCFG_EXP2_LOG2="GNU_Need_exp2_log2"
+  DCFG_LOG2="GNU_Need_log2"
 fi
+
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for fpclassify and signbit" >&5
@@ -5440,6 +5436,7 @@ case "$d_target_os" in
     freebsd*|k*bsd*-gnu)
 	     d_have_loader=1
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
+	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     ;;
     linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"

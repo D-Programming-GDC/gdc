@@ -25,7 +25,7 @@
 #include <windows.h>
 #endif
 
-#if USE_PTHREADS
+#ifdef USE_PTHREADS
 #include <pthread.h>
 #endif
 
@@ -42,7 +42,7 @@ typedef struct Monitor
     CRITICAL_SECTION mon;
 #endif
 
-#if USE_PTHREADS
+#ifdef USE_PTHREADS
     pthread_mutex_t mon;
 #endif
 } Monitor;
@@ -127,10 +127,11 @@ void _d_monitor_unlock(Object *h)
     //printf("-_d_monitor_release(%p)\n", h);
 }
 
+#else
 
 /* =============================== linux ============================ */
 
-#elif USE_PTHREADS
+#ifdef USE_PTHREADS
 
 #ifndef PTHREAD_MUTEX_RECURSIVE
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
@@ -269,5 +270,7 @@ void _d_monitor_unlock(Object *h)
     assert(h && h->monitor && !(((Monitor*)h->monitor)->impl));
     //printf("-_d_monitor_release(%p)\n", h);
 }
+
+#endif
 
 #endif

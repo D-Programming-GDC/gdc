@@ -507,39 +507,30 @@ version( GNU )
 
     alias __builtin_acosh  acosh;
     alias __builtin_acoshf acoshf;
-    alias __builtin_acoshl acoshl;
 
     alias __builtin_asinh  asinh;
     alias __builtin_asinhf asinhf;
-    alias __builtin_asinhl asinhl;
 
     alias __builtin_atanh  atanh;
     alias __builtin_atanhf atanhf;
-    alias __builtin_atanhl atanhl;
 
     alias __builtin_cosh  cosh;
     alias __builtin_coshf coshf;
-    alias __builtin_coshl coshl;
 
     alias __builtin_sinh  sinh;
     alias __builtin_sinhf sinhf;
-    alias __builtin_sinhl sinhl;
 
     alias __builtin_tanh  tanh;
     alias __builtin_tanhf tanhf;
-    alias __builtin_tanhl tanhl;
 
     alias __builtin_exp  exp;
     alias __builtin_expf expf;
-    alias __builtin_expl expl;
 
     alias __builtin_exp2  exp2;
     alias __builtin_exp2f exp2f;
-    alias __builtin_exp2l exp2l;
 
     alias __builtin_expm1  expm1;
     alias __builtin_expm1f expm1f;
-    alias __builtin_expm1l expm1l;
 
     alias __builtin_frexp  frexp;
     alias __builtin_frexpf frexpf;
@@ -555,19 +546,15 @@ version( GNU )
 
     alias __builtin_log  log;
     alias __builtin_logf logf;
-    alias __builtin_logl logl;
 
     alias __builtin_log10  log10;
     alias __builtin_log10f log10f;
-    alias __builtin_log10l log10l;
 
     alias __builtin_log1p  log1p;
     alias __builtin_log1pf log1pf;
-    alias __builtin_log1pl log1pl;
 
     alias __builtin_log2  log2;
     alias __builtin_log2f log2f;
-    alias __builtin_log2l log2l;
 
     alias __builtin_logb  logb;
     alias __builtin_logbf logbf;
@@ -587,7 +574,6 @@ version( GNU )
 
     alias __builtin_cbrt  cbrt;
     alias __builtin_cbrtf cbrtf;
-    alias __builtin_cbrtl cbrtl;
 
     alias __builtin_fabs  fabs;
     alias __builtin_fabsf fabsf;
@@ -599,7 +585,6 @@ version( GNU )
 
     alias __builtin_pow  pow;
     alias __builtin_powf powf;
-    alias __builtin_powl powl;
 
     alias __builtin_sqrt  sqrt;
     alias __builtin_sqrtf sqrtf;
@@ -607,19 +592,15 @@ version( GNU )
 
     alias __builtin_erf  erf;
     alias __builtin_erff erff;
-    alias __builtin_erfl erfl;
 
     alias __builtin_erfc  erfc;
     alias __builtin_erfcf erfcf;
-    alias __builtin_erfcl erfcl;
 
     alias __builtin_lgamma  lgamma;
     alias __builtin_lgammaf lgammaf;
-    alias __builtin_lgammal lgammal;
 
     alias __builtin_tgamma  tgamma;
     alias __builtin_tgammaf tgammaf;
-    alias __builtin_tgammal tgammal;
 
     alias __builtin_ceil  ceil;
     alias __builtin_ceilf ceilf;
@@ -631,7 +612,6 @@ version( GNU )
 
     alias __builtin_nearbyint  nearbyint;
     alias __builtin_nearbyintf nearbyintf;
-    alias __builtin_nearbyintl nearbyintl;
 
     alias __builtin_rint  rint;
     alias __builtin_rintf rintf;
@@ -679,7 +659,6 @@ version( GNU )
 
     alias __builtin_nan  nan;
     alias __builtin_nanf nanf;
-    alias __builtin_nanl nanl;
 
     alias __builtin_nextafter  nextafter;
     alias __builtin_nextafterf nextafterf;
@@ -704,6 +683,82 @@ version( GNU )
     alias __builtin_fma  fma;
     alias __builtin_fmaf fmaf;
     alias __builtin_fmal fmal;
+
+  /**
+   * FreeBSD is missing a few symbols in -lm, so for the symbols that are missing,
+   * we use the lower resolution double versions for the long double functions.
+   * For everything else we use the GCC builtins.
+   */
+  version ( FreeBSD )
+  { @trusted:
+    /* This call to a builtin that is not at all pure. */
+    real   lgammal(real x) { return lgamma(x); }
+
+    /* For everything else, the builtins are pure by default. */
+pure:
+    real   acoshl(real x) { return acosh(x); }
+    real   asinhl(real x) { return asinh(x); }
+    real   atanhl(real x) { return atanh(x); }
+
+    real   coshl(real x) { return cosh(x); }
+    real   sinhl(real x) { return sinh(x); }
+    real   tanhl(real x) { return tanh(x); }
+
+    real   expl(real x) { return exp(x); }
+    real   exp2l(real x) { return exp2(x); }
+    real   expm1l(real x) { return expm1(x); }
+
+    real   logl(real x) { return log(x); }
+    real   log10l(real x) { return log10(x); }
+    real   log1pl(real x) { return log1p(x); }
+    real   log2l(real x) { return log10(x) / log10(2); }
+
+    real   cbrtl(real x) { return cbrt(x); }
+
+    real   powl(real x, real y) { return pow(x, y); }
+
+    real   erfl(real x) { return erf(x); }
+    real   erfcl(real x) { return erfc(x); }
+
+    real   tgammal(real x) { return tgamma(x); }
+
+    real   nearbyintl(real x) { return nearbyint(x); }
+
+    real   nanl(char *tagp) { return real.nan; }
+  }
+  else
+  {
+    alias __builtin_acoshl acoshl;
+    alias __builtin_asinhl asinhl;
+    alias __builtin_atanhl atanhl;
+
+    alias __builtin_coshl coshl;
+    alias __builtin_sinhl sinhl;
+    alias __builtin_tanhl tanhl;
+
+    alias __builtin_expl expl;
+    alias __builtin_exp2l exp2l;
+    alias __builtin_expm1l expm1l;
+
+    alias __builtin_logl logl;
+    alias __builtin_log10l log10l;
+    alias __builtin_log1pl log1pl;
+    alias __builtin_log2l log2l;
+
+    alias __builtin_cbrtl cbrtl;
+
+    alias __builtin_powl powl;
+
+    alias __builtin_erfl erfl;
+    alias __builtin_erfcl erfcl;
+
+    alias __builtin_lgammal lgammal;
+    alias __builtin_tgammal tgammal;
+
+    alias __builtin_nearbyintl nearbyintl;
+
+    alias __builtin_nanl nanl;
+  }
 }
 /* NOTE: freebsd < 8-CURRENT doesn't appear to support *l, but we can
  *       approximate.

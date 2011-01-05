@@ -333,7 +333,8 @@ if test "$with_newlib" = yes; then
     DCFG_ROUND=""
     DCFG_TGAMMA=""
     DCFG_NAN=""
-    DCFG_EXP2_LOG2="GNU_Need_exp2_log2"
+    DCFG_EXP2="GNU_Need_exp2"
+    DCFG_LOG2="GNU_Need_log2"
 
     AC_DEFINE(HAVE_FP_CLASSIFY_SIGNBIT,1,[Define to 1 fpclassify and signbit are available])
     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_math.o"
@@ -402,22 +403,17 @@ AC_SUBST(DCFG_NEARBYINT)
 AC_CHECK_FUNC(round,DCFG_ROUND="",DCFG_ROUND="GNU_Need_round")
 AC_SUBST(DCFG_ROUND)
 
-AC_CHECK_FUNC(tgamma,DCFG_TGAMMA="",[
-	DCFG_TGAMMA="GNU_Need_tgamma"
-	D_EXTRA_OBJS="$D_EXTRA_OBJS etc/gamma.o"
-	])
+AC_CHECK_FUNC(tgamma,DCFG_TGAMMA="",DCFG_TGAMMA="GNU_Need_tgamma")
 AC_SUBST(DCFG_TGAMMA)
 
 AC_CHECK_FUNC(nan,DCFG_NAN="",DCFG_NAN="GNU_Need_nan")
 AC_SUBST(DCFG_NAN)
 
-AC_CHECK_FUNCS(exp2 log2,:,:)
-if test "$ac_cv_func_exp2" = "yes" && test "$ac_cv_func_log2" = "yes"; then
-    DCFG_EXP2_LOG2=""
-else
-    DCFG_EXP2_LOG2="GNU_Need_exp2_log2"
-fi
-AC_SUBST(DCFG_EXP2_LOG2)
+AC_CHECK_FUNC(exp2, DCFG_EXP2="", DCFG_EXP2="GNU_Need_exp2")
+AC_SUBST(DCFG_EXP2)
+
+AC_CHECK_FUNC(log2, DCFG_LOG2="", DCFG_LOG2="GNU_Need_log2")
+AC_SUBST(DCFG_LOG2)
 
 AC_MSG_CHECKING([for fpclassify and signbit])
 AC_TRY_COMPILE([
@@ -579,6 +575,7 @@ case "$d_target_os" in
     freebsd*|k*bsd*-gnu)
 	     d_have_loader=1
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
+	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     ;;
     linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"

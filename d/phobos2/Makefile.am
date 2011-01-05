@@ -268,6 +268,8 @@ LINUX_OBJS=std/c/linux/socket.o
 
 OSX_OBJS=std/c/osx/socket.o
 
+FREEBSD_OBJS=std/c/freebsd/socket.o
+
 # std.c.linux.linux, std.loader, gcc.cbridge*
 WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/windows/windows.o \
              std/c/windows/winsock.o std/windows/charset.o \
