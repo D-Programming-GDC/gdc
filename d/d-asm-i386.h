@@ -2996,20 +2996,25 @@ bool getFrameRelativeValue(tree decl, HOST_WIDE_INT * result)
     /* Using this instead of DECL_RTL for struct args seems like a
        good way to get hit by a truck because it may not agree with
        non-asm access, but asm code wouldn't know what GCC does anyway. */
-    rtx r = DECL_INCOMING_RTL(decl);
-    rtx e1, e2;
+    rtx r = NULL_RTX;
 
-    // Local variables don't have DECL_INCOMING_RTL
-    if (r == NULL_RTX)
-        r = DECL_RTL(decl);
+    if (TREE_CODE(decl) == PARM_DECL)
+    {
+        r = DECL_INCOMING_RTL(decl);
+    }
+    else
+    {   // Local variables don't have DECL_INCOMING_RTL
+        if (TREE_STATIC(decl) || TREE_PUBLIC(decl))
+            r = DECL_RTL(decl);
+    }
 
     if (r != NULL_RTX && GET_CODE(r) == MEM /* && r->frame_related */)
     {
         r = XEXP(r, 0);
         if (GET_CODE(r) == PLUS)
         {
-            e1 = XEXP(r, 0);
-            e2 = XEXP(r, 1);
+            rtx e1 = XEXP(r, 0);
+            rtx e2 = XEXP(r, 1);
             if (e1 == virtual_incoming_args_rtx && GET_CODE(e2) == CONST_INT)
             {
                 *result = INTVAL(e2) + 8; // %% 8 is 32-bit specific...

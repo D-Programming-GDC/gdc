@@ -234,7 +234,7 @@ struct IRState : IRBase
         return d_null_pointer;
     }
 
-    static tree integerConstant(dinteger_t value, tree type = 0);
+    static tree integerConstant(dinteger_t value, tree type = integer_type_node);
 
     static tree integerConstant(dinteger_t value, Type * type)
     {
