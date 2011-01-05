@@ -493,7 +493,6 @@ void StorageClassDeclaration::stcToCBuffer(OutBuffer *buf, StorageClass stc)
 void StorageClassDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     stcToCBuffer(buf, stc);
-
     AttribDeclaration::toCBuffer(buf, hgs);
 }
 
@@ -884,7 +883,7 @@ PragmaDeclaration::PragmaDeclaration(Loc loc, Identifier *ident, Expressions *ar
 
 Dsymbol *PragmaDeclaration::syntaxCopy(Dsymbol *s)
 {
-        //printf("PragmaDeclaration::syntaxCopy(%s)\n", toChars());
+    //printf("PragmaDeclaration::syntaxCopy(%s)\n", toChars());
     PragmaDeclaration *pd;
 
     assert(!s);
@@ -1248,7 +1247,6 @@ void PragmaDeclaration::toObjFile(int multiobj)
         obj_includelib(name);
 #elif ELFOBJ || MACHOBJ
         /* The format does not allow embedded library names,
-         * The ELF format does not allow embedded library names,
          * so instead append the library name to the list to be passed
          * to the linker.
          */
@@ -1332,7 +1330,7 @@ void ConditionalDeclaration::emitComment(Scope *sc)
         AttribDeclaration::emitComment(sc);
     }
     else if (sc->docbuf)
-     {
+    {
         /* If generating doc comment, be careful because if we're inside
          * a template, then include(NULL, NULL) will fail.
          */
@@ -1341,7 +1339,7 @@ void ConditionalDeclaration::emitComment(Scope *sc)
         {   Dsymbol *s = (Dsymbol *)d->data[i];
             s->emitComment(sc);
         }
-     }
+    }
 }
 
 // Decide if 'then' or 'else' code should be included
@@ -1481,7 +1479,7 @@ Dsymbol *StaticIfDeclaration::syntaxCopy(Dsymbol *s)
 
 int StaticIfDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
-        //printf("StaticIfDeclaration::addMember() '%s'\n",toChars());
+    //printf("StaticIfDeclaration::addMember() '%s'\n",toChars());
     /* This is deferred until semantic(), so that
      * expressions in the condition can refer to declarations
      * in the same scope, such as:
@@ -1546,8 +1544,8 @@ const char *StaticIfDeclaration::kind()
 CompileDeclaration::CompileDeclaration(Loc loc, Expression *exp)
     : AttribDeclaration(NULL)
 {
-        //printf("CompileDeclaration(loc = %d)\n", loc.linnum);
-        this->loc = loc;
+    //printf("CompileDeclaration(loc = %d)\n", loc.linnum);
+    this->loc = loc;
     this->exp = exp;
     this->sd = NULL;
     this->compiled = 0;
@@ -1576,7 +1574,7 @@ int CompileDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 
 void CompileDeclaration::compileIt(Scope *sc)
 {
-     //printf("CompileDeclaration::compileIt(loc = %d)\n", loc.linnum);
+    //printf("CompileDeclaration::compileIt(loc = %d)\n", loc.linnum);
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
     exp = exp->optimize(WANTvalue | WANTinterpret);
@@ -1585,14 +1583,14 @@ void CompileDeclaration::compileIt(Scope *sc)
     }
     else
     {
-    StringExp *se = (StringExp *)exp;
-    se = se->toUTF8(sc);
-    Parser p(sc->module, (unsigned char *)se->string, se->len, 0);
-    p.loc = loc;
-    p.nextToken();
-    decl = p.parseDeclDefs(0);
-    if (p.token.value != TOKeof)
-        exp->error("incomplete mixin declaration (%s)", se->toChars());
+        StringExp *se = (StringExp *)exp;
+        se = se->toUTF8(sc);
+        Parser p(sc->module, (unsigned char *)se->string, se->len, 0);
+        p.loc = loc;
+        p.nextToken();
+        decl = p.parseDeclDefs(0);
+        if (p.token.value != TOKeof)
+            exp->error("incomplete mixin declaration (%s)", se->toChars());
     }
 }
 

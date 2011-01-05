@@ -322,7 +322,7 @@ struct OverloadSet : Dsymbol
 struct DsymbolTable : Object
 {
 #if STRINGTABLE
-     StringTable *tab;
+    StringTable *tab;
 #else
     AA *tab;
 #endif

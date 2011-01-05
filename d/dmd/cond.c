@@ -31,7 +31,7 @@ int findCondition(Array *ids, Identifier *ident)
     {
         for (int i = 0; i < ids->dim; i++)
         {
-            const char *id = (char *)ids->data[i];
+            const char *id = (const char *)ids->data[i];
 
             if (strcmp(id, ident->toChars()) == 0)
                 return TRUE;

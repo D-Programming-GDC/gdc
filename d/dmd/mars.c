@@ -42,6 +42,7 @@
 long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep);
 #endif
 
+
 int response_expand(int *pargc, char ***pargv);
 void browse(const char *url);
 void getenv_setargv(const char *envvar, int *pargc, char** *pargv);
@@ -195,7 +196,7 @@ void verror(Loc loc, const char *format, va_list ap)
 #endif
         fprintf(stdmsg, "\n");
         fflush(stdmsg);
-        halt();
+//halt();
     }
     global.errors++;
 }
@@ -394,20 +395,20 @@ int main(int argc, char *argv[])
     VersionCondition::addPredefinedGlobalIdent("D_NET");
 #endif
 #elif TARGET_LINUX
-        VersionCondition::addPredefinedGlobalIdent("Posix");
+    VersionCondition::addPredefinedGlobalIdent("Posix");
     VersionCondition::addPredefinedGlobalIdent("linux");
     global.params.isLinux = 1;
 #elif TARGET_OSX
-     VersionCondition::addPredefinedGlobalIdent("Posix");
-     VersionCondition::addPredefinedGlobalIdent("OSX");
-     global.params.isOSX = 1;
+    VersionCondition::addPredefinedGlobalIdent("Posix");
+    VersionCondition::addPredefinedGlobalIdent("OSX");
+    global.params.isOSX = 1;
 
-     // For legacy compatibility
-     VersionCondition::addPredefinedGlobalIdent("darwin");
+    // For legacy compatibility
+    VersionCondition::addPredefinedGlobalIdent("darwin");
 #elif TARGET_FREEBSD
-     VersionCondition::addPredefinedGlobalIdent("Posix");
-     VersionCondition::addPredefinedGlobalIdent("FreeBSD");
-     global.params.isFreeBSD = 1;
+    VersionCondition::addPredefinedGlobalIdent("Posix");
+    VersionCondition::addPredefinedGlobalIdent("FreeBSD");
+    global.params.isFreeBSD = 1;
 #elif TARGET_SOLARIS
     VersionCondition::addPredefinedGlobalIdent("Posix");
     VersionCondition::addPredefinedGlobalIdent("Solaris");
@@ -416,7 +417,6 @@ int main(int argc, char *argv[])
 #error "fix this"
 #endif
 
-    VersionCondition::addPredefinedGlobalIdent("X86");
     VersionCondition::addPredefinedGlobalIdent("LittleEndian");
     //VersionCondition::addPredefinedGlobalIdent("D_Bits");
 #if DMDV2
@@ -494,7 +494,7 @@ int main(int argc, char *argv[])
             }
             else if (strcmp(p + 1, "w") == 0)
                 global.params.warnings = 1;
-                else if (strcmp(p + 1, "wi") == 0)
+            else if (strcmp(p + 1, "wi") == 0)
                 global.params.warnings = 2;
             else if (strcmp(p + 1, "O") == 0)
                 global.params.optimize = 1;
@@ -703,7 +703,7 @@ int main(int argc, char *argv[])
             }
             else if (memcmp(p + 1, "debuglib=", 9) == 0)
             {
-            setdebuglib = 1;
+                setdebuglib = 1;
                 global.params.debuglibname = p + 1 + 9;
             }
             else if (memcmp(p + 1, "deps=", 5) == 0)
@@ -795,6 +795,7 @@ int main(int argc, char *argv[])
 
     if (!setdebuglib)
         global.params.debuglibname = global.params.defaultlibname;
+
 #if TARGET_OSX
     global.params.pic = 1;
 #endif
@@ -874,7 +875,7 @@ int main(int argc, char *argv[])
         VersionCondition::addPredefinedGlobalIdent("D_InlineAsm");
         VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86");
         VersionCondition::addPredefinedGlobalIdent("X86");
-#if TARGET_WINDOSs
+#if TARGET_WINDOS
         VersionCondition::addPredefinedGlobalIdent("Win32");
 #endif
     }
@@ -882,7 +883,7 @@ int main(int argc, char *argv[])
         VersionCondition::addPredefinedGlobalIdent("D_Ddoc");
     if (global.params.cov)
         VersionCondition::addPredefinedGlobalIdent("D_Coverage");
-        if (global.params.pic)
+    if (global.params.pic)
         VersionCondition::addPredefinedGlobalIdent("D_PIC");
 #if DMDV2
     if (global.params.useUnitTests)
@@ -964,13 +965,14 @@ int main(int argc, char *argv[])
         if (ext)
         {   /* Deduce what to do with a file based on its extension
              */
-                if (FileName::equals(ext, global.obj_ext))
+            if (FileName::equals(ext, global.obj_ext))
             {
                 global.params.objfiles->push(files.data[i]);
                 libmodules.push(files.data[i]);
                 continue;
             }
 
+            if (FileName::equals(ext, global.lib_ext))
             {
                 global.params.libfiles->push(files.data[i]);
                 libmodules.push(files.data[i]);
@@ -1134,6 +1136,7 @@ int main(int argc, char *argv[])
 #if ASYNCREAD
     AsyncRead::dispose(aw);
 #endif
+
     if (anydocfiles && modules.dim &&
         (global.params.oneobj || global.params.objname))
     {
@@ -1209,7 +1212,7 @@ int main(int argc, char *argv[])
     if (global.errors)
         fatal();
 
-        if (global.params.moduleDeps != NULL)
+    if (global.params.moduleDeps != NULL)
     {
         assert(global.params.moduleDepsFile != NULL);
 
@@ -1218,6 +1221,7 @@ int main(int argc, char *argv[])
         deps.setbuffer((void*)ob->data, ob->offset);
         deps.writev();
     }
+
 
     // Scan for functions to inline
     if (global.params.useInline)
@@ -1250,6 +1254,7 @@ int main(int argc, char *argv[])
             m->inlineScan();
         }
     }
+
     // Do not attempt to generate output files if errors or warnings occurred
     if (global.errors || global.warnings)
         fatal();
@@ -1484,7 +1489,5 @@ long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep)
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
-
-#endif
 
 #endif

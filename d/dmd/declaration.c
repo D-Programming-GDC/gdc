@@ -166,7 +166,6 @@ void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
 #endif
 
 
-
 /********************************* TupleDeclaration ****************************/
 
 TupleDeclaration::TupleDeclaration(Loc loc, Identifier *id, Objects *objects)
@@ -329,7 +328,7 @@ void TypedefDeclaration::semantic(Scope *sc)
             attributes = sc->attributes;
         if (sc->parent->isFuncDeclaration() && init)
             semantic2(sc);
-            storage_class |= sc->stc & STCdeprecated;
+        storage_class |= sc->stc & STCdeprecated;
     }
     else if (sem == 1)
     {
@@ -417,7 +416,7 @@ AliasDeclaration::AliasDeclaration(Loc loc, Identifier *id, Dsymbol *s)
 
 Dsymbol *AliasDeclaration::syntaxCopy(Dsymbol *s)
 {
-        //printf("AliasDeclaration::syntaxCopy()\n");
+    //printf("AliasDeclaration::syntaxCopy()\n");
     assert(!s);
     AliasDeclaration *sa;
     if (type)
@@ -485,7 +484,7 @@ void AliasDeclaration::semantic(Scope *sc)
     s = type->toDsymbol(sc);
     if (s
 #if DMDV2
-        && ((s->getType() && type->equals(s->getType())) || s->isEnumMember())
+`       && ((s->getType() && type->equals(s->getType())) || s->isEnumMember())
 #endif
         )
         goto L2;                        // it's a symbolic alias
@@ -502,7 +501,7 @@ void AliasDeclaration::semantic(Scope *sc)
     }
     else
 #endif
-    type->resolve(loc, sc, &e, &t, &s);
+        type->resolve(loc, sc, &e, &t, &s);
     if (s)
     {
         goto L2;
@@ -526,7 +525,7 @@ void AliasDeclaration::semantic(Scope *sc)
     else if (t)
     {
         type = t;
-         }
+    }
     if (overnext)
         ScopeDsymbol::multiplyDefined(0, this, overnext);
     this->inSemantic = 0;
@@ -610,7 +609,7 @@ const char *AliasDeclaration::kind()
 
 Type *AliasDeclaration::getType()
 {
-        //printf("AliasDeclaration::getType() %s\n", type->toChars());
+    //printf("AliasDeclaration::getType() %s\n", type->toChars());
 #if 0
     if (!type->deco && scope)
         semantic(scope);
@@ -916,7 +915,7 @@ void VarDeclaration::semantic(Scope *sc)
             }
             else
 #endif
-            aad->addField(sc, this);
+                aad->addField(sc, this);
         }
 
         InterfaceDeclaration *id = parent->isInterfaceDeclaration();
@@ -924,7 +923,8 @@ void VarDeclaration::semantic(Scope *sc)
         {
             error("field not allowed in interface");
         }
-/* Templates cannot add fields to aggregates
+
+        /* Templates cannot add fields to aggregates
          */
         TemplateInstance *ti = parent->isTemplateInstance();
         if (ti)
@@ -1016,7 +1016,8 @@ void VarDeclaration::semantic(Scope *sc)
     if (init)
     {
         sc = sc->push();
-    sc->stc &= ~(STC_TYPECTOR | STCpure | STCnothrow | STCref);
+        sc->stc &= ~(STC_TYPECTOR | STCpure | STCnothrow | STCref);
+
         ArrayInitializer *ai = init->isArrayInitializer();
         if (ai && tb->ty == Taarray)
         {
@@ -1044,7 +1045,6 @@ void VarDeclaration::semantic(Scope *sc)
             // possibilities.
             if (fd && !isStatic() && !isConst() && !init->isVoidInitializer())
             {
-
                 //printf("fd = '%s', var = '%s'\n", fd->toChars(), toChars());
                 if (!ei)
                 {
@@ -1292,7 +1292,7 @@ void VarDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
             ((AssignExp *)ie->exp)->e2->toCBuffer(buf, hgs);
         else
 #endif
-        init->toCBuffer(buf, hgs);
+            init->toCBuffer(buf, hgs);
     }
     buf->writeByte(';');
     buf->writenl();
@@ -1324,7 +1324,7 @@ void VarDeclaration::checkCtorConstInit()
 
 void VarDeclaration::checkNestedReference(Scope *sc, Loc loc)
 {
-        //printf("VarDeclaration::checkNestedReference() %s\n", toChars());
+    //printf("VarDeclaration::checkNestedReference() %s\n", toChars());
     if (parent && !isDataseg() && parent != sc->parent)
     {
         // The function that this variable is in
@@ -1391,7 +1391,7 @@ int VarDeclaration::isCTFE()
 
 int VarDeclaration::hasPointers()
 {
-        //printf("VarDeclaration::hasPointers() %s, ty = %d\n", toChars(), type->ty);
+    //printf("VarDeclaration::hasPointers() %s, ty = %d\n", toChars(), type->ty);
     return (!isDataseg() && type->hasPointers());
 }
 
@@ -1608,7 +1608,7 @@ TypeInfoTupleDeclaration::TypeInfoTupleDeclaration(Type *tinfo)
 // For the "this" parameter to member functions
 
 ThisDeclaration::ThisDeclaration(Loc loc, Type *t)
-    : VarDeclaration(loc, t, Id::This, NULL)
+   : VarDeclaration(loc, t, Id::This, NULL)
 {
     noscope = 1;
 }
@@ -1618,3 +1618,4 @@ Dsymbol *ThisDeclaration::syntaxCopy(Dsymbol *s)
     assert(0);          // should never be produced by syntax
     return NULL;
 }
+

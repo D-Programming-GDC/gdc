@@ -857,7 +857,7 @@ Statement *ForStatement::inlineScan(InlineScanState *iss)
     if (increment)
         increment = increment->inlineScan(iss);
     if (body)
-    body = body->inlineScan(iss);
+        body = body->inlineScan(iss);
     return this;
 }
 
@@ -934,11 +934,11 @@ Statement *DefaultStatement::inlineScan(InlineScanState *iss)
 
 Statement *ReturnStatement::inlineScan(InlineScanState *iss)
 {
-        //printf("ReturnStatement::inlineScan()\n");
+    //printf("ReturnStatement::inlineScan()\n");
     if (exp)
     {
         exp = exp->inlineScan(iss);
-        }
+    }
     return this;
 }
 

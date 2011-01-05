@@ -512,8 +512,8 @@ struct NewExp : Expression
         Type *newtype, Expressions *arguments);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
-    Expression *optimize(int result);
     Expression *interpret(InterState *istate);
+    Expression *optimize(int result);
     elem *toElem(IRState *irs);
     int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -1524,7 +1524,6 @@ struct LineInitExp : DefaultInitExp
     Expression *resolve(Loc loc, Scope *sc);
 };
 #endif
-
 
 /****************************************************************/
 

@@ -15,9 +15,9 @@
 #include "lstring.h"
 
 #ifdef _MSC_VER // prevent compiler internal crash
- Lstring Lstring::zero;
+Lstring Lstring::zero;
 #else
- Lstring Lstring::zero = LSTRING_EMPTY();
+Lstring Lstring::zero = LSTRING_EMPTY();
 #endif
 
 Lstring *Lstring::ctor(const dchar *p, unsigned length)

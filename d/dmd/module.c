@@ -79,7 +79,7 @@ Module::Module(char *filename, Identifier *ident, int doDocComment, int doHdrGen
 #ifdef IN_GCC
     strictlyneedmoduleinfo = 0;
 #endif
-        selfimports = 0;
+    selfimports = 0;
     insearch = 0;
     searchCacheIdent = NULL;
     searchCacheSymbol = NULL;
@@ -363,8 +363,8 @@ void Module::read(Loc loc)
                     fprintf(stdmsg, "import path[%d] = %s\n", i, p);
                 }
             }
-        else
-            fprintf(stdmsg, "Specify path to file '%s' with -I switch\n", srcfile->toChars());
+            else
+                fprintf(stdmsg, "Specify path to file '%s' with -I switch\n", srcfile->toChars());
         }
         fatal();
     }
@@ -1012,7 +1012,7 @@ void Module::runDeferredSemantic()
     //if (deferred.dim) printf("+Module::runDeferredSemantic('%s'), len = %d\n", toChars(), deferred.dim);
     nested++;
 
-        size_t len;
+    size_t len;
     do
     {
         dprogress = 0;
@@ -1103,6 +1103,7 @@ int Module::selfImports()
     }
     return selfimports - 1;
 }
+
 
 /* =========================== ModuleDeclaration ===================== */
 

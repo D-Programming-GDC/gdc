@@ -122,7 +122,8 @@ char *Declaration::mangle()
                 case LINKc:
                 case LINKwindows:
                 case LINKpascal:
-                        return ident->toChars();
+                    return ident->toChars();
+
                 case LINKcpp:
 #if DMDV2 && (TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS)
                     return cpp_mangle(this);

@@ -32,7 +32,7 @@
 #include <errno.h>
 #endif
 
-#ifndef _WIN32 //#if linux || __APPLE__ || __FreeBSD__
+#ifndef _WIN32
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -479,7 +479,7 @@ hash_t FileName::hashCode()
 
 int FileName::compare(Object *obj)
 {
-        return compare(str, ((FileName *)obj)->str);
+    return compare(str, ((FileName *)obj)->str);
 }
 
 int FileName::compare(const char *name1, const char *name2)
@@ -493,7 +493,7 @@ int FileName::compare(const char *name1, const char *name2)
 
 int FileName::equals(Object *obj)
 {
-        return compare(obj) == 0;
+    return compare(obj) == 0;
 }
 
 int FileName::equals(const char *name1, const char *name2)
@@ -507,14 +507,13 @@ int FileName::equals(const char *name1, const char *name2)
 
 int FileName::absolute(const char *name)
 {
-#ifndef _WIN32
-        return (*name == '/');
-#elif _WIN32
+#if _WIN32
     return (*name == '\\') ||
            (*name == '/')  ||
            (*name && name[1] == ':');
-#else
-    assert(0);
+#endif
+#ifndef _WIN32
+    return (*name == '/');
 #endif
 }
 
@@ -606,7 +605,7 @@ char *FileName::name(const char *str)
                  * Consider ADS separators as part of the file name.
                  */
                 if (e == str + 1 || e == str + len - 1)
-                return e + 1;
+                    return e + 1;
 #endif
             default:
                 if (e == str)
@@ -896,6 +895,7 @@ cont:
 #endif
 }
 
+
 int FileName::exists(const char *name)
 {
 #ifndef _WIN32
@@ -946,14 +946,15 @@ void FileName::ensurePathExists(const char *path)
 #if _WIN32
             if (path[strlen(path) - 1] != '\\')
 #endif
-#if linux
+#ifndef _WIN32
             if (path[strlen(path) - 1] != '\\')
 #endif
             {
                 //printf("mkdir(%s)\n", path);
 #if _WIN32
                 if (mkdir(path))
-#else
+#endif
+#ifndef _WIN32
                 if (mkdir(path, 0777))
 #endif
                 {
@@ -967,6 +968,7 @@ void FileName::ensurePathExists(const char *path)
         }
     }
 }
+
 
 /******************************************
  * Return canonical version of name in a malloc'd buffer.
@@ -1011,6 +1013,7 @@ char *FileName::canonicalName(const char *name)
     return NULL;
 #endif
 }
+
 
 /****************************** File ********************************/
 
@@ -1787,6 +1790,7 @@ void OutBuffer::align(unsigned size)
     fill0(nbytes);
 }
 
+
 ////////////////////////////////////////////////////////////////
 // The compiler shipped with Visual Studio 2005 (and possible
 // other versions) does not support C99 printf format specfiers
@@ -1822,6 +1826,7 @@ void OutBuffer::vprintf(const char *format, va_list args)
     char *p;
     unsigned psize;
     int count;
+
     WORKAROUND_C99_SPECIFIERS_BUG(string, fmt, format);
     va_list args_copy;
 
@@ -1838,8 +1843,8 @@ void OutBuffer::vprintf(const char *format, va_list args)
 #endif
 #ifndef _WIN32
         va_list va;
-         va_copy(va, args);
- /*
+        va_copy(va, args);
+/*
   The functions vprintf(), vfprintf(), vsprintf(), vsnprintf()
   are equivalent to the functions printf(), fprintf(), sprintf(),
   snprintf(), respectively, except that they are called with a
@@ -1849,7 +1854,7 @@ void OutBuffer::vprintf(const char *format, va_list args)
   va_end(ap) itself afterwards.
  */
         count = vsnprintf(p,psize,format,va);
-         va_end(va);
+        va_end(va);
         if (count == -1)
             psize *= 2;
         else if (count >= psize)
@@ -1869,6 +1874,8 @@ void OutBuffer::vprintf(const wchar_t *format, va_list args)
     dchar *p;
     unsigned psize;
     int count;
+
+    WORKAROUND_C99_SPECIFIERS_BUG(wstring, fmt, format);
     va_list args_copy;
 
     p = buffer;
@@ -1883,9 +1890,10 @@ void OutBuffer::vprintf(const wchar_t *format, va_list args)
 #endif
 #ifndef _WIN32
         va_list va;
-         va_copy(va, args);
+        va_copy(va, args);
         count = vsnwprintf(p,psize,format,va);
-         va_end(va);
+        va_end(va);
+
         if (count == -1)
             psize *= 2;
         else if (count >= psize)

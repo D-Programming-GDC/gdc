@@ -233,6 +233,7 @@ Dsymbol *ClassDeclaration::syntaxCopy(Dsymbol *s)
 
 void ClassDeclaration::semantic(Scope *sc)
 {   int i;
+    unsigned offset;
 
     //printf("ClassDeclaration::semantic(%s), type = %p, sizeok = %d, this = %p\n", toChars(), type, sizeok, this);
     //printf("\tparent = %p, '%s'\n", sc->parent, sc->parent ? sc->parent->toChars() : "");
@@ -579,11 +580,12 @@ void ClassDeclaration::semantic(Scope *sc)
         isscope = 1;
     if (storage_class & STCabstract)
         isabstract = 1;
+
     if (storage_class & STCimmutable)
         type = type->addMod(MODimmutable);
-    else if (storage_class & STCconst)
+    if (storage_class & STCconst)
         type = type->addMod(MODconst);
-    else if (storage_class & STCshared)
+    if (storage_class & STCshared)
         type = type->addMod(MODshared);
 
     sc = sc->push(this);

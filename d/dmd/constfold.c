@@ -940,9 +940,8 @@ Expression *Cmp(enum TOK op, Type *type, Expression *e1, Expression *e2)
 #if IN_GCC
         if (r1.isNan() || r2.isNan())   // if unordered
 #else
-        if (isnan(r1) || isnan(r2))     // if unordered
+        if (Port::isNan(r1) || Port::isNan(r2)) // if unordered
 #endif
-        //if (Port::isNan(r1) || Port::isNan(r2))       // if unordered
         {
             switch (op)
             {
@@ -1516,15 +1515,15 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
     }
     else if (e1->op == TOKarrayliteral && e2->op == TOKnull &&
         t1->nextOf()->equals(t2->nextOf()))
-     {
+    {
         e = e1;
         goto L3;
-     }
-     else if (e1->op == TOKnull && e2->op == TOKarrayliteral &&
+    }
+    else if (e1->op == TOKnull && e2->op == TOKarrayliteral &&
         t1->nextOf()->equals(t2->nextOf()))
-     {
+    {
         e = e2;
-      L3:
+     L3:
         // Concatenate the array with null
         ArrayLiteralExp *es = (ArrayLiteralExp *)e;
 
@@ -1538,16 +1537,15 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         }
         else
             e->type = type;
-     }
+    }
     else if ((e1->op == TOKarrayliteral || e1->op == TOKnull) &&
         e1->type->toBasetype()->nextOf()->equals(e2->type))
     {
         ArrayLiteralExp *es1;
         if (e1->op == TOKarrayliteral)
         {   es1 = (ArrayLiteralExp *)e1;
-
-        es1 = new ArrayLiteralExp(es1->loc, (Expressions *)es1->elements->copy());
-        es1->elements->push(e2);
+            es1 = new ArrayLiteralExp(es1->loc, (Expressions *)es1->elements->copy());
+            es1->elements->push(e2);
         }
         else
         {

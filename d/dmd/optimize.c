@@ -692,11 +692,11 @@ Expression *EqualExp::optimize(int result)
 
 Expression *IdentityExp::optimize(int result)
 {
-
     //printf("IdentityExp::optimize(result = %d) %s\n", result, toChars());
     e1 = e1->optimize(WANTvalue | (result & WANTinterpret));
     e2 = e2->optimize(WANTvalue | (result & WANTinterpret));
     Expression *e = this;
+
     if ((this->e1->isConst()     && this->e2->isConst()) ||
         (this->e1->op == TOKnull && this->e2->op == TOKnull))
     {

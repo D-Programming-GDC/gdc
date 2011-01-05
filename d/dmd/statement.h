@@ -374,7 +374,6 @@ struct ForeachRangeStatement : Statement
     int hasContinue();
     int usesEH();
     int blockExit();
-
     int comeFrom();
     Expression *interpret(InterState *istate);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -457,6 +456,7 @@ struct SwitchStatement : Statement
 {
     Expression *condition;
     Statement *body;
+
     DefaultStatement *sdefault;
 
     Array gotoCases;            // array of unresolved GotoCaseStatement's

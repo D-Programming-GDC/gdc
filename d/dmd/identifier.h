@@ -36,7 +36,7 @@ struct Identifier : Object
     int dyncast();
 
     static Identifier *generateId(const char *prefix);
-     static Identifier *generateId(const char *prefix, size_t i);
+    static Identifier *generateId(const char *prefix, size_t i);
 };
 
 #endif /* DMD_IDENTIFIER_H */

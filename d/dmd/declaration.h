@@ -251,7 +251,7 @@ struct VarDeclaration : Declaration
 {
     Initializer *init;
     target_size_t offset;
-    int noscope;                // no auto semantics
+    int noscope;                 // no auto semantics
 #if DMDV2
     FuncDeclarations nestedrefs; // referenced by these lexically nested functions
     bool isargptr;              // if parameter that _argptr points to
@@ -712,7 +712,7 @@ struct CtorDeclaration : FuncDeclaration
 struct PostBlitDeclaration : FuncDeclaration
 {
     PostBlitDeclaration(Loc loc, Loc endloc);
-   PostBlitDeclaration(Loc loc, Loc endloc, Identifier *id);
+    PostBlitDeclaration(Loc loc, Loc endloc, Identifier *id);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -776,6 +776,7 @@ struct SharedStaticCtorDeclaration : StaticCtorDeclaration
 
 struct StaticDtorDeclaration : FuncDeclaration
 {   VarDeclaration *vgate;      // 'gate' variable
+
     StaticDtorDeclaration(Loc loc, Loc endloc);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);

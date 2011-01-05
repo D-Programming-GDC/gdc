@@ -236,17 +236,6 @@ Dsymbol *Dsymbol::pastMixin()
     return s;
 }
 
-TemplateInstance *Dsymbol::inTemplateInstance()
-{
-    for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
-    {
-        TemplateInstance *ti = parent->isTemplateInstance();
-        if (ti)
-            return ti;
-    }
-    return NULL;
-}
-
 /**********************************
  * Use this instead of toParent() when looking for the
  * 'this' pointer of the enclosing function/class.
@@ -260,6 +249,16 @@ Dsymbol *Dsymbol::toParent2()
     return s;
 }
 
+TemplateInstance *Dsymbol::inTemplateInstance()
+{
+    for (Dsymbol *parent = this->parent; parent; parent = parent->parent)
+    {
+        TemplateInstance *ti = parent->isTemplateInstance();
+        if (ti)
+            return ti;
+    }
+    return NULL;
+}
 
 int Dsymbol::isAnonymous()
 {
@@ -286,8 +285,8 @@ void Dsymbol::importAll(Scope *sc)
 /*************************************
  * Does semantic analysis on the public face of declarations.
  */
- 
- void Dsymbol::semantic0(Scope *sc)
+
+void Dsymbol::semantic0(Scope *sc)
 {
 }
 
@@ -481,8 +480,8 @@ LabelDsymbol *Dsymbol::isLabel()                // is this a LabelDsymbol()?
 AggregateDeclaration *Dsymbol::isMember()       // is this a member of an AggregateDeclaration?
 {
     //printf("Dsymbol::isMember() %s\n", toChars());
-      Dsymbol *parent = toParent();
-     //printf("parent is %s %s\n", parent->kind(), parent->toChars());
+    Dsymbol *parent = toParent();
+    //printf("parent is %s %s\n", parent->kind(), parent->toChars());
     return parent ? parent->isAggregateDeclaration() : NULL;
 }
 
@@ -597,7 +596,8 @@ void Dsymbol::checkDeprecated(Loc loc, Scope *sc)
         {
             if (sc->scopesym && sc->scopesym->isDeprecated())
                 return;
-                // If inside a StorageClassDeclaration that is deprecated
+
+            // If inside a StorageClassDeclaration that is deprecated
             if (sc->stc & STCdeprecated)
                 return;
         }
@@ -667,8 +667,8 @@ Array *Dsymbol::arraySyntaxCopy(Array *a)
 
 void Dsymbol::addComment(unsigned char *comment)
 {
-//    if (comment)
-//      printf("adding comment '%s' to symbol %p '%s'\n", comment, this, toChars());
+    //if (comment)
+        //printf("adding comment '%s' to symbol %p '%s'\n", comment, this, toChars());
 
     if (!this->comment)
         this->comment = comment;
@@ -735,9 +735,9 @@ Dsymbol *ScopeDsymbol::syntaxCopy(Dsymbol *s)
 
 Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
 {
-
     //printf("%s->ScopeDsymbol::search(ident='%s', flags=x%x)\n", toChars(), ident->toChars(), flags);
     //if (strcmp(ident->toChars(),"c") == 0) *(char*)0=0;
+
     // Look in symbols declared in this module
     Dsymbol *s = symtab ? symtab->lookup(ident) : NULL;
     if (s)
@@ -1151,7 +1151,7 @@ Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int flags)
 DsymbolTable::DsymbolTable()
 {
 #if STRINGTABLE
-     tab = new StringTable;
+    tab = new StringTable;
 #else
     tab = NULL;
 #endif

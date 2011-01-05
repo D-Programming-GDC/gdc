@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "rmem.h"
-
 #include "root.h"
 
 #include "mars.h"
@@ -503,7 +502,7 @@ void ScopeDsymbol::emitMemberComments(Scope *sc)
             buf->offset = offset1;
         }
         else
-        buf->writestring(")\n");
+            buf->writestring(")\n");
     }
 }
 
@@ -616,7 +615,7 @@ void TemplateDeclaration::emitComment(Scope *sc)
         {
             ss = onemember->isFuncDeclaration();
             if (ss)
-                {       hasmembers = 0;
+            {   hasmembers = 0;
                 if (com != ss->comment)
                     com = Lexer::combineComments(com, ss->comment);
             }
@@ -628,9 +627,9 @@ void TemplateDeclaration::emitComment(Scope *sc)
     if (!com)
         return;
 
-     OutBuffer *buf = sc->docbuf;
-     DocComment *dc = DocComment::parse(sc, this, com);
-     unsigned o;
+    OutBuffer *buf = sc->docbuf;
+    DocComment *dc = DocComment::parse(sc, this, com);
+    unsigned o;
 
     if (!dc)
     {
@@ -925,7 +924,7 @@ void ClassDeclaration::toDocBuffer(OutBuffer *buf)
         }
         else
         {
-                if (isAbstract())
+            if (isAbstract())
                 buf->writestring("abstract ");
             buf->printf("%s $(DDOC_PSYMBOL %s)", kind(), toChars());
         }
@@ -988,8 +987,7 @@ DocComment::DocComment()
 DocComment *DocComment::parse(Scope *sc, Dsymbol *s, unsigned char *comment)
 {   unsigned idlen;
 
-//printf("parse(%s): '%s'\n", s->toChars(), comment);
-
+    //printf("parse(%s): '%s'\n", s->toChars(), comment);
     if (sc->lastdc && isDitto(comment))
         return NULL;
 
@@ -1035,7 +1033,6 @@ void DocComment::parseSections(unsigned char *comment)
     unsigned namelen = 0;
 
     //printf("parseSections('%s')\n", comment);
-
     p = comment;
     while (*p)
     {

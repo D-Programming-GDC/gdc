@@ -444,7 +444,6 @@ Type *Type::merge()
     assert(t);
     if (!deco)
     {
-
         if (next)
             next = next->merge();
 
@@ -487,7 +486,6 @@ Type *Type::merge2()
         assert(0);
     return t;
 }
-
 
 int Type::isbit()
 {
@@ -1595,8 +1593,8 @@ MATCH TypeBasic::implicitConvTo(Type *to)
 
     if (ty == Tvoid || to->ty == Tvoid)
         return MATCHnomatch;
-        if (to->ty == Tbool)
-            return MATCHnomatch;
+    if (to->ty == Tbool)
+        return MATCHnomatch;
     if (!to->isTypeBasic())
         return MATCHnomatch;
 
@@ -2550,7 +2548,7 @@ Type *TypePointer::syntaxCopy()
 
 Type *TypePointer::semantic(Loc loc, Scope *sc)
 {
-        if (deco)
+    if (deco)
         return this;
 
     //printf("TypePointer::semantic()\n");
@@ -2930,7 +2928,6 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
      * This can produce redundant copies if inferring return type,
      * as semantic() will get called again on this.
      */
-
     TypeFunction *tf = (TypeFunction *)mem.malloc(sizeof(TypeFunction));
     memcpy(tf, this, sizeof(TypeFunction));
     if (parameters)
@@ -3025,7 +3022,7 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
         argsc->pop();
     }
     if (tf->next)
-    tf->deco = tf->merge()->deco;
+        tf->deco = tf->merge()->deco;
 
     if (tf->inuse)
     {   error(loc, "recursive type");
@@ -3827,7 +3824,7 @@ TypeTypeof::TypeTypeof(Loc loc, Expression *exp)
 
 Type *TypeTypeof::syntaxCopy()
 {
-        //printf("TypeTypeof::syntaxCopy() %s\n", toChars());
+    //printf("TypeTypeof::syntaxCopy() %s\n", toChars());
     TypeTypeof *t;
 
     t = new TypeTypeof(loc, exp->syntaxCopy());
@@ -3937,8 +3934,7 @@ Type *TypeTypeof::semantic(Loc loc, Scope *sc)
             goto Lerr;
         }
         if (t->ty == Ttypeof)
-        {
-            error(loc, "forward reference to %s", toChars());
+        {   error(loc, "forward reference to %s", toChars());
             goto Lerr;
         }
     }
@@ -4036,7 +4032,7 @@ Dsymbol *TypeEnum::toDsymbol(Scope *sc)
 
 Type *TypeEnum::toBasetype()
 {
-        if (sym->scope)
+    if (sym->scope)
     {   // Enum is forward referenced. We don't need to resolve the whole thing,
         // just the base type
         if (sym->memtype)
@@ -4090,16 +4086,16 @@ Expression *TypeEnum::dotExp(Scope *sc, Expression *e, Identifier *ident)
     s = sym->symtab->lookup(ident);
     if (!s)
     {
-    if (ident == Id::max ||
+        if (ident == Id::max ||
             ident == Id::min ||
             ident == Id::init ||
             ident == Id::mangleof ||
             !sym->memtype
            )
         {
-        return getProperty(e->loc, ident);
-    }
-    return sym->memtype->dotExp(sc, e, ident);
+            return getProperty(e->loc, ident);
+        }
+        return sym->memtype->dotExp(sc, e, ident);
     }
     m = s->isEnumMember();
     em = m->value->copy();
@@ -4560,7 +4556,7 @@ L1:
         return Type::dotExp(sc, e, ident);
     }
     if (!s->isFuncDeclaration())        // because of overloading
-    s->checkDeprecated(e->loc, sc);
+        s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
 
     v = s->isVarDeclaration();
@@ -4607,7 +4603,7 @@ L1:
     TemplateInstance *ti = s->isTemplateInstance();
     if (ti)
     {   if (!ti->semanticRun)
-    {
+        {
             if (global.errors)
                 return new ErrorExp();  // TemplateInstance::semantic() will fail anyway
             ti->semantic(sc);
@@ -4621,12 +4617,12 @@ L1:
     }
 
     Import *timp = s->isImport();
-     if (timp)
-     {
+    if (timp)
+    {
         e = new DsymbolExp(e->loc, s);
         e = e->semantic(sc);
         return e;
-     }
+    }
 
     d = s->isDeclaration();
 #ifdef DEBUG
@@ -4968,7 +4964,7 @@ L1:
         }
     }
     if (!s->isFuncDeclaration())        // because of overloading
-    s->checkDeprecated(e->loc, sc);
+        s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
     v = s->isVarDeclaration();
     if (v && v->isConst() && v->type->toBasetype()->ty != Tsarray)

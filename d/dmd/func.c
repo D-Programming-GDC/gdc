@@ -74,7 +74,7 @@ FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageCla
     cantInterpret = 0;
     semanticRun = PASSinit;
 #if DMDV1
-      nestedFrameRef = 0;
+    nestedFrameRef = 0;
 #endif
     fes = NULL;
     introducing = 0;
@@ -88,8 +88,8 @@ FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageCla
     nrvo_var = NULL;
     shidden = NULL;
 #if DMDV2
-     builtin = BUILTINunknown;
-     tookAddressOf = 0;
+    builtin = BUILTINunknown;
+    tookAddressOf = 0;
 #endif
 }
 
@@ -259,17 +259,18 @@ void FuncDeclaration::semantic(Scope *sc)
         if (fbody && isVirtual())
             error("function body is not abstract in interface %s", id->toChars());
     }
+
     /* Template member functions aren't virtual:
      *   interface TestInterface { void tpl(T)(); }
      * and so won't work in interfaces
      */
-     if ((pd = toParent()) != NULL &&
+    if ((pd = toParent()) != NULL &&
         pd->isTemplateInstance() &&
         (pd = toParent2()) != NULL &&
         (id = pd->isInterfaceDeclaration()) != NULL)
-     {
+    {
         error("template member function not allowed in interface %s", id->toChars());
-     }
+    }
 
     cd = parent->isClassDeclaration();
     if (cd)
@@ -330,6 +331,7 @@ void FuncDeclaration::semantic(Scope *sc)
          */
         vi = cd->baseClass ? findVtblIndex(&cd->baseClass->vtbl, cd->baseClass->vtbl.dim)
                            : -1;
+
         switch (vi)
         {
             case -1:
@@ -352,7 +354,7 @@ void FuncDeclaration::semantic(Scope *sc)
 
                 if (isFinal())
                 {
-                        if (isOverride())
+                    if (isOverride())
                         error("does not override any function");
                     cd->vtblFinal.push(this);
                 }
@@ -808,7 +810,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                 v_arguments->parent = this;
 #endif
             }
-            if (f->linkage == LINKd || (f->parameters && Parameter::dim(f->parameters)))
+            if (f->linkage == LINKd || (parameters && parameters->dim))
             {   // Declare _argptr
 #if IN_GCC
                 t = d_gcc_builtin_va_list_d_type;
@@ -1258,7 +1260,6 @@ void FuncDeclaration::semantic3(Scope *sc)
                 else
                     offset += p->type->size();
                 offset = (offset + PTRSIZE - 1) & ~(PTRSIZE - 1);  // assume stack aligns on pointer size
-                offset = (offset + 3) & ~3;     // assume stack aligns on 4
                 Expression *e = new SymOffExp(0, p, offset);
                 e->type = Type::tvoidptr;
                 //e = e->semantic(sc);
@@ -1618,14 +1619,14 @@ int FuncDeclaration::overrides(FuncDeclaration *fd)
 
 int FuncDeclaration::findVtblIndex(Array *vtbl, int dim)
 {
-        FuncDeclaration *mismatch = NULL;
+    FuncDeclaration *mismatch = NULL;
     int bestvi = -1;
     for (int vi = 0; vi < dim; vi++)
     {
         FuncDeclaration *fdv = ((Dsymbol *)vtbl->data[vi])->isFuncDeclaration();
         if (fdv && fdv->ident == ident)
         {
-                if (type->equals(fdv->type))    // if exact match
+            if (type->equals(fdv->type))        // if exact match
                 return vi;                      // no need to look further
 
             int cov = type->covariant(fdv->type);
@@ -1636,7 +1637,7 @@ int FuncDeclaration::findVtblIndex(Array *vtbl, int dim)
                     break;
 
                 case 1:
-                        bestvi = vi;    // covariant, but not identical
+                    bestvi = vi;        // covariant, but not identical
                     break;              // keep looking for an exact match
 
                 case 2:
@@ -1858,9 +1859,8 @@ int fp2(void *param, FuncDeclaration *f)
 
     if (f != m->lastf)          // skip duplicates
     {
-   m->anyf = f;
+        m->anyf = f;
         TypeFunction *tf = (TypeFunction *)f->type;
-        tf = (TypeFunction *)f->type;
         match = (MATCH) tf->callMatch(arguments);
         //printf("1match = %d\n", match);
         if (match != MATCHnomatch)
@@ -2124,6 +2124,7 @@ LabelDsymbol *FuncDeclaration::searchLabel(Identifier *ident)
     }
     return (LabelDsymbol *)s;
 }
+
 /****************************************
  * If non-static member function that has a 'this' pointer,
  * return the aggregate it is a member of.
@@ -2251,7 +2252,7 @@ int FuncDeclaration::isMain()
 
 int FuncDeclaration::isWinMain()
 {
-   //printf("FuncDeclaration::isWinMain() %s\n", toChars());
+    //printf("FuncDeclaration::isWinMain() %s\n", toChars());
 #if 0
     int x = ident == Id::WinMain &&
         linkage != LINKc && !isMember();
@@ -2427,6 +2428,7 @@ const char *FuncDeclaration::kind()
 {
     return "function";
 }
+
 /*******************************
  * Look at all the variables in this function that are referenced
  * by nested functions, and determine if a closure needs to be
@@ -2555,7 +2557,7 @@ Dsymbol *FuncLiteralDeclaration::syntaxCopy(Dsymbol *s)
     if (s)
         f = (FuncLiteralDeclaration *)s;
     else
-        {       f = new FuncLiteralDeclaration(loc, endloc, type->syntaxCopy(), tok, fes);
+    {   f = new FuncLiteralDeclaration(loc, endloc, type->syntaxCopy(), tok, fes);
         f->ident = ident;               // keep old identifier
     }
     FuncDeclaration::syntaxCopy(f);
@@ -2619,10 +2621,6 @@ void CtorDeclaration::semantic(Scope *sc)
 {
     //printf("CtorDeclaration::semantic() %s\n", toChars());
     sc = sc->push();
-#if STRUCTTHISREF
-    if (ad && ad->isStructDeclaration())
-        ((TypeFunction *)type)->isref = 1;
-#endif
     sc->stc &= ~STCstatic;              // not a static constructor
 
     parent = sc->parent;
@@ -2638,7 +2636,10 @@ void CtorDeclaration::semantic(Scope *sc)
         tret = cd->type; //->referenceTo();
     if (!type)
         type = new TypeFunction(arguments, tret, varargs, LINKd);
-
+#if STRUCTTHISREF
+    if (ad && ad->isStructDeclaration())
+        ((TypeFunction *)type)->isref = 1;
+#endif
     if (!originalType)
         originalType = type;
 
@@ -2888,9 +2889,9 @@ void StaticCtorDeclaration::semantic(Scope *sc)
         type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
 
     /* If the static ctor appears within a template instantiation,
-    * it could get called multiple times by the module constructors
-    * for different modules. Thus, protect it with a gate.
-    */
+     * it could get called multiple times by the module constructors
+     * for different modules. Thus, protect it with a gate.
+     */
     if (inTemplateInstance() && semanticRun < PASSsemantic)
     {
         /* Add this prefix to the function:
@@ -2913,7 +2914,7 @@ void StaticCtorDeclaration::semantic(Scope *sc)
         if (fbody)
             sa->push(fbody);
         fbody = new CompoundStatement(0, sa);
-     }
+    }
 
     FuncDeclaration::semantic(sc);
 
@@ -2923,7 +2924,7 @@ void StaticCtorDeclaration::semantic(Scope *sc)
         m = sc->module;
     if (m)
     {   m->needmoduleinfo = 1;
-    //printf("module1 %s needs moduleinfo\n", m->toChars());
+        //printf("module1 %s needs moduleinfo\n", m->toChars());
 #ifdef IN_GCC
         m->strictlyneedmoduleinfo = 1;
 #endif
@@ -2971,7 +2972,7 @@ StaticDtorDeclaration::StaticDtorDeclaration(Loc loc, Loc endloc)
     : FuncDeclaration(loc, endloc,
       Identifier::generateId("_staticDtor"), STCstatic, NULL)
 {
-        vgate = NULL;
+    vgate = NULL;
 }
 
 Dsymbol *StaticDtorDeclaration::syntaxCopy(Dsymbol *s)
@@ -2995,8 +2996,8 @@ void StaticDtorDeclaration::semantic(Scope *sc)
      * it could get called multiple times by the module constructors
      * for different modules. Thus, protect it with a gate.
      */
-     if (inTemplateInstance() && semanticRun < PASSsemantic)
-     {
+    if (inTemplateInstance() && semanticRun < PASSsemantic)
+    {
         /* Add this prefix to the function:
          *      static int gate;
          *      if (--gate != 0) return;
@@ -3019,7 +3020,7 @@ void StaticDtorDeclaration::semantic(Scope *sc)
             sa->push(fbody);
         fbody = new CompoundStatement(0, sa);
         vgate = v;
-     }
+    }
 
     FuncDeclaration::semantic(sc);
 
@@ -3178,11 +3179,11 @@ void UnitTestDeclaration::semantic(Scope *sc)
         sc2->pop();
     }
 
-#if IN_GCC
+#if 0
     // We're going to need ModuleInfo even if the unit tests are not
     // compiled in, because other modules may import this module and refer
     // to this ModuleInfo.
-    // (DMD doesn't need this, but GDC still does?)
+    // (This doesn't make sense to me?)
     Module *m = getModule();
     if (!m)
         m = sc->module;
@@ -3272,8 +3273,7 @@ void NewDeclaration::semantic(Scope *sc)
     else
     {
         Parameter *a = Parameter::getNth(tf->parameters, 0);
-        if (!a->type->equals(Type::tsize_t)  &&
-            (! global.params.isX86_64 || !a->type->equals(Type::tuns64)))
+        if (!a->type->equals(Type::tsize_t))
             error("first argument must be type size_t, not %s", a->type->toChars());
     }
 

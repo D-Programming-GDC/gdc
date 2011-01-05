@@ -62,25 +62,25 @@ void AsyncRead::addFile(File *file)
 
 void AsyncRead::start()
 {
-        //printf("aw->filesdim = %p %d\n", this, filesdim);
+    //printf("aw->filesdim = %p %d\n", this, filesdim);
     if (filesdim)
     {
-    unsigned threadaddr;
-    hThread = (HANDLE) _beginthreadex(NULL,
-        0,
-        &startthread,
-        this,
-        0,
-        (unsigned *)&threadaddr);
+        unsigned threadaddr;
+        hThread = (HANDLE) _beginthreadex(NULL,
+            0,
+            &startthread,
+            this,
+            0,
+            (unsigned *)&threadaddr);
 
-    if (hThread)
-    {
-        SetThreadPriority(hThread, THREAD_PRIORITY_HIGHEST);
-    }
-    else
-    {
-        assert(0);
-    }
+        if (hThread)
+        {
+            SetThreadPriority(hThread, THREAD_PRIORITY_HIGHEST);
+        }
+        else
+        {
+            assert(0);
+        }
     }
 }
 

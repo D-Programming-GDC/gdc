@@ -70,10 +70,10 @@ void StaticAssert::semantic2(Scope *sc)
         }
         else
             error("(%s) is false", exp->toChars());
-                if(sc->tinst)
+        if (sc->tinst)
             sc->tinst->printInstantiationTrace();
         if (!global.gag)
-            fatal();
+              fatal();
     }
     else if (!e->isBool(TRUE))
     {

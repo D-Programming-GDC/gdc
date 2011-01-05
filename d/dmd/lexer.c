@@ -177,7 +177,6 @@ const char *Token::toChars()
             break;
 #endif
 
-
         case TOKstring:
 #if CSTRINGS
             p = string;
@@ -683,7 +682,6 @@ void Lexer::scan(Token *t)
 
                 StringValue *sv = stringtable.update((char *)t->ptr, p - t->ptr);
                 Identifier *id = (Identifier *) sv->ptrvalue;
-
                 if (!id)
                 {   id = new Identifier(sv->lstring.string,TOKidentifier);
                     sv->ptrvalue = id;
@@ -708,6 +706,7 @@ void Lexer::scan(Token *t)
                         sprintf(time, "%.8s", p + 11);
                         sprintf(timestamp, "%.24s", p);
                     }
+
 #if DMDV1
                     if (mod && id == Id::FILE)
                     {
@@ -1337,7 +1336,7 @@ unsigned Lexer::escapeSequence()
                         }
                     }
                     if (ndigits != 2 && !utf_isValidDchar(v))
-                        {       error("invalid UTF character \\U%08x", v);
+                    {   error("invalid UTF character \\U%08x", v);
                         v = '?';        // recover with valid UTF character
                     }
                     c = v;
@@ -2260,7 +2259,7 @@ done:
                 break;
             if (d >= r)
                 break;
-           uinteger_t n2 = n * r;
+            uinteger_t n2 = n * r;
             //printf("n2 / r = %llx, n = %llx\n", n2/r, n);
             if (n2 / r != n || n2 + d < n)
             {
@@ -2365,9 +2364,9 @@ done:
             break;
 
         default:
-#ifdef DEBUG
-            printf("%x\n",flags);
-#endif
+            #ifdef DEBUG
+                printf("%x\n",flags);
+            #endif
             assert(0);
     }
     t->uns64value = n;
@@ -2723,6 +2722,7 @@ void Lexer::getDocComment(Token *t, unsigned lineComment)
     /* ct tells us which kind of comment it is: '/', '*', or '+'
      */
     unsigned char ct = t->ptr[2];
+
     /* Start of comment text skips over / * *, / + +, or / / /
      */
     unsigned char *q = t->ptr + 3;      // start of comment text
@@ -2753,8 +2753,8 @@ void Lexer::getDocComment(Token *t, unsigned lineComment)
     /* Comment is now [q .. qend].
      * Canonicalize it into buf[].
      */
-     OutBuffer buf;
-     int linestart = 0;
+    OutBuffer buf;
+    int linestart = 0;
 
     for (; q < qend; q++)
     {
@@ -2838,7 +2838,8 @@ void Lexer::getDocComment(Token *t, unsigned lineComment)
 
 unsigned char *Lexer::combineComments(unsigned char *c1, unsigned char *c2)
 {
-        //printf("Lexer::combineComments('%s', '%s')\n", c1, c2);
+    //printf("Lexer::combineComments('%s', '%s')\n", c1, c2);
+
     unsigned char *c = c2;
 
     if (c1)
@@ -2855,9 +2856,6 @@ unsigned char *Lexer::combineComments(unsigned char *c1, unsigned char *c2)
             }
             memcpy(c + len1, c2, len2);
             c[len1 + len2] = 0;
-            c[len1] = '\n';
-            memcpy(c + len1 + 1, c2, len2);
-            c[len1 + 1 + len2] = 0;
         }
     }
     return c;

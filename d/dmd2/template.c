@@ -4107,7 +4107,7 @@ void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
     //printf("%d\n", nest);
     if (++nest > 500)
     {
-        global.gag = 0;         // ensure error message gets printed
+        global.gag = 0;                 // ensure error message gets printed
         error("recursive expansion");
         fatal();
     }

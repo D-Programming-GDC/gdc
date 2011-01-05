@@ -87,6 +87,7 @@ int Identifier::dyncast()
     return DYNCAST_IDENTIFIER;
 }
 
+
 Identifier *Identifier::generateId(const char *prefix)
 {
     static size_t i;

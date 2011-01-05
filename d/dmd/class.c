@@ -231,6 +231,7 @@ Dsymbol *ClassDeclaration::syntaxCopy(Dsymbol *s)
 
 void ClassDeclaration::semantic(Scope *sc)
 {   int i;
+    unsigned offset;
 
     //printf("ClassDeclaration::semantic(%s), type = %p, sizeok = %d, this = %p\n", toChars(), type, sizeok, this);
     //printf("\tparent = %p, '%s'\n", sc->parent, sc->parent ? sc->parent->toChars() : "");
@@ -246,11 +247,12 @@ void ClassDeclaration::semantic(Scope *sc)
 
     if (!sc)
         sc = scope;
-        if (!parent && sc->parent && !sc->parent->isModule())
-            parent = sc->parent;
+    if (!parent && sc->parent && !sc->parent->isModule())
+        parent = sc->parent;
 
-        type = type->semantic(loc, sc);
-        handle = type;
+    type = type->semantic(loc, sc);
+    handle = type;
+
     if (!members)                       // if forward reference
     {   //printf("\tclass '%s' is forward referenced\n", toChars());
         return;
@@ -513,7 +515,7 @@ void ClassDeclaration::semantic(Scope *sc)
             if (storage_class & STCstatic)
                 error("static class cannot inherit from nested class %s", baseClass->toChars());
             if (toParent2() != baseClass->toParent2())
-                {
+            {
                 if (toParent2())
                 {
                     error("is nested within %s, but super class %s is nested within %s",
@@ -616,7 +618,7 @@ void ClassDeclaration::semantic(Scope *sc)
          * Scope keeps track of things like 'offset'
          */
         if (s->isEnumDeclaration() || (s->isAggregateDeclaration() && s->ident))
-    {
+        {
             //printf("setScope %s %s\n", s->kind(), s->toChars());
             s->setScope(sc);
         }
@@ -855,7 +857,7 @@ Dsymbol *ClassDeclaration::search(Loc loc, Identifier *ident, int flags)
     //printf("%s.ClassDeclaration::search('%s')\n", toChars(), ident->toChars());
 
     if (scope)
-        {       Scope *sc = scope;
+    {   Scope *sc = scope;
         sc->mustsemantic++;
         semantic(sc);
         sc->mustsemantic--;
@@ -1093,6 +1095,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
     //printf("InterfaceDeclaration::semantic(%s), type = %p\n", toChars(), type);
     if (inuse)
         return;
+
     if (!sc)
         sc = scope;
     if (!parent && sc->parent && !sc->parent->isModule())
@@ -1100,6 +1103,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
 
     type = type->semantic(loc, sc);
     handle = type;
+
     if (!members)                       // if forward reference
     {   //printf("\tinterface '%s' is forward referenced\n", toChars());
         return;
@@ -1328,11 +1332,14 @@ int InterfaceDeclaration::isBaseOf(BaseClass *bc, target_ptrdiff_t *poffset)
         {
             if (poffset)
             {   *poffset = b->offset;
+                if (j && bc->base->isInterfaceDeclaration())
+                    *poffset = OFFSET_RUNTIME;
             }
             return 1;
         }
         if (isBaseOf(b, poffset))
-        {
+        {   if (j && poffset && bc->base->isInterfaceDeclaration())
+                *poffset = OFFSET_RUNTIME;
             return 1;
         }
     }

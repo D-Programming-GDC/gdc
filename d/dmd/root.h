@@ -47,10 +47,11 @@ void warning(const char *format, ...);
 #if _MSC_VER
 #include <float.h>  // for _isnan
 #include <malloc.h> // for alloca
- // According to VC 8.0 docs, long double is the same as double
- #define strtold strtod
- #define strtof  strtod
- #define isnan   _isnan
+// According to VC 8.0 docs, long double is the same as double
+#define strtold strtod
+#define strtof  strtod
+#define isnan   _isnan
+
 typedef __int64 longlong;
 typedef unsigned __int64 ulonglong;
 #else
@@ -325,7 +326,6 @@ struct Array : Object
     void *smallarray[SMALLARRAYCAP];    // inline storage for small arrays
 
   public:
-
     Array();
     ~Array();
     //Array(const Array&);

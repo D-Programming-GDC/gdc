@@ -22,33 +22,33 @@
 #endif
 
 /*
- It is very important to use version control macros correctly - the
- idea is that host and target are independent. If these are done
- correctly, cross compilers can be built.
- The host compiler and host operating system are also different,
- and are predefined by the host compiler. The ones used in
- dmd are:
+It is very important to use version control macros correctly - the
+idea is that host and target are independent. If these are done
+correctly, cross compilers can be built.
+The host compiler and host operating system are also different,
+and are predefined by the host compiler. The ones used in
+dmd are:
 
- Macros defined by the compiler, not the code:
+Macros defined by the compiler, not the code:
 
-     Compiler:
+    Compiler:
         __DMC__         Digital Mars compiler
         _MSC_VER        Microsoft compiler
         __GNUC__        Gnu compiler
 
-     Host operating system:
+    Host operating system:
         _WIN32          Microsoft NT, Windows 95, Windows 98, Win32s,
                         Windows 2000, Win XP, Vista
         _WIN64          Windows for AMD64
         linux           Linux
         __APPLE__       Mac OSX
-  __FreeBSD__   FreeBSD
-  __sun&&__SVR4 Solaris, OpenSolaris (yes, both macros are necessary)
+        __FreeBSD__     FreeBSD
+        __sun&&__SVR4   Solaris, OpenSolaris (yes, both macros are necessary)
 
- For the target systems, there are the target operating system and
- the target object file format:
+For the target systems, there are the target operating system and
+the target object file format:
 
-     Target operating system:
+    Target operating system:
         TARGET_WINDOS   Covers 32 bit windows and 64 bit windows
         TARGET_LINUX    Covers 32 and 64 bit linux
         TARGET_OSX      Covers 32 and 64 bit Mac OSX
@@ -56,16 +56,17 @@
         TARGET_SOLARIS  Covers 32 and 64 bit Solaris
         TARGET_NET      Covers .Net
 
-     It is expected that the compiler for each platform will be able
-     to generate 32 and 64 bit code from the same compiler binary.
+    It is expected that the compiler for each platform will be able
+    to generate 32 and 64 bit code from the same compiler binary.
 
-     Target object module format:
+    Target object module format:
         OMFOBJ          Intel Object Module Format, used on Windows
         ELFOBJ          Elf Object Module Format, used on linux, FreeBSD and Solaris
         MACHOBJ         Mach-O Object Module Format, used on Mac OSX
 
-     There are currently no macros for byte endianness order.
-*/
+    There are currently no macros for byte endianness order.
+ */
+
 
 #include <stdio.h>
 #include <stdint.h>
@@ -104,21 +105,22 @@
  */
 
 #if _WIN32
- #define TARGET_WINDOS 1                // Windows dmd generates Windows targets
- #define OMFOBJ 1
+#define TARGET_WINDOS 1         // Windows dmd generates Windows targets
+#define OMFOBJ 1
 #endif
 
 #if TARGET_LINUX || TARGET_FREEBSD || TARGET_SOLARIS || TARGET_UNIX
 #ifndef ELFOBJ
- #define ELFOBJ 1
+#define ELFOBJ 1
 #endif
 #endif
 
 #if TARGET_OSX
 #ifndef MACHOBJ
- #define MACHOBJ 1
+#define MACHOBJ 1
 #endif
 #endif
+
 
 struct Array;
 struct OutBuffer;
@@ -135,7 +137,7 @@ struct Param
     char trace;         // insert profiling hooks
     char quiet;         // suppress non-error messages
     char verbose;       // verbose compile
-    char vtls;          // identify thread local variabless
+    char vtls;          // identify thread local variables
     char symdebug;      // insert debug symbolic information
     char optimize;      // run optimizer
     char map;           // generate linker .map file
@@ -260,7 +262,8 @@ extern Global global;
 /* Set if Windows Structured Exception Handling C extensions are supported.
  * Apparently, VC has dropped support for these?
  */
- #define WINDOWS_SEH    (_WIN32 && __DMC__)
+#define WINDOWS_SEH     (_WIN32 && __DMC__)
+
 
 #ifdef __DMC__
  typedef _Complex long double complex_t;
@@ -306,6 +309,7 @@ typedef sinteger_t target_ptrdiff_t;
 #else
 typedef long double real_t;
 #endif
+
 // Modify OutBuffer::writewchar to write the correct size of wchar
 #if _WIN32
 #define writewchar writeword

@@ -36,6 +36,7 @@ struct AnonymousAggregateDeclaration;
 struct FuncDeclaration;
 struct DocComment;
 struct TemplateInstance;
+
 #if __GNUC__
 // Requires a full definition for PROT and LINK
 #include "dsymbol.h"    // PROT

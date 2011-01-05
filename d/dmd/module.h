@@ -73,7 +73,7 @@ struct Module : Package
     int strictlyneedmoduleinfo;
 #endif
 
-        int selfimports;                // 0: don't know, 1: does not, 2: does
+    int selfimports;            // 0: don't know, 1: does not, 2: does
     int selfImports();          // returns !=0 if module imports itself
 
     int insearch;

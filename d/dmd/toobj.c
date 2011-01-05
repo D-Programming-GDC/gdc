@@ -31,6 +31,7 @@
 #include "id.h"
 #include "import.h"
 #include "template.h"
+
 #include "rmem.h"
 
 #ifndef IN_GCC
@@ -241,6 +242,7 @@ void Dsymbol::toObjFile(int multiobj)
     }
 #endif
 }
+
 /* ================================================================== */
 
 void ClassDeclaration::toObjFile(int multiobj)
@@ -253,6 +255,11 @@ void ClassDeclaration::toObjFile(int multiobj)
 
     if (!members)
         return;
+
+    if (multiobj)
+    {   obj_append(this);
+        return;
+    }
 
     if (global.params.symdebug)
         toDebug();
@@ -728,7 +735,7 @@ void ClassDeclaration::toObjFile(int multiobj)
     vtblsym->Sclass = scclass;
     vtblsym->Sfl = FLdata;
 #if ELFOBJ
-      vtblsym->Sseg = CDATA;
+    vtblsym->Sseg = CDATA;
 #endif
 #if MACHOBJ
     vtblsym->Sseg = DATA;
@@ -825,10 +832,9 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     if (global.params.symdebug)
         toDebug();
 
+    scclass = SCglobal;
     if (inTemplateInstance())
         scclass = SCcomdat;
-    else
-        scclass = SCglobal;
 
     // Put out the members
     for (i = 0; i < members->dim; i++)
@@ -853,7 +859,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     csym->Sfl = FLdata;
 
     /* The layout is:
-        {
+       {
             void **vptr;
             monitor_t monitor;
             byte[] initializer;         // static initialization data
@@ -871,7 +877,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
             const(MemberInfo[]) function(string) xgetMembers;   // module getMembers() function
 #endif
             TypeInfo typeinfo;
-        }
+       }
      */
     dt_t *dt = NULL;
 
@@ -899,15 +905,15 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     dtsize_t(&dt, vtblInterfaces->dim);
     if (vtblInterfaces->dim)
     {
+        offset = global.params.isX86_64 ? CLASSINFO_SIZE_64 : CLASSINFO_SIZE;    // must be ClassInfo.size
         if (classinfo)
         {
-            if (classinfo->structsize != CLASSINFO_SIZE)
+            if (classinfo->structsize != offset)
             {
                 error("mismatch between dmd and object.d or object.di found. Check installation and import paths with -v compiler switch.");
                 fatal();
             }
         }
-        offset = CLASSINFO_SIZE;
         dtxoff(&dt, csym, offset, TYnptr);      // (*)
     }
     else
@@ -924,7 +930,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     dtsize_t(&dt, 0);
 
     // flags
-    dtsize_t(&dt, 4 | isCOMinterface() | 32); //dti32(&dt, 4 | isCOMinterface(), true);
+    dtsize_t(&dt, 4 | isCOMinterface() | 32);
 
     // deallocator
     dtsize_t(&dt, 0);
@@ -966,7 +972,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 
     csym->Sdt = dt;
 #if ELFOBJ
-      csym->Sseg = CDATA;
+    csym->Sseg = CDATA;
 #endif
 #if MACHOBJ
     csym->Sseg = DATA;
@@ -1119,7 +1125,6 @@ void VarDeclaration::toObjFile(int multiobj)
                         init && init->isExpInitializer())
                         return;
 #endif
-
                     s->Sclass = SCcomdat;
                     break;
                 }
@@ -1217,7 +1222,7 @@ void TypedefDeclaration::toObjFile(int multiobj)
     {
         enum_SC scclass = SCglobal;
         if (inTemplateInstance())
-                scclass = SCcomdat;
+            scclass = SCcomdat;
 
         // Generate static initializer
         toInitializer();
@@ -1229,8 +1234,7 @@ void TypedefDeclaration::toObjFile(int multiobj)
 #if MACHOBJ
         sinit->Sseg = DATA;
 #endif
-        if (! sinit->Sdt)
-            sinit->Sdt = tc->sym->init->toDt();
+        sinit->Sdt = tc->sym->init->toDt();
         outdata(sinit);
     }
 }
@@ -1258,7 +1262,7 @@ void EnumDeclaration::toObjFile(int multiobj)
     {
         enum_SC scclass = SCglobal;
         if (inTemplateInstance())
-                scclass = SCcomdat;
+            scclass = SCcomdat;
 
         // Generate static initializer
         toInitializer();
@@ -1277,15 +1281,9 @@ void EnumDeclaration::toObjFile(int multiobj)
 #if DMDV2
         tc->sym->defaultval->toDt(&sinit->Sdt);
 #endif
-#ifndef IN_GCC
-        dtnbytes(&sinit->Sdt, tc->size(0), (char *)&tc->sym->defaultval);
-#else
-        Expression * e = new IntegerExp(0, tc->sym->defaultval, tc);
-        e->toDt(& sinit->Sdt);
-#endif
-        //sinit->Sdt = tc->sym->init->toDt();
         outdata(sinit);
     }
 }
+
 
 

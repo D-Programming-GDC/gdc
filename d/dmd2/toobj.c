@@ -32,7 +32,7 @@
 #include "import.h"
 #include "template.h"
 
-#include <rmem.h>
+#include "rmem.h"
 #ifndef IN_GCC
 #include "cc.h"
 #include "global.h"
@@ -1367,12 +1367,11 @@ void TypedefDeclaration::toObjFile(int multiobj)
         sinit->Sfl = FLdata;
 #if ELFOBJ // Burton
         sinit->Sseg = CDATA;
-#endif /* ELFOBJ */
+#endif
 #if MACHOBJ
         sinit->Sseg = DATA;
 #endif
-        if (! sinit->Sdt)
-            sinit->Sdt = tc->sym->init->toDt();
+        sinit->Sdt = tc->sym->init->toDt();
         outdata(sinit);
     }
 }

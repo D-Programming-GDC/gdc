@@ -271,7 +271,7 @@ void StructDeclaration::semantic(Scope *sc)
         {   //printf("already completed\n");
             scope = NULL;
             return;             // semantic() already completed
-    }
+        }
     }
     else
         symtab = new DsymbolTable();

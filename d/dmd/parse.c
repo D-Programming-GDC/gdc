@@ -104,6 +104,7 @@ Array *Parser::parseModule()
             check(TOKrparen);
         }
 #endif
+
         if (token.value != TOKidentifier)
         {   error("Identifier expected following module");
             goto Lerr;
@@ -291,7 +292,7 @@ Array *Parser::parseDeclDefs(int once)
             case TOKpure:         stc = STCpure;         goto Lstc;
             case TOKref:          stc = STCref;          goto Lstc;
             case TOKtls:          stc = STCtls;          goto Lstc;
-            case TOKgshared:      stc = STCgshared       goto Lstc;
+            case TOKgshared:      stc = STCgshared;      goto Lstc;
             //case TOKmanifest:   stc = STCmanifest;     goto Lstc;
             case TOKat:           stc = parseAttribute(); goto Lstc;
 #endif
@@ -603,6 +604,11 @@ StaticAssert *Parser::parseStaticAssert()
     return new StaticAssert(loc, exp, msg);
 }
 
+/***********************************
+ * Parse typeof(expression).
+ * Current token is on the 'typeof'.
+ */
+
 #if DMDV2
 TypeQualified *Parser::parseTypeof()
 {   TypeQualified *t;
@@ -623,7 +629,6 @@ TypeQualified *Parser::parseTypeof()
     return t;
 }
 #endif
-
 
 /***********************************
  * Parse extern (linkage)
@@ -1135,6 +1140,7 @@ EnumDeclaration *Parser::parseEnum()
                 }
                 EnumMember *em = new EnumMember(loc, ident, value);
                 e->members->push(em);
+
                 if (token.value == TOKrcurly)
                     ;
                 else
@@ -1155,14 +1161,13 @@ EnumDeclaration *Parser::parseEnum()
     else
         error("enum declaration is invalid");
 
-        //printf("-parseEnum() %s\n", e->toChars());
-
+    //printf("-parseEnum() %s\n", e->toChars());
     return e;
 }
 
 /********************************
-* Parse struct, union, interface, class.
-*/
+ * Parse struct, union, interface, class.
+ */
 
 Dsymbol *Parser::parseAggregate()
 {   AggregateDeclaration *a = NULL;
@@ -1566,7 +1571,7 @@ Dsymbol *Parser::parseMixin()
             id = Id::empty;
         }
         else
-                id = token.ident;
+            id = token.ident;
         nextToken();
     }
 
@@ -1612,7 +1617,6 @@ Dsymbol *Parser::parseMixin()
     tm = new TemplateMixin(loc, id, tqual, idents, tiargs);
     check(TOKsemicolon, "template mixin");
     return tm;
-
 }
 
 /******************************************
@@ -1873,7 +1877,7 @@ Type *Parser::parseBasicType()
             break;
 
         case TOKdot:
-        // Leading . as in .foo
+            // Leading . as in .foo
             id = Id::empty;
             goto Lident;
 
@@ -2075,8 +2079,8 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
             {   // This is the old C-style post [] syntax.
                 nextToken();
                 if (token.value == TOKrbracket)
-                { // It's a dynamic array
-                    ta = new TypeDArray(t);                     // []
+                {   // It's a dynamic array
+                    ta = new TypeDArray(t);             // []
                     nextToken();
                 }
                 else if (isDeclaration(&token, 0, TOKrbracket, NULL))
@@ -2095,6 +2099,7 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
                     ta = new TypeSArray(t, e);
                     check(TOKrbracket);
                 }
+
                 /* Insert ta into
                  *   ts -> ... -> t
                  * so that
@@ -2286,6 +2291,7 @@ Array *Parser::parseDeclarations()
         if (tok == TOKtypedef || tok == TOKalias)
         {   Declaration *v;
             Initializer *init = NULL;
+
             if (token.value == TOKassign)
             {
                 nextToken();
@@ -2354,12 +2360,14 @@ Array *Parser::parseDeclarations()
             a->push(s);
         }
         else
-        {   Initializer *init= NULL;
+        {
+            Initializer *init = NULL;
             if (token.value == TOKassign)
             {
                 nextToken();
                 init = parseInitializer();
             }
+
             VarDeclaration *v = new VarDeclaration(loc, t, ident, init);
             v->storage_class = storage_class;
             if (link == linkage)
@@ -2668,6 +2676,7 @@ Initializer *Parser::parseInitializer()
                 }
                 break;
             }
+
             ia = new ArrayInitializer(loc);
             nextToken();
             comma = 0;
@@ -3783,7 +3792,7 @@ void Parser::check(enum TOK value, const char *string)
 
 int Parser::isDeclaration(Token *t, int needId, enum TOK endtok, Token **pt)
 {
-        //printf("isDeclaration(needId = %d)\n", needId);
+    //printf("isDeclaration(needId = %d)\n", needId);
     int haveId = 0;
 
 #if DMDV2
@@ -3894,7 +3903,7 @@ int Parser::isBasicType(Token **pt)
     return TRUE;
 
 Lfalse:
-        //printf("is not\n");
+    //printf("is not\n");
     return FALSE;
 }
 
@@ -4309,7 +4318,6 @@ Expression *Parser::parsePrimaryExp()
     Loc loc = this->loc;
 
     //printf("parsePrimaryExp(): loc = %d\n", loc.linnum);
-
     switch (token.value)
     {
         case TOKidentifier:
@@ -4934,7 +4942,7 @@ Expression *Parser::parseUnaryExp()
                 tk = peek(tk);          // skip over right parenthesis
                 switch (tk->value)
                 {
-                        case TOKnot:
+                    case TOKnot:
                         tk = peek(tk);
                         if (tk->value == TOKis) // !is
                             break;
@@ -5725,3 +5733,4 @@ void initPrecedence()
     precedence[TOKcomma] = PREC_expr;
     precedence[TOKdeclaration] = PREC_expr;
 }
+

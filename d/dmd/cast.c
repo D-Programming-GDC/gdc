@@ -55,9 +55,8 @@ Expression *Expression::implicitCastTo(Scope *sc, Type *t)
             }
             else
             {
-
                 warning("implicit conversion of expression (%s) of type %s to %s can cause loss of data",
-                        toChars(), type->toChars(), t->toChars());
+                    toChars(), type->toChars(), t->toChars());
             }
         }
 #if DMDV2
@@ -123,7 +122,7 @@ MATCH Expression::implicitConvTo(Type *t)
     printf("Expression::implicitConvTo(this=%s, type=%s, t=%s)\n",
         toChars(), type->toChars(), t->toChars());
 #endif
-//static int nest; if (++nest == 10) halt();
+    //static int nest; if (++nest == 10) halt();
     if (!type)
     {   error("%s is not an expression", toChars());
         type = Type::terror;
@@ -484,10 +483,9 @@ MATCH ArrayLiteralExp::implicitConvTo(Type *t)
 {   MATCH result = MATCHexact;
 
 #if 0
-     printf("ArrayLiteralExp::implicitConvTo(this=%s, type=%s, t=%s)\n",
+    printf("ArrayLiteralExp::implicitConvTo(this=%s, type=%s, t=%s)\n",
         toChars(), type->toChars(), t->toChars());
 #endif
-
     Type *typeb = type->toBasetype();
     Type *tb = t->toBasetype();
     if ((tb->ty == Tarray || tb->ty == Tsarray) &&
@@ -1118,7 +1116,6 @@ L1:
     return e->Expression::castTo(sc, t);
 }
 
-
 Expression *SymOffExp::castTo(Scope *sc, Type *t)
 {
 #if 0
@@ -1168,8 +1165,8 @@ Expression *SymOffExp::castTo(Scope *sc, Type *t)
                     else
 #endif
                     {
-                    e = new SymOffExp(loc, f, 0);
-                    e->type = t;
+                        e = new SymOffExp(loc, f, 0);
+                        e->type = t;
                     }
 #if DMDV2
                     f->tookAddressOf++;
@@ -1182,7 +1179,7 @@ Expression *SymOffExp::castTo(Scope *sc, Type *t)
     }
     else
     {
-    e->type = t;
+        e->type = t;
     }
     return e;
 }
@@ -1455,14 +1452,14 @@ Expression *BinExp::typeCombine(Scope *sc)
     }
     else if ((t1->ty == Tsarray || t1->ty == Tarray) &&
              e2->op == TOKnull && t2->ty == Tpointer && t2->nextOf()->ty == Tvoid)
-     {  /*  (T[n] op void*)
+    {   /*  (T[n] op void*)
          *  (T[] op void*)
          */
         goto Lx1;
     }
     else if ((t2->ty == Tsarray || t2->ty == Tarray) &&
              e1->op == TOKnull && t1->ty == Tpointer && t1->nextOf()->ty == Tvoid)
-     {  /*  (void* op T[n])
+    {   /*  (void* op T[n])
          *  (void* op T[])
          */
         goto Lx2;
@@ -1553,13 +1550,13 @@ Expression *BinExp::typeCombine(Scope *sc)
         assert(0);
     }
     else if (e1->isArrayOperand() && t1->ty == Tarray &&
-            e2->implicitConvTo(t1->nextOf()))
+             e2->implicitConvTo(t1->nextOf()))
     {   // T[] op T
         e2 = e2->castTo(sc, t1->nextOf());
         t = t1->nextOf()->arrayOf();
     }
     else if (e2->isArrayOperand() && t2->ty == Tarray &&
-            e1->implicitConvTo(t2->nextOf()))
+             e1->implicitConvTo(t2->nextOf()))
     {   // T op T[]
         e1 = e1->castTo(sc, t2->nextOf());
         t = t2->nextOf()->arrayOf();
@@ -1609,15 +1606,14 @@ Lt2:
 
 Expression *Expression::integralPromotions(Scope *sc)
 {
-     Expression *e = this;
+    Expression *e = this;
 
-     //printf("integralPromotions %s %s\n", e->toChars(), e->type->toChars());
+    //printf("integralPromotions %s %s\n", e->toChars(), e->type->toChars());
     switch (type->toBasetype()->ty)
     {
         case Tvoid:
             error("void has no value");
             return new ErrorExp();
-            break;
 
         case Tint8:
         case Tuns8:

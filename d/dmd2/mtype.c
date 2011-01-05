@@ -69,6 +69,7 @@
 
 FuncDeclaration *hasThis(Scope *sc);
 
+
 #define LOGDOTEXP       0       // log ::dotExp()
 #define LOGDEFAULTINIT  0       // log ::defaultInit()
 
@@ -317,6 +318,7 @@ void Type::init()
         Tptrdiff_t = Tint32;
     }
     CLASSINFO_SIZE = 19 * PTRSIZE;
+    CLASSINFO_SIZE_64 = 19 * PTRSIZE;
 }
 
 d_uns64 Type::size()

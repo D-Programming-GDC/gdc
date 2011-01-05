@@ -1548,8 +1548,8 @@ Expression *StructLiteralExp::interpret(InterState *istate)
     /* We don't know how to deal with overlapping fields
      */
     if (sd->hasUnions)
-    {   error("Unions with overlapping fields are not yet supported in CTFE");
-        return EXP_CANT_INTERPRET;
+        {   error("Unions with overlapping fields are not yet supported in CTFE");
+                return EXP_CANT_INTERPRET;
     }
 
     if (elements)
@@ -1971,8 +1971,8 @@ Expression * assignArrayElement(Loc loc, Expression *arr, Expression *index, Exp
 // Consider moving this function into Expression.
 UnaExp *isUnaExp(Expression *e)
 {
-    switch (e->op)
-    {
+   switch (e->op)
+   {
         case TOKdotvar:
         case TOKindex:
         case TOKslice:
@@ -1985,7 +1985,7 @@ UnaExp *isUnaExp(Expression *e)
         default:
             break;
     }
-    return NULL;
+        return NULL;
 }
 
 // To resolve an assignment expression, we need to walk to the end of the
@@ -2002,10 +2002,11 @@ struct ExpressionReverseIterator
 
     ExpressionReverseIterator(Expression *root, Expression *thisexpr)
     {
-        totalExpr = root;
-        thisval = thisexpr;
-        totalDepth = findExpressionDepth(totalExpr);
+       totalExpr = root;
+       thisval = thisexpr;
+       totalDepth = findExpressionDepth(totalExpr);
     }
+
     int findExpressionDepth(Expression *e);
     Expression *getExpressionAtDepth(int depth);
 };
@@ -2013,9 +2014,9 @@ struct ExpressionReverseIterator
 // Determines the depth in unary expressions.
 int ExpressionReverseIterator::findExpressionDepth(Expression *e)
 {
-    int depth = 0;
-    for (;;)
-    {
+   int depth = 0;
+   for (;;)
+   {
         e = resolveReferences(e, thisval);
         if (e->op == TOKvar)
             return depth;
@@ -2032,10 +2033,10 @@ int ExpressionReverseIterator::findExpressionDepth(Expression *e)
 
 Expression *ExpressionReverseIterator::getExpressionAtDepth(int depth)
 {
-    Expression *e = totalExpr;
-    int d = 0;
-    for (;;)
-    {
+   Expression *e = totalExpr;
+   int d = 0;
+   for (;;)
+   {
         e = resolveReferences(e, thisval);
         if (d == depth) return e;
         ++d;
@@ -2089,12 +2090,14 @@ Expression *assignDotVar(ExpressionReverseIterator rvs, int depth, Expression *e
         assert(existing->op == TOKstructliteral);
         if (existing->op != TOKstructliteral)
             return EXP_CANT_INTERPRET;
+
         StructLiteralExp *se = (StructLiteralExp *)existing;
         int fieldi = se->getFieldIndex(member->type, member->offset);
         if (fieldi == -1)
             return EXP_CANT_INTERPRET;
         assert(fieldi>=0 && fieldi < se->elements->dim);
         Expression *ex =  (Expression *)(se->elements->data[fieldi]);
+
         newval = assignDotVar(rvs, depth - 1, ex, newval);
         Expressions *expsx = changeOneElement(se->elements, fieldi, newval);
         Expression * ee = new StructLiteralExp(se->loc, se->sd, expsx);
@@ -2400,8 +2403,8 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, fp_t fp, int post)
         //   aggregate[low..upp] = newval
         // ------------------------------
         /* Slice assignment, initialization of static arrays
-         *   a[] = e
-         */
+        *   a[] = e
+        */
         if (aggregate->op==TOKvar)
         {
             SliceExp * sexp = (SliceExp *)e1;
@@ -2472,58 +2475,58 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, fp_t fp, int post)
                 error("Array length mismatch assigning [0..%d] to [%d..%d]", srclen, lowerbound, upperbound);
                 return e;
             }
-            if (newval->op == TOKarrayliteral)
+        if (newval->op == TOKarrayliteral)
+        {
+            // Static array assignment from literal
+            if (upperbound - lowerbound != dim)
             {
-                // Static array assignment from literal
-                if (upperbound - lowerbound != dim)
-                {
-                    ArrayLiteralExp *ae = (ArrayLiteralExp *)newval;
-                    ArrayLiteralExp *existing = (ArrayLiteralExp *)v->value;
-                    // value[] = value[0..lower] ~ ae ~ value[upper..$]
-                    existing->elements = spliceElements(existing->elements, ae->elements, lowerbound);
-                    newval = existing;
-                }
+                ArrayLiteralExp *ae = (ArrayLiteralExp *)newval;
+                ArrayLiteralExp *existing = (ArrayLiteralExp *)v->value;
+                // value[] = value[0..lower] ~ ae ~ value[upper..$]
+                existing->elements = spliceElements(existing->elements, ae->elements, lowerbound);
+                newval = existing;
+            }
+            v->value = newval;
+            return newval;
+        }
+        else if (newval->op == TOKstring)
+        {
+            StringExp *se = (StringExp *)newval;
+            if (upperbound-lowerbound == dim)
                 v->value = newval;
-                return newval;
-            }
-            else if (newval->op == TOKstring)
+            else
             {
-                StringExp *se = (StringExp *)newval;
-                if (upperbound-lowerbound == dim)
-                    v->value = newval;
+                if (!v->value)
+                    v->value = createBlockDuplicatedStringLiteral(se->type,
+                        se->type->defaultInit()->toInteger(), dim, se->sz);
+                if (v->value->op==TOKstring)
+                    v->value = spliceStringExp((StringExp *)v->value, se, lowerbound);
                 else
-                {
-                    if (!v->value)
-                        v->value = createBlockDuplicatedStringLiteral(se->type,
-                                se->type->defaultInit()->toInteger(), dim, se->sz);
-                    if (v->value->op==TOKstring)
-                        v->value = spliceStringExp((StringExp *)v->value, se, lowerbound);
-                    else
-                        error("String slice assignment is not yet supported in CTFE");
-                }
-                return newval;
+                    error("String slice assignment is not yet supported in CTFE");
             }
-            else if (t->nextOf()->ty == newval->type->ty)
-            {
-                // Static array block assignment
-                e = createBlockDuplicatedArrayLiteral(v->type, newval, upperbound-lowerbound);
+            return newval;
+        }
+        else if (t->nextOf()->ty == newval->type->ty)
+        {
+            // Static array block assignment
+            e = createBlockDuplicatedArrayLiteral(v->type, newval, upperbound-lowerbound);
 
-                if (upperbound - lowerbound == dim)
-                    newval = e;
-                else
-                {
-                    ArrayLiteralExp *newarrayval;
-                    // Only modifying part of the array. Must create a new array literal.
-                    // If the existing array is uninitialized (this can only happen
-                    // with static arrays), create it.
-                    if (v->value && v->value->op == TOKarrayliteral)
-                        newarrayval = (ArrayLiteralExp *)v->value;
-                    else // this can only happen with static arrays
-                        newarrayval = createBlockDuplicatedArrayLiteral(v->type, v->type->defaultInit(), dim);
-                    // value[] = value[0..lower] ~ e ~ value[upper..$]
-                    newarrayval->elements = spliceElements(newarrayval->elements,
-                            ((ArrayLiteralExp *)e)->elements, lowerbound);
-                    newval = newarrayval;
+            if (upperbound - lowerbound == dim)
+                newval = e;
+            else
+            {
+                ArrayLiteralExp * newarrayval;
+                // Only modifying part of the array. Must create a new array literal.
+                // If the existing array is uninitialized (this can only happen
+                // with static arrays), create it.
+                if (v->value && v->value->op == TOKarrayliteral)
+                    newarrayval = (ArrayLiteralExp *)v->value;
+                else // this can only happen with static arrays
+                    newarrayval = createBlockDuplicatedArrayLiteral(v->type, v->type->defaultInit(), dim);
+                // value[] = value[0..lower] ~ e ~ value[upper..$]
+                newarrayval->elements = spliceElements(newarrayval->elements,
+                        ((ArrayLiteralExp *)e)->elements, lowerbound);
+                newval = newarrayval;
                 }
                 v->value = newval;
                 return e;
@@ -2700,17 +2703,15 @@ Expression *CallExp::interpret(InterState *istate)
     if (ecall->op == TOKstar)
     {   // Calling a function pointer
         Expression * pe = ((PtrExp*)ecall)->e1;
-        if (pe->op == TOKvar)
-        {
+        if (pe->op == TOKvar) {
             VarDeclaration *vd = ((VarExp *)((PtrExp*)ecall)->e1)->var->isVarDeclaration();
             if (vd && vd->value && vd->value->op==TOKsymoff)
                 fd = ((SymOffExp *)vd->value)->var->isFuncDeclaration();
-            else
-            {
+            else {
                 ecall = vd->value->interpret(istate);
                 if (ecall->op==TOKsymoff)
-                    fd = ((SymOffExp *)ecall)->var->isFuncDeclaration();
-            }
+                        fd = ((SymOffExp *)ecall)->var->isFuncDeclaration();
+                }
         }
         else
             ecall = ((PtrExp*)ecall)->e1->interpret(istate);

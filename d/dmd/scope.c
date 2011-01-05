@@ -379,7 +379,7 @@ void Scope::setNoFree()
 void *scope_search_fp(void *arg, const char *seed)
 {
     //printf("scope_search_fp('%s')\n", seed);
-    
+
     /* If not in the lexer's string table, it certainly isn't in the symbol table.
      * Doing this first is a lot faster.
      */
@@ -391,7 +391,7 @@ void *scope_search_fp(void *arg, const char *seed)
         return NULL;
     Identifier *id = (Identifier *)sv->ptrvalue;
     assert(id);
-    
+
     Scope *sc = (Scope *)arg;
     Module::clearCache();
     Dsymbol *s = sc->search(0, id, NULL);

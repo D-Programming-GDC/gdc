@@ -95,7 +95,7 @@ void EnumDeclaration::semantic(Scope *sc)
     if (!memtype)
         memtype = Type::tint32;
 
-        if (symtab)                     // if already done
+    if (symtab)                 // if already done
     {   if (isdone || !scope)
             return;             // semantic() already completed
     }
@@ -111,8 +111,9 @@ void EnumDeclaration::semantic(Scope *sc)
 
     unsigned dprogress_save = Module::dprogress;
 
-        if (sc->stc & STCdeprecated)
+    if (sc->stc & STCdeprecated)
         isdeprecated = 1;
+
     parent = sc->scopesym;
     if (attributes)
         attributes->append(sc->attributes);

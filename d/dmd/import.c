@@ -175,7 +175,7 @@ void Import::semantic(Scope *sc)
         }
 #endif
 
-// Modules need a list of each imported module
+        // Modules need a list of each imported module
         //printf("%s imports %s\n", sc->module->toChars(), mod->toChars());
         sc->module->aimports.push(mod);
 

@@ -404,7 +404,7 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t)
         goto Lerr;
     }
     return this;
-    
+
 Lerr:
     return new ExpInitializer(loc, new ErrorExp());
 }
@@ -470,8 +470,8 @@ Expression *ArrayInitializer::toExpression()
         if (!ex)
         {
             goto Lno;
-    }
-    elements->data[j] = ex;
+        }
+        elements->data[j] = ex;
     }
 
     /* Fill in any missing elements with the default initializer
@@ -491,7 +491,6 @@ Expression *ArrayInitializer::toExpression()
     }
 
     Expression *e = new ArrayLiteralExp(loc, elements);
-
     e->type = type;
     return e;
     }

@@ -37,7 +37,6 @@
 #include "rmem.h"
 #endif
 #ifndef IN_GCC
-#ifndef TARGET_NET
 #include "cc.h"
 #include "global.h"
 #include "oper.h"
@@ -46,7 +45,6 @@
 #include "dt.h"
 #include "cgcv.h"
 #include "outbuf.h"
-#endif // TARGET_NET
 #include "irstate.h"
 #else
 #include "symbol.h"
@@ -601,11 +599,7 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
         dtsize_t(pdt, 0);
 
     // uint m_flags;
-#if DMDV2
     dtsize_t(pdt, tc->hasPointers());
-#else
-    dti32(pdt, tc->hasPointers(), false);
-#endif
 
 #if DMDV2
     // xgetMembers
@@ -629,7 +623,6 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
     else
         dtsize_t(pdt, 0);                        // xpostblit
 #endif
-
     // name[]
     dtnbytes(pdt, namelen + 1, name);
 }

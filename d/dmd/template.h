@@ -51,9 +51,7 @@ struct TemplateDeclaration : ScopeDsymbol
     TemplateParameters *parameters;     // array of TemplateParameter's
 
     TemplateParameters *origParameters; // originals for Ddoc
-
     Expression *constraint;
-
     Array instances;                    // array of TemplateInstance's
 
     TemplateDeclaration *overnext;      // next overloaded TemplateDeclaration
