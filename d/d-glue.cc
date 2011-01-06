@@ -3316,8 +3316,8 @@ Module::genobjfile(int multiobj)
         }
     }
 
-    // Always generate module info... unless an error occurred.
-    if ((! global.errors && ! errorcount) || needModuleInfo())
+    // Always generate module info.
+    if (1 || needModuleInfo())
     {
         ModuleInfo & mi = * g.mi();
         if (mi.ctors.dim || mi.ctorgates.dim)

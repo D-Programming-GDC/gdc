@@ -1020,6 +1020,15 @@ outdata(Symbol * sym)
     if (sym->Sdt && DECL_INITIAL(t) == NULL_TREE)
         DECL_INITIAL(t) = dt2tree(sym->Sdt);
 
+    /* Special case, outputting symbol of a module, but object.d is missing
+       or corrupt. Set type as typeof DECL_INITIAL to satisfy runtime.  */
+    tree type = TREE_TYPE(t);
+    if (g.irs->isErrorMark(type))
+    {
+        assert(DECL_INITIAL(t));
+        TREE_TYPE(t) = TREE_TYPE(DECL_INITIAL(t));
+    }
+
     if (! g.ofile->shouldEmit(sym))
         return;
 

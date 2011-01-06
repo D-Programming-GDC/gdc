@@ -25,36 +25,30 @@
 
 /* %(d_options) ? */
 
-#if GCC_SPEC_FORMAT_4
-#define D_D_SPEC_REST 0, 1, 0
-#else
-#define D_D_SPEC_REST 0
-#endif
-
 #if D_DRIVER_ONLY
 #define D_USE_EXTRA_SPEC_FUNCTIONS 1
-{".html", "@d", D_D_SPEC_REST },
-{".HTML", "@d", D_D_SPEC_REST },
-{".htm", "@d", D_D_SPEC_REST },
-{".HTM", "@d", D_D_SPEC_REST },
-{".xhtml", "@d", D_D_SPEC_REST },
-{".XHTML", "@d", D_D_SPEC_REST },
-{".d", "@d", D_D_SPEC_REST },
-{".D", "@d", D_D_SPEC_REST },
-{".dd", "@d", D_D_SPEC_REST },
-{".DD", "@d", D_D_SPEC_REST },
-{".di", "@d", D_D_SPEC_REST },
-{".DI", "@d", D_D_SPEC_REST },
+{".html", "@d", 0, 1, 0 },
+{".HTML", "@d", 0, 1, 0 },
+{".htm", "@d", 0, 1, 0 },
+{".HTM", "@d", 0, 1, 0 },
+{".xhtml", "@d", 0, 1, 0 },
+{".XHTML", "@d", 0, 1, 0 },
+{".d", "@d", 0, 1, 0 },
+{".D", "@d", 0, 1, 0 },
+{".dd", "@d", 0, 1, 0 },
+{".DD", "@d", 0, 1, 0 },
+{".di", "@d", 0, 1, 0 },
+{".DI", "@d", 0, 1, 0 },
 {"@d",
      "%{!E:cc1d %i %:d-all-sources() %(cc1_options) %(cc1d) %I %N %{nostdinc*} %{+e*} %{I*} %{J*}\
-      %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC_REST },
+      %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC, 1, 0 },
 #else
-{".d", "@d", D_D_SPEC_REST },
-{".D", "@d", D_D_SPEC_REST },
-{".di", "@d", D_D_SPEC_REST },
-{".DI", "@d", D_D_SPEC_REST },
+{".d", "@d", 0, 1, 0 },
+{".D", "@d", 0, 1, 0 },
+{".di", "@d", 0, 1, 0 },
+{".DI", "@d", 0, 1, 0 },
 {"@d",
      "%{!E:cc1d %i %(cc1_options) %(cc1d) %I %N %{nostdinc*} %{+e*} %{I*} %{J*}\
-      %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC_REST },
+      %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC, 1, 0 },
 #endif
 

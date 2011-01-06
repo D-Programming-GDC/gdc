@@ -203,7 +203,8 @@ struct IRState : IRBase
     {
         if (ClassDeclaration::object)
             return ClassDeclaration::object->type;
-        error("missing or corrupt object.d");
+        //error("missing or corrupt object.d");
+        // %% apparently this isn't an error, so special-case in outdata.
         return Type::terror;
     }
 
