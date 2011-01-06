@@ -397,11 +397,11 @@ d_gcc_magic_builtins_module(Module *m)
             continue;
         }
 #if V2
-        /* %% D2 - builtins are safe and optionally nothrow.
+        /* %% D2 - builtins are trusted and optionally nothrow.
            The purity of a builtins can vary depending on compiler flags set at
            init, or by the -foptions passed, such as flag_unsafe_math_optimizations
          */
-        dtf->trust = TRUSTsafe;
+        dtf->trust = TRUSTtrusted;
         dtf->isnothrow = TREE_NOTHROW(decl);
         dtf->purity = DECL_PURE_P(decl) ?   PUREstrong :
                       TREE_READONLY(decl) ? PUREconst :

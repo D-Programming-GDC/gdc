@@ -161,7 +161,7 @@ static unsigned int
 d_init_options (unsigned int, const char ** argv)
 {
     // Set default values
-    global.params.argv0 = (char *) progname;
+    global.params.argv0 = xstrdup(progname);
     global.params.link = 1;
     global.params.useAssert = 1;
     global.params.useInvariants = 1;
@@ -679,7 +679,7 @@ d_handle_option (size_t scode, const char *arg, int value)
           strcpy(lang_name, value ? "GNU C" : "GNU D");
           break;
       case OPT_fdeps_:
-          global.params.moduleDepsFile = (char*)arg;
+          global.params.moduleDepsFile = xstrdup(arg);
           if (!global.params.moduleDepsFile[0])
               error("bad argument for -fdeps");
           global.params.moduleDeps = new OutBuffer;
@@ -778,7 +778,7 @@ d_handle_option (size_t scode, const char *arg, int value)
           break;
       case OPT_fXf_:
           global.params.doXGeneration = 1;
-          global.params.xfilename = (char*)arg;
+          global.params.xfilename = xstrdup(arg);
           break;
       default:
           break;
@@ -795,7 +795,7 @@ bool d_post_options(const char ** fn)
     // Save register names for restoring later.
     memcpy (saved_reg_names, reg_names, sizeof reg_names);
 
-#if D_GCC_VER >= 43
+#if D_GCC_VER == 43
     // Workaround for embedded functions, don't inline if debugging is on.
     // See Issue #38 for why.
     flag_inline_small_functions = !write_symbols;
@@ -1069,7 +1069,7 @@ d_parse_file (int /*set_yydebug*/)
              */
         }
         //fprintf(stderr, "fn %d = %s\n", i, in_fnames[i]);
-        char * the_fname = (char*) in_fnames[i];
+        char * the_fname = xstrdup(in_fnames[i]);
         char * p = FileName::name(the_fname);
         char * e = FileName::ext(p);
         char * name;

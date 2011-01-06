@@ -3316,8 +3316,8 @@ Module::genobjfile(int multiobj)
         }
     }
 
-    // Always generate module info
-    if (1 || needModuleInfo())
+    // Always generate module info... unless an error occurred.
+    if ((! global.errors && ! errorcount) || needModuleInfo())
     {
         ModuleInfo & mi = * g.mi();
         if (mi.ctors.dim || mi.ctorgates.dim)
@@ -4223,7 +4223,6 @@ SynchronizedStatement::toIR(IRState * irs)
         tree decl = irs->localVar(IRState::getObjectType());
 
         DECL_IGNORED_P(decl) = 1;
-        tree cleanup = irs->libCall(LIBCALL_MONITOREXIT, 1, & decl);
         // assuming no conversions needed
         tree init_exp;
 
@@ -4256,7 +4255,7 @@ SynchronizedStatement::toIR(IRState * irs)
             body->toIR(irs);
         }
         irs->startFinally();
-        irs->doExp(cleanup);
+        irs->doExp(irs->libCall(LIBCALL_MONITOREXIT, 1, & decl));
         irs->endFinally();
         irs->endBindings();
     }

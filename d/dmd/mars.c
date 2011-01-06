@@ -1491,3 +1491,5 @@ long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep)
 }
 
 #endif
+
+#endif

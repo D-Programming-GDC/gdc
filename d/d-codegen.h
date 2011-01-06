@@ -201,7 +201,10 @@ struct IRState : IRBase
 
     static Type * getObjectType()
     {
-        return ClassDeclaration::object->type;
+        if (ClassDeclaration::object)
+            return ClassDeclaration::object->type;
+        error("missing or corrupt object.d");
+        return Type::terror;
     }
 
     // Routines to handle variables that are references.

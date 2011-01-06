@@ -915,25 +915,13 @@ Symbol *Module::toSymbol()
 {
     if (!csym)
     {
-        Type * some_type;
-
-        /* This causes problems  .. workaround
-           is to call moduleinfo->toCtype() before we start processing
-           decls in genobjfile. ...
-
-            if (moduleinfo) {
-                some_type = moduleinfo->type;
-            } else {
-                some_type = gen.getObjectType();
-            }
-        */
-        some_type = gen.getObjectType();
+        Type * obj_type = gen.getObjectType();
 
         csym = toSymbolX("__ModuleInfo", SCextern, 0, "Z");
         slist_add(csym);
 
         tree decl = d_build_decl(VAR_DECL, get_identifier(csym->Sident),
-            TREE_TYPE(some_type->toCtype())); // want the RECORD_TYPE, not the REFERENCE_TYPE
+                TREE_TYPE(obj_type->toCtype())); // want the RECORD_TYPE, not the REFERENCE_TYPE
         g.ofile->setDeclLoc(decl, this);
         csym->Stree = decl;
 
