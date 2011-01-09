@@ -1112,7 +1112,10 @@ unsigned TypeBasic::alignsize()
         case Timaginary64:
         case Tcomplex32:
         case Tcomplex64:
-            sz = 4;
+            if (global.params.isX86_64)
+                sz = size(0);
+            else
+                sz = 4;
             break;
 #endif
 
