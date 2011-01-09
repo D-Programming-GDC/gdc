@@ -309,7 +309,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         $link = 0;
         $tmpdir = tempdir(CLEANUP => 1);
     } elsif ( $arg =~ m/^-O$/ ) {
-        push @out, '-O3', '-fomit-frame-pointer';
+        push @out, '-O3';
         if( ! grep(/^-inline$/,@ARGV) ) {
             push @out, '-fno-inline-functions';
         }

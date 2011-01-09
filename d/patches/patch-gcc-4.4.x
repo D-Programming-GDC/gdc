@@ -1,6 +1,6 @@
-diff -cr gcc-orig/cgraph.c gcc/cgraph.c
-*** gcc-orig/cgraph.c	2010-10-11 13:56:32.259107241 -0400
---- gcc/cgraph.c	2010-10-11 13:59:09.143107246 -0400
+diff -cr gcc.orig/cgraph.c gcc/cgraph.c
+*** gcc.orig/cgraph.c	2008-11-16 22:31:58.000000000 +0000
+--- gcc/cgraph.c	2011-01-06 22:20:41.287061001 +0000
 ***************
 *** 451,456 ****
 --- 451,457 ----
@@ -42,49 +42,9 @@ diff -cr gcc-orig/cgraph.c gcc/cgraph.c
       }
     if (assembler_name_hash)
       {
-diff -cr gcc-orig/cgraphunit.c gcc/cgraphunit.c
-*** gcc-orig/cgraphunit.c	2010-10-11 13:56:32.239107241 -0400
---- gcc/cgraphunit.c	2010-10-11 13:59:09.143107246 -0400
-***************
-*** 1032,1037 ****
---- 1032,1041 ----
-  static void
-  cgraph_expand_function (struct cgraph_node *node)
-  {
-+   int save_flag_omit_frame_pointer = flag_omit_frame_pointer;
-+   static int inited = 0;
-+   static int orig_omit_frame_pointer;
-+ 
-    tree decl = node->decl;
-  
-    /* We ought to not compile any inline clones.  */
-***************
-*** 1041,1051 ****
---- 1045,1065 ----
-  
-    gcc_assert (node->lowered);
-  
-+   if (!inited)
-+     {
-+       inited = 1;
-+       orig_omit_frame_pointer = flag_omit_frame_pointer;
-+     }
-+   flag_omit_frame_pointer = orig_omit_frame_pointer ||
-+       DECL_STRUCT_FUNCTION (decl)->naked;
-+ 
-    /* Generate RTL for the body of DECL.  */
-    if (lang_hooks.callgraph.emit_associated_thunks)
-      lang_hooks.callgraph.emit_associated_thunks (decl);
-    tree_rest_of_compilation (decl);
-  
-+   flag_omit_frame_pointer = save_flag_omit_frame_pointer;
-+ 
-    /* Make sure that BE didn't give up on compiling.  */
-    gcc_assert (TREE_ASM_WRITTEN (decl));
-    current_function_decl = NULL;
-diff -cr gcc-orig/config/i386/i386.c gcc/config/i386/i386.c
-*** gcc-orig/config/i386/i386.c	2010-10-11 13:56:32.171107241 -0400
---- gcc/config/i386/i386.c	2010-10-11 13:59:09.159107247 -0400
+diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
+*** gcc.orig/config/i386/i386.c	2010-08-06 08:52:04.000000000 +0100
+--- gcc/config/i386/i386.c	2011-01-09 16:54:46.385570002 +0000
 ***************
 *** 7879,7884 ****
 --- 7879,7889 ----
@@ -116,9 +76,9 @@ diff -cr gcc-orig/config/i386/i386.c gcc/config/i386/i386.c
   	  output_asm_insn ("jmp\t{*}%1", xops);
   	}
       }
-diff -cr gcc-orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
-*** gcc-orig/config/rs6000/rs6000.c	2010-10-11 13:56:32.135107241 -0400
---- gcc/config/rs6000/rs6000.c	2010-10-11 13:59:09.175107242 -0400
+diff -cr gcc.orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
+*** gcc.orig/config/rs6000/rs6000.c	2010-06-04 05:57:21.000000000 +0100
+--- gcc/config/rs6000/rs6000.c	2011-01-06 22:20:41.367061001 +0000
 ***************
 *** 17665,17671 ****
   	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
@@ -137,9 +97,30 @@ diff -cr gcc-orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
   	i = 0;
         else if (! strcmp (language_string, "GNU F77")
   	       || ! strcmp (language_string, "GNU Fortran"))
-diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
-*** gcc-orig/dwarf2out.c	2010-10-11 13:56:32.315107241 -0400
---- gcc/dwarf2out.c	2010-10-11 13:59:09.183107240 -0400
+diff -cr gcc.orig/dojump.c gcc/dojump.c
+*** gcc.orig/dojump.c	2010-03-08 11:46:28.000000000 +0000
+--- gcc/dojump.c	2011-01-06 23:06:56.619061002 +0000
+***************
+*** 80,86 ****
+  clear_pending_stack_adjust (void)
+  {
+    if (optimize > 0
+!       && (! flag_omit_frame_pointer || cfun->calls_alloca)
+        && EXIT_IGNORE_STACK)
+      discard_pending_stack_adjust ();
+  }
+--- 80,87 ----
+  clear_pending_stack_adjust (void)
+  {
+    if (optimize > 0
+!       && ((! flag_omit_frame_pointer && ! cfun->naked)
+!           || cfun->calls_alloca)
+        && EXIT_IGNORE_STACK)
+      discard_pending_stack_adjust ();
+  }
+diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
+*** gcc.orig/dwarf2out.c	2010-02-10 15:09:06.000000000 +0000
+--- gcc/dwarf2out.c	2011-01-06 22:20:41.387061001 +0000
 ***************
 *** 6398,6404 ****
   
@@ -186,9 +167,9 @@ diff -cr gcc-orig/dwarf2out.c gcc/dwarf2out.c
   
         /* If we are in terse mode, don't generate any DIEs to represent any
   	 variable declarations or definitions.  */
-diff -cr gcc-orig/except.c gcc/except.c
-*** gcc-orig/except.c	2010-10-11 13:56:32.055107241 -0400
---- gcc/except.c	2010-10-11 13:59:09.187107241 -0400
+diff -cr gcc.orig/except.c gcc/except.c
+*** gcc.orig/except.c	2010-03-08 11:46:28.000000000 +0000
+--- gcc/except.c	2011-01-06 22:20:41.399061001 +0000
 ***************
 *** 200,206 ****
   
@@ -312,9 +293,9 @@ diff -cr gcc-orig/except.c gcc/except.c
   
         dw2_asm_output_data_uleb128 (INTVAL (cs->landing_pad),
   				   "region %d landing pad", i);
-diff -cr gcc-orig/expr.c gcc/expr.c
-*** gcc-orig/expr.c	2010-10-11 13:56:32.079107241 -0400
---- gcc/expr.c	2010-10-11 13:59:09.191107241 -0400
+diff -cr gcc.orig/expr.c gcc/expr.c
+*** gcc.orig/expr.c	2010-09-23 08:41:30.000000000 +0100
+--- gcc/expr.c	2011-01-06 22:20:41.411061001 +0000
 ***************
 *** 9351,9356 ****
 --- 9351,9361 ----
@@ -329,9 +310,9 @@ diff -cr gcc-orig/expr.c gcc/expr.c
       case EXC_PTR_EXPR:
         return get_exception_pointer ();
   
-diff -cr gcc-orig/function.c gcc/function.c
-*** gcc-orig/function.c	2010-10-11 13:56:32.271107241 -0400
---- gcc/function.c	2010-10-11 13:59:09.195107241 -0400
+diff -cr gcc.orig/function.c gcc/function.c
+*** gcc.orig/function.c	2010-08-16 21:24:54.000000000 +0100
+--- gcc/function.c	2011-01-06 22:20:41.419061001 +0000
 ***************
 *** 3190,3196 ****
         FUNCTION_ARG_ADVANCE (all.args_so_far, data.promoted_mode,
@@ -421,9 +402,9 @@ diff -cr gcc-orig/function.c gcc/function.c
     rtl_profile_for_bb (ENTRY_BLOCK_PTR);
   #ifdef HAVE_prologue
     if (HAVE_prologue)
-diff -cr gcc-orig/function.h gcc/function.h
-*** gcc-orig/function.h	2010-10-11 13:56:32.251107241 -0400
---- gcc/function.h	2010-10-11 13:59:09.195107241 -0400
+diff -cr gcc.orig/function.h gcc/function.h
+*** gcc.orig/function.h	2009-09-23 15:58:58.000000000 +0100
+--- gcc/function.h	2011-01-06 22:20:41.423061001 +0000
 ***************
 *** 137,143 ****
     rtx x_forced_labels;
@@ -485,9 +466,9 @@ diff -cr gcc-orig/function.h gcc/function.h
   };
   
   /* If va_list_[gf]pr_size is set to this, it means we don't know how
-diff -cr gcc-orig/gcc.c gcc/gcc.c
-*** gcc-orig/gcc.c	2010-10-11 13:56:32.259107241 -0400
---- gcc/gcc.c	2010-10-11 13:59:09.199107241 -0400
+diff -cr gcc.orig/gcc.c gcc/gcc.c
+*** gcc.orig/gcc.c	2010-01-09 00:05:06.000000000 +0000
+--- gcc/gcc.c	2011-01-06 22:20:41.435061001 +0000
 ***************
 *** 126,131 ****
 --- 126,134 ----
@@ -599,9 +580,9 @@ diff -cr gcc-orig/gcc.c gcc/gcc.c
   	    /* Here we define characters other than letters and digits.  */
   
   	  case '{':
-diff -cr gcc-orig/gimple.c gcc/gimple.c
-*** gcc-orig/gimple.c	2010-10-11 13:56:32.235107241 -0400
---- gcc/gimple.c	2010-10-11 13:59:09.199107241 -0400
+diff -cr gcc.orig/gimple.c gcc/gimple.c
+*** gcc.orig/gimple.c	2008-12-07 23:27:14.000000000 +0000
+--- gcc/gimple.c	2011-01-06 22:20:41.451061001 +0000
 ***************
 *** 2535,2540 ****
 --- 2535,2543 ----
@@ -644,9 +625,9 @@ diff -cr gcc-orig/gimple.c gcc/gimple.c
   	  || TREE_CODE (t) == SSA_NAME);
   }
   
-diff -cr gcc-orig/gimple.h gcc/gimple.h
-*** gcc-orig/gimple.h	2010-10-11 13:56:32.275107241 -0400
---- gcc/gimple.h	2010-10-11 13:59:09.203107241 -0400
+diff -cr gcc.orig/gimple.h gcc/gimple.h
+*** gcc.orig/gimple.h	2009-05-18 11:13:43.000000000 +0100
+--- gcc/gimple.h	2011-01-06 22:20:41.463061001 +0000
 ***************
 *** 65,71 ****
       const_gimple __gs = (GS);						\
@@ -681,9 +662,9 @@ diff -cr gcc-orig/gimple.h gcc/gimple.h
   }
   
   
-diff -cr gcc-orig/ipa-cp.c gcc/ipa-cp.c
-*** gcc-orig/ipa-cp.c	2010-10-11 13:56:32.239107241 -0400
---- gcc/ipa-cp.c	2010-10-11 13:59:09.211107241 -0400
+diff -cr gcc.orig/ipa-cp.c gcc/ipa-cp.c
+*** gcc.orig/ipa-cp.c	2009-12-27 22:39:58.000000000 +0000
+--- gcc/ipa-cp.c	2011-01-06 22:20:41.519061001 +0000
 ***************
 *** 1393,1399 ****
     return flag_ipa_cp;
@@ -701,9 +682,9 @@ diff -cr gcc-orig/ipa-cp.c gcc/ipa-cp.c
   {
    {
     IPA_PASS,
-diff -cr gcc-orig/ipa-inline.c gcc/ipa-inline.c
-*** gcc-orig/ipa-inline.c	2010-10-11 13:56:32.295107241 -0400
---- gcc/ipa-inline.c	2010-10-11 13:59:09.211107241 -0400
+diff -cr gcc.orig/ipa-inline.c gcc/ipa-inline.c
+*** gcc.orig/ipa-inline.c	2010-02-08 14:10:15.000000000 +0000
+--- gcc/ipa-inline.c	2011-01-06 22:20:41.523061001 +0000
 ***************
 *** 1753,1759 ****
     return todo | execute_fixup_cfg ();
@@ -721,9 +702,9 @@ diff -cr gcc-orig/ipa-inline.c gcc/ipa-inline.c
   {
    {
     IPA_PASS,
-diff -cr gcc-orig/ipa-pure-const.c gcc/ipa-pure-const.c
-*** gcc-orig/ipa-pure-const.c	2010-10-11 13:56:32.239107241 -0400
---- gcc/ipa-pure-const.c	2010-10-11 13:59:09.215107241 -0400
+diff -cr gcc.orig/ipa-pure-const.c gcc/ipa-pure-const.c
+*** gcc.orig/ipa-pure-const.c	2008-09-18 18:28:40.000000000 +0100
+--- gcc/ipa-pure-const.c	2011-01-06 22:20:41.527061001 +0000
 ***************
 *** 910,916 ****
   	  && !(errorcount || sorrycount));
@@ -741,9 +722,9 @@ diff -cr gcc-orig/ipa-pure-const.c gcc/ipa-pure-const.c
   {
    {
     IPA_PASS,
-diff -cr gcc-orig/ipa-reference.c gcc/ipa-reference.c
-*** gcc-orig/ipa-reference.c	2010-10-11 13:56:32.311107241 -0400
---- gcc/ipa-reference.c	2010-10-11 13:59:09.215107241 -0400
+diff -cr gcc.orig/ipa-reference.c gcc/ipa-reference.c
+*** gcc.orig/ipa-reference.c	2008-09-18 18:28:40.000000000 +0100
+--- gcc/ipa-reference.c	2011-01-06 22:20:41.531061001 +0000
 ***************
 *** 1257,1263 ****
   	  && !(errorcount || sorrycount));
@@ -761,9 +742,29 @@ diff -cr gcc-orig/ipa-reference.c gcc/ipa-reference.c
   {
    {
     IPA_PASS,
-diff -cr gcc-orig/passes.c gcc/passes.c
-*** gcc-orig/passes.c	2010-10-11 13:56:32.015107238 -0400
---- gcc/passes.c	2010-10-11 13:59:09.215107241 -0400
+diff -cr gcc.orig/ira.c gcc/ira.c
+*** gcc.orig/ira.c	2010-09-09 14:58:24.000000000 +0100
+--- gcc/ira.c	2011-01-06 23:09:08.471061001 +0000
+***************
+*** 1404,1410 ****
+       case.  At some point, we should improve this by emitting the
+       sp-adjusting insns for this case.  */
+    int need_fp
+!     = (! flag_omit_frame_pointer
+         || (cfun->calls_alloca && EXIT_IGNORE_STACK)
+         || crtl->accesses_prior_frames
+         || crtl->stack_realign_needed
+--- 1404,1410 ----
+       case.  At some point, we should improve this by emitting the
+       sp-adjusting insns for this case.  */
+    int need_fp
+!     = ((! flag_omit_frame_pointer && ! cfun->naked)
+         || (cfun->calls_alloca && EXIT_IGNORE_STACK)
+         || crtl->accesses_prior_frames
+         || crtl->stack_realign_needed
+diff -cr gcc.orig/passes.c gcc/passes.c
+*** gcc.orig/passes.c	2009-02-20 15:20:38.000000000 +0000
+--- gcc/passes.c	2011-01-06 22:20:41.535061001 +0000
 ***************
 *** 1146,1159 ****
   static void
@@ -846,9 +847,9 @@ diff -cr gcc-orig/passes.c gcc/passes.c
   	    }
   	  summaries_generated = true;
   	}
-diff -cr gcc-orig/system.h gcc/system.h
-*** gcc-orig/system.h	2010-10-11 13:56:32.255107241 -0400
---- gcc/system.h	2010-10-11 13:59:09.215107241 -0400
+diff -cr gcc.orig/system.h gcc/system.h
+*** gcc.orig/system.h	2008-07-28 15:33:56.000000000 +0100
+--- gcc/system.h	2011-01-06 22:20:41.539061001 +0000
 ***************
 *** 786,791 ****
 --- 786,794 ----
@@ -871,9 +872,9 @@ diff -cr gcc-orig/system.h gcc/system.h
   #define CONST_CAST(TYPE,X) CONST_CAST2(TYPE, const TYPE, (X))
   #define CONST_CAST_TREE(X) CONST_CAST(union tree_node *, (X))
   #define CONST_CAST_RTX(X) CONST_CAST(struct rtx_def *, (X))
-diff -cr gcc-orig/tree.def gcc/tree.def
-*** gcc-orig/tree.def	2010-10-11 13:56:32.275107241 -0400
---- gcc/tree.def	2010-10-11 13:59:09.215107241 -0400
+diff -cr gcc.orig/tree.def gcc/tree.def
+*** gcc.orig/tree.def	2009-02-20 15:20:38.000000000 +0000
+--- gcc/tree.def	2011-01-06 22:20:41.547061001 +0000
 ***************
 *** 554,559 ****
 --- 554,566 ----
@@ -891,10 +892,10 @@ diff -cr gcc-orig/tree.def gcc/tree.def
      Operand 0 is the cleanup expression.
      The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
 diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
-*** gcc.orig/tree-inline.c	2010-02-08 15:50:59.000000000 +0000
---- gcc/tree-inline.c	2010-12-14 01:25:52.483647002 +0000
+*** gcc.orig/tree-inline.c	2010-09-18 18:23:20.000000000 +0100
+--- gcc/tree-inline.c	2011-01-06 22:20:41.555061001 +0000
 ***************
-*** 2199,2205 ****
+*** 2206,2212 ****
     /* Initialize the static chain.  */
     p = DECL_STRUCT_FUNCTION (fn)->static_chain_decl;
     gcc_assert (fn != current_function_decl);
@@ -902,7 +903,7 @@ diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
       {
         /* No static chain?  Seems like a bug in tree-nested.c.  */
         gcc_assert (static_chain);
---- 2199,2206 ----
+--- 2206,2213 ----
     /* Initialize the static chain.  */
     p = DECL_STRUCT_FUNCTION (fn)->static_chain_decl;
     gcc_assert (fn != current_function_decl);
@@ -911,9 +912,10 @@ diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
       {
         /* No static chain?  Seems like a bug in tree-nested.c.  */
         gcc_assert (static_chain);
-diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
-*** gcc-orig/tree-nested.c	2010-10-11 13:56:32.239107241 -0400
---- gcc/tree-nested.c	2010-10-11 13:59:09.219107241 -0400
+Only in gcc: tree-inline.c.orig
+diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
+*** gcc.orig/tree-nested.c	2010-04-20 09:37:12.000000000 +0100
+--- gcc/tree-nested.c	2011-01-06 22:20:41.563061001 +0000
 ***************
 *** 714,719 ****
 --- 714,721 ----
@@ -1015,9 +1017,9 @@ diff -cr gcc-orig/tree-nested.c gcc/tree-nested.c
       }
   
     /* If a chain_decl was created, then it needs to be registered with
-diff -cr gcc-orig/tree-pass.h gcc/tree-pass.h
-*** gcc-orig/tree-pass.h	2010-10-11 13:56:32.043107241 -0400
---- gcc/tree-pass.h	2010-10-11 13:59:09.219107241 -0400
+diff -cr gcc.orig/tree-pass.h gcc/tree-pass.h
+*** gcc.orig/tree-pass.h	2009-02-20 15:20:38.000000000 +0000
+--- gcc/tree-pass.h	2011-01-06 22:20:41.563061001 +0000
 ***************
 *** 157,163 ****
   
@@ -1058,9 +1060,9 @@ diff -cr gcc-orig/tree-pass.h gcc/tree-pass.h
   
   extern struct simple_ipa_opt_pass pass_ipa_matrix_reorg;
   extern struct simple_ipa_opt_pass pass_ipa_early_inline;
-diff -cr gcc-orig/tree-pretty-print.c gcc/tree-pretty-print.c
-*** gcc-orig/tree-pretty-print.c	2010-10-11 13:56:32.263107241 -0400
---- gcc/tree-pretty-print.c	2010-10-11 13:59:09.219107241 -0400
+diff -cr gcc.orig/tree-pretty-print.c gcc/tree-pretty-print.c
+*** gcc.orig/tree-pretty-print.c	2009-02-18 21:03:05.000000000 +0000
+--- gcc/tree-pretty-print.c	2011-01-06 22:20:41.571061001 +0000
 ***************
 *** 1216,1221 ****
 --- 1216,1231 ----
@@ -1080,9 +1082,9 @@ diff -cr gcc-orig/tree-pretty-print.c gcc/tree-pretty-print.c
       case WITH_CLEANUP_EXPR:
         NIY;
         break;
-diff -cr gcc-orig/tree-sra.c gcc/tree-sra.c
-*** gcc-orig/tree-sra.c	2010-10-11 13:56:32.007107257 -0400
---- gcc/tree-sra.c	2010-10-11 13:59:09.219107241 -0400
+diff -cr gcc.orig/tree-sra.c gcc/tree-sra.c
+*** gcc.orig/tree-sra.c	2010-04-18 16:56:32.000000000 +0100
+--- gcc/tree-sra.c	2011-01-06 22:20:41.579061001 +0000
 ***************
 *** 263,268 ****
 --- 263,270 ----
@@ -1109,9 +1111,9 @@ diff -cr gcc-orig/tree-sra.c gcc/tree-sra.c
   	      saw_one_field = true;
   	    }
   
-diff -cr gcc-orig/tree-ssa.c gcc/tree-ssa.c
-*** gcc-orig/tree-ssa.c	2010-10-11 13:56:32.271107241 -0400
---- gcc/tree-ssa.c	2010-10-11 13:59:09.223107241 -0400
+diff -cr gcc.orig/tree-ssa.c gcc/tree-ssa.c
+*** gcc.orig/tree-ssa.c	2009-08-03 20:27:32.000000000 +0100
+--- gcc/tree-ssa.c	2011-01-06 22:20:41.583061001 +0000
 ***************
 *** 1094,1101 ****
         && TYPE_CANONICAL (inner_type) == TYPE_CANONICAL (outer_type))
