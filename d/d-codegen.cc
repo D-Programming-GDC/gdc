@@ -2557,10 +2557,10 @@ IRState::isArgumentReferenceType(Parameter * arg)
     if (arg->storageClass & (STCout | STCref))
         return true;
 
-    // %% if !SARRAYVALUE? Doesn't seem to work...
+#if !SARRAYVALUE
     if (base_type->ty == Tsarray)
         return true;
-
+#endif
     return false;
 }
 
