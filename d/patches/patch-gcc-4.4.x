@@ -893,7 +893,17 @@ diff -cr gcc.orig/tree.def gcc/tree.def
      The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
 diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
 *** gcc.orig/tree-inline.c	2010-09-18 18:23:20.000000000 +0100
---- gcc/tree-inline.c	2011-01-06 22:20:41.555061001 +0000
+--- gcc/tree-inline.c	2011-01-12 16:39:33.506643001 +0000
+***************
+*** 1832,1837 ****
+--- 1832,1838 ----
+  
+    /* Copy items we preserve during clonning.  */
+    cfun->static_chain_decl = src_cfun->static_chain_decl;
++   cfun->custom_static_chain = src_cfun->custom_static_chain;
+    cfun->nonlocal_goto_save_area = src_cfun->nonlocal_goto_save_area;
+    cfun->function_end_locus = src_cfun->function_end_locus;
+    cfun->curr_properties = src_cfun->curr_properties;
 ***************
 *** 2206,2212 ****
     /* Initialize the static chain.  */
@@ -903,12 +913,12 @@ diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
       {
         /* No static chain?  Seems like a bug in tree-nested.c.  */
         gcc_assert (static_chain);
---- 2206,2213 ----
+--- 2207,2214 ----
     /* Initialize the static chain.  */
     p = DECL_STRUCT_FUNCTION (fn)->static_chain_decl;
     gcc_assert (fn != current_function_decl);
 !   /* Custom static chain has already been dealt with.  */
-!   if (p && !DECL_STRUCT_FUNCTION (fn)->custom_static_chain)
+!   if (p && ! DECL_STRUCT_FUNCTION(fn)->custom_static_chain)
       {
         /* No static chain?  Seems like a bug in tree-nested.c.  */
         gcc_assert (static_chain);
