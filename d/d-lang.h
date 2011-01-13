@@ -131,6 +131,13 @@ extern GTY(()) tree d_null_pointer;
 extern GTY(()) tree d_void_zero_node;
 extern GTY(()) tree d_vtbl_ptr_type_node;
 
+extern GTY(()) tree d_char_type_node;
+extern GTY(()) tree d_wchar_type_node;
+extern GTY(()) tree d_dchar_type_node;
+extern GTY(()) tree d_ifloat_type_node;
+extern GTY(()) tree d_idouble_type_node;
+extern GTY(()) tree d_ireal_type_node;
+
 #if D_GCC_VER >= 41
 /* not GTY'd because gtype does not actually understand #if */
 extern tree null_node;

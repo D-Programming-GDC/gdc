@@ -3413,22 +3413,22 @@ Type::toCtype()
                 dkeep(ctype);
                 break;
             case Tchar:
-                ctype = build_variant_type_copy(unsigned_intQI_type_node);
+                ctype = d_char_type_node;
                 break;
             case Twchar:
-                ctype = build_variant_type_copy(unsigned_intHI_type_node);
+                ctype = d_wchar_type_node;
                 break;
             case Tdchar:
-                ctype = build_variant_type_copy(unsigned_intSI_type_node);
+                ctype = d_dchar_type_node;
                 break;
             case Timaginary32:
-                ctype = build_variant_type_copy(float_type_node);
+                ctype = d_ifloat_type_node;
                 break;
             case Timaginary64:
-                ctype = build_variant_type_copy(double_type_node);
+                ctype = d_idouble_type_node;
                 break;
             case Timaginary80:
-                ctype = build_variant_type_copy(long_double_type_node);
+                ctype = d_ireal_type_node;
                 break;
 
             case Terror:
@@ -3456,6 +3456,19 @@ Type::toCtype()
                 abort();
                 return NULL_TREE;
         }
+#if V2
+        if (this->mod)
+        {   // Build a qualified variant of the tree type.
+            tree t = build_variant_type_copy(ctype);
+
+            if (TYPE_CANONICAL(ctype) != ctype)
+                TYPE_CANONICAL(t) = build_qualified_type(TYPE_CANONICAL(ctype), TYPE_QUALS(ctype));
+            else
+                TYPE_CANONICAL(t) = t;
+
+            ctype = t;
+        }
+#endif
     }
     return ctype;
 }
@@ -3485,16 +3498,25 @@ apply_type_attributes(Expressions * attrs, tree & type_node, bool in_place = fal
 type *
 TypeTypedef::toCtype()
 {
-    // %%TODO: create info for debugging
-    tree type_node = sym->basetype->toCtype();
-    apply_type_attributes(sym->attributes, type_node);
-    return type_node;
-    /*
-    tree type_decl = d_build_decl(TYPE_DECL, get_identifier(sym->ident->string),
-        type_node);
-    DECL_CONTEXT(type_decl) =
-    rest_of_decl_compilation(type_decl, NULL, ?context?, 0); //%% flag
-    */
+    if (! ctype)
+    {
+        tree base_type = sym->basetype->toCtype();
+        const char * name = toChars();
+
+        tree ident = get_identifier(name);
+        tree type_node = build_variant_type_copy(base_type);
+        tree type_decl = d_build_decl(TYPE_DECL, ident, type_node);
+        TYPE_NAME(type_node) = type_decl;
+        apply_type_attributes(sym->attributes, type_node);
+
+        /* %% TODO ?
+        DECL_CONTEXT(type_decl) =
+        rest_of_decl_compilation(type_decl, NULL, ?context?, 0); //%% flag
+         */
+
+        ctype = type_node;
+    }
+    return ctype;
 }
 
 type *
@@ -4883,6 +4905,13 @@ tree d_void_zero_node;
 tree d_null_pointer;
 tree d_vtbl_ptr_type_node;
 
+tree d_char_type_node;
+tree d_wchar_type_node;
+tree d_dchar_type_node;
+tree d_ifloat_type_node;
+tree d_idouble_type_node;
+tree d_ireal_type_node;
+
 void
 gcc_d_backend_init()
 {
@@ -4918,6 +4947,14 @@ gcc_d_backend_init()
     // %%TODO: we are relying on default boolean_type_node being 8bit / same as Tbit
 
     d_null_pointer = convert(ptr_type_node, integer_zero_node);
+
+    // %% D variant types of Ctypes.
+    d_char_type_node = build_variant_type_copy(unsigned_intQI_type_node);
+    d_wchar_type_node = build_variant_type_copy(unsigned_intHI_type_node);
+    d_dchar_type_node = build_variant_type_copy(unsigned_intSI_type_node);
+    d_ifloat_type_node = build_variant_type_copy(float_type_node);
+    d_idouble_type_node = build_variant_type_copy(double_type_node);
+    d_ireal_type_node = build_variant_type_copy(long_double_type_node);
 
     TYPE_NAME(integer_type_node) = d_build_decl(TYPE_DECL, get_identifier("int"), integer_type_node);
     TYPE_NAME(char_type_node) = d_build_decl(TYPE_DECL, get_identifier("char"), char_type_node);
@@ -4963,7 +5000,7 @@ gcc_d_backend_init()
     {
         /* Make sure we get a unique function type, so we can give
            its pointer type a name.  (This wins for gdb.) */
-        tree vfunc_type = build_function_type(Type::tint32->toCtype(), NULL_TREE); // integer_type_node; messed up built in types?
+        tree vfunc_type = build_function_type(integer_type_node, NULL_TREE);
 
         tree vtable_entry_type = build_pointer_type (vfunc_type);
         d_vtbl_ptr_type_node = build_pointer_type(vtable_entry_type);
