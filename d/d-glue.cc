@@ -1483,7 +1483,7 @@ SliceExp::toElem(IRState * irs)
 elem *
 CastExp::toElem(IRState * irs)
 {
-    if (e1->op == TOKcall && to->ty == Tvoid)
+    if (to->ty == Tvoid)
     {   // Just evaluate e1 if it has any side effects
         return build1(NOP_EXPR, void_type_node, e1->toElem(irs));
     }
@@ -3004,8 +3004,8 @@ FuncDeclaration::toObjFile(int multiobj)
                     }
                     else
 #endif
-                    {
-                        static_chain_expr = t;
+                    {   /* Pass chain by reference. */
+                        static_chain_expr = irs->addressOf(t);
                     }
                     break;
                 }
@@ -3057,6 +3057,7 @@ FuncDeclaration::toObjFile(int multiobj)
     irs->startScope();
     irs->doLineNote(loc);
 
+#if D_NO_TRAMPOLINES
     if (static_chain_expr)
     {
         cfun->custom_static_chain = 1;
@@ -3081,6 +3082,7 @@ FuncDeclaration::toObjFile(int multiobj)
     }
 
     buildClosure(irs); // may change irs->closureLink and irs->closureFunc
+#endif
 #endif
 
     if (vresult)
@@ -4868,6 +4870,10 @@ PragmaStatement::toIR(IRState *)
 void
 EnumDeclaration::toDebug()
 {
+    TypeEnum * tc = (TypeEnum *)type;
+    if (!tc->sym->defaultval || type->isZeroInit())
+        return;
+
     tree ctype = type->toCtype();
     rest_of_type_compilation(ctype, /*toplevel*/1);
 }
