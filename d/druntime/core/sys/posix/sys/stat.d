@@ -80,7 +80,11 @@ mode_t umask(mode_t);
 
 version( linux )
 {
-    static if( __USE_LARGEFILE64 )
+    static if( __WORDSIZE == 64 )
+    {
+        private alias int _pad_t;
+    }
+    else static if( __USE_LARGEFILE64 )
     {
         private alias uint _pad_t;
     }
@@ -89,96 +93,130 @@ version( linux )
         private alias ushort _pad_t;
     }
 
-    static if( __WORDSIZE == 32 )
+    static if( __USE_LARGEFILE64 )
     {
-      struct stat_t
-      {
-          dev_t       st_dev;
-          _pad_t      __pad1;
-        static if( __USE_FILE_OFFSET64 )
+        struct stat_t
         {
-          ino_t       __st_ino;
+            dev_t       st_dev;
+          static if( __WORDSIZE == 64 )
+          {
+            ino_t       st_ino;
+            nlink_t     st_nlink;
+            mode_t      st_mode;
+          }
+          else
+          {
+            _pad_t      __pad1;
+            _pad_t      __st_ino;
+            mode_t      st_mode;
+            nlink_t     st_nlink;
+          }
+            uid_t       st_uid;
+            gid_t       st_gid;
+          static if( __WORDSIZE == 64 )
+          {
+            _pad_t      __pad0;
+            dev_t       st_rdev;
+            off_t       st_size;
+          }
+          else
+          {
+            dev_t       st_rdev;
+            _pad_t      __pad2;
+            off_t       st_size;
+          }
+            blksize_t   st_blksize;
+            blkcnt_t    st_blocks;
+          static if( true /*__USE_MISC*/ ) // true if _BSD_SOURCE || _SVID_SOURCE
+          {
+            timespec    st_atim;
+            timespec    st_mtim;
+            timespec    st_ctim;
+            @property time_t st_atime() { return st_atim.tv_sec; }
+            @property time_t st_mtime() { return st_mtim.tv_sec; }
+            @property time_t st_ctime() { return st_ctim.tv_sec; }
+          }
+          else
+          {
+            time_t      st_atime;
+            c_ulong     st_atimensec;
+            time_t      st_mtime;
+            c_ulong     st_mtimensec;
+            time_t      st_ctime;
+            c_ulong     st_ctimensec;
+          }
+          static if( __WORDSIZE == 64 )
+          {
+            c_long      __unused[3];
+          }
+          else
+          {
+            ino_t       st_ino;
+          }
         }
-        else
-        {
-          ino_t       st_ino;
-        }
-          mode_t      st_mode;
-          nlink_t     st_nlink;
-          uid_t       st_uid;
-          gid_t       st_gid;
-          dev_t       st_rdev;
-          _pad_t      __pad2;
-          off_t       st_size;
-          blksize_t   st_blksize;
-          blkcnt_t    st_blocks;
-        static if( true /*__USE_MISC*/ ) // true if _BSD_SOURCE || _SVID_SOURCE
-        {
-          timespec    st_atim;
-          timespec    st_mtim;
-          timespec    st_ctim;
-          @property time_t st_atime() { return st_atim.tv_sec; }
-          @property time_t st_mtime() { return st_mtim.tv_sec; }
-          @property time_t st_ctime() { return st_ctim.tv_sec; }
-        }
-        else
-        {
-          time_t      st_atime;
-          c_ulong     st_atimensec;
-          time_t      st_mtime;
-          c_ulong     st_mtimensec;
-          time_t      st_ctime;
-          c_ulong     st_ctimensec;
-        }
-        static if( __USE_FILE_OFFSET64 )
-        {
-          ino_t       st_ino;
-        }
-        else
-        {
-          c_ulong     __unused4;
-          c_ulong     __unused5;
-        }
-      }
-    }
-    else static if( __WORDSIZE == 64 )
-    {
-      struct stat_t
-      {
-          dev_t       st_dev;
-          ino_t       st_ino;
-          nlink_t     st_nlink;
-          mode_t      st_mode;
-          uid_t       st_uid;
-          gid_t       st_gid;
-          _pad_t      __pad0;
-          dev_t       st_rdev;
-          off_t       st_size;
-          blksize_t   st_blksize;
-          blkcnt_t    st_blocks;
-        static if( true /*__USE_MISC*/ ) // true if _BSD_SOURCE || _SVID_SOURCE
-        {
-          timespec    st_atim;
-          timespec    st_mtim;
-          timespec    st_ctim;
-          @property time_t st_atime() { return st_atim.tv_sec; }
-          @property time_t st_mtime() { return st_mtim.tv_sec; }
-          @property time_t st_ctime() { return st_ctim.tv_sec; }
-        }
-        else
-        {
-          time_t      st_atime;
-          c_ulong     st_atimensec;
-          time_t      st_mtime;
-          c_ulong     st_mtimensec;
-          time_t      st_ctime;
-          c_ulong     st_ctimensec;
-        }
-          long        __unused[3];
-      }
     }
     else
-        static assert(false, "Architecture not supported");
+    {
+        struct stat_t
+        {
+            dev_t       st_dev;
+          static if( __WORDSIZE == 64 )
+          {
+            ino_t       st_ino;
+            nlink_t     st_nlink;
+            mode_t      st_mode;
+          }
+          else
+          {
+            _pad_t      __pad1;
+            ino_t       st_ino;
+            mode_t      st_mode;
+            nlink_t     st_nlink;
+          }
+            uid_t       st_uid;
+            gid_t       st_gid;
+          static if( __WORDSIZE == 64 )
+          {
+            _pad_t      __pad0;
+            dev_t       st_rdev;
+          }
+          else
+          {
+            dev_t       st_rdev;
+            _pad_t      __pad2;
+          }
+            off_t       st_size;
+            blksize_t   st_blksize;
+            blkcnt_t    st_blocks;
+          static if( true /*__USE_MISC*/ ) // true if _BSD_SOURCE || _SVID_SOURCE
+          {
+            timespec    st_atim;
+            timespec    st_mtim;
+            timespec    st_ctim;
+            @property time_t st_atime() { return st_atim.tv_sec; }
+            @property time_t st_mtime() { return st_mtim.tv_sec; }
+            @property time_t st_ctime() { return st_ctim.tv_sec; }
+          }
+          else
+          {
+            time_t      st_atime;
+            c_ulong     st_atimensec;
+            time_t      st_mtime;
+            c_ulong     st_mtimensec;
+            time_t      st_ctime;
+            c_ulong     st_ctimensec;
+          }
+          static if( __WORDSIZE == 64 )
+          {
+            c_long      __unused[3];
+          }
+          else
+          {
+            c_ulong     __unused4;
+            c_ulong     __unused5;
+          }
+        }
+    }
 
     enum S_IRUSR    = 0400;
     enum S_IWUSR    = 0200;

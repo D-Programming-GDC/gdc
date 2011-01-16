@@ -871,10 +871,6 @@ class GC
     private void freeNoSync(void *p)
     {
         assert (p);
-        version (GNU)
-        {
-            gcx.removeRoot(p);
-        }
 
         Pool*  pool;
         size_t pagenum;

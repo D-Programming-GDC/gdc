@@ -26,7 +26,7 @@ version( linux )
 }
 
 /// %% FIXME: Probably not consistent for all architectures.
-static if(size_t.sizeof == 8)
+static if( size_t.sizeof == 8 )
 {
     enum uint __WORDSIZE            = 64;
 }
