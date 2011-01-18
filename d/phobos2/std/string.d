@@ -2612,7 +2612,6 @@ string format(...)
     {
         std.utf.encode(s, c);
     }
-
     std.format.doFormat(&putc, _arguments, _argptr);
     return assumeUnique(s);
 }
@@ -2624,8 +2623,7 @@ string format(...)
  * Returns: s
  */
 char[] sformat(char[] s, ...)
-{
-  size_t i;
+{   size_t i;
 
     void putc(dchar c)
     {

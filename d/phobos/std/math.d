@@ -1366,7 +1366,7 @@ real log1p(real x)              { return std.c.math.log1pl(x); }
  *  $(TR $(TD +$(INFIN))    $(TD +$(INFIN)) $(TD no)           $(TD no) )
  *  )
  */
-version (GNU_Need_exp2_log2) real log2(real x) { return std.c.math.logl(x) / LOG2; } else
+version (GNU_Need_exp2_log2) real log2(real x) { return std.c.math.logl(x) / std.c.math.logl(2); } else
 real log2(real x)
 {
     version (INLINE_YL2X)

@@ -52,7 +52,6 @@
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   $(WEB digitalmars.com, Walter Bright),
  *                        Don Clugston
- *
  */
 module std.math;
 
@@ -1497,7 +1496,7 @@ unittest {
  *    )
  */
 
-real log(real x) @safe pure nothrow
+real log(real x) @safe pure nothrow 
 {
     version (INLINE_YL2X)
         return yl2x(x, LN2);
@@ -1578,7 +1577,7 @@ real log1p(real x) @safe pure nothrow
 real log2(real x) @safe pure nothrow
 {
     version (GNU_Need_log2)
-        return core.stdc.math.logl(x) / LOG2;
+        return core.stdc.math.logl(x) / core.stdc.math.logl(2);
     else version (INLINE_YL2X)
         return yl2x(x, 1);
     else
@@ -2086,7 +2085,7 @@ private:
             DIVBYZERO_MASK = 0x020,
             INVALID_MASK   = 0xF80 // PowerPC has five types of invalid exceptions.
         }
-    } else version (SPARC) { // SPARC FSR is a 32bit register
+    } else version(SPARC) { // SPARC FSR is a 32bit register
              //(64 bits for Sparc 7 & 8, but high 32 bits are uninteresting).
         enum : int {
             INEXACT_MASK   = 0x020,

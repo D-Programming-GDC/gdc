@@ -25,13 +25,10 @@
  */
 module std.intrinsic;
 
-version (GNU)
-{
-    public import gcc.bitmanip;
-}
-else
-{
+version (GNU):
+public import gcc.bitmanip;
 
+version (DigitalMars):
 nothrow:
 
 /**
@@ -188,4 +185,4 @@ ushort outpw(uint port_address, ushort value);
  */
 uint outpl(uint port_address, uint value);
 
-}
+

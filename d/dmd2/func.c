@@ -972,12 +972,7 @@ void FuncDeclaration::semantic3(Scope *sc)
             if (f->linkage == LINKd || (parameters && parameters->dim))
             {   // Declare _argptr
 #if IN_GCC
-#if 0
-                t = (f->linkage == LINKd) ? Type::tvoid->pointerTo()
-                                          : d_gcc_builtin_va_list_d_type;
-#else
                 t = d_gcc_builtin_va_list_d_type;
-#endif
 #else
                 t = Type::tvoid->pointerTo();
 #endif
