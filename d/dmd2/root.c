@@ -94,6 +94,30 @@ int wcharIsAscii(wchar_t *us, unsigned len)
 #endif
 
 
+#if IN_GCC
+/***********************************
+ * Binary search for p in tab.
+ * Implementation copied from gdc/d-asm-i386.h
+ */
+int binary(const char *p , const char **tab, int high)
+{
+    int low = 0;
+    do
+    {
+        int pos = (low + high) / 2;
+        int cmp = strcmp(p, tab[pos]);
+        if (! cmp)
+            return pos;
+        else if (cmp < 0)
+            high = pos;
+        else
+            low = pos + 1;
+    } while (low != high);
+
+    return -1;
+}
+#endif
+
 /***********************************
  * Compare length-prefixed strings (bstr).
  */

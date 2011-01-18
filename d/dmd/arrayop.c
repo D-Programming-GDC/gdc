@@ -24,6 +24,8 @@
 #include "module.h"
 #include "init.h"
 
+extern int binary(const char *p , const char **tab, int high);
+
 /**************************************
  * Hash table of array op functions already generated or known about.
  */
@@ -286,18 +288,7 @@ Expression *BinExp::arrayOp(Scope *sc)
             "_arraySliceSliceMulass_w",
         };
 
-        // Search for the library function using a linear search
-        int i = -1;
-        size_t namelen = strlen(name);
-        for( int ii = 0; ii < sizeof(libArrayopFuncs) / sizeof(char *); ii++)
-        {
-            if( strlen(libArrayopFuncs[ii]) == namelen &&
-                strcmp(libArrayopFuncs[ii], name) == 0 )
-            {
-                i = 0;
-            }
-        }
-
+        int i = binary(name, libArrayopFuncs, sizeof(libArrayopFuncs) / sizeof(char *));
         if (i == -1)
         {
 #ifdef DEBUG    // Make sure our array is alphabetized
