@@ -859,10 +859,12 @@ struct ExtAsmStatement : Statement
     Expressions *clobbers;        // of StringExp*
 
     ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Array *argNames,
-        Expressions *argConstraints, int nOutputArgs, Expressions *clobbers);
+                    Expressions *argConstraints, int nOutputArgs, Expressions *clobbers);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     int blockExit(bool mustNotThrow);
+    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+
     void toIR(IRState *irs);
 };
 

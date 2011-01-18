@@ -3719,7 +3719,6 @@ void AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
     for (unsigned i = 0; i < fields->dim; i++)
     {   // %% D anonymous unions just put the fields into the outer struct...
         // does this cause problems?
-
         VarDeclaration * var_decl = (VarDeclaration *) fields->data[i];
 
         assert(var_decl->storage_class & STCfield);
@@ -3736,14 +3735,11 @@ void AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
         DECL_FIELD_OFFSET (field_decl) = size_int(var_decl->offset);
         DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_zero_node;
 
-        DECL_ARTIFICIAL(field_decl) =
-            DECL_IGNORED_P(field_decl) = inherited;
-
+        DECL_ARTIFICIAL(field_decl) = DECL_IGNORED_P(field_decl) = inherited;
 
         // GCC 4.0 requires DECL_OFFSET_ALIGN to be set
         // %% .. using TYPE_ALIGN may not be same as DMD..
-        SET_DECL_OFFSET_ALIGN(field_decl,
-            TYPE_ALIGN(TREE_TYPE(field_decl)));
+        SET_DECL_OFFSET_ALIGN(field_decl, TYPE_ALIGN(TREE_TYPE(field_decl)));
 
         //SET_DECL_OFFSET_ALIGN (field_decl, BIGGEST_ALIGNMENT); // ?
         layout_decl(field_decl, 0);
@@ -3768,8 +3764,7 @@ void AggLayout::doInterfaces(Array * bases, AggregateDeclaration * /*agg*/)
         tree decl = d_build_decl(FIELD_DECL, NULL_TREE,
             Type::tvoid->pointerTo()->pointerTo()->toCtype() /* %% better */);
         //DECL_VIRTUAL_P(decl) = 1; %% nobody cares, boo hoo
-        DECL_ARTIFICIAL(decl) =
-            DECL_IGNORED_P(decl) = 1;
+        DECL_ARTIFICIAL(decl) = DECL_IGNORED_P(decl) = 1;
         // DECL_FCONTEXT(decl) = fcontext; // shouldn't be needed since it's ignored
         addField(decl, bc->offset);
     }
@@ -3779,8 +3774,7 @@ void AggLayout::addField(tree field_decl, target_size_t offset)
 {
     DECL_CONTEXT(field_decl) = aggType;
     // DECL_FCONTEXT(field_decl) = aggType; // caller needs to set this
-    SET_DECL_OFFSET_ALIGN(field_decl,
-        TYPE_ALIGN(TREE_TYPE(field_decl)));
+    SET_DECL_OFFSET_ALIGN(field_decl, TYPE_ALIGN(TREE_TYPE(field_decl)));
     DECL_FIELD_OFFSET (field_decl) = size_int(offset);
     DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_int(0);
     Loc l(aggDecl->getModule(), 1); // Must set this or we crash with DWARF debugging

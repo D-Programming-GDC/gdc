@@ -162,7 +162,7 @@ ExtAsmStatement::syntaxCopy()
     Expressions * argConstraints = Expression::arraySyntaxCopy(this->argConstraints);
     Expressions * clobbers = Expression::arraySyntaxCopy(this->clobbers);
     return new ExtAsmStatement(loc, insnTemplate, args, argNames,
-        argConstraints, nOutputArgs, clobbers);
+                               argConstraints, nOutputArgs, clobbers);
 }
 
 Statement *
@@ -211,6 +211,60 @@ ExtAsmStatement::semantic(Scope *sc)
     return this;
 }
 
+void
+ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
+{
+    buf->writestring("gcc asm { ");
+    if (insnTemplate)
+        buf->writestring(insnTemplate->toChars());
+    buf->writestring(" : ");
+    if (args)
+    {
+        for (unsigned i = 0; i < args->dim; i++)
+        {
+            Identifier * name = argNames->data[i] ? (Identifier *) argNames->data[i] : NULL;
+            Expression * constr = (Expression *) argConstraints->data[i];
+            Expression * arg = (Expression *) args->data[i];
+
+            if (name)
+            {
+                buf->writestring("[");
+                buf->writestring(name->toChars());
+                buf->writestring("] ");
+            }
+            if (constr)
+            {
+                buf->writestring(constr->toChars());
+                buf->writestring(" ");
+            }
+            if (arg)
+            {
+                buf->writestring(arg->toChars());
+            }
+
+            if (i < nOutputArgs - 1)
+                buf->writestring(", ");
+            else if(i == nOutputArgs - 1)
+                buf->writestring(" : ");
+            else if(i < args->dim - 1)
+                buf->writestring(", ");
+        }
+    }
+    if (clobbers)
+    {
+        buf->writestring(" : ");
+        for (unsigned i = 0; i < clobbers->dim; i++)
+        {
+            Expression * clobber = (Expression *) clobbers->data[i];
+            buf->writestring(clobber->toChars());
+            if (i < clobbers->dim - 1)
+                buf->writestring(", ");
+        }
+    }
+    buf->writestring("; }");
+    buf->writenl();
+}
+
 #if V2
 int 
 ExtAsmStatement::blockExit(bool mustNotThrow)
@@ -252,7 +306,7 @@ void ExtAsmStatement::toIR(IRState *irs)
 
     gen.doLineNote(loc);
 
-    if (this->args)
+    if (args)
     {
         for (unsigned i = 0; i < args->dim; i++)
         {
