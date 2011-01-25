@@ -90,7 +90,7 @@ build_indirect_ref (location_t loc ATTRIBUTE_UNUSED, tree ptr ATTRIBUTE_UNUSED,
     return NULL_TREE;
 }
 
-enum { unused } c_language;
+enum c_language_kind { unused } c_language;
 
 enum cpp_ttype
 c_lex (tree *value ATTRIBUTE_UNUSED)

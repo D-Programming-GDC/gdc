@@ -121,10 +121,10 @@ struct IRState : IRBase
     typedef enum
     {
         INTRINSIC_BSF, INTRINSIC_BSR,
-        INTRINSIC_BT, INTRINSIC_BTC, INTRINSIC_BTR, INTRINSIC_BTS,
         INTRINSIC_BSWAP,
-        INTRINSIC_INP, INTRINSIC_INPW, INTRINSIC_INPL,
-        INTRINSIC_OUTP, INTRINSIC_OUTPW, INTRINSIC_OUTPL,
+        INTRINSIC_BT, INTRINSIC_BTC, INTRINSIC_BTR, INTRINSIC_BTS,
+        INTRINSIC_INP, INTRINSIC_INPL, INTRINSIC_INPW,
+        INTRINSIC_OUTP, INTRINSIC_OUTPL, INTRINSIC_OUTPW,
         INTRINSIC_STD_VA_ARG,
         INTRINSIC_C_VA_ARG,
         INTRINSIC_C_VA_START,
@@ -524,6 +524,7 @@ struct IRState : IRBase
 
 protected:
     tree maybeExpandSpecialCall(tree call_exp);
+    static tree expandPortIntrinsic(Intrinsic code, tree port, tree value, int outp);
 public:
     tree floatMod(tree a, tree b, Type * d_type);
 
