@@ -4,7 +4,7 @@
 // Written by Walter Bright
 
 //import std.c.linux.linuxextern;
- 
+
 version (FreeBSD)
     import std.c.freebsd.freebsd;
 else version (Solaris)

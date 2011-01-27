@@ -73,9 +73,10 @@ static this()
     // Initialize uri_flags[]
 
     static void helper(char[] p, uint flags)
-    {
-        foreach (c; p)
-            uri_flags[c] |= flags;
+    {   int i;
+
+        for (i = 0; i < p.length; i++)
+            uri_flags[p[i]] |= flags;
     }
 
     uri_flags['#'] |= URI_Hash;
@@ -233,13 +234,13 @@ private dchar[] URI_Decode(char[] string, uint reservedSet)
 
     // Result array, allocated on stack
     dchar* R;
-    size_t Rlen;
+    size_t Rlen = 0;
 
     auto len = string.length;
     auto s = string.ptr;
 
     // Preallocate result buffer R guaranteed to be large enough for result
-    auto Rsize = len;          // alloc'd size
+    auto Rsize = len;           // alloc'd size
     if (Rsize > 1024 / dchar.sizeof)
         R = (new dchar[Rsize]).ptr;
     else

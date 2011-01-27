@@ -44,10 +44,12 @@ private import std.uni;
 private import std.array;
 private import std.format;
 private import std.ctype;
-private import std.stdarg;
+private import std.c.stdarg;
+//private import std.stdarg;
 
 extern (C)
 {
+
     size_t wcslen(wchar *);
     int wcscmp(wchar *, wchar *);
 }
@@ -216,7 +218,7 @@ deprecated char* toCharz(char[] s)
 char* toStringz(char[] s)
     in
     {
-        assert(memchr(s.ptr, 0, s.length) == null);
+        //assert(memchr(s.ptr, 0, s.length) == null);
     }
     out (result)
     {
@@ -789,14 +791,14 @@ unittest
 
     char[] sPlts = "Mars: the fourth Rock (Planet) from the Sun.";
     char[] sMars = "Who\'s \'My Favorite Maritian?\'";
-    
+
     i = irfind("abcdefcdef", "c");
     assert(i == 6);
     i = irfind("abcdefcdef", "cd");
     assert(i == 6);
     i = irfind( "abcdefcdef", "def" );
     assert(i == 7);
-    
+
     i = irfind(sMars, "RiTE maR");
     assert(i == 14);
     i = irfind(sPlts, "FOuRTh");
@@ -1316,10 +1318,10 @@ char[][] split(char[] s, char[] delim)
                 {
                     nwords++;
                     j = find(s[i .. s.length], delim);
-                    if (j+1 == 0)
+                    if (j == -1)
                         break;
                     i += j + delim.length;
-                    if (i >= s.length)
+                    if (i == s.length)
                     {   nwords++;
                         break;
                     }
@@ -1332,7 +1334,7 @@ char[][] split(char[] s, char[] delim)
                 while (true)
                 {
                     j = find(s[i .. s.length], delim);
-                    if (j+1 == 0)
+                    if (j == -1)
                     {
                         words[wordi] = s[i .. s.length];
                         break;
@@ -1340,7 +1342,7 @@ char[][] split(char[] s, char[] delim)
                     words[wordi] = s[i .. i + j];
                     wordi++;
                     i += j + delim.length;
-                    if (i >= s.length)
+                    if (i == s.length)
                     {
                         words[wordi] = "";
                         break;
@@ -1418,6 +1420,7 @@ unittest
 /**************************************
  * Split s[] into an array of lines,
  * using CR, LF, or CR-LF as the delimiter.
+ * The delimiter is not included in the line.
  */
 
 char[][] splitlines(char[] s)
@@ -2013,10 +2016,10 @@ char[] entab(char[] string, ptrdiff_t tabsize = 8)
 
     ptrdiff_t nspaces = 0;
     ptrdiff_t nwhite = 0;
-    ptrdiff_t column = 0;                       // column number
+    ptrdiff_t column = 0;                     // column number
 
     foreach (size_t i, dchar c; string)
-    {   
+    {
 
         void change()
         {
@@ -2028,7 +2031,7 @@ char[] entab(char[] string, ptrdiff_t tabsize = 8)
         }
 
         switch (c)
-        {   
+        {
             case '\t':
                 nwhite++;
                 if (nspaces)
@@ -2543,6 +2546,7 @@ char[] toString(creal r)
     int len = sprintf(buffer.ptr, ("%"~_longDoubleFormat~"g+%"~_longDoubleFormat~"gi").ptr, r.re, r.im);
     return buffer[0 .. len].dup;
 }
+
 
 /******************************************
  * Convert value to string in _radix radix.
@@ -3253,7 +3257,7 @@ unittest
  * Author        : David L. 'SpottedTiger' Davis
  * Date Created  : 31.May.05 Compiled and Tested with dmd v0.125
  * Date Modified : 01.Jun.05 Modified the function to handle the
- *               :           imaginary and complex float-point 
+ *               :           imaginary and complex float-point
  *               :           datatypes.
  *               :
  * Licence       : Public Domain / Contributed to Digital Mars
@@ -3274,7 +3278,7 @@ unittest
  *      or [nan|nani|inf|-inf]
  *
  * examples: +123., -123.01, 123.3e-10f, 123.3e-10fi, 123.3e-10L
- * 
+ *
  * (for cfloat, cdouble, and creal)
  * ['+'|'-']digit(s)[.][digit(s)][[e-|e+]digit(s)][+]
  *         [digit(s)[.][digit(s)][[e-|e+]digit(s)][i|f|L|Li|fi]]
@@ -3282,15 +3286,15 @@ unittest
  *
  * examples: nan, -123e-1+456.9e-10Li, +123e+10+456i, 123+456
  *
- * [in] bool bAllowSep 
- * False by default, but when set to true it will accept the 
- * separator characters "," and "_" within the string, but these  
- * characters should be stripped from the string before using any 
- * of the conversion functions like toInt(), toFloat(), and etc 
+ * [in] bool bAllowSep
+ * False by default, but when set to true it will accept the
+ * separator characters "," and "_" within the string, but these
+ * characters should be stripped from the string before using any
+ * of the conversion functions like toInt(), toFloat(), and etc
  * else an error will occur.
  *
- * Also please note, that no spaces are allowed within the string  
- * anywhere whether it's a leading, trailing, or embedded space(s), 
+ * Also please note, that no spaces are allowed within the string
+ * anywhere whether it's a leading, trailing, or embedded space(s),
  * thus they too must be stripped from the string before using this
  * function, or any of the conversion functions.
  */
@@ -3301,7 +3305,7 @@ final bool isNumeric(in char[] s, in bool bAllowSep = false)
     bool   bDecimalPoint = false;
     bool   bExponent = false;
     bool   bComplex = false;
-    char[] sx = std.string.tolower(s); 
+    char[] sx = std.string.tolower(s);
     size_t j  = 0;
     char   c;
 
@@ -3309,32 +3313,32 @@ final bool isNumeric(in char[] s, in bool bAllowSep = false)
     // Empty string, return false
     if (iLen == 0)
         return false;
-    
+
     // Check for NaN (Not a Number)
     if (sx == "nan" || sx == "nani" || sx == "nan+nani")
         return true;
-        
+
     // Check for Infinity
     if (sx == "inf" || sx == "-inf")
         return true;
-     
-    // A sign is allowed only in the 1st character   
+
+    // A sign is allowed only in the 1st character
     if (sx[0] == '-' || sx[0] == '+')
         j++;
-            
+
     for (ptrdiff_t i = j; i < iLen; i++)
     {
         c = sx[i];
-    
-        // Digits are good, continue checking 
+
+        // Digits are good, continue checking
         // with the next character... ;)
-        if (c >= '0' && c <= '9') 
+        if (c >= '0' && c <= '9')
             continue;
 
-        // Check for the complex type, and if found 
-        // reset the flags for checking the 2nd number.  
+        // Check for the complex type, and if found
+        // reset the flags for checking the 2nd number.
         else if (c == '+')
-            if (i > 0) 
+            if (i > 0)
             {
                 bDecimalPoint = false;
                 bExponent = false;
@@ -3343,97 +3347,97 @@ final bool isNumeric(in char[] s, in bool bAllowSep = false)
             }
             else
                 return false;
-                
-        // Allow only one exponent per number   
-        else if (c == 'e')  
+
+        // Allow only one exponent per number
+        else if (c == 'e')
         {
             // A 2nd exponent found, return not a number
             if (bExponent)
                 return false;
-                
+
             if (i + 1 < iLen)
             {
-                // Look forward for the sign, and if 
+                // Look forward for the sign, and if
                 // missing then this is not a number.
                 if (sx[i + 1] != '-' && sx[i + 1] != '+')
                     return false;
                 else
                 {
                     bExponent = true;
-                    i++;    
-                }    
-            }        
+                    i++;
+                }
+            }
             else
                 // Ending in "E", return not a number
-                return false;        
-        }  
+                return false;
+        }
         // Allow only one decimal point per number to be used
         else if (c == '.' )
         {
             // A 2nd decimal point found, return not a number
             if (bDecimalPoint)
                 return false;
-            
+
             bDecimalPoint = true;
             continue;
-        }   
+        }
         // Check for ending literal characters: "f,u,l,i,ul,fi,li",
         // and wheater they're being used with the correct datatype.
         else if (i == iLen - 2)
         {
             // Integer Whole Number
-            if (sx[i..iLen] == "ul" && 
+            if (sx[i..iLen] == "ul" &&
                (!bDecimalPoint && !bExponent && !bComplex))
                 return true;
             // Floating-Point Number
             else if ((sx[i..iLen] == "fi" || sx[i..iLen] == "li") &&
                      (bDecimalPoint || bExponent || bComplex))
                 return true;
-            else if (sx[i..iLen] == "ul" && 
+            else if (sx[i..iLen] == "ul" &&
                     (bDecimalPoint || bExponent || bComplex))
-                return false;    
+                return false;
             // Could be a Integer or a Float, thus
-            // all these suffixes are valid for both  
-            else if (sx[i..iLen] == "ul" || 
-                     sx[i..iLen] == "fi" || 
+            // all these suffixes are valid for both
+            else if (sx[i..iLen] == "ul" ||
+                     sx[i..iLen] == "fi" ||
                      sx[i..iLen] == "li")
                 return true;
-            else    
+            else
                 return false;
         }
         else if (i == iLen - 1)
         {
             // Integer Whole Number
-            if ((c == 'u' || c == 'l') && 
+            if ((c == 'u' || c == 'l') &&
                 (!bDecimalPoint && !bExponent && !bComplex))
                 return true;
-            // Check to see if the last character in the string 
+            // Check to see if the last character in the string
             // is the required 'i' character
             else if (bComplex)
                 if (c == 'i')
                     return true;
-                else 
-                    return false;        
+                else
+                    return false;
             // Floating-Point Number
             else if ((c == 'l' || c == 'f' || c == 'i') &&
                      (bDecimalPoint || bExponent))
                 return true;
-            // Could be a Integer or a Float, thus  
-            // all these suffixes are valid for both 
+            // Could be a Integer or a Float, thus
+            // all these suffixes are valid for both
             else if (c == 'l' || c == 'f' || c == 'i')
                 return true;
             else
                 return false;
         }
         else
-            // Check if separators are allow  
+            // Check if separators are allow
             // to be in the numeric string
             if (bAllowSep == true && (c == '_' || c == ','))
                 continue;
-            else    
-                return false;       
-    }     
-    
+            else
+                return false;
+    }
+
     return true;
 }
 
@@ -3443,7 +3447,7 @@ bool isNumeric(...)
     return isNumeric(_arguments, _argptr);
 }
 
-/// Check only the first parameter, all others will be ignored. 
+/// Check only the first parameter, all others will be ignored.
 bool isNumeric(TypeInfo[] _arguments, va_list _argptr)
 {
     char[]  s  = "";
@@ -3462,29 +3466,29 @@ bool isNumeric(TypeInfo[] _arguments, va_list _argptr)
         return isNumeric(std.utf.toUTF8(va_arg!(dchar[])(_argptr)));
     else if (_arguments[0] == typeid(real))
         return true;
-    else if (_arguments[0] == typeid(double)) 
-        return true;   
-    else if (_arguments[0] == typeid(float)) 
-        return true;  
-    else if (_arguments[0] == typeid(ulong)) 
-        return true; 
-    else if (_arguments[0] == typeid(long)) 
-        return true;   
-    else if (_arguments[0] == typeid(uint)) 
-        return true;  
-    else if (_arguments[0] == typeid(int)) 
-        return true;   
-    else if (_arguments[0] == typeid(ushort)) 
-        return true;   
-    else if (_arguments[0] == typeid(short)) 
-        return true;   
-    else if (_arguments[0] == typeid(ubyte)) 
+    else if (_arguments[0] == typeid(double))
+        return true;
+    else if (_arguments[0] == typeid(float))
+        return true;
+    else if (_arguments[0] == typeid(ulong))
+        return true;
+    else if (_arguments[0] == typeid(long))
+        return true;
+    else if (_arguments[0] == typeid(uint))
+        return true;
+    else if (_arguments[0] == typeid(int))
+        return true;
+    else if (_arguments[0] == typeid(ushort))
+        return true;
+    else if (_arguments[0] == typeid(short))
+        return true;
+    else if (_arguments[0] == typeid(ubyte))
     {
        s.length = 1;
        s[0]= va_arg!(ubyte)(_argptr);
        return isNumeric(cast(char[])s);
     }
-    else if (_arguments[0] == typeid(byte)) 
+    else if (_arguments[0] == typeid(byte))
     {
        s.length = 1;
        s[0] = va_arg!(char)(_argptr);
@@ -3492,16 +3496,16 @@ bool isNumeric(TypeInfo[] _arguments, va_list _argptr)
     }
     else if (_arguments[0] == typeid(ireal))
         return true;
-    else if (_arguments[0] == typeid(idouble)) 
-        return true;   
-    else if (_arguments[0] == typeid(ifloat)) 
-        return true;  
+    else if (_arguments[0] == typeid(idouble))
+        return true;
+    else if (_arguments[0] == typeid(ifloat))
+        return true;
     else if (_arguments[0] == typeid(creal))
         return true;
-    else if (_arguments[0] == typeid(cdouble)) 
-        return true;   
-    else if (_arguments[0] == typeid(cfloat)) 
-        return true;  
+    else if (_arguments[0] == typeid(cdouble))
+        return true;
+    else if (_arguments[0] == typeid(cfloat))
+        return true;
     else if (_arguments[0] == typeid(char))
     {
         s.length = 1;
@@ -3515,17 +3519,17 @@ bool isNumeric(TypeInfo[] _arguments, va_list _argptr)
         return isNumeric(std.utf.toUTF8(ws));
     }
     else if (_arguments[0] == typeid(dchar))
-    { 
+    {
         ds.length =  1;
         ds[0] = va_arg!(dchar)(_argptr);
         return isNumeric(std.utf.toUTF8(ds));
     }
-    //else if (_arguments[0] == typeid(cent)) 
-    //    return true;   
-    //else if (_arguments[0] == typeid(ucent)) 
-    //    return true;  
-    else       
-       return false; 
+    //else if (_arguments[0] == typeid(cent))
+    //    return true;
+    //else if (_arguments[0] == typeid(ucent))
+    //    return true;
+    else
+       return false;
 }
 
 unittest
@@ -3545,12 +3549,12 @@ unittest
     assert(isNumeric(" 12.356") == false );
     assert(isNumeric("123 5.6") == false );
     assert(isNumeric("1233E-1+1.0e-1i") == true );
- 
+
     assert(isNumeric("123.00E-5+1234.45E-12Li") == true);
     assert(isNumeric("123.00e-5+1234.45E-12iL") == false);
     assert(isNumeric("123.00e-5+1234.45e-12uL") == false);
     assert(isNumeric("123.00E-5+1234.45e-12lu") == false);
-  
+
     assert(isNumeric("123fi") == true);
     assert(isNumeric("123li") == true);
     assert(isNumeric("--123L") == false);
@@ -3734,13 +3738,13 @@ unittest
  * ---
  * import std.stdio;
  * import std.string;
- * 
+ *
  * void main()
  * {
  *    static char[][] list = [ "food", "foxy" ];
- * 
+ *
  *    auto abbrevs = std.string.abbrev(list);
- * 
+ *
  *    foreach (key, value; abbrevs)
  *    {
  *       writefln("%s => %s", key, value);

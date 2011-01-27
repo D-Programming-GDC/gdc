@@ -27,7 +27,6 @@
    Modified by David Friedman, September 2004
 */
 
-
 /** \file std/perf.d This file contains platform-independent performance classes */
 
 module std.perf;
@@ -43,9 +42,9 @@ scope class PerformanceCounterScope(T)
     /// \name Construction
     /// @{
     public:
-        /// Constructs an instance of the PerformanceCounterScope using a reference 
+        /// Constructs an instance of the PerformanceCounterScope using a reference
         /// to the parameterising performance counter class, whose measurement is
-        /// to be scoped. The measurement interval is commenced with a call to 
+        /// to be scoped. The measurement interval is commenced with a call to
         /// <b>start()</b> on the managed counter instance.
         this(T counter)
         in
@@ -58,7 +57,7 @@ scope class PerformanceCounterScope(T)
 
             m_counter.start();
         }
-        /// The measurement interval is completed with a call to <b>stop()</b> on the 
+        /// The measurement interval is completed with a call to <b>stop()</b> on the
         /// managed counter instance.
         ~this()
         {
@@ -117,7 +116,7 @@ version(Unix)
 
     /// \brief A performance counter that uses the most accurate measurement APIs available on the host machine
     ///
-    /// This class attempts to use the high performance hardware counter as its measurement resource, but failing 
+    /// This class attempts to use the high performance hardware counter as its measurement resource, but failing
     /// that it defaults to less accurate resources in order to guarantee that meaningful measurements are always
     /// available to application code
     ///
@@ -544,7 +543,7 @@ else version(Windows)
 
     /// \brief A performance counter that provides thread-specific performance timings
     ///
-    /// This class uses the operating system's performance monitoring facilities to provide timing 
+    /// This class uses the operating system's performance monitoring facilities to provide timing
     /// information pertaining to the calling thread only, irrespective of the activities of other
     /// threads on the system. This class does not provide meaningful timing information on operating
     /// systems that do not provide thread-specific monitoring.
@@ -757,7 +756,7 @@ else version(Windows)
 
     /// \brief A performance counter that provides process-specific performance timings
     ///
-    /// This class uses the operating system's performance monitoring facilities to provide timing 
+    /// This class uses the operating system's performance monitoring facilities to provide timing
     /// information pertaining to the calling process only, irrespective of the activities of other
     /// processes on the system. This class does not provide meaningful timing information on operating
     /// systems that do not provide process-specific monitoring.
@@ -788,7 +787,7 @@ else version(Windows)
         /// \brief Class constructor
         ///
         /// Detects availability of the high performance hardware counter, and if
-        /// not available adjusts 
+        /// not available adjusts
         static this()
         {
             sm_process = GetCurrentProcess();
@@ -970,7 +969,7 @@ else version(Windows)
 
     /// \brief A performance counter that uses the most accurate measurement APIs available on the host machine
     ///
-    /// This class attempts to use the high performance hardware counter as its measurement resource, but failing 
+    /// This class attempts to use the high performance hardware counter as its measurement resource, but failing
     /// that it defaults to less accurate resources in order to guarantee that meaningful measurements are always
     /// available to application code
     ///
@@ -1000,7 +999,7 @@ else version(Windows)
         /// \brief Class constructor
         ///
         /// Detects availability of the high performance hardware counter, and if
-        /// not available adjusts 
+        /// not available adjusts
         static this()
         {
             if(QueryPerformanceFrequency(&sm_freq))

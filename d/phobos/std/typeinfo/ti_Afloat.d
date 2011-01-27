@@ -79,11 +79,7 @@ class TypeInfo_Af : TypeInfo
             if (c)
                 return c;
         }
-        if (s1.length < s2.length)
-            return -1;
-        else if (s1.length > s2.length)
-            return 1;
-        return 0;
+        return cast(int)s1.length - cast(int)s2.length;
     }
 
     size_t tsize()
@@ -99,6 +95,17 @@ class TypeInfo_Af : TypeInfo
     TypeInfo next()
     {
         return typeid(float);
+    }
+
+    size_t talign()
+    {
+        return (float[]).alignof;
+    }
+
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {   //arg1 = typeid(size_t);
+        //arg2 = typeid(void*);
+        return 0;
     }
 }
 

@@ -68,7 +68,6 @@ static this()
 
 class FileException : Exception
 {
-
     uint errno;                 // operating system error code
 
     this(string name)
@@ -176,7 +175,7 @@ void write(char[] name, void[] buffer)
 
     if (buffer.length != numwritten)
         goto err2;
-    
+
     if (!CloseHandle(h))
         goto err;
     return;
@@ -220,7 +219,7 @@ void append(char[] name, void[] buffer)
 
     if (buffer.length != numwritten)
         goto err2;
-    
+
     if (!CloseHandle(h))
         goto err;
     return;
@@ -584,13 +583,13 @@ struct DirEntry
 string[] listdir(string pathname)
 {
     string[] result;
-    
+
     bool listing(string filename)
     {
         result ~= filename;
         return true; // continue
     }
-    
+
     listdir(pathname, &listing);
     return result;
 }
@@ -639,7 +638,7 @@ string[] listdir(string pathname)
 
 string[] listdir(string pathname, string pattern)
 {   string[] result;
-    
+
     bool callback(DirEntry* de)
     {
         if (de.isdir)
@@ -650,7 +649,7 @@ string[] listdir(string pathname, string pattern)
         }
         return true; // continue
     }
-    
+
     listdir(pathname, &callback);
     return result;
 }
@@ -659,7 +658,7 @@ string[] listdir(string pathname, string pattern)
 
 string[] listdir(string pathname, RegExp r)
 {   string[] result;
-    
+
     bool callback(DirEntry* de)
     {
         if (de.isdir)
@@ -670,7 +669,7 @@ string[] listdir(string pathname, RegExp r)
         }
         return true; // continue
     }
-    
+
     listdir(pathname, &callback);
     return result;
 }
@@ -850,20 +849,18 @@ void copy(string from, string to)
 else version (Unix)
 {
 
+private import std.date;
 private import std.c.unix.unix;
 //private import std.c.posix.posix;
-private import std.date;
+private import std.c.string;
 
 alias std.c.unix.unix unix;
-
-private import std.c.string;
 
 /***********************************
  */
 
 class FileException : Exception
 {
-
     uint errno;                 // operating system error code
 
     this(string name)
@@ -877,7 +874,8 @@ class FileException : Exception
     }
 
     this(string name, uint errno)
-    {   char[1024] buf = void;
+    {
+        char[1024] buf = void;
         auto s = _d_gnu_cbridge_strerror(errno, buf.ptr, buf.length);
         this(name, std.string.toString(s).dup);
         this.errno = errno;
@@ -910,12 +908,9 @@ void[] read(string name)
         goto err2;
     }
     auto size = statbuf.st_size;
-    if (size > size_t.max)
-        goto err2;
-
     if (size > int.max)
         goto err2;
- 
+
     void[] buf;
     if (size == 0)
     {   /* The size could be 0 if the file is a device or a procFS file,
@@ -925,7 +920,7 @@ void[] read(string name)
         while (1)
         {
             buf = std.gc.realloc(buf.ptr, cast(int)size + readsize);
- 
+
             auto toread = readsize;
             while (toread)
             {
@@ -950,7 +945,7 @@ void[] read(string name)
         if (buf.ptr)
             std.gc.hasNoPointers(buf.ptr);
 
-    auto numread = unix.read(fd, buf.ptr, cast(int)size); //auto numread = std.c.linux.linux.read(fd, buf.ptr, cast(int)size);
+        auto numread = unix.read(fd, buf.ptr, cast(int)size); //auto numread = std.c.linux.linux.read(fd, buf.ptr, cast(int)size);
         if (numread != size)
         {
             //printf("\tread error, errno = %d\n",getErrno());
@@ -1137,17 +1132,17 @@ void getTimes(string name, out d_time ftc, out d_time fta, out d_time ftm)
     char *namez;
 
     namez = toStringz(name);
-    if (std.c.unix.unix.stat(namez, &statbuf))
+    if (unix.stat(namez, &statbuf))
     {
         throw new FileException(name, getErrno());
     }
     version (GNU)
     {
-      ftc = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
-    fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
-    ftm = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
+        ftc = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
+        fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
+        ftm = cast(d_time)statbuf.st_mtime * std.date.TicksPerSecond;
     }
-        else version (linux)
+    else version (linux)
     {
         ftc = cast(d_time)statbuf.st_ctime * std.date.TicksPerSecond;
         fta = cast(d_time)statbuf.st_atime * std.date.TicksPerSecond;
@@ -1264,32 +1259,32 @@ void rmdir(string pathname)
 
 string getcwd()
 {
-    version(all)
+  version(all)
+  {
+    char buf[PATH_MAX];
+    if (! unix.getcwd(buf.ptr, buf.length))
     {
-        char buf[PATH_MAX];
-        if (! unix.getcwd(buf.ptr, buf.length))
-        {
-            throw new FileException("cannot get cwd", getErrno());
-        }
-        size_t len = strlen(buf.ptr);
-        string result = new char[len];
-        result[] = buf[0..len];
-        return result;
+        throw new FileException("cannot get cwd", getErrno());
     }
-    else
-    {
+    size_t len = strlen(buf.ptr);
+    string result = new char[len];
+    result[] = buf[0..len];
+    return result;
+  }
+  else
+  {
     auto p = unix.getcwd(null, 0);
     if (!p)
     {
         throw new FileException("cannot get cwd", getErrno());
     }
+
     auto len = std.c.string.strlen(p);
     auto buf = new char[len];
     buf[] = p[0 .. len];
     std.c.stdlib.free(p);
     return buf;
-    }       
-
+  }
 }
 
 /***************************************************
@@ -1386,7 +1381,7 @@ struct DirEntry
         char* namez;
 
         namez = toStringz(name);
-        if (std.c.unix.unix.stat(namez, &statbuf))
+        if (unix.stat(namez, &statbuf))
         {
             //printf("\tstat error, errno = %d\n",getErrno());
             return;
@@ -1439,20 +1434,18 @@ struct DirEntry
 string[] listdir(string pathname)
 {
     string[] result;
-    
     bool listing(string filename)
     {
         result ~= filename;
         return true; // continue
     }
-    
+
     listdir(pathname, &listing);
     return result;
 }
 
 string[] listdir(string pathname, string pattern)
 {   string[] result;
-    
     bool callback(DirEntry* de)
     {
         if (de.isdir)
@@ -1463,14 +1456,14 @@ string[] listdir(string pathname, string pattern)
         }
         return true; // continue
     }
-    
+
     listdir(pathname, &callback);
     return result;
 }
 
 string[] listdir(string pathname, RegExp r)
 {   string[] result;
-    
+
     bool callback(DirEntry* de)
     {
         if (de.isdir)
@@ -1481,7 +1474,7 @@ string[] listdir(string pathname, RegExp r)
         }
         return true; // continue
     }
-    
+
     listdir(pathname, &callback);
     return result;
 }
@@ -1515,7 +1508,7 @@ void listdir(string pathname, bool delegate(DirEntry* de) callback)
                         continue;
 
                 de.init(pathname, fdata);
-                if (!callback(&de))         
+                if (!callback(&de))
                     break;
             }
         }
@@ -1545,7 +1538,7 @@ void copy(string from, string to)
     char* toz = toStringz(to);
     //printf("file.copy(from='%s', to='%s')\n", fromz, toz);
 
-    int fd = std.c.unix.unix.open(fromz, O_RDONLY);
+    int fd = unix.open(fromz, O_RDONLY);
     if (fd == -1)
     {
         //printf("\topen error, errno = %d\n",getErrno());
@@ -1553,13 +1546,13 @@ void copy(string from, string to)
     }
 
     //printf("\tfile opened\n");
-    if (std.c.unix.unix.fstat(fd, &statbuf))
+    if (unix.fstat(fd, &statbuf))
     {
         //printf("\tfstat error, errno = %d\n",getErrno());
         goto err2;
     }
 
-    auto fdw = std.c.unix.unix.open(toz, O_CREAT | O_WRONLY | O_TRUNC, 0660);
+    auto fdw = unix.open(toz, O_CREAT | O_WRONLY | O_TRUNC, 0660);
     if (fdw == -1)
     {
         //printf("\topen error, errno = %d\n",getErrno());
@@ -1581,13 +1574,13 @@ void copy(string from, string to)
     for (auto size = statbuf.st_size; size; )
     {   size_t toread = (size > BUFSIZ) ? BUFSIZ : cast(size_t)size;
 
-        auto n = std.c.unix.unix.read(fd, buf, toread);
+        auto n = unix.read(fd, buf, toread);
         if (n != toread)
         {
             //printf("\tread error, errno = %d\n",getErrno());
             goto err5;
         }
-        n = std.c.unix.unix.write(fdw, buf, toread);
+        n = unix.write(fdw, buf, toread);
         if (n != toread)
         {
             //printf("\twrite error, errno = %d\n",getErrno());
@@ -1598,7 +1591,7 @@ void copy(string from, string to)
 
     std.c.stdlib.free(buf);
 
-    if (std.c.unix.unix.close(fdw) == -1)
+    if (unix.close(fdw) == -1)
     {
         //printf("\tclose error, errno = %d\n",getErrno());
         goto err2;
@@ -1607,13 +1600,13 @@ void copy(string from, string to)
     utimbuf utim = void;
     version (GNU)
     {
-    utim.actime = cast(typeof(utim.actime))statbuf.st_atime;
-    utim.modtime = cast(typeof(utim.modtime))statbuf.st_mtime;
+        utim.actime = cast(typeof(utim.actime))statbuf.st_atime;
+        utim.modtime = cast(typeof(utim.modtime))statbuf.st_mtime;
     }
     else version (linux)
     {
-    utim.actime = cast(typeof(utim.actime))statbuf.st_atime;
-    utim.modtime = cast(typeof(utim.modtime))statbuf.st_mtime;
+        utim.actime = cast(__time_t)statbuf.st_atime;
+        utim.modtime = cast(__time_t)statbuf.st_mtime;
     }
     else version (OSX)
     {
@@ -1640,7 +1633,7 @@ void copy(string from, string to)
         goto err3;
     }
 
-    if (std.c.unix.unix.close(fd) == -1)
+    if (unix.close(fd) == -1)
     {
         //printf("\tclose error, errno = %d\n",getErrno());
         goto err1;
@@ -1651,11 +1644,11 @@ void copy(string from, string to)
 err5:
     std.c.stdlib.free(buf);
 err4:
-    std.c.unix.unix.close(fdw);
+    unix.close(fdw);
 err3:
     std.c.stdio.remove(toz);
 err2:
-    std.c.unix.unix.close(fd);
+    unix.close(fd);
 err1:
     throw new FileException(from, getErrno());
   }

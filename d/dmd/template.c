@@ -37,6 +37,10 @@
 #include "identifier.h"
 #include "hdrgen.h"
 
+#ifdef IN_GCC
+#include "d-dmd-gcc.h"
+#endif
+
 #if WINDOWS_SEH
 #include <windows.h>
 long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep);
@@ -219,21 +223,31 @@ int match(Object *o1, Object *o2, TemplateDeclaration *tempdecl, Scope *sc)
     }
     else if (s1)
     {
-        //printf("%p %s, %p %s\n", s1, s1->toChars(), s2, s2->toChars());
-        if (!s2 || !s1->equals(s2) || s1->parent != s2->parent)
+        //printf("%p %s %s, %p %s %s\n", s1, s1->kind(), s1->toChars(), s2, s2->kind(), s2->toChars());
+        if (!s2)
         {
             goto Lnomatch;
         }
+        if (!s1->equals(s2))
+        {
 #if DMDV2
-        VarDeclaration *v1 = s1->isVarDeclaration();
-        VarDeclaration *v2 = s2->isVarDeclaration();
-        if (v1 && v2 && v1->storage_class & v2->storage_class & STCmanifest)
-        {   ExpInitializer *ei1 = v1->init->isExpInitializer();
-            ExpInitializer *ei2 = v2->init->isExpInitializer();
-            if (ei1 && ei2 && !ei1->exp->equals(ei2->exp))
+            VarDeclaration *v1 = s1->isVarDeclaration();
+            VarDeclaration *v2 = s2->isVarDeclaration();
+            if (v1 && v2 && v1->storage_class & v2->storage_class & STCmanifest)
+            {   ExpInitializer *ei1 = v1->init->isExpInitializer();
+                ExpInitializer *ei2 = v2->init->isExpInitializer();
+                if (ei1 && ei2 && !ei1->exp->equals(ei2->exp))
+                    goto Lnomatch;
+                goto Lmatch;
+            }
+            else
+#endif
                 goto Lnomatch;
         }
-#endif
+        if (s1->parent != s2->parent)
+        {
+            goto Lnomatch;
+        }
     }
     else if (v1)
     {
@@ -249,11 +263,34 @@ int match(Object *o1, Object *o2, TemplateDeclaration *tempdecl, Scope *sc)
                 goto Lnomatch;
         }
     }
+Lmatch:
     //printf("match\n");
     return 1;   // match
 Lnomatch:
     //printf("nomatch\n");
     return 0;   // nomatch;
+}
+
+
+/************************************
+ * Match an array of them.
+ * This should match what genIdent() does.
+ */
+int arrayObjectMatch(Objects *oa1, Objects *oa2, TemplateDeclaration *tempdecl, Scope *sc)
+{
+    if (oa1 == oa2)
+        return 1;
+    if (oa1->dim != oa2->dim)
+        return 0;
+    for (size_t j = 0; j < oa1->dim; j++)
+    {   Object *o1 = (Object *)oa1->data[j];
+        Object *o2 = (Object *)oa2->data[j];
+        if (!match(o1, o2, tempdecl, sc))
+        {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 /****************************************
@@ -355,7 +392,6 @@ Dsymbol *TemplateDeclaration::syntaxCopy(Dsymbol *)
     //printf("TemplateDeclaration::syntaxCopy()\n");
     TemplateDeclaration *td;
     TemplateParameters *p;
-    Array *d;
 
     p = NULL;
     if (parameters)
@@ -370,7 +406,7 @@ Dsymbol *TemplateDeclaration::syntaxCopy(Dsymbol *)
     Expression *e = NULL;
     if (constraint)
         e = constraint->syntaxCopy();
-    d = Dsymbol::arraySyntaxCopy(members);
+    Array *d = Dsymbol::arraySyntaxCopy(members);
     td = new TemplateDeclaration(loc, ident, p, e, d);
     return td;
 }
@@ -379,6 +415,8 @@ void TemplateDeclaration::semantic(Scope *sc)
 {
 #if LOG
     printf("TemplateDeclaration::semantic(this = %p, id = '%s')\n", this, ident->toChars());
+    printf("sc->stc = %llx\n", sc->stc);
+    printf("sc->module = %s\n", sc->module->toChars());
 #endif
     if (semanticRun)
         return;         // semantic() already run
@@ -814,6 +852,7 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(Loc loc, Objects *targsi,
     ScopeDsymbol *paramsym = new ScopeDsymbol();
     paramsym->parent = scope->parent;
     Scope *paramscope = scope->push(paramsym);
+    paramscope->stc = 0;
 
     TemplateTupleParameter *tp = isVariadic();
 
@@ -950,9 +989,9 @@ L1:
 
 L2:
 #if DMDV2
-    // Match 'ethis' to any TemplateThisParameter's
     if (ethis)
     {
+        // Match 'ethis' to any TemplateThisParameter's
         for (size_t i = 0; i < parameters->dim; i++)
         {   TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
             TemplateThisParameter *ttp = tp->isTemplateThisParameter();
@@ -965,6 +1004,34 @@ L2:
                     goto Lnomatch;
                 if (m < match)
                     match = m;          // pick worst match
+            }
+        }
+
+        // Match attributes of ethis against attributes of fd
+        if (fd->type)
+        {
+            Type *tthis = ethis->type;
+            unsigned mod = fd->type->mod;
+            StorageClass stc = scope->stc;
+            if (stc & (STCshared | STCsynchronized))
+                mod |= MODshared;
+            if (stc & STCimmutable)
+                mod |= MODimmutable;
+            if (stc & STCconst)
+                mod |= MODconst;
+            if (stc & STCwild)
+                mod |= MODwild;
+            // Fix mod
+            if (mod & MODimmutable)
+                mod = MODimmutable;
+            if (mod & MODconst)
+                mod &= ~STCwild;
+            if (tthis->mod != mod)
+            {
+                if (!MODimplicitConv(tthis->mod, mod))
+                    goto Lnomatch;
+                if (MATCHconst < match)
+                    match = MATCHconst;
             }
         }
     }
@@ -1333,6 +1400,7 @@ FuncDeclaration *TemplateDeclaration::deduceFunctionTemplate(Scope *sc, Loc loc,
         printf("\t%s %s\n", arg->type->toChars(), arg->toChars());
         //printf("\tty = %d\n", arg->type->ty);
     }
+    printf("stc = %llx\n", scope->stc);
 #endif
 
     for (TemplateDeclaration *td = this; td; td = td->overnext)
@@ -1627,8 +1695,14 @@ MATCH Type::deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters,
     }
 
     if (ty != tparam->ty)
-        return implicitConvTo(tparam);
-//      goto Lnomatch;
+    {
+#if DMDV2
+        // Can't instantiate AssociativeArray!() without a scope
+        if (tparam->ty == Taarray && !((TypeAArray*)tparam)->sc)
+            ((TypeAArray*)tparam)->sc = sc;
+#endif
+       return implicitConvTo(tparam);
+    }
 
     if (nextOf())
         return nextOf()->deduceType(sc, tparam->nextOf(), parameters, dedtypes);
@@ -1797,6 +1871,8 @@ MATCH TypeFunction::deduceType(Scope *sc, Type *tparam, TemplateParameters *para
              * of the type of the last function parameter.
              */
             Parameter *fparam = Parameter::getNth(tp->parameters, nfparams - 1);
+            assert(fparam);
+            assert(fparam->type);
             if (fparam->type->ty != Tident)
                 goto L1;
             TypeIdentifier *tid = (TypeIdentifier *)fparam->type;
@@ -2102,6 +2178,7 @@ MATCH TypeInstance::deduceType(Scope *sc,
     return Type::deduceType(sc, tparam, parameters, dedtypes);
 
 Lnomatch:
+    //printf("no match\n");
     return MATCHnomatch;
 }
 
@@ -2460,6 +2537,7 @@ Lnomatch:
  *      parameters[]    template parameters
  *      dedtypes[]      deduced arguments to template instance
  *      *psparam        set to symbol declared and initialized to dedtypes[i]
+ *      flags           1: don't do 'toHeadMutable()'
  */
 
 MATCH TemplateTypeParameter::matchArg(Scope *sc, Objects *tiargs,
@@ -3126,7 +3204,10 @@ MATCH TemplateTupleParameter::matchArg(Scope *sc,
      */
     assert(i + 1 == dedtypes->dim);     // must be the last one
     Tuple *ovar;
-    if (i + 1 == tiargs->dim && isTuple((Object *)tiargs->data[i]))
+    if (dedtypes->data[i] && isTuple((Object *)dedtypes->data[i]))
+        // It was already been deduced
+        ovar = isTuple((Object *)dedtypes->data[i]);
+    else if (i + 1 == tiargs->dim && isTuple((Object *)tiargs->data[i]))
         ovar = isTuple((Object *)tiargs->data[i]);
     else
     {
@@ -3302,10 +3383,6 @@ Dsymbol *TemplateInstance::syntaxCopy(Dsymbol *s)
 }
 
 
-#ifdef IN_GCC
-#include "d-dmd-gcc.h"
-#endif
-
 void TemplateInstance::semantic(Scope *sc)
 {
     if (global.errors)
@@ -3317,7 +3394,7 @@ void TemplateInstance::semantic(Scope *sc)
              */
             fatal();
         }
-        return;
+        //return;
     }
 #if LOG
     printf("\n+TemplateInstance::semantic('%s', this=%p)\n", toChars(), this);
@@ -3346,6 +3423,9 @@ void TemplateInstance::semantic(Scope *sc)
 
     if (semanticRun != 0)
     {
+#if LOG
+        printf("Recursive template expansion\n");
+#endif
         error(loc, "recursive template expansion");
 //      inst = this;
         return;
@@ -3463,9 +3543,9 @@ void TemplateInstance::semantic(Scope *sc)
 
         Scope *scx = sc;
 #if 0
-    for (scx = sc; scx; scx = scx->enclosing)
-        if (scx->scopesym)
-            break;
+        for (scx = sc; scx; scx = scx->enclosing)
+            if (scx->scopesym)
+                break;
 #endif
 #ifdef IN_GCC
         /* For "all" and "private" template modes, templates are always
@@ -3709,7 +3789,7 @@ void TemplateInstance::semantic(Scope *sc)
     // Give additional context info if error occurred during instantiation
     if (global.errors != errorsave)
     {
-        error("error instantiating");
+        error(loc, "error instantiating");
         if (tinst)
         {   tinst->printInstantiationTrace();
             if (!global.gag)
@@ -3903,11 +3983,7 @@ TemplateDeclaration *TemplateInstance::findTemplateDeclaration(Scope *sc)
         if (s->parent &&
             (ti = s->parent->isTemplateInstance()) != NULL)
         {
-            if (
-                (ti->name == id ||
-                 ti->toAlias()->ident == id)
-                &&
-                ti->tempdecl)
+            if (ti->tempdecl && ti->tempdecl->ident == id)
             {
                 /* This is so that one can refer to the enclosing
                  * template, even if it has the same name as a member
@@ -4264,8 +4340,16 @@ Identifier *TemplateInstance::genIdent()
                 error("forward reference of %s", d->toChars());
             else
             {
-                char *p = sa->mangle();
-                buf.printf("%"PRIuSIZE"%s", strlen(p), p);
+                const char *p = sa->mangle();
+
+                /* Bugzilla 3043: if the first character of p is a digit this
+                 * causes ambiguity issues because the digits of the two numbers are adjacent.
+                 * Current demanglers resolve this by trying various places to separate the
+                 * numbers until one gets a successful demangle.
+                 * Unfortunately, fixing this ambiguity will break existing binary
+                 * compatibility and the demanglers, so we'll leave it as is.
+                 */
+                buf.printf("%zu%s", strlen(p), p);
             }
         }
         else if (va)

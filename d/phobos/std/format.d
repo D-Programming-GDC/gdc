@@ -135,7 +135,7 @@ enum Mangle : char
 // This is required since for arrays of ints we only have the mangled
 // char to work from. If arrays always subclassed TypeInfo_Array this
 // routine could go away.
-private TypeInfo primitiveTypeInfo(Mangle m) 
+private TypeInfo primitiveTypeInfo(Mangle m)
 {
   TypeInfo ti;
 
@@ -357,7 +357,7 @@ $(I FormatChar):
             to use in the result.
             <dt>non-string static and dynamic arrays
             <dd>The result is [s<sub>0</sub>, s<sub>1</sub>, ...]
-            where s<sub>k</sub> is the kth element 
+            where s<sub>k</sub> is the kth element
             formatted with the default format.
         </dl>
 
@@ -448,7 +448,6 @@ int x = 27;
 formattedPrint("The answer is %s:", x, 6);
 ------------------------
  */
-
 void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
 {
     doFormatPtr(putc, arguments, argptr, null);
@@ -641,6 +640,10 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
           return m;
         }
 
+        /* p = pointer to the first element in the array
+         * len = number of elements in the array
+         * valti = type of the elements
+         */
         void putArray(void* p, size_t len, TypeInfo valti)
         {
           //printf("\nputArray(len = %u), tsize = %u\n", len, valti.tsize());
@@ -670,14 +673,6 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
         void putAArray(ubyte[long] vaa, TypeInfo valti, TypeInfo keyti)
         {
-            // Copied from aaA.d
-            size_t aligntsize(size_t tsize)
-            {
-                // Is pointer alignment on the x64 4 bytes or 8?
-                return (tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
-            }
-
-            
           putc('[');
           bool comma=false;
           auto argptrSave = p_args;
@@ -689,19 +684,30 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
           {
             if (comma) putc(',');
             comma = true;
-            // the key comes before the value
-            ubyte* key = &fakevalue - long.sizeof;
+            void *pkey = &fakevalue;
+            version (X86)
+                pkey -= long.sizeof;
+            else
+                pkey -= 16;
 
-            //doFormat(putc, (&keyti)[0..1], key);
-            p_args = key;
+            // the key comes before the value
+            auto keysize = keyti.tsize();
+            version (X86)
+                auto keysizet = (keysize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+            else
+                auto keysizet = (keysize + 15) & ~(15);
+
+            void* pvalue = pkey + keysizet;
+
+            //doFormat(putc, (&keyti)[0..1], pkey);
+             p_args = pkey;
             ti = keyti;
             m = getMan(keyti);
             formatArg('s');
 
             putc(':');
-            ubyte* value = key + aligntsize(keyti.tsize);
-            //doFormat(putc, (&valti)[0..1], value);
-            p_args = value;
+            //doFormat(putc, (&valti)[0..1], pvalue);
+            p_args = pvalue;
             ti = valti;
             m = getMan(valti);
             formatArg('s');
@@ -807,7 +813,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 goto Lputstr;
 
             case Mangle.Tpointer:
-                vnumber = cast(size_t)va_arg!(void*)(argptr);
+                vnumber = cast(ulong)va_arg!(void*)(argptr);
                 if (fc != 'x' && fc != 'X')             uc = 1;
                 flags |= FL0pad;
                 if (!(flags & FLprecision))
@@ -821,22 +827,14 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
             case Mangle.Tfloat:
             case Mangle.Tifloat:
                 if (fc == 'x' || fc == 'X')
-                {
-                    float f = va_arg!(float)(argptr);
-                    vnumber = *cast(uint*)&f;
-                    goto Lnumber;
-                }
+                    goto Luint;
                 vreal = va_arg!(float)(argptr);
                 goto Lreal;
 
             case Mangle.Tdouble:
             case Mangle.Tidouble:
                 if (fc == 'x' || fc == 'X')
-                {
-                    double f = va_arg!(double)(argptr);
-                    vnumber = *cast(ulong*)&f;
-                    goto Lnumber;
-                }
+                    goto Lulong;
                 vreal = va_arg!(double)(argptr);
                 goto Lreal;
 
@@ -868,7 +866,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
             case Mangle.Tarray:
                 int mi = 10;
                 if (ti.classinfo.name.length == 14 &&
-                    ti.classinfo.name[9..14] == "Array") 
+                    ti.classinfo.name[9..14] == "Array")
                 { // array of non-primitive types
                   TypeInfo tn = (cast(TypeInfo_Array)ti).next;
                   tn = skipCI(tn);
@@ -885,7 +883,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                   return;
                 }
                 if (ti.classinfo.name.length == 25 &&
-                    ti.classinfo.name[9..25] == "AssociativeArray") 
+                    ti.classinfo.name[9..25] == "AssociativeArray")
                 { // associative array
                   ubyte[long] vaa = va_arg!(ubyte[long])(argptr);
                   putAArray(vaa,
@@ -936,6 +934,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                     }
                     return;
                 }
+
             case Mangle.Ttypedef:
                 ti = (cast(TypeInfo_Typedef)ti).base;
                 m = cast(Mangle)ti.classinfo.name[9];
@@ -1351,7 +1350,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
     for (j = 0; j < arguments.length; )
     {   ti = arguments[j++];
-        //printf("test1: '%.*s' %d\n", ti.classinfo.name, ti.classinfo.name.length);
+        //printf("arg[%d]: '%.*s' %d\n", j, ti.classinfo.name.length, ti.classinfo.name.ptr, ti.classinfo.name.length);
         //ti.print();
 
         flags = 0;
@@ -1370,7 +1369,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
         if (m == Mangle.Tarray)
         {
             if (ti.classinfo.name.length == 14 &&
-                ti.classinfo.name[9..14] == "Array") 
+                ti.classinfo.name[9..14] == "Array")
             {
               TypeInfo tn = (cast(TypeInfo_Array)ti).next;
               tn = skipCI(tn);
@@ -1609,7 +1608,7 @@ unittest
     string s;
 
     debug(format) printf("std.format.format.unittest\n");
- 
+
     s = std.string.format("hello world! %s %s ", true, 57, 1_000_000_000, 'x', " foo");
     assert(s == "hello world! true 57 1000000000x foo");
 
@@ -1880,10 +1879,9 @@ unittest
 
     char[5][int] aa = ([3:"hello", 4:"betty"]);
     r = std.string.format("%s", aa.values);
-    writefln(aa);
     assert(r == "[[h,e,l,l,o],[b,e,t,t,y]]");
     r = std.string.format("%s", aa);
-    writefln(aa);
+printf("r = %.*s\n", r.length, r.ptr);
     assert(r == "[3:[h,e,l,l,o],4:[b,e,t,t,y]]");
 
     static const dchar[] ds = ['a','b'];

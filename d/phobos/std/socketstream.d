@@ -1,14 +1,14 @@
 /*
         Copyright (C) 2004 Christopher E. Miller
-        
+
         This software is provided 'as-is', without any express or implied
         warranty.  In no event will the authors be held liable for any damages
         arising from the use of this software.
-        
+
         Permission is granted to anyone to use this software for any purpose,
         including commercial applications, and to alter it and redistribute it
         freely, subject to the following restrictions:
-        
+
         1. The origin of this software must not be misrepresented; you must not
            claim that you wrote the original software. If you use this software
            in a product, an acknowledgment in the product documentation would be
@@ -45,7 +45,7 @@ class SocketStream: Stream
 {
     private:
         Socket sock;
-        
+
     public:
 
         /**
@@ -57,10 +57,10 @@ class SocketStream: Stream
                         readable = true;
                 if(mode & FileMode.Out)
                         writeable = true;
-                
+
                 this.sock = sock;
         }
-        
+
         /**
          * Uses mode <b>FileMode.In | FileMode.Out</b>.
          */
@@ -69,7 +69,7 @@ class SocketStream: Stream
                 writeable = readable = true;
                 this.sock = sock;
         }
-        
+
         /**
          * Property to get the <b>Socket</b> that is being streamed.
          */
@@ -77,7 +77,7 @@ class SocketStream: Stream
         {
                 return sock;
         }
-        
+
         /**
          * Attempts to read the entire block, waiting if necessary.
          */
@@ -85,17 +85,17 @@ class SocketStream: Stream
         {
           ubyte* buffer = cast(ubyte*)_buffer;
           assertReadable();
-          
+
           if (size == 0)
             return size;
-          
+
           auto len = sock.receive(buffer[0 .. size]);
           readEOF = cast(bool)(len == 0);
           if (len == sock.ERROR)
             len = 0;
           return len;
         }
-        
+
         /**
          * Attempts to write the entire block, waiting if necessary.
          */
@@ -106,14 +106,14 @@ class SocketStream: Stream
 
           if (size == 0)
             return size;
-          
+
           auto len = sock.send(buffer[0 .. size]);
           readEOF = cast(bool)(len == 0);
-          if (len == sock.ERROR) 
+          if (len == sock.ERROR)
             len = 0;
           return len;
         }
-        
+
         /**
          *
          */
@@ -121,7 +121,7 @@ class SocketStream: Stream
         {
                 throw new SeekException("Cannot seek a socket.");
         }
-        
+
         /**
          * Does not return the entire stream because that would
          * require the remote connection to be closed.
@@ -130,7 +130,7 @@ class SocketStream: Stream
         {
                 return sock.toString();
         }
-        
+
         /**
          * Close the <b>Socket</b>.
          */

@@ -39,7 +39,6 @@
    Modified by David Friedman, April 2005
 */
 
-
 module object;
 
 import std.outofmemory;
@@ -121,7 +120,7 @@ class Object
     hash_t toHash()
     {
         // BUG: this prevents a compacting GC from working, needs to be fixed
-        return cast(size_t)cast(void *)this;
+        return cast(hash_t)cast(void *)this;
     }
 
     /**
@@ -389,7 +388,7 @@ class TypeInfo
     }
 
     /// Returns a hash of the instance of a type.
-    hash_t getHash(void *p) { return cast(size_t)p; }
+    hash_t getHash(void *p) { return cast(hash_t)p; }
 
     /// Compares two instances for equality.
     int equals(void *p1, void *p2) { return cast(int)(p1 == p2); }
@@ -425,6 +424,17 @@ class TypeInfo
 
     /// Get type information on the contents of the type; null if not available
     OffsetTypeInfo[] offTi() { return null; }
+
+    /// Return alignment of type
+    size_t talign() { return tsize(); }
+
+    /** Return internal info on arguments fitting into 8byte.
+     * See X86-64 ABI 3.2.3
+     */
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {   arg1 = this;
+        return 0;
+    }
 }
 
 class TypeInfo_Typedef : TypeInfo
@@ -451,6 +461,12 @@ class TypeInfo_Typedef : TypeInfo
     uint flags() { return base.flags(); }
     void[] init() { return m_init.length ? m_init : base.init(); }
 
+    size_t talign() { return base.talign(); }
+
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {   return base.argTypes(arg1, arg2);
+    }
+
     TypeInfo base;
     char[] name;
     void[] m_init;
@@ -474,7 +490,7 @@ class TypeInfo_Pointer : TypeInfo
 
     hash_t getHash(void *p)
     {
-        return cast(size_t)*cast(void* *)p;
+        return cast(hash_t)*cast(void* *)p;
     }
 
     int equals(void *p1, void *p2)
@@ -585,6 +601,17 @@ class TypeInfo_Array : TypeInfo
     }
 
     uint flags() { return 1; }
+
+    size_t talign()
+    {
+        return (void[]).alignof;
+    }
+
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {   //arg1 = typeid(size_t);
+        //arg2 = typeid(void*);
+        return 0;
+    }
 }
 
 class TypeInfo_StaticArray : TypeInfo
@@ -669,6 +696,16 @@ class TypeInfo_StaticArray : TypeInfo
 
     TypeInfo value;
     size_t len;
+
+    size_t talign()
+    {
+        return value.talign();
+    }
+
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {   arg1 = typeid(void*);
+        return 0;
+    }
 }
 
 class TypeInfo_AssociativeArray : TypeInfo
@@ -699,6 +736,16 @@ class TypeInfo_AssociativeArray : TypeInfo
 
     TypeInfo value;
     TypeInfo key;
+
+    size_t talign()
+    {
+        return (char[int]).alignof;
+    }
+
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {   arg1 = typeid(void*);
+        return 0;
+    }
 }
 
 class TypeInfo_Function : TypeInfo
@@ -751,6 +798,17 @@ class TypeInfo_Delegate : TypeInfo
     uint flags() { return 1; }
 
     TypeInfo next;
+
+    size_t talign()
+    {   alias int delegate() dg;
+        return dg.alignof;
+    }
+
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {   arg1 = typeid(void*);
+        arg2 = typeid(void*);
+        return 0;
+    }
 }
 
 class TypeInfo_Class : TypeInfo
@@ -971,6 +1029,8 @@ class TypeInfo_Struct : TypeInfo
 
     uint flags() { return m_flags; }
 
+    size_t talign() { return m_align; }
+
     char[] name;
     void[] m_init;      // initializer; init.ptr == null if 0 initialize
 
@@ -980,6 +1040,18 @@ class TypeInfo_Struct : TypeInfo
     char[] function(void*) xtoString;
 
     uint m_flags;
+    uint m_align;
+
+    version (X86_64)
+    {
+        int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+        {   arg1 = m_arg1;
+            arg2 = m_arg2;
+            return 0;
+        }
+        TypeInfo m_arg1;
+        TypeInfo m_arg2;
+    }
 }
 
 class TypeInfo_Tuple : TypeInfo
@@ -1042,6 +1114,16 @@ class TypeInfo_Tuple : TypeInfo
     {
         assert(0);
     }
+
+    size_t talign()
+    {
+        assert(0);
+    }
+
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {
+        assert(0);
+    }
 }
 
 class TypeInfo_Const : TypeInfo
@@ -1058,6 +1140,12 @@ class TypeInfo_Const : TypeInfo
     TypeInfo next() { return base.next(); }
     uint flags() { return base.flags(); }
     void[] init() { return base.init(); }
+
+    size_t talign() { return base.talign(); }
+
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {   return base.argTypes(arg1, arg2);
+    }
 
     TypeInfo base;
 }

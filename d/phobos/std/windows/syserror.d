@@ -14,9 +14,9 @@ char[] sysErrorString(uint errcode)
     char* buffer;
     DWORD r;
 
-    r = FormatMessageA( 
-            FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-            FORMAT_MESSAGE_FROM_SYSTEM | 
+    r = FormatMessageA(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER |
+            FORMAT_MESSAGE_FROM_SYSTEM |
             FORMAT_MESSAGE_IGNORE_INSERTS,
             null,
             errcode,

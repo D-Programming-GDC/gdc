@@ -1,13 +1,14 @@
 
 /**
  * C's &lt;stdarg.h&gt;
- * Authors: Hauke Duden and Walter Bright, Digital Mars, www.digitalmars.com
+ * This is for use with extern(C) variable argument lists.
+ * Authors: Hauke Duden and Walter Bright, Digital Mars, http://www.digitalmars.com
  * License: Public Domain
+ * Source: $(PHOBOSSRC std/c/_stdarg.d)
  * Macros:
  *      WIKI=Phobos/StdCStdarg
  */
 
-/* This is for use with extern(C) variable argument lists. */
 
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.

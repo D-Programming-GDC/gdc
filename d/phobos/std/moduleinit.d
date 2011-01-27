@@ -100,7 +100,7 @@ else version (FreeBSD)
         ModuleReference* next;
         ModuleInfo mod;
     }
- 
+
     extern (C) ModuleReference *_Dmodule_ref;   // start of linked list
 }
 else version (Solaris)
@@ -118,10 +118,11 @@ else version (Solaris)
 
 /*version (OSX)
 {
-   extern (C)   {
+    extern (C)
+    {
         extern void* _minfo_beg;
         extern void* _minfo_end;
-   }
+    }
 }*/
 
 ModuleInfo[] _moduleinfo_dtors;
@@ -179,17 +180,18 @@ extern (C) void _moduleCtor()
            len++;
        }
     }
-    
+
     /+version (OSX)
      {  /* The ModuleInfo references are stored in the special segment
          * __minfodata, which is bracketed by the segments __minfo_beg
          * and __minfo_end. The variables _minfo_beg and _minfo_end
          * are of zero size and are in the two bracketing segments,
          * respectively.
-         */     size_t length = cast(ModuleInfo*)&_minfo_end - cast(ModuleInfo*)&_minfo_beg;
+         */
+        size_t length = cast(ModuleInfo*)&_minfo_end - cast(ModuleInfo*)&_minfo_beg;
         _moduleinfo_array = (cast(ModuleInfo*)&_minfo_beg)[0 .. length];
         debug printf("moduleinfo: ptr = %p, length = %d\n", _moduleinfo_array.ptr, _moduleinfo_array.length);
- 
+
         debug foreach (m; _moduleinfo_array)
         {
             //printf("\t%p\n", m);
@@ -231,8 +233,8 @@ void _moduleCtor2(ModuleInfo[] mi, int skip)
         debug printf("\tmodule[%d] = '%p'\n", i, m);
         if (!m)
             continue;
-        debug printf("\tmodule[%d] = '%.*s'\n", i, cast(int) m.name.length,
-            m.name.ptr);
+        debug printf("\tmodule[%d] = '%.*s'\n", i,
+            cast(int) m.name.length, m.name.ptr);
         if (m.flags & MIctordone)
             continue;
         debug printf("\tmodule[%d] = '%.*s', m = x%x, m.flags = x%x\n", i, m.name, m, m.flags);

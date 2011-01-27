@@ -4,6 +4,7 @@
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
+// http://www.dsource.org/projects/dmd/browser/branches/dmd-1.x/src/mars.c
 // License for redistribution is by either the Artistic License
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
@@ -108,7 +109,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
 #endif
     ;
-    version = "v1.064";
+    version = "v1.066";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -196,7 +197,7 @@ void verror(Loc loc, const char *format, va_list ap)
 #endif
         fprintf(stdmsg, "\n");
         fflush(stdmsg);
-//halt();
+halt();
     }
     global.errors++;
 }

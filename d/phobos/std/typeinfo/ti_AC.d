@@ -42,9 +42,9 @@ class TypeInfo_AC : TypeInfo
     {
         Object[] s1 = *cast(Object[]*)p1;
         Object[] s2 = *cast(Object[]*)p2;
-        ptrdiff_t c;
+        int c;
 
-        c = cast(ptrdiff_t)s1.length - cast(ptrdiff_t)s2.length;
+        c = cast(int)s1.length - cast(int)s2.length;
         if (c == 0)
         {
             for (size_t u = 0; u < s1.length; u++)
@@ -71,10 +71,6 @@ class TypeInfo_AC : TypeInfo
                 }
             }
         }
-        if (c < 0)
-            c = -1;
-        else if (c > 0)
-            c = 1;
         return c;
     }
 
@@ -91,6 +87,17 @@ class TypeInfo_AC : TypeInfo
     TypeInfo next()
     {
         return typeid(Object);
+    }
+
+    size_t talign()
+    {
+        return (Object[]).alignof;
+    }
+
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {   //arg1 = typeid(size_t);
+        //arg2 = typeid(void*);
+        return 0;
     }
 }
 

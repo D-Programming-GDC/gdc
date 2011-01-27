@@ -573,8 +573,7 @@ void ClassDeclaration::semantic(Scope *sc)
         isabstract = 1;
 
     sc = sc->push(this);
-    sc->stc &= ~(STCfinal | STCauto | STCscope | STCstatic |
-                 STCabstract | STCdeprecated);
+    sc->stc &= STCsafe | STCtrusted | STCsystem;
     sc->attributes = NULL;
     sc->parent = this;
     sc->inunion = 0;

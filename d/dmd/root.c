@@ -11,6 +11,7 @@
    work with the GDC compiler.
 
    Modified by David Friedman, December 2006
+   Updated by Iain Buclaw, January 2011
 */
 
 #define POSIX (linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4)
@@ -835,6 +836,7 @@ char *FileName::searchPath(Array *path, const char *name, int cwd)
     }
     return NULL;
 }
+
 
 /*************************************
  * Search Path for file in a safe manner.
@@ -1852,15 +1854,16 @@ void OutBuffer::vprintf(const char *format, va_list args)
     int count;
 
     WORKAROUND_C99_SPECIFIERS_BUG(string, fmt, format);
-    va_list args_copy;
 
     p = buffer;
     psize = sizeof(buffer);
     for (;;)
     {
-        va_copy(args_copy, args);
 #if _WIN32
-        count = _vsnprintf(p,psize,format,args_copy);
+        va_list va;
+        va_copy(va, args);
+        count = _vsnprintf(p,psize,format,va);
+        va_end(va);
         if (count != -1)
             break;
         psize *= 2;
@@ -1900,14 +1903,16 @@ void OutBuffer::vprintf(const wchar_t *format, va_list args)
     int count;
 
     WORKAROUND_C99_SPECIFIERS_BUG(wstring, fmt, format);
-    va_list args_copy;
 
     p = buffer;
     psize = sizeof(buffer) / sizeof(buffer[0]);
     for (;;)
     {
 #if _WIN32
-        count = _vsnwprintf(p,psize,format,args_copy);
+        va_list va;
+        va_copy(va, args);
+        count = _vsnwprintf(p,psize,format,va);
+        va_end(va);
         if (count != -1)
             break;
         psize *= 2;

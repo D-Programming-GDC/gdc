@@ -66,13 +66,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 333% faster 
+        // SSE2 version is 333% faster
         if (sse2() && b.length >= 16)
         {
             auto n = aptr + (b.length & ~15);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov EAX, bptr; // left operand
                 mov ECX, cptr; // right operand
@@ -81,12 +81,12 @@ body
 
                 align 8;
             startsseloopb:
-                movupd XMM0, [EAX]; 
+                movupd XMM0, [EAX];
                 movupd XMM1, [EAX+16];
                 movupd XMM2, [EAX+32];
                 movupd XMM3, [EAX+48];
                 add EAX, 64;
-                movupd XMM4, [ECX]; 
+                movupd XMM4, [ECX];
                 movupd XMM5, [ECX+16];
                 movupd XMM6, [ECX+32];
                 movupd XMM7, [ECX+48];
@@ -100,7 +100,7 @@ body
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloopb;
 
                 mov aptr, ESI;
@@ -179,13 +179,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 324% faster 
+        // SSE2 version is 324% faster
         if (sse2() && b.length >= 8)
         {
             auto n = aptr + (b.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov EAX, bptr; // left operand
                 mov ECX, cptr; // right operand
@@ -194,12 +194,12 @@ body
 
                 align 8;
             startsseloopb:
-                movupd XMM0, [EAX]; 
+                movupd XMM0, [EAX];
                 movupd XMM1, [EAX+16];
                 movupd XMM2, [EAX+32];
                 movupd XMM3, [EAX+48];
                 add EAX, 64;
-                movupd XMM4, [ECX]; 
+                movupd XMM4, [ECX];
                 movupd XMM5, [ECX+16];
                 movupd XMM6, [ECX+32];
                 movupd XMM7, [ECX+48];
@@ -213,7 +213,7 @@ body
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloopb;
 
                 mov aptr, ESI;
@@ -291,13 +291,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 305% faster 
+        // SSE2 version is 305% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov EAX, bptr;
                 mov ESI, aptr;
@@ -321,7 +321,7 @@ body
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloop;
 
                 mov aptr, ESI;
@@ -388,14 +388,14 @@ T[] _arrayExpSliceAddass_d(T[] a, T value)
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 114% faster 
+        // SSE2 version is 114% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
             if (aptr < n)
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -404,7 +404,7 @@ T[] _arrayExpSliceAddass_d(T[] a, T value)
 
                 align 8;
             startsseloopa:
-                movupd XMM0, [ESI]; 
+                movupd XMM0, [ESI];
                 movupd XMM1, [ESI+16];
                 movupd XMM2, [ESI+32];
                 movupd XMM3, [ESI+48];
@@ -417,7 +417,7 @@ T[] _arrayExpSliceAddass_d(T[] a, T value)
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloopa;
 
                 mov aptr, ESI;
@@ -491,13 +491,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 183% faster 
+        // SSE2 version is 183% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov ECX, bptr; // right operand
                 mov ESI, aptr; // destination operand
@@ -510,7 +510,7 @@ body
                 movupd XMM2, [ESI+32];
                 movupd XMM3, [ESI+48];
                 add ESI, 64;
-                movupd XMM4, [ECX]; 
+                movupd XMM4, [ECX];
                 movupd XMM5, [ECX+16];
                 movupd XMM6, [ECX+32];
                 movupd XMM7, [ECX+48];
@@ -523,7 +523,7 @@ body
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloopb;
 
                 mov aptr, ESI;
@@ -598,13 +598,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 305% faster 
+        // SSE2 version is 305% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov EAX, bptr;
                 mov ESI, aptr;
@@ -628,7 +628,7 @@ body
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloop;
 
                 mov aptr, ESI;
@@ -702,13 +702,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 66% faster 
+        // SSE2 version is 66% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov EAX, bptr;
                 mov ESI, aptr;
@@ -736,7 +736,7 @@ body
                 subpd XMM6, XMM3;
                 movupd [ESI+32-64], XMM5;
                 movupd [ESI+48-64], XMM6;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloop;
 
                 mov aptr, ESI;
@@ -803,14 +803,14 @@ T[] _arrayExpSliceMinass_d(T[] a, T value)
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 115% faster 
+        // SSE2 version is 115% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
             if (aptr < n)
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -819,7 +819,7 @@ T[] _arrayExpSliceMinass_d(T[] a, T value)
 
                 align 8;
             startsseloopa:
-                movupd XMM0, [ESI]; 
+                movupd XMM0, [ESI];
                 movupd XMM1, [ESI+16];
                 movupd XMM2, [ESI+32];
                 movupd XMM3, [ESI+48];
@@ -832,7 +832,7 @@ T[] _arrayExpSliceMinass_d(T[] a, T value)
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloopa;
 
                 mov aptr, ESI;
@@ -906,13 +906,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 183% faster 
+        // SSE2 version is 183% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov ECX, bptr; // right operand
                 mov ESI, aptr; // destination operand
@@ -920,12 +920,12 @@ body
 
                 align 8;
             startsseloopb:
-                movupd XMM0, [ESI]; 
+                movupd XMM0, [ESI];
                 movupd XMM1, [ESI+16];
                 movupd XMM2, [ESI+32];
                 movupd XMM3, [ESI+48];
                 add ESI, 64;
-                movupd XMM4, [ECX]; 
+                movupd XMM4, [ECX];
                 movupd XMM5, [ECX+16];
                 movupd XMM6, [ECX+32];
                 movupd XMM7, [ECX+48];
@@ -938,7 +938,7 @@ body
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloopb;
 
                 mov aptr, ESI;
@@ -1013,13 +1013,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 304% faster 
+        // SSE2 version is 304% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov EAX, bptr;
                 mov ESI, aptr;
@@ -1043,7 +1043,7 @@ body
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloop;
 
                 mov aptr, ESI;
@@ -1120,13 +1120,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 329% faster 
+        // SSE2 version is 329% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov EAX, bptr; // left operand
                 mov ECX, cptr; // right operand
@@ -1140,7 +1140,7 @@ body
                 movupd XMM2, [EAX+32];
                 movupd XMM3, [EAX+48];
                 add ESI, 64;
-                movupd XMM4, [ECX]; 
+                movupd XMM4, [ECX];
                 movupd XMM5, [ECX+16];
                 movupd XMM6, [ECX+32];
                 movupd XMM7, [ECX+48];
@@ -1154,7 +1154,7 @@ body
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloopb;
 
                 mov aptr, ESI;
@@ -1222,14 +1222,14 @@ T[] _arrayExpSliceMulass_d(T[] a, T value)
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 109% faster 
+        // SSE2 version is 109% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
             if (aptr < n)
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1238,7 +1238,7 @@ T[] _arrayExpSliceMulass_d(T[] a, T value)
 
                 align 8;
             startsseloopa:
-                movupd XMM0, [ESI]; 
+                movupd XMM0, [ESI];
                 movupd XMM1, [ESI+16];
                 movupd XMM2, [ESI+32];
                 movupd XMM3, [ESI+48];
@@ -1251,7 +1251,7 @@ T[] _arrayExpSliceMulass_d(T[] a, T value)
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloopa;
 
                 mov aptr, ESI;
@@ -1325,13 +1325,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 205% faster 
+        // SSE2 version is 205% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov ECX, bptr; // right operand
                 mov ESI, aptr; // destination operand
@@ -1344,7 +1344,7 @@ body
                 movupd XMM2, [ESI+32];
                 movupd XMM3, [ESI+48];
                 add ESI, 64;
-                movupd XMM4, [ECX]; 
+                movupd XMM4, [ECX];
                 movupd XMM5, [ECX+16];
                 movupd XMM6, [ECX+32];
                 movupd XMM7, [ECX+48];
@@ -1357,7 +1357,7 @@ body
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloopb;
 
                 mov aptr, ESI;
@@ -1437,13 +1437,13 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 299% faster 
+        // SSE2 version is 299% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov EAX, bptr;
                 mov ESI, aptr;
@@ -1473,7 +1473,7 @@ body
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloop;
 
                 mov aptr, ESI;
@@ -1549,13 +1549,13 @@ T[] _arrayExpSliceDivass_d(T[] a, T value)
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 version is 65% faster 
+        // SSE2 version is 65% faster
         if (sse2() && a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             // Unaligned case
-            asm 
+            asm
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1566,7 +1566,7 @@ T[] _arrayExpSliceDivass_d(T[] a, T value)
 
                 align 8;
             startsseloopa:
-                movupd XMM0, [ESI]; 
+                movupd XMM0, [ESI];
                 movupd XMM1, [ESI+16];
                 movupd XMM2, [ESI+32];
                 movupd XMM3, [ESI+48];
@@ -1583,7 +1583,7 @@ T[] _arrayExpSliceDivass_d(T[] a, T value)
                 movupd [ESI+16-64], XMM1;
                 movupd [ESI+32-64], XMM2;
                 movupd [ESI+48-64], XMM3;
-                cmp ESI, EDI; 
+                cmp ESI, EDI;
                 jb startsseloopa;
 
                 mov aptr, ESI;

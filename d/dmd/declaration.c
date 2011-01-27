@@ -171,6 +171,7 @@ void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
 TupleDeclaration::TupleDeclaration(Loc loc, Identifier *id, Objects *objects)
     : Declaration(id)
 {
+    this->loc = loc;
     this->type = NULL;
     this->objects = objects;
     this->isexp = 0;
@@ -757,6 +758,10 @@ void VarDeclaration::semantic(Scope *sc)
     if (storage_class & STCextern && init)
         error("extern symbols cannot have initializers");
 
+    AggregateDeclaration *ad = isThis();
+    if (ad)
+        storage_class |= ad->storage_class & STC_TYPECTOR;
+
     /* If auto type inference, do the inference
      */
     int inferred = 0;
@@ -1202,20 +1207,31 @@ void VarDeclaration::semantic(Scope *sc)
                 }
                 else if (ei)
                 {
-                    e = e->optimize(WANTvalue | WANTinterpret);
-                    if (e->op == TOKint64 || e->op == TOKstring || e->op == TOKfloat64)
-                    {
-                        ei->exp = e;            // no errors, keep result
-                    }
-#if DMDV2
+                    if (isDataseg() || (storage_class & STCmanifest))
+                        e = e->optimize(WANTvalue | WANTinterpret);
                     else
+                        e = e->optimize(WANTvalue);
+                    switch (e->op)
                     {
-                        /* Save scope for later use, to try again
-                         */
-                        scope = new Scope(*sc);
-                        scope->setNoFree();
-                    }
+                        case TOKint64:
+                        case TOKfloat64:
+                        case TOKstring:
+                        case TOKarrayliteral:
+                        case TOKassocarrayliteral:
+                        case TOKstructliteral:
+                        case TOKnull:
+                            ei->exp = e;            // no errors, keep result
+                            break;
+
+                        default:
+#if DMDV2
+                            /* Save scope for later use, to try again
+                             */
+                            scope = new Scope(*sc);
+                            scope->setNoFree();
 #endif
+                            break;
+                    }
                 }
                 else
                     init = i2;          // no errors, keep result
@@ -1296,6 +1312,27 @@ void VarDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     }
     buf->writeByte(';');
     buf->writenl();
+}
+
+AggregateDeclaration *VarDeclaration::isThis()
+{
+    AggregateDeclaration *ad = NULL;
+
+    if (!(storage_class & (STCstatic | STCextern | STCmanifest | STCtemplateparameter |
+                           STCtls | STCgshared | STCctfe)))
+    {
+        if ((storage_class & (STCconst | STCimmutable)) && init)
+            return NULL;
+
+        for (Dsymbol *s = this; s; s = s->parent)
+        {
+            ad = s->isMember();
+            if (ad)
+                break;
+            if (!s->parent || !s->parent->isTemplateMixin()) break;
+        }
+    }
+    return ad;
 }
 
 int VarDeclaration::needThis()

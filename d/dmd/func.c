@@ -62,6 +62,7 @@ FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageCla
     v_argptr = NULL;
     v_arguments_var = NULL;
 #endif
+    v_argsave = NULL;
     parameters = NULL;
     labtab = NULL;
     overnext = NULL;
@@ -115,6 +116,7 @@ Dsymbol *FuncDeclaration::syntaxCopy(Dsymbol *s)
 
 void FuncDeclaration::semantic(Scope *sc)
 {   TypeFunction *f;
+    AggregateDeclaration *ad;
     StructDeclaration *sd;
     ClassDeclaration *cd;
     InterfaceDeclaration *id;
@@ -173,13 +175,17 @@ void FuncDeclaration::semantic(Scope *sc)
 
     linkage = sc->linkage;
     protection = sc->protection;
+
     storage_class |= sc->stc;
+    ad = isThis();
+    if (ad)
+        storage_class |= ad->storage_class & (STC_TYPECTOR | STCsynchronized);
+    //printf("function storage_class = x%x\n", storage_class);
+
     if (attributes)
         attributes->append(sc->attributes);
     else
         attributes = sc->attributes;
-    //printf("function storage_class = x%x\n", storage_class);
-
     if (ident == Id::ctor && !isCtorDeclaration())
         error("_ctor is reserved for constructors");
 
@@ -208,11 +214,11 @@ void FuncDeclaration::semantic(Scope *sc)
 #endif
 
 #ifdef IN_GCC
-    AggregateDeclaration *ad;
-
-    ad = parent->isAggregateDeclaration();
-    if (ad)
-        ad->methods.push(this);
+    {
+        AggregateDeclaration *ad = parent->isAggregateDeclaration();
+        if (ad)
+            ad->methods.push(this);
+    }
 #endif
     sd = parent->isStructDeclaration();
     if (sd)
@@ -674,6 +680,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 {   TypeFunction *f;
     VarDeclaration *argptr = NULL;
     VarDeclaration *_arguments = NULL;
+    int nerrors = global.errors;
 
     if (!parent)
     {
@@ -783,9 +790,24 @@ void FuncDeclaration::semantic3(Scope *sc)
         if (f->varargs == 1)
         {
 #if TARGET_NET
-        varArgs(sc2, f, argptr, _arguments);
+            varArgs(sc2, f, argptr, _arguments);
 #else
-        Type *t;
+            Type *t;
+
+            if (global.params.isX86_64)
+            {   // Declare save area for varargs registers
+                Type *t = new TypeIdentifier(loc, Id::va_argsave_t);
+                t = t->semantic(loc, sc);
+                if (t == Type::terror)
+                    error("must import std.c.stdarg to use variadic functions");
+                else
+                {
+                    v_argsave = new VarDeclaration(loc, t, Id::va_argsave, NULL);
+                    v_argsave->semantic(sc2);
+                    sc2->insert(v_argsave);
+                    v_argsave->parent = this;
+                }
+            }
 
             if (f->linkage == LINKd)
             {   // Declare _arguments[]
@@ -1220,7 +1242,7 @@ void FuncDeclaration::semantic3(Scope *sc)
             }
 
             if (argptr)
-            {   // Initialize _argptr to point past non-variadic arg
+            {   // Initialize _argptr
 #if IN_GCC
                 // Handled in FuncDeclaration::toObjFile
                 v_argptr = argptr;
@@ -1228,44 +1250,56 @@ void FuncDeclaration::semantic3(Scope *sc)
 #else
                 Type *t = argptr->type;
                 VarDeclaration *p;
-                unsigned offset = 0;
-
-                Expression *e1 = new VarExp(0, argptr);
-                // Find the last non-ref parameter
-                if (parameters && parameters->dim)
-                {
-                    int lastNonref = parameters->dim -1;
-                    p = (VarDeclaration *)parameters->data[lastNonref];
-                    /* The trouble with out and ref parameters is that taking
-                     * the address of it doesn't work, because later processing
-                     * adds in an extra level of indirection. So we skip over them.
-                     */
-                    while (p->storage_class & (STCout | STCref))
-                    {
-                        --lastNonref;
-                        offset += PTRSIZE;
-                        if (lastNonref < 0)
-                        {
-                            p = v_arguments;
-                            break;
-                        }
-                        p = (VarDeclaration *)parameters->data[lastNonref];
-                    }
+                if (global.params.isX86_64)
+                {   // Initialize _argptr to point to v_argsave
+                    Expression *e1 = new VarExp(0, argptr);
+                    Expression *e = new SymOffExp(0, v_argsave, 6*8 + 8*16);
+                    e->type = argptr->type;
+                    e = new AssignExp(0, e1, e);
+                    e = e->semantic(sc);
+                    a->push(new ExpStatement(0, e));
                 }
                 else
-                    p = v_arguments;            // last parameter is _arguments[]
-                if (p->storage_class & STClazy)
-                    // If the last parameter is lazy, it's the size of a delegate
-                    offset += PTRSIZE * 2;
-                else
-                    offset += p->type->size();
-                offset = (offset + PTRSIZE - 1) & ~(PTRSIZE - 1);  // assume stack aligns on pointer size
-                Expression *e = new SymOffExp(0, p, offset);
-                e->type = Type::tvoidptr;
-                //e = e->semantic(sc);
-                e = new AssignExp(0, e1, e);
-                e->type = t;
-                a->push(new ExpStatement(0, e));
+                {   // Initialize _argptr to point past non-variadic arg
+                    unsigned offset = 0;
+
+                    Expression *e1 = new VarExp(0, argptr);
+                    // Find the last non-ref parameter
+                    if (parameters && parameters->dim)
+                    {
+                        int lastNonref = parameters->dim -1;
+                        p = (VarDeclaration *)parameters->data[lastNonref];
+                        /* The trouble with out and ref parameters is that taking
+                         * the address of it doesn't work, because later processing
+                         * adds in an extra level of indirection. So we skip over them.
+                         */
+                        while (p->storage_class & (STCout | STCref))
+                        {
+                            --lastNonref;
+                            offset += PTRSIZE;
+                            if (lastNonref < 0)
+                            {
+                                p = v_arguments;
+                                break;
+                            }
+                            p = (VarDeclaration *)parameters->data[lastNonref];
+                        }
+                    }
+                    else
+                        p = v_arguments;            // last parameter is _arguments[]
+                    if (p->storage_class & STClazy)
+                        // If the last parameter is lazy, it's the size of a delegate
+                        offset += PTRSIZE * 2;
+                    else
+                        offset += p->type->size();
+                    offset = (offset + PTRSIZE - 1) & ~(PTRSIZE - 1);  // assume stack aligns on pointer size
+                    Expression *e = new SymOffExp(0, p, offset);
+                    e->type = Type::tvoidptr;
+                    //e = e->semantic(sc);
+                    e = new AssignExp(0, e1, e);
+                    e->type = t;
+                    a->push(new ExpStatement(0, e));
+                }
 #endif
             }
 
@@ -1439,7 +1473,11 @@ void FuncDeclaration::semantic3(Scope *sc)
         sc2->callSuper = 0;
         sc2->pop();
     }
-    semanticRun = PASSsemantic3done;
+
+    if (global.gag && global.errors != nerrors)
+        semanticRun = PASSsemanticdone; // Ensure errors get reported again
+    else
+        semanticRun = PASSsemantic3done;
 }
 
 void FuncDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -1520,6 +1558,19 @@ Statement *FuncDeclaration::mergeFrequire(Statement *sf)
     for (int i = 0; i < foverrides.dim; i++)
     {
         FuncDeclaration *fdv = (FuncDeclaration *)foverrides.data[i];
+
+        /* The semantic pass on the contracts of the overridden functions must
+         * be completed before code generation occurs (bug 3602).
+         */
+        if (fdv->fdrequire && fdv->fdrequire->semanticRun != PASSsemantic3done)
+        {
+            assert(fdv->scope);
+            Scope *sc = fdv->scope->push();
+            sc->stc &= ~STCoverride;
+            fdv->semantic3(sc);
+            sc->pop();
+        }
+
         sf = fdv->mergeFrequire(sf);
         if (fdv->fdrequire)
         {
@@ -1564,6 +1615,19 @@ Statement *FuncDeclaration::mergeFensure(Statement *sf)
     for (int i = 0; i < foverrides.dim; i++)
     {
         FuncDeclaration *fdv = (FuncDeclaration *)foverrides.data[i];
+
+        /* The semantic pass on the contracts of the overridden functions must
+         * be completed before code generation occurs (bug 3602 and 5230).
+         */
+        if (fdv->fdensure && fdv->fdensure->semanticRun != PASSsemantic3done)
+        {
+            assert(fdv->scope);
+            Scope *sc = fdv->scope->push();
+            sc->stc &= ~STCoverride;
+            fdv->semantic3(sc);
+            sc->pop();
+        }
+
         sf = fdv->mergeFensure(sf);
         if (fdv->fdensure)
         {

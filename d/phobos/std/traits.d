@@ -132,7 +132,7 @@ unittest
 template isStaticArray_impl(T)
 {
     const T inst = void;
-    
+
     static if (is(typeof(T.length)))
     {
         static if (!is(T == typeof(T.init)))

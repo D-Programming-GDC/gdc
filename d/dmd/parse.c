@@ -388,6 +388,9 @@ Array *Parser::parseDeclDefs(int once)
                     case TOKexport:
                         error("redundant protection attribute");
                         break;
+
+                    default:
+                        break;
                 }
                 a = parseBlock();
                 s = new ProtDeclaration(prot, a);
@@ -2137,6 +2140,9 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
                 *pt = ta;
                 break;
             }
+
+            default:
+                break;
         }
         break;
     }
@@ -3190,7 +3196,10 @@ Statement *Parser::parseStatement(int flags)
             }
             else
                 elsebody = NULL;
-            s = new IfStatement(loc, arg, condition, ifbody, elsebody);
+            if (condition && ifbody)
+                s = new IfStatement(loc, arg, condition, ifbody, elsebody);
+            else
+                s = NULL;               // don't propagate parsing errors
             break;
         }
 
@@ -3992,6 +4001,9 @@ int Parser::isDeclarator(Token **pt, int *haveId, enum TOK endtok)
                 if (!isParameters(&t))
                     return FALSE;
                 continue;
+
+            default:
+                break;
         }
         break;
     }
@@ -4577,6 +4589,7 @@ Expression *Parser::parsePrimaryExp()
                          token.value == TOKsuper ||
                          token.value == TOKenum ||
                          token.value == TOKinterface ||
+                         token.value == TOKargTypes ||
 #if DMDV2
                          token.value == TOKconst && peek(&token)->value == TOKrparen ||
                          token.value == TOKinvariant && peek(&token)->value == TOKrparen ||
@@ -5015,6 +5028,9 @@ Expression *Parser::parseUnaryExp()
                         }
                         return e;
                     }
+
+                    default:
+                        break;
                 }
             }
 #endif
@@ -5621,35 +5637,53 @@ void initPrecedence()
     precedence[TOKsuper] = PREC_primary;
     precedence[TOKint64] = PREC_primary;
     precedence[TOKfloat64] = PREC_primary;
+    precedence[TOKcomplex80] = PREC_primary;
     precedence[TOKnull] = PREC_primary;
     precedence[TOKstring] = PREC_primary;
     precedence[TOKarrayliteral] = PREC_primary;
+    precedence[TOKassocarrayliteral] = PREC_primary;
+#if DMDV2
+    precedence[TOKfile] = PREC_primary;
+    precedence[TOKline] = PREC_primary;
+#endif
     precedence[TOKtypeid] = PREC_primary;
     precedence[TOKis] = PREC_primary;
     precedence[TOKassert] = PREC_primary;
+    precedence[TOKhalt] = PREC_primary;
+    precedence[TOKtemplate] = PREC_primary;
+    precedence[TOKdsymbol] = PREC_primary;
     precedence[TOKfunction] = PREC_primary;
     precedence[TOKvar] = PREC_primary;
     precedence[TOKsymoff] = PREC_primary;
     precedence[TOKstructliteral] = PREC_primary;
     precedence[TOKarraylength] = PREC_primary;
+    precedence[TOKremove] = PREC_primary;
     precedence[TOKtuple] = PREC_primary;
 #if DMDV2
     precedence[TOKtraits] = PREC_primary;
     precedence[TOKdefault] = PREC_primary;
+    precedence[TOKoverloadset] = PREC_primary;
 #endif
 
     // post
     precedence[TOKdotti] = PREC_primary;
     precedence[TOKdot] = PREC_primary;
     precedence[TOKdottd] = PREC_primary;
+    precedence[TOKdotexp] = PREC_primary;
+    precedence[TOKdottype] = PREC_primary;
 //  precedence[TOKarrow] = PREC_primary;
     precedence[TOKplusplus] = PREC_primary;
     precedence[TOKminusminus] = PREC_primary;
+#if DMDV2
+    precedence[TOKpreplusplus] = PREC_primary;
+    precedence[TOKpreminusminus] = PREC_primary;
+#endif
     precedence[TOKcall] = PREC_primary;
     precedence[TOKslice] = PREC_primary;
     precedence[TOKarray] = PREC_primary;
     precedence[TOKindex] = PREC_primary;
 
+    precedence[TOKdelegate] = PREC_unary;
     precedence[TOKaddress] = PREC_unary;
     precedence[TOKstar] = PREC_unary;
     precedence[TOKneg] = PREC_unary;
@@ -5659,7 +5693,12 @@ void initPrecedence()
     precedence[TOKtilde] = PREC_unary;
     precedence[TOKdelete] = PREC_unary;
     precedence[TOKnew] = PREC_unary;
+    precedence[TOKnewanonclass] = PREC_unary;
     precedence[TOKcast] = PREC_unary;
+
+#if DMDV2
+    precedence[TOKpow] = PREC_pow;
+#endif
 
     precedence[TOKmul] = PREC_mul;
     precedence[TOKdiv] = PREC_mul;
@@ -5723,6 +5762,9 @@ void initPrecedence()
     precedence[TOKmulass] = PREC_assign;
     precedence[TOKdivass] = PREC_assign;
     precedence[TOKmodass] = PREC_assign;
+#if DMDV2
+    precedence[TOKpowass] = PREC_assign;
+#endif
     precedence[TOKshlass] = PREC_assign;
     precedence[TOKshrass] = PREC_assign;
     precedence[TOKushrass] = PREC_assign;

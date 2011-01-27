@@ -112,7 +112,7 @@ version (Unix) alias std.string.cmp fcmp;
  *     getExt(r"d:\path\foo.bat") // "bat"
  *     getExt(r"d:\path.two\bar") // null
  * }
- * version(linux)
+ * version(Posix)
  * {
  *     getExt(r"/home/user.name/bar.")  // ""
  *     getExt(r"d:\\path.two\\bar")     // "two\\bar"
@@ -121,10 +121,9 @@ version (Unix) alias std.string.cmp fcmp;
  * -----
  */
 
-char[] getExt(char[] fullname)
+string getExt(string fullname)
 {
-
-    size_t i = fullname.length;
+    auto i = fullname.length;
     while (i > 0)
     {
         if (fullname[i - 1] == '.')
@@ -204,7 +203,7 @@ unittest
  *     getName(r"d:\path\foo.bat") => "d:\path\foo"
  *     getName(r"d:\path.two\bar") => null
  * }
- * version(linux)
+ * version(Posix)
  * {
  *     getName("/home/user.name/bar.")  => "/home/user.name/bar"
  *     getName(r"d:\path.two\bar") => "d:\path"
@@ -215,7 +214,7 @@ unittest
 
 string getName(string fullname)
 {
-    size_t i = fullname.length;
+    auto i = fullname.length;
     while (i > 0)
     {
         if (fullname[i - 1] == '.')
@@ -271,7 +270,7 @@ unittest
  * {
  *     getBaseName(r"d:\path\foo.bat") => "foo.bat"
  * }
- * version(linux)
+ * version(Posix)
  * {
  *     getBaseName("/home/user.name/bar.")  => "bar."
  * }
@@ -348,7 +347,7 @@ unittest
  *     getDirName(r"d:\path\foo.bat") => "d:\path"
  *     getDirName(getDirName(r"d:\path\foo.bat")) => r"d:\"
  * }
- * version(linux)
+ * version(Posix)
  * {
  *     getDirName("/home/user")  => "/home"
  *     getDirName(getDirName("/home/user"))  => ""
@@ -421,7 +420,6 @@ string getDrive(string fullname)
     {
         version(Win32)
         {
-
             for (size_t i = 0; i < fullname.length; i++)
             {
                 if (fullname[i] == ':')
@@ -534,7 +532,7 @@ string addExt(string filename, string ext)
  *     isabs(r"\relative\path") => 0
  *     isabs(r"d:\absolute") => 1
  * }
- * version(linux)
+ * version(Posix)
  * {
  *     isabs("/home/user") => 1
  *     isabs("foo") => 0
@@ -564,7 +562,7 @@ unittest
         assert(isabs(r"\relative\path") == 0);
         assert(isabs(r"d:\absolute") == 1);
     }
-    version (linux)
+    else version (Unix)
     {
         assert(isabs("/home/user") == 1);
         assert(isabs("foo") == 0);
@@ -589,7 +587,7 @@ unittest
  *     join(r"c:\foo", "bar") => "c:\foo\bar"
  *     join("foo", r"d:\bar") => "d:\bar"
  * }
- * version(linux)
+ * version(Posix)
  * {
  *     join("/foo/", "bar") => "/foo/bar"
  *     join("/foo", "/bar") => "/bar"
@@ -755,7 +753,7 @@ unittest
  *     fncharmatch('a', 'b') => 0
  *     fncharmatch('A', 'a') => 1
  * }
- * version(linux)
+ * version(Posix)
  * {
  *     fncharmatch('a', 'b') => 0
  *     fncharmatch('A', 'a') => 0
@@ -828,7 +826,7 @@ int fncharmatch(dchar c1, dchar c2)
  *     fnmatch("Goo.bar", "[fg]???bar") => 1
  *     fnmatch(r"d:\foo\bar", "d*foo?bar") => 1
  * }
- * version(linux)
+ * version(Posix)
  * {
  *     fnmatch("Go*.bar", "[fg]???bar") => 0
  *     fnmatch("/foo*home/bar", "?foo*bar") => 1
@@ -1104,7 +1102,7 @@ private string expandFromEnvironment(string path)
 {
     assert(path.length >= 1);
     assert(path[0] == '~');
-    
+
     // Get HOME and use that to replace the tilde.
     char* home = getenv("HOME");
     if (home == null)
@@ -1167,10 +1165,9 @@ private string expandFromDatabase(string path)
         username = path[1 .. last_char] ~ '\0';
     }
     assert(last_char > 1);
-    
-    version (GNU_Unix_Have_getpwnam_r)
-    {
-    
+
+  version (GNU_Unix_Have_getpwnam_r)
+  {
     // Reserve C memory for the getpwnam_r() function.
     passwd result;
     int extra_memory_size = 5 * 1024;
@@ -1226,22 +1223,21 @@ Lerror:
         std.c.stdlib.free(extra_memory);
     _d_OutOfMemory();
     return null;
+  }
+  else
+  {
+    passwd * result;
 
+    /* This does not guarantee another thread will not
+       use getpwnam at the same time */
+    synchronized {
+        result = getpwnam(username);
     }
-    else
-    {
-        passwd * result;
-
-        /* This does not guarantee another thread will not
-           use getpwnam at the same time */
-        synchronized {
-            result = getpwnam(username);
-        }
         
-        if (result)
-            path = combineCPathWithDPath(result.pw_dir, path, last_char);
-        return path;
-    }
+    if (result)
+        path = combineCPathWithDPath(result.pw_dir, path, last_char);
+    return path;
+  }
 }
 
 }

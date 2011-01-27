@@ -2,15 +2,15 @@
 
 /*
         Copyright (C) 2004-2005 Christopher E. Miller
-        
+
         This software is provided 'as-is', without any express or implied
         warranty.  In no event will the authors be held liable for any damages
         arising from the use of this software.
-        
+
         Permission is granted to anyone to use this software for any purpose,
         including commercial applications, and to alter it and redistribute it
         freely, subject to the following restrictions:
-        
+
         1. The origin of this software must not be misrepresented; you must not
            claim that you wrote the original software. If you use this software
            in a product, an acknowledgment in the product documentation would be
@@ -19,10 +19,10 @@
            be misrepresented as being the original software.
         3. This notice may not be removed or altered from any source
            distribution.
-        
+
         socket.d 1.3
         Jan 2005
-        
+
         Thanks to Benjamin Herr for his assistance.
 */
 
@@ -33,9 +33,9 @@
 */
 
 /**
- * Notes: For Win32 systems, link with ws2_32.lib. 
+ * Notes: For Win32 systems, link with ws2_32.lib.
  * Example: See /dmd/samples/d/listener.d.
- * Authors: Christopher E. Miller 
+ * Authors: Christopher E. Miller
  * Macros:
  *      WIKI=Phobos/StdSocket
  */
@@ -65,6 +65,7 @@ else
 
 version(Win32)
 {
+
         pragma (lib, "wsock32.lib");
 
         private import std.c.windows.windows, std.c.windows.winsock;
@@ -83,10 +84,6 @@ else version(BsdSockets)
 {
         version (Unix)
         {
-                version (FreeBSD)
-                {
-                        // private import std.c.freebsd.socket;
-                }
                 private import std.c.unix.unix;
                 private alias std.c.unix.unix.timeval _ctimeval;
         }
@@ -113,64 +110,65 @@ class SocketException: Exception
 
         this(string msg, int err = 0)
         {
-                errorCode = err;
+            errorCode = err;
 
-                version(Unix)
+            version(Unix)
+            {
+                if(errorCode > 0)
                 {
-                        if(errorCode > 0)
+                    char[80] buf;
+                    auto cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
+                    //char* cs;
+                    /+version (linux)
+                    {
+                        cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
+                    }
+                    else version (OSX)
+                    {
+                        auto errs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
+                        if (errs == 0)
+                            cs = buf.ptr;
+                        else
                         {
-                                char[80] buf;
-                                auto cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
-                                //char* cs;
-                            /+version (linux)
-                            {
-                                 cs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
-                            }
-                            else version (OSX)
-                            {
-                                 auto errs = _d_gnu_cbridge_strerror(errorCode, buf.ptr, buf.length);
-                                 if (errs == 0)
-                                    cs = buf.ptr;
-                                 else
-                                 {
-                                    cs = "Unknown error";
-                                 }
-                            }
-                            else version (FreeBSD)
-                            {
-                                auto errs = strerror_r(errorCode, buf.ptr, buf.length);
-                                if (errs == 0)
-                                    cs = buf.ptr;
-                                else
-                                {
-                                    cs = "Unknown error";
-                                }
-                            }
-                            else version (Solaris)
-             {
-                 auto errs = strerror_r(errorCode, buf.ptr, buf.length);
-                 if (errs == 0)
-                     cs = buf.ptr;
-                 else
-                 {
-                     cs = "Unknown error";
-                 }
-             }
-                            else
-                            {
-                                static assert(0);
-                            }+/
-                                auto len = strlen(cs);
-
-                                if(cs[len - 1] == '\n')
-                                        len--;
-                                if(cs[len - 1] == '\r')
-                                        len--;
-                                msg = msg ~ ": " ~ cs[0 .. len];
+                            cs = "Unknown error";
                         }
-                }
+                    }
+                    else version (FreeBSD)
+                    {
+                        auto errs = strerror_r(errorCode, buf.ptr, buf.length);
+                        if (errs == 0)
+                            cs = buf.ptr;
+                        else
+                        {
+                            cs = "Unknown error";
+                        }
+                    }
+                    else version (Solaris)
+                    {
+                        auto errs = strerror_r(errorCode, buf.ptr, buf.length);
+                        if (errs == 0)
+                            cs = buf.ptr;
+                        else
+                        {
+                            cs = "Unknown error";
+                        }
+                    }
+                    else
+                    {
+                        static assert(0);
+                    }+/
 
-                super(msg);
+                    auto len = strlen(cs);
+
+                    if(cs[len - 1] == '\n')
+                            len--;
+                    if(cs[len - 1] == '\r')
+                            len--;
+                    msg = msg ~ ": " ~ cs[0 .. len];
+                }
+            }
+
+            super(msg);
         }
 }
 
@@ -532,7 +530,7 @@ class InternetHost
 
         /**
          * Resolve host name. Returns false if unable to resolve.
-         */     
+         */
         bool getHostByName(string name)
         {
                 hostent* he;
@@ -547,7 +545,7 @@ class InternetHost
 
         /**
          * Resolve IPv4 address number. Returns false if unable to resolve.
-         */     
+         */
         bool getHostByAddr(uint addr)
         {
                 uint x = htonl(addr);
@@ -565,7 +563,7 @@ class InternetHost
          * Same as previous, but addr is an IPv4 address string in the
          * dotted-decimal form $(I a.b.c.d).
          * Returns false if unable to resolve.
-         */     
+         */
         bool getHostByAddr(string addr)
         {
                 uint x = inet_addr(std.string.toStringz(addr));
@@ -583,7 +581,7 @@ class InternetHost
 unittest
 {
         InternetHost ih = new InternetHost;
-        assert(ih.getHostByName("www.digitalmars.com"));
+        assert(ih.getHostByName("www.google.com"));
         printf("addrList.length = %d\n", ih.addrList.length);
         assert(ih.addrList.length);
         InternetAddress ia = new InternetAddress(ih.addrList[0], InternetAddress.PORT_ANY);
@@ -637,21 +635,25 @@ class UnknownAddress: Address
         protected:
         sockaddr sa;
 
+
         sockaddr* name()
         {
                 return &sa;
         }
+
 
         int nameLen()
         {
                 return sa.sizeof;
         }
 
+
         public:
         AddressFamily addressFamily()
         {
                 return cast(AddressFamily)sa.sa_family;
         }
+
 
         string toString()
         {
@@ -675,14 +677,17 @@ class InternetAddress: Address
                 return cast(sockaddr*)&sin;
         }
 
+
         int nameLen()
         {
                 return sin.sizeof;
         }
 
+
         this()
         {
         }
+
 
         public:
         const uint ADDR_ANY = INADDR_ANY;       /// Any IPv4 address number.
@@ -743,7 +748,7 @@ class InternetAddress: Address
                 sin.sin_port = htons(port);
         }
 
-        /// ditto       
+        /// ditto
         this(ushort port)
         {
                 sin.sin_family = AddressFamily.INET;
@@ -751,7 +756,7 @@ class InternetAddress: Address
                 sin.sin_port = htons(port);
         }
 
-        /// Human readable string representing the IPv4 address in dotted-decimal form. 
+        /// Human readable string representing the IPv4 address in dotted-decimal form.
         string toAddrString()
         {
                 return std.string.toString(inet_ntoa(sin.sin_addr)).dup;
@@ -810,7 +815,7 @@ enum SocketShutdown: int
 /// Flags may be OR'ed together:
 enum SocketFlags: int
 {
-        NONE =       0,             /// no flags specified 
+        NONE =       0,             /// no flags specified
 
         OOB =        MSG_OOB,       /// out-of-band stream data
         PEEK =       MSG_PEEK,      /// peek at incoming data without removing it from the queue, only for receiving
@@ -872,7 +877,7 @@ class SocketSet
                 this(FD_SETSIZE);
         }
 
-        /// Reset the SocketSet so that there are 0 Sockets in the collection.  
+        /// Reset the SocketSet so that there are 0 Sockets in the collection.
         void reset()
         {
                 FD_ZERO(&set);
@@ -892,15 +897,15 @@ class SocketSet
                 assert(count < maxsockets);
                 version(BsdSockets)
                 {
-                        version(GNU)
-                        {
-                            // Tries to account for little and big endian..er needs work
-                            // assert((s/NFDBITS+1)*NFDBITS/8 <= nbytes);
-                        }
-                        else
-                        {
-                                assert(FDELT(s) < (FD_SETSIZE / NFDBITS));
-                        }
+                  version(GNU)
+                  {
+                        // Tries to account for little and big endian..er needs work
+                        // assert((s/NFDBITS+1)*NFDBITS/8 <= nbytes);
+                  }
+                  else
+                  {
+                        assert(FDELT(s) < (FD_SETSIZE / NFDBITS));
+                  }
                 }
         }
         body
@@ -993,7 +998,6 @@ enum SocketOptionLevel: int
         IPV6 =    ProtocolType.IPV6,    /// internet protocol version 6 level
 }
 
-
 /// Linger information for use with SocketOption.LINGER.
 extern(C) struct linger
 {
@@ -1011,18 +1015,16 @@ extern(C) struct linger
         }
         else version(BsdSockets)
         {
-                version (GNU)
-                {
-
-                    typeof(__unix_linger.l_onoff) on;
-                    typeof(__unix_linger.l_linger) time;
-
-                }
-                else
-                {
-                    int32_t on;
-                    int32_t time;
-                }
+          version (GNU)
+          {
+                typeof(__unix_linger.l_onoff) on;
+                typeof(__unix_linger.l_linger) time;
+          }
+          else
+          {
+                int32_t on;
+                int32_t time;
+          }
         }
 
         // C interface
@@ -1131,7 +1133,7 @@ class Socket
          *
          * When a socket is blocking, calls to receive(), accept(), and send()
          * will block and wait for data/action.
-         * A non-blocking socket will immediately return instead of blocking. 
+         * A non-blocking socket will immediately return instead of blocking.
          */
         bool blocking()
         {
@@ -1174,7 +1176,7 @@ class Socket
         }
 
 
-        /// Get the socket's address family.    
+        /// Get the socket's address family.
         AddressFamily addressFamily() // getter
         {
                 return _family;
@@ -1214,7 +1216,7 @@ class Socket
                                         if(WSAEWOULDBLOCK == err)
                                                 return;
                                 }
-                                else version(Unix) //posix
+                                else version(Unix)
                                 {
                                         if(EINPROGRESS == err)
                                                 return;
@@ -1493,7 +1495,7 @@ class Socket
         }
 
 
-        /// Get a socket option. Returns the number of bytes written to result. 
+        /// Get a socket option. Returns the number of bytes written to result.
         //returns the length, in bytes, of the actual result - very different from getsockopt()
         int getOption(SocketOptionLevel level, SocketOption option, void[] result)
         {
@@ -1504,18 +1506,18 @@ class Socket
         }
 
 
-        /// Common case of getting integer and boolean options. 
+        /// Common case of getting integer and boolean options.
         int getOption(SocketOptionLevel level, SocketOption option, out int32_t result)
         {
                 return getOption(level, option, (&result)[0 .. 1]);
         }
 
 
-        /// Get the linger option.      
+        /// Get the linger option.
         int getOption(SocketOptionLevel level, SocketOption option, out linger result)
         {
                 //return getOption(cast(SocketOptionLevel)SocketOptionLevel.SOCKET, SocketOption.LINGER, (&result)[0 .. 1]);
-                return getOption(level, option, (&result)[0 .. 1]); 
+                return getOption(level, option, (&result)[0 .. 1]);
         }
 
         // Set a socket option.
@@ -1621,7 +1623,7 @@ class Socket
                         if(_SOCKET_ERROR == result && WSAGetLastError() == WSAEINTR)
                                 return -1;
                 }
-                else version(Unix) //posix??
+                else version(Unix)
                 {
                         if(_SOCKET_ERROR == result && getErrno() == EINTR)
                                 return -1;

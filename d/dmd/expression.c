@@ -715,6 +715,9 @@ void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argum
                     case Timaginary32:
                         arg = arg->castTo(sc, Type::timaginary64);
                         break;
+
+                    default:
+                        break;
                 }
             }
 
@@ -1554,6 +1557,7 @@ void IntegerExp::toMangleBuffer(OutBuffer *buf)
 ErrorExp::ErrorExp()
     : IntegerExp(0, 0, Type::terror)
 {
+    op = TOKerror;
 }
 
 void ErrorExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -2148,7 +2152,7 @@ Lagain:
     {
         //printf("Identifier '%s' is a variable, type '%s'\n", toChars(), v->type->toChars());
         if (!type)
-        {   if (!v->type && v->scope)
+        {   if ((!v->type || !v->type->deco) && v->scope)
                 v->semantic(v->scope);
             type = v->type;
             if (!v->type)
@@ -2201,6 +2205,11 @@ Lagain:
 
         if (!f->originalType && f->scope)       // semantic not yet run
             f->semantic(f->scope);
+        if (f->isUnitTestDeclaration())
+        {
+            error("cannot call unittest function %s", toChars());
+            return new ErrorExp();
+        }
         if (!f->type->deco)
         {
             error("forward reference to %s", toChars());
@@ -2728,7 +2737,7 @@ int StringExp::compare(Object *obj)
         switch (sz)
         {
             case 1:
-                return strcmp((char *)string, (char *)se2->string);
+                return memcmp((char *)string, (char *)se2->string, len1);
 
             case 2:
             {   unsigned u;
@@ -4768,6 +4777,17 @@ Expression *IsExp::semantic(Scope *sc)
                     goto Lno;
                 break;
 
+            case TOKargTypes:
+                /* Generate a type tuple of the equivalent types used to determine if a
+                 * function argument of this type can be passed in registers.
+                 * The results of this are highly platform dependent, and intended
+                 * primarly for use in implementing va_arg().
+                 */
+                tded = targ->toArgTypes();
+                if (!tded)
+                    goto Lno;           // not valid for a parameter
+                break;
+
             default:
                 assert(0);
         }
@@ -4802,6 +4822,31 @@ Expression *IsExp::semantic(Scope *sc)
             tded = (Type *)dedtypes.data[0];
             if (!tded)
                 tded = targ;
+#if DMDV2
+            Objects tiargs;
+            tiargs.setDim(1);
+            tiargs.data[0] = (void *)targ;
+
+            /* Declare trailing parameters
+             */
+            for (int i = 1; i < parameters->dim; i++)
+            {   TemplateParameter *tp = (TemplateParameter *)parameters->data[i];
+                Declaration *s = NULL;
+
+                m = tp->matchArg(sc, &tiargs, i, parameters, &dedtypes, &s);
+                if (m == MATCHnomatch)
+                    goto Lno;
+                s->semantic(sc);
+#if 0
+                Object *o = (Object *)dedtypes.data[i];
+                Dsymbol *s = TemplateDeclaration::declareParameter(loc, sc, tp, o);
+#endif
+                if (sc->sd)
+                    s->addMember(sc, sc->sd, 1);
+                else if (!sc->insert(s))
+                    error("declaration %s is already defined", s->toChars());
+            }
+#endif
             goto Lyes;
         }
     }
@@ -4951,14 +4996,16 @@ Expression *BinExp::semantic(Scope *sc)
         !(op == TOKassign && e1->op == TOKdottd))       // a.template = e2
     {
         error("%s has no value", e1->toChars());
-        e1->type = Type::terror;
+        e1 = new ErrorExp();
     }
     e2 = e2->semantic(sc);
     if (!e2->type)
     {
         error("%s has no value", e2->toChars());
-        e2->type = Type::terror;
+        e2 = new ErrorExp();
     }
+    if (e1->op == TOKerror || e2->op == TOKerror)
+        return new ErrorExp();
     return this;
 }
 
@@ -4988,7 +5035,9 @@ Expression *BinExp::commonSemanticAssign(Scope *sc)
 
         if (e1->op == TOKslice)
         {   // T[] op= ...
-            typeCombine(sc);
+            e = typeCombine(sc);
+            if (e->op == TOKerror)
+                return e;
             type = e1->type;
             return arrayOp(sc);
         }
@@ -5026,7 +5075,9 @@ Expression *BinExp::commonSemanticAssignIntegral(Scope *sc)
 
         if (e1->op == TOKslice)
         {   // T[] op= ...
-            typeCombine(sc);
+            e = typeCombine(sc);
+            if (e->op == TOKerror)
+                return e;
             type = e1->type;
             return arrayOp(sc);
         }
@@ -5156,11 +5207,15 @@ Expression *CompileExp::semantic(Scope *sc)
 #endif
     UnaExp::semantic(sc);
     e1 = resolveProperties(sc, e1);
+    if (!e1->type->isString())
+    {
+        error("argument to mixin must be a string type, not %s\n", e1->type->toChars());
+        return new ErrorExp();
+    }
     e1 = e1->optimize(WANTvalue | WANTinterpret);
     if (e1->op != TOKstring)
     {   error("argument to mixin must be a string, not (%s)", e1->toChars());
-        type = Type::terror;
-        return this;
+        return new ErrorExp();
     }
     StringExp *se = (StringExp *)e1;
     se = se->toUTF8(sc);
@@ -5286,7 +5341,8 @@ Expression *AssertExp::semantic(Scope *sc)
     if (e1->isBool(FALSE))
     {
         FuncDeclaration *fd = sc->parent->isFuncDeclaration();
-        fd->hasReturnExp |= 4;
+        if (fd)
+            fd->hasReturnExp |= 4;
 
         if (!global.params.useAssert)
         {   Expression *e = new HaltExp(loc);
@@ -7490,6 +7546,8 @@ Expression *SliceExp::semantic(Scope *sc)
             goto Lerror;
         }
     }
+    else if (t == Type::terror)
+        goto Lerr;
     else
         goto Lerror;
 
@@ -7521,8 +7579,8 @@ Expression *SliceExp::semantic(Scope *sc)
 
     if (t->ty == Ttuple)
     {
-        lwr = lwr->optimize(WANTvalue);
-        upr = upr->optimize(WANTvalue);
+        lwr = lwr->optimize(WANTvalue | WANTinterpret);
+        upr = upr->optimize(WANTvalue | WANTinterpret);
         uinteger_t i1 = lwr->toUInteger();
         uinteger_t i2 = upr->toUInteger();
 
@@ -7885,6 +7943,8 @@ Expression *IndexExp::semantic(Scope *sc)
     if (!e1->type)
         e1 = e1->semantic(sc);
     assert(e1->type);           // semantic() should already be run on it
+    if (e1->op == TOKerror)
+        goto Lerr;
     e = this;
 
     // Note that unlike C we do not implement the int[ptr]
@@ -7990,6 +8050,8 @@ Expression *IndexExp::semantic(Scope *sc)
         }
 
         default:
+            if (e1->op == TOKerror)
+                goto Lerr;
             error("%s must be an array or pointer type, not %s",
                 e1->toChars(), e1->type->toChars());
         case Terror:
@@ -8195,7 +8257,9 @@ Expression *AssignExp::semantic(Scope *sc)
         }
     }
 
-    BinExp::semantic(sc);
+    Expression *e = BinExp::semantic(sc);
+    if (e->op == TOKerror)
+        return e;
 
     if (e1->op == TOKdottd)
     {   // Rewrite a.b=e2, when b is a template, as a.b(e2)
@@ -8360,7 +8424,9 @@ Expression *AddAssignExp::semantic(Scope *sc)
 
     if (e1->op == TOKslice)
     {
-        typeCombine(sc);
+        e = typeCombine(sc);
+        if (e->op == TOKerror)
+            return e;
         type = e1->type;
         return arrayOp(sc);
     }
@@ -8463,7 +8529,9 @@ Expression *MinAssignExp::semantic(Scope *sc)
 
     if (e1->op == TOKslice)
     {   // T[] -= ...
-        typeCombine(sc);
+        e = typeCombine(sc);
+        if (e->op == TOKerror)
+            return e;
         type = e1->type;
         return arrayOp(sc);
     }
@@ -8596,7 +8664,9 @@ Expression *MulAssignExp::semantic(Scope *sc)
 
     if (e1->op == TOKslice)
     {   // T[] -= ...
-        typeCombine(sc);
+        e = typeCombine(sc);
+        if (e->op == TOKerror)
+            return e;
         type = e1->type;
         return arrayOp(sc);
     }
@@ -8669,7 +8739,9 @@ Expression *DivAssignExp::semantic(Scope *sc)
 
     if (e1->op == TOKslice)
     {   // T[] -= ...
-        typeCombine(sc);
+        e = typeCombine(sc);
+        if (e->op == TOKerror)
+            return e;
         type = e1->type;
         return arrayOp(sc);
     }
@@ -9648,6 +9720,14 @@ RemoveExp::RemoveExp(Loc loc, Expression *e1, Expression *e2)
     type = Type::tvoid;
 }
 
+void RemoveExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
+{
+    expToCBuffer(buf, hgs, e1, PREC_primary);
+    buf->writestring(".remove(");
+    expToCBuffer(buf, hgs, e2, PREC_assign);
+    buf->writestring(")");
+}
+
 /************************************************************/
 
 CmpExp::CmpExp(enum TOK op, Loc loc, Expression *e1, Expression *e2)
@@ -9953,6 +10033,9 @@ Expression *CondExp::semantic(Scope *sc)
             case Tcomplex80:
                 e2 = e2->castTo(sc, e1->type);
                 break;
+
+            default:
+                break;
         }
         switch (e2->type->toBasetype()->ty)
         {
@@ -9960,6 +10043,9 @@ Expression *CondExp::semantic(Scope *sc)
             case Tcomplex64:
             case Tcomplex80:
                 e1 = e1->castTo(sc, e2->type);
+                break;
+
+            default:
                 break;
         }
     }

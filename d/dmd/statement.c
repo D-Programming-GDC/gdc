@@ -46,7 +46,6 @@
 #define CRITSECSIZE 0
 #endif
 
-
 /******************************** Statement ***************************/
 
 Statement::Statement(Loc loc)
@@ -334,7 +333,8 @@ Statements *CompileStatement::flatten(Scope *sc)
     while (p.token.value != TOKeof)
     {
         Statement *s = p.parseStatement(PSsemi | PScurlyscope);
-        a->push(s);
+        if (s)                  // if no parsing errors
+            a->push(s);
     }
     return a;
 }
@@ -1793,7 +1793,10 @@ Statement *ForeachStatement::semantic(Scope *sc)
                 Expressions *exps = new Expressions();
                 exps->push(aggr);
                 size_t keysize = taa->key->size();
-                keysize = (keysize + (PTRSIZE-1)) & ~(PTRSIZE-1);
+                if (global.params.isX86_64)
+                    keysize = (keysize + 15) & ~15;
+                else
+                    keysize = (keysize + PTRSIZE - 1) & ~(PTRSIZE - 1);
                 exps->push(new IntegerExp(0, keysize, Type::tsize_t));
                 exps->push(flde);
                 e = new CallExp(loc, ec, exps);
@@ -4000,7 +4003,12 @@ void Catch::semantic(Scope *sc)
         type = new TypeIdentifier(0, Id::Object);
     type = type->semantic(loc, sc);
     if (!type->toBasetype()->isClassHandle())
-        error(loc, "can only catch class objects, not '%s'", type->toChars());
+    {
+        if (type != Type::terror)
+        {   error(loc, "can only catch class objects, not '%s'", type->toChars());
+            type = Type::terror;
+        }
+    }
     else if (ident)
     {
         var = new VarDeclaration(loc, type, ident, NULL);

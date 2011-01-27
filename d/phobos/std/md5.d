@@ -3,10 +3,10 @@
  */
 
 /**
- * Computes MD5 digests of arbitrary data. MD5 digests are 16 byte quantities that are like a checksum or crc, but are more robust. 
+ * Computes MD5 digests of arbitrary data. MD5 digests are 16 byte quantities that are like a checksum or crc, but are more robust.
  *
  * There are two ways to do this. The first does it all in one function call to
- * sum(). The second is for when the data is buffered. 
+ * sum(). The second is for when the data is buffered.
  *
  * Bugs:
  * MD5 digests have been demonstrated to not be unique.
@@ -179,26 +179,22 @@ struct MD5_CTX
         version (D_InlineAsm_X86)
         {
             version (GNU)
-            {
                 asm
                 {
-                    naked ;
-                    mov ECX, n ;
-                    mov EAX, x ;
-                    rol EAX, CL ;
-                    ret ;
+                    naked                   ;
+                    mov     ECX,n           ;
+                    mov     EAX,x           ;
+                    rol     EAX,CL          ;
+                    ret                     ;
                 }
-            }
             else
-            {
-                asm
-                {   naked                       ;
-                    mov ECX,EAX         ;
-                    mov EAX,4[ESP]      ;
-                    rol EAX,CL          ;
-                    ret 4               ;
+            asm
+                {   naked                   ;
+                    mov     ECX,EAX         ;
+                    mov     EAX,4[ESP]      ;
+                    rol     EAX,CL          ;
+                    ret     4               ;
                 }
-            }
         }
         else
         {

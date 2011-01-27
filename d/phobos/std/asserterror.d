@@ -36,13 +36,14 @@ class AssertError : Error
         {
             version (Win32) alias _snprintf snprintf;
             count = snprintf(buffer, len, "AssertError Failure %.*s(%u) %.*s",
-                cast(int) filename.length, filename.ptr, linnum, msg);
+                cast(int) filename.length, filename.ptr, linnum, cast(int) msg.length, msg.ptr);
             if (count >= len || count == -1)
             {   super("AssertError internal failure");
                 std.c.stdlib.free(buffer);
             }
             else
                 super(buffer[0 .. count]);
+            //printf("buffer = %s\n", buffer);
         }
     }
 

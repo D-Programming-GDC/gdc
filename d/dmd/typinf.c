@@ -158,6 +158,8 @@ Expression *Type::getTypeInfo(Scope *sc)
             }
         }
     }
+    if (!vtinfo)
+        vtinfo = t->vtinfo;     // Types aren't merged, but we can share the vtinfo's
     Expression *e = new VarExp(0, t->vtinfo);
     e = e->addressOf(sc);
     e->type = t->vtinfo->type;          // do this so we don't get redundant dereference
@@ -484,6 +486,10 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
      *  int function(void*,void*) xopCmp;
      *  char[] function(void*) xtoString;
      *  uint m_flags;
+     *  uint m_align;
+     *  version (X86_64)
+     *      TypeInfo m_arg1;
+     *      TypeInfo m_arg2;
      *
      *  name[]
      */
@@ -599,7 +605,10 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
         dtsize_t(pdt, 0);
 
     // uint m_flags;
-    dtsize_t(pdt, tc->hasPointers());
+    dtdword(pdt, tc->hasPointers());
+
+    // uint m_align;
+    dtdword(pdt, tc->alignsize());
 
 #if DMDV2
     // xgetMembers
@@ -623,6 +632,24 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
     else
         dtsize_t(pdt, 0);                        // xpostblit
 #endif
+    if (global.params.isX86_64)
+    {
+        TypeTuple *tup = tc->toArgTypes();
+        assert(tup->arguments->dim <= 2);
+        for (int i = 0; i < 2; i++)
+        {
+            if (i < tup->arguments->dim)
+            {
+                Type *targ = ((Parameter *)tup->arguments->data[i])->type;
+                targ = targ->merge();
+                targ->getTypeInfo(NULL);
+                dtxoff(pdt, targ->vtinfo->toSymbol(), 0, TYnptr);       // m_argi
+            }
+            else
+                dtsize_t(pdt, 0);                    // m_argi
+        }
+    }
+
     // name[]
     dtnbytes(pdt, namelen + 1, name);
 }

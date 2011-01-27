@@ -120,7 +120,7 @@ void Module::genmoduleinfo()
     int aimports_dim = aimports.dim;
     for (int i = 0; i < aimports.dim; i++)
     {   Module *m = (Module *)aimports.data[i];
-        if (!m->needModuleInfo())
+        if (!m->needmoduleinfo)
             aimports_dim--;
     }
     dtsize_t(&dt, aimports_dim);
@@ -181,7 +181,7 @@ void Module::genmoduleinfo()
     for (int i = 0; i < aimports.dim; i++)
     {   Module *m = (Module *)aimports.data[i];
 
-        if (m->needModuleInfo())
+        if (m->needmoduleinfo)
         {   Symbol *s = m->toSymbol();
 
             /* Weak references don't pull objects in from the library,
@@ -1187,7 +1187,7 @@ void VarDeclaration::toObjFile(int multiobj)
         else
             s->Sseg = DATA;
 #endif
-        if (sz)
+        if (1 || sz)
         {   outdata(s);
             if (isExport())
                 obj_export(s,0);

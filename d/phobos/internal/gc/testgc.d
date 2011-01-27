@@ -4,12 +4,6 @@
 // Written by Walter Bright
 // www.digitalmars.com
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, July 2006
-*/
-
 // GC tester program
 
 import std.c.stdio;

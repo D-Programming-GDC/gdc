@@ -67,7 +67,6 @@
    Modified by David Friedman, September 2007
 */
 
-
 module std.math;
 
 //debug=math;           // uncomment to turn on debugging printf's
@@ -82,7 +81,7 @@ version(GNU){
     // GDC can't actually do inline asm.
 } else version(D_InlineAsm_X86) {
     version = Naked_D_InlineAsm_X86;
-} else version(LDC) {    
+} else version(LDC) {
     import ldc.intrinsics;
     version(X86)
     {
@@ -102,7 +101,7 @@ version (GNU)
 }
 
 version(DigitalMars){
-     version=INLINE_YL2X;       // x87 has opcodes for these
+    version=INLINE_YL2X;        // x87 has opcodes for these
 }
 
 private:
@@ -117,7 +116,7 @@ private:
  * Non-IEEE 128 bit Big-endian 'doubledouble' (eg PowerPC) has partial support
  */
 version(LittleEndian) {
-    static assert(real.mant_dig == 53 || real.mant_dig==64 
+    static assert(real.mant_dig == 53 || real.mant_dig==64
                || real.mant_dig == 113,
       "Only 64-bit, 80-bit, and 128-bit reals"
       " are supported for LittleEndian CPUs");
@@ -142,7 +141,7 @@ template floatTraits(T) {
     const uint EXPMASK_INT = 0x7F80_0000;
     const uint MANTISSAMASK_INT = 0x007F_FFFF;
     const real POW2MANTDIG = 0x1p+24;
-    version(LittleEndian) {        
+    version(LittleEndian) {
       const EXPPOS_SHORT = 1;
     } else {
       const EXPPOS_SHORT = 0;
@@ -163,7 +162,7 @@ template floatTraits(T) {
  } else static if (T.mant_dig == 64) { // real80
     const ushort EXPMASK = 0x7FFF;
     const ushort EXPBIAS = 0x3FFE;
-    const real POW2MANTDIG = 0x1p+63;    
+    const real POW2MANTDIG = 0x1p+63;
     version(LittleEndian) {
       const EXPPOS_SHORT = 4;
       const SIGNPOS_BYTE = 9;
@@ -198,7 +197,7 @@ template floatTraits(T) {
 // These apply to all floating-point types
 version(LittleEndian) {
     const MANTISSA_LSB = 0;
-    const MANTISSA_MSB = 1;    
+    const MANTISSA_MSB = 1;
 } else {
     const MANTISSA_LSB = 1;
     const MANTISSA_MSB = 0;
@@ -278,7 +277,6 @@ real abs(ireal y)
 {
     return fabs(y.im);
 }
-
 
 unittest
 {
@@ -370,7 +368,7 @@ ireal sin(ireal y)
   return cosh(y.im)*1i;
 }
 
-unittest 
+unittest
 {
   assert(sin(0.0+0.0i) == 0.0);
   assert(sin(2.0+0.0i) == sin(2.0L) );
@@ -384,15 +382,15 @@ unittest
 creal cos(creal z)
 {
   creal cs = expi(z.re);
-  return cs.re * cosh(z.im) + cs.im * sinh(z.im) * 1i;
+  return cs.re * cosh(z.im) - cs.im * sinh(z.im) * 1i;
 }
- 
+
 /** ditto */
 real cos(ireal y)
 {
   return cosh(y.im);
 }
- 
+
 unittest{
   assert(cos(0.0+0.0i)==1.0);
   assert(cos(1.3L+0.0i)==cos(1.3L));
@@ -583,7 +581,7 @@ real atan2(real y, real x)      { return std.c.math.atan2l(y,x); }
  */
 real cosh(real x)               {
     //  cosh = (exp(x)+exp(-x))/2.
-    // The naive implementation works correctly. 
+    // The naive implementation works correctly.
     real y = exp(x);
     return (y + 1.0/y) * 0.5;
 }
@@ -599,13 +597,13 @@ real cosh(real x)               {
  */
 real sinh(real x)
 {
-    //  sinh(x) =  (exp(x)-exp(-x))/2;    
+    //  sinh(x) =  (exp(x)-exp(-x))/2;
     // Very large arguments could cause an overflow, but
     // the maximum value of x for which exp(x) + exp(-x)) != exp(x)
     // is x = 0.5 * (real.mant_dig) * LN2. // = 22.1807 for real80.
     if (fabs(x) > real.mant_dig * LN2) {
         return copysign(0.5 * exp(fabs(x)), x);
-    }    
+    }
     real y = expm1(x);
     return 0.5 * y / (y+1) * (y+2);
 }
@@ -623,7 +621,7 @@ real tanh(real x)
 {
     //  tanh(x) = (exp(x) - exp(-x))/(exp(x)+exp(-x))
     if (fabs(x) > real.mant_dig * LN2) {
-        return copysign(1, x);        
+        return copysign(1, x);
     }
     real y = expm1(2*x);
     return y / (y + 2);
@@ -644,7 +642,7 @@ real tanh(real x)
  *    $(SV  1,      0       )
  *    $(SV  +$(INFIN),+$(INFIN))
  *  )
- */   
+ */
 real acosh(real x)
 {
     if (x > 1/real.epsilon)
@@ -678,7 +676,7 @@ unittest
  *    )
  */
 real asinh(real x)
-{   
+{
     if (fabs(x) > 1 / real.epsilon) {   // beyond this point, x*x + 1 == x*x
             return copysign(LN2 + log(fabs(x)), x);
     } else {
@@ -699,9 +697,9 @@ unittest
 /***********************************
  * Calculates the inverse hyperbolic tangent of x,
  * returning a value from ranging from -1 to 1.
- *  
+ *
  * Mathematically, atanh(x) = log( (1+x)/(1-x) ) / 2
- *  
+ *
  *
  * $(TABLE_DOMRG
  *  $(DOMAIN -$(INFIN)..$(INFIN))
@@ -712,7 +710,7 @@ unittest
  *    $(SV  $(PLUSMN)0, $(PLUSMN)0)
  *    $(SV  -$(INFIN), -0)
  * )
- */   
+ */
 real atanh(real x)
 {
     // log( (1+x)/(1-x) ) == log ( 1 + (2*x)/(1-x) )
@@ -724,7 +722,7 @@ unittest
     assert(isIdentical(atanh(0.0), 0.0));
     assert(isIdentical(atanh(-0.0),-0.0));
     assert(isnan(atanh(real.nan)));
-    assert(isnan(atanh(-real.infinity))); 
+    assert(isnan(atanh(-real.infinity)));
 }
 
 /*****************************************
@@ -822,19 +820,16 @@ real exp(real x) {
    // and exp2 are so similar).
     return exp2(LOG2E*x);
     } else {
-        return std.c.math.exp(x);        
-    }    
+        return std.c.math.exp(x);
+    }
 }
- 
-version (GNU_Need_exp2_log2) real exp2(real x) { return std.c.math.powl(2, x); } else
-//real exp2(real x)               { return std.c.math.exp2l(x); }
 
-/******************************************
+/**
  * Calculates the value of the natural logarithm base (e)
  * raised to the power of x, minus 1.
  *
- * For very small x, expm1(x) is more accurate 
- * than exp(x)-1. 
+ * For very small x, expm1(x) is more accurate
+ * than exp(x)-1.
  *
  *  $(TABLE_SV
  *    $(TR $(TH x)             $(TH e$(SUP x)-1)  )
@@ -844,24 +839,25 @@ version (GNU_Need_exp2_log2) real exp2(real x) { return std.c.math.powl(2, x); }
  *    $(TR $(TD $(NAN))        $(TD $(NAN))       )
  *  )
  */
-real expm1(real x) 
+version (GNU_msvcrt_math) { /* nothing */ } else
+real expm1(real x)
 {
     version(Naked_D_InlineAsm_X86) {
       enum { PARAMSIZE = (real.sizeof+3)&(0xFFFF_FFFC) } // always a multiple of 4
       asm {
         /*  expm1() for x87 80-bit reals, IEEE754-2008 conformant.
          * Author: Don Clugston.
-         * 
+         *
          *    expm1(x) = 2^(rndint(y))* 2^(y-rndint(y)) - 1 where y = LN2*x.
          *    = 2rndy * 2ym1 + 2rndy - 1, where 2rndy = 2^(rndint(y))
          *     and 2ym1 = (2^(y-rndint(y))-1).
          *    If 2rndy  < 0.5*real.epsilon, result is -1.
          *    Implementation is otherwise the same as for exp2()
          */
-        naked;        
+        naked;
         fld real ptr [ESP+4] ; // x
         mov AX, [ESP+4+8]; // AX = exponent and sign
-        sub ESP, 12+8; // Create scratch space on the stack 
+        sub ESP, 12+8; // Create scratch space on the stack
         // [ESP,ESP+2] = scratchint
         // [ESP+4..+6, +8..+10, +10] = scratchreal
         // set scratchreal mantissa = 1.0
@@ -871,7 +867,7 @@ real expm1(real x)
         cmp AX, 0x401D; // avoid InvalidException in fist
         jae L_extreme;
         fldl2e;
-        fmul ; // y = x*log2(e)       
+        fmul ; // y = x*log2(e)
         fist dword ptr [ESP]; // scratchint = rndint(y)
         fisub dword ptr [ESP]; // y - rndint(y)
         // and now set scratchreal exponent
@@ -880,26 +876,26 @@ real expm1(real x)
         jle short L_largenegative;
         cmp EAX,0x8000;
         jge short L_largepositive;
-        mov [ESP+8+8],AX;        
-        f2xm1; // 2^(y-rndint(y)) -1 
+        mov [ESP+8+8],AX;
+        f2xm1; // 2^(y-rndint(y)) -1
         fld real ptr [ESP+8] ; // 2^rndint(y)
         fmul ST(1), ST;
         fld1;
         fsubp ST(1), ST;
-        fadd;        
-        add ESP,12+8;        
+        fadd;
+        add ESP,12+8;
         ret PARAMSIZE;
-        
+
 L_extreme: // Extreme exponent. X is very large positive, very
         // large negative, infinity, or NaN.
         fxam;
         fstsw AX;
-        test AX, 0x0400; // NaN_or_zero, but we already know x!=0 
+        test AX, 0x0400; // NaN_or_zero, but we already know x!=0
         jz L_was_nan;  // if x is NaN, returns x
         test AX, 0x0200;
         jnz L_largenegative;
-L_largepositive:        
-        // Set scratchreal = real.max. 
+L_largepositive:
+        // Set scratchreal = real.max.
         // squaring it will create infinity, and set overflow flag.
         mov word  ptr [ESP+8+8], 0x7FFE;
         fstp ST(0), ST;
@@ -908,7 +904,7 @@ L_largepositive:
 L_was_nan:
         add ESP,12+8;
         ret PARAMSIZE;
-L_largenegative:        
+L_largenegative:
         fstp ST(0), ST;
         fld1;
         fchs; // return -1. Underflow flag is not set.
@@ -916,10 +912,10 @@ L_largenegative:
         ret PARAMSIZE;
       }
     } else {
-        return std.c.math.expm1(x);                
+        return std.c.math.expm1(x);
     }
 }
-version (GNU_msvcrt_math) { /* nothing */ } else
+
 /**
  * Calculates 2$(SUP x).
  *
@@ -930,30 +926,31 @@ version (GNU_msvcrt_math) { /* nothing */ } else
  *    $(TR $(TD $(NAN))        $(TD $(NAN))    )
  *  )
  */
-real exp2(real x) 
+version (GNU_Need_exp2_log2) real exp2(real x) { return std.c.math.powl(2, x); } else
+real exp2(real x)
 {
     version(Naked_D_InlineAsm_X86) {
       enum { PARAMSIZE = (real.sizeof+3)&(0xFFFF_FFFC) } // always a multiple of 4
       asm {
         /*  exp2() for x87 80-bit reals, IEEE754-2008 conformant.
          * Author: Don Clugston.
-         * 
+         *
          * exp2(x) = 2^(rndint(x))* 2^(y-rndint(x))
          * The trick for high performance is to avoid the fscale(28cycles on core2),
          * frndint(19 cycles), leaving f2xm1(19 cycles) as the only slow instruction.
-         * 
+         *
          * We can do frndint by using fist. BUT we can't use it for huge numbers,
          * because it will set the Invalid Operation flag is overflow or NaN occurs.
          * Fortunately, whenever this happens the result would be zero or infinity.
-         * 
+         *
          * We can perform fscale by directly poking into the exponent. BUT this doesn't
          * work for the (very rare) cases where the result is subnormal. So we fall back
          * to the slow method in that case.
          */
-        naked;        
+        naked;
         fld real ptr [ESP+4] ; // x
         mov AX, [ESP+4+8]; // AX = exponent and sign
-        sub ESP, 12+8; // Create scratch space on the stack 
+        sub ESP, 12+8; // Create scratch space on the stack
         // [ESP,ESP+2] = scratchint
         // [ESP+4..+6, +8..+10, +10] = scratchreal
         // set scratchreal mantissa = 1.0
@@ -970,43 +967,43 @@ real exp2(real x)
         jle short L_subnormal;
         cmp EAX,0x8000;
         jge short L_overflow;
-        mov [ESP+8+8],AX;        
+        mov [ESP+8+8],AX;
 L_normal:
         f2xm1;
         fld1;
         fadd; // 2^(x-rndint(x))
         fld real ptr [ESP+8] ; // 2^rndint(x)
-        add ESP,12+8;        
+        add ESP,12+8;
         fmulp ST(1), ST;
         ret PARAMSIZE;
 
 L_subnormal:
         // Result will be subnormal.
-        // In this rare case, the simple poking method doesn't work. 
+        // In this rare case, the simple poking method doesn't work.
         // The speed doesn't matter, so use the slow fscale method.
         fild dword ptr [ESP];  // scratchint
         fld1;
         fscale;
         fstp real ptr [ESP+8]; // scratchreal = 2^scratchint
-        fstp ST(0),ST;         // drop scratchint        
+        fstp ST(0),ST;         // drop scratchint
         jmp L_normal;
-        
+
 L_extreme: // Extreme exponent. X is very large positive, very
         // large negative, infinity, or NaN.
         fxam;
         fstsw AX;
-        test AX, 0x0400; // NaN_or_zero, but we already know x!=0 
+        test AX, 0x0400; // NaN_or_zero, but we already know x!=0
         jz L_was_nan;  // if x is NaN, returns x
         // set scratchreal = real.min
         // squaring it will return 0, setting underflow flag
         mov word  ptr [ESP+8+8], 1;
         test AX, 0x0200;
         jnz L_waslargenegative;
-L_overflow:        
+L_overflow:
         // Set scratchreal = real.max.
         // squaring it will create infinity, and set overflow flag.
         mov word  ptr [ESP+8+8], 0x7FFE;
-L_waslargenegative:        
+L_waslargenegative:
         fstp ST(0), ST;
         fld real ptr [ESP+8];  // load scratchreal
         fmul ST(0), ST;        // square it, to create havoc!
@@ -1016,7 +1013,7 @@ L_was_nan:
       }
     } else {
         return std.c.math.exp2(x);
-    }    
+    }
 }
 
 /**
@@ -1071,7 +1068,7 @@ unittest
  *      Calculate and return $(I x) and $(I exp) such that
  *      value =$(I x)*2$(SUP exp) and
  *      .5 $(LT)= |$(I x)| $(LT) 1.0
- *      
+ *
  *      $(I x) has same sign as value.
  *
  *      $(TABLE_SV
@@ -1083,11 +1080,10 @@ unittest
  *      )
  */
 
-
 real frexp(real value, out int exp)
 {
-    version (DMD) {
-
+  version (DMD)
+  {
     ushort* vu = cast(ushort*)&value;
     long* vl = cast(long*)&value;
     uint ex;
@@ -1124,7 +1120,7 @@ real frexp(real value, out int exp)
         vu[F.EXPPOS_SHORT] =
             cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FFE);
     }
-  } else static if (real.mant_dig == 113) { // quadruple      
+  } else static if (real.mant_dig == 113) { // quadruple
         if (ex) { // If exponent is non-zero
             if (ex == F.EXPMASK) {   // infinity or NaN
                 if (vl[MANTISSA_LSB] |
@@ -1142,7 +1138,7 @@ real frexp(real value, out int exp)
                 vu[F.EXPPOS_SHORT] =
                    cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FFE);
             }
-        } else if ((vl[MANTISSA_LSB] 
+        } else if ((vl[MANTISSA_LSB]
                   |(vl[MANTISSA_MSB] & 0x0000_FFFF_FFFF_FFFF)) == 0) {
             // value is +-0.0
             exp = 0;
@@ -1151,7 +1147,7 @@ real frexp(real value, out int exp)
         value *= F.POW2MANTDIG;
         ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
         exp = ex - F.EXPBIAS - 113;
-        vu[F.EXPPOS_SHORT] = 
+        vu[F.EXPPOS_SHORT] =
                   cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FFE);
     }
   } else static if (real.mant_dig==53) { // real is double
@@ -1190,23 +1186,22 @@ real frexp(real value, out int exp)
     throw new NotImplemented("frexp");
   }
   return value;
-
-    }
-    else version(GNU)
-    {
-        switch (gcc.fpcls.fpclassify(value)) {
-        case gcc.fpcls.FP_NORMAL:
-        case gcc.fpcls.FP_ZERO:
-        case gcc.fpcls.FP_SUBNORMAL: // I can only hope the library frexp normalizes the value...
-            return std.c.math.frexpl(value, & exp);
-        case gcc.fpcls.FP_INFINITE:
-            exp = gcc.fpcls.signbit(value) ? int.min : int.max;
-            return value;
-        case gcc.fpcls.FP_NAN:
-            exp = int.min;
-            return value;
-        }
-    }
+  }
+  else version(GNU)
+  {
+      switch (gcc.fpcls.fpclassify(value)) {
+      case gcc.fpcls.FP_NORMAL:
+      case gcc.fpcls.FP_ZERO:
+      case gcc.fpcls.FP_SUBNORMAL: // I can only hope the library frexp normalizes the value...
+          return std.c.math.frexpl(value, & exp);
+      case gcc.fpcls.FP_INFINITE:
+          exp = gcc.fpcls.signbit(value) ? int.min : int.max;
+          return value;
+      case gcc.fpcls.FP_NAN:
+          exp = int.min;
+          return value;
+      }
+  }
 }
 
 
@@ -1219,7 +1214,7 @@ unittest
         [1.0,   .5,     1],
         [-1.0,  -.5,    1],
         [2.0,   .5,     2],
-        [double.min/2.0, .5, -1022],
+    [double.min/2.0, .5, -1022],
         [real.infinity,real.infinity,int.max],
         [-real.infinity,-real.infinity,int.min],
         [real.nan,real.nan,int.min],
@@ -1236,13 +1231,13 @@ unittest
         int exp = cast(int)vals[i][2];
         int eptr;
         real v = frexp(x, eptr);
-//        printf("frexp(%La) = %La, should be %La, eptr = %d, should be %d\n", 
+//        printf("frexp(%La) = %La, should be %La, eptr = %d, should be %d\n",
 //                x, v, e, eptr, exp);
         assert(isIdentical(e, v));
         assert(exp == eptr);
 
     }
-    static if (real.mant_dig == 64) {
+   static if (real.mant_dig == 64) {
      static real extendedvals[][3] = [ // x,frexp,exp
         [0x1.a5f1c2eb3fe4efp+73L, 0x1.A5F1C2EB3FE4EFp-1L,   74],    // normal
         [0x1.fa01712e8f0471ap-1064L,  0x1.fa01712e8f0471ap-1L,     -1063],
@@ -1258,6 +1253,7 @@ unittest
         real v = frexp(x, eptr);
         assert(isIdentical(e, v));
         assert(exp == eptr);
+
     }
     }
 }
@@ -1307,7 +1303,7 @@ real log(real x)
     else
         return std.c.math.logl(x);
 }
- 
+
 unittest
 {
     assert(log(E) == 1);
@@ -1331,7 +1327,7 @@ real log10(real x)
     else
         return std.c.math.log10l(x);
 }
- 
+
 unittest
 {
     //printf("%Lg\n", log10(1000) - 3);
@@ -1341,8 +1337,8 @@ unittest
 /******************************************
  *      Calculates the natural logarithm of 1 + x.
  *
- *      For very small x, log1p(x) will be more accurate than 
- *      log(1 + x). 
+ *      For very small x, log1p(x) will be more accurate than
+ *      log(1 + x).
  *
  *  $(TABLE_SV
  *  $(TR $(TH x)            $(TH log1p(x))     $(TH divide by 0?) $(TH invalid?))
@@ -1375,13 +1371,14 @@ real log2(real x)
         return std.c.math.log2l(x);
 }
 
+
 /*****************************************
  * Extracts the exponent of x as a signed integral value.
  *
  * If x is subnormal, it is treated as if it were normalized.
- * For a positive, finite x: 
+ * For a positive, finite x:
  *
- * 1 $(LT)= $(I x) * FLT_RADIX$(SUP -logb(x)) $(LT) FLT_RADIX 
+ * 1 $(LT)= $(I x) * FLT_RADIX$(SUP -logb(x)) $(LT) FLT_RADIX
  *
  *      $(TABLE_SV
  *      $(TR $(TH x)                 $(TH logb(x))   $(TH divide by 0?) )
@@ -1394,8 +1391,8 @@ real logb(real x)               { return std.c.math.logbl(x); }
 /************************************
  * Calculates the remainder from the calculation x/y.
  * Returns:
- * The value of x - i * y, where i is the number of times that y can 
- * be completely subtracted from x. The result has the same sign as x. 
+ * The value of x - i * y, where i is the number of times that y can
+ * be completely subtracted from x. The result has the same sign as x.
  *
  * $(TABLE_SV
  *  $(TR $(TH x)              $(TH y)             $(TH modf(x, y))   $(TH invalid?))
@@ -1410,8 +1407,8 @@ real modf(real x, inout real y) { return std.c.math.modfl(x,&y); }
 /*************************************
  * Efficiently calculates x * 2$(SUP n).
  *
- * scalbn handles underflow and overflow in 
- * the same fashion as the basic arithmetic operators. 
+ * scalbn handles underflow and overflow in
+ * the same fashion as the basic arithmetic operators.
  *
  *      $(TABLE_SV
  *      $(TR $(TH x)                 $(TH scalb(x)))
@@ -1427,7 +1424,7 @@ real scalbn(real x, int n)
             fild n;
             fld x;
             fscale;
-            fstp ST(1)/*, ST*/;
+            fstp ST(1), ST;
         }
     } else version(D_InlineAsm_X86_64) {
         asm {
@@ -1472,9 +1469,9 @@ real fabs(real x);      /* intrinsic */
 
 
 /***********************************************************************
- * Calculates the length of the 
- * hypotenuse of a right-angled triangle with sides of length x and y. 
- * The hypotenuse is the value of the square root of 
+ * Calculates the length of the
+ * hypotenuse of a right-angled triangle with sides of length x and y.
+ * The hypotenuse is the value of the square root of
  * the sums of the squares of x and y:
  *
  *      sqrt($(POW x, 2) + $(POW y, 2))
@@ -1583,7 +1580,6 @@ unittest
         real y = vals[i][1];
         real z = vals[i][2];
         real h = hypot(x, y);
-
         assert(mfeq(z, h, .0000001));
     }
 }
@@ -1677,11 +1673,11 @@ real ceil(real x)               { return std.c.math.ceill(x); }
 real floor(real x)              { return std.c.math.floorl(x); }
 
 /******************************************
- * Rounds x to the nearest integer value, using the current rounding 
+ * Rounds x to the nearest integer value, using the current rounding
  * mode.
  *
- * Unlike the rint functions, nearbyint does not raise the 
- * FE_INEXACT exception. 
+ * Unlike the rint functions, nearbyint does not raise the
+ * FE_INEXACT exception.
  */
 version (GNU_Need_nearbyint)
 {
@@ -1700,7 +1696,6 @@ real nearbyint(real x) { return std.c.math.nearbyintl(x); }
  */
 version(GNU) alias std.c.math.rintl rint; else
 real rint(real x);      /* intrinsic */
-
 /***************************************
  * Rounds x to the nearest integer value, using the current rounding
  * mode.
@@ -1742,7 +1737,7 @@ long lrint(real x)
 /*******************************************
  * Return the value of x rounded to the nearest integer.
  * If the fractional part of x is exactly 0.5, the return value is rounded to
- * the even integer. 
+ * the even integer.
  */
 version (GNU_Need_round)
 {
@@ -1795,9 +1790,9 @@ long lround(real x)
 }
 
 /****************************************************
- * Returns the integer portion of x, dropping the fractional portion. 
+ * Returns the integer portion of x, dropping the fractional portion.
  *
- * This is also known as "chop" rounding. 
+ * This is also known as "chop" rounding.
  */
 version (GNU_Need_trunc)
 {
@@ -1822,7 +1817,7 @@ real trunc(real x) { return std.c.math.truncl(x); }
 /****************************************************
  * Calculate the remainder x REM y, following IEC 60559.
  *
- * REM is the value of x - y * n, where n is the integer nearest the exact 
+ * REM is the value of x - y * n, where n is the integer nearest the exact
  * value of x / y.
  * If |n - x / y| == 0.5, n is even.
  * If the result is zero, it has the same sign as x.
@@ -1851,7 +1846,6 @@ real remquo(real x, real y, out int n)  /// ditto
         throw new NotImplemented("remquo");
 }
 
-
 import gcc.fpcls;
 
 /*********************************
@@ -1865,7 +1859,7 @@ int isnan(real x)
   alias floatTraits!(real) F;
   static if (real.mant_dig==53) { // double
         ulong*  p = cast(ulong *)&x;
-        return (*p & 0x7FF0_0000_0000_0000 == 0x7FF0_0000_0000_0000) 
+        return (*p & 0x7FF0_0000_0000_0000 == 0x7FF0_0000_0000_0000)
              && *p & 0x000F_FFFF_FFFF_FFFF;
   } else static if (real.mant_dig==64) {     // real80
         // Prevent a ridiculous warning
@@ -1943,7 +1937,7 @@ int isnormal(real x) { return fpclassify(x)==FP_NORMAL; }
 int isnormal(X)(X x)
 {
     alias floatTraits!(X) F;
-    
+
     static if(real.mant_dig==106) { // doubledouble
         // doubledouble is normal if the least significant part is normal.
         return isnormal((cast(double*)&x)[MANTISSA_LSB]);
@@ -1954,6 +1948,7 @@ int isnormal(X)(X x)
     }
 }
 */
+
 
 unittest
 {
@@ -1984,6 +1979,14 @@ unittest
  */
 
 int issubnormal(float x) { return fpclassify(x) == FP_SUBNORMAL; }
+
+/*
+int issubnormal(float f)
+{
+    uint *p = cast(uint *)&f;
+    return (*p & 0x7F80_0000) == 0 && *p & 0x007F_FFFF;
+}
+*/
 
 unittest
 {
@@ -2024,7 +2027,7 @@ int issubnormal(real x)
     alias floatTraits!(real) F;
     static if (real.mant_dig == 53) { // double
         return issubnormal(cast(double)x);
-    } else static if (real.mant_dig == 113) { // quadruple        
+    } else static if (real.mant_dig == 113) { // quadruple
         ushort e = F.EXPMASK & (cast(ushort *)&x)[F.EXPPOS_SHORT];
         long*   ps = cast(long *)&x;
         return (e == 0 &&
@@ -2063,10 +2066,10 @@ int isinf(real x)
                 == 0x7FF8_0000_0000_0000;
     } else static if(real.mant_dig == 106) { //doubledouble
         return (((cast(ulong *)&x)[MANTISSA_MSB]) & 0x7FFF_FFFF_FFFF_FFFF)
-                    == 0x7FF8_0000_0000_0000;   
-    } else static if (real.mant_dig == 113) { // quadruple   
+                    == 0x7FF8_0000_0000_0000;
+    } else static if (real.mant_dig == 113) { // quadruple
         long*   ps = cast(long *)&x;
-        return (ps[MANTISSA_LSB] == 0) 
+        return (ps[MANTISSA_LSB] == 0)
          && (ps[MANTISSA_MSB] & 0x7FFF_FFFF_FFFF_FFFF) == 0x7FFF_0000_0000_0000;
     } else { // real80
         ushort e = cast(ushort)(F.EXPMASK & (cast(ushort *)&x)[F.EXPPOS_SHORT]);
@@ -2076,7 +2079,7 @@ int isinf(real x)
    }
 }
 */
-    
+
 unittest
 {
     assert(isinf(float.infinity));
@@ -2144,7 +2147,7 @@ real copysign(real to, real from)
 {
     ubyte* pto   = cast(ubyte *)&to;
     ubyte* pfrom = cast(ubyte *)&from;
-    
+
     alias floatTraits!(real) F;
     pto[F.SIGNPOS_BYTE] &= 0x7F;
     pto[F.SIGNPOS_BYTE] |= pfrom[F.SIGNPOS_BYTE] & 0x80;
@@ -2213,7 +2216,7 @@ real nextUp(real x)
         if (e == F.EXPMASK) { // NaN or Infinity
              if (x == -real.infinity) return -real.max;
              return x; // +Inf and NaN are unchanged.
-        }     
+        }
         ulong*   ps = cast(ulong *)&e;
         if (ps[MANTISSA_LSB] & 0x8000_0000_0000_0000)  { // Negative number
             if (ps[MANTISSA_LSB] == 0
@@ -2230,7 +2233,7 @@ real nextUp(real x)
             if (ps[MANTISSA_LSB]==0) ++ps[MANTISSA_MSB];
         }
         return x;
-          
+
     } else static if(real.mant_dig==64){ // real80
         // For 80-bit reals, the "implied bit" is a nuisance...
         ushort *pe = cast(ushort *)&x;
@@ -2694,9 +2697,9 @@ int feqrel(X)(X x, X y)
 {
     /* Public Domain. Author: Don Clugston, 18 Aug 2005.
      */
-  static assert(is(X==real) || is(X==double) || is(X==float), 
+  static assert(is(X==real) || is(X==double) || is(X==float),
         "Only float, double, and real are supported by feqrel");
-  
+
   static if (X.mant_dig == 106) { // doubledouble.
      if (cast(double*)(&x)[MANTISSA_MSB] == cast(double*)(&y)[MANTISSA_MSB]) {
          return double.mant_dig
@@ -2707,7 +2710,7 @@ int feqrel(X)(X x, X y)
                        cast(double*)(&y)[MANTISSA_MSB]);
      }
   } else static if (X.mant_dig==64 || X.mant_dig==113 || X.mant_dig==53) {
-      
+
     if (x == y) return X.mant_dig; // ensure diff!=0, cope with INF.
 
     X diff = fabs(x - y);
@@ -2729,12 +2732,12 @@ int feqrel(X)(X x, X y)
     // they could have 0 or 1 bits in common.
 
  static if (X.mant_dig==64 || X.mant_dig==113) { // real80 or quadruple
-    int bitsdiff = ( ((pa[F.EXPPOS_SHORT]&0x7FFF) 
-                    + (pb[F.EXPPOS_SHORT]&0x7FFF)-1)>>1) 
+    int bitsdiff = ( ((pa[F.EXPPOS_SHORT]&0x7FFF)
+                    + (pb[F.EXPPOS_SHORT]&0x7FFF)-1)>>1)
                     - pd[F.EXPPOS_SHORT];
  } else static if (X.mant_dig==53) { // double
-    int bitsdiff = (( ((pa[F.EXPPOS_SHORT]&0x7FF0) 
-                     + (pb[F.EXPPOS_SHORT]&0x7FF0)-0x10)>>1) 
+    int bitsdiff = (( ((pa[F.EXPPOS_SHORT]&0x7FF0)
+                     + (pb[F.EXPPOS_SHORT]&0x7FF0)-0x10)>>1)
                      - (pd[F.EXPPOS_SHORT]&0x7FF0))>>4;
  }
     if (pd[F.EXPPOS_SHORT] == 0)
@@ -2748,16 +2751,16 @@ int feqrel(X)(X x, X y)
 
     if (bitsdiff > 0)
         return bitsdiff + 1; // add the 1 we subtracted before
-        
-    // Avoid out-by-1 errors when factor is almost 2.    
-     static if (X.mant_dig==64 || X.mant_dig==113) { // real80 or quadruple    
+
+    // Avoid out-by-1 errors when factor is almost 2.
+     static if (X.mant_dig==64 || X.mant_dig==113) { // real80 or quadruple
         return (bitsdiff == 0) ? (pa[F.EXPPOS_SHORT] == pb[F.EXPPOS_SHORT]) : 0;
      } else static if (X.mant_dig==53) { // double
-        if (bitsdiff == 0 
+        if (bitsdiff == 0
           && !((pa[F.EXPPOS_SHORT] ^ pb[F.EXPPOS_SHORT])& F.EXPMASK)) {
               return 1;
         } else return 0;
-     }  
+     }
  } else {
     throw new NotImplemented("feqrel");
  }
@@ -2782,9 +2785,9 @@ unittest
    assert(feqrel(1.5+real.epsilon,1.5L)==real.mant_dig-1);
    assert(feqrel(1.5-real.epsilon,1.5L)==real.mant_dig-1);
    assert(feqrel(1.5-real.epsilon,1.5+real.epsilon)==real.mant_dig-2);
-   
+
    assert(feqrel(real.min/8,real.min/17)==3);;
-   
+
    // Numbers that are close
    assert(feqrel(0x1.Bp+84, 0x1.B8p+84)==5);
    assert(feqrel(0x1.8p+10, 0x1.Cp+10)==2);
@@ -2832,7 +2835,7 @@ package: // Not public yet
 T ieeeMean(T)(T x, T y)
 in {
     // both x and y must have the same sign, and must not be NaN.
-    assert(signbit(x) == signbit(y)); 
+    assert(signbit(x) == signbit(y));
     assert(x<>=0 && y<>=0);
 }
 body {
@@ -2878,8 +2881,8 @@ body {
         ulong *ul = cast(ulong *)&u;
         ulong *xl = cast(ulong *)&x;
         ulong *yl = cast(ulong *)&y;
-        // Multi-byte add, then multi-byte right shift.        
-        ulong mh = ((xl[MANTISSA_MSB] & 0x7FFF_FFFF_FFFF_FFFFL) 
+        // Multi-byte add, then multi-byte right shift.
+        ulong mh = ((xl[MANTISSA_MSB] & 0x7FFF_FFFF_FFFF_FFFFL)
                   + (yl[MANTISSA_MSB] & 0x7FFF_FFFF_FFFF_FFFFL));
         // Discard the lowest bit (to avoid overflow)
         ulong ml = (xl[MANTISSA_LSB]>>>1) + (yl[MANTISSA_LSB]>>>1);
@@ -2935,24 +2938,16 @@ unittest {
 
 public:
 
-    
-// The space allocated for real varies across targets.
-version (D_InlineAsm_X86)
-{
-    static if (real.sizeof == 10)
-        { version = poly_10; }
-    else static if (real.sizeof == 12)
-        { version = poly_12; }
-}
 
 /***********************************
  * Evaluate polynomial A(x) = $(SUB a, 0) + $(SUB a, 1)x + $(SUB a, 2)&sup2;
  *                          + $(SUB a,3)x&sup3; ...
- * Uses Horner's rule A(x) = $(SUB a, 0) + x($(SUB a, 1) + x($(SUB a, 2) 
+ *
+ * Uses Horner's rule A(x) = $(SUB a, 0) + x($(SUB a, 1) + x($(SUB a, 2)
  *                         + x($(SUB a, 3) + ...)))
  * Params:
  *      A =     array of coefficients $(SUB a, 0), $(SUB a, 1), etc.
- */ 
+ */
 real poly(real x, real[] A)
 in
 {
@@ -2960,61 +2955,96 @@ in
 }
 body
 {
-    version (poly_10)
+    version (D_InlineAsm_X86)
     {
+        static if (real.sizeof == 10)
+        {
         // BUG: This code assumes a frame pointer in EBP.
-        asm    // assembler by W. Bright
-        {
-            // EDX = (A.length - 1) * real.sizeof
-            mov     ECX,A[EBP]              ; // ECX = A.length
-            dec     ECX                     ;
-            lea     EDX,[ECX][ECX*8]        ;
-            add     EDX,ECX                 ;
-            add     EDX,A+4[EBP]            ;
-            fld     real ptr [EDX]          ; // ST0 = coeff[ECX]
-            jecxz   return_ST               ;
-            fld     x[EBP]                  ; // ST0 = x
-            fxch    ST(1)                   ; // ST1 = x, ST0 = r
-            align   4                       ;
-            L2:     fmul    ST,ST(1)        ; // r *= x
-            fld     real ptr -10[EDX]       ;
-            sub     EDX,10                  ; // deg--
-            faddp   ST(1),ST                ;
-            dec     ECX                     ;
-            jne     L2                      ;
-            fxch    ST(1)                   ; // ST1 = r, ST0 = x
-            fstp    ST(0)                   ; // dump x
-            align   4                       ;
-            return_ST:                      ;
-            ;
+            asm // assembler by W. Bright
+            {
+                // EDX = (A.length - 1) * real.sizeof
+                mov     ECX,A[EBP]              ; // ECX = A.length
+                dec     ECX                     ;
+                lea     EDX,[ECX][ECX*8]        ;
+                add     EDX,ECX                 ;
+                add     EDX,A+4[EBP]            ;
+                fld     real ptr [EDX]          ; // ST0 = coeff[ECX]
+                jecxz   return_ST               ;
+                fld     x[EBP]                  ; // ST0 = x
+                fxch    ST(1)                   ; // ST1 = x, ST0 = r
+                align   4                       ;
+        L2:     fmul    ST,ST(1)                ; // r *= x
+                fld     real ptr -10[EDX]       ;
+                sub     EDX,10                  ; // deg--
+                faddp   ST(1),ST                ;
+                dec     ECX                     ;
+                jne     L2                      ;
+                fxch    ST(1)                   ; // ST1 = r, ST0 = x
+                fstp    ST(0)                   ; // dump x
+                align   4                       ;
+        return_ST:                              ;
+                ;
+            }
         }
-    }
-    else version (poly_12)
-    {
-        asm    // above code with modifications for GCC
+        else static if (real.sizeof == 12)
         {
-            // EDX = (A.length - 1) * real.sizeof
-            mov     ECX,A[EBP]              ; // ECX = A.length
-            dec     ECX                     ;
-            lea     EDX,[ECX][ECX*2]        ;
-            lea     EDX,[EDX*4]             ;
-            add     EDX,A+4[EBP]            ;
-            fld     real ptr [EDX]          ; // ST0 = coeff[ECX]
-            jecxz   return_ST               ;
-            fld     x                       ; // ST0 = x
-            fxch    ST(1)                   ; // ST1 = x, ST0 = r
-            align   4                       ;
-        L2:     fmul    ST,ST(1)            ; // r *= x
-            fld     real ptr -12[EDX]       ;
-            sub     EDX,12                  ; // deg--
-            faddp   ST(1),ST                ;
-            dec     ECX                     ;
-            jne     L2                      ;
-            fxch    ST(1)                   ; // ST1 = r, ST0 = x
-            fstp    ST(0)                   ; // dump x
-            align   4                       ;
-        return_ST:                          ;
-            ;
+            asm // assembler by W. Bright
+            {
+                // EDX = (A.length - 1) * real.sizeof
+                mov     ECX,A[EBP]              ; // ECX = A.length
+                dec     ECX                     ;
+                lea     EDX,[ECX*8]             ;
+                lea     EDX,[EDX][ECX*4]        ;
+                add     EDX,A+4[EBP]            ;
+                fld     real ptr [EDX]          ; // ST0 = coeff[ECX]
+                jecxz   return_ST               ;
+                fld     x[EBP]                  ; // ST0 = x
+                fxch    ST(1)                   ; // ST1 = x, ST0 = r
+                align   4                       ;
+        L2:     fmul    ST,ST(1)                ; // r *= x
+                fld     real ptr -12[EDX]       ;
+                sub     EDX,12                  ; // deg--
+                faddp   ST(1),ST                ;
+                dec     ECX                     ;
+                jne     L2                      ;
+                fxch    ST(1)                   ; // ST1 = r, ST0 = x
+                fstp    ST(0)                   ; // dump x
+                align   4                       ;
+        return_ST:                              ;
+                ;
+            }
+        }
+        else static if (real.sizeof == 16)
+        {
+            asm // assembler by W. Bright
+            {
+                // EDX = (A.length - 1) * real.sizeof
+                mov     ECX,A[EBP]              ; // ECX = A.length
+                dec     ECX                     ;
+                lea     EDX,[ECX*8]             ;
+                add     EDX,EDX                 ;
+                add     EDX,A+4[EBP]            ;
+                fld     real ptr [EDX]          ; // ST0 = coeff[ECX]
+                jecxz   return_ST               ;
+                fld     x[EBP]                  ; // ST0 = x
+                fxch    ST(1)                   ; // ST1 = x, ST0 = r
+                align   4                       ;
+        L2:     fmul    ST,ST(1)                ; // r *= x
+                fld     real ptr -16[EDX]       ;
+                sub     EDX,16                  ; // deg--
+                faddp   ST(1),ST                ;
+                dec     ECX                     ;
+                jne     L2                      ;
+                fxch    ST(1)                   ; // ST1 = r, ST0 = x
+                fstp    ST(0)                   ; // dump x
+                align   4                       ;
+        return_ST:                              ;
+                ;
+            }
+        }
+        else
+        {
+            static assert(0);
         }
     }
     else
@@ -3055,3 +3085,5 @@ unittest
         assert(yl2xp1(1023, 1) == 10);
     }
 }
+
+

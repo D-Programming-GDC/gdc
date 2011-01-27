@@ -1,4 +1,3 @@
-
 // Written in the D programming language
 // written by Walter Bright
 // www.digitalmars.com
@@ -48,7 +47,7 @@ version (GNU)
         return i; // supposed to be undefined
     }
 else
-    int bsf(uint v);
+int bsf(uint v);
 
 /**
  * Scans the bits in v from the most significant bit
@@ -91,7 +90,7 @@ int bsr(size_t v)
     return i; // supposed to be undefined
 }
 else
-    int bsr(size_t v);
+int bsr(size_t v);
 
 /**
  * Tests the bit.
@@ -102,7 +101,7 @@ int bt(in size_t *p, size_t bitnum)
     return (p[bitnum / (size_t.sizeof*8)] & (1<<(bitnum & ((size_t.sizeof*8)-1)))) ? -1 : 0 ;
 }
 else
-    int bt(in size_t *p, size_t bitnum);
+int bt(in size_t *p, size_t bitnum);
 
 /**
  * Tests and complements the bit.
@@ -132,7 +131,7 @@ int btr(size_t *p, size_t bitnum)
     return result ? -1 : 0;
 }
 else
-    int btr(size_t *p, size_t bitnum);
+int btr(size_t *p, size_t bitnum);
 
 /**
  * Tests and sets the bit.
@@ -201,7 +200,7 @@ int bts(size_t *p, size_t bitnum)
     return result ? -1 : 0;
 }
 else
-    int bts(size_t *p, size_t bitnum);
+int bts(size_t *p, size_t bitnum);
 
 
 /**
@@ -215,7 +214,7 @@ uint bswap(uint v)
     return ((v&0xFF)<<24)|((v&0xFF00)<<8)|((v&0xFF0000)>>>8)|((v&0xFF000000)>>>24);
 }
 else
-    uint bswap(uint v);
+uint bswap(uint v);
 
 
 /**
@@ -224,7 +223,7 @@ else
 version (GNU)
     ubyte  inp(uint p) { return 0; }
 else
-    ubyte  inp(uint port_address);
+ubyte  inp(uint port_address);
 
 /**
  * ditto
@@ -232,7 +231,7 @@ else
 version (GNU)
     ushort inpw(uint p) { return 0; }
 else
-    ushort inpw(uint port_address);
+ushort inpw(uint port_address);
 
 /**
  * ditto
@@ -240,7 +239,7 @@ else
 version (GNU)
     uint   inpl(uint p) { return 0; }
 else
-    uint   inpl(uint port_address);
+uint   inpl(uint port_address);
 
 
 /**
@@ -249,7 +248,7 @@ else
 version (GNU)
     ubyte  outp(uint p, ubyte v) { return v; }
 else
-    ubyte  outp(uint port_address, ubyte value);
+ubyte  outp(uint port_address, ubyte value);
 
 /**
  * ditto
@@ -257,7 +256,7 @@ else
 version (GNU)
     ushort outpw(uint p, ushort v) { return v; }
 else
-    ushort outpw(uint port_address, ushort value);
+ushort outpw(uint port_address, ushort value);
 
 /**
  * ditto
@@ -265,6 +264,6 @@ else
 version (GNU)
     uint   outpl(uint p, uint v) { return v; }
 else
-    uint   outpl(uint port_address, uint value);
+uint   outpl(uint port_address, uint value);
 
 

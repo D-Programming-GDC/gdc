@@ -14,7 +14,7 @@ extern (C):
 version (Windows)
 {
     /// Entire floating point environment
- 
+
     struct fenv_t
     {
         ushort status;
@@ -22,6 +22,7 @@ version (Windows)
         ushort round;
         ushort reserved[2];
     }
+
     extern fenv_t _FE_DFL_ENV;
 
     /// Default floating point environment
@@ -70,6 +71,7 @@ else version (linux)
         static if (size_t.sizeof == 8)
             uint __mxcsr;
     }
+
     /// Default floating point environment
     fenv_t* FE_DFL_ENV = cast(fenv_t*)(-1);
 
@@ -145,6 +147,7 @@ else version (FreeBSD)
             uint __tag;
             char[16] other;
         }
+
         X87 __x87;
         uint __mxcsr;
     }

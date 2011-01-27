@@ -36,7 +36,6 @@
  *      WIKI=Phobos/StdProcess
  */
 
-
 module std.process;
 
 private import std.c.stdlib;
@@ -161,7 +160,7 @@ int  termsig(int status)    { return status & 0x7f; }
 bool exited(int status)     { return cast(bool)((status & 0x7f) == 0); }
 int  exitstatus(int status) { return (status & 0xff00) >> 8; }
 }   // private
-}   // version(Posix)
+}   // version (Unix)
 
 /* ========================================================== */
 
@@ -226,7 +225,7 @@ version (GNU_Need_execvpe)
 
         foreach(string pathDir; envPaths)
         {
-            string  composite   =   pathDir ~ "/" ~ pathname;
+            string  composite   =  pathDir ~ "/" ~ pathname;
 
             iRet = execve(composite, argv, envp);
         }

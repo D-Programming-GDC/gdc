@@ -319,8 +319,8 @@ class Thread
     static Thread getThis()
     {
         Thread t = _getThis();
-        if (t)
-            return t;
+        if(t)
+                return t;
         printf("didn't find it\n");
         assert(0);
     }
@@ -491,16 +491,15 @@ class Thread
 
     void del_thread()
     {
-        assert(allThreads[idx] == this);
+            assert(allThreads[idx] == this);
 
-        allThreads[idx] = null;
-        nthreads--;
-        idx = -1;
+            allThreads[idx] = null;
+            nthreads--;
+            idx = -1;
 
-        while(allThreadsDim > 0 && !allThreads[allThreadsDim - 1])
-            allThreadsDim--;
+            while(allThreadsDim > 0 && !allThreads[allThreadsDim - 1])
+                allThreadsDim--;
     }
-
 
     /**************************************
      * Create a Thread for global main().
@@ -579,7 +578,7 @@ class Thread
             allThreads[0].hdl = GetCurrentThread();
         }
     }
-          
+
     /********************************************
      * Returns the handle of the current thread.
      * This is needed because GetCurrentThread() always returns -2 which
@@ -785,7 +784,7 @@ class Thread
             error("wait on self");
         if (state != TS.FINISHED)
         {
-            timespec ts; 
+            timespec ts;
             timeval  tv;
 
             alias typeof(tv.tv_sec) __time_t;
@@ -1019,7 +1018,7 @@ class Thread
   private:
 
     static uint allThreadsDim;
- 
+
     // Set max to Windows equivalent for compatibility.
     // pthread_create will fail gracefully if stack limit
     // is reached prior to allThreads max.
@@ -1223,11 +1222,8 @@ class Thread
 
     public static void* getESP()
     {
-        // TODO add builtin for using stack_pointer_rtx
-        int dummy;
-        void * p = & dummy + 1; // +1 doesn't help much; also assume stack grows down
-        p = cast(void*)( (cast(size_t) p) & ~(size_t.sizeof - 1));
-        return p;
+        // This works even if frame pointer is omitted.
+        return __builtin_frame_address(0);
     }
 }
 
@@ -1267,11 +1263,8 @@ else version (NoSystem)
 
         public static void* getESP()
         {
-            // TODO add builtin for using stack_pointer_rtx
-            int dummy;
-            void * p = & dummy + 1; // +1 doesn't help much; also assume stack grows down
-            p = cast(void*)( (cast(size_t) p) & ~(size_t.sizeof - 1));
-            return p;
+            // This works even if frame pointer is omitted.
+            return __builtin_frame_address(0);
         }
     }
 }

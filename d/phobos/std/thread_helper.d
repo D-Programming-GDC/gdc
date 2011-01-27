@@ -48,7 +48,7 @@ version( Windows )
         int[15] fill1;
         int ProcessId;
         int[28] fill2;
-    
+
         // SYSTEM_THREAD_INFORMATION or SYSTEM_EXTENDED_THREAD_INFORMATION structures follow.
     }
 
@@ -65,7 +65,7 @@ version( Windows )
 
     const ThreadBasicInformation = 0;
 
-    struct THREAD_BASIC_INFORMATION 
+    struct THREAD_BASIC_INFORMATION
     {
         int    ExitStatus;
         void** TebBaseAddress;
@@ -91,7 +91,7 @@ version( Windows )
         THREAD_BASIC_INFORMATION tbi;
         int Status = (*fn)(hnd, ThreadBasicInformation, &tbi, tbi.sizeof, null);
         assert(Status == 0);
-        
+
         return tbi.TebBaseAddress;
     }
 

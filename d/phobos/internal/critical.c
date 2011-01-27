@@ -85,8 +85,10 @@ void _STD_critical_term()
 
 #if linux || PHOBOS_USE_PTHREADS || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
 
-
+#include        <stdio.h>
+#include        <stdlib.h>
 #include        <pthread.h>
+
 // PTHREAD_MUTEX_RECURSIVE is the "standard" symbol,
 #if linux || __APPLE__
 // while the _NP version is specific to Linux
@@ -103,8 +105,6 @@ void _STD_critical_term()
 /******************************************
  * Enter/exit critical section.
  */
-
-
 
 /* We don't initialize critical sections unless we actually need them.
  * So keep a linked list of the ones we do use, and in the static destructor

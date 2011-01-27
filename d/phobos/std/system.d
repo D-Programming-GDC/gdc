@@ -50,7 +50,7 @@ const
         Family family = Family.OSX;
     }
     else version (FreeBSD)
-     {
+    {
         Family family = Family.FreeBSD;
     }
     else version (Solaris)

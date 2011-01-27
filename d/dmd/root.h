@@ -12,6 +12,7 @@
    work with the GDC compiler.
 
    Modified by David Friedman, September 2004
+   Updated by Iain Buclaw, January 2011
 */
 
 #ifndef ROOT_H

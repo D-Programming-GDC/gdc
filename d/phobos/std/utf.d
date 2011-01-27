@@ -28,7 +28,7 @@
  * For Win32 systems, the C wchar_t type is UTF-16 and corresponds to the D
  * wchar type.
  * For linux systems, the C wchar_t type is UTF-32 and corresponds to
- * the D utf.dchar type. 
+ * the D utf.dchar type.
  *
  * UTF character support is restricted to (\u0000 &lt;= character &lt;= \U0010FFFF).
  *
@@ -39,7 +39,7 @@
  * Macros:
  *      WIKI = Phobos/StdUtf
  */
- 
+
 module std.utf;
 
 private import std.stdio;

@@ -505,21 +505,12 @@ unittest
         [ "_D4test34__T3barVG3uw3_616263VG3wd3_646566Z1xi", "int test.bar!(wchar[3] \"abc\"w, dchar[3] \"def\"d).x" ],
         [ "_D8demangle4testFLC6ObjectLDFLiZiZi", "int demangle.test(lazy class Object, lazy int delegate(lazy int))"],
         [ "_D8demangle4testFAiXi", "int demangle.test(int[] ...)"],
-        [ "_D8demangle4testFLAiXi", "int demangle.test(lazy int[] ...)"] 
+        [ "_D8demangle4testFLAiXi", "int demangle.test(lazy int[] ...)"]
     ];
 
-    foreach (int i, name; table)
+    foreach (i, name; table)
     {
-        // Bugzilla 1377 workaround
-        if (i == 6 || i == 10)
-            continue;
-
-        static if (real.sizeof != 10) {
-            if (i == 7 || i == 8)
-                continue;
-        }
         string r = demangle(name[0]);
-        //writefln("%d, [ \"%s\", \"%s\" ],", i, name[0], r);
         assert(r == name[1],
             "table entry #" ~ toString(i) ~ ": '" ~ name[0] ~ "' demangles as '" ~ r ~ "' but is expected to be '" ~ name[1] ~ "'");
 

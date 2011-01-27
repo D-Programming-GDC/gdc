@@ -4,6 +4,7 @@
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
+// http://www.dsource.org/projects/dmd/browser/branches/dmd-1.x/src/mtype.c
 // License for redistribution is by either the Artistic License
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
@@ -25,7 +26,7 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include <float.h>
+//#include <float.h>
 
 #if IN_GCC
 #include "gdc_alloca.h"
@@ -249,7 +250,7 @@ void Type::init()
           Tfloat32, Tfloat64, Tfloat80,
           Timaginary32, Timaginary64, Timaginary80,
           Tcomplex32, Tcomplex64, Tcomplex80,
-          Tbit, Tbool,
+          Tbool,
           Tascii, Twchar, Tdchar };
 
     for (i = 0; i < sizeof(basetab) / sizeof(basetab[0]); i++)
@@ -668,10 +669,13 @@ Expression *Type::getProperty(Loc loc, Identifier *ident)
             s = toDsymbol(NULL);
         if (s)
             s = s->search_correct(ident);
-        if (s)
-            error(loc, "no property '%s' for type '%s', did you mean '%s'?", ident->toChars(), toChars(), s->toChars());
-        else
-            error(loc, "no property '%s' for type '%s'", ident->toChars(), toChars());
+        if (this != Type::terror)
+        {
+            if (s)
+                error(loc, "no property '%s' for type '%s', did you mean '%s'?", ident->toChars(), toChars(), s->toChars());
+            else
+                error(loc, "no property '%s' for type '%s'", ident->toChars(), toChars());
+        }
         e = new ErrorExp();
     }
     return e;
@@ -993,6 +997,7 @@ TypeBasic::TypeBasic(TY ty)
         case Tbit:      d = Token::toChars(TOKbit);
                         c = "bit";
                         flags |= TFLAGSintegral | TFLAGSunsigned;
+assert(0);
                         break;
 
         case Tbool:     d = "bool";
@@ -1108,14 +1113,14 @@ unsigned TypeBasic::alignsize()
 #if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS || TARGET_UNIX
         case Tint64:
         case Tuns64:
+            sz = global.params.isX86_64 ? 8 : 4;
+            break;
+
         case Tfloat64:
         case Timaginary64:
         case Tcomplex32:
         case Tcomplex64:
-            if (global.params.isX86_64)
-                sz = size(0);
-            else
-                sz = 4;
+            sz = global.params.isX86_64 ? 16 : 4;
             break;
 #endif
 
@@ -1196,7 +1201,8 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tfloat64:      fvalue = DBL_MAX;       goto Lfvalue;
             case Tcomplex80:
             case Timaginary80:
-            case Tfloat80:      fvalue = LDBL_MAX; goto Lfvalue;
+            case Tfloat80:      fvalue = LDBL_MAX;      goto Lfvalue;
+            default:            goto Ldefault;
         }
     }
     else if (ident == Id::min)
@@ -1226,6 +1232,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      fvalue = LDBL_MIN;      goto Lfvalue;
+            default:            goto Ldefault;
         }
     }
     else if (ident == Id::nan)
@@ -1250,6 +1257,9 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 #endif
                 goto Lfvalue;
             }
+
+            default:
+                goto Ldefault;
         }
     }
     else if (ident == Id::infinity)
@@ -1271,6 +1281,9 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
                 fvalue = Port::infinity;
 #endif
                 goto Lfvalue;
+
+            default:
+                goto Ldefault;
         }
     }
     else if (ident == Id::dig)
@@ -1286,6 +1299,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_DIG;      goto Lint;
+            default:            goto Ldefault;
         }
     }
     else if (ident == Id::epsilon)
@@ -1301,6 +1315,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      fvalue = LDBL_EPSILON;  goto Lfvalue;
+            default:            goto Ldefault;
         }
     }
     else if (ident == Id::mant_dig)
@@ -1316,6 +1331,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_MANT_DIG; goto Lint;
+            default:            goto Ldefault;
         }
     }
     else if (ident == Id::max_10_exp)
@@ -1331,6 +1347,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_MAX_10_EXP;       goto Lint;
+            default:            goto Ldefault;
         }
     }
     else if (ident == Id::max_exp)
@@ -1346,6 +1363,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_MAX_EXP;  goto Lint;
+            default:            goto Ldefault;
         }
     }
     else if (ident == Id::min_10_exp)
@@ -1361,6 +1379,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_MIN_10_EXP;       goto Lint;
+            default:            goto Ldefault;
         }
     }
     else if (ident == Id::min_exp)
@@ -1376,6 +1395,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_MIN_EXP;  goto Lint;
+            default:            goto Ldefault;
         }
     }
 
@@ -1515,6 +1535,9 @@ Expression *TypeBasic::defaultInit(Loc loc)
         case Tvoid:
             error(loc, "void does not have a default initializer");
             return new ErrorExp();
+        
+        default:
+            break;
     }
     return new IntegerExp(loc, value, this);
 }
@@ -1536,6 +1559,9 @@ int TypeBasic::isZeroInit(Loc loc)
         case Tcomplex64:
         case Tcomplex80:
             return 0;           // no
+
+        default:
+            break;
     }
     return 1;                   // yes
 }
@@ -1953,7 +1979,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
             return this;
         }
         dinteger_t d1 = dim->toInteger();
-        dim = dim->castTo(sc, tsize_t);
+        dim = dim->implicitCastTo(sc, tsize_t);
         dim = dim->optimize(WANTvalue);
         dinteger_t d2 = dim->toInteger();
 
@@ -2004,6 +2030,9 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
         case Tnone:
             error(loc, "can't have array of %s", tbn->toChars());
             tbn = next = tint32;
+            break;
+
+        default:
             break;
     }
     if (tbn->isscope())
@@ -2182,6 +2211,9 @@ Type *TypeDArray::semantic(Loc loc, Scope *sc)
         case Ttuple:
             error(loc, "can't have array of %s", tbn->toChars());
             tn = next = tint32;
+            break;
+
+        default:
             break;
     }
     if (tn->isscope())
@@ -2372,13 +2404,20 @@ Type *TypeAArray::semantic(Loc loc, Scope *sc)
         case Ttuple:
             error(loc, "can't have associative array key of %s", key->toChars());
             break;
+
+        default:
+            break;
     }
     next = next->semantic(loc,sc);
     switch (next->toBasetype()->ty)
     {
         case Tfunction:
+        case Tvoid:
         case Tnone:
             error(loc, "can't have associative array of %s", next->toChars());
+            break;
+
+        default:
             break;
     }
     if (next->isscope())
@@ -2463,7 +2502,10 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         arguments = new Expressions();
         arguments->push(e);
         size_t keysize = key->size(e->loc);
-        keysize = (keysize + PTRSIZE - 1) & ~(PTRSIZE - 1);
+        if (global.params.isX86_64)
+            keysize = (keysize + 15) & ~15;
+        else
+            keysize = (keysize + PTRSIZE - 1) & ~(PTRSIZE - 1);
         arguments->push(new IntegerExp(0, keysize, Type::tsize_t));
         arguments->push(new IntegerExp(0, next->size(e->loc), Type::tsize_t));
         e = new CallExp(e->loc, ec, arguments);
@@ -2561,6 +2603,9 @@ Type *TypePointer::semantic(Loc loc, Scope *sc)
         case Ttuple:
             error(loc, "can't have pointer to %s", n->toChars());
             n = tint32;
+            break;
+
+        default:
             break;
     }
     if (n != next)
@@ -3552,9 +3597,22 @@ L1:
         else
             *pt = t->merge();
     }
+
     if (!s)
     {
-        error(loc, "identifier '%s' is not defined", toChars());
+        const char *p = toChars();
+        const char *n = importHint(p);
+        if (n)
+            error(loc, "'%s' is not defined, perhaps you need to import %s; ?", p, n);
+        else
+        {
+            Identifier *id = new Identifier(p, TOKidentifier);
+            s = sc->search_correct(id);
+            if (s)
+                error(loc, "undefined identifier %s, did you mean %s %s?", p, s->kind(), s->toChars());
+            else
+                error(loc, "undefined identifier %s", p);
+        }
     }
 }
 
@@ -4201,6 +4259,19 @@ Expression *TypeEnum::defaultInit(Loc loc)
 
 int TypeEnum::isZeroInit(Loc loc)
 {
+    //printf("TypeEnum::isZeroInit() '%s'\n", toChars());
+    if (!sym->isdone && sym->scope)
+    {   // Enum is forward referenced. We need to resolve the whole thing.
+        sym->semantic(NULL);
+    }
+    if (!sym->isdone)
+    {
+#ifdef DEBUG
+        printf("3: ");
+#endif
+        error(loc, "enum %s is forward referenced", sym->toChars());
+        return 0;
+    }
     return (sym->defaultval == 0);
 }
 
@@ -5218,6 +5289,29 @@ TypeTuple::TypeTuple(Expressions *exps)
     this->arguments = arguments;
 }
 
+/*******************************************
+ * Type tuple with 0, 1 or 2 types in it.
+ */
+TypeTuple::TypeTuple()
+    : Type(Ttuple, NULL)
+{
+    arguments = new Parameters();
+}
+
+TypeTuple::TypeTuple(Type *t1)
+    : Type(Ttuple, NULL)
+{
+    arguments = new Parameters();
+    arguments->push(new Parameter(0, t1, NULL, NULL));
+}
+
+TypeTuple::TypeTuple(Type *t1, Type *t2)
+    : Type(Ttuple, NULL)
+{
+    arguments = new Parameters();
+    arguments->push(new Parameter(0, t1, NULL, NULL));
+    arguments->push(new Parameter(0, t2, NULL, NULL));
+}
 Type *TypeTuple::syntaxCopy()
 {
     Parameters *args = Parameter::arraySyntaxCopy(arguments);
@@ -5350,11 +5444,11 @@ Type *TypeSlice::semantic(Loc loc, Scope *sc)
     TypeTuple *tt = (TypeTuple *)tbn;
 
     lwr = semanticLength(sc, tbn, lwr);
-    lwr = lwr->optimize(WANTvalue);
+    lwr = lwr->optimize(WANTvalue | WANTinterpret);
     uinteger_t i1 = lwr->toUInteger();
 
     upr = semanticLength(sc, tbn, upr);
-    upr = upr->optimize(WANTvalue);
+    upr = upr->optimize(WANTvalue | WANTinterpret);
     uinteger_t i2 = upr->toUInteger();
 
     if (!(i1 <= i2 && i2 <= tt->arguments->dim))
@@ -5394,11 +5488,11 @@ void TypeSlice::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol 
             sc = sc->push(sym);
 
             lwr = lwr->semantic(sc);
-            lwr = lwr->optimize(WANTvalue);
+            lwr = lwr->optimize(WANTvalue | WANTinterpret);
             uinteger_t i1 = lwr->toUInteger();
 
             upr = upr->semantic(sc);
-            upr = upr->optimize(WANTvalue);
+            upr = upr->optimize(WANTvalue | WANTinterpret);
             uinteger_t i2 = upr->toUInteger();
 
             sc = sc->pop();

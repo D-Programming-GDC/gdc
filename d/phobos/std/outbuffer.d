@@ -1,4 +1,5 @@
 // Written in the D programming language
+
 /**
  * Boilerplate:
  *      $(std_boilerplate.html)
@@ -204,6 +205,7 @@ class OutBuffer
     }
     body
     {
+
         auto nbytes = offset & (alignsize - 1);
         if (nbytes)
             fill0(alignsize - nbytes);
@@ -306,19 +308,18 @@ class OutBuffer
      * Append output of C's printf() to internal buffer.
      */
 
+    version (GNU)
     void printf(string format, ...)
     {
-        version (GNU)
-        {
-            vprintf(format, _argptr);
-        }
-        else
-        {
-            va_list ap;
-            ap = cast(va_list)&format;
-            ap += format.sizeof;
-            vprintf(format, ap);
-        }
+        vprintf(format, _argptr);
+    }
+    else
+    void printf(string format, ...)
+    {
+        va_list ap;
+        va_start(ap, format);
+        vprintf(format, ap);
+        va_end(ap);
     }
 
     /*****************************************

@@ -1,3 +1,8 @@
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Iain Buclaw, July 2010
+*/
 
 #include <stdio.h>
 #include <string.h>

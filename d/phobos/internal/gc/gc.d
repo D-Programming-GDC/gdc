@@ -28,8 +28,8 @@
    work with the GDC compiler.
 
    Modified by David Friedman, February 2007
+   Updated by Iain Buclaw, January 2011
 */
-
 
 // Storage allocation
 
@@ -149,7 +149,6 @@ version(OSX)
 {
     void _d_osx_image_init();
 }
-
 
 void gc_init()
 {
@@ -271,16 +270,17 @@ void _d_delclass(Object *p)
  */
 
 /* For when the array is initialized to 0 */
-Array _d_newarrayT(TypeInfo ti, size_t length)
+array_t _d_newarrayT(TypeInfo ti, size_t length)
 {
-    Array result;
+    void *p;
+    array_t result;
     auto size = ti.next.tsize();                // array element size
 
     debug(PRINTF) printf("_d_newarrayT(length = x%x, size = %d)\n", length, size);
-    if (length && size)
+    if (length == 0 || size == 0)
+        result = array_t.init;
+    else
     {
-        result.length = length;
-        
         version (GNU)
         {
             // required to output the label;
@@ -300,7 +300,6 @@ Array _d_newarrayT(TypeInfo ti, size_t length)
             }
         }
         else version (D_InlineAsm_X86_64)
-        {
             asm
             {
                 mov     RAX,size        ;
@@ -308,13 +307,14 @@ Array _d_newarrayT(TypeInfo ti, size_t length)
                 mov     size,RAX        ;
                 jc      Loverflow       ;
             }
-        }
         else
             size *= length;
-        result.data = cast(byte*) _gc.malloc(size + 1);
+        p = _gc.malloc(size + 1);
+        debug(PRINTF) printf(" p = %p\n", p);
         if (!(ti.next.flags() & 1))
-            _gc.hasNoPointers(result.data);
-        memset(result.data, 0, size);
+            _gc.hasNoPointers(p);
+        memset(p, 0, size);
+        result = cast(array_t)p[0..length];
     }
     return result;
 
@@ -324,21 +324,20 @@ Loverflow:
 
 /* For when the array has a non-zero initializer.
  */
-Array _d_newarrayiT(TypeInfo ti, size_t length)
+array_t _d_newarrayiT(TypeInfo ti, size_t length)
 {
-    Array result;
+    array_t result;
     auto size = ti.next.tsize();                // array element size
 
     debug(PRINTF)
          printf("_d_newarrayiT(length = %d, size = %d)\n", length, size);
     if (length == 0 || size == 0)
-        { }
+        result = array_t.init;
     else
     {
         auto initializer = ti.next.init();
         auto isize = initializer.length;
         auto q = initializer.ptr;
-        
         version (GNU)
         {
             // required to output the label;
@@ -358,7 +357,6 @@ Array _d_newarrayiT(TypeInfo ti, size_t length)
             }
         }
         else version (D_InlineAsm_X86_64)
-        {
             asm
             {
                 mov     RAX,size        ;
@@ -366,7 +364,6 @@ Array _d_newarrayiT(TypeInfo ti, size_t length)
                 mov     size,RAX        ;
                 jc      Loverflow       ;
             }
-        }
         else
             size *= length;
         auto p = _gc.malloc(size + 1);
@@ -392,8 +389,7 @@ Array _d_newarrayiT(TypeInfo ti, size_t length)
                 memcpy(p + u, q, isize);
             }
         }
-        result.length = length;
-        result.data = cast(byte*) p;
+        result = cast(array_t)p[0..length];
     }
     return result;
 
@@ -401,14 +397,14 @@ Loverflow:
     _d_OutOfMemory();
 }
 
-void[] _d_newarraymTp(TypeInfo ti, int ndims, size_t* pdim)
+array_t _d_newarraymTp(TypeInfo ti, size_t ndims, size_t* pdim)
 {
-    void[] result = void;
+    array_t result;
 
     //debug(PRINTF)
         //printf("_d_newarraymT(ndims = %d)\n", ndims);
     if (ndims == 0)
-        result = null;
+        result = array_t.init;
     else
     {
 
@@ -434,12 +430,12 @@ void[] _d_newarraymTp(TypeInfo ti, int ndims, size_t* pdim)
             return p;
         }
 
-        result = foo(ti, pdim, ndims);
+        result = cast(typeof(result))foo(ti, pdim, ndims);
         //printf("result = %llx\n", result);
 
         version (none)
         {
-            for (int i = 0; i < ndims; i++)
+            for (size_t i = 0; i < ndims; i++)
             {
                 printf("index %d: %d\n", i, pdim[i]);
             }
@@ -448,14 +444,14 @@ void[] _d_newarraymTp(TypeInfo ti, int ndims, size_t* pdim)
     return result;
 }
 
-void[] _d_newarraymiTp(TypeInfo ti, int ndims, size_t* pdim)
+array_t _d_newarraymiTp(TypeInfo ti, size_t ndims, size_t* pdim)
 {
-    void[] result = void;
+    array_t result;
 
     //debug(PRINTF)
         //printf("_d_newarraymi(size = %d, ndims = %d)\n", size, ndims);
     if (ndims == 0)
-        result = null;
+        result = array_t.init;
     else
     {
 
@@ -480,12 +476,12 @@ void[] _d_newarraymiTp(TypeInfo ti, int ndims, size_t* pdim)
             return p;
         }
 
-        result = foo(ti, pdim, ndims);
+        result = cast(typeof(result))foo(ti, pdim, ndims);
         //printf("result = %llx\n", result);
 
         version (none)
         {
-            for (int i = 0; i < ndims; i++)
+            for (size_t i = 0; i < ndims; i++)
             {
                 printf("index %d: %d\n", i, pdim[i]);
                 printf("init = %d\n", *cast(int*)pinit);
@@ -631,6 +627,7 @@ body
         else version (D_InlineAsm_X86_64)
         {
             size_t newsize = void;
+
             asm
             {
                 mov     RAX,newlength   ;
@@ -753,6 +750,7 @@ body
         else version (D_InlineAsm_X86_64)
         {
             size_t newsize = void;
+
             asm
             {
                 mov     RAX,newlength   ;
@@ -838,7 +836,7 @@ Loverflow:
  */
 
 extern (C)
-Array _d_arrayappendT(TypeInfo ti, Array *px, byte[] y)
+array_t _d_arrayappendT(TypeInfo ti, Array *px, byte[] y)
 {
     auto sizeelem = ti.next.tsize();            // array element size
     auto cap = _gc.capacity(px.data);
@@ -866,7 +864,7 @@ Array _d_arrayappendT(TypeInfo ti, Array *px, byte[] y)
   L1:
     px.length = newlength;
     memcpy(px.data + length * sizeelem, y.ptr, y.length * sizeelem);
-    return *px;
+    return *cast(array_t*)px;
 }
 
 size_t newCapacity(size_t newlength, size_t size)
@@ -970,12 +968,12 @@ byte[] _d_arrayappendcTp(TypeInfo ti, inout byte[] x, byte *argp)
         memcpy(newdata, x.ptr, length * sizeelem);
         (cast(void **)(&x))[1] = newdata;
     }
-  L1:
 
+  L1:
     *cast(size_t *)&x = newlength;
     x.ptr[length * sizeelem .. newsize] = argp[0 .. sizeelem];
     assert((cast(size_t)x.ptr & 15) == 0);
-    assert(_gc.capacity(x.ptr) >= x.length * sizeelem);
+    assert(_gc.capacity(x.ptr) > x.length * sizeelem);
     return x;
 }
 
@@ -1179,17 +1177,15 @@ body
 
 extern (C)
 byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
-{   void* a;
+{
     size_t length;
-    byte[]* p;
-    uint i;
     byte[] b;
     va_list va;
     auto sizeelem = ti.next.tsize();            // array element size
 
     va_start!(typeof(n))(va, n);
 
-    for (i = 0; i < n; i++)
+    for (uint i = 0; i < n; i++)
     {
         b = va_arg!(typeof(b))(va);
         length += b.length;
@@ -1197,13 +1193,13 @@ byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
     if (!length)
         return null;
 
-    a = _gc.malloc(length * sizeelem);
+    auto a = _gc.malloc(length * sizeelem);
     if (!(ti.next.flags() & 1))
         _gc.hasNoPointers(a);
     va_start!(typeof(n))(va, n);
 
     uint j = 0;
-    for (i = 0; i < n; i++)
+    for (uint i = 0; i < n; i++)
     {
         b = va_arg!(typeof(b))(va);
         if (b.length)
@@ -1213,7 +1209,10 @@ byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
         }
     }
 
-    return (cast(byte*)a)[0..length];
+    byte[] result;
+    *cast(size_t *)&result = length;       // jam length
+    (cast(void **)&result)[1] = a;      // jam ptr
+    return result;
 }
 
 version (GNU) { } else
@@ -1234,25 +1233,36 @@ void* _d_arrayliteralT(TypeInfo ti, size_t length, ...)
             _gc.hasNoPointers(result);
         }
 
-        va_list q;
-        va_start!(size_t)(q, length);
-
-        size_t stacksize = (sizeelem + int.sizeof - 1) & ~(int.sizeof - 1);
-
-        if (stacksize == sizeelem)
+        version (X86)
         {
-            memcpy(result, q, length * sizeelem);
+            va_list ap;
+            va_start(ap, length);
+
+            size_t stacksize = (sizeelem + int.sizeof - 1) & ~(int.sizeof - 1);
+
+            if (stacksize == sizeelem)
+            {
+                memcpy(result, ap, length * sizeelem);
+            }
+            else
+            {
+                for (size_t i = 0; i < length; i++)
+                {
+                    memcpy(result + i * sizeelem, ap, sizeelem);
+                    ap += stacksize;
+                }
+            }
+            va_end(ap);
         }
         else
-        {
+        {   va_list ap;
+            va_start(ap, __va_argsave);
             for (size_t i = 0; i < length; i++)
             {
-                memcpy(result + i * sizeelem, q, sizeelem);
-                q += stacksize;
+                va_arg(ap, ti.next, result + i * sizeelem);
             }
+            va_end(ap);
         }
-
-        va_end(q);
     }
     return result;
 }
@@ -1268,7 +1278,7 @@ struct Array2
 }
 
 extern (C)
-Array2 _adDupT(TypeInfo ti, Array2 a)
+array_t _adDupT(TypeInfo ti, Array2 a)
     out (result)
     {
         auto sizeelem = ti.next.tsize();                // array element size
@@ -1288,7 +1298,7 @@ Array2 _adDupT(TypeInfo ti, Array2 a)
             r.length = a.length;
             memcpy(r.ptr, a.ptr, size);
         }
-        return r;
+        return *cast(array_t*)(&r);
     }
 
 unittest

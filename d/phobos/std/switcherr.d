@@ -2,6 +2,7 @@
 module std.switcherr;
 
 import std.stdio;
+import std.c.stdio;
 
 class SwitchError : Error
 {

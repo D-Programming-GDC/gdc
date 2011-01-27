@@ -1306,11 +1306,7 @@ IRState::getLibCallDecl(LibCall lib_call)
             case LIBCALL_NEWARRAYMTP:
             case LIBCALL_NEWARRAYMITP:
                 arg_types.push(Type::typeinfo->type);
-#if V2
                 arg_types.push(Type::tsize_t);
-#else
-                arg_types.push(Type::tint32); // Currently 'int', even if 64-bit
-#endif
                 arg_types.push(Type::tsize_t);
                 return_type = Type::tvoid->arrayOf();
                 break;

@@ -923,7 +923,7 @@ unittest
     j = join(result, ",");
     i = std.string.cmp(j, "ab");
     assert(i == 0);
-    
+
     result = r.match("ac");
     j = join(result, ",");
     i = std.string.cmp(j, "ac");
@@ -1045,7 +1045,7 @@ public rchar[] replace(rchar[] string, rchar[] format)
         if (attributes & REA.global &&          // global, so replace all
            !(attributes & REA.ignoreCase) &&    // not ignoring case
            !(attributes & REA.multiline) &&     // not multiline
-           pattern == slice &&                  // simple pattern (exact match, no special characters) 
+           pattern == slice &&                  // simple pattern (exact match, no special characters)
            format == replacement)               // simple format, not $ formats
         {
             debug(regexp)

@@ -108,12 +108,12 @@ extern (C) char[] _adReverseChar(char[] a)
              */
             memcpy(tmp.ptr, hi, stridehi);
             memcpy(tmplo.ptr, lo, stridelo);
-            memmove(lo + stridehi, lo + stridelo , cast(size_t)(hi - lo) - stridelo);
+            memmove(lo + stridehi, lo + stridelo , cast(size_t)((hi - lo) - stridelo));
             memcpy(lo, tmp.ptr, stridehi);
-            memcpy(hi + cast(int) stridehi - cast(int) stridelo, tmplo.ptr, stridelo);
+            memcpy(hi + stridehi - stridelo, tmplo.ptr, stridelo);
 
             lo += stridehi;
-            hi = hi - 1 + (cast(int) stridehi - cast(int) stridelo);
+            hi = hi - 1 + (stridehi - stridelo);
         }
     }
     return a;
@@ -152,8 +152,9 @@ unittest
  * reversed.
  */
 
-extern (C) Array _adReverseWchar(wchar[] a)
+extern (C) wchar[] _adReverseWchar(wchar[] a)
 {
+    //printf("adReverseWchar(%d %p)\n", a.length, a.ptr);
     if (a.length > 1)
     {
         wchar[2] tmp;
@@ -202,15 +203,15 @@ extern (C) Array _adReverseWchar(wchar[] a)
             /* Shift the whole array. This is woefully inefficient
              */
             memcpy(tmp.ptr, hi, stridehi * wchar.sizeof);
-            memcpy(hi + cast(int) stridehi - cast(int) stridelo, lo, stridelo * wchar.sizeof);
+            memcpy(hi + stridehi - stridelo, lo, stridelo * wchar.sizeof);
             memmove(lo + stridehi, lo + stridelo , (hi - (lo + stridelo)) * wchar.sizeof);
             memcpy(lo, tmp.ptr, stridehi * wchar.sizeof);
 
             lo += stridehi;
-            hi = hi - 1 + (cast(int) stridehi - cast(int) stridelo);
+            hi = hi - 1 + (stridehi - stridelo);
         }
     }
-    return *cast(Array*)(&a);
+    return *cast(wchar[]*)(&a);
 }
 
 unittest
@@ -377,15 +378,14 @@ unittest
     assert(a >= "hello");
 }
 
-
 /**********************************************
  * Support for array.reverse property.
  */
 
-extern (C) Array _adReverse(Array a, size_t szelem)
+extern (C) void[] _adReverse(Array a, size_t szelem)
     out (result)
     {
-        assert(result is a);
+        assert(result is *cast(void[]*)(&a));
     }
     body
     {
@@ -424,7 +424,7 @@ extern (C) Array _adReverse(Array a, size_t szelem)
                     //delete tmp;
             }
         }
-        return a;
+        return *cast(void[]*)(&a);
     }
 
 unittest
@@ -531,7 +531,7 @@ extern (C) char[] _adSortChar(char[] a)
         }
         delete da;
     }
-    return a;
+    return *cast(char[]*)(&a);
 }
 
 /**********************************************
@@ -553,7 +553,7 @@ extern (C) wchar[] _adSortWchar(wchar[] a)
         }
         delete da;
     }
-    return a;
+    return *cast(wchar[]*)(&a);
 }
 
 /**********************************************
@@ -678,12 +678,12 @@ unittest
 version (none)
 {
 extern (C) int _adEqBit(Array a1, Array a2)
-{   int i;
+{   size_t i;
 
     if (a1.length != a2.length)
         return 0;               // not equal
-    auto p1 = cast(ubyte*)a1.ptr;
-    auto p2 = cast(ubyte*)a2.ptr;
+    auto p1 = cast(byte*)a1.ptr;
+    auto p2 = cast(byte*)a2.ptr;
     auto n = a1.length / 8;
     for (i = 0; i < n; i++)
     {

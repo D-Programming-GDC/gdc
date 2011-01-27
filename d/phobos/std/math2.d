@@ -34,8 +34,8 @@ version(GNU)
 bool feq(real a, real b)
 {
         return feq(a, b, 0.000001);
-} 
- 
+}
+
 bool feq(real a, real b, real eps)
 {
         return abs(a - b) <= eps;
@@ -44,12 +44,12 @@ bool feq(real a, real b, real eps)
 /*********************************
  * Modulus
  */
- 
+
 int abs(int n)
 {
         return n > 0 ? n : -n;
 }
- 
+
 long abs(long n)
 {
         return n > 0 ? n : -n;
@@ -69,12 +69,12 @@ int sqr(int n)
 {
         return n * n;
 }
- 
+
 long sqr(long n)
 {
         return n * n;
-} 
- 
+}
+
 real sqr(real n)
 {
         return n * n;
@@ -126,7 +126,7 @@ unittest
 /*********************************
  * Fractional part
  */
- 
+
 real frac(real n)
 {
         return n - trunc(n);
@@ -153,7 +153,7 @@ unittest
         assert(sign(+666) == +1);
         assert(sign(-666) == -1);
 }
- 
+
 int sign(long n)
 {
         return (n > 0 ? +1 : (n < 0 ? -1 : 0));
@@ -165,7 +165,7 @@ unittest
         assert(sign(+666L) == +1);
         assert(sign(-666L) == -1);
 }
- 
+
 int sign(real n)
 {
         return (n > 0 ? +1 : (n < 0 ? -1 : 0));
@@ -181,7 +181,7 @@ unittest
 /**********************************************************
  * Cycles <-> radians <-> grads <-> degrees conversions
  */
- 
+
 real cycle2deg(real c)
 {
         return c * 360;
@@ -261,7 +261,7 @@ unittest
 /************************************
  * Arithmetic average of values
  */
- 
+
 real avg(real[] n)
 {
         real result = 0;
@@ -293,7 +293,7 @@ unittest
         static int[3] n = [ 1, 2, 3 ];
         assert(sum(n) == 6);
 }
- 
+
 long sum(long[] n)
 {
         long result = 0;
@@ -307,7 +307,7 @@ unittest
         static long[3] n = [ 1, 2, 3 ];
         assert(sum(n) == 6);
 }
- 
+
 real sum(real[] n)
 {
         real result = 0;
@@ -340,7 +340,7 @@ unittest
         static int[3] n = [ 2, -1, 0 ];
         assert(min(n) == -1);
 }
- 
+
 long min(long[] n)
 {
         long result = long.max;
@@ -421,7 +421,7 @@ unittest
         static int[3] n = [ 0, 2, -1 ];
         assert(max(n) == 2);
 }
- 
+
 long max(long[] n)
 {
         long result = long.min;
@@ -625,7 +625,7 @@ real frexp(real x, out int exponent)
                 sahf;
                 jz done;
                 fxtract;
-                fxch;   
+                fxch;
                 fistp dword ptr [EDX];
                 fld1;
                 fchs;
@@ -724,7 +724,7 @@ real asinh(real x)
         else
         {
                 real z = x * x;
-                return x > 0 ? 
+                return x > 0 ?
                         std.math.log1p(x + z / (1.0 + std.math.sqrt(1.0 + z))) :
                         -std.math.log1p(-x + z / (1.0 + std.math.sqrt(1.0 + z)));
         }
@@ -931,7 +931,7 @@ real atof(char[] s)
         if (eneg)
                 e = -e;
         result *= std.math.pow(hex ? 2.0L : 10.0L, cast(real)e);
-done:   
+done:
         return neg ? -result : result;
 }
 

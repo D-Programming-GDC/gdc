@@ -7,7 +7,7 @@ class TypeInfo_P : TypeInfo
 {
     hash_t getHash(void *p)
     {
-        return cast(hash_t)*cast(void* *)p;
+        return cast(uint)*cast(void* *)p;
     }
 
     int equals(void *p1, void *p2)
@@ -17,11 +17,16 @@ class TypeInfo_P : TypeInfo
 
     int compare(void *p1, void *p2)
     {
-        auto c = *cast(void* *)p1 - *cast(void* *)p2;
-        if (c < 0)
-            return -1;
+        version (D_LP64)
+        {
+            long c = *cast(void* *)p1 - *cast(void* *)p2;
+            if (c < 0)
+                return -1;
+            else
+                return c != 0;
+        }
         else
-            return c != 0;
+            return *cast(void* *)p1 - *cast(void* *)p2;
     }
 
     size_t tsize()

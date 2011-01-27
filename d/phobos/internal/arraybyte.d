@@ -75,7 +75,7 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 1088% faster 
+        // SSE2 aligned version is 1088% faster
         if (sse2() && a.length >= 64)
         {
             auto n = aptr + (a.length & ~63);
@@ -149,10 +149,10 @@ body
                     mov aptr, ESI;
                     mov bptr, EAX;
                 }
-            }                
+            }
         }
         else
-        // MMX version is 1000% faster 
+        // MMX version is 1000% faster
         if (mmx() && a.length >= 32)
         {
             auto n = aptr + (a.length & ~31);
@@ -191,15 +191,15 @@ body
                 mov aptr, ESI;
                 mov bptr, EAX;
             }
-        }       
+        }
         /* trying to be fair and treat normal 32-bit cpu the same way as we do
          * the SIMD units, with unrolled asm.  There's not enough registers,
          * really.
          */
-        else         
+        else
         if (a.length >= 4)
         {
-        
+
             auto n = aptr + (a.length & ~3);
             asm
             {
@@ -226,7 +226,7 @@ body
                 mov aptr, ESI;
                 mov bptr, EAX;
             }
-            
+
         }
     }
 
@@ -310,7 +310,7 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 5739% faster 
+        // SSE2 aligned version is 5739% faster
         if (sse2() && a.length >= 64)
         {
             auto n = aptr + (a.length & ~63);
@@ -395,7 +395,7 @@ body
             }
         }
         else
-        // MMX version is 4428% faster 
+        // MMX version is 4428% faster
         if (mmx() && a.length >= 32)
         {
             version (log) printf("\tmmx\n");
@@ -511,7 +511,7 @@ T[] _arrayExpSliceAddass_g(T[] a, T value)
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 1578% faster 
+        // SSE2 aligned version is 1578% faster
         if (sse2() && a.length >= 64)
         {
             auto n = aptr + (a.length & ~63);
@@ -582,7 +582,7 @@ T[] _arrayExpSliceAddass_g(T[] a, T value)
             }
         }
         else
-        // MMX version is 1721% faster 
+        // MMX version is 1721% faster
         if (mmx() && a.length >= 32)
         {
 
@@ -700,7 +700,7 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 4727% faster 
+        // SSE2 aligned version is 4727% faster
         if (sse2() && a.length >= 64)
         {
             auto n = aptr + (a.length & ~63);
@@ -777,7 +777,7 @@ body
             }
         }
         else
-        // MMX version is 3059% faster 
+        // MMX version is 3059% faster
         if (mmx() && a.length >= 32)
         {
 
@@ -898,7 +898,7 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 1189% faster 
+        // SSE2 aligned version is 1189% faster
         if (sse2() && a.length >= 64)
         {
             auto n = aptr + (a.length & ~63);
@@ -971,11 +971,11 @@ body
 
                     mov aptr, ESI;
                     mov bptr, EAX;
-                }     
-            }           
+                }
+            }
         }
         else
-        // MMX version is 1079% faster 
+        // MMX version is 1079% faster
         if (mmx() && a.length >= 32)
         {
             auto n = aptr + (a.length & ~31);
@@ -1014,9 +1014,9 @@ body
                 mov aptr, ESI;
                 mov bptr, EAX;
             }
-        }    
+        }
         // trying to be fair and treat normal 32-bit cpu the same way as we do the SIMD units, with unrolled asm.  There's not enough registers, really.
-        else         
+        else
         if (a.length >= 4)
         {
             auto n = aptr + (a.length & ~3);
@@ -1126,7 +1126,7 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 8748% faster 
+        // SSE2 aligned version is 8748% faster
         if (sse2() && a.length >= 64)
         {
             auto n = aptr + (a.length & ~63);
@@ -1207,11 +1207,11 @@ body
 
                     mov aptr, ESI;
                     mov bptr, EAX;
-                }     
-            }           
+                }
+            }
         }
         else
-        // MMX version is 7397% faster 
+        // MMX version is 7397% faster
         if (mmx() && a.length >= 32)
         {
             auto n = aptr + (a.length & ~31);
@@ -1254,8 +1254,8 @@ body
                 mov aptr, ESI;
                 mov bptr, EAX;
             }
-        }    
-                       
+        }
+
     }
 
     while (aptr < aend)
@@ -1338,7 +1338,7 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 5756% faster 
+        // SSE2 aligned version is 5756% faster
         if (sse2() && a.length >= 64)
         {
             auto n = aptr + (a.length & ~63);
@@ -1418,10 +1418,10 @@ body
                     mov bptr, EAX;
                     mov cptr, ECX;
                 }
-            }                
+            }
         }
         else
-        // MMX version is 4428% faster 
+        // MMX version is 4428% faster
         if (mmx() && a.length >= 32)
         {
             auto n = aptr + (a.length & ~31);
@@ -1535,7 +1535,7 @@ T[] _arrayExpSliceMinass_g(T[] a, T value)
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 1577% faster 
+        // SSE2 aligned version is 1577% faster
         if (sse2() && a.length >= 64)
         {
             auto n = aptr + (a.length & ~63);
@@ -1606,7 +1606,7 @@ T[] _arrayExpSliceMinass_g(T[] a, T value)
             }
         }
         else
-        // MMX version is 1577% faster 
+        // MMX version is 1577% faster
         if (mmx() && a.length >= 32)
         {
 
@@ -1724,7 +1724,7 @@ body
 
     version (D_InlineAsm_X86)
     {
-        // SSE2 aligned version is 4800% faster 
+        // SSE2 aligned version is 4800% faster
         if (sse2() && a.length >= 64)
         {
             auto n = aptr + (a.length & ~63);
@@ -1801,7 +1801,7 @@ body
             }
         }
         else
-        // MMX version is 3107% faster 
+        // MMX version is 3107% faster
         if (mmx() && a.length >= 32)
         {
 

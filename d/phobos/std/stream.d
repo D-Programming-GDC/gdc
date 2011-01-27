@@ -80,7 +80,7 @@ private {
   import std.system;    // for Endian enumeration
   import std.intrinsic; // for bswap
   import std.utf;
-  import std.stdarg;
+  import std.c.stdarg;
 }
 
 version (Windows) {
@@ -101,7 +101,7 @@ interface InputStream {
   /***
    * Read a block of data big enough to fill the given array buffer.
    *
-   * Returns: the actual number of bytes read. Unfilled bytes are not modified. 
+   * Returns: the actual number of bytes read. Unfilled bytes are not modified.
    */
   size_t read(ubyte[] buffer);
 
@@ -146,7 +146,7 @@ interface InputStream {
    *
    * The terminators are not included. The wchar version
    * is identical. The optional buffer parameter is filled (reallocating
-   * it if necessary) and a slice of the result is returned. 
+   * it if necessary) and a slice of the result is returned.
    */
   char[] readLine();
   char[] readLine(char[] result);       /// ditto
@@ -190,6 +190,7 @@ interface InputStream {
    */
 
   wchar[] readStringW(size_t length);
+
 
   /***
    * Read and return the next character in the stream.
@@ -359,9 +360,10 @@ interface OutputStream {
   bool isOpen(); /// Return true if the stream is currently open.
 }
 
+
 /***
  * Stream is the base abstract class from which the other stream classes derive.
- * 
+ *
  * Stream's byte order is the format native to the computer.
  *
  * Reading:
@@ -400,7 +402,7 @@ class Stream : InputStream, OutputStream {
 
   protected bool prevCr = false; /** For a non-seekable stream indicates that
                                   * the last readLine or readLineW ended on a
-                                  * '\r' character. 
+                                  * '\r' character.
                                   */
 
   this() {}
@@ -630,7 +632,7 @@ class Stream : InputStream, OutputStream {
     if (prevCr) {
       prevCr = false;
       c = getc();
-      if (c != '\n') 
+      if (c != '\n')
         return c;
     }
     if (unget.length > 1) {
@@ -650,7 +652,7 @@ class Stream : InputStream, OutputStream {
     if (prevCr) {
       prevCr = false;
       c = getcw();
-      if (c != '\n') 
+      if (c != '\n')
         return c;
     }
     if (unget.length > 1) {
@@ -1024,7 +1026,7 @@ class Stream : InputStream, OutputStream {
   }
 
   int readf(...) {
-    return vreadf(_arguments, _argptr);
+    return vreadf(_arguments, cast(va_list)_argptr);
   }
 
   // returns estimated number of bytes available for immediate reading
@@ -1135,7 +1137,7 @@ class Stream : InputStream, OutputStream {
     size_t count;
     va_list args_copy;
     while (true) {
-      __va_copy(args_copy, args);
+      va_copy(args_copy, args);
       version (Win32) {
         count = _vsnprintf(p, psize, f, args_copy);
         if (count != -1)
@@ -1160,15 +1162,15 @@ class Stream : InputStream, OutputStream {
 
   // writes data to stream using printf() syntax,
   // returns number of bytes written
+  version (GNU)
   size_t printf(char[] format, ...) {
-    version (GNU)
-        return vprintf(format, _argptr);
-    else {
-      va_list ap;
-      ap = cast(va_list) &format;
-      ap += format.sizeof;
-      return vprintf(format, ap);
-    }
+    return vprintf(format, _argptr);
+  }
+  else
+  size_t printf(char[] format, ...) {
+    va_list ap;
+    va_start(ap, format);
+    return vprintf(format, ap);
   }
 
   private void doFormatCallback(dchar c) {
@@ -1190,7 +1192,7 @@ class Stream : InputStream, OutputStream {
   // writes data with optional trailing newline
   OutputStream writefx(TypeInfo[] arguments, va_list argptr, int newline=false) {
     doFormat(&doFormatCallback,arguments,argptr);
-    if (newline) 
+    if (newline)
       writeLine("");
     return this;
   }
@@ -1269,12 +1271,12 @@ class Stream : InputStream, OutputStream {
   }
 
   // returns true if end of stream is reached, false otherwise
-  bool eof() { 
+  bool eof() {
     // for unseekable streams we only know the end when we read it
     if (readEOF && !ungetAvailable())
       return true;
     else if (seekable)
-      return position() == size(); 
+      return position() == size();
     else
       return false;
   }
@@ -1406,7 +1408,7 @@ class FilterStream : Stream {
    *
    * Setting the source stream closes this stream before attaching the new
    * source. Attaching an open stream reopens this stream and resets the stream
-   * state. 
+   * state.
    */
   void source(Stream s) {
     close();
@@ -1444,7 +1446,7 @@ class FilterStream : Stream {
   }
 
   // close stream
-  override void close() { 
+  override void close() {
     if (isopen) {
       super.close();
       if (nestClose)
@@ -1578,7 +1580,7 @@ class BufferedStream : FilterStream {
         bufferLen = s.readBlock(buffer.ptr, buffer.length);
         bufferSourcePos = bufferLen;
         streamPos += bufferLen;
-          
+
       } else if (len >= buffer.length) {
         // buffer can't hold the data so write it directly and exit
         writesize = s.writeBlock(buf,len);
@@ -1598,7 +1600,7 @@ class BufferedStream : FilterStream {
     }
 
     writesize = buffer.length - bufferCurPos;
-    if (writesize > 0) { 
+    if (writesize > 0) {
       // buffer can take some data
       buffer[bufferCurPos .. buffer.length] = buf[0 .. writesize];
       bufferCurPos = bufferLen = buffer.length;
@@ -1933,7 +1935,7 @@ class File: Stream {
 
   /// Close the current file if it is open; otherwise it does nothing.
   override void close() {
-    if (isopen) { 
+    if (isopen) {
       super.close();
       if (hFile) {
         version (Win32) {
@@ -1994,7 +1996,7 @@ class File: Stream {
         throw new SeekException("unable to move file pointer");
       ulong result = (cast(ulong)hi << 32) + low;
     } else version (Unix) {
-       ulong result = lseek(hFile, cast(off_t)offset, rel);
+      ulong result = lseek(hFile, cast(off_t)offset, rel);
       if (result == 0xFFFFFFFF)
         throw new SeekException("unable to move file pointer");
     } else version (NoSystem) {
@@ -2191,7 +2193,7 @@ class BufferedFile: BufferedStream {
 
 }
 
-/// UTF byte-order-mark signatures 
+/// UTF byte-order-mark signatures
 enum BOM {
         UTF8,           /// UTF-8
         UTF16LE,        /// UTF-16 Little Endian
@@ -2201,13 +2203,13 @@ enum BOM {
 }
 
 private const int NBOMS = 5;
-Endian[NBOMS] BOMEndian = 
-[ std.system.endian, 
+Endian[NBOMS] BOMEndian =
+[ std.system.endian,
   Endian.LittleEndian, Endian.BigEndian,
   Endian.LittleEndian, Endian.BigEndian
   ];
 
-ubyte[][NBOMS] ByteOrderMarks = 
+ubyte[][NBOMS] ByteOrderMarks =
 [ [0xEF, 0xBB, 0xBF],
   [0xFF, 0xFE],
   [0xFE, 0xFF],
@@ -2343,6 +2345,7 @@ class EndianStream : FilterStream {
       buffer += size;
     }
   }
+
   override void read(out byte x) { readExact(&x, x.sizeof); }
   override void read(out ubyte x) { readExact(&x, x.sizeof); }
   void read(out short x) { readExact(&x, x.sizeof); fixBO(&x,x.sizeof); }
@@ -2368,7 +2371,7 @@ class EndianStream : FilterStream {
     if (prevCr) {
       prevCr = false;
       c = getcw();
-      if (c != '\n') 
+      if (c != '\n')
         return c;
     }
     if (unget.length > 1) {
@@ -2589,7 +2592,7 @@ class TArrayStream(Buffer): Stream {
   override size_t available () { return cast(size_t)(len - cur); }
 
   /// Get the current memory data in total.
-  ubyte[] data() { 
+  ubyte[] data() {
     if (len > size_t.max)
       throw new StreamException("Stream too big");
     void[] res = buf[0 .. cast(size_t)len];
@@ -2683,7 +2686,7 @@ class MemoryStream: TArrayStream!(ubyte[]) {
     assert (str[0..13] == "100 345 hello", str[0 .. 13]);
     assert (m.available == 29);
     assert (m.position == 13);
-    
+
     MemoryStream m2;
     m.position = 3;
     m2 = new MemoryStream ();

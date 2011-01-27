@@ -16,15 +16,15 @@
 
 /*
         Copyright (C) 2004 Christopher E. Miller
-        
+
         This software is provided 'as-is', without any express or implied
         warranty.  In no event will the authors be held liable for any damages
         arising from the use of this software.
-        
+
         Permission is granted to anyone to use this software for any purpose,
         including commercial applications, and to alter it and redistribute it
         freely, subject to the following restrictions:
-        
+
         1. The origin of this software must not be misrepresented; you must not
            claim that you wrote the original software. If you use this software
            in a product, an acknowledgment in the product documentation would be
@@ -70,7 +70,7 @@ const char[] array = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345
 size_t encodeLength(size_t slen)
 {
         auto result = slen / 3;
-        if(slen % 3)
+        if (slen % 3)
             result++;
         return result * 4;
 }
@@ -93,12 +93,12 @@ body
 {
         if(!str.length)
                 return buf[0 .. 0];
-        
+
         size_t stri;
         auto strmax = str.length / 3;
         auto strleft = str.length % 3;
         uint x;
-        
+
         auto bp = &buf[0];
         auto sp = &str[0];
         for (stri = 0; stri != strmax; stri++)
@@ -110,7 +110,7 @@ body
                 *bp++ = array[(x & 0b00000000_00001111_11000000) >> 6];
                 *bp++ = array[(x & 0b00000000_00000000_00111111)];
         }
-        
+
         switch(strleft)
         {
                 case 2:
@@ -121,7 +121,7 @@ body
                         *bp++ = array[(x & 0b00000000_00001111_11000000) >> 6];
                         *bp++ = '=';
                         break;
-                
+
                 case 1:
                         x = *sp++ << 16;
                         *bp++ = array[(x & 0b11111100_00000000_00000000) >> 18];
@@ -129,14 +129,14 @@ body
                         *bp++ = '=';
                         *bp++ = '=';
                         break;
-                
+
                 case 0:
                         break;
 
                 default:
                         assert(0);
         }
-        
+
         return buf[0 .. (bp - &buf[0])];
 }
 
@@ -193,8 +193,8 @@ body
         {
                 throw new Base64CharException("Invalid base64 character '" ~ (&ch)[0 .. 1] ~ "'");
         }
-        
-        
+
+
         uint arrayIndex(char ch)
         out(result)
         {
@@ -215,19 +215,19 @@ body
                 badc(ch);
                 assert(0);
         }
-        
-        
+
+
         if(!estr.length)
                 return buf[0 .. 0];
-        
+
         if(estr.length % 4)
                 throw new Base64Exception("Invalid encoded base64 string");
-        
+
         size_t estri;
         auto estrmax = estr.length / 4;
         uint x;
         char ch;
-        
+
         auto sp = &estr[0];
         auto bp = &buf[0];
         for(estri = 0; estri != estrmax; estri++)
@@ -244,7 +244,7 @@ body
                         break;
                 }
                 x |= arrayIndex(ch) << 6;
-                
+
                 ch = *sp++;
                 if(ch == '=')
                 {
@@ -253,12 +253,12 @@ body
                         break;
                 }
                 x |= arrayIndex(ch);
-                
+
                 *bp++ = cast(char) (x >> 16);
                 *bp++ = cast(char) ((x >> 8) & 0xFF);
                 *bp++ = cast(char) (x & 0xFF);
         }
-        
+
         return buf[0 .. (bp - &buf[0])];
 }
 
@@ -282,7 +282,7 @@ unittest
         assert(decode(encode("foo")) == "foo");
         assert(decode(encode("foos")) == "foos");
         assert(decode(encode("all your base64 are belong to foo")) == "all your base64 are belong to foo");
-        
+
         assert(decode(encode("testing some more")) == "testing some more");
         assert(decode(encode("asdf jkl;")) == "asdf jkl;");
         assert(decode(encode("base64 stuff")) == "base64 stuff");

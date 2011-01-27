@@ -24,13 +24,14 @@
  * Authors:   Walter Bright, David Friedman, Sean Kelly
  */
 
+// D Programming Language Garbage Collector implementation
+
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
    Modified by David Friedman, July 2006
+   Updated by Iain Buclaw, January 2011
 */
-
-// D Garbage Collector implementation
 
 /************** Debugging ***************************/
 
@@ -122,8 +123,6 @@ private bool thread_needLock()
 
 alias GC gc_t;
 
-version (X86) version (D_InlineAsm) { version = Asm86; }
-
 
 /* ======================= Leak Detector =========================== */
 
@@ -210,7 +209,7 @@ debug (LOGGING)
                 if (data[i].p == p)
                     return i;
             }
-            return ~0u;         // not found
+            return ~cast(size_t)0;         // not found
         }
 
 
@@ -350,9 +349,10 @@ class GC
         void *p = null;
         Bins bin;
 
-        //debug(PRINTF) printf("GC::malloc(size = %d, gcx = %p)\n", size, gcx);
+        //debug(PRINTF) printf("GC::mallocNoSync(size = %d, gcx = %p)\n", size, gcx);
         assert(gcx);
         //debug(PRINTF) printf("gcx.self = %x, pthread_self() = %x\n", gcx.self, pthread_self());
+
         size += SENTINEL_EXTRA;
 
         // Compute size bin
@@ -550,7 +550,7 @@ class GC
                                 if (i == pool.ncommitted)
                                 {
                                     auto u = pool.extendPages(pagenum + newsz - pool.ncommitted);
-                                    if (u == ~0u)
+                                    if (u == ~cast(typeof(u))0)
                                         break;
                                     i = pagenum + newsz;
                                     continue;
@@ -644,7 +644,7 @@ class GC
         else if (pagenum + psz + sz == pool.ncommitted)
         {
             auto u = pool.extendPages(minsz - sz);
-            if (u == ~0u)
+            if (u == ~cast(typeof(u))0)
                 return 0;
             sz = minsz;
         }
@@ -819,6 +819,7 @@ class GC
         }
     }
 
+
     //
     //
     //
@@ -973,7 +974,7 @@ class GC
             return;
         }
 
-        //debug(PRINTF) printf("+GC.addRange(pbot = x%x, ptop = x%x)\n", pbot, ptop);
+        //debug(PRINTF) printf("+GC.addRange(pbot = %p, ptop = %p)\n", pbot, ptop);
         if (!thread_needLock())
         {
             gcx.addRange(pbot, ptop);
@@ -1107,6 +1108,7 @@ class GC
         gcx.conservative = 1;
     }
 
+
     /**
      * Retrieve statistics about garbage collection.
      * Useful for debugging and tuning.
@@ -1122,6 +1124,7 @@ class GC
             getStatsNoSync(stats);
         }
     }
+
 
     //
     //
@@ -1217,8 +1220,8 @@ struct Range
 
 
 const uint binsize[B_MAX] = [ 16,32,64,128,256,512,1024,2048,4096 ];
-const uint notbinsize[B_MAX] = [ ~(16u-1),~(32u-1),~(64u-1),~(128u-1),~(256u-1),
-                                ~(512u-1),~(1024u-1),~(2048u-1),~(4096u-1) ];
+const size_t notbinsize[B_MAX] = [ ~(16-1),~(32-1),~(64-1),~(128-1),~(256-1),
+                                ~(512-1),~(1024-1),~(2048-1),~(4096-1) ];
 
 /* ============================ Gcx =============================== */
 
@@ -1373,7 +1376,6 @@ struct Gcx
     /**
      *
      */
-
     void addRoot(void *p)
     {
         if (nroots == rootdim)
@@ -1419,7 +1421,8 @@ struct Gcx
      */
     void addRange(void *pbot, void *ptop)
     {
-        debug(THREADINVARIANT) { debug(PRINTF) printf("Thread %x ", pthread_self()); }
+        debug(PRINTF) printf("addRange(pbot = %p, ptop = %p)\n", pbot, ptop);
+        debug(PRINTF) printf("Thread %x ", pthread_self());
         debug(PRINTF) printf("%x.Gcx::addRange(%x, %x), nranges = %d\n", this, pbot, ptop, nranges);
         if (nranges == rangedim)
         {
@@ -1447,7 +1450,7 @@ struct Gcx
      */
     void removeRange(void *pbot)
     {
-        debug(THREADINVARIANT) { debug(PRINTF) printf("Thread %x ", pthread_self()); }
+        debug(PRINTF) printf("Thread %x ", pthread_self());
         debug(PRINTF) printf("%x.Gcx.removeRange(%x), nranges = %d\n", this, pbot, nranges);
         for (size_t i = nranges; i--;)
         {
@@ -1603,7 +1606,7 @@ struct Gcx
             {
                 pool = pooltable[n];
                 pn = pool.allocPages(npages);
-                if (pn != ~0u)
+                if (pn != ~cast(typeof(pn))0)
                     goto L1;
             }
 
@@ -1628,7 +1631,7 @@ struct Gcx
                         continue;
                     }
                     pn = pool.allocPages(npages);
-                    assert(pn != ~0u);
+                    assert(pn != ~cast(typeof(pn))0);
                     goto L1;
 
                 case 1:
@@ -1637,7 +1640,7 @@ struct Gcx
                     if (!pool)
                         goto Lnomemory;
                     pn = pool.allocPages(npages);
-                    assert(pn != ~0u);
+                    assert(pn != ~cast(typeof(pn))0);
                     goto L1;
 
                 case 2:
@@ -1743,18 +1746,18 @@ struct Gcx
      */
     int allocPage(Bins bin)
     {
+        //debug(PRINTF) printf("Gcx::allocPage(bin = %d)\n", bin);
         Pool *pool;
         uint n;
         uint pn;
         byte *p;
         byte *ptop;
 
-        //debug(PRINTF) printf("Gcx::allocPage(bin = %d)\n", bin);
         for (n = 0; n < npools; n++)
         {
             pool = pooltable[n];
             pn = pool.allocPages(1);
-            if (pn != ~0u)
+            if (pn != ~cast(typeof(pn))0)
                 goto L1;
         }
         return 0;               // failed
@@ -1798,8 +1801,9 @@ struct Gcx
             {
                 /* Skip page if we've already scanned it
                  */
-                if ((cast(size_t)p & ~(PAGESIZE-1)) == pageCache)
+                if ((cast(size_t)p & ~cast(size_t)(PAGESIZE-1)) == pageCache)
                     continue;
+
                 pool = findPool(p);
                 if (pool)
                 {
@@ -1828,9 +1832,9 @@ struct Gcx
                         // Don't mark bits in B_FREE or B_UNCOMMITTED pages
                         continue;
                     }
-                    
+
                     if (bin >= B_PAGE)  // cache B_PAGE and B_PAGEPLUS lookups
-                        pageCache = cast(size_t)p & ~(PAGESIZE-1);
+                        pageCache = cast(size_t)p & ~cast(size_t)(PAGESIZE-1);
 
                     //debug(PRINTF) printf("\t\tmark(x%x) = %d\n", biti, pool.mark.test(biti));
                     if (!pool.mark.test(biti))
@@ -1856,7 +1860,6 @@ struct Gcx
      */
     size_t fullcollectshell()
     {
-
         // The purpose of the 'shell' is to ensure all the registers
         // get put on the stack so they'll be scanned
         void *sp;
@@ -1866,83 +1869,77 @@ struct Gcx
             __builtin_unwind_init();
             sp = & sp;
         }
+        else version (D_InlineAsm_X86)
+        {
+            asm
+            {
+                pushad              ;
+                mov sp[EBP],ESP     ;
+            }
+        }
+        else version (D_InlineAsm_X86_64)
+        {
+            asm
+            {
+                push RAX ;
+                push RBX ;
+                push RCX ;
+                push RDX ;
+                push RSI ;
+                push RDI ;
+                push RBP ;
+                push R8  ;
+                push R9  ;
+                push R10  ;
+                push R11  ;
+                push R12  ;
+                push R13  ;
+                push R14  ;
+                push R15  ;
+                push EAX ;   // 16 byte align the stack
+            }
+        }
         else
         {
-            version (D_InlineAsm_X86)
-            {
-                asm
-                {
-                    pushad                  ;
-                    mov     sp[EBP],ESP     ;
-                }
-            }
-            else version (D_InlineAsm_X86_64)
-            {
-                asm
-                {
-                    push RAX ;
-                    push RBX ;
-                    push RCX ;
-                    push RDX ;
-                    push RSI ;
-                    push RDI ;
-                    push RBP ;
-                    push R8  ;
-                    push R9  ;
-                    push R10  ;
-                    push R11  ;
-                    push R12  ;
-                    push R13  ;
-                    push R14  ;
-                    push R15  ;
-                    push EAX ;   // 16 byte align the stack
-                }
-            }
-            else
-            {
-                static assert( false, "Architecture not supported." );
-            }
+            static assert( false, "Architecture not supported." );
         }
         result = fullcollect(sp);
         version (GNU)
         {
             // nothing to do
         }
+        else version (D_InlineAsm_X86)
+        {
+            asm
+            {
+                popad;
+            }
+        }
+        else version (D_InlineAsm_X86_64)
+        {
+            asm
+            {
+                pop EAX ;   // 16 byte align the stack
+                pop R15  ;
+                pop R14  ;
+                pop R13  ;
+                pop R12  ;
+                pop R11  ;
+                pop R10  ;
+                pop R9  ;
+                pop R8  ;
+                pop RBP ;
+                pop RDI ;
+                pop RSI ;
+                pop RDX ;
+                pop RCX ;
+                pop RBX ;
+                pop RAX ;
+            }
+        }
         else
         {
-            version (D_InlineAsm_X86)
-            {
-                asm
-                {
-                    popad           ;
-                }
-            }
-            else version (D_InlineAsm_X86_64)
-            {
-                asm
-                {
-                    pop EAX ;   // 16 byte align the stack
-                    pop R15  ;
-                    pop R14  ;
-                    pop R13  ;
-                    pop R12  ;
-                    pop R11  ;
-                    pop R10  ;
-                    pop R9  ;
-                    pop R8  ;
-                    pop RBP ;
-                    pop RDI ;
-                    pop RSI ;
-                    pop RDX ;
-                    pop RCX ;
-                    pop RBX ;
-                    pop RAX ;
-                }
-            }
-            else
-            {
-                static assert( false, "Architecture not supported." );
-            }
+            static assert( false, "Architecture not supported." );
         }
         return result;
     }
@@ -2046,7 +2043,7 @@ struct Gcx
                     else version (Posix)
                     {
                         // The registers are already stored in the stack
-                        //printf("Thread: ESP = x%x, stackBottom = x%x, isSelf = %d\n", Thread.getESP(), t.stackBottom, t.isSelf());
+                        //printf("Thread: ESP = %p, stackBottom = %p, isSelf = %d\n", Thread.getESP(), t.stackBottom, t.isSelf());
                         if (t.isSelf())
                             t.stackTop = Thread.getESP();
 
@@ -2142,7 +2139,7 @@ struct Gcx
                 }
             }
         }
-        
+
         /* After done marking, resume the frozen threads. This is necessary
          * so that the finalizers can run without deadlocking with some frozen thread.
          */
@@ -2392,10 +2389,9 @@ struct Gcx
         void log_free(void *p)
         {
             //debug(PRINTF) printf("+log_free(%x)\n", p);
-            size_t i;
 
-            i = current.find(p);
-            if (i == ~0u)
+            auto i = current.find(p);
+            if (i == ~cast(typeof(i))0)
             {
                 debug(PRINTF) printf("free'ing unallocated memory %x\n", p);
             }
@@ -2403,6 +2399,7 @@ struct Gcx
                 current.remove(i);
             //debug(PRINTF) printf("-log_free()\n");
         }
+
 
         void log_collect()
         {
@@ -2413,10 +2410,8 @@ struct Gcx
             size_t used = 0;
             for (size_t i = 0; i < current.dim; i++)
             {
-                size_t j;
-
-                j = prev.find(current.data[i].p);
-                if (j == ~0u)
+                auto j = prev.find(current.data[i].p);
+                if (j == ~cast(typeof(j))0)
                     current.data[i].print();
                 else
                     used++;
@@ -2432,7 +2427,7 @@ struct Gcx
                 if (!findPool(current.data[i].parent))
                 {
                     j = prev.find(current.data[i].p);
-                    if (j == ~0u)
+                    if (j == ~cast(typeof(j))0)
                         debug(PRINTF) printf("N");
                     else
                         debug(PRINTF) printf(" ");;
@@ -2450,10 +2445,9 @@ struct Gcx
         void log_parent(void *p, void *parent)
         {
             //debug(PRINTF) printf("+log_parent()\n");
-            size_t i;
 
-            i = current.find(p);
-            if (i == ~0u)
+            auto i = current.find(p);
+            if (i == ~cast(typeof(i))0)
             {
                 debug(PRINTF) printf("parent'ing unallocated memory %x, parent = %x\n", p, parent);
                 Pool *pool;
@@ -2751,5 +2745,4 @@ else
         return p;
     }
 }
-
 

@@ -60,11 +60,7 @@ class TypeInfo_As : TypeInfo
             if (result)
                 return result;
         }
-        if (s1.length < s2.length)
-            return -1;
-        else if (s1.length > s2.length)
-            return 1;
-        return 0;
+        return cast(int)s1.length - cast(int)s2.length;
     }
 
     size_t tsize()
@@ -80,6 +76,17 @@ class TypeInfo_As : TypeInfo
     TypeInfo next()
     {
         return typeid(short);
+    }
+
+    size_t talign()
+    {
+        return (short[]).alignof;
+    }
+
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    {   arg1 = typeid(size_t);
+        arg2 = typeid(void*);
+        return 0;
     }
 }
 
@@ -104,11 +111,7 @@ class TypeInfo_At : TypeInfo_As
             if (result)
                 return result;
         }
-        if (s1.length < s2.length)
-            return -1;
-        else if (s1.length > s2.length)
-            return 1;
-        return 0;
+        return cast(int)s1.length - cast(int)s2.length;
     }
 
     TypeInfo next()

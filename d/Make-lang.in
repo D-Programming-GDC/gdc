@@ -212,7 +212,7 @@ ifeq ($(D_LANGUAGE_VERSION),2)
   D_DMD_OBJS += d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o
 else
 # D1 specific sources
-  D_DMD_OBJS +=
+  D_DMD_OBJS += d/argtypes.dmd.o
 endif
 
 

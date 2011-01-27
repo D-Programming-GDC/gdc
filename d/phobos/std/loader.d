@@ -66,7 +66,7 @@
 */
 
 
-/** \file D/std/loader.d This file contains the \c D standard library 
+/** \file D/std/loader.d This file contains the \c D standard library
  * executable module loader library, and the ExeModule class.
  */
 
@@ -222,7 +222,7 @@ else
 {
         const int platform_not_discriminated = 0;
 
-        static assert(0);
+        static assert(platform_not_discriminated);
 }
 
 /** The platform-independent module handle. Note that this has to be
@@ -243,7 +243,7 @@ typedef void    *HXModule;
 
 /** ExeModule library Initialisation
  *
- * \retval <0 Initialisation failed. Processing must gracefully terminate, 
+ * \retval <0 Initialisation failed. Processing must gracefully terminate,
  * without making any use of the ExeModule library
  * \retval 0 Initialisation succeeded for the first time. Any necessary resources
  * were successfully allocated
@@ -259,7 +259,7 @@ public void ExeModule_Uninit()
     ExeModule_Uninit_();
 }
 
-/** 
+/**
  *
  * \note The value of the handle returned may not be a valid handle for your operating
  * system, and you <b>must not</b> attempt to use it with any other operating system
@@ -840,9 +840,9 @@ else version(darwin)
 }
 else
 {
-        //const int platform_not_discriminated = 0;
+        const int platform_not_discriminated = 0;
 
-        static assert(0); //used to platform_not_discriminated
+        static assert(platform_not_discriminated);
 }
 
 /* /////////////////////////////////////////////////////////////////////////////
@@ -1097,8 +1097,8 @@ version(TestMain)
             {
                 auto ExeModule xmod =   new ExeModule(moduleName);
 
-                printf("\"%.*s\" is loaded\n", cast(int) moduleName.length,
-                    moduleName.ptr);
+                printf("\"%.*s\" is loaded\n",
+                       cast(int) moduleName.length, moduleName.ptr);
 
                 void    *symbol =   xmod.getSymbol(symbolName);
 

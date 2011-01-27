@@ -1091,7 +1091,6 @@ dt_t **TypeSArray::toDtElem(dt_t **pdt, Expression *e)
             else
                 e->toDt(pdt);
             dt_optimize(*pdt);
-
             // These first two cases are okay for GDC too
             if ((*pdt)->dt == DT_azeros && !(*pdt)->DTnext)
             {
