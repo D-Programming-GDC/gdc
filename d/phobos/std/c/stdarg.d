@@ -24,6 +24,10 @@ version (GNU) {
     alias __builtin_va_end va_end;
     alias __builtin_va_copy va_copy;
 
+    version( X86_64 )
+    {   // TODO: implement this?
+        alias __builtin_va_list __va_argsave_t;
+    }
     // The va_start and va_arg template functions are magically
     // handled by the compiler.
 } else {

@@ -368,9 +368,6 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                 // conversions to different sizes
                 // Assumes tvoid->size() == 1
                 // %% TODO: handle misalign like _d_arraycast_xxx ?
-#if V1
-                gcc_assert(a_type->next->isbit() == target_type->next->isbit());
-#endif
                 if (sz_a != sz_b)
                     array_len = array_len * sz_a / sz_b;
 
@@ -402,8 +399,6 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                 Type * dst_elem_type = target_type->nextOf()->toBasetype();
                 d_uns64 sz_a = src_elem_type->size();
                 d_uns64 sz_b = dst_elem_type->size();
-
-                gcc_assert((src_elem_type->ty == Tbit) == (dst_elem_type->ty == Tbit));
 
                 if (sz_a != sz_b)
                 {
@@ -1891,9 +1886,6 @@ IRState::arrayElemRef(IndexExp * aer_exp, ArrayScope * aryscp)
 
     Type * base_type = e1->type->toBasetype();
     TY base_type_ty = base_type->ty;
-#if V1
-    gcc_assert(! base_type->next->isbit());
-#endif
     tree index_expr; // logical index
     tree subscript_expr; // expr that indexes the array data
     tree ptr_exp;  // base pointer to the elements

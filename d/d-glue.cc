@@ -311,13 +311,10 @@ EqualExp::toElem(IRState* irs)
             return result;
         } else if (base_ty_1 == Tsarray && base_ty_2 == Tsarray) {
             // assuming sizes are equal
-            // shouldn't need to check for Tbit
             return make_bool_binop(this, irs);
         } else {
             tree len_expr[2];
             tree data_expr[2];
-
-            gcc_assert(elem_type->ty != Tbit);
 
             for (int i = 0; i < 2; i++) {
                 Expression * e = i == 0 ? e1 : e2;
@@ -413,8 +410,6 @@ CmpExp::toElem(IRState* irs)
             lib_call = LIBCALL_ADCMPCHAR;
             break;
         default:
-            gcc_assert(elem_type->ty != Tbit);
-
             // Tuns8, Tchar, Tbool
             if (elem_type->size() == 1 && elem_type->isscalar() &&
                 elem_type->isunsigned())
@@ -987,8 +982,6 @@ CatAssignExp::toElem(IRState * irs)
     LibCall lib_call;
     AddrOfExpr aoe;
 
-    gcc_assert(elem_type->ty != Tbit);
-
     if (e1->type->toBasetype()->ty == Tarray && value_type->ty == Tdchar &&
         (elem_type->ty == Tchar || elem_type->ty == Twchar))
     {   // append a dchar to a char[] or wchar[]
@@ -1124,9 +1117,6 @@ AssignExp::toElem(IRState* irs)
             elem_type = ae->type->toBasetype()->nextOf(); // don't want ->toBasetype for the element type
             array_exp = irs->addressOf(ae->toElem(irs));
         }
-#if V1
-        gcc_assert(! elem_type->isbit());
-#endif
         args[0] = irs->typeinfoReference(array_type);
         args[1] = irs->convertTo(e2, Type::tsize_t);
         args[2] = array_exp;
@@ -1142,8 +1132,6 @@ AssignExp::toElem(IRState* irs)
     else if (e1->op == TOKslice)
     {
         Type * elem_type = e1->type->toBasetype()->nextOf()->toBasetype();
-
-        gcc_assert(elem_type->ty != Tbit);
 
         if (irs->typesCompatible(elem_type, e2->type->toBasetype()))
         {   // Set a range of elements to one value.
@@ -1414,9 +1402,6 @@ SliceExp::toElem(IRState * irs)
         if (! integer_zerop(lwr_tree))
         {
             lwr_tree = irs->maybeMakeTemp(lwr_tree);
-#if V1
-            gcc_assert(! orig_array_type->next->isbit());
-#endif
             // Adjust .ptr offset
             final_ptr_expr = irs->pointerIntSum(irs->pvoidOkay(final_ptr_expr), lwr_tree);
             final_ptr_expr = irs->nop(final_ptr_expr, TREE_TYPE(orig_pointer_expr));
@@ -2271,9 +2256,6 @@ NewExp::toElem(IRState * irs)
                allocated by this call. */
             for (unsigned i = 0; i < arguments->dim; i++)
                 elem_init_type = elem_init_type->toBasetype()->nextOf(); // assert ty == Tarray
-#if V1
-            gcc_assert(! elem_init_type->isbit());
-#endif
             if (arguments->dim == 1)
             {
                 lib_call = elem_init_type->isZeroInit() ?
@@ -3459,16 +3441,9 @@ Type::toCtype()
                 return NULL_TREE;
         }
 #if V2
-        if (this->mod)
-        {   // Build a qualified variant of the tree type.
-            tree t = build_variant_type_copy(ctype);
-
-            if (TYPE_CANONICAL(ctype) != ctype)
-                TYPE_CANONICAL(t) = build_qualified_type(TYPE_CANONICAL(ctype), TYPE_QUALS(ctype));
-            else
-                TYPE_CANONICAL(t) = t;
-
-            ctype = t;
+        if (this->mod && ty != Terror)
+        {   // Build a variant of the tree type.
+            ctype = build_variant_type_copy(ctype);
         }
 #endif
     }
@@ -3768,9 +3743,6 @@ TypeSArray::toCtype()
         if (dim->isConst() && dim->type->isintegral())
         {
             uinteger_t size = dim->toUInteger();
-#if V1
-            gcc_assert(! next->isbit());
-#endif
             if (next->toBasetype()->ty == Tvoid)
                 ctype = gen.arrayType(Type::tuns8, size);
             else
@@ -4558,8 +4530,6 @@ ForeachStatement::toIR(IRState *)
     tree aggr_expr = irs->maybeMakeTemp(aggr->toElem(irs));
 
     assert(value);
-
-    gcc_assert(elem_type->ty != Tbit);
 
     irs->startScope();
     irs->startBindings(); /* Variables created by the function will probably
