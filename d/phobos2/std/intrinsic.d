@@ -25,10 +25,6 @@
  */
 module std.intrinsic;
 
-version (GNU):
-public import gcc.bitmanip;
-
-version (DigitalMars):
 nothrow:
 
 /**

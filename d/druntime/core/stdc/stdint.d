@@ -86,12 +86,6 @@ else
 alias long      intmax_t;
 alias ulong     uintmax_t;
 
-version( GNU )
-{
-    alias __builtin_Clong Clong_t;
-    alias __builtin_Culong Culong_t;
-}
-
 enum int8_t   INT8_MIN  = int8_t.min;
 enum int8_t   INT8_MAX  = int8_t.max;
 enum int16_t  INT16_MIN = int16_t.min;

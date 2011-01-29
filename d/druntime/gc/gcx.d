@@ -83,6 +83,7 @@ private
         extern (C) bool thread_needLock();
         extern (C) void thread_suspendAll();
         extern (C) void thread_resumeAll();
+        extern (C) void thread_processGCMarks();
 
         alias void delegate( void*, void* ) scanFn;
         extern (C) void thread_scanAll( scanFn fn, void* curStackTop = null );
@@ -115,7 +116,7 @@ debug (LOGGING)
 
         void print()
         {
-            printf("    p = %x, size = %d, parent = %x ", p, size, parent);
+            printf("    p = %p, size = %zd, parent = %p ", p, size, parent);
             if (file)
             {
                 printf("%s(%u)", file, line);
@@ -465,16 +466,16 @@ class GC
                     auto freedpages = gcx.fullcollectshell();
                     collected = true;
                     if (freedpages < gcx.npools * ((POOLSIZE / PAGESIZE) / 8))
-		    {	/* Didn't free much, so try allocating more anyway.
-			 * Note: freedpages is not the amount of memory freed, it's the amount
-			 * of full pages freed. Perhaps this should instead be the amount of
-			 * memory freed.
-			 */
-			gcx.newPool(1);
-			state = 2;
-		    }
-		    else
-			state = 1;
+                    {   /* Didn't free much, so try allocating more anyway.
+                         * Note: freedpages is not the amount of memory freed, it's the amount
+                         * of full pages freed. Perhaps this should instead be the amount of
+                         * memory freed.
+                         */
+                        gcx.newPool(1);
+                        state = 2;
+                    }
+                    else
+                        state = 1;
                     continue;
                 case 1:
                     gcx.newPool(1);
@@ -495,7 +496,7 @@ class GC
             gcx.bucket[bin] = (cast(List*)p).next;
             if( !(bits & BlkAttr.NO_SCAN) )
                 memset(p + size, 0, binsize[bin] - size);
-            //debug(PRINTF) printf("\tmalloc => %x\n", p);
+            //debug(PRINTF) printf("\tmalloc => %p\n", p);
             debug (MEMSTOMP) memset(p, 0xF0, size);
         }
         else
@@ -515,11 +516,6 @@ class GC
             assert(pool);
 
             gcx.setBits(pool, cast(size_t)(p - pool.baseAddr) / 16, bits);
-        }
-
-        version (GNU)
-        {
-            gcx.addRoot(p);
         }
         return p;
     }
@@ -554,7 +550,7 @@ class GC
     {
         assert(size != 0);
 
-        //debug(PRINTF) printf("calloc: %x len %d\n", p, len);
+        //debug(PRINTF) printf("calloc: %p len %d\n", p, len);
         void *p = mallocNoSync(size, bits, alloc_size);
         memset(p, 0, size);
         return p;
@@ -597,7 +593,7 @@ class GC
         {   void *p2;
             size_t psize;
 
-            //debug(PRINTF) printf("GC::realloc(p = %x, size = %u)\n", p, size);
+            //debug(PRINTF) printf("GC::realloc(p = %p, size = %zu)\n", p, size);
             version (SENTINEL)
             {
                 sentinel_Invariant(p);
@@ -754,7 +750,7 @@ class GC
     }
     body
     {
-        //debug(PRINTF) printf("GC::extend(p = %x, minsize = %u, maxsize = %u)\n", p, minsize, maxsize);
+        //debug(PRINTF) printf("GC::extend(p = %p, minsize = %zu, maxsize = %zu)\n", p, minsize, maxsize);
         version (SENTINEL)
         {
             return 0;
@@ -1115,7 +1111,7 @@ class GC
             //p = (void *)((uint *)p + 4);
             if (p > gcx.stackBottom)
             {
-                //debug(PRINTF) printf("setStackBottom(%x)\n", p);
+                //debug(PRINTF) printf("setStackBottom(%p)\n", p);
                 gcx.stackBottom = p;
             }
         }
@@ -1124,7 +1120,7 @@ class GC
             //p = (void *)((uint *)p - 4);
             if (p < gcx.stackBottom)
             {
-                //debug(PRINTF) printf("setStackBottom(%x)\n", p);
+                //debug(PRINTF) printf("setStackBottom(%p)\n", p);
                 gcx.stackBottom = cast(char*)p;
             }
         }
@@ -1199,7 +1195,7 @@ class GC
             return;
         }
 
-        //debug(PRINTF) printf("+GC.addRange(pbot = x%x, ptop = x%x)\n", pbot, ptop);
+        //debug(PRINTF) printf("+GC.addRange(p = %p, sz = 0x%zx), p + sz = %p\n", p, sz, p + sz);
         if (!thread_needLock())
         {
             gcx.addRange(p, p + sz);
@@ -1256,7 +1252,7 @@ class GC
     size_t fullCollect()
     {
         debug(PRINTF) printf("GC.fullCollect()\n");
-	size_t result;
+        size_t result;
 
         // Since a finalizer could launch a new thread, we always need to lock
         // when collecting.
@@ -1270,12 +1266,24 @@ class GC
             GCStats stats;
 
             getStats(stats);
-            debug(PRINTF) printf("poolsize = %x, usedsize = %x, freelistsize = %x\n",
+            debug(PRINTF) printf("poolsize = %zx, usedsize = %zx, freelistsize = %zx\n",
                     stats.poolsize, stats.usedsize, stats.freelistsize);
         }
 
         gcx.log_collect();
-	return result;
+        return result;
+    }
+
+    /**
+     * Returns true if the pointer is being collected.  Should only be called
+     * with the base pointer of the block.
+     *
+     * Warning! This should only be called while the world is stopped inside
+     * the fullcollect function.
+     */
+    bool isCollecting(void *p)
+    {
+        return gcx.isCollecting(p);
     }
 
 
@@ -1364,7 +1372,7 @@ class GC
             //debug(PRINTF) printf("bin %d\n", n);
             for (List *list = gcx.bucket[n]; list; list = list.next)
             {
-                //debug(PRINTF) printf("\tlist %x\n", list);
+                //debug(PRINTF) printf("\tlist %p\n", list);
                 flsize += binsize[n];
             }
         }
@@ -1436,7 +1444,7 @@ struct Gcx
         void thread_Invariant()
         {
             if (self != pthread_self())
-                printf("thread_Invariant(): gcx = %x, self = %x, pthread_self() = %x\n", this, self, pthread_self());
+                printf("thread_Invariant(): gcx = %p, self = %x, pthread_self() = %x\n", &this, self, pthread_self());
             assert(self == pthread_self());
         }
     }
@@ -1444,10 +1452,10 @@ struct Gcx
     {
         void thread_Invariant() { }
     }
-    
+
     void *cached_size_key;
     size_t cached_size_val;
-    
+
     void *cached_info_key;
     BlkInfo cached_info_val;
 
@@ -1483,7 +1491,7 @@ struct Gcx
         log_init();
         debug (THREADINVARIANT)
             self = pthread_self();
-        //printf("gcx = %p, self = %x\n", this, self);
+        //printf("gcx = %p, self = %x\n", &this, self);
         inited = 1;
     }
 
@@ -1516,7 +1524,7 @@ struct Gcx
     {
         if (inited)
         {
-        //printf("Gcx.invariant(): this = %p\n", this);
+            //printf("Gcx.invariant(): this = %p\n", &this);
             size_t i;
 
             // Assure we're called on the right thread
@@ -1634,7 +1642,7 @@ struct Gcx
     void addRange(void *pbot, void *ptop)
     {
         //debug(PRINTF) printf("Thread %x ", pthread_self());
-        debug(PRINTF) printf("%x.Gcx::addRange(%x, %x), nranges = %d\n", this, pbot, ptop, nranges);
+        debug(PRINTF) printf("%p.Gcx::addRange(%p, %p), nranges = %d\n", &this, pbot, ptop, nranges);
         if (nranges == rangedim)
         {
             size_t newdim = rangedim * 2 + 16;
@@ -1662,7 +1670,7 @@ struct Gcx
     void removeRange(void *pbot)
     {
         //debug(PRINTF) printf("Thread %x ", pthread_self());
-        debug(PRINTF) printf("%x.Gcx.removeRange(%x), nranges = %d\n", this, pbot, nranges);
+        debug(PRINTF) printf("Gcx.removeRange(%p), nranges = %d\n", pbot, nranges);
         for (size_t i = nranges; i--;)
         {
             if (ranges[i].pbot == pbot)
@@ -1711,22 +1719,22 @@ struct Gcx
                 return npools == 0 ? null : pooltable[0];
             }
 
-	    /* The pooltable[] is sorted by address, so do a binary search
-	     */
-	    auto pt = pooltable;
-	    size_t low = 0;
-	    size_t high = npools - 1;
-	    while (low <= high)
-	    {
-		size_t mid = (low + high) >> 1;
-		auto pool = pt[mid];
-		if (p < pool.baseAddr)
-		    high = mid - 1;
-		else if (p >= pool.topAddr)
-		    low = mid + 1;
-		else
-		    return pool;
-	    }
+            /* The pooltable[] is sorted by address, so do a binary search
+             */
+            auto pt = pooltable;
+            size_t low = 0;
+            size_t high = npools - 1;
+            while (low <= high)
+            {
+                size_t mid = (low + high) >> 1;
+                auto pool = pt[mid];
+                if (p < pool.baseAddr)
+                    high = mid - 1;
+                else if (p >= pool.topAddr)
+                    low = mid + 1;
+                else
+                    return pool;
+            }
         }
         return null;
     }
@@ -1781,7 +1789,7 @@ struct Gcx
 
         if (USE_CACHE && p == cached_size_key)
             return cached_size_val;
-            
+
         pool = findPool(p);
         if (pool)
         {
@@ -1818,7 +1826,7 @@ struct Gcx
     {
         Pool*   pool;
         BlkInfo info;
-        
+
         if (USE_CACHE && p == cached_info_key)
             return cached_info_val;
 
@@ -1876,7 +1884,7 @@ struct Gcx
             // are the bits for the pointer, which may be garbage
             offset = cast(size_t)(info.base - pool.baseAddr);
             info.attr = getBits(pool, cast(size_t)(offset / 16));
-            
+
             cached_info_key = p;
             cached_info_val = info;
         }
@@ -2063,7 +2071,7 @@ struct Gcx
         debug (MEMSTOMP) memset(p, 0xF1, size);
         if(alloc_size)
             *alloc_size = npages * PAGESIZE;
-        //debug(PRINTF) printf("\tp = %x\n", p);
+        //debug(PRINTF) printf("\tp = %p\n", p);
         return p;
 
       Lnomemory:
@@ -2103,8 +2111,8 @@ struct Gcx
         {   size_t n;
 
             n = npools;
-	    if (n > 32)
-		n = 32;			// cap pool size at 32 megs
+            if (n > 32)
+                n = 32;                 // cap pool size at 32 megs
             else if (n > 8)
                 n = 16;
             n *= (POOLSIZE / PAGESIZE);
@@ -2112,7 +2120,7 @@ struct Gcx
                 npages = n;
         }
 
-	//printf("npages = %d\n", npages);
+        //printf("npages = %d\n", npages);
 
         pool = cast(Pool *)cstdlib.calloc(1, Pool.sizeof);
         if (pool)
@@ -2206,13 +2214,13 @@ struct Gcx
         {
             auto p = cast(byte *)(*p1);
 
-            //if (log) debug(PRINTF) printf("\tmark %x\n", p);
+            //if (log) debug(PRINTF) printf("\tmark %p\n", p);
             if (p >= minAddr && p < maxAddr)
             {
-                if ((cast(size_t)p & ~(PAGESIZE-1)) == pcache)
+                if ((cast(size_t)p & ~cast(size_t)(PAGESIZE-1)) == pcache)
                     continue;
 
-		auto pool = findPool(p);
+                auto pool = findPool(p);
                 if (pool)
                 {
                     size_t offset = cast(size_t)(p - pool.baseAddr);
@@ -2220,7 +2228,7 @@ struct Gcx
                     size_t pn = offset / PAGESIZE;
                     Bins   bin = cast(Bins)pool.pagetable[pn];
 
-                    //debug(PRINTF) printf("\t\tfound pool %x, base=%x, pn = %d, bin = %d, biti = x%x\n", pool, pool.baseAddr, pn, bin, biti);
+                    //debug(PRINTF) printf("\t\tfound pool %p, base=%p, pn = %zd, bin = %d, biti = x%x\n", pool, pool.baseAddr, pn, bin, biti);
 
                     // Adjust bit to be at start of allocated memory block
                     if (bin < B_PAGE)
@@ -2233,7 +2241,7 @@ struct Gcx
                         biti = (offset & notbinsize[bin]) >> 4;
                         //debug(PRINTF) printf("\t\tbiti = x%x\n", biti);
 
-                        pcache = cast(size_t)p & ~(PAGESIZE-1);
+                        pcache = cast(size_t)p & ~cast(size_t)(PAGESIZE-1);
                     }
                     else if (bin == B_PAGEPLUS)
                     {
@@ -2242,7 +2250,7 @@ struct Gcx
                         } while (cast(Bins)pool.pagetable[pn] == B_PAGEPLUS);
                         biti = pn * (PAGESIZE / 16);
 
-                        pcache = cast(size_t)p & ~(PAGESIZE-1);
+                        pcache = cast(size_t)p & ~cast(size_t)(PAGESIZE-1);
                     }
                     else
                     {
@@ -2253,7 +2261,7 @@ struct Gcx
                     //debug(PRINTF) printf("\t\tmark(x%x) = %d\n", biti, pool.mark.test(biti));
                     if (!pool.mark.testSet(biti))
                     {
-                        //if (log) debug(PRINTF) printf("\t\tmarking %x\n", p);
+                        //if (log) debug(PRINTF) printf("\t\tmarking %p\n", p);
                         if (!pool.noscan.test(biti))
                         {
                             pool.scan.set(biti);
@@ -2284,78 +2292,79 @@ struct Gcx
         }
         else version( D_InlineAsm_X86 )
         {
-	    asm
-	    {
-		pushad              ;
-		mov sp[EBP],ESP     ;
-	    }
+            asm
+            {
+                pushad              ;
+                mov sp[EBP],ESP     ;
+            }
         }
-	else version ( D_InlineAsm_X86_64 )
-	{
-	    asm
-	    {
-		push RAX ;
-		push RBX ;
-		push RCX ;
-		push RDX ;
-		push RSI ;
-		push RDI ;
-		push RBP ;
-		push R8  ;
-		push R9  ;
-		push R10  ;
-		push R11  ;
-		push R12  ;
-		push R13  ;
-		push R14  ;
-		push R15  ;
-		push EAX ;   // 16 byte align the stack
-	    }
-	}
-	else
-	{
-	    static assert( false, "Architecture not supported." );
-	}
+        else version ( D_InlineAsm_X86_64 )
+        {
+            asm
+            {
+                push RAX ;
+                push RBX ;
+                push RCX ;
+                push RDX ;
+                push RSI ;
+                push RDI ;
+                push RBP ;
+                push R8  ;
+                push R9  ;
+                push R10  ;
+                push R11  ;
+                push R12  ;
+                push R13  ;
+                push R14  ;
+                push R15  ;
+                push EAX ;   // 16 byte align the stack
+                mov sp[RBP],RSP     ;
+            }
+        }
+        else
+        {
+            static assert( false, "Architecture not supported." );
+        }
 
         result = fullcollect(sp);
 
-	version( GNU )
-	{
-	    // registers will be popped automatically
-	}
-	else version( D_InlineAsm_X86 )
-	{
-	    asm
-	    {
-		popad;
-	    }
-	}
-	else version ( D_InlineAsm_X86_64 )
-	{
-	    asm
-	    {
-		pop EAX ;   // 16 byte align the stack
-		pop R15  ;
-		pop R14  ;
-		pop R13  ;
-		pop R12  ;
-		pop R11  ;
-		pop R10  ;
-		pop R9  ;
-		pop R8  ;
-		pop RBP ;
-		pop RDI ;
-		pop RSI ;
-		pop RDX ;
-		pop RCX ;
-		pop RBX ;
-		pop RAX ;
-	    }
-	}
-	else
-	{
-	    static assert( false, "Architecture not supported." );
-	}
+        version( GNU )
+        {
+            // registers will be popped automatically
+        }
+        else version( D_InlineAsm_X86 )
+        {
+            asm
+            {
+                popad;
+            }
+        }
+        else version ( D_InlineAsm_X86_64 )
+        {
+            asm
+            {
+                pop EAX ;   // 16 byte align the stack
+                pop R15  ;
+                pop R14  ;
+                pop R13  ;
+                pop R12  ;
+                pop R11  ;
+                pop R10  ;
+                pop R9  ;
+                pop R8  ;
+                pop RBP ;
+                pop RDI ;
+                pop RSI ;
+                pop RDX ;
+                pop RCX ;
+                pop RBX ;
+                pop RAX ;
+            }
+        }
+        else
+        {
+            static assert( false, "Architecture not supported." );
+        }
         return result;
     }
 
@@ -2369,7 +2378,7 @@ struct Gcx
         Pool*  pool;
 
         debug(COLLECT_PRINTF) printf("Gcx.fullcollect()\n");
-	//printf("\tpool address range = %p .. %p\n", minAddr, maxAddr);
+        //printf("\tpool address range = %p .. %p\n", minAddr, maxAddr);
 
         thread_suspendAll();
 
@@ -2417,7 +2426,7 @@ struct Gcx
             if (!noStack)
             {
                 // Scan stack for main thread
-                debug(PRINTF) printf(" scan stack bot = %x, top = %x\n", stackTop, stackBottom);
+                debug(PRINTF) printf(" scan stack bot = %p, top = %p\n", stackTop, stackBottom);
                 version (STACKGROWSDOWN)
                     mark(stackTop, stackBottom);
                 else
@@ -2434,7 +2443,7 @@ struct Gcx
         //log++;
         for (n = 0; n < nranges; n++)
         {
-            debug(COLLECT_PRINTF) printf("\t\t%x .. %x\n", ranges[n].pbot, ranges[n].ptop);
+            debug(COLLECT_PRINTF) printf("\t\t%p .. %p\n", ranges[n].pbot, ranges[n].ptop);
             mark(ranges[n].pbot, ranges[n].ptop);
         }
         //log--;
@@ -2450,6 +2459,7 @@ struct Gcx
 
                 auto bbase = pool.scan.base();
                 auto btop = bbase + pool.scan.nwords;
+                //printf("\t\tn = %d, bbase = %p, btop = %p\n", n, bbase, btop);
                 for (auto b = bbase; b < btop;)
                 {
                     auto bitm = *b;
@@ -2459,7 +2469,7 @@ struct Gcx
                     }
                     *b = 0;
 
-                    auto o = pool.baseAddr + (b - bbase) * 32 * 16;
+                    auto o = pool.baseAddr + (b - bbase) * (typeof(bitm).sizeof*8) * 16;
                     if (!(bitm & 0xFFFF))
                     {
                         bitm >>= 16;
@@ -2498,6 +2508,7 @@ struct Gcx
             }
         }
 
+        thread_processGCMarks();
         thread_resumeAll();
 
         // Free up everything not marked
@@ -2539,7 +2550,7 @@ struct Gcx
                             gcx.clrBits(pool, biti, BlkAttr.ALL_BITS);
 
                             List *list = cast(List *)p;
-                            //debug(PRINTF) printf("\tcollecting %x\n", list);
+                            //debug(PRINTF) printf("\tcollecting %p\n", list);
                             log_free(sentinel_add(list));
 
                             debug (MEMSTOMP) memset(p, 0xF3, size);
@@ -2562,7 +2573,7 @@ struct Gcx
                             clrBits(pool, biti, BlkAttr.ALL_BITS);
 
                             List *list = cast(List *)p;
-                            debug(PRINTF) printf("\tcollecting %x\n", list);
+                            debug(PRINTF) printf("\tcollecting %p\n", list);
                             log_free(sentinel_add(list));
 
                             debug (MEMSTOMP) memset(p, 0xF3, size);
@@ -2582,7 +2593,7 @@ struct Gcx
                             rt_finalize(sentinel_add(p), false/*noStack > 0*/);
                         clrBits(pool, biti, BlkAttr.ALL_BITS);
 
-                        debug(COLLECT_PRINTF) printf("\tcollecting big %x\n", p);
+                        debug(COLLECT_PRINTF) printf("\tcollecting big %p\n", p);
                         log_free(sentinel_add(p));
                         pool.pagetable[pn] = B_FREE;
                         freedpages++;
@@ -2659,6 +2670,33 @@ struct Gcx
         debug(COLLECT_PRINTF) printf("\tfree'd %u bytes, %u pages from %u pools\n", freed, freedpages, npools);
 
         return freedpages + recoveredpages;
+    }
+
+    /**
+     * Returns true if the pointer is being collected.  Should only be called
+     * with the base pointer of the block.
+     *
+     * Warning! This should only be called while the world is stopped inside
+     * the fullcollect function.
+     */
+    bool isCollecting(void *p)
+    {
+        // first, we find the Pool this block is in, then check to see if the
+        // mark bit is clear.
+        auto pool = findPool(p);
+        if(pool)
+        {
+            auto offset = cast(size_t)(p - pool.baseAddr);
+            auto pn = offset / PAGESIZE;
+            auto bins = cast(Bins)pool.pagetable[pn];
+            if(bins <= B_PAGE)
+            {
+                assert(p == cast(void*)((cast(size_t)p) & notbinsize[bins]));
+                // return true if the block is not marked.
+                return !(pool.mark.test(offset / 16));
+            }
+        }
+        return false; // not collecting or pointer is a valid argument.
     }
 
 
@@ -2762,7 +2800,7 @@ struct Gcx
 
         void log_malloc(void *p, size_t size)
         {
-            //debug(PRINTF) printf("+log_malloc(p = %x, size = %d)\n", p, size);
+            //debug(PRINTF) printf("+log_malloc(p = %p, size = %zd)\n", p, size);
             Log log;
 
             log.p = p;
@@ -2781,13 +2819,11 @@ struct Gcx
 
         void log_free(void *p)
         {
-            //debug(PRINTF) printf("+log_free(%x)\n", p);
-            size_t i;
-
-            i = current.find(p);
+            //debug(PRINTF) printf("+log_free(%p)\n", p);
+            auto i = current.find(p);
             if (i == OPFAIL)
             {
-                debug(PRINTF) printf("free'ing unallocated memory %x\n", p);
+                debug(PRINTF) printf("free'ing unallocated memory %p\n", p);
             }
             else
                 current.remove(i);
@@ -2804,9 +2840,7 @@ struct Gcx
             size_t used = 0;
             for (size_t i = 0; i < current.dim; i++)
             {
-                size_t j;
-
-                j = prev.find(current.data[i].p);
+                auto j = prev.find(current.data[i].p);
                 if (j == OPFAIL)
                     current.data[i].print();
                 else
@@ -2816,13 +2850,10 @@ struct Gcx
             debug(PRINTF) printf("All roots this cycle: --------------------------------\n");
             for (size_t i = 0; i < current.dim; i++)
             {
-                void *p;
-                size_t j;
-
-                p = current.data[i].p;
+                void* p = current.data[i].p;
                 if (!findPool(current.data[i].parent))
                 {
-                    j = prev.find(current.data[i].p);
+                    auto j = prev.find(current.data[i].p);
                     if (j == OPFAIL)
                         debug(PRINTF) printf("N");
                     else
@@ -2841,12 +2872,10 @@ struct Gcx
         void log_parent(void *p, void *parent)
         {
             //debug(PRINTF) printf("+log_parent()\n");
-            size_t i;
-
-            i = current.find(p);
+            auto i = current.find(p);
             if (i == OPFAIL)
             {
-                debug(PRINTF) printf("parent'ing unallocated memory %x, parent = %x\n", p, parent);
+                debug(PRINTF) printf("parent'ing unallocated memory %p, parent = %p\n", p, parent);
                 Pool *pool;
                 pool = findPool(p);
                 assert(pool);
@@ -2909,7 +2938,7 @@ struct Pool
 
         if (!baseAddr)
         {
-            //debug(PRINTF) printf("GC fail: poolsize = x%x, errno = %d\n", poolsize, errno);
+            //debug(PRINTF) printf("GC fail: poolsize = x%zx, errno = %d\n", poolsize, errno);
             //debug(PRINTF) printf("message = '%s'\n", sys_errlist[errno]);
 
             npages = 0;

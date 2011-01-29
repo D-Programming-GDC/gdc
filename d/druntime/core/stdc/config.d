@@ -16,7 +16,12 @@ module core.stdc.config;
 
 extern (C):
 
-version( Windows )
+version( GNU )
+{
+    alias __builtin_Clong c_long;
+    alias __builtin_Culong c_ulong;
+}
+else version( Windows )
 {
     alias int   c_long;
     alias uint  c_ulong;

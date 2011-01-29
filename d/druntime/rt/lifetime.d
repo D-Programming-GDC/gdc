@@ -28,6 +28,7 @@ private
     import core.stdc.string;
     import core.stdc.stdarg;
     import core.bitop;
+    import core.thread : thread_getTLSBlock;
     debug(PRINTF) import core.stdc.stdio;
 }
 
@@ -50,6 +51,7 @@ private
     }
 
     extern (C) uint gc_getAttr( in void* p );
+    extern (C) uint gc_isCollecting( in void* p );
     extern (C) uint gc_setAttr( in void* p, uint a );
     extern (C) uint gc_clrAttr( in void* p, uint a );
 
@@ -76,7 +78,7 @@ private
     alias bool function(Object) CollectHandler;
     __gshared CollectHandler collectHandler = null;
 
-		enum : size_t
+                enum : size_t
     {
         BIGLENGTHMASK = ~(cast(size_t)PAGESIZE - 1),
         SMALLPAD = 1,
@@ -362,11 +364,13 @@ size_t __arrayPad(size_t size)
   cache for the lookup of the block info
   */
 enum N_CACHE_BLOCKS=8;
+
+// note this is TLS, so no need to sync.
+BlkInfo *__blkcache_storage;
+
 static if(N_CACHE_BLOCKS==1)
 {
     version=single_cache;
-    // note this is TLS, so no need to sync.
-    BlkInfo __blkcache;
 }
 else
 {
@@ -376,8 +380,6 @@ else
     // ensure N_CACHE_BLOCKS is power of 2.
     static assert(!((N_CACHE_BLOCKS - 1) & N_CACHE_BLOCKS));
 
-    // note this is TLS, so no need to sync.
-    BlkInfo __blkcache[N_CACHE_BLOCKS];
     version(random_cache)
     {
         int __nextRndNum = 0;
@@ -385,6 +387,62 @@ else
     int __nextBlkIdx;
 }
 
+@property BlkInfo *__blkcache()
+{
+    if(!__blkcache_storage)
+    {
+        // allocate the block cache for the first time
+        immutable size = BlkInfo.sizeof * N_CACHE_BLOCKS;
+        __blkcache_storage = cast(BlkInfo *)malloc(size);
+        memset(__blkcache_storage, 0, size);
+    }
+    return __blkcache_storage;
+}
+
+static __gshared size_t __blkcache_offset;
+shared static this()
+{
+    void[] tls = thread_getTLSBlock();
+    __blkcache_offset = (cast(void *)&__blkcache_storage) - tls.ptr;
+}
+
+// called when thread is exiting.
+static ~this()
+{
+    // free the blkcache
+    if(__blkcache_storage)
+    {
+        free(__blkcache_storage);
+        __blkcache_storage = null;
+    }
+}
+
+
+// we expect this to be called with the lock in place
+extern(C) void rt_processGCMarks(void[] tls)
+{
+    // called after the mark routine to eliminate block cache data when it
+    // might be ready to sweep
+
+    debug(PRINTF) printf("processing GC Marks, %x\n", tls.ptr);
+    auto cache = *cast(BlkInfo **)(tls.ptr + __blkcache_offset);
+    if(cache)
+    {
+        debug(PRINTF) foreach(i; 0 .. N_CACHE_BLOCKS)
+        {
+            printf("cache entry %d has base ptr %x\tsize %d\tflags %x\n", i, cache[i].base, cache[i].size, cache[i].attr);
+        }
+        auto cache_end = cache + N_CACHE_BLOCKS;
+        for(;cache < cache_end; ++cache)
+        {
+            if(cache.base != null && gc_isCollecting(cache.base))
+            {
+                debug(PRINTF) printf("clearing cache entry at %x\n", cache.base);
+                cache.base = null; // clear that data.
+            }
+        }
+    }
+}
 
 /**
   Get the cached block info of an interior pointer.  Returns null if the
@@ -392,50 +450,46 @@ else
   */
 BlkInfo *__getBlkInfo(void *interior)
 {
+    BlkInfo *ptr = __blkcache;
     version(single_cache)
     {
-        BlkInfo *ptr = &__blkcache;
-        if(ptr.base <= interior && (interior - ptr.base) < ptr.size)
+        if(ptr.base && ptr.base <= interior && (interior - ptr.base) < ptr.size)
             return ptr;
         return null; // not in cache.
     }
+    else version(simple_cache)
+    {
+        foreach(i; 0..N_CACHE_BLOCKS)
+        {
+            if(ptr.base && ptr.base <= interior && (interior - ptr.base) < ptr.size)
+                return ptr;
+            ptr++;
+        }
+    }
     else
     {
-        version(simple_cache)
+        // try to do a smart lookup, using __nextBlkIdx as the "head"
+        auto curi = ptr + __nextBlkIdx;
+        for(auto i = curi; i >= ptr; --i)
         {
-            BlkInfo *ptr = __blkcache.ptr;
-            foreach(i; 0..N_CACHE_BLOCKS)
-            {
-                if(ptr.base <= interior && (interior - ptr.base) < ptr.size)
-                    return ptr;
-                ptr++;
-            }
+            if(i.base && i.base <= interior && (interior - i.base) < i.size)
+                return i;
         }
-        else
-        {
-            // try to do a smart lookup, using __nextBlkIdx as the "head"
-            BlkInfo *ptr = __blkcache.ptr;
-            for(int i = __nextBlkIdx; i >= 0; --i)
-            {
-                if(ptr[i].base <= interior && (interior - ptr[i].base) < ptr[i].size)
-                    return ptr + i;
-            }
 
-            for(int i = N_CACHE_BLOCKS - 1; i > __nextBlkIdx; --i)
-            {
-                if(ptr[i].base <= interior && (interior - ptr[i].base) < ptr[i].size)
-                    return ptr + i;
-            }
+        for(auto i = ptr + N_CACHE_BLOCKS - 1; i > curi; --i)
+        {
+            if(i.base && i.base <= interior && (interior - i.base) < i.size)
+                return i;
         }
-        return null; // not in cache.
     }
+    return null; // not in cache.
 }
 
 void __insertBlkInfoCache(BlkInfo bi, BlkInfo *curpos)
 {
     version(single_cache)
     {
-        __blkcache = bi;
+        *__blkcache = bi;
     }
     else
     {
@@ -450,7 +504,7 @@ void __insertBlkInfoCache(BlkInfo bi, BlkInfo *curpos)
                 // cache block info.  This means that the ordering of the cache
                 // doesn't mean anything.  Certain patterns of allocation may
                 // render the cache near-useless.
-                __blkcache.ptr[__nextBlkIdx] = bi;
+                __blkcache[__nextBlkIdx] = bi;
                 __nextBlkIdx = (__nextBlkIdx+1) & (N_CACHE_BLOCKS - 1);
             }
         }
@@ -459,7 +513,7 @@ void __insertBlkInfoCache(BlkInfo bi, BlkInfo *curpos)
             // strategy: if the block currently is in the cache, move the
             // current block index to the a random element and evict that
             // element.
-            auto cache = __blkcache.ptr;
+            auto cache = __blkcache;
             if(!curpos)
             {
                 __nextBlkIdx = (__nextRndNum = 1664525 * __nextRndNum + 1013904223) & (N_CACHE_BLOCKS - 1);
@@ -478,7 +532,7 @@ void __insertBlkInfoCache(BlkInfo bi, BlkInfo *curpos)
             // the head element.  Otherwise, move the head element up by one,
             // and insert it there.
             //
-            auto cache = __blkcache.ptr;
+            auto cache = __blkcache;
             if(!curpos)
             {
                 __nextBlkIdx = (__nextBlkIdx+1) & (N_CACHE_BLOCKS - 1);
@@ -947,6 +1001,18 @@ extern (C) void _d_delarray(Array *p)
     }
 }
 
+debug(PRINTF)
+{
+    extern(C) void printArrayCache()
+    {
+        auto ptr = __blkcache;
+        printf("CACHE: \n");
+        foreach(i; 0 .. N_CACHE_BLOCKS)
+        {
+            printf("  %d\taddr:% .8x\tsize:% .10d\tflags:% .8x\n", i, ptr[i].base, ptr[i].size, ptr[i].attr);
+        }
+    }
+}
 
 /**
  *
@@ -969,6 +1035,13 @@ extern (C) void _d_delarray_t(Array *p, TypeInfo ti)
                     pend -= sz;
                     ti.destroy(pend);
                 }
+            }
+
+            // if p is in the cache, clear it as well
+            if(auto bic = __getBlkInfo(p.data))
+            {
+                // clear the data from the cache, it's being deleted.
+                bic.base = null;
             }
             gc_free(p.data);
         }

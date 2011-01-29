@@ -1762,6 +1762,14 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                             op1 = indirect(op1);
                         }
                     }
+#if SARRAYVALUE
+                    else
+                    {   // list would be passed by value, convert to reference.
+                        tree t = TREE_TYPE(op1);
+                        assert(TREE_CODE(t) == ARRAY_TYPE);
+                        op1 = addressOf(op1);
+                    }
+#endif
                     op1 = fix_d_va_list_type(op1);
                     type = TREE_TYPE(TREE_TYPE(callee));
                     if (splitDynArrayVarArgs && (d_type = getDType(type)) &&
@@ -1795,6 +1803,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                        address taken.  The second argument, however, is
                        inout and that needs to be fixed to prevent a warning.  */
                     op1 = ce.nextArg();
+                    type = TREE_TYPE(op1);
                     // kinda wrong... could be casting.. so need to check type too?
                     while (TREE_CODE(op1) == NOP_EXPR)
                         op1 = TREE_OPERAND(op1, 0);
@@ -1805,6 +1814,13 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                         op1 = fix_d_va_list_type(op1);
                         op1 = addressOf(op1);
                     }
+#if SARRAYVALUE
+                    else if (TREE_CODE(type) == ARRAY_TYPE)
+                    {   // pass list by reference.
+                        op1 = fix_d_va_list_type(op1);
+                        op1 = addressOf(op1);
+                    }
+#endif
                     else
                     {
                         op1 = fix_d_va_list_type(op1);

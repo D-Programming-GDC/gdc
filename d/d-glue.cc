@@ -1838,11 +1838,14 @@ AssertExp::toElem(IRState* irs)
             {
                 arg = irs->convertTo(arg, base_type, irs->getObjectType());
             }
-            return irs->libCall(LIBCALL_INVARIANT, 1, & arg);  // this does a null pointer check
+            // this does a null pointer check before calling _d_invariant
+            return build3(COND_EXPR, void_type_node,
+                    irs->boolOp(NE_EXPR, arg, d_null_pointer),
+                    irs->libCall(LIBCALL_INVARIANT, 1, & arg), assert_call);
         }
         else
         {   // build: ((bool) e1  ? (void)0 : _d_assert(...))
-            //    or: (e1 != null ? (void)0 : _d_assert(...), e1._invariant())
+            //    or: (e1 != null ? e1._invariant() : _d_assert(...))
             tree result;
             tree invc = NULL_TREE;
             tree e1_t = e1->toElem(irs);
@@ -1863,9 +1866,7 @@ AssertExp::toElem(IRState* irs)
             }
             result = build3(COND_EXPR, void_type_node,
                     irs->convertForCondition(e1_t, e1->type),
-                    d_void_zero_node, assert_call);
-            if (invc)
-                result = build2(COMPOUND_EXPR, void_type_node, result, invc);
+                    invc ? invc : d_void_zero_node, assert_call);
             return result;
         }
     }
