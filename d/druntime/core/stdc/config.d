@@ -18,6 +18,7 @@ extern (C):
 
 version( GNU )
 {
+    import gcc.builtins;
     alias __builtin_Clong c_long;
     alias __builtin_Culong c_ulong;
 }
