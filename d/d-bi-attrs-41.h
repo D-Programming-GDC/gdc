@@ -566,6 +566,7 @@ handle_mode_attribute (tree *node, tree name, tree args,
                        int ARG_UNUSED (flags), bool *no_add_attrs)
 {
   tree type = *node;
+  tree ident = TREE_VALUE (args);
 
   *no_add_attrs = true;
 
@@ -573,12 +574,12 @@ handle_mode_attribute (tree *node, tree name, tree args,
   if (TREE_CODE (ident) == STRING_CST)
       ident = get_identifier (TREE_STRING_POINTER (ident));
 
-  if (TREE_CODE (TREE_VALUE (args)) != IDENTIFIER_NODE)
+  if (TREE_CODE (ident) != IDENTIFIER_NODE)
     warning (OPT_Wattributes, "%qE attribute ignored", name);
   else
     {
       int j;
-      const char *p = IDENTIFIER_POINTER (TREE_VALUE (args));
+      const char *p = IDENTIFIER_POINTER (ident);
       int len = strlen (p);
       enum machine_mode mode = VOIDmode;
       tree typefm;
