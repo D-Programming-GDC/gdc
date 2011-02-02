@@ -761,6 +761,10 @@ handle_mode_attribute (tree *node, tree name, tree args,
 
   *no_add_attrs = true;
 
+  /* For gdc: allow string argument in place of identifier. */
+  if (TREE_CODE (ident) == STRING_CST)
+      ident = get_identifier (TREE_STRING_POINTER (ident));
+
   if (TREE_CODE (ident) != IDENTIFIER_NODE)
     warning (OPT_Wattributes, "%qE attribute ignored", name);
   else

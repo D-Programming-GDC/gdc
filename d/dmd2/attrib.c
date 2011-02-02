@@ -1028,17 +1028,18 @@ void PragmaDeclaration::semantic(Scope *sc)
                 Expression * e = (Expression *) args->data[i];
                 //e = e->semantic(sc);
                 
-                if (e->op == TOKidentifier) {
-                    /* ok */
-                } else if (e->op == TOKcall) {
+                if (e->op == TOKidentifier)
+                    ; // ok
+                else if (e->op == TOKcall)
+                {
                     CallExp * c = (CallExp *) e;
                     if (c->e1->op != TOKidentifier)
                         error("identifier or call expression expected for attribute");
                     if (c->arguments)
                         for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
                         {
-                            c->arguments->data[ai] =
-                                ((Expression *) c->arguments->data[ai])->semantic(sc);
+                            Expression * ea = (Expression *) c->arguments->data[ai];
+                            c->arguments->data[ai] = ea->semantic(sc);
                         }
                 }
                 else
@@ -1096,17 +1097,18 @@ void PragmaDeclaration::semantic(Scope *sc)
                 Expression * e = (Expression *) args->data[i];
                 //e = e->semantic(sc);
                 
-                if (e->op == TOKidentifier) {
-                    /* ok */
-                } else if (e->op == TOKcall) {
+                if (e->op == TOKidentifier)
+                    ; // ok
+                else if (e->op == TOKcall)
+                {
                     CallExp * c = (CallExp *) e;
                     if (c->e1->op != TOKidentifier)
                         error("identifier or call expression expected for attribute");
                     if (c->arguments)
                         for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
                         {
-                            c->arguments->data[ai] =
-                                ((Expression *) c->arguments->data[ai])->semantic(sc);
+                            Expression * ea = (Expression *) c->arguments->data[ai];
+                            c->arguments->data[ai] = ea->semantic(sc);
                         }
                 }
                 else
