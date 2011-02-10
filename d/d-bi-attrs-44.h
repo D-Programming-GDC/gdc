@@ -730,17 +730,14 @@ handle_mode_attribute (tree *node, tree name, tree args,
 
   *no_add_attrs = true;
 
-  /* For gdc: allow string argument in place of identifier. */
-  if (TREE_CODE (ident) == STRING_CST)
-      ident = get_identifier (TREE_STRING_POINTER (ident));
-
-  if (TREE_CODE (ident) != IDENTIFIER_NODE)
+  /* For gdc: accepts string argument instead of identifier. */
+  if (TREE_CODE (ident) != STRING_CST)
     warning (OPT_Wattributes, "%qE attribute ignored", name);
   else
     {
       int j;
-      const char *p = IDENTIFIER_POINTER (ident);
-      int len = strlen (p);
+      const char *p = TREE_STRING_POINTER (ident);
+      int len = TREE_STRING_LENGTH (ident);
       enum machine_mode mode = VOIDmode;
       tree typefm;
       bool valid_mode;
