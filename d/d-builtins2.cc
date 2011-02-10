@@ -287,6 +287,11 @@ d_bi_builtin_func(tree decl)
     bi_fn_list.cons(NULL_TREE, decl);
 }
 
+void
+d_bi_builtin_type(tree decl)
+{
+    bi_type_list.cons(NULL_TREE, decl);
+}
 
 // helper function for d_gcc_magic_stdarg_module
 /*
@@ -415,6 +420,19 @@ d_gcc_magic_builtins_module(Module *m)
         func->isym->Stree = decl;
 
         funcs->push(func);
+    }
+
+    for (tree n = bi_type_list.head; n; n = TREE_CHAIN(n))
+    {
+        tree decl = TREE_VALUE(n);
+        tree type = TREE_TYPE(decl);
+        const char * name = IDENTIFIER_POINTER(DECL_NAME(decl));
+        Type * dt = gcc_type_to_d_type(type);
+        if (! dt)
+        {   //warning("cannot create built in type for %s", name);
+            continue;
+        }
+        funcs->push(new AliasDeclaration(0, Lexer::idPool(name), dt));
     }
 
     for (unsigned i = 0; i < builtin_converted_decls.dim ; ++i)

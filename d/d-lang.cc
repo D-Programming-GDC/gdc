@@ -58,6 +58,7 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_MARK_ADDRESSABLE
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
 #undef LANG_HOOKS_BUILTIN_FUNCTION
+#undef LANG_HOOKS_REGISTER_BUILTIN_TYPE
 
 #define LANG_HOOKS_NAME                     lang_name
 #define LANG_HOOKS_INIT                     d_init
@@ -72,6 +73,7 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_GIMPLIFY_EXPR            d_gimplify_expr
 #define LANG_HOOKS_MARK_ADDRESSABLE         d_mark_addressable
 #define LANG_HOOKS_TYPES_COMPATIBLE_P       d_types_compatible_p
+#define LANG_HOOKS_REGISTER_BUILTIN_TYPE    d_register_builtin_type
 
 #if D_GCC_VER < 41
 #undef LANG_HOOKS_TRUTHVALUE_CONVERSION

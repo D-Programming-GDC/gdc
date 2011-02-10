@@ -418,6 +418,19 @@ void d_init_builtins(void)
 #endif
 }
 
+/* Registration of machine- or os-specific builtin types.  */
+void
+d_register_builtin_type (tree type, const char * name)
+{
+    tree ident = get_identifier(name);
+    tree decl = d_build_decl(TYPE_DECL, ident, type);
+    DECL_ARTIFICIAL(decl) = 1;
+
+    if (! TYPE_NAME(type))
+        TYPE_NAME(type) = decl;
+
+    d_bi_builtin_type(decl);
+}
 
 /* Return a definition for a builtin function named NAME and whose data type
    is TYPE.  TYPE should be a function type with argument types.
