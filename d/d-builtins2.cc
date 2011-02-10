@@ -336,7 +336,7 @@ d_gcc_magic_stdarg_check(Dsymbol *m, bool is_c_std_arg)
     {   /* For GCC, a va_list can be an array.  D static arrays are
            automatically passed by reference, but the 'inout'
            modifier is not allowed. */
-        assert(td->members);
+        gcc_assert(td->members);
         for (unsigned j = 0; j < td->members->dim; j++)
         {
             FuncDeclaration * fd =
@@ -346,9 +346,9 @@ d_gcc_magic_stdarg_check(Dsymbol *m, bool is_c_std_arg)
                 TypeFunction * tf;
                 // Should have nice error message instead of ICE in case some tries
                 // to tweak the file.
-                assert(! fd->parameters);
+                gcc_assert(! fd->parameters);
                 tf = (TypeFunction *) fd->type;
-                assert(tf->ty == Tfunction &&
+                gcc_assert(tf->ty == Tfunction &&
                         tf->parameters && tf->parameters->dim >= 1);
                 ((Parameter*) tf->parameters->data[0])->storageClass &= ~(STCin|STCout|STCref);
                 ((Parameter*) tf->parameters->data[0])->storageClass |= STCin;
@@ -581,7 +581,7 @@ d_gcc_eval_builtin(CallExp *ce, Expressions *arguments)
     if (ce->e1->op == TOKvar)
     {
         FuncDeclaration * fd = ((VarExp *) ce->e1)->var->isFuncDeclaration();
-        assert(fd);
+        gcc_assert(fd);
         TypeFunction * tf = (TypeFunction *) fd->type;
         tree callee = fd->toSymbol()->Stree;
 

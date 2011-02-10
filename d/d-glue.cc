@@ -228,9 +228,9 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
        gimplified correctly. */
     if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)) || COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e2)))
     {   // All other operations are not defined for complex types.
-        assert(op == TOKidentity || op == TOKequal ||
-               op == TOKnotidentity || op == TOKnotequal ||
-               op == TOKandand || op == TOKoror);
+        gcc_assert(op == TOKidentity || op == TOKequal ||
+                   op == TOKnotidentity || op == TOKnotequal ||
+                   op == TOKandand || op == TOKoror);
         cmp = fold(cmp);
     }
 
@@ -376,7 +376,7 @@ InExp::toElem(IRState * irs)
 {
     Type * e2_base_type = e2->type->toBasetype();
     AddrOfExpr aoe;
-    assert(e2_base_type->ty == Taarray);
+    gcc_assert(e2_base_type->ty == Taarray);
 
     tree args[3];
     Type * key_type = ((TypeAArray *) e2_base_type)->index->toBasetype();
@@ -885,7 +885,7 @@ make_assign_math_op(BinExp * exp, IRState * irs)
     while (e1_to_use->op == TOKcast)
     {
         CastExp * cast_exp = (CastExp *) e1_to_use;
-        assert(irs->typesCompatible(cast_exp->type, cast_exp->to)); // %% check, basetype?
+        gcc_assert(irs->typesCompatible(cast_exp->type, cast_exp->to)); // %% check, basetype?
         lhs_casts.push(cast_exp->to);
         e1_to_use = cast_exp->e1;
     }
@@ -902,10 +902,10 @@ make_assign_math_op(BinExp * exp, IRState * irs)
     }
     if ((out_code == TOKmul || out_code == TOKdiv) && exp->e1->type->isimaginary())
     {
-        assert(exp->e2->type->isfloating());
+        gcc_assert(exp->e2->type->isfloating());
         if (! exp->e2->type->isimaginary() && ! exp->e2->type->iscomplex())
         {
-            assert(exp->e1->type->size() == exp->e2->type->size());
+            gcc_assert(exp->e1->type->size() == exp->e2->type->size());
             src_type = exp->e1->type;
         }
     }
@@ -1333,7 +1333,7 @@ CommaExp::toElem(IRState * irs)
     tree t1 = e1->toElem(irs);
     tree t2 = e2->toElem(irs);
 
-    assert(type);
+    gcc_assert(type);
     return build2(COMPOUND_EXPR, type->toCtype(), t1, t2);
 }
 
@@ -1354,7 +1354,7 @@ ArrayLengthExp::toElem(IRState * irs)
 elem *
 SliceExp::toElem(IRState * irs)
 {   // This function assumes that the front end casts the result to a dynamic array.
-    assert(type->toBasetype()->ty == Tarray);
+    gcc_assert(type->toBasetype()->ty == Tarray);
 
     // Use convert-to-dynamic-array code if possible
     if (e1->type->toBasetype()->ty == Tsarray && ! upr && ! lwr)
@@ -1423,7 +1423,7 @@ SliceExp::toElem(IRState * irs)
             }
             else
             {   // Still need to check bounds lwr <= upr for pointers.
-                assert(orig_array_type->ty == Tpointer);
+                gcc_assert(orig_array_type->ty == Tpointer);
                 final_len_expr = upr_tree;
             }
             if (lwr_tree)
@@ -1752,7 +1752,7 @@ DelegateExp::toElem(IRState* irs)
             error("delegates are only for non-static functions");
         return irs->objectInstanceMethod(e1, func, type);
     } else {
-        assert(func->isNested() || func->isThis());
+        gcc_assert(func->isNested() || func->isThis());
         return irs->methodCallExpr(irs->functionPointer(func),
             func->isNested() ?
 #if D_NO_TRAMPOLINES
@@ -2003,7 +2003,7 @@ SymbolExp::toElem(IRState * irs)
             a = var->toSymbol()->Stree;
 
         if (irs->isDeclarationReferenceType(var))
-            assert(POINTER_TYPE_P(TREE_TYPE(a)));
+            gcc_assert(POINTER_TYPE_P(TREE_TYPE(a)));
         else
             a = irs->addressOf(a);
 
@@ -2074,7 +2074,7 @@ SymOffExp::toElem(IRState * irs)
         a = var->toSymbol()->Stree;
 
     if (irs->isDeclarationReferenceType(var))
-        assert(POINTER_TYPE_P(TREE_TYPE(a)));
+        gcc_assert(POINTER_TYPE_P(TREE_TYPE(a)));
     else
         a = irs->addressOf(var);
 
@@ -2093,7 +2093,7 @@ NewExp::toElem(IRState * irs)
     tree result;
 
     if (allocator)
-        assert(newargs);
+        gcc_assert(newargs);
 
     switch (base_type->ty)
     {
@@ -2146,7 +2146,7 @@ NewExp::toElem(IRState * irs)
                     if (outer != thisexp_cd)
                     {
                         ClassDeclaration * outer_cd = outer->isClassDeclaration();
-                        assert(outer_cd->isBaseOf(thisexp_cd, & offset));
+                        gcc_assert(outer_cd->isBaseOf(thisexp_cd, & offset));
                         // could just add offset
                         vthis_value = irs->convertTo(vthis_value, thisexp->type, outer_cd->type);
                     }
@@ -2246,8 +2246,8 @@ NewExp::toElem(IRState * irs)
         }
         case Tarray:
         {
-            assert(! allocator);
-            assert(arguments && arguments->dim > 0);
+            gcc_assert(! allocator);
+            gcc_assert(arguments && arguments->dim > 0);
 
             LibCall lib_call;
 
@@ -2429,7 +2429,7 @@ elem *
 ArrayLiteralExp::toElem(IRState * irs)
 {
     Type * typeb = type->toBasetype();
-    assert(typeb->ty == Tarray || typeb->ty == Tsarray || typeb->ty == Tpointer);
+    gcc_assert(typeb->ty == Tarray || typeb->ty == Tsarray || typeb->ty == Tpointer);
     Type * etype = typeb->nextOf();
     tree sa_type = irs->arrayType(etype->toCtype(), elements->dim);
     tree result = NULL_TREE;
@@ -2446,7 +2446,7 @@ ArrayLiteralExp::toElem(IRState * irs)
 #if V2
     if (var)
     {   // Just copy the array we are referencing, much faster.
-        assert(var->type->ty == Tarray || var->type->ty == Tsarray);
+        gcc_assert(var->type->ty == Tarray || var->type->ty == Tsarray);
         tree var_tree = irs->var(var);
         if (var->type->ty == Tarray)
             result = irs->darrayPtrRef(var_tree);
@@ -2502,14 +2502,14 @@ elem *
 AssocArrayLiteralExp::toElem(IRState * irs)
 {
     Type * tb = type->toBasetype();
-    assert (tb->ty == Taarray);
+    gcc_assert (tb->ty == Taarray);
 #if V2
     // %% want mutable type for typeinfo reference.
     tb = tb->mutableOf();
 #endif
     TypeAArray * aa_type = (TypeAArray *)tb;
-    assert(keys != NULL);
-    assert(values != NULL);
+    gcc_assert(keys != NULL);
+    gcc_assert(values != NULL);
 
     tree keys_var = irs->exprVar(irs->arrayType(aa_type->index, keys->dim)); //?
     tree vals_var = irs->exprVar(irs->arrayType(aa_type->next, keys->dim));
@@ -2562,12 +2562,12 @@ elem *
 StructLiteralExp::toElem(IRState *irs)
 {
     // %% Brings false positives on D2, maybe uncomment for debug builds...
-    //assert(irs->typesSame(type->toBasetype(), sd->type->toBasetype()));
+    //gcc_assert(irs->typesSame(type->toBasetype(), sd->type->toBasetype()));
     CtorEltMaker ce;
 
     if (elements)
     {
-        assert(elements->dim <= sd->fields.dim);
+        gcc_assert(elements->dim <= sd->fields.dim);
 
         for (unsigned i = 0; i < elements->dim; ++i)
         {
@@ -2612,7 +2612,7 @@ StructLiteralExp::toElem(IRState *irs)
                     while (etype->ty == Tsarray)
                         etype = etype->nextOf();
 
-                    assert(fld_type->size() % etype->size() == 0);
+                    gcc_assert(fld_type->size() % etype->size() == 0);
                     tree size = build2(TRUNC_DIV_EXPR, size_type_node,
                                 size_int(fld_type->size()), size_int(etype->size()));
                     size = fold(size);
@@ -2698,8 +2698,8 @@ ThisExp::toElem(IRState * irs)
     {
         // %% DMD issue -- creates ThisExp without setting var to vthis
         // %%TODO: updated in 0.79-0.81?
-        assert(irs->func);
-        assert(irs->func->vthis);
+        gcc_assert(irs->func);
+        gcc_assert(irs->func->vthis);
         this_tree = irs->var(irs->func->vthis);
     }
 #if STRUCTTHISREF
@@ -2994,7 +2994,7 @@ FuncDeclaration::toObjFile(int multiobj)
                 }
                 else if (! (cd = d->isClassDeclaration()))
                 {
-                    assert(0);
+                    gcc_unreachable();
                 }
             }
         }
@@ -3025,7 +3025,7 @@ FuncDeclaration::toObjFile(int multiobj)
                 }
                 else if (! (sd = d->isStructDeclaration()))
                 {
-                    assert(0);
+                    gcc_unreachable();
                 }
             }
         }
@@ -3289,7 +3289,7 @@ Module::genobjfile(int multiobj)
 {
     /* Normally would create an ObjFile here, but gcc is limited to one obj file
        per pass and there may be more than one module per obj file. */
-    assert(g.ofile);
+    gcc_assert(g.ofile);
 
     g.ofile->beginModule(this);
 
@@ -3394,7 +3394,7 @@ Type::toCtype()
             case Tbit:
                 ctype = make_unsigned_type(1);
                 TREE_SET_CODE(ctype, BOOLEAN_TYPE);
-                assert(int_size_in_bytes(ctype) == 1);
+                gcc_assert(int_size_in_bytes(ctype) == 1);
                 dkeep(ctype);
                 break;
             case Tchar:
@@ -3824,7 +3824,7 @@ TypeDelegate::toCtype()
 {
     if (! ctype)
     {
-        assert(next->toBasetype()->ty == Tfunction);
+        gcc_assert(next->toBasetype()->ty == Tfunction);
         ctype = gen.twoFieldType(Type::tvoid->pointerTo(), next->pointerTo(),
             this, "object", "func");
         dkeep(ctype);
@@ -4223,7 +4223,7 @@ SynchronizedStatement::toIR(IRState * irs)
         // assuming no conversions needed
         tree init_exp;
 
-        assert(exp->type->toBasetype()->ty == Tclass);
+        gcc_assert(exp->type->toBasetype()->ty == Tclass);
         iface = ((TypeClass *) exp->type->toBasetype())->sym->isInterfaceDeclaration();
         if (iface)
         {
@@ -4530,7 +4530,7 @@ ForeachStatement::toIR(IRState *)
     tree iter_init_expr;
     tree aggr_expr = irs->maybeMakeTemp(aggr->toElem(irs));
 
-    assert(value);
+    gcc_assert(value);
 
     irs->startScope();
     irs->startBindings(); /* Variables created by the function will probably
@@ -4953,11 +4953,11 @@ gcc_d_backend_init()
     }
     switch (PTRSIZE) {
     case 4:
-        assert(POINTER_SIZE == 32);
+        gcc_assert(POINTER_SIZE == 32);
         Tptrdiff_t = Tint32;
         break;
     case 8:
-        assert(POINTER_SIZE == 64);
+        gcc_assert(POINTER_SIZE == 64);
         Tptrdiff_t = Tint64;
         break;
     default:

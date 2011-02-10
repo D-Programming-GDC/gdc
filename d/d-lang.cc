@@ -34,7 +34,6 @@
 #include "async.h"
 #include "json.h"
 
-#include <assert.h>
 #include "d-gcc-includes.h"
 #include "options.h"
 #include "d-lang.h"
@@ -293,7 +292,7 @@ add_gnu_version_condition(const char * ident, unsigned int len)
     {
         len -= 1;
     }
-    assert(len);
+    gcc_assert(len);
     strcpy(d_ident, "GNU_");
     strncpy(d_ident + 4, ident, len);
     d_ident[len + 4] = '\0';
@@ -315,7 +314,7 @@ cpp_reader * parse_in;
 extern "C" void
 builtin_define_std (const char *macro)
 {
-    assert(macro);
+    gcc_assert(macro);
     unsigned int len = strlen(macro);
     add_gnu_version_condition(macro, len);
 }
@@ -1027,7 +1026,7 @@ d_parse_file (int /*set_yydebug*/)
     e = FileName::ext(p);
     if (e) {
         e--;
-        assert( *e == '.' );
+        gcc_assert( *e == '.' );
         name = (char *) xmalloc((e - p) + 1);
         memcpy(name, p, e - p);
         name[e - p] = 0;
@@ -1076,7 +1075,7 @@ d_parse_file (int /*set_yydebug*/)
         if (e)
         {
             e--;
-            assert(*e == '.');
+            gcc_assert(*e == '.');
             name = (char *) xmalloc((e - p) + 1);
             memcpy(name, p, e - p);
             name[e - p] = 0;
@@ -1119,7 +1118,7 @@ d_parse_file (int /*set_yydebug*/)
     // TemplateInstance puts itself somwhere during ::semantic, thus it has
     // to know the current module...
 
-    assert(an_output_module);
+    gcc_assert(an_output_module);
 
     //global.params.verbose = 1;
 
@@ -1235,7 +1234,7 @@ d_parse_file (int /*set_yydebug*/)
 
     if (global.params.moduleDeps != NULL)
     {
-        assert(global.params.moduleDepsFile != NULL);
+        gcc_assert(global.params.moduleDepsFile != NULL);
 
         File deps(global.params.moduleDepsFile);
         OutBuffer* ob = global.params.moduleDeps;
@@ -1813,7 +1812,7 @@ pushdecl_top_level (tree x)
 void
 set_decl_binding_chain(tree decl_chain)
 {
-    assert(current_binding_level);
+    gcc_assert(current_binding_level);
     current_binding_level->names = decl_chain;
 }
 
@@ -2005,9 +2004,9 @@ static tree
 d_build_eh_type_type(tree type)
 {
     TypeClass * d_type = (TypeClass *) IRState::getDType(type);
-    assert(d_type);
+    gcc_assert(d_type);
     d_type = (TypeClass *) d_type->toBasetype();
-    assert(d_type->ty == Tclass);
+    gcc_assert(d_type->ty == Tclass);
     return IRState::addressOf(d_type->sym->toSymbol()->Stree);
 }
 

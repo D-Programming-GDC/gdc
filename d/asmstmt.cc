@@ -292,9 +292,9 @@ static tree
 naturalString(Expression * e)
 {
     // don't fail, just an error?
-    assert(e->op == TOKstring);
+    gcc_assert(e->op == TOKstring);
     StringExp * s = (StringExp *) e;
-    assert(s->sz == 1);
+    gcc_assert(s->sz == 1);
     return build_string(s->len, (char *) s->string);
 }
 
@@ -403,7 +403,7 @@ AsmStatement::toIR(IRState * irs)
     int n_outputs = 0;
     int arg_map[10];
 
-    assert(code->args.dim <= 10);
+    gcc_assert(code->args.dim <= 10);
 
     for (unsigned i = 0; i < code->args.dim; i++)
     {
@@ -460,14 +460,14 @@ AsmStatement::toIR(IRState * irs)
                     case Mode_Input:  cns = m_cns; break;
                     case Mode_Output: cns = mw_cns;  is_input = false; break;
                     case Mode_Update: cns = mrw_cns; is_input = false; break;
-                    default: assert(0); break;
+                    default: gcc_unreachable(); break;
                 }
                 break;
             case Arg_FrameRelative:
                 if (arg->expr->op == TOKvar)
                     arg_val = ((VarExp *) arg->expr)->var->toSymbol()->Stree;
                 else
-                    assert(0);
+                    gcc_unreachable();
                 if (getFrameRelativeValue(arg_val, & var_frame_offset))
                 {
                     arg_val = irs->integerConstant(var_frame_offset);
@@ -495,7 +495,7 @@ AsmStatement::toIR(IRState * irs)
                    goto do_pointer;
                  */
             default:
-                assert(0);
+                gcc_unreachable();
         }
 
         if (is_input)
@@ -554,7 +554,7 @@ AsmStatement::toIR(IRState * irs)
             {
                 pct = false;
             }
-            //assert(*p == '%');// could be 'a', etc. so forget it..
+            //gcc_assert(*p == '%');// could be 'a', etc. so forget it..
         }
         else if (*p == '%')
         {

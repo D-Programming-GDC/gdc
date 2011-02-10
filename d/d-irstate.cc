@@ -23,8 +23,6 @@
 #include "d-lang.h"
 #include "d-irstate.h"
 
-#include <assert.h>
-
 #include "total.h"
 #include "init.h"
 #include "symbol.h"
@@ -92,7 +90,7 @@ IRBase::startFunction(FuncDeclaration * decl)
 void
 IRBase::endFunction()
 {
-    assert(scopes.dim == 0);
+    gcc_assert(scopes.dim == 0);
 
     func = 0; // make shouldDeferFunction return false
     // Assumes deferredFuncDecls will not change after this point
@@ -220,7 +218,7 @@ IRBase::getLabelTree(LabelDsymbol * label)
     {
         tree label_decl = d_build_decl (LABEL_DECL, get_identifier(label->ident->string), void_type_node);
 
-        assert(func != 0);
+        gcc_assert(func != 0);
         DECL_CONTEXT( label_decl ) = getLocalContext();
         DECL_MODE( label_decl ) = VOIDmode; // Not sure why or if this is needed
         D_LABEL_IS_USED( label_decl ) = 1;
@@ -267,7 +265,7 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 {
     if (ident) {
         LabelStatement * lbl_stmt = func->searchLabel(ident)->statement;
-        assert(lbl_stmt != 0);
+        gcc_assert(lbl_stmt != 0);
         Statement * stmt = lbl_stmt->statement;
         ScopeStatement * scope_stmt = stmt->isScopeStatement();
 
@@ -279,11 +277,11 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 
             if (flow->statement == stmt) {
                 if (want_continue)
-                    assert(stmt->hasContinue());
+                    gcc_assert(stmt->hasContinue());
                 return flow;
             }
         }
-        assert(0);
+        gcc_unreachable();
     } else {
         for (int i = loops.dim - 1; i >= 0; i--) {
             Flow * flow = (Flow *) loops.data[i];
@@ -292,7 +290,7 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
                 flow->statement->hasContinue())
                 return flow;
         }
-        assert(0);
+        gcc_unreachable();
     }
 }
 
@@ -320,7 +318,7 @@ IRBase::endFlow()
 {
     Flow * flow;
 
-    assert(loops.dim);
+    gcc_assert(loops.dim);
 
     flow = (Flow *) loops.pop();
     if (flow->exitLabel)
@@ -359,7 +357,7 @@ void IRBase::endScope()
 {
     unsigned * p_count;
 
-    assert(scopes.dim);
+    gcc_assert(scopes.dim);
     p_count = currentScope();
 
     //endBindings();
@@ -380,7 +378,7 @@ void IRBase::startBindings()
 
     pushStatementList();
 
-    assert(scopes.dim);
+    gcc_assert(scopes.dim);
     ++( * currentScope() );
     //printf("%*s  start -> %d\n", scopes.dim, "", * currentScope() );
 
@@ -398,9 +396,9 @@ void IRBase::endBindings()
     // Because we used set_block, the popped level/block is not automatically recorded
     insert_block(block);
 
-    assert(scopes.dim);
+    gcc_assert(scopes.dim);
     --( * currentScope() );
-    assert( * (int *) currentScope() >= 0 );
+    gcc_assert( * (int *) currentScope() >= 0 );
     //printf("%*s  end -> %d\n", scopes.dim, "", * currentScope() );
 
 }

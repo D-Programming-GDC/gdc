@@ -33,7 +33,6 @@
 */
 
 #include "d-gcc-includes.h"
-#include <assert.h>
 
 #include "total.h"
 #include "mars.h"
@@ -64,7 +63,7 @@ Symbol *SymbolDeclaration::toSymbol()
     {
         if (dsym)
             dsym->toInitializer();
-        assert(sym->Stree);
+        gcc_assert(sym->Stree);
     }
     return sym;
 }
@@ -92,7 +91,7 @@ Symbol *Dsymbol::toSymbolX(const char *prefix, int sclass, type *t, const char *
 Symbol *Dsymbol::toSymbol()
 {
     fprintf(stderr, "Dsymbol::toSymbol() '%s', kind = '%s'\n", toChars(), kind());
-    assert(0);          // BUG: implement
+    gcc_unreachable();          // BUG: implement
     return NULL;
 }
 
@@ -198,9 +197,9 @@ Symbol *VarDeclaration::toSymbol()
         if (storage_class & STCfield)
         {
             AggregateDeclaration * parent_decl = toParent()->isAggregateDeclaration();
-            assert(parent_decl);
+            gcc_assert(parent_decl);
             parent_decl->type->toCtype();
-            assert(csym);
+            gcc_assert(csym);
             return csym;
         }
 
@@ -304,7 +303,7 @@ Symbol *VarDeclaration::toSymbol()
             DECL_ARG_TYPE(var_decl) = TREE_TYPE (var_decl);
 
             DECL_CONTEXT(var_decl) = gen.declContext(this);
-            assert(TREE_CODE(DECL_CONTEXT(var_decl)) == FUNCTION_DECL);
+            gcc_assert(TREE_CODE(DECL_CONTEXT(var_decl)) == FUNCTION_DECL);
         }
         else if (decl_kind == CONST_DECL)
         {
@@ -318,7 +317,7 @@ Symbol *VarDeclaration::toSymbol()
                 if (! init->isVoidInitializer())
                 {
                     e = init->toExpression();
-                    assert(e != NULL);
+                    gcc_assert(e != NULL);
                 }
             }
             else
@@ -434,7 +433,7 @@ Symbol *TypeInfoDeclaration::toSymbol()
 
         // This variable is the static initialization for the
         // given TypeInfo.  It is the actual data, not a reference
-        assert(TREE_CODE(TREE_TYPE(csym->Stree)) == REFERENCE_TYPE);
+        gcc_assert(TREE_CODE(TREE_TYPE(csym->Stree)) == REFERENCE_TYPE);
         TREE_TYPE(csym->Stree) = TREE_TYPE(TREE_TYPE(csym->Stree));
 
         /* DMD makes typeinfo decls one-only by doing:
@@ -457,7 +456,7 @@ Symbol *TypeInfoDeclaration::toSymbol()
 
 Symbol *TypeInfoClassDeclaration::toSymbol()
 {
-    assert(tinfo->ty == Tclass);
+    gcc_assert(tinfo->ty == Tclass);
     TypeClass *tc = (TypeClass *)tinfo;
     return tc->sym->toSymbol();
 }
@@ -614,7 +613,7 @@ Symbol *FuncDeclaration::toSymbol()
                     Symbol * outer_sym = outer_func->toSymbol();
 #if 0
                     // TODO: This could fail in some corner cases.
-                    assert(outer_sym->outputStage != Finished);
+                    gcc_assert(outer_sym->outputStage != Finished);
 #endif
                     if (! outer_sym->otherNestedFuncs)
                         outer_sym->otherNestedFuncs = new FuncDeclarations;
@@ -685,7 +684,7 @@ Symbol *FuncDeclaration::toSymbol()
                 case LINKwindows:
                     gen.addDeclAttribute(fn_decl, "stdcall");
                     // The stdcall attribute also needs to be set on the function type.
-                    assert(func_type->linkage == LINKwindows);
+                    gcc_assert(func_type->linkage == LINKwindows);
                     break;
                 case LINKpascal:
                     // stdcall and reverse params?
@@ -706,7 +705,7 @@ Symbol *FuncDeclaration::toSymbol()
                     break;
                 default:
                     fprintf(stderr, "linkage = %d\n", linkage);
-                    assert(0);
+                    gcc_unreachable();
             }
 
             csym->Sident = mangled_ident_str; // save for making thunks

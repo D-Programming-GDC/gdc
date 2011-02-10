@@ -17,7 +17,6 @@
 */
 
 #include "d-gcc-includes.h"
-#include <assert.h>
 
 // d-real_t.cc
 
@@ -58,7 +57,7 @@ real_t_Properties real_t_properties[real_t::NumModes];
 void
 real_t::init()
 {
-    assert(sizeof(real_t) >= sizeof(REAL_VALUE_TYPE));
+    gcc_assert(sizeof(real_t) >= sizeof(REAL_VALUE_TYPE));
     for (int i = (int) Float; i < (int) NumModes; i++)
     {
         real_t_Properties & p = real_t_properties[i];
@@ -419,9 +418,9 @@ real_t::toBytes(unsigned char * buf, unsigned buf_size)
     long *src = data;
     unsigned char *dest = buf;
 
-    // assert(ld_size == REALSIZE);
-    // assert(buf_size >= REALSIZE);
-    assert( ld_size <= 16 );
+    // gcc_assert(ld_size == REALSIZE);
+    // gcc_assert(buf_size >= REALSIZE);
+    gcc_assert( ld_size <= 16 );
 
     real_to_target (data, & rv(), TYPE_MODE(long_double_type_node));
     while (count)

@@ -1822,7 +1822,7 @@ struct AsmProcessor
                         stmt->error("invalid operand size/type");
                         return false;
                 }
-                assert(type_char != 0);
+                gcc_assert(type_char != 0);
                 insnTemplate->write(mnemonic, mlen-1);
                 insnTemplate->writebyte(tc_1);
                 insnTemplate->writebyte(type_char);
@@ -2384,7 +2384,7 @@ struct AsmProcessor
                     e = new ComExp(stmt->loc, e1);
                     break;
                 default:
-                    assert(0);
+                    gcc_unreachable();
             }
             e = e->semantic(sc);
             return e->optimize(WANTvalue | WANTinterpret);

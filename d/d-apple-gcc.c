@@ -132,37 +132,37 @@ build_modify_expr (tree lhs, enum tree_code modifycode, tree rhs)
 tree
 c_common_type_for_mode (enum machine_mode mode, int unsignedp)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 pointer_int_sum (enum tree_code resultcode, tree ptrop, tree intop)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 decl_constant_value (tree decl)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 void
 finish_decl (tree decl, tree init, tree asmspec_tree)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 enum cpp_ttype
 pragma_lex (tree *value)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 lookup_name (tree name)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
@@ -174,55 +174,55 @@ lookup_name_two (tree name, int ARG_UNUSED (prefer_type))
 enum cpp_ttype
 c_lex (tree *value)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 iasm_addr (tree e)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static enum machine_mode
 iasm_get_mode (tree type)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 iasm_ptr_conv (tree type, tree exp)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 iasm_build_bracket (tree v1, tree v2)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static tree
 iasm_default_function_conversion (tree exp)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 bool
 iasm_is_pseudo (const char *opcode)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static int
 iasm_op_comp (const void *a, const void *b)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static const char*
 iasm_constraint_for (const char *opcode, unsigned argnum, unsigned ARG_UNUSED (num_args))
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static void
@@ -230,91 +230,91 @@ iasm_process_arg (const char *opcodename, int op_num,
                   tree *outputsp, tree *inputsp, tree *uses, unsigned num_args,
                   iasm_md_extra_info *e)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static tree
 iasm_identifier (tree expr)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 bool
 iasm_is_prefix (tree ARG_UNUSED (id))
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static int
 iasm_num_constraints_1 (tree io)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static int
 iasm_num_constraints (tree inputs, tree outputs)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static void
 iasm_set_constraints_1 (int num, tree io)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static void
 iasm_set_constraints (int num, tree inputs, tree outputs)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static int
 iasm_op_clobber_comp (const void *a, const void *b)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static void
 iasm_extra_clobbers (const char *opcode, tree *clobbersp)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 iasm_stmt (tree expr, tree args, int lineno)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static int
 iasm_field_offset (tree arg)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static bool
 iasm_simple_expr (tree arg)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static int
 iasm_expr_val (tree arg)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 void
 iasm_force_constraint (const char *c, iasm_md_extra_info *e)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static void
 iasm_maybe_force_mem (tree arg, char *buf, unsigned argnum, bool must_be_reg, iasm_md_extra_info *e)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 void
@@ -322,60 +322,60 @@ iasm_print_operand (char *buf, tree arg, unsigned argnum,
                     tree *uses,
                     bool must_be_reg, bool must_not_be_reg, iasm_md_extra_info *e)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 void
 iasm_get_register_var (tree var, const char *modifier, char *buf, unsigned argnum,
                        bool must_be_reg, iasm_md_extra_info *e)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 iasm_reg_name (tree id)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 iasm_label (tree labid, int atsign)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 iasm_get_identifier (tree id, const char *str)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 void
 iasm_clear_labels (void)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 iasm_do_id (tree id)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 static tree
 iasm_get_label (tree labid)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 iasm_build_register_offset (tree offset, tree regname)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }
 
 tree
 iasm_entry (tree keyword, tree scspec, tree fn)
 {
-    gcc_assert(0);
+    gcc_unreachable();
 }

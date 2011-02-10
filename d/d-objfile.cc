@@ -126,7 +126,7 @@ ObjectFile::doLineNote(const Loc & loc)
 static location_t
 cvtLocToloc_t(const Loc loc)
 {
-    //assert(sizeof(StringValue.intvalue) == sizeof(location_t));
+    //gcc_assert(sizeof(StringValue.intvalue) == sizeof(location_t));
     static StringTable lmtab;
     StringValue * sv = lmtab.update(loc.filename, strlen(loc.filename));
     const struct line_map * lm = 0;
@@ -175,7 +175,7 @@ ObjectFile::setDeclLoc(tree t, const Loc & loc)
 {
     // DWARF2 will often crash if the DECL_SOURCE_FILE is not set.  It's
     // easier the error here.
-    assert(loc.filename);
+    gcc_assert(loc.filename);
 #ifdef D_USE_MAPPED_LOCATION
     DECL_SOURCE_LOCATION (t) = cvtLocToloc_t(loc);
 #else
@@ -594,7 +594,7 @@ ObjectFile::addAggMethods(tree rec_type, AggregateDeclaration * agg)
 void
 ObjectFile::initTypeDecl(tree t, Dsymbol * d_sym)
 {
-    assert(! POINTER_TYPE_P(t));
+    gcc_assert(! POINTER_TYPE_P(t));
     if (! TYPE_STUB_DECL(t))
     {
         const char * name = d_sym->ident ? d_sym->ident->string : "fix";
@@ -632,7 +632,7 @@ ObjectFile::initTypeDecl(tree t, tree decl)
 {
     if (! TYPE_STUB_DECL(t))
     {
-        assert(! POINTER_TYPE_P(t));
+        gcc_assert(! POINTER_TYPE_P(t));
 
         TYPE_CONTEXT(t) = DECL_CONTEXT(decl);
         TYPE_NAME(t) = decl;
@@ -990,8 +990,8 @@ tree
 check_static_sym(Symbol * sym)
 {
     if (! sym->Stree)
-    {   //assert(sym->Sdt);    // Unfortunately cannot check for this; it might be an empty dt_t list...
-        assert(! sym->Sident); // Can enforce that sym is anonymous though.
+    {   //gcc_assert(sym->Sdt);    // Unfortunately cannot check for this; it might be an empty dt_t list...
+        gcc_assert(! sym->Sident); // Can enforce that sym is anonymous though.
         tree t_ini = dt2tree(sym->Sdt); // %% recursion problems?
         tree t_var = d_build_decl(VAR_DECL, NULL_TREE, TREE_TYPE(t_ini));
         g.ofile->giveDeclUniqueName(t_var);
@@ -1015,7 +1015,7 @@ void
 outdata(Symbol * sym)
 {
     tree t = check_static_sym(sym);
-    assert(t);
+    gcc_assert(t);
 
     if (sym->Sdt && DECL_INITIAL(t) == NULL_TREE)
         DECL_INITIAL(t) = dt2tree(sym->Sdt);
@@ -1025,7 +1025,7 @@ outdata(Symbol * sym)
     tree type = TREE_TYPE(t);
     if (g.irs->isErrorMark(type))
     {
-        assert(DECL_INITIAL(t));
+        gcc_assert(DECL_INITIAL(t));
         TREE_TYPE(t) = TREE_TYPE(DECL_INITIAL(t));
     }
 

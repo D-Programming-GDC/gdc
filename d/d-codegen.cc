@@ -22,8 +22,10 @@
 #include "d-gcc-includes.h"
 #include "d-lang.h"
 #include "d-codegen.h"
+
 #include <math.h>
 #include <limits.h>
+
 #include "total.h"
 #include "template.h"
 #include "init.h"
@@ -244,7 +246,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 {
     tree result = NULL_TREE;
 
-    assert(exp_type && target_type);
+    gcc_assert(exp_type && target_type);
     target_type = target_type->toBasetype();
     exp_type = exp_type->toBasetype();
 
@@ -510,7 +512,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             }
             else
             {
-                assert(TREE_CODE(exp) != STRING_CST);
+                gcc_assert(TREE_CODE(exp) != STRING_CST);
                 // default conversion
             }
         }
@@ -1025,7 +1027,7 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
     else if (expr->op == TOKvar)
     {
         FuncDeclaration * fd = ((VarExp *) expr)->var->isFuncDeclaration();
-        assert(fd);
+        gcc_assert(fd);
         tf = (TypeFunction *) fd->type;
         if (fd->isNested())
         {
@@ -1052,7 +1054,7 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
 tree
 IRState::call(FuncDeclaration * func_decl, Array * args)
 {
-    assert(! func_decl->isNested()); // Otherwise need to copy code from above
+    gcc_assert(! func_decl->isNested()); // Otherwise need to copy code from above
     return call((TypeFunction *) func_decl->type, func_decl->toSymbol()->Stree, NULL_TREE, args);
 }
 
@@ -1075,9 +1077,9 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     else
         actual_callee = addressOf(callable);
 
-    assert(function_type_p(func_type_node));
-    assert(func_type != NULL);
-    assert(func_type->ty == Tfunction);
+    gcc_assert(function_type_p(func_type_node));
+    gcc_assert(func_type != NULL);
+    gcc_assert(func_type->ty == Tfunction);
 
     bool is_d_vararg = func_type->varargs == 1 && func_type->linkage == LINKd;
 
@@ -1103,7 +1105,7 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
             }
             else
             {   // Probably an internal error
-                assert(object != NULL_TREE);
+                gcc_assert(object != NULL_TREE);
             }
         }
     }
@@ -1418,7 +1420,7 @@ IRState::getLibCallDecl(LibCall lib_call)
                         return_type = Type::tvoid;
                         break;
                     default:
-                        assert(0);
+                        gcc_unreachable();
                 }
                 break;
             }
@@ -1665,7 +1667,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                         enum tree_code code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
                                               (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
                                               (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
-                        assert(code != ERROR_MARK);
+                        gcc_assert(code != ERROR_MARK);
 
                         if (intrinsic == INTRINSIC_BTR)
                             op2 = build1(BIT_NOT_EXPR, TREE_TYPE(op2), op2);
@@ -1766,7 +1768,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                     else
                     {   // list would be passed by value, convert to reference.
                         tree t = TREE_TYPE(op1);
-                        assert(TREE_CODE(t) == ARRAY_TYPE);
+                        gcc_assert(TREE_CODE(t) == ARRAY_TYPE);
                         op1 = addressOf(op1);
                     }
 #endif
@@ -2036,7 +2038,7 @@ IRState::darrayVal(tree type, uinteger_t len, tree data)
 
     if (data)
     {
-        assert(POINTER_TYPE_P(TREE_TYPE(data)));
+        gcc_assert(POINTER_TYPE_P(TREE_TYPE(data)));
         ptr_value = data;
     }
     else
@@ -2071,7 +2073,7 @@ IRState::hostToTargetString(char * str, size_t length, unsigned unit_size)
 {
     if (unit_size == 1)
         return str;
-    assert(unit_size == 2 || unit_size == 4);
+    gcc_assert(unit_size == 2 || unit_size == 4);
 
     bool flip;
 #if D_GCC_VER < 41
@@ -2190,7 +2192,7 @@ tree
 IRState::typeinfoReference(Type * t)
 {
     tree ti_ref = t->getInternalTypeInfo(NULL)->toElem(this);
-    assert(POINTER_TYPE_P(TREE_TYPE(ti_ref)));
+    gcc_assert(POINTER_TYPE_P(TREE_TYPE(ti_ref)));
     return ti_ref;
 }
 
@@ -2249,7 +2251,7 @@ IRState::delegateVal(tree method_exp, tree object_exp, Type * d_type)
     }
     else
     {
-        assert(base_type->ty == Tdelegate);
+        gcc_assert(base_type->ty == Tdelegate);
     }
 
     tree type = base_type ? base_type->toCtype() : NULL_TREE;
@@ -2285,7 +2287,7 @@ IRState::delegateVal(tree method_exp, tree object_exp, Type * d_type)
 void
 IRState::extractMethodCallExpr(tree mcr, tree & callee_out, tree & object_out)
 {
-    assert(D_IS_METHOD_CALL_EXPR(mcr));
+    gcc_assert(D_IS_METHOD_CALL_EXPR(mcr));
 #if D_GCC_VER < 41
     tree elts = CONSTRUCTOR_ELTS(mcr);
     object_out = TREE_VALUE(elts);
@@ -2558,7 +2560,7 @@ IRState::maybeSetUpBuiltin(Declaration * decl)
             return false;
 
         // Make sure 'i' is within the range we require.
-        assert(i >= INTRINSIC_BSF && i <= INTRINSIC_OUTPW);
+        gcc_assert(i >= INTRINSIC_BSF && i <= INTRINSIC_OUTPW);
         tree t = decl->toSymbol()->Stree;
 
         DECL_BUILT_IN_CLASS(t) = BUILT_IN_FRONTEND;
@@ -2744,7 +2746,7 @@ IRState::attributes(Expressions * in_attrs)
         else if (e->op == TOKcall)
         {
             CallExp * c = (CallExp *) e;
-            assert(c->e1->op == TOKidentifier);
+            gcc_assert(c->e1->op == TOKidentifier);
             ident_e = (IdentifierExp *) c->e1;
 
             if (c->arguments)
@@ -2908,7 +2910,7 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
                 {
                     if (outer_func == fd->toParent2())
                         break;
-                    assert(fd->isNested() || fd->vthis);
+                    gcc_assert(fd->isNested() || fd->vthis);
                 }
                 else if ((cd = this_func->isClassDeclaration()))
                 {
@@ -3095,13 +3097,13 @@ findThis(IRState * irs, ClassDeclaration * target_cd)
             }
             else if (target_cd->isBaseOf(fd_cd, NULL))
             {
-                assert(fd->vthis); // && fd->vthis->csym->Stree
+                gcc_assert(fd->vthis); // && fd->vthis->csym->Stree
                 return irs->convertTo(irs->var(fd->vthis),
                         fd_cd->type, target_cd->type);
             }
             else if (irs->isClassNestedIn(fd_cd, target_cd))
             {
-                assert(0); // not implemented
+                gcc_unreachable(); // not implemented
             }
             else
             {
@@ -3178,7 +3180,7 @@ IRState::getVThis(Dsymbol * decl, Expression * e)
         FuncDeclaration *fd_outer = outer->isFuncDeclaration();
         // Assuming this is kept as trivial as possible.
         // NOTE: what about structs nested in structs nested in functions?
-        assert(fd_outer);
+        gcc_assert(fd_outer);
         if (fd_outer->closureVars.dim ||
                 getFrameInfo(fd_outer)->creates_closure)
         {
@@ -3683,7 +3685,7 @@ IRState::checkSwitchCase(Statement * stmt, int default_flag)
 {
     Flow * flow = currentFlow();
 
-    assert(flow);
+    gcc_assert(flow);
     if (flow->kind != level_switch && flow->kind != level_block)
     {
         stmt->error("%s cannot be in different try block level from switch",
@@ -3704,7 +3706,7 @@ IRState::checkGoto(Statement * stmt, LabelDsymbol * label)
     for (unsigned i = 0; i < Labels.dim; i++)
     {
         Label * linfo = (Label *)Labels.data[i];
-        assert(linfo);
+        gcc_assert(linfo);
 
         if (label == linfo->label)
         {
@@ -3742,13 +3744,13 @@ IRState::checkPreviousGoto(Array * refs)
         Label * ref = (Label *)refs->data[i];
         int found = 0;
 
-        assert(ref && ref->from);
+        gcc_assert(ref && ref->from);
         stmt = ref->from;
 
         for (unsigned i = 0; i < Labels.dim; i++)
         {
             Label * linfo = (Label *)Labels.data[i];
-            assert(linfo);
+            gcc_assert(linfo);
 
             if (ref->label == linfo->label)
             {
@@ -3768,7 +3770,7 @@ IRState::checkPreviousGoto(Array * refs)
                 break;
             }
         }
-        assert(found);
+        gcc_assert(found);
     }
 }
 
@@ -3808,7 +3810,7 @@ void AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
         // does this cause problems?
         VarDeclaration * var_decl = (VarDeclaration *) fields->data[i];
 
-        assert(var_decl->storage_class & STCfield);
+        gcc_assert(var_decl->storage_class & STCfield);
 
         tree ident = var_decl->ident ? get_identifier(var_decl->ident->string) : NULL_TREE;
         tree field_decl = d_build_decl(FIELD_DECL, ident,
@@ -3835,8 +3837,8 @@ void AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
         // DECL_SIZE is NULL if size is zero.
         if (var_decl->size(var_decl->loc))
         {
-            assert(DECL_MODE(field_decl) != VOIDmode);
-            assert(DECL_SIZE(field_decl) != NULL_TREE);
+            gcc_assert(DECL_MODE(field_decl) != VOIDmode);
+            gcc_assert(DECL_SIZE(field_decl) != NULL_TREE);
         }
         fieldList.chain(field_decl);
     }

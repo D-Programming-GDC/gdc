@@ -309,7 +309,7 @@ TypeSArray::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         buf->writeByte('_');
         if (next)
             next->toCppMangle(buf, cms);
-        assert(! cms->hasSubstitute(this, NULL));
+        gcc_assert(! cms->hasSubstitute(this, NULL));
         cms->add(this);
     }
 }
@@ -334,7 +334,7 @@ TypePointer::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         buf->writeByte('P');
         if (next)
             next->toCppMangle(buf, cms);
-        assert(! cms->hasSubstitute(this, NULL));
+        gcc_assert(! cms->hasSubstitute(this, NULL));
         cms->add(this);
     }
 }
@@ -347,7 +347,7 @@ TypeReference::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         buf->writeByte('R');
         if (next)
             next->toCppMangle(buf, cms);
-        assert(! cms->hasSubstitute(this, NULL));
+        gcc_assert(! cms->hasSubstitute(this, NULL));
         cms->add(this);
     }
 }
@@ -364,7 +364,7 @@ TypeFunction::toCppMangle(OutBuffer *buf, CppMangleState *cms)
             next->toCppMangle(buf, cms);
         cpp_mangle_arguments(this, buf, cms);
         buf->writeByte('E');
-        assert(! cms->hasSubstitute(this, NULL));
+        gcc_assert(! cms->hasSubstitute(this, NULL));
         cms->add(this);
     }
 }
@@ -419,7 +419,7 @@ TypeClass::toCppMangle(OutBuffer *buf, CppMangleState *cms)
     {
         buf->writeByte('P');
         cpp_mangle1(sym, buf, cms);
-        assert(! cms->hasSubstitute(this, NULL));
+        gcc_assert(! cms->hasSubstitute(this, NULL));
         cms->add(this);
     }
 }

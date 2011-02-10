@@ -23,7 +23,6 @@
 #include "d-gcc-includes.h"
 #include "d-lang.h"
 #include "d-codegen.h"
-#include <assert.h>
 #include "dt.h"
 
 static tree dt2tree_list_of_elems(dt_t * dt);
@@ -44,7 +43,7 @@ dtval(dt_t** pdt, DT t, dinteger_t i, const void * p)
 dt_t**
 dtcat(dt_t** pdt, dt_t * d)
 {
-    assert(d);
+    gcc_assert(d);
     // wasted time and mem touching... shortcut DTend field?
     while (*pdt)
         pdt = & (*pdt)->DTnext;
@@ -57,8 +56,8 @@ typedef unsigned bitunit_t;
 dt_t**
 dtnbits(dt_t** pdt, target_size_t count, char * pbytes, unsigned unit_size)
 {
-    assert(unit_size == sizeof(bitunit_t));
-    assert(count % unit_size == 0);
+    gcc_assert(unit_size == sizeof(bitunit_t));
+    gcc_assert(count % unit_size == 0);
 
     bitunit_t * p_unit = (bitunit_t *) pbytes;
     bitunit_t * p_unit_end = (bitunit_t *) (pbytes + count);
@@ -82,7 +81,7 @@ dtnbits(dt_t** pdt, target_size_t count, char * pbytes, unsigned unit_size)
             }
         }
     }
-    assert((unsigned)(p_out - pbits) == count);
+    gcc_assert((unsigned)(p_out - pbits) == count);
 
     return dtnbytes(pdt, count, pbits);
 }
