@@ -21,8 +21,9 @@
 */
 
 #include "d-gcc-includes.h"
-#include "total.h"
 #include "statement.h"
+#include "scope.h"
+#include "id.h"
 
 #include "d-lang.h"
 #include "d-codegen.h"

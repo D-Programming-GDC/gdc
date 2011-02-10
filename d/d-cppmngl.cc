@@ -22,7 +22,7 @@
 #include "d-gcc-includes.h"
 
 // from DMD
-#include "total.h"
+#include "enum.h"
 #include "init.h"
 #include "symbol.h"
 #include "d-lang.h"

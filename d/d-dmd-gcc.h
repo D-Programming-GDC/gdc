@@ -39,7 +39,6 @@ extern bool d_gcc_is_target_win32();
 /* used in toobj.c */
 struct VarDeclaration;
 struct Symbol;
-struct ClassDeclaration;
 extern void d_gcc_emit_local_variable(VarDeclaration *);
 extern bool d_gcc_supports_weak();
 
@@ -57,7 +56,9 @@ extern Module * d_gcc_get_output_module();
 
 #if V2
 /* used in interpret.c */
-extern Expression * d_gcc_eval_builtin(CallExp *ce, Expressions *arguments);
+struct CallExp;
+struct Expressions;
+extern Expression * d_gcc_eval_builtin(CallExp *, Expressions *);
 #endif
 
 #endif

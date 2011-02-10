@@ -21,13 +21,14 @@
 
 #include "d-gcc-includes.h"
 #include "d-lang.h"
-#include "total.h"
 #include "attrib.h"
+#include "module.h"
 #include "template.h"
 #include "symbol.h"
 #include "d-codegen.h"
 
 static ListMaker bi_fn_list;
+static ListMaker bi_type_list;
 
 // Necessary for built-in struct types
 static Array builtin_converted_types;

@@ -19,7 +19,6 @@
 #include "d-gcc-includes.h"
 #include "d-lang.h"
 #include "d-codegen.h"
-#include "total.h"
 #include "dt.h"
 
 dt_t** ComplexExp::toDt(dt_t** pdt)

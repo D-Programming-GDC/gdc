@@ -23,9 +23,11 @@
 #include "d-gcc-includes.h"
 #include "d-lang.h"
 #include "d-codegen.h"
+
 #include <math.h>
 #include <limits.h>
-#include "total.h"
+
+#include "module.h"
 #include "template.h"
 #include "init.h"
 #include "symbol.h"

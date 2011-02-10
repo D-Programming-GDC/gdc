@@ -26,7 +26,6 @@
 #include <math.h>
 #include <limits.h>
 
-#include "total.h"
 #include "template.h"
 #include "init.h"
 #include "symbol.h"

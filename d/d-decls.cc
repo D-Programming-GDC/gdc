@@ -34,12 +34,13 @@
 
 #include "d-gcc-includes.h"
 
-#include "total.h"
 #include "mars.h"
 #include "statement.h"
 #include "aggregate.h"
 #include "init.h"
 #include "attrib.h"
+#include "enum.h"
+#include "module.h"
 
 #include "symbol.h"
 #include "d-lang.h"

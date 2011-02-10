@@ -23,7 +23,6 @@
 #include "d-lang.h"
 #include "d-irstate.h"
 
-#include "total.h"
 #include "init.h"
 #include "symbol.h"
 
