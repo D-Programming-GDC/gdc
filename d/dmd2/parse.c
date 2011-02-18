@@ -240,7 +240,7 @@ Dsymbols *Parser::parseDeclDefs(int once)
             case TOKtypeof:
             case TOKdot:
             Ldeclaration:
-                a = parseDeclarations(STCundefined);
+                a = parseDeclarations(STCundefined, NULL);
                 decldefs->append(a);
                 continue;
 
@@ -441,7 +441,7 @@ Dsymbols *Parser::parseDeclDefs(int once)
                      peek(tk)->value == TOKlcurly)
                    )
                 {
-                    a = parseDeclarations(storageClass);
+                    a = parseDeclarations(storageClass, comment);
                     decldefs->append(a);
                     continue;
                 }
@@ -2662,7 +2662,7 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
  * Return array of Declaration *'s.
  */
 
-Dsymbols *Parser::parseDeclarations(StorageClass storage_class)
+Dsymbols *Parser::parseDeclarations(StorageClass storage_class, unsigned char *comment)
 {
     StorageClass stc;
     Type *ts;
@@ -2671,10 +2671,12 @@ Dsymbols *Parser::parseDeclarations(StorageClass storage_class)
     Identifier *ident;
     Dsymbols *a;
     enum TOK tok = TOKreserved;
-    unsigned char *comment = token.blockComment;
     enum LINK link = linkage;
 
     //printf("parseDeclarations() %s\n", token.toChars());
+    if (!comment)
+        comment = token.blockComment;
+
     if (storage_class)
     {   ts = NULL;              // infer type
         goto L2;
@@ -3494,7 +3496,7 @@ Statement *Parser::parseStatement(int flags)
         Ldeclaration:
         {   Array *a;
 
-            a = parseDeclarations(STCundefined);
+            a = parseDeclarations(STCundefined, NULL);
             if (a->dim > 1)
             {
                 Statements *as = new Statements();
@@ -5097,12 +5099,12 @@ Expression *Parser::parsePrimaryExp()
             break;
 
         case TOKint32v:
-            e = new IntegerExp(loc, (d_int32)token.int64value, Type::tint32);
+            e = new IntegerExp(loc, token.int32value, Type::tint32);
             nextToken();
             break;
 
         case TOKuns32v:
-            e = new IntegerExp(loc, (d_uns32)token.uns64value, Type::tuns32);
+            e = new IntegerExp(loc, token.uns32value, Type::tuns32);
             nextToken();
             break;
 
@@ -5176,17 +5178,17 @@ Expression *Parser::parsePrimaryExp()
             break;
 
         case TOKcharv:
-            e = new IntegerExp(loc, (d_uns32)token.uns64value, Type::tchar);
+            e = new IntegerExp(loc, token.uns32value, Type::tchar);
             nextToken();
             break;
 
         case TOKwcharv:
-            e = new IntegerExp(loc, (d_uns32)token.uns64value, Type::twchar);
+            e = new IntegerExp(loc, token.uns32value, Type::twchar);
             nextToken();
             break;
 
         case TOKdcharv:
-            e = new IntegerExp(loc, (d_uns32)token.uns64value, Type::tdchar);
+            e = new IntegerExp(loc, token.uns32value, Type::tdchar);
             nextToken();
             break;
 

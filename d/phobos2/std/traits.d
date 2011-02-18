@@ -13,6 +13,7 @@
  *            Tomasz Stachowiak ($(D isExpressionTuple)),
  *            $(WEB erdani.org, Andrei Alexandrescu),
  *            Shin Fujishiro
+ * Source:    $(PHOBOSSRC std/_traits.d)
  */
 /*          Copyright Digital Mars 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
@@ -21,6 +22,7 @@
  */
 module std.traits;
 import std.typetuple;
+import core.vararg;
 
 //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::://
 // Functions
@@ -877,11 +879,29 @@ assert(R.length == 4
 ----
 */
 
-template RepresentationTypeTuple(T...)
+template RepresentationTypeTuple(T)
+{
+    static if (is(T == struct) || is(T == union) || is(T == class))
+    {
+        alias RepresentationTypeTupleImpl!(FieldTypeTuple!T)
+            RepresentationTypeTuple;
+    }
+    else static if (is(T U == typedef))
+    {
+        alias RepresentationTypeTuple!U RepresentationTypeTuple;
+    }
+    else
+    {
+        alias RepresentationTypeTupleImpl!T
+            RepresentationTypeTuple;
+    }
+}
+
+private template RepresentationTypeTupleImpl(T...)
 {
     static if (T.length == 0)
     {
-        alias TypeTuple!() RepresentationTypeTuple;
+        alias TypeTuple!() RepresentationTypeTupleImpl;
     }
     else
     {
@@ -889,19 +909,19 @@ template RepresentationTypeTuple(T...)
 // @@@BUG@@@ this should work
 //             alias .RepresentationTypes!(T[0].tupleof)
 //                 RepresentationTypes;
-            alias .RepresentationTypeTuple!(FieldTypeTuple!(T[0]),
+            alias .RepresentationTypeTupleImpl!(FieldTypeTuple!(T[0]),
                                             T[1 .. $])
-                RepresentationTypeTuple;
+                RepresentationTypeTupleImpl;
         else static if (is(T[0] U == typedef))
         {
-            alias .RepresentationTypeTuple!(FieldTypeTuple!(U),
+            alias .RepresentationTypeTupleImpl!(FieldTypeTuple!(U),
                                             T[1 .. $])
-                RepresentationTypeTuple;
+                RepresentationTypeTupleImpl;
         }
         else
         {
-            alias TypeTuple!(T[0], RepresentationTypeTuple!(T[1 .. $]))
-                RepresentationTypeTuple;
+            alias TypeTuple!(T[0], RepresentationTypeTupleImpl!(T[1 .. $]))
+                RepresentationTypeTupleImpl;
         }
     }
 }
@@ -924,6 +944,10 @@ unittest
     assert(R.length == 4
            && is(R[0] == char[]) && is(R[1] == int)
            && is(R[2] == float) && is(R[3] == S11*));
+
+    class C { int a; float b; }
+    alias RepresentationTypeTuple!C R1;
+    static assert(R1.length == 2 && is(R1[0] == int) && is(R1[1] == float));
 }
 
 /*
@@ -1056,7 +1080,7 @@ static assert(hasRawAliasing!(S4));
 private template hasRawAliasing(T...)
 {
     enum hasRawAliasing
-        = hasRawPointerImpl!(RepresentationTypeTuple!(T)).result;
+        = hasRawPointerImpl!(RepresentationTypeTuple!T).result;
 }
 
 unittest
@@ -1448,6 +1472,37 @@ unittest
     static assert(!hasElaborateAssign!S2);
     struct S3 { S s; }
     static assert(hasElaborateAssign!S3);
+}
+
+/**
+   True if $(D S) or any type directly embedded in the representation
+   of $(D S) defines an elaborate destructor. Elaborate destructors
+   are introduced by defining $(D ~this()) for a $(D
+   struct). (Non-struct types never have elaborate destructors, even
+   though classes may define $(D ~this()).)
+ */
+template hasElaborateDestructor(S)
+{
+    static if(!is(S == struct))
+    {
+        enum bool hasElaborateDestructor = false;
+    }
+    else
+    {
+        enum hasElaborateDestructor = is(typeof({S s; return &s.__dtor;}))
+            || anySatisfy!(.hasElaborateDestructor, typeof(S.tupleof));
+    }
+}
+
+unittest
+{
+    static assert(!hasElaborateDestructor!int);
+    static struct S1 { }
+    static assert(!hasElaborateDestructor!S1);
+    static struct S2 { ~this() {} }
+    static assert(hasElaborateDestructor!S2);
+    static struct S3 { S2 field; }
+    static assert(hasElaborateDestructor!S3);
 }
 
 /**
@@ -3089,6 +3144,81 @@ unittest
     static assert(is(ModifyTypePreservingSTC!(Intify, shared(const real)) == shared(const int)));
 }
 version (unittest) private template Intify(T) { alias int Intify; }
+
+/*
+*/
+template StringTypeOf(T) if (isSomeString!T)
+{
+    static if (is(T == class) || is(T == struct))
+    {
+        static if (is(T : const(char[])))
+        {
+            static if (is(T : char[]))
+                alias char[] StringTypeOf;
+            else static if (is(T : immutable(char[])))
+                alias immutable(char)[] StringTypeOf;
+            else
+                alias const(char)[] StringTypeOf;
+        }
+        else static if (is(T : const(wchar[])))
+        {
+            static if (is(T : wchar[]))
+                alias wchar[] StringTypeOf;
+            else static if (is(T : immutable(wchar[])))
+                alias immutable(wchar)[] StringTypeOf;
+            else
+                alias const(wchar)[] StringTypeOf;
+        }
+        else
+        {
+            static if (is(T : dchar[]))
+                alias dchar[] StringTypeOf;
+            else static if (is(T : immutable(dchar[])))
+                alias immutable(dchar)[] StringTypeOf;
+            else
+                alias const(dchar)[] StringTypeOf;
+        }
+    }
+    else
+    {
+        alias T StringTypeOf;
+    }
+}
+unittest
+{
+    class C(Char, int n)
+    {
+        static if (n==0) Char[]            val;
+        static if (n==1) const(Char)[]     val;
+        static if (n==2) const(Char[])     val;
+        static if (n==3) immutable(Char)[] val;
+        static if (n==4) immutable(Char[]) val;
+        alias val this;
+    }
+    struct S(Char, int n)
+    {
+        static if (n==0) Char[]            val;
+        static if (n==1) const(Char)[]     val;
+        static if (n==2) const(Char[])     val;
+        static if (n==3) immutable(Char)[] val;
+        static if (n==4) immutable(Char[]) val;
+        alias val this;
+    }
+    foreach (Char; TypeTuple!(char, wchar, dchar))
+    {
+        static assert(is(StringTypeOf!(C!(Char, 0)) == Char[]));
+        static assert(is(StringTypeOf!(C!(Char, 1)) == const(Char)[]));
+        static assert(is(StringTypeOf!(C!(Char, 2)) == const(Char)[]));     // cannot get exact string type
+        static assert(is(StringTypeOf!(C!(Char, 3)) == immutable(Char)[]));
+        static assert(is(StringTypeOf!(C!(Char, 4)) == immutable(Char)[])); // cannot get exact string type
+        
+        static assert(is(StringTypeOf!(S!(Char, 0)) == Char[]));
+        static assert(is(StringTypeOf!(S!(Char, 1)) == const(Char)[]));
+        static assert(is(StringTypeOf!(S!(Char, 2)) == const(Char)[]));     // cannot get exact string type
+        static assert(is(StringTypeOf!(S!(Char, 3)) == immutable(Char)[]));
+        static assert(is(StringTypeOf!(S!(Char, 4)) == immutable(Char)[])); // cannot get exact string type
+    }
+}
 
 /**
 Returns the inferred type of the loop variable when a variable of type T

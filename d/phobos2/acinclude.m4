@@ -80,7 +80,7 @@ AC_CHECK_FUNC(getpwnam_r,DCFG_GETPWNAM_R="GNU_Unix_Have_getpwnam_r",[])
 
 
 D_EXTRA_OBJS="std/c/unix/unix.o $D_EXTRA_OBJS"
-DRUNTIME_OBJS="gcc/config/unix.o gcc/cbridge_fdset.o $DRUNTIME_OBJS"
+DRUNTIME_OBJS="gcc/config/unix.o $DRUNTIME_OBJS"
 # Add "linux" module for compatibility even if not Linux
 D_EXTRA_OBJS="std/c/linux/linux.o $D_EXTRA_OBJS"
 D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_unix_d_src)'
@@ -104,11 +104,11 @@ case "$d_target_os" in
 	    ;;
   cygwin*)  d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    ;;
-  darwin*)  D_GC_MODULES="$D_GC_MODULES gc/gc_dyld.o"
+  darwin*)  D_GC_MODULES="$D_GC_MODULES rt/memory_osx.o"
 	    d_gc_stack=GC_Use_Stack_Fixed
 	    d_gc_data="$d_gc_data GC_Use_Data_Dyld"
 	    ;;
-  freebsd*|k*bsd*-gnu)D_GC_MODULES="$D_GC_MODULES gc/gc_freebsd.o"
+  freebsd*|k*bsd*-gnu)
 	    d_gc_stack=GC_Use_Stack_FreeBSD
 	    d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    dnl maybe just GC_Use_Stack_ExternC
@@ -147,10 +147,10 @@ if test -z "$d_gc_stack"; then
        d_gc_stack=GC_Use_Stack_GLibC],
       [AC_MSG_RESULT(no)])
 fi
-if test -z "$d_gc_stack"; then
-    d_gc_stack=GC_Use_Stack_Guess
-    D_GC_MODULES="$D_GC_MODULES gc/gc_guess_stack.o"
-fi
+dnl if test -z "$d_gc_stack"; then
+dnl    d_gc_stack=GC_Use_Stack_Guess
+dnl    D_GC_MODULES="$D_GC_MODULES gc/gc_guess_stack.o"
+dnl fi
 if test -z "$d_gc_stack"; then
     AC_MSG_ERROR([No usable stack origin information])
 fi

@@ -22,6 +22,7 @@
  * Copyright: Copyright Digital Mars 2000 - 2009.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   $(WEB digitalmars.com, Walter Bright)
+ * Source:    $(PHOBOSSRC std/_zip.d)
  */
 
 /*          Copyright Digital Mars 2000 - 2009.
@@ -31,9 +32,9 @@
  */
 module std.zip;
 
-private import std.zlib;
-private import std.date;
-private import std.intrinsic;
+import std.zlib;
+import std.datetime;
+import std.intrinsic;
 import std.conv;
 
 //debug=print;
@@ -53,17 +54,17 @@ class ZipException : Exception
  */
 class ArchiveMember
 {
-    ushort madeVersion = 20;    /// Read Only
-    ushort extractVersion = 20; /// Read Only
-    ushort flags;               /// Read/Write: normally set to 0
-    ushort compressionMethod;   /// Read/Write: 0 for compression, 8 for deflate
-    std.date.DosFileTime time;  /// Read/Write: Last modified time of the member. It's in the DOS date/time format.
-    uint crc32;                 /// Read Only: cyclic redundancy check (CRC) value
-    uint compressedSize;        /// Read Only: size of data of member in compressed form.
-    uint expandedSize;          /// Read Only: size of data of member in expanded form.
-    ushort diskNumber;          /// Read Only: should be 0.
-    ushort internalAttributes;  /// Read/Write
-    uint externalAttributes;    /// Read/Write
+    ushort madeVersion = 20;       /// Read Only
+    ushort extractVersion = 20;    /// Read Only
+    ushort flags;                  /// Read/Write: normally set to 0
+    ushort compressionMethod;      /// Read/Write: 0 for compression, 8 for deflate
+    std.datetime.DosFileTime time; /// Read/Write: Last modified time of the member. It's in the DOS date/time format.
+    uint crc32;                    /// Read Only: cyclic redundancy check (CRC) value
+    uint compressedSize;           /// Read Only: size of data of member in compressed form.
+    uint expandedSize;             /// Read Only: size of data of member in expanded form.
+    ushort diskNumber;             /// Read Only: should be 0.
+    ushort internalAttributes;     /// Read/Write
+    uint externalAttributes;       /// Read/Write
 
     private uint offset;
 
@@ -83,8 +84,8 @@ class ArchiveMember
     {
     void print()
     {
-        printf("name = '%.*s'\n", name);
-        printf("\tcomment = '%.*s'\n", comment);
+        printf("name = '%.*s'\n", name.length, name.ptr);
+        printf("\tcomment = '%.*s'\n", comment.length, comment.ptr);
         printf("\tmadeVersion = x%04x\n", madeVersion);
         printf("\textractVersion = x%04x\n", extractVersion);
         printf("\tflags = x%04x\n", flags);
@@ -136,7 +137,7 @@ class ZipArchive
         printf("\tdiskStartDir = %u\n", diskStartDir);
         printf("\tnumEntries = %u\n", numEntries);
         printf("\ttotalEntries = %u\n", totalEntries);
-        printf("\tcomment = '%.*s'\n", comment);
+        printf("\tcomment = '%.*s'\n", comment.length, comment.ptr);
     }
     }
 

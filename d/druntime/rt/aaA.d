@@ -5,7 +5,7 @@
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
  */
- 
+
 /*          Copyright Digital Mars 2000 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
@@ -46,6 +46,13 @@ static immutable size_t[] prime_list = [
     1_610_612_741UL,  4_294_967_291UL,
 //  8_589_934_513UL, 17_179_869_143UL
 ];
+
+/* This is the type of the return value for dynamic arrays.
+ * It should be a type that is returned in registers.
+ * Although DMD will return types of Array in registers,
+ * gcc will not, so we instead use a 'long'.
+ */
+alias void[] ArrayRet_t;
 
 struct Array
 {
@@ -202,6 +209,7 @@ body
  * Add entry for key if it is not already there.
  */
 
+// retained for backwards compatibility
 void* _aaGet(AA* aa, TypeInfo keyti, size_t valuesize, ...)
 {
     return _aaGetp(aa, keyti, valuesize, cast(void*)(&valuesize + 1));
@@ -254,7 +262,8 @@ body
     //printf("create new one\n");
     size_t size = aaA.sizeof + keysize + valuesize;
     e = cast(aaA *) gc_calloc(size);
-    memcpy(e + 1, pkey, keysize);
+    memcpy(e + 1, pkey, keyti.tsize);
+    memset(cast(byte*)(e + 1) + keyti.tsize, 0, keysize - keyti.tsize);
     e.hash = key_hash;
     *pe = e;
 
@@ -404,15 +413,12 @@ void _aaDelp(AA aa, TypeInfo keyti, void* pkey)
  * Produce array of values from aa.
  */
 
-Array _aaValues(AA aa, size_t keysize, size_t valuesize)
-in
-{
-    assert(keysize == aligntsize(keysize));
-}
-body
+ArrayRet_t _aaValues(AA aa, size_t keysize, size_t valuesize)
 {
     size_t resi;
     Array a;
+
+    auto alignsize = aligntsize(keysize);
 
     if (aa.a)
     {
@@ -425,7 +431,7 @@ body
             while (e)
             {
                 memcpy(a.ptr + resi * valuesize,
-                       cast(byte*)e + aaA.sizeof + keysize,
+                       cast(byte*)e + aaA.sizeof + alignsize,
                        valuesize);
                 resi++;
                 e = e.next;
@@ -433,7 +439,7 @@ body
         }
         assert(resi == a.length);
     }
-    return *cast(Array*)(&a);
+    return *cast(ArrayRet_t*)(&a);
 }
 
 
@@ -497,12 +503,11 @@ body
  * Produce array of N byte keys from aa.
  */
 
-Array _aaKeys(AA aa, size_t keysize)
+ArrayRet_t _aaKeys(AA aa, size_t keysize)
 {
-    Array a;
     auto len = _aaLen(aa);
     if (!len)
-        return a;
+        return null;
     auto res = (cast(byte*) gc_malloc(len * keysize,
                                  !(aa.a.keyti.flags() & 1) ? BlkAttr.NO_SCAN : 0))[0 .. len * keysize];
     size_t resi = 0;
@@ -517,9 +522,54 @@ Array _aaKeys(AA aa, size_t keysize)
     }
     assert(resi == len);
 
+    Array a;
     a.length = len;
     a.ptr = res.ptr;
-    return *cast(Array*)(&a);
+    return *cast(ArrayRet_t*)(&a);
+}
+
+unittest
+{
+    int[string] aa;
+
+    aa["hello"] = 3;
+    assert(aa["hello"] == 3);
+    aa["hello"]++;
+    assert(aa["hello"] == 4);
+
+    assert(aa.length == 1);
+
+    string[] keys = aa.keys;
+    assert(keys.length == 1);
+    assert(memcmp(keys[0].ptr, cast(char*)"hello", 5) == 0);
+
+    int[] values = aa.values;
+    assert(values.length == 1);
+    assert(values[0] == 4);
+
+    aa.rehash;
+    assert(aa.length == 1);
+    assert(aa["hello"] == 4);
+
+    aa["foo"] = 1;
+    aa["bar"] = 2;
+    aa["batz"] = 3;
+
+    assert(aa.keys.length == 4);
+    assert(aa.values.length == 4);
+
+    foreach(a; aa.keys)
+    {
+        assert(a.length != 0);
+        assert(a.ptr != null);
+        //printf("key: %.*s -> value: %d\n", a.length, a.ptr, aa[a]);
+    }
+
+    foreach(v; aa.values)
+    {
+        assert(v != 0);
+        //printf("value: %d\n", v);
+    }
 }
 
 
@@ -531,14 +581,11 @@ Array _aaKeys(AA aa, size_t keysize)
 extern (D) typedef int delegate(void *) dg_t;
 
 int _aaApply(AA aa, size_t keysize, dg_t dg)
-in
-{
-    assert(aligntsize(keysize) == keysize);
-}
-body
 {   int result;
 
     //printf("_aaApply(aa = x%llx, keysize = %d, dg = x%llx)\n", aa.a, keysize, dg);
+
+    auto alignsize = aligntsize(keysize);
 
     if (aa.a)
     {
@@ -547,7 +594,7 @@ body
         {
             while (e)
             {
-                result = dg(cast(void *)(e + 1) + keysize);
+                result = dg(cast(void *)(e + 1) + alignsize);
                 if (result)
                     break Loop;
                 e = e.next;
@@ -561,14 +608,11 @@ body
 extern (D) typedef int delegate(void *, void *) dg2_t;
 
 int _aaApply2(AA aa, size_t keysize, dg2_t dg)
-in
-{
-    assert(aligntsize(keysize) == keysize);
-}
-body
 {   int result;
 
     //printf("_aaApply(aa = x%llx, keysize = %d, dg = x%llx)\n", aa.a, keysize, dg);
+
+    auto alignsize = aligntsize(keysize);
 
     if (aa.a)
     {
@@ -577,7 +621,7 @@ body
         {
             while (e)
             {
-                result = dg(cast(void *)(e + 1), cast(void *)(e + 1) + keysize);
+                result = dg(cast(void *)(e + 1), cast(void *)(e + 1) + alignsize);
                 if (result)
                     break Loop;
                 e = e.next;

@@ -17,6 +17,15 @@
 
 #define __C99FEATURES__ 1       // Needed on Solaris for NaN and more
 #define __USE_ISOC99 1          // so signbit() gets defined
+
+#if IN_GCC
+#include "gdc_alloca.h"
+#else
+#if (defined (__SVR4) && defined (__sun))
+#include <alloca.h>
+#endif
+#endif
+
 #include <math.h>
 
 #include <stdio.h>
@@ -26,13 +35,8 @@
 #endif
 
 #if IN_GCC
-#include "gdc_alloca.h"
 #include "d-confdefs.h"
-#endif
-
-// TODO%% this undefines signbit and includes is the wrong complex.h anyway
-// -- not sure why this is needed, anyway
-// don't need to worry about all this if the 'nan negative by default' issue is resolved
+#else
 #if _MSC_VER
 #include <malloc.h>
 #include <complex>
@@ -42,12 +46,6 @@
 #elif __MINGW32__
 #include <malloc.h>
 #endif
-
-#ifndef NAN
-#define NAN (nan("0"))
-#endif
-#ifndef INFINITY
-#define INFINITY (infinity())
 #endif
 
 #include "rmem.h"
@@ -66,6 +64,7 @@
 #include "import.h"
 #include "aggregate.h"
 #include "hdrgen.h"
+#include "doc.h"
 
 FuncDeclaration *hasThis(Scope *sc);
 
@@ -1744,10 +1743,13 @@ Expression *Type::getProperty(Loc loc, Identifier *ident)
             s = toDsymbol(NULL);
         if (s)
             s = s->search_correct(ident);
-        if (s)
-            error(loc, "no property '%s' for type '%s', did you mean '%s'?", ident->toChars(), toChars(), s->toChars());
-        else
-            error(loc, "no property '%s' for type '%s'", ident->toChars(), toChars());
+        if (this != Type::terror)
+        {
+            if (s)
+                error(loc, "no property '%s' for type '%s', did you mean '%s'?", ident->toChars(), toChars(), s->toChars());
+            else
+                error(loc, "no property '%s' for type '%s'", ident->toChars(), toChars());
+        }
         e = new ErrorExp();
     }
     return e;
@@ -2518,14 +2520,20 @@ unsigned TypeBasic::alignsize()
 #if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS || TARGET_UNIX
         case Tint64:
         case Tuns64:
+            sz = global.params.isX86_64 ? 8 : 4;
+            break;
+
         case Tfloat64:
         case Timaginary64:
+            sz = global.params.isX86_64 ? 8 : 4;
+            break;
+
         case Tcomplex32:
+            sz = 4;
+            break;
+
         case Tcomplex64:
-            if (global.params.isX86_64)
-                sz = size(0);
-            else
-                sz = 4;
+            sz = global.params.isX86_64 ? 8 : 4;
             break;
 #endif
 
@@ -2604,11 +2612,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tfloat64:      fvalue = DBL_MAX;       goto Lfvalue;
             case Tcomplex80:
             case Timaginary80:
-#if IN_GCC
             case Tfloat80:      fvalue = LDBL_MAX;      goto Lfvalue;
-#else
-            case Tfloat80:      fvalue = Port::ldbl_max; goto Lfvalue;
-#endif
         }
     }
     else if (ident == Id::min)
@@ -3182,10 +3186,10 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         dup = (ident == Id::dup || ident == Id::idup);
         if (dup)
             fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::adDup,
-                Type::typeinfo->type, Type::tvoid->arrayOf());
+                    Type::typeinfo->type, Type::tvoid->arrayOf());
         else
             fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::adReverse,
-                Type::tvoid->arrayOf(), Type::tsize_t);
+                    Type::tvoid->arrayOf(), Type::tsize_t);
         ec = new VarExp(0, fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
@@ -3211,7 +3215,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         Expressions *arguments;
 
         fd = FuncDeclaration::genCfunc(tint32->arrayOf(), "_adSort",
-            Type::tvoid->arrayOf(), Type::tvoid->pointerTo());
+                Type::tvoid->arrayOf(), Type::tvoidptr);
         ec = new VarExp(0, fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
@@ -4156,7 +4160,7 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         FuncDeclaration *fd;
         Expressions *arguments;
 
-        fd = FuncDeclaration::genCfunc(Type::tsize_t, Id::aaLen, Type::tvoid->arrayOf());
+        fd = FuncDeclaration::genCfunc(Type::tsize_t, Id::aaLen);
         ec = new VarExp(0, fd);
         arguments = new Expressions();
         arguments->push(e);
@@ -4172,8 +4176,7 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         int size = index->size(e->loc);
 
         assert(size);
-        fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::aaKeys,
-            Type::tvoid->arrayOf(), Type::tsize_t);
+        fd = FuncDeclaration::genCfunc(Type::tindex, Id::aaKeys);
         ec = new VarExp(0, fd);
         arguments = new Expressions();
         arguments->push(e);
@@ -4187,8 +4190,7 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         FuncDeclaration *fd;
         Expressions *arguments;
 
-        fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::aaValues,
-            Type::tvoid->arrayOf(), Type::tsize_t, Type::tsize_t);
+        fd = FuncDeclaration::genCfunc(Type::tindex, Id::aaValues);
         ec = new VarExp(0, fd);
         arguments = new Expressions();
         arguments->push(e);
@@ -4205,7 +4207,7 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         FuncDeclaration *fd;
         Expressions *arguments;
 
-        fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::aaRehash);
+        fd = FuncDeclaration::genCfunc(Type::tint64, Id::aaRehash);
         ec = new VarExp(0, fd);
         arguments = new Expressions();
         arguments->push(e->addressOf(sc));
@@ -6072,6 +6074,7 @@ TypeTypeof::TypeTypeof(Loc loc, Expression *exp)
         : TypeQualified(Ttypeof, loc)
 {
     this->exp = exp;
+    inuse = 0;
 }
 
 Type *TypeTypeof::syntaxCopy()
@@ -6114,6 +6117,13 @@ Type *TypeTypeof::semantic(Loc loc, Scope *sc)
     //printf("TypeTypeof::semantic() %s\n", toChars());
 
     //static int nest; if (++nest == 50) *(char*)0=0;
+    if (inuse)
+    {
+        inuse = 2;
+        error(loc, "circular typeof definition");
+        return Type::terror;
+    }
+    inuse++;
 
 #if 0
     /* Special case for typeof(this) and typeof(super) since both
@@ -6216,9 +6226,11 @@ Type *TypeTypeof::semantic(Loc loc, Scope *sc)
             goto Lerr;
         }
     }
+    inuse--;
     return t;
 
 Lerr:
+    inuse--;
     return terror;
 }
 
@@ -7220,9 +7232,12 @@ static MATCH aliasthisConvTo(AggregateDeclaration *ad, Type *from, Type *to)
             Expression *ethis = from->defaultInit(0);
             fd = fd->overloadResolve(0, ethis, NULL);
             if (fd)
+            {
                 t = ((TypeFunction *)fd->type)->next;
+            }
         }
-        return t->implicitConvTo(to);
+        MATCH m = t->implicitConvTo(to);
+        return m;
     }
     return MATCHnomatch;
 }
@@ -8186,7 +8201,12 @@ void Parameter::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Parameters *argu
             if (arg->defaultArg)
             {
                 argbuf.writestring(" = ");
+                unsigned o = argbuf.offset;
                 arg->defaultArg->toCBuffer(&argbuf, hgs);
+                if (hgs->ddoc)
+                {
+                    escapeDdocString(&argbuf, o);
+                }
             }
             buf->write(&argbuf);
         }

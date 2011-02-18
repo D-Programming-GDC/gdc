@@ -16,6 +16,7 @@
  * Authors:   $(WEB digitalmars.com, Walter Bright),
  *            Grzegorz Adam Hankiewicz, Thomas K&uuml;hne, Bill Baxter,
  *            $(WEB erdani.org, Andrei Alexandrescu)
+ * Source:    $(PHOBOSSRC std/_path.d)
  */
 module std.path;
 
@@ -80,7 +81,7 @@ version(Posix)
 
 version (Windows) alias std.string.icmp fcmp;
 
-version (Posix) alias std.string.cmp fcmp;
+version (Posix) alias std.algorithm.cmp fcmp;
 
 /**************************
  * Extracts the extension from a filename or path.
@@ -909,7 +910,7 @@ unittest
     debug(path) printf("path.join.unittest\n");
 
     string p;
-    int i;
+    sizediff_t i;
 
     p = join("foo", "bar");
     version (Windows)
@@ -1438,7 +1439,7 @@ private string expandFromDatabase(string path)
 
     // Extract username, searching for path separator.
     string username;
-    auto last_char = std.algorithm.indexOf(path, sep[0]);
+    auto last_char = std.algorithm.countUntil(path, sep[0]);
 
     if (last_char == -1)
     {
@@ -1451,9 +1452,8 @@ private string expandFromDatabase(string path)
     }
     assert(last_char > 1);
 
-    version (GNU_Unix_Have_getpwnam_r)
-    {
-    
+  version (GNU_Unix_Have_getpwnam_r)
+  {  
     // Reserve C memory for the getpwnam_r() function.
     passwd result;
     int extra_memory_size = 5 * 1024;
@@ -1498,10 +1498,9 @@ Lerror:
         std.c.stdlib.free(extra_memory);
     onOutOfMemoryError();
     return null;
-    
-    }
-    else
-    {
+  }
+  else
+  {
 	passwd * result;
 
 	/* This does not guarantee another thread will not
@@ -1513,7 +1512,7 @@ Lerror:
 	if (result)
 	    path = combineCPathWithDPath(result.pw_dir, path, last_char);
 	return path;
-    }
+  }
 }
 
 }

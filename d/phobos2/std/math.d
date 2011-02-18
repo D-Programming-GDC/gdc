@@ -20,6 +20,7 @@
  * std.mathspecial. They will be officially deprecated in std.math in DMD2.055.
  * The semantics and names of feqrel and approxEqual will be revised.
  *
+ * Source: $(PHOBOSSRC std/_math.d)
  * Macros:
  *      WIKI = Phobos/StdMath
  *
@@ -48,10 +49,11 @@
  *      SQRT = &radic;
  *      HALF = &frac12;
  *
- * Copyright: Copyright Digital Mars 2000 - 2009.
+ * Copyright: Copyright Digital Mars 2000 - 2011.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   $(WEB digitalmars.com, Walter Bright),
  *                        Don Clugston
+ * Source: $(PHOBOSSRC std/_math.d)
  */
 module std.math;
 
@@ -77,6 +79,14 @@ version (X86){
 version (X86_64){
     version = X86_Any;
 }
+
+version(D_InlineAsm_X86){
+    version = InlineAsm_X86_Any;
+}
+else version(D_InlineAsm_X86_64){
+    version = InlineAsm_X86_Any;
+}
+
 
 
 
@@ -401,16 +411,25 @@ unittest{
  *      )
  */
 
-real tan(real x) @trusted pure nothrow
+real tan(real x) @trusted pure nothrow 
 {
     version(GNU) {
         // %% problems outputting Lret label.
         return core.stdc.math.tanl(x);
     } else
     version(D_InlineAsm_X86) {
+        asm
+        {
+            fld     x[EBP]                  ; // load theta
+        } 
+    } else version(D_InlineAsm_X86_64) {
+        asm {
+            fld     x[RBP]                  ; // load theta
+        }
+    }
+    version(InlineAsm_X86_Any) {
     asm
     {
-        fld     x[EBP]                  ; // load theta
         fxam                            ; // test for oddball values
         fstsw   AX                      ;
         sahf                            ;
@@ -440,8 +459,6 @@ trigerr:
 
 Lret:
     ;
-    } else version(D_InlineAsm_X86_64) {
-        assert(false, "not implemented");
     } else {
         return core.stdc.math.tanl(x);
     }
@@ -581,17 +598,13 @@ float atan(float x)  @safe pure nothrow { return atan(cast(real)x); }
  */
 real atan2(real y, real x) @trusted pure nothrow
 {
-    version(D_InlineAsm_X86)
+    version(InlineAsm_X86_Any)
     {
         asm {
             fld y;
             fld x;
             fpatan;
         }
-    }
-    else version(D_InlineAsm_X86_64)
-    {
-        assert(false, "not implemented");
     }
     else
     {
@@ -1066,7 +1079,75 @@ L_largenegative:
             ret PARAMSIZE;
         }
     } else version(D_InlineAsm_X86_64) {
-        assert(false, "not implemented");
+        asm
+        { 
+            /*  expm1() for x87 80-bit reals, IEEE754-2008 conformant. 
+             * Author: Don Clugston. 
+             * 
+             *    expm1(x) = 2^(rndint(y))* 2^(y-rndint(y)) - 1 where y = LN2*x. 
+             *    = 2rndy * 2ym1 + 2rndy - 1, where 2rndy = 2^(rndint(y)) 
+             *     and 2ym1 = (2^(y-rndint(y))-1). 
+             *    If 2rndy  < 0.5*real.epsilon, result is -1. 
+             *    Implementation is otherwise the same as for exp2() 
+             */ 
+            naked; 
+            fld real ptr [RSP+8] ; // x 
+            mov AX, [RSP+8+8]; // AX = exponent and sign 
+            sub RSP, 24;       // Create scratch space on the stack 
+            // [RSP,RSP+2] = scratchint 
+            // [RSP+4..+6, +8..+10, +10] = scratchreal 
+            // set scratchreal mantissa = 1.0 
+            mov dword ptr [RSP+8], 0; 
+            mov dword ptr [RSP+8+4], 0x80000000; 
+            and AX, 0x7FFF; // drop sign bit 
+            cmp AX, 0x401D; // avoid InvalidException in fist 
+            jae L_extreme; 
+            fldl2e; 
+            fmul ; // y = x*log2(e) 
+            fist dword ptr [RSP]; // scratchint = rndint(y) 
+            fisub dword ptr [RSP]; // y - rndint(y) 
+            // and now set scratchreal exponent 
+            mov EAX, [RSP]; 
+            add EAX, 0x3fff; 
+            jle short L_largenegative; 
+            cmp EAX,0x8000; 
+            jge short L_largepositive; 
+            mov [RSP+8+8],AX; 
+            f2xm1; // 2^(y-rndint(y)) -1 
+            fld real ptr [RSP+8] ; // 2^rndint(y) 
+            fmul ST(1), ST; 
+            fld1; 
+            fsubp ST(1), ST; 
+            fadd; 
+            add RSP,24; 
+            ret; 
+           
+L_extreme: // Extreme exponent. X is very large positive, very 
+            // large negative, infinity, or NaN. 
+            fxam; 
+            fstsw AX; 
+            test AX, 0x0400; // NaN_or_zero, but we already know x!=0 
+            jz L_was_nan;  // if x is NaN, returns x 
+            test AX, 0x0200; 
+            jnz L_largenegative; 
+L_largepositive: 
+            // Set scratchreal = real.max. 
+            // squaring it will create infinity, and set overflow flag. 
+            mov word  ptr [RSP+8+8], 0x7FFE; 
+            fstp ST(0), ST; 
+            fld real ptr [RSP+8];  // load scratchreal 
+            fmul ST(0), ST;        // square it, to create havoc! 
+L_was_nan: 
+            add RSP,24; 
+            ret;
+            
+L_largenegative: 
+            fstp ST(0), ST; 
+            fld1; 
+            fchs; // return -1. Underflow flag is not set. 
+            add RSP,24; 
+            ret; 
+        } 
     } else {
         return core.stdc.math.expm1(x);
     }
@@ -1168,6 +1249,87 @@ L_was_nan:
             add ESP,12+8;
             ret PARAMSIZE;
         }
+    } else version(D_InlineAsm_X86_64) {
+        asm { 
+            /*  exp2() for x87 80-bit reals, IEEE754-2008 conformant. 
+             * Author: Don Clugston. 
+             * 
+             * exp2(x) = 2^(rndint(x))* 2^(y-rndint(x)) 
+             * The trick for high performance is to avoid the fscale(28cycles on core2), 
+             * frndint(19 cycles), leaving f2xm1(19 cycles) as the only slow instruction. 
+             * 
+             * We can do frndint by using fist. BUT we can't use it for huge numbers, 
+             * because it will set the Invalid Operation flag is overflow or NaN occurs. 
+             * Fortunately, whenever this happens the result would be zero or infinity. 
+             * 
+             * We can perform fscale by directly poking into the exponent. BUT this doesn't 
+             * work for the (very rare) cases where the result is subnormal. So we fall back 
+             * to the slow method in that case. 
+             */ 
+            naked; 
+            fld real ptr [RSP+8] ; // x 
+            mov AX, [RSP+8+8]; // AX = exponent and sign 
+            sub RSP, 24; // Create scratch space on the stack 
+            // [RSP,RSP+2] = scratchint 
+            // [RSP+4..+6, +8..+10, +10] = scratchreal 
+            // set scratchreal mantissa = 1.0 
+            mov dword ptr [RSP+8], 0; 
+            mov dword ptr [RSP+8+4], 0x80000000; 
+            and AX, 0x7FFF; // drop sign bit 
+            cmp AX, 0x401D; // avoid InvalidException in fist 
+            jae L_extreme; 
+            fist dword ptr [RSP]; // scratchint = rndint(x) 
+            fisub dword ptr [RSP]; // x - rndint(x) 
+            // and now set scratchreal exponent 
+            mov EAX, [RSP]; 
+            add EAX, 0x3fff; 
+            jle short L_subnormal; 
+            cmp EAX,0x8000; 
+            jge short L_overflow; 
+            mov [RSP+8+8],AX; 
+L_normal: 
+            f2xm1; 
+            fld1; 
+            fadd; // 2^(x-rndint(x)) 
+            fld real ptr [RSP+8] ; // 2^rndint(x) 
+            add RSP,24; 
+            fmulp ST(1), ST; 
+            ret; 
+     
+L_subnormal: 
+            // Result will be subnormal. 
+            // In this rare case, the simple poking method doesn't work. 
+            // The speed doesn't matter, so use the slow fscale method. 
+            fild dword ptr [RSP];  // scratchint 
+            fld1; 
+            fscale; 
+            fstp real ptr [RSP+8]; // scratchreal = 2^scratchint 
+            fstp ST(0),ST;         // drop scratchint 
+            jmp L_normal; 
+     
+L_extreme: // Extreme exponent. X is very large positive, very 
+            // large negative, infinity, or NaN. 
+            fxam; 
+            fstsw AX; 
+            test AX, 0x0400; // NaN_or_zero, but we already know x!=0 
+            jz L_was_nan;  // if x is NaN, returns x 
+            // set scratchreal = real.min 
+            // squaring it will return 0, setting underflow flag 
+            mov word  ptr [RSP+8+8], 1; 
+            test AX, 0x0200; 
+            jnz L_waslargenegative; 
+L_overflow: 
+            // Set scratchreal = real.max. 
+            // squaring it will create infinity, and set overflow flag. 
+            mov word  ptr [RSP+8+8], 0x7FFE; 
+L_waslargenegative: 
+            fstp ST(0), ST; 
+            fld real ptr [RSP+8];  // load scratchreal 
+            fmul ST(0), ST;        // square it, to create havoc! 
+L_was_nan: 
+            add RSP,24; 
+            ret;
+        } 
     } else version(GNU_Need_exp2) {
         return core.stdc.math.powl(2, x);
     } else {
@@ -1257,7 +1419,7 @@ unittest
  */
 creal expi(real y) @trusted pure nothrow
 {
-    version(D_InlineAsm_X86)
+    version(InlineAsm_X86_Any)
     {
         asm
         {
@@ -1630,7 +1792,7 @@ real modf(real x, ref real y) @trusted nothrow { return core.stdc.math.modfl(x,&
  */
 real scalbn(real x, int n) @trusted nothrow
 {
-    version(D_InlineAsm_X86) {
+    version(InlineAsm_X86_Any) {
         // scalbnl is not supported on DMD-Windows, so use asm.
         asm {
             fild n;
@@ -1638,8 +1800,6 @@ real scalbn(real x, int n) @trusted nothrow
             fscale;
             fstp ST(1), ST;
         }
-    } else version(D_InlineAsm_X86_64) {
-        assert(false, "not implemented");
     } else {
         return core.stdc.math.scalbnl(x, n);
     }
@@ -1898,7 +2058,7 @@ real rint(real x) @safe pure nothrow;      /* intrinsic */
  */
 long lrint(real x) @trusted pure nothrow
 {
-    version(D_InlineAsm_X86)
+    version(InlineAsm_X86_Any)
     {
         long n;
         asm
@@ -1907,8 +2067,6 @@ long lrint(real x) @trusted pure nothrow
             fistp n;
         }
         return n;
-    } else version(D_InlineAsm_X86_64) {
-        assert(false, "not implemented");
     } else {
         return core.stdc.math.llrintl(x);
     }
@@ -1966,6 +2124,16 @@ long lround(real x) @trusted nothrow
         return core.stdc.math.llroundl(x);
     else
         assert (0, "lround not implemented");
+}
+
+version(Posix)
+{
+    unittest
+    {
+        assert(lround(0.49) == 0);
+        assert(lround(0.5) == 1);
+        assert(lround(1.5) == 2);
+    }
 }
 
 /****************************************************
@@ -2115,6 +2283,14 @@ private:
                  // Clear all irrelevant bits
                  and EAX, 0x03D;
             }
+        } else version(D_InlineAsm_X86_64) {
+            asm {
+                 fstsw AX;
+                 // NOTE: If compiler supports SSE2, need to OR the result with
+                 // the SSE2 status register.
+                 // Clear all irrelevant bits
+                 and RAX, 0x03D;
+            }
         } else version (SPARC) {
            /*
                int retval;
@@ -2127,7 +2303,7 @@ private:
     }
     static void resetIeeeFlags()
     {
-        version(D_InlineAsm_X86) {
+        version(InlineAsm_X86_Any) {
             asm {
                 fnclex;
             }
@@ -2284,7 +2460,7 @@ private:
     // Clear all pending exceptions
     static void clearExceptions()
     {
-        version (X86_Any)
+        version (InlineAsm_X86_Any)
         {
             asm
             {
@@ -2297,7 +2473,7 @@ private:
     // Read from the control register
     static ushort getControlState()
     {
-        version (X86_Any)
+        version (D_InlineAsm_X86)
         {
             short cont;
             asm
@@ -2307,7 +2483,19 @@ private:
             }
             return cont;
         }
-        else version (ARM)
+        else 
+        version (D_InlineAsm_X86_64)
+        {
+            short cont;
+            asm
+            {
+                xor RAX, RAX;
+                fstcw cont;
+            }
+            return cont;
+        }
+        else
+        version (ARM)
         {
             short cont;
             asm
@@ -2325,12 +2513,12 @@ private:
     // Set the control register
     static void setControlState(ushort newState)
     {
-        version (X86_Any)
+        version (InlineAsm_X86_Any)
         {
             asm
             {
-                fclex;
-                fldcw newState;
+                 fclex;
+                 fldcw newState;
             }
         }
         else version (ARM)
@@ -3927,7 +4115,8 @@ bool approxEqual(T, U, V)(T lhs, U rhs, V maxRelDiff, V maxAbsDiff = 1e-5)
             }
             static if (is(typeof(lhs.infinity)) && is(typeof(rhs.infinity)))
             {
-                if (lhs == lhs.infinity && rhs == rhs.infinity) return true;
+                if (lhs == lhs.infinity && rhs == rhs.infinity ||
+                    lhs == -lhs.infinity && rhs == -rhs.infinity) return true;
             }
             return fabs((lhs - rhs) / rhs) <= maxRelDiff
                 || maxAbsDiff != 0 && fabs(lhs - rhs) <= maxAbsDiff;
@@ -3950,6 +4139,13 @@ unittest
     float[] arr1 = [ 1.0, 2.0, 3.0 ];
     double[] arr2 = [ 1.001, 1.999, 3 ];
     assert(approxEqual(arr1, arr2));
+
+    real num = real.infinity;
+    assert(num == real.infinity);  // Passes.
+    assert(approxEqual(num, real.infinity));  // Fails.
+    num = -real.infinity;
+    assert(num == -real.infinity);  // Passes.
+    assert(approxEqual(num, -real.infinity));  // Fails.
 }
 
 // Included for backwards compatibility with Phobos1

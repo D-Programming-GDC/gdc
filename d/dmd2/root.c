@@ -23,7 +23,18 @@
 #include <stdint.h>
 #include <assert.h>
 
+#if IN_GCC
 #include "gdc_alloca.h"
+#else
+#if (defined (__SVR4) && defined (__sun))
+#include <alloca.h>
+#endif
+
+#if _MSC_VER ||__MINGW32__
+#include <malloc.h>
+#include <string>
+#endif
+#endif
 
 #if _WIN32
 #include <windows.h>
@@ -779,7 +790,6 @@ int FileName::equalsExt(const char *ext)
 #endif
 }
 
-
 /*************************************
  * Copy file from this to to.
  */
@@ -973,7 +983,8 @@ void FileName::ensurePathExists(const char *path)
                 //printf("mkdir(%s)\n", path);
 #if _WIN32
                 if (mkdir(path))
-#else
+#endif
+#ifndef _WIN32
                 if (mkdir(path, 0777))
 #endif
                 {

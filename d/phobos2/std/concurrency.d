@@ -15,6 +15,7 @@
  * Copyright: Copyright Sean Kelly 2009 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Sean Kelly
+ * Source:    $(PHOBOSSRC std/_concurrency.d)
  */
 /*          Copyright Sean Kelly 2009 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
@@ -163,18 +164,23 @@ private
 
 static this()
 {
-    mbox = new MessageBox;
+    // NOTE: thisTid will construct a new MessageBox if one doesn't exist,
+    //       which should only be true of the main thread and threads created
+    //       via core.thread instead of spawn.
 }
 
 
 static ~this()
 {
-    mbox.close();
-    auto me = thisTid;
-    foreach( tid; links.keys )
-        _send( MsgType.linkDead, tid, me );
-    if( owner != Tid.init )
-        _send( MsgType.linkDead, owner, me );
+    if( mbox !is null )
+    {
+        mbox.close();
+        auto me = thisTid;
+        foreach( tid; links.keys )
+            _send( MsgType.linkDead, tid, me );
+        if( owner != Tid.init )
+            _send( MsgType.linkDead, owner, me );
+    }
 }
 
 
@@ -289,6 +295,9 @@ private:
  */
 @property Tid thisTid()
 {
+    if( mbox )
+        return Tid( mbox );
+    mbox = new MessageBox;
     return Tid( mbox );
 }
 
@@ -462,6 +471,14 @@ receiveOnlyRet!(T) receiveOnly(T...)()
               {
                   static if( T.length )
                       ret.field = val;
+              },
+              ( LinkTerminated e )
+              {
+                  throw e;
+              },
+              ( OwnerTerminated e )
+              {
+                  throw e;
               },
               ( Variant val )
               {

@@ -109,6 +109,7 @@ enum BUILTIN FuncDeclaration::isBuiltin()
  * Evaluate builtin function.
  * Return result; NULL if cannot evaluate it.
  */
+
 Expression *eval_builtin(enum BUILTIN builtin, Expressions *arguments)
 {
     assert(arguments && arguments->dim);

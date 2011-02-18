@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -47,6 +47,7 @@
 long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep);
 #endif
 #endif
+
 
 int response_expand(int *pargc, char ***pargv);
 void browse(const char *url);
@@ -95,9 +96,9 @@ Global::Global()
 
 #ifndef IN_GCC
 #if TARGET_WINDOS
-    dll_ext = "dll";
+    dll_ext  = "dll";
 #elif TARGET_LINUX || TARGET_FREEBSD || TARGET_SOLARIS
-    dll_ext = "so";
+    dll_ext  = "so";
 #elif TARGET_OSX
     dll_ext = "dylib";
 #else
@@ -107,13 +108,13 @@ Global::Global()
     dll_ext = "so";
 #endif
 
-    copyright = "Copyright (c) 1999-2010 by Digital Mars";
+    copyright = "Copyright (c) 1999-2011 by Digital Mars";
     written = "written by Walter Bright"
 #if TARGET_NET
-    "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates."
+    "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
 #endif
     ;
-    version = "v2.051";
+    version = "v2.052";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -211,9 +212,6 @@ void vwarning(Loc loc, const char *format, va_list ap)
     if (global.params.warnings && !global.gag)
     {
         char *p = loc.toChars();
-
-        if (global.params.warnings == 1)
-            fprintf(stdmsg, "%s: warnings being treated as errors\n", global.params.argv0);
 
         if (*p)
             fprintf(stdmsg, "%s: ", p);
@@ -860,7 +858,15 @@ int main(int argc, char *argv[])
         global.params.objname = NULL;
 
         // Haven't investigated handling these options with multiobj
-        if (!global.params.cov && !global.params.trace)
+        if (!global.params.cov && !global.params.trace
+#if 0 && TARGET_WINDOS
+            /* multiobj causes class/struct debug info to be attached to init-data,
+             * but this will not be linked into the executable, so this info is lost.
+             * Bugzilla 4014
+             */
+            && !global.params.symdebug
+#endif
+           )
             global.params.multiobj = 1;
     }
     else if (global.params.run)

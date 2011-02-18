@@ -5,12 +5,12 @@
  * Macros:
  *      WIKI = Object
  *
- * Copyright: Copyright Digital Mars 2000 - 2010.
+ * Copyright: Copyright Digital Mars 2000 - 2011.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
  */
 
-/*          Copyright Digital Mars 2000 - 2009.
+/*          Copyright Digital Mars 2000 - 2011.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -108,7 +108,7 @@ class Object
     {
         return this is o;
     }
-    
+
     equals_t opEquals(Object lhs, Object rhs)
     {
         if (lhs is rhs)
@@ -181,10 +181,10 @@ bool opEquals(TypeInfo lhs, TypeInfo rhs)
     // (This still isn't right, should follow same rules as compiler does for type equality.)
     TypeInfo_Const c = cast(TypeInfo_Const) lhs;
     if (c)
-	lhs = c.base;
+        lhs = c.base;
     c = cast(TypeInfo_Const) rhs;
     if (c)
-	rhs = c.base;
+        rhs = c.base;
 
     // General case => symmetric calls to method opEquals
     return lhs.opEquals(rhs) && rhs.opEquals(lhs);
@@ -593,7 +593,7 @@ class TypeInfo_StaticArray : TypeInfo
     }
 
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {   //arg1 = typeid(void*);
+    {   arg1 = typeid(void*);
         return 0;
     }
 }
@@ -698,8 +698,8 @@ class TypeInfo_Delegate : TypeInfo
     }
 
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {   arg1 = typeid(void*);
-        arg2 = typeid(void*);
+    {   //arg1 = typeid(void*);
+        //arg2 = typeid(void*);
         return 0;
     }
 }
@@ -801,7 +801,7 @@ class TypeInfo_Class : TypeInfo
     {
         foreach (m; ModuleInfo)
         {
-	  if (m)
+          if (m)
             //writefln("module %s, %d", m.name, m.localClasses.length);
             foreach (c; m.localClasses)
             {
@@ -1127,8 +1127,8 @@ class TypeInfo_Const : TypeInfo
         if (this is o)
             return true;
 
-	if (typeid(this) != typeid(o))
-	    return false;
+        if (typeid(this) != typeid(o))
+            return false;
 
         auto t = cast(TypeInfo_Const)o;
         if (base.opEquals(t.base))
@@ -1236,6 +1236,8 @@ class Throwable : Object
     interface TraceInfo
     {
         int opApply(scope int delegate(ref char[]));
+        int opApply(scope int delegate(ref size_t, ref char[]));
+        string toString();
     }
 
     string      msg;
@@ -1335,14 +1337,42 @@ extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null)
 
 class Exception : Throwable
 {
-    this(string msg, Throwable next = null)
-    {
-        super(msg, next);
-    }
 
-    this(string msg, string file, size_t line, Throwable next = null)
+    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
         super(msg, file, line, next);
+    }
+
+    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, next);
+    }
+}
+
+unittest
+{
+    {
+        auto e = new Exception("msg");
+        assert(e.file == __FILE__);
+        assert(e.line == __LINE__ - 2);
+        assert(e.next is null);
+        assert(e.msg == "msg");
+    }
+
+    {
+        auto e = new Exception("msg", new Exception("It's an Excepton!"), "hello", 42);
+        assert(e.file == "hello");
+        assert(e.line == 42);
+        assert(e.next !is null);
+        assert(e.msg == "msg");
+    }
+
+    {
+        auto e = new Exception("msg", "hello", 42, new Exception("It's an Exception!"));
+        assert(e.file == "hello");
+        assert(e.line == 42);
+        assert(e.next !is null);
+        assert(e.msg == "msg");
     }
 }
 
@@ -1352,11 +1382,47 @@ class Error : Throwable
     this(string msg, Throwable next = null)
     {
         super(msg, next);
+        bypassedException = null;
     }
 
     this(string msg, string file, size_t line, Throwable next = null)
     {
         super(msg, file, line, next);
+        bypassedException = null;
+    }
+
+    /// The first Exception which was bypassed when this Error was thrown,
+    /// or null if no Exceptions were pending.
+    Throwable   bypassedException;
+}
+
+unittest
+{
+    {
+        auto e = new Error("msg");
+        assert(e.file is null);
+        assert(e.line == 0);
+        assert(e.next is null);
+        assert(e.msg == "msg");
+        assert(e.bypassedException is null);
+    }
+
+    {
+        auto e = new Error("msg", new Exception("It's an Excepton!"));
+        assert(e.file is null);
+        assert(e.line == 0);
+        assert(e.next !is null);
+        assert(e.msg == "msg");
+        assert(e.bypassedException is null);
+    }
+
+    {
+        auto e = new Error("msg", "hello", 42, new Exception("It's an Exception!"));
+        assert(e.file == "hello");
+        assert(e.line == 42);
+        assert(e.next !is null);
+        assert(e.msg == "msg");
+        assert(e.bypassedException is null);
     }
 }
 
@@ -1381,7 +1447,7 @@ enum
     MIunitTest   = 0x200,
     MIimportedModules = 0x400,
     MIlocalClasses = 0x800,
-    MInew        = 0x80000000	// it's the "new" layout
+    MInew        = 0x80000000        // it's the "new" layout
 }
 
 
@@ -1389,48 +1455,48 @@ struct ModuleInfo
 {
     struct New
     {
-	uint flags;
-	uint index;			// index into _moduleinfo_array[]
+        uint flags;
+        uint index;                        // index into _moduleinfo_array[]
 
-	/* Order of appearance, depending on flags
-	 * tlsctor
-	 * tlsdtor
-	 * xgetMembers
-	 * ctor
-	 * dtor
-	 * ictor
-	 * importedModules
-	 * localClasses
-	 * name
-	 */
+        /* Order of appearance, depending on flags
+         * tlsctor
+         * tlsdtor
+         * xgetMembers
+         * ctor
+         * dtor
+         * ictor
+         * importedModules
+         * localClasses
+         * name
+         */
     }
     struct Old
     {
-	string          name;
-	ModuleInfo*[]    importedModules;
-	TypeInfo_Class[]     localClasses;
-	uint            flags;
+        string          name;
+        ModuleInfo*[]    importedModules;
+        TypeInfo_Class[]     localClasses;
+        uint            flags;
 
-	void function() ctor;       // module shared static constructor (order dependent)
-	void function() dtor;       // module shared static destructor
-	void function() unitTest;   // module unit tests
+        void function() ctor;       // module shared static constructor (order dependent)
+        void function() dtor;       // module shared static destructor
+        void function() unitTest;   // module unit tests
 
-	void* xgetMembers;          // module getMembers() function
+        void* xgetMembers;          // module getMembers() function
 
-	void function() ictor;      // module shared static constructor (order independent)
+        void function() ictor;      // module shared static constructor (order independent)
 
-	void function() tlsctor;	// module thread local static constructor (order dependent)
-	void function() tlsdtor;	// module thread local static destructor
+        void function() tlsctor;        // module thread local static constructor (order dependent)
+        void function() tlsdtor;        // module thread local static destructor
 
-	uint index;			// index into _moduleinfo_array[]
+        uint index;                        // index into _moduleinfo_array[]
 
-	void*[1] reserved;          // for future expansion
+        void*[1] reserved;          // for future expansion
     }
 
     union
     {
-	New n;
-	Old o;
+        New n;
+        Old o;
     }
 
     @property isNew() { return n.flags & MInew; }
@@ -1443,245 +1509,245 @@ struct ModuleInfo
 
     @property void function() tlsctor()
     {
-	if (isNew)
-	{
-	    if (n.flags & MItlsctor)
-	    {
-		size_t off = New.sizeof;
-		return *cast(typeof(return)*)(cast(void*)(&this) + off);
-	    }
-	    return null;
-	}
-	else
-	    return o.tlsctor;
+        if (isNew)
+        {
+            if (n.flags & MItlsctor)
+            {
+                size_t off = New.sizeof;
+                return *cast(typeof(return)*)(cast(void*)(&this) + off);
+            }
+            return null;
+        }
+        else
+            return o.tlsctor;
     }
 
     @property void function() tlsdtor()
     {
-	if (isNew)
-	{
-	    if (n.flags & MItlsdtor)
-	    {
-		size_t off = New.sizeof;
-		if (n.flags & MItlsctor)
-		    off += o.tlsctor.sizeof;
-		return *cast(typeof(return)*)(cast(void*)(&this) + off);
-	    }
-	    return null;
-	}
-	else
-	    return o.tlsdtor;
+        if (isNew)
+        {
+            if (n.flags & MItlsdtor)
+            {
+                size_t off = New.sizeof;
+                if (n.flags & MItlsctor)
+                    off += o.tlsctor.sizeof;
+                return *cast(typeof(return)*)(cast(void*)(&this) + off);
+            }
+            return null;
+        }
+        else
+            return o.tlsdtor;
     }
 
     @property void* xgetMembers()
     {
-	if (isNew)
-	{
-	    if (n.flags & MIxgetMembers)
-	    {
-		size_t off = New.sizeof;
-		if (n.flags & MItlsctor)
-		    off += o.tlsctor.sizeof;
-		if (n.flags & MItlsdtor)
-		    off += o.tlsdtor.sizeof;
-		return *cast(typeof(return)*)(cast(void*)(&this) + off);
-	    }
-	    return null;
-	}
-	return o.xgetMembers;
+        if (isNew)
+        {
+            if (n.flags & MIxgetMembers)
+            {
+                size_t off = New.sizeof;
+                if (n.flags & MItlsctor)
+                    off += o.tlsctor.sizeof;
+                if (n.flags & MItlsdtor)
+                    off += o.tlsdtor.sizeof;
+                return *cast(typeof(return)*)(cast(void*)(&this) + off);
+            }
+            return null;
+        }
+        return o.xgetMembers;
     }
 
     @property void function() ctor()
     {
-	if (isNew)
-	{
-	    if (n.flags & MIctor)
-	    {
-		size_t off = New.sizeof;
-		if (n.flags & MItlsctor)
-		    off += o.tlsctor.sizeof;
-		if (n.flags & MItlsdtor)
-		    off += o.tlsdtor.sizeof;
-		if (n.flags & MIxgetMembers)
-		    off += o.xgetMembers.sizeof;
-		return *cast(typeof(return)*)(cast(void*)(&this) + off);
-	    }
-	    return null;
-	}
-	return o.ctor;
+        if (isNew)
+        {
+            if (n.flags & MIctor)
+            {
+                size_t off = New.sizeof;
+                if (n.flags & MItlsctor)
+                    off += o.tlsctor.sizeof;
+                if (n.flags & MItlsdtor)
+                    off += o.tlsdtor.sizeof;
+                if (n.flags & MIxgetMembers)
+                    off += o.xgetMembers.sizeof;
+                return *cast(typeof(return)*)(cast(void*)(&this) + off);
+            }
+            return null;
+        }
+        return o.ctor;
     }
 
     @property void function() dtor()
     {
-	if (isNew)
-	{
-	    if (n.flags & MIdtor)
-	    {
-		size_t off = New.sizeof;
-		if (n.flags & MItlsctor)
-		    off += o.tlsctor.sizeof;
-		if (n.flags & MItlsdtor)
-		    off += o.tlsdtor.sizeof;
-		if (n.flags & MIxgetMembers)
-		    off += o.xgetMembers.sizeof;
-		if (n.flags & MIctor)
-		    off += o.ctor.sizeof;
-		return *cast(typeof(return)*)(cast(void*)(&this) + off);
-	    }
-	    return null;
-	}
-	return o.ctor;
+        if (isNew)
+        {
+            if (n.flags & MIdtor)
+            {
+                size_t off = New.sizeof;
+                if (n.flags & MItlsctor)
+                    off += o.tlsctor.sizeof;
+                if (n.flags & MItlsdtor)
+                    off += o.tlsdtor.sizeof;
+                if (n.flags & MIxgetMembers)
+                    off += o.xgetMembers.sizeof;
+                if (n.flags & MIctor)
+                    off += o.ctor.sizeof;
+                return *cast(typeof(return)*)(cast(void*)(&this) + off);
+            }
+            return null;
+        }
+        return o.ctor;
     }
 
     @property void function() ictor()
     {
-	if (isNew)
-	{
-	    if (n.flags & MIictor)
-	    {
-		size_t off = New.sizeof;
-		if (n.flags & MItlsctor)
-		    off += o.tlsctor.sizeof;
-		if (n.flags & MItlsdtor)
-		    off += o.tlsdtor.sizeof;
-		if (n.flags & MIxgetMembers)
-		    off += o.xgetMembers.sizeof;
-		if (n.flags & MIctor)
-		    off += o.ctor.sizeof;
-		if (n.flags & MIdtor)
-		    off += o.ctor.sizeof;
-		return *cast(typeof(return)*)(cast(void*)(&this) + off);
-	    }
-	    return null;
-	}
-	return o.ictor;
+        if (isNew)
+        {
+            if (n.flags & MIictor)
+            {
+                size_t off = New.sizeof;
+                if (n.flags & MItlsctor)
+                    off += o.tlsctor.sizeof;
+                if (n.flags & MItlsdtor)
+                    off += o.tlsdtor.sizeof;
+                if (n.flags & MIxgetMembers)
+                    off += o.xgetMembers.sizeof;
+                if (n.flags & MIctor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIdtor)
+                    off += o.ctor.sizeof;
+                return *cast(typeof(return)*)(cast(void*)(&this) + off);
+            }
+            return null;
+        }
+        return o.ictor;
     }
 
     @property void function() unitTest()
     {
-	if (isNew)
-	{
-	    if (n.flags & MIunitTest)
-	    {
-		size_t off = New.sizeof;
-		if (n.flags & MItlsctor)
-		    off += o.tlsctor.sizeof;
-		if (n.flags & MItlsdtor)
-		    off += o.tlsdtor.sizeof;
-		if (n.flags & MIxgetMembers)
-		    off += o.xgetMembers.sizeof;
-		if (n.flags & MIctor)
-		    off += o.ctor.sizeof;
-		if (n.flags & MIdtor)
-		    off += o.ctor.sizeof;
-		if (n.flags & MIictor)
-		    off += o.ictor.sizeof;
-		return *cast(typeof(return)*)(cast(void*)(&this) + off);
-	    }
-	    return null;
-	}
-	return o.unitTest;
+        if (isNew)
+        {
+            if (n.flags & MIunitTest)
+            {
+                size_t off = New.sizeof;
+                if (n.flags & MItlsctor)
+                    off += o.tlsctor.sizeof;
+                if (n.flags & MItlsdtor)
+                    off += o.tlsdtor.sizeof;
+                if (n.flags & MIxgetMembers)
+                    off += o.xgetMembers.sizeof;
+                if (n.flags & MIctor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIdtor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIictor)
+                    off += o.ictor.sizeof;
+                return *cast(typeof(return)*)(cast(void*)(&this) + off);
+            }
+            return null;
+        }
+        return o.unitTest;
     }
 
     @property ModuleInfo*[] importedModules()
     {
-	if (isNew)
-	{
-	    if (n.flags & MIimportedModules)
-	    {
-		size_t off = New.sizeof;
-		if (n.flags & MItlsctor)
-		    off += o.tlsctor.sizeof;
-		if (n.flags & MItlsdtor)
-		    off += o.tlsdtor.sizeof;
-		if (n.flags & MIxgetMembers)
-		    off += o.xgetMembers.sizeof;
-		if (n.flags & MIctor)
-		    off += o.ctor.sizeof;
-		if (n.flags & MIdtor)
-		    off += o.ctor.sizeof;
-		if (n.flags & MIictor)
-		    off += o.ictor.sizeof;
-		if (n.flags & MIunitTest)
-		    off += o.unitTest.sizeof;
-		auto plength = cast(size_t*)(cast(void*)(&this) + off);
-		ModuleInfo** pm = cast(ModuleInfo**)(plength + 1);
-		return pm[0 .. *plength];
-	    }
-	    return null;
-	}
-	return o.importedModules;
+        if (isNew)
+        {
+            if (n.flags & MIimportedModules)
+            {
+                size_t off = New.sizeof;
+                if (n.flags & MItlsctor)
+                    off += o.tlsctor.sizeof;
+                if (n.flags & MItlsdtor)
+                    off += o.tlsdtor.sizeof;
+                if (n.flags & MIxgetMembers)
+                    off += o.xgetMembers.sizeof;
+                if (n.flags & MIctor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIdtor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIictor)
+                    off += o.ictor.sizeof;
+                if (n.flags & MIunitTest)
+                    off += o.unitTest.sizeof;
+                auto plength = cast(size_t*)(cast(void*)(&this) + off);
+                ModuleInfo** pm = cast(ModuleInfo**)(plength + 1);
+                return pm[0 .. *plength];
+            }
+            return null;
+        }
+        return o.importedModules;
     }
 
     @property TypeInfo_Class[] localClasses()
     {
-	if (isNew)
-	{
-	    if (n.flags & MIlocalClasses)
-	    {
-		size_t off = New.sizeof;
-		if (n.flags & MItlsctor)
-		    off += o.tlsctor.sizeof;
-		if (n.flags & MItlsdtor)
-		    off += o.tlsdtor.sizeof;
-		if (n.flags & MIxgetMembers)
-		    off += o.xgetMembers.sizeof;
-		if (n.flags & MIctor)
-		    off += o.ctor.sizeof;
-		if (n.flags & MIdtor)
-		    off += o.ctor.sizeof;
-		if (n.flags & MIictor)
-		    off += o.ictor.sizeof;
-		if (n.flags & MIunitTest)
-		    off += o.unitTest.sizeof;
-		if (n.flags & MIimportedModules)
-		{
-		    auto plength = cast(size_t*)(cast(void*)(&this) + off);
-		    off += size_t.sizeof + *plength * plength.sizeof;
-		}
-		auto plength = cast(size_t*)(cast(void*)(&this) + off);
-		TypeInfo_Class* pt = cast(TypeInfo_Class*)(plength + 1);
-		return pt[0 .. *plength];
-	    }
-	    return null;
-	}
-	return o.localClasses;
+        if (isNew)
+        {
+            if (n.flags & MIlocalClasses)
+            {
+                size_t off = New.sizeof;
+                if (n.flags & MItlsctor)
+                    off += o.tlsctor.sizeof;
+                if (n.flags & MItlsdtor)
+                    off += o.tlsdtor.sizeof;
+                if (n.flags & MIxgetMembers)
+                    off += o.xgetMembers.sizeof;
+                if (n.flags & MIctor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIdtor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIictor)
+                    off += o.ictor.sizeof;
+                if (n.flags & MIunitTest)
+                    off += o.unitTest.sizeof;
+                if (n.flags & MIimportedModules)
+                {
+                    auto plength = cast(size_t*)(cast(void*)(&this) + off);
+                    off += size_t.sizeof + *plength * plength.sizeof;
+                }
+                auto plength = cast(size_t*)(cast(void*)(&this) + off);
+                TypeInfo_Class* pt = cast(TypeInfo_Class*)(plength + 1);
+                return pt[0 .. *plength];
+            }
+            return null;
+        }
+        return o.localClasses;
     }
 
     @property string name()
     {
-	if (isNew)
-	{
-	    size_t off = New.sizeof;
-	    if (n.flags & MItlsctor)
-		off += o.tlsctor.sizeof;
-	    if (n.flags & MItlsdtor)
-		off += o.tlsdtor.sizeof;
-	    if (n.flags & MIxgetMembers)
-		off += o.xgetMembers.sizeof;
-	    if (n.flags & MIctor)
-		off += o.ctor.sizeof;
-	    if (n.flags & MIdtor)
-		off += o.ctor.sizeof;
-	    if (n.flags & MIictor)
-		off += o.ictor.sizeof;
-	    if (n.flags & MIunitTest)
-		off += o.unitTest.sizeof;
-	    if (n.flags & MIimportedModules)
-	    {
-		auto plength = cast(size_t*)(cast(void*)(&this) + off);
-		off += size_t.sizeof + *plength * plength.sizeof;
-	    }
-	    if (n.flags & MIlocalClasses)
-	    {
-		auto plength = cast(size_t*)(cast(void*)(&this) + off);
-		off += size_t.sizeof + *plength * plength.sizeof;
-	    }
-	    auto p = cast(immutable(char)*)(cast(void*)(&this) + off);
-	    auto len = strlen(p);
-	    return p[0 .. len];
-	}
-	return o.name;
+        if (isNew)
+        {
+            size_t off = New.sizeof;
+            if (n.flags & MItlsctor)
+                off += o.tlsctor.sizeof;
+            if (n.flags & MItlsdtor)
+                off += o.tlsdtor.sizeof;
+            if (n.flags & MIxgetMembers)
+                off += o.xgetMembers.sizeof;
+            if (n.flags & MIctor)
+                off += o.ctor.sizeof;
+            if (n.flags & MIdtor)
+                off += o.ctor.sizeof;
+            if (n.flags & MIictor)
+                off += o.ictor.sizeof;
+            if (n.flags & MIunitTest)
+                off += o.unitTest.sizeof;
+            if (n.flags & MIimportedModules)
+            {
+                auto plength = cast(size_t*)(cast(void*)(&this) + off);
+                off += size_t.sizeof + *plength * plength.sizeof;
+            }
+            if (n.flags & MIlocalClasses)
+            {
+                auto plength = cast(size_t*)(cast(void*)(&this) + off);
+                off += size_t.sizeof + *plength * plength.sizeof;
+            }
+            auto p = cast(immutable(char)*)(cast(void*)(&this) + off);
+            auto len = strlen(p);
+            return p[0 .. len];
+        }
+        return o.name;
     }
 
 
@@ -1866,7 +1932,7 @@ extern (C) void _moduleCtor()
             len++;
         }
     }
-    
+
     version (Windows)
     {
         // Ensure module destructors also get called on program termination
@@ -2262,7 +2328,7 @@ body
         _d_monitor_create(cast(Object) owner);
         m = cast(shared(Monitor)*) owner.__monitor;
     }
-    
+
     auto i = m.impl;
     if (i is null)
     {
@@ -2422,7 +2488,7 @@ extern (C)
     void* _aaInp(void* p, TypeInfo keyti, void* pkey);
     void _aaDelp(void* p, TypeInfo keyti, void* pkey);
     void[] _aaValues(void* p, size_t keysize, size_t valuesize);
-    void[] _aaKeys(void* p, size_t keysize, size_t valuesize);
+    void[] _aaKeys(void* p, size_t keysize);
     void* _aaRehash(void** pp, TypeInfo keyti);
 
     extern (D) typedef scope int delegate(void *) _dg_t;
@@ -2438,15 +2504,6 @@ struct AssociativeArray(Key, Value)
 {
     void* p;
 
-    size_t aligntsize(size_t tsize)
-    {
-        version (X86_64)
-            // Size of key needed to align value on 16 bytes
-            return (tsize + 15) & ~(15);
-        else
-           return (tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
-    }
-
     size_t length() @property { return _aaLen(p); }
 
     Value[Key] rehash() @property
@@ -2457,56 +2514,75 @@ struct AssociativeArray(Key, Value)
 
     Value[] values() @property
     {
-        auto a = _aaValues(p, aligntsize(Key.sizeof), Value.sizeof);
+        auto a = _aaValues(p, Key.sizeof, Value.sizeof);
         return *cast(Value[]*) &a;
     }
 
     Key[] keys() @property
     {
-        auto a = _aaKeys(p, aligntsize(Key.sizeof), Value.sizeof);
+        auto a = _aaKeys(p, Key.sizeof);
         return *cast(Key[]*) &a;
     }
 
     int opApply(scope int delegate(ref Key, ref Value) dg)
     {
-        return _aaApply2(p, aligntsize(Key.sizeof), cast(_dg2_t)dg);
+        return _aaApply2(p, Key.sizeof, cast(_dg2_t)dg);
     }
 
     int opApply(scope int delegate(ref Value) dg)
     {
-        return _aaApply(p, aligntsize(Key.sizeof), cast(_dg_t)dg);
+        return _aaApply(p, Key.sizeof, cast(_dg_t)dg);
     }
 
     int delegate(int delegate(ref Key) dg) byKey()
     {
-	// Discard the Value part and just do the Key
-	int foo(int delegate(ref Key) dg)
-	{
-	    int byKeydg(ref Key key, ref Value value)
-	    {
-		return dg(key);
-	    }
+        // Discard the Value part and just do the Key
+        int foo(int delegate(ref Key) dg)
+        {
+            int byKeydg(ref Key key, ref Value value)
+            {
+                return dg(key);
+            }
 
-	    return _aaApply2(p, aligntsize(Key.sizeof), cast(_dg2_t)&byKeydg);
-	}
+        return _aaApply2(p, Key.sizeof, cast(_dg2_t)&byKeydg);
+        }
 
-	return &foo;
+        return &foo;
     }
 
     int delegate(int delegate(ref Value) dg) byValue()
     {
-	return &opApply;
+        return &opApply;
     }
 
     Value get(Key key, lazy Value defaultValue)
     {
-	auto p = key in *cast(Value[Key]*)(&p);
-	return p ? *p : defaultValue;
+        auto p = key in *cast(Value[Key]*)(&p);
+        return p ? *p : defaultValue;
     }
+
+    static if (is(typeof({ Value[Key] r; r[Key.init] = Value.init; }())))
+        @property Value[Key] dup()
+        {
+            Value[Key] result;
+            foreach (k, v; this)
+            {
+                result[k] = v;
+            }
+            return result;
+        }
+}
+
+unittest
+{
+    auto a = [ 1:"one", 2:"two", 3:"three" ];
+    auto b = a.dup;
+    assert(b == [ 1:"one", 2:"two", 3:"three" ]);
 }
 
 void clear(T)(T obj) if (is(T == class))
 {
+    if (!obj) return;
     auto ci = obj.classinfo;
     auto defaultCtor =
         cast(void function(Object)) ci.defaultConstructor;
@@ -2727,7 +2803,7 @@ version (none)
 {
     // enforce() copied from Phobos std.contracts for clear(), left out until
     // we decide whether to use it.
-    
+
 
     T _enforce(T, string file = __FILE__, int line = __LINE__)
         (T value, lazy const(char)[] msg = null)
@@ -2765,10 +2841,11 @@ version (none)
 bool _ArrayEq(T1, T2)(T1[] a1, T2[] a2)
 {
     if (a1.length != a2.length)
-	return false;
+        return false;
     foreach(i, a; a1)
-    {	if (a != a2[i])
-	    return false;
+    {
+        if (a != a2[i])
+            return false;
     }
     return true;
 }

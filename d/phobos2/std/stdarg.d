@@ -12,29 +12,9 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
- */
 module std.stdarg;
 
-version (GNU)
-{
-    // va_list might be a pointer, but assuming so is not portable.
-    private import gcc.builtins;
-    alias __builtin_va_list va_list;
-}
-else
-{
-    alias void* va_list;
-}
-    
-// va_arg is handled magically by the compiler
-template va_arg(T)
-{
-    T va_arg(ref va_list _argptr)
-    {
-        T t;
-        return t;
-    }
-}
+pragma(msg, "std.stdarg is deprecated.  You should import core.vararg instead.");
+
+public import core.vararg;
+

@@ -7,13 +7,14 @@ Macros:
 
 WIKI = StdBitarray
 
-Copyright: Copyright Digital Mars 2007 - 2009.
+Copyright: Copyright Digital Mars 2007 - 2011.
 License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
 Authors:   $(WEB digitalmars.com, Walter Bright),
            $(WEB erdani.org, Andrei Alexandrescu)
+Source: $(PHOBOSSRC std/_bitmanip.d)
 */
 /*
-         Copyright Digital Mars 2007 - 2009.
+         Copyright Digital Mars 2007 - 2011.
 Distributed under the Boost Software License, Version 1.0.
    (See accompanying file LICENSE_1_0.txt or copy at
          http://www.boost.org/LICENSE_1_0.txt)
@@ -579,7 +580,7 @@ else
     {
         debug(bitarray) printf("BitArray.sort.unittest\n");
 
-        __gshared uint x = 0b1100011000;
+        __gshared size_t x = 0b1100011000;
         __gshared BitArray ba = { 10, &x };
         ba.sort;
         for (size_t i = 0; i < 6; i++)
@@ -768,7 +769,7 @@ else
         BitArray a; a.init(ba);
         void[] v = cast(void[])a;
 
-        assert(v.length == a.dim * uint.sizeof);
+        assert(v.length == a.dim * size_t.sizeof);
     }
 
     /***************************************

@@ -349,7 +349,7 @@ void ArrayInitializer::addInit(Expression *index, Initializer *value)
 Initializer *ArrayInitializer::semantic(Scope *sc, Type *t)
 {   unsigned i;
     unsigned length;
-    uintmax_t amax = 0x80000000;
+    const uintmax_t amax = 0x80000000;
 
     //printf("ArrayInitializer::semantic(%s)\n", t->toChars());
     if (sem)                            // if semantic() already run
@@ -402,8 +402,8 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t)
     }
 
     if ((uintmax_t) dim * t->nextOf()->size() >= amax)
-    {	error(loc, "array dimension %"PRIuTSIZE" exceeds max of %"PRIuMAX, dim, amax / t->nextOf()->size());
-	goto Lerr;
+    {   error(loc, "array dimension %"PRIuTSIZE" exceeds max of %"PRIuMAX, dim, amax / t->nextOf()->size());
+        goto Lerr;
     }
     return this;
 

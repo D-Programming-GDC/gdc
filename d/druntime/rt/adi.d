@@ -11,12 +11,6 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by Iain Buclaw, September 2010.
-*/
 module rt.adi;
 
 //debug=adi;            // uncomment to turn on debugging printf's
@@ -107,15 +101,15 @@ extern (C) char[] _adReverseChar(char[] a)
              */
             memcpy(tmp.ptr, hi, stridehi);
             memcpy(tmplo.ptr, lo, stridelo);
-            memmove(lo + stridehi, lo + stridelo , (hi - lo) - stridelo);
+            memmove(lo + stridehi, lo + stridelo , cast(size_t)((hi - lo) - stridelo));
             memcpy(lo, tmp.ptr, stridehi);
             memcpy(hi + stridehi - stridelo, tmplo.ptr, stridelo);
 
             lo += stridehi;
-            hi = hi - 1 + (stridehi - stridelo);
+            hi = hi - 1 + cast(int)(stridehi - stridelo);
         }
     }
-    return *cast(char[]*)(&a);
+    return a;
 }
 
 unittest
@@ -208,7 +202,7 @@ extern (C) wchar[] _adReverseWchar(wchar[] a)
             hi = hi - 1 + (stridehi - stridelo);
         }
     }
-    return *cast(wchar[]*)(&a);
+    return a;
 }
 
 unittest
@@ -332,7 +326,7 @@ extern (C) char[] _adSortChar(char[] a)
         }
         delete da;
     }
-    return *cast(char[]*)(&a);
+    return a;
 }
 
 /**********************************************
@@ -354,7 +348,7 @@ extern (C) wchar[] _adSortWchar(wchar[] a)
         }
         delete da;
     }
-    return *cast(wchar[]*)(&a);
+    return a;
 }
 
 /***************************************

@@ -136,8 +136,8 @@ class Condition
                 throw new SyncException( "Unable to wait for condition" );
         }
     }
-    
-    
+
+
     /**
      * Suspends the calling thread until a notification occurs or until the
      * supplied time period has elapsed.
@@ -163,16 +163,16 @@ class Condition
     {
         version( Win32 )
         {
-            auto maxWaitMillis = milliseconds( uint.max - 1 );
+            auto maxWaitMillis = dur!("msecs")( uint.max - 1 );
 
             while( val > maxWaitMillis )
             {
                 if( timedWait( cast(uint)
-                               maxWaitMillis.totalMilliseconds ) )
+                               maxWaitMillis.total!("msecs")() ) )
                     return true;
                 val -= maxWaitMillis;
             }
-            return timedWait( cast(uint) val.totalMilliseconds );
+            return timedWait( cast(uint) val.total!("msecs")() );
         }
         else version( Posix )
         {
@@ -214,12 +214,7 @@ class Condition
     }
     body
     {
-        enum : uint
-        {
-            NANOS_PER_TICK = 100,
-        }
-
-        return wait( nanoseconds( period * NANOS_PER_TICK ) );
+        return wait( dur!"hnsecs"( period ) );
     }
 
 
@@ -575,8 +570,8 @@ version( unittest )
             synchronized( mutex )
             {
                 waiting    = true;
-                alertedOne = condReady.wait( 10_000_000 ); // 1s
-                alertedTwo = condReady.wait( 10_000_000 ); // 1s
+                alertedOne = condReady.wait( dur!"seconds"(1) );
+                alertedTwo = condReady.wait( dur!"seconds"(1) );
             }
         }
 

@@ -70,12 +70,7 @@ endif
 
 D_dmd_srcdir=d/dmd$(D_ver_suffix)
 D_incl_subdir=d$(D_ver_suffix)
-D_EXTRA_DEFINES += -DLIBPHOBOS=\"-lgphobos$(D_ver_suffix)\" -DLIBPHOBOS_PROFILE=\"-lgphobos$(D_ver_suffix)\"
-
-# druntime library for linker
-ifeq ($(D_LANGUAGE_VERSION),2)
-  D_EXTRA_DEFINES += -DLIBDRUNTIME=\"-lgdruntime\" -DLIBDRUNTIME_PROFILE=\"-lgdruntime\"
-endif
+D_EXTRA_DEFINES += -DLIBPHOBOS=\"-lgphobos$(D_ver_suffix)\" 
 
 # This should be configured
 gcc_d_include_dir = $(libsubdir)/$(unlibsubdir)/..`echo $(exec_prefix) | sed -e 's|^$(prefix)||' -e 's|/[^/]*|/..|g'`/include/$(D_incl_subdir)/$(version)
@@ -112,8 +107,6 @@ D_TREE_H = $(TREE_H) d/d-tree.def d/d-lang.h d/d-codegen.h d/d-objfile.h \
 	$(srcdir)/../include/hashtab.h $(srcdir)/../include/splay-tree.h \
 	$(D_DMD_H)
 
-#D_EXTRA_DEFINES += -DD_PHOBOS_DIR=\"$(gcc_d_include_dir)\"
-
 
 # Would be better to configure these rather than running shell script again and again,
 # but would require a patch to gcc/configure.ac
@@ -149,6 +142,8 @@ D_CC_FLAGS = -Wno-missing-braces
 D_CC_FLAGS += -Wno-format
 # d-asm-i386.h
 D_CC_FLAGS += -Wno-missing-field-initializers
+# from dmd
+D_CC_FLAGS += -Wno-deprecated -Wstrict-aliasing
 # d-gcc-real.h
 D_CC_FLAGS += -fno-strict-aliasing
 

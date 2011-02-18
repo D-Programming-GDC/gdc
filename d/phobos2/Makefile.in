@@ -246,9 +246,9 @@ BASE_OBJS = object_.o
 RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
              rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
              rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
-             rt/cast_.o rt/critical.o rt/dmain2.o \
+             rt/cast_.o rt/critical_.o rt/dmain2.o \
              rt/memory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
-             rt/monitor.o rt/obj.o rt/qsort.o rt/switch_.o
+             rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o
 
 CORE_OBJS = core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
           core/exception.o core/memory.o core/runtime.o core/thread.o \
@@ -329,7 +329,7 @@ CORE_IMPORTS = core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
              core/sys/posix/sys/shm.di core/sys/posix/sys/socket.di \
              core/sys/posix/sys/stat.di core/sys/posix/sys/time.di \
              core/sys/posix/sys/types.di core/sys/posix/sys/uio.di \
-             core/sys/posix/sys/wait.di \
+             core/sys/posix/sys/un.di core/sys/posix/sys/wait.di \
              \
              core/sys/windows/windows.di
 
@@ -727,10 +727,6 @@ uninstall-am: uninstall-info-am
 
 all-local: libgphobos2.a libgdruntime.a
 
-# Special-case for phobos, need to emit all templates.
-std/%.o : std/%.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
-
 %.o : %.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
 $(IMPORT): $(D_PREREQ_SRCS)
@@ -812,6 +808,10 @@ libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core
 std/boxer.t.o: std/boxer.o
 	cp $< $@
 
+# Special-case for std.xml, need to emit templates.
+std/xml.o : std/xml.d $(D_PREREQ_SRCS)
+	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
+
 unittest: unittest.o libgphobos2_t.a libgphobos2.a
 	$(GDC) -o $@ $(CFLAGS) -fdeprecated unittest.o -L./ -lgdruntime -lgphobos2_t $(LIBS) -ldl
 
@@ -819,7 +819,7 @@ std/stream.t.o: std/stream.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
 
 libgphobos2.a : libgdruntime.a $(ALL_PHOBOS_OBJS)
-	$(AR) -r $@ $(ALL_PHOBOS_OBJS)
+	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(ALL_PHOBOS_OBJS)
 	$(RANLIB) $@
 
 libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)

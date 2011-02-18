@@ -12,7 +12,7 @@ Authors:   $(WEB digitalmars.com, Walter Bright),
            Shin Fujishiro,
            Adam D. Ruppe
 
-Copyright: Copyright Digital Mars 2007-.
+Source:    $(PHOBOSSRC std/_conv.d)
 */
 module std.conv;
 
@@ -177,6 +177,13 @@ unittest
             }
         }
     }
+}
+
+unittest
+{
+    char[4] test = ['a', 'b', 'c', 'd'];
+    static assert(!isInputRange!(Unqual!(char[4])));
+    assert(to!string(test) == test);
 }
 
 /**
@@ -697,7 +704,8 @@ fit in the narrower type.
  */
 T toImpl(T, S)(S value)
 if (!implicitlyConverts!(S, T)
-        && std.traits.isNumeric!(S) && std.traits.isNumeric!(T))
+        && (isNumeric!S || isSomeChar!S)
+        && (isNumeric!T || isSomeChar!T))
 {
     enum sSmallest = mostNegative!(S);
     enum tSmallest = mostNegative!(T);
@@ -718,6 +726,29 @@ if (!implicitlyConverts!(S, T)
     return cast(T) value;
 }
 
+unittest
+{
+    dchar a = ' ';
+    assert(to!char(a) == ' ');
+    a = 300;
+    assert(collectException(to!char(a)));
+
+    dchar from0 = 'A';
+    char to0 = to!(char)(from0);
+
+    wchar from1 = 'A';
+    char to1 = to!(char)(from1);
+
+    char from2 = 'A';
+    char to2 = to!(char)(from2);
+
+    char from3 = 'A';
+    wchar to3 = to!(wchar)(from3);
+
+    char from4 = 'A';
+    dchar to4 = to!(dchar)(from4);
+}
+
 private T parseString(T)(const(char)[] v)
 {
     scope(exit)
@@ -734,7 +765,8 @@ private T parseString(T)(const(char)[] v)
 Array-to-array conversion (except when target is a string type)
 converts each element in turn by using $(D to).
  */
-T toImpl(T, S)(S src) if (isDynamicArray!(S) && isArray!(T) && !isSomeString!(T)
+T toImpl(T, S)(S src) if (isDynamicArray!(S) && isArray!(T)
+        && !isSomeString!(S) && !isSomeString!(T)
         && !implicitlyConverts!(S, T))
 {
     alias typeof(T.init[0]) E;
@@ -1260,32 +1292,59 @@ unittest
     assert(parse!A(s) == A.member111 && s == "1");
 }
 
+unittest
+{
+    assert(to!float("inf") == float.infinity);
+    assert(to!float("-inf") == -float.infinity);
+}
+
 Target parse(Target, Source)(ref Source p)
 if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
 {
-    static immutable real negtab[] =
+    static immutable real negtab[14] =
         [ 1e-4096L,1e-2048L,1e-1024L,1e-512L,1e-256L,1e-128L,1e-64L,1e-32L,
                 1e-16L,1e-8L,1e-4L,1e-2L,1e-1L,1.0L ];
-    static immutable real postab[] =
+    static immutable real postab[13] =
         [ 1e+4096L,1e+2048L,1e+1024L,1e+512L,1e+256L,1e+128L,1e+64L,1e+32L,
                 1e+16L,1e+8L,1e+4L,1e+2L,1e+1L ];
     // static immutable string infinity = "infinity";
     // static immutable string nans = "nans";
 
+    ConvException bailOut(string f = __FILE__, size_t n = __LINE__)
+        (string msg = null) {
+        if (!msg) msg = "Floating point conversion error";
+        return new ConvException(text(f, ":", n, ": ", msg, " for input \"", p, "\"."));
+    }
+
     for (;;)
     {
-        enforce(!p.empty,
-                new ConvException("error converting input to floating point"));
+        enforce(!p.empty, bailOut());
         if (!isspace(p.front)) break;
         p.popFront();
     }
     char sign = 0;                       /* indicating +                 */
     switch (p.front)
     {
-        case '-': sign++; goto case '+';
-        case '+': p.popFront(); enforce(!p.empty,
-                new ConvException("error converting input to floating point"));
-        default: {}
+    case '-':
+        sign++;
+        p.popFront();
+        if (tolower(p.front) == 'i') goto case 'i';
+        enforce(!p.empty, bailOut());
+        break;
+    case '+':
+        p.popFront();
+        enforce(!p.empty, bailOut());
+        break;
+    case 'i': case 'I':
+        p.popFront();
+        if (tolower(p.front) == 'n' &&
+                (p.popFront(), tolower(p.front) == 'f') &&
+                (p.popFront(), p.empty))
+        {
+            // 'inf'
+            return sign ? -Target.infinity : Target.infinity;
+        }
+    default: {}
     }
 
     bool isHex = false;
@@ -1369,10 +1428,9 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
             }
         }
 
-        enforce(anydigits,
-                new ConvException("Error converting input to floating point"));
+        enforce(anydigits, bailOut());
         enforce(!p.empty && (p.front == 'p' || p.front == 'P'),
-                new ConvException("Floating point parsing: exponent is required"));
+                bailOut("Floating point parsing: exponent is required"));
         char sexp;
         int e;
 
@@ -1656,6 +1714,67 @@ if (isSomeString!Source && is(Target == typedef))
         return cast(Target) parse!T(s);
     else
         static assert(0);
+}
+
+private void skipWS(R)(ref R r)
+{
+    skipAll(r, ' ', '\n', '\t', '\r');
+}
+
+/**
+ * Parses an array from a string given the left bracket (default $(D
+ * '[')), right bracket (default $(D ']')), and element seprator (by
+ * default $(D ',')).
+ */
+Target parse(Target, Source)(ref Source s, dchar lbracket = '[', dchar rbracket = ']', dchar comma = ',')
+if (isSomeString!Source && isDynamicArray!Target && !isSomeString!Target)
+{
+    Target result;
+    skipWS(s);
+    if (s.front != lbracket) return result;
+    s.popFront();
+    skipWS(s);
+    if (s.front == rbracket)
+    {
+        s.popFront();
+        return result;
+    }
+    for (;; s.popFront(), skipWS(s))
+    {
+        result ~= parse!(ElementType!Target)(s);
+        skipWS(s);
+        if (s.front != comma) break;
+    }
+    if (s.front == rbracket)
+    {
+        s.popFront();
+    }
+    return result;
+}
+
+unittest
+{
+    int[] a = [1, 2, 3, 4, 5];
+	auto s = to!string(a);
+    assert(to!(int[])(s) == a);
+}
+
+unittest
+{
+    int[][] a = [ [1, 2] , [3], [4, 5] ];
+	auto s = to!string(a);
+    //assert(to!(int[][])(s) == a);
+}
+
+unittest
+{
+    int[][][] ia = [ [[1,2],[3,4],[5]] , [[6],[],[7,8,9]] , [[]] ];
+	
+	char[] s = to!(char[])(ia);
+	int[][][] ia2;
+	
+	ia2 = to!(typeof(ia2))(s);
+    assert( ia == ia2);  
 }
 
 // Customizable integral parse
@@ -3248,7 +3367,7 @@ unittest
 }
 
 /// C-style strings
-T toImpl(T, S)(S s) if (is(S : const(char)*) && isSomeString!(T))
+T toImpl(T, S)(S s) if (isPointer!S && is(S : const(char)*) && isSomeString!T)
 {
     return s ? cast(T) s[0 .. strlen(s)].dup : cast(string)null;
 }
@@ -3269,7 +3388,7 @@ T toImpl(T, S)(S d) if (is(Unqual!S == double) && isSomeString!(T))
 }
 
 /// $(D real) to all string types.
-T toImpl(T, S)(S r) if (is(Unqual!S == real) && isSomeString!(T))
+T toImpl(T, S)(S r) if (is(Unqual!S == real) && isSomeString!T)
 {
     char[20] buffer;
     int len = sprintf(buffer.ptr, "%Lg", r);
@@ -3832,7 +3951,7 @@ T octal(T, string num)() {
 
 /// Ditto
 template octal(alias s) if (isIntegral!(typeof(s))) {
-        enum auto octal = octal!(typeof(s), toStringNow!(s));
+    enum auto octal = octal!(typeof(s), toStringNow!(s));
 }
 
 unittest

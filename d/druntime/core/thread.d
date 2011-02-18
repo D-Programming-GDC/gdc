@@ -39,9 +39,14 @@ version = StackGrowsDown;
  */
 class ThreadException : Exception
 {
-    this( string msg )
+    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
-        super( msg );
+        super(msg, file, line, next);
+    }
+
+    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, next);
     }
 }
 
@@ -51,15 +56,22 @@ class ThreadException : Exception
  */
 class FiberException : Exception
 {
-    this( string msg )
+    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
-        super( msg );
+        super(msg, file, line, next);
+    }
+
+    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, next);
     }
 }
 
 
 private
 {
+    import core.sync.mutex;
+
     //
     // from core.memory
     //
@@ -92,8 +104,8 @@ private
     {
         return rt_stackTop();
     }
-    
-    
+
+
     alias scope void delegate() gc_atom;
     extern (C) void function(gc_atom) gc_atomic;
 }
@@ -109,8 +121,9 @@ version( Windows )
     private
     {
         import core.stdc.stdint : uintptr_t; // for _beginthreadex decl below
+        import core.stdc.stdlib;             // for malloc
         import core.sys.windows.windows;
-        import core.thread_helper; // for OpenThreadHandle
+        import core.thread_helper;           // for OpenThreadHandle
 
         const DWORD TLS_OUT_OF_INDEXES  = 0xFFFFFFFF;
 
@@ -124,8 +137,8 @@ version( Windows )
             //       these are defined in dm\src\win32\tlsseg.asm by DMC.
             extern (C)
             {
-                extern __thread int _tlsstart;
-                extern __thread int _tlsend;
+                extern int _tlsstart;
+                extern int _tlsend;
             }
         }
         else
@@ -193,19 +206,11 @@ version( Windows )
                 {
                     append( t );
                 }
-                catch( Object o )
-                {
-                    // TODO: Remove this once the compiler prevents it.
-                }
                 rt_moduleTlsDtor();
             }
             catch( Throwable t )
             {
                 append( t );
-            }
-            catch( Object o )
-            {
-                // TODO: Remove this once the compiler prevents it.
             }
             return 0;
         }
@@ -228,11 +233,12 @@ else version( Posix )
 {
     private
     {
+        import core.stdc.errno;
         import core.sys.posix.semaphore;
+        import core.sys.posix.stdlib; // for malloc, valloc, free
         import core.sys.posix.pthread;
         import core.sys.posix.signal;
         import core.sys.posix.time;
-        import core.stdc.errno;
 
         extern (C) int getErrno();
 
@@ -253,8 +259,8 @@ else version( Posix )
             {
                 extern (C)
                 {
-                    extern __thread int _tlsstart;
-                    extern __thread int _tlsend;
+                    extern int _tlsstart;
+                    extern int _tlsend;
                 }
             }
             else version( OSX )
@@ -286,8 +292,8 @@ else version( Posix )
         {   // TODO: make these compiler generated
             extern (C)
             {
-                __thread int _tlsstart = 3;
-                __thread int _tlsend;
+                int _tlsstart = 3;
+                int _tlsend;
             }
         }
         else
@@ -360,7 +366,7 @@ else version( Posix )
                 auto pend   = cast(void*) &_tlsend;
                 obj.m_tls = pstart[0 .. pend - pstart];
             }
-            
+
             obj.m_isRunning = true;
             Thread.setThis( obj );
             //Thread.add( obj );
@@ -373,7 +379,7 @@ else version( Posix )
                 obj.m_isRunning = false;
             }
             Thread.add( &obj.m_main );
-            
+
             static extern (C) void thread_cleanupHandler( void* arg )
             {
                 Thread  obj = cast(Thread) arg;
@@ -441,23 +447,15 @@ else version( Posix )
                 {
                     append( t );
                 }
-                catch( Object o )
-                {
-                    // TODO: Remove this once the compiler prevents it.
-                }
                 rt_moduleTlsDtor();
             }
             catch( Throwable t )
             {
                 append( t );
             }
-            catch( Object o )
-            {
-                // TODO: Remove this once the compiler prevents it.
-            }
 
             // NOTE: Normal cleanup is handled by scope(exit).
-            
+
             static if( __traits( compiles, pthread_cleanup ) )
             {
                 cleanup.pop( 0 );
@@ -484,11 +482,7 @@ else version( Posix )
         }
         body
         {
-            version( GNU )
-            {
-                __builtin_unwind_init();
-            }
-            else version( D_InlineAsm_X86 )
+            version( D_InlineAsm_X86 )
             {
                 asm
                 {
@@ -517,6 +511,10 @@ else version( Posix )
                     push R15 ;
                     push EAX ;   // 16 byte align the stack
                 }
+            }
+            else version( GNU )
+            {
+                __builtin_unwind_init();
             }
             else
             {
@@ -560,11 +558,7 @@ else version( Posix )
                 }
             }
 
-            version( GNU )
-            {
-                // registers will be popped automatically
-            }
-            else version( D_InlineAsm_X86 )
+            version( D_InlineAsm_X86 )
             {
                 asm
                 {
@@ -593,6 +587,10 @@ else version( Posix )
                     pop RBX ;
                     pop RAX ;
                 }
+            }
+            else version( GNU )
+            {
+                // registers will be popped automatically
             }
             else
             {
@@ -692,6 +690,7 @@ class Thread
     }
     body
     {
+        this();                 // set m_tls
         m_fn   = fn;
         m_sz   = sz;
         m_call = Call.FN;
@@ -717,6 +716,7 @@ class Thread
     }
     body
     {
+        this();                 // set m_tls
         m_dg   = dg;
         m_sz   = sz;
         m_call = Call.DG;
@@ -1064,8 +1064,8 @@ class Thread
     ///////////////////////////////////////////////////////////////////////////
     // Actions on Calling Thread
     ///////////////////////////////////////////////////////////////////////////
-    
-    
+
+
     /**
      * Suspends the calling thread for at least the supplied period.  This may
      * result in multiple OS calls if period is greater than the maximum sleep
@@ -1080,8 +1080,8 @@ class Thread
      * Example:
      * ------------------------------------------------------------------------
      *
-     * Thread.sleep( milliseconds( 50 ) );  // sleep for 50 milliseconds
-     * Thread.sleep( seconds( 5 ) );        // sleep for 5 seconds
+     * Thread.sleep( dur!("msecs")( 50 ) );  // sleep for 50 milliseconds
+     * Thread.sleep( dur!("seconds")( 5 ) ); // sleep for 5 seconds
      *
      * ------------------------------------------------------------------------
      */
@@ -1094,7 +1094,7 @@ class Thread
     {
         version( Windows )
         {
-            auto maxSleepMillis = milliseconds( uint.max - 1 );
+            auto maxSleepMillis = dur!("msecs")( uint.max - 1 );
 
             // NOTE: In instances where all other threads in the process have a
             //       lower priority than the current thread, the current thread
@@ -1106,30 +1106,25 @@ class Thread
             while( val > maxSleepMillis )
             {
                 Sleep( cast(uint)
-                       maxSleepMillis.totalMilliseconds );
+                       maxSleepMillis.total!("msecs")() );
                 val -= maxSleepMillis;
             }
-            Sleep( cast(uint) val.totalMilliseconds );
+            Sleep( cast(uint) val.total!("msecs")() );
         }
         else version( Posix )
         {
             timespec tin  = void;
             timespec tout = void;
 
-            enum : uint
-            {
-                NANOS_PER_SECOND = 1000_000_000
-            }
-            
-            if( val.totalSeconds > tin.tv_sec.max )
+            if( val.total!("seconds")() > tin.tv_sec.max )
             {
                 tin.tv_sec  = tin.tv_sec.max;
-                tin.tv_nsec = cast(typeof(tin.tv_nsec)) (val.totalNanoseconds % NANOS_PER_SECOND);
+                tin.tv_nsec = cast(typeof(tin.tv_nsec)) val.fracSec.nsecs;
             }
             else
             {
-                tin.tv_sec  = cast(typeof(tin.tv_sec)) val.totalSeconds;
-                tin.tv_nsec = cast(typeof(tin.tv_nsec)) (val.totalNanoseconds % NANOS_PER_SECOND);
+                tin.tv_sec  = cast(typeof(tin.tv_sec)) val.total!("seconds")();
+                tin.tv_nsec = cast(typeof(tin.tv_nsec)) val.fracSec.nsecs;
             }
             while( true )
             {
@@ -1141,8 +1136,8 @@ class Thread
             }
         }
     }
-    
-    
+
+
     /**
      * Suspends the calling thread for at least the supplied period.  This may
      * result in multiple OS calls if period is greater than the maximum sleep
@@ -1170,12 +1165,7 @@ class Thread
     }
     body
     {
-        enum : uint
-        {
-            NANOS_PER_TICK = 100,
-        }
-
-        sleep( nanoseconds( period * NANOS_PER_TICK ) );
+        sleep( dur!"hnsecs"( period ) );
     }
 
 
@@ -1218,7 +1208,7 @@ class Thread
         version( Windows )
         {
             auto t = cast(Thread) TlsGetValue( sm_this );
-            
+
             // NOTE: If this thread was attached via thread_attachByAddr then
             //       this TLS lookup won't initially be set, so when the TLS
             //       lookup fails, try an exhaustive search.
@@ -1232,7 +1222,7 @@ class Thread
         else version( Posix )
         {
             auto t = cast(Thread) pthread_getspecific( sm_this );
-            
+
             // NOTE: See the comment near thread_findByAddr() for why the
             //       secondary thread_findByAddr lookup can't be done on
             //       Posix.  However, because thread_attachByAddr() is for
@@ -1325,13 +1315,13 @@ class Thread
             assert( PRIORITY_MAX != -1 );
         }
     }
-    
-    
+
+
     ///////////////////////////////////////////////////////////////////////////
     // Stuff That Should Go Away
     ///////////////////////////////////////////////////////////////////////////
-    
-    
+
+
     deprecated alias thread_findByAddr findThread;
 
 
@@ -1417,8 +1407,8 @@ private:
     // Local storage
     //
     __gshared TLSKey    sm_this;
-    
-    
+
+
     //
     // Main process thread
     //
@@ -1605,9 +1595,21 @@ private:
     //
     // All use of the global lists should synchronize on this lock.
     //
-    static Object slock()
+    static Mutex slock()
     {
-        return Thread.classinfo;
+        static Mutex m = null;
+
+        if( m !is null )
+            return m;
+        else
+        {
+            auto ci = Mutex.classinfo;
+            auto p  = malloc( ci.init.length );
+            (cast(byte*) p)[0 .. ci.init.length] = ci.init[];
+            m = cast(Mutex) p;
+            m.__ctor();
+            return m;
+        }
     }
 
 
@@ -1899,7 +1901,7 @@ extern (C) bool thread_isMainThread()
 extern (C) Thread thread_attachThis()
 {
     gc_disable(); scope(exit) gc_enable();
-    
+
     Thread          thisThread  = new Thread();
     Thread.Context* thisContext = &thisThread.m_main;
     assert( thisContext == thisThread.m_curr );
@@ -1916,7 +1918,7 @@ extern (C) Thread thread_attachThis()
         thisThread.m_addr  = pthread_self();
         thisContext.bstack = getStackBottom();
         thisContext.tstack = thisContext.bstack;
-        
+
         thisThread.m_isRunning = true;
     }
     thisThread.m_isDaemon = true;
@@ -1965,7 +1967,7 @@ version( Windows )
     //       Windows-specific.  If they are truly needed elsewhere, the
     //       suspendHandler will need a way to call a version of getThis()
     //       that only does the TLS lookup without the fancy fallback stuff.
-    
+
     /// ditto
     extern (C) Thread thread_attachByAddr( Thread.ThreadAddr addr )
     {
@@ -1987,7 +1989,7 @@ version( Windows )
             thisThread.m_addr  = addr;
             thisContext.bstack = bstack;
             thisContext.tstack = thisContext.bstack;
-            
+
             if( addr == GetCurrentThreadId() )
             {
                 thisThread.m_hndl = GetCurrentThreadHandle();
@@ -2012,7 +2014,7 @@ version( Windows )
             thisThread.m_tmach = pthread_mach_thread_np( thisThread.m_addr );
             assert( thisThread.m_tmach != thisThread.m_tmach.init );
         }
-        
+
         version( OSX )
         {
             // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
@@ -2060,19 +2062,19 @@ version( Windows )
             multiThreadedFlag = true;
         return thisThread;
     }
-    
-    
+
+
     /// This should be handled automatically by thread_attach.
     deprecated extern (C) void thread_setNeedLock( bool need ) nothrow
     {
         if( need )
             multiThreadedFlag = true;
     }
-    
-    
+
+
     /// Renamed to be more consistent with other extern (C) routines.
     deprecated alias thread_attachByAddr thread_attach;
-    
+
 
     /// ditto
     deprecated alias thread_detachByAddr thread_detach;
@@ -2133,6 +2135,11 @@ extern (C) void thread_joinAll()
 
         foreach( t; Thread )
         {
+            if( !t.isRunning )
+            {
+                Thread.remove( t );
+                continue;
+            }
             if( !t.isDaemon )
             {
                 nonDaemon = t;
@@ -2366,7 +2373,8 @@ extern (C) void thread_suspendAll()
             suspend( Thread.getThis() );
         return;
     }
-    synchronized( Thread.slock )
+
+    Thread.slock.lock();
     {
         if( ++suspendDepth > 1 )
             return;
@@ -2490,7 +2498,8 @@ body
             resume( Thread.getThis() );
         return;
     }
-    synchronized( Thread.slock )
+
+    scope(exit) Thread.slock.unlock();
     {
         if( --suspendDepth > 0 )
             return;
@@ -2802,7 +2811,6 @@ private
     {
         import core.sys.posix.unistd;   // for sysconf
         import core.sys.posix.sys.mman; // for mmap
-        import core.sys.posix.stdlib;   // for malloc, valloc, free
 
         version( AsmX86_Win32 ) {} else
         version( AsmX86_Posix ) {} else
@@ -2872,10 +2880,6 @@ private
         catch( Throwable t )
         {
             obj.m_unhandled = t;
-        }
-        catch( Object o )
-        {
-            // TODO: Remove this once the compiler prevents it.
         }
 
         static if( __traits( compiles, ucontext_t ) )

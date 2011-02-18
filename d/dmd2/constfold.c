@@ -31,6 +31,7 @@
 #include "expression.h"
 #include "aggregate.h"
 #include "declaration.h"
+#include "utf.h"
 
 #ifdef IN_GCC
 #include "d-gcc-real.h"
@@ -1416,10 +1417,12 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
     if (e1->op == TOKnull && (e2->op == TOKint64 || e2->op == TOKstructliteral))
     {   e = e2;
+        t = t1;
         goto L2;
     }
     else if ((e1->op == TOKint64 || e1->op == TOKstructliteral) && e2->op == TOKnull)
     {   e = e1;
+        t = t2;
      L2:
         Type *tn = e->type->toBasetype();
         if (tn->ty == Tchar || tn->ty == Twchar || tn->ty == Tdchar)
@@ -1427,18 +1430,15 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
             // Create a StringExp
             void *s;
             StringExp *es;
-            size_t len = 1;
-            int sz = tn->size();
+            if (t->nextOf())
+                t = t->nextOf()->toBasetype();
+            int sz = t->size();
+
             dinteger_t v = e->toInteger();
 
+            size_t len = utf_codeLength(sz, v);
             s = mem.malloc((len + 1) * sz);
-            switch (sz)
-            {
-                case 1: *(d_uns8*)s = v; break;
-                case 2: *(d_uns16*)s = v; break;
-                case 4: *(d_uns32*)s = v; break;
-                default: assert(0);
-            }
+            utf_encode(sz, s, v);
 
             // Add terminating 0
             memset((unsigned char *)s + len * sz, 0, sz);
@@ -1525,24 +1525,16 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
     {
         // Concatenate the strings
         void *s;
-        void *sch;
         StringExp *es1 = (StringExp *)e1;
         StringExp *es;
         Type *t;
-        size_t len = es1->len + 1;
         int sz = es1->sz;
         dinteger_t v = e2->toInteger();
 
+        size_t len = es1->len + utf_codeLength(sz, v);
         s = mem.malloc((len + 1) * sz);
         memcpy(s, es1->string, es1->len * sz);
-        sch = (unsigned char *)s + es1->len * sz;
-        switch (sz)
-        {
-            case 1: *(d_uns8*)sch = v; break;
-            case 2: *(d_uns16*)sch = v; break;
-            case 4: *(d_uns32*)sch = v; break;
-            default: assert(0);
-        }
+        utf_encode(sz, (unsigned char *)s + (sz * es1->len), v);
 
         // Add terminating 0
         memset((unsigned char *)s + len * sz, 0, sz);
@@ -1566,13 +1558,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         dinteger_t v = e1->toInteger();
 
         s = mem.malloc((len + 1) * sz);
-        switch (sz)
-        {
-            case 1: *(d_uns8*)s = v; break;
-            case 2: *(d_uns16*)s = v; break;
-            case 4: *(d_uns32*)s = v; break;
-            default: assert(0);
-        }
+        memcpy((unsigned char *)s, &v, sz);
         memcpy((unsigned char *)s + sz, es2->string, es2->len * sz);
 
         // Add terminating 0

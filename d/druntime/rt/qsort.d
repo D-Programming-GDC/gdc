@@ -13,12 +13,6 @@
         _adSort() is required.
 */
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by Iain Buclaw, September 2010.
-*/
-
 module rt.qsort;
 
 /*
@@ -50,7 +44,7 @@ an array of large structures to be sorted, rather than an array of pointers to
 structures.  The default value is optimized for a high cost for compares. */
 
 
-extern (C) Array _adSort(Array a, TypeInfo ti)
+extern (C) void[] _adSort(Array a, TypeInfo ti)
 {
   byte*[40] stack;              // stack
   byte* i, j;            // scan and limit pointers
@@ -127,7 +121,7 @@ extern (C) Array _adSort(Array a, TypeInfo ti)
       limit = sp[1];
     }
     else                                // else stack empty, all done
-      return *cast(Array*)(&a);
+      return *cast(void[]*)(&a);
   }
   assert(0);
 }

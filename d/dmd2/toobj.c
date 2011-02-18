@@ -224,7 +224,7 @@ void Module::genmoduleinfo()
     // name[]
     const char *name = toPrettyChars();
     size_t namelen = strlen(name);
-    dtsize_t(&dt, namelen);
+    dtdword(&dt, namelen);
     dtabytes(&dt, TYnptr, 0, namelen + 1, name);
 
     ClassDeclarations aclasses;
@@ -258,9 +258,9 @@ void Module::genmoduleinfo()
         dtdword(&dt, 0);
 
     if (needmoduleinfo)
-        dti32(&dt, 8, true);                    // flags
+        dtdword(&dt, 8);                        // flags
     else
-        dti32(&dt, 8 | MIstandalone, true);     // flags
+        dtdword(&dt, 8 | MIstandalone);         // flags
 
     if (ssharedctor)
         dtxoff(&dt, ssharedctor, 0, TYnptr);
@@ -607,7 +607,7 @@ void ClassDeclaration::toObjFile(int multiobj)
     }
     flags |= 2;                 // no pointers
   L2:
-    dti32(&dt, flags, true);
+    dtsize_t(&dt, flags);
 
 
     // deallocator
@@ -955,7 +955,6 @@ unsigned ClassDeclaration::baseVtblOffset(BaseClass *bc)
 
 void InterfaceDeclaration::toObjFile(int multiobj)
 {   unsigned i;
-    unsigned offset;
     Symbol *sinit;
     enum_SC scclass;
 
@@ -1037,6 +1036,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     dtsize_t(&dt, 0);
 
     // vtblInterfaces->data[]
+    unsigned offset;
     dtsize_t(&dt, vtblInterfaces->dim);
     if (vtblInterfaces->dim)
     {
@@ -1052,7 +1052,9 @@ void InterfaceDeclaration::toObjFile(int multiobj)
         dtxoff(&dt, csym, offset, TYnptr);      // (*)
     }
     else
+    {   offset = 0;
         dtsize_t(&dt, 0);
+    }
 
     // base
     assert(!baseClass);
@@ -1065,7 +1067,7 @@ void InterfaceDeclaration::toObjFile(int multiobj)
     dtsize_t(&dt, 0);
 
     // flags
-    dti32(&dt, 4 | isCOMinterface() | 32, true);
+    dtsize_t(&dt, 4 | isCOMinterface() | 32);
 
     // deallocator
     dtsize_t(&dt, 0);

@@ -1,10 +1,12 @@
 // Written in the D programming language.
 
 /**
+ * $(RED This module has been deprecated. Use delegates for binding arguments to specific values.)
+ * 
  * Bind function arguments to functions.
  *
  * References:
- *      $(LINK2 http://www.boost.org/libs/bind/bind.html, boost::bind)
+ *      $(LINK2 http://www.boost.org/libs/bind/bind.html, boost bind)
  * Macros:
  *      WIKI = Phobos/StdBind
  *
@@ -18,6 +20,7 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module std.bind;
+deprecated:
 
 import std.string : stdFormat = format;
 import std.traits;

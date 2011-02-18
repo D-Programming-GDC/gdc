@@ -680,9 +680,7 @@ case "$target_os" in
 	    ;;
   *)        if test "$with_newlib"; then
 		dnl Not sure what to do about GC...
-		D_GC_MODULES=gc/gcgcc.o
 		D_GC_FLAGS='-fversion=GC_Use_Stack_Guess -fversion=GC_Use_Alloc_Malloc'
-		D_GC_MODULES="gc/gcgcc.o gc/gc_guess_stack.o"
 	    else
 		need_to_cfgr_gc=yes
 	    fi

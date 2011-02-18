@@ -3,9 +3,6 @@
 /* Define to 1 if the system has the type `clockid_t'. */
 #undef HAVE_CLOCKID_T
 
-/* Define to 1 if you have the `exp2' function. */
-#undef HAVE_EXP2
-
 /* Define to 1 if you have the `flockfile' function. */
 #undef HAVE_FLOCKFILE
 
@@ -32,9 +29,6 @@
 
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
-
-/* Define to 1 if you have the `log2' function. */
-#undef HAVE_LOG2
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H

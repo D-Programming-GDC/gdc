@@ -43,9 +43,8 @@
 #include <pthread.h>
 #define CRITSECSIZE sizeof(pthread_mutex_t)
 #else
-#define CRITSECSIZE 0
+#define CRITSECSIZE 64
 #endif
-
 
 /******************************** Statement ***************************/
 
@@ -1853,10 +1852,10 @@ Lagain:
                 FuncDeclaration *fdapply;
                 if (dim == 2)
                     fdapply = FuncDeclaration::genCfunc(Type::tint32, "_aaApply2",
-                        Type::tvoid->arrayOf(), Type::tsize_t, flde->type); // flde->type is not generic
+                                                        aggr->type, Type::tsize_t, flde->type);
                 else
                     fdapply = FuncDeclaration::genCfunc(Type::tint32, "_aaApply",
-                        Type::tvoid->arrayOf(), Type::tsize_t, flde->type); // flde->type is not generic);
+                                                        aggr->type, Type::tsize_t, flde->type);
                 ec = new VarExp(0, fdapply);
                 Expressions *exps = new Expressions();
                 exps->push(aggr);
@@ -1898,7 +1897,7 @@ Lagain:
                 int j = sprintf(fdname, "_aApply%s%.*s%zd", r, 2, fntab[flag], dim);
                 assert(j < sizeof(fdname));
                 FuncDeclaration *fdapply = FuncDeclaration::genCfunc(Type::tint32, fdname,
-                    Type::tvoid->arrayOf(), flde->type); // flde->type is not generic
+                                                                     tn->arrayOf(), flde->type);
 
                 ec = new VarExp(0, fdapply);
                 Expressions *exps = new Expressions();
@@ -2339,12 +2338,6 @@ Statement *IfStatement::semantic(Scope *sc)
 {
     condition = condition->semantic(sc);
     condition = resolveProperties(sc, condition);
-    condition = condition->checkToBoolean(sc);
-
-    // If we can short-circuit evaluate the if statement, don't do the
-    // semantic analysis of the skipped code.
-    // This feature allows a limited form of conditional compilation.
-    condition = condition->optimize(WANTflags);
 
     // Evaluate at runtime
     unsigned cs0 = sc->callSuper;
@@ -2368,15 +2361,25 @@ Statement *IfStatement::semantic(Scope *sc)
         match->parent = sc->func;
 
         /* Generate:
-         *  (arg = condition)
+         *  ((arg = condition), arg)
          */
         VarExp *v = new VarExp(0, match);
         condition = new AssignExp(loc, v, condition);
+        condition = new CommaExp(loc, condition, v);
         condition = condition->semantic(scd);
     }
     else
         scd = sc->push();
 
+    // Convert to boolean after declaring arg so this works:
+    //  if (S arg = S()) {}
+    // where S is a struct that defines opCast!bool.
+    condition = condition->checkToBoolean(sc);
+
+    // If we can short-circuit evaluate the if statement, don't do the
+    // semantic analysis of the skipped code.
+    // This feature allows a limited form of conditional compilation.
+    condition = condition->optimize(WANTflags);
     ifbody = ifbody->semanticNoScope(scd);
     scd->pop();
 
@@ -3882,12 +3885,12 @@ Statement *SynchronizedStatement::semantic(Scope *sc)
         Statements *cs = new Statements();
         cs->push(new DeclarationStatement(loc, new DeclarationExp(loc, tmp)));
 
-        FuncDeclaration *fdenter = FuncDeclaration::genCfunc(Type::tvoid, Id::monitorenter);
+        FuncDeclaration *fdenter = FuncDeclaration::genCfunc(Type::tvoid, Id::monitorenter, exp->type);
         Expression *e = new CallExp(loc, new VarExp(loc, fdenter), new VarExp(loc, tmp));
         e->type = Type::tvoid;                  // do not run semantic on e
         cs->push(new ExpStatement(loc, e));
 
-        FuncDeclaration *fdexit = FuncDeclaration::genCfunc(Type::tvoid, Id::monitorexit);
+        FuncDeclaration *fdexit = FuncDeclaration::genCfunc(Type::tvoid, Id::monitorexit, exp->type);
         e = new CallExp(loc, new VarExp(loc, fdexit), new VarExp(loc, tmp));
         e->type = Type::tvoid;                  // do not run semantic on e
         Statement *s = new ExpStatement(loc, e);
@@ -3913,14 +3916,14 @@ Statement *SynchronizedStatement::semantic(Scope *sc)
         Statements *cs = new Statements();
         cs->push(new DeclarationStatement(loc, new DeclarationExp(loc, tmp)));
 
-        FuncDeclaration *fdenter = FuncDeclaration::genCfunc(Type::tvoid, Id::criticalenter);
+        FuncDeclaration *fdenter = FuncDeclaration::genCfunc(Type::tvoid, Id::criticalenter, t);
         Expression *e = new DotIdExp(loc, new VarExp(loc, tmp), Id::ptr);
         e = e->semantic(sc);
         e = new CallExp(loc, new VarExp(loc, fdenter), e);
         e->type = Type::tvoid;                  // do not run semantic on e
         cs->push(new ExpStatement(loc, e));
 
-        FuncDeclaration *fdexit = FuncDeclaration::genCfunc(Type::tvoid, Id::criticalexit);
+        FuncDeclaration *fdexit = FuncDeclaration::genCfunc(Type::tvoid, Id::criticalexit, t);
         e = new DotIdExp(loc, new VarExp(loc, tmp), Id::ptr);
         e = e->semantic(sc);
         e = new CallExp(loc, new VarExp(loc, fdexit), e);
@@ -4231,12 +4234,13 @@ void Catch::semantic(Scope *sc)
     sc = sc->push(sym);
 
     if (!type)
-        type = new TypeIdentifier(0, Id::Object);
+        type = new TypeIdentifier(0, Id::Throwable);
     type = type->semantic(loc, sc);
-    if (!type->toBasetype()->isClassHandle())
+    ClassDeclaration *cd = type->toBasetype()->isClassHandle();
+    if (!cd || ((cd != ClassDeclaration::throwable) && !ClassDeclaration::throwable->isBaseOf(cd, NULL)))
     {
         if (type != Type::terror)
-        {   error(loc, "can only catch class objects, not '%s'", type->toChars());
+        {   error(loc, "can only catch class objects derived from Throwable, not '%s'", type->toChars());
             type = Type::terror;
         }
     }
@@ -4456,8 +4460,10 @@ Statement *ThrowStatement::semantic(Scope *sc)
 #endif
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
-    if (!exp->type->toBasetype()->isClassHandle())
-        error("can only throw class objects, not type %s", exp->type->toChars());
+    ClassDeclaration *cd = exp->type->toBasetype()->isClassHandle();
+    if (!cd || ((cd != ClassDeclaration::throwable) && !ClassDeclaration::throwable->isBaseOf(cd, NULL)))
+        error("can only throw class objects derived from Throwable, not type %s", exp->type->toChars());
+
     return this;
 }
 

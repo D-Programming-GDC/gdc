@@ -1,6 +1,7 @@
 // Written in the D programming language
 
 /**
+ * Source:    $(PHOBOSSRC std/_stream.d)
  * Macros:
  *      WIKI = Phobos/StdStream
  */
@@ -28,7 +29,6 @@
 
 module std.stream;
 
-import std.conv;
 
 /* Class structure:
  *  InputStream       interface for reading
@@ -76,11 +76,12 @@ enum SeekPos {
 }
 
 private {
+  import std.conv;
   import std.format;
   import std.system;    // for Endian enumeration
   import std.intrinsic; // for bswap
   import std.utf;
-  import std.stdarg;
+  import core.vararg;
 }
 
 version (Windows) {
@@ -1159,15 +1160,16 @@ class Stream : InputStream, OutputStream {
 
   // writes data to stream using printf() syntax,
   // returns number of bytes written
+  version (GNU)
   size_t printf(const(char)[] format, ...) {
-    version (GNU) {
       return vprintf(format, _argptr);
-    } else {
-      va_list ap;
-      ap = cast(va_list) &format;
-      ap += format.sizeof;
-      return vprintf(format, ap);
-    }
+  }
+  else
+  size_t printf(const(char)[] format, ...) {
+    va_list ap;
+    ap = cast(va_list) &format;
+    ap += format.sizeof;
+    return vprintf(format, ap);
   }
 
   private void doFormatCallback(dchar c) {

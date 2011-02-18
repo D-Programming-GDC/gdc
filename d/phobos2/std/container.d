@@ -3,12 +3,13 @@
 /**
 Defines generic _containers.
 
+Source: $(PHOBOSSRC std/_container.d)
 Macros:
 WIKI = Phobos/StdContainer
 TEXTWITHCOMMAS = $0
 LEADINGROW = <tr style=leadingrow bgcolor=#E4E9EF><td colspan=3><b><em>$0</em></b></td></tr>
 
-Copyright: Red-black tree code copyright (C) 2008- by Steven Schveighoffer. Other code 
+Copyright: Red-black tree code copyright (C) 2008- by Steven Schveighoffer. Other code
 copyright 2010- Andrei Alexandrescu. All rights reserved by the respective holders.
 
 License: Distributed under the Boost Software License, Version 1.0.
@@ -18,24 +19,24 @@ boost.org/LICENSE_1_0.txt)).
 Authors: Steven Schveighoffer, $(WEB erdani.com, Andrei Alexandrescu)
 
 $(BOOKTABLE $(TEXTWITHCOMMAS Container primitives. Below, $(D C) means
-a _container type, $(D c) is a value of _container type, $(D l$(SUB
+a _container type, $(D c) is a value of _container type, $(D n$(SUB
 x)) represents the effective length of value $(D x), which could be a
-single element (in which case $(D l$(SUB x)) is $(D 1)), a _container,
+single element (in which case $(D n$(SUB x)) is $(D 1)), a _container,
 or a range.),
 
 $(TR $(TH Syntax) $(TH $(BIGOH &middot;)) $(TH Description))
 
-$(TR $(TDNW $(D C(x))) $(TDNW $(D l$(SUB x))) $(TD Creates a
+$(TR $(TDNW $(D C(x))) $(TDNW $(D n$(SUB x))) $(TD Creates a
 _container of type $(D C) from either another _container or a range.))
 
-$(TR $(TDNW $(D c.dup)) $(TDNW $(D l$(SUB c))) $(TD Returns a
+$(TR $(TDNW $(D c.dup)) $(TDNW $(D n$(SUB c))) $(TD Returns a
 duplicate of the _container.))
 
-$(TR $(TDNW $(D c ~ x)) $(TDNW $(D l$(SUB c) + l$(SUB x))) $(TD
+$(TR $(TDNW $(D c ~ x)) $(TDNW $(D n$(SUB c) + n$(SUB x))) $(TD
 Returns the concatenation of $(D c) and $(D r). $(D x) may be a single
 element or an input range.))
 
-$(TR $(TDNW $(D x ~ c)) $(TDNW $(D l$(SUB c) + l$(SUB x))) $(TD
+$(TR $(TDNW $(D x ~ c)) $(TDNW $(D n$(SUB c) + n$(SUB x))) $(TD
 Returns the concatenation of $(D x) and $(D c).  $(D x) may be a
 single element or an input range type.))
 
@@ -44,10 +45,10 @@ $(LEADINGROW Iteration)
 $(TR  $(TD $(D c.Range)) $(TD) $(TD The primary range
 type associated with the _container.))
 
-$(TR $(TD $(D c[])) $(TDNW $(D log l$(SUB c))) $(TD Returns a range
+$(TR $(TD $(D c[])) $(TDNW $(D log n$(SUB c))) $(TD Returns a range
 iterating over the entire _container, in a _container-defined order.))
 
-$(TR $(TDNW $(D c[a, b])) $(TDNW $(D log l$(SUB c))) $(TD Fetches a
+$(TR $(TDNW $(D c[a, b])) $(TDNW $(D log n$(SUB c))) $(TD Fetches a
 portion of the _container from key $(D a) to key $(D b).))
 
 $(LEADINGROW Capacity)
@@ -55,151 +56,151 @@ $(LEADINGROW Capacity)
 $(TR $(TD $(D c.empty)) $(TD $(D 1)) $(TD Returns $(D true) if the
 _container has no elements, $(D false) otherwise.))
 
-$(TR  $(TD $(D c.length)) $(TDNW $(D log l$(SUB c))) $(TD Returns the
+$(TR  $(TD $(D c.length)) $(TDNW $(D log n$(SUB c))) $(TD Returns the
 number of elements in the _container.))
 
-$(TR $(TDNW $(D c.length = n)) $(TDNW $(D l$(SUB c) + n)) $(TD Forces
+$(TR $(TDNW $(D c.length = n)) $(TDNW $(D n$(SUB c) + n)) $(TD Forces
 the number of elements in the _container to $(D n). If the _container
 ends up growing, the added elements are initialized in a
 _container-dependent manner (usually with $(D T.init)).))
 
-$(TR $(TD $(D c.capacity)) $(TDNW $(D log l$(SUB c))) $(TD Returns the
+$(TR $(TD $(D c.capacity)) $(TDNW $(D log n$(SUB c))) $(TD Returns the
 maximum number of elements that can be stored in the _container
 without triggering a reallocation.))
 
-$(TR $(TD $(D c.reserve(x))) $(TD $(D l$(SUB c))) $(TD Forces $(D
+$(TR $(TD $(D c.reserve(x))) $(TD $(D n$(SUB c))) $(TD Forces $(D
 capacity) to at least $(D x) without reducing it.))
 
 $(LEADINGROW Access)
 
-$(TR $(TDNW $(D c.front)) $(TDNW $(D log l$(SUB c))) $(TD Returns the
+$(TR $(TDNW $(D c.front)) $(TDNW $(D log n$(SUB c))) $(TD Returns the
 first element of the _container, in a _container-defined order.))
 
-$(TR $(TDNW $(D c.moveFront)) $(TDNW $(D log l$(SUB c))) $(TD
+$(TR $(TDNW $(D c.moveFront)) $(TDNW $(D log n$(SUB c))) $(TD
 Destructively reads and returns the first element of the
 _container. The slot is not removed from the _container; it is left
 initalized with $(D T.init). This routine need not be defined if $(D
 front) returns a $(D ref).))
 
-$(TR $(TDNW $(D c.front = v)) $(TDNW $(D log l$(SUB c))) $(TD Assigns
+$(TR $(TDNW $(D c.front = v)) $(TDNW $(D log n$(SUB c))) $(TD Assigns
 $(D v) to the first element of the _container.))
 
-$(TR $(TDNW $(D c.back)) $(TDNW $(D log l$(SUB c))) $(TD Returns the
+$(TR $(TDNW $(D c.back)) $(TDNW $(D log n$(SUB c))) $(TD Returns the
 last element of the _container, in a _container-defined order.))
 
-$(TR $(TDNW $(D c.moveBack)) $(TDNW $(D log l$(SUB c))) $(TD
+$(TR $(TDNW $(D c.moveBack)) $(TDNW $(D log n$(SUB c))) $(TD
 Destructively reads and returns the first element of the
 container. The slot is not removed from the _container; it is left
 initalized with $(D T.init). This routine need not be defined if $(D
 front) returns a $(D ref).))
 
-$(TR $(TDNW $(D c.back = v)) $(TDNW $(D log l$(SUB c))) $(TD Assigns
+$(TR $(TDNW $(D c.back = v)) $(TDNW $(D log n$(SUB c))) $(TD Assigns
 $(D v) to the last element of the _container.))
 
-$(TR $(TDNW $(D c[x])) $(TDNW $(D log l$(SUB c))) $(TD Provides
+$(TR $(TDNW $(D c[x])) $(TDNW $(D log n$(SUB c))) $(TD Provides
 indexed access into the _container. The index type is
 _container-defined. A container may define several index types (and
 consequently overloaded indexing).))
 
-$(TR  $(TDNW $(D c.moveAt(x))) $(TDNW $(D log l$(SUB c))) $(TD
+$(TR  $(TDNW $(D c.moveAt(x))) $(TDNW $(D log n$(SUB c))) $(TD
 Destructively reads and returns the value at position $(D x). The slot
 is not removed from the _container; it is left initialized with $(D
 T.init).))
 
-$(TR  $(TDNW $(D c[x] = v)) $(TDNW $(D log l$(SUB c))) $(TD Sets
+$(TR  $(TDNW $(D c[x] = v)) $(TDNW $(D log n$(SUB c))) $(TD Sets
 element at specified index into the _container.))
 
-$(TR  $(TDNW $(D c[x] $(I op)= v)) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c[x] $(I op)= v)) $(TDNW $(D log n$(SUB c)))
 $(TD Performs read-modify-write operation at specified index into the
 _container.))
 
 $(LEADINGROW Operations)
 
-$(TR $(TDNW $(D e in c)) $(TDNW $(D log l$(SUB c))) $(TD
+$(TR $(TDNW $(D e in c)) $(TDNW $(D log n$(SUB c))) $(TD
 Returns nonzero if e is found in $(D c).))
 
-$(TR  $(TDNW $(D c.lowerBound(v))) $(TDNW $(D log l$(SUB c))) $(TD
+$(TR  $(TDNW $(D c.lowerBound(v))) $(TDNW $(D log n$(SUB c))) $(TD
 Returns a range of all elements strictly less than $(D v).))
 
-$(TR  $(TDNW $(D c.upperBound(v))) $(TDNW $(D log l$(SUB c))) $(TD
+$(TR  $(TDNW $(D c.upperBound(v))) $(TDNW $(D log n$(SUB c))) $(TD
 Returns a range of all elements strictly greater than $(D v).))
 
-$(TR  $(TDNW $(D c.equalRange(v))) $(TDNW $(D log l$(SUB c))) $(TD
+$(TR  $(TDNW $(D c.equalRange(v))) $(TDNW $(D log n$(SUB c))) $(TD
 Returns a range of all elements in $(D c) that are equal to $(D v).))
 
 $(LEADINGROW Modifiers)
 
-$(TR $(TDNW $(D c ~= x)) $(TDNW $(D l$(SUB c) + l$(SUB x)))
+$(TR $(TDNW $(D c ~= x)) $(TDNW $(D n$(SUB c) + n$(SUB x)))
 $(TD Appends $(D x) to $(D c). $(D x) may be a single element or an
 input range type.))
 
-$(TR  $(TDNW $(D c.clear())) $(TDNW $(D l$(SUB c))) $(TD Removes all
+$(TR  $(TDNW $(D c.clear())) $(TDNW $(D n$(SUB c))) $(TD Removes all
 elements in $(D c).))
 
-$(TR  $(TDNW $(D c.insert(x))) $(TDNW $(D l$(SUB x) * log l$(SUB c)))
+$(TR  $(TDNW $(D c.insert(x))) $(TDNW $(D n$(SUB x) * log n$(SUB c)))
 $(TD Inserts $(D x) in $(D c) at a position (or positions) chosen by $(D c).))
 
 $(TR  $(TDNW $(D c.stableInsert(x)))
-$(TDNW $(D l$(SUB x) * log l$(SUB c))) $(TD Same as $(D c.insert(x)),
+$(TDNW $(D n$(SUB x) * log n$(SUB c))) $(TD Same as $(D c.insert(x)),
 but is guaranteed to not invalidate any ranges.))
 
-$(TR  $(TDNW $(D c.linearInsert(v))) $(TDNW $(D l$(SUB c))) $(TD Same
+$(TR  $(TDNW $(D c.linearInsert(v))) $(TDNW $(D n$(SUB c))) $(TD Same
 as $(D c.insert(v)) but relaxes complexity to linear.))
 
-$(TR  $(TDNW $(D c.stableLinearInsert(v))) $(TDNW $(D l$(SUB c)))
+$(TR  $(TDNW $(D c.stableLinearInsert(v))) $(TDNW $(D n$(SUB c)))
 $(TD Same as $(D c.stableInsert(v)) but relaxes complexity to linear.))
 
-$(TR  $(TDNW $(D c.removeAny())) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.removeAny())) $(TDNW $(D log n$(SUB c)))
 $(TD Removes some element from $(D c) and returns it.))
 
-$(TR  $(TDNW $(D c.stableRemoveAny(v))) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.stableRemoveAny(v))) $(TDNW $(D log n$(SUB c)))
 $(TD Same as $(D c.removeAny(v)), but is guaranteed to not invalidate any
 iterators.))
 
-$(TR  $(TDNW $(D c.insertFront(v))) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.insertFront(v))) $(TDNW $(D log n$(SUB c)))
 $(TD Inserts $(D v) at the front of $(D c).))
 
-$(TR  $(TDNW $(D c.stableInsertFront(v))) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.stableInsertFront(v))) $(TDNW $(D log n$(SUB c)))
 $(TD Same as $(D c.insertFront(v)), but guarantees no ranges will be
 invalidated.))
 
-$(TR  $(TDNW $(D c.insertBack(v))) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.insertBack(v))) $(TDNW $(D log n$(SUB c)))
 $(TD Inserts $(D v) at the back of $(D c).))
 
-$(TR  $(TDNW $(D c.stableInsertBack(v))) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.stableInsertBack(v))) $(TDNW $(D log n$(SUB c)))
 $(TD Same as $(D c.insertBack(v)), but guarantees no ranges will be
 invalidated.))
 
-$(TR  $(TDNW $(D c.removeFront())) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.removeFront())) $(TDNW $(D log n$(SUB c)))
 $(TD Removes the element at the front of $(D c).))
 
-$(TR  $(TDNW $(D c.stableRemoveFront())) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.stableRemoveFront())) $(TDNW $(D log n$(SUB c)))
 $(TD Same as $(D c.removeFront()), but guarantees no ranges will be
 invalidated.))
 
-$(TR  $(TDNW $(D c.removeBack())) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.removeBack())) $(TDNW $(D log n$(SUB c)))
 $(TD Removes the value at the back of $(D c).))
 
-$(TR  $(TDNW $(D c.stableRemoveBack())) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.stableRemoveBack())) $(TDNW $(D log n$(SUB c)))
 $(TD Same as $(D c.removeBack()), but guarantees no ranges will be
 invalidated.))
 
-$(TR  $(TDNW $(D c.remove(r))) $(TDNW $(D l$(SUB r) * log l$(SUB c)))
+$(TR  $(TDNW $(D c.remove(r))) $(TDNW $(D n$(SUB r) * log n$(SUB c)))
 $(TD Removes range $(D r) from $(D c).))
 
 $(TR  $(TDNW $(D c.stableRemove(r)))
-$(TDNW $(D l$(SUB r) * log l$(SUB c)))
+$(TDNW $(D n$(SUB r) * log n$(SUB c)))
 $(TD Same as $(D c.remove(r)), but guarantees iterators are not
 invalidated.))
 
-$(TR  $(TDNW $(D c.linearRemove(r))) $(TDNW $(D l$(SUB c)))
+$(TR  $(TDNW $(D c.linearRemove(r))) $(TDNW $(D n$(SUB c)))
 $(TD Removes range $(D r) from $(D c).))
 
-$(TR  $(TDNW $(D c.stableLinearRemove(r))) $(TDNW $(D l$(SUB c)))
+$(TR  $(TDNW $(D c.stableLinearRemove(r))) $(TDNW $(D n$(SUB c)))
 $(TD Same as $(D c.linearRemove(r)), but guarantees iterators are not
 invalidated.))
 
-$(TR  $(TDNW $(D c.removeKey(k))) $(TDNW $(D log l$(SUB c)))
+$(TR  $(TDNW $(D c.removeKey(k))) $(TDNW $(D log n$(SUB c)))
 $(TD Removes an element from $(D c) by using its key $(D k).
 The key's type is defined by the _container.))
 
@@ -1659,16 +1660,34 @@ Defines the container's primary range, which is a random-access range.
             return _outer[_a];
         }
 
+        @property T back()
+        {
+            enforce(!empty);
+            return _outer[_b - 1];
+        }
+
         @property void front(T value)
         {
             enforce(!empty);
             _outer[_a] = move(value);
         }
 
+        @property void back(T value)
+        {
+            enforce(!empty);
+            _outer[_b - 1] = move(value);
+        }
+
         void popFront()
         {
             enforce(!empty);
             ++_a;
+        }
+
+        void popBack()
+        {
+            enforce(!empty);
+            --_b;
         }
 
         T moveFront()
@@ -1704,10 +1723,19 @@ Defines the container's primary range, which is a random-access range.
             _outer[i] = value;
         }
 
+        typeof(this) opSlice(size_t a, size_t b)
+        {
+            return typeof(this)(_outer, a + _a, b + _a);
+        }
+
         void opIndexOpAssign(string op)(T value, size_t i)
         {
             enforce(_outer && _a + i < _b && _b <= _outer._payload.length);
             mixin("_outer._payload.ptr[_a + i] "~op~"= value;");
+        }
+
+        @property size_t length() const {
+            return _b - _a;
         }
     }
 
@@ -2003,7 +2031,7 @@ Complexity: $(BIGOH log(n)).
         static if (is(T == struct))
         {
             // Destroy this guy
-            clear(_data._payload[$ - 1]);
+            .clear(_data._payload[$ - 1]);
         }
         _data._payload = _data._payload[0 .. $ - 1];
     }
@@ -2031,7 +2059,7 @@ Complexity: $(BIGOH howMany).
             // Destroy this guy
             foreach (ref e; _data._payload[$ - howMany .. $])
             {
-                clear(e);
+                .clear(e);
             }
         }
         _data._payload = _data._payload[0 .. $ - howMany];
@@ -2278,6 +2306,23 @@ unittest
     //writeln(a.length);
     //foreach (e; a) writeln(e);
     assert(a == Array!int(0, 1, 2, 3, 6, 7, 8));
+}
+
+// Give the Range object some testing.
+unittest
+{
+    auto a = Array!int(0, 1, 2, 3, 4, 5, 6)[];
+    auto b = Array!int(6, 5, 4, 3, 2, 1, 0)[];
+    alias typeof(a) A;
+
+    static assert(isRandomAccessRange!A);
+    static assert(hasSlicing!A);
+    static assert(hasAssignableElements!A);
+    static assert(hasMobileElements!A);
+
+    assert(equal(retro(b), a));
+    assert(a.length == 7);
+    assert(equal(a[1..4], [1, 2, 3]));
 }
 
 // BinaryHeap
@@ -3567,8 +3612,8 @@ struct RBNode(V)
     //      T         L
     //     / \       / \
     //    L   R     a   T
-    //   / \           / \ 
-    //  a   b         b   R 
+    //   / \           / \
+    //  a   b         b   R
     //
     /**
      * Rotate right.  This performs the following operations:
@@ -3610,8 +3655,8 @@ struct RBNode(V)
     //      T           R
     //     / \         / \
     //    L   R       T   b
-    //       / \     / \ 
-    //      a   b   L   a 
+    //       / \     / \
+    //      a   b   L   a
     //
     /**
      * Rotate left.  This performs the following operations:
@@ -4052,7 +4097,7 @@ struct RBNode(V)
  * value.
  *
  * Note that less should produce a strict ordering.  That is, for two unequal
- * elements $(D a) and $(D b), $(D less(a, b) == !less(b, a)). $(D less(a, a)) should 
+ * elements $(D a) and $(D b), $(D less(a, b) == !less(b, a)). $(D less(a, a)) should
  * always equal $(D false).
  *
  * If $(D allowDuplicates) is set to $(D true), then inserting the same element more than
@@ -4587,7 +4632,7 @@ if (is(typeof(less(T.init, T.init)) == bool) || is(typeof(less) == string))
                 result = cur;
                 cur = cur.left;
             }
-                
+
         }
         return result;
     }
@@ -4761,4 +4806,13 @@ unittest
     RedBlackTree!short rt4;
     RedBlackTree!ubyte rt5;
     RedBlackTree!byte rt6;
+}
+
+version(unittest) struct UnittestMe {
+  int a;
+}
+
+unittest
+{
+    auto c = Array!UnittestMe();
 }

@@ -16,13 +16,11 @@
  * Copyright: Public Domain
  * License:   Public Domain
  * Authors:   Walter Bright
+ * Source:    $(PHOBOSSRC std/_intrinsic.d)
  * Macros:
  *      WIKI=Phobos/StdIntrinsic
  */
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
- */
 module std.intrinsic;
 
 nothrow:

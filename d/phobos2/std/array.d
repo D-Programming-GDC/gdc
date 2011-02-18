@@ -1,31 +1,28 @@
 // Written in the D programming language.
-
 /**
-Copyright: Copyright Andrei Alexandrescu 2008 - 2009.
-License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+Functions and types that manipulate built-in arrays.  
+
+Copyright: Copyright Andrei Alexandrescu 2008-.
+
+License:   $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+
 Authors:   $(WEB erdani.org, Andrei Alexandrescu)
-*/
-/*
-         Copyright Andrei Alexandrescu 2008 - 2009.
-Distributed under the Boost Software License, Version 1.0.
-   (See accompanying file LICENSE_1_0.txt or copy at
-         http://www.boost.org/LICENSE_1_0.txt)
+
+Source: $(PHOBOSSRC std/_array.d)
 */
 module std.array;
 
-import std.c.stdio;
 import core.memory;
-import std.algorithm, std.conv, std.encoding, std.exception, std.range,
-    std.string, std.traits, std.typecons, std.utf;
-private import std.c.string : memcpy;
-private import std.intrinsic : bsr;
-version(unittest) private import std.stdio;
+import std.algorithm, std.conv, std.ctype, std.encoding, std.exception,
+    std.intrinsic, std.range, std.string, std.traits, std.typecons, std.utf;
+import std.c.string : memcpy;
+version(unittest) import std.stdio, std.typetuple;
 
 /**
-Returns a newly-allocated dynamic array consisting of a copy of the input
-range, static array, dynamic array, or class or struct with an $(D opApply)
-function $(D r).  Note that narrow strings are handled
-as a special case in an overload.
+Returns a newly-allocated dynamic array consisting of a copy of the
+input range, static array, dynamic array, or class or struct with an
+$(D opApply) function $(D r).  Note that narrow strings are handled as
+a special case in an overload.
 
 Example:
 
@@ -77,39 +74,6 @@ if (isIterable!Range && !isNarrowString!Range)
         }
         return a.data;
     }
-    // // 2. Initialize the memory
-    // size_t constructedElements = 0;
-    // scope(failure)
-    // {
-    //     // Deconstruct only what was constructed
-    //     foreach_reverse (i; 0 .. constructedElements)
-    //     {
-    //         try
-    //         {
-    //             //result[i].~E();
-    //         }
-    //         catch (Exception e)
-    //         {
-    //         }
-    //     }
-    //     // free the entire array
-    //     std.gc.realloc(result, 0);
-    // }
-    // foreach (src; elements)
-    // {
-    //     static if (is(typeof(new(result + constructedElements) E(src))))
-    //     {
-    //         new(result + constructedElements) E(src);
-    //     }
-    //     else
-    //     {
-    //         result[constructedElements] = src;
-    //     }
-    //     ++constructedElements;
-    // }
-    // // 3. Success constructing all elements, type the array and return it
-    // setTypeInfo(typeid(E), result);
-    // return result[0 .. constructedElements];
 }
 
 /**
@@ -118,27 +82,16 @@ This is handled as a special case and always returns a $(D dchar[]),
 $(D const(dchar)[]), or $(D immutable(dchar)[]) depending on the constness of
 the input.
 */
-ElementType!String[] array(String)(String str) if(isNarrowString!String)
+ElementType!String[] array(String)(String str) if (isNarrowString!String)
 {
-    static if(is(typeof(return) == immutable))
-    {
-        return to!(immutable(dchar)[])(str);
-    }
-    else static if(is(typeof(return) == const))
-    {
-        return to!(const(dchar)[])(str);
-    }
-    else
-    {
-        return to!(dchar[])(str);
-    }
+    return to!(typeof(return))(str);
 }
 
-version(unittest)
+unittest
 {
-    struct TestArray { int x; string toString() { return .to!string(x); } }
+    static struct TestArray { int x; string toString() { return .to!string(x); } }
 
-    struct OpAssign
+    static struct OpAssign
     {
         uint num;
         this(uint num) { this.num = num; }
@@ -148,7 +101,7 @@ version(unittest)
         void opAssign(T)(T rhs) { this.num = rhs.num; }
     }
 
-    struct OpApply
+    static struct OpApply
     {
         int opApply(int delegate(ref int) dg)
         {
@@ -162,10 +115,7 @@ version(unittest)
             return res;
         }
     }
-}
-
-unittest
-{
+    
     auto a = array([1, 2, 3, 4, 5][]);
     //writeln(a);
     assert(a == [ 1, 2, 3, 4, 5 ]);
@@ -195,17 +145,6 @@ unittest
     assert(array("ABC".dup) == "ABC"d.dup);
 }
 
-template IndexType(C : T[], T)
-{
-    alias size_t IndexType;
-}
-
-unittest
-{
-    static assert(is(IndexType!(double[]) == size_t));
-    static assert(!is(IndexType!(double) == size_t));
-}
-
 /**
 Implements the range interface primitive $(D empty) for built-in
 arrays. Due to the fact that nonmember functions can be called with
@@ -214,12 +153,9 @@ equivalent to $(D empty(array)).
 
 Example:
 ----
-void main()
-{
-    auto a = [ 1, 2, 3 ];
-    assert(!a.empty);
-    assert(a[3 .. $].empty);
-}
+auto a = [ 1, 2, 3 ];
+assert(!a.empty);
+assert(a[3 .. $].empty);
 ----
  */
 
@@ -239,16 +175,14 @@ unittest
 Implements the range interface primitive $(D save) for built-in
 arrays. Due to the fact that nonmember functions can be called with
 the first argument using the dot notation, $(D array.save) is
-equivalent to $(D save(array)).
+equivalent to $(D save(array)). The function does not duplicate the
+content of the array, it simply returns its argument.
 
 Example:
 ----
-void main()
-{
-    auto a = [ 1, 2, 3 ];
-    auto b = a.save;
-    assert(b is a);
-}
+auto a = [ 1, 2, 3 ];
+auto b = a.save;
+assert(b is a);
 ----
  */
 
@@ -261,46 +195,42 @@ void main()
 Implements the range interface primitive $(D popFront) for built-in
 arrays. Due to the fact that nonmember functions can be called with
 the first argument using the dot notation, $(D array.popFront) is
-equivalent to $(D popFront(array)).
-
+equivalent to $(D popFront(array)). For $(GLOSSARY narrow strings),
+$(D popFront) automaticaly advances to the next $(GLOSSARY code
+point).
 
 Example:
 ----
-void main()
-{
-    int[] a = [ 1, 2, 3 ];
-    a.popFront;
-    assert(a == [ 2, 3 ]);
-}
+int[] a = [ 1, 2, 3 ];
+a.popFront();
+assert(a == [ 2, 3 ]);
 ----
 */
 
 void popFront(A)(ref A a)
-if(!isNarrowString!A && isDynamicArray!A && isMutable!A && !is(A == void[]))
+if (!isNarrowString!A && isDynamicArray!A && isMutable!A && !is(A == void[]))
 {
-    alias typeof(A[0]) T;
     assert(a.length, "Attempting to popFront() past the end of an array of "
-            ~ T.stringof);
+            ~ typeof(a[0]).stringof);
     a = a[1 .. $];
 }
 
 unittest
 {
-    //@@@BUG 2608@@@
-    //auto a = [ 1, 2, 3 ];
-    int[] a = [ 1, 2, 3 ];
-    a.popFront;
+    auto a = [ 1, 2, 3 ];
+    a.popFront();
     assert(a == [ 2, 3 ]);
-
     static assert(!__traits(compiles, popFront!(immutable int[])));
+    static assert(!__traits(compiles, popFront!(void[])));
 }
 
+// Specialization for narrow strings. The necessity of
+// !isStaticArray!A suggests a compiler @@@BUG@@@.
 void popFront(A)(ref A a)
-if(isNarrowString!A && isMutable!A)
+if (isNarrowString!A && isMutable!A && !isStaticArray!A)
 {
-    alias typeof(a[0]) T;
     assert(a.length, "Attempting to popFront() past the end of an array of "
-            ~ T.stringof);
+            ~ typeof(a[0]).stringof);
     a = a[std.utf.stride(a, 0) .. $];
 }
 
@@ -322,22 +252,20 @@ unittest
 Implements the range interface primitive $(D popBack) for built-in
 arrays. Due to the fact that nonmember functions can be called with
 the first argument using the dot notation, $(D array.popBack) is
-equivalent to $(D popBack(array)).
+equivalent to $(D popBack(array)). For $(GLOSSARY narrow strings), $(D
+popFront) automaticaly eliminates the last $(GLOSSARY code point).
 
 
 Example:
 ----
-void main()
-{
-    int[] a = [ 1, 2, 3 ];
-    a.popBack;
-    assert(a == [ 1, 2 ]);
-}
+int[] a = [ 1, 2, 3 ];
+a.popBack();
+assert(a == [ 1, 2 ]);
 ----
 */
 
 void popBack(A)(ref A a)
-if(isDynamicArray!A && !isNarrowString!A && isMutable!A && !is(A == void[]))
+if (isDynamicArray!A && !isNarrowString!A && isMutable!A && !is(A == void[]))
 {
     assert(a.length);
     a = a[0 .. $ - 1];
@@ -345,17 +273,16 @@ if(isDynamicArray!A && !isNarrowString!A && isMutable!A && !is(A == void[]))
 
 unittest
 {
-    //@@@BUG 2608@@@
-    //auto a = [ 1, 2, 3 ];
-    int[] a = [ 1, 2, 3 ];
-    a.popBack;
+    auto a = [ 1, 2, 3 ];
+    a.popBack();
     assert(a == [ 1, 2 ]);
-
     static assert(!__traits(compiles, popBack!(immutable int[])));
+    static assert(!__traits(compiles, popBack!(void[])));
 }
 
-void popBack(A)(ref A a)
-if(is(A : const(char)[]) && isMutable!A)
+// Specialization for arrays of char
+@trusted void popBack(A)(ref A a)
+if (is(A : const(char)[]) && isMutable!A)
 {
     immutable n = a.length;
     const p = a.ptr + n;
@@ -377,7 +304,7 @@ if(is(A : const(char)[]) && isMutable!A)
     }
     else
     {
-        assert(false, "Invalid UTF character at end of string");
+        throw new UtfException("Invalid UTF character at end of string");
     }
 }
 
@@ -386,7 +313,6 @@ unittest
     string s = "hello\xE2\x89\xA0";
     s.popBack();
     assert(s == "hello", s);
-
     string s3 = "\xE2\x89\xA0";
     auto c = s3.back;
     assert(c == cast(dchar)'\u2260');
@@ -396,17 +322,19 @@ unittest
     static assert(!__traits(compiles, popBack!(immutable char[])));
 }
 
-void popBack(A)(ref A a)
-if(is(A : const(wchar)[]) && isMutable!A)
+// Specialization for arrays of wchar
+@trusted void popBack(A)(ref A a)
+if (is(A : const(wchar)[]) && isMutable!A)
 {
     assert(a.length);
-    if (a.length == 1)
+    if (a.length <= 1) // this is technically == but costs nothing and is safer
     {
         a = a[0 .. 0];
         return;
     }
-    immutable c = a[$ - 2];
-    a = a[0 .. $ - 1 - (c >= 0xD800 && c <= 0xDBFF)];
+    // We can go commando from here on, we're safe; length is > 1
+    immutable c = a.ptr[a.length - 2];
+    a = a.ptr[0 .. a.length - 1 - (c >= 0xD800 && c <= 0xDBFF)];
 }
 
 unittest
@@ -422,67 +350,56 @@ unittest
 Implements the range interface primitive $(D front) for built-in
 arrays. Due to the fact that nonmember functions can be called with
 the first argument using the dot notation, $(D array.front) is
-equivalent to $(D front(array)).
+equivalent to $(D front(array)). For $(GLOSSARY narrow strings), $(D
+front) automaticaly returns the first $(GLOSSARY code point) as a $(D
+dchar).
 
 
 Example:
 ----
-void main()
-{
-    int[] a = [ 1, 2, 3 ];
-    assert(a.front == 1);
-}
+int[] a = [ 1, 2, 3 ];
+assert(a.front == 1);
 ----
 */
-ref typeof(A[0]) front(A)(A a)
-if (is(typeof(A[0])) && !isNarrowString!A && !is(typeof(A[0]) : const(void)))
+ref T front(T)(T[] a)
+if (!isNarrowString!(T[]) && !is(T[] == void[]))
 {
     assert(a.length, "Attempting to fetch the front of an empty array");
     return a[0];
 }
 
-dchar front(A)(A a) if (is(typeof(A[0])) && isNarrowString!A)
+dchar front(A)(A a) if (isNarrowString!A)
 {
     assert(a.length, "Attempting to fetch the front of an empty array");
     size_t i = 0;
     return decode(a, i);
 }
 
-/// Ditto
-void front(T)(T[] a, T v) if (!isNarrowString!A)
+unittest
 {
-    assert(a.length); a[0] = v;
+    auto a = [ 1, 2 ];
+    a.front = 4;
+    assert(a.front == 4);
+    assert(a == [ 4, 2 ]);
 }
 
 /**
 Implements the range interface primitive $(D back) for built-in
 arrays. Due to the fact that nonmember functions can be called with
 the first argument using the dot notation, $(D array.back) is
-equivalent to $(D back(array)).
+equivalent to $(D back(array)). For $(GLOSSARY narrow strings), $(D
+back) automaticaly returns the last $(GLOSSARY code point) as a $(D
+dchar).
 
 Example:
 ----
-void main()
-{
-    int[] a = [ 1, 2, 3 ];
-    assert(a.back == 3);
-}
+int[] a = [ 1, 2, 3 ];
+assert(a.back == 3);
 ----
 */
-ref typeof(A.init[0]) back(A)(A a)
-if (is(typeof(A.init[0])) && !isNarrowString!A
-    && !is(typeof(A.init[0]) : const(void)))
+ref T back(T)(T[] a) if (!isNarrowString!(T[]))
 {
-    // @@@BUG@@@ The assert below crashes the unittest due to a bug in
-    //   the compiler
-    version (bug4426)
-    {
-        assert(a.length, "Attempting to fetch the back of an empty array");
-    }
-    else
-    {
-        assert(a.length);
-    }
+    assert(a.length, "Attempting to fetch the back of an empty array");
     return a[$ - 1];
 }
 
@@ -494,36 +411,35 @@ unittest
     assert(a.back == 7);
 }
 
+// Specialization for strings
 dchar back(A)(A a)
-if (is(typeof(A.init[0])) && isNarrowString!A && a[0].sizeof < 4)
+if (isDynamicArray!A && isNarrowString!A)
 {
-    assert(a.length, "Attempting to fetch the back of an empty array");
     auto n = a.length;
     const p = a.ptr + n;
     if (n >= 1 && (p[-1] & 0b1100_0000) != 0b1000_0000)
     {
         --n;
-        return std.utf.decode(a, n);
     }
     else if (n >= 2 && (p[-2] & 0b1100_0000) != 0b1000_0000)
     {
         n -= 2;
-        return decode(a, n);
     }
     else if (n >= 3 && (p[-3] & 0b1100_0000) != 0b1000_0000)
     {
         n -= 3;
-        return decode(a, n);
     }
     else if (n >= 4 && (p[-4] & 0b1100_0000) != 0b1000_0000)
     {
         n -= 4;
-        return decode(a, n);
     }
     else
     {
-        throw new UtfException("Invalid UTF character at end of string");
+        throw new UtfException(a.length
+                ? "Invalid UTF character at end of string"
+                : "Attempting to fetch the back of an empty array");
     }
+    return decode(a, n);
 }
 
 // overlap
@@ -545,8 +461,8 @@ assert(overlap(a, b).empty);
 */
 T[] overlap(T)(T[] r1, T[] r2) @trusted pure nothrow
 {
-    T* max(T* a, T* b) nothrow { return a > b ? a : b; }
-    T* min(T* a, T* b) nothrow { return a < b ? a : b; }
+    static T* max(T* a, T* b) nothrow { return a > b ? a : b; }
+    static T* min(T* a, T* b) nothrow { return a < b ? a : b; }
     auto b = max(r1.ptr, r2.ptr);
     auto e = min(r1.ptr + r1.length, r2.ptr + r2.length);
     return b < e ? b[0 .. e - b] : null;
@@ -568,49 +484,55 @@ unittest
 }
 
 /**
-Inserts $(D stuff) in $(D container) at position $(D pos).
+Inserts $(D stuff) (which must be an input range or a single item) in
+$(D array) at position $(D pos).
+
+Example:
+---
+int[] a = [ 1, 2, 3, 4 ];
+a.insert(2, [ 1, 2 ]);    
+assert(a == [ 1, 2, 1, 2, 3, 4 ]);
+---
  */
 void insert(T, Range)(ref T[] array, size_t pos, Range stuff)
+if (isInputRange!Range && is(ElementEncodingType!Range : T))
 {
-    static if (is(typeof(stuff[0])))
+    static if (hasLength!Range)
     {
-        // presumably an array
-        alias stuff toInsert;
-        //assert(!overlap(array, toInsert));
+        immutable
+            delta = stuff.length,
+            oldLength = array.length,
+            newLength = oldLength + delta;
+
+        // Reallocate the array to make space for new content
+        array = (cast(T*) core.memory.GC.realloc(array.ptr,
+                        newLength * array[0].sizeof))[0 .. newLength];
+        assert(array.length == newLength);
+
+        // Move data in pos .. pos + stuff.length to the end of the array
+        foreach_reverse (i; pos .. oldLength)
+        {
+            // This will be guaranteed to not throw
+            move(array[i], array[i + delta]);
+        }
+
+        // Copy stuff into array
+        copy(stuff, array[pos .. pos + stuff.length]);
     }
     else
     {
-        // presumably only one element
-        auto toInsert = (&stuff)[0 .. 1];
+        auto app = appender!(T[])();
+        app.put(array[0 .. pos]);
+        app.put(stuff);
+        app.put(array[pos .. $]);
+        array = app.data;
     }
+}
 
-    // @@@BUG 2130@@@
-    // immutable
-    //     size_t delta = toInsert.length,
-    //     size_t oldLength = array.length,
-    //     size_t newLength = oldLength + delta;
-    immutable
-        delta = toInsert.length,
-        oldLength = array.length,
-        newLength = oldLength + delta;
-
-    // Reallocate the array to make space for new content
-    array = (cast(T*) core.memory.GC.realloc(array.ptr,
-                    newLength * array[0].sizeof))[0 .. newLength];
-    assert(array.length == newLength);
-
-    // Move data in pos .. pos + stuff.length to the end of the array
-    foreach_reverse (i; pos .. oldLength)
-    {
-        // This will be guaranteed to not throw
-        move(array[i], array[i + delta]);
-    }
-
-    // Copy stuff into array
-    foreach (e; toInsert)
-    {
-        array[pos++] = e;
-    }
+/// Ditto
+void insert(T)(ref T[] array, size_t pos, T stuff)
+{
+    return insert(array, pos, (&stuff)[0 .. 1]);
 }
 
 unittest
@@ -623,56 +545,300 @@ unittest
 }
 
 // @@@ TODO: document this
-bool sameHead(T)(in T[] lhs, in T[] rhs)
+pure bool sameHead(T)(in T[] lhs, in T[] rhs)
 {
     return lhs.ptr == rhs.ptr;
 }
 
-/**
-Erases elements from $(D array) with indices ranging from $(D from)
-(inclusive) to $(D to) (exclusive).
+/********************************************
+Returns an array that consists of $(D s) (which must be an input
+range) repeated $(D n) times. This function allocates, fills, and
+returns a new array. For a lazy version, refer to $(XREF
+range,repeat).
  */
-// void erase(T)(ref T[] array, size_t from, size_t to)
-// {
-//     immutable newLength = array.length - (to - from);
-//     foreach (i; to .. array.length)
-//     {
-//         move(array[i], array[from++]);
-//     }
-//     array.length = newLength;
-// }
+S replicate(S)(S s, size_t n) if (isDynamicArray!S)
+{
+    // Optimization for return join(std.range.repeat(s, n));
+    if (n == 0)
+        return S.init;
+    if (n == 1)
+        return s;
+    auto r = new Unqual!(typeof(s[0]))[n * s.length];
+    if (s.length == 1)
+        r[] = s[0];
+    else
+    {
+        immutable len = s.length, nlen = n * len;
+        for (size_t i = 0; i < nlen; i += len)
+        {
+            r[i .. i + len] = s[];
+        }
+    }
+    return cast(S) r;
+}
 
-// unittest
-// {
-//     int[] a = [1, 2, 3, 4, 5];
-//     erase(a, 1u, 3u);
-//     assert(a == [1, 4, 5]);
-// }
+ElementType!S[] replicate(S)(S s, size_t n)
+if (isInputRange!S && !isDynamicArray!S)
+{
+    return join(std.range.repeat(s, n));
+}
+
+unittest
+{
+    debug(std_array) printf("array.repeat.unittest\n");
+
+    foreach (S; TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[]))
+    {
+        S s;
+
+        s = replicate(to!S("1234"), 0);
+        assert(s is null);
+        s = replicate(to!S("1234"), 1);
+        assert(cmp(s, "1234") == 0);
+        s = replicate(to!S("1234"), 2);
+        assert(cmp(s, "12341234") == 0);
+        s = replicate(to!S("1"), 4);
+        assert(cmp(s, "1111") == 0);
+        s = replicate(cast(S) null, 4);
+        assert(s is null);
+    }
+
+    int[] a = [ 1, 2, 3 ];
+    assert(replicate(a, 3) == [1, 2, 3, 1, 2, 3, 1, 2, 3]);
+}
+
+/**************************************
+Split the string $(D s) into an array of words, using whitespace as
+delimiter. Runs of whitespace are merged together (no empty words are
+produced).
+ */
+
+S[] split(S)(S s) if (isSomeString!S)
+{
+    size_t istart;
+    bool inword = false;
+    S[] result;
+
+    foreach (i; 0 .. s.length)
+    {
+        switch (s[i])
+        {
+        case ' ': case '\t': case '\f': case '\r': case '\n': case '\v':
+            if (inword)
+            {
+                result ~= s[istart .. i];
+                inword = false;
+            }
+            break;
+        default:
+            if (!inword)
+            {
+                istart = i;
+                inword = true;
+            }
+            break;
+        }
+    }
+    if (inword)
+        result ~= s[istart .. $];
+    return result;
+}
+
+unittest
+{
+    foreach (S; TypeTuple!(string, wstring, dstring))
+    {
+        debug(string) printf("string.split1\n");
+        S s = " \t\npeter paul\tjerry \n";
+        assert(equal(split(s), [ to!S("peter"), to!S("paul"), to!S("jerry") ]));
+    }
+}
 
 /**
-Erases element from $(D array) at index $(D from).
- */
-// void erase(T)(ref T[] array, size_t from)
-// {
-//     erase(array, from, from + 1);
-// }
+Splits a string by whitespace.
 
-// unittest
-// {
-//     int[] a = [1, 2, 3, 4, 5];
-//     erase(a, 2u);
-//     assert(a == [1, 2, 4, 5]);
-// }
+Example:
+
+---- 
+auto a = " a     bcd   ef gh ";
+assert(equal(splitter(a), ["", "a", "bcd", "ef", "gh"][]));
+----
+ */
+auto splitter(String)(String s) if (isSomeString!String)
+{
+    return std.algorithm.splitter!isspace(s);
+}
+
+unittest
+{
+    auto a = " a     bcd   ef gh ";
+    assert(equal(splitter(a), ["", "a", "bcd", "ef", "gh"][]));
+    a = "";
+    assert(splitter(a).empty);
+}
+
+/**************************************
+ * Splits $(D s) into an array, using $(D delim) as the delimiter.
+ */
+Unqual!(S1)[] split(S1, S2)(S1 s, S2 delim)
+if (isForwardRange!(Unqual!S1) && isForwardRange!S2)
+{
+    Unqual!S1 us = s;
+    auto app = appender!(Unqual!(S1)[])();
+    foreach (word; std.algorithm.splitter(us, delim))
+    {
+        app.put(word);
+    }
+    return app.data;
+}
+
+unittest
+{
+    debug(std_array) printf("array.split\n");
+    foreach (S; TypeTuple!(string, wstring, dstring,
+                    immutable(string), immutable(wstring), immutable(dstring),
+                    char[], wchar[], dchar[],
+                    const(char)[], const(wchar)[], const(dchar)[]))
+    {
+        S s = to!S(",peter,paul,jerry,");
+        int i;
+
+        auto words = split(s, ",");
+        assert(words.length == 5, text(words.length));
+        i = cmp(words[0], "");
+        assert(i == 0);
+        i = cmp(words[1], "peter");
+        assert(i == 0);
+        i = cmp(words[2], "paul");
+        assert(i == 0);
+        i = cmp(words[3], "jerry");
+        assert(i == 0);
+        i = cmp(words[4], "");
+        assert(i == 0);
+
+        auto s1 = s[0 .. s.length - 1];   // lop off trailing ','
+        words = split(s1, ",");
+        assert(words.length == 4);
+        i = cmp(words[3], "jerry");
+        assert(i == 0);
+
+        auto s2 = s1[1 .. s1.length];   // lop off leading ','
+        words = split(s2, ",");
+        assert(words.length == 3);
+        i = cmp(words[0], "peter");
+        assert(i == 0);
+
+        auto s3 = to!S(",,peter,,paul,,jerry,,");
+
+        words = split(s3, ",,");
+        //printf("words.length = %d\n", words.length);
+        assert(words.length == 5);
+        i = cmp(words[0], "");
+        assert(i == 0);
+        i = cmp(words[1], "peter");
+        assert(i == 0);
+        i = cmp(words[2], "paul");
+        assert(i == 0);
+        i = cmp(words[3], "jerry");
+        assert(i == 0);
+        i = cmp(words[4], "");
+        assert(i == 0);
+
+        auto s4 = s3[0 .. s3.length - 2];    // lop off trailing ',,'
+        words = split(s4, ",,");
+        assert(words.length == 4);
+        i = cmp(words[3], "jerry");
+        assert(i == 0);
+
+        auto s5 = s4[2 .. s4.length];    // lop off leading ',,'
+        words = split(s5, ",,");
+        assert(words.length == 3);
+        i = cmp(words[0], "peter");
+        assert(i == 0);
+    }
+}
+
+/********************************************
+ * Concatenate all the ranges in $(D ror) together into one array;
+ * use $(D sep) as the separator if present, otherwise none.
+ */
+ElementEncodingType!(ElementType!RoR)[]
+join(RoR, R)(RoR ror, R sep)
+if (isInputRange!RoR && isInputRange!(ElementType!RoR) && isForwardRange!R)
+{
+    if (ror.empty) return typeof(return).init;
+    auto iter = joiner(ror, sep);
+    static if (isForwardRange!RoR && hasLength!RoR
+            && (hasLength!(ElementType!RoR) || isSomeString!(ElementType!RoR))
+            && hasLength!R)
+    {
+        immutable resultLen = reduce!"a + b.length"(cast(size_t) 0, ror.save)
+            + sep.length * (ror.length - 1);
+        auto result = new ElementEncodingType!(ElementType!RoR)[resultLen];
+        copy(iter, result);
+        return result;
+    }
+    else
+    {
+        return copy(iter, appender!(typeof(return))).data;
+    }
+}
+
+/// Ditto
+ElementEncodingType!(ElementType!RoR)[] join(RoR)(RoR ror)
+if (isInputRange!RoR && isInputRange!(ElementType!RoR))
+{
+    auto iter = joiner(ror);
+    static if (hasLength!RoR && hasLength!(ElementType!RoR))
+    {
+        immutable resultLen = reduce!"a + b.length"(cast(size_t) 0, ror.save);
+        auto result = new Unqual!(ElementEncodingType!(ElementType!RoR))[resultLen];
+        copy(iter, result);
+        return cast(typeof(return)) result;
+    }
+    else
+    {
+        return copy(iter, appender!(typeof(return))).data;
+    }
+}
+
+unittest
+{
+    debug(std_array) printf("array.join.unittest\n");
+
+    string word1 = "peter";
+    string word2 = "paul";
+    string word3 = "jerry";
+    string[3] words;
+    string r;
+    int i;
+
+    words[0] = word1;
+    words[1] = word2;
+    words[2] = word3;
+    r = join(words[], ",");
+    i = cmp(r, "peter,paul,jerry");
+    assert(i == 0, text(i));
+
+    assert(join([[1, 2], [41, 42]], [5, 6]) == [1, 2, 5, 6, 41, 42]);
+    assert(join([[1, 2], [41, 42]]) == [1, 2, 41, 42]);
+}
 
 /**
 Replaces elements from $(D array) with indices ranging from $(D from)
 (inclusive) to $(D to) (exclusive) with the range $(D stuff). Expands
 or shrinks the array as needed.
+
+Example:
+---
+int[] a = [ 1, 2, 3, 4 ];
+a.replace(1, 3, [ 9, 9, 9 ]);
+assert(a == [ 1, 9, 9, 9, 4 ]);
+---
  */
 void replace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff)
-    if (is(ElementType!Range == T))
+if (isDynamicArray!Range && is(ElementType!Range : T))
 {
-    // container = container[0 .. from] ~ stuff ~ container[to .. $];
     if (overlap(array, stuff))
     {
         // use slower/conservative method
@@ -697,15 +863,6 @@ void replace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff)
     }
 }
 
-
-void replace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff)
-    if (!is(ElementType!Range == T) && is(Unqual!Range == void*))
-{
-    replace(array, from, to, cast(T[])[]);
-}
-
-
-
 unittest
 {
     int[] a = [1, 4, 5];
@@ -713,8 +870,143 @@ unittest
     assert(a == [1, 2, 3, 4, 5]);
     replace(a, 1u, 2u, cast(int[])[]);
     assert(a == [1, 3, 4, 5]);
-    replace(a, 1u, 2u, null);
-    assert(a == [1, 4, 5]);
+}
+
+/********************************************
+Replace occurrences of $(D from) with $(D to) in $(D a). Returns a new
+array without changing the contents of $(D subject).
+ */
+R1 replace(R1, R2, R3)(R1 subject, R2 from, R3 to)
+if (isDynamicArray!R1 && isForwardRange!R2 && isForwardRange!R3
+        && (hasLength!R3 || isSomeString!R3))
+{
+    if (from.empty) return subject;
+    auto app = appender!R1();
+
+    for (;;)
+    {
+        auto balance = std.algorithm.find(subject, from.save);
+        if (balance.empty)
+        {
+            if (app.data.empty) return subject;
+            app.put(subject);
+            break;
+        }
+        app.put(subject[0 .. subject.length - balance.length]);
+        app.put(to.save);
+        subject = balance[from.length .. $];
+    }
+
+    return app.data;
+}
+
+unittest
+{
+    debug(string) printf("array.replace.unittest\n");
+
+    alias TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[])
+        TestTypes;
+
+    foreach (S; TestTypes)
+    {
+        auto s = to!S("This is a foo foo list");
+        auto from = to!S("foo");
+        auto into = to!S("silly");
+        S r;
+        int i;
+        
+        r = replace(s, from, into);
+        i = cmp(r, "This is a silly silly list");
+        assert(i == 0);
+        
+        r = replace(s, to!S(""), into);
+        i = cmp(r, "This is a foo foo list");
+        assert(i == 0);
+
+        assert(replace(r, to!S("won't find this"), to!S("whatever")) is r);
+    }
+}
+
+/********************************************
+Replaces the first occurrence of $(D from) with $(D to) in $(D
+a). Returns a new array without changing the contents of $(D subject).
+ */
+R1 replaceFirst(R1, R2, R3)(R1 subject, R2 from, R3 to)
+if (isDynamicArray!R1 && isForwardRange!R2 && isInputRange!R3)
+{
+    if (from.empty) return subject;
+    auto balance = std.algorithm.find(subject, from.save);
+    if (balance.empty) return subject;
+    auto app = appender!R1();
+    app.put(subject[0 .. subject.length - balance.length]);
+    app.put(to.save);
+    subject = balance[from.length .. $];
+
+    return app.data;
+}
+
+unittest
+{
+    debug(string) printf("array.replaceFirst.unittest\n");
+
+    alias TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[])
+        TestTypes;
+
+    foreach (S; TestTypes)
+    {
+        auto s = to!S("This is a foo foo list");
+        auto from = to!S("foo");
+        auto into = to!S("silly");
+        S r;
+        int i;
+        
+        r = replace(s, from, into);
+        i = cmp(r, "This is a silly silly list");
+        assert(i == 0);
+        
+        r = replace(s, to!S(""), into);
+        i = cmp(r, "This is a foo foo list");
+        assert(i == 0);
+
+        assert(replace(r, to!S("won't find this"), to!S("whatever")) is r);
+    }
+}
+
+/*****************************
+Return an array that is $(D s) with $(D slice) replaced by $(D
+replacement[]).
+ */
+
+T[] replaceSlice(T)(T[] s, in T[] slice, in T[] replacement)
+in
+{
+    // Verify that slice[] really is a slice of s[]
+    assert(overlap(s, slice) is slice);
+}
+body
+{
+    auto result = new Unqual!(typeof(s[0]))[
+        s.length - slice.length + replacement.length];
+    immutable so = slice.ptr - s.ptr;
+    result[0 .. so] = s[0 .. so];
+    result[so .. so + replacement.length] = replacement;
+    result[so + replacement.length .. result.length] =
+        s[so + slice.length .. s.length];
+    
+    return cast(T[]) result;
+}
+
+unittest
+{
+    debug(std_array) printf("array.replaceSlice.unittest\n");
+
+    string s = "hello";
+    string slice = s[2 .. 4];
+
+    auto r = replaceSlice(s, slice, "bar");
+    int i;
+    i = cmp(r, "hebaro");
+    assert(i == 0);
 }
 
 /**
@@ -782,11 +1074,25 @@ done.
         if(_data.capacity < newCapacity)
         {
             // need to increase capacity
-            auto bi = GC.qalloc(newCapacity * T.sizeof, (typeid(T[]).next.flags & 1) ? 0 : GC.BlkAttr.NO_SCAN);
-            _data.capacity = bi.size / T.sizeof;
-            if(_data.arr.length)
-                memcpy(bi.base, _data.arr.ptr, _data.arr.length * T.sizeof);
-            _data.arr = (cast(Unqual!(T)*)bi.base)[0.._data.arr.length];
+            immutable len = _data.arr.length;
+            immutable growsize = (newCapacity - len) * T.sizeof;
+            auto u = GC.extend(_data.arr.ptr, growsize, growsize);
+            if(u)
+            {
+                // extend worked, update the capacity
+                _data.capacity = u / T.sizeof;
+            }
+            else
+            {
+                // didn't work, must reallocate
+                auto bi = GC.qalloc(newCapacity * T.sizeof,
+                        (typeid(T[]).next.flags & 1) ? 0 : GC.BlkAttr.NO_SCAN);
+                _data.capacity = bi.size / T.sizeof;
+                if(len)
+                    memcpy(bi.base, _data.arr.ptr, len * T.sizeof);
+                _data.arr = (cast(Unqual!(T)*)bi.base)[0..len];
+                // leave the old data, for safety reasons
+            }
         }
     }
 
@@ -808,6 +1114,50 @@ Returns the managed array.
         return cast(typeof(return))(_data ? _data.arr : null);
     }
 
+    // ensure we can add nelems elements, resizing as necessary
+    private void ensureAddable(size_t nelems)
+    {
+        if(!_data)
+            _data = new Data;
+        immutable len = _data.arr.length;
+        immutable reqlen = len + nelems;
+        if (reqlen > _data.capacity)
+        {
+            // Time to reallocate.
+            // We need to almost duplicate what's in druntime, except we
+            // have better access to the capacity field.
+            auto newlen = newCapacity(reqlen);
+            // first, try extending the current block
+            auto u = GC.extend(_data.arr.ptr, nelems * T.sizeof, (newlen - len) * T.sizeof);
+            if(u)
+            {
+                // extend worked, update the capacity
+                _data.capacity = u / T.sizeof;
+            }
+            else
+            {
+                // didn't work, must reallocate
+                auto bi = GC.qalloc(newlen * T.sizeof,
+                        (typeid(T[]).next.flags & 1) ? 0 : GC.BlkAttr.NO_SCAN);
+                _data.capacity = bi.size / T.sizeof;
+                if(len)
+                    memcpy(bi.base, _data.arr.ptr, len * T.sizeof);
+                _data.arr = (cast(Unqual!(T)*)bi.base)[0..len];
+                // leave the old data, for safety reasons
+            }
+        }
+    }
+
+    private static size_t newCapacity(size_t newlength)
+    {
+        long mult = 100 + (1000L) / (bsr(newlength * T.sizeof) + 1);
+        // limit to doubling the length, we don't want to grow too much
+        if(mult > 200)
+            mult = 200;
+        auto newext = cast(size_t)((newlength * mult + 99) / 100);
+        return newext > newlength ? newext : newlength;
+    }
+
 /**
 Appends one item to the managed array.
  */
@@ -823,50 +1173,11 @@ Appends one item to the managed array.
         }
         else
         {
-            if (!_data)
-                _data = new Data;
+            ensureAddable(1);
             immutable len = _data.arr.length;
-            if (len >= _data.capacity)
-            {
-                // Time to reallocate.
-                // We need to almost duplicate what's in druntime, except we
-                // have better access to the capacity field.
-                auto newlen = newCapacity(len + 1);
-                // first, try extending the current block
-                auto u = GC.extend(_data.arr.ptr, T.sizeof, (newlen - len) * T.sizeof);
-                if(u)
-                {
-                    // extend worked, update the capacity
-                    _data.capacity = u / T.sizeof;
-                    _data.arr = _data.arr.ptr[0..len + 1];
-                }
-                else
-                {
-                    // didn't work, must reallocate
-                    auto bi = GC.qalloc(newlen * T.sizeof, (typeid(T[]).next.flags & 1) ? 0 : GC.BlkAttr.NO_SCAN);
-                    _data.capacity = bi.size / T.sizeof;
-                    if(len)
-                        memcpy(bi.base, _data.arr.ptr, len * T.sizeof);
-                    _data.arr = (cast(Unqual!(T)*)bi.base)[0..len + 1];
-                    // leave the old data, for safety reasons
-                }
-            }
-            else
-            {
-                _data.arr = _data.arr.ptr[0 .. len + 1];
-            }
             _data.arr.ptr[len] = cast(Unqual!T)item;
+            _data.arr = _data.arr.ptr[0 .. len + 1];
         }
-    }
-
-    private static size_t newCapacity(size_t newlength)
-    {
-        long mult = 100 + (1000L) / (bsr(newlength * T.sizeof) + 1);
-        // limit to doubling the length, we don't want to grow too much
-        if(mult > 200)
-            mult = 200;
-        auto newext = cast(size_t)((newlength * mult + 99) / 100);
-        return newext > newlength ? newext : newlength;
     }
 
     // Const fixing hack.
@@ -888,10 +1199,22 @@ Appends an entire range to the managed array.
                      !is(Range == Unqual!(T)[])) &&
                    is(typeof(items.length) == size_t))
         {
+            // optimization -- if this type is something other than a string,
+            // and we are adding exactly one element, call the version for one
+            // element.
+            static if(!isSomeChar!T)
+            {
+                if(items.length == 1)
+                {
+                    put(items.front);
+                    return;
+                }
+            }
+
             // make sure we have enough space, then add the items
-            immutable len = _data ? _data.arr.length : 0;
+            ensureAddable(items.length);
+            immutable len = _data.arr.length;
             immutable newlen = len + items.length;
-            reserve(newlen);
             _data.arr = _data.arr.ptr[0..newlen];
             static if(is(typeof(_data.arr[] = items)))
             {
@@ -900,7 +1223,7 @@ Appends an entire range to the managed array.
             else
             {
                 for(size_t i = len; !items.empty; items.popFront(), ++i)
-                    _data.arr.ptr[i] = items.front;
+                    _data.arr.ptr[i] = cast(Unqual!T)items.front;
             }
         }
         else

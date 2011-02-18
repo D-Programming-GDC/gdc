@@ -50,6 +50,8 @@ writefln("Time elapsed: %s msec", elapsedMsec);
  * Author:
  * Matthew Wilson
  *
+ * Source:    $(PHOBOSSRC std/_perf.d)
+ *
  * Macros:
  *      WIKI=Phobos/StdPerf
  */
@@ -896,4 +898,4 @@ else
 
     static assert(platform_not_supported);
 }
- 
+

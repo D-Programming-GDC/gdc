@@ -1,183 +1,139 @@
 /**
  * This module exposes functionality for inspecting and manipulating memory.
  *
- * Based off the original rt.memory template, but written to work with the GDC compiler.
+ * Scan data areas in /proc/maps. This cannot be done in rt.memory because
+ * requires GDC compiler-specific implementation of D module references.
  *
- * Written by Iain Buclaw, September 2010.
+ * Written by Iain Buclaw, February 2011.
  */
 
-module rt.memory;
+module rt.gccmemory;
 
 private
 {
-    import gcgccextern;
-
-    version( GC_Use_Stack_Guess )
-        import gc_guess_stack;
-
-    version( GC_Use_Stack_FreeBSD )
-        extern (C) int _d_gcc_gc_freebsd_stack(void **);
+    import core.stdc.stdlib;        // alloca, strtoul
+    import core.stdc.string;        // memmove, strchr
+    import core.sys.posix.fcntl;    // open
+    import core.sys.posix.unistd;   // close, read
 
     extern (C) void gc_addRange( void* p, size_t sz );
-    extern (C) void gc_removeRange( void *p );
-}
 
-
-/**
- *
- */
-extern (C) void* rt_stackBottom()
-{
-    version( Windows ) // TODO: Does this work with MinGW?
+    // Marked areas in the maps file.
+    static if ( size_t.sizeof == 4 )
     {
-        asm
+        enum Ofs
         {
-            naked;
-            mov EAX,FS:4;
-            ret;
+            Write_Prot = 19,
+            Start_Addr = 0,
+            End_Addr = 9,
+            Addr_Len = 8,
+            Inode_Num = 38,
         }
     }
-    else version( GC_Use_Stack_GLibC )
+    else static if ( size_t.sizeof == 8 )
     {
-        return __libc_stack_end;
-    }
-    else version( GC_Use_Stack_Guess )
-    {
-        return stackOriginGuess;
-    }
-    else version( GC_Use_Stack_FreeBSD )
-    {
-        void * stack_origin;
-        if( _d_gcc_gc_freebsd_stack(&stack_origin) )
-            return stack_origin;
-        else
-            // No way to signal an error
-            return null;
-    }
-    else version( GC_Use_Stack_Scan )
-    {
-        static assert( false, "Operating system not supported." );
-    }
-    else version( GC_Use_Stack_Fixed )
-    {
-        version( darwin )
+        enum Ofs
         {
-            static if( size_t.sizeof == 4 )
-                return cast(void*) 0xc0000000;
-            else static if( size_t.sizeof == 8 )
-                return cast(void*) 0x7ffff_00000000UL;
+            Write_Prot = 35,
+            Start_Addr = 0,
+            End_Addr = 9,
+            Addr_Len = 17,
+            Inode_Num = 70,
+        }
+    }
+    else
+        static assert( false, "Architecture not supported." );
+
+    // This linked list is created by a compiler generated function inserted
+    // into the .ctor list by the compiler.
+    struct ModRef 
+    {
+        ModRef* next;
+        void*   mod;
+    }
+
+    extern (C) extern __gshared ModRef* _Dmodule_ref;
+}
+
+void scanDataProcMaps(void* Data_Start, void* Data_End)
+{
+    int fd;         // file descriptor
+    char * buffer;  // file buffer allocated on stack
+    uint len = 256; // buffer length
+    int count;      // file read count
+    char * ptr;     // current location on buffer
+    char * eptr;    // end location on buffer
+
+    fd = open( "/proc/self/maps", O_RDONLY );
+    if ( fd == -1 )
+        return;
+    scope( exit ) close( fd );
+
+    buffer = cast(char*) alloca( len );
+    if ( buffer == null )
+        return;
+
+    ptr = buffer;
+    while (( count = read( fd, ptr, len - ( ptr - buffer ))) > 0 )
+    {
+        eptr = ptr + count;
+        ptr = buffer;
+
+        while( true )
+        {
+            auto nptr = strchr( ptr, '\n' );
+            if ( nptr && nptr < eptr )
+            {
+                // parse the entry in ptr[]
+                if ( ptr[Ofs.Write_Prot] == 'w' )
+                {
+                    ptr[Ofs.Start_Addr + Ofs.Addr_Len] = '\0';
+                    ptr[Ofs.End_Addr + Ofs.Addr_Len] = '\0';
+                    auto start = cast(void*) strtoul( ptr + Ofs.Start_Addr, null, 16 );
+                    auto end   = cast(void*) strtoul( ptr + Ofs.End_Addr, null, 16 );
+
+                    // 1. Exclude anything overlapping [Data_Start,Data_End]
+                    // 2. Exclude stack
+                    if (( ! Data_End ||
+                                ! ( Data_Start >= start && Data_End <= end )) &&
+                            ! ( buffer >= start && buffer < end ))
+                    {
+                        int addrange = 0;
+
+                        // 3. Include heap
+                        // 4. Include D modules
+                        if ( ptr[Ofs.Inode_Num] == '0' )
+                            addrange = 1;
+                        else
+                        {
+                            ModRef* mr;
+                            for ( mr = _Dmodule_ref; mr; mr = mr.next )
+                            {
+                                if ( mr >= start && mr <= end )
+                                {
+                                    addrange = 1;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if ( addrange )
+                        {
+                            debug ( ProcMaps )
+                                printf( "Adding map range %p 0%p\n", start, end );
+                            gc_addRange( start, cast(size_t) end - cast(size_t) start );
+                        }
+                    }
+                }
+                ptr = nptr + 1;
+            }
             else
-                static assert( false, "Operating system not supported." );
+            {
+                count = eptr - ptr;
+                memmove( buffer, ptr, count );
+                ptr = buffer + count;
+                break;
+            }
         }
     }
-    else
-    {
-        static assert( false, "Operating system not supported." );
-    }
 }
-
-
-/**
- *
- */
-extern (C) void* rt_stackTop()
-{
-    // Safe to use asm? or use the fallback method...
-    version( D_InlineAsm_X86 )
-    {
-        asm
-        {
-            naked;
-            mov EAX, ESP;
-            ret;
-        }
-    }
-    else version( D_InlineAsm_X86_64 )
-    {
-        asm
-        {
-            naked;
-            mov RAX, RSP;
-            ret;
-        }
-    }
-    else
-    {
-        // TODO: add builtin for using stack pointer rtx
-        int dummy;
-        void * p = & dummy + 1; // +1 doesn't help much; also assume stack grows down
-        p = cast(void*)( (cast(size_t) p) & ~(size_t.sizeof - 1));
-        return p;
-    }
-}
-
-
-private
-{
-    const size_t S = (void *).sizeof;
-
-    // Can't assume the input addresses are word-aligned
-    static void * adjust_up(void * p)
-    {
-        return p + ((S - (cast(size_t)p & (S-1))) & (S-1)); // cast ok even if 64-bit
-    }
-    static void * adjust_down(void * p)
-    {
-        return p - (cast(size_t) p & (S-1));
-    }
-
-    alias void delegate( void*, void* ) scanFn;
-}
-
-
-/**
- *
- */
-extern (C) void rt_scanStaticData( scanFn scan )
-{
-    scan(rt_staticDataBottom(), rt_staticDataTop());
-}
-
-/**
- *
- */
-extern (C) void* rt_staticDataBottom()
-{
-    version( GC_Use_Data_Fixed )
-    {
-        return adjust_down(&Data_End);
-    }
-    else // FIXME
-    {
-        static assert( false, "Operating system not supported." );
-    }
-}
-
-/**
- *
- */
-extern (C) void* rt_staticDataTop()
-{
-    version( GC_Use_Data_Fixed )
-    {
-        return adjust_up(&Data_Start);
-    }
-    else // FIXME
-    {
-        static assert( false, "Operating system not supported." );
-    }
-}
-
-
-void initStaticDataGC()
-{
-    version( GC_Use_Data_Fixed )
-    {
-        gc_addRange( &Data_Start, cast(size_t) &Data_End - cast(size_t) &Data_Start );
-    }
-    else // FIXME
-    {
-        static assert( false, "Operating system not supported." );
-    }
-}
-

@@ -155,14 +155,13 @@ class Semaphore
             }
         }
     }
-    
-   
+
+
     /**
      * Suspends the calling thread until the current count moves above zero or
      * until the supplied time period has elapsed.  If the count moves above
      * zero in this interval, then atomically decrement the count by one and
      * return true.  Otherwise, return false.
-     *
      *
      * Params:
      *  period = The time to wait.
@@ -185,12 +184,12 @@ class Semaphore
     {
         version( Win32 )
         {
-            auto maxWaitMillis = milliseconds( uint.max - 1 );
+            auto maxWaitMillis = dur!("msecs")( uint.max - 1 );
 
             while( val > maxWaitMillis )
             {
                 auto rc = WaitForSingleObject( m_hndl, cast(uint)
-                                                       maxWaitMillis.totalMilliseconds );
+                                                       maxWaitMillis.total!("msecs")() );
                 switch( rc )
                 {
                 case WAIT_OBJECT_0:
@@ -202,7 +201,7 @@ class Semaphore
                     throw new SyncException( "Unable to wait for semaphore" );
                 }
             }
-            switch( WaitForSingleObject( m_hndl, cast(uint) val.totalMilliseconds ) )
+            switch( WaitForSingleObject( m_hndl, cast(uint) val.total!("msecs")() ) )
             {
             case WAIT_OBJECT_0:
                 return true;
@@ -213,26 +212,21 @@ class Semaphore
             }
         }
         else version( OSX )
-        {            
+        {
             mach_timespec_t t = void;
             (cast(byte*) &t)[0 .. t.sizeof] = 0;
 
-            if( val.ticks != 0 )
+            if( dur!("nsecs")( 0 ) == val )
             {
-                enum : uint
-                {
-                    NANOS_PER_SECOND = 1000_000_000
-                }
-
-                if( val.totalSeconds > t.tv_sec.max )
+                if( val.total!("seconds")() > t.tv_sec.max )
                 {
                     t.tv_sec  = t.tv_sec.max;
-                    t.tv_nsec = cast(typeof(t.tv_nsec)) (val.totalNanoseconds % NANOS_PER_SECOND);
+                    t.tv_nsec = cast(typeof(t.tv_nsec)) val.fracSec.nsecs;
                 }
                 else
                 {
-                    t.tv_sec  = cast(typeof(t.tv_sec)) val.totalSeconds;
-                    t.tv_nsec = cast(typeof(t.tv_nsec)) (val.totalNanoseconds % NANOS_PER_SECOND);
+                    t.tv_sec  = cast(typeof(t.tv_sec)) val.total!("seconds")();
+                    t.tv_nsec = cast(typeof(t.tv_nsec)) val.fracSec.nsecs;
                 }
             }
             while( true )
@@ -270,7 +264,6 @@ class Semaphore
      * zero in this interval, then atomically decrement the count by one and
      * return true.  Otherwise, return false.
      *
-     *
      * Params:
      *  period = The time to wait, in 100 nanosecond intervals.  This value may
      *           be adjusted to equal to the maximum wait period supported by
@@ -292,12 +285,7 @@ class Semaphore
     }
     body
     {
-        enum : uint
-        {
-            NANOS_PER_TICK = 100,
-        }
-
-        return wait( nanoseconds( period * NANOS_PER_TICK ) );
+        return wait( dur!("hnsecs")( period ) );
     }
 
 
@@ -505,8 +493,8 @@ version( unittest )
             {
                 waiting    = true;
             }
-            alertedOne = semReady.wait( 10_000_000 ); // 100ms
-            alertedTwo = semReady.wait( 10_000_000 ); // 100ms
+            alertedOne = semReady.wait( dur!"msecs"(200) );
+            alertedTwo = semReady.wait( dur!"msecs"(200) );
         }
 
         auto thread = new Thread( &waiter );

@@ -555,6 +555,7 @@ struct FuncDeclaration : Declaration
     ILS inlineStatus;
     int inlineNest;                     // !=0 if nested inline
     int cantInterpret;                  // !=0 if cannot interpret function
+    int isArrayOp;                      // !=0 if array operation
     enum PASS semanticRun;
                                         // this function's frame ptr
     ForeachStatement *fes;              // if foreach body, this is the foreach
@@ -645,9 +646,9 @@ struct FuncDeclaration : Declaration
     Parameters *getParameters(int *pvarargs);
 
     static FuncDeclaration *genCfunc(Type *treturn, const char *name,
-        Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);
+            Type *t1 = NULL, Type *t2 = NULL, Type *t3 = NULL);
     static FuncDeclaration *genCfunc(Type *treturn, Identifier *id,
-        Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);
+            Type *t1 = NULL, Type *t2 = NULL, Type *t3 = NULL);
 
     Symbol *toSymbol();
     Symbol *toThunkSymbol(target_ptrdiff_t offset);     // thunk version

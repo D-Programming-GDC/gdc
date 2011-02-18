@@ -11,10 +11,6 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-*/
 module gc.gcx;
 
 // D Programming Language Garbage Collector implementation
@@ -46,7 +42,7 @@ private import gc.gcalloc;
 private import cstdlib = core.stdc.stdlib : calloc, free, malloc, realloc;
 private import core.stdc.string;
 
-version(GNU) import gcc.builtins;
+version (GNU) import gcc.builtins;
 
 debug (PRINTF) import core.stdc.stdio : printf;
 debug (COLLECT_PRINTF) import core.stdc.stdio : printf;

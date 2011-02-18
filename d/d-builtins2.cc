@@ -517,6 +517,18 @@ d_gcc_magic_module(Module *m)
             if (! strcmp(md->id->string, "builtins"))
                 d_gcc_magic_builtins_module(m);
         }
+#if V2
+        else if (! strcmp(((Identifier *) md->packages->data[0])->string, "core"))
+        {
+            if (! strcmp(md->id->string, "vararg"))
+                d_gcc_magic_stdarg_module(m, false);
+        }
+        else if (! strcmp(((Identifier *) md->packages->data[0])->string, "std"))
+        {
+            if (! strcmp(md->id->string, "intrinsic"))
+                IRState::setIntrinsicModule(m);
+        }
+#else
         else if (! strcmp(((Identifier *) md->packages->data[0])->string, "std"))
         {
             if (! strcmp(md->id->string, "stdarg"))
@@ -524,18 +536,20 @@ d_gcc_magic_module(Module *m)
             else if (! strcmp(md->id->string, "intrinsic"))
                 IRState::setIntrinsicModule(m);
         }
+#endif
     }
     else if (md->packages->dim == 2)
     {
-        if (! strcmp(((Identifier *) md->packages->data[0])->string, "std") &&
-            ! strcmp(((Identifier *) md->packages->data[1])->string, "c"))
+#if V2
+        if (! strcmp(((Identifier *) md->packages->data[0])->string, "core") &&
+            ! strcmp(((Identifier *) md->packages->data[1])->string, "stdc"))
         {
             if (! strcmp(md->id->string, "stdarg"))
                 d_gcc_magic_stdarg_module(m, true);
         }
-#if V2
-        else if (! strcmp(((Identifier *) md->packages->data[0])->string, "core") &&
-                 ! strcmp(((Identifier *) md->packages->data[1])->string, "stdc"))
+#else
+        if (! strcmp(((Identifier *) md->packages->data[0])->string, "std") &&
+            ! strcmp(((Identifier *) md->packages->data[1])->string, "c"))
         {
             if (! strcmp(md->id->string, "stdarg"))
                 d_gcc_magic_stdarg_module(m, true);

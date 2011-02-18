@@ -79,6 +79,31 @@ int clock_nanosleep(clockid_t, int, in timespec*, timespec*);
 CLOCK_MONOTONIC
 */
 
+version( linux )
+{
+    enum CLOCK_MONOTONIC        = 1;
+    enum CLOCK_MONOTONIC_RAW    = 4; // non-standard
+    enum CLOCK_MONOTONIC_COARSE = 6; // non-standard
+}
+else version (FreeBSD)
+{   // time.h
+    enum CLOCK_MONOTONIC         = 4;
+    enum CLOCK_MONOTONIC_PRECISE = 11;
+    enum CLOCK_MONOTONIC_FAST    = 12;
+}
+else version (OSX)
+{
+    // No CLOCK_MONOTONIC defined
+}
+else version (Windows)
+{
+    pragma(msg, "no Windows support for CLOCK_MONOTONIC");
+}
+else
+{
+    static assert(0);
+}
+
 //
 // Timer (TMR)
 //
@@ -120,8 +145,8 @@ int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
 
 version( linux )
 {
-    enum CLOCK_PROCESS_CPUTIME_ID   = 2; // (TMR|CPT)
-    enum CLOCK_THREAD_CPUTIME_ID    = 3; // (TMR|TCT)
+    enum CLOCK_PROCESS_CPUTIME_ID = 2;
+    enum CLOCK_THREAD_CPUTIME_ID  = 3;
 
     // NOTE: See above for why this is commented out.
     //
@@ -137,8 +162,9 @@ version( linux )
         timespec it_value;
     }
 
-    enum CLOCK_REALTIME     = 0;
-    enum TIMER_ABSTIME      = 0x01;
+    enum CLOCK_REALTIME         = 0;
+    enum CLOCK_REALTIME_COARSE  = 5; // non-standard
+    enum TIMER_ABSTIME          = 0x01;
 
     alias int clockid_t;
     alias int timer_t;
@@ -159,7 +185,8 @@ else version( OSX )
 }
 else version( FreeBSD )
 {
-    enum CLOCK_THREAD_CPUTIME_ID    = 15;
+    //enum CLOCK_PROCESS_CPUTIME_ID = ??;
+    enum CLOCK_THREAD_CPUTIME_ID  = 15;
 
     // NOTE: See above for why this is commented out.
     //

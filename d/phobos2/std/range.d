@@ -13,6 +13,7 @@ WIKI = Phobos/StdRange
 Copyright: Copyright Andrei Alexandrescu 2008-.
 License:   $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors:   $(WEB erdani.org, Andrei Alexandrescu), David Simcha
+Source:    $(PHOBOSSRC std/_range.d)
 */
 module std.range;
 
@@ -207,7 +208,7 @@ $(UL $(LI $(D r.empty) returns $(D false) iff there is more data
 available in the range.)  $(LI $(D r.front) returns the current element
 in the range. It may return by value or by reference. Calling $(D
 r.front) is allowed only if calling $(D r.empty) has, or would have,
-returned $(D false).) $(LI $(D r.popFront) advances to the popFront element in
+returned $(D false).) $(LI $(D r.popFront) advances to the next element in
 the range. Calling $(D r.popFront) is allowed only if calling $(D r.empty)
 has, or would have, returned $(D false).))
  */
@@ -215,9 +216,9 @@ template isInputRange(R)
 {
     enum bool isInputRange = is(typeof(
     {
-        R r;             // can define a range object
-        if (r.empty) {}  // can test for empty
-        r.popFront;          // can invoke next
+        R r;              // can define a range object
+        if (r.empty) {}   // can test for empty
+        r.popFront();     // can invoke next
         auto h = r.front; // can get the front of the range
     }()));
 }
@@ -235,6 +236,7 @@ unittest
     static assert(isInputRange!(B));
     static assert(isInputRange!(int[]));
     static assert(isInputRange!(char[]));
+    static assert(!isInputRange!(char[4]));
 }
 
 /**
@@ -619,6 +621,34 @@ template ElementType(R)
         alias T ElementType;
     else
         alias void ElementType;
+}
+
+unittest
+{
+    enum XYZ : string { a = "foo" };
+    auto x = front(XYZ.a);
+    static assert(is(ElementType!(XYZ) : dchar));
+    immutable char[3] a = "abc";
+    static assert(is(ElementType!(typeof(a)) : dchar));
+    int[] i;
+    static assert(is(ElementType!(typeof(i)) : int));
+    void[] buf;
+    static assert(is(ElementType!(typeof(buf)) : void));
+}
+
+/**
+The encoding element type of $(D R). For narrow strings ($(D char[]),
+$(D wchar[]) and their qualified variants including $(D string) and
+$(D wstring)), $(D ElementEncodingType) is the character type of the
+string. For all other ranges, $(D ElementEncodingType) is the same as
+$(D ElementType).
+ */
+template ElementEncodingType(R)
+{
+    static if (isNarrowString!R)
+        alias typeof(R.init[0]) ElementEncodingType;
+    else
+        alias ElementType!R ElementEncodingType;
 }
 
 unittest
@@ -2096,6 +2126,13 @@ unittest
     static assert(is(Radial!(immutable int[])));
 }
 
+// Detect whether T can be sliced safely, i.e. whether it
+// a) can be sliced, and b) is not a narrow string.
+private template isSafelySlicable(T)
+{
+    enum isSafelySlicable = hasSlicing!T && !isNarrowString!T;
+}
+
 /**
 Lazily takes only up to $(D n) elements of a range. This is
 particulary useful when using with infinite ranges. If the range
@@ -2111,8 +2148,8 @@ assert(equal(s, [ 1, 2, 3, 4, 5 ][]));
 ----
  */
 struct Take(Range)
-if(isInputRange!(Unqual!Range) &&
-(!hasSlicing!(Unqual!Range) || isNarrowString!(Unqual!Range)))
+if(isInputRange!(Unqual!Range) && !isSafelySlicable!(Unqual!Range)
+    && !is(Unqual!Range T == Take!T))
 {
     alias Unqual!Range R;
     R original;
@@ -2121,11 +2158,6 @@ if(isInputRange!(Unqual!Range) &&
 
 public:
     alias R Source;
-
-    static if (byRef)
-        alias ref .ElementType!(R) ElementType;
-    else
-        alias .ElementType!(R) ElementType;
 
     @property bool empty()
     {
@@ -2156,7 +2188,7 @@ public:
     }
 
     static if (hasAssignableElements!R)
-        @property auto front(ElementType v)
+        @property auto front(ElementType!R v)
         {
             // This has to return auto instead of void because of Bug 4706.
             original.front = v;
@@ -2164,7 +2196,7 @@ public:
 
     static if(hasMobileElements!R)
     {
-        ElementType moveFront()
+        auto moveFront()
         {
             return .moveFront(original);
         }
@@ -2210,13 +2242,13 @@ public:
 
         static if(hasAssignableElements!R)
         {
-            auto back(ElementType v)
+            auto back(ElementType!R v)
             {
                 // This has to return auto instead of void because of Bug 4706.
                 original[this.length - 1] = v;
             }
 
-            void opIndexAssign(ElementType v, size_t index)
+            void opIndexAssign(ElementType!R v, size_t index)
             {
                 original[index] = v;
             }
@@ -2224,12 +2256,12 @@ public:
 
         static if(hasMobileElements!R)
         {
-            ElementType moveBack()
+            auto moveBack()
             {
                 return .moveAt(original, this.length - 1);
             }
 
-            ElementType moveAt(size_t index)
+            auto moveAt(size_t index)
             {
                 assert(index < this.length,
                     "Attempting to index out of the bounds of a "
@@ -2247,33 +2279,23 @@ public:
     }
 }
 
-// This template simply aliases itself to R and is useful for consistency in
-// generic code.
-template Take(R)
-if(isInputRange!(Unqual!R) && hasSlicing!(Unqual!R) && !isNarrowString!(Unqual!R))
-{
-    alias R Take;
-}
-
-/// Ditto
-R take(R)(R input, size_t n)
-if((isInputRange!(Unqual!R) && (!hasSlicing!(Unqual!R) || isNarrowString!(Unqual!R)))
-    && is (R T == Take!T))
-{
-    return R(input.original, min(n, input.maxLength));
-}
-
 /// Ditto
 Take!(R) take(R)(R input, size_t n)
-if((isInputRange!(Unqual!R) && (!hasSlicing!(Unqual!R) || isNarrowString!(Unqual!R)))
-    && !is (R T == Take!T))
+if(isInputRange!(Unqual!R) && !isSafelySlicable!(Unqual!R)
+    && !is(Unqual!R T == Take!T))
 {
     return Take!(R)(input, n);
 }
 
-/// Ditto
+// For the case when R can be safely sliced.
+template Take(R)
+if(isInputRange!(Unqual!R) && isSafelySlicable!(Unqual!R))
+{
+    alias typeof(R[0 .. 1]) Take;
+}
+
 Take!(R) take(R)(R input, size_t n)
-if(isInputRange!(Unqual!R) && hasSlicing!(Unqual!R) && !isNarrowString!(Unqual!R))
+if(isInputRange!(Unqual!R) && isSafelySlicable!(Unqual!R))
 {
     static if (hasLength!R)
     {
@@ -2287,6 +2309,21 @@ if(isInputRange!(Unqual!R) && hasSlicing!(Unqual!R) && !isNarrowString!(Unqual!R
                 "Nonsensical finite range with slicing but no length");
         return input[0 .. n];
     }
+}
+
+// For the case when R is a Take struct
+template Take(R)
+if(isInputRange!(Unqual!R) && !isSafelySlicable!(Unqual!R)
+    && is(Unqual!R T == Take!T))
+{
+    alias R Take;
+}
+
+Take!(R) take(R)(R input, size_t n)
+if(isInputRange!(Unqual!R) && !isSafelySlicable!(Unqual!R)
+    && is(Unqual!R T == Take!T))
+{
+    return R(input.original, min(n, input.maxLength));
 }
 
 unittest
@@ -2343,6 +2380,92 @@ unittest
 
     immutable myRepeat = repeat(1);
     static assert(is(Take!(typeof(myRepeat))));
+}
+
+unittest
+{
+    // Check that one can declare variables of all Take types,
+    // and that they match the return type of the corresponding
+    // take().  (See issue 4464.)
+    int[] r1;
+    Take!(int[]) t1;
+    t1 = take(r1, 1);
+
+    string r2;
+    Take!string t2;
+    t2 = take(r2, 1);
+
+    Take!(Take!string) t3;
+    t3 = take(t2, 1);
+}
+
+/**
+Similar to $(XREF range,take), but assumes the length of $(D range) is
+at least $(D n). As such, the result of $(D takeExactly(range, n))
+always defines the $(D length) property (and initializea it to $(D n))
+even when $(D range) itself does not define $(D length).
+
+If $(D R) is a random-access range, the result of $(D takeExactly) is
+$(D R) as well because $(D takeExactly) simply returns a slice of $(D
+range). Otherwise if $(D R) is an input range, the type of the result
+is an input range with length. Finally, if $(D R) is a forward range
+(including bidirectional), the type of the result is a forward range.
+ */
+auto takeExactly(R)(R range, size_t n)
+if (isInputRange!R && !isRandomAccessRange!R)
+{
+    static if (is(typeof(takeExactly(range._input, n)) == R))
+    {
+        // takeExactly(takeExactly(r, n1), n2) has the same type as
+        // takeExactly(r, n1) and simply returns takeExactly(r, n2)
+        range._n = n;
+        return range;
+    }
+    else
+    {
+        static struct Result
+        {
+            R _input;
+            private size_t _n;
+        
+            @property bool empty() const { return !_n; }
+            @property auto ref front()
+            {
+                assert(_n > 0, "front() on an empty " ~ Result.stringof);
+                return _input.front();
+            }
+            void popFront() { _input.popFront(); --_n; }
+            size_t length() const { return _n; }
+
+            static if (isForwardRange!R)
+                auto save() { return this; }
+        }
+    
+        return Result(range, n);
+    }
+}
+
+auto takeExactly(R)(R range, size_t n)
+if (isRandomAccessRange!R)
+{
+    return range[0 .. n];
+}
+
+unittest
+{
+    auto a = [ 1, 2, 3, 4, 5 ];
+    auto b = takeExactly(a, 3);
+    assert(equal(b, [1, 2, 3]));
+    auto c = takeExactly(b, 2);
+
+    auto d = filter!"a > 0"(a);
+    auto e = takeExactly(d, 3);
+    assert(equal(e, [1, 2, 3]));
+    assert(equal(takeExactly(e, 4), [1, 2, 3, 4]));
+    // assert(b.length == 3);
+    // assert(b.front == 1);
+    // assert(b.back == 3);
+    // b[1]++;
 }
 
 /**
@@ -2435,9 +2558,9 @@ struct Repeat(T)
 {
     private T _value;
     /// Range primitive implementations.
-    @property ref T front() { return _value; }
+    @property T front() { return _value; }
     /// Ditto
-    @property ref T back() { return _value; }
+    @property T back() { return _value; }
     /// Ditto
     enum bool empty = false;
     /// Ditto
@@ -2445,9 +2568,9 @@ struct Repeat(T)
     /// Ditto
     void popBack() {}
     /// Ditto
-    @property Repeat!(T) save() { return this; }
+    @property Repeat!T save() { return this; }
     /// Ditto
-    ref T opIndex(size_t) { return _value; }
+    T opIndex(size_t) { return _value; }
 }
 
 /// Ditto
@@ -2460,17 +2583,23 @@ unittest
 }
 
 /**
-Replicates $(D value) exactly $(D n) times. Equivalent to $(D
+Repeats $(D value) exactly $(D n) times. Equivalent to $(D
 take(repeat(value), n)).
  */
-Take!(Repeat!(T)) replicate(T)(T value, size_t n)
+Take!(Repeat!T) repeat(T)(T value, size_t n)
 {
     return take(repeat(value), n);
 }
 
+/// Equivalent to $(D repeat(value, n)). Scheduled for deprecation.
+Take!(Repeat!T) replicate(T)(T value, size_t n)
+{
+    return repeat(value, n);
+}
+
 unittest
 {
-    enforce(equal(replicate(5, 4), [ 5, 5, 5, 5 ][]));
+    enforce(equal(repeat(5, 4), [ 5, 5, 5, 5 ][]));
 }
 
 /**
@@ -2559,24 +2688,23 @@ if (isForwardRange!(Unqual!Range) && !isInfinite!(Unqual!Range))
             if (_current.empty) _current = _original;
         }
 
-        @property Cycle!(R) save() {
-            Cycle!(R) ret;
+        @property Cycle!R save() {
+            Cycle!R ret;
             ret._original = this._original.save;
             ret._current =  this._current.save;
             return ret;
         }
-
     }
 }
 
 /// Ditto
-template Cycle(R) if(isInfinite!(R))
+template Cycle(R) if (isInfinite!R)
 {
     alias R Cycle;
 }
 
 /// Ditto
-struct Cycle(R) if (isStaticArray!(R))
+struct Cycle(R) if (isStaticArray!R)
 {
     private alias typeof(R[0]) ElementType;
     private ElementType* _ptr;
@@ -2607,17 +2735,17 @@ struct Cycle(R) if (isStaticArray!(R))
 }
 
 /// Ditto
-Cycle!(R) cycle(R)(R input)
-if(isForwardRange!(Unqual!R) && !isInfinite!(Unqual!R))
+Cycle!R cycle(R)(R input)
+if (isForwardRange!(Unqual!R) && !isInfinite!(Unqual!R))
 {
     return Cycle!(R)(input);
 }
 
 /// Ditto
-Cycle!(R) cycle(R)(R input, size_t index)
-if(isRandomAccessRange!(Unqual!R) && !isInfinite!(Unqual!R))
+Cycle!R cycle(R)(R input, size_t index)
+if (isRandomAccessRange!(Unqual!R) && !isInfinite!(Unqual!R))
 {
-    return Cycle!(R)(input, index);
+    return Cycle!R(input, index);
 }
 
 /// Ditto
@@ -2775,7 +2903,7 @@ stopping policy.
                     {
                         if (!ranges[i].empty) return false;
                     }
-                    break;
+                    return true;
                 case StoppingPolicy.requireSameLength:
                     foreach (i, Unused; R[1 .. $])
                     {
@@ -2925,7 +3053,7 @@ stopping policy.
     }
 
 /**
-   Advances to the popFront element in all controlled ranges.
+   Advances to the next element in all controlled ranges.
 */
     void popFront()
     {
@@ -3120,14 +3248,14 @@ unittest
     assert(a == [1, 2, 3]);
     assert(b == [2., 1, 3]);
 
+    // Test infiniteness propagation.
+    static assert(isInfinite!(typeof(zip(repeat(1), repeat(1)))));
+
     // Test stopping policies with both value and reference.
     auto a1 = [1, 2];
     auto a2 = [1, 2, 3];
     auto stuff = tuple(tuple(a1, a2),
                             tuple(filter!"a"(a1), filter!"a"(a2)));
-
-    // Test infiniteness propagation.
-    static assert(isInfinite!(typeof(zip(repeat(1), repeat(1)))));
 
     alias Zip!(immutable int[], immutable float[]) FOO;
 
@@ -3144,14 +3272,18 @@ unittest
             assert(0);
         } catch { /* It's supposed to throw.*/ }
 
-        auto zLongest = zip(StoppingPolicy.requireSameLength, arr1, arr2);
+        auto zLongest = zip(StoppingPolicy.longest, arr1, arr2);
         assert(!zLongest.ranges[0].empty);
         assert(!zLongest.ranges[1].empty);
 
         zLongest.popFront();
         zLongest.popFront();
+        assert(!zLongest.empty);
         assert(zLongest.ranges[0].empty);
         assert(!zLongest.ranges[1].empty);
+
+        zLongest.popFront();
+        assert(zLongest.empty);
     }
 
     // Doesn't work yet.  Issues w/ emplace.
@@ -3370,7 +3502,7 @@ template Lockstep(Range)
     alias Range Lockstep;
 }
 
-version(ddoc)
+version(D_Ddoc)
 {
     /// Ditto
     Lockstep!(Ranges) lockstep(Ranges...)(Ranges ranges) { assert(0); }
@@ -3481,7 +3613,7 @@ unittest {
 
 /**
 Creates a mathematical sequence given the initial values and a
-recurrence function that computes the popFront value from the existing
+recurrence function that computes the next value from the existing
 values. The sequence comes in the form of an infinite forward
 range. The type $(D Recurrence) itself is seldom used directly; most
 often, recurrences are obtained by calling the function $(D
@@ -3491,7 +3623,7 @@ When calling $(D recurrence), the function that computes the next
 value is specified as a template argument, and the initial values in
 the recurrence are passed as regular arguments. For example, in a
 Fibonacci sequence, there are two initial values (and therefore a
-state size of 2) because computing the popFront Fibonacci value needs the
+state size of 2) because computing the next Fibonacci value needs the
 past two values.
 
 If the function is passed in string form, the state has name $(D "a")
@@ -5145,13 +5277,65 @@ unittest {
 }
 
 /**
+   Policy used with the searching primitives $(D lowerBound), $(D
+   upperBound), and $(D equalRange) of $(XREF range,SortedRange)
+   below.
+ */
+enum SearchPolicy
+{
+    /**
+       Searches with a step that is grows linearly (1, 2, 3,...)
+       leading to a quadratic search schedule (indexes tried are 0, 1,
+       3, 5, 8, 12, 17, 23,...) Once the search overshoots its target,
+       the remaining interval is searched using binary search. The
+       search is completed in $(BIGOH sqrt(n)) time. Use it when you
+       are reasonably confident that the value is around the beginning
+       of the range.
+    */
+    trot,
+        
+    /**
+       Performs a $(LUCKY galloping search algorithm), i.e. searches
+       with a step that doubles every time, (1, 2, 4, 8, ...)  leading
+       to an exponential search schedule (indexes tried are 0, 1, 2,
+       4, 8, 16, 32,...) Once the search overshoots its target, the
+       remaining interval is searched using binary search. A value is
+       found in $(BIGOH log(n)) time.
+    */
+        gallop,
+        
+    /**
+       Searches using a classic interval halving policy. The search
+       starts in the middle of the range, and each search step cuts
+       the range in half. This policy finds a value in $(BIGOH log(n))
+       time but is less cache friendly than $(D gallop) for large
+       ranges. The $(D binarySearch) policy is used as the last step
+       of $(D trot), $(D gallop), $(D trotBackwards), and $(D
+       gallopBackwards) strategies.
+    */
+        binarySearch,
+        
+    /**
+       Similar to $(D trot) but starts backwards. Use it when
+       confident that the value is around the end of the range.
+    */
+        trotBackwards,
+        
+    /**
+       Similar to $(D gallop) but starts backwards. Use it when
+       confident that the value is around the end of the range.
+    */
+        gallopBackwards
+}
+
+/**
 Represents a sorted random-access range. In addition to the regular
 range primitives, supports fast operations using binary search. To
 obtain a $(D SortedRange) from an unsorted range $(D r), use $(XREF
 algorithm, sort) which sorts $(D r) in place and returns the
 corresponding $(D SortedRange). To construct a $(D SortedRange) from a
-range $(D r) that is known to be already sorted, use $(D assumeSorted)
-described below.
+range $(D r) that is known to be already sorted, use $(XREF
+range,assumeSorted) described below.
 
 Example:
 
@@ -5180,17 +5364,27 @@ Example:
 auto a = [ 1, 2, 3, 42, 52, 64 ];
 auto r = assumeSorted(a);
 assert(r.canFind(42));
-swap(a[2], a[5]); // illegal to break sortedness of original range
+swap(a[3], a[5]); // illegal to break sortedness of original range
 assert(!r.canFind(42)); // passes although it shouldn't
 ----
  */
 struct SortedRange(Range, alias pred = "a < b")
-if(isRandomAccessRange!(Unqual!Range))
+if (isRandomAccessRange!Range)
 {
-    alias Unqual!Range R;
-    private R _input;
+    private alias binaryFun!pred predFun;
+    private bool geq(L, R)(L lhs, R rhs)
+    {
+        return !predFun(lhs, rhs);
+    }
+    private bool gt(L, R)(L lhs, R rhs)
+    {
+        return predFun(rhs, lhs);
+    }
+    private Range _input;
 
-    this(R input)
+    // Undocummented because a clearer way to invoke is by calling
+    // assumeSorted.
+    this(Range input)
     {
         this._input = input;
         debug
@@ -5214,97 +5408,78 @@ if(isRandomAccessRange!(Unqual!Range))
     }
 
     /// Ditto
-    @property typeof(this) save()
+    @property auto save()
     {
+        // Avoid the constructor
         typeof(this) result;
-        result._input = this._input.save;
+        result._input = _input.save;
         return result;
     }
 
     /// Ditto
-    @property ElementType!R front()
+    @property auto front()
     {
-        return this._input.front;
+        return _input.front;
     }
 
     /// Ditto
     void popFront()
     {
-        this._input.popFront();
+        _input.popFront();
     }
 
     /// Ditto
-    @property ElementType!R back()
+    @property auto back()
     {
-        return this._input.back;
+        return _input.back;
     }
 
     /// Ditto
     void popBack()
     {
-        this._input.popBack();
+        _input.popBack();
     }
 
     /// Ditto
-    ElementType!R opIndex(size_t i)
+    auto opIndex(size_t i)
     {
-        return this._input[i];
+        return _input[i];
     }
 
     /// Ditto
-    typeof(this) opSlice(size_t a, size_t b)
+    auto opSlice(size_t a, size_t b)
     {
+        assert(a <= b);
         typeof(this) result;
-        result._input = this._input[a .. b]; // skip checking
+        result._input = _input[a .. b]; // skip checking
         return result;
     }
 
     /// Ditto
     @property size_t length() //const
     {
-        return this._input.length;
+        return _input.length;
     }
 
 /**
 Releases the controlled range and returns it.
  */
-    R release()
+    auto release()
     {
-        return move(this._input);
+        return move(_input);
     }
 
-// lowerBound
-/**
-   This function assumes that range $(D r) consists of a subrange $(D r1)
-   of elements $(D e1) for which $(D pred(e1, value)) is $(D true),
-   followed by a subrange $(D r2) of elements $(D e2) for which $(D
-   pred(e2, value)) is $(D false). Using this assumption, $(D lowerBound)
-   uses binary search to find $(D r1), i.e. the left subrange on which
-   $(D pred) is always $(D true). Performs $(BIGOH log(r.length))
-   evaluations of $(D pred).  The precondition is not verified because it
-   would deteriorate function's complexity. It is possible that the types
-   of $(D value) and $(D ElementType!(Range)) are different, if the
-   predicate accepts them. See also STL's $(WEB
-   sgi.com/tech/stl/lower_bound.html, lower_bound).
-
-   Precondition: $(D find!(not!(pred))(r, value).length +
-   find!(pred)(retro(r), value).length == r.length)
-
-   Example:
-   ----
-   auto a = assumeSorted([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]);
-   auto p = a.lowerBound(4);
-   assert(p.release == [ 0, 1, 2, 3 ]);
-   ----
-*/
-    typeof(this) lowerBound(V)(V value)
+    // Assuming a predicate "test" that returns 0 for a left portion
+    // of the range and then 1 for the rest, returns the index at
+    // which the first 1 appears. Used internally by the search routines.
+    private size_t getTransitionIndex(SearchPolicy sp, alias test, V)(V v)
+    if (sp == SearchPolicy.binarySearch)
     {
-        size_t first = 0, count = this._input.length;
+        size_t first = 0, count = _input.length;
         while (count > 0)
         {
-            immutable step = count / 2;
-            auto it = first + step;
-            if (binaryFun!(pred)(this._input[it], value))
+            immutable step = count / 2, it = first + step;
+            if (!test(_input[it], v))
             {
                 first = it + 1;
                 count -= step + 1;
@@ -5314,95 +5489,273 @@ Releases the controlled range and returns it.
                 count = step;
             }
         }
-        return this[0 .. first];
+        return first;
+    }
+
+    // Specialization for trot and gallop
+    private size_t getTransitionIndex(SearchPolicy sp, alias test, V)(V v)
+    if (sp == SearchPolicy.trot || sp == SearchPolicy.gallop)
+    {
+        if (empty || test(front, v)) return 0;
+        immutable count = length;
+        if (count == 1) return 1;
+        size_t below = 0, above = 1, step = 2;
+        while (!test(_input[above], v))
+        {
+            // Still too small, update below and increase gait
+            below = above;
+            immutable next = above + step;
+            if (next >= count)
+            {
+                // Overshot - the next step took us beyond the end. So
+                // now adjust next and simply exit the loop to do the
+                // binary search thingie.
+                above = count;
+                break;
+            }
+            // Still in business, increase step and continue
+            above = next;
+            static if (sp == SearchPolicy.trot)
+                ++step;
+            else
+                step <<= 1;
+        }
+        return below + this[below .. above].getTransitionIndex!(
+            SearchPolicy.binarySearch, test, V)(v);
+    }
+
+    // Specialization for trotBackwards and gallopBackwards
+    private size_t getTransitionIndex(SearchPolicy sp, alias test, V)(V v)
+    if (sp == SearchPolicy.trotBackwards || sp == SearchPolicy.gallopBackwards)
+    {
+        immutable count = length;
+        if (empty || !test(back, v)) return count;
+        if (count == 1) return 0;
+        size_t below = count - 2, above = count - 1, step = 2;
+        while (test(_input[below], v))
+        {
+            // Still too large, update above and increase gait
+            above = below;
+            if (below < step)
+            {
+                // Overshot - the next step took us beyond the end. So
+                // now adjust next and simply fall through to do the
+                // binary search thingie.
+                below = 0;
+                break;
+            }
+            // Still in business, increase step and continue
+            below -= step;
+            static if (sp == SearchPolicy.trot)
+                ++step;
+            else
+                step <<= 1;
+        }
+        return below + this[below .. above].getTransitionIndex!(
+            SearchPolicy.binarySearch, test, V)(v);
+    }
+
+// lowerBound
+/**
+This function uses binary search with policy $(D sp) to find the
+largest left subrange on which $(D pred(x, value)) is $(D true) for
+all $(D x) (e.g., if $(D pred) is "less than", returns the portion of
+the range with elements strictly smaller than $(D value)). The search
+schedule and its complexity are documented in $(XREF
+range,SearchPolicy).  See also STL's $(WEB
+sgi.com/tech/stl/lower_bound.html, lower_bound).
+
+Example:
+----
+auto a = assumeSorted([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]);
+auto p = a.lowerBound(4);
+assert(equal(p, [ 0, 1, 2, 3 ]));
+----
+*/
+    auto lowerBound(SearchPolicy sp = SearchPolicy.binarySearch, V)(V value)
+    if (is(V : ElementType!Range))
+    {
+        ElementType!Range v = value;
+        return this[0 .. getTransitionIndex!(sp, geq)(v)];
     }
 
 // upperBound
 /**
-   This function assumes that range $(D r) consists of a subrange $(D r1)
-   of elements $(D e1) for which $(D pred(value, e1)) is $(D false),
-   followed by a subrange $(D r2) of elements $(D e2) for which $(D
-   pred(value, e2)) is $(D true). (Note the differences in subrange
-   definition and argument order for $(D pred) compared to $(D
-   lowerBound).) Using this assumption, $(D upperBound) uses binary
-   search to find $(D r2), i.e. the right subrange on which $(D pred) is
-   always $(D true). Performs $(BIGOH log(r.length)) evaluations of $(D
-   pred).  The precondition is not verified because it would deteriorate
-   function's complexity. It is possible that the types of $(D value) and
-   $(D ElementType!(Range)) are different, if the predicate accepts
-   them. See also STL's $(WEB sgi.com/tech/stl/lower_bound.html,
-   upper_bound).
+This function uses binary search with policy $(D sp) to find the
+largest right subrange on which $(D pred(value, x)) is $(D true) for
+all $(D x) (e.g., if $(D pred) is "less than", returns the portion of
+the range with elements strictly greater than $(D value)). The search
+schedule and its complexity are documented in $(XREF
+range,SearchPolicy).  See also STL's $(WEB
+sgi.com/tech/stl/lower_bound.html,upper_bound).
 
-   Precondition: $(D find!(pred)(r, value).length +
-   find!(not!(pred))(retro(r), value).length == r.length)
-
-   Example:
-   ----
-   auto a = assumeSorted([ 1, 2, 3, 3, 3, 4, 4, 5, 6 ]);
-   auto p = a.upperBound(3);
-   assert(p == [4, 4, 5, 6]);
-   ----
+Example:
+----
+auto a = assumeSorted([ 1, 2, 3, 3, 3, 4, 4, 5, 6 ]);
+auto p = a.upperBound(3);
+assert(equal(p, [4, 4, 5, 6]));
+----
 */
-    typeof(this) upperBound(V)(V value)
+    auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, V)(V value)
+    if (is(V : ElementType!Range))
     {
-        size_t first = 0;
-        size_t count = length;
-        while (count > 0)
-        {
-            auto step = count / 2;
-            auto it = first + step;
-            if (!binaryFun!(pred)(value, this[it]))
-            {
-                first = it + 1;
-                count -= step + 1;
-            }
-            else count = step;
-        }
-        return this[first .. length];
+        ElementType!Range v = value;
+        return this[getTransitionIndex!(sp, gt)(v) .. length];
     }
 
 // equalRange
 /**
-   Assuming a range satisfying both preconditions for $(D
-   lowerBound!(pred)(r, value)) and $(D upperBound!(pred)(r, value)), the
-   call $(D equalRange!(pred)(r, v)) returns the subrange containing all
-   elements $(D e) for which both $(D pred(e, value)) and $(D pred(value,
-   e)) evaluate to $(D false). Performs $(BIGOH log(r.length))
-   evaluations of $(D pred). See also STL's $(WEB
-   sgi.com/tech/stl/equal_range.html, equal_range).
+Returns the subrange containing all elements $(D e) for which both $(D
+pred(e, value)) and $(D pred(value, e)) evaluate to $(D false) (e.g.,
+if $(D pred) is "less than", returns the portion of the range with
+elements equal to $(D value)). Uses a classic binary search with
+interval halving until it finds a value that satisfies the condition,
+then uses $(D SearchPolicy.gallopBackwards) to find the left boundary
+and $(D SearchPolicy.gallop) to find the right boundary. These
+policies are justified by the fact that the two boundaries are likely
+to be near the first found value (i.e., equal ranges are relatively
+small). Completes the entire search in $(BIGOH log(n)) time. See also
+STL's $(WEB sgi.com/tech/stl/equal_range.html, equal_range).
 
-   Precondition: $(D find!(not!(pred))(r, value).length +
-   find!(pred)(retro(r), value).length == r.length) && $(D find!(pred)(r,
-   value).length + find!(not!(pred))(retro(r), value).length == r.length)
-
-   Example:
-   ----
-   auto a = [ 1, 2, 3, 3, 3, 4, 4, 5, 6 ];
-   auto r = equalRange(a, 3);
-   assert(r == [ 3, 3, 3 ]);
-   ----
+Example:
+----
+auto a = [ 1, 2, 3, 3, 3, 4, 4, 5, 6 ];
+auto r = equalRange(a, 3);
+assert(equal(r, [ 3, 3, 3 ]));
+----
 */
-    typeof(this) equalRange(V)(V value)
+    auto equalRange(V)(V value) if (is(V : ElementType!Range))
     {
-        auto left = lowerBound(value);
-        auto right = this[left.length .. length].upperBound(value);
-        return this[left.length .. length - right.length];
+        size_t first = 0, count = _input.length;
+        while (count > 0)
+        {
+            immutable step = count / 2;
+            auto it = first + step;
+            if (predFun(_input[it], value))
+            {
+                // Less than value, bump left bound up
+                first = it + 1;
+                count -= step + 1;
+            }
+            else if (predFun(value, _input[it]))
+            {
+                // Greater than value, chop count
+                count = step;
+            }
+            else
+            {
+                // Equal to value, do binary searches in the
+                // leftover portions
+                // Gallop towards the left end as it's likely nearby
+                immutable left = first
+                    + this[first .. it]
+                    .lowerBound!(SearchPolicy.gallopBackwards)(value).length;
+                first += count;
+                // Gallop towards the right end as it's likely nearby
+                immutable right = first
+                    - this[it + 1 .. first]
+                    .upperBound!(SearchPolicy.gallop)(value).length;
+                return this[left .. right];
+            }
+        }
+        return this.init;
     }
 
-// canFind
+// trisect
 /**
-   Returns $(D true) if and only if $(D value) can be found in $(D
-   range), which is assumed to be sorted. Performs $(BIGOH log(r.length))
-   evaluations of $(D pred). See also STL's $(WEB
-   sgi.com/tech/stl/binary_search.html, binary_search).
-*/
+Returns a tuple $(D r) such that $(D r[0]) is the same as the result
+of $(D lowerBound(value)), $(D r[1]) is the same as the result of $(D
+equalRange(value)), and $(D r[2]) is the same as the result of $(D
+upperBound(value)). The call is faster than computing all three
+separately. Uses a search schedule similar to $(D
+equalRange). Completes the entire search in $(BIGOH log(n)) time.
 
-    bool canFind(V)(V value)
+Example:
+----
+auto a = [ 1, 2, 3, 3, 3, 4, 4, 5, 6 ];
+auto r = assumeSorted(a).trisect(3);
+assert(equal(r[0], [ 1, 2 ]));
+assert(equal(r[1], [ 3, 3, 3 ]));
+assert(equal(r[2], [ 4, 4, 5, 6 ]));
+----
+*/
+    auto trisect(V)(V value) if (is(V : ElementType!Range))
     {
-        auto lb = this.lowerBound(value);
-        return lb.length < length &&
-            !binaryFun!pred(value, this[lb.length]);
+        size_t first = 0, count = _input.length;
+        while (count > 0)
+        {
+            immutable step = count / 2;
+            auto it = first + step;
+            if (predFun(_input[it], value))
+            {
+                // Less than value, bump left bound up
+                first = it + 1;
+                count -= step + 1;
+            }
+            else if (predFun(value, _input[it]))
+            {
+                // Greater than value, chop count
+                count = step;
+            }
+            else
+            {
+                // Equal to value, do binary searches in the
+                // leftover portions
+                // Gallop towards the left end as it's likely nearby
+                immutable left = first
+                    + this[first .. it]
+                    .lowerBound!(SearchPolicy.gallopBackwards)(value).length;
+                first += count;
+                // Gallop towards the right end as it's likely nearby
+                immutable right = first
+                    - this[it + 1 .. first]
+                    .upperBound!(SearchPolicy.gallop)(value).length;
+                return tuple(this[0 .. left], this[left .. right],
+                        this[right .. length]);
+            }
+        }
+        // No equal element was found
+        return tuple(this[0 .. first], this.init, this[first .. length]);
     }
+
+// contains
+/**
+Returns $(D true) if and only if $(D value) can be found in $(D
+range), which is assumed to be sorted. Performs $(BIGOH log(r.length))
+evaluations of $(D pred). See also STL's $(WEB
+sgi.com/tech/stl/binary_search.html, binary_search).
+ */
+
+    bool contains(V)(V value)
+    {
+        size_t first = 0, count = _input.length;
+        while (count > 0)
+        {
+            immutable step = count / 2, it = first + step;
+            if (predFun(_input[it], value))
+            {
+                // Less than value, bump left bound up
+                first = it + 1;
+                count -= step + 1;
+            }
+            else if (predFun(value, _input[it]))
+            {
+                // Greater than value, chop count
+                count = step;
+            }
+            else
+            {
+                // Found!!!
+                return true;
+            }
+        }
+        return false;
+    }
+
+/**
+ * Deprecated alias for $(D contains).
+ */
+    alias contains canFind;
 }
 
 // Doc examples
@@ -5416,6 +5769,56 @@ unittest
     assert(r1.canFind(3));
     assert(!r1.canFind(32));
     assert(r1.release() == [ 64, 52, 42, 3, 2, 1 ]);
+}
+
+unittest
+{
+    auto a = [ 10, 20, 30, 30, 30, 40, 40, 50, 60 ];
+    auto r = assumeSorted(a).trisect(30);
+    assert(equal(r[0], [ 10, 20 ]));
+    assert(equal(r[1], [ 30, 30, 30 ]));
+    assert(equal(r[2], [ 40, 40, 50, 60 ]));
+
+    r = assumeSorted(a).trisect(35);
+    assert(equal(r[0], [ 10, 20, 30, 30, 30 ]));
+    assert(r[1].empty);
+    assert(equal(r[2], [ 40, 40, 50, 60 ]));
+}
+
+unittest
+{
+    static void test(SearchPolicy pol)()
+    {
+        auto a = [ 1, 2, 3, 42, 52, 64 ];
+        auto r = assumeSorted(a);
+        //writeln(r.lowerBound(42));
+        assert(equal(r.lowerBound(42), [1, 2, 3]));
+        //writeln(r.gallopLowerBound(42));
+        
+        assert(equal(r.lowerBound!(pol)(42), [1, 2, 3]));
+        assert(equal(r.lowerBound!(pol)(41), [1, 2, 3]));
+        assert(equal(r.lowerBound!(pol)(43), [1, 2, 3, 42]));
+        assert(equal(r.lowerBound!(pol)(51), [1, 2, 3, 42]));
+        assert(equal(r.lowerBound!(pol)(3), [1, 2]));
+        assert(equal(r.lowerBound!(pol)(55), [1, 2, 3, 42, 52]));
+        assert(equal(r.lowerBound!(pol)(420), a));
+        assert(equal(r.lowerBound!(pol)(0), a[0 .. 0]));
+
+        assert(equal(r.upperBound!(pol)(42), [52, 64]));
+        assert(equal(r.upperBound!(pol)(41), [42, 52, 64]));
+        assert(equal(r.upperBound!(pol)(43), [52, 64]));
+        assert(equal(r.upperBound!(pol)(51), [52, 64]));
+        assert(equal(r.upperBound!(pol)(53), [64]));
+        assert(equal(r.upperBound!(pol)(55), [64]));
+        assert(equal(r.upperBound!(pol)(420), a[0 .. 0]));
+        assert(equal(r.upperBound!(pol)(0), a));
+    }
+
+    test!(SearchPolicy.trot)();
+    test!(SearchPolicy.gallop)();
+    test!(SearchPolicy.trotBackwards)();
+    test!(SearchPolicy.gallopBackwards)();
+    test!(SearchPolicy.binarySearch)();    
 }
 
 unittest
@@ -5436,8 +5839,14 @@ unittest
     auto a = [ 1, 2, 3, 42, 52, 64 ];
     auto r = assumeSorted(a);
     assert(r.canFind(42));
-    swap(a[2], a[5]); // illegal to break sortedness of original range
+    swap(a[3], a[5]); // illegal to break sortedness of original range
     assert(!r.canFind(42)); // passes although it shouldn't
+}
+
+unittest
+{
+    immutable(int)[] arr = [ 1, 2, 3 ];
+    auto s = assumeSorted(arr);
 }
 
 /**
@@ -5454,9 +5863,9 @@ almost-sorted range is likely to pass it). To check for sortedness at
 cost $(BIGOH n), use $(XREF algorithm, isSorted).
  */
 auto assumeSorted(alias pred = "a < b", R)(R r)
-if(isRandomAccessRange!(Unqual!R))
+if (isRandomAccessRange!(Unqual!R))
 {
-    return SortedRange!(R, pred)(r);
+    return SortedRange!(Unqual!R, pred)(r);
 }
 
 unittest
@@ -5490,6 +5899,10 @@ unittest
     assert(equal(p, [ 4, 4 ]), text(p));
     p = assumeSorted(a).equalRange(2);
     assert(equal(p, [ 2 ]));
+    p = assumeSorted(a).equalRange(0);
+    assert(p.empty);
+    p = assumeSorted(a).equalRange(7);
+    assert(p.empty);
 }
 
 unittest

@@ -1,11 +1,11 @@
 /**
  * Contains all implicitly declared types and variables.
  *
- * Copyright: Copyright Digital Mars 2000 - 2010.
+ * Copyright: Copyright Digital Mars 2000 - 2011.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
  *
- *          Copyright Digital Mars 2000 - 2009.
+ *          Copyright Digital Mars 2000 - 2011.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -240,32 +240,32 @@ struct ModuleInfo
 {
     struct New
     {
-	    uint flags;
-    	uint index;
+        uint flags;
+        uint index;
     }
 
     struct Old
     {
-	    string           name;
-	    ModuleInfo*[]    importedModules;
-	    TypeInfo_Class[] localClasses;
-	    uint             flags;
+        string           name;
+        ModuleInfo*[]    importedModules;
+        TypeInfo_Class[] localClasses;
+        uint             flags;
 
-	    void function() ctor;
-	    void function() dtor;
-	    void function() unitTest;
-	    void* xgetMembers;
-	    void function() ictor;
-	    void function() tlsctor;
-	    void function() tlsdtor;
-	    uint index;
-	    void*[1] reserved;
+        void function() ctor;
+        void function() dtor;
+        void function() unitTest;
+        void* xgetMembers;
+        void function() ictor;
+        void function() tlsctor;
+        void function() tlsdtor;
+        uint index;
+        void*[1] reserved;
     }
 
     union
     {
-	    New n;
-	    Old o;
+        New n;
+        Old o;
     }
 
     @property bool isNew();
@@ -298,7 +298,8 @@ class Throwable : Object
     interface TraceInfo
     {
         int opApply(scope int delegate(ref char[]));
-        //string toString(); // %% Not implemented ?
+        int opApply(scope int delegate(ref size_t, ref char[]));
+        string toString();
     }
 
     string      msg;
@@ -315,8 +316,8 @@ class Throwable : Object
 
 class Exception : Throwable
 {
-    this(string msg, Throwable next = null);
-    this(string msg, string file, size_t line, Throwable next = null);
+    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null);
+    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__);
 }
 
 
@@ -324,6 +325,7 @@ class Error : Throwable
 {
     this(string msg, Throwable next = null);
     this(string msg, string file, size_t line, Throwable next = null);
+    Throwable   bypassedException;
 }
 
 extern (C)
@@ -336,7 +338,7 @@ extern (C)
     void* _aaInp(void* p, TypeInfo keyti, void* pkey);
     void _aaDelp(void* p, TypeInfo keyti, void* pkey);
     void[] _aaValues(void* p, size_t keysize, size_t valuesize);
-    void[] _aaKeys(void* p, size_t keysize, size_t valuesize);
+    void[] _aaKeys(void* p, size_t keysize);
     void* _aaRehash(void** pp, TypeInfo keyti);
 
     extern (D) typedef scope int delegate(void *) _dg_t;
@@ -352,15 +354,6 @@ struct AssociativeArray(Key, Value)
 {
     void* p;
 
-    size_t aligntsize(size_t tsize)
-    {
-        version (X86_64)
-            // Size of key needed to align value on 16 bytes
-            return (tsize + 15) & ~(15);
-        else
-            return (tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
-    }
-
     size_t length() @property { return _aaLen(p); }
 
     Value[Key] rehash() @property
@@ -371,55 +364,74 @@ struct AssociativeArray(Key, Value)
 
     Value[] values() @property
     {
-        auto a = _aaValues(p, aligntsize(Key.sizeof), Value.sizeof);
+        auto a = _aaValues(p, Key.sizeof, Value.sizeof);
         return *cast(Value[]*) &a;
     }
 
     Key[] keys() @property
     {
-        auto a = _aaKeys(p, aligntsize(Key.sizeof), Value.sizeof);
+        auto a = _aaKeys(p, Key.sizeof);
         return *cast(Key[]*) &a;
     }
 
     int opApply(scope int delegate(ref Key, ref Value) dg)
     {
-        return _aaApply2(p, aligntsize(Key.sizeof), cast(_dg2_t)dg);
+        return _aaApply2(p, Key.sizeof, cast(_dg2_t)dg);
     }
 
     int opApply(scope int delegate(ref Value) dg)
     {
-        return _aaApply(p, aligntsize(Key.sizeof), cast(_dg_t)dg);
+        return _aaApply(p, Key.sizeof, cast(_dg_t)dg);
     }
 
     int delegate(int delegate(ref Key) dg) byKey()
     {
-	int foo(int delegate(ref Key) dg)
-	{
-	    int byKeydg(ref Key key, ref Value value)
-	    {
-		return dg(key);
-	    }
+        int foo(int delegate(ref Key) dg)
+        {
+            int byKeydg(ref Key key, ref Value value)
+            {
+               return dg(key);
+            }
 
-	    return _aaApply2(p, aligntsize(Key.sizeof), cast(_dg2_t)&byKeydg);
-	}
+            return _aaApply2(p, Key.sizeof, cast(_dg2_t)&byKeydg);
+        }
 
-	return &foo;
+        return &foo;
     }
 
     int delegate(int delegate(ref Value) dg) byValue()
     {
-	return &opApply;
+        return &opApply;
     }
 
     Value get(Key key, lazy Value defaultValue)
     {
-	auto p = key in *cast(Value[Key]*)(&p);
-	return p ? *p : defaultValue;
+        auto r = key in *cast(Value[Key]*)(&p);
+        return r ? *r : defaultValue;
     }
+
+    static if (is(typeof({ Value[Key] r; r[Key.init] = Value.init; }())))
+        @property Value[Key] dup()
+        {
+            Value[Key] result;
+            foreach (k, v; this)
+            {
+                result[k] = v;
+            }
+            return result;
+        }
+}
+
+unittest
+{
+    auto a = [ 1:"one", 2:"two", 3:"three" ];
+    auto b = a.dup;
+    assert(b == [ 1:"one", 2:"two", 3:"three" ]);
 }
 
 void clear(T)(T obj) if (is(T == class))
 {
+    if (!obj) return;
     auto ci = obj.classinfo;
     auto defaultCtor =
         cast(void function(Object)) ci.defaultConstructor;
@@ -436,7 +448,7 @@ void clear(T)(T obj) if (is(T == class))
         ci2 = ci2.base;
     } while (ci2)
 
-    auto buf = (cast(void*) obj)[0 .. size];
+        auto buf = (cast(void*) obj)[0 .. size];
     buf[] = ci.init;
     if (defaultCtor)
         defaultCtor(obj);
@@ -448,12 +460,12 @@ void clear(T)(ref T obj) if (is(T == struct))
     {
         obj.__dtor();
     }
-    auto buf = (cast(void*) &obj)[0 .. T.sizeof];
-    // @@@BUG4436@@@ workaround
-    //auto init = (cast(void*) &T.init)[0 .. T.sizeof];
-    static T empty;
-    auto init = (cast(void*) &empty)[0 .. T.sizeof];
-    buf[] = init[];
+    auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
+    auto init = cast(ubyte[])typeid(T).init();
+    if(init.ptr is null) // null ptr means initialize to 0s
+        buf[] = 0;
+    else
+        buf[] = init[];
 }
 
 void clear(T : U[n], U, size_t n)(ref T obj)
@@ -462,7 +474,7 @@ void clear(T : U[n], U, size_t n)(ref T obj)
 }
 
 void clear(T)(ref T obj)
-    if (!is(T == struct) && !is(T == class) && !_isStaticArray!T)
+if (!is(T == struct) && !is(T == class) && !_isStaticArray!T)
 {
     obj = T.init;
 }
@@ -501,10 +513,10 @@ void assumeSafeAppend(T)(T[] arr)
 bool _ArrayEq(T1, T2)(T1[] a1, T2[] a2)
 {
     if (a1.length != a2.length)
-	return false;
+        return false;
     foreach(i, a; a1)
-    {	if (a != a2[i])
-	    return false;
+    {   if (a != a2[i])
+            return false;
     }
     return true;
 }

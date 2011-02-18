@@ -80,11 +80,7 @@ mode_t umask(mode_t);
 
 version( linux )
 {
-    static if( __WORDSIZE == 64 )
-    {
-        private alias int _pad_t;
-    }
-    else static if( __USE_LARGEFILE64 )
+    static if( __USE_LARGEFILE64 )
     {
         private alias uint _pad_t;
     }
@@ -275,7 +271,7 @@ else version( OSX )
       {
           timespec  st_atimespec;
           timespec  st_mtimespec;
-          timespec  st_ctimespec;          
+          timespec  st_ctimespec;
       }
       else
       {

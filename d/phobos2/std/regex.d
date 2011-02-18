@@ -58,6 +58,7 @@ Copyright: Copyright Digital Mars 2000 - 2009.
 License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
 Authors:   $(WEB digitalmars.com, Walter Bright),
            $(WEB erdani.org, Andrei Alexandrescu)
+Source:    $(PHOBOSSRC std/_regex.d)
 */
 /*
          Copyright Digital Mars 2000 - 2009.
@@ -275,7 +276,7 @@ Throws: $(D Exception) if there are any compilation errors.
             msg = ree.toString();
             //writefln("message: %s", ree);
         }
-        assert(std.algorithm.indexOf(msg, "unrecognized attribute") >= 0);
+        assert(std.algorithm.countUntil(msg, "unrecognized attribute") >= 0);
     }
 
 /**
@@ -334,7 +335,7 @@ Returns the number of parenthesized captures
     void error(string msg)
     {
         //errors++;
-        debug(regex) printf("error: %.*s\n", msg);
+        debug(regex) printf("error: %.*s\n", msg.length, msg.ptr);
         throw new Exception(msg);
     }
 
@@ -453,14 +454,18 @@ Returns the number of parenthesized captures
 
     int parsePiece(String)(in String pattern, ref size_t p, OutBuffer buf)
     {
-        uint offset;
+        size_t offset;
         uint len;
         uint n;
         uint m;
         ubyte op;
         sizediff_t plength = pattern.length;
 
-        //printf("parsePiece() '%.*s'\n", pattern[p .. pattern.length]);
+        debug(regex)
+        {
+            auto sss = pattern[p .. pattern.length];
+            printf("parsePiece() '%.*s'\n", sss.length, sss.ptr);
+        }
         offset = buf.offset;
         parseAtom(pattern, p, buf);
         if (p == plength)
@@ -541,7 +546,7 @@ Returns the number of parenthesized captures
             {   op = REnmq;     // minimal munch version
                 p++;
             }
-            len = buf.offset - offset;
+            len = cast(uint)(buf.offset - offset);
             buf.spread(offset, 1 + uint.sizeof * 3);
             buf.data[offset] = op;
             uint* puint = cast(uint *)&buf.data[offset + 1];
@@ -563,10 +568,14 @@ Returns the number of parenthesized captures
     int parseAtom(String)(in String pattern, ref size_t p, OutBuffer buf)
     {
         ubyte op;
-        uint offset;
+        size_t offset;
         E c;
 
-        //printf("parseAtom() '%.*s'\n", pattern[p .. pattern.length]);
+        debug(regex)
+        {
+            auto sss = pattern[p .. pattern.length];
+            printf("parseAtom() '%.*s'\n", sss.length, sss.ptr);
+        }
         if (p >= pattern.length) return 1;
         c = pattern[p];
         switch (c)
@@ -758,8 +767,8 @@ Returns the number of parenthesized captures
 
     struct Range
     {
-        uint maxc;
-        uint maxb;
+        size_t maxc;
+        size_t maxb;
         OutBuffer buf;
         ubyte* base;
         BitArray bits;
@@ -771,13 +780,13 @@ Returns the number of parenthesized captures
                 this.base = &buf.data[buf.offset];
         }
 
-        void setbitmax(uint u)
+        void setbitmax(size_t u)
         {
             //printf("setbitmax(x%x), maxc = x%x\n", u, maxc);
             if (u <= maxc)
                 return;
             maxc = u;
-            uint b = u / 8;
+            auto b = u / 8;
             if (b >= maxb)
             {   size_t u2;
 
@@ -786,12 +795,12 @@ Returns the number of parenthesized captures
                 base = &buf.data[u2];
                 maxb = b + 1;
                 //bits = (cast(bit*)this.base)[0 .. maxc + 1];
-                bits.ptr = cast(uint*)this.base;
+                bits.ptr = cast(size_t*)this.base;
             }
             bits.len = maxc + 1;
         }
 
-        void setbit2(uint u)
+        void setbit2(size_t u)
         {
             setbitmax(u + 1);
             //printf("setbit2 [x%02x] |= x%02x\n", u >> 3, 1 << (u & 7));
@@ -805,7 +814,6 @@ Returns the number of parenthesized captures
         int c;
         int c2;
         uint i;
-        uint offset;
 
         uint cmax = 0x7F;
         p++;
@@ -819,7 +827,7 @@ Returns the number of parenthesized captures
                 goto Lerr;
         }
         buf.write(op);
-        offset = buf.offset;
+        auto offset = buf.offset;
         buf.write(cast(uint)0);         // reserve space for length
         buf.reserve(128 / 8);
         auto r = Range(buf);
@@ -999,8 +1007,8 @@ Returns the number of parenthesized captures
     {
         E c;
         uint maxc;
-        uint maxb;
-        uint len;
+        size_t maxb;
+        size_t len;
         uint b;
         uint n;
         uint m;
@@ -1035,19 +1043,19 @@ Returns the number of parenthesized captures
                 return 0;               // no point
 
             case REstring:
-                len = *cast(uint *)&prog[i + 1] / E.sizeof;
+                len = *cast(size_t *)&prog[i + 1] / E.sizeof;
                 assert(len);
-                c = *cast(E *)&prog[i + 1 + uint.sizeof];
+                c = *cast(E *)&prog[i + 1 + size_t.sizeof];
                 debug(regex) printf("\tREstring %d, '%c'\n", len, c);
                 if (c <= 0x7F)
                     r.setbit2(c);
                 return 1;
 
             case REistring:
-                len = *cast(uint *)&prog[i + 1];
+                len = *cast(size_t *)&prog[i + 1];
                 assert(len && len % E.sizeof == 0);
                 len /= E.sizeof;
-                c = *cast(E *)&prog[i + 1 + uint.sizeof];
+                c = *cast(E *)&prog[i + 1 + size_t.sizeof];
                 debug(regex) printf("\tREistring %d, '%c'\n", len, c);
                 if (c <= 0x7F)
                 {   r.setbit2(std.ctype.toupper(cast(E) c));
@@ -1306,14 +1314,15 @@ Returns the number of parenthesized captures
         if (!prog) prog = program;
         //debug(regex)
         {
-            uint len;
+            size_t len;
             uint n;
             uint m;
             ushort *pu;
             uint *puint;
+            char[] str;
 
             printf("printProgram()\n");
-            for (uint pc = 0; pc < prog.length; )
+            for (size_t pc = 0; pc < prog.length; )
             {
                 printf("%3d: ", pc);
                 switch (prog[pc])
@@ -1344,24 +1353,31 @@ Returns the number of parenthesized captures
                     break;
 
                 case REstring:
-                    len = *cast(uint *)&prog[pc + 1];
-                    assert(len %  E.sizeof == 0);
+                    len = *cast(size_t *)&prog[pc + 1];
+                    assert(len % E.sizeof == 0);
                     len /=  E.sizeof;
                     printf("\tREstring x%x*%d, ", len, E.sizeof);
-                    auto es = cast(E*) (&prog[pc + 1 + uint.sizeof]);
+                    auto es = cast(E*) (&prog[pc + 1 + size_t.sizeof]);
                     foreach (e; es[0 .. len])
                     {
                         printf("'%c' ", e);
                     }
                     printf("\n");
-                    pc += 1 + uint.sizeof + len * E.sizeof;
+                    pc += 1 + size_t.sizeof + len * E.sizeof;
                     break;
 
                 case REistring:
-                    len = *cast(uint *)&prog[pc + 1];
-                    printf("\tREistring x%x, '%.*s'\n", len,
-                            (&prog[pc + 1 + uint.sizeof])[0 .. len]);
-                    pc += 1 + uint.sizeof + len * E.sizeof;
+                    len = *cast(size_t *)&prog[pc + 1];
+                    assert(len % E.sizeof == 0);
+                    len /=  E.sizeof;
+                    printf("\tREistring x%x*%d, ", len, E.sizeof);
+                    auto es = cast(E*) (&prog[pc + 1 + size_t.sizeof]);
+                    foreach (e; es[0 .. len])
+                    {
+                        printf("'%c' ", e);
+                    }
+                    printf("\n");
+                    pc += 1 + size_t.sizeof + len * E.sizeof;
                     break;
 
                 case REtestbit:
@@ -1446,8 +1462,8 @@ Returns the number of parenthesized captures
                     len = puint[0];
                     n = puint[1];
                     m = puint[2];
-                    printf("\tREnm%.*s len=%d, n=%u, m=%u, pc=>%d\n",
-                            (prog[pc] == REnmq) ? "q" : " ",
+                    printf("\tREnm%s len=%d, n=%u, m=%u, pc=>%d\n",
+                            (prog[pc] == REnmq) ? "q".ptr : " ".ptr,
                             len, n, m, pc + 1 + uint.sizeof * 3 + len);
                     pc += 1 + uint.sizeof * 3;
                     break;
@@ -1832,12 +1848,17 @@ Returns $(D hit) (converted to $(D string) if necessary).
                     format == replacement)              // simple format, not $ formats
             {
                 debug(regex)
-                         printf("pattern: %.*s, slice: %.*s, format: %.*s"
-                         ", replacement: %.*s\n",
-                         pattern,result[offset + so .. offset + eo],format,
-                         replacement);
+                {
+                    auto sss = result[offset + so .. offset + eo];
+                    printf("pattern: %.*s, slice: %.*s, format: %.*s, replacement: %.*s\n",
+                            pattern.length,     pattern.ptr,
+                            sss.length,         sss.ptr,
+                            format.length,      format.ptr,
+                            replacement.length, replacement.ptr);
+                }
                 result = std.string.replace(result,slice,replacement);
-                break; }
+                break;
+            }
 +/
             result = replaceSlice(result,
                     result[offset + so .. offset + eo], replacement);
@@ -1866,8 +1887,8 @@ Returns $(D hit) (converted to $(D string) if necessary).
     {
         if (startindex == size_t.max) startindex = pmatch[0].endIdx;
         //writeln("matching [", input, "] starting from ", startindex);
-        debug (regex) printf("Regex.test(input[] = '%.*s', "
-                "startindex = %d)\n", input, startindex);
+        debug (regex) printf("Regex.test(input[] = '%.*s', startindex = %d)\n",
+                input.length, input.ptr, startindex);
         if (startindex > input.length)
         {
             pmatch[0].startIdx = pmatch[0].startIdx.max;
@@ -1919,14 +1940,17 @@ Returns $(D hit) (converted to $(D string) if necessary).
             if (engine.program[0] == engine.REbol || engine.program[0] == engine.REanystar)
             {
                 if (!(engine.attributes & engine.REA.multiline)) break;
-                // Scan for the popFront \n
+                // Scan for the next \n
                 if (!chr(startindex, '\n'))
                     break;              // no match if '\n' not found
             }
             if (startindex == input.length)
                 break;
-            //debug(regex) printf("Starting new try: '%.*s'\n",
-            //input[si + 1 .. input.length]);
+            debug(regex)
+            {
+                auto sss = input[si + 1 .. input.length];
+                printf("Starting new try: '%.*s'\n", sss.length, sss.ptr);
+            }
         }
         pmatch[0].startIdx = pmatch[0].startIdx.max;
         pmatch[0].endIdx = pmatch[0].endIdx.max;
@@ -1999,8 +2023,12 @@ Returns $(D hit) (converted to $(D string) if necessary).
         ushort* pu;
         uint* puint;
 
-        // printf("Regex.trymatch(pc = %d, src = '%.*s'"
-        //         ", pcend = %d)\n", pc, input[src .. input.length], pcend);
+        debug(regex)
+        {
+            auto sss = input[src .. input.length];
+            printf("Regex.trymatch(pc = %d, src = '%.*s', pcend = %d)\n",
+                    pc, sss.length, sss.ptr, pcend);
+        }
         auto srcsave = src;
         regmatch_t *psave = null;
         for (;;)
@@ -2087,43 +2115,40 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 break;
 
             case engine.REstring:
-                len = *cast(uint *)&engine.program[pc + 1];
+                len = *cast(size_t *)&engine.program[pc + 1];
                 assert(len % E.sizeof == 0);
                 len /= E.sizeof;
-                debug(regex) printf("\tREstring x%x, '%.*s'\n", len,
-                                    (&engine.program[pc + 1 + uint.sizeof])[0 .. len]);
+                debug(regex)
+                {
+                    auto sss = (&engine.program[pc + 1 + size_t.sizeof])[0 .. len];
+                    printf("\tREstring x%x, '%.*s'\n", len, sss.length, sss.ptr);
+                }
                 if (src + len > input.length)
                     goto Lnomatch;
-                if (memcmp(&engine.program[pc + 1 + uint.sizeof],
+                if (memcmp(&engine.program[pc + 1 + size_t.sizeof],
                                 &input[src], len * E.sizeof))
                     goto Lnomatch;
                 src += len;
-                pc += 1 + uint.sizeof + len * E.sizeof;
+                pc += 1 + size_t.sizeof + len * E.sizeof;
                 break;
 
             case engine.REistring:
-                len = *cast(uint *)&engine.program[pc + 1];
+                len = *cast(size_t *)&engine.program[pc + 1];
                 assert(len % E.sizeof == 0);
                 len /= E.sizeof;
-                debug(regex) printf("\tREistring x%x, '%.*s'\n", len,
-                                    (&engine.program[pc + 1 + uint.sizeof])[0 .. len]);
+                debug(regex)
+                {
+                    auto sss = (&engine.program[pc + 1 + size_t.sizeof])[0 .. len];
+                    printf("\tREistring x%x, '%.*s'\n", len, sss.length, sss.ptr);
+                }
                 if (src + len > input.length)
                     goto Lnomatch;
-                // version (Win32)
-                // {
-                //     if (memicmp(cast(E*)&engine.program[pc + 1 + uint.sizeof],
-                //                     &input[src], len * E.sizeof))
-                //         goto Lnomatch;
-                // }
-                // else
-                {
-                    if (icmp(
-                       (cast(E*)&engine.program[pc+1+uint.sizeof])[0..len],
-                          input[src .. src + len]))
-                        goto Lnomatch;
-                }
+                if (icmp(
+                   (cast(E*)&engine.program[pc+1+size_t.sizeof])[0..len],
+                      input[src .. src + len]))
+                    goto Lnomatch;
                 src += len;
-                pc += 1 + uint.sizeof + len * E.sizeof;
+                pc += 1 + size_t.sizeof + len * E.sizeof;
                 break;
 
             case engine.REtestbit:
@@ -2308,8 +2333,8 @@ Returns $(D hit) (converted to $(D string) if necessary).
                 n = puint[1];
                 m = puint[2];
                 debug(regex) printf("\tREnm%s len=%d, n=%u, m=%u\n",
-                        (engine.program[pc] == engine.REnmq) ? cast(char*)"q"
-                        : cast(char*)"", len, n, m);
+                        (engine.program[pc] == engine.REnmq) ? "q".ptr : "".ptr,
+                        len, n, m);
                 pop = pc + 1 + uint.sizeof * 3;
                 for (count = 0; count < n; count++)
                 {
@@ -2666,7 +2691,7 @@ and, using the format string, generate and return a new string.
         string result;
 
 //printf("replace: this = %p so = %d, eo = %d\n", this, pmatch[0].startIdx, pmatch[0].endIdx);
-//printf("3input = '%.*s'\n", input);
+//printf("3input = '%.*s'\n", input.length, input.ptr);
         result.length = format.length;
         result.length = 0;
         for (size_t i; i < format.length; i++)
@@ -2900,9 +2925,13 @@ Range replace(alias fun, Range, Regex)
                 pattern == slice) // simple pattern (exact match, no
                                   // special characters)
         {
-            debug(regex) printf("pattern: %.*s, slice: %.*s"
-                    ", replacement: %.*s\n",
-                    pattern, result[offset + so .. offset + eo], replacement);
+            debug(regex)
+            {
+                auto sss = result[offset + so .. offset + eo];
+                printf("pattern: %.*s, slice: %.*s, replacement: %.*s\n",
+                    pattern.length,     pattern.ptr,
+                    sss.length          sss.ptr,
+                    replacement.length, replacement.ptr);
             result = std.string.replace(result, slice, replacement);
             break;
         }
@@ -3338,8 +3367,12 @@ unittest
         {
             // printf("width: %d tv[%d]: pattern='%.*s' input='%.*s' result=%.*s"
             //         " format='%.*s' replace='%.*s'\n",
-            //         Char.sizeof, a, tv[a].pattern, tv[a].input,
-            //         tv[a].result, tv[a].format, tv[a].replace);
+            //         Char.sizeof, a,
+            //         tv[a].pattern.length, tv[a].pattern.ptr,
+            //         tv[a].input.length,   tv[a].input.ptr,
+            //         tv[a].result.length,  tv[a].result.ptr,
+            //         tv[a].format.length,  tv[a].format.ptr,
+            //         tv[a].replace.length, tv[a].replace.ptr);
 
             tvd = tv[a];
 

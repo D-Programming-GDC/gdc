@@ -12,7 +12,6 @@ Copyright: Copyright Digital Mars 2007-.
 License:   $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors:   $(WEB digitalmars.com, Walter Bright),
            $(WEB erdani.org, Andrei Alexandrescu)
-
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
@@ -29,7 +28,7 @@ import std.algorithm, std.array, std.conv, std.exception, std.file, std.format,
     std.typetuple, std.utf;
 
 version (GNU)
-    import std.stdarg;
+    import core.vararg;
 
 version (DigitalMars) version (Windows)
 {
@@ -555,7 +554,7 @@ file handle. Throws on error.
         }
         else
         {
-            static assert(off_t.sizeof == 8);
+            //static assert(off_t.sizeof == 8);
             errnoEnforce(fseeko(p.handle, offset, origin) == 0,
                     "Could not seek in file `"~p.name~"'");
         }
@@ -831,12 +830,11 @@ with every line.  */
         }
     }
 
-    size_t readf(Data...)(in char[] format, Data data)
+    uint readf(Data...)(in char[] format, Data data)
     {
         assert(isOpen);
         auto input = LockingTextReader(this);
-        formattedRead(input, format, data);
-        return 1;
+        return formattedRead(input, format, data);
     }
 
     unittest
@@ -1249,6 +1247,25 @@ $(D Range) that locks the file and allows fast writing to it.
     {
         return LockingTextWriter(this);
     }
+
+/// Get the size of the file, ulong.max if file is not searchable, but still throws if an actual error occurs.
+    @property ulong size()
+    {
+        ulong pos = void;
+        if (collectException(pos = tell)) return ulong.max;
+        scope(exit) seek(pos);
+        seek(0, SEEK_END);
+        return tell;
+    }
+}
+
+unittest
+{
+    scope(exit) collectException(std.file.remove("deleteme"));
+    std.file.write("deleteme", "1 2 3");
+    auto f = File("deleteme");
+    assert(f.size == 5);
+    assert(f.tell == 0);
 }
 
 struct LockingTextReader
@@ -1628,7 +1645,7 @@ unittest
 /**
  * Formatted read one line from stdin.
  */
-void readf(A...)(in char[] format, A args)
+uint readf(A...)(in char[] format, A args)
 {
     return stdin.readf(format, args);
 }
@@ -1636,7 +1653,12 @@ void readf(A...)(in char[] format, A args)
 unittest
 {
     float f;
-    if (false) readf("%s", &f);
+    if (false) uint x = readf("%s", &f);
+
+    char a;
+    wchar b;
+    dchar c;
+    if (false) readf("%s %s %s", &a,&b,&c);
 }
 
 /**********************************

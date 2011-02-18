@@ -5,7 +5,7 @@
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
  */
- 
+
 /*          Copyright Digital Mars 2000 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
@@ -27,7 +27,7 @@ private
     import core.stdc.stddef;
     import core.stdc.stdlib;
     import core.stdc.string;
-    //import core.stdc.stdio;   // for printf()
+    import core.stdc.stdio;   // for printf()
 }
 
 version (Windows)
@@ -53,7 +53,7 @@ version (all)
     extern (C) void _d_setUnhandled(Object* o)
     {
         auto t = cast(Throwable) o;
-        
+
         if (t !is null)
         {
             if (cast(byte*) t is t.classinfo.init.ptr)
@@ -119,15 +119,19 @@ extern (C) void* rt_loadLibrary(in char[] name)
 {
     version (Windows)
     {
+        // Load a DLL at runtime
         char[260] temp = void;
         temp[0 .. name.length] = name[];
         temp[name.length] = cast(char) 0;
+        // BUG: LoadLibraryA() call calls rt_init(), which fails if proxy is not set!
         void* ptr = LoadLibraryA(temp.ptr);
         if (ptr is null)
             return ptr;
         gcSetFn gcSet = cast(gcSetFn) GetProcAddress(ptr, "gc_setProxy");
         if (gcSet !is null)
+        {   // BUG: Set proxy, but too late
             gcSet(gc_getProxy());
+        }
         return ptr;
 
     }
@@ -313,10 +317,8 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
     {
         if (dg)
             dg(e);
-    }
-    catch
-    {
-
+        else
+            throw e;    // rethrow, don't silently ignore error
     }
     _d_criticalTerm();
     return false;
@@ -352,10 +354,6 @@ extern (C) bool rt_term(ExceptionHandler dg = null)
     {
         if (dg)
             dg(e);
-    }
-    catch
-    {
-
     }
     finally
     {
@@ -510,12 +508,6 @@ extern (C) int _d_run_main(int argc, char** argv, main_type main_func)
                 console (e.toString)("\n");
                 result = EXIT_FAILURE;
             }
-            catch (Object o)
-            {
-                // fprintf(stderr, "%.*s\n", o.toString());
-                console (o.toString)("\n");
-                result = EXIT_FAILURE;
-            }
         }
         else
         {
@@ -572,5 +564,6 @@ extern (C) int _d_run_main(int argc, char** argv, main_type main_func)
         _STD_critical_term();
         _STD_monitor_staticdtor();
     }
+
     return result;
 }

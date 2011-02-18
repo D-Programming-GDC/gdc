@@ -25,7 +25,7 @@
 #include <windows.h>
 #endif
 
-#ifdef USE_PTHREADS
+#if USE_PTHREADS
 #include <pthread.h>
 #endif
 
@@ -42,7 +42,7 @@ typedef struct Monitor
     CRITICAL_SECTION mon;
 #endif
 
-#ifdef USE_PTHREADS
+#if USE_PTHREADS
     pthread_mutex_t mon;
 #endif
 } Monitor;
@@ -131,10 +131,12 @@ void _d_monitor_unlock(Object *h)
 
 /* =============================== linux ============================ */
 
-#ifdef USE_PTHREADS
+#if USE_PTHREADS
 
-#ifndef PTHREAD_MUTEX_RECURSIVE
-#define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
+#ifdef linux
+#  ifndef PTHREAD_MUTEX_RECURSIVE
+#    define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
+#  endif
 #endif
 
 // Includes attribute fixes from David Friedman's GDC port

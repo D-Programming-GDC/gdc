@@ -28,7 +28,7 @@ Idioms:
   'func(Tulong)(Tulong x) if (is(Tulong == ulong))' rather than 'func(ulong x)'
   in order to disable implicit conversion.
 
-*/ 
+*/
 
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.

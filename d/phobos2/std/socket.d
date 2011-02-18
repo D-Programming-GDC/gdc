@@ -30,6 +30,7 @@
  * Notes: For Win32 systems, link with ws2_32.lib.
  * Example: See /dmd/samples/d/listener.d.
  * Authors: Christopher E. Miller
+ * Source:  $(PHOBOSSRC std/_socket.d)
  * Macros:
  *      WIKI=Phobos/StdSocket
  */
@@ -1320,7 +1321,7 @@ class Socket
                                 newSocket._blocking = _blocking; //inherits blocking mode
                         newSocket._family = _family; //same family
                 }
-                catch(Object o)
+                catch(Throwable o)
                 {
                         _close(newsock);
                         throw o;

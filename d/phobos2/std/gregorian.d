@@ -1,12 +1,15 @@
 // Written in the D programming language.
 
 /**
+$(RED Scheduled for deprecation. Please use std.datetime instead.)
+
 Macros:
 WIKI = Phobos/StdGregorian
 
 Copyright: Copyright Andrei Alexandrescu 2008 - 2009.
 License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
 Authors:   $(WEB erdani.org, Andrei Alexandrescu)
+Source:    $(PHOBOSSRC std/_gregorian.d)
 */
 /*
          Copyright Andrei Alexandrescu 2010-.
@@ -15,6 +18,9 @@ Distributed under the Boost Software License, Version 1.0.
          http://www.boost.org/LICENSE_1_0.txt)
 */
 module std.gregorian;
+
+pragma(msg, "std.gregorian has been scheduled for deprecation. "
+            "Please use std.datetime instead.");
 
 version(posix) import core.sys.posix.time;
 import std.typecons;

@@ -2,7 +2,7 @@
  * The vararg module is intended to facilitate vararg manipulation in D.
  * It should be interface compatible with the C module "stdarg," and the
  * two modules may share a common implementation if possible (as is done
- * here). 
+ * here).
  * Copyright: Copyright Digital Mars 2000 - 2009.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Walter Bright, Hauke Duden
@@ -14,9 +14,29 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+
+   Modified by Iain Buclaw, February 2011
+*/
 module core.vararg;
 
-version( X86 )
+version( GNU )
+{
+    // va_list might be a pointer, but assuming so is not portable.
+    private import gcc.builtins;
+    alias __builtin_va_list va_list;
+
+    T va_arg(T)( ref va_list ap )
+    {
+        T t;
+        return t;
+    }
+
+    public import core.stdc.stdarg;
+}
+else version( X86 )
 {
     /**
      * The base vararg list type.

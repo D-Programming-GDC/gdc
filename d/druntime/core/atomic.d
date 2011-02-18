@@ -35,7 +35,7 @@ else version( D_InlineAsm_X86_64 )
 
 
 private
-{   
+{
     template NakedType(T: shared(T))  { alias T  NakedType; }
     template NakedType(T: shared(T*)) { alias T* NakedType; }
     template NakedType(T: const(T))   { alias T  NakedType; }
@@ -45,12 +45,15 @@ private
 }
 
 
-// NOTE: Strictly speaking, the x86 supports atomic operations on
-//       unaligned values.  However, this is far slower than the
-//       common case, so such behavior should be prohibited.
-private bool atomicValueIsProperlyAligned(T)( size_t addr )
+version( AsmX86 )
 {
-    return addr % T.sizeof == 0;
+    // NOTE: Strictly speaking, the x86 supports atomic operations on
+    //       unaligned values.  However, this is far slower than the
+    //       common case, so such behavior should be prohibited.
+    private bool atomicValueIsProperlyAligned(T)( size_t addr )
+    {
+        return addr % T.sizeof == 0;
+    }
 }
 
 
@@ -70,8 +73,8 @@ version( D_Ddoc )
     {
         return val;
     }
-    
-    
+
+
     /**
      * Stores 'writeThis' to the memory referenced by 'here' if the value
      * referenced by 'here' is equal to 'ifThis'.  This operation is both
@@ -98,16 +101,6 @@ else version( GNU )
 
     T atomicOp(string op, T, V1)( ref shared T val, V1 mod )
         if( is( NakedType!(V1) == NakedType!(T) ) )
-    in
-    {
-        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
-        //       4 byte alignment, so use size_t as the align type here.
-        static if( T.sizeof > size_t.sizeof )
-            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) &val ) );
-        else
-            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) &val ) );
-    }
-    body
     {
         // binary operators
         //
@@ -121,7 +114,7 @@ else version( GNU )
                    op == "==" || op == "!=" || op == "<"  || op == "<="  ||
                    op == ">"  || op == ">=" )
         {
-            T get = val; // compiler can do atomic load
+            T get = atomicLoad!(msync.raw)( val );
             mixin( "return get " ~ op ~ " mod;" );
         }
         else
@@ -152,16 +145,6 @@ else version( GNU )
     bool cas(T,V1,V2)( shared(T)* val, const V1 oldval, const V2 newval )
         if( is( NakedType!(V1) == NakedType!(T) ) &&
             is( NakedType!(V2) == NakedType!(T) ) )
-    in
-    {
-        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
-        //       4 byte alignment, so use size_t as the align type here.
-        static if( T.sizeof > size_t.sizeof )
-            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) val ) );
-        else
-            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) val ) );
-    }
-    body
     {
     version( GNU_Need_Atomics )
     {
@@ -306,7 +289,7 @@ else version( AsmX86_32 )
                    op == "==" || op == "!=" || op == "<"  || op == "<="  ||
                    op == ">"  || op == ">=" )
         {
-            T get = val; // compiler can do atomic load
+            T get = atomicLoad!(msync.raw)( val );
             mixin( "return get " ~ op ~ " mod;" );
         }
         else
@@ -319,7 +302,7 @@ else version( AsmX86_32 )
                    op == "^=" || op == "<<=" || op == ">>=" || op == ">>>=" ) // skip "~="
         {
             T get, set;
-            
+
             do
             {
                 get = set = atomicLoad!(msync.raw)( val );
@@ -332,8 +315,8 @@ else version( AsmX86_32 )
             static assert( false, "Operation not supported." );
         }
     }
-    
-    
+
+
     bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
         if( is( NakedType!(V1) == NakedType!(T) ) &&
             is( NakedType!(V2) == NakedType!(T) ) )
@@ -429,8 +412,8 @@ else version( AsmX86_32 )
             static assert( false, "Invalid template type specified." );
         }
     }
-    
-    
+
+
     private
     {
         template isHoistOp(msync ms)
@@ -445,8 +428,8 @@ else version( AsmX86_32 )
             enum bool isSinkOp = ms == msync.rel ||
                                  ms == msync.seq;
         }
-        
-        
+
+
         // NOTE: While x86 loads have acquire semantics for stores, it appears
         //       that independent loads may be reordered by some processors
         //       (notably the AMD64).  This implies that the hoist-load barrier
@@ -473,8 +456,8 @@ else version( AsmX86_32 )
             rel,    /// sink-load + sink-store barrier
             seq,    /// fully sequenced (acq + rel)
         }
-    
-    
+
+
         T atomicLoad(msync ms = msync.seq, T)( const ref shared T val )
         {
             static if( T.sizeof == byte.sizeof )
@@ -613,7 +596,7 @@ else version( AsmX86_64 )
                    op == "==" || op == "!=" || op == "<"  || op == "<="  ||
                    op == ">"  || op == ">=" )
         {
-            T get = val; // compiler can do atomic load
+            T get = atomicLoad!(msync.raw)( val );
             mixin( "return get " ~ op ~ " mod;" );
         }
         else
@@ -626,7 +609,7 @@ else version( AsmX86_64 )
                    op == "^=" || op == "<<=" || op == ">>=" || op == ">>>=" ) // skip "~="
         {
             T get, set;
-            
+
             do
             {
                 get = set = atomicLoad!(msync.raw)( val );
@@ -639,8 +622,8 @@ else version( AsmX86_64 )
             static assert( false, "Operation not supported." );
         }
     }
-    
-    
+
+
     bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
         if( is( NakedType!(V1) == NakedType!(T) ) &&
             is( NakedType!(V2) == NakedType!(T) ) )
@@ -727,8 +710,8 @@ else version( AsmX86_64 )
             static assert( false, "Invalid template type specified." );
         }
     }
-    
-    
+
+
     private
     {
         template isHoistOp(msync ms)
@@ -743,8 +726,8 @@ else version( AsmX86_64 )
             enum bool isSinkOp = ms == msync.rel ||
                                  ms == msync.seq;
         }
-        
-        
+
+
         // NOTE: While x86 loads have acquire semantics for stores, it appears
         //       that independent loads may be reordered by some processors
         //       (notably the AMD64).  This implies that the hoist-load barrier
@@ -771,8 +754,8 @@ else version( AsmX86_64 )
             rel,    /// sink-load + sink-store barrier
             seq,    /// fully sequenced (acq + rel)
         }
-    
-    
+
+
         T atomicLoad(msync ms = msync.seq, T)( const ref shared T val )
         {
             static if( T.sizeof == byte.sizeof )
@@ -796,7 +779,8 @@ else version( AsmX86_64 )
                 {
                     asm
                     {
-                        mov AL, [val];
+                        mov RAX, val;
+                        mov AL, [RAX];
                     }
                 }
             }
@@ -822,7 +806,8 @@ else version( AsmX86_64 )
                 {
                     asm
                     {
-                        mov AX, [val];
+                        mov RAX, val;
+                        mov AX, [RAX];
                     }
                 }
             }
@@ -848,30 +833,36 @@ else version( AsmX86_64 )
                 {
                     asm
                     {
-                        mov EAX, [val];
+                        mov RAX, val;
+                        mov EAX, [RAX];
                     }
                 }
             }
-            else static if( T.sizeof == long.sizeof && has64BitCAS )
+            else static if( T.sizeof == long.sizeof )
             {
                 //////////////////////////////////////////////////////////////////
-                // 8 Byte Load on a 32-Bit Processor
+                // 8 Byte Load
                 //////////////////////////////////////////////////////////////////
 
 
-                asm
+                static if( needsLoadBarrier!(ms) )
                 {
-                    push EDI;
-                    push EBX;
-                    mov EBX, 0;
-                    mov ECX, 0;
-                    mov EAX, 0;
-                    mov EDX, 0;
-                    mov RDI, val;
-                    lock; // lock always needed to make this op atomic
-                    cmpxch8b [RDI];
-                    pop EBX;
-                    pop EDI;
+                    asm
+                    {
+                        mov RDX, 0;
+                        mov RAX, 0;
+                        mov RCX, val;
+                        lock; // lock always needed to make this op atomic
+                        cmpxchg [RCX], RDX;
+                    }
+                }
+                else
+                {
+                    asm
+                    {
+                        mov RAX, val;
+                        mov RAX, [RAX];
+                    }
                 }
             }
             else
@@ -905,14 +896,14 @@ version( unittest )
             assert( atom == val );
         }
     }
-    
-    
+
+
     void testType(T)( T val = T.init + 1 )
     {
         testCAS!(T)( val );
     }
-    
-    
+
+
     unittest
     {
         testType!(bool)();
@@ -933,5 +924,13 @@ version( unittest )
             testType!(long)();
             testType!(ulong)();
         }
+
+        size_t i;
+
+        atomicOp!"+="(i, cast(size_t)1);
+        assert(i == 1);
+
+        atomicOp!"-="(i, cast(size_t)1);
+        assert(i == 0);
     }
 }

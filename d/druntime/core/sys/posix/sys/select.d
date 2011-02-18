@@ -20,6 +20,9 @@ public import core.sys.posix.sys.time;  // for timeval
 public import core.sys.posix.sys.types; // for time_t
 public import core.sys.posix.signal;    // for sigset_t
 
+//debug=select;  // uncomment to turn on debugging printf's
+version(unittest) import core.stdc.stdio: printf;
+
 extern (C):
 
 //
@@ -34,7 +37,7 @@ NOTE: This module requires timeval from core.sys.posix.sys.time, but timeval
 fd_set
 
 void FD_CLR(int fd, fd_set* fdset);
-int FD_ISSET(int fd, fd_set* fdset);
+int FD_ISSET(int fd, const(fd_set)* fdset);
 void FD_SET(int fd, fd_set* fdset);
 void FD_ZERO(fd_set* fdset);
 
@@ -49,7 +52,7 @@ version( linux )
     private
     {
         alias c_long __fd_mask;
-        enum __NFDBITS = 8 * __fd_mask.sizeof;
+        enum uint __NFDBITS = 8 * __fd_mask.sizeof;
 
         extern (D) auto __FDELT( int d )
         {
@@ -74,7 +77,7 @@ version( linux )
         fdset.fds_bits[__FDELT( fd )] &= ~__FDMASK( fd );
     }
 
-    extern (D) bool FD_ISSET( int fd, fd_set* fdset )
+    extern (D) bool FD_ISSET( int fd, const(fd_set)* fdset )
     {
         return (fdset.fds_bits[__FDELT( fd )] & __FDMASK( fd )) != 0;
     }
@@ -131,8 +134,8 @@ else version( OSX )
 {
     private
     {
-        enum __DARWIN_NBBY    = 8;                            /* bits in a byte */
-        enum __DARWIN_NFDBITS = (int.sizeof * __DARWIN_NBBY); /* bits per mask */
+        enum uint __DARWIN_NBBY    = 8;                            /* bits in a byte */
+        enum uint __DARWIN_NFDBITS = (int.sizeof * __DARWIN_NBBY); /* bits per mask */
     }
 
     enum FD_SETSIZE = 1024;
@@ -147,7 +150,7 @@ else version( OSX )
         fdset.fds_bits[fd / __DARWIN_NFDBITS] &= ~(1 << (fd % __DARWIN_NFDBITS));
     }
 
-    extern (D) bool FD_ISSET( int fd, fd_set* fdset )
+    extern (D) bool FD_ISSET( int fd, const(fd_set)* fdset )
     {
         return (fdset.fds_bits[fd / __DARWIN_NFDBITS] & (1 << (fd % __DARWIN_NFDBITS))) != 0;
     }
@@ -190,7 +193,7 @@ else version( FreeBSD )
         p.__fds_bits[n / _NFDBITS] &= ~__fdset_mask(n);
     }
 
-    extern (D) bool FD_ISSET( int n, fd_set* p )
+    extern (D) bool FD_ISSET( int n, const(fd_set)* p )
     {
         return (p.__fds_bits[n / _NFDBITS] & __fdset_mask(n)) != 0;
     }
@@ -214,3 +217,53 @@ else version( FreeBSD )
     int pselect(int, fd_set*, fd_set*, fd_set*, in timespec*, in sigset_t*);
     int select(int, fd_set*, fd_set*, fd_set*, timeval*);
 }
+
+unittest
+{
+    debug(select) printf("core.sys.posix.sys.select unittest\n");
+
+    fd_set fd;
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        assert(!FD_ISSET(i, &fd));
+    }
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        if ((i & -i) == i)
+            FD_SET(i, &fd);
+    }
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        if ((i & -i) == i)
+            assert(FD_ISSET(i, &fd));
+        else
+            assert(!FD_ISSET(i, &fd));
+    }
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        if ((i & -i) == i)
+            FD_CLR(i, &fd);
+        else
+            FD_SET(i, &fd);
+    }
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        if ((i & -i) == i)
+            assert(!FD_ISSET(i, &fd));
+        else
+            assert(FD_ISSET(i, &fd));
+    }
+
+    FD_ZERO(&fd);
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        assert(!FD_ISSET(i, &fd));
+    }
+}
+

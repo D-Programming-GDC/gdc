@@ -13,6 +13,8 @@
 
    Authors: $(WEB digitalmars.com, Walter Bright), $(WEB erdani.com,
    Andrei Alexandrescu)
+
+   Source: $(PHOBOSSRC std/_format.d)
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
@@ -22,9 +24,9 @@ module std.format;
 
 //debug=format;                // uncomment to turn on debugging printf's
 
-import core.stdc.stdio, core.stdc.stdlib, core.stdc.string;
+import core.stdc.stdio, core.stdc.stdlib, core.stdc.string, core.vararg;
 import std.algorithm, std.array, std.bitmanip, std.conv,
-    std.ctype, std.exception, std.functional, std.range, std.stdarg,
+    std.ctype, std.exception, std.functional, std.math, std.range, 
     std.string, std.system, std.traits, std.typecons, std.typetuple,
     std.utf;
 version(unittest) {
@@ -414,13 +416,14 @@ formattedRead(s, "%s!%s:%s", &a, &b, &c);
 assert(a == "hello" && b == 124 && c == 34.5);
 ----
  */
-void formattedRead(R, Char, S...)(ref R r, const(Char)[] fmt, S args)
+uint formattedRead(R, Char, S...)(ref R r, const(Char)[] fmt, S args)
 {
     auto spec = FormatSpec!Char(fmt);
     static if (!S.length)
     {
         spec.readUpToNextSpec(r);
         enforce(spec.trailing.empty);
+        return 0;
     }
     else
     {
@@ -438,6 +441,11 @@ void formattedRead(R, Char, S...)(ref R r, const(Char)[] fmt, S args)
         }
 
         skipUnstoredFields();
+        if (r.empty)
+        {
+            // Input is empty, nothing to read
+            return 0;
+        }
         alias typeof(*args[0]) A;
         static if (isTuple!A)
         {
@@ -452,8 +460,19 @@ void formattedRead(R, Char, S...)(ref R r, const(Char)[] fmt, S args)
         {
             *args[0] = unformatValue!(A)(r, spec);
         }
-        return formattedRead(r, spec.trailing, args[1 .. $]);
+        return 1 + formattedRead(r, spec.trailing, args[1 .. $]);
     }
+}
+
+unittest
+{
+    string s = " 1.2 3.4 ";
+    double x, y, z;
+    assert(formattedRead(s, " %s %s %s ", &x, &y, &z) == 2);
+    assert(s.empty);
+    assert(x == 1.2);
+    assert(y == 3.4);
+    assert(isnan(z));
 }
 
 /**
@@ -492,7 +511,7 @@ struct FormatSpec(Char)
        $(D ubyte.max). ($(D 0) means not used).
     */
     ubyte index;
-    version(ddoc) {
+    version(D_Ddoc) {
         /**
          The format specifier contained a $(D '-') ($(D printf)
          compatibility).
@@ -1107,7 +1126,8 @@ void formatValue(Writer, T, Char)(Writer w, T val,
 if (isSomeString!T && !isStaticArray!T)
 {
     enforce(f.spec == 's');
-    auto s = val[0 .. f.precision < $ ? f.precision : $];
+    StringTypeOf!T val2 = val;		// for `alias this`
+    auto s = val2[0 .. f.precision < $ ? f.precision : $];
     if (!f.flDash)
     {
         // right align
@@ -1357,7 +1377,7 @@ if (isPointer!T && !isInputRange!T)
    Objects are formatted by calling $(D toString).
  */
 void formatValue(Writer, T, Char)(Writer w, T val, ref FormatSpec!Char f)
-if (is(T == class) && !isInputRange!T)
+if (!isSomeString!T && is(T == class) && !isInputRange!T)
 {
     // TODO: Change this once toString() works for shared objects.
     static assert(!is(T == shared), "unable to format shared objects");
@@ -1435,6 +1455,7 @@ struct WriterSink(Writer)
    void toString(void delegate(const(char)[]) sink, FormatSpec fmt);
    void toString(void delegate(const(char)[]) sink, string fmt);
    ---
+
  */
 void formatValue(Writer, T, Char)(Writer w, T val,
         ref FormatSpec!Char f)
@@ -1532,6 +1553,7 @@ unittest
     ireal val = 1i;
     formatValue(a, val, f);
 }
+
 
 /**
    Delegates are formatted by 'Attributes ReturnType delegate(Parameters)'
@@ -2281,6 +2303,23 @@ if (isIntegral!T && isInputRange!Range)
 }
 
 /**
+ * Reads one character.
+ */
+T unformatValue(T, Range, Char)(ref Range input, ref FormatSpec!Char spec)
+if (isSomeChar!T && isInputRange!Range)
+{
+    enforce(std.algorithm.find("cdosuxX", spec.spec).length,
+            text("Wrong character type specifier: `", spec.spec, "'"));
+    if (spec.spec == 's')
+    {
+        auto result = to!T(input.front);
+        input.popFront();
+        return result;
+    }
+    assert(0, "Parsing spec '"~spec.spec~"' not implemented.");
+}
+
+/**
    Reads a floating-point value and returns it.
  */
 T unformatValue(T, Range, Char)(ref Range input, ref FormatSpec!Char spec)
@@ -2757,7 +2796,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
         void putstr(const char[] s)
         {
-            //printf("flags = x%x\n", flags);
+            //printf("putstr: s = %.*s, flags = x%x\n", s.length, s.ptr, flags);
             sizediff_t padding = field_width -
                 (strlen(prefix) + toUCSindex(s, s.length));
             sizediff_t prepad = 0;
@@ -2883,6 +2922,10 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
           return m;
         }
 
+        /* p = pointer to the first element in the array 
+         * len = number of elements in the array 
+         * valti = type of the elements 
+         */
         void putArray(void* p, size_t len, TypeInfo valti)
         {
           //printf("\nputArray(len = %u), tsize = %u\n", len, valti.tsize());
@@ -2893,7 +2936,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
           auto tiSave = ti;
           auto mSave = m;
           ti = valti;
-          //printf("\n%.*s\n", valti.classinfo.name);
+          //printf("\n%.*s\n", valti.classinfo.name.length, valti.classinfo.name.ptr);
           m = getMan(valti);
           while (len--)
           {
@@ -2961,6 +3004,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 putstr(vbit ? "true" : "false");
                 return;
 
+
             case Mangle.Tchar:
                 vchar = va_arg!(char)(argptr);
                 if (fc != 's')
@@ -2993,6 +3037,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                     putstr(toUTF8(vbuf, vdchar));
                 }
                 return;
+
 
             case Mangle.Tbyte:
                 signed = 1;
@@ -3041,7 +3086,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 goto Lputstr;
 
             case Mangle.Tpointer:
-                vnumber = cast(size_t)va_arg!(void*)(argptr);
+                vnumber = cast(ulong)va_arg!(void*)(argptr);
                 if (fc != 'x')  uc = 1;
                 flags |= FL0pad;
                 if (!(flags & FLprecision))
@@ -3575,8 +3620,8 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
     for (int j = 0; j < arguments.length; )
     {
         ti = arguments[j++];
-        //printf("test1: '%.*s' %d\n", ti.classinfo.name,
-        //ti.classinfo.name.length); ti.print();
+        //printf("arg[%d]: '%.*s' %d\n", j, ti.classinfo.name.length, ti.classinfo.name.ptr, ti.classinfo.name.length);
+        //ti.print();
 
         flags = 0;
         precision = 0;

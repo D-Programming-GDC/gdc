@@ -5751,7 +5751,7 @@ fi
 
 
 D_EXTRA_OBJS="std/c/unix/unix.o $D_EXTRA_OBJS"
-DRUNTIME_OBJS="gcc/config/unix.o gcc/cbridge_fdset.o $DRUNTIME_OBJS"
+DRUNTIME_OBJS="gcc/config/unix.o $DRUNTIME_OBJS"
 # Add "linux" module for compatibility even if not Linux
 D_EXTRA_OBJS="std/c/linux/linux.o $D_EXTRA_OBJS"
 D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_unix_d_src)'
@@ -5811,9 +5811,7 @@ case "$target_os" in
 	    need_to_cfgr_gc=''
 	    ;;
   *)        if test "$with_newlib"; then
-				D_GC_MODULES=gc/gcgcc.o
-		D_GC_FLAGS='-fversion=GC_Use_Stack_Guess -fversion=GC_Use_Alloc_Malloc'
-		D_GC_MODULES="gc/gcgcc.o gc/gc_guess_stack.o"
+				D_GC_FLAGS='-fversion=GC_Use_Stack_Guess -fversion=GC_Use_Alloc_Malloc'
 	    else
 		need_to_cfgr_gc=yes
 	    fi
@@ -5833,11 +5831,11 @@ case "$d_target_os" in
 	    ;;
   cygwin*)  d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    ;;
-  darwin*)  D_GC_MODULES="$D_GC_MODULES gc/gc_dyld.o"
+  darwin*)  D_GC_MODULES="$D_GC_MODULES rt/memory_osx.o"
 	    d_gc_stack=GC_Use_Stack_Fixed
 	    d_gc_data="$d_gc_data GC_Use_Data_Dyld"
 	    ;;
-  freebsd*|k*bsd*-gnu)D_GC_MODULES="$D_GC_MODULES gc/gc_freebsd.o"
+  freebsd*|k*bsd*-gnu)
 	    d_gc_stack=GC_Use_Stack_FreeBSD
 	    d_gc_data="$d_gc_data GC_Use_Data_Fixed"
 	    	    ;;
@@ -5899,10 +5897,6 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-fi
-if test -z "$d_gc_stack"; then
-    d_gc_stack=GC_Use_Stack_Guess
-    D_GC_MODULES="$D_GC_MODULES gc/gc_guess_stack.o"
 fi
 if test -z "$d_gc_stack"; then
     as_fn_error $? "No usable stack origin information" "$LINENO" 5

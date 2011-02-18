@@ -23,6 +23,11 @@ private
     version( GNU )
     {
         import gcc.builtins;
+
+        version( GC_Use_Data_Proc_Maps )
+        {
+            import rt.gccmemory;
+        }
     }
     version( linux )
     {
@@ -104,7 +109,12 @@ extern (C) void* rt_stackBottom()
     }
     else version( OSX )
     {
-        return cast(void*) 0xc0000000;
+        static if( size_t.sizeof == 4 )
+            return cast(void*) 0xc0000000;
+        else static if( size_t.sizeof == 8 )
+            return cast(void*) 0x7ffff_00000000UL;
+        else
+            static assert( false, "Operating system not supported." );
     }
     else version( FreeBSD )
     {
@@ -142,11 +152,6 @@ extern (C) void* rt_stackTop()
             ret;
         }
     }
-    else version( GNU )
-    {
-        // This works even if frame pointer is omitted.
-        return __builtin_frame_address(0);
-    }
     else version( D_InlineAsm_X86_64 )
     {
         asm
@@ -155,6 +160,10 @@ extern (C) void* rt_stackTop()
             mov RAX, RSP;
             ret;
         }
+    }
+    else version( GNU )
+    {
+        return __builtin_frame_address(0);
     }
     else
     {
@@ -268,5 +277,25 @@ void initStaticDataGC()
     else
     {
         static assert( false, "Operating system not supported." );
+    }
+
+    version( GC_Use_Data_Proc_Maps )
+    {
+        version( linux )
+        {
+            scanDataProcMaps( &__data_start, &_end );
+        }
+        else version( FreeBSD )
+        {
+            scanDataProcMaps( &etext, &_end );
+        }
+        else version( Solaris )
+        {
+            scanDataProcMaps( &etext, &_end );
+        }
+        else
+        {
+            static assert( false, "Operating system not supported." );
+        }
     }
 }

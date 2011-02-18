@@ -22,6 +22,7 @@ Credits:   This module and its documentation are inspired by Perl's $(WEB
                    D's $(D getopt) is simpler than its Perl counterpart because $(D
                    getopt) infers the expected parameter types from the static types of
                    the passed-in pointers.
+Source:    $(PHOBOSSRC std/_getopt.d)
 */
 /*
          Copyright Andrei Alexandrescu 2008 - 2009.
@@ -31,7 +32,7 @@ Distributed under the Boost Software License, Version 1.0.
 */
 module std.getopt;
 
-private import std.string, std.conv, std.traits, std.bitmanip,
+private import std.array, std.string, std.conv, std.traits, std.bitmanip,
     std.algorithm, std.ctype, std.exception;
 
 version (unittest)
