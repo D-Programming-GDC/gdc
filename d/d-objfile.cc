@@ -1090,8 +1090,8 @@ obj_moduleinfo(Symbol *sym)
         }
     */
     // struct ModuleReference in moduleinit.d
-    tree mod_ref_type = gen.twoFieldType(Type::tvoid->pointerTo(), gen.getObjectType(),
-        NULL, "next", "mod");
+    tree mod_ref_type = gen.twoFieldType(Type::tvoidptr, gen.getObjectType(),
+                                         NULL, "next", "mod");
     tree f0 = TYPE_FIELDS(mod_ref_type);
     tree f1 = TREE_CHAIN(f0);
 

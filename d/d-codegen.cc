@@ -1218,7 +1218,8 @@ static const char * libcall_ids[LIBCALL_count] = {
     "_d_criticalenter", "_d_criticalexit",
     "_d_throw",
     "_d_switch_string", "_d_switch_ustring", "_d_switch_dstring",
-    "_d_assocarrayliteralTp"
+    "_d_assocarrayliteralTp",
+    "_d_arrayliteralTp"
 #if V2
         ,
     "_d_unittest", "_d_unittest_msg",
@@ -1326,7 +1327,7 @@ IRState::getLibCallDecl(LibCall lib_call)
 
             case LIBCALL_DELCLASS:
             case LIBCALL_DELINTERFACE:
-                arg_types.push(Type::tvoid->pointerTo());
+                arg_types.push(Type::tvoidptr);
                 break;
 
             case LIBCALL_DELARRAY:
@@ -1339,12 +1340,12 @@ IRState::getLibCallDecl(LibCall lib_call)
                 break;
 #endif
             case LIBCALL_DELMEMORY:
-                arg_types.push(Type::tvoid->pointerTo()->pointerTo());
+                arg_types.push(Type::tvoidptr->pointerTo());
                 break;
 
             case LIBCALL_CALLFINALIZER:
             case LIBCALL_CALLINTERFACEFINALIZER:
-                arg_types.push(Type::tvoid->pointerTo());
+                arg_types.push(Type::tvoidptr);
                 break;
 
             case LIBCALL_ARRAYSETLENGTHT:
@@ -1390,8 +1391,7 @@ IRState::getLibCallDecl(LibCall lib_call)
             {
                 static Type * aa_type = NULL;
                 if (! aa_type)
-                    aa_type = new TypeAArray(Type::tvoid->pointerTo(),
-                            Type::tvoid->pointerTo());
+                    aa_type = new TypeAArray(Type::tvoidptr, Type::tvoidptr);
 
                 if (lib_call == LIBCALL_AAEQUAL)
                 {
@@ -1418,14 +1418,14 @@ IRState::getLibCallDecl(LibCall lib_call)
                 if (lib_call == LIBCALL_AAGETP || lib_call == LIBCALL_AAGETRVALUEP)
                     arg_types.push(Type::tsize_t);
 
-                arg_types.push(Type::tvoid->pointerTo());
+                arg_types.push(Type::tvoidptr);
 
                 switch (lib_call)
                 {
                     case LIBCALL_AAINP:
                     case LIBCALL_AAGETP:
                     case LIBCALL_AAGETRVALUEP:
-                        return_type = Type::tvoid->pointerTo();
+                        return_type = Type::tvoidptr;
                         break;
                     case LIBCALL_AADELP:
                         return_type = Type::tvoid;
@@ -1474,9 +1474,9 @@ IRState::getLibCallDecl(LibCall lib_call)
 //          case LIBCALL_ARRAYAPPENDCT:
             case LIBCALL_ARRAYAPPENDCTP:
                 arg_types.push(Type::typeinfo->type);
-                arg_types.push(Type::tuns8->arrayOf());
-                arg_types.push(Type::tvoid->pointerTo()); // varargs = true;
-                return_type = Type::tvoid->arrayOf();
+                arg_types.push(Type::tuns8->arrayOf()->pointerTo());
+                arg_types.push(Type::tsize_t);
+                return_type = Type::tuns8->arrayOf();
                 break;
 
             case LIBCALL_ARRAYAPPENDCD:
@@ -1501,11 +1501,11 @@ IRState::getLibCallDecl(LibCall lib_call)
 
             case LIBCALL_ARRAYSETASSIGN:
             case LIBCALL_ARRAYSETCTOR:
-                arg_types.push(Type::tvoid->pointerTo());
-                arg_types.push(Type::tvoid->pointerTo());
+                arg_types.push(Type::tvoidptr);
+                arg_types.push(Type::tvoidptr);
                 arg_types.push(Type::tsize_t);
                 arg_types.push(Type::typeinfo->type);
-                return_type = Type::tvoid->pointerTo();
+                return_type = Type::tvoidptr;
                 break;
 #endif
             case LIBCALL_MONITORENTER:
@@ -1517,7 +1517,7 @@ IRState::getLibCallDecl(LibCall lib_call)
 
             case LIBCALL_CRITICALENTER:
             case LIBCALL_CRITICALEXIT:
-                arg_types.push(Type::tvoid->pointerTo());
+                arg_types.push(Type::tvoidptr);
                 break;
 
             case LIBCALL_SWITCH_USTRING:
@@ -1539,17 +1539,22 @@ IRState::getLibCallDecl(LibCall lib_call)
                 break;
             case LIBCALL_ASSOCARRAYLITERALTP:
                 arg_types.push(Type::typeinfo->type);
+                arg_types.push(Type::tvoid->arrayOf());
+                arg_types.push(Type::tvoid->arrayOf());
+                return_type = Type::tvoidptr;
+                break;
+
+            case LIBCALL_ARRAYLITERALTP:
+                arg_types.push(Type::typeinfo->type);
                 arg_types.push(Type::tsize_t);
-                arg_types.push(Type::tvoid->pointerTo());
-                arg_types.push(Type::tvoid->pointerTo());
-                return_type = Type::tvoid->pointerTo();
+                return_type = Type::tvoidptr;
                 break;
 #if V2
             case LIBCALL_HIDDEN_FUNC:
                 /* Argument is an Object, but can't use that as
                    LIBCALL_HIDDEN_FUNC is needed before the Object type is
                    created. */
-                arg_types.push(Type::tvoid->pointerTo());
+                arg_types.push(Type::tvoidptr);
                 break;
 #endif
             default:
@@ -3861,7 +3866,7 @@ void AggLayout::doInterfaces(Array * bases, AggregateDeclaration * /*agg*/)
     {
         BaseClass * bc = (BaseClass *) bases->data[i];
         tree decl = d_build_decl(FIELD_DECL, NULL_TREE,
-            Type::tvoid->pointerTo()->pointerTo()->toCtype() /* %% better */);
+            Type::tvoidptr->pointerTo()->toCtype() /* %% better */);
         //DECL_VIRTUAL_P(decl) = 1; %% nobody cares, boo hoo
         DECL_ARTIFICIAL(decl) = DECL_IGNORED_P(decl) = 1;
         // DECL_FCONTEXT(decl) = fcontext; // shouldn't be needed since it's ignored

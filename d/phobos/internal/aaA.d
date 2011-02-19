@@ -707,25 +707,24 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
 }
 
 extern (C)
-BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length, void* keys, void* values)
+BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, void[] keys, void[] values)
 {
     auto valueti = ti.next;
     auto valuesize = valueti.tsize();           // value size
     auto keyti = ti.key;
     auto keysize = keyti.tsize();               // key size
+    auto length = keys.length;
     BB* result;
 
-    //printf("_d_assocarrayliteralT(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
+    //printf("_d_assocarrayliteralTp(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
     //printf("tivalue = %.*s\n", ti.next.classinfo.name);
+    assert(length == values.length);
     if (length == 0 || valuesize == 0 || keysize == 0)
     {
         ;
     }
     else
     {
-        void * qkey = keys;
-        void * qval = values;
-
         result = new BB();
 
         size_t i;
@@ -740,10 +739,8 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length, void* ke
         size_t keytsize = aligntsize(keysize);
 
         for (size_t j = 0; j < length; j++)
-        {   void* pkey = qkey;
-            qkey += keysize;
-            void* pvalue = qval;
-            qval += valuesize;
+        {   auto pkey = keys.ptr + j * keysize;
+            auto pvalue = values.ptr + j * valuesize;
             aaA* e;
 
             auto key_hash = keyti.getHash(pkey);

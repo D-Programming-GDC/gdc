@@ -934,8 +934,9 @@ size_t newCapacity(size_t newlength, size_t size)
     return newcap;
 }
 
+version (GNU) {} else
 extern (C)
-byte[] _d_arrayappendcTp(TypeInfo ti, inout byte[] x, byte *argp)
+byte[] _d_arrayappendcT(TypeInfo ti, inout byte[] x, ...)
 {
     auto sizeelem = ti.next.tsize();            // array element size
     auto cap = _gc.capacity(x.ptr);
@@ -971,7 +972,83 @@ byte[] _d_arrayappendcTp(TypeInfo ti, inout byte[] x, byte *argp)
 
   L1:
     *cast(size_t *)&x = newlength;
-    x.ptr[length * sizeelem .. newsize] = argp[0 .. sizeelem];
+    version (X86)
+    {
+        byte *argp = cast(byte *)(&ti + 2);
+        x.ptr[length * sizeelem .. newsize] = argp[0 .. sizeelem];
+    }
+    else
+    {
+        va_list ap;
+        va_start(ap, __va_argsave);
+	TypeInfo tis = cast(TypeInfo_StaticArray)ti.next;
+	if (tis)
+	{
+	    /* Special handling for static arrays because we put their contents
+	     * on the stack, which isn't the ABI for D1 static arrays.
+	     * (It is for D2, though.)
+	     * The code here is ripped from std.c.stdarg, and initializes
+	     * assuming the data is always passed on the stack.
+	     */
+	    __va_list* vap = cast(__va_list*)ap;
+	    auto talign = tis.talign();
+	    auto tsize = tis.tsize();
+	    void* parmn = cast(void*)x.ptr + length * sizeelem;
+	    auto p = cast(void*)((cast(size_t)vap.stack_args + talign - 1) & ~(talign - 1));
+	    vap.stack_args = cast(void*)(cast(size_t)p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
+	    parmn[0..tsize] = p[0..tsize];
+	}
+	else
+	{
+	    va_arg(ap, ti.next, cast(void*)x.ptr + length * sizeelem);
+	}
+    }
+    assert((cast(size_t)x.ptr & 15) == 0);
+    assert(_gc.capacity(x.ptr) > x.length * sizeelem);
+    return x;
+}
+
+/**************************************
+ * Extend an array by n elements.
+ * Caller must initialize that element.
+ */
+extern (C)
+byte[] _d_arrayappendcTp(TypeInfo ti, inout byte[] x, size_t n)
+{
+    auto sizeelem = ti.next.tsize();            // array element size
+    auto cap = _gc.capacity(x.ptr);
+    auto length = x.length;
+    auto newlength = length + n;
+    auto newsize = newlength * sizeelem;
+
+    assert(cap == 0 || length * sizeelem <= cap);
+
+    //printf("_d_arrayappendcTX(sizeelem = %d, ptr = %p, length = %d, cap = %d)\n", sizeelem, x.ptr, x.length, cap);
+
+    if (newsize >= cap)
+    {   byte* newdata;
+
+        if (cap >= 4096)
+        {   // Try to extend in-place
+            auto u = _gc.extend(x.ptr, (newsize + 1) - cap, (newsize + 1) - cap);
+            if (u)
+            {
+                goto L1;
+            }
+        }
+
+        //printf("_d_arrayappendc(sizeelem = %d, newlength = %d, cap = %d)\n", sizeelem, newlength, cap);
+        cap = newCapacity(newlength, sizeelem);
+        assert(cap >= newlength * sizeelem);
+        newdata = cast(byte *)_gc.malloc(cap + 1);
+        if (!(ti.next.flags() & 1))
+            _gc.hasNoPointers(newdata);
+        memcpy(newdata, x.ptr, length * sizeelem);
+        (cast(void **)(&x))[1] = newdata;
+    }
+
+  L1:
+    *cast(size_t *)&x = newlength;
     assert((cast(size_t)x.ptr & 15) == 0);
     assert(_gc.capacity(x.ptr) > x.length * sizeelem);
     return x;

@@ -951,8 +951,8 @@ Symbol *ClassDeclaration::toVtblSymbol()
 
         /* The DECL_INITIAL value will have a different type object from the
            VAR_DECL.  The back end seems to accept this. */
-        TypeSArray * vtbl_type = new TypeSArray(Type::tvoid->pointerTo(),
-            new IntegerExp(loc, vtbl.dim, Type::tindex));
+        TypeSArray * vtbl_type = new TypeSArray(Type::tvoidptr,
+                                                new IntegerExp(loc, vtbl.dim, Type::tindex));
 
         decl = d_build_decl(VAR_DECL, get_identifier(vtblsym->Sident), vtbl_type->toCtype());
         vtblsym->Stree = decl;

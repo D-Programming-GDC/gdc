@@ -92,7 +92,7 @@ MAIN_OBJS=std/asserterror.o internal/switch.o gcstats.o \
 	internal/critical.o internal/object.o internal/monitor.o internal/arraycat.o internal/invariant.o \
 	std/outofmemory.o internal/aaA.o internal/adi.o internal/aApply.o internal/aApplyR.o \
 	std/compiler.o std/system.o std/moduleinit.o std/md5.o std/base64.o \
-	internal/cast.o std/string.o internal/memset.o std/math.o \
+	internal/cast.o std/string.o std/math.o \
 	internal/arraybyte.o internal/arraydouble.o internal/arrayfloat.o \
 	internal/arrayint.o internal/arrayreal.o internal/arrayshort.o \
 	std/outbuffer.o std/ctype.o std/regexp.o std/random.o \

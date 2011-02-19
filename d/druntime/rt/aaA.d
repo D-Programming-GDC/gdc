@@ -637,16 +637,16 @@ int _aaApply2(AA aa, size_t keysize, dg2_t dg)
  * length pairs of key/value pairs.
  */
 
+version (GNU) {} else
 extern (C)
-BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
-    void *keys, void *values)
+BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
 {
     auto valuesize = ti.next.tsize();           // value size
     auto keyti = ti.key;
     auto keysize = keyti.tsize();               // key size
     BB* result;
 
-    //printf("_d_assocarrayliteralTp(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
+    //printf("_d_assocarrayliteralT(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
     //printf("tivalue = %.*s\n", ti.next.classinfo.name);
     if (length == 0 || valuesize == 0 || keysize == 0)
     {
@@ -654,8 +654,8 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
     }
     else
     {
-        void * qkey = keys;
-        void * qval = values;
+        va_list q;
+        version(X86_64) va_start(q, __va_argsave); else va_start(q, length);
 
         result = new BB();
         result.keyti = keyti;
@@ -669,13 +669,16 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
         auto len = prime_list[i];
         result.b = new aaA*[len];
 
+        size_t keystacksize   = (keysize   + int.sizeof - 1) & ~(int.sizeof - 1);
+        size_t valuestacksize = (valuesize + int.sizeof - 1) & ~(int.sizeof - 1);
+
         size_t keytsize = aligntsize(keysize);
 
         for (size_t j = 0; j < length; j++)
-        {   void* pkey = qkey;
-            qkey += keysize;
-            void* pvalue = qval;
-            qval += valuesize;
+        {   void* pkey = q;
+            q += keystacksize;
+            void* pvalue = q;
+            q += valuestacksize;
             aaA* e;
 
             auto key_hash = keyti.getHash(pkey);
@@ -707,9 +710,80 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length,
             memcpy(cast(void *)(e + 1) + keytsize, pvalue, valuesize);
         }
 
+        va_end(q);
     }
     return result;
 }
+
+extern (C)
+BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, void[] keys, void[] values)
+{
+    auto valuesize = ti.next.tsize();           // value size
+    auto keyti = ti.key;
+    auto keysize = keyti.tsize();               // key size
+    auto length = keys.length;
+    BB* result;
+
+    //printf("_d_assocarrayliteralTp(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
+    //printf("tivalue = %.*s\n", ti.next.classinfo.name);
+    assert(length == values.length);
+    if (length == 0 || valuesize == 0 || keysize == 0)
+    {
+        ;
+    }
+    else
+    {
+        result = new BB();
+        result.keyti = keyti;
+
+        size_t i;
+        for (i = 0; i < prime_list.length - 1; i++)
+        {
+            if (length <= prime_list[i])
+                break;
+        }
+        auto len = prime_list[i];
+        result.b = new aaA*[len];
+
+        size_t keytsize = aligntsize(keysize);
+
+        for (size_t j = 0; j < length; j++)
+        {   auto pkey = keys.ptr + j * keysize;
+            auto pvalue = values.ptr + j * valuesize;
+            aaA* e;
+
+            auto key_hash = keyti.getHash(pkey);
+            //printf("hash = %d\n", key_hash);
+            i = key_hash % len;
+            auto pe = &result.b[i];
+            while (1)
+            {
+                e = *pe;
+                if (!e)
+                {
+                    // Not found, create new elem
+                    //printf("create new one\n");
+                    e = cast(aaA *) cast(void*) new void[aaA.sizeof + keytsize + valuesize];
+                    memcpy(e + 1, pkey, keysize);
+                    e.hash = key_hash;
+                    *pe = e;
+                    result.nodes++;
+                    break;
+                }
+                if (key_hash == e.hash)
+                {
+                    auto c = keyti.compare(pkey, e + 1);
+                    if (c == 0)
+                        break;
+                }
+                pe = &e.next;
+            }
+            memcpy(cast(void *)(e + 1) + keytsize, pvalue, valuesize);
+        }
+    }
+    return result;
+}
+
 
 /***********************************
  * Compare AA contents for equality.

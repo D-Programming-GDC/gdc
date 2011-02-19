@@ -18,15 +18,6 @@
 
 module gcc.support;
 
-/* Binary compatibility for an earlier bug.  This will be removed
-   in a later version. */
-extern (C) {
-    void _D9invariant12_d_invariantFC6ObjectZv(Object o);
-    void _d_invariant(Object o) {
-        _D9invariant12_d_invariantFC6ObjectZv(o);
-    }
-}
-
 extern(C) double strtod(char *,char **);
 
 real strtold(char* a, char** b) { return strtod(a, b); }

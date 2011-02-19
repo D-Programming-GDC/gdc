@@ -35,24 +35,8 @@ private
     extern (C) size_t _d_arraysetcapacity(TypeInfo ti, size_t newcapacity, void *arrptr);
 }
 
-// NOTE: For some reason, this declaration method doesn't work
-//       in this particular file (and this file only).  It must
-//       be a DMD thing.
-//alias typeof(int.sizeof)                    size_t;
-//alias typeof(cast(void*)0 - cast(void*)0)   ptrdiff_t;
-
-version(X86_64)
-{
-    alias ulong size_t;
-    alias long  ptrdiff_t;
-    alias long  sizediff_t;
-}
-else
-{
-    alias uint  size_t;
-    alias int   ptrdiff_t;
-    alias int   sizediff_t;
-}
+alias typeof(int.sizeof)                    size_t;
+alias typeof(cast(void*)0 - cast(void*)0)   ptrdiff_t;
 
 alias size_t hash_t;
 alias bool equals_t;
@@ -2497,7 +2481,7 @@ extern (C)
     extern (D) typedef scope int delegate(void *, void *) _dg2_t;
     int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    void* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length, void* keys, void* values);
+    void* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, void[] keys, void[] values);
 }
 
 struct AssociativeArray(Key, Value)
