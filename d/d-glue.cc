@@ -76,28 +76,27 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
     {
         case TOKidentity:
         case TOKequal:
-        {   // (e1 == e2)
+            // (e1 == e2)
             out_code = EQ_EXPR;
             break;
-        }
+
         case TOKnotidentity:
         case TOKnotequal:
-        {   // (e1 != e2)
+            // (e1 != e2)
             out_code = NE_EXPR;
             break;
-        }
+
         case TOKandand:
-        {   // (e1 && e2)
+            // (e1 && e2)
             out_code = TRUTH_ANDIF_EXPR;
             break;
-        }
+
         case TOKoror:
-        {   // (e1 || e2)
+            // (e1 || e2)
             out_code = TRUTH_ORIF_EXPR;
             break;
-        }
+
         case TOKleg:
-        {
             if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 <>= e2)
                 out_code = ORDERED_EXPR;
@@ -107,9 +106,8 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
             {   // %% is this properly optimized away?
                 return convert(boolean_type_node, integer_one_node);
             }
-        }
+
         case TOKunord:
-        {
             if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !<>= e2)
                 out_code = UNORDERED_EXPR;
@@ -119,18 +117,17 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
             {   // %% is this properly optimized away?
                 return convert(boolean_type_node, integer_zero_node);
             }
-        }
+
         case TOKlg:
-        {   // (e1 < e2) || (e1 > e2)
+            // (e1 < e2) || (e1 > e2)
             e1 = irs->maybeMakeTemp(e1);
             e2 = irs->maybeMakeTemp(e2);
             // %% Write instead as (e1 != e2) ?
             return irs->boolOp(TRUTH_ORIF_EXPR,
                     build2(LT_EXPR, boolean_type_node, e1, e2),
                     build2(GT_EXPR, boolean_type_node, e1, e2));
-        }
+
         case TOKue:
-        {
             if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !<> e2)
                 out_code = UNEQ_EXPR;
@@ -141,7 +138,7 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
                 out_code = EQ_EXPR;
                 break;
             }
-        }
+
         // From cmath2.d: if imaginary parts are equal,
         // result is comparison of real parts; otherwise, result false
         //
@@ -149,7 +146,6 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
 
         // make a target-independent _cmplxCmp ?
         case TOKule:
-        {
             if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !> e2)
                 out_code = UNLE_EXPR;
@@ -160,14 +156,13 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
                 out_code = LE_EXPR;
                 break;
             }
-        }
+
         case TOKle:
-        {   // (e1 <= e2)
+            // (e1 <= e2)
             out_code = LE_EXPR;
             break;
-        }
+
         case TOKul:
-        {
             if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !>= e2)
                 out_code = UNLT_EXPR;
@@ -178,14 +173,13 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
                 out_code = LT_EXPR;
                 break;
             }
-        }
+
         case TOKlt:
-        {   // (e1 < e2)
+            // (e1 < e2)
             out_code = LT_EXPR;
             break;
-        }
+
         case TOKuge:
-        {
             if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !< e2)
                 out_code = UNGE_EXPR;
@@ -196,14 +190,13 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
                 out_code = GE_EXPR;
                 break;
             }
-        }
+
         case TOKge:
-        {   // (e1 >= e2)
+            // (e1 >= e2)
             out_code = GE_EXPR;
             break;
-        }
+
         case TOKug:
-        {
             if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
             {   // (e1 !<= e2)
                 out_code = UNGT_EXPR;
@@ -214,12 +207,12 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
                 out_code = GT_EXPR;
                 break;
             }
-        }
+
         case TOKgt:
-        {   // (e1 > e2)
+            // (e1 > e2)
             out_code = GT_EXPR;
             break;
-        }
+
         default:
             gcc_unreachable();
     }
@@ -587,14 +580,14 @@ make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * ex
     }
 }
 
-tree
+static tree
 make_math_op(BinExp * exp, IRState * irs)
 {
     TY ty1 = exp->e1->type->toBasetype()->ty;
     TY ty2 = exp->e2->type->toBasetype()->ty;
 
     if ((ty1 == Tarray || ty1 == Tsarray) ||
-            (ty2 == Tarray || ty2 == Tsarray))
+        (ty2 == Tarray || ty2 == Tsarray))
     {
         exp->error("Array operation %s not implemented", exp->toChars());
         return irs->errorMark(exp->type);
@@ -738,12 +731,14 @@ CatExp::toElem(IRState * irs)
 
         if ((tb1->ty == Tsarray || tb1->ty == Tarray) &&
             irs->typesCompatible(e2->type, tb1->nextOf()))
-
+        {
             elem_type = tb1->nextOf();
+        }
         else if ((tb2->ty == Tsarray || tb2->ty == Tarray) &&
             irs->typesCompatible(e1->type, tb2->nextOf()))
-
+        {
             elem_type = tb2->nextOf();
+        }
         else
             elem_type = tb1->nextOf();
     }
@@ -757,7 +752,8 @@ CatExp::toElem(IRState * irs)
 
     {
         Expression * e = e1;
-        while (e->op == TOKcat) {
+        while (e->op == TOKcat)
+        {
             e = ((CatExp*) e)->e1;
             n_operands += 1;
         }
@@ -773,7 +769,8 @@ CatExp::toElem(IRState * irs)
     unsigned ai = n_args - 1;
     CatExp * ce = this;
 
-    while (ce) {
+    while (ce)
+    {
         Expression *oe = ce->e2;
         while (1)
         {
@@ -787,6 +784,7 @@ CatExp::toElem(IRState * irs)
             }
             else
                 array_exp = irs->toDArray(oe);
+
             if (n_operands > 2 && irs->splitDynArrayVarArgs)
             {
                 array_exp = irs->maybeMakeTemp(array_exp);
@@ -796,16 +794,21 @@ CatExp::toElem(IRState * irs)
             else
                 args[ai--] = array_exp;
 
-            if (ce) {
-                if (ce->e1->op != TOKcat) {
+            if (ce)
+            {
+                if (ce->e1->op != TOKcat)
+                {
                     oe = ce->e1;
                     ce = NULL;
                     // finish with atomtic lhs
-                } else {
+                }
+                else
+                {
                     ce = (CatExp*) ce->e1;
                     break;  // continue with lhs CatExp
                 }
-            } else
+            }
+            else
                 goto all_done;
         }
     }
@@ -837,34 +840,20 @@ AddExp::toElem(IRState* irs)
     return make_math_op(this, irs);
 }
 
-tree chain_cvt(tree t, Type * typ, Array & casts, IRState * irs)
-{
-    for (int i = casts.dim - 1; i >= 0; i--) {
-        t = irs->convertTo(t, typ, (Type *) casts.data[i]);
-        typ = (Type *) casts.data[i];
-    }
-    return t;
-}
-
-tree
+static tree
 make_assign_math_op(BinExp * exp, IRState * irs)
 {
     TY ty1 = exp->e1->type->toBasetype()->ty;
     TY ty2 = exp->e2->type->toBasetype()->ty;
 
     if ((ty1 == Tarray || ty1 == Tsarray) ||
-            (ty2 == Tarray || ty2 == Tsarray))
+        (ty2 == Tarray || ty2 == Tsarray))
     {
         exp->error("Array operation %s not implemented", exp->toChars());
         return irs->errorMark(exp->type);
     }
 
-    Expression * e1_to_use;
-    Type * lhs_type = 0;
-    tree result;
     TOK out_code;
-    Array lhs_casts; // no more than two casts?
-
     switch (exp->op)
     {
         case TOKaddass:  out_code = TOKadd; break;
@@ -879,45 +868,29 @@ make_assign_math_op(BinExp * exp, IRState * irs)
         case TOKmodass:  out_code = TOKmod; break;
         case TOKdivass:  out_code = TOKdiv; break;
         default:
-            abort();
+            gcc_unreachable();
     }
 
-    e1_to_use = exp->e1;
-    lhs_type = e1_to_use->type;
-    while (e1_to_use->op == TOKcast)
+    Expression * e1 = exp->e1;
+    Expression * e2 = exp->e2;
+
+    // Skip casts for lhs assignment.
+    Expression * e1b = e1;
+    while (e1b->op == TOKcast)
     {
-        CastExp * cast_exp = (CastExp *) e1_to_use;
-        gcc_assert(irs->typesCompatible(cast_exp->type, cast_exp->to)); // %% check, basetype?
-        lhs_casts.push(cast_exp->to);
-        e1_to_use = cast_exp->e1;
+        CastExp * ce = (CastExp *) e1b;
+        gcc_assert(irs->typesCompatible(ce->type, ce->to)); // %% check, basetype?
+        e1b = ce->e1;
     }
+    tree lhs_assign = irs->toElemLvalue(e1b);
+    lhs_assign = stabilize_reference(lhs_assign);
 
-    tree tgt = stabilize_reference(irs->toElemLvalue(e1_to_use));
-    tree lhs = chain_cvt(tgt, e1_to_use->type, lhs_casts, irs);
+    tree rhs_assign = make_math_op(out_code,
+            irs->convertTo(lhs_assign, e1b->type, e1->type), e1->type,
+            e2->toElem(irs), e2->type, e1->type, irs);
 
-    Type * src_type = lhs_type;
-    {
-        /* Determine the correct combined type from BinExp::typeCombine.  */
-        TY ty = (TY) Type::impcnvResult[lhs_type->toBasetype()->ty][exp->e2->type->toBasetype()->ty];
-        if (ty != Terror)
-            src_type = Type::basic[ty];
-    }
-    if ((out_code == TOKmul || out_code == TOKdiv) && exp->e1->type->isimaginary())
-    {
-        gcc_assert(exp->e2->type->isfloating());
-        if (! exp->e2->type->isimaginary() && ! exp->e2->type->iscomplex())
-        {
-            gcc_assert(exp->e1->type->size() == exp->e2->type->size());
-            src_type = exp->e1->type;
-        }
-    }
-    tree src = make_math_op(out_code, lhs, lhs_type,
-                            exp->e2->toElem(irs), exp->e2->type,
-                            src_type, irs);
-    result = build2(MODIFY_EXPR, exp->type->toCtype(),
-                    tgt, irs->convertForAssignment(src, src_type, e1_to_use->type));
-
-    return result;
+    return build2(MODIFY_EXPR, exp->type->toCtype(), lhs_assign,
+                  irs->convertForAssignment(rhs_assign, e1->type, exp->type));
 }
 
 elem *
@@ -1077,7 +1050,7 @@ do_array_set(IRState * irs, tree in_ptr, tree in_val, tree in_cnt)
 
 
 // Create a tree node to set multiple elements to a single value
-tree
+static tree
 array_set_expr(IRState * irs, tree ptr, tree src, tree count)
 {
     irs->pushStatementList();
