@@ -20,7 +20,7 @@
 
    Modified by David Friedman, September 2007
 */
- 
+
 module std.math2;
 private import std.math, std.string, std.c.stdlib, std.c.stdio;
 version(GNU)

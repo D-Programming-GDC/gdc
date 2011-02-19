@@ -1282,11 +1282,11 @@ cfloat toCfloat(in char[] s)
 
     // atof(s1);
     endptr = &s1[s1.length - 1];
-    r1 = _conv_strtold(s1, &endptr); 
+    r1 = _conv_strtold(s1, &endptr);
 
     // atof(s2);
     endptr = &s2[s2.length - 1];
-    r2 = _conv_strtold(s2, &endptr); 
+    r2 = _conv_strtold(s2, &endptr);
 
     cf = cast(cfloat)(r1 + (r2 * 1.0i));
 
@@ -1361,7 +1361,7 @@ cdouble toCdouble(in char[] s)
 
     // atof(s1);
     endptr = &s1[s1.length - 1];
-    r1 = _conv_strtold(s1, &endptr); 
+    r1 = _conv_strtold(s1, &endptr);
 
     // atof(s2);
     endptr = &s2[s2.length - 1];
@@ -1436,7 +1436,7 @@ creal toCreal(in char[] s)
 
     // atof(s1);
     endptr = &s1[s1.length - 1];
-    r1 = _conv_strtold(s1, &endptr); 
+    r1 = _conv_strtold(s1, &endptr);
 
     // atof(s2);
     endptr = &s2[s2.length - 1];

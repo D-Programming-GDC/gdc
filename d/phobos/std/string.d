@@ -2497,7 +2497,7 @@ static if (real.sizeof != double.sizeof)
     private static const char[] _longDoubleFormat = "L";
 else
     private static const char[] _longDoubleFormat = "";
-    
+
 char[] toString(real r)
 {
     char[20] buffer;

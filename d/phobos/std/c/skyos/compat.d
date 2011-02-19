@@ -10,12 +10,12 @@ enum {
 int pthread_create(pthread_t * pth, pthread_attr_t * attr, void*  fn, void * arg)
 {
     int tid = ThreadCreate("thread", TASK_CREATE_FLAG_WANT_WAIT_FOR,
-	cast(void *) fn, cast(uint) arg, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        cast(void *) fn, cast(uint) arg, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     if (tid) {
-	*pth = tid;
-	return 0;
+        *pth = tid;
+        return 0;
     } else {
-	return EAGAIN;
+        return EAGAIN;
     }
 }
 int pthread_join(pthread_t thread, void ** result)
@@ -23,11 +23,11 @@ int pthread_join(pthread_t thread, void ** result)
     int v;
     int r = ThreadWait(thread, & v);
     if (r == thread) {
-	if (result)
-	    *result = null;
-	return 0;
+        if (result)
+            *result = null;
+        return 0;
     } else
-	return -1;
+        return -1;
 }
 
 pthread_t pthread_self() { return cast(pthread_t) ThreadGetPid(); }

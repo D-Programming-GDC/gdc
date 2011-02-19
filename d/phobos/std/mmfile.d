@@ -386,7 +386,7 @@ else                            static assert(0);
                 }
                 else static if (! Have_MMFile)
                 {
-                } 
+                }
                 else
                 {
                         static assert(0);
@@ -413,7 +413,7 @@ else                            static assert(0);
                 }
                 else static if (! Have_MMFile)
                 {
-                } 
+                }
                 else
                 {
                         static assert(0);

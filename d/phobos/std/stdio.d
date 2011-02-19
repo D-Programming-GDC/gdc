@@ -53,8 +53,7 @@ version (GNU)
         void flockfile(FILE*);
         void funlockfile(FILE*);
     }
-    
-    
+
     static if (Have_getdelim)
     {
         import gcc.config.unix;
@@ -145,7 +144,7 @@ void writefx(FILE* fp, TypeInfo[] arguments, va_list argptr, int newline=false)
             FLOCK(fp);
             scope(exit) FUNLOCK(fp);
         }
-        
+
         void putc(dchar c)
         {
             if (c <= 0x7F)
@@ -168,7 +167,7 @@ void writefx(FILE* fp, TypeInfo[] arguments, va_list argptr, int newline=false)
     {
         static if (Have_fwide)
         {
-            
+
         static if (Have_Unlocked_Wide_Stdio)
         {
             /* Do the file stream locking at the outermost level

@@ -1024,7 +1024,6 @@ class Thread
     // is reached prior to allThreads max.
     static Thread[0x400] allThreads;
 
- 
     version (GNU_pthread_suspend) {} else
     static sem_t flagSuspend;
 
@@ -1143,7 +1142,6 @@ class Thread
     }
     else
     {
-    
         private static void installSignalHandlers()
         {
             int result;
@@ -1238,7 +1236,7 @@ else version (NoSystem)
         static void resumeAll() { }
         static void yield() { }
         static void thread_init() { _instance = new Thread; }
-        
+
         private static Thread _instance;
         static uint nthreads = 1;
 
@@ -1250,7 +1248,7 @@ else version (NoSystem)
             RUNNING,
             TERMINATED
         }
-    
+
         TS getState()
         {
             return TS.RUNNING;

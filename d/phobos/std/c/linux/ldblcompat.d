@@ -10,7 +10,7 @@ else version (GNU_WantLongDoubleFormat64)
 else
 {
     version (GNU_LongDouble128)
-	version = GNU_UseLongDoubleFormat128;
+        version = GNU_UseLongDoubleFormat128;
 }
 
 version (GNU_UseLongDoubleFormat128)

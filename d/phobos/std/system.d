@@ -45,7 +45,7 @@ const
     else version (Unix)
     {
         Family family = Family.Unix;
-    }        
+    }
     else version (OSX)
     {
         Family family = Family.OSX;

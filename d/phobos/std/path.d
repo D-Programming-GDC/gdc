@@ -1234,7 +1234,7 @@ Lerror:
     synchronized {
         result = getpwnam(username);
     }
-        
+
     if (result)
         path = combineCPathWithDPath(result.pw_dir, path, last_char);
     return path;

@@ -26,13 +26,13 @@ extern (C)
 
     extern
     {
-	void* __libc_stack_end;
-	int __data_start;
-	int _end;
-	int timezone;
+        void* __libc_stack_end;
+        int __data_start;
+        int _end;
+        int timezone;
 
-	void *_deh_beg;
-	void *_deh_end;
+        void *_deh_beg;
+        void *_deh_end;
     }
 }
 

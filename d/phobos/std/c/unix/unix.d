@@ -1,16 +1,16 @@
 /* GDC -- D front-end for GCC
    Copyright (C) 2004 David Friedman
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -46,8 +46,8 @@ int access(in char *path, int mode);
 int utime(char *path, utimbuf *buf);
 int fstat(int, struct_stat*);
 int stat(in char*, struct_stat*);
-int	lstat(in char *, struct_stat *);
-int	chmod(in char *, mode_t);
+int     lstat(in char *, struct_stat *);
+int     chmod(in char *, mode_t);
 int chdir(in char*);
 int mkdir(in char*, mode_t);
 int rmdir(in char*);
@@ -116,7 +116,7 @@ int pthread_continue_np(pthread_t);
 int pthread_cancel(pthread_t);
 int pthread_setcancelstate(int state, int *oldstate);
 int pthread_setcanceltype(int type, int *oldtype);
-void pthread_testcancel();    
+void pthread_testcancel();
 int pthread_detach(pthread_t);
 void pthread_exit(void*);
 int pthread_getattr_np(pthread_t, pthread_attr_t*);
@@ -244,36 +244,36 @@ private import std.stdint;
 
 version(BigEndian)
 {
-	uint16_t htons(uint16_t x)
-	{
-		return x;
-	}
+        uint16_t htons(uint16_t x)
+        {
+                return x;
+        }
 
 
-	uint32_t htonl(uint32_t x)
-	{
-		return x;
-	}
+        uint32_t htonl(uint32_t x)
+        {
+                return x;
+        }
 }
 else version(LittleEndian)
 {
-	private import std.intrinsic;
+        private import std.intrinsic;
 
 
-	uint16_t htons(uint16_t x)
-	{
-		return (x >> 8) | (x << 8);
-	}
+        uint16_t htons(uint16_t x)
+        {
+                return (x >> 8) | (x << 8);
+        }
 
 
-	uint32_t htonl(uint32_t x)
-	{
-		return bswap(x);
-	}
+        uint32_t htonl(uint32_t x)
+        {
+                return bswap(x);
+        }
 }
 else
 {
-	static assert(0);
+        static assert(0);
 }
 
 alias htons ntohs;

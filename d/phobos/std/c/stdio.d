@@ -97,7 +97,7 @@ struct _iobuf
     else version (GNU) {
         byte[gcc.config.libc.FILE_struct_size] opaque;
     }
-    
+
 }
 
 alias _iobuf FILE;      ///
@@ -177,7 +177,7 @@ version (GNU_CBridge_Stdio)
     /* Call from dgccmain2.  Can't use a static constructor here
        because std.c.stdio is not compiled. */
     extern void _d_gnu_cbridge_init_stdio();
-    
+
     alias _d_gnu_cbridge_stdin stdin;
     alias _d_gnu_cbridge_stdout stdout;
     alias _d_gnu_cbridge_stderr stderr;
@@ -311,14 +311,14 @@ version (Win32)
 else version (darwin)
 {
     private import std.c.darwin.ldblcompat;
-    
+
     extern (C) int ferror(FILE *);
     extern (C) int feof(FILE *);
     extern (C) void clearerr(FILE *);
     extern (C) void rewind(FILE *);
     extern (C) int _bufsize(FILE *);
     extern (C) int fileno(FILE *);
-   
+
     int snprintf(char *, size_t, char *, ...);
     int vsnprintf(char *, size_t, char *, va_list);
 
@@ -338,14 +338,14 @@ else version (darwin)
 else version (PPCLinux)
 {
     private import std.c.linux.ldblcompat;
-    
+
     extern (C) int ferror(FILE *);
     extern (C) int feof(FILE *);
     extern (C) void clearerr(FILE *);
     extern (C) void rewind(FILE *);
     extern (C) int _bufsize(FILE *);
     extern (C) int fileno(FILE *);
-   
+
     int snprintf(char *, size_t, char *, ...);
     int vsnprintf(char *, size_t, char *, va_list);
 

@@ -994,8 +994,8 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                     }
                     putstr(vbit ? "true" : "false");
                     return;
-    
-    
+
+
                 case Mangle.Tchar:
                     vchar = *cast(char*)(p_args); p_args += char.sizeof;
                     if (fc != 's')
@@ -1005,11 +1005,11 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 PL2: // there is goto L2 outside of thise switch; it's okay to do that
                     putstr((&vchar)[0 .. 1]);
                     return;
-    
+
                 case Mangle.Twchar:
                     vdchar = *cast(wchar*)(p_args); p_args += wchar.sizeof;
                     goto PL1;
-    
+
                 case Mangle.Tdchar:
                     vdchar = *cast(dchar*)(p_args); p_args += dchar.sizeof;
                 PL1:
@@ -1028,51 +1028,51 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                         putstr(toUTF8(vbuf, vdchar));
                     }
                     return;
-    
-    
+
+
                 case Mangle.Tbyte:
                     signed = 1;
                     vnumber = *cast(byte*)p_args; p_args += byte.sizeof;
                     goto Lnumber;
-    
+
                 case Mangle.Tubyte:
                     vnumber = *cast(ubyte*)p_args; p_args += ubyte.sizeof;
                     goto Lnumber;
-    
+
                 case Mangle.Tshort:
                     signed = 1;
                     vnumber = *cast(short*)p_args; p_args += short.sizeof;
                     goto Lnumber;
-    
+
                 case Mangle.Tushort:
                     vnumber = *cast(ushort*)p_args; p_args += ushort.sizeof;
                     goto Lnumber;
-    
+
                 case Mangle.Tint:
                     signed = 1;
                     vnumber = *cast(int*)p_args; p_args += int.sizeof;
                     goto Lnumber;
-    
+
                 case Mangle.Tuint:
                 PLuint:
                     vnumber = *cast(uint*)p_args; p_args += uint.sizeof;
                     goto Lnumber;
-    
+
                 case Mangle.Tlong:
                     signed = 1;
                     vnumber = cast(ulong)*cast(long*)p_args; p_args += long.sizeof;
                     goto Lnumber;
-    
+
                 case Mangle.Tulong:
                 PLulong:
                     vnumber = *cast(ulong*)p_args; p_args += ulong.sizeof;
                     goto Lnumber;
-    
+
                 case Mangle.Tclass:
                     vobject = *cast(Object*)p_args; p_args += Object.sizeof;
                     s = vobject.toString();
                     goto Lputstr;
-    
+
                 case Mangle.Tpointer:
                     alias void * void_ponter_t;
                     vnumber = cast(size_t)*cast(void**)p_args; p_args += void_ponter_t.sizeof;
@@ -1084,40 +1084,40 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                     }
                     base = 16;
                     goto Lnumber;
-    
-    
+
+
                 case Mangle.Tfloat:
                 case Mangle.Tifloat:
                     if (fc == 'x' || fc == 'X')
                         goto PLuint;
                     vreal = *cast(float*)p_args; p_args += float.sizeof;
                     goto Lreal;
-    
+
                 case Mangle.Tdouble:
                 case Mangle.Tidouble:
                     if (fc == 'x' || fc == 'X')
                         goto PLulong;
                     vreal = *cast(double*)p_args; p_args += double.sizeof;
                     goto Lreal;
-    
+
                 case Mangle.Treal:
                 case Mangle.Tireal:
                     vreal = *cast(real*)p_args; p_args += real.sizeof;
                     goto Lreal;
-    
-    
+
+
                 case Mangle.Tcfloat:
                     vcreal = *cast(cfloat*)p_args; p_args += cfloat.sizeof;
                     goto Lcomplex;
-    
+
                 case Mangle.Tcdouble:
                     vcreal = *cast(cdouble*)p_args; p_args += cdouble.sizeof;
                     goto Lcomplex;
-    
+
                 case Mangle.Tcreal:
                     vcreal = *cast(creal*)p_args; p_args += creal.sizeof;
                     goto Lcomplex;
-    
+
                 case Mangle.Tsarray:
                     putArray(p_args, (cast(TypeInfo_StaticArray)ti).len, (cast(TypeInfo_StaticArray)ti).next);
                     p_args += ti.tsize();
@@ -1127,7 +1127,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                     alias void[] array_t;
                     int mi = 10;
                     if (ti.classinfo.name.length == 14 &&
-                        ti.classinfo.name[9..14] == "Array") 
+                        ti.classinfo.name[9..14] == "Array")
                     { // array of non-primitive types
                       TypeInfo tn = (cast(TypeInfo_Array)ti).next;
                       tn = skipCI(tn);
@@ -1144,7 +1144,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                       return;
                     }
                     if (ti.classinfo.name.length == 25 &&
-                        ti.classinfo.name[9..25] == "AssociativeArray") 
+                        ti.classinfo.name[9..25] == "AssociativeArray")
                     { // associative array
                       ubyte[long] vaa = *cast(ubyte[long]*)p_args; p_args += vaa.sizeof;
                       putAArray(vaa,
@@ -1195,19 +1195,19 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                         }
                         return;
                     }
-    
+
                 case Mangle.Ttypedef:
                     ti = (cast(TypeInfo_Typedef)ti).base;
                     m = cast(Mangle)ti.classinfo.name[9];
                     formatArg(fc);
                     return;
-    
+
                 case Mangle.Tenum:
                     ti = (cast(TypeInfo_Enum)ti).base;
                     m = cast(Mangle)ti.classinfo.name[9];
                     formatArg(fc);
                     return;
-                    
+
                 case Mangle.Tstruct:
                 {   TypeInfo_Struct tis = cast(TypeInfo_Struct)ti;
                     if (tis.xtoString is null)

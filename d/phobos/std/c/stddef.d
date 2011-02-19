@@ -13,7 +13,7 @@ version (GNU)
 {
     private import gcc.config.libc;
     alias gcc.config.libc.wchar_t wchar_t;
-} 
+}
 else version (Win32)
 {
     alias wchar wchar_t;

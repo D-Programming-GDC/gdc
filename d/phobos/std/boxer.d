@@ -427,10 +427,10 @@ body
     version (GNU)
     {
         // Help for promoted types
-        TypeInfo ti_orig = _arguments[0]; 
+        TypeInfo ti_orig = _arguments[0];
         TypeInfo ti = ti_orig;
         TypeInfo_Typedef ttd;
-        
+
         while ( (ttd = cast(TypeInfo_Typedef) ti) !is null )
             ti = ttd.base;
 

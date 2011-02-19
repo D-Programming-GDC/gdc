@@ -905,7 +905,7 @@ else version (Unix)
     }
 
     private extern (C) time_t _d_gnu_cbridge_tza();
-    
+
     d_time getLocalTZA()
     {
         return _d_gnu_cbridge_tza() * TicksPerSecond;
@@ -966,7 +966,7 @@ else version (Unix)
                     start = dstt(year,  3, 2, 0, 2);
                     end   = dstt(year, 11, 1, 0, 2);
                 }
-  
+
                 if (start <= dt && dt < end)
                         dst = TicksPerHour;
                 //writefln("start = %s, dt = %s, end = %s, dst = %s", start, dt, end, dst);
@@ -1080,7 +1080,7 @@ else version (Posix)
 }
 else version (NoSystem)
 {
-    d_time getLocalTZA() { return 0; }    
+    d_time getLocalTZA() { return 0; }
     int DaylightSavingTA(d_time dt) { return 0; }
 }
 

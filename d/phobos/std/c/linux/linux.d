@@ -15,22 +15,22 @@ else
 {
 
 
-	public import std.c.dirent;
-	public import std.c.linux.linuxextern;
+        public import std.c.dirent;
+        public import std.c.linux.linuxextern;
 
-	extern (C)
-	{
-	    /* From <dlfcn.h>
-	     * See http://www.opengroup.org/onlinepubs/007908799/xsh/dlsym.html
-	     * To use these functions, you'll need to link in /usr/lib/libdl.a
-	     * (compile/link with -L-ldl)
-	     */
+        extern (C)
+        {
+            /* From <dlfcn.h>
+             * See http://www.opengroup.org/onlinepubs/007908799/xsh/dlsym.html
+             * To use these functions, you'll need to link in /usr/lib/libdl.a
+             * (compile/link with -L-ldl)
+             */
 
-	    const int RTLD_NOW = 0x00002;	// Correct for Red Hat 8
+            const int RTLD_NOW = 0x00002;       // Correct for Red Hat 8
 
-	    void* dlopen(in char* file, int mode);
-	    int   dlclose(void* handle);
-	    void* dlsym(void* handle, char* name);
-	    char* dlerror();
-	}
+            void* dlopen(in char* file, int mode);
+            int   dlclose(void* handle);
+            void* dlsym(void* handle, char* name);
+            char* dlerror();
+        }
 }

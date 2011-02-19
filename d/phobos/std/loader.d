@@ -135,7 +135,7 @@ else version(darwin)
             uint    sizeofcmds; /* the size of all the load commands */
             uint    flags;      /* flags */
         }
-        
+
         /* Constant for the magic field of the mach_header */
         const uint MH_MAGIC = 0xfeedface;   // the mach magic number
         const uint MH_CIGAM = 0xcefaedfe;   // x86 variant
@@ -143,11 +143,11 @@ else version(darwin)
         const uint MH_CIGAM_64 = 0xcffaedfe;  // NXSwapInt(MH_MAGIC_64)
 
         // #include <mach-o/dyld.h>
-        
+
         typedef void *NSObjectFileImage;
-        
+
         typedef void *NSModule;
-        
+
         typedef void *NSSymbol;
 
         enum // DYLD_BOOL: uint
@@ -167,7 +167,7 @@ else version(darwin)
             NSObjectFileImageAccess
         }
         alias uint NSObjectFileImageReturnCode;
-        
+
         enum // NSLinkEditErrors: uint
         {
             NSLinkEditFileAccessError,
@@ -183,10 +183,10 @@ else version(darwin)
 
 
         alias NSModule HModule_;
-    
+
         NSObjectFileImageReturnCode NSCreateObjectFileImageFromFile(char *pathName, NSObjectFileImage* objectFileImage);
         DYLD_BOOL NSDestroyObjectFileImage(NSObjectFileImage objectFileImage);
-   
+
         mach_header * NSAddImage(char *image_name, uint options);
         const uint NSADDIMAGE_OPTION_NONE = 0x0;
         const uint NSADDIMAGE_OPTION_RETURN_ON_ERROR = 0x1;
@@ -202,9 +202,9 @@ else version(darwin)
         const uint NSLINKMODULE_OPTION_DONT_CALL_MOD_INIT_ROUTINES = 0x08;
         const uint NSLINKMODULE_OPTION_TRAILING_PHYS_NAME = 0x10;
         DYLD_BOOL NSUnLinkModule(NSModule module_, uint options);
-    
+
         void NSLinkEditError(NSLinkEditErrors *c, int *errorNumber, char **fileName, char **errorString);
-   
+
         DYLD_BOOL NSIsSymbolNameDefined(char *symbolName);
         DYLD_BOOL NSIsSymbolNameDefinedInImage(mach_header *image, char *symbolName);
         NSSymbol NSLookupAndBindSymbol(char *symbolName);
@@ -610,7 +610,7 @@ else version(darwin)
 
         NSLinkEditError(&error, &errno, &fileName, &err);
         printf("NSLinkEditError: %d %d - %s %s\n", cast(uint) error, errno, fileName, err);
-        
+
         s_lastError = (err == null) ? "" : err[0 .. std.string.strlen(err)];
     }
 
@@ -659,7 +659,7 @@ else version(darwin)
                 NSCreateObjectFileImageFromFile(filename, &fileImage);
             if(returnCode == NSObjectFileImageSuccess)
             {
-                handle = NSLinkModule(fileImage,filename, 
+                handle = NSLinkModule(fileImage,filename,
                     NSLINKMODULE_OPTION_RETURN_ON_ERROR |
                     NSLINKMODULE_OPTION_PRIVATE |
                     NSLINKMODULE_OPTION_BINDNOW);
@@ -678,11 +678,11 @@ else version(darwin)
                 s_lastError = "NSCreateObjectFileImageFromFile failed";
                 return null;
             }
-            
+
             if (handle == null)
             {
                 record_error_();
-        
+
                 return null;
             }
             else
@@ -692,7 +692,7 @@ else version(darwin)
                 s_modules[moduleName]   =   mi;
 
                 return cast(HXModule)mi;
-            }        
+            }
         }
     }
 
@@ -744,7 +744,7 @@ else version(darwin)
         {
             char[]      name    =   mi.m_name;
             uint        magic;
-            
+
             magic = (* cast(mach_header *) mi.m_hmod).magic;
             if ( magic == MH_MAGIC || magic == MH_CIGAM ||
                  magic == MH_MAGIC_64 || magic == MH_CIGAM_64)
@@ -778,12 +778,12 @@ else version(darwin)
     body
     {
         ExeModuleInfo   mi      =   cast(ExeModuleInfo)hModule;
-        
+
         NSModule handle = mi.m_hmod;
         uint magic = (* cast(mach_header *) handle).magic;
         char *name = ("_" ~ symbolName ~ "\0").ptr;
         NSSymbol symbol = null;
- 
+
         if ( (handle == cast(NSModule) -1) &&
             NSIsSymbolNameDefined(name))
             /* Global context, use NSLookupAndBindSymbol */
@@ -797,13 +797,13 @@ else version(darwin)
                 NSLOOKUPSYMBOLINIMAGE_OPTION_RETURN_ON_ERROR);
         else
             symbol = NSLookupSymbolInModule(handle, name);
-        
+
         if (symbol == null)
         {
             // printf("DEBUG: Symbol not found: %s\n", name);
             return null;
         }
-        
+
         void *address = NSAddressOfSymbol(symbol);
 
         if(address == null)
