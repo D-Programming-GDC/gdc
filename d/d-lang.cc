@@ -567,14 +567,17 @@ d_handle_option (size_t scode, const char *arg, int value)
           global.params.useUnitTests = value;
           break;
       case OPT_fversion_:
-          if (ISDIGIT(arg[0])) {
+          if (ISDIGIT(arg[0]))
+          {
               if (! parse_int(arg, & level))
                   goto Lerror_v;
               VersionCondition::setGlobalLevel(level);
-          } else if (Lexer::isValidIdentifier((char*) arg))
+          }
+          else if (Lexer::isValidIdentifier(CONST_CAST(char*, arg)))
               VersionCondition::addGlobalIdent(xstrdup(arg));
-          else {
-          Lerror_v:
+          else
+          {
+        Lerror_v:
               error("bad argument for -fversion");
           }
           break;
@@ -582,14 +585,17 @@ d_handle_option (size_t scode, const char *arg, int value)
           global.params.debuglevel = value ? 1 : 0;
           break;
       case OPT_fdebug_:
-          if (ISDIGIT(arg[0])) {
+          if (ISDIGIT(arg[0]))
+          {
               if (! parse_int(arg, & level))
                   goto Lerror_d;
               DebugCondition::setGlobalLevel(level);
-          } else if (Lexer::isValidIdentifier((char*) arg))
+          }
+          else if (Lexer::isValidIdentifier(CONST_CAST(char*, arg)))
               DebugCondition::addGlobalIdent(xstrdup(arg));
-          else {
-          Lerror_d:
+          else
+          {
+        Lerror_d:
               error("bad argument for -fdebug");
           }
           break;

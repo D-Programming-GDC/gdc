@@ -48,6 +48,18 @@ d_gcc_force_templates()
 }
 
 void
+d_gcc_emit_local_variable(VarDeclaration * v)
+{
+    g.irs->emitLocalVar(v);
+}
+
+bool
+d_gcc_supports_weak()
+{
+    return SUPPORTS_WEAK;
+}
+
+void
 IRState::emitLocalVar(VarDeclaration * v, bool no_init)
 {
     if (v->isDataseg() || v->isMember())
@@ -1543,7 +1555,7 @@ IRState::getLibCallDecl(LibCall lib_call)
             default:
                 gcc_unreachable();
         }
-        decl = FuncDeclaration::genCfunc(return_type, (char *) libcall_ids[lib_call]);
+        decl = FuncDeclaration::genCfunc(return_type, libcall_ids[lib_call]);
         {
             TypeFunction * tf = (TypeFunction *) decl->type;
             tf->varargs = varargs ? 1 : 0;
@@ -3518,9 +3530,8 @@ IRState::startCase(Statement * stmt, tree t_cond, int has_vars)
 void
 IRState::doCase(tree t_value, tree t_label)
 {
-    Flow * f = currentFlow();
 #if V2
-    if (f->hasVars)
+    if (currentFlow()->hasVars)
     {   // SwitchStatement has already taken care of label jumps.
         doLabel(t_label);
     }

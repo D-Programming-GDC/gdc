@@ -189,9 +189,9 @@ extern int d_using_sjlj_exceptions PARAMS ((void));
 extern char * d_asm_format_private_name PARAMS ((const char *,int));
 
 /* In d-builtins2.cc */
-extern void d_bi_init(int nt, int nb);
-extern void d_bi_builtin_func(tree decl);
-extern void d_bi_builtin_type(tree decl);
+extern void d_bi_init PARAMS ((void));
+extern void d_bi_builtin_func PARAMS ((tree));
+extern void d_bi_builtin_type PARAMS ((tree));
 
 #ifdef __cplusplus
 }

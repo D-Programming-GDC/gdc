@@ -39,7 +39,7 @@ static Type * gcc_type_to_d_type(tree t);
 Type * d_gcc_builtin_va_list_d_type;
 
 void
-d_bi_init(int nt, int nb)
+d_bi_init()
 {
     // assumes va_list_type_node already built
     d_gcc_builtin_va_list_d_type = gcc_type_to_d_type(va_list_type_node);
@@ -595,7 +595,7 @@ gcc_cst_to_d_expr(Loc loc, tree cst)
         {
             const void * string = TREE_STRING_POINTER(cst);
             size_t len = TREE_STRING_LENGTH(cst);
-            return new StringExp(loc, (void *)string, len);
+            return new StringExp(loc, CONST_CAST(void*, string), len);
         }
         // TODO: VECTOR... ?
     }

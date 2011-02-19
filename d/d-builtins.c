@@ -90,7 +90,7 @@ int flag_isoc99;
    The later results in segfaults even when a decl using the type doesn't
    get invoked.  */
 
-tree
+static tree
 builtin_type_for_size (int size, bool unsignedp)
 {
     tree type = lang_hooks.types.type_for_size (size, unsignedp);
@@ -162,12 +162,12 @@ lookup_C_type_name(const char * p)
 }
 
 #if D_GCC_VER >= 41
-void do_build_builtin_fn(enum built_in_function fncode,
-    const char *name,
-    enum built_in_class fnclass,
-    int fntype_index, tree fntype, int libtype_index,
-    bool both_p, bool fallback_p, bool nonansi_p,
-    tree fnattrs, bool implicit_p)
+static void
+do_build_builtin_fn(enum built_in_function fncode,
+                    const char *name,
+                    enum built_in_class fnclass,
+                    tree fntype, bool both_p, bool fallback_p,
+                    tree fnattrs, bool implicit_p)
 {
     tree decl;
     const char *libname;
@@ -176,19 +176,18 @@ void do_build_builtin_fn(enum built_in_function fncode,
         return;
 
     gcc_assert ((!both_p && !fallback_p)
-            || !strncmp (name, "__builtin_",
-                strlen ("__builtin_")));
-    libname = name + strlen ("__builtin_");
+                || !strncmp (name, "__builtin_",
+                             strlen ("__builtin_")));
 
-    /*if (!BOTH_P)*/
+    libname = name + strlen ("__builtin_");
 #if D_GCC_VER >= 43
     decl = add_builtin_function(name, fntype, fncode, fnclass,
-            fallback_p ?libname : NULL, fnattrs);
+            fallback_p ? libname : NULL, fnattrs);
 #else
     decl = lang_hooks.builtin_function (name, fntype,
             fncode,
             fnclass,
-            fallback_p ?libname : NULL,
+            fallback_p ? libname : NULL,
             fnattrs);
 #endif
 
@@ -289,7 +288,7 @@ void d_init_builtins(void)
     tree va_list_ref_type_node;
     tree va_list_arg_type_node;
 
-    d_bi_init((int) BT_LAST, (int) END_BUILTINS);
+    d_bi_init(/*(int) BT_LAST, (int) END_BUILTINS*/);
 
 
     if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
@@ -398,8 +397,10 @@ void d_init_builtins(void)
 #define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE, BOTH_P, FALLBACK_P, \
                     NONANSI_P, ATTRS, IMPLICIT, COND)                   \
   if (NAME && COND)                                                     \
-      do_build_builtin_fn(ENUM, NAME, CLASS, TYPE, builtin_types[TYPE], LIBTYPE, BOTH_P, \
-          FALLBACK_P, NONANSI_P, built_in_attributes[(int) ATTRS], IMPLICIT);
+      do_build_builtin_fn(ENUM, NAME, CLASS,                            \
+                          builtin_types[(int) TYPE],                    \
+                          BOTH_P, FALLBACK_P,                           \
+                          built_in_attributes[(int) ATTRS], IMPLICIT);
 #endif
 
 #include "builtins.def"

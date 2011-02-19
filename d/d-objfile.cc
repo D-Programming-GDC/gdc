@@ -885,7 +885,6 @@ ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, boo
 FuncDeclaration *
 ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool force_and_public)
 {
-    Module * mod = g.mod;
     IRState * irs = g.irs;
     tree expr_list = NULL_TREE;
 
@@ -916,7 +915,6 @@ ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool
 FuncDeclaration *
 ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
 {
-    Module * mod = g.mod;
     IRState * irs = g.irs;
     tree expr_list = NULL_TREE;
 
@@ -955,7 +953,6 @@ ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
 FuncDeclaration *
 ObjectFile::doDtorFunction(const char * name, Array * functions)
 {
-    Module * mod = g.mod;
     IRState * irs = g.irs;
     tree expr_list = NULL_TREE;
 

@@ -93,6 +93,16 @@ extern "C" {
 #endif
 #endif
 
+/* This macro allows casting away const-ness to pass -Wcast-qual
+   warnings.  DO NOT USE THIS UNLESS YOU REALLY HAVE TO!  It should
+   only be used in certain specific cases.  One valid case is where
+   the C standard definitions or prototypes force you to.  E.g. if you
+   need to free a const object, or if you pass a const string to
+   execv, et al. */
+#ifndef CONST_CAST
+#define CONST_CAST(TYPE,X) ((__extension__(union {const TYPE _q; TYPE _nq;})(X))._nq)
+#endif
+
 // Undefine things that give us problems
 #undef RET
 

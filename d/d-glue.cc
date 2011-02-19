@@ -1898,18 +1898,6 @@ DeclarationExp::toElem(IRState* irs)
     return t;
 }
 
-void
-d_gcc_emit_local_variable(VarDeclaration * v)
-{
-    g.irs->emitLocalVar(v);
-}
-
-bool
-d_gcc_supports_weak()
-{
-    return SUPPORTS_WEAK;
-}
-
 // %% check calling this directly?
 elem *
 FuncExp::toElem(IRState * irs)
@@ -2780,7 +2768,7 @@ genericize_function(tree fndecl)
 
 
 void
-FuncDeclaration::toObjFile(int multiobj)
+FuncDeclaration::toObjFile(int /*multiobj*/)
 {
     if (!g.ofile->shouldEmit(this))
         return;
@@ -2818,9 +2806,9 @@ FuncDeclaration::toObjFile(int multiobj)
 #if V2
     FuncDeclaration * closure_func = NULL;
     tree closure_expr = NULL_TREE;
+    StructDeclaration * sd;
 #endif
     ClassDeclaration * cd;
-    StructDeclaration * sd;
 #endif
     AggregateDeclaration * ad = NULL;
 
@@ -3548,15 +3536,13 @@ TypeEnum::toCtype()
                 for (unsigned i = 0; i < sym->members->dim; i++)
                 {
                     EnumMember * member = (EnumMember *) sym->members->data[i];
-                    char * ident;
+                    char * ident = NULL;
 
                     if (sym->ident)
                         ident = concat(sym->ident->string, ".",
-                                member->ident->string, NULL);
-                    else
-                        ident = (char *) member->ident->string;
+                                       member->ident->string, NULL);
 
-                    enum_values.cons(get_identifier(ident),
+                    enum_values.cons(get_identifier(ident ? ident : member->ident->string),
                             gen.integerConstant(member->value->toInteger(), ctype));
 
                     if (sym->ident)
@@ -4317,7 +4303,6 @@ ReturnStatement::toIR(IRState* irs)
     {   // %% == Type::tvoid ?
         FuncDeclaration * func = irs->func;
         TypeFunction * tf = (TypeFunction *)func->type;
-        Type * exp_base_type = exp->type->toBasetype();
         Type * ret_type = func->tintro ?
             func->tintro->nextOf() : tf->nextOf();
 
@@ -4333,11 +4318,11 @@ ReturnStatement::toIR(IRState* irs)
         {
             result_value = irs->addressOf(result_value);
         }
-        else if ((exp->op == TOKvar || exp->op == TOKdotvar || exp->op == TOKstar) &&
-                 exp_base_type->ty == Tstruct)
+        else if (exp->type->toBasetype()->ty == Tstruct &&
+                 (exp->op == TOKvar || exp->op == TOKdotvar || exp->op == TOKstar))
         {   // Maybe call postblit on result_value
             StructDeclaration * sd;
-            if ((sd = needsPostblit(exp_base_type)) != NULL)
+            if ((sd = needsPostblit(exp->type->toBasetype())) != NULL)
             {
                 Array args;
                 tree call_exp = irs->call(sd->postblit, irs->addressOf(result_value), & args);
