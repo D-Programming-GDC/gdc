@@ -280,47 +280,6 @@ prefixed_path(const char * path)
         return xstrdup(path);
 }
 
-static void
-add_gnu_version_condition(const char * ident, unsigned int len)
-{
-    char * d_ident = new char[4 + len + 1];
-    // Strip all leading and trailing underscores.
-    while (len > 0 && ident[0] == '_')
-    {
-        ident += 1;
-        len -= 1;
-    }
-    while (len > 0 && ident[len - 1] == '_')
-    {
-        len -= 1;
-    }
-    gcc_assert(len);
-    strcpy(d_ident, "GNU_");
-    strncpy(d_ident + 4, ident, len);
-    d_ident[len + 4] = '\0';
-    VersionCondition::addPredefinedGlobalIdent(d_ident);
-}
-
-static int
-d_cpp_forall_callback(cpp_reader *, cpp_hashnode * hn, void *)
-{
-    const char * str = (const char *)hn->ident.str;
-    // Filter out unneeded builtin defines.
-    if (hn->type == NT_MACRO)
-        add_gnu_version_condition(str, hn->ident.len);
-    return 1;
-}
-
-/* Supports CPP builtins. */
-cpp_reader * parse_in;
-extern "C" void
-builtin_define_std (const char *macro)
-{
-    gcc_assert(macro);
-    unsigned int len = strlen(macro);
-    add_gnu_version_condition(macro, len);
-}
-
 static bool
 d_init ()
 {
@@ -465,48 +424,6 @@ d_init ()
         VersionCondition::addPredefinedGlobalIdent("D_Ddoc");
     if (global.params.useUnitTests)
         VersionCondition::addPredefinedGlobalIdent("unittest");
-
-    {
-        line_maps lm;
-        cpp_reader * pfile; // Target macros below expect this identifier.
-        extern int flag_iso;             // ditto
-        extern int flag_preprocess_only; // ditto
-
-        flag_iso = 0;
-        flag_preprocess_only = 0;
-        linemap_init(& lm);
-#if D_GCC_VER >= 43
-        lm.reallocator = NULL;
-#endif
-        parse_in = pfile = cpp_create_reader(CLK_STDC89, NULL, & lm);
-        cpp_change_file(pfile, LC_ENTER, "<built-in>");
-
-        // from c-cppbuiltin.c
-#ifndef TARGET_OS_CPP_BUILTINS
-# define TARGET_OS_CPP_BUILTINS()
-#endif
-#ifndef TARGET_OBJFMT_CPP_BUILTINS
-# define TARGET_OBJFMT_CPP_BUILTINS()
-#endif
-
-# define preprocessing_asm_p() (0)
-# define preprocessing_trad_p() (0)
-# define c_dialect_cxx() (0)
-# define c_dialect_objc() (0)
-# define builtin_define(TXT) (cpp_define (pfile, TXT))
-# define builtin_define_with_value(m,e,s)
-# define builtin_define_with_int_value(m,i)
-# define builtin_define_std(TXT) (cpp_define (pfile, TXT))
-# define builtin_assert(TXT) (cpp_assert (pfile, TXT))
-        TARGET_CPU_CPP_BUILTINS ();
-        TARGET_OS_CPP_BUILTINS ();
-        TARGET_OBJFMT_CPP_BUILTINS ();
-
-        cpp_forall_identifiers(pfile, & d_cpp_forall_callback, NULL);
-
-        cpp_destroy(pfile);
-        linemap_free(& lm);
-    }
 
     VersionCondition::addPredefinedGlobalIdent("all");
 

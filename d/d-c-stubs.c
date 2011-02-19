@@ -110,12 +110,3 @@ lookup_name (tree name ATTRIBUTE_UNUSED)
     return NULL_TREE;
 }
 
-typedef void (*pragma_handler)(struct cpp_reader *);
-
-void
-c_register_pragma (const char *space ATTRIBUTE_UNUSED,
-                   const char *name ATTRIBUTE_UNUSED,
-                   pragma_handler handler ATTRIBUTE_UNUSED)
-{
-}
-

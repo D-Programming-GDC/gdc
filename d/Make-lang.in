@@ -228,39 +228,39 @@ D_BI_ATTRS = d/d-bi-attrs-40.h d/d-bi-attrs-41.h d/d-bi-attrs-42.h \
 ifdef D_is_apple_ver
   ifeq ($(D_gcc_main_ver),4.0)
     D_GLUE_OBJS += d/d-apple-gcc.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o
   endif
   ifeq ($(D_gcc_main_ver),4.2)
     D_GLUE_OBJS += d/d-apple-gcc.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o
     D_DRIVER_OBJS += opts-common.o gcc-options.o
   endif
 else
   ifeq ($(D_gcc_main_ver),4.1)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o
   endif
   ifeq ($(D_gcc_main_ver),4.2)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o
     D_DRIVER_OBJS += opts-common.o gcc-options.o
   endif
   ifeq ($(D_gcc_main_ver),4.3)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o
     D_EXTRA_LIBS += $(GMPLIBS)
     D_DRIVER_OBJS += opts-common.o gcc-options.o
   endif
   ifeq ($(D_gcc_main_ver),4.4)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o
     D_BORROWED_C_OBJS += gimplify.o tree-iterator.o
     D_EXTRA_LIBS += $(BACKENDLIBS)
     D_DRIVER_OBJS += opts-common.o gcc-options.o
   endif
   ifeq ($(D_gcc_main_ver),4.5)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o $(C_TARGET_OBJS)
+    D_BORROWED_C_OBJS += stub-objc.o prefix.o
     D_EXTRA_LIBS += $(BACKENDLIBS)
     D_DRIVER_OBJS += opts-common.o gcc-options.o
   endif
@@ -351,7 +351,7 @@ D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_BORROWED_C_OBJS) $(D_DMD_OBJS) $(D_GLUE_OBJ
 
 $(D_COMPILER_NAME)$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
 	$(CXX) $(ALL_D_CXXFLAGS) $(LDFLAGS) -o $@ \
-		$(D_ALL_OBJS) $(BACKEND) $(D_EXTRA_LIBS) $(LIBS)
+		$(D_ALL_OBJS) $(BACKEND) $(LIBS) $(D_EXTRA_LIBS)
 
 # Stage hooks:
 # The main makefile has already created stage?/cobol.
