@@ -11,6 +11,7 @@
 */
 /****
  * Demangle D mangled names.
+ * Source: $(PHOBOSSRC std/_demangle.d)
  * Macros:
  *      WIKI = Phobos/StdDemangle
  */

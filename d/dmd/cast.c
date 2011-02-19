@@ -362,8 +362,6 @@ MATCH IntegerExp::implicitConvTo(Type *t)
             goto Lyes;
         }
 #endif
-        default:
-            break;
     }
     return Expression::implicitConvTo(t);
 
@@ -466,9 +464,6 @@ MATCH StringExp::implicitConvTo(Type *t)
                         else if (t->next->ty == Tdchar)
                             return MATCHexact;
                     }
-                    break;
-
-                default:
                     break;
             }
         }
@@ -1634,9 +1629,6 @@ Expression *Expression::integralPromotions(Scope *sc)
 
         case Tdchar:
             e = e->castTo(sc, Type::tuns32);
-            break;
-
-        default:
             break;
     }
     return e;

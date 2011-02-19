@@ -9,8 +9,15 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "speller.h"
+#if IN_GCC
 #include "gdc_alloca.h"
+#else
+#if __sun&&__SVR4
+#include <alloca.h>
+#endif
+#endif
+
+#include "speller.h"
 
 const char idchars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
 

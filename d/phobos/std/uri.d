@@ -32,6 +32,7 @@
  * See_Also:
  *      $(LINK2 http://www.ietf.org/rfc/rfc3986.txt, RFC 3986)<br>
  *      $(LINK2 http://en.wikipedia.org/wiki/Uniform_resource_identifier, Wikipedia)
+ * Source: $(PHOBOSSRC std/_uri.d)
  * Macros:
  *      WIKI = Phobos/StdUri
  */
@@ -385,10 +386,10 @@ unittest
     char[] r;
 
     r = encode(s);
-    debug(uri) printf("r = '%.*s'\n", cast(int) r.length, r.ptr);
+    debug(uri) printf("r = '%.*s'\n", r);
     assert(r == t);
     r = decode(t);
-    debug(uri) printf("r = '%.*s'\n", cast(int) r.length, r.ptr);
+    debug(uri) printf("r = '%.*s'\n", r);
     assert(r == s);
 
     r = encode( decode("%E3%81%82%E3%81%82") );
@@ -398,8 +399,7 @@ unittest
     //printf("r = '%.*s'\n", r);
     assert(r == "c%2B%2B");
 
-    // char[] str = new char[10_000_000]; // Belongs in testgc.d? 8-\
-    char[] str = new char[10_000];
+    char[] str = new char[10_000_000];
     str[] = 'A';
     r = encodeComponent(str);
     foreach (char c; r)

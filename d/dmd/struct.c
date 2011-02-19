@@ -220,7 +220,7 @@ void AggregateDeclaration::addField(Scope *sc, VarDeclaration *v)
         memalignsize = sc->structalign;
     if (alignsize < memalignsize)
         alignsize = memalignsize;
-    //printf("\talignsize = %d\n", alignsize);
+    //printf("\t%s: alignsize = %d\n", toChars(), alignsize);
 
     v->storage_class |= STCfield;
     //printf(" addField '%s' to '%s' at offset %d, size = %d\n", v->toChars(), toChars(), v->offset, memsize);

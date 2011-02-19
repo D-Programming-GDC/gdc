@@ -100,6 +100,7 @@
  *
  * References:
  *      $(LINK2 http://en.wikipedia.org/wiki/Regular_expressions, Wikipedia)
+ * Source: $(PHOBOSSRC std/_regexp.d)
  * Macros:
  *      WIKI = StdRegexp
  *      DOLLAR = $
@@ -264,13 +265,10 @@ char[] sub(char[] string, char[] pattern, char[] delegate(RegExp) dg, char[] att
         if (r.attributes & RegExp.REA.global &&         // global, so replace all
             !(r.attributes & RegExp.REA.ignoreCase) &&  // not ignoring case
             !(r.attributes & RegExp.REA.multiline) &&   // not multiline
-            pattern == slice)                           // simple pattern (exact match, no special characters) 
+            pattern == slice)                           // simple pattern (exact match, no special characters)
         {
             debug(regexp)
-                printf("pattern: %.*s, slice: %.*s, replacement: %.*s\n",
-                    cast(int) pattern.length, pattern.ptr,
-                    cast(int) (eo-so), result.ptr + offset,
-                    cast(int) replacement.length, replacement.ptr);
+                printf("pattern: %.*s, slice: %.*s, replacement: %.*s\n",pattern,result[offset + so .. offset + eo],replacement);
             result = std.string.replace(result,slice,replacement);
             break;
         }
@@ -1049,11 +1047,7 @@ public rchar[] replace(rchar[] string, rchar[] format)
            format == replacement)               // simple format, not $ formats
         {
             debug(regexp)
-                printf("pattern: %.*s, slice: %.*s, format: %.*s, replacement: %.*s\n",
-                    cast(int) pattern.length, pattern.ptr,
-                    cast(int) (eo-so), result.ptr + offset,
-                    cast(int) format.length, format.ptr,
-                    cast(int) replacement.length, replacement.ptr);
+                printf("pattern: %.*s, slice: %.*s, format: %.*s, replacement: %.*s\n",pattern,result[offset + so .. offset + eo],format,replacement);
             result = std.string.replace(result,slice,replacement);
             break;
         }
@@ -1104,8 +1098,7 @@ unittest
 
 public rchar[][] exec(rchar[] string)
 {
-    debug(regexp) printf("regexp.exec(string = '%.*s')\n",
-        cast(int) string.length, string.ptr);
+    debug(regexp) printf("regexp.exec(string = '%.*s')\n", string);
     input = string;
     pmatch[0].rm_so = 0;
     pmatch[0].rm_eo = 0;
@@ -1191,8 +1184,7 @@ public int test(char[] string, ptrdiff_t startindex)
     size_t si;
 
     input = string;
-    debug (regexp) printf("RegExp.test(input[] = '%.*s', startindex = %d)\n",
-        cast(int) input.length, input.ptr, startindex);
+    debug (regexp) printf("RegExp.test(input[] = '%.*s', startindex = %d)\n", input.length, input.ptr, startindex);
     pmatch[0].rm_so = 0;
     pmatch[0].rm_eo = 0;
     if (startindex < 0 || startindex > input.length)
@@ -1275,7 +1267,6 @@ void printProgram(ubyte[] prog)
     uint m;
     ushort *pu;
     uint *puint;
-    ubyte[] s;
 
     printf("printProgram()\n");
     for (size_t pc = 0; pc < prog.length; )
@@ -1312,17 +1303,15 @@ void printProgram(ubyte[] prog)
 
             case REstring:
                 len = *cast(uint *)&prog[pc + 1];
-                s = (&prog[pc + 1 + uint.sizeof])[0 .. len];
-                printf("\tREstring x%x, '%.*s'\n", len,
-                    cast(int) s.length, s.ptr);
+                printf("\tREstring x%x, '%.*s'\n", len, len,
+                        (&prog[pc + 1 + uint.sizeof]));
                 pc += 1 + uint.sizeof + len * rchar.sizeof;
                 break;
 
             case REistring:
                 len = *cast(uint *)&prog[pc + 1];
-                s = (&prog[pc + 1 + uint.sizeof])[0 .. len];
-                printf("\tREistring x%x, '%.*s'\n", len,
-                    cast(int) s.length, s.ptr);
+                printf("\tREistring x%x, '%.*s'\n", len, len,
+                        (&prog[pc + 1 + uint.sizeof]));
                 pc += 1 + uint.sizeof + len * rchar.sizeof;
                 break;
 
@@ -1398,8 +1387,8 @@ void printProgram(ubyte[] prog)
                 len = puint[0];
                 n = puint[1];
                 m = puint[2];
-                printf("\tREnm%s len=%d, n=%u, m=%u, pc=>%d\n",
-                    (prog[pc] == REnmq) ? cast(char*)"q" : cast(char*)" ",
+                printf("\tREnm%.*s len=%d, n=%u, m=%u, pc=>%d\n",
+                    1, (prog[pc] == REnmq) ? "q".ptr : " ".ptr,
                     len, n, m, pc + 1 + uint.sizeof * 3 + len);
                 pc += 1 + uint.sizeof * 3;
                 break;
@@ -1492,11 +1481,8 @@ int trymatch(size_t pc, size_t pcend)
     uint* puint;
 
     debug(regexp)
-    {
-        char[] s = input[src .. input.length];
         printf("RegExp.trymatch(pc = %d, src = '%.*s', pcend = %d)\n",
-            pc, cast(int) s.length, s.ptr, pcend);
-    }
+            pc, input[src .. input.length], pcend);
     auto srcsave = src;
     psave = null;
     for (;;)
@@ -1580,12 +1566,8 @@ int trymatch(size_t pc, size_t pcend)
 
             case REstring:
                 len = *cast(uint *)&program[pc + 1];
-                debug(regexp)
-                {
-                    char[] s = (&program[pc + 1 + uint.sizeof])[0 .. len];
-                    printf("\tREstring x%x, '%.*s'\n", len,
-                        cast(int) s.length, s.ptr);
-                }
+                debug(regexp) printf("\tREstring x%x, '%.*s'\n", len,
+                        (&program[pc + 1 + uint.sizeof])[0 .. len]);
                 if (src + len > input.length)
                     goto Lnomatch;
                 if (memcmp(&program[pc + 1 + uint.sizeof], &input[src], len * rchar.sizeof))
@@ -1596,12 +1578,8 @@ int trymatch(size_t pc, size_t pcend)
 
             case REistring:
                 len = *cast(uint *)&program[pc + 1];
-                debug(regexp)
-                {
-                    char[] s = (&program[pc + 1 + uint.sizeof])[0 .. len];
-                    printf("\tREistring x%x, '%.*s'\n", len,
-                        cast(int) s.length, s.ptr);
-                }
+                debug(regexp) printf("\tREistring x%x, '%.*s'\n", len,
+                        (&program[pc + 1 + uint.sizeof])[0 .. len]);
                 if (src + len > input.length)
                     goto Lnomatch;
                 version (Win32)
@@ -2023,7 +2001,7 @@ int parseRegexp()
     uint len1;
     uint len2;
 
-    //printf("parseRegexp() '%.*s'\n", pattern[p .. pattern.length]);
+    //printf("parseRegexp() '%.*s'\n", pattern[p .. pattern.length].length, pattern[p .. pattern.length].ptr);
     auto offset = buf.offset;
     for (;;)
     {
@@ -2067,7 +2045,7 @@ int parsePiece()
     ubyte op;
     auto plength = pattern.length;
 
-    //printf("parsePiece() '%.*s'\n", pattern[p .. pattern.length]);
+    //printf("parsePiece() '%.*s'\n", pattern[p .. pattern.length].length, pattern[p .. pattern.length].ptr);
     auto offset = buf.offset;
     parseAtom();
     if (p == plength)
@@ -2172,7 +2150,7 @@ int parseAtom()
     size_t offset;
     rchar c;
 
-    //printf("parseAtom() '%.*s'\n", pattern[p .. pattern.length]);
+    //printf("parseAtom() '%.*s'\n", pattern[p .. pattern.length].length, pattern[p .. pattern.length].ptr);
     if (p < pattern.length)
     {
         c = pattern[p];
@@ -2604,7 +2582,7 @@ Lerr:
 void error(char[] msg)
 {
     errors++;
-    debug(regexp) printf("error: %.*s\n", cast(int) msg.length, msg.ptr);
+    debug(regexp) printf("error: %.*s\n", msg.length, msg.ptr);
 //assert(0);
 //*(char*)0=0;
     throw new RegExpException(msg);

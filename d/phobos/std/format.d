@@ -5,6 +5,7 @@
  * This module implements the workhorse functionality for string and
  * I/O formatting.  It's comparable to C99's vsprintf().
  *
+ * Source: $(PHOBOSSRC std/_format.d)
  * Macros:
  *      WIKI = Phobos/StdFormat
  */
@@ -654,7 +655,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
           auto tiSave = ti;
           auto mSave = m;
           ti = valti;
-          //printf("\n%.*s\n", valti.classinfo.name);
+          //printf("\nvalti = %.*s\n", valti.classinfo.name.length, valti.classinfo.name.ptr);
           m = getMan(valti);
           while (len--)
           {

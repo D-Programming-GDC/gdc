@@ -24,8 +24,18 @@
 #include <stdint.h>
 #include <assert.h>
 
+#if IN_GCC
 #include "gdc_alloca.h"
-#include <string> //for msc_ver
+#else
+#if (defined (__SVR4) && defined (__sun))
+#include <alloca.h>
+#endif
+#endif
+
+#if _MSC_VER ||__MINGW32__
+#include <malloc.h>
+#include <string>
+#endif
 
 #if _WIN32
 #include <windows.h>

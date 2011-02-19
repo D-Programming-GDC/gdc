@@ -2,6 +2,7 @@
 /*
  * Placed in public domain.
  * Written by Hauke Duden and Walter Bright
+ * Source: $(PHOBOSSRC std/_stdarg.d)
  */
 
 /* This is for use with variable argument lists with extern(D) linkage. */
@@ -11,33 +12,35 @@
 
    Modified by David Friedman, September 2004
 */
-
 module std.stdarg;
 
 version(GNU)
-{   // va_list might be a pointer, but assuming so is not portable.
+{
+    // va_list might be a pointer, but assuming so is not portable.
     private import gcc.builtins;
     alias __builtin_va_list va_list;
-}
-else
-{   // va_arg is handled magically by the compiler
-    alias void* va_list;
-}
 
-template va_arg(T)
-{
-    T va_arg(inout va_list _argptr)
+    T va_arg(T)(inout va_list _argptr)
     {
-        /*
-        T arg = *cast(T*)_argptr;
-        _argptr = _argptr + ((T.sizeof + int.sizeof - 1) & ~(int.sizeof - 1));
-        return arg;
-        */
-        T t; return t;
+        T t;
+        return t;
     }
 }
+else version (X86)
+{
+    alias void* va_list;
 
-private import std.c.stdarg;
-/* The existence of std.stdarg.va_copy isn't standard.  Prevent
-   conflicts by using '__'. */
-alias std.c.stdarg.va_copy __va_copy;
+    template va_arg(T)
+    {
+        T va_arg(inout va_list _argptr)
+        {
+            T arg = *cast(T*)_argptr;
+            _argptr = _argptr + ((T.sizeof + int.sizeof - 1) & ~(int.sizeof - 1));
+            return arg;
+        }
+    }
+}
+else
+{
+    public import std.c.stdarg;
+}

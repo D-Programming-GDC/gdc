@@ -1,7 +1,7 @@
 
 /**
- * C's &lt;stdio.h&gt;
- * Authors: Walter Bright, Digital Mars, www.digitalmars.com
+ * C's &lt;stdio.h&gt; for the D programming language
+ * Authors: Walter Bright, Digital Mars, http://www.digitalmars.com
  * License: Public Domain
  * Source: $(PHOBOSSRC std/c/_stdio.d)
  * Macros:
@@ -13,7 +13,6 @@
 
    Modified by David Friedman, September 2004
 */
-
 
 
 module std.c.stdio;

@@ -41,6 +41,7 @@
  *      Matthew Wilson
  * References:
  *      $(LINK2 http://www.$(OPENRJ).org/, Open-RJ)
+ * Source: $(PHOBOSSRC std/_openrj.d)
  * Macros:
  *      WIKI=Phobos/StdOpenrj
  *      OPENRJ=openrj
@@ -1067,8 +1068,7 @@ version(MainTest)
             try
             {
                 printf( "std.openrj test:\n\tmodule:      \t%.*s\n\tdescription: \t%.*s\n\tversion:     \t%d.%d.%d.%d\n"
-                    ,   cast(int) std.openrj.VERSION.name.length
-                    ,   std.openrj.VERSION.name.ptr
+                    ,   std.openrj.VERSION.name
                     ,   std.openrj.VERSION.description
                     ,   std.openrj.VERSION.major
                     ,   std.openrj.VERSION.minor
@@ -1113,18 +1113,14 @@ version(MainTest)
                     printf("  Record\n");
                     foreach(Field field; record.fields)
                     {
-                        printf("    Field: %.*s=%.*s\n",
-                            cast(int) field.name.length, field.name.ptr,
-                            cast(int) field.value.length, field.value.ptr);
+                        printf("    Field: %.*s=%.*s\n", field.name, field.value);
                     }
                 }
 
                 printf("Fields (%u)\n", database.numFields);
                 foreach(Field field; database)
                 {
-                        printf("    Field: %.*s=%.*s\n",
-                            cast(int) field.name.length, field.name.ptr,
-                            cast(int) field.value.length, field.value.ptr);
+                        printf("    Field: %.*s=%.*s\n", field.name, field.value);
                 }
 
                 Record[]    records =   database.getRecordsContainingField("Name");
@@ -1134,16 +1130,13 @@ version(MainTest)
                     printf("  Record\n");
                     foreach(Field field; record.fields)
                     {
-                        printf("    Field: %.*s=%.*s\n",
-                            cast(int) field.name.length, field.name.ptr,
-                            cast(int) field.value.length, field.value.ptr);
+                        printf("    Field: %.*s=%.*s\n", field.name, field.value);
                     }
                 }
             }
             catch(Exception x)
             {
-                char[] s = x.toString();
-                printf("Exception: %.*s\n", cast(int) s.length, s.ptr);
+                printf("Exception: %.*s\n", x.toString());
             }
         }
 

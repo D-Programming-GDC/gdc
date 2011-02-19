@@ -41,17 +41,9 @@
 #include <complex>
 #include <limits>
 #elif __DMC__
-// includes the wrong complex.h in C++
 #include <complex.h>
 #elif __MINGW32__
 #include <malloc.h>
-#endif
-
-#ifndef NAN
-#define NAN (nan("0"))
-#endif
-#ifndef INFINITY
-#define INFINITY (infinity())
 #endif
 
 #include "rmem.h"
@@ -70,6 +62,7 @@
 #include "import.h"
 #include "aggregate.h"
 #include "hdrgen.h"
+#include "doc.h"
 
 FuncDeclaration *hasThis(Scope *sc);
 
@@ -1118,9 +1111,15 @@ unsigned TypeBasic::alignsize()
 
         case Tfloat64:
         case Timaginary64:
+            sz = global.params.isX86_64 ? 8 : 4;
+            break;
+
         case Tcomplex32:
+            sz = 4;
+            break;
+
         case Tcomplex64:
-            sz = global.params.isX86_64 ? 16 : 4;
+            sz = global.params.isX86_64 ? 8 : 4;
             break;
 #endif
 
@@ -1202,7 +1201,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      fvalue = LDBL_MAX;      goto Lfvalue;
-            default:            goto Ldefault;
         }
     }
     else if (ident == Id::min)
@@ -1232,7 +1230,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      fvalue = LDBL_MIN;      goto Lfvalue;
-            default:            goto Ldefault;
         }
     }
     else if (ident == Id::nan)
@@ -1257,9 +1254,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 #endif
                 goto Lfvalue;
             }
-
-            default:
-                goto Ldefault;
         }
     }
     else if (ident == Id::infinity)
@@ -1281,9 +1275,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
                 fvalue = Port::infinity;
 #endif
                 goto Lfvalue;
-
-            default:
-                goto Ldefault;
         }
     }
     else if (ident == Id::dig)
@@ -1299,7 +1290,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_DIG;      goto Lint;
-            default:            goto Ldefault;
         }
     }
     else if (ident == Id::epsilon)
@@ -1315,7 +1305,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      fvalue = LDBL_EPSILON;  goto Lfvalue;
-            default:            goto Ldefault;
         }
     }
     else if (ident == Id::mant_dig)
@@ -1331,7 +1320,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_MANT_DIG; goto Lint;
-            default:            goto Ldefault;
         }
     }
     else if (ident == Id::max_10_exp)
@@ -1347,7 +1335,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_MAX_10_EXP;       goto Lint;
-            default:            goto Ldefault;
         }
     }
     else if (ident == Id::max_exp)
@@ -1363,7 +1350,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_MAX_EXP;  goto Lint;
-            default:            goto Ldefault;
         }
     }
     else if (ident == Id::min_10_exp)
@@ -1379,7 +1365,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_MIN_10_EXP;       goto Lint;
-            default:            goto Ldefault;
         }
     }
     else if (ident == Id::min_exp)
@@ -1395,7 +1380,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tcomplex80:
             case Timaginary80:
             case Tfloat80:      ivalue = LDBL_MIN_EXP;  goto Lint;
-            default:            goto Ldefault;
         }
     }
 
@@ -1535,9 +1519,6 @@ Expression *TypeBasic::defaultInit(Loc loc)
         case Tvoid:
             error(loc, "void does not have a default initializer");
             return new ErrorExp();
-        
-        default:
-            break;
     }
     return new IntegerExp(loc, value, this);
 }
@@ -1559,9 +1540,6 @@ int TypeBasic::isZeroInit(Loc loc)
         case Tcomplex64:
         case Tcomplex80:
             return 0;           // no
-
-        default:
-            break;
     }
     return 1;                   // yes
 }
@@ -2031,9 +2009,6 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
             error(loc, "can't have array of %s", tbn->toChars());
             tbn = next = tint32;
             break;
-
-        default:
-            break;
     }
     if (tbn->isscope())
         error(loc, "cannot have array of auto %s", tbn->toChars());
@@ -2211,9 +2186,6 @@ Type *TypeDArray::semantic(Loc loc, Scope *sc)
         case Ttuple:
             error(loc, "can't have array of %s", tbn->toChars());
             tn = next = tint32;
-            break;
-
-        default:
             break;
     }
     if (tn->isscope())
@@ -2404,9 +2376,6 @@ Type *TypeAArray::semantic(Loc loc, Scope *sc)
         case Ttuple:
             error(loc, "can't have associative array key of %s", key->toChars());
             break;
-
-        default:
-            break;
     }
     next = next->semantic(loc,sc);
     switch (next->toBasetype()->ty)
@@ -2415,9 +2384,6 @@ Type *TypeAArray::semantic(Loc loc, Scope *sc)
         case Tvoid:
         case Tnone:
             error(loc, "can't have associative array of %s", next->toChars());
-            break;
-
-        default:
             break;
     }
     if (next->isscope())
@@ -2603,9 +2569,6 @@ Type *TypePointer::semantic(Loc loc, Scope *sc)
         case Ttuple:
             error(loc, "can't have pointer to %s", n->toChars());
             n = tint32;
-            break;
-
-        default:
             break;
     }
     if (n != next)
@@ -3836,7 +3799,7 @@ Type *TypeInstance::semantic(Loc loc, Scope *sc)
 
     if (!t)
     {
-#ifdef DEBUG
+#if 0
         if (s) printf("s = %s\n", s->kind());
         printf("2: e:%p s:%p ", e, s);
 #endif
@@ -3881,6 +3844,7 @@ TypeTypeof::TypeTypeof(Loc loc, Expression *exp)
         : TypeQualified(Ttypeof, loc)
 {
     this->exp = exp;
+    inuse = 0;
 }
 
 Type *TypeTypeof::syntaxCopy()
@@ -3927,6 +3891,13 @@ Type *TypeTypeof::semantic(Loc loc, Scope *sc)
     //printf("TypeTypeof::semantic() %p\n", this);
 
     //static int nest; if (++nest == 50) *(char*)0=0;
+    if (inuse)
+    {
+        inuse = 2;
+        error(loc, "circular typeof definition");
+        return Type::terror;
+    }
+    inuse++;
 
 #if 0
     /* Special case for typeof(this) and typeof(super) since both
@@ -4023,9 +3994,11 @@ Type *TypeTypeof::semantic(Loc loc, Scope *sc)
             goto Lerr;
         }
     }
+    inuse--;
     return t;
 
 Lerr:
+    inuse--;
     return terror;
 }
 
@@ -4745,7 +4718,7 @@ L1:
 #if 0
         b = new AddrExp(e->loc, e);
         b->type = e->type->pointerTo();
-        b = new AddExp(e->loc, b, new IntegerExp(e->loc, v->offset, Type::tsize_t));
+        b = new AddExp(e->loc, b, new IntegerExp(e->loc, v->offset, Type::tint32));
         b->type = v->type->pointerTo();
         e = new PtrExp(e->loc, b);
         e->type = v->type;
@@ -5637,7 +5610,12 @@ void Parameter::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Parameters *argu
             if (arg->defaultArg)
             {
                 argbuf.writestring(" = ");
+                unsigned o = argbuf.offset;
                 arg->defaultArg->toCBuffer(&argbuf, hgs);
+                if(hgs->ddoc)
+                {
+                    escapeDdocString(&argbuf, o);
+                }
             }
             buf->write(&argbuf);
         }

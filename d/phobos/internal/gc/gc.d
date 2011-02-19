@@ -422,7 +422,7 @@ array_t _d_newarraymTp(TypeInfo ti, size_t ndims, size_t* pdim)
             else
             {
                 p = _gc.malloc(dim * (void[]).sizeof + 1)[0 .. dim];
-                for (int i = 0; i < dim; i++)
+                for (size_t i = 0; i < dim; i++)
                 {
                     (cast(void[]*)p.ptr)[i] = foo(ti.next, pdim + 1, ndims - 1);
                 }
@@ -1215,6 +1215,26 @@ byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
     return result;
 }
 
+extern (C)
+void* _d_arrayliteralTp(TypeInfo ti, size_t length)
+{
+    auto sizeelem = ti.next.tsize();            // array element size
+    void* result;
+
+    //printf("_d_arrayliteralTp(sizeelem = %d, length = %d)\n", sizeelem, length);
+    if (length == 0 || sizeelem == 0)
+        result = null;
+    else
+    {
+        result = _gc.malloc(length * sizeelem);
+        if (!(ti.next.flags() & 1))
+        {
+            _gc.hasNoPointers(result);
+        }
+    }
+    return result;
+}
+
 version (GNU) { } else
 extern (C)
 void* _d_arrayliteralT(TypeInfo ti, size_t length, ...)
@@ -1257,9 +1277,34 @@ void* _d_arrayliteralT(TypeInfo ti, size_t length, ...)
         else
         {   va_list ap;
             va_start(ap, __va_argsave);
-            for (size_t i = 0; i < length; i++)
+            TypeInfo tis = cast(TypeInfo_StaticArray)ti.next;
+            if (0 && tis)
             {
-                va_arg(ap, ti.next, result + i * sizeelem);
+                /* Special handling for static arrays because we put their contents
+                 * on the stack, which isn't the ABI for D1 static arrays.
+                 * (It is for D2, though.)
+                 * The code here is ripped from std.c.stdarg, and initializes
+                 * assuming the data is always passed on the stack.
+                 */
+                __va_list* vap = cast(__va_list*)ap;
+                auto talign = tis.talign();
+                auto tsize = tis.tsize();
+                for (size_t i = 0; i < length; i++)
+                {
+                    //va_arg(ap, ti.next, result + i * sizeelem);
+
+                    void* parmn = result + i * sizeelem;
+                    auto p = cast(void*)((cast(size_t)vap.stack_args + talign - 1) & ~(talign - 1));
+                    vap.stack_args = cast(void*)(cast(size_t)p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
+                    parmn[0..tsize] = p[0..tsize];
+                }
+            }
+            else
+            {
+                for (size_t i = 0; i < length; i++)
+                {
+                    va_arg(ap, ti.next, result + i * sizeelem);
+                }
             }
             va_end(ap);
         }

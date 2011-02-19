@@ -68,6 +68,7 @@
 
 /** \file D/std/loader.d This file contains the \c D standard library
  * executable module loader library, and the ExeModule class.
+ * Source: $(PHOBOSSRC std/_loader.d)
  */
 
 /* ////////////////////////////////////////////////////////////////////////// */
@@ -1097,8 +1098,7 @@ version(TestMain)
             {
                 auto ExeModule xmod =   new ExeModule(moduleName);
 
-                printf("\"%.*s\" is loaded\n",
-                       cast(int) moduleName.length, moduleName.ptr);
+                printf("\"%.*s\" is loaded\n", moduleName);
 
                 void    *symbol =   xmod.getSymbol(symbolName);
 

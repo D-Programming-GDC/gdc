@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -442,6 +442,15 @@ void TemplateDeclaration::semantic(Scope *sc)
         // when template is instantiated in other modules
         sc->module->toModuleAssert();
     }
+
+#if DMDV2
+    if (/*global.params.useUnitTests &&*/ sc->module)
+    {
+        // Generate this function as it may be used
+        // when template is instantiated in other modules
+        sc->module->toModuleUnittest();
+    }
+#endif
 
     /* Remember Scope for later instantiations, but make
      * a copy since attributes can change.
@@ -2283,7 +2292,7 @@ void deduceBaseClassParameters(BaseClass *b,
     Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes,
     Objects *best, int &numBaseClassMatches)
 {
-    TemplateInstance *parti = b->base->parent->isTemplateInstance();
+    TemplateInstance *parti = b->base ? b->base->parent->isTemplateInstance() : NULL;
     if (parti)
     {
         // Make a temporary copy of dedtypes so we don't destroy it
@@ -2945,7 +2954,10 @@ void TemplateValueParameter::semantic(Scope *sc)
     valType = valType->semantic(loc, sc);
     if (!(valType->isintegral() || valType->isfloating() || valType->isString()) &&
         valType->ty != Tident)
-        error(loc, "arithmetic/string type expected for value-parameter, not %s", valType->toChars());
+    {
+        if (valType != Type::terror)
+            error(loc, "arithmetic/string type expected for value-parameter, not %s", valType->toChars());
+    }
 
     if (specValue)
     {   Expression *e = specValue;

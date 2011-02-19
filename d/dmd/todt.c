@@ -152,6 +152,11 @@ dt_t *StructInitializer::toDt()
                 target_size_t vsz = v->type->size();
                 target_size_t voffset = v->offset;
 
+                if (sz > vsz)
+                {   assert(v->type->ty == Tsarray && vsz == 0);
+                    error(loc, "zero length array %s has non-zero length initializer", v->toChars());
+                }
+
                 target_size_t dim = 1;
                 for (Type *vt = v->type->toBasetype();
                      vt->ty == Tsarray;
@@ -772,6 +777,11 @@ dt_t **StructLiteralExp::toDt(dt_t **pdt)
                 target_size_t vsz = v->type->size();
                 target_size_t voffset = v->offset;
 
+                if (sz > vsz)
+                {   assert(v->type->ty == Tsarray && vsz == 0);
+                    error("zero length array %s has non-zero length initializer", v->toChars());
+                }
+
                 target_size_t dim = 1;
                 Type *vt;
                 for (vt = v->type->toBasetype();
@@ -780,6 +790,9 @@ dt_t **StructLiteralExp::toDt(dt_t **pdt)
                 {   TypeSArray *tsa = (TypeSArray *)vt;
                     dim *= tsa->dim->toInteger();
                 }
+
+                //printf("sz = %d, dim = %d, vsz = %d\n", sz, dim, vsz);
+                assert(sz == vsz || sz * dim <= vsz);
 
                 for (target_size_t i = 0; i < dim; i++)
                 {
@@ -1060,61 +1073,44 @@ dt_t **TypeSArray::toDtElem(dt_t **pdt, Expression *e)
             pdt = &((*pdt)->DTnext);
         Type *tnext = next;
         Type *tbn = tnext->toBasetype();
-        while (tbn->ty == Tsarray)
+        while (tbn->ty == Tsarray && (!e || tbn != e->type->nextOf()))
         {   TypeSArray *tsa = (TypeSArray *)tbn;
 
             len *= tsa->dim->toInteger();
-            tnext = tbn->next;
+            tnext = tbn->nextOf();
             tbn = tnext->toBasetype();
         }
         if (!e)                         // if not already supplied
             e = tnext->defaultInit();   // use default initializer
-        if (tbn->ty == Tbit)
+        e->toDt(pdt);
+        dt_optimize(*pdt);
+        if (e->op == TOKstring)
+            len /= ((StringExp *)e)->len;
+        if (e->op == TOKarrayliteral)
+            len /= ((ArrayLiteralExp *)e)->elements->dim;
+        // These first two cases are okay for GDC too
+        if ((*pdt)->dt == DT_azeros && !(*pdt)->DTnext)
         {
-            Bits databits;
-
-            databits.resize(len);
-            if (e->toInteger())
-                databits.set();
-#ifdef IN_GCC
-            pdt = dtnbits(pdt, databits.allocdim * sizeof(databits.data[0]),
-                (char *)databits.data, sizeof(databits.data[0]));
-#else
-            pdt = dtnbytes(pdt, databits.allocdim * sizeof(databits.data[0]),
-                (char *)databits.data);
-#endif
+            (*pdt)->DTazeros *= len;
+            pdt = &((*pdt)->DTnext);
+        }
+        else if ((*pdt)->dt == DT_1byte && (*pdt)->DTonebyte == 0 && !(*pdt)->DTnext)
+        {
+            (*pdt)->dt = DT_azeros;
+            (*pdt)->DTazeros = len;
+            pdt = &((*pdt)->DTnext);
         }
         else
         {
-            if (tbn->ty == Tstruct)
-                tnext->toDt(pdt);
-            else
-                e->toDt(pdt);
-            dt_optimize(*pdt);
-            // These first two cases are okay for GDC too
-            if ((*pdt)->dt == DT_azeros && !(*pdt)->DTnext)
+            for (i = 1; i < len; i++)
             {
-                (*pdt)->DTazeros *= len;
-                pdt = &((*pdt)->DTnext);
-            }
-            else if ((*pdt)->dt == DT_1byte && (*pdt)->DTonebyte == 0 && !(*pdt)->DTnext)
-            {
-                (*pdt)->dt = DT_azeros;
-                (*pdt)->DTazeros = len;
-                pdt = &((*pdt)->DTnext);
-            }
-            else if (e->op != TOKstring)
-            {
-                for (i = 1; i < len; i++)
-                {
-                    if (tbn->ty == Tstruct)
-                    {   pdt = tnext->toDt(pdt);
-                        while (*pdt)
-                            pdt = &((*pdt)->DTnext);
-                    }
-                    else
-                        pdt = e->toDt(pdt);
+                if (tbn->ty == Tstruct)
+                {   pdt = tnext->toDt(pdt);
+                    while (*pdt)
+                        pdt = &((*pdt)->DTnext);
                 }
+                else
+                    pdt = e->toDt(pdt);
             }
         }
     }

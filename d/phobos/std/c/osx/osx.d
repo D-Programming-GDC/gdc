@@ -1,6 +1,6 @@
 
 /* Written by Walter Bright, Sean Kelly, and many others.
- * www.digitalmars.com
+ * http://www.digitalmars.com
  * Placed into public domain.
  */
 

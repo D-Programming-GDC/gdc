@@ -36,6 +36,7 @@
  * has a unique instance of class $(B Thread) associated with it.
  * It is important to use the $(B Thread) class to create and manage
  * threads as the garbage collector needs to know about all the threads.
+ * Source: $(PHOBOSSRC std/_thread.d)
  * Macros:
  *      WIKI=Phobos/StdThread
  */
@@ -87,7 +88,7 @@ class ThreadError : Error
 class Thread
 {
     /**
-     * Constructor used by classes derived from Thread that override main(). 
+     * Constructor used by classes derived from Thread that override main().
      * The optional stacksize parameter default value of 0 will cause threads
      * to be created with the default size for the executable - Dave Fladebo
      */
@@ -909,42 +910,42 @@ class Thread
 
     void pause()
     {
-        if (state == TS.RUNNING)
-        {   
-            version (GNU_pthread_suspend)
-            {
-                if (pthread_suspend_np(id) != 0)
-                    error("cannot pause");
-            }
-            else
+        version (GNU_pthread_suspend)
+        {
+            if (state != TS.RUNNING || pthread_suspend_np(id) != 0)
+                error("cannot pause");
+        }
+        else
+        {
+            if (state == TS.RUNNING)
             {
                 if (pthread_kill(id, SIGUSR1))
                     error("cannot pause");
                 else
-                    flagSuspend.wait(); // wait for acknowledgement
+                    sem_wait(&flagSuspend);     // wait for acknowledgement
             }
+            else
+                error("cannot pause");
         }
-        else
-            error("cannot pause");
     }
 
     void resume()
     {
-        if (state == TS.RUNNING)
+        version (GNU_pthread_suspend)
         {
-            version (GNU_pthread_suspend)
-            {
-                if (pthread_continue_np(id) != 0)
-                    error("cannot pause");
-            }
-            else
+            if (state != TS.RUNNING || pthread_continue_np(id) != 0)
+                error("cannot resume");
+        }
+        else
+        {
+            if (state == TS.RUNNING)
             {
                 if (pthread_kill(id, SIGUSR2))
                     error("cannot resume");
             }
+            else
+                error("cannot resume");
         }
-        else
-            error("cannot resume");
     }
 
     static void pauseAll()
@@ -963,7 +964,7 @@ class Thread
                     {
                         version (GNU_pthread_suspend)
                         {
-                            if (pthread_suspend_np(id))
+                            if (t.state != TS.RUNNING || pthread_suspend_np(id))
                                 t.error("cannot pause");
                         }
                         else
@@ -976,14 +977,13 @@ class Thread
                     }
                 }
 
-                version (GNU_pthread_suspend)
-                    { }
+                version (GNU_pthread_suspend) {}
                 else
                 {
                     // Wait for each paused thread to acknowledge
                     while (npause--)
                     {
-                        flagSuspend.wait();
+                        sem_wait(&flagSuspend);
                     }
                 }
             }
@@ -1023,15 +1023,10 @@ class Thread
     // pthread_create will fail gracefully if stack limit
     // is reached prior to allThreads max.
     static Thread[0x400] allThreads;
+
  
-    version (GNU_pthread_suspend)
-    {
-        // nothing
-    }
-    else
-    {
-        static Semaphore flagSuspend;
-    }
+    version (GNU_pthread_suspend) {} else
+    static sem_t flagSuspend;
 
     TS state;
     int idx = -1;                       // index into allThreads[]
@@ -1130,10 +1125,7 @@ class Thread
         allThreadsDim = 1;
         t.idx = 0;
 
-        version (GNU_pthread_suspend)
-        {
-            // nothing
-        }
+        version (GNU_pthread_suspend) {}
         else
         {
             /* Install signal handlers so we can suspend/resume threads
@@ -1160,6 +1152,7 @@ class Thread
             if (result)
                 goto Lfail;
             sigact.sa_handler = &pauseHandler;
+            sigact.sa_flags = SA_RESTART;
             result = sigaction(SIGUSR1, &sigact, null);
             if (result)
                 goto Lfail;
@@ -1168,7 +1161,8 @@ class Thread
             if (result)
                 goto Lfail;
 
-            if (! flagSuspend.create())
+            result = sem_init(&flagSuspend, 0, 0);
+            if (result)
                 goto Lfail;
 
             return;
@@ -1177,7 +1171,7 @@ class Thread
             throw new ThreadError("cannot initialize threads");
         }
 
-        
+
         /**********************************
          * This gets called when a thread gets SIGUSR1.
          */
@@ -1199,11 +1193,12 @@ class Thread
             Thread t = getThis();
             t.stackTop = getESP();
             t.flags &= ~1;
-            flagSuspend.signal();
+            // Release the semaphore _after_ stackTop is set
+            sem_post(&flagSuspend);
             while (1)
             {
-                sigsuspend(&sigmask);   // suspend until SIGUSR2
-                if (t.flags & 1)                // ensure it was resumeHandler()
+                sigsuspend(&sigmask);       // suspend until SIGUSR2
+                if (t.flags & 1)            // ensure it was resumeHandler()
                     break;
             }
         }
@@ -1214,9 +1209,9 @@ class Thread
 
         extern (C) static void resumeHandler(int sig)
         {
-            Thread t = getThis();
+        Thread t = getThis();
 
-            t.flags |= 1;
+        t.flags |= 1;
         }
     }
 

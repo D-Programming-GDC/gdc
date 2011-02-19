@@ -432,7 +432,6 @@ Expression *BinExp::op_overload(Scope *sc)
                 case TOKlg:
                 case TOKleg:
                 case TOKue:
-                default:
                     break;
             }
 

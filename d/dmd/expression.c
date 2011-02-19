@@ -121,6 +121,14 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
                         n++;
                         e1 = new VarExp(loc, f->vthis);
                     }
+                    else
+                    {
+                        e1->error("need 'this' of type %s to access member %s"
+                                  " from static function %s",
+                            ad->toChars(), var->toChars(), f->toChars());
+                        e1 = new ErrorExp();
+                        return e1;
+                    }
                 }
                 if (s && s->isClassDeclaration())
                 {   e1->type = s->isClassDeclaration()->type;
@@ -714,9 +722,6 @@ void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argum
 
                     case Timaginary32:
                         arg = arg->castTo(sc, Type::timaginary64);
-                        break;
-
-                    default:
                         break;
                 }
             }
@@ -1885,11 +1890,11 @@ int ComplexExp::equals(Object *o)
         (((Expression *)o)->op == TOKcomplex80 &&
          ((ne = (ComplexExp *)o), type->equals(ne->type)) &&
 #ifndef IN_GCC
-            RealEquals(creall(value), creall(ne->value)) &&
-            RealEquals(cimagl(value), cimagl(ne->value))
+        RealEquals(creall(value), creall(ne->value)) &&
+        RealEquals(cimagl(value), cimagl(ne->value))
 #else
-            RealEquals(value.re, ne->value.re) &&
-            RealEquals(value.im, ne->value.im)
+        RealEquals(value.re, ne->value.re) &&
+        RealEquals(value.im, ne->value.im)
 #endif
         )
        )
@@ -2836,7 +2841,7 @@ void StringExp::toMangleBuffer(OutBuffer *buf)
 {   char m;
     OutBuffer tmp;
     const char *p;
-    dchar_t c;
+    unsigned c;
     size_t u;
     unsigned char *q;
     unsigned qlen;
@@ -4000,6 +4005,9 @@ Expression *VarExp::semantic(Scope *sc)
 #endif
     }
 
+    if (type && !type->deco)
+        type = type->semantic(loc, sc);
+
     /* Fix for 1161 doesn't work because it causes protection
      * problems when instantiating imported templates passing private
      * variables as alias template parameters.
@@ -4435,9 +4443,14 @@ Expression *DeclarationExp::semantic(Scope *sc)
             error("declaration %s is already defined", s->toPrettyChars());
         else if (sc->func)
         {   VarDeclaration *v = s->isVarDeclaration();
-            if ((s->isFuncDeclaration() /*|| v && v->storage_class & STCstatic*/) &&
+            if ( (s->isFuncDeclaration() || s->isTypedefDeclaration() ||
+                s->isAggregateDeclaration() || s->isEnumDeclaration() ||
+                s->isInterfaceDeclaration()) &&
                 !sc->func->localsymtab->insert(s))
-                error("declaration %s is already defined in another scope in %s", s->toPrettyChars(), sc->func->toChars());
+            {
+                error("declaration %s is already defined in another scope in %s",
+                    s->toPrettyChars(), sc->func->toChars());
+            }
             else if (!global.params.useDeprecated)
             {   // Disallow shadowing
 
@@ -5579,7 +5592,8 @@ Expression *DotIdExp::semantic(Scope *sc)
                         e->type = v->type;
                     }
                 }
-                return e->deref();
+                e = e->deref();
+                return e->semantic(sc);
             }
 
             FuncDeclaration *f = s->isFuncDeclaration();
@@ -8606,14 +8620,6 @@ Expression *CatAssignExp::semantic(Scope *sc)
         type = e1->type;
         e = this;
     }
-    else if ((tb1->ty == Tarray) &&
-        e2->implicitConvTo(tb1next)
-       )
-    {   // Append element
-        e2 = e2->castTo(sc, tb1next);
-        type = e1->type;
-        e = this;
-    }
     else if (tb1->ty == Tarray &&
         (tb1next->ty == Tchar || tb1next->ty == Twchar) &&
         e2->implicitConvTo(Type::tdchar)
@@ -8626,6 +8632,14 @@ Expression *CatAssignExp::semantic(Scope *sc)
         /* Do not allow appending wchar to char[] because if wchar happens
          * to be a surrogate pair, nothing good can result.
          */
+    }
+    else if ((tb1->ty == Tarray) &&
+        e2->implicitConvTo(tb1next)
+       )
+    {   // Append element
+        e2 = e2->castTo(sc, tb1next);
+        type = e1->type;
+        e = this;
     }
     else
     {
@@ -10033,9 +10047,6 @@ Expression *CondExp::semantic(Scope *sc)
             case Tcomplex80:
                 e2 = e2->castTo(sc, e1->type);
                 break;
-
-            default:
-                break;
         }
         switch (e2->type->toBasetype()->ty)
         {
@@ -10043,9 +10054,6 @@ Expression *CondExp::semantic(Scope *sc)
             case Tcomplex64:
             case Tcomplex80:
                 e1 = e1->castTo(sc, e2->type);
-                break;
-
-            default:
                 break;
         }
     }

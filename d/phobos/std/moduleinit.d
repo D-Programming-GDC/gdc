@@ -1,5 +1,9 @@
 // Written in the D programming language
 
+/**
+ * Source: $(PHOBOSSRC std/_moduleinit.d)
+ */
+
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
@@ -233,8 +237,7 @@ void _moduleCtor2(ModuleInfo[] mi, int skip)
         debug printf("\tmodule[%d] = '%p'\n", i, m);
         if (!m)
             continue;
-        debug printf("\tmodule[%d] = '%.*s'\n", i,
-            cast(int) m.name.length, m.name.ptr);
+        debug printf("\tmodule[%d] = '%.*s'\n", i, m.name);
         if (m.flags & MIctordone)
             continue;
         debug printf("\tmodule[%d] = '%.*s', m = x%x, m.flags = x%x\n", i, m.name, m, m.flags);
@@ -282,8 +285,7 @@ extern (C) void _moduleDtor()
     {
         ModuleInfo m = _moduleinfo_dtors[i];
 
-        debug printf("\tmodule[%d] = '%.*s', x%x\n", i,
-            cast(int) m.name.length, m.name.ptr, m);
+        debug printf("\tmodule[%d] = '%.*s', x%x\n", i, m.name, m);
         if (m.dtor)
         {
             (*m.dtor)();
@@ -306,8 +308,7 @@ extern (C) void _moduleUnitTests()
         if (!m)
             continue;
 
-        debug printf("\tmodule[%d] = '%.*s'\n", i,
-            cast(int) m.name.length, m.name.ptr);
+        debug printf("\tmodule[%d] = '%.*s'\n", i, m.name);
         if (m.unitTest)
         {
             (*m.unitTest)();

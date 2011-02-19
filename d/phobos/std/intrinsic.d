@@ -3,12 +3,6 @@
 // www.digitalmars.com
 // Placed into the public domain
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, May 2006
-*/
-
 /** These functions are built-in intrinsics to the compiler.
  *
         Intrinsic functions are functions built in to the compiler,
@@ -22,6 +16,7 @@
  * Copyright: Public Domain
  * License:   Public Domain
  * Authors:   Walter Bright
+ * Source: $(PHOBOSSRC std/_intrinsic.d)
  * Macros:
  *      WIKI=Phobos/StdIntrinsic
  */
@@ -35,19 +30,7 @@ module std.intrinsic;
  *      The bit number of the first bit set.
  *      The return value is undefined if v is zero.
  */
-version (GNU)
-    int bsf(uint v)
-    {
-        uint m = 1;
-        uint i;
-        for (i = 0; i < 32; i++,m<<=1) {
-            if (v&m)
-                return i;
-        }
-        return i; // supposed to be undefined
-    }
-else
-int bsf(uint v);
+int bsf(size_t v);
 
 /**
  * Scans the bits in v from the most significant bit
@@ -78,59 +61,21 @@ int bsf(uint v);
  *  bsf(x21) = 0<br>
  *  bsr(x21) = 5
  */
-version (GNU)
-int bsr(size_t v)
-{
-    size_t m = 0x80000000;
-    size_t i;
-    for (i = 32; i ; i--,m>>>=1) {
-        if (v&m)
-            return i-1;
-    }
-    return i; // supposed to be undefined
-}
-else
 int bsr(size_t v);
 
 /**
  * Tests the bit.
  */
-version (GNU)
-int bt(in size_t *p, size_t bitnum)
-{
-    return (p[bitnum / (size_t.sizeof*8)] & (1<<(bitnum & ((size_t.sizeof*8)-1)))) ? -1 : 0 ;
-}
-else
 int bt(in size_t *p, size_t bitnum);
 
 /**
  * Tests and complements the bit.
  */
-version (GNU)
-int btc(size_t *p, size_t bitnum)
-{
-    size_t * q = p + (bitnum / (size_t.sizeof*8));
-    size_t mask = 1 << (bitnum & ((size_t.sizeof*8) - 1));
-    int result = *q & mask;
-    *q ^= mask;
-    return result ? -1 : 0;
-}
-else
 int btc(size_t *p, size_t bitnum);
 
 /**
  * Tests and resets (sets to 0) the bit.
  */
-version (GNU)
-int btr(size_t *p, size_t bitnum)
-{
-    size_t * q = p + (bitnum / (size_t.sizeof*8));
-    size_t mask = 1 << (bitnum & ((size_t.sizeof*8) - 1));
-    int result = *q & mask;
-    *q &= ~mask;
-    return result ? -1 : 0;
-}
-else
 int btr(size_t *p, size_t bitnum);
 
 /**
@@ -190,16 +135,6 @@ bt(array, 1) = -1
 array = [0]:x2, [1]:x100
 </pre>
  */
-version (GNU)
-int bts(size_t *p, size_t bitnum)
-{
-    size_t * q = p + (bitnum / (size_t.sizeof*8));
-    size_t mask = 1 << (bitnum & ((size_t.sizeof*8) - 1));
-    int result = *q & mask;
-    *q |= mask;
-    return result ? -1 : 0;
-}
-else
 int bts(size_t *p, size_t bitnum);
 
 
@@ -208,62 +143,38 @@ int bts(size_t *p, size_t bitnum);
         byte 3, byte 1 becomes byte 2, byte 2 becomes byte 1, byte 3
         becomes byte 0.
  */
-version (GNU)
-uint bswap(uint v)
-{
-    return ((v&0xFF)<<24)|((v&0xFF00)<<8)|((v&0xFF0000)>>>8)|((v&0xFF000000)>>>24);
-}
-else
 uint bswap(uint v);
 
 
 /**
  * Reads I/O port at port_address.
  */
-version (GNU)
-    ubyte  inp(uint p) { return 0; }
-else
 ubyte  inp(uint port_address);
 
 /**
  * ditto
  */
-version (GNU)
-    ushort inpw(uint p) { return 0; }
-else
 ushort inpw(uint port_address);
 
 /**
  * ditto
  */
-version (GNU)
-    uint   inpl(uint p) { return 0; }
-else
 uint   inpl(uint port_address);
 
 
 /**
  * Writes and returns value to I/O port at port_address.
  */
-version (GNU)
-    ubyte  outp(uint p, ubyte v) { return v; }
-else
 ubyte  outp(uint port_address, ubyte value);
 
 /**
  * ditto
  */
-version (GNU)
-    ushort outpw(uint p, ushort v) { return v; }
-else
 ushort outpw(uint port_address, ushort value);
 
 /**
  * ditto
  */
-version (GNU)
-    uint   outpl(uint p, uint v) { return v; }
-else
 uint   outpl(uint port_address, uint value);
 
 

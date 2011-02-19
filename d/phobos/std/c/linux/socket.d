@@ -16,9 +16,9 @@ else version (Solaris)
 }
 else
 {
+
 private import std.stdint;
 private import std.c.linux.linux;
-
 
 extern(C):
 
@@ -422,6 +422,7 @@ enum: int
 	IPPROTO_MAX =   256,
 }
 
+
 enum: uint
 {
 	INADDR_ANY =        0,
@@ -502,6 +503,7 @@ const in6_addr IN6ADDR_LOOPBACK = { s6_addr8: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 	
 const uint INET_ADDRSTRLEN = 16;
 const uint INET6_ADDRSTRLEN = 46;
+
 
 struct hostent
 {

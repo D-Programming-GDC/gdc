@@ -1,4 +1,7 @@
 
+/**
+ * Source: $(PHOBOSSRC std/_math.d)
+ */
 module std.array;
 
 private import std.c.stdio;
@@ -18,8 +21,7 @@ class ArrayBoundsError : Error
 
         char[] buffer = new char[19 + filename.length + linnum.sizeof * 3 + 1];
         int len;
-        len = sprintf(buffer.ptr, "ArrayBoundsError %.*s(%u)",
-            cast(int) filename.length, filename.ptr, linnum);
+        len = sprintf(buffer.ptr, "ArrayBoundsError %.*s(%u)", filename.length, filename.ptr, linnum);
         super(buffer[0..len]);
     }
 }

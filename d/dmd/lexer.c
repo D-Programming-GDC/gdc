@@ -2554,8 +2554,6 @@ done:
             case TOKfloat80v:
                 result = TOKimaginary80v;
                 break;
-            default:
-                break;
         }
     }
 #if _WIN32 && __DMC__

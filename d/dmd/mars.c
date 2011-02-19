@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -103,13 +103,13 @@ Global::Global()
     dll_ext  = "so";
 #endif
 
-    copyright = "Copyright (c) 1999-2010 by Digital Mars";
+    copyright = "Copyright (c) 1999-2011 by Digital Mars";
     written = "written by Walter Bright"
 #if TARGET_NET
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
 #endif
     ;
-    version = "v1.066";
+    version = "v1.067";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -845,7 +845,15 @@ int main(int argc, char *argv[])
         global.params.objname = NULL;
 
         // Haven't investigated handling these options with multiobj
-        if (!global.params.cov && !global.params.trace)
+        if (!global.params.cov && !global.params.trace
+#if 0 && TARGET_WINDOS
+            /* multiobj causes class/struct debug info to be attached to init-data,
+             * but this will not be linked into the executable, so this info is lost.
+             * Bugzilla 4014
+             */
+            && !global.params.symdebug
+#endif
+           )
             global.params.multiobj = 1;
     }
     else if (global.params.run)

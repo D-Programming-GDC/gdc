@@ -113,7 +113,7 @@ extern (C) char[] _adReverseChar(char[] a)
             memcpy(hi + stridehi - stridelo, tmplo.ptr, stridelo);
 
             lo += stridehi;
-            hi = hi - 1 + (stridehi - stridelo);
+            hi = hi - 1 + cast(int)(stridehi - stridelo);
         }
     }
     return a;
@@ -436,7 +436,7 @@ unittest
     size_t i;
 
     for (i = 0; i < 5; i++)
-        a[i] = i;
+        a[i] = cast(int)i;
     b = a.reverse;
     assert(b is a);
     for (i = 0; i < 5; i++)
@@ -452,7 +452,7 @@ unittest
     X20[] d;
 
     for (i = 0; i < 5; i++)
-    {   c[i].a = i;
+    {   c[i].a = cast(int)i;
         c[i].e = 10;
     }
     d = c.reverse;

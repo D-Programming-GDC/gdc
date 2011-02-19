@@ -21,6 +21,9 @@
  *     distribution.
  */
 
+/**
+ * Source: $(PHOBOSSRC std/_dateparse.d)
+ */
 
 module std.dateparse;
 
@@ -52,8 +55,7 @@ struct DateParse
         //else
             //buffer = new char[s.length];
 
-        debug(dateparse) printf("DateParse.parse('%.*s')\n",
-            cast(int) s.length, s.ptr);
+        debug(dateparse) printf("DateParse.parse('%.*s')\n", s);
         if (!parseString(s))
         {
             goto Lerror;

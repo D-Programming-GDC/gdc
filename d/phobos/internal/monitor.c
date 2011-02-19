@@ -21,7 +21,7 @@
 
 #if _WIN32
 #elif linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
-#define PHOBOS_USE_PTHREADS     1
+#define USE_PTHREADS    1
 #else
 #endif
 
@@ -29,7 +29,7 @@
 #include <windows.h>
 #endif
 
-#if PHOBOS_USE_PTHREADS
+#if USE_PTHREADS
 #include <pthread.h>
 #endif
 
@@ -44,7 +44,7 @@ typedef struct Monitor
     CRITICAL_SECTION mon;
 #endif
 
-#if PHOBOS_USE_PTHREADS
+#if USE_PTHREADS
     pthread_mutex_t mon;
 #endif
 } Monitor;
@@ -129,8 +129,7 @@ void _d_monitorrelease(Object *h)
 
 /* =============================== linux ============================ */
 
-// needs to be else..
-#elif PHOBOS_USE_PTHREADS
+#elif USE_PTHREADS
 
 #if linux || __APPLE__
 #ifndef PTHREAD_MUTEX_RECURSIVE
@@ -149,7 +148,7 @@ static pthread_mutexattr_t _monitors_attr;
 void _STI_monitor_staticctor()
 {
     if (!inited)
-    {   
+    {
 #ifndef PTHREAD_MUTEX_ALREADY_RECURSIVE
         pthread_mutexattr_init(&_monitors_attr);
         pthread_mutexattr_settype(&_monitors_attr, PTHREAD_MUTEX_RECURSIVE);

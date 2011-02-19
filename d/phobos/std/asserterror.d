@@ -1,4 +1,7 @@
 
+/**
+ * Source: $(PHOBOSSRC std/_asserterror.d)
+ */
 module std.asserterror;
 
 import std.c.stdio;
@@ -36,7 +39,7 @@ class AssertError : Error
         {
             version (Win32) alias _snprintf snprintf;
             count = snprintf(buffer, len, "AssertError Failure %.*s(%u) %.*s",
-                cast(int) filename.length, filename.ptr, linnum, cast(int) msg.length, msg.ptr);
+                filename.length, filename.ptr, linnum, msg.length, msg.ptr);
             if (count >= len || count == -1)
             {   super("AssertError internal failure");
                 std.c.stdlib.free(buffer);

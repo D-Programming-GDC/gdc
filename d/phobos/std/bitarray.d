@@ -1,4 +1,5 @@
 /***********************
+ * Source: $(PHOBOSSRC std/_bitarray.d)
  * Macros:
  *      WIKI = StdBitarray
  */
@@ -271,7 +272,7 @@ struct BitArray
     {
         debug(bitarray) printf("BitArray.sort.unittest\n");
 
-        static uint x = 0b1100011000;
+        static size_t x = 0b1100011000;
         static BitArray ba = { 10, &x };
         ba.sort;
         for (size_t i = 0; i < 6; i++)
@@ -290,17 +291,17 @@ struct BitArray
 
         if (this.length != a2.length)
             return 0;           // not equal
-        uint *p1 = cast(uint*)this.ptr;
-        uint *p2 = cast(uint*)a2.ptr;
-        size_t n = this.length / (8 * uint.sizeof);
+        byte *p1 = cast(byte*)this.ptr;
+        byte *p2 = cast(byte*)a2.ptr;
+        auto n = this.length / 8;
         for (i = 0; i < n; i++)
         {
             if (p1[i] != p2[i])
                 return 0;               // not equal
         }
 
-        n = this.length & ((8 * uint.sizeof) - 1);
-        auto mask = (1 << n) - 1;
+        n = this.length & 7;
+        auto mask = cast(ubyte)((1 << n) - 1);
         //printf("i = %d, n = %d, mask = %x, %x, %x\n", i, n, mask, p1[i], p2[i]);
         return (mask == 0) || (p1[i] & mask) == (p2[i] & mask);
     }
@@ -338,37 +339,31 @@ struct BitArray
         auto len = this.length;
         if (a2.length < len)
             len = a2.length;
-        auto p1 = cast(uint*)this.ptr;
-        auto p2 = cast(uint*)a2.ptr;
-        size_t n = len / (8 * uint.sizeof);
+        auto p1 = cast(ubyte*)this.ptr;
+        auto p2 = cast(ubyte*)a2.ptr;
+        auto n = len / 8;
         for (i = 0; i < n; i++)
         {
             if (p1[i] != p2[i])
                 break;          // not equal
         }
-        /*      
-        for (uint j = i * 8; j < len; j++)
-        {   ubyte mask = cast(ubyte)(1 << j);
-            int c;
+        for (auto j = i * 8; j < len; j++)
+        {   auto mask = cast(ubyte)(1 << j);
 
-            c = cast(int)(p1[i] & mask) - cast(int)(p2[i] & mask);
-            if (c)
-                return c;
-        }
-        */
-        uint mask = 1;
-        for (auto j = i * (8 * uint.sizeof); j < len; j++)
-        {
             auto c = cast(int)(p1[i] & mask) - cast(int)(p2[i] & mask);
             if (c)
                 return c;
-            mask <<= 1;
         }
-        ptrdiff_t c = cast(ptrdiff_t)this.len - cast(ptrdiff_t)a2.length;
-        if (c < 0)
-            return -1;
+        version (D_LP64)
+        {
+            long c = this.len - a2.length;
+            if (c < 0)
+                return -1;
+            else
+                return c != 0;
+        }
         else
-            return c != 0;
+            return cast(int)this.len - cast(int)a2.length;
     }
 
     unittest
@@ -472,7 +467,7 @@ struct BitArray
         BitArray a; a.init(ba);
         void[] v = cast(void[])a;
 
-        assert(v.length == a.dim * uint.sizeof);
+        assert(v.length == a.dim * size_t.sizeof);
     }
 
     /***************************************

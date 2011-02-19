@@ -596,6 +596,116 @@ body
  * length pairs of key/value pairs.
  */
 
+version (GNU) {} else
+extern (C)
+BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
+{
+    auto valuesize = ti.next.tsize();           // value size
+    auto keyti = ti.key;
+    auto keysize = keyti.tsize();               // key size
+    BB* result;
+
+    //printf("_d_assocarrayliteralT(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
+    //printf("tivalue = %.*s\n", ti.next.classinfo.name);
+    if (length == 0 || valuesize == 0 || keysize == 0)
+    {
+        ;
+    }
+    else
+    {
+        va_list q;
+        version (X86_64) va_start(q, __va_argsave); else va_start(q, length);
+
+        result = new BB();
+        size_t i;
+
+        for (i = 0; i < prime_list.length - 1; i++)
+        {
+            if (length <= prime_list[i])
+                break;
+        }
+        auto len = prime_list[i];
+        result.b = new aaA*[len];
+
+        size_t keystacksize   = (keysize   + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+        size_t valuestacksize = (valuesize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+
+        size_t keytsize = aligntsize(keysize);
+
+        aaA* ne;
+        for (size_t j = 0; j < length; j++)
+        {
+            if (!ne)
+                ne = cast(aaA *) cast(void*) new void[aaA.sizeof + keytsize + valuesize];
+            void* pkey = ne + 1;
+            va_arg(q, keyti, pkey);
+            //q += keystacksize;
+            aaA* e;
+
+            auto key_hash = keyti.getHash(pkey);
+            //printf("hash = %d\n", key_hash);
+            i = key_hash % len;
+            auto pe = &result.b[i];
+            while (1)
+            {
+                e = *pe;
+                if (!e)
+                {
+                    // Not found, create new elem
+                    //printf("create new one\n");
+                    //e = cast(aaA *) cast(void*) new void[aaA.sizeof + keytsize + valuesize];
+                    //memcpy(e + 1, pkey, keysize);
+                    e = ne;
+                    e.hash = key_hash;
+                    *pe = e;
+                    ne = null;
+                    result.nodes++;
+                    break;
+                }
+                if (key_hash == e.hash)
+                {
+                    auto c = keyti.compare(pkey, e + 1);
+                    if (c == 0)
+                        break;
+                }
+                pe = &e.next;
+            }
+            //memcpy(cast(void *)(e + 1) + keytsize, q, valuesize);
+            //q += valuestacksize;
+            version (X86)
+                va_arg(q, ti.next, cast(void *)(e + 1) + keytsize);
+            else
+            {
+                TypeInfo tis = cast(TypeInfo_StaticArray)ti.next;
+                if (tis)
+                {
+                    /* Special handling for static arrays because we put their contents
+                     * on the stack, which isn't the ABI for D1 static arrays.
+                     * (It is for D2, though.)
+                     * The code here is ripped from std.c.stdarg, and initializes
+                     * assuming the data is always passed on the stack.
+                     */
+                    __va_list* vap = cast(__va_list*)q;
+                    auto talign = tis.talign();
+                    auto tsize = tis.tsize();
+                    void* parmn = cast(void *)(e + 1) + keytsize;
+                    auto p = cast(void*)((cast(size_t)vap.stack_args + talign - 1) & ~(talign - 1));
+                    vap.stack_args = cast(void*)(cast(size_t)p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
+                    parmn[0..tsize] = p[0..tsize];
+                }
+                else
+                {
+                    va_arg(q, ti.next, cast(void *)(e + 1) + keytsize);
+                }
+            }
+        }
+        if (ne)
+            delete ne;
+        va_end(q);
+    }
+    return result;
+}
+
 extern (C)
 BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, size_t length, void* keys, void* values)
 {

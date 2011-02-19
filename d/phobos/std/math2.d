@@ -12,6 +12,7 @@
  * in supporting documentation.  Author makes no representations about
  * the suitability of this software for any purpose. It is provided
  * "as is" without express or implied warranty.
+ * Source: $(PHOBOSSRC std/_math2.d)
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
@@ -90,30 +91,23 @@ private ushort fp_cw_chop = 7999;
 /*********************************
  * Integer part
  */
- 
-version (GNU)
+
+real trunc(real n)
 {
     version (GNU_Need_trunc) {
-        real trunc(real n) {
-            return n >= 0 ? std.math.floor(n) : std.math.ceil(n);
-        }
+        return n >= 0 ? std.math.floor(n) : std.math.ceil(n);
+    } else version (GNU) {
+        return std.c.math.truncl(n);
     } else {
-        alias std.c.math.truncl trunc;
-    }
-}
-else
-{
-    real trunc(real n)
-    {
-            ushort cw;
-            asm
-            {
-                    fstcw cw;
-                    fldcw fp_cw_chop;
-                    fld n;
-                    frndint;
-                    fldcw cw;
-            }   
+        ushort cw;
+        asm
+        {
+                fstcw cw;
+                fldcw fp_cw_chop;
+                fld n;
+                frndint;
+                fldcw cw;
+        }
     }
 }
 
