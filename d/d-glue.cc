@@ -986,7 +986,7 @@ CatAssignExp::toElem(IRState * irs)
 
         // assign e2 to last element
         tree off_exp = irs->darrayLenRef(result);
-        off_exp = build2(MINUS_EXPR, TREE_TYPE(off_exp), irs->darrayLenRef(result), size_one_node);
+        off_exp = build2(MINUS_EXPR, TREE_TYPE(off_exp), off_exp, size_one_node);
         off_exp = irs->maybeMakeTemp(off_exp);
 
         tree ptr_exp = irs->darrayPtrRef(result);
@@ -3309,10 +3309,33 @@ Module::genobjfile(int multiobj)
     g.ofile->endModule();
 }
 
-// This is not used for GCC
 unsigned
 Type::totym()
 {
+    gcc_assert(ctype);
+#if V2
+    // Apply modifiers to ctype
+    switch (mod)
+    {
+        case 0:
+            break;
+        case MODconst:
+        case MODwild:
+        case MODimmutable:
+            TYPE_READONLY(ctype) = 1;
+            break;
+        case MODshared:
+            TYPE_VOLATILE(ctype) = 1;
+            break;
+        case MODshared | MODwild:
+        case MODshared | MODconst:
+            TYPE_READONLY(ctype) = 1;
+            TYPE_VOLATILE(ctype) = 1;
+            break;
+        default:
+            gcc_unreachable();
+    }
+#endif
     return 0;
 }
 
@@ -3426,11 +3449,11 @@ Type::toCtype()
                 return NULL_TREE;
         }
 #if V2
+        // Build a variant of the tree type.
         if (this->mod && ty != Terror)
-        {   // Build a variant of the tree type.
             ctype = build_variant_type_copy(ctype);
-        }
 #endif
+        this->totym();
     }
     return ctype;
 }
@@ -3475,7 +3498,6 @@ TypeTypedef::toCtype()
         DECL_CONTEXT(type_decl) =
         rest_of_decl_compilation(type_decl, NULL, ?context?, 0); //%% flag
          */
-
         ctype = type_node;
     }
     return ctype;
@@ -3797,7 +3819,10 @@ type *
 TypePointer::toCtype()
 {
     if (! ctype)
+    {
         ctype = build_pointer_type(next->toCtype());
+        this->totym();
+    }
     return ctype;
 }
 
@@ -3983,7 +4008,6 @@ TypeClass::toCtype()
         TYPE_CONTEXT(rec_type) = gen.declContext(sym);
 
         agg_layout.finish(sym->attributes);
-
     }
     return ctype;
 }
