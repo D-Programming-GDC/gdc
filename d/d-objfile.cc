@@ -401,13 +401,7 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
         }
         else
             is_static = hasModule(dsym->getModule());
-        /*
-        if (func_decl)
-            fprintf(stderr, "%s: is_template = %d is_static = %d te = %d m = %s cur = %s\n",
-                func_decl->toPrettyChars(), is_template, is_static, emitTemplates,
-                dsym->getModule() ? dsym->getModule()->toChars() : "none",
-                getCurrentModule()->toChars());
-        */
+
         if (TREE_CODE(decl_tree) == VAR_DECL &&
                 (real_decl && (real_decl->storage_class & STCextern)))
             is_static = false;
@@ -423,6 +417,23 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
         {
             DECL_EXTERNAL(decl_tree) = 1;
             TREE_STATIC(decl_tree) = 0;
+        }
+
+        if (func_decl)
+        {   /* From DMD:
+               Vector operations should be comdat's
+             */
+            if (func_decl->isArrayOp)
+            {
+                DECL_COMDAT(decl_tree) = 1;
+                DECL_ARTIFICIAL(decl_tree) = 1;
+            }
+#if 0
+            fprintf(stderr, "%s: is_template = %d is_static = %d te = %d m = %s cur = %s\n",
+                    func_decl->toPrettyChars(), is_template, is_static, emitTemplates,
+                    dsym->getModule() ? dsym->getModule()->toChars() : "none",
+                    getCurrentModule()->toChars());
+#endif
         }
 
         if ((real_decl))
