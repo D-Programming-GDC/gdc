@@ -1877,10 +1877,18 @@ d_types_compatible_p (tree t1, tree t2)
 tree
 d_convert_parm_for_inlining  (tree parm, tree value, tree fndecl, int argnum)
 {
+    if (!value)
+        return value;
+
+    if (TYPE_ARG_TYPES(TREE_TYPE(fndecl))
+            && (TYPE_MAIN_VARIANT(TREE_TYPE(parm))
+                == TYPE_MAIN_VARIANT(TREE_TYPE(value))))
+        return value;
+
     if (TREE_TYPE(parm) != TREE_TYPE(value))
         return build1(NOP_EXPR, TREE_TYPE(parm), value);
-    else
-        return value;
+    
+    return value;
 }
 #endif
 

@@ -1710,10 +1710,7 @@ CallExp::toElem(IRState* irs)
     tree call_exp = irs->call(e1, arguments);
     // Some library calls are defined to return a generic type.
     // this->type is the real type. (See crash2.d)
-    tree call_type = type->toCtype();
-
-    if (TREE_TYPE(call_exp) != call_type)
-        call_exp = irs->nop(call_exp, call_type);
+    TREE_TYPE(call_exp) = type->toCtype();
 
     return call_exp;
 }
@@ -2722,7 +2719,7 @@ RealExp::toElem(IRState * irs)
 elem *
 IntegerExp::toElem(IRState * irs)
 {
-    return irs->integerConstant(value, type);
+    return irs->integerConstant(value, type->toBasetype());
 }
 
 

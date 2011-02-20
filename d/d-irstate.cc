@@ -117,9 +117,10 @@ bool
 IRBase::shouldDeferFunction(FuncDeclaration * decl)
 {
 #if D_GCC_VER < 40
-    if (! func || gen.functionNeedsChain(decl)) {
+    if (! func || gen.functionNeedsChain(decl))
         return false;
-    } else {
+    else
+    {
         deferredFuncDecls.push(decl);
         return true;
     }

@@ -258,7 +258,6 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
     tree result = NULL_TREE;
 
     gcc_assert(exp_type && target_type);
-    target_type = target_type->toBasetype();
     exp_type = exp_type->toBasetype();
 
 #if V2
@@ -1192,7 +1191,7 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
 
 static const char * libcall_ids[LIBCALL_count] = {
     "_d_assert", "_d_assert_msg", "_d_array_bounds", "_d_switch_error",
-    "_d_invariant", /*"_D9invariant12_d_invariantFC6ObjectZv", */
+    /*"_d_invariant",*/ "_D9invariant12_d_invariantFC6ObjectZv",
     "_d_newclass", "_d_newarrayT",
     "_d_newarrayiT",
     "_d_newarraymTp", "_d_newarraymiTp", "_d_allocmemory",
