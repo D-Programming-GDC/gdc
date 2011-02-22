@@ -212,7 +212,7 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
              core/sys/posix/sys/shm.di core/sys/posix/sys/socket.di \
              core/sys/posix/sys/stat.di core/sys/posix/sys/time.di \
              core/sys/posix/sys/types.di core/sys/posix/sys/uio.di \
-             core/sys/posix/sys/un.di core/sys/posix/sys/wait.di \
+             core/sys/posix/sys/wait.di \
              \
              core/sys/windows/windows.di
 
