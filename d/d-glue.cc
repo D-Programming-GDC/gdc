@@ -3778,8 +3778,21 @@ TypeDArray::toCtype()
 {
     if (! ctype)
     {
-        ctype = gen.twoFieldType(Type::tsize_t, next->pointerTo(), this,
-            "length", "ptr");
+#if V2
+        if (mod)
+        {   /* Rather than making const(T[]) and const(T)[] two distinct
+               types, make the former a variant of the latter, and apply
+               modifiers afterwards. */
+            ctype = next->arrayOf()->toCtype();
+            ctype = build_variant_type_copy(ctype);
+            this->totym();
+        }
+        else
+#endif
+        {
+            ctype = gen.twoFieldType(Type::tsize_t, next->pointerTo(), this,
+                    "length", "ptr");
+        }
         dkeep(ctype);
     }
     return ctype;

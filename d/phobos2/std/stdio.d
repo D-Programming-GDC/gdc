@@ -62,6 +62,12 @@ version (FreeBSD)
     alias core.stdc.stdio.fopen fopen64;
 }
 
+version (MinGW)
+{
+    version = DIGITAL_MARS_STDIO;
+    import std.c.stdio : __fhnd_info, FHND_WCHAR, FHND_TEXT;
+}
+
 version(Windows)
 {
     alias core.stdc.stdio.fopen fopen64;

@@ -87,6 +87,6 @@ darwin)  echo "#define TARGET_OSX     1" ;;
 freebsd) echo "#define TARGET_FREEBSD 1" ;;
 linux)   echo "#define TARGET_LINUX   1" ;;
 solaris) echo "#define TARGET_SOLARIS 1" ;;
-Win32)                                   ;; # Nothing
+Win32)   echo "#define TARGET_WINDOS  1" ;;
 *)       echo "#define TARGET_UNIX    1" ;;
 esac
