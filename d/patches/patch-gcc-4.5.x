@@ -305,17 +305,6 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
    %L     process LIB_SPEC as a spec.
    %G     process LIBGCC_SPEC as a spec.
 ***************
-*** 1001,1006 ****
---- 1008,1015 ----
-  #endif
-  #endif
-  
-+ #define GCC_SPEC_FORMAT_4 1
-+ 
-  /* Record the mapping from file suffixes for compilation specs.  */
-  
-  struct compiler
-***************
 *** 1730,1735 ****
 --- 1739,1748 ----
     { "compare-debug-dump-opt",	compare_debug_dump_opt_spec_function },

@@ -362,17 +362,6 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
    %L     process LIB_SPEC as a spec.
    %G     process LIBGCC_SPEC as a spec.
 ***************
-*** 922,927 ****
---- 926,933 ----
-  #endif
-  #endif
-  
-+ #define GCC_SPEC_FORMAT_4 1
-+ 
-  /* Record the mapping from file suffixes for compilation specs.  */
-  
-  struct compiler
-***************
 *** 1656,1661 ****
 --- 1659,1668 ----
     { "replace-outfile",		replace_outfile_spec_function },

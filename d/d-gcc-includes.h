@@ -31,11 +31,6 @@
 #endif
 
 extern "C" {
-
-// hack needed to prevent inclusion of the generated insn-flags.h
-// which defines some inline functions that use C prototypes....
-#define GCC_INSN_FLAGS_H
-
 // Conflicting definitions between stdio.h and libiberty.h over the throw()
 #define HAVE_DECL_ASPRINTF 1
 
