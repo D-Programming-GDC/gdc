@@ -30,8 +30,8 @@
 #define LANGSPEC        (1<<1)
 /* This bit is set if they did `-lm' or `-lmath'.  */
 #define MATHLIB         (1<<2)
-/* This bit is set if they did `-lpthread'.  */
-#define THREADLIB       (1<<3)
+/* This bit is set if they did `-pthread'.  */
+#define WITHTHREAD      (1<<3)
 /* This bit is set if they did `-lrt'.  */
 #define TIMERLIB        (1<<4)
 /* This bit is set if they did `-lc'.  */
@@ -47,9 +47,6 @@
 #ifndef MATH_LIBRARY_PROFILE
 #define MATH_LIBRARY_PROFILE MATH_LIBRARY
 #endif
-
-#define THREAD_LIBRARY "-lpthread"
-#define THREAD_LIBRARY_PROFILE THREAD_LIBRARY
 
 #define RT_LIBRARY "-lrt"
 #define RT_LIBRARY_PROFILE RT_LIBRARY
@@ -76,6 +73,9 @@ static unsigned n_all_d_sources = 0;
 static char * output_directory_option = NULL;
 static int output_parents_option = 0;
 static char * only_source_option = NULL;
+    
+/* Whether we need -pthread flag. */
+extern int need_pthreads;
 
 void
 lang_specific_driver (int *in_argc, const char *const **in_argv,
@@ -122,8 +122,8 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     /* "-lm" or "-lmath" if it appears on the command line.  */
     const char *saw_math = 0;
 
-    /* "-lpthread" if it appears on the command line.  */
-    const char *saw_thread = 0;
+    /* "-pthread" if it appears on the command line.  */
+    const char *saw_pthread = 0;
 
     /* "-lrt" if it appears on the command line.  */
     const char *saw_librt = 0;
@@ -132,14 +132,11 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     const char *saw_libc = 0;
 
     /* An array used to flag each argument that needs a bit set for
-       LANGSPEC, MATHLIB, THREADLIB, or WITHLIBC.  */
+       LANGSPEC, MATHLIB, WITHTHREAD, or WITHLIBC.  */
     int *args;
 
     /* By default, we throw on the math library if we have one.  */
     int need_math = (MATH_LIBRARY[0] != '\0');
-
-    /* Whether we need the thread library */
-    int need_pthreads = 0;
 
     /* True if we saw -static. */
     int static_link = 0;
@@ -167,9 +164,6 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 
     /* The total number of arguments with the new stuff.  */
     int num_args = 1;
-
-    /* If we add libraries, should we read $(libdir)/phobos-threadlib and add that */
-    //int add_thread_lib = 1; // Unused
 
     argc = *in_argc;
     argv = *in_argv;
@@ -259,8 +253,6 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                   args[i] |= MATHLIB;
                   need_math = 0;
               }
-              else if (strcmp (arg, "pthread") == 0)
-                  args[i] |= THREADLIB;
               else if (strcmp (arg, "rt") == 0)
                   args[i] |= TIMERLIB;
               else if (strcmp (argv[i], "c") == 0)
@@ -269,6 +261,8 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                   /* Unrecognised libraries (e.g. -ltango) may require libphobos.  */
                   library = (library == 0) ? 1 : library;
             }
+            else if (strcmp (argv[i], "-pthread") == 0)
+                args[i] |= WITHTHREAD;
             else if (strcmp (argv[i], "-pg") == 0 || strcmp (argv[i], "-p") == 0)
                 saw_profile_flag++;
             else if (strcmp (argv[i], "-v") == 0)
@@ -421,10 +415,10 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
             saw_math = argv[i];
         }
 
-        if (!saw_thread && (args[i] & THREADLIB) && library > 0)
+        if (!saw_pthread && (args[i] & WITHTHREAD) && library > 0)
         {
             --j;
-            saw_thread = argv[i];
+            saw_pthread = argv[i];
         }
 
         if (!saw_librt && (args[i] & TIMERLIB) && library > 0)
@@ -465,11 +459,6 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     {
         arglist[j++] = saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS;
         added_libraries++;
-
-        /* When linking libphobos statically we also need to link with the
-           pthread library.  */
-        if (static_phobos || static_link)
-            need_pthreads = 1;
     }
     else if (saw_debug_flag && debuglib)
     {
@@ -490,12 +479,12 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
         added_libraries++;
     }
 
-    if (saw_thread)
-        arglist[j++] = saw_thread;
-    else if (library > 0 && need_pthreads)
+    if (saw_pthread)
+        arglist[j++] = saw_pthread;
+    else if (library > 0)
     {
-        arglist[j++] = saw_profile_flag ? THREAD_LIBRARY_PROFILE : THREAD_LIBRARY;
-        added_libraries++;
+        /* Handled in gcc.c  */
+        need_pthreads = 1;
     }
 
     if (saw_librt)
