@@ -36,11 +36,9 @@ extern "C" {
 
 #include "config.h"
 #include "system.h"
-
 #include "coretypes.h"
 #include "tm.h"
-#include "cpplib.h"
-#include "cppdefault.h"
+
 #include "tree.h"
 #include "real.h"
 #include "langhooks.h"

@@ -1226,7 +1226,7 @@ AssignExp::toElem(IRState* irs)
                 {
                     unsigned sz = sle->type->size();
                     init = irs->buildCall(built_in_decls[BUILT_IN_MEMSET], 3,
-                            irs->addressOf(lhs), size_int(0), size_int(sz));
+                            irs->addressOf(lhs), size_zero_node, size_int(sz));
                 }
             }
         }
@@ -2501,8 +2501,8 @@ AssocArrayLiteralExp::toElem(IRState * irs)
                              index->pointerTo()->toCtype());
     tree vals_ptr = irs->nop(irs->addressOf(vals_var),
                              next->pointerTo()->toCtype());
-    tree keys_offset = size_int(0);
-    tree vals_offset = size_int(0);
+    tree keys_offset = size_zero_node;
+    tree vals_offset = size_zero_node;
     tree keys_size = size_int(index->size());
     tree vals_size = size_int(next->size());
     tree result = NULL_TREE;

@@ -3809,7 +3809,24 @@ WrappedExp::toElem(IRState *)
 }
 
 
-void AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
+void
+FieldVisitor::visit(AggregateDeclaration * decl)
+{
+    ClassDeclaration * class_decl = decl->isClassDeclaration();
+
+    if (class_decl && class_decl->baseClass)
+        FieldVisitor::visit(class_decl->baseClass);
+
+    if (decl->fields.dim)
+        doFields(& decl->fields, decl);
+
+    if (class_decl && class_decl->vtblInterfaces)
+        doInterfaces(class_decl->vtblInterfaces, decl);
+}
+
+
+void
+AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
 {
     bool inherited = agg != this->aggDecl;
     tree fcontext;
@@ -3822,9 +3839,10 @@ void AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
     for (unsigned i = 0; i < fields->dim; i++)
     {   // %% D anonymous unions just put the fields into the outer struct...
         // does this cause problems?
-        VarDeclaration * var_decl = (VarDeclaration *) fields->data[i];
+        Dsymbol * field = (Dsymbol *) fields->data[i];
+        VarDeclaration * var_decl = field->isVarDeclaration();
 
-        gcc_assert(var_decl->storage_class & STCfield);
+        gcc_assert(var_decl && var_decl->storage_class & STCfield);
 
         tree ident = var_decl->ident ? get_identifier(var_decl->ident->string) : NULL_TREE;
         tree field_decl = d_build_decl(FIELD_DECL, ident,
@@ -3858,7 +3876,8 @@ void AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
     }
 }
 
-void AggLayout::doInterfaces(Array * bases, AggregateDeclaration * /*agg*/)
+void
+AggLayout::doInterfaces(Array * bases, AggregateDeclaration * /*agg*/)
 {
     //tree fcontext = TREE_TYPE(agg->type->toCtype());
     for (unsigned i = 0; i < bases->dim; i++)
@@ -3873,13 +3892,14 @@ void AggLayout::doInterfaces(Array * bases, AggregateDeclaration * /*agg*/)
     }
 }
 
-void AggLayout::addField(tree field_decl, target_size_t offset)
+void
+AggLayout::addField(tree field_decl, target_size_t offset)
 {
     DECL_CONTEXT(field_decl) = aggType;
     // DECL_FCONTEXT(field_decl) = aggType; // caller needs to set this
     SET_DECL_OFFSET_ALIGN(field_decl, TYPE_ALIGN(TREE_TYPE(field_decl)));
     DECL_FIELD_OFFSET (field_decl) = size_int(offset);
-    DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_int(0);
+    DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_zero_node;
     Loc l(aggDecl->getModule(), 1); // Must set this or we crash with DWARF debugging
     // gen.setDeclLoc(field_decl, aggDecl->loc); // aggDecl->loc isn't set
     g.ofile->setDeclLoc(field_decl, l);
@@ -3888,7 +3908,8 @@ void AggLayout::addField(tree field_decl, target_size_t offset)
     fieldList.chain(field_decl);
 }
 
-void AggLayout::finish(Expressions * attrs)
+void
+AggLayout::finish(Expressions * attrs)
 {
     unsigned size_to_use = aggDecl->structsize;
     unsigned align_to_use = aggDecl->alignsize;
@@ -3922,6 +3943,7 @@ void AggLayout::finish(Expressions * attrs)
         TYPE_USER_ALIGN (x) = TYPE_USER_ALIGN (aggType);
     }
 }
+
 
 ArrayScope::ArrayScope(IRState * ini_irs, VarDeclaration * ini_v, const Loc & loc) :
     v(ini_v), irs(ini_irs)
@@ -3976,16 +3998,3 @@ ArrayScope::finish(tree e)
     return e;
 }
 
-void
-FieldVisitor::visit(AggregateDeclaration * decl)
-{
-    ClassDeclaration * class_decl = decl->isClassDeclaration();
-
-    if (class_decl && class_decl->baseClass)
-        FieldVisitor::visit(class_decl->baseClass);
-
-    doFields(& decl->fields, decl);
-
-    if (class_decl && class_decl->vtblInterfaces)
-        doInterfaces(class_decl->vtblInterfaces, decl);
-}

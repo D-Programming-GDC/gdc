@@ -514,8 +514,8 @@ ObjectFile::outputStaticSymbol(tree t)
     // wrapup_global_declarations
     if (DECL_SIZE(t) == 0)
     {
-        DECL_SIZE(t) = bitsize_int(0);
-        DECL_SIZE_UNIT(t) = size_int(0);
+        DECL_SIZE(t) = bitsize_zero_node;
+        DECL_SIZE_UNIT(t) = size_zero_node;
     } // Otherwise, if DECL_SIZE == 0, just let it fail...
 
     rodc(t, 1);
@@ -1055,8 +1055,8 @@ outdata(Symbol * sym)
     // from outputStaticSymbol:
     if (DECL_SIZE(t) == NULL_TREE)
     {
-        DECL_SIZE(t) = bitsize_int(0);
-        DECL_SIZE_UNIT(t) = size_int(0);
+        DECL_SIZE(t) = bitsize_zero_node;
+        DECL_SIZE_UNIT(t) = size_zero_node;
     } // Otherwise, if DECL_SIZE == 0, just let it fail...
 
     d_add_global_function(t);

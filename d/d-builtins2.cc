@@ -269,6 +269,7 @@ gcc_type_to_d_type(tree t)
             }
             d = new TypeFunction(args, ret, varargs, LINKc);
             return d;
+
         Lfail:
             delete args;
             break;

@@ -272,12 +272,12 @@ d_gcc_is_target_win32()
 static char *
 prefixed_path(const char * path)
 {
-    // based on c-incpath.c
-    size_t len = cpp_GCC_INCLUDE_DIR_len;
-    if (iprefix && len != 0 && ! strncmp(path, cpp_GCC_INCLUDE_DIR, len))
+#ifdef GCC_INCLUDE_DIR
+    size_t len = sizeof GCC_INCLUDE_DIR - 8;
+    if (iprefix && (strncmp(path, GCC_INCLUDE_DIR, len) == 0))
         return concat(iprefix, path + len, NULL);
-    else
-        return xstrdup(path);
+#endif
+    return xstrdup(path);
 }
 
 static bool
