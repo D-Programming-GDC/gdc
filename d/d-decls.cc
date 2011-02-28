@@ -358,23 +358,6 @@ Symbol *VarDeclaration::toSymbol()
             }
         }
 
-#if D_GCC_VER < 40
-        // With cgraph, backend can figure it out (improves inline nested funcs?)
-        if (
-#if V2
-            nestedrefs.dim
-#else
-            nestedref
-#endif
-            && decl_kind != CONST_DECL)
-        {
-            DECL_NONLOCAL(var_decl) = 1;
-            TREE_ADDRESSABLE(var_decl) = 1;
-        }
-
-        TREE_USED(var_decl) = 1;
-#endif
-
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
         // Have to test for import first
         if (isImportedSymbol())
@@ -490,7 +473,6 @@ Symbol *FuncDeclaration::toSymbol()
             TypeFunction * func_type = (TypeFunction *)(tintro ? tintro : type);
             tree fn_decl;
             char * mangled_ident_str = 0;
-            AggregateDeclaration * agg_decl;
 
             if (ident)
             {
@@ -523,29 +505,33 @@ Symbol *FuncDeclaration::toSymbol()
                 // irs->functionType(func_type, Type::tvoid);
                 fn_type = build_method_type(void_type_node, fn_type);
             }
-            else if ((agg_decl = isMember()))
+            else if (isThis())
             {   // Do this even if there is no debug info.  It is needed to make
                 // sure member functions are not called statically
-                if (isThis())
-                {
-                    tree method_type = NULL_TREE;
-                    tree handle = agg_decl->handle->toCtype();
-#if STRUCTTHISREF
-                    if (agg_decl->isStructDeclaration())
-                    {   // Handle not a pointer type
-                        method_type = build_method_type(handle, fn_type);
-                    }
-                    else
-#endif
-                    {
-                        method_type = build_method_type(TREE_TYPE(handle), fn_type);
-                    }
-                    TYPE_ATTRIBUTES(method_type) = TYPE_ATTRIBUTES(fn_type);
-                    fn_type = method_type;
+                AggregateDeclaration * agg_decl = isMember();
+                // Could be a template instance, check parent.
+                if (agg_decl == NULL && parent->isTemplateInstance())
+                    agg_decl = parent->isMember();
 
-                    if (isVirtual())
-                        vindex = size_int(vtblIndex);
+                gcc_assert(agg_decl != NULL);
+
+                tree method_type = NULL_TREE;
+                tree handle = agg_decl->handle->toCtype();
+#if STRUCTTHISREF
+                if (agg_decl->isStructDeclaration())
+                {   // Handle not a pointer type
+                    method_type = build_method_type(handle, fn_type);
                 }
+                else
+#endif
+                {
+                    method_type = build_method_type(TREE_TYPE(handle), fn_type);
+                }
+                TYPE_ATTRIBUTES(method_type) = TYPE_ATTRIBUTES(fn_type);
+                fn_type = method_type;
+
+                if (isVirtual())
+                    vindex = size_int(vtblIndex);
             }
             else if (isMain() && func_type->nextOf()->toBasetype()->ty == Tvoid)
             {
@@ -570,12 +556,10 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_VINDEX    (fn_decl) = vindex;
                 DECL_VIRTUAL_P (fn_decl) = 1;
             }
-            if (! gen.functionNeedsChain(this)
-                // gcc 4.0: seems to be an error to set DECL_NO_STATIC_CHAIN on a toplevel function
-                // (tree-nest.c:1282:convert_all_function_calls)
-                && decl_function_context(fn_decl))
-            {   // Prevent backend from thinking this is a nested function.
+            if (! gen.functionNeedsChain(this))
+            {
 #if D_GCC_VER < 45
+                // Prevent backend from thinking this is a nested function.
                 DECL_NO_STATIC_CHAIN(fn_decl) = 1;
 #endif
             }
@@ -657,6 +641,11 @@ Symbol *FuncDeclaration::toSymbol()
                    flag_omit_frame_pointer back on. */
                 DECL_UNINLINABLE(fn_decl) = 1;
             }
+
+            // These are always compiler generated.
+            if (isArrayOp)
+                DECL_ARTIFICIAL(fn_decl) = 1;
+
 #if V2
             // %% Pure functions don't imply nothrow
             DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && func_type->isnothrow);

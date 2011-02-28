@@ -2918,6 +2918,8 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         {
             parm_decl = param->toSymbol()->Stree;
         }
+
+        gcc_assert(parm_decl != NULL_TREE);
         DECL_CONTEXT (parm_decl) = fn_decl;
         // param->loc is not set, so use the function's loc
         // %%doc not setting this crashes debug generating code

@@ -288,80 +288,47 @@ is_function_nested_in_function(Dsymbol * dsym)
 void
 ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
 {
-    /* First method: Use one-only/coalesced attribute.
-
-       If user has specified -femit-templates=private, honor that
-       even if the target supports one-only. */
     if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates != TEprivate)
     {   /* Weak definitions have to be public.  Nested functions may or
            may not be emitted as public even if TREE_PUBLIC is set.
            There is no way to tell if the back end implements
            make_decl_one_only with DECL_WEAK, so this check is
            done first.  */
-        if ((TREE_CODE(decl_tree) == FUNCTION_DECL &&
-                    decl_function_context(decl_tree) != NULL_TREE &&
-#if D_GCC_VER >= 45
-                    DECL_STATIC_CHAIN(decl_tree)
-#else
-                    ! DECL_NO_STATIC_CHAIN(decl_tree)
-#endif
-             )
+        if (TREE_CODE(decl_tree) == FUNCTION_DECL &&
+                decl_function_context(decl_tree) != NULL_TREE &&
+                DECL_STATIC_CHAIN(decl_tree))
+            return;
 #if V2
-                || (dsym && is_function_nested_in_function(dsym))
-#endif
-           )
-        {
+        if (dsym && is_function_nested_in_function(dsym))
             return;
-        }
-
-#ifdef MAKE_DECL_COALESCED
-        // %% TODO: check if available like SUPPORTS_ONE_ONLY
-        // for Apple gcc...
-        MAKE_DECL_COALESCED(decl_tree);
-        return;
 #endif
-        /* The following makes assumptions about the behavior
-           of make_decl_one_only */
-        if (SUPPORTS_ONE_ONLY)
-        {   // Must check, otherwise backend will abort
-#if D_GCC_VER >= 45
-            make_decl_one_only(decl_tree, DECL_ASSEMBLER_NAME (decl_tree));
-#else
-            make_decl_one_only(decl_tree);
-#endif
-            return;
-        }
-        else if (SUPPORTS_WEAK)
-        {
-            tree orig_init = DECL_INITIAL(decl_tree);
-            DECL_INITIAL(decl_tree) = integer_zero_node;
-#if D_GCC_VER >= 45
-            make_decl_one_only(decl_tree, DECL_ASSEMBLER_NAME (decl_tree));
-#else
-            make_decl_one_only(decl_tree);
-#endif
-            DECL_INITIAL(decl_tree) = orig_init;
-            return;
-        }
     }
 
+    /* First method: Use one-only.
+       If user has specified -femit-templates=private, honor that
+       even if the target supports one-only. */
+    if ((! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates != TEprivate)
+            && supports_one_only())
+#if D_GCC_VER >= 45
+        make_decl_one_only(decl_tree, DECL_ASSEMBLER_NAME (decl_tree));
+#else
+        make_decl_one_only(decl_tree);
+#endif
     /* Second method: Make a private copy.
-
        For RTTI, we can always make a private copy.  For templates, only do
        this if the user specified -femit-templates=private. */
-    if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates == TEprivate)
+    else if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates == TEprivate)
     {
         TREE_PRIVATE(decl_tree) = 1;
         TREE_PUBLIC(decl_tree) = 0;
     }
     else
-    {
-        static bool warned = false;
-        if (! warned)
-        {
-            warned = true;
-            ::warning(0, "system does not support one-only linkage");
-        }
+    {   /* Fallback for templates, cannot have multiple copies. */
+        if (DECL_INITIAL(decl_tree) == NULL_TREE
+                || DECL_INITIAL(decl_tree) == error_mark_node)
+            DECL_COMMON(decl_tree) = 1;
+
+        DECL_COMDAT (decl_tree) = 1;
     }
 }
 
@@ -419,58 +386,8 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
             TREE_STATIC(decl_tree) = 0;
         }
 
-        if (func_decl)
-        {   /* From DMD:
-               Vector operations should be comdat's
-             */
-            if (func_decl->isArrayOp)
-            {
-                DECL_COMDAT(decl_tree) = 1;
-                DECL_ARTIFICIAL(decl_tree) = 1;
-            }
-#if 0
-            fprintf(stderr, "%s: is_template = %d is_static = %d te = %d m = %s cur = %s\n",
-                    func_decl->toPrettyChars(), is_template, is_static, emitTemplates,
-                    dsym->getModule() ? dsym->getModule()->toChars() : "none",
-                    getCurrentModule()->toChars());
-#endif
-        }
-
-        if ((real_decl))
-        {
-            switch (real_decl->prot())
-            {
-                case PROTexport:
-                case PROTpublic:
-                case PROTpackage:
-                case PROTprotected:
-                {
-                    // %% set for specials like init,vtbl ? -- otherwise,special case
-                    // for reverse the default
-                    TREE_PUBLIC(decl_tree) = 1;
-                    break;
-                }
-                default:
-                {
-                    if ((func_decl && (func_decl->isMain() || func_decl->isWinMain() ||
-                                    func_decl->isDllMain())) ||
-                            (real_decl->isMember() && ! real_decl->isThis()))
-                    {   // %% check this -- static members/
-                        // DMD seems to ignore private in this case...
-                        TREE_PUBLIC(decl_tree) = 1;
-                    }
-                    else
-                    {
-                        // From DMD:
-                        /* private statics should still get a global symbol, in case
-                         * another module inlines a function that references it.
-                         */
-                        // TREE_PUBLIC(decl_tree) = 0;
-                        TREE_PUBLIC(decl_tree) = 1;
-                    }
-                }
-            }
-        }
+        // Do this by default, but allow private templates to override
+        TREE_PUBLIC(decl_tree) = 1;
 
         if (D_DECL_ONE_ONLY(decl_tree))
             makeDeclOneOnly(decl_tree, dsym);
@@ -492,7 +409,6 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
 void
 ObjectFile::setupStaticStorage(Dsymbol * dsym, tree decl_tree)
 {
-    TREE_PUBLIC(decl_tree) = 1; // Do this by default, but allow private templates to override
     setupSymbolStorage(dsym, decl_tree, true);
 }
 

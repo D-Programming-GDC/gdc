@@ -132,7 +132,7 @@ D d: $(D_COMPILER_NAME)$(exeext) d/pkgvars
 # Tell GNU make to ignore these if they exist.
 .PHONY: D d
 
-D_BORROWED_C_OBJS=attribs.o cppdefault.o
+D_BORROWED_C_OBJS=attribs.o
 
 D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/$(D_dmd_srcdir) -Id
 # -Wno-long-double is for MacOS X -- needs to be configurated
