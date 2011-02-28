@@ -225,8 +225,7 @@ extern GTY(()) tree d_keep_list;
 #endif
 
 /* compat with D_GCC_VER >= 45 */
-#define DECL_STATIC_CHAIN(decl)  !DECL_NO_STATIC_CHAIN(decl_tree)
-
+#define DECL_STATIC_CHAIN(decl)  ! DECL_NO_STATIC_CHAIN(decl)
 
 typedef HOST_WIDE_INT hwint;
 typedef unsigned HOST_WIDE_INT uhwint;
