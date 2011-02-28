@@ -3505,12 +3505,6 @@ void TemplateInstance::semantic(Scope *sc)
             Object *o2 = (Object *)ti->tdtypes.data[j];
             if (!match(o1, o2, tempdecl, sc))
             {
-#if IN_GCC
-                /* Be absolutely certain that instances don't match */
-                hash_t id1 = genIdent()->hashCode();
-                hash_t id2 = ti->genIdent()->hashCode();
-                if(id1 != id2)
-#endif
                 goto L1;
             }
         }

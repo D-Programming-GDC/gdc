@@ -35,6 +35,7 @@
 
 
 ModuleInfo * ObjectFile::moduleInfo;
+StringTable * ObjectFile::symtab;
 Array ObjectFile::modules;
 unsigned  ObjectFile::moduleSearchIndex;
 Array ObjectFile::deferredThunks;
@@ -54,6 +55,7 @@ ObjectFile::ObjectFile()
 void
 ObjectFile::beginModule(Module * m)
 {
+    symtab = new StringTable;
     moduleInfo = new ModuleInfo;
     g.mod = m;
 }
@@ -69,6 +71,7 @@ ObjectFile::endModule()
     deferredThunks.setDim(0);
     moduleInfo = NULL;
     g.mod = NULL;
+    delete symtab;
 }
 
 bool
@@ -483,26 +486,43 @@ ObjectFile::outputFunction(FuncDeclaration * f)
 bool
 ObjectFile::shouldEmit(Dsymbol * d_sym)
 {
-    if (gen.emitTemplates != TEnone)
-        return true;
+    Symbol * s = d_sym->toSymbol();
+    gcc_assert(s);
 
-    Dsymbol * sym = d_sym->toParent();
-    while (sym)
-    {
-        if (sym->isTemplateInstance())
-        {
-            return false;
-            break;
-        }
-        sym = sym->toParent();
-    }
-    return true;
+    return shouldEmit(s);
 }
 
 bool
 ObjectFile::shouldEmit(Symbol * sym)
 {
-    return (gen.emitTemplates != TEnone) || ! D_DECL_IS_TEMPLATE(sym->Stree);
+    // If have already started emitting, continue doing so.
+    if (sym->outputStage)
+        return true;
+
+    // Not emitting templates, so return true all others.
+    if (gen.emitTemplates == TEnone)
+        return ! D_DECL_IS_TEMPLATE(sym->Stree);
+    
+    /* Multiple copies of the same template instantiations can
+       be passed to the backend from the frontend.
+
+       One such example:
+         class c(int i = -1) {}
+         c!() aa = new c!()();
+
+       So disgard any duplicates found to avoid linker errors.
+     */
+    if (D_DECL_IS_TEMPLATE(sym->Stree))
+    {
+        size_t len;
+        gcc_assert(sym->Sident);
+
+        len = strlen(sym->Sident);
+        if (! symtab->insert(sym->Sident, len))
+            return false;
+    }
+
+    return true;
 }
 
 void

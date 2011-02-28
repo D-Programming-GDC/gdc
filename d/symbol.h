@@ -136,7 +136,7 @@ struct Symbol : Object
 {
     Symbol();
 
-    char *Sident;
+    const char *Sident;
     //unused in GCC//TYPE *Stype; // maybe type/TYPE ?
     SymbolStorageClass Sclass;
     SymbolFL           Sfl;

@@ -204,11 +204,11 @@ Symbol *VarDeclaration::toSymbol()
             return csym;
         }
 
-        const char * ident_to_use;
+        csym = new Symbol();
         if (isDataseg())
-            ident_to_use = mangle();
+            csym->Sident = mangle();
         else
-            ident_to_use = ident->string;
+            csym->Sident = ident->string;
 
         enum tree_code decl_kind;
 
@@ -277,16 +277,15 @@ Symbol *VarDeclaration::toSymbol()
             decl_kind = VAR_DECL;
         }
 
-        var_decl = d_build_decl(decl_kind, get_identifier(ident_to_use),
+        var_decl = d_build_decl(decl_kind, get_identifier(csym->Sident),
             gen.trueDeclarationType(this));
 
-        csym = new Symbol();
         csym->Stree = var_decl;
 
         if (decl_kind != CONST_DECL)
         {
             if (isDataseg())
-                uniqueName(this, var_decl, ident_to_use);
+                uniqueName(this, var_decl, csym->Sident);
             if (c_ident)
                 SET_DECL_ASSEMBLER_NAME(var_decl, get_identifier(c_ident->string));
         }
@@ -472,7 +471,6 @@ Symbol *FuncDeclaration::toSymbol()
             //tree type_node;
             TypeFunction * func_type = (TypeFunction *)(tintro ? tintro : type);
             tree fn_decl;
-            char * mangled_ident_str = 0;
 
             if (ident)
             {
@@ -543,8 +541,8 @@ Symbol *FuncDeclaration::toSymbol()
             dkeep(fn_decl);
             if (ident)
             {
-                mangled_ident_str = mangle();
-                uniqueName(this, fn_decl, mangled_ident_str);
+                csym->Sident = mangle(); // save for making thunks
+                uniqueName(this, fn_decl, csym->Sident);
             }
             if (c_ident)
                 SET_DECL_ASSEMBLER_NAME(fn_decl, get_identifier(c_ident->string));
@@ -580,18 +578,17 @@ Symbol *FuncDeclaration::toSymbol()
                    function's cgraph_finalize_function until all nested
                    functions are finished, but this will only work for
                    GCC >= 3.4. */
-                Dsymbol * p = this->parent;
                 FuncDeclaration * outer_func = NULL;
                 bool is_template_member = false;
-                while (p)
+                for (Dsymbol * p = parent; p; p = p->parent)
                 {
                     if (p->isTemplateInstance() && ! p->isTemplateMixin())
-                    {
                         is_template_member = true;
-                    }
-                    else if ((outer_func = p->isFuncDeclaration()))
+                    else if (p->isFuncDeclaration())
+                    {
+                        outer_func = (FuncDeclaration *) p;
                         break;
-                    p = p->parent;
+                    }
                 }
                 if (is_template_member && outer_func)
                 {
@@ -703,7 +700,6 @@ Symbol *FuncDeclaration::toSymbol()
                     gcc_unreachable();
             }
 
-            csym->Sident = mangled_ident_str; // save for making thunks
             csym->Stree = fn_decl;
 
             gen.maybeSetUpBuiltin(this);
@@ -755,12 +751,10 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
     if (! thunk->symbol)
     {
         char *id;
-        char *n;
-        //type *t;
-
-        n = csym->Sident; // dmd uses 'sym' -- not sure what that is...
-        id = (char *) alloca(8 + 5 + strlen(n) + 1);
-        sprintf(id,"__t%"PRIdTSIZE"_%s", offset, n);
+        
+        // dmd uses 'sym' -- not sure what that is...
+        id = (char *) alloca(8 + 5 + strlen(csym->Sident) + 1);
+        sprintf(id,"__t%"PRIdTSIZE"_%s", offset, csym->Sident);
         sthunk = symbol_calloc(id);
         slist_add(sthunk);
         /* todo: could use anonymous names like DMD, with ASM_FORMAT_RRIVATE_NAME*/

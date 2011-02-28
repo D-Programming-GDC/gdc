@@ -2764,9 +2764,9 @@ genericize_function(tree fndecl)
 void
 FuncDeclaration::toObjFile(int /*multiobj*/)
 {
-    if (!g.ofile->shouldEmit(this))
-        return;
     if (! global.params.useUnitTests && isUnitTestDeclaration())
+        return;
+    if (! g.ofile->shouldEmit(this))
         return;
 
     Symbol * this_sym = toSymbol();

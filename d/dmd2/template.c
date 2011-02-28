@@ -3868,15 +3868,7 @@ void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
             continue;
 #endif
         if (!arrayObjectMatch(&tdtypes, &ti->tdtypes, tempdecl, sc))
-        {
-#if IN_GCC
-            /* Be absolutely certain that instances don't match */
-            hash_t id1 = genIdent(tiargs)->hashCode();
-            hash_t id2 = ti->genIdent(ti->tiargs)->hashCode();
-            if(id1 != id2)
-#endif
             goto L1;
-        }
 
         /* Template functions may have different instantiations based on
          * "auto ref" parameters.
