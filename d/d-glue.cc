@@ -1956,6 +1956,8 @@ SymbolExp::toElem(IRState * irs)
         else
             e = var->toSymbol()->Stree;
 
+        TREE_USED(e) = 1;
+
         if (irs->isDeclarationReferenceType(var))
         {
             e = irs->indirect(e, var->type->toCtype());

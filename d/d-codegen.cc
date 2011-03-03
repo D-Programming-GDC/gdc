@@ -1176,7 +1176,6 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
             }
         }
 
-        //TREE_USED(actual_arg_tree) = 1; // needed ?
         actual_arg_list.cons(actual_arg_tree);
     }
 

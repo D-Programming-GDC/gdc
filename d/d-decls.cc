@@ -554,7 +554,10 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_VINDEX    (fn_decl) = vindex;
                 DECL_VIRTUAL_P (fn_decl) = 1;
             }
-            if (! gen.functionNeedsChain(this))
+            if (! gen.functionNeedsChain(this)
+                // gcc 4.0: seems to be an error to set DECL_NO_STATIC_CHAIN on a toplevel function
+                // (tree-nest.c:1282:convert_all_function_calls)
+                && decl_function_context(fn_decl))
             {
 #if D_GCC_VER < 45
                 // Prevent backend from thinking this is a nested function.
