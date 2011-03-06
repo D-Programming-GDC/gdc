@@ -26,7 +26,6 @@
 /* %(d_options) ? */
 
 #if D_DRIVER_ONLY
-#define D_USE_EXTRA_SPEC_FUNCTIONS 1
 {".html", "@d", 0, 1, 0 },
 {".HTML", "@d", 0, 1, 0 },
 {".htm", "@d", 0, 1, 0 },
@@ -40,7 +39,7 @@
 {".di", "@d", 0, 1, 0 },
 {".DI", "@d", 0, 1, 0 },
 {"@d",
-     "%{!E:cc1d %i %:d-all-sources() %(cc1_options) %(cc1d) %I %N %{nostdinc*} %{+e*} %{I*} %{J*}\
+     "%{!E:cc1d %i %(cc1_options) %(cc1d) %I %N %{nostdinc*} %{+e*} %{I*} %{J*}\
       %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC, 1, 0 },
 #else
 {".d", "@d", 0, 1, 0 },

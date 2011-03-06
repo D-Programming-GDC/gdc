@@ -355,18 +355,6 @@ diff -cr gcc-orig/gcc.c gcc/gcc.c
      to the calling program.  */
   static int pass_exit_codes;
 ***************
-*** 365,370 ****
---- 368,376 ----
-  static const char *version_compare_spec_function (int, const char **);
-  static const char *include_spec_function (int, const char **);
-  static const char *print_asm_header_spec_function (int, const char **);
-+ 
-+ extern const char *d_all_sources_spec_function (int, const char **);
-+ extern const char *d_output_prefix_spec_function (int, const char **);
-  
-  /* The Specs Language
-  
-***************
 *** 472,477 ****
 --- 478,484 ----
   	assembler has done its job.
@@ -376,19 +364,6 @@ diff -cr gcc-orig/gcc.c gcc/gcc.c
    %l     process LINK_SPEC as a spec.
    %L     process LIB_SPEC as a spec.
    %G     process LIBGCC_SPEC as a spec.
-***************
-*** 1635,1640 ****
---- 1644,1653 ----
-    { "version-compare",		version_compare_spec_function },
-    { "include",			include_spec_function },
-    { "print-asm-header",		print_asm_header_spec_function },
-+ #ifdef D_USE_EXTRA_SPEC_FUNCTIONS
-+   { "d-all-sources",            d_all_sources_spec_function },
-+   { "d-output-prefix",          d_output_prefix_spec_function },
-+ #endif
-  #ifdef EXTRA_SPEC_FUNCTIONS
-    EXTRA_SPEC_FUNCTIONS
-  #endif
 ***************
 *** 3974,3979 ****
 --- 3987,3995 ----

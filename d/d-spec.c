@@ -24,6 +24,8 @@
 #include "coretypes.h"
 #include "tm.h"
 
+#include "d-confdefs.h"
+
 #include "gcc.h"
 
 /* This bit is set if we saw a `-xfoo' language specification.  */
@@ -489,7 +491,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 
     if (saw_librt)
         arglist[j++] = saw_librt;
-#if _POSIX_TIMERS
+#if TARGET_LINUX
     /* Only link if linking statically and target platform supports. */
     else if (library > 0 && (static_phobos || static_link))
     {
@@ -514,93 +516,9 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 /* Called before linking.  Returns 0 on success and -1 on failure.  */
 int lang_specific_pre_link (void)  /* Not used for D.  */
 {
-  return 0;
+    return 0;
 }
-
-// Also in patched gcc.c
-extern const char *d_all_sources_spec_function (int, const char **);
-extern const char *d_output_prefix_spec_function (int, const char **);
-
-const char *
-d_all_sources_spec_function (int argc, const char ** argv)
-{
-    unsigned result_len = 0;
-    unsigned i;
-
-    if (only_source_option)
-    {
-        char * result;
-
-        for (i = 0; i < n_all_d_sources; i++)
-            result_len += strlen(all_d_sources[i]);
-        result_len += n_all_d_sources + 1; /* once space to separate each file and terminating null
-                                              ... really n_all_d_sources - 1 + 1, but ignores n=0 case */
-        result = (char *) xmalloc(result_len);
-        result[0] = '\0';
-        for (i = 0; i < n_all_d_sources; i++)
-        {
-            if ( i )
-                strcat(result, " ");
-            strcat(result, all_d_sources[i]);
-        }
-
-        return result;
-    }
-    else
-    {
-        return "";
-    }
-}
-
-const char *
-d_output_prefix_spec_function (int argc, const char ** argv)
-{
-    char * result = NULL;
-    fprintf(stderr, "** d_output_prefix_spec_function(%s)\n", argv[0]);
-    if (argc != 1)
-        return ""; /* %% should abort */
-    if (output_directory_option)
-        result = concat(output_directory_option, "/", NULL);
-    if (output_parents_option)
-    {
-        char *p;
-        /* %% sloppy */
-        /* Append the whole input filename and search backwards for
-           the directory separator. */
-        if (result)
-        {
-            result = concat(result, argv[0], NULL);
-        }
-        else
-        {
-            result = concat(argv[0], NULL);
-        }
-        p = result + strlen(result) - 1;
-        while (p >= result)
-        {
-            if (IS_DIR_SEPARATOR(*p))
-            {
-                *(p+1) = '\0';
-                break;
-            }
-        }
-    }
-    fprintf(stderr, "**   -> '%s'\n", result);
-    return result;
-}
-
 
 /* Number of extra output files that lang_specific_pre_link may generate.  */
 int lang_specific_extra_outfiles = 0;  /* Not used for D.  */
-
-/* not for 4.3.x+ ... */
-
-/* Table of language-specific spec functions.  */
-const struct spec_function lang_specific_spec_functions[] =
-{
-    { "d-all-sources",  d_all_sources_spec_function },
-    { "d-output-prefix", d_output_prefix_spec_function },
-  { 0, 0 }
-};
-/* ...4.3.x+ */
 

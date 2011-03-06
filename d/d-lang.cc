@@ -36,6 +36,8 @@
 
 #include "d-gcc-includes.h"
 #include "options.h"
+#include "cppdefault.h"
+
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-gcc-real.h"
@@ -272,11 +274,11 @@ d_gcc_is_target_win32()
 static char *
 prefixed_path(const char * path)
 {
-#ifdef GCC_INCLUDE_DIR
-    size_t len = sizeof GCC_INCLUDE_DIR - 8;
-    if (iprefix && (strncmp(path, GCC_INCLUDE_DIR, len) == 0))
+    // based on incpath.c
+    size_t len = cpp_GCC_INCLUDE_DIR_len;
+    if (iprefix && len != 0 && ! strncmp(path, cpp_GCC_INCLUDE_DIR, len))
         return concat(iprefix, path + len, NULL);
-#endif
+    // else
     return xstrdup(path);
 }
 
