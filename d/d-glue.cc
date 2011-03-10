@@ -3316,31 +3316,7 @@ Module::genobjfile(int multiobj)
 unsigned
 Type::totym()
 {
-    gcc_assert(ctype);
-#if V2
-    // Apply modifiers to ctype
-    switch (mod)
-    {
-        case 0:
-            break;
-        case MODconst:
-        case MODwild:
-        case MODimmutable:
-            TYPE_READONLY(ctype) = 1;
-            break;
-        case MODshared:
-            TYPE_VOLATILE(ctype) = 1;
-            break;
-        case MODshared | MODwild:
-        case MODshared | MODconst:
-            TYPE_READONLY(ctype) = 1;
-            TYPE_VOLATILE(ctype) = 1;
-            break;
-        default:
-            gcc_unreachable();
-    }
-#endif
-    return 0;
+    return 0;   // Unused
 }
 
 type *
@@ -3452,14 +3428,8 @@ Type::toCtype()
                 abort();
                 return NULL_TREE;
         }
-#if V2
-        // Build a variant of the tree type.
-        if (this->mod && ty != Terror)
-            ctype = build_variant_type_copy(ctype);
-#endif
-        this->totym();
     }
-    return ctype;
+    return gen.addTypeModifiers(ctype, mod);
 }
 
 // This is not used for GCC
@@ -3523,10 +3493,13 @@ type *
 TypeEnum::toCtype()
 {
     if (! ctype)
-    {
-        /* Enums in D2 can have a base type that is not necessarily integral.
+    {   /* Enums in D2 can have a base type that is not necessarily integral.
            So don't bother trying to make an ENUMERAL_TYPE using them.  */
-        if (sym->memtype->isintegral())
+        if (! sym->memtype->isintegral())
+        {
+            ctype = sym->memtype->toCtype();
+        }
+        else
         {
             tree enum_mem_type_node = sym->memtype->toCtype();
 
@@ -3574,10 +3547,6 @@ TypeEnum::toCtype()
             g.ofile->initTypeDecl(ctype, sym);
             g.ofile->declareType(ctype, sym);
         }
-        else
-        {
-            ctype = sym->memtype->toCtype();
-        }
     }
     return ctype;
 }
@@ -3585,6 +3554,13 @@ TypeEnum::toCtype()
 type *
 TypeStruct::toCtype()
 {
+#if V2
+    if (mod)
+    {   // const, shared, just derivatives of the naked type.
+        Type * tm = mutableOf()->unSharedOf();
+        ctype = tm->toCtype();
+    }
+#endif
     if (! ctype)
     {   // need to set this right away in case of self-references
         ctype = make_node(sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE);
@@ -3638,7 +3614,7 @@ TypeStruct::toCtype()
 
         agg_layout.finish(sym->attributes);
     }
-    return ctype;
+    return gen.addTypeModifiers(ctype, mod);
 }
 
 void
@@ -3756,7 +3732,6 @@ TypeSArray::toCtype()
                 ctype = gen.arrayType(Type::tuns8, size);
             else
                 ctype = gen.arrayType(next, size);
-
         }
         else
         {
@@ -3764,7 +3739,7 @@ TypeSArray::toCtype()
             abort();
         }
     }
-    return ctype;
+    return gen.addTypeModifiers(ctype, mod);
 }
 
 type *
@@ -3782,24 +3757,20 @@ TypeDArray::toCtype()
 {
     if (! ctype)
     {
-#if V2
         if (mod)
         {   /* Rather than making const(T[]) and const(T)[] two distinct
                types, make the former a variant of the latter, and apply
                modifiers afterwards. */
             ctype = next->arrayOf()->toCtype();
-            ctype = build_variant_type_copy(ctype);
-            this->totym();
         }
         else
-#endif
         {
             ctype = gen.twoFieldType(Type::tsize_t, next->pointerTo(), this,
                     "length", "ptr");
         }
         dkeep(ctype);
     }
-    return ctype;
+    return gen.addTypeModifiers(ctype, mod);
 }
 
 type *
@@ -3813,8 +3784,7 @@ TypeAArray::toCtype()
     */
 
     if (! ctype)
-    {
-        /* Library functions expect a struct-of-pointer which could be passed
+    {   /* Library functions expect a struct-of-pointer which could be passed
            differently from a pointer. */
         static tree aa_type = NULL_TREE;
         if (! aa_type)
@@ -3829,7 +3799,7 @@ TypeAArray::toCtype()
         }
         ctype = aa_type;
     }
-    return ctype;
+    return gen.addTypeModifiers(ctype, mod);
 }
 
 type *
@@ -3838,9 +3808,8 @@ TypePointer::toCtype()
     if (! ctype)
     {
         ctype = build_pointer_type(next->toCtype());
-        this->totym();
     }
-    return ctype;
+    return gen.addTypeModifiers(ctype, mod);
 }
 
 type *
@@ -3853,7 +3822,7 @@ TypeDelegate::toCtype()
                                  this, "object", "func");
         dkeep(ctype);
     }
-    return ctype;
+    return gen.addTypeModifiers(ctype, mod);
 }
 
 /* Create debug information for a ClassDeclaration's inheritance tree.
@@ -3952,6 +3921,13 @@ intfc_binfo_for(tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offse
 type *
 TypeClass::toCtype()
 {
+#if V2
+    if (mod)
+    {   // const, shared, just derivatives of the naked type.
+        Type * tm = mutableOf()->unSharedOf();
+        ctype = tm->toCtype();
+    }
+#endif
     if (! ctype)
     {
         tree rec_type;
@@ -4026,7 +4002,7 @@ TypeClass::toCtype()
 
         agg_layout.finish(sym->attributes);
     }
-    return ctype;
+    return gen.addTypeModifiers(ctype, mod);
 }
 
 void

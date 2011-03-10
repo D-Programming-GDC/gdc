@@ -2792,6 +2792,40 @@ IRState::attributes(Expressions * in_attrs)
 }
 
 tree
+IRState::addTypeModifiers(tree type, unsigned mod)
+{
+    int quals = 0;
+    gcc_assert(type);
+
+    switch (mod)
+    {
+        case 0:
+            break;
+
+        case MODconst:
+        case MODwild:
+        case MODimmutable:
+            quals |= TYPE_QUAL_CONST;
+            break;
+
+        case MODshared:
+            quals |= TYPE_QUAL_VOLATILE;
+            break;
+
+        case MODshared | MODwild:
+        case MODshared | MODconst:
+            quals |= TYPE_QUAL_CONST;
+            quals |= TYPE_QUAL_VOLATILE;
+            break;
+
+        default:
+            gcc_unreachable();
+    }
+
+    return build_qualified_type(type, quals);
+}
+
+tree
 IRState::integerConstant(dinteger_t value, tree type)
 {
     // The type is error_mark_node, we can't do anything.

@@ -231,6 +231,7 @@ struct IRState : IRBase
     static tree addTypeAttribute(tree type, const char * attrname, tree value = NULL_TREE);
     static void addDeclAttribute(tree type, const char * attrname, tree value = NULL_TREE);
     static tree attributes(Expressions * in_attrs);
+    static tree addTypeModifiers(tree type, unsigned mod);
 
     // ** Simple constants
 

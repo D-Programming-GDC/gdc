@@ -592,14 +592,12 @@ ObjectFile::initTypeDecl(tree t, tree decl)
             case UNION_TYPE:
             {   /* Not sure if there is a need for separate TYPE_DECLs in
                    TYPE_NAME and TYPE_STUB_DECL. */
-                TYPE_STUB_DECL(t) = d_build_decl(TYPE_DECL, DECL_NAME(decl), t);
-#if D_GCC_VER >= 43
-                DECL_ARTIFICIAL(TYPE_STUB_DECL(t)) = 1; // dunno...
-                // code now assumes...
-                DECL_SOURCE_LOCATION(TYPE_STUB_DECL(t)) = DECL_SOURCE_LOCATION(decl);
-#else
+                TYPE_STUB_DECL(t) = decl;
                 // g++ does this and the debugging code assumes it:
-                DECL_ARTIFICIAL(TYPE_STUB_DECL(t)) = 1;
+                DECL_ARTIFICIAL(decl) = 1;
+#if D_GCC_VER >= 43
+                // code now assumes...
+                DECL_SOURCE_LOCATION(decl) = DECL_SOURCE_LOCATION(decl);
 #endif
                 break;
             }

@@ -42,14 +42,16 @@ void
 d_bi_init()
 {
     // assumes va_list_type_node already built
-    d_gcc_builtin_va_list_d_type = gcc_type_to_d_type(va_list_type_node);
+    tree t, m = va_list_type_node;
+    d_gcc_builtin_va_list_d_type = gcc_type_to_d_type(m);
     if (! d_gcc_builtin_va_list_d_type)
     {   // fallback to array of byte of the same size?
         error("cannot represent built in va_list type in D");
         abort();
     }
-    // generate ctype if it doesn't already exist
-    d_gcc_builtin_va_list_d_type->toCtype();
+    // D type main variant same as C va_list type.
+    t = d_gcc_builtin_va_list_d_type->toCtype();
+    TYPE_MAIN_VARIANT(t) = TYPE_MAIN_VARIANT(m);
 }
 
 /*
@@ -75,7 +77,6 @@ gcc_type_to_d_type(tree t)
             if (TYPE_MAIN_VARIANT(TREE_TYPE(t)) == char_type_node)
             {
                 d = Type::tchar;
-                d->ctype = TREE_TYPE(t);
                 return d->pointerTo();
             }
             d = gcc_type_to_d_type(TREE_TYPE(t));
@@ -396,11 +397,11 @@ d_gcc_magic_builtins_module(Module *m)
         const char * name = IDENTIFIER_POINTER(DECL_NAME(decl));
         TypeFunction * dtf = (TypeFunction *) gcc_type_to_d_type(TREE_TYPE(decl));
         if (! dtf)
-        {   //warning("cannot create built in function type for %s", name);
+        {   //warning(0, "cannot create built in function type for %s", name);
             continue;
         }
         if (dtf->parameters && dtf->parameters->dim == 0 && dtf->varargs)
-        {   //warning("one-arg va problem: %s", name);
+        {   //warning(0, "one-arg va problem: %s", name);
             continue;
         }
 #if V2
@@ -430,7 +431,7 @@ d_gcc_magic_builtins_module(Module *m)
         const char * name = IDENTIFIER_POINTER(DECL_NAME(decl));
         Type * dt = gcc_type_to_d_type(type);
         if (! dt)
-        {   //warning("cannot create built in type for %s", name);
+        {   //warning(0, "cannot create built in type for %s", name);
             continue;
         }
         funcs->push(new AliasDeclaration(0, Lexer::idPool(name), dt));

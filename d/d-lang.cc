@@ -935,17 +935,7 @@ d_parse_file (int /*set_yydebug*/)
     for (TY ty = (TY) 0; ty < TMAX; ty = (TY)(ty + 1))
     {
         if (Type::basic[ty] && ty != Terror)
-        {
-#if V2
-            nametype(Type::basic[ty]->constOf());
-            nametype(Type::basic[ty]->invariantOf());
-            nametype(Type::basic[ty]->sharedOf());
-            nametype(Type::basic[ty]->sharedConstOf());
-            nametype(Type::basic[ty]->wildOf());
-            nametype(Type::basic[ty]->sharedWildOf());
-#endif
             nametype(Type::basic[ty]);
-        }
     }
 
     /*
