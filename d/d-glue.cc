@@ -993,7 +993,12 @@ CatAssignExp::toElem(IRState * irs)
         ptr_exp = irs->pvoidOkay(ptr_exp);
         ptr_exp = irs->pointerIntSum(ptr_exp, off_exp);
 
-        result = build2(MODIFY_EXPR, elem_type->toCtype(), irs->indirect(ptr_exp), e2->toElem(irs));
+        // evaluate expression before appending
+        tree e2e = e2->toElem(irs);
+        e2e = save_expr(e2e);
+
+        result = build2(MODIFY_EXPR, elem_type->toCtype(), irs->indirect(ptr_exp), e2e);
+        result = build2(COMPOUND_EXPR, elem_type->toCtype(), e2e, result);
     }
     else
     {   // append an array
