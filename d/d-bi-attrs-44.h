@@ -47,6 +47,8 @@ static tree handle_warn_unused_result_attribute (tree *, tree, tree, int,
 static tree handle_sentinel_attribute (tree *, tree, tree, int, bool *);
 static tree handle_type_generic_attribute (tree *, tree, tree, int, bool *);
 static tree handle_alloc_size_attribute (tree *, tree, tree, int, bool *);
+static tree handle_target_attribute (tree *, tree, tree, int, bool *);
+static tree handle_optimize_attribute (tree *, tree, tree, int, bool *);
 
 static bool get_nonnull_operand (tree, unsigned HOST_WIDE_INT *);
 
@@ -90,9 +92,9 @@ const struct attribute_spec d_common_attribute_table[] =
                               handle_always_inline_attribute },
 /* not in gdc
   { "gnu_inline",             0, 0, true,  false, false,
-                             handle_gnu_inline_attribute },
+                              handle_gnu_inline_attribute },
   { "artificial",             0, 0, true,  false, false,
-                             handle_artificial_attribute },*/
+                              handle_artificial_attribute },*/
   { "flatten",                0, 0, true,  false, false,
                               handle_flatten_attribute },
   { "used",                   0, 0, true,  false, false,
@@ -149,10 +151,9 @@ const struct attribute_spec d_common_attribute_table[] =
   { "nothrow",                0, 0, true,  false, false,
                               handle_nothrow_attribute },
   { "may_alias",              0, 0, false, true, false, NULL },
-  /* not in gdc
+/* not in gdc
   { "cleanup",                1, 1, true, false, false,
-                              handle_cleanup_attribute },
-  */
+                              handle_cleanup_attribute },*/
   { "warn_unused_result",     0, 0, false, true, true,
                               handle_warn_unused_result_attribute },
   { "sentinel",               0, 1, false, true, true,
@@ -160,17 +161,21 @@ const struct attribute_spec d_common_attribute_table[] =
   /* For internal use (marking of builtins) only.  The name contains space
      to prevent its usage in source code.  */
   { "type generic",           0, 0, false, true, true,
-                             handle_type_generic_attribute },
-  { "alloc_size",            1, 2, false, true, true,
-                             handle_alloc_size_attribute },
+                              handle_type_generic_attribute },
+  { "alloc_size",             1, 2, false, true, true,
+                              handle_alloc_size_attribute },
   { "cold",                   0, 0, true,  false, false,
-                             handle_cold_attribute },
+                              handle_cold_attribute },
   { "hot",                    0, 0, true,  false, false,
-                             handle_hot_attribute },
-  { "warning",               1, 1, true,  false, false,
-                             handle_error_attribute },
-  { "error",                 1, 1, true,  false, false,
-                             handle_error_attribute },
+                              handle_hot_attribute },
+  { "warning",                1, 1, true,  false, false,
+                              handle_error_attribute },
+  { "error",                  1, 1, true,  false, false,
+                              handle_error_attribute },
+  { "target",                 1, -1, true, false, false,
+                              handle_target_attribute },
+  { "optimize",               1, -1, true, false, false,
+                              handle_optimize_attribute },
   { NULL,                     0, 0, false, false, false, NULL }
 };
 
@@ -204,7 +209,9 @@ handle_packed_attribute (tree *node, tree name, tree ARG_UNUSED (args),
     }
   else if (TREE_CODE (*node) == FIELD_DECL)
     {
-      if (TYPE_ALIGN (TREE_TYPE (*node)) <= BITS_PER_UNIT)
+      if (TYPE_ALIGN (TREE_TYPE (*node)) <= BITS_PER_UNIT
+          /* Still pack bitfields.  */
+          && ! DECL_INITIAL (*node))
         warning (OPT_Wattributes,
                  "%qE attribute ignored for field of type %qT",
                  name, TREE_TYPE (*node));
@@ -293,7 +300,7 @@ handle_noreturn_attribute (tree *node, tree name, tree ARG_UNUSED (args),
 
 static tree
 handle_hot_attribute (tree *node, tree name, tree ARG_UNUSED (args),
-                          int ARG_UNUSED (flags), bool *no_add_attrs)
+                      int ARG_UNUSED (flags), bool *no_add_attrs)
 {
   if (TREE_CODE (*node) == FUNCTION_DECL)
     {
@@ -303,8 +310,8 @@ handle_hot_attribute (tree *node, tree name, tree ARG_UNUSED (args),
                    name, "cold");
           *no_add_attrs = true;
         }
-      /* Do nothing else, just set the attribute.  We'll get at
-         it later with lookup_attribute.  */
+      /* Most of the rest of the hot processing is done later with
+         lookup_attribute.  */
     }
   else
     {
@@ -329,8 +336,8 @@ handle_cold_attribute (tree *node, tree name, tree ARG_UNUSED (args),
                    name, "hot");
           *no_add_attrs = true;
         }
-      /* Do nothing else, just set the attribute.  We'll get at
-         it later with lookup_attribute.  */
+      /* Most of the rest of the cold processing is done later with
+         lookup_attribute.  */
     }
   else
     {
@@ -743,6 +750,8 @@ handle_mode_attribute (tree *node, tree name, tree args,
         mode = targetm.libgcc_cmp_return_mode ();
       else if (!strcmp (p, "libgcc_shift_count"))
         mode = targetm.libgcc_shift_count_mode ();
+      else if (!strcmp (p, "unwind_word"))
+        mode = targetm.unwind_word_mode ();
       else
         for (j = 0; j < NUM_MACHINE_MODES; j++)
           if (!strcmp (p, GET_MODE_NAME (j)))
@@ -898,7 +907,7 @@ handle_section_attribute (tree *node, tree ARG_UNUSED (name), tree args,
         {
           if (TREE_CODE (decl) == VAR_DECL
               && current_function_decl != NULL_TREE
-              && ! (TREE_STATIC (decl) || DECL_EXTERNAL (decl)))
+              && !TREE_STATIC (decl))
             {
               error ("%Jsection attribute cannot be specified for "
                      "local variables", decl);
@@ -913,6 +922,13 @@ handle_section_attribute (tree *node, tree ARG_UNUSED (name), tree args,
             {
               error ("section of %q+D conflicts with previous declaration",
                      *node);
+              *no_add_attrs = true;
+            }
+          else if (TREE_CODE (decl) == VAR_DECL
+                   && !targetm.have_tls && targetm.emutls.tmpl_section
+                   && DECL_THREAD_LOCAL_P (decl))
+            {
+              error ("section of %q+D cannot be overridden", *node);
               *no_add_attrs = true;
             }
           else
@@ -944,7 +960,7 @@ handle_aligned_attribute (tree *node, tree ARG_UNUSED (name), tree args,
   tree *type = NULL;
   int is_type = 0;
   tree align_expr = (args ? TREE_VALUE (args)
-                     : size_int (BIGGEST_ALIGNMENT / BITS_PER_UNIT));
+                     : size_int (ATTRIBUTE_ALIGNED_VALUE / BITS_PER_UNIT));
   int i;
 
   if (DECL_P (*node))
@@ -973,10 +989,12 @@ handle_aligned_attribute (tree *node, tree ARG_UNUSED (name), tree args,
     }
   else if (is_type)
     {
+      if ((flags & (int) ATTR_FLAG_TYPE_IN_PLACE))
+        /* OK, modify the type in place.  */;
       /* If we have a TYPE_DECL, then copy the type, so that we
          don't accidentally modify a builtin type.  See pushdecl.  */
-      if (decl && TREE_TYPE (decl) != error_mark_node
-          && DECL_ORIGINAL_TYPE (decl) == NULL_TREE)
+      else if (decl && TREE_TYPE (decl) != error_mark_node
+               && DECL_ORIGINAL_TYPE (decl) == NULL_TREE)
         {
           tree tt = TREE_TYPE (decl);
           *type = build_variant_type_copy (*type);
@@ -985,7 +1003,7 @@ handle_aligned_attribute (tree *node, tree ARG_UNUSED (name), tree args,
           TREE_USED (*type) = TREE_USED (decl);
           TREE_TYPE (decl) = *type;
         }
-      else if (!(flags & (int) ATTR_FLAG_TYPE_IN_PLACE))
+      else
         *type = build_variant_type_copy (*type);
 
       TYPE_ALIGN (*type) = (1 << i) * BITS_PER_UNIT;
@@ -1028,11 +1046,16 @@ handle_weak_attribute (tree *node, tree name,
                        bool * ARG_UNUSED (no_add_attrs))
 {
   if (TREE_CODE (*node) == FUNCTION_DECL
-      || TREE_CODE (*node) == VAR_DECL)
+      && DECL_DECLARED_INLINE_P (*node))
+    {
+      error ("inline function %q+D cannot be declared weak", *node);
+      *no_add_attrs = true;
+    }
+  else if (TREE_CODE (*node) == FUNCTION_DECL
+           || TREE_CODE (*node) == VAR_DECL)
     declare_weak (*node);
   else
     warning (OPT_Wattributes, "%qE attribute ignored", name);
-
 
   return NULL_TREE;
 }
@@ -1046,7 +1069,12 @@ handle_alias_attribute (tree *node, tree name, tree args,
 {
   tree decl = *node;
 
-  if ((TREE_CODE (decl) == FUNCTION_DECL && DECL_INITIAL (decl))
+  if (TREE_CODE (decl) != FUNCTION_DECL && TREE_CODE (decl) != VAR_DECL)
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+  else if ((TREE_CODE (decl) == FUNCTION_DECL && DECL_INITIAL (decl))
       || (TREE_CODE (decl) != FUNCTION_DECL
           && TREE_PUBLIC (decl) && !DECL_EXTERNAL (decl))
       /* A static variable declaration is always a tentative definition,
@@ -1107,6 +1135,18 @@ handle_weakref_attribute (tree *node, tree ARG_UNUSED (name), tree args,
 {
   tree attr = NULL_TREE;
 
+  /* We must ignore the attribute when it is associated with
+     local-scoped decls, since attribute alias is ignored and many
+     such symbols do not even have a DECL_WEAK field.  */
+  if (decl_function_context (*node)
+      || current_function_decl
+      || (TREE_CODE (*node) != VAR_DECL && TREE_CODE (*node) != FUNCTION_DECL))
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+      return NULL_TREE;
+    }
+  
   /* The idea here is that `weakref("name")' mutates into `weakref,
      alias("name")', and weakref without arguments, in turn,
      implicitly adds weak. */
@@ -1116,9 +1156,9 @@ handle_weakref_attribute (tree *node, tree ARG_UNUSED (name), tree args,
       attr = tree_cons (get_identifier ("alias"), args, attr);
       attr = tree_cons (get_identifier ("weakref"), NULL_TREE, attr);
 
-      decl_attributes (node, attr, flags);
-
       *no_add_attrs = true;
+
+      decl_attributes (node, attr, flags);
     }
   else
     {
@@ -1246,7 +1286,7 @@ handle_tls_model_attribute (tree *node, tree name, tree args,
 
   *no_add_attrs = true;
 
-  if (!DECL_THREAD_LOCAL_P (decl))
+  if (TREE_CODE (decl) != VAR_DECL || !DECL_THREAD_LOCAL_P (decl))
     {
       warning (OPT_Wattributes, "%qE attribute ignored", name);
       return NULL_TREE;
@@ -1529,7 +1569,8 @@ handle_vector_size_attribute (tree *node, tree name, tree args,
       || (!SCALAR_FLOAT_MODE_P (orig_mode)
           && GET_MODE_CLASS (orig_mode) != MODE_INT
           && !ALL_SCALAR_FIXED_POINT_MODE_P (orig_mode))
-      || !host_integerp (TYPE_SIZE_UNIT (type), 1))
+      || !host_integerp (TYPE_SIZE_UNIT (type), 1)
+      || TREE_CODE (type) == BOOLEAN_TYPE)
     {
       error ("invalid vector type for attribute %qE", name);
       return NULL_TREE;
@@ -1735,24 +1776,203 @@ handle_sentinel_attribute (tree *node, tree name, tree args,
 }
 
 /* Handle a "type_generic" attribute.  */
-//static tree handle_type_generic_attribute (tree *, tree, tree, int, bool *);
+
 static tree
 handle_type_generic_attribute (tree *node, tree ARG_UNUSED (name),
                                tree ARG_UNUSED (args), int ARG_UNUSED (flags),
                                bool * ARG_UNUSED (no_add_attrs))
 {
-   tree params;
+  tree params;
 
-   /* Ensure we have a function type. */
-   gcc_assert (TREE_CODE (*node) == FUNCTION_TYPE);
+  /* Ensure we have a function type.  */
+  gcc_assert (TREE_CODE (*node) == FUNCTION_TYPE);
 
-   params = TYPE_ARG_TYPES (*node);
-   while (params && ! VOID_TYPE_P (TREE_VALUE (params)))
-      params = TREE_CHAIN (params);
+  params = TYPE_ARG_TYPES (*node);
+  while (params && ! VOID_TYPE_P (TREE_VALUE (params)))
+    params = TREE_CHAIN (params);
 
-   /* Ensure we have a variadic function. */
-   gcc_assert (!params);
+  /* Ensure we have a variadic function.  */
+  gcc_assert (!params);
 
-   return NULL_TREE;
+  return NULL_TREE;
 }
 
+/* Handle a "target" attribute.  */
+
+static tree
+handle_target_attribute (tree *node, tree name, tree args, int flags,
+                         bool *no_add_attrs)
+{
+  /* Ensure we have a function type.  */
+  if (TREE_CODE (*node) != FUNCTION_DECL)
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+  else if (! targetm.target_option.valid_attribute_p (*node, name, args,
+                                                      flags))
+    *no_add_attrs = true;
+
+  return NULL_TREE;
+}
+
+/* Arguments being collected for optimization.  */
+typedef const char *const_char_p;               /* For DEF_VEC_P.  */
+DEF_VEC_P(const_char_p);
+DEF_VEC_ALLOC_P(const_char_p, gc);
+static GTY(()) VEC(const_char_p, gc) *optimize_args;
+
+extern void decode_options (unsigned int argc, const char **argv);
+
+
+/* Inner function to convert a TREE_LIST to argv string to parse the optimize
+   options in ARGS.  ATTR_P is true if this is for attribute(optimize), and
+   false for #pragma GCC optimize.  */
+
+bool
+parse_optimize_options (tree args, bool attr_p)
+{
+  bool ret = true;
+  unsigned opt_argc;
+  unsigned i;
+  int saved_flag_strict_aliasing;
+  const char **opt_argv;
+  tree ap;
+
+  /* Build up argv vector.  Just in case the string is stored away, use garbage
+     collected strings.  */
+  VEC_truncate (const_char_p, optimize_args, 0);
+  VEC_safe_push (const_char_p, gc, optimize_args, NULL);
+
+  for (ap = args; ap != NULL_TREE; ap = TREE_CHAIN (ap))
+    {
+      tree value = TREE_VALUE (ap);
+
+      if (TREE_CODE (value) == INTEGER_CST)
+        {
+          char buffer[20];
+          sprintf (buffer, "-O%ld", (long) TREE_INT_CST_LOW (value));
+          VEC_safe_push (const_char_p, gc, optimize_args, ggc_strdup (buffer));
+        }
+
+      else if (TREE_CODE (value) == STRING_CST)
+        {
+          /* Split string into multiple substrings.  */
+          size_t len = TREE_STRING_LENGTH (value);
+          char *p = ASTRDUP (TREE_STRING_POINTER (value));
+          char *end = p + len;
+          char *comma;
+          char *next_p = p;
+
+          while (next_p != NULL)
+            {
+              size_t len2;
+              char *q, *r;
+
+              p = next_p;
+              comma = strchr (p, ',');
+              if (comma)
+                {
+                  len2 = comma - p;
+                  *comma = '\0';
+                  next_p = comma+1;
+                }
+              else
+                {
+                  len2 = end - p;
+                  next_p = NULL;
+                }
+
+              r = q = (char *) ggc_alloc (len2 + 3);
+
+              /* If the user supplied -Oxxx or -fxxx, only allow -Oxxx or -fxxx
+                 options.  */
+              if (*p == '-' && p[1] != 'O' && p[1] != 'f')
+                {
+                  ret = false;
+                  if (attr_p)
+                    warning (OPT_Wattributes,
+                             "Bad option %s to optimize attribute.", p);
+                  else
+                    warning (OPT_Wpragmas,
+                             "Bad option %s to pragma attribute", p);
+                  continue;
+                }
+
+              if (*p != '-')
+                {
+                  *r++ = '-';
+
+                  /* Assume that Ox is -Ox, a numeric value is -Ox, a s by
+                     itself is -Os, and any other switch begins with a -f.  */
+                  if ((*p >= '0' && *p <= '9')
+                      || (p[0] == 's' && p[1] == '\0'))
+                    *r++ = 'O';
+                  else if (*p != 'O')
+                    *r++ = 'f';
+                }
+
+              memcpy (r, p, len2);
+              r[len2] = '\0';
+              VEC_safe_push (const_char_p, gc, optimize_args, q);
+            }
+
+        }
+    }
+
+  opt_argc = VEC_length (const_char_p, optimize_args);
+  opt_argv = (const char **) alloca (sizeof (char *) * (opt_argc + 1));
+
+  for (i = 1; i < opt_argc; i++)
+    opt_argv[i] = VEC_index (const_char_p, optimize_args, i);
+
+  saved_flag_strict_aliasing = flag_strict_aliasing;
+
+  /* Now parse the options.  */
+  decode_options (opt_argc, opt_argv);
+
+  /* Don't allow changing -fstrict-aliasing.  */
+  flag_strict_aliasing = saved_flag_strict_aliasing;
+
+  VEC_truncate (const_char_p, optimize_args, 0);
+  return ret;
+}
+
+/* For handling "optimize" attribute. arguments as in
+   struct attribute_spec.handler.  */
+
+static tree
+handle_optimize_attribute (tree *node, tree name, tree args,
+                           int ARG_UNUSED (flags), bool *no_add_attrs)
+{
+  /* Ensure we have a function type.  */
+  if (TREE_CODE (*node) != FUNCTION_DECL)
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+  else
+    {
+      struct cl_optimization cur_opts;
+      tree old_opts = DECL_FUNCTION_SPECIFIC_OPTIMIZATION (*node);
+
+      /* Save current options.  */
+      cl_optimization_save (&cur_opts);
+
+      /* If we previously had some optimization options, use them as the
+         default.  */
+      if (old_opts)
+        cl_optimization_restore (TREE_OPTIMIZATION (old_opts));
+
+      /* Parse options, and update the vector.  */
+      parse_optimize_options (args, true);
+      DECL_FUNCTION_SPECIFIC_OPTIMIZATION (*node)
+        = build_optimization_node ();
+
+      /* Restore current options.  */
+      cl_optimization_restore (&cur_opts);
+    }
+
+  return NULL_TREE;
+}
+
