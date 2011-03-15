@@ -1940,9 +1940,9 @@ SymbolExp::toElem(IRState * irs)
 {
     if (op == TOKvar)
     {
-        if (var->storage_class & STCfield)
+        if (var->needThis())
         {
-            /*::*/error("Need 'this' to access member %s", var->ident->string);
+            error("need 'this' to access member %s", var->ident->string);
             return irs->errorMark(type);
         }
 
@@ -1992,6 +1992,8 @@ SymbolExp::toElem(IRState * irs)
         else
             a = var->toSymbol()->Stree;
 
+        TREE_USED(a) = 1;
+
         if (irs->isDeclarationReferenceType(var))
             gcc_assert(POINTER_TYPE_P(TREE_TYPE(a)));
         else
@@ -2011,9 +2013,9 @@ SymbolExp::toElem(IRState * irs)
 elem *
 VarExp::toElem(IRState* irs)
 {
-    if (var->storage_class & STCfield)
+    if (var->needThis())
     {
-        /*::*/error("Need 'this' to access member %s", var->ident->string);
+        error("need 'this' to access member %s", var->ident->string);
         return irs->errorMark(type);
     }
 
@@ -2026,6 +2028,8 @@ VarExp::toElem(IRState* irs)
         e = irs->var(v);
     else
         e = var->toSymbol()->Stree;
+
+    TREE_USED(e) = 1;
 
     if (irs->isDeclarationReferenceType(var))
     {
@@ -2055,13 +2059,14 @@ VarExp::toElem(IRState* irs)
 elem *
 SymOffExp::toElem(IRState * irs)
 {
-    //tree a = irs->var(var);
     tree a;
     VarDeclaration * v = var->isVarDeclaration();
     if (v)
         a = irs->var(v);
     else
         a = var->toSymbol()->Stree;
+
+    TREE_USED(a) = 1;
 
     if (irs->isDeclarationReferenceType(var))
         gcc_assert(POINTER_TYPE_P(TREE_TYPE(a)));
@@ -2784,6 +2789,9 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         return;
 
     this_sym->outputStage = InProgress;
+
+    if (global.params.verbose)
+        fprintf(stderr, "function %s\n", this->toChars());
 
     tree fn_decl = this_sym->Stree;
 
