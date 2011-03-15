@@ -693,8 +693,13 @@ Symbol *FuncDeclaration::toSymbol()
                     gen.replaceLibCallDecl(this);
                     break;
                 case LINKd:
-                    // %% If x86, regparm(1)
-                    // not sure if reg struct return
+#if D_DMD_CALLING_CONVENTIONS
+                    /* Setting this on all targets.  TARGET_RETURN_IN_MEMORY has precedence
+                       over this attribute.  So, only targets on which flag_pcc_struct_return
+                       is considered will be affected. */
+                    gen.addDeclAttribute(fn_decl, "optimize",
+                            build_string(17, "reg-struct-return"));
+#endif
                     break;
                 case LINKcpp:
                     break;

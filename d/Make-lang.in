@@ -43,6 +43,10 @@ D_EXTRA_DEFINES += -DELFOBJ=1
 # specification syntax.  Can still use extended asm if disabled.
 # D_EXTRA_DEFINES += -DGDC_EXTENDED_ASM_SYNTAX=1
 
+# Enables experimental code generation which sets out to match the D calling
+# convention as used by the DMD compiler on x86 targets.
+# D_EXTRA_DEFINES += -DD_DMD_CALLING_CONVENTIONS=1
+
 # As with C++: (quote) OTOH, I think this means the g++ driver...
 # Note that it would be nice to move the dependency on g++
 # into the C++ rule, but that needs a little bit of work

@@ -3700,18 +3700,14 @@ TypeFunction::toCtype()
         if (linkage == LINKwindows && ! global.params.isX86_64)
             ctype = gen.addTypeAttribute(ctype, "stdcall");
 
-#ifdef D_DMD_CALLING_CONVENTIONS
-        // W.I.P.
-        /* Setting this on all targets.  TARGET_RETURN_IN_MEMORY has precedence
-           over this attribute.  So, only targets on which flag_pcc_struct_return
-           is considered will be affected. */
-        if ((linkage == LINKd && next->size() <= 8) ||
-             (next && next->toBasetype()->ty == Tarray))
-            ctype = gen.addTypeAttribute(ctype, "no_pcc_struct_return");
-
+#if D_DMD_CALLING_CONVENTIONS
+        // W.I.P
 #ifdef TARGET_386
         if (linkage == LINKd && ! TARGET_64BIT)
-            ctype = gen.addTypeAttribute(ctype, "regparm", integer_one_node);
+        {   /* Can combine regparm with all attributes but fastcall.  */
+            if (! lookup_attribute ("fastcall", TYPE_ATTRIBUTES (ctype)))
+                ctype = gen.addTypeAttribute(ctype, "regparm", integer_one_node);
+        }
 #endif
 #endif
         dkeep(ctype);

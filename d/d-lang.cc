@@ -193,6 +193,8 @@ d_init_options (unsigned int, const char ** argv)
     flag_complex_method = 2;
     // Unlike C, there is no global 'errno' variable.
     flag_errno_math = 0;
+    // Honour left to right code evaluation.
+    flag_evaluation_order = 1;
 
     // extra D-specific options
     gen.splitDynArrayVarArgs = true;
