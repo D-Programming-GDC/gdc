@@ -22,26 +22,84 @@
 #include "d-gcc-includes.h"
 #include "d-lang.h"
 
+static tree
+d_default_conversion (tree exp)
+{
+    tree orig_exp;
+    tree type = TREE_TYPE (exp);
+    tree_code code = TREE_CODE (type);
+
+    /* Constants can be used directly unless they're not loadable.  */
+    if (TREE_CODE (exp) == CONST_DECL)
+        exp = DECL_INITIAL (exp);
+
+    /* Strip no-op conversions.  */
+    orig_exp = exp;
+    STRIP_TYPE_NOPS (exp);
+
+    if (TREE_NO_WARNING (orig_exp))
+        TREE_NO_WARNING (exp) = 1;
+
+    switch (code)
+    {
+        case ARRAY_TYPE:
+            error ("used array that cannot be converted to pointer where scalar is required");
+            return error_mark_node;
+
+        case RECORD_TYPE:
+            error ("used struct type as value where scalar is required");
+            return error_mark_node;
+
+        case UNION_TYPE:
+            error ("used union type as value where scalar is required");
+            return error_mark_node;
+
+        case VOID_TYPE:
+            error ("void value not ignored as it ought to be");
+            return error_mark_node;
+
+        default:
+            break;
+    }
+
+    return exp;
+}
+
 // copied this over just to support d_truthvalue_conversion, so assumes bool
 static tree
-build_buul_binary_op(tree_code code, tree orig_op0, tree orig_op1) 
+d_build_binary_op (tree_code code, tree orig_op0, tree orig_op1, int convert_p) 
 {
+    tree type0, type1;
     tree op0, op1;
+
     tree result_type = NULL_TREE;
 
-    op0 = orig_op0;
-    op1 = orig_op1;
+    if (convert_p)
+    {
+        op0 = d_default_conversion (orig_op0);
+        op1 = d_default_conversion (orig_op1);
+    }
+    else
+    {
+        op0 = orig_op0;
+        op1 = orig_op1;
+    }
+
+    type0 = TREE_TYPE (op0);
+    type1 = TREE_TYPE (op1);
+
+    /* Strip NON_LVALUE_EXPRs, etc., since we aren't using as an lvalue.  */
+    STRIP_TYPE_NOPS (op0);
+    STRIP_TYPE_NOPS (op1);
 
     /* Also need to convert pointer/int comparison for GCC >= 4.1 */
-    tree type0 = TREE_TYPE (op0);
-    tree type1 = TREE_TYPE (op1);
     if (POINTER_TYPE_P(type0) && TREE_CODE(op1) == INTEGER_CST
-            && integer_zerop (op1))
+        && integer_zerop (op1))
     {
         result_type = type0;
     }
     else if (POINTER_TYPE_P(type1) && TREE_CODE(op0) == INTEGER_CST
-            && integer_zerop (op0))
+             && integer_zerop (op0))
     {
         result_type = type1;
     }
@@ -145,30 +203,45 @@ d_convert_basic (tree type, tree expr)
 tree
 d_truthvalue_conversion (tree expr)
 {
-    if (TREE_CODE (expr) == ERROR_MARK)
-        return expr;
-
     switch (TREE_CODE (expr))
     {
-        case EQ_EXPR:
-        case NE_EXPR: case LE_EXPR: case GE_EXPR: case LT_EXPR: case GT_EXPR:
+        case EQ_EXPR:   case NE_EXPR:   case LE_EXPR:
+        case GE_EXPR:   case LT_EXPR:   case GT_EXPR:
+            if (TREE_TYPE (expr) == boolean_type_node)
+                return expr;
+            return build2 (TREE_CODE (expr), boolean_type_node,
+                           TREE_OPERAND (expr, 0), TREE_OPERAND (expr, 1));
+
         case TRUTH_ANDIF_EXPR:
         case TRUTH_ORIF_EXPR:
         case TRUTH_AND_EXPR:
         case TRUTH_OR_EXPR:
         case TRUTH_XOR_EXPR:
+            if (TREE_TYPE (expr) == boolean_type_node)
+                return expr;
+            return build2 (TREE_CODE (expr), boolean_type_node,
+                        d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
+                        d_truthvalue_conversion (TREE_OPERAND (expr, 1)));
+
         case TRUTH_NOT_EXPR:
-            TREE_TYPE (expr) = boolean_type_node;
-            return expr;
+            if (TREE_TYPE (expr) == boolean_type_node)
+                return expr;
+            return build1 (TREE_CODE (expr), boolean_type_node,
+                        d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
 
         case ERROR_MARK:
             return expr;
 
         case INTEGER_CST:
-            return integer_zerop (expr) ? boolean_false_node : boolean_true_node;
+            /* Avoid integer_zerop to ignore TREE_CONSTANT_OVERFLOW.  */
+            return (TREE_INT_CST_LOW (expr) != 0 || TREE_INT_CST_HIGH (expr) != 0)
+                   ? boolean_true_node
+                   : boolean_false_node;
 
         case REAL_CST:
-            return real_zerop (expr) ? boolean_false_node : boolean_true_node;
+            return real_compare (NE_EXPR, &TREE_REAL_CST (expr), &dconst0)
+                   ? boolean_true_node
+                   : boolean_false_node;
 
         case ADDR_EXPR:
             /* If we are taking the address of an external decl, it might be zero
@@ -179,15 +252,16 @@ d_truthvalue_conversion (tree expr)
 
             if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 0)))
                 return build2 (COMPOUND_EXPR, boolean_type_node,
-                        TREE_OPERAND (expr, 0), boolean_true_node);
+                               TREE_OPERAND (expr, 0), boolean_true_node);
             else
                 return boolean_true_node;
 
         case COMPLEX_EXPR:
-            return build_buul_binary_op ((TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1))
-                        ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-                    d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
-                    d_truthvalue_conversion (TREE_OPERAND (expr, 1)));
+            return d_build_binary_op ((TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1))
+                                       ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
+                        d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
+                        d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
+                                      /* convert_p */ 0);
 
         case NEGATE_EXPR:
         case ABS_EXPR:
@@ -202,15 +276,15 @@ d_truthvalue_conversion (tree expr)
                we can't ignore them if their second arg has side-effects.  */
             if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1)))
                 return build2 (COMPOUND_EXPR, boolean_type_node, TREE_OPERAND (expr, 1),
-                        d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
+                               d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
             else
                 return d_truthvalue_conversion (TREE_OPERAND (expr, 0));
 
         case COND_EXPR:
             /* Distribute the conversion into the arms of a COND_EXPR.  */
             return fold (build3 (COND_EXPR, boolean_type_node, TREE_OPERAND (expr, 0),
-                        d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
-                        d_truthvalue_conversion (TREE_OPERAND (expr, 2))));
+                         d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
+                         d_truthvalue_conversion (TREE_OPERAND (expr, 2))));
 
         case CONVERT_EXPR:
             /* Don't cancel the effect of a CONVERT_EXPR from a REFERENCE_TYPE,
@@ -218,7 +292,7 @@ d_truthvalue_conversion (tree expr)
             if (TREE_CODE (TREE_TYPE (expr)) == REFERENCE_TYPE
                     || TREE_CODE (TREE_TYPE (TREE_OPERAND (expr, 0))) == REFERENCE_TYPE)
                 break;
-            /* fall through...  */
+            /* Fall through....  */
         case NOP_EXPR:
             /* If this is widening the argument, we can ignore it.  */
             if (TYPE_PRECISION (TREE_TYPE (expr))
@@ -237,18 +311,19 @@ d_truthvalue_conversion (tree expr)
                be false.  */
             if (HONOR_INFINITIES (TYPE_MODE (TREE_TYPE (TREE_OPERAND (expr, 0)))))
                 break;
-            /* fall through...  */
+            /* Fall through....  */
         case BIT_XOR_EXPR:
             /* This and MINUS_EXPR can be changed into a comparison of the
                two objects.  */
             if (TREE_TYPE (TREE_OPERAND (expr, 0))
                     == TREE_TYPE (TREE_OPERAND (expr, 1)))
-                return build_buul_binary_op (NE_EXPR, TREE_OPERAND (expr, 0),
-                        TREE_OPERAND (expr, 1));
-            return build_buul_binary_op (NE_EXPR, TREE_OPERAND (expr, 0),
-                    fold (build1 (NOP_EXPR,
-                            TREE_TYPE (TREE_OPERAND (expr, 0)),
-                            TREE_OPERAND (expr, 1))));
+                return fold_build2 (NE_EXPR, boolean_type_node,
+                                    TREE_OPERAND (expr, 0), TREE_OPERAND (expr, 1));
+            return fold_build2 (NE_EXPR, boolean_type_node,
+                                TREE_OPERAND (expr, 0),
+                                fold_convert (TREE_TYPE (TREE_OPERAND (expr, 0)),
+                                              TREE_OPERAND (expr, 1)));
+
         case BIT_AND_EXPR:
             if (integer_onep (TREE_OPERAND (expr, 1))
                     && TREE_TYPE (expr) != boolean_type_node)
@@ -257,34 +332,30 @@ d_truthvalue_conversion (tree expr)
             break;
 
         case MODIFY_EXPR:
-            /*
-               if (warn_parentheses && C_EXP_ORIGINAL_CODE (expr) == MODIFY_EXPR)
-               warning ("suggest parentheses around assignment used as truth value");
-             */
+            // %% do nothing
             break;
 
         default:
             break;
     }
 
-    tree t_zero = integer_zero_node;
-
     if (TREE_CODE (TREE_TYPE (expr)) == COMPLEX_TYPE)
     {
         tree t = save_expr (expr);
-        tree compon_type = TREE_TYPE( TREE_TYPE( expr ));
-        return (build_buul_binary_op
+        tree compon_type = TREE_TYPE (TREE_TYPE (expr));
+        return (d_build_binary_op
                 ((TREE_SIDE_EFFECTS (expr)
                   ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-                 d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
-                 d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t))));
+            d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
+            d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)),
+                 /* convert_p */ 0));
     }
     /* Without this, the backend tries to load a float reg with and integer
        value with fails (on i386 and rs6000, at least). */
-    else if ( SCALAR_FLOAT_TYPE_P( TREE_TYPE( expr )))
-    {
-        t_zero = convert( TREE_TYPE(expr), t_zero );
-    }
-    return build_buul_binary_op (NE_EXPR, expr, t_zero);
+    else if (SCALAR_FLOAT_TYPE_P (TREE_TYPE (expr)))
+        return d_build_binary_op (NE_EXPR, expr,
+                        convert(TREE_TYPE (expr), integer_zero_node), 1);
+
+    return d_build_binary_op (NE_EXPR, expr, integer_zero_node, 1);
 }
 
