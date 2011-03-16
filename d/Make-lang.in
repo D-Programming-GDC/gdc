@@ -47,6 +47,10 @@ D_EXTRA_DEFINES += -DELFOBJ=1
 # convention as used by the DMD compiler on x86 targets.
 # D_EXTRA_DEFINES += -DD_DMD_CALLING_CONVENTIONS=1
 
+# Enables correct implementation of D's va_list type (void*) as per
+# the D language specification.
+# D_EXTRA_DEFINES += -DD_VA_LIST_TYPE_VOIDPTR
+
 # As with C++: (quote) OTOH, I think this means the g++ driver...
 # Note that it would be nice to move the dependency on g++
 # into the C++ rule, but that needs a little bit of work

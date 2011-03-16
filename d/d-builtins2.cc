@@ -41,9 +41,14 @@ Type * d_gcc_builtin_va_list_d_type;
 void
 d_bi_init()
 {
+#if D_VA_LIST_TYPE_VOIDPTR
+    // The "standard" definition of va_list is void*.
+    tree t, m = std_build_builtin_va_list();
+#else
     // assumes va_list_type_node already built
     tree t, m = va_list_type_node;
     d_gcc_builtin_va_list_d_type = gcc_type_to_d_type(m);
+#endif
     if (! d_gcc_builtin_va_list_d_type)
     {   // fallback to array of byte of the same size?
         error("cannot represent built in va_list type in D");
@@ -339,6 +344,7 @@ d_gcc_magic_stdarg_check(Dsymbol *m, bool is_c_std_arg)
     if (td == NULL)     // Not handled.
         return;
 
+#ifndef D_VA_LIST_TYPE_VOIDPTR
     if (TREE_CODE(va_list_type_node) == ARRAY_TYPE)
     {   /* For GCC, a va_list can be an array.  D static arrays are
            automatically passed by reference, but the 'inout'
@@ -362,6 +368,7 @@ d_gcc_magic_stdarg_check(Dsymbol *m, bool is_c_std_arg)
             }
         }
     }
+#endif
 }
 
 // std.stdarg is different: it expects pointer types (i.e. _argptr)

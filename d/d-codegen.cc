@@ -1762,10 +1762,11 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                     // just drop though for now...
                 case INTRINSIC_STD_VA_ARG:
                     op1 = ce.nextArg();
+                    exp = d_gcc_builtin_va_list_d_type->toCtype();
                     /* signature is (inout va_list), but VA_ARG_EXPR expects the
                        list itself... but not if the va_list type is an array.  In that
                        case, it should be a pointer.  */
-                    if (TREE_CODE(va_list_type_node) != ARRAY_TYPE)
+                    if (TREE_CODE(exp) != ARRAY_TYPE)
                     {
                         if (TREE_CODE(op1) == ADDR_EXPR)
                         {
@@ -3449,7 +3450,7 @@ IRState::functionNeedsChain(FuncDeclaration *f)
     return false;
 }
 
- tree
+tree
 IRState::toElemLvalue(Expression * e)
 {
     /*
