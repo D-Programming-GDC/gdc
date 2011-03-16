@@ -218,15 +218,15 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
     }
 
     // Build compare expression.
-    tree cmp = build2(out_code, boolean_type_node, e1, e2);
-    /* Need to use fold().  Otherwise, complex-var == complex-cst is not
-       gimplified correctly. */
+    /* Need to fold, otherwise 'complex-var == complex-cst' is not
+       gimplified correctly.  */
+    tree cmp = fold_build2(out_code, boolean_type_node, e1, e2);
+
     if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)) || COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e2)))
     {   // All other operations are not defined for complex types.
         gcc_assert(op == TOKidentity || op == TOKequal ||
                    op == TOKnotidentity || op == TOKnotequal ||
                    op == TOKandand || op == TOKoror);
-        cmp = fold(cmp);
     }
 
     return cmp;
@@ -330,10 +330,9 @@ EqualExp::toElem(IRState* irs)
             tree result;
             tree size;
 
-            size = build2(MULT_EXPR, size_type_node,
-                convert(size_type_node, len_expr[0]), // should be size_type already, though
-                size_int(elem_type->size()));
-            size = fold(size);
+            size = fold_build2(MULT_EXPR, size_type_node,
+                               convert(size_type_node, len_expr[0]), // should be size_type already, though
+                               size_int(elem_type->size()));
 
             result = irs->buildCall(t_memcmp, 3, data_expr[0], data_expr[1], size);
 
@@ -1196,10 +1195,9 @@ AssignExp::toElem(IRState* irs)
                 tree result;
                 tree size;
 
-                size = build2(MULT_EXPR, size_type_node,
-                    convert(size_type_node, irs->darrayLenRef(array[0])),
-                    size_int(elem_type->size()));
-                size = fold(size);
+                size = fold_build2(MULT_EXPR, size_type_node,
+                                   convert(size_type_node, irs->darrayLenRef(array[0])),
+                                   size_int(elem_type->size()));
 
                 result = irs->buildCall(t_memcpy, 3, irs->darrayPtrRef(array[0]),
                                         irs->darrayPtrRef(array[1]), size);
@@ -2466,9 +2464,9 @@ ArrayLiteralExp::toElem(IRState * irs)
         result = irs->addressOf(ctor);
     }
     // memcpy(mem, &ctor, size)
-    tree size = build2(MULT_EXPR, size_type_node,
-            size_int(elements->dim), size_int(typeb->nextOf()->size()));
-    size = fold(size);
+    tree size = fold_build2(MULT_EXPR, size_type_node,
+                            size_int(elements->dim), size_int(typeb->nextOf()->size()));
+
     result = irs->buildCall(built_in_decls[BUILT_IN_MEMCPY], 3,
                             mem, result, size);
 
@@ -2609,9 +2607,8 @@ StructLiteralExp::toElem(IRState *irs)
                         etype = etype->nextOf();
 
                     gcc_assert(fld_type->size() % etype->size() == 0);
-                    tree size = build2(TRUNC_DIV_EXPR, size_type_node,
-                                size_int(fld_type->size()), size_int(etype->size()));
-                    size = fold(size);
+                    tree size = fold_build2(TRUNC_DIV_EXPR, size_type_node,
+                                            size_int(fld_type->size()), size_int(etype->size()));
 
                     tree ptr_tree = irs->nop(irs->addressOf(exp_tree),
                                     etype->pointerTo()->toCtype());
@@ -3567,13 +3564,6 @@ TypeEnum::toCtype()
 type *
 TypeStruct::toCtype()
 {
-#if V2
-    if (mod)
-    {   // const, shared, just derivatives of the naked type.
-        Type * tm = mutableOf()->unSharedOf();
-        ctype = tm->toCtype();
-    }
-#endif
     if (! ctype)
     {   // need to set this right away in case of self-references
         ctype = make_node(sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE);
@@ -3627,7 +3617,7 @@ TypeStruct::toCtype()
 
         agg_layout.finish(sym->attributes);
     }
-    return gen.addTypeModifiers(ctype, mod);
+    return ctype;
 }
 
 void
@@ -3930,13 +3920,6 @@ intfc_binfo_for(tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offse
 type *
 TypeClass::toCtype()
 {
-#if V2
-    if (mod)
-    {   // const, shared, just derivatives of the naked type.
-        Type * tm = mutableOf()->unSharedOf();
-        ctype = tm->toCtype();
-    }
-#endif
     if (! ctype)
     {
         tree rec_type;
@@ -4011,7 +3994,7 @@ TypeClass::toCtype()
 
         agg_layout.finish(sym->attributes);
     }
-    return gen.addTypeModifiers(ctype, mod);
+    return ctype;
 }
 
 void

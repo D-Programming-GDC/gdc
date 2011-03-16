@@ -522,3 +522,8 @@ int lang_specific_pre_link (void)  /* Not used for D.  */
 /* Number of extra output files that lang_specific_pre_link may generate.  */
 int lang_specific_extra_outfiles = 0;  /* Not used for D.  */
 
+/* Table of language-specific spec functions.  */
+const struct spec_function lang_specific_spec_functions[] =
+{
+  { 0, 0 }  /* Not used for D.  */
+};

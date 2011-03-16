@@ -168,11 +168,10 @@ gcc_type_to_d_type(tree t)
                 tree ub = TYPE_MAX_VALUE (index);
                 tree lb = TYPE_MIN_VALUE (index);
                 tree length
-                    = size_binop (PLUS_EXPR, size_one_node,
+                    = size_binop(PLUS_EXPR, size_one_node,
                             convert (sizetype,
-                                fold (build2 (MINUS_EXPR,
-                                        TREE_TYPE (lb),
-                                        ub, lb))));
+                                fold_build2 (MINUS_EXPR, TREE_TYPE (lb),
+                                             ub, lb)));
                 d = new TypeSArray(d,
                         new IntegerExp(0, gen.getTargetSizeConst(length),
                             Type::tindex));

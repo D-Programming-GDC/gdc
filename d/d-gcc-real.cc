@@ -292,8 +292,8 @@ real_t::toInt() const
 d_uns64
 real_t::toInt(Type * real_type, Type * int_type) const
 {
-    tree t = fold( build1(FIX_TRUNC_EXPR, int_type->toCtype(),
-                gen.floatConstant(rv(), real_type->toBasetype()->isTypeBasic())) );
+    tree t = fold_build1(FIX_TRUNC_EXPR, int_type->toCtype(),
+                         gen.floatConstant(rv(), real_type->toBasetype()->isTypeBasic()));
     // can't use tree_low_cst as it asserts !TREE_OVERFLOW
     return gen.hwi2toli(TREE_INT_CST_LOW(t), TREE_INT_CST_HIGH(t));
 }

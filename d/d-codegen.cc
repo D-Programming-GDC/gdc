@@ -736,7 +736,7 @@ IRState::pointerIntSum(tree ptr_node, tree idx_exp)
     if (integer_zerop(size_exp) || // Test for void case...
         integer_onep(size_exp))    // ...or byte case -- No need to multiply.
     {
-        intop = fold(convert(prod_result_type, intop));
+        intop = fold_convert(prod_result_type, intop);
     }
     else
     {
@@ -747,10 +747,9 @@ IRState::pointerIntSum(tree ptr_node, tree idx_exp)
             intop = convert (d_type_for_size (TYPE_PRECISION (sizetype),
                                  TYPE_UNSIGNED (sizetype)), intop);
         }
-        intop = convert (prod_result_type,
-                build2/*_binary_op*/ (MULT_EXPR, TREE_TYPE(size_exp), intop,  // the type here may be wrong %%
-                    convert (TREE_TYPE (intop), size_exp)));
-        intop = fold(intop);
+        intop = fold_convert (prod_result_type,
+                              fold_build2 (MULT_EXPR, TREE_TYPE(size_exp), // the type here may be wrong %%
+                                           intop, convert (TREE_TYPE (intop), size_exp)));
     }
 
     if (isErrorMark(result_type_node))
@@ -795,14 +794,14 @@ IRState::pointerOffsetOp(int op, tree ptr, tree idx)
 tree
 IRState::pointerOffset(tree ptr_node, tree byte_offset)
 {
-    tree ofs = fold(convert(sizetype, byte_offset));
+    tree ofs = fold_convert(sizetype, byte_offset);
     tree t;
 #if D_GCC_VER >= 43
-    t = build2(POINTER_PLUS_EXPR, TREE_TYPE(ptr_node), ptr_node, ofs);
+    t = fold_build2(POINTER_PLUS_EXPR, TREE_TYPE(ptr_node), ptr_node, ofs);
 #else
-    t = build2(PLUS_EXPR, TREE_TYPE(ptr_node), ptr_node, ofs);
+    t = fold_build2(PLUS_EXPR, TREE_TYPE(ptr_node), ptr_node, ofs);
 #endif
-    return fold(t);
+    return t;
 }
 
 

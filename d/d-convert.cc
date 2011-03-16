@@ -22,6 +22,7 @@
 #include "d-gcc-includes.h"
 #include "d-lang.h"
 
+// Helper for d_build_binary_op, so assumes exp will be converted to bool.
 static tree
 d_default_conversion (tree exp)
 {
@@ -145,6 +146,7 @@ d_convert_basic (tree type, tree expr)
     // taken from c-convert.c
     tree e = expr;
     enum tree_code code = TREE_CODE (type);
+    tree ret;
 
     if (type == error_mark_node
             || expr == error_mark_node
@@ -154,7 +156,7 @@ d_convert_basic (tree type, tree expr)
     if (type == TREE_TYPE (expr))
         return expr;
 #if D_GCC_VER >= 45
-    tree ret = targetm.convert_to_type (type, expr);
+    ret = targetm.convert_to_type (type, expr);
     if (ret)
         return ret;
 #endif
@@ -169,32 +171,51 @@ d_convert_basic (tree type, tree expr)
         error ("void value not ignored as it ought to be");
         return error_mark_node;
     }
-    if (code == VOID_TYPE)
-        return fold_convert(type, e);
-    if (code == INTEGER_TYPE || code == ENUMERAL_TYPE)
-        return fold (convert_to_integer (type, e));
-    if (code == BOOLEAN_TYPE)
+    
+    switch (code)
     {
-        tree t = d_truthvalue_conversion (e);
-#if D_GCC_VER >= 42
-        return fold_convert(type, t);
-#else
-        /* If it returns a NOP_EXPR, we must fold it here to avoid
-           infinite recursion between fold () and convert ().  */
-        if (TREE_CODE (t) == NOP_EXPR)
-            return fold (build1 (NOP_EXPR, type, TREE_OPERAND (t, 0)));
-        else
-            return fold (build1 (NOP_EXPR, type, t));
-#endif
+        case VOID_TYPE:
+            return fold_convert (type, e);
+
+        case INTEGER_TYPE:
+        case ENUMERAL_TYPE:
+            ret = convert_to_integer (type, e);
+            goto maybe_fold;
+
+        case BOOLEAN_TYPE:
+            return fold_convert (type, d_truthvalue_conversion (expr));
+
+        case POINTER_TYPE:
+        case REFERENCE_TYPE:
+            ret = convert_to_pointer (type, e);
+            goto maybe_fold;
+
+        case REAL_TYPE:
+            ret = convert_to_real (type, e);
+            goto maybe_fold;
+
+        case COMPLEX_TYPE:
+            ret = convert_to_complex (type, e);
+            goto maybe_fold;
+
+        case VECTOR_TYPE:
+            ret = convert_to_vector (type, e);
+            goto maybe_fold;
+
+        case RECORD_TYPE:
+        case UNION_TYPE:
+            if (lang_hooks.types_compatible_p (type, TREE_TYPE (expr)))
+                return e;
+            break;
+
+        default:
+            break;
+
+        maybe_fold:
+            if (! TREE_CONSTANT (ret))
+                ret = fold (ret);
+            return ret;
     }
-    if (code == POINTER_TYPE || code == REFERENCE_TYPE)
-        return fold (convert_to_pointer (type, e));
-    if (code == REAL_TYPE)
-        return fold (convert_to_real (type, e));
-    if (code == COMPLEX_TYPE)
-        return fold (convert_to_complex (type, e));
-    if (code == VECTOR_TYPE)
-        return fold (convert_to_vector (type, e));
 
     error ("conversion to non-scalar type requested");
     return error_mark_node;
@@ -282,9 +303,9 @@ d_truthvalue_conversion (tree expr)
 
         case COND_EXPR:
             /* Distribute the conversion into the arms of a COND_EXPR.  */
-            return fold (build3 (COND_EXPR, boolean_type_node, TREE_OPERAND (expr, 0),
+            return fold_build3 (COND_EXPR, boolean_type_node, TREE_OPERAND (expr, 0),
                          d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
-                         d_truthvalue_conversion (TREE_OPERAND (expr, 2))));
+                         d_truthvalue_conversion (TREE_OPERAND (expr, 2)));
 
         case CONVERT_EXPR:
             /* Don't cancel the effect of a CONVERT_EXPR from a REFERENCE_TYPE,
@@ -354,7 +375,7 @@ d_truthvalue_conversion (tree expr)
        value with fails (on i386 and rs6000, at least). */
     else if (SCALAR_FLOAT_TYPE_P (TREE_TYPE (expr)))
         return d_build_binary_op (NE_EXPR, expr,
-                        convert(TREE_TYPE (expr), integer_zero_node), 1);
+                        convert (TREE_TYPE (expr), integer_zero_node), 1);
 
     return d_build_binary_op (NE_EXPR, expr, integer_zero_node, 1);
 }
