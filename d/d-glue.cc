@@ -1287,30 +1287,34 @@ IndexExp::toElem(IRState* irs)
 {
     Type * array_type = e1->type->toBasetype();
 
-    if (array_type->ty != Taarray) {
-        ArrayScope aryscp(irs, lengthVar, loc);
-        /* arrayElemRef will call aryscp.finish.  This result
+    if (array_type->ty != Taarray)
+    {   /* arrayElemRef will call aryscp.finish.  This result
            of this function may be used as an lvalue and we
            do not want it to be a BIND_EXPR. */
+        ArrayScope aryscp(irs, lengthVar, loc);
         return irs->arrayElemRef(this, & aryscp);
-    } else {
+    }
+    else
+    {
         Type * key_type = ((TypeAArray *) array_type)->index->toBasetype();
         AddrOfExpr aoe;
-        tree args[4];
-        tree t;
-        args[0] = e1->toElem(irs);
-        args[1] = irs->typeinfoReference(key_type);
-        args[2] = irs->integerConstant(array_type->nextOf()->size(), Type::tsize_t);
-        args[3] = aoe.set(irs, irs->convertTo(e2, key_type));
-        t = irs->libCall(LIBCALL_AAGETRVALUEP, 4, args, type->pointerTo()->toCtype());
+        tree args[4] = {
+            e1->toElem(irs),
+            irs->typeinfoReference(key_type),
+            irs->integerConstant(array_type->nextOf()->size(), Type::tsize_t),
+            aoe.set(irs, irs->convertTo(e2, key_type))
+        };
+        LibCall lib_call = modifiable ? LIBCALL_AAGETP : LIBCALL_AAGETRVALUEP;
+        tree t = irs->libCall(lib_call, 4, args, type->pointerTo()->toCtype());
         t = aoe.finish(irs, t);
-        if (irs->arrayBoundsCheck()) {
+
+        if (irs->arrayBoundsCheck())
+        {
             t = save_expr(t);
             t = build3(COND_EXPR, TREE_TYPE(t), t, t,
-                irs->assertCall(loc, LIBCALL_ARRAY_BOUNDS));
+                       irs->assertCall(loc, LIBCALL_ARRAY_BOUNDS));
         }
-        t = irs->indirect(t, type->toCtype());
-        return t;
+        return irs->indirect(t, type->toCtype());
     }
 }
 
