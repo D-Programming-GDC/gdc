@@ -2360,7 +2360,6 @@ IRState::objectInstanceMethod(Expression * obj_exp, FuncDeclaration * func, Type
             this_expr = maybeMakeTemp(this_expr);
 
             tree vtbl_ref;
-            //#if D_GCC_VER >= 40
             /* Folding of *&<static var> fails because of the type of the
                address expression is 'Object' while the type of the static
                var is a particular class (why?). This prevents gimplification
@@ -2375,7 +2374,6 @@ IRState::objectInstanceMethod(Expression * obj_exp, FuncDeclaration * func, Type
             }
             else
             {
-                //#endif
                 vtbl_ref = indirect(this_expr);
             }
 

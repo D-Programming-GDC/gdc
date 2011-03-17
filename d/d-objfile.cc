@@ -330,8 +330,6 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
         if (DECL_INITIAL(decl_tree) == NULL_TREE
                 || DECL_INITIAL(decl_tree) == error_mark_node)
             DECL_COMMON(decl_tree) = 1;
-
-        DECL_COMDAT (decl_tree) = 1;
     }
 }
 
@@ -502,7 +500,8 @@ ObjectFile::shouldEmit(Symbol * sym)
     // Not emitting templates, so return true all others.
     if (gen.emitTemplates == TEnone)
         return ! D_DECL_IS_TEMPLATE(sym->Stree);
-    
+
+    // %% TODO: Move this.
     /* Multiple copies of the same template instantiations can
        be passed to the backend from the frontend.
 
@@ -510,7 +509,8 @@ ObjectFile::shouldEmit(Symbol * sym)
          class c(int i = -1) {}
          c!() aa = new c!()();
 
-       So disgard any duplicates found to avoid linker errors.
+       Marking the decls as weak apparently isn't enough, so 
+       put any duplicates found in comdat to avoid linker errors.
      */
     if (D_DECL_IS_TEMPLATE(sym->Stree))
     {
@@ -519,7 +519,7 @@ ObjectFile::shouldEmit(Symbol * sym)
 
         len = strlen(sym->Sident);
         if (! symtab->insert(sym->Sident, len))
-            return false;
+            DECL_COMDAT(sym->Stree) = 1;
     }
 
     return true;
