@@ -212,7 +212,7 @@ ObjectFile::setDeclLoc(tree t, Dsymbol * decl)
         l.filename = m->srcfile->name->str;
     else
         l.filename = "<no_file>"; // Emptry string can mess up debug info
-   
+
     l.linnum = 1;
     setDeclLoc(t, l);
 }
@@ -414,27 +414,23 @@ ObjectFile::setupStaticStorage(Dsymbol * dsym, tree decl_tree)
 }
 
 void
-ObjectFile::outputStaticSymbol(tree t)
+ObjectFile::outputStaticSymbol(Symbol * s)
 {
-    d_add_global_function(t);
+    tree t = s->Stree;
+    gcc_assert(t);
 
-    // %%TODO: flags
-
-    /* D allows zero-length declarations.  Such a declaration ends up with
-       DECL_SIZE(t) == NULL_TREE which is what the backend function
-       assembler_variable checks.  This could change in later versions...
-
-       Maybe all of these variables should be aliased to one symbol... */
-
-    // %%TODO: could move this to lang_hooks.decls.prepare_assemble_variable to
-    // make this check less precarious. -- or finish_incomplete_decl (from
-    // wrapup_global_declarations
-    if (DECL_SIZE(t) == 0)
+    if (D_DECL_IS_TEMPLATE(t))
     {
-        DECL_SIZE(t) = bitsize_zero_node;
-        DECL_SIZE_UNIT(t) = size_zero_node;
-    } // Otherwise, if DECL_SIZE == 0, just let it fail...
+        gcc_assert(s->Sident);
+        size_t len = strlen(s->Sident);
 
+        if (symtab->insert(s->Sident, len))
+            /* Mark it needed so we don't forget to emit it.  */
+            mark_decl_referenced (t);
+        DECL_COMDAT(t) = 1;
+    }
+
+    d_add_global_function(t);
     rodc(t, 1);
 }
 
@@ -444,13 +440,36 @@ ObjectFile::outputFunction(FuncDeclaration * f)
     Symbol * s = f->toSymbol();
     tree t = s->Stree;
 
+    /* Multiple copies of the same template instantiations can
+       be passed to the backend from the frontend.
+
+       One such example:
+         class c(int i = -1) {}
+         c!() aa = new c!()();
+
+       Marking the decls as weak apparently isn't enough, so
+       give duplicates unique asm names to avoid linker errors.
+     */
+    if (D_DECL_IS_TEMPLATE(t))
+    {
+        gcc_assert(s->Sident);
+        size_t len = strlen(s->Sident);
+
+        if (! symtab->insert(s->Sident, len))
+            giveDeclUniqueName(t, s->Sident);
+
+        /* Mark it needed so we don't forget to emit it.  */
+        mark_decl_referenced (t);
+        DECL_COMDAT(t) = 1;
+    }
+
     if (TREE_CODE(t) == FUNCTION_DECL)
     {
         if (DECL_STATIC_CONSTRUCTOR(t))
         {
             // %% check for nested function -- error
             // otherwise, shouldn't be in a function, so safe to do asm_out
-            if (targetm.have_ctors_dtors) 
+            if (targetm.have_ctors_dtors)
             {
                 // handled in d_expand_function
             }
@@ -500,27 +519,6 @@ ObjectFile::shouldEmit(Symbol * sym)
     // Not emitting templates, so return true all others.
     if (gen.emitTemplates == TEnone)
         return ! D_DECL_IS_TEMPLATE(sym->Stree);
-
-    // %% TODO: Move this.
-    /* Multiple copies of the same template instantiations can
-       be passed to the backend from the frontend.
-
-       One such example:
-         class c(int i = -1) {}
-         c!() aa = new c!()();
-
-       Marking the decls as weak apparently isn't enough, so 
-       put any duplicates found in comdat to avoid linker errors.
-     */
-    if (D_DECL_IS_TEMPLATE(sym->Stree))
-    {
-        size_t len;
-        gcc_assert(sym->Sident);
-
-        len = strlen(sym->Sident);
-        if (! symtab->insert(sym->Sident, len))
-            DECL_COMDAT(sym->Stree) = 1;
-    }
 
     return true;
 }
@@ -908,7 +906,7 @@ ObjectFile::doDtorFunction(const char * name, Array * functions)
     }
     else
     {
-        for (int i = functions->dim - 1; i >= 0; i--) 
+        for (int i = functions->dim - 1; i >= 0; i--)
         {
             FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
@@ -986,16 +984,7 @@ outdata(Symbol * sym)
 
     layout_decl(t, 0);
 
-    // from outputStaticSymbol:
-    if (DECL_SIZE(t) == NULL_TREE)
-    {
-        DECL_SIZE(t) = bitsize_zero_node;
-        DECL_SIZE_UNIT(t) = size_zero_node;
-    } // Otherwise, if DECL_SIZE == 0, just let it fail...
-
-    d_add_global_function(t);
-
-    g.ofile->rodc(t, 1);
+    g.ofile->outputStaticSymbol(sym);
 }
 
 void

@@ -59,30 +59,6 @@ enum TypeFlag
     TFfixed = 0x08
 };
 
-/*
-struct TYPE : Object
-{
-    tym_t        Tty;
-    mangle_t     Tmangle;
-    TYPE *       Tnext;
-    int          Tcount;
-    int          Tflags;
-    void *       Ttag;
-    void *       Tparamtypes;
-    tree         Ttree;
-
-    TYPE();
-};
-
-extern TYPE * tsvoid;
-
-extern TYPE * type_alloc(tym_t ty); // ty: combination of TypeType values
-extern TYPE * type_fake(tym_t ty);
-extern void   type_setcv(TYPE ** pp_type, int ty);
-extern void   type_setmangle(TYPE ** pp_type, mangle_t mangle);
-extern int/ *?* / type_paramsize(TYPE * t);
-*/
-
 enum SymbolStorageClass
 {
     SC_INVALID,
@@ -154,7 +130,6 @@ struct Symbol : Object
     // Specific to GNU backend
     tree     Stree;
     tree     ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see IRState::declContext
-    unsigned Sunique;      // For conflicting symbol names
 #if V2
     tree     SclosureField; // FIELD_DECL in closure frame struct that this variable is allocated in -- Eventually move back into Stree once everything works right
 #endif

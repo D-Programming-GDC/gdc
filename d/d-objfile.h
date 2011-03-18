@@ -84,7 +84,7 @@ public:
     static void makeDeclOneOnly(tree decl_tree, Dsymbol * dsym = NULL);
 
     static StringTable * symtab;    // Table of emitted symbols.
-    static void outputStaticSymbol(tree t);
+    static void outputStaticSymbol(Symbol * s);
     static void outputFunction(FuncDeclaration * f);
 
     static void addAggMethods(tree rec_type, AggregateDeclaration * agg);

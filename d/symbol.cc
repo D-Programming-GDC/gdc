@@ -38,7 +38,6 @@ Symbol::Symbol()
 
     Stree = 0; // %% make it NULL-TREE, include d-gcc-include
     ScontextDecl = 0;
-    Sunique = 0;
 #if V2
     SclosureField = 0;
 #endif

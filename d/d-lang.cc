@@ -61,6 +61,7 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
 #undef LANG_HOOKS_BUILTIN_FUNCTION
 #undef LANG_HOOKS_REGISTER_BUILTIN_TYPE
+#undef LANG_HOOKS_FINISH_INCOMPLETE_DECL
 
 #define LANG_HOOKS_NAME                     lang_name
 #define LANG_HOOKS_INIT                     d_init
@@ -76,6 +77,7 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_MARK_ADDRESSABLE         d_mark_addressable
 #define LANG_HOOKS_TYPES_COMPATIBLE_P       d_types_compatible_p
 #define LANG_HOOKS_REGISTER_BUILTIN_TYPE    d_register_builtin_type
+#define LANG_HOOKS_FINISH_INCOMPLETE_DECL   d_finish_incomplete_decl
 
 #if D_GCC_VER < 41
 #undef LANG_HOOKS_TRUTHVALUE_CONVERSION
@@ -900,7 +902,7 @@ void
 d_parse_file (int /*set_yydebug*/)
 {
     if (global.params.verbose)
-    {   
+    {
         printf("binary    %s\n", global.params.argv0);
         printf("version   %s\n", global.version);
     }
@@ -1261,7 +1263,7 @@ d_build_decl_loc(location_t loc, tree_code code, tree name, tree type)
 tree
 d_build_decl(tree_code code, tree name, tree type)
 {
-    return d_build_decl_loc(UNKNOWN_LOCATION, code, name, type); 
+    return d_build_decl_loc(UNKNOWN_LOCATION, code, name, type);
 }
 
 bool
@@ -1853,6 +1855,23 @@ d_types_compatible_p (tree t1, tree t2)
     return 0;
 }
 
+static void
+d_finish_incomplete_decl (tree decl)
+{
+    if (TREE_CODE (decl) == VAR_DECL)
+    {   /* D allows zero-length declarations.  Such a declaration ends up with
+           DECL_SIZE(t) == NULL_TREE which is what the backend function
+           assembler_variable checks.  This could change in later versions...
+
+           Maybe all of these variables should be aliased to one symbol... */
+        if (DECL_SIZE (decl) == 0)
+        {
+            DECL_SIZE (decl) = bitsize_zero_node;
+            DECL_SIZE_UNIT (decl) = size_zero_node;
+        }
+    }
+}
+
 #if V2
 
 /* DMD 2 makes a parameter delclaration's type 'const(T)' if the
@@ -1881,7 +1900,7 @@ d_convert_parm_for_inlining  (tree parm, tree value, tree fndecl, int argnum)
 
     if (TREE_TYPE(parm) != TREE_TYPE(value))
         return build1(NOP_EXPR, TREE_TYPE(parm), value);
-    
+
     return value;
 }
 #endif
