@@ -1197,7 +1197,7 @@ static const char * libcall_ids[LIBCALL_count] = {
     "_d_delmemory", "_d_callfinalizer", "_d_callinterfacefinalizer",
     "_d_arraysetlengthT", "_d_arraysetlengthiT",
     "_d_dynamic_cast", "_d_interface_cast",
-    "_adEq", "_adCmp", "_adCmpChar",
+    "_adEq", "_adEq2", "_adCmp", "_adCmp2", "_adCmpChar",
     "_aaEqual", "_aaLen",
     //"_aaIn", "_aaGet", "_aaGetRvalue", "_aaDel",
     "_aaInp", "_aaGetp", "_aaGetRvaluep", "_aaDelp",
@@ -1272,26 +1272,22 @@ IRState::getLibCallDecl(LibCall lib_call)
             case LIBCALL_ARRAY_BOUNDS:
             case LIBCALL_SWITCH_ERROR:
                 // need to spec chararray/string because internal code passes string constants
-                arg_types.reserve(2);
                 arg_types.push(Type::tchar->arrayOf());
                 arg_types.push(Type::tuns32);
                 break;
 
             case LIBCALL_ASSERT_MSG:
-                arg_types.reserve(3);
                 arg_types.push(Type::tchar->arrayOf());
                 arg_types.push(Type::tchar->arrayOf());
                 arg_types.push(Type::tuns32);
                 break;
 #if V2
             case LIBCALL_UNITTEST:
-                arg_types.reserve(2);
                 arg_types.push(Type::tchar->arrayOf());
                 arg_types.push(Type::tuns32);
                 break;
 
             case LIBCALL_UNITTEST_MSG:
-                arg_types.reserve(3);
                 arg_types.push(Type::tchar->arrayOf());
                 arg_types.push(Type::tchar->arrayOf());
                 arg_types.push(Type::tuns32);
@@ -1361,8 +1357,9 @@ IRState::getLibCallDecl(LibCall lib_call)
                 break;
 
             case LIBCALL_ADEQ:
+            case LIBCALL_ADEQ2:
             case LIBCALL_ADCMP:
-                arg_types.reserve(3);
+            case LIBCALL_ADCMP2:
                 arg_types.push(Type::tvoid->arrayOf());
                 arg_types.push(Type::tvoid->arrayOf());
                 arg_types.push(Type::typeinfo->type);
@@ -1370,7 +1367,6 @@ IRState::getLibCallDecl(LibCall lib_call)
                 break;
 
             case LIBCALL_ADCMPCHAR:
-                arg_types.reserve(2);
                 arg_types.push(Type::tchar->arrayOf());
                 arg_types.push(Type::tchar->arrayOf());
                 return_type = Type::tint32;
@@ -1409,7 +1405,6 @@ IRState::getLibCallDecl(LibCall lib_call)
                 if (lib_call == LIBCALL_AAGETP)
                     aa_type = aa_type->pointerTo();
 
-                arg_types.reserve(3);
                 arg_types.push(aa_type);
                 arg_types.push(Type::typeinfo->type); // typeinfo reference
                 if (lib_call == LIBCALL_AAGETP || lib_call == LIBCALL_AAGETRVALUEP)
@@ -3351,7 +3346,7 @@ tree
 IRState::getClosureRef(FuncDeclaration * outer_func)
 {
     tree result = closureLink();
-    FuncDeclaration * fd = closureFunc;
+    FuncDeclaration * fd = closureFunc();
 
     while (fd && fd != outer_func)
     {

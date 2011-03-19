@@ -51,7 +51,9 @@ typedef enum
     LIBCALL_DYNAMIC_CAST,
     LIBCALL_INTERFACE_CAST,
     LIBCALL_ADEQ,
+    LIBCALL_ADEQ2,
     LIBCALL_ADCMP,
+    LIBCALL_ADCMP2,
     LIBCALL_ADCMPCHAR,
     LIBCALL_AAEQUAL,
     LIBCALL_AALEN,
@@ -96,6 +98,13 @@ typedef enum
 #endif
     LIBCALL_count
 } LibCall;
+
+enum BinOp
+{
+    opComp,
+    opBinary,
+    opAssign,
+};
 
 struct FuncFrameInfo
 {
@@ -581,7 +590,7 @@ public:
     void useClosure(FuncDeclaration * f, tree l)
     {
         _closureLink = l;
-        closureFunc = f;
+        _closureFunc = f;
     }
 
     void useParentClosure()
@@ -589,7 +598,7 @@ public:
         if (parent)
         {
             _closureLink = ((IRState*)parent)->_closureLink;
-            closureFunc = ((IRState*)parent)->closureFunc;
+            _closureFunc = ((IRState*)parent)->_closureFunc;
         }
     }
 
@@ -597,12 +606,17 @@ public:
     {
         return _closureLink;
     }
+
+    FuncDeclaration * closureFunc()
+    {
+        return _closureFunc;
+    }
 #endif
 protected:
     tree getFrameForSymbol(Dsymbol * nested_sym);
 #if V2
     tree getClosureRef(FuncDeclaration *outer_func);
-    FuncDeclaration * closureFunc;
+    FuncDeclaration * _closureFunc;
     tree _closureLink;
 public:
     static FuncFrameInfo * getFrameInfo(FuncDeclaration *fd);

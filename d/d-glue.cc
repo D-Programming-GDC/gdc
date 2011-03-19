@@ -61,83 +61,80 @@ CondExp::toElem(IRState * irs)
 }
 
 static tree
-make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
+build_bool_binop(TOK op, tree type, Expression * e1, Expression * e2, IRState * irs)
 {
     tree_code out_code;
+    tree t1 = e1->toElem(irs);
+    tree t2 = e2->toElem(irs);
 
-    if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
-    {   // GCC doesn't handle these.
+    if (op == TOKandand || op == TOKoror)
+    {
+        t1 = irs->convertForCondition(t1, e1->type);
+        t2 = irs->convertForCondition(t2, e2->type);
+    }
+
+    if (COMPLEX_FLOAT_TYPE_P(type))
+    {   // All other operations are not defined for complex types.
+        gcc_assert(op == TOKidentity || op == TOKequal ||
+                   op == TOKnotidentity || op == TOKnotequal ||
+                   op == TOKandand || op == TOKoror);
+
+        // GCC doesn't handle these.
         // ordering for complex isn't defined, all that is guaranteed is the 'unordered part'
-        e1 = irs->maybeMakeTemp(e1);
-        e2 = irs->maybeMakeTemp(e2);
+        t1 = irs->maybeMakeTemp(t1);
+        t2 = irs->maybeMakeTemp(t2);
     }
 
     switch (op)
     {
         case TOKidentity:
         case TOKequal:
-            // (e1 == e2)
             out_code = EQ_EXPR;
             break;
 
         case TOKnotidentity:
         case TOKnotequal:
-            // (e1 != e2)
             out_code = NE_EXPR;
             break;
 
         case TOKandand:
-            // (e1 && e2)
             out_code = TRUTH_ANDIF_EXPR;
             break;
 
         case TOKoror:
-            // (e1 || e2)
             out_code = TRUTH_ORIF_EXPR;
             break;
 
         case TOKleg:
-            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
-            {   // (e1 <>= e2)
+            if (FLOAT_TYPE_P(TREE_TYPE(t1)) && FLOAT_TYPE_P(TREE_TYPE(t2)))
                 out_code = ORDERED_EXPR;
-                break;
-            }
             else
-            {   // %% is this properly optimized away?
+                // %% is this properly optimized away?
                 return convert(boolean_type_node, integer_one_node);
-            }
+            break;
 
         case TOKunord:
-            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
-            {   // (e1 !<>= e2)
+            if (FLOAT_TYPE_P(TREE_TYPE(t1)) && FLOAT_TYPE_P(TREE_TYPE(t2)))
                 out_code = UNORDERED_EXPR;
-                break;
-            }
             else
-            {   // %% is this properly optimized away?
+                // %% is this properly optimized away?
                 return convert(boolean_type_node, integer_zero_node);
-            }
+            break;
 
         case TOKlg:
-            // (e1 < e2) || (e1 > e2)
-            e1 = irs->maybeMakeTemp(e1);
-            e2 = irs->maybeMakeTemp(e2);
-            // %% Write instead as (e1 != e2) ?
+            t1 = irs->maybeMakeTemp(t1);
+            t2 = irs->maybeMakeTemp(t2);
+            // %% Write instead as (t1 != t2) ?
             return irs->boolOp(TRUTH_ORIF_EXPR,
-                    build2(LT_EXPR, boolean_type_node, e1, e2),
-                    build2(GT_EXPR, boolean_type_node, e1, e2));
+                build2(LT_EXPR, boolean_type_node, t1, t2),
+                build2(GT_EXPR, boolean_type_node, t1, t2));
 
         case TOKue:
-            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
-            {   // (e1 !<> e2)
+            if (FLOAT_TYPE_P(TREE_TYPE(t1)) && FLOAT_TYPE_P(TREE_TYPE(t2)))
                 out_code = UNEQ_EXPR;
-                break;
-            }
             else
-            {   // (e1 == e2)
                 out_code = EQ_EXPR;
-                break;
-            }
+            break;
 
         // From cmath2.d: if imaginary parts are equal,
         // result is comparison of real parts; otherwise, result false
@@ -146,70 +143,46 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
 
         // make a target-independent _cmplxCmp ?
         case TOKule:
-            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
-            {   // (e1 !> e2)
+            if (FLOAT_TYPE_P(TREE_TYPE(t1)) && FLOAT_TYPE_P(TREE_TYPE(t2)))
                 out_code = UNLE_EXPR;
-                break;
-            }
             else
-            {   // (e1 < e2)
                 out_code = LE_EXPR;
-                break;
-            }
+            break;
 
         case TOKle:
-            // (e1 <= e2)
             out_code = LE_EXPR;
             break;
 
         case TOKul:
-            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
-            {   // (e1 !>= e2)
+            if (FLOAT_TYPE_P(TREE_TYPE(t1)) && FLOAT_TYPE_P(TREE_TYPE(t2)))
                 out_code = UNLT_EXPR;
-                break;
-            }
             else
-            {   // (e1 < e2)
                 out_code = LT_EXPR;
-                break;
-            }
+            break;
 
         case TOKlt:
-            // (e1 < e2)
             out_code = LT_EXPR;
             break;
 
         case TOKuge:
-            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
-            {   // (e1 !< e2)
+            if (FLOAT_TYPE_P(TREE_TYPE(t1)) && FLOAT_TYPE_P(TREE_TYPE(t2)))
                 out_code = UNGE_EXPR;
-                break;
-            }
             else
-            {   // (e1 >= e2)
                 out_code = GE_EXPR;
-                break;
-            }
+            break;
 
         case TOKge:
-            // (e1 >= e2)
             out_code = GE_EXPR;
             break;
 
         case TOKug:
-            if (FLOAT_TYPE_P(TREE_TYPE(e1)) && FLOAT_TYPE_P(TREE_TYPE(e2)))
-            {   // (e1 !<= e2)
+            if (FLOAT_TYPE_P(TREE_TYPE(t1)) && FLOAT_TYPE_P(TREE_TYPE(t2)))
                 out_code = UNGT_EXPR;
-                break;
-            }
             else
-            {   // (e1 > e2)
                 out_code = GT_EXPR;
-                break;
-            }
+            break;
 
         case TOKgt:
-            // (e1 > e2)
             out_code = GT_EXPR;
             break;
 
@@ -220,30 +193,169 @@ make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
     // Build compare expression.
     /* Need to fold, otherwise 'complex-var == complex-cst' is not
        gimplified correctly.  */
-    tree cmp = fold_build2(out_code, boolean_type_node, e1, e2);
+    tree t = fold_build2(out_code, boolean_type_node, t1, t2);
 
-    if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)) || COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e2)))
-    {   // All other operations are not defined for complex types.
-        gcc_assert(op == TOKidentity || op == TOKequal ||
-                   op == TOKnotidentity || op == TOKnotequal ||
-                   op == TOKandand || op == TOKoror);
-    }
-
-    return cmp;
+    return convert(type, t);
 }
 
 static tree
-make_bool_binop(BinExp * exp, IRState * irs)
+build_math_op(TOK op, tree type, tree e1, Type * tb1, tree e2, Type * tb2, IRState * irs)
 {
-    tree t1 = exp->e1->toElem(irs);
-    tree t2 = exp->e2->toElem(irs);
-    if (exp->op == TOKandand || exp->op == TOKoror)
+    // Integral promotions have already been done in the front end
+    tree_code out_code;
+    tree e1_type = tb1->toCtype();
+    tree e2_type = tb2->toCtype();
+
+    switch (op)
     {
-        t1 = irs->convertForCondition(t1, exp->e1->type);
-        t2 = irs->convertForCondition(t2, exp->e2->type);
+        case TOKadd:    out_code = PLUS_EXPR;    break;
+        case TOKmin:    out_code = MINUS_EXPR;   break;
+        case TOKmul:    out_code = MULT_EXPR;    break;
+        case TOKxor:    out_code = BIT_XOR_EXPR; break;
+        case TOKor:     out_code = BIT_IOR_EXPR; break;
+        case TOKand:    out_code = BIT_AND_EXPR; break;
+        case TOKshl:    out_code = LSHIFT_EXPR;  break;
+        case TOKushr: // drop through
+        case TOKshr:    out_code = RSHIFT_EXPR;  break;
+        case TOKmod:
+            if (INTEGRAL_TYPE_P(e1_type))
+                out_code = TRUNC_MOD_EXPR;
+            else
+                return irs->floatMod(e1, e2, tb1);
+            break;
+
+        case TOKdiv:
+            if (INTEGRAL_TYPE_P(e1_type))
+                out_code = TRUNC_DIV_EXPR;
+            else
+                out_code = RDIV_EXPR;
+            break;
+
+        default:
+            gcc_unreachable();
     }
-    tree t = make_bool_binop(exp->op, t1, t2, irs);
-    return convert(exp->type->toCtype(), t);
+
+    bool is_unsigned = TYPE_UNSIGNED(e1_type) || TYPE_UNSIGNED(e2_type)
+                        || op == TOKushr;
+#if D_GCC_VER >= 43
+    if (POINTER_TYPE_P(e1_type) && INTEGRAL_TYPE_P(e2_type))
+    {
+        return irs->nop(irs->pointerOffsetOp(out_code, e1, e2), type);
+    }
+    else if (INTEGRAL_TYPE_P(e1_type) && POINTER_TYPE_P(e2_type))
+    {
+        gcc_assert(out_code == PLUS_EXPR);
+        return irs->nop(irs->pointerOffsetOp(out_code, e2, e1), type);
+    }
+    else if (POINTER_TYPE_P(e1_type) && POINTER_TYPE_P(e2_type))
+    {   /* Need to convert pointers to integers because tree-vrp asserts
+           against (ptr MINUS ptr). */
+
+        // %% need to work on this
+        tree tt = d_type_for_mode(ptr_mode, TYPE_UNSIGNED(type));
+        e1 = convert(tt, e1);
+        e2 = convert(tt, e2);
+        return convert(type, build2(out_code, tt, e1, e2));
+    }
+    else
+#endif
+    if (INTEGRAL_TYPE_P(type) &&
+        (TYPE_UNSIGNED(type) != 0) != is_unsigned)
+    {
+        tree tt = is_unsigned
+                    ? d_unsigned_type(type)
+                    : d_signed_type(type);
+        if (op == TOKushr)
+        {   /* For >>> and >>>= operations, need e1 to be of the same
+               signedness as what we are converting to, else we get
+               undefined behaviour when optimizations are enabled. */
+            e1 = convert(tt, e1);
+        }
+        tree t = build2(out_code, tt, e1, e2);
+        return convert(type, t);
+    }
+    else
+    {   /* Front-end does not do this conversion and GCC does not
+           always do it right. */
+        if (COMPLEX_FLOAT_TYPE_P(e1_type) && !COMPLEX_FLOAT_TYPE_P(e2_type))
+            e2 = irs->convertTo(e2, tb2, tb1);
+        else if (COMPLEX_FLOAT_TYPE_P(e2_type) && !COMPLEX_FLOAT_TYPE_P(e1_type))
+            e1 = irs->convertTo(e1, tb1, tb2);
+
+        return build2(out_code, type, e1, e2);
+    }
+}
+
+static tree
+build_assign_math_op(TOK op, Type * type, Expression * e1, Expression * e2, IRState * irs)
+{
+    TOK out_code;
+    switch (op)
+    {
+        case TOKaddass:  out_code = TOKadd; break;
+        case TOKminass:  out_code = TOKmin; break;
+        case TOKmulass:  out_code = TOKmul; break;
+        case TOKxorass:  out_code = TOKxor; break;
+        case TOKorass:   out_code = TOKor; break;
+        case TOKandass:  out_code = TOKand; break;
+        case TOKshlass:  out_code = TOKshl; break;
+        case TOKushrass: out_code = TOKushr; break;
+        case TOKshrass:  out_code = TOKshr; break;
+        case TOKmodass:  out_code = TOKmod; break;
+        case TOKdivass:  out_code = TOKdiv; break;
+        default:
+            gcc_unreachable();
+    }
+
+    // Skip casts for lhs assignment.
+    Expression * e1b = e1;
+    while (e1b->op == TOKcast)
+    {
+        CastExp * ce = (CastExp *) e1b;
+        gcc_assert(irs->typesCompatible(ce->type, ce->to)); // %% check, basetype?
+        e1b = ce->e1;
+    }
+    tree lhs_assign = irs->toElemLvalue(e1b);
+    lhs_assign = stabilize_reference(lhs_assign);
+
+    tree rhs_assign = build_math_op(out_code, e1->type->toCtype(),
+            irs->convertTo(lhs_assign, e1b->type, e1->type), e1->type,
+            e2->toElem(irs), e2->type, irs);
+
+    return build2(MODIFY_EXPR, type->toCtype(), lhs_assign,
+                  irs->convertForAssignment(rhs_assign, e1->type, type));
+}
+
+elem *
+BinExp::toElemBin(IRState* irs, int binop)
+{
+    TY ty1 = e1->type->toBasetype()->ty;
+    TY ty2 = e2->type->toBasetype()->ty;
+
+    if ((ty1 == Tarray || ty1 == Tsarray ||
+         ty2 == Tarray || ty2 == Tsarray) &&
+        op != TOKandand && op != TOKoror)
+    {
+        error("Array operation %s not implemented", toChars());
+        return irs->errorMark(type);
+    }
+
+    switch (binop)
+    {
+        case opComp:
+            return build_bool_binop(op, type->toCtype(), e1, e2, irs);
+
+        case opBinary:
+            return build_math_op(op, type->toCtype(),
+                                 e1->toElem(irs), e1->type,
+                                 e2->toElem(irs), e2->type, irs);
+
+        case opAssign:
+            return build_assign_math_op(op, type, e1, e2, irs);
+
+        default:
+            gcc_unreachable();
+    }
 }
 
 elem *
@@ -255,97 +367,120 @@ IdentityExp::toElem(IRState* irs)
     //if (ty1 != e2->type->toBasetype()->ty)
     //abort();
 
-    switch (ty1) {
-    case Tsarray:
-        return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
-            type->toCtype(),
-            irs->addressOf(e1->toElem(irs)),
-            irs->addressOf(e2->toElem(irs)));
-    case Treference:
-    case Tclass:
-    case Tarray:
-        return make_bool_binop(this, irs);
-    default:
-        // For operand types other than class objects, static or dynamic
-        // arrays, identity is defined as being the same as equality
+    switch (ty1)
+    {
+        case Tsarray:
+            return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
+                          type->toCtype(),
+                          irs->addressOf(e1->toElem(irs)),
+                          irs->addressOf(e2->toElem(irs)));
 
-        // Assumes object == object has been changed to function call
-        // ... impl is really the same as the special cales
-        return make_bool_binop(this, irs);
+        case Treference:
+        case Tclass:
+        case Tarray:
+            return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
+                          type->toCtype(),
+                          e1->toElem(irs),
+                          e2->toElem(irs));
+
+        default:
+            // For operand types other than class objects, static or dynamic
+            // arrays, identity is defined as being the same as equality
+
+            // Assumes object == object has been changed to function call
+            // ... impl is really the same as the special cales
+            return toElemBin(irs, opComp);
     }
 }
 
 elem *
 EqualExp::toElem(IRState* irs)
 {
-    Type * base_type_1 = e1->type->toBasetype();
-    TY base_ty_1 = base_type_1->ty;
-    TY base_ty_2 = e2->type->toBasetype()->ty;
+    Type * tb1 = e1->type->toBasetype();
+    Type * tb2 = e2->type->toBasetype();
 
-    if ((base_ty_1 == Tsarray || base_ty_1 == Tarray ||
-             base_ty_2 == Tsarray || base_ty_2 == Tarray))
+    if ((tb1->ty == Tsarray || tb1->ty == Tarray) &&
+        (tb2->ty == Tsarray || tb2->ty == Tarray))
     {
+        Type * telem = tb1->nextOf()->toBasetype();
 
-        Type * elem_type = base_type_1->nextOf()->toBasetype();
-
-        // _adCmp compares each element.  If bitwise comparison is ok,
+        // _adEq compares each element.  If bitwise comparison is ok,
         // use memcmp.
-
-        if (elem_type->isfloating() || elem_type->isClassHandle() ||
-            elem_type->ty == Tsarray || elem_type->ty == Tarray ||
-            elem_type->ty == Tstruct)
+        if (telem->isfloating() || telem->isClassHandle() ||
+            telem->ty == Tsarray || telem->ty == Tarray ||
+            telem->ty == Tstruct)
         {
+            tree result;
             tree args[3] = {
                 irs->toDArray(e1),
                 irs->toDArray(e2),
-                irs->typeinfoReference(elem_type) };
-            tree result = irs->libCall(LIBCALL_ADEQ, 3, args);
+                NULL_TREE,
+            };
+#if V2
+            args[2] = irs->typeinfoReference(telem->arrayOf());
+            result = irs->libCall(LIBCALL_ADEQ2, 3, args);
+#else
+            args[2] = irs->typeinfoReference(telem);
+            result = irs->libCall(LIBCALL_ADEQ, 3, args);
+#endif
             result = convert(type->toCtype(), result);
             if (op == TOKnotequal)
                 result = build1(TRUTH_NOT_EXPR, type->toCtype(), result);
             return result;
-        } else if (base_ty_1 == Tsarray && base_ty_2 == Tsarray) {
-            // assuming sizes are equal
-            return make_bool_binop(this, irs);
-        } else {
+        }
+        else if (tb1->ty == Tsarray && tb2->ty == Tsarray)
+        {   // Assuming sizes are equal.
+            return build2(EQ_EXPR, type->toCtype(),
+                          e1->toElem(irs), e2->toElem(irs));
+        }
+        else
+        {
             tree len_expr[2];
             tree data_expr[2];
 
-            for (int i = 0; i < 2; i++) {
-                Expression * e = i == 0 ? e1 : e2;
-                TY e_base_ty = i == 0 ? base_ty_1 : base_ty_2;
+            for (int i = 0; i < 2; i++)
+            {
+                Expression * exp = i == 0 ? e1 : e2;
+                TY ety = i == 0 ? tb1->ty : tb2->ty;
 
-                if (e_base_ty == Tarray) {
-                    tree array_expr = irs->maybeMakeTemp(e->toElem(irs));
-
-                    data_expr[i] = irs->darrayPtrRef(array_expr);
-                    len_expr[i]  = irs->darrayLenRef(array_expr); // may be used twice -- should be okay
-                } else {
-                    data_expr[i] = irs->addressOf(e->toElem(irs));
-                    len_expr[i]  = ((TypeSArray *) e->type->toBasetype())->dim->toElem(irs);
+                if (ety == Tarray)
+                {
+                    tree ae = irs->maybeMakeTemp(exp->toElem(irs));
+                    data_expr[i] = irs->darrayPtrRef(ae);
+                    len_expr[i] = irs->darrayLenRef(ae);    // may be used twice -- should be okay
+                }
+                else
+                {
+                    data_expr[i] = irs->addressOf(exp->toElem(irs));
+                    len_expr[i] = ((TypeSArray *) exp->type->toBasetype())->dim->toElem(irs);
                 }
             }
 
             tree t_memcmp = built_in_decls[BUILT_IN_MEMCMP];
             tree result;
             tree size;
-
+            
             size = fold_build2(MULT_EXPR, size_type_node,
                                convert(size_type_node, len_expr[0]), // should be size_type already, though
-                               size_int(elem_type->size()));
+                               size_int(telem->size()));
 
             result = irs->buildCall(t_memcmp, 3, data_expr[0], data_expr[1], size);
 
-            result = irs->boolOp(op == TOKequal ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR,
-                irs->boolOp(op == TOKequal ? EQ_EXPR : NE_EXPR, len_expr[0], len_expr[1]),
-                irs->boolOp(op == TOKequal ? EQ_EXPR : NE_EXPR, result, integer_zero_node));
+            if (op == TOKequal)
+                result = irs->boolOp(TRUTH_ANDIF_EXPR,
+                    irs->boolOp(EQ_EXPR, len_expr[0], len_expr[1]),
+                    irs->boolOp(EQ_EXPR, result, integer_zero_node));
+            else
+                result = irs->boolOp(TRUTH_ORIF_EXPR,
+                    irs->boolOp(NE_EXPR, len_expr[0], len_expr[1]),
+                    irs->boolOp(NE_EXPR, result, integer_zero_node));
 
             return convert(type->toCtype(), result);
         }
     }
-    else if (base_ty_1 == Taarray && base_ty_2 == Taarray)
+    else if (tb1->ty == Taarray && tb2->ty == Taarray)
     {
-        TypeAArray * aatype_1 = (TypeAArray *)base_type_1;
+        TypeAArray * aatype_1 = (TypeAArray *) tb1;
         tree args[3] = {
             irs->typeinfoReference(aatype_1),
             e1->toElem(irs),
@@ -361,7 +496,7 @@ EqualExp::toElem(IRState* irs)
     }
     else
     {
-        return make_bool_binop(this, irs);
+        return toElemBin(irs, opComp);
     }
 }
 
@@ -372,11 +507,12 @@ InExp::toElem(IRState * irs)
     AddrOfExpr aoe;
     gcc_assert(e2_base_type->ty == Taarray);
 
-    tree args[3];
     Type * key_type = ((TypeAArray *) e2_base_type)->index->toBasetype();
-    args[0] = e2->toElem(irs);
-    args[1] = irs->typeinfoReference(key_type);
-    args[2] = aoe.set(irs, irs->convertTo(e1, key_type));
+    tree args[3] = {
+        e2->toElem(irs),
+        irs->typeinfoReference(key_type),
+        aoe.set(irs, irs->convertTo(e1, key_type))
+    };
     return d_convert_basic(type->toCtype(),
         aoe.finish(irs, irs->libCall(LIBCALL_AAINP, 3, args)));
 }
@@ -384,301 +520,162 @@ InExp::toElem(IRState * irs)
 elem *
 CmpExp::toElem(IRState* irs)
 {
-    Type * base_type_1 = e1->type->toBasetype();
-    TY base_ty_1 = base_type_1->ty;
-    TY base_ty_2 = e2->type->toBasetype()->ty;
+    Type * tb1 = e1->type->toBasetype();
+    Type * tb2 = e2->type->toBasetype();
 
-    if ((base_ty_1 == Tsarray || base_ty_1 == Tarray ||
-             base_ty_2 == Tsarray || base_ty_2 == Tarray)) {
-
-        Type * elem_type = base_type_1->nextOf()->toBasetype();
-        tree args[3];
+    if ((tb1->ty == Tsarray || tb1->ty == Tarray) &&
+        (tb2->ty == Tsarray || tb2->ty == Tarray))
+    {
+        Type * telem = tb1->nextOf()->toBasetype();
         unsigned n_args = 2;
         LibCall lib_call;
+        tree args[3] = {
+            irs->toDArray(e1),
+            irs->toDArray(e2),
+            NULL_TREE,
+        };
 
-        args[0] = irs->toDArray(e1);
-        args[1] = irs->toDArray(e2);
-
-        switch (elem_type->ty) {
-        case Tvoid:
+        if (telem->ty == Tvoid ||
+            (telem->size() == 1 && telem->isscalar() &&
+             telem->isunsigned()))
+        {   // Tvoid, Tuns8, Tchar, Tbool
             lib_call = LIBCALL_ADCMPCHAR;
-            break;
-        default:
-            // Tuns8, Tchar, Tbool
-            if (elem_type->size() == 1 && elem_type->isscalar() &&
-                elem_type->isunsigned())
-                lib_call = LIBCALL_ADCMPCHAR;
-            else
-            {
-                args[2] = irs->typeinfoReference(elem_type);
-                n_args = 3;
-                lib_call = LIBCALL_ADCMP;
-            }
-            break;
+        }
+        else
+        {
+#if V2
+            args[2] = irs->typeinfoReference(telem->arrayOf());
+            n_args = 3;
+            lib_call = LIBCALL_ADCMP2;
+#else
+            args[2] = irs->typeinfoReference(telem);
+            n_args = 3;
+            lib_call = LIBCALL_ADCMP;
+#endif
         }
 
         tree result = irs->libCall(lib_call, n_args, args);
         enum tree_code out_code;
 
         // %% For float element types, warn that NaN is not taken into account ?
+        switch (op)
+        {
+            case TOKlt: case TOKul: 
+                out_code = LT_EXPR;
+                break;
 
-        switch (this->op) {
-        case TOKlt: out_code = LT_EXPR; break;
-        case TOKgt: out_code = GT_EXPR; break;
-        case TOKle: out_code = LE_EXPR; break;
-        case TOKge: out_code = GE_EXPR; break;
+            case TOKgt: case TOKug:
+                out_code = GT_EXPR;
+                break;
 
-        case TOKlg: out_code = NE_EXPR; break;
-        case TOKunord:
-        case TOKleg:
-            // %% Could do a check for side effects and drop the unused condition
-            return build2(COMPOUND_EXPR, boolean_type_node,
-                result,
-                d_truthvalue_conversion(this->op == TOKunord ? integer_zero_node : integer_one_node));
-        case TOKule: out_code = LE_EXPR; break;
-        case TOKul:  out_code = LT_EXPR; break;
-        case TOKuge: out_code = GE_EXPR; break;
-        case TOKug:  out_code = GT_EXPR; break;
-        case TOKue:  out_code = EQ_EXPR; break;
-            break;
-        default:
-            gcc_unreachable();
-            return 0;
+            case TOKle: case TOKule:
+                out_code = LE_EXPR;
+                break;
+
+            case TOKge: case TOKuge:
+                out_code = GE_EXPR;
+                break;
+
+            case TOKunord: case TOKleg:
+                // %% Could do a check for side effects and drop the unused condition
+                return build2(COMPOUND_EXPR, boolean_type_node, result,
+                    d_truthvalue_conversion(op == TOKunord
+                                            ? integer_zero_node
+                                            : integer_one_node));
+
+            case TOKlg:
+                out_code = NE_EXPR;
+                break;
+
+            case TOKue:
+                out_code = EQ_EXPR;
+                break;
+
+            default:
+                gcc_unreachable();
         }
-
         result = build2(out_code, boolean_type_node, result, integer_zero_node);
         return convert(type->toCtype(), result);
-    } else {
-        return make_bool_binop(this, irs);
-    }
-}
-
-static tree
-make_math_op(TOK op, tree e1, Type * e1_type, tree e2, Type * e2_type, Type * exp_type, IRState * irs)
-{
-    // Integral promotions have already been done in the front end
-    tree_code out_code;
-
-    // %% faster: check if result is complex
-    if (((e1_type->isreal() && e2_type->isimaginary()) ||
-         (e1_type->isimaginary() && e2_type->isreal())) &&
-        (op == TOKadd || op == TOKmin))
-    {   // %%TODO: need to check size/modes
-        tree e2_adj;
-        tree e_real, e_imag;
-
-        if (op == TOKadd)
-        {
-            e2_adj = e2;
-        }
-        else
-        {
-            e2_adj = build1(NEGATE_EXPR, TREE_TYPE(e2), e2);
-        }
-        if (e1_type->isreal())
-        {
-            e_real = e1;
-            e_imag = e2_adj;
-        }
-        else
-        {
-            e_real = e2_adj;
-            e_imag = e1;
-        }
-
-        return build2(COMPLEX_EXPR, exp_type->toCtype(), e_real, e_imag);
-    }
-
-    switch (op)
-    {
-        case TOKadd:    out_code = PLUS_EXPR;    break;
-        case TOKmin:    out_code = MINUS_EXPR;   break;
-        case TOKmul:    out_code = MULT_EXPR;    break;
-        case TOKxor:    out_code = BIT_XOR_EXPR; break;
-        case TOKor:     out_code = BIT_IOR_EXPR; break;
-        case TOKand:    out_code = BIT_AND_EXPR; break;
-        case TOKshl:    out_code = LSHIFT_EXPR;  break;
-        case TOKushr: // drop through
-        case TOKshr:    out_code = RSHIFT_EXPR;  break;
-        case TOKmod:
-        {
-            if (e1_type->isintegral())
-                out_code = TRUNC_MOD_EXPR;
-            else
-            {
-                return irs->floatMod(e1, e2, e1_type);
-            }
-            break;
-        }
-        case TOKdiv:
-        {
-            if (e1_type->isintegral())
-                out_code = TRUNC_DIV_EXPR;
-            else
-                out_code = RDIV_EXPR;
-            break;
-        }
-        default:
-            gcc_unreachable();
-    }
-
-    bool is_unsigned = e1_type->isunsigned() || e2_type->isunsigned()
-                        || op == TOKushr;
-#if D_GCC_VER >= 43
-    if (POINTER_TYPE_P(TREE_TYPE(e1)) && e2_type->isintegral())
-    {
-        return irs->nop(irs->pointerOffsetOp(out_code, e1, e2), exp_type->toCtype());
-    }
-    else if (e1_type->isintegral() && POINTER_TYPE_P(TREE_TYPE(e2)))
-    {
-        gcc_assert(out_code == PLUS_EXPR);
-        return irs->nop(irs->pointerOffsetOp(out_code, e2, e1), exp_type->toCtype());
-    }
-    else if (POINTER_TYPE_P(TREE_TYPE(e1)) && POINTER_TYPE_P(TREE_TYPE(e2)))
-    {   /* Need to convert pointers to integers because tree-vrp asserts
-           against (ptr MINUS ptr). */
-
-        // %% need to work on this
-        tree tt = d_type_for_mode(ptr_mode, TYPE_UNSIGNED(exp_type->toCtype()));
-        e1 = convert(tt, e1);
-        e2 = convert(tt, e2);
-        return convert(exp_type->toCtype(),
-                build2(out_code, tt, e1, e2));
     }
     else
-#endif
-    if (exp_type->isintegral() &&
-            (exp_type->isunsigned() != 0) != is_unsigned)
     {
-        tree e_new_type_1 = is_unsigned ?
-            d_unsigned_type(exp_type->toCtype()) :
-            d_signed_type(exp_type->toCtype());
-        if (op == TOKushr)
-        {   /* For >>> and >>>= operations, need e1 to be of the same
-               signedness as what we are converting to, else we get
-               undefined behaviour when optimizations are enabled. */
-            e1 = convert(e_new_type_1, e1);
-        }
-        tree t = build2(out_code, e_new_type_1, e1, e2);
-        return convert(exp_type->toCtype(), t);
+        return toElemBin(irs, opComp);
     }
-    else
-    {   /* Front-end does not do this conversion and GCC does not
-           always do it right. */
-        tree_code tc1 = TREE_CODE(TREE_TYPE(e1));
-        tree_code tc2 = TREE_CODE(TREE_TYPE(e2));
-        if (tc1 == COMPLEX_TYPE && tc2 != COMPLEX_TYPE)
-        {
-            e2 = irs->convertTo(e2, e2_type, e1_type);
-        }
-        else if (tc2 == COMPLEX_TYPE && tc1 != COMPLEX_TYPE)
-        {
-            e1 = irs->convertTo(e1, e1_type, e2_type);
-        }
-        return build2(out_code, exp_type->toCtype(), e1, e2);
-    }
-}
-
-static tree
-make_math_op(BinExp * exp, IRState * irs)
-{
-    TY ty1 = exp->e1->type->toBasetype()->ty;
-    TY ty2 = exp->e2->type->toBasetype()->ty;
-
-    if ((ty1 == Tarray || ty1 == Tsarray) ||
-        (ty2 == Tarray || ty2 == Tsarray))
-    {
-        exp->error("Array operation %s not implemented", exp->toChars());
-        return irs->errorMark(exp->type);
-    }
-
-    return make_math_op(exp->op,
-            exp->e1->toElem(irs), exp->e1->type,
-            exp->e2->toElem(irs), exp->e2->type,
-            exp->type, irs);
 }
 
 elem *
 AndAndExp::toElem(IRState * irs)
 {
     if (e2->type->toBasetype()->ty != Tvoid)
-    {
-        return make_bool_binop(this, irs);
-    }
+        return toElemBin(irs, opComp);
     else
-    {
         return build3(COND_EXPR, type->toCtype(),
                 irs->convertForCondition(e1), e2->toElem(irs), d_void_zero_node);
-    }
 }
 
 elem *
 OrOrExp::toElem(IRState * irs)
 {
     if (e2->type->toBasetype()->ty != Tvoid)
-    {
-        return make_bool_binop(this, irs);
-    }
+        return toElemBin(irs, opComp);
     else
-    {
         return build3(COND_EXPR, type->toCtype(),
                 build1(TRUTH_NOT_EXPR, boolean_type_node, irs->convertForCondition(e1)),
                 e2->toElem(irs), d_void_zero_node);
-    }
 }
 
 elem *
 XorExp::toElem(IRState * irs)
 {
-    return make_math_op(this, irs);
+    return toElemBin(irs, opBinary);
 }
 
 elem *
 OrExp::toElem(IRState * irs)
 {
-    return make_math_op(this, irs);
+    return toElemBin(irs, opBinary);
 }
 
 elem *
 AndExp::toElem(IRState * irs)
 {
-    return make_math_op(this, irs);
+    return toElemBin(irs, opBinary);
 }
 
 elem *
 UshrExp::toElem(IRState* irs)
 {
-    return make_math_op(this, irs);
+    return toElemBin(irs, opBinary);
 }
 
 elem *
 ShrExp::toElem(IRState * irs)
 {
-    return make_math_op(this, irs);
+    return toElemBin(irs, opBinary);
 }
 
 elem *
 ShlExp::toElem(IRState * irs)
 {
-    return make_math_op(this, irs);
+    return toElemBin(irs, opBinary);
 }
 
 elem *
 ModExp::toElem(IRState * irs)
 {
-    return make_math_op(this, irs);
+    return toElemBin(irs, opBinary);
 }
 
 elem *
 DivExp::toElem(IRState * irs)
 {
-    return make_math_op(this, irs);
+    return toElemBin(irs, opBinary);
 }
 
 elem *
 MulExp::toElem(IRState * irs)
 {
-    return make_math_op(this, irs);
+    return toElemBin(irs, opBinary);
 }
 
 #if V2
@@ -828,122 +825,97 @@ CatExp::toElem(IRState * irs)
 elem *
 MinExp::toElem(IRState* irs)
 {
+    // %% faster: check if result is complex
+    if ((e1->type->isreal() && e2->type->isimaginary()) ||
+        (e1->type->isimaginary() && e2->type->isreal()))
+    {   // %%TODO: need to check size/modes
+        tree t1 = e1->toElem(irs);
+        tree t2 = e2->toElem(irs);
+
+        t2 = build1(NEGATE_EXPR, TREE_TYPE(t2), t2);
+
+        if (e1->type->isreal())
+            return build2(COMPLEX_EXPR, type->toCtype(), t1, t2);
+        else
+            return build2(COMPLEX_EXPR, type->toCtype(), t2, t1);
+    }
+
     // The front end has already taken care of pointer-int and pointer-pointer
-    return make_math_op(this, irs);
+    return toElemBin(irs, opBinary);
 }
 
 elem *
 AddExp::toElem(IRState* irs)
 {
+    // %% faster: check if result is complex
+    if ((e1->type->isreal() && e2->type->isimaginary()) ||
+        (e1->type->isimaginary() && e2->type->isreal()))
+    {   // %%TODO: need to check size/modes
+        tree t1 = e1->toElem(irs);
+        tree t2 = e2->toElem(irs);
+
+        if (e1->type->isreal())
+            return build2(COMPLEX_EXPR, type->toCtype(), t1, t2);
+        else
+            return build2(COMPLEX_EXPR, type->toCtype(), t2, t1);
+    }
+
     // The front end has already taken care of (pointer + integer)
-    return make_math_op(this, irs);
-}
-
-static tree
-make_assign_math_op(BinExp * exp, IRState * irs)
-{
-    TY ty1 = exp->e1->type->toBasetype()->ty;
-    TY ty2 = exp->e2->type->toBasetype()->ty;
-
-    if ((ty1 == Tarray || ty1 == Tsarray) ||
-        (ty2 == Tarray || ty2 == Tsarray))
-    {
-        exp->error("Array operation %s not implemented", exp->toChars());
-        return irs->errorMark(exp->type);
-    }
-
-    TOK out_code;
-    switch (exp->op)
-    {
-        case TOKaddass:  out_code = TOKadd; break;
-        case TOKminass:  out_code = TOKmin; break;
-        case TOKmulass:  out_code = TOKmul; break;
-        case TOKxorass:  out_code = TOKxor; break;
-        case TOKorass:   out_code = TOKor; break;
-        case TOKandass:  out_code = TOKand; break;
-        case TOKshlass:  out_code = TOKshl; break;
-        case TOKushrass: out_code = TOKushr; break;
-        case TOKshrass:  out_code = TOKshr; break;
-        case TOKmodass:  out_code = TOKmod; break;
-        case TOKdivass:  out_code = TOKdiv; break;
-        default:
-            gcc_unreachable();
-    }
-
-    Expression * e1 = exp->e1;
-    Expression * e2 = exp->e2;
-
-    // Skip casts for lhs assignment.
-    Expression * e1b = e1;
-    while (e1b->op == TOKcast)
-    {
-        CastExp * ce = (CastExp *) e1b;
-        gcc_assert(irs->typesCompatible(ce->type, ce->to)); // %% check, basetype?
-        e1b = ce->e1;
-    }
-    tree lhs_assign = irs->toElemLvalue(e1b);
-    lhs_assign = stabilize_reference(lhs_assign);
-
-    tree rhs_assign = make_math_op(out_code,
-            irs->convertTo(lhs_assign, e1b->type, e1->type), e1->type,
-            e2->toElem(irs), e2->type, e1->type, irs);
-
-    return build2(MODIFY_EXPR, exp->type->toCtype(), lhs_assign,
-                  irs->convertForAssignment(rhs_assign, e1->type, exp->type));
+    return toElemBin(irs, opBinary);
 }
 
 elem *
 XorAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 elem *
 OrAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 elem *
 AndAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 elem *
 UshrAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 elem *
 ShrAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 elem *
 ShlAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 elem *
 ModAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 elem *
 DivAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 elem *
 MulAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 elem *
@@ -1017,13 +989,13 @@ CatAssignExp::toElem(IRState * irs)
 elem *
 MinAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 elem *
 AddAssignExp::toElem(IRState * irs)
 {
-    return make_assign_math_op(this, irs);
+    return toElemBin(irs, opAssign);
 }
 
 
@@ -1258,7 +1230,7 @@ AssignExp::toElem(IRState* irs)
     {   // Simple assignment
         tree lhs = irs->toElemLvalue(e1);
         return build2(MODIFY_EXPR, type->toCtype(),
-            lhs, irs->convertForAssignment(e2, e1->type));
+                      lhs, irs->convertForAssignment(e2, e1->type));
     }
     gcc_unreachable();
 }
