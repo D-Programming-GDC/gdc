@@ -479,7 +479,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                         case Tcomplex64: part_type = Type::tfloat64; break;
                         case Tcomplex80: part_type = Type::tfloat80; break;
                         default:
-                            abort();
+                            gcc_unreachable();
                     }
                     result = realPart(exp);
                 }
@@ -491,7 +491,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                         case Tcomplex64: part_type = Type::timaginary64; break;
                         case Tcomplex80: part_type = Type::timaginary80; break;
                         default:
-                            abort();
+                            gcc_unreachable();
                     }
                     result = imagPart(exp);
                 }
@@ -612,7 +612,7 @@ IRState::convertForAssignment(Expression * exp, Type * target_type)
         }
         else
         {
-            abort();
+            gcc_unreachable();
         }
     }
 
@@ -2182,7 +2182,7 @@ IRState::floatMod(tree a, tree b, Type * d_type)
                     d_type->toChars());
             return error_mark_node;
     }
-    
+
     tree decl = built_in_decls[fn];
     if (d_type->iscomplex())
     {
@@ -2198,7 +2198,7 @@ IRState::floatMod(tree a, tree b, Type * d_type)
     }
     else
     {   // Should have caught this above.
-        abort();
+        gcc_unreachable();
     }
 }
 

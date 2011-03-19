@@ -5,12 +5,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -54,10 +54,10 @@ struct GTY(()) lang_type
    there is no special lang_identifier */
 union GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
            chain_next ("(union lang_tree_node *)TREE_CHAIN (&%h.generic)")))
-lang_tree_node 
+lang_tree_node
 {
-    union tree_node GTY ((tag ("0"), 
-                          desc ("tree_node_structure (&%h)"))) 
+    union tree_node GTY ((tag ("0"),
+                          desc ("tree_node_structure (&%h)")))
       generic;
     struct lang_identifier GTY ((tag ("1"))) identifier;
 };
@@ -175,7 +175,7 @@ tree d_type_for_mode(enum machine_mode mode, int unsignedp);
 tree d_build_decl_loc(location_t loc, enum tree_code code, tree name, tree type);
 tree d_build_decl(enum tree_code code, tree name, tree type);
 void dkeep(tree t);
-    
+
 /* In d-builtins.c */
 extern void d_init_builtins PARAMS ((void));
 extern const struct attribute_spec d_common_attribute_table[];

@@ -2967,7 +2967,7 @@ struct AsmProcessor
                     }
                     break;
                 default:
-                    abort();
+                    gcc_unreachable();
             }
 
             nextToken();

@@ -759,7 +759,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
     if (! thunk->symbol)
     {
         char *id;
-        
+
         // dmd uses 'sym' -- not sure what that is...
         id = (char *) alloca(8 + 5 + strlen(csym->Sident) + 1);
         sprintf(id,"__t%"PRIdTSIZE"_%s", offset, csym->Sident);

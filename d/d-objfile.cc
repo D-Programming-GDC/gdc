@@ -653,7 +653,7 @@ ObjectFile::stripVarDecl(tree value)
                 }
             }
         }
-        abort();
+        gcc_unreachable();
     }
 }
 

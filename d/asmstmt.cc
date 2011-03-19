@@ -267,7 +267,7 @@ ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 }
 
 #if V2
-int 
+int
 ExtAsmStatement::blockExit(bool mustNotThrow)
 {
     if (mustNotThrow)

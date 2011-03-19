@@ -75,7 +75,7 @@ static unsigned n_all_d_sources = 0;
 static char * output_directory_option = NULL;
 static int output_parents_option = 0;
 static char * only_source_option = NULL;
-    
+
 /* Whether we need -pthread flag. */
 extern int need_pthreads;
 
@@ -283,7 +283,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 		arg = "";
 	      if (library == 0 && (strcmp (arg, "d") == 0))
 		library = 1;
-		
+
                 saw_speclang = 1;
             }
             else if (((argv[i][2] == '\0'

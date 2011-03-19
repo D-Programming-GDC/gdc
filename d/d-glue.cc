@@ -64,7 +64,7 @@ static tree
 make_bool_binop(TOK op, tree e1, tree e2, IRState * irs)
 {
     tree_code out_code;
-    
+
     if (COMPLEX_FLOAT_TYPE_P(TREE_TYPE(e1)))
     {   // GCC doesn't handle these.
         // ordering for complex isn't defined, all that is guaranteed is the 'unordered part'
@@ -442,7 +442,7 @@ CmpExp::toElem(IRState* irs)
         case TOKue:  out_code = EQ_EXPR; break;
             break;
         default:
-            abort();
+            gcc_unreachable();
             return 0;
         }
 
@@ -1008,7 +1008,7 @@ CatAssignExp::toElem(IRState * irs)
         args[1] = irs->addressOf(irs->toElemLvalue(e1));
         args[2] = irs->toDArray(e2);
         lib_call = LIBCALL_ARRAYAPPENDT;
-        
+
         result = irs->libCall(lib_call, n_args, args, type->toCtype());
     }
     return aoe.finish(irs, result);
@@ -1519,7 +1519,7 @@ DeleteExp::toElem(IRState* irs)
         case Tclass:
         {
             bool is_intfc = base_type->isClassHandle()->isInterfaceDeclaration() != NULL;
-            
+
             if (e1->op == TOKvar)
             {
                 VarDeclaration * v = ((VarExp *)e1)->var->isVarDeclaration();
@@ -2716,7 +2716,7 @@ ComplexExp::toElem(IRState * irs)
         case Tcomplex64: compon_type = (TypeBasic *) Type::tfloat64; break;
         case Tcomplex80: compon_type = (TypeBasic *) Type::tfloat80; break;
         default:
-            abort();
+            gcc_unreachable();
     }
     return build_complex(type->toCtype(),
             irs->floatConstant(creall(value), compon_type),
@@ -3439,7 +3439,7 @@ Type::toCtype()
 
             default:
                 ::error("unexpected call to Type::toCtype() for %s\n", this->toChars());
-                abort();
+                gcc_unreachable();
                 return NULL_TREE;
         }
     }
@@ -3739,7 +3739,7 @@ TypeSArray::toCtype()
         else
         {
             ::error("invalid expressions for static array dimension: %s", dim->toChars());
-            abort();
+            gcc_unreachable();
         }
     }
     return gen.addTypeModifiers(ctype, mod);
@@ -4110,7 +4110,7 @@ ThrowStatement::toIR(IRState* irs)
 
     if (intfc_decl)
     {
-        if (! intfc_decl->isCOMclass()) 
+        if (! intfc_decl->isCOMclass())
         {
             arg = irs->convertTo(arg, exp->type, irs->getObjectType());
         }
@@ -4399,7 +4399,7 @@ SwitchStatement::toIR(IRState * irs)
             default:
                 ::error("switch statement value must be an array of some character type, not %s",
                         elem_type->toChars());
-                abort();
+                gcc_unreachable();
         }
 
         // Apparently the backend is supposed to sort and set the indexes
@@ -4430,7 +4430,7 @@ SwitchStatement::toIR(IRState * irs)
     else if (! cond_type->isscalar())
     {
         ::error("cannot handle switch condition of type %s", cond_type->toChars());
-        abort();
+        gcc_unreachable();
     }
     if (cases)
     {   // Build LABEL_DECLs now so they can be refered to by goto case
@@ -4478,7 +4478,7 @@ void
 Statement::toIR(IRState*)
 {
     ::error("Statement::toIR: don't know what to do (%s)", toChars());
-    abort();
+    gcc_unreachable();
 }
 
 void
@@ -4511,7 +4511,7 @@ ForeachStatement::toIR(IRState *)
 {
     // Frontend rewrites this to ForStatement
     ::error("ForeachStatement::toIR: we shouldn't emit this (%s)", toChars());
-    abort();
+    gcc_unreachable();
 #if 0
     // %% better?: set iter to start - 1 and use result of increment for condition?
 
@@ -4642,7 +4642,7 @@ ForeachRangeStatement::toIR(IRState *)
 {
     // Frontend rewrites this to ForStatement
     ::error("ForeachRangeStatement::toIR: we shouldn't emit this (%s)", toChars());
-    abort();
+    gcc_unreachable();
 #if 0
     bool fwd = op == TOKforeach;
     Type * key_type = key->type->toBasetype();
@@ -4752,7 +4752,7 @@ WhileStatement::toIR(IRState *)
 {
     // Frontend rewrites this to ForStatement
     ::error("WhileStatement::toIR: we shouldn't emit this (%s)", toChars());
-    abort();
+    gcc_unreachable();
 #if 0
     irs->doLineNote(loc); // store for next statement...
     irs->startLoop(this);
@@ -4943,7 +4943,7 @@ gcc_d_backend_init()
         Tindex = Tint64;
         break;
     default:
-        abort();
+        gcc_unreachable();
     }
     switch (PTRSIZE) {
     case 4:
@@ -4955,7 +4955,7 @@ gcc_d_backend_init()
         Tptrdiff_t = Tint64;
         break;
     default:
-        abort();
+        gcc_unreachable();
     }
 
     CLASSINFO_SIZE_64 = 19 * PTRSIZE;

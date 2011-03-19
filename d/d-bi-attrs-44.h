@@ -1146,7 +1146,7 @@ handle_weakref_attribute (tree *node, tree ARG_UNUSED (name), tree args,
       *no_add_attrs = true;
       return NULL_TREE;
     }
-  
+
   /* The idea here is that `weakref("name")' mutates into `weakref,
      alias("name")', and weakref without arguments, in turn,
      implicitly adds weak. */
@@ -1975,4 +1975,4 @@ handle_optimize_attribute (tree *node, tree name, tree args,
 
   return NULL_TREE;
 }
-
+

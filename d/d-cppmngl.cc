@@ -295,7 +295,7 @@ TypeBasic::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         buf->writeByte('K');
         cms->add(this);
     }
-    
+
     buf->writeByte(c);
 }
 

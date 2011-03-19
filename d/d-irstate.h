@@ -119,7 +119,7 @@ public:
             };
             struct
             {
-                tree condition;  // Only need this if it is not okay to convert an IfStatement's 
+                tree condition;  // Only need this if it is not okay to convert an IfStatement's
                 tree trueBranch; // condition after converting it's branches...
             };
             struct

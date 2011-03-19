@@ -68,7 +68,7 @@ d_default_conversion (tree exp)
 
 // copied this over just to support d_truthvalue_conversion, so assumes bool
 static tree
-d_build_binary_op (tree_code code, tree orig_op0, tree orig_op1, int convert_p) 
+d_build_binary_op (tree_code code, tree orig_op0, tree orig_op1, int convert_p)
 {
     tree type0, type1;
     tree op0, op1;
@@ -171,7 +171,7 @@ d_convert_basic (tree type, tree expr)
         error ("void value not ignored as it ought to be");
         return error_mark_node;
     }
-    
+
     switch (code)
     {
         case VOID_TYPE:

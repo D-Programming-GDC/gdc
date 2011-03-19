@@ -259,7 +259,7 @@ struct IRState : IRBase
     // ** Dynamic arrays
     static tree darrayLenRef(tree exp);
     static tree darrayPtrRef(tree exp);
-    
+
     tree darrayPtrRef(Expression * e)
     {
         return darrayPtrRef(e->toElem(this));
@@ -331,7 +331,7 @@ struct IRState : IRBase
         {
             t = TREE_OPERAND(exp, 0);
             ptrtype = build_pointer_type(exp_type);
-            t = nop(t, ptrtype); 
+            t = nop(t, ptrtype);
         }
         else
         {   /* Just convert string literals (char[]) to C-style strings (char *), otherwise
