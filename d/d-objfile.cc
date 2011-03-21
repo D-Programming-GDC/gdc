@@ -457,10 +457,6 @@ ObjectFile::outputFunction(FuncDeclaration * f)
 
         if (! symtab->insert(s->Sident, len))
             giveDeclUniqueName(t, s->Sident);
-
-        /* Mark it needed so we don't forget to emit it.  */
-        mark_decl_referenced (t);
-        DECL_COMDAT(t) = 1;
     }
 
     if (TREE_CODE(t) == FUNCTION_DECL)

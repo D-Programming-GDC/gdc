@@ -1,7 +1,7 @@
-diff -cr gcc.orig/cgraph.c gcc/cgraph.c
+diff -pcr gcc.orig/cgraph.c gcc/cgraph.c
 *** gcc.orig/cgraph.c	2008-11-16 22:31:58.000000000 +0000
---- gcc/cgraph.c	2011-01-06 22:20:41.287061001 +0000
-***************
+--- gcc/cgraph.c	2011-03-21 18:37:28.108025146 +0000
+*************** struct cgraph_node *
 *** 451,456 ****
 --- 451,457 ----
   cgraph_node (tree decl)
@@ -11,7 +11,7 @@ diff -cr gcc.orig/cgraph.c gcc/cgraph.c
   
     gcc_assert (TREE_CODE (decl) == FUNCTION_DECL);
   
-***************
+*************** cgraph_node (tree decl)
 *** 472,483 ****
     node = cgraph_create_node ();
     node->decl = decl;
@@ -42,12 +42,83 @@ diff -cr gcc.orig/cgraph.c gcc/cgraph.c
       }
     if (assembler_name_hash)
       {
-diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
+diff -pcr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
 *** gcc.orig/config/i386/i386.c	2010-08-06 08:52:04.000000000 +0100
---- gcc/config/i386/i386.c	2011-01-09 16:54:46.385570002 +0000
-***************
+--- gcc/config/i386/i386.c	2011-03-21 19:46:00.804418905 +0000
+*************** ix86_handle_cconv_attribute (tree *node,
+*** 4270,4275 ****
+--- 4270,4279 ----
+          {
+  	  error ("fastcall and stdcall attributes are not compatible");
+  	}
++       if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (*node)))
++         {
++ 	  error ("fastcall and optlink attributes are not compatible");
++ 	}
+        if (lookup_attribute ("regparm", TYPE_ATTRIBUTES (*node)))
+          {
+  	  error ("fastcall and regparm attributes are not compatible");
+*************** ix86_handle_cconv_attribute (tree *node,
+*** 4288,4293 ****
+--- 4292,4301 ----
+          {
+  	  error ("stdcall and fastcall attributes are not compatible");
+  	}
++       if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (*node)))
++         {
++ 	  error ("stdcall and optlink attributes are not compatible");
++ 	}
+      }
+  
+    /* Can combine cdecl with regparm and sseregparm.  */
+*************** ix86_handle_cconv_attribute (tree *node,
+*** 4301,4306 ****
+--- 4309,4335 ----
+          {
+  	  error ("fastcall and cdecl attributes are not compatible");
+  	}
++       if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (*node)))
++         {
++ 	  error ("optlink and cdecl attributes are not compatible");
++ 	}
++     }
++ 
++   /* Can combine optlink with regparm and sseregparm.  */
++   else if (is_attribute_p ("optlink", name))
++     {
++       if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
++         {
++ 	  error ("optlink and stdcall attributes are not compatible");
++ 	}
++       if (lookup_attribute ("fastcall", TYPE_ATTRIBUTES (*node)))
++         {
++ 	  error ("optlink and fastcall attributes are not compatible");
++ 	}
++       if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
++         {
++ 	  error ("optlink and cdecl attributes are not compatible");
++ 	}
+      }
+  
+    /* Can combine sseregparm with all attributes.  */
+*************** ix86_return_pops_args (tree fundecl, tre
+*** 4537,4542 ****
+--- 4566,4577 ----
+            || lookup_attribute ("fastcall", TYPE_ATTRIBUTES (funtype)))
+  	rtd = 1;
+  
++       /* Optlink functions will pop the stack if returning float and
++          if not variable args.  */
++       if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (funtype))
++           && FLOAT_MODE_P (TYPE_MODE (TREE_TYPE (funtype))))
++ 	rtd = 1;
++ 
+        if (rtd && ! stdarg_p (funtype))
+  	return size;
+      }
+*************** ix86_compute_frame_layout (struct ix86_f
 *** 7879,7884 ****
---- 7879,7889 ----
+--- 7914,7924 ----
       frame->red_zone_size = 0;
     frame->to_allocate -= frame->red_zone_size;
     frame->stack_pointer_offset -= frame->red_zone_size;
@@ -59,7 +130,7 @@ diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
   #if 0
     fprintf (stderr, "\n");
     fprintf (stderr, "size: %ld\n", (long)size);
-***************
+*************** x86_output_mi_thunk (FILE *file ATTRIBUT
 *** 26795,26801 ****
   	  output_set_got (tmp, NULL_RTX);
   
@@ -68,7 +139,7 @@ diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
   	  output_asm_insn ("jmp\t{*}%1", xops);
   	}
       }
---- 26800,26806 ----
+--- 26835,26841 ----
   	  output_set_got (tmp, NULL_RTX);
   
   	  xops[1] = tmp;
@@ -76,10 +147,34 @@ diff -cr gcc.orig/config/i386/i386.c gcc/config/i386/i386.c
   	  output_asm_insn ("jmp\t{*}%1", xops);
   	}
       }
-diff -cr gcc.orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
+*************** static const struct attribute_spec ix86_
+*** 29551,29556 ****
+--- 29591,29598 ----
+    /* Sseregparm attribute says we are using x86_64 calling conventions
+       for FP arguments.  */
+    { "sseregparm", 0, 0, false, true, true, ix86_handle_cconv_attribute },
++   /* Optlink attribute says we are using D calling convention */
++   { "optlink",    0, 0, false, true, true, ix86_handle_cconv_attribute },
+    /* force_align_arg_pointer says this function realigns the stack at entry.  */
+    { (const char *)&ix86_force_align_arg_pointer_string, 0, 0,
+      false, true,  true, ix86_handle_cconv_attribute },
+diff -pcr gcc.orig/config/i386/i386.h gcc/config/i386/i386.h
+*** gcc.orig/config/i386/i386.h	2009-11-13 19:13:16.000000000 +0000
+--- gcc/config/i386/i386.h	2011-03-21 19:43:34.955695689 +0000
+*************** typedef struct ix86_args {
+*** 1572,1577 ****
+--- 1572,1578 ----
+    int nregs;			/* # registers available for passing */
+    int regno;			/* next available register number */
+    int fastcall;			/* fastcall calling convention is used */
++   int optlink;			/* optlink calling convention is used */
+    int sse_words;		/* # sse words passed so far */
+    int sse_nregs;		/* # sse registers available for passing */
+    int warn_avx;			/* True when we want to warn about AVX ABI.  */
+diff -pcr gcc.orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
 *** gcc.orig/config/rs6000/rs6000.c	2010-06-04 05:57:21.000000000 +0100
---- gcc/config/rs6000/rs6000.c	2011-01-06 22:20:41.367061001 +0000
-***************
+--- gcc/config/rs6000/rs6000.c	2011-03-21 18:37:28.292026049 +0000
+*************** rs6000_output_function_epilogue (FILE *f
 *** 17665,17671 ****
   	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
   	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -97,10 +192,10 @@ diff -cr gcc.orig/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
   	i = 0;
         else if (! strcmp (language_string, "GNU F77")
   	       || ! strcmp (language_string, "GNU Fortran"))
-diff -cr gcc.orig/dojump.c gcc/dojump.c
+diff -pcr gcc.orig/dojump.c gcc/dojump.c
 *** gcc.orig/dojump.c	2010-03-08 11:46:28.000000000 +0000
---- gcc/dojump.c	2011-01-06 23:06:56.619061002 +0000
-***************
+--- gcc/dojump.c	2011-03-21 18:37:28.304026114 +0000
+*************** void
 *** 80,86 ****
   clear_pending_stack_adjust (void)
   {
@@ -118,10 +213,10 @@ diff -cr gcc.orig/dojump.c gcc/dojump.c
         && EXIT_IGNORE_STACK)
       discard_pending_stack_adjust ();
   }
-diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
+diff -pcr gcc.orig/dwarf2out.c gcc/dwarf2out.c
 *** gcc.orig/dwarf2out.c	2010-02-10 15:09:06.000000000 +0000
---- gcc/dwarf2out.c	2011-01-06 22:20:41.387061001 +0000
-***************
+--- gcc/dwarf2out.c	2011-03-21 18:37:28.356026367 +0000
+*************** is_c_family (void)
 *** 6398,6404 ****
   
     return (lang == DW_LANG_C || lang == DW_LANG_C89 || lang == DW_LANG_ObjC
@@ -139,7 +234,7 @@ diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
   }
   
   /* Return TRUE if the language is C++.  */
-***************
+*************** gen_compile_unit_die (const char *filena
 *** 14506,14511 ****
 --- 14507,14514 ----
       language = DW_LANG_ObjC;
@@ -150,7 +245,7 @@ diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
     else
       language = DW_LANG_C89;
   
-***************
+*************** dwarf2out_decl (tree decl)
 *** 15688,15694 ****
   
         /* For local statics lookup proper context die.  */
@@ -167,10 +262,10 @@ diff -cr gcc.orig/dwarf2out.c gcc/dwarf2out.c
   
         /* If we are in terse mode, don't generate any DIEs to represent any
   	 variable declarations or definitions.  */
-diff -cr gcc.orig/except.c gcc/except.c
+diff -pcr gcc.orig/except.c gcc/except.c
 *** gcc.orig/except.c	2010-03-08 11:46:28.000000000 +0000
---- gcc/except.c	2011-01-06 22:20:41.399061001 +0000
-***************
+--- gcc/except.c	2011-03-21 18:37:28.368026429 +0000
+*************** struct eh_region GTY(())
 *** 200,206 ****
   
   typedef struct eh_region *eh_region;
@@ -187,7 +282,7 @@ diff -cr gcc.orig/except.c gcc/except.c
   {
     rtx landing_pad;
     int action;
-***************
+*************** sjlj_mark_call_sites (struct sjlj_lp_inf
 *** 1777,1782 ****
 --- 1777,1794 ----
   
@@ -208,7 +303,7 @@ diff -cr gcc.orig/except.c gcc/except.c
   	}
   
         if (this_call_site == last_call_site)
-***************
+*************** add_call_site (rtx landing_pad, int acti
 *** 3198,3204 ****
   {
     call_site_record record;
@@ -225,7 +320,7 @@ diff -cr gcc.orig/except.c gcc/except.c
     record->landing_pad = landing_pad;
     record->action = action;
   
-***************
+*************** dw2_size_of_call_site_table (void)
 *** 3399,3405 ****
   
     for (i = 0; i < n; ++i)
@@ -242,7 +337,7 @@ diff -cr gcc.orig/except.c gcc/except.c
         size += size_of_uleb128 (cs->action);
       }
   
-***************
+*************** sjlj_size_of_call_site_table (void)
 *** 3415,3421 ****
   
     for (i = 0; i < n; ++i)
@@ -259,7 +354,7 @@ diff -cr gcc.orig/except.c gcc/except.c
         size += size_of_uleb128 (INTVAL (cs->landing_pad));
         size += size_of_uleb128 (cs->action);
       }
-***************
+*************** dw2_output_call_site_table (void)
 *** 3432,3438 ****
   
     for (i = 0; i < n; ++i)
@@ -276,7 +371,7 @@ diff -cr gcc.orig/except.c gcc/except.c
         char reg_start_lab[32];
         char reg_end_lab[32];
         char landing_pad_lab[32];
-***************
+*************** sjlj_output_call_site_table (void)
 *** 3486,3492 ****
   
     for (i = 0; i < n; ++i)
@@ -293,10 +388,10 @@ diff -cr gcc.orig/except.c gcc/except.c
   
         dw2_asm_output_data_uleb128 (INTVAL (cs->landing_pad),
   				   "region %d landing pad", i);
-diff -cr gcc.orig/expr.c gcc/expr.c
+diff -pcr gcc.orig/expr.c gcc/expr.c
 *** gcc.orig/expr.c	2010-09-23 08:41:30.000000000 +0100
---- gcc/expr.c	2011-01-06 22:20:41.411061001 +0000
-***************
+--- gcc/expr.c	2011-03-21 18:37:28.396026575 +0000
+*************** expand_expr_real_1 (tree exp, rtx target
 *** 9351,9356 ****
 --- 9351,9361 ----
   	 represent.  */
@@ -310,10 +405,10 @@ diff -cr gcc.orig/expr.c gcc/expr.c
       case EXC_PTR_EXPR:
         return get_exception_pointer ();
   
-diff -cr gcc.orig/function.c gcc/function.c
+diff -pcr gcc.orig/function.c gcc/function.c
 *** gcc.orig/function.c	2010-08-16 21:24:54.000000000 +0100
---- gcc/function.c	2011-01-06 22:20:41.419061001 +0000
-***************
+--- gcc/function.c	2011-03-21 18:37:28.412026653 +0000
+*************** assign_parms (tree fndecl)
 *** 3190,3196 ****
         FUNCTION_ARG_ADVANCE (all.args_so_far, data.promoted_mode,
   			    data.passed_type, data.named_arg);
@@ -331,7 +426,7 @@ diff -cr gcc.orig/function.c gcc/function.c
   
         if (assign_parm_setup_block_p (&data))
   	assign_parm_setup_block (&all, parm, &data);
-***************
+*************** assign_parms (tree fndecl)
 *** 3205,3211 ****
   
     /* Output all parameter conversion instructions (possibly including calls)
@@ -349,7 +444,7 @@ diff -cr gcc.orig/function.c gcc/function.c
   
     /* Estimate reload stack alignment from scalar return mode.  */
     if (SUPPORTS_STACK_ALIGNMENT)
-***************
+*************** gimplify_parameters (void)
 *** 3357,3362 ****
 --- 3359,3367 ----
     tree fnargs, parm;
@@ -361,7 +456,7 @@ diff -cr gcc.orig/function.c gcc/function.c
     assign_parms_initialize_all (&all);
     fnargs = assign_parms_augmented_arg_list (&all);
   
-***************
+*************** expand_function_start (tree subr)
 *** 4460,4470 ****
         tree parm = cfun->static_chain_decl;
         rtx local = gen_reg_rtx (Pmode);
@@ -390,7 +485,7 @@ diff -cr gcc.orig/function.c gcc/function.c
       }
   
     /* If the function receives a non-local goto, then store the
-***************
+*************** thread_prologue_and_epilogue_insns (void
 *** 4985,4990 ****
 --- 4994,5002 ----
   #endif
@@ -402,10 +497,10 @@ diff -cr gcc.orig/function.c gcc/function.c
     rtl_profile_for_bb (ENTRY_BLOCK_PTR);
   #ifdef HAVE_prologue
     if (HAVE_prologue)
-diff -cr gcc.orig/function.h gcc/function.h
+diff -pcr gcc.orig/function.h gcc/function.h
 *** gcc.orig/function.h	2009-09-23 15:58:58.000000000 +0100
---- gcc/function.h	2011-01-06 22:20:41.423061001 +0000
-***************
+--- gcc/function.h	2011-03-21 18:37:28.420026685 +0000
+*************** struct expr_status GTY(())
 *** 137,143 ****
     rtx x_forced_labels;
   };
@@ -422,7 +517,7 @@ diff -cr gcc.orig/function.h gcc/function.h
   DEF_VEC_P(call_site_record);
   DEF_VEC_ALLOC_P(call_site_record, gc);
   
-***************
+*************** struct rtl_eh GTY(())
 *** 175,186 ****
   struct gimple_df;
   struct temp_slot;
@@ -449,7 +544,7 @@ diff -cr gcc.orig/function.h gcc/function.h
   
   DEF_VEC_P(ipa_opt_pass);
   DEF_VEC_ALLOC_P(ipa_opt_pass,heap);
-***************
+*************** struct function GTY(())
 *** 600,605 ****
 --- 600,613 ----
        adjusts one of its arguments and forwards to another
@@ -466,10 +561,10 @@ diff -cr gcc.orig/function.h gcc/function.h
   };
   
   /* If va_list_[gf]pr_size is set to this, it means we don't know how
-diff -cr gcc.orig/gcc.c gcc/gcc.c
+diff -pcr gcc.orig/gcc.c gcc/gcc.c
 *** gcc.orig/gcc.c	2010-01-09 00:05:06.000000000 +0000
---- gcc/gcc.c	2011-01-06 22:20:41.435061001 +0000
-***************
+--- gcc/gcc.c	2011-03-21 18:37:28.448026828 +0000
+*************** int is_cpp_driver;
 *** 126,131 ****
 --- 126,134 ----
   /* Flag set to nonzero if an @file argument has been supplied to gcc.  */
@@ -481,9 +576,9 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
   /* Flag saying to pass the greatest exit code returned by a sub-process
      to the calling program.  */
   static int pass_exit_codes;
-***************
+*************** or with constant text in a single argume
 *** 480,485 ****
---- 486,492 ----
+--- 483,489 ----
   	assembler has done its job.
    %D	Dump out a -L option for each directory in startfile_prefixes.
   	If multilib_dir is set, extra entries are generated with it affixed.
@@ -491,9 +586,9 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
    %l     process LINK_SPEC as a spec.
    %L     process LIB_SPEC as a spec.
    %G     process LIBGCC_SPEC as a spec.
-***************
+*************** warranty; not even for MERCHANTABILITY o
 *** 4022,4027 ****
---- 4035,4043 ----
+--- 4026,4034 ----
   	}
       }
   
@@ -503,9 +598,9 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
     if (save_temps_flag && use_pipes)
       {
         /* -save-temps overrides -pipe, so that temp files are produced */
-***************
+*************** warranty; not even for MERCHANTABILITY o
 *** 4332,4337 ****
---- 4348,4365 ----
+--- 4339,4356 ----
         infiles[0].name   = "help-dummy";
       }
   
@@ -524,9 +619,9 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
     switches[n_switches].part1 = 0;
     infiles[n_infiles].name = 0;
   }
-***************
+*************** do_spec_1 (const char *spec, int inswitc
 *** 5337,5342 ****
---- 5365,5381 ----
+--- 5356,5372 ----
   	      return value;
   	    break;
   
@@ -544,10 +639,10 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
   	    /* Here we define characters other than letters and digits.  */
   
   	  case '{':
-diff -cr gcc.orig/gimple.c gcc/gimple.c
+diff -pcr gcc.orig/gimple.c gcc/gimple.c
 *** gcc.orig/gimple.c	2008-12-07 23:27:14.000000000 +0000
---- gcc/gimple.c	2011-01-06 22:20:41.451061001 +0000
-***************
+--- gcc/gimple.c	2011-03-21 18:37:28.480026985 +0000
+*************** get_gimple_rhs_num_ops (enum tree_code c
 *** 2535,2540 ****
 --- 2535,2543 ----
         || (SYM) == POLYNOMIAL_CHREC					    \
@@ -559,7 +654,7 @@ diff -cr gcc.orig/gimple.c gcc/gimple.c
         || (SYM) == REALIGN_LOAD_EXPR) ? GIMPLE_SINGLE_RHS		    \
      : GIMPLE_INVALID_RHS),
   #define END_OF_BASE_TREE_CODES (unsigned char) GIMPLE_INVALID_RHS,
-***************
+*************** is_gimple_lvalue (tree t)
 *** 2615,2621 ****
   	  || TREE_CODE (t) == WITH_SIZE_EXPR
   	  /* These are complex lvalues, but don't have addresses, so they
@@ -579,7 +674,7 @@ diff -cr gcc.orig/gimple.c gcc/gimple.c
   }
   
   /*  Return true if T is a GIMPLE condition.  */
-***************
+*************** is_gimple_variable (tree t)
 *** 2851,2856 ****
 --- 2857,2863 ----
     return (TREE_CODE (t) == VAR_DECL
@@ -589,10 +684,10 @@ diff -cr gcc.orig/gimple.c gcc/gimple.c
   	  || TREE_CODE (t) == SSA_NAME);
   }
   
-diff -cr gcc.orig/gimple.h gcc/gimple.h
+diff -pcr gcc.orig/gimple.h gcc/gimple.h
 *** gcc.orig/gimple.h	2009-05-18 11:13:43.000000000 +0100
---- gcc/gimple.h	2011-01-06 22:20:41.463061001 +0000
-***************
+--- gcc/gimple.h	2011-03-21 18:37:28.508027129 +0000
+*************** extern void gimple_check_failed (const_g
 *** 65,71 ****
       const_gimple __gs = (GS);						\
       if (gimple_code (__gs) != (CODE))					\
@@ -609,7 +704,7 @@ diff -cr gcc.orig/gimple.h gcc/gimple.h
     } while (0)
   #else  /* not ENABLE_GIMPLE_CHECKING  */
   #define GIMPLE_CHECK(GS, CODE)			(void)0
-***************
+*************** static inline enum tree_code
 *** 2216,2222 ****
   gimple_cond_code (const_gimple gs)
   {
@@ -626,10 +721,10 @@ diff -cr gcc.orig/gimple.h gcc/gimple.h
   }
   
   
-diff -cr gcc.orig/ipa-cp.c gcc/ipa-cp.c
+diff -pcr gcc.orig/ipa-cp.c gcc/ipa-cp.c
 *** gcc.orig/ipa-cp.c	2009-12-27 22:39:58.000000000 +0000
---- gcc/ipa-cp.c	2011-01-06 22:20:41.519061001 +0000
-***************
+--- gcc/ipa-cp.c	2011-03-21 18:37:28.528027223 +0000
+*************** cgraph_gate_cp (void)
 *** 1393,1399 ****
     return flag_ipa_cp;
   }
@@ -646,10 +741,10 @@ diff -cr gcc.orig/ipa-cp.c gcc/ipa-cp.c
   {
    {
     IPA_PASS,
-diff -cr gcc.orig/ipa-inline.c gcc/ipa-inline.c
+diff -pcr gcc.orig/ipa-inline.c gcc/ipa-inline.c
 *** gcc.orig/ipa-inline.c	2010-02-08 14:10:15.000000000 +0000
---- gcc/ipa-inline.c	2011-01-06 22:20:41.523061001 +0000
-***************
+--- gcc/ipa-inline.c	2011-03-21 18:37:28.556027367 +0000
+*************** inline_transform (struct cgraph_node *no
 *** 1753,1759 ****
     return todo | execute_fixup_cfg ();
   }
@@ -666,10 +761,10 @@ diff -cr gcc.orig/ipa-inline.c gcc/ipa-inline.c
   {
    {
     IPA_PASS,
-diff -cr gcc.orig/ipa-pure-const.c gcc/ipa-pure-const.c
+diff -pcr gcc.orig/ipa-pure-const.c gcc/ipa-pure-const.c
 *** gcc.orig/ipa-pure-const.c	2008-09-18 18:28:40.000000000 +0100
---- gcc/ipa-pure-const.c	2011-01-06 22:20:41.527061001 +0000
-***************
+--- gcc/ipa-pure-const.c	2011-03-21 18:37:28.556027367 +0000
+*************** gate_pure_const (void)
 *** 910,916 ****
   	  && !(errorcount || sorrycount));
   }
@@ -686,10 +781,10 @@ diff -cr gcc.orig/ipa-pure-const.c gcc/ipa-pure-const.c
   {
    {
     IPA_PASS,
-diff -cr gcc.orig/ipa-reference.c gcc/ipa-reference.c
+diff -pcr gcc.orig/ipa-reference.c gcc/ipa-reference.c
 *** gcc.orig/ipa-reference.c	2008-09-18 18:28:40.000000000 +0100
---- gcc/ipa-reference.c	2011-01-06 22:20:41.531061001 +0000
-***************
+--- gcc/ipa-reference.c	2011-03-21 18:37:28.560027381 +0000
+*************** gate_reference (void)
 *** 1257,1263 ****
   	  && !(errorcount || sorrycount));
   }
@@ -706,10 +801,10 @@ diff -cr gcc.orig/ipa-reference.c gcc/ipa-reference.c
   {
    {
     IPA_PASS,
-diff -cr gcc.orig/ira.c gcc/ira.c
+diff -pcr gcc.orig/ira.c gcc/ira.c
 *** gcc.orig/ira.c	2010-09-09 14:58:24.000000000 +0100
---- gcc/ira.c	2011-01-06 23:09:08.471061001 +0000
-***************
+--- gcc/ira.c	2011-03-21 18:37:28.572027448 +0000
+*************** setup_eliminable_regset (void)
 *** 1404,1410 ****
        case.  At some point, we should improve this by emitting the
        sp-adjusting insns for this case.  */
@@ -726,10 +821,10 @@ diff -cr gcc.orig/ira.c gcc/ira.c
          || (cfun->calls_alloca && EXIT_IGNORE_STACK)
          || crtl->accesses_prior_frames
          || crtl->stack_realign_needed
-diff -cr gcc.orig/passes.c gcc/passes.c
+diff -pcr gcc.orig/passes.c gcc/passes.c
 *** gcc.orig/passes.c	2009-02-20 15:20:38.000000000 +0000
---- gcc/passes.c	2011-01-06 22:20:41.535061001 +0000
-***************
+--- gcc/passes.c	2011-03-21 18:37:28.588027527 +0000
+*************** update_properties_after_pass (void *data
 *** 1146,1159 ****
   static void
   add_ipa_transform_pass (void *data)
@@ -760,7 +855,7 @@ diff -cr gcc.orig/passes.c gcc/passes.c
   {
     while (ipa_pass)
       {
-***************
+*************** execute_ipa_summary_passes (struct ipa_o
 *** 1167,1173 ****
   	  ipa_pass->generate_summary ();
   	  pass_fini_dump_file (pass);
@@ -777,7 +872,7 @@ diff -cr gcc.orig/passes.c gcc/passes.c
       }
   }
   
-***************
+*************** execute_ipa_summary_passes (struct ipa_o
 *** 1175,1181 ****
   
   static void
@@ -794,7 +889,7 @@ diff -cr gcc.orig/passes.c gcc/passes.c
   {
     struct opt_pass *pass = &ipa_pass->pass;
     unsigned int todo_after = 0;
-***************
+*************** execute_ipa_pass_list (struct opt_pass *
 *** 1347,1353 ****
   	    {
   	      if (!quiet_flag && !cfun)
@@ -811,10 +906,10 @@ diff -cr gcc.orig/passes.c gcc/passes.c
   	    }
   	  summaries_generated = true;
   	}
-diff -cr gcc.orig/system.h gcc/system.h
+diff -pcr gcc.orig/system.h gcc/system.h
 *** gcc.orig/system.h	2008-07-28 15:33:56.000000000 +0100
---- gcc/system.h	2011-01-06 22:20:41.539061001 +0000
-***************
+--- gcc/system.h	2011-03-21 18:37:28.596027557 +0000
+*************** extern void fancy_abort (const char *, i
 *** 786,791 ****
 --- 786,794 ----
      change after the fact).  Beyond these uses, most other cases of
@@ -826,7 +921,7 @@ diff -cr gcc.orig/system.h gcc/system.h
   #if defined(__GNUC__) && GCC_VERSION > 4000
   /* GCC 4.0.x has a bug where it may ICE on this expression,
      so does GCC 3.4.x (PR17436).  */
-***************
+*************** extern void fancy_abort (const char *, i
 *** 793,798 ****
 --- 796,802 ----
   #else
@@ -836,10 +931,10 @@ diff -cr gcc.orig/system.h gcc/system.h
   #define CONST_CAST(TYPE,X) CONST_CAST2(TYPE, const TYPE, (X))
   #define CONST_CAST_TREE(X) CONST_CAST(union tree_node *, (X))
   #define CONST_CAST_RTX(X) CONST_CAST(struct rtx_def *, (X))
-diff -cr gcc.orig/tree.def gcc/tree.def
+diff -pcr gcc.orig/tree.def gcc/tree.def
 *** gcc.orig/tree.def	2009-02-20 15:20:38.000000000 +0000
---- gcc/tree.def	2011-01-06 22:20:41.547061001 +0000
-***************
+--- gcc/tree.def	2011-03-21 18:37:28.624027699 +0000
+*************** DEFTREECODE (BIND_EXPR, "bind_expr", tcc
 *** 554,559 ****
 --- 554,566 ----
      arguments to the call.  */
@@ -855,10 +950,10 @@ diff -cr gcc.orig/tree.def gcc/tree.def
   /* Specify a value to compute along with its corresponding cleanup.
      Operand 0 is the cleanup expression.
      The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
-diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
+diff -pcr gcc.orig/tree-inline.c gcc/tree-inline.c
 *** gcc.orig/tree-inline.c	2010-09-18 18:23:20.000000000 +0100
---- gcc/tree-inline.c	2011-01-12 16:39:33.506643001 +0000
-***************
+--- gcc/tree-inline.c	2011-03-21 18:37:28.648027815 +0000
+*************** initialize_cfun (tree new_fndecl, tree c
 *** 1832,1837 ****
 --- 1832,1838 ----
   
@@ -868,7 +963,7 @@ diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
     cfun->nonlocal_goto_save_area = src_cfun->nonlocal_goto_save_area;
     cfun->function_end_locus = src_cfun->function_end_locus;
     cfun->curr_properties = src_cfun->curr_properties;
-***************
+*************** initialize_inlined_parameters (copy_body
 *** 2206,2212 ****
     /* Initialize the static chain.  */
     p = DECL_STRUCT_FUNCTION (fn)->static_chain_decl;
@@ -886,11 +981,10 @@ diff -cr gcc.orig/tree-inline.c gcc/tree-inline.c
       {
         /* No static chain?  Seems like a bug in tree-nested.c.  */
         gcc_assert (static_chain);
-Only in gcc: tree-inline.c.orig
-diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
+diff -pcr gcc.orig/tree-nested.c gcc/tree-nested.c
 *** gcc.orig/tree-nested.c	2010-04-20 09:37:12.000000000 +0100
---- gcc/tree-nested.c	2011-01-06 22:20:41.563061001 +0000
-***************
+--- gcc/tree-nested.c	2011-03-21 18:37:28.656027857 +0000
+*************** get_static_chain (struct nesting_info *i
 *** 714,719 ****
 --- 714,721 ----
   
@@ -901,7 +995,7 @@ diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
         x = build_addr (info->frame_decl, target_context);
       }
     else
-***************
+*************** convert_tramp_reference_op (tree *tp, in
 *** 1761,1766 ****
 --- 1763,1772 ----
         if (DECL_NO_STATIC_CHAIN (decl))
@@ -914,7 +1008,7 @@ diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
         /* If we don't want a trampoline, then don't build one.  */
         if (TREE_NO_TRAMPOLINE (t))
   	break;
-***************
+*************** convert_gimple_call (gimple_stmt_iterato
 *** 1908,1913 ****
 --- 1914,1938 ----
         walk_body (convert_gimple_call, NULL, info, gimple_omp_body (stmt));
@@ -942,7 +1036,7 @@ diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
       default:
         /* Keep looking for other operands.  */
         *handled_ops_p = false;
-***************
+*************** finalize_nesting_tree_1 (struct nesting_
 *** 2054,2061 ****
         gimple bind;
         annotate_all_with_location (stmt_list, DECL_SOURCE_LOCATION (context));
@@ -991,10 +1085,10 @@ diff -cr gcc.orig/tree-nested.c gcc/tree-nested.c
       }
   
     /* If a chain_decl was created, then it needs to be registered with
-diff -cr gcc.orig/tree-pass.h gcc/tree-pass.h
+diff -pcr gcc.orig/tree-pass.h gcc/tree-pass.h
 *** gcc.orig/tree-pass.h	2009-02-20 15:20:38.000000000 +0000
---- gcc/tree-pass.h	2011-01-06 22:20:41.563061001 +0000
-***************
+--- gcc/tree-pass.h	2011-03-21 18:37:28.660027875 +0000
+*************** struct cgraph_node;
 *** 157,163 ****
   
   /* Description of IPA pass with generate summary, write, execute, read and
@@ -1011,7 +1105,7 @@ diff -cr gcc.orig/tree-pass.h gcc/tree-pass.h
   {
     struct opt_pass pass;
   
-***************
+*************** extern struct gimple_opt_pass pass_build
 *** 390,399 ****
   extern struct gimple_opt_pass pass_reset_cc_flags;
   
@@ -1034,10 +1128,10 @@ diff -cr gcc.orig/tree-pass.h gcc/tree-pass.h
   
   extern struct simple_ipa_opt_pass pass_ipa_matrix_reorg;
   extern struct simple_ipa_opt_pass pass_ipa_early_inline;
-diff -cr gcc.orig/tree-pretty-print.c gcc/tree-pretty-print.c
+diff -pcr gcc.orig/tree-pretty-print.c gcc/tree-pretty-print.c
 *** gcc.orig/tree-pretty-print.c	2009-02-18 21:03:05.000000000 +0000
---- gcc/tree-pretty-print.c	2011-01-06 22:20:41.571061001 +0000
-***************
+--- gcc/tree-pretty-print.c	2011-03-21 18:37:28.680027975 +0000
+*************** dump_generic_node (pretty_printer *buffe
 *** 1216,1221 ****
 --- 1216,1231 ----
   	pp_string (buffer, " [tail call]");
@@ -1056,10 +1150,10 @@ diff -cr gcc.orig/tree-pretty-print.c gcc/tree-pretty-print.c
       case WITH_CLEANUP_EXPR:
         NIY;
         break;
-diff -cr gcc.orig/tree-sra.c gcc/tree-sra.c
+diff -pcr gcc.orig/tree-sra.c gcc/tree-sra.c
 *** gcc.orig/tree-sra.c	2010-04-18 16:56:32.000000000 +0100
---- gcc/tree-sra.c	2011-01-06 22:20:41.579061001 +0000
-***************
+--- gcc/tree-sra.c	2011-03-21 18:37:28.692028033 +0000
+*************** sra_type_can_be_decomposed_p (tree type)
 *** 263,268 ****
 --- 263,270 ----
       case RECORD_TYPE:
@@ -1070,7 +1164,7 @@ diff -cr gcc.orig/tree-sra.c gcc/tree-sra.c
   
   	for (t = TYPE_FIELDS (type); t ; t = TREE_CHAIN (t))
   	  if (TREE_CODE (t) == FIELD_DECL)
-***************
+*************** sra_type_can_be_decomposed_p (tree type)
 *** 274,279 ****
 --- 276,287 ----
   		      != TYPE_PRECISION (TREE_TYPE (t))))
@@ -1085,10 +1179,10 @@ diff -cr gcc.orig/tree-sra.c gcc/tree-sra.c
   	      saw_one_field = true;
   	    }
   
-diff -cr gcc.orig/tree-ssa.c gcc/tree-ssa.c
+diff -pcr gcc.orig/tree-ssa.c gcc/tree-ssa.c
 *** gcc.orig/tree-ssa.c	2009-08-03 20:27:32.000000000 +0100
---- gcc/tree-ssa.c	2011-01-06 22:20:41.583061001 +0000
-***************
+--- gcc/tree-ssa.c	2011-03-21 18:37:28.700028081 +0000
+*************** useless_type_conversion_p_1 (tree outer_
 *** 1094,1101 ****
         && TYPE_CANONICAL (inner_type) == TYPE_CANONICAL (outer_type))
       return true;

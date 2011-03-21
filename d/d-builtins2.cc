@@ -41,22 +41,32 @@ Type * d_gcc_builtin_va_list_d_type;
 void
 d_bi_init()
 {
+    tree vatype;
+
 #if D_VA_LIST_TYPE_VOIDPTR
     // The "standard" definition of va_list is void*.
-    tree t, m = std_build_builtin_va_list();
+    vatype = build_distinct_type_copy(void_type_node);
+    vatype = build_pointer_type(vatype);
+
+    // %% Yuck. Needed to pass stabilize_va_list
+    if (TREE_CODE(va_list_type_node) == ARRAY_TYPE)
+        TYPE_MAIN_VARIANT(TREE_TYPE(vatype)) =
+            TYPE_MAIN_VARIANT(TREE_TYPE(va_list_type_node));
+    else
+        TYPE_MAIN_VARIANT(vatype) = TYPE_MAIN_VARIANT(va_list_type_node);
 #else
+    // The "standard" abi va_list is va_list_type_node.
     // assumes va_list_type_node already built
-    tree t, m = va_list_type_node;
-    d_gcc_builtin_va_list_d_type = gcc_type_to_d_type(m);
+    vatype = va_list_type_node;
 #endif
+
+    d_gcc_builtin_va_list_d_type = gcc_type_to_d_type(vatype);
     if (! d_gcc_builtin_va_list_d_type)
     {   // fallback to array of byte of the same size?
         error("cannot represent built in va_list type in D");
         gcc_unreachable();
     }
-    // D type main variant same as C va_list type.
-    t = d_gcc_builtin_va_list_d_type->toCtype();
-    TYPE_MAIN_VARIANT(t) = TYPE_MAIN_VARIANT(m);
+    d_gcc_builtin_va_list_d_type->ctype = vatype;
 }
 
 /*

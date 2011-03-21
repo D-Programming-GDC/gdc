@@ -3663,19 +3663,31 @@ TypeFunction::toCtype()
         // Function type can be reference by parameters, etc.  Set ctype earlier?
         ctype = build_function_type(ret_type, type_list.head);
 
-        if (linkage == LINKwindows && ! global.params.isX86_64)
-            ctype = gen.addTypeAttribute(ctype, "stdcall");
+        switch (linkage)
+        {
+            case LINKpascal:
+                // stdcall and reverse params?
+            case LINKwindows:
+                if (! global.params.isX86_64)
+                    ctype = gen.addTypeAttribute(ctype, "stdcall");
+                break;
 
-#if D_DMD_CALLING_CONVENTIONS
-        // W.I.P
-#ifdef TARGET_386
-        if (linkage == LINKd && ! TARGET_64BIT)
-        {   /* Can combine regparm with all attributes but fastcall.  */
-            if (! lookup_attribute ("fastcall", TYPE_ATTRIBUTES (ctype)))
-                ctype = gen.addTypeAttribute(ctype, "regparm", integer_one_node);
-        }
+            case LINKc:
+            case LINKcpp:
+                break;
+
+            case LINKd:
+#if D_DMD_CALLING_CONVENTIONS \
+        && defined(TARGET_386)
+                ctype = gen.addTypeAttribute(ctype, "optlink");
 #endif
-#endif
+                break;
+
+            default:
+                fprintf(stderr, "linkage = %d\n", linkage);
+                gcc_unreachable();
+            }
+
         dkeep(ctype);
     }
     return ctype;

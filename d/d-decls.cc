@@ -535,6 +535,7 @@ Symbol *FuncDeclaration::toSymbol()
             {
                 fn_type = build_function_type(integer_type_node, TYPE_ARG_TYPES(fn_type));
             }
+
             // %%CHECK: is it okay for static nested functions to have a FUNC_DECL context?
             // seems okay so far...
             fn_decl = d_build_decl(FUNCTION_DECL, id, fn_type);
@@ -672,41 +673,13 @@ Symbol *FuncDeclaration::toSymbol()
 
             TREE_USED (fn_decl) = 1; // %% Probably should be a little more intelligent about this
 
-            // if -mrtd is passed, how to handle this? handle in parsing or do
-            // we go back and find out if linkage was specified
-            switch (linkage)
-            {
-                case LINKwindows:
-                    gen.addDeclAttribute(fn_decl, "stdcall");
-                    // The stdcall attribute also needs to be set on the function type.
-                    gcc_assert(func_type->linkage == LINKwindows);
-                    break;
-                case LINKpascal:
-                    // stdcall and reverse params?
-                    break;
-                case LINKc:
-                    // %% hack: on darwin (at least) using a DECL_EXTERNAL (IRState::getLibCallDecl)
-                    // and TREE_STATIC FUNCTION_DECLs causes the stub label to be output twice.  This
-                    // is a work around.  This doesn't handle the case in which the normal
-                    // getLibCallDecl has already been created and used.  Note that the problem only
-                    // occurs with function inlining is used.
-                    gen.replaceLibCallDecl(this);
-                    break;
-                case LINKd:
-#if D_DMD_CALLING_CONVENTIONS
-                    /* Setting this on all targets.  TARGET_RETURN_IN_MEMORY has precedence
-                       over this attribute.  So, only targets on which flag_pcc_struct_return
-                       is considered will be affected. */
-                    gen.addDeclAttribute(fn_decl, "optimize",
-                            build_string(17, "reg-struct-return"));
-#endif
-                    break;
-                case LINKcpp:
-                    break;
-                default:
-                    fprintf(stderr, "linkage = %d\n", linkage);
-                    gcc_unreachable();
-            }
+            // %% hack: on darwin (at least) using a DECL_EXTERNAL (IRState::getLibCallDecl)
+            // and TREE_STATIC FUNCTION_DECLs causes the stub label to be output twice.  This
+            // is a work around.  This doesn't handle the case in which the normal
+            // getLibCallDecl has already been created and used.  Note that the problem only
+            // occurs with function inlining is used.
+            if (linkage == LINKc)
+                gen.replaceLibCallDecl(this);
 
             csym->Stree = fn_decl;
 
