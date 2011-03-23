@@ -64,15 +64,15 @@ struct AsmCode
     char *   insnTemplate;
     unsigned insnTemplateLen;
     Array    args; // of AsmArg
-    unsigned moreRegs;
+    unsigned * clbregs; // list of clobbered registers
     unsigned dollarLabel;
     int      clobbersMemory;
 
-    AsmCode()
+    AsmCode(unsigned n_regs)
     {
         insnTemplate = NULL;
         insnTemplateLen = 0;
-        moreRegs = 0;
+        clbregs = new unsigned[n_regs];
         dollarLabel = 0;
         clobbersMemory = 0;
     }
@@ -517,14 +517,9 @@ AsmStatement::toIR(IRState * irs)
 
     if (! irs->func->naked)
     {
-        for (int i = 0; i < 32; i++)
+        for (int i = 0; i < N_Regs; i++)
         {
-            if (regs & (1 << i))
-                clobbers.cons(NULL_TREE, regInfo[i].gccName);
-        }
-        for (int i = 0; i < 32; i++)
-        {
-            if (code->moreRegs & (1 << (i-32)))
+            if (code->clbregs[i])
                 clobbers.cons(NULL_TREE, regInfo[i].gccName);
         }
         if (clobbers_mem)

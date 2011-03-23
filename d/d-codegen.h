@@ -525,6 +525,7 @@ struct IRState : IRBase
 
     static TemplateEmission emitTemplates;
     static bool splitDynArrayVarArgs;
+    static bool useInlineAsm;
     static bool useBuiltins;
 
     // Warnings
@@ -694,13 +695,6 @@ public:
     void checkSwitchCase(Statement * stmt, int default_flag = 0);
     void checkGoto(Statement * stmt, LabelDsymbol * label);
     void checkPreviousGoto(Array * refs);
-
-    // ** Callback statement evalutation
-
-    static Array stmtExprList;
-
-    tree makeStmtExpr(Statement * statement);
-    static void retrieveStmtExpr(tree t, Statement ** s_out, IRState ** i_out);
 
     static void doLineNote(const Loc & loc)
     {

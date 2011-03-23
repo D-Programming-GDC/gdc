@@ -221,7 +221,7 @@ IRBase::getLabelTree(LabelDsymbol * label)
         gcc_assert(func != 0);
         DECL_CONTEXT( label_decl ) = getLocalContext();
         DECL_MODE( label_decl ) = VOIDmode; // Not sure why or if this is needed
-        D_LABEL_IS_USED( label_decl ) = 1;
+        TREE_USED( label_decl ) = 1;
         // Not setting this doesn't seem to cause problems (unlike VAR_DECLs)
         if (label->statement->loc.filename)
             g.ofile->setDeclLoc( label_decl, label->statement->loc ); // %% label->loc okay?
@@ -333,7 +333,7 @@ IRBase::doLabel(tree t_label)
        This makes auto-vectorization possible in conditional loops.
        The only excemption to this is in LabelStatement::toIR, in which
        all computed labels are marked regardless.  */
-    if(D_LABEL_IS_USED(t_label))
+    if(TREE_USED(t_label))
         addExp(build1(LABEL_EXPR, void_type_node, t_label));
 }
 

@@ -33,9 +33,9 @@
 
 GlobalValues g;
 IRState gen;
-Array IRState::stmtExprList;
 TemplateEmission IRState::emitTemplates;
 bool IRState::splitDynArrayVarArgs;
+bool IRState::useInlineAsm;
 bool IRState::useBuiltins;
 bool IRState::warnSignCompare = false;
 bool IRState::originalOmitFramePointer;
@@ -357,7 +357,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                     {   // make sure the expression is still evaluated if necessary
                         result = compound(exp, result);
                     }
-                return result;
+                    return result;
                 }
             }
             else
@@ -440,7 +440,12 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                     return indirect(darrayPtrRef(exp), target_type->toCtype());
             }
 #endif
-            // else, default conversion, which should produce an error
+            else
+            {
+                ::error("cannot cast expression of type %s to %s",
+                        exp_type->toChars(), target_type->toChars());
+                return error_mark_node;
+            }
             break;
         case Taarray:
             if (target_type->ty == Taarray)
@@ -3693,23 +3698,8 @@ IRState::doJump(Statement * stmt, tree t_label)
     if (stmt)
         g.ofile->doLineNote(stmt->loc);
     addExp(build1(GOTO_EXPR, void_type_node, t_label));
-    D_LABEL_IS_USED(t_label) = 1;
+    TREE_USED(t_label) = 1;
 }
-
-tree
-IRState::makeStmtExpr(Statement * statement)
-{
-    tree t_list;
-
-    pushStatementList();
-    statement->toIR(this);
-    t_list = popStatementList();
-
-    // addExp(t_list);
-
-    return t_list;
-}
-
 
 void
 IRState::doAsm(tree insn_tmpl, tree outputs, tree inputs, tree clobbers)

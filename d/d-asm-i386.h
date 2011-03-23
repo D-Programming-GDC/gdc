@@ -20,7 +20,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-typedef enum
+enum Reg
 {
     Reg_Invalid = -1,
     Reg_EAX = 0,
@@ -35,8 +35,16 @@ typedef enum
     Reg_ST1, Reg_ST2, Reg_ST3, Reg_ST4, Reg_ST5, Reg_ST6, Reg_ST7,
     Reg_MM0, Reg_MM1, Reg_MM2, Reg_MM3, Reg_MM4, Reg_MM5, Reg_MM6, Reg_MM7,
     Reg_XMM0, Reg_XMM1, Reg_XMM2, Reg_XMM3, Reg_XMM4, Reg_XMM5, Reg_XMM6, Reg_XMM7,
-    // will need 64-bit rax,etc. eventually
-    // xmm8-15?
+
+    Reg_RAX, Reg_RBX, Reg_RCX, Reg_RDX, Reg_RSI, Reg_RDI, Reg_RBP, Reg_RSP,
+    Reg_R8, Reg_R9, Reg_R10, Reg_R11, Reg_R12, Reg_R13, Reg_R14, Reg_R15,
+    Reg_R8B, Reg_R9B, Reg_R10B, Reg_R11B, Reg_R12B, Reg_R13B, Reg_R14B, Reg_R15B,
+    Reg_R8W, Reg_R9W, Reg_R10W, Reg_R11W, Reg_R12W, Reg_R13W, Reg_R14W, Reg_R15W,
+    Reg_R8D, Reg_R9D, Reg_R10D, Reg_R11D, Reg_R12D, Reg_R13D, Reg_R14D, Reg_R15D,
+    Reg_XMM8, Reg_XMM9, Reg_XMM10, Reg_XMM11, Reg_XMM12, Reg_XMM13, Reg_XMM14, Reg_XMM15,
+    Reg_RIP,
+    Reg_SIL, Reg_DIL, Reg_BPL, Reg_SPL,
+
     Reg_EFLAGS,
     Reg_CS,
     Reg_DS,
@@ -48,11 +56,12 @@ typedef enum
     Reg_AL, Reg_AH, Reg_BL, Reg_BH, Reg_CL, Reg_CH, Reg_DL, Reg_DH,
     Reg_CR0, Reg_CR2, Reg_CR3, Reg_CR4,
     Reg_DR0, Reg_DR1, Reg_DR2, Reg_DR3, Reg_DR6, Reg_DR7,
-    Reg_TR3, Reg_TR4, Reg_TR5, Reg_TR6, Reg_TR7
-} Reg;
+    Reg_TR3, Reg_TR4, Reg_TR5, Reg_TR6, Reg_TR7,
 
-static const int N_Regs = /*gp*/ 8 + /*fp*/ 8 + /*mmx*/ 8 + /*sse*/ 8 +
-/*seg*/ 6 + /*16bit*/ 8 + /*8bit*/ 8 + /*sys*/ 4+6+5 + /*flags*/ + 1;
+    Reg_MAX
+};
+
+static const int N_Regs = Reg_MAX;
 
 static struct
 {
@@ -94,6 +103,59 @@ static struct
     { "XMM5", NULL_TREE, NULL, 16, Reg_XMM5 },
     { "XMM6", NULL_TREE, NULL, 16, Reg_XMM6 },
     { "XMM7", NULL_TREE, NULL, 16, Reg_XMM7 },
+    { "RAX", NULL_TREE, NULL, 8,  Reg_RAX },
+    { "RBX", NULL_TREE, NULL, 8,  Reg_RBX },
+    { "RCX", NULL_TREE, NULL, 8,  Reg_RCX },
+    { "RDX", NULL_TREE, NULL, 8,  Reg_RDX },
+    { "RSI", NULL_TREE, NULL, 8,  Reg_RSI },
+    { "RDI", NULL_TREE, NULL, 8,  Reg_RDI },
+    { "RBP", NULL_TREE, NULL, 8,  Reg_RBP },
+    { "RSP", NULL_TREE, NULL, 8,  Reg_RSP },
+    { "R8",  NULL_TREE, NULL, 8,  Reg_R8 },
+    { "R9",  NULL_TREE, NULL, 8,  Reg_R9 },
+    { "R10", NULL_TREE, NULL, 8,  Reg_R10 },
+    { "R11", NULL_TREE, NULL, 8,  Reg_R11 },
+    { "R12", NULL_TREE, NULL, 8,  Reg_R12 },
+    { "R13", NULL_TREE, NULL, 8,  Reg_R13 },
+    { "R14", NULL_TREE, NULL, 8,  Reg_R14 },
+    { "R15", NULL_TREE, NULL, 8,  Reg_R15 },
+    { "R8B", NULL_TREE, NULL, 1,  Reg_R8 },
+    { "R9B", NULL_TREE, NULL, 1,  Reg_R9 },
+    { "R10B", NULL_TREE, NULL, 1,  Reg_R10 },
+    { "R11B", NULL_TREE, NULL, 1,  Reg_R11 },
+    { "R12B", NULL_TREE, NULL, 1,  Reg_R12 },
+    { "R13B", NULL_TREE, NULL, 1,  Reg_R13 },
+    { "R14B", NULL_TREE, NULL, 1,  Reg_R14 },
+    { "R15B", NULL_TREE, NULL, 1,  Reg_R15 },
+    { "R8W",  NULL_TREE, NULL, 2,  Reg_R8 },
+    { "R9W",  NULL_TREE, NULL, 2,  Reg_R9 },
+    { "R10W", NULL_TREE, NULL, 2,  Reg_R10 },
+    { "R11W", NULL_TREE, NULL, 2,  Reg_R11 },
+    { "R12W", NULL_TREE, NULL, 2,  Reg_R12 },
+    { "R13W", NULL_TREE, NULL, 2,  Reg_R13 },
+    { "R14W", NULL_TREE, NULL, 2,  Reg_R14 },
+    { "R15W", NULL_TREE, NULL, 2,  Reg_R15 },
+    { "R8D",  NULL_TREE, NULL, 4,  Reg_R8 },
+    { "R9D",  NULL_TREE, NULL, 4,  Reg_R9 },
+    { "R10D", NULL_TREE, NULL, 4,  Reg_R10 },
+    { "R11D", NULL_TREE, NULL, 4,  Reg_R11 },
+    { "R12D", NULL_TREE, NULL, 4,  Reg_R12 },
+    { "R13D", NULL_TREE, NULL, 4,  Reg_R13 },
+    { "R14D", NULL_TREE, NULL, 4,  Reg_R14 },
+    { "R15D", NULL_TREE, NULL, 4,  Reg_R15 },
+    { "XMM8",  NULL_TREE, NULL, 16, Reg_XMM8 },
+    { "XMM9",  NULL_TREE, NULL, 16, Reg_XMM9 },
+    { "XMM10", NULL_TREE, NULL, 16, Reg_XMM10 },
+    { "XMM11", NULL_TREE, NULL, 16, Reg_XMM11 },
+    { "XMM12", NULL_TREE, NULL, 16, Reg_XMM12 },
+    { "XMM13", NULL_TREE, NULL, 16, Reg_XMM13 },
+    { "XMM14", NULL_TREE, NULL, 16, Reg_XMM14 },
+    { "XMM15", NULL_TREE, NULL, 16, Reg_XMM15 },
+    { "RIP", NULL_TREE, NULL, 8,  Reg_RIP },
+    { "SIL", NULL_TREE, NULL, 1,  Reg_SIL },
+    { "DIL", NULL_TREE, NULL, 1,  Reg_DIL },
+    { "BPL", NULL_TREE, NULL, 1,  Reg_BPL },
+    { "SPL", NULL_TREE, NULL, 1,  Reg_SPL },
     { "FLAGS", NULL_TREE, NULL, 0, Reg_EFLAGS }, // the gcc name is "flags"; not used in assembler input
     { "CS",  NULL_TREE, NULL, 2, -1 },
     { "DS",  NULL_TREE, NULL, 2, -1 },
@@ -134,7 +196,7 @@ static struct
     { "TR7", NULL_TREE, NULL, 0, -1 }
 };
 
-typedef enum
+enum TypeNeeded
 {
     No_Type_Needed,
     Int_Types,
@@ -142,16 +204,16 @@ typedef enum
     FP_Types,
     FPInt_Types,
     Byte_NoType, // byte only, but no type suffix
-} TypeNeeded;
+};
 
-typedef enum
+enum OpLink
 {
     No_Link,
     Out_Mnemonic,
     Next_Form
-} OpLink;
+};
 
-typedef enum
+enum ImplicitClober
 {
     Clb_SizeAX   = 0x01,
     Clb_SizeDXAX = 0x02,
@@ -164,10 +226,10 @@ typedef enum
     Clb_CX       = 0x20,
     Clb_ST       = 0x40,
     Clb_SP       = 0x80 // Doesn't actually let GCC know the frame pointer is modified
-} ImplicitClober;
+};
 
 // "^ +/..\([A-Za-z_0-9]+\).*" -> "    \1,"
-typedef enum
+enum AsmOp
 {
     Op_Invalid,
     Op_Adjust,
@@ -268,6 +330,7 @@ typedef enum
     Op_insX,
     Op_iret,
     Op_iretd,
+    Op_iretq,
     Op_lods,
     Op_lodsX,
     Op_movs,
@@ -280,6 +343,7 @@ typedef enum
     Op_outs,
     Op_outsX,
     Op_push,
+    Op_pushq,
     Op_ret,
     Op_retf,
     Op_scas,
@@ -298,42 +362,42 @@ typedef enum
     Op_df,
     Op_dd,
     Op_de
-} AsmOp;
+};
 
-typedef enum
+enum OprVals
 {
-    Opr_None = 0,
-    OprC_MRI  = 1,
-    OprC_MR   = 2,
-    OprC_Mem  = 3,
-    OprC_Reg  = 4,
-    OprC_Imm  = 5,
-    OprC_SSE  = 6,
-    OprC_SSE_Mem = 7,
-    OprC_R32  = 8,
-    OprC_RWord = 9,
-    OprC_RFP   = 10,
-    OprC_AbsRel = 11,
-    OprC_Relative = 12,
-    OprC_Port = 13, // DX or imm
-    OprC_AX = 14, // AL,AX,EAX
-    OprC_DX = 15, // only DX
-    OprC_MMX = 16,
-    OprC_MMX_Mem = 17,
-    OprC_Shift = 18, // imm or CL
+    Opr_None      = 0x0,
+    OprC_MRI      = 0x1,
+    OprC_MR       = 0x2,
+    OprC_Mem      = 0x4,
+    OprC_Reg      = 0x8,
+    OprC_Imm      = 0x10,
+    OprC_SSE      = 0x20,
+    OprC_SSE_Mem  = 0x40,
+    OprC_R32      = 0x80,
+    OprC_RWord    = 0x100,
+    OprC_RFP      = 0x200,
+    OprC_AbsRel   = 0x400,
+    OprC_Relative = 0x800,
+    OprC_Port     = 0x1000, // DX or imm
+    OprC_AX       = 0x2000, // AL,AX,EAX
+    OprC_DX       = 0x4000, // only DX
+    OprC_MMX      = 0x8000,
+    OprC_MMX_Mem  = 0x10000,
+    OprC_Shift    = 0x20000, // imm or CL
 
-    Opr_ClassMask = 0x1f,
+    Opr_ClassMask = 0x40000,
 
-    Opr_Dest     = 0x20,
-    Opr_Update   = 0x60,
+    Opr_Dest      = 0x80000,
+    Opr_Update    = 0x100000,
 
-    Opr_NoType = 0x80,
-} OprVals;
+    Opr_NoType    = 0x80000000,
+};
 
 
-typedef unsigned char Opr;
+typedef unsigned Opr;
 
-typedef struct
+struct AsmOpInfo
 {
     Opr operands[3];
     unsigned char
@@ -353,19 +417,20 @@ typedef struct
         else
             return 3;
     }
-} AsmOpInfo;
+};
 
-typedef enum
+enum Alternate_Mnemonics
 {
     Mn_fdisi,
     Mn_feni,
     Mn_fsetpm,
     Mn_iretw,
     Mn_iret,
+    Mn_iretq,
     Mn_lret,
     Mn_cmpxchg8b,
     N_AltMn
-} Alternate_Mnemonics;
+};
 
 static const char * alternateMnemonics[N_AltMn] = {
     ".byte 0xdb, 0xe1",
@@ -373,6 +438,7 @@ static const char * alternateMnemonics[N_AltMn] = {
     ".byte 0xdb, 0xe4",
     "iretw",
     "iret",
+    "iretq",
     "lret",
     "cmpxchg8b"
 };
@@ -501,6 +567,7 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_insX      */  {   0,   0,   0,     0, Clb_DI }, // output segment overrides %% needs work
     /* Op_iret      */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_iretw },
     /* Op_iretd     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_iret },
+    /* Op_iretq     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_iretq },
     /* Op_lods      */  {   mem, 0,   0,     1, Clb_SI },
     /* Op_lodsX     */  {   0,   0,   0,     0, Clb_SI },
     /* Op_movs      */  {   mem, mem, 0,     1, Clb_DI|Clb_SI }, // only src/DS can be overridden
@@ -513,6 +580,7 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_outs      */  { N|dx,  mem, 0,     1, Clb_SI },
     /* Op_outsX     */  {   0,   0,   0,     0, Clb_SI },
     /* Op_push      */  {   mri, 0,    0,    Word_Types, Clb_SP }, // would be Op_SrcW, but DMD defaults to 32-bit for immediate form
+    /* Op_pushq     */  {   mri, 0,    0,    0, Clb_SP },
     /* Op_ret       */  {   imm, 0,   0,     0, 0, Next_Form, Op_0  },
     /* Op_retf      */  {   0,   0,   0,     0, 0, Out_Mnemonic, Mn_lret  },
     /* Op_scas      */  {   mem, 0,   0,     1, Clb_DI|Clb_Flags },
@@ -550,11 +618,11 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
 #undef N
 //#undef L
 
-typedef struct
+struct AsmOpEnt
 {
-    const char  * inMnemonic;
-    AsmOp   asmOp;
-} AsmOpEnt;
+    const char * inMnemonic;
+    AsmOp asmOp;
+};
 
 /* Some opcodes which have data size restrictions, but we don't check
 
@@ -1121,10 +1189,8 @@ static AsmOpEnt opData[] = {
     { "subps",  Op_DstSrcSSE },
     { "subsd",  Op_DstSrcSSE },
     { "subss",  Op_DstSrcSSE },
-    { "syscall", Op_0 },
     { "sysenter",Op_0 },
     { "sysexit", Op_0 },
-    { "sysret",  Op_0 },
     { "test",    Op_SrcSrcF },
     { "ucomisd", Op_SrcSrcSSEF },
     { "ucomiss", Op_SrcSrcSSEF },
@@ -1147,7 +1213,82 @@ static AsmOpEnt opData[] = {
     { "xorps",  Op_DstSrcSSE },
 };
 
-typedef enum
+static AsmOpEnt opData64[] = {
+    { "aaa",    Op_Invalid },
+    { "aad",    Op_Invalid },
+    { "aam",    Op_Invalid },
+    { "aas",    Op_Invalid },
+    { "addq",   Op_DstSrcSSE },
+    { "align",  Op_Invalid },
+    { "arpl",   Op_Invalid },
+    { "bound",  Op_Invalid },
+    { "callf",  Op_Branch },
+    { "cdq",    Op_Invalid },
+    { "cdqe",   Op_0_DXAX },
+    { "cmpq",   Op_DstSrcNT },
+    { "cmpsq",  Op_cmpsX },
+    { "cmpxch16b", Op_cmpxchg8b },
+    { "cwde",   Op_0_DXAX },
+    { "daa",    Op_Invalid },
+    { "das",    Op_Invalid },
+    { "even",   Op_Invalid },
+    { "imul",   Op_DstSrcNT },
+    { "iretq",  Op_iretq },
+    { "les",    Op_Invalid },
+    { "jmpe",   Op_Branch },
+    { "jmpf",   Op_Branch },
+    { "jrcxz",  Op_CBranch },
+    { "leaq",   Op_DstSrcSSE },  // "
+    { "lodsq",  Op_lodsX },
+    { "movb",   Op_DstSrcNT  },
+    { "movl",   Op_DstSrc },
+    { "movsq",  Op_movsd },
+    { "movsxd", Op_movsx },
+    { "movzbl", Op_DstSrcNT  },
+    { "mul",    Op_DstSrcNT  },
+    { "pabsb",  Op_DstSrcSSE },
+    { "pabsw",  Op_DstSrcSSE },
+    { "pabsq",  Op_DstSrcSSE },
+    { "palignr", Op_DstSrcSSE },
+    { "pause",   Op_DstSrcMMX },
+    { "phaddd",  Op_DstSrcSSE },
+    { "phaddsw", Op_DstSrcSSE },
+    { "phaddw",  Op_DstSrcSSE },
+    { "phsubd",  Op_DstSrcSSE },
+    { "phsubsw", Op_DstSrcSSE },
+    { "phsubw",  Op_DstSrcSSE },
+    { "pmaddubsw", Op_DstSrcSSE },
+    { "pmulhrsw",  Op_DstSrcMMX },
+    { "pop",    Op_Invalid },
+    { "popa",   Op_Invalid },
+    { "popad",  Op_Invalid },
+    { "popfd",  Op_Invalid },
+    { "popfq",  Op_SizedStack },
+    { "popq",   Op_SizedStack },
+    { "pshufb", Op_DstSrcImmM },
+    { "psignb", Op_DstSrcSSE },
+    { "psignd", Op_DstSrcSSE },
+    { "psignw", Op_DstSrcSSE },
+    { "push",   Op_Invalid },
+    { "pusha",  Op_Invalid },
+    { "pushad", Op_Invalid },
+    { "pushfd", Op_Invalid },
+    { "pushfq", Op_SizedStack },
+    { "pushq",  Op_pushq },
+    { "retn",   Op_retf },
+    { "salq",   Op_DstSrcNT  },
+    { "scasq",  Op_scasX },
+    { "stosq",  Op_stosX },
+    { "subq",   Op_DstSrcSSE },
+    { "syscall", Op_0 },
+    { "sysret",  Op_0 },
+    { "swapgs", Op_0 },
+    { "sysretq",Op_0 },
+    { "wait",   Op_Invalid },
+    { "xorq",   Op_DstSrcNT },
+};
+
+enum PtrType
 {
     Default_Ptr = 0,
     Byte_Ptr = 1,
@@ -1160,7 +1301,7 @@ typedef enum
     Near_Ptr = 98,
     Far_Ptr = 99,
     N_PtrTypes
-} PtrType;
+};
 
 static const int N_PtrNames = 8;
 static const char * ptrTypeNameTable[N_PtrNames] = {
@@ -1176,13 +1317,13 @@ static PtrType ptrTypeValueTable[N_PtrNames] = {
     Near_Ptr, Far_Ptr
 };
 
-typedef enum
+enum OperandClass
 {
     Opr_Invalid,
     Opr_Immediate,
     Opr_Reg,
     Opr_Mem
-} OperandClass;
+};
 
 /* kill inlining if we reference a local? */
 
@@ -1320,6 +1461,7 @@ struct AsmProcessor
                 break;
 
             case Op_Invalid:
+                stmt->error("unknown opcode '%s'", opIdent->string);
                 break;
 
             default:
@@ -1332,8 +1474,6 @@ struct AsmProcessor
 
     AsmOp parseOpcode()
     {
-        static const int N_ents = sizeof(opData)/sizeof(AsmOpEnt);
-
         switch (token->value)
         {
             case TOKalign:
@@ -1360,25 +1500,43 @@ struct AsmProcessor
         }
 
         opIdent = token->ident;
-        const char * opcode = token->ident->string;
-
         nextToken();
 
-        // %% okay to use bsearch?
-        int i = 0, j = N_ents, k, l;
-        do
-        {
-            k = (i + j) / 2;
-            l = strcmp(opcode, opData[k].inMnemonic);
-            if (! l)
-                return opData[k].asmOp;
-            else if (l < 0)
-                j = k;
-            else
-                i = k + 1;
-        } while (i != j);
+        static const int N_ents = sizeof(opData)/sizeof(AsmOpEnt);
+        static const int N_ents64 = sizeof(opData64)/sizeof(AsmOpEnt);
+        int low = 0, high;
 
-        stmt->error("unknown opcode '%s'", opcode);
+        for (int i = 0; i < 2; i++)
+        {
+            AsmOpEnt * opdata;
+
+            // Search 64bit opcodes first.
+            if (i == 0 && global.params.isX86_64)
+            {
+                opdata = opData64;
+                high = N_ents64;
+            }
+            else if (i == 1)
+            {
+                opdata = opData;
+                high = N_ents;
+            }
+            else 
+                continue;
+
+            // %% okay to use bsearch?
+            do
+            {
+                int pos = (low + high) / 2;
+                int cmp = strcmp(opIdent->string, opdata[pos].inMnemonic);
+                if (! cmp)
+                    return opdata[pos].asmOp;
+                else if (cmp < 0)
+                    high = pos;
+                else
+                    low = pos + 1;
+            } while (low != high);
+        }
 
         return Op_Invalid;
     }
@@ -1430,7 +1588,7 @@ struct AsmProcessor
 
         if (matchOperands(operand_i))
         {
-            AsmCode * asmcode = new AsmCode;
+            AsmCode * asmcode = new AsmCode(N_Regs);
 
             if (formatInstruction(operand_i, asmcode))
                 stmt->asmcode = (code *) asmcode;
@@ -1439,7 +1597,7 @@ struct AsmProcessor
 
     void setAsmCode()
     {
-        AsmCode * asmcode = new AsmCode;
+        AsmCode * asmcode = new AsmCode(N_Regs);
         asmcode->insnTemplateLen = insnTemplate->offset;
         asmcode->insnTemplate = (char*) insnTemplate->extractData();
         stmt->asmcode = (code*) asmcode;
@@ -1465,18 +1623,16 @@ struct AsmProcessor
                 {
                     Operand * operand = & operands[i];
 
-                    switch (opInfo->operands[i] & Opr_ClassMask)
+                    if (opInfo->operands[i] & OprC_Mem) // no FPMem currently
                     {
-                        case OprC_Mem: // no FPMem currently
-                            if (operand->cls != Opr_Mem)
-                                goto no_match;
-                            break;
-                        case OprC_RFP:
-                            if (! (operand->reg >= Reg_ST && operand->reg <= Reg_ST7))
-                                goto no_match;
-                            break;
-                        default:
-                            break;
+                        if (operand->cls != Opr_Mem)
+                            goto no_match;
+                    }
+                    else if (opInfo->operands[i] & OprC_RFP)
+                    {
+                        if (! (operand->reg >= Reg_ST
+                               && operand->reg <= Reg_ST7))
+                            goto no_match;
                     }
                 }
                 return true;
@@ -1572,8 +1728,10 @@ struct AsmProcessor
                     operand->dataSize = Byte_Ptr;
                 else if (operand->constDisplacement < 0x10000)
                     operand->dataSize = Short_Ptr;
-                else
+                else if (operand->constDisplacement < 0xFFFFFFFF)
                     operand->dataSize = Int_Ptr;
+                else
+                    operand->dataSize = QWord_Ptr;
             }
             return Opr_Immediate;
         }
@@ -1618,6 +1776,7 @@ struct AsmProcessor
                     case Byte_Ptr:  type_char = 'b'; break;
                     case Short_Ptr: type_char = 'w'; break;
                     case Int_Ptr:   type_char = 'l'; break;
+                    case QWord_Ptr: type_char = 'q'; break;
                     // %% these may be too strict
                     default:        return false;
                 }
@@ -1696,18 +1855,23 @@ struct AsmProcessor
                     min_type = Float_Ptr;
                     break;
             }
-            if (op == Op_push && operands[0].cls == Opr_Immediate)
-                min_type = Int_Ptr;
+            if (operands[0].cls == Opr_Immediate)
+            {
+                if (op == Op_push)
+                    min_type = Int_Ptr;
+                else if (op == Op_pushq)
+                    min_type = QWord_Ptr;
+            }
 
             for (int i = 0; i < nOperands; i++)
             {
                 if (hint_type == Default_Ptr &&
-                        ! (opInfo->operands[i] & Opr_NoType))
+                    ! (opInfo->operands[i] & Opr_NoType))
                 {
                     hint_type = operands[i].dataSizeHint;
                 }
                 if ((opInfo->operands[i] & Opr_NoType) ||
-                        operands[i].dataSize == Default_Ptr)
+                    operands[i].dataSize == Default_Ptr)
                 {
                     continue;
                 }
@@ -1866,12 +2030,12 @@ struct AsmProcessor
         {
             case Clb_SizeAX:
             case Clb_EAX:
-                stmt->regs |= (1<<Reg_EAX);
+                asmcode->clbregs[Reg_EAX] = 1;
                 break;
             case Clb_SizeDXAX:
-                stmt->regs |= (1<<Reg_EAX);
+                asmcode->clbregs[Reg_EAX] = 1;
                 if (type_char != 'b')
-                    stmt->regs |= (1<<Reg_EDX);
+                    asmcode->clbregs[Reg_EDX] = 1;
                 break;
             default:
                 // nothing
@@ -1879,33 +2043,37 @@ struct AsmProcessor
         }
 
         if (opInfo->implicitClobbers & Clb_DI)
-            stmt->regs |= (1 << Reg_EDI);
+            asmcode->clbregs[Reg_EDI] = 1;
         if (opInfo->implicitClobbers & Clb_SI)
-            stmt->regs |= (1 << Reg_ESI);
+            asmcode->clbregs[Reg_ESI] = 1;
         if (opInfo->implicitClobbers & Clb_CX)
-            stmt->regs |= (1 << Reg_ECX);
+            asmcode->clbregs[Reg_ECX] = 1;
         if (opInfo->implicitClobbers & Clb_SP)
-            stmt->regs |= (1 << Reg_ESP);
+            asmcode->clbregs[Reg_ESP] = 1;
         if (opInfo->implicitClobbers & Clb_ST)
         {   /* Can't figure out how to tell GCC that an
                asm statement leaves an arg pushed on the stack.
                Maybe if the statment had and input or output
                operand it would work...  In any case, clobbering
                all FP prevents incorrect code generation. */
-            stmt->regs |= (1 << Reg_ST);
-            stmt->regs |= (1 << Reg_ST1);
-            stmt->regs |= (1 << Reg_ST2);
-            stmt->regs |= (1 << Reg_ST3);
-            stmt->regs |= (1 << Reg_ST4);
-            stmt->regs |= (1 << Reg_ST5);
-            stmt->regs |= (1 << Reg_ST6);
-            stmt->regs |= (1 << Reg_ST7);
+            asmcode->clbregs[Reg_ST] = 1;
+            asmcode->clbregs[Reg_ST1] = 1;
+            asmcode->clbregs[Reg_ST2] = 1;
+            asmcode->clbregs[Reg_ST3] = 1;
+            asmcode->clbregs[Reg_ST4] = 1;
+            asmcode->clbregs[Reg_ST5] = 1;
+            asmcode->clbregs[Reg_ST6] = 1;
+            asmcode->clbregs[Reg_ST7] = 1;
         }
         if (opInfo->implicitClobbers & Clb_Flags)
-            asmcode->moreRegs |= (1 << (Reg_EFLAGS - 32));
+            asmcode->clbregs[Reg_EFLAGS] = 1;
         if (op == Op_cpuid)
-            stmt->regs |= (1 << Reg_EAX)|(1 << Reg_EBX)|
-                (1 << Reg_ECX)|(1 << Reg_EDX);
+        {
+            asmcode->clbregs[Reg_EAX] = 1;
+            asmcode->clbregs[Reg_EBX] = 1;
+            asmcode->clbregs[Reg_ECX] = 1;
+            asmcode->clbregs[Reg_EDX] = 1;
+        }
 
         insnTemplate->writebyte(' ');
         for (int i__ = 0; i__ < nOperands; i__++)
@@ -1952,7 +2120,7 @@ struct AsmProcessor
                     }
 
                     if (operand->symbolDisplacement.dim &&
-                            isLocalSize((Expression *) operand->symbolDisplacement.data[0]))
+                        isLocalSize((Expression *) operand->symbolDisplacement.data[0]))
                     {    // handle __LOCAL_SIZE, which in this constant, is an immediate
                         // should do this in slotexp..
                         addOperand("%", Arg_LocalSize,
@@ -1985,12 +2153,7 @@ struct AsmProcessor
                     {
                         Reg clbr_reg = (Reg) regInfo[operand->reg].baseReg;
                         if (clbr_reg != Reg_Invalid)
-                        {
-                            if (clbr_reg < 32)
-                                stmt->regs |= (1 << clbr_reg);
-                            else
-                                asmcode->moreRegs |= (1 << (clbr_reg - 32));
-                        }
+                            asmcode->clbregs[clbr_reg] = 1;
                     }
                     if (opTakesLabel()/*opInfo->takesLabel()*/)
                         insnTemplate->writebyte('*');
@@ -2003,18 +2166,12 @@ struct AsmProcessor
                 }
                 case Opr_Mem:
                 {   // better: use output operands for simple variable references
-                    if ((opInfo->operands[i] & Opr_Update) == Opr_Update)
-                    {
+                    if (opInfo->operands[i] & Opr_Update)
                         mode = Mode_Update;
-                    }
                     else if (opInfo->operands[i] & Opr_Dest)
-                    {
                         mode = Mode_Output;
-                    }
                     else
-                    {
                         mode = Mode_Input;
-                    }
 
                     use_star = opTakesLabel();//opInfo->takesLabel();
 
@@ -2088,7 +2245,7 @@ struct AsmProcessor
                                 {
                                     e = new AddExp(0, e,
                                             new IntegerExp(0, operand->constDisplacement,
-                                                Type::tint32));
+                                                Type::tptrdiff_t));
                                     e->type = decl->type->pointerTo();
                                 }
                                 e = new PtrExp(0, e);
@@ -2119,6 +2276,7 @@ struct AsmProcessor
                             {
                                 unsigned lbl_num = ++d_priv_asm_label_serial;
                                 addLabel(lbl_num);
+                                use_star = false;
                                 asmcode->dollarLabel = lbl_num; // could make the dollar label part of the same asm..
                             }
                             else if (e->op == TOKdsymbol)
@@ -2212,9 +2370,9 @@ struct AsmProcessor
         return e;
     }
 
-    Expression * newIntExp(int v /* %% type */)
+    Expression * newIntExp(sinteger_t v /* %% type */)
     {   // Only handles 32-bit numbers as this is IA-32.
-        return new IntegerExp(stmt->loc, v, Type::tint32);
+        return new IntegerExp(stmt->loc, v, Type::tptrdiff_t);
     }
 
     void slotExp(Expression * exp)
@@ -2598,7 +2756,9 @@ struct AsmProcessor
                 return Short_Ptr;
             case TOKint32:
                 return Int_Ptr;
-                // 'long ptr' isn't accepted?
+            case TOKint64:
+                // 'long ptr' isn't accepted? (it is now - qword)
+                return QWord_Ptr;
             case TOKfloat32:
                 return Float_Ptr;
             case TOKfloat64:
@@ -2699,7 +2859,7 @@ struct AsmProcessor
             case TOKuns64v:
             {   // semantic here?
                 // %% for tok64 really should use 64bit type
-                e = new IntegerExp(stmt->loc, token->uns64value, Type::tint32);
+                e = new IntegerExp(stmt->loc, token->uns64value, Type::tptrdiff_t);
                 nextToken();
                 break;
             }
@@ -2919,7 +3079,7 @@ struct AsmProcessor
                 case Op_di:
                 case Op_dl:
                     if (token->value == TOKint32v || token->value == TOKuns32v ||
-                            token->value == TOKint64v || token->value == TOKuns64v)
+                        token->value == TOKint64v || token->value == TOKuns64v)
                     {   // As per usual with GNU, assume at least 32-bit host
                         if (op != Op_dl)
                             insnTemplate->printf("%u", (d_uns32) token->uns64value);
@@ -2949,7 +3109,7 @@ struct AsmProcessor
                     // drop through
                 do_float:
                     if (token->value == TOKfloat32v || token->value == TOKfloat64v ||
-                            token->value == TOKfloat80v)
+                        token->value == TOKfloat80v)
                     {
                         long words[3];
                         real_to_target(words, & token->float80value.rv(), mode);

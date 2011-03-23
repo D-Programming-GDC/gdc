@@ -148,6 +148,10 @@ fdump-source
 D RejectNegative
 Dump decoded UTF-8 text and source from HTML
 
+fasm
+D
+Recognize the \"asm\" keyword
+
 fbuiltin
 D
 Recognize built-in functions

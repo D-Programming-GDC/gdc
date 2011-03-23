@@ -201,6 +201,7 @@ d_init_options (unsigned int, const char ** argv)
     // extra D-specific options
     gen.splitDynArrayVarArgs = true;
     gen.emitTemplates = TEnormal;
+    gen.useInlineAsm = true;
     gen.useBuiltins = true;
     std_inc = true;
 
@@ -406,13 +407,18 @@ d_init ()
         VersionCondition::addPredefinedGlobalIdent("GNU_LongDouble128");
 #endif
 
-    if (d_have_inline_asm())
+    if (d_have_inline_asm() && gen.useInlineAsm)
     {
         VersionCondition::addPredefinedGlobalIdent("D_InlineAsm");
 
-        if (cpu_versym && strcmp(cpu_versym, "X86") == 0)
-            VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86");
-        // TODO: D_InlineAsm_X86_64
+        if (cpu_versym)
+        {
+            if (strcmp(cpu_versym, "X86") == 0)
+                VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86");
+            // TODO: Uncomment this once phobos builds with it turned on.
+            //else if (strcmp(cpu_versym, "X86_64") == 0)
+            //    VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86_64");
+        }
 
         /* Should define this anyway to set us apart from the competition. */
         VersionCondition::addPredefinedGlobalIdent("GNU_InlineAsm");
@@ -657,21 +663,20 @@ d_handle_option (size_t scode, const char *arg, int value)
           gen.emitTemplates = value ? TEauto : TEnone;
           break;
       case OPT_femit_templates_:
-          if (! arg || ! *arg) {
+          if (! arg || ! *arg)
               gen.emitTemplates = value ? TEauto : TEnone;
-          } else if (! strcmp(arg, "normal")) {
+          else if (! strcmp(arg, "normal"))
               gen.emitTemplates = TEnormal;
-          } else if (! strcmp(arg, "all")) {
+          else if (! strcmp(arg, "all"))
               gen.emitTemplates = TEall;
-          } else if (! strcmp(arg, "private")) {
+          else if (! strcmp(arg, "private"))
               gen.emitTemplates = TEprivate;
-          } else if (! strcmp(arg, "none")) {
+          else if (! strcmp(arg, "none"))
               gen.emitTemplates = TEnone;
-          } else if (! strcmp(arg, "auto")) {
+          else if (! strcmp(arg, "auto"))
               gen.emitTemplates = TEauto;
-          } else {
+          else
               error("bad argument for -femit-templates");
-          }
           break;
       case OPT_fonly_:
           fonly_arg = xstrdup(arg);
@@ -688,6 +693,8 @@ d_handle_option (size_t scode, const char *arg, int value)
       case OPT_fdump_source:
           global.params.dump_source = value;
           break;
+      case OPT_fasm:
+          gen.useInlineAsm = value;
       case OPT_fbuiltin:
           gen.useBuiltins = value;
           break;

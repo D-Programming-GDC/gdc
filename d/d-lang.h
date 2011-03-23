@@ -90,9 +90,6 @@ union lang_tree_node
 /* True if the function has been marked "naked". */
 #define D_DECL_NO_FRAME_POINTER(NODE) (DECL_LANG_FLAG_2(NODE))
 
-/* True if the label has been computed, or used by the frontend. */
-#define D_LABEL_IS_USED(NODE) (DECL_LANG_FLAG_3(NODE))
-
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and
    otherwise support the backend. */
