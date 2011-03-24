@@ -66,7 +66,7 @@
    /* Make sure that BE didn't give up on compiling.  */
    /* ??? Can happen with nested function of extern inline.  */
 --- gcc.orig/config/i386/i386.c	2010-03-31 21:14:10.000000000 +0100
-+++ gcc/config/i386/i386.c	2011-03-21 19:42:27.571361547 +0000
++++ gcc/config/i386/i386.c	2011-03-24 09:13:45.231082911 +0000
 @@ -3145,6 +3145,10 @@ ix86_handle_cconv_attribute (tree *node,
          {
  	  error ("fastcall and stdcall attributes are not compatible");
@@ -102,17 +102,17 @@
 +  /* Can combine optlink with regparm and sseregparm.  */
 +  else if (is_attribute_p ("optlink", name))
 +    {
-+      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
++      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
 +        {
-+	  error ("optlink and stdcall attributes are not compatible");
++	  error ("optlink and cdecl attributes are not compatible");
 +	}
 +      if (lookup_attribute ("fastcall", TYPE_ATTRIBUTES (*node)))
 +        {
 +	  error ("optlink and fastcall attributes are not compatible");
 +	}
-+      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
++      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
 +        {
-+	  error ("optlink and cdecl attributes are not compatible");
++	  error ("optlink and stdcall attributes are not compatible");
 +	}
      }
  
@@ -130,7 +130,19 @@
        if (rtd && ! stdarg_p (funtype))
  	return size;
      }
-@@ -6151,6 +6186,11 @@ ix86_compute_frame_layout (struct ix86_f
+@@ -3529,6 +3564,11 @@ init_cumulative_args (CUMULATIVE_ARGS *c
+ 	    }
+ 	  else
+ 	    cum->nregs = ix86_function_regparm (fntype, fndecl);
++
++	  /* For optlink, last parameter is passed in eax rather than
++	     being pushed on the stack.  */
++	  if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (fntype)))
++	    cum->optlink = 1;
+ 	}
+ 
+       /* Set up the number of SSE registers used for passing SFmode
+@@ -6151,6 +6191,11 @@ ix86_compute_frame_layout (struct ix86_f
      frame->red_zone_size = 0;
    frame->to_allocate -= frame->red_zone_size;
    frame->stack_pointer_offset -= frame->red_zone_size;
@@ -142,7 +154,7 @@
  #if 0
    fprintf (stderr, "\n");
    fprintf (stderr, "nregs: %ld\n", (long)frame->nregs);
-@@ -22924,7 +22964,7 @@ x86_output_mi_thunk (FILE *file ATTRIBUT
+@@ -22924,7 +22969,7 @@ x86_output_mi_thunk (FILE *file ATTRIBUT
  	  output_set_got (tmp, NULL_RTX);
  
  	  xops[1] = tmp;
@@ -151,7 +163,7 @@
  	  output_asm_insn ("jmp\t{*}%1", xops);
  	}
      }
-@@ -25240,6 +25280,8 @@ static const struct attribute_spec ix86_
+@@ -25240,6 +25285,8 @@ static const struct attribute_spec ix86_
    /* Sseregparm attribute says we are using x86_64 calling conventions
       for FP arguments.  */
    { "sseregparm", 0, 0, false, true, true, ix86_handle_cconv_attribute },
@@ -161,7 +173,7 @@
    { (const char *)&ix86_force_align_arg_pointer_string, 0, 0,
      false, true,  true, ix86_handle_cconv_attribute },
 --- gcc.orig/config/i386/i386.h	2009-11-13 19:51:52.000000000 +0000
-+++ gcc/config/i386/i386.h	2011-03-21 19:39:45.910559903 +0000
++++ gcc/config/i386/i386.h	2011-03-24 09:14:27.943294703 +0000
 @@ -1672,6 +1672,7 @@ typedef struct ix86_args {
    int nregs;			/* # registers available for passing */
    int regno;			/* next available register number */
@@ -401,6 +413,31 @@
 +   || (CHAR) == 'B' || (CHAR) == 'b' || (CHAR) == 'J')
  
  /* This defines which multi-letter switches take arguments.  */
+ 
+--- gcc.orig/gimplify.c	2010-01-31 21:08:15.000000000 +0000
++++ gcc/gimplify.c	2011-03-23 20:29:56.665775841 +0000
+@@ -2085,6 +2085,7 @@ gimplify_call_expr (tree *expr_p, tree *
+   tree decl, parms, p;
+   enum gimplify_status ret;
+   int i, nargs;
++  int reverse_args;
+ 
+   gcc_assert (TREE_CODE (*expr_p) == CALL_EXPR);
+ 
+@@ -2244,9 +2245,11 @@ gimplify_call_expr (tree *expr_p, tree *
+     }
+ 
+   /* Finally, gimplify the function arguments.  */
+-  for (i = (PUSH_ARGS_REVERSED ? nargs - 1 : 0);
+-       PUSH_ARGS_REVERSED ? i >= 0 : i < nargs;
+-       PUSH_ARGS_REVERSED ? i-- : i++)
++  /* Evaluate args left to right if evaluation order matters. */
++  reverse_args = flag_evaluation_order ? 0 : PUSH_ARGS_REVERSED;
++  for (i = (reverse_args ? nargs - 1 : 0);
++       reverse_args ? i >= 0 : i < nargs;
++       reverse_args ? i-- : i++)
+     {
+       enum gimplify_status t;
  
 --- gcc.orig/tree.def	2007-10-29 11:05:04.000000000 +0000
 +++ gcc/tree.def	2011-03-21 18:37:21.463992196 +0000

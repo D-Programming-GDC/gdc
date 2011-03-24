@@ -147,7 +147,11 @@ uniqueName(Declaration * d, tree t, const char * asm_name)
          // Static declarations in different scope statements
          (p && p->isFuncDeclaration()) ||
          // Top-level duplicate names are okay if private.
-         ((!p || p->isModule()) && d->protection == PROTprivate)))
+         ((!p || p->isModule()) && d->protection == PROTprivate) ||
+         // or duplicate template functions.
+         (f && f->inTemplateInstance())
+        )
+       )
     {
         StringValue * sv;
 

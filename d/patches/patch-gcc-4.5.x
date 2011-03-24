@@ -29,7 +29,7 @@
    if (assembler_name_hash)
      {
 --- gcc.orig/config/i386/i386.c	2010-09-30 21:24:54.000000000 +0100
-+++ gcc/config/i386/i386.c	2011-03-21 19:13:59.450891425 +0000
++++ gcc/config/i386/i386.c	2011-03-24 09:06:17.576863107 +0000
 @@ -4466,6 +4466,10 @@ ix86_handle_cconv_attribute (tree *node,
          {
  	  error ("fastcall and stdcall attributes are not compatible");
@@ -93,7 +93,19 @@
        if (rtd && ! stdarg_p (funtype))
  	return size;
      }
-@@ -8131,6 +8166,10 @@ ix86_compute_frame_layout (struct ix86_f
+@@ -4969,6 +5004,11 @@ init_cumulative_args (CUMULATIVE_ARGS *c
+ 	    }
+ 	  else
+ 	    cum->nregs = ix86_function_regparm (fntype, fndecl);
++
++	  /* For optlink, last parameter is passed in eax rather than
++	     being pushed on the stack.  */
++	  if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (fntype)))
++	    cum->optlink = 1;
+ 	}
+ 
+       /* Set up the number of SSE registers used for passing SFmode
+@@ -8131,6 +8171,10 @@ ix86_compute_frame_layout (struct ix86_f
      frame->red_zone_size = 0;
    frame->to_allocate -= frame->red_zone_size;
    frame->stack_pointer_offset -= frame->red_zone_size;
@@ -104,7 +116,7 @@
  }
  
  /* Emit code to save registers in the prologue.  */
-@@ -26366,7 +26405,7 @@ x86_output_mi_thunk (FILE *file,
+@@ -26366,7 +26410,7 @@ x86_output_mi_thunk (FILE *file,
  	  output_set_got (tmp, NULL_RTX);
  
  	  xops[1] = tmp;
@@ -113,7 +125,7 @@
  	  output_asm_insn ("jmp\t{*}%1", xops);
  	}
      }
-@@ -28996,6 +29035,8 @@ static const struct attribute_spec ix86_
+@@ -28996,6 +29040,8 @@ static const struct attribute_spec ix86_
    /* Sseregparm attribute says we are using x86_64 calling conventions
       for FP arguments.  */
    { "sseregparm", 0, 0, false, true, true, ix86_handle_cconv_attribute },
@@ -123,7 +135,7 @@
    { (const char *)&ix86_force_align_arg_pointer_string, 0, 0,
      false, true,  true, ix86_handle_cconv_attribute },
 --- gcc.orig/config/i386/i386.h	2010-04-27 21:14:19.000000000 +0100
-+++ gcc/config/i386/i386.h	2011-03-21 18:40:34.116947508 +0000
++++ gcc/config/i386/i386.h	2011-03-24 09:03:24.388004311 +0000
 @@ -1581,6 +1581,7 @@ typedef struct ix86_args {
    int nregs;			/* # registers available for passing */
    int regno;			/* next available register number */
@@ -362,6 +374,23 @@
 +	  || TREE_CODE (t) == STATIC_CHAIN_DECL
  	  || TREE_CODE (t) == SSA_NAME);
  }
+ 
+--- gcc.orig/gimplify.c	2010-11-11 20:36:49.000000000 +0000
++++ gcc/gimplify.c	2011-03-23 20:28:01.165203119 +0000
+@@ -2348,9 +2348,11 @@ gimplify_call_expr (tree *expr_p, gimple
+   /* Finally, gimplify the function arguments.  */
+   if (nargs > 0)
+     {
+-      for (i = (PUSH_ARGS_REVERSED ? nargs - 1 : 0);
+-           PUSH_ARGS_REVERSED ? i >= 0 : i < nargs;
+-           PUSH_ARGS_REVERSED ? i-- : i++)
++      /* Evaluate args left to right if evaluation order matters. */
++      int reverse_args = flag_evaluation_order ? 0 : PUSH_ARGS_REVERSED;
++      for (i = (reverse_args ? nargs - 1 : 0);
++           reverse_args ? i >= 0 : i < nargs;
++           reverse_args ? i-- : i++)
+         {
+           enum gimplify_status t;
  
 --- gcc.orig/ira.c	2010-09-09 14:55:35.000000000 +0100
 +++ gcc/ira.c	2011-03-21 18:37:35.136060003 +0000

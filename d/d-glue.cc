@@ -3639,9 +3639,17 @@ TypeFunction::toCtype()
         if (parameters)
         {
             size_t n_args = Parameter::dim(parameters);
-            for (size_t i = 0; i < n_args; i++)
+            size_t argnum = 0, inc = 1;
+#if D_DMD_CALLING_CONVENTIONS
+            if (linkage == LINKd && varargs != 1)
+            {   // In this case, reverse order so last arg
+                // gets pushed first.
+                argnum = n_args - 1, inc = -1;
+            }
+#endif
+            for (size_t i = 0; i < n_args; i++, argnum += inc)
             {
-                Parameter * arg = Parameter::getNth(parameters, i);
+                Parameter * arg = Parameter::getNth(parameters, argnum);
                 type_list.cons(IRState::trueArgumentType(arg));
             }
         }

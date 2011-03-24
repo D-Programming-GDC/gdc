@@ -83,7 +83,6 @@ public:
     static void setupStaticStorage(Dsymbol * dsym, tree decl_tree);
     static void makeDeclOneOnly(tree decl_tree, Dsymbol * dsym = NULL);
 
-    static StringTable * symtab;    // Table of emitted symbols.
     static void outputStaticSymbol(Symbol * s);
     static void outputFunction(FuncDeclaration * f);
 

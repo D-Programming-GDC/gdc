@@ -31,7 +31,7 @@
    if (assembler_name_hash)
      {
 --- gcc.orig/config/i386/i386.c	2010-08-06 08:52:04.000000000 +0100
-+++ gcc/config/i386/i386.c	2011-03-21 19:46:00.804418905 +0000
++++ gcc/config/i386/i386.c	2011-03-24 09:10:35.050139850 +0000
 @@ -4270,6 +4270,10 @@ ix86_handle_cconv_attribute (tree *node,
          {
  	  error ("fastcall and stdcall attributes are not compatible");
@@ -67,17 +67,17 @@
 +  /* Can combine optlink with regparm and sseregparm.  */
 +  else if (is_attribute_p ("optlink", name))
 +    {
-+      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
++      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
 +        {
-+	  error ("optlink and stdcall attributes are not compatible");
++	  error ("optlink and cdecl attributes are not compatible");
 +	}
 +      if (lookup_attribute ("fastcall", TYPE_ATTRIBUTES (*node)))
 +        {
 +	  error ("optlink and fastcall attributes are not compatible");
 +	}
-+      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
++      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
 +        {
-+	  error ("optlink and cdecl attributes are not compatible");
++	  error ("optlink and stdcall attributes are not compatible");
 +	}
      }
  
@@ -95,7 +95,19 @@
        if (rtd && ! stdarg_p (funtype))
  	return size;
      }
-@@ -7879,6 +7914,11 @@ ix86_compute_frame_layout (struct ix86_f
+@@ -4782,6 +4817,11 @@ init_cumulative_args (CUMULATIVE_ARGS *c
+ 	    }
+ 	  else
+ 	    cum->nregs = ix86_function_regparm (fntype, fndecl);
++
++	  /* For optlink, last parameter is passed in eax rather than
++	     being pushed on the stack.  */
++	  if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (fntype)))
++	    cum->optlink = 1;
+ 	}
+ 
+       /* Set up the number of SSE registers used for passing SFmode
+@@ -7879,6 +7919,11 @@ ix86_compute_frame_layout (struct ix86_f
      frame->red_zone_size = 0;
    frame->to_allocate -= frame->red_zone_size;
    frame->stack_pointer_offset -= frame->red_zone_size;
@@ -107,7 +119,7 @@
  #if 0
    fprintf (stderr, "\n");
    fprintf (stderr, "size: %ld\n", (long)size);
-@@ -26795,7 +26835,7 @@ x86_output_mi_thunk (FILE *file ATTRIBUT
+@@ -26795,7 +26840,7 @@ x86_output_mi_thunk (FILE *file ATTRIBUT
  	  output_set_got (tmp, NULL_RTX);
  
  	  xops[1] = tmp;
@@ -116,7 +128,7 @@
  	  output_asm_insn ("jmp\t{*}%1", xops);
  	}
      }
-@@ -29551,6 +29591,8 @@ static const struct attribute_spec ix86_
+@@ -29551,6 +29596,8 @@ static const struct attribute_spec ix86_
    /* Sseregparm attribute says we are using x86_64 calling conventions
       for FP arguments.  */
    { "sseregparm", 0, 0, false, true, true, ix86_handle_cconv_attribute },
@@ -126,7 +138,7 @@
    { (const char *)&ix86_force_align_arg_pointer_string, 0, 0,
      false, true,  true, ix86_handle_cconv_attribute },
 --- gcc.orig/config/i386/i386.h	2009-11-13 19:13:16.000000000 +0000
-+++ gcc/config/i386/i386.h	2011-03-21 19:43:34.955695689 +0000
++++ gcc/config/i386/i386.h	2011-03-24 09:11:22.018372742 +0000
 @@ -1572,6 +1572,7 @@ typedef struct ix86_args {
    int nregs;			/* # registers available for passing */
    int regno;			/* next available register number */
@@ -498,6 +510,23 @@
 +  return (enum tree_code) gs->gsbase.subcode;
  }
  
+ 
+--- gcc.orig/gimplify.c	2010-09-02 09:00:55.000000000 +0100
++++ gcc/gimplify.c	2011-03-23 20:28:24.433318495 +0000
+@@ -2443,9 +2443,11 @@ gimplify_call_expr (tree *expr_p, gimple
+   /* Finally, gimplify the function arguments.  */
+   if (nargs > 0)
+     {
+-      for (i = (PUSH_ARGS_REVERSED ? nargs - 1 : 0);
+-           PUSH_ARGS_REVERSED ? i >= 0 : i < nargs;
+-           PUSH_ARGS_REVERSED ? i-- : i++)
++      /* Evaluate args left to right if evaluation order matters. */
++      int reverse_args = flag_evaluation_order ? 0 : PUSH_ARGS_REVERSED;
++      for (i = (reverse_args ? nargs - 1 : 0);
++           reverse_args ? i >= 0 : i < nargs;
++           reverse_args ? i-- : i++)
+         {
+           enum gimplify_status t;
  
 --- gcc.orig/ipa-cp.c	2009-12-27 22:39:58.000000000 +0000
 +++ gcc/ipa-cp.c	2011-03-21 18:37:28.528027223 +0000

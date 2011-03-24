@@ -1140,8 +1140,8 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     for (size_t ai = 0; ai < n_actual_args; ++ai)
     {
         tree actual_arg_tree;
-
         Expression * actual_arg_exp = (Expression *) arguments->data[ai];
+
         if (ai == 0 && is_d_vararg)
         {   // The hidden _arguments parameter
             actual_arg_tree = actual_arg_exp->toElem(this);

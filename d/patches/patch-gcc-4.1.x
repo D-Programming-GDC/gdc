@@ -62,7 +62,7 @@
  #undef TARGET_ENCODE_SECTION_INFO
  #define TARGET_ENCODE_SECTION_INFO  darwin_encode_section_info
 --- gcc.orig/config/i386/i386.c	2006-11-17 07:01:22.000000000 +0000
-+++ gcc/config/i386/i386.c	2011-03-21 19:28:16.015138892 +0000
++++ gcc/config/i386/i386.c	2011-03-24 09:17:12.680111593 +0000
 @@ -1914,6 +1914,8 @@ const struct attribute_spec ix86_attribu
    /* Sseregparm attribute says we are using x86_64 calling conventions
       for FP arguments.  */
@@ -107,21 +107,30 @@
 +  /* Can combine optlink with regparm and sseregparm.  */
 +  else if (is_attribute_p ("optlink", name))
 +    {
-+      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
++      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
 +        {
-+	  error ("optlink and stdcall attributes are not compatible");
++	  error ("optlink and cdecl attributes are not compatible");
 +	}
 +      if (lookup_attribute ("fastcall", TYPE_ATTRIBUTES (*node)))
 +        {
 +	  error ("optlink and fastcall attributes are not compatible");
 +	}
-+      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
++      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
 +        {
-+	  error ("optlink and cdecl attributes are not compatible");
++	  error ("optlink and stdcall attributes are not compatible");
 +	}
      }
  
    /* Can combine sseregparm with all attributes.  */
+@@ -2169,7 +2200,7 @@ ix86_function_regparm (tree type, tree d
+ 	  user_convention = true;
+ 	}
+ 
+-      if (lookup_attribute ("fastcall", TYPE_ATTRIBUTES (type)))
++      if (lookup_attribute ("fastcall", type_attributes (type)))
+ 	{
+ 	  regparm = 2;
+ 	  user_convention = true;
 @@ -2301,6 +2332,12 @@ ix86_return_pops_args (tree fundecl, tre
          || lookup_attribute ("fastcall", TYPE_ATTRIBUTES (funtype)))
        rtd = 1;
@@ -135,7 +144,19 @@
      if (rtd
          && (TYPE_ARG_TYPES (funtype) == NULL_TREE
  	    || (TREE_VALUE (tree_last (TYPE_ARG_TYPES (funtype)))
-@@ -4754,6 +4791,11 @@ ix86_compute_frame_layout (struct ix86_f
+@@ -2413,6 +2450,11 @@ init_cumulative_args (CUMULATIVE_ARGS *c
+ 	}
+       else
+ 	cum->nregs = ix86_function_regparm (fntype, fndecl);
++
++      /* For optlink, last parameter is passed in eax rather than
++         being pushed on the stack.  */
++      if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (fntype)))
++	cum->optlink = 1;
+     }
+ 
+   /* Set up the number of SSE registers used for passing SFmode
+@@ -4754,6 +4796,11 @@ ix86_compute_frame_layout (struct ix86_f
      frame->red_zone_size = 0;
    frame->to_allocate -= frame->red_zone_size;
    frame->stack_pointer_offset -= frame->red_zone_size;
@@ -147,7 +168,7 @@
  #if 0
    fprintf (stderr, "nregs: %i\n", frame->nregs);
    fprintf (stderr, "size: %i\n", size);
-@@ -16979,7 +17021,7 @@ x86_output_mi_thunk (FILE *file ATTRIBUT
+@@ -16979,7 +17026,7 @@ x86_output_mi_thunk (FILE *file ATTRIBUT
  	  output_set_got (tmp);
  
  	  xops[1] = tmp;
@@ -157,7 +178,7 @@
  	}
      }
 --- gcc.orig/config/i386/i386.h	2006-12-16 19:24:56.000000000 +0000
-+++ gcc/config/i386/i386.h	2011-03-21 19:17:51.356041376 +0000
++++ gcc/config/i386/i386.h	2011-03-24 09:12:00.922565654 +0000
 @@ -1476,6 +1476,7 @@ typedef struct ix86_args {
    int nregs;			/* # registers available for passing */
    int regno;			/* next available register number */
@@ -408,6 +429,36 @@
  
  /* This defines which multi-letter switches take arguments.  */
  
+--- gcc.orig/gimplify.c	2006-11-19 16:15:47.000000000 +0000
++++ gcc/gimplify.c	2011-03-23 20:32:47.058620783 +0000
+@@ -1845,6 +1845,7 @@ gimplify_call_expr (tree *expr_p, tree *
+   tree decl;
+   tree arglist;
+   enum gimplify_status ret;
++  int reverse_args;
+ 
+   gcc_assert (TREE_CODE (*expr_p) == CALL_EXPR);
+ 
+@@ -1907,7 +1908,9 @@ gimplify_call_expr (tree *expr_p, tree *
+   ret = gimplify_expr (&TREE_OPERAND (*expr_p, 0), pre_p, NULL,
+ 		       is_gimple_call_addr, fb_rvalue);
+ 
+-  if (PUSH_ARGS_REVERSED)
++  /* Evaluate args left to right if evaluation order matters. */
++  reverse_args = flag_evaluation_order ? 0 : PUSH_ARGS_REVERSED;
++  if (reverse_args)
+     TREE_OPERAND (*expr_p, 1) = nreverse (TREE_OPERAND (*expr_p, 1));
+   for (arglist = TREE_OPERAND (*expr_p, 1); arglist;
+        arglist = TREE_CHAIN (arglist))
+@@ -1919,7 +1922,7 @@ gimplify_call_expr (tree *expr_p, tree *
+       if (t == GS_ERROR)
+ 	ret = GS_ERROR;
+     }
+-  if (PUSH_ARGS_REVERSED)
++  if (reverse_args)
+     TREE_OPERAND (*expr_p, 1) = nreverse (TREE_OPERAND (*expr_p, 1));
+ 
+   /* Try this again in case gimplification exposed something.  */
 --- gcc.orig/predict.c	2005-11-05 00:55:23.000000000 +0000
 +++ gcc/predict.c	2011-03-21 18:36:53.043851268 +0000
 @@ -1339,6 +1339,7 @@ tree_estimate_probability (void)

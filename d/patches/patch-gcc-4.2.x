@@ -60,7 +60,7 @@
  #define MACHOPIC_PURE		(flag_pic && ! MACHO_DYNAMIC_NO_PIC_P)
  
 --- gcc.orig/config/i386/i386.c	2007-12-13 09:25:46.000000000 +0000
-+++ gcc/config/i386/i386.c	2011-03-21 19:36:25.105564161 +0000
++++ gcc/config/i386/i386.c	2011-03-24 09:15:26.563585390 +0000
 @@ -2219,6 +2219,8 @@ const struct attribute_spec ix86_attribu
    /* Sseregparm attribute says we are using x86_64 calling conventions
       for FP arguments.  */
@@ -105,17 +105,17 @@
 +  /* Can combine optlink with regparm and sseregparm.  */
 +  else if (is_attribute_p ("optlink", name))
 +    {
-+      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
++      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
 +        {
-+	  error ("optlink and stdcall attributes are not compatible");
++	  error ("optlink and cdecl attributes are not compatible");
 +	}
 +      if (lookup_attribute ("fastcall", TYPE_ATTRIBUTES (*node)))
 +        {
 +	  error ("optlink and fastcall attributes are not compatible");
 +	}
-+      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
++      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
 +        {
-+	  error ("optlink and cdecl attributes are not compatible");
++	  error ("optlink and stdcall attributes are not compatible");
 +	}
      }
  
@@ -133,7 +133,19 @@
      if (rtd
          && (TYPE_ARG_TYPES (funtype) == NULL_TREE
  	    || (TREE_VALUE (tree_last (TYPE_ARG_TYPES (funtype)))
-@@ -5217,6 +5254,11 @@ ix86_compute_frame_layout (struct ix86_f
+@@ -2756,6 +2793,11 @@ init_cumulative_args (CUMULATIVE_ARGS *c
+ 	}
+       else
+ 	cum->nregs = ix86_function_regparm (fntype, fndecl);
++
++      /* For optlink, last parameter is passed in eax rather than
++         being pushed on the stack.  */
++      if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (fntype)))
++	cum->optlink = 1;
+     }
+ 
+   /* Set up the number of SSE registers used for passing SFmode
+@@ -5217,6 +5259,11 @@ ix86_compute_frame_layout (struct ix86_f
      frame->red_zone_size = 0;
    frame->to_allocate -= frame->red_zone_size;
    frame->stack_pointer_offset -= frame->red_zone_size;
@@ -145,7 +157,7 @@
  #if 0
    fprintf (stderr, "nregs: %i\n", frame->nregs);
    fprintf (stderr, "size: %i\n", size);
-@@ -17732,7 +17774,7 @@ x86_output_mi_thunk (FILE *file ATTRIBUT
+@@ -17732,7 +17779,7 @@ x86_output_mi_thunk (FILE *file ATTRIBUT
  	  output_set_got (tmp, NULL_RTX);
  
  	  xops[1] = tmp;
@@ -155,7 +167,7 @@
  	}
      }
 --- gcc.orig/config/i386/i386.h	2007-09-01 16:28:30.000000000 +0100
-+++ gcc/config/i386/i386.h	2011-03-21 19:31:31.140106465 +0000
++++ gcc/config/i386/i386.h	2011-03-24 09:11:49.110507094 +0000
 @@ -1428,6 +1428,7 @@ typedef struct ix86_args {
    int nregs;			/* # registers available for passing */
    int regno;			/* next available register number */
@@ -395,6 +407,36 @@
  
  /* This defines which multi-letter switches take arguments.  */
  
+--- gcc.orig/gimplify.c	2008-05-01 12:15:32.000000000 +0100
++++ gcc/gimplify.c	2011-03-23 20:31:51.306344316 +0000
+@@ -2022,6 +2022,7 @@ gimplify_call_expr (tree *expr_p, tree *
+   tree decl;
+   tree arglist;
+   enum gimplify_status ret;
++  int reverse_args;
+ 
+   gcc_assert (TREE_CODE (*expr_p) == CALL_EXPR);
+ 
+@@ -2084,7 +2085,9 @@ gimplify_call_expr (tree *expr_p, tree *
+   ret = gimplify_expr (&TREE_OPERAND (*expr_p, 0), pre_p, NULL,
+ 		       is_gimple_call_addr, fb_rvalue);
+ 
+-  if (PUSH_ARGS_REVERSED)
++  /* Evaluate args left to right if evaluation order matters. */
++  reverse_args = flag_evaluation_order ? 0 : PUSH_ARGS_REVERSED;
++  if (reverse_args)
+     TREE_OPERAND (*expr_p, 1) = nreverse (TREE_OPERAND (*expr_p, 1));
+   for (arglist = TREE_OPERAND (*expr_p, 1); arglist;
+        arglist = TREE_CHAIN (arglist))
+@@ -2096,7 +2099,7 @@ gimplify_call_expr (tree *expr_p, tree *
+       if (t == GS_ERROR)
+ 	ret = GS_ERROR;
+     }
+-  if (PUSH_ARGS_REVERSED)
++  if (reverse_args)
+     TREE_OPERAND (*expr_p, 1) = nreverse (TREE_OPERAND (*expr_p, 1));
+ 
+   /* Try this again in case gimplification exposed something.  */
 --- gcc.orig/predict.c	2008-01-24 15:59:18.000000000 +0000
 +++ gcc/predict.c	2011-03-21 18:37:14.407957209 +0000
 @@ -1318,6 +1318,7 @@ tree_estimate_probability (void)
