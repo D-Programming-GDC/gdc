@@ -62,7 +62,7 @@
  #undef TARGET_ENCODE_SECTION_INFO
  #define TARGET_ENCODE_SECTION_INFO  darwin_encode_section_info
 --- gcc.orig/config/i386/i386.c	2006-11-17 07:01:22.000000000 +0000
-+++ gcc/config/i386/i386.c	2011-03-24 09:17:12.680111593 +0000
++++ gcc/config/i386/i386.c	2011-03-24 09:38:42.350506719 +0000
 @@ -1914,6 +1914,8 @@ const struct attribute_spec ix86_attribu
    /* Sseregparm attribute says we are using x86_64 calling conventions
       for FP arguments.  */
@@ -122,15 +122,6 @@
      }
  
    /* Can combine sseregparm with all attributes.  */
-@@ -2169,7 +2200,7 @@ ix86_function_regparm (tree type, tree d
- 	  user_convention = true;
- 	}
- 
--      if (lookup_attribute ("fastcall", TYPE_ATTRIBUTES (type)))
-+      if (lookup_attribute ("fastcall", type_attributes (type)))
- 	{
- 	  regparm = 2;
- 	  user_convention = true;
 @@ -2301,6 +2332,12 @@ ix86_return_pops_args (tree fundecl, tre
          || lookup_attribute ("fastcall", TYPE_ATTRIBUTES (funtype)))
        rtd = 1;
