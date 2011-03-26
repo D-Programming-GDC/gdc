@@ -41,11 +41,12 @@ Array ObjectFile::deferredThunks;
 Array ObjectFile::staticCtorList;
 Array ObjectFile::staticDtorList;
 
-typedef struct {
+struct DeferredThunk
+{
     tree decl;
     tree target;
     target_ptrdiff_t offset;
-} DeferredThunk;
+};
 
 ObjectFile::ObjectFile()
 {
@@ -447,7 +448,21 @@ ObjectFile::outputStaticSymbol(Symbol * s)
     }
 
     d_add_global_function(t);
-    rodc(t, 1);
+
+    // %% Hack
+    // Defer output of tls symbols to ensure that
+    // _tlsstart gets emitted first.
+    if (! DECL_THREAD_LOCAL_P(t))
+        rodc(t, 1);
+    else
+    {
+        tree sinit = DECL_INITIAL(t);
+        DECL_INITIAL(t) = NULL_TREE;
+
+        DECL_DEFER_OUTPUT(t) = 1;
+        rodc(t, 1);
+        DECL_INITIAL(t) = sinit;
+    }
 }
 
 void
@@ -1055,5 +1070,41 @@ obj_moduleinfo(Symbol *sym)
     tree exp = build2(COMPOUND_EXPR, void_type_node, m1, m2);
 
     g.ofile->doSimpleFunction("*__modinit", exp, true);
+}
+
+void
+obj_tlssections()
+{
+    /*
+        Generate:
+        __thread int _tlsstart = 3;
+        __thread int _tlsend;
+     */
+    tree tlsstart, tlsend;
+
+    tlsstart = d_build_decl(VAR_DECL, get_identifier("_tlsstart"),
+                            integer_type_node);
+    TREE_PUBLIC(tlsstart) = 1;
+    TREE_STATIC(tlsstart) = 1;
+    DECL_ARTIFICIAL(tlsstart) = 1;
+    // DECL_INITIAL so the symbol goes in .tdata
+    DECL_INITIAL(tlsstart) = build_int_cst(integer_type_node, 3);
+    DECL_TLS_MODEL(tlsstart) = decl_default_tls_model(tlsstart);
+    g.ofile->setDeclLoc(tlsstart, g.mod);
+    g.ofile->rodc(tlsstart, 1);
+
+    tlsend = d_build_decl(VAR_DECL, get_identifier("_tlsend"),
+                          integer_type_node);
+    TREE_PUBLIC(tlsend) = 1;
+    TREE_STATIC(tlsend) = 1;
+    DECL_ARTIFICIAL(tlsend) = 1;
+#if D_GCC_VER > 41
+    // %% thread-local COMMON data not implemented in 4.1.x
+    // DECL_COMMON so the symbol goes in .tcommon
+    DECL_COMMON(tlsend) = 1;
+#endif
+    DECL_TLS_MODEL(tlsend) = decl_default_tls_model(tlsend);
+    g.ofile->setDeclLoc(tlsend, g.mod);
+    g.ofile->rodc(tlsend, 1);
 }
 

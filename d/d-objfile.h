@@ -33,14 +33,14 @@ struct ModuleInfo
     Array unitTests;
 };
 
-typedef enum
+enum TemplateEmission
 {
     TEnone,
     TEnormal,
     TEall,
     TEprivate,
     TEauto
-} TemplateEmission;
+};
 
 /* nearly everything is static for effeciency since there is
    only one object per run of the backend */

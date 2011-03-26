@@ -43,10 +43,11 @@ extern void d_gcc_emit_local_variable(VarDeclaration *);
 extern bool d_gcc_supports_weak();
 
 #if V2
-typedef enum {
+enum RTLSYM
+{
     RTLSYM_DHIDDENFUNC,
     N_RTLSYM
-} RTLSYM;
+};
 extern Symbol* rtlsym[N_RTLSYM];
 #endif
 

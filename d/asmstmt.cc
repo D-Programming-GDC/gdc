@@ -28,7 +28,7 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
-typedef enum
+enum AsmArgType
 {
     Arg_Integer,
     Arg_Pointer,
@@ -36,14 +36,14 @@ typedef enum
     Arg_FrameRelative,
     Arg_LocalSize,
     Arg_Dollar
-} AsmArgType;
+};
 
-typedef enum
+enum AsmArgMode
 {
     Mode_Input,
     Mode_Output,
     Mode_Update
-} AsmArgMode;
+};
 
 struct AsmArg
 {

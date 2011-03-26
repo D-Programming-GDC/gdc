@@ -141,6 +141,14 @@ version( Windows )
                 extern int _tlsend;
             }
         }
+        else version( GNU )
+        {
+            extern (C)
+            {
+                extern int _tlsstart;
+                extern int _tlsend;
+            }
+        }
         else
         {
             __gshared int   _tlsstart;
@@ -289,11 +297,11 @@ else version( Posix )
             }
         }
         else version( GNU )
-        {   // TODO: make these compiler generated
+        {
             extern (C)
             {
-                int _tlsstart = 3;
-                int _tlsend;
+                extern int _tlsstart;
+                extern int _tlsend;
             }
         }
         else

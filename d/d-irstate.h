@@ -72,25 +72,25 @@ public:
     // ** Scope kinds.
 
     /* The kinds of levels we recognize. */
-    typedef enum LevelKind
+    enum LevelKind
     {
         level_block = 0,    /* An ordinary block scope. */
         level_switch,       /* A switch-block */
         level_try,          /* A try-block. */
         level_catch,        /* A catch-block. */
         level_finally,      /* A finally-block. */
-    } LevelKind;
+    };
 
     // ** Labels
 
-    typedef struct
+    struct Label
     {
         LabelDsymbol * label;
         Statement * block;
         Statement * from;
         LevelKind kind;
         unsigned level;
-    } Label;
+    };
 
     Array Labels; // of Label.
 
@@ -105,7 +105,7 @@ public:
     }
 
     // ** Loops (and case statements)
-    typedef struct
+    struct Flow
     {
         Statement * statement;
         LevelKind   kind;
@@ -128,7 +128,7 @@ public:
                 tree catchType;
             };
         };
-    } Flow;
+    };
 
     Array loops; // of Flow
 

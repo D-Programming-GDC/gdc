@@ -25,7 +25,7 @@
 #include "d-irstate.h"
 #include "d-objfile.h"
 
-typedef enum
+enum LibCall
 {
     LIBCALL_ASSERT,
     LIBCALL_ASSERT_MSG,
@@ -97,7 +97,7 @@ typedef enum
     LIBCALL_HIDDEN_FUNC,
 #endif
     LIBCALL_count
-} LibCall;
+};
 
 enum BinOp
 {
@@ -128,7 +128,7 @@ class ArrayScope;
 
 struct IRState : IRBase
 {
-    typedef enum
+    enum Intrinsic
     {
         INTRINSIC_BSF, INTRINSIC_BSR,
         INTRINSIC_BSWAP,
@@ -139,7 +139,7 @@ struct IRState : IRBase
         INTRINSIC_C_VA_ARG,
         INTRINSIC_C_VA_START,
         INTRINSIC_count,
-    } Intrinsic;
+    };
 
     static tree declContext(Dsymbol * d_sym);
 

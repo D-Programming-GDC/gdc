@@ -157,6 +157,7 @@ extern tree     check_static_sym(Symbol * sym);
 extern void     outdata(Symbol * sym);
 inline void     obj_export(Symbol *, int) { }
 extern void     obj_moduleinfo(Symbol *sym);
+extern void     obj_tlssections();
 
 extern Symbol * symbol_tree(tree);
 extern Symbol * static_sym();

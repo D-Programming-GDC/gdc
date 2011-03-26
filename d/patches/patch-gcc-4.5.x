@@ -29,7 +29,7 @@
    if (assembler_name_hash)
      {
 --- gcc.orig/config/i386/i386.c	2010-09-30 21:24:54.000000000 +0100
-+++ gcc/config/i386/i386.c	2011-03-24 09:06:17.576863107 +0000
++++ gcc/config/i386/i386.c	2011-03-24 22:48:58.236478442 +0000
 @@ -4466,6 +4466,10 @@ ix86_handle_cconv_attribute (tree *node,
          {
  	  error ("fastcall and stdcall attributes are not compatible");
@@ -87,7 +87,7 @@
 +      /* Optlink functions will pop the stack if floating-point return
 +         and if not variable args.  */
 +      if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (funtype))
-+          && X87_FLOAT_MODE_P (TYPE_MODE (TREE_TYPE (funtype))))
++          && FLOAT_MODE_P (TYPE_MODE (TREE_TYPE (funtype))))
 +	rtd = 1;
 +
        if (rtd && ! stdarg_p (funtype))
@@ -420,7 +420,7 @@
     Operand 0 is the cleanup expression.
     The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
 --- gcc.orig/tree-inline.c	2010-09-25 22:38:56.000000000 +0100
-+++ gcc/tree-inline.c	2011-03-21 18:37:35.148060041 +0000
++++ gcc/tree-inline.c	2011-03-25 11:03:45.453705021 +0000
 @@ -2023,6 +2023,7 @@ initialize_cfun (tree new_fndecl, tree c
  
    /* Copy items we preserve during clonning.  */
@@ -435,12 +435,12 @@
    gcc_assert (fn != current_function_decl);
 -  if (p)
 +  /* Custom static chain has already been dealt with.  */
-+  if (p && ! DECL_STRUCT_FUNCTION (fn)->custom_static_chain)
++  if (p && !DECL_STRUCT_FUNCTION (fn)->custom_static_chain)
      {
        /* No static chain?  Seems like a bug in tree-nested.c.  */
        gcc_assert (static_chain);
 --- gcc.orig/tree-nested.c	2010-08-31 22:08:15.000000000 +0100
-+++ gcc/tree-nested.c	2011-03-21 18:37:35.152060066 +0000
++++ gcc/tree-nested.c	2011-03-26 20:20:08.407581283 +0000
 @@ -750,6 +750,8 @@ get_static_chain (struct nesting_info *i
  
    if (info->context == target_context)

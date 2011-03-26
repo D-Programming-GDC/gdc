@@ -1342,7 +1342,7 @@ static Identifier * ident_seg;
 
 struct AsmProcessor
 {
-    typedef struct
+    struct Operand
     {
         int inBracket;
         int hasBracket;
@@ -1360,7 +1360,7 @@ struct AsmProcessor
         OperandClass cls;
         PtrType dataSize;
         PtrType dataSizeHint; // DMD can use the type of a referenced variable
-    } Operand;
+    };
 
     static const unsigned Max_Operands = 3;
 

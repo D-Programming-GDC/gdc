@@ -28,7 +28,6 @@
 
 #include "d-codegen.h"
 
-
 Array IRBase::deferredFuncDecls;
 
 IRBase::IRBase()
@@ -51,7 +50,7 @@ IRBase::startFunction(FuncDeclaration * decl)
 
     // %%MOVE to ofile -- shuold be able to do after codegen
     // Need to do this for GCC 3.4 or functions will not be emitted
-    d_add_global_function( decl_tree );
+    d_add_global_function(decl_tree);
 
     g.irs = (IRState*) new_irs;
     ModuleInfo & mi = * g.mi();
@@ -83,6 +82,10 @@ IRBase::startFunction(FuncDeclaration * decl)
     else if (decl->isUnitTestDeclaration())
         mi.unitTests.push(decl);
 
+    // Write out _tlsstart/_tlsend.
+    if (decl->isMain())
+        obj_tlssections();
+
     return new_irs;
 }
 
@@ -91,40 +94,12 @@ IRBase::endFunction()
 {
     gcc_assert(scopes.dim == 0);
 
-    func = 0; // make shouldDeferFunction return false
-    // Assumes deferredFuncDecls will not change after this point
-
     g.irs = (IRState *) parent;
-
-    if (g.irs == & gen) {
-        Array a;
-        a.append(& deferredFuncDecls);
-        deferredFuncDecls.setDim(0);
-        for (unsigned i = 0; i < a.dim; i++) {
-            FuncDeclaration * f = (FuncDeclaration *) a.data[i];
-            f->toObjFile(false);
-        }
-    }
-
-    // %%TODO
-    /*
-    if (can_delete)
-        delete this;
-    */
 }
 
 bool
 IRBase::shouldDeferFunction(FuncDeclaration * decl)
 {
-#if D_GCC_VER < 40
-    if (! func || gen.functionNeedsChain(decl))
-        return false;
-    else
-    {
-        deferredFuncDecls.push(decl);
-        return true;
-    }
-#else
     /* There is no need to defer functions for 4.0.  In fact, deferring
        causes problems because statically nested functions need to
        be prepared (maybe just have a struct function allocated) before
@@ -138,8 +113,8 @@ IRBase::shouldDeferFunction(FuncDeclaration * decl)
        lower_nested(F)
        the method is in the nested cgraph nodes, but the function hasing
        even been translated! */
+
     return false;
-#endif
 }
 
 void

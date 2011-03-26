@@ -27,21 +27,21 @@ struct real_t
     // Including gcc/real.h presents too many problems, so
     // just statically allocate enough space for
     // REAL_VALUE_TYPE.
-    typedef enum
+    enum MyMode
     {
         Float,
         Double,
         LongDouble,
         NumModes
-    } MyMode;
+    };
 
-    typedef struct
+    struct fake_t
     {
         int c;
         int s;
         int e;
         long m[ (16 + sizeof(long))/sizeof(long) + 1 ];
-    } fake_t;
+    };
 
     fake_t frv;
 
@@ -99,13 +99,13 @@ private:
     // real_t & operator=(long double v) { return *this; }
 };
 
-typedef struct
+struct real_t_Properties
 {
     real_t maxval, minval, epsilonval/*, nanval, infval*/;
     d_int64 dig, mant_dig;
     d_int64 max_10_exp, min_10_exp;
     d_int64 max_exp, min_exp;
-} real_t_Properties;
+};
 
 extern real_t_Properties real_t_properties[real_t::NumModes];
 
