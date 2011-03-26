@@ -41,32 +41,34 @@ Type * d_gcc_builtin_va_list_d_type;
 void
 d_bi_init()
 {
-    tree vatype;
-
 #if D_VA_LIST_TYPE_VOIDPTR
     // The "standard" definition of va_list is void*.
-    vatype = build_distinct_type_copy(void_type_node);
-    vatype = build_pointer_type(vatype);
+    tree void_type = make_node(VOID_TYPE);
+    d_va_list_type_node = build_pointer_type(void_type);
 
     // %% Yuck. Needed to pass stabilize_va_list
     if (TREE_CODE(va_list_type_node) == ARRAY_TYPE)
-        TYPE_MAIN_VARIANT(TREE_TYPE(vatype)) =
-            TYPE_MAIN_VARIANT(TREE_TYPE(va_list_type_node));
+        TYPE_MAIN_VARIANT(TREE_TYPE(d_va_list_type_node)) =
+                TYPE_MAIN_VARIANT(TREE_TYPE(va_list_type_node));
     else
-        TYPE_MAIN_VARIANT(vatype) = TYPE_MAIN_VARIANT(va_list_type_node);
+        TYPE_MAIN_VARIANT(d_va_list_type_node) =
+                TYPE_MAIN_VARIANT(va_list_type_node);
 #else
     // The "standard" abi va_list is va_list_type_node.
     // assumes va_list_type_node already built
-    vatype = va_list_type_node;
+    d_va_list_type_node = build_variant_type_copy(va_list_type_node);
 #endif
 
-    d_gcc_builtin_va_list_d_type = gcc_type_to_d_type(vatype);
+    d_gcc_builtin_va_list_d_type = gcc_type_to_d_type(d_va_list_type_node);
     if (! d_gcc_builtin_va_list_d_type)
     {   // fallback to array of byte of the same size?
         error("cannot represent built in va_list type in D");
         gcc_unreachable();
     }
-    d_gcc_builtin_va_list_d_type->ctype = vatype;
+
+    // if D_VA_TYPE_VOIDPTR, need to avoid errors in gimplification,
+    // else, need to not ICE in targetm.canonical_va_list_type
+    d_gcc_builtin_va_list_d_type->ctype = d_va_list_type_node;
 }
 
 /*

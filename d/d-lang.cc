@@ -1833,18 +1833,13 @@ d_expand_function(tree fndecl)
 static int
 d_types_compatible_p (tree t1, tree t2)
 {
-    tree d_va_list = NULL;
-
     /* Is compatible if types are equivalent */
     if (TYPE_MAIN_VARIANT (t1) == TYPE_MAIN_VARIANT (t2))
         return 1;
 
-    if (d_gcc_builtin_va_list_d_type)
-        d_va_list = d_gcc_builtin_va_list_d_type->ctype;
-
     /* Is compatible if we are dealing with C <-> D va_list nodes */
-    if ((t1 == d_va_list && t2 == va_list_type_node)
-        || (t2 == d_va_list && t1 == va_list_type_node))
+    if ((t1 == d_va_list_type_node && t2 == va_list_type_node)
+        || (t2 == d_va_list_type_node && t1 == va_list_type_node))
         return 1;
 
     /* Is compatible if aggregates are same type or share the same

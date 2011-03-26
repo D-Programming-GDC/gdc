@@ -118,27 +118,53 @@ struct binding_level GTY(())
 extern GTY(()) struct binding_level * current_binding_level;
 extern GTY(()) struct binding_level * global_binding_level;
 
-extern GTY(()) tree intmax_type_node;
-extern GTY(()) tree uintmax_type_node;
-extern GTY(()) tree signed_size_type_node;
-extern GTY(()) tree string_type_node;
-extern GTY(()) tree const_string_type_node;
+enum d_tree_index
+{
+    DTI_NULL_PTR,
+    DTI_VOID_ZERO,
+    DTI_VTBL_PTR_TYPE,
 
-extern GTY(()) tree d_null_pointer;
-extern GTY(()) tree d_void_zero_node;
-extern GTY(()) tree d_vtbl_ptr_type_node;
+    DTI_CHAR_TYPE,
+    DTI_WCHAR_TYPE,
+    DTI_DCHAR_TYPE,
 
-extern GTY(()) tree d_char_type_node;
-extern GTY(()) tree d_wchar_type_node;
-extern GTY(()) tree d_dchar_type_node;
-extern GTY(()) tree d_ifloat_type_node;
-extern GTY(()) tree d_idouble_type_node;
-extern GTY(()) tree d_ireal_type_node;
+    DTI_IFLOAT_TYPE,
+    DTI_IDOUBLE_TYPE,
+    DTI_IREAL_TYPE,
 
-#if D_GCC_VER >= 41
-/* not GTY'd because gtype does not actually understand #if */
-extern tree null_node;
-#endif
+    DTI_VA_LIST_TYPE,
+
+    /* unused except for gcc builtins. */
+    DTI_INTMAX_TYPE,
+    DTI_UINTMAX_TYPE,
+    DTI_SIGNED_SIZE_TYPE,
+    DTI_STRING_TYPE,
+    DTI_CONST_STRING_TYPE,
+    DTI_NULL,
+
+    DTI_MAX
+};
+
+extern GTY(()) tree d_global_trees[DTI_MAX];
+
+#define d_null_pointer                  d_global_trees[DTI_NULL_PTR]
+#define d_void_zero_node                d_global_trees[DTI_VOID_ZERO]
+#define d_vtbl_ptr_type_node            d_global_trees[DTI_VTBL_PTR_TYPE]
+#define d_char_type_node                d_global_trees[DTI_CHAR_TYPE]
+#define d_dchar_type_node               d_global_trees[DTI_DCHAR_TYPE]
+#define d_wchar_type_node               d_global_trees[DTI_WCHAR_TYPE]
+#define d_ifloat_type_node              d_global_trees[DTI_IFLOAT_TYPE]
+#define d_idouble_type_node             d_global_trees[DTI_IDOUBLE_TYPE]
+#define d_ireal_type_node               d_global_trees[DTI_IREAL_TYPE]
+#define d_va_list_type_node             d_global_trees[DTI_VA_LIST_TYPE]
+
+#define intmax_type_node                d_global_trees[DTI_INTMAX_TYPE]
+#define uintmax_type_node               d_global_trees[DTI_UINTMAX_TYPE]
+#define signed_size_type_node           d_global_trees[DTI_SIGNED_SIZE_TYPE]
+#define string_type_node                d_global_trees[DTI_STRING_TYPE]
+#define const_string_type_node          d_global_trees[DTI_CONST_STRING_TYPE]
+#define null_node                       d_global_trees[DTI_NULL]
+
 
 #ifdef __cplusplus
 /* In d-lang.cc.  These are called through function pointers

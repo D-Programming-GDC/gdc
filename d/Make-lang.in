@@ -107,9 +107,10 @@ endif
 D_DMD_H := $(subst d/dmd,$(D_dmd_srcdir),$(D_DMD_H))
 
 
-D_TREE_H = $(TREE_H) d/d-tree.def d/d-lang.h d/d-codegen.h d/d-objfile.h \
-	d/d-irstate.h d/d-dmd-gcc.h d/d-gcc-includes.h d/d-gcc-real.h \
-	d/symbol.h d/dt.h coretypes.h function.h varray.h \
+D_TREE_H = $(TREE_H) d/d-tree.def d/d-lang.h d/d-lang-45.h d/d-codegen.h \
+        d/d-objfile.h d/d-irstate.h d/d-dmd-gcc.h d/d-gcc-includes.h \
+        d/d-gcc-real.h d/symbol.h d/dt.h \
+        coretypes.h function.h varray.h \
 	$(SYSTEM_H) $(CONFIG_H) $(TARGET_H) \
 	$(GGC_H) \
 	$(srcdir)/../include/hashtab.h $(srcdir)/../include/splay-tree.h \

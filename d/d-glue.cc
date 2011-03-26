@@ -4864,16 +4864,8 @@ TypedefDeclaration::cvMember(unsigned char*)
 
 // Backend init
 
-tree d_void_zero_node;
-tree d_null_pointer;
-tree d_vtbl_ptr_type_node;
-
-tree d_char_type_node;
-tree d_wchar_type_node;
-tree d_dchar_type_node;
-tree d_ifloat_type_node;
-tree d_idouble_type_node;
-tree d_ireal_type_node;
+// Array of d type/decl nodes.
+tree d_global_trees[DTI_MAX];
 
 void
 gcc_d_backend_init()
@@ -4925,31 +4917,36 @@ gcc_d_backend_init()
     REALSIZE = int_size_in_bytes(long_double_type_node);
     REALPAD = 0;
     PTRSIZE = int_size_in_bytes(ptr_type_node);
-    switch (int_size_in_bytes(size_type_node)) {
-    case 4:
-        Tsize_t = Tuns32;
-        Tindex = Tint32;
-        break;
-    case 8:
-        Tsize_t = Tuns64;
-        Tindex = Tint64;
-        break;
-    default:
-        gcc_unreachable();
-    }
-    switch (PTRSIZE) {
-    case 4:
-        gcc_assert(POINTER_SIZE == 32);
-        Tptrdiff_t = Tint32;
-        break;
-    case 8:
-        gcc_assert(POINTER_SIZE == 64);
-        Tptrdiff_t = Tint64;
-        break;
-    default:
-        gcc_unreachable();
+
+    switch (int_size_in_bytes(size_type_node))
+    {
+        case 4:
+            Tsize_t = Tuns32;
+            Tindex = Tint32;
+            break;
+        case 8:
+            Tsize_t = Tuns64;
+            Tindex = Tint64;
+            break;
+        default:
+            gcc_unreachable();
     }
 
+    switch (PTRSIZE)
+    {
+        case 4:
+            gcc_assert(POINTER_SIZE == 32);
+            Tptrdiff_t = Tint32;
+            break;
+        case 8:
+            gcc_assert(POINTER_SIZE == 64);
+            Tptrdiff_t = Tint64;
+            break;
+        default:
+            gcc_unreachable();
+    }
+
+    // %% May get changed later anyway...
     CLASSINFO_SIZE_64 = 19 * PTRSIZE;
     CLASSINFO_SIZE = 19 * PTRSIZE;
 
@@ -4964,8 +4961,8 @@ gcc_d_backend_init()
         /* Make sure we get a unique function type, so we can give
            its pointer type a name.  (This wins for gdb.) */
         tree vfunc_type = build_function_type(integer_type_node, NULL_TREE);
+        tree vtable_entry_type = build_pointer_type(vfunc_type);
 
-        tree vtable_entry_type = build_pointer_type (vfunc_type);
         d_vtbl_ptr_type_node = build_pointer_type(vtable_entry_type);
         layout_type (d_vtbl_ptr_type_node);// %%TODO: check if needed
     }

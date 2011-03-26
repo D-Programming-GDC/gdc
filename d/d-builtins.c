@@ -44,17 +44,6 @@
 
 #include "d-lang.h"
 
-tree intmax_type_node;
-tree uintmax_type_node;
-tree signed_size_type_node;
-tree string_type_node;
-tree const_string_type_node;
-
-#if D_GCC_VER >= 41
-tree null_node;
-extern void dkeep(tree t);
-#endif
-
 #if D_GCC_VER == 40
 #include "d-bi-attrs-40.h"
 #elif D_GCC_VER == 41
@@ -304,7 +293,6 @@ void d_init_builtins(void)
         va_list_ref_type_node = build_reference_type (va_list_type_node);
     }
 
-
     intmax_type_node       = intDI_type_node;
     uintmax_type_node      = unsigned_intDI_type_node;
     signed_size_type_node  = d_signed_type(size_type_node);
@@ -410,13 +398,10 @@ void d_init_builtins(void)
     (*targetm.init_builtins) ();
     main_identifier_node = get_identifier ("main");
 
-#if D_GCC_VER >= 41
     /* Create the built-in __null node.  It is important that this is
        not shared.  */
     null_node = make_node (INTEGER_CST);
     TREE_TYPE (null_node) = d_type_for_size (POINTER_SIZE, 0);
-    dkeep(null_node);
-#endif
 }
 
 /* Registration of machine- or os-specific builtin types.  */
