@@ -2974,10 +2974,10 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
                 // the key comes before the value
                 auto keysize = keyti.tsize;
-                version (X86) 
-                    auto keysizet = (keysize + size_t.sizeof - 1) & ~(size_t.sizeof - 1); 
-                else 
+                version (X86_64) 
                     auto keysizet = (keysize + 15) & ~(15); 
+                else 
+                    auto keysizet = (keysize + size_t.sizeof - 1) & ~(size_t.sizeof - 1); 
                 
                 void* pvalue = pkey + keysizet; 
                 
@@ -3239,7 +3239,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 if (tis.xtoString is null)
                     throw new FormatError("Can't convert " ~ tis.toString()
                             ~ " to string: \"string toString()\" not defined");
-                static if (is(__va_list : void[]) || is(__valist == struct))
+                static if (is(__va_list : void[]) || is(__va_list == struct))
                 {
                     version(PPC)
                     {
