@@ -783,14 +783,22 @@ static void
 d_write_global_declarations()
 {
     tree * vec = (tree *) globalFunctions.data;
+
+    /* Process all file scopes in this compilation, and the external_scope,
+       through wrapup_global_declarations and check_global_declarations.  */
     wrapup_global_declarations(vec, globalFunctions.dim);
     check_global_declarations(vec, globalFunctions.dim);
 
-    /* In 4.5.x, don't call cgraph_optimize() */
-#if D_GCC_VER >= 41 && D_GCC_VER < 45
+#if D_GCC_VER >= 45
+    /* We're done parsing; proceed to optimize and emit assembly. */
+    cgraph_finalize_compilation_unit();
+#elif D_GCC_VER >= 41
+    cgraph_finalize_compilation_unit();
     cgraph_optimize();
 #endif
 
+    /* After cgraph has had a chance to emit everything that's going to
+       be emitted, output debug information for globals.  */
     for (unsigned i = 0; i < globalFunctions.dim; i++)
         debug_hooks->global_decl(vec[i]);
 
@@ -1208,7 +1216,6 @@ d_parse_file (int /*set_yydebug*/)
     errorcount += global.errors;
 
     g.ofile->finish();
-    cgraph_finalize_compilation_unit();
     an_output_module = 0;
 
     gcc_d_backend_term();
