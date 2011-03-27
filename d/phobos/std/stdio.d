@@ -128,7 +128,7 @@ class StdioException : Exception
 }
 
 private
-void writefx(FILE* fp, TypeInfo[] arguments, va_list argptr, int newline=false)
+void writefx(FILE* fp, TypeInfo[] arguments, void* argptr, int newline=false)
 {   int orientation;
 
     static if (Have_fwide)

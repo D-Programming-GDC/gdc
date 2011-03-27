@@ -68,7 +68,7 @@ a = boxArray(arg_types, arg_data);
 
    Modified by David Friedman, May 2005
 
-   This module make not work on all GCC targets due to assumptions
+   This module may not work on all GCC targets due to assumptions
    about the type of va_list.
 */
 module std.boxer;
@@ -296,7 +296,7 @@ struct Box
         args[(char[]).sizeof..length] = data;
         version (GNU)
         {
-            va_list dummy = void;
+            void* dummy = void;
             std.format.doFormatPtr(&putc, arguments, dummy, args.ptr);
         }
         else

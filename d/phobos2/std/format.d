@@ -2966,21 +2966,30 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
             {
                 if (comma) putc(',');
                 comma = true;
-                // the key comes before the value
-                ubyte* key = &fakevalue - long.sizeof;
+                void *pkey = &fakevalue; 
+                version(X86_64)
+                    pkey -= 16;
+                else
+                    pkey -= long.sizeof;
 
-                //doFormat(putc, (&keyti)[0..1], key);
-                p_args = key;
+                // the key comes before the value
+                auto keysize = keyti.tsize;
+                version (X86) 
+                    auto keysizet = (keysize + size_t.sizeof - 1) & ~(size_t.sizeof - 1); 
+                else 
+                    auto keysizet = (keysize + 15) & ~(15); 
+                
+                void* pvalue = pkey + keysizet; 
+                
+                //doFormat(putc, (&keyti)[0..1], pkey); 
+                p_args = pkey;
                 ti = keyti;
                 m = getMan(keyti);
                 formatArg('s');
 
                 putc(':');
-                auto keysize = keyti.tsize;
-                keysize = (keysize + 3) & ~3;
-                ubyte* value = key + keysize;
-                //doFormat(putc, (&valti)[0..1], value);
-                p_args = value;
+                //doFormat(putc, (&valti)[0..1], pvalue);
+                p_args = pvalue; 
                 ti = valti;
                 m = getMan(valti);
                 formatArg('s');
@@ -3230,7 +3239,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 if (tis.xtoString is null)
                     throw new FormatError("Can't convert " ~ tis.toString()
                             ~ " to string: \"string toString()\" not defined");
-                static if (is(typeof(argptr): void[]) || is(typeof(argptr) == struct))
+                static if (is(__va_list : void[]) || is(__valist == struct))
                 {
                     version(PPC)
                     {

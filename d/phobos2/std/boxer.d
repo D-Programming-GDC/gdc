@@ -77,7 +77,7 @@ a = boxArray(arg_types, arg_data);
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   This module make not work on all GCC targets due to assumptions
+   This module may not work on all GCC targets due to assumptions
    about the type of va_list.
 */
 module std.boxer;
@@ -86,7 +86,6 @@ private import std.format;
 private import std.string;
 private import std.utf;
 import std.exception;
-version (GNU) private import std.stdarg;
 
  /* These functions and types allow packing objects into generic containers
   * and recovering them later.  This comes into play in a wide spectrum of
@@ -305,7 +304,7 @@ struct Box
         args[(char[]).sizeof..$] = data;
         version (GNU)
         {
-            va_list dummy = void;
+            void* dummy = void;
             std.format.doFormatPtr(&putc, arguments, dummy, args.ptr);
         }
         else

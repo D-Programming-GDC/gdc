@@ -267,6 +267,7 @@ gcc_type_to_d_type(tree t)
                 tree ta = TREE_VALUE(tl);
                 if (ta != void_type_node)
                 {
+                    Type * d_arg_type;
                     unsigned io = STCin;
 
                     if (TREE_CODE(ta) == REFERENCE_TYPE)
@@ -274,8 +275,15 @@ gcc_type_to_d_type(tree t)
                         ta = TREE_TYPE(ta);
                         io = STCref;
                     }
-
-                    Type * d_arg_type = gcc_type_to_d_type(ta);
+#if D_VA_LIST_TYPE_VOIDPTR
+                    // C-type va_list, but require D-type void*
+                    if (ta == va_list_type_node)
+                        d_arg_type = d_gcc_builtin_va_list_d_type;
+                    else
+#endif
+                    {
+                        d_arg_type = gcc_type_to_d_type(ta);
+                    }
                     if (! d_arg_type)
                         goto Lfail;
 

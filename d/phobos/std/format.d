@@ -454,8 +454,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
     doFormatPtr(putc, arguments, argptr, null);
 }
 
-void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr,
-              void * p_args)
+void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr, void * p_args)
 {   int j;
     TypeInfo ti;
     Mangle m;
@@ -686,22 +685,22 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
             if (comma) putc(',');
             comma = true;
             void *pkey = &fakevalue;
-            version (X86)
-                pkey -= long.sizeof;
-            else
+            version (X86_64)
                 pkey -= 16;
+            else
+                pkey -= long.sizeof;
 
             // the key comes before the value
             auto keysize = keyti.tsize();
-            version (X86)
-                auto keysizet = (keysize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
-            else
+            version (X86_64)
                 auto keysizet = (keysize + 15) & ~(15);
+            else
+                auto keysizet = (keysize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
 
             void* pvalue = pkey + keysizet;
 
             //doFormat(putc, (&keyti)[0..1], pkey);
-             p_args = pkey;
+            p_args = pkey;
             ti = keyti;
             m = getMan(keyti);
             formatArg('s');
@@ -828,14 +827,30 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
             case Mangle.Tfloat:
             case Mangle.Tifloat:
                 if (fc == 'x' || fc == 'X')
-                    goto Luint;
+                {
+                    version (X86_64)
+                    {   float f = va_arg!(float)(argptr);
+                        vnumber = *cast(uint*)&f;
+                        goto Lnumber;
+                    }
+                    else
+                        goto Luint;
+                }
                 vreal = va_arg!(float)(argptr);
                 goto Lreal;
 
             case Mangle.Tdouble:
             case Mangle.Tidouble:
                 if (fc == 'x' || fc == 'X')
-                    goto Lulong;
+                {
+                    version (X86_64)
+                    {   double d = va_arg!(double)(argptr);
+                        vnumber = *cast(ulong*)&d;
+                        goto Lnumber;
+                    }
+                    else
+                        goto Lulong;
+                }
                 vreal = va_arg!(double)(argptr);
                 goto Lreal;
 
@@ -952,23 +967,16 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
             {   TypeInfo_Struct tis = cast(TypeInfo_Struct)ti;
                 if (tis.xtoString is null)
                     throw new FormatError("Can't convert " ~ tis.toString() ~ " to string: \"string toString()\" not defined");
-                static if
-                    (
-                     is( typeof(argptr): void[] ) ||
-                     is( typeof(argptr) == struct ))
+                static if (is(__va_list : void[]) || is(__va_list == struct))
                 {
                     version(PPC)
                     {
                         // Structs are pass-by-reference in V4 ABI
                         s = tis.xtoString(va_arg!(void*)(argptr));
                     }
-                    else version(X86_64)
-                    {
-                        throw new FormatError("cannot portably format a struct on this target");
-                    }
                     else
                     {
-                        static assert(0, "unimplemented");
+                        throw new FormatError("cannot portably format a struct on this target");
                     }
                 }
                 else

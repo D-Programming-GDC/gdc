@@ -24,9 +24,7 @@ module core.vararg;
 
 version( GNU )
 {
-    // va_list might be a pointer, but assuming so is not portable.
-    private import gcc.builtins;
-    alias __builtin_va_list va_list;
+    alias void* va_list;
 
     T va_arg(T)( ref va_list ap )
     {

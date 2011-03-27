@@ -22,8 +22,10 @@ module core.stdc.stdarg;
 
 version( GNU )
 {
+    alias void* va_list;
+
     private import gcc.builtins;
-    alias __builtin_va_list va_list;
+    alias __builtin_va_list __va_list; // C ABI va_list
     alias __builtin_va_end va_end;
     alias __builtin_va_copy va_copy;
 

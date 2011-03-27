@@ -55,6 +55,10 @@
  *                        Don Clugston
  * Source: $(PHOBOSSRC std/_math.d)
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+ */
 module std.math;
 
 import core.stdc.math;
@@ -983,7 +987,7 @@ real exp(real x) @safe pure nothrow
         // and exp2 are so similar).
         return exp2(LOG2E*x);
     } else {
-        return core.stdc.math.exp(x);
+        return core.stdc.math.expl(x);
     }
 }
 /// ditto
@@ -1149,7 +1153,7 @@ L_largenegative:
             ret; 
         } 
     } else {
-        return core.stdc.math.expm1(x);
+        return core.stdc.math.expm1l(x);
     }
 }
 
@@ -1333,7 +1337,7 @@ L_was_nan:
     } else version(GNU_Need_exp2) {
         return core.stdc.math.powl(2, x);
     } else {
-        return core.stdc.math.exp2(x);
+        return core.stdc.math.exp2l(x);
     }
 }
 
