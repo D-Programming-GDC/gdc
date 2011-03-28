@@ -73,6 +73,7 @@ struct AsmCode
         insnTemplate = NULL;
         insnTemplateLen = 0;
         clbregs = new unsigned[n_regs];
+        memset(clbregs, 0, sizeof(unsigned)*n_regs);
         dollarLabel = 0;
         clobbersMemory = 0;
     }
