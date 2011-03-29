@@ -1743,8 +1743,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 
         fd = FuncDeclaration::genCfunc(tint32->arrayOf(),
             (char*)(n->ty == Tbit ? "_adSortBit" : "_adSort"),
-            Type::tvoid->arrayOf(),
-            n->ty == Tbit ? NULL : Type::tvoid->pointerTo());
+            Type::tvoid->arrayOf(), Type::tvoidptr);
         ec = new VarExp(0, fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();

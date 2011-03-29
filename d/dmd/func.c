@@ -2469,19 +2469,21 @@ FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id,
     }
     else
     {
-        Parameters * args = 0;
-        if (t1) {
-            args = new Parameters;
-            args->push(new Parameter(STCin,t1,0,0));
+        tf = new TypeFunction(NULL, treturn, 0, LINKc);
+#if IN_GCC
+        Parameters *args = new Parameters;
+        if (t1)
+        {
+            args->push(new Parameter(STCin, t1, NULL, NULL));
             if (t2)
             {
-                args->push(new Parameter(STCin,t2,0,0));
+                args->push(new Parameter(STCin, t2, NULL, NULL));
                 if (t3)
-                    args->push(new Parameter(STCin,t3,0,0));
+                    args->push(new Parameter(STCin, t3, NULL, NULL));
             }
         }
-
-        tf = new TypeFunction(args, treturn, 0, LINKc);
+        tf->parameters = args;
+#endif
         fd = new FuncDeclaration(0, 0, id, STCstatic, tf);
         fd->protection = PROTpublic;
         fd->linkage = LINKc;

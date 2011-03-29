@@ -62,7 +62,7 @@
  #undef TARGET_ENCODE_SECTION_INFO
  #define TARGET_ENCODE_SECTION_INFO  darwin_encode_section_info
 --- gcc.orig/config/i386/i386.c	2006-11-17 07:01:22.000000000 +0000
-+++ gcc/config/i386/i386.c	2011-03-24 09:38:42.350506719 +0000
++++ gcc/config/i386/i386.c	2011-03-27 19:41:46.453699580 +0100
 @@ -1914,6 +1914,8 @@ const struct attribute_spec ix86_attribu
    /* Sseregparm attribute says we are using x86_64 calling conventions
       for FP arguments.  */
@@ -420,36 +420,6 @@
  
  /* This defines which multi-letter switches take arguments.  */
  
---- gcc.orig/gimplify.c	2006-11-19 16:15:47.000000000 +0000
-+++ gcc/gimplify.c	2011-03-23 20:32:47.058620783 +0000
-@@ -1845,6 +1845,7 @@ gimplify_call_expr (tree *expr_p, tree *
-   tree decl;
-   tree arglist;
-   enum gimplify_status ret;
-+  int reverse_args;
- 
-   gcc_assert (TREE_CODE (*expr_p) == CALL_EXPR);
- 
-@@ -1907,7 +1908,9 @@ gimplify_call_expr (tree *expr_p, tree *
-   ret = gimplify_expr (&TREE_OPERAND (*expr_p, 0), pre_p, NULL,
- 		       is_gimple_call_addr, fb_rvalue);
- 
--  if (PUSH_ARGS_REVERSED)
-+  /* Evaluate args left to right if evaluation order matters. */
-+  reverse_args = flag_evaluation_order ? 0 : PUSH_ARGS_REVERSED;
-+  if (reverse_args)
-     TREE_OPERAND (*expr_p, 1) = nreverse (TREE_OPERAND (*expr_p, 1));
-   for (arglist = TREE_OPERAND (*expr_p, 1); arglist;
-        arglist = TREE_CHAIN (arglist))
-@@ -1919,7 +1922,7 @@ gimplify_call_expr (tree *expr_p, tree *
-       if (t == GS_ERROR)
- 	ret = GS_ERROR;
-     }
--  if (PUSH_ARGS_REVERSED)
-+  if (reverse_args)
-     TREE_OPERAND (*expr_p, 1) = nreverse (TREE_OPERAND (*expr_p, 1));
- 
-   /* Try this again in case gimplification exposed something.  */
 --- gcc.orig/predict.c	2005-11-05 00:55:23.000000000 +0000
 +++ gcc/predict.c	2011-03-21 18:36:53.043851268 +0000
 @@ -1339,6 +1339,7 @@ tree_estimate_probability (void)
@@ -511,7 +481,7 @@
  
  /*  Return true if T is a GIMPLE condition.  */
 --- gcc.orig/tree-inline.c	2007-01-05 13:53:45.000000000 +0000
-+++ gcc/tree-inline.c	2011-03-21 18:36:53.911855567 +0000
++++ gcc/tree-inline.c	2011-03-27 19:25:06.380740492 +0100
 @@ -602,10 +602,21 @@ copy_body_r (tree *tp, int *walk_subtree
       knows not to copy VAR_DECLs, etc., so this is safe.  */
    else
@@ -536,7 +506,7 @@
  	  && (lang_hooks.tree_inlining.auto_var_in_fn_p
  	      (TREE_OPERAND (*tp, 0), fn)))
 --- gcc.orig/tree-nested.c	2006-07-20 16:43:44.000000000 +0100
-+++ gcc/tree-nested.c	2011-03-21 18:36:54.239857194 +0000
++++ gcc/tree-nested.c	2011-03-27 19:26:47.613242468 +0100
 @@ -323,6 +323,7 @@ get_chain_decl (struct nesting_info *inf
    if (!decl)
      {

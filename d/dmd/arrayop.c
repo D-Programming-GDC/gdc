@@ -363,7 +363,20 @@ Expression *BinExp::arrayOp(Scope *sc)
         else
         {   /* In library, refer to it.
              */
-            fd = FuncDeclaration::genCfunc(type, name, type, type, type);
+            fd = FuncDeclaration::genCfunc(type, name);
+#ifdef IN_GCC
+            /* Setup function parameters for GCC backend
+             */
+            TypeFunction * tf = (TypeFunction *) fd->type;
+            Parameters * targs = new Parameters;
+            targs->setDim(arguments->dim);
+            for (unsigned i = 0; i < arguments->dim; i++)
+            {
+                targs->data[i] = new Parameter(STCin,
+                        ((Expression *) arguments->data[i])->type, NULL, NULL);
+            }
+            tf->parameters = targs;
+#endif
         }
         sv->ptrvalue = fd;      // cache symbol in hash table
     }

@@ -203,8 +203,8 @@ build_math_op(TOK op, tree type, tree e1, Type * tb1, tree e2, Type * tb2, IRSta
 {
     // Integral promotions have already been done in the front end
     tree_code out_code;
-    tree e1_type = tb1->toCtype();
-    tree e2_type = tb2->toCtype();
+    tree e1_type = TREE_TYPE(e1);
+    tree e2_type = TREE_TYPE(e2);
 
     switch (op)
     {
@@ -221,7 +221,7 @@ build_math_op(TOK op, tree type, tree e1, Type * tb1, tree e2, Type * tb2, IRSta
             if (INTEGRAL_TYPE_P(e1_type))
                 out_code = TRUNC_MOD_EXPR;
             else
-                return irs->floatMod(e1, e2, tb1);
+                return irs->floatMod(e1, e2, e1_type);
             break;
 
         case TOKdiv:
@@ -1294,21 +1294,28 @@ elem *
 CommaExp::toElem(IRState * irs)
 {
     // CommaExp is used with DotTypeExp..?
-    if (e1->op == TOKdottype && e2->op == TOKvar) {
+    if (e1->op == TOKdottype && e2->op == TOKvar)
+    {
         VarExp * ve = (VarExp *) e2;
         VarDeclaration * vd;
         FuncDeclaration * fd;
         /* Handle references to static variable and functions.  Otherwise,
            just let the DotTypeExp report an error. */
-        if (((vd = ve->var->isVarDeclaration()) && ! vd->needThis()) ||
-            ((fd = ve->var->isFuncDeclaration()) && ! fd->isThis()))
+        if (((vd = ve->var->isVarDeclaration()) && ! vd->needThis())
+            || ((fd = ve->var->isFuncDeclaration()) && ! fd->isThis()))
+        {
             return e2->toElem(irs);
+        }
     }
     tree t1 = e1->toElem(irs);
     tree t2 = e2->toElem(irs);
 
-    gcc_assert(type);
-    return build2(COMPOUND_EXPR, type->toCtype(), t1, t2);
+    // %% type is NULL, bug in frontend? :-/
+    // probably should be just using void compound anyway...
+    tree tt = type ? type->toCtype() : void_type_node;
+
+    gcc_assert(tt != NULL_TREE);
+    return build2(COMPOUND_EXPR, tt, t1, t2);
 }
 
 elem *

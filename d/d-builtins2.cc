@@ -43,8 +43,7 @@ d_bi_init()
 {
 #if D_VA_LIST_TYPE_VOIDPTR
     // The "standard" definition of va_list is void*.
-    tree void_type = make_node(VOID_TYPE);
-    d_va_list_type_node = build_pointer_type(void_type);
+    d_va_list_type_node = build_distinct_type_copy(ptr_type_node);
 
     // %% Yuck. Needed to pass stabilize_va_list
     if (TREE_CODE(va_list_type_node) == ARRAY_TYPE)

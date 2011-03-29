@@ -49,7 +49,7 @@ D_EXTRA_DEFINES += -DELFOBJ=1
 
 # Enables correct implementation of D's va_list type (void*) as per
 # the D language specification.
-D_EXTRA_DEFINES += -DD_VA_LIST_TYPE_VOIDPTR
+D_EXTRA_DEFINES += -DD_VA_LIST_TYPE_VOIDPTR=1
 
 # As with C++: (quote) OTOH, I think this means the g++ driver...
 # Note that it would be nice to move the dependency on g++

@@ -513,7 +513,7 @@ Symbol *FuncDeclaration::toSymbol()
                 AggregateDeclaration * agg_decl = isMember();
                 // Could be a template instance, check parent.
                 if (agg_decl == NULL && parent->isTemplateInstance())
-                    agg_decl = parent->isMember();
+                    agg_decl = isThis();
 
                 gcc_assert(agg_decl != NULL);
 

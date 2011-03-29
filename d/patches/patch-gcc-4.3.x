@@ -66,7 +66,7 @@
    /* Make sure that BE didn't give up on compiling.  */
    /* ??? Can happen with nested function of extern inline.  */
 --- gcc.orig/config/i386/i386.c	2010-03-31 21:14:10.000000000 +0100
-+++ gcc/config/i386/i386.c	2011-03-24 09:13:45.231082911 +0000
++++ gcc/config/i386/i386.c	2011-03-27 19:42:21.497873357 +0100
 @@ -3145,6 +3145,10 @@ ix86_handle_cconv_attribute (tree *node,
          {
  	  error ("fastcall and stdcall attributes are not compatible");
@@ -414,31 +414,6 @@
  
  /* This defines which multi-letter switches take arguments.  */
  
---- gcc.orig/gimplify.c	2010-01-31 21:08:15.000000000 +0000
-+++ gcc/gimplify.c	2011-03-23 20:29:56.665775841 +0000
-@@ -2085,6 +2085,7 @@ gimplify_call_expr (tree *expr_p, tree *
-   tree decl, parms, p;
-   enum gimplify_status ret;
-   int i, nargs;
-+  int reverse_args;
- 
-   gcc_assert (TREE_CODE (*expr_p) == CALL_EXPR);
- 
-@@ -2244,9 +2245,11 @@ gimplify_call_expr (tree *expr_p, tree *
-     }
- 
-   /* Finally, gimplify the function arguments.  */
--  for (i = (PUSH_ARGS_REVERSED ? nargs - 1 : 0);
--       PUSH_ARGS_REVERSED ? i >= 0 : i < nargs;
--       PUSH_ARGS_REVERSED ? i-- : i++)
-+  /* Evaluate args left to right if evaluation order matters. */
-+  reverse_args = flag_evaluation_order ? 0 : PUSH_ARGS_REVERSED;
-+  for (i = (reverse_args ? nargs - 1 : 0);
-+       reverse_args ? i >= 0 : i < nargs;
-+       reverse_args ? i-- : i++)
-     {
-       enum gimplify_status t;
- 
 --- gcc.orig/tree.def	2007-10-29 11:05:04.000000000 +0000
 +++ gcc/tree.def	2011-03-21 18:37:21.463992196 +0000
 @@ -539,6 +539,13 @@ DEFTREECODE (BIND_EXPR, "bind_expr", tcc
@@ -479,7 +454,7 @@
  
  /*  Return true if T is a GIMPLE condition.  */
 --- gcc.orig/tree-nested.c	2008-05-29 12:35:05.000000000 +0100
-+++ gcc/tree-nested.c	2011-03-21 18:37:21.483992295 +0000
++++ gcc/tree-nested.c	2011-03-27 19:27:36.161483206 +0100
 @@ -815,6 +815,8 @@ get_static_chain (struct nesting_info *i
  
    if (info->context == target_context)

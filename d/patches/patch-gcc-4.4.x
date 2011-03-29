@@ -31,7 +31,7 @@
    if (assembler_name_hash)
      {
 --- gcc.orig/config/i386/i386.c	2010-08-06 08:52:04.000000000 +0100
-+++ gcc/config/i386/i386.c	2011-03-24 09:10:35.050139850 +0000
++++ gcc/config/i386/i386.c	2011-03-27 19:42:34.441937542 +0100
 @@ -4270,6 +4270,10 @@ ix86_handle_cconv_attribute (tree *node,
          {
  	  error ("fastcall and stdcall attributes are not compatible");
@@ -511,23 +511,6 @@
  }
  
  
---- gcc.orig/gimplify.c	2010-09-02 09:00:55.000000000 +0100
-+++ gcc/gimplify.c	2011-03-23 20:28:24.433318495 +0000
-@@ -2443,9 +2443,11 @@ gimplify_call_expr (tree *expr_p, gimple
-   /* Finally, gimplify the function arguments.  */
-   if (nargs > 0)
-     {
--      for (i = (PUSH_ARGS_REVERSED ? nargs - 1 : 0);
--           PUSH_ARGS_REVERSED ? i >= 0 : i < nargs;
--           PUSH_ARGS_REVERSED ? i-- : i++)
-+      /* Evaluate args left to right if evaluation order matters. */
-+      int reverse_args = flag_evaluation_order ? 0 : PUSH_ARGS_REVERSED;
-+      for (i = (reverse_args ? nargs - 1 : 0);
-+           reverse_args ? i >= 0 : i < nargs;
-+           reverse_args ? i-- : i++)
-         {
-           enum gimplify_status t;
- 
 --- gcc.orig/ipa-cp.c	2009-12-27 22:39:58.000000000 +0000
 +++ gcc/ipa-cp.c	2011-03-21 18:37:28.528027223 +0000
 @@ -1393,7 +1393,7 @@ cgraph_gate_cp (void)
@@ -686,7 +669,7 @@
        /* No static chain?  Seems like a bug in tree-nested.c.  */
        gcc_assert (static_chain);
 --- gcc.orig/tree-nested.c	2010-04-20 09:37:12.000000000 +0100
-+++ gcc/tree-nested.c	2011-03-21 18:37:28.656027857 +0000
++++ gcc/tree-nested.c	2011-03-27 19:27:54.617574723 +0100
 @@ -714,6 +714,8 @@ get_static_chain (struct nesting_info *i
  
    if (info->context == target_context)

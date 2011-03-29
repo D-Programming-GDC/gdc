@@ -538,7 +538,7 @@ protected:
     tree maybeExpandSpecialCall(tree call_exp);
     static tree expandPortIntrinsic(Intrinsic code, tree port, tree value, int outp);
 public:
-    tree floatMod(tree a, tree b, Type * d_type);
+    tree floatMod(tree a, tree b, tree type);
 
     tree typeinfoReference(Type * t);
 

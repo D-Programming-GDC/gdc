@@ -29,7 +29,7 @@
    if (assembler_name_hash)
      {
 --- gcc.orig/config/i386/i386.c	2010-09-30 21:24:54.000000000 +0100
-+++ gcc/config/i386/i386.c	2011-03-24 22:48:58.236478442 +0000
++++ gcc/config/i386/i386.c	2011-03-27 19:42:43.877984330 +0100
 @@ -4466,6 +4466,10 @@ ix86_handle_cconv_attribute (tree *node,
          {
  	  error ("fastcall and stdcall attributes are not compatible");
@@ -374,23 +374,6 @@
 +	  || TREE_CODE (t) == STATIC_CHAIN_DECL
  	  || TREE_CODE (t) == SSA_NAME);
  }
- 
---- gcc.orig/gimplify.c	2010-11-11 20:36:49.000000000 +0000
-+++ gcc/gimplify.c	2011-03-23 20:28:01.165203119 +0000
-@@ -2348,9 +2348,11 @@ gimplify_call_expr (tree *expr_p, gimple
-   /* Finally, gimplify the function arguments.  */
-   if (nargs > 0)
-     {
--      for (i = (PUSH_ARGS_REVERSED ? nargs - 1 : 0);
--           PUSH_ARGS_REVERSED ? i >= 0 : i < nargs;
--           PUSH_ARGS_REVERSED ? i-- : i++)
-+      /* Evaluate args left to right if evaluation order matters. */
-+      int reverse_args = flag_evaluation_order ? 0 : PUSH_ARGS_REVERSED;
-+      for (i = (reverse_args ? nargs - 1 : 0);
-+           reverse_args ? i >= 0 : i < nargs;
-+           reverse_args ? i-- : i++)
-         {
-           enum gimplify_status t;
  
 --- gcc.orig/ira.c	2010-09-09 14:55:35.000000000 +0100
 +++ gcc/ira.c	2011-03-21 18:37:35.136060003 +0000

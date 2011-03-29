@@ -258,29 +258,30 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
     tree result = NULL_TREE;
 
     gcc_assert(exp_type && target_type);
-    exp_type = exp_type->toBasetype();
+    Type * ebtype = exp_type->toBasetype();
+    Type * tbtype = target_type->toBasetype();
 
 #if V2
-    if (exp_type->ty == Taarray)
-        exp_type = ((TypeAArray*)exp_type)->getImpl()->type;
-    if (target_type->ty == Taarray)
-        target_type = ((TypeAArray*)target_type)->getImpl()->type;
+    if (ebtype->ty == Taarray)
+        ebtype = ((TypeAArray*)ebtype)->getImpl()->type;
+    if (tbtype->ty == Taarray)
+        tbtype = ((TypeAArray*)tbtype)->getImpl()->type;
 #endif
 
     if (typesSame(exp_type, target_type))
         return exp;
 
-    switch (exp_type->ty)
+    switch (ebtype->ty)
     {
         case Tdelegate:
             // %%TODO:NOP/VIEW_CONVERT
-            if (target_type->ty == Tdelegate)
+            if (tbtype->ty == Tdelegate)
             {
                 exp = maybeMakeTemp(exp);
                 return delegateVal(delegateMethodRef(exp), delegateObjectRef(exp),
                                    target_type);
             }
-            else if (target_type->ty == Tpointer)
+            else if (tbtype->ty == Tpointer)
             {   // The front-end converts <delegate>.ptr to cast(void*)<delegate>.
                 // Maybe should only allow void*?
                 exp = delegateObjectRef(exp);
@@ -292,7 +293,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             }
             break;
         case Tstruct:
-            if (target_type->ty == Tstruct)
+            if (tbtype->ty == Tstruct)
             {
                 if (target_type->size() == exp_type->size())
                 {   // Allowed to cast to structs with same type size.
@@ -307,10 +308,10 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             // else, default conversion, which should produce an error
             break;
         case Tclass:
-            if (target_type->ty == Tclass)
+            if (tbtype->ty == Tclass)
             {
-                ClassDeclaration * target_class_decl = ((TypeClass *) target_type)->sym;
-                ClassDeclaration * obj_class_decl = ((TypeClass *) exp_type)->sym;
+                ClassDeclaration * target_class_decl = ((TypeClass *) tbtype)->sym;
+                ClassDeclaration * obj_class_decl = ((TypeClass *) ebtype)->sym;
                 bool use_dynamic = false;
 
                 target_ptrdiff_t offset;
@@ -365,17 +366,17 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             }
             break;
         case Tsarray:
-            if (target_type->ty == Tpointer)
+            if (tbtype->ty == Tpointer)
             {
                 result = nop(addressOf(exp), target_type->toCtype());
             }
-            else if (target_type->ty == Tarray)
+            else if (tbtype->ty == Tarray)
             {
-                TypeSArray * a_type = (TypeSArray*) exp_type;
+                TypeSArray * a_type = (TypeSArray*) ebtype;
 
                 uinteger_t array_len = a_type->dim->toUInteger();
                 d_uns64 sz_a = a_type->next->size();
-                d_uns64 sz_b = target_type->nextOf()->size();
+                d_uns64 sz_b = tbtype->nextOf()->size();
 
                 // conversions to different sizes
                 // Assumes tvoid->size() == 1
@@ -384,12 +385,12 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                     array_len = array_len * sz_a / sz_b;
 
                 tree pointer_value = nop(addressOf(exp),
-                        target_type->nextOf()->pointerTo()->toCtype());
+                        tbtype->nextOf()->pointerTo()->toCtype());
 
                 // Assumes casting to dynamic array of same type or void
                 return darrayVal(target_type, array_len, pointer_value);
             }
-            else if (target_type->ty == Tsarray)
+            else if (tbtype->ty == Tsarray)
             {   // DMD apparently allows casting a static array to any static array type
                 return indirect(addressOf(exp), target_type->toCtype());
             }
@@ -401,14 +402,14 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             }
             break;
         case Tarray:
-            if (target_type->ty == Tpointer)
+            if (tbtype->ty == Tpointer)
             {
                 return convert(target_type->toCtype(), darrayPtrRef(exp));
             }
-            else if (target_type->ty == Tarray)
+            else if (tbtype->ty == Tarray)
             {   // assume tvoid->size() == 1
-                Type * src_elem_type = exp_type->nextOf()->toBasetype();
-                Type * dst_elem_type = target_type->nextOf()->toBasetype();
+                Type * src_elem_type = ebtype->nextOf()->toBasetype();
+                Type * dst_elem_type = tbtype->nextOf()->toBasetype();
                 d_uns64 sz_a = src_elem_type->size();
                 d_uns64 sz_b = dst_elem_type->size();
 
@@ -434,9 +435,9 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                 }
             }
 #if V2
-            else if (target_type->ty == Tsarray)
+            else if (tbtype->ty == Tsarray)
             {   // %% Strings are treated as dynamic arrays D2.
-                if (exp_type->isString() && target_type->isString())
+                if (ebtype->isString() && tbtype->isString())
                     return indirect(darrayPtrRef(exp), target_type->toCtype());
             }
 #endif
@@ -448,37 +449,37 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             }
             break;
         case Taarray:
-            if (target_type->ty == Taarray)
+            if (tbtype->ty == Taarray)
                 return build1(NOP_EXPR, target_type->toCtype(), exp);
             // else, default conversion, which should product an error
             break;
         case Tpointer:
             /* For some reason, convert_to_integer converts pointers
                to a signed type. */
-            if (target_type->isintegral())
+            if (tbtype->isintegral())
                 exp = d_convert_basic(d_type_for_size(POINTER_SIZE, 1), exp);
             // Can convert void pointers to associative arrays too...
-            else if (target_type->ty == Taarray && exp_type == exp_type->tvoidptr)
+            else if (tbtype->ty == Taarray && ebtype == Type::tvoidptr)
                 return build1(NOP_EXPR, target_type->toCtype(), exp);
             break;
         default:
         {
-            if ((exp_type->isreal() && target_type->isimaginary())
-                || (exp_type->isimaginary() && target_type->isreal()))
+            if ((ebtype->isreal() && tbtype->isimaginary())
+                || (ebtype->isimaginary() && tbtype->isreal()))
             {   // warn? handle in front end?
                 result = build_real_from_int_cst(target_type->toCtype(), integer_zero_node);
                 if (TREE_SIDE_EFFECTS(exp))
                     result = compound(exp, result);
                 return result;
             }
-            else if (exp_type->iscomplex())
+            else if (ebtype->iscomplex())
             {
                 Type * part_type;
                 // creal.re, .im implemented by cast to real or ireal
                 // Assumes target type is the same size as the original's components size
-                if (target_type->isreal())
+                if (tbtype->isreal())
                 {   // maybe install lang_specific...
-                    switch (exp_type->ty)
+                    switch (ebtype->ty)
                     {
                         case Tcomplex32: part_type = Type::tfloat32; break;
                         case Tcomplex64: part_type = Type::tfloat64; break;
@@ -488,9 +489,9 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                     }
                     result = realPart(exp);
                 }
-                else if (target_type->isimaginary())
+                else if (tbtype->isimaginary())
                 {
-                    switch (exp_type->ty)
+                    switch (ebtype->ty)
                     {
                         case Tcomplex32: part_type = Type::timaginary32; break;
                         case Tcomplex64: part_type = Type::timaginary64; break;
@@ -506,15 +507,15 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                 }
                 result = convertTo(result, part_type, target_type);
             }
-            else if (target_type->iscomplex())
+            else if (tbtype->iscomplex())
             {
                 tree c1 = convert(TREE_TYPE(target_type->toCtype()), exp);
                 tree c2 = build_real_from_int_cst(TREE_TYPE(target_type->toCtype()), integer_zero_node);
 
-                if (exp_type->isreal())
+                if (ebtype->isreal())
                 {   // nothing
                 }
-                else if (exp_type->isimaginary())
+                else if (ebtype->isimaginary())
                 {
                     tree swap = c1;
                     c1 = c2;
@@ -1578,8 +1579,9 @@ IRState::getLibCallDecl(LibCall lib_call)
 static tree
 fix_d_va_list_type(tree val)
 {
-    if (POINTER_TYPE_P(va_list_type_node) ||
-            INTEGRAL_TYPE_P(va_list_type_node))
+    tree va_type = TREE_TYPE(val);
+
+    if (POINTER_TYPE_P(va_type) || INTEGRAL_TYPE_P(va_type))
         return build1(NOP_EXPR, va_list_type_node, val);
     else
         return val;
@@ -2149,51 +2151,34 @@ IRState::arrayLength(tree exp, Type * exp_type)
 }
 
 tree
-IRState::floatMod(tree a, tree b, Type * d_type)
+IRState::floatMod(tree a, tree b, tree type)
 {
-    enum built_in_function fn;
+    tree fmodfn;
+    tree basetype = type;
 
-    switch (d_type->toBasetype()->ty)
-    {
-        case Tcomplex32:
-        case Tfloat32:
-        case Timaginary32:
-            fn = BUILT_IN_FMODF;
-            break;
+    if (COMPLEX_FLOAT_TYPE_P(basetype))
+        basetype = TREE_TYPE(basetype);
 
-        case Tcomplex64:
-        case Tfloat64:
-        case Timaginary64:
-        no_long_double:
-            fn = BUILT_IN_FMOD;
-            break;
+    fmodfn = mathfn_built_in(basetype, BUILT_IN_FMOD);
 
-        case Tcomplex80:
-        case Tfloat80:
-        case Timaginary80:
-            if (! haveLongDouble())
-                goto no_long_double;
-            fn = BUILT_IN_FMODL;
-            break;
-
-        default:
-            ::error("tried to perform floating-point modulo division on %s",
-                    d_type->toChars());
-            return error_mark_node;
+    if (! fmodfn)
+    {   // %qT pretty prints the tree type.
+        ::error("tried to perform floating-point modulo division on %qT",
+                type);
+        return error_mark_node;
     }
 
-    tree decl = built_in_decls[fn];
-    if (d_type->iscomplex())
+    if (COMPLEX_FLOAT_TYPE_P(type))
     {
-        return build2(COMPLEX_EXPR, d_type->toCtype(),
-                buildCall(decl, 2, realPart(a), b),
-                buildCall(decl, 2, imagPart(a), b));
+        return build2(COMPLEX_EXPR, type,
+                      buildCall(fmodfn, 2, realPart(a), b),
+                      buildCall(fmodfn, 2, imagPart(a), b));
     }
-    else if (d_type->isfloating() || d_type->isimaginary())
+    else if (SCALAR_FLOAT_TYPE_P(type))
     {   // %% assuming no arg conversion needed
         // %% bypassing buildCall since this shouldn't have
         // side effects
-        return buildCall(decl, 2, a, b);
+        return buildCall(fmodfn, 2, a, b);
     }
     else
     {   // Should have caught this above.

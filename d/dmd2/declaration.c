@@ -1177,12 +1177,6 @@ Lagain:
                                     e->op = TOKblit;
                                     e->type = t;
                                     ei->exp = new CommaExp(loc, e, ei->exp);
-#if IN_GCC
-                                    /* We rely on exp->type being set here, else
-                                     * causes problems later in CommaExp::toElem()
-                                     */
-                                    ei->exp = ei->exp->semantic(sc);
-#endif
 
                                     /* Replace __ctmp being constructed with e1
                                      */
