@@ -114,12 +114,19 @@ real_t::getinfinity()
     return r;
 }
 
-/*
-real_t::real_t()
+const real_value &
+real_t::rv() const
 {
-    REAL_VALUE_FROM_INT(rv(), 0, 0, max_float_mode());
+    const real_value * r = (real_value *) & frv;
+    return *r;
 }
-*/
+
+real_value &
+real_t::rv()
+{
+    real_value * r = (real_value *) & frv;
+    return *r;
+}
 
 real_t::real_t(const real_t & r)
 {

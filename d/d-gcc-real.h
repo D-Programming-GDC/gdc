@@ -55,8 +55,8 @@ struct real_t
     real_t() { }
     real_t(const real_t & r);
 
-    const real_value & rv() const { return * (real_value *) & frv; }
-    real_value & rv() { return * (real_value *) & frv; }
+    const real_value & rv() const;
+    real_value & rv();
     real_t(const struct real_value & rv);
     real_t(int v);
     real_t(d_uns64 v);

@@ -153,8 +153,6 @@ D_CC_FLAGS += -Wno-format
 D_CC_FLAGS += -Wno-missing-field-initializers
 # from dmd
 D_CC_FLAGS += -Wno-deprecated -Wstrict-aliasing
-# d-gcc-real.h
-D_CC_FLAGS += -fno-strict-aliasing
 
 ifeq ($(if $(findstring solaris,$(build)),T,$(if $(findstring solaris,$(host)),T)),T)
 D_CC_FLAGS += -Wcast-align
