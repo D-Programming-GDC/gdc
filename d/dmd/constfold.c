@@ -1088,7 +1088,6 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
         if (e1->type->isfloating())
         {   dinteger_t result;
 #ifdef IN_GCC
-            d_int64 r;
             Type * rt = e1->type;
             if (rt->iscomplex())
             {
@@ -1099,12 +1098,8 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
                     case Tcomplex80: rt = Type::tfloat80; break;
                     default: assert(0);
                 }
-                r = e1->toReal().toInt(rt, type);
             }
-            else
-            {
-                r = e1->toInteger();
-            }
+            d_int64 r = e1->toReal().toInt(rt, type);
 #else
             real_t r = e1->toReal();
 #endif

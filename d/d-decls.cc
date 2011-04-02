@@ -147,9 +147,7 @@ uniqueName(Declaration * d, tree t, const char * asm_name)
          // Static declarations in different scope statements
          (p && p->isFuncDeclaration()) ||
          // Top-level duplicate names are okay if private.
-         ((!p || p->isModule()) && d->protection == PROTprivate) ||
-         // or duplicate template functions.
-         (f && f->inTemplateInstance())
+         ((!p || p->isModule()) && d->protection == PROTprivate)
         )
        )
     {
@@ -432,7 +430,7 @@ Symbol *TypeInfoDeclaration::toSymbol()
            one-only.
         */
         D_DECL_ONE_ONLY(csym->Stree) = 1;
-        g.ofile->makeDeclOneOnly(csym->Stree);
+        g.ofile->makeDeclOneOnly(csym->Stree, this);
     }
     return csym;
 }
@@ -785,7 +783,7 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
         //needed on some targets to avoid "causes a section type conflict"
         D_DECL_ONE_ONLY(thunk_decl) = D_DECL_ONE_ONLY(target_func_decl);
         if (D_DECL_ONE_ONLY(thunk_decl))
-            g.ofile->makeDeclOneOnly(thunk_decl);
+            g.ofile->makeDeclOneOnly(thunk_decl, this);
 
         TREE_ADDRESSABLE(thunk_decl) = 1;
         TREE_USED (thunk_decl) = 1;

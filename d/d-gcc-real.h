@@ -27,7 +27,7 @@ struct real_t
     // Including gcc/real.h presents too many problems, so
     // just statically allocate enough space for
     // REAL_VALUE_TYPE.
-    enum MyMode
+    enum Mode
     {
         Float,
         Double,
@@ -46,9 +46,9 @@ struct real_t
     fake_t frv;
 
     static void init();
-    static real_t parse(const char * str, MyMode mode);
-    static real_t getnan(MyMode mode);
-    static real_t getsnan(MyMode mode);
+    static real_t parse(const char * str, Mode mode);
+    static real_t getnan(Mode mode);
+    static real_t getsnan(Mode mode);
     static real_t getinfinity();
 
     // This constructor prevent the use of the real_t in a union
@@ -57,7 +57,7 @@ struct real_t
 
     const real_value & rv() const;
     real_value & rv();
-    real_t(const struct real_value & rv);
+    real_t(const real_value & rv);
     real_t(int v);
     real_t(d_uns64 v);
     real_t(d_int64 v);
@@ -78,7 +78,7 @@ struct real_t
     //operator d_uns64(); // avoid bugs, but maybe allow operator bool()
     d_uns64 toInt() const;
     d_uns64 toInt(Type * real_type, Type * int_type) const;
-    real_t convert(MyMode to_mode) const;
+    real_t convert(Mode to_mode) const;
     bool isZero();
     bool isNegative();
     bool floatCompare(int op, const real_t & r);
@@ -89,7 +89,7 @@ struct real_t
     bool isInf();
     bool isNan();
     bool isSignallingNan();
-    bool isConversionExact(MyMode to_mode) const;
+    bool isConversionExact(Mode to_mode) const;
     void toBytes(unsigned char * buf, unsigned buf_size);
     void dump();
 private:

@@ -256,9 +256,14 @@ struct IRState : IRBase
         return integerConstant(value, type->toCtype());
     }
 
-    static tree floatConstant(const real_t & value, TypeBasic * target_type);
+    static tree floatConstant(const real_t & value, Type * target_type);
 
     static dinteger_t hwi2toli(HOST_WIDE_INT low, HOST_WIDE_INT high);
+
+    static dinteger_t hwi2toli(double_int cst)
+    {
+        return hwi2toli(cst.low, cst.high);
+    }
 
     // ** Routines for built in structured types
 

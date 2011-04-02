@@ -307,7 +307,7 @@ MATCH IntegerExp::implicitConvTo(Type *t)
         case Tfloat64:
         case Tfloat80:
         {
-            real_t::MyMode mode;
+            real_t::Mode mode;
             real_t f;
             switch (toty)
             {

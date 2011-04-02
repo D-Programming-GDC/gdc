@@ -35,7 +35,7 @@ max_float_mode()
 }
 
 static enum machine_mode
-myMode_to_machineMode(real_t::MyMode mode)
+machineMode(real_t::Mode mode)
 {
     switch (mode)
     {
@@ -58,51 +58,81 @@ void
 real_t::init()
 {
     gcc_assert(sizeof(real_t) >= sizeof(REAL_VALUE_TYPE));
+
     for (int i = (int) Float; i < (int) NumModes; i++)
     {
         real_t_Properties & p = real_t_properties[i];
 
-        enum machine_mode mode = myMode_to_machineMode((MyMode) i);
+        enum machine_mode mode = machineMode((Mode) i);
         const struct real_format & rf = * REAL_MODE_FORMAT(mode);
+        char buf[128];
 
-        real_maxval(& p.maxval.rv(), 0, mode);
-        real_ldexp(& p.minval.rv(), & dconst1, rf.emin - 1); // %% correct for non-ieee754?
-        real_ldexp(& p.epsilonval.rv(), & dconst1, 1 - rf.p); // %% correct for non-ieee754?
-        /*
-        real_nan(& p.nanval.rv(), "", 1, mode);
-        real_inf(& p.infval.rv());
-        */
-        p.dig = (int)(rf.p * M_LOG10_2); // %% not always the same as header values..
+        /* .max:
+           The largest representable value that's not infinity.  */
+        get_max_float(& rf, buf, sizeof(buf));
+        real_from_string(& p.maxval.rv(), buf);
+
+        /* .min, .min_normal:
+           The smallest representable normalized value that's not 0.  */
+        sprintf(buf, "0x1p%d", rf.emin - 1);
+        real_from_string(& p.minval.rv(), buf);
+
+        /* .epsilon:
+           The smallest increment to the value 1.  */
+        if (rf.pnan < rf.p)
+            sprintf(buf, "0x1p%d", rf.emin - rf.p);
+        else
+            sprintf(buf, "0x1p%d", 1 - rf.p);
+        real_from_string(& p.epsilonval.rv(), buf);
+
+        /* .dig:
+           The number of decimal digits of precision.  */
+        p.dig = (rf.p - 1) * M_LOG10_2;
+
+        /* .mant_dig:
+           The number of bits in mantissa.  */
         p.mant_dig = rf.p;
-        p.max_10_exp = (int)(rf.emax * M_LOG10_2);
-        p.min_10_exp = (int)(rf.emin * M_LOG10_2);
+
+        /* .max_10_exp:
+            The maximum int value such that 10**value is representable.  */
+        p.max_10_exp = rf.emax * M_LOG10_2;
+
+        /* .min_10_exp:
+           The minimum int value such that 10**value is representable as a normalized value.  */
+        p.min_10_exp = (rf.emin - 1) * M_LOG10_2;
+
+        /* .max_exp:
+           The maximum int value such that 2**(value-1) is representable.  */
         p.max_exp = rf.emax;
+
+        /* .min_exp:
+           The minimum int value such that 2**(value-1) is representable as a normalized value.  */
         p.min_exp = rf.emin;
     }
 }
 
 real_t
-real_t::parse(const char * str, MyMode mode)
+real_t::parse(const char * str, Mode mode)
 {
     real_t r;
-    r.rv() = REAL_VALUE_ATOF(str, myMode_to_machineMode(mode));
+    r.rv() = REAL_VALUE_ATOF(str, machineMode(mode));
     return r;
 }
 
 real_t
-real_t::getnan(MyMode mode)
+real_t::getnan(Mode mode)
 {
     real_t r;
-    real_nan(& r.rv(), "", 1, myMode_to_machineMode(mode));
+    real_nan(& r.rv(), "", 1, machineMode(mode));
     return r;
 }
 
 // Same as getnan, except the significand is forced to be a signalling NaN
 real_t
-real_t::getsnan(MyMode mode)
+real_t::getsnan(Mode mode)
 {
     real_t r;
-    real_nan(& r.rv(), "", 0, myMode_to_machineMode(mode));
+    real_nan(& r.rv(), "", 0, machineMode(mode));
     return r;
 }
 
@@ -114,17 +144,17 @@ real_t::getinfinity()
     return r;
 }
 
-const real_value &
+const REAL_VALUE_TYPE &
 real_t::rv() const
 {
-    const real_value * r = (real_value *) & frv;
+    REAL_VALUE_TYPE * r = (REAL_VALUE_TYPE *) & frv;
     return *r;
 }
 
-real_value &
+REAL_VALUE_TYPE &
 real_t::rv()
 {
-    real_value * r = (real_value *) & frv;
+    REAL_VALUE_TYPE * r = (REAL_VALUE_TYPE *) & frv;
     return *r;
 }
 
@@ -133,7 +163,7 @@ real_t::real_t(const real_t & r)
     rv() = r.rv();
 }
 
-real_t::real_t(const struct real_value & rv)
+real_t::real_t(const REAL_VALUE_TYPE & rv)
 {
     this->rv() = rv;
 }
@@ -292,24 +322,42 @@ d_uns64
 real_t::toInt() const
 {
     HOST_WIDE_INT low, high;
-    real_to_integer2(& low, & high, & rv());
+    REAL_VALUE_TYPE r;
+
+    r = rv();
+    if (REAL_VALUE_ISNAN(r))
+        low = high = 0;
+    else
+        REAL_VALUE_TO_INT(& low, & high, r);
+
     return gen.hwi2toli(low, high);
 }
 
 d_uns64
 real_t::toInt(Type * real_type, Type * int_type) const
 {
-    tree t = fold_build1(FIX_TRUNC_EXPR, int_type->toCtype(),
-                         gen.floatConstant(rv(), real_type->toBasetype()->isTypeBasic()));
-    // can't use tree_low_cst as it asserts !TREE_OVERFLOW
-    return gen.hwi2toli(TREE_INT_CST_LOW(t), TREE_INT_CST_HIGH(t));
+    tree t;
+    double_int cst;
+    REAL_VALUE_TYPE r;
+
+    r = rv();
+    if (REAL_VALUE_ISNAN(r))
+        cst.low = cst.high = 0;
+    else
+    {
+        t = fold_build1(FIX_TRUNC_EXPR, int_type->toCtype(),
+                        gen.floatConstant(r, real_type->toBasetype()));
+        // can't use tree_low_cst as it asserts !TREE_OVERFLOW
+        cst = TREE_INT_CST(t);
+    }
+    return gen.hwi2toli(cst);
 }
 
 real_t
-real_t::convert(MyMode to_mode) const
+real_t::convert(Mode to_mode) const
 {
     real_t result;
-    real_convert(& result.rv(), myMode_to_machineMode(to_mode), & rv());
+    real_convert(& result.rv(), machineMode(to_mode), & rv());
     return result;
 }
 
@@ -409,9 +457,9 @@ real_t::isSignallingNan()
 }
 
 bool
-real_t::isConversionExact(MyMode to_mode) const
+real_t::isConversionExact(Mode to_mode) const
 {
-    return exact_real_truncate(myMode_to_machineMode(to_mode), & rv());
+    return exact_real_truncate(machineMode(to_mode), & rv());
 }
 
 void

@@ -90,6 +90,7 @@ enum SymbolFlag
 
 enum SymbolSegment
 {
+    INVALID,
     DATA,
     CDATA,
     UDATA

@@ -263,9 +263,9 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 
 #if V2
     if (ebtype->ty == Taarray)
-        ebtype = ((TypeAArray*)ebtype)->getImpl()->type;
+        exp_type = ((TypeAArray*)ebtype)->getImpl()->type;
     if (tbtype->ty == Taarray)
-        tbtype = ((TypeAArray*)tbtype)->getImpl()->type;
+        target_type = ((TypeAArray*)tbtype)->getImpl()->type;
 #endif
 
     if (typesSame(exp_type, target_type))
@@ -901,28 +901,38 @@ IRState::assertCall(Loc loc, Expression * msg)
 }
 
 tree
-IRState::floatConstant(const real_t & value, TypeBasic * target_type)
+IRState::floatConstant(const real_t & value, Type * target_type)
 {
-    REAL_VALUE_TYPE converted_val;
+    real_t new_value;
+    TypeBasic * tb = target_type->isTypeBasic();
 
-    tree type_node = target_type->toCtype();
-    real_convert(& converted_val, TYPE_MODE(type_node), & value.rv());
+    gcc_assert(tb != NULL);
 
-    return build_real(type_node, converted_val);
+    tree type_node = tb->toCtype();
+    real_convert(& new_value.rv(), TYPE_MODE(type_node), & value.rv());
+
+    if (new_value > value)
+    {   // value grew as a result of the conversion. %% precision bug ??
+        // For now just revert back to original.
+        new_value = value;
+    }
+
+    return build_real(type_node, new_value.rv());
 }
 
 dinteger_t
 IRState::hwi2toli(HOST_WIDE_INT low, HOST_WIDE_INT high)
 {
-    uinteger_t result;
-    if (sizeof(HOST_WIDE_INT) < sizeof(dinteger_t))
+    dinteger_t result;
+
+    if (high == 0 || sizeof(HOST_WIDE_INT) > sizeof(dinteger_t))
+        result = low;
+    else
     {
         gcc_assert(sizeof(HOST_WIDE_INT) * 2 == sizeof(dinteger_t));
         result = (unsigned HOST_WIDE_INT) low;
         result += ((uinteger_t) (unsigned HOST_WIDE_INT) high) << HOST_BITS_PER_WIDE_INT;
     }
-    else
-        result = low;
     return result;
 }
 

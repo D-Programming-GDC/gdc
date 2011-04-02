@@ -28,6 +28,7 @@ Symbol::Symbol()
     //Stype = 0;
     Sclass = SC_INVALID;
     Sfl = FL_INVALID;
+    Sseg = INVALID;
     Sflags = 0;
 
     //Ssymnum = 0;

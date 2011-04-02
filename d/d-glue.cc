@@ -459,7 +459,7 @@ EqualExp::toElem(IRState* irs)
             tree t_memcmp = built_in_decls[BUILT_IN_MEMCMP];
             tree result;
             tree size;
-            
+
             size = fold_build2(MULT_EXPR, size_type_node,
                                convert(size_type_node, len_expr[0]), // should be size_type already, though
                                size_int(telem->size()));
@@ -2705,7 +2705,7 @@ ComplexExp::toElem(IRState * irs)
 elem *
 RealExp::toElem(IRState * irs)
 {
-    return irs->floatConstant(value, type->toBasetype()->isTypeBasic());
+    return irs->floatConstant(value, type->toBasetype());
 }
 
 elem *

@@ -250,9 +250,13 @@ extern GTY(()) tree d_keep_list;
 /* compat with D_GCC_VER >= 45 */
 #define DECL_STATIC_CHAIN(decl)  ! DECL_NO_STATIC_CHAIN(decl)
 
-typedef HOST_WIDE_INT hwint;
-typedef unsigned HOST_WIDE_INT uhwint;
-
+#if D_GCC_VER <= 41
+typedef struct
+{
+    unsigned HOST_WIDE_INT low;
+    HOST_WIDE_INT high;
+} double_int;
+#endif
 
 #if D_GCC_VER < 41
 //#define d_warning(option, xformat, ...) warning(format, __VA_ARGS__)

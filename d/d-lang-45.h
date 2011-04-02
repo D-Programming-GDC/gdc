@@ -228,9 +228,6 @@ extern GTY(()) tree d_keep_list;
 
 #include "d-dmd-gcc.h"
 
-typedef HOST_WIDE_INT hwint;
-typedef unsigned HOST_WIDE_INT uhwint;
-
 #define d_warning(option, ...) warning(option, __VA_ARGS__)
 
 #endif

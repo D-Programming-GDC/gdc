@@ -87,14 +87,7 @@ gcc_type_to_d_type(tree t)
     switch (TREE_CODE(t))
     {
         case POINTER_TYPE:
-        {   // Check for strings first.  There are currently no 'char' arguments
-            // for built-in functions, so this is all that needs to be done for
-            // chars/string.
-            if (TYPE_MAIN_VARIANT(TREE_TYPE(t)) == char_type_node)
-            {
-                d = Type::tchar;
-                return d->pointerTo();
-            }
+        {
             d = gcc_type_to_d_type(TREE_TYPE(t));
             if (d)
             {
@@ -127,6 +120,11 @@ gcc_type_to_d_type(tree t)
         {
             unsigned sz = tree_low_cst(TYPE_SIZE_UNIT(t), 1);
             bool unsgn = TYPE_UNSIGNED(t);
+
+            // Check for char first. Needs to be done for chars/string.
+            if (TYPE_MAIN_VARIANT(t) == char_type_node)
+                return Type::tchar;
+
             // This search assumes that integer types come before char and bit...
             for (int i = 0; i < (int) TMAX; i++)
             {
@@ -141,9 +139,9 @@ gcc_type_to_d_type(tree t)
         }
         case REAL_TYPE:
         {   // Double and long double may be the same size
-            if (t == double_type_node)
+            if (TYPE_MAIN_VARIANT(t) == double_type_node)
                 return Type::tfloat64;
-            else if (t == long_double_type_node)
+            else if (TYPE_MAIN_VARIANT(t) == long_double_type_node)
                 return Type::tfloat80;
 
             unsigned sz = tree_low_cst(TYPE_SIZE_UNIT(t), 1);
@@ -608,9 +606,7 @@ gcc_cst_to_d_expr(Loc loc, tree cst)
         }
         else if (code == INTEGER_CST)
         {
-            HOST_WIDE_INT low = TREE_INT_CST_LOW(cst);
-            HOST_WIDE_INT high = TREE_INT_CST_HIGH(cst);
-            dinteger_t value = IRState::hwi2toli(low, high);
+            dinteger_t value = IRState::hwi2toli(TREE_INT_CST(cst));
             return new IntegerExp(loc, value, type);
         }
         else if (code == REAL_CST)
@@ -645,7 +641,9 @@ d_gcc_eval_builtin(CallExp *ce, Expressions *arguments)
         TypeFunction * tf = (TypeFunction *) fd->type;
         tree callee = fd->toSymbol()->Stree;
 
-        tree result = g.irs->call(tf, callee, NULL, arguments);
+        // g.irs is not available.
+        static IRState irs;
+        tree result = irs.call(tf, callee, NULL, arguments);
         result = fold(result);
 
         if (TREE_CONSTANT(result) && TREE_CODE(result) != CALL_EXPR)
