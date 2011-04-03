@@ -69,8 +69,12 @@ real_t::init()
 
         /* .max:
            The largest representable value that's not infinity.  */
+#if D_GCC_VER >= 43
         get_max_float(& rf, buf, sizeof(buf));
         real_from_string(& p.maxval.rv(), buf);
+#else
+        real_maxval(& p.maxval.rv(), 0, mode);
+#endif
 
         /* .min, .min_normal:
            The smallest representable normalized value that's not 0.  */

@@ -394,6 +394,12 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             {   // DMD apparently allows casting a static array to any static array type
                 return indirect(addressOf(exp), target_type->toCtype());
             }
+            else if (tbtype->ty == Tstruct)
+            {   // And allows casting a static array to any struct type too.
+                // %% type sizes should have already been checked by the frontend.
+                gcc_assert(target_type->size() == exp_type->size());
+                result = indirect(addressOf(exp), target_type->toCtype());
+            }
             else
             {
                 ::error("cannot cast expression of type %s to type %s",
