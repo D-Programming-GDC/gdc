@@ -45,7 +45,7 @@ D_EXTRA_DEFINES += -DELFOBJ=1
 
 # Enables experimental code generation which sets out to match the D calling
 # convention as used by the DMD compiler on x86 targets.
-# D_EXTRA_DEFINES += -DD_DMD_CALLING_CONVENTIONS=1
+D_EXTRA_DEFINES += -DD_DMD_CALLING_CONVENTIONS=1
 
 # Enables correct implementation of D's va_list type (void*) as per
 # the D language specification.

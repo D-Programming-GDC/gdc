@@ -480,6 +480,32 @@
  }
  
  /*  Return true if T is a GIMPLE condition.  */
+--- gcc.orig/tree.h	2007-02-09 02:52:53.000000000 +0000
++++ gcc/tree.h	2011-04-03 12:36:53.098995528 +0100
+@@ -1092,16 +1092,16 @@ extern void tree_operand_check_failed (i
+ 	== (unsigned HOST_WIDE_INT) TREE_INT_CST_HIGH (B))	\
+        && TREE_INT_CST_LOW (A) < TREE_INT_CST_LOW (B)))
+ 
++typedef struct double_int_d GTY(())
++{
++  unsigned HOST_WIDE_INT low;
++  HOST_WIDE_INT high;
++} double_int;
++
+ struct tree_int_cst GTY(())
+ {
+   struct tree_common common;
+-  /* A sub-struct is necessary here because the function `const_hash'
+-     wants to scan both words as a unit and taking the address of the
+-     sub-struct yields the properly inclusive bounded pointer.  */
+-  struct tree_int_cst_lowhi {
+-    unsigned HOST_WIDE_INT low;
+-    HOST_WIDE_INT high;
+-  } int_cst;
++  double_int int_cst;
+ };
+ 
+ /* In a REAL_CST node.  struct real_value is an opaque entity, with
 --- gcc.orig/tree-inline.c	2007-01-05 13:53:45.000000000 +0000
 +++ gcc/tree-inline.c	2011-03-27 19:25:06.380740492 +0100
 @@ -602,10 +602,21 @@ copy_body_r (tree *tp, int *walk_subtree

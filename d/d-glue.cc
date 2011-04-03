@@ -2421,12 +2421,11 @@ ArrayLiteralExp::toElem(IRState * irs)
 #if V2
     if (var)
     {   // Just copy the array we are referencing, much faster.
-        gcc_assert(var->type->ty == Tarray || var->type->ty == Tsarray);
-        tree var_tree = irs->var(var);
+        result = irs->var(var);
         if (var->type->ty == Tarray)
-            result = irs->darrayPtrRef(var_tree);
-        else
-            result = irs->addressOf(var_tree);
+            result = irs->darrayPtrRef(result);
+        else if (var->type->ty == Tsarray)
+            result = irs->addressOf(result);
     }
     else
 #endif
@@ -4839,7 +4838,11 @@ EnumDeclaration::toDebug()
         return;
 
     tree ctype = type->toCtype();
-    rest_of_type_compilation(ctype, /*toplevel*/1);
+
+    // %% For D2 - ctype is not necessarily enum, which doesn't
+    // sit well with rotc.  Can call this on structs though.
+    if (AGGREGATE_TYPE_P(ctype) || TREE_CODE(ctype) == ENUMERAL_TYPE)
+        rest_of_type_compilation(ctype, /*toplevel*/1);
 }
 
 int
