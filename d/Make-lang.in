@@ -218,7 +218,7 @@ else
 endif
 
 
-D_GENERATED_SRCS = d/id.c d/impcnvtab.c
+D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
 D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-objfile.glue.o d/d-irstate.glue.o d/d-glue.glue.o \
@@ -333,13 +333,8 @@ d/todt.dmd.o: $(D_DMD_H)
 d/toobj.dmd.o: $(D_DMD_H)
 d/typinf.dmd.o: $(D_DMD_H)
 
-ifeq ($(D_gcc_main_ver),3.3)
-D_CORETYPES=
-else
-D_CORETYPES=coretypes.h
-endif
 
-d/d-gcc.o: gcc.c $(CONFIG_H) $(SYSTEM_H) $(D_CORETYPES) $(TM_H) intl.h multilib.h \
+d/d-gcc.o: gcc.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) intl.h multilib.h \
     Makefile $(lang_specs_files) specs.h prefix.h $(GCC_H)
 	(SHLIB_LINK='$(SHLIB_LINK)' \
 	SHLIB_MULTILIB='$(SHLIB_MULTILIB)'; \
@@ -347,7 +342,7 @@ d/d-gcc.o: gcc.c $(CONFIG_H) $(SYSTEM_H) $(D_CORETYPES) $(TM_H) intl.h multilib.
   $(DRIVER_DEFINES) -DD_DRIVER_ONLY=1 \
   -c $(srcdir)/gcc.c $(OUTPUT_OPTION))
 
-d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) $(D_CORETYPES) $(TM_H) $(GCC_H) $(CONFIG_H)
+d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) $(CONFIG_H)
 	(SHLIB_LINK='$(SHLIB_LINK)' \
 	SHLIB_MULTILIB='$(SHLIB_MULTILIB)'; \
 	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(DRIVER_DEFINES) \
@@ -360,27 +355,23 @@ $(D_COMPILER_NAME)$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
 	$(CXX) $(ALL_D_CXXFLAGS) $(LDFLAGS) -o $@ \
 		$(D_ALL_OBJS) $(BACKEND) $(LIBS) $(D_EXTRA_LIBS)
 
-# Stage hooks:
-# The main makefile has already created stage?/cobol.
 
-# Are these are obsolete? (see gcc/Changelog.6)
-#  Rather, is d.all.build actually used? Doesn't seem so.  d.all.cross does...
-# A lot of these are different for gcc-3.3 / gcc-3.4
+# Build hooks:
+
 d.all.build: $(D_DRIVER_NAME)$(exeext) $(D_COMPILER_NAME)$(exeext)
 d.all.cross: $(D_DRIVER_NAME)-cross$(exeext)
 d.start.encap: $(D_DRIVER_NAME)$(exeext)
 d.rest.encap:
 d.info:
+d.srcinfo:
+d.srcextra:
 d.dvi:
-# <foo>.generated-manpages is also required, but not documented as such.
-# 3.4...
-# d.man: doc/$(D_DRIVER_NAME).1
 d.man:
+d.srcman:
 
 
+# Install hooks:
 
-# ... 3.4
-d.generated-manpages:
 d.install-normal:
 d.install-plugin:
 d.install-common: installdirs
@@ -423,7 +414,11 @@ $(DESTDIR)$(man1dir)/$(GDMD_INSTALL_NAME)$(man1ext): $(srcdir)/d/dmd-script.1
 	-chmod a-x $@
 
 d.uninstall:
-d.distdir:
+	-rm -rf $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
+	-rm -rf $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)$(exeext)
+	-rm -rf $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext)
+	-rm -rf $(DESTDIR)$(man1dir)/$(GDMD_INSTALL_NAME)$(man1ext)
+
 d.mostlyclean:
 	-rm -f d/*$(objext)
 	-rm -f d/*$(coverageexts)
@@ -436,7 +431,9 @@ d.distclean:
 d.extraclean:
 d.maintainer-clean:
 
-# where to clean id.[ch] and impcnvtbl?
+
+# Stage hooks:
+# The main makefile has already created stage?/d.
 
 d.stage1: stage1-start
 	-mv d/*$(objext) stage1/d

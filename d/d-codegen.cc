@@ -1650,7 +1650,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
 
                 // op1[op2 / align]
                 op1 = pointerIntSum(op1, build2(TRUNC_DIV_EXPR, type, op2,
-                            integerConstant(TYPE_ALIGN(type))));
+                                    integerConstant(TYPE_ALIGN(type))));
 
                 // mask = 1 << (op2 & (align - 1));
                 op2 = build2(BIT_AND_EXPR, type, op2, integerConstant(TYPE_ALIGN(type) - 1));
@@ -1672,8 +1672,8 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 {   // Update the bit as needed.
                     tree result = localVar(type);
                     enum tree_code code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
-                        (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
-                        (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
+                                          (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
+                                          (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
                     gcc_assert(code != ERROR_MARK);
 
                     if (intrinsic == INTRINSIC_BTR)
@@ -1693,7 +1693,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 return buildCall(built_in_decls[BUILT_IN_BSWAP32], 1, op1);
 #else
                 /* Expand a call to bswap intrinsic with argument op1.
-TODO: use asm if 386?
+                    TODO: use asm if 386?
                  */
                 op1 = ce.nextArg();
                 type = TREE_TYPE(op1);
