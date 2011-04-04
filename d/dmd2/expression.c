@@ -10353,6 +10353,15 @@ Expression *PowExp::semantic(Scope *sc)
             e = e->semantic(sc);
             return e;
         }
+        // Replace x ^^ 0 or x^^0.0 by (x, 1)
+        if ((e2->op == TOKint64 && e2->toInteger() == 0) ||
+                (e2->op == TOKfloat64 && e2->toReal() == (real_t)(d_int64)0))
+        {
+            typeCombine(sc);
+            e = new CommaExp(loc, e1, new IntegerExp(loc, 1, Type::tint32));
+            e = e->semantic(sc);
+            return e;
+        }
 #else
         if ((e1->op == TOKint64 && e1->toInteger() == 1) ||
                 (e1->op == TOKfloat64 && e1->toReal() == 1.0))
@@ -10386,7 +10395,7 @@ Expression *PowExp::semantic(Scope *sc)
         sinteger_t intpow = 0;
         if (e2->op == TOKint64 && ((sinteger_t)e2->toInteger() == 2 || (sinteger_t)e2->toInteger() == 3))
             intpow = e2->toInteger();
-        else if (e2->op == TOKfloat64 && e2->toReal() == (real_t)e2->toInteger())
+        else if (e2->op == TOKfloat64 && e2->toReal() == (real_t)(d_int64)(e2->toInteger()))
             intpow = e2->toInteger();
 #else
         sinteger_t intpow = 0;

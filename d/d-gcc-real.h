@@ -79,6 +79,7 @@ struct real_t
     d_uns64 toInt() const;
     d_uns64 toInt(Type * real_type, Type * int_type) const;
     real_t convert(Mode to_mode) const;
+    real_t convert(Type * to_type) const;
     bool isZero();
     bool isNegative();
     bool floatCompare(int op, const real_t & r);

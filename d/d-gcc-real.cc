@@ -365,6 +365,25 @@ real_t::convert(Mode to_mode) const
     return result;
 }
 
+real_t
+real_t::convert(Type * to_type) const
+{
+    switch (to_type->ty)
+    {
+        case Tfloat32:
+            return convert(real_t::Float);
+
+        case Tfloat64:
+            return convert(real_t::Double);
+
+        case Tfloat80:
+            return convert(real_t::LongDouble);
+
+        default:
+            gcc_unreachable();
+    }
+}
+
 bool
 real_t::isZero()
 {

@@ -307,26 +307,18 @@ MATCH IntegerExp::implicitConvTo(Type *t)
         case Tfloat64:
         case Tfloat80:
         {
-            real_t::Mode mode;
             real_t f;
-            switch (toty)
-            {
-                case Tfloat32: mode = real_t::Float; break;
-                case Tfloat64: mode = real_t::Double; break;
-                case Tfloat80: mode = real_t::LongDouble; break;
-                default:       break;
-            }
             if (type->isunsigned())
             {
                 f = real_t((d_uns64) value);
-                f = f.convert(mode);
+                f = f.convert(t);
                 if ((d_uns64) f.toInt() != (d_uns64) value)
                     goto Lno;
             }
             else
             {
                 f = real_t((d_int64) value);
-                f = f.convert(mode);
+                f = f.convert(t);
                 if ((d_int64) f.toInt() != (d_int64) value)
                     goto Lno;
             }
