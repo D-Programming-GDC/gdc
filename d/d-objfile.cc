@@ -433,6 +433,8 @@ ObjectFile::outputFunction(FuncDeclaration * f)
     Symbol * s = f->toSymbol();
     tree t = s->Stree;
 
+    d_add_global_function(t);
+
     if (TREE_CODE(t) == FUNCTION_DECL)
     {
         if (DECL_STATIC_CONSTRUCTOR(t))

@@ -999,7 +999,7 @@ AddAssignExp::toElem(IRState * irs)
 }
 
 
-void
+static void
 do_array_set(IRState * irs, tree in_ptr, tree in_val, tree in_cnt)
 {
     irs->startBindings(); // %%maybe not
@@ -1456,18 +1456,6 @@ CastExp::toElem(IRState * irs)
     return irs->convertTo(e1, to);
 }
 
-static tree
-make_aa_del(IRState * irs, Expression * e_array, Expression * e_index)
-{
-    tree args[3];
-    Type * key_type = ((TypeAArray *) e_array->type->toBasetype())->index->toBasetype();
-    AddrOfExpr aoe;
-
-    args[0] = e_array->toElem(irs);
-    args[1] = irs->typeinfoReference(key_type);
-    args[2] = aoe.set(irs, irs->convertTo(e_index, key_type));
-    return aoe.finish(irs, irs->libCall(LIBCALL_AADELP, 3, args));
-}
 
 elem *
 DeleteExp::toElem(IRState* irs)
@@ -1485,7 +1473,18 @@ DeleteExp::toElem(IRState* irs)
 
         // Check that the array is actually an associative array
         if (e_array->type->toBasetype()->ty == Taarray)
-            return make_aa_del(irs, e_array, e_index);
+        {
+            Type * a_type = e_array->type->toBasetype();
+            Type * key_type = ((TypeAArray *) a_type)->index->toBasetype();
+            AddrOfExpr aoe;
+
+            tree args[3] = {
+                e_array->toElem(irs),
+                irs->typeinfoReference(key_type),
+                aoe.set(irs, irs->convertTo(e_index, key_type)),
+            };
+            return aoe.finish(irs, irs->libCall(LIBCALL_AADELP, 3, args));
+        }
     }
 
     // Otherwise, this is normal delete
@@ -1559,7 +1558,16 @@ RemoveExp::toElem(IRState * irs)
     // Check that the array is actually an associative array
     if (e_array->type->toBasetype()->ty == Taarray)
     {
-        return make_aa_del(irs, e_array, e_index);
+        Type * a_type = e_array->type->toBasetype();
+        Type * key_type = ((TypeAArray *) a_type)->index->toBasetype();
+        AddrOfExpr aoe;
+
+        tree args[3] = {
+            e_array->toElem(irs),
+            irs->typeinfoReference(key_type),
+            aoe.set(irs, irs->convertTo(e_index, key_type)),
+        };
+        return aoe.finish(irs, irs->libCall(LIBCALL_AADELP, 3, args));
     }
     else
     {

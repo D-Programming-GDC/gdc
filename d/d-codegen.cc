@@ -1610,263 +1610,238 @@ IRState::maybeExpandSpecialCall(tree call_exp)
     CallExpr ce(call_exp);
     tree callee = ce.callee();
     tree exp, op1, op2;
+
     if (POINTER_TYPE_P(TREE_TYPE(callee)))
-    {
         callee = TREE_OPERAND(callee, 0);
-    }
-    if (TREE_CODE(callee) == FUNCTION_DECL)
+
+    if (TREE_CODE(callee) == FUNCTION_DECL
+            && DECL_BUILT_IN_CLASS(callee) == BUILT_IN_FRONTEND)
     {
-        if (DECL_BUILT_IN_CLASS(callee) == NOT_BUILT_IN)
-        {   // the most common case
-            return call_exp;
-        }
-        else if (DECL_BUILT_IN_CLASS(callee) == BUILT_IN_NORMAL)
+        Intrinsic intrinsic = (Intrinsic) DECL_FUNCTION_CODE(callee);
+        tree type;
+        Type *d_type;
+        switch (intrinsic)
         {
-            switch (DECL_FUNCTION_CODE(callee))
-            {
-                case BUILT_IN_ABS:
-                case BUILT_IN_LABS:
-                case BUILT_IN_LLABS:
-                case BUILT_IN_IMAXABS:
-                    /* The above are required for both 3.4.  Not sure about later
-                       versions. */
-                    op1 = ce.nextArg();
-                    exp = build1(ABS_EXPR, TREE_TYPE(op1), op1);
-                    return d_convert_basic(TREE_TYPE(call_exp), exp);
-                    // probably need a few more cases:
+            case INTRINSIC_BSF:
+                /* builtin count_trailing_zeros matches behaviour of bsf.
+                   %% TODO: The return value is supposed to be undefined if op1 is zero. */
+                op1 = ce.nextArg();
+                return buildCall(built_in_decls[BUILT_IN_CTZL], 1, op1);
 
-                default:
-                    return call_exp;
-            }
-        }
-        else if (DECL_BUILT_IN_CLASS(callee) == BUILT_IN_FRONTEND)
-        {
-            Intrinsic intrinsic = (Intrinsic) DECL_FUNCTION_CODE(callee);
-            tree type;
-            Type *d_type;
-            switch (intrinsic)
-            {
-                case INTRINSIC_BSF:
-                    /* builtin count_trailing_zeros matches behaviour of bsf.
-                       %% TODO: The return value is supposed to be undefined if op1 is zero. */
-                    op1 = ce.nextArg();
-                    return buildCall(built_in_decls[BUILT_IN_CTZL], 1, op1);
+            case INTRINSIC_BSR:
+                /* bsr becomes 31-(clz), but parameter passed to bsf may not be a 32bit type!!
+                   %% TODO: The return value is supposed to be undefined if op1 is zero. */
+                op1 = ce.nextArg();
+                type = TREE_TYPE(op1);
 
-                case INTRINSIC_BSR:
-                    /* bsr becomes 31-(clz), but parameter passed to bsf may not be a 32bit type!!
-                       %% TODO: The return value is supposed to be undefined if op1 is zero. */
-                    op1 = ce.nextArg();
-                    type = TREE_TYPE(op1);
+                // %% Using TYPE_ALIGN, should be ok for size_t on 64bit...
+                op2 = integerConstant(TYPE_ALIGN(type) - 1, type);
+                exp = buildCall(built_in_decls[BUILT_IN_CLZL], 1, op1);
 
-                    // %% Using TYPE_ALIGN, should be ok for size_t on 64bit...
-                    op2 = integerConstant(TYPE_ALIGN(type) - 1, type);
-                    exp = buildCall(built_in_decls[BUILT_IN_CLZL], 1, op1);
+                return build2(MINUS_EXPR, type, op2, exp);
 
-                    return build2(MINUS_EXPR, type, op2, exp);
+            case INTRINSIC_BT:
+            case INTRINSIC_BTC:
+            case INTRINSIC_BTR:
+            case INTRINSIC_BTS:
+                op1 = ce.nextArg();
+                op2 = ce.nextArg();
+                type = TREE_TYPE(TREE_TYPE(op1));
 
-                case INTRINSIC_BT:
-                case INTRINSIC_BTC:
-                case INTRINSIC_BTR:
-                case INTRINSIC_BTS:
-                    op1 = ce.nextArg();
-                    op2 = ce.nextArg();
-                    type = TREE_TYPE(TREE_TYPE(op1));
+                // op1[op2 / align]
+                op1 = pointerIntSum(op1, build2(TRUNC_DIV_EXPR, type, op2,
+                            integerConstant(TYPE_ALIGN(type))));
 
-                    // op1[op2 / align]
-                    op1 = pointerIntSum(op1, build2(TRUNC_DIV_EXPR, type, op2,
-                                                    integerConstant(TYPE_ALIGN(type))));
+                // mask = 1 << (op2 & (align - 1));
+                op2 = build2(BIT_AND_EXPR, type, op2, integerConstant(TYPE_ALIGN(type) - 1));
+                op2 = build2(LSHIFT_EXPR, type, integerConstant(1, type), op2);
 
-                    // mask = 1 << (op2 & (align - 1));
-                    op2 = build2(BIT_AND_EXPR, type, op2, integerConstant(TYPE_ALIGN(type) - 1));
-                    op2 = build2(LSHIFT_EXPR, type, integerConstant(1, type), op2);
+                // cond = *op1 & mask
+                op1 = indirect(op1, type);
+                exp = build2(BIT_AND_EXPR, type, op1, op2);
 
-                    // cond = *op1 & mask
-                    op1 = indirect(op1, type);
-                    exp = build2(BIT_AND_EXPR, type, op1, op2);
+                // cond ? -1 : 0;
+                type = TREE_TYPE(call_exp);
+                exp = build3(COND_EXPR, type, exp, integerConstant(-1), integerConstant(0));
 
-                    // cond ? -1 : 0;
-                    type = TREE_TYPE(call_exp);
-                    exp = build3(COND_EXPR, type, exp, integerConstant(-1), integerConstant(0));
-
-                    if (intrinsic == INTRINSIC_BT)
-                    {   // Only testing the bit.
-                        return exp;
-                    }
-                    else
-                    {   // Update the bit as needed.
-                        tree result = localVar(type);
-                        enum tree_code code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
-                                              (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
-                                              (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
-                        gcc_assert(code != ERROR_MARK);
-
-                        if (intrinsic == INTRINSIC_BTR)
-                            op2 = build1(BIT_NOT_EXPR, TREE_TYPE(op2), op2);
-
-                        exp = vmodify(result, exp);
-                        op1 = vmodify(op1, build2(code, TREE_TYPE(op1), op1, op2));
-                        op1 = compound(op1, result);
-                        return voidCompound(exp, op1);
-                    }
-
-                case INTRINSIC_BSWAP:
-#if D_GCC_VER >= 43
-                    /* Backend provides builtin bswap32.
-                       Assumes first argument and return type is uint. */
-                    op1 = ce.nextArg();
-                    return buildCall(built_in_decls[BUILT_IN_BSWAP32], 1, op1);
-#else
-                    /* Expand a call to bswap intrinsic with argument op1.
-                       TODO: use asm if 386?
-                     */
-                    op1 = ce.nextArg();
-                    type = TREE_TYPE(op1);
-                    // exp = (op1 & 0xFF) << 24
-                    exp = build2(BIT_AND_EXPR, type, op1, integerConstant(0xff, type));
-                    exp = build2(LSHIFT_EXPR, type, exp, integerConstant(24, type));
-
-                    // exp |= (op1 & 0xFF00) << 8
-                    op2 = build2(BIT_AND_EXPR, type, op1, integerConstant(0xff00, type));
-                    op2 = build2(LSHIFT_EXPR, type, op2, integerConstant(8, type));
-                    exp = build2(BIT_IOR_EXPR, type, exp, op2);
-
-                    // exp |= (op1 & 0xFF0000) >>> 8
-                    op2 = build2(BIT_AND_EXPR, type, op1, integerConstant(0xff0000, type));
-                    op2 = build2(RSHIFT_EXPR, type, op2, integerConstant(8, type));
-                    exp = build2(BIT_IOR_EXPR, type, exp, op2);
-
-                    // exp |= op1 & 0xFF000000) >>> 24
-                    op2 = build2(BIT_AND_EXPR, type, op1, integerConstant(0xff000000, type));
-                    op2 = build2(RSHIFT_EXPR, type, op2, integerConstant(24, type));
-                    exp = build2(BIT_IOR_EXPR, type, exp, op2);
-
+                if (intrinsic == INTRINSIC_BT)
+                {   // Only testing the bit.
                     return exp;
-#endif
+                }
+                else
+                {   // Update the bit as needed.
+                    tree result = localVar(type);
+                    enum tree_code code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
+                        (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
+                        (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
+                    gcc_assert(code != ERROR_MARK);
 
-                case INTRINSIC_INP:
-                case INTRINSIC_INPL:
-                case INTRINSIC_INPW:
-#ifdef TARGET_386
-                    type = TREE_TYPE(call_exp);
-                    d_type = Type::tuns16;
+                    if (intrinsic == INTRINSIC_BTR)
+                        op2 = build1(BIT_NOT_EXPR, TREE_TYPE(op2), op2);
 
-                    op1 = ce.nextArg();
-                    // %% Port is always cast to ushort
-                    op1 = d_convert_basic(d_type->toCtype(), op1);
-                    op2 = localVar(type);
-                    return expandPortIntrinsic(intrinsic, op1, op2, 0);
-#endif
-                    // else fall through to error below.
-                case INTRINSIC_OUTP:
-                case INTRINSIC_OUTPL:
-                case INTRINSIC_OUTPW:
-#ifdef TARGET_386
-                    type = TREE_TYPE(call_exp);
-                    d_type = Type::tuns16;
+                    exp = vmodify(result, exp);
+                    op1 = vmodify(op1, build2(code, TREE_TYPE(op1), op1, op2));
+                    op1 = compound(op1, result);
+                    return voidCompound(exp, op1);
+                }
 
-                    op1 = ce.nextArg();
-                    // %% Port is always cast to ushort
-                    op1 = d_convert_basic(d_type->toCtype(), op1);
-                    op2 = ce.nextArg();
-                    return expandPortIntrinsic(intrinsic, op1, op2, 1);
+            case INTRINSIC_BSWAP:
+#if D_GCC_VER >= 43
+                /* Backend provides builtin bswap32.
+                   Assumes first argument and return type is uint. */
+                op1 = ce.nextArg();
+                return buildCall(built_in_decls[BUILT_IN_BSWAP32], 1, op1);
 #else
-                    ::error("Port I/O intrinsic '%s' is only available on ix86 targets",
-                            IDENTIFIER_POINTER(DECL_NAME(callee)));
-                    break;
+                /* Expand a call to bswap intrinsic with argument op1.
+TODO: use asm if 386?
+                 */
+                op1 = ce.nextArg();
+                type = TREE_TYPE(op1);
+                // exp = (op1 & 0xFF) << 24
+                exp = build2(BIT_AND_EXPR, type, op1, integerConstant(0xff, type));
+                exp = build2(LSHIFT_EXPR, type, exp, integerConstant(24, type));
+
+                // exp |= (op1 & 0xFF00) << 8
+                op2 = build2(BIT_AND_EXPR, type, op1, integerConstant(0xff00, type));
+                op2 = build2(LSHIFT_EXPR, type, op2, integerConstant(8, type));
+                exp = build2(BIT_IOR_EXPR, type, exp, op2);
+
+                // exp |= (op1 & 0xFF0000) >>> 8
+                op2 = build2(BIT_AND_EXPR, type, op1, integerConstant(0xff0000, type));
+                op2 = build2(RSHIFT_EXPR, type, op2, integerConstant(8, type));
+                exp = build2(BIT_IOR_EXPR, type, exp, op2);
+
+                // exp |= op1 & 0xFF000000) >>> 24
+                op2 = build2(BIT_AND_EXPR, type, op1, integerConstant(0xff000000, type));
+                op2 = build2(RSHIFT_EXPR, type, op2, integerConstant(24, type));
+                exp = build2(BIT_IOR_EXPR, type, exp, op2);
+
+                return exp;
 #endif
 
-                case INTRINSIC_C_VA_ARG:
-                    // %% should_check c_promotes_to as in va_arg now
-                    // just drop though for now...
-                case INTRINSIC_STD_VA_ARG:
-                    op1 = ce.nextArg();
-                    /* signature is (inout va_list), but VA_ARG_EXPR expects the
-                       list itself... but not if the va_list type is an array.  In that
-                       case, it should be a pointer.  */
-                    if (TREE_CODE(d_va_list_type_node) != ARRAY_TYPE)
-                    {
-                        if (TREE_CODE(op1) == ADDR_EXPR)
-                        {
-                            op1 = TREE_OPERAND(op1, 0);
-                        }
-                        else
-                        {   /* this probably doesn't happen... passing an inout va_list argument,
-                               but again,  it's probably { & (* inout_arg) }  */
-                            op1 = indirect(op1);
-                        }
-                    }
-#if SARRAYVALUE
-                    else
-                    {   // list would be passed by value, convert to reference.
-                        tree t = TREE_TYPE(op1);
-                        gcc_assert(TREE_CODE(t) == ARRAY_TYPE);
-                        op1 = addressOf(op1);
-                    }
+            case INTRINSIC_INP:
+            case INTRINSIC_INPL:
+            case INTRINSIC_INPW:
+#ifdef TARGET_386
+                type = TREE_TYPE(call_exp);
+                d_type = Type::tuns16;
+
+                op1 = ce.nextArg();
+                // %% Port is always cast to ushort
+                op1 = d_convert_basic(d_type->toCtype(), op1);
+                op2 = localVar(type);
+                return expandPortIntrinsic(intrinsic, op1, op2, 0);
 #endif
-                    op1 = fix_d_va_list_type(op1);
-                    type = TREE_TYPE(TREE_TYPE(callee));
-                    if (splitDynArrayVarArgs && (d_type = getDType(type)) &&
-                            d_type->toBasetype()->ty == Tarray)
-                    {   /* should create a temp var of type TYPE and move the binding
-                           to outside this expression.  */
-                        op1 = stabilize_reference(op1);
-                        tree ltype = TREE_TYPE(TYPE_FIELDS(type));
-                        tree ptype = TREE_TYPE(TREE_CHAIN(TYPE_FIELDS(type)));
-                        tree lvar = exprVar(ltype);
-                        tree pvar = exprVar(ptype);
-                        tree e1 = vmodify(lvar, build1(VA_ARG_EXPR, ltype, op1));
-                        tree e2 = vmodify(pvar, build1(VA_ARG_EXPR, ptype, op1));
-                        tree b = compound(compound(e1, e2), darrayVal(type, lvar, pvar));
-                        return binding(lvar, binding(pvar, b));
-                    }
-                    else
-                    {
-                        tree type2 = d_type_promotes_to(type);
-                        op1 = build1(VA_ARG_EXPR, type2, op1);
-                        if (type != type2)
-                        {   // silently convert promoted type...
-                            op1 = d_convert_basic(type, op1);
-                        }
-                        return op1;
-                    }
-                    break;
+                // else fall through to error below.
+            case INTRINSIC_OUTP:
+            case INTRINSIC_OUTPL:
+            case INTRINSIC_OUTPW:
+#ifdef TARGET_386
+                type = TREE_TYPE(call_exp);
+                d_type = Type::tuns16;
 
-                case INTRINSIC_C_VA_START:
-                    /* The va_list argument should already have its
-                       address taken.  The second argument, however, is
-                       inout and that needs to be fixed to prevent a warning.  */
-                    op1 = ce.nextArg();
-                    type = TREE_TYPE(op1);
-                    // kinda wrong... could be casting.. so need to check type too?
-                    while (TREE_CODE(op1) == NOP_EXPR)
-                        op1 = TREE_OPERAND(op1, 0);
+                op1 = ce.nextArg();
+                // %% Port is always cast to ushort
+                op1 = d_convert_basic(d_type->toCtype(), op1);
+                op2 = ce.nextArg();
+                return expandPortIntrinsic(intrinsic, op1, op2, 1);
+#else
+                ::error("Port I/O intrinsic '%s' is only available on ix86 targets",
+                        IDENTIFIER_POINTER(DECL_NAME(callee)));
+                break;
+#endif
 
+            case INTRINSIC_C_VA_ARG:
+                // %% should_check c_promotes_to as in va_arg now
+                // just drop though for now...
+            case INTRINSIC_STD_VA_ARG:
+                op1 = ce.nextArg();
+                /* signature is (inout va_list), but VA_ARG_EXPR expects the
+                   list itself... but not if the va_list type is an array.  In that
+                   case, it should be a pointer.  */
+                if (TREE_CODE(d_va_list_type_node) != ARRAY_TYPE)
+                {
                     if (TREE_CODE(op1) == ADDR_EXPR)
                     {
                         op1 = TREE_OPERAND(op1, 0);
-                        op1 = fix_d_va_list_type(op1);
-                        op1 = addressOf(op1);
                     }
-#if SARRAYVALUE
-                    else if (TREE_CODE(type) == ARRAY_TYPE)
-                    {   // pass list by reference.
-                        op1 = fix_d_va_list_type(op1);
-                        op1 = addressOf(op1);
-                    }
-#endif
                     else
-                    {
-                        op1 = fix_d_va_list_type(op1);
+                    {   /* this probably doesn't happen... passing an inout va_list argument,
+                           but again,  it's probably { & (* inout_arg) }  */
+                        op1 = indirect(op1);
                     }
-                    op2 = ce.nextArg();
-                    if (TREE_CODE(op2) == ADDR_EXPR)
-                        op2 = TREE_OPERAND(op2, 0);
-                    // assuming nobody tries to change the return type
-                    return buildCall(built_in_decls[BUILT_IN_VA_START], 2, op1, op2);
+                }
+#if SARRAYVALUE
+                else
+                {   // list would be passed by value, convert to reference.
+                    tree t = TREE_TYPE(op1);
+                    gcc_assert(TREE_CODE(t) == ARRAY_TYPE);
+                    op1 = addressOf(op1);
+                }
+#endif
+                op1 = fix_d_va_list_type(op1);
+                type = TREE_TYPE(TREE_TYPE(callee));
+                if (splitDynArrayVarArgs && (d_type = getDType(type)) &&
+                        d_type->toBasetype()->ty == Tarray)
+                {   /* should create a temp var of type TYPE and move the binding
+                       to outside this expression.  */
+                    op1 = stabilize_reference(op1);
+                    tree ltype = TREE_TYPE(TYPE_FIELDS(type));
+                    tree ptype = TREE_TYPE(TREE_CHAIN(TYPE_FIELDS(type)));
+                    tree lvar = exprVar(ltype);
+                    tree pvar = exprVar(ptype);
+                    tree e1 = vmodify(lvar, build1(VA_ARG_EXPR, ltype, op1));
+                    tree e2 = vmodify(pvar, build1(VA_ARG_EXPR, ptype, op1));
+                    tree b = compound(compound(e1, e2), darrayVal(type, lvar, pvar));
+                    return binding(lvar, binding(pvar, b));
+                }
+                else
+                {
+                    tree type2 = d_type_promotes_to(type);
+                    op1 = build1(VA_ARG_EXPR, type2, op1);
+                    if (type != type2)
+                    {   // silently convert promoted type...
+                        op1 = d_convert_basic(type, op1);
+                    }
+                    return op1;
+                }
+                break;
 
-                default:
-                    gcc_unreachable();
-            }
+            case INTRINSIC_C_VA_START:
+                /* The va_list argument should already have its
+                   address taken.  The second argument, however, is
+                   inout and that needs to be fixed to prevent a warning.  */
+                op1 = ce.nextArg();
+                type = TREE_TYPE(op1);
+                // kinda wrong... could be casting.. so need to check type too?
+                while (TREE_CODE(op1) == NOP_EXPR)
+                    op1 = TREE_OPERAND(op1, 0);
+
+                if (TREE_CODE(op1) == ADDR_EXPR)
+                {
+                    op1 = TREE_OPERAND(op1, 0);
+                    op1 = fix_d_va_list_type(op1);
+                    op1 = addressOf(op1);
+                }
+#if SARRAYVALUE
+                else if (TREE_CODE(type) == ARRAY_TYPE)
+                {   // pass list by reference.
+                    op1 = fix_d_va_list_type(op1);
+                    op1 = addressOf(op1);
+                }
+#endif
+                else
+                {
+                    op1 = fix_d_va_list_type(op1);
+                }
+                op2 = ce.nextArg();
+                if (TREE_CODE(op2) == ADDR_EXPR)
+                    op2 = TREE_OPERAND(op2, 0);
+                // assuming nobody tries to change the return type
+                return buildCall(built_in_decls[BUILT_IN_VA_START], 2, op1, op2);
+
+            default:
+                gcc_unreachable();
         }
     }
 

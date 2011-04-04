@@ -48,10 +48,6 @@ IRBase::startFunction(FuncDeclaration * decl)
 
     tree decl_tree = decl->toSymbol()->Stree;
 
-    // %%MOVE to ofile -- shuold be able to do after codegen
-    // Need to do this for GCC 3.4 or functions will not be emitted
-    d_add_global_function(decl_tree);
-
     g.irs = (IRState*) new_irs;
     ModuleInfo & mi = * g.mi();
 #if V2
