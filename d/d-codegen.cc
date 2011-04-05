@@ -931,7 +931,7 @@ IRState::hwi2toli(HOST_WIDE_INT low, HOST_WIDE_INT high)
 {
     dinteger_t result;
 
-    if (high == 0 || sizeof(HOST_WIDE_INT) > sizeof(dinteger_t))
+    if (high == 0 || sizeof(HOST_WIDE_INT) >= sizeof(dinteger_t))
         result = low;
     else
     {
