@@ -104,7 +104,7 @@ d_build_binary_op (tree_code code, tree orig_op0, tree orig_op1, int convert_p)
     {
         result_type = type1;
     }
-#if ENABLE_CHECKING
+#if D_GCC_VER >= 44
     /* If integral, need to convert unsigned/signed comparison for GCC >= 4.4.x
        Will also need to convert if type precisions differ. */
     else if (INTEGRAL_TYPE_P (type0) && INTEGRAL_TYPE_P (type1))
