@@ -98,11 +98,9 @@ static char lang_name[6] = "GNU D";
 #if D_GCC_VER >= 45
 #undef LANG_HOOKS_EH_PERSONALITY
 #undef LANG_HOOKS_EH_RUNTIME_TYPE
-#undef LANG_HOOKS_EH_USE_CXA_END_CLEANUP
 
 #define LANG_HOOKS_EH_PERSONALITY           d_eh_personality
 #define LANG_HOOKS_EH_RUNTIME_TYPE          d_build_eh_type_type
-#define LANG_HOOKS_EH_USE_CXA_END_CLEANUP   true
 #endif
 
 /* Lang Hooks for decls */
