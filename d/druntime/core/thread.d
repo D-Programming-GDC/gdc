@@ -490,7 +490,11 @@ else version( Posix )
         }
         body
         {
-            version( D_InlineAsm_X86 )
+            version( GNU )
+            {
+                __builtin_unwind_init();
+            }
+            else version( D_InlineAsm_X86 )
             {
                 asm
                 {
@@ -518,11 +522,8 @@ else version( Posix )
                     push R14 ;
                     push R15 ;
                     push EAX ;   // 16 byte align the stack
+
                 }
-            }
-            else version( GNU )
-            {
-                __builtin_unwind_init();
             }
             else
             {
@@ -566,7 +567,11 @@ else version( Posix )
                 }
             }
 
-            version( D_InlineAsm_X86 )
+            version( GNU )
+            {
+                // registers will be popped automatically
+            }
+            else version( D_InlineAsm_X86 )
             {
                 asm
                 {
@@ -595,10 +600,6 @@ else version( Posix )
                     pop RBX ;
                     pop RAX ;
                 }
-            }
-            else version( GNU )
-            {
-                // registers will be popped automatically
             }
             else
             {

@@ -380,7 +380,7 @@ enum OprVals
     OprC_AbsRel   = 0x400,
     OprC_Relative = 0x800,
     OprC_Port     = 0x1000, // DX or imm
-    OprC_AX       = 0x2000, // AL,AX,EAX
+    OprC_AX       = 0x2000, // AL,AX,EAX,RAX
     OprC_DX       = 0x4000, // only DX
     OprC_MMX      = 0x8000,
     OprC_MMX_Mem  = 0x10000,
@@ -1232,7 +1232,6 @@ static AsmOpEnt opData64[] = {
     { "daa",    Op_Invalid },
     { "das",    Op_Invalid },
     { "even",   Op_Invalid },
-    { "imul",   Op_DstSrcNT },
     { "iretq",  Op_iretq },
     { "les",    Op_Invalid },
     { "jmpe",   Op_Branch },
@@ -1245,7 +1244,6 @@ static AsmOpEnt opData64[] = {
     { "movsq",  Op_movsd },
     { "movsxd", Op_movsx },
     { "movzbl", Op_DstSrcNT  },
-    { "mul",    Op_DstSrcNT  },
     { "pabsb",  Op_DstSrcSSE },
     { "pabsw",  Op_DstSrcSSE },
     { "pabsq",  Op_DstSrcSSE },
@@ -1259,7 +1257,6 @@ static AsmOpEnt opData64[] = {
     { "phsubw",  Op_DstSrcSSE },
     { "pmaddubsw", Op_DstSrcSSE },
     { "pmulhrsw",  Op_DstSrcMMX },
-    { "pop",    Op_Invalid },
     { "popa",   Op_Invalid },
     { "popad",  Op_Invalid },
     { "popfd",  Op_Invalid },
@@ -1269,7 +1266,6 @@ static AsmOpEnt opData64[] = {
     { "psignb", Op_DstSrcSSE },
     { "psignd", Op_DstSrcSSE },
     { "psignw", Op_DstSrcSSE },
-    { "push",   Op_Invalid },
     { "pusha",  Op_Invalid },
     { "pushad", Op_Invalid },
     { "pushfd", Op_Invalid },

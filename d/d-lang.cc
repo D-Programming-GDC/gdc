@@ -414,8 +414,8 @@ d_init ()
             if (strcmp(cpu_versym, "X86") == 0)
                 VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86");
             // TODO: Uncomment this once phobos builds with it turned on.
-            //else if (strcmp(cpu_versym, "X86_64") == 0)
-            //    VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86_64");
+            else if (strcmp(cpu_versym, "X86_64") == 0)
+                VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86_64");
         }
 
         /* Should define this anyway to set us apart from the competition. */
