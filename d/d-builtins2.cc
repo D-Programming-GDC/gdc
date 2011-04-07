@@ -49,8 +49,8 @@ d_bi_init()
     if (TREE_CODE(va_list_type_node) == ARRAY_TYPE)
         TYPE_MAIN_VARIANT(TREE_TYPE(d_va_list_type_node)) =
                 TYPE_MAIN_VARIANT(TREE_TYPE(va_list_type_node));
-    else
-        TYPE_MAIN_VARIANT(d_va_list_type_node) =
+
+    TYPE_MAIN_VARIANT(d_va_list_type_node) =
                 TYPE_MAIN_VARIANT(va_list_type_node);
 #else
     // The "standard" abi va_list is va_list_type_node.
@@ -175,6 +175,13 @@ gcc_type_to_d_type(tree t)
         }
         case ARRAY_TYPE:
         {
+            for (unsigned i = 0; i < builtin_converted_types.dim; i += 2)
+            {
+                tree ti = (tree) builtin_converted_types.data[i];
+                if (ti == t)
+                    return (Type *) builtin_converted_types.data[i + 1];
+            }
+
             d = gcc_type_to_d_type(TREE_TYPE(t));
             if (d)
             {
@@ -189,7 +196,10 @@ gcc_type_to_d_type(tree t)
                 d = new TypeSArray(d,
                         new IntegerExp(0, gen.getTargetSizeConst(length),
                             Type::tindex));
+                d->semantic(0, NULL);
                 d->ctype = t;
+                builtin_converted_types.push(t);
+                builtin_converted_types.push(d);
                 return d;
             }
             break;

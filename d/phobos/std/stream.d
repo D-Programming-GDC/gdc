@@ -352,7 +352,7 @@ interface OutputStream {
    */
   OutputStream writef(...);
   OutputStream writefln(...); /// ditto
-  OutputStream writefx(TypeInfo[] arguments, void* argptr, int newline = false);  /// ditto
+  OutputStream writefx(TypeInfo[] arguments, va_list argptr, int newline = false);  /// ditto
 
   void flush(); /// Flush pending output if appropriate.
   void close(); /// Close the stream, flushing output if appropriate.
@@ -1189,7 +1189,7 @@ class Stream : InputStream, OutputStream {
   }
 
   // writes data with optional trailing newline
-  OutputStream writefx(TypeInfo[] arguments, void* argptr, int newline=false) {
+  OutputStream writefx(TypeInfo[] arguments, va_list argptr, int newline=false) {
     doFormat(&doFormatCallback,arguments,argptr);
     if (newline)
       writeLine("");

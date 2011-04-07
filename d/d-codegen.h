@@ -358,7 +358,7 @@ struct IRState : IRBase
                but some targets use an array. So fix it.  */
             else if (TYPE_MAIN_VARIANT(exp_type) == TYPE_MAIN_VARIANT(va_list_type_node))
             {
-                if (TREE_CODE(exp_type) == ARRAY_TYPE)
+                if (TREE_CODE(TYPE_MAIN_VARIANT(exp_type)) == ARRAY_TYPE)
                     ptrtype = build_pointer_type(TREE_TYPE(exp_type));
                 else
                     ptrtype = build_pointer_type(exp_type);

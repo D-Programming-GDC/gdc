@@ -967,7 +967,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
             {   TypeInfo_Struct tis = cast(TypeInfo_Struct)ti;
                 if (tis.xtoString is null)
                     throw new FormatError("Can't convert " ~ tis.toString() ~ " to string: \"string toString()\" not defined");
-                static if (is(__va_list : void[]) || is(__va_list == struct))
+                static if (is(va_list : void[]) || is(va_list == struct))
                 {
                     version(PPC)
                     {

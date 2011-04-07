@@ -1595,9 +1595,8 @@ IRState::getLibCallDecl(LibCall lib_call)
 static tree
 fix_d_va_list_type(tree val)
 {
-    tree va_type = TREE_TYPE(val);
-
-    if (POINTER_TYPE_P(va_type) || INTEGRAL_TYPE_P(va_type))
+    if (POINTER_TYPE_P(va_list_type_node)
+	    || INTEGRAL_TYPE_P(va_list_type_node))
         return build1(NOP_EXPR, va_list_type_node, val);
     else
         return val;
@@ -1882,12 +1881,12 @@ IRState::expandPortIntrinsic(Intrinsic code, tree port, tree value, int outp)
 
     switch(code)
     {
-        case INTRINSIC_INP:     insn_string = "inb %1, %0"; break;
-        case INTRINSIC_INPL:    insn_string = "inl %1, %0"; break;
-        case INTRINSIC_INPW:    insn_string = "inw %1, %0"; break;
-        case INTRINSIC_OUTP:    insn_string = "outb %0, %1"; break;
-        case INTRINSIC_OUTPL:   insn_string = "outl %0, %1"; break;
-        case INTRINSIC_OUTPW:   insn_string = "outw %0, %1"; break;
+        case INTRINSIC_INP:     insn_string = "inb %w1, %0"; break;
+        case INTRINSIC_INPL:    insn_string = "inl %w1, %0"; break;
+        case INTRINSIC_INPW:    insn_string = "inw %w1, %0"; break;
+        case INTRINSIC_OUTP:    insn_string = "outb %b0, %w1"; break;
+        case INTRINSIC_OUTPL:   insn_string = "outl %0, %w1";  break;
+        case INTRINSIC_OUTPW:   insn_string = "outw %w0, %w1"; break;
         default:
             gcc_unreachable();
     }

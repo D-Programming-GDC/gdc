@@ -85,6 +85,7 @@ module std.boxer;
 private import std.format;
 private import std.string;
 private import std.utf;
+version(GNU) private import std.c.stdarg;
 import std.exception;
 
  /* These functions and types allow packing objects into generic containers
@@ -304,7 +305,7 @@ struct Box
         args[(char[]).sizeof..$] = data;
         version (GNU)
         {
-            void* dummy = void;
+            va_list dummy = void;
             std.format.doFormatPtr(&putc, arguments, dummy, args.ptr);
         }
         else

@@ -296,7 +296,7 @@ struct Box
         args[(char[]).sizeof..length] = data;
         version (GNU)
         {
-            void* dummy = void;
+            va_list dummy = void;
             std.format.doFormatPtr(&putc, arguments, dummy, args.ptr);
         }
         else

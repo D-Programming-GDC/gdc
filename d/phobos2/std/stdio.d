@@ -27,6 +27,9 @@ import std.algorithm, std.array, std.conv, std.exception, std.file, std.format,
     std.range, std.string, std.traits, std.typecons,
     std.typetuple, std.utf;
 
+version (GNU)
+    import core.vararg;
+
 version (DigitalMars) version (Windows)
 {
     // Specific to the way Digital Mars C does stdio
@@ -1355,7 +1358,7 @@ unittest
 }
 
 private
-void writefx(FILE* fps, TypeInfo[] arguments, void* argptr, int newline=false)
+void writefx(FILE* fps, TypeInfo[] arguments, va_list argptr, int newline=false)
 {
     int orientation = fwide(fps, 0);    // move this inside the lock?
 
