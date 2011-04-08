@@ -196,8 +196,9 @@ gcc_type_to_d_type(tree t)
                 d = new TypeSArray(d,
                         new IntegerExp(0, gen.getTargetSizeConst(length),
                             Type::tindex));
-                d->semantic(0, NULL);
+                d = d->semantic(0, NULL);
                 d->ctype = t;
+
                 builtin_converted_types.push(t);
                 builtin_converted_types.push(d);
                 return d;

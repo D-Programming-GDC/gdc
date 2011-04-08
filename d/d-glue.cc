@@ -50,13 +50,8 @@ elem *
 CondExp::toElem(IRState * irs)
 {
     tree cn = irs->convertForCondition(econd);
-#if ENABLE_CHECKING
     tree t1 = irs->convertTo(e1, type);
     tree t2 = irs->convertTo(e2, type);
-#else
-    tree t1 = e1->toElem(irs);
-    tree t2 = e2->toElem(irs);
-#endif
     return build3(COND_EXPR, type->toCtype(), cn, t1, t2);
 }
 
@@ -2038,10 +2033,6 @@ VarExp::toElem(IRState* irs)
             TREE_THIS_VOLATILE(e) = 1;
         }
     }
-#if ENABLE_CHECKING
-    if (!irs->typesCompatible(var->type, type))
-        e = irs->convertTo(e, var->type, type);
-#endif
     return e;
 }
 
@@ -3777,6 +3768,14 @@ TypeDArray::toCtype()
             ctype = gen.twoFieldType(Type::tsize_t, next->pointerTo(), this,
                     "length", "ptr");
         }
+#if V2
+        if (basic[next->ty])
+        {   /* Basic array type always the main variant of this record type.
+               Addresses problems with transparency in the const system. */
+            tree btype = basic[next->ty]->arrayOf()->toCtype();
+            TYPE_MAIN_VARIANT(ctype) = btype;
+        }
+#endif
         dkeep(ctype);
     }
     return gen.addTypeModifiers(ctype, mod);
