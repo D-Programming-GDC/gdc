@@ -238,6 +238,7 @@ enum AsmOp
     Op_DstW,
     Op_DstF,
     Op_UpdF,
+    Op_DstQ,
     Op_DstSrc,
     Op_DstSrcF,
     Op_UpdSrcF,
@@ -475,6 +476,7 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_DstW      */  { D|mr,  0,    0,    Word_Types  },
     /* Op_DstF      */  { D|mr,  0,    0,    1, Clb_Flags },
     /* Op_UpdF      */  { U|mr,  0,    0,    1, Clb_Flags },
+    /* Op_DstQ      */  { D|mr,  0,    0,    0  },
     /* Op_DstSrc    */  { D|mr,  mri,  0,/**/1  },
     /* Op_DstSrcF   */  { D|mr,  mri,  0,/**/1, Clb_Flags },
     /* Op_UpdSrcF   */  { U|mr,  mri,  0,/**/1, Clb_Flags },
@@ -1258,6 +1260,7 @@ static AsmOpEnt opData64[] = {
     { "phsubw",  Op_DstSrcSSE },
     { "pmaddubsw", Op_DstSrcSSE },
     { "pmulhrsw",  Op_DstSrcMMX },
+    { "pop",    Op_DstQ },
     { "popa",   Op_Invalid },
     { "popad",  Op_Invalid },
     { "popfd",  Op_Invalid },
@@ -1267,6 +1270,7 @@ static AsmOpEnt opData64[] = {
     { "psignb", Op_DstSrcSSE },
     { "psignd", Op_DstSrcSSE },
     { "psignw", Op_DstSrcSSE },
+    { "push",   Op_pushq },
     { "pusha",  Op_Invalid },
     { "pushad", Op_Invalid },
     { "pushfd", Op_Invalid },
@@ -1469,6 +1473,24 @@ struct AsmProcessor
         }
     }
 
+    AsmOp searchOpdata(Identifier * opIdent, AsmOpEnt * opdata, int nents)
+    {
+        int low = 0, high = nents;
+        do
+        {   // %% okay to use bsearch?
+            int pos = (low + high) / 2;
+            int cmp = strcmp(opIdent->string, opdata[pos].inMnemonic);
+            if (! cmp)
+                return opdata[pos].asmOp;
+            else if (cmp < 0)
+                high = pos;
+            else
+                low = pos + 1;
+        } while (low != high);
+
+        return Op_Invalid;
+    }
+
     AsmOp parseOpcode()
     {
         switch (token->value)
@@ -1501,43 +1523,17 @@ struct AsmProcessor
 
         static const int N_ents = sizeof(opData)/sizeof(AsmOpEnt);
         static const int N_ents64 = sizeof(opData64)/sizeof(AsmOpEnt);
-        int low = 0, high;
 
-        for (int i = 0; i < 2; i++)
+        // Search 64bit opcodes first.
+        if (global.params.isX86_64)
         {
-            AsmOpEnt * opdata;
-
-            // Search 64bit opcodes first.
-            if (i == 0 && global.params.isX86_64)
-            {
-                opdata = opData64;
-                high = N_ents64;
-            }
-            else if (i == 1)
-            {
-                opdata = opData;
-                high = N_ents;
-            }
-            else 
-                continue;
-
-            // %% okay to use bsearch?
-            do
-            {
-                int pos = (low + high) / 2;
-                int cmp = strcmp(opIdent->string, opdata[pos].inMnemonic);
-                if (! cmp)
-                    return opdata[pos].asmOp;
-                else if (cmp < 0)
-                    high = pos;
-                else
-                    low = pos + 1;
-            } while (low != high);
+            AsmOp op = searchOpdata(opIdent, opData64, N_ents64);
+            if (op != Op_Invalid)
+                return op;
         }
-
-        return Op_Invalid;
+        return searchOpdata(opIdent, opData, N_ents);
     }
-
+    
     // need clobber information.. use information is good too...
     void doInstruction()
     {
@@ -1728,7 +1724,9 @@ struct AsmProcessor
                 else if (operand->constDisplacement < 0xFFFFFFFF)
                     operand->dataSize = Int_Ptr;
                 else
-                    operand->dataSize = QWord_Ptr;
+                    operand->dataSize = global.params.isX86_64
+                                            ? QWord_Ptr
+                                            : Int_Ptr;   // %% 32-bit overflow
             }
             return Opr_Immediate;
         }
@@ -1858,7 +1856,7 @@ struct AsmProcessor
             {
                 if (op == Op_push)
                     min_type = Int_Ptr;
-                else if (op == Op_pushq)
+                else if (op == Op_pushq || op == Op_DstQ)
                     min_type = QWord_Ptr;
             }
 
@@ -1993,6 +1991,17 @@ struct AsmProcessor
             }
             default:
             {
+                // special case for 64bit
+                if (global.params.isX86_64 &&
+                    (op == Op_pushq || op == Op_DstQ) &&
+                    operands[0].reg >= Reg_EAX && operands[0].reg <= Reg_ESP)
+                {
+                    // replace:
+                    // {pop,push} EAX -> {pop,push} RAX
+                    int reg = operands[0].reg + Reg_RAX;
+                    operands[0].reg = (Reg) reg;
+                }
+
                 // special case for fdiv, fsub
                 if ((strncmp(mnemonic, "fsub", 4) == 0 ||
                      strncmp(mnemonic, "fdiv", 4) == 0) &&
@@ -2042,21 +2051,13 @@ struct AsmProcessor
         }
 
         if (opInfo->implicitClobbers & Clb_DI)
-        {
             asmcode->clbregs[isX86_64 ? Reg_RDI : Reg_EDI] = 1;
-        }
         if (opInfo->implicitClobbers & Clb_SI)
-        {
             asmcode->clbregs[isX86_64 ? Reg_RSI : Reg_ESI] = 1;
-        }
         if (opInfo->implicitClobbers & Clb_CX)
-        {
             asmcode->clbregs[isX86_64 ? Reg_RCX : Reg_ECX] = 1;
-        }
         if (opInfo->implicitClobbers & Clb_SP)
-        {
-            asmcode->clbregs[Reg_ESP] = 1;
-        }
+            asmcode->clbregs[isX86_64 ? Reg_RSP : Reg_ESP] = 1;
         if (opInfo->implicitClobbers & Clb_ST)
         {   /* Can't figure out how to tell GCC that an
                asm statement leaves an arg pushed on the stack.
@@ -2236,10 +2237,15 @@ struct AsmProcessor
                                a memory expression that does not require us to know
                                the stack offset.
                              */
-                            if (operand->indexReg == Reg_Invalid &&
-                                    decl->isVarDeclaration() &&
-                                    ((operand->baseReg == Reg_EBP && ! sc->func->naked) ||
-                                     (operand->baseReg == Reg_ESP && sc->func->naked)))
+                            bool isBaseRegBP = operand->baseReg == Reg_EBP ||
+                                (global.params.isX86_64 && operand->baseReg == Reg_RBP);
+                            bool isBaseRegSP = operand->baseReg == Reg_ESP ||
+                                (global.params.isX86_64 && operand->baseReg == Reg_RSP);
+                            
+                            if (operand->indexReg == Reg_Invalid
+                                    && decl->isVarDeclaration()
+                                    && ((isBaseRegBP && ! sc->func->naked)
+                                        || (isBaseRegSP && sc->func->naked)))
                             {
                                 e = new AddrExp(0, e);
                                 e->type = decl->type->pointerTo();
@@ -2416,18 +2422,11 @@ struct AsmProcessor
         {
             if (is_offset)
                 invalidExpression();
-            // %% Special case for 64bit.
-            // Replace: EAX,EBX,etc -> RAX,RBX,etc
-            int regVal = exp->toInteger();
-            // Assumes Reg_EAX is 0
-            if (global.params.isX86_64 &&
-                    regVal >= Reg_EAX && regVal <= Reg_ESP)
-                regVal += Reg_RAX;
 
             if (! operand->inBracket)
             {
                 if (operand->reg == Reg_Invalid)
-                    operand->reg = (Reg) regVal;
+                    operand->reg = (Reg) exp->toInteger();
                 else
                     stmt->error("too many registers in operand (use brackets)");
             }
@@ -2435,11 +2434,11 @@ struct AsmProcessor
             {
                 if (operand->baseReg == Reg_Invalid)
                 {
-                    operand->baseReg = (Reg) regVal;
+                    operand->baseReg = (Reg) exp->toInteger();
                 }
                 else if (operand->indexReg == Reg_Invalid)
                 {
-                    operand->indexReg = (Reg) regVal;
+                    operand->indexReg = (Reg) exp->toInteger();
                     operand->scale = 1;
                 }
                 else

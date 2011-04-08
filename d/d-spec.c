@@ -239,14 +239,14 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
             }
             else if (strncmp (argv[i], "-l", 2) == 0)
             {
-	      const char * arg;
-	      if (argv[i][2] != '\0')
-		arg = argv[i]+2;
-	      else if ((argv[i+1]) != NULL)
-		/* We need to swallow arg on next loop.  */
-		quote = arg = argv[i+1];
-  	      else  /* Error condition, message will be printed later.  */
-		arg = "";
+                const char * arg;
+                if (argv[i][2] != '\0')
+                    arg = argv[i]+2;
+                else if ((argv[i+1]) != NULL)
+                    /* We need to swallow arg on next loop.  */
+                    quote = arg = argv[i+1];
+                else  /* Error condition, message will be printed later.  */
+                    arg = "";
 
               if (strcmp (arg, "m") == 0
                   || strcmp (arg, "math") == 0
@@ -273,16 +273,16 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                 saw_debug_flag = 1;
             else if (strncmp (argv[i], "-x", 2) == 0)
             {
-	      const char * arg;
-	      if (argv[i][2] != '\0')
-		arg = argv[i]+2;
-	      else if ((argv[i+1]) != NULL)
-		/* We need to swallow arg on next loop.  */
-		quote = arg = argv[i+1];
-  	      else  /* Error condition, message will be printed later.  */
-		arg = "";
-	      if (library == 0 && (strcmp (arg, "d") == 0))
-		library = 1;
+                const char * arg;
+                if (argv[i][2] != '\0')
+                    arg = argv[i]+2;
+                else if ((argv[i+1]) != NULL)
+                    /* We need to swallow arg on next loop.  */
+                    quote = arg = argv[i+1];
+                else  /* Error condition, message will be printed later.  */
+                    arg = "";
+                if (library == 0 && (strcmp (arg, "d") == 0))
+                    library = 1;
 
                 saw_speclang = 1;
             }

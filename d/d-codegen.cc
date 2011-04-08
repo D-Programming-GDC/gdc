@@ -1596,7 +1596,7 @@ static tree
 fix_d_va_list_type(tree val)
 {
     if (POINTER_TYPE_P(va_list_type_node)
-	    || INTEGRAL_TYPE_P(va_list_type_node))
+            || INTEGRAL_TYPE_P(va_list_type_node))
         return build1(NOP_EXPR, va_list_type_node, val);
     else
         return val;

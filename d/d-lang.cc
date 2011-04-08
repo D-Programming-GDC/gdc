@@ -413,7 +413,6 @@ d_init ()
         {
             if (strcmp(cpu_versym, "X86") == 0)
                 VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86");
-            // TODO: Uncomment this once phobos builds with it turned on.
             else if (strcmp(cpu_versym, "X86_64") == 0)
                 VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86_64");
         }
@@ -851,7 +850,7 @@ d_dump_tree (void *dump_info , tree t)
 #if D_GCC_VER >= 44
 int
 d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
-		 gimple_seq *post_p ATTRIBUTE_UNUSED)
+                 gimple_seq *post_p ATTRIBUTE_UNUSED)
 {
     enum tree_code code = TREE_CODE (*expr_p);
     switch (code)
@@ -868,7 +867,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 #else
 int
 d_gimplify_expr (tree *expr_p, tree *pre_p ATTRIBUTE_UNUSED,
-		 tree *post_p ATTRIBUTE_UNUSED)
+                 tree *post_p ATTRIBUTE_UNUSED)
 {
     enum tree_code code = TREE_CODE (*expr_p);
     switch (code)

@@ -3595,10 +3595,13 @@ TypeStruct::toCtype()
                 ofs += 4;
             }
         }
-
         agg_layout.finish(sym->attributes);
+#if V2
+        // As per TypeDArray::toCtype, don't distinguish const from mutable types.
+        TYPE_MAIN_VARIANT(ctype) = mutableOf()->toCtype();
+#endif
     }
-    return ctype;
+    return gen.addTypeModifiers(ctype, mod);
 }
 
 void
