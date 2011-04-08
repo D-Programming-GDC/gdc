@@ -1232,6 +1232,7 @@ static AsmOpEnt opData64[] = {
     { "daa",    Op_Invalid },
     { "das",    Op_Invalid },
     { "even",   Op_Invalid },
+    { "into",   Op_Invalid },
     { "iretq",  Op_iretq },
     { "les",    Op_Invalid },
     { "jmpe",   Op_Branch },
@@ -1810,6 +1811,8 @@ struct AsmProcessor
         bool use_star;
         AsmArgMode mode;
 
+        static bool isX86_64 = global.params.isX86_64;
+
         insnTemplate = new OutBuffer;
         if (opInfo->linkType == Out_Mnemonic)
             mnemonic = alternateMnemonics[opInfo->link];
@@ -2026,12 +2029,12 @@ struct AsmProcessor
         {
             case Clb_SizeAX:
             case Clb_EAX:
-                asmcode->clbregs[Reg_EAX] = 1;
+                asmcode->clbregs[isX86_64 ? Reg_RAX : Reg_EAX] = 1;
                 break;
             case Clb_SizeDXAX:
-                asmcode->clbregs[Reg_EAX] = 1;
+                asmcode->clbregs[isX86_64 ? Reg_RAX : Reg_EAX] = 1;
                 if (type_char != 'b')
-                    asmcode->clbregs[Reg_EDX] = 1;
+                    asmcode->clbregs[isX86_64 ? Reg_RDX : Reg_EDX] = 1;
                 break;
             default:
                 // nothing
@@ -2039,13 +2042,21 @@ struct AsmProcessor
         }
 
         if (opInfo->implicitClobbers & Clb_DI)
-            asmcode->clbregs[Reg_EDI] = 1;
+        {
+            asmcode->clbregs[isX86_64 ? Reg_RDI : Reg_EDI] = 1;
+        }
         if (opInfo->implicitClobbers & Clb_SI)
-            asmcode->clbregs[Reg_ESI] = 1;
+        {
+            asmcode->clbregs[isX86_64 ? Reg_RSI : Reg_ESI] = 1;
+        }
         if (opInfo->implicitClobbers & Clb_CX)
-            asmcode->clbregs[Reg_ECX] = 1;
+        {
+            asmcode->clbregs[isX86_64 ? Reg_RCX : Reg_ECX] = 1;
+        }
         if (opInfo->implicitClobbers & Clb_SP)
+        {
             asmcode->clbregs[Reg_ESP] = 1;
+        }
         if (opInfo->implicitClobbers & Clb_ST)
         {   /* Can't figure out how to tell GCC that an
                asm statement leaves an arg pushed on the stack.
@@ -2405,10 +2416,18 @@ struct AsmProcessor
         {
             if (is_offset)
                 invalidExpression();
+            // %% Special case for 64bit.
+            // Replace: EAX,EBX,etc -> RAX,RBX,etc
+            int regVal = exp->toInteger();
+            // Assumes Reg_EAX is 0
+            if (global.params.isX86_64 &&
+                    regVal >= Reg_EAX && regVal <= Reg_ESP)
+                regVal += Reg_RAX;
+
             if (! operand->inBracket)
             {
                 if (operand->reg == Reg_Invalid)
-                    operand->reg = (Reg) exp->toInteger();
+                    operand->reg = (Reg) regVal;
                 else
                     stmt->error("too many registers in operand (use brackets)");
             }
@@ -2416,11 +2435,11 @@ struct AsmProcessor
             {
                 if (operand->baseReg == Reg_Invalid)
                 {
-                    operand->baseReg = (Reg) exp->toInteger();
+                    operand->baseReg = (Reg) regVal;
                 }
                 else if (operand->indexReg == Reg_Invalid)
                 {
-                    operand->indexReg = (Reg) exp->toInteger();
+                    operand->indexReg = (Reg) regVal;
                     operand->scale = 1;
                 }
                 else
