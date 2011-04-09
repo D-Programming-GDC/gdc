@@ -15,18 +15,13 @@
  */
 module core.atomic;
 
-version( GNU )
-{
-    // %% TODO: Add detection in configure
-    version = GNU_Need_Atomics;
-}
-else version( D_InlineAsm_X86 )
+version( D_InlineAsm_X86 )
 {
     version = AsmX86;
     version = AsmX86_32;
     enum has64BitCAS = true;
 }
-else version( D_InlineAsm_X86_64 )
+version( D_InlineAsm_X86_64 )
 {
     version = AsmX86;
     version = AsmX86_64;
@@ -97,7 +92,8 @@ version( D_Ddoc )
 }
 else version( GNU )
 {
-    public import gcc.builtins;
+    import gcc.atomics;
+    import gcc.builtins;
 
     T atomicOp(string op, T, V1)( ref shared T val, V1 mod )
         if( is( NakedType!(V1) == NakedType!(T) ) )
@@ -127,10 +123,10 @@ else version( GNU )
                    op == "^=" || op == "<<=" || op == ">>=" || op == ">>>=" ) // skip "~="
         {
             T get, set;
-            
+
             do
             {
-                get = set = atomicLoad!(T)( val );
+                get = set = atomicLoad!(msync.raw)( val );
                 mixin( "set " ~ op ~ " mod;" );
             } while( !cas( &val, get, set ) );
             return set;
@@ -140,125 +136,104 @@ else version( GNU )
             static assert( false, "Operation not supported." );
         }
     }
-    
-    
-    bool cas(T,V1,V2)( shared(T)* val, const V1 oldval, const V2 newval )
+
+
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
         if( is( NakedType!(V1) == NakedType!(T) ) &&
             is( NakedType!(V2) == NakedType!(T) ) )
     {
-    version( GNU_Need_Atomics )
-    {
-        synchronized
-        {
-            if (*val == oldval)
-            {
-                if((*val = newval) == newval)
-                    return true;
-            }
-        }
-        return false;
-    }
-    else
-    {
-        static if( T.sizeof == byte.sizeof )
-        {
-            //////////////////////////////////////////////////////////////////
-            // 1 Byte CAS
-            //////////////////////////////////////////////////////////////////
-
-            return __sync_bool_compare_and_swap_1(cast(void*)val, oldval, newval);
-
-        }
-        else static if( T.sizeof == short.sizeof )
-        {
-            //////////////////////////////////////////////////////////////////
-            // 2 Byte CAS
-            //////////////////////////////////////////////////////////////////
-
-            return __sync_bool_compare_and_swap_2(cast(void*)val, oldval, newval);
-
-        }
-        else static if( T.sizeof == int.sizeof )
-        {
-            //////////////////////////////////////////////////////////////////
-            // 4 Byte CAS
-            //////////////////////////////////////////////////////////////////
-
-            return __sync_bool_compare_and_swap_4(cast(void*)val, oldval, newval);
-
-        }
-        else static if( T.sizeof == long.sizeof )
-        {
-            //////////////////////////////////////////////////////////////////
-            // 8 Byte CAS on a 32-Bit Processor
-            //////////////////////////////////////////////////////////////////
-
-            return __sync_bool_compare_and_swap_8(cast(void*)val, oldval, newval);
-
-        }
-        else
-        {
-            static assert( false, "Invalid template type specified." );
-        }
-    } // GNU_Need_Atomics
-    }
-    
-    
-    private
-    {
-        T atomicLoad(T)( const ref shared T val )
-        {
         version( GNU_Need_Atomics )
         {
             synchronized
             {
-                T result = val;
-                return result;
+                if (*here == ifThis)
+                {
+                    if ((*here = writeThis) == writeThis)
+                        return true;
+                }
+                return false;
             }
         }
         else
         {
-            static if( T.sizeof == byte.sizeof )
+            return __sync_bool_compare_and_swap!(T)(here, ifThis, writeThis);
+        }
+    }
+
+
+    private
+    {
+        template isHoistOp(msync ms)
+        {
+            enum bool isHoistOp = ms == msync.acq ||
+                                  ms == msync.seq;
+        }
+
+
+        template isSinkOp(msync ms)
+        {
+            enum bool isSinkOp = ms == msync.rel ||
+                                 ms == msync.seq;
+        }
+
+
+        // NOTE: While x86 loads have acquire semantics for stores, it appears
+        //       that independent loads may be reordered by some processors
+        //       (notably the AMD64).  This implies that the hoist-load barrier
+        //       op requires an ordering instruction, which also extends this
+        //       requirement to acquire ops (though hoist-store should not need
+        //       one if support is added for this later).  However, since no
+        //       modern architectures will reorder dependent loads to occur
+        //       before the load they depend on (except the Alpha), raw loads
+        //       are actually a possible means of ordering specific sequences
+        //       of loads in some instances.
+        //
+        //       For reference, the old behavior (acquire semantics for loads)
+        //       required a memory barrier if: ms == msync.seq || isSinkOp!(ms)
+        template needsLoadBarrier( msync ms )
+        {
+            const bool needsLoadBarrier = ms != msync.raw;
+        }
+
+
+        enum msync
+        {
+            raw,    /// not sequenced
+            acq,    /// hoist-load + hoist-store barrier
+            rel,    /// sink-load + sink-store barrier
+            seq,    /// fully sequenced (acq + rel)
+        }
+
+
+        T atomicLoad(msync ms = msync.seq, T)( const ref shared T val )
+        {
+            shared lock = 0;
+            T loadval;
+
+            version( GNU_Need_Atomics )
             {
-                //////////////////////////////////////////////////////////////////
-                // 1 Byte Load
-                //////////////////////////////////////////////////////////////////
-
-                return __sync_fetch_and_add_1(cast(void*)val, 0);
-
-            }
-            else static if( T.sizeof == short.sizeof )
-            {
-                //////////////////////////////////////////////////////////////////
-                // 2 Byte Load
-                //////////////////////////////////////////////////////////////////
-
-                return __sync_fetch_and_add_2(cast(void*)val, 0);
-
-            }
-            else static if( T.sizeof == int.sizeof )
-            {
-                //////////////////////////////////////////////////////////////////
-                // 4 Byte Load
-                //////////////////////////////////////////////////////////////////
-
-                return __sync_fetch_and_add_4(cast(void*)val, 0);
-
-            }
-            else static if( T.sizeof == long.sizeof )
-            {
-                //////////////////////////////////////////////////////////////////
-                // 8 Byte Load on a 32-Bit Processor
-                //////////////////////////////////////////////////////////////////
-
-                return __sync_fetch_and_add_8(cast(void*)val, 0);
-
+                static if( needsLoadBarrier!(ms) )
+                {
+                    synchronized loadval = val;
+                }
+                else
+                {
+                    loadval = val;
+                }
             }
             else
             {
-                static assert( false, "Invalid template type specified." );
+                static if( needsLoadBarrier!(ms) )
+                {
+                    __sync_synchronize();
+                }
+
+                __sync_lock_test_and_set!(typeof(lock))(&lock, 1);
+                loadval = val;
+                __sync_lock_release!(typeof(lock))(&lock);
             }
-        } // GNU_Need_Atomics
+
+            return loadval;
         }
     }
 }

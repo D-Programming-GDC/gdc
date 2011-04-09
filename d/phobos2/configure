@@ -5769,7 +5769,7 @@ fi
 
 
 if test -z "$DFLAGS"; then
-    DFLAGS="-Wall -g -frelease -O2"
+    DFLAGS="-Wall -g -frelease -O2 -finline-functions"
 fi
 
 

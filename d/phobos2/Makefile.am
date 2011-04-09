@@ -135,7 +135,7 @@ CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
 
 GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
          gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
-         gcc/cbridge_time.o gcc/cbridge_strerror.o gcc/bitmanip.o
+         gcc/cbridge_time.o gcc/cbridge_strerror.o gcc/atomics.o
 
 UTIL_OBJS=rt/util/console.o rt/util/ctype.o rt/util/hash.o rt/util/string.o \
           rt/util/utf.o
