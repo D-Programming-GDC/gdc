@@ -90,153 +90,6 @@ version( D_Ddoc )
          return false;
      }
 }
-else version( GNU )
-{
-    import gcc.atomics;
-    import gcc.builtins;
-
-    T atomicOp(string op, T, V1)( ref shared T val, V1 mod )
-        if( is( NakedType!(V1) == NakedType!(T) ) )
-    {
-        // binary operators
-        //
-        // +    -   *   /   %   ^^  &
-        // |    ^   <<  >>  >>> ~   in
-        // ==   !=  <   <=  >   >=
-        static if( op == "+"  || op == "-"  || op == "*"  || op == "/"   ||
-                   op == "%"  || op == "^^" || op == "&"  || op == "|"   ||
-                   op == "^"  || op == "<<" || op == ">>" || op == ">>>" ||
-                   op == "~"  || // skip "in"
-                   op == "==" || op == "!=" || op == "<"  || op == "<="  ||
-                   op == ">"  || op == ">=" )
-        {
-            T get = atomicLoad!(msync.raw)( val );
-            mixin( "return get " ~ op ~ " mod;" );
-        }
-        else
-        // assignment operators
-        //
-        // +=   -=  *=  /=  %=  ^^= &=
-        // |=   ^=  <<= >>= >>>=    ~=
-        static if( op == "+=" || op == "-="  || op == "*="  || op == "/=" ||
-                   op == "%=" || op == "^^=" || op == "&="  || op == "|=" ||
-                   op == "^=" || op == "<<=" || op == ">>=" || op == ">>>=" ) // skip "~="
-        {
-            T get, set;
-
-            do
-            {
-                get = set = atomicLoad!(msync.raw)( val );
-                mixin( "set " ~ op ~ " mod;" );
-            } while( !cas( &val, get, set ) );
-            return set;
-        }
-        else
-        {
-            static assert( false, "Operation not supported." );
-        }
-    }
-
-
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
-        if( is( NakedType!(V1) == NakedType!(T) ) &&
-            is( NakedType!(V2) == NakedType!(T) ) )
-    {
-        version( GNU_Need_Atomics )
-        {
-            synchronized
-            {
-                if (*here == ifThis)
-                {
-                    if ((*here = writeThis) == writeThis)
-                        return true;
-                }
-                return false;
-            }
-        }
-        else
-        {
-            return __sync_bool_compare_and_swap!(T)(here, ifThis, writeThis);
-        }
-    }
-
-
-    private
-    {
-        template isHoistOp(msync ms)
-        {
-            enum bool isHoistOp = ms == msync.acq ||
-                                  ms == msync.seq;
-        }
-
-
-        template isSinkOp(msync ms)
-        {
-            enum bool isSinkOp = ms == msync.rel ||
-                                 ms == msync.seq;
-        }
-
-
-        // NOTE: While x86 loads have acquire semantics for stores, it appears
-        //       that independent loads may be reordered by some processors
-        //       (notably the AMD64).  This implies that the hoist-load barrier
-        //       op requires an ordering instruction, which also extends this
-        //       requirement to acquire ops (though hoist-store should not need
-        //       one if support is added for this later).  However, since no
-        //       modern architectures will reorder dependent loads to occur
-        //       before the load they depend on (except the Alpha), raw loads
-        //       are actually a possible means of ordering specific sequences
-        //       of loads in some instances.
-        //
-        //       For reference, the old behavior (acquire semantics for loads)
-        //       required a memory barrier if: ms == msync.seq || isSinkOp!(ms)
-        template needsLoadBarrier( msync ms )
-        {
-            const bool needsLoadBarrier = ms != msync.raw;
-        }
-
-
-        enum msync
-        {
-            raw,    /// not sequenced
-            acq,    /// hoist-load + hoist-store barrier
-            rel,    /// sink-load + sink-store barrier
-            seq,    /// fully sequenced (acq + rel)
-        }
-
-
-        T atomicLoad(msync ms = msync.seq, T)( const ref shared T val )
-        {
-            shared lock = 0;
-            T loadval;
-
-            version( GNU_Need_Atomics )
-            {
-                static if( needsLoadBarrier!(ms) )
-                {
-                    synchronized loadval = val;
-                }
-                else
-                {
-                    loadval = val;
-                }
-            }
-            else
-            {
-                static if( needsLoadBarrier!(ms) )
-                {
-                    __sync_synchronize();
-                }
-
-                __sync_lock_test_and_set!(typeof(lock))(&lock, 1);
-                loadval = val;
-                __sync_lock_release!(typeof(lock))(&lock);
-            }
-
-            return loadval;
-        }
-    }
-}
 else version( AsmX86_32 )
 {
     T atomicOp(string op, T, V1)( ref shared T val, V1 mod )
@@ -844,6 +697,150 @@ else version( AsmX86_64 )
             {
                 static assert( false, "Invalid template type specified." );
             }
+        }
+    }
+}
+else version( GNU )
+{
+    import gcc.atomics;
+    import gcc.builtins;
+
+    T atomicOp(string op, T, V1)( ref shared T val, V1 mod )
+        if( is( NakedType!(V1) == NakedType!(T) ) )
+    {
+        // binary operators
+        //
+        // +    -   *   /   %   ^^  &
+        // |    ^   <<  >>  >>> ~   in
+        // ==   !=  <   <=  >   >=
+        static if( op == "+"  || op == "-"  || op == "*"  || op == "/"   ||
+                   op == "%"  || op == "^^" || op == "&"  || op == "|"   ||
+                   op == "^"  || op == "<<" || op == ">>" || op == ">>>" ||
+                   op == "~"  || // skip "in"
+                   op == "==" || op == "!=" || op == "<"  || op == "<="  ||
+                   op == ">"  || op == ">=" )
+        {
+            T get = atomicLoad!(msync.raw)( val );
+            mixin( "return get " ~ op ~ " mod;" );
+        }
+        else
+        // assignment operators
+        //
+        // +=   -=  *=  /=  %=  ^^= &=
+        // |=   ^=  <<= >>= >>>=    ~=
+        static if( op == "+=" || op == "-="  || op == "*="  || op == "/=" ||
+                   op == "%=" || op == "^^=" || op == "&="  || op == "|=" ||
+                   op == "^=" || op == "<<=" || op == ">>=" || op == ">>>=" ) // skip "~="
+        {
+            T get, set;
+
+            do
+            {
+                get = set = atomicLoad!(msync.raw)( val );
+                mixin( "set " ~ op ~ " mod;" );
+            } while( !cas( &val, get, set ) );
+            return set;
+        }
+        else
+        {
+            static assert( false, "Operation not supported." );
+        }
+    }
+
+
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
+        if( is( NakedType!(V1) == NakedType!(T) ) &&
+            is( NakedType!(V2) == NakedType!(T) ) )
+    {
+        version( GNU_Need_Atomics )
+        {
+            synchronized
+            {
+                if (*here == ifThis)
+                {
+                    if ((*here = writeThis) == writeThis)
+                        return true;
+                }
+                return false;
+            }
+        }
+        else
+        {
+            return __sync_bool_compare_and_swap!(T)(here, ifThis, writeThis);
+        }
+    }
+
+
+    private
+    {
+        template isHoistOp(msync ms)
+        {
+            enum bool isHoistOp = ms == msync.acq ||
+                                  ms == msync.seq;
+        }
+
+
+        template isSinkOp(msync ms)
+        {
+            enum bool isSinkOp = ms == msync.rel ||
+                                 ms == msync.seq;
+        }
+
+
+        // NOTE: While x86 loads have acquire semantics for stores, it appears
+        //       that independent loads may be reordered by some processors
+        //       (notably the AMD64).  This implies that the hoist-load barrier
+        //       op requires an ordering instruction, which also extends this
+        //       requirement to acquire ops (though hoist-store should not need
+        //       one if support is added for this later).  However, since no
+        //       modern architectures will reorder dependent loads to occur
+        //       before the load they depend on (except the Alpha), raw loads
+        //       are actually a possible means of ordering specific sequences
+        //       of loads in some instances.
+        //
+        //       For reference, the old behavior (acquire semantics for loads)
+        //       required a memory barrier if: ms == msync.seq || isSinkOp!(ms)
+        template needsLoadBarrier( msync ms )
+        {
+            const bool needsLoadBarrier = ms != msync.raw;
+        }
+
+
+        enum msync
+        {
+            raw,    /// not sequenced
+            acq,    /// hoist-load + hoist-store barrier
+            rel,    /// sink-load + sink-store barrier
+            seq,    /// fully sequenced (acq + rel)
+        }
+
+
+        T atomicLoad(msync ms = msync.seq, T)( const ref shared T val )
+        {
+            T loadval;
+
+            version( GNU_Need_Atomics )
+            {
+                static if( needsLoadBarrier!(ms) )
+                {
+                    synchronized loadval = val;
+                }
+                else
+                {
+                    loadval = val;
+                }
+            }
+            else
+            {
+                static if( needsLoadBarrier!(ms) )
+                {
+                    __sync_synchronize();
+                }
+
+                loadval = val;
+            }
+
+            return loadval;
         }
     }
 }

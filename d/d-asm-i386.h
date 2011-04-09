@@ -2353,12 +2353,14 @@ struct AsmProcessor
     {
         if (exp->op == TOKint64)
             return 1;
+#if 0   // %% TODO: review
         if (exp->op == TOKvar)
         {
             Declaration * v = ((VarExp *) exp)->var;
             if (v->isConst() && v->type->isintegral())
                 return 1;
         }
+#endif
         return 0;
     }
     bool isRegExp(Expression * exp)
