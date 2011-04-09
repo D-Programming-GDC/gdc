@@ -330,7 +330,6 @@ unittest
  *      Results are undefined if |x| >= $(POWER 2,64).
  */
 
-version(GNU) alias std.c.math.cosl cos; else
 real cos(real x);       /* intrinsic */
 
 /***********************************
@@ -346,7 +345,6 @@ real cos(real x);       /* intrinsic */
  *      Results are undefined if |x| >= $(POWER 2,64).
  */
 
-version(GNU) alias std.c.math.sinl sin; else
 real sin(real x);       /* intrinsic */
 
 
@@ -768,7 +766,6 @@ unittest
  * greater than long.max, the result is
  * indeterminate.
  */
-version(GNU) alias std.c.math.llroundl rndtol; else
 long rndtol(real x);    /* intrinsic */
 
 
@@ -792,11 +789,8 @@ extern (C) real rndtonl(real x);
  *      )
  */
 
-version(GNU) float sqrt(float x) { return std.c.math.sqrtf(x); } else
 float sqrt(float x);    /* intrinsic */
-version(GNU) double sqrt(double x) { return std.c.math.sqrt(x); } else /// ditto
 double sqrt(double x);  /* intrinsic */ /// ditto
-version(GNU) real sqrt(real x) { return std.c.math.sqrtl(x); } else /// ditto
 real sqrt(real x);      /* intrinsic */ /// ditto
 
 creal sqrt(creal z)
@@ -1473,7 +1467,6 @@ alias std.c.math.FP_ILOGBNAN FP_ILOGBNAN;
  * References: frexp
  */
 
-version(GNU) alias std.c.math.ldexpl ldexp; else
 real ldexp(real n, int exp);    /* intrinsic */
 
 /**************************************
@@ -1655,7 +1648,6 @@ real cbrt(real x)               { return std.c.math.cbrtl(x); }
  *      $(TR $(TD $(PLUSMN)$(INFIN)) $(TD +$(INFIN)) )
  *      )
  */
-version (GNU) alias std.c.math.fabsl fabs; else
 real fabs(real x);      /* intrinsic */
 
 
@@ -1885,7 +1877,6 @@ real nearbyint(real x) { return std.c.math.nearbyintl(x); }
  * $(B nearbyint ) performs
  * the same operation, but does not set the FE_INEXACT exception.
  */
-version(GNU) alias std.c.math.rintl rint; else
 real rint(real x);      /* intrinsic */
 /***************************************
  * Rounds x to the nearest integer value, using the current rounding

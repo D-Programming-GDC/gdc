@@ -1750,6 +1750,41 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 break;
 #endif
 
+            case INTRINSIC_COS:
+                // Math intrinsics just map to their GCC equivalents.
+                op1 = ce.nextArg();
+                return buildCall(built_in_decls[BUILT_IN_COSL], 1, op1);
+
+            case INTRINSIC_SIN:
+                op1 = ce.nextArg();
+                return buildCall(built_in_decls[BUILT_IN_SINL], 1, op1);
+
+            case INTRINSIC_RNDTOL:
+                // %% not sure if llroundl stands as a good replacement
+                // for the expected behaviour of rndtol.
+                op1 = ce.nextArg();
+                return buildCall(built_in_decls[BUILT_IN_LLROUNDL], 1, op1);
+
+            case INTRINSIC_SQRT:
+                // Have float, double and real variants of sqrt.
+                op1 = ce.nextArg();
+                exp = mathfn_built_in(TREE_TYPE(op1), BUILT_IN_SQRT);
+                gcc_assert(exp);    // Should never trigger.
+                return buildCall(exp, 1, op1);
+
+            case INTRINSIC_LDEXP:
+                op1 = ce.nextArg();
+                return buildCall(built_in_decls[BUILT_IN_LDEXPL], 1, op1);
+
+            case INTRINSIC_FABS:
+                op1 = ce.nextArg();
+                return buildCall(built_in_decls[BUILT_IN_FABSL], 1, op1);
+
+            case INTRINSIC_RINT:
+                op1 = ce.nextArg();
+                return buildCall(built_in_decls[BUILT_IN_RINTL], 1, op1);
+
+
             case INTRINSIC_C_VA_ARG:
                 // %% should_check c_promotes_to as in va_arg now
                 // just drop though for now...
@@ -2515,6 +2550,7 @@ IRState::maybeMakeTemp(tree t)
 
 Module * IRState::builtinsModule = 0;
 Module * IRState::intrinsicModule = 0;
+Module * IRState::mathModule = 0;
 TemplateDeclaration * IRState::stdargTemplateDecl = 0;
 TemplateDeclaration * IRState::cstdargStartTemplateDecl = 0;
 TemplateDeclaration * IRState::cstdargArgTemplateDecl = 0;
@@ -2531,14 +2567,20 @@ IRState::maybeSetUpBuiltin(Declaration * decl)
     if (! dsym)
         return false;
 
-    if (intrinsicModule && dsym->getModule() == intrinsicModule)
+    if ((intrinsicModule && dsym->getModule() == intrinsicModule)
+        || (mathModule && dsym->getModule() == mathModule))
+
     {   // Matches order of Intrinsic enum
         static const char * intrinsic_names[] = {
             "bsf", "bsr",
             "bswap",
             "bt", "btc", "btr", "bts",
+            "cos", "ldexp",
             "inp", "inpl", "inpw",
+            "ldexp",
             "outp", "outpl", "outpw",
+            "rint", "rndtol",
+            "sin", "sqrt",
         };
         const size_t sz = sizeof(intrinsic_names) / sizeof(char *);
         int i = binary(decl->ident->string, intrinsic_names, sz);
@@ -2546,7 +2588,7 @@ IRState::maybeSetUpBuiltin(Declaration * decl)
             return false;
 
         // Make sure 'i' is within the range we require.
-        gcc_assert(i >= INTRINSIC_BSF && i <= INTRINSIC_OUTPW);
+        gcc_assert(i >= INTRINSIC_BSF && i <= INTRINSIC_SQRT);
         tree t = decl->toSymbol()->Stree;
 
         DECL_BUILT_IN_CLASS(t) = BUILT_IN_FRONTEND;

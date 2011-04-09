@@ -175,13 +175,6 @@ gcc_type_to_d_type(tree t)
         }
         case ARRAY_TYPE:
         {
-            for (unsigned i = 0; i < builtin_converted_types.dim; i += 2)
-            {
-                tree ti = (tree) builtin_converted_types.data[i];
-                if (ti == t)
-                    return (Type *) builtin_converted_types.data[i + 1];
-            }
-
             d = gcc_type_to_d_type(TREE_TYPE(t));
             if (d)
             {
@@ -198,9 +191,6 @@ gcc_type_to_d_type(tree t)
                             Type::tindex));
                 d = d->semantic(0, NULL);
                 d->ctype = t;
-
-                builtin_converted_types.push(t);
-                builtin_converted_types.push(d);
                 return d;
             }
             break;
@@ -491,7 +481,8 @@ d_gcc_magic_builtins_module(Module *m)
 
     Type * d = NULL;
 
-    d = gcc_type_to_d_type(va_list_type_node);
+    /* va_list should already be built, so no need to convert to D type again. */
+    d = d_gcc_builtin_va_list_d_type;
     if (d)
     {
         funcs->push(new AliasDeclaration(0,
@@ -563,6 +554,8 @@ d_gcc_magic_module(Module *m)
         {
             if (! strcmp(md->id->string, "intrinsic"))
                 IRState::setIntrinsicModule(m);
+            else if (! strcmp(md->id->string, "math"))
+                IRState::setMathModule(m);
         }
 #else
         else if (! strcmp(((Identifier *) md->packages->data[0])->string, "std"))
@@ -571,6 +564,8 @@ d_gcc_magic_module(Module *m)
                 d_gcc_magic_stdarg_module(m, false);
             else if (! strcmp(md->id->string, "intrinsic"))
                 IRState::setIntrinsicModule(m);
+            else if (! strcmp(md->id->string, "math"))
+                IRState::setMathModule(m);
         }
 #endif
     }

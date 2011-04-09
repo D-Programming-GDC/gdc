@@ -43,23 +43,6 @@ extern "C"
  */
 enum BUILTIN FuncDeclaration::isBuiltin()
 {
-#ifdef IN_GCC
-    //printf("FuncDeclaration::isBuiltin() %s\n", toChars());
-    if (builtin == BUILTINunknown)
-    {
-        builtin = BUILTINnot;
-        if (parent && parent->isModule())
-        {
-            // If it's in the gcc.builtins package
-            if (strcmp(parent->ident->string, "builtins") == 0 && parent->parent &&
-                strcmp(parent->parent->ident->string, "gcc") == 0 &&
-                !parent->parent->parent)
-            {
-                //printf("deco = %s\n", type->deco);
-                builtin = BUILTINgcc;
-            }
-        }
-#else
     static const char FeZe [] = "FNaNbNfeZe";      // @safe pure nothrow real function(real)
     static const char FeZe2[] = "FNaNbNeeZe";      // @trusted pure nothrow real function(real)
 
@@ -97,8 +80,17 @@ enum BUILTIN FuncDeclaration::isBuiltin()
                         builtin = BUILTINsqrt;
                 }
             }
+#ifdef IN_GCC
+            // If it's in the gcc.builtins package
+            else if (strcmp(parent->ident->string, "builtins") == 0 && parent->parent &&
+                strcmp(parent->parent->ident->string, "gcc") == 0 &&
+                !parent->parent->parent)
+            {
+                //printf("deco = %s\n", type->deco);
+                builtin = BUILTINgcc;
+            }
+#endif
         }
-#endif  
     }
     return builtin;
 }

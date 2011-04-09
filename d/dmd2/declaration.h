@@ -502,14 +502,13 @@ enum BUILTIN
 {
     BUILTINunknown = -1,        // not known if this is a builtin
     BUILTINnot,                 // this is not a builtin
-#if IN_GCC
-    BUILTINgcc,                 // GCC builtin
-#else
     BUILTINsin,                 // std.math.sin
     BUILTINcos,                 // std.math.cos
     BUILTINtan,                 // std.math.tan
     BUILTINsqrt,                // std.math.sqrt
     BUILTINfabs,                // std.math.fabs
+#if IN_GCC
+    BUILTINgcc,                 // GCC builtin
 #endif
 };
 

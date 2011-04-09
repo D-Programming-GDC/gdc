@@ -128,13 +128,18 @@ class ArrayScope;
 
 struct IRState : IRBase
 {
+    // %% intrinsic and math functions in alphabetical order for bsearch
     enum Intrinsic
     {
         INTRINSIC_BSF, INTRINSIC_BSR,
         INTRINSIC_BSWAP,
         INTRINSIC_BT, INTRINSIC_BTC, INTRINSIC_BTR, INTRINSIC_BTS,
+        INTRINSIC_COS, INTRINSIC_FABS,
         INTRINSIC_INP, INTRINSIC_INPL, INTRINSIC_INPW,
+        INTRINSIC_LDEXP,
         INTRINSIC_OUTP, INTRINSIC_OUTPL, INTRINSIC_OUTPW,
+        INTRINSIC_RINT, INTRINSIC_RNDTOL,
+        INTRINSIC_SIN, INTRINSIC_SQRT,
         INTRINSIC_STD_VA_ARG,
         INTRINSIC_C_VA_ARG,
         INTRINSIC_C_VA_START,
@@ -551,6 +556,7 @@ public:
 
     static Module * builtinsModule;
     static Module * intrinsicModule;
+    static Module * mathModule;
     static TemplateDeclaration * stdargTemplateDecl;
     static TemplateDeclaration * cstdargStartTemplateDecl;
     static TemplateDeclaration * cstdargArgTemplateDecl;
@@ -563,6 +569,11 @@ public:
     static void setIntrinsicModule(Module * mod)
     {
         intrinsicModule = mod;
+    }
+
+    static void setMathModule(Module * mod)
+    {
+        mathModule = mod;
     }
 
     static void setStdArg(TemplateDeclaration * td)

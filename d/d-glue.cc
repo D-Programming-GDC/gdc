@@ -3271,6 +3271,7 @@ Module::genobjfile(int multiobj)
     gcc_assert(g.ofile);
 
     g.ofile->beginModule(this);
+    g.ofile->setupStaticStorage(this, toSymbol()->Stree);
 
     if (members) {
         for (unsigned i = 0; i < members->dim; i++) {
