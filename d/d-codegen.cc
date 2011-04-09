@@ -1759,6 +1759,10 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 op1 = ce.nextArg();
                 return buildCall(built_in_decls[BUILT_IN_SINL], 1, op1);
 
+            case INTRINSIC_TAN:
+                op1 = ce.nextArg();
+                return buildCall(built_in_decls[BUILT_IN_TANL], 1, op1);
+
             case INTRINSIC_RNDTOL:
                 // %% not sure if llroundl stands as a good replacement
                 // for the expected behaviour of rndtol.
@@ -2567,20 +2571,14 @@ IRState::maybeSetUpBuiltin(Declaration * decl)
     if (! dsym)
         return false;
 
-    if ((intrinsicModule && dsym->getModule() == intrinsicModule)
-        || (mathModule && dsym->getModule() == mathModule))
-
+    if (intrinsicModule && dsym->getModule() == intrinsicModule)
     {   // Matches order of Intrinsic enum
         static const char * intrinsic_names[] = {
             "bsf", "bsr",
             "bswap",
             "bt", "btc", "btr", "bts",
-            "cos", "ldexp",
             "inp", "inpl", "inpw",
-            "ldexp",
             "outp", "outpl", "outpw",
-            "rint", "rndtol",
-            "sin", "sqrt",
         };
         const size_t sz = sizeof(intrinsic_names) / sizeof(char *);
         int i = binary(decl->ident->string, intrinsic_names, sz);
@@ -2588,12 +2586,39 @@ IRState::maybeSetUpBuiltin(Declaration * decl)
             return false;
 
         // Make sure 'i' is within the range we require.
-        gcc_assert(i >= INTRINSIC_BSF && i <= INTRINSIC_SQRT);
+        gcc_assert(i >= INTRINSIC_BSF && i <= INTRINSIC_OUTPW);
         tree t = decl->toSymbol()->Stree;
 
         DECL_BUILT_IN_CLASS(t) = BUILT_IN_FRONTEND;
         DECL_FUNCTION_CODE(t) = (built_in_function) i;
         return true;
+    }
+    else if (mathModule && dsym->getModule() == mathModule)
+    {   // Matches order of Intrinsic enum
+        static const char * math_names[] = {
+            "cos", "fabs", "ldexp",
+            "rint", "rndtol", "sin",
+            "sqrt", "tan",
+        };
+        const size_t sz = sizeof(math_names) / sizeof(char *);
+        int i = binary(decl->ident->string, math_names, sz);
+        if (i == -1)
+            return false;
+
+        // Adjust 'i' for this range of enums
+        i += INTRINSIC_COS;
+        gcc_assert(i >= INTRINSIC_COS && i <= INTRINSIC_TAN);
+        tree t = decl->toSymbol()->Stree;
+
+        // Ignore functions that don't return a real value.
+        Type * tf = decl->type->nextOf();
+        if (tf->ty == Tfloat80 || (i == INTRINSIC_SQRT && tf->isreal()))
+        {
+            DECL_BUILT_IN_CLASS(t) = BUILT_IN_FRONTEND;
+            DECL_FUNCTION_CODE(t) = (built_in_function) i;
+            return true;
+        }
+        return false;
     }
     else
     {
