@@ -25,6 +25,7 @@ for arg in "$@"; do
         --update) d_update_phobos=1 ;;
         -v1) d_lang_version=1 ;;
         -v2) d_lang_version=2 ;;
+        -hg) use_hg_revision=1 ;;
         *)
             echo "Usage: $0 [OPTION]"
             echo "error: invalid option '$arg'"
@@ -84,7 +85,16 @@ if test ! -f gcc/"$gcc_patch_fn"; then
 fi
 
 # 0.5. Find out what GDC and DMD version this is
-gdc_ver=`cat gcc/d/gdc-version`
+if test "$use_hg_revision" = 1; then
+    if ! command -v hg &> /dev/null; then
+        echo "Mercurial not found.  Please install it or remove -hg."
+        exit 1
+    fi
+    gdc_ver=`hg --cwd gcc/d tip --template "hg r{rev}:{node|short}"  2> /dev/null`
+else
+    gdc_ver=`cat gcc/d/gdc-version`
+fi
+
 dmd_ver=`grep 'version = "v' gcc/d/dmd$d_subdir_sfx/mars.c | sed -e 's/^.*"v\(.*\)".*$/\1/'` || exit 1
 gdc_ver_msg="gdc $gdc_ver, using dmd $dmd_ver"
 
@@ -126,7 +136,7 @@ cd gcc || exit 1
 d_gcc_ver=`echo $gcc_ver | sed -e 's/\.//g'`
 
 if test "$d_gcc_ver" -ge 41; then
-    sed -i 's/gdc [a-z0-9. ]*, using dmd [0-9. ]*//g' DEV-PHASE
+    sed -i 's/gdc [a-z0-9. :]*, using dmd [0-9. ]*//g' DEV-PHASE
     cur_DEV_PHASE=`cat DEV-PHASE`
     if test -z "$cur_DEV_PHASE"; then
         echo "$gdc_ver_msg" > DEV-PHASE
