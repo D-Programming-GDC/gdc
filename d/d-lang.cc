@@ -152,10 +152,7 @@ class DGCCMain {
 };
 */
 
-static const char * iprefix;
-static bool std_inc; // %%FIX: find a place for this
 static const char * fonly_arg;
-static const char * multilib_dir;
 // Because of PR16888, on x86 platforms, GCC clears unused reg names.
 // As this doesn't affect us, need a way to restore them.
 static const char *saved_reg_names[FIRST_PSEUDO_REGISTER];
@@ -272,17 +269,6 @@ bool
 d_gcc_is_target_win32()
 {
     return is_target_win32;
-}
-
-static char *
-prefixed_path(const char * path)
-{
-    // based on incpath.c
-    size_t len = cpp_GCC_INCLUDE_DIR_len;
-    if (iprefix && len != 0 && ! strncmp(path, cpp_GCC_INCLUDE_DIR, len))
-        return concat(iprefix, path + len, NULL);
-    // else
-    return xstrdup(path);
 }
 
 static bool
@@ -436,49 +422,7 @@ d_init ()
 
     VersionCondition::addPredefinedGlobalIdent("all");
 
-    // %%TODO: front or back?
-    if (std_inc)
-    {
-        char * target_dir = prefixed_path(D_PHOBOS_TARGET_DIR);
-        if (multilib_dir)
-            target_dir = concat(target_dir, "/", multilib_dir, NULL);
-
-        global.params.imppath->insert(0, prefixed_path(D_PHOBOS_DIR));
-        global.params.imppath->insert(0, target_dir);
-    }
-
-    if (global.params.imppath)
-    {
-        for (unsigned i = 0; i < global.params.imppath->dim; i++)
-        {
-            char *path = (char *)global.params.imppath->data[i];
-            // We would do this for D_INCLUDE_PATH env var, but not for '-I'
-            // command line args.
-            //Array *a = FileName::splitPath(path);
-
-            if (path)
-            {
-                if (!global.path)
-                    global.path = new Array();
-                //global.path->append(a);
-                global.path->push(path);
-            }
-        }
-    }
-
-    if (global.params.fileImppath)
-    {
-        for (unsigned i = 0; i < global.params.fileImppath->dim; i++)
-        {
-            char *path = (char *)global.params.fileImppath->data[i];
-            if (path)
-            {
-                if (!global.filePath)
-                    global.filePath = new Array();
-                global.filePath->push(path);
-            }
-        }
-    }
+    register_import_chains();
 
     {
         char * path = FileName::searchPath(global.path, "phobos-ver-syms", 1);

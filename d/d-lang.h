@@ -195,6 +195,12 @@ extern bool d_have_inline_asm();
 extern void d_expand_priv_asm_label(IRState * irs, unsigned n);
 extern tree d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4);
 
+/* In d-incpath.cc */
+extern void register_import_chains();
+extern bool std_inc;
+extern const char * iprefix;
+extern const char * multilib_dir;
+
 #endif
 
 #ifdef __cplusplus
