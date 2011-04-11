@@ -642,16 +642,53 @@ d_gcc_eval_builtin(CallExp *ce, Expressions *arguments)
 
     if (ce->e1->op == TOKvar)
     {
-        FuncDeclaration * fd = ((VarExp *) ce->e1)->var->isFuncDeclaration();
-        gcc_assert(fd);
-        TypeFunction * tf = (TypeFunction *) fd->type;
-        tree callee = fd->toSymbol()->Stree;
-
         // g.irs is not available.
         static IRState irs;
-        tree result = irs.call(tf, callee, NULL, arguments);
-        result = fold(result);
 
+        FuncDeclaration * fd = ((VarExp *) ce->e1)->var->isFuncDeclaration();
+        TypeFunction * tf = (TypeFunction *) fd->type;
+        tree callee;
+        tree result;
+
+        switch (fd->builtin)
+        {
+            case BUILTINsin:
+                callee = built_in_decls[BUILT_IN_SINL];
+                break;
+
+            case BUILTINcos:
+                callee = built_in_decls[BUILT_IN_COSL];
+                break;
+
+            case BUILTINtan:
+                callee = built_in_decls[BUILT_IN_TANL];
+                break;
+
+            case BUILTINsqrt:
+                if (tf->next->ty == Tfloat32)
+                    callee = built_in_decls[BUILT_IN_SQRTF];
+                else if (tf->next->ty == Tfloat64)
+                    callee = built_in_decls[BUILT_IN_SQRT];
+                else if (tf->next->ty == Tfloat80)
+                    callee = built_in_decls[BUILT_IN_SQRTL];
+                gcc_assert(callee);
+                break;
+
+            case BUILTINfabs:
+                callee = built_in_decls[BUILT_IN_FABSL];
+                break;
+
+            case BUILTINgcc:
+                callee = fd->toSymbol()->Stree;
+                break;
+
+            default:
+                gcc_unreachable();
+        }
+
+        result = irs.call(tf, callee, NULL, arguments);
+        result = fold(result);
+        
         if (TREE_CONSTANT(result) && TREE_CODE(result) != CALL_EXPR)
         {   // Builtin should be successfully evaluated.
             // Will only return NULL if we can't convert it.

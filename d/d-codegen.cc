@@ -1759,10 +1759,6 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 op1 = ce.nextArg();
                 return buildCall(built_in_decls[BUILT_IN_SINL], 1, op1);
 
-            case INTRINSIC_TAN:
-                op1 = ce.nextArg();
-                return buildCall(built_in_decls[BUILT_IN_TANL], 1, op1);
-
             case INTRINSIC_RNDTOL:
                 // %% not sure if llroundl stands as a good replacement
                 // for the expected behaviour of rndtol.
@@ -1772,13 +1768,23 @@ IRState::maybeExpandSpecialCall(tree call_exp)
             case INTRINSIC_SQRT:
                 // Have float, double and real variants of sqrt.
                 op1 = ce.nextArg();
-                exp = mathfn_built_in(TREE_TYPE(op1), BUILT_IN_SQRT);
+                type = TREE_TYPE(op1);
+                // Could have used mathfn_built_in, but that only returns
+                // implicit built in decls.
+                if (TYPE_MAIN_VARIANT (type) == double_type_node)
+                    exp = built_in_decls[BUILT_IN_SQRT];
+                else if (TYPE_MAIN_VARIANT (type) == float_type_node)
+                    exp = built_in_decls[BUILT_IN_SQRTF];
+                else if (TYPE_MAIN_VARIANT (type) == long_double_type_node)
+                    exp = built_in_decls[BUILT_IN_SQRTL];
+
                 gcc_assert(exp);    // Should never trigger.
                 return buildCall(exp, 1, op1);
 
             case INTRINSIC_LDEXP:
                 op1 = ce.nextArg();
-                return buildCall(built_in_decls[BUILT_IN_LDEXPL], 1, op1);
+                op2 = ce.nextArg();
+                return buildCall(built_in_decls[BUILT_IN_LDEXPL], 2, op1, op2);
 
             case INTRINSIC_FABS:
                 op1 = ce.nextArg();
@@ -2598,7 +2604,7 @@ IRState::maybeSetUpBuiltin(Declaration * decl)
         static const char * math_names[] = {
             "cos", "fabs", "ldexp",
             "rint", "rndtol", "sin",
-            "sqrt", "tan",
+            "sqrt",
         };
         const size_t sz = sizeof(math_names) / sizeof(char *);
         int i = binary(decl->ident->string, math_names, sz);
@@ -2607,12 +2613,15 @@ IRState::maybeSetUpBuiltin(Declaration * decl)
 
         // Adjust 'i' for this range of enums
         i += INTRINSIC_COS;
-        gcc_assert(i >= INTRINSIC_COS && i <= INTRINSIC_TAN);
+        gcc_assert(i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
         tree t = decl->toSymbol()->Stree;
 
-        // Ignore functions that don't return a real value.
+        // rndtol returns a long, sqrt any real value,
+        // every other math builtin returns an 80bit float.
         Type * tf = decl->type->nextOf();
-        if (tf->ty == Tfloat80 || (i == INTRINSIC_SQRT && tf->isreal()))
+        if ((i == INTRINSIC_RNDTOL && tf->ty == Tint64)
+            || (i == INTRINSIC_SQRT && tf->isreal())
+            || (i != INTRINSIC_RNDTOL && tf->ty == Tfloat80))
         {
             DECL_BUILT_IN_CLASS(t) = BUILT_IN_FRONTEND;
             DECL_FUNCTION_CODE(t) = (built_in_function) i;
