@@ -254,9 +254,10 @@ ObjectFile::giveDeclUniqueName(tree decl, const char * prefix)
         name = IDENTIFIER_POINTER(DECL_NAME(decl));
     else
         name = "___s";
-    char *label = d_asm_format_private_name(name, DECL_UID(decl));
+
+    char *label;
+    ASM_FORMAT_PRIVATE_NAME(label, name, DECL_UID(decl));
     SET_DECL_ASSEMBLER_NAME(decl, get_identifier(label));
-    free(label);
 }
 
 #if D_GCC_VER >= 45

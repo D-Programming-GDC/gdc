@@ -144,13 +144,6 @@ static tree d_signed_or_unsigned_type(int, tree);
 ////tree d_unsigned_type(tree);
 ////tree d_signed_type(tree);
 
-/*
-class DGCCMain {
-    bool stdInc;
-
-    initOptions() { }
-};
-*/
 
 static const char * fonly_arg;
 // Because of PR16888, on x86 platforms, GCC clears unused reg names.
@@ -383,9 +376,9 @@ d_init ()
     else
         VersionCondition::addPredefinedGlobalIdent("LittleEndian");
 
-    if (d_using_sjlj_exceptions()) {
+    if (USING_SJLJ_EXCEPTIONS)
         VersionCondition::addPredefinedGlobalIdent("GNU_SjLj_Exceptions");
-    }
+
 #ifdef TARGET_LONG_DOUBLE_128
     if (TARGET_LONG_DOUBLE_128)
         VersionCondition::addPredefinedGlobalIdent("GNU_LongDouble128");
@@ -1888,7 +1881,7 @@ d_eh_personality (void)
     if (!d_eh_personality_decl)
     {
        d_eh_personality_decl
-           = build_personality_function (d_using_sjlj_exceptions()
+           = build_personality_function (USING_SJLJ_EXCEPTIONS
                                          ? "__gdc_personality_sj0"
                                          : "__gdc_personality_v0");
     }
@@ -1912,7 +1905,7 @@ d_init_exceptions(void)
 #if D_GCC_VER >= 45
     // Handled with langhooks eh_personality and eh_runtime_type
 #else
-    eh_personality_libfunc = init_one_libfunc(d_using_sjlj_exceptions()
+    eh_personality_libfunc = init_one_libfunc(USING_SJLJ_EXCEPTIONS
             ? "__gdc_personality_sj0" : "__gdc_personality_v0");
     default_init_unwind_resume_libfunc ();
     lang_eh_runtime_type = d_build_eh_type_type;

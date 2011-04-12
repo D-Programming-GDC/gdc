@@ -231,10 +231,6 @@ extern tree d_builtin_function PARAMS ((const char *, tree, int, enum built_in_c
 extern tree d_builtin_function43 PARAMS ((tree));
 extern void d_register_builtin_type PARAMS((tree, const char *));
 
-/* In d-misc.c */
-extern int d_using_sjlj_exceptions PARAMS ((void));
-extern char * d_asm_format_private_name PARAMS ((const char *,int));
-
 /* In d-builtins2.cc */
 extern void d_bi_init PARAMS ((void));
 extern void d_bi_builtin_func PARAMS ((tree));

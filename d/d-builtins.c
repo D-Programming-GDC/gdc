@@ -60,20 +60,6 @@
 #error "Version of GCC is not supported."
 #endif
 
-/* Nonzero if preprocessing only.  */
-int flag_preprocess_only;
-
-/* Nonzero if an ISO standard was selected.  It rejects macros in the
-   user's namespace.  */
-int flag_iso;
-
-/* Nonzero means enable C89 Amendment 1 features.  */
-int flag_isoc94;
-
-/* Nonzero means use the ISO C99 dialect of C.  */
-int flag_isoc99;
-
-
 /* Used to help initialize the builtin-types.def table.  When a type of
    the correct size doesn't exist, use error_mark_node instead of NULL.
    The later results in segfaults even when a decl using the type doesn't

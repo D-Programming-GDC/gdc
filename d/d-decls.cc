@@ -133,7 +133,7 @@ uniqueName(Declaration * d, tree t, const char * asm_name)
 {
     Dsymbol * p = d->toParent2();
     const char * out_name = asm_name;
-    char * alloc_name = 0;
+    char * alloc_name;
 
     FuncDeclaration * f = d->isFuncDeclaration();
     VarDeclaration * v = d->isVarDeclaration();
@@ -160,7 +160,10 @@ uniqueName(Declaration * d, tree t, const char * asm_name)
         sv = uniqueNames->update(asm_name, strlen(asm_name));
 
         if (sv->intvalue)
-            out_name = alloc_name = d_asm_format_private_name(asm_name, sv->intvalue);
+        {
+            ASM_FORMAT_PRIVATE_NAME(alloc_name, asm_name, sv->intvalue);
+            out_name = alloc_name;
+        }
         sv->intvalue++;
     }
 
@@ -180,9 +183,6 @@ uniqueName(Declaration * d, tree t, const char * asm_name)
     }
 
     SET_DECL_ASSEMBLER_NAME(t, id);
-
-    if (alloc_name)
-        free(alloc_name);
 }
 
 
@@ -733,16 +733,12 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
 
     if (! thunk->symbol)
     {
-        char *id;
-
-        // dmd uses 'sym' -- not sure what that is...
-        id = (char *) alloca(8 + 5 + strlen(csym->Sident) + 1);
-        sprintf(id,"__t%"PRIdTSIZE"_%s", offset, csym->Sident);
+        char * id;
+        static unsigned thunk_sym_label = 0;
+        ASM_FORMAT_PRIVATE_NAME(id, "___t", thunk_sym_label);
+        thunk_sym_label++;
         sthunk = symbol_calloc(id);
         slist_add(sthunk);
-        /* todo: could use anonymous names like DMD, with ASM_FORMAT_RRIVATE_NAME*/
-        //sthunk = symbol_generate(SCstatic, csym->Stype);
-        //sthunk->Sflags |= SFLimplem;
 
         tree target_func_decl = csym->Stree;
         tree thunk_decl = build_fn_decl(id, TREE_TYPE(target_func_decl));
@@ -819,17 +815,6 @@ Symbol *static_sym()
     return s;
 }
 
-/**************************************
- * Fake a struct symbol.
- */
-
-// Not used in GCC
-/*
-Classsym *fake_classsym(char * name)
-{
-    return 0;
-}
-*/
 
 /*************************************
  * Create the "ClassInfo" symbol
