@@ -274,7 +274,6 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
     switch (ebtype->ty)
     {
         case Tdelegate:
-            // %%TODO:NOP/VIEW_CONVERT
             if (tbtype->ty == Tdelegate)
             {
                 exp = maybeMakeTemp(exp);
@@ -435,9 +434,8 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                     return libCall(LIBCALL_ARRAYCAST, 3, args, target_type->toCtype());
                 }
                 else
-                {   // %% VIEW_CONVERT_EXPR or NOP_EXPR ? (and the two cases below)
-                    // Convert to/from void[] or elements are the same size -- don't change length
-                    return build1(NOP_EXPR, target_type->toCtype(), exp);
+                {   // Convert to/from void[] or elements are the same size -- don't change length
+                    return build1(VIEW_CONVERT_EXPR, target_type->toCtype(), exp);
                 }
             }
 #if V2
@@ -456,7 +454,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             break;
         case Taarray:
             if (tbtype->ty == Taarray)
-                return build1(NOP_EXPR, target_type->toCtype(), exp);
+                return build1(VIEW_CONVERT_EXPR, target_type->toCtype(), exp);
             // else, default conversion, which should product an error
             break;
         case Tpointer:
@@ -466,7 +464,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                 exp = d_convert_basic(d_type_for_size(POINTER_SIZE, 1), exp);
             // Can convert void pointers to associative arrays too...
             else if (tbtype->ty == Taarray && ebtype == Type::tvoidptr)
-                return build1(NOP_EXPR, target_type->toCtype(), exp);
+                return build1(VIEW_CONVERT_EXPR, target_type->toCtype(), exp);
             break;
         default:
         {
@@ -1771,11 +1769,11 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 type = TREE_TYPE(op1);
                 // Could have used mathfn_built_in, but that only returns
                 // implicit built in decls.
-                if (TYPE_MAIN_VARIANT (type) == double_type_node)
+                if (TYPE_MAIN_VARIANT(type) == double_type_node)
                     exp = built_in_decls[BUILT_IN_SQRT];
-                else if (TYPE_MAIN_VARIANT (type) == float_type_node)
+                else if (TYPE_MAIN_VARIANT(type) == float_type_node)
                     exp = built_in_decls[BUILT_IN_SQRTF];
-                else if (TYPE_MAIN_VARIANT (type) == long_double_type_node)
+                else if (TYPE_MAIN_VARIANT(type) == long_double_type_node)
                     exp = built_in_decls[BUILT_IN_SQRTL];
 
                 gcc_assert(exp);    // Should never trigger.
@@ -2188,13 +2186,18 @@ IRState::arrayLength(tree exp, Type * exp_type)
 tree
 IRState::floatMod(tree a, tree b, tree type)
 {
-    tree fmodfn;
+    tree fmodfn = NULL_TREE;
     tree basetype = type;
 
     if (COMPLEX_FLOAT_TYPE_P(basetype))
         basetype = TREE_TYPE(basetype);
 
-    fmodfn = mathfn_built_in(basetype, BUILT_IN_FMOD);
+    if (TYPE_MAIN_VARIANT(basetype) == double_type_node)
+        fmodfn = built_in_decls[BUILT_IN_FMOD];
+    else if (TYPE_MAIN_VARIANT(basetype) == float_type_node)
+        fmodfn = built_in_decls[BUILT_IN_FMODF];
+    else if (TYPE_MAIN_VARIANT(basetype) == long_double_type_node)
+        fmodfn = built_in_decls[BUILT_IN_FMODL];
 
     if (! fmodfn)
     {   // %qT pretty prints the tree type.

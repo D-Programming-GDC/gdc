@@ -1533,7 +1533,7 @@ struct AsmProcessor
         }
         return searchOpdata(opIdent, opData, N_ents);
     }
-    
+
     // need clobber information.. use information is good too...
     void doInstruction()
     {
@@ -2241,7 +2241,7 @@ struct AsmProcessor
                                 (global.params.isX86_64 && operand->baseReg == Reg_RBP);
                             bool isBaseRegSP = operand->baseReg == Reg_ESP ||
                                 (global.params.isX86_64 && operand->baseReg == Reg_RSP);
-                            
+
                             if (operand->indexReg == Reg_Invalid
                                     && decl->isVarDeclaration()
                                     && ((isBaseRegBP && ! sc->func->naked)

@@ -276,6 +276,7 @@ dt2tree_list_of_elems(dt_t * dt)
     {
         tree value = dt2node(dt);
         tree field = d_build_decl(FIELD_DECL, NULL_TREE, TREE_TYPE(value));
+        tree size = size_zero_node;
         DECL_CONTEXT(field) = aggtype;
         DECL_FIELD_OFFSET(field) = offset;
         DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;
@@ -286,7 +287,10 @@ dt2tree_list_of_elems(dt_t * dt)
 
         fields.chain(field);
         elts.cons(field, value);
-        offset = size_binop(PLUS_EXPR, offset, TYPE_SIZE_UNIT(TREE_TYPE(value)));
+
+        if (value != error_mark_node)
+            size = TYPE_SIZE_UNIT(TREE_TYPE(value));
+        offset = size_binop(PLUS_EXPR, offset, size);
 
         dt = dt->DTnext;
     }

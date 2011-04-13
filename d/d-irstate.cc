@@ -234,7 +234,8 @@ IRBase::getLabelBlock(LabelDsymbol * label, Statement * from)
 IRBase::Flow *
 IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 {
-    if (ident) {
+    if (ident)
+    {
         LabelStatement * lbl_stmt = func->searchLabel(ident)->statement;
         gcc_assert(lbl_stmt != 0);
         Statement * stmt = lbl_stmt->statement;
@@ -243,18 +244,23 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
         if (scope_stmt)
             stmt = scope_stmt->statement;
 
-        for (int i = loops.dim - 1; i >= 0; i--) {
+        for (int i = loops.dim - 1; i >= 0; i--)
+        {
             Flow * flow = (Flow *) loops.data[i];
 
-            if (flow->statement == stmt) {
+            if (flow->statement == stmt)
+            {
                 if (want_continue)
                     gcc_assert(stmt->hasContinue());
                 return flow;
             }
         }
         gcc_unreachable();
-    } else {
-        for (int i = loops.dim - 1; i >= 0; i--) {
+    }
+    else
+    {
+        for (int i = loops.dim - 1; i >= 0; i--)
+        {
             Flow * flow = (Flow *) loops.data[i];
 
             if (( ! want_continue && flow->statement->hasBreak() ) ||

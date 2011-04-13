@@ -555,7 +555,7 @@ CmpExp::toElem(IRState* irs)
         // %% For float element types, warn that NaN is not taken into account ?
         switch (op)
         {
-            case TOKlt: case TOKul: 
+            case TOKlt: case TOKul:
                 out_code = LT_EXPR;
                 break;
 
@@ -678,25 +678,31 @@ elem *
 PowExp::toElem(IRState * irs)
 {
     tree e1_t, e2_t;
-    tree powtype, powfn;
+    tree powtype, powfn = NULL_TREE;
 
     // Dictates what version of pow() we call.
     powtype = type->toBasetype()->toCtype();
     // If type is int, implicitly convert to double.
     // This allows backend to fold the call into a constant return value.
-    if (!type->isfloating() && type->isintegral())
+    if (type->isintegral())
         powtype = double_type_node;
 
     // Lookup compatible builtin.
-    e1_t = convert(powtype, e1->toElem(irs));
-    e2_t = convert(powtype, e2->toElem(irs));
-    powfn = mathfn_built_in (powtype, BUILT_IN_POW);
+    if (TYPE_MAIN_VARIANT(powtype) == double_type_node)
+        powfn = built_in_decls[BUILT_IN_POW];
+    else if (TYPE_MAIN_VARIANT(powtype) == float_type_node)
+        powfn = built_in_decls[BUILT_IN_POWF];
+    else if (TYPE_MAIN_VARIANT(powtype) == long_double_type_node)
+        powfn = built_in_decls[BUILT_IN_POWL];
 
     if (powfn == NULL_TREE)
     {
         error("%s ^^ %s is not supported", e1->type->toChars(), e2->type->toChars());
         return irs->errorMark(type);
     }
+
+    e1_t = convert(powtype, e1->toElem(irs));
+    e2_t = convert(powtype, e2->toElem(irs));
 
     return convert(type->toCtype(), irs->buildCall(powfn, 2, e1_t, e2_t));
 }
@@ -1304,12 +1310,8 @@ CommaExp::toElem(IRState * irs)
     }
     tree t1 = e1->toElem(irs);
     tree t2 = e2->toElem(irs);
-
-    // %% type is NULL, bug in frontend? :-/
-    // probably should be just using void compound anyway...
     tree tt = type ? type->toCtype() : void_type_node;
 
-    gcc_assert(tt != NULL_TREE);
     return build2(COMPOUND_EXPR, tt, t1, t2);
 }
 
@@ -3115,8 +3117,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     /* This would apply to complex types as well, but GDC currently
        returns complex types as a struct instead of in ST(0) and ST(1).
      */
-    if (inlineAsm && ! naked && type->nextOf()->isfloating() &&
-        ! type->nextOf()->iscomplex())
+    if (inlineAsm && ! naked && type->nextOf()->isreal())
     {
         tree result_var = irs->localVar(TREE_TYPE(result_decl));
 
@@ -3396,21 +3397,24 @@ Type::toCtype()
                 break;
 
             case Terror:
-                ctype = error_mark_node;
-                break;
+                return error_mark_node;
 
                 /* We can get Tident with forward references.  There seems to
                    be a legitame case (dstress:debug_info_03).  I have not seen this
                    happen for an error, so maybe it's okay...
-
-                   A way to handle this would be to partially construct
-                   function types and not complete it until it was actually
-                   used in a call. */
+                   
+                   Update:
+                   Seems to be fixed in the frontend, so changed to an error
+                   to catch potential bugs.
+                 */
             case Tident:
-                ctype = void_type_node;
-                break;
+            case Ttypeof:
+                ::error("forward reference of %s\n", this->toChars());
+                return error_mark_node;
 
-                /* We can get Ttuple from void (T...)(T t) */
+                /* Valid case for Ttuple is in CommaExp::toElem, in instances when
+                   a tuple has been expanded as a large chain of comma expressions.
+                 */
             case Ttuple:
                 ctype = void_type_node;
                 break;
@@ -3570,6 +3574,11 @@ TypeStruct::toCtype()
 
         TYPE_CONTEXT(ctype) = gen.declContext(sym);
 
+#if V2 && D_GCC_VER >= 45
+        // For aggregates GCC now relies on TYPE_CANONICAL exclusively
+        // to show that two variant types are structurally equal.
+        TYPE_CANONICAL(ctype) = castMod(0)->toCtype();
+#endif
         g.ofile->initTypeDecl(ctype, sym);
 
         AggLayout agg_layout(sym, ctype);
@@ -3597,12 +3606,8 @@ TypeStruct::toCtype()
             }
         }
         agg_layout.finish(sym->attributes);
-#if V2
-        // As per TypeDArray::toCtype, don't distinguish const from mutable types.
-        TYPE_MAIN_VARIANT(ctype) = mutableOf()->toCtype();
-#endif
     }
-    return gen.addTypeModifiers(ctype, mod);
+    return ctype;
 }
 
 void
@@ -4901,12 +4906,11 @@ gcc_d_backend_init()
     // This is required or we'll crash pretty early on. %%log
     build_common_tree_nodes (flag_signed_char, false);
 
+
     // This is also required (or the manual equivalent) or crashes
     // will occur later
+    char_type_node = d_type_for_size(CHAR_TYPE_SIZE, 1);
     size_type_node = d_type_for_mode(ptr_mode, 1);
-
-    // c was: TREE_TYPE (identifier_global_value (get_identifier (SIZE_TYPE)));
-    //signed_size_type_node = c_common_signed_type (size_type_node);
 
     // If this is called after the next statements, you'll get an ICE.
     set_sizetype(size_type_node);

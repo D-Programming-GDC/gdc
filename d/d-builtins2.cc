@@ -148,8 +148,7 @@ gcc_type_to_d_type(tree t)
             for (int i = 0; i < (int) TMAX; i++)
             {
                 d = Type::basic[i];
-                if (d && d->isfloating() && ! d->iscomplex() && ! d->isimaginary() &&
-                    d->size() == sz)
+                if (d && d->isreal() && d->size() == sz)
                 {
                     return d;
                 }
@@ -688,7 +687,7 @@ d_gcc_eval_builtin(CallExp *ce, Expressions *arguments)
 
         result = irs.call(tf, callee, NULL, arguments);
         result = fold(result);
-        
+
         if (TREE_CONSTANT(result) && TREE_CODE(result) != CALL_EXPR)
         {   // Builtin should be successfully evaluated.
             // Will only return NULL if we can't convert it.

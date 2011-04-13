@@ -223,9 +223,10 @@ D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-objfile.glue.o d/d-irstate.glue.o d/d-glue.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-gcc-real.glue.o \
-              d/d-gt.cglue.o d/d-builtins.cglue.o d/d-misc.cglue.o \
-              d/d-builtins2.glue.o d/symbol.glue.o d/asmstmt.glue.o \
-              d/dt.glue.o d/d-incpath.glue.o
+              d/d-gt.cglue.o d/d-builtins.cglue.o d/d-builtins2.glue.o \
+              d/symbol.glue.o d/asmstmt.glue.o d/dt.glue.o \
+              d/d-incpath.glue.o
+
 ifeq ($(D_LANGUAGE_VERSION),2)
 D_GLUE_OBJS += d/d-cppmngl.glue.o
 endif
