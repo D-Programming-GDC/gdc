@@ -1775,6 +1775,12 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                     exp = built_in_decls[BUILT_IN_SQRTF];
                 else if (TYPE_MAIN_VARIANT(type) == long_double_type_node)
                     exp = built_in_decls[BUILT_IN_SQRTL];
+                // op1 is an integral type - use double precision.
+                else if (INTEGRAL_TYPE_P(TYPE_MAIN_VARIANT(type)))
+                {
+                    op1 = d_convert_basic(double_type_node, op1);
+                    exp = built_in_decls[BUILT_IN_SQRT];
+                }
 
                 gcc_assert(exp);    // Should never trigger.
                 return buildCall(exp, 1, op1);
