@@ -282,29 +282,29 @@ d_init ()
      * (as amd64 or s390x) so for full 64-bit archs (as ia64 or alpha) we
      * need to test it more. */
 #  ifdef D_CPU_VERSYM64
-        /* We are "defaulting" to 32-bit, which mean that if both D_CPU_VERSYM
-         * and D_CPU_VERSYM64 are defined, and not TARGET_64BIT, we will use
-         * 32 bits. This will be overidden for full 64-bit archs */
-        global.params.isX86_64 = 0;
+    /* We are "defaulting" to 32-bit, which mean that if both D_CPU_VERSYM
+     * and D_CPU_VERSYM64 are defined, and not TARGET_64BIT, we will use
+     * 32 bits. This will be overidden for full 64-bit archs */
+    global.params.isX86_64 = 0;
 #    ifndef D_CPU_VERSYM
-        /* So this is typically for alpha and ia64 */
-        global.params.isX86_64 = 1;
+    /* So this is typically for alpha and ia64 */
+    global.params.isX86_64 = 1;
 #    endif
 #  else
 #    ifdef D_CPU_VERSYM /* D_CPU_VERSYM is defined and D_CPU_VERSYM64 is not. */
-        global.params.isX86_64 = 0;
+    global.params.isX86_64 = 0;
 #    else
-        /* If none of D_CPU_VERSYM and D_CPU_VERSYM64 defined check size_t
-         * length instead. */
-        switch (sizeof(size_t))
-        {
-            case 4:
-                global.params.isX86_64 = 0;
-                break;
-            case 8:
-                global.params.isX86_64 = 1;
-                break;
-        }
+    /* If none of D_CPU_VERSYM and D_CPU_VERSYM64 defined check size_t
+     * length instead. */
+    switch (sizeof(size_t))
+    {
+        case 4:
+            global.params.isX86_64 = 0;
+            break;
+        case 8:
+            global.params.isX86_64 = 1;
+            break;
+    }
 #    endif
 #  endif
 #endif
@@ -353,10 +353,7 @@ d_init ()
     if (strcmp(D_OS_VERSYM, "darwin") == 0)
         VersionCondition::addPredefinedGlobalIdent("OSX");
     if (strcmp(D_OS_VERSYM, "Win32") == 0)
-    {
-        VersionCondition::addPredefinedGlobalIdent("Windows");
         is_target_win32 = true;
-    }
 #endif
 #ifdef D_OS_VERSYM2
     VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM2);

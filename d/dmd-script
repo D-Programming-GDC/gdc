@@ -29,6 +29,7 @@
 
 
 use strict;
+use warnings;
 use Cwd qw(abs_path);
 use File::Basename;
 use File::Spec;
@@ -39,12 +40,9 @@ my $output_directory;
 my $output_parents;
 my $output_file;
 my $header_directory;
-my $header_parents;
 my $header_file;
 my $documentation_directory;
 my $documentation_file;
-my $default_lib;
-my $debug_lib;
 my $debug = 0;
 my $link = 1;
 my $header = 0;
@@ -176,8 +174,8 @@ chomp $gcc_version;
 $gcc_version =~ m/^(\d+)\.(\d+)/;
 my ($gcc_maj, $gcc_min) = ( $1, $2 );
 
-my $target_machine = `$gdc -dumpmachine`;
-chomp $target_machine;
+#my $target_machine = `$gdc -dumpmachine`;
+#chomp $target_machine;
 
 sub addSourceFile($) {
     my ($arg) = @_;
@@ -201,7 +199,7 @@ sub determineARexe() {
 
     if ( length $target_prefix ) {
         foreach my $dir (split pathSep, $ENV{PATH}) {
-            $path = File::Spec->catfile( $path, $name );
+            $path = File::Spec->catfile( $dir, $name );
             return $name if -x $path; # Could return $path, but this looks better
         }
         errorExit "Could not find archiver command '$name'.";
