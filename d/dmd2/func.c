@@ -946,6 +946,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 #else
             Type *t;
 
+#ifndef IN_GCC
             if (global.params.isX86_64)
             {   // Declare save area for varargs registers
                 Type *t = new TypeIdentifier(loc, Id::va_argsave_t);
@@ -960,6 +961,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                     v_argsave->parent = this;
                 }
             }
+#endif
 
             if (f->linkage == LINKd)
             {   // Declare _arguments[]
@@ -985,7 +987,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                 v_arguments->parent = this;
 #endif
             }
-            if (f->linkage == LINKd || (parameters && parameters->dim))
+            if (f->linkage == LINKd || (f->parameters && Parameter::dim(f->parameters)))
             {   // Declare _argptr
 #if IN_GCC
                 t = d_gcc_builtin_va_list_d_type;
