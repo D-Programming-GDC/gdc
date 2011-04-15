@@ -1265,7 +1265,7 @@ static AsmOpEnt opData64[] = {
     { "popad",  Op_Invalid },
     { "popfd",  Op_Invalid },
     { "popfq",  Op_SizedStack },
-    { "popq",   Op_SizedStack },
+    { "popq",   Op_DstQ },
     { "pshufb", Op_DstSrcImmM },
     { "psignb", Op_DstSrcSSE },
     { "psignd", Op_DstSrcSSE },

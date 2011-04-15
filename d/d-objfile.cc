@@ -447,6 +447,10 @@ ObjectFile::outputFunction(FuncDeclaration * f)
     Symbol * s = f->toSymbol();
     tree t = s->Stree;
 
+    // Write out _tlsstart/_tlsend.
+    if (f->isMain())
+        obj_tlssections();
+
     d_add_global_function(t);
 
     if (TREE_CODE(t) == FUNCTION_DECL)

@@ -147,6 +147,7 @@ version( Windows )
             {
                 extern int _tlsstart;
                 extern int _tlsend;
+                __gshared int _tls_index;   // %% Find somewhere to put this.
             }
         }
         else

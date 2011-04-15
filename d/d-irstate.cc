@@ -78,10 +78,6 @@ IRBase::startFunction(FuncDeclaration * decl)
     else if (decl->isUnitTestDeclaration())
         mi.unitTests.push(decl);
 
-    // Write out _tlsstart/_tlsend.
-    if (decl->isMain())
-        obj_tlssections();
-
     return new_irs;
 }
 
