@@ -267,12 +267,8 @@ ObjectFile::giveDeclUniqueName(tree decl, const char * prefix)
 static tree
 d_comdat_group(tree decl, Dsymbol * dsym)
 {
-    tree name = NULL_TREE;
-
-    if (dsym->getModule())
-        name = DECL_ASSEMBLER_NAME(decl);
-
-    return name;
+    // %% May need special case here.
+    return DECL_ASSEMBLER_NAME(decl);
 }
 
 #endif
@@ -297,13 +293,30 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
     /* First method: Use one-only.
        If user has specified -femit-templates=private, honor that
        even if the target supports one-only. */
-    if ((! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates != TEprivate)
-            && supports_one_only())
+    if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates != TEprivate)
+    {
+        /* The following makes assumptions about the behavior
+           of make_decl_one_only */
+        if (SUPPORTS_ONE_ONLY)
+        {
 #if D_GCC_VER >= 45
-        make_decl_one_only(decl_tree, d_comdat_group(decl_tree, dsym));
+            make_decl_one_only(decl_tree, d_comdat_group(decl_tree, dsym));
 #else
-        make_decl_one_only(decl_tree);
+            make_decl_one_only(decl_tree);
 #endif
+        }
+        else if (SUPPORTS_WEAK)
+        {
+            tree decl_init = DECL_INITIAL(decl_tree);
+            DECL_INITIAL(decl_tree) = integer_zero_node;
+#if D_GCC_VER >= 45
+            make_decl_one_only(decl_tree, d_comdat_group(decl_tree, dsym));
+#else
+            make_decl_one_only(decl_tree);
+#endif
+            DECL_INITIAL(decl_tree) = decl_init;
+        }
+    }
     /* Second method: Make a private copy.
        For RTTI, we can always make a private copy.  For templates, only do
        this if the user specified -femit-templates=private. */
