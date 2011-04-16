@@ -343,7 +343,7 @@ MAIN_OBJS = std/algorithm.o std/array.o std/base64.o std/bigint.o \
         std/functional.o std/getopt.o std/gregorian.o std/json.o std/math.o \
         std/mathspecial.o std/md5.o std/metastrings.o std/numeric.o \
         std/openrj.o std/outbuffer.o std/signals.o std/stdarg.o std/stdio.o \
-        std/stdiobase.o std/stream.o std/string.o std/syserror.o \
+        std/stdiobase.o std/stdint.o std/stream.o std/string.o std/syserror.o \
         std/system.o std/random.o std/range.o std/regex.o std/regexp.o \
         std/traits.o std/typecons.o std/typetuple.o std/uni.o std/uri.o \
         std/utf.o std/variant.o std/xml.o std/zip.o std/zlib.o \

@@ -448,7 +448,7 @@ ObjectFile::outputFunction(FuncDeclaration * f)
     tree t = s->Stree;
 
     // Write out _tlsstart/_tlsend.
-    if (f->isMain())
+    if (f->isMain() || f->isWinMain() || f->isDllMain())
         obj_tlssections();
 
     d_add_global_function(t);

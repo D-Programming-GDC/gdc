@@ -64,8 +64,7 @@ version (FreeBSD)
 
 version (MinGW)
 {
-    version = DIGITAL_MARS_STDIO;
-    import std.c.stdio : __fhnd_info, FHND_WCHAR, FHND_TEXT;
+    version = MINGW_IO;
 }
 
 version(Windows)
@@ -98,6 +97,38 @@ version (DIGITAL_MARS_STDIO)
 
     alias __fp_lock FLOCK;
     alias __fp_unlock FUNLOCK;
+
+    alias setmode _setmode;
+    enum _O_BINARY = 0x8000;
+    int _fileno(FILE* f) { return f._file; }
+    alias _fileno fileno;
+}
+else version (MINGW_IO)
+{
+    extern (C)
+    {
+        int setmode(int, int);
+    }
+
+    void flockfile(FILE* fp) { }
+
+    void funlockfile(FILE* fp) { }
+
+    int fputc_unlocked(int c, _iobuf* fp) { return fputc(c, cast(shared) fp); }
+    int fputwc_unlocked(int c, _iobuf* fp)
+    {
+        return fputwc(cast(wchar_t)c, cast(shared) fp);
+    }
+    int fgetc_unlocked(_iobuf* fp) { return fgetc(cast(shared) fp); }
+    int fgetwc_unlocked(_iobuf* fp) { return fgetwc(cast(shared) fp); }
+
+    alias fputc_unlocked FPUTC;
+    alias fputwc_unlocked FPUTWC;
+    alias fgetc_unlocked FGETC;
+    alias fgetwc_unlocked FGETWC;
+
+    alias flockfile FLOCK;
+    alias funlockfile FUNLOCK;
 
     alias setmode _setmode;
     enum _O_BINARY = 0x8000;
@@ -2347,6 +2378,80 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
         fp._ptr += i;
         return i;
     }
+}
+
+version (MINGW_IO)
+private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
+{
+    FLOCK(fps);
+    scope(exit) FUNLOCK(fps);
+    auto fp = cast(_iobuf*)fps;
+    if (fwide(fps, 0) > 0)
+    {   /* Stream is in wide characters
+         * Read them and convert to chars.
+         */
+        version (Windows)
+        {
+            buf.length = 0;
+            for (int c; (c = FGETWC(fp)) != -1; )
+            {
+                if ((c & ~0x7F) == 0)
+                {   buf ~= c;
+                    if (c == terminator)
+                        break;
+                }
+                else
+                {
+                    if (c >= 0xD800 && c <= 0xDBFF)
+                    {
+                        int c2 = void;
+                        if ((c2 = FGETWC(fp)) != -1 ||
+                                c2 < 0xDC00 && c2 > 0xDFFF)
+                        {
+                            StdioException("unpaired UTF-16 surrogate");
+                        }
+                        c = ((c - 0xD7C0) << 10) + (c2 - 0xDC00);
+                    }
+                    std.utf.encode(buf, c);
+                }
+            }
+            if (ferror(cast(shared)fp))
+                StdioException();
+            return buf.length;
+        }
+        else version (Posix)
+        {
+            buf.length = 0;
+            for (int c; (c = FGETWC(fp)) != -1; )
+            {
+                if ((c & ~0x7F) == 0)
+                    buf ~= cast(char)c;
+                else
+                    std.utf.encode(buf, cast(dchar)c);
+                if (c == terminator)
+                    break;
+            }
+            if (ferror(fps))
+                StdioException();
+            return buf.length;
+        }
+        else
+        {
+            static assert(0);
+        }
+    }
+
+    // Narrow stream
+    buf.length = 0;
+    for (int c; (c = FGETC(fp)) != -1; )
+    {
+        buf ~= cast(char)c;
+        if (c == terminator)
+            break;
+    }
+    if (ferror(fps))
+        StdioException();
+    return buf.length;
 }
 
 version (GCC_IO)

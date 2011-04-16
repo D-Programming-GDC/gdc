@@ -260,15 +260,36 @@ version( Windows )
         _IOAPP   = 0x200, // non-standard
     }
 
-    extern shared void function() _fcloseallp;
+    version( MinGW )
+    {
+        private extern
+        {
+            __gshared export FILE[5] _iob;
+        }
 
-    private extern shared FILE[_NFILE] _iob;
+        __gshared FILE* stdin;
+        __gshared FILE* stdout;
+        __gshared FILE* stderr;
 
-    shared stdin  = &_iob[0];
-    shared stdout = &_iob[1];
-    shared stderr = &_iob[2];
-    shared stdaux = &_iob[3];
-    shared stdprn = &_iob[4];
+        static this()
+        {
+            stdin  = &_iob[0];
+            stdout = &_iob[1];
+            stderr = &_iob[2];
+        }
+    }
+    else
+    {
+        extern shared void function() _fcloseallp;
+
+        private extern shared FILE[_NFILE] _iob;
+
+        shared stdin  = &_iob[0];
+        shared stdout = &_iob[1];
+        shared stderr = &_iob[2];
+        shared stdaux = &_iob[3];
+        shared stdprn = &_iob[4];
+    }
 }
 else version( linux )
 {
