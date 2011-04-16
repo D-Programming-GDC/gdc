@@ -271,7 +271,7 @@ version( Windows )
         __gshared FILE* stdout;
         __gshared FILE* stderr;
 
-        static this()
+        shared static this()
         {
             stdin  = &_iob[0];
             stdout = &_iob[1];
