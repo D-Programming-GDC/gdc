@@ -199,7 +199,7 @@ gcc_type_to_d_type(tree t)
             for (unsigned i = 0; i < builtin_converted_types.dim; i += 2)
             {
                 tree ti = (tree) builtin_converted_types.data[i];
-                if (ti == t)
+                if (TYPE_MAIN_VARIANT(ti) == TYPE_MAIN_VARIANT(t))
                     return (Type *) builtin_converted_types.data[i + 1];
             }
 
