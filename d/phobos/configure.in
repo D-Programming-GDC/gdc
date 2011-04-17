@@ -249,7 +249,12 @@ dnl (# Default case for install directory for include files.) and on
 
 # include dir .. need to support --enable-version-specific.. but
 # will have to modify gcc/configure.ac ..
-gdc_include_dir='${prefix}'/include/d/${d_gcc_ver}
+# For now, basic workaround for cross compilers ..
+if test "${host}" != "${target}"; then
+    gdc_include_dir='${libdir}/gcc/${host_alias}'/${d_gcc_ver}/include/d
+else
+    gdc_include_dir='${prefix}'/include/d/${d_gcc_ver}
+fi
 AC_SUBST(gdc_include_dir)
 AC_ARG_WITH([cross-host],
   AC_HELP_STRING([--with-cross-host=HOST],

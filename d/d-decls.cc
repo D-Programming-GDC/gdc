@@ -376,7 +376,10 @@ Symbol *VarDeclaration::toSymbol()
             if (TREE_CODE(var_decl) == VAR_DECL)
             {   // %% If not marked, variable will be accessible
                 // from multiple threads, which is not what we want.
-                DECL_TLS_MODEL(var_decl) = decl_default_tls_model(var_decl);
+                if (targetm.have_tls)
+                    DECL_TLS_MODEL(var_decl) = decl_default_tls_model(var_decl);
+                else
+                    DECL_TLS_MODEL(var_decl) = TLS_MODEL_EMULATED;
             }
             if (global.params.vtls)
             {

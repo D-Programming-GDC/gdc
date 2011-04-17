@@ -848,8 +848,10 @@ install-data-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 	for i in core core/stdc core/sync core/sys/osx/mach core/sys/posix \
 		core/sys/posix/arpa core/sys/posix/net core/sys/posix/netinet \
 		core/sys/posix/sys core/sys/windows; do \
-		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(IMPORT)/$$i/*.di; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/$$i; \
+		for f in $(IMPORT)/$$i/*.di; do \
+			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/$$i; \
+		done; \
 	done
 	for i in crc32.d object.di; do \
 		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done
