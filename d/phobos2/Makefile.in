@@ -367,10 +367,10 @@ OSX_OBJS = std/c/osx/socket.o
 FREEBSD_OBJS = std/c/freebsd/socket.o
 
 # std.c.linux.linux, std.loader, gcc.cbridge*
-WINDOWS_OBJS = std/c/windows/com.o std/c/windows/stat.o std/c/windows/windows.o \
-             std/c/windows/winsock.o std/windows/charset.o \
-             std/windows/iunknown.o std/windows/registry.o \
-             std/windows/syserror.o std/__fileinit.o
+WINDOWS_OBJS = std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
+             std/c/windows/windows.o std/c/windows/winsock.o \
+             std/windows/charset.o std/windows/iunknown.o std/windows/registry.o \
+             std/windows/syserror.o std/__fileinit.o 
 
 ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
 
