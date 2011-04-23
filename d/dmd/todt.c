@@ -52,6 +52,42 @@ extern Symbol *static_sym();
 
 /* ================================================================ */
 
+#ifdef IN_GCC
+static dt_t *createTsarrayDt(dt_t * dt, Type *t)
+{
+    assert(dt != NULL);
+    target_size_t eoa_size = dt_size(dt);
+    if (eoa_size == t->size())
+        return dt;
+    else
+    {
+        TypeSArray * tsa = (TypeSArray *) t->toBasetype();
+        assert(tsa->ty == Tsarray);
+
+        target_size_t dim = tsa->dim->toInteger();
+        dt_t * adt = NULL;
+        dt_t ** padt = & adt;
+
+        if (eoa_size * dim == eoa_size)
+        {
+            for (target_size_t i = 0; i < dim; i++)
+                padt = dtcontainer(padt, NULL, dt);
+        }
+        else
+        {
+            assert(tsa->size(0) % eoa_size == 0);
+            for (target_size_t i = 0; i < dim; i++)
+                padt = dtcontainer(padt, NULL,
+                    createTsarrayDt(dt, tsa->next));
+        }
+        dt_t * cdt = NULL;
+        dtcontainer(& cdt, t, adt);
+        return cdt;
+    }
+}
+#endif
+
+
 dt_t *Initializer::toDt()
 {
     assert(0);
@@ -1082,36 +1118,44 @@ dt_t **TypeSArray::toDtElem(dt_t **pdt, Expression *e)
         }
         if (!e)                         // if not already supplied
             e = tnext->defaultInit();   // use default initializer
-        e->toDt(pdt);
-        dt_optimize(*pdt);
+        dt_t *adt = NULL;
+        dt_t **padt = & adt;
+        e->toDt(padt);
+        dt_optimize(*padt);
+        // These first four cases are OK for GDC
         if (e->op == TOKstring)
             len /= ((StringExp *)e)->len;
         if (e->op == TOKarrayliteral)
             len /= ((ArrayLiteralExp *)e)->elements->dim;
         // These first two cases are okay for GDC too
-        if ((*pdt)->dt == DT_azeros && !(*pdt)->DTnext)
+        if ((*padt)->dt == DT_azeros && !(*padt)->DTnext)
         {
-            (*pdt)->DTazeros *= len;
-            pdt = &((*pdt)->DTnext);
+            (*padt)->DTazeros *= len;
+            pdt = dtcat(pdt, adt);
         }
-        else if ((*pdt)->dt == DT_1byte && (*pdt)->DTonebyte == 0 && !(*pdt)->DTnext)
+        else if ((*padt)->dt == DT_1byte && (*padt)->DTonebyte == 0 && !(*padt)->DTnext)
         {
-            (*pdt)->dt = DT_azeros;
-            (*pdt)->DTazeros = len;
-            pdt = &((*pdt)->DTnext);
+            (*padt)->dt = DT_azeros;
+            (*padt)->DTazeros = len;
+            pdt = dtcat(pdt, adt);
         }
         else
         {
+#if IN_GCC
+            pdt = dtcat(pdt, createTsarrayDt(adt, this));
+#else
             for (i = 1; i < len; i++)
             {
                 if (tbn->ty == Tstruct)
-                {   pdt = tnext->toDt(pdt);
-                    while (*pdt)
-                        pdt = &((*pdt)->DTnext);
+                {   padt = tnext->toDt(padt);
+                    while (*padt)
+                        padt = &((*padt)->DTnext);
                 }
                 else
-                    pdt = e->toDt(pdt);
+                    padt = e->toDt(padt);
             }
+            pdt = dtcat(pdt, adt);
+#endif
         }
     }
     return pdt;
