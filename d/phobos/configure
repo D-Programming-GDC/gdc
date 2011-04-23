@@ -4694,7 +4694,7 @@ LIBIBERTY_H_PATH='$(srcdir)/../include'
 # include dir .. need to support --enable-version-specific.. but
 # will have to modify gcc/configure.ac ..
 # For now, basic workaround for cross compilers ..
-if test "${host}" != "${target}"; then
+if test "${host}" != "${build}"; then
     gdc_include_dir='${libdir}/gcc/${host_alias}'/${d_gcc_ver}/include/d
 else
     gdc_include_dir='${prefix}'/include/d/${d_gcc_ver}

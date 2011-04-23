@@ -425,8 +425,8 @@ EqualExp::toElem(IRState* irs)
         }
         else if (tb1->ty == Tsarray && tb2->ty == Tsarray)
         {   // Assuming sizes are equal.
-            return build2(EQ_EXPR, type->toCtype(),
-                          e1->toElem(irs), e2->toElem(irs));
+            return build2(op == TOKnotequal ? NE_EXPR : EQ_EXPR,
+                          type->toCtype(), e1->toElem(irs), e2->toElem(irs));
         }
         else
         {
