@@ -151,8 +151,11 @@ dt_size(dt_t * dt)
             }
             case DT_tree:
             {
-                tree t_size = TYPE_SIZE_UNIT(TREE_TYPE(dt->DTtree));
-                size += gen.getTargetSizeConst(t_size);
+                if (! gen.isErrorMark(dt->DTtree))
+                {
+                    tree t_size = TYPE_SIZE_UNIT(TREE_TYPE(dt->DTtree));
+                    size += gen.getTargetSizeConst(t_size);
+                }
                 break;
             }
             case DT_container:
@@ -276,7 +279,7 @@ dt2tree_list_of_elems(dt_t * dt)
     {
         tree value = dt2node(dt);
         tree field = d_build_decl(FIELD_DECL, NULL_TREE, TREE_TYPE(value));
-        tree size = size_zero_node;
+        tree size = TYPE_SIZE_UNIT(TREE_TYPE(value));
         DECL_CONTEXT(field) = aggtype;
         DECL_FIELD_OFFSET(field) = offset;
         DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;
@@ -288,10 +291,7 @@ dt2tree_list_of_elems(dt_t * dt)
         fields.chain(field);
         elts.cons(field, value);
 
-        if (value != error_mark_node)
-            size = TYPE_SIZE_UNIT(TREE_TYPE(value));
         offset = size_binop(PLUS_EXPR, offset, size);
-
         dt = dt->DTnext;
     }
 

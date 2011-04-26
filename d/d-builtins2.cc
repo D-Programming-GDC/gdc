@@ -432,7 +432,7 @@ d_gcc_magic_builtins_module(Module *m)
            The purity of a builtins can vary depending on compiler flags set at
            init, or by the -foptions passed, such as flag_unsafe_math_optimizations
          */
-        dtf->trust = TRUSTtrusted;
+        dtf->trust = TREE_NOTHROW(decl) ? TRUSTtrusted : TRUSTsystem;
         dtf->isnothrow = TREE_NOTHROW(decl);
         dtf->purity = DECL_PURE_P(decl) ?   PUREstrong :
                       TREE_READONLY(decl) ? PUREconst :
@@ -637,7 +637,7 @@ gcc_cst_to_d_expr(Loc loc, tree cst)
 Expression *
 d_gcc_eval_builtin(CallExp *ce, Expressions *arguments)
 {
-    Expression * e = NULL;
+    Expression * e = EXP_VOID_INTERPRET;
 
     if (ce->e1->op == TOKvar)
     {
@@ -646,7 +646,7 @@ d_gcc_eval_builtin(CallExp *ce, Expressions *arguments)
 
         FuncDeclaration * fd = ((VarExp *) ce->e1)->var->isFuncDeclaration();
         TypeFunction * tf = (TypeFunction *) fd->type;
-        tree callee;
+        tree callee = NULL_TREE;
         tree result;
 
         switch (fd->builtin)

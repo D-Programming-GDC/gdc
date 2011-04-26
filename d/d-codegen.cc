@@ -2242,15 +2242,15 @@ target_size_t
 IRState::getTargetSizeConst(tree t)
 {
     target_size_t result;
-    if (sizeof(HOST_WIDE_INT) < sizeof(target_size_t))
+    if (sizeof(HOST_WIDE_INT) >= sizeof(target_size_t))
+        result = tree_low_cst(t, 1);
+    else
     {
         gcc_assert(sizeof(HOST_WIDE_INT) * 2 == sizeof(target_size_t));
         result = (unsigned HOST_WIDE_INT) TREE_INT_CST_LOW(t);
         result += ((target_size_t) (unsigned HOST_WIDE_INT) TREE_INT_CST_HIGH(t))
             << HOST_BITS_PER_WIDE_INT;
     }
-    else
-        result = tree_low_cst(t, 1);
     return result;
 }
 
