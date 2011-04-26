@@ -3110,15 +3110,24 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
        When optimization is turned on, this whole process results in
        no extra code!
     */
+    /* Also applies to integral types, where the result in EAX gets
+       written with '0' before return under certain optimisations.
+     */
     /* This would apply to complex types as well, but GDC currently
        returns complex types as a struct instead of in ST(0) and ST(1).
      */
-    if (inlineAsm && ! naked && type->nextOf()->isreal())
+    if ((type->nextOf()->isreal() || type->nextOf()->isintegral())
+            && inlineAsm && ! naked)
     {
         tree result_var = irs->localVar(TREE_TYPE(result_decl));
 
         tree nop_str = build_string(0, "");
-        tree cns_str = build_string(2, "=t");
+        tree cns_str;
+        if (type->nextOf()->isreal())
+            cns_str = build_string(2, "=t");
+        else
+            cns_str = build_string(2, "=a");
+
         tree out_arg = tree_cons(tree_cons(NULL_TREE, cns_str, NULL_TREE),
             result_var, NULL_TREE);
 
