@@ -32,16 +32,33 @@ enum wchar_t WEOF = 0xFFFF;
 
 int fwprintf(FILE* stream, in wchar_t* format, ...);
 int fwscanf(FILE* stream, in wchar_t* format, ...);
-int swprintf(wchar_t* s, size_t n, in wchar_t* format, ...);
 int swscanf(in wchar_t* s, in wchar_t* format, ...);
 int vfwprintf(FILE* stream, in wchar_t* format, va_list arg);
 int vfwscanf(FILE* stream, in wchar_t* format, va_list arg);
-int vswprintf(wchar_t* s, size_t n, in wchar_t* format, va_list arg);
 int vswscanf(in wchar_t* s, in wchar_t* format, va_list arg);
 int vwprintf(in wchar_t* format, va_list arg);
 int vwscanf(in wchar_t* format, va_list arg);
 int wprintf(in wchar_t* format, ...);
 int wscanf(in wchar_t* format, ...);
+
+/*
+ * Windows has 2 versions of swprintf and vswprintf.  MinGW defaults to the
+ * Microsoft signature.  Alias to match DMD/ANSI signature.
+ */
+version( MinGW )
+{
+	int _snwprintf(wchar_t* s, size_t n, in wchar_t* format, ...);
+	alias _snwprintf swprintf;
+
+	int _vsnwprintf(wchar_t* s, size_t n, in wchar_t* format, va_list arg);
+	alias _vsnwprintf vswprintf;	
+}
+else
+{
+	int swprintf(wchar_t* s, size_t n, in wchar_t* format, ...);
+	int vswprintf(wchar_t* s, size_t n, in wchar_t* format, va_list arg);
+}
+
 
 wint_t fgetwc(FILE* stream);
 wint_t fputwc(wchar_t c, FILE* stream);
