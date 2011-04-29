@@ -2426,20 +2426,16 @@ ArrayLiteralExp::toElem(IRState * irs)
     }
     else
 #endif
-    {   /* Build an expression that assigns the expressions in ELEMENTS to a static
-           constructor. */
+    {   /* Build an expression that assigns the expressions in ELEMENTS to a constructor. */
         CtorEltMaker elms;
 
         elms.reserve(elements->dim);
         for (unsigned i = 0; i < elements->dim; i++)
         {
             elms.cons(irs->integerConstant(i, size_type_node),
-                    ((Expression*) elements->data[i])->toElem(irs));
+                      ((Expression *) elements->data[i])->toElem(irs));
         }
         tree ctor = build_constructor(sa_type, elms.head);
-        TREE_STATIC(ctor) = 1;
-        TREE_CONSTANT(ctor) = 1;
-
         result = irs->addressOf(ctor);
     }
     // memcpy(mem, &ctor, size)
@@ -2452,19 +2448,10 @@ ArrayLiteralExp::toElem(IRState * irs)
     // Returns array pointed to by MEM.
     result = irs->maybeCompound(result, mem);
 
-    switch (typeb->ty)
-    {
-        case Tarray:
-            result = irs->darrayVal(type, elements->dim, result);
-            break;
-        case Tsarray:
-            result = irs->indirect(result, sa_type);
-            break;
-        case Tpointer:
-            break;
-        default:
-            gcc_unreachable();
-    }
+    if (typeb->ty == Tarray)
+        result = irs->darrayVal(type, elements->dim, result);
+    else if (typeb->ty == Tsarray)
+        result = irs->indirect(result, sa_type);
 
     return result;
 }
