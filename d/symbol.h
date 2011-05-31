@@ -114,19 +114,14 @@ struct Symbol : Object
     Symbol();
 
     const char *Sident;
+    const char *prettyIdent;
     //unused in GCC//TYPE *Stype; // maybe type/TYPE ?
     SymbolStorageClass Sclass;
     SymbolFL           Sfl;
     SymbolSegment      Sseg;
     int                Sflags;
 
-    //unused in GCC//int Ssymnum;
-
     dt_t * Sdt;
-
-    // fake classsym....
-    //unused in GCC//Symbol * Sstruct;
-    //unused in GCC//int      Sstructalign;
 
     // Specific to GNU backend
     tree     Stree;

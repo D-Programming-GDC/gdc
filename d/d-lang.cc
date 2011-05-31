@@ -79,11 +79,6 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_REGISTER_BUILTIN_TYPE    d_register_builtin_type
 #define LANG_HOOKS_FINISH_INCOMPLETE_DECL   d_finish_incomplete_decl
 
-#if D_GCC_VER < 41
-#undef LANG_HOOKS_TRUTHVALUE_CONVERSION
-#define LANG_HOOKS_TRUTHVALUE_CONVERSION    d_truthvalue_conversion
-#endif
-
 #if D_GCC_VER >= 43
 #define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function43
 #else
@@ -723,7 +718,7 @@ d_write_global_declarations()
 #if D_GCC_VER >= 45
     /* We're done parsing; proceed to optimize and emit assembly. */
     cgraph_finalize_compilation_unit();
-#elif D_GCC_VER >= 41
+#else
     cgraph_finalize_compilation_unit();
     cgraph_optimize();
 #endif
@@ -732,20 +727,6 @@ d_write_global_declarations()
        be emitted, output debug information for globals.  */
     for (unsigned i = 0; i < globalFunctions.dim; i++)
         debug_hooks->global_decl(vec[i]);
-
-#if D_GCC_VER == 40
-    /* For 4.0.x, if cgraph_optimize is called before the loop over
-       globalFunctions, dwarf2out can generate a DIE tree that has a
-       nested class as the parent of an outer class (this causes an
-       ICE.) Not sure if this is due to a bug in the D front end, but calling
-       debug_hooks->global_decl ensures the outer elements are
-       processed first.
-
-       For later versions, calling cgraph_optimize later causes more
-       problems.
-    */
-    cgraph_optimize();
-#endif
 }
 
 // Some phobos code (isnormal, etc.) breaks with strict aliasing...
@@ -1049,7 +1030,7 @@ d_parse_file (int /*set_yydebug*/)
          }
      }
      if (global.errors)
-         fatal();
+         goto had_errors;
 #endif
 
     // load all unconditional imports for better symbol resolving
@@ -1111,7 +1092,7 @@ d_parse_file (int /*set_yydebug*/)
 
     // Do not attempt to generate output files if errors or warnings occurred
     if (global.errors || global.warnings)
-        fatal();
+        goto had_errors;
 
     g.ofile = new ObjectFile();
     if (fonly_arg)

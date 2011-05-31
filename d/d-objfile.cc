@@ -804,22 +804,21 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
 FuncDeclaration *
 ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, bool public_fn)
 {
-    Module * mod = g.mod;
-    if (! mod)
-        mod = d_gcc_get_output_module();
+    if (! g.mod)
+        g.mod = d_gcc_get_output_module();
 
     if (name[0] == '*')
     {
-        Symbol * s = mod->toSymbolX(name + 1, 0, 0, "FZv");
+        Symbol * s = g.mod->toSymbolX(name + 1, 0, 0, "FZv");
         name = s->Sident;
     }
 
     TypeFunction * func_type = new TypeFunction(0, Type::tvoid, 0, LINKc);
-    FuncDeclaration * func = new FuncDeclaration(mod->loc, mod->loc, // %% locs may be wrong
+    FuncDeclaration * func = new FuncDeclaration(g.mod->loc, g.mod->loc, // %% locs may be wrong
         Lexer::idPool(name), STCstatic, func_type); // name is only to prevent crashes
-    func->loc = Loc(mod, 1); // to prevent debug info crash // maybe not needed if DECL_ARTIFICIAL?
+    func->loc = Loc(g.mod, 1); // to prevent debug info crash // maybe not needed if DECL_ARTIFICIAL?
     func->linkage = func_type->linkage;
-    func->parent = mod;
+    func->parent = g.mod;
     func->protection = public_fn ? PROTpublic : PROTprivate;
 
     tree func_decl = func->toSymbol()->Stree;
@@ -832,8 +831,8 @@ ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, boo
 
     // %% maybe remove the identifier
 
-    func->fbody = new ExpStatement(mod->loc,
-        new WrappedExp(mod->loc, TOKcomma, expr, Type::tvoid));
+    func->fbody = new ExpStatement(g.mod->loc,
+        new WrappedExp(g.mod->loc, TOKcomma, expr, Type::tvoid));
 
     func->toObjFile(false);
 
@@ -846,7 +845,6 @@ ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, boo
 FuncDeclaration *
 ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool force_and_public)
 {
-    IRState * irs = g.irs;
     tree expr_list = NULL_TREE;
 
     // If there is only one function, just return that
@@ -860,7 +858,7 @@ ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool
         {
             FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
-            expr_list = irs->maybeVoidCompound(expr_list, call_expr);
+            expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
     }
     if (expr_list)
@@ -876,7 +874,6 @@ ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool
 FuncDeclaration *
 ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
 {
-    IRState * irs = g.irs;
     tree expr_list = NULL_TREE;
 
     // If there is only one function, just return that
@@ -892,14 +889,14 @@ ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
             tree var_decl = var->toSymbol()->Stree;
             tree var_expr = build2(MODIFY_EXPR, void_type_node, var_decl,
                                 build2(PLUS_EXPR, TREE_TYPE(var_decl), var_decl, integer_one_node));
-            expr_list = irs->maybeVoidCompound(expr_list, var_expr);
+            expr_list = g.irs->maybeVoidCompound(expr_list, var_expr);
         }
         // Call Ctor Functions
         for (unsigned i = 0; i < functions->dim; i++)
         {
             FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
-            expr_list = irs->maybeVoidCompound(expr_list, call_expr);
+            expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
     }
     if (expr_list)
@@ -914,7 +911,6 @@ ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
 FuncDeclaration *
 ObjectFile::doDtorFunction(const char * name, Array * functions)
 {
-    IRState * irs = g.irs;
     tree expr_list = NULL_TREE;
 
     // If there is only one function, just return that
@@ -928,7 +924,7 @@ ObjectFile::doDtorFunction(const char * name, Array * functions)
         {
             FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
-            expr_list = irs->maybeVoidCompound(expr_list, call_expr);
+            expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
     }
     if (expr_list)
@@ -1103,11 +1099,8 @@ obj_tlssections()
     TREE_PUBLIC(tlsend) = 1;
     TREE_STATIC(tlsend) = 1;
     DECL_ARTIFICIAL(tlsend) = 1;
-#if D_GCC_VER > 41
-    // %% thread-local COMMON data not implemented in 4.1.x
     // DECL_COMMON so the symbol goes in .tcommon
     DECL_COMMON(tlsend) = 1;
-#endif
     DECL_TLS_MODEL(tlsend) = decl_default_tls_model(tlsend);
     g.ofile->setDeclLoc(tlsend, g.mod);
     g.ofile->rodc(tlsend, 1);

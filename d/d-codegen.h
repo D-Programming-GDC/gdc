@@ -489,6 +489,15 @@ struct IRState : IRBase
                  TREE_CODE(TREE_OPERAND(t, 0)) == ERROR_MARK);
     }
 
+    // ** Helpers for call
+    static TypeFunction * getFuncType(Type * t);
+
+    static inline bool isFuncType(tree t)
+    {
+        return (TREE_CODE(t) == FUNCTION_TYPE ||
+                TREE_CODE(t) == METHOD_TYPE);
+    }
+
     // ** Function calls
     tree call(Expression * expr, Array * arguments);
     tree call(FuncDeclaration * func_decl, Array * args);
@@ -771,10 +780,6 @@ struct ListMaker
     }
 };
 
-#if D_GCC_VER < 41
-typedef ListMaker CtorEltMaker;
-#else
-
 struct CtorEltMaker
 {
     VEC(constructor_elt,gc) *head;
@@ -798,8 +803,6 @@ struct CtorEltMaker
         cons(NULL_TREE, v);
     }
 };
-
-#endif
 
 class FieldVisitor
 {

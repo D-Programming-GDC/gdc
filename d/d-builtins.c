@@ -44,11 +44,7 @@
 
 #include "d-lang.h"
 
-#if D_GCC_VER == 40
-#include "d-bi-attrs-40.h"
-#elif D_GCC_VER == 41
-#include "d-bi-attrs-41.h"
-#elif D_GCC_VER == 42
+#if D_GCC_VER == 42
 #include "d-bi-attrs-42.h"
 #elif D_GCC_VER == 43
 #include "d-bi-attrs-43.h"
@@ -71,6 +67,8 @@ builtin_type_for_size (int size, bool unsignedp)
     tree type = lang_hooks.types.type_for_size (size, unsignedp);
     return type ? type : error_mark_node;
 }
+
+/* Handle default attributes.  */
 
 enum built_in_attribute
 {
@@ -136,7 +134,6 @@ lookup_C_type_name(const char * p)
     internal_error("unsigned C type '%s'", p);
 }
 
-#if D_GCC_VER >= 41
 static void
 do_build_builtin_fn(enum built_in_function fncode,
                     const char *name,
@@ -170,7 +167,6 @@ do_build_builtin_fn(enum built_in_function fncode,
     if (implicit_p)
         implicit_built_in_decls[(int) fncode] = decl;
 }
-#endif
 
 enum d_builtin_type
 {
@@ -253,10 +249,9 @@ def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
         goto egress;
     t = build_function_type (t, args);
 
-egress:
+  egress:
     builtin_types[def] = t;
 }
-
 
 void d_init_builtins(void)
 {
@@ -264,7 +259,6 @@ void d_init_builtins(void)
     tree va_list_arg_type_node;
 
     d_bi_init(/*(int) BT_LAST, (int) END_BUILTINS*/);
-
 
     if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
     {
@@ -308,10 +302,10 @@ void d_init_builtins(void)
 #define DEF_FUNCTION_TYPE_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5) \
     def_fn_type (ENUM, RETURN, 0, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
 #define DEF_FUNCTION_TYPE_6(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-        ARG6)                                       \
+                            ARG6)                                       \
     def_fn_type (ENUM, RETURN, 0, 6, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
 #define DEF_FUNCTION_TYPE_7(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-        ARG6, ARG7)                                 \
+                            ARG6, ARG7)                                 \
     def_fn_type (ENUM, RETURN, 0, 7, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 #define DEF_FUNCTION_TYPE_VAR_0(ENUM, RETURN) \
     def_fn_type (ENUM, RETURN, 1, 0);
@@ -327,7 +321,9 @@ void d_init_builtins(void)
     def_fn_type (ENUM, RETURN, 1, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
 #define DEF_POINTER_TYPE(ENUM, TYPE) \
     builtin_types[(int) ENUM] = build_pointer_type (builtin_types[(int) TYPE]);
+
 #include "builtin-types.def"
+
 #undef DEF_PRIMITIVE_TYPE
 #undef DEF_FUNCTION_TYPE_1
 #undef DEF_FUNCTION_TYPE_2
@@ -342,32 +338,10 @@ void d_init_builtins(void)
 #undef DEF_FUNCTION_TYPE_VAR_4
 #undef DEF_FUNCTION_TYPE_VAR_5
 #undef DEF_POINTER_TYPE
+    builtin_types[(int) BT_LAST] = NULL_TREE;
 
     d_init_attributes ();
 
-#if D_GCC_VER == 40
-#define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE, BOTH_P, FALLBACK_P, \
-                    NONANSI_P, ATTRS, IMPLICIT, COND)                   \
-  if (NAME && COND)                                                     \
-    {                                                                   \
-      tree decl;                                                        \
-                                                                        \
-      gcc_assert (!strncmp (NAME, "__builtin_",                         \
-                            strlen ("__builtin_")));                    \
-                                                                        \
-      decl = lang_hooks.builtin_function (NAME, builtin_types[TYPE],    \
-                               ENUM,                                    \
-                               CLASS,                                   \
-                               (FALLBACK_P                              \
-                                ? (NAME + strlen ("__builtin_"))        \
-                                : NULL),                                \
-                               built_in_attributes[(int) ATTRS]);       \
-                                                                        \
-      built_in_decls[(int) ENUM] = decl;                                \
-      if (IMPLICIT)                                                     \
-        implicit_built_in_decls[(int) ENUM] = decl;                     \
-    }
-#else
 #define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE, BOTH_P, FALLBACK_P, \
                     NONANSI_P, ATTRS, IMPLICIT, COND)                   \
   if (NAME && COND)                                                     \
@@ -375,13 +349,13 @@ void d_init_builtins(void)
                           builtin_types[(int) TYPE],                    \
                           BOTH_P, FALLBACK_P,                           \
                           built_in_attributes[(int) ATTRS], IMPLICIT);
-#endif
-
 #include "builtins.def"
 #undef DEF_BUILTIN
 
+    targetm.init_builtins ();
+
     build_common_builtin_nodes ();
-    (*targetm.init_builtins) ();
+
     main_identifier_node = get_identifier ("main");
 
     /* Create the built-in __null node.  It is important that this is

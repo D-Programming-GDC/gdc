@@ -31,15 +31,8 @@ version (GNU)
 
     // The va_start and va_arg template functions are magically
     // handled by the compiler.
-    void va_start(T)(out va_list ap, inout T parmn)
-    {
-    }
-
-    T va_arg(T)(inout va_list ap)
-    {
-        T t;
-        return t;
-    }
+    void va_start(T)(out va_list ap, inout T parmn);
+    T va_arg(T)(inout va_list ap);
 }
 else version (X86)
 {

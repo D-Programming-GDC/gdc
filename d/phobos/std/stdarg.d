@@ -20,11 +20,7 @@ version(GNU)
     private import gcc.builtins;
     alias __builtin_va_list va_list;
 
-    T va_arg(T)(inout va_list _argptr)
-    {
-        T t;
-        return t;
-    }
+    T va_arg(T)(inout va_list _argptr);
 }
 else version (X86)
 {

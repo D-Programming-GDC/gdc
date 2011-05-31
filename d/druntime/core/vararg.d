@@ -28,11 +28,7 @@ version( GNU )
     private import gcc.builtins;
     alias __builtin_va_list va_list;
 
-    T va_arg(T)( ref va_list ap )
-    {
-        T t;
-        return t;
-    }
+    T va_arg(T)( ref va_list ap );
 
     public import core.stdc.stdarg;
 }

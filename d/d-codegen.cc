@@ -986,15 +986,9 @@ IRState::libCall(LibCall lib_call, unsigned n_args, tree *args, tree force_resul
     return result;
 }
 
-static inline bool
-function_type_p(tree t)
-{
-    return TREE_CODE(t) == FUNCTION_TYPE || TREE_CODE(t) == METHOD_TYPE;
-}
-
 // Assumes T is already ->toBasetype()
-static TypeFunction *
-get_function_type(Type * t)
+TypeFunction *
+IRState::getFuncType(Type * t)
 {
     TypeFunction* tf = NULL;
     if (t->ty == Tpointer)
@@ -1003,6 +997,7 @@ get_function_type(Type * t)
         tf = (TypeFunction *) t;
     else if (t->ty == Tdelegate)
         tf = (TypeFunction *) ((TypeDelegate *) t)->next;
+
     return tf;
 }
 
@@ -1039,10 +1034,10 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
         if (expr->op == TOKdotvar)
         {   /* This gets the true function type, the latter way can sometimes
                be incorrect. Example: ref functions in D2. */
-            tf = get_function_type(((DotVarExp *)expr)->var->type);
+            tf = getFuncType(((DotVarExp *)expr)->var->type);
         }
         else
-            tf = get_function_type(t);
+            tf = getFuncType(t);
 
         extractMethodCallExpr(callee, callee, object);
     }
@@ -1075,7 +1070,7 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
     }
     else
     {
-        tf = get_function_type(t);
+        tf = getFuncType(t);
     }
     return call(tf, callee, object, arguments);
 }
@@ -1106,7 +1101,7 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     else
         actual_callee = addressOf(callable);
 
-    gcc_assert(function_type_p(func_type_node));
+    gcc_assert(isFuncType(func_type_node));
     gcc_assert(func_type != NULL);
     gcc_assert(func_type->ty == Tfunction);
 
@@ -1199,12 +1194,12 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     }
 
     tree result = buildCall(TREE_TYPE(func_type_node), actual_callee, actual_arg_list.head);
+    result = maybeExpandSpecialCall(result);
 #if V2
-    // Assumes call can't be intrinsic if isref is true.
     if (func_type->isref)
-        return indirect(result);
+        result = indirect(result);
 #endif
-    return maybeExpandSpecialCall(result);
+    return result;
 }
 
 static const char * libcall_ids[LIBCALL_count] = {
@@ -1606,13 +1601,13 @@ IRState::maybeExpandSpecialCall(tree call_exp)
     // More code duplication from C
     CallExpr ce(call_exp);
     tree callee = ce.callee();
-    tree exp, op1, op2;
+    tree exp = NULL_TREE, op1, op2;
 
     if (POINTER_TYPE_P(TREE_TYPE(callee)))
         callee = TREE_OPERAND(callee, 0);
 
     if (TREE_CODE(callee) == FUNCTION_DECL
-            && DECL_BUILT_IN_CLASS(callee) == BUILT_IN_FRONTEND)
+        && DECL_BUILT_IN_CLASS(callee) == BUILT_IN_FRONTEND)
     {
         Intrinsic intrinsic = (Intrinsic) DECL_FUNCTION_CODE(callee);
         tree type;
@@ -1974,11 +1969,10 @@ IRState::arrayElemRef(IndexExp * aer_exp, ArrayScope * aryscp)
             tree e1_tree = e1->toElem(this);
             e1_tree = aryscp->setArrayExp(e1_tree, e1->type);
 
+            // If it's a static array and the index is constant,
+            // the front end has already checked the bounds.
             if (arrayBoundsCheck() &&
-                    // If it's a static array and the index is
-                    // constant, the front end has already
-                    // checked the bounds.
-                    ! (base_type_ty == Tsarray && e2->isConst()))
+                ! (base_type_ty == Tsarray && e2->isConst()))
             {
                 tree array_len_expr, throw_expr, oob_cond;
                 // implement bounds check as a conditional expression:
@@ -2130,18 +2124,10 @@ IRState::hostToTargetString(char * str, size_t length, unsigned unit_size)
     gcc_assert(unit_size == 2 || unit_size == 4);
 
     bool flip;
-#if D_GCC_VER < 41
-# ifdef HOST_WORDS_BIG_ENDIAN
+#if WORDS_BIG_ENDIAN
     flip = (bool) ! BYTES_BIG_ENDIAN;
-# else
-    flip = (bool) BYTES_BIG_ENDIAN;
-# endif
 #else
-# if WORDS_BIG_ENDIAN
-    flip = (bool) ! BYTES_BIG_ENDIAN;
-# else
     flip = (bool) BYTES_BIG_ENDIAN;
-# endif
 #endif
 
     if (flip)
@@ -2330,15 +2316,10 @@ void
 IRState::extractMethodCallExpr(tree mcr, tree & callee_out, tree & object_out)
 {
     gcc_assert(D_IS_METHOD_CALL_EXPR(mcr));
-#if D_GCC_VER < 41
-    tree elts = CONSTRUCTOR_ELTS(mcr);
-    object_out = TREE_VALUE(elts);
-    callee_out = TREE_VALUE(TREE_CHAIN(elts));
-#else
+
     VEC(constructor_elt,gc) *elts = CONSTRUCTOR_ELTS(mcr);
     object_out = VEC_index(constructor_elt, elts, 0)->value;
     callee_out = VEC_index(constructor_elt, elts, 1)->value;
-#endif
 }
 
 tree
@@ -2516,9 +2497,6 @@ needs_temp(tree t)
             return false;
 
         case ADDR_EXPR:
-#if D_GCC_VER < 40
-        case REFERENCE_EXPR:
-#endif
             /* This check is needed for 4.0.  Without it, typeinfo.methodCall may not be
              */
             return ! (DECL_P(TREE_OPERAND(t, 0)));
@@ -2889,16 +2867,13 @@ IRState::integerConstant(dinteger_t value, tree type)
     if (isErrorMark(type))
         return type;
 
+    tree tree_value = NULL_TREE;
+
 #if HOST_BITS_PER_WIDE_INT == 32
-#  if D_GCC_VER >= 43
-    tree tree_value = build_int_cst_wide_type(type, value & 0xffffffff,
-                                              (value >> 32) & 0xffffffff);
-#  else
-    tree tree_value = build_int_cst_wide(type, value & 0xffffffff,
-                                         (value >> 32) & 0xffffffff);
-#  endif
+    double_int cst = { value & 0xffffffff, (value >> 32) & 0xffffffff };
+    tree_value = double_int_to_tree(type, cst);
 #elif HOST_BITS_PER_WIDE_INT == 64
-    tree tree_value = build_int_cst_type(type, value);
+    tree_value = build_int_cst_type(type, value);
 #else
 #  error Fix This
 #endif
