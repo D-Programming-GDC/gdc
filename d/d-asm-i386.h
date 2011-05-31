@@ -315,8 +315,8 @@ enum AsmOp
     Op_cmps,
     Op_cmpsd,
     Op_cmpsX,
-    Op_cmpxchg8b,
     Op_cmpxchg,
+    Op_cmpxchg8b,
     Op_cpuid,
     Op_enter,
     Op_fdisi,
@@ -429,7 +429,6 @@ enum Alternate_Mnemonics
     Mn_iret,
     Mn_iretq,
     Mn_lret,
-    Mn_cmpxchg8b,
     N_AltMn
 };
 
@@ -441,7 +440,6 @@ static const char * alternateMnemonics[N_AltMn] = {
     "iret",
     "iretq",
     "lret",
-    "cmpxchg8b"
 };
 
 #define mri  OprC_MRI
@@ -553,8 +551,8 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_cmps      */  {   mem, mem, 0,     1, Clb_DI|Clb_SI|Clb_Flags },
     /* Op_cmpsd     */  {   0,   0,   0,     0, Clb_DI|Clb_SI|Clb_Flags, Next_Form, Op_DstSrcImmS },
     /* Op_cmpsX     */  {   0,   0,   0,     0, Clb_DI|Clb_SI|Clb_Flags },
-    /* Op_cmpxchg8b */  { D|mem/*64*/,0,0,   0, Clb_SizeDXAX/*32*/|Clb_Flags, Out_Mnemonic, Mn_cmpxchg8b },
     /* Op_cmpxchg   */  { D|mr,  reg, 0,     1, Clb_SizeAX|Clb_Flags },
+    /* Op_cmpxchg8b */  { D|mem/*64*/,0,0,   0, Clb_SizeDXAX/*32*/|Clb_Flags },
     /* Op_cpuid     */  {   0,0,0 },    // Clobbers eax, ebx, ecx, and edx. Handled specially below.
     /* Op_enter     */  {   imm, imm }, // operands *not* reversed for gas, %% inform gcc of EBP clobber?,
     /* Op_fdisi     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_fdisi },
@@ -708,8 +706,8 @@ static AsmOpEnt opData[] = {
     { "cmpsd",  Op_cmpsd }, // string cmp, and SSE cmp
     { "cmpss",  Op_DstSrcImmS },
     { "cmpsw",  Op_cmpsX },
-    { "cmpxch8b", Op_cmpxchg8b }, // %% DMD opcode typo?
-    { "cmpxchg",  Op_cmpxchg },
+    { "cmpxchg",   Op_cmpxchg },
+    { "cmpxchg8b", Op_cmpxchg8b }, // formerly cmpxch8b
     { "comisd", Op_SrcSrcSSEF },
     { "comiss", Op_SrcSrcSSEF },
     { "cpuid",  Op_cpuid },
@@ -1033,6 +1031,7 @@ static AsmOpEnt opData[] = {
     { "pcmpgtw",  Op_DstSrcMMX },
     { "pextrw",   Op_DstSrcImmM }, // gpr32 dest
     { "pf2id",    Op_DstSrcMMX }, // %% AMD 3dNow! opcodes
+    { "pf2iw",    Op_DstSrcMMX },
     { "pfacc",    Op_DstSrcMMX },
     { "pfadd",    Op_DstSrcMMX },
     { "pfcmpeq",  Op_DstSrcMMX },
@@ -1056,7 +1055,8 @@ static AsmOpEnt opData[] = {
     { "phsubd",  Op_DstSrcSSE },
     { "phsubsw", Op_DstSrcSSE },
     { "phsubw",  Op_DstSrcSSE },
-    { "pi2fd",    Op_DstSrcMMX }, // %%
+    { "pi2fd",    Op_DstSrcMMX },
+    { "pi2fw",    Op_DstSrcMMX }, // %%
     { "pinsrw",   Op_DstSrcImmM }, // gpr32(16), mem16 src, sse too
     { "pmaddubsw",Op_DstSrcSSE },
     { "pmaddwd",  Op_DstSrcMMX },
@@ -1244,17 +1244,17 @@ static AsmOpEnt opData64[] = {
     { "arpl",   Op_Invalid },
     { "bound",  Op_Invalid },
     { "callf",  Op_Branch },
-    { "cdq",    Op_Invalid },
     { "cdqe",   Op_0_DXAX },
+    { "cqo",    Op_0_DXAX },
     { "cmpq",   Op_DstSrcNT },
     { "cmpsq",  Op_cmpsX },
-    { "cmpxch16b", Op_cmpxchg8b },
+    { "cmpxchg16b", Op_cmpxchg8b }, // m128 operand
     { "cwde",   Op_0_DXAX },
     { "daa",    Op_Invalid },
     { "das",    Op_Invalid },
-    { "even",   Op_Invalid },
     { "into",   Op_Invalid },
     { "iretq",  Op_iretq },
+    { "lds",    Op_Invalid },
     { "les",    Op_Invalid },
     { "jmpe",   Op_Branch },
     { "jmpf",   Op_Branch },
@@ -1281,6 +1281,7 @@ static AsmOpEnt opData64[] = {
     { "pushfq", Op_SizedStack },
     { "pushq",  Op_pushq },
     { "retn",   Op_retf },
+    { "rsm",    Op_Invalid },
     { "salq",   Op_DstSrcNT  },
     { "scasq",  Op_scasX },
     { "stosq",  Op_stosX },
@@ -1289,7 +1290,6 @@ static AsmOpEnt opData64[] = {
     { "sysret",  Op_0 },
     { "swapgs", Op_0 },
     { "sysretq",Op_0 },
-    { "wait",   Op_Invalid },
     { "xorq",   Op_DstSrcNT },
 };
 
@@ -1299,7 +1299,7 @@ enum PtrType
     Byte_Ptr = 1,
     Short_Ptr = 2,
     Int_Ptr = 4,
-    QWord_Ptr =  8,
+    Long_Ptr =  8,
     Float_Ptr = 4,
     Double_Ptr = 8,
     Extended_Ptr = 10,
@@ -1317,7 +1317,7 @@ static const char * ptrTypeNameTable[N_PtrNames] = {
 
 static Identifier * ptrTypeIdentTable[N_PtrNames];
 static PtrType ptrTypeValueTable[N_PtrNames] = {
-    Short_Ptr, Int_Ptr, QWord_Ptr,
+    Short_Ptr, Int_Ptr, Long_Ptr,
     Float_Ptr, Double_Ptr, Extended_Ptr,
     Near_Ptr, Far_Ptr
 };
@@ -1541,7 +1541,6 @@ struct AsmProcessor
     // need clobber information.. use information is good too...
     void doInstruction()
     {
-        bool ok = true;
         unsigned operand_i = 0;
 
         opInfo = & asmOpInfo[op];
@@ -1562,7 +1561,6 @@ struct AsmProcessor
             }
             else
             {
-                ok = false;
                 stmt->error("too many operands for instruction");
                 break;
             }
@@ -1573,13 +1571,11 @@ struct AsmProcessor
             }
             else if (token->value != TOKeof)
             {
-                ok = false;
                 stmt->error("expected comma after operand");
                 return;
             }
         }
 //      if (operand_i < opInfo->minOperands) {
-//          ok = false;
 //          stmt->error("too few operands for instruction");
 //      }
 
@@ -1729,7 +1725,7 @@ struct AsmProcessor
                     operand->dataSize = Int_Ptr;
                 else
                     operand->dataSize = global.params.isX86_64
-                                            ? QWord_Ptr
+                                            ? Long_Ptr
                                             : Int_Ptr;   // %% 32-bit overflow
             }
             return Opr_Immediate;
@@ -1775,7 +1771,7 @@ struct AsmProcessor
                     case Byte_Ptr:  type_char = 'b'; break;
                     case Short_Ptr: type_char = 'w'; break;
                     case Int_Ptr:   type_char = 'l'; break;
-                    case QWord_Ptr: type_char = 'q'; break;
+                    case Long_Ptr: type_char = 'q'; break;
                     // %% these may be too strict
                     default:        return false;
                 }
@@ -1785,7 +1781,7 @@ struct AsmProcessor
                 {
                     case Short_Ptr: type_char = 0;   break;
                     case Int_Ptr:   type_char = 'l'; break;
-                    case QWord_Ptr: type_char = 'q'; break;
+                    case Long_Ptr: type_char = 'q'; break;
                     default:        return false;
                 }
                 break;
@@ -1813,7 +1809,7 @@ struct AsmProcessor
         bool use_star;
         AsmArgMode mode;
 
-        static bool isX86_64 = global.params.isX86_64;
+        const bool isX86_64 = global.params.isX86_64;
 
         insnTemplate = new OutBuffer;
         if (opInfo->linkType == Out_Mnemonic)
@@ -1861,7 +1857,7 @@ struct AsmProcessor
                 if (op == Op_push)
                     min_type = Int_Ptr;
                 else if (op == Op_pushq || op == Op_DstQ)
-                    min_type = QWord_Ptr;
+                    min_type = Long_Ptr;
             }
 
             for (int i = 0; i < nOperands; i++)
@@ -2088,10 +2084,10 @@ struct AsmProcessor
         }
 
         insnTemplate->writebyte(' ');
-        for (int i__ = 0; i__ < nOperands; i__++)
+        for (int n = 0; n < nOperands; n++)
         {
             int i;
-            if (i__ != 0)
+            if (n != 0)
                 insnTemplate->writestring(", ");
 
             fmt = "%";
@@ -2100,14 +2096,14 @@ struct AsmProcessor
             {
                 case Op_mul:
                     // gas won't accept the two-operand form; skip to the source operand
-                    i__ = 1;
+                    n = 1;
                     // drop through
                 case Op_bound:
                 case Op_enter:
-                    i = i__;
+                    i = n;
                     break;
                 default:
-                    i = nOperands - 1 - i__; // operand = & operands[ nOperands - 1 - i ];
+                    i = nOperands - 1 - n; // operand = & operands[ nOperands - 1 - i ];
                     break;
             }
             operand = & operands[i];
@@ -2784,7 +2780,7 @@ struct AsmProcessor
                 return Int_Ptr;
             case TOKint64:
                 // 'long ptr' isn't accepted? (it is now - qword)
-                return QWord_Ptr;
+                return Long_Ptr;
             case TOKfloat32:
                 return Float_Ptr;
             case TOKfloat64:
