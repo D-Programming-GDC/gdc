@@ -21,6 +21,12 @@
 #ifndef GCC_DCMPLR_DC_LANG_H
 #define GCC_DCMPLR_DC_LANG_H
 
+#if D_GCC_VER == 45
+#include "d-lang-type-45.h"
+#else
+#include "d-lang-type.h"
+#endif
+
 /* Nothing is added to tree_identifier; */
 struct GTY(()) lang_identifier
 {
@@ -40,14 +46,6 @@ typedef struct Declaration *DeclarationGTYP;
 struct GTY(()) lang_decl
 {
     DeclarationGTYP GTY ((skip(""))) d_decl;
-};
-
-/* The lang_type field is not set for every GCC type. */
-struct Type;
-typedef struct Type *TypeGTYP;
-struct GTY(()) lang_type
-{
-    TypeGTYP GTY((skip(""))) d_type;
 };
 
 /* Another required, but unused declaration.  This could be simplified, since

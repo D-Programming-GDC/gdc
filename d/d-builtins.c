@@ -31,7 +31,11 @@
 #include "output.h"
 #include "rtl.h"
 #include "ggc.h"
+#if D_GCC_VER >= 46
+#include "vec.h"
+#else
 #include "varray.h"
+#endif
 #include "expr.h"
 #include "diagnostic.h"
 #include "tm_p.h"
@@ -52,6 +56,8 @@
 #include "d-bi-attrs-44.h"
 #elif D_GCC_VER == 45
 #include "d-bi-attrs-45.h"
+#elif D_GCC_VER == 46
+#include "d-bi-attrs-46.h"
 #else
 #error "Version of GCC is not supported."
 #endif

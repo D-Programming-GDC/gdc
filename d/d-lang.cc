@@ -98,6 +98,13 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_EH_RUNTIME_TYPE          d_build_eh_type_type
 #endif
 
+#if D_GCC_VER >= 46
+#undef LANG_HOOKS_OPTION_LANG_MASK
+#undef LANG_HOOKS_INIT_OPTIONS_STRUCT
+#define LANG_HOOKS_OPTION_LANG_MASK         d_option_lang_mask
+#define LANG_HOOKS_INIT_OPTIONS_STRUCT      d_init_options_struct
+#endif
+
 /* Lang Hooks for decls */
 #undef LANG_HOOKS_WRITE_GLOBALS
 #define LANG_HOOKS_WRITE_GLOBALS            d_write_global_declarations
@@ -139,12 +146,74 @@ static tree d_signed_or_unsigned_type(int, tree);
 ////tree d_unsigned_type(tree);
 ////tree d_signed_type(tree);
 
-
 static const char * fonly_arg;
 // Because of PR16888, on x86 platforms, GCC clears unused reg names.
 // As this doesn't affect us, need a way to restore them.
 static const char *saved_reg_names[FIRST_PSEUDO_REGISTER];
 
+#if D_GCC_VER >= 46
+/* Common initialization before calling option handlers.  */
+static void
+d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
+{
+    // Set default values
+    global.params.argv0 = xstrdup(decoded_options[0].arg);
+    global.params.link = 1;
+    global.params.useAssert = 1;
+    global.params.useInvariants = 1;
+    global.params.useIn = 1;
+    global.params.useOut = 1;
+    global.params.useArrayBounds = 2;
+    global.params.useSwitchError = 1;
+    global.params.useInline = 0;
+    global.params.warnings = 0;
+    global.params.obj = 1;
+    global.params.Dversion = 2;
+    global.params.quiet = 1;
+
+    global.params.linkswitches = new Array();
+    global.params.libfiles = new Array();
+    global.params.objfiles = new Array();
+    global.params.ddocfiles = new Array();
+
+    global.params.imppath = new Array();
+    global.params.fileImppath = new Array();
+
+    // extra D-specific options
+    gen.splitDynArrayVarArgs = true;
+    gen.emitTemplates = TEnormal;
+    gen.useBuiltins = true;
+    std_inc = true;
+}
+
+/* Initialize options structure OPTS.  */
+static void
+d_init_options_struct (struct gcc_options *opts)
+{
+    // GCC options
+    opts->x_flag_exceptions = 1;
+
+    // Avoid range issues for complex multiply and divide.
+    opts->x_flag_complex_method = 2;
+
+    // Unlike C, there is no global 'errno' variable.
+    opts->x_flag_errno_math = 0;
+
+    // Keep in synch with existing -fbounds-check flag.
+    opts->x_flag_bounds_check = 1;
+
+    // Honour left to right code evaluation
+    opts->x_flag_evaluation_order = 1;
+}
+
+/* Return language mask for option parsing.  */
+static unsigned int
+d_option_lang_mask (void)
+{
+    return CL_D;
+}
+
+#else
 static unsigned int
 d_init_options (unsigned int, const char ** argv)
 {
@@ -156,7 +225,6 @@ d_init_options (unsigned int, const char ** argv)
     global.params.useIn = 1;
     global.params.useOut = 1;
     global.params.useArrayBounds = 2;
-    flag_bounds_check = global.params.useArrayBounds; // keep in synch with existing -fbounds-check flag
     global.params.useSwitchError = 1;
     global.params.useInline = 0;
     global.params.warnings = 0;
@@ -174,10 +242,16 @@ d_init_options (unsigned int, const char ** argv)
 
     // GCC options
     flag_exceptions = 1;
+
     // Avoid range issues for complex multiply and divide.
     flag_complex_method = 2;
+
     // Unlike C, there is no global 'errno' variable.
     flag_errno_math = 0;
+
+    // keep in synch with existing -fbounds-check flag
+    flag_bounds_check = global.params.useArrayBounds;
+
     // Honour left to right code evaluation.
     flag_evaluation_order = 1;
 
@@ -190,6 +264,7 @@ d_init_options (unsigned int, const char ** argv)
 
     return CL_D;
 }
+#endif
 
 // support for the -mno-cygwin switch
 // copied from cygwin.h, cygwin2.c
@@ -368,8 +443,13 @@ d_init ()
     else
         VersionCondition::addPredefinedGlobalIdent("LittleEndian");
 
+#if D_GCC_VER >= 46
+    if (targetm.except_unwind_info(&global_options) == UI_SJLJ)
+        VersionCondition::addPredefinedGlobalIdent("GNU_SjLj_Exceptions");
+#else
     if (USING_SJLJ_EXCEPTIONS)
         VersionCondition::addPredefinedGlobalIdent("GNU_SjLj_Exceptions");
+#endif
 
 #ifdef TARGET_LONG_DOUBLE_128
     if (TARGET_LONG_DOUBLE_128)
@@ -462,8 +542,15 @@ parse_int (const char * arg, int * value_ret)
     return true;
 }
 
+#if D_GCC_VER >= 46
+static bool
+d_handle_option (size_t scode, const char *arg, int value,
+                 int kind, location_t loc,
+                 const struct cl_option_handlers *handlers)
+#else
 static int
 d_handle_option (size_t scode, const char *arg, int value)
+#endif
 {
   enum opt_code code = (enum opt_code) scode;
   int level;
@@ -826,7 +913,11 @@ Symbol* rtlsym[N_RTLSYM];
 #endif
 
 void
+#if D_GCC_VER >= 46
+d_parse_file (void)
+#else
 d_parse_file (int /*set_yydebug*/)
+#endif
 {
     if (global.params.verbose)
     {
@@ -1527,7 +1618,12 @@ struct binding_level * global_binding_level;
 static binding_level *
 alloc_binding_level()
 {
-    return (struct binding_level *) ggc_alloc_cleared (sizeof (struct binding_level));
+    unsigned sz = sizeof (struct binding_level);
+#if D_GCC_VER >= 46
+    return (struct binding_level *) ggc_alloc_cleared_atomic (sz);
+#else
+    return (struct binding_level *) ggc_alloc_cleared (sz);
+#endif
 }
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
@@ -1836,7 +1932,13 @@ d_init_ts (void)
 struct lang_type *
 build_d_type_lang_specific(Type * t)
 {
-    struct lang_type * l = (struct lang_type *) ggc_alloc_cleared( sizeof(struct lang_type) );
+    struct lang_type * l;
+    unsigned sz = sizeof(struct lang_type);
+#if D_GCC_VER >= 46
+    l = (struct lang_type *) ggc_alloc_cleared_atomic(sz);
+#else
+    l = (struct lang_type *) ggc_alloc_cleared(sz);
+#endif
     l->d_type = t;
     return l;
 }
@@ -1858,10 +1960,15 @@ d_eh_personality (void)
 {
     if (!d_eh_personality_decl)
     {
-       d_eh_personality_decl
-           = build_personality_function (USING_SJLJ_EXCEPTIONS
-                                         ? "__gdc_personality_sj0"
-                                         : "__gdc_personality_v0");
+#if D_GCC_VER >= 46
+        d_eh_personality_decl
+            = build_personality_function ("gdc");
+#else
+        d_eh_personality_decl
+            = build_personality_function (USING_SJLJ_EXCEPTIONS
+                                          ? "__gdc_personality_sj0"
+                                          : "__gdc_personality_v0");
+#endif
     }
     return d_eh_personality_decl;
 }

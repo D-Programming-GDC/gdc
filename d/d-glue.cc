@@ -4896,8 +4896,11 @@ gcc_d_backend_init()
     // built-in functions.
     flag_signed_char = 0;
     // This is required or we'll crash pretty early on. %%log
+#if D_GCC_VER >= 46
+    build_common_tree_nodes (flag_signed_char);
+#else
     build_common_tree_nodes (flag_signed_char, false);
-
+#endif
 
     // This is also required (or the manual equivalent) or crashes
     // will occur later
@@ -4906,7 +4909,6 @@ gcc_d_backend_init()
 
     // If this is called after the next statements, you'll get an ICE.
     set_sizetype(size_type_node);
-
 
     // need this for void.. %% but this crashes... probably need to impl
     // some things in dc-lang.cc

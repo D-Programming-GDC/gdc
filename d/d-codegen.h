@@ -519,11 +519,15 @@ struct IRState : IRBase
     static tree buildCall(tree type, tree callee, tree args)
     {
 #if D_GCC_VER >= 43
-        tree t = build_call_list(type, callee, args);
+        int nargs = list_length(args);
+        tree * pargs = new tree[nargs];
+        for (int i = 0; args; args = TREE_CHAIN(args), i++)
+            pargs[i] = TREE_VALUE(args);
+
+        return build_call_array(type, callee, nargs, pargs);
 #else
-        tree t = build3(CALL_EXPR, type, callee, args, NULL_TREE);
+        return build3(CALL_EXPR, type, callee, args, NULL_TREE);
 #endif
-        return t;
     }
 
     // Conveniently construct the function arguments for passing

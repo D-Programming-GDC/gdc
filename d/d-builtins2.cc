@@ -460,6 +460,26 @@ d_gcc_magic_builtins_module(Module *m)
         funcs->push(new AliasDeclaration(0, Lexer::idPool(name), dt));
     }
 
+#if D_GCC_VER >= 46
+    /* Iterate through the target-specific builtin types for va_list. */
+    if (targetm.enum_va_list_p)
+    {
+        int l;
+        const char* name;
+        tree type;
+
+        for (l = 0; targetm.enum_va_list_p(l, &name, &type); ++l)
+        {
+            Type * dt = gcc_type_to_d_type(type);
+            if (! dt)
+            {   //warning(0, "cannot create built in type for "%s", name);
+                continue;
+            }
+            funcs->push(new AliasDeclaration(0, Lexer::idPool(name), dt));
+        }
+    }
+#endif
+
     for (unsigned i = 0; i < builtin_converted_decls.dim ; ++i)
     {
         Dsymbol * sym = (Dsymbol *) builtin_converted_decls.data[i];
