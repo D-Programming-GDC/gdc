@@ -88,10 +88,6 @@
 #define CONST_CAST(TYPE,X) ((__extension__(union {const TYPE _q; TYPE _nq;})(X))._nq)
 #endif
 
-static char * output_directory_option = NULL;
-static int output_parents_option = 0;
-static char * only_source_option = NULL;
-
 /* Whether we need -pthread flag. */
 extern int need_pthreads;
 
@@ -174,6 +170,15 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
     /* The total number of arguments with the new stuff.  */
     int num_args = 1;
 
+    /* Argument for -fod option.  */
+    char * output_directory_option = NULL;
+
+    /* True if we saw -fop. */
+    int output_parents_option = 0;
+
+    /* "-fonly" if it appears on the command line.  */
+    const char *only_source_option = 0;
+
     /* Whether the -o option was used.  */
     int saw_opt_o = 0;
 
@@ -184,7 +189,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
     decoded_options = *in_decoded_options;
     added_libraries = *in_added_libraries;
 
-    args = XNEWVEC(int, argc);
+    args = XCNEWVEC(int, argc);
 
     for (i = 1; i < argc; i++)
     {
@@ -209,53 +214,31 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
                 phobos = 0;
                 args[i] |= REMOVE_ARG;
                 if (defaultlib != NULL)
-                    free(CONST_CAST(char *, defaultlib));
-                break;
-#if 0
-                else if (strncmp (argv[i], "-defaultlib=", 12) == 0)
+                    free (CONST_CAST(char *, defaultlib));
+                if (arg == NULL)
+                    error ("missing argument to 'defaultlib=' option");
+                else
                 {
-                    added = 1;
-                    phobos = 0;
-                    args[i] |= REMOVE_ARG;
-                    if (defaultlib != NULL)
-                        free(CONST_CAST(char *, defaultlib));
-                    if (argv[i][12] == '\0')
-                    {
-                        error ("missing argument to '%s' option", argv[i] + 1);
-                    break;
-                    }
-                    defaultlib = (const char *) xmalloc(sizeof(char) * strlen(argv[i]));
-                    strcpy(CONST_CAST(char *, defaultlib), "-l");
-                    strcat(CONST_CAST(char *, defaultlib), argv[i] + 12);
-                    args[i] |= REMOVE_ARG;
+                    defaultlib = XNEWVEC (char, strlen(arg));
+                    strcpy (CONST_CAST (char *, defaultlib), arg);
                 }
-#endif
+                break;
+
             case OPT_debuglib_:
                 added = 1;
-                phobos = 1;
+                phobos = 0;
                 args[i] |= REMOVE_ARG;
                 if (debuglib != NULL)
                     free(CONST_CAST(char *, debuglib));
-                break;
-#if 0
-                else if (strncmp (argv[i], "-debuglib=", 10) == 0)
+                if (arg == NULL)
+                    error ("missing argument to 'debuglib=' option");
+                else
                 {
-                    added = 1;
-                    phobos = 0;
-                    args[i] |= REMOVE_ARG;
-                    if (debuglib != NULL)
-                        free(CONST_CAST(char *, debuglib));
-                    if (argv[i][12] == '\0')
-                    {
-                        error ("missing argument to '%s' option", argv[i] + 1);
-                        break;
-                    }
-                    debuglib = (const char *) xmalloc(sizeof(char) * strlen(argv[i]));
-                    strcpy(CONST_CAST(char *, debuglib), "-l");
-                    strcat(CONST_CAST(char *, debuglib), argv[i] + 12);
-                    args[i] |= REMOVE_ARG;
+                    debuglib = XNEWVEC (char, strlen(arg));
+                    strcpy (CONST_CAST (char *, debuglib), arg);
                 }
-#endif
+                break;
+
             case OPT_l:
                 if (strcmp (arg, "m") == 0
                     || strcmp (arg, "math") == 0
@@ -327,54 +310,39 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
                 break;
 
             case OPT_fonly_:
-                break;
-#if 0
-                else if (strncmp (argv[i], "-fonly=", 7) == 0)
+                args[i] |= REMOVE_ARG;
+                only_source_option = decoded_options[i].orig_option_with_args_text;
+
+                if (arg != NULL)
                 {
-                    int len;
-
-                    args[i] |= REMOVE_ARG;
-                    const char * only_source_arg = argv[i];
-
-                    len = strlen(only_source_arg);
-                    if (len <= 2 || only_source_arg[len-1] != 'd' ||
-                            only_source_arg[len-2] != '.')
-                        only_source_option = concat(only_source_arg, ".d", NULL);
-                    else
-                        only_source_option = xstrdup(only_source_arg);
+                    int len = strlen(only_source_option);
+                    if (len <= 2 || only_source_option[len-1] != 'd' ||
+                            only_source_option[len-2] != '.')
+                        only_source_option = concat(only_source_option, ".d", NULL);
                 }
-#endif
-            case OPT_fod_:
                 break;
-#if 0
-                else if (strncmp (argv[i], "-fod=", 5) == 0)
+
+            case OPT_fod_:
+                args[i] |= REMOVE_ARG;
+                if (arg != NULL)
                 {
-                    args[i] |= REMOVE_ARG;
-                    output_directory_option = xstrdup(argv[i] + 5);
+                    output_directory_option = xstrdup(arg);
                     fprintf(stderr, "** outputdir = '%s'\n", output_directory_option);
                 }
-#endif
-            case OPT_fop:
                 break;
-#if 0
-                else if (strcmp (argv[i], "-fop") == 0)
-                {
-                    args[i] |= REMOVE_ARG;
-                    output_parents_option = 1;
-                    fprintf(stderr, "** output parents\n");
-                }
-                else if (DEFAULT_WORD_SWITCH_TAKES_ARG (&argv[i][1]))
-                    i++;
-                else
-                    /* Pass other options through.  */
-                    continue;
-#endif
+
+            case OPT_fop:
+                args[i] |= REMOVE_ARG;
+                output_parents_option = 1;
+                fprintf(stderr, "** output parents\n");
+                break;
+
             case OPT_SPECIAL_input_file:
             {
                 int len;
 
                 if (library == 0)
-                    library = -1;
+                    library = 1;
 
                 len = strlen (arg);
                 if (len > 2 && strcmp (arg + len - 2, ".d") == 0)
@@ -462,13 +430,16 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
         j++;
     }
 
-#if 0
     if (only_source_option)
     {
-        new_decoded_options[j++] = only_source_option;
-        new_decoded_options[j++] = only_source_option + 7;
+        const char * only_source_arg = only_source_option + 7;
+        generate_option (OPT_fonly_, only_source_arg, 1, CL_DRIVER,
+                         &new_decoded_options[j]);
+        j++;
+
+        generate_option_input_file (only_source_arg,
+                                    &new_decoded_options[j++]);
     }
-#endif
 
     /* If we are not linking, add a -o option.  This is because we need
        the driver to pass all .d files to cc1d.  Without a -o option the
@@ -646,6 +617,15 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     /* The total number of arguments with the new stuff.  */
     int num_args = 1;
 
+    /* Argument for -fod option.  */
+    char * output_directory_option = NULL;
+
+    /* True if we saw -fop. */
+    int output_parents_option = 0;
+
+    /* "-fonly" if it appears on the command line.  */
+    char * only_source_option = NULL;
+
     argc = *in_argc;
     argv = *in_argv;
     added_libraries = *in_added_libraries;
@@ -694,7 +674,6 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                 defaultlib = (const char *) xmalloc(sizeof(char) * strlen(argv[i]));
                 strcpy(CONST_CAST(char *, defaultlib), "-l");
                 strcat(CONST_CAST(char *, defaultlib), argv[i] + 12);
-                args[i] |= REMOVE_ARG;
             }
             else if (strncmp (argv[i], "-debuglib=", 10) == 0)
             {
@@ -711,7 +690,6 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                 debuglib = (const char *) xmalloc(sizeof(char) * strlen(argv[i]));
                 strcpy(CONST_CAST(char *, debuglib), "-l");
                 strcat(CONST_CAST(char *, debuglib), argv[i] + 12);
-                args[i] |= REMOVE_ARG;
             }
             else if (strncmp (argv[i], "-l", 2) == 0)
             {

@@ -21,7 +21,7 @@
 +      context = decl_function_context (decl);
 +      if (context)
 +	{
-+	  node->origin = cgraph_node (DECL_CONTEXT (decl));
++	  node->origin = cgraph_node (context);
 +	  node->next_nested = node->origin->nested;
 +	  node->origin->nested = node;
 +	}
@@ -29,7 +29,7 @@
    if (assembler_name_hash)
      {
 --- gcc.orig/config/i386/i386.c	2011-03-04 17:56:39.000000000 +0000
-+++ gcc/config/i386/i386.c	2011-05-31 21:25:28.091767948 +0100
++++ gcc/config/i386/i386.c	2011-05-31 22:40:50.786194783 +0100
 @@ -5358,6 +5358,10 @@ ix86_handle_cconv_attribute (tree *node,
  	{
  	  error ("fastcall and thiscall attributes are not compatible");
@@ -304,7 +304,7 @@
  
  /* Add the decl D to the local_decls list of FUN.  */
 --- gcc.orig/gcc.c	2011-02-23 02:04:43.000000000 +0000
-+++ gcc/gcc.c	2011-05-31 21:25:10.463680546 +0100
++++ gcc/gcc.c	2011-06-01 07:03:30.167747084 +0100
 @@ -83,6 +83,9 @@ int is_cpp_driver;
  /* Flag set to nonzero if an @file argument has been supplied to gcc.  */
  static bool at_file_supplied;
@@ -334,17 +334,7 @@
  #ifdef EXTRA_SPEC_FUNCTIONS
    EXTRA_SPEC_FUNCTIONS
  #endif
-@@ -3809,6 +3817,9 @@ process_command (unsigned int decoded_op
-       save_temps_prefix = NULL;
-     }
- 
-+  if (need_pthreads)
-+    n_switches++;
-+
-   if (save_temps_flag && use_pipes)
-     {
-       /* -save-temps overrides -pipe, so that temp files are produced */
-@@ -3925,6 +3936,17 @@ process_command (unsigned int decoded_op
+@@ -3925,6 +3933,17 @@ process_command (unsigned int decoded_op
        add_infile ("help-dummy", "c");
      }
  
@@ -362,7 +352,7 @@
    alloc_switch ();
    switches[n_switches].part1 = 0;
    alloc_infile ();
-@@ -5095,6 +5117,17 @@ do_spec_1 (const char *spec, int inswitc
+@@ -5095,6 +5114,17 @@ do_spec_1 (const char *spec, int inswitc
  	      return value;
  	    break;
  

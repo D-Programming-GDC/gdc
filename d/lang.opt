@@ -189,24 +189,23 @@ D Joined RejectNegative
 ; Everything below this line is used in 4.6+
 
 debuglib=
-Driver
-; Debug library to use instead of phobos
+Driver Joined
+Debug library to use instead of phobos
 
 defaultlib=
-Driver
-; Default library to use instead of phobos
+Driver Joined
+Default library to use instead of phobos
 
 fod=
-Driver
-; -fod=<directory> Specify the object output directory.
+Driver Joined
+-fod=<directory> Specify the object output directory.
 
 fop
 Driver
-; Specify that the source file's parent directories should be appended to the object output directory.
+Specify that the source file's parent directories should be appended to the object output directory.
 
 nophoboslib
 Driver
 
 static_libphobos
 Driver
-

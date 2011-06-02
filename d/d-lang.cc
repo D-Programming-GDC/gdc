@@ -198,6 +198,7 @@ d_init_options_struct (struct gcc_options *opts)
 
     // Unlike C, there is no global 'errno' variable.
     opts->x_flag_errno_math = 0;
+    opts->frontend_set_flag_errno_math = true;
 
     // Keep in synch with existing -fbounds-check flag.
     opts->x_flag_bounds_check = 1;
@@ -960,18 +961,6 @@ d_parse_file (int /*set_yydebug*/)
             nametype(Type::basic[ty]);
     }
 
-    /*
-    p = FileName::name(input_filename);
-    e = FileName::ext(p);
-    if (e) {
-        e--;
-        gcc_assert( *e == '.' );
-        name = (char *) xmalloc((e - p) + 1);
-        memcpy(name, p, e - p);
-        name[e - p] = 0;
-    } else
-        name = p;
-    */
     an_output_module = NULL;
     Array modules; // vs. outmodules... = [an_output_module] or modules
     modules.reserve(num_in_fnames);
@@ -999,11 +988,9 @@ d_parse_file (int /*set_yydebug*/)
     {
         if (fonly_arg)
         {
-            if (i == 0)
-                continue;
             /* %% Do the other modules really need to be processed?
-               else if (an_output_module)
-               break;
+            if (an_output_module)
+                break;
              */
         }
         //fprintf(stderr, "fn %d = %s\n", i, in_fnames[i]);

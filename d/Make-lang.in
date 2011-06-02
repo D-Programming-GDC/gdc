@@ -76,9 +76,6 @@ else
 $(error D_LANGUAGE_VERSION not defined)
 endif
 
-D_dmd_srcdir = d/dmd$(D_ver_suffix)
-D_EXTRA_DEFINES += -DLIBPHOBOS=\"-lgphobos$(D_ver_suffix)\" 
-
 # This should be configured
 ifeq ($(host), $(target))
   D_include_dir = `echo $(exec_prefix) | sed -e 's|^$(prefix)||' -e 's|/[^/]*|/..|g'`/include/d$(D_ver_suffix)/$(version)
@@ -88,6 +85,7 @@ else
 endif
 
 
+D_dmd_srcdir = d/dmd$(D_ver_suffix)
 
 # Common headers between D1 and D2
 D_DMD_H := \
@@ -131,6 +129,12 @@ ifeq ($(D_gcc_main_ver),4.2)
 endif
 
 gcc_d_target_include_dir=$(gcc_d_include_dir)/$(target_noncanonical)
+
+ifeq ($(D_gcc_main_ver),4.6)
+  D_EXTRA_DEFINES += -DLIBPHOBOS=\"gphobos$(D_ver_suffix)\"
+else
+  D_EXTRA_DEFINES += -DLIBPHOBOS=\"-lgphobos$(D_ver_suffix)\" 
+endif
 
 D_EXTRA_DEFINES += -DD_GCC_VER=$(subst .,,$(D_gcc_main_ver))
 

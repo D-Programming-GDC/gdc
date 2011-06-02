@@ -52,7 +52,6 @@ static tree handle_target_attribute (tree *, tree, tree, int, bool *);
 static tree handle_optimize_attribute (tree *, tree, tree, int, bool *);
 
 static bool get_nonnull_operand (tree, unsigned HOST_WIDE_INT *);
-static bool parse_optimize_options (tree, bool)
 
 extern void decode_options (unsigned int argc, const char **argv);
 
@@ -1866,7 +1865,7 @@ static GTY(()) VEC(const_char_p, gc) *optimize_args;
    options in ARGS.  ATTR_P is true if this is for attribute(optimize), and
    false for #pragma GCC optimize.  */
 
-static bool
+bool
 parse_optimize_options (tree args, bool attr_p)
 {
   bool ret = true;
