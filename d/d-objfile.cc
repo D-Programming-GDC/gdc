@@ -713,30 +713,56 @@ make_alias_for_thunk (tree function)
     if (DECL_EXTERNAL(function))
         return function;
 
+#if D_GCC_VER >= 46
+    targetm.asm_out.generate_internal_label (buf, "LTHUNK", thunk_labelno);
+#else
     ASM_GENERATE_INTERNAL_LABEL (buf, "LTHUNK", thunk_labelno);
+#endif
     thunk_labelno++;
     alias = build_fn_decl (buf, TREE_TYPE (function));
+
     DECL_CONTEXT (alias) = NULL;
     TREE_READONLY (alias) = TREE_READONLY (function);
     TREE_THIS_VOLATILE (alias) = TREE_THIS_VOLATILE (function);
     TREE_NOTHROW (alias) = TREE_NOTHROW (function);
     TREE_PUBLIC (alias) = 0;
+
     DECL_EXTERNAL (alias) = 0;
     DECL_ARTIFICIAL (alias) = 1;
+
 #if D_GCC_VER < 45
     DECL_NO_STATIC_CHAIN (alias) = 1;
 #endif
 #if D_GCC_VER < 44
     DECL_INLINE (alias) = 0;
 #endif
+
     DECL_DECLARED_INLINE_P (alias) = 0;
-    //DECL_INITIAL (alias) = error_mark_node;
+#if D_GCC_VER >= 45
+    DECL_INITIAL (alias) = error_mark_node;
+    DECL_ARGUMENTS (alias) = copy_list (DECL_ARGUMENTS (function));
+#endif
+
     TREE_ADDRESSABLE (alias) = 1;
     TREE_USED (alias) = 1;
     SET_DECL_ASSEMBLER_NAME (alias, DECL_NAME (alias));
     TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (alias)) = 1;
+
     if (!flag_syntax_only)
+    {
+#if D_GCC_VER >= 46
+        struct cgraph_node *aliasn = cgraph_same_body_alias (cgraph_node (function),
+                                                             alias, function);
+        DECL_ASSEMBLER_NAME (function);
+        gcc_assert (aliasn != NULL);
+#elif D_GCC_VER >= 45
+        bool ok = cgraph_same_body_alias (alias, function);
+        DECL_ASSEMBLER_NAME (function);
+        gcc_assert (ok);
+#else
         assemble_alias (alias, DECL_ASSEMBLER_NAME (function));
+#endif
+    }
     return alias;
 }
 #endif

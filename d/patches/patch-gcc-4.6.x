@@ -1,5 +1,5 @@
 --- gcc.orig/cgraph.c	2011-03-04 18:49:23.000000000 +0000
-+++ gcc/cgraph.c	2011-05-31 20:40:08.518282318 +0100
++++ gcc/cgraph.c	2011-06-02 20:25:25.773713538 +0100
 @@ -491,6 +491,7 @@ struct cgraph_node *
  cgraph_node (tree decl)
  {
@@ -182,19 +182,8 @@
      discard_pending_stack_adjust ();
  }
 --- gcc.orig/dwarf2out.c	2011-03-18 16:22:01.000000000 +0000
-+++ gcc/dwarf2out.c	2011-05-31 21:06:00.633978841 +0100
-@@ -7905,7 +7905,9 @@ is_cxx (void)
- {
-   unsigned int lang = get_AT_unsigned (comp_unit_die (), DW_AT_language);
- 
--  return lang == DW_LANG_C_plus_plus || lang == DW_LANG_ObjC_plus_plus;
-+  return (lang == DW_LANG_C_plus_plus
-+	  || lang == DW_LANG_ObjC_plus_plus
-+      	  || lang == DW_LANG_D);
- }
- 
- /* Return TRUE if the language is Fortran.  */
-@@ -20069,6 +20071,8 @@ gen_compile_unit_die (const char *filena
++++ gcc/dwarf2out.c	2011-06-04 12:50:12.757559347 +0100
+@@ -20069,6 +20069,8 @@ gen_compile_unit_die (const char *filena
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
      language = DW_LANG_C_plus_plus;
@@ -203,7 +192,7 @@
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
-@@ -21464,7 +21468,7 @@ dwarf2out_decl (tree decl)
+@@ -21464,7 +21466,7 @@ dwarf2out_decl (tree decl)
  
        /* For local statics lookup proper context die.  */
        if (TREE_STATIC (decl) && decl_function_context (decl))

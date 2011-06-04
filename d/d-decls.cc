@@ -619,16 +619,7 @@ Symbol *FuncDeclaration::toSymbol()
             }
             else
             {
-#if D_GCC_VER >= 44
-                // otherwise most functions aren't even considered for inlining.
-                if (flag_inline_functions && fbody)
-                {
-                    if (isMember() && canInline(1))
-                        DECL_DECLARED_INLINE_P(fn_decl) = 1;
-                    else if(canInline(0))
-                        DECL_DECLARED_INLINE_P(fn_decl) = 1;
-                }
-#else
+#if D_GCC_VER < 44
                 // see grokdeclarator in c-decl.c
                 if (flag_inline_trees == 2 && fbody /* && should_emit? */)
                     DECL_INLINE (fn_decl) = 1;
