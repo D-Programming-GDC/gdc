@@ -48,7 +48,7 @@ D_EXTRA_DEFINES += -DELFOBJ=1
 D_EXTRA_DEFINES += -DD_DMD_CALLING_CONVENTIONS=1
 
 # Enables correct implementation of D's va_list type (void*) as per
-# the D language specification.
+# the D language specification - this is experimental.
 #D_EXTRA_DEFINES += -DD_VA_LIST_TYPE_VOIDPTR=1
 
 # As with C++: (quote) OTOH, I think this means the g++ driver...
@@ -188,10 +188,13 @@ ALL_DMD_CXXFLAGS = $(ALL_CXXFLAGS) $(ALL_CPPFLAGS) \
                         -Id -I$(srcdir)/$(D_dmd_srcdir) -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 
 
+# GDC has it's own build rule for gcc.c
+D_GCC_OBJS = d/d-gcc.o $(filter-out gcc.o, $(GCC_OBJS))
+
 # Create the compiler driver for D.
-$(D_DRIVER_NAME)$(exeext): $(GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(LIBDEPS)
+$(D_DRIVER_NAME)$(exeext): $(D_GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(LIBDEPS)
 	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o $@ \
-	$(GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(LIBS)
+	$(D_GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(LIBS)
 
 # Create a version of the g++ driver which calls the cross-compiler.
 $(D_DRIVER_NAME)-cross$(exeext): $(D_DRIVER_NAME)$(exeext)
@@ -334,6 +337,14 @@ d/todt.dmd.o: $(D_DMD_H)
 d/toobj.dmd.o: $(D_DMD_H)
 d/typinf.dmd.o: $(D_DMD_H)
 
+
+d/d-gcc.o: gcc.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) intl.h multilib.h \
+    Makefile $(lang_specs_files) specs.h prefix.h $(GCC_H)
+	(SHLIB_LINK='$(SHLIB_LINK)' \
+	SHLIB_MULTILIB='$(SHLIB_MULTILIB)'; \
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+  $(DRIVER_DEFINES) -DD_DRIVER_ONLY=1 \
+  -c $(srcdir)/gcc.c $(OUTPUT_OPTION))
 
 d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) $(CONFIG_H)
 	(SHLIB_LINK='$(SHLIB_LINK)' \

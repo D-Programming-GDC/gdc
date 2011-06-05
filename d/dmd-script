@@ -540,7 +540,7 @@ foreach my $srcf_i (@sources) {
 
     my @source_args;
     if ( $combine ) {
-        if ($gcc_maj >= 4) {
+        if ($gcc_maj >= 4 && $gcc_min <= 5) {
             push @source_args, "-combine";
         }
         push @source_args, @sources;

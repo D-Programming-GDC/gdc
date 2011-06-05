@@ -2124,11 +2124,10 @@ IRState::hostToTargetString(char * str, size_t length, unsigned unit_size)
     gcc_assert(unit_size == 2 || unit_size == 4);
 
     bool flip;
-#if WORDS_BIG_ENDIAN
-    flip = (bool) ! BYTES_BIG_ENDIAN;
-#else
-    flip = (bool) BYTES_BIG_ENDIAN;
-#endif
+    if (WORDS_BIG_ENDIAN)
+        flip = (bool) ! BYTES_BIG_ENDIAN;
+    else
+        flip = (bool) BYTES_BIG_ENDIAN;
 
     if (flip)
     {
