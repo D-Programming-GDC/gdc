@@ -348,15 +348,18 @@ Symbol *VarDeclaration::toSymbol()
             // but it would be nice to get the benefit of them (could handle in
             // VarExp -- makeAddressOf could switch back to the VAR_DECL
 
-            // if (typs->isscalar()) CONST_DECL...
-            TREE_READONLY(var_decl) = 1;
+            if (! TREE_STATIC(var_decl))
+                TREE_READONLY(var_decl) = 1;
+            else
+            {   // Can't set TREE_READONLY until DECL_INITIAL is set, which
+                // doesn't happen until symbol lands in outdata.
+                D_DECL_READONLY_STATIC(var_decl) = 1;
+            }
 
             // can at least do this...
             //  const doesn't seem to matter for aggregates, so prevent problems..
             if (type->isscalar() || type->isString())
-            {
                 TREE_CONSTANT(var_decl) = 1;
-            }
         }
 
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES

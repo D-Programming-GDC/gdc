@@ -1002,6 +1002,10 @@ outdata(Symbol * sym)
     if (sym->Sdt && DECL_INITIAL(t) == NULL_TREE)
         DECL_INITIAL(t) = dt2tree(sym->Sdt);
 
+    /* If the symbol was marked as readonly in the frontend, set TREE_READONLY.  */
+    if (D_DECL_READONLY_STATIC(t))
+        TREE_READONLY(t) = 1;
+
     /* Special case, outputting symbol of a module, but object.d is missing
        or corrupt. Set type as typeof DECL_INITIAL to satisfy runtime.  */
     tree type = TREE_TYPE(t);
