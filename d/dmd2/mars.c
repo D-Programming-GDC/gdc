@@ -114,7 +114,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
 #endif
     ;
-    version = "v2.052";
+    version = "v2.053";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -272,7 +272,8 @@ void usage()
 #else
     const char fpic[] = "";
 #endif
-    printf("Digital Mars D Compiler %s\n%s %s\n",
+    printf("DMD%s D Compiler %s\n%s %s\n",
+        sizeof(size_t) == 4 ? "32" : "64",
         global.version, global.copyright, global.written);
     printf("\
 Documentation: http://www.digitalmars.com/d/2.0/index.html\n\
@@ -386,6 +387,9 @@ int main(int argc, char *argv[])
     global.params.libfiles = new Array();
     global.params.objfiles = new Array();
     global.params.ddocfiles = new Array();
+
+    // Default to -m32 for 32 bit dmd, -m64 for 64 bit dmd
+    global.params.isX86_64 = (sizeof(size_t) == 8);
 
 #if TARGET_WINDOS
     global.params.defaultlibname = "phobos";

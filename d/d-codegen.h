@@ -559,6 +559,11 @@ struct IRState : IRBase
     // %%
     static bool originalOmitFramePointer;
 
+#if V2
+    // Variables that are in scope that will need destruction later
+    static Array * varsInScope;
+#endif
+
 protected:
     tree maybeExpandSpecialCall(tree call_exp);
     static tree expandPortIntrinsic(Intrinsic code, tree port, tree value, int outp);
@@ -571,7 +576,9 @@ public:
 
     static Module * builtinsModule;
     static Module * intrinsicModule;
+    static Module * intrinsicCoreModule;
     static Module * mathModule;
+    static Module * mathCoreModule;
     static TemplateDeclaration * stdargTemplateDecl;
     static TemplateDeclaration * cstdargStartTemplateDecl;
     static TemplateDeclaration * cstdargArgTemplateDecl;
@@ -581,14 +588,20 @@ public:
         builtinsModule = mod;
     }
 
-    static void setIntrinsicModule(Module * mod)
+    static void setIntrinsicModule(Module * mod, bool coremod)
     {
-        intrinsicModule = mod;
+        if (coremod)
+            intrinsicCoreModule = mod;
+        else
+            intrinsicModule = mod;
     }
 
-    static void setMathModule(Module * mod)
+    static void setMathModule(Module * mod, bool coremod)
     {
-        mathModule = mod;
+        if (coremod)
+            mathCoreModule = mod;
+        else
+            mathModule = mod;
     }
 
     static void setStdArg(TemplateDeclaration * td)

@@ -268,6 +268,10 @@ void FuncDeclaration::semantic(Scope *sc)
     if (isAbstract() && !isVirtual())
         error("non-virtual functions cannot be abstract");
 
+    // https://github.com/donc/dmd/commit/9f7b2f8cfe5d7482f2de7f9678c176d54abe237f#commitcomment-321724
+    //if (isOverride() && !isVirtual())
+        //error("cannot override a non-virtual function");
+
     if ((f->isConst() || f->isImmutable()) && !isThis())
         error("without 'this' cannot be const/immutable");
 
@@ -724,7 +728,7 @@ void FuncDeclaration::semantic(Scope *sc)
             FuncDeclaration *fd = new FuncDeclaration(loc, loc,
                 Id::require, STCundefined, tf);
             fd->fbody = frequire;
-            Statement *s1 = new DeclarationStatement(loc, fd);
+            Statement *s1 = new ExpStatement(loc, fd);
             Expression *e = new CallExp(loc, new VarExp(loc, fd, 0), (Expressions *)NULL);
             Statement *s2 = new ExpStatement(loc, e);
             frequire = new CompoundStatement(loc, s1, s2);
@@ -751,7 +755,7 @@ void FuncDeclaration::semantic(Scope *sc)
             FuncDeclaration *fd = new FuncDeclaration(loc, loc,
                 Id::ensure, STCundefined, tf);
             fd->fbody = fensure;
-            Statement *s1 = new DeclarationStatement(loc, fd);
+            Statement *s1 = new ExpStatement(loc, fd);
             Expression *eresult = NULL;
             if (outId)
                 eresult = new IdentifierExp(loc, outId);
@@ -1577,7 +1581,10 @@ void FuncDeclaration::semantic3(Scope *sc)
                     if (v->type->toBasetype()->ty == Tsarray)
                         continue;
 
-                    Expression *e = v->callScopeDtor(sc2);
+                    if (v->noscope)
+                        continue;
+
+                    Expression *e = v->edtor;
                     if (e)
                     {   Statement *s = new ExpStatement(0, e);
                         s = s->semantic(sc2);
@@ -1595,7 +1602,7 @@ void FuncDeclaration::semantic3(Scope *sc)
             {   /* Wrap the entire function body in a synchronized statement
                  */
                 AggregateDeclaration *ad = isThis();
-                ClassDeclaration *cd = ad ? ad->isClassDeclaration() : NULL;
+                ClassDeclaration *cd = ad ? ad->isClassDeclaration() : parent->isClassDeclaration();
 
                 if (cd)
                 {
@@ -2717,14 +2724,12 @@ int FuncDeclaration::addPostInvariant()
  * Generate a FuncDeclaration for a runtime library function.
  */
 
-FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, const char *name,
-        Type *t1, Type *t2, Type *t3)
+FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, const char *name, Type *t1, Type *t2, Type *t3)
 {
     return genCfunc(treturn, Lexer::idPool(name), t1, t2 ,t3);
 }
 
-FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id,
-        Type *t1, Type *t2, Type *t3)
+FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id, Type *t1, Type *t2, Type *t3)
 {
     FuncDeclaration *fd;
     TypeFunction *tf;
@@ -3264,7 +3269,7 @@ void StaticCtorDeclaration::semantic(Scope *sc)
         VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
         v->storage_class = isSharedStaticCtorDeclaration() ? STCstatic : STCtls;
         Statements *sa = new Statements();
-        Statement *s = new DeclarationStatement(0, v);
+        Statement *s = new ExpStatement(0, v);
         sa->push(s);
         Expression *e = new IdentifierExp(0, id);
         e = new AddAssignExp(0, e, new IntegerExp(1));
@@ -3390,7 +3395,7 @@ void StaticDtorDeclaration::semantic(Scope *sc)
         VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
         v->storage_class = isSharedStaticDtorDeclaration() ? STCstatic : STCtls;
         Statements *sa = new Statements();
-        Statement *s = new DeclarationStatement(0, v);
+        Statement *s = new ExpStatement(0, v);
         sa->push(s);
         Expression *e = new IdentifierExp(0, id);
         e = new AddAssignExp(0, e, new IntegerExp(-1));

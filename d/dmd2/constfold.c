@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -912,32 +912,7 @@ Expression *Cmp(enum TOK op, Type *type, Expression *e1, Expression *e2)
         if (es2->len < len)
             len = es2->len;
 
-        int cmp = 0;
-        if (sz == 1)
-            cmp = memcmp(es1->string, es2->string, sz * len);
-        else if (sz == 2)
-        {
-            const d_uns16 * p1 = (const d_uns16 *) es1->string;
-            const d_uns16 * p2 = (const d_uns16 *) es2->string;
-            for (size_t i = 0; i < len; ++i)
-                if (p1[i] > p2[i])
-                    { cmp = 1; break; }
-                else if (p1[i] < p2[i])
-                    { cmp = -1; break; }
-        }
-        else if (sz == 4)
-        {
-            const d_uns32 * p1 = (const d_uns32 *) es1->string;
-            const d_uns32 * p2 = (const d_uns32 *) es2->string;
-            for (size_t i = 0; i < len; ++i)
-                if (p1[i] > p2[i])
-                    { cmp = 1; break; }
-                else if (p1[i] < p2[i])
-                    { cmp = -1; break; }
-        }
-        else
-            assert(0);
-        
+        int cmp = memcmp(es1->string, es2->string, sz * len);
         if (cmp == 0)
             cmp = es1->len - es2->len;
 
@@ -1431,9 +1406,12 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
             dinteger_t v = e->toInteger();
 
-            size_t len = utf_codeLength(sz, v);
+            size_t len = (t->ty == tn->ty) ? 1 : utf_codeLength(sz, v);
             s = mem.malloc((len + 1) * sz);
-            utf_encode(sz, s, v);
+            if (t->ty == tn->ty)
+                memcpy((unsigned char *)s, &v, sz);
+            else
+                utf_encode(sz, s, v);
 
             // Add terminating 0
             memset((unsigned char *)s + len * sz, 0, sz);
@@ -1488,6 +1466,34 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         es->type = type;
         e = es;
     }
+    else if (e2->op == TOKstring && e1->op == TOKarrayliteral &&
+        t1->nextOf()->isintegral())
+    {
+        // Concatenate the strings
+        StringExp *es1 = (StringExp *)e2;
+        ArrayLiteralExp *es2 = (ArrayLiteralExp *)e1;
+        size_t len = es1->len + es2->elements->dim;
+        int sz = es1->sz;
+
+        void *s = mem.malloc((len + 1) * sz);
+        memcpy((char *)s + sz * es2->elements->dim, es1->string, es1->len * sz);
+        for (int i = 0; i < es2->elements->dim; i++)
+        {   Expression *es2e = (Expression *)es2->elements->data[i];
+            if (es2e->op != TOKint64)
+                return EXP_CANT_INTERPRET;
+            dinteger_t v = es2e->toInteger();
+            memcpy((unsigned char *)s + i * sz, &v, sz);
+        }
+
+        // Add terminating 0
+        memset((unsigned char *)s + len * sz, 0, sz);
+
+        StringExp *es = new StringExp(loc, s, len);
+        es->sz = sz;
+        es->committed = 0;
+        es->type = type;
+        e = es;
+    }
     else if (e1->op == TOKstring && e2->op == TOKarrayliteral &&
         t2->nextOf()->isintegral())
     {
@@ -1526,10 +1532,18 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         int sz = es1->sz;
         dinteger_t v = e2->toInteger();
 
-        size_t len = es1->len + utf_codeLength(sz, v);
+        // Is it a concatentation of homogenous types?
+        // (char[] ~ char, wchar[]~wchar, or dchar[]~dchar)
+        bool homoConcat = (sz == t2->size());
+        size_t len = es1->len;
+        len += homoConcat ? 1 : utf_codeLength(sz, v);
+
         s = mem.malloc((len + 1) * sz);
         memcpy(s, es1->string, es1->len * sz);
-        utf_encode(sz, (unsigned char *)s + (sz * es1->len), v);
+        if (homoConcat)
+             memcpy((unsigned char *)s + (sz * es1->len), &v, sz);
+        else
+             utf_encode(sz, (unsigned char *)s + (sz * es1->len), v);
 
         // Add terminating 0
         memset((unsigned char *)s + len * sz, 0, sz);

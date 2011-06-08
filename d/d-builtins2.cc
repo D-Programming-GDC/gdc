@@ -568,13 +568,17 @@ d_gcc_magic_module(Module *m)
         {
             if (! strcmp(md->id->string, "vararg"))
                 d_gcc_magic_stdarg_module(m, false);
+            else if (! strcmp(md->id->string, "bitop"))
+                IRState::setIntrinsicModule(m, true);
+            else if (! strcmp(md->id->string, "math"))
+                IRState::setMathModule(m, true);
         }
         else if (! strcmp(((Identifier *) md->packages->data[0])->string, "std"))
         {
             if (! strcmp(md->id->string, "intrinsic"))
-                IRState::setIntrinsicModule(m);
+                IRState::setIntrinsicModule(m, false);
             else if (! strcmp(md->id->string, "math"))
-                IRState::setMathModule(m);
+                IRState::setMathModule(m, false);
         }
 #else
         else if (! strcmp(((Identifier *) md->packages->data[0])->string, "std"))
@@ -582,9 +586,9 @@ d_gcc_magic_module(Module *m)
             if (! strcmp(md->id->string, "stdarg"))
                 d_gcc_magic_stdarg_module(m, false);
             else if (! strcmp(md->id->string, "intrinsic"))
-                IRState::setIntrinsicModule(m);
+                IRState::setIntrinsicModule(m, false);
             else if (! strcmp(md->id->string, "math"))
-                IRState::setMathModule(m);
+                IRState::setMathModule(m, false);
         }
 #endif
     }

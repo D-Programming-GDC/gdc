@@ -351,8 +351,8 @@ Symbol *VarDeclaration::toSymbol()
             if (! TREE_STATIC(var_decl))
                 TREE_READONLY(var_decl) = 1;
             else
-            {   // Can't set TREE_READONLY until DECL_INITIAL is set, which
-                // doesn't happen until symbol lands in outdata.
+            {   // Can't set "readonly" unless DECL_INITIAL is set, which
+                // doesn't happen until outdata is called for the symbol.
                 D_DECL_READONLY_STATIC(var_decl) = 1;
             }
 

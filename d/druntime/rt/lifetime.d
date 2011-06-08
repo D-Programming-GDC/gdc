@@ -768,14 +768,14 @@ extern (C) void[] _d_newarrayT(TypeInfo ti, size_t length)
                 jc      Loverflow       ;
             }
         }
-	else
-	{
-	    auto newsize = size * length;
-	    if (newsize / length != size)
-		goto Loverflow;
+        else
+        {
+            auto newsize = size * length;
+            if (newsize / length != size)
+                goto Loverflow;
 
-	    size = newsize;
-	}
+            size = newsize;
+        }
 
         // increase the size by the array pad.
         auto info = gc_qalloc(size + __arrayPad(size), !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN | BlkAttr.APPENDABLE : BlkAttr.APPENDABLE);
@@ -840,14 +840,14 @@ extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length)
                 jc      Loverflow       ;
             }
         }
-	else
-	{
-	    auto newsize = size * length;
-	    if (newsize / length != size)
-		goto Loverflow;
+        else
+        {
+            auto newsize = size * length;
+            if (newsize / length != size)
+                goto Loverflow;
 
-	    size = newsize;
-	}
+            size = newsize;
+        }
 
         auto info = gc_qalloc(size + __arrayPad(size), !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN | BlkAttr.APPENDABLE : BlkAttr.APPENDABLE);
         debug(PRINTF) printf(" p = %p\n", info.base);

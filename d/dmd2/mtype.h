@@ -120,7 +120,6 @@ typedef unsigned char TY;       // ENUMTY
 
 extern int Tsize_t;
 extern int Tptrdiff_t;
-extern int Tindex;
 
 
 struct Type : Object
@@ -188,7 +187,7 @@ struct Type : Object
     #define tshiftcnt   tint32          // right side of shift expression
 //    #define tboolean  tint32          // result of boolean expression
     #define tboolean    tbool           // result of boolean expression
-    #define tindex      basic[Tindex]   // array/ptr index
+    #define tindex      tsize_t         // array/ptr index
     static Type *tvoidptr;              // void*
     static Type *tstring;               // immutable(char)[]
     #define terror      basic[Terror]   // for error recovery
@@ -327,6 +326,7 @@ struct Type : Object
     virtual TypeTuple *toArgTypes();
     virtual Type *nextOf();
     uinteger_t sizemask();
+    virtual int needsDestruction();
 
     static void error(Loc loc, const char *format, ...);
     static void warning(Loc loc, const char *format, ...);
@@ -443,6 +443,7 @@ struct TypeSArray : TypeArray
     TypeInfoDeclaration *getTypeInfoDeclaration();
     Expression *toExpression();
     int hasPointers();
+    int needsDestruction();
     TypeTuple *toArgTypes();
 #if IN_GCC || CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
@@ -730,6 +731,7 @@ struct TypeStruct : Type
     int isZeroInit(Loc loc);
     int isAssignable();
     int checkBoolean();
+    int needsDestruction();
     dt_t **toDt(dt_t **pdt);
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
     TypeInfoDeclaration *getTypeInfoDeclaration();
@@ -769,6 +771,7 @@ struct TypeEnum : Type
     int isunsigned();
     int checkBoolean();
     int isAssignable();
+    int needsDestruction();
     MATCH implicitConvTo(Type *to);
     MATCH constConv(Type *to);
     Type *toBasetype();
@@ -810,6 +813,7 @@ struct TypeTypedef : Type
     int isunsigned();
     int checkBoolean();
     int isAssignable();
+    int needsDestruction();
     Type *toBasetype();
     MATCH implicitConvTo(Type *to);
     MATCH constConv(Type *to);

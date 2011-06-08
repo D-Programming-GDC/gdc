@@ -26,12 +26,13 @@ module std.format;
 
 import core.stdc.stdio, core.stdc.stdlib, core.stdc.string, core.vararg;
 import std.algorithm, std.array, std.bitmanip, std.conv,
-    std.ctype, std.exception, std.functional, std.math, std.range, 
+    std.ctype, std.exception, std.functional, std.math, std.range,
     std.string, std.system, std.traits, std.typecons, std.typetuple,
     std.utf;
 version(unittest) {
     import std.stdio;
 }
+import std.stdio;
 
 version (Windows) version (DigitalMars)
 {
@@ -336,7 +337,7 @@ void formattedWrite(Writer, Char, A...)(Writer w, in Char[] fmt, A args)
     auto spec = FormatSpec!Char(fmt);
     for (;spec.writeUpToNextSpec(w);)
     {
-        if (currentArg == funs.length && !spec.index)
+        if (currentArg == funs.length && !spec.indexStart)
         {
             // leftover spec?
             enforce(fmt.length == 0, new FormatError(
@@ -388,11 +389,15 @@ void formattedWrite(Writer, Char, A...)(Writer w, in Char[] fmt, A args)
             else spec.precision = spec.UNSPECIFIED;
         }
         // Format!
-        if (spec.index > 0)
+        if (spec.indexStart > 0)
         {
             // using positional parameters!
-            funs[spec.index - 1](w, argsAddresses[spec.index - 1], spec);
-            if (currentArg < spec.index) currentArg = spec.index;
+            foreach (i; spec.indexStart - 1 .. spec.indexEnd)
+            {
+                if (funs.length <= i) break;
+                funs[i](w, argsAddresses[i], spec);
+            }
+            if (currentArg < spec.indexEnd) currentArg = spec.indexEnd;
         }
         else
         {
@@ -451,7 +456,6 @@ uint formattedRead(R, Char, S...)(ref R r, const(Char)[] fmt, S args)
         {
             foreach (i, T; A.Types)
             {
-                //writeln("Parsing ", r, " with format ", fmt);
                 (*args[0])[i] = unformatValue!(T)(r, spec);
                 skipUnstoredFields();
             }
@@ -510,8 +514,13 @@ struct FormatSpec(Char)
        Index of the argument for positional parameters, from $(D 1) to
        $(D ubyte.max). ($(D 0) means not used).
     */
-    ubyte index;
-    version(D_Ddoc) {
+    ubyte indexStart;
+    /**
+       Index of the last argument for positional parameter range, from
+       $(D 1) to $(D ubyte.max). ($(D 0) means not used).
+    */
+    ubyte indexEnd;
+    version(StdDdoc) {
         /**
          The format specifier contained a $(D '-') ($(D printf)
          compatibility).
@@ -729,9 +738,25 @@ struct FormatSpec(Char)
                     i = tmp.ptr - trailing.ptr;
                     if (tmp.length && tmp[0] == '$')
                     {
-                        // index!
-                        index = to!(ubyte)(widthOrArgIndex);
+                        // index of the form %n$
+                        indexEnd = indexStart = to!(ubyte)(widthOrArgIndex);
                         ++i;
+                    }
+                    else if (tmp.length && tmp[0] == ':')
+                    {
+                        // two indexes of the form %m:n$, or one index of the form %m:$
+                        indexStart = to!(ubyte)(widthOrArgIndex);
+                        tmp = tmp[1 .. $];
+                        if (tmp[0] == '$')
+                        {
+                            indexEnd = indexEnd.max;
+                        }
+                        else
+                        {
+                            indexEnd = .parse!(typeof(indexEnd))(tmp);
+                        }
+                        i = tmp.ptr - trailing.ptr;
+                        enforce(trailing[i++] == '$', new FormatError("$ expected"));
                     }
                     else
                     {
@@ -844,10 +869,12 @@ struct FormatSpec(Char)
 
     string toString()
     {
-        return text("width = ", width,
+        return text("address = ", cast(void*) &this,
+                "\nwidth = ", width,
                 "\nprecision = ", precision,
                 "\nspec = ", spec,
-                "\nindex = ", index,
+                "\nindexStart = ", indexStart,
+                "\nindexEnd = ", indexEnd,
                 "\nflDash = ", flDash,
                 "\nflZero = ", flZero,
                 "\nflSpace = ", flSpace,
@@ -892,7 +919,7 @@ if (is(T == enum))
    Integrals are formatted like $(D printf) does.
  */
 void formatValue(Writer, T, Char)(Writer w, T val,
-        ref FormatSpec!Char f)
+        /*ref*/ FormatSpec!Char f)
 if (isIntegral!T)
 {
     Unqual!T arg = val;
@@ -988,7 +1015,6 @@ if (isIntegral!T)
         - (base == 16 && f.flHash && arg ? 2 : 0); // 0x or 0X
     const sizediff_t delta = f.precision - digits.length;
     if (delta > 0) spacesToPrint -= delta;
-    //writeln(spacesToPrint);
     if (spacesToPrint > 0) // need to do some padding
     {
         if (leftPad == '0')
@@ -1065,7 +1091,6 @@ if (isFloatingPoint!D)
     sprintfSpec[i] = 0;
     //printf("format: '%s'; geeba: %g\n", sprintfSpec.ptr, obj);
     char[512] buf;
-    //writeln("Spec is: ", sprintfSpec);
     immutable n = snprintf(buf.ptr, buf.length,
             sprintfSpec.ptr,
             f.width,
@@ -1469,7 +1494,7 @@ if (is(T == struct) && !isInputRange!T)
         string outbuff = "";
         void sink(const(char)[] s) { outbuff ~= s; }
         val.toString(&sink, f);
-        put (w, outbuff);        
+        put (w, outbuff);
     }
     else static if (is(typeof(val.toString(SinkType, "s"))))
     {   // Support toString( delegate(const(char)[]) sink, string fmt)
@@ -1955,7 +1980,7 @@ here:
     stream.clear; formattedWrite(stream, "%#X", 0xABCD);
     assert(stream.data == "0XABCD");
 
-    stream.clear; formattedWrite(stream, "%#o", 012345);
+    stream.clear; formattedWrite(stream, "%#o", octal!12345);
     assert(stream.data == "012345");
     stream.clear; formattedWrite(stream, "%o", 9);
     assert(stream.data == "11");
@@ -2922,9 +2947,9 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
           return m;
         }
 
-        /* p = pointer to the first element in the array 
-         * len = number of elements in the array 
-         * valti = type of the elements 
+        /* p = pointer to the first element in the array
+         * len = number of elements in the array
+         * valti = type of the elements
          */
         void putArray(void* p, size_t len, TypeInfo valti)
         {
@@ -4037,7 +4062,7 @@ unittest
     r = std.string.format("%#X", 0xABCD);
     assert(r == "0XABCD");
 
-    r = std.string.format("%#o", 012345);
+    r = std.string.format("%#o", octal!12345);
     assert(r == "012345");
     r = std.string.format("%o", 9);
     assert(r == "11");

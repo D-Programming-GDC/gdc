@@ -2,7 +2,7 @@
 
 /**
  * $(RED This module has been deprecated. Use delegates for binding arguments to specific values.)
- * 
+ *
  * Bind function arguments to functions.
  *
  * References:

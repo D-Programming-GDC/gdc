@@ -1095,13 +1095,13 @@ in
 }
 body
 {
-	size_t ni; // current character in filename
+        size_t ni; // current character in filename
 
-	foreach (pi; 0 .. pattern.length)
-	{
-	    char pc = pattern[pi];
-	    switch (pc)
-	    {
+        foreach (pi; 0 .. pattern.length)
+        {
+            char pc = pattern[pi];
+            switch (pc)
+            {
             case '*':
                 if (pi + 1 == pattern.length)
                     return true;
@@ -1198,10 +1198,10 @@ body
                     return false;
                 ni++;
                 break;
-	    }
-	}
+            }
+        }
     assert(ni >= filename.length);
-	return ni == filename.length;
+        return ni == filename.length;
 }
 
 unittest
@@ -1211,7 +1211,7 @@ unittest
     version (Win32)
         assert(fnmatch("foo", "Foo"));
     version (linux)
-	assert(!fnmatch("foo", "Foo"));
+        assert(!fnmatch("foo", "Foo"));
     assert(fnmatch("foo", "*"));
     assert(fnmatch("foo.bar", "*"));
     assert(fnmatch("foo.bar", "*.*"));

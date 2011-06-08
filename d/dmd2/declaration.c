@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -333,7 +333,7 @@ void TypedefDeclaration::semantic2(Scope *sc)
     {   sem = Semantic2Done;
         if (init)
         {
-            init = init->semantic(sc, basetype);
+            init = init->semantic(sc, basetype, WANTinterpret);
 
             ExpInitializer *ie = init->isExpInitializer();
             if (ie)
@@ -541,7 +541,7 @@ void AliasDeclaration::semantic(Scope *sc)
             }
         }
         if (overnext)
-            ScopeDsymbol::multiplyDefined(0, s, overnext);
+            ScopeDsymbol::multiplyDefined(0, this, overnext);
         if (s == this)
         {
             assert(global.errors);
@@ -676,8 +676,11 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     aliassym = NULL;
     onstack = 0;
     canassign = 0;
-    value = NULL;
+    setValueNull();
+#if DMDV2
     rundtor = NULL;
+    edtor = NULL;
+#endif
 }
 
 Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
@@ -1049,7 +1052,7 @@ Lagain:
             e = new ConstructExp(loc, e1, e);
             e->type = e1->type;         // don't type check this, it would fail
             init = new ExpInitializer(loc, e);
-            return;
+            goto Ldtor;
         }
         else if (type->ty == Ttypedef)
         {   TypeTypedef *td = (TypeTypedef *)type;
@@ -1112,7 +1115,7 @@ Lagain:
                     Expression *e = init->toExpression();
                     if (!e)
                     {
-                        init = init->semantic(sc, type);
+                        init = init->semantic(sc, type, 0); // Don't need to interpret
                         e = init->toExpression();
                         if (!e)
                         {   error("is not a static and cannot have static initializer");
@@ -1126,12 +1129,14 @@ Lagain:
                 Expression *e1 = new VarExp(loc, this);
 
                 Type *t = type->toBasetype();
+
+            Linit2:
                 if (t->ty == Tsarray && !(storage_class & (STCref | STCout)))
                 {
                     ei->exp = ei->exp->semantic(sc);
                     if (!ei->exp->implicitConvTo(type))
                     {
-                        sinteger_t dim = ((TypeSArray *)t)->dim->toInteger();
+                        int dim = ((TypeSArray *)t)->dim->toInteger();
                         // If multidimensional static array, treat as one large array
                         while (1)
                         {
@@ -1155,14 +1160,13 @@ Lagain:
                     if (sd->ctor &&             // there are constructors
                         ei->exp->type->ty == Tstruct && // rvalue is the same struct
                         ((TypeStruct *)ei->exp->type)->sym == sd &&
-                        ei->exp->op == TOKstar)
+                        ei->exp->op == TOKcall)
                     {
                         /* Look for form of constructor call which is:
                          *    *__ctmp.ctor(arguments...)
                          */
-                        PtrExp *pe = (PtrExp *)ei->exp;
-                        if (pe->e1->op == TOKcall)
-                        {   CallExp *ce = (CallExp *)pe->e1;
+                        if (1)
+                        {   CallExp *ce = (CallExp *)ei->exp;
                             if (ce->e1->op == TOKdotvar)
                             {   DotVarExp *dve = (DotVarExp *)ce->e1;
                                 if (dve->var->isCtorDeclaration())
@@ -1173,18 +1177,35 @@ Lagain:
                                      * variable with a bit copy of the default
                                      * initializer
                                      */
-                                    Expression *e = new AssignExp(loc, new VarExp(loc, this), t->defaultInit(loc));
-                                    e->op = TOKblit;
+                                    Expression *e;
+                                    if (sd->zeroInit == 1)
+                                    {
+                                        e = new ConstructExp(loc, new VarExp(loc, this), new IntegerExp(loc, 0, Type::tint32));
+                                    }
+                                    else
+                                    {   e = new AssignExp(loc, new VarExp(loc, this), t->defaultInit(loc));
+                                        e->op = TOKblit;
+                                    }
                                     e->type = t;
                                     ei->exp = new CommaExp(loc, e, ei->exp);
 
                                     /* Replace __ctmp being constructed with e1
                                      */
                                     dve->e1 = e1;
-                                    return;
+                                    ei->exp = ei->exp->semantic(sc);
+                                    goto Ldtor;
                                 }
                             }
                         }
+                    }
+
+                    /* Look for ((S tmp = S()),tmp) and replace it with just S()
+                     */
+                    Expression *e2 = ei->exp->isTemp();
+                    if (e2)
+                    {
+                        ei->exp = e2;
+                        goto Linit2;
                     }
 #endif
                     if (!ei->exp->implicitConvTo(type))
@@ -1232,7 +1253,7 @@ Lagain:
             }
             else
             {
-                init = init->semantic(sc, type);
+                init = init->semantic(sc, type, WANTinterpret);
             }
         }
         else if (storage_class & (STCconst | STCimmutable | STCmanifest) ||
@@ -1305,7 +1326,7 @@ Lagain:
                 }
                 else if (si || ai)
                 {   i2 = init->syntaxCopy();
-                    i2 = i2->semantic(sc, type);
+                    i2 = i2->semantic(sc, type, WANTinterpret);
                 }
                 inuse--;
                 global.gag--;
@@ -1355,6 +1376,21 @@ Lagain:
         }
         sc = sc->pop();
     }
+
+Ldtor:
+    /* Build code to execute destruction, if necessary
+     */
+    edtor = callScopeDtor(sc);
+    if (edtor)
+    {
+        edtor = edtor->semantic(sc);
+
+#if 0 // currently disabled because of std.stdio.stdin, stdout and stderr
+        if (isDataseg() && !(storage_class & STCextern))
+            error("static storage variables cannot have destructors");
+#endif
+    }
+
     sem = SemanticDone;
 }
 
@@ -1371,7 +1407,7 @@ void VarDeclaration::semantic2(Scope *sc)
             printf("type = %p\n", ei->exp->type);
         }
 #endif
-        init = init->semantic(sc, type);
+        init = init->semantic(sc, type, WANTinterpret);
         inuse--;
     }
     sem = Semantic2Done;
@@ -1645,29 +1681,10 @@ int VarDeclaration::needsAutoDtor()
 {
     //printf("VarDeclaration::needsAutoDtor() %s\n", toChars());
 
-    if (noscope || storage_class & STCnodtor)
+    if (noscope || !edtor)
         return FALSE;
 
-    // Destructors for structs and arrays of structs
-    Type *tv = type->toBasetype();
-    while (tv->ty == Tsarray)
-    {   TypeSArray *ta = (TypeSArray *)tv;
-        tv = tv->nextOf()->toBasetype();
-    }
-    if (tv->ty == Tstruct)
-    {   TypeStruct *ts = (TypeStruct *)tv;
-        StructDeclaration *sd = ts->sym;
-        if (sd->dtor)
-            return TRUE;
-    }
-
-    // Destructors for classes
-    if (storage_class & (STCauto | STCscope))
-    {
-        if (type->isClassHandle())
-            return TRUE;
-    }
-    return FALSE;
+    return TRUE;
 }
 
 
@@ -1681,8 +1698,11 @@ Expression *VarDeclaration::callScopeDtor(Scope *sc)
 
     //printf("VarDeclaration::callScopeDtor() %s\n", toChars());
 
-    if (noscope || storage_class & STCnodtor)
+    // Destruction of STCfield's is handled by buildDtor()
+    if (noscope || storage_class & (STCnodtor | STCref | STCout | STCfield))
+    {
         return NULL;
+    }
 
     // Destructors for structs and arrays of structs
     bool array = false;
@@ -1713,6 +1733,11 @@ Expression *VarDeclaration::callScopeDtor(Scope *sc)
             else
             {
                 e = new VarExp(loc, this);
+                /* This is a hack so we can call destructors on const/immutable objects.
+                 * Need to add things like "const ~this()" and "immutable ~this()" to
+                 * fix properly.
+                 */
+                e->type = e->type->mutableOf();
                 e = new DotVarExp(loc, e, sd->dtor, 0);
                 e = new CallExp(loc, e);
             }

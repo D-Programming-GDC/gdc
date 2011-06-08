@@ -18,7 +18,7 @@ Authors: $(WEB digitalmars.com, Walter Bright), $(WEB erdani.org,
 Andrei Alexandrescu)
 
 Source:    $(PHOBOSSRC std/_string.d)
-     
+
 $(B $(RED IMPORTANT NOTE:)) Beginning with version 2.052, the
 following symbols have been generalized beyond strings and moved to
 different modules. This action was prompted by the fact that
@@ -53,7 +53,7 @@ $(TR $(TD $(D replaceSlice)) $(TD Use $(XREF array, replace) instead.))
 
 $(TR $(TD $(D split)) $(TD Use $(XREF array, split) instead.))
 )
-   
+
 */
 module std.string;
 
@@ -1036,11 +1036,11 @@ unittest
         s2 = capitalize(s1);
         assert(cmp(s2, "Fol") == 0);
         assert(s2 !is s1);
-        
+
         s2 = capitalize(s1[0 .. 2]);
         assert(cmp(s2, "Fo") == 0);
         assert(s2.ptr == s1.ptr);
-        
+
         s1 = to!S("fOl");
         s2 = capitalize(s1);
         assert(cmp(s2, "Fol") == 0);
@@ -1078,7 +1078,7 @@ S capwords(S)(S s) if (isSomeString!S)
                 inword = false;
             }
             break;
-            
+
         default:
             if (!inword)
             {
@@ -1094,7 +1094,7 @@ S capwords(S)(S s) if (isSomeString!S)
     {
         r ~= capitalize(s[istart .. i]);
     }
-    
+
     return cast(S) r;
 }
 
@@ -2531,7 +2531,7 @@ S succ(S)(S s) if (isSomeString!S)
         {
             dchar c = s[i];
             dchar carry;
-            
+
             switch (c)
             {
             case '9':
@@ -2646,7 +2646,7 @@ string tr(const(char)[] str, const(char)[] from, const(char)[] to, const(char)[]
         dchar lastt;
         dchar newc;
         int n = 0;
-        
+
         for (size_t i = 0; i < from.length; )
         {
             dchar f = std.utf.decode(from, i);

@@ -90,6 +90,8 @@ struct AggregateDeclaration : ScopeDsymbol
     static void alignmember(target_size_t salign, target_size_t size, target_size_t *poffset);
     Type *getType();
     void addField(Scope *sc, VarDeclaration *v);
+    int firstFieldInUnion(int indx); // first field in union that includes indx
+    int numFieldsInUnion(int firstIndex); // #fields in union starting at index
     int isDeprecated();         // is aggregate deprecated?
     FuncDeclaration *buildDtor(Scope *sc);
     int isNested();

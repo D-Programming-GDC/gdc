@@ -4,7 +4,7 @@
 /**
  * $(RED This module has been deprecated. Use $(LINK2 std_regex.html,
  * std.regex) instead.)
- * 
+ *
  * $(LINK2 http://www.digitalmars.com/ctg/regular.html, Regular
  * expressions) are a powerful method of string pattern matching.  The
  * regular expression language used in this library is the same as

@@ -1899,7 +1899,7 @@ struct Gcx
                 push R13  ;
                 push R14  ;
                 push R15  ;
-                push EAX ;   // 16 byte align the stack
+                push RAX ;   // 16 byte align the stack
             }
         }
         else

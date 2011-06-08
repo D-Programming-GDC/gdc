@@ -117,7 +117,6 @@ enum TY
 
 extern int Tsize_t;
 extern int Tptrdiff_t;
-extern int Tindex;
 
 
 struct Type : Object
@@ -170,7 +169,7 @@ struct Type : Object
     #define tshiftcnt   tint32          // right side of shift expression
 //    #define tboolean  tint32          // result of boolean expression
     #define tboolean    tbool           // result of boolean expression
-    #define tindex      basic[Tindex]   // array/ptr index
+    #define tindex      tsize_t         // array/ptr index
     static Type *tvoidptr;              // void*
     #define terror      basic[Terror]   // for error recovery
 

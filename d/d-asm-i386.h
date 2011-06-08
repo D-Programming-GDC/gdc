@@ -1991,17 +1991,6 @@ struct AsmProcessor
             }
             default:
             {
-                // special case for 64bit
-                if (global.params.isX86_64 &&
-                    (op == Op_pushq || op == Op_DstQ) &&
-                    operands[0].reg >= Reg_EAX && operands[0].reg <= Reg_ESP)
-                {
-                    // replace:
-                    // {pop,push} EAX -> {pop,push} RAX
-                    int reg = operands[0].reg + Reg_RAX;
-                    operands[0].reg = (Reg) reg;
-                }
-
                 // special case for fdiv, fsub
                 if ((strncmp(mnemonic, "fsub", 4) == 0 ||
                      strncmp(mnemonic, "fdiv", 4) == 0) &&
@@ -2411,7 +2400,7 @@ struct AsmProcessor
          */
 
         bool is_offset = false;
-        exp = exp->optimize(WANTvalue | WANTinterpret);
+        exp = exp->optimize(WANTvalue);
         if (exp->op == TOKaddress)
         {
             exp = ((AddrExp *) exp)->e1;

@@ -40,6 +40,10 @@ bool IRState::useBuiltins;
 bool IRState::warnSignCompare = false;
 bool IRState::originalOmitFramePointer;
 
+#if V2
+Array * IRState::varsInScope;
+#endif
+
 bool
 d_gcc_force_templates()
 {
@@ -2546,7 +2550,9 @@ IRState::maybeMakeTemp(tree t)
 
 Module * IRState::builtinsModule = 0;
 Module * IRState::intrinsicModule = 0;
+Module * IRState::intrinsicCoreModule = 0;
 Module * IRState::mathModule = 0;
+Module * IRState::mathCoreModule = 0;
 TemplateDeclaration * IRState::stdargTemplateDecl = 0;
 TemplateDeclaration * IRState::cstdargStartTemplateDecl = 0;
 TemplateDeclaration * IRState::cstdargArgTemplateDecl = 0;
@@ -2563,7 +2569,8 @@ IRState::maybeSetUpBuiltin(Declaration * decl)
     if (! dsym)
         return false;
 
-    if (intrinsicModule && dsym->getModule() == intrinsicModule)
+    if ((intrinsicModule && dsym->getModule() == intrinsicModule) ||
+        (intrinsicCoreModule && dsym->getModule() == intrinsicCoreModule))
     {   // Matches order of Intrinsic enum
         static const char * intrinsic_names[] = {
             "bsf", "bsr",
@@ -2585,7 +2592,8 @@ IRState::maybeSetUpBuiltin(Declaration * decl)
         DECL_FUNCTION_CODE(t) = (built_in_function) i;
         return true;
     }
-    else if (mathModule && dsym->getModule() == mathModule)
+    else if ((mathModule && dsym->getModule() == mathModule) ||
+             (mathCoreModule && dsym->getModule() == mathCoreModule))
     {   // Matches order of Intrinsic enum
         static const char * math_names[] = {
             "cos", "fabs", "ldexp",

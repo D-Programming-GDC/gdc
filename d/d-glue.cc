@@ -50,8 +50,13 @@ elem *
 CondExp::toElem(IRState * irs)
 {
     tree cn = irs->convertForCondition(econd);
+#if V2
+    tree t1 = irs->convertTo(e1->toElemDtor(irs), e1->type, type);
+    tree t2 = irs->convertTo(e2->toElemDtor(irs), e2->type, type);
+#else
     tree t1 = irs->convertTo(e1, type);
     tree t2 = irs->convertTo(e2, type);
+#endif
     return build3(COND_EXPR, type->toCtype(), cn, t1, t2);
 }
 
@@ -59,13 +64,21 @@ static tree
 build_bool_binop(TOK op, tree type, Expression * e1, Expression * e2, IRState * irs)
 {
     tree_code out_code;
-    tree t1 = e1->toElem(irs);
-    tree t2 = e2->toElem(irs);
+    tree t1, t2;
 
     if (op == TOKandand || op == TOKoror)
     {
-        t1 = irs->convertForCondition(t1, e1->type);
-        t2 = irs->convertForCondition(t2, e2->type);
+        t1 = irs->convertForCondition(e1->toElem(irs), e1->type);
+#if V2
+        t2 = irs->convertForCondition(e2->toElemDtor(irs), e2->type);
+#else
+        t2 = irs->convertForCondition(e2->toElem(irs), e2->type);
+#endif
+    }
+    else
+    {
+        t1 = e1->toElem(irs);
+        t2 = e2->toElem(irs);
     }
 
     if (COMPLEX_FLOAT_TYPE_P(type))
@@ -604,8 +617,15 @@ AndAndExp::toElem(IRState * irs)
     if (e2->type->toBasetype()->ty != Tvoid)
         return toElemBin(irs, opComp);
     else
+    {
+#if V2
+        tree t2 = e2->toElemDtor(irs);
+#else
+        tree t2 = e2->toElem(irs);
+#endif
         return build3(COND_EXPR, type->toCtype(),
-                irs->convertForCondition(e1), e2->toElem(irs), d_void_zero_node);
+                      irs->convertForCondition(e1), t2, d_void_zero_node);
+    }
 }
 
 elem *
@@ -614,9 +634,17 @@ OrOrExp::toElem(IRState * irs)
     if (e2->type->toBasetype()->ty != Tvoid)
         return toElemBin(irs, opComp);
     else
+    {
+#if V2
+        tree t2 = e2->toElemDtor(irs);
+#else
+        tree t2 = e2->toElem(irs);
+#endif
         return build3(COND_EXPR, type->toCtype(),
-                build1(TRUTH_NOT_EXPR, boolean_type_node, irs->convertForCondition(e1)),
-                e2->toElem(irs), d_void_zero_node);
+                      build1(TRUTH_NOT_EXPR, boolean_type_node,
+                             irs->convertForCondition(e1)),
+                             t2, d_void_zero_node);
+    }
 }
 
 elem *
@@ -1713,6 +1741,38 @@ Expression::toElem(IRState* irs)
     return irs->errorMark(type);
 }
 
+#if V2
+/*******************************************
+ * Evaluate Expression, then call destructors on any temporaries in it.
+ */
+
+elem *
+Expression::toElemDtor(IRState *irs)
+{
+    size_t starti = irs->varsInScope ? irs->varsInScope->dim : 0;
+    tree e = toElem(irs);
+    size_t endi = irs->varsInScope ? irs->varsInScope->dim : 0;
+
+    // Add destructors
+    tree edtors = NULL_TREE;
+    for (size_t i = endi; i != starti;)
+    {
+        --i;
+        VarDeclaration * vd = (VarDeclaration *) irs->varsInScope->data[i];
+        if (vd)
+        {
+            irs->varsInScope->data[i] = NULL;
+            tree ed = vd->edtor->toElem(irs);
+            edtors = irs->maybeCompound(edtors, ed);
+        }
+    }
+    if (edtors != NULL_TREE)
+        e = irs->compound(e, edtors);
+    return e;
+}
+#endif
+
+
 elem *
 DotTypeExp::toElem(IRState *irs)
 {
@@ -1859,23 +1919,37 @@ AssertExp::toElem(IRState* irs)
 elem *
 DeclarationExp::toElem(IRState* irs)
 {
+#if V2
+    VarDeclaration * vd;
+    if ((vd = declaration->isVarDeclaration()) != NULL)
+    {   // Put variable on list of things needing destruction
+        if (vd->edtor && ! vd->noscope)
+        {
+            if (! irs->varsInScope)
+                irs->varsInScope = new Array();
+            irs->varsInScope->push(vd);
+        }
+    }
+#endif
+
     // VarDeclaration::toObjFile was modified to call d_gcc_emit_local_variable
     // if needed.  This assumes irs == g.irs
     irs->pushStatementList();
     declaration->toObjFile(false);
     tree t = irs->popStatementList();
-#if D_GCC_VER >= 43
+
+#if D_GCC_VER >= 45
     /* Construction of an array for typesafe-variadic function arguments
        can cause an empty STMT_LIST here.  This can causes problems
        during gimplification. */
     if (TREE_CODE(t) == STATEMENT_LIST && ! STATEMENT_LIST_HEAD(t))
-#if D_GCC_VER >= 45
         return build_empty_stmt(input_location);
-#else
+#elif D_GCC_VER >= 43
+    if (TREE_CODE(t) == STATEMENT_LIST && ! STATEMENT_LIST_HEAD(t))
         return build_empty_stmt();
-#endif
-#endif
+#else
     return t;
+#endif
 }
 
 // %% check calling this directly?
@@ -4825,7 +4899,11 @@ ExpStatement::toIR(IRState * irs)
     if (exp)
     {
         gen.doLineNote(loc);
+#if V2
+        tree exp_tree = exp->toElemDtor(irs);
+#else
         tree exp_tree = exp->toElem(irs);
+#endif
         irs->doExp(exp_tree);
     }
 }
@@ -4936,20 +5014,6 @@ gcc_d_backend_init()
     REALSIZE = int_size_in_bytes(long_double_type_node);
     REALPAD = 0;
     PTRSIZE = int_size_in_bytes(ptr_type_node);
-
-    switch (int_size_in_bytes(size_type_node))
-    {
-        case 4:
-            Tsize_t = Tuns32;
-            Tindex = Tint32;
-            break;
-        case 8:
-            Tsize_t = Tuns64;
-            Tindex = Tint64;
-            break;
-        default:
-            gcc_unreachable();
-    }
 
     switch (PTRSIZE)
     {
