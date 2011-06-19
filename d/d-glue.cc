@@ -1790,23 +1790,26 @@ elem *
 DelegateExp::toElem(IRState* irs)
 {
     Type * t = e1->type->toBasetype();
-    if (t->ty == Tclass || t->ty == Tstruct) {
-        // %% Need to see if DotVarExp ever has legitimate
+    if (t->ty == Tclass || t->ty == Tstruct)
+    {   // %% Need to see if DotVarExp ever has legitimate
         // <aggregate>.<static method>.  If not, move this test
         // to objectInstanceMethod.
         if (! func->isThis())
             error("delegates are only for non-static functions");
+
         return irs->objectInstanceMethod(e1, func, type);
-    } else {
+    }
+    else
+    {
+        tree ctx = d_null_pointer;
         gcc_assert(func->isNested() || func->isThis());
-        return irs->methodCallExpr(irs->functionPointer(func),
-            func->isNested() ?
+
 #if D_NO_TRAMPOLINES
-            irs->getFrameForFunction(func)
-#else
-            d_null_pointer
+        ctx = irs->getFrameForFunction(func);
 #endif
-            : e1->toElem(irs), type);
+        return irs->methodCallExpr(irs->functionPointer(func),
+                                   func->isNested() ? ctx : e1->toElem(irs),
+                                   type);
     }
 }
 
@@ -1947,36 +1950,41 @@ DeclarationExp::toElem(IRState* irs)
 #elif D_GCC_VER >= 43
     if (TREE_CODE(t) == STATEMENT_LIST && ! STATEMENT_LIST_HEAD(t))
         return build_empty_stmt();
-#else
-    return t;
 #endif
+
+    return t;
 }
 
 // %% check calling this directly?
 elem *
 FuncExp::toElem(IRState * irs)
 {
-    fd->toObjFile(false);
-
     Type * func_type = type->toBasetype();
+    tree ctx;
 
     if (func_type->ty == Tpointer)
         func_type = func_type->nextOf()->toBasetype();
 
-    switch (func_type->ty) {
-    case Tfunction:
-        return irs->nop(irs->addressOf(fd), type->toCtype());
-    case Tdelegate:
-        return irs->methodCallExpr(irs->functionPointer(fd), // trampoline or not
-#if D_NO_TRAMPOLINES
-            irs->getFrameForFunction(fd),
+    fd->toObjFile(false);
+
+    switch (func_type->ty)
+    {
+        case Tfunction:
+            return irs->nop(irs->addressOf(fd), type->toCtype());
+
+        case Tdelegate:
+#if D_NO_TRAMPOLINES    // trampoline or not
+            ctx = irs->getFrameForFunction(fd);
 #else
-            convert(ptr_type_node, integer_one_node),
+            ctx = convert(ptr_type_node, integer_one_node);
 #endif
-            type);
-    default:
-        ::error("Unexpected FuncExp type");
-        return irs->errorMark(type);
+
+            return irs->methodCallExpr(irs->functionPointer(fd),
+                                       ctx, type);
+
+        default:
+            ::error("Unexpected FuncExp type");
+            return irs->errorMark(type);
     }
 
     // If nested, this will be a trampoline...

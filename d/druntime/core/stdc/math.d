@@ -771,7 +771,7 @@ pure:
 //       but we can approximate.
 else version( FreeBSD )
 {
-  version (all) // < 8-CURRENT
+  version (none) // < 8-CURRENT
   {
     real    acosl(real x) { return acos(x); }
     real    asinl(real x) { return asin(x); }

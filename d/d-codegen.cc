@@ -188,7 +188,7 @@ tree
 IRState::declContext(Dsymbol * d_sym)
 {
     Dsymbol * orig_sym = d_sym;
-    AggregateDeclaration * agg_decl;
+    AggregateDeclaration * ad;
 
     while ((d_sym = d_sym->toParent2()))
     {
@@ -196,16 +196,18 @@ IRState::declContext(Dsymbol * d_sym)
         {   // 3.3.x (others?) dwarf2out chokes without this check... (output_pubnames)
             FuncDeclaration * f = orig_sym->isFuncDeclaration();
             if (f && ! gen.functionNeedsChain(f))
-                return 0;
+                return NULL_TREE;
+
             return d_sym->toSymbol()->Stree;
         }
-        else if ((agg_decl = d_sym->isAggregateDeclaration()))
+        else if ((ad = d_sym->isAggregateDeclaration()))
         {
-            ClassDeclaration * cd;
+            tree ctx = ad->type->toCtype();
+            if (ad->isClassDeclaration())
+            {   // RECORD_TYPE instead of REFERENCE_TYPE
+                ctx = TREE_TYPE(ctx);
+            }
 
-            tree ctx = agg_decl->type->toCtype();
-            if ((cd = d_sym->isClassDeclaration()))
-                ctx = TREE_TYPE(ctx); // RECORD_TYPE instead of REFERENCE_TYPE
             return ctx;
         }
         else if (d_sym->isModule())
@@ -3474,18 +3476,7 @@ IRState::functionNeedsChain(FuncDeclaration *f)
             return true;
         }
     }
-#if V2
-    StructDeclaration * b;
-    while (s && (b = s->isStructDeclaration()) && b->isNested())
-    {
-        s = s->toParent2();
-        if ((pf = s->isFuncDeclaration()) &&
-                ! getFrameInfo(pf)->creates_closure)
-        {
-            return true;
-        }
-    }
-#endif
+
     return false;
 }
 

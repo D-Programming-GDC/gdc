@@ -30,7 +30,6 @@ private import core.stdc.stdlib;
 
 extern (C)
 {
-    void _d_setUnhandled(Object *);
     void _d_createTrace(Object *);
 }
 
@@ -161,7 +160,6 @@ _d_throw(Object obj)
 
     // Runtime now expects us to do this first before unwinding.
     _d_createTrace (&exc.obj);
-    //_d_setUnhandled (&exc.obj);
 
     version (GNU_SjLj_Exceptions) {
         _Unwind_SjLj_RaiseException (&exc.unwindHeader);
