@@ -1964,7 +1964,9 @@ class File: Stream {
   override size_t readBlock(void* buffer, size_t size) {
     assertReadable();
     version (Win32) {
-      ReadFile(hFile, buffer, size, &size, null);
+	  DWORD dwSize = cast(DWORD) size;
+	  ReadFile(hFile, buffer, size, &dwSize, null);
+	  size = dwSize;
     } else version (Unix) {
       size = std.c.unix.unix.read(hFile, buffer, size);
       if (size == -1)
@@ -1977,7 +1979,9 @@ class File: Stream {
   override size_t writeBlock(void* buffer, size_t size) {
     assertWriteable();
     version (Win32) {
-      WriteFile(hFile, buffer, size, &size, null);
+	  DWORD dwSize = cast(DWORD) size;
+	  WriteFile(hFile, buffer, dwSize, &dwSize, null);
+	  size = dwSize;
     } else version (Unix) {
       size = std.c.unix.unix.write(hFile, buffer, size);
       if (size == -1)

@@ -106,10 +106,10 @@ extern (C)
     extern int _bss_end__;
 }
 
-void os_query_staticdataseg(void **base, uint *nbytes)
+void os_query_staticdataseg(void **base, size_t *nbytes)
 {
     *base = cast(void *)&_data_start__;
-    *nbytes = cast(uint)(cast(char *)&_bss_end__ - cast(char *)&_data_start__);
+    *nbytes = cast(size_t)(cast(char *)&_bss_end__ - cast(char *)&_data_start__);
 }
 
 }
