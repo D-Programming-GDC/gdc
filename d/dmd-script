@@ -383,14 +383,17 @@ while ( $arg_i < scalar(@ARGV) ) {
         browse("http://bitbucket.org/goshawk/gdc/wiki/UserDocumentation");
         exit 0;
     } elsif ( $arg =~ m/^-map$/ ) {
-        # Check for Mac (Untested)
-        if ($^O =~ m/darwin/i)
-        {
-            push @link_out, '-Wl,-map=' . substr($first_input_file, 0, length($first_input_file)-2) . ".map";
+        my $map = substr($first_input_file, 0, length($first_input_file)-2) . ".map";
+
+        if ($ARGV[$arg_i] =~ m/.map$/ ) {
+            $map = $ARGV[$arg_i++];
         }
-        else
-        {
-            push @link_out, '-Wl,-Map=' . substr($first_input_file, 0, length($first_input_file)-2) . ".map";
+		
+        # Check for Mac (Untested)
+        if ($^O =~ m/darwin/i) {
+            push @link_out, '-Wl,-map=' . $map;
+        } else {
+            push @link_out, '-Wl,-Map=' . $map;
         }
     } elsif ( $arg =~ m/^-m.+/ ) {
         # Pass -mxxx options
