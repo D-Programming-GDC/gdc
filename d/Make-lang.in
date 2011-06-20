@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+target_os=$(shell echo $(target) | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)/\3/')
 
 # Manual configuration since patching gcc/configure.ac is troublesome...
 
@@ -50,6 +51,11 @@ D_EXTRA_DEFINES += -DD_DMD_CALLING_CONVENTIONS=1
 # Enables correct implementation of D's va_list type (void*) as per
 # the D language specification.
 #D_EXTRA_DEFINES += -DD_VA_LIST_TYPE_VOIDPTR=1
+
+# Enables MinGW support for C99 printf format specfiers
+ifeq ($(target_os), mingw32)
+D_EXTRA_DEFINES += -D__USE_MINGW_ANSI_STDIO
+endif
 
 # As with C++: (quote) OTOH, I think this means the g++ driver...
 # Note that it would be nice to move the dependency on g++
