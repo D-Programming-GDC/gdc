@@ -2186,20 +2186,19 @@ struct AsmProcessor
                         mode = Mode_Input;
 
                     use_star = opTakesLabel();//opInfo->takesLabel();
+                    if (use_star && operand->symbolDisplacement.dim == 0)
+                        insnTemplate->writebyte('*');
+                    
 
                     if (operand->segmentPrefix != Reg_Invalid)
                     {
                         writeReg(operand->segmentPrefix);
                         insnTemplate->writebyte(':');
                     }
-                    if ((operand->segmentPrefix != Reg_Invalid && operand->symbolDisplacement.dim == 0) ||
+                    if ((operand->segmentPrefix != Reg_Invalid && operand->symbolDisplacement.dim == 0) &&
                         operand->constDisplacement)
                     {
                         addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
-                        if (operand->symbolDisplacement.dim)
-                        {
-                            insnTemplate->writebyte('+');
-                        }
                         operand->constDisplacement = 0;
                         if (opInfo->operands[i] & Opr_Dest)
                             asmcode->clobbersMemory = 1;
@@ -2321,8 +2320,16 @@ struct AsmProcessor
                             }
                         }
                     }
-                    if (use_star)
-                        insnTemplate->writebyte('*');
+                    if (operand->constDisplacement)
+                    {
+                        if (operand->symbolDisplacement.dim)
+                            insnTemplate->writebyte('+');
+                        addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
+                        operand->constDisplacement = 0;
+                        if (opInfo->operands[i] & Opr_Dest)
+                            asmcode->clobbersMemory = 1;                     
+                    }
+                    
                     if (operand->baseReg != Reg_Invalid || operand->indexReg != Reg_Invalid)
                     {
                         insnTemplate->writebyte('(');
