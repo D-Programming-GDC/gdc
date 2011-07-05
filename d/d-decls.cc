@@ -643,6 +643,13 @@ Symbol *FuncDeclaration::toSymbol()
             if (isArrayOp)
                 DECL_ARTIFICIAL(fn_decl) = 1;
 
+            // See grokmethod,
+            if (isMember())
+            {
+                DECL_DECLARED_INLINE_P(fn_decl) = 1;
+                DECL_NO_INLINE_WARNING_P (fn_decl) = 1;
+            }
+
 #if V2
             // %% Pure functions don't imply nothrow
             DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && func_type->isnothrow);
