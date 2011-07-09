@@ -2229,14 +2229,9 @@ struct AsmProcessor
                         writeReg(operand->segmentPrefix);
                         insnTemplate->writebyte(':');
                     }
-                    if ((operand->segmentPrefix != Reg_Invalid && operand->symbolDisplacement.dim == 0) ||
-                        operand->constDisplacement)
+                    if (operand->segmentPrefix != Reg_Invalid && operand->symbolDisplacement.dim == 0)
                     {
                         addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
-                        if (operand->symbolDisplacement.dim)
-                        {
-                            insnTemplate->writebyte('+');
-                        }
                         operand->constDisplacement = 0;
                         if (opInfo->operands[i] & Opr_Dest)
                             asmcode->clobbersMemory = 1;
@@ -2354,7 +2349,36 @@ struct AsmProcessor
                                     insnTemplate->writebyte('*');
                                     use_star = false;
                                 }
-                                addOperand(fmt, Arg_Memory, e, asmcode, mode);
+
+                                if (operand->constDisplacement == 0)
+                                    addOperand(fmt, Arg_Memory, e, asmcode, mode);
+                                else
+                                {
+                                    Expression * offset = newIntExp(operand->constDisplacement);
+
+                                    if (decl->isDataseg())
+                                    {   // Displacement can only come after symbol
+                                        addOperand(fmt, Arg_Memory, e, asmcode, mode);
+                                        insnTemplate->writebyte('+');
+                                        addOperand("%a", Arg_Integer, offset, asmcode);
+                                    }
+                                    else
+                                    {   // Displacement cannot come after symbol.
+                                        addOperand("%a", Arg_Integer, offset, asmcode);
+                                        if (decl->isParameter())
+                                        {   // Parameter may have offset that will add to this value.
+                                            insnTemplate->writebyte('+');
+                                        }
+                                        addOperand(fmt, Arg_Memory, e, asmcode, mode);
+                                    }
+                                }
+                            }
+                            if (operand->constDisplacement)
+                            {   // If a memory reference was displaced, tell GCC to not keep
+                                // memory values cached in registers across the instruction.
+                                if (opInfo->operands[i] & Opr_Dest)
+                                    asmcode->clobbersMemory = 1;
+                                operand->constDisplacement = 0;
                             }
                         }
                     }
