@@ -620,15 +620,21 @@ Symbol *FuncDeclaration::toSymbol()
             {
                 DECL_UNINLINABLE(fn_decl) = 1;
             }
+#if D_GCC_VER >= 44
+            else if (isMember())
+            {
+                // See grokmethod in cp/decl.c
+                DECL_DECLARED_INLINE_P(fn_decl) = 1;
+                DECL_NO_INLINE_WARNING_P (fn_decl) = 1;
+            }
+#else
             else
             {
-#if D_GCC_VER < 44
                 // see grokdeclarator in c-decl.c
                 if (flag_inline_trees == 2 && fbody /* && should_emit? */)
                     DECL_INLINE (fn_decl) = 1;
-#endif
             }
-
+#endif
             if (naked)
             {
                 D_DECL_NO_FRAME_POINTER(fn_decl) = 1;
@@ -642,14 +648,6 @@ Symbol *FuncDeclaration::toSymbol()
             // These are always compiler generated.
             if (isArrayOp)
                 DECL_ARTIFICIAL(fn_decl) = 1;
-
-            // See grokmethod,
-            if (isMember())
-            {
-                DECL_DECLARED_INLINE_P(fn_decl) = 1;
-                DECL_NO_INLINE_WARNING_P (fn_decl) = 1;
-            }
-
 #if V2
             // %% Pure functions don't imply nothrow
             DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && func_type->isnothrow);

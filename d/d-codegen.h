@@ -377,7 +377,7 @@ struct IRState : IRBase
         }
 #if D_NO_TRAMPOLINES
         if (TREE_CODE(exp) == FUNCTION_DECL)
-            TREE_STATIC(t) = 1;
+            TREE_NO_TRAMPOLINE(t) = 1;
 #endif
         return t;
     }

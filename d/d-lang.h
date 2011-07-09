@@ -250,6 +250,8 @@ extern GTY(()) tree d_keep_list;
 
 #if D_GCC_VER < 44
 #define DECL_PURE_P DECL_IS_PURE
+/* nonzero means do not use a trampoline - requires patching frontend. */
+#define TREE_NO_TRAMPOLINE(NODE) (TREE_STATIC(NODE))
 #endif
 
 /* compat with D_GCC_VER >= 45 */

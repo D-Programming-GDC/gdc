@@ -423,7 +423,7 @@
        /* No static chain?  Seems like a bug in tree-nested.c.  */
        gcc_assert (static_chain);
 --- gcc.orig/tree-nested.c	2010-08-31 22:08:15.000000000 +0100
-+++ gcc/tree-nested.c	2011-03-26 20:20:08.407581283 +0000
++++ gcc/tree-nested.c	2011-07-09 20:00:44.554234033 +0100
 @@ -750,6 +750,8 @@ get_static_chain (struct nesting_info *i
  
    if (info->context == target_context)
@@ -433,18 +433,7 @@
        x = build_addr (info->frame_decl, target_context);
      }
    else
-@@ -1888,6 +1890,10 @@ convert_tramp_reference_op (tree *tp, in
-       if (!DECL_STATIC_CHAIN (decl))
- 	break;
- 
-+      /* Don't use a trampoline for a static reference. */
-+      if (TREE_STATIC (t))
-+	break;
-+
-       /* If we don't want a trampoline, then don't build one.  */
-       if (TREE_NO_TRAMPOLINE (t))
- 	break;
-@@ -2038,6 +2044,25 @@ convert_gimple_call (gimple_stmt_iterato
+@@ -2038,6 +2040,25 @@ convert_gimple_call (gimple_stmt_iterato
        walk_body (convert_gimple_call, NULL, info, gimple_omp_body (stmt));
        break;
  
@@ -470,7 +459,7 @@
      default:
        /* Keep looking for other operands.  */
        *handled_ops_p = false;
-@@ -2366,8 +2391,38 @@ finalize_nesting_tree_1 (struct nesting_
+@@ -2366,8 +2387,38 @@ finalize_nesting_tree_1 (struct nesting_
        gimple bind;
        annotate_all_with_location (stmt_list, DECL_SOURCE_LOCATION (context));
        bind = gimple_seq_first_stmt (gimple_body (context));
