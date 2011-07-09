@@ -3185,25 +3185,34 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     /* This would apply to complex types as well, but GDC currently
        returns complex types as a struct instead of in ST(0) and ST(1).
      */
-    if ((type->nextOf()->isreal() || type->nextOf()->isintegral())
-            && inlineAsm && ! naked)
+    if (inlineAsm && ! naked)
     {
-        tree result_var = irs->localVar(TREE_TYPE(result_decl));
+        tree cns_str = NULL_TREE;
 
-        tree nop_str = build_string(0, "");
-        tree cns_str;
         if (type->nextOf()->isreal())
             cns_str = build_string(2, "=t");
         else
-            cns_str = build_string(2, "=a");
+        {   // On 32bit, can't return 'long' value in EAX.
+            if (type->nextOf()->isintegral() &&
+                type->nextOf()->size() <= Type::tsize_t->size())
+            {
+                cns_str = build_string(2, "=a");
+            }
+        }
 
-        tree out_arg = tree_cons(tree_cons(NULL_TREE, cns_str, NULL_TREE),
-            result_var, NULL_TREE);
+        if (cns_str != NULL_TREE)
+        {
+            tree result_var = irs->localVar(TREE_TYPE(result_decl));
+            tree nop_str = build_string(0, "");
 
-        irs->expandDecl(result_var);
-        irs->doAsm(nop_str, out_arg, NULL_TREE, NULL_TREE);
-        irs->doReturn(build2(MODIFY_EXPR, TREE_TYPE(result_decl),
-                           result_decl, result_var));
+            tree out_arg = tree_cons(tree_cons(NULL_TREE, cns_str, NULL_TREE),
+                                     result_var, NULL_TREE);
+
+            irs->expandDecl(result_var);
+            irs->doAsm(nop_str, out_arg, NULL_TREE, NULL_TREE);
+            irs->doReturn(build2(MODIFY_EXPR, TREE_TYPE(result_decl),
+                          result_decl, result_var));
+        }
     }
 #endif
 

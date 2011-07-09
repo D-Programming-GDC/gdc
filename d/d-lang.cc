@@ -182,6 +182,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
     // extra D-specific options
     gen.splitDynArrayVarArgs = true;
     gen.emitTemplates = TEnormal;
+    gen.useInlineAsm = true;
     gen.useBuiltins = true;
     std_inc = true;
 }

@@ -1502,21 +1502,26 @@ struct AsmProcessor
             case TOKalign:
                 nextToken();
                 return Op_Align;
+
             case TOKin:
                 nextToken();
                 opIdent = Id::___in;
                 return Op_in;
+
             case TOKint32: // "int"
                 nextToken();
                 opIdent = Id::__int;
                 return Op_SrcImm;
+
             case TOKout:
                 nextToken();
                 opIdent = Id::___out;
                 return Op_out;
+
             case TOKidentifier:
                 // search for mnemonic below
                 break;
+
             default:
                 stmt->error("expected opcode");
                 return Op_Invalid;
@@ -1750,6 +1755,7 @@ struct AsmProcessor
             case Op_CBranch:
             case Op_Loop:
                 return true;
+
             default:
                 return false;
         }
@@ -1761,39 +1767,86 @@ struct AsmProcessor
         {
             case Byte_NoType:
                 return ptrtype == Byte_Ptr;
+
             case Word_Types:
                 if (ptrtype == Byte_Ptr)
+                {
                     return false;
-                // drop through
+                }
+            // Drop through... 
+            
             case Int_Types:
                 switch (ptrtype)
                 {
-                    case Byte_Ptr:  type_char = 'b'; break;
-                    case Short_Ptr: type_char = 'w'; break;
-                    case Int_Ptr:   type_char = 'l'; break;
-                    case Long_Ptr: type_char = 'q'; break;
-                    // %% these may be too strict
-                    default:        return false;
+                    case Byte_Ptr:
+                        type_char = 'b';
+                        break;
+
+                    case Short_Ptr:
+                        type_char = 'w';
+                        break;
+
+                    case Int_Ptr:
+                        type_char = 'l';
+                        break;
+
+                    case Long_Ptr:
+                        if (global.params.isX86_64)
+                        {
+                            type_char = 'q';
+                            break;
+                        }
+                    // Drop through...
+
+                    default:
+                        return false;
                 }
                 break;
+
             case FPInt_Types:
                 switch (ptrtype)
                 {
-                    case Short_Ptr: type_char = 0;   break;
-                    case Int_Ptr:   type_char = 'l'; break;
-                    case Long_Ptr: type_char = 'q'; break;
-                    default:        return false;
+                    case Short_Ptr:
+                        type_char = 0;
+                        break;
+
+                    case Int_Ptr:
+                        type_char = 'l';
+                        break;
+
+                    case Long_Ptr:
+                        if (global.params.isX86_64)
+                        {
+                            type_char = 'q';
+                            break;
+                        }
+                    // Drop through...
+
+                    default:
+                        return false;
                 }
                 break;
+
             case FP_Types:
                 switch (ptrtype)
                 {
-                    case Float_Ptr:     type_char = 's'; break;
-                    case Double_Ptr:    type_char = 'l'; break;
-                    case Extended_Ptr:  type_char = 't'; break;
-                    default:            return false;
+                    case Float_Ptr:
+                        type_char = 's';
+                        break;
+
+                    case Double_Ptr:
+                        type_char = 'l';
+                        break;
+
+                    case Extended_Ptr:
+                        type_char = 't';
+                        break;
+
+                    default:
+                        return false;
                 }
                 break;
+
             default:
                 return false;
         }
@@ -1805,9 +1858,11 @@ struct AsmProcessor
     {
         const char *fmt;
         const char *mnemonic;
+        size_t mlen;
         char type_char = 0;
         bool use_star;
         AsmArgMode mode;
+        PtrType op1_size;
 
         const bool isX86_64 = global.params.isX86_64;
 
@@ -1839,15 +1894,18 @@ struct AsmProcessor
                 case Int_Types:
                     min_type = Byte_Ptr;
                     break;
+
                 case Word_Types:
                     min_type = Short_Ptr;
                     break;
+
                 case FPInt_Types:
                     if (op == Op_Fis_ST) // integer math instructions
                         min_type = Int_Ptr;
                     else // compare, load, store
                         min_type = Short_Ptr;
                     break;
+
                 case FP_Types:
                     min_type = Float_Ptr;
                     break;
@@ -1930,8 +1988,7 @@ struct AsmProcessor
         switch (op)
         {
             case Op_SizedStack:
-            {
-                int mlen = strlen(mnemonic);
+                mlen = strlen(mnemonic);
                 if (mnemonic[mlen-1] == 'd')
                     insnTemplate->write(mnemonic, mlen-1);
                 else
@@ -1940,7 +1997,7 @@ struct AsmProcessor
                     insnTemplate->writebyte('w');
                 }
                 break;
-            }
+
             case Op_cmpsd:
             case Op_insX:
             case Op_lodsX:
@@ -1948,8 +2005,7 @@ struct AsmProcessor
             case Op_outsX:
             case Op_scasX:
             case Op_stosX:
-            {
-                int mlen = strlen(mnemonic);
+                mlen = strlen(mnemonic);
                 if (mnemonic[mlen-1] == 'd')
                 {
                     insnTemplate->write(mnemonic, mlen-1);
@@ -1960,13 +2016,11 @@ struct AsmProcessor
                     insnTemplate->writestring(mnemonic);
                 }
                 break;
-            }
+
             case Op_movsx:
             case Op_movzx:
-            {
-                char tc_1;
-                int mlen = strlen(mnemonic);
-                PtrType op1_size = operands[1].dataSize;
+                mlen = strlen(mnemonic);
+                op1_size = operands[1].dataSize;
                 if (op1_size == Default_Ptr)
                     op1_size = operands[1].dataSizeHint;
                 // Need type char for source arg
@@ -1974,23 +2028,20 @@ struct AsmProcessor
                 {
                     case Byte_Ptr:
                     case Default_Ptr:
-                        tc_1 = 'b';
-                        break;
                     case Short_Ptr:
-                        tc_1 = 'w';
                         break;
+
                     default:
                         stmt->error("invalid operand size/type");
                         return false;
                 }
                 gcc_assert(type_char != 0);
                 insnTemplate->write(mnemonic, mlen-1);
-                insnTemplate->writebyte(tc_1);
+                insnTemplate->writebyte(op1_size == Short_Ptr ? 'w' : 'b');
                 insnTemplate->writebyte(type_char);
                 break;
-            }
+
             default:
-            {
                 // special case for fdiv, fsub
                 if ((strncmp(mnemonic, "fsub", 4) == 0 ||
                      strncmp(mnemonic, "fdiv", 4) == 0) &&
@@ -2020,7 +2071,6 @@ struct AsmProcessor
                 if (type_char)
                     insnTemplate->writebyte(type_char);
                 break;
-            }
         }
 
         switch (opInfo->implicitClobbers & Clb_DXAX_Mask)
@@ -2029,14 +2079,15 @@ struct AsmProcessor
             case Clb_EAX:
                 asmcode->clbregs[isX86_64 ? Reg_RAX : Reg_EAX] = 1;
                 break;
+
             case Clb_SizeDXAX:
                 asmcode->clbregs[isX86_64 ? Reg_RAX : Reg_EAX] = 1;
                 if (type_char != 'b')
                     asmcode->clbregs[isX86_64 ? Reg_RDX : Reg_EDX] = 1;
                 break;
+
             default:
-                // nothing
-                break;
+                break;  // nothing
         }
 
         if (opInfo->implicitClobbers & Clb_DI)
@@ -2087,10 +2138,12 @@ struct AsmProcessor
                     // gas won't accept the two-operand form; skip to the source operand
                     n = 1;
                     // drop through
+                
                 case Op_bound:
                 case Op_enter:
                     i = n;
                     break;
+
                 default:
                     i = nOperands - 1 - n; // operand = & operands[ nOperands - 1 - i ];
                     break;
@@ -2100,7 +2153,7 @@ struct AsmProcessor
             switch (operand->cls)
             {
                 case Opr_Immediate:
-                {   // for implementing offset:
+                    // for implementing offset:
                     // $var + $7 // fails
                     // $var + 7  // ok
                     // $7 + $var // ok
@@ -2143,9 +2196,8 @@ struct AsmProcessor
                     }
                     addOperand(fmt, Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
                     break;
-                }
+
                 case Opr_Reg:
-                {
                     if (opInfo->operands[i] & Opr_Dest)
                     {
                         Reg clbr_reg = (Reg) regInfo[operand->reg].baseReg;
@@ -2160,9 +2212,9 @@ struct AsmProcessor
                        insnTemplate->writestring(regInfo[operand->reg].name);
                      */
                     break;
-                }
+
                 case Opr_Mem:
-                {   // better: use output operands for simple variable references
+                    // better: use output operands for simple variable references
                     if (opInfo->operands[i] & Opr_Update)
                         mode = Mode_Update;
                     else if (opInfo->operands[i] & Opr_Dest)
@@ -2327,7 +2379,7 @@ struct AsmProcessor
                             asmcode->clobbersMemory = 1;
                     }
                     break;
-                }
+
                 case Opr_Invalid:
                     return false;
             }
@@ -2522,36 +2574,46 @@ struct AsmProcessor
                     else
                         e = e1;
                     break;
+
                 case TOKmin:
                     if (e2)
                         e = new MinExp(stmt->loc, e1, e2);
                     else
                         e = new NegExp(stmt->loc, e1);
                     break;
+
                 case TOKmul:
                     e = new MulExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKdiv:
                     e = new DivExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKmod:
                     e = new ModExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKshl:
                     e = new ShlExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKshr:
                     e = new ShrExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKushr:
                     e = new UshrExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKnot:
                     e = new NotExp(stmt->loc, e1);
                     break;
+
                 case TOKtilde:
                     e = new ComExp(stmt->loc, e1);
                     break;
+
                 default:
                     gcc_unreachable();
             }
@@ -2595,6 +2657,7 @@ struct AsmProcessor
                     e2 = parseAddExp();
                     e1 = intOp(tv, e1, e2);
                     continue;
+
                 default:
                     break;
             }
@@ -2627,6 +2690,7 @@ struct AsmProcessor
                         e1 = Handled;
                     }
                     continue;
+
                 case TOKmin:
                     // Note: no support for symbol address difference
                     nextToken();
@@ -2643,6 +2707,7 @@ struct AsmProcessor
                         e1 = Handled;
                     }
                     continue;
+
                 default:
                     break;
             }
@@ -2653,17 +2718,15 @@ struct AsmProcessor
 
     bool tryScale(Expression * e1, Expression * e2)
     {
-        Expression * et;
         if (isIntExp(e1) && isRegExp(e2))
-        {
-            et = e1;
+        {   // swap reg and int expressions.
+            Expression * et = e1;
             e1 = e2;
             e2 = et;
-            goto do_scale;
         }
-        else if (isRegExp(e1) && isIntExp(e2))
+
+        if (isRegExp(e1) && isIntExp(e2))
         {
-    do_scale:
             if (! operand->inBracket)
             {
                 invalidExpression(); // maybe should allow, e.g. DS:EBX+EAX*4
@@ -2675,17 +2738,11 @@ struct AsmProcessor
             }
             operand->indexReg = (Reg) e1->toInteger();
             operand->scale = e2->toInteger();
-            switch (operand->scale)
+            if (operand->scale != 1 && operand->scale != 2 &&
+                operand->scale != 4 && operand->scale != 8)
             {
-                case 1:
-                case 2:
-                case 4:
-                case 8:
-                    // ok; do nothing
-                    break;
-                default:
-                    stmt->error("invalid index register scale '%d'", operand->scale);
-                    return true;
+                stmt->error("invalid index register scale '%d'", operand->scale);
+                return true;
             }
             return true;
         }
@@ -2712,12 +2769,14 @@ struct AsmProcessor
                     else
                         invalidExpression();
                     continue;
+
                 case TOKdiv:
                 case TOKmod:
                     nextToken();
                     e2 = parseMultExp();
                     e1 = intOp(tv, e1, e2);
                     continue;
+
                 default:
                     break;
             }
@@ -2763,19 +2822,26 @@ struct AsmProcessor
         {
             case TOKint8:
                 return Byte_Ptr;
+
             case TOKint16:
                 return Short_Ptr;
+
             case TOKint32:
                 return Int_Ptr;
+
             case TOKint64:
                 // 'long ptr' isn't accepted? (it is now - qword)
                 return Long_Ptr;
+
             case TOKfloat32:
                 return Float_Ptr;
+
             case TOKfloat64:
                 return Double_Ptr;
+
             case TOKfloat80:
                 return Extended_Ptr;
+
             case TOKidentifier:
                 for (int i = 0; i < N_PtrNames; i++)
                 {
@@ -2783,6 +2849,7 @@ struct AsmProcessor
                         return ptrTypeValueTable[i];
                 }
                 break;
+
             default:
                 break;
         }
@@ -2839,6 +2906,7 @@ struct AsmProcessor
                     break;
                 }
                 return e;
+
             case TOKadd:
             case TOKmin:
             case TOKnot:
@@ -2846,6 +2914,7 @@ struct AsmProcessor
                 nextToken();
                 e = parseUnaExp();
                 return intOp(tv, e, NULL);
+
             default:
                 // primary exp
                 break;
@@ -2868,22 +2937,21 @@ struct AsmProcessor
             case TOKuns32v:
             case TOKint64v:
             case TOKuns64v:
-            {   // semantic here?
+                // semantic here?
                 // %% for tok64 really should use 64bit type
                 e = new IntegerExp(stmt->loc, token->uns64value, Type::tptrdiff_t);
                 nextToken();
                 break;
-            }
+
             case TOKfloat32v:
             case TOKfloat64v:
             case TOKfloat80v:
-            {   // %% need different types?
+                // %% need different types?
                 e = new RealExp(stmt->loc, token->float80value, Type::tfloat80);
                 nextToken();
                 break;
-            }
+
             case TOKidentifier:
-            {
                 ident = token->ident;
                 nextToken();
 
@@ -2893,7 +2961,6 @@ struct AsmProcessor
                 }
                 else if (ident == Id::__dollar)
                 {
-            do_dollar:
                     return new IdentifierExp(stmt->loc, ident);
                 }
                 else
@@ -2952,6 +3019,7 @@ struct AsmProcessor
                                     else
                                         stmt->error("expected ')'");
                                     return e;
+
                                 default:
                                     break;
                             }
@@ -3008,23 +3076,18 @@ struct AsmProcessor
                     }
                 }
                 return e;
-            }
+
             case TOKdollar:
-            {
                 nextToken();
-                ident = Id::__dollar;
-                goto do_dollar;
-                break;
-            }
+                return new IdentifierExp(stmt->loc, Id::__dollar);
+
             default:
-            {
                 if (op == Op_FMath0 || op == Op_FdST0ST1 || op == Op_FMath)
-                {
                     return Handled;
-                }
+
                 invalidExpression();
                 return Handled;
-            }
+
         }
         return e;
     }
@@ -3106,18 +3169,21 @@ struct AsmProcessor
                         stmt->error("expected integer constant");
                     }
                     break;
+
                 case Op_df:
                     mode = SFmode;
                     goto do_float;
+
                 case Op_dd:
                     mode = DFmode;
                     goto do_float;
+
                 case Op_de:
 #ifndef TARGET_80387
 #define XFmode TFmode
 #endif
                     mode = XFmode; // not TFmode
-                    // drop through
+
                 do_float:
                     if (token->value == TOKfloat32v || token->value == TOKfloat64v ||
                         token->value == TOKfloat80v)
@@ -3137,6 +3203,7 @@ struct AsmProcessor
                         stmt->error("expected float constant");
                     }
                     break;
+
                 default:
                     gcc_unreachable();
             }
