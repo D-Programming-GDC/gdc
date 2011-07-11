@@ -81,13 +81,13 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
     tree var_exp;
 #if V2
     if (sym->SclosureField)
-        var_exp = var(v);
-    else
-#endif
-    {
-        var_exp = var_decl;
-        pushdecl(var_decl);
+    {   // Fixes debugging local variables.
+        SET_DECL_VALUE_EXPR(var_decl, var(v));
+        DECL_HAS_VALUE_EXPR_P(var_decl) = 1;
     }
+#endif
+    var_exp = var_decl;
+    pushdecl(var_decl);
 
     tree init_exp = NULL_TREE; // complete initializer expression (include MODIFY_EXPR, e.g.)
     tree init_val = NULL_TREE;
@@ -1102,6 +1102,8 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     tree func_type_node = TREE_TYPE(callable);
     tree actual_callee  = callable;
 
+    ListMaker actual_arg_list;
+
     if (POINTER_TYPE_P(func_type_node))
         func_type_node = TREE_TYPE(func_type_node);
     else
@@ -1135,13 +1137,10 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
             }
             else
             {   // Probably an internal error
-                gcc_assert(object != NULL_TREE);
+                gcc_unreachable();
             }
         }
     }
-
-    ListMaker actual_arg_list;
-
     /* If this is a delegate call or a nested function being called as
        a delegate, the object should not be NULL. */
     if (object != NULL_TREE)

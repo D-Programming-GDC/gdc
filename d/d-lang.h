@@ -255,7 +255,7 @@ extern GTY(()) tree d_keep_list;
 #endif
 
 /* compat with D_GCC_VER >= 45 */
-#define DECL_STATIC_CHAIN(decl)  ! DECL_NO_STATIC_CHAIN(decl)
+#define DECL_STATIC_CHAIN(NODE) (! DECL_NO_STATIC_CHAIN(NODE))
 
 //#define d_warning(option, format, ...) warning(option, format, __VA_ARGS__)
 #define d_warning(option, ...) warning(option, __VA_ARGS__)

@@ -3290,6 +3290,12 @@ FuncDeclaration::buildClosure(IRState * irs)
         return;
 
     tree closure_rec_type = make_node(RECORD_TYPE);
+    char * name = concat ("CLOSURE.",
+                          IDENTIFIER_POINTER(DECL_NAME(toSymbol()->Stree)),
+                          NULL);
+    TYPE_NAME (closure_rec_type) = get_identifier (name);
+    free(name);
+
     tree ptr_field = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
                                       get_identifier("__closptr"), ptr_type_node);
     DECL_CONTEXT(ptr_field) = closure_rec_type;
@@ -3300,8 +3306,8 @@ FuncDeclaration::buildClosure(IRState * irs)
     {
         VarDeclaration *v = (VarDeclaration *)closureVars.data[i];
         tree field = d_build_decl(FIELD_DECL,
-            v->ident ? get_identifier(v->ident->string) : NULL_TREE,
-            gen.trueDeclarationType(v));
+                                  v->ident ? get_identifier(v->ident->string) : NULL_TREE,
+                                  gen.trueDeclarationType(v));
         v->toSymbol()->SclosureField = field;
         g.ofile->setDeclLoc(field, v);
         DECL_CONTEXT(field) = closure_rec_type;
@@ -3321,14 +3327,16 @@ FuncDeclaration::buildClosure(IRState * irs)
 
     DECL_INITIAL(closure_ptr) =
         irs->nop(irs->libCall(LIBCALL_ALLOCMEMORY, 1, & arg),
-            TREE_TYPE(closure_ptr));
+                              TREE_TYPE(closure_ptr));
     irs->expandDecl(closure_ptr);
 
     // set the first entry to the parent closure, if any
     tree cl = irs->closureLink();
     if (cl)
+    {
         irs->doExp(irs->vmodify(irs->component(irs->indirect(closure_ptr),
-                    ptr_field), cl));
+                   ptr_field), cl));
+    }
 
     // copy parameters that are referenced nonlocally
     for (unsigned i = 0; i < closureVars.dim; i++)
@@ -3340,7 +3348,7 @@ FuncDeclaration::buildClosure(IRState * irs)
 
         Symbol * vsym = v->toSymbol();
         irs->doExp(irs->vmodify(irs->component(irs->indirect(closure_ptr),
-                    vsym->SclosureField), vsym->Stree));
+                   vsym->SclosureField), vsym->Stree));
     }
 
     irs->useClosure(this, closure_ptr);
@@ -3357,10 +3365,11 @@ Module::genobjfile(int multiobj)
     g.ofile->beginModule(this);
     g.ofile->setupStaticStorage(this, toSymbol()->Stree);
 
-    if (members) {
-        for (unsigned i = 0; i < members->dim; i++) {
+    if (members)
+    {
+        for (unsigned i = 0; i < members->dim; i++)
+        {
             Dsymbol * dsym = (Dsymbol *) members->data[i];
-
             dsym->toObjFile(multiobj);
         }
     }
@@ -3894,6 +3903,7 @@ TypeAArray::toCtype()
                                        get_identifier("ptr"), ptr_type_node);
             DECL_CONTEXT(f0) = aa_type;
             TYPE_FIELDS(aa_type) = f0;
+            TYPE_NAME(aa_type) = get_identifier(toChars());
             layout_type(aa_type);
             dkeep(aa_type);
         }
