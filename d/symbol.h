@@ -114,26 +114,19 @@ struct Symbol : Object
     Symbol();
 
     const char *Sident;
+    const char *prettyIdent;
     //unused in GCC//TYPE *Stype; // maybe type/TYPE ?
     SymbolStorageClass Sclass;
     SymbolFL           Sfl;
     SymbolSegment      Sseg;
     int                Sflags;
 
-    //unused in GCC//int Ssymnum;
-
     dt_t * Sdt;
-
-    // fake classsym....
-    //unused in GCC//Symbol * Sstruct;
-    //unused in GCC//int      Sstructalign;
 
     // Specific to GNU backend
     tree     Stree;
     tree     ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see IRState::declContext
-#if V2
-    tree     SclosureField; // FIELD_DECL in closure frame struct that this variable is allocated in -- Eventually move back into Stree once everything works right
-#endif
+    tree     SframeField;  // FIELD_DECL in frame struct that this variable is allocated in -- Eventually move back into Stree once everything works right
 
     // For FuncDeclarations:
     Array * thunks; // of struct Thunk

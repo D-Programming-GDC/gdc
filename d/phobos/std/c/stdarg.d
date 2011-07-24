@@ -31,15 +31,8 @@ version (GNU)
 
     // The va_start and va_arg template functions are magically
     // handled by the compiler.
-    void va_start(T)(out va_list ap, inout T parmn)
-    {
-    }
-
-    T va_arg(T)(inout va_list ap)
-    {
-        T t;
-        return t;
-    }
+    void va_start(T)(out va_list ap, inout T parmn);
+    T va_arg(T)(inout va_list ap);
 }
 else version (X86)
 {
@@ -270,7 +263,7 @@ else version (X86_64)
                 auto tsize = arg1.tsize();
                 void* p;
                 auto s = arg1.toString();
-                if (s == "double" || s == "float")
+                if (s == "double" || s == "float" || s == "idouble" || s == "ifloat")
                 {   // Passed in XMM register
                     if (ap.offset_fpregs < (6 * 8 + 16 * 8))
                     {
@@ -303,7 +296,7 @@ else version (X86_64)
                     parmn += 8;
                     tsize = arg2.tsize();
                     s = arg2.toString();
-                    if (s == "double" || s == "float")
+                    if (s == "double" || s == "float" || s == "idouble" || s == "ifloat")
                     {   // Passed in XMM register
                         if (ap.offset_fpregs < (6 * 8 + 16 * 8))
                         {

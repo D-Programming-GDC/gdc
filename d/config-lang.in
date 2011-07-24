@@ -34,10 +34,14 @@ else
 fi
 
 d_gcc_version=$(echo $d_gcc_version | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1\2/')
-if [ ${d_gcc_version} -ge 45 ]; then
-  gtfiles="\$(srcdir)/d/d-lang-45.h \$(srcdir)/d/d-builtins.c"
+if [ ${d_gcc_version} -ge 46 ]; then
+  d_langfiles="\$(srcdir)/d/d-lang-45.h \$(srcdir)/d/d-lang-type.h"
+elif [ ${d_gcc_version} -ge 45 ]; then
+  d_langfiles="\$(srcdir)/d/d-lang-45.h \$(srcdir)/d/d-lang-type-45.h"
 else
-  gtfiles="\$(srcdir)/d/d-lang.h \$(srcdir)/d/d-builtins.c"
+  d_langfiles="\$(srcdir)/d/d-lang.h"
 fi
+
+gtfiles="${d_langfiles} \$(srcdir)/d/d-builtins.c"
 
 target_libs="target-libphobos"

@@ -1,5 +1,5 @@
 /* GDC -- D front-end for GCC
-   Copyright (C) 2010 Iain Buclaw
+   Copyright (C) 2010, 2011 Iain Buclaw
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -21,6 +21,12 @@
 #ifndef GCC_DCMPLR_DC_LANG_H
 #define GCC_DCMPLR_DC_LANG_H
 
+#if D_GCC_VER == 45
+#include "d-lang-type-45.h"
+#else
+#include "d-lang-type.h"
+#endif
+
 /* Nothing is added to tree_identifier; */
 struct GTY(()) lang_identifier
 {
@@ -40,14 +46,6 @@ typedef struct Declaration *DeclarationGTYP;
 struct GTY(()) lang_decl
 {
     DeclarationGTYP GTY ((skip(""))) d_decl;
-};
-
-/* The lang_type field is not set for every GCC type. */
-struct Type;
-typedef struct Type *TypeGTYP;
-struct GTY(()) lang_type
-{
-    TypeGTYP GTY((skip(""))) d_type;
 };
 
 /* Another required, but unused declaration.  This could be simplified, since
@@ -79,6 +77,9 @@ extern GTY(()) tree d_eh_personality_decl;
 
 /* True if the function has been marked "naked". */
 #define D_DECL_NO_FRAME_POINTER(NODE) (DECL_LANG_FLAG_2(NODE))
+
+/* True if the symbol has been marked "static const".  */
+#define D_DECL_READONLY_STATIC(NODE) (DECL_LANG_FLAG_3(NODE))
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and

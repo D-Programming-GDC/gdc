@@ -2,7 +2,7 @@
    Copyright (C) 2004 David Friedman
 
    Modified by
-    Michael Parrott, Iain Buclaw, (C) 2010
+    Michael Parrott, Iain Buclaw, (C) 2010, 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -460,6 +460,26 @@ d_gcc_magic_builtins_module(Module *m)
         funcs->push(new AliasDeclaration(0, Lexer::idPool(name), dt));
     }
 
+#if D_GCC_VER >= 46
+    /* Iterate through the target-specific builtin types for va_list. */
+    if (targetm.enum_va_list_p)
+    {
+        int l;
+        const char* name;
+        tree type;
+
+        for (l = 0; targetm.enum_va_list_p(l, &name, &type); ++l)
+        {
+            Type * dt = gcc_type_to_d_type(type);
+            if (! dt)
+            {   //warning(0, "cannot create built in type for "%s", name);
+                continue;
+            }
+            funcs->push(new AliasDeclaration(0, Lexer::idPool(name), dt));
+        }
+    }
+#endif
+
     for (unsigned i = 0; i < builtin_converted_decls.dim ; ++i)
     {
         Dsymbol * sym = (Dsymbol *) builtin_converted_decls.data[i];
@@ -548,13 +568,17 @@ d_gcc_magic_module(Module *m)
         {
             if (! strcmp(md->id->string, "vararg"))
                 d_gcc_magic_stdarg_module(m, false);
+            else if (! strcmp(md->id->string, "bitop"))
+                IRState::setIntrinsicModule(m, true);
+            else if (! strcmp(md->id->string, "math"))
+                IRState::setMathModule(m, true);
         }
         else if (! strcmp(((Identifier *) md->packages->data[0])->string, "std"))
         {
             if (! strcmp(md->id->string, "intrinsic"))
-                IRState::setIntrinsicModule(m);
+                IRState::setIntrinsicModule(m, false);
             else if (! strcmp(md->id->string, "math"))
-                IRState::setMathModule(m);
+                IRState::setMathModule(m, false);
         }
 #else
         else if (! strcmp(((Identifier *) md->packages->data[0])->string, "std"))
@@ -562,9 +586,9 @@ d_gcc_magic_module(Module *m)
             if (! strcmp(md->id->string, "stdarg"))
                 d_gcc_magic_stdarg_module(m, false);
             else if (! strcmp(md->id->string, "intrinsic"))
-                IRState::setIntrinsicModule(m);
+                IRState::setIntrinsicModule(m, false);
             else if (! strcmp(md->id->string, "math"))
-                IRState::setMathModule(m);
+                IRState::setMathModule(m, false);
         }
 #endif
     }

@@ -572,6 +572,40 @@ extern(C) void _d_arrayshrinkfit(TypeInfo ti, void[] arr)
     }
 }
 
+void __doPostblit(void *ptr, size_t len, TypeInfo ti)
+{
+    // optimize out any type info that does not need postblit.
+    //if((&ti.postblit).funcptr is &TypeInfo.postblit) // compiler doesn't like this
+    auto fptr = &ti.postblit;
+    if(fptr.funcptr is &TypeInfo.postblit)
+        // postblit has not been overridden, no point in looping.
+        return;
+
+    if(auto tis = cast(TypeInfo_Struct)ti)
+    {
+        // this is a struct, check the xpostblit member
+        auto pblit = tis.xpostblit;
+        if(!pblit)
+            // postblit not specified, no point in looping.
+            return;
+
+        // optimized for struct, call xpostblit directly for each element
+        immutable size = ti.tsize();
+        const eptr = ptr + len;
+        for(;ptr < eptr;ptr += size)
+            pblit(ptr);
+    }
+    else
+    {
+        // generic case, call the typeinfo's postblit function
+        immutable size = ti.tsize();
+        const eptr = ptr + len;
+        for(;ptr < eptr;ptr += size)
+            ti.postblit(ptr);
+    }
+}
+
+
 /**
  * set the array capacity.  If the array capacity isn't currently large enough
  * to hold the requested capacity (in number of elements), then the array is
@@ -688,6 +722,10 @@ body
     // note that malloc will have initialized the data we did not request to 0.
     auto tgt = __arrayStart(info);
     memcpy(tgt, p.data, datasize);
+
+    // handle postblit
+    __doPostblit(tgt, datasize, ti.next);
+
     if(!(info.attr & BlkAttr.NO_SCAN))
     {
         // need to memset the newly requested data, except for the data that
@@ -768,14 +806,14 @@ extern (C) void[] _d_newarrayT(TypeInfo ti, size_t length)
                 jc      Loverflow       ;
             }
         }
-	else
-	{
-	    auto newsize = size * length;
-	    if (newsize / length != size)
-		goto Loverflow;
+        else
+        {
+            auto newsize = size * length;
+            if (newsize / length != size)
+                goto Loverflow;
 
-	    size = newsize;
-	}
+            size = newsize;
+        }
 
         // increase the size by the array pad.
         auto info = gc_qalloc(size + __arrayPad(size), !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN | BlkAttr.APPENDABLE : BlkAttr.APPENDABLE);
@@ -840,14 +878,14 @@ extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length)
                 jc      Loverflow       ;
             }
         }
-	else
-	{
-	    auto newsize = size * length;
-	    if (newsize / length != size)
-		goto Loverflow;
+        else
+        {
+            auto newsize = size * length;
+            if (newsize / length != size)
+                goto Loverflow;
 
-	    size = newsize;
-	}
+            size = newsize;
+        }
 
         auto info = gc_qalloc(size + __arrayPad(size), !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN | BlkAttr.APPENDABLE : BlkAttr.APPENDABLE);
         debug(PRINTF) printf(" p = %p\n", info.base);
@@ -885,25 +923,22 @@ Loverflow:
 /**
  *
  */
-extern (C) void[] _d_newarraymTp(TypeInfo ti, size_t ndims, size_t* pdim)
+void[] _d_newarrayOpT(alias op)(TypeInfo ti, size_t ndims, size_t* pdim)
 {
-    void[] result = void;
-
-    debug(PRINTF) printf("_d_newarraymTp(ndims = %d)\n", ndims);
+    debug(PRINTF) printf("_d_newarrayOpT(ndims = %d)\n", ndims);
     if (ndims == 0)
-        result = null;
+        return null;
     else
     {
         void[] foo(TypeInfo ti, size_t* pdim, size_t ndims)
         {
             auto dim = *pdim;
-            void[] p;
 
             debug(PRINTF) printf("foo(ti = %p, ti.next = %p, dim = %d, ndims = %d\n", ti, ti.next, dim, ndims);
             if (ndims == 1)
             {
-                auto r = _d_newarrayT(ti, dim);
-                p = *cast(void[]*)(&r);
+                auto r = op(ti, dim);
+                return *cast(void[]*)(&r);
             }
             else
             {
@@ -911,17 +946,14 @@ extern (C) void[] _d_newarraymTp(TypeInfo ti, size_t ndims, size_t* pdim)
                 auto info = gc_qalloc(allocsize + __arrayPad(allocsize));
                 auto isshared = ti.classinfo is TypeInfo_Shared.classinfo;
                 __setArrayAllocLength(info, allocsize, isshared);
-                p = __arrayStart(info)[0 .. dim];
+                auto p = __arrayStart(info)[0 .. dim];
                 for (size_t i = 0; i < dim; i++)
                 {
                     (cast(void[]*)p.ptr)[i] = foo(ti.next, pdim + 1, ndims - 1);
                 }
+                return p;
             }
-            return p;
         }
-
-        result = foo(ti, pdim, ndims);
-        debug(PRINTF) printf("result = %llx\n", result);
 
         version (none)
         {
@@ -930,8 +962,28 @@ extern (C) void[] _d_newarraymTp(TypeInfo ti, size_t ndims, size_t* pdim)
                 printf("index %d: %d\n", i, pdim[i]);
             }
         }
+
+        auto result = foo(ti, pdim, ndims);
+        debug(PRINTF) printf("result = %llx\n", result);
+
+        return result;
     }
-    return result;
+}
+
+
+/**
+ *
+ */
+extern (C) void[] _d_newarraymTp(TypeInfo ti, size_t ndims, size_t* pdim)
+{
+    debug(PRINTF) printf("_d_newarraymTp(ndims = %d)\n", ndims);
+
+    if (ndims == 0)
+        return null;
+    else
+    {
+        return _d_newarrayOpT!(_d_newarrayT)(ti, ndims, pdim);
+    }
 }
 
 
@@ -940,51 +992,14 @@ extern (C) void[] _d_newarraymTp(TypeInfo ti, size_t ndims, size_t* pdim)
  */
 extern (C) void[] _d_newarraymiTp(TypeInfo ti, size_t ndims, size_t* pdim)
 {
-    void[] result;
-
     debug(PRINTF) printf("_d_newarraymiTp(ndims = %d)\n", ndims);
+
     if (ndims == 0)
-        result = null;
+        return null;
     else
     {
-        void[] foo(TypeInfo ti, size_t* pdim, size_t ndims)
-        {
-            size_t dim = *pdim;
-            void[] p;
-
-            if (ndims == 1)
-            {
-                auto r = _d_newarrayiT(ti, dim);
-                p = *cast(void[]*)(&r);
-            }
-            else
-            {
-                auto allocsize = (void[]).sizeof * dim;
-                auto info = gc_qalloc(allocsize + __arrayPad(allocsize));
-                auto isshared = ti.classinfo is TypeInfo_Shared.classinfo;
-                __setArrayAllocLength(info, allocsize, isshared);
-                p = __arrayStart(info)[0 .. dim];
-                for (size_t i = 0; i < dim; i++)
-                {
-                    (cast(void[]*)p.ptr)[i] = foo(ti.next, pdim + 1, ndims - 1);
-                }
-            }
-            return p;
-        }
-
-        result = foo(ti, pdim, ndims);
-        debug(PRINTF) printf("result = %llx\n", result);
-
-        version (none)
-        {
-            for (size_t i = 0; i < ndims; i++)
-            {
-                printf("index %d: %d\n", i, pdim[i]);
-                printf("init = %d\n", *cast(int*)pinit);
-            }
-        }
+        return _d_newarrayOpT!(_d_newarrayiT)(ti, ndims, pdim);
     }
-    return result;
 }
 
 
@@ -1282,6 +1297,9 @@ body
                                 __insertBlkInfoCache(info, bic);
                             newdata = cast(byte *)(info.base + LARGEPREFIX);
                             newdata[0 .. size] = p.data[0 .. size];
+
+                            // do postblit processing
+                            __doPostblit(newdata, size, ti.next());
                         }
                         else if(!isshared && !bic)
                         {
@@ -1310,6 +1328,9 @@ body
                         __insertBlkInfoCache(info, bic);
                     newdata = cast(byte *)__arrayStart(info);
                     newdata[0 .. size] = p.data[0 .. size];
+
+                    // do postblit processing
+                    __doPostblit(newdata, size, ti.next());
                 }
              L1:
                 newdata[size .. newsize] = 0;
@@ -1464,6 +1485,9 @@ body
                                 __insertBlkInfoCache(info, bic);
                             newdata = cast(byte *)(info.base + LARGEPREFIX);
                             newdata[0 .. size] = p.data[0 .. size];
+
+                            // do postblit processing
+                            __doPostblit(newdata, size, ti.next());
                         }
                         else if(!isshared && !bic)
                         {
@@ -1494,6 +1518,9 @@ body
                         __insertBlkInfoCache(info, bic);
                     newdata = cast(byte *)__arrayStart(info);
                     newdata[0 .. size] = p.data[0 .. size];
+
+                    // do postblit processing
+                    __doPostblit(newdata, size, ti.next());
                 }
                 L1: ;
             }
@@ -1550,6 +1577,9 @@ extern (C) void[] _d_arrayappendT(TypeInfo ti, ref byte[] x, byte[] y)
     auto sizeelem = ti.next.tsize();            // array element size
     _d_arrayappendcTp(ti, x, y.length);
     memcpy(x.ptr + length * sizeelem, y.ptr, y.length * sizeelem);
+
+    // do postblit
+    __doPostblit(x.ptr + length * sizeelem, y.length * sizeelem, ti.next);
     return x;
 }
 
@@ -1732,6 +1762,8 @@ byte[] _d_arrayappendcTp(TypeInfo ti, ref byte[] px, size_t n)
                     __insertBlkInfoCache(info, bic);
                 auto newdata = cast(byte *)info.base + LARGEPREFIX;
                 memcpy(newdata, px.ptr, length * sizeelem);
+                // do postblit processing
+                __doPostblit(newdata, length * sizeelem, ti.next());
                 (cast(void **)(&px))[1] = newdata;
             }
             else if(!isshared && !bic)
@@ -1762,6 +1794,8 @@ byte[] _d_arrayappendcTp(TypeInfo ti, ref byte[] px, size_t n)
             __insertBlkInfoCache(info, bic);
         auto newdata = cast(byte *)__arrayStart(info);
         memcpy(newdata, px.ptr, length * sizeelem);
+        // do postblit processing
+        __doPostblit(newdata, length * sizeelem, ti.next());
         (cast(void **)(&px))[1] = newdata;
     }
 
@@ -1898,6 +1932,9 @@ body
     p[len] = 0; // guessing this is to optimize for null-terminated arrays?
     memcpy(p, x.ptr, xlen);
     memcpy(p + xlen, y.ptr, ylen);
+    // do postblit processing
+    __doPostblit(p, xlen + ylen, ti.next);
+
     auto isshared = ti.classinfo is TypeInfo_Shared.classinfo;
     __setArrayAllocLength(info, len, isshared);
     return p[0 .. x.length + y.length];
@@ -1941,6 +1978,9 @@ extern (C) byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
             j += b.length * size;
         }
     }
+
+    // do postblit processing
+    __doPostblit(a, j, ti.next);
 
     Array2 result;
     result.length = length;
@@ -2062,6 +2102,9 @@ body
         r.ptr = __arrayStart(info);
         r.length = a.length;
         memcpy(r.ptr, a.ptr, size);
+
+        // do postblit processing
+        __doPostblit(r.ptr, size, ti.next);
     }
     return *cast(void[]*)(&r);
 }
@@ -2097,4 +2140,52 @@ unittest
     auto arr2 = arr ~ "123";
     assert(arr2[0..arr.length] == arr);
     assert(arr2[arr.length..$] == "123");
+
+    // test postblit on array concat, append, length, etc.
+    static struct S
+    {
+        int x;
+        int pad;
+        this(this)
+        {
+            ++x;
+        }
+    }
+    auto sarr = new S[1];
+    assert(sarr.capacity == 1);
+
+    // length extend
+    auto sarr2 = sarr;
+    assert(sarr[0].x == 0);
+    sarr2.length += 1;
+    assert(sarr2[0].x == 1);
+    assert(sarr[0].x == 0);
+
+    // append
+    S s;
+    sarr2 = sarr;
+    sarr2 ~= s;
+    assert(sarr2[0].x == 1);
+    assert(sarr2[1].x == 1);
+    assert(sarr[0].x == 0);
+    assert(s.x == 0);
+
+    // concat
+    sarr2 = sarr ~ sarr;
+    assert(sarr2[0].x == 1);
+    assert(sarr2[1].x == 1);
+    assert(sarr[0].x == 0);
+
+    // concat multiple (calls different method)
+    sarr2 = sarr ~ sarr ~ sarr;
+    assert(sarr2[0].x == 1);
+    assert(sarr2[1].x == 1);
+    assert(sarr2[2].x == 1);
+    assert(sarr[0].x == 0);
+
+    // reserve capacity
+    sarr2 = sarr;
+    sarr2.reserve(2);
+    assert(sarr2[0].x == 1);
+    assert(sarr[0].x == 0);
 }

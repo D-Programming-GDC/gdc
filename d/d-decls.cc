@@ -3,7 +3,7 @@
 
    Modified by
     Michael Parrot, (C) 2009, 2010
-    Iain Buclaw, (C) 2010
+    Iain Buclaw, (C) 2010, 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -348,15 +348,18 @@ Symbol *VarDeclaration::toSymbol()
             // but it would be nice to get the benefit of them (could handle in
             // VarExp -- makeAddressOf could switch back to the VAR_DECL
 
-            // if (typs->isscalar()) CONST_DECL...
-            TREE_READONLY(var_decl) = 1;
+            if (! TREE_STATIC(var_decl))
+                TREE_READONLY(var_decl) = 1;
+            else
+            {   // Can't set "readonly" unless DECL_INITIAL is set, which
+                // doesn't happen until outdata is called for the symbol.
+                D_DECL_READONLY_STATIC(var_decl) = 1;
+            }
 
             // can at least do this...
             //  const doesn't seem to matter for aggregates, so prevent problems..
             if (type->isscalar() || type->isString())
-            {
                 TREE_CONSTANT(var_decl) = 1;
-            }
         }
 
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
@@ -599,13 +602,15 @@ Symbol *FuncDeclaration::toSymbol()
                 if (is_template_member && outer_func)
                 {
                     Symbol * outer_sym = outer_func->toSymbol();
-#if 0
-                    // TODO: This could fail in some corner cases.
-                    gcc_assert(outer_sym->outputStage != Finished);
-#endif
-                    if (! outer_sym->otherNestedFuncs)
-                        outer_sym->otherNestedFuncs = new FuncDeclarations;
-                    outer_sym->otherNestedFuncs->push(this);
+                    if (outer_sym->outputStage != Finished)
+                    {
+                        if (! outer_sym->otherNestedFuncs)
+                            outer_sym->otherNestedFuncs = new FuncDeclarations;
+                        outer_sym->otherNestedFuncs->push(this);
+                    }
+                    else
+                    {   // Probably a frontend bug.
+                    }
                 }
             }
 
@@ -613,28 +618,25 @@ Symbol *FuncDeclaration::toSymbol()
                what was expected and LDASM labels aren't unique.)
                TODO: If the asm consists entirely
                of extended asm, we can allow inlining. */
-            if (inlineAsm)
+            if (hasReturnExp & 8 /*inlineAsm*/)
             {
                 DECL_UNINLINABLE(fn_decl) = 1;
             }
+#if D_GCC_VER >= 44
+            else if (isMember())
+            {
+                // See grokmethod in cp/decl.c
+                DECL_DECLARED_INLINE_P(fn_decl) = 1;
+                DECL_NO_INLINE_WARNING_P (fn_decl) = 1;
+            }
+#else
             else
             {
-#if D_GCC_VER >= 44
-                // otherwise most functions aren't even considered for inlining.
-                if (flag_inline_functions && fbody)
-                {
-                    if (isMember() && canInline(1))
-                        DECL_DECLARED_INLINE_P(fn_decl) = 1;
-                    else if(canInline(0))
-                        DECL_DECLARED_INLINE_P(fn_decl) = 1;
-                }
-#else
                 // see grokdeclarator in c-decl.c
                 if (flag_inline_trees == 2 && fbody /* && should_emit? */)
                     DECL_INLINE (fn_decl) = 1;
-#endif
             }
-
+#endif
             if (naked)
             {
                 D_DECL_NO_FRAME_POINTER(fn_decl) = 1;
@@ -648,11 +650,11 @@ Symbol *FuncDeclaration::toSymbol()
             // These are always compiler generated.
             if (isArrayOp)
                 DECL_ARTIFICIAL(fn_decl) = 1;
-
 #if V2
             // %% Pure functions don't imply nothrow
             DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && func_type->isnothrow);
-            TREE_NOTHROW(fn_decl) = func_type->isnothrow;
+            // %% Assert contracts in functions may throw.
+            TREE_NOTHROW(fn_decl) = func_type->isnothrow && !global.params.useAssert;
             // TODO: check 'immutable' means arguments are readonly...
             TREE_READONLY(fn_decl) = func_type->isImmutable();
             TREE_CONSTANT(fn_decl) = func_type->isConst();

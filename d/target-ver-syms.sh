@@ -34,6 +34,7 @@ k*bsd*-gnu) d_os_versym=FreeBSD ; d_unix=1 ;;
 kopensolaris*-gnu) d_os_versym=Solaris; d_unix=1 ;;
 linux*) d_os_versym=linux ; d_unix=1 ;;
 mingw32*) d_os_versym=Win32; d_os_versym2=MinGW; d_windows=1 ;;
+openbsd*) d_os_versym=OpenBSD; d_unix=1 ;;
 pe*)    case "$target" in
             *-skyos*-*) d_os_versym=skyos ; d_unix=1 ;;
         esac
@@ -86,6 +87,7 @@ case "$d_os_versym" in
 darwin)  echo "#define TARGET_OSX     1" ;;
 freebsd) echo "#define TARGET_FREEBSD 1" ;;
 linux)   echo "#define TARGET_LINUX   1" ;;
+openbsd) echo "#define TARGET_OPENBSD 1" ;;
 solaris) echo "#define TARGET_SOLARIS 1" ;;
 Win32)   echo "#define TARGET_WINDOS  1" ;;
 *)       echo "#define TARGET_UNIX    1" ;;

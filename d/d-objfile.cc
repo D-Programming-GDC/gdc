@@ -3,7 +3,7 @@
 
    Modified by
     Michael Parrott, (C) 2009
-    Iain Buclaw, (C) 2010
+    Iain Buclaw, (C) 2010, 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -485,8 +485,8 @@ ObjectFile::outputFunction(FuncDeclaration * f)
 
     if (! gen.functionNeedsChain(f))
     {
-        cgraph_finalize_function(t,
-            decl_function_context(t) != NULL);
+        bool context = decl_function_context(t) != NULL;
+        cgraph_finalize_function(t, context);
     }
 }
 
@@ -504,8 +504,12 @@ ObjectFile::outputFunction(FuncDeclaration * f)
 static StringTable * symtab = NULL;
 
 bool
-ObjectFile::shouldEmit(Dsymbol * d_sym)
+ObjectFile::shouldEmit(Declaration * d_sym)
 {
+    // If errors occurred compiling it.
+    if (d_sym->type->ty == Tfunction && ((TypeFunction *)d_sym->type)->next->ty == Terror)
+        return false;
+
     Symbol * s = d_sym->toSymbol();
     gcc_assert(s);
 
@@ -713,30 +717,56 @@ make_alias_for_thunk (tree function)
     if (DECL_EXTERNAL(function))
         return function;
 
+#if D_GCC_VER >= 46
+    targetm.asm_out.generate_internal_label (buf, "LTHUNK", thunk_labelno);
+#else
     ASM_GENERATE_INTERNAL_LABEL (buf, "LTHUNK", thunk_labelno);
+#endif
     thunk_labelno++;
     alias = build_fn_decl (buf, TREE_TYPE (function));
+
     DECL_CONTEXT (alias) = NULL;
     TREE_READONLY (alias) = TREE_READONLY (function);
     TREE_THIS_VOLATILE (alias) = TREE_THIS_VOLATILE (function);
     TREE_NOTHROW (alias) = TREE_NOTHROW (function);
     TREE_PUBLIC (alias) = 0;
+
     DECL_EXTERNAL (alias) = 0;
     DECL_ARTIFICIAL (alias) = 1;
+
 #if D_GCC_VER < 45
     DECL_NO_STATIC_CHAIN (alias) = 1;
 #endif
 #if D_GCC_VER < 44
     DECL_INLINE (alias) = 0;
 #endif
+
     DECL_DECLARED_INLINE_P (alias) = 0;
-    //DECL_INITIAL (alias) = error_mark_node;
+#if D_GCC_VER >= 45
+    DECL_INITIAL (alias) = error_mark_node;
+    DECL_ARGUMENTS (alias) = copy_list (DECL_ARGUMENTS (function));
+#endif
+
     TREE_ADDRESSABLE (alias) = 1;
     TREE_USED (alias) = 1;
     SET_DECL_ASSEMBLER_NAME (alias, DECL_NAME (alias));
     TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (alias)) = 1;
+
     if (!flag_syntax_only)
+    {
+#if D_GCC_VER >= 46
+        struct cgraph_node *aliasn = cgraph_same_body_alias (cgraph_node (function),
+                                                             alias, function);
+        DECL_ASSEMBLER_NAME (function);
+        gcc_assert (aliasn != NULL);
+#elif D_GCC_VER >= 45
+        bool ok = cgraph_same_body_alias (alias, function);
+        DECL_ASSEMBLER_NAME (function);
+        gcc_assert (ok);
+#else
         assemble_alias (alias, DECL_ASSEMBLER_NAME (function));
+#endif
+    }
     return alias;
 }
 #endif
@@ -804,22 +834,21 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offs
 FuncDeclaration *
 ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, bool public_fn)
 {
-    Module * mod = g.mod;
-    if (! mod)
-        mod = d_gcc_get_output_module();
+    if (! g.mod)
+        g.mod = d_gcc_get_output_module();
 
     if (name[0] == '*')
     {
-        Symbol * s = mod->toSymbolX(name + 1, 0, 0, "FZv");
+        Symbol * s = g.mod->toSymbolX(name + 1, 0, 0, "FZv");
         name = s->Sident;
     }
 
     TypeFunction * func_type = new TypeFunction(0, Type::tvoid, 0, LINKc);
-    FuncDeclaration * func = new FuncDeclaration(mod->loc, mod->loc, // %% locs may be wrong
+    FuncDeclaration * func = new FuncDeclaration(g.mod->loc, g.mod->loc, // %% locs may be wrong
         Lexer::idPool(name), STCstatic, func_type); // name is only to prevent crashes
-    func->loc = Loc(mod, 1); // to prevent debug info crash // maybe not needed if DECL_ARTIFICIAL?
+    func->loc = Loc(g.mod, 1); // to prevent debug info crash // maybe not needed if DECL_ARTIFICIAL?
     func->linkage = func_type->linkage;
-    func->parent = mod;
+    func->parent = g.mod;
     func->protection = public_fn ? PROTpublic : PROTprivate;
 
     tree func_decl = func->toSymbol()->Stree;
@@ -832,8 +861,8 @@ ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, boo
 
     // %% maybe remove the identifier
 
-    func->fbody = new ExpStatement(mod->loc,
-        new WrappedExp(mod->loc, TOKcomma, expr, Type::tvoid));
+    func->fbody = new ExpStatement(g.mod->loc,
+        new WrappedExp(g.mod->loc, TOKcomma, expr, Type::tvoid));
 
     func->toObjFile(false);
 
@@ -846,7 +875,6 @@ ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, boo
 FuncDeclaration *
 ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool force_and_public)
 {
-    IRState * irs = g.irs;
     tree expr_list = NULL_TREE;
 
     // If there is only one function, just return that
@@ -860,7 +888,7 @@ ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool
         {
             FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
-            expr_list = irs->maybeVoidCompound(expr_list, call_expr);
+            expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
     }
     if (expr_list)
@@ -876,7 +904,6 @@ ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool
 FuncDeclaration *
 ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
 {
-    IRState * irs = g.irs;
     tree expr_list = NULL_TREE;
 
     // If there is only one function, just return that
@@ -892,14 +919,14 @@ ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
             tree var_decl = var->toSymbol()->Stree;
             tree var_expr = build2(MODIFY_EXPR, void_type_node, var_decl,
                                 build2(PLUS_EXPR, TREE_TYPE(var_decl), var_decl, integer_one_node));
-            expr_list = irs->maybeVoidCompound(expr_list, var_expr);
+            expr_list = g.irs->maybeVoidCompound(expr_list, var_expr);
         }
         // Call Ctor Functions
         for (unsigned i = 0; i < functions->dim; i++)
         {
             FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
-            expr_list = irs->maybeVoidCompound(expr_list, call_expr);
+            expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
     }
     if (expr_list)
@@ -914,7 +941,6 @@ ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
 FuncDeclaration *
 ObjectFile::doDtorFunction(const char * name, Array * functions)
 {
-    IRState * irs = g.irs;
     tree expr_list = NULL_TREE;
 
     // If there is only one function, just return that
@@ -928,7 +954,7 @@ ObjectFile::doDtorFunction(const char * name, Array * functions)
         {
             FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
-            expr_list = irs->maybeVoidCompound(expr_list, call_expr);
+            expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
     }
     if (expr_list)
@@ -979,6 +1005,10 @@ outdata(Symbol * sym)
 
     if (sym->Sdt && DECL_INITIAL(t) == NULL_TREE)
         DECL_INITIAL(t) = dt2tree(sym->Sdt);
+
+    /* If the symbol was marked as readonly in the frontend, set TREE_READONLY.  */
+    if (D_DECL_READONLY_STATIC(t))
+        TREE_READONLY(t) = 1;
 
     /* Special case, outputting symbol of a module, but object.d is missing
        or corrupt. Set type as typeof DECL_INITIAL to satisfy runtime.  */
@@ -1103,11 +1133,8 @@ obj_tlssections()
     TREE_PUBLIC(tlsend) = 1;
     TREE_STATIC(tlsend) = 1;
     DECL_ARTIFICIAL(tlsend) = 1;
-#if D_GCC_VER > 41
-    // %% thread-local COMMON data not implemented in 4.1.x
     // DECL_COMMON so the symbol goes in .tcommon
     DECL_COMMON(tlsend) = 1;
-#endif
     DECL_TLS_MODEL(tlsend) = decl_default_tls_model(tlsend);
     g.ofile->setDeclLoc(tlsend, g.mod);
     g.ofile->rodc(tlsend, 1);

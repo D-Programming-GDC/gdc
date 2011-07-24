@@ -499,22 +499,22 @@ Expression *Mod(Type *type, Expression *e1, Expression *e2)
         {   real_t r2 = e2->toReal();
 
 #ifdef __DMC__
-            c = fmodl(e1->toReal(), r2) + fmodl(e1->toImaginary(), r2) * I;
+            c = Port::fmodl(e1->toReal(), r2) + Port::fmodl(e1->toImaginary(), r2) * I;
 #elif defined(IN_GCC)
             c = complex_t(e1->toReal() % r2, e1->toImaginary() % r2);
 #else
-            c = complex_t(fmodl(e1->toReal(), r2), fmodl(e1->toImaginary(), r2));
+            c = complex_t(Port::fmodl(e1->toReal(), r2), Port::fmodl(e1->toImaginary(), r2));
 #endif
         }
         else if (e2->type->isimaginary())
         {   real_t i2 = e2->toImaginary();
 
 #ifdef __DMC__
-            c = fmodl(e1->toReal(), i2) + fmodl(e1->toImaginary(), i2) * I;
+            c = Port::fmodl(e1->toReal(), i2) + Port::fmodl(e1->toImaginary(), i2) * I;
 #elif defined(IN_GCC)
             c = complex_t(e1->toReal() % i2, e1->toImaginary() % i2);
 #else
-            c = complex_t(fmodl(e1->toReal(), i2), fmodl(e1->toImaginary(), i2));
+            c = complex_t(Port::fmodl(e1->toReal(), i2), Port::fmodl(e1->toImaginary(), i2));
 #endif
         }
         else
@@ -885,11 +885,11 @@ Expression *Identity(enum TOK op, Type *type, Expression *e1, Expression *e2)
 
         cmp = (es1->var == es2->var && es1->offset == es2->offset);
     }
-    else if (e1->isConst() == 1 && e2->isConst() == 1)
+    else
+    {
         return Equal((op == TOKidentity) ? TOKequal : TOKnotequal,
                 type, e1, e2);
-    else
-        assert(0);
+    }
     if (op == TOKnotidentity)
         cmp ^= 1;
     return new IntegerExp(loc, cmp, type);
@@ -1228,30 +1228,34 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
         uinteger_t i = e2->toInteger();
 
         if (i >= length)
-        {   e2->error("array index %"PRIuMAX" is out of bounds %s[0 .. %"PRIuMAX"]", i, e1->toChars(), length);
+        {   e1->error("array index %"PRIuMAX" is out of bounds %s[0 .. %"PRIuMAX"]", i, e1->toChars(), length);
         }
-        else if (e1->op == TOKarrayliteral && !e1->checkSideEffect(2))
+        else if (e1->op == TOKarrayliteral)
         {   ArrayLiteralExp *ale = (ArrayLiteralExp *)e1;
             e = (Expression *)ale->elements->data[i];
             e->type = type;
+            if (e->checkSideEffect(2))
+                e = EXP_CANT_INTERPRET;
         }
     }
     else if (e1->type->toBasetype()->ty == Tarray && e2->op == TOKint64)
     {
         uinteger_t i = e2->toInteger();
 
-        if (e1->op == TOKarrayliteral && !e1->checkSideEffect(2))
+        if (e1->op == TOKarrayliteral)
         {   ArrayLiteralExp *ale = (ArrayLiteralExp *)e1;
             if (i >= ale->elements->dim)
-            {   e2->error("array index %"PRIuMAX" is out of bounds %s[0 .. %u]", i, e1->toChars(), ale->elements->dim);
+            {   e1->error("array index %"PRIuMAX" is out of bounds %s[0 .. %u]", i, e1->toChars(), ale->elements->dim);
             }
             else
             {   e = (Expression *)ale->elements->data[i];
                 e->type = type;
+                if (e->checkSideEffect(2))
+                    e = EXP_CANT_INTERPRET;
             }
         }
     }
-    else if (e1->op == TOKassocarrayliteral && !e1->checkSideEffect(2))
+    else if (e1->op == TOKassocarrayliteral)
     {
         AssocArrayLiteralExp *ae = (AssocArrayLiteralExp *)e1;
         /* Search the keys backwards, in case there are duplicate keys
@@ -1266,6 +1270,8 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
             if (ex->isBool(TRUE))
             {   e = (Expression *)ae->values->data[i];
                 e->type = type;
+                if (e->checkSideEffect(2))
+                    e = EXP_CANT_INTERPRET;
                 break;
             }
         }
@@ -1368,9 +1374,12 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
             dinteger_t v = e->toInteger();
 
-            size_t len = utf_codeLength(sz, v);
+            size_t len = (t->ty == tn->ty) ? 1 : utf_codeLength(sz, v);
             s = mem.malloc((len + 1) * sz);
-            utf_encode(sz, s, v);
+            if (t->ty == tn->ty)
+                memcpy((unsigned char *)s, &v, sz);
+            else
+                utf_encode(sz, s, v);
 
             // Add terminating 0
             memset((unsigned char *)s + len * sz, 0, sz);
@@ -1388,6 +1397,14 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         }
         e->type = type;
         return e;
+    }
+    else if (e1->op == TOKnull && e2->op == TOKnull)
+    {
+        if (type == e1->type)
+            return e1;
+        if (type == e2->type)
+            return e2;
+        return new NullExp(e1->loc, type);
     }
     else if (e1->op == TOKstring && e2->op == TOKstring)
     {
@@ -1425,6 +1442,62 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         es->type = type;
         e = es;
     }
+    else if (e2->op == TOKstring && e1->op == TOKarrayliteral &&
+        t1->nextOf()->isintegral())
+    {
+        // Concatenate the strings
+        StringExp *es1 = (StringExp *)e2;
+        ArrayLiteralExp *es2 = (ArrayLiteralExp *)e1;
+        size_t len = es1->len + es2->elements->dim;
+        int sz = es1->sz;
+
+        void *s = mem.malloc((len + 1) * sz);
+        memcpy((char *)s + sz * es2->elements->dim, es1->string, es1->len * sz);
+        for (int i = 0; i < es2->elements->dim; i++)
+        {   Expression *es2e = (Expression *)es2->elements->data[i];
+            if (es2e->op != TOKint64)
+                return EXP_CANT_INTERPRET;
+            dinteger_t v = es2e->toInteger();
+            memcpy((unsigned char *)s + i * sz, &v, sz);
+        }
+
+        // Add terminating 0
+        memset((unsigned char *)s + len * sz, 0, sz);
+
+        StringExp *es = new StringExp(loc, s, len);
+        es->sz = sz;
+        es->committed = 0;
+        es->type = type;
+        e = es;
+    }
+    else if (e1->op == TOKstring && e2->op == TOKarrayliteral &&
+        t2->nextOf()->isintegral())
+    {
+        // Concatenate the strings
+        StringExp *es1 = (StringExp *)e1;
+        ArrayLiteralExp *es2 = (ArrayLiteralExp *)e2;
+        size_t len = es1->len + es2->elements->dim;
+        int sz = es1->sz;
+
+        void *s = mem.malloc((len + 1) * sz);
+        memcpy(s, es1->string, es1->len * sz);
+        for (int i = 0; i < es2->elements->dim; i++)
+        {   Expression *es2e = (Expression *)es2->elements->data[i];
+            if (es2e->op != TOKint64)
+                return EXP_CANT_INTERPRET;
+            dinteger_t v = es2e->toInteger();
+            memcpy((unsigned char *)s + (es1->len + i) * sz, &v, sz);
+        }
+
+        // Add terminating 0
+        memset((unsigned char *)s + len * sz, 0, sz);
+
+        StringExp *es = new StringExp(loc, s, len);
+        es->sz = sz;
+        es->committed = 0; //es1->committed;
+        es->type = type;
+        e = es;
+    }
     else if (e1->op == TOKstring && e2->op == TOKint64)
     {
         // Concatenate the strings
@@ -1435,10 +1508,18 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         int sz = es1->sz;
         dinteger_t v = e2->toInteger();
 
-        size_t len = es1->len + utf_codeLength(sz, v);
+        // Is it a concatentation of homogenous types?
+        // (char[] ~ char, wchar[]~wchar, or dchar[]~dchar)
+        bool homoConcat = (sz == t2->size());
+        size_t len = es1->len;
+        len += homoConcat ? 1 : utf_codeLength(sz, v);
+
         s = mem.malloc((len + 1) * sz);
         memcpy(s, es1->string, es1->len * sz);
-        utf_encode(sz, (unsigned char *)s + (sz * es1->len), v);
+        if (homoConcat)
+             memcpy((unsigned char *)s + (sz * es1->len), &v, sz);
+        else
+             utf_encode(sz, (unsigned char *)s + (sz * es1->len), v);
 
         // Add terminating 0
         memset((unsigned char *)s + len * sz, 0, sz);
@@ -1462,13 +1543,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         dinteger_t v = e1->toInteger();
 
         s = mem.malloc((len + 1) * sz);
-        switch (sz)
-        {
-            case 1: *(d_uns8*)s = v; break;
-            case 2: *(d_uns16*)s = v; break;
-            case 4: *(d_uns32*)s = v; break;
-            default: assert(0);
-        }
+        memcpy((unsigned char *)s, &v, sz);
         memcpy((unsigned char *)s + sz, es2->string, es2->len * sz);
 
         // Add terminating 0

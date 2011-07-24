@@ -323,12 +323,12 @@ private:
         string decl = "";
         foreach (i, name; staticMap!(extractName, fieldSpecs))
         {
-            auto    field = text("Identity!(field[", i, "])");
-            auto numbered = text("_", i);
-            decl ~= text("alias ", field, " ", numbered, ";");
+            enum    field = Format!("Identity!(field[%s])",i);
+            enum numbered = Format!("_%s", i);
+            decl ~= Format!("alias %s %s;", field, numbered);
             if (name.length != 0)
             {
-                decl ~= text("alias ", numbered, " ", name, ";");
+                decl ~= Format!("alias %s %s;", numbered, name);
             }
         }
         return decl;
@@ -1025,41 +1025,56 @@ struct Banner {
 
   Alignment is not always optimal for 80-bit reals, nor for structs declared
   as align(1).
-  BUG: bugzilla 2029 prevents the signature from being (string[] names...),
-  so we need to use an ugly array literal instead.
 */
-char [] alignForSize(E...)(string[E.length] names)
+string alignForSize(E...)(string[] names...)
 {
     // Sort all of the members by .alignof.
     // BUG: Alignment is not always optimal for align(1) structs
-    // or 80-bit reals.
+    // or 80-bit reals or 64-bit primitives on x86.
     // TRICK: Use the fact that .alignof is always a power of 2,
     // and maximum 16 on extant systems. Thus, we can perform
     // a very limited radix sort.
     // Contains the members with .alignof = 64,32,16,8,4,2,1
-    int [][] alignlist; // workaround for bugzilla 2569
-    alignlist = [ [],[],[],[],[],[],[]]; // workaround for bugzilla 2562
-    char[][] declaration;
-    foreach(int i_bug,T; E) {
-        int i = i_bug; // workaround for bugzilla 2564 (D2 only)
-        declaration ~= T.stringof ~ " " ~ names[i].dup ~ ";\n";
-        int a = T.alignof;
-        int k = a>=64? 0 : a>=32? 1 : a>=16? 2 : a>=8? 3 : a>=4? 4 : a>=2? 5 : 6;
-        alignlist[k]~=i;
+
+    assert(E.length == names.length,
+        "alignForSize: There should be as many member names as the types");
+
+    string[7] declaration = ["", "", "", "", "", "", ""];
+
+    foreach (i, T; E) {
+        auto a = T.alignof;
+        auto k = a>=64? 0 : a>=32? 1 : a>=16? 2 : a>=8? 3 : a>=4? 4 : a>=2? 5 : 6;
+        declaration[k] ~= T.stringof ~ " " ~ names[i] ~ ";\n";
     }
-    char [] s;
-    foreach(q; alignlist) {
-      foreach(int i; q) {
-        s~=  declaration[i];
-      }
-    }
+
+    auto s = "";
+    foreach (decl; declaration)
+        s ~= decl;
     return s;
 }
 
 unittest {
-    // assert(alignForSize!(int[], char[3], short, double[5])(["x", "y","z", "w"]) =="double[5u] w;\nint[] x;\nshort z;\nchar[3u] y;\n");
+    enum x = alignForSize!(int[], char[3], short, double[5])("x", "y","z", "w");
     struct Foo{ int x; }
-    // assert(alignForSize!(ubyte, Foo, cdouble)(["x", "y","z"]) =="cdouble z;\nFoo y;\nubyte x;\n");
+    enum y = alignForSize!(ubyte, Foo, cdouble)("x", "y","z");
+
+    static if(size_t.sizeof == uint.sizeof)
+    {
+        enum passNormalX = x == "double[5u] w;\nint[] x;\nshort z;\nchar[3u] y;\n";
+        enum passNormalY = y == "cdouble z;\nFoo y;\nubyte x;\n";
+
+        enum passAbnormalX = x == "int[] x;\ndouble[5u] w;\nshort z;\nchar[3u] y;\n";
+        enum passAbnormalY = y == "Foo y;\ncdouble z;\nubyte x;\n";
+        // ^ blame http://d.puremagic.com/issues/show_bug.cgi?id=231
+
+        static assert(passNormalX || double.alignof <= (int[]).alignof && passAbnormalX);
+        static assert(passNormalY || double.alignof <= int.alignof && passAbnormalY);
+    }
+    else
+    {
+        static assert(x == "int[] x;\ndouble[5LU] w;\nshort z;\nchar[3LU] y;\n");
+        static assert(y == "cdouble z;\nFoo y;\nubyte x;\n");
+    }
 }
 
 /*--*
@@ -2286,7 +2301,7 @@ if (!is(T == class))
             {
                 GC.addRange(p.ptr, sz);
             }
-            emplace!T(p[0 .. T.sizeof], args);
+            emplace(cast(T*) p.ptr, args);
             _store = cast(typeof(_store)) p.ptr;
             _store._count = 1;
             debug(RefCounted) if (debugging) writeln(typeof(this).stringof,
@@ -2600,3 +2615,107 @@ unittest
     assert(B.dead, "asdasd");
     assert(A.dead, "asdasd");
 }
+
+/**
+Defines a simple, self-documenting yes/no flag. This makes it easy for
+APIs to define functions accepting flags without resorting to $(D
+bool), which is opaque in calls, and without needing to define an
+enumerated type separately. Using $(D Flag!"Name") instead of $(D
+bool) makes the flag's meaning visible in calls. Each yes/no flag has
+its own type, which makes confusions and mix-ups impossible.
+
+Example:
+----
+// Before
+string getLine(bool keepTerminator)
+{
+    ...
+    if (keepTerminator) ...
+    ...
+}
+...
+// Code calling getLine (usually far away from its definition) can't
+// be understood without looking at the documentation, even by users
+// familiar with the API. Assuming the reverse meaning
+// (i.e. "ignoreTerminator") and inserting the wrong code compiles and
+// runs with erroneous results.
+auto line = getLine(false);
+
+// After
+string getLine(Flag!"KeepTerminator" keepTerminator)
+{
+    ...
+    if (keepTerminator) ...
+    ...
+}
+...
+// Code calling getLine can be easily read and understood even by
+// people not fluent with the API.
+auto line = getLine(Flag!"KeepTerminator".yes);
+----
+
+Passing categorical data by means of unstructured $(D bool)
+parameters is classified under "simple-data coupling" by Steve
+McConnell in the $(LUCKY Code Complete) book, along with three other
+kinds of coupling. The author argues citing several studies that
+coupling has a negative effect on code quality. $(D Flag) offers a
+simple structuring method for passing yes/no flags to APIs.
+
+As a perk, the flag's name may be any string and as such can include
+characters not normally allowed in identifiers, such as
+spaces and dashes.
+ */
+template Flag(string name) {
+    ///
+    enum Flag : bool
+    {
+        /**
+         When creating a value of type $(D Flag!"Name"), use $(D
+         Flag!"Name".no) for the negative option. When using a value
+         of type $(D Flag!"Name"), compare it against $(D
+         Flag!"Name".no) or just $(D false) or $(D 0).  */
+        no = false,
+
+        /** When creating a value of type $(D Flag!"Name"), use $(D
+         Flag!"Name".yes) for the affirmative option. When using a
+         value of type $(D Flag!"Name"), compare it against $(D
+         Flag!"Name".yes).
+        */
+        yes = true
+    }
+}
+
+/**
+Convenience names that allow using e.g. $(D yes!"encryption") instead of
+$(D Flag!"encryption".yes) and $(D no!"encryption") instead of $(D
+Flag!"encryption".no).
+*/
+struct Yes
+{
+    static auto @property opDispatch(string name)() { return
+    Flag!name.yes; }
+}
+//template yes(string name) { enum Flag!name yes = Flag!name.yes; }
+
+/// Ditto
+struct No
+{
+    static auto @property opDispatch(string name)() { return
+    Flag!name.no; }
+}
+//template no(string name) { enum Flag!name no = Flag!name.no; }
+
+unittest
+{
+    Flag!"abc" flag1;
+    assert(flag1 == Flag!"abc".no);
+    assert(flag1 == No.abc);
+    assert(!flag1);
+    if (flag1) assert(false);
+    flag1 = Yes.abc;
+    assert(flag1);
+    if (!flag1) assert(false);
+    if (flag1) {} else assert(false);
+    assert(flag1 == Yes.abc);
+}
+

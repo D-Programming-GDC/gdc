@@ -229,8 +229,19 @@ private
         {
             extern __gshared
             {
-                int etext;
-                int _end;
+                size_t etext;
+                size_t _end;
+            }
+        }
+        version (X86_64)
+        {
+            extern (C)
+            {
+                extern __gshared
+                {
+                    size_t _deh_end;
+                    size_t __progname;
+                }
             }
         }
     }
@@ -268,7 +279,15 @@ void initStaticDataGC()
     }
     else version( FreeBSD )
     {
-        gc_addRange( &etext, cast(size_t) &_end - cast(size_t) &etext );
+        version (X86_64)
+        {
+            gc_addRange( &etext, cast(size_t) &_deh_end - cast(size_t) &etext );
+            gc_addRange( &__progname, cast(size_t) &_end - cast(size_t) &__progname );
+        }
+        else
+        {
+            gc_addRange( &etext, cast(size_t) &_end - cast(size_t) &etext );
+        }
     }
     else version( Solaris )
     {
@@ -287,7 +306,15 @@ void initStaticDataGC()
         }
         else version( FreeBSD )
         {
-            scanDataProcMaps( &etext, &_end );
+            version (X86_64)
+            {
+                scanDataProcMaps( &etext, &_deh_end );
+                scanDataProcMaps( &__progname, &_end );
+            }
+            else
+            {
+                scanDataProcMaps( &etext, &_end );
+            }
         }
         else version( Solaris )
         {

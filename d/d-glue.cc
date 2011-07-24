@@ -50,8 +50,13 @@ elem *
 CondExp::toElem(IRState * irs)
 {
     tree cn = irs->convertForCondition(econd);
+#if V2
+    tree t1 = irs->convertTo(e1->toElemDtor(irs), e1->type, type);
+    tree t2 = irs->convertTo(e2->toElemDtor(irs), e2->type, type);
+#else
     tree t1 = irs->convertTo(e1, type);
     tree t2 = irs->convertTo(e2, type);
+#endif
     return build3(COND_EXPR, type->toCtype(), cn, t1, t2);
 }
 
@@ -59,13 +64,21 @@ static tree
 build_bool_binop(TOK op, tree type, Expression * e1, Expression * e2, IRState * irs)
 {
     tree_code out_code;
-    tree t1 = e1->toElem(irs);
-    tree t2 = e2->toElem(irs);
+    tree t1, t2;
 
     if (op == TOKandand || op == TOKoror)
     {
-        t1 = irs->convertForCondition(t1, e1->type);
-        t2 = irs->convertForCondition(t2, e2->type);
+        t1 = irs->convertForCondition(e1->toElem(irs), e1->type);
+#if V2
+        t2 = irs->convertForCondition(e2->toElemDtor(irs), e2->type);
+#else
+        t2 = irs->convertForCondition(e2->toElem(irs), e2->type);
+#endif
+    }
+    else
+    {
+        t1 = e1->toElem(irs);
+        t2 = e2->toElem(irs);
     }
 
     if (COMPLEX_FLOAT_TYPE_P(type))
@@ -362,29 +375,37 @@ IdentityExp::toElem(IRState* irs)
     //if (ty1 != e2->type->toBasetype()->ty)
     //abort();
 
-    switch (ty1)
+    if (ty1 == Tsarray)
     {
-        case Tsarray:
-            return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
-                          type->toCtype(),
-                          irs->addressOf(e1->toElem(irs)),
-                          irs->addressOf(e2->toElem(irs)));
+        return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
+                      type->toCtype(),
+                      irs->addressOf(e1->toElem(irs)),
+                      irs->addressOf(e2->toElem(irs)));
+    }
+    else if (ty1 == Treference || ty1 == Tclass || ty1 == Tarray)
+    {
+        return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
+                      type->toCtype(),
+                      e1->toElem(irs),
+                      e2->toElem(irs));
+    }
+    else if (ty1 == Tstruct || e1->type->isfloating())
+    {   // Do bit compare.
+        tree t_memcmp = irs->buildCall(built_in_decls[BUILT_IN_MEMCMP], 3,
+                                       irs->addressOf(e1->toElem(irs)),
+                                       irs->addressOf(e2->toElem(irs)),
+                                       irs->integerConstant(e1->type->size()));
 
-        case Treference:
-        case Tclass:
-        case Tarray:
-            return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
-                          type->toCtype(),
-                          e1->toElem(irs),
-                          e2->toElem(irs));
+        return irs->boolOp(op == TOKidentity ? EQ_EXPR : NE_EXPR,
+                           t_memcmp, integer_zero_node);
+    }
+    else
+    {   // For operand types other than class objects, static or dynamic
+        // arrays, identity is defined as being the same as equality
 
-        default:
-            // For operand types other than class objects, static or dynamic
-            // arrays, identity is defined as being the same as equality
-
-            // Assumes object == object has been changed to function call
-            // ... impl is really the same as the special cales
-            return toElemBin(irs, opComp);
+        // Assumes object == object has been changed to function call
+        // ... impl is really the same as the special cales
+        return toElemBin(irs, opComp);
     }
 }
 
@@ -604,8 +625,15 @@ AndAndExp::toElem(IRState * irs)
     if (e2->type->toBasetype()->ty != Tvoid)
         return toElemBin(irs, opComp);
     else
+    {
+#if V2
+        tree t2 = e2->toElemDtor(irs);
+#else
+        tree t2 = e2->toElem(irs);
+#endif
         return build3(COND_EXPR, type->toCtype(),
-                irs->convertForCondition(e1), e2->toElem(irs), d_void_zero_node);
+                      irs->convertForCondition(e1), t2, d_void_zero_node);
+    }
 }
 
 elem *
@@ -614,9 +642,17 @@ OrOrExp::toElem(IRState * irs)
     if (e2->type->toBasetype()->ty != Tvoid)
         return toElemBin(irs, opComp);
     else
+    {
+#if V2
+        tree t2 = e2->toElemDtor(irs);
+#else
+        tree t2 = e2->toElem(irs);
+#endif
         return build3(COND_EXPR, type->toCtype(),
-                build1(TRUTH_NOT_EXPR, boolean_type_node, irs->convertForCondition(e1)),
-                e2->toElem(irs), d_void_zero_node);
+                      build1(TRUTH_NOT_EXPR, boolean_type_node,
+                             irs->convertForCondition(e1)),
+                             t2, d_void_zero_node);
+    }
 }
 
 elem *
@@ -1713,6 +1749,40 @@ Expression::toElem(IRState* irs)
     return irs->errorMark(type);
 }
 
+#if V2
+/*******************************************
+ * Evaluate Expression, then call destructors on any temporaries in it.
+ */
+
+elem *
+Expression::toElemDtor(IRState *irs)
+{
+    size_t starti = irs->varsInScope ? irs->varsInScope->dim : 0;
+    tree t = toElem(irs);
+    size_t endi = irs->varsInScope ? irs->varsInScope->dim : 0;
+
+    // Add destructors
+    tree tdtors = NULL_TREE;
+    for (size_t i = starti; i != endi; ++i)
+    {
+        VarDeclaration * vd = (VarDeclaration *) irs->varsInScope->data[i];
+        if (vd)
+        {
+            irs->varsInScope->data[i] = NULL;
+            tree ed = vd->edtor->toElem(irs);
+            tdtors = irs->maybeCompound(ed, tdtors); // execute in reverse order
+        }
+    }
+    if (tdtors != NULL_TREE)
+    {
+        t = save_expr(t);
+        t = irs->compound(irs->compound(t, tdtors), t);
+    }
+    return t;
+}
+#endif
+
+
 elem *
 DotTypeExp::toElem(IRState *irs)
 {
@@ -1730,23 +1800,24 @@ elem *
 DelegateExp::toElem(IRState* irs)
 {
     Type * t = e1->type->toBasetype();
-    if (t->ty == Tclass || t->ty == Tstruct) {
-        // %% Need to see if DotVarExp ever has legitimate
+    if (t->ty == Tclass || t->ty == Tstruct)
+    {   // %% Need to see if DotVarExp ever has legitimate
         // <aggregate>.<static method>.  If not, move this test
         // to objectInstanceMethod.
         if (! func->isThis())
             error("delegates are only for non-static functions");
+
         return irs->objectInstanceMethod(e1, func, type);
-    } else {
+    }
+    else
+    {
         gcc_assert(func->isNested() || func->isThis());
+
         return irs->methodCallExpr(irs->functionPointer(func),
-            func->isNested() ?
-#if D_NO_TRAMPOLINES
-            irs->getFrameForFunction(func)
-#else
-            d_null_pointer
-#endif
-            : e1->toElem(irs), type);
+                                   (func->isNested()
+                                    ? irs->getFrameForFunction(func)
+                                    : e1->toElem(irs)),
+                                   type);
     }
 }
 
@@ -1859,22 +1930,36 @@ AssertExp::toElem(IRState* irs)
 elem *
 DeclarationExp::toElem(IRState* irs)
 {
+#if V2
+    VarDeclaration * vd;
+    if ((vd = declaration->isVarDeclaration()) != NULL)
+    {   // Put variable on list of things needing destruction
+        if (vd->edtor && ! vd->noscope)
+        {
+            if (! irs->varsInScope)
+                irs->varsInScope = new Array();
+            irs->varsInScope->push(vd);
+        }
+    }
+#endif
+
     // VarDeclaration::toObjFile was modified to call d_gcc_emit_local_variable
     // if needed.  This assumes irs == g.irs
     irs->pushStatementList();
     declaration->toObjFile(false);
     tree t = irs->popStatementList();
-#if D_GCC_VER >= 43
+
+#if D_GCC_VER >= 45
     /* Construction of an array for typesafe-variadic function arguments
        can cause an empty STMT_LIST here.  This can causes problems
        during gimplification. */
     if (TREE_CODE(t) == STATEMENT_LIST && ! STATEMENT_LIST_HEAD(t))
-#if D_GCC_VER >= 45
         return build_empty_stmt(input_location);
-#else
+#elif D_GCC_VER >= 43
+    if (TREE_CODE(t) == STATEMENT_LIST && ! STATEMENT_LIST_HEAD(t))
         return build_empty_stmt();
 #endif
-#endif
+
     return t;
 }
 
@@ -1882,27 +1967,25 @@ DeclarationExp::toElem(IRState* irs)
 elem *
 FuncExp::toElem(IRState * irs)
 {
-    fd->toObjFile(false);
-
     Type * func_type = type->toBasetype();
 
     if (func_type->ty == Tpointer)
         func_type = func_type->nextOf()->toBasetype();
 
-    switch (func_type->ty) {
-    case Tfunction:
-        return irs->nop(irs->addressOf(fd), type->toCtype());
-    case Tdelegate:
-        return irs->methodCallExpr(irs->functionPointer(fd), // trampoline or not
-#if D_NO_TRAMPOLINES
-            irs->getFrameForFunction(fd),
-#else
-            convert(ptr_type_node, integer_one_node),
-#endif
-            type);
-    default:
-        ::error("Unexpected FuncExp type");
-        return irs->errorMark(type);
+    fd->toObjFile(false);
+
+    switch (func_type->ty)
+    {
+        case Tfunction:
+            return irs->nop(irs->addressOf(fd), type->toCtype());
+
+        case Tdelegate:
+            return irs->methodCallExpr(irs->functionPointer(fd),
+                                       irs->getFrameForFunction(fd), type);
+
+        default:
+            ::error("Unexpected FuncExp type");
+            return irs->errorMark(type);
     }
 
     // If nested, this will be a trampoline...
@@ -2769,37 +2852,24 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         return;
     }
 
-    tree param_list;
-    tree result_decl;
-    tree parm_decl = NULL_TREE;
-    tree block;
-#if D_NO_TRAMPOLINES
-    tree static_chain_expr = NULL_TREE;
-#if V2
-    FuncDeclaration * closure_func = NULL;
-    tree closure_expr = NULL_TREE;
-    StructDeclaration * sd;
-#endif
-    ClassDeclaration * cd;
-#endif
-    AggregateDeclaration * ad = NULL;
-
     announce_function(fn_decl);
     IRState * irs = IRState::startFunction(this);
-#if V2
-    TypeFunction * tf = (TypeFunction *)type;
-    irs->useClosure(NULL, NULL_TREE);
-#endif
+
+    irs->useChain(NULL, NULL_TREE);
+    tree chain_expr = NULL;
+    FuncDeclaration * chain_func = NULL;
 
     // in 4.0, doesn't use push_function_context
     tree old_current_function_decl = current_function_decl;
     function * old_cfun = cfun;
 
     current_function_decl = fn_decl;
-
     TREE_STATIC(fn_decl) = 1;
+
+    TypeFunction * tf = (TypeFunction *)type;
+    tree result_decl = NULL_TREE;
     {
-        Type * func_type = tintro ? tintro : type;
+        Type * func_type = tintro ? tintro : tf;
         Type * ret_type = func_type->nextOf()->toBasetype();
 
         if (isMain() && ret_type->ty == Tvoid)
@@ -2818,21 +2888,21 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     DECL_CONTEXT(result_decl) = fn_decl;
     //layout_decl(result_decl, 0);
 
-# if D_GCC_VER >= 43
+#if D_GCC_VER >= 43
     allocate_struct_function(fn_decl, false);
-# else
+#else
     allocate_struct_function(fn_decl);
-# endif
+#endif
     // assuming the above sets cfun
     g.ofile->setCfunEndLoc(endloc);
 
-    param_list = NULL_TREE;
-
-#if V2
-    bool needs_static_chain = irs->functionNeedsChain(this);
-#endif
+    AggregateDeclaration * ad = isThis();
+    tree parm_decl = NULL_TREE;
+    tree param_list = NULL_TREE;
 
     int n_parameters = parameters ? parameters->dim : 0;
+
+    int reverse_args = 0; //tf->linkage == LINKd && tf->varargs != 1;
 
     // Special arguments...
     static const int VTHIS = -2;
@@ -2847,7 +2917,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
 
         if (i == VTHIS)
         {
-            if ((ad = isThis()))
+            if (ad != NULL)
             {
                 param = vthis;
             }
@@ -2856,25 +2926,16 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
                    referenced in any expression.
 
                    This parameter is hidden from the debugger.
-                */
+                 */
                 parm_type = ptr_type_node;
                 parm_decl = d_build_decl(PARM_DECL, NULL_TREE, parm_type);
                 DECL_ARTIFICIAL(parm_decl) = 1;
                 DECL_IGNORED_P(parm_decl) = 1;
-                DECL_ARG_TYPE (parm_decl) = TREE_TYPE (parm_decl); // %% doc need this arg silently disappears
-#if D_NO_TRAMPOLINES
-#if V2
-                if (! needs_static_chain)
-                {
-                    closure_func = toParent2()->isFuncDeclaration();
-                    closure_expr = parm_decl;
-                }
-                else
-#endif
-                {
-                    static_chain_expr = parm_decl;
-                }
-#endif
+                // %% doc need this arg silently disappears
+                DECL_ARG_TYPE (parm_decl) = TREE_TYPE (parm_decl);
+
+                chain_func = toParent2()->isFuncDeclaration();
+                chain_expr = parm_decl;
             }
             else
                 continue;
@@ -2904,12 +2965,20 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         g.ofile->setDeclLoc(parm_decl, param ? (Dsymbol*) param : (Dsymbol*) this);
 
         // chain them in the correct order
-        param_list = chainon (param_list, parm_decl);
+        if (reverse_args)
+        {
+            param_list = chainon (parm_decl, param_list);
+        }
+        else
+        {
+            param_list = chainon (param_list, parm_decl);
+        }
     }
 
     // param_list is a number of PARM_DECL trees chained together (*not* a TREE_LIST of PARM_DECLs).
     // The leftmost parameter is the first in the chain.  %% varargs?
-    DECL_ARGUMENTS(fn_decl) = param_list; // %% in treelang, useless ? because it just sets them to getdecls() later
+    // %% in treelang, useless ? because it just sets them to getdecls() later
+    DECL_ARGUMENTS(fn_decl) = param_list;
 
     // http://www.tldp.org/HOWTO/GCC-Frontend-HOWTO-7.html
     rest_of_decl_compilation(fn_decl, /*toplevel*/1, /*atend*/0);
@@ -2919,84 +2988,6 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     DECL_INITIAL(fn_decl) = error_mark_node; // Just doing what they tell me to do...
 
     IRState::initFunctionStart(fn_decl, loc);
-#if D_NO_TRAMPOLINES
-    /* If this is a member function that nested (possibly indirectly) in another
-       function, construct an expession for this member function's static chain
-       by going through parent link of nested classes.
-    */
-    if (! static_chain_expr
-#if V2
-            || closure_expr
-#endif
-       )
-    {
-        if (ad && (cd = ad->isClassDeclaration()))
-        {
-            /* D 2.0 Closures: this->vthis is passed as a normal parameter and
-               is valid to access as Stree before the closure frame is created. */
-            tree t = vthis->toSymbol()->Stree;
-            while (cd->isNested())
-            {
-                Dsymbol * d = cd->toParent2();
-                tree vthis_field = cd->vthis->toSymbol()->Stree;
-                t = irs->component(irs->indirect(t), vthis_field);
-                FuncDeclaration * f;
-                if ((f = d->isFuncDeclaration()))
-                {
-#if V2
-                    if (! needs_static_chain)
-                    {
-                        closure_expr = t;
-                        closure_func = f;
-                    }
-                    else
-#endif
-                    {   /* Pass chain by reference. */
-                        static_chain_expr = irs->addressOf(t);
-                    }
-                    break;
-                }
-                else if (! (cd = d->isClassDeclaration()))
-                {
-                    gcc_unreachable();
-                }
-            }
-        }
-#if V2
-        else if (ad && (sd = ad->isStructDeclaration()))
-        {
-            /* D 2.0 Closures: this->vthis is passed as a normal parameter and
-               is valid to access as Stree before the closure frame is created. */
-            tree t = vthis->toSymbol()->Stree;
-            while (sd->isNested())
-            {
-                Dsymbol * d = sd->toParent2();
-                tree vthis_field = sd->vthis->toSymbol()->Stree;
-                t = irs->component(irs->indirect(t), vthis_field);
-                FuncDeclaration * f;
-                if ((f = d->isFuncDeclaration()))
-                {
-                    if (! needs_static_chain)
-                    {
-                        closure_expr = t;
-                        closure_func = f;
-                    }
-                    else
-                    {
-                        static_chain_expr = t;
-                    }
-                    break;
-                }
-                else if (! (sd = d->isStructDeclaration()))
-                {
-                    gcc_unreachable();
-                }
-            }
-        }
-#endif
-    }
-#endif
-
     cfun->naked = naked ? 1 : 0;
     pushlevel(0);
     irs->pushStatementList();
@@ -3004,33 +2995,75 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     irs->startScope();
     irs->doLineNote(loc);
 
-#if D_NO_TRAMPOLINES
-    if (static_chain_expr)
+    /* If this is a member function that nested (possibly indirectly) in another
+       function, construct an expession for this member function's static chain
+       by going through parent link of nested classes.
+    */
+    if (! irs->functionNeedsChain(this))
     {
-        cfun->custom_static_chain = 1;
-        irs->doExp(build2(MODIFY_EXPR, ptr_type_node,
-                build0(STATIC_CHAIN_DECL, ptr_type_node), static_chain_expr));
+        /* D 2.0 Closures: this->vthis is passed as a normal parameter and
+           is valid to access as Stree before the closure frame is created. */
+        ClassDeclaration * cd = ad ? ad->isClassDeclaration() : NULL;
+        StructDeclaration * sd = ad ? ad->isStructDeclaration() : NULL;
+
+        if (cd != NULL)
+        {
+            FuncDeclaration *f = NULL;
+            tree t = vthis->toSymbol()->Stree;
+            while (cd->isNested())
+            {
+                Dsymbol * d = cd->toParent2();
+                tree vthis_field = cd->vthis->toSymbol()->Stree;
+                t = irs->component(irs->indirect(t), vthis_field);
+                if ((f = d->isFuncDeclaration()))
+                {
+                    chain_expr = t;
+                    chain_func = f;
+                    break;
+                }
+                else if (! (cd = d->isClassDeclaration()))
+                    gcc_unreachable();
+            }
+        }
+#if V2
+        else if (sd != NULL)
+        {
+            FuncDeclaration *f = NULL;
+            tree t = vthis->toSymbol()->Stree;
+            while (sd->isNested())
+            {
+                Dsymbol * d = sd->toParent2();
+                tree vthis_field = sd->vthis->toSymbol()->Stree;
+                t = irs->component(irs->indirect(t), vthis_field);
+                if ((f = d->isFuncDeclaration()))
+                {
+                    chain_expr = t;
+                    chain_func = f;
+                    break;
+                }
+                else if (! (sd = d->isStructDeclaration()))
+                    gcc_unreachable();
+            }
+        }
+#endif
     }
 
-#if V2
-    if (static_chain_expr || closure_expr)
-        irs->useParentClosure();
+    if (isNested() || chain_expr)
+        irs->useParentChain();
 
-    if (closure_expr)
+    if (chain_expr)
     {
-        if (! DECL_P(closure_expr))
+        if (! DECL_P(chain_expr))
         {
             tree c = irs->localVar(ptr_type_node);
-            DECL_INITIAL(c) = closure_expr;
+            DECL_INITIAL(c) = chain_expr;
             irs->expandDecl(c);
-            closure_expr = c;
+            chain_expr = c;
         }
-        irs->useClosure(closure_func, closure_expr);
+        irs->useChain(chain_func, chain_expr);
     }
 
-    buildClosure(irs); // may change irs->closureLink and irs->closureFunc
-#endif
-#endif
+    irs->buildChain(this); // may change irs->chainLink and irs->chainFunc
 
     if (vresult)
         irs->emitLocalVar(vresult);
@@ -3103,25 +3136,34 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     /* This would apply to complex types as well, but GDC currently
        returns complex types as a struct instead of in ST(0) and ST(1).
      */
-    if ((type->nextOf()->isreal() || type->nextOf()->isintegral())
-            && inlineAsm && ! naked)
+    if (hasReturnExp & 8 /*inlineAsm*/ && ! naked)
     {
-        tree result_var = irs->localVar(TREE_TYPE(result_decl));
+        tree cns_str = NULL_TREE;
 
-        tree nop_str = build_string(0, "");
-        tree cns_str;
         if (type->nextOf()->isreal())
             cns_str = build_string(2, "=t");
         else
-            cns_str = build_string(2, "=a");
+        {   // On 32bit, can't return 'long' value in EAX.
+            if (type->nextOf()->isintegral() &&
+                type->nextOf()->size() <= Type::tsize_t->size())
+            {
+                cns_str = build_string(2, "=a");
+            }
+        }
 
-        tree out_arg = tree_cons(tree_cons(NULL_TREE, cns_str, NULL_TREE),
-            result_var, NULL_TREE);
+        if (cns_str != NULL_TREE)
+        {
+            tree result_var = irs->localVar(TREE_TYPE(result_decl));
+            tree nop_str = build_string(0, "");
 
-        irs->expandDecl(result_var);
-        irs->doAsm(nop_str, out_arg, NULL_TREE, NULL_TREE);
-        irs->doReturn(build2(MODIFY_EXPR, TREE_TYPE(result_decl),
-                           result_decl, result_var));
+            tree out_arg = tree_cons(tree_cons(NULL_TREE, cns_str, NULL_TREE),
+                                     result_var, NULL_TREE);
+
+            irs->expandDecl(result_var);
+            irs->doAsm(nop_str, out_arg, NULL_TREE, NULL_TREE);
+            irs->doReturn(build2(MODIFY_EXPR, TREE_TYPE(result_decl),
+                          result_decl, result_var));
+        }
     }
 #endif
 
@@ -3172,7 +3214,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         }
     }
     //block = (*lang_hooks.decls.poplevel) (1, 0, 1);
-    block = poplevel(1, 0, 1);
+    tree block = poplevel(1, 0, 1);
 
     DECL_INITIAL (fn_decl) = block; // %% redundant, see poplevel
     BLOCK_SUPERCONTEXT(DECL_INITIAL (fn_decl)) = fn_decl; // done in C, don't know effect
@@ -3199,6 +3241,12 @@ FuncDeclaration::buildClosure(IRState * irs)
         return;
 
     tree closure_rec_type = make_node(RECORD_TYPE);
+    char *name = concat ("CLOSURE.",
+                         IDENTIFIER_POINTER (DECL_NAME (toSymbol()->Stree)),
+                         NULL);
+    TYPE_NAME (closure_rec_type) = get_identifier (name);
+    free(name);
+
     tree ptr_field = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
                                       get_identifier("__closptr"), ptr_type_node);
     DECL_CONTEXT(ptr_field) = closure_rec_type;
@@ -3209,9 +3257,9 @@ FuncDeclaration::buildClosure(IRState * irs)
     {
         VarDeclaration *v = (VarDeclaration *)closureVars.data[i];
         tree field = d_build_decl(FIELD_DECL,
-            v->ident ? get_identifier(v->ident->string) : NULL_TREE,
-            gen.trueDeclarationType(v));
-        v->toSymbol()->SclosureField = field;
+                                  v->ident ? get_identifier(v->ident->string) : NULL_TREE,
+                                  gen.trueDeclarationType(v));
+        v->toSymbol()->SframeField = field;
         g.ofile->setDeclLoc(field, v);
         DECL_CONTEXT(field) = closure_rec_type;
         fields.chain(field);
@@ -3230,14 +3278,14 @@ FuncDeclaration::buildClosure(IRState * irs)
 
     DECL_INITIAL(closure_ptr) =
         irs->nop(irs->libCall(LIBCALL_ALLOCMEMORY, 1, & arg),
-            TREE_TYPE(closure_ptr));
+                 TREE_TYPE(closure_ptr));
     irs->expandDecl(closure_ptr);
 
     // set the first entry to the parent closure, if any
-    tree cl = irs->closureLink();
+    tree cl = irs->chainLink();
     if (cl)
         irs->doExp(irs->vmodify(irs->component(irs->indirect(closure_ptr),
-                    ptr_field), cl));
+                   ptr_field), cl));
 
     // copy parameters that are referenced nonlocally
     for (unsigned i = 0; i < closureVars.dim; i++)
@@ -3249,10 +3297,10 @@ FuncDeclaration::buildClosure(IRState * irs)
 
         Symbol * vsym = v->toSymbol();
         irs->doExp(irs->vmodify(irs->component(irs->indirect(closure_ptr),
-                    vsym->SclosureField), vsym->Stree));
+                   vsym->SframeField), vsym->Stree));
     }
 
-    irs->useClosure(this, closure_ptr);
+    irs->useChain(this, closure_ptr);
 }
 #endif
 
@@ -3266,10 +3314,11 @@ Module::genobjfile(int multiobj)
     g.ofile->beginModule(this);
     g.ofile->setupStaticStorage(this, toSymbol()->Stree);
 
-    if (members) {
-        for (unsigned i = 0; i < members->dim; i++) {
+    if (members)
+    {
+        for (unsigned i = 0; i < members->dim; i++)
+        {
             Dsymbol * dsym = (Dsymbol *) members->data[i];
-
             dsym->toObjFile(multiobj);
         }
     }
@@ -3358,16 +3407,14 @@ Type::toCtype()
                 break;
             case Tbool:
                 if (int_size_in_bytes(boolean_type_node) == 1)
-                {
                     ctype = boolean_type_node;
-                    break;
+                else
+                {
+                    ctype = make_unsigned_type(1);
+                    TREE_SET_CODE(ctype, BOOLEAN_TYPE);
+                    gcc_assert(int_size_in_bytes(ctype) == 1);
+                    dkeep(ctype);
                 }
-                // else, drop through
-            case Tbit:
-                ctype = make_unsigned_type(1);
-                TREE_SET_CODE(ctype, BOOLEAN_TYPE);
-                gcc_assert(int_size_in_bytes(ctype) == 1);
-                dkeep(ctype);
                 break;
             case Tchar:
                 ctype = d_char_type_node;
@@ -3645,17 +3692,10 @@ TypeFunction::toCtype()
         if (parameters)
         {
             size_t n_args = Parameter::dim(parameters);
-            size_t argnum = 0, inc = 1;
-#if D_DMD_CALLING_CONVENTIONS
-            if (linkage == LINKd && varargs != 1)
-            {   // In this case, reverse order so last arg
-                // gets pushed first.
-                argnum = n_args - 1, inc = -1;
-            }
-#endif
-            for (size_t i = 0; i < n_args; i++, argnum += inc)
+            
+            for (size_t i = 0; i < n_args; i++)
             {
-                Parameter * arg = Parameter::getNth(parameters, argnum);
+                Parameter * arg = Parameter::getNth(parameters, i);
                 type_list.cons(IRState::trueArgumentType(arg));
             }
         }
@@ -3803,6 +3843,7 @@ TypeAArray::toCtype()
                                        get_identifier("ptr"), ptr_type_node);
             DECL_CONTEXT(f0) = aa_type;
             TYPE_FIELDS(aa_type) = f0;
+            TYPE_NAME(aa_type) = get_identifier(toChars());
             layout_type(aa_type);
             dkeep(aa_type);
         }
@@ -4112,7 +4153,21 @@ ThrowStatement::toIR(IRState* irs)
     ClassDeclaration * class_decl = exp->type->toBasetype()->isClassHandle();
     // Front end already checks for isClassHandle
     InterfaceDeclaration * intfc_decl = class_decl->isInterfaceDeclaration();
+#if V2
+    tree arg = exp->toElemDtor(irs);
+#else
     tree arg = exp->toElem(irs);
+#endif
+
+    if (! flag_exceptions)
+    {
+        static int warned = 0;
+        if (! warned)
+        {
+            error ("exception handling disabled, use -fexceptions to enable");
+            warned = 1;
+        }
+    }
 
     if (intfc_decl)
     {
@@ -4195,19 +4250,16 @@ OnScopeStatement::toIR(IRState *)
 void
 WithStatement::toIR(IRState * irs)
 {
+    irs->startScope();
     if (wthis)
     {
-        irs->startScope();
         irs->emitLocalVar(wthis);
     }
     if (body)
     {
         body->toIR(irs);
     }
-    if (wthis)
-    {
-        irs->endScope();
-    }
+    irs->endScope();
 }
 
 void
@@ -4323,8 +4375,11 @@ ReturnStatement::toIR(IRState* irs)
             ret_type = Type::tint32;
 
         tree result_decl = DECL_RESULT(irs->func->toSymbol()->Stree);
+#if V1
         tree result_value = irs->convertForAssignment(exp, ret_type);
-#if V2
+#else
+        tree result_value = irs->convertForAssignment(exp->toElemDtor(irs),
+                                                      exp->type, ret_type);
         // %% convert for init -- if we were returning a reference,
         // would want to take the address...
         if (tf->isref)
@@ -4332,12 +4387,17 @@ ReturnStatement::toIR(IRState* irs)
             result_value = irs->addressOf(result_value);
         }
         else if (exp->type->toBasetype()->ty == Tstruct &&
-                 (exp->op == TOKvar || exp->op == TOKdotvar || exp->op == TOKstar))
+                 (exp->op == TOKvar || exp->op == TOKdotvar || exp->op == TOKstar || exp->op == TOKthis))
         {   // Maybe call postblit on result_value
             StructDeclaration * sd;
             if ((sd = needsPostblit(exp->type->toBasetype())) != NULL)
             {
                 Array args;
+                FuncDeclaration * fd = sd->postblit;
+                if (fd->storage_class & STCdisable)
+                {
+                    fd->toParent()->error(loc, "is not copyable because it is annotated with @disable");
+                }
                 tree call_exp = irs->call(sd->postblit, irs->addressOf(result_value), & args);
                 irs->addExp(call_exp);
             }
@@ -4389,8 +4449,11 @@ SwitchStatement::toIR(IRState * irs)
     tree cond_tree;
     // %% also what about c-semantics doing emit_nop() ?
     irs->doLineNote(loc);
-
+#if V2
+    cond_tree = condition->toElemDtor(irs);
+#else
     cond_tree = condition->toElem(irs);
+#endif
 
     Type * cond_type = condition->type->toBasetype();
     if (cond_type->ty == Tarray)
@@ -4458,7 +4521,7 @@ SwitchStatement::toIR(IRState * irs)
         {
             CaseStatement * case_stmt = (CaseStatement *) cases->data[i];
             tree case_cond = build2(EQ_EXPR, cond_type->toCtype(), cond_tree,
-                                    case_stmt->exp->toElem(irs));
+                                    case_stmt->exp->toElemDtor(irs));
             irs->startCond(this, case_cond);
             irs->doJump(NULL, case_stmt->cblock);
             irs->endCond();
@@ -4490,11 +4553,15 @@ Statement::toIR(IRState*)
 void
 IfStatement::toIR(IRState * irs)
 {
+    irs->doLineNote(loc);
+    irs->startScope();
+
+#if 0
     if (match)
     {
-        irs->startScope();
         irs->emitLocalVar(match);
     }
+#endif
     irs->startCond(this, condition);
     if (ifbody)
     {
@@ -4506,10 +4573,7 @@ IfStatement::toIR(IRState * irs)
         elsebody->toIR(irs);
     }
     irs->endCond();
-    if (match)
-    {
-        irs->endScope();
-    }
+    irs->endScope();
 }
 
 void
@@ -4725,6 +4789,7 @@ ForStatement::toIR(IRState * irs)
     irs->startLoop(this);
     if (condition)
     {
+        irs->doLineNote(condition->loc);
         irs->exitIfFalse(condition);
     }
     if (body)
@@ -4734,7 +4799,12 @@ ForStatement::toIR(IRState * irs)
     irs->continueHere();
     if (increment)
     {   // force side effects?
+        irs->doLineNote(increment->loc);
+#if V2
+        irs->doExp(increment->toElemDtor(irs));
+#else
         irs->doExp(increment->toElem(irs));
+#endif
     }
     irs->endLoop();
 }
@@ -4749,6 +4819,7 @@ DoStatement::toIR(IRState * irs)
         body->toIR(irs);
     }
     irs->continueHere();
+    irs->doLineNote(condition->loc);
     irs->exitIfFalse(condition);
     irs->endLoop();
 }
@@ -4825,7 +4896,11 @@ ExpStatement::toIR(IRState * irs)
     if (exp)
     {
         gen.doLineNote(loc);
+#if V2
+        tree exp_tree = exp->toElemDtor(irs);
+#else
         tree exp_tree = exp->toElem(irs);
+#endif
         irs->doExp(exp_tree);
     }
 }
@@ -4833,6 +4908,12 @@ ExpStatement::toIR(IRState * irs)
 #if V2
 void
 PragmaStatement::toIR(IRState *)
+{
+    // nothing
+}
+
+void
+ImportStatement::toIR(IRState* irs)
 {
     // nothing
 }
@@ -4896,8 +4977,11 @@ gcc_d_backend_init()
     // built-in functions.
     flag_signed_char = 0;
     // This is required or we'll crash pretty early on. %%log
+#if D_GCC_VER >= 46
+    build_common_tree_nodes (flag_signed_char);
+#else
     build_common_tree_nodes (flag_signed_char, false);
-
+#endif
 
     // This is also required (or the manual equivalent) or crashes
     // will occur later
@@ -4906,7 +4990,6 @@ gcc_d_backend_init()
 
     // If this is called after the next statements, you'll get an ICE.
     set_sizetype(size_type_node);
-
 
     // need this for void.. %% but this crashes... probably need to impl
     // some things in dc-lang.cc
@@ -4934,20 +5017,6 @@ gcc_d_backend_init()
     REALSIZE = int_size_in_bytes(long_double_type_node);
     REALPAD = 0;
     PTRSIZE = int_size_in_bytes(ptr_type_node);
-
-    switch (int_size_in_bytes(size_type_node))
-    {
-        case 4:
-            Tsize_t = Tuns32;
-            Tindex = Tint32;
-            break;
-        case 8:
-            Tsize_t = Tuns64;
-            Tindex = Tint64;
-            break;
-        default:
-            gcc_unreachable();
-    }
 
     switch (PTRSIZE)
     {

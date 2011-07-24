@@ -47,23 +47,6 @@ version (Windows)
 
 version (all)
 {
-    Throwable _d_unhandled = null;
-
-    // TODO: Make this accept Throwable instead.
-    extern (C) void _d_setUnhandled(Object* o)
-    {
-        auto t = cast(Throwable) o;
-
-        if (t !is null)
-        {
-            if (cast(byte*) t is t.classinfo.init.ptr)
-                return;
-            if (t !is _d_unhandled)
-                t.next = _d_unhandled;
-        }
-        _d_unhandled = t;
-    }
-
     extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null);
 
     extern (C) void _d_createTrace(Object *o)
@@ -365,8 +348,7 @@ extern (C) bool rt_term(ExceptionHandler dg = null)
 /***********************************
  * The D main() function supplied by the user's program
  */
-//int main(char[][] args);
-extern (C) alias int function(char[][] args) main_type;
+int main(char[][] args);
 
 /***********************************
  * Substitutes for the C main() function.
@@ -374,19 +356,7 @@ extern (C) alias int function(char[][] args) main_type;
  * function and catch any unhandled exceptions.
  */
 
-/* Note that this is not the C main function, nor does it refer
-   to the D main function as in the DMD version.  The actual C
-   main is in cmain.d
-
-   This serves two purposes:
-   1) Special applications that have a C main declared elsewhere.
-
-   2) It is possible to create D shared libraries that can be used
-   by non-D executables. (TODO: Not complete, need a general library
-   init routine.)
-*/
-
-extern (C) int _d_run_main(int argc, char** argv, main_type main_func)
+extern (C) int main(int argc, char** argv)
 {
     char[][] args;
     int result;
@@ -472,6 +442,74 @@ extern (C) int _d_run_main(int argc, char** argv, main_type main_func)
 
     void tryExec(scope void delegate() dg)
     {
+        void printLocLine(Throwable t)
+        {
+            if (t.file)
+            {
+               console(t.classinfo.name)("@")(t.file)("(")(t.line)(")");
+            }
+            else
+            {
+                console(t.classinfo.name);
+            }
+            console("\n");
+        }
+
+        void printMsgLine(Throwable t)
+        {
+            if (t.file)
+            {
+               console(t.classinfo.name)("@")(t.file)("(")(t.line)(")");
+            }
+            else
+            {
+                console(t.classinfo.name);
+            }
+            if (t.msg)
+            {
+                console(": ")(t.msg);
+            }
+            console("\n");
+        }
+
+        void printInfoBlock(Throwable t)
+        {
+            if (t.info)
+            {
+                console("----------------\n");
+                foreach (i; t.info)
+                    console(i)("\n");
+                console("----------------\n");
+            }
+        }
+
+        void print(Throwable t)
+        {
+            Throwable firstWithBypass = null;
+
+            for (; t; t = t.next)
+            {
+                printMsgLine(t);
+                printInfoBlock(t);
+                auto e = cast(Error) t;
+                if (e && e.bypassedException)
+                {
+                    console("Bypasses ");
+                    printLocLine(e.bypassedException);
+                    if (firstWithBypass is null)
+                        firstWithBypass = t;
+                }
+            }
+            if (firstWithBypass is null)
+                return;
+            console("=== Bypassed ===\n");
+            for (t = firstWithBypass; t; t = t.next)
+            {
+                auto e = cast(Error) t;
+                if (e && e.bypassedException)
+                    print(e.bypassedException);
+            }
+        }
 
         if (trapExceptions)
         {
@@ -479,33 +517,9 @@ extern (C) int _d_run_main(int argc, char** argv, main_type main_func)
             {
                 dg();
             }
-            catch (Throwable e)
+            catch (Throwable t)
             {
-                /+
-                while (e)
-                {
-                    if (e.file)
-                    {
-                        // fprintf(stderr, "%.*s(%u): %.*s\n", e.file, e.line, e.msg);
-                        console (e.classinfo.name)("@")(e.file)("(")(e.line)("): ")(e.msg)("\n");
-                    }
-                    else
-                    {
-                        // fprintf(stderr, "%.*s\n", e.toString());
-                        console (e.toString)("\n");
-                    }
-                    if (e.info)
-                    {
-                        console ("----------------\n");
-                        foreach (t; e.info)
-                            console (t)("\n");
-                    }
-                    if (e.next)
-                        console ("\n");
-                    e = e.next;
-                }
-                +/
-                console (e.toString)("\n");
+                print(t);
                 result = EXIT_FAILURE;
             }
         }
@@ -526,7 +540,7 @@ extern (C) int _d_run_main(int argc, char** argv, main_type main_func)
 
     void runMain()
     {
-        result = main_func(args);
+        result = main(args);
     }
 
     void runAll()

@@ -2,7 +2,7 @@
    Copyright (C) 2004 David Friedman
 
    Modified by
-    Iain Buclaw, (C) 2010
+    Iain Buclaw, (C) 2010, 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -39,9 +39,7 @@ Symbol::Symbol()
 
     Stree = 0; // %% make it NULL-TREE, include d-gcc-include
     ScontextDecl = 0;
-#if V2
-    SclosureField = 0;
-#endif
+    SframeField = 0;
 
     thunks = NULL;
     otherNestedFuncs = NULL;

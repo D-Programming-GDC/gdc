@@ -13,7 +13,7 @@
    Modified by David Friedman, December 2006
 */
 
-#define POSIX (linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4)
+#define POSIX (linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4)
 
 #include <stdio.h>
 #include <stdlib.h>

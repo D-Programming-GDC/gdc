@@ -16,6 +16,7 @@
 ; Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ; This is used in GCC 3.4+
+; %% TODO cleanup in ASCII collating order.
 
 Language
 D
@@ -97,17 +98,13 @@ fonly=
 D Joined RejectNegative
 Process all modules specified on the command line, but only generate code for the module specified by the argument.
 
-fod=
-D Joined RejectNegative
--fod=<directory> Specify the object output directory. Note: this is actually a driver option; the backend ignores it.
-
-fop
-D
-Specify that the source file's parent directories should be appended to the object output directory. Note: this is actually a driver option; the backend ignores it.
-
 fignore-unknown-pragmas
 D
 Ignore unsupported pragmas
+
+fproperty
+D
+Enforce property syntax
 
 fintfc
 Generate D interface files
@@ -191,3 +188,28 @@ Error out the compiler on warnings
 fXf=
 D Joined RejectNegative
 -fXf=<filename> Write JSON file to <filename>
+
+
+; Everything below this line is used in 4.6+
+
+debuglib=
+Driver Joined
+Debug library to use instead of phobos
+
+defaultlib=
+Driver Joined
+Default library to use instead of phobos
+
+fod=
+Driver Joined
+-fod=<directory> Specify the object output directory.
+
+fop
+Driver
+Specify that the source file's parent directories should be appended to the object output directory.
+
+nophoboslib
+Driver
+
+static_libphobos
+Driver

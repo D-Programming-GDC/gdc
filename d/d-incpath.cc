@@ -43,7 +43,7 @@ add_env_var_paths (const char *env_var)
 {
     char *p, *q, *path;
 
-    GET_ENVIRONMENT (q, env_var);
+    q = getenv (env_var);
 
     if (!q)
         return;

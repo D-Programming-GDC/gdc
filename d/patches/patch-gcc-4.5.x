@@ -1,5 +1,5 @@
 --- gcc.orig/cgraph.c	2010-07-01 12:03:31.000000000 +0100
-+++ gcc/cgraph.c	2011-03-21 18:37:34.308055890 +0000
++++ gcc/cgraph.c	2011-03-22 00:31:28.341349775 +0000
 @@ -464,6 +464,7 @@ struct cgraph_node *
  cgraph_node (tree decl)
  {
@@ -29,7 +29,7 @@
    if (assembler_name_hash)
      {
 --- gcc.orig/config/i386/i386.c	2010-09-30 21:24:54.000000000 +0100
-+++ gcc/config/i386/i386.c	2011-03-27 19:42:43.877984330 +0100
++++ gcc/config/i386/i386.c	2011-07-24 12:50:17.370885866 +0100
 @@ -4466,6 +4466,10 @@ ix86_handle_cconv_attribute (tree *node,
          {
  	  error ("fastcall and stdcall attributes are not compatible");
@@ -105,7 +105,28 @@
  	}
  
        /* Set up the number of SSE registers used for passing SFmode
-@@ -8131,6 +8171,10 @@ ix86_compute_frame_layout (struct ix86_f
+@@ -7529,6 +7569,9 @@ ix86_can_use_return_insn_p (void)
+   if (! reload_completed || frame_pointer_needed)
+     return 0;
+ 
++  if (cfun->naked)
++    return 0;
++
+   /* Don't allow more than 32 pop, since that's all we can do
+      with one instruction.  */
+   if (crtl->args.pops_args
+@@ -7568,6 +7611,10 @@ ix86_frame_pointer_required (void)
+   if (crtl->profile)
+     return true;
+ 
++  /* Optink mandates the setting up of ebp, unless 'naked' is used.  */
++  if (crtl->args.info.optlink && !cfun->naked)
++    return true;
++
+   return false;
+ }
+ 
+@@ -8131,6 +8178,10 @@ ix86_compute_frame_layout (struct ix86_f
      frame->red_zone_size = 0;
    frame->to_allocate -= frame->red_zone_size;
    frame->stack_pointer_offset -= frame->red_zone_size;
@@ -116,7 +137,7 @@
  }
  
  /* Emit code to save registers in the prologue.  */
-@@ -26366,7 +26410,7 @@ x86_output_mi_thunk (FILE *file,
+@@ -26366,7 +26417,7 @@ x86_output_mi_thunk (FILE *file,
  	  output_set_got (tmp, NULL_RTX);
  
  	  xops[1] = tmp;
@@ -125,7 +146,7 @@
  	  output_asm_insn ("jmp\t{*}%1", xops);
  	}
      }
-@@ -28996,6 +29040,8 @@ static const struct attribute_spec ix86_
+@@ -28996,6 +29047,8 @@ static const struct attribute_spec ix86_
    /* Sseregparm attribute says we are using x86_64 calling conventions
       for FP arguments.  */
    { "sseregparm", 0, 0, false, true, true, ix86_handle_cconv_attribute },
@@ -135,7 +156,7 @@
    { (const char *)&ix86_force_align_arg_pointer_string, 0, 0,
      false, true,  true, ix86_handle_cconv_attribute },
 --- gcc.orig/config/i386/i386.h	2010-04-27 21:14:19.000000000 +0100
-+++ gcc/config/i386/i386.h	2011-03-24 09:03:24.388004311 +0000
++++ gcc/config/i386/i386.h	2011-04-25 00:46:47.553601354 +0100
 @@ -1581,6 +1581,7 @@ typedef struct ix86_args {
    int nregs;			/* # registers available for passing */
    int regno;			/* next available register number */
@@ -145,7 +166,7 @@
    int sse_nregs;		/* # sse registers available for passing */
    int warn_avx;			/* True when we want to warn about AVX ABI.  */
 --- gcc.orig/config/rs6000/rs6000.c	2010-11-17 06:09:53.000000000 +0000
-+++ gcc/config/rs6000/rs6000.c	2011-03-21 18:37:34.684057757 +0000
++++ gcc/config/rs6000/rs6000.c	2011-03-22 00:31:28.417350149 +0000
 @@ -20365,6 +20365,7 @@ rs6000_output_function_epilogue (FILE *f
  	 a number, so for now use 9.  LTO isn't assigned a number either,
  	 so for now use 0.  */
@@ -155,7 +176,7 @@
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
 --- gcc.orig/dojump.c	2010-02-19 18:19:06.000000000 +0000
-+++ gcc/dojump.c	2011-03-21 18:37:34.852058580 +0000
++++ gcc/dojump.c	2011-04-25 02:24:02.758536569 +0100
 @@ -80,7 +80,8 @@ void
  clear_pending_stack_adjust (void)
  {
@@ -167,7 +188,7 @@
      discard_pending_stack_adjust ();
  }
 --- gcc.orig/dwarf2out.c	2010-12-07 15:12:45.000000000 +0000
-+++ gcc/dwarf2out.c	2011-03-21 18:37:35.032059476 +0000
++++ gcc/dwarf2out.c	2011-03-22 00:31:28.509350608 +0000
 @@ -18729,6 +18729,8 @@ gen_compile_unit_die (const char *filena
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
@@ -186,22 +207,8 @@
  
        /* If we are in terse mode, don't generate any DIEs to represent any
  	 variable declarations or definitions.  */
---- gcc.orig/expr.c	2010-09-21 15:18:34.000000000 +0100
-+++ gcc/expr.c	2011-03-21 18:37:35.080059715 +0000
-@@ -9625,6 +9625,11 @@ expand_expr_real_1 (tree exp, rtx target
-       /* Lowered by gimplify.c.  */
-       gcc_unreachable ();
- 
-+    case STATIC_CHAIN_EXPR:
-+    case STATIC_CHAIN_DECL:
-+      /* Lowered by tree-nested.c */
-+      gcc_unreachable ();
-+
-     case FDESC_EXPR:
-       /* Function descriptors are not valid except for as
- 	 initialization constants, and should not be expanded.  */
 --- gcc.orig/function.c	2010-08-16 21:18:08.000000000 +0100
-+++ gcc/function.c	2011-03-21 18:37:35.096059805 +0000
++++ gcc/function.c	2011-07-24 12:29:15.576628946 +0100
 @@ -3202,7 +3202,8 @@ assign_parms (tree fndecl)
        FUNCTION_ARG_ADVANCE (all.args_so_far, data.promoted_mode,
  			    data.passed_type, data.named_arg);
@@ -232,25 +239,16 @@
    assign_parms_initialize_all (&all);
    fnargs = assign_parms_augmented_arg_list (&all);
  
-@@ -4472,11 +4477,15 @@ expand_function_start (tree subr)
-       local = gen_reg_rtx (Pmode);
-       chain = targetm.calls.static_chain (current_function_decl, true);
- 
--      set_decl_incoming_rtl (parm, chain, false);
+@@ -4475,7 +4480,7 @@ expand_function_start (tree subr)
+       set_decl_incoming_rtl (parm, chain, false);
        SET_DECL_RTL (parm, local);
        mark_reg_pointer (local, TYPE_ALIGN (TREE_TYPE (TREE_TYPE (parm))));
- 
--      insn = emit_move_insn (local, chain);
-+      if (!cfun->custom_static_chain)
-+	{
-+	  set_decl_incoming_rtl (parm, chain, false);
-+	  insn = emit_move_insn (local, chain);
-+	}
-+      /* else, the static chain will be set in the main body */
+-
++      
+       insn = emit_move_insn (local, chain);
  
        /* Mark the register as eliminable, similar to parameters.  */
-       if (MEM_P (chain)
-@@ -5015,6 +5024,9 @@ thread_prologue_and_epilogue_insns (void
+@@ -5015,6 +5020,9 @@ thread_prologue_and_epilogue_insns (void
  #endif
    edge_iterator ei;
  
@@ -261,24 +259,20 @@
  #ifdef HAVE_prologue
    if (HAVE_prologue)
 --- gcc.orig/function.h	2009-11-25 10:55:54.000000000 +0000
-+++ gcc/function.h	2011-03-21 18:37:35.104059824 +0000
-@@ -596,6 +596,14 @@ struct GTY(()) function {
++++ gcc/function.h	2011-07-24 12:29:23.188666683 +0100
+@@ -596,6 +596,10 @@ struct GTY(()) function {
       adjusts one of its arguments and forwards to another
       function.  */
    unsigned int is_thunk : 1;
 +
-+  /* Nonzero if static chain is initialized by something other than
-+     static_chain_incoming_rtx. */
-+  unsigned int custom_static_chain : 1;
-+
-+  /* Nonzero if no code should be generated for prologues, copying
-+     parameters, etc. */
++   /* Nonzero if no code should be generated for prologues, copying
++      parameters, etc. */
 +  unsigned int naked : 1;
  };
  
  /* If va_list_[gf]pr_size is set to this, it means we don't know how
 --- gcc.orig/gcc.c	2010-04-18 18:46:08.000000000 +0100
-+++ gcc/gcc.c	2011-03-21 18:37:35.116059904 +0000
++++ gcc/gcc.c	2011-03-24 22:54:48.766216607 +0000
 @@ -139,6 +139,9 @@ int is_cpp_driver;
  /* Flag set to nonzero if an @file argument has been supplied to gcc.  */
  static bool at_file_supplied;
@@ -344,39 +338,8 @@
  	    /* Here we define characters other than letters and digits.  */
  
  	  case '{':
---- gcc.orig/gimple.c	2010-06-22 19:23:11.000000000 +0100
-+++ gcc/gimple.c	2011-03-21 18:37:35.124059923 +0000
-@@ -2404,6 +2404,8 @@ get_gimple_rhs_num_ops (enum tree_code c
-       || (SYM) == POLYNOMIAL_CHREC					    \
-       || (SYM) == DOT_PROD_EXPR						    \
-       || (SYM) == VEC_COND_EXPR						    \
-+      || (SYM) == STATIC_CHAIN_DECL					    \
-+      || (SYM) == STATIC_CHAIN_EXPR /* not sure if this is right...*/	    \
-       || (SYM) == REALIGN_LOAD_EXPR) ? GIMPLE_SINGLE_RHS		    \
-    : GIMPLE_INVALID_RHS),
- #define END_OF_BASE_TREE_CODES (unsigned char) GIMPLE_INVALID_RHS,
-@@ -2460,7 +2462,10 @@ is_gimple_lvalue (tree t)
- 	  || TREE_CODE (t) == WITH_SIZE_EXPR
- 	  /* These are complex lvalues, but don't have addresses, so they
- 	     go here.  */
--	  || TREE_CODE (t) == BIT_FIELD_REF);
-+	  || TREE_CODE (t) == BIT_FIELD_REF
-+	  /* This is an lvalue because it will be replaced with the real
-+	     static chain decl. */
-+	  || TREE_CODE (t) == STATIC_CHAIN_DECL);
- }
- 
- /*  Return true if T is a GIMPLE condition.  */
-@@ -2694,6 +2699,7 @@ is_gimple_variable (tree t)
-   return (TREE_CODE (t) == VAR_DECL
- 	  || TREE_CODE (t) == PARM_DECL
- 	  || TREE_CODE (t) == RESULT_DECL
-+	  || TREE_CODE (t) == STATIC_CHAIN_DECL
- 	  || TREE_CODE (t) == SSA_NAME);
- }
- 
 --- gcc.orig/ira.c	2010-09-09 14:55:35.000000000 +0100
-+++ gcc/ira.c	2011-03-21 18:37:35.136060003 +0000
++++ gcc/ira.c	2011-04-25 02:26:12.763181215 +0100
 @@ -1440,7 +1440,7 @@ ira_setup_eliminable_regset (void)
       case.  At some point, we should improve this by emitting the
       sp-adjusting insns for this case.  */
@@ -386,152 +349,8 @@
         || (cfun->calls_alloca && EXIT_IGNORE_STACK)
         /* We need the frame pointer to catch stack overflow exceptions
  	  if the stack pointer is moving.  */
---- gcc.orig/tree.def	2010-04-02 20:54:46.000000000 +0100
-+++ gcc/tree.def	2011-03-21 18:37:35.140060012 +0000
-@@ -543,6 +543,13 @@ DEFTREECODE (BIND_EXPR, "bind_expr", tcc
-    arguments to the call.  */
- DEFTREECODE (CALL_EXPR, "call_expr", tcc_vl_exp, 3)
- 
-+/* Operand 0 is the FUNC_DECL of the outer function for
-+   which the static chain is to be computed. */
-+DEFTREECODE (STATIC_CHAIN_EXPR, "static_chain_expr", tcc_expression, 1)
-+
-+/* Represents a function's static chain.  It can be used as an lvalue. */
-+DEFTREECODE (STATIC_CHAIN_DECL, "static_chain_decl", tcc_expression, 0)
-+
- /* Specify a value to compute along with its corresponding cleanup.
-    Operand 0 is the cleanup expression.
-    The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
---- gcc.orig/tree-inline.c	2010-09-25 22:38:56.000000000 +0100
-+++ gcc/tree-inline.c	2011-03-25 11:03:45.453705021 +0000
-@@ -2023,6 +2023,7 @@ initialize_cfun (tree new_fndecl, tree c
- 
-   /* Copy items we preserve during clonning.  */
-   cfun->static_chain_decl = src_cfun->static_chain_decl;
-+  cfun->custom_static_chain = src_cfun->custom_static_chain;
-   cfun->nonlocal_goto_save_area = src_cfun->nonlocal_goto_save_area;
-   cfun->function_end_locus = src_cfun->function_end_locus;
-   cfun->curr_properties = src_cfun->curr_properties;
-@@ -2607,7 +2608,8 @@ initialize_inlined_parameters (copy_body
-   /* Initialize the static chain.  */
-   p = DECL_STRUCT_FUNCTION (fn)->static_chain_decl;
-   gcc_assert (fn != current_function_decl);
--  if (p)
-+  /* Custom static chain has already been dealt with.  */
-+  if (p && !DECL_STRUCT_FUNCTION (fn)->custom_static_chain)
-     {
-       /* No static chain?  Seems like a bug in tree-nested.c.  */
-       gcc_assert (static_chain);
---- gcc.orig/tree-nested.c	2010-08-31 22:08:15.000000000 +0100
-+++ gcc/tree-nested.c	2011-03-26 20:20:08.407581283 +0000
-@@ -750,6 +750,8 @@ get_static_chain (struct nesting_info *i
- 
-   if (info->context == target_context)
-     {
-+      /* might be doing something wrong to need the following line.. */
-+      get_frame_type (info);
-       x = build_addr (info->frame_decl, target_context);
-     }
-   else
-@@ -1888,6 +1890,10 @@ convert_tramp_reference_op (tree *tp, in
-       if (!DECL_STATIC_CHAIN (decl))
- 	break;
- 
-+      /* Don't use a trampoline for a static reference. */
-+      if (TREE_STATIC (t))
-+	break;
-+
-       /* If we don't want a trampoline, then don't build one.  */
-       if (TREE_NO_TRAMPOLINE (t))
- 	break;
-@@ -2038,6 +2044,25 @@ convert_gimple_call (gimple_stmt_iterato
-       walk_body (convert_gimple_call, NULL, info, gimple_omp_body (stmt));
-       break;
- 
-+    case GIMPLE_ASSIGN:
-+      /* Deal with static_chain_decl */
-+      decl = gimple_op(stmt, 0);
-+      if (TREE_CODE (decl) == STATIC_CHAIN_DECL)
-+	{
-+	  tree chain = get_chain_decl (info);
-+	  gimple_assign_set_lhs (stmt, chain);
-+	  break;
-+	}
-+      /* Deal with static_chain_expr */
-+      decl = gimple_op(stmt, 1);
-+      if (TREE_CODE (decl) == STATIC_CHAIN_EXPR)
-+	{
-+	  tree chain = get_static_chain (info, TREE_OPERAND (decl, 0), &wi->gsi);
-+	  gimple_assign_set_rhs1 (stmt, chain);
-+	  break;
-+	}
-+      /* FALLTHRU */
-+
-     default:
-       /* Keep looking for other operands.  */
-       *handled_ops_p = false;
-@@ -2366,8 +2391,38 @@ finalize_nesting_tree_1 (struct nesting_
-       gimple bind;
-       annotate_all_with_location (stmt_list, DECL_SOURCE_LOCATION (context));
-       bind = gimple_seq_first_stmt (gimple_body (context));
--      gimple_seq_add_seq (&stmt_list, gimple_bind_body (bind));
--      gimple_bind_set_body (bind, stmt_list);
-+
-+      if (DECL_STRUCT_FUNCTION (root->context)->custom_static_chain)
-+	{
-+	  /* This chicanery is needed to make sure the GIMPLE initialization
-+	     statements are in the right order
-+	     
-+	     CHAIN.3 = D.1614;
-+	     FRAME.0.__chain = CHAIN.3;
-+	     FRAME.0.m = m;
-+	   */
-+	  gimple_stmt_iterator gsi =
-+	      gsi_start (gimple_bind_body (bind));
-+	  int found = 0;
-+	  while (!gsi_end_p (gsi))
-+	    {
-+	      gimple g = gsi_stmt (gsi);
-+	      if (gimple_code (g) == GIMPLE_ASSIGN &&
-+		  gimple_op (g, 0) == root->chain_decl)
-+		{
-+		  gsi_insert_seq_after (& gsi, stmt_list, GSI_SAME_STMT);
-+		  found = 1;
-+		  break;
-+		}
-+	      gsi_next (& gsi);
-+	    }
-+	  gcc_assert (found);
-+	}
-+      else
-+	{
-+	  gimple_seq_add_seq (&stmt_list, gimple_bind_body (bind));
-+	  gimple_bind_set_body (bind, stmt_list);
-+	}
-     }
- 
-   /* If a chain_decl was created, then it needs to be registered with
---- gcc.orig/tree-pretty-print.c	2009-11-30 10:36:54.000000000 +0000
-+++ gcc/tree-pretty-print.c	2011-03-21 18:37:35.164060121 +0000
-@@ -1410,6 +1410,16 @@ dump_generic_node (pretty_printer *buffe
- 	pp_string (buffer, " [tail call]");
-       break;
- 
-+    case STATIC_CHAIN_EXPR:
-+      pp_string (buffer, "<<static chain of ");
-+      dump_generic_node (buffer, TREE_OPERAND (node, 0), spc, flags, false);
-+      pp_string (buffer, ">>");
-+      break;
-+
-+    case STATIC_CHAIN_DECL:
-+      pp_string (buffer, "<<static chain decl>>");
-+      break;
-+
-     case WITH_CLEANUP_EXPR:
-       NIY;
-       break;
 --- gcc.orig/tree-sra.c	2010-08-03 10:52:46.000000000 +0100
-+++ gcc/tree-sra.c	2011-03-21 18:37:35.172060172 +0000
++++ gcc/tree-sra.c	2011-03-22 00:31:28.597351039 +0000
 @@ -1505,6 +1505,8 @@ is_va_list_type (tree type)
  /* The very first phase of intraprocedural SRA.  It marks in candidate_bitmap
     those with type which is suitable for scalarization.  */
@@ -541,18 +360,3 @@
  static bool
  find_var_candidates (void)
  {
---- gcc.orig/tree-ssa-operands.c	2010-04-02 20:54:46.000000000 +0100
-+++ gcc/tree-ssa-operands.c	2011-03-21 18:37:35.192060263 +0000
-@@ -1001,6 +1001,12 @@ get_expr_operands (gimple stmt, tree *ex
-         return;
-       }
- 
-+    case STATIC_CHAIN_EXPR:
-+      {
-+	  get_expr_operands (stmt, &TREE_OPERAND (expr, 0), flags);
-+	  return;
-+      }
-+
-     case FUNCTION_DECL:
-     case LABEL_DECL:
-     case CONST_DECL:

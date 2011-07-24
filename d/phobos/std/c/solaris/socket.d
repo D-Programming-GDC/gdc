@@ -13,88 +13,12 @@ version (Solaris) { } else { static assert(0); }
 
 extern(C):
 
-alias uint socklen_t;
-
 enum: int
 {
-    AF_UNSPEC =     0,
-    AF_UNIX =       1,
-    AF_INET =       2,
-    AF_IPX =        23,
-    AF_APPLETALK =  16,
-    AF_INET6 =      26,
-    // ...
-
-    PF_UNSPEC =     AF_UNSPEC,
-    PF_UNIX =       AF_UNIX,
-    PF_INET =       AF_INET,
-    PF_IPX =        AF_IPX,
-    PF_APPLETALK =  AF_APPLETALK,
-    PF_INET6 =      AF_INET6,
-}
-
-enum: int
-{
-    SOL_SOCKET =  0xFFFF,
-}
-
-enum: int
-{
-    SO_DEBUG =       1,
-    SO_BROADCAST =   0x20,
-    SO_REUSEADDR =   4,
-    SO_LINGER =      0x80,
-    //SO_DONTLINGER =  ~SO_LINGER,
-    SO_OOBINLINE =   0x100,
-    SO_SNDBUF =      0x1001,
-    SO_RCVBUF =      0x1002,
-    SO_ACCEPTCONN =  2,
-    SO_DONTROUTE =   0x10,
-    SO_TYPE =        0x1008,
-
-    // netinet/tcp.h
-    TCP_NODELAY =    1,
-
     // netinet/in.h
     IP_MULTICAST_LOOP =  0x12,
     IP_ADD_MEMBERSHIP =  0x13,
     IP_DROP_MEMBERSHIP = 0x14,
-
-    // netinet6/in6.h
-    //IPV6_ADDRFORM =        1,
-    IPV6_PKTINFO =         0xb,
-    IPV6_HOPOPTS =         0xe,
-    IPV6_DSTOPTS =         0xf,
-    IPV6_RTHDR =           0x10,
-    IPV6_CHECKSUM =        0x18,
-    IPV6_HOPLIMIT =        0xc,
-    IPV6_NEXTHOP =         0xd,
-    //IPV6_AUTHHDR =         10,
-    IPV6_UNICAST_HOPS =    0x5,
-    IPV6_MULTICAST_IF =    0x6,
-    IPV6_MULTICAST_HOPS =  0x7,
-    IPV6_MULTICAST_LOOP =  0x8,
-    IPV6_JOIN_GROUP =      0x9,
-    IPV6_LEAVE_GROUP =     0xa,
-    //IPV6_ROUTER_ALERT =    22,
-    //IPV6_MTU_DISCOVER =    23,
-    //IPV6_MTU =             24,
-    //IPV6_RECVERR =         25,
-    IPV6_V6ONLY =          0x27,
-    //IPV6_JOIN_ANYCAST =    27,
-    //IPV6_LEAVE_ANYCAST =   28,
-    //IPV6_IPSEC_POLICY =    28,
-    //IPV6_XFRM_POLICY =     35,
-}
-
-// sys/socket.h
-enum: int
-{
-    MSG_OOB =        0x1,
-    MSG_PEEK =       0x2,
-    MSG_DONTROUTE =  0x4,
-    // Bug: Not supported on Solaris, but std.socket uses it in spades.
-    MSG_NOSIGNAL =   0,
 }
 
 enum: int
@@ -110,53 +34,6 @@ enum: int       // Not defined on Solaris, but that's okay.
     SD_SEND =     SHUT_WR,
     SD_BOTH =     SHUT_RDWR,
 }
-
-alias ushort sa_family_t;
-struct sockaddr
-{
-    sa_family_t sa_family;
-    ubyte[14] sa_data;
-}
-
-alias uint in_addr_t;
-alias ushort in_port_t;
-
-// netinet/in.h
-struct sockaddr_in
-{
-    sa_family_t sin_family;
-    in_port_t sin_port;
-    in_addr sin_addr;
-    ubyte[8] sin_zero;
-}
-
-// netinet6/in6.h
-struct sockaddr_in6
-{
-    sa_family_t sin6_family;
-    in_port_t sin6_port;
-    uint sin6_flowinfo;
-    in6_addr sin6_addr;
-    uint sin6_scope_id;
-    uint __sin6_src_id;
-}
-
-// netdb.h
-struct addrinfo
-{
-    int ai_flags;
-    int ai_family;
-    int ai_socktype;
-    int ai_protocol;
-    socklen_t ai_addrlen;
-    char* ai_canonname;
-    sockaddr* ai_addr;
-    addrinfo* ai_next;
-}
-
-// fcntl.h
-const int F_GETFL =       3;
-const int F_SETFL =       4;
 
 int socket(int af, int type, int protocol);
 int bind(int s, /*const*/ sockaddr* name, int namelen);
@@ -185,30 +62,6 @@ int gethostname(char* name, int namelen);
 int getaddrinfo(char* nodename, char* servname, addrinfo* hints, addrinfo** res);
 void freeaddrinfo(addrinfo* ai);
 int getnameinfo(sockaddr* sa, socklen_t salen, char* node, socklen_t nodelen, char* service, socklen_t servicelen, int flags);
-
-
-struct linger
-{
-        int l_onoff;
-        int l_linger;
-}
-
-// netdb.h
-struct protoent
-{
-        char* p_name;
-        char** p_aliases;
-        int p_proto;
-}
-
-// netdb.h
-struct servent
-{
-        char* s_name;
-        char** s_aliases;
-        int s_port;
-        char* s_proto;
-}
 
 
 version(BigEndian)
@@ -258,45 +111,6 @@ uint ntohl(uint x)
 }
 
 
-enum: int
-{
-        SOCK_STREAM =     2,
-        SOCK_DGRAM =      1,
-        SOCK_RAW =        4,
-        SOCK_RDM =        5,
-        SOCK_SEQPACKET =  6,
-}
-
-
-// netinet/in.h
-enum: int
-{
-        IPPROTO_IP =    0,
-        IPPROTO_ICMP =  1,
-        IPPROTO_IGMP =  2,
-        IPPROTO_GGP =   3,
-        IPPROTO_TCP =   6,
-        IPPROTO_PUP =   12,
-        IPPROTO_UDP =   17,
-        IPPROTO_IDP =   22,
-        IPPROTO_IPV6 =  41,
-        IPPROTO_ND =    77,
-        IPPROTO_RAW =   255,
-
-        IPPROTO_MAX =   256,
-}
-
-
-enum: uint
-{
-        INADDR_ANY =        0,
-        INADDR_LOOPBACK =   0x7F000001,
-        INADDR_BROADCAST =  0xFFFFFFFF,
-        INADDR_NONE =       0xFFFFFFFF,
-        ADDR_ANY =          INADDR_ANY,
-}
-
-
 // netdb.h
 enum: int
 {
@@ -307,80 +121,6 @@ enum: int
 }
 
 
-union in_addr
-{
-        private union _S_un_t
-        {
-                private struct _S_un_b_t
-                {
-                        uint8_t s_b1, s_b2, s_b3, s_b4;
-                }
-                _S_un_b_t S_un_b;
-
-                private struct _S_un_w_t
-                {
-                        ushort s_w1, s_w2;
-                }
-                _S_un_w_t S_un_w;
-
-                uint S_addr;
-        }
-        _S_un_t S_un;
-
-        uint s_addr;
-
-        struct
-        {
-                uint8_t s_net, s_host;
-
-                union
-                {
-                        ushort s_imp;
-
-                        struct
-                        {
-                                uint8_t s_lh, s_impno;
-                        }
-                }
-        }
-}
-
-
-union in6_addr
-{
-        private union _in6_u_t
-        {
-                uint8_t[16] u6_addr8;
-                ushort[8] u6_addr16;
-                uint[4] u6_addr32;
-        }
-        _in6_u_t in6_u;
-
-        uint8_t[16] s6_addr8;
-        ushort[8] s6_addr16;
-        uint[4] s6_addr32;
-}
-
-
-const in6_addr IN6ADDR_ANY = { s6_addr8: [0] };
-const in6_addr IN6ADDR_LOOPBACK = { s6_addr8: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] };
-//alias IN6ADDR_ANY IN6ADDR_ANY_INIT;
-//alias IN6ADDR_LOOPBACK IN6ADDR_LOOPBACK_INIT;
-
 const uint INET_ADDRSTRLEN = 16;
 const uint INET6_ADDRSTRLEN = 46;
 
-// netdb.h
-struct hostent
-{
-        char* h_name;
-        char** h_aliases;
-        int h_addrtype;
-        int h_length;
-        char** h_addr_list;
-
-        char* h_addr()
-        {
-                return h_addr_list[0];
-        }
-}

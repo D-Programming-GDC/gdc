@@ -183,10 +183,12 @@ void FuncDeclaration::semantic(Scope *sc)
         storage_class |= ad->storage_class & (STC_TYPECTOR | STCsynchronized);
     //printf("function storage_class = x%x\n", storage_class);
 
+#if IN_GCC
     if (attributes)
         attributes->append(sc->attributes);
     else
         attributes = sc->attributes;
+#endif
     if (ident == Id::ctor && !isCtorDeclaration())
         error("_ctor is reserved for constructors");
 
@@ -195,6 +197,10 @@ void FuncDeclaration::semantic(Scope *sc)
 
     if (isAbstract() && !isVirtual())
         error("non-virtual functions cannot be abstract");
+
+    // https://github.com/donc/dmd/commit/9f7b2f8cfe5d7482f2de7f9678c176d54abe237f#commitcomment-321724
+    //if (isOverride() && !isVirtual())
+        //error("cannot override a non-virtual function");
 
     if (isAbstract() && isFinal())
         error("cannot be both final and abstract");
@@ -618,7 +624,7 @@ void FuncDeclaration::semantic(Scope *sc)
             FuncDeclaration *fd = new FuncDeclaration(loc, loc,
                 Id::require, STCundefined, tf);
             fd->fbody = frequire;
-            Statement *s1 = new DeclarationStatement(loc, fd);
+            Statement *s1 = new ExpStatement(loc, fd);
             Expression *e = new CallExp(loc, new VarExp(loc, fd), (Expressions *)NULL);
             Statement *s2 = new ExpStatement(loc, e);
             frequire = new CompoundStatement(loc, s1, s2);
@@ -645,7 +651,7 @@ void FuncDeclaration::semantic(Scope *sc)
             FuncDeclaration *fd = new FuncDeclaration(loc, loc,
                 Id::ensure, STCundefined, tf);
             fd->fbody = fensure;
-            Statement *s1 = new DeclarationStatement(loc, fd);
+            Statement *s1 = new ExpStatement(loc, fd);
             Expression *eresult = NULL;
             if (outId)
                 eresult = new IdentifierExp(loc, outId);
@@ -718,6 +724,20 @@ void FuncDeclaration::semantic3(Scope *sc)
         }
     }
 
+    if (frequire)
+    {
+        for (int i = 0; i < foverrides.dim; i++)
+        {
+            FuncDeclaration *fdv = (FuncDeclaration *)foverrides.data[i];
+
+            if (fdv->fbody && !fdv->frequire)
+            {
+                error("cannot have an in contract when overriden function %s does not have an in contract", fdv->toPrettyChars());
+                break;
+            }
+        }
+    }
+
     frequire = mergeFrequire(frequire);
     fensure = mergeFensure(fensure);
 
@@ -741,7 +761,9 @@ void FuncDeclaration::semantic3(Scope *sc)
         sc2->fes = fes;
         sc2->linkage = LINKd;
         sc2->stc &= ~(STCauto | STCscope | STCstatic | STCabstract | STCdeprecated | STCfinal);
+#if IN_GCC
         sc2->attributes = NULL;
+#endif
         sc2->protection = PROTpublic;
         sc2->explicitProtection = 0;
         sc2->structalign = 8;
@@ -1110,7 +1132,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                 f = (TypeFunction *)type;
             }
 
-            int offend = fbody ? fbody->blockExit() & BEfallthru : TRUE;
+            int offend = fbody ? fbody->blockExit(FALSE) & BEfallthru : TRUE;
 
             if (isStaticCtorDeclaration())
             {   /* It's a static constructor. Ensure that all
@@ -1438,7 +1460,7 @@ void FuncDeclaration::semantic3(Scope *sc)
             {   /* Wrap the entire function body in a synchronized statement
                  */
                 AggregateDeclaration *ad = isThis();
-                ClassDeclaration *cd = ad ? ad->isClassDeclaration() : NULL;
+                ClassDeclaration *cd = ad ? ad->isClassDeclaration() : parent->isClassDeclaration();
 
                 if (cd)
                 {
@@ -1577,7 +1599,7 @@ Statement *FuncDeclaration::mergeFrequire(Statement *sf)
         }
 
         sf = fdv->mergeFrequire(sf);
-        if (fdv->fdrequire)
+        if (sf && fdv->fdrequire)
         {
             //printf("fdv->frequire: %s\n", fdv->frequire->toChars());
             /* Make the call:
@@ -1588,15 +1610,13 @@ Statement *FuncDeclaration::mergeFrequire(Statement *sf)
             Expression *e = new CallExp(loc, new VarExp(loc, fdv->fdrequire), eresult);
             Statement *s2 = new ExpStatement(loc, e);
 
-            if (sf)
-            {   Catch *c = new Catch(loc, NULL, NULL, sf);
-                Array *catches = new Array();
-                catches->push(c);
-                sf = new TryCatchStatement(loc, s2, catches);
-            }
-            else
-                sf = s2;
+            Catch *c = new Catch(loc, NULL, NULL, sf);
+            Array *catches = new Array();
+            catches->push(c);
+            sf = new TryCatchStatement(loc, s2, catches);
         }
+        else
+            return NULL;
     }
     return sf;
 }
@@ -2442,14 +2462,12 @@ int FuncDeclaration::addPostInvariant()
  * Generate a FuncDeclaration for a runtime library function.
  */
 
-FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, const char *name,
-    Type *t1, Type *t2, Type *t3)
+FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, const char *name, Type *t1, Type *t2, Type *t3)
 {
     return genCfunc(treturn, Lexer::idPool(name), t1, t2, t3);
 }
 
-FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id,
-    Type *t1, Type *t2, Type *t3)
+FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id, Type *t1, Type *t2, Type *t3)
 {
     FuncDeclaration *fd;
     TypeFunction *tf;
@@ -2975,7 +2993,7 @@ void StaticCtorDeclaration::semantic(Scope *sc)
         VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
         v->storage_class = STCstatic;
         Statements *sa = new Statements();
-        Statement *s = new DeclarationStatement(0, v);
+        Statement *s = new ExpStatement(0, v);
         sa->push(s);
         Expression *e = new IdentifierExp(0, id);
         e = new AddAssignExp(0, e, new IntegerExp(1));
@@ -3081,7 +3099,7 @@ void StaticDtorDeclaration::semantic(Scope *sc)
         VarDeclaration *v = new VarDeclaration(0, Type::tint32, id, NULL);
         v->storage_class = STCstatic;
         Statements *sa = new Statements();
-        Statement *s = new DeclarationStatement(0, v);
+        Statement *s = new ExpStatement(0, v);
         sa->push(s);
         Expression *e = new IdentifierExp(0, id);
         e = new AddAssignExp(0, e, new IntegerExp(-1));

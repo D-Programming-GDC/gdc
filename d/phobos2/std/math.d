@@ -3,7 +3,7 @@
 /**
  * Elementary mathematical functions
  *
- * Contains the elementary mathematical functions (powers, roots, 
+ * Contains the elementary mathematical functions (powers, roots,
  * and trignometric functions), and low-level floating-point operations.
  * Mathematical special functions are available in std.mathspecial.
  *
@@ -123,7 +123,7 @@ template floatTraits(T) {
     // EXPMASK is a ushort mask to select the exponent portion (without sign)
     // EXPPOS_SHORT is the index of the exponent when represented as a ushort array.
     // SIGNPOS_BYTE is the index of the sign when represented as a ubyte array.
-    // RECIP_EPSILON is the value such that (smallest_denormal) * RECIP_EPSILON == T.min_normal
+    // RECIP_EPSILON is the value such that (smallest_subnormal) * RECIP_EPSILON == T.min_normal
     enum T RECIP_EPSILON = (1/T.epsilon);
     static if (T.mant_dig == 24)
     { // float
@@ -207,21 +207,24 @@ else
 
 public:
 
-enum real E =          2.7182818284590452354L;  /** e */ // 0x1.5BF0A8B1_45769535_5FF5p+1L
-enum real LOG2T =      0x1.a934f0979a3715fcp+1; /** $(SUB log, 2)10 */ // 3.32193 fldl2t
-enum real LOG2E =      0x1.71547652b82fe178p+0; /** $(SUB log, 2)e */ // 1.4427 fldl2e
-enum real LOG2 =       0x1.34413509f79fef32p-2; /** $(SUB log, 10)2 */ // 0.30103 fldlg2
-enum real LOG10E =     0.43429448190325182765;  /** $(SUB log, 10)e */
-enum real LN2 =        0x1.62e42fefa39ef358p-1; /** ln 2 */  // 0.693147 fldln2
-enum real LN10 =       2.30258509299404568402;  /** ln 10 */
-enum real PI =         0x1.921fb54442d1846ap+1; /** $(_PI) */ // 3.14159 fldpi
-enum real PI_2 =       1.57079632679489661923;  /** $(PI) / 2 */
-enum real PI_4 =       0.78539816339744830962;  /** $(PI) / 4 */
-enum real M_1_PI =     0.31830988618379067154;  /** 1 / $(PI) */
-enum real M_2_PI =     0.63661977236758134308;  /** 2 / $(PI) */
-enum real M_2_SQRTPI = 1.12837916709551257390;  /** 2 / $(SQRT)$(PI) */
-enum real SQRT2 =      1.41421356237309504880;  /** $(SQRT)2 */
-enum real SQRT1_2 =    0.70710678118654752440;  /** $(SQRT)$(HALF) */
+// Values obtained from Wolfram Alpha. 116 bits ought to be enough for anybody.
+// Wolfram Alpha LLC. 2011. Wolfram|Alpha. http://www.wolframalpha.com/input/?i=e+in+base+16 (access July 6, 2011).
+enum real E =          0x1.5bf0a8b1457695355fb8ac404e7a8p+1L; /** e = 2.718281... */
+enum real LOG2T =      0x1.a934f0979a3715fc9257edfe9b5fbp+1L; /** $(SUB log, 2)10 = 3.321928... */
+enum real LOG2E =      0x1.71547652b82fe1777d0ffda0d23a8p+0L; /** $(SUB log, 2)e = 1.442695... */
+enum real LOG2 =       0x1.34413509f79fef311f12b35816f92p-2L; /** $(SUB log, 10)2 = 0.301029... */
+enum real LOG10E =     0x1.bcb7b1526e50e32a6ab7555f5a67cp-2L; /** $(SUB log, 10)e = 0.434294... */
+enum real LN2 =        0x1.62e42fefa39ef35793c7673007e5fp-1L; /** ln 2  = 0.693147... */
+enum real LN10 =       0x1.26bb1bbb5551582dd4adac5705a61p+1L; /** ln 10 = 2.302585... */
+enum real PI =         0x1.921fb54442d18469898cc51701b84p+1L; /** $(_PI) = 3.141592... */
+enum real PI_2 =       PI/2;                                  /** $(PI) / 2 = 1.570796... */
+enum real PI_4 =       PI/4;                                  /** $(PI) / 4 = 0.785398... */
+enum real M_1_PI =     0x1.45f306dc9c882a53f84eafa3ea69cp-2L; /** 1 / $(PI) = 0.318309... */
+enum real M_2_PI =     2*M_1_PI;                              /** 2 / $(PI) = 0.636619... */
+enum real M_2_SQRTPI = 0x1.20dd750429b6d11ae3a914fed7fd8p+0L; /** 2 / $(SQRT)$(PI) = 1.128379... */
+enum real SQRT2 =      0x1.6a09e667f3bcc908b2fb1366ea958p+0L; /** $(SQRT)2 = 1.414213... */
+enum real SQRT1_2 =    SQRT2/2;                               /** $(SQRT)$(HALF) = 0.707106... */
+// Note: Make sure the magic numbers in compiler backend for x87 match these.
 
 /*
         Octal versions:
@@ -243,7 +246,7 @@ enum real SQRT1_2 =    0.70710678118654752440;  /** $(SQRT)$(HALF) */
  * For complex numbers, abs(z) = sqrt( $(POWER z.re, 2) + $(POWER z.im, 2) )
  * = hypot(z.re, z.im).
  */
-Num abs(Num)(Num x) @safe pure nothrow 
+Num abs(Num)(Num x) @safe pure nothrow
     if (is(typeof(Num.init >= 0)) && is(typeof(-Num.init)) &&
             !(is(Num* : const(ifloat*)) || is(Num* : const(idouble*))
                     || is(Num* : const(ireal*))))
@@ -254,7 +257,7 @@ Num abs(Num)(Num x) @safe pure nothrow
         return x>=0 ? x : -x;
 }
 
-auto abs(Num)(Num z) @safe pure nothrow 
+auto abs(Num)(Num z) @safe pure nothrow
     if (is(Num* : const(cfloat*)) || is(Num* : const(cdouble*))
             || is(Num* : const(creal*)))
 {
@@ -290,13 +293,13 @@ unittest
  * Note that z * conj(z) = $(POWER z.re, 2) - $(POWER z.im, 2)
  * is always a real number
  */
-creal conj(creal z) @safe pure nothrow 
+creal conj(creal z) @safe pure nothrow
 {
     return z.re - z.im*1i;
 }
 
 /** ditto */
-ireal conj(ireal y) @safe pure nothrow 
+ireal conj(ireal y) @safe pure nothrow
 {
     return -y;
 }
@@ -347,7 +350,7 @@ real sin(real x) @safe pure nothrow;       /* intrinsic */
  * If both sin($(THETA)) and cos($(THETA)) are required,
  * it is most efficient to use expi($(THETA)).
  */
-creal sin(creal z) @safe pure nothrow 
+creal sin(creal z) @safe pure nothrow
 {
     creal cs = expi(z.re);
     creal csh = coshisinh(z.im);
@@ -355,7 +358,7 @@ creal sin(creal z) @safe pure nothrow
 }
 
 /** ditto */
-ireal sin(ireal y) @safe pure nothrow 
+ireal sin(ireal y) @safe pure nothrow
 {
     return cosh(y.im)*1i;
 }
@@ -371,7 +374,7 @@ unittest
  *
  *  cos(z) = cos(z.re)*cosh(z.im) - sin(z.re)*sinh(z.im)i
  */
-creal cos(creal z) @safe pure nothrow 
+creal cos(creal z) @safe pure nothrow
 {
     creal cs = expi(z.re);
     creal csh = coshisinh(z.im);
@@ -379,7 +382,7 @@ creal cos(creal z) @safe pure nothrow
 }
 
 /** ditto */
-real cos(ireal y) @safe pure nothrow 
+real cos(ireal y) @safe pure nothrow
 {
     return cosh(y.im);
 }
@@ -401,30 +404,22 @@ unittest{
  *      )
  */
 
-real tan(real x) @trusted pure nothrow 
+real tan(real x) @trusted pure nothrow
 {
     version(GNU) {
         // %% problems outputting Lret label.
         return core.stdc.math.tanl(x);
     } else
-    version(D_InlineAsm_X86) {
-        asm
-        {
-            fld     x[EBP]                  ; // load theta
-        } 
-    } else version(D_InlineAsm_X86_64) {
-        asm {
-            fld     x[RBP]                  ; // load theta
-        }
-    }
-    version(InlineAsm_X86_Any) {
+    version(D_InlineAsm_X86)
+    {
     asm
     {
+        fld     x[EBP]                  ; // load theta
         fxam                            ; // test for oddball values
         fstsw   AX                      ;
         sahf                            ;
         jc      trigerr                 ; // x is NAN, infinity, or empty
-                                          // 387's can handle denormals
+                                          // 387's can handle subnormals
 SC18:   fptan                           ;
         fstp    ST(0)                   ; // dump X, which is always 1
         fstsw   AX                      ;
@@ -443,6 +438,42 @@ SC17:   fprem1                          ;
 
 trigerr:
         jnp     Lret                    ; // if theta is NAN, return theta
+        fstp    ST(0)                   ; // dump theta
+    }
+    return real.nan;
+
+Lret:
+    ;
+    }
+    else version(D_InlineAsm_X86_64)
+    {
+    asm
+    {
+        fld     x[RBP]                  ; // load theta
+        fxam                            ; // test for oddball values
+        fstsw   AX                      ;
+        test    AH,1                    ;
+        jnz     trigerr                 ; // x is NAN, infinity, or empty
+                                          // 387's can handle subnormals
+SC18:   fptan                           ;
+        fstp    ST(0)                   ; // dump X, which is always 1
+        fstsw   AX                      ;
+        test    AH,4                    ;
+        jz      Lret                    ; // C2 = 1 (x is out of range)
+
+        // Do argument reduction to bring x into range
+        fldpi                           ;
+        fxch                            ;
+SC17:   fprem1                          ;
+        fstsw   AX                      ;
+        test    AH,4                    ;
+        jnz     SC17                    ;
+        fstp    ST(1)                   ; // remove pi from stack
+        jmp     SC18                    ;
+
+trigerr:
+        test    AH,4                    ;
+        jz      Lret                    ; // if theta is NAN, return theta
         fstp    ST(0)                   ; // dump theta
     }
     return real.nan;
@@ -1045,74 +1076,74 @@ L_largenegative:
         }
     } else version(D_InlineAsm_X86_64) {
         asm
-        { 
-            /*  expm1() for x87 80-bit reals, IEEE754-2008 conformant. 
-             * Author: Don Clugston. 
-             * 
-             *    expm1(x) = 2^(rndint(y))* 2^(y-rndint(y)) - 1 where y = LN2*x. 
-             *    = 2rndy * 2ym1 + 2rndy - 1, where 2rndy = 2^(rndint(y)) 
-             *     and 2ym1 = (2^(y-rndint(y))-1). 
-             *    If 2rndy  < 0.5*real.epsilon, result is -1. 
-             *    Implementation is otherwise the same as for exp2() 
-             */ 
-            naked; 
-            fld real ptr [RSP+8] ; // x 
-            mov AX, [RSP+8+8]; // AX = exponent and sign 
-            sub RSP, 24;       // Create scratch space on the stack 
-            // [RSP,RSP+2] = scratchint 
-            // [RSP+4..+6, +8..+10, +10] = scratchreal 
-            // set scratchreal mantissa = 1.0 
-            mov dword ptr [RSP+8], 0; 
-            mov dword ptr [RSP+8+4], 0x80000000; 
-            and AX, 0x7FFF; // drop sign bit 
-            cmp AX, 0x401D; // avoid InvalidException in fist 
-            jae L_extreme; 
-            fldl2e; 
-            fmul ; // y = x*log2(e) 
-            fist dword ptr [RSP]; // scratchint = rndint(y) 
-            fisub dword ptr [RSP]; // y - rndint(y) 
-            // and now set scratchreal exponent 
-            mov EAX, [RSP]; 
-            add EAX, 0x3fff; 
-            jle short L_largenegative; 
-            cmp EAX,0x8000; 
-            jge short L_largepositive; 
-            mov [RSP+8+8],AX; 
-            f2xm1; // 2^(y-rndint(y)) -1 
-            fld real ptr [RSP+8] ; // 2^rndint(y) 
-            fmul ST(1), ST; 
-            fld1; 
-            fsubp ST(1), ST; 
-            fadd; 
-            add RSP,24; 
-            ret; 
-           
-L_extreme: // Extreme exponent. X is very large positive, very 
-            // large negative, infinity, or NaN. 
-            fxam; 
-            fstsw AX; 
-            test AX, 0x0400; // NaN_or_zero, but we already know x!=0 
-            jz L_was_nan;  // if x is NaN, returns x 
-            test AX, 0x0200; 
-            jnz L_largenegative; 
-L_largepositive: 
-            // Set scratchreal = real.max. 
-            // squaring it will create infinity, and set overflow flag. 
-            mov word  ptr [RSP+8+8], 0x7FFE; 
-            fstp ST(0), ST; 
-            fld real ptr [RSP+8];  // load scratchreal 
-            fmul ST(0), ST;        // square it, to create havoc! 
-L_was_nan: 
-            add RSP,24; 
+        {
+            /*  expm1() for x87 80-bit reals, IEEE754-2008 conformant.
+             * Author: Don Clugston.
+             *
+             *    expm1(x) = 2^(rndint(y))* 2^(y-rndint(y)) - 1 where y = LN2*x.
+             *    = 2rndy * 2ym1 + 2rndy - 1, where 2rndy = 2^(rndint(y))
+             *     and 2ym1 = (2^(y-rndint(y))-1).
+             *    If 2rndy  < 0.5*real.epsilon, result is -1.
+             *    Implementation is otherwise the same as for exp2()
+             */
+            naked;
+            fld real ptr [RSP+8] ; // x
+            mov AX, [RSP+8+8]; // AX = exponent and sign
+            sub RSP, 24;       // Create scratch space on the stack
+            // [RSP,RSP+2] = scratchint
+            // [RSP+4..+6, +8..+10, +10] = scratchreal
+            // set scratchreal mantissa = 1.0
+            mov dword ptr [RSP+8], 0;
+            mov dword ptr [RSP+8+4], 0x80000000;
+            and AX, 0x7FFF; // drop sign bit
+            cmp AX, 0x401D; // avoid InvalidException in fist
+            jae L_extreme;
+            fldl2e;
+            fmul ; // y = x*log2(e)
+            fist dword ptr [RSP]; // scratchint = rndint(y)
+            fisub dword ptr [RSP]; // y - rndint(y)
+            // and now set scratchreal exponent
+            mov EAX, [RSP];
+            add EAX, 0x3fff;
+            jle short L_largenegative;
+            cmp EAX,0x8000;
+            jge short L_largepositive;
+            mov [RSP+8+8],AX;
+            f2xm1; // 2^(y-rndint(y)) -1
+            fld real ptr [RSP+8] ; // 2^rndint(y)
+            fmul ST(1), ST;
+            fld1;
+            fsubp ST(1), ST;
+            fadd;
+            add RSP,24;
             ret;
-            
-L_largenegative: 
-            fstp ST(0), ST; 
-            fld1; 
-            fchs; // return -1. Underflow flag is not set. 
-            add RSP,24; 
-            ret; 
-        } 
+
+L_extreme: // Extreme exponent. X is very large positive, very
+            // large negative, infinity, or NaN.
+            fxam;
+            fstsw AX;
+            test AX, 0x0400; // NaN_or_zero, but we already know x!=0
+            jz L_was_nan;  // if x is NaN, returns x
+            test AX, 0x0200;
+            jnz L_largenegative;
+L_largepositive:
+            // Set scratchreal = real.max.
+            // squaring it will create infinity, and set overflow flag.
+            mov word  ptr [RSP+8+8], 0x7FFE;
+            fstp ST(0), ST;
+            fld real ptr [RSP+8];  // load scratchreal
+            fmul ST(0), ST;        // square it, to create havoc!
+L_was_nan:
+            add RSP,24;
+            ret;
+
+L_largenegative:
+            fstp ST(0), ST;
+            fld1;
+            fchs; // return -1. Underflow flag is not set.
+            add RSP,24;
+            ret;
+        }
     } else {
         return core.stdc.math.expm1l(x);
     }
@@ -1215,86 +1246,86 @@ L_was_nan:
             ret PARAMSIZE;
         }
     } else version(D_InlineAsm_X86_64) {
-        asm { 
-            /*  exp2() for x87 80-bit reals, IEEE754-2008 conformant. 
-             * Author: Don Clugston. 
-             * 
-             * exp2(x) = 2^(rndint(x))* 2^(y-rndint(x)) 
-             * The trick for high performance is to avoid the fscale(28cycles on core2), 
-             * frndint(19 cycles), leaving f2xm1(19 cycles) as the only slow instruction. 
-             * 
-             * We can do frndint by using fist. BUT we can't use it for huge numbers, 
-             * because it will set the Invalid Operation flag is overflow or NaN occurs. 
-             * Fortunately, whenever this happens the result would be zero or infinity. 
-             * 
-             * We can perform fscale by directly poking into the exponent. BUT this doesn't 
-             * work for the (very rare) cases where the result is subnormal. So we fall back 
-             * to the slow method in that case. 
-             */ 
-            naked; 
-            fld real ptr [RSP+8] ; // x 
-            mov AX, [RSP+8+8]; // AX = exponent and sign 
-            sub RSP, 24; // Create scratch space on the stack 
-            // [RSP,RSP+2] = scratchint 
-            // [RSP+4..+6, +8..+10, +10] = scratchreal 
-            // set scratchreal mantissa = 1.0 
-            mov dword ptr [RSP+8], 0; 
-            mov dword ptr [RSP+8+4], 0x80000000; 
-            and AX, 0x7FFF; // drop sign bit 
-            cmp AX, 0x401D; // avoid InvalidException in fist 
-            jae L_extreme; 
-            fist dword ptr [RSP]; // scratchint = rndint(x) 
-            fisub dword ptr [RSP]; // x - rndint(x) 
-            // and now set scratchreal exponent 
-            mov EAX, [RSP]; 
-            add EAX, 0x3fff; 
-            jle short L_subnormal; 
-            cmp EAX,0x8000; 
-            jge short L_overflow; 
-            mov [RSP+8+8],AX; 
-L_normal: 
-            f2xm1; 
-            fld1; 
-            fadd; // 2^(x-rndint(x)) 
-            fld real ptr [RSP+8] ; // 2^rndint(x) 
-            add RSP,24; 
-            fmulp ST(1), ST; 
-            ret; 
-     
-L_subnormal: 
-            // Result will be subnormal. 
-            // In this rare case, the simple poking method doesn't work. 
-            // The speed doesn't matter, so use the slow fscale method. 
-            fild dword ptr [RSP];  // scratchint 
-            fld1; 
-            fscale; 
-            fstp real ptr [RSP+8]; // scratchreal = 2^scratchint 
-            fstp ST(0),ST;         // drop scratchint 
-            jmp L_normal; 
-     
-L_extreme: // Extreme exponent. X is very large positive, very 
-            // large negative, infinity, or NaN. 
-            fxam; 
-            fstsw AX; 
-            test AX, 0x0400; // NaN_or_zero, but we already know x!=0 
-            jz L_was_nan;  // if x is NaN, returns x 
-            // set scratchreal = real.min 
-            // squaring it will return 0, setting underflow flag 
-            mov word  ptr [RSP+8+8], 1; 
-            test AX, 0x0200; 
-            jnz L_waslargenegative; 
-L_overflow: 
-            // Set scratchreal = real.max. 
-            // squaring it will create infinity, and set overflow flag. 
-            mov word  ptr [RSP+8+8], 0x7FFE; 
-L_waslargenegative: 
-            fstp ST(0), ST; 
-            fld real ptr [RSP+8];  // load scratchreal 
-            fmul ST(0), ST;        // square it, to create havoc! 
-L_was_nan: 
-            add RSP,24; 
+        asm {
+            /*  exp2() for x87 80-bit reals, IEEE754-2008 conformant.
+             * Author: Don Clugston.
+             *
+             * exp2(x) = 2^(rndint(x))* 2^(y-rndint(x))
+             * The trick for high performance is to avoid the fscale(28cycles on core2),
+             * frndint(19 cycles), leaving f2xm1(19 cycles) as the only slow instruction.
+             *
+             * We can do frndint by using fist. BUT we can't use it for huge numbers,
+             * because it will set the Invalid Operation flag is overflow or NaN occurs.
+             * Fortunately, whenever this happens the result would be zero or infinity.
+             *
+             * We can perform fscale by directly poking into the exponent. BUT this doesn't
+             * work for the (very rare) cases where the result is subnormal. So we fall back
+             * to the slow method in that case.
+             */
+            naked;
+            fld real ptr [RSP+8] ; // x
+            mov AX, [RSP+8+8]; // AX = exponent and sign
+            sub RSP, 24; // Create scratch space on the stack
+            // [RSP,RSP+2] = scratchint
+            // [RSP+4..+6, +8..+10, +10] = scratchreal
+            // set scratchreal mantissa = 1.0
+            mov dword ptr [RSP+8], 0;
+            mov dword ptr [RSP+8+4], 0x80000000;
+            and AX, 0x7FFF; // drop sign bit
+            cmp AX, 0x401D; // avoid InvalidException in fist
+            jae L_extreme;
+            fist dword ptr [RSP]; // scratchint = rndint(x)
+            fisub dword ptr [RSP]; // x - rndint(x)
+            // and now set scratchreal exponent
+            mov EAX, [RSP];
+            add EAX, 0x3fff;
+            jle short L_subnormal;
+            cmp EAX,0x8000;
+            jge short L_overflow;
+            mov [RSP+8+8],AX;
+L_normal:
+            f2xm1;
+            fld1;
+            fadd; // 2^(x-rndint(x))
+            fld real ptr [RSP+8] ; // 2^rndint(x)
+            add RSP,24;
+            fmulp ST(1), ST;
             ret;
-        } 
+
+L_subnormal:
+            // Result will be subnormal.
+            // In this rare case, the simple poking method doesn't work.
+            // The speed doesn't matter, so use the slow fscale method.
+            fild dword ptr [RSP];  // scratchint
+            fld1;
+            fscale;
+            fstp real ptr [RSP+8]; // scratchreal = 2^scratchint
+            fstp ST(0),ST;         // drop scratchint
+            jmp L_normal;
+
+L_extreme: // Extreme exponent. X is very large positive, very
+            // large negative, infinity, or NaN.
+            fxam;
+            fstsw AX;
+            test AX, 0x0400; // NaN_or_zero, but we already know x!=0
+            jz L_was_nan;  // if x is NaN, returns x
+            // set scratchreal = real.min
+            // squaring it will return 0, setting underflow flag
+            mov word  ptr [RSP+8+8], 1;
+            test AX, 0x0200;
+            jnz L_waslargenegative;
+L_overflow:
+            // Set scratchreal = real.max.
+            // squaring it will create infinity, and set overflow flag.
+            mov word  ptr [RSP+8+8], 0x7FFE;
+L_waslargenegative:
+            fstp ST(0), ST;
+            fld real ptr [RSP+8];  // load scratchreal
+            fmul ST(0), ST;        // square it, to create havoc!
+L_was_nan:
+            add RSP,24;
+            ret;
+        }
     } else version(GNU_Need_exp2) {
         return core.stdc.math.powl(2, x);
     } else {
@@ -1338,7 +1369,7 @@ unittest
     for (int i=0; i<exptestpoints.length;++i) {
         resetIeeeFlags();
         x = exp(exptestpoints[i][0]);
-        f = ieeeFlags();
+        f = ieeeFlags;
         assert(x == exptestpoints[i][1]);
         // Check the overflow bit
         assert(f.overflow() == (fabs(x) == real.infinity));
@@ -1356,7 +1387,7 @@ unittest
     // NaN propagation. Doesn't set flags, bcos was already NaN.
     resetIeeeFlags();
     x = exp(real.nan);
-    f = ieeeFlags();
+    f = ieeeFlags;
     assert(isIdentical(x,real.nan));
     assert(f.flags == 0);
 
@@ -1450,7 +1481,7 @@ real frexp(real value, out int exp) @trusted pure nothrow
             // value is +-0.0
             exp = 0;
         } else {
-            // denormal
+            // subnormal
             value *= F.RECIP_EPSILON;
             ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
             exp = ex - F.EXPBIAS - real.mant_dig + 1;
@@ -1479,7 +1510,7 @@ real frexp(real value, out int exp) @trusted pure nothrow
             // value is +-0.0
             exp = 0;
         } else {
-            // denormal
+            // subnormal
             value *= F.RECIP_EPSILON;
             ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
             exp = ex - F.EXPBIAS - real.mant_dig + 1;
@@ -1505,7 +1536,7 @@ real frexp(real value, out int exp) @trusted pure nothrow
             // value is +-0.0
             exp = 0;
         } else {
-            // denormal
+            // subnormal
             value *= F.RECIP_EPSILON;
             ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
             exp = ((ex - F.EXPBIAS)>> 4) - real.mant_dig + 1;
@@ -1552,7 +1583,7 @@ unittest
                                           [0x1.a5f1c2eb3fe4efp+73L, 0x1.A5F1C2EB3FE4EFp-1L,   74],    // normal
                                           [0x1.fa01712e8f0471ap-1064L,  0x1.fa01712e8f0471ap-1L,     -1063],
                                           [real.min_normal,  .5,     -16381],
-                                          [real.min_normal/2.0L, .5,     -16382]    // denormal
+                                          [real.min_normal/2.0L, .5,     -16382]    // subnormal
                                            ];
 
         for (i = 0; i < extendedvals.length; i++) {
@@ -1616,7 +1647,7 @@ unittest {
  *    )
  */
 
-real log(real x) @safe pure nothrow 
+real log(real x) @safe pure nothrow
 {
     version (INLINE_YL2X)
         return yl2x(x, LN2);
@@ -2186,8 +2217,8 @@ private:
             DIVBYZERO_MASK = 0x04,
             INVALID_MASK   = 0x01
         }
-        // Don't bother about denormals, they are not supported on most CPUs.
-        //  DENORMAL_MASK = 0x02;
+        // Don't bother about subnormals, they are not supported on most CPUs.
+        //  SUBNORMAL_MASK = 0x02;
     } else version (PPC) {
         // PowerPC FPSCR is a 32-bit register.
         enum : int {
@@ -2264,15 +2295,15 @@ private:
 public:
      /// The result cannot be represented exactly, so rounding occured.
      /// (example: x = sin(0.1); )
-     bool inexact() { return (flags & INEXACT_MASK) != 0; }
+     @property bool inexact() { return (flags & INEXACT_MASK) != 0; }
      /// A zero was generated by underflow (example: x = real.min*real.epsilon/2;)
-     bool underflow() { return (flags & UNDERFLOW_MASK) != 0; }
+     @property bool underflow() { return (flags & UNDERFLOW_MASK) != 0; }
      /// An infinity was generated by overflow (example: x = real.max*2;)
-     bool overflow() { return (flags & OVERFLOW_MASK) != 0; }
+     @property bool overflow() { return (flags & OVERFLOW_MASK) != 0; }
      /// An infinity was generated by division by zero (example: x = 3/0.0; )
-     bool divByZero() { return (flags & DIVBYZERO_MASK) != 0; }
+     @property bool divByZero() { return (flags & DIVBYZERO_MASK) != 0; }
      /// A machine NaN was generated. (example: x = real.infinity * 0.0; )
-     bool invalid() { return (flags & INVALID_MASK) != 0; }
+     @property bool invalid() { return (flags & INVALID_MASK) != 0; }
 }
 
 
@@ -2280,7 +2311,7 @@ public:
 void resetIeeeFlags() { IeeeFlags.resetIeeeFlags; }
 
 /// Return a snapshot of the current state of the floating-point status flags.
-IeeeFlags ieeeFlags()
+@property IeeeFlags ieeeFlags()
 {
    return IeeeFlags(IeeeFlags.getIeeeFlags());
 }
@@ -2340,16 +2371,17 @@ struct FloatingPointControl
      */
     enum : uint
     {
-        inexactException   = 0x20,
-        underflowException = 0x10,
-        overflowException  = 0x08,
-        divByZeroException = 0x04,
-        invalidException   = 0x01,
+        inexactException      = 0x20,
+        underflowException    = 0x10,
+        overflowException     = 0x08,
+        divByZeroException    = 0x04,
+        subnormalException    = 0x02,
+        invalidException      = 0x01,
         /// Severe = The overflow, division by zero, and invalid exceptions.
         severeExceptions   = overflowException | divByZeroException
                              | invalidException,
         allExceptions      = severeExceptions | underflowException
-                             | inexactException,
+                             | inexactException | subnormalException,
     };
 private:
     enum ushort EXCEPTION_MASK = 0x3F;
@@ -2368,18 +2400,18 @@ public:
         setControlState(getControlState() | (exceptions & EXCEPTION_MASK));
     }
     //// Change the floating-point hardware rounding mode
-    void rounding(RoundingMode newMode)
+    @property void rounding(RoundingMode newMode)
     {
         ushort old = getControlState();
         setControlState((old & ~ROUNDING_MASK) | (newMode & ROUNDING_MASK));
     }
     /// Return the exceptions which are currently enabled (unmasked)
-    static uint enabledExceptions()
+    @property static uint enabledExceptions()
     {
         return (getControlState() & EXCEPTION_MASK) ^ EXCEPTION_MASK;
     }
     /// Return the currently active rounding mode
-    static RoundingMode rounding()
+    @property static RoundingMode rounding()
     {
         return cast(RoundingMode)(getControlState() & ROUNDING_MASK);
     }
@@ -2427,7 +2459,7 @@ private:
             }
             return cont;
         }
-        else 
+        else
         version (D_InlineAsm_X86_64)
         {
             short cont;
@@ -3103,7 +3135,7 @@ unittest {
         assert( nextUp(-real.infinity) == -real.max );
         assert( nextUp(-1.0L-real.epsilon) == -1.0 );
         assert( nextUp(-2.0L) == -2.0 + real.epsilon);
-        // denormals and zero
+        // subnormals and zero
         assert( nextUp(-real.min_normal) == -real.min_normal*(1-real.epsilon) );
         assert( nextUp(-real.min_normal*(1-real.epsilon)) == -real.min_normal*(1-2*real.epsilon) );
         assert( isIdentical(-0.0L, nextUp(-real.min_normal*real.epsilon)) );
@@ -3124,7 +3156,7 @@ unittest {
     assert( nextUp(-double.infinity) == -double.max );
     assert( nextUp(-1-double.epsilon) == -1.0 );
     assert( nextUp(-2.0) == -2.0 + double.epsilon);
-    // denormals and zero
+    // subnormals and zero
 
     assert( nextUp(-double.min_normal) == -double.min_normal*(1-double.epsilon) );
     assert( nextUp(-double.min_normal*(1-double.epsilon)) == -double.min_normal*(1-2*double.epsilon) );
@@ -3315,7 +3347,7 @@ unittest
  * regardless of the value of x.
  */
 
-typeof(Unqual!(F).init * Unqual!(G).init) pow(F, G)(F x, G n) @trusted pure nothrow 
+typeof(Unqual!(F).init * Unqual!(G).init) pow(F, G)(F x, G n) @trusted pure nothrow
 if (isIntegral!(F) && isIntegral!(G))
 {
     if (n<0) return x/0; // Only support positive powers
@@ -3370,7 +3402,7 @@ unittest
 }
 
 /**Computes integer to floating point powers.*/
-real pow(I, F)(I x, F y) @trusted pure nothrow 
+real pow(I, F)(I x, F y) @trusted pure nothrow
     if(isIntegral!I && isFloatingPoint!F)
 {
     return pow(cast(real) x, cast(Unqual!F) y);
@@ -3526,7 +3558,7 @@ Unqual!(Largest!(F, G)) pow(F, G)(F x, G y) @trusted pure nothrow
             }
             x = -x;
         }
-        version(INLINE_YL2X) {        
+        version(INLINE_YL2X) {
             // If x > 0, x ^^ y == 2 ^^ ( y * log2(x) )
             // TODO: This is not accurate in practice. A fast and accurate
             // (though complicated) method is described in:
@@ -3579,7 +3611,7 @@ unittest
     assert(pow(-1.0L, 1/real.epsilon) == 1.0L);
     assert(isNaN(pow(-1.0L, 1/real.epsilon-0.5L)));
     assert(isNaN(pow(-1.0L, -1/real.epsilon+0.5L)));
-    
+
     assert(pow(0.0, -3.0) == double.infinity);
     assert(pow(-0.0, -3.0) == -double.infinity);
     assert(pow(0.0, -PI) == double.infinity);
@@ -3659,8 +3691,8 @@ int feqrel(X)(X x, X y) @trusted pure nothrow
                                - (pd[F.EXPPOS_SHORT]&0x7FF0))>>4;
         }
         if (pd[F.EXPPOS_SHORT] == 0)
-        {   // Difference is denormal
-            // For denormals, we need to add the number of zeros that
+        {   // Difference is subnormal
+            // For subnormals, we need to add the number of zeros that
             // lie at the start of diff's significand.
             // We do this by multiplying by 2^^real.mant_dig
             diff *= F.RECIP_EPSILON;
@@ -3784,7 +3816,7 @@ body {
     m >>>= 1;
     if (c) m |= 0x4000_0000_0000_0000L; // shift carry into significand
     if (e) *ul = m | 0x8000_0000_0000_0000L; // set implicit bit...
-    else *ul = m; // ... unless exponent is 0 (denormal or zero).
+    else *ul = m; // ... unless exponent is 0 (subnormal or zero).
     ue[4]= e | (xe[F.EXPPOS_SHORT]& 0x8000); // restore sign bit
     } else static if(T.mant_dig == 113) { //quadruple
         // This would be trivial if 'ucent' were implemented...

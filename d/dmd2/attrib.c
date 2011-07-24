@@ -719,6 +719,12 @@ void AnonDeclaration::semantic(Scope *sc)
 {
     //printf("\tAnonDeclaration::semantic %s %p\n", isunion ? "union" : "struct", this);
 
+    if (sem == 1)
+    {   //printf("already completed\n");
+        scope = NULL;
+        return;             // semantic() already completed
+    }
+
     Scope *scx = NULL;
     if (scope)
     {   sc = scope;
@@ -921,7 +927,7 @@ void PragmaDeclaration::setScope(Scope *sc)
 
 void PragmaDeclaration::semantic(Scope *sc)
 {   // Should be merged with PragmaStatement
-        Scope sc_save;
+    Scope sc_save;
 
     //printf("\tPragmaDeclaration::semantic '%s'\n",toChars());
     if (ident == Id::msg)
@@ -957,6 +963,8 @@ void PragmaDeclaration::semantic(Scope *sc)
             e = e->semantic(sc);
             e = e->optimize(WANTvalue | WANTinterpret);
             args->data[0] = (void *)e;
+            if (e->op == TOKerror)
+                goto Lnodecl;
             if (e->op != TOKstring)
                 error("string expected for library name, not '%s'", e->toChars());
             else if (global.params.verbose)

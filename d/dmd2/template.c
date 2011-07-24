@@ -389,6 +389,20 @@ TemplateDeclaration::TemplateDeclaration(Loc loc, Identifier *id,
     this->literal = 0;
     this->ismixin = ismixin;
     this->previous = NULL;
+
+    // Compute in advance for Ddoc's use
+    if (members)
+    {
+        Dsymbol *s;
+        if (Dsymbol::oneMembers(members, &s))
+        {
+            if (s && s->ident && s->ident->equals(ident))
+            {
+                onemember = s;
+                s->parent = this;
+            }
+        }
+    }
 }
 
 Dsymbol *TemplateDeclaration::syntaxCopy(Dsymbol *)
@@ -505,6 +519,8 @@ void TemplateDeclaration::semantic(Scope *sc)
 
     paramscope->pop();
 
+    // Compute again
+    onemember = NULL;
     if (members)
     {
         Dsymbol *s;
@@ -1655,11 +1671,14 @@ FuncDeclaration *TemplateDeclaration::deduceFunctionTemplate(Scope *sc, Loc loc,
 
 void TemplateDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-#if 0 // Should handle template functions
+#if 0 // Should handle template functions for doc generation
     if (onemember && onemember->isFuncDeclaration())
         buf->writestring("foo ");
 #endif
-    buf->writestring(kind());
+    if (hgs->ddoc)
+        buf->writestring(kind());
+    else
+        buf->writestring("template");
     buf->writeByte(' ');
     buf->writestring(ident->toChars());
     buf->writeByte('(');
@@ -4156,7 +4175,13 @@ void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
     {   Dsymbol *sd = (Dsymbol *)Module::deferred.data[i];
 
         if (sd->parent == this)
+        {
+        //printf("deferred %s %s\n", sd->parent->toChars(), sd->toChars());
+            AggregateDeclaration *ad = sd->isAggregateDeclaration();
+            if (ad)
+                ad->deferred = this;
             goto Laftersemantic;
+        }
     }
 
     /* The problem is when to parse the initializer for a variable.
@@ -4245,7 +4270,7 @@ void TemplateInstance::semanticTiargs(Scope *sc)
 void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int flags)
 {
     // Run semantic on each argument, place results in tiargs[]
-    //printf("+TemplateInstance::semanticTiargs() %s\n", toChars());
+    //printf("+TemplateInstance::semanticTiargs()\n");
     if (!tiargs)
         return;
     for (size_t j = 0; j < tiargs->dim; j++)
@@ -4269,7 +4294,9 @@ void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int f
                  * match with an 'alias' parameter. Instead, do the
                  * const substitution in TemplateValueParameter::matchArg().
                  */
-                if (ea->op != TOKvar || flags & 1)
+                if (flags & 1) // only used by __traits, must not interpret the args
+                    ea = ea->optimize(WANTvalue);
+                else if (ea->op != TOKvar)
                     ea = ea->optimize(WANTvalue | WANTinterpret);
                 tiargs->data[j] = ea;
             }
@@ -4318,7 +4345,9 @@ void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int f
             }
             assert(ea);
             ea = ea->semantic(sc);
-            if (ea->op != TOKvar || flags & 1)
+            if (flags & 1) // only used by __traits, must not interpret the args
+                ea = ea->optimize(WANTvalue);
+            else if (ea->op != TOKvar)
                 ea = ea->optimize(WANTvalue | WANTinterpret);
             tiargs->data[j] = ea;
             if (ea->op == TOKtype)
@@ -4351,7 +4380,7 @@ void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int f
         //printf("1: tiargs->data[%d] = %p\n", j, tiargs->data[j]);
     }
 #if 0
-    printf("-TemplateInstance::semanticTiargs('%s', this=%p)\n", toChars(), this);
+    printf("-TemplateInstance::semanticTiargs()\n");
     for (size_t j = 0; j < tiargs->dim; j++)
     {
         Object *o = (Object *)tiargs->data[j];
@@ -4748,11 +4777,17 @@ Identifier *TemplateInstance::genIdent(Objects *args)
           Lea:
             sinteger_t v;
             real_t r;
-
-            ea = ea->optimize(WANTvalue | WANTinterpret);
+            // Don't interpret it yet, it might actually be an alias
+            ea = ea->optimize(WANTvalue);
             if (ea->op == TOKvar)
             {
                 sa = ((VarExp *)ea)->var;
+                ea = NULL;
+                goto Lsa;
+            }
+            if (ea->op == TOKthis)
+            {
+                sa = ((ThisExp *)ea)->var;
                 ea = NULL;
                 goto Lsa;
             }
@@ -4767,6 +4802,8 @@ Identifier *TemplateInstance::genIdent(Objects *args)
             {   ea->error("tuple is not a valid template value argument");
                 continue;
             }
+            // Now that we know it is not an alias, we MUST obtain a value
+            ea = ea->optimize(WANTvalue | WANTinterpret);
 #if 1
             /* Use deco that matches what it would be for a function parameter
              */

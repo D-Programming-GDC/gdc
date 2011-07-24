@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -43,12 +43,15 @@ AggregateDeclaration::AggregateDeclaration(Loc loc, Identifier *id)
     structalign = 0;            // struct member alignment in effect
     hasUnions = 0;
     sizeok = 0;                 // size not determined yet
+    deferred = NULL;
     isdeprecated = 0;
     inv = NULL;
     aggNew = NULL;
     aggDelete = NULL;
 
+#if IN_GCC
     attributes = NULL;
+#endif
 
     stag = NULL;
     sinit = NULL;
@@ -148,8 +151,8 @@ int AggregateDeclaration::isDeprecated()
  */
 
 void AggregateDeclaration::alignmember(
-        target_size_t salign,   // struct alignment that is in effect
-        target_size_t size,     // alignment requirement of field
+        target_size_t salign,        // struct alignment that is in effect
+        target_size_t size,          // alignment requirement of field
         target_size_t *poffset)
 {
     //printf("salign = %d, size = %d, offset = %d\n",salign,size,offset);
@@ -167,9 +170,9 @@ void AggregateDeclaration::alignmember(
 
 void AggregateDeclaration::addField(Scope *sc, VarDeclaration *v)
 {
-    target_size_t memsize;      // size of member
-    target_size_t memalignsize; // size of member for alignment purposes
-    target_size_t xalign;       // alignment boundaries
+    target_size_t memsize;           // size of member
+    target_size_t memalignsize;      // size of member for alignment purposes
+    target_size_t xalign;            // alignment boundaries
 
     //printf("AggregateDeclaration::addField('%s') %s\n", v->toChars(), toChars());
     assert(!(v->storage_class & (STCstatic | STCextern | STCparameter | STCtls)));
@@ -247,6 +250,57 @@ int AggregateDeclaration::isNested()
     return isnested;
 }
 
+/****************************************
+ * If field[indx] is not part of a union, return indx.
+ * Otherwise, return the lowest field index of the union.
+ */
+int AggregateDeclaration::firstFieldInUnion(int indx)
+{
+    if (isUnionDeclaration())
+        return 0;
+    VarDeclaration * vd = (VarDeclaration *)fields.data[indx];
+    int firstNonZero = indx; // first index in the union with non-zero size
+    for (; ;)
+    {
+        if (indx == 0)
+            return firstNonZero;
+        VarDeclaration * v = (VarDeclaration *)fields.data[indx - 1];
+        if (v->offset != vd->offset)
+            return firstNonZero;
+        --indx;
+        /* If it is a zero-length field, it's ambiguous: we don't know if it is
+         * in the union unless we find an earlier non-zero sized field with the
+         * same offset.
+         */
+        if (v->size(loc) != 0)
+            firstNonZero = indx;
+    }
+}
+
+/****************************************
+ * Count the number of fields starting at firstIndex which are part of the
+ * same union as field[firstIndex]. If not a union, return 1.
+ */
+int AggregateDeclaration::numFieldsInUnion(int firstIndex)
+{
+    VarDeclaration * vd = (VarDeclaration *)fields.data[firstIndex];
+    /* If it is a zero-length field, AND we can't find an earlier non-zero
+     * sized field with the same offset, we assume it's not part of a union.
+     */
+    if (vd->size(loc) == 0 && !isUnionDeclaration() &&
+        firstFieldInUnion(firstIndex) == firstIndex)
+        return 1;
+    int count = 1;
+    for (int i = firstIndex+1; i < fields.dim; ++i)
+    {
+        VarDeclaration * v = (VarDeclaration *)fields.data[i];
+        // If offsets are different, they are not in the same union
+        if (v->offset != vd->offset)
+            break;
+        ++count;
+    }
+    return count;
+}
 
 /********************************* StructDeclaration ****************************/
 
@@ -281,7 +335,7 @@ void StructDeclaration::semantic(Scope *sc)
 {
     Scope *sc2;
 
-    //printf("+StructDeclaration::semantic(this=%p, '%s', sizeok = %d)\n", this, toChars(), sizeok);
+    //printf("+StructDeclaration::semantic(this=%p, %s '%s', sizeok = %d)\n", this, parent->toChars(), toChars(), sizeok);
 
     //static int count; if (++count == 20) halt();
 
@@ -334,10 +388,12 @@ void StructDeclaration::semantic(Scope *sc)
     if (storage_class & STCshared)
         type = type->addMod(MODshared);
 #endif
+#if IN_GCC
     if (attributes)
         attributes->append(sc->attributes);
     else
         attributes = sc->attributes;
+#endif
 
     if (sizeok == 0)            // if not already done the addMember step
     {
@@ -388,7 +444,9 @@ void StructDeclaration::semantic(Scope *sc)
     sizeok = 0;
     sc2 = sc->push(this);
     sc2->stc &= STCsafe | STCtrusted | STCsystem;
+#if IN_GCC
     sc2->attributes = NULL;
+#endif
     sc2->parent = this;
     if (isUnionDeclaration())
         sc2->inunion = 1;
@@ -616,13 +674,18 @@ void StructDeclaration::semantic(Scope *sc)
         semantic2(sc);
         semantic3(sc);
     }
+    if (deferred)
+    {
+        deferred->semantic2(sc);
+        deferred->semantic3(sc);
+    }
 }
 
 Dsymbol *StructDeclaration::search(Loc loc, Identifier *ident, int flags)
 {
     //printf("%s.StructDeclaration::search('%s')\n", toChars(), ident->toChars());
 
-    if (scope)
+    if (scope && !symtab)
         semantic(scope);
 
     if (!members || !symtab)
@@ -671,6 +734,7 @@ const char *StructDeclaration::kind()
 UnionDeclaration::UnionDeclaration(Loc loc, Identifier *id)
     : StructDeclaration(loc, id)
 {
+    hasUnions = 1;
 }
 
 Dsymbol *UnionDeclaration::syntaxCopy(Dsymbol *s)

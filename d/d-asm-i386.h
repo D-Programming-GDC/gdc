@@ -3,7 +3,7 @@
 
    Modified by
     Michael Parrott, (C) 2009
-    Vincenzo Ampolo, Iain Buclaw, (C) 2010
+    Vincenzo Ampolo, Iain Buclaw, (C) 2010, 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -315,8 +315,8 @@ enum AsmOp
     Op_cmps,
     Op_cmpsd,
     Op_cmpsX,
-    Op_cmpxchg8b,
     Op_cmpxchg,
+    Op_cmpxchg8b,
     Op_cpuid,
     Op_enter,
     Op_fdisi,
@@ -429,7 +429,6 @@ enum Alternate_Mnemonics
     Mn_iret,
     Mn_iretq,
     Mn_lret,
-    Mn_cmpxchg8b,
     N_AltMn
 };
 
@@ -441,7 +440,6 @@ static const char * alternateMnemonics[N_AltMn] = {
     "iret",
     "iretq",
     "lret",
-    "cmpxchg8b"
 };
 
 #define mri  OprC_MRI
@@ -553,8 +551,8 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_cmps      */  {   mem, mem, 0,     1, Clb_DI|Clb_SI|Clb_Flags },
     /* Op_cmpsd     */  {   0,   0,   0,     0, Clb_DI|Clb_SI|Clb_Flags, Next_Form, Op_DstSrcImmS },
     /* Op_cmpsX     */  {   0,   0,   0,     0, Clb_DI|Clb_SI|Clb_Flags },
-    /* Op_cmpxchg8b */  { D|mem/*64*/,0,0,   0, Clb_SizeDXAX/*32*/|Clb_Flags, Out_Mnemonic, Mn_cmpxchg8b },
     /* Op_cmpxchg   */  { D|mr,  reg, 0,     1, Clb_SizeAX|Clb_Flags },
+    /* Op_cmpxchg8b */  { D|mem/*64*/,0,0,   0, Clb_SizeDXAX/*32*/|Clb_Flags },
     /* Op_cpuid     */  {   0,0,0 },    // Clobbers eax, ebx, ecx, and edx. Handled specially below.
     /* Op_enter     */  {   imm, imm }, // operands *not* reversed for gas, %% inform gcc of EBP clobber?,
     /* Op_fdisi     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_fdisi },
@@ -708,8 +706,8 @@ static AsmOpEnt opData[] = {
     { "cmpsd",  Op_cmpsd }, // string cmp, and SSE cmp
     { "cmpss",  Op_DstSrcImmS },
     { "cmpsw",  Op_cmpsX },
-    { "cmpxch8b", Op_cmpxchg8b }, // %% DMD opcode typo?
-    { "cmpxchg",  Op_cmpxchg },
+    { "cmpxchg",   Op_cmpxchg },
+    { "cmpxchg8b", Op_cmpxchg8b }, // formerly cmpxch8b
     { "comisd", Op_SrcSrcSSEF },
     { "comiss", Op_SrcSrcSSEF },
     { "cpuid",  Op_cpuid },
@@ -1033,6 +1031,7 @@ static AsmOpEnt opData[] = {
     { "pcmpgtw",  Op_DstSrcMMX },
     { "pextrw",   Op_DstSrcImmM }, // gpr32 dest
     { "pf2id",    Op_DstSrcMMX }, // %% AMD 3dNow! opcodes
+    { "pf2iw",    Op_DstSrcMMX },
     { "pfacc",    Op_DstSrcMMX },
     { "pfadd",    Op_DstSrcMMX },
     { "pfcmpeq",  Op_DstSrcMMX },
@@ -1056,7 +1055,8 @@ static AsmOpEnt opData[] = {
     { "phsubd",  Op_DstSrcSSE },
     { "phsubsw", Op_DstSrcSSE },
     { "phsubw",  Op_DstSrcSSE },
-    { "pi2fd",    Op_DstSrcMMX }, // %%
+    { "pi2fd",    Op_DstSrcMMX },
+    { "pi2fw",    Op_DstSrcMMX }, // %%
     { "pinsrw",   Op_DstSrcImmM }, // gpr32(16), mem16 src, sse too
     { "pmaddubsw",Op_DstSrcSSE },
     { "pmaddwd",  Op_DstSrcMMX },
@@ -1244,17 +1244,17 @@ static AsmOpEnt opData64[] = {
     { "arpl",   Op_Invalid },
     { "bound",  Op_Invalid },
     { "callf",  Op_Branch },
-    { "cdq",    Op_Invalid },
     { "cdqe",   Op_0_DXAX },
+    { "cqo",    Op_0_DXAX },
     { "cmpq",   Op_DstSrcNT },
     { "cmpsq",  Op_cmpsX },
-    { "cmpxch16b", Op_cmpxchg8b },
+    { "cmpxchg16b", Op_cmpxchg8b }, // m128 operand
     { "cwde",   Op_0_DXAX },
     { "daa",    Op_Invalid },
     { "das",    Op_Invalid },
-    { "even",   Op_Invalid },
     { "into",   Op_Invalid },
     { "iretq",  Op_iretq },
+    { "lds",    Op_Invalid },
     { "les",    Op_Invalid },
     { "jmpe",   Op_Branch },
     { "jmpf",   Op_Branch },
@@ -1281,6 +1281,7 @@ static AsmOpEnt opData64[] = {
     { "pushfq", Op_SizedStack },
     { "pushq",  Op_pushq },
     { "retn",   Op_retf },
+    { "rsm",    Op_Invalid },
     { "salq",   Op_DstSrcNT  },
     { "scasq",  Op_scasX },
     { "stosq",  Op_stosX },
@@ -1289,7 +1290,6 @@ static AsmOpEnt opData64[] = {
     { "sysret",  Op_0 },
     { "swapgs", Op_0 },
     { "sysretq",Op_0 },
-    { "wait",   Op_Invalid },
     { "xorq",   Op_DstSrcNT },
 };
 
@@ -1299,7 +1299,7 @@ enum PtrType
     Byte_Ptr = 1,
     Short_Ptr = 2,
     Int_Ptr = 4,
-    QWord_Ptr =  8,
+    Long_Ptr =  8,
     Float_Ptr = 4,
     Double_Ptr = 8,
     Extended_Ptr = 10,
@@ -1317,7 +1317,7 @@ static const char * ptrTypeNameTable[N_PtrNames] = {
 
 static Identifier * ptrTypeIdentTable[N_PtrNames];
 static PtrType ptrTypeValueTable[N_PtrNames] = {
-    Short_Ptr, Int_Ptr, QWord_Ptr,
+    Short_Ptr, Int_Ptr, Long_Ptr,
     Float_Ptr, Double_Ptr, Extended_Ptr,
     Near_Ptr, Far_Ptr
 };
@@ -1502,21 +1502,26 @@ struct AsmProcessor
             case TOKalign:
                 nextToken();
                 return Op_Align;
+
             case TOKin:
                 nextToken();
                 opIdent = Id::___in;
                 return Op_in;
+
             case TOKint32: // "int"
                 nextToken();
                 opIdent = Id::__int;
                 return Op_SrcImm;
+
             case TOKout:
                 nextToken();
                 opIdent = Id::___out;
                 return Op_out;
+
             case TOKidentifier:
                 // search for mnemonic below
                 break;
+
             default:
                 stmt->error("expected opcode");
                 return Op_Invalid;
@@ -1541,7 +1546,6 @@ struct AsmProcessor
     // need clobber information.. use information is good too...
     void doInstruction()
     {
-        bool ok = true;
         unsigned operand_i = 0;
 
         opInfo = & asmOpInfo[op];
@@ -1562,7 +1566,6 @@ struct AsmProcessor
             }
             else
             {
-                ok = false;
                 stmt->error("too many operands for instruction");
                 break;
             }
@@ -1573,13 +1576,11 @@ struct AsmProcessor
             }
             else if (token->value != TOKeof)
             {
-                ok = false;
                 stmt->error("expected comma after operand");
                 return;
             }
         }
 //      if (operand_i < opInfo->minOperands) {
-//          ok = false;
 //          stmt->error("too few operands for instruction");
 //      }
 
@@ -1729,7 +1730,7 @@ struct AsmProcessor
                     operand->dataSize = Int_Ptr;
                 else
                     operand->dataSize = global.params.isX86_64
-                                            ? QWord_Ptr
+                                            ? Long_Ptr
                                             : Int_Ptr;   // %% 32-bit overflow
             }
             return Opr_Immediate;
@@ -1754,6 +1755,7 @@ struct AsmProcessor
             case Op_CBranch:
             case Op_Loop:
                 return true;
+
             default:
                 return false;
         }
@@ -1765,39 +1767,86 @@ struct AsmProcessor
         {
             case Byte_NoType:
                 return ptrtype == Byte_Ptr;
+
             case Word_Types:
                 if (ptrtype == Byte_Ptr)
+                {
                     return false;
-                // drop through
+                }
+            // Drop through... 
+            
             case Int_Types:
                 switch (ptrtype)
                 {
-                    case Byte_Ptr:  type_char = 'b'; break;
-                    case Short_Ptr: type_char = 'w'; break;
-                    case Int_Ptr:   type_char = 'l'; break;
-                    case QWord_Ptr: type_char = 'q'; break;
-                    // %% these may be too strict
-                    default:        return false;
+                    case Byte_Ptr:
+                        type_char = 'b';
+                        break;
+
+                    case Short_Ptr:
+                        type_char = 'w';
+                        break;
+
+                    case Int_Ptr:
+                        type_char = 'l';
+                        break;
+
+                    case Long_Ptr:
+                        if (global.params.isX86_64)
+                        {
+                            type_char = 'q';
+                            break;
+                        }
+                    // Drop through...
+
+                    default:
+                        return false;
                 }
                 break;
+
             case FPInt_Types:
                 switch (ptrtype)
                 {
-                    case Short_Ptr: type_char = 0;   break;
-                    case Int_Ptr:   type_char = 'l'; break;
-                    case QWord_Ptr: type_char = 'q'; break;
-                    default:        return false;
+                    case Short_Ptr:
+                        type_char = 0;
+                        break;
+
+                    case Int_Ptr:
+                        type_char = 'l';
+                        break;
+
+                    case Long_Ptr:
+                        if (global.params.isX86_64)
+                        {
+                            type_char = 'q';
+                            break;
+                        }
+                    // Drop through...
+
+                    default:
+                        return false;
                 }
                 break;
+
             case FP_Types:
                 switch (ptrtype)
                 {
-                    case Float_Ptr:     type_char = 's'; break;
-                    case Double_Ptr:    type_char = 'l'; break;
-                    case Extended_Ptr:  type_char = 't'; break;
-                    default:            return false;
+                    case Float_Ptr:
+                        type_char = 's';
+                        break;
+
+                    case Double_Ptr:
+                        type_char = 'l';
+                        break;
+
+                    case Extended_Ptr:
+                        type_char = 't';
+                        break;
+
+                    default:
+                        return false;
                 }
                 break;
+
             default:
                 return false;
         }
@@ -1809,11 +1858,13 @@ struct AsmProcessor
     {
         const char *fmt;
         const char *mnemonic;
+        size_t mlen;
         char type_char = 0;
         bool use_star;
         AsmArgMode mode;
+        PtrType op1_size;
 
-        static bool isX86_64 = global.params.isX86_64;
+        const bool isX86_64 = global.params.isX86_64;
 
         insnTemplate = new OutBuffer;
         if (opInfo->linkType == Out_Mnemonic)
@@ -1843,15 +1894,18 @@ struct AsmProcessor
                 case Int_Types:
                     min_type = Byte_Ptr;
                     break;
+
                 case Word_Types:
                     min_type = Short_Ptr;
                     break;
+
                 case FPInt_Types:
                     if (op == Op_Fis_ST) // integer math instructions
                         min_type = Int_Ptr;
                     else // compare, load, store
                         min_type = Short_Ptr;
                     break;
+
                 case FP_Types:
                     min_type = Float_Ptr;
                     break;
@@ -1861,7 +1915,7 @@ struct AsmProcessor
                 if (op == Op_push)
                     min_type = Int_Ptr;
                 else if (op == Op_pushq || op == Op_DstQ)
-                    min_type = QWord_Ptr;
+                    min_type = Long_Ptr;
             }
 
             for (int i = 0; i < nOperands; i++)
@@ -1934,8 +1988,7 @@ struct AsmProcessor
         switch (op)
         {
             case Op_SizedStack:
-            {
-                int mlen = strlen(mnemonic);
+                mlen = strlen(mnemonic);
                 if (mnemonic[mlen-1] == 'd')
                     insnTemplate->write(mnemonic, mlen-1);
                 else
@@ -1944,7 +1997,7 @@ struct AsmProcessor
                     insnTemplate->writebyte('w');
                 }
                 break;
-            }
+
             case Op_cmpsd:
             case Op_insX:
             case Op_lodsX:
@@ -1952,8 +2005,7 @@ struct AsmProcessor
             case Op_outsX:
             case Op_scasX:
             case Op_stosX:
-            {
-                int mlen = strlen(mnemonic);
+                mlen = strlen(mnemonic);
                 if (mnemonic[mlen-1] == 'd')
                 {
                     insnTemplate->write(mnemonic, mlen-1);
@@ -1964,13 +2016,11 @@ struct AsmProcessor
                     insnTemplate->writestring(mnemonic);
                 }
                 break;
-            }
+
             case Op_movsx:
             case Op_movzx:
-            {
-                char tc_1;
-                int mlen = strlen(mnemonic);
-                PtrType op1_size = operands[1].dataSize;
+                mlen = strlen(mnemonic);
+                op1_size = operands[1].dataSize;
                 if (op1_size == Default_Ptr)
                     op1_size = operands[1].dataSizeHint;
                 // Need type char for source arg
@@ -1978,34 +2028,20 @@ struct AsmProcessor
                 {
                     case Byte_Ptr:
                     case Default_Ptr:
-                        tc_1 = 'b';
-                        break;
                     case Short_Ptr:
-                        tc_1 = 'w';
                         break;
+
                     default:
                         stmt->error("invalid operand size/type");
                         return false;
                 }
                 gcc_assert(type_char != 0);
                 insnTemplate->write(mnemonic, mlen-1);
-                insnTemplate->writebyte(tc_1);
+                insnTemplate->writebyte(op1_size == Short_Ptr ? 'w' : 'b');
                 insnTemplate->writebyte(type_char);
                 break;
-            }
-            default:
-            {
-                // special case for 64bit
-                if (global.params.isX86_64 &&
-                    (op == Op_pushq || op == Op_DstQ) &&
-                    operands[0].reg >= Reg_EAX && operands[0].reg <= Reg_ESP)
-                {
-                    // replace:
-                    // {pop,push} EAX -> {pop,push} RAX
-                    int reg = operands[0].reg + Reg_RAX;
-                    operands[0].reg = (Reg) reg;
-                }
 
+            default:
                 // special case for fdiv, fsub
                 if ((strncmp(mnemonic, "fsub", 4) == 0 ||
                      strncmp(mnemonic, "fdiv", 4) == 0) &&
@@ -2035,7 +2071,6 @@ struct AsmProcessor
                 if (type_char)
                     insnTemplate->writebyte(type_char);
                 break;
-            }
         }
 
         switch (opInfo->implicitClobbers & Clb_DXAX_Mask)
@@ -2044,14 +2079,15 @@ struct AsmProcessor
             case Clb_EAX:
                 asmcode->clbregs[isX86_64 ? Reg_RAX : Reg_EAX] = 1;
                 break;
+
             case Clb_SizeDXAX:
                 asmcode->clbregs[isX86_64 ? Reg_RAX : Reg_EAX] = 1;
                 if (type_char != 'b')
                     asmcode->clbregs[isX86_64 ? Reg_RDX : Reg_EDX] = 1;
                 break;
+
             default:
-                // nothing
-                break;
+                break;  // nothing
         }
 
         if (opInfo->implicitClobbers & Clb_DI)
@@ -2088,10 +2124,10 @@ struct AsmProcessor
         }
 
         insnTemplate->writebyte(' ');
-        for (int i__ = 0; i__ < nOperands; i__++)
+        for (int n = 0; n < nOperands; n++)
         {
             int i;
-            if (i__ != 0)
+            if (n != 0)
                 insnTemplate->writestring(", ");
 
             fmt = "%";
@@ -2100,14 +2136,16 @@ struct AsmProcessor
             {
                 case Op_mul:
                     // gas won't accept the two-operand form; skip to the source operand
-                    i__ = 1;
+                    n = 1;
                     // drop through
+                
                 case Op_bound:
                 case Op_enter:
-                    i = i__;
+                    i = n;
                     break;
+
                 default:
-                    i = nOperands - 1 - i__; // operand = & operands[ nOperands - 1 - i ];
+                    i = nOperands - 1 - n; // operand = & operands[ nOperands - 1 - i ];
                     break;
             }
             operand = & operands[i];
@@ -2115,7 +2153,7 @@ struct AsmProcessor
             switch (operand->cls)
             {
                 case Opr_Immediate:
-                {   // for implementing offset:
+                    // for implementing offset:
                     // $var + $7 // fails
                     // $var + 7  // ok
                     // $7 + $var // ok
@@ -2158,9 +2196,8 @@ struct AsmProcessor
                     }
                     addOperand(fmt, Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
                     break;
-                }
+
                 case Opr_Reg:
-                {
                     if (opInfo->operands[i] & Opr_Dest)
                     {
                         Reg clbr_reg = (Reg) regInfo[operand->reg].baseReg;
@@ -2175,9 +2212,9 @@ struct AsmProcessor
                        insnTemplate->writestring(regInfo[operand->reg].name);
                      */
                     break;
-                }
+
                 case Opr_Mem:
-                {   // better: use output operands for simple variable references
+                    // better: use output operands for simple variable references
                     if (opInfo->operands[i] & Opr_Update)
                         mode = Mode_Update;
                     else if (opInfo->operands[i] & Opr_Dest)
@@ -2192,14 +2229,10 @@ struct AsmProcessor
                         writeReg(operand->segmentPrefix);
                         insnTemplate->writebyte(':');
                     }
-                    if ((operand->segmentPrefix != Reg_Invalid && operand->symbolDisplacement.dim == 0) ||
-                        operand->constDisplacement)
+                    if ((operand->segmentPrefix != Reg_Invalid || operand->constDisplacement) &&
+                        operand->symbolDisplacement.dim == 0)
                     {
                         addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
-                        if (operand->symbolDisplacement.dim)
-                        {
-                            insnTemplate->writebyte('+');
-                        }
                         operand->constDisplacement = 0;
                         if (opInfo->operands[i] & Opr_Dest)
                             asmcode->clobbersMemory = 1;
@@ -2317,7 +2350,33 @@ struct AsmProcessor
                                     insnTemplate->writebyte('*');
                                     use_star = false;
                                 }
-                                addOperand(fmt, Arg_Memory, e, asmcode, mode);
+
+                                if (operand->constDisplacement == 0)
+                                    addOperand(fmt, Arg_Memory, e, asmcode, mode);
+                                else
+                                {
+                                    Expression * offset = newIntExp(operand->constDisplacement);
+
+                                    if (decl->isDataseg())
+                                    {   // Displacement can only come after symbol
+                                        addOperand(fmt, Arg_Memory, e, asmcode, mode);
+                                        insnTemplate->writebyte('+');
+                                        addOperand("%a", Arg_Integer, offset, asmcode);
+                                    }
+                                    else
+                                    {   // Displacement cannot come after symbol.
+                                        addOperand("%a", Arg_Integer, offset, asmcode);
+                                        insnTemplate->writebyte('+');
+                                        addOperand(fmt, Arg_Memory, e, asmcode, mode);
+                                    }
+                                }
+                            }
+                            if (operand->constDisplacement)
+                            {   // If a memory reference was displaced, tell GCC to not keep
+                                // memory values cached in registers across the instruction.
+                                if (opInfo->operands[i] & Opr_Dest)
+                                    asmcode->clobbersMemory = 1;
+                                operand->constDisplacement = 0;
                             }
                         }
                     }
@@ -2342,7 +2401,7 @@ struct AsmProcessor
                             asmcode->clobbersMemory = 1;
                     }
                     break;
-                }
+
                 case Opr_Invalid:
                     return false;
             }
@@ -2415,7 +2474,7 @@ struct AsmProcessor
          */
 
         bool is_offset = false;
-        exp = exp->optimize(WANTvalue | WANTinterpret);
+        exp = exp->optimize(WANTvalue);
         if (exp->op == TOKaddress)
         {
             exp = ((AddrExp *) exp)->e1;
@@ -2537,36 +2596,46 @@ struct AsmProcessor
                     else
                         e = e1;
                     break;
+
                 case TOKmin:
                     if (e2)
                         e = new MinExp(stmt->loc, e1, e2);
                     else
                         e = new NegExp(stmt->loc, e1);
                     break;
+
                 case TOKmul:
                     e = new MulExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKdiv:
                     e = new DivExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKmod:
                     e = new ModExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKshl:
                     e = new ShlExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKshr:
                     e = new ShrExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKushr:
                     e = new UshrExp(stmt->loc, e1, e2);
                     break;
+
                 case TOKnot:
                     e = new NotExp(stmt->loc, e1);
                     break;
+
                 case TOKtilde:
                     e = new ComExp(stmt->loc, e1);
                     break;
+
                 default:
                     gcc_unreachable();
             }
@@ -2610,6 +2679,7 @@ struct AsmProcessor
                     e2 = parseAddExp();
                     e1 = intOp(tv, e1, e2);
                     continue;
+
                 default:
                     break;
             }
@@ -2642,6 +2712,7 @@ struct AsmProcessor
                         e1 = Handled;
                     }
                     continue;
+
                 case TOKmin:
                     // Note: no support for symbol address difference
                     nextToken();
@@ -2658,6 +2729,7 @@ struct AsmProcessor
                         e1 = Handled;
                     }
                     continue;
+
                 default:
                     break;
             }
@@ -2668,17 +2740,15 @@ struct AsmProcessor
 
     bool tryScale(Expression * e1, Expression * e2)
     {
-        Expression * et;
         if (isIntExp(e1) && isRegExp(e2))
-        {
-            et = e1;
+        {   // swap reg and int expressions.
+            Expression * et = e1;
             e1 = e2;
             e2 = et;
-            goto do_scale;
         }
-        else if (isRegExp(e1) && isIntExp(e2))
+
+        if (isRegExp(e1) && isIntExp(e2))
         {
-    do_scale:
             if (! operand->inBracket)
             {
                 invalidExpression(); // maybe should allow, e.g. DS:EBX+EAX*4
@@ -2690,17 +2760,11 @@ struct AsmProcessor
             }
             operand->indexReg = (Reg) e1->toInteger();
             operand->scale = e2->toInteger();
-            switch (operand->scale)
+            if (operand->scale != 1 && operand->scale != 2 &&
+                operand->scale != 4 && operand->scale != 8)
             {
-                case 1:
-                case 2:
-                case 4:
-                case 8:
-                    // ok; do nothing
-                    break;
-                default:
-                    stmt->error("invalid index register scale '%d'", operand->scale);
-                    return true;
+                stmt->error("invalid index register scale '%d'", operand->scale);
+                return true;
             }
             return true;
         }
@@ -2727,12 +2791,14 @@ struct AsmProcessor
                     else
                         invalidExpression();
                     continue;
+
                 case TOKdiv:
                 case TOKmod:
                     nextToken();
                     e2 = parseMultExp();
                     e1 = intOp(tv, e1, e2);
                     continue;
+
                 default:
                     break;
             }
@@ -2778,19 +2844,26 @@ struct AsmProcessor
         {
             case TOKint8:
                 return Byte_Ptr;
+
             case TOKint16:
                 return Short_Ptr;
+
             case TOKint32:
                 return Int_Ptr;
+
             case TOKint64:
                 // 'long ptr' isn't accepted? (it is now - qword)
-                return QWord_Ptr;
+                return Long_Ptr;
+
             case TOKfloat32:
                 return Float_Ptr;
+
             case TOKfloat64:
                 return Double_Ptr;
+
             case TOKfloat80:
                 return Extended_Ptr;
+
             case TOKidentifier:
                 for (int i = 0; i < N_PtrNames; i++)
                 {
@@ -2798,6 +2871,7 @@ struct AsmProcessor
                         return ptrTypeValueTable[i];
                 }
                 break;
+
             default:
                 break;
         }
@@ -2854,6 +2928,7 @@ struct AsmProcessor
                     break;
                 }
                 return e;
+
             case TOKadd:
             case TOKmin:
             case TOKnot:
@@ -2861,6 +2936,7 @@ struct AsmProcessor
                 nextToken();
                 e = parseUnaExp();
                 return intOp(tv, e, NULL);
+
             default:
                 // primary exp
                 break;
@@ -2883,22 +2959,21 @@ struct AsmProcessor
             case TOKuns32v:
             case TOKint64v:
             case TOKuns64v:
-            {   // semantic here?
+                // semantic here?
                 // %% for tok64 really should use 64bit type
                 e = new IntegerExp(stmt->loc, token->uns64value, Type::tptrdiff_t);
                 nextToken();
                 break;
-            }
+
             case TOKfloat32v:
             case TOKfloat64v:
             case TOKfloat80v:
-            {   // %% need different types?
+                // %% need different types?
                 e = new RealExp(stmt->loc, token->float80value, Type::tfloat80);
                 nextToken();
                 break;
-            }
+
             case TOKidentifier:
-            {
                 ident = token->ident;
                 nextToken();
 
@@ -2908,7 +2983,6 @@ struct AsmProcessor
                 }
                 else if (ident == Id::__dollar)
                 {
-            do_dollar:
                     return new IdentifierExp(stmt->loc, ident);
                 }
                 else
@@ -2967,6 +3041,7 @@ struct AsmProcessor
                                     else
                                         stmt->error("expected ')'");
                                     return e;
+
                                 default:
                                     break;
                             }
@@ -3023,23 +3098,18 @@ struct AsmProcessor
                     }
                 }
                 return e;
-            }
+
             case TOKdollar:
-            {
                 nextToken();
-                ident = Id::__dollar;
-                goto do_dollar;
-                break;
-            }
+                return new IdentifierExp(stmt->loc, Id::__dollar);
+
             default:
-            {
                 if (op == Op_FMath0 || op == Op_FdST0ST1 || op == Op_FMath)
-                {
                     return Handled;
-                }
+
                 invalidExpression();
                 return Handled;
-            }
+
         }
         return e;
     }
@@ -3093,9 +3163,6 @@ struct AsmProcessor
                                              "", "", "" };
         machine_mode mode;
 
-        insnTemplate->writestring(directives[op - Op_db]);
-        insnTemplate->writebyte(' ');
-
         while (1)
         {   // DMD is pretty strict here, not even constant expressions are allowed..
             switch (op)
@@ -3107,6 +3174,9 @@ struct AsmProcessor
                     if (token->value == TOKint32v || token->value == TOKuns32v ||
                         token->value == TOKint64v || token->value == TOKuns64v)
                     {   // As per usual with GNU, assume at least 32-bit host
+                        insnTemplate->writestring(directives[op - Op_db]);
+                        insnTemplate->writebyte(' ');
+
                         if (op != Op_dl)
                             insnTemplate->printf("%u", (d_uns32) token->uns64value);
                         else
@@ -3116,27 +3186,37 @@ struct AsmProcessor
                                     (d_uns32) token->uns64value, (d_uns32) (token->uns64value >> 32));
                         }
                     }
+                    else if (token->value == TOKstring)
+                    {
+                        insnTemplate->printf(".string %s", token->toChars());
+                    }
                     else
                     {
-                        stmt->error("expected integer constant");
+                        stmt->error("constant initializer expected");
                     }
                     break;
+
                 case Op_df:
                     mode = SFmode;
                     goto do_float;
+
                 case Op_dd:
                     mode = DFmode;
                     goto do_float;
+
                 case Op_de:
 #ifndef TARGET_80387
 #define XFmode TFmode
 #endif
                     mode = XFmode; // not TFmode
-                    // drop through
+
                 do_float:
                     if (token->value == TOKfloat32v || token->value == TOKfloat64v ||
                         token->value == TOKfloat80v)
                     {
+                        insnTemplate->writestring(directives[op - Op_db]);
+                        insnTemplate->writebyte(' ');
+
                         long words[3];
                         real_to_target(words, & token->float80value.rv(), mode);
                         // don't use directives..., just use .long like GCC
@@ -3152,6 +3232,7 @@ struct AsmProcessor
                         stmt->error("expected float constant");
                     }
                     break;
+
                 default:
                     gcc_unreachable();
             }

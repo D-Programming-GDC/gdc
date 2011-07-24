@@ -33,7 +33,7 @@ Distributed under the Boost Software License, Version 1.0.
 module std.getopt;
 
 private import std.array, std.string, std.conv, std.traits, std.bitmanip,
-    std.algorithm, std.ctype, std.exception;
+    std.algorithm, std.ascii, std.exception;
 
 version (unittest)
 {
@@ -49,6 +49,8 @@ import std.getopt;
 string data = "file.dat";
 int length = 24;
 bool verbose;
+enum Color { no, yes };
+Color color;
 
 void main(string[] args)
 {
@@ -56,7 +58,8 @@ void main(string[] args)
     args,
     "length",  &length,    // numeric
     "file",    &data,      // string
-    "verbose", &verbose);  // flag
+    "verbose", &verbose,   // flag
+    "color",   &color);    // enum
   ...
 }
 ---------
@@ -116,6 +119,19 @@ To set $(D timeout) to $(D 5), invoke the program with either $(D
  --paranoid", the "42" does not set $(D paranoid) to 42;
  instead, $(D paranoid) is set to 2 and "42" is not considered
  as part of the normal program arguments.))
+
+ $(LI $(I Enum options.) If an option is bound to an enum, an enum symbol as a
+ string is expected as the next option, or right within the option separated
+ with an "=" sign:
+
+---------
+  enum Color { no, yes };
+  Color color; // default initialized to Color.no
+  getopt(args, "color", &color);
+---------
+
+To set $(D color) to $(D Color.yes), invoke the program with either $(D
+--color=yes) or $(D --color yes).
 
  $(LI $(I String options.) If an option is bound to a string, a string
  is expected as the next option, or right within the option separated
@@ -453,7 +469,12 @@ void handleOption(R)(string option, R receiver, ref string[] args,
                 val = args[i];
                 args = args[0 .. i] ~ args[i + 1 .. $];
             }
-            static if (is(typeof(*receiver) : real))
+            static if (is(typeof(*receiver) == enum))
+            {
+                // enum receiver
+                *receiver = parse!(typeof(*receiver))(val);
+            }
+            else static if (is(typeof(*receiver) : real))
             {
                 // numeric receiver
                 if (incremental) ++*receiver;
@@ -578,7 +599,7 @@ private bool optMatch(string arg, string optPattern, ref string value,
     foreach (v ; variants)
     {
         //writeln("Trying variant: ", v, " against ", arg);
-        if (arg == v || !cfg.caseSensitive && toupper(arg) == toupper(v))
+        if (arg == v || !cfg.caseSensitive && toUpper(arg) == toUpper(v))
             return true;
         if (cfg.bundling && !isLong && v.length == 1
                 && std.string.indexOf(arg, v) >= 0)
@@ -613,6 +634,17 @@ unittest
                       "--paranoid", "--paranoid", "--paranoid"]).dup;
     getopt(args, "paranoid+", &paranoid);
     assert(paranoid == 5, to!(string)(paranoid));
+
+    enum Color { no, yes };
+    Color color;
+    args = (["program.name", "--color=yes",]).dup;
+    getopt(args, "color", &color);
+    assert(color, to!(string)(color));
+
+    color = Color.no;
+    args = (["program.name", "--color", "yes",]).dup;
+    getopt(args, "color", &color);
+    assert(color, to!(string)(color));
 
     string data = "file.dat";
     int length = 24;

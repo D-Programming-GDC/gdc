@@ -28,6 +28,10 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
+#if D_GCC_VER >= 46
+#define REAL_VALUE_NEGATE(X)  real_value_negate(&(X))
+#endif
+
 static enum machine_mode
 max_float_mode()
 {
@@ -257,7 +261,7 @@ real_t real_t::operator/ (const real_t & r)
 // Using darwin fmodl man page for special cases
 real_t real_t::operator% (const real_t & r)
 {
-    REAL_VALUE_TYPE quot, tmp, x;
+    REAL_VALUE_TYPE q, x;
     // %% inf cases..
 
     // %% signal error?
@@ -275,10 +279,10 @@ real_t real_t::operator% (const real_t & r)
         return *this;
 
     // %% need to check for NaN?
-    REAL_ARITHMETIC(quot, RDIV_EXPR, rv(), r.rv());
-    quot = real_arithmetic2(FIX_TRUNC_EXPR, & quot, NULL);
-    REAL_ARITHMETIC(tmp, MULT_EXPR, quot, r.rv());
-    REAL_ARITHMETIC(x, MINUS_EXPR, rv(), tmp);
+    REAL_ARITHMETIC(q, RDIV_EXPR, rv(), r.rv());
+    real_arithmetic(& q, FIX_TRUNC_EXPR, & q, NULL);
+    REAL_ARITHMETIC(q, MULT_EXPR, q, r.rv());
+    REAL_ARITHMETIC(x, MINUS_EXPR, rv(), q);
 
     return real_t(x);
 }

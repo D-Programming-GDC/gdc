@@ -17,7 +17,7 @@
 
 #ifndef IN_GCC
 
-#if linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
+#if linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4
 #include <errno.h>
 #endif
 #endif
@@ -66,7 +66,7 @@ Global::Global()
 #ifndef IN_GCC
 #if TARGET_WINDOS
     obj_ext  = "obj";
-#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
+#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
     obj_ext  = "o";
 #elif TARGET_NET
 #else
@@ -79,7 +79,7 @@ Global::Global()
 #ifndef IN_GCC
 #if TARGET_WINDOS
     lib_ext  = "lib";
-#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
+#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
     lib_ext  = "a";
 #elif TARGET_NET
 #else
@@ -92,7 +92,7 @@ Global::Global()
 #ifndef IN_GCC
 #if TARGET_WINDOS
     dll_ext  = "dll";
-#elif TARGET_LINUX || TARGET_FREEBSD || TARGET_SOLARIS
+#elif TARGET_LINUX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
     dll_ext  = "so";
 #elif TARGET_OSX
     dll_ext = "dylib";
@@ -109,7 +109,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
 #endif
     ;
-    version = "v1.067";
+    version = "v1.069";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -267,7 +267,8 @@ void usage()
 #else
     const char fpic[] = "";
 #endif
-    printf("Digital Mars D Compiler %s\n%s %s\n",
+    printf("DMD%s D Compiler %s\n%s %s\n",
+        sizeof(size_t) == 4 ? "32" : "64",
         global.version, global.copyright, global.written);
     printf("\
 Documentation: http://www.digitalmars.com/d/1.0/index.html\n\
@@ -339,6 +340,10 @@ int main(int argc, char *argv[])
     int setdebuglib = 0;
     const char *inifilename = NULL;
 
+#ifdef DEBUG
+    printf("DMD %s DEBUG\n", global.version);
+#endif
+
     // Check for malformed input
     if (argc < 1 || !argv)
     {
@@ -376,9 +381,12 @@ int main(int argc, char *argv[])
     global.params.objfiles = new Array();
     global.params.ddocfiles = new Array();
 
+    // Default to -m32 for 32 bit dmd, -m64 for 64 bit dmd
+    global.params.isX86_64 = (sizeof(size_t) == 8);
+
 #if TARGET_WINDOS
     global.params.defaultlibname = "phobos";
-#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
+#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
     global.params.defaultlibname = "phobos";
 #elif TARGET_NET
 #else
@@ -410,6 +418,10 @@ int main(int argc, char *argv[])
     VersionCondition::addPredefinedGlobalIdent("Posix");
     VersionCondition::addPredefinedGlobalIdent("FreeBSD");
     global.params.isFreeBSD = 1;
+#elif TARGET_OPENBSD
+    VersionCondition::addPredefinedGlobalIdent("Posix");
+    VersionCondition::addPredefinedGlobalIdent("OpenBSD");
+    global.params.isFreeBSD = 1;
 #elif TARGET_SOLARIS
     VersionCondition::addPredefinedGlobalIdent("Posix");
     VersionCondition::addPredefinedGlobalIdent("Solaris");
@@ -427,7 +439,7 @@ int main(int argc, char *argv[])
 
 #if _WIN32
     inifilename = inifile(argv[0], "sc.ini");
-#elif linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
+#elif linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4
     inifilename = inifile(argv[0], "dmd.conf");
 #else
 #error "fix this"
@@ -452,7 +464,7 @@ int main(int argc, char *argv[])
                 global.params.link = 0;
             else if (strcmp(p + 1, "cov") == 0)
                 global.params.cov = 1;
-#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS
+#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
             else if (strcmp(p + 1, "fPIC") == 0)
                 global.params.pic = 1;
 #endif
@@ -555,7 +567,6 @@ int main(int argc, char *argv[])
                         goto Lerror;
                 }
             }
-#ifdef _DH
             else if (p[1] == 'H')
             {   global.params.doHdrGeneration = 1;
                 switch (p[2])
@@ -579,7 +590,6 @@ int main(int argc, char *argv[])
                         goto Lerror;
                 }
             }
-#endif
             else if (p[1] == 'X')
             {   global.params.doXGeneration = 1;
                 switch (p[2])
@@ -742,6 +752,13 @@ int main(int argc, char *argv[])
                 browse("http://www.digitalmars.com/d/1.0/dmd-freebsd.html");
 #else
                 browse("http://www.digitalmars.com/d/2.0/dmd-freebsd.html");
+#endif
+#endif
+#if __OpenBSD__
+#if DMDV1
+                browse("http://www.digitalmars.com/d/1.0/dmd-openbsd.html");
+#else
+                browse("http://www.digitalmars.com/d/2.0/dmd-openbsd.html");
 #endif
 #endif
                 exit(EXIT_SUCCESS);
@@ -1154,7 +1171,6 @@ int main(int argc, char *argv[])
     }
     if (global.errors)
         fatal();
-#ifdef _DH
     if (global.params.doHdrGeneration)
     {
         /* Generate 'header' import files.
@@ -1172,7 +1188,6 @@ int main(int argc, char *argv[])
     }
     if (global.errors)
         fatal();
-#endif
 
     // load all unconditional imports for better symbol resolving
     for (i = 0; i < modules.dim; i++)

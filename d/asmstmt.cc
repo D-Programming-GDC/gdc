@@ -173,8 +173,11 @@ ExtAsmStatement::semantic(Scope *sc)
     insnTemplate = insnTemplate->semantic(sc);
     insnTemplate = insnTemplate->optimize(WANTvalue);
 #if V2
-    if (sc->func && sc->func->isSafe())
-        error("extended assembler not allowed in @safe function %s", sc->func->toChars());
+    if (sc->func)
+    {
+        if (sc->func->setUnsafe())
+            error("extended assembler not allowed in @safe function %s", sc->func->toChars());
+    }
 #endif
     if (insnTemplate->op != TOKstring || ((StringExp *)insnTemplate)->sz != 1)
         error("instruction template must be a constant char string");
@@ -267,7 +270,6 @@ ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writenl();
 }
 
-#if V2
 int
 ExtAsmStatement::blockExit(bool mustNotThrow)
 {
@@ -276,16 +278,6 @@ ExtAsmStatement::blockExit(bool mustNotThrow)
     // TODO: Be smarter about this
     return BEany;
 }
-
-#else
-
-int
-ExtAsmStatement::blockExit()
-{
-    // TODO: Be smarter about this
-    return BEany;
-}
-#endif
 
 
 // StringExp::toIR usually adds a NULL.  We don't want that...
@@ -352,10 +344,9 @@ AsmStatement::semantic(Scope *sc)
     if (sc->func && sc->func->isSafe())
         error("inline assembler not allowed in @safe function %s", sc->func->toChars());
 #endif
-    sc->func->inlineAsm = 1;
     sc->func->inlineStatus = ILSno; // %% not sure
     // %% need to set DECL_UNINLINABLE too?
-    sc->func->hasReturnExp = 1; // %% DMD does this, apparently...
+    sc->func->hasReturnExp |= 8; // %% DMD does this, apparently...
 
     // empty statement -- still do the above things because they might be expected?
     if (! tokens)
@@ -578,7 +569,7 @@ bool d_have_inline_asm() { return false; }
 Statement *
 AsmStatement::semantic(Scope *sc)
 {
-    sc->func->inlineAsm = 1;
+    sc->func->hasReturnExp |= 8;
     return Statement::semantic(sc);
 }
 

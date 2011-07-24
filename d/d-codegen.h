@@ -3,6 +3,7 @@
 
    Modified by
     Michael Parrot, (C) 2009, 2010
+    Iain Buclaw, (C) 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -39,7 +40,9 @@ enum LibCall
     LIBCALL_NEWARRAYMTP,
     //LIBCALL_NEWARRAYMIT,
     LIBCALL_NEWARRAYMITP,
+#if V2
     LIBCALL_ALLOCMEMORY,
+#endif
     LIBCALL_DELCLASS,
     LIBCALL_DELINTERFACE,
     LIBCALL_DELARRAY,
@@ -109,7 +112,12 @@ enum BinOp
 struct FuncFrameInfo
 {
     bool creates_closure;
-    tree closure_rec;
+    bool creates_frame;
+    union
+    {
+        tree closure_rec;
+        tree frame_rec;
+    };
 };
 
 class ArrayScope;
@@ -163,14 +171,7 @@ struct IRState : IRBase
     tree maybeExprVar(tree exp, tree * out_var);
     void expandDecl(tree t_decl);
 
-#if V2
     tree var(VarDeclaration * v);
-#else
-    tree var(VarDeclaration * v)
-    {
-        return v->toSymbol()->Stree;
-    }
-#endif
 
     // ** Type conversion
 
@@ -375,10 +376,9 @@ struct IRState : IRBase
 
             t = build1(ADDR_EXPR, ptrtype, exp);
         }
-#if D_NO_TRAMPOLINES
         if (TREE_CODE(exp) == FUNCTION_DECL)
-            TREE_STATIC(t) = 1;
-#endif
+            TREE_NO_TRAMPOLINE(t) = 1;
+
         return t;
     }
 
@@ -489,6 +489,15 @@ struct IRState : IRBase
                  TREE_CODE(TREE_OPERAND(t, 0)) == ERROR_MARK);
     }
 
+    // ** Helpers for call
+    static TypeFunction * getFuncType(Type * t);
+
+    static inline bool isFuncType(tree t)
+    {
+        return (TREE_CODE(t) == FUNCTION_TYPE ||
+                TREE_CODE(t) == METHOD_TYPE);
+    }
+
     // ** Function calls
     tree call(Expression * expr, Array * arguments);
     tree call(FuncDeclaration * func_decl, Array * args);
@@ -509,12 +518,25 @@ struct IRState : IRBase
     // and the SIDE_EFFECTS flags of the arguments.
     static tree buildCall(tree type, tree callee, tree args)
     {
-#if D_GCC_VER >= 43
-        tree t = build_call_list(type, callee, args);
-#else
-        tree t = build3(CALL_EXPR, type, callee, args, NULL_TREE);
+#if 0
+        Type * t = getDType(TREE_TYPE(TREE_TYPE(callee)));
+        if (t != NULL)
+        {
+            TypeFunction * tf = getFuncType(t);
+            if (tf->linkage == LINKd && tf->varargs != 1)
+                args = nreverse(args);
+        }
 #endif
-        return t;
+#if D_GCC_VER >= 43
+        int nargs = list_length(args);
+        tree * pargs = new tree[nargs];
+        for (int i = 0; args; args = TREE_CHAIN(args), i++)
+            pargs[i] = TREE_VALUE(args);
+
+        return build_call_array(type, callee, nargs, pargs);
+#else
+        return build3(CALL_EXPR, type, callee, args, NULL_TREE);
+#endif
     }
 
     // Conveniently construct the function arguments for passing
@@ -546,6 +568,11 @@ struct IRState : IRBase
     // %%
     static bool originalOmitFramePointer;
 
+#if V2
+    // Variables that are in scope that will need destruction later
+    static Array * varsInScope;
+#endif
+
 protected:
     tree maybeExpandSpecialCall(tree call_exp);
     static tree expandPortIntrinsic(Intrinsic code, tree port, tree value, int outp);
@@ -558,7 +585,9 @@ public:
 
     static Module * builtinsModule;
     static Module * intrinsicModule;
+    static Module * intrinsicCoreModule;
     static Module * mathModule;
+    static Module * mathCoreModule;
     static TemplateDeclaration * stdargTemplateDecl;
     static TemplateDeclaration * cstdargStartTemplateDecl;
     static TemplateDeclaration * cstdargArgTemplateDecl;
@@ -568,14 +597,20 @@ public:
         builtinsModule = mod;
     }
 
-    static void setIntrinsicModule(Module * mod)
+    static void setIntrinsicModule(Module * mod, bool coremod)
     {
-        intrinsicModule = mod;
+        if (coremod)
+            intrinsicCoreModule = mod;
+        else
+            intrinsicModule = mod;
     }
 
-    static void setMathModule(Module * mod)
+    static void setMathModule(Module * mod, bool coremod)
     {
-        mathModule = mod;
+        if (coremod)
+            mathCoreModule = mod;
+        else
+            mathModule = mod;
     }
 
     static void setStdArg(TemplateDeclaration * td)
@@ -605,41 +640,42 @@ public:
 
     static tree label(Loc loc, Identifier * ident = 0);
 
-#if V2
-    void useClosure(FuncDeclaration * f, tree l)
+    // Static chain of function, for D2, this is a closure.
+    void useChain(FuncDeclaration * f, tree l)
     {
-        _closureLink = l;
-        _closureFunc = f;
+        _chainLink = l;
+        _chainFunc = f;
     }
 
-    void useParentClosure()
+    void useParentChain()
     {
         if (parent)
         {
-            _closureLink = ((IRState*)parent)->_closureLink;
-            _closureFunc = ((IRState*)parent)->_closureFunc;
+            _chainLink = ((IRState *)parent)->_chainLink;
+            _chainFunc = ((IRState *)parent)->_chainFunc;
         }
     }
 
-    tree closureLink()
+    tree chainLink()
     {
-        return _closureLink;
+        return _chainLink;
     }
 
-    FuncDeclaration * closureFunc()
+    FuncDeclaration * chainFunc()
     {
-        return _closureFunc;
+        return _chainFunc;
     }
-#endif
+
+    void buildChain(FuncDeclaration * func);
+
 protected:
     tree getFrameForSymbol(Dsymbol * nested_sym);
-#if V2
-    tree getClosureRef(FuncDeclaration *outer_func);
-    FuncDeclaration * _closureFunc;
-    tree _closureLink;
+    tree getFrameRef(FuncDeclaration *outer_func);
+    FuncDeclaration * _chainFunc;
+    tree _chainLink;
+
 public:
     static FuncFrameInfo * getFrameInfo(FuncDeclaration *fd);
-#endif
 public:
     static bool functionNeedsChain(FuncDeclaration *f);
 
@@ -662,7 +698,17 @@ public:
 
     // ** Instruction stream manipulation
     void startCond(Statement * stmt, tree t_cond);
-    void startCond(Statement * stmt, Expression * e_cond);
+
+    void startCond(Statement * stmt, Expression * e_cond)
+    {
+#if V2
+        tree t_cond = e_cond->toElemDtor(this);
+        startCond(stmt, convertForCondition(t_cond, e_cond->type));
+#else
+        startCond(stmt, convertForCondition(e_cond));
+#endif
+    }
+
     void startElse();
     void endCond();
     void startLoop(Statement * stmt);
@@ -672,7 +718,12 @@ public:
 
     void exitIfFalse(Expression * e_cond, bool is_top_cond = 0)
     {
+#if V2
+        tree t_cond = e_cond->toElemDtor(this);
+        exitIfFalse(convertForCondition(t_cond, e_cond->type), is_top_cond);
+#else
         exitIfFalse(convertForCondition(e_cond), is_top_cond);
+#endif
     }
 
     void endLoop();
@@ -751,7 +802,6 @@ struct ListMaker
     tree * ptail;
     ListMaker() : head(NULL_TREE), ptail(& head) { }
     ListMaker(tree * alt_head) : head(NULL_TREE), ptail(alt_head) { }
-    void reserve(int i) { }
 
     void chain(tree t)
     {
@@ -770,10 +820,6 @@ struct ListMaker
         cons(NULL_TREE, v);
     }
 };
-
-#if D_GCC_VER < 41
-typedef ListMaker CtorEltMaker;
-#else
 
 struct CtorEltMaker
 {
@@ -798,8 +844,6 @@ struct CtorEltMaker
         cons(NULL_TREE, v);
     }
 };
-
-#endif
 
 class FieldVisitor
 {

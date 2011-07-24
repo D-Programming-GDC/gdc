@@ -68,10 +68,7 @@ extern "C" {
 #endif
 #include "tree-dump.h"
 #include "tree-inline.h"
-
-#if D_GCC_VER >= 41
 #include "vec.h"
-#endif
 }
 
 // Define our own macro for handling mapped locations as

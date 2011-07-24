@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -117,7 +117,6 @@ enum TY
 
 extern int Tsize_t;
 extern int Tptrdiff_t;
-extern int Tindex;
 
 
 struct Type : Object
@@ -170,7 +169,7 @@ struct Type : Object
     #define tshiftcnt   tint32          // right side of shift expression
 //    #define tboolean  tint32          // result of boolean expression
     #define tboolean    tbool           // result of boolean expression
-    #define tindex      basic[Tindex]   // array/ptr index
+    #define tindex      tsize_t         // array/ptr index
     static Type *tvoidptr;              // void*
     #define terror      basic[Terror]   // for error recovery
 
@@ -488,6 +487,7 @@ struct TypeFunction : Type
     Type *semantic(Loc loc, Scope *sc);
     void toDecoBuffer(OutBuffer *buf);
     void toCBuffer(OutBuffer *buf, Identifier *ident, HdrGenState *hgs);
+    void toCBufferWithAttributes(OutBuffer *buf, Identifier *ident, HdrGenState* hgs, TypeFunction *attrs, TemplateDeclaration *td);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
     TypeInfoDeclaration *getTypeInfoDeclaration();
@@ -498,6 +498,8 @@ struct TypeFunction : Type
     enum RET retStyle();
 
     unsigned totym();
+
+    Expression *defaultInit(Loc loc);
 };
 
 struct TypeDelegate : Type

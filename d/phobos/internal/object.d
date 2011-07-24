@@ -102,8 +102,7 @@ class Object
      */
     void print()
     {
-        char[] s = toString();
-        printf("%.*s\n", cast(int) s.length, s.ptr);
+        printf("%.*s\n", toString());
     }
 
     /**
@@ -120,7 +119,7 @@ class Object
     hash_t toHash()
     {
         // BUG: this prevents a compacting GC from working, needs to be fixed
-        return cast(hash_t)cast(void *)this;
+        return cast(uint)cast(void *)this;
     }
 
     /**
@@ -388,7 +387,7 @@ class TypeInfo
     }
 
     /// Returns a hash of the instance of a type.
-    hash_t getHash(void *p) { return cast(hash_t)p; }
+    hash_t getHash(void *p) { return cast(uint)p; }
 
     /// Compares two instances for equality.
     int equals(void *p1, void *p2) { return cast(int)(p1 == p2); }
@@ -416,7 +415,8 @@ class TypeInfo
     /// null if none.
     TypeInfo next() { return null; }
 
-    /// Return default initializer, null if default initialize to 0
+    /// Return default initializer.  If the type should be initialized to all zeros,
+    /// an array with a null ptr and a length equal to the type size will be returned.
     void[] init() { return null; }
 
     /// Get flags for type: 1 means GC should scan for pointers
@@ -490,7 +490,7 @@ class TypeInfo_Pointer : TypeInfo
 
     hash_t getHash(void *p)
     {
-        return cast(hash_t)*cast(void* *)p;
+        return cast(uint)*cast(void* *)p;
     }
 
     int equals(void *p1, void *p2)
@@ -760,6 +760,7 @@ class TypeInfo_Function : TypeInfo
 
         return this is o ||
                 ((c = cast(TypeInfo_Function)o) !is null &&
+//		 this.deco == c.deco);
                  this.next == c.next);
     }
 
@@ -771,6 +772,7 @@ class TypeInfo_Function : TypeInfo
     }
 
     TypeInfo next;
+    string deco;
 }
 
 class TypeInfo_Delegate : TypeInfo
@@ -785,6 +787,7 @@ class TypeInfo_Delegate : TypeInfo
 
         return this is o ||
                 ((c = cast(TypeInfo_Delegate)o) !is null &&
+//		 this.deco == c.deco);
                  this.next == c.next);
     }
 
@@ -798,6 +801,7 @@ class TypeInfo_Delegate : TypeInfo
     uint flags() { return 1; }
 
     TypeInfo next;
+    string deco;
 
     size_t talign()
     {   alias int delegate() dg;
@@ -1173,8 +1177,7 @@ class Exception : Object
 
     void print()
     {
-        char[] s = toString();
-        printf("%.*s\n", cast(int) s.length, s.ptr);
+        printf("%.*s\n", toString());
     }
 
     char[] toString() { return msg; }

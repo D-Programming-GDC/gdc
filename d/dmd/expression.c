@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -50,6 +50,7 @@ extern "C" char * __cdecl __locale_decpoint;
 #include "attrib.h"
 #include "hdrgen.h"
 #include "parse.h"
+#include "doc.h"
 
 
 Expression *createTypeInfoArray(Scope *sc, Expression *args[], int dim);
@@ -117,9 +118,11 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
                 {   FuncDeclaration *f = s->isFuncDeclaration();
                     if (f->vthis)
                     {
+#ifndef IN_GCC
                         //printf("rewriting e1 to %s's this\n", f->toChars());
                         n++;
                         e1 = new VarExp(loc, f->vthis);
+#endif
                     }
                     else
                     {
@@ -183,7 +186,7 @@ FuncDeclaration *hasThis(Scope *sc)
                 break;
         }
 
-        fd = fd->parent->isFuncDeclaration();
+        fd = parent->isFuncDeclaration();
     }
 
     if (!fd->isThis())
@@ -509,7 +512,7 @@ void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argum
 
     if (nargs > nparams && tf->varargs == 0)
         error(loc, "expected %"PRIuSIZE" arguments, not %"PRIuSIZE" for non-variadic function type %s",
-                nparams, nargs, tf->toChars());
+              nparams, nargs, tf->toChars());
 
     unsigned n = (nargs > nparams) ? nargs : nparams;   // n = max(nargs, nparams)
 
@@ -1455,13 +1458,18 @@ void IntegerExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
                      break;
                 }
             case Tchar:
+            {
+                unsigned o = buf->offset;
                 if (v == '\'')
                     buf->writestring("'\\''");
                 else if (isprint(v) && v != '\\')
                     buf->printf("'%c'", (int)v);
                 else
                     buf->printf("'\\x%02x'", (int)v);
+                if (hgs->ddoc)
+                    escapeDdocString(buf, o);
                 break;
+            }
 
             case Tint8:
                 buf->writestring("cast(byte)");
@@ -1549,7 +1557,7 @@ void IntegerExp::toMangleBuffer(OutBuffer *buf)
         if (buf->offset > 0 && isdigit(buf->data[buf->offset - 1]))
             buf->writeByte('i');
 
-        buf->printf("%jd", value);
+        buf->printf("%"PRIdMAX, value);
     }
 }
 
@@ -1641,11 +1649,7 @@ complex_t RealExp::toComplex()
 int RealEquals(real_t x1, real_t x2)
 {
 #ifndef IN_GCC
-#if __APPLE__
-    return (__inline_isnan(x1) && __inline_isnan(x2)) ||
-#else
-    return (isnan(x1) && isnan(x2)) ||
-#endif
+    return (Port::isNan(x1) && Port::isNan(x2)) ||
         /* In some cases, the REALPAD bytes get garbage in them,
          * so be sure and ignore them.
          */
@@ -1694,8 +1698,8 @@ void floatToBuffer(OutBuffer *buf, Type *type, const real_t & value)
      * If it doesn't, fall back to hex, which is
      * always exact.
      */
-    char buffer[48];
 #ifdef IN_GCC
+    char buffer[48];
     real_t parsed_value;
 
     value.format(buffer, sizeof(buffer));
@@ -1708,6 +1712,7 @@ void floatToBuffer(OutBuffer *buf, Type *type, const real_t & value)
         buf->writestring(buffer);
     }
 #else
+    char buffer[25];
     sprintf(buffer, "%Lg", value);
     assert(strlen(buffer) < sizeof(buffer));
 #if _WIN32 && __DMC__
@@ -1773,20 +1778,17 @@ void realToMangleBuffer(OutBuffer *buf, real_t value)
     else if (value.isInf())
         buf->writestring(value.isNegative()?"NINF":"INF");
 #else
-#if __APPLE__
-    if (__inline_isnan(value))
-#else
-    if (isnan(value))
-#endif
+    if (Port::isNan(value))
         buf->writestring("NAN");        // no -NAN bugs
 #endif
     else
     {
-        char buffer[64];
 #ifdef IN_GCC
+        char buffer[64];
         value.formatHex(buffer, sizeof(buffer));
         int n = strlen(buffer);
 #else
+        char buffer[32];
         int n = sprintf(buffer, "%LA", value);
         assert(n > 0 && n < sizeof(buffer));
 #endif
@@ -1853,7 +1855,7 @@ char *ComplexExp::toChars()
 dinteger_t ComplexExp::toInteger()
 {
 #ifdef IN_GCC
-    return (d_int64) toReal().toInt();
+    return (sinteger_t) toReal().toInt();
 #else
     return (sinteger_t) toReal();
 #endif
@@ -1890,11 +1892,11 @@ int ComplexExp::equals(Object *o)
         (((Expression *)o)->op == TOKcomplex80 &&
          ((ne = (ComplexExp *)o), type->equals(ne->type)) &&
 #ifndef IN_GCC
-        RealEquals(creall(value), creall(ne->value)) &&
-        RealEquals(cimagl(value), cimagl(ne->value))
+         RealEquals(creall(value), creall(ne->value)) &&
+         RealEquals(cimagl(value), cimagl(ne->value))
 #else
-        RealEquals(value.re, ne->value.re) &&
-        RealEquals(value.im, ne->value.im)
+         RealEquals(value.re, ne->value.re) &&
+         RealEquals(value.im, ne->value.im)
 #endif
         )
        )
@@ -2808,6 +2810,7 @@ unsigned StringExp::charAt(size_t i)
 void StringExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     buf->writeByte('"');
+    unsigned o = buf->offset;
     for (size_t i = 0; i < len; i++)
     {   unsigned c = charAt(i);
 
@@ -2832,6 +2835,8 @@ void StringExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
                 break;
         }
     }
+    if (hgs->ddoc)
+        escapeDdocString(buf, o);
     buf->writeByte('"');
     if (postfix)
         buf->writeByte(postfix);
@@ -2959,8 +2964,15 @@ Expression *ArrayLiteralExp::semantic(Scope *sc)
 
     if (!t0)
         t0 = Type::tvoid;
+
     type = new TypeSArray(t0, new IntegerExp(elements->dim));
     type = type->semantic(loc, sc);
+
+    /* Disallow array literals of type void being used.
+     */
+    if (elements->dim > 0 && t0->ty == Tvoid)
+        error("%s of type %s has no value", toChars(), type->toChars());
+
     return this;
 }
 
@@ -3196,17 +3208,21 @@ Expression *StructLiteralExp::semantic(Scope *sc)
         else
         {
             if (v->init)
-            {   e = v->init->toExpression();
-                if (!e)
-                {   error("cannot make expression out of initializer for %s", v->toChars());
-                    e = new ErrorExp();
-                }
-                else if (v->scope)
-                {   // Do deferred semantic anaylsis
-                    Initializer *i2 = v->init->syntaxCopy();
-                    i2 = i2->semantic(v->scope, v->type);
-                    e = i2->toExpression();
-                    v->scope = NULL;
+            {   if (v->init->isVoidInitializer())
+                    e = NULL;
+                else
+                {   e = v->init->toExpression();
+                    if (!e)
+                    {   error("cannot make expression out of initializer for %s", v->toChars());
+                        return new ErrorExp();
+                    }
+                    else if (v->scope)
+                    {   // Do deferred semantic analysis
+                        Initializer *i2 = v->init->syntaxCopy();
+                        i2 = i2->semantic(v->scope, v->type, WANTinterpret);
+                        e = i2->toExpression();
+                        v->scope = NULL;
+                    }
                 }
             }
             else
@@ -3454,6 +3470,8 @@ Lagain:
             }
             //printf("sds = %s, '%s'\n", sds->kind(), sds->toChars());
         }
+        if (global.errors)
+            return new ErrorExp();
     }
     else
     {
@@ -3724,7 +3742,7 @@ Lagain:
             Expression *e;
 
             // Prepend the uint size argument to newargs[]
-            e = new IntegerExp(loc, sd->size(loc), Type::tsize_t);
+            e = new IntegerExp(loc, sd->size(loc), Type::tuns32);
             if (!newargs)
                 newargs = new Expressions();
             newargs->shift(e);
@@ -5220,6 +5238,8 @@ Expression *CompileExp::semantic(Scope *sc)
 #endif
     UnaExp::semantic(sc);
     e1 = resolveProperties(sc, e1);
+    if (e1->op == TOKerror)
+        return e1;
     if (!e1->type->isString())
     {
         error("argument to mixin must be a string type, not %s\n", e1->type->toChars());
@@ -5265,7 +5285,7 @@ Expression *FileExp::semantic(Scope *sc)
 #endif
     UnaExp::semantic(sc);
     e1 = resolveProperties(sc, e1);
-    e1 = e1->optimize(WANTvalue);
+    e1 = e1->optimize(WANTvalue | WANTinterpret);
     if (e1->op != TOKstring)
     {   error("file name argument must be a string, not (%s)", e1->toChars());
         goto Lerror;
@@ -5477,7 +5497,8 @@ Expression *DotIdExp::semantic(Scope *sc)
     }
     else
     {
-        e1 = resolveProperties(sc, e1);
+        if (e1->op != TOKtype)
+            e1 = resolveProperties(sc, e1);
         eleft = NULL;
         eright = e1;
     }
@@ -5952,6 +5973,8 @@ Expression *DotTemplateInstanceExp::semantic(Scope *sc)
     Expression *e = new DotIdExp(loc, e1, ti->name);
 L1:
     e = e->semantic(sc);
+    if (e->op == TOKerror)
+        return e;
     if (e->op == TOKdottd)
     {
         if (global.errors)
@@ -6953,7 +6976,11 @@ Expression *AddrExp::semantic(Scope *sc)
     if (!type)
     {
         UnaExp::semantic(sc);
+        if (e1->type == Type::terror)
+            return new ErrorExp();
         e1 = e1->toLvalue(sc, NULL);
+        if (e1->op == TOKerror)
+            return e1;
         if (!e1->type)
         {
             error("cannot take address of %s", e1->toChars());
@@ -6991,9 +7018,8 @@ Expression *AddrExp::semantic(Scope *sc)
             FuncDeclaration *f = dve->var->isFuncDeclaration();
 
             if (f && f->isNested())
-            {   Expression *e;
-
-                e = new DelegateExp(loc, e1, f);
+            {
+                Expression *e = new DelegateExp(loc, e1, f);
                 e = e->semantic(sc);
                 return e;
             }
@@ -7043,12 +7069,12 @@ Expression *PtrExp::semantic(Scope *sc)
         switch (tb->ty)
         {
             case Tpointer:
-                type = tb->next;
+                type = ((TypePointer *)tb)->next;
                 break;
 
             case Tsarray:
             case Tarray:
-                type = tb->next;
+                type = ((TypeArray *)tb)->next;
                 e1 = e1->castTo(sc, type->pointerTo());
                 break;
 
@@ -7245,6 +7271,8 @@ Expression *DeleteExp::semantic(Scope *sc)
     UnaExp::semantic(sc);
     e1 = resolveProperties(sc, e1);
     e1 = e1->toLvalue(sc, NULL);
+    if (e1->op == TOKerror)
+        return e1;
     type = Type::tvoid;
 
     tb = e1->type->toBasetype();
@@ -7292,7 +7320,7 @@ Expression *DeleteExp::semantic(Scope *sc)
                     break;
             }
             error("cannot delete type %s", e1->type->toChars());
-            break;
+            return new ErrorExp();
     }
 
     if (e1->op == TOKindex)
@@ -7316,7 +7344,7 @@ int DeleteExp::checkSideEffect(int flag)
 Expression *DeleteExp::checkToBoolean()
 {
     error("delete does not give a boolean result");
-    return this;
+    return new ErrorExp();
 }
 
 void DeleteExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -7565,31 +7593,34 @@ Expression *SliceExp::semantic(Scope *sc)
     else
         goto Lerror;
 
+    {
+    Scope *sc2 = sc;
     if (t->ty == Tsarray || t->ty == Tarray || t->ty == Ttuple)
     {
         sym = new ArrayScopeSymbol(this);
         sym->loc = loc;
         sym->parent = sc->scopesym;
-        sc = sc->push(sym);
+        sc2 = sc->push(sym);
     }
 
     if (lwr)
-    {   lwr = lwr->semantic(sc);
-        lwr = resolveProperties(sc, lwr);
-        lwr = lwr->implicitCastTo(sc, Type::tsize_t);
+    {   lwr = lwr->semantic(sc2);
+        lwr = resolveProperties(sc2, lwr);
+        lwr = lwr->implicitCastTo(sc2, Type::tsize_t);
         if (lwr->type == Type::terror)
             goto Lerr;
     }
     if (upr)
-    {   upr = upr->semantic(sc);
-        upr = resolveProperties(sc, upr);
-        upr = upr->implicitCastTo(sc, Type::tsize_t);
-        if (lwr->type == Type::terror)
+    {   upr = upr->semantic(sc2);
+        upr = resolveProperties(sc2, upr);
+        upr = upr->implicitCastTo(sc2, Type::tsize_t);
+        if (upr->type == Type::terror)
             goto Lerr;
     }
 
-    if (t->ty == Tsarray || t->ty == Tarray || t->ty == Ttuple)
-        sc->pop();
+    if (sc2 != sc)
+        sc2->pop();
+    }
 
     if (t->ty == Ttuple)
     {
@@ -7712,6 +7743,13 @@ void SliceExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
             buf->writestring("length");         // BUG: should be array.length
     }
     buf->writeByte(']');
+}
+
+int SliceExp::canThrow()
+{
+    return UnaExp::canThrow()
+        || (lwr != NULL && lwr->canThrow())
+        || (upr != NULL && upr->canThrow());
 }
 
 /********************** ArrayLength **************************************/
@@ -8622,6 +8660,7 @@ Expression *CatAssignExp::semantic(Scope *sc)
     }
     else if (tb1->ty == Tarray &&
         (tb1next->ty == Tchar || tb1next->ty == Twchar) &&
+        e2->type->ty != tb1next->ty &&
         e2->implicitConvTo(Type::tdchar)
        )
     {   // Append dchar to char[] or wchar[]
@@ -9572,11 +9611,21 @@ Expression *OrOrExp::semantic(Scope *sc)
     e2 = resolveProperties(sc, e2);
     e2 = e2->checkToPointer();
 
-    type = Type::tboolean;
     if (e2->type->ty == Tvoid)
         type = Type::tvoid;
+    else
+    {
+        e2 = e2->checkToBoolean();
+        type = Type::tboolean;
+    }
     if (e2->op == TOKtype || e2->op == TOKimport)
-        error("%s is not an expression", e2->toChars());
+    {   error("%s is not an expression", e2->toChars());
+        return new ErrorExp();
+    }
+    if (e1->op == TOKerror)
+        return e1;
+    if (e2->op == TOKerror)
+        return e2;
     return this;
 }
 
@@ -9637,11 +9686,21 @@ Expression *AndAndExp::semantic(Scope *sc)
     e2 = resolveProperties(sc, e2);
     e2 = e2->checkToPointer();
 
-    type = Type::tboolean;
     if (e2->type->ty == Tvoid)
         type = Type::tvoid;
+    else
+    {
+        e2 = e2->checkToBoolean();
+        type = Type::tboolean;
+    }
     if (e2->op == TOKtype || e2->op == TOKimport)
-        error("%s is not an expression", e2->toChars());
+    {   error("%s is not an expression", e2->toChars());
+        return new ErrorExp();
+    }
+    if (e1->op == TOKerror)
+        return e1;
+    if (e2->op == TOKerror)
+        return e2;
     return this;
 }
 

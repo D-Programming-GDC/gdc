@@ -90,6 +90,9 @@ union lang_tree_node
 /* True if the function has been marked "naked". */
 #define D_DECL_NO_FRAME_POINTER(NODE) (DECL_LANG_FLAG_2(NODE))
 
+/* True if the symbol has been marked "static const".  */
+#define D_DECL_READONLY_STATIC(NODE) (DECL_LANG_FLAG_3(NODE))
+
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and
    otherwise support the backend. */
@@ -247,18 +250,15 @@ extern GTY(()) tree d_keep_list;
 
 #if D_GCC_VER < 44
 #define DECL_PURE_P DECL_IS_PURE
+/* nonzero means do not use a trampoline - requires patching frontend. */
+#define TREE_NO_TRAMPOLINE(NODE) (TREE_STATIC(NODE))
 #endif
 
 /* compat with D_GCC_VER >= 45 */
-#define DECL_STATIC_CHAIN(decl)  ! DECL_NO_STATIC_CHAIN(decl)
+#define DECL_STATIC_CHAIN(NODE) (! DECL_NO_STATIC_CHAIN(NODE))
 
-#if D_GCC_VER < 41
-//#define d_warning(option, xformat, ...) warning(format, __VA_ARGS__)
-#define d_warning(option, ...) warning(__VA_ARGS__)
-#else
 //#define d_warning(option, format, ...) warning(option, format, __VA_ARGS__)
 #define d_warning(option, ...) warning(option, __VA_ARGS__)
-#endif
 
 #if D_GCC_VER < 43
 #define set_cfun(x) (cfun = (x))

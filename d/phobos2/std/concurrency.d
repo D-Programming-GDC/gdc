@@ -66,7 +66,7 @@ private
     {
         MsgType type;
         Variant data;
-        
+
         this(T...)( MsgType t, T vals )
             if( T.length < 1 )
         {
@@ -95,7 +95,7 @@ private
             else
                 return data.convertsTo!(Tuple!(T));
         }
-        
+
         auto get(T...)()
         {
             static if( T.length == 1 )
@@ -162,11 +162,14 @@ private
 }
 
 
-static this()
+shared static this()
 {
-    // NOTE: thisTid will construct a new MessageBox if one doesn't exist,
-    //       which should only be true of the main thread and threads created
-    //       via core.thread instead of spawn.
+    // NOTE: Normally, mbox is initialized by spawn() or thisTid().  This
+    //       doesn't support the simple case of calling only receive() in main
+    //       however.  To ensure that this works, initialize the main thread's
+    //       mbox field here (as shared static ctors are run once on startup
+    //       by the main thread).
+    mbox = new MessageBox;
 }
 
 
@@ -492,15 +495,25 @@ receiveOnlyRet!(T) receiveOnly(T...)()
 
 
 /**
- *
+ * $(RED Scheduled for deprecation in January 2012. Please use the version
+ *       which takes a $(CXREF time, Duration) instead.)
  */
 bool receiveTimeout(T...)( long ms, T ops )
 {
-    checkops( ops );
-    static enum long TICKS_PER_MILLI = 10_000;
-    return mbox.get( ms * TICKS_PER_MILLI, ops );
+    return receiveTimeout( dur!"msecs"( ms ), ops );
 }
 
+/++
+    Same as $(D receive) except that rather than wait forever for a message,
+    it waits until either it receives a message or the given
+    $(CXREF time, Duration) has passed. It returns $(D true) if it received a
+    message and $(D false) if it timed out waiting for one.
+  +/
+bool receiveTimeout(T...)( Duration duration, T ops )
+{
+    checkops( ops );
+    return mbox.get( duration, ops );
+}
 
 unittest
 {
@@ -519,6 +532,11 @@ unittest
                        {
                            receiveTimeout( 0, (int x) {}, (int x) {} );
                        } ) );
+
+    assert( __traits( compiles,
+                      {
+                          receiveTimeout( dur!"msecs"(10), (int x) {}, (Variant x) {} );
+                      } ) );
 }
 
 
@@ -603,6 +621,115 @@ void setMaxMailboxSize( Tid tid, size_t messages, bool function(Tid) onCrowdingD
 
 
 //////////////////////////////////////////////////////////////////////////////
+// Name Registration
+//////////////////////////////////////////////////////////////////////////////
+
+
+private
+{
+    __gshared Tid[string]   tidByName;
+    __gshared string[][Tid] namesByTid;
+    __gshared Mutex         registryLock;
+}
+
+
+shared static this()
+{
+    registryLock = new Mutex;
+}
+
+
+static ~this()
+{
+    auto me = thisTid;
+
+    synchronized( registryLock )
+    {
+        if( auto allNames = me in namesByTid )
+        {
+            foreach( name; *allNames )
+                tidByName.remove( name );
+            namesByTid.remove( me );
+        }
+    }
+}
+
+
+/**
+ * Associates name with tid in a process-local map.  When the thread
+ * represented by tid termiantes, any names associated with it will be
+ * automatically unregistered.
+ *
+ * Params:
+ *  name = The name to associate with tid.
+ *  tid  = The tid register by name.
+ *
+ * Returns:
+ *  true if the name is available and tid is not known to represent a
+ *  defunct thread.
+ */
+bool register( string name, Tid tid )
+{
+    synchronized( registryLock )
+    {
+        if( name in tidByName )
+            return false;
+        if( tid.mbox.isClosed )
+            return false;
+        namesByTid[tid] ~= name;
+        tidByName[name] = tid;
+        return true;
+    }
+}
+
+
+/**
+ * Removes the registered name associated with a tid.
+ *
+ * Params:
+ *  name = The name to unregister.
+ *
+ * Returns:
+ *  true if the name is registered, false if not.
+ */
+bool unregister( string name )
+{
+    synchronized( registryLock )
+    {
+        if( auto tid = name in tidByName )
+        {
+            auto allNames = *tid in namesByTid;
+            auto pos      = countUntil( *allNames, name );
+            remove!(SwapStrategy.unstable)( *allNames, pos );
+            tidByName.remove( name );
+            return true;
+        }
+        return false;
+    }
+}
+
+
+/**
+ * Gets the Tid associated with name.
+ *
+ * Params:
+ *  name = The name to locate within the registry.
+ *
+ * Returns:
+ *  The associated Tid or Tid.init if name is not registered.
+ */
+Tid locate( string name )
+{
+    synchronized( registryLock )
+    {
+        if( auto tid = name in tidByName )
+            return *tid;
+        return Tid.init;
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
 // MessageBox Implementation
 //////////////////////////////////////////////////////////////////////////////
 
@@ -624,6 +751,18 @@ private
             m_putMsg    = new Condition( m_lock );
             m_notFull   = new Condition( m_lock );
             m_closed    = false;
+        }
+
+
+        /*
+         *
+         */
+        final @property bool isClosed() const
+        {
+            synchronized( m_lock )
+            {
+                return m_closed;
+            }
         }
 
 
@@ -717,13 +856,13 @@ private
         {
             static assert( T.length );
 
-            static if( isImplicitlyConvertible!(T[0], long) )
+            static if( isImplicitlyConvertible!(T[0], Duration) )
             {
                 alias TypeTuple!(T[1 .. $]) Ops;
                 alias vals[1 .. $] ops;
-                assert( vals[0] >= 0 );
+                assert( vals[0] >= dur!"msecs"(0) );
                 enum timedWait = true;
-                long period = vals[0];
+                Duration period = vals[0];
             }
             else
             {
@@ -738,7 +877,7 @@ private
                 {
                     alias ParameterTypeTuple!(t) Args;
                     auto op = ops[i];
-                    
+
                     if( msg.convertsTo!(Args) )
                     {
                         static if( is( ReturnType!(t) == bool ) )
@@ -765,7 +904,7 @@ private
                     links.remove( tid );
                     // Give the owner relationship precedence.
                     if( *depends && tid != owner )
-                    {                        
+                    {
                         auto e = new LinkTerminated( tid );
                         if( onStandardMsg( Message( MsgType.standard, e ) ) )
                             return true;
@@ -818,7 +957,7 @@ private
                                 continue;
                             }
                             list.removeAt( range );
-                            return true;    
+                            return true;
                         }
                         range.popFront();
                         continue;
@@ -982,8 +1121,8 @@ private
         {
             return msg.type == MsgType.priority;
         }
-        
-        
+
+
         pure final bool isLinkDeadMsg( ref Message msg )
         {
             return msg.type == MsgType.linkDead;
@@ -1078,7 +1217,7 @@ private
          */
         void put( T val )
         {
-            put( new Node( val ) );
+            appendNode( new Node( val ) );
             m_count++;
         }
 
@@ -1090,7 +1229,8 @@ private
         {
             if( !rhs.empty )
             {
-                put( rhs.m_first );
+                appendNode( rhs.m_first );
+                m_count++;
                 while( m_last.next !is null )
                 {
                     m_last = m_last.next;
@@ -1127,6 +1267,8 @@ private
             Node* todelete = n.next;
             n.next = n.next.next;
             //delete todelete;
+
+            assert( m_count > 0 );
             m_count--;
         }
 
@@ -1146,6 +1288,7 @@ private
         void clear()
         {
             m_first = m_last = null;
+            m_count = 0;
         }
 
 
@@ -1174,7 +1317,7 @@ private
         /*
          *
          */
-        void put( Node* n )
+        void appendNode( Node* n )
         {
             if( !empty )
             {
@@ -1224,15 +1367,24 @@ version( unittest )
         prioritySend( tid, "done" );
     }
 
-
-    unittest
+    void runTest( Tid tid )
     {
-        auto tid = spawn( &testfn, thisTid );
-
         send( tid, 42, 86 );
         send( tid, tuple(42, 86) );
         send( tid, "hello", "there" );
         send( tid, "the quick brown fox" );
         receive( (string val) { assert(val == "done"); } );
+    }
+
+
+    unittest
+    {
+        auto tid = spawn( &testfn, thisTid );
+        runTest( tid );
+
+        // Run the test again with a limited mailbox size.
+        tid = spawn( &testfn, thisTid );
+        setMaxMailboxSize( tid, 2, OnCrowding.block );
+        runTest( tid );
     }
 }

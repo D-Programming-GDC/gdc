@@ -53,10 +53,13 @@ static tree handle_optimize_attribute (tree *, tree, tree, int, bool *);
 
 static bool get_nonnull_operand (tree, unsigned HOST_WIDE_INT *);
 
+extern void decode_options (unsigned int argc, const char **argv);
+
 /* extra for gdc copy: */
 static tree
 handle_format_arg_attribute (tree *node ATTRIBUTE_UNUSED, tree name ATTRIBUTE_UNUSED,
-                             tree args ATTRIBUTE_UNUSED, int flags ATTRIBUTE_UNUSED, bool *no_add_attrs ATTRIBUTE_UNUSED)
+                             tree args ATTRIBUTE_UNUSED, int flags ATTRIBUTE_UNUSED,
+                             bool *no_add_attrs ATTRIBUTE_UNUSED)
 {
     return NULL_TREE;
 }
@@ -1857,9 +1860,6 @@ typedef const char *const_char_p;               /* For DEF_VEC_P.  */
 DEF_VEC_P(const_char_p);
 DEF_VEC_ALLOC_P(const_char_p, gc);
 static GTY(()) VEC(const_char_p, gc) *optimize_args;
-
-extern void decode_options (unsigned int argc, const char **argv);
-
 
 /* Inner function to convert a TREE_LIST to argv string to parse the optimize
    options in ARGS.  ATTR_P is true if this is for attribute(optimize), and

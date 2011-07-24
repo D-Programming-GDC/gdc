@@ -3,7 +3,7 @@
 
    Modified by
     Michael Parrott, (C) 2009, 2010
-    Iain Buclaw, (C) 2010
+    Iain Buclaw, (C) 2010, 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -49,14 +49,12 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_NAME
 #undef LANG_HOOKS_INIT
 #undef LANG_HOOKS_INIT_OPTIONS
-#undef LANG_HOOKS_INIT_TS
 #undef LANG_HOOKS_HANDLE_OPTION
 #undef LANG_HOOKS_POST_OPTIONS
 #undef LANG_HOOKS_PARSE_FILE
 #undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_GET_ALIAS_SET
-#undef LANG_HOOKS_GIMPLIFY_EXPR
 #undef LANG_HOOKS_MARK_ADDRESSABLE
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
 #undef LANG_HOOKS_BUILTIN_FUNCTION
@@ -66,23 +64,16 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_NAME                     lang_name
 #define LANG_HOOKS_INIT                     d_init
 #define LANG_HOOKS_INIT_OPTIONS             d_init_options
-#define LANG_HOOKS_INIT_TS                  d_init_ts
 #define LANG_HOOKS_HANDLE_OPTION            d_handle_option
 #define LANG_HOOKS_POST_OPTIONS             d_post_options
 #define LANG_HOOKS_PARSE_FILE               d_parse_file
 #define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE   d_common_attribute_table
 #define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE   d_common_format_attribute_table
 #define LANG_HOOKS_GET_ALIAS_SET            d_hook_get_alias_set
-#define LANG_HOOKS_GIMPLIFY_EXPR            d_gimplify_expr
 #define LANG_HOOKS_MARK_ADDRESSABLE         d_mark_addressable
 #define LANG_HOOKS_TYPES_COMPATIBLE_P       d_types_compatible_p
 #define LANG_HOOKS_REGISTER_BUILTIN_TYPE    d_register_builtin_type
 #define LANG_HOOKS_FINISH_INCOMPLETE_DECL   d_finish_incomplete_decl
-
-#if D_GCC_VER < 41
-#undef LANG_HOOKS_TRUTHVALUE_CONVERSION
-#define LANG_HOOKS_TRUTHVALUE_CONVERSION    d_truthvalue_conversion
-#endif
 
 #if D_GCC_VER >= 43
 #define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function43
@@ -101,6 +92,13 @@ static char lang_name[6] = "GNU D";
 
 #define LANG_HOOKS_EH_PERSONALITY           d_eh_personality
 #define LANG_HOOKS_EH_RUNTIME_TYPE          d_build_eh_type_type
+#endif
+
+#if D_GCC_VER >= 46
+#undef LANG_HOOKS_OPTION_LANG_MASK
+#undef LANG_HOOKS_INIT_OPTIONS_STRUCT
+#define LANG_HOOKS_OPTION_LANG_MASK         d_option_lang_mask
+#define LANG_HOOKS_INIT_OPTIONS_STRUCT      d_init_options_struct
 #endif
 
 /* Lang Hooks for decls */
@@ -122,10 +120,6 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_SIGNED_TYPE              d_signed_type
 #define LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE  d_signed_or_unsigned_type
 
-/* Lang Hooks for tree-dump.c */
-#undef LANG_HOOKS_TREE_DUMP_DUMP_TREE_FN
-#define LANG_HOOKS_TREE_DUMP_DUMP_TREE_FN   d_dump_tree
-
 /* Lang Hooks for callgraph */
 #if D_GCC_VER < 43
 #undef LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION
@@ -144,12 +138,76 @@ static tree d_signed_or_unsigned_type(int, tree);
 ////tree d_unsigned_type(tree);
 ////tree d_signed_type(tree);
 
-
 static const char * fonly_arg;
 // Because of PR16888, on x86 platforms, GCC clears unused reg names.
 // As this doesn't affect us, need a way to restore them.
 static const char *saved_reg_names[FIRST_PSEUDO_REGISTER];
 
+#if D_GCC_VER >= 46
+/* Common initialization before calling option handlers.  */
+static void
+d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
+{
+    // Set default values
+    global.params.argv0 = xstrdup(decoded_options[0].arg);
+    global.params.link = 1;
+    global.params.useAssert = 1;
+    global.params.useInvariants = 1;
+    global.params.useIn = 1;
+    global.params.useOut = 1;
+    global.params.useArrayBounds = 2;
+    global.params.useSwitchError = 1;
+    global.params.useInline = 0;
+    global.params.warnings = 0;
+    global.params.obj = 1;
+    global.params.Dversion = 2;
+    global.params.quiet = 1;
+
+    global.params.linkswitches = new Array();
+    global.params.libfiles = new Array();
+    global.params.objfiles = new Array();
+    global.params.ddocfiles = new Array();
+
+    global.params.imppath = new Array();
+    global.params.fileImppath = new Array();
+
+    // extra D-specific options
+    gen.splitDynArrayVarArgs = true;
+    gen.emitTemplates = TEnormal;
+    gen.useInlineAsm = true;
+    gen.useBuiltins = true;
+    std_inc = true;
+}
+
+/* Initialize options structure OPTS.  */
+static void
+d_init_options_struct (struct gcc_options *opts)
+{
+    // GCC options
+    opts->x_flag_exceptions = 1;
+
+    // Avoid range issues for complex multiply and divide.
+    opts->x_flag_complex_method = 2;
+
+    // Unlike C, there is no global 'errno' variable.
+    opts->x_flag_errno_math = 0;
+    opts->frontend_set_flag_errno_math = true;
+
+    // Keep in synch with existing -fbounds-check flag.
+    opts->x_flag_bounds_check = 1;
+
+    // Honour left to right code evaluation
+    opts->x_flag_evaluation_order = 1;
+}
+
+/* Return language mask for option parsing.  */
+static unsigned int
+d_option_lang_mask (void)
+{
+    return CL_D;
+}
+
+#else
 static unsigned int
 d_init_options (unsigned int, const char ** argv)
 {
@@ -161,7 +219,6 @@ d_init_options (unsigned int, const char ** argv)
     global.params.useIn = 1;
     global.params.useOut = 1;
     global.params.useArrayBounds = 2;
-    flag_bounds_check = global.params.useArrayBounds; // keep in synch with existing -fbounds-check flag
     global.params.useSwitchError = 1;
     global.params.useInline = 0;
     global.params.warnings = 0;
@@ -179,10 +236,16 @@ d_init_options (unsigned int, const char ** argv)
 
     // GCC options
     flag_exceptions = 1;
+
     // Avoid range issues for complex multiply and divide.
     flag_complex_method = 2;
+
     // Unlike C, there is no global 'errno' variable.
     flag_errno_math = 0;
+
+    // keep in synch with existing -fbounds-check flag
+    flag_bounds_check = global.params.useArrayBounds;
+
     // Honour left to right code evaluation.
     flag_evaluation_order = 1;
 
@@ -195,6 +258,7 @@ d_init_options (unsigned int, const char ** argv)
 
     return CL_D;
 }
+#endif
 
 // support for the -mno-cygwin switch
 // copied from cygwin.h, cygwin2.c
@@ -373,8 +437,13 @@ d_init ()
     else
         VersionCondition::addPredefinedGlobalIdent("LittleEndian");
 
+#if D_GCC_VER >= 46
+    if (targetm.except_unwind_info(&global_options) == UI_SJLJ)
+        VersionCondition::addPredefinedGlobalIdent("GNU_SjLj_Exceptions");
+#else
     if (USING_SJLJ_EXCEPTIONS)
         VersionCondition::addPredefinedGlobalIdent("GNU_SjLj_Exceptions");
+#endif
 
 #ifdef TARGET_LONG_DOUBLE_128
     if (TARGET_LONG_DOUBLE_128)
@@ -467,8 +536,15 @@ parse_int (const char * arg, int * value_ret)
     return true;
 }
 
+#if D_GCC_VER >= 46
+static bool
+d_handle_option (size_t scode, const char *arg, int value,
+                 int kind, location_t loc,
+                 const struct cl_option_handlers *handlers)
+#else
 static int
 d_handle_option (size_t scode, const char *arg, int value)
+#endif
 {
   enum opt_code code = (enum opt_code) scode;
   int level;
@@ -554,7 +630,10 @@ d_handle_option (size_t scode, const char *arg, int value)
       case OPT_fignore_unknown_pragmas:
           global.params.ignoreUnsupportedPragmas = value;
           break;
-#ifdef _DH
+#if V2
+      case OPT_fproperty:
+          global.params.enforcePropertySyntax = 1;
+#endif
       case OPT_fintfc:
           global.params.doHdrGeneration = value;
           break;
@@ -566,7 +645,6 @@ d_handle_option (size_t scode, const char *arg, int value)
           global.params.doHdrGeneration = 1;
           global.params.hdrname = xstrdup(arg);
           break;
-#endif
       case OPT_fdoc:
           global.params.doDocComments = value;
           break;
@@ -723,7 +801,7 @@ d_write_global_declarations()
 #if D_GCC_VER >= 45
     /* We're done parsing; proceed to optimize and emit assembly. */
     cgraph_finalize_compilation_unit();
-#elif D_GCC_VER >= 41
+#else
     cgraph_finalize_compilation_unit();
     cgraph_optimize();
 #endif
@@ -732,20 +810,6 @@ d_write_global_declarations()
        be emitted, output debug information for globals.  */
     for (unsigned i = 0; i < globalFunctions.dim; i++)
         debug_hooks->global_decl(vec[i]);
-
-#if D_GCC_VER == 40
-    /* For 4.0.x, if cgraph_optimize is called before the loop over
-       globalFunctions, dwarf2out can generate a DIE tree that has a
-       nested class as the parent of an outer class (this causes an
-       ICE.) Not sure if this is due to a bug in the D front end, but calling
-       debug_hooks->global_decl ensures the outer elements are
-       processed first.
-
-       For later versions, calling cgraph_optimize later causes more
-       problems.
-    */
-    cgraph_optimize();
-#endif
 }
 
 // Some phobos code (isnormal, etc.) breaks with strict aliasing...
@@ -762,60 +826,6 @@ d_hook_get_alias_set(tree)
 {
     return 0;
 }
-
-
-bool
-d_dump_tree (void *dump_info , tree t)
-{
-    enum tree_code code = TREE_CODE (t);
-    dump_info_p di = (dump_info_p) dump_info;
-    switch (code)
-    {
-        case STATIC_CHAIN_EXPR:
-            dump_child("func", TREE_OPERAND (t, 0));
-            return true;
-
-        default:
-            return false;
-    }
-}
-
-/* Gimplification of expression trees.  */
-#if D_GCC_VER >= 44
-int
-d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
-                 gimple_seq *post_p ATTRIBUTE_UNUSED)
-{
-    enum tree_code code = TREE_CODE (*expr_p);
-    switch (code)
-    {
-        case STATIC_CHAIN_EXPR:
-            /* The argument is used as information only.  No need to gimplify */
-        case STATIC_CHAIN_DECL:
-            return GS_ALL_DONE;
-
-        default:
-            return GS_UNHANDLED;
-    }
-}
-#else
-int
-d_gimplify_expr (tree *expr_p, tree *pre_p ATTRIBUTE_UNUSED,
-                 tree *post_p ATTRIBUTE_UNUSED)
-{
-    enum tree_code code = TREE_CODE (*expr_p);
-    switch (code)
-    {
-        case STATIC_CHAIN_EXPR:
-        case STATIC_CHAIN_DECL:
-            return GS_ALL_DONE;
-
-        default:
-            return GS_UNHANDLED;
-    }
-    return GS_UNHANDLED;
-}
-#endif
 
 static Module * an_output_module = 0;
 
@@ -845,7 +855,11 @@ Symbol* rtlsym[N_RTLSYM];
 #endif
 
 void
+#if D_GCC_VER >= 46
+d_parse_file (void)
+#else
 d_parse_file (int /*set_yydebug*/)
+#endif
 {
     if (global.params.verbose)
     {
@@ -888,18 +902,6 @@ d_parse_file (int /*set_yydebug*/)
             nametype(Type::basic[ty]);
     }
 
-    /*
-    p = FileName::name(input_filename);
-    e = FileName::ext(p);
-    if (e) {
-        e--;
-        gcc_assert( *e == '.' );
-        name = (char *) xmalloc((e - p) + 1);
-        memcpy(name, p, e - p);
-        name[e - p] = 0;
-    } else
-        name = p;
-    */
     an_output_module = NULL;
     Array modules; // vs. outmodules... = [an_output_module] or modules
     modules.reserve(num_in_fnames);
@@ -927,11 +929,9 @@ d_parse_file (int /*set_yydebug*/)
     {
         if (fonly_arg)
         {
-            if (i == 0)
-                continue;
             /* %% Do the other modules really need to be processed?
-               else if (an_output_module)
-               break;
+            if (an_output_module)
+                break;
              */
         }
         //fprintf(stderr, "fn %d = %s\n", i, in_fnames[i]);
@@ -1030,7 +1030,6 @@ d_parse_file (int /*set_yydebug*/)
     if (global.errors)
         goto had_errors;
 
-#ifdef _DH
      if (global.params.doHdrGeneration)
      {
          /* Generate 'header' import files.
@@ -1049,8 +1048,7 @@ d_parse_file (int /*set_yydebug*/)
          }
      }
      if (global.errors)
-         fatal();
-#endif
+         goto had_errors;
 
     // load all unconditional imports for better symbol resolving
     for (unsigned i = 0; i < modules.dim; i++)
@@ -1111,7 +1109,7 @@ d_parse_file (int /*set_yydebug*/)
 
     // Do not attempt to generate output files if errors or warnings occurred
     if (global.errors || global.warnings)
-        fatal();
+        goto had_errors;
 
     g.ofile = new ObjectFile();
     if (fonly_arg)
@@ -1546,7 +1544,12 @@ struct binding_level * global_binding_level;
 static binding_level *
 alloc_binding_level()
 {
-    return (struct binding_level *) ggc_alloc_cleared (sizeof (struct binding_level));
+    unsigned sz = sizeof (struct binding_level);
+#if D_GCC_VER >= 46
+    return (struct binding_level *) ggc_alloc_cleared_atomic (sz);
+#else
+    return (struct binding_level *) ggc_alloc_cleared (sz);
+#endif
 }
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
@@ -1846,16 +1849,16 @@ d_convert_parm_for_inlining  (tree parm, tree value, tree fndecl, int argnum)
 #endif
 
 
-static void
-d_init_ts (void)
-{
-    tree_contains_struct[STATIC_CHAIN_DECL][TS_DECL_COMMON] = 1;
-}
-
 struct lang_type *
 build_d_type_lang_specific(Type * t)
 {
-    struct lang_type * l = (struct lang_type *) ggc_alloc_cleared( sizeof(struct lang_type) );
+    struct lang_type * l;
+    unsigned sz = sizeof(struct lang_type);
+#if D_GCC_VER >= 46
+    l = (struct lang_type *) ggc_alloc_cleared_atomic(sz);
+#else
+    l = (struct lang_type *) ggc_alloc_cleared(sz);
+#endif
     l->d_type = t;
     return l;
 }
@@ -1877,10 +1880,15 @@ d_eh_personality (void)
 {
     if (!d_eh_personality_decl)
     {
-       d_eh_personality_decl
-           = build_personality_function (USING_SJLJ_EXCEPTIONS
-                                         ? "__gdc_personality_sj0"
-                                         : "__gdc_personality_v0");
+#if D_GCC_VER >= 46
+        d_eh_personality_decl
+            = build_personality_function ("gdc");
+#else
+        d_eh_personality_decl
+            = build_personality_function (USING_SJLJ_EXCEPTIONS
+                                          ? "__gdc_personality_sj0"
+                                          : "__gdc_personality_v0");
+#endif
     }
     return d_eh_personality_decl;
 }
