@@ -173,8 +173,11 @@ ExtAsmStatement::semantic(Scope *sc)
     insnTemplate = insnTemplate->semantic(sc);
     insnTemplate = insnTemplate->optimize(WANTvalue);
 #if V2
-    if (sc->func && sc->func->isSafe())
-        error("extended assembler not allowed in @safe function %s", sc->func->toChars());
+    if (sc->func)
+    {
+        if (sc->func->setUnsafe())
+            error("extended assembler not allowed in @safe function %s", sc->func->toChars());
+    }
 #endif
     if (insnTemplate->op != TOKstring || ((StringExp *)insnTemplate)->sz != 1)
         error("instruction template must be a constant char string");

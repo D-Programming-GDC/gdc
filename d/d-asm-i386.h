@@ -3,7 +3,7 @@
 
    Modified by
     Michael Parrott, (C) 2009
-    Vincenzo Ampolo, Iain Buclaw, (C) 2010
+    Vincenzo Ampolo, Iain Buclaw, (C) 2010, 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -2229,7 +2229,8 @@ struct AsmProcessor
                         writeReg(operand->segmentPrefix);
                         insnTemplate->writebyte(':');
                     }
-                    if (operand->segmentPrefix != Reg_Invalid && operand->symbolDisplacement.dim == 0)
+                    if ((operand->segmentPrefix != Reg_Invalid || operand->constDisplacement) &&
+                        operand->symbolDisplacement.dim == 0)
                     {
                         addOperand("%a", Arg_Integer, newIntExp(operand->constDisplacement), asmcode);
                         operand->constDisplacement = 0;
@@ -2365,10 +2366,7 @@ struct AsmProcessor
                                     else
                                     {   // Displacement cannot come after symbol.
                                         addOperand("%a", Arg_Integer, offset, asmcode);
-                                        if (decl->isParameter())
-                                        {   // Parameter may have offset that will add to this value.
-                                            insnTemplate->writebyte('+');
-                                        }
+                                        insnTemplate->writebyte('+');
                                         addOperand(fmt, Arg_Memory, e, asmcode, mode);
                                     }
                                 }
@@ -3165,9 +3163,6 @@ struct AsmProcessor
                                              "", "", "" };
         machine_mode mode;
 
-        insnTemplate->writestring(directives[op - Op_db]);
-        insnTemplate->writebyte(' ');
-
         while (1)
         {   // DMD is pretty strict here, not even constant expressions are allowed..
             switch (op)
@@ -3179,6 +3174,9 @@ struct AsmProcessor
                     if (token->value == TOKint32v || token->value == TOKuns32v ||
                         token->value == TOKint64v || token->value == TOKuns64v)
                     {   // As per usual with GNU, assume at least 32-bit host
+                        insnTemplate->writestring(directives[op - Op_db]);
+                        insnTemplate->writebyte(' ');
+
                         if (op != Op_dl)
                             insnTemplate->printf("%u", (d_uns32) token->uns64value);
                         else
@@ -3188,9 +3186,13 @@ struct AsmProcessor
                                     (d_uns32) token->uns64value, (d_uns32) (token->uns64value >> 32));
                         }
                     }
+                    else if (token->value == TOKstring)
+                    {
+                        insnTemplate->printf(".string %s", token->toChars());
+                    }
                     else
                     {
-                        stmt->error("expected integer constant");
+                        stmt->error("constant initializer expected");
                     }
                     break;
 
@@ -3212,6 +3214,9 @@ struct AsmProcessor
                     if (token->value == TOKfloat32v || token->value == TOKfloat64v ||
                         token->value == TOKfloat80v)
                     {
+                        insnTemplate->writestring(directives[op - Op_db]);
+                        insnTemplate->writebyte(' ');
+
                         long words[3];
                         real_to_target(words, & token->float80value.rv(), mode);
                         // don't use directives..., just use .long like GCC

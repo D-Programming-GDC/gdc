@@ -3,7 +3,7 @@
 
    Modified by
     Michael Parrott, (C) 2009
-    Iain Buclaw, (C) 2010
+    Iain Buclaw, (C) 2010, 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -504,8 +504,12 @@ ObjectFile::outputFunction(FuncDeclaration * f)
 static StringTable * symtab = NULL;
 
 bool
-ObjectFile::shouldEmit(Dsymbol * d_sym)
+ObjectFile::shouldEmit(Declaration * d_sym)
 {
+    // If errors occurred compiling it.
+    if (d_sym->type->ty == Tfunction && ((TypeFunction *)d_sym->type)->next->ty == Terror)
+        return false;
+
     Symbol * s = d_sym->toSymbol();
     gcc_assert(s);
 

@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -380,7 +380,7 @@ void Module::read(Loc loc)
 
 inline unsigned readwordLE(unsigned short *p)
 {
-#if __I86__
+#if LITTLE_ENDIAN
     return *p;
 #else
     return (((unsigned char *)p)[1] << 8) | ((unsigned char *)p)[0];
@@ -394,7 +394,7 @@ inline unsigned readwordBE(unsigned short *p)
 
 inline unsigned readlongLE(unsigned *p)
 {
-#if __I86__
+#if LITTLE_ENDIAN
     return *p;
 #else
     return ((unsigned char *)p)[0] |
@@ -752,26 +752,6 @@ void Module::semantic()
         Import *im = new Import(0, NULL, Id::object, NULL, 0);
         members->shift(im);
     }
-#ifdef IN_GCC
-    else
-    {
-        /* va_list is a pain.  If va_list involves a struct, add the
-           struct declaration to the "object" module.  This depends on
-           the GCC backend not naming the struct something that will
-           cause a conflict or define "va_list" without going through
-           std.stdarg. */
-        Type * t = d_gcc_builtin_va_list_d_type;
-        while (t) {
-            if (t->ty == Tstruct) {
-                StructDeclaration * sd = ((TypeStruct *) t)->sym;
-                sd->parent = this;
-                members->push(sd);
-                break;
-            }
-            t = t->nextOf();
-        }
-    }
-#endif
 
     // Add all symbols into module's symbol table
     symtab = new DsymbolTable();

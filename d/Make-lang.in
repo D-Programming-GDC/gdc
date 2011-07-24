@@ -102,7 +102,7 @@ D_DMD_H := \
 
 ifeq ($(D_LANGUAGE_VERSION),2)
 # D2 specific headers
-  D_DMD_H +=
+  D_DMD_H += d/dmd/intrange.h
 else
 # D1 specific headers
   D_DMD_H +=
@@ -221,7 +221,7 @@ D_DMD_OBJS := \
 
 ifeq ($(D_LANGUAGE_VERSION),2)
 # D2 specific sources
-  D_DMD_OBJS += d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o
+  D_DMD_OBJS += d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o d/intrange.dmd.o
 else
 # D1 specific sources
   D_DMD_OBJS += d/argtypes.dmd.o

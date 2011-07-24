@@ -19,8 +19,9 @@ module std.conv;
 import core.stdc.math : ldexpl;
 import core.memory, core.stdc.errno, core.stdc.string,
     core.stdc.stdlib;
-import std.algorithm, std.array, std.ctype, std.exception, std.math, std.range,
-    std.stdio, std.string, std.traits, std.typecons, std.typetuple, std.utf;
+import std.algorithm, std.array, std.ascii, std.exception, std.math, std.range,
+    std.stdio, std.string, std.traits, std.typecons, std.typetuple, std.uni,
+    std.utf;
 import std.metastrings;
 
 //debug=conv;           // uncomment to turn on debugging printf's
@@ -381,11 +382,9 @@ T toImpl(T, S)(S s) if (is(S == enum) && isSomeString!(T)
             return __traits(allMembers, S)[i];
     }
 
-    // Embed the actual value encountered into the error message.
+    // val is not a member of T, output cast(T)rawValue instead.
     static assert(!is(OriginalType!S == S));
-    OriginalType!S v = s;
-    throw new ConvException(
-        "value '" ~ to!string(v) ~ "' is not enumerated in " ~ S.stringof);
+    return to!T("cast(" ~ S.stringof ~ ")") ~ to!T(cast(OriginalType!S)s);
 }
 
 unittest
@@ -401,14 +400,11 @@ unittest
     assert(to!wstring(F.y) == "y"w);
     assert(to!dstring(F.z) == "z"d);
 
-    try
-    {
-        to!string(cast(E) (E.max + 1));
-        assert(0);
-    }
-    catch (ConvException e)
-    {
-    }
+    // Test an value not corresponding to an enum member.
+    auto o = cast(E)5;
+    assert(to! string(o) == "cast(E)5"c);
+    assert(to!wstring(o) == "cast(E)5"w);
+    assert(to!dstring(o) == "cast(E)5"d);
 }
 
 /**
@@ -1319,7 +1315,7 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
     for (;;)
     {
         enforce(!p.empty, bailOut());
-        if (!isspace(p.front)) break;
+        if (!std.uni.isWhite(p.front)) break;
         p.popFront();
     }
     char sign = 0;                       /* indicating +                 */
@@ -1328,7 +1324,7 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
     case '-':
         sign++;
         p.popFront();
-        if (tolower(p.front) == 'i') goto case 'i';
+        if (std.ascii.toLower(p.front) == 'i') goto case 'i';
         enforce(!p.empty, bailOut());
         break;
     case '+':
@@ -1337,13 +1333,14 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
         break;
     case 'i': case 'I':
         p.popFront();
-        if (tolower(p.front) == 'n' &&
-                (p.popFront(), tolower(p.front) == 'f') &&
+        if (std.ascii.toLower(p.front) == 'n' &&
+                (p.popFront(), std.ascii.toLower(p.front) == 'f') &&
                 (p.popFront(), p.empty))
         {
             // 'inf'
             return sign ? -Target.infinity : Target.infinity;
         }
+        goto default;
     default: {}
     }
 
@@ -1376,10 +1373,10 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
         while (!p.empty)
         {
             int i = p.front;
-            while (isxdigit(i))
+            while (isHexDigit(i))
             {
                 anydigits = 1;
-                i = isalpha(i) ? ((i & ~0x20) - ('A' - 10)) : i - '0';
+                i = std.ascii.isAlpha(i) ? ((i & ~0x20) - ('A' - 10)) : i - '0';
                 if (ndigits < 16)
                 {
                     msdec = msdec * 16 + i;
@@ -1440,15 +1437,17 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
         {
             switch (p.front)
             {   case '-':    sexp++;
+                             goto case;
                 case '+':    p.popFront(); enforce(!p.empty,
-                        new ConvException("Error converting input"
+                                new ConvException("Error converting input"
                                 " to floating point"));
+                             break;
                 default: {}
             }
         }
         ndigits = 0;
         e = 0;
-        while (!p.empty && isdigit(p.front))
+        while (!p.empty && isDigit(p.front))
         {
             if (e < 0x7FFFFFFF / 10 - 10) // prevent integer overflow
             {
@@ -1482,11 +1481,11 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
     }
     else // not hex
     {
-        if (toupper(p.front) == 'N' && !startsWithZero)
+        if (std.ascii.toUpper(p.front) == 'N' && !startsWithZero)
         {
             // nan
-            enforce((p.popFront(), !p.empty && toupper(p.front) == 'A')
-                    && (p.popFront(), !p.empty && toupper(p.front) == 'N'),
+            enforce((p.popFront(), !p.empty && std.ascii.toUpper(p.front) == 'A')
+                    && (p.popFront(), !p.empty && std.ascii.toUpper(p.front) == 'N'),
                    new ConvException("error converting input to floating point"));
             // skip past the last 'n'
             p.popFront();
@@ -1498,7 +1497,7 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
         while (!p.empty)
         {
             int i = p.front;
-            while (isdigit(i))
+            while (isDigit(i))
             {
                 sawDigits = true;        /* must have at least 1 digit   */
                 if (msdec < (0x7FFFFFFFFFFFL-10)/10)
@@ -1538,12 +1537,14 @@ if (isInputRange!Source && /*!isSomeString!Source && */isFloatingPoint!Target)
         enforce(!p.empty, new ConvException("Unexpected end of input"));
         switch (p.front)
         {   case '-':    sexp++;
+                         goto case;
             case '+':    p.popFront();
+                         break;
             default: {}
         }
         bool sawDigits = 0;
         e = 0;
-        while (!p.empty && isdigit(p.front))
+        while (!p.empty && isDigit(p.front))
         {
             if (e < 0x7FFFFFFF / 10 - 10)   // prevent integer overflow
             {
@@ -2451,7 +2452,7 @@ unittest
 // {
 //     //writefln("toFloat('%s')", s);
 //     auto sz = toStringz(to!(const char[])(s));
-//     if (std.ctype.isspace(*sz))
+//     if (std.ascii.isspace(*sz))
 //      goto Lerr;
 
 //     // issue 1589
@@ -3301,7 +3302,7 @@ if (staticIndexOf!(Unqual!S, int, long) >= 0 && isSomeString!T)
         return to!T(cast(Unsigned!(S)) value);
     alias Unqual!(typeof(T.init[0])) Char;
 
-    // Cache read-only data only for const and immutable - mutable
+    // Cache read-only data only for const and immutable; mutable
     // data is supposed to use allocation in all cases
     static if (is(ElementType!T == const) || is(ElementType!T == immutable))
     {
@@ -3468,8 +3469,8 @@ body
     char[value.sizeof * 8] buffer;
     uint i = buffer.length;
 
-    if (value < radix && value < hexdigits.length)
-        return hexdigits[cast(size_t)value .. cast(size_t)value + 1];
+    if (value < radix && value < hexDigits.length)
+        return hexDigits[cast(size_t)value .. cast(size_t)value + 1];
 
     do
     {
@@ -4229,3 +4230,39 @@ unittest
     emplace!Foo(&foo, 2U);
     assert(foo.num == 2);
 }
+
+// Undocumented for the time being
+void toTextRange(T, W)(T value, W writer)
+if (isIntegral!T && isOutputRange!(W, char))
+{
+    Unqual!(Unsigned!T) v = void;
+    if (value < 0)
+    {
+        put(writer, '-');
+        v = -value;
+    }
+    else
+    {
+        v = value;
+    }
+
+    if (v < 10 && v < hexDigits.length)
+    {
+        put(writer, hexDigits[cast(size_t) v]);
+        return;
+    }
+
+    char[v.sizeof * 4] buffer = void;
+    auto i = buffer.length;
+
+    do
+    {
+        auto c = cast(ubyte) (v % 10);
+        v = v / 10;
+        i--;
+        buffer[i] = cast(char) (c + '0');
+    } while (v);
+
+    put(writer, buffer[i .. $]);
+}
+

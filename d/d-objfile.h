@@ -99,7 +99,7 @@ protected:
 public:
 
     // Hack for systems without linkonce support
-    static bool shouldEmit(Dsymbol * d_sym);
+    static bool shouldEmit(Declaration * d_sym);
     static bool shouldEmit(Symbol * sym);
 
     static void doThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offset);

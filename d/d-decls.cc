@@ -653,7 +653,8 @@ Symbol *FuncDeclaration::toSymbol()
 #if V2
             // %% Pure functions don't imply nothrow
             DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && func_type->isnothrow);
-            TREE_NOTHROW(fn_decl) = func_type->isnothrow;
+            // %% Assert contracts in functions may throw.
+            TREE_NOTHROW(fn_decl) = func_type->isnothrow && !global.params.useAssert;
             // TODO: check 'immutable' means arguments are readonly...
             TREE_READONLY(fn_decl) = func_type->isImmutable();
             TREE_CONSTANT(fn_decl) = func_type->isConst();

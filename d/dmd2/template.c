@@ -389,6 +389,20 @@ TemplateDeclaration::TemplateDeclaration(Loc loc, Identifier *id,
     this->literal = 0;
     this->ismixin = ismixin;
     this->previous = NULL;
+
+    // Compute in advance for Ddoc's use
+    if (members)
+    {
+        Dsymbol *s;
+        if (Dsymbol::oneMembers(members, &s))
+        {
+            if (s && s->ident && s->ident->equals(ident))
+            {
+                onemember = s;
+                s->parent = this;
+            }
+        }
+    }
 }
 
 Dsymbol *TemplateDeclaration::syntaxCopy(Dsymbol *)
@@ -505,6 +519,8 @@ void TemplateDeclaration::semantic(Scope *sc)
 
     paramscope->pop();
 
+    // Compute again
+    onemember = NULL;
     if (members)
     {
         Dsymbol *s;
@@ -1655,11 +1671,14 @@ FuncDeclaration *TemplateDeclaration::deduceFunctionTemplate(Scope *sc, Loc loc,
 
 void TemplateDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-#if 0 // Should handle template functions
+#if 0 // Should handle template functions for doc generation
     if (onemember && onemember->isFuncDeclaration())
         buf->writestring("foo ");
 #endif
-    buf->writestring(kind());
+    if (hgs->ddoc)
+        buf->writestring(kind());
+    else
+        buf->writestring("template");
     buf->writeByte(' ');
     buf->writestring(ident->toChars());
     buf->writeByte('(');
@@ -4156,7 +4175,13 @@ void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
     {   Dsymbol *sd = (Dsymbol *)Module::deferred.data[i];
 
         if (sd->parent == this)
+        {
+        //printf("deferred %s %s\n", sd->parent->toChars(), sd->toChars());
+            AggregateDeclaration *ad = sd->isAggregateDeclaration();
+            if (ad)
+                ad->deferred = this;
             goto Laftersemantic;
+        }
     }
 
     /* The problem is when to parse the initializer for a variable.
@@ -4757,6 +4782,12 @@ Identifier *TemplateInstance::genIdent(Objects *args)
             if (ea->op == TOKvar)
             {
                 sa = ((VarExp *)ea)->var;
+                ea = NULL;
+                goto Lsa;
+            }
+            if (ea->op == TOKthis)
+            {
+                sa = ((ThisExp *)ea)->var;
                 ea = NULL;
                 goto Lsa;
             }

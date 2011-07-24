@@ -1741,9 +1741,9 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 d_type = Type::tuns16;
 
                 op1 = ce.nextArg();
+                op2 = ce.nextArg();
                 // %% Port is always cast to ushort
                 op1 = d_convert_basic(d_type->toCtype(), op1);
-                op2 = ce.nextArg();
                 return expandPortIntrinsic(intrinsic, op1, op2, 1);
 #else
                 ::error("Port I/O intrinsic '%s' is only available on ix86 targets",
@@ -1863,6 +1863,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                    address taken.  The second argument, however, is
                    inout and that needs to be fixed to prevent a warning.  */
                 op1 = ce.nextArg();
+                op2 = ce.nextArg();
                 type = TREE_TYPE(op1);
                 // kinda wrong... could be casting.. so need to check type too?
                 while (TREE_CODE(op1) == NOP_EXPR)
@@ -1885,7 +1886,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 {
                     op1 = fix_d_va_list_type(op1);
                 }
-                op2 = ce.nextArg();
+
                 if (TREE_CODE(op2) == ADDR_EXPR)
                     op2 = TREE_OPERAND(op2, 0);
                 // assuming nobody tries to change the return type
@@ -3522,12 +3523,6 @@ IRState::startCond(Statement * stmt, tree t_cond)
 {
     Flow * f = beginFlow(stmt);
     f->condition = t_cond;
-}
-
-void
-IRState::startCond(Statement * stmt, Expression * e_cond)
-{
-    startCond(stmt, convertForCondition(e_cond));
 }
 
 void

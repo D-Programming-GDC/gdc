@@ -39,7 +39,7 @@
 #if _WIN32
 #include <windows.h>
 #define CRITSECSIZE sizeof(CRITICAL_SECTION)
-#elif linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
+#elif linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4
 #include <pthread.h>
 #define CRITSECSIZE sizeof(pthread_mutex_t)
 #else
@@ -51,11 +51,9 @@
 Statement::Statement(Loc loc)
     : loc(loc)
 {
-#ifdef _DH
     // If this is an in{} contract scope statement (skip for determining
     //  inlineStatus of a function body for header content)
     incontract = 0;
-#endif
 }
 
 Statement *Statement::syntaxCopy()
@@ -174,6 +172,11 @@ int Statement::isEmpty()
 {
     //printf("Statement::isEmpty()\n");
     return FALSE;
+}
+
+Statement *Statement::last()
+{
+    return this;
 }
 
 /****************************************
@@ -614,6 +617,22 @@ ReturnStatement *CompoundStatement::isReturnStatement()
     return rs;
 }
 
+Statement *CompoundStatement::last()
+{
+    Statement *s = NULL;
+
+    for (size_t i = statements->dim; i; --i)
+    {   s = (Statement *) statements->data[i - 1];
+        if (s)
+        {
+            s = s->last();
+            if (s)
+                break;
+        }
+    }
+    return s;
+}
+
 void CompoundStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     for (int i = 0; i < statements->dim; i++)
@@ -637,12 +656,31 @@ int CompoundStatement::blockExit(bool mustNotThrow)
 {
     //printf("CompoundStatement::blockExit(%p) %d\n", this, statements->dim);
     int result = BEfallthru;
+    Statement *slast = NULL;
     for (size_t i = 0; i < statements->dim; i++)
     {   Statement *s = (Statement *) statements->data[i];
         if (s)
         {
-//printf("result = x%x\n", result);
-//printf("%s\n", s->toChars());
+            //printf("result = x%x\n", result);
+            //printf("%s\n", s->toChars());
+            if (global.params.warnings && result & BEfallthru && slast)
+            {
+                slast = slast->last();
+                if (slast && (s->isCaseStatement() || s->isDefaultStatement()))
+                {
+                    // Allow if last case/default was empty
+                    CaseStatement *sc = slast->isCaseStatement();
+                    DefaultStatement *sd = slast->isDefaultStatement();
+                    if (sc && sc->statement->isEmpty())
+                        ;
+                    else if (sd && sd->statement->isEmpty())
+                        ;
+                    else
+                        s->error("switch case fallthrough - use 'goto %s;' if intended",
+                            s->isCaseStatement() ? "case" : "default");
+                }
+            }
+
             if (!(result & BEfallthru) && !s->comeFrom())
             {
                 if (s->blockExit(mustNotThrow) != BEhalt && !s->isEmpty())
@@ -653,6 +691,7 @@ int CompoundStatement::blockExit(bool mustNotThrow)
                 result &= ~BEfallthru;
                 result |= s->blockExit(mustNotThrow);
             }
+            slast = s;
         }
     }
     return result;
@@ -1723,7 +1762,7 @@ Lagain:
 
             // __r.next
             e = new VarExp(loc, r);
-            Expression *increment = new DotIdExp(loc, e, idnext);
+            Expression *increment = new CallExp(loc, new DotIdExp(loc, e, idnext));
 
             /* Declaration statement for e:
              *    auto e = __r.idhead;
@@ -2332,9 +2371,6 @@ Statement *IfStatement::syntaxCopy()
 
 Statement *IfStatement::semantic(Scope *sc)
 {
-    condition = condition->semantic(sc);
-    condition = resolveProperties(sc, condition);
-
     // Evaluate at runtime
     unsigned cs0 = sc->callSuper;
     unsigned cs1;
@@ -2348,24 +2384,29 @@ Statement *IfStatement::semantic(Scope *sc)
         sym->parent = sc->scopesym;
         scd = sc->push(sym);
 
-        Type *t = arg->type ? arg->type : condition->type;
-        match = new VarDeclaration(loc, t, arg->ident, NULL);
-        match->noscope = 1;
-        match->semantic(scd);
-        if (!scd->insert(match))
-            assert(0);
+        match = new VarDeclaration(loc, arg->type, arg->ident, new ExpInitializer(loc, condition));
         match->parent = sc->func;
 
-        /* Generate:
-         *  ((arg = condition), arg)
-         */
-        VarExp *v = new VarExp(0, match);
-        condition = new AssignExp(loc, v, condition);
-        condition = new CommaExp(loc, condition, v);
+        DeclarationExp *de = new DeclarationExp(loc, match);
+        VarExp *ve = new VarExp(0, match);
+        condition = new CommaExp(loc, de, ve);
         condition = condition->semantic(scd);
+
+       if (match->edtor)
+       {
+            Statement *sdtor = new ExpStatement(loc, match->edtor);
+            sdtor = new OnScopeStatement(loc, TOKon_scope_exit, sdtor);
+            ifbody = new CompoundStatement(loc, sdtor, ifbody);
+            match->noscope = 1;
+       }
     }
     else
+    {
+        condition = condition->semantic(sc);
+        condition = condition->addDtorHook(sc);
+        condition = resolveProperties(sc, condition);
         scd = sc->push();
+    }
 
     // Convert to boolean after declaring arg so this works:
     //  if (S arg = S()) {}
@@ -2834,7 +2875,8 @@ Statement *SwitchStatement::semantic(Scope *sc)
     if (!sc->sw->sdefault && !isFinal)
     {   hasNoDefault = 1;
 
-        warning("switch statement has no default");
+        if (!global.params.useDeprecated)
+           error("non-final switch statement without a default is deprecated");
 
         // Generate runtime error if the default is hit
         Statements *a = new Statements();
@@ -2923,7 +2965,7 @@ int SwitchStatement::blockExit(bool mustNotThrow)
 
 void SwitchStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-    buf->writestring("switch (");
+    buf->writestring(isFinal ? "final switch (" : "switch (");
     condition->toCBuffer(buf, hgs);
     buf->writebyte(')');
     buf->writenl();
@@ -3402,7 +3444,8 @@ Statement *ReturnStatement::semantic(Scope *sc)
 
         exp = exp->semantic(sc);
         exp = resolveProperties(sc, exp);
-        exp = exp->optimize(WANTvalue);
+        if (!((TypeFunction *)fd->type)->isref)
+            exp = exp->optimize(WANTvalue);
 
         if (fd->nrvo_can && exp->op == TOKvar)
         {   VarExp *ve = (VarExp *)exp;
@@ -3484,7 +3527,8 @@ Statement *ReturnStatement::semantic(Scope *sc)
         else if (tbret->ty != Tvoid)
         {
             exp = exp->implicitCastTo(sc, tret);
-            exp = exp->optimize(WANTvalue);
+            if (!((TypeFunction *)fd->type)->isref)
+                exp = exp->optimize(WANTvalue);
         }
     }
     else if (fd->inferRetType)
@@ -3631,6 +3675,17 @@ Statement *ReturnStatement::semantic(Scope *sc)
         exp = NULL;
         s = s->semantic(sc);
         return new CompoundStatement(loc, s, this);
+    }
+
+    if (exp)
+    {   if (exp->op == TOKcall)
+            valueNoDtor(exp);
+        else
+        {
+            Expression *e = exp->isTemp();
+            if (e)
+                exp = e;                // don't need temporary
+        }
     }
 
     return this;
@@ -4183,8 +4238,7 @@ int TryCatchStatement::blockExit(bool mustNotThrow)
         /* If we're catching Object, then there is no throwing
          */
         Identifier *id = c->type->toBasetype()->isClassHandle()->ident;
-        if (i == 0 &&
-            (id == Id::Object || id == Id::Throwable || id == Id::Exception))
+        if (id == Id::Object || id == Id::Throwable || id == Id::Exception)
         {
             result &= ~BEthrow;
         }
@@ -4263,6 +4317,15 @@ void Catch::semantic(Scope *sc)
         {   error(loc, "can only catch class objects derived from Throwable, not '%s'", type->toChars());
             type = Type::terror;
         }
+    }
+    else if (sc->func &&
+        !sc->intypeof &&
+        cd != ClassDeclaration::exception &&
+        !ClassDeclaration::exception->isBaseOf(cd, NULL) &&
+        sc->func->setUnsafe())
+    {
+        error(loc, "can only catch class objects derived from Exception in @safe code, not '%s'", type->toChars());
+        type = Type::terror;
     }
     else if (ident)
     {
@@ -4842,3 +4905,49 @@ void AsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writenl();
 }
 
+/************************ ImportStatement ***************************************/
+
+ImportStatement::ImportStatement(Loc loc, Dsymbols *imports)
+    : Statement(loc)
+{
+    this->imports = imports;
+}
+
+Statement *ImportStatement::syntaxCopy()
+{
+    Dsymbols *m = new Dsymbols();
+    m->setDim(imports->dim);
+    for (int i = 0; i < imports->dim; i++)
+    {   Dsymbol *s = (Dsymbol *)imports->data[i];
+        m->data[i] = (void *)s->syntaxCopy(NULL);
+    }
+    return new ImportStatement(loc, m);
+}
+
+Statement *ImportStatement::semantic(Scope *sc)
+{
+    for (int i = 0; i < imports->dim; i++)
+    {   Dsymbol *s = (Dsymbol *)imports->data[i];
+        s->semantic(sc);
+        sc->insert(s);
+    }
+    return this;
+}
+
+int ImportStatement::blockExit(bool mustNotThrow)
+{
+    return BEfallthru;
+}
+
+int ImportStatement::isEmpty()
+{
+    return TRUE;
+}
+
+void ImportStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
+{
+    for (int i = 0; i < imports->dim; i++)
+    {   Dsymbol *s = (Dsymbol *)imports->data[i];
+        s->toCBuffer(buf, hgs);
+    }
+}

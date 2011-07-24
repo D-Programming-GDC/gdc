@@ -638,7 +638,10 @@ d_handle_option (size_t scode, const char *arg, int value)
       case OPT_fignore_unknown_pragmas:
           global.params.ignoreUnsupportedPragmas = value;
           break;
-#ifdef _DH
+#if V2
+      case OPT_fproperty:
+          global.params.enforcePropertySyntax = 1;
+#endif
       case OPT_fintfc:
           global.params.doHdrGeneration = value;
           break;
@@ -650,7 +653,6 @@ d_handle_option (size_t scode, const char *arg, int value)
           global.params.doHdrGeneration = 1;
           global.params.hdrname = xstrdup(arg);
           break;
-#endif
       case OPT_fdoc:
           global.params.doDocComments = value;
           break;
@@ -1090,7 +1092,6 @@ d_parse_file (int /*set_yydebug*/)
     if (global.errors)
         goto had_errors;
 
-#ifdef _DH
      if (global.params.doHdrGeneration)
      {
          /* Generate 'header' import files.
@@ -1110,7 +1111,6 @@ d_parse_file (int /*set_yydebug*/)
      }
      if (global.errors)
          goto had_errors;
-#endif
 
     // load all unconditional imports for better symbol resolving
     for (unsigned i = 0; i < modules.dim; i++)

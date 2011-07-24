@@ -200,10 +200,13 @@ char *Dsymbol::locToChars()
     OutBuffer buf;
     char *p;
 
-    Module *m = getModule();
+    if (!loc.filename)  // avoid bug 5861.
+    {
+        Module *m = getModule();
 
-    if (m && m->srcfile)
-        loc.filename = m->srcfile->toChars();
+        if (m && m->srcfile)
+            loc.filename = m->srcfile->toChars();
+    }
     return loc.toChars();
 }
 
@@ -548,6 +551,7 @@ void Dsymbol::error(const char *format, ...)
 
         fprintf(stdmsg, "\n");
         fflush(stdmsg);
+//halt();
     }
     global.errors++;
 
@@ -576,6 +580,7 @@ void Dsymbol::error(Loc loc, const char *format, ...)
 
         fprintf(stdmsg, "\n");
         fflush(stdmsg);
+//halt();
     }
 
     global.errors++;

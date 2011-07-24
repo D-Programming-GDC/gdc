@@ -927,7 +927,7 @@ void PragmaDeclaration::setScope(Scope *sc)
 
 void PragmaDeclaration::semantic(Scope *sc)
 {   // Should be merged with PragmaStatement
-        Scope sc_save;
+    Scope sc_save;
 
     //printf("\tPragmaDeclaration::semantic '%s'\n",toChars());
     if (ident == Id::msg)

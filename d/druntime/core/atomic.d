@@ -21,11 +21,15 @@ version( D_InlineAsm_X86 )
     version = AsmX86_32;
     enum has64BitCAS = true;
 }
-version( D_InlineAsm_X86_64 )
+else version( D_InlineAsm_X86_64 )
 {
     version = AsmX86;
     version = AsmX86_64;
     enum has64BitCAS = true;
+}
+else version( GNU )
+{
+    enum has64BitCAS = false;
 }
 
 
@@ -1064,17 +1068,17 @@ else version( GNU )
 
     HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val )
     {
-        HeadUnshared!(T) loadval;
+        alias HeadUnshared!(T) S;
 
         version( GNU_Need_Atomics )
         {
             static if( needsLoadBarrier!(ms) )
             {
-                synchronized loadval = val;
+                synchronized return cast(S) val;
             }
             else
             {
-                loadval = val;
+                return cast(S) val;
             }
         }
         else
@@ -1084,10 +1088,8 @@ else version( GNU )
                 __sync_synchronize();
             }
 
-            loadval = val;
+            return cast(S) val;
         }
-
-        return loadval;
     }
 
 

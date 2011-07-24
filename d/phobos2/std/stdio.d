@@ -695,12 +695,30 @@ arguments in text format to the file. */
         auto w = lockingTextWriter();
         foreach (arg; args)
         {
-            static if (isSomeString!(typeof(arg)))
+            alias typeof(arg) A;
+            static if (isSomeString!A)
             {
-                w.put(arg);
+                put(w, arg);
+            }
+            else static if (isIntegral!A)
+            {
+                toTextRange(arg, w);
+            }
+            else static if (is(Unqual!A == bool))
+            {
+                put(w, arg ? "true" : "false");
+            }
+            else static if (is(A : char))
+            {
+                put(w, arg);
+            }
+            else static if (isSomeChar!A)
+            {
+                put(w, arg);
             }
             else
             {
+                // Most general case
                 std.format.formattedWrite(w, "%s", arg);
             }
         }
@@ -948,9 +966,6 @@ Range that reads one line at a time. */
             file = f;
             this.terminator = terminator;
             keepTerminator = kt;
-            popFront; // prime the range
-            // @@@BUG@@@ line below should not exist
-            //if (file.p) ++file.p.refs;
         }
 
         /// Range primitive implementations.
@@ -962,6 +977,7 @@ Range that reads one line at a time. */
         /// Ditto
         Char[] front()
         {
+            if (line is null) popFront();
             return line;
         }
 
@@ -970,6 +986,7 @@ Range that reads one line at a time. */
         {
             enforce(file.isOpen);
             file.readln(line, terminator);
+            assert(line !is null, "Bug in File.readln");
             if (!line.length)
                 file.detach;
             else if (keepTerminator == KeepTerminator.no
@@ -1518,7 +1535,7 @@ unittest
     if (false) writeln();
 }
 
-/// ditto
+// Specialization for strings - a very frequent case
 void writeln(T...)(T args)
 if (T.length == 1 && is(typeof(args[0]) : const(char)[]))
 {
@@ -1531,7 +1548,7 @@ unittest
     if (false) writeln("wyda");
 }
 
-/// Ditto
+// Most general instance
 void writeln(T...)(T args)
 if (T.length > 1 || T.length == 1 && !is(typeof(args[0]) : const(char)[]))
 {

@@ -348,8 +348,7 @@ extern (C) bool rt_term(ExceptionHandler dg = null)
 /***********************************
  * The D main() function supplied by the user's program
  */
-//int main(char[][] args);
-extern (C) alias int function(char[][] args) main_type;
+int main(char[][] args);
 
 /***********************************
  * Substitutes for the C main() function.
@@ -357,19 +356,7 @@ extern (C) alias int function(char[][] args) main_type;
  * function and catch any unhandled exceptions.
  */
 
-/* Note that this is not the C main function, nor does it refer
-   to the D main function as in the DMD version.  The actual C
-   main is in cmain.d
-
-   This serves two purposes:
-   1) Special applications that have a C main declared elsewhere.
-
-   2) It is possible to create D shared libraries that can be used
-   by non-D executables. (TODO: Not complete, need a general library
-   init routine.)
-*/
-
-extern (C) int _d_run_main(int argc, char** argv, main_type main_func)
+extern (C) int main(int argc, char** argv)
 {
     char[][] args;
     int result;
@@ -553,7 +540,7 @@ extern (C) int _d_run_main(int argc, char** argv, main_type main_func)
 
     void runMain()
     {
-        result = main_func(args);
+        result = main(args);
     }
 
     void runAll()

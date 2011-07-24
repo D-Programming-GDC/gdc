@@ -98,7 +98,6 @@ enum ENUMTY
 
     Tcomplex64,
     Tcomplex80,
-    Tbit,
     Tbool,
     Tchar,
     Twchar,
@@ -177,7 +176,6 @@ struct Type : Object
     #define tcomplex64  basic[Tcomplex64]
     #define tcomplex80  basic[Tcomplex80]
 
-    #define tbit        basic[Tbit]
     #define tbool       basic[Tbool]
     #define tchar       basic[Tchar]
     #define twchar      basic[Twchar]
@@ -393,7 +391,6 @@ struct TypeBasic : Type
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
     int isintegral();
-    int isbit();
     int isfloating();
     int isreal();
     int isimaginary();
@@ -599,11 +596,13 @@ struct TypeFunction : TypeNext
     void purityLevel();
     void toDecoBuffer(OutBuffer *buf, int flag);
     void toCBuffer(OutBuffer *buf, Identifier *ident, HdrGenState *hgs);
+    void toCBufferWithAttributes(OutBuffer *buf, Identifier *ident, HdrGenState* hgs, TypeFunction *attrs, TemplateDeclaration *td);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     void attributesToCBuffer(OutBuffer *buf, int mod);
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     Type *reliesOnTident();
+    bool hasLazyParameters();
 #if IN_GCC || CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
@@ -614,6 +613,8 @@ struct TypeFunction : TypeNext
     enum RET retStyle();
 
     unsigned totym();
+
+    Expression *defaultInit(Loc loc);
 };
 
 struct TypeDelegate : TypeNext
@@ -803,7 +804,6 @@ struct TypeTypedef : Type
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
     Expression *getProperty(Loc loc, Identifier *ident);
-    int isbit();
     int isintegral();
     int isfloating();
     int isreal();

@@ -128,6 +128,7 @@ Usage:
   --help         print help
   -Ipath         where to look for imports
   -ignore        ignore unsupported pragmas
+  -property      enforce property syntax
   -inline        do function inlining
   -Jpath         where to look for string imports
   -Llinkerflag   pass linkerflag to link
@@ -290,6 +291,8 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @link_out, '-framework', $ARGV[$arg_i++];
     } elsif ( $arg eq '-ignore' ) {
         push @out, '-fignore-unknown-pragmas';
+    } elsif ( $arg eq '-property' ) {
+        push @out, '-fproperty';
     } elsif ( $arg =~ m/^-inline$/ ) {
         push @out, '-finline-functions';
     } elsif ( $arg =~ m/^-I(.*)$/ ) {

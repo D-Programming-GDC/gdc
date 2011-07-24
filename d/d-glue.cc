@@ -375,29 +375,37 @@ IdentityExp::toElem(IRState* irs)
     //if (ty1 != e2->type->toBasetype()->ty)
     //abort();
 
-    switch (ty1)
+    if (ty1 == Tsarray)
     {
-        case Tsarray:
-            return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
-                          type->toCtype(),
-                          irs->addressOf(e1->toElem(irs)),
-                          irs->addressOf(e2->toElem(irs)));
+        return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
+                      type->toCtype(),
+                      irs->addressOf(e1->toElem(irs)),
+                      irs->addressOf(e2->toElem(irs)));
+    }
+    else if (ty1 == Treference || ty1 == Tclass || ty1 == Tarray)
+    {
+        return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
+                      type->toCtype(),
+                      e1->toElem(irs),
+                      e2->toElem(irs));
+    }
+    else if (ty1 == Tstruct || e1->type->isfloating())
+    {   // Do bit compare.
+        tree t_memcmp = irs->buildCall(built_in_decls[BUILT_IN_MEMCMP], 3,
+                                       irs->addressOf(e1->toElem(irs)),
+                                       irs->addressOf(e2->toElem(irs)),
+                                       irs->integerConstant(e1->type->size()));
 
-        case Treference:
-        case Tclass:
-        case Tarray:
-            return build2(op == TOKidentity ? EQ_EXPR : NE_EXPR,
-                          type->toCtype(),
-                          e1->toElem(irs),
-                          e2->toElem(irs));
+        return irs->boolOp(op == TOKidentity ? EQ_EXPR : NE_EXPR,
+                           t_memcmp, integer_zero_node);
+    }
+    else
+    {   // For operand types other than class objects, static or dynamic
+        // arrays, identity is defined as being the same as equality
 
-        default:
-            // For operand types other than class objects, static or dynamic
-            // arrays, identity is defined as being the same as equality
-
-            // Assumes object == object has been changed to function call
-            // ... impl is really the same as the special cales
-            return toElemBin(irs, opComp);
+        // Assumes object == object has been changed to function call
+        // ... impl is really the same as the special cales
+        return toElemBin(irs, opComp);
     }
 }
 
@@ -1750,25 +1758,27 @@ elem *
 Expression::toElemDtor(IRState *irs)
 {
     size_t starti = irs->varsInScope ? irs->varsInScope->dim : 0;
-    tree e = toElem(irs);
+    tree t = toElem(irs);
     size_t endi = irs->varsInScope ? irs->varsInScope->dim : 0;
 
     // Add destructors
-    tree edtors = NULL_TREE;
-    for (size_t i = endi; i != starti;)
+    tree tdtors = NULL_TREE;
+    for (size_t i = starti; i != endi; ++i)
     {
-        --i;
         VarDeclaration * vd = (VarDeclaration *) irs->varsInScope->data[i];
         if (vd)
         {
             irs->varsInScope->data[i] = NULL;
             tree ed = vd->edtor->toElem(irs);
-            edtors = irs->maybeCompound(edtors, ed);
+            tdtors = irs->maybeCompound(ed, tdtors); // execute in reverse order
         }
     }
-    if (edtors != NULL_TREE)
-        e = irs->compound(e, edtors);
-    return e;
+    if (tdtors != NULL_TREE)
+    {
+        t = save_expr(t);
+        t = irs->compound(irs->compound(t, tdtors), t);
+    }
+    return t;
 }
 #endif
 
@@ -4204,7 +4214,21 @@ ThrowStatement::toIR(IRState* irs)
     ClassDeclaration * class_decl = exp->type->toBasetype()->isClassHandle();
     // Front end already checks for isClassHandle
     InterfaceDeclaration * intfc_decl = class_decl->isInterfaceDeclaration();
+#if V2
+    tree arg = exp->toElemDtor(irs);
+#else
     tree arg = exp->toElem(irs);
+#endif
+
+    if (! flag_exceptions)
+    {
+        static int warned = 0;
+        if (! warned)
+        {
+            error ("exception handling disabled, use -fexceptions to enable");
+            warned = 1;
+        }
+    }
 
     if (intfc_decl)
     {
@@ -4412,8 +4436,11 @@ ReturnStatement::toIR(IRState* irs)
             ret_type = Type::tint32;
 
         tree result_decl = DECL_RESULT(irs->func->toSymbol()->Stree);
+#if V1
         tree result_value = irs->convertForAssignment(exp, ret_type);
-#if V2
+#else
+        tree result_value = irs->convertForAssignment(exp->toElemDtor(irs),
+                                                      exp->type, ret_type);
         // %% convert for init -- if we were returning a reference,
         // would want to take the address...
         if (tf->isref)
@@ -4421,12 +4448,17 @@ ReturnStatement::toIR(IRState* irs)
             result_value = irs->addressOf(result_value);
         }
         else if (exp->type->toBasetype()->ty == Tstruct &&
-                 (exp->op == TOKvar || exp->op == TOKdotvar || exp->op == TOKstar))
+                 (exp->op == TOKvar || exp->op == TOKdotvar || exp->op == TOKstar || exp->op == TOKthis))
         {   // Maybe call postblit on result_value
             StructDeclaration * sd;
             if ((sd = needsPostblit(exp->type->toBasetype())) != NULL)
             {
                 Array args;
+                FuncDeclaration * fd = sd->postblit;
+                if (fd->storage_class & STCdisable)
+                {
+                    fd->toParent()->error(loc, "is not copyable because it is annotated with @disable");
+                }
                 tree call_exp = irs->call(sd->postblit, irs->addressOf(result_value), & args);
                 irs->addExp(call_exp);
             }
@@ -4478,8 +4510,11 @@ SwitchStatement::toIR(IRState * irs)
     tree cond_tree;
     // %% also what about c-semantics doing emit_nop() ?
     irs->doLineNote(loc);
-
+#if V2
+    cond_tree = condition->toElemDtor(irs);
+#else
     cond_tree = condition->toElem(irs);
+#endif
 
     Type * cond_type = condition->type->toBasetype();
     if (cond_type->ty == Tarray)
@@ -4547,7 +4582,7 @@ SwitchStatement::toIR(IRState * irs)
         {
             CaseStatement * case_stmt = (CaseStatement *) cases->data[i];
             tree case_cond = build2(EQ_EXPR, cond_type->toCtype(), cond_tree,
-                                    case_stmt->exp->toElem(irs));
+                                    case_stmt->exp->toElemDtor(irs));
             irs->startCond(this, case_cond);
             irs->doJump(NULL, case_stmt->cblock);
             irs->endCond();
@@ -4579,11 +4614,15 @@ Statement::toIR(IRState*)
 void
 IfStatement::toIR(IRState * irs)
 {
+    irs->doLineNote(loc);
+    irs->startScope();
+
+#if 0
     if (match)
     {
-        irs->startScope();
         irs->emitLocalVar(match);
     }
+#endif
     irs->startCond(this, condition);
     if (ifbody)
     {
@@ -4595,10 +4634,7 @@ IfStatement::toIR(IRState * irs)
         elsebody->toIR(irs);
     }
     irs->endCond();
-    if (match)
-    {
-        irs->endScope();
-    }
+    irs->endScope();
 }
 
 void
@@ -4814,6 +4850,7 @@ ForStatement::toIR(IRState * irs)
     irs->startLoop(this);
     if (condition)
     {
+        irs->doLineNote(condition->loc);
         irs->exitIfFalse(condition);
     }
     if (body)
@@ -4823,7 +4860,12 @@ ForStatement::toIR(IRState * irs)
     irs->continueHere();
     if (increment)
     {   // force side effects?
+        irs->doLineNote(increment->loc);
+#if V2
+        irs->doExp(increment->toElemDtor(irs));
+#else
         irs->doExp(increment->toElem(irs));
+#endif
     }
     irs->endLoop();
 }
@@ -4838,6 +4880,7 @@ DoStatement::toIR(IRState * irs)
         body->toIR(irs);
     }
     irs->continueHere();
+    irs->doLineNote(condition->loc);
     irs->exitIfFalse(condition);
     irs->endLoop();
 }
@@ -4926,6 +4969,12 @@ ExpStatement::toIR(IRState * irs)
 #if V2
 void
 PragmaStatement::toIR(IRState *)
+{
+    // nothing
+}
+
+void
+ImportStatement::toIR(IRState* irs)
 {
     // nothing
 }

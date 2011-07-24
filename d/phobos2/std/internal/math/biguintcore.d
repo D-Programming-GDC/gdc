@@ -169,9 +169,9 @@ public:
         else if (u == 2) data = TWO;
         else if (u == 10) data = TEN;
         else
-                {
+		{
             static if (BigDigit.sizeof == int.sizeof)
-                    {
+		    {
                 uint ulo = cast(uint)(u & 0xFFFF_FFFF);
                 uint uhi = cast(uint)(u >> 32);
                 if (uhi == 0)
@@ -185,7 +185,7 @@ public:
                   data[0] = ulo;
                   data[1] = uhi;
                 }
-                    }
+		    }
             else static if (BigDigit.sizeof == long.sizeof)
             {
                 data = new BigDigit[1];
@@ -228,7 +228,7 @@ bool opEquals(Tdummy = void)(ref const BigUint y) pure const
        return y.data[] == data[];
 }
 
-bool opEquals(Tdummy = void)(ulong y) pure const
+bool opEquals(Tdummy = void)(ulong y) pure const 
 {
     if (data.length > 2)
         return false;
@@ -482,7 +482,7 @@ static BigUint addOrSubInt(Tulong)(const BigUint x, Tulong y, bool wantSub, ref 
             r.data = new BigDigit[ d > uint.max ? 2: 1];
             r.data[0] = cast(uint)(d & 0xFFFF_FFFF);
             if (d > uint.max)
-                                r.data[1] = cast(uint)(d>>32);
+				r.data[1] = cast(uint)(d>>32);
         }
     }
     else

@@ -1,9 +1,10 @@
-/* zlib.d: modified from zlib.h by Walter Bright */
-/* updated from 1.2.1 to 1.2.3 by Thomas Kuehne */
+/** zlib.d: modified from zlib.h by Walter Bright
+    updated from 1.2.1 to 1.2.3 by Thomas Kuehne
 
-module etc.c.zlib;
+ */
 
-/* zlib.h -- interface of the 'zlib' general purpose compression library
+
+/** zlib.h -- interface of the 'zlib' general purpose compression library
    version 1.2.3, July 18th, 2005
 
   Copyright (C) 1995-2005 Jean-loup Gailly and Mark Adler
@@ -31,14 +32,7 @@ module etc.c.zlib;
   The data format used by the zlib library is described by RFCs (Request for
   Comments) 1950 to 1952 in the files http://www.ietf.org/rfc/rfc1950.txt
   (zlib format), rfc1951.txt (deflate format) and rfc1952.txt (gzip format).
-*/
 
-extern (C):
-
-const char[] ZLIB_VERSION = "1.2.3";
-const ZLIB_VERNUM = 0x1230;
-
-/*
      The 'zlib' compression library provides in-memory compression and
   decompression functions, including integrity checks of the uncompressed
   data.  This version of the library supports only one compression method
@@ -72,57 +66,23 @@ const ZLIB_VERNUM = 0x1230;
   crash even in case of corrupted input.
 */
 
+module etc.c.zlib;
+
+extern (C):
+
+///
+const char[] ZLIB_VERSION = "1.2.3";
+
+///
+const ZLIB_VERNUM = 0x1230;
+
+///
 alias void* function (void* opaque, uint items, uint size) alloc_func;
+
+///
 alias void  function (void* opaque, void* address) free_func;
 
-struct z_stream
-{
-    ubyte    *next_in;  /* next input byte */
-    uint     avail_in;  /* number of bytes available at next_in */
-    size_t   total_in;  /* total nb of input bytes read so far */
-
-    ubyte    *next_out; /* next output byte should be put there */
-    uint     avail_out; /* remaining free space at next_out */
-    size_t   total_out; /* total nb of bytes output so far */
-
-    char     *msg;      /* last error message, NULL if no error */
-    void*    state;     /* not visible by applications */
-
-    alloc_func zalloc;  /* used to allocate the internal state */
-    free_func  zfree;   /* used to free the internal state */
-    void*      opaque;  /* private data object passed to zalloc and zfree */
-
-    int    data_type;  /* best guess about the data type: binary or text */
-    size_t adler;      /* adler32 value of the uncompressed data */
-    size_t reserved;   /* reserved for future use */
-}
-
-alias z_stream* z_streamp;
-
-/*
-     gzip header information passed to and from zlib routines.  See RFC 1952
-  for more details on the meanings of these fields.
-*/
-struct gz_header {
-    int     text;       /* true if compressed data believed to be text */
-    ulong   time;       /* modification time */
-    int     xflags;     /* extra flags (not used when writing a gzip file) */
-    int     os;         /* operating system */
-    byte    *extra;     /* pointer to extra field or Z_NULL if none */
-    uint    extra_len;  /* extra field length (valid if extra != Z_NULL) */
-    uint    extra_max;  /* space at extra (only when reading header) */
-    byte    *name;      /* pointer to zero-terminated file name or Z_NULL */
-    uint    name_max;   /* space at name (only when reading header) */
-    byte    *comment;   /* pointer to zero-terminated comment or Z_NULL */
-    uint    comm_max;   /* space at comment (only when reading header) */
-    int     hcrc;       /* true if there was or will be a header crc */
-    int     done;       /* true when done reading gzip header (not used
-                           when writing a gzip file) */
-}
-
-alias gz_header* gz_headerp;
-
-/*
+/**
   The application must update next_in and avail_in when avail_in has
    dropped to zero. It must update next_out and avail_out when avail_out
    has dropped to zero. The application must initialize zalloc, zfree and
@@ -154,8 +114,58 @@ alias gz_header* gz_headerp;
    a single step).
 */
 
+struct z_stream
+{
+    ubyte    *next_in;  /** next input byte */
+    uint     avail_in;  /** number of bytes available at next_in */
+    size_t   total_in;  /** total nb of input bytes read so far */
+
+    ubyte    *next_out; /** next output byte should be put there */
+    uint     avail_out; /** remaining free space at next_out */
+    size_t   total_out; /** total nb of bytes output so far */
+
+    char     *msg;      /** last error message, NULL if no error */
+    void*    state;     /** not visible by applications */
+
+    alloc_func zalloc;  /** used to allocate the internal state */
+    free_func  zfree;   /** used to free the internal state */
+    void*      opaque;  /** private data object passed to zalloc and zfree */
+
+    int    data_type;  /** best guess about the data type: binary or text */
+    size_t adler;      /** adler32 value of the uncompressed data */
+    size_t reserved;   /** reserved for future use */
+}
+
+///
+alias z_stream* z_streamp;
+
+/**
+     gzip header information passed to and from zlib routines.  See RFC 1952
+  for more details on the meanings of these fields.
+*/
+struct gz_header {
+    int     text;       /** true if compressed data believed to be text */
+    ulong   time;       /** modification time */
+    int     xflags;     /** extra flags (not used when writing a gzip file) */
+    int     os;         /** operating system */
+    byte    *extra;     /** pointer to extra field or Z_NULL if none */
+    uint    extra_len;  /** extra field length (valid if extra != Z_NULL) */
+    uint    extra_max;  /** space at extra (only when reading header) */
+    byte    *name;      /** pointer to zero-terminated file name or Z_NULL */
+    uint    name_max;   /** space at name (only when reading header) */
+    byte    *comment;   /** pointer to zero-terminated comment or Z_NULL */
+    uint    comm_max;   /** space at comment (only when reading header) */
+    int     hcrc;       /** true if there was or will be a header crc */
+    int     done;       /** true when done reading gzip header (not used
+                           when writing a gzip file) */
+}
+
+///
+alias gz_header* gz_headerp;
+
                         /* constants */
 
+///
 enum
 {
         Z_NO_FLUSH      = 0,
@@ -166,7 +176,7 @@ enum
         Z_BLOCK         = 5,
         Z_TREES         = 6,
 }
-/* Allowed flush values; see deflate() and inflate() below for details */
+/** Allowed flush values; see deflate() and inflate() below for details */
 
 enum
 {
@@ -180,7 +190,7 @@ enum
         Z_BUF_ERROR     = -5,
         Z_VERSION_ERROR = -6,
 }
-/* Return codes for the compression/decompression functions. Negative
+/** Return codes for the compression/decompression functions. Negative
  * values are errors, positive values are used for special but normal events.
  */
 
@@ -191,7 +201,7 @@ enum
         Z_BEST_COMPRESSION       = 9,
         Z_DEFAULT_COMPRESSION    = -1,
 }
-/* compression levels */
+/** compression levels */
 
 enum
 {
@@ -201,7 +211,7 @@ enum
         Z_FIXED               = 4,
         Z_DEFAULT_STRATEGY    = 0,
 }
-/* compression strategy; see deflateInit2() below for details */
+/** compression strategy; see deflateInit2() below for details */
 
 enum
 {
@@ -211,20 +221,20 @@ enum
 
         Z_ASCII    = Z_TEXT
 }
-/* Possible values of the data_type field (though see inflate()) */
+/** Possible values of the data_type field (though see inflate()) */
 
 enum
 {
         Z_DEFLATED   = 8,
 }
-/* The deflate compression method (the only one supported in this version) */
+/** The deflate compression method (the only one supported in this version) */
 
 const int Z_NULL = 0;  /* for initializing zalloc, zfree, opaque */
 
                         /* basic functions */
 
 char* zlibVersion();
-/* The application can compare zlibVersion and ZLIB_VERSION for consistency.
+/** The application can compare zlibVersion and ZLIB_VERSION for consistency.
    If the first character differs, the library code actually used is
    not compatible with the zlib.h header file used by the application.
    This check is automatically made by deflateInit and inflateInit.
@@ -234,7 +244,7 @@ int deflateInit(z_streamp strm, int level)
 {
     return deflateInit_(strm, level, ZLIB_VERSION.ptr, z_stream.sizeof);
 }
-/*
+/**
      Initializes the internal stream state for compression. The fields
    zalloc, zfree and opaque must be initialized before by the caller.
    If zalloc and zfree are set to Z_NULL, deflateInit updates them to
@@ -256,7 +266,7 @@ int deflateInit(z_streamp strm, int level)
 
 
 int deflate(z_streamp strm, int flush);
-/*
+/**
     deflate compresses as much data as possible, and stops when the input
   buffer becomes empty or the output buffer becomes full. It may introduce some
   output latency (reading input without producing any output) except when
@@ -342,7 +352,7 @@ int deflate(z_streamp strm, int flush);
 
 
 int deflateEnd(z_streamp strm);
-/*
+/**
      All dynamically allocated data structures for this stream are freed.
    This function discards any unprocessed input and does not flush any
    pending output.
@@ -359,7 +369,7 @@ int inflateInit(z_streamp strm)
 {
     return inflateInit_(strm, ZLIB_VERSION.ptr, z_stream.sizeof);
 }
-/*
+/**
      Initializes the internal stream state for decompression. The fields
    next_in, avail_in, zalloc, zfree and opaque must be initialized before by
    the caller. If next_in is not Z_NULL and avail_in is large enough (the exact
@@ -379,7 +389,7 @@ int inflateInit(z_streamp strm)
 
 
 int inflate(z_streamp strm, int flush);
-/*
+/**
     inflate decompresses as much data as possible, and stops when the input
   buffer becomes empty or the output buffer becomes full. It may introduce
   some output latency (reading input without producing any output) except when
@@ -478,7 +488,7 @@ int inflate(z_streamp strm, int flush);
 
 
 int inflateEnd(z_streamp strm);
-/*
+/**
      All dynamically allocated data structures for this stream are freed.
    This function discards any unprocessed input and does not flush any
    pending output.
@@ -490,7 +500,7 @@ int inflateEnd(z_streamp strm);
 
                         /* Advanced functions */
 
-/*
+/**
     The following functions are needed only in some special applications.
 */
 
@@ -504,7 +514,7 @@ int deflateInit2(z_streamp strm,
     return deflateInit2_(strm, level, method, windowBits, memLevel,
                          strategy, ZLIB_VERSION.ptr, z_stream.sizeof);
 }
-/*
+/**
      This is another version of deflateInit with more compression options. The
    fields next_in, zalloc, zfree and opaque must be initialized before by
    the caller.
@@ -557,7 +567,7 @@ int deflateInit2(z_streamp strm,
 */
 
 int deflateSetDictionary(z_streamp strm, ubyte* dictionary, uint  dictLength);
-/*
+/**
      Initializes the compression dictionary from the given byte sequence
    without producing any compressed output. This function must be called
    immediately after deflateInit, deflateInit2 or deflateReset, before any
@@ -594,7 +604,7 @@ int deflateSetDictionary(z_streamp strm, ubyte* dictionary, uint  dictLength);
 */
 
 int deflateCopy(z_streamp dest, z_streamp source);
-/*
+/**
      Sets the destination stream as a complete copy of the source stream.
 
      This function can be useful when several compression strategies will be
@@ -611,7 +621,7 @@ int deflateCopy(z_streamp dest, z_streamp source);
 */
 
 int deflateReset(z_streamp strm);
-/*
+/**
      This function is equivalent to deflateEnd followed by deflateInit,
    but does not free and reallocate all the internal compression state.
    The stream will keep the same compression level and any other attributes
@@ -622,7 +632,7 @@ int deflateReset(z_streamp strm);
 */
 
 int inflatePrime(z_streamp strm, int bits, int value);
-/*
+/**
      This function inserts bits in the inflate input stream.  The intent is
   that this function is used to start inflating at a bit position in the
   middle of a byte.  The provided bits will be used before any bytes are used
@@ -636,7 +646,7 @@ int inflatePrime(z_streamp strm, int bits, int value);
 */
 
 int inflateGetHeader(z_streamp strm, gz_headerp head);
-/*
+/**
       inflateGetHeader() requests that gzip header information be stored in the
    provided gz_header structure.  inflateGetHeader() may be called after
    inflateInit2() or inflateReset(), and before the first call of inflate().
@@ -675,7 +685,7 @@ int inflateGetHeader(z_streamp strm, gz_headerp head);
 */
 
 int deflateParams(z_streamp strm, int level, int strategy);
-/*
+/**
      Dynamically update the compression level and compression strategy.  The
    interpretation of level and strategy is as in deflateInit2.  This can be
    used to switch between compression and straight copy of the input data, or
@@ -695,7 +705,7 @@ int deflateParams(z_streamp strm, int level, int strategy);
 
 int deflateTune(z_streamp strm, int good_length, int max_lazy, int nice_length,
         int max_chain);
-/*
+/**
      Fine tune deflate's internal compression parameters.  This should only be
    used by someone who understands the algorithm used by zlib's deflate for
    searching for the best matching string, and even then only by the most
@@ -708,7 +718,7 @@ int deflateTune(z_streamp strm, int good_length, int max_lazy, int nice_length,
  */
 
 int deflateBound(z_streamp strm, size_t sourceLen);
-/*
+/**
      deflateBound() returns an upper bound on the compressed size after
    deflation of sourceLen bytes.  It must be called after deflateInit()
    or deflateInit2().  This would be used to allocate an output buffer
@@ -716,7 +726,7 @@ int deflateBound(z_streamp strm, size_t sourceLen);
 */
 
 int deflatePrime(z_streamp strm, int bits, int value);
-/*
+/**
      deflatePrime() inserts bits in the deflate output stream.  The intent
   is that this function is used to start off the deflate output with the
   bits leftover from a previous deflate stream when appending to it.  As such,
@@ -730,7 +740,7 @@ int deflatePrime(z_streamp strm, int bits, int value);
 */
 
 int deflateSetHeader(z_streamp strm, gz_headerp head);
-/*
+/**
       deflateSetHeader() provides gzip header information for when a gzip
    stream is requested by deflateInit2().  deflateSetHeader() may be called
    after deflateInit2() or deflateReset() and before the first call of
@@ -756,7 +766,7 @@ int inflateInit2(z_streamp strm, int windowBits)
 {
     return inflateInit2_(strm, windowBits, ZLIB_VERSION.ptr, z_stream.sizeof);
 }
-/*
+/**
      This is another version of inflateInit with an extra parameter. The
    fields next_in, avail_in, zalloc, zfree and opaque must be initialized
    before by the caller.
@@ -797,7 +807,7 @@ int inflateInit2(z_streamp strm, int windowBits)
 /
 
 int inflateSetDictionary(z_streamp strm, ubyte* dictionary, uint  dictLength);
-/*
+/**
      Initializes the decompression dictionary from the given uncompressed byte
    sequence. This function must be called immediately after a call of inflate,
    if that call returned Z_NEED_DICT. The dictionary chosen by the compressor
@@ -817,7 +827,7 @@ int inflateSetDictionary(z_streamp strm, ubyte* dictionary, uint  dictLength);
 */
 
 int inflateSync(z_streamp strm);
-/*
+/**
     Skips invalid compressed data until a full flush point (see above the
   description of deflate with Z_FULL_FLUSH) can be found, or until all
   available input is skipped. No output is provided.
@@ -832,7 +842,7 @@ int inflateSync(z_streamp strm);
 */
 
 int inflateCopy (z_streamp dest, z_streamp source);
-/*
+/**
      Sets the destination stream as a complete copy of the source stream.
 
      This function can be useful when randomly accessing a large stream.  The
@@ -847,7 +857,7 @@ int inflateCopy (z_streamp dest, z_streamp source);
 */
 
 int inflateReset(z_streamp strm);
-/*
+/**
      This function is equivalent to inflateEnd followed by inflateInit,
    but does not free and reallocate all the internal decompression state.
    The stream will keep attributes that may have been set by inflateInit2.
@@ -861,7 +871,7 @@ int inflateBackInit(z_stream* strm, int windowBits, ubyte* window)
 {
     return inflateBackInit_(strm, windowBits, window, ZLIB_VERSION.ptr, z_stream.sizeof);
 }
-/*
+/**
      Initialize the internal stream state for decompression using inflateBack()
    calls.  The fields zalloc, zfree and opaque in strm must be initialized
    before the call.  If zalloc and zfree are Z_NULL, then the default library-
@@ -888,7 +898,7 @@ int inflateBack(z_stream* strm,
                 void* in_desc,
                 out_func f_out,
                 void* out_desc);
-/*
+/**
      inflateBack() does a raw inflate with a single call using a call-back
    interface for input and output.  This is more efficient than inflate() for
    file i/o applications in that it avoids copying between the output and the
@@ -955,7 +965,7 @@ int inflateBack(z_stream* strm,
 */
 
 int inflateBackEnd(z_stream* strm);
-/*
+/**
      All memory allocated by inflateBackInit() is freed.
 
      inflateBackEnd() returns Z_OK on success, or Z_STREAM_ERROR if the stream
@@ -963,7 +973,7 @@ int inflateBackEnd(z_stream* strm);
 */
 
 uint zlibCompileFlags();
-/* Return flags indicating compile-time options.
+/** Return flags indicating compile-time options.
 
     Type sizes, two bits each, 00 = 16 bits, 01 = 32, 10 = 64, 11 = other:
      1.0: size of uInt
@@ -1005,7 +1015,7 @@ uint zlibCompileFlags();
 
                         /* utility functions */
 
-/*
+/**
      The following utility functions are implemented on top of the
    basic stream-oriented functions. To simplify the interface, some
    default options are assumed (compression level and memory usage,
@@ -1017,7 +1027,7 @@ int compress(ubyte* dest,
              size_t* destLen,
              ubyte* source,
              size_t sourceLen);
-/*
+/**
      Compresses the source buffer into the destination buffer.  sourceLen is
    the byte length of the source buffer. Upon entry, destLen is the total
    size of the destination buffer, which must be at least the value returned
@@ -1035,7 +1045,7 @@ int compress2(ubyte* dest,
               ubyte* source,
               size_t sourceLen,
               int level);
-/*
+/**
      Compresses the source buffer into the destination buffer. The level
    parameter has the same meaning as in deflateInit.  sourceLen is the byte
    length of the source buffer. Upon entry, destLen is the total size of the
@@ -1049,7 +1059,7 @@ int compress2(ubyte* dest,
 */
 
 size_t compressBound(size_t sourceLen);
-/*
+/**
      compressBound() returns an upper bound on the compressed size after
    compress() or compress2() on sourceLen bytes.  It would be used before
    a compress() or compress2() call to allocate the destination buffer.
@@ -1059,7 +1069,7 @@ int uncompress(ubyte* dest,
                size_t* destLen,
                ubyte* source,
                size_t sourceLen);
-/*
+/**
      Decompresses the source buffer into the destination buffer.  sourceLen is
    the byte length of the source buffer. Upon entry, destLen is the total
    size of the destination buffer, which must be large enough to hold the
@@ -1080,7 +1090,7 @@ typedef void* gzFile;
 alias int z_off_t;              // file offset
 
 gzFile gzopen(char* path, char* mode);
-/*
+/**
      Opens a gzip (.gz) file for reading or writing. The mode parameter
    is as in fopen ("rb" or "wb") but can also include a compression level
    ("wb9") or a strategy: 'f' for filtered data as in "wb6f", 'h' for
@@ -1097,7 +1107,7 @@ gzFile gzopen(char* path, char* mode);
    zlib error is Z_MEM_ERROR).  */
 
 gzFile gzdopen(int fd, char* mode);
-/*
+/**
      gzdopen() associates a gzFile with the file descriptor fd.  File
    descriptors are obtained from calls like open, dup, creat, pipe or
    fileno (in the file has been previously opened with fopen).
@@ -1110,7 +1120,7 @@ gzFile gzdopen(int fd, char* mode);
 */
 
 int gzsetparams(gzFile file, int level, int strategy);
-/*
+/**
      Dynamically update the compression level or strategy. See the description
    of deflateInit2 for the meaning of these parameters.
      gzsetparams returns Z_OK if success, or Z_STREAM_ERROR if the file was not
@@ -1118,7 +1128,7 @@ int gzsetparams(gzFile file, int level, int strategy);
 */
 
 int gzread(gzFile file, void* buf, uint len);
-/*
+/**
      Reads the given number of uncompressed bytes from the compressed file.
    If the input file was not in gzip format, gzread copies the given number
    of bytes into the buffer.
@@ -1126,14 +1136,14 @@ int gzread(gzFile file, void* buf, uint len);
    end of file, -1 for error). */
 
 int gzwrite(gzFile file, void* buf, uint len);
-/*
+/**
      Writes the given number of uncompressed bytes into the compressed file.
    gzwrite returns the number of uncompressed bytes actually written
    (0 in case of error).
 */
 
 int gzprintf(gzFile file, char* format, ...);
-/*
+/**
      Converts, formats, and writes the args to the compressed file under
    control of the format string, as in fprintf. gzprintf returns the number of
    uncompressed bytes actually written (0 in case of error).  The number of
@@ -1146,14 +1156,14 @@ int gzprintf(gzFile file, char* format, ...);
 */
 
 int gzputs(gzFile file, char* s);
-/*
+/**
       Writes the given null-terminated string to the compressed file, excluding
    the terminating null character.
       gzputs returns the number of characters written, or -1 in case of error.
 */
 
 char* gzgets(gzFile file, char* buf, int len);
-/*
+/**
       Reads bytes from the compressed file until len-1 characters are read, or
    a newline character is read and transferred to buf, or an end-of-file
    condition is encountered.  The string is then terminated with a null
@@ -1162,19 +1172,19 @@ char* gzgets(gzFile file, char* buf, int len);
 */
 
 int gzputc(gzFile file, int c);
-/*
+/**
       Writes c, converted to an unsigned char, into the compressed file.
    gzputc returns the value that was written, or -1 in case of error.
 */
 
 int    gzgetc(gzFile file);
-/*
+/**
       Reads one byte from the compressed file. gzgetc returns this byte
    or -1 in case of end of file or error.
 */
 
 int gzungetc(int c, gzFile file);
-/*
+/**
       Push one character back onto the stream to be read again later.
    Only one character of push-back is allowed.  gzungetc() returns the
    character pushed, or -1 on failure.  gzungetc() will fail if a
@@ -1184,7 +1194,7 @@ int gzungetc(int c, gzFile file);
 */
 
 int gzflush(gzFile file, int flush);
-/*
+/**
      Flushes all pending output into the compressed file. The parameter
    flush is as in the deflate() function. The return value is the zlib
    error number (see function gzerror below). gzflush returns Z_OK if
@@ -1194,7 +1204,7 @@ int gzflush(gzFile file, int flush);
 */
 
 z_off_t gzseek(gzFile file, z_off_t offset, int whence);
-/*
+/**
       Sets the starting position for the next gzread or gzwrite on the
    given compressed file. The offset represents a number of bytes in the
    uncompressed data stream. The whence parameter is defined as in lseek(2);
@@ -1211,14 +1221,14 @@ z_off_t gzseek(gzFile file, z_off_t offset, int whence);
 */
 
 int gzrewind(gzFile file);
-/*
+/**
      Rewinds the given file. This function is supported only for reading.
 
    gzrewind(file) is equivalent to (int)gzseek(file, 0L, SEEK_SET)
 */
 
 z_off_t  gztell(gzFile file);
-/*
+/**
      Returns the starting position for the next gzread or gzwrite on the
    given compressed file. This position represents a number of bytes in the
    uncompressed data stream.
@@ -1227,26 +1237,26 @@ z_off_t  gztell(gzFile file);
 */
 
 int gzeof(gzFile file);
-/*
+/**
      Returns 1 when EOF has previously been detected reading the given
    input stream, otherwise zero.
 */
 
 int gzdirect(gzFile file);
-/*
+/**
      Returns 1 if file is being read directly without decompression, otherwise
    zero.
 */
 
 int gzclose(gzFile file);
-/*
+/**
      Flushes all pending output if necessary, closes the compressed file
    and deallocates all the (de)compression state. The return value is the zlib
    error number (see function gzerror below).
 */
 
 char* gzerror(gzFile file, int *errnum);
-/*
+/**
      Returns the error message for the last error which occurred on the
    given compressed file. errnum is set to zlib error number. If an
    error occurred in the file system and not in the compression library,
@@ -1255,15 +1265,15 @@ char* gzerror(gzFile file, int *errnum);
 */
 
 void gzclearerr (gzFile file);
-/*
+/**
      Clears the error and end-of-file flags for file. This is analogous to the
    clearerr() function in stdio. This is useful for continuing to read a gzip
    file that is being written concurrently.
 */
 
-                        /* checksum functions */
+                        /** checksum functions */
 
-/*
+/**
      These functions are not related to compression but are exported
    anyway because they might be useful in applications using the
    compression library.
@@ -1271,7 +1281,7 @@ void gzclearerr (gzFile file);
 
  uint adler32  (uint adler, ubyte *buf, uint len);
 
-/*
+/**
      Update a running Adler-32 checksum with the bytes buf[0..len-1] and
    return the updated checksum. If buf is NULL, this function returns
    the required initial value for the checksum.
@@ -1287,7 +1297,7 @@ void gzclearerr (gzFile file);
 */
 
 uint adler32_combine(uint adler1, uint adler2, z_off_t len2);
-/*
+/**
      Combine two Adler-32 checksums into one.  For two sequences of bytes, seq1
    and seq2 with lengths len1 and len2, Adler-32 checksums were calculated for
    each, adler1 and adler2.  adler32_combine() returns the Adler-32 checksum of
@@ -1295,7 +1305,7 @@ uint adler32_combine(uint adler1, uint adler2, z_off_t len2);
 */
 
 uint crc32(uint crc, ubyte *buf, uint len);
-/*
+/**
      Update a running CRC-32 with the bytes buf[0..len-1] and return the
    updated CRC-32. If buf is NULL, this function returns the required initial
    value for the for the crc. Pre- and post-conditioning (one's complement) is
@@ -1312,7 +1322,7 @@ uint crc32(uint crc, ubyte *buf, uint len);
 
 uint crc32_combine (uint crc1, uint crc2, z_off_t len2);
 
-/*
+/**
      Combine two CRC-32 check values into one.  For two sequences of bytes,
    seq1 and seq2 with lengths len1 and len2, CRC-32 check values were
    calculated for each, crc1 and crc2.  crc32_combine() returns the CRC-32
@@ -1321,9 +1331,9 @@ uint crc32_combine (uint crc1, uint crc2, z_off_t len2);
 */
 
 
-                        /* various hacks, don't look :) */
+                        /** various hacks, don't look :) */
 
-/* deflateInit and inflateInit are macros to allow checking the zlib version
+/** deflateInit and inflateInit are macros to allow checking the zlib version
  * and the compiler's view of z_stream:
  */
 int deflateInit_(z_streamp strm,

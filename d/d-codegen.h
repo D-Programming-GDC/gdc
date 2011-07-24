@@ -691,7 +691,17 @@ public:
 
     // ** Instruction stream manipulation
     void startCond(Statement * stmt, tree t_cond);
-    void startCond(Statement * stmt, Expression * e_cond);
+
+    void startCond(Statement * stmt, Expression * e_cond)
+    {
+#if V2
+        tree t_cond = e_cond->toElemDtor(this);
+        startCond(stmt, convertForCondition(t_cond, e_cond->type));
+#else
+        startCond(stmt, convertForCondition(e_cond));
+#endif
+    }
+
     void startElse();
     void endCond();
     void startLoop(Statement * stmt);
@@ -701,7 +711,12 @@ public:
 
     void exitIfFalse(Expression * e_cond, bool is_top_cond = 0)
     {
+#if V2
+        tree t_cond = e_cond->toElemDtor(this);
+        exitIfFalse(convertForCondition(t_cond, e_cond->type), is_top_cond);
+#else
         exitIfFalse(convertForCondition(e_cond), is_top_cond);
+#endif
     }
 
     void endLoop();
@@ -780,7 +795,6 @@ struct ListMaker
     tree * ptail;
     ListMaker() : head(NULL_TREE), ptail(& head) { }
     ListMaker(tree * alt_head) : head(NULL_TREE), ptail(alt_head) { }
-    void reserve(int i) { }
 
     void chain(tree t)
     {

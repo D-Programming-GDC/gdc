@@ -165,14 +165,14 @@ RT_OSX_OBJS=core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
 
 RT_POSIX_OBJS=core/sys/posix/netinet/in_.o core/sys/posix/sys/select.o \
 	      core/sys/posix/sys/socket.o core/sys/posix/sys/stat.o \
-	      core/sys/posix/sys/wait.o
+	      core/sys/posix/sys/wait.o core/sys/posix/netdb.o
 
 RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
 		core/sys/windows/windows.o
 
 # This should not be linked into a shared library.
-CMAIN_OBJS=rt/cmain.o
+CMAIN_OBJS= #rt/cmain.o
 
 D_GC_MODULES=@D_GC_MODULES@
 
@@ -199,20 +199,20 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/posix/arpa/inet.di core/sys/posix/config.di \
 	     core/sys/posix/dirent.di core/sys/posix/dlfcn.di \
 	     core/sys/posix/fcntl.di core/sys/posix/inttypes.di \
-	     core/sys/posix/poll.di core/sys/posix/pthread.di \
-	     core/sys/posix/pwd.di core/sys/posix/sched.di \
-	     core/sys/posix/semaphore.di core/sys/posix/setjmp.di \
-	     core/sys/posix/signal.di core/sys/posix/stdio.di \
-	     core/sys/posix/stdlib.di core/sys/posix/termios.di \
-	     core/sys/posix/time.di core/sys/posix/ucontext.di \
-	     core/sys/posix/unistd.di core/sys/posix/utime.di \
-	     core/sys/posix/net/if_.di core/sys/posix/netinet/in_.di \
-	     core/sys/posix/netinet/tcp.di core/sys/posix/sys/ipc.di \
-	     core/sys/posix/sys/mman.di core/sys/posix/sys/select.di \
-	     core/sys/posix/sys/shm.di core/sys/posix/sys/socket.di \
-	     core/sys/posix/sys/stat.di core/sys/posix/sys/time.di \
-	     core/sys/posix/sys/types.di core/sys/posix/sys/uio.di \
-	     core/sys/posix/sys/wait.di \
+	     core/sys/posix/netdb.di core/sys/posix/poll.di \
+	     core/sys/posix/pthread.di core/sys/posix/pwd.di \
+	     core/sys/posix/sched.di core/sys/posix/semaphore.di \
+	     core/sys/posix/setjmp.di core/sys/posix/signal.di \
+	     core/sys/posix/stdio.di core/sys/posix/stdlib.di \
+	     core/sys/posix/termios.di core/sys/posix/time.di \
+	     core/sys/posix/ucontext.di core/sys/posix/unistd.di \
+	     core/sys/posix/utime.di core/sys/posix/net/if_.di \
+	     core/sys/posix/netinet/in_.di core/sys/posix/netinet/tcp.di \
+	     core/sys/posix/sys/ipc.di core/sys/posix/sys/mman.di \
+	     core/sys/posix/sys/select.di core/sys/posix/sys/shm.di \
+	     core/sys/posix/sys/socket.di core/sys/posix/sys/stat.di \
+	     core/sys/posix/sys/time.di core/sys/posix/sys/types.di \
+	     core/sys/posix/sys/uio.di core/sys/posix/sys/wait.di \
 	     \
 	     core/sys/windows/dbghelp.di core/sys/windows/dll.di \
 	     core/sys/windows/stacktrace.di core/sys/windows/threadaux.di \
@@ -239,7 +239,7 @@ std/xml.o : std/xml.d $(D_PREREQ_SRCS)
 unittest: unittest.o libgphobos2_t.a libgphobos2.a
 	$(GDC) -o $@ $(CFLAGS) -fdeprecated unittest.o -L./ -lgdruntime -lgphobos2_t $(LIBS) -ldl
 
-MAIN_OBJS=std/algorithm.o std/array.o std/base64.o std/bigint.o \
+MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/bind.o std/bitarray.o std/bitmanip.o std/compiler.o \
 	  std/container.o std/complex.o std/concurrency.o std/contracts.o \
 	  std/conv.o std/cpuid.o std/cstream.o std/ctype.o std/date.o \
@@ -247,15 +247,18 @@ MAIN_OBJS=std/algorithm.o std/array.o std/base64.o std/bigint.o \
 	  std/demangle.o std/encoding.o std/exception.o std/format.o \
 	  std/functional.o std/getopt.o std/gregorian.o std/json.o std/math.o \
 	  std/mathspecial.o std/md5.o std/metastrings.o std/numeric.o \
-	  std/openrj.o std/outbuffer.o std/parallelism.o std/signals.o \
+	  std/outbuffer.o std/parallelism.o std/signals.o \
 	  std/stdarg.o std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
 	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
 	  std/regex.o std/regexp.o std/traits.o std/typecons.o \
 	  std/typetuple.o std/uni.o std/uri.o std/utf.o std/variant.o \
 	  std/xml.o std/zip.o std/zlib.o \
-	  std/c/stdarg.o std/c/stdio.o std/internal/math/biguintcore.o \
-	  std/internal/math/biguintnoasm.o std/internal/math/biguintx86.o \
-	  std/internal/math/gammafunction.o std/internal/math/errorfunction.o \
+	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \
+	  std/c/stdarg.o std/c/stddef.o std/c/stdio.o std/c/stdlib.o \
+	  std/c/string.o std/c/time.o std/c/wcharh.o \
+	  std/internal/math/biguintcore.o std/internal/math/biguintnoasm.o \
+	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
+	  std/internal/math/errorfunction.o \
 	  std/net/isemail.o \
 	  crc32.o etc/c/curl.o etc/c/zlib.o
 

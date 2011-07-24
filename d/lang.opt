@@ -102,6 +102,10 @@ fignore-unknown-pragmas
 D
 Ignore unsupported pragmas
 
+fproperty
+D
+Enforce property syntax
+
 fintfc
 Generate D interface files
 
