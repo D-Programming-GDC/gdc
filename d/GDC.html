@@ -5,18 +5,18 @@
   <title>D Front End for GCC</title>
 </head>
 <body>
-<h2>D Front End for GCC - Release 0.25<br>
+<h2>D Front End for GCC - Release 0.30<br>
 </h2>
-Last update: August 22, 2007<br>
+Last update: July 24, 2011<br>
 <h3>Supported Systems</h3>
 <ul>
-  <li>GCC 3.4.x, 4.0.x, 4.1.x, 4.2.x, 4.3.x, 4.4.x<br>
+  <li>GCC 4.2.x, 4.3.x, 4.4.x, 4.5.x, 4.6.x<br>
   </li>
-  <li>Linux (tested on Fedora Core 5 x86, x86_64, and PowerPC)<br>
+  <li>Linux (tested on Debian Sid and Ubuntu Oneiric x86, x86_64)<br>
   </li>
   <li>Mac OS X 10.3.9, 10.4.x<br>
   </li>
-  <li>FreeBSD 6.x</li>
+  <li>FreeBSD 6.x, 7.x</li>
   <li>Cygwin</li>
   <li>MinGW</li>
   <li>AIX (tested on 5.1)</li>
@@ -491,6 +491,33 @@ between these extended attributes and D languge attributes (alignment,
 for example) is not well defined.
 
 <h3>Changes</h3>
+
+<a name="0.30"></a>0.30:
+<ul>
+  <li>Support for GCC, 4.5.x and 4.6.x added</li>
+  <li>Removed support for GCC 3.4.x, 4.0.x, 4.1.x</li>
+  <li>Updated D1 to 1.069</li>
+  <li>Updated D2 to 2.054</li>
+  <li>Better D2 support for MinGW</li>
+  <li>Added 'optlink' calling convention for D</li>
+  <li>Added 64bit support for IASM (Work in Progress)</li>
+  <li>Moved correct implementation of delegates from GCC backend</li>
+    to GDC frontend glue code</li>
+  <li>Fixed Bugzilla 670, 4494, 4543, 5086, 5090, 5148, 5182,</li>
+    5191, 5439, 5735, 5812</li>
+  <li>As always, my dear reader, fixes to many other bugs.</li>
+</ul>
+
+<a name="0.25"></a>0.25:
+<ul>
+  <li>Support for GCC, 4.2.x, 4.3.x, and 4.4.x added</li>
+  <li>Updated D1 to 1.063</li>
+  <li>Updated D2 to 2.020</li>
+  <li>Added druntime support</li>
+  <li>Fixed Bugzilla 1041, 1044, 1136, 1145, 1296, 1669, 1689,</li>
+    1751, 1813, 1822, 1921, 1930, 2079, 2102, 2291, 2421</li>
+  <li>Fixed Bitbucket issues too numerous to mention. :-)</li>
+</ul>
 
 <a name="0.24"></a>0.24:
 <ul>

@@ -1,20 +1,20 @@
-D Front End for GCC - Release 0.25
+D Front End for GCC - Release 0.30
 
-Last update: September 25, 2010
+Last update: Sunday 24, 2011
 
-Release Notes for 0.25:
-  * Support for GCC, 4.2.x, 4.3.x, and 4.4.x added
-  * Updated D1 to 1.063
-  * Updated D2 to 2.020
-  * Added druntime support
-  * Fixed Bugzilla 1041, 1044, 1136, 1145, 1296, 1669, 1689,
-    1751, 1813, 1822, 1921, 1930, 2079, 2102, 2291, 2421
-  * Fixed Bitbucket issues too numerous to mention. :-)
+Release Notes for 0.30:
+  * Support for GCC, 4.5.x and 4.6.x added
+  * Dropped support for GCC 3.4.x, 4.0.x, 4.1.x
+  * Updated D1 to 1.069
+  * Updated D2 to 2.054
+  * Added 'optlink' calling convention for D
+  * Added 64bit support for IASM (WIP).
+  * Reimplemented static chain passing in frontend
 
 Supported Systems
 
-    * GCC 3.4.x, 4.0.x, 4.1.x, 4.2.x, 4.3.x, 4.4.x
-    * Linux (tested on Debian Squeeze and Ubuntu Lucid x86, x86_64)
+    * GCC 4.2.x, 4.3.x, 4.4.x, 4.5.x, 4.6.x
+    * Linux (tested on Debian Sid and Ubuntu Oneiric x86, x86_64)
     * Mac OS X 10.3.9 and 10.4.x
     * FreeBSD 6.x, 7.x
     * Cygwin
