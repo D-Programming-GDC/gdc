@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -401,10 +401,10 @@ Array *Parser::parseDeclDefs(int once)
                 if (token.value == TOKlparen)
                 {
                     nextToken();
-                    if (token.value == TOKint32v)
+                    if (token.value == TOKint32v && token.uns64value > 0)
                         n = (unsigned)token.uns64value;
                     else
-                    {   error("integer expected, not %s", token.toChars());
+                    {   error("positive integer expected, not %s", token.toChars());
                         n = 1;
                     }
                     nextToken();
@@ -2631,6 +2631,8 @@ Initializer *Parser::parseInitializer()
                         break;
 
                     default:
+                        if (comma == 1)
+                            error("comma expected separating field initializers");
                         value = parseInitializer();
                         is->addInit(NULL, value);
                         comma = 1;
@@ -2921,7 +2923,7 @@ Statement *Parser::parseStatement(int flags)
                 for (int i = 0; i < a->dim; i++)
                 {
                     Dsymbol *d = (Dsymbol *)a->data[i];
-                    s = new DeclarationStatement(loc, d);
+                    s = new ExpStatement(loc, d);
                     as->push(s);
                 }
                 s = new CompoundDeclarationStatement(loc, as);
@@ -2929,7 +2931,7 @@ Statement *Parser::parseStatement(int flags)
             else if (a->dim == 1)
             {
                 Dsymbol *d = (Dsymbol *)a->data[0];
-                s = new DeclarationStatement(loc, d);
+                s = new ExpStatement(loc, d);
             }
             else
                 assert(0);
@@ -2945,7 +2947,7 @@ Statement *Parser::parseStatement(int flags)
         {   Dsymbol *d;
 
             d = parseAggregate();
-            s = new DeclarationStatement(loc, d);
+            s = new ExpStatement(loc, d);
             break;
         }
 
@@ -2953,7 +2955,7 @@ Statement *Parser::parseStatement(int flags)
         {   Dsymbol *d;
 
             d = parseEnum();
-            s = new DeclarationStatement(loc, d);
+            s = new ExpStatement(loc, d);
             break;
         }
 
@@ -2961,16 +2963,21 @@ Statement *Parser::parseStatement(int flags)
         {   t = peek(&token);
             if (t->value == TOKlparen)
             {   // mixin(string)
-                nextToken();
-                check(TOKlparen, "mixin");
                 Expression *e = parseAssignExp();
-                check(TOKrparen);
-                check(TOKsemicolon, "mixin (string)");
-                s = new CompileStatement(loc, e);
+                check(TOKsemicolon);
+                if (e->op == TOKmixin)
+                {
+                    CompileExp *cpe = (CompileExp *)e;
+                    s = new CompileStatement(loc, cpe->e1);
+                }
+                else
+                {
+                    s = new ExpStatement(loc, e);
+                }
                 break;
             }
             Dsymbol *d = parseMixin();
-            s = new DeclarationStatement(loc, d);
+            s = new ExpStatement(loc, d);
             break;
         }
 
@@ -3007,7 +3014,7 @@ Statement *Parser::parseStatement(int flags)
             if (!(flags & PSsemi))
                 error("use '{ }' for an empty statement, not a ';'");
             nextToken();
-            s = new ExpStatement(loc, NULL);
+            s = new ExpStatement(loc, (Expression *)NULL);
             break;
 
         case TOKdo:
@@ -4293,7 +4300,6 @@ int Parser::skipParens(Token *t, Token **pt)
                 break;
 
             case TOKeof:
-            case TOKsemicolon:
                 goto Lfalse;
 
              default:
@@ -4813,6 +4819,7 @@ Expression *Parser::parsePostExp(Expression *e)
                 nextToken();
                 if (token.value == TOKrbracket)
                 {   // array[]
+                    inBrackets--;
                     e = new SliceExp(loc, e, NULL, NULL);
                     nextToken();
                 }

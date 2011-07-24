@@ -69,7 +69,7 @@ x3_gi_pop_header();
 
     x3_out_struct("struct timespec", NULL, "i:tv_sec", "i:tv_nsec", NULL);
     x3_out_struct("struct timeval", NULL, "i:tv_sec", "i:tv_usec", NULL);
-    x3_out_struct("struct timezone", NULL, "i:tz_minuteswest", "i:tz_dsttime", NULL);
+    x3_out_struct("struct timezone", "struct_timezone", "i:tz_minuteswest", "i:tz_dsttime", NULL);
     x3_out_type_ex("clockid_t",NULL, "Culong_t");
 
     x3_gi_pop_headers(pop_count); // sys/time.h
@@ -151,6 +151,7 @@ if (x3_compile_test()) {
     x3_out_enum(NULL, NULL, "^MCL_[^_].*", NULL);
     x3_out_enum(NULL, NULL, "^MREMAP_[^_].*", NULL);
     x3_out_enum(NULL, NULL, "^MADV_[^_].*", NULL);
+    x3_out_enum(NULL, NULL, "^MINCORE_[^_].*", NULL);
     x3_pop_optional();
 
 }

@@ -2,7 +2,7 @@
    Copyright (C) 2004 David Friedman
 
    Modified by
-    Iain Buclaw, Michael Parrott, (C) 2010
+    Iain Buclaw, Michael Parrott, (C) 2010, 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -1212,7 +1212,10 @@ static const char * libcall_ids[LIBCALL_count] = {
     /*"_d_invariant",*/ "_D9invariant12_d_invariantFC6ObjectZv",
     "_d_newclass", "_d_newarrayT",
     "_d_newarrayiT",
-    "_d_newarraymTp", "_d_newarraymiTp", "_d_allocmemory",
+    "_d_newarraymTp", "_d_newarraymiTp",
+#if V2
+    "_d_allocmemory",
+#endif
     "_d_delclass", "_d_delinterface", "_d_delarray",
     "_d_delmemory", "_d_callfinalizer", "_d_callinterfacefinalizer",
     "_d_arraysetlengthT", "_d_arraysetlengthiT",
@@ -1332,12 +1335,12 @@ IRState::getLibCallDecl(LibCall lib_call)
                 arg_types.push(Type::tsize_t);
                 return_type = Type::tvoid->arrayOf();
                 break;
-
+#if V2
             case LIBCALL_ALLOCMEMORY:
                 arg_types.push(Type::tsize_t);
                 return_type = Type::tvoidptr;
                 break;
-
+#endif
             case LIBCALL_DELCLASS:
             case LIBCALL_DELINTERFACE:
                 arg_types.push(Type::tvoidptr);

@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -18,24 +18,23 @@
 #define __C99FEATURES__ 1       // Needed on Solaris for NaN and more
 #define __USE_ISOC99 1          // so signbit() gets defined
 
+#if IN_GCC
+#include "gdc_alloca.h"
+#else
 #if (defined (__SVR4) && defined (__sun))
 #include <alloca.h>
+#endif
 #endif
 
 #include <math.h>
 
 #include <stdio.h>
 #include <assert.h>
-//#include <float.h>
-
 #if IN_GCC
-#include "gdc_alloca.h"
 #include "d-confdefs.h"
-#endif
+#else
+#include <float.h>
 
-// TODO%% this undefines signbit and includes is the wrong complex.h anyway
-// -- not sure why this is needed, anyway
-// don't need to worry about all this if the 'nan negative by default' issue is resolved
 #if _MSC_VER
 #include <malloc.h>
 #include <complex>
@@ -44,6 +43,7 @@
 #include <complex.h>
 #elif __MINGW32__
 #include <malloc.h>
+#endif
 #endif
 
 #include "rmem.h"
@@ -62,7 +62,6 @@
 #include "import.h"
 #include "aggregate.h"
 #include "hdrgen.h"
-#include "doc.h"
 
 FuncDeclaration *hasThis(Scope *sc);
 
@@ -87,7 +86,7 @@ int PTRSIZE = 4;
 int REALSIZE = 16;
 int REALPAD = 6;
 int REALALIGNSIZE = 16;
-#elif TARGET_LINUX || TARGET_FREEBSD || TARGET_SOLARIS || TARGET_UNIX
+#elif TARGET_LINUX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS || TARGET_UNIX
 int REALSIZE = 12;
 int REALPAD = 2;
 int REALALIGNSIZE = 4;
@@ -269,7 +268,7 @@ void Type::init()
 #if TARGET_OSX
         REALSIZE = 16;
         REALPAD = 6;
-#elif TARGET_LINUX || TARGET_FREEBSD || TARGET_SOLARIS || TARGET_UNIX
+#elif TARGET_LINUX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS || TARGET_UNIX
         REALSIZE = 12;
         REALPAD = 2;
 #else
@@ -308,6 +307,8 @@ Type *Type::semantic(Loc loc, Scope *sc)
 
 Type *Type::pointerTo()
 {
+    if (ty == Terror)
+        return this;
     if (!pto)
     {   Type *t;
 
@@ -319,6 +320,8 @@ Type *Type::pointerTo()
 
 Type *Type::referenceTo()
 {
+    if (ty == Terror)
+        return this;
     if (!rto)
     {   Type *t;
 
@@ -330,6 +333,8 @@ Type *Type::referenceTo()
 
 Type *Type::arrayOf()
 {
+    if (ty == Terror)
+        return this;
     if (!arrayof)
     {   Type *t;
 
@@ -633,6 +638,8 @@ Expression *Type::getProperty(Loc loc, Identifier *ident)
     {
         if (ty == Tvoid)
             error(loc, "void does not have an initializer");
+        if (ty == Tfunction)
+            error(loc, "function does not have an initializer");
         e = defaultInit(loc);
     }
     else if (ident == Id::mangleof)
@@ -1101,7 +1108,7 @@ unsigned TypeBasic::alignsize()
             sz = REALALIGNSIZE;
             break;
 
-#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_SOLARIS || TARGET_UNIX
+#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS || TARGET_UNIX
         case Tint64:
         case Tuns64:
             sz = global.params.isX86_64 ? 8 : 4;
@@ -1870,7 +1877,7 @@ void TypeSArray::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
             sc = sc->pop();
 
             if (d >= td->objects->dim)
-            {   error(loc, "tuple index %"PRIuMAX" exceeds %u", d, td->objects->dim);
+            {   error(loc, "tuple index %"PRIuMAX" exceeds length %u", d, td->objects->dim);
                 goto Ldefault;
             }
             Object *o = (Object *)td->objects->data[(size_t)d];
@@ -1958,6 +1965,9 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
         dim = dim->optimize(WANTvalue);
         dinteger_t d2 = dim->toInteger();
 
+        if (dim->op == TOKerror)
+            goto Lerror;
+
         if (d1 != d2)
             goto Loverflow;
 
@@ -1982,7 +1992,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
             {
               Loverflow:
                 error(loc, "index %"PRIdMAX" overflow for static array", d1);
-                dim = new IntegerExp(0, 1, tsize_t);
+                goto Lerror;
             }
         }
     }
@@ -1996,7 +2006,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
 
             if (d >= tt->arguments->dim)
             {   error(loc, "tuple index %"PRIuMAX" exceeds %u", d, tt->arguments->dim);
-                return Type::terror;
+                goto Lerror;
             }
             Parameter *arg = (Parameter *)tt->arguments->data[(size_t)d];
             return arg->type;
@@ -2004,12 +2014,16 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
         case Tfunction:
         case Tnone:
             error(loc, "can't have array of %s", tbn->toChars());
-            tbn = next = tint32;
-            break;
+            goto Lerror;
     }
     if (tbn->isscope())
-        error(loc, "cannot have array of auto %s", tbn->toChars());
+    {   error(loc, "cannot have array of auto %s", tbn->toChars());
+        goto Lerror;
+    }
     return merge();
+
+Lerror:
+    return Type::terror;
 }
 
 void TypeSArray::toDecoBuffer(OutBuffer *buf)
@@ -2137,7 +2151,18 @@ Expression *TypeSArray::toExpression()
 
 int TypeSArray::hasPointers()
 {
-    return next->hasPointers();
+    /* Don't want to do this, because:
+     *    struct S { T* array[0]; }
+     * may be a variable length struct.
+     */
+    //if (dim->toInteger() == 0)
+        //return FALSE;
+
+    if (next->ty == Tvoid)
+        // Arrays of void contain arbitrary data, which may include pointers
+        return TRUE;
+    else
+        return next->hasPointers();
 }
 
 /***************************** TypeDArray *****************************/
@@ -2857,6 +2882,11 @@ void TypeFunction::toDecoBuffer(OutBuffer *buf)
 
 void TypeFunction::toCBuffer(OutBuffer *buf, Identifier *ident, HdrGenState *hgs)
 {
+    toCBufferWithAttributes(buf, ident, hgs, this, NULL);
+}
+
+void TypeFunction::toCBufferWithAttributes(OutBuffer *buf, Identifier *ident, HdrGenState* hgs, TypeFunction *attrs, TemplateDeclaration *td)
+{
     const char *p = NULL;
 
     if (inuse)
@@ -2885,6 +2915,17 @@ void TypeFunction::toCBuffer(OutBuffer *buf, Identifier *ident, HdrGenState *hgs
     if (ident)
     {   buf->writeByte(' ');
         buf->writestring(ident->toHChars2());
+    }
+    if (td)
+    {   buf->writeByte('(');
+        for (int i = 0; i < td->origParameters->dim; i++)
+        {
+            TemplateParameter *tp = (TemplateParameter *)td->origParameters->data[i];
+            if (i)
+                buf->writestring(", ");
+            tp->toCBuffer(buf, hgs);
+        }
+        buf->writeByte(')');
     }
     Parameter::argsToCBuffer(buf, hgs, parameters, varargs);
     inuse--;
@@ -3184,6 +3225,12 @@ Type *TypeFunction::reliesOnTident()
     return next->reliesOnTident();
 }
 
+Expression *TypeFunction::defaultInit(Loc loc)
+{
+    error(loc, "function does not have a default initializer");
+    return new ErrorExp();
+}
+
 /***************************** TypeDelegate *****************************/
 
 TypeDelegate::TypeDelegate(Type *t)
@@ -3456,8 +3503,11 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
                     *pe = e;
                 }
                 else
+                {
                   Lerror:
                     error(loc, "identifier '%s' of '%s' is not defined", id->toChars(), toChars());
+                    *pe = new ErrorExp();
+                }
                 return;
             }
         L2:
@@ -3573,6 +3623,7 @@ L1:
             else
                 error(loc, "undefined identifier %s", p);
         }
+        *pt = Type::terror;
     }
 }
 
@@ -3801,7 +3852,7 @@ Type *TypeInstance::semantic(Loc loc, Scope *sc)
         printf("2: e:%p s:%p ", e, s);
 #endif
         error(loc, "%s is used as a type", toChars());
-        t = tvoid;
+        t = terror;
     }
     return t;
 }
@@ -3878,7 +3929,7 @@ void TypeTypeof::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
 
 void TypeTypeof::toDecoBuffer(OutBuffer *buf)
 {
-    error(loc, "invalid typeof expression");
+    assert(0);
 }
 
 Type *TypeTypeof::semantic(Loc loc, Scope *sc)
@@ -4761,7 +4812,11 @@ Expression *TypeStruct::defaultInitLiteral(Loc loc)
         VarDeclaration *vd = (VarDeclaration *)(sym->fields.data[j]);
         Expression *e;
         if (vd->init)
-            e = vd->init->toExpression();
+        {   if (vd->init->isVoidInitializer())
+                e = NULL;
+            else
+                e = vd->init->toExpression();
+        }
         else
             e = vd->type->defaultInitLiteral();
         structelems->data[j] = e;
@@ -5355,13 +5410,7 @@ void TypeTuple::toDecoBuffer(OutBuffer *buf)
     OutBuffer buf2;
     Parameter::argsToDecoBuffer(&buf2, arguments);
     unsigned len = buf2.offset;
-#if __NEWLIB_H__
-    // newlib bug as of 1.14.0
-    char * p = (char*) buf2.extractData();
-    buf->printf("%c%d%.*s", mangleChar[ty], len, len, p ? p : "");
-#else
     buf->printf("%c%d%.*s", mangleChar[ty], len, len, (char *)buf2.extractData());
-#endif
 }
 
 Expression *TypeTuple::getProperty(Loc loc, Identifier *ident)
@@ -5607,12 +5656,7 @@ void Parameter::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Parameters *argu
             if (arg->defaultArg)
             {
                 argbuf.writestring(" = ");
-                unsigned o = argbuf.offset;
                 arg->defaultArg->toCBuffer(&argbuf, hgs);
-                if(hgs->ddoc)
-                {
-                    escapeDdocString(&argbuf, o);
-                }
             }
             buf->write(&argbuf);
         }

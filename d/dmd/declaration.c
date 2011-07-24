@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -344,7 +344,7 @@ void TypedefDeclaration::semantic2(Scope *sc)
     {   sem = 3;
         if (init)
         {
-            init = init->semantic(sc, basetype);
+            init = init->semantic(sc, basetype, WANTinterpret);
 
             ExpInitializer *ie = init->isExpInitializer();
             if (ie)
@@ -485,7 +485,7 @@ void AliasDeclaration::semantic(Scope *sc)
     s = type->toDsymbol(sc);
     if (s
 #if DMDV2
-`       && ((s->getType() && type->equals(s->getType())) || s->isEnumMember())
+        && ((s->getType() && type->equals(s->getType())) || s->isEnumMember())
 #endif
         )
         goto L2;                        // it's a symbolic alias
@@ -557,15 +557,17 @@ void AliasDeclaration::semantic(Scope *sc)
             }
         }
         if (overnext)
-            ScopeDsymbol::multiplyDefined(0, s, overnext);
+            ScopeDsymbol::multiplyDefined(0, this, overnext);
         if (s == this)
         {
             assert(global.errors);
             s = NULL;
         }
     }
-    //printf("setting aliassym %s to %s %s\n", toChars(), s->kind(), s->toChars());
-    aliassym = s;
+    if (!type || type->ty != Terror)
+    {   //printf("setting aliassym %s to %s %s\n", toChars(), s->kind(), s->toChars());
+        aliassym = s;
+    }
     this->inSemantic = 0;
 }
 
@@ -699,7 +701,7 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     aliassym = NULL;
     onstack = 0;
     canassign = 0;
-    value = NULL;
+    setValueNull();
 }
 
 Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
@@ -755,6 +757,11 @@ void VarDeclaration::semantic(Scope *sc)
     //if (strcmp(toChars(), "mul") == 0) halt();
 #endif
 
+    if (scope)
+    {   sc = scope;
+        scope = NULL;
+    }
+
     storage_class |= sc->stc;
     if (storage_class & STCextern && init)
         error("extern symbols cannot have initializers");
@@ -769,6 +776,7 @@ void VarDeclaration::semantic(Scope *sc)
     if (!type)
     {   inuse++;
         type = init->inferType(sc);
+        type = type->semantic(loc, sc);
         inuse--;
         inferred = 1;
 
@@ -1057,7 +1065,7 @@ void VarDeclaration::semantic(Scope *sc)
                     Expression *e = init->toExpression();
                     if (!e)
                     {
-                        init = init->semantic(sc, type);
+                        init = init->semantic(sc, type, 0); // Don't need to interpret
                         e = init->toExpression();
                         if (!e)
                         {   error("is not a static and cannot have static initializer");
@@ -1158,7 +1166,7 @@ void VarDeclaration::semantic(Scope *sc)
             }
             else
             {
-                init = init->semantic(sc, type);
+                init = init->semantic(sc, type, WANTinterpret);
                 if (fd && isConst() && !isStatic())
                 {   // Make it static
                     storage_class |= STCstatic;
@@ -1190,7 +1198,7 @@ void VarDeclaration::semantic(Scope *sc)
                 }
                 else if (si || ai)
                 {   i2 = init->syntaxCopy();
-                    i2 = i2->semantic(sc, type);
+                    i2 = i2->semantic(sc, type, WANTinterpret);
                 }
                 inuse--;
                 global.gag--;
@@ -1272,7 +1280,7 @@ void VarDeclaration::semantic2(Scope *sc)
             printf("type = %p\n", ei->exp->type);
         }
 #endif
-        init = init->semantic(sc, type);
+        init = init->semantic(sc, type, WANTinterpret);
         inuse--;
     }
 }
@@ -1374,6 +1382,25 @@ void VarDeclaration::checkNestedReference(Scope *sc, Loc loc)
         {
             if (loc.filename)
                 fdthis->getLevel(loc, fdv);
+#if IN_GCC
+            for (int i = 0; i < nestedrefs.dim; i++)
+            {   FuncDeclaration *f = (FuncDeclaration *)nestedrefs.data[i];
+                if (f == fdthis)
+                    goto L1;
+            }
+            nestedrefs.push(fdthis);
+          L1: ;
+
+
+            for (int i = 0; i < fdv->frameVars.dim; i++)
+            {   Dsymbol *s = (Dsymbol *)fdv->frameVars.data[i];
+                if (s == this)
+                    goto L2;
+            }
+
+            fdv->frameVars.push(this);
+          L2: ;
+#endif
             nestedref = 1;
             fdv->nestedFrameRef = 1;
             //printf("var %s in function %s is nested ref\n", toChars(), fdv->toChars());

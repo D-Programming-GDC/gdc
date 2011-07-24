@@ -137,9 +137,9 @@ void Module::genmoduleinfo()
         dtsize_t(&dt, 0);
 
     if (needmoduleinfo)
-        dti32(&dt, 8|0, true);          // flags (4 means MIstandalone)
+        dtsize_t(&dt, 8|0);              // flags (4 means MIstandalone)
     else
-        dti32(&dt, 8|4, true);          // flags (4 means MIstandalone)
+        dtsize_t(&dt, 8|4);              // flags (4 means MIstandalone)
 
     if (sctor)
         dtxoff(&dt, sctor, 0, TYnptr);

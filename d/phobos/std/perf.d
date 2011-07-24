@@ -150,7 +150,7 @@ version(Unix)
         /// Begins the measurement period
         void start()
         {
-            timezone tz;
+            struct_timezone tz;
 
             gettimeofday(&m_start, &tz);
         }
@@ -160,7 +160,7 @@ version(Unix)
         /// Ends the measurement period
         void stop()
         {
-            timezone tz;
+            struct_timezone tz;
 
             gettimeofday(&m_end, &tz);
         }

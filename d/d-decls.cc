@@ -3,7 +3,7 @@
 
    Modified by
     Michael Parrot, (C) 2009, 2010
-    Iain Buclaw, (C) 2010
+    Iain Buclaw, (C) 2010, 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -602,13 +602,15 @@ Symbol *FuncDeclaration::toSymbol()
                 if (is_template_member && outer_func)
                 {
                     Symbol * outer_sym = outer_func->toSymbol();
-#if 0
-                    // TODO: This could fail in some corner cases.
-                    gcc_assert(outer_sym->outputStage != Finished);
-#endif
-                    if (! outer_sym->otherNestedFuncs)
-                        outer_sym->otherNestedFuncs = new FuncDeclarations;
-                    outer_sym->otherNestedFuncs->push(this);
+                    if (outer_sym->outputStage != Finished)
+                    {
+                        if (! outer_sym->otherNestedFuncs)
+                            outer_sym->otherNestedFuncs = new FuncDeclarations;
+                        outer_sym->otherNestedFuncs->push(this);
+                    }
+                    else
+                    {   // Probably a frontend bug.
+                    }
                 }
             }
 
@@ -616,7 +618,7 @@ Symbol *FuncDeclaration::toSymbol()
                what was expected and LDASM labels aren't unique.)
                TODO: If the asm consists entirely
                of extended asm, we can allow inlining. */
-            if (inlineAsm)
+            if (hasReturnExp & 8 /*inlineAsm*/)
             {
                 DECL_UNINLINABLE(fn_decl) = 1;
             }

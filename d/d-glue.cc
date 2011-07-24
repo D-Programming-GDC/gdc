@@ -3185,7 +3185,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     /* This would apply to complex types as well, but GDC currently
        returns complex types as a struct instead of in ST(0) and ST(1).
      */
-    if (inlineAsm && ! naked)
+    if (hasReturnExp & 8 /*inlineAsm*/ && ! naked)
     {
         tree cns_str = NULL_TREE;
 
@@ -3458,16 +3458,14 @@ Type::toCtype()
                 break;
             case Tbool:
                 if (int_size_in_bytes(boolean_type_node) == 1)
-                {
                     ctype = boolean_type_node;
-                    break;
+                else
+                {
+                    ctype = make_unsigned_type(1);
+                    TREE_SET_CODE(ctype, BOOLEAN_TYPE);
+                    gcc_assert(int_size_in_bytes(ctype) == 1);
+                    dkeep(ctype);
                 }
-                // else, drop through
-            case Tbit:
-                ctype = make_unsigned_type(1);
-                TREE_SET_CODE(ctype, BOOLEAN_TYPE);
-                gcc_assert(int_size_in_bytes(ctype) == 1);
-                dkeep(ctype);
                 break;
             case Tchar:
                 ctype = d_char_type_node;
@@ -3745,17 +3743,10 @@ TypeFunction::toCtype()
         if (parameters)
         {
             size_t n_args = Parameter::dim(parameters);
-            size_t argnum = 0, inc = 1;
-#if D_DMD_CALLING_CONVENTIONS
-            if (linkage == LINKd && varargs != 1)
-            {   // In this case, reverse order so last arg
-                // gets pushed first.
-                argnum = n_args - 1, inc = -1;
-            }
-#endif
-            for (size_t i = 0; i < n_args; i++, argnum += inc)
+            
+            for (size_t i = 0; i < n_args; i++)
             {
-                Parameter * arg = Parameter::getNth(parameters, argnum);
+                Parameter * arg = Parameter::getNth(parameters, i);
                 type_list.cons(IRState::trueArgumentType(arg));
             }
         }
@@ -4296,19 +4287,16 @@ OnScopeStatement::toIR(IRState *)
 void
 WithStatement::toIR(IRState * irs)
 {
+    irs->startScope();
     if (wthis)
     {
-        irs->startScope();
         irs->emitLocalVar(wthis);
     }
     if (body)
     {
         body->toIR(irs);
     }
-    if (wthis)
-    {
-        irs->endScope();
-    }
+    irs->endScope();
 }
 
 void

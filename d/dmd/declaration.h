@@ -259,14 +259,27 @@ struct VarDeclaration : Declaration
     bool isargptr;              // if parameter that _argptr points to
 #else
     int nestedref;              // referenced by a lexically nested function
+#if IN_GCC
+    FuncDeclarations nestedrefs; // referenced by these lexically nested functions
+#endif
 #endif
     int ctorinit;               // it has been initialized in a ctor
     int onstack;                // 1: it has been allocated on the stack
                                 // 2: on stack, run destructor anyway
     int canassign;              // it can be assigned to
     Dsymbol *aliassym;          // if redone as alias to another symbol
-    Expression *value;          // when interpreting, this is the value
-                                // (NULL if value not determinable)
+
+    // When interpreting, these hold the value (NULL if value not determinable)
+    // The various functions are used only to detect compiler CTFE bugs
+    Expression *literalvalue;
+    Expression *getValue() { return literalvalue; }
+    void setValueNull();
+    void setValueWithoutChecking(Expression *newval);
+    void createRefValue(Expression *newval); // struct or array literal
+    void setRefValue(Expression *newval);
+    void setStackValue(Expression *newval);
+    void createStackValue(Expression *newval);
+
 #if DMDV2
     VarDeclaration *rundtor;    // if !NULL, rundtor is tested at runtime to see
                                 // if the destructor should be run. Used to prevent
@@ -591,6 +604,11 @@ struct FuncDeclaration : Declaration
                                         // functions
 #else
     int nestedFrameRef;                 // !=0 if nested variables referenced
+#if IN_GCC
+    Dsymbols frameVars;                 // local variables in this function
+                                        // which are referenced by nested
+                                        // functions
+#endif
 #endif
 
     FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageClass storage_class, Type *type);
@@ -647,10 +665,8 @@ struct FuncDeclaration : Declaration
     Statement *mergeFensure(Statement *);
     Parameters *getParameters(int *pvarargs);
 
-    static FuncDeclaration *genCfunc(Type *treturn, const char *name,
-        Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);
-    static FuncDeclaration *genCfunc(Type *treturn, Identifier *id,
-        Type *t1 = 0, Type *t2 = 0, Type *t3 = 0);
+    static FuncDeclaration *genCfunc(Type *treturn, const char *name, Type *t1 = NULL, Type *t2 = NULL, Type *t3 = NULL);
+    static FuncDeclaration *genCfunc(Type *treturn, Identifier *id, Type *t1 = NULL, Type *t2 = NULL, Type *t3 = NULL);
 
     Symbol *toSymbol();
     Symbol *toThunkSymbol(target_ptrdiff_t offset);     // thunk version

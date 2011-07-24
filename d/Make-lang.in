@@ -29,7 +29,7 @@
 # For various glibc, we need to define this to get NAN and FP_ constants
 D_EXTRA_DEFINES += -D_GNU_SOURCE=1
 
-# Enable D interface files
+# Enable D interface files - %% deprecated
 D_EXTRA_DEFINES += -D_DH=1
 
 # Enables correct implementation of delegates. This requires patching GCC.

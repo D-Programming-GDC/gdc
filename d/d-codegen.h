@@ -3,6 +3,7 @@
 
    Modified by
     Michael Parrot, (C) 2009, 2010
+    Iain Buclaw, (C) 2011
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -39,7 +40,9 @@ enum LibCall
     LIBCALL_NEWARRAYMTP,
     //LIBCALL_NEWARRAYMIT,
     LIBCALL_NEWARRAYMITP,
+#if V2
     LIBCALL_ALLOCMEMORY,
+#endif
     LIBCALL_DELCLASS,
     LIBCALL_DELINTERFACE,
     LIBCALL_DELARRAY,
