@@ -49,14 +49,12 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_NAME
 #undef LANG_HOOKS_INIT
 #undef LANG_HOOKS_INIT_OPTIONS
-#undef LANG_HOOKS_INIT_TS
 #undef LANG_HOOKS_HANDLE_OPTION
 #undef LANG_HOOKS_POST_OPTIONS
 #undef LANG_HOOKS_PARSE_FILE
 #undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_GET_ALIAS_SET
-#undef LANG_HOOKS_GIMPLIFY_EXPR
 #undef LANG_HOOKS_MARK_ADDRESSABLE
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
 #undef LANG_HOOKS_BUILTIN_FUNCTION
@@ -66,14 +64,12 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_NAME                     lang_name
 #define LANG_HOOKS_INIT                     d_init
 #define LANG_HOOKS_INIT_OPTIONS             d_init_options
-#define LANG_HOOKS_INIT_TS                  d_init_ts
 #define LANG_HOOKS_HANDLE_OPTION            d_handle_option
 #define LANG_HOOKS_POST_OPTIONS             d_post_options
 #define LANG_HOOKS_PARSE_FILE               d_parse_file
 #define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE   d_common_attribute_table
 #define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE   d_common_format_attribute_table
 #define LANG_HOOKS_GET_ALIAS_SET            d_hook_get_alias_set
-#define LANG_HOOKS_GIMPLIFY_EXPR            d_gimplify_expr
 #define LANG_HOOKS_MARK_ADDRESSABLE         d_mark_addressable
 #define LANG_HOOKS_TYPES_COMPATIBLE_P       d_types_compatible_p
 #define LANG_HOOKS_REGISTER_BUILTIN_TYPE    d_register_builtin_type
@@ -123,10 +119,6 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_UNSIGNED_TYPE            d_unsigned_type
 #define LANG_HOOKS_SIGNED_TYPE              d_signed_type
 #define LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE  d_signed_or_unsigned_type
-
-/* Lang Hooks for tree-dump.c */
-#undef LANG_HOOKS_TREE_DUMP_DUMP_TREE_FN
-#define LANG_HOOKS_TREE_DUMP_DUMP_TREE_FN   d_dump_tree
 
 /* Lang Hooks for callgraph */
 #if D_GCC_VER < 43
@@ -834,60 +826,6 @@ d_hook_get_alias_set(tree)
 {
     return 0;
 }
-
-
-bool
-d_dump_tree (void *dump_info , tree t)
-{
-    enum tree_code code = TREE_CODE (t);
-    dump_info_p di = (dump_info_p) dump_info;
-    switch (code)
-    {
-        case STATIC_CHAIN_EXPR:
-            dump_child("func", TREE_OPERAND (t, 0));
-            return true;
-
-        default:
-            return false;
-    }
-}
-
-/* Gimplification of expression trees.  */
-#if D_GCC_VER >= 44
-int
-d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
-                 gimple_seq *post_p ATTRIBUTE_UNUSED)
-{
-    enum tree_code code = TREE_CODE (*expr_p);
-    switch (code)
-    {
-        case STATIC_CHAIN_EXPR:
-            /* The argument is used as information only.  No need to gimplify */
-        case STATIC_CHAIN_DECL:
-            return GS_ALL_DONE;
-
-        default:
-            return GS_UNHANDLED;
-    }
-}
-#else
-int
-d_gimplify_expr (tree *expr_p, tree *pre_p ATTRIBUTE_UNUSED,
-                 tree *post_p ATTRIBUTE_UNUSED)
-{
-    enum tree_code code = TREE_CODE (*expr_p);
-    switch (code)
-    {
-        case STATIC_CHAIN_EXPR:
-        case STATIC_CHAIN_DECL:
-            return GS_ALL_DONE;
-
-        default:
-            return GS_UNHANDLED;
-    }
-    return GS_UNHANDLED;
-}
-#endif
 
 static Module * an_output_module = 0;
 
@@ -1910,12 +1848,6 @@ d_convert_parm_for_inlining  (tree parm, tree value, tree fndecl, int argnum)
 }
 #endif
 
-
-static void
-d_init_ts (void)
-{
-    tree_contains_struct[STATIC_CHAIN_DECL][TS_DECL_COMMON] = 1;
-}
 
 struct lang_type *
 build_d_type_lang_specific(Type * t)

@@ -79,13 +79,11 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
     DECL_CONTEXT(var_decl) = getLocalContext();
 
     tree var_exp;
-#if V2
-    if (sym->SclosureField)
+    if (sym->SframeField)
     {   // Fixes debugging local variables.
         SET_DECL_VALUE_EXPR(var_decl, var(v));
         DECL_HAS_VALUE_EXPR_P(var_decl) = 1;
     }
-#endif
     var_exp = var_decl;
     pushdecl(var_decl);
 
@@ -229,18 +227,17 @@ IRState::expandDecl(tree t_decl)
     }
 }
 
-#if V2
 tree
 IRState::var(VarDeclaration * v)
 {
-    bool is_closure_var = v->toSymbol()->SclosureField != NULL;
+    bool is_frame_var = v->toSymbol()->SframeField != NULL;
 
-    if (is_closure_var)
+    if (is_frame_var)
     {
         FuncDeclaration * f = v->toParent2()->isFuncDeclaration();
 
-        tree cf = getClosureRef(f);
-        tree field = v->toSymbol()->SclosureField;
+        tree cf = getFrameRef(f);
+        tree field = v->toSymbol()->SframeField;
         gcc_assert(field != NULL_TREE);
         return component(indirect(cf), field);
     }
@@ -249,7 +246,6 @@ IRState::var(VarDeclaration * v)
         return v->toSymbol()->Stree;
     }
 }
-#endif
 
 
 tree
@@ -1061,12 +1057,7 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
         tf = (TypeFunction *) fd->type;
         if (fd->isNested())
         {
-#if D_NO_TRAMPOLINES
             object = getFrameForFunction(fd);
-#else
-            // Pass fake argument for nested functions
-            object = d_null_pointer;
-#endif
         }
         else if (fd->needThis())
         {
@@ -3097,15 +3088,14 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
         // else, the answer is 'virtual_stack_vars_rtx'
     }
 
-#if V2
-    if (getFrameInfo(outer_func)->creates_closure)
-        return getClosureRef(outer_func);
-#endif
-
     if (! outer_func)
         outer_func = nested_func->toParent2()->isFuncDeclaration();
     gcc_assert(outer_func != NULL);
-    return build1(STATIC_CHAIN_EXPR, ptr_type_node, outer_func->toSymbol()->Stree);
+
+    if (getFrameInfo(outer_func)->creates_frame)
+        return getFrameRef(outer_func);
+
+    return d_null_pointer;
 }
 
 bool
@@ -3320,6 +3310,7 @@ IRState::isStructNestedInFunction(StructDeclaration * sd)
     }
     return NULL;
 }
+#endif
 
 
 FuncFrameInfo *
@@ -3331,15 +3322,29 @@ IRState::getFrameInfo(FuncDeclaration *fd)
 
     FuncFrameInfo * ffi = new FuncFrameInfo;
     ffi->creates_closure = false;
-    ffi->closure_rec = NULL_TREE;
+    ffi->frame_rec = NULL_TREE;
 
     fds->frameInfo = ffi;
 
+#if V2
+    Dsymbols * nestedVars = & fd->closureVars;
+#else
+    Dsymbols * nestedVars = & fd->frameVars;
+#endif
+
+    // Nested functions, or functions with nested refs must create
+    // a static frame for local variables to be referenced from.
+    ffi->creates_frame = nestedVars->dim != 0 || fd->isNested();
+
+#if V2
+    // D2 maybe setup closure instead.
     if (fd->needsClosure())
-        ffi->creates_closure = true;
-    else
     {
-        /* If fd is nested (deeply) in a function 'g' that creates a
+        ffi->creates_frame = true;
+        ffi->creates_closure = true;
+    }
+    else
+    {   /* If fd is nested (deeply) in a function 'g' that creates a
            closure and there exists a function 'h' nested (deeply) in
            fd and 'h' accesses the frame of 'g', then fd must also
            create a closure.
@@ -3356,15 +3361,20 @@ IRState::getFrameInfo(FuncDeclaration *fd)
             AggregateDeclaration * ad;
             ClassDeclaration * cd;
             StructDeclaration * sd;
+            FuncFrameInfo * ffo = getFrameInfo(ff);
 
-            if (ff != fd && getFrameInfo(ff)->creates_closure)
+            if (ff != fd && ffo->creates_closure)
             {
                 for (unsigned i = 0; i < ff->closureVars.dim; i++)
-                {   VarDeclaration *v = (VarDeclaration *)ff->closureVars.data[i];
+                {
+                    VarDeclaration *v = (VarDeclaration *)ff->closureVars.data[i];
+                    gcc_assert(v->isVarDeclaration());
                     for (unsigned j = 0; j < v->nestedrefs.dim; j++)
-                    {   FuncDeclaration *fi = (FuncDeclaration *)v->nestedrefs.data[j];
+                    {
+                        FuncDeclaration *fi = (FuncDeclaration *)v->nestedrefs.data[j];
                         if (isFuncNestedIn(fi, fd))
                         {
+                            ffi->creates_frame = true;
                             ffi->creates_closure = true;
                             goto L_done;
                         }
@@ -3381,23 +3391,19 @@ IRState::getFrameInfo(FuncDeclaration *fd)
             else
                 break;
         }
-
-        L_done:
-            ;
+        L_done: ;
     }
-
-    /*fprintf(stderr, "%s  %s\n", ffi->creates_closure ? "YES" : "NO ",
-      fd->toChars());*/
+#endif
 
     return ffi;
 }
 
-// Return a pointer to the closure block of outer_func
+// Return a pointer to the frame/closure block of outer_func
 tree
-IRState::getClosureRef(FuncDeclaration * outer_func)
+IRState::getFrameRef(FuncDeclaration * outer_func)
 {
-    tree result = closureLink();
-    FuncDeclaration * fd = closureFunc();
+    tree result = chainLink();
+    FuncDeclaration * fd = chainFunc();
 
     while (fd && fd != outer_func)
     {
@@ -3405,30 +3411,32 @@ IRState::getClosureRef(FuncDeclaration * outer_func)
         ClassDeclaration * cd;
         StructDeclaration * sd;
 
-        gcc_assert(getFrameInfo(fd)->creates_closure); // remove this if we loosen creates_closure
+        gcc_assert(getFrameInfo(fd)->creates_frame);
 
-        // like compon(indirect, field0) parent closure link is the first field;
+        // like compon(indirect, field0) parent frame/closure link is the first field;
         result = indirect(result, ptr_type_node);
 
         if (fd->isNested())
             fd = fd->toParent2()->isFuncDeclaration();
-        /* getClosureRef is only used to get the pointer to a function's frame
+        /* getFrameRef is only used to get the pointer to a function's frame
            (not a class instances.)  With the current implementation, the link
-           the closure record always points to the outer function's frame even
+           the frame/closure record always points to the outer function's frame even
            if there are intervening nested classes or structs.
            So, we can just skip over those... */
         else if ((ad = fd->isThis()) && (cd = ad->isClassDeclaration()))
             fd = isClassNestedInFunction(cd);
+#if V2
         else if ((ad = fd->isThis()) && (sd = ad->isStructDeclaration()))
             fd = isStructNestedInFunction(sd);
+#endif
         else
             break;
     }
 
     if (fd == outer_func)
     {
-        tree closure_rec = getFrameInfo(outer_func)->closure_rec;
-        result = nop(result, build_pointer_type(closure_rec));
+        tree frame_rec = getFrameInfo(outer_func)->frame_rec;
+        result = nop(result, build_pointer_type(frame_rec));
         return result;
     }
     else
@@ -3437,7 +3445,6 @@ IRState::getClosureRef(FuncDeclaration * outer_func)
         return d_null_pointer;
     }
 }
-#endif
 
 
 /* Return true if function F needs to have the static chain passed to
@@ -3456,7 +3463,7 @@ IRState::functionNeedsChain(FuncDeclaration *f)
         && (pf = f->toParent2()->isFuncDeclaration())
             && ! getFrameInfo(pf)->creates_closure
 #endif
-        )
+       )
     {
         return true;
     }
@@ -3474,13 +3481,97 @@ IRState::functionNeedsChain(FuncDeclaration *f)
 #if V2
             && ! getFrameInfo(pf)->creates_closure
 #endif
-             )
+           )
         {
             return true;
         }
     }
 
     return false;
+}
+
+
+// Build static chain decl to be passed to nested functions in D.
+void
+IRState::buildChain(FuncDeclaration * func)
+{
+    FuncFrameInfo * ffi = getFrameInfo(func);
+
+#if V2
+    if (ffi->creates_closure)
+    {   // Build closure pointer, which is initialised on heap.
+        func->buildClosure(this);
+        return;
+    }
+#endif
+
+    if (! ffi->creates_frame)
+        return;
+
+#if V2
+    Dsymbols * nestedVars = & func->closureVars;
+#else
+    Dsymbols * nestedVars = & func->frameVars;
+#endif
+
+    char *name = concat ("FRAME.",
+                         IDENTIFIER_POINTER (DECL_NAME (func->toSymbol()->Stree)),
+                         NULL);
+    tree frame_rec_type = make_node(RECORD_TYPE);
+    TYPE_NAME (frame_rec_type) = get_identifier (name);
+    free (name);
+
+    tree chain_link = chainLink();
+    tree ptr_field;
+    ListMaker fields;
+
+    ptr_field = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
+                                 get_identifier("__chain"), ptr_type_node);
+    DECL_CONTEXT(ptr_field) = frame_rec_type;
+    fields.chain(ptr_field);
+
+    for (unsigned i = 0; i < nestedVars->dim; ++i)
+    {
+        VarDeclaration *v = (VarDeclaration *)nestedVars->data[i];
+        tree field = d_build_decl(FIELD_DECL,
+                                  v->ident ? get_identifier(v->ident->string) : NULL_TREE,
+                                  gen.trueDeclarationType(v));
+        v->toSymbol()->SframeField = field;
+        g.ofile->setDeclLoc(field, v);
+        DECL_CONTEXT(field) = frame_rec_type;
+        fields.chain(field);
+    }
+
+    TYPE_FIELDS(frame_rec_type) = fields.head;
+    layout_type(frame_rec_type);
+    ffi->frame_rec = frame_rec_type;
+
+    tree frame_decl = localVar(frame_rec_type);
+    tree frame_ptr = addressOf(frame_decl);
+    DECL_ARTIFICIAL(frame_decl) = DECL_IGNORED_P(frame_decl) = 0;
+    expandDecl(frame_decl);
+
+    // set the first entry to the parent frame, if any
+    if (chain_link != NULL_TREE)
+    {
+        doExp(vmodify(component(indirect(frame_ptr), ptr_field),
+                      chain_link));
+    }
+
+    // copy parameters that are referenced nonlocally
+    for (unsigned i = 0; i < nestedVars->dim; i++)
+    {
+        VarDeclaration *v = (VarDeclaration *)nestedVars->data[i];
+
+        if (! v->isParameter())
+            continue;
+
+        Symbol * vsym = v->toSymbol();
+        doExp(vmodify(component(indirect(frame_ptr), vsym->SframeField),
+                      vsym->Stree));
+    }
+
+    useChain(func, frame_ptr); 
 }
 
 tree
@@ -4027,14 +4118,12 @@ ArrayScope::finish(tree e)
         tree t = s->Stree;
         if (TREE_CODE(t) == VAR_DECL)
         {
-#if V2
-            if (s->SclosureField)
+            if (s->SframeField)
             {
                 return irs->compound(irs->vmodify(irs->var(v),
                             DECL_INITIAL(t)), e);
             }
             else
-#endif
             {
                 return gen.binding(v->toSymbol()->Stree, e);
             }

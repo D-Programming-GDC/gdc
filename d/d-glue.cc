@@ -1811,14 +1811,12 @@ DelegateExp::toElem(IRState* irs)
     }
     else
     {
-        tree ctx = d_null_pointer;
         gcc_assert(func->isNested() || func->isThis());
 
-#if D_NO_TRAMPOLINES
-        ctx = irs->getFrameForFunction(func);
-#endif
         return irs->methodCallExpr(irs->functionPointer(func),
-                                   func->isNested() ? ctx : e1->toElem(irs),
+                                   (func->isNested()
+                                    ? irs->getFrameForFunction(func)
+                                    : e1->toElem(irs)),
                                    type);
     }
 }
@@ -1970,7 +1968,6 @@ elem *
 FuncExp::toElem(IRState * irs)
 {
     Type * func_type = type->toBasetype();
-    tree ctx;
 
     if (func_type->ty == Tpointer)
         func_type = func_type->nextOf()->toBasetype();
@@ -1983,14 +1980,8 @@ FuncExp::toElem(IRState * irs)
             return irs->nop(irs->addressOf(fd), type->toCtype());
 
         case Tdelegate:
-#if D_NO_TRAMPOLINES    // trampoline or not
-            ctx = irs->getFrameForFunction(fd);
-#else
-            ctx = convert(ptr_type_node, integer_one_node);
-#endif
-
             return irs->methodCallExpr(irs->functionPointer(fd),
-                                       ctx, type);
+                                       irs->getFrameForFunction(fd), type);
 
         default:
             ::error("Unexpected FuncExp type");
@@ -2861,37 +2852,24 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         return;
     }
 
-    tree param_list;
-    tree result_decl;
-    tree parm_decl = NULL_TREE;
-    tree block;
-#if D_NO_TRAMPOLINES
-    tree static_chain_expr = NULL_TREE;
-#if V2
-    FuncDeclaration * closure_func = NULL;
-    tree closure_expr = NULL_TREE;
-    StructDeclaration * sd;
-#endif
-    ClassDeclaration * cd;
-#endif
-    AggregateDeclaration * ad = NULL;
-
     announce_function(fn_decl);
     IRState * irs = IRState::startFunction(this);
-#if V2
-    TypeFunction * tf = (TypeFunction *)type;
-    irs->useClosure(NULL, NULL_TREE);
-#endif
+
+    irs->useChain(NULL, NULL_TREE);
+    tree chain_expr = NULL;
+    FuncDeclaration * chain_func = NULL;
 
     // in 4.0, doesn't use push_function_context
     tree old_current_function_decl = current_function_decl;
     function * old_cfun = cfun;
 
     current_function_decl = fn_decl;
-
     TREE_STATIC(fn_decl) = 1;
+
+    TypeFunction * tf = (TypeFunction *)type;
+    tree result_decl = NULL_TREE;
     {
-        Type * func_type = tintro ? tintro : type;
+        Type * func_type = tintro ? tintro : tf;
         Type * ret_type = func_type->nextOf()->toBasetype();
 
         if (isMain() && ret_type->ty == Tvoid)
@@ -2910,21 +2888,21 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     DECL_CONTEXT(result_decl) = fn_decl;
     //layout_decl(result_decl, 0);
 
-# if D_GCC_VER >= 43
+#if D_GCC_VER >= 43
     allocate_struct_function(fn_decl, false);
-# else
+#else
     allocate_struct_function(fn_decl);
-# endif
+#endif
     // assuming the above sets cfun
     g.ofile->setCfunEndLoc(endloc);
 
-    param_list = NULL_TREE;
-
-#if V2
-    bool needs_static_chain = irs->functionNeedsChain(this);
-#endif
+    AggregateDeclaration * ad = isThis();
+    tree parm_decl = NULL_TREE;
+    tree param_list = NULL_TREE;
 
     int n_parameters = parameters ? parameters->dim : 0;
+
+    int reverse_args = 0; //tf->linkage == LINKd && tf->varargs != 1;
 
     // Special arguments...
     static const int VTHIS = -2;
@@ -2939,7 +2917,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
 
         if (i == VTHIS)
         {
-            if ((ad = isThis()))
+            if (ad != NULL)
             {
                 param = vthis;
             }
@@ -2948,25 +2926,16 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
                    referenced in any expression.
 
                    This parameter is hidden from the debugger.
-                */
+                 */
                 parm_type = ptr_type_node;
                 parm_decl = d_build_decl(PARM_DECL, NULL_TREE, parm_type);
                 DECL_ARTIFICIAL(parm_decl) = 1;
                 DECL_IGNORED_P(parm_decl) = 1;
-                DECL_ARG_TYPE (parm_decl) = TREE_TYPE (parm_decl); // %% doc need this arg silently disappears
-#if D_NO_TRAMPOLINES
-#if V2
-                if (! needs_static_chain)
-                {
-                    closure_func = toParent2()->isFuncDeclaration();
-                    closure_expr = parm_decl;
-                }
-                else
-#endif
-                {
-                    static_chain_expr = parm_decl;
-                }
-#endif
+                // %% doc need this arg silently disappears
+                DECL_ARG_TYPE (parm_decl) = TREE_TYPE (parm_decl);
+
+                chain_func = toParent2()->isFuncDeclaration();
+                chain_expr = parm_decl;
             }
             else
                 continue;
@@ -2996,12 +2965,20 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         g.ofile->setDeclLoc(parm_decl, param ? (Dsymbol*) param : (Dsymbol*) this);
 
         // chain them in the correct order
-        param_list = chainon (param_list, parm_decl);
+        if (reverse_args)
+        {
+            param_list = chainon (parm_decl, param_list);
+        }
+        else
+        {
+            param_list = chainon (param_list, parm_decl);
+        }
     }
 
     // param_list is a number of PARM_DECL trees chained together (*not* a TREE_LIST of PARM_DECLs).
     // The leftmost parameter is the first in the chain.  %% varargs?
-    DECL_ARGUMENTS(fn_decl) = param_list; // %% in treelang, useless ? because it just sets them to getdecls() later
+    // %% in treelang, useless ? because it just sets them to getdecls() later
+    DECL_ARGUMENTS(fn_decl) = param_list;
 
     // http://www.tldp.org/HOWTO/GCC-Frontend-HOWTO-7.html
     rest_of_decl_compilation(fn_decl, /*toplevel*/1, /*atend*/0);
@@ -3011,84 +2988,6 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     DECL_INITIAL(fn_decl) = error_mark_node; // Just doing what they tell me to do...
 
     IRState::initFunctionStart(fn_decl, loc);
-#if D_NO_TRAMPOLINES
-    /* If this is a member function that nested (possibly indirectly) in another
-       function, construct an expession for this member function's static chain
-       by going through parent link of nested classes.
-    */
-    if (! static_chain_expr
-#if V2
-            || closure_expr
-#endif
-       )
-    {
-        if (ad && (cd = ad->isClassDeclaration()))
-        {
-            /* D 2.0 Closures: this->vthis is passed as a normal parameter and
-               is valid to access as Stree before the closure frame is created. */
-            tree t = vthis->toSymbol()->Stree;
-            while (cd->isNested())
-            {
-                Dsymbol * d = cd->toParent2();
-                tree vthis_field = cd->vthis->toSymbol()->Stree;
-                t = irs->component(irs->indirect(t), vthis_field);
-                FuncDeclaration * f;
-                if ((f = d->isFuncDeclaration()))
-                {
-#if V2
-                    if (! needs_static_chain)
-                    {
-                        closure_expr = t;
-                        closure_func = f;
-                    }
-                    else
-#endif
-                    {   /* Pass chain by reference. */
-                        static_chain_expr = irs->addressOf(t);
-                    }
-                    break;
-                }
-                else if (! (cd = d->isClassDeclaration()))
-                {
-                    gcc_unreachable();
-                }
-            }
-        }
-#if V2
-        else if (ad && (sd = ad->isStructDeclaration()))
-        {
-            /* D 2.0 Closures: this->vthis is passed as a normal parameter and
-               is valid to access as Stree before the closure frame is created. */
-            tree t = vthis->toSymbol()->Stree;
-            while (sd->isNested())
-            {
-                Dsymbol * d = sd->toParent2();
-                tree vthis_field = sd->vthis->toSymbol()->Stree;
-                t = irs->component(irs->indirect(t), vthis_field);
-                FuncDeclaration * f;
-                if ((f = d->isFuncDeclaration()))
-                {
-                    if (! needs_static_chain)
-                    {
-                        closure_expr = t;
-                        closure_func = f;
-                    }
-                    else
-                    {
-                        static_chain_expr = t;
-                    }
-                    break;
-                }
-                else if (! (sd = d->isStructDeclaration()))
-                {
-                    gcc_unreachable();
-                }
-            }
-        }
-#endif
-    }
-#endif
-
     cfun->naked = naked ? 1 : 0;
     pushlevel(0);
     irs->pushStatementList();
@@ -3096,33 +2995,75 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     irs->startScope();
     irs->doLineNote(loc);
 
-#if D_NO_TRAMPOLINES
-    if (static_chain_expr)
+    /* If this is a member function that nested (possibly indirectly) in another
+       function, construct an expession for this member function's static chain
+       by going through parent link of nested classes.
+    */
+    if (! irs->functionNeedsChain(this))
     {
-        cfun->custom_static_chain = 1;
-        irs->doExp(build2(MODIFY_EXPR, ptr_type_node,
-                build0(STATIC_CHAIN_DECL, ptr_type_node), static_chain_expr));
+        /* D 2.0 Closures: this->vthis is passed as a normal parameter and
+           is valid to access as Stree before the closure frame is created. */
+        ClassDeclaration * cd = ad ? ad->isClassDeclaration() : NULL;
+        StructDeclaration * sd = ad ? ad->isStructDeclaration() : NULL;
+
+        if (cd != NULL)
+        {
+            FuncDeclaration *f = NULL;
+            tree t = vthis->toSymbol()->Stree;
+            while (cd->isNested())
+            {
+                Dsymbol * d = cd->toParent2();
+                tree vthis_field = cd->vthis->toSymbol()->Stree;
+                t = irs->component(irs->indirect(t), vthis_field);
+                if ((f = d->isFuncDeclaration()))
+                {
+                    chain_expr = t;
+                    chain_func = f;
+                    break;
+                }
+                else if (! (cd = d->isClassDeclaration()))
+                    gcc_unreachable();
+            }
+        }
+#if V2
+        else if (sd != NULL)
+        {
+            FuncDeclaration *f = NULL;
+            tree t = vthis->toSymbol()->Stree;
+            while (sd->isNested())
+            {
+                Dsymbol * d = sd->toParent2();
+                tree vthis_field = sd->vthis->toSymbol()->Stree;
+                t = irs->component(irs->indirect(t), vthis_field);
+                if ((f = d->isFuncDeclaration()))
+                {
+                    chain_expr = t;
+                    chain_func = f;
+                    break;
+                }
+                else if (! (sd = d->isStructDeclaration()))
+                    gcc_unreachable();
+            }
+        }
+#endif
     }
 
-#if V2
-    if (static_chain_expr || closure_expr)
-        irs->useParentClosure();
+    if (isNested() || chain_expr)
+        irs->useParentChain();
 
-    if (closure_expr)
+    if (chain_expr)
     {
-        if (! DECL_P(closure_expr))
+        if (! DECL_P(chain_expr))
         {
             tree c = irs->localVar(ptr_type_node);
-            DECL_INITIAL(c) = closure_expr;
+            DECL_INITIAL(c) = chain_expr;
             irs->expandDecl(c);
-            closure_expr = c;
+            chain_expr = c;
         }
-        irs->useClosure(closure_func, closure_expr);
+        irs->useChain(chain_func, chain_expr);
     }
 
-    buildClosure(irs); // may change irs->closureLink and irs->closureFunc
-#endif
-#endif
+    irs->buildChain(this); // may change irs->chainLink and irs->chainFunc
 
     if (vresult)
         irs->emitLocalVar(vresult);
@@ -3273,7 +3214,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         }
     }
     //block = (*lang_hooks.decls.poplevel) (1, 0, 1);
-    block = poplevel(1, 0, 1);
+    tree block = poplevel(1, 0, 1);
 
     DECL_INITIAL (fn_decl) = block; // %% redundant, see poplevel
     BLOCK_SUPERCONTEXT(DECL_INITIAL (fn_decl)) = fn_decl; // done in C, don't know effect
@@ -3300,9 +3241,9 @@ FuncDeclaration::buildClosure(IRState * irs)
         return;
 
     tree closure_rec_type = make_node(RECORD_TYPE);
-    char * name = concat ("CLOSURE.",
-                          IDENTIFIER_POINTER(DECL_NAME(toSymbol()->Stree)),
-                          NULL);
+    char *name = concat ("CLOSURE.",
+                         IDENTIFIER_POINTER (DECL_NAME (toSymbol()->Stree)),
+                         NULL);
     TYPE_NAME (closure_rec_type) = get_identifier (name);
     free(name);
 
@@ -3318,7 +3259,7 @@ FuncDeclaration::buildClosure(IRState * irs)
         tree field = d_build_decl(FIELD_DECL,
                                   v->ident ? get_identifier(v->ident->string) : NULL_TREE,
                                   gen.trueDeclarationType(v));
-        v->toSymbol()->SclosureField = field;
+        v->toSymbol()->SframeField = field;
         g.ofile->setDeclLoc(field, v);
         DECL_CONTEXT(field) = closure_rec_type;
         fields.chain(field);
@@ -3337,16 +3278,14 @@ FuncDeclaration::buildClosure(IRState * irs)
 
     DECL_INITIAL(closure_ptr) =
         irs->nop(irs->libCall(LIBCALL_ALLOCMEMORY, 1, & arg),
-                              TREE_TYPE(closure_ptr));
+                 TREE_TYPE(closure_ptr));
     irs->expandDecl(closure_ptr);
 
     // set the first entry to the parent closure, if any
-    tree cl = irs->closureLink();
+    tree cl = irs->chainLink();
     if (cl)
-    {
         irs->doExp(irs->vmodify(irs->component(irs->indirect(closure_ptr),
                    ptr_field), cl));
-    }
 
     // copy parameters that are referenced nonlocally
     for (unsigned i = 0; i < closureVars.dim; i++)
@@ -3358,10 +3297,10 @@ FuncDeclaration::buildClosure(IRState * irs)
 
         Symbol * vsym = v->toSymbol();
         irs->doExp(irs->vmodify(irs->component(irs->indirect(closure_ptr),
-                   vsym->SclosureField), vsym->Stree));
+                   vsym->SframeField), vsym->Stree));
     }
 
-    irs->useClosure(this, closure_ptr);
+    irs->useChain(this, closure_ptr);
 }
 #endif
 

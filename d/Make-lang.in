@@ -33,7 +33,7 @@ D_EXTRA_DEFINES += -D_GNU_SOURCE=1
 D_EXTRA_DEFINES += -D_DH=1
 
 # Enables correct implementation of delegates. This requires patching GCC.
-D_EXTRA_DEFINES += -DD_NO_TRAMPOLINES=1
+#D_EXTRA_DEFINES += -DD_NO_TRAMPOLINES=1
 
 # Enables placing some RTTI in the read-only data section.  Does not
 # have to be an ELF target.

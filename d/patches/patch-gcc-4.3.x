@@ -1,5 +1,5 @@
---- gcc.orig/cgraph.c	2008-11-14 13:26:59.000000000 +0000
-+++ gcc/cgraph.c	2011-03-21 18:37:21.139990586 +0000
+--- gcc.orig/cgraph.c	2010-08-20 18:07:17.979440836 +0100
++++ gcc/cgraph.c	2010-08-20 18:08:05.728441136 +0100
 @@ -181,6 +181,7 @@ struct cgraph_node *
  cgraph_node (tree decl)
  {
@@ -30,54 +30,19 @@
      }
    return node;
  }
---- gcc.orig/cgraphunit.c	2008-11-14 13:26:59.000000000 +0000
-+++ gcc/cgraphunit.c	2011-03-21 18:37:21.143990613 +0000
-@@ -1150,6 +1150,10 @@ cgraph_mark_functions_to_output (void)
- static void
- cgraph_expand_function (struct cgraph_node *node)
- {
-+  int save_flag_omit_frame_pointer = flag_omit_frame_pointer;
-+  static int inited = 0;
-+  static int orig_omit_frame_pointer;
-+  
-   tree decl = node->decl;
- 
-   /* We ought to not compile any inline clones.  */
-@@ -1159,11 +1163,21 @@ cgraph_expand_function (struct cgraph_no
-     announce_function (decl);
- 
-   gcc_assert (node->lowered);
-+  
-+  if (!inited)
-+  {
-+      inited = 1;
-+      orig_omit_frame_pointer = flag_omit_frame_pointer;
-+  }
-+  flag_omit_frame_pointer = orig_omit_frame_pointer ||
-+    DECL_STRUCT_FUNCTION (decl)->naked;
- 
-   /* Generate RTL for the body of DECL.  */
-   if (lang_hooks.callgraph.emit_associated_thunks)
-     lang_hooks.callgraph.emit_associated_thunks (decl);
-   tree_rest_of_compilation (decl);
-+  
-+  flag_omit_frame_pointer = save_flag_omit_frame_pointer;
- 
-   /* Make sure that BE didn't give up on compiling.  */
-   /* ??? Can happen with nested function of extern inline.  */
---- gcc.orig/config/i386/i386.c	2010-03-31 21:14:10.000000000 +0100
-+++ gcc/config/i386/i386.c	2011-03-27 19:42:21.497873357 +0100
-@@ -3145,6 +3145,10 @@ ix86_handle_cconv_attribute (tree *node,
+--- gcc.orig/config/i386/i386.c	2010-08-20 18:07:18.079444473 +0100
++++ gcc/config/i386/i386.c	2011-07-24 14:27:02.959674225 +0100
+@@ -3149,6 +3149,10 @@ ix86_handle_cconv_attribute (tree *node,
          {
- 	  error ("fastcall and stdcall attributes are not compatible");
+ 	  error ("fastcall and regparm attributes are not compatible");
  	}
 +      if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (*node)))
 +        {
 +	  error ("fastcall and optlink attributes are not compatible");
 +	}
-       if (lookup_attribute ("regparm", TYPE_ATTRIBUTES (*node)))
-         {
- 	  error ("fastcall and regparm attributes are not compatible");
+     }
+ 
+   /* Can combine stdcall with fastcall (redundant), regparm and
 @@ -3163,6 +3167,10 @@ ix86_handle_cconv_attribute (tree *node,
          {
  	  error ("stdcall and fastcall attributes are not compatible");
@@ -122,8 +87,8 @@
  	rtd = 1;
  
 +      /* Optlink functions will pop the stack if returning float and
-+         if not variable args.  */
-+      else if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (funtype))
++         if not variable args..  */
++      if (lookup_attribute ("optlink", TYPE_ATTRIBUTES (funtype))
 +          && FLOAT_MODE_P (TYPE_MODE (TREE_TYPE (funtype))))
 +	rtd = 1;
 +
@@ -142,7 +107,28 @@
  	}
  
        /* Set up the number of SSE registers used for passing SFmode
-@@ -6151,6 +6191,11 @@ ix86_compute_frame_layout (struct ix86_f
+@@ -5677,6 +5717,9 @@ ix86_can_use_return_insn_p (void)
+   if (! reload_completed || frame_pointer_needed)
+     return 0;
+ 
++  if (cfun->naked)
++    return 0;
++
+   /* Don't allow more than 32 pop, since that's all we can do
+      with one instruction.  */
+   if (current_function_pops_args
+@@ -5715,6 +5758,10 @@ ix86_frame_pointer_required (void)
+   if (current_function_profile)
+     return 1;
+ 
++  /* Optlink mandates the setting up of ebp, unless 'naked' is used.  */
++  if (current_function_args_info.optlink && !cfun->naked)
++    return 1;
++
+   return 0;
+ }
+ 
+@@ -6151,6 +6198,11 @@ ix86_compute_frame_layout (struct ix86_f
      frame->red_zone_size = 0;
    frame->to_allocate -= frame->red_zone_size;
    frame->stack_pointer_offset -= frame->red_zone_size;
@@ -154,7 +140,7 @@
  #if 0
    fprintf (stderr, "\n");
    fprintf (stderr, "nregs: %ld\n", (long)frame->nregs);
-@@ -22924,7 +22969,7 @@ x86_output_mi_thunk (FILE *file ATTRIBUT
+@@ -22924,7 +22976,7 @@ x86_output_mi_thunk (FILE *file ATTRIBUT
  	  output_set_got (tmp, NULL_RTX);
  
  	  xops[1] = tmp;
@@ -163,7 +149,7 @@
  	  output_asm_insn ("jmp\t{*}%1", xops);
  	}
      }
-@@ -25240,6 +25285,8 @@ static const struct attribute_spec ix86_
+@@ -25240,6 +25292,8 @@ static const struct attribute_spec ix86_
    /* Sseregparm attribute says we are using x86_64 calling conventions
       for FP arguments.  */
    { "sseregparm", 0, 0, false, true, true, ix86_handle_cconv_attribute },
@@ -173,7 +159,7 @@
    { (const char *)&ix86_force_align_arg_pointer_string, 0, 0,
      false, true,  true, ix86_handle_cconv_attribute },
 --- gcc.orig/config/i386/i386.h	2009-11-13 19:51:52.000000000 +0000
-+++ gcc/config/i386/i386.h	2011-03-24 09:14:27.943294703 +0000
++++ gcc/config/i386/i386.h	2011-07-24 13:05:11.883321506 +0100
 @@ -1672,6 +1672,7 @@ typedef struct ix86_args {
    int nregs;			/* # registers available for passing */
    int regno;			/* next available register number */
@@ -182,8 +168,8 @@
    int sse_words;		/* # sse words passed so far */
    int sse_nregs;		/* # sse registers available for passing */
    int warn_sse;			/* True when we want to warn about SSE ABI.  */
---- gcc.orig/config/rs6000/rs6000.c	2009-09-23 23:30:05.000000000 +0100
-+++ gcc/config/rs6000/rs6000.c	2011-03-21 18:37:21.267991218 +0000
+--- gcc.orig/config/rs6000/rs6000.c	2010-08-20 18:07:18.231439846 +0100
++++ gcc/config/rs6000/rs6000.c	2010-08-20 18:08:06.464443120 +0100
 @@ -16943,7 +16943,8 @@ rs6000_output_function_epilogue (FILE *f
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -194,8 +180,20 @@
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
  	       || ! strcmp (language_string, "GNU F95"))
---- gcc.orig/dwarf2out.c	2009-06-18 21:06:04.000000000 +0100
-+++ gcc/dwarf2out.c	2011-03-21 18:37:21.327991520 +0000
+--- gcc.orig/dojump.c	2009-05-07 16:53:11.000000000 +0100
++++ gcc/dojump.c	2011-07-24 13:10:30.688902370 +0100
+@@ -70,7 +70,8 @@ void
+ clear_pending_stack_adjust (void)
+ {
+   if (optimize > 0
+-      && (! flag_omit_frame_pointer || current_function_calls_alloca)
++      && ((! flag_omit_frame_pointer && ! cfun->naked)
++          || current_function_calls_alloca)
+       && EXIT_IGNORE_STACK
+       && ! (DECL_INLINE (current_function_decl) && ! flag_no_inline))
+     discard_pending_stack_adjust ();
+--- gcc.orig/dwarf2out.c	2010-08-20 18:07:18.360467489 +0100
++++ gcc/dwarf2out.c	2010-08-20 18:08:06.483443929 +0100
 @@ -5743,7 +5743,8 @@ is_c_family (void)
  
    return (lang == DW_LANG_C || lang == DW_LANG_C89 || lang == DW_LANG_ObjC
@@ -224,8 +222,8 @@
  
        /* If we are in terse mode, don't generate any DIEs to represent any
  	 variable declarations or definitions.  */
---- gcc.orig/except.c	2008-06-28 11:43:12.000000000 +0100
-+++ gcc/except.c	2011-03-21 18:37:21.347991617 +0000
+--- gcc.orig/except.c	2010-08-07 23:20:32.623306514 +0100
++++ gcc/except.c	2010-09-01 18:03:06.763377179 +0100
 @@ -1821,6 +1821,18 @@ sjlj_mark_call_sites (struct sjlj_lp_inf
  
  	  region = VEC_index (eh_region, cfun->eh->region_array, INTVAL (XEXP (note, 0)));
@@ -245,22 +243,8 @@
  	}
  
        if (this_call_site == last_call_site)
---- gcc.orig/expr.c	2009-01-06 16:17:41.000000000 +0000
-+++ gcc/expr.c	2011-03-21 18:37:21.383991797 +0000
-@@ -9227,6 +9227,11 @@ expand_expr_real_1 (tree exp, rtx target
- 	 represent.  */
-       return const0_rtx;
- 
-+    case STATIC_CHAIN_EXPR:
-+    case STATIC_CHAIN_DECL:
-+      /* Lowered by tree-nested.c */
-+      gcc_unreachable ();
-+
-     case EXC_PTR_EXPR:
-       return get_exception_pointer (cfun);
- 
---- gcc.orig/function.c	2009-06-19 22:44:24.000000000 +0100
-+++ gcc/function.c	2011-03-21 18:37:21.407991915 +0000
+--- gcc.orig/function.c	2010-08-20 18:07:18.479439027 +0100
++++ gcc/function.c	2011-07-24 12:54:27.280125106 +0100
 @@ -3062,7 +3062,8 @@ assign_parms (tree fndecl)
        FUNCTION_ARG_ADVANCE (all.args_so_far, data.promoted_mode,
  			    data.passed_type, data.named_arg);
@@ -291,25 +275,7 @@
    assign_parms_initialize_all (&all);
    fnargs = assign_parms_augmented_arg_list (&all);
  
-@@ -4280,11 +4285,15 @@ expand_function_start (tree subr)
-       tree parm = cfun->static_chain_decl;
-       rtx local = gen_reg_rtx (Pmode);
- 
--      set_decl_incoming_rtl (parm, static_chain_incoming_rtx, false);
-       SET_DECL_RTL (parm, local);
-       mark_reg_pointer (local, TYPE_ALIGN (TREE_TYPE (TREE_TYPE (parm))));
- 
--      emit_move_insn (local, static_chain_incoming_rtx);
-+      if (! cfun->custom_static_chain)
-+        {
-+	    set_decl_incoming_rtl (parm, static_chain_incoming_rtx, false);
-+	    emit_move_insn (local, static_chain_incoming_rtx);
-+	}
-+      /* else, the static chain will be set in the main body */
-     }
- 
-   /* If the function receives a non-local goto, then store the
-@@ -5179,6 +5188,9 @@ thread_prologue_and_epilogue_insns (void
+@@ -5179,6 +5184,9 @@ thread_prologue_and_epilogue_insns (void
  #endif
    edge_iterator ei;
  
@@ -319,16 +285,12 @@
  #ifdef HAVE_prologue
    if (HAVE_prologue)
      {
---- gcc.orig/function.h	2008-01-26 17:18:35.000000000 +0000
-+++ gcc/function.h	2011-03-21 18:37:21.419991989 +0000
-@@ -463,6 +463,14 @@ struct function GTY(())
+--- gcc.orig/function.h	2010-08-20 18:07:18.499442756 +0100
++++ gcc/function.h	2011-07-24 12:54:35.248164604 +0100
+@@ -463,6 +463,10 @@ struct function GTY(())
  
    /* Nonzero if pass_tree_profile was run on this function.  */
    unsigned int after_tree_profile : 1;
-+
-+  /* Nonzero if static chain is initialized by something other than
-+     static_chain_incoming_rtx. */
-+  unsigned int custom_static_chain : 1;
 +
 +  /* Nonzero if no code should be generated for prologues, copying
 +     parameters, etc. */
@@ -336,8 +298,8 @@
  };
  
  /* If va_list_[gf]pr_size is set to this, it means we don't know how
---- gcc.orig/gcc.c	2008-03-02 22:55:19.000000000 +0000
-+++ gcc/gcc.c	2011-03-21 18:37:21.455992151 +0000
+--- gcc.orig/gcc.c	2010-08-20 18:07:18.515441647 +0100
++++ gcc/gcc.c	2011-07-24 13:07:13.707925615 +0100
 @@ -129,6 +129,9 @@ int is_cpp_driver;
  /* Flag set to nonzero if an @file argument has been supplied to gcc.  */
  static bool at_file_supplied;
@@ -348,7 +310,17 @@
  /* Flag saying to pass the greatest exit code returned by a sub-process
     to the calling program.  */
  static int pass_exit_codes;
-@@ -472,6 +475,7 @@ or with constant text in a single argume
+@@ -365,6 +368,9 @@ static const char *replace_outfile_spec_
+ static const char *version_compare_spec_function (int, const char **);
+ static const char *include_spec_function (int, const char **);
+ static const char *print_asm_header_spec_function (int, const char **);
++
++extern const char *d_all_sources_spec_function (int, const char **);
++extern const char *d_output_prefix_spec_function (int, const char **);
+ 
+ /* The Specs Language
+ 
+@@ -472,6 +478,7 @@ or with constant text in a single argume
  	assembler has done its job.
   %D	Dump out a -L option for each directory in startfile_prefixes.
  	If multilib_dir is set, extra entries are generated with it affixed.
@@ -356,7 +328,7 @@
   %l     process LINK_SPEC as a spec.
   %L     process LIB_SPEC as a spec.
   %G     process LIBGCC_SPEC as a spec.
-@@ -3974,6 +3978,9 @@ warranty; not even for MERCHANTABILITY o
+@@ -3974,6 +3981,9 @@ warranty; not even for MERCHANTABILITY o
  	}
      }
  
@@ -366,7 +338,7 @@
    if (save_temps_flag && use_pipes)
      {
        /* -save-temps overrides -pipe, so that temp files are produced */
-@@ -4280,6 +4287,18 @@ warranty; not even for MERCHANTABILITY o
+@@ -4280,6 +4290,18 @@ warranty; not even for MERCHANTABILITY o
        infiles[0].name   = "help-dummy";
      }
  
@@ -385,7 +357,7 @@
    switches[n_switches].part1 = 0;
    infiles[n_infiles].name = 0;
  }
-@@ -5240,6 +5259,17 @@ do_spec_1 (const char *spec, int inswitc
+@@ -5240,6 +5262,17 @@ do_spec_1 (const char *spec, int inswitc
  	      return value;
  	    break;
  
@@ -403,8 +375,8 @@
  	    /* Here we define characters other than letters and digits.  */
  
  	  case '{':
---- gcc.orig/gcc.h	2007-07-26 09:37:01.000000000 +0100
-+++ gcc/gcc.h	2011-03-21 18:37:21.455992151 +0000
+--- gcc.orig/gcc.h	2010-08-20 18:07:18.548356656 +0100
++++ gcc/gcc.h	2010-08-20 18:08:06.540492593 +0100
 @@ -37,7 +37,7 @@ struct spec_function
     || (CHAR) == 'e' || (CHAR) == 'T' || (CHAR) == 'u' \
     || (CHAR) == 'I' || (CHAR) == 'm' || (CHAR) == 'x' \
@@ -414,57 +386,20 @@
  
  /* This defines which multi-letter switches take arguments.  */
  
---- gcc.orig/tree.def	2007-10-29 11:05:04.000000000 +0000
-+++ gcc/tree.def	2011-03-21 18:37:21.463992196 +0000
-@@ -539,6 +539,13 @@ DEFTREECODE (BIND_EXPR, "bind_expr", tcc
-    arguments to the call.  */
- DEFTREECODE (CALL_EXPR, "call_expr", tcc_vl_exp, 3)
+--- gcc.orig/reload1.c	2007-10-22 20:28:23.000000000 +0100
++++ gcc/reload1.c	2011-07-24 13:15:09.350284190 +0100
+@@ -3716,7 +3716,7 @@ init_elim_table (void)
  
-+/* Operand 0 is the FUNC_DECL of the outer function for
-+   which the static chain is to be computed. */
-+DEFTREECODE (STATIC_CHAIN_EXPR, "static_chain_expr", tcc_expression, 1)
-+    
-+/* Represents a function's static chain.  It can be used as an lvalue. */
-+DEFTREECODE (STATIC_CHAIN_DECL, "static_chain_decl", tcc_expression, 0)
-+
- /* Specify a value to compute along with its corresponding cleanup.
-    Operand 0 is the cleanup expression.
-    The cleanup is executed by the first enclosing CLEANUP_POINT_EXPR,
---- gcc.orig/tree-gimple.c	2007-12-13 21:49:09.000000000 +0000
-+++ gcc/tree-gimple.c	2011-03-21 18:37:21.475992250 +0000
-@@ -74,6 +74,8 @@ is_gimple_formal_tmp_rhs (tree t)
-     case VECTOR_CST:
-     case OBJ_TYPE_REF:
-     case ASSERT_EXPR:
-+    case STATIC_CHAIN_EXPR: /* not sure if this is right...*/
-+    case STATIC_CHAIN_DECL:
-       return true;
+   /* Does this function require a frame pointer?  */
  
-     default:
-@@ -147,7 +149,10 @@ is_gimple_lvalue (tree t)
- 	  || TREE_CODE (t) == WITH_SIZE_EXPR
- 	  /* These are complex lvalues, but don't have addresses, so they
- 	     go here.  */
--	  || TREE_CODE (t) == BIT_FIELD_REF);
-+	  || TREE_CODE (t) == BIT_FIELD_REF
-+          /* This is an lvalue because it will be replaced with the real
-+	     static chain decl. */
-+	  || TREE_CODE (t) == STATIC_CHAIN_DECL);
- }
- 
- /*  Return true if T is a GIMPLE condition.  */
---- gcc.orig/tree-nested.c	2008-05-29 12:35:05.000000000 +0100
-+++ gcc/tree-nested.c	2011-03-27 19:27:36.161483206 +0100
-@@ -815,6 +815,8 @@ get_static_chain (struct nesting_info *i
- 
-   if (info->context == target_context)
-     {
-+      /* might be doing something wrong to need the following line.. */
-+      get_frame_type (info);
-       x = build_addr (info->frame_decl, target_context);
-     }
-   else
-@@ -1640,6 +1642,10 @@ convert_tramp_reference (tree *tp, int *
+-  frame_pointer_needed = (! flag_omit_frame_pointer
++  frame_pointer_needed = ((! flag_omit_frame_pointer && ! cfun->naked)
+ 			  /* ?? If EXIT_IGNORE_STACK is set, we will not save
+ 			     and restore sp for alloca.  So we can't eliminate
+ 			     the frame pointer in that case.  At some point,
+--- gcc.orig/tree-nested.c	2010-08-20 18:07:18.615442350 +0100
++++ gcc/tree-nested.c	2011-07-24 12:57:20.604984574 +0100
+@@ -1640,6 +1640,10 @@ convert_tramp_reference (tree *tp, int *
        if (DECL_NO_STATIC_CHAIN (decl))
  	break;
  
@@ -475,80 +410,8 @@
        /* Lookup the immediate parent of the callee, as that's where
  	 we need to insert the trampoline.  */
        for (i = info; i->context != target_context; i = i->outer)
-@@ -1714,6 +1720,14 @@ convert_call_expr (tree *tp, int *walk_s
- 	}
-       break;
- 
-+    case STATIC_CHAIN_EXPR:
-+      *tp = get_static_chain (info, TREE_OPERAND (t, 0), &wi->tsi);
-+      break;
-+
-+    case STATIC_CHAIN_DECL:
-+      *tp = get_chain_decl (info);
-+      break;
-+ 
-     case RETURN_EXPR:
-     case GIMPLE_MODIFY_STMT:
-     case WITH_SIZE_EXPR:
-@@ -1889,9 +1903,34 @@ finalize_nesting_tree_1 (struct nesting_
-     {
-       annotate_all_with_locus (&stmt_list,
- 			       DECL_SOURCE_LOCATION (context));
--      append_to_statement_list (BIND_EXPR_BODY (DECL_SAVED_TREE (context)),
--				&stmt_list);
--      BIND_EXPR_BODY (DECL_SAVED_TREE (context)) = stmt_list;
-+      /* If the function has a custom static chain, chain_field must
-+	 be set after the static chain. */
-+      if (DECL_STRUCT_FUNCTION (root->context)->custom_static_chain)
-+	{
-+	  /* Should use walk_function instead. */
-+	  tree_stmt_iterator i =
-+	      tsi_start ( BIND_EXPR_BODY (DECL_SAVED_TREE (context)));
-+	  int found = 0;
-+	  while (!tsi_end_p (i))
-+	    {
-+	      tree t = tsi_stmt (i);
-+	      if (TREE_CODE (t) == GIMPLE_MODIFY_STMT &&
-+		  GIMPLE_STMT_OPERAND (t, 0) == root->chain_decl)
-+		{
-+		  tsi_link_after (& i, stmt_list, TSI_SAME_STMT);
-+		  found = 1;
-+		  break;
-+		}
-+	      tsi_next (& i);
-+	    }
-+	  gcc_assert (found);
-+	}
-+      else
-+        {
-+	  append_to_statement_list (BIND_EXPR_BODY (DECL_SAVED_TREE (context)),
-+				    &stmt_list);
-+	  BIND_EXPR_BODY (DECL_SAVED_TREE (context)) = stmt_list;
-+	}
-     }
- 
-   /* If a chain_decl was created, then it needs to be registered with
---- gcc.orig/tree-pretty-print.c	2008-01-27 16:48:54.000000000 +0000
-+++ gcc/tree-pretty-print.c	2011-03-21 18:37:21.491992325 +0000
-@@ -1251,6 +1251,16 @@ dump_generic_node (pretty_printer *buffe
- 	pp_string (buffer, " [tail call]");
-       break;
- 
-+    case STATIC_CHAIN_EXPR:
-+	pp_string (buffer, "<<static chain of ");
-+	dump_generic_node (buffer, TREE_OPERAND (node, 0), spc, flags, false);
-+	pp_string (buffer, ">>");
-+      break;
-+
-+    case STATIC_CHAIN_DECL:
-+       pp_string (buffer, "<<static chain decl>>");
-+       break;
-+	
-     case WITH_CLEANUP_EXPR:
-       NIY;
-       break;
---- gcc.orig/tree-sra.c	2010-04-18 16:56:56.000000000 +0100
-+++ gcc/tree-sra.c	2011-03-21 18:37:21.499992373 +0000
+--- gcc.orig/tree-sra.c	2010-08-20 18:07:18.663445099 +0100
++++ gcc/tree-sra.c	2010-08-20 18:08:06.575454930 +0100
 @@ -262,6 +262,8 @@ sra_type_can_be_decomposed_p (tree type)
      case RECORD_TYPE:
        {

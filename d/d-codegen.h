@@ -112,7 +112,12 @@ enum BinOp
 struct FuncFrameInfo
 {
     bool creates_closure;
-    tree closure_rec;
+    bool creates_frame;
+    union
+    {
+        tree closure_rec;
+        tree frame_rec;
+    };
 };
 
 class ArrayScope;
@@ -166,14 +171,7 @@ struct IRState : IRBase
     tree maybeExprVar(tree exp, tree * out_var);
     void expandDecl(tree t_decl);
 
-#if V2
     tree var(VarDeclaration * v);
-#else
-    tree var(VarDeclaration * v)
-    {
-        return v->toSymbol()->Stree;
-    }
-#endif
 
     // ** Type conversion
 
@@ -378,10 +376,9 @@ struct IRState : IRBase
 
             t = build1(ADDR_EXPR, ptrtype, exp);
         }
-#if D_NO_TRAMPOLINES
         if (TREE_CODE(exp) == FUNCTION_DECL)
             TREE_NO_TRAMPOLINE(t) = 1;
-#endif
+
         return t;
     }
 
@@ -521,6 +518,15 @@ struct IRState : IRBase
     // and the SIDE_EFFECTS flags of the arguments.
     static tree buildCall(tree type, tree callee, tree args)
     {
+#if 0
+        Type * t = getDType(TREE_TYPE(TREE_TYPE(callee)));
+        if (t != NULL)
+        {
+            TypeFunction * tf = getFuncType(t);
+            if (tf->linkage == LINKd && tf->varargs != 1)
+                args = nreverse(args);
+        }
+#endif
 #if D_GCC_VER >= 43
         int nargs = list_length(args);
         tree * pargs = new tree[nargs];
@@ -634,41 +640,42 @@ public:
 
     static tree label(Loc loc, Identifier * ident = 0);
 
-#if V2
-    void useClosure(FuncDeclaration * f, tree l)
+    // Static chain of function, for D2, this is a closure.
+    void useChain(FuncDeclaration * f, tree l)
     {
-        _closureLink = l;
-        _closureFunc = f;
+        _chainLink = l;
+        _chainFunc = f;
     }
 
-    void useParentClosure()
+    void useParentChain()
     {
         if (parent)
         {
-            _closureLink = ((IRState*)parent)->_closureLink;
-            _closureFunc = ((IRState*)parent)->_closureFunc;
+            _chainLink = ((IRState *)parent)->_chainLink;
+            _chainFunc = ((IRState *)parent)->_chainFunc;
         }
     }
 
-    tree closureLink()
+    tree chainLink()
     {
-        return _closureLink;
+        return _chainLink;
     }
 
-    FuncDeclaration * closureFunc()
+    FuncDeclaration * chainFunc()
     {
-        return _closureFunc;
+        return _chainFunc;
     }
-#endif
+
+    void buildChain(FuncDeclaration * func);
+
 protected:
     tree getFrameForSymbol(Dsymbol * nested_sym);
-#if V2
-    tree getClosureRef(FuncDeclaration *outer_func);
-    FuncDeclaration * _closureFunc;
-    tree _closureLink;
+    tree getFrameRef(FuncDeclaration *outer_func);
+    FuncDeclaration * _chainFunc;
+    tree _chainLink;
+
 public:
     static FuncFrameInfo * getFrameInfo(FuncDeclaration *fd);
-#endif
 public:
     static bool functionNeedsChain(FuncDeclaration *f);
 

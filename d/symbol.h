@@ -126,9 +126,7 @@ struct Symbol : Object
     // Specific to GNU backend
     tree     Stree;
     tree     ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see IRState::declContext
-#if V2
-    tree     SclosureField; // FIELD_DECL in closure frame struct that this variable is allocated in -- Eventually move back into Stree once everything works right
-#endif
+    tree     SframeField;  // FIELD_DECL in frame struct that this variable is allocated in -- Eventually move back into Stree once everything works right
 
     // For FuncDeclarations:
     Array * thunks; // of struct Thunk
