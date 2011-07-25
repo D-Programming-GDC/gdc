@@ -87,12 +87,26 @@ if test ! -f gcc/"$gcc_patch_fn"; then
 fi
 
 # 0.5. Find out what GDC and DMD version this is
-if test "$use_hg_revision" = 1; then
-    if ! command -v hg &> /dev/null; then
-        echo "Mercurial not found.  Please install it or remove -hg."
+if ! command -v hg &> /dev/null; then
+        use_hg_revision=0
+        echo "Mercurial not found.  Install mercurial or remove -hg to continue."
         exit 1
-    fi
-    gdc_ver=`hg --cwd gcc/d tip --template "hg r{rev}:{node|short}"  2> /dev/null`
+else        
+        hg_branch=`hg  --cwd gcc/d identify -b 2> /dev/null`        
+        hg_revision=`hg --cwd gcc/d identify -n 2> /dev/null | sed -e 's/^\(.*\)+$/\1/'`
+        hg_id=`hg --cwd gcc/d identify -i 2> /dev/null`
+        hg --cwd gcc/d identify &> /dev/null
+        if [ "$?" -ne "0" ]; then
+            echo "Sorry, mercurial cannot find repository information."
+            echo "Please remove -hg or correct the issue."
+            exit 1
+        fi        
+fi
+
+if test "$use_hg_revision" = 1; then
+    # is branch useful?
+    #gdc_ver="hg r$hg_revision:$hg_id($hg_branch)"
+    gdc_ver="hg r$hg_revision:$hg_id"
 else
     gdc_ver=`cat gcc/d/gdc-version`
 fi
