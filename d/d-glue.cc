@@ -3802,7 +3802,7 @@ TypeDArray::toCtype()
         {   /* Rather than making const(T[]) and const(T)[] two distinct
                types, make the former a variant of the latter, and apply
                modifiers afterwards. */
-            ctype = next->arrayOf()->toCtype();
+            ctype = next->castMod(0)->arrayOf()->toCtype();
         }
         else
         {
