@@ -3436,8 +3436,17 @@ IRState::getFrameRef(FuncDeclaration * outer_func)
     if (fd == outer_func)
     {
         tree frame_rec = getFrameInfo(outer_func)->frame_rec;
-        result = nop(result, build_pointer_type(frame_rec));
-        return result;
+
+        if (frame_rec != NULL_TREE)
+        {
+            result = nop(result, build_pointer_type(frame_rec));
+            return result;
+        }
+        else
+        {
+            func->error("forward reference to frame of %s", outer_func->toChars());
+            return d_null_pointer;
+        }
     }
     else
     {
