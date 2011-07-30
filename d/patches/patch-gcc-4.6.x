@@ -268,7 +268,7 @@
  
  /* Add the decl D to the local_decls list of FUN.  */
 --- gcc.orig/gcc.c	2011-02-23 02:04:43.000000000 +0000
-+++ gcc/gcc.c	2011-07-12 21:55:05.805144355 +0100
++++ gcc/gcc.c	2011-07-26 20:57:56.604217439 +0100
 @@ -83,6 +83,9 @@ int is_cpp_driver;
  /* Flag set to nonzero if an @file argument has been supplied to gcc.  */
  static bool at_file_supplied;
@@ -287,7 +287,17 @@
   %l     process LINK_SPEC as a spec.
   %L     process LIB_SPEC as a spec.
   %G     process LIBGCC_SPEC as a spec.
-@@ -3925,6 +3929,17 @@ process_command (unsigned int decoded_op
+@@ -3809,6 +3813,9 @@ process_command (unsigned int decoded_op
+       save_temps_prefix = NULL;
+     }
+ 
++  if (need_pthreads)
++    n_switches++;
++
+   if (save_temps_flag && use_pipes)
+     {
+       /* -save-temps overrides -pipe, so that temp files are produced */
+@@ -3925,6 +3932,17 @@ process_command (unsigned int decoded_op
        add_infile ("help-dummy", "c");
      }
  
@@ -305,7 +315,7 @@
    alloc_switch ();
    switches[n_switches].part1 = 0;
    alloc_infile ();
-@@ -5095,6 +5110,17 @@ do_spec_1 (const char *spec, int inswitc
+@@ -5095,6 +5113,17 @@ do_spec_1 (const char *spec, int inswitc
  	      return value;
  	    break;
  
