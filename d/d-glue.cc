@@ -1735,11 +1735,15 @@ elem *
 CallExp::toElem(IRState* irs)
 {
     tree call_exp = irs->call(e1, arguments);
+    Type * e1_type = e1->type->nextOf();
+
     // Some library calls are defined to return a generic type.
     // this->type is the real type. (See crash2.d)
-    TREE_TYPE(call_exp) = type->toCtype();
+    if (e1_type && TREE_CODE(call_exp) == CALL_EXPR)
+        return irs->convertTo(call_exp, e1_type, type);
 
-    return call_exp;
+    // Use basic convert for expanded calls and delegates.
+    return convert(type->toCtype(), call_exp);
 }
 
 elem *
@@ -2999,7 +3003,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
        function, construct an expession for this member function's static chain
        by going through parent link of nested classes.
     */
-    if (! irs->functionNeedsChain(this))
+    //if (! irs->functionNeedsChain(this))
     {
         /* D 2.0 Closures: this->vthis is passed as a normal parameter and
            is valid to access as Stree before the closure frame is created. */
@@ -4913,7 +4917,7 @@ PragmaStatement::toIR(IRState *)
 }
 
 void
-ImportStatement::toIR(IRState* irs)
+ImportStatement::toIR(IRState *)
 {
     // nothing
 }

@@ -311,6 +311,7 @@ dt2tree_list_of_elems(dt_t * dt)
     // should always be constant
     TREE_CONSTANT(ctor) = 1;
 
+    D_IS_CTOR_ELEMLIST(ctor) = 1;
     return ctor;
 }
 

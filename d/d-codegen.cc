@@ -417,10 +417,13 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             {   // assume tvoid->size() == 1
                 Type * src_elem_type = ebtype->nextOf()->toBasetype();
                 Type * dst_elem_type = tbtype->nextOf()->toBasetype();
-                d_uns64 sz_a = src_elem_type->size();
-                d_uns64 sz_b = dst_elem_type->size();
 
-                if (sz_a != sz_b)
+                if (src_elem_type->ty == Tvoid || dst_elem_type->ty == Tvoid
+                    || src_elem_type->size() == dst_elem_type->size())
+                {   // Convert to/from void[] or elements are the same size -- don't change length
+                    return build1(VIEW_CONVERT_EXPR, target_type->toCtype(), exp);
+                }
+                else
                 {
                     unsigned mult = 1;
 #if V1
@@ -429,15 +432,11 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 #endif
                     tree args[3] = {
                         // assumes Type::tbit->size() == 1
-                        integerConstant(sz_b, Type::tsize_t),
-                        integerConstant(sz_a * mult, Type::tsize_t),
+                        integerConstant(dst_elem_type->size(), Type::tsize_t),
+                        integerConstant(src_elem_type->size() * mult, Type::tsize_t),
                         exp
                     };
                     return libCall(LIBCALL_ARRAYCAST, 3, args, target_type->toCtype());
-                }
-                else
-                {   // Convert to/from void[] or elements are the same size -- don't change length
-                    return build1(VIEW_CONVERT_EXPR, target_type->toCtype(), exp);
                 }
             }
 #if V2
@@ -975,16 +974,20 @@ IRState::binding(tree var_chain, tree body)
 tree
 IRState::libCall(LibCall lib_call, unsigned n_args, tree *args, tree force_result_type)
 {
-    tree result;
-    tree callee = functionPointer(getLibCallDecl(lib_call));
-    // for force_result_type, assumes caller knows what it is doing %%
-    tree result_type = force_result_type != NULL_TREE ?
-        force_result_type : TREE_TYPE(TREE_TYPE(TREE_OPERAND(callee, 0)));
+    FuncDeclaration * lib_decl = getLibCallDecl(lib_call);
+    Type * type = lib_decl->type->nextOf();
+    tree callee = functionPointer(lib_decl);
     tree arg_list = NULL_TREE;
+
     for (int i = n_args - 1; i >= 0; i--)
         arg_list = tree_cons(NULL_TREE, args[i], arg_list);
 
-    result = buildCall(result_type, callee, arg_list);
+    tree result = buildCall(type->toCtype(), callee, arg_list);
+
+    // for force_result_type, assumes caller knows what it is doing %%
+    if (force_result_type != NULL_TREE)
+        result = convert(force_result_type, result);
+
     return result;
 }
 
@@ -1626,8 +1629,12 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 type = TREE_TYPE(op1);
 
                 // %% Using TYPE_ALIGN, should be ok for size_t on 64bit...
-                op2 = integerConstant(TYPE_ALIGN(type) - 1, type);
+                op2 = integerConstant(TYPE_ALIGN(type) - 1, TREE_TYPE(op1));
                 exp = buildCall(built_in_decls[BUILT_IN_CLZL], 1, op1);
+
+                // Handle int -> long conversions.
+                if (TREE_TYPE(exp) != type)
+                    exp = fold_convert (type, exp);
 
                 return build2(MINUS_EXPR, type, op2, exp);
 
@@ -1641,10 +1648,10 @@ IRState::maybeExpandSpecialCall(tree call_exp)
 
                 // op1[op2 / align]
                 op1 = pointerIntSum(op1, build2(TRUNC_DIV_EXPR, type, op2,
-                                    integerConstant(TYPE_ALIGN(type))));
+                                    integerConstant(TYPE_ALIGN(type), type)));
 
                 // mask = 1 << (op2 & (align - 1));
-                op2 = build2(BIT_AND_EXPR, type, op2, integerConstant(TYPE_ALIGN(type) - 1));
+                op2 = build2(BIT_AND_EXPR, type, op2, integerConstant(TYPE_ALIGN(type) - 1, type));
                 op2 = build2(LSHIFT_EXPR, type, integerConstant(1, type), op2);
 
                 // cond = *op1 & mask
@@ -1653,7 +1660,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
 
                 // cond ? -1 : 0;
                 type = TREE_TYPE(call_exp);
-                exp = build3(COND_EXPR, type, exp, integerConstant(-1), integerConstant(0));
+                exp = build3(COND_EXPR, type, exp, integerConstant(-1, type), integerConstant(0, type));
 
                 if (intrinsic == INTRINSIC_BT)
                 {   // Only testing the bit.
@@ -1673,7 +1680,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                     exp = vmodify(result, exp);
                     op1 = vmodify(op1, build2(code, TREE_TYPE(op1), op1, op2));
                     op1 = compound(op1, result);
-                    return voidCompound(exp, op1);
+                    return compound(exp, op1);
                 }
 
             case INTRINSIC_BSWAP:
