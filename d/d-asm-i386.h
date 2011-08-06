@@ -248,6 +248,7 @@ enum AsmOp
     Op_DstSrcMMX,
     Op_DstSrcImmS,
     Op_DstSrcImmM,
+    Op_DstSrcXmmS,
     Op_UpdSrcShft,
     Op_DstSrcNT,
     Op_UpdSrcNT,
@@ -484,6 +485,7 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_DstSrcMMX */  { U|mmx, mmxm, 0     },  // some may not be update %%
     /* Op_DstSrcImmS*/  { U|sse, ssem, N|imm  }, // some may not be update %%
     /* Op_DstSrcImmM*/  { U|mmx, mmxm, N|imm  }, // some may not be update %%
+    /* Op_DstSrcXmmS*/  { U|sse, ssem, N|mmx  }, // some may not be update %%
     /* Op_UpdSrcShft*/  { U|mr,  reg,  N|shft, 1, Clb_Flags }, // 16/32 only
     /* Op_DstSrcNT  */  { D|mr,  mr,   0,    0 }, // used for movd .. operands can be rm32,sse,mmx
     /* Op_UpdSrcNT  */  { U|mr,  mr,   0,    0 }, // used for movd .. operands can be rm32,sse,mmx
@@ -632,6 +634,8 @@ struct AsmOpEnt
 */
 
 static AsmOpEnt opData[] = {
+    { "__emit", Op_db },  // %% Not sure...
+    { "_emit",  Op_db },
     { "aaa",    Op_Adjust },
     { "aad",    Op_Adjust },
     { "aam",    Op_Adjust },
@@ -2531,6 +2535,8 @@ struct AsmProcessor
             exp = ((AddrExp *) exp)->e1;
             is_offset = true;
         }
+        else if (exp->op == TOKsymoff)
+            is_offset = true;
 
         if (isIntExp(exp))
         {
@@ -2569,9 +2575,14 @@ struct AsmProcessor
                 }
             }
         }
-        else if (exp->op == TOKvar)
+        else if (exp->op == TOKvar || exp->op == TOKsymoff)
         {
-            VarDeclaration * v = ((VarExp *) exp)->var->isVarDeclaration();
+            VarDeclaration * v;
+            
+            if (exp->op == TOKvar)
+                v = ((VarExp *) exp)->var->isVarDeclaration();
+            else
+                v = ((SymOffExp *) exp)->var->isVarDeclaration();
 
             if (v && v->storage_class & STCfield)
             {
@@ -2973,6 +2984,7 @@ struct AsmProcessor
                     nextToken();
                     e = parseAsmExp();
                     e = new AddrExp(stmt->loc, e);
+                    e = e->semantic(sc);
                 }
                 else
                 {   // primary exp

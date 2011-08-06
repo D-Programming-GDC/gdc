@@ -403,6 +403,7 @@ AsmStatement::toIR(IRState * irs)
         AsmArg * arg = (AsmArg *) code->args.data[i];
 
         bool is_input = true;
+        TOK arg_op = arg->expr->op;
         tree arg_val = NULL_TREE;
         tree cns = NULL_TREE;
 
@@ -414,25 +415,22 @@ AsmStatement::toIR(IRState * irs)
                 cns = i_cns;
                 break;
             case Arg_Pointer:
-                if (arg->expr->op == TOKvar)
-                {
+                if (arg_op == TOKvar)
                     arg_val = ((VarExp *) arg->expr)->var->toSymbol()->Stree;
-                }
-                else if (arg->expr->op == TOKdsymbol)
-                {
+                else if (arg_op == TOKdsymbol)
                     arg_val = irs->getLabelTree((LabelDsymbol *) ((DsymbolExp *) arg->expr)->s);
-                }
                 else
-                {
                     arg_val = arg->expr->toElem(irs);
-                }
-                arg_val = irs->addressOf(arg_val);
+
+                if (arg_op != TOKaddress && arg_op != TOKsymoff && arg_op != TOKadd)
+                    arg_val = irs->addressOf(arg_val);
+
                 cns = p_cns;
                 break;
             case Arg_Memory:
-                if (arg->expr->op == TOKvar)
+                if (arg_op == TOKvar)
                     arg_val = ((VarExp *) arg->expr)->var->toSymbol()->Stree;
-                else if (arg->expr->op == TOKfloat64)
+                else if (arg_op == TOKfloat64)
                 {
                     /* Constant scalar value.  In order to reference it as memory,
                        create an anonymous static var. */
@@ -457,7 +455,7 @@ AsmStatement::toIR(IRState * irs)
                 }
                 break;
             case Arg_FrameRelative:
-                if (arg->expr->op == TOKvar)
+                if (arg_op == TOKvar)
                     arg_val = ((VarExp *) arg->expr)->var->toSymbol()->Stree;
                 else
                     gcc_unreachable();
