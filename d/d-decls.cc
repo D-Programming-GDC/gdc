@@ -472,8 +472,6 @@ Symbol *FuncDeclaration::toSymbol()
         if (! isym)
         {
             tree id;
-            //struct prod_token_parm_item* parm;
-            //tree type_node;
             TypeFunction * func_type = (TypeFunction *)(tintro ? tintro : type);
             tree fn_decl;
 
@@ -496,17 +494,13 @@ Symbol *FuncDeclaration::toSymbol()
             }
 
             tree fn_type = func_type->toCtype();
-            dkeep(fn_type); /* TODO: fix this. we need to keep the type because
-                               the creation of a method type below leaves this fn_type
-                               unreferenced. maybe lang_specific.based_on */
+            tree new_fn_type = NULL_TREE;
 
             tree vindex = NULL_TREE;
             if (isNested())
             {   /* Even if DMD-style nested functions are not implemented, add an
                    extra argument to be compatible with delegates. */
-
-                // irs->functionType(func_type, Type::tvoid);
-                fn_type = build_method_type(void_type_node, fn_type);
+                new_fn_type = build_method_type(void_type_node, fn_type);
             }
             else if (isThis())
             {   // Do this even if there is no debug info.  It is needed to make
@@ -518,27 +512,31 @@ Symbol *FuncDeclaration::toSymbol()
 
                 gcc_assert(agg_decl != NULL);
 
-                tree method_type = NULL_TREE;
                 tree handle = agg_decl->handle->toCtype();
 #if STRUCTTHISREF
                 if (agg_decl->isStructDeclaration())
                 {   // Handle not a pointer type
-                    method_type = build_method_type(handle, fn_type);
+                    new_fn_type = build_method_type(handle, fn_type);
                 }
                 else
 #endif
                 {
-                    method_type = build_method_type(TREE_TYPE(handle), fn_type);
+                    new_fn_type = build_method_type(TREE_TYPE(handle), fn_type);
                 }
-                TYPE_ATTRIBUTES(method_type) = TYPE_ATTRIBUTES(fn_type);
-                fn_type = method_type;
 
                 if (isVirtual())
                     vindex = size_int(vtblIndex);
             }
             else if (isMain() && func_type->nextOf()->toBasetype()->ty == Tvoid)
             {
-                fn_type = build_function_type(integer_type_node, TYPE_ARG_TYPES(fn_type));
+                new_fn_type = build_function_type(integer_type_node, TYPE_ARG_TYPES(fn_type));
+            }
+
+            if (new_fn_type != NULL_TREE)
+            {
+                TYPE_ATTRIBUTES(new_fn_type) = TYPE_ATTRIBUTES(fn_type);
+                TYPE_LANG_SPECIFIC(new_fn_type) = TYPE_LANG_SPECIFIC(fn_type);
+                fn_type = new_fn_type;
             }
 
             // %%CHECK: is it okay for static nested functions to have a FUNC_DECL context?

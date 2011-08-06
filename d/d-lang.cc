@@ -1927,6 +1927,7 @@ build_d_type_lang_specific(Type * t)
     l = (struct lang_type *) ggc_alloc_cleared(sz);
 #endif
     l->d_type = t;
+    l->c_type = t->ctype;
     return l;
 }
 

@@ -3741,9 +3741,7 @@ TypeFunction::toCtype()
             default:
                 fprintf(stderr, "linkage = %d\n", linkage);
                 gcc_unreachable();
-            }
-
-        dkeep(ctype);
+        }
     }
     return ctype;
 }
@@ -3807,7 +3805,7 @@ TypeDArray::toCtype()
         // should be treated as two distinct types in GCC.
         SET_TYPE_STRUCTURAL_EQUALITY(ctype);
 #endif
-        dkeep(ctype);
+        TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
     }
     return gen.addTypeModifiers(ctype, mod);
 }
@@ -3835,7 +3833,7 @@ TypeAArray::toCtype()
             TYPE_FIELDS(aa_type) = f0;
             TYPE_NAME(aa_type) = get_identifier(toChars());
             layout_type(aa_type);
-            dkeep(aa_type);
+            TYPE_LANG_SPECIFIC(aa_type) = build_d_type_lang_specific(this);
         }
         ctype = aa_type;
     }
@@ -3860,7 +3858,7 @@ TypeDelegate::toCtype()
         gcc_assert(next->toBasetype()->ty == Tfunction);
         ctype = gen.twoFieldType(Type::tvoidptr, next->pointerTo(),
                                  this, "object", "func");
-        dkeep(ctype);
+        TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
     }
     return gen.addTypeModifiers(ctype, mod);
 }

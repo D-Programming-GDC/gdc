@@ -52,6 +52,7 @@ struct Type;
 typedef struct Type *TypeGTYP;
 struct lang_type GTY(())
 {
+    tree GTY((skip(""))) c_type;
     TypeGTYP GTY((skip(""))) d_type;
 };
 
