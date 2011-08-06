@@ -3612,10 +3612,11 @@ TypeStruct::toCtype()
 
         TYPE_CONTEXT(ctype) = gen.declContext(sym);
 
-#if V2 && D_GCC_VER >= 45
+#if D_GCC_VER >= 43
         // For aggregates GCC now relies on TYPE_CANONICAL exclusively
         // to show that two variant types are structurally equal.
-        TYPE_CANONICAL(ctype) = castMod(0)->toCtype();
+        // %% Now conversions now handled in d_gimplify_expr.
+        SET_TYPE_STRUCTURAL_EQUALITY(ctype);
 #endif
         g.ofile->initTypeDecl(ctype, sym);
 
@@ -3715,6 +3716,7 @@ TypeFunction::toCtype()
 
         // Function type can be reference by parameters, etc.  Set ctype earlier?
         ctype = build_function_type(ret_type, type_list.head);
+        TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
 
         switch (linkage)
         {
@@ -3797,24 +3799,13 @@ TypeDArray::toCtype()
 {
     if (! ctype)
     {
-        if (mod)
-        {   /* Rather than making const(T[]) and const(T)[] two distinct
-               types, make the former a variant of the latter, and apply
-               modifiers afterwards. */
-            ctype = next->arrayOf()->toCtype();
-        }
-        else
-        {
-            ctype = gen.twoFieldType(Type::tsize_t, next->pointerTo(), this,
-                    "length", "ptr");
-        }
-#if V2
-        if (basic[next->ty])
-        {   /* Basic array type always the main variant of this record type.
-               Addresses problems with transparency in the const system. */
-            tree btype = basic[next->ty]->arrayOf()->toCtype();
-            TYPE_MAIN_VARIANT(ctype) = btype;
-        }
+        ctype = gen.twoFieldType(Type::tsize_t, next->pointerTo(), this,
+                                 "length", "ptr");
+#if D_GCC_VER >= 43
+        // Don't rely on tree type information to determine whether
+        // two distinct D types: ie: const(T[]) and const(T)[]
+        // should be treated as two distinct types in GCC.
+        SET_TYPE_STRUCTURAL_EQUALITY(ctype);
 #endif
         dkeep(ctype);
     }
