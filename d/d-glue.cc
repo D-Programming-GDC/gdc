@@ -1735,15 +1735,10 @@ elem *
 CallExp::toElem(IRState* irs)
 {
     tree call_exp = irs->call(e1, arguments);
-    Type * e1_type = e1->type->nextOf();
 
     // Some library calls are defined to return a generic type.
     // this->type is the real type. (See crash2.d)
-    if (e1_type && TREE_CODE(call_exp) == CALL_EXPR)
-        return irs->convertTo(call_exp, e1_type, type);
-
-    // Use basic convert for expanded calls and delegates.
-    return convert(type->toCtype(), call_exp);
+    return irs->vconvert(call_exp, type->toCtype());
 }
 
 elem *

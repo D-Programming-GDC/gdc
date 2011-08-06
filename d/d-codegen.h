@@ -420,6 +420,11 @@ struct IRState : IRBase
         return build1(NOP_EXPR, t, e);
     }
 
+    static tree vconvert(tree e, tree t)
+    {
+        return build1(VIEW_CONVERT_EXPR, t, e);
+    }
+
     // DMD allows { void[] a; & a[3]; }
     static tree
     pvoidOkay(tree t)
@@ -482,11 +487,12 @@ struct IRState : IRBase
     // Giving error_mark_node a type allows for some assumptions about
     // the type of an arbitrary expression.
     static tree errorMark(Type * t);
-    static bool isErrorMark(tree t)
+    static inline bool isErrorMark(tree t)
     {
-        return TREE_CODE(t) == ERROR_MARK ||
-                (TREE_CODE(t) == NOP_EXPR &&
-                 TREE_CODE(TREE_OPERAND(t, 0)) == ERROR_MARK);
+        return t == error_mark_node
+                || (t && TREE_TYPE(t) == error_mark_node)
+                || (t && TREE_CODE(t) == NOP_EXPR &&
+                    TREE_OPERAND(t, 0) == error_mark_node);
     }
 
     // ** Helpers for call

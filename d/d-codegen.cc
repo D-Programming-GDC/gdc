@@ -30,6 +30,7 @@
 #include "init.h"
 #include "symbol.h"
 #include "dt.h"
+#include "id.h"
 
 GlobalValues g;
 IRState gen;
@@ -298,7 +299,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             {
                 if (target_type->size() == exp_type->size())
                 {   // Allowed to cast to structs with same type size.
-                    result = indirect(addressOf(exp), target_type->toCtype());
+                    result = vconvert(exp, target_type->toCtype());
                 }
                 else
                 {
@@ -393,13 +394,13 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             }
             else if (tbtype->ty == Tsarray)
             {   // DMD apparently allows casting a static array to any static array type
-                return indirect(addressOf(exp), target_type->toCtype());
+                return vconvert(exp, target_type->toCtype());
             }
             else if (tbtype->ty == Tstruct)
             {   // And allows casting a static array to any struct type too.
                 // %% type sizes should have already been checked by the frontend.
                 gcc_assert(target_type->size() == exp_type->size());
-                result = indirect(addressOf(exp), target_type->toCtype());
+                result = vconvert(exp, target_type->toCtype());
             }
             else
             {
@@ -417,11 +418,12 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             {   // assume tvoid->size() == 1
                 Type * src_elem_type = ebtype->nextOf()->toBasetype();
                 Type * dst_elem_type = tbtype->nextOf()->toBasetype();
+                d_uns64 sz_src = src_elem_type->size();
+                d_uns64 sz_dst = dst_elem_type->size();
 
-                if (src_elem_type->ty == Tvoid || dst_elem_type->ty == Tvoid
-                    || src_elem_type->size() == dst_elem_type->size())
-                {   // Convert to/from void[] or elements are the same size -- don't change length
-                    return build1(VIEW_CONVERT_EXPR, target_type->toCtype(), exp);
+                if (src_elem_type->ty == Tvoid || sz_src == sz_dst)
+                {   // Convert from void[] or elements are the same size -- don't change length
+                    return vconvert(exp, target_type->toCtype());
                 }
                 else
                 {
@@ -432,8 +434,8 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
 #endif
                     tree args[3] = {
                         // assumes Type::tbit->size() == 1
-                        integerConstant(dst_elem_type->size(), Type::tsize_t),
-                        integerConstant(src_elem_type->size() * mult, Type::tsize_t),
+                        integerConstant(sz_dst, Type::tsize_t),
+                        integerConstant(sz_src * mult, Type::tsize_t),
                         exp
                     };
                     return libCall(LIBCALL_ARRAYCAST, 3, args, target_type->toCtype());
@@ -455,7 +457,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             break;
         case Taarray:
             if (tbtype->ty == Taarray)
-                return build1(VIEW_CONVERT_EXPR, target_type->toCtype(), exp);
+                return vconvert(exp, target_type->toCtype());
             // else, default conversion, which should product an error
             break;
         case Tpointer:
@@ -465,7 +467,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                 exp = d_convert_basic(d_type_for_size(POINTER_SIZE, 1), exp);
             // Can convert void pointers to associative arrays too...
             else if (tbtype->ty == Taarray && ebtype == Type::tvoidptr)
-                return build1(VIEW_CONVERT_EXPR, target_type->toCtype(), exp);
+                return vconvert(exp, target_type->toCtype());
             break;
         default:
         {
@@ -986,7 +988,7 @@ IRState::libCall(LibCall lib_call, unsigned n_args, tree *args, tree force_resul
 
     // for force_result_type, assumes caller knows what it is doing %%
     if (force_result_type != NULL_TREE)
-        result = convert(force_result_type, result);
+        return vconvert(result, force_result_type);
 
     return result;
 }

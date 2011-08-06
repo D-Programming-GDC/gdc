@@ -81,6 +81,11 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function
 #endif
 
+#if D_GCC_VER >= 43
+#undef LANG_HOOKS_GIMPLIFY_EXPR
+#define LANG_HOOKS_GIMPLIFY_EXPR            d_gimplify_expr
+#endif
+
 #if D_GCC_VER >= 44
 #undef LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE
 #define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE d_builtin_function43
@@ -826,6 +831,68 @@ d_hook_get_alias_set(tree)
 {
     return 0;
 }
+
+/* Gimplification of expression trees.  */
+#if D_GCC_VER >= 44
+int
+d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
+                 gimple_seq *post_p ATTRIBUTE_UNUSED)
+{
+    enum tree_code code = TREE_CODE (*expr_p);
+    switch (code)
+    {
+        case MODIFY_EXPR:
+        {
+            /* If the back end isn't clever enough to know that the lhs and rhs
+               types are the same, add an explicit conversion.  */
+            tree op0 = TREE_OPERAND (*expr_p, 0);
+            tree op1 = TREE_OPERAND (*expr_p, 1);
+
+            if (!gen.isErrorMark(op0) && !gen.isErrorMark(op1)
+                && (TYPE_STRUCTURAL_EQUALITY_P (TREE_TYPE (op0))
+                    || TYPE_STRUCTURAL_EQUALITY_P (TREE_TYPE (op1)))
+                && !useless_type_conversion_p (TREE_TYPE (op1), TREE_TYPE (op0)))
+            {
+                TREE_OPERAND (*expr_p, 1) = build1 (VIEW_CONVERT_EXPR,
+                                                    TREE_TYPE (op0), op1);
+            }
+        }
+
+        default:
+            return GS_UNHANDLED;
+    }
+}
+#elif D_GCC_VER >= 43
+int
+d_gimplify_expr (tree *expr_p, tree *pre_p ATTRIBUTE_UNUSED,
+                 tree *post_p ATTRIBUTE_UNUSED)
+{
+    enum tree_code code = TREE_CODE (*expr_p);
+    switch (code)
+    {
+        case MODIFY_EXPR:
+        {
+            /* If the back end isn't clever enough to know that the lhs and rhs
+               types are the same, add an explicit conversion.  */
+            tree op0 = TREE_OPERAND (*expr_p, 0);
+            tree op1 = TREE_OPERAND (*expr_p, 1);
+
+            if (!gen.isErrorMark(op0) && !gen.isErrorMark(op1)
+                && (TYPE_STRUCTURAL_EQUALITY_P (TREE_TYPE (op0))
+                    || TYPE_STRUCTURAL_EQUALITY_P (TREE_TYPE (op1)))
+                && !useless_type_conversion_p (TREE_TYPE (op1), TREE_TYPE (op0)))
+            {
+                TREE_OPERAND (*expr_p, 1) = build1 (VIEW_CONVERT_EXPR,
+                                                    TREE_TYPE (op0), op1);
+            }
+        }
+
+        default:
+            return GS_UNHANDLED;
+    }
+    return GS_UNHANDLED;
+}
+#endif
 
 static Module * an_output_module = 0;
 
