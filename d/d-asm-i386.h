@@ -651,6 +651,10 @@ static AsmOpEnt opData[] = {
     { "andpd",  Op_DstSrcSSE },
     { "andps",  Op_DstSrcSSE },
     { "arpl",   Op_UpdSrcNT },
+    { "blendpd", Op_DstSrcImmS },
+    { "blendps", Op_DstSrcImmS },
+    { "blendvpd", Op_DstSrcXmmS },
+    { "blendvps", Op_DstSrcXmmS },
     { "bound",  Op_bound },
     { "bsf",    Op_SrcSrcFW },
     { "bsr",    Op_SrcSrcFW },
@@ -711,6 +715,7 @@ static AsmOpEnt opData[] = {
     { "comisd", Op_SrcSrcSSEF },
     { "comiss", Op_SrcSrcSSEF },
     { "cpuid",  Op_cpuid },
+    { "crc32",  Op_DstSrc },
     { "cvtdq2pd", Op_DstSrcSSE },
     { "cvtdq2ps", Op_DstSrcSSE },
     { "cvtpd2dq", Op_DstSrcSSE },
@@ -758,6 +763,7 @@ static AsmOpEnt opData[] = {
     { "dw",    Op_ds },
     { "emms",  Op_0 }, // clobber all mmx/fp?
     { "enter", Op_enter },
+    { "extractps", Op_DstSrcImmS },
     { "even",  Op_Even },
     { "f2xm1",  Op_F0_ST }, // %% most of these are update...
     { "fabs",   Op_F0_ST },
@@ -871,6 +877,7 @@ static AsmOpEnt opData[] = {
     { "ins",  Op_ins },
     { "insb", Op_insX },
     { "insd", Op_insX },
+    { "insertps", Op_DstSrcImmS },
     { "insw", Op_insX },
     { "int",  Op_SrcImm },
     { "into", Op_0 },
@@ -968,6 +975,7 @@ static AsmOpEnt opData[] = {
     { "movmskpd",Op_DstSrcSSE },
     { "movmskps",Op_DstSrcSSE },
     { "movntdq", Op_DstSrcNT  }, // limited to sse, but mem dest
+    { "movntdqa", Op_DstSrcNT }, // limited to sse, but mem dest
     { "movnti",  Op_DstSrcNT  }, // limited to gpr, but mem dest
     { "movntpd", Op_DstSrcNT  }, // limited to sse, but mem dest
     { "movntps", Op_DstSrcNT  }, // limited to sse, but mem dest
@@ -985,6 +993,7 @@ static AsmOpEnt opData[] = {
     { "movupd",Op_DstSrcSSE },
     { "movups",Op_DstSrcSSE },
     { "movzx", Op_movzx },
+    { "mpsadbw", Op_DstSrcImmS },
     { "mul",   Op_mul },
     { "mulpd", Op_DstSrcSSE },
     { "mulps", Op_DstSrcSSE },
@@ -1007,6 +1016,7 @@ static AsmOpEnt opData[] = {
     { "pabsd",  Op_DstSrcSSE },
     { "pabsw",  Op_DstSrcSSE },
     { "packssdw", Op_DstSrcMMX }, // %% also SSE
+    { "packusdw", Op_DstSrcMMX },
     { "packsswb", Op_DstSrcMMX },
     { "packuswb", Op_DstSrcMMX },
     { "paddb",    Op_DstSrcMMX },
@@ -1023,12 +1033,22 @@ static AsmOpEnt opData[] = {
     { "pavgb",    Op_DstSrcMMX },
     { "pavgusb",  Op_DstSrcMMX }, // AMD 3dNow!
     { "pavgw",    Op_DstSrcMMX },
+    { "pblendvb", Op_DstSrcXmmS },
+    { "pblendw",  Op_DstSrcImmS },
     { "pcmpeqb",  Op_DstSrcMMX },
     { "pcmpeqd",  Op_DstSrcMMX },
+    { "pcmpeqq",  Op_DstSrcMMX },
     { "pcmpeqw",  Op_DstSrcMMX },
+    { "pcmpestri", Op_DstSrcImmS },
+    { "pcmpestrm", Op_DstSrcImmS },
+    { "pcmpistri", Op_DstSrcImmS },
+    { "pcmpistrm", Op_DstSrcImmS },
     { "pcmpgtb",  Op_DstSrcMMX },
     { "pcmpgtd",  Op_DstSrcMMX },
+    { "pcmpgtq",  Op_DstSrcMMX },
     { "pcmpgtw",  Op_DstSrcMMX },
+    { "pextrd",   Op_DstSrcImmM }, // gpr32 dest
+    { "pextrq",   Op_DstSrcImmM }, // gpr64 dest
     { "pextrw",   Op_DstSrcImmM }, // gpr32 dest
     { "pf2id",    Op_DstSrcMMX }, // %% AMD 3dNow! opcodes
     { "pf2iw",    Op_DstSrcMMX },
@@ -1052,19 +1072,45 @@ static AsmOpEnt opData[] = {
     { "phaddd",   Op_DstSrcSSE },
     { "phaddsw",  Op_DstSrcSSE },
     { "phaddw",   Op_DstSrcSSE },
+    { "phminposuw", Op_DstSrcSSE },
     { "phsubd",  Op_DstSrcSSE },
     { "phsubsw", Op_DstSrcSSE },
     { "phsubw",  Op_DstSrcSSE },
     { "pi2fd",    Op_DstSrcMMX },
     { "pi2fw",    Op_DstSrcMMX }, // %%
+    { "pinsrb",   Op_DstSrcImmM }, // gpr32, sse too
+    { "pinsrd",   Op_DstSrcImmM }, // gpr32, sse too
+    { "pinsrq",   Op_DstSrcImmM }, // gpr64, sse too
     { "pinsrw",   Op_DstSrcImmM }, // gpr32(16), mem16 src, sse too
     { "pmaddubsw",Op_DstSrcSSE },
     { "pmaddwd",  Op_DstSrcMMX },
+    { "pmaxsb",   Op_DstSrcMMX },
+    { "pmaxsd",   Op_DstSrcMMX },
     { "pmaxsw",   Op_DstSrcMMX },
     { "pmaxub",   Op_DstSrcMMX },
+    { "pmaxud",   Op_DstSrcMMX },
+    { "pmaxuw",   Op_DstSrcMMX },
+    { "pminsb",   Op_DstSrcMMX },
+    { "pminsd",   Op_DstSrcMMX },
     { "pminsw",   Op_DstSrcMMX },
     { "pminub",   Op_DstSrcMMX },
+    { "pminud",   Op_DstSrcMMX },
+    { "pminuw",   Op_DstSrcMMX },
     { "pmovmskb", Op_DstSrcMMX },
+    { "pmovsxbd", Op_DstSrcMMX },
+    { "pmovsxbq", Op_DstSrcMMX },
+    { "pmovsxbw", Op_DstSrcMMX },
+    { "pmovsxdq", Op_DstSrcMMX },
+    { "pmovsxwd", Op_DstSrcMMX },
+    { "pmovsxwq", Op_DstSrcMMX },
+    { "pmovzxbd", Op_DstSrcMMX },
+    { "pmovzxbq", Op_DstSrcMMX },
+    { "pmovzxdq", Op_DstSrcMMX },
+    { "pmovzxbw", Op_DstSrcMMX },
+    { "pmovzxwd", Op_DstSrcMMX },
+    { "pmovsxwq", Op_DstSrcMMX },
+    { "pmuldq",   Op_DstSrcMMX }, // also sse
+    { "pmulld",   Op_DstSrcMMX }, // also sse
     { "pmulhrsw", Op_DstSrcMMX },
     { "pmulhrw",  Op_DstSrcMMX }, // AMD 3dNow!
     { "pmulhuw",  Op_DstSrcMMX },
@@ -1074,6 +1120,7 @@ static AsmOpEnt opData[] = {
     { "pop",      Op_DstW },
     { "popa",     Op_SizedStack },  // For intel this is always 16-bit
     { "popad",    Op_SizedStack },  // GAS doesn't accept 'popad' -- these clobber everything, but supposedly it would be used to preserve clobbered regs
+    { "popcnt",   Op_DstSrc },
     { "popf",     Op_SizedStack },  // rewrite the insn with a special case
     { "popfd",    Op_SizedStack },
     { "por",      Op_DstSrcMMX },
@@ -1140,7 +1187,11 @@ static AsmOpEnt opData[] = {
     { "retf",   Op_retf },
     { "rol",    Op_Shift },
     { "ror",    Op_Shift },
-    { "rsm",    Op_0 },
+    { "roundpd", Op_DstSrcImmS },
+    { "roundps", Op_DstSrcImmS },
+    { "roundsd", Op_DstSrcImmS },
+    { "roundss", Op_DstSrcImmS },
+    { "rsm",     Op_0 },
     { "rsqrtps", Op_DstSrcSSE },
     { "rsqrtss", Op_DstSrcSSE },
     { "sahf",   Op_Flags },
