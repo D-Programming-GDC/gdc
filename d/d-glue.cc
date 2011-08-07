@@ -1244,24 +1244,7 @@ AssignExp::toElem(IRState* irs)
         }
 
         tree result = build2(MODIFY_EXPR, type->toCtype(), lhs, rhs);
-        result = irs->maybeCompound(init, result);
-#if V2
-        // Maybe setup hidden pointer to outer scope context.
-        if (e1->type->ty == Tstruct)
-        {
-            StructDeclaration * sd = ((TypeStruct *)e1->type)->sym;
-            if (sd->isNested())
-            {
-                tree vthis_field = sd->vthis->toSymbol()->Stree;
-                tree vthis_value = irs->getVThis(sd, this);
-
-                tree vthis_exp = build2(MODIFY_EXPR, TREE_TYPE(vthis_field),
-                        irs->component(lhs, vthis_field), vthis_value);
-                result = irs->maybeCompound(result, vthis_exp);
-            }
-        }
-#endif
-        return result;
+        return irs->maybeCompound(init, result);
     }
     else
     {   // Simple assignment

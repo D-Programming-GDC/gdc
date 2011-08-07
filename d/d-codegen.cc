@@ -97,7 +97,7 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
         {
             ExpInitializer * exp_init = v->init->isExpInitializer();
             Expression * ie = exp_init->toExpression();
-            if (ie->op == TOKconstruct || ! (init_val = assignValue(ie, v)))
+            if (! (init_val = assignValue(ie, v)))
                 init_exp = ie->toElem(this);
         }
         else
@@ -2427,7 +2427,7 @@ IRState::imagPart(tree c)
 tree
 IRState::assignValue(Expression * e, VarDeclaration * v)
 {
-    if (e->op == TOKassign || e->op == TOKconstruct || e->op == TOKblit)
+    if (e->op == TOKassign || e->op == TOKblit)
     {
         AssignExp * a_exp = (AssignExp *) e;
         if (a_exp->e1->op == TOKvar && ((VarExp *) a_exp->e1)->var == v)
