@@ -3377,7 +3377,6 @@ struct AsmProcessor
                         case Op_dl:
                             insnTemplate->writestring(directives[op - Op_db]);
                             insnTemplate->writebyte(' ');
-                            insnTemplate->printf("%u", intvalue);
    
                             if (op != Op_dl)
                                 insnTemplate->printf("%u", (d_uns32) intvalue);

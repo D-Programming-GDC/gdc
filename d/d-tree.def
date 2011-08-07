@@ -16,3 +16,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+/* Used to represent a D inline assembly statement, an intermediate
+   representation of an ASM_EXPR.  Reserved for future use and
+   implementation yet to be defined.  */
+DEFTREECODE (IASM_EXPR, "iasm_expr", tcc_statement, 5)
