@@ -303,7 +303,11 @@ enum AsmOp
     Op_FCmp1,
     Op_FCmpP,
     Op_FCmpP1,
+    Op_FCmpFlg0,
+    Op_FCmpFlg1,
     Op_FCmpFlg,
+    Op_FCmpFlgP0,
+    Op_FCmpFlgP1,
     Op_FCmpFlgP,
     Op_fld,
     Op_fldR,
@@ -540,8 +544,12 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_FCmp1     */  {   rfp, 0,    0,    0,        0,      Next_Form, Op_0 },
     /* Op_FCmpP     */  {   mfp, 0,    0,    FP_Types, 0,      Next_Form, Op_FCmpP1 }, // pops
     /* Op_FCmpP1    */  {   rfp, 0,    0,    0,        0,      Next_Form, Op_F0_P }, // pops
-    /* Op_FCmpFlg   */  {   rfp, rfp,  0,    0,        Clb_Flags },
-    /* Op_FCmpFlgP  */  {   rfp, rfp,  0,    0,        Clb_Flags }, // pops
+    /* Op_FCmpFlg0  */  {   0,   0,    0,    0,        Clb_Flags },
+    /* Op_FCmpFlg1  */  {   rfp, 0,    0,    0,        Clb_Flags, Next_Form, Op_FCmpFlg0 },
+    /* Op_FCmpFlg   */  {   rfp, rfp,  0,    0,        Clb_Flags, Next_Form, Op_FCmpFlg1 },
+    /* Op_FCmpFlgP0 */  {   0,   0,    0,    0,        Clb_Flags }, // pops
+    /* Op_FCmpFlgP1 */  {   rfp, 0,    0,    0,        Clb_Flags, Next_Form, Op_FCmpFlgP0 }, // pops
+    /* Op_FCmpFlgP  */  {   rfp, rfp,  0,    0,        Clb_Flags, Next_Form, Op_FCmpFlgP1 }, // pops
     /* Op_fld       */  {   mfp, 0,    0,    FP_Types, Clb_ST, Next_Form, Op_fldR },
     /* Op_fldR      */  {   rfp, 0,    0,    0,        Clb_ST },
     /* Op_fxch      */  { D|rfp,D|rfp, 0,    0,        Clb_ST, Next_Form, Op_fxch1 }, // not in intel manual?, but DMD allows it (gas won't), second arg must be ST
@@ -589,7 +597,7 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
     /* Op_scasX     */  {   0,   0,   0,     0, Clb_DI|Clb_Flags },
     /* Op_stos      */  {   mem, 0,   0,     1, Clb_DI },
     /* Op_stosX     */  {   0,   0,   0,     0, Clb_DI },
-    /* Op_xlat      */  {   mem, 0,   0,     0, Clb_SizeAX }
+    /* Op_xlat      */  {   mem, 0,   0,     0, Clb_SizeAX, Next_Form, Op_0_AX }
 
     /// * Op_arpl      */  { D|mr,  reg }, // 16 only -> DstSrc
     /// * Op_bsX       */  {   rw,  mrw,  0,    1, Clb_Flags },//->srcsrcf
@@ -1045,12 +1053,12 @@ static AsmOpEnt opData[] = {
     { "pcmpeqw",  Op_DstSrcMMX },
     { "pcmpestri", Op_DstSrcImmS },
     { "pcmpestrm", Op_DstSrcImmS },
-    { "pcmpistri", Op_DstSrcImmS },
-    { "pcmpistrm", Op_DstSrcImmS },
     { "pcmpgtb",  Op_DstSrcMMX },
     { "pcmpgtd",  Op_DstSrcMMX },
     { "pcmpgtq",  Op_DstSrcMMX },
     { "pcmpgtw",  Op_DstSrcMMX },
+    { "pcmpistri", Op_DstSrcImmS },
+    { "pcmpistrm", Op_DstSrcImmS },
     { "pextrd",   Op_DstSrcImmM }, // gpr32 dest
     { "pextrq",   Op_DstSrcImmM }, // gpr64 dest
     { "pextrw",   Op_DstSrcImmM }, // gpr32 dest
@@ -1114,11 +1122,11 @@ static AsmOpEnt opData[] = {
     { "pmovzxwd", Op_DstSrcMMX },
     { "pmovsxwq", Op_DstSrcMMX },
     { "pmuldq",   Op_DstSrcMMX }, // also sse
-    { "pmulld",   Op_DstSrcMMX }, // also sse
     { "pmulhrsw", Op_DstSrcMMX },
     { "pmulhrw",  Op_DstSrcMMX }, // AMD 3dNow!
     { "pmulhuw",  Op_DstSrcMMX },
     { "pmulhw",   Op_DstSrcMMX },
+    { "pmulld",   Op_DstSrcMMX }, // also sse
     { "pmullw",   Op_DstSrcMMX },
     { "pmuludq",  Op_DstSrcMMX }, // also sse
     { "pop",      Op_DstW },
@@ -2295,7 +2303,7 @@ struct AsmProcessor
                     if (operand->symbolDisplacement.dim)
                     {
                         Expression * e = (Expression *) operand->symbolDisplacement.data[0];
-                        Declaration * decl = 0;
+                        Declaration * decl = NULL;
 
                         /* We are generating a memory reference, but the
                            operand could be a floating point constant.  If this
@@ -2634,9 +2642,31 @@ struct AsmProcessor
             // Will be converted to a VAR_DECL in AsmStatement::toIR
             operand->symbolDisplacement.push(exp);
         }
+        else if(exp->op == TOKtuple)
+        {
+            TupleExp * te = ((TupleExp *) exp);
+            sinteger_t index = operand->constDisplacement;
+
+            if (index >= te->exps->dim)
+            {
+                stmt->error("tuple index %u exceeds length %u", index, te->exps->dim);
+            }
+            else
+            {
+                Expression * e = (Expression *) te->exps->data[index];
+                if (e->op == TOKvar || e->op == TOKfunction)
+                {
+                    operand->symbolDisplacement.push(e);
+                    operand->constDisplacement = 0;
+                }
+                else
+                    stmt->error("invalid asm operand %s", e->toChars());
+            }
+
+        }
         else if (exp != Handled)
         {
-            stmt->error("invalid operand");
+            stmt->error("invalid operand %s", exp->toChars());
         }
     }
 
@@ -3037,6 +3067,7 @@ struct AsmProcessor
                 break;
 
             case TOKidentifier:
+            case TOKthis:
                 ident = token->ident;
                 nextToken();
 
@@ -3227,83 +3258,153 @@ struct AsmProcessor
         machine_mode mode;
 
         while (1)
-        {   // DMD is pretty strict here, not even constant expressions are allowed..
-            switch (op)
+        {   // DMD is pretty strict here, not even constant expressions are allowed.
+            d_uns64 intvalue;
+            unsigned char* strvalue;
+            size_t strlength;
+            real_value fltvalue;
+            long words[3];
+
+            if (token->value == TOKidentifier)
             {
-                case Op_db:
-                case Op_ds:
-                case Op_di:
-                case Op_dl:
-                    if (token->value == TOKint32v || token->value == TOKuns32v ||
-                        token->value == TOKint64v || token->value == TOKuns64v)
-                    {   // As per usual with GNU, assume at least 32-bit host
+                Expression * e = new IdentifierExp(stmt->loc, token->ident);
+                e = e->semantic(sc);
+                e = e->optimize(WANTvalue | WANTinterpret);
+                if (e->op == TOKint64)
+                {
+                    intvalue = e->toInteger();
+                    goto op_integer;
+                }
+                else if (e->op == TOKfloat64)
+                {
+                    fltvalue = e->toReal().rv();
+                    goto op_float;
+                }
+                else if (e->op == TOKstring)
+                {
+                    StringExp * s = (StringExp *) e;
+                    strvalue = (unsigned char *) s->string;
+                    strlength = s->len;
+                    goto op_string;
+                }
+            }
+
+            if (token->value == TOKint32v || token->value == TOKuns32v ||
+                token->value == TOKint64v || token->value == TOKuns64v)
+            {
+                intvalue = token->uns64value;
+
+            op_integer:
+                switch (op)
+                {
+                    case Op_db:
+                    case Op_ds:
+                    case Op_di:
+                    case Op_dl:
                         insnTemplate->writestring(directives[op - Op_db]);
                         insnTemplate->writebyte(' ');
 
                         if (op != Op_dl)
-                            insnTemplate->printf("%u", (d_uns32) token->uns64value);
+                            insnTemplate->printf("%u", (d_uns32) intvalue);
                         else
-                        {   // Output two .longS.  GAS has .quad, but would have to rely on 'L' format ..
+                        {   // Output two .longs.  GAS has .quad, but would have to rely on 'L' format ..
                             // just need to use HOST_WIDE_INT_PRINT_DEC
-                            insnTemplate->printf("%u,%u",
-                                    (d_uns32) token->uns64value, (d_uns32) (token->uns64value >> 32));
+                            insnTemplate->printf("%u,%u", (d_uns32) intvalue, (d_uns32) (intvalue >> 32));
                         }
-                    }
-                    else if (token->value == TOKstring)
-                    {
-                        insnTemplate->printf(".string %s", token->toChars());
-                    }
-                    else
-                    {
-                        stmt->error("constant initializer expected");
-                    }
-                    break;
+                        break;
 
-                case Op_df:
-                    mode = SFmode;
-                    goto do_float;
+                    default:
+                        stmt->error("floating point expected");
+                }
+            }
+            else if (token->value == TOKfloat32v || token->value == TOKfloat64v ||
+                     token->value == TOKfloat80v)
+            {
+                fltvalue = token->float80value.rv();
 
-                case Op_dd:
-                    mode = DFmode;
-                    goto do_float;
+            op_float:
+                switch (op)
+                {
+                    case Op_df:
+                        mode = SFmode;
+                        goto do_float;
 
-                case Op_de:
+                    case Op_dd:
+                        mode = DFmode;
+                        goto do_float;
+
+                    case Op_de:
 #ifndef TARGET_80387
 #define XFmode TFmode
 #endif
-                    mode = XFmode; // not TFmode
+                        mode = XFmode; // not TFmode
 
-                do_float:
-                    if (token->value == TOKfloat32v || token->value == TOKfloat64v ||
-                        token->value == TOKfloat80v)
-                    {
+                    do_float:
+                        real_to_target(words, & fltvalue, mode);
                         insnTemplate->writestring(directives[op - Op_db]);
                         insnTemplate->writebyte(' ');
 
-                        long words[3];
-                        real_to_target(words, & token->float80value.rv(), mode);
                         // don't use directives..., just use .long like GCC
                         insnTemplate->printf(".long %u", words[0]);
                         if (mode != SFmode)
                             insnTemplate->printf(",%u", words[1]);
                         // DMD outputs 10 bytes, so we need to switch to .short here
                         if (mode == XFmode)
-                            insnTemplate->printf("\n .short %u", words[2]);
-                    }
-                    else
-                    {
-                        stmt->error("expected float constant");
-                    }
-                    break;
+                            insnTemplate->printf("\n\t .short %u", words[2]);
 
-                default:
-                    gcc_unreachable();
+                        break;
+
+                    default:
+                        stmt->error("integer constant expected");
+                }
+            }
+            else if (token->value == TOKstring)
+            {
+                strvalue = token->ustring;
+                strlength = token->len;
+            op_string:
+                // Loop through string values.
+                for (size_t i = 0; i < strlength; i++)
+                {
+                    // %% Check for character truncation?
+                    intvalue = strvalue[i];
+
+                    switch (op)
+                    {
+                        case Op_db:
+                        case Op_ds:
+                        case Op_di:
+                        case Op_dl:
+                            insnTemplate->writestring(directives[op - Op_db]);
+                            insnTemplate->writebyte(' ');
+                            insnTemplate->printf("%u", intvalue);
+   
+                            if (op != Op_dl)
+                                insnTemplate->printf("%u", (d_uns32) intvalue);
+                            else
+                            {   // As above, output two .longs
+                                insnTemplate->printf("%u,%u", (d_uns32) intvalue,
+                                                     (d_uns32) (intvalue >> 32));
+                            }
+
+                            insnTemplate->writestring("\n\t");
+                            break;
+
+                        default:
+                            stmt->error("floating point expected");
+                    }
+                }
+            }
+            else
+            {
+                stmt->error("const initializer expected");
             }
 
             nextToken();
             if (token->value == TOKcomma)
-            {
-                insnTemplate->writebyte(',');
+            {   // GAS can only do one data instruction per line,
+                // using commas doesn't work here.
+                insnTemplate->writestring("\n\t");
                 nextToken();
             }
             else if (token->value == TOKeof)
