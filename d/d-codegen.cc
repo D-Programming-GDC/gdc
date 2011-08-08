@@ -733,6 +733,7 @@ tree
 IRState::pointerIntSum(tree ptr_node, tree idx_exp)
 {
     tree result_type_node = TREE_TYPE(ptr_node);
+    tree elem_type_node = TREE_TYPE(result_type_node);
     tree intop = idx_exp;
     tree size_exp;
 
@@ -745,15 +746,24 @@ IRState::pointerIntSum(tree ptr_node, tree idx_exp)
 
     // %% TODO: real-not-long-double issues...
 
-    size_exp = size_in_bytes(TREE_TYPE(result_type_node)); // array element size
-    if (integer_zerop(size_exp) || // Test for void case...
-        integer_onep(size_exp))    // ...or byte case -- No need to multiply.
-    {
+    size_exp = size_in_bytes(elem_type_node); // array element size
+
+    if (integer_zerop(size_exp))
+    {   // Test for void case...
+        if (TYPE_MODE(elem_type_node) == TYPE_MODE(void_type_node))
+            intop = fold_convert(prod_result_type, intop);
+        else
+        {   // FIXME: should catch this earlier.
+            error("invalid use of incomplete type %qD", TYPE_NAME(elem_type_node));
+            result_type_node = error_mark_node;
+        }
+    }
+    else if (integer_onep(size_exp))
+    {   // ...or byte case -- No need to multiply.
         intop = fold_convert(prod_result_type, intop);
     }
     else
     {
-
         if (TYPE_PRECISION (TREE_TYPE (intop)) != TYPE_PRECISION (sizetype)
             || TYPE_UNSIGNED (TREE_TYPE (intop)) != TYPE_UNSIGNED (sizetype))
         {

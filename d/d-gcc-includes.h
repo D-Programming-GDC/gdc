@@ -69,6 +69,12 @@ extern "C" {
 #include "tree-dump.h"
 #include "tree-inline.h"
 #include "vec.h"
+
+#if D_GCC_VER == 43
+// Defined in tree-flow.h but gives us problems when trying to include it
+extern bool useless_type_conversion_p (tree, tree);
+#endif
+
 }
 
 // Define our own macro for handling mapped locations as
