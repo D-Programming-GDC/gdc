@@ -2666,6 +2666,14 @@ StructLiteralExp::toElem(IRState *irs)
             ce.cons(fld->toSymbol()->Stree, exp_tree);
         }
     }
+#if V2
+    if (sd->isNested())
+    {   // Maybe setup hidden pointer to outer scope context.
+        tree vthis_field = sd->vthis->toSymbol()->Stree;
+        tree vthis_value = irs->getVThis(sd, this);
+        ce.cons(vthis_field, vthis_value);
+    }
+#endif
     tree ctor = build_constructor(type->toCtype(), ce.head);
     return ctor;
 }

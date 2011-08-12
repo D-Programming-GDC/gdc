@@ -134,9 +134,6 @@ IRBase::pushStatementList()
 {
     tree t;
     t = alloc_stmt_list ();
-#if ENABLE_GC_CHECKING
-    dkeep(t);   // %% Must be doing something wrong to need this.
-#endif
     TREE_CHAIN (t) = statementList;
     statementList = t;
 }
