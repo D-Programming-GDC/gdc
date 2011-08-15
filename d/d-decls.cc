@@ -647,7 +647,10 @@ Symbol *FuncDeclaration::toSymbol()
 
             // These are always compiler generated.
             if (isArrayOp)
+            {
                 DECL_ARTIFICIAL(fn_decl) = 1;
+                D_DECL_ONE_ONLY(fn_decl) = 1;
+            }
 #if V2
             // %% Pure functions don't imply nothrow
             DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && func_type->isnothrow);
