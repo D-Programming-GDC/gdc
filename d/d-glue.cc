@@ -3054,6 +3054,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     }
 
     irs->buildChain(this); // may change irs->chainLink and irs->chainFunc
+    DECL_LANG_SPECIFIC(fn_decl) = build_d_decl_lang_specific(this);
 
     if (vresult)
         irs->emitLocalVar(vresult);
@@ -3399,12 +3400,7 @@ Type::toCtype()
                 if (int_size_in_bytes(boolean_type_node) == 1)
                     ctype = boolean_type_node;
                 else
-                {
-                    ctype = make_unsigned_type(1);
-                    TREE_SET_CODE(ctype, BOOLEAN_TYPE);
-                    gcc_assert(int_size_in_bytes(ctype) == 1);
-                    dkeep(ctype);
-                }
+                    ctype = d_boolean_type_node;
                 break;
             case Tchar:
                 ctype = d_char_type_node;
@@ -4983,6 +4979,9 @@ gcc_d_backend_init()
     d_null_pointer = convert(ptr_type_node, integer_zero_node);
 
     // %% D variant types of Ctypes.
+    d_boolean_type_node = make_unsigned_type(1);
+    TREE_SET_CODE(d_boolean_type_node, BOOLEAN_TYPE);
+
     d_char_type_node = build_variant_type_copy(unsigned_intQI_type_node);
     d_wchar_type_node = build_variant_type_copy(unsigned_intHI_type_node);
     d_dchar_type_node = build_variant_type_copy(unsigned_intSI_type_node);

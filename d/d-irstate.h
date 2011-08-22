@@ -164,7 +164,7 @@ public:
        Each user-declared variable will have a binding contour that begins
        where the variable is declared and ends at it's containing scope.
     */
-    Array      scopes; // of unsigned*
+    Array scopes; // of unsigned*
 
     void startScope();
     void endScope();

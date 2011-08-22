@@ -308,11 +308,6 @@ IRBase::doLabel(tree t_label)
 }
 
 
-extern "C" void pushlevel PARAMS ((int));
-extern "C" tree poplevel PARAMS ((int, int, int));
-extern "C" void set_block PARAMS ((tree));
-extern "C" void insert_block PARAMS ((tree));
-
 void IRBase::startScope()
 {
     unsigned * p_count = new unsigned;
@@ -361,7 +356,7 @@ void IRBase::endBindings()
 
     tree t_body = popStatementList();
     addExp(build3(BIND_EXPR, void_type_node,
-               BLOCK_VARS( block ), t_body, block));
+           BLOCK_VARS(block), t_body, block));
 
     // Because we used set_block, the popped level/block is not automatically recorded
     insert_block(block);

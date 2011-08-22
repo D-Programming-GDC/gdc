@@ -842,8 +842,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
     switch (code)
     {
         case MODIFY_EXPR:
-        {
-            /* If the back end isn't clever enough to know that the lhs and rhs
+        {   /* If the back end isn't clever enough to know that the lhs and rhs
                types are the same, add an explicit conversion.  */
             tree op0 = TREE_OPERAND (*expr_p, 0);
             tree op1 = TREE_OPERAND (*expr_p, 1);
@@ -871,8 +870,7 @@ d_gimplify_expr (tree *expr_p, tree *pre_p ATTRIBUTE_UNUSED,
     switch (code)
     {
         case MODIFY_EXPR:
-        {
-            /* If the back end isn't clever enough to know that the lhs and rhs
+        {   /* If the back end isn't clever enough to know that the lhs and rhs
                types are the same, add an explicit conversion.  */
             tree op0 = TREE_OPERAND (*expr_p, 0);
             tree op1 = TREE_OPERAND (*expr_p, 1);
@@ -890,7 +888,6 @@ d_gimplify_expr (tree *expr_p, tree *pre_p ATTRIBUTE_UNUSED,
         default:
             return GS_UNHANDLED;
     }
-    return GS_UNHANDLED;
 }
 #endif
 
@@ -1339,6 +1336,39 @@ d_mark_addressable (tree t)
 }
 
 
+/* Mark EXP as read, not just set, for set but not used -Wunused
+   warning purposes.  */
+
+void
+d_mark_exp_read (tree exp)
+{
+    switch (TREE_CODE (exp))
+    {
+        case VAR_DECL:
+        case PARM_DECL:
+            D_DECL_READ (exp) = 1;
+            break;
+
+        case ARRAY_REF:
+        case COMPONENT_REF:
+        case MODIFY_EXPR:
+        case REALPART_EXPR:
+        case IMAGPART_EXPR:
+        case NOP_EXPR:   
+        case CONVERT_EXPR:
+        case ADDR_EXPR:
+            d_mark_exp_read (TREE_OPERAND (exp, 0));
+            break;
+
+        case COMPOUND_EXPR:
+            d_mark_exp_read (TREE_OPERAND (exp, 1));
+            break;
+
+        default:
+            break;
+    }
+}
+
 
 tree
 d_type_for_mode (enum machine_mode mode, int unsignedp)
@@ -1596,14 +1626,6 @@ d_type_promotes_to (tree type)
 }
 
 
-extern "C" void pushlevel PARAMS ((int));
-extern "C" tree poplevel PARAMS ((int, int, int));
-extern "C" int global_bindings_p PARAMS ((void));
-extern "C" void insert_block PARAMS ((tree));
-extern "C" void set_block PARAMS ((tree));
-extern "C" tree getdecls PARAMS ((void));
-
-
 struct binding_level * current_binding_level;
 struct binding_level * global_binding_level;
 
@@ -1642,16 +1664,17 @@ poplevel (int keep, int reverse, int routinebody)
     if (reverse)
         decls = nreverse(decls);
 
-    if ( level->this_block )
+    if (level->this_block)
         block = level->this_block;
     else if (keep || routinebody)
         block = make_node(BLOCK);
     else
         block = NULL_TREE;
 
-    if (block) {
-        BLOCK_VARS( block ) = routinebody ? NULL_TREE : decls;
-        BLOCK_SUBBLOCKS( block ) = level->blocks;
+    if (block)
+    {
+        BLOCK_VARS(block) = routinebody ? NULL_TREE : decls;
+        BLOCK_SUBBLOCKS(block) = level->blocks;
         // %% need this for when insert_block is called by backend... or make
         // insert_block do it's work elsewere
         // BLOCK_SUBBLOCKS( block ) = level->blocks;
@@ -1664,23 +1687,52 @@ poplevel (int keep, int reverse, int routinebody)
     if (routinebody)
         DECL_INITIAL (current_function_decl) = block;
     else if (block)
-        {
-            // Original logic was: If this block was created by this poplevel
-            // call and not and earlier set_block, insert it into the parent's
-            // list of blocks.  Blocks created with set_block have to be
-            // inserted with insert_block.
-            //
-            // For D, currently always using set_block/insert_block
-            if (!level->this_block)
-                current_binding_level->blocks = chainon (current_binding_level->blocks, block);
-        }
+    {
+        // Original logic was: If this block was created by this poplevel
+        // call and not and earlier set_block, insert it into the parent's
+        // list of blocks.  Blocks created with set_block have to be
+        // inserted with insert_block.
+        //
+        // For D, currently always using set_block/insert_block
+        if (!level->this_block)
+            current_binding_level->blocks = chainon (current_binding_level->blocks, block);
+    }
     /* If we did not make a block for the level just exited, any blocks made for inner
        levels (since they cannot be recorded as subblocks in that level) must be
        carried forward so they will later become subblocks of something else. */
     else if (level->blocks)
         current_binding_level->blocks = chainon (current_binding_level->blocks, level->blocks);
+
     if (block)
+    {
         TREE_USED (block) = 1;
+
+        /* Warnings for unused variables.  */
+        for (tree t = BLOCK_VARS (block); t != NULL_TREE; t = TREE_CHAIN (t))
+        {
+            gcc_assert(TREE_CODE (t) == VAR_DECL);
+            if ((!TREE_USED (t) /*|| !D_DECL_READ(t)*/) //%% TODO
+                && !TREE_NO_WARNING (t)
+                && DECL_NAME (t)
+                && !DECL_ARTIFICIAL (t))
+            {
+                if (!TREE_USED (t))
+                    warning (OPT_Wunused_variable, "unused variable %q+D", t);
+                else if (DECL_CONTEXT (t) == current_function_decl)
+                {
+#if D_GCC_VER >= 46
+                    warning_at (DECL_SOURCE_LOCATION (t),
+                                OPT_Wunused_but_set_variable, "variable %qD set but not used", t);
+#elif D_GCC_VER >= 44
+                    warning_at (DECL_SOURCE_LOCATION (t),
+                                OPT_Wunused_variable, "variable %qD set but not used", t);
+#else
+                    warning (OPT_Wunused_variable, "variable %qD set but not used", t);
+#endif
+                }
+            }
+        }
+    }
     return block;
 }
 
@@ -1720,8 +1772,8 @@ pushdecl (tree decl)
 
     // %% probably  should be cur_irs->getDeclContext()
     // %% should only be for variables OR, should also use TRANSLATION_UNIT for toplevel..
-    if ( DECL_CONTEXT( decl ) == NULL_TREE )
-        DECL_CONTEXT( decl ) = current_function_decl; // could be NULL_TREE (top level) .. hmm. // hm.m.
+    if (DECL_CONTEXT(decl) == NULL_TREE)
+        DECL_CONTEXT(decl) = current_function_decl; // could be NULL_TREE (top level) .. hmm. // hm.m.
 
     /* Put decls on list in reverse order. We will reverse them later if necessary. */
     TREE_CHAIN (decl) = current_binding_level->names;
@@ -1931,6 +1983,22 @@ build_d_type_lang_specific(Type * t)
     return l;
 }
 
+struct lang_decl *
+build_d_decl_lang_specific(Declaration * d)
+{
+    struct lang_decl * l;
+    unsigned sz = sizeof(struct lang_decl);
+#if D_GCC_VER >= 46
+    l = (struct lang_decl *) ggc_alloc_cleared_atomic(sz);
+#else
+    l = (struct lang_decl *) ggc_alloc_cleared(sz);
+#endif
+    l->d_decl = d;
+    return l;
+}
+
+
+// This preserves tree we create from the garbage collector.
 tree d_keep_list = NULL_TREE;
 
 void
@@ -1965,11 +2033,11 @@ d_eh_personality (void)
 static tree
 d_build_eh_type_type(tree type)
 {
-    TypeClass * d_type = (TypeClass *) IRState::getDType(type);
+    TypeClass * d_type = (TypeClass *) gen.getDType(type);
     gcc_assert(d_type);
     d_type = (TypeClass *) d_type->toBasetype();
     gcc_assert(d_type->ty == Tclass);
-    return IRState::addressOf(d_type->sym->toSymbol()->Stree);
+    return gen.addressOf(d_type->sym->toSymbol()->Stree);
 }
 
 void

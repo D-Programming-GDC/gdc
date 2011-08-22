@@ -81,6 +81,13 @@ extern GTY(()) tree d_eh_personality_decl;
 /* True if the symbol has been marked "static const".  */
 #define D_DECL_READONLY_STATIC(NODE) (DECL_LANG_FLAG_3(NODE))
 
+/* True if the decl has been used except for being set.  */
+#if D_GCC_VER >= 46
+#define D_DECL_READ(NODE) (DECL_READ_P(NODE))
+#else
+#define D_DECL_READ(NODE) (DECL_LANG_FLAG_4(NODE))
+#endif
+
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and
    otherwise support the backend. */
@@ -115,6 +122,7 @@ enum d_tree_index
     DTI_VOID_ZERO,
     DTI_VTBL_PTR_TYPE,
 
+    DTI_BOOL_TYPE,
     DTI_CHAR_TYPE,
     DTI_WCHAR_TYPE,
     DTI_DCHAR_TYPE,
@@ -141,6 +149,7 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define d_null_pointer                  d_global_trees[DTI_NULL_PTR]
 #define d_void_zero_node                d_global_trees[DTI_VOID_ZERO]
 #define d_vtbl_ptr_type_node            d_global_trees[DTI_VTBL_PTR_TYPE]
+#define d_boolean_type_node             d_global_trees[DTI_BOOL_TYPE]
 #define d_char_type_node                d_global_trees[DTI_CHAR_TYPE]
 #define d_dchar_type_node               d_global_trees[DTI_DCHAR_TYPE]
 #define d_wchar_type_node               d_global_trees[DTI_WCHAR_TYPE]
@@ -161,6 +170,7 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 /* In d-lang.cc.  These are called through function pointers
    and do not need to be "extern C". */
 extern bool d_mark_addressable PARAMS ((tree));
+extern void d_mark_exp_read PARAMS ((tree));
 extern tree d_truthvalue_conversion PARAMS ((tree));
 extern tree d_convert_basic PARAMS ((tree, tree));
 extern void d_init_exceptions PARAMS ((void));
@@ -179,6 +189,7 @@ struct Module;
 extern Module * d_gcc_get_output_module();
 
 extern struct lang_type * build_d_type_lang_specific(Type * t);
+extern struct lang_decl * build_d_decl_lang_specific(Declaration * d);
 
 /* In asmstmt.cc */
 struct IRState;
@@ -208,6 +219,12 @@ tree d_type_for_mode(enum machine_mode mode, int unsignedp);
 tree d_build_decl_loc(location_t loc, enum tree_code code, tree name, tree type);
 tree d_build_decl(enum tree_code code, tree name, tree type);
 void dkeep(tree t);
+
+int global_bindings_p PARAMS ((void));
+void insert_block PARAMS ((tree));
+void set_block PARAMS ((tree));
+tree getdecls PARAMS ((void));
+
 
 /* In d-builtins.c */
 extern void d_init_builtins PARAMS ((void));

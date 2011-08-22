@@ -342,50 +342,12 @@ struct IRState : IRBase
     // ** Various expressions
     tree toElemLvalue(Expression * e);
 
-    static tree addressOf(tree exp)
-    {
-        tree t, ptrtype;
-        tree exp_type = TREE_TYPE(exp);
-        d_mark_addressable(exp);
-
-        // Gimplify doesn't like &(*(ptr-to-array-type)) with static arrays
-        if (TREE_CODE(exp) == INDIRECT_REF)
-        {
-            t = TREE_OPERAND(exp, 0);
-            ptrtype = build_pointer_type(exp_type);
-            t = nop(t, ptrtype);
-        }
-        else
-        {   /* Just convert string literals (char[]) to C-style strings (char *), otherwise
-               the latter method (char[]*) causes conversion problems during gimplification. */
-            if (TREE_CODE (exp) == STRING_CST)
-            {
-                ptrtype = build_pointer_type(TREE_TYPE(exp_type));
-            }
-            /* Special case for va_list. The backends will be expecting a pointer to vatype,
-               but some targets use an array. So fix it.  */
-            else if (TYPE_MAIN_VARIANT(exp_type) == TYPE_MAIN_VARIANT(va_list_type_node))
-            {
-                if (TREE_CODE(TYPE_MAIN_VARIANT(exp_type)) == ARRAY_TYPE)
-                    ptrtype = build_pointer_type(TREE_TYPE(exp_type));
-                else
-                    ptrtype = build_pointer_type(exp_type);
-            }
-            else
-                ptrtype = build_pointer_type(exp_type);
-
-            t = build1(ADDR_EXPR, ptrtype, exp);
-        }
-        if (TREE_CODE(exp) == FUNCTION_DECL)
-            TREE_NO_TRAMPOLINE(t) = 1;
-
-        return t;
-    }
-
     static tree addressOf(Dsymbol *d)
     {
         return addressOf(d->toSymbol()->Stree);
     }
+
+    static tree addressOf(tree exp);
 
     /* Cast exp (which should be a pointer) to TYPE* and then indirect.  The
        back-end requires this cast in many cases. */
