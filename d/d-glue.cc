@@ -3247,13 +3247,15 @@ FuncDeclaration::buildClosure(IRState * irs)
     for (unsigned i = 0; i < closureVars.dim; ++i)
     {
         VarDeclaration *v = (VarDeclaration *)closureVars.data[i];
+        Symbol * s = v->toSymbol();
         tree field = d_build_decl(FIELD_DECL,
                                   v->ident ? get_identifier(v->ident->string) : NULL_TREE,
                                   gen.trueDeclarationType(v));
-        v->toSymbol()->SframeField = field;
+        s->SframeField = field;
         g.ofile->setDeclLoc(field, v);
         DECL_CONTEXT(field) = closure_rec_type;
         fields.chain(field);
+        TREE_USED(s->Stree) = 1;
     }
     TYPE_FIELDS(closure_rec_type) = fields.head;
     layout_type(closure_rec_type);
@@ -3262,7 +3264,6 @@ FuncDeclaration::buildClosure(IRState * irs)
 
     tree closure_ptr = irs->localVar(build_pointer_type(closure_rec_type));
     DECL_NAME(closure_ptr) = get_identifier("__closptr");
-    DECL_ARTIFICIAL(closure_ptr) = DECL_IGNORED_P(closure_ptr) = 0;
 
     tree arg = d_convert_basic(Type::tsize_t->toCtype(),
         TYPE_SIZE_UNIT(closure_rec_type));

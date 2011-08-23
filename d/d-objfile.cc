@@ -989,6 +989,7 @@ check_static_sym(Symbol * sym)
             TREE_READONLY(t_var) = TREE_READONLY(t_ini) = 1;
         }
         // %% need to check SCcomdat?
+        TREE_USED(t_var) = 1;
         TREE_PRIVATE(t_var) = 1;
         DECL_IGNORED_P(t_var) = 1;
         DECL_ARTIFICIAL(t_var) = 1;

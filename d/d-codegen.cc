@@ -79,6 +79,10 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
 
     DECL_CONTEXT(var_decl) = getLocalContext();
 
+    // Compiler generated symbols
+    if (v == func->vresult || v == func->v_argptr || v == func->v_arguments_var)
+        DECL_ARTIFICIAL(var_decl) = 1;
+
     tree var_exp;
     if (sym->SframeField)
     {   // Fixes debugging local variables.
@@ -3562,13 +3566,15 @@ IRState::buildChain(FuncDeclaration * func)
     for (unsigned i = 0; i < nestedVars->dim; ++i)
     {
         VarDeclaration *v = (VarDeclaration *)nestedVars->data[i];
+        Symbol * s = v->toSymbol();
         tree field = d_build_decl(FIELD_DECL,
                                   v->ident ? get_identifier(v->ident->string) : NULL_TREE,
                                   gen.trueDeclarationType(v));
-        v->toSymbol()->SframeField = field;
+        s->SframeField = field;
         g.ofile->setDeclLoc(field, v);
         DECL_CONTEXT(field) = frame_rec_type;
         fields.chain(field);
+        TREE_USED(s->Stree) = 1;
     }
 
     TYPE_FIELDS(frame_rec_type) = fields.head;
@@ -3577,7 +3583,6 @@ IRState::buildChain(FuncDeclaration * func)
 
     tree frame_decl = localVar(frame_rec_type);
     tree frame_ptr = addressOf(frame_decl);
-    DECL_ARTIFICIAL(frame_decl) = DECL_IGNORED_P(frame_decl) = 0;
     expandDecl(frame_decl);
 
     // set the first entry to the parent frame, if any
