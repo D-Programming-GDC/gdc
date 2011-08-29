@@ -208,7 +208,10 @@ Symbol *VarDeclaration::toSymbol()
 
         csym = new Symbol();
         if (isDataseg())
+        {
             csym->Sident = mangle();
+            csym->prettyIdent = toPrettyChars();
+        }
         else
             csym->Sident = ident->string;
 
@@ -546,17 +549,18 @@ Symbol *FuncDeclaration::toSymbol()
             if (ident)
             {
                 csym->Sident = mangle(); // save for making thunks
+                csym->prettyIdent = toPrettyChars();
                 uniqueName(this, fn_decl, csym->Sident);
             }
             if (c_ident)
                 SET_DECL_ASSEMBLER_NAME(fn_decl, get_identifier(c_ident->string));
             // %% What about DECL_SECTION_NAME ?
             //DECL_ARGUMENTS(fn_decl) = NULL_TREE; // Probably don't need to do this until toObjFile
-            DECL_CONTEXT (fn_decl) = gen.declContext(this); //context;
+            DECL_CONTEXT(fn_decl) = gen.declContext(this); //context;
             if (vindex)
             {
-                DECL_VINDEX    (fn_decl) = vindex;
-                DECL_VIRTUAL_P (fn_decl) = 1;
+                DECL_VINDEX(fn_decl) = vindex;
+                DECL_VIRTUAL_P(fn_decl) = 1;
             }
             if (! gen.functionNeedsChain(this)
                 // gcc 4.0: seems to be an error to set DECL_NO_STATIC_CHAIN on a toplevel function

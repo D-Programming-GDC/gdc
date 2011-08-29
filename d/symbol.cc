@@ -25,6 +25,7 @@
 Symbol::Symbol()
 {
     Sident = 0;
+    prettyIdent = 0;
     //Stype = 0;
     Sclass = SC_INVALID;
     Sfl = FL_INVALID;

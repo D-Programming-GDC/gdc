@@ -3583,6 +3583,7 @@ IRState::buildChain(FuncDeclaration * func)
 
     tree frame_decl = localVar(frame_rec_type);
     tree frame_ptr = addressOf(frame_decl);
+    DECL_IGNORED_P(frame_decl) = 0;
     expandDecl(frame_decl);
 
     // set the first entry to the parent frame, if any

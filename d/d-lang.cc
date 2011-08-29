@@ -1706,9 +1706,10 @@ poplevel (int keep, int reverse, int routinebody)
     if (block)
     {
         TREE_USED (block) = 1;
+        tree vars = copy_list (BLOCK_VARS (block));
 
         /* Warnings for unused variables.  */
-        for (tree t = BLOCK_VARS (block); t != NULL_TREE; t = TREE_CHAIN (t))
+        for (tree t = nreverse(vars); t != NULL_TREE; t = TREE_CHAIN (t))
         {
             gcc_assert(TREE_CODE (t) == VAR_DECL);
             if ((!TREE_USED (t) /*|| !D_DECL_READ(t)*/) //%% TODO

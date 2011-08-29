@@ -423,6 +423,9 @@ ObjectFile::outputStaticSymbol(Symbol * s)
     tree t = s->Stree;
     gcc_assert(t);
 
+    if (s->prettyIdent)
+        DECL_NAME(t) = get_identifier(s->prettyIdent);
+
     d_add_global_function(t);
 
     // %% Hack
@@ -450,6 +453,9 @@ ObjectFile::outputFunction(FuncDeclaration * f)
     // Write out _tlsstart/_tlsend.
     if (f->isMain() || f->isWinMain() || f->isDllMain())
         obj_tlssections();
+
+    if (s->prettyIdent)
+        DECL_NAME(t) = get_identifier(s->prettyIdent);
 
     d_add_global_function(t);
 

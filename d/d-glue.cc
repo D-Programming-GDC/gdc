@@ -3264,6 +3264,7 @@ FuncDeclaration::buildClosure(IRState * irs)
 
     tree closure_ptr = irs->localVar(build_pointer_type(closure_rec_type));
     DECL_NAME(closure_ptr) = get_identifier("__closptr");
+    DECL_IGNORED_P(closure_ptr) = 0;
 
     tree arg = d_convert_basic(Type::tsize_t->toCtype(),
         TYPE_SIZE_UNIT(closure_rec_type));
