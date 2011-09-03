@@ -346,6 +346,13 @@ AsmStatement::semantic(Scope *sc)
 #endif
     sc->func->inlineStatus = ILSno; // %% not sure
     // %% need to set DECL_UNINLINABLE too?
+    
+    // DMD assumes that inline assembly sets return argument.
+    // This avoids "missing return expression" assertion.
+    FuncDeclaration *fd = sc->parent->isFuncDeclaration();
+    gcc_assert(fd);    
+    fd->inlineAsm = 1;
+    
     sc->func->hasReturnExp |= 8; // %% DMD does this, apparently...
 
     // empty statement -- still do the above things because they might be expected?
