@@ -1862,13 +1862,13 @@ void OutBuffer::vprintf(const char *format, va_list args)
     psize = sizeof(buffer);
     for (;;)
     {
-#if _WIN32
+/* MinGW32 supports ANSI with -D__USE_MINGW_ANSI_STDIO */
+#if _WIN32 && !defined( __MINGW32__ )
         count = _vsnprintf(p,psize,format,args);
         if (count != -1)
             break;
         psize *= 2;
-#endif
-#ifndef _WIN32
+#else
         va_list va;
         va_copy(va, args);
 /*
