@@ -35,7 +35,7 @@ else version (GNU_Semaphore_Mach)
     struct Semaphore {
         semaphore_t sem;
         bool create() {
-            return semaphore_create(current_task(), & sem,
+            return semaphore_create(mach_task_self(), & sem,
                 SYNC_POLICY_FIFO, 0) == KERN_SUCCESS; }
         void wait() { semaphore_wait(sem); }
         void signal() { semaphore_signal(sem); }
