@@ -42,7 +42,11 @@ static void on_add_image( const struct mach_header* h, intptr_t slide )
 
     for( i = 0; i < NUM_DATA_SEGS; ++i )
     {
+#ifdef __LP64__
+        const struct section_64* sect = getsectbynamefromheader_64( h,
+#else
         const struct section* sect = getsectbynamefromheader( h,
+#endif
                                         data_segs[i].seg,
                                         data_segs[i].sect );
         if( sect == NULL || sect->size == 0 )
@@ -58,7 +62,11 @@ static void on_remove_image( const struct mach_header* h, intptr_t slide )
 
     for( i = 0; i < NUM_DATA_SEGS; ++i )
     {
+#ifdef __LP64__
+        const struct section_64* sect = getsectbynamefromheader_64( h,
+#else
         const struct section* sect = getsectbynamefromheader( h,
+#endif
                                         data_segs[i].seg,
                                         data_segs[i].sect );
         if( sect == NULL || sect->size == 0 )
