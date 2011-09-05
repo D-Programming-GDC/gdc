@@ -1805,11 +1805,26 @@ version (Solaris)
 
 version (OSX)
 {
+version( DigitalMars )
+{
     extern (C)
     {
         extern __gshared void* _minfo_beg;
         extern __gshared void* _minfo_end;
     }
+}
+version( GNU )
+{
+    // This linked list is created by a compiler generated function inserted
+    // into the .ctor list by the compiler.
+    struct ModuleReference
+    {
+        ModuleReference* next;
+        ModuleInfo*      mod;
+    }
+
+    extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
+}
 }
 
 version (MinGW)
@@ -1844,6 +1859,8 @@ extern (C) void _moduleCtor()
 
     version (OSX)
     {
+    version( DigitalMars )
+    {
         /* The ModuleInfo references are stored in the special segment
          * __minfodata, which is bracketed by the segments __minfo_beg
          * and __minfo_end. The variables _minfo_beg and _minfo_end
@@ -1862,6 +1879,21 @@ extern (C) void _moduleCtor()
                 printf("\t%.*s\n", m.name);
          }
     }
+    version (GNU)
+    {
+        int len = 0;
+        ModuleReference *mr;
+
+        for (mr = _Dmodule_ref; mr; mr = mr.next)
+            len++;
+        _moduleinfo_array = new ModuleInfo*[len];
+        len = 0;
+        for (mr = _Dmodule_ref; mr; mr = mr.next)
+        {   _moduleinfo_array[len] = mr.mod;
+            len++;
+        }
+    }
+    }    
     // all other Posix variants (FreeBSD, Solaris, Linux)
     else version (Posix)
     {
