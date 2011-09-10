@@ -33,7 +33,7 @@
 #define LANGSPEC        (1<<1)
 /* This bit is set if they did `-lm' or `-lmath'.  */
 #define MATHLIB         (1<<2)
-/* This bit is set if they did `-pthread'.  */
+/* This bit is set if they did `-lpthread'.  */
 #define WITHTHREAD      (1<<3)
 /* This bit is set if they did `-lrt'.  */
 #define TIMERLIB        (1<<4)
@@ -127,7 +127,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
     /* "-lm" or "-lmath" if it appears on the command line.  */
     const struct cl_decoded_option *saw_math = 0;
 
-    /* "-pthread" if it appears on the command line.  */
+    /* "-lpthread" if it appears on the command line.  */
     const struct cl_decoded_option *saw_pthread = 0;
 
     /* "-lrt" if it appears on the command line.  */
@@ -247,6 +247,8 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
                     args[i] |= MATHLIB;
                     need_math = 0;
                 }
+                else if (strcmp (arg, "pthread") == 0)
+                    args[i] |= WITHTHREAD;
                 else if (strcmp (arg, "rt") == 0)
                     args[i] |= TIMERLIB;
                 else if (strcmp (arg, "c") == 0)
@@ -254,10 +256,6 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
                 else
                     /* Unrecognized libraries (e.g. -ltango) may require libphobos.  */
                     library = (library == 0) ? 1 : library;
-                break;
-
-            case OPT_pthread:
-                args[i] |= WITHTHREAD;
                 break;
 
             case OPT_pg:
@@ -574,7 +572,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     /* "-lm" or "-lmath" if it appears on the command line.  */
     const char *saw_math = 0;
 
-    /* "-pthread" if it appears on the command line.  */
+    /* "-lpthread" if it appears on the command line.  */
     const char *saw_pthread = 0;
 
     /* "-lrt" if it appears on the command line.  */
@@ -709,6 +707,8 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                   args[i] |= MATHLIB;
                   need_math = 0;
               }
+              else if (strcmp (arg, "pthread") == 0)
+                  args[i] |= WITHTHREAD;
               else if (strcmp (arg, "rt") == 0)
                   args[i] |= TIMERLIB;
               else if (strcmp (argv[i], "c") == 0)
@@ -717,8 +717,6 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
                   /* Unrecognised libraries (e.g. -ltango) may require libphobos.  */
                   library = (library == 0) ? 1 : library;
             }
-            else if (strcmp (argv[i], "-pthread") == 0)
-                args[i] |= WITHTHREAD;
             else if (strcmp (argv[i], "-pg") == 0 || strcmp (argv[i], "-p") == 0)
                 saw_profile_flag++;
             else if (strcmp (argv[i], "-g") == 0)
