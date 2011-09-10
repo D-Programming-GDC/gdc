@@ -455,6 +455,10 @@ d_init ()
         VersionCondition::addPredefinedGlobalIdent("GNU_LongDouble128");
 #endif
 
+#ifdef STACK_GROWS_DOWNWARD
+    VersionCondition::addPredefinedGlobalIdent("GNU_StackGrowsDown");
+#endif
+
     if (d_have_inline_asm() && gen.useInlineAsm)
     {
         VersionCondition::addPredefinedGlobalIdent("D_InlineAsm");
@@ -947,7 +951,7 @@ d_parse_file (int /*set_yydebug*/)
         gen.emitTemplates = (supports_one_only()) ? TEall : TEprivate;
     }
     global.params.symdebug = write_symbols != NO_DEBUG;
-    //global.params.useInline = flag_inline_functions;
+    global.params.useInline = flag_inline_functions;
     global.params.obj = ! flag_syntax_only;
     global.params.pic = flag_pic != 0; // Has no effect yet.
     gen.originalOmitFramePointer = flag_omit_frame_pointer;
