@@ -40,6 +40,7 @@ struct Msgtable msgtable[] =
     { "max" },
     { "min" },
     { "This", "this" },
+    { "super" },
     { "ctor", "__ctor" },
     { "dtor", "__dtor" },
     { "cpctor", "__cpctor" },

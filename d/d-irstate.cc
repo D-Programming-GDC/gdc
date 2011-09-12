@@ -194,7 +194,7 @@ IRBase::getLabelTree(LabelDsymbol * label)
     return label->statement->lblock;
 }
 
-IRBase::Label *
+Label *
 IRBase::getLabelBlock(LabelDsymbol * label, Statement * from)
 {
     Label * l = new Label;
@@ -205,7 +205,7 @@ IRBase::getLabelBlock(LabelDsymbol * label, Statement * from)
 
     for (int i = loops.dim - 1; i >= 0; i--)
     {
-        Flow * flow = (Flow *)loops.data[i];
+        Flow * flow = loops.tdata()[i];
 
         if (flow->kind != level_block &&
             flow->kind != level_switch)
@@ -224,7 +224,7 @@ IRBase::getLabelBlock(LabelDsymbol * label, Statement * from)
 }
 
 
-IRBase::Flow *
+Flow *
 IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 {
     if (ident)
@@ -239,7 +239,7 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 
         for (int i = loops.dim - 1; i >= 0; i--)
         {
-            Flow * flow = (Flow *) loops.data[i];
+            Flow * flow = loops.tdata()[i];
 
             if (flow->statement == stmt)
             {
@@ -254,7 +254,7 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
     {
         for (int i = loops.dim - 1; i >= 0; i--)
         {
-            Flow * flow = (Flow *) loops.data[i];
+            Flow * flow = loops.tdata()[i];
 
             if (( ! want_continue && flow->statement->hasBreak() ) ||
                 flow->statement->hasContinue())
@@ -265,7 +265,7 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 }
 
 
-IRBase::Flow *
+Flow *
 IRBase::beginFlow(Statement * stmt)
 {
     Flow * flow = new Flow;
@@ -308,7 +308,8 @@ IRBase::doLabel(tree t_label)
 }
 
 
-void IRBase::startScope()
+void
+IRBase::startScope()
 {
     unsigned * p_count = new unsigned;
     *p_count = 0;
@@ -318,7 +319,8 @@ void IRBase::startScope()
     startBindings();
 }
 
-void IRBase::endScope()
+void
+IRBase::endScope()
 {
     unsigned * p_count;
 
@@ -335,7 +337,8 @@ void IRBase::endScope()
 }
 
 
-void IRBase::startBindings()
+void
+IRBase::startBindings()
 {
     pushlevel(0);
     tree block = make_node(BLOCK);
@@ -349,7 +352,8 @@ void IRBase::startBindings()
 
 }
 
-void IRBase::endBindings()
+void
+IRBase::endBindings()
 {
     // %%TODO: reversing list causes problems with inf loops in unshare_all_decls
     tree block = poplevel(1,0,0);

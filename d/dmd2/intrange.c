@@ -458,8 +458,8 @@ void IntRange::splitBySign(IntRange& negRange, bool& hasNegRange,
 const IntRange& IntRange::dump(const char* funcName, Expression *e) const
 {
     printf("[(%c)%#018llx, (%c)%#018llx] @ %s ::: %s\n",
-           imin.negative?'-':'+', imin.value,
-           imax.negative?'-':'+', imax.value,
+           imin.negative?'-':'+', (uintmax_t)imin.value,
+           imax.negative?'-':'+', (uintmax_t)imax.value,
            funcName, e->toChars());
     return *this;
 }

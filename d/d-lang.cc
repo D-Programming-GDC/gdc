@@ -168,13 +168,13 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
     global.params.Dversion = 2;
     global.params.quiet = 1;
 
-    global.params.linkswitches = new Array();
-    global.params.libfiles = new Array();
-    global.params.objfiles = new Array();
-    global.params.ddocfiles = new Array();
+    global.params.linkswitches = new Strings();
+    global.params.libfiles = new Strings();
+    global.params.objfiles = new Strings();
+    global.params.ddocfiles = new Strings();
 
-    global.params.imppath = new Array();
-    global.params.fileImppath = new Array();
+    global.params.imppath = new Strings();
+    global.params.fileImppath = new Strings();
 
     // extra D-specific options
     gen.splitDynArrayVarArgs = true;
@@ -342,10 +342,10 @@ d_init ()
     if (memcmp (reg_names, saved_reg_names, sizeof reg_names))
         memcpy (reg_names, saved_reg_names, sizeof reg_names);
 
-    /* Currently, isX86_64 indicates a 64-bit target in general and is not
+    /* Currently, is64bit indicates a 64-bit target in general and is not
        Intel-specific. */
 #ifdef TARGET_64BIT
-    global.params.isX86_64 = TARGET_64BIT ? 1 : 0;
+    global.params.is64bit = TARGET_64BIT ? 1 : 0;
 #else
     /* TARGET_64BIT is only defined on biarched archs defaulted to 64-bit
      * (as amd64 or s390x) so for full 64-bit archs (as ia64 or alpha) we
@@ -354,24 +354,24 @@ d_init ()
     /* We are "defaulting" to 32-bit, which mean that if both D_CPU_VERSYM
      * and D_CPU_VERSYM64 are defined, and not TARGET_64BIT, we will use
      * 32 bits. This will be overidden for full 64-bit archs */
-    global.params.isX86_64 = 0;
+    global.params.is64bit = 0;
 #    ifndef D_CPU_VERSYM
     /* So this is typically for alpha and ia64 */
-    global.params.isX86_64 = 1;
+    global.params.is64bit = 1;
 #    endif
 #  else
 #    ifdef D_CPU_VERSYM /* D_CPU_VERSYM is defined and D_CPU_VERSYM64 is not. */
-    global.params.isX86_64 = 0;
+    global.params.is64bit = 0;
 #    else
     /* If none of D_CPU_VERSYM and D_CPU_VERSYM64 defined check size_t
      * length instead. */
     switch (sizeof(size_t))
     {
         case 4:
-            global.params.isX86_64 = 0;
+            global.params.is64bit = 0;
             break;
         case 8:
-            global.params.isX86_64 = 1;
+            global.params.is64bit = 1;
             break;
     }
 #    endif
@@ -404,7 +404,7 @@ d_init ()
     VersionCondition::addPredefinedGlobalIdent("D_Version2");
 #endif
 #ifdef D_CPU_VERSYM64
-    if (global.params.isX86_64 == 1)
+    if (global.params.is64bit == 1)
         cpu_versym = D_CPU_VERSYM64;
 #  ifdef D_CPU_VERSYM
     else
@@ -789,7 +789,7 @@ bool d_post_options(const char ** fn)
 
 /* wrapup_global_declaration needs to be called or functions will not
    be emitted. */
-Array globalFunctions; // Array of tree (for easy passing to wrapup_global_declarations)
+Array globalFunctions;
 
 void
 d_add_global_function(tree decl)
@@ -971,7 +971,7 @@ d_parse_file (int /*set_yydebug*/)
     }
 
     an_output_module = NULL;
-    Array modules; // vs. outmodules... = [an_output_module] or modules
+    Modules modules; // vs. outmodules... = [an_output_module] or modules
     modules.reserve(num_in_fnames);
     AsyncRead * aw = NULL;
     Module * m = NULL;
@@ -1061,7 +1061,7 @@ d_parse_file (int /*set_yydebug*/)
     aw = AsyncRead::create(modules.dim);
     for (unsigned i = 0; i < modules.dim; i++)
     {
-        m = (Module *)modules.data[i];
+        m = modules.tdata()[i];
         aw->addFile(m->srcfile);
     }
     aw->start();
@@ -1078,7 +1078,7 @@ d_parse_file (int /*set_yydebug*/)
     // Parse files
     for (unsigned i = 0; i < modules.dim; i++)
     {
-        m = (Module *)modules.data[i];
+        m = modules.tdata()[i];
         if (global.params.verbose)
             printf("parse     %s\n", m->toChars());
         if (!Module::rootModule)
@@ -1107,7 +1107,7 @@ d_parse_file (int /*set_yydebug*/)
           */
          for (unsigned i = 0; i < modules.dim; i++)
          {
-             m = (Module *)modules.data[i];
+             m = modules.tdata()[i];
              if (fonly_arg && m != an_output_module)
                  continue;
              if (global.params.verbose)
@@ -1121,7 +1121,7 @@ d_parse_file (int /*set_yydebug*/)
     // load all unconditional imports for better symbol resolving
     for (unsigned i = 0; i < modules.dim; i++)
     {
-        m = (Module *)modules.data[i];
+        m = modules.tdata()[i];
         if (global.params.verbose)
             printf("importall %s\n", m->toChars());
         m->importAll(0);
@@ -1132,7 +1132,7 @@ d_parse_file (int /*set_yydebug*/)
     // Do semantic analysis
     for (unsigned i = 0; i < modules.dim; i++)
     {
-        m = (Module *)modules.data[i];
+        m = modules.tdata()[i];
         if (global.params.verbose)
             printf("semantic  %s\n", m->toChars());
         m->semantic();
@@ -1146,7 +1146,7 @@ d_parse_file (int /*set_yydebug*/)
     // Do pass 2 semantic analysis
     for (unsigned i = 0; i < modules.dim; i++)
     {
-        m = (Module *)modules.data[i];
+        m = modules.tdata()[i];
         if (global.params.verbose)
             printf("semantic2 %s\n", m->toChars());
         m->semantic2();
@@ -1157,7 +1157,7 @@ d_parse_file (int /*set_yydebug*/)
     // Do pass 3 semantic analysis
     for (unsigned i = 0; i < modules.dim; i++)
     {
-        m = (Module *)modules.data[i];
+        m = modules.tdata()[i];
         if (global.params.verbose)
             printf("semantic3 %s\n", m->toChars());
         m->semantic3();
@@ -1192,7 +1192,7 @@ d_parse_file (int /*set_yydebug*/)
 
     for (unsigned i = 0; i < modules.dim; i++)
     {
-        m = (Module *)modules.data[i];
+        m = modules.tdata()[i];
         if (fonly_arg && m != an_output_module)
             continue;
         if (global.params.verbose)

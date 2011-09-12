@@ -65,7 +65,6 @@ enum ENUMTY
 {
     Tarray,             // slice array, aka T[]
     Tsarray,            // static array, aka T[dimension]
-    Tnarray,            // resizable array, aka T[new]
     Taarray,            // associative array, aka T[type]
     Tpointer,
     Treference,
@@ -297,7 +296,7 @@ struct Type : Object
     virtual Dsymbol *toDsymbol(Scope *sc);
     virtual Type *toBasetype();
     virtual Type *toHeadMutable();
-    virtual int isBaseOf(Type *t, target_ptrdiff_t *poffset);
+    virtual int isBaseOf(Type *t, int *poffset);
     virtual MATCH constConv(Type *to);
     virtual MATCH implicitConvTo(Type *to);
     virtual ClassDeclaration *isClassHandle();
@@ -522,6 +521,7 @@ struct TypePointer : TypeNext
     d_uns64 size(Loc loc);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     MATCH implicitConvTo(Type *to);
+    MATCH constConv(Type *to);
     int isscalar();
     Expression *defaultInit(Loc loc);
     int isZeroInit(Loc loc);
@@ -645,7 +645,7 @@ struct TypeDelegate : TypeNext
 struct TypeQualified : Type
 {
     Loc loc;
-    Array idents;       // array of Identifier's representing ident.ident.ident etc.
+    Identifiers idents;       // array of Identifier's representing ident.ident.ident etc.
 
     TypeQualified(TY ty, Loc loc);
     void syntaxCopyHelper(TypeQualified *t);
@@ -849,7 +849,7 @@ struct TypeClass : Type
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
     ClassDeclaration *isClassHandle();
-    int isBaseOf(Type *t, target_ptrdiff_t *poffset);
+    int isBaseOf(Type *t, int *poffset);
     MATCH implicitConvTo(Type *to);
     Expression *defaultInit(Loc loc);
     int isZeroInit(Loc loc);
@@ -901,12 +901,6 @@ struct TypeSlice : TypeNext
     Type *syntaxCopy();
     Type *semantic(Loc loc, Scope *sc);
     void resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol **ps);
-    void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
-};
-
-struct TypeNewArray : TypeNext
-{
-    TypeNewArray(Type *next);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
 };
 

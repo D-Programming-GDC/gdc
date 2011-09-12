@@ -76,9 +76,9 @@ Parser::Parser(Module *module, unsigned char *base, unsigned length, int doDocCo
     //nextToken();              // start up the scanner
 }
 
-Array *Parser::parseModule()
+Dsymbols *Parser::parseModule()
 {
-    Array *decldefs;
+    Dsymbols *decldefs;
 
     // ModuleDeclation leads off
     if (token.value == TOKmodule)
@@ -111,14 +111,14 @@ Array *Parser::parseModule()
         }
         else
         {
-            Array *a = NULL;
+            Identifiers *a = NULL;
             Identifier *id;
 
             id = token.ident;
             while (nextToken() == TOKdot)
             {
                 if (!a)
-                    a = new Array();
+                    a = new Identifiers();
                 a->push(id);
                 nextToken();
                 if (token.value != TOKidentifier)
@@ -146,21 +146,21 @@ Lerr:
     while (token.value != TOKsemicolon && token.value != TOKeof)
         nextToken();
     nextToken();
-    return new Array();
+    return new Dsymbols();
 }
 
-Array *Parser::parseDeclDefs(int once)
+Dsymbols *Parser::parseDeclDefs(int once)
 {   Dsymbol *s;
-    Array *decldefs;
-    Array *a;
-    Array *aelse;
+    Dsymbols *decldefs;
+    Dsymbols *a;
+    Dsymbols *aelse;
     enum PROT prot;
     StorageClass stc;
     Condition *condition;
     unsigned char *comment;
 
     //printf("Parser::parseDeclDefs()\n");
-    decldefs = new Array();
+    decldefs = new Dsymbols();
     do
     {
         comment = token.blockComment;
@@ -537,10 +537,9 @@ void Parser::composeStorageClass(StorageClass stc)
  * Parse declarations after an align, protection, or extern decl.
  */
 
-Array *Parser::parseBlock()
+Dsymbols *Parser::parseBlock()
 {
-    Array *a = NULL;
-    Dsymbol *s;
+    Dsymbols *a = NULL;
 
     //printf("parseBlock()\n");
     switch (token.value)
@@ -763,8 +762,6 @@ Condition *Parser::parseVersionCondition()
 Condition *Parser::parseStaticIfCondition()
 {   Expression *exp;
     Condition *condition;
-    Array *aif;
-    Array *aelse;
     Loc loc = this->loc;
 
     nextToken();
@@ -1119,7 +1116,7 @@ EnumDeclaration *Parser::parseEnum()
     else if (token.value == TOKlcurly)
     {
         //printf("enum definition\n");
-        e->members = new Array();
+        e->members = new Dsymbols();
         nextToken();
         unsigned char *comment = token.blockComment;
         while (token.value != TOKrcurly)
@@ -1246,7 +1243,7 @@ Dsymbol *Parser::parseAggregate()
     {
         //printf("aggregate definition\n");
         nextToken();
-        Array *decl = parseDeclDefs(0);
+        Dsymbols *decl = parseDeclDefs(0);
         if (token.value != TOKrcurly)
             error("} expected following member declarations in aggregate");
         nextToken();
@@ -1268,7 +1265,7 @@ Dsymbol *Parser::parseAggregate()
     if (tpl)
     {   // Wrap a template around the aggregate declaration
 
-        Array *decldefs = new Array();
+        Dsymbols *decldefs = new Dsymbols();
         decldefs->push(a);
         TemplateDeclaration *tempdecl =
                 new TemplateDeclaration(loc, id, tpl, constraint, decldefs);
@@ -1347,7 +1344,7 @@ TemplateDeclaration *Parser::parseTemplateDeclaration()
     TemplateDeclaration *tempdecl;
     Identifier *id;
     TemplateParameters *tpl;
-    Array *decldefs;
+    Dsymbols *decldefs;
     Loc loc = this->loc;
 
     nextToken();
@@ -1544,7 +1541,7 @@ Dsymbol *Parser::parseMixin()
     Identifier *id;
     Type *tqual;
     Objects *tiargs;
-    Array *idents;
+    Identifiers *idents;
 
     //printf("parseMixin()\n");
     nextToken();
@@ -1575,7 +1572,7 @@ Dsymbol *Parser::parseMixin()
         nextToken();
     }
 
-    idents = new Array();
+    idents = new Identifiers();
     while (1)
     {
         tiargs = NULL;
@@ -1668,7 +1665,7 @@ Import *Parser::parseImport(Array *decldefs, int isstatic)
 {   Import *s;
     Identifier *id;
     Identifier *aliasid = NULL;
-    Array *a;
+    Identifiers *a;
     Loc loc;
 
     //printf("Parser::parseImport()\n");
@@ -1693,7 +1690,7 @@ Import *Parser::parseImport(Array *decldefs, int isstatic)
         while (token.value == TOKdot)
         {
             if (!a)
-                a = new Array();
+                a = new Identifiers();
             a->push(id);
             nextToken();
             if (token.value != TOKidentifier)
@@ -2152,7 +2149,7 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
  * Return array of Declaration *'s.
  */
 
-Array *Parser::parseDeclarations()
+Dsymbols *Parser::parseDeclarations()
 {
     StorageClass storage_class;
     StorageClass stc;
@@ -2160,7 +2157,7 @@ Array *Parser::parseDeclarations()
     Type *t;
     Type *tfirst;
     Identifier *ident;
-    Array *a;
+    Dsymbols *a;
     enum TOK tok = TOKreserved;
     unsigned char *comment = token.blockComment;
     enum LINK link = linkage;
@@ -2222,7 +2219,7 @@ Array *Parser::parseDeclarations()
         break;
     }
 
-    a = new Array();
+    a = new Dsymbols();
 
     /* Look for auto initializers:
      *  storage_class identifier = initializer;
@@ -2309,7 +2306,7 @@ Array *Parser::parseDeclarations()
                 a->push(v);
             else
             {
-                Array *ax = new Array();
+                Dsymbols *ax = new Dsymbols();
                 ax->push(v);
                 Dsymbol *s = new LinkDeclaration(link, ax);
                 a->push(s);
@@ -2343,14 +2340,14 @@ Array *Parser::parseDeclarations()
             }
             else
             {
-                Array *ax = new Array();
+                Dsymbols *ax = new Dsymbols();
                 ax->push(f);
                 s = new LinkDeclaration(link, ax);
             }
             if (tpl)                    // it's a function template
             {
                 // Wrap a template around the aggregate declaration
-                Array *decldefs = new Array();
+                Dsymbols *decldefs = new Dsymbols();
                 decldefs->push(s);
                 TemplateDeclaration *tempdecl =
                     new TemplateDeclaration(loc, s->ident, tpl, NULL, decldefs);
@@ -2374,7 +2371,7 @@ Array *Parser::parseDeclarations()
                 a->push(v);
             else
             {
-                Array *ax = new Array();
+                Dsymbols *ax = new Dsymbols();
                 ax->push(v);
                 Dsymbol *s = new LinkDeclaration(link, ax);
                 a->push(s);
@@ -2594,7 +2591,7 @@ Initializer *Parser::parseInitializer()
 
             is = new StructInitializer(loc);
             nextToken();
-            comma = 0;
+            comma = 2;
             while (1)
             {
                 switch (token.value)
@@ -2618,6 +2615,8 @@ Initializer *Parser::parseInitializer()
                         continue;
 
                     case TOKcomma:
+                        if (comma == 2)
+                            error("expression expected, not ','");
                         nextToken();
                         comma = 2;
                         continue;
@@ -2681,7 +2680,7 @@ Initializer *Parser::parseInitializer()
 
             ia = new ArrayInitializer(loc);
             nextToken();
-            comma = 0;
+            comma = 2;
             while (1)
             {
                 switch (token.value)
@@ -2718,6 +2717,8 @@ Initializer *Parser::parseInitializer()
                         continue;
 
                     case TOKcomma:
+                        if (comma == 2)
+                            error("expression expected, not ','");
                         nextToken();
                         comma = 2;
                         continue;
@@ -2920,7 +2921,7 @@ Statement *Parser::parseStatement(int flags)
             {
                 Statements *as = new Statements();
                 as->reserve(a->dim);
-                for (int i = 0; i < a->dim; i++)
+                for (size_t i = 0; i < a->dim; i++)
                 {
                     Dsymbol *d = (Dsymbol *)a->data[i];
                     s = new ExpStatement(loc, d);
@@ -3332,7 +3333,7 @@ Statement *Parser::parseStatement(int flags)
             s = new ScopeStatement(loc, s);
 
             // Keep cases in order by building the case statements backwards
-            for (int i = cases.dim; i; i--)
+            for (size_t i = cases.dim; i; i--)
             {
                 exp = (Expression *)cases.data[i - 1];
                 s = new CaseStatement(loc, exp, s);
@@ -3666,7 +3667,7 @@ Statement *Parser::parseExtAsm(int expect_rparen)
 {
     Expression * insnTemplate;
     Expressions * args = NULL;
-    Array * argNames = NULL;
+    Identifiers * argNames = NULL;
     Expressions * argConstraints = NULL;
     int nOutputArgs = 0;
     Expressions * clobbers = NULL;
@@ -3714,7 +3715,7 @@ Statement *Parser::parseExtAsm(int expect_rparen)
             {
                 args = new Expressions;
                 argConstraints = new Expressions;
-                argNames = new Array;
+                argNames = new Identifiers;
             }
             args->push(arg);
             argNames->push(name);
@@ -3850,8 +3851,6 @@ int Parser::isBasicType(Token **pt)
 {
     // This code parallels parseBasicType()
     Token *t = *pt;
-    Token *t2;
-    int parens;
 
     switch (t->value)
     {
@@ -4501,7 +4500,6 @@ Expression *Parser::parsePrimaryExp()
 
         case BASIC_TYPES_X(t):
             nextToken();
-        L1:
             check(TOKdot, t->toChars());
             if (token.value != TOKidentifier)
             {   error("found '%s' when expecting identifier following '%s.'", token.toChars(), t->toChars());
@@ -5530,7 +5528,7 @@ Expression *Parser::parseNewExp(Expression *thisexp)
         else
         {
             nextToken();
-            Array *decl = parseDeclDefs(0);
+            Dsymbols *decl = parseDeclDefs(0);
             if (token.value != TOKrcurly)
                 error("class member expected");
             nextToken();
@@ -5616,7 +5614,7 @@ enum PREC precedence[TOKMAX];
 
 void initPrecedence()
 {
-    for (int i = 0; i < TOKMAX; i++)
+    for (size_t i = 0; i < TOKMAX; i++)
         precedence[i] = PREC_zero;
 
     precedence[TOKtype] = PREC_expr;

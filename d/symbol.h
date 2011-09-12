@@ -49,8 +49,6 @@ enum TypeType
     mTYvolatile = 0x2000
 };
 
-typedef int tym_t;
-
 enum TypeFlag
 {
     TFsizeunknown = 0x01,
@@ -108,6 +106,7 @@ enum OutputStage
 };
 
 struct FuncFrameInfo;
+typedef ArrayBase<struct Thunk> Thunks;
 
 struct Symbol : Object
 {
@@ -129,7 +128,7 @@ struct Symbol : Object
     tree     SframeField;  // FIELD_DECL in frame struct that this variable is allocated in -- Eventually move back into Stree once everything works right
 
     // For FuncDeclarations:
-    Array * thunks; // of struct Thunk
+    Thunks * thunks;
     FuncDeclarations * otherNestedFuncs;
     OutputStage outputStage;
     FuncFrameInfo *frameInfo;
@@ -137,7 +136,7 @@ struct Symbol : Object
 
 struct Thunk
 {
-    target_ptrdiff_t offset;
+    int offset;
     Symbol * symbol;
     Thunk();
 };

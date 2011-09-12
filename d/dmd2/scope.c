@@ -72,7 +72,9 @@ Scope::Scope()
     this->protection = PROTpublic;
     this->explicitProtection = 0;
     this->stc = 0;
+#if IN_GCC
     this->attributes = NULL;
+#endif
     this->offset = 0;
     this->inunion = 0;
     this->incontract = 0;
@@ -121,7 +123,9 @@ Scope::Scope(Scope *enclosing)
     this->protection = enclosing->protection;
     this->explicitProtection = enclosing->explicitProtection;
     this->stc = enclosing->stc;
+#if IN_GCC
     this->attributes = enclosing->attributes;
+#endif
     this->offset = 0;
     this->inunion = enclosing->inunion;
     this->incontract = enclosing->incontract;

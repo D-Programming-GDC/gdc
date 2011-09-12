@@ -18,6 +18,7 @@
 struct Lstring
 {
     unsigned length;
+
 #ifndef IN_GCC
     // Disable warning about nonstandard extension
     #pragma warning (disable : 4200)

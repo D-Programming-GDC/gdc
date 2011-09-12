@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, September 2004
-*/
-
 #ifndef DMD_EXPRESSION_H
 #define DMD_EXPRESSION_H
 
@@ -50,6 +44,8 @@ struct BinExp;
 struct InterState;
 struct Symbol;          // back end symbol
 struct OverloadSet;
+struct Initializer;
+struct StringExp;
 
 enum TOK;
 
@@ -75,6 +71,7 @@ void expandTuples(Expressions *exps);
 FuncDeclaration *hasThis(Scope *sc);
 Expression *fromConstInitializer(int result, Expression *e);
 int arrayExpressionCanThrow(Expressions *exps);
+TemplateDeclaration *getFuncTemplateDecl(Dsymbol *s);
 
 /* Interpreter: what form of return value expression is required?
  */
@@ -120,6 +117,7 @@ struct Expression : Object
     virtual real_t toReal();
     virtual real_t toImaginary();
     virtual complex_t toComplex();
+    virtual StringExp *toString();
     virtual void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     virtual void toMangleBuffer(OutBuffer *buf);
     virtual Expression *toLvalue(Scope *sc, Expression *e);
@@ -333,6 +331,7 @@ struct NullExp : Expression
     Expression *semantic(Scope *sc);
     int isBool(int result);
     int isConst();
+    StringExp *toString();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void toMangleBuffer(OutBuffer *buf);
     MATCH implicitConvTo(Type *t);
@@ -358,6 +357,8 @@ struct StringExp : Expression
     char *toChars();
     Expression *semantic(Scope *sc);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
+    size_t length();
+    StringExp *toString();
     StringExp *toUTF8(Scope *sc);
     MATCH implicitConvTo(Type *t);
     Expression *castTo(Scope *sc, Type *t);
@@ -407,6 +408,7 @@ struct ArrayLiteralExp : Expression
     int isBool(int result);
     elem *toElem(IRState *irs);
     int checkSideEffect(int flag);
+    StringExp *toString();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void toMangleBuffer(OutBuffer *buf);
     void scanForNestedRef(Scope *sc);
@@ -572,9 +574,9 @@ struct SymbolExp : Expression
 struct SymOffExp : Expression
 {
     Declaration *var;
-    target_size_t offset;
+    unsigned offset;
 
-    SymOffExp(Loc loc, Declaration *var, target_size_t offset);
+    SymOffExp(Loc loc, Declaration *var, unsigned offset);
     Expression *semantic(Scope *sc);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     void checkEscape();
@@ -645,6 +647,7 @@ struct FuncExp : Expression
     char *toChars();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     elem *toElem(IRState *irs);
+    dt_t **toDt(dt_t **pdt);
 
     int inlineCost(InlineCostState *ics);
     //Expression *doInline(InlineDoState *ids);
@@ -1047,6 +1050,7 @@ struct SliceExp : UnaExp
     void checkEscapeRef();
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);
+    int isBool(int result);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);

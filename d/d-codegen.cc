@@ -42,7 +42,7 @@ bool IRState::warnSignCompare = false;
 bool IRState::originalOmitFramePointer;
 
 #if V2
-Array * IRState::varsInScope;
+VarDeclarations * IRState::varsInScope;
 #endif
 
 bool
@@ -319,8 +319,8 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                 ClassDeclaration * target_class_decl = ((TypeClass *) tbtype)->sym;
                 ClassDeclaration * obj_class_decl = ((TypeClass *) ebtype)->sym;
                 bool use_dynamic = false;
+                int offset;
 
-                target_ptrdiff_t offset;
                 if (target_class_decl->isBaseOf(obj_class_decl, & offset))
                 {   // Casting up the inheritance tree: Don't do anything special.
                     // Cast to an implemented interface: Handle at compile time.
@@ -1029,7 +1029,7 @@ tree IRState::errorMark(Type * t)
 }
 
 tree
-IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * arguments)
+IRState::call(Expression * expr, Expressions * arguments)
 {
     // Calls to delegates can sometimes look like this:
     if (expr->op == TOKcomma)
@@ -1093,21 +1093,21 @@ IRState::call(Expression * expr, /*TypeFunction * func_type, */ Array * argument
 }
 
 tree
-IRState::call(FuncDeclaration * func_decl, Array * args)
+IRState::call(FuncDeclaration * func_decl, Expressions * args)
 {
     gcc_assert(! func_decl->isNested()); // Otherwise need to copy code from above
     return call((TypeFunction *) func_decl->type, func_decl->toSymbol()->Stree, NULL_TREE, args);
 }
 
 tree
-IRState::call(FuncDeclaration * func_decl, tree object, Array * args)
+IRState::call(FuncDeclaration * func_decl, tree object, Expressions * args)
 {
     return call((TypeFunction *)func_decl->type, functionPointer(func_decl),
             object, args);
 }
 
 tree
-IRState::call(TypeFunction *func_type, tree callable, tree object, Array * arguments)
+IRState::call(TypeFunction *func_type, tree callable, tree object, Expressions * arguments)
 {
     // Using TREE_TYPE(callable) instead of func_type->toCtype can save a build_method_type
     tree func_type_node = TREE_TYPE(callable);
@@ -1166,7 +1166,7 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Array * argum
     for (size_t ai = 0; ai < n_actual_args; ++ai)
     {
         tree actual_arg_tree;
-        Expression * actual_arg_exp = (Expression *) arguments->data[ai];
+        Expression * actual_arg_exp = arguments->tdata()[ai];
 
         if (ai == 0 && is_d_vararg)
         {   // The hidden _arguments parameter
@@ -1293,7 +1293,7 @@ FuncDeclaration *
 IRState::getLibCallDecl(LibCall lib_call)
 {
     FuncDeclaration * decl = libcall_decls[lib_call];
-    Array arg_types;
+    Types arg_types;
     bool varargs = false;
 
     if (! decl)
@@ -1593,10 +1593,8 @@ IRState::getLibCallDecl(LibCall lib_call)
             Parameters * args = new Parameters;
             args->setDim(arg_types.dim);
             for (unsigned i = 0; i < arg_types.dim; i++)
-            {
-                args->data[i] = new Parameter(STCin, (Type *) arg_types.data[i],
-                        NULL, NULL);
-            }
+                args->tdata()[i] = new Parameter(STCin, arg_types.tdata()[i], NULL, NULL);
+
             tf->parameters = args;
         }
         libcall_decls[lib_call] = decl;
@@ -2247,17 +2245,17 @@ IRState::typeinfoReference(Type * t)
     return ti_ref;
 }
 
-target_size_t
+dinteger_t
 IRState::getTargetSizeConst(tree t)
 {
-    target_size_t result;
-    if (sizeof(HOST_WIDE_INT) >= sizeof(target_size_t))
+    dinteger_t result;
+    if (sizeof(HOST_WIDE_INT) >= sizeof(dinteger_t))
         result = tree_low_cst(t, 1);
     else
     {
-        gcc_assert(sizeof(HOST_WIDE_INT) * 2 == sizeof(target_size_t));
+        gcc_assert(sizeof(HOST_WIDE_INT) * 2 == sizeof(dinteger_t));
         result = (unsigned HOST_WIDE_INT) TREE_INT_CST_LOW(t);
-        result += ((target_size_t) (unsigned HOST_WIDE_INT) TREE_INT_CST_HIGH(t))
+        result += ((dinteger_t) (unsigned HOST_WIDE_INT) TREE_INT_CST_HIGH(t))
             << HOST_BITS_PER_WIDE_INT;
     }
     return result;
@@ -2812,7 +2810,7 @@ IRState::attributes(Expressions * in_attrs)
 
     for (unsigned i = 0; i < in_attrs->dim; i++)
     {
-        Expression * e = (Expression *) in_attrs->data[i];
+        Expression * e = in_attrs->tdata()[i];
         IdentifierExp * ident_e = NULL;
 
         ListMaker args;
@@ -2829,7 +2827,7 @@ IRState::attributes(Expressions * in_attrs)
             {
                 for (unsigned ai = 0; ai < c->arguments->dim; ai++)
                 {
-                    Expression * ae = (Expression *) c->arguments->data[ai];
+                    Expression * ae = c->arguments->tdata()[ai];
                     tree aet;
                     if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
                     {
@@ -3351,9 +3349,9 @@ IRState::getFrameInfo(FuncDeclaration *fd)
     fds->frameInfo = ffi;
 
 #if V2
-    Dsymbols * nestedVars = & fd->closureVars;
+    VarDeclarations * nestedVars = & fd->closureVars;
 #else
-    Dsymbols * nestedVars = & fd->frameVars;
+    VarDeclarations * nestedVars = & fd->frameVars;
 #endif
 
     // Nested functions, or functions with nested refs must create
@@ -3391,11 +3389,11 @@ IRState::getFrameInfo(FuncDeclaration *fd)
             {
                 for (unsigned i = 0; i < ff->closureVars.dim; i++)
                 {
-                    VarDeclaration *v = (VarDeclaration *)ff->closureVars.data[i];
+                    VarDeclaration * v = ff->closureVars.tdata()[i];
                     gcc_assert(v->isVarDeclaration());
                     for (unsigned j = 0; j < v->nestedrefs.dim; j++)
                     {
-                        FuncDeclaration *fi = (FuncDeclaration *)v->nestedrefs.data[j];
+                        FuncDeclaration * fi = v->nestedrefs.tdata()[j];
                         if (isFuncNestedIn(fi, fd))
                         {
                             ffi->creates_frame = true;
@@ -3542,9 +3540,9 @@ IRState::buildChain(FuncDeclaration * func)
         return;
 
 #if V2
-    Dsymbols * nestedVars = & func->closureVars;
+    VarDeclarations * nestedVars = & func->closureVars;
 #else
-    Dsymbols * nestedVars = & func->frameVars;
+    VarDeclarations * nestedVars = & func->frameVars;
 #endif
 
     char *name = concat ("FRAME.",
@@ -3565,7 +3563,7 @@ IRState::buildChain(FuncDeclaration * func)
 
     for (unsigned i = 0; i < nestedVars->dim; ++i)
     {
-        VarDeclaration *v = (VarDeclaration *)nestedVars->data[i];
+        VarDeclaration *v = nestedVars->tdata()[i];
         Symbol * s = v->toSymbol();
         tree field = d_build_decl(FIELD_DECL,
                                   v->ident ? get_identifier(v->ident->string) : NULL_TREE,
@@ -3596,8 +3594,7 @@ IRState::buildChain(FuncDeclaration * func)
     // copy parameters that are referenced nonlocally
     for (unsigned i = 0; i < nestedVars->dim; i++)
     {
-        VarDeclaration *v = (VarDeclaration *)nestedVars->data[i];
-
+        VarDeclaration * v = nestedVars->tdata()[i];
         if (! v->isParameter())
             continue;
 
@@ -3930,9 +3927,9 @@ IRState::checkGoto(Statement * stmt, LabelDsymbol * label)
     if (curLevel)
         curBlock = currentFlow()->statement;
 
-    for (unsigned i = 0; i < Labels.dim; i++)
+    for (unsigned i = 0; i < labels.dim; i++)
     {
-        Label * linfo = (Label *)Labels.data[i];
+        Label * linfo = labels.tdata()[i];
         gcc_assert(linfo);
 
         if (label == linfo->label)
@@ -3968,15 +3965,15 @@ IRState::checkPreviousGoto(Array * refs)
 
     for (unsigned i = 0; i < refs->dim; i++)
     {
-        Label * ref = (Label *)refs->data[i];
+        Label * ref = (Label *) refs->data[i];
         int found = 0;
 
         gcc_assert(ref && ref->from);
         stmt = ref->from;
 
-        for (unsigned i = 0; i < Labels.dim; i++)
+        for (unsigned i = 0; i < labels.dim; i++)
         {
-            Label * linfo = (Label *)Labels.data[i];
+            Label * linfo = labels.tdata()[i];
             gcc_assert(linfo);
 
             if (ref->label == linfo->label)
@@ -4039,7 +4036,7 @@ FieldVisitor::visit(AggregateDeclaration * decl)
 
 
 void
-AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
+AggLayout::doFields(VarDeclarations * fields, AggregateDeclaration * agg)
 {
     bool inherited = agg != this->aggDecl;
     tree fcontext;
@@ -4052,9 +4049,7 @@ AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
     for (unsigned i = 0; i < fields->dim; i++)
     {   // %% D anonymous unions just put the fields into the outer struct...
         // does this cause problems?
-        Dsymbol * field = (Dsymbol *) fields->data[i];
-        VarDeclaration * var_decl = field->isVarDeclaration();
-
+        VarDeclaration * var_decl = fields->tdata()[i];
         gcc_assert(var_decl && var_decl->storage_class & STCfield);
 
         tree ident = var_decl->ident ? get_identifier(var_decl->ident->string) : NULL_TREE;
@@ -4090,12 +4085,12 @@ AggLayout::doFields(Array * fields, AggregateDeclaration * agg)
 }
 
 void
-AggLayout::doInterfaces(Array * bases, AggregateDeclaration * /*agg*/)
+AggLayout::doInterfaces(BaseClasses * bases, AggregateDeclaration * /*agg*/)
 {
     //tree fcontext = TREE_TYPE(agg->type->toCtype());
     for (unsigned i = 0; i < bases->dim; i++)
     {
-        BaseClass * bc = (BaseClass *) bases->data[i];
+        BaseClass * bc = bases->tdata()[i];
         tree decl = d_build_decl(FIELD_DECL, NULL_TREE,
             Type::tvoidptr->pointerTo()->toCtype() /* %% better */);
         //DECL_VIRTUAL_P(decl) = 1; %% nobody cares, boo hoo
@@ -4106,7 +4101,7 @@ AggLayout::doInterfaces(Array * bases, AggregateDeclaration * /*agg*/)
 }
 
 void
-AggLayout::addField(tree field_decl, target_size_t offset)
+AggLayout::addField(tree field_decl, size_t offset)
 {
     DECL_CONTEXT(field_decl) = aggType;
     // DECL_FCONTEXT(field_decl) = aggType; // caller needs to set this

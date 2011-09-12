@@ -424,7 +424,7 @@ Expression *CastExp::optimize(int result)
         // See if we can remove an unnecessary cast
         ClassDeclaration *cdfrom;
         ClassDeclaration *cdto;
-        target_ptrdiff_t offset;
+        int offset;
 
         cdfrom = e1->type->isClassHandle();
         cdto   = type->isClassHandle();
@@ -564,9 +564,9 @@ Expression *shift_optimize(int result, BinExp *e, Expression *(*shift)(Type *, E
     if (e->e2->isConst() == 1)
     {
         dinteger_t i2 = e->e2->toInteger();
-        target_size_t sz = e->e1->type->size() * 8;
+        d_uns64 sz = e->e1->type->size() * 8;
         if (i2 < 0 || i2 > sz)
-        {   e->error("shift by %"PRIdMAX" is outside the range 0..%"PRIuTSIZE, i2, sz);
+        {   e->error("shift by %"PRIdMAX" is outside the range 0..%"PRIuSIZE, i2, sz);
             e->e2 = new IntegerExp(0);
         }
         if (e->e1->isConst() == 1)

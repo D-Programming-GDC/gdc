@@ -59,11 +59,14 @@ struct AsmArg
     }
 };
 
+typedef ArrayBase<struct AsmArg> AsmArgs;
+
+
 struct AsmCode
 {
     char *   insnTemplate;
     unsigned insnTemplateLen;
-    Array    args; // of AsmArg
+    AsmArgs args;
     unsigned * clbregs; // list of clobbered registers
     unsigned dollarLabel;
     int      clobbersMemory;
@@ -141,7 +144,7 @@ d_expand_priv_asm_label(IRState * irs, unsigned n)
     irs->addExp(t);
 }
 
-ExtAsmStatement::ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Array *argNames,
+ExtAsmStatement::ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Identifiers *argNames,
     Expressions *argConstraints, int nOutputArgs, Expressions *clobbers)
     : Statement(loc)
 {
@@ -185,32 +188,32 @@ ExtAsmStatement::semantic(Scope *sc)
     {
         for (unsigned i = 0; i < args->dim; i++)
         {
-            Expression * e = (Expression *) args->data[i];
+            Expression * e = args->tdata()[i];
             e = e->semantic(sc);
             if (i < nOutputArgs)
                 e = e->modifiableLvalue(sc, NULL);
             else
                 e = e->optimize(WANTvalue|WANTinterpret);
-            args->data[i] = e;
+            args->tdata()[i] = e;
 
-            e = (Expression *) argConstraints->data[i];
+            e = argConstraints->tdata()[i];
             e = e->semantic(sc);
             e = e->optimize(WANTvalue);
             if (e->op != TOKstring || ((StringExp *)e)->sz != 1)
                 error("constraint must be a constant char string");
-            argConstraints->data[i] = e;
+            argConstraints->tdata()[i] = e;
         }
     }
     if (clobbers)
     {
         for (unsigned i = 0; i < clobbers->dim; i++)
         {
-            Expression * e = (Expression *) clobbers->data[i];
+            Expression * e = clobbers->tdata()[i];
             e = e->semantic(sc);
             e = e->optimize(WANTvalue);
             if (e->op != TOKstring || ((StringExp *)e)->sz != 1)
                 error("clobber specification must be a constant char string");
-            clobbers->data[i] = e;
+            clobbers->tdata()[i] = e;
         }
     }
     return this;
@@ -227,9 +230,9 @@ ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     {
         for (unsigned i = 0; i < args->dim; i++)
         {
-            Identifier * name = argNames->data[i] ? (Identifier *) argNames->data[i] : NULL;
-            Expression * constr = (Expression *) argConstraints->data[i];
-            Expression * arg = (Expression *) args->data[i];
+            Identifier * name = argNames->tdata()[i];
+            Expression * constr = argConstraints->tdata()[i];
+            Expression * arg = args->tdata()[i];
 
             if (name)
             {
@@ -260,7 +263,7 @@ ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         buf->writestring(" : ");
         for (unsigned i = 0; i < clobbers->dim; i++)
         {
-            Expression * clobber = (Expression *) clobbers->data[i];
+            Expression * clobber = clobbers->tdata()[i];
             buf->writestring(clobber->toChars());
             if (i < clobbers->dim - 1)
                 buf->writestring(", ");
@@ -304,11 +307,11 @@ void ExtAsmStatement::toIR(IRState *irs)
     {
         for (unsigned i = 0; i < args->dim; i++)
         {
-            Identifier * name = argNames->data[i] ? (Identifier *) argNames->data[i] : NULL;
-            Expression * constr = (Expression *) argConstraints->data[i];
+            Identifier * name = argNames->tdata()[i]; 
+            Expression * constr = argConstraints->tdata()[i];
             tree p = tree_cons(name ? build_string(name->len, name->string) : NULL_TREE,
                 naturalString(constr), NULL_TREE);
-            tree v = ((Expression *) args->data[i])->toElem(irs);
+            tree v = (args->tdata()[i])->toElem(irs);
 
             if (i < nOutputArgs)
                 outputs.cons(p, v);
@@ -320,7 +323,7 @@ void ExtAsmStatement::toIR(IRState *irs)
     {
         for (unsigned i = 0; i < clobbers->dim; i++)
         {
-            Expression * clobber = (Expression *) clobbers->data[i];
+            Expression * clobber = clobbers->tdata()[i];
             tree_clobbers.cons(NULL_TREE, naturalString(clobber));
         }
     }
@@ -409,7 +412,7 @@ AsmStatement::toIR(IRState * irs)
 
     for (unsigned i = 0; i < code->args.dim; i++)
     {
-        AsmArg * arg = (AsmArg *) code->args.data[i];
+        AsmArg * arg = code->args.tdata()[i];
 
         bool is_input = true;
         TOK arg_op = arg->expr->op;

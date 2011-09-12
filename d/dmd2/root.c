@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -375,8 +375,8 @@ char *FileName::combine(const char *path, const char *name)
 #endif
 #if _WIN32
     if (path[pathlen - 1] != '\\' &&
-        path[pathlen - 1] != ':'  &&
-        path[pathlen - 1] != '/')
+        path[pathlen - 1] != '/'  &&
+        path[pathlen - 1] != ':')
     {   f[pathlen] = '\\';
         pathlen++;
     }
@@ -391,21 +391,21 @@ FileName::FileName(char *path, char *name)
 }
 
 // Split a path into an Array of paths
-Array *FileName::splitPath(const char *path)
+Strings *FileName::splitPath(const char *path)
 {
     char c = 0;                         // unnecessary initializer is for VC /W4
     const char *p;
     OutBuffer buf;
-    Array *array;
+    Strings *array;
 
-    array = new Array();
+    array = new Strings();
     if (path)
     {
         p = path;
         do
         {   char instring = 0;
 
-            while (isspace(*p))         // skip leading whitespace
+            while (isspace((unsigned char)*p))         // skip leading whitespace
                 p++;
             buf.reserve(strlen(p) + 1); // guess size of path
             for (; ; p++)
@@ -815,7 +815,7 @@ void FileName::CopyTo(FileName *to)
  *      cwd     if !=0, search current directory before searching path
  */
 
-char *FileName::searchPath(Array *path, const char *name, int cwd)
+char *FileName::searchPath(Strings *path, const char *name, int cwd)
 {
     if (absolute(name))
     {
@@ -831,7 +831,7 @@ char *FileName::searchPath(Array *path, const char *name, int cwd)
 
         for (i = 0; i < path->dim; i++)
         {
-            char *p = (char *)path->data[i];
+            char *p = path->tdata()[i];
             char *n = combine(p, name);
 
             if (exists(n))
@@ -855,7 +855,7 @@ char *FileName::searchPath(Array *path, const char *name, int cwd)
  *      !=NULL  mem.malloc'd file name
  */
 
-char *FileName::safeSearchPath(Array *path, const char *name)
+char *FileName::safeSearchPath(Strings *path, const char *name)
 {
 #if _WIN32
     /* Disallow % / \ : and .. in name characters
@@ -892,7 +892,7 @@ char *FileName::safeSearchPath(Array *path, const char *name)
         for (i = 0; i < path->dim; i++)
         {
             char *cname = NULL;
-            char *cpath = canonicalName((char *)path->data[i]);
+            char *cpath = canonicalName(path->tdata()[i]);
             //printf("FileName::safeSearchPath(): name=%s; path=%s; cpath=%s\n",
             //      name, (char *)path->data[i], cpath);
             if (cpath == NULL)
@@ -1104,7 +1104,7 @@ int File::read()
     //printf("File::read('%s')\n",name);
     fd = open(name, O_RDONLY);
     if (fd == -1)
-    {   result = errno;
+    {
         //printf("\topen error, errno = %d\n",errno);
         goto err1;
     }
@@ -1470,12 +1470,12 @@ void File::remove()
 #endif
 }
 
-Array *File::match(char *n)
+Files *File::match(char *n)
 {
     return match(new FileName(n, 0));
 }
 
-Array *File::match(FileName *n)
+Files *File::match(FileName *n)
 {
 #ifndef _WIN32
     return NULL;
@@ -1483,11 +1483,11 @@ Array *File::match(FileName *n)
 #if _WIN32
     HANDLE h;
     WIN32_FIND_DATAA fileinfo;
-    Array *a;
+    Files *a;
     char *c;
     char *name;
 
-    a = new Array();
+    a = new Files();
     c = n->toChars();
     name = n->name();
     h = FindFirstFileA(c,&fileinfo);
@@ -1578,11 +1578,11 @@ OutBuffer::~OutBuffer()
     mem.free(data);
 }
 
-void *OutBuffer::extractData()
+char *OutBuffer::extractData()
 {
-    void *p;
+    char *p;
 
-    p = (void *)data;
+    p = (char *)data;
     data = NULL;
     offset = 0;
     size = 0;
@@ -1784,7 +1784,7 @@ void OutBuffer::writeUTF16(unsigned w)
 void OutBuffer::write4(unsigned w)
 {
     reserve(4);
-    *(uint32_t *)(this->data + offset) = w;
+    *(unsigned *)(this->data + offset) = w;
     offset += 4;
 }
 

@@ -451,8 +451,8 @@ MATCH StructLiteralExp::implicitConvTo(Type *t)
         ((TypeStruct *)type)->sym == ((TypeStruct *)t)->sym)
     {
         m = MATCHconst;
-        for (int i = 0; i < elements->dim; i++)
-        {   Expression *e = (Expression *)elements->data[i];
+        for (size_t i = 0; i < elements->dim; i++)
+        {   Expression *e = (*elements)[i];
             Type *te = e->type;
             te = te->castMod(t->mod);
             MATCH m2 = e->implicitConvTo(te);
@@ -466,8 +466,7 @@ MATCH StructLiteralExp::implicitConvTo(Type *t)
 #endif
 
 MATCH StringExp::implicitConvTo(Type *t)
-{   MATCH m;
-
+{
 #if 0
     printf("StringExp::implicitConvTo(this=%s, committed=%d, type=%s, t=%s)\n",
         toChars(), committed, type->toChars(), t->toChars());
@@ -560,8 +559,8 @@ MATCH ArrayLiteralExp::implicitConvTo(Type *t)
                 result = MATCHnomatch;
         }
 
-        for (int i = 0; i < elements->dim; i++)
-        {   Expression *e = (Expression *)elements->data[i];
+        for (size_t i = 0; i < elements->dim; i++)
+        {   Expression *e = (*elements)[i];
             MATCH m = (MATCH)e->implicitConvTo(tb->nextOf());
             if (m < result)
                 result = m;                     // remember worst match
@@ -582,13 +581,13 @@ MATCH AssocArrayLiteralExp::implicitConvTo(Type *t)
     if (tb->ty == Taarray && typeb->ty == Taarray)
     {
         for (size_t i = 0; i < keys->dim; i++)
-        {   Expression *e = (Expression *)keys->data[i];
+        {   Expression *e = keys->tdata()[i];
             MATCH m = (MATCH)e->implicitConvTo(((TypeAArray *)tb)->index);
             if (m < result)
                 result = m;                     // remember worst match
             if (result == MATCHnomatch)
                 break;                          // no need to check for worse
-            e = (Expression *)values->data[i];
+            e = values->tdata()[i];
             m = (MATCH)e->implicitConvTo(tb->nextOf());
             if (m < result)
                 result = m;                     // remember worst match
@@ -599,6 +598,26 @@ MATCH AssocArrayLiteralExp::implicitConvTo(Type *t)
     }
     else
         return Expression::implicitConvTo(t);
+}
+
+MATCH CallExp::implicitConvTo(Type *t)
+{
+#if 0
+    printf("CalLExp::implicitConvTo(this=%s, type=%s, t=%s)\n",
+        toChars(), type->toChars(), t->toChars());
+#endif
+
+    MATCH m = Expression::implicitConvTo(t);
+    if (m)
+        return m;
+
+    /* Allow the result of strongly pure functions to
+     * convert to immutable
+     */
+    if (f && f->isPure() == PUREstrong)
+        return type->invariantOf()->implicitConvTo(t);
+
+    return MATCHnomatch;
 }
 
 MATCH AddrExp::implicitConvTo(Type *t)
@@ -622,8 +641,8 @@ MATCH AddrExp::implicitConvTo(Type *t)
             (t->ty == Tpointer || t->ty == Tdelegate) && t->nextOf()->ty == Tfunction)
         {   OverExp *eo = (OverExp *)e1;
             FuncDeclaration *f = NULL;
-            for (int i = 0; i < eo->vars->a.dim; i++)
-            {   Dsymbol *s = (Dsymbol *)eo->vars->a.data[i];
+            for (size_t i = 0; i < eo->vars->a.dim; i++)
+            {   Dsymbol *s = eo->vars->a[i];
                 FuncDeclaration *f2 = s->isFuncDeclaration();
                 assert(f2);
                 if (f2->overloadExactMatch(t->nextOf()))
@@ -708,11 +727,10 @@ MATCH DelegateExp::implicitConvTo(Type *t)
     if (result == MATCHnomatch)
     {
         // Look for pointers to functions where the functions are overloaded.
-        FuncDeclaration *f;
 
         t = t->toBasetype();
-        if (type->ty == Tdelegate && type->nextOf()->ty == Tfunction &&
-            t->ty == Tdelegate && t->nextOf()->ty == Tfunction)
+        if (type->ty == Tdelegate &&
+            t->ty == Tdelegate)
         {
             if (func && func->overloadExactMatch(t->nextOf()))
                 result = MATCHexact;
@@ -838,9 +856,9 @@ Expression *Expression::castTo(Scope *sc, Type *t)
                      *   cast(to)e1.aliasthis
                      */
                     Expression *e1 = new DotIdExp(loc, this, ts->sym->aliasthis->ident);
-                    Expression *e = new CastExp(loc, e1, tb);
-                    e = e->semantic(sc);
-                    return e;
+                    Expression *e2 = new CastExp(loc, e1, tb);
+                    e2 = e2->semantic(sc);
+                    return e2;
                 }
             }
             else if (typeb->ty == Tclass)
@@ -851,7 +869,7 @@ Expression *Expression::castTo(Scope *sc, Type *t)
                     {
                         ClassDeclaration *cdfrom = typeb->isClassHandle();
                         ClassDeclaration *cdto   = tb->isClassHandle();
-                        target_ptrdiff_t offset;
+                        int offset;
                         if (cdto->isBaseOf(cdfrom, &offset))
                              goto L1;
                     }
@@ -859,9 +877,9 @@ Expression *Expression::castTo(Scope *sc, Type *t)
                      *   cast(to)e1.aliasthis
                      */
                     Expression *e1 = new DotIdExp(loc, this, ts->sym->aliasthis->ident);
-                    Expression *e = new CastExp(loc, e1, tb);
-                    e = e->semantic(sc);
-                    return e;
+                    Expression *e2 = new CastExp(loc, e1, tb);
+                    e2 = e2->semantic(sc);
+                    return e2;
                 }
              L1: ;
             }
@@ -1008,7 +1026,9 @@ Expression *StringExp::castTo(Scope *sc, Type *t)
     if (committed && tb->ty == Tsarray && typeb->ty == Tarray)
     {
         se = (StringExp *)copy();
-        se->sz = tb->nextOf()->size();
+        d_uns64 szx = tb->nextOf()->size();
+        assert(szx <= 255);
+        se->sz = (unsigned char)szx;
         se->len = (len * sz) / se->sz;
         se->committed = 1;
         se->type = t;
@@ -1143,7 +1163,12 @@ Expression *StringExp::castTo(Scope *sc, Type *t)
             }
             se->string = buffer.extractData();
             se->len = newlen;
-            se->sz = tb->nextOf()->size();
+
+            {
+                d_uns64 szx = tb->nextOf()->size();
+                assert(szx <= 255);
+                se->sz = (unsigned char)szx;
+            }
             break;
 
         default:
@@ -1158,9 +1183,9 @@ L2:
     // See if need to truncate or extend the literal
     if (tb->ty == Tsarray)
     {
-        int dim2 = ((TypeSArray *)tb)->dim->toInteger();
+        dinteger_t dim2 = ((TypeSArray *)tb)->dim->toInteger();
 
-        //printf("dim from = %d, to = %d\n", se->len, dim2);
+        //printf("dim from = %d, to = %d\n", (int)se->len, (int)dim2);
 
         // Changing dimensions
         if (dim2 != se->len)
@@ -1208,8 +1233,8 @@ Expression *AddrExp::castTo(Scope *sc, Type *t)
             (t->ty == Tpointer || t->ty == Tdelegate) && t->nextOf()->ty == Tfunction)
         {   OverExp *eo = (OverExp *)e1;
             FuncDeclaration *f = NULL;
-            for (int i = 0; i < eo->vars->a.dim; i++)
-            {   Dsymbol *s = (Dsymbol *)eo->vars->a.data[i];
+            for (size_t i = 0; i < eo->vars->a.dim; i++)
+            {   Dsymbol *s = eo->vars->a[i];
                 FuncDeclaration *f2 = s->isFuncDeclaration();
                 assert(f2);
                 if (f2->overloadExactMatch(t->nextOf()))
@@ -1263,9 +1288,9 @@ Expression *TupleExp::castTo(Scope *sc, Type *t)
 {   TupleExp *e = (TupleExp *)copy();
     e->exps = (Expressions *)exps->copy();
     for (size_t i = 0; i < e->exps->dim; i++)
-    {   Expression *ex = (Expression *)e->exps->data[i];
+    {   Expression *ex = e->exps->tdata()[i];
         ex = ex->castTo(sc, t);
-        e->exps->data[i] = (void *)ex;
+        e->exps->tdata()[i] = ex;
     }
     return e;
 }
@@ -1295,10 +1320,10 @@ Expression *ArrayLiteralExp::castTo(Scope *sc, Type *t)
 
         e = (ArrayLiteralExp *)copy();
         e->elements = (Expressions *)elements->copy();
-        for (int i = 0; i < elements->dim; i++)
-        {   Expression *ex = (Expression *)elements->data[i];
+        for (size_t i = 0; i < elements->dim; i++)
+        {   Expression *ex = (*elements)[i];
             ex = ex->castTo(sc, tb->nextOf());
-            e->elements->data[i] = (void *)ex;
+            (*e->elements)[i] = ex;
         }
         e->type = t;
         return e;
@@ -1330,18 +1355,17 @@ Expression *AssocArrayLiteralExp::castTo(Scope *sc, Type *t)
         e->values = (Expressions *)values->copy();
         assert(keys->dim == values->dim);
         for (size_t i = 0; i < keys->dim; i++)
-        {   Expression *ex = (Expression *)values->data[i];
+        {   Expression *ex = values->tdata()[i];
             ex = ex->castTo(sc, tb->nextOf());
-            e->values->data[i] = (void *)ex;
+            e->values->tdata()[i] = ex;
 
-            ex = (Expression *)keys->data[i];
+            ex = keys->tdata()[i];
             ex = ex->castTo(sc, ((TypeAArray *)tb)->index);
-            e->keys->data[i] = (void *)ex;
+            e->keys->tdata()[i] = ex;
         }
         e->type = t;
         return e;
     }
-L1:
     return e->Expression::castTo(sc, t);
 }
 
@@ -1430,14 +1454,14 @@ Expression *DelegateExp::castTo(Scope *sc, Type *t)
         // Look for delegates to functions where the functions are overloaded.
         FuncDeclaration *f;
 
-        if (typeb->ty == Tdelegate && typeb->nextOf()->ty == Tfunction &&
-            tb->ty == Tdelegate && tb->nextOf()->ty == Tfunction)
+        if (typeb->ty == Tdelegate &&
+            tb->ty == Tdelegate)
         {
             if (func)
             {
                 f = func->overloadExactMatch(tb->nextOf());
                 if (f)
-                {   target_ptrdiff_t offset;
+                {   int offset;
                     if (f->tintro && f->tintro->nextOf()->isBaseOf(f->type->nextOf(), &offset) && offset)
                         error("%s", msg);
                     f->tookAddressOf++;
@@ -1452,7 +1476,7 @@ Expression *DelegateExp::castTo(Scope *sc, Type *t)
         e = Expression::castTo(sc, t);
     }
     else
-    {   target_ptrdiff_t offset;
+    {   int offset;
 
         func->tookAddressOf++;
         if (func->tintro && func->tintro->nextOf()->isBaseOf(func->type->nextOf(), &offset) && offset)
@@ -1561,7 +1585,7 @@ bool isVoidArrayLiteral(Expression *e, Type *other)
     while (e->op == TOKarrayliteral && e->type->ty == Tarray
         && (((ArrayLiteralExp *)e)->elements->dim == 1))
     {
-        e = (Expression *)((ArrayLiteralExp *)e)->elements->data[0];
+        e = ((ArrayLiteralExp *)e)->elements->tdata()[0];
         if (other->ty == Tsarray || other->ty == Tarray)
             other = other->nextOf();
         else
@@ -1669,6 +1693,41 @@ Lagain:
             t = t2;
         else if (t2n->ty == Tvoid)
             ;
+        else if (t1n->ty == Tfunction && t2n->ty == Tfunction)
+        {
+            if (t1->implicitConvTo(t2))
+                goto Lt2;
+            if (t2->implicitConvTo(t1))
+                goto Lt1;
+
+            TypeFunction *tf1 = (TypeFunction *)t1n;
+            TypeFunction *tf2 = (TypeFunction *)t2n;
+            TypeFunction *d = (TypeFunction *)tf1->syntaxCopy();
+
+            if (tf1->purity != tf2->purity)
+                d->purity = PUREimpure;
+            assert(d->purity != PUREfwdref);
+
+            d->isnothrow = (tf1->isnothrow && tf2->isnothrow);
+
+            if (tf1->trust == tf2->trust)
+                d->trust = tf1->trust;
+            else if (tf1->trust <= TRUSTsystem || tf2->trust <= TRUSTsystem)
+                d->trust = TRUSTsystem;
+            else
+                d->trust = TRUSTtrusted;
+
+            Type *tx = d->pointerTo();
+
+            if (t1->implicitConvTo(tx) && t2->implicitConvTo(tx))
+            {
+                t = tx;
+                e1 = e1->castTo(sc, t);
+                e2 = e2->castTo(sc, t);
+                goto Lret;
+            }
+            goto Lincompatible;
+        }
         else if (t1n->mod != t2n->mod)
         {
             t1 = t1n->mutableOf()->constOf()->pointerTo();
@@ -1679,7 +1738,7 @@ Lagain:
         else if (t1n->ty == Tclass && t2n->ty == Tclass)
         {   ClassDeclaration *cd1 = t1n->isClassHandle();
             ClassDeclaration *cd2 = t2n->isClassHandle();
-            target_ptrdiff_t offset;
+            int offset;
 
             if (cd1->isBaseOf(cd2, &offset))
             {
@@ -1808,14 +1867,71 @@ Lagain:
                 else
                     goto Lincompatible;
             }
+            else if (t1->ty == Tstruct && ((TypeStruct *)t1)->sym->aliasthis)
+            {
+                e1 = new DotIdExp(e1->loc, e1, ((TypeStruct *)t1)->sym->aliasthis->ident);
+                e1 = e1->semantic(sc);
+                e1 = resolveProperties(sc, e1);
+                t1 = e1->type;
+                continue;
+            }
+            else if (t2->ty == Tstruct && ((TypeStruct *)t2)->sym->aliasthis)
+            {
+                e2 = new DotIdExp(e2->loc, e2, ((TypeStruct *)t2)->sym->aliasthis->ident);
+                e2 = e2->semantic(sc);
+                e2 = resolveProperties(sc, e2);
+                t2 = e2->type;
+                continue;
+            }
             else
                 goto Lincompatible;
         }
     }
     else if (t1->ty == Tstruct && t2->ty == Tstruct)
     {
-        if (((TypeStruct *)t1)->sym != ((TypeStruct *)t2)->sym)
-            goto Lincompatible;
+        TypeStruct *ts1 = (TypeStruct *)t1;
+        TypeStruct *ts2 = (TypeStruct *)t2;
+        if (ts1->sym != ts2->sym)
+        {
+            if (!ts1->sym->aliasthis && !ts2->sym->aliasthis)
+                goto Lincompatible;
+
+            int i1 = 0;
+            int i2 = 0;
+
+            Expression *e1b = NULL;
+            Expression *e2b = NULL;
+            if (ts2->sym->aliasthis)
+            {
+                e2b = new DotIdExp(e2->loc, e2, ts2->sym->aliasthis->ident);
+                e2b = e2b->semantic(sc);
+                e2b = resolveProperties(sc, e2b);
+                i1 = e2b->implicitConvTo(t1);
+            }
+            if (ts1->sym->aliasthis)
+            {
+                e1b = new DotIdExp(e1->loc, e1, ts1->sym->aliasthis->ident);
+                e1b = e1b->semantic(sc);
+                e1b = resolveProperties(sc, e1b);
+                i2 = e1b->implicitConvTo(t2);
+            }
+            assert(!(i1 && i2));
+
+            if (i1)
+                goto Lt1;
+            else if (i2)
+                goto Lt2;
+
+            if (e1b)
+            {   e1 = e1b;
+                t1 = e1b->type->toBasetype();
+            }
+            if (e2b)
+            {   e2 = e2b;
+                t2 = e2b->type->toBasetype();
+            }
+            goto Lagain;
+        }
     }
     else if ((e1->op == TOKstring || e1->op == TOKnull) && e1->implicitConvTo(t2))
     {

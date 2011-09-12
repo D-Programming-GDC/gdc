@@ -706,7 +706,7 @@ Symbol *FuncDeclaration::toSymbol()
 
 /*************************************
  */
-Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
+Symbol *FuncDeclaration::toThunkSymbol(int offset)
 {
     Symbol *sthunk;
     Thunk * thunk;
@@ -717,13 +717,13 @@ Symbol *FuncDeclaration::toThunkSymbol(target_ptrdiff_t offset)
        module, there can only be one FUNCTION_DECL for it.   Thus, there
        is a list of all thunks for a given function. */
     if (! csym->thunks)
-        csym->thunks = new Array;
-    Array & thunks = * csym->thunks;
+        csym->thunks = new Thunks;
+    Thunks & thunks = * csym->thunks;
     bool found = false;
 
     for (unsigned i = 0; i < thunks.dim; i++)
     {
-        thunk = (Thunk *) thunks.data[i];
+        thunk = thunks.tdata()[i];
         if (thunk->offset == offset)
         {
             found = true;

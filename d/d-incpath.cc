@@ -118,7 +118,7 @@ add_import_path (char * path)
     char * target_dir = make_absolute (path);
 
     if (! global.path)
-        global.path = new Array();
+        global.path = new Strings();
 
     if (! FileName::exists (target_dir))
     {
@@ -138,7 +138,7 @@ add_file_path (char * path)
     char * target_dir = make_absolute (path);
 
     if (! global.filePath)
-        global.filePath = new Array();
+        global.filePath = new Strings();
 
     if (! FileName::exists (target_dir))
     {
@@ -173,7 +173,7 @@ register_import_chains ()
     {
         for (unsigned i = 0; i < global.params.imppath->dim; i++)
         {
-            char *path = (char *)global.params.imppath->data[i];
+            char *path = global.params.imppath->tdata()[i];
             if (path)
                 add_import_path (path);
         }
@@ -183,7 +183,7 @@ register_import_chains ()
     {
         for (unsigned i = 0; i < global.params.fileImppath->dim; i++)
         {
-            char *path = (char *)global.params.fileImppath->data[i];
+            char *path = global.params.fileImppath->tdata()[i];
             if (path)
                 add_file_path (path);
         }

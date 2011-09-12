@@ -32,7 +32,7 @@ static ListMaker bi_type_list;
 
 // Necessary for built-in struct types
 static Array builtin_converted_types;
-static Array builtin_converted_decls;
+static Dsymbols builtin_converted_decls;
 
 static Type * gcc_type_to_d_type(tree t);
 
@@ -225,23 +225,18 @@ gcc_type_to_d_type(tree t)
             sd->sizeok = 1;
 
             d = new TypeStruct(sd);
+            d->ctype = t;
+
             sd->type = d;
 #if STRUCTTHISREF
             sd->handle = d;
 #else
             sd->handle = new TypePointer(d);
 #endif
-
             /* Does not seem necessary to convert fields, but the
                members field must be non-null for the above size
                setting to stick. */
-#if V2
             sd->members = new Dsymbols;
-#else
-            sd->members = new Array;
-#endif
-
-            d->ctype = t;
 
             builtin_converted_types.push(t);
             builtin_converted_types.push(d);
@@ -333,12 +328,12 @@ d_gcc_magic_stdarg_check(Dsymbol *m, bool is_c_std_arg)
     if ((ad = m->isAttribDeclaration()))
     {
         // Recursively search through attribute decls
-        Array * decl = ad->include(NULL, NULL);
+        Dsymbols * decl = ad->include(NULL, NULL);
         if (decl && decl->dim)
         {
             for (size_t i = 0; i < decl->dim; i++)
             {
-                Dsymbol * sym = (Dsymbol *)decl->data[i];
+                Dsymbol * sym = decl->tdata()[i];
                 d_gcc_magic_stdarg_check(sym, is_c_std_arg);
             }
         }
@@ -369,8 +364,7 @@ d_gcc_magic_stdarg_check(Dsymbol *m, bool is_c_std_arg)
         gcc_assert(td->members);
         for (unsigned j = 0; j < td->members->dim; j++)
         {
-            FuncDeclaration * fd =
-                ((Dsymbol *) td->members->data[j])->isFuncDeclaration();
+            FuncDeclaration * fd = (td->members->tdata()[j])->isFuncDeclaration();
             if (fd && (fd->ident == id_arg || fd->ident == id_start))
             {
                 TypeFunction * tf;
@@ -380,8 +374,8 @@ d_gcc_magic_stdarg_check(Dsymbol *m, bool is_c_std_arg)
                 tf = (TypeFunction *) fd->type;
                 gcc_assert(tf->ty == Tfunction &&
                         tf->parameters && tf->parameters->dim >= 1);
-                ((Parameter*) tf->parameters->data[0])->storageClass &= ~(STCin|STCout|STCref);
-                ((Parameter*) tf->parameters->data[0])->storageClass |= STCin;
+                (tf->parameters->tdata()[0])->storageClass &= ~(STCin|STCout|STCref);
+                (tf->parameters->tdata()[0])->storageClass |= STCin;
             }
         }
     }
@@ -397,10 +391,10 @@ d_gcc_magic_stdarg_check(Dsymbol *m, bool is_c_std_arg)
 static void
 d_gcc_magic_stdarg_module(Module *m, bool is_c_std_arg)
 {
-    Array * members = m->members;
+    Dsymbols * members = m->members;
     for (unsigned i = 0; i < members->dim; i++)
     {
-        Dsymbol * sym = (Dsymbol *) members->data[i];
+        Dsymbol * sym = members->tdata()[i];
         d_gcc_magic_stdarg_check(sym, is_c_std_arg);
     }
 }
@@ -408,11 +402,7 @@ d_gcc_magic_stdarg_module(Module *m, bool is_c_std_arg)
 static void
 d_gcc_magic_builtins_module(Module *m)
 {
-#if V2
     Dsymbols * funcs = new Dsymbols;
-#else
-    Array * funcs = new Array;
-#endif
 
     for (tree n = bi_fn_list.head; n; n = TREE_CHAIN(n))
     {
@@ -482,7 +472,7 @@ d_gcc_magic_builtins_module(Module *m)
 
     for (unsigned i = 0; i < builtin_converted_decls.dim ; ++i)
     {
-        Dsymbol * sym = (Dsymbol *) builtin_converted_decls.data[i];
+        Dsymbol * sym = builtin_converted_decls.tdata()[i];
         /* va_list is a pain.  It can be referenced without importing
            gcc.builtins so it really needs to go in the object module. */
         if (! sym->parent)
@@ -558,13 +548,13 @@ d_gcc_magic_module(Module *m)
 
     if (md->packages->dim == 1)
     {
-        if (! strcmp(((Identifier *) md->packages->data[0])->string, "gcc"))
+        if (! strcmp((md->packages->tdata()[0])->string, "gcc"))
         {
             if (! strcmp(md->id->string, "builtins"))
                 d_gcc_magic_builtins_module(m);
         }
 #if V2
-        else if (! strcmp(((Identifier *) md->packages->data[0])->string, "core"))
+        else if (! strcmp((md->packages->tdata()[0])->string, "core"))
         {
             if (! strcmp(md->id->string, "vararg"))
                 d_gcc_magic_stdarg_module(m, false);
@@ -573,7 +563,7 @@ d_gcc_magic_module(Module *m)
             else if (! strcmp(md->id->string, "math"))
                 IRState::setMathModule(m, true);
         }
-        else if (! strcmp(((Identifier *) md->packages->data[0])->string, "std"))
+        else if (! strcmp((md->packages->tdata()[0])->string, "std"))
         {
             if (! strcmp(md->id->string, "intrinsic"))
                 IRState::setIntrinsicModule(m, false);
@@ -595,15 +585,15 @@ d_gcc_magic_module(Module *m)
     else if (md->packages->dim == 2)
     {
 #if V2
-        if (! strcmp(((Identifier *) md->packages->data[0])->string, "core") &&
-            ! strcmp(((Identifier *) md->packages->data[1])->string, "stdc"))
+        if (! strcmp((md->packages->tdata()[0])->string, "core") &&
+            ! strcmp((md->packages->tdata()[1])->string, "stdc"))
         {
             if (! strcmp(md->id->string, "stdarg"))
                 d_gcc_magic_stdarg_module(m, true);
         }
 #else
-        if (! strcmp(((Identifier *) md->packages->data[0])->string, "std") &&
-            ! strcmp(((Identifier *) md->packages->data[1])->string, "c"))
+        if (! strcmp((md->packages->tdata()[0])->string, "std") &&
+            ! strcmp((md->packages->tdata()[1])->string, "c"))
         {
             if (! strcmp(md->id->string, "stdarg"))
                 d_gcc_magic_stdarg_module(m, true);
@@ -615,7 +605,7 @@ d_gcc_magic_module(Module *m)
 #if V2
 // Convert backend evaluated trees to D Frontend Expressions for CTFE
 static Expression *
-gcc_cst_to_d_expr(Loc loc, tree cst)
+gcc_cst_to_d_expr(tree cst)
 {
     STRIP_TYPE_NOPS(cst);
     Type * type = gcc_type_to_d_type(TREE_TYPE(cst));
@@ -631,23 +621,23 @@ gcc_cst_to_d_expr(Loc loc, tree cst)
             complex_t value;
             value.re = TREE_REAL_CST(TREE_REALPART(cst));
             value.im = TREE_REAL_CST(TREE_IMAGPART(cst));
-            return new ComplexExp(loc, value, type);
+            return new ComplexExp(0, value, type);
         }
         else if (code == INTEGER_CST)
         {
             dinteger_t value = IRState::hwi2toli(TREE_INT_CST(cst));
-            return new IntegerExp(loc, value, type);
+            return new IntegerExp(0, value, type);
         }
         else if (code == REAL_CST)
         {
             real_t value = TREE_REAL_CST(cst);
-            return new RealExp(loc, value, type);
+            return new RealExp(0, value, type);
         }
         else if (code == STRING_CST)
         {
             const void * string = TREE_STRING_POINTER(cst);
             size_t len = TREE_STRING_LENGTH(cst);
-            return new StringExp(loc, CONST_CAST(void*, string), len);
+            return new StringExp(0, CONST_CAST(void*, string), len);
         }
         // TODO: VECTOR... ?
     }
@@ -659,64 +649,60 @@ gcc_cst_to_d_expr(Loc loc, tree cst)
    Return result; NULL if cannot evaluate it.
  */
 Expression *
-d_gcc_eval_builtin(CallExp *ce, Expressions *arguments)
+d_gcc_eval_builtin(FuncDeclaration *fd, Expressions *arguments)
 {
     Expression * e = EXP_VOID_INTERPRET;
 
-    if (ce->e1->op == TOKvar)
+    // g.irs is not available.
+    static IRState irs;
+
+    TypeFunction * tf = (TypeFunction *) fd->type;
+    tree callee = NULL_TREE;
+    tree result;
+
+    switch (fd->builtin)
     {
-        // g.irs is not available.
-        static IRState irs;
+        case BUILTINsin:
+            callee = built_in_decls[BUILT_IN_SINL];
+            break;
 
-        FuncDeclaration * fd = ((VarExp *) ce->e1)->var->isFuncDeclaration();
-        TypeFunction * tf = (TypeFunction *) fd->type;
-        tree callee = NULL_TREE;
-        tree result;
+        case BUILTINcos:
+            callee = built_in_decls[BUILT_IN_COSL];
+            break;
 
-        switch (fd->builtin)
-        {
-            case BUILTINsin:
-                callee = built_in_decls[BUILT_IN_SINL];
-                break;
+        case BUILTINtan:
+            callee = built_in_decls[BUILT_IN_TANL];
+            break;
 
-            case BUILTINcos:
-                callee = built_in_decls[BUILT_IN_COSL];
-                break;
+        case BUILTINsqrt:
+            if (tf->next->ty == Tfloat32)
+                callee = built_in_decls[BUILT_IN_SQRTF];
+            else if (tf->next->ty == Tfloat64)
+                callee = built_in_decls[BUILT_IN_SQRT];
+            else if (tf->next->ty == Tfloat80)
+                callee = built_in_decls[BUILT_IN_SQRTL];
+            gcc_assert(callee);
+            break;
 
-            case BUILTINtan:
-                callee = built_in_decls[BUILT_IN_TANL];
-                break;
+        case BUILTINfabs:
+            callee = built_in_decls[BUILT_IN_FABSL];
+            break;
 
-            case BUILTINsqrt:
-                if (tf->next->ty == Tfloat32)
-                    callee = built_in_decls[BUILT_IN_SQRTF];
-                else if (tf->next->ty == Tfloat64)
-                    callee = built_in_decls[BUILT_IN_SQRT];
-                else if (tf->next->ty == Tfloat80)
-                    callee = built_in_decls[BUILT_IN_SQRTL];
-                gcc_assert(callee);
-                break;
+        case BUILTINgcc:
+            callee = fd->toSymbol()->Stree;
+            break;
 
-            case BUILTINfabs:
-                callee = built_in_decls[BUILT_IN_FABSL];
-                break;
+        default:
+            gcc_unreachable();
+    }
 
-            case BUILTINgcc:
-                callee = fd->toSymbol()->Stree;
-                break;
+    result = irs.call(tf, callee, NULL, arguments);
+    result = fold(result);
 
-            default:
-                gcc_unreachable();
-        }
-
-        result = irs.call(tf, callee, NULL, arguments);
-        result = fold(result);
-
-        if (TREE_CONSTANT(result) && TREE_CODE(result) != CALL_EXPR)
-        {   // Builtin should be successfully evaluated.
-            // Will only return NULL if we can't convert it.
-            e = gcc_cst_to_d_expr(ce->loc, result);
-        }
+    if (TREE_CONSTANT(result) && TREE_CODE(result) != CALL_EXPR)
+    {   // Builtin should be successfully evaluated.
+        // Will only return NULL if we can't convert it.
+        e = gcc_cst_to_d_expr(result);
     }
     return e;
 }

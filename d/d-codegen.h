@@ -467,10 +467,10 @@ struct IRState : IRBase
     }
 
     // ** Function calls
-    tree call(Expression * expr, Array * arguments);
-    tree call(FuncDeclaration * func_decl, Array * args);
-    tree call(FuncDeclaration * func_decl, tree object, Array * args);
-    tree call(TypeFunction *guess, tree callable, tree object, Array * arguments);
+    tree call(Expression * expr, Expressions * arguments);
+    tree call(FuncDeclaration * func_decl, Expressions * args);
+    tree call(FuncDeclaration * func_decl, tree object, Expressions * args);
+    tree call(TypeFunction *guess, tree callable, tree object, Expressions * arguments);
 
     tree assertCall(Loc loc, LibCall libcall = LIBCALL_ASSERT);
     tree assertCall(Loc loc, Expression * msg);
@@ -538,7 +538,7 @@ struct IRState : IRBase
 
 #if V2
     // Variables that are in scope that will need destruction later
-    static Array * varsInScope;
+    static VarDeclarations * varsInScope;
 #endif
 
 protected:
@@ -549,7 +549,7 @@ public:
 
     tree typeinfoReference(Type * t);
 
-    target_size_t getTargetSizeConst(tree t);
+    dinteger_t getTargetSizeConst(tree t);
 
     static Module * builtinsModule;
     static Module * intrinsicModule;
@@ -726,7 +726,7 @@ public:
 
     void pushLabel(LabelDsymbol * l)
     {
-        Labels.push(getLabelBlock(l));
+        labels.push(getLabelBlock(l));
     }
 
     void checkSwitchCase(Statement * stmt, int default_flag = 0);
@@ -819,8 +819,8 @@ public:
     AggregateDeclaration * aggDecl;
     FieldVisitor(AggregateDeclaration * decl) : aggDecl(decl) { }
     //virtual doField(VarDeclaration * field) = 0;
-    virtual void doFields(Array * fields, AggregateDeclaration * agg) = 0;
-    virtual void doInterfaces(Array * bases, AggregateDeclaration * agg) = 0;
+    virtual void doFields(VarDeclarations * fields, AggregateDeclaration * agg) = 0;
+    virtual void doInterfaces(BaseClasses * bases, AggregateDeclaration * agg) = 0;
 
     void go()
     {
@@ -839,9 +839,9 @@ public:
         FieldVisitor(ini_agg_decl),
         aggType(ini_agg_type),
         fieldList(& TYPE_FIELDS(aggType)) { }
-    void doFields(Array * fields, AggregateDeclaration * agg);
-    void doInterfaces(Array * bases, AggregateDeclaration * agg);
-    void addField(tree field_decl, target_size_t offset);
+    void doFields(VarDeclarations * fields, AggregateDeclaration * agg);
+    void doInterfaces(BaseClasses * bases, AggregateDeclaration * agg);
+    void addField(tree field_decl, size_t offset);
     void finish(Expressions * attrs);
 };
 

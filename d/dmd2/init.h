@@ -72,7 +72,7 @@ struct StructInitializer : Initializer
     Identifiers field;  // of Identifier *'s
     Initializers value; // parallel array of Initializer *'s
 
-    Array vars;         // parallel array of VarDeclaration *'s
+    VarDeclarations vars;       // parallel array of VarDeclaration *'s
     AggregateDeclaration *ad;   // which aggregate this is for
 
     StructInitializer(Loc loc);
@@ -91,7 +91,7 @@ struct ArrayInitializer : Initializer
 {
     Expressions index;  // indices
     Initializers value; // of Initializer *'s
-    target_size_t dim;  // length of array being initialized
+    unsigned dim;       // length of array being initialized
     Type *type;         // type that array will be used to initialize
     int sem;            // !=0 if semantic() is run
 

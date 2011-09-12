@@ -331,7 +331,7 @@ struct ForeachStatement : Statement
 
     FuncDeclaration *func;      // function we're lexically in
 
-    Array *cases;        // put breaks, continues, gotos and returns here
+    Statements *cases;          // put breaks, continues, gotos and returns here
     Array *gotos;        // forward referenced goto's go here
 
     ForeachStatement(Loc loc, enum TOK op, Parameters *arguments, Expression *aggr, Statement *body);
@@ -456,7 +456,7 @@ struct SwitchStatement : Statement
     DefaultStatement *sdefault;
 
     Array gotoCases;            // array of unresolved GotoCaseStatement's
-    Array *cases;               // array of CaseStatement's
+    CaseStatements *cases;      // array of CaseStatement's
     int hasNoDefault;           // !=0 if no default statement
 
     SwitchStatement(Loc loc, Expression *c, Statement *b);
@@ -849,14 +849,14 @@ struct ExtAsmStatement : Statement
 {
     Expression *insnTemplate;
     Expressions *args;
-    Array *argNames;        // of NULL or Identifier*
+    Identifiers *argNames;        // of NULL or Identifier*
     Expressions *argConstraints;  // of StringExp*
     unsigned nOutputArgs;
     Expressions *clobbers;        // of StringExp*
 
     int blockExit(bool mustNotThrow);
 
-    ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Array *argNames,
+    ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Identifiers *argNames,
                     Expressions *argConstraints, int nOutputArgs, Expressions *clobbers);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);

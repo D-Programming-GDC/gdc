@@ -40,7 +40,9 @@ Declaration::Declaration(Identifier *id)
     storage_class = STCundefined;
     protection = PROTundefined;
     linkage = LINKdefault;
+#if IN_GCC
     attributes = NULL;
+#endif
     inuse = 0;
 }
 
@@ -53,7 +55,7 @@ const char *Declaration::kind()
     return "declaration";
 }
 
-target_size_t Declaration::size(Loc loc)
+unsigned Declaration::size(Loc loc)
 {
     assert(type);
     return type->size();
@@ -119,7 +121,7 @@ void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
             if (fd &&
                 ((fd->isCtorDeclaration() && storage_class & STCfield) ||
                  (fd->isStaticCtorDeclaration() && !(storage_class & STCfield))) &&
-                fd->toParent() == toParent()
+                fd->toParent2() == toParent()
                )
             {
                 VarDeclaration *v = isVarDeclaration();
@@ -323,10 +325,12 @@ void TypedefDeclaration::semantic(Scope *sc)
         type = type->addStorageClass(storage_class);
 #endif
         type = type->semantic(loc, sc);
+#if IN_GCC
         if (attributes)
             attributes->append(sc->attributes);
         else
             attributes = sc->attributes;
+#endif
         if (sc->parent->isFuncDeclaration() && init)
             semantic2(sc);
         storage_class |= sc->stc & STCdeprecated;
@@ -798,10 +802,12 @@ void VarDeclaration::semantic(Scope *sc)
     this->parent = sc->parent;
     //printf("this = %p, parent = %p, '%s'\n", this, parent, parent->toChars());
     protection = sc->protection;
+#if IN_GCC
     if (attributes)
         attributes->append(sc->attributes);
     else
         attributes = sc->attributes;
+#endif
     //printf("sc->stc = %x\n", sc->stc);
     //printf("storage_class = x%x\n", storage_class);
 
@@ -953,10 +959,10 @@ void VarDeclaration::semantic(Scope *sc)
             }
 
             // If it's a member template
-            AggregateDeclaration *ad = ti->tempdecl->isMember();
-            if (ad && storage_class != STCundefined)
+            AggregateDeclaration *ad2 = ti->tempdecl->isMember();
+            if (ad2 && storage_class != STCundefined)
             {
-                error("cannot use template to add field to aggregate '%s'", ad->toChars());
+                error("cannot use template to add field to aggregate '%s'", ad2->toChars());
             }
         }
     }
@@ -1084,7 +1090,7 @@ void VarDeclaration::semantic(Scope *sc)
                     ei->exp = ei->exp->semantic(sc);
                     if (!ei->exp->implicitConvTo(type))
                     {
-                        sinteger_t dim = ((TypeSArray *)t)->dim->toInteger();
+                        dinteger_t dim = ((TypeSArray *)t)->dim->toInteger();
                         // If multidimensional static array, treat as one large array
                         while (1)
                         {
@@ -1494,6 +1500,15 @@ Expression *VarDeclaration::callScopeDtor(Scope *sc)
         }
     }
     return e;
+}
+
+/******************************************
+ */
+
+void ObjectNotFound(Identifier *id)
+{
+    Type::error(0, "%s not found. object.d may be incorrectly installed or corrupt.", id->toChars());
+    fatal();
 }
 
 

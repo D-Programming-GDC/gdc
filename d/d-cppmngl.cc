@@ -57,12 +57,12 @@ to_base36(unsigned n, OutBuffer * buf)
 struct CppMangleState
 {
     Dsymbol * topSymbol;
-    Array substitutions;
+    Voids substitutions;
 
     bool hasSubstitute(void * p, OutBuffer * buf)
     {
         for (unsigned i = 0; i < substitutions.dim; i++)
-            if ( substitutions.data[i] == p )
+            if (substitutions.tdata()[i] == p)
             {
                 if (buf)
                 {
@@ -136,7 +136,7 @@ cpp_mangle1(Dsymbol *sthis, OutBuffer * buf, CppMangleState * cms)
     Dsymbol * s = sthis;
     bool is_nested_ident = false;
     FuncDeclaration * fd;
-    Array pfxs;
+    Dsymbols pfxs;
 
     do
     {
@@ -160,13 +160,13 @@ cpp_mangle1(Dsymbol *sthis, OutBuffer * buf, CppMangleState * cms)
     unsigned ii;
     for (ii = 0; ii < pfxs.dim; ++ii)
     {
-        s = (Dsymbol *) pfxs.data[ii];
+        s = pfxs.tdata()[ii];
         if (cms->hasSubstitute(s, buf))
             break;
     }
     while (ii > 0)
     {
-        s = (Dsymbol *) pfxs.data[--ii];
+        s = pfxs.tdata()[--ii];
         if (s->isCtorDeclaration())
         {
             buf->writeByte('C');

@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -125,12 +125,14 @@ struct Declaration : Dsymbol
     enum PROT protection;
     enum LINK linkage;
     int inuse;                  // used to detect cycles
+#if IN_GCC
     Expressions * attributes;   // GCC decl/type attributes
+#endif
 
     Declaration(Identifier *id);
     void semantic(Scope *sc);
     const char *kind();
-    target_size_t size(Loc loc);
+    unsigned size(Loc loc);
     void checkModify(Loc loc, Scope *sc, Type *t);
 
     void emitComment(Scope *sc);
@@ -203,10 +205,8 @@ struct TypedefDeclaration : Declaration
     const char *kind();
     Type *getType();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-#ifdef _DH
     Type *htype;
     Type *hbasetype;
-#endif
 
     void toDocBuffer(OutBuffer *buf);
 
@@ -237,10 +237,8 @@ struct AliasDeclaration : Declaration
     Type *getType();
     Dsymbol *toAlias();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-#ifdef _DH
     Type *htype;
     Dsymbol *haliassym;
-#endif
 
     void toDocBuffer(OutBuffer *buf);
 
@@ -252,7 +250,7 @@ struct AliasDeclaration : Declaration
 struct VarDeclaration : Declaration
 {
     Initializer *init;
-    target_size_t offset;
+    unsigned offset;
     int noscope;                 // no auto semantics
 #if DMDV2
     FuncDeclarations nestedrefs; // referenced by these lexically nested functions
@@ -292,10 +290,8 @@ struct VarDeclaration : Declaration
     void semantic2(Scope *sc);
     const char *kind();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-#ifdef _DH
     Type *htype;
     Initializer *hinit;
-#endif
     AggregateDeclaration *isThis();
     int needThis();
     int isImportedSymbol();
@@ -535,7 +531,7 @@ enum BUILTIN { };
 
 struct FuncDeclaration : Declaration
 {
-    Array *fthrows;                     // Array of Type's of exceptions (not used)
+    Types *fthrows;                     // Array of Type's of exceptions (not used)
     Statement *frequire;
     Statement *fensure;
     Statement *fbody;
@@ -557,7 +553,7 @@ struct FuncDeclaration : Declaration
     VarDeclaration *v_argptr;           // '_argptr' variable
 #endif
     VarDeclaration *v_argsave;          // save area for args passed in registers for variadic functions
-    Dsymbols *parameters;               // Array of VarDeclaration's for parameters
+    VarDeclarations *parameters;        // Array of VarDeclaration's for parameters
     DsymbolTable *labtab;               // statement label symbol table
     Declaration *overnext;              // next in overload list
     Loc endloc;                         // location of closing curly bracket
@@ -605,7 +601,7 @@ struct FuncDeclaration : Declaration
 #else
     int nestedFrameRef;                 // !=0 if nested variables referenced
 #if IN_GCC
-    Dsymbols frameVars;                 // local variables in this function
+    VarDeclarations frameVars;          // local variables in this function
                                         // which are referenced by nested
                                         // functions
 #endif
@@ -669,7 +665,7 @@ struct FuncDeclaration : Declaration
     static FuncDeclaration *genCfunc(Type *treturn, Identifier *id, Type *t1 = NULL, Type *t2 = NULL, Type *t3 = NULL);
 
     Symbol *toSymbol();
-    Symbol *toThunkSymbol(target_ptrdiff_t offset);     // thunk version
+    Symbol *toThunkSymbol(int offset);  // thunk version
     void toObjFile(int multiobj);                       // compile to .obj file
     int cvMember(unsigned char *p);
     void buildClosure(IRState *irs);
@@ -883,9 +879,7 @@ struct DeleteDeclaration : FuncDeclaration
     int isVirtual();
     int addPreInvariant();
     int addPostInvariant();
-#ifdef _DH
     DeleteDeclaration *isDeleteDeclaration() { return this; }
-#endif
 };
 
 #endif /* DMD_DECLARATION_H */

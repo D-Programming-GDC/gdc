@@ -120,6 +120,7 @@ ClassDeclaration *Type::typeinfodelegate;
 ClassDeclaration *Type::typeinfotypelist;
 
 Type *Type::tvoidptr;
+Type *Type::tstring;
 Type *Type::basic[TMAX];
 unsigned char Type::mangleChar[TMAX];
 StringTable Type::stringtable;
@@ -176,9 +177,7 @@ char Type::needThisPrefix()
 }
 
 void Type::init()
-{   int i;
-    int j;
-
+{
     Lexer::initKeywords();
 
     mangleChar[Tarray] = 'A';
@@ -229,9 +228,9 @@ void Type::init()
     mangleChar[Tslice] = '@';
     mangleChar[Treturn] = '@';
 
-    for (i = 0; i < TMAX; i++)
+    for (size_t i = 0; i < TMAX; i++)
     {   if (!mangleChar[i])
-            fprintf(stdmsg, "ty = %d\n", i);
+            fprintf(stdmsg, "ty = %zd\n", i);
         assert(mangleChar[i]);
     }
 
@@ -244,13 +243,14 @@ void Type::init()
           Tbool,
           Tascii, Twchar, Tdchar };
 
-    for (i = 0; i < sizeof(basetab) / sizeof(basetab[0]); i++)
+    for (size_t i = 0; i < sizeof(basetab) / sizeof(basetab[0]); i++)
         basic[basetab[i]] = new TypeBasic(basetab[i]);
     basic[Terror] = new TypeError();
 
     tvoidptr = tvoid->pointerTo();
+    tstring = tchar->arrayOf();
 
-    if (global.params.isX86_64)
+    if (global.params.is64bit)
     {
         PTRSIZE = 8;
         if (global.params.isLinux || global.params.isFreeBSD || global.params.isSolaris)
@@ -584,7 +584,7 @@ int Type::isZeroInit(Loc loc)
     return 0;           // assume not
 }
 
-int Type::isBaseOf(Type *t, target_ptrdiff_t *poffset)
+int Type::isBaseOf(Type *t, int *poffset)
 {
     return 0;           // assume not
 }
@@ -992,12 +992,6 @@ TypeBasic::TypeBasic(TY ty)
                         break;
 
 
-        case Tbit:      d = Token::toChars(TOKbit);
-                        c = "bit";
-                        flags |= TFLAGSintegral | TFLAGSunsigned;
-assert(0);
-                        break;
-
         case Tbool:     d = "bool";
                         c = d;
                         flags |= TFLAGSintegral | TFLAGSunsigned;
@@ -1083,7 +1077,6 @@ d_uns64 TypeBasic::size(Loc loc)
             size = 1;
             break;
 
-        case Tbit:      size = 1;               break;
         case Tbool:     size = 1;               break;
         case Tascii:    size = 1;               break;
         case Twchar:    size = 2;               break;
@@ -1111,12 +1104,12 @@ unsigned TypeBasic::alignsize()
 #if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS || TARGET_UNIX
         case Tint64:
         case Tuns64:
-            sz = global.params.isX86_64 ? 8 : 4;
+            sz = global.params.is64bit ? 8 : 4;
             break;
 
         case Tfloat64:
         case Timaginary64:
-            sz = global.params.isX86_64 ? 8 : 4;
+            sz = global.params.is64bit ? 8 : 4;
             break;
 
         case Tcomplex32:
@@ -1124,7 +1117,7 @@ unsigned TypeBasic::alignsize()
             break;
 
         case Tcomplex64:
-            sz = global.params.isX86_64 ? 8 : 4;
+            sz = global.params.is64bit ? 8 : 4;
             break;
 #endif
 
@@ -1159,7 +1152,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tuns32:        ivalue = 0xFFFFFFFFUL;  goto Livalue;
             case Tint64:        ivalue = 0x7FFFFFFFFFFFFFFFLL;  goto Livalue;
             case Tuns64:        ivalue = 0xFFFFFFFFFFFFFFFFULL; goto Livalue;
-            case Tbit:          ivalue = 1;             goto Livalue;
             case Tbool:         ivalue = 1;             goto Livalue;
             case Tchar:         ivalue = 0xFF;          goto Livalue;
             case Twchar:        ivalue = 0xFFFFUL;      goto Livalue;
@@ -1220,7 +1212,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tuns32:        ivalue = 0;                     goto Livalue;
             case Tint64:        ivalue = (-9223372036854775807LL-1LL);  goto Livalue;
             case Tuns64:        ivalue = 0;             goto Livalue;
-            case Tbit:          ivalue = 0;             goto Livalue;
             case Tbool:         ivalue = 0;             goto Livalue;
             case Tchar:         ivalue = 0;             goto Livalue;
             case Twchar:        ivalue = 0;             goto Livalue;
@@ -1410,7 +1401,7 @@ Lfvalue:
         cvalue.re = fvalue;
         cvalue.im = fvalue;
 #endif
-        //for (int i = 0; i < 20; i++)
+        //for (size_t i = 0; i < 20; i++)
         //    printf("%02x ", ((unsigned char *)&cvalue)[i]);
         //printf("\n");
         e = new ComplexExp(loc, cvalue, this);
@@ -1551,7 +1542,7 @@ int TypeBasic::isZeroInit(Loc loc)
 
 int TypeBasic::isbit()
 {
-    return (ty == Tbit);
+    return 0;
 }
 
 int TypeBasic::isintegral()
@@ -1718,7 +1709,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         Expression *ec;
         FuncDeclaration *fd;
         Expressions *arguments;
-        target_size_t size = next->size(e->loc);
+        int size = next->size(e->loc);
         int dup;
 
         assert(size);
@@ -1753,10 +1744,9 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
         arguments->push(e);
-        if (next->ty != Tbit)
-            arguments->push(n->ty == Tsarray
-                        ? n->getTypeInfo(sc)    // don't convert to dynamic array
-                        : n->getInternalTypeInfo(sc));
+        arguments->push(n->ty == Tsarray
+                    ? n->getTypeInfo(sc)    // don't convert to dynamic array
+                    : n->getInternalTypeInfo(sc));
         e = new CallExp(e->loc, ec, arguments);
         e->type = next->arrayOf();
     }
@@ -1791,13 +1781,6 @@ d_uns64 TypeSArray::size(Loc loc)
     if (!dim)
         return Type::size(loc);
     sz = dim->toInteger();
-    if (next->toBasetype()->ty == Tbit)         // if array of bits
-    {
-        if (sz + 31 < sz)
-            goto Loverflow;
-        sz = ((sz + 31) & ~31) / 8;     // size in bytes, rounded up to 32 bit dwords
-    }
-    else
     {   dinteger_t n, n2;
 
         n = next->size();
@@ -2088,7 +2071,7 @@ MATCH TypeSArray::implicitConvTo(Type *to)
         return MATCHconvert;
     }
     if (to->ty == Tarray)
-    {   target_ptrdiff_t offset = 0;
+    {   int offset = 0;
 
         if (next->equals(to->next) ||
             (to->next->isBaseOf(next, &offset) && offset == 0) ||
@@ -2282,7 +2265,7 @@ MATCH TypeDArray::implicitConvTo(Type *to)
     }
 
     if (to->ty == Tarray)
-    {   target_ptrdiff_t offset = 0;
+    {   int offset = 0;
 
         if ((to->next->isBaseOf(next, &offset) && offset == 0) ||
             to->next->ty == Tvoid)
@@ -2390,7 +2373,6 @@ Type *TypeAArray::semantic(Loc loc, Scope *sc)
             key = key->next->arrayOf();
 #endif
             break;
-        case Tbit:
         case Tbool:
         case Tfunction:
         case Tvoid:
@@ -2490,7 +2472,7 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         arguments = new Expressions();
         arguments->push(e);
         size_t keysize = key->size(e->loc);
-        if (global.params.isX86_64)
+        if (global.params.is64bit)
             keysize = (keysize + 15) & ~15;
         else
             keysize = (keysize + PTRSIZE - 1) & ~(PTRSIZE - 1);
@@ -2676,8 +2658,6 @@ int TypePointer::hasPointers()
 TypeReference::TypeReference(Type *t)
     : Type(Treference, t)
 {
-    if (t->ty == Tbit)
-        error(0,"cannot make reference to a bit");
     // BUG: what about references to static arrays?
 }
 
@@ -2918,7 +2898,7 @@ void TypeFunction::toCBufferWithAttributes(OutBuffer *buf, Identifier *ident, Hd
     }
     if (td)
     {   buf->writeByte('(');
-        for (int i = 0; i < td->origParameters->dim; i++)
+        for (size_t i = 0; i < td->origParameters->dim; i++)
         {
             TemplateParameter *tp = (TemplateParameter *)td->origParameters->data[i];
             if (i)
@@ -3269,7 +3249,7 @@ unsigned TypeDelegate::alignsize()
 {
 #if DMDV1
     // See Bugzilla 942 for discussion
-    if (!global.params.isX86_64)
+    if (!global.params.is64bit)
         return PTRSIZE * 2;
 #endif
     return PTRSIZE;
@@ -3364,7 +3344,7 @@ void TypeQualified::syntaxCopyHelper(TypeQualified *t)
 {
     //printf("TypeQualified::syntaxCopyHelper(%s) %s\n", t->toChars(), toChars());
     idents.setDim(t->idents.dim);
-    for (int i = 0; i < idents.dim; i++)
+    for (size_t i = 0; i < idents.dim; i++)
     {
         Identifier *id = (Identifier *)t->idents.data[i];
         if (id->dyncast() == DYNCAST_DSYMBOL)
@@ -3386,9 +3366,7 @@ void TypeQualified::addIdent(Identifier *ident)
 
 void TypeQualified::toCBuffer2Helper(OutBuffer *buf, HdrGenState *hgs)
 {
-    int i;
-
-    for (i = 0; i < idents.dim; i++)
+    for (size_t i = 0; i < idents.dim; i++)
     {   Identifier *id = (Identifier *)idents.data[i];
 
         buf->writeByte('.');
@@ -3421,8 +3399,6 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
         Dsymbol *s, Dsymbol *scopesym,
         Expression **pe, Type **pt, Dsymbol **ps)
 {
-    Identifier *id = NULL;
-    int i;
     VarDeclaration *v;
     EnumMember *em;
     TupleDeclaration *td;
@@ -3443,11 +3419,10 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
         s->checkDeprecated(loc, sc);            // check for deprecated aliases
         s = s->toAlias();
         //printf("\t2: s = '%s' %p, kind = '%s'\n",s->toChars(), s, s->kind());
-        for (i = 0; i < idents.dim; i++)
-        {   Dsymbol *sm;
-
-            id = (Identifier *)idents.data[i];
-            sm = s->searchX(loc, sc, id);
+        for (size_t i = 0; i < idents.dim; i++)
+        {
+            Identifier *id = idents[i];
+            Dsymbol *sm = s->searchX(loc, sc, id);
             //printf("\t3: s = '%s' %p, kind = '%s'\n",s->toChars(), s, s->kind());
             //printf("getType = '%s'\n", s->getType()->toChars());
             if (!sm)
@@ -3465,12 +3440,12 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
                         goto Lerror;
                     goto L3;
                 }
-                else if (v && id == Id::stringof)
+                else if (v && (id == Id::stringof || id == Id::offsetof))
                 {
                     e = new DsymbolExp(loc, s);
                     do
                     {
-                        id = (Identifier *)idents.data[i];
+                        id = idents.tdata()[i];
                         e = new DotIdExp(loc, e, id);
                     } while (++i < idents.dim);
                     e = e->semantic(sc);
@@ -3496,7 +3471,7 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
                 L3:
                     for (; i < idents.dim; i++)
                     {
-                        id = (Identifier *)idents.data[i];
+                        id = idents.tdata()[i];
                         //printf("e: '%s', id: '%s', type = %p\n", e->toChars(), id->toChars(), e->type);
                         e = e->type->dotExp(sc, e, id);
                     }
@@ -3698,7 +3673,7 @@ Dsymbol *TypeIdentifier::toDsymbol(Scope *sc)
     Dsymbol *s = sc->search(loc, ident, &scopesym);
     if (s)
     {
-        for (int i = 0; i < idents.dim; i++)
+        for (size_t i = 0; i < idents.dim; i++)
         {
             Identifier *id = (Identifier *)idents.data[i];
             s = s->searchX(loc, sc, id);
@@ -3756,7 +3731,7 @@ Type *TypeIdentifier::reliesOnTident()
 Expression *TypeIdentifier::toExpression()
 {
     Expression *e = new IdentifierExp(loc, ident);
-    for (int i = 0; i < idents.dim; i++)
+    for (size_t i = 0; i < idents.dim; i++)
     {
         Identifier *id = (Identifier *)idents.data[i];
         e = new DotIdExp(loc, e, id);
@@ -4549,7 +4524,7 @@ d_uns64 TypeStruct::size(Loc loc)
 }
 
 unsigned TypeStruct::alignsize()
-{   target_size_t sz;
+{   unsigned sz;
 
     sym->size(0);               // give error for forward references
     sz = sym->alignsize;
@@ -4590,8 +4565,7 @@ void TypeStruct::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
 }
 
 Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident)
-{   unsigned offset;
-
+{
     Expression *b;
     VarDeclaration *v;
     Dsymbol *s;
@@ -4916,9 +4890,7 @@ void TypeClass::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
 }
 
 Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident)
-{   unsigned offset;
-
-    Expression *b;
+{
     VarDeclaration *v;
     Dsymbol *s;
     DotVarExp *de;
@@ -5214,7 +5186,7 @@ int TypeClass::isscope()
     return sym->isscope;
 }
 
-int TypeClass::isBaseOf(Type *t, target_ptrdiff_t *poffset)
+int TypeClass::isBaseOf(Type *t, int *poffset)
 {
     if (t->ty == Tclass)
     {   ClassDeclaration *cd;
@@ -5605,23 +5577,20 @@ char *Parameter::argsTypesToChars(Parameters *args, int varargs)
 
     buf->writeByte('(');
     if (args)
-    {   int i;
-        OutBuffer argbuf;
+    {   OutBuffer argbuf;
         HdrGenState hgs;
 
-        for (i = 0; i < args->dim; i++)
-        {   Parameter *arg;
-
-            if (i)
+        for (size_t i = 0; i < args->dim; i++)
+        {   if (i)
                 buf->writeByte(',');
-            arg = (Parameter *)args->data[i];
+            Parameter *arg = (Parameter *)args->data[i];
             argbuf.reset();
             arg->type->toCBuffer2(&argbuf, &hgs, 0);
             buf->write(&argbuf);
         }
         if (varargs)
         {
-            if (i && varargs == 1)
+            if (args->dim && varargs == 1)
                 buf->writeByte(',');
             buf->writestring("...");
         }
@@ -5635,15 +5604,14 @@ void Parameter::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Parameters *argu
 {
     buf->writeByte('(');
     if (arguments)
-    {   int i;
+    {
         OutBuffer argbuf;
 
-        for (i = 0; i < arguments->dim; i++)
-        {   Parameter *arg;
-
+        for (size_t i = 0; i < arguments->dim; i++)
+        {
             if (i)
                 buf->writestring(", ");
-            arg = (Parameter *)arguments->data[i];
+            Parameter *arg = (Parameter *)arguments->data[i];
             if (arg->storageClass & STCout)
                 buf->writestring("out ");
             else if (arg->storageClass & STCref)
@@ -5662,7 +5630,7 @@ void Parameter::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Parameters *argu
         }
         if (varargs)
         {
-            if (i && varargs == 1)
+            if (arguments->dim && varargs == 1)
                 buf->writeByte(',');
             buf->writestring("...");
         }

@@ -171,6 +171,7 @@ struct Type : Object
     #define tboolean    tbool           // result of boolean expression
     #define tindex      tsize_t         // array/ptr index
     static Type *tvoidptr;              // void*
+    static Type *tstring;               // immutable(char)[]
     #define terror      basic[Terror]   // for error recovery
 
     #define tsize_t     basic[Tsize_t]          // matches size_t alias
@@ -239,7 +240,7 @@ struct Type : Object
     Type *arrayOf();
     virtual Dsymbol *toDsymbol(Scope *sc);
     virtual Type *toBasetype();
-    virtual int isBaseOf(Type *t, target_ptrdiff_t *poffset);
+    virtual int isBaseOf(Type *t, int *poffset);
     virtual MATCH implicitConvTo(Type *to);
     virtual ClassDeclaration *isClassHandle();
     virtual Expression *getProperty(Loc loc, Identifier *ident);
@@ -524,7 +525,7 @@ struct TypeDelegate : Type
 struct TypeQualified : Type
 {
     Loc loc;
-    Array idents;       // array of Identifier's representing ident.ident.ident etc.
+    Identifiers idents;       // array of Identifier's representing ident.ident.ident etc.
 
     TypeQualified(TY ty, Loc loc);
     void syntaxCopyHelper(TypeQualified *t);
@@ -697,7 +698,7 @@ struct TypeClass : Type
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
     ClassDeclaration *isClassHandle();
-    int isBaseOf(Type *t, target_ptrdiff_t *poffset);
+    int isBaseOf(Type *t, int *poffset);
     MATCH implicitConvTo(Type *to);
     Expression *defaultInit(Loc loc);
     int isZeroInit(Loc loc);

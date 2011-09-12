@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -35,6 +35,7 @@ Macros defined by the compiler, not the code:
         __DMC__         Digital Mars compiler
         _MSC_VER        Microsoft compiler
         __GNUC__        Gnu compiler
+        __clang__       Clang compiler
 
     Host operating system:
         _WIN32          Microsoft NT, Windows 95, Windows 98, Win32s,
@@ -112,8 +113,12 @@ void unittests();
  */
 
 #if _WIN32
+#ifndef TARGET_WINDOS
 #define TARGET_WINDOS 1         // Windows dmd generates Windows targets
-#define OMFOBJ 1
+#endif
+#ifndef OMFOBJ
+#define OMFOBJ TARGET_WINDOS
+#endif
 #endif
 
 #if TARGET_LINUX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
@@ -129,8 +134,12 @@ void unittests();
 #endif
 
 
-struct Array;
 struct OutBuffer;
+
+// Can't include arraytypes.h here, need to declare these directly.
+template <typename TYPE> struct ArrayBase;
+typedef ArrayBase<struct Identifier> Identifiers;
+typedef ArrayBase<char> Strings;
 
 // Put command line switches in here
 struct Param
@@ -149,7 +158,7 @@ struct Param
     char optimize;      // run optimizer
     char map;           // generate linker .map file
     char cpu;           // target CPU
-    char isX86_64;      // generate X86_64 bit code
+    char is64bit;       // generate 64 bit code
     char isLinux;       // generate code for linux
     char isOSX;         // generate code for Mac OSX
     char isWindows;     // generate code for Windows
@@ -182,8 +191,8 @@ struct Param
     char enforcePropertySyntax;
 
     char *argv0;        // program name
-    Array *imppath;     // array of char*'s of where to look for import modules
-    Array *fileImppath; // array of char*'s of where to look for file import modules
+    Strings *imppath;     // array of char*'s of where to look for import modules
+    Strings *fileImppath; // array of char*'s of where to look for file import modules
     char *objdir;       // .obj/.lib file output directory
     char *objname;      // .obj file output name
     char *libname;      // .lib file output name
@@ -191,7 +200,7 @@ struct Param
     char doDocComments; // process embedded documentation comments
     char *docdir;       // write documentation file to docdir directory
     char *docname;      // write documentation file to docname
-    Array *ddocfiles;   // macro include files for Ddoc
+    Strings *ddocfiles;   // macro include files for Ddoc
 
     char doHdrGeneration;       // process embedded documentation comments
     char *hdrdir;               // write 'header' file to docdir directory
@@ -201,10 +210,10 @@ struct Param
     char *xfilename;            // write JSON file to xfilename
 
     unsigned debuglevel;        // debug level
-    Array *debugids;            // debug identifiers
+    Strings *debugids;     // debug identifiers
 
     unsigned versionlevel;      // version level
-    Array *versionids;          // version identifiers
+    Strings *versionids;   // version identifiers
 
     bool dump_source;
 
@@ -229,9 +238,9 @@ struct Param
     char** runargs;     // arguments for executable
 
     // Linker stuff
-    Array *objfiles;
-    Array *linkswitches;
-    Array *libfiles;
+    Strings *objfiles;
+    Strings *linkswitches;
+    Strings *libfiles;
     char *deffile;
     char *resfile;
     char *exefile;
@@ -252,8 +261,8 @@ struct Global
     const char *map_ext;        // for .map files
     const char *copyright;
     const char *written;
-    Array *path;        // Array of char*'s which form the import lookup path
-    Array *filePath;    // Array of char*'s which form the file import lookup path
+    Strings *path;        // Array of char*'s which form the import lookup path
+    Strings *filePath;    // Array of char*'s which form the file import lookup path
     int structalign;
     const char *version;
 
@@ -310,8 +319,6 @@ typedef d_uns8                  d_char;
 typedef d_uns16                 d_wchar;
 typedef d_uns32                 d_dchar;
 
-typedef uinteger_t target_size_t;
-typedef sinteger_t target_ptrdiff_t;
 #ifdef IN_GCC
 #include "d-gcc-real.h"
 #else
@@ -331,12 +338,15 @@ typedef long double real_t;
 #endif
 
 #if __MSVCRT__
+#define PRIdSIZE "Id"
 #define PRIuSIZE "Iu"
 #define PRIxSIZE "Ix"
 #elif __NEWLIB_H__
+#define PRIdSIZE "d"
 #define PRIuSIZE "u"
 #define PRIxSIZE "x"
 #else
+#define PRIdSIZE "zd"
 #define PRIuSIZE "zu"
 #define PRIxSIZE "zx"
 #endif

@@ -45,7 +45,9 @@ struct EnumDeclaration : ScopeDsymbol
     Expression *minval;
     Expression *defaultval;     // default initializer
 #endif
-    Expressions * attributes; // GCC decl/type attributes
+#if IN_GCC
+    Expressions * attributes;   // GCC decl/type attributes
+#endif
     int isdeprecated;
     int isdone;                 // 0: not done
                                 // 1: semantic() successfully completed

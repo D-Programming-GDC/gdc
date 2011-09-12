@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -43,13 +43,13 @@ void obj_startaddress(Symbol *s);
 
 /********************************* AttribDeclaration ****************************/
 
-AttribDeclaration::AttribDeclaration(Array *decl)
+AttribDeclaration::AttribDeclaration(Dsymbols *decl)
         : Dsymbol()
 {
     this->decl = decl;
 }
 
-Array *AttribDeclaration::include(Scope *sc, ScopeDsymbol *sd)
+Dsymbols *AttribDeclaration::include(Scope *sc, ScopeDsymbol *sd)
 {
     return decl;
 }
@@ -57,12 +57,13 @@ Array *AttribDeclaration::include(Scope *sc, ScopeDsymbol *sd)
 int AttribDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
     int m = 0;
-    Array *d = include(sc, sd);
+    Dsymbols *d = include(sc, sd);
 
     if (d)
     {
         for (unsigned i = 0; i < d->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)d->data[i];
+        {   Dsymbol *s = d->tdata()[i];
+            //printf("\taddMember %s to %s\n", s->toChars(), sd->toChars());
             m |= s->addMember(sc, sd, m | memnum);
         }
     }
@@ -92,7 +93,7 @@ void AttribDeclaration::setScopeNewSc(Scope *sc,
             newsc->structalign = structalign;
         }
         for (unsigned i = 0; i < decl->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)decl->data[i];
+        {   Dsymbol *s = decl->tdata()[i];
 
             s->setScope(newsc); // yes, the only difference from semanticNewSc()
         }
@@ -127,7 +128,7 @@ void AttribDeclaration::semanticNewSc(Scope *sc,
             newsc->structalign = structalign;
         }
         for (unsigned i = 0; i < decl->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)decl->data[i];
+        {   Dsymbol *s = decl->tdata()[i];
 
             s->semantic(newsc);
         }
@@ -141,14 +142,14 @@ void AttribDeclaration::semanticNewSc(Scope *sc,
 
 void AttribDeclaration::semantic(Scope *sc)
 {
-    Array *d = include(sc, NULL);
+    Dsymbols *d = include(sc, NULL);
 
     //printf("\tAttribDeclaration::semantic '%s', d = %p\n",toChars(), d);
     if (d)
     {
-        for (unsigned i = 0; i < d->dim; i++)
+        for (size_t i = 0; i < d->dim; i++)
         {
-            Dsymbol *s = (Dsymbol *)d->data[i];
+            Dsymbol *s = d->tdata()[i];
 
             s->semantic(sc);
         }
@@ -157,12 +158,12 @@ void AttribDeclaration::semantic(Scope *sc)
 
 void AttribDeclaration::semantic2(Scope *sc)
 {
-    Array *d = include(sc, NULL);
+    Dsymbols *d = include(sc, NULL);
 
     if (d)
     {
-        for (unsigned i = 0; i < d->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)d->data[i];
+        for (size_t i = 0; i < d->dim; i++)
+        {   Dsymbol *s = d->tdata()[i];
             s->semantic2(sc);
         }
     }
@@ -170,12 +171,12 @@ void AttribDeclaration::semantic2(Scope *sc)
 
 void AttribDeclaration::semantic3(Scope *sc)
 {
-    Array *d = include(sc, NULL);
+    Dsymbols *d = include(sc, NULL);
 
     if (d)
     {
-        for (unsigned i = 0; i < d->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)d->data[i];
+        for (size_t i = 0; i < d->dim; i++)
+        {   Dsymbol *s = d->tdata()[i];
             s->semantic3(sc);
         }
     }
@@ -183,12 +184,12 @@ void AttribDeclaration::semantic3(Scope *sc)
 
 void AttribDeclaration::inlineScan()
 {
-    Array *d = include(NULL, NULL);
+    Dsymbols *d = include(NULL, NULL);
 
     if (d)
     {
         for (unsigned i = 0; i < d->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)d->data[i];
+        {   Dsymbol *s = d->tdata()[i];
             //printf("AttribDeclaration::inlineScan %s\n", s->toChars());
             s->inlineScan();
         }
@@ -197,14 +198,15 @@ void AttribDeclaration::inlineScan()
 
 void AttribDeclaration::addComment(unsigned char *comment)
 {
+    //printf("AttribDeclaration::addComment %s\n", comment);
     if (comment)
     {
-        Array *d = include(NULL, NULL);
+        Dsymbols *d = include(NULL, NULL);
 
         if (d)
         {
             for (unsigned i = 0; i < d->dim; i++)
-            {   Dsymbol *s = (Dsymbol *)d->data[i];
+            {   Dsymbol *s = d->tdata()[i];
                 //printf("AttribDeclaration::addComment %s\n", s->toChars());
                 s->addComment(comment);
             }
@@ -224,12 +226,12 @@ void AttribDeclaration::emitComment(Scope *sc)
      * Hence, Ddoc omits attributes from template members.
      */
 
-    Array *d = include(NULL, NULL);
+    Dsymbols *d = include(NULL, NULL);
 
     if (d)
     {
         for (unsigned i = 0; i < d->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)d->data[i];
+        {   Dsymbol *s = d->tdata()[i];
             //printf("AttribDeclaration::emitComment %s\n", s->toChars());
             s->emitComment(sc);
         }
@@ -238,12 +240,12 @@ void AttribDeclaration::emitComment(Scope *sc)
 
 void AttribDeclaration::toObjFile(int multiobj)
 {
-    Array *d = include(NULL, NULL);
+    Dsymbols *d = include(NULL, NULL);
 
     if (d)
     {
         for (unsigned i = 0; i < d->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)d->data[i];
+        {   Dsymbol *s = d->tdata()[i];
             s->toObjFile(multiobj);
         }
     }
@@ -253,12 +255,12 @@ int AttribDeclaration::cvMember(unsigned char *p)
 {
     int nwritten = 0;
     int n;
-    Array *d = include(NULL, NULL);
+    Dsymbols *d = include(NULL, NULL);
 
     if (d)
     {
         for (unsigned i = 0; i < d->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)d->data[i];
+        {   Dsymbol *s = d->tdata()[i];
             n = s->cvMember(p);
             if (p)
                 p += n;
@@ -270,13 +272,13 @@ int AttribDeclaration::cvMember(unsigned char *p)
 
 int AttribDeclaration::hasPointers()
 {
-    Array *d = include(NULL, NULL);
+    Dsymbols *d = include(NULL, NULL);
 
     if (d)
     {
         for (size_t i = 0; i < d->dim; i++)
         {
-            Dsymbol *s = (Dsymbol *)d->data[i];
+            Dsymbol *s = d->tdata()[i];
             if (s->hasPointers())
                 return 1;
         }
@@ -291,19 +293,19 @@ const char *AttribDeclaration::kind()
 
 int AttribDeclaration::oneMember(Dsymbol **ps)
 {
-    Array *d = include(NULL, NULL);
+    Dsymbols *d = include(NULL, NULL);
 
     return Dsymbol::oneMembers(d, ps);
 }
 
 void AttribDeclaration::checkCtorConstInit()
 {
-    Array *d = include(NULL, NULL);
+    Dsymbols *d = include(NULL, NULL);
 
     if (d)
     {
         for (unsigned i = 0; i < d->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)d->data[i];
+        {   Dsymbol *s = d->tdata()[i];
             s->checkCtorConstInit();
         }
     }
@@ -314,12 +316,12 @@ void AttribDeclaration::checkCtorConstInit()
 
 void AttribDeclaration::addLocalClass(ClassDeclarations *aclasses)
 {
-    Array *d = include(NULL, NULL);
+    Dsymbols *d = include(NULL, NULL);
 
     if (d)
     {
         for (unsigned i = 0; i < d->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)d->data[i];
+        {   Dsymbol *s = d->tdata()[i];
             s->addLocalClass(aclasses);
         }
     }
@@ -333,7 +335,7 @@ void AttribDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         if (decl->dim == 0)
             buf->writestring("{}");
         else if (decl->dim == 1)
-            ((Dsymbol *)decl->data[0])->toCBuffer(buf, hgs);
+            (decl->tdata()[0])->toCBuffer(buf, hgs);
         else
         {
             buf->writenl();
@@ -341,7 +343,7 @@ void AttribDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
             buf->writenl();
             for (unsigned i = 0; i < decl->dim; i++)
             {
-                Dsymbol *s = (Dsymbol *)decl->data[i];
+                Dsymbol *s = decl->tdata()[i];
 
                 buf->writestring("    ");
                 s->toCBuffer(buf, hgs);
@@ -356,7 +358,7 @@ void AttribDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /************************* StorageClassDeclaration ****************************/
 
-StorageClassDeclaration::StorageClassDeclaration(StorageClass stc, Array *decl)
+StorageClassDeclaration::StorageClassDeclaration(StorageClass stc, Dsymbols *decl)
         : AttribDeclaration(decl)
 {
     this->stc = stc;
@@ -498,7 +500,7 @@ void StorageClassDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /********************************* LinkDeclaration ****************************/
 
-LinkDeclaration::LinkDeclaration(enum LINK p, Array *decl)
+LinkDeclaration::LinkDeclaration(enum LINK p, Dsymbols *decl)
         : AttribDeclaration(decl)
 {
     //printf("LinkDeclaration(linkage = %d, decl = %p)\n", p, decl);
@@ -541,7 +543,7 @@ void LinkDeclaration::semantic3(Scope *sc)
         sc->linkage = linkage;
         for (unsigned i = 0; i < decl->dim; i++)
         {
-            Dsymbol *s = (Dsymbol *)decl->data[i];
+            Dsymbol *s = decl->tdata()[i];
 
             s->semantic3(sc);
         }
@@ -580,7 +582,7 @@ char *LinkDeclaration::toChars()
 
 /********************************* ProtDeclaration ****************************/
 
-ProtDeclaration::ProtDeclaration(enum PROT p, Array *decl)
+ProtDeclaration::ProtDeclaration(enum PROT p, Dsymbols *decl)
         : AttribDeclaration(decl)
 {
     protection = p;
@@ -617,9 +619,9 @@ void ProtDeclaration::importAll(Scope *sc)
        newsc->explicitProtection = 1;
     }
 
-    for (int i = 0; i < decl->dim; i++)
+    for (size_t i = 0; i < decl->dim; i++)
     {
-       Dsymbol *s = (Dsymbol *)decl->data[i];
+       Dsymbol *s = (*decl)[i];
        s->importAll(newsc);
     }
 
@@ -662,7 +664,7 @@ void ProtDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /********************************* AlignDeclaration ****************************/
 
-AlignDeclaration::AlignDeclaration(unsigned sa, Array *decl)
+AlignDeclaration::AlignDeclaration(unsigned sa, Dsymbols *decl)
         : AttribDeclaration(decl)
 {
     salign = sa;
@@ -704,7 +706,7 @@ void AlignDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /********************************* AnonDeclaration ****************************/
 
-AnonDeclaration::AnonDeclaration(Loc loc, int isunion, Array *decl)
+AnonDeclaration::AnonDeclaration(Loc loc, int isunion, Dsymbols *decl)
         : AttribDeclaration(decl)
 {
     this->loc = loc;
@@ -778,7 +780,7 @@ void AnonDeclaration::semantic(Scope *sc)
 
         for (unsigned i = 0; i < decl->dim; i++)
         {
-            Dsymbol *s = (Dsymbol *)decl->data[i];
+            Dsymbol *s = decl->tdata()[i];
 
             s->semantic(sc);
             if (isunion)
@@ -863,7 +865,7 @@ void AnonDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     {
         for (unsigned i = 0; i < decl->dim; i++)
         {
-            Dsymbol *s = (Dsymbol *)decl->data[i];
+            Dsymbol *s = decl->tdata()[i];
 
             //buf->writestring("    ");
             s->toCBuffer(buf, hgs);
@@ -879,7 +881,7 @@ const char *AnonDeclaration::kind()
 
 /********************************* PragmaDeclaration ****************************/
 
-PragmaDeclaration::PragmaDeclaration(Loc loc, Identifier *ident, Expressions *args, Array *decl)
+PragmaDeclaration::PragmaDeclaration(Loc loc, Identifier *ident, Expressions *args, Dsymbols *decl)
         : AttribDeclaration(decl)
 {
     this->loc = loc;
@@ -909,15 +911,16 @@ void PragmaDeclaration::setScope(Scope *sc)
         }
         else
         {
-            Expression *e = (Expression *)args->data[0];
+            Expression *e = args->tdata()[0];
             e = e->semantic(sc);
             e = e->optimize(WANTvalue | WANTinterpret);
-            args->data[0] = (void *)e;
-            if (e->op != TOKstring)
+            args->tdata()[0] = e;
+            StringExp* se = e->toString();
+            if (!se)
             {
                 error("string expected, not '%s'", e->toChars());
             }
-            PragmaScope* pragma = new PragmaScope(this, sc->parent, static_cast<StringExp*>(e));
+            PragmaScope* pragma = new PragmaScope(this, sc->parent, se);
 
             assert(sc);
             pragma->setScope(sc);
@@ -942,13 +945,13 @@ void PragmaDeclaration::semantic(Scope *sc)
         {
             for (size_t i = 0; i < args->dim; i++)
             {
-                Expression *e = (Expression *)args->data[i];
+                Expression *e = args->tdata()[i];
 
                 e = e->semantic(sc);
                 e = e->optimize(WANTvalue | WANTinterpret);
-                if (e->op == TOKstring)
+                StringExp *se = e->toString();
+                if (se)
                 {
-                    StringExp *se = (StringExp *)e;
                     fprintf(stdmsg, "%.*s", (int)se->len, (char *)se->string);
                 }
                 else
@@ -964,18 +967,18 @@ void PragmaDeclaration::semantic(Scope *sc)
             error("string expected for library name");
         else
         {
-            Expression *e = (Expression *)args->data[0];
+            Expression *e = args->tdata()[0];
 
             e = e->semantic(sc);
             e = e->optimize(WANTvalue | WANTinterpret);
-            args->data[0] = (void *)e;
+            args->tdata()[0] = e;
             if (e->op == TOKerror)
                 goto Lnodecl;
-            if (e->op != TOKstring)
+            StringExp *se = e->toString();
+            if (!se)
                 error("string expected for library name, not '%s'", e->toChars());
             else if (global.params.verbose)
             {
-                StringExp *se = (StringExp *)e;
                 char *name = (char *)mem.malloc(se->len + 1);
                 memcpy(name, se->string, se->len);
                 name[se->len] = 0;
@@ -1007,10 +1010,11 @@ void PragmaDeclaration::semantic(Scope *sc)
             if (!d)
                 error("first argument of GNU_asm must be a function or variable declaration");
 
-            e = (Expression *)args->data[1];
+            e = args->tdata()[1];
             e = e->semantic(sc);
-            e = e->optimize(WANTvalue | WANTinterpret);
-            if (e->op == TOKstring && ((StringExp *)e)->sz == 1)
+            e = e->optimize(WANTvalue);
+            e = e->toString();
+            if (e && ((StringExp *)e)->sz == 1)
                 s = ((StringExp *)e);
             else
                 error("second argument of GNU_asm must be a character string");
@@ -1040,9 +1044,9 @@ void PragmaDeclaration::semantic(Scope *sc)
 
             for (unsigned i = 0; i < args->dim; i++)
             {
-                Expression * e = (Expression *) args->data[i];
+                Expression * e = args->tdata()[i];
                 //e = e->semantic(sc);
-
+                
                 if (e->op == TOKidentifier)
                     ; // ok
                 else if (e->op == TOKcall)
@@ -1053,8 +1057,8 @@ void PragmaDeclaration::semantic(Scope *sc)
                     if (c->arguments)
                         for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
                         {
-                            Expression * ea = (Expression *) c->arguments->data[ai];
-                            c->arguments->data[ai] = ea->semantic(sc);
+                            Expression * ea = c->arguments->tdata()[ai];
+                            c->arguments->tdata()[ai] = ea->semantic(sc);
                         }
                 }
                 else
@@ -1075,43 +1079,40 @@ void PragmaDeclaration::semantic(Scope *sc)
             error("declaration expected for setting attributes");
         else
         {
-            Array p_attributes_list; // of Expressions**
+            Expressions ** p_attributes = NULL;     // list of existing attributes
             {
-                Expression * e = (Expression *) args->data[0];
-                Expressions ** pa = NULL;
-
+                Expression * e = args->tdata()[0];
+                
                 e = e->semantic(sc);
                 if (e->op == TOKvar)
                 {
                     Declaration * d = ((VarExp *)e)->var;
                     if (d->isFuncDeclaration() || d->isVarDeclaration())
-                        pa = & d->attributes;
+                        p_attributes = & d->attributes;
                 }
                 else if (e->op == TOKtype)
                 {
                     Type * t = ((TypeExp *)e)->type;
                     if (t->ty == Ttypedef)
-                        pa = & ((TypeTypedef *) t)->sym->attributes;
+                        p_attributes = & ((TypeTypedef *) t)->sym->attributes;
                     else if (t->ty == Tenum)
-                        pa = & ((TypeEnum *) t)->sym->attributes;
+                        p_attributes = & ((TypeEnum *) t)->sym->attributes;
                     else if (t->ty == Tstruct)
-                        pa = & ((TypeStruct *) t)->sym->attributes;
+                        p_attributes = & ((TypeStruct *) t)->sym->attributes;
                     else if (t->ty == Tclass)
-                        pa = & ((TypeClass *) t)->sym->attributes;
+                        p_attributes = & ((TypeClass *) t)->sym->attributes;
                 }
 
-                if (pa)
-                    p_attributes_list.push(pa);
-                else
+                if (p_attributes == NULL)
                     error("first argument must be a function, variable, or type declaration");
             }
 
             Expressions * new_attrs = new Expressions;
             for (unsigned i = 1; i < args->dim; i++)
             {
-                Expression * e = (Expression *) args->data[i];
+                Expression * e = args->tdata()[i];
                 //e = e->semantic(sc);
-
+                
                 if (e->op == TOKidentifier)
                     ; // ok
                 else if (e->op == TOKcall)
@@ -1122,8 +1123,8 @@ void PragmaDeclaration::semantic(Scope *sc)
                     if (c->arguments)
                         for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
                         {
-                            Expression * ea = (Expression *) c->arguments->data[ai];
-                            c->arguments->data[ai] = ea->semantic(sc);
+                            Expression * ea = c->arguments->tdata()[ai];
+                            c->arguments->tdata()[ai] = ea->semantic(sc);
                         }
                 }
                 else
@@ -1134,16 +1135,15 @@ void PragmaDeclaration::semantic(Scope *sc)
                 new_attrs->push(e);
             }
 
-            for (unsigned i = 0; i < p_attributes_list.dim; ++i)
+            if (p_attributes)
             {
-                Expressions ** pa = (Expressions **) p_attributes_list.data[i];
-                if (*pa)
+                if (*p_attributes)
                 {
-                    *pa = (Expressions *) (*pa)->copy();
-                    (*pa)->append(new_attrs);
+                    *p_attributes = (Expressions *) (*p_attributes)->copy();
+                    (*p_attributes)->append(new_attrs);
                 }
                 else
-                    *pa = new_attrs;
+                    *p_attributes = new_attrs;
             }
         }
         goto Lnodecl;
@@ -1206,7 +1206,7 @@ void PragmaDeclaration::semantic(Scope *sc)
     {
         for (unsigned i = 0; i < decl->dim; i++)
         {
-            Dsymbol *s = (Dsymbol *)decl->data[i];
+            Dsymbol *s = decl->tdata()[i];
 
             s->semantic(sc);
         }
@@ -1260,7 +1260,7 @@ void PragmaDeclaration::toObjFile(int multiobj)
          * so instead append the library name to the list to be passed
          * to the linker.
          */
-        global.params.libfiles->push((void *) name);
+        global.params.libfiles->push(name);
 #else
         error("pragma lib not supported");
 #endif
@@ -1300,7 +1300,7 @@ void PragmaDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /********************************* ConditionalDeclaration ****************************/
 
-ConditionalDeclaration::ConditionalDeclaration(Condition *condition, Array *decl, Array *elsedecl)
+ConditionalDeclaration::ConditionalDeclaration(Condition *condition, Dsymbols *decl, Dsymbols *elsedecl)
         : AttribDeclaration(decl)
 {
     //printf("ConditionalDeclaration::ConditionalDeclaration()\n");
@@ -1325,7 +1325,7 @@ int ConditionalDeclaration::oneMember(Dsymbol **ps)
     //printf("ConditionalDeclaration::oneMember(), inc = %d\n", condition->inc);
     if (condition->inc)
     {
-        Array *d = condition->include(NULL, NULL) ? decl : elsedecl;
+        Dsymbols *d = condition->include(NULL, NULL) ? decl : elsedecl;
         return Dsymbol::oneMembers(d, ps);
     }
     *ps = NULL;
@@ -1344,9 +1344,9 @@ void ConditionalDeclaration::emitComment(Scope *sc)
         /* If generating doc comment, be careful because if we're inside
          * a template, then include(NULL, NULL) will fail.
          */
-        Array *d = decl ? decl : elsedecl;
+        Dsymbols *d = decl ? decl : elsedecl;
         for (unsigned i = 0; i < d->dim; i++)
-        {   Dsymbol *s = (Dsymbol *)d->data[i];
+        {   Dsymbol *s = d->tdata()[i];
             s->emitComment(sc);
         }
     }
@@ -1354,7 +1354,7 @@ void ConditionalDeclaration::emitComment(Scope *sc)
 
 // Decide if 'then' or 'else' code should be included
 
-Array *ConditionalDeclaration::include(Scope *sc, ScopeDsymbol *sd)
+Dsymbols *ConditionalDeclaration::include(Scope *sc, ScopeDsymbol *sd)
 {
     //printf("ConditionalDeclaration::include()\n");
     assert(condition);
@@ -1363,14 +1363,14 @@ Array *ConditionalDeclaration::include(Scope *sc, ScopeDsymbol *sd)
 
 void ConditionalDeclaration::setScope(Scope *sc)
 {
-    Array *d = include(sc, NULL);
+    Dsymbols *d = include(sc, NULL);
 
     //printf("\tConditionalDeclaration::setScope '%s', d = %p\n",toChars(), d);
     if (d)
     {
        for (unsigned i = 0; i < d->dim; i++)
        {
-           Dsymbol *s = (Dsymbol *)d->data[i];
+           Dsymbol *s = d->tdata()[i];
 
            s->setScope(sc);
        }
@@ -1379,14 +1379,14 @@ void ConditionalDeclaration::setScope(Scope *sc)
 
 void ConditionalDeclaration::importAll(Scope *sc)
 {
-    Array *d = include(sc, NULL);
+    Dsymbols *d = include(sc, NULL);
 
     //printf("\tConditionalDeclaration::importAll '%s', d = %p\n",toChars(), d);
     if (d)
     {
        for (unsigned i = 0; i < d->dim; i++)
        {
-           Dsymbol *s = (Dsymbol *)d->data[i];
+           Dsymbol *s = d->tdata()[i];
 
            s->importAll(sc);
        }
@@ -1403,7 +1403,7 @@ void ConditionalDeclaration::addComment(unsigned char *comment)
 
     if (comment)
     {
-        Array *d = decl;
+        Dsymbols *d = decl;
 
         for (int j = 0; j < 2; j++)
         {
@@ -1412,7 +1412,7 @@ void ConditionalDeclaration::addComment(unsigned char *comment)
                 for (unsigned i = 0; i < d->dim; i++)
                 {   Dsymbol *s;
 
-                    s = (Dsymbol *)d->data[i];
+                    s = d->tdata()[i];
                     //printf("ConditionalDeclaration::addComment %s\n", s->toChars());
                     s->addComment(comment);
                 }
@@ -1434,7 +1434,7 @@ void ConditionalDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         {
             for (unsigned i = 0; i < decl->dim; i++)
             {
-                Dsymbol *s = (Dsymbol *)decl->data[i];
+                Dsymbol *s = decl->tdata()[i];
 
                 buf->writestring("    ");
                 s->toCBuffer(buf, hgs);
@@ -1450,7 +1450,7 @@ void ConditionalDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
             buf->writenl();
             for (unsigned i = 0; i < elsedecl->dim; i++)
             {
-                Dsymbol *s = (Dsymbol *)elsedecl->data[i];
+                Dsymbol *s = elsedecl->tdata()[i];
 
                 buf->writestring("    ");
                 s->toCBuffer(buf, hgs);
@@ -1466,7 +1466,7 @@ void ConditionalDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 /***************************** StaticIfDeclaration ****************************/
 
 StaticIfDeclaration::StaticIfDeclaration(Condition *condition,
-        Array *decl, Array *elsedecl)
+        Dsymbols *decl, Dsymbols *elsedecl)
         : ConditionalDeclaration(condition, decl, elsedecl)
 {
     //printf("StaticIfDeclaration::StaticIfDeclaration()\n");
@@ -1524,7 +1524,7 @@ void StaticIfDeclaration::setScope(Scope *sc)
 
 void StaticIfDeclaration::semantic(Scope *sc)
 {
-    Array *d = include(sc, sd);
+    Dsymbols *d = include(sc, sd);
 
     //printf("\tStaticIfDeclaration::semantic '%s', d = %p\n",toChars(), d);
     if (d)
@@ -1536,7 +1536,7 @@ void StaticIfDeclaration::semantic(Scope *sc)
 
         for (unsigned i = 0; i < d->dim; i++)
         {
-            Dsymbol *s = (Dsymbol *)d->data[i];
+            Dsymbol *s = d->tdata()[i];
 
             s->semantic(sc);
         }
@@ -1588,12 +1588,12 @@ void CompileDeclaration::compileIt(Scope *sc)
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
     exp = exp->optimize(WANTvalue | WANTinterpret);
-    if (exp->op != TOKstring)
+    StringExp *se = exp->toString();
+    if (!se)
     {   exp->error("argument to mixin must be a string, not (%s)", exp->toChars());
     }
     else
     {
-        StringExp *se = (StringExp *)exp;
         se = se->toUTF8(sc);
         Parser p(sc->module, (unsigned char *)se->string, se->len, 0);
         p.loc = loc;

@@ -41,7 +41,9 @@ Declaration::Declaration(Identifier *id)
     linkage = LINKdefault;
     inuse = 0;
     sem = SemanticStart;
+#if IN_GCC
     attributes = NULL;
+#endif
 }
 
 void Declaration::semantic(Scope *sc)
@@ -53,7 +55,7 @@ const char *Declaration::kind()
     return "declaration";
 }
 
-target_size_t Declaration::size(Loc loc)
+unsigned Declaration::size(Loc loc)
 {
     assert(type);
     return type->size();
@@ -90,6 +92,7 @@ enum PROT Declaration::prot()
  */
 
 #if DMDV2
+
 void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
 {
     if (sc->incontract && isParameter())
@@ -98,40 +101,10 @@ void Declaration::checkModify(Loc loc, Scope *sc, Type *t)
     if (sc->incontract && isResult())
         error(loc, "cannot modify result '%s' in contract", toChars());
 
-    if (isCtorinit() && !t->isMutable())
+    if (isCtorinit() && !t->isMutable() ||
+        (storage_class & STCnodefaultctor))
     {   // It's only modifiable if inside the right constructor
-        Dsymbol *s = sc->func;
-        while (1)
-        {
-            FuncDeclaration *fd = NULL;
-            if (s)
-                fd = s->isFuncDeclaration();
-            if (fd &&
-                ((fd->isCtorDeclaration() && storage_class & STCfield) ||
-                 (fd->isStaticCtorDeclaration() && !(storage_class & STCfield))) &&
-                fd->toParent() == toParent()
-               )
-            {
-                VarDeclaration *v = isVarDeclaration();
-                assert(v);
-                v->ctorinit = 1;
-                //printf("setting ctorinit\n");
-            }
-            else
-            {
-                if (s)
-                {   s = s->toParent2();
-                    continue;
-                }
-                else
-                {
-                    const char *p = isStatic() ? "static " : "";
-                    error(loc, "can only initialize %sconst %s inside %sconstructor",
-                        p, toChars(), p);
-                }
-            }
-            break;
-        }
+        modifyFieldVar(loc, sc, isVarDeclaration(), NULL);
     }
     else
     {
@@ -192,7 +165,7 @@ Type *TupleDeclaration::getType()
         /* It's only a type tuple if all the Object's are types
          */
         for (size_t i = 0; i < objects->dim; i++)
-        {   Object *o = (Object *)objects->data[i];
+        {   Object *o = objects->tdata()[i];
 
             if (o->dyncast() != DYNCAST_TYPE)
             {
@@ -203,12 +176,13 @@ Type *TupleDeclaration::getType()
 
         /* We know it's a type tuple, so build the TypeTuple
          */
+        Types *types = (Types *)objects;
         Parameters *args = new Parameters();
         args->setDim(objects->dim);
         OutBuffer buf;
         int hasdeco = 1;
-        for (size_t i = 0; i < objects->dim; i++)
-        {   Type *t = (Type *)objects->data[i];
+        for (size_t i = 0; i < types->dim; i++)
+        {   Type *t = types->tdata()[i];
 
             //printf("type = %s\n", t->toChars());
 #if 0
@@ -219,7 +193,7 @@ Type *TupleDeclaration::getType()
 #else
             Parameter *arg = new Parameter(0, t, NULL, NULL);
 #endif
-            args->data[i] = (void *)arg;
+            args->tdata()[i] = arg;
             if (!t->deco)
                 hasdeco = 0;
         }
@@ -236,7 +210,7 @@ int TupleDeclaration::needThis()
 {
     //printf("TupleDeclaration::needThis(%s)\n", toChars());
     for (size_t i = 0; i < objects->dim; i++)
-    {   Object *o = (Object *)objects->data[i];
+    {   Object *o = objects->tdata()[i];
         if (o->dyncast() == DYNCAST_EXPRESSION)
         {   Expression *e = (Expression *)o;
             if (e->op == TOKdsymbol)
@@ -311,10 +285,12 @@ void TypedefDeclaration::semantic(Scope *sc)
         type = type->addStorageClass(storage_class);
 #endif
         type = type->semantic(loc, sc);
+#if IN_GCC
         if (attributes)
             attributes->append(sc->attributes);
         else
             attributes = sc->attributes;
+#endif
         if (sc->parent->isFuncDeclaration() && init)
             semantic2(sc);
         storage_class |= sc->stc & STCdeprecated;
@@ -724,7 +700,7 @@ void VarDeclaration::semantic(Scope *sc)
     printf("VarDeclaration::semantic('%s', parent = '%s')\n", toChars(), sc->parent->toChars());
     printf(" type = %s\n", type ? type->toChars() : "null");
     printf(" stc = x%x\n", sc->stc);
-    printf(" storage_class = x%x\n", storage_class);
+    printf(" storage_class = x%llx\n", storage_class);
     printf("linkage = %d\n", sc->linkage);
     //if (strcmp(toChars(), "mul") == 0) halt();
 #endif
@@ -803,10 +779,12 @@ void VarDeclaration::semantic(Scope *sc)
     this->parent = sc->parent;
     //printf("this = %p, parent = %p, '%s'\n", this, parent, parent->toChars());
     protection = sc->protection;
+#if IN_GCC
     if (attributes)
         attributes->append(sc->attributes);
     else
         attributes = sc->attributes;
+#endif
     //printf("sc->stc = %x\n", sc->stc);
     //printf("storage_class = x%x\n", storage_class);
 
@@ -829,8 +807,8 @@ void VarDeclaration::semantic(Scope *sc)
             Dsymbol *s = type->toDsymbol(sc);
             if (s)
             {
-                AggregateDeclaration *ad = s->isAggregateDeclaration();
-                if (ad && ad->hasUnions)
+                AggregateDeclaration *ad2 = s->isAggregateDeclaration();
+                if (ad2 && ad2->hasUnions)
                 {
                     if (sc->func->setUnsafe())
                         error("unions containing pointers are not allowed in @safe functions");
@@ -874,6 +852,103 @@ void VarDeclaration::semantic(Scope *sc)
         Objects *exps = new Objects();
         exps->setDim(nelems);
         Expression *ie = init ? init->toExpression() : NULL;
+        if (ie) ie = ie->semantic(sc);
+
+        if (nelems > 0 && ie)
+        {
+            Expressions *iexps = new Expressions();
+            iexps->push(ie);
+
+            Expressions *exps = new Expressions();
+
+            for (size_t pos = 0; pos < iexps->dim; pos++)
+            {
+            Lexpand1:
+                Expression *e = iexps->tdata()[pos];
+                Parameter *arg = Parameter::getNth(tt->arguments, pos);
+                arg->type = arg->type->semantic(loc, sc);
+                //printf("[%d] iexps->dim = %d, ", pos, iexps->dim);
+                //printf("e = (%s %s, %s), ", Token::tochars[e->op], e->toChars(), e->type->toChars());
+                //printf("arg = (%s, %s)\n", arg->toChars(), arg->type->toChars());
+
+                if (e != ie)
+                {
+                if (iexps->dim > nelems)
+                    goto Lnomatch;
+                if (e->type->implicitConvTo(arg->type))
+                    continue;
+                }
+
+                if (e->op == TOKtuple)
+                {
+                    TupleExp *te = (TupleExp *)e;
+                    if (iexps->dim - 1 + te->exps->dim > nelems)
+                        goto Lnomatch;
+
+                    iexps->remove(pos);
+                    iexps->insert(pos, te->exps);
+                    goto Lexpand1;
+                }
+                else if (isAliasThisTuple(e))
+                {
+                    Identifier *id = Lexer::uniqueId("__tup");
+                    ExpInitializer *ei = new ExpInitializer(e->loc, e);
+                    VarDeclaration *v = new VarDeclaration(loc, NULL, id, ei);
+                    v->storage_class = STCctfe | STCref | STCforeach;
+                    VarExp *ve = new VarExp(loc, v);
+                    ve->type = e->type;
+
+                    exps->setDim(1);
+                    (*exps)[0] = ve;
+                    expandAliasThisTuples(exps, 0);
+
+                    for (size_t u = 0; u < exps->dim ; u++)
+                    {
+                    Lexpand2:
+                        Expression *ee = (*exps)[u];
+                        Parameter *arg = Parameter::getNth(tt->arguments, pos + u);
+                        arg->type = arg->type->semantic(loc, sc);
+                        //printf("[%d+%d] exps->dim = %d, ", pos, u, exps->dim);
+                        //printf("ee = (%s %s, %s), ", Token::tochars[ee->op], ee->toChars(), ee->type->toChars());
+                        //printf("arg = (%s, %s)\n", arg->toChars(), arg->type->toChars());
+
+                        size_t iexps_dim = iexps->dim - 1 + exps->dim;
+                        if (iexps_dim > nelems)
+                            goto Lnomatch;
+                        if (ee->type->implicitConvTo(arg->type))
+                            continue;
+
+                        if (expandAliasThisTuples(exps, u) != -1)
+                            goto Lexpand2;
+                    }
+
+                    if ((*exps)[0] != ve)
+                    {
+                        Expression *e0 = (*exps)[0];
+                        (*exps)[0] = new CommaExp(loc, new DeclarationExp(loc, v), e0);
+                        (*exps)[0]->type = e0->type;
+
+                        iexps->remove(pos);
+                        iexps->insert(pos, exps);
+                        goto Lexpand1;
+                    }
+                }
+            }
+            if (iexps->dim < nelems)
+                goto Lnomatch;
+
+            ie = new TupleExp(init->loc, iexps);
+        }
+Lnomatch:
+
+        if (ie && ie->op == TOKtuple)
+        {   size_t tedim = ((TupleExp *)ie)->exps->dim;
+            if (tedim != nelems)
+            {   ::error(loc, "tuple of %d elements cannot be assigned to tuple of %d elements", (int)tedim, (int)nelems);
+                for (size_t u = tedim; u < nelems; u++) // fill dummy expression
+                    ((TupleExp *)ie)->exps->push(new ErrorExp());
+            }
+        }
 
         for (size_t i = 0; i < nelems; i++)
         {   Parameter *arg = Parameter::getNth(tt->arguments, i);
@@ -886,7 +961,7 @@ void VarDeclaration::semantic(Scope *sc)
 
             Expression *einit = ie;
             if (ie && ie->op == TOKtuple)
-            {   einit = (Expression *)((TupleExp *)ie)->exps->data[i];
+            {   einit = ((TupleExp *)ie)->exps->tdata()[i];
             }
             Initializer *ti = init;
             if (einit)
@@ -904,7 +979,7 @@ void VarDeclaration::semantic(Scope *sc)
             }
 
             Expression *e = new DsymbolExp(loc, v);
-            exps->data[i] = e;
+            exps->tdata()[i] = e;
         }
         TupleDeclaration *v2 = new TupleDeclaration(loc, ident, exps);
         v2->isexp = 1;
@@ -912,7 +987,6 @@ void VarDeclaration::semantic(Scope *sc)
         return;
     }
 
-Lagain:
     /* Storage class can modify the type
      */
     type = type->addStorageClass(storage_class);
@@ -963,12 +1037,19 @@ Lagain:
 
             if (storage_class & (STCconst | STCimmutable) && init)
             {
-                if (!type->toBasetype()->isTypeBasic())
+                if (!tb->isTypeBasic())
                     storage_class |= STCstatic;
             }
             else
-#endif
+            {
                 aad->addField(sc, this);
+                if (tb->ty == Tstruct && ((TypeStruct *)tb)->sym->noDefaultCtor ||
+                    tb->ty == Tclass  && ((TypeClass  *)tb)->sym->noDefaultCtor)
+                    aad->noDefaultCtor = TRUE;
+            }
+#else
+                aad->addField(sc, this);
+#endif
         }
 
         InterfaceDeclaration *id = parent->isInterfaceDeclaration();
@@ -992,10 +1073,10 @@ Lagain:
             }
 
             // If it's a member template
-            AggregateDeclaration *ad = ti->tempdecl->isMember();
-            if (ad && storage_class != STCundefined)
+            AggregateDeclaration *ad2 = ti->tempdecl->isMember();
+            if (ad2 && storage_class != STCundefined)
             {
-                error("cannot use template to add field to aggregate '%s'", ad->toChars());
+                error("cannot use template to add field to aggregate '%s'", ad2->toChars());
             }
         }
     }
@@ -1012,6 +1093,21 @@ Lagain:
         type->hasWild())
     {
         error("only fields, parameters or stack based variables can be inout");
+    }
+
+    if (!(storage_class & (STCctfe | STCref)) && tb->ty == Tstruct &&
+        ((TypeStruct *)tb)->sym->noDefaultCtor)
+    {
+        if (!init)
+        {   if (storage_class & STCfield)
+                /* For fields, we'll check the constructor later to make sure it is initialized
+                 */
+                storage_class |= STCnodefaultctor;
+            else if (storage_class & STCparameter)
+                ;
+            else
+                error("initializer required for type %s", type->toChars());
+        }
     }
 #endif
 
@@ -1145,7 +1241,7 @@ Lagain:
                     ei->exp = ei->exp->semantic(sc);
                     if (!ei->exp->implicitConvTo(type))
                     {
-                        sinteger_t dim = ((TypeSArray *)t)->dim->toInteger();
+                        dinteger_t dim = ((TypeSArray *)t)->dim->toInteger();
                         // If multidimensional static array, treat as one large array
                         while (1)
                         {
@@ -1307,15 +1403,15 @@ Lagain:
                      * because the postblit doesn't get run on the initialization of w.
                      */
 
-                    Type *tb = e->type->toBasetype();
-                    if (tb->ty == Tstruct)
-                    {   StructDeclaration *sd = ((TypeStruct *)tb)->sym;
+                    Type *tb2 = e->type->toBasetype();
+                    if (tb2->ty == Tstruct)
+                    {   StructDeclaration *sd = ((TypeStruct *)tb2)->sym;
                         Type *typeb = type->toBasetype();
                         /* Look to see if initializer involves a copy constructor
                          * (which implies a postblit)
                          */
                         if (sd->cpctor &&               // there is a copy constructor
-                            typeb->equals(tb))          // rvalue is the same struct
+                            typeb->equals(tb2))          // rvalue is the same struct
                         {
                             // The only allowable initializer is a (non-copy) constructor
                             if (e->op == TOKcall)
@@ -1530,8 +1626,8 @@ void VarDeclaration::checkNestedReference(Scope *sc, Loc loc)
             if (loc.filename)
                 fdthis->getLevel(loc, fdv);
 
-            for (int i = 0; i < nestedrefs.dim; i++)
-            {   FuncDeclaration *f = (FuncDeclaration *)nestedrefs.data[i];
+            for (size_t i = 0; i < nestedrefs.dim; i++)
+            {   FuncDeclaration *f = nestedrefs.tdata()[i];
                 if (f == fdthis)
                     goto L1;
             }
@@ -1539,8 +1635,8 @@ void VarDeclaration::checkNestedReference(Scope *sc, Loc loc)
           L1: ;
 
 
-            for (int i = 0; i < fdv->closureVars.dim; i++)
-            {   Dsymbol *s = (Dsymbol *)fdv->closureVars.data[i];
+            for (size_t i = 0; i < fdv->closureVars.dim; i++)
+            {   Dsymbol *s = fdv->closureVars.tdata()[i];
                 if (s == this)
                     goto L2;
             }
@@ -1789,6 +1885,15 @@ Expression *VarDeclaration::callScopeDtor(Scope *sc)
     return e;
 }
 
+/******************************************
+ */
+
+void ObjectNotFound(Identifier *id)
+{
+    Type::error(0, "%s not found. object.d may be incorrectly installed or corrupt.", id->toChars());
+    fatal();
+}
+
 
 /********************************* ClassInfoDeclaration ****************************/
 
@@ -1856,6 +1961,10 @@ void TypeInfoDeclaration::semantic(Scope *sc)
 TypeInfoConstDeclaration::TypeInfoConstDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfoconst)
+    {
+        ObjectNotFound(Id::TypeInfo_Const);
+    }
     type = Type::typeinfoconst->type;
 }
 #endif
@@ -1866,6 +1975,10 @@ TypeInfoConstDeclaration::TypeInfoConstDeclaration(Type *tinfo)
 TypeInfoInvariantDeclaration::TypeInfoInvariantDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfoinvariant)
+    {
+        ObjectNotFound(Id::TypeInfo_Invariant);
+    }
     type = Type::typeinfoinvariant->type;
 }
 #endif
@@ -1876,6 +1989,10 @@ TypeInfoInvariantDeclaration::TypeInfoInvariantDeclaration(Type *tinfo)
 TypeInfoSharedDeclaration::TypeInfoSharedDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfoshared)
+    {
+        ObjectNotFound(Id::TypeInfo_Shared);
+    }
     type = Type::typeinfoshared->type;
 }
 #endif
@@ -1886,6 +2003,10 @@ TypeInfoSharedDeclaration::TypeInfoSharedDeclaration(Type *tinfo)
 TypeInfoWildDeclaration::TypeInfoWildDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfowild)
+    {
+        ObjectNotFound(Id::TypeInfo_Wild);
+    }
     type = Type::typeinfowild->type;
 }
 #endif
@@ -1895,6 +2016,10 @@ TypeInfoWildDeclaration::TypeInfoWildDeclaration(Type *tinfo)
 TypeInfoStructDeclaration::TypeInfoStructDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfostruct)
+    {
+        ObjectNotFound(Id::TypeInfo_Struct);
+    }
     type = Type::typeinfostruct->type;
 }
 
@@ -1903,6 +2028,10 @@ TypeInfoStructDeclaration::TypeInfoStructDeclaration(Type *tinfo)
 TypeInfoClassDeclaration::TypeInfoClassDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfoclass)
+    {
+        ObjectNotFound(Id::TypeInfo_Class);
+    }
     type = Type::typeinfoclass->type;
 }
 
@@ -1911,6 +2040,10 @@ TypeInfoClassDeclaration::TypeInfoClassDeclaration(Type *tinfo)
 TypeInfoInterfaceDeclaration::TypeInfoInterfaceDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfointerface)
+    {
+        ObjectNotFound(Id::TypeInfo_Interface);
+    }
     type = Type::typeinfointerface->type;
 }
 
@@ -1919,6 +2052,10 @@ TypeInfoInterfaceDeclaration::TypeInfoInterfaceDeclaration(Type *tinfo)
 TypeInfoTypedefDeclaration::TypeInfoTypedefDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfotypedef)
+    {
+        ObjectNotFound(Id::TypeInfo_Typedef);
+    }
     type = Type::typeinfotypedef->type;
 }
 
@@ -1927,6 +2064,10 @@ TypeInfoTypedefDeclaration::TypeInfoTypedefDeclaration(Type *tinfo)
 TypeInfoPointerDeclaration::TypeInfoPointerDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfopointer)
+    {
+        ObjectNotFound(Id::TypeInfo_Pointer);
+    }
     type = Type::typeinfopointer->type;
 }
 
@@ -1935,6 +2076,10 @@ TypeInfoPointerDeclaration::TypeInfoPointerDeclaration(Type *tinfo)
 TypeInfoArrayDeclaration::TypeInfoArrayDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfoarray)
+    {
+        ObjectNotFound(Id::TypeInfo_Array);
+    }
     type = Type::typeinfoarray->type;
 }
 
@@ -1943,6 +2088,10 @@ TypeInfoArrayDeclaration::TypeInfoArrayDeclaration(Type *tinfo)
 TypeInfoStaticArrayDeclaration::TypeInfoStaticArrayDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfostaticarray)
+    {
+        ObjectNotFound(Id::TypeInfo_StaticArray);
+    }
     type = Type::typeinfostaticarray->type;
 }
 
@@ -1951,6 +2100,10 @@ TypeInfoStaticArrayDeclaration::TypeInfoStaticArrayDeclaration(Type *tinfo)
 TypeInfoAssociativeArrayDeclaration::TypeInfoAssociativeArrayDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfoassociativearray)
+    {
+        ObjectNotFound(Id::TypeInfo_AssociativeArray);
+    }
     type = Type::typeinfoassociativearray->type;
 }
 
@@ -1959,6 +2112,10 @@ TypeInfoAssociativeArrayDeclaration::TypeInfoAssociativeArrayDeclaration(Type *t
 TypeInfoEnumDeclaration::TypeInfoEnumDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfoenum)
+    {
+        ObjectNotFound(Id::TypeInfo_Enum);
+    }
     type = Type::typeinfoenum->type;
 }
 
@@ -1967,6 +2124,10 @@ TypeInfoEnumDeclaration::TypeInfoEnumDeclaration(Type *tinfo)
 TypeInfoFunctionDeclaration::TypeInfoFunctionDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfofunction)
+    {
+        ObjectNotFound(Id::TypeInfo_Function);
+    }
     type = Type::typeinfofunction->type;
 }
 
@@ -1975,6 +2136,10 @@ TypeInfoFunctionDeclaration::TypeInfoFunctionDeclaration(Type *tinfo)
 TypeInfoDelegateDeclaration::TypeInfoDelegateDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfodelegate)
+    {
+        ObjectNotFound(Id::TypeInfo_Delegate);
+    }
     type = Type::typeinfodelegate->type;
 }
 
@@ -1983,6 +2148,10 @@ TypeInfoDelegateDeclaration::TypeInfoDelegateDeclaration(Type *tinfo)
 TypeInfoTupleDeclaration::TypeInfoTupleDeclaration(Type *tinfo)
     : TypeInfoDeclaration(tinfo, 0)
 {
+    if (!Type::typeinfotypelist)
+    {
+        ObjectNotFound(Id::TypeInfo_Tuple);
+    }
     type = Type::typeinfotypelist->type;
 }
 

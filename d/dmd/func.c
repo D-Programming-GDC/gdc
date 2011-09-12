@@ -437,7 +437,7 @@ void FuncDeclaration::semantic(Scope *sc)
                     /* Only need to have a tintro if the vptr
                      * offsets differ
                      */
-                    target_ptrdiff_t offset;
+                    int offset;
                     if (fdv->type->nextOf()->isBaseOf(type->nextOf(), &offset))
                     {
                         tintro = fdv->type;
@@ -482,7 +482,7 @@ void FuncDeclaration::semantic(Scope *sc)
                          */
                         unsigned errors = global.errors;
                         global.gag++;            // suppress printing of error messages
-                        target_ptrdiff_t offset;
+                        int offset;
                         int baseOf = fdv->type->nextOf()->isBaseOf(type->nextOf(), &offset);
                         global.gag--;            // suppress printing of error messages
                         if (errors != global.errors)
@@ -818,7 +818,7 @@ void FuncDeclaration::semantic3(Scope *sc)
             Type *t;
 
 #ifndef IN_GCC
-            if (global.params.isX86_64)
+            if (global.params.is64bit)
             {   // Declare save area for varargs registers
                 Type *t = new TypeIdentifier(loc, Id::va_argsave_t);
                 t = t->semantic(loc, sc);
@@ -900,7 +900,7 @@ void FuncDeclaration::semantic3(Scope *sc)
         {   /* parameters[] has all the tuples removed, as the back end
              * doesn't know about tuples
              */
-            parameters = new Dsymbols();
+            parameters = new VarDeclarations();
             parameters->reserve(nparams);
             for (size_t i = 0; i < nparams; i++)
             {
@@ -1274,8 +1274,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                 v_argptr->init = new VoidInitializer(loc);
 #else
                 Type *t = argptr->type;
-                VarDeclaration *p;
-                if (global.params.isX86_64)
+                if (global.params.is64bit)
                 {   // Initialize _argptr to point to v_argsave
                     Expression *e1 = new VarExp(0, argptr);
                     Expression *e = new SymOffExp(0, v_argsave, 6*8 + 8*16);
@@ -1286,6 +1285,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                 }
                 else
                 {   // Initialize _argptr to point past non-variadic arg
+                    VarDeclaration *p;
                     unsigned offset = 0;
 
                     Expression *e1 = new VarExp(0, argptr);

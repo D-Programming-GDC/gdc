@@ -9,7 +9,7 @@
 #if IN_GCC
 #include "rmem.h"
 #else
-#if linux || __APPLE__ || __FreeBSD__ || __sun&&__SVR4
+#if linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4
 #include "../root/rmem.h"
 #else
 #include "rmem.h"
@@ -83,9 +83,12 @@ void *Mem::realloc(void *p, size_t size)
     }
     else
     {
-        p = ::realloc(p, size);
+        void *psave = p;
+        p = ::realloc(psave, size);
         if (!p)
+        {   free(psave);
             error();
+        }
     }
     return p;
 }

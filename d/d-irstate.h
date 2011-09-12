@@ -32,6 +32,57 @@
 #include "aggregate.h"
 #include "symbol.h"
 
+// The kinds of levels we recognize.
+enum LevelKind
+{
+    level_block = 0,    // An ordinary block scope.
+    level_switch,       // A switch-block
+    level_try,          // A try-block.
+    level_catch,        // A catch-block.
+    level_finally,      // A finally-block.
+};
+
+
+struct Label 
+{
+    LabelDsymbol * label;
+    Statement * block;
+    Statement * from;
+    LevelKind kind;
+    unsigned level;
+};
+
+struct Flow
+{
+    Statement * statement;
+    LevelKind kind;
+    tree exitLabel;
+    union
+    {
+        struct
+        {
+            tree continueLabel;
+            tree hasVars; // D2 specific, != NULL_TREE if switch uses Lvalues for cases.
+        };
+        struct
+        {
+            tree condition;  // Only need this if it is not okay to convert an IfStatement's
+            tree trueBranch; // condition after converting it's branches...
+        };
+        struct
+        {
+            tree tryBody;
+            tree catchType;
+        };
+    };
+};
+
+
+typedef ArrayBase<Label> Labels;
+typedef ArrayBase<struct Flow> Flows;
+
+
+
 // IRBase contains the core functionality of IRState.  The actual IRState class
 // extends this with lots of code generation utilities.
 //
@@ -40,6 +91,7 @@
 //
 // Most toElem calls don't actually need the IRState because they create GCC
 // expression trees rather than emit instructions.
+
 
 struct IRBase : Object
 {
@@ -69,68 +121,23 @@ public:
     void pushStatementList();
     tree popStatementList();
 
-    // ** Scope kinds.
-
-    /* The kinds of levels we recognize. */
-    enum LevelKind
-    {
-        level_block = 0,    /* An ordinary block scope. */
-        level_switch,       /* A switch-block */
-        level_try,          /* A try-block. */
-        level_catch,        /* A catch-block. */
-        level_finally,      /* A finally-block. */
-    };
-
     // ** Labels
 
-    struct Label
-    {
-        LabelDsymbol * label;
-        Statement * block;
-        Statement * from;
-        LevelKind kind;
-        unsigned level;
-    };
-
-    Array Labels; // of Label.
+    Labels labels;
 
     // It is only valid to call this while the function in which the label is defined
     // is being compiled.
     tree    getLabelTree(LabelDsymbol * label);
     Label * getLabelBlock(LabelDsymbol * label, Statement * from = NULL);
 
-    bool    isReturnLabel(Identifier * ident)
+    bool isReturnLabel(Identifier * ident)
     {
         return func->returnLabel ? ident == func->returnLabel->ident : 0;
     }
 
     // ** Loops (and case statements)
-    struct Flow
-    {
-        Statement * statement;
-        LevelKind   kind;
-        tree exitLabel;
-        union
-        {
-            struct
-            {
-                tree continueLabel;
-                tree hasVars; // D2 specific, != NULL_TREE if switch uses Lvalues for cases.
-            };
-            struct
-            {
-                tree condition;  // Only need this if it is not okay to convert an IfStatement's
-                tree trueBranch; // condition after converting it's branches...
-            };
-            struct
-            {
-                tree tryBody;
-                tree catchType;
-            };
-        };
-    };
-
-    Array loops; // of Flow
+    
+    Flows loops;
 
     // These routines don't generate code.  They are for tracking labeled loops.
     Flow * getLoopForLabel(Identifier * ident, bool want_continue = false);

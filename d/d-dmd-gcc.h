@@ -38,11 +38,11 @@ extern bool d_gcc_is_target_win32();
 
 /* used in toobj.c */
 struct VarDeclaration;
-struct Symbol;
 extern void d_gcc_emit_local_variable(VarDeclaration *);
 extern bool d_gcc_supports_weak();
 
 #if V2
+struct Symbol;
 enum RTLSYM
 {
     RTLSYM_DHIDDENFUNC,
@@ -57,9 +57,9 @@ extern Module * d_gcc_get_output_module();
 
 #if V2
 /* used in interpret.c */
-struct CallExp;
-struct Expressions;
-extern Expression * d_gcc_eval_builtin(CallExp *, Expressions *);
+struct FuncDeclaration;
+typedef ArrayBase<struct Expression> Expressions;
+extern Expression * d_gcc_eval_builtin(FuncDeclaration *, Expressions *);
 #endif
 
 #endif

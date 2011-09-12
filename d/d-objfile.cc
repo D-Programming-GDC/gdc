@@ -35,18 +35,11 @@
 
 
 ModuleInfo * ObjectFile::moduleInfo;
-Array ObjectFile::modules;
+Modules ObjectFile::modules;
 unsigned  ObjectFile::moduleSearchIndex;
-Array ObjectFile::deferredThunks;
-Array ObjectFile::staticCtorList;
-Array ObjectFile::staticDtorList;
-
-struct DeferredThunk
-{
-    tree decl;
-    tree target;
-    target_ptrdiff_t offset;
-};
+DeferredThunks ObjectFile::deferredThunks;
+FuncDeclarations ObjectFile::staticCtorList;
+FuncDeclarations ObjectFile::staticDtorList;
 
 ObjectFile::ObjectFile()
 {
@@ -64,7 +57,7 @@ ObjectFile::endModule()
 {
     for (unsigned i = 0; i < deferredThunks.dim; i++)
     {
-        DeferredThunk * t = (DeferredThunk *) deferredThunks.data[i];
+        DeferredThunk * t = deferredThunks.tdata()[i];
         outputThunk(t->decl, t->target, t->offset);
     }
     deferredThunks.setDim(0);
@@ -78,11 +71,11 @@ ObjectFile::hasModule(Module *m)
     if (!m || ! modules.dim)
         return false;
 
-    if (modules.data[moduleSearchIndex] == m)
+    if (modules.tdata()[moduleSearchIndex] == m)
         return true;
     for (unsigned i = 0; i < modules.dim; i++)
     {
-        if ((Module*) modules.data[i] == m)
+        if (modules.tdata()[i] == m)
         {
             moduleSearchIndex = i;
             return true;
@@ -560,7 +553,7 @@ ObjectFile::addAggMethods(tree rec_type, AggregateDeclaration * agg)
         ListMaker methods;
         for (unsigned i = 0; i < agg->methods.dim; i++)
         {
-            FuncDeclaration * fd = (FuncDeclaration *) agg->methods.data[i];
+            FuncDeclaration * fd = agg->methods.tdata()[i];
             methods.chain(fd->toSymbol()->Stree);
         }
         TYPE_METHODS(rec_type) = methods.head;
@@ -686,7 +679,7 @@ ObjectFile::stripVarDecl(tree value)
 }
 
 void
-ObjectFile::doThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offset)
+ObjectFile::doThunk(tree thunk_decl, tree target_decl, int offset)
 {
     if (current_function_decl)
     {
@@ -778,9 +771,9 @@ make_alias_for_thunk (tree function)
 #endif
 
 void
-ObjectFile::outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offset)
+ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
 {
-    target_ptrdiff_t delta = -offset;
+    int delta = -offset;
     tree alias;
 
 #ifdef ASM_OUTPUT_DEF
@@ -879,20 +872,20 @@ ObjectFile::doSimpleFunction(const char * name, tree expr, bool static_ctor, boo
           list.
 */
 FuncDeclaration *
-ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool force_and_public)
+ObjectFile::doFunctionToCallFunctions(const char * name, FuncDeclarations * functions, bool force_and_public)
 {
     tree expr_list = NULL_TREE;
 
     // If there is only one function, just return that
     if (functions->dim == 1 && ! force_and_public)
     {
-        return (FuncDeclaration *) functions->data[0];
+        return functions->tdata()[0];
     }
     else
     {   // %% shouldn't front end build these?
         for (unsigned i = 0; i < functions->dim; i++)
         {
-            FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
+            FuncDeclaration * fn_decl = functions->tdata()[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
             expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
@@ -908,20 +901,20 @@ ObjectFile::doFunctionToCallFunctions(const char * name, Array * functions, bool
    protect static ctors in templates getting called multiple times.
 */
 FuncDeclaration *
-ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
+ObjectFile::doCtorFunction(const char * name, FuncDeclarations * functions, VarDeclarations * gates)
 {
     tree expr_list = NULL_TREE;
 
     // If there is only one function, just return that
     if (functions->dim == 1 && ! gates->dim)
     {
-        return (FuncDeclaration *) functions->data[0];
+        return functions->tdata()[0];
     }
     else
     {   // Increment gates first.
         for (unsigned i = 0; i < gates->dim; i++)
         {
-            VarDeclaration * var = (VarDeclaration *) gates->data[i];
+            VarDeclaration * var = gates->tdata()[i];
             tree var_decl = var->toSymbol()->Stree;
             tree var_expr = build2(MODIFY_EXPR, void_type_node, var_decl,
                                 build2(PLUS_EXPR, TREE_TYPE(var_decl), var_decl, integer_one_node));
@@ -930,7 +923,7 @@ ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
         // Call Ctor Functions
         for (unsigned i = 0; i < functions->dim; i++)
         {
-            FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
+            FuncDeclaration * fn_decl = functions->tdata()[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
             expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
@@ -945,20 +938,20 @@ ObjectFile::doCtorFunction(const char * name, Array * functions, Array * gates)
    the reverse order that the constructors were called in.
 */
 FuncDeclaration *
-ObjectFile::doDtorFunction(const char * name, Array * functions)
+ObjectFile::doDtorFunction(const char * name, FuncDeclarations * functions)
 {
     tree expr_list = NULL_TREE;
 
     // If there is only one function, just return that
     if (functions->dim == 1)
     {
-        return (FuncDeclaration *) functions->data[0];
+        return functions->tdata()[0];
     }
     else
     {
         for (int i = functions->dim - 1; i >= 0; i--)
         {
-            FuncDeclaration * fn_decl = (FuncDeclaration *) functions->data[i];
+            FuncDeclaration * fn_decl = functions->tdata()[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
             expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
@@ -972,7 +965,7 @@ ObjectFile::doDtorFunction(const char * name, Array * functions)
 /* Currently just calls doFunctionToCallFunctions
 */
 FuncDeclaration *
-ObjectFile::doUnittestFunction(const char * name, Array * functions)
+ObjectFile::doUnittestFunction(const char * name, FuncDeclarations * functions)
 {
     return doFunctionToCallFunctions(name, functions);
 }

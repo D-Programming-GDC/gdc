@@ -21,16 +21,16 @@
 
 struct ModuleInfo
 {
-    Array classes;  // Array of ClassDeclaration*
-    Array ctors;    // Arrays of FuncDeclaration*
-    Array dtors;
-    Array ctorgates;
+    ClassDeclarations classes;
+    FuncDeclarations ctors;
+    FuncDeclarations dtors;
+    VarDeclarations ctorgates;
 #if V2
-    Array sharedctors;
-    Array shareddtors;
-    Array sharedctorgates;
+    FuncDeclarations sharedctors;
+    FuncDeclarations shareddtors;
+    VarDeclarations sharedctorgates;
 #endif
-    Array unitTests;
+    FuncDeclarations unitTests;
 };
 
 enum TemplateEmission
@@ -41,6 +41,16 @@ enum TemplateEmission
     TEprivate,
     TEauto
 };
+
+struct DeferredThunk
+{
+    tree decl;
+    tree target;
+    int offset;
+};
+
+typedef ArrayBase<DeferredThunk> DeferredThunks;
+
 
 /* nearly everything is static for effeciency since there is
    only one object per run of the backend */
@@ -56,7 +66,7 @@ struct ObjectFile
     static void finish();
 
     /* support for multiple modules per object file */
-    static Array modules;
+    static Modules modules;
     static bool hasModule(Module *m);
 private:
     static unsigned moduleSearchIndex;
@@ -102,27 +112,27 @@ public:
     static bool shouldEmit(Declaration * d_sym);
     static bool shouldEmit(Symbol * sym);
 
-    static void doThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offset);
+    static void doThunk(tree thunk_decl, tree target_decl, int offset);
 protected:
     // Can't output thunks while a function is being compiled.
-    static Array deferredThunks;
-    static void outputThunk(tree thunk_decl, tree target_decl, target_ptrdiff_t offset);
+    static DeferredThunks deferredThunks;
+    static void outputThunk(tree thunk_decl, tree target_decl, int offset);
 public:
 
     // Can't use VAR_DECLs for the DECL_INITIAL of static varibles or in CONSTRUCTORSs
     static tree stripVarDecl(tree value);
 
     static FuncDeclaration * doSimpleFunction(const char * name, tree expr, bool static_ctor, bool public_fn = false);
-    static FuncDeclaration * doFunctionToCallFunctions(const char * name, Array * functions, bool force_and_public = false);
-    static FuncDeclaration * doCtorFunction(const char * name, Array * functions, Array * gates);
-    static FuncDeclaration * doDtorFunction(const char * name, Array * functions);
-    static FuncDeclaration * doUnittestFunction(const char * name, Array * functions);
+    static FuncDeclaration * doFunctionToCallFunctions(const char * name, FuncDeclarations * functions, bool force_and_public = false);
+    static FuncDeclaration * doCtorFunction(const char * name, FuncDeclarations * functions, VarDeclarations * gates);
+    static FuncDeclaration * doDtorFunction(const char * name, FuncDeclarations * functions);
+    static FuncDeclaration * doUnittestFunction(const char * name, FuncDeclarations * functions);
 
     // ** Module info.  Assuming only one module per run of the compiler.
 
     // ** static constructors (not D static constructors)
-    static Array staticCtorList; // of FuncDeclaration*. usually only one.
-    static Array staticDtorList; // of FuncDeclaration*. only if __attribute__(destructor) is used.
+    static FuncDeclarations staticCtorList; // usually only one.
+    static FuncDeclarations staticDtorList; // only if __attribute__(destructor) is used.
 
     static void rodc(tree decl, int top_level)
     {

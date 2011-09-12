@@ -51,11 +51,9 @@
 Statement::Statement(Loc loc)
     : loc(loc)
 {
-#ifdef _DH
     // If this is an in{} contract scope statement (skip for determining
     //  inlineStatus of a function body for header content)
     incontract = 0;
-#endif
 }
 
 Statement *Statement::syntaxCopy()
@@ -378,11 +376,11 @@ Statements *CompileStatement::flatten(Scope *sc)
     exp = exp->optimize(WANTvalue | WANTinterpret);
     if (exp->op == TOKerror)
         return NULL;
-    if (exp->op != TOKstring)
+    StringExp *se = exp->toString();
+    if (!se)
     {   error("argument to mixin must be a string, not (%s)", exp->toChars());
         return NULL;
     }
-    StringExp *se = (StringExp *)exp;
     se = se->toUTF8(sc);
     Parser p(sc->module, (unsigned char *)se->string, se->len, 0);
     p.loc = loc;
@@ -505,9 +503,9 @@ Statement *CompoundStatement::semantic(Scope *sc)
                         Statement *body;
                         Statements *a = new Statements();
 
-                        for (int j = i + 1; j < statements->dim; j++)
+                        for (size_t j = i + 1; j < statements->dim; j++)
                         {
-                            a->push(statements->data[j]);
+                            a->push((*statements)[j]);
                         }
                         body = new CompoundStatement(0, a);
                         body = new ScopeStatement(0, body);
@@ -546,9 +544,9 @@ Statement *CompoundStatement::semantic(Scope *sc)
                         Statement *body;
                         Statements *a = new Statements();
 
-                        for (int j = i + 1; j < statements->dim; j++)
+                        for (size_t j = i + 1; j < statements->dim; j++)
                         {
-                            a->push(statements->data[j]);
+                            a->push((*statements)[j]);
                         }
                         body = new CompoundStatement(0, a);
                         s = new TryFinallyStatement(0, body, sfinally);
@@ -564,7 +562,7 @@ Statement *CompoundStatement::semantic(Scope *sc)
     }
     if (statements->dim == 1)
     {
-        return (Statement *)statements->data[0];
+        return (*statements)[0];
     }
     return this;
 }
@@ -578,8 +576,8 @@ ReturnStatement *CompoundStatement::isReturnStatement()
 {
     ReturnStatement *rs = NULL;
 
-    for (int i = 0; i < statements->dim; i++)
-    {   Statement *s = (Statement *) statements->data[i];
+    for (size_t i = 0; i < statements->dim; i++)
+    {   Statement *s = (*statements)[i];
         if (s)
         {
             rs = s->isReturnStatement();
@@ -592,7 +590,7 @@ ReturnStatement *CompoundStatement::isReturnStatement()
 
 void CompoundStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
-    for (int i = 0; i < statements->dim; i++)
+    for (size_t i = 0; i < statements->dim; i++)
     {   Statement *s = (Statement *) statements->data[i];
         if (s)
             s->toCBuffer(buf, hgs);
@@ -601,7 +599,7 @@ void CompoundStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 int CompoundStatement::usesEH()
 {
-    for (int i = 0; i < statements->dim; i++)
+    for (size_t i = 0; i < statements->dim; i++)
     {   Statement *s = (Statement *) statements->data[i];
         if (s && s->usesEH())
             return TRUE;
@@ -638,7 +636,7 @@ int CompoundStatement::comeFrom()
 {   int comefrom = FALSE;
 
     //printf("CompoundStatement::comeFrom()\n");
-    for (int i = 0; i < statements->dim; i++)
+    for (size_t i = 0; i < statements->dim; i++)
     {   Statement *s = (Statement *)statements->data[i];
 
         if (!s)
@@ -651,7 +649,7 @@ int CompoundStatement::comeFrom()
 
 int CompoundStatement::isEmpty()
 {
-    for (int i = 0; i < statements->dim; i++)
+    for (size_t i = 0; i < statements->dim; i++)
     {   Statement *s = (Statement *) statements->data[i];
         if (s && !s->isEmpty())
             return FALSE;
@@ -685,7 +683,7 @@ Statement *CompoundDeclarationStatement::syntaxCopy()
 void CompoundDeclarationStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     int nwritten = 0;
-    for (int i = 0; i < statements->dim; i++)
+    for (size_t i = 0; i < statements->dim; i++)
     {   Statement *s = (Statement *) statements->data[i];
         ExpStatement *ds;
         if (s &&
@@ -1389,10 +1387,10 @@ Statement *ForeachStatement::semantic(Scope *sc)
             Expression *e;
             Type *t;
             if (te)
-                e = (Expression *)te->exps->data[k];
+                e = te->exps->tdata()[k];
             else
                 t = Parameter::getNth(tuple->arguments, k)->type;
-            Parameter *arg = (Parameter *)arguments->data[0];
+            Parameter *arg = arguments->tdata()[0];
             Statements *st = new Statements();
 
             if (dim == 2)
@@ -1402,7 +1400,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
                 TY keyty = arg->type->ty;
                 if (keyty != Tint32 && keyty != Tuns32)
                 {
-                    if (global.params.isX86_64)
+                    if (global.params.is64bit)
                     {
                         if (keyty != Tint64 && keyty != Tuns64)
                             error("foreach: key type must be int or uint, long or ulong, not %s", arg->type->toChars());
@@ -1544,8 +1542,8 @@ Statement *ForeachStatement::semantic(Scope *sc)
 
             if (!key)
             {
-                Identifier *id = Lexer::uniqueId("__key");
-                key = new VarDeclaration(loc, Type::tsize_t, id, NULL);
+                Identifier *idkey = Lexer::uniqueId("__key");
+                key = new VarDeclaration(loc, Type::tsize_t, idkey, NULL);
             }
             if (op == TOKforeach_reverse)
                 key->init = new ExpInitializer(loc, tmp_length);
@@ -1594,7 +1592,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
             {
                 if (key->type->ty != Tint32 && key->type->ty != Tuns32)
                 {
-                    if (global.params.isX86_64)
+                    if (global.params.is64bit)
                     {
                         if (key->type->ty != Tint64 && key->type->ty != Tuns64)
                             error("foreach: key type must be int or uint, long or ulong, not %s", key->type->toChars());
@@ -1752,7 +1750,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
                 args->push(a);
             }
             Type *t = new TypeFunction(args, Type::tint32, 0, LINKd);
-            cases = new Array();
+            cases = new Statements();
             gotos = new Array();
             FuncLiteralDeclaration *fld = new FuncLiteralDeclaration(loc, 0, t, TOKdelegate, this);
             fld->fbody = body;
@@ -1801,7 +1799,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
                 Expressions *exps = new Expressions();
                 exps->push(aggr);
                 size_t keysize = taa->key->size();
-                if (global.params.isX86_64)
+                if (global.params.is64bit)
                     keysize = (keysize + 15) & ~15;
                 else
                     keysize = (keysize + PTRSIZE - 1) & ~(PTRSIZE - 1);
@@ -1899,7 +1897,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
                 a->push(s);
 
                 // cases 2...
-                for (int i = 0; i < cases->dim; i++)
+                for (size_t i = 0; i < cases->dim; i++)
                 {
                     s = (Statement *)cases->data[i];
                     s = new CaseStatement(0, new IntegerExp(i + 2), s);
@@ -1966,7 +1964,7 @@ void ForeachStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     buf->writestring(Token::toChars(op));
     buf->writestring(" (");
-    for (int i = 0; i < arguments->dim; i++)
+    for (size_t i = 0; i < arguments->dim; i++)
     {
         Parameter *a = (Parameter *)arguments->data[i];
         if (i)
@@ -2021,7 +2019,6 @@ Statement *ForeachRangeStatement::syntaxCopy()
 Statement *ForeachRangeStatement::semantic(Scope *sc)
 {
     //printf("ForeachRangeStatement::semantic() %p\n", this);
-    ScopeDsymbol *sym;
     Statement *s = this;
 
     lwr = lwr->semantic(sc);
@@ -2470,13 +2467,13 @@ Statement *PragmaStatement::semantic(Scope *sc)
         {
             for (size_t i = 0; i < args->dim; i++)
             {
-                Expression *e = (Expression *)args->data[i];
+                Expression *e = args->tdata()[i];
 
                 e = e->semantic(sc);
                 e = e->optimize(WANTvalue | WANTinterpret);
-                if (e->op == TOKstring)
+                StringExp *se = e->toString();
+                if (se)
                 {
-                    StringExp *se = (StringExp *)e;
                     fprintf(stdmsg, "%.*s", (int)se->len, (char *)se->string);
                 }
                 else
@@ -2496,16 +2493,16 @@ Statement *PragmaStatement::semantic(Scope *sc)
             error("string expected for library name");
         else
         {
-            Expression *e = (Expression *)args->data[0];
+            Expression *e = args->tdata()[0];
 
             e = e->semantic(sc);
             e = e->optimize(WANTvalue | WANTinterpret);
-            args->data[0] = (void *)e;
-            if (e->op != TOKstring)
+            args->tdata()[0] = e;
+            StringExp *se = e->toString();
+            if (!se)
                 error("string expected for library name, not '%s'", e->toChars());
             else if (global.params.verbose)
             {
-                StringExp *se = (StringExp *)e;
                 char *name = (char *)mem.malloc(se->len + 1);
                 memcpy(name, se->string, se->len);
                 name[se->len] = 0;
@@ -2668,13 +2665,13 @@ Statement *SwitchStatement::semantic(Scope *sc)
     sc->sbreak = this;
     sc->sw = this;
 
-    cases = new Array();
+    cases = new CaseStatements();
     sc->noctor++;       // BUG: should use Scope::mergeCallSuper() for each case instead
     body = body->semantic(sc);
     sc->noctor--;
 
     // Resolve any goto case's with exp
-    for (int i = 0; i < gotoCases.dim; i++)
+    for (size_t i = 0; i < gotoCases.dim; i++)
     {
         GotoCaseStatement *gcs = (GotoCaseStatement *)gotoCases.data[i];
 
@@ -2688,7 +2685,7 @@ Statement *SwitchStatement::semantic(Scope *sc)
         {
             if (!scx->sw)
                 continue;
-            for (int j = 0; j < scx->sw->cases->dim; j++)
+            for (size_t j = 0; j < scx->sw->cases->dim; j++)
             {
                 CaseStatement *cs = (CaseStatement *)scx->sw->cases->data[j];
 
@@ -2848,7 +2845,7 @@ Statement *CaseStatement::semantic(Scope *sc)
             exp = new IntegerExp(0);
         }
 
-        for (int i = 0; i < sw->cases->dim; i++)
+        for (size_t i = 0; i < sw->cases->dim; i++)
         {
             CaseStatement *cs = (CaseStatement *)sw->cases->data[i];
 
@@ -3898,7 +3895,7 @@ Statement *TryCatchStatement::syntaxCopy()
 {
     Array *a = new Array();
     a->setDim(catches->dim);
-    for (int i = 0; i < a->dim; i++)
+    for (size_t i = 0; i < a->dim; i++)
     {   Catch *c;
 
         c = (Catch *)catches->data[i];
@@ -4297,7 +4294,7 @@ Statements *VolatileStatement::flatten(Scope *sc)
 
     a = statement ? statement->flatten(sc) : NULL;
     if (a)
-    {   for (int i = 0; i < a->dim; i++)
+    {   for (size_t i = 0; i < a->dim; i++)
         {   Statement *s = (Statement *)a->data[i];
 
             s = new VolatileStatement(loc, s);

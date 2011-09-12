@@ -23,7 +23,13 @@ module std.c.unix.unix;
    handled with the autoconf'd version. */
 
 public import gcc.config.libc : tm, time_t;
-private import gcc.config.libc : Clong_t, Culong_t;
+private import gcc.builtins;
+private
+{
+
+    alias __builtin_Clong Clong_t;
+    alias __builtin_Culong Culong_t;
+}
 public import gcc.config.unix;
 public import gcc.config.errno;
 

@@ -1420,7 +1420,7 @@ struct AsmProcessor
         Reg segmentPrefix;
         Reg reg;
         sinteger_t constDisplacement; // use to build up.. should be int constant in the end..
-        Array      symbolDisplacement; // array of expressions or..
+        Expressions symbolDisplacement;
         Reg baseReg;
         Reg indexReg;
         int scale;
@@ -1597,7 +1597,7 @@ struct AsmProcessor
         static const int N_ents64 = sizeof(opData64)/sizeof(AsmOpEnt);
 
         // Search 64bit opcodes first.
-        if (global.params.isX86_64)
+        if (global.params.is64bit)
         {
             AsmOp op = searchOpdata(opIdent, opData64, N_ents64);
             if (op != Op_Invalid)
@@ -1743,7 +1743,7 @@ struct AsmProcessor
 
         if (operand->symbolDisplacement.dim)
         {
-            is_localsize = isLocalSize((Expression *) operand->symbolDisplacement.data[0]);
+            is_localsize = isLocalSize(operand->symbolDisplacement.tdata()[0]);
             really_have_symbol = ! is_localsize;
         }
 
@@ -1792,7 +1792,7 @@ struct AsmProcessor
                 else if (operand->constDisplacement < 0xFFFFFFFF)
                     operand->dataSize = Int_Ptr;
                 else
-                    operand->dataSize = global.params.isX86_64
+                    operand->dataSize = global.params.is64bit
                                             ? Long_Ptr
                                             : Int_Ptr;   // %% 32-bit overflow
             }
@@ -1854,7 +1854,7 @@ struct AsmProcessor
                         break;
 
                     case Long_Ptr:
-                        if (global.params.isX86_64)
+                        if (global.params.is64bit)
                         {
                             type_char = 'q';
                             break;
@@ -1878,7 +1878,7 @@ struct AsmProcessor
                         break;
 
                     case Long_Ptr:
-                        if (global.params.isX86_64)
+                        if (global.params.is64bit)
                         {
                             type_char = 'q';
                             break;
@@ -1927,7 +1927,7 @@ struct AsmProcessor
         AsmArgMode mode;
         PtrType op1_size;
 
-        const bool isX86_64 = global.params.isX86_64;
+        const bool is64bit = global.params.is64bit;
 
         insnTemplate = new OutBuffer;
         if (opInfo->linkType == Out_Mnemonic)
@@ -2140,13 +2140,13 @@ struct AsmProcessor
         {
             case Clb_SizeAX:
             case Clb_EAX:
-                asmcode->clbregs[isX86_64 ? Reg_RAX : Reg_EAX] = 1;
+                asmcode->clbregs[is64bit ? Reg_RAX : Reg_EAX] = 1;
                 break;
 
             case Clb_SizeDXAX:
-                asmcode->clbregs[isX86_64 ? Reg_RAX : Reg_EAX] = 1;
+                asmcode->clbregs[is64bit ? Reg_RAX : Reg_EAX] = 1;
                 if (type_char != 'b')
-                    asmcode->clbregs[isX86_64 ? Reg_RDX : Reg_EDX] = 1;
+                    asmcode->clbregs[is64bit ? Reg_RDX : Reg_EDX] = 1;
                 break;
 
             default:
@@ -2154,13 +2154,13 @@ struct AsmProcessor
         }
 
         if (opInfo->implicitClobbers & Clb_DI)
-            asmcode->clbregs[isX86_64 ? Reg_RDI : Reg_EDI] = 1;
+            asmcode->clbregs[is64bit ? Reg_RDI : Reg_EDI] = 1;
         if (opInfo->implicitClobbers & Clb_SI)
-            asmcode->clbregs[isX86_64 ? Reg_RSI : Reg_ESI] = 1;
+            asmcode->clbregs[is64bit ? Reg_RSI : Reg_ESI] = 1;
         if (opInfo->implicitClobbers & Clb_CX)
-            asmcode->clbregs[isX86_64 ? Reg_RCX : Reg_ECX] = 1;
+            asmcode->clbregs[is64bit ? Reg_RCX : Reg_ECX] = 1;
         if (opInfo->implicitClobbers & Clb_SP)
-            asmcode->clbregs[isX86_64 ? Reg_RSP : Reg_ESP] = 1;
+            asmcode->clbregs[is64bit ? Reg_RSP : Reg_ESP] = 1;
         if (opInfo->implicitClobbers & Clb_ST)
         {   /* Can't figure out how to tell GCC that an
                asm statement leaves an arg pushed on the stack.
@@ -2233,11 +2233,11 @@ struct AsmProcessor
                     }
 
                     if (operand->symbolDisplacement.dim &&
-                        isLocalSize((Expression *) operand->symbolDisplacement.data[0]))
+                        isLocalSize(operand->symbolDisplacement.tdata()[0]))
                     {    // handle __LOCAL_SIZE, which in this constant, is an immediate
                         // should do this in slotexp..
                         addOperand("%", Arg_LocalSize,
-                                (Expression *) operand->symbolDisplacement.data[0], asmcode);
+                                operand->symbolDisplacement.tdata()[0], asmcode);
                         if (operand->constDisplacement)
                             insnTemplate->writebyte('+');
                         else
@@ -2248,7 +2248,7 @@ struct AsmProcessor
                     {
                         fmt = "%a";
                         addOperand("%", Arg_Pointer,
-                                (Expression *) operand->symbolDisplacement.data[0],
+                                operand->symbolDisplacement.tdata()[0],
                                 asmcode);
 
                         if (operand->constDisplacement)
@@ -2302,7 +2302,7 @@ struct AsmProcessor
                     }
                     if (operand->symbolDisplacement.dim)
                     {
-                        Expression * e = (Expression *) operand->symbolDisplacement.data[0];
+                        Expression * e = operand->symbolDisplacement.tdata()[0];
                         Declaration * decl = NULL;
 
                         /* We are generating a memory reference, but the
@@ -2338,9 +2338,9 @@ struct AsmProcessor
                                the stack offset.
                              */
                             bool isBaseRegBP = operand->baseReg == Reg_EBP ||
-                                (global.params.isX86_64 && operand->baseReg == Reg_RBP);
+                                (global.params.is64bit && operand->baseReg == Reg_RBP);
                             bool isBaseRegSP = operand->baseReg == Reg_ESP ||
-                                (global.params.isX86_64 && operand->baseReg == Reg_RSP);
+                                (global.params.is64bit && operand->baseReg == Reg_RSP);
 
                             if (operand->indexReg == Reg_Invalid
                                     && decl->isVarDeclaration()
@@ -2653,7 +2653,7 @@ struct AsmProcessor
             }
             else
             {
-                Expression * e = (Expression *) te->exps->data[index];
+                Expression * e = te->exps->tdata()[index];
                 if (e->op == TOKvar || e->op == TOKfunction)
                 {
                     operand->symbolDisplacement.push(e);

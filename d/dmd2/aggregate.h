@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2008 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -47,11 +47,11 @@ struct AggregateDeclaration : ScopeDsymbol
     StorageClass storage_class;
     enum PROT protection;
     Type *handle;               // 'this' type
-    target_size_t structsize;   // size of struct
-    target_size_t alignsize;    // size of struct for alignment purposes
-    target_size_t structalign;  // struct member alignment in effect
+    unsigned structsize;        // size of struct
+    unsigned alignsize;         // size of struct for alignment purposes
+    unsigned structalign;       // struct member alignment in effect
     int hasUnions;              // set if aggregate has overlapping fields
-    Array fields;               // VarDeclaration fields
+    VarDeclarations fields;     // VarDeclaration fields
     unsigned sizeok;            // set when structsize contains valid data
                                 // 0: no size
                                 // 1: size is correct
@@ -73,22 +73,23 @@ struct AggregateDeclaration : ScopeDsymbol
     Dsymbol *ctor;                      // CtorDeclaration or TemplateDeclaration
     CtorDeclaration *defaultCtor;       // default constructor
     Dsymbol *aliasthis;                 // forward unresolved lookups to aliasthis
+    bool noDefaultCtor;         // no default construction
 #endif
 
     FuncDeclarations dtors;     // Array of destructors
     FuncDeclaration *dtor;      // aggregate destructor
 
-    Expressions * attributes;   // GCC decl/type attributes
 #ifdef IN_GCC
-    Array methods;              // flat list of all methods for debug information
+    Expressions * attributes;   // GCC decl/type attributes
+    FuncDeclarations methods;   // flat list of all methods for debug information
 #endif
 
     AggregateDeclaration(Loc loc, Identifier *id);
     void semantic2(Scope *sc);
     void semantic3(Scope *sc);
     void inlineScan();
-    target_size_t size(Loc loc);
-    static void alignmember(target_size_t salign, target_size_t size, target_size_t *poffset);
+    unsigned size(Loc loc);
+    static void alignmember(unsigned salign, unsigned size, unsigned *poffset);
     Type *getType();
     void addField(Scope *sc, VarDeclaration *v);
     int firstFieldInUnion(int indx); // first field in union that includes indx
@@ -183,18 +184,18 @@ struct BaseClass
     enum PROT protection;               // protection for the base interface
 
     ClassDeclaration *base;
-    target_ptrdiff_t offset;            // 'this' pointer offset
-    Array vtbl;                         // for interfaces: Array of FuncDeclaration's
+    int offset;                         // 'this' pointer offset
+    FuncDeclarations vtbl;              // for interfaces: Array of FuncDeclaration's
                                         // making up the vtbl[]
 
-    int baseInterfaces_dim;
+    size_t baseInterfaces_dim;
     BaseClass *baseInterfaces;          // if BaseClass is an interface, these
                                         // are a copy of the InterfaceDeclaration::interfaces
 
     BaseClass();
     BaseClass(Type *type, enum PROT protection);
 
-    int fillVtbl(ClassDeclaration *cd, Array *vtbl, int newinstance);
+    int fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newinstance);
     void copyBaseInterfaces(BaseClasses *);
 };
 
@@ -215,13 +216,13 @@ struct ClassDeclaration : AggregateDeclaration
 #endif
     FuncDeclaration *staticCtor;
     FuncDeclaration *staticDtor;
-    Array vtbl;                         // Array of FuncDeclaration's making up the vtbl[]
-    Array vtblFinal;                    // More FuncDeclaration's that aren't in vtbl[]
+    Dsymbols vtbl;                      // Array of FuncDeclaration's making up the vtbl[]
+    Dsymbols vtblFinal;                 // More FuncDeclaration's that aren't in vtbl[]
 
     BaseClasses *baseclasses;           // Array of BaseClass's; first is super,
                                         // rest are Interface's
 
-    int interfaces_dim;
+    size_t interfaces_dim;
     BaseClass **interfaces;             // interfaces[interfaces_dim] for this class
                                         // (does not include baseClass)
 
@@ -246,7 +247,7 @@ struct ClassDeclaration : AggregateDeclaration
     int isBaseOf2(ClassDeclaration *cd);
 
     #define OFFSET_RUNTIME 0x76543210
-    virtual int isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset);
+    virtual int isBaseOf(ClassDeclaration *cd, int *poffset);
 
     virtual int isBaseInfoComplete();
     Dsymbol *search(Loc, Identifier *ident, int flags);
@@ -295,8 +296,8 @@ struct InterfaceDeclaration : ClassDeclaration
     InterfaceDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);
-    int isBaseOf(ClassDeclaration *cd, target_ptrdiff_t *poffset);
-    int isBaseOf(BaseClass *bc, target_ptrdiff_t *poffset);
+    int isBaseOf(ClassDeclaration *cd, int *poffset);
+    int isBaseOf(BaseClass *bc, int *poffset);
     const char *kind();
     int isBaseInfoComplete();
     int vtblOffset();

@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2011 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -56,7 +56,7 @@ extern Symbol *static_sym();
 static dt_t *createTsarrayDt(dt_t * dt, Type *t)
 {
     assert(dt != NULL);
-    target_size_t eoa_size = dt_size(dt);
+    unsigned eoa_size = dt_size(dt);
     if (eoa_size == t->size())
         return dt;
     else
@@ -64,19 +64,19 @@ static dt_t *createTsarrayDt(dt_t * dt, Type *t)
         TypeSArray * tsa = (TypeSArray *) t->toBasetype();
         assert(tsa->ty == Tsarray);
 
-        target_size_t dim = tsa->dim->toInteger();
+        unsigned dim = tsa->dim->toInteger();
         dt_t * adt = NULL;
         dt_t ** padt = & adt;
 
         if (eoa_size * dim == eoa_size)
         {
-            for (target_size_t i = 0; i < dim; i++)
+            for (size_t i = 0; i < dim; i++)
                 padt = dtcontainer(padt, NULL, dt);
         }
         else
         {
             assert(tsa->size(0) % eoa_size == 0);
-            for (target_size_t i = 0; i < dim; i++)
+            for (size_t i = 0; i < dim; i++)
                 padt = dtcontainer(padt, NULL,
                     createTsarrayDt(dt, tsa->next));
         }
@@ -109,25 +109,23 @@ dt_t *VoidInitializer::toDt()
 dt_t *StructInitializer::toDt()
 {
     Array dts;
-    unsigned i;
-    unsigned j;
     dt_t *dt;
     dt_t *d;
     dt_t **pdtend;
-    target_size_t offset;
+    unsigned offset;
 
     //printf("StructInitializer::toDt('%s')\n", toChars());
     dts.setDim(ad->fields.dim);
     dts.zero();
 
-    for (i = 0; i < vars.dim; i++)
+    for (size_t i = 0; i < vars.dim; i++)
     {
         VarDeclaration *v = (VarDeclaration *)vars.data[i];
         Initializer *val = (Initializer *)value.data[i];
 
         //printf("vars[%d] = %s\n", i, v->toChars());
 
-        for (j = 0; 1; j++)
+        for (size_t j = 0; 1; j++)
         {
             assert(j < dts.dim);
             //printf(" adfield[%d] = %s\n", j, ((VarDeclaration *)ad->fields.data[j])->toChars());
@@ -144,7 +142,7 @@ dt_t *StructInitializer::toDt()
     dt = NULL;
     pdtend = &dt;
     offset = 0;
-    for (j = 0; j < dts.dim; j++)
+    for (size_t j = 0; j < dts.dim; j++)
     {
         VarDeclaration *v = (VarDeclaration *)ad->fields.data[j];
 
@@ -153,16 +151,14 @@ dt_t *StructInitializer::toDt()
         {   // An instance specific initializer was not provided.
             // Look to see if there's a default initializer from the
             // struct definition
-            VarDeclaration *v = (VarDeclaration *)ad->fields.data[j];
-
             if (v->init)
             {
                 d = v->init->toDt();
             }
             else if (v->offset >= offset)
             {
-                target_size_t k;
-                target_size_t offset2 = v->offset + v->type->size();
+                unsigned k;
+                unsigned offset2 = v->offset + v->type->size();
                 // Make sure this field does not overlap any explicitly
                 // initialized field.
                 for (k = j + 1; 1; k++)
@@ -184,16 +180,16 @@ dt_t *StructInitializer::toDt()
             if (v->offset < offset)
                 error(loc, "duplicate union initialization for %s", v->toChars());
             else
-            {   target_size_t sz = dt_size(d);
-                target_size_t vsz = v->type->size();
-                target_size_t voffset = v->offset;
+            {   unsigned sz = dt_size(d);
+                unsigned vsz = v->type->size();
+                unsigned voffset = v->offset;
 
                 if (sz > vsz)
                 {   assert(v->type->ty == Tsarray && vsz == 0);
                     error(loc, "zero length array %s has non-zero length initializer", v->toChars());
                 }
 
-                target_size_t dim = 1;
+                unsigned dim = 1;
                 for (Type *vt = v->type->toBasetype();
                      vt->ty == Tsarray;
                      vt = vt->next->toBasetype())
@@ -203,7 +199,7 @@ dt_t *StructInitializer::toDt()
                 //printf("sz = %d, dim = %d, vsz = %d\n", sz, dim, vsz);
                 assert(sz == vsz || sz * dim <= vsz);
 
-                for (target_size_t i = 0; i < dim; i++)
+                for (size_t i = 0; i < dim; i++)
                 {
                     if (offset < voffset)
                         pdtend = dtnzeros(pdtend, voffset - offset);
@@ -248,7 +244,6 @@ dt_t *ArrayInitializer::toDt()
     Array dts;
     unsigned size;
     unsigned length;
-    unsigned i;
     dt_t *dt;
     dt_t *d;
     dt_t **pdtend;
@@ -260,7 +255,7 @@ dt_t *ArrayInitializer::toDt()
     size = tn->size();
 
     length = 0;
-    for (i = 0; i < index.dim; i++)
+    for (size_t i = 0; i < index.dim; i++)
     {   Expression *idx;
         Initializer *val;
 
@@ -297,7 +292,7 @@ dt_t *ArrayInitializer::toDt()
 
     d = NULL;
     pdtend = &d;
-    for (i = 0; i < dim; i++)
+    for (size_t i = 0; i < dim; i++)
     {
         dt = (dt_t *)dts.data[i];
 #ifdef IN_GCC
@@ -307,7 +302,7 @@ dt_t *ArrayInitializer::toDt()
             pdtend = dtcat(pdtend, dt);
         else
         {
-            for (int j = 0; j < n; j++)
+            for (size_t j = 0; j < n; j++)
                 pdtend = edefault->toDt(pdtend);
         }
 #endif
@@ -327,11 +322,11 @@ dt_t *ArrayInitializer::toDt()
                     pdtend = dtnzeros(pdtend, size * (tadim - dim));
                 else
                 {
-                    for (i = dim; i < tadim; i++)
+                    for (size_t i = dim; i < tadim; i++)
 #ifdef IN_GCC
                         pdtend = dtcontainer(pdtend, NULL, sadefault);
 #else
-                    {   for (int j = 0; j < n; j++)
+                    {   for (size_t j = 0; j < n; j++)
                             pdtend = edefault->toDt(pdtend);
                     }
 #endif
@@ -354,9 +349,8 @@ dt_t *ArrayInitializer::toDt()
 
         case Tpointer:
         case Tarray:
-            // Create symbol, and then refer to it
-            Symbol *s;
-            s = static_sym();
+        {   // Create symbol, and then refer to it
+            Symbol *s = static_sym();
             s->Sdt = d;
             outdata(s);
 
@@ -374,6 +368,7 @@ dt_t *ArrayInitializer::toDt()
             }
 #endif
             break;
+        }
 
         default:
             assert(0);
@@ -387,7 +382,6 @@ dt_t *ArrayInitializer::toDtBit()
 #if DMDV1
     unsigned size;
     unsigned length;
-    unsigned i;
     unsigned tadim;
     dt_t *d;
     dt_t **pdtend;
@@ -425,7 +419,7 @@ dt_t *ArrayInitializer::toDtBit()
     size = sizeof(databits.data[0]);
 
     length = 0;
-    for (i = 0; i < index.dim; i++)
+    for (size_t i = 0; i < index.dim; i++)
     {   Expression *idx;
         Initializer *val;
         Expression *eval;
@@ -691,7 +685,7 @@ dt_t **ArrayLiteralExp::toDt(dt_t **pdt)
 
     d = NULL;
     pdtend = &d;
-    for (int i = 0; i < elements->dim; i++)
+    for (size_t i = 0; i < elements->dim; i++)
     {   Expression *e = (Expression *)elements->data[i];
 
         pdtend = e->toDt(pdtend);
@@ -744,19 +738,17 @@ dt_t **ArrayLiteralExp::toDt(dt_t **pdt)
 dt_t **StructLiteralExp::toDt(dt_t **pdt)
 {
     Array dts;
-    unsigned i;
-    unsigned j;
     dt_t *dt;
     dt_t *d;
     dt_t *sdt = NULL;
-    target_size_t offset;
+    unsigned  offset;
 
     //printf("StructLiteralExp::toDt() %s)\n", toChars());
     dts.setDim(sd->fields.dim);
     dts.zero();
     assert(elements->dim <= sd->fields.dim);
 
-    for (i = 0; i < elements->dim; i++)
+    for (size_t i = 0; i < elements->dim; i++)
     {
         Expression *e = (Expression *)elements->data[i];
         if (!e)
@@ -767,7 +759,7 @@ dt_t **StructLiteralExp::toDt(dt_t **pdt)
     }
 
     offset = 0;
-    for (j = 0; j < dts.dim; j++)
+    for (size_t j = 0; j < dts.dim; j++)
     {
         VarDeclaration *v = (VarDeclaration *)sd->fields.data[j];
 
@@ -776,19 +768,16 @@ dt_t **StructLiteralExp::toDt(dt_t **pdt)
         {   // An instance specific initializer was not provided.
             // Look to see if there's a default initializer from the
             // struct definition
-            VarDeclaration *v = (VarDeclaration *)sd->fields.data[j];
-
             if (v->init)
             {
                 d = v->init->toDt();
             }
             else if (v->offset >= offset)
             {
-                target_size_t k;
-                target_size_t offset2 = v->offset + v->type->size();
+                unsigned offset2 = v->offset + v->type->size();
                 // Make sure this field (v) does not overlap any explicitly
                 // initialized field.
-                for (k = j + 1; 1; k++)
+                for (size_t k = j + 1; 1; k++)
                 {
                     if (k == dts.dim)           // didn't find any overlap
                     {
@@ -807,16 +796,16 @@ dt_t **StructLiteralExp::toDt(dt_t **pdt)
             if (v->offset < offset)
                 error("duplicate union initialization for %s", v->toChars());
             else
-            {   target_size_t sz = dt_size(d);
-                target_size_t vsz = v->type->size();
-                target_size_t voffset = v->offset;
+            {   unsigned sz = dt_size(d);
+                unsigned vsz = v->type->size();
+                unsigned voffset = v->offset;
 
                 if (sz > vsz)
                 {   assert(v->type->ty == Tsarray && vsz == 0);
                     error("zero length array %s has non-zero length initializer", v->toChars());
                 }
 
-                target_size_t dim = 1;
+                unsigned dim = 1;
                 Type *vt;
                 for (vt = v->type->toBasetype();
                      vt->ty == Tsarray;
@@ -828,7 +817,7 @@ dt_t **StructLiteralExp::toDt(dt_t **pdt)
                 //printf("sz = %d, dim = %d, vsz = %d\n", sz, dim, vsz);
                 assert(sz == vsz || sz * dim <= vsz);
 
-                for (target_size_t i = 0; i < dim; i++)
+                for (size_t i = 0; i < dim; i++)
                 {
                     if (offset < voffset)
                         dtnzeros(&sdt, voffset - offset);
@@ -911,6 +900,18 @@ dt_t **VarExp::toDt(dt_t **pdt)
     return pdt;
 }
 
+dt_t **FuncExp::toDt(dt_t **pdt)
+{
+    //printf("FuncExp::toDt() %d\n", op);
+    Symbol *s = fd->toSymbol();
+    if (fd->isNested())
+    {   error("non-constant nested delegate literal expression %s", toChars());
+        return NULL;
+    }
+    fd->toObjFile(0);
+    return dtxoff(pdt, s, 0, TYnptr);
+}
+
 /* ================================================================= */
 
 // Generate the data for the static initializer.
@@ -932,7 +933,6 @@ void ClassDeclaration::toDt(dt_t **pdt)
 void ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
 {
     unsigned offset;
-    unsigned i;
     dt_t *dt;
     unsigned csymoffset;
 
@@ -952,7 +952,7 @@ void ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
     }
 
     // Note equivalence of this loop to struct's
-    for (i = 0; i < fields.dim; i++)
+    for (size_t i = 0; i < fields.dim; i++)
     {
         VarDeclaration *v = (VarDeclaration *)fields.data[i];
         Initializer *init;
@@ -990,7 +990,7 @@ void ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
     // Interface vptr initializations
     toSymbol();                                         // define csym
 
-    for (i = 0; i < vtblInterfaces->dim; i++)
+    for (size_t i = 0; i < vtblInterfaces->dim; i++)
     {   BaseClass *b = (BaseClass *)vtblInterfaces->data[i];
 
 #if 1 || INTERFACE_VIRTUAL
@@ -1029,7 +1029,6 @@ void StructDeclaration::toDt(dt_t **pdt)
     }
 
     unsigned offset;
-    unsigned i;
     dt_t *dt;
     dt_t *sdt = NULL;
 
@@ -1037,7 +1036,7 @@ void StructDeclaration::toDt(dt_t **pdt)
     offset = 0;
 
     // Note equivalence of this loop to class's
-    for (i = 0; i < fields.dim; i++)
+    for (size_t i = 0; i < fields.dim; i++)
     {
         VarDeclaration *v = (VarDeclaration *)fields.data[i];
         Initializer *init;
@@ -1096,7 +1095,6 @@ dt_t **TypeSArray::toDt(dt_t **pdt)
 
 dt_t **TypeSArray::toDtElem(dt_t **pdt, Expression *e)
 {
-    int i;
     unsigned len;
 
     //printf("TypeSArray::toDtElem()\n");
@@ -1142,7 +1140,7 @@ dt_t **TypeSArray::toDtElem(dt_t **pdt, Expression *e)
 #if IN_GCC
             pdt = dtcat(pdt, createTsarrayDt(adt, this));
 #else
-            for (i = 1; i < len; i++)
+            for (size_t i = 1; i < len; i++)
             {
                 if (tbn->ty == Tstruct)
                 {   padt = tnext->toDt(padt);

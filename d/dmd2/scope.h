@@ -22,7 +22,6 @@
 
 struct Dsymbol;
 struct ScopeDsymbol;
-struct Array;
 struct Identifier;
 struct Module;
 struct Statement;
@@ -63,7 +62,7 @@ struct Scope
     Statement *sbreak;          // enclosing statement that supports "break"
     Statement *scontinue;       // enclosing statement that supports "continue"
     ForeachStatement *fes;      // if nested function for ForeachStatement, this is it
-    target_size_t offset;       // next offset to use in aggregate
+    unsigned offset;            // next offset to use in aggregate
     int inunion;                // we're processing members of a union
     int incontract;             // we're inside contract code
     int nofree;                 // set if shouldn't free it
@@ -89,7 +88,9 @@ struct Scope
     int explicitProtection;     // set if in an explicit protection attribute
 
     StorageClass stc;           // storage class
+#if IN_GCC
     Expressions * attributes;   // GCC decl/type attributes
+#endif
 
     unsigned flags;
 #define SCOPEctor       1       // constructor type
