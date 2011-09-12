@@ -6,7 +6,6 @@
  */
 
 #include <stddef.h>
-#include <sys/types.h>
 
 #if __cplusplus
 extern "C" {
@@ -25,7 +24,7 @@ typedef struct Interface
 {
     struct ClassInfo *classinfo;
     struct Vtbl vtbl;
-    ptrdiff_t offset;
+    int offset;
 } Interface;
 
 typedef struct Object

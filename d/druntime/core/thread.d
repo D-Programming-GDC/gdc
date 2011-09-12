@@ -26,8 +26,7 @@ public import core.time; // for Duration
 
 
 // this should be true for most architectures
-version( GNU_StackGrowsDown )
-    version = StackGrowsDown;
+version = StackGrowsDown;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -328,14 +327,7 @@ else version( Posix )
             assert( obj.m_curr is &obj.m_main );
             // NOTE: For some reason this does not always work for threads.
             //obj.m_main.bstack = getStackBottom();
-            version( GNU )
-            {
-                version( StackGrowsDown )
-                    obj.m_main.bstack = &obj + 1;
-                else
-                    obj.m_main.bstack = &obj;
-            }
-            else version( D_InlineAsm_X86 )
+            version( D_InlineAsm_X86 )
             {
                 static void* getBasePtr()
                 {
@@ -1096,9 +1088,6 @@ class Thread
 
 
     /**
-     * $(RED Scheduled for deprecation in January 2012. Please use the version
-     *       which takes a $(D Duration) instead.)
-     *
      * Suspends the calling thread for at least the supplied period.  This may
      * result in multiple OS calls if period is greater than the maximum sleep
      * duration supported by the operating system.
@@ -1171,6 +1160,9 @@ class Thread
 
 
     /**
+     * $(RED Scheduled for deprecation in January 2012. Please use the version
+     *       which takes a $(D Duration) instead.)
+     *
      * Suspends the calling thread for at least the supplied period.  This may
      * result in multiple OS calls if period is greater than the maximum sleep
      * duration supported by the operating system.
@@ -1627,7 +1619,7 @@ private:
     //
     // All use of the global lists should synchronize on this lock.
     //
-    static Mutex slock()
+    @property static Mutex slock()
     {
         __gshared Mutex m = null;
 
@@ -2650,7 +2642,7 @@ void[] thread_getTLSBlock()
     }
     else version(FreeBSD)
     {
-        return _tlsstart[0..(_tlsend-_tlsstart)];
+        return (cast(void*)&_tlsstart)[0..(&_tlsend)-(&_tlsstart)];
     }
     else
     {

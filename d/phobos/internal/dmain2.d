@@ -45,6 +45,7 @@ version (Solaris)
  * The D main() function supplied by the user's program
  */
 int main(char[][] args);
+alias extern(C) int function(char[][] args) MainFunc;
 
 /***********************************
  * Substitutes for the C main() function.
@@ -67,6 +68,10 @@ extern (C) int main(size_t argc, char **argv)
          * of the main thread's stack, so save the address of that.
          */
         __osx_stack_end = cast(void*)&argv;
+        /* 0xC0000000 is no longer valid for OSX 10.7 when ASLR is enabled.
+         * Use pthread_get_stackaddr_np(pthread_self()) instead.
+         * extern (C) void* pthread_get_stackaddr_np(pthread_t thread);
+         */
     }
 
     version (FreeBSD)

@@ -433,7 +433,7 @@ template map(fun...) if (fun.length >= 1)
 
             static if (hasLength!R || isSomeString!R)
             {
-                @property size_t length()
+                @property auto length()
                 {
                     return _input.length;
                 }
@@ -547,6 +547,12 @@ unittest
         static assert(propagatesRangeType!(typeof(m), DummyType));
         assert(equal(m, [1,4,9,16,25,36,49,64,81,100]));
     }
+}
+unittest
+{
+    auto LL = iota(1L, 4L);
+    auto m = map!"a*a"(LL);
+    assert(equal(m, [1L, 4L, 9L]));
 }
 
 // reduce
@@ -1629,13 +1635,15 @@ if (is(typeof(ElementType!Range.init == Separator.init))
     private:
         Range _input;
         Separator _separator;
-        enum size_t _unComputed = size_t.max - 1, _atEnd = size_t.max;
-        size_t _frontLength = _unComputed;
-        size_t _backLength = _unComputed;
+        // Do we need hasLength!Range? popFront uses _input.length...
+        alias typeof(unsigned(_input.length)) IndexType;
+        enum IndexType _unComputed = IndexType.max - 1, _atEnd = IndexType.max;
+        IndexType _frontLength = _unComputed;
+        IndexType _backLength = _unComputed;
 
         static if(isBidirectionalRange!Range)
         {
-            static sizediff_t lastIndexOf(Range haystack, Separator needle)
+            static IndexType lastIndexOf(Range haystack, Separator needle)
             {
                 immutable index = countUntil(retro(haystack), needle);
                 return (index == -1) ? -1 : haystack.length - 1 - index;
@@ -1822,6 +1830,16 @@ unittest
         }
     }
 }
+unittest
+{
+    auto L = retro(iota(1L, 10L));
+    auto s = splitter(L, 5L);
+    assert(equal(s.front, [9L, 8L, 7L, 6L]));
+    s.popFront();
+    assert(equal(s.front, [4L, 3L, 2L, 1L]));
+    s.popFront();
+    assert(s.empty);
+}
 
 /**
 Splits a range using another range as a separator. This can be used
@@ -1835,12 +1853,13 @@ if (is(typeof(Range.init.front == Separator.init.front) : bool))
     private:
         Range _input;
         Separator _separator;
+        alias typeof(unsigned(_input.length)) RIndexType;
         // _frontLength == size_t.max means empty
-        size_t _frontLength = size_t.max;
+        RIndexType _frontLength = RIndexType.max;
         static if (isBidirectionalRange!Range)
-            size_t _backLength = size_t.max;
+            RIndexType _backLength = RIndexType.max;
 
-        size_t separatorLength() { return _separator.length; }
+        auto separatorLength() { return _separator.length; }
 
         void ensureFrontLength()
         {
@@ -1887,7 +1906,7 @@ if (is(typeof(Range.init.front == Separator.init.front) : bool))
         {
             @property bool empty()
             {
-                return _frontLength == size_t.max && _input.empty;
+                return _frontLength == RIndexType.max && _input.empty;
             }
         }
 
@@ -2113,6 +2132,16 @@ if (is(typeof(unaryFun!(isTerminator)(ElementType!(Range).init))))
     }
 
     return Result(input);
+}
+unittest
+{
+    auto L = iota(1L, 10L);
+    auto s = splitter(L, [5L, 6L]);
+    assert(equal(s.front, [1L, 2L, 3L, 4L]));
+    s.popFront();
+    assert(equal(s.front, [7L, 8L, 9L]));
+    s.popFront();
+    assert(s.empty);
 }
 
 unittest
@@ -3570,21 +3599,33 @@ unittest
     assert(equal(r1[1], a[4 .. $]));
 }
 
-/**
-If $(D haystack) supports slicing, returns the smallest number $(D n)
-such that $(D haystack[n .. $].startsWith!pred(needle)). Oherwise,
-returns the smallest $(D n) such that after $(D n) calls to $(D
-haystack.popFront), $(D haystack.startsWith!pred(needle)). If no such
-number could be found, return $(D -1).
- */
-sizediff_t countUntil(alias pred = "a == b", R1, R2)(R1 haystack, R2 needle)
+/++
+    Returns the number of elements which must be popped from the front of
+    $(D haystack) before reaching an element for which
+    $(D startsWith!pred(haystack, needle)) is $(D true). If
+    $(D startsWith!pred(haystack, needle)) is not $(D true) for any element in
+    $(D haystack), then -1 is returned.
+
+    $(D needle) may be either an element or a range.
+
+    Examples:
+--------------------
+assert(countUntil("hello world", "world") == 6);
+assert(countUntil("hello world", 'r') == 8);
+assert(countUntil("hello world", "programming") == -1);
+assert(countUntil([0, 7, 12, 22, 9], [12, 22]) == 2);
+assert(countUntil([0, 7, 12, 22, 9], 9) == 4);
+assert(countUntil!"a > b"([0, 7, 12, 22, 9], 20) == 3);
+--------------------
+  +/
+sizediff_t countUntil(alias pred = "a == b", R, N)(R haystack, N needle)
 if (is(typeof(startsWith!pred(haystack, needle))))
 {
-    static if (isNarrowString!R1)
+    static if (isNarrowString!R)
     {
         // Narrow strings are handled a bit differently
         auto length = haystack.length;
-        for (; !haystack.empty; haystack.popFront)
+        for (; !haystack.empty; haystack.popFront())
         {
             if (startsWith!pred(haystack, needle))
             {
@@ -3601,6 +3642,62 @@ if (is(typeof(startsWith!pred(haystack, needle))))
         }
     }
     return -1;
+}
+
+//Verify Examples.
+unittest
+{
+    assert(countUntil("hello world", "world") == 6);
+    assert(countUntil("hello world", 'r') == 8);
+    assert(countUntil("hello world", "programming") == -1);
+    assert(countUntil([0, 7, 12, 22, 9], [12, 22]) == 2);
+    assert(countUntil([0, 7, 12, 22, 9], 9) == 4);
+    assert(countUntil!"a > b"([0, 7, 12, 22, 9], 20) == 3);
+}
+
+/++
+    Returns the number of elements which must be popped from $(D haystack)
+    before $(D pred(hastack.front)) is $(D true.).
+
+    Examples:
+--------------------
+assert(countUntil!(std.uni.isWhite)("hello world") == 5);
+assert(countUntil!(std.ascii.isDigit)("hello world") == -1);
+assert(countUntil!"a > 20"([0, 7, 12, 22, 9]) == 3);
+--------------------
+  +/
+sizediff_t countUntil(alias pred, R)(R haystack)
+if (isForwardRange!R && is(typeof(unaryFun!pred(haystack.front)) == bool))
+{
+    static if (isNarrowString!R)
+    {
+        // Narrow strings are handled a bit differently
+        auto length = haystack.length;
+        for (; !haystack.empty; haystack.popFront())
+        {
+            if (unaryFun!pred(haystack.front))
+            {
+                return length - haystack.length;
+            }
+        }
+    }
+    else
+    {
+        typeof(return) result;
+        for (; !haystack.empty; ++result, haystack.popFront())
+        {
+            if (unaryFun!pred(haystack.front)) return result;
+        }
+    }
+    return -1;
+}
+
+//Verify Examples.
+unittest
+{
+    assert(countUntil!(std.uni.isWhite)("hello world") == 5);
+    assert(countUntil!(std.ascii.isDigit)("hello world") == -1);
+    assert(countUntil!"a > 20"([0, 7, 12, 22, 9]) == 3);
 }
 
 /**
@@ -4601,8 +4698,8 @@ if (isInputRange!R1 && isInputRange!R2 && !(isSomeString!R1 && isSomeString!R2))
 {
     for (;; r1.popFront(), r2.popFront())
     {
-        if (r1.empty) return -r2.empty;
-        if (r2.empty) return r1.empty;
+        if (r1.empty) return -cast(int)!r2.empty;
+        if (r2.empty) return !r1.empty;
         auto a = r1.front, b = r2.front;
         if (binaryFun!pred(a, b)) return -1;
         if (binaryFun!pred(b, a)) return 1;
@@ -4692,6 +4789,16 @@ unittest
     assert(result > 0);
     result = cmp("aaa", "aaa"d);
     assert(result == 0);
+    result = cmp(cast(int[])[], cast(int[])[]);
+    assert(result == 0);
+    result = cmp([1, 2, 3], [1, 2, 3]);
+    assert(result == 0);
+    result = cmp([1, 3, 2], [1, 2, 3]);
+    assert(result > 0);
+    result = cmp([1, 2, 3], [1L, 2, 3, 4]);
+    assert(result < 0);
+    result = cmp([1L, 2, 3], [1, 2]);
+    assert(result > 0);
 }
 
 // MinType
@@ -5252,11 +5359,29 @@ assert(b[0 .. $ - c.length] == [ 1, 5, 9, 1 ]);
 Range2 copy(Range1, Range2)(Range1 source, Range2 target)
 if (isInputRange!Range1 && isOutputRange!(Range2, ElementType!Range1))
 {
-    for (; !source.empty; source.popFront())
+    static if(isArray!Range1 && isArray!Range2 && 
+    is(Unqual!(typeof(source[0])) == Unqual!(typeof(target[0]))))
     {
-        put(target, source.front);
+        // Array specialization.  This uses optimized memory copying routines
+        // under the hood and is about 10-20x faster than the generic 
+        // implementation.
+        enforce(target.length >= source.length, 
+            "Cannot copy a source array into a smaller target array.");
+        target[0..source.length] = source;
+        
+        return target[source.length..$];
     }
-    return target;
+    else
+    {   
+        // Generic implementation.    
+        for (; !source.empty; source.popFront())
+        {
+            put(target, source.front);
+        }
+        
+        return target;
+    }
+    
 }
 
 unittest

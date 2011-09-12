@@ -959,7 +959,7 @@ void[] _d_newarrayOpT(alias op)(TypeInfo ti, size_t ndims, size_t* pdim)
         {
             for (size_t i = 0; i < ndims; i++)
             {
-                printf("index %d: %d\n", i, pdim[i]);
+                printf("index %d: %ul\n", i, pdim[i]);
             }
         }
 
