@@ -231,13 +231,13 @@ d_init_options (unsigned int, const char ** argv)
     global.params.Dversion = 2;
     global.params.quiet = 1;
 
-    global.params.linkswitches = new Array();
-    global.params.libfiles = new Array();
-    global.params.objfiles = new Array();
-    global.params.ddocfiles = new Array();
+    global.params.linkswitches = new Strings();
+    global.params.libfiles = new Strings();
+    global.params.objfiles = new Strings();
+    global.params.ddocfiles = new Strings();
 
-    global.params.imppath = new Array();
-    global.params.fileImppath = new Array();
+    global.params.imppath = new Strings();
+    global.params.fileImppath = new Strings();
 
     // GCC options
     flag_exceptions = 1;
