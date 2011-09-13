@@ -1210,7 +1210,7 @@ d_parse_file (int /*set_yydebug*/)
     (*debug_hooks->end_source_file) (input_line);
  had_errors:
     // Add DMD error count to GCC error count to to exit with error status
-    errorcount += global.errors;
+    errorcount += (global.errors + global.warnings);
 
     g.ofile->finish();
     an_output_module = 0;
