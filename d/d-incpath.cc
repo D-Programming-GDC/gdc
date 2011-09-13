@@ -171,7 +171,7 @@ register_import_chains ()
 
     if (global.params.imppath)
     {
-        for (unsigned i = 0; i < global.params.imppath->dim; i++)
+        for (size_t i = 0; i < global.params.imppath->dim; i++)
         {
             char *path = global.params.imppath->tdata()[i];
             if (path)
@@ -181,7 +181,7 @@ register_import_chains ()
 
     if (global.params.fileImppath)
     {
-        for (unsigned i = 0; i < global.params.fileImppath->dim; i++)
+        for (size_t i = 0; i < global.params.fileImppath->dim; i++)
         {
             char *path = global.params.fileImppath->tdata()[i];
             if (path)

@@ -186,7 +186,7 @@ ExtAsmStatement::semantic(Scope *sc)
         error("instruction template must be a constant char string");
     if (args)
     {
-        for (unsigned i = 0; i < args->dim; i++)
+        for (size_t i = 0; i < args->dim; i++)
         {
             Expression * e = args->tdata()[i];
             e = e->semantic(sc);
@@ -206,7 +206,7 @@ ExtAsmStatement::semantic(Scope *sc)
     }
     if (clobbers)
     {
-        for (unsigned i = 0; i < clobbers->dim; i++)
+        for (size_t i = 0; i < clobbers->dim; i++)
         {
             Expression * e = clobbers->tdata()[i];
             e = e->semantic(sc);
@@ -228,7 +228,7 @@ ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writestring(" : ");
     if (args)
     {
-        for (unsigned i = 0; i < args->dim; i++)
+        for (size_t i = 0; i < args->dim; i++)
         {
             Identifier * name = argNames->tdata()[i];
             Expression * constr = argConstraints->tdata()[i];
@@ -261,7 +261,7 @@ ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     if (clobbers)
     {
         buf->writestring(" : ");
-        for (unsigned i = 0; i < clobbers->dim; i++)
+        for (size_t i = 0; i < clobbers->dim; i++)
         {
             Expression * clobber = clobbers->tdata()[i];
             buf->writestring(clobber->toChars());
@@ -305,7 +305,7 @@ void ExtAsmStatement::toIR(IRState *irs)
 
     if (args)
     {
-        for (unsigned i = 0; i < args->dim; i++)
+        for (size_t i = 0; i < args->dim; i++)
         {
             Identifier * name = argNames->tdata()[i]; 
             Expression * constr = argConstraints->tdata()[i];
@@ -321,7 +321,7 @@ void ExtAsmStatement::toIR(IRState *irs)
     }
     if (clobbers)
     {
-        for (unsigned i = 0; i < clobbers->dim; i++)
+        for (size_t i = 0; i < clobbers->dim; i++)
         {
             Expression * clobber = clobbers->tdata()[i];
             tree_clobbers.cons(NULL_TREE, naturalString(clobber));
@@ -410,7 +410,7 @@ AsmStatement::toIR(IRState * irs)
 
     gcc_assert(code->args.dim <= 10);
 
-    for (unsigned i = 0; i < code->args.dim; i++)
+    for (size_t i = 0; i < code->args.dim; i++)
     {
         AsmArg * arg = code->args.tdata()[i];
 
@@ -519,7 +519,7 @@ AsmStatement::toIR(IRState * irs)
 
     if (! irs->func->naked)
     {
-        for (int i = 0; i < N_Regs; i++)
+        for (size_t i = 0; i < N_Regs; i++)
         {
             if (code->clbregs[i])
                 clobbers.cons(NULL_TREE, regInfo[i].gccName);
@@ -529,7 +529,7 @@ AsmStatement::toIR(IRState * irs)
     }
 
     // Remap argument numbers
-    for (unsigned i = 0; i < code->args.dim; i++)
+    for (size_t i = 0; i < code->args.dim; i++)
     {
         if (arg_map[i] < 0)
             arg_map[i] = -arg_map[i] - 1 + n_outputs;

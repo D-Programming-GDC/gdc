@@ -70,7 +70,7 @@ dtnbits(dt_t** pdt, size_t count, char * pbytes, unsigned unit_size)
     {
         bitunit_t inv = *p_unit++;
 
-        for (unsigned i = 0; i < sizeof(bitunit_t)*8; i++)
+        for (size_t i = 0; i < sizeof(bitunit_t)*8; i++)
         {
             outv |= ((inv >> i) & 1) << b;
             if (++b == 8)

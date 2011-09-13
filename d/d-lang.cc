@@ -817,7 +817,7 @@ d_write_global_declarations()
 
     /* After cgraph has had a chance to emit everything that's going to
        be emitted, output debug information for globals.  */
-    for (unsigned i = 0; i < globalFunctions.dim; i++)
+    for (size_t i = 0; i < globalFunctions.dim; i++)
         debug_hooks->global_decl(vec[i]);
 }
 
@@ -993,7 +993,7 @@ d_parse_file (int /*set_yydebug*/)
     }
     //fprintf (stderr, "***** %d files  main=%s\n", num_in_fnames, input_filename);
 
-    for (unsigned i = 0; i < num_in_fnames; i++)
+    for (size_t i = 0; i < num_in_fnames; i++)
     {
         if (fonly_arg)
         {
@@ -1059,13 +1059,13 @@ d_parse_file (int /*set_yydebug*/)
 
     // Read files
     aw = AsyncRead::create(modules.dim);
-    for (unsigned i = 0; i < modules.dim; i++)
+    for (size_t i = 0; i < modules.dim; i++)
     {
         m = modules.tdata()[i];
         aw->addFile(m->srcfile);
     }
     aw->start();
-    for (unsigned i = 0; i < modules.dim; i++)
+    for (size_t i = 0; i < modules.dim; i++)
     {
         if (aw->read(i))
         {
@@ -1076,7 +1076,7 @@ d_parse_file (int /*set_yydebug*/)
     AsyncRead::dispose(aw);
 
     // Parse files
-    for (unsigned i = 0; i < modules.dim; i++)
+    for (size_t i = 0; i < modules.dim; i++)
     {
         m = modules.tdata()[i];
         if (global.params.verbose)
@@ -1105,7 +1105,7 @@ d_parse_file (int /*set_yydebug*/)
           * line switches and what else is imported, they are generated
           * before any semantic analysis.
           */
-         for (unsigned i = 0; i < modules.dim; i++)
+         for (size_t i = 0; i < modules.dim; i++)
          {
              m = modules.tdata()[i];
              if (fonly_arg && m != an_output_module)
@@ -1119,7 +1119,7 @@ d_parse_file (int /*set_yydebug*/)
          goto had_errors;
 
     // load all unconditional imports for better symbol resolving
-    for (unsigned i = 0; i < modules.dim; i++)
+    for (size_t i = 0; i < modules.dim; i++)
     {
         m = modules.tdata()[i];
         if (global.params.verbose)
@@ -1130,7 +1130,7 @@ d_parse_file (int /*set_yydebug*/)
         goto had_errors;
 
     // Do semantic analysis
-    for (unsigned i = 0; i < modules.dim; i++)
+    for (size_t i = 0; i < modules.dim; i++)
     {
         m = modules.tdata()[i];
         if (global.params.verbose)
@@ -1144,7 +1144,7 @@ d_parse_file (int /*set_yydebug*/)
     Module::runDeferredSemantic();
 
     // Do pass 2 semantic analysis
-    for (unsigned i = 0; i < modules.dim; i++)
+    for (size_t i = 0; i < modules.dim; i++)
     {
         m = modules.tdata()[i];
         if (global.params.verbose)
@@ -1155,7 +1155,7 @@ d_parse_file (int /*set_yydebug*/)
         goto had_errors;
 
     // Do pass 3 semantic analysis
-    for (unsigned i = 0; i < modules.dim; i++)
+    for (size_t i = 0; i < modules.dim; i++)
     {
         m = modules.tdata()[i];
         if (global.params.verbose)
@@ -1190,7 +1190,7 @@ d_parse_file (int /*set_yydebug*/)
     if (global.params.doXGeneration)
         json_generate(&modules);
 
-    for (unsigned i = 0; i < modules.dim; i++)
+    for (size_t i = 0; i < modules.dim; i++)
     {
         m = modules.tdata()[i];
         if (fonly_arg && m != an_output_module)

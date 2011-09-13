@@ -1265,7 +1265,7 @@ IRState::replaceLibCallDecl(FuncDeclaration * d_decl)
 {
     if (! d_decl->ident)
         return;
-    for (unsigned i = 0; i < LIBCALL_count; i++)
+    for (size_t i = 0; i < LIBCALL_count; i++)
     {
         if (strcmp(d_decl->ident->string, libcall_ids[i]) == 0)
         {   // %% warn if libcall already set?
@@ -1592,7 +1592,7 @@ IRState::getLibCallDecl(LibCall lib_call)
             tf->varargs = varargs ? 1 : 0;
             Parameters * args = new Parameters;
             args->setDim(arg_types.dim);
-            for (unsigned i = 0; i < arg_types.dim; i++)
+            for (size_t i = 0; i < arg_types.dim; i++)
                 args->tdata()[i] = new Parameter(STCin, arg_types.tdata()[i], NULL, NULL);
 
             tf->parameters = args;
@@ -2808,7 +2808,7 @@ IRState::attributes(Expressions * in_attrs)
 
     ListMaker out_attrs;
 
-    for (unsigned i = 0; i < in_attrs->dim; i++)
+    for (size_t i = 0; i < in_attrs->dim; i++)
     {
         Expression * e = in_attrs->tdata()[i];
         IdentifierExp * ident_e = NULL;
@@ -2825,7 +2825,7 @@ IRState::attributes(Expressions * in_attrs)
 
             if (c->arguments)
             {
-                for (unsigned ai = 0; ai < c->arguments->dim; ai++)
+                for (size_t ai = 0; ai < c->arguments->dim; ai++)
                 {
                     Expression * ae = c->arguments->tdata()[ai];
                     tree aet;
@@ -3387,11 +3387,11 @@ IRState::getFrameInfo(FuncDeclaration *fd)
 
             if (ff != fd && ffo->creates_closure)
             {
-                for (unsigned i = 0; i < ff->closureVars.dim; i++)
+                for (size_t i = 0; i < ff->closureVars.dim; i++)
                 {
                     VarDeclaration * v = ff->closureVars.tdata()[i];
                     gcc_assert(v->isVarDeclaration());
-                    for (unsigned j = 0; j < v->nestedrefs.dim; j++)
+                    for (size_t j = 0; j < v->nestedrefs.dim; j++)
                     {
                         FuncDeclaration * fi = v->nestedrefs.tdata()[j];
                         if (isFuncNestedIn(fi, fd))
@@ -3561,7 +3561,7 @@ IRState::buildChain(FuncDeclaration * func)
     DECL_CONTEXT(ptr_field) = frame_rec_type;
     fields.chain(ptr_field);
 
-    for (unsigned i = 0; i < nestedVars->dim; ++i)
+    for (size_t i = 0; i < nestedVars->dim; ++i)
     {
         VarDeclaration *v = nestedVars->tdata()[i];
         Symbol * s = v->toSymbol();
@@ -3592,7 +3592,7 @@ IRState::buildChain(FuncDeclaration * func)
     }
 
     // copy parameters that are referenced nonlocally
-    for (unsigned i = 0; i < nestedVars->dim; i++)
+    for (size_t i = 0; i < nestedVars->dim; i++)
     {
         VarDeclaration * v = nestedVars->tdata()[i];
         if (! v->isParameter())
@@ -3927,7 +3927,7 @@ IRState::checkGoto(Statement * stmt, LabelDsymbol * label)
     if (curLevel)
         curBlock = currentFlow()->statement;
 
-    for (unsigned i = 0; i < labels.dim; i++)
+    for (size_t i = 0; i < labels.dim; i++)
     {
         Label * linfo = labels.tdata()[i];
         gcc_assert(linfo);
@@ -3963,7 +3963,7 @@ IRState::checkPreviousGoto(Array * refs)
 {
     Statement * stmt; // Our forward reference.
 
-    for (unsigned i = 0; i < refs->dim; i++)
+    for (size_t i = 0; i < refs->dim; i++)
     {
         Label * ref = (Label *) refs->data[i];
         int found = 0;
@@ -3971,7 +3971,7 @@ IRState::checkPreviousGoto(Array * refs)
         gcc_assert(ref && ref->from);
         stmt = ref->from;
 
-        for (unsigned i = 0; i < labels.dim; i++)
+        for (size_t i = 0; i < labels.dim; i++)
         {
             Label * linfo = labels.tdata()[i];
             gcc_assert(linfo);
@@ -4046,7 +4046,7 @@ AggLayout::doFields(VarDeclarations * fields, AggregateDeclaration * agg)
         fcontext = TREE_TYPE(fcontext);
 
     // tree new_field_chain = NULL_TREE;
-    for (unsigned i = 0; i < fields->dim; i++)
+    for (size_t i = 0; i < fields->dim; i++)
     {   // %% D anonymous unions just put the fields into the outer struct...
         // does this cause problems?
         VarDeclaration * var_decl = fields->tdata()[i];
@@ -4088,7 +4088,7 @@ void
 AggLayout::doInterfaces(BaseClasses * bases, AggregateDeclaration * /*agg*/)
 {
     //tree fcontext = TREE_TYPE(agg->type->toCtype());
-    for (unsigned i = 0; i < bases->dim; i++)
+    for (size_t i = 0; i < bases->dim; i++)
     {
         BaseClass * bc = bases->tdata()[i];
         tree decl = d_build_decl(FIELD_DECL, NULL_TREE,

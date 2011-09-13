@@ -61,7 +61,7 @@ struct CppMangleState
 
     bool hasSubstitute(void * p, OutBuffer * buf)
     {
-        for (unsigned i = 0; i < substitutions.dim; i++)
+        for (size_t i = 0; i < substitutions.dim; i++)
             if (substitutions.tdata()[i] == p)
             {
                 if (buf)

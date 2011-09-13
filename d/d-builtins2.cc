@@ -126,7 +126,7 @@ gcc_type_to_d_type(tree t)
                 return Type::tchar;
 
             // This search assumes that integer types come before char and bit...
-            for (int i = 0; i < (int) TMAX; i++)
+            for (size_t i = 0; i < TMAX; i++)
             {
                 d = Type::basic[i];
                 if (d && d->isintegral() && d->size() == sz &&
@@ -145,7 +145,7 @@ gcc_type_to_d_type(tree t)
                 return Type::tfloat80;
 
             unsigned sz = tree_low_cst(TYPE_SIZE_UNIT(t), 1);
-            for (int i = 0; i < (int) TMAX; i++)
+            for (size_t i = 0; i < TMAX; i++)
             {
                 d = Type::basic[i];
                 if (d && d->isreal() && d->size() == sz)
@@ -158,7 +158,7 @@ gcc_type_to_d_type(tree t)
         case COMPLEX_TYPE:
         {
             unsigned sz = tree_low_cst(TYPE_SIZE_UNIT(t), 1);
-            for (int i = 0; i < (int) TMAX; i++)
+            for (size_t i = 0; i < TMAX; i++)
             {
                 d = Type::basic[i];
                 if (d && d->iscomplex() && d->size() == sz)
@@ -196,7 +196,7 @@ gcc_type_to_d_type(tree t)
         }
         case RECORD_TYPE:
         {
-            for (unsigned i = 0; i < builtin_converted_types.dim; i += 2)
+            for (size_t i = 0; i < builtin_converted_types.dim; i += 2)
             {
                 tree ti = (tree) builtin_converted_types.data[i];
                 if (TYPE_MAIN_VARIANT(ti) == TYPE_MAIN_VARIANT(t))
@@ -362,7 +362,7 @@ d_gcc_magic_stdarg_check(Dsymbol *m, bool is_c_std_arg)
            automatically passed by reference, but the 'inout'
            modifier is not allowed. */
         gcc_assert(td->members);
-        for (unsigned j = 0; j < td->members->dim; j++)
+        for (size_t j = 0; j < td->members->dim; j++)
         {
             FuncDeclaration * fd = (td->members->tdata()[j])->isFuncDeclaration();
             if (fd && (fd->ident == id_arg || fd->ident == id_start))
@@ -392,7 +392,7 @@ static void
 d_gcc_magic_stdarg_module(Module *m, bool is_c_std_arg)
 {
     Dsymbols * members = m->members;
-    for (unsigned i = 0; i < members->dim; i++)
+    for (size_t i = 0; i < members->dim; i++)
     {
         Dsymbol * sym = members->tdata()[i];
         d_gcc_magic_stdarg_check(sym, is_c_std_arg);
@@ -470,7 +470,7 @@ d_gcc_magic_builtins_module(Module *m)
     }
 #endif
 
-    for (unsigned i = 0; i < builtin_converted_decls.dim ; ++i)
+    for (size_t i = 0; i < builtin_converted_decls.dim ; ++i)
     {
         Dsymbol * sym = builtin_converted_decls.tdata()[i];
         /* va_list is a pain.  It can be referenced without importing

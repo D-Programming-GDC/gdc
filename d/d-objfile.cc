@@ -55,7 +55,7 @@ ObjectFile::beginModule(Module * m)
 void
 ObjectFile::endModule()
 {
-    for (unsigned i = 0; i < deferredThunks.dim; i++)
+    for (size_t i = 0; i < deferredThunks.dim; i++)
     {
         DeferredThunk * t = deferredThunks.tdata()[i];
         outputThunk(t->decl, t->target, t->offset);
@@ -73,7 +73,7 @@ ObjectFile::hasModule(Module *m)
 
     if (modules.tdata()[moduleSearchIndex] == m)
         return true;
-    for (unsigned i = 0; i < modules.dim; i++)
+    for (size_t i = 0; i < modules.dim; i++)
     {
         if (modules.tdata()[i] == m)
         {
@@ -551,7 +551,7 @@ ObjectFile::addAggMethods(tree rec_type, AggregateDeclaration * agg)
     if (write_symbols != NO_DEBUG)
     {
         ListMaker methods;
-        for (unsigned i = 0; i < agg->methods.dim; i++)
+        for (size_t i = 0; i < agg->methods.dim; i++)
         {
             FuncDeclaration * fd = agg->methods.tdata()[i];
             methods.chain(fd->toSymbol()->Stree);
@@ -883,7 +883,7 @@ ObjectFile::doFunctionToCallFunctions(const char * name, FuncDeclarations * func
     }
     else
     {   // %% shouldn't front end build these?
-        for (unsigned i = 0; i < functions->dim; i++)
+        for (size_t i = 0; i < functions->dim; i++)
         {
             FuncDeclaration * fn_decl = functions->tdata()[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
@@ -912,7 +912,7 @@ ObjectFile::doCtorFunction(const char * name, FuncDeclarations * functions, VarD
     }
     else
     {   // Increment gates first.
-        for (unsigned i = 0; i < gates->dim; i++)
+        for (size_t i = 0; i < gates->dim; i++)
         {
             VarDeclaration * var = gates->tdata()[i];
             tree var_decl = var->toSymbol()->Stree;
@@ -921,7 +921,7 @@ ObjectFile::doCtorFunction(const char * name, FuncDeclarations * functions, VarD
             expr_list = g.irs->maybeVoidCompound(expr_list, var_expr);
         }
         // Call Ctor Functions
-        for (unsigned i = 0; i < functions->dim; i++)
+        for (size_t i = 0; i < functions->dim; i++)
         {
             FuncDeclaration * fn_decl = functions->tdata()[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);

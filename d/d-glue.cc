@@ -850,7 +850,7 @@ CatExp::toElem(IRState * irs)
     result = irs->libCall(n_operands > 2 ? LIBCALL_ARRAYCATNT : LIBCALL_ARRAYCATT,
         n_args, args, type->toCtype());
 
-    for (unsigned i = 0; i < elem_vars.dim; ++i)
+    for (size_t i = 0; i < elem_vars.dim; ++i)
     {
         tree elem_var = (tree) elem_vars.data[i];
         result = irs->binding(elem_var, result);
@@ -1684,7 +1684,7 @@ PtrExp::toElem(IRState * irs)
     if (rec_type && rec_type->ty == Tstruct)
     {
         StructDeclaration * sd = ((TypeStruct *)rec_type)->sym;
-        for (unsigned i = 0; i < sd->fields.dim; i++)
+        for (size_t i = 0; i < sd->fields.dim; i++)
         {
             VarDeclaration * field = sd->fields.tdata()[i];
             if (field->offset == the_offset &&
@@ -2293,7 +2293,7 @@ NewExp::toElem(IRState * irs)
 
             /* First, skip past dynamic array dimensions/types that will be
                allocated by this call. */
-            for (unsigned i = 0; i < arguments->dim; i++)
+            for (size_t i = 0; i < arguments->dim; i++)
                 elem_init_type = elem_init_type->toBasetype()->nextOf(); // assert ty == Tarray
             if (arguments->dim == 1)
             {
@@ -2316,7 +2316,7 @@ NewExp::toElem(IRState * irs)
                     CtorEltMaker elms;
 
                     elms.reserve(arguments->dim);
-                    for (unsigned i = 0; i < arguments->dim/* - 1*/; i++)
+                    for (size_t i = 0; i < arguments->dim/* - 1*/; i++)
                         elms.cons(irs->integerConstant(i, size_type_node),
                                 (arguments->tdata()[i])->toElem(irs));
                     //elms.cons(final_length);
@@ -2451,7 +2451,7 @@ TupleExp::toElem(IRState * irs)
     tree result = NULL_TREE;
     if (exps && exps->dim)
     {
-        for (unsigned i = 0; i < exps->dim; ++i)
+        for (size_t i = 0; i < exps->dim; ++i)
         {
             Expression * e = exps->tdata()[i];
             result = irs->maybeVoidCompound(result, e->toElem(irs));
@@ -2495,7 +2495,7 @@ ArrayLiteralExp::toElem(IRState * irs)
         CtorEltMaker elms;
 
         elms.reserve(elements->dim);
-        for (unsigned i = 0; i < elements->dim; i++)
+        for (size_t i = 0; i < elements->dim; i++)
         {
             elms.cons(irs->integerConstant(i, size_type_node),
                       (elements->tdata()[i])->toElem(irs));
@@ -2548,7 +2548,7 @@ AssocArrayLiteralExp::toElem(IRState * irs)
     tree vals_size = size_int(next->size());
     tree result = NULL_TREE;
 
-    for (unsigned i = 0; i < keys->dim; i++)
+    for (size_t i = 0; i < keys->dim; i++)
     {
         Expression * e;
         tree elemp_e, assgn_e;
@@ -2594,7 +2594,7 @@ StructLiteralExp::toElem(IRState *irs)
     {
         gcc_assert(elements->dim <= sd->fields.dim);
 
-        for (unsigned i = 0; i < elements->dim; ++i)
+        for (size_t i = 0; i < elements->dim; ++i)
         {
             if (! elements->tdata()[i])
                 continue;
@@ -3103,7 +3103,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
 
     if (this_sym->otherNestedFuncs)
     {
-        for (unsigned i = 0; i < this_sym->otherNestedFuncs->dim; ++i)
+        for (size_t i = 0; i < this_sym->otherNestedFuncs->dim; ++i)
         {
             (this_sym->otherNestedFuncs->tdata()[i])->toObjFile(false);
         }
@@ -3244,7 +3244,7 @@ FuncDeclaration::buildClosure(IRState * irs)
     ListMaker fields;
     fields.chain(ptr_field);
 
-    for (unsigned i = 0; i < closureVars.dim; ++i)
+    for (size_t i = 0; i < closureVars.dim; ++i)
     {
         VarDeclaration *v = closureVars.tdata()[i];
         Symbol * s = v->toSymbol();
@@ -3281,7 +3281,7 @@ FuncDeclaration::buildClosure(IRState * irs)
                    ptr_field), cl));
 
     // copy parameters that are referenced nonlocally
-    for (unsigned i = 0; i < closureVars.dim; i++)
+    for (size_t i = 0; i < closureVars.dim; i++)
     {
         VarDeclaration *v = closureVars.tdata()[i];
         if (! v->isParameter())
@@ -3308,7 +3308,7 @@ Module::genobjfile(int multiobj)
 
     if (members)
     {
-        for (unsigned i = 0; i < members->dim; i++)
+        for (size_t i = 0; i < members->dim; i++)
         {
             Dsymbol * dsym = members->tdata()[i];
             dsym->toObjFile(multiobj);
@@ -3548,7 +3548,7 @@ TypeEnum::toCtype()
             ListMaker enum_values;
             if (sym->members)
             {
-                for (unsigned i = 0; i < sym->members->dim; i++)
+                for (size_t i = 0; i < sym->members->dim; i++)
                 {
                     EnumMember * member = (sym->members->tdata()[i])->isEnumMember();
                     gcc_assert(member);
@@ -3913,7 +3913,7 @@ intfc_binfo_for(tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offse
         BINFO_BASEACCESSES(binfo) = make_tree_vec(iface->baseclasses->dim);
 #endif
     }
-    for (unsigned i = 0; i < iface->baseclasses->dim; i++)
+    for (size_t i = 0; i < iface->baseclasses->dim; i++)
     {
         BaseClass * bc = iface->baseclasses->tdata()[i];
 
@@ -4191,7 +4191,7 @@ TryCatchStatement::toIR(IRState * irs)
     irs->startCatches();
     if (catches)
     {
-        for (unsigned i = 0; i < catches->dim; i++)
+        for (size_t i = 0; i < catches->dim; i++)
         {
 #if V2
             Catch * a_catch = catches->tdata()[i];
@@ -4460,7 +4460,7 @@ SwitchStatement::toIR(IRState * irs)
         Symbol * s = static_sym();
         dt_t **  pdt = & s->Sdt;
         s->Sseg = CDATA;
-        for (unsigned case_i = 0; case_i < cases->dim; case_i++)
+        for (size_t case_i = 0; case_i < cases->dim; case_i++)
         {
             CaseStatement * case_stmt = cases->tdata()[case_i];
             pdt = case_stmt->exp->toDt(pdt);
@@ -4484,7 +4484,7 @@ SwitchStatement::toIR(IRState * irs)
     }
     if (cases)
     {   // Build LABEL_DECLs now so they can be refered to by goto case
-        for (unsigned i = 0; i < cases->dim; i++)
+        for (size_t i = 0; i < cases->dim; i++)
         {
             CaseStatement * case_stmt = cases->tdata()[i];
             case_stmt->cblock = irs->label(case_stmt->loc); //make_case_label(case_stmt->loc);
@@ -4498,7 +4498,7 @@ SwitchStatement::toIR(IRState * irs)
 #if V2
     if (hasVars)
     {   // Write cases as a series of if-then-else blocks.
-        for (unsigned i = 0; i < cases->dim; i++)
+        for (size_t i = 0; i < cases->dim; i++)
         {
             CaseStatement * case_stmt = cases->tdata()[i];
             tree case_cond = build2(EQ_EXPR, cond_type->toCtype(), cond_tree,
@@ -4839,7 +4839,7 @@ CompoundStatement::toIR(IRState* irs)
     if (! statements)
         return;
 
-    for (unsigned i = 0; i < statements->dim; i++)
+    for (size_t i = 0; i < statements->dim; i++)
     {
         Statement * statement = statements->tdata()[i];
         if (statement)
@@ -4857,7 +4857,7 @@ UnrolledLoopStatement::toIR(IRState* irs)
 
     irs->startLoop(this);
     irs->continueHere();
-    for (unsigned i = 0; i < statements->dim; i++)
+    for (size_t i = 0; i < statements->dim; i++)
     {
         Statement * statement = statements->tdata()[i];
         if (statement)

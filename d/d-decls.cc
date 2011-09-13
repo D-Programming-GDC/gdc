@@ -721,7 +721,7 @@ Symbol *FuncDeclaration::toThunkSymbol(int offset)
     Thunks & thunks = * csym->thunks;
     bool found = false;
 
-    for (unsigned i = 0; i < thunks.dim; i++)
+    for (size_t i = 0; i < thunks.dim; i++)
     {
         thunk = thunks.tdata()[i];
         if (thunk->offset == offset)

@@ -1457,7 +1457,7 @@ struct AsmProcessor
         {
             char buf[8], *p;
 
-            for (int i = 0; i < N_Regs; i++)
+            for (size_t i = 0; i < N_Regs; i++)
             {
                 strncpy(buf, regInfo[i].name, sizeof(buf) - 1);
                 for (p = buf; *p; p++)
@@ -1468,7 +1468,7 @@ struct AsmProcessor
                     regInfo[i].ident = Lexer::idPool(regInfo[i].name);
             }
 
-            for (int i = 0; i < N_PtrNames; i++)
+            for (size_t i = 0; i < N_PtrNames; i++)
                 ptrTypeIdentTable[i] = Lexer::idPool(ptrTypeNameTable[i]);
 
             Handled = new Expression(0, TOKvoid, sizeof(Expression));
@@ -1669,7 +1669,7 @@ struct AsmProcessor
     {
         bool wrong_number = true;
 
-        for (unsigned i = 0; i < nOperands; i++)
+        for (size_t i = 0; i < nOperands; i++)
             classifyOperand(& operands[i]);
 
         while (1)
@@ -1680,7 +1680,7 @@ struct AsmProcessor
                 /*  Cases in which number of operands is not
                     enough for a match: Op_FCmp/Op_FCmp1,
                     Op_FCmpP/Op_FCmpP1 */
-                for (unsigned i = 0; i < nOperands; i++)
+                for (size_t i = 0; i < nOperands; i++)
                 {
                     Operand * operand = & operands[i];
 
@@ -1981,7 +1981,7 @@ struct AsmProcessor
                     min_type = Long_Ptr;
             }
 
-            for (int i = 0; i < nOperands; i++)
+            for (size_t i = 0; i < nOperands; i++)
             {
                 if (hint_type == Default_Ptr &&
                     ! (opInfo->operands[i] & Opr_NoType))
@@ -2187,7 +2187,7 @@ struct AsmProcessor
         }
 
         insnTemplate->writebyte(' ');
-        for (int n = 0; n < nOperands; n++)
+        for (size_t n = 0; n < nOperands; n++)
         {
             int i;
             if (n != 0)
@@ -2957,7 +2957,7 @@ struct AsmProcessor
                 return Extended_Ptr;
 
             case TOKidentifier:
-                for (int i = 0; i < N_PtrNames; i++)
+                for (size_t i = 0; i < N_PtrNames; i++)
                 {
                     if (tok->ident == ptrTypeIdentTable[i])
                         return ptrTypeValueTable[i];
@@ -3108,7 +3108,7 @@ struct AsmProcessor
                 // check for reg first then dotexp is an error?
                 if (e->op == TOKidentifier)
                 {
-                    for (int i = 0; i < N_Regs; i++)
+                    for (size_t i = 0; i < N_Regs; i++)
                     {
                         if (ident != regInfo[i].ident)
                             continue;
