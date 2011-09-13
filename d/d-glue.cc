@@ -1721,7 +1721,7 @@ CallExp::toElem(IRState* irs)
 
     // Some library calls are defined to return a generic type.
     // this->type is the real type. (See crash2.d)
-    return irs->vconvert(call_exp, type->toCtype());
+    return convert(type->toCtype(), call_exp);
 }
 
 elem *
