@@ -715,6 +715,7 @@ PowExp::toElem(IRState * irs)
 {
     tree e1_t, e2_t;
     tree powtype, powfn = NULL_TREE;
+    Type *tb1 = e1->type->toBasetype();
 
     // Dictates what version of pow() we call.
     powtype = type->toBasetype()->toCtype();
@@ -723,7 +724,7 @@ PowExp::toElem(IRState * irs)
     if (type->isintegral())
         powtype = double_type_node;
 
-    // Lookup compatible builtin.
+    // Lookup compatible builtin. %% TODO: handle complex types?
     if (TYPE_MAIN_VARIANT(powtype) == double_type_node)
         powfn = built_in_decls[BUILT_IN_POW];
     else if (TYPE_MAIN_VARIANT(powtype) == float_type_node)
@@ -733,7 +734,10 @@ PowExp::toElem(IRState * irs)
 
     if (powfn == NULL_TREE)
     {
-        error("%s ^^ %s is not supported", e1->type->toChars(), e2->type->toChars());
+        if (tb1->ty == Tarray || tb1->ty == Tsarray)
+            error("Array operation %s not implemented", toChars());
+        else
+            error("%s ^^ %s is not supported", e1->type->toChars(), e2->type->toChars());
         return irs->errorMark(type);
     }
 
@@ -951,6 +955,12 @@ DivAssignExp::toElem(IRState * irs)
 
 elem *
 MulAssignExp::toElem(IRState * irs)
+{
+    return toElemBin(irs, opAssign);
+}
+
+elem *
+PowAssignExp::toElem(IRState * irs)
 {
     return toElemBin(irs, opAssign);
 }

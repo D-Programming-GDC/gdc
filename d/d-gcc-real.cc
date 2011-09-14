@@ -176,10 +176,9 @@ real_t::real_t(const REAL_VALUE_TYPE & rv)
     this->rv() = rv;
 }
 
-// HOST_WIDE_INT is probably == d_uns64 this is probably zero, so this is probably zero...
 real_t::real_t(int v)
 {
-    *this = v;
+    REAL_VALUE_FROM_INT(rv(), v, 0, max_float_mode());
 }
 
 real_t::real_t(d_uns64 v)
@@ -386,6 +385,36 @@ real_t::convert(Type * to_type) const
         default:
             gcc_unreachable();
     }
+}
+
+bool
+real_t::isConst0()
+{
+    return REAL_VALUES_EQUAL(rv(), dconst0);
+}
+
+bool
+real_t::isConst1()
+{
+    return REAL_VALUES_EQUAL(rv(), dconst1);
+}
+
+bool
+real_t::isConst2()
+{
+    return REAL_VALUES_EQUAL(rv(), dconst2);
+}
+
+bool
+real_t::isConstMinus1()
+{
+    return REAL_VALUES_EQUAL(rv(), dconstm1);
+}
+
+bool
+real_t::isConstHalf()
+{
+    return REAL_VALUES_EQUAL(rv(), dconsthalf);
 }
 
 bool

@@ -82,6 +82,11 @@ struct real_t
     real_t convert(Type * to_type) const;
     bool isZero();
     bool isNegative();
+    bool isConst0();
+    bool isConst1();
+    bool isConst2();
+    bool isConstMinus1();
+    bool isConstHalf();
     bool floatCompare(int op, const real_t & r);
     bool isIdenticalTo(const real_t & r) const;
     void format(char * buf, unsigned buf_size) const;

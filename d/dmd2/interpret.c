@@ -2360,6 +2360,9 @@ BIN_INTERPRET(Ushr)
 BIN_INTERPRET(And)
 BIN_INTERPRET(Or)
 BIN_INTERPRET(Xor)
+#if DMDV2
+BIN_INTERPRET(Pow)
+#endif
 
 
 typedef Expression *(*fp2_t)(enum TOK, Type *, Expression *, Expression *);
@@ -3918,6 +3921,9 @@ BIN_ASSIGN_INTERPRET(Ushr)
 BIN_ASSIGN_INTERPRET(And)
 BIN_ASSIGN_INTERPRET(Or)
 BIN_ASSIGN_INTERPRET(Xor)
+#if DMDV2
+BIN_ASSIGN_INTERPRET(Pow)
+#endif
 
 Expression *PostExp::interpret(InterState *istate, CtfeGoal goal)
 {

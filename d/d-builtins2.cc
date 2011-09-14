@@ -649,18 +649,16 @@ gcc_cst_to_d_expr(tree cst)
    Return result; NULL if cannot evaluate it.
  */
 Expression *
-d_gcc_eval_builtin(FuncDeclaration *fd, Expressions *arguments)
+eval_builtin(BUILTIN builtin, Expressions * arguments)
 {
-    Expression * e = EXP_VOID_INTERPRET;
+    Expression *e = NULL;
+    Expression *arg0 = arguments->tdata()[0];
 
-    // g.irs is not available.
     static IRState irs;
-
-    TypeFunction * tf = (TypeFunction *) fd->type;
     tree callee = NULL_TREE;
     tree result;
 
-    switch (fd->builtin)
+    switch (builtin)
     {
         case BUILTINsin:
             callee = built_in_decls[BUILT_IN_SINL];
@@ -675,11 +673,11 @@ d_gcc_eval_builtin(FuncDeclaration *fd, Expressions *arguments)
             break;
 
         case BUILTINsqrt:
-            if (tf->next->ty == Tfloat32)
+            if (arg0->type->ty == Tfloat32)
                 callee = built_in_decls[BUILT_IN_SQRTF];
-            else if (tf->next->ty == Tfloat64)
+            else if (arg0->type->ty == Tfloat64)
                 callee = built_in_decls[BUILT_IN_SQRT];
-            else if (tf->next->ty == Tfloat80)
+            else if (arg0->type->ty == Tfloat80)
                 callee = built_in_decls[BUILT_IN_SQRTL];
             gcc_assert(callee);
             break;
@@ -688,14 +686,11 @@ d_gcc_eval_builtin(FuncDeclaration *fd, Expressions *arguments)
             callee = built_in_decls[BUILT_IN_FABSL];
             break;
 
-        case BUILTINgcc:
-            callee = fd->toSymbol()->Stree;
-            break;
-
         default:
             gcc_unreachable();
     }
 
+    TypeFunction * tf = (TypeFunction *) gcc_type_to_d_type(TREE_TYPE(callee));
     result = irs.call(tf, callee, NULL, arguments);
     result = fold(result);
 
@@ -705,5 +700,33 @@ d_gcc_eval_builtin(FuncDeclaration *fd, Expressions *arguments)
         e = gcc_cst_to_d_expr(result);
     }
     return e;
+
+}
+
+Expression *
+d_gcc_eval_builtin(FuncDeclaration *fd, Expressions *arguments)
+{
+    gcc_assert(arguments && arguments->dim);
+
+    if (fd->builtin != BUILTINgcc)
+        return eval_builtin(fd->builtin, arguments);
+    else
+    {
+        Expression * e = NULL;
+        TypeFunction * tf = (TypeFunction *) fd->type;
+        tree callee = NULL_TREE;
+
+        // g.irs is not available.
+        static IRState irs;
+        tree result = irs.call(tf, callee, NULL, arguments);
+        result = fold(result);
+
+        if (TREE_CONSTANT(result) && TREE_CODE(result) != CALL_EXPR)
+        {   // Builtin should be successfully evaluated.
+            // Will only return NULL if we can't convert it.
+            e = gcc_cst_to_d_expr(result);
+        }
+        return e;
+    }
 }
 #endif
