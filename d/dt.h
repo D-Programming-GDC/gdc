@@ -68,7 +68,7 @@ extern dt_t** dtcat(dt_t** pdt, dt_t * d);
 extern tree   dt2tree(dt_t * dt);
 
 // %% should be dinteger_t?, but when used in todt.c, it's assigned to an unsigned
-unsigned dt_size(dt_t * dt);
+size_t dt_size(dt_t * dt);
 
 // Added for GCC to get correct byte ordering / size
 extern dt_t** dtnbits(dt_t** pdt, size_t count, char * pbytes, unsigned unit_size);
