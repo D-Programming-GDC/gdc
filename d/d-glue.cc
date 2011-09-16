@@ -959,11 +959,13 @@ MulAssignExp::toElem(IRState * irs)
     return toElemBin(irs, opAssign);
 }
 
+#if V2
 elem *
 PowAssignExp::toElem(IRState * irs)
 {
     return toElemBin(irs, opAssign);
 }
+#endif
 
 elem *
 CatAssignExp::toElem(IRState * irs)
