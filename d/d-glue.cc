@@ -4548,8 +4548,7 @@ IfStatement::toIR(IRState * irs)
 {
     irs->doLineNote(loc);
     irs->startScope();
-
-#if 0
+#if V1
     if (match)
     {
         irs->emitLocalVar(match);
