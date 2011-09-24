@@ -1050,7 +1050,9 @@ void PragmaDeclaration::semantic(Scope *sc)
                         for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
                         {
                             Expression * ea = c->arguments->tdata()[ai];
-                            c->arguments->tdata()[ai] = ea->semantic(sc);
+                            ea = ea->semantic(sc);
+                            ea = ea->optimize(WANTvalue | WANTinterpret);
+                            c->arguments->tdata()[ai] = ea;
                         }
                 }
                 else
@@ -1116,7 +1118,9 @@ void PragmaDeclaration::semantic(Scope *sc)
                         for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
                         {
                             Expression * ea = c->arguments->tdata()[ai];
-                            c->arguments->tdata()[ai] = ea->semantic(sc);
+                            ea = ea->semantic(sc);
+                            ea = ea->optimize(WANTvalue | WANTinterpret);
+                            c->arguments->tdata()[ai] = ea;
                         }
                 }
                 else
