@@ -278,6 +278,8 @@ else version( Posix )
             }
             else version( OSX )
             {
+                version = DigitalMarsOSX;
+                
                 extern (C)
                 {
                     extern __gshared
@@ -361,7 +363,7 @@ else version( Posix )
                 obj.m_main.bstack = &obj;
             obj.m_main.tstack = obj.m_main.bstack;
 
-            version( OSX )
+            version( DigitalMarsOSX )
             {
                 // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
                 //       data output by the compiler is bracketed by _tls_beg and
@@ -1359,7 +1361,7 @@ private:
         m_call = Call.NO;
         m_curr = &m_main;
 
-        version( OSX )
+        version( DigitalMarsOSX )
         {
             // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
             //       data output by the compiler is bracketed by _tls_beg and
@@ -1954,7 +1956,7 @@ extern (C) Thread thread_attachThis()
         assert( thisThread.m_tmach != thisThread.m_tmach.init );
     }
 
-    version( OSX )
+    version( DigitalMarsOSX )
     {
         // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
         //       data output by the compiler is bracketed by _tls_beg and
@@ -2039,7 +2041,7 @@ version( Windows )
             assert( thisThread.m_tmach != thisThread.m_tmach.init );
         }
 
-        version( OSX )
+        version( DigitalMarsOSX )
         {
             // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
             //       data output by the compiler is bracketed by _tls_beg and
@@ -3978,7 +3980,7 @@ version( AsmX86_64_Posix )
     }
 }
 
-version( OSX )
+version( DigitalMarsOSX )
 {
     // NOTE: The Mach-O object file format does not allow for thread local
     //       storage declarations. So instead we roll our own by putting tls
