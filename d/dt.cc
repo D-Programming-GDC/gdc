@@ -126,7 +126,7 @@ dtcontainer(dt_t** pdt, Type * type, dt_t* values)
 }
 
 
-unsigned
+size_t
 dt_size(dt_t * dt)
 {
     size_t size = 0;

@@ -58,7 +58,7 @@ typedef ArrayBase<dt_t> Dts;
 static dt_t *createTsarrayDt(dt_t * dt, Type *t)
 {
     assert(dt != NULL);
-    unsigned eoa_size = dt_size(dt);
+    size_t eoa_size = dt_size(dt);
     if (eoa_size == t->size())
         return dt;
     else
@@ -66,7 +66,7 @@ static dt_t *createTsarrayDt(dt_t * dt, Type *t)
         TypeSArray * tsa = (TypeSArray *) t->toBasetype();
         assert(tsa->ty == Tsarray);
 
-        unsigned dim = tsa->dim->toInteger();
+        size_t dim = tsa->dim->toInteger();
         dt_t * adt = NULL;
         dt_t ** padt = & adt;
 
@@ -182,9 +182,9 @@ dt_t *StructInitializer::toDt()
             if (v->offset < offset)
                 error(loc, "duplicate union initialization for %s", v->toChars());
             else
-            {   unsigned sz = dt_size(d);
-                unsigned vsz = v->type->size();
-                unsigned voffset = v->offset;
+            {   size_t sz = dt_size(d);
+                size_t vsz = v->type->size();
+                size_t voffset = v->offset;
 
                 if (sz > vsz)
                 {   assert(v->type->ty == Tsarray && vsz == 0);
@@ -795,9 +795,9 @@ dt_t **StructLiteralExp::toDt(dt_t **pdt)
             if (v->offset < offset)
                 error("duplicate union initialization for %s", v->toChars());
             else
-            {   unsigned sz = dt_size(d);
-                unsigned vsz = v->type->size();
-                unsigned voffset = v->offset;
+            {   size_t sz = dt_size(d);
+                size_t vsz = v->type->size();
+                size_t voffset = v->offset;
 
                 if (sz > vsz)
                 {   assert(v->type->ty == Tsarray && vsz == 0);
