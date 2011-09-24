@@ -2636,6 +2636,8 @@ string expandTilde(string inputPath)
             }
             assert(last_char > 1);
 
+          version (GNU_Unix_Have_getpwnam_r)
+          {
             // Reserve C memory for the getpwnam_r() function.
             passwd result;
             int extra_memory_size = 5 * 1024;
@@ -2680,6 +2682,22 @@ string expandTilde(string inputPath)
                 std.c.stdlib.free(extra_memory);
             onOutOfMemoryError();
             return null;
+          }
+          else
+          {
+            passwd * result;
+            
+            /* This does not guarantee another thread will not
+               use getpwnam at the same time */
+            synchronized
+            {
+                result = getpwnam(username);
+            }
+            
+            if (result)
+                path = combineCPathWithDPath(result.pw_dir, path, last_char);
+            return path;
+          }
         }
 
         // Return early if there is no tilde in path.

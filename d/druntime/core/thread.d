@@ -26,7 +26,8 @@ public import core.time; // for Duration
 
 
 // this should be true for most architectures
-version = StackGrowsDown;
+version( GNU_StackGrowsDown )
+    version = StackGrowsDown;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -329,7 +330,14 @@ else version( Posix )
             assert( obj.m_curr is &obj.m_main );
             // NOTE: For some reason this does not always work for threads.
             //obj.m_main.bstack = getStackBottom();
-            version( D_InlineAsm_X86 )
+            version( GNU )
+            {
+                version( StackGrowsDown )
+                    obj.m_main.bstack = &obj + 1;
+                else
+                    obj.m_main.bstack = &obj;
+            }
+            else version( D_InlineAsm_X86 )
             {
                 static void* getBasePtr()
                 {
