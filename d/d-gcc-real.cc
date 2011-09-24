@@ -371,7 +371,7 @@ real_t::convert(Mode to_mode) const
 real_t
 real_t::convert(Type * to_type) const
 {
-    switch (to_type->ty)
+    switch (to_type->toBasetype()->ty)
     {
         case Tfloat32:
             return convert(real_t::Float);
