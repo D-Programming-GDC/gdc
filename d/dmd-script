@@ -31,6 +31,7 @@
 use strict;
 use warnings;
 use Cwd qw(abs_path);
+use FindBin qw($Bin);
 use File::Basename;
 use File::Spec;
 use File::Path;
@@ -169,6 +170,66 @@ sub errorExit(@) {
     exit 1;
 }
 use subs qw(errorExit);
+
+sub readINI {
+    # look for dmd.conf in the following sequence of directories:
+    #   - current working directory
+    #   - directory specified by the HOME environment variable
+    #   - directory gdmd resides in
+    #   - /etc directory
+    my @confpaths = ("./", "$ENV{HOME}/", "$Bin/", "/etc/");
+    my $dmdconfpath = "";
+    my $dmdconf = "";
+
+    foreach my $confpath (@confpaths) {
+        if (-e $confpath."dmd.conf") {
+            $dmdconfpath = $confpath;
+            $dmdconf = $confpath."dmd.conf";
+            last;
+        }
+    }
+
+    if (-e $dmdconf) {
+        open(DMDCONF, "<$dmdconf");
+        my $envsection = 0;
+
+        while(<DMDCONF>) {
+            # Ignore all lines up to [Environment] section
+            if ($_ =~ /^\s*\[\s*Environment\s*\]\s*$/) {
+                $envsection = 1;
+                next;
+            }
+            next if (!$envsection);
+
+            # Ignore comments
+            next if ($_ =~ /^\s*;/);
+            # Ignore empty lines
+            next if ($_ =~ /^\s*$/);
+
+            # Check correct syntax
+            $_ =~ /^\s*(\S+?)\s*=\s*(.*)\s*$/;
+            if ($&) {
+                my $VAR = $1;
+                my $VAL = $2;
+                # The special name %@P% is replaced with the path to dmd.conf
+                $VAL =~ s/%\@P%/$dmdconfpath/g;
+                # Names enclosed by %% are searched for in the existing environment and inserted
+                while ($VAL =~ /%(\S+?)%/) {
+                    my $envp = $1;
+                    if ($ENV{$envp}) {
+                        $VAL =~ s/%$envp%/$ENV{$envp}/g;
+                    } else {
+                        $VAL =~ s/%$envp%//g;
+                    }
+                }
+                $ENV{$VAR} = "$VAL";
+            } else {
+                errorExit "syntax error at line $. in file $dmdconf";
+            }
+        }
+        close DMDCONF;
+    }
+}
 
 my $gcc_version = `$gdc -dumpversion`;
 chomp $gcc_version;
@@ -424,6 +485,9 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @objects, $arg
     }
 }
+
+# Load dmd.conf after parsing arguments.
+readINI();
 
 # Slightly different from dmd... allows -of to specify
 # the name of the executable.
