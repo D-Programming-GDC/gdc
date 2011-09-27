@@ -3259,14 +3259,14 @@ IRState::getVThis(Dsymbol * decl, Expression * e)
                STATIC_CHAIN_EXPR created here will never be
                translated. Use a null pointer for the link in
                this case. */
+            if (getFrameInfo(fd_outer)->creates_frame ||
 #if V2
-            if (fd_outer->closureVars.dim ||
-                    getFrameInfo(fd_outer)->creates_closure)
+                fd_outer->closureVars.dim
 #else
-            if(fd_outer->nestedFrameRef)
+                fd_outer->nestedFrameRef
 #endif
-            {
-                // %% V2: rec_type->class_type
+               )
+            {   // %% V2: rec_type->class_type
                 vthis_value = getFrameForNestedClass(class_decl);
             }
             else if (fd_outer->vthis)
@@ -3286,7 +3286,7 @@ IRState::getVThis(Dsymbol * decl, Expression * e)
         // NOTE: what about structs nested in structs nested in functions?
         gcc_assert(fd_outer);
         if (fd_outer->closureVars.dim ||
-                getFrameInfo(fd_outer)->creates_closure)
+            getFrameInfo(fd_outer)->creates_frame)
         {
             vthis_value = getFrameForNestedStruct(struct_decl);
         }

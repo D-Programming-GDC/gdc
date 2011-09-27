@@ -1231,7 +1231,8 @@ AssignExp::toElem(IRState* irs)
     {
         tree lhs = irs->toElemLvalue(e1);
         tree rhs = irs->convertForAssignment(e2, e1->type);
-        tree init = NULL_TREE;
+        Type * tb1 = e1->type->toBasetype();
+        tree result = NULL_TREE;
 
         if (e1->op == TOKvar)
         {
@@ -1242,21 +1243,38 @@ AssignExp::toElem(IRState* irs)
                 lhs = TREE_OPERAND(lhs, 0);
                 rhs = irs->addressOf(rhs);
             }
+        }
+        result = build2(MODIFY_EXPR, type->toCtype(), lhs, rhs);
 
-            if (e2->op == TOKstructliteral)
+        if (tb1->ty == Tstruct)
+        {
+            if (e2->op == TOKint64)
+            {   // Maybe set-up hidden pointer to outer scope context.
+                StructDeclaration * sd = ((TypeStruct *)tb1)->sym;
+                if (sd->isnested)
+                {
+                    tree vthis_field = sd->vthis->toSymbol()->Stree;
+                    tree vthis_value = irs->getVThis(sd, this);
+
+                    tree vthis_exp = build2(MODIFY_EXPR, TREE_TYPE(vthis_field),
+                                            irs->component(lhs, vthis_field), vthis_value);
+                    result = irs->maybeCompound(result, vthis_exp);
+                }
+            }
+            else if (e2->op == TOKstructliteral)
             {   // Initialize all alignment 'holes' to zero.
                 StructLiteralExp * sle = ((StructLiteralExp *)e2);
                 if (sle->fillHoles)
                 {
                     unsigned sz = sle->type->size();
-                    init = irs->buildCall(built_in_decls[BUILT_IN_MEMSET], 3,
-                            irs->addressOf(lhs), size_zero_node, size_int(sz));
+                    tree init = irs->buildCall(built_in_decls[BUILT_IN_MEMSET], 3,
+                                               irs->addressOf(lhs), size_zero_node, size_int(sz));
+                    result = irs->maybeCompound(init, result);
                 }
             }
         }
+        return result;
 
-        tree result = build2(MODIFY_EXPR, type->toCtype(), lhs, rhs);
-        return irs->maybeCompound(init, result);
     }
     else
     {   // Simple assignment
