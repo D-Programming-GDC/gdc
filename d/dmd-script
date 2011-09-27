@@ -48,6 +48,10 @@ my $debug = 0;
 my $link = 1;
 my $header = 0;
 my $documentation = 0;
+my $json = 0;
+my $json_file;
+my $map = 0;
+my $map_file;
 my $run = 0;
 my $verbose = 0;
 my $show_commands = 0;
@@ -436,9 +440,10 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-q,(.*)$/ ) {
         push @out, split(qr/,/, $1);
     } elsif ( $arg =~ m/^-X$/ ) {
-        push @out, '-fXf=' . substr($first_input_file, 0, length($first_input_file)-2) . ".json";;
+        $json = 1;
     } elsif ( $arg =~ m/^-Xf(.*)$/ ) {
-        push @out, '-fXf=' . $1
+        $json = 1;
+        $json_file = $1;
     } elsif ( $arg eq '-fall-sources' ) {
         $seen_all_sources_flag = 1;
     } elsif ( $arg =~ m/^-f.+/ ) {
@@ -448,17 +453,9 @@ while ( $arg_i < scalar(@ARGV) ) {
         browse("http://bitbucket.org/goshawk/gdc/wiki/UserDocumentation");
         exit 0;
     } elsif ( $arg =~ m/^-map$/ ) {
-        my $map = substr($first_input_file, 0, length($first_input_file)-2) . ".map";
-
+        $map = 1;
         if ($ARGV[$arg_i] =~ m/.map$/ ) {
-            $map = $ARGV[$arg_i++];
-        }
-		
-        # Check for Mac (Untested)
-        if ($^O =~ m/darwin/i) {
-            push @link_out, '-Wl,-map=' . $map;
-        } else {
-            push @link_out, '-Wl,-Map=' . $map;
+            $map_file = $ARGV[$arg_i++];
         }
     } elsif ( $arg =~ m/^-m.+/ ) {
         # Pass -mxxx options
@@ -608,6 +605,25 @@ foreach my $srcf_i (@sources) {
             if ($@) {
                 errorExit "could not create $docd: $@";
             }
+        }
+    }
+
+    if ($json) {
+        if (! $json_file) {
+            $json_file = substr($first_input_file, 0, length($first_input_file)-2) . ".json";
+        }
+        push @out, '-fXf=' . $json_file;
+    }
+
+    if ($map) {
+        if (! $map_file) {
+            $map_file = substr($first_input_file, 0, length($first_input_file)-2) . ".map";
+        }
+        # Check for Mac (Untested)
+        if ($^O =~ m/darwin/i) {
+            push @link_out, '-Wl,-map=' . $map_file;
+        } else {
+            push @link_out, '-Wl,-Map=' . $map_file;
         }
     }
 
