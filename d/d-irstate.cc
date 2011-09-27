@@ -324,7 +324,6 @@ IRBase::endScope()
 {
     unsigned * p_count;
 
-    gcc_assert(scopes.dim);
     p_count = currentScope();
 
     //endBindings();
@@ -346,7 +345,6 @@ IRBase::startBindings()
 
     pushStatementList();
 
-    gcc_assert(scopes.dim);
     ++( * currentScope() );
     //printf("%*s  start -> %d\n", scopes.dim, "", * currentScope() );
 
@@ -365,7 +363,6 @@ IRBase::endBindings()
     // Because we used set_block, the popped level/block is not automatically recorded
     insert_block(block);
 
-    gcc_assert(scopes.dim);
     --( * currentScope() );
     gcc_assert( * (int *) currentScope() >= 0 );
     //printf("%*s  end -> %d\n", scopes.dim, "", * currentScope() );

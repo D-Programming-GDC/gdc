@@ -519,7 +519,7 @@ AsmStatement::toIR(IRState * irs)
 
     if (! irs->func->naked)
     {
-        for (size_t i = 0; i < N_Regs; i++)
+        for (size_t i = 0; i < (size_t) N_Regs; i++)
         {
             if (code->clbregs[i])
                 clobbers.cons(NULL_TREE, regInfo[i].gccName);

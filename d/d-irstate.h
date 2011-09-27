@@ -147,6 +147,7 @@ public:
 
     Flow * currentFlow()
     {
+        gcc_assert(loops.dim);
         return (Flow *) loops.tos();
     }
 
@@ -178,6 +179,7 @@ public:
 
     unsigned * currentScope()
     {
+        gcc_assert(scopes.dim);
         return (unsigned *) scopes.tos();
     }
 
