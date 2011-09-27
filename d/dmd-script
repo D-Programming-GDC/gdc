@@ -67,7 +67,6 @@ my @objects;
 my @dobjects;
 
 my @out;
-my @dflags;
 my @link_out;
 my @run_args;
 
@@ -302,6 +301,13 @@ sub browse($) {
     exit 0;
 }
 
+# Load dmd.conf before before parsing arguments.
+readINI();
+
+if ($ENV{DFLAGS}) {
+    push @ARGV, split /\s+/, $ENV{DFLAGS};
+}
+
 my $arg_i = 0;
 while ( $arg_i < scalar(@ARGV) ) {
     my $arg = $ARGV[$arg_i++];
@@ -484,13 +490,6 @@ while ( $arg_i < scalar(@ARGV) ) {
     }
 }
 
-# Load dmd.conf after parsing arguments.
-readINI();
-
-if ($ENV{DFLAGS}) {
-    @dflags = split /\s+/, $ENV{DFLAGS};
-}
-
 # Slightly different from dmd... allows -of to specify
 # the name of the executable.
 
@@ -656,7 +655,7 @@ foreach my $srcf_i (@sources) {
     }
 
     # Step 2: Run the compiler driver
-    my @cmd = ($gdc, @out, @dflags, '-c', @source_args, '-o', $outf, @interface, @documentation);
+    my @cmd = ($gdc, @out, '-c', @source_args, '-o', $outf, @interface, @documentation);
     if ( $show_commands ) {
         print join(' ', @cmd), "\n";
     }
@@ -668,7 +667,7 @@ foreach my $srcf_i (@sources) {
 }
 
 if ($ok && $link) {
-    my @cmd = ($gdc, @out, @dflags, @dobjects, @objects, @link_out);
+    my @cmd = ($gdc, @out, @dobjects, @objects, @link_out);
     if ( $output_file ) {
         push @cmd, '-o', $output_file;
     }
