@@ -1248,20 +1248,7 @@ AssignExp::toElem(IRState* irs)
 
         if (tb1->ty == Tstruct)
         {
-            if (e2->op == TOKint64)
-            {   // Maybe set-up hidden pointer to outer scope context.
-                StructDeclaration * sd = ((TypeStruct *)tb1)->sym;
-                if (sd->isnested)
-                {
-                    tree vthis_field = sd->vthis->toSymbol()->Stree;
-                    tree vthis_value = irs->getVThis(sd, this);
-
-                    tree vthis_exp = build2(MODIFY_EXPR, TREE_TYPE(vthis_field),
-                                            irs->component(lhs, vthis_field), vthis_value);
-                    result = irs->maybeCompound(result, vthis_exp);
-                }
-            }
-            else if (e2->op == TOKstructliteral)
+            if (e2->op == TOKstructliteral)
             {   // Initialize all alignment 'holes' to zero.
                 StructLiteralExp * sle = ((StructLiteralExp *)e2);
                 if (sle->fillHoles)
@@ -1272,6 +1259,21 @@ AssignExp::toElem(IRState* irs)
                     result = irs->maybeCompound(init, result);
                 }
             }
+#if V2
+            else if (e2->op == TOKint64)
+            {   // Maybe set-up hidden pointer to outer scope context.
+                StructDeclaration * sd = ((TypeStruct *)tb1)->sym;
+                if (sd->isNested())
+                {
+                    tree vthis_field = sd->vthis->toSymbol()->Stree;
+                    tree vthis_value = irs->getVThis(sd, this);
+
+                    tree vthis_exp = build2(MODIFY_EXPR, TREE_TYPE(vthis_field),
+                                            irs->component(lhs, vthis_field), vthis_value);
+                    result = irs->maybeCompound(result, vthis_exp);
+                }
+            }
+#endif
         }
         return result;
 
