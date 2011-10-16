@@ -193,7 +193,7 @@ ExtAsmStatement::semantic(Scope *sc)
             if (i < nOutputArgs)
                 e = e->modifiableLvalue(sc, NULL);
             else
-                e = e->optimize(WANTvalue|WANTinterpret);
+                e = e->optimize(WANTvalue);
             args->tdata()[i] = e;
 
             e = argConstraints->tdata()[i];
@@ -312,6 +312,9 @@ void ExtAsmStatement::toIR(IRState *irs)
             tree p = tree_cons(name ? build_string(name->len, name->string) : NULL_TREE,
                 naturalString(constr), NULL_TREE);
             tree v = (args->tdata()[i])->toElem(irs);
+
+            if (DECL_P(v))
+                v = save_expr(v);
 
             if (i < nOutputArgs)
                 outputs.cons(p, v);
