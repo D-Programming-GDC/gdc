@@ -1824,44 +1824,40 @@ struct AsmProcessor
         }
     }
 
-    const char * getTypeChar(TypeNeeded needed, PtrType ptrtype, bool & type_ok)
+    bool getTypeChar(TypeNeeded needed, PtrType ptrtype, char & type_char)
     {
         switch (needed)
         {
             case Byte_NoType:
-                type_ok = (ptrtype == Byte_Ptr);
-                break;
+                return (ptrtype == Byte_Ptr);
 
             case Word_Types:
                 if (ptrtype == Byte_Ptr)
-                {
-                    type_ok = false;
-                    return "";
-                }
+                    return false;
+
             // Drop through... 
             
             case Int_Types:
                 switch (ptrtype)
                 {
                     case Byte_Ptr:
-                        type_ok = true;
-                        return "b";
+                        type_char = 'b';
+                        break;
 
                     case Short_Ptr:
-                        type_ok = true;
-                        return "w";
+                        type_char = 'w';
+                        break;
 
                     case Int_Ptr:
-                        type_ok = true;
-                        return "l";
+                        type_char = 'l';
+                        break;
 
                     case Long_Ptr:
                         if (global.params.is64bit)
-                        {
-                            type_ok = true;
-                            return "q";
-                        }
-                    // Drop through...
+                            type_char = 'q';
+                        else
+                            type_char = 'l';
+                        break;
 
                     default:
                         return false;
@@ -1872,16 +1868,12 @@ struct AsmProcessor
                 switch (ptrtype)
                 {
                     case Short_Ptr:
-                        type_ok = true;
-                        return "";
+                        break;
 
                     case Int_Ptr:
-                        type_ok = true;
-                        return "l";
-
                     case Long_Ptr:
-                        type_ok = true;
-                        return "ll";
+                        type_char = 'l';
+                        break;
 
                     default:
                         return false;
@@ -1892,26 +1884,26 @@ struct AsmProcessor
                 switch (ptrtype)
                 {
                     case Float_Ptr:
-                        type_ok = true;
-                        return "s";
+                        type_char = 's';
+                        break;
 
                     case Double_Ptr:
-                        type_ok = true;
-                        return "l";
+                        type_char = 'l';
+                        break;
 
                     case Extended_Ptr:
-                        type_ok = true;
-                        return "t";
+                        type_char = 't';
+                        break;
 
                     default:
-                        type_ok = false;
+                        return false;
                 }
                 break;
 
             default:
-                type_ok = false;
+                return false;
         }
-        return "";
+        return true;
     }
 
     // also set impl clobbers
@@ -1920,7 +1912,7 @@ struct AsmProcessor
         const char *fmt;
         const char *mnemonic;
         size_t mlen;
-        const char * type_char = "";
+        char type_char = 0;
         bool use_star;
         AsmArgMode mode;
         PtrType op1_size;
@@ -2006,13 +1998,13 @@ struct AsmProcessor
             bool type_ok = false;
             if (exact_type == Default_Ptr)
             {
-                type_char = getTypeChar((TypeNeeded) opInfo->needsType, hint_type, type_ok);
+                type_ok = getTypeChar((TypeNeeded) opInfo->needsType, hint_type, type_char);
                 if (! type_ok)
-                    type_char = getTypeChar((TypeNeeded) opInfo->needsType, min_type, type_ok);
+                    type_ok = getTypeChar((TypeNeeded) opInfo->needsType, min_type, type_char);
             }
             else
             {
-                type_char = getTypeChar((TypeNeeded) opInfo->needsType, exact_type, type_ok);
+                type_ok = getTypeChar((TypeNeeded) opInfo->needsType, exact_type, type_char);
             }
             if (! type_ok)
             {
@@ -2096,10 +2088,10 @@ struct AsmProcessor
                         stmt->error("invalid operand size/type");
                         return false;
                 }
-                gcc_assert(type_char[0] != 0);
+                gcc_assert(type_char != 0);
                 insnTemplate->write(mnemonic, mlen-1);
                 insnTemplate->writebyte(op1_size == Short_Ptr ? 'w' : 'b');
-                insnTemplate->writestring(type_char);
+                insnTemplate->writebyte(type_char);
                 break;
 
             default:
@@ -2122,6 +2114,14 @@ struct AsmProcessor
                         insnTemplate->write(mnemonic + 4, strlen(mnemonic) - 4);
                     }
                 }
+                // special case for fild - accept 64 bit operand.
+                else if (strcmp(mnemonic, "fild") == 0)
+                {
+                    op1_size = operands[0].dataSizeHint;
+                    if (type_char == 'l' && op1_size == Long_Ptr)
+                        type_char = 'q';
+                    insnTemplate->writestring(mnemonic);
+                }
                 else
                 {
                     insnTemplate->writestring(mnemonic);
@@ -2129,8 +2129,8 @@ struct AsmProcessor
                 // the no-operand versions of floating point ops always pop
                 if (op == Op_FMath0)
                     insnTemplate->writebyte('p');
-                if (type_char[0])
-                    insnTemplate->writestring(type_char);
+                if (type_char)
+                    insnTemplate->writebyte(type_char);
                 break;
         }
 
@@ -2143,7 +2143,7 @@ struct AsmProcessor
 
             case Clb_SizeDXAX:
                 asmcode->clbregs[is64bit ? Reg_RAX : Reg_EAX] = 1;
-                if (type_char[0] != 'b')
+                if (type_char != 'b')
                     asmcode->clbregs[is64bit ? Reg_RDX : Reg_EDX] = 1;
                 break;
 

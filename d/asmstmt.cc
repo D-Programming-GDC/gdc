@@ -407,6 +407,7 @@ AsmStatement::toIR(IRState * irs)
     //tree dollar_label = NULL_TREE;//OLD
     HOST_WIDE_INT var_frame_offset; // "frame_offset" is a macro
     bool clobbers_mem = code->clobbersMemory;
+    bool is_naked = irs->func->naked;
     int input_idx = 0;
     int n_outputs = 0;
     int arg_map[10];
@@ -460,7 +461,11 @@ AsmStatement::toIR(IRState * irs)
                 else
                     arg_val = arg->expr->toElem(irs);
                 if (DECL_P(arg_val))
+                {
                     TREE_ADDRESSABLE(arg_val) = 1;
+                    if (! is_naked)
+                        arg_val = save_expr(arg_val);
+                }
                 switch (arg->mode)
                 {
                     case Mode_Input:  cns = m_cns; break;
@@ -520,7 +525,7 @@ AsmStatement::toIR(IRState * irs)
     // those registers.   This changes the stack from what a naked function
     // expects.
 
-    if (! irs->func->naked)
+    if (! is_naked)
     {
         for (size_t i = 0; i < (size_t) N_Regs; i++)
         {
