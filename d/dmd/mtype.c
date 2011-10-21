@@ -1679,7 +1679,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         static const char *name[2] = { "_adReverseChar", "_adReverseWchar" };
 
         nm = name[n->ty == Twchar];
-        fd = FuncDeclaration::genCfunc(next->arrayOf(), nm, Type::tvoid->arrayOf());
+        fd = FuncDeclaration::genCfunc(tint32->arrayOf(), nm, Type::tvoid->arrayOf());
         ec = new VarExp(0, fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
@@ -1696,7 +1696,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         static const char *name[2] = { "_adSortChar", "_adSortWchar" };
 
         nm = name[n->ty == Twchar];
-        fd = FuncDeclaration::genCfunc(next->arrayOf(), nm, Type::tvoid->arrayOf());
+        fd = FuncDeclaration::genCfunc(tint32->arrayOf(), nm, Type::tvoid->arrayOf());
         ec = new VarExp(0, fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
@@ -1739,7 +1739,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
 
         fd = FuncDeclaration::genCfunc(tint32->arrayOf(),
             (char*)(n->ty == Tbit ? "_adSortBit" : "_adSort"),
-            Type::tvoid->arrayOf(), Type::tvoidptr);
+            Type::tvoid->arrayOf(), Type::typeinfo->type);
         ec = new VarExp(0, fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();

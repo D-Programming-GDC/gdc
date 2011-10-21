@@ -1959,7 +1959,8 @@ IRState::expandPortIntrinsic(Intrinsic code, tree port, tree value, int outp)
     insn_tmpl = build_string(strlen(insn_string), insn_string);
 
     // ::doAsm
-    tree exp = d_build_asm_stmt(insn_tmpl, outputs.head, inputs.head, NULL_TREE);
+    tree exp = d_build_asm_stmt(insn_tmpl, outputs.head, inputs.head,
+                                NULL_TREE, NULL_TREE);
     ASM_VOLATILE_P(exp) = 1;
 
     // These functions always return the contents of 'value'
@@ -3898,7 +3899,7 @@ IRState::doJump(Statement * stmt, tree t_label)
 void
 IRState::doAsm(tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
 {
-    tree t = d_build_asm_stmt(insn_tmpl, outputs, inputs, clobbers);
+    tree t = d_build_asm_stmt(insn_tmpl, outputs, inputs, clobbers, NULL_TREE);
     ASM_VOLATILE_P(t) = 1;
     addExp(t);
 }

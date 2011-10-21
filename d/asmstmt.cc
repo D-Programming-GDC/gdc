@@ -84,15 +84,16 @@ struct AsmCode
 
 /* Apple GCC extends ASM_EXPR to five operands; cannot use build4. */
 tree
-d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4)
+d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4, tree t5)
 {
     tree t = make_node(ASM_EXPR);
     TREE_TYPE(t) = void_type_node;
     SET_EXPR_LOCATION(t, input_location);
-    TREE_OPERAND(t,0) = t1;
-    TREE_OPERAND(t,1) = t2;
-    TREE_OPERAND(t,2) = t3;
-    TREE_OPERAND(t,3) = t4;
+    TREE_OPERAND(t,0) = t1;     // STRING
+    TREE_OPERAND(t,1) = t2;     // OUTPUTS
+    TREE_OPERAND(t,2) = t3;     // INPUTS
+    TREE_OPERAND(t,3) = t4;     // CLOBBERS
+    TREE_OPERAND(t,4) = t5;     // LABELS
     TREE_SIDE_EFFECTS(t) = 1;
     return t;
 }
@@ -117,7 +118,20 @@ d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4)
    Also had to add 'asmLabelNum' to LabelDsymbol to indicate it needs
    special processing.
 
-   (junk) d-lang.cc:916:case LABEL_DECL: // C doesn't do this.  D needs this for referencing labels in inline assembler since there may be not goto referencing it.
+   (junk) d-lang.cc:916:case LABEL_DECL:
+   C doesn't do this.  D needs this for referencing labels in
+   inline assembler since there may be not goto referencing it.
+
+   ------------------------------
+   %% Fix for GCC-4.5+
+   GCC now accepts a 5th operand, ASM_LABELS. 
+   If present, this indicates various destinations for the asm expr,
+   this in turn is used in tree-cfg.c to determine whether or not a
+   expr may affect the flowgraph analysis by jumping to said label.
+
+   For prior versions of gcc, this requires a backpatch.
+
+   %% TODO: Add support for label operands in GDC Extended Assembler.
 
 */
 
@@ -138,7 +152,7 @@ d_expand_priv_asm_label(IRState * irs, unsigned n)
     d_format_priv_asm_label(buf, n);
     strcat(buf, ":");
     tree insnt = build_string(strlen(buf), buf);
-    tree t = d_build_asm_stmt(insnt, NULL_TREE, NULL_TREE, NULL_TREE);
+    tree t = d_build_asm_stmt(insnt, NULL_TREE, NULL_TREE, NULL_TREE, NULL_TREE);
     ASM_VOLATILE_P(t) = 1;
     ASM_INPUT_P(t) = 1; // what is this doing?
     irs->addExp(t);
@@ -313,9 +327,6 @@ void ExtAsmStatement::toIR(IRState *irs)
                 naturalString(constr), NULL_TREE);
             tree v = (args->tdata()[i])->toElem(irs);
 
-            if (DECL_P(v))
-                v = save_expr(v);
-
             if (i < nOutputArgs)
                 outputs.cons(p, v);
             else
@@ -404,10 +415,9 @@ AsmStatement::toIR(IRState * irs)
     ListMaker inputs;
     ListMaker outputs;
     ListMaker clobbers;
-    //tree dollar_label = NULL_TREE;//OLD
+    ListMaker labels;
     HOST_WIDE_INT var_frame_offset; // "frame_offset" is a macro
     bool clobbers_mem = code->clobbersMemory;
-    bool is_naked = irs->func->naked;
     int input_idx = 0;
     int n_outputs = 0;
     int arg_map[10];
@@ -427,14 +437,16 @@ AsmStatement::toIR(IRState * irs)
         {
             case Arg_Integer:
                 arg_val = arg->expr->toElem(irs);
-            do_integer:
                 cns = i_cns;
                 break;
             case Arg_Pointer:
                 if (arg_op == TOKvar)
                     arg_val = ((VarExp *) arg->expr)->var->toSymbol()->Stree;
                 else if (arg_op == TOKdsymbol)
+                {
                     arg_val = irs->getLabelTree((LabelDsymbol *) ((DsymbolExp *) arg->expr)->s);
+                    labels.cons(NULL_TREE, arg_val);
+                }
                 else
                     arg_val = arg->expr->toElem(irs);
 
@@ -461,11 +473,7 @@ AsmStatement::toIR(IRState * irs)
                 else
                     arg_val = arg->expr->toElem(irs);
                 if (DECL_P(arg_val))
-                {
                     TREE_ADDRESSABLE(arg_val) = 1;
-                    if (! is_naked)
-                        arg_val = save_expr(arg_val);
-                }
                 switch (arg->mode)
                 {
                     case Mode_Input:  cns = m_cns; break;
@@ -497,14 +505,8 @@ AsmStatement::toIR(IRState * irs)
                 if (var_frame_offset < 0)
                     var_frame_offset = - var_frame_offset;
                 arg_val = irs->integerConstant(var_frame_offset);
-                goto do_integer;
-                /* OLD
-                   case Arg_Dollar:
-                   if (! dollar_label)
-                   dollar_label = d_build_decl(LABEL_DECL, NULL_TREE, void_type_node);
-                   arg_val = dollar_label;
-                   goto do_pointer;
-                 */
+                cns = i_cns;
+                break;
             default:
                 gcc_unreachable();
         }
@@ -525,7 +527,7 @@ AsmStatement::toIR(IRState * irs)
     // those registers.   This changes the stack from what a naked function
     // expects.
 
-    if (! is_naked)
+    if (! irs->func->naked)
     {
         for (size_t i = 0; i < (size_t) N_Regs; i++)
         {
@@ -571,11 +573,9 @@ AsmStatement::toIR(IRState * irs)
 
     //printf("final: %.*s\n", code->insnTemplateLen, code->insnTemplate);
     tree insnt = build_string(code->insnTemplateLen, code->insnTemplate);
-    tree t = d_build_asm_stmt(insnt, outputs.head, inputs.head, clobbers.head);
+    tree t = d_build_asm_stmt(insnt, outputs.head, inputs.head, clobbers.head, labels.head);
     ASM_VOLATILE_P(t) = 1;
     irs->addExp(t);
-    //if (dollar_label)//OLD
-    // expand_label(dollar_label);
     if (code->dollarLabel)
         d_expand_priv_asm_label(irs, code->dollarLabel);
 }

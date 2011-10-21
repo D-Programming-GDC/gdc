@@ -183,12 +183,12 @@ IRBase::getLabelTree(LabelDsymbol * label)
         tree label_decl = d_build_decl (LABEL_DECL, get_identifier(label->ident->string), void_type_node);
 
         gcc_assert(func != 0);
-        DECL_CONTEXT( label_decl ) = getLocalContext();
-        DECL_MODE( label_decl ) = VOIDmode; // Not sure why or if this is needed
-        TREE_USED( label_decl ) = 1;
+        DECL_CONTEXT(label_decl) = getLocalContext();
+        DECL_MODE(label_decl) = VOIDmode; // Not sure why or if this is needed
+        TREE_USED(label_decl) = 1;
         // Not setting this doesn't seem to cause problems (unlike VAR_DECLs)
         if (label->statement->loc.filename)
-            g.ofile->setDeclLoc( label_decl, label->statement->loc ); // %% label->loc okay?
+            g.ofile->setDeclLoc(label_decl, label->statement->loc); // %% label->loc okay?
         label->statement->lblock = label_decl;
     }
     return label->statement->lblock;

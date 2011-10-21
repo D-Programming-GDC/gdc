@@ -1834,7 +1834,6 @@ struct AsmProcessor
             case Word_Types:
                 if (ptrtype == Byte_Ptr)
                     return false;
-
             // Drop through... 
             
             case Int_Types:
@@ -1868,6 +1867,7 @@ struct AsmProcessor
                 switch (ptrtype)
                 {
                     case Short_Ptr:
+                        type_char = 0;
                         break;
 
                     case Int_Ptr:
@@ -2395,9 +2395,13 @@ struct AsmProcessor
                                 LabelDsymbol * lbl = (LabelDsymbol *) ((DsymbolExp *) e)->s;
                                 if (! lbl->asmLabelNum)
                                     lbl->asmLabelNum = ++d_priv_asm_label_serial;
-
+#if D_GCC_VER >= 45
+                                use_star = false;
+                                addOperand("%a", Arg_Pointer, e, asmcode);
+#else
                                 use_star = false;
                                 addLabel(lbl->asmLabelNum);
+#endif
                             }
                             else if ((decl && decl->isCodeseg()))
                             {   // if function or label
