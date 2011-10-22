@@ -187,7 +187,7 @@ extern void d_init_exceptions PARAMS ((void));
 extern void init_global_binding_level(void);
 extern void set_decl_binding_chain(tree decl_chain);
 
-extern void d_add_global_function PARAMS(( tree ));
+extern void d_add_global_declaration PARAMS(( tree ));
 
 extern tree d_type_promotes_to(tree);
 

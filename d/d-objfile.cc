@@ -419,7 +419,7 @@ ObjectFile::outputStaticSymbol(Symbol * s)
     if (s->prettyIdent)
         DECL_NAME(t) = get_identifier(s->prettyIdent);
 
-    d_add_global_function(t);
+    d_add_global_declaration(t);
 
     // %% Hack
     // Defer output of tls symbols to ensure that
@@ -450,7 +450,7 @@ ObjectFile::outputFunction(FuncDeclaration * f)
     if (s->prettyIdent)
         DECL_NAME(t) = get_identifier(s->prettyIdent);
 
-    d_add_global_function(t);
+    d_add_global_declaration(t);
 
     if (TREE_CODE(t) == FUNCTION_DECL)
     {

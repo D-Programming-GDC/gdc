@@ -789,23 +789,23 @@ bool d_post_options(const char ** fn)
 
 /* wrapup_global_declaration needs to be called or functions will not
    be emitted. */
-Array globalFunctions;
+Array globalDeclarations;
 
 void
-d_add_global_function(tree decl)
+d_add_global_declaration(tree decl)
 {
-    globalFunctions.push(decl);
+    globalDeclarations.push(decl);
 }
 
 static void
 d_write_global_declarations()
 {
-    tree * vec = (tree *) globalFunctions.data;
+    tree * vec = (tree *) globalDeclarations.data;
 
     /* Process all file scopes in this compilation, and the external_scope,
        through wrapup_global_declarations and check_global_declarations.  */
-    wrapup_global_declarations(vec, globalFunctions.dim);
-    check_global_declarations(vec, globalFunctions.dim);
+    wrapup_global_declarations(vec, globalDeclarations.dim);
+    check_global_declarations(vec, globalDeclarations.dim);
 
 #if D_GCC_VER >= 45
     /* We're done parsing; proceed to optimize and emit assembly. */
@@ -817,8 +817,7 @@ d_write_global_declarations()
 
     /* After cgraph has had a chance to emit everything that's going to
        be emitted, output debug information for globals.  */
-    for (size_t i = 0; i < globalFunctions.dim; i++)
-        debug_hooks->global_decl(vec[i]);
+    emit_debug_global_declarations(vec, globalDeclarations.dim);
 }
 
 // Some phobos code (isnormal, etc.) breaks with strict aliasing...
