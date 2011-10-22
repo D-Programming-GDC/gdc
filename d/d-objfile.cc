@@ -367,8 +367,6 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
         {
             if (real_decl->storage_class & STCextern)
                 is_static = false;
-            else if (real_decl->storage_class & STCstatic)
-                is_static = true;
         }
 
         if (is_static)
@@ -1005,6 +1003,12 @@ outdata(Symbol * sym)
 
     if (sym->Sdt && DECL_INITIAL(t) == NULL_TREE)
         DECL_INITIAL(t) = dt2tree(sym->Sdt);
+
+    if (DECL_INITIAL(t) != NULL_TREE)
+    {
+        TREE_STATIC(t) = 1;
+        DECL_EXTERNAL(t) = 0;
+    }
 
     /* If the symbol was marked as readonly in the frontend, set TREE_READONLY.  */
     if (D_DECL_READONLY_STATIC(t))
