@@ -194,17 +194,25 @@ FILTER_CFLAGS = -Wstrict-prototypes -Wmissing-prototypes -Wold-style-definition 
 ifndef ALL_CXXFLAGS
   ALL_CXXFLAGS = $(filter-out $(FILTER_CFLAGS), $(ALL_CFLAGS))
 endif
+ifndef WARN_CXXFLAGS
+  WARN_CXXFLAGS = $(filter-out $(FILTER_CFLAGS), $(WARN_CFLAGS))
+endif
 
 ALL_D_CFLAGS = $(ALL_CFLAGS) $(ALL_CPPFLAGS) \
                         $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 # %% Ditto
-ALL_D_CXXFLAGS = $(ALL_CXXFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+ALL_D_CXXFLAGS = $(ALL_CXXFLAGS) $(ALL_CPPFLAGS) \
+                        $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 
 # Somehow, I started getting problems with the C++ <complex.h> being included..
-ALL_DMD_CFLAGS = $(ALL_CFLAGS) $(ALL_CPPFLAGS) \
+DMD_WARN_CFLAGS = -Wno-deprecated -Wstrict-aliasing
+DMD_CFLAGS = $(filter-out $(WARN_CFLAGS), $(ALL_CFLAGS)) $(DMD_WARN_CFLAGS)
+DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(ALL_CXXFLAGS)) $(DMD_WARN_CFLAGS)
+
+ALL_DMD_CFLAGS = $(DMD_CFLAGS) $(ALL_CPPFLAGS) \
                         -Id -I$(srcdir)/$(D_dmd_srcdir) -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 # %% Ditto
-ALL_DMD_CXXFLAGS = $(ALL_CXXFLAGS) $(ALL_CPPFLAGS) \
+ALL_DMD_CXXFLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
                         -Id -I$(srcdir)/$(D_dmd_srcdir) -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 
 
