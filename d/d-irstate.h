@@ -116,7 +116,7 @@ public:
     // ** Statement Lists
 
     void addExp(tree e);
-    tree statementList;
+    Array statementList;    // of tree
 
     void pushStatementList();
     tree popStatementList();

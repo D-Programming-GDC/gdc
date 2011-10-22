@@ -36,7 +36,7 @@ IRBase::IRBase()
     func = 0;
     volatileDepth = 0;
     // declContextStack is composed... choose one..
-    statementList = NULL_TREE;
+    statementList.zero();
 }
 
 IRState *
@@ -126,26 +126,25 @@ IRBase::addExp(tree e)
     if (EXPR_P(e) && ! EXPR_HAS_LOCATION (e))
         SET_EXPR_LOCATION (e, input_location);
 
-    append_to_statement_list_force (e, & statementList);
+    tree stmt_list = (tree) statementList.pop();
+    append_to_statement_list_force (e, & stmt_list);
+    statementList.push(stmt_list);
 }
+
 
 void
 IRBase::pushStatementList()
 {
-    tree t;
-    t = alloc_stmt_list ();
-    TREE_CHAIN (t) = statementList;
-    statementList = t;
+    //tree t = alloc_stmt_list ();
+    tree t = make_node (STATEMENT_LIST);
+    TREE_TYPE (t) = void_type_node;
+    statementList.push(t);
 }
 
 tree
 IRBase::popStatementList()
 {
-    tree t = statementList;
-    tree u;
-    tree chain = TREE_CHAIN(t);
-    TREE_CHAIN(t) = NULL_TREE;
-    statementList = chain;
+    tree t = (tree) statementList.pop();
 
     // %% should gdc bother doing this?
 
@@ -162,7 +161,7 @@ IRBase::popStatementList()
            extract it immediately.  */
         if (tsi_one_before_end_p (i))
         {
-            u = tsi_stmt (i);
+            tree u = tsi_stmt (i);
             tsi_delink (&i);
             free_stmt_list (t);
             t = u;
