@@ -1619,6 +1619,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
     CallExpr ce(call_exp);
     tree callee = ce.callee();
     tree exp = NULL_TREE, op1, op2;
+    enum built_in_function fcode;
 
     if (POINTER_TYPE_P(TREE_TYPE(callee)))
         callee = TREE_OPERAND(callee, 0);
@@ -1664,39 +1665,38 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 // op1[op2 / align]
                 op1 = pointerIntSum(op1, build2(TRUNC_DIV_EXPR, type, op2,
                                     integerConstant(TYPE_ALIGN(type), type)));
+                op1 = maybeMakeTemp(op1);
 
                 // mask = 1 << (op2 & (align - 1));
                 op2 = build2(BIT_AND_EXPR, type, op2, integerConstant(TYPE_ALIGN(type) - 1, type));
                 op2 = build2(LSHIFT_EXPR, type, integerConstant(1, type), op2);
+                op2 = maybeMakeTemp(op2);
 
-                // cond = *op1 & mask
-                op1 = indirect(op1, type);
-                exp = build2(BIT_AND_EXPR, type, op1, op2);
-
-                // cond ? -1 : 0;
-                type = TREE_TYPE(call_exp);
-                exp = build3(COND_EXPR, type, exp, integerConstant(-1, type), integerConstant(0, type));
-
-                if (intrinsic == INTRINSIC_BT)
-                {   // Only testing the bit.
-                    return exp;
-                }
+                // Update the bit as needed, bt adds zero to value.
+                if (PTRSIZE == 4)
+                    fcode = (intrinsic == INTRINSIC_BT)  ? BUILT_IN_FETCH_AND_ADD_4 :
+                            (intrinsic == INTRINSIC_BTC) ? BUILT_IN_FETCH_AND_XOR_4 :
+                            (intrinsic == INTRINSIC_BTR) ? BUILT_IN_FETCH_AND_AND_4 :
+                          /* intrinsic == INTRINSIC_BTS */ BUILT_IN_FETCH_AND_OR_4;
+                else if (PTRSIZE == 8)
+                    fcode = (intrinsic == INTRINSIC_BT)  ? BUILT_IN_FETCH_AND_ADD_8 :
+                            (intrinsic == INTRINSIC_BTC) ? BUILT_IN_FETCH_AND_XOR_8 :
+                            (intrinsic == INTRINSIC_BTR) ? BUILT_IN_FETCH_AND_AND_8 :
+                          /* intrinsic == INTRINSIC_BTS */ BUILT_IN_FETCH_AND_OR_8;
                 else
-                {   // Update the bit as needed.
-                    tree result = localVar(type);
-                    enum tree_code code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
-                                          (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
-                                          (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
-                    gcc_assert(code != ERROR_MARK);
+                    gcc_unreachable();
 
-                    if (intrinsic == INTRINSIC_BTR)
-                        op2 = build1(BIT_NOT_EXPR, TREE_TYPE(op2), op2);
+                exp = (intrinsic == INTRINSIC_BT) ? integer_zero_node : op2;
+                if (intrinsic == INTRINSIC_BTR)
+                    exp = build1(BIT_NOT_EXPR, TREE_TYPE(exp), exp);
 
-                    exp = vmodify(result, exp);
-                    op1 = vmodify(op1, build2(code, TREE_TYPE(op1), op1, op2));
-                    op1 = compound(op1, result);
-                    return compound(exp, op1);
-                }
+                exp = buildCall(built_in_decls[fcode], 2, op1, exp);
+
+                // cond = (exp & mask) ? -1 : 0;
+                exp = build2(BIT_AND_EXPR, TREE_TYPE(exp), exp, op2);
+                exp = fold_convert(TREE_TYPE(call_exp), exp);
+                return build3(COND_EXPR, TREE_TYPE(call_exp), d_truthvalue_conversion(exp),
+                              integer_minus_one_node, integer_zero_node);
 
             case INTRINSIC_BSWAP:
 #if D_GCC_VER >= 43
