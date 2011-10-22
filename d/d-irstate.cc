@@ -196,11 +196,7 @@ IRBase::getLabelTree(LabelDsymbol * label)
 Label *
 IRBase::getLabelBlock(LabelDsymbol * label, Statement * from)
 {
-    Label * l = new Label;
-    l->block = NULL;
-    l->from = NULL;
-    l->kind = level_block;
-    l->level = 0;
+    Label * l = new Label();
 
     for (int i = loops.dim - 1; i >= 0; i--)
     {
@@ -267,18 +263,9 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 Flow *
 IRBase::beginFlow(Statement * stmt)
 {
-    Flow * flow = new Flow;
-
-    flow->statement = stmt;
-    flow->kind = level_block;
-    flow->exitLabel = NULL_TREE;
-    flow->condition = NULL_TREE;
-    flow->trueBranch = NULL_TREE;
-
+    Flow * flow = new Flow(stmt);
     loops.push(flow);
-
     pushStatementList();
-
     return flow;
 }
 

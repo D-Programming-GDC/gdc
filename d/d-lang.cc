@@ -702,7 +702,7 @@ d_handle_option (size_t scode, const char *arg, int value)
       case OPT_iprefix:
           iprefix = xstrdup(arg);
           break;
-      case OPT_fmultilib_dir_:
+      case OPT_imultilib:
           multilib_dir = xstrdup(arg);
           break;
       case OPT_nostdinc:
@@ -713,12 +713,9 @@ d_handle_option (size_t scode, const char *arg, int value)
           break;
       case OPT_fasm:
           gen.useInlineAsm = value;
+          break;
       case OPT_fbuiltin:
           gen.useBuiltins = value;
-          break;
-      case OPT_fsigned_char:
-      case OPT_funsigned_char:
-          // ignored
           break;
       case OPT_Wall:
           global.params.warnings = 2;
@@ -950,7 +947,7 @@ d_parse_file (int /*set_yydebug*/)
         gen.emitTemplates = (supports_one_only()) ? TEall : TEprivate;
     }
     global.params.symdebug = write_symbols != NO_DEBUG;
-    global.params.useInline = flag_inline_functions;
+    //global.params.useInline = flag_inline_functions;
     global.params.obj = ! flag_syntax_only;
     global.params.pic = flag_pic != 0; // Has no effect yet.
     gen.originalOmitFramePointer = flag_omit_frame_pointer;

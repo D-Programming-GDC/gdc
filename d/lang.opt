@@ -133,10 +133,6 @@ fdoc-inc=
 D Joined RejectNegative
 -fdoc-inc=<filename> Include a Ddoc macro file
 
-fmultilib-dir=
-D Joined RejectNegative
--fmultilib-dir=<dir> Select header multilib subdirectory
-
 Wsign-compare
 D
 Warn about signed-unsigned comparisons
@@ -152,14 +148,6 @@ Recognize the \"asm\" keyword
 fbuiltin
 D
 Recognize built-in functions
-
-funsigned-char
-D
-Make \"char\" unsigned by default (silently ignored in D)
-
-fsigned-char
-D
-Make \"char\" signed by default (silently ignored in D)
 
 imultilib
 D Joined Separate

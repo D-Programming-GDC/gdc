@@ -91,7 +91,7 @@ public:
     // Definitely in static data, but not neccessarily this module.
     // Assumed to be public data.
     static void setupStaticStorage(Dsymbol * dsym, tree decl_tree);
-    static void makeDeclOneOnly(tree decl_tree, Dsymbol * dsym);
+    static void makeDeclOneOnly(tree decl_tree);
 
     static void outputStaticSymbol(Symbol * s);
     static void outputFunction(FuncDeclaration * f);

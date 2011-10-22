@@ -50,6 +50,9 @@ struct Label
     Statement * from;
     LevelKind kind;
     unsigned level;
+
+    Label() : label(NULL), block(NULL), from(NULL),
+              kind(level_block), level(0) { }
 };
 
 struct Flow
@@ -75,6 +78,10 @@ struct Flow
             tree catchType;
         };
     };
+
+    Flow(Statement * stmt) :
+            statement(stmt), kind(level_block), exitLabel(NULL_TREE),
+            continueLabel(NULL_TREE), hasVars(NULL_TREE) { }
 };
 
 

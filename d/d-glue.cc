@@ -326,7 +326,6 @@ build_assign_math_op(TOK op, Type * type, Expression * e1, Expression * e2, IRSt
     tree lhs_assign = irs->toElemLvalue(e1b);
     lhs_assign = stabilize_reference(lhs_assign);
 
-
     tree lhs_var = irs->exprVar(type->toCtype());
     DECL_INITIAL(lhs_var) = lhs_assign;
 

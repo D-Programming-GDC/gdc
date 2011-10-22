@@ -258,7 +258,7 @@ ObjectFile::giveDeclUniqueName(tree decl, const char * prefix)
 /* For 4.5.x, return the COMDAT group into which DECL should be placed. */
 
 static tree
-d_comdat_group(tree decl, Dsymbol * dsym)
+d_comdat_group(tree decl)
 {
     // %% May need special case here.
     return DECL_ASSEMBLER_NAME(decl);
@@ -268,7 +268,7 @@ d_comdat_group(tree decl, Dsymbol * dsym)
 
 
 void
-ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
+ObjectFile::makeDeclOneOnly(tree decl_tree)
 {
     if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates != TEprivate)
     {   /* Weak definitions have to be public.  Nested functions may or
@@ -293,7 +293,7 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
         if (SUPPORTS_ONE_ONLY)
         {
 #if D_GCC_VER >= 45
-            make_decl_one_only(decl_tree, d_comdat_group(decl_tree, dsym));
+            make_decl_one_only(decl_tree, d_comdat_group(decl_tree));
 #else
             make_decl_one_only(decl_tree);
 #endif
@@ -303,7 +303,7 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, Dsymbol * dsym)
             tree decl_init = DECL_INITIAL(decl_tree);
             DECL_INITIAL(decl_tree) = integer_zero_node;
 #if D_GCC_VER >= 45
-            make_decl_one_only(decl_tree, d_comdat_group(decl_tree, dsym));
+            make_decl_one_only(decl_tree, d_comdat_group(decl_tree));
 #else
             make_decl_one_only(decl_tree);
 #endif
@@ -389,7 +389,7 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
             TREE_PUBLIC(decl_tree) = 1;
 
         if (D_DECL_ONE_ONLY(decl_tree))
-            makeDeclOneOnly(decl_tree, dsym);
+            makeDeclOneOnly(decl_tree);
 
     }
     else

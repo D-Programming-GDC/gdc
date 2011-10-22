@@ -41,6 +41,7 @@
 #include "attrib.h"
 #include "enum.h"
 #include "module.h"
+#include "id.h"
 
 #include "symbol.h"
 #include "d-lang.h"
@@ -436,7 +437,7 @@ Symbol *TypeInfoDeclaration::toSymbol()
            one-only.
         */
         D_DECL_ONE_ONLY(csym->Stree) = 1;
-        g.ofile->makeDeclOneOnly(csym->Stree, this);
+        g.ofile->makeDeclOneOnly(csym->Stree);
     }
     return csym;
 }
@@ -625,7 +626,7 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_UNINLINABLE(fn_decl) = 1;
             }
 #if D_GCC_VER >= 44
-            else if (isMember())
+            else if (isMember() || isFuncLiteralDeclaration())
             {
                 // See grokmethod in cp/decl.c
                 DECL_DECLARED_INLINE_P(fn_decl) = 1;
@@ -786,7 +787,7 @@ Symbol *FuncDeclaration::toThunkSymbol(int offset)
         //needed on some targets to avoid "causes a section type conflict"
         D_DECL_ONE_ONLY(thunk_decl) = D_DECL_ONE_ONLY(target_func_decl);
         if (D_DECL_ONE_ONLY(thunk_decl))
-            g.ofile->makeDeclOneOnly(thunk_decl, this);
+            g.ofile->makeDeclOneOnly(thunk_decl);
 
         TREE_ADDRESSABLE(thunk_decl) = 1;
         TREE_USED (thunk_decl) = 1;
