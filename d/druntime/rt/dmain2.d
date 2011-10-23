@@ -123,6 +123,10 @@ extern (C) void* rt_loadLibrary(in char[] name)
     {
         throw new Exception("rt_loadLibrary not yet implemented on Posix.");
     }
+    else
+    {
+        throw new Exception("rt_loadLibrary not yet implemented on this platform.");
+    }
 }
 
 extern (C) bool rt_unloadLibrary(void* ptr)
@@ -137,6 +141,10 @@ extern (C) bool rt_unloadLibrary(void* ptr)
     else version (Posix)
     {
         throw new Exception("rt_unloadLibrary not yet implemented on Posix.");
+    }
+    else
+    {
+        throw new Exception("rt_unloadLibrary not yet implemented on this platform.");
     }
 }
 

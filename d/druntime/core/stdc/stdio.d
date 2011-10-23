@@ -24,6 +24,12 @@ private
   {
     import core.sys.posix.sys.types;
   }
+
+  version (GNU)
+  {
+    import gcc.builtins;
+    import libc = gcc.config.libc;
+  }
 }
 
 extern (C):
@@ -106,6 +112,18 @@ else version ( FreeBSD )
     {
         char[128]   _mbstate8;
         long        _mbstateL;
+    }
+}
+else version ( GNU )
+{
+    enum
+    {
+        BUFSIZ       = libc.BUFSIZ,
+        EOF          = libc.EOF,
+        FOPEN_MAX    = libc.FOPEN_MAX,
+        FILENAME_MAX = libc.FILENAME_MAX,
+        TMP_MAX      = libc.TMP_MAX,
+        L_tmpnam     = libc.L_tmpnam
     }
 }
 else
@@ -218,6 +236,11 @@ struct _iobuf
         int             _fl_count;
         int             _orientation;
         __mbstate_t     _mbstate;
+    }
+    else version( GNU )
+    {
+        // want to get rid of this...
+        byte[libc.FILE_struct_size] opaque;
     }
     else
     {
@@ -338,6 +361,23 @@ else version( FreeBSD )
     alias __stdoutp stdout;
     alias __stderrp stderr;
 }
+else version( GNU_CBridge_Stdio )
+{
+    extern FILE * _d_gnu_cbridge_stdin;
+    extern FILE * _d_gnu_cbridge_stdout;
+    extern FILE * _d_gnu_cbridge_stderr;
+    
+    extern void _d_gnu_cbridge_init_stdio();
+
+    shared static this()
+    {
+        _d_gnu_cbridge_init_stdio();
+    }
+
+    alias _d_gnu_cbridge_stdin stdin;
+    alias _d_gnu_cbridge_stdout stdout;
+    alias _d_gnu_cbridge_stderr stderr;
+}
 else
 {
     static assert( false, "Unsupported platform" );
@@ -446,6 +486,17 @@ else version( FreeBSD )
 
     int  snprintf(char* s, size_t n, in char* format, ...);
     int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
+}
+else version( GNU )
+{
+    void rewind(FILE*);
+    void clearerr(FILE*);
+    int  feof(FILE*);
+    int  ferror(FILE*);
+    int  fileno(FILE*);
+
+    alias __builtin_snprintf snprintf;
+    alias __builtin_vsnprintf vsnprintf;
 }
 else
 {

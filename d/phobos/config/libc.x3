@@ -36,6 +36,7 @@ x3_out_int_value("TMP_MAX");
 x3_push_optional(1);
 x3_out_int_value("FOPEN_MAX");
 x3_out_int_value("L_tmpnam");
+x3_out_int_value("BUFSIZ");
 x3_pop_optional(1);
 
 // want to get rid of this...

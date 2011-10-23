@@ -63,6 +63,13 @@ private
             pthread_mutex_t cs;
         }
     }
+    else version( NoSystem )
+    {
+        /* Stub declaration. */
+        struct D_CRITICAL_SECTION
+        {
+        }
+    }
     else
     {
         static assert(0, "Unsupported platform");
@@ -201,3 +208,32 @@ version( USE_PTHREADS )
     }
 }
 
+/* ================================= No System ============================ */
+
+version( NoSystem )
+{
+    /******************************************
+     * Enter/exit critical section.
+     */
+
+    extern (C) void _d_criticalenter(D_CRITICAL_SECTION *dcs)
+    {
+        debug(PRINTF) printf("_d_criticalenter(dcs = x%x)\n", dcs);
+    }
+
+    extern (C) void _d_criticalexit(D_CRITICAL_SECTION *dcs)
+    {
+        debug(PRINTF) printf("_d_criticalexit(dcs = x%x)\n", dcs);
+    }
+
+    extern (C) void _STI_critical_init()
+    {
+        debug(PRINTF) printf("_STI_critical_init()\n");
+    }
+
+    extern (C) void _STD_critical_term()
+    {
+        debug(PRINTF) printf("_STI_critical_term()\n");
+    }
+
+}

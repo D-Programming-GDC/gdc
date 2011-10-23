@@ -49,6 +49,10 @@ gnu*) d_os_versym=hurd; d_unix=1 ;;
 *) d_os_versym="$d_target_os"
 esac
 
+case "$target_vendor" in
+*) ;;
+esac
+
 case "$target_cpu" in
 i*86 | x86_64) gdc_target_cpu=x86 ;;
 parisc* | hppa*) gdc_target_cpu=hppa ;;

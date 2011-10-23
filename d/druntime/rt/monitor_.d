@@ -65,6 +65,15 @@ private
             pthread_mutex_t mon;
         }
     }
+    else version( NoSystem )
+    {
+        struct Monitor
+        {
+            IMonitor impl; // for user-level monitors
+            DEvent[] devt; // for internal monitors
+            size_t   refs; // reference count
+        }
+    }
     else
     {
         static assert(0, "Unsupported platform");
@@ -251,3 +260,56 @@ version( USE_PTHREADS )
     }
 }
 
+/* ================================= No System ============================ */
+
+version( NoSystem )
+{
+    extern (C) void _STI_monitor_staticctor()
+    {
+    }
+
+    extern (C) void _STD_monitor_staticdtor()
+    {
+    }
+
+    extern (C) void _d_monitor_create(Object h)
+    {
+        debug(PRINTF) printf("+_d_monitor_create(%p)\n", h);
+        assert(h);
+        Monitor *cs;
+        if (!h.__monitor)
+        {
+            cs = cast(Monitor *)calloc(Monitor.sizeof, 1);
+            assert(cs);
+            setMonitor(h, cs);
+            cs.refs = 1;
+            cs = null;
+        }
+        if (cs)
+            free(cs);
+        debug(PRINTF) printf("-_d_monitor_create(%p)\n", h);
+    }
+
+    extern (C) void _d_monitor_destroy(Object h)
+    {
+        debug(PRINTF) printf("+_d_monitor_destroy(%p)\n", h);
+        assert(h && h.__monitor && !getMonitor(h).impl);
+        free(h.__monitor);
+        setMonitor(h, null);
+        debug(PRINTF) printf("-_d_monitor_destroy(%p)\n", h);
+    }
+
+    extern (C) void _d_monitor_lock(Object h)
+    {
+        debug(PRINTF) printf("+_d_monitor_acquire(%p)\n", h);
+        assert(h && h.__monitor && !getMonitor(h).impl);
+        debug(PRINTF) printf("-_d_monitor_acquire(%p)\n", h);
+    }
+
+    extern (C) void _d_monitor_unlock(Object h)
+    {
+        debug(PRINTF) printf("+_d_monitor_release(%p)\n", h);
+        assert(h && h.__monitor && !getMonitor(h).impl);
+        debug(PRINTF) printf("-_d_monitor_release(%p)\n", h);
+    }
+}
