@@ -81,6 +81,9 @@ fi
 if test -n "$d_os_versym2"; then
     echo "#define D_OS_VERSYM2 \"$d_os_versym2\""
 fi
+if test -n "$d_vendor_versym"; then
+    echo "#define D_VENDOR_VERSYM \"$d_vendor_versym\""
+fi
 
 # In DMD, this is usually defined in the target's Makefile.
 case "$d_os_versym" in

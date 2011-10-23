@@ -429,6 +429,9 @@ d_init ()
     if (strcmp(D_OS_VERSYM2, "Win32") == 0)
         is_target_win32 = true;
 #endif
+#ifdef D_VENDOR_VERSYM
+    VersionCondition::addPredefinedGlobalIdent(D_VENDOR_VERSYM);
+#endif
 
 #ifdef TARGET_THUMB
     if (TARGET_THUMB)
