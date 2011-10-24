@@ -283,14 +283,6 @@
  /* Flag saying to pass the greatest exit code returned by a sub-process
     to the calling program.  */
  static int pass_exit_codes;
-@@ -515,6 +518,7 @@ or with constant text in a single argume
- 	assembler has done its job.
-  %D	Dump out a -L option for each directory in startfile_prefixes.
- 	If multilib_dir is set, extra entries are generated with it affixed.
-+ %N	Output the currently selected multilib directory name
-  %l     process LINK_SPEC as a spec.
-  %L     process LIB_SPEC as a spec.
-  %G     process LIBGCC_SPEC as a spec.
 @@ -4282,6 +4286,9 @@ process_command (int argc, const char **
        save_temps_prefix = NULL;
      }
@@ -320,24 +312,6 @@
    switches[n_switches].part1 = 0;
    infiles[n_infiles].name = 0;
  }
-@@ -5809,6 +5828,17 @@ do_spec_1 (const char *spec, int inswitc
- 	      return value;
- 	    break;
- 
-+	  case 'N':
-+	    if (multilib_dir)
-+	      {
-+		arg_going = 1;
-+		obstack_grow (&obstack, "-fmultilib-dir=",
-+			      strlen ("-fmultilib-dir="));
-+		obstack_grow (&obstack, multilib_dir,
-+			      strlen (multilib_dir));
-+	      }
-+	    break;
-+
- 	    /* Here we define characters other than letters and digits.  */
- 
- 	  case '{':
 --- gcc.orig/ira.c	2010-09-09 14:55:35.000000000 +0100
 +++ gcc/ira.c	2011-04-25 02:26:12.763181215 +0100
 @@ -1440,7 +1440,7 @@ ira_setup_eliminable_regset (void)

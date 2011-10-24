@@ -330,16 +330,6 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
      to the calling program.  */
   static int pass_exit_codes;
 ***************
-*** 487,492 ****
---- 490,496 ----
-  	assembler has done its job.
-   %D	Dump out a -L option for each directory in startfile_prefixes.
-  	If multilib_dir is set, extra entries are generated with it affixed.
-+  %N     Output the currently selected multilib directory name.
-   %l     process LINK_SPEC as a spec.
-   %L     process LIB_SPEC as a spec.
-   %G     process LIBGCC_SPEC as a spec.
-***************
 *** 3975,3980 ****
 --- 3981,3989 ----
   	}
@@ -372,26 +362,6 @@ diff -cr gcc.orig/gcc.c gcc/gcc.c
     switches[n_switches].part1 = 0;
     infiles[n_infiles].name = 0;
   }
-***************
-*** 5448,5453 ****
---- 5469,5485 ----
-  	      return value;
-  	    break;
-  
-+ 	  case 'N':
-+ 	    if (multilib_dir)
-+ 	      {
-+ 		arg_going = 1;
-+ 		obstack_grow (&obstack, "-fmultilib-dir=",
-+ 			      strlen ("-fmultilib-dir="));
-+ 	        obstack_grow (&obstack, multilib_dir,
-+ 			      strlen (multilib_dir));
-+ 	      }
-+ 	    break;
-+ 
-  	    /* Here we define characters other than letters and digits.  */
-  
-  	  case '{':
 diff -cr gcc.orig/gcc.h gcc/gcc.h
 *** gcc.orig/gcc.h	2005-03-04 20:17:11.000000000 +0000
 --- gcc/gcc.h	2010-10-27 17:11:22.472795001 +0100

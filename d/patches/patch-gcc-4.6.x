@@ -279,14 +279,6 @@
  /* Definition of string containing the arguments given to configure.  */
  #include "configargs.h"
  
-@@ -373,6 +376,7 @@ or with constant text in a single argume
- 	assembler has done its job.
-  %D	Dump out a -L option for each directory in startfile_prefixes.
- 	If multilib_dir is set, extra entries are generated with it affixed.
-+ %N	Output the currently selected multilib directory name.
-  %l     process LINK_SPEC as a spec.
-  %L     process LIB_SPEC as a spec.
-  %G     process LIBGCC_SPEC as a spec.
 @@ -3925,6 +3929,18 @@ process_command (unsigned int decoded_op
        add_infile ("help-dummy", "c");
      }
@@ -306,24 +298,6 @@
    alloc_switch ();
    switches[n_switches].part1 = 0;
    alloc_infile ();
-@@ -5095,6 +5111,17 @@ do_spec_1 (const char *spec, int inswitc
- 	      return value;
- 	    break;
- 
-+          case 'N':
-+	    if (multilib_dir)
-+	      {
-+		arg_going = 1;
-+		obstack_grow (&obstack, "-fmultilib-dir=",
-+			      strlen ("-fmultilib-dir="));
-+		obstack_grow (&obstack, multilib_dir,
-+			      strlen (multilib_dir));
-+	      }
-+	    break;
-+
- 	    /* Here we define characters other than letters and digits.  */
- 
- 	  case '{':
 --- gcc.orig/ira.c	2011-03-08 15:51:12.000000000 +0000
 +++ gcc/ira.c	2011-07-12 23:04:12.433706377 +0100
 @@ -1341,7 +1341,7 @@ ira_setup_eliminable_regset (void)
