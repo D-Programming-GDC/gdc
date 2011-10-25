@@ -4100,10 +4100,8 @@ LabelStatement::toIR(IRState* irs)
     {
         irs->pushLabel(label);
         irs->doLabel(t_label);
-#if D_GCC_VER < 45
         if (label->asmLabelNum)
             d_expand_priv_asm_label(irs, label->asmLabelNum);
-#endif
         if (irs->isReturnLabel(ident) && func->fensure)
             func->fensure->toIR(irs);
         else if (statement)

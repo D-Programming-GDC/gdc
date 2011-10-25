@@ -135,10 +135,9 @@ IRBase::addExp(tree e)
 void
 IRBase::pushStatementList()
 {
-    //tree t = alloc_stmt_list ();
-    tree t = make_node (STATEMENT_LIST);
-    TREE_TYPE (t) = void_type_node;
+    tree t = alloc_stmt_list ();
     statementList.push(t);
+    dkeep(t);
 }
 
 tree

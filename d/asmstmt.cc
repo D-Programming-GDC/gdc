@@ -35,6 +35,7 @@ enum AsmArgType
     Arg_Memory,
     Arg_FrameRelative,
     Arg_LocalSize,
+    Arg_Label,
     Arg_Dollar
 };
 
@@ -507,6 +508,11 @@ AsmStatement::toIR(IRState * irs)
                 arg_val = irs->integerConstant(var_frame_offset);
                 cns = i_cns;
                 break;
+            case Arg_Label:
+                /* Just add label, no further processing needed.  */
+                arg_val = irs->getLabelTree((LabelDsymbol *) ((DsymbolExp *) arg->expr)->s);
+                labels.cons(NULL_TREE, arg_val);
+                continue;
             default:
                 gcc_unreachable();
         }

@@ -2388,20 +2388,18 @@ struct AsmProcessor
                                 unsigned lbl_num = ++d_priv_asm_label_serial;
                                 addLabel(lbl_num);
                                 use_star = false;
-                                asmcode->dollarLabel = lbl_num; // could make the dollar label part of the same asm..
+                                // could make the dollar label part of the same asm..
+                                asmcode->dollarLabel = lbl_num;
                             }
                             else if (e->op == TOKdsymbol)
                             {
                                 LabelDsymbol * lbl = (LabelDsymbol *) ((DsymbolExp *) e)->s;
                                 if (! lbl->asmLabelNum)
                                     lbl->asmLabelNum = ++d_priv_asm_label_serial;
-#if D_GCC_VER >= 45
-                                use_star = false;
-                                addOperand("%a", Arg_Pointer, e, asmcode);
-#else
                                 use_star = false;
                                 addLabel(lbl->asmLabelNum);
-#endif
+                                // Push label as argument. Not really emitted.
+                                asmcode->args.push(new AsmArg(Arg_Label, e, Mode_Input));
                             }
                             else if ((decl && decl->isCodeseg()))
                             {   // if function or label
