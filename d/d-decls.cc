@@ -656,6 +656,21 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_ARTIFICIAL(fn_decl) = 1;
                 D_DECL_ONE_ONLY(fn_decl) = 1;
             }
+            // So are ensure and require contracts.
+            if (ident == Id::ensure || ident == Id::require)
+            {
+                // Maybe fix decl context so inherited in/out contracts are reachable.
+                AggregateDeclaration * ad = parent->isMember();
+                if (ad)
+                {
+                    tree context = ad->type->toCtype();
+                    DECL_CONTEXT(fn_decl) = ad->isClassDeclaration()
+                        ? TREE_TYPE(context)
+                        : context;
+                }
+                DECL_ARTIFICIAL(fn_decl) = 1;
+                D_DECL_INOUT_CONTRACT(fn_decl) = 1;
+            }
 #if V2
             // %% Pure functions don't imply nothrow
             DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && func_type->isnothrow);

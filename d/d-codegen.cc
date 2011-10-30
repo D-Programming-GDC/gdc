@@ -3012,6 +3012,10 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
                 ClassDeclaration * cd;
                 StructDeclaration * sd;
 
+                // Special case for __ensure and __require.
+                if (nested_func->ident == Id::ensure || nested_func->ident == Id::require)
+                    break;
+
                 if ((fd = this_func->isFuncDeclaration()))
                 {
                     if (outer_func == fd->toParent2())

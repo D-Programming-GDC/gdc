@@ -81,11 +81,14 @@ extern GTY(()) tree d_eh_personality_decl;
 /* True if the symbol has been marked "static const".  */
 #define D_DECL_READONLY_STATIC(NODE) (DECL_LANG_FLAG_3(NODE))
 
+/* True if the decl is a compiler generated function for the in and out contracts.  */
+#define D_DECL_INOUT_CONTRACT(NODE) (DECL_LANG_FLAG_4(NODE))
+
 /* True if the decl has been used except for being set.  */
 #if D_GCC_VER >= 46
 #define D_DECL_READ(NODE) (DECL_READ_P(NODE))
 #else
-#define D_DECL_READ(NODE) (DECL_LANG_FLAG_4(NODE))
+#define D_DECL_READ(NODE) (DECL_LANG_FLAG_5(NODE))
 #endif
 
 /* The D front-end does not use the 'binding level' system for a symbol table,

@@ -94,8 +94,11 @@ union lang_tree_node
 /* True if the symbol has been marked "static const".  */
 #define D_DECL_READONLY_STATIC(NODE) (DECL_LANG_FLAG_3(NODE))
 
+/* True if the decl is a compiler generated function for the in and out contracts.  */
+#define D_DECL_INOUT_CONTRACT(NODE) (DECL_LANG_FLAG_4(NODE))
+
 /* True if the decl has been used except for being set.  */
-#define D_DECL_READ(NODE) (DECL_LANG_FLAG_4(NODE))
+#define D_DECL_READ(NODE) (DECL_LANG_FLAG_5(NODE))
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and
