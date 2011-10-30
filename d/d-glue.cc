@@ -3113,7 +3113,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         AggregateDeclaration * asym;
         ClassDeclaration * sym;
 
-        if ((asym = isMember()) && (sym = asym->isClassDeclaration()))
+        if ((asym = isMember2()) && (sym = asym->isClassDeclaration()))
         {
             if (vthis != NULL)
             {

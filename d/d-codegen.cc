@@ -3093,7 +3093,7 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
                 if (! nested_func->isNested())
                 {
 #if V2
-                    if (! nested_func->isMember())
+                    if (! nested_func->isMember2())
 #endif
                     goto cannot_access_frame;
                 }

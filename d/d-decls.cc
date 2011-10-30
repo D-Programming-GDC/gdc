@@ -509,11 +509,7 @@ Symbol *FuncDeclaration::toSymbol()
             else if (isThis())
             {   // Do this even if there is no debug info.  It is needed to make
                 // sure member functions are not called statically
-                AggregateDeclaration * agg_decl = isMember();
-                // Could be a template instance, check parent.
-                if (agg_decl == NULL && parent->isTemplateInstance())
-                    agg_decl = isThis();
-
+                AggregateDeclaration * agg_decl = isMember2();
                 gcc_assert(agg_decl != NULL);
 
                 tree handle = agg_decl->handle->toCtype();
@@ -626,7 +622,7 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_UNINLINABLE(fn_decl) = 1;
             }
 #if D_GCC_VER >= 44
-            else if (isMember() || isFuncLiteralDeclaration())
+            else if (isMember2() || isFuncLiteralDeclaration())
             {
                 // See grokmethod in cp/decl.c
                 DECL_DECLARED_INLINE_P(fn_decl) = 1;
@@ -659,8 +655,9 @@ Symbol *FuncDeclaration::toSymbol()
             // So are ensure and require contracts.
             if (ident == Id::ensure || ident == Id::require)
             {
-                // Maybe fix decl context so inherited in/out contracts are reachable.
-                AggregateDeclaration * ad = parent->isMember();
+                // Maybe fix decl context so in/out contract inheritence works.
+                gcc_assert(parent->isFuncDeclaration());
+                AggregateDeclaration * ad = ((FuncDeclaration *)parent)->isMember2();
                 if (ad)
                 {
                     tree context = ad->type->toCtype();
