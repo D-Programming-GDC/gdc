@@ -24,27 +24,27 @@ target_os=`echo $target | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)$/\3/'`
 
 d_target_os=`echo $target_os | sed 's/^\([A-Za-z_]+\)/\1/'`
 case "$d_target_os" in
-aix*) d_os_versym=aix ; d_unix=1 ;;
+aix*) d_os_versym=AIX ; d_unix=1 ;;
 coff*) ;;
-cygwin*) d_os_versym=cygwin ; d_unix=1 ;;
-darwin*) d_os_versym=darwin ; d_unix=1 ;;
+cygwin*) d_os_versym=Cygwin ; d_unix=1 ;;
+darwin*) d_os_versym=Darwin ; d_unix=1 ;;
 elf*) ;;
 freebsd*) d_os_versym=FreeBSD ; d_unix=1 ;;
 k*bsd*-gnu) d_os_versym=FreeBSD ; d_unix=1 ;;
 kopensolaris*-gnu) d_os_versym=Solaris; d_unix=1 ;;
-linux*) d_os_versym=linux ; d_unix=1 ;;
+linux*) d_os_versym=linux ; d_unix=1 ;; # This is supposed to be "linux", not "Linux", according to the spec
 mingw32*) d_os_versym=Win32; d_os_versym2=MinGW; d_windows=1 ;;
 openbsd*) d_os_versym=OpenBSD; d_unix=1 ;;
 pe*)    case "$target" in
-            *-skyos*-*) d_os_versym=skyos ; d_unix=1 ;;
+            *-skyos*-*) d_os_versym=SkyOS ; d_unix=1 ;;
         esac
         ;;
-skyos*) d_os_versym=skyos ; d_unix=1 ;; # Doesn't actually work because SkyOS uses i386-skyos-pe
+skyos*) d_os_versym=SkyOS ; d_unix=1 ;; # Doesn't actually work because SkyOS uses i386-skyos-pe
 solaris*) d_os_versym=Solaris; d_unix=1 ;;
-sysv3*) d_os_versym=sysv3; d_unix=1 ;;
-sysv4*) d_os_versym=sysv4; d_unix=1 ;;
-*bsd*) d_os_versym=bsd; d_unix=1 ;;
-gnu*) d_os_versym=hurd; d_unix=1 ;;
+sysv3*) d_os_versym=SysV3; d_unix=1 ;;
+sysv4*) d_os_versym=SysV4; d_unix=1 ;;
+*bsd*) d_os_versym=BSD; d_unix=1 ;;
+gnu*) d_os_versym=Hurd; d_unix=1 ;;
 
 *) d_os_versym="$d_target_os"
 esac
@@ -61,7 +61,7 @@ parisc* | hppa*) gdc_target_cpu=hppa ;;
 esac
 
 case "$gdc_target_cpu" in
-alpha*)                       d_cpu_versym64=ALPHA ;;
+alpha*)                       d_cpu_versym64=Alpha ;;
 arm*)    d_cpu_versym=ARM  ;;
 hppa)    d_cpu_versym=HPPA  ; d_cpu_versym64=HPPA64 ;;
 ia64*)                        d_cpu_versym64=IA64 ;;
