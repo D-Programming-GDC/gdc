@@ -19,13 +19,13 @@ version(GC_Use_Data_Fixed)
        .. the Mode can be a version instead of enum trick
     */
     
-    version (aix)
+    version (AIX)
     {
         alias _data Data_Start;
         alias _end Data_End;
         enum FM { One = 1, MinMax = 0, Two = 0 }
     }
-    else version (cygwin)
+    else version (Cygwin)
     {
         alias _data_start__ Data_Start;
         alias _data_end__ Data_End;
@@ -53,7 +53,7 @@ version(GC_Use_Data_Fixed)
         */
         enum FM { One = 1, MinMax = 0, Two = 0 }
     }
-    else version (skyos)
+    else version (SkyOS)
     {
         alias _data_start__ Data_Start;
         alias _bss_end__ Data_End;

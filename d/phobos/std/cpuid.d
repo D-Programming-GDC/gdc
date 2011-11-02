@@ -52,7 +52,7 @@ version(D_InlineAsm_X86)
 version(D_InlineAsm_X86_64)
     version = Asm;
 
-version (darwin)
+version (Darwin)
 {
     extern(C) int sysctlbyname(char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen);
 

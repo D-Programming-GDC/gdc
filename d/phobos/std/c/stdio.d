@@ -191,7 +191,7 @@ else version (Win32)
     const FILE *stdaux = &_iob[3];      ///
     const FILE *stdprn = &_iob[4];      ///
 }
-else version (aix)
+else version (AIX)
 {
     // 32- and 64-bit
     extern FILE _iob[16];
@@ -199,7 +199,7 @@ else version (aix)
     const FILE *stdout = &_iob[1];
     const FILE *stderr = &_iob[2];
 }
-else version (darwin)
+else version (Darwin)
 {
     static if (size_t.sizeof == 4)
     {
@@ -308,7 +308,7 @@ version (Win32)
     int  _snprintf(char *,size_t,char *,...);
     int  _vsnprintf(char *,size_t,char *,va_list);
 }
-else version (darwin)
+else version (Darwin)
 {
     private import std.c.darwin.ldblcompat;
 

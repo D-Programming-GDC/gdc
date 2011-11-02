@@ -651,7 +651,7 @@ else
 private import std.c.unix.unix;
 private import gcc.builtins;
 
-version (skyos)
+version (SkyOS)
 {
     private import std.c.skyos.skyos;
     private import std.c.skyos.compat;
@@ -1079,7 +1079,7 @@ class Thread
         // before pthread_create() sets it.
         t.id = pthread_self();
 
-        version(skyos)
+        version(SkyOS)
             installSignalHandlers();
 
         t.stackBottom = getESP();
