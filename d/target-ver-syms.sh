@@ -27,7 +27,7 @@ case "$d_target_os" in
 aix*) d_os_versym=AIX ; d_unix=1 ;;
 coff*) ;;
 cygwin*) d_os_versym=Cygwin ; d_unix=1 ;;
-darwin*) d_os_versym=Darwin ; d_unix=1 ;;
+darwin*) d_os_versym=darwin ; d_unix=1 ;;
 elf*) ;;
 freebsd*) d_os_versym=FreeBSD ; d_unix=1 ;;
 k*bsd*-gnu) d_os_versym=FreeBSD ; d_unix=1 ;;

@@ -419,7 +419,7 @@ d_init ()
         VersionCondition::addPredefinedGlobalIdent(cpu_versym);
 #ifdef D_OS_VERSYM
     VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM);
-    if (strcmp(D_OS_VERSYM, "Darwin") == 0)
+    if (strcmp(D_OS_VERSYM, "darwin") == 0)
         VersionCondition::addPredefinedGlobalIdent("OSX");
     if (strcmp(D_OS_VERSYM, "Win32") == 0)
         is_target_win32 = true;
