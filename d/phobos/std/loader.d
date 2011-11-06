@@ -119,7 +119,7 @@ else version(dlopen)
         alias void* HModule_;
     }
 }
-else version(Darwin)
+else version(darwin)
 {
     extern(C)
     {
@@ -584,7 +584,7 @@ else version(dlopen)
         return mi.m_name;
     }
 }
-else version(Darwin)
+else version(darwin)
 {
     private class ExeModuleInfo
     {
@@ -904,7 +904,7 @@ public:
             {
                 m_hModule = ExeModule_AddRef(hModule);
             }
-            else version (Darwin)
+            else version (darwin)
             {
                 m_hModule = ExeModule_AddRef(hModule);
             }
@@ -932,7 +932,7 @@ public:
             if (null is m_hModule)
                 throw new ExeModuleException(ExeModule_Error());
         }
-        else version (Darwin)
+        else version (darwin)
         {
             m_hModule = ExeModule_Load(moduleName);
             if (null is m_hModule)
@@ -969,7 +969,7 @@ public:
             {
                 ExeModule_Release(m_hModule);
             }
-            else version (Darwin)
+            else version (darwin)
             {
                 ExeModule_Release(m_hModule);
             }
@@ -1006,7 +1006,7 @@ public:
                 throw new ExeModuleException(ExeModule_Error());
             }
         }
-        else version (Darwin)
+        else version (darwin)
         {
             void *symbol = ExeModule_GetSymbol(m_hModule, symbolName);
 
@@ -1066,7 +1066,7 @@ public:
         {
             return ExeModule_GetPath_(m_hModule);
         }
-        else version (Darwin)
+        else version (darwin)
         {
             return ExeModule_GetPath_(m_hModule);
         }

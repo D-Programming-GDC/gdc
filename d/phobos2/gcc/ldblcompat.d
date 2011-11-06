@@ -5,7 +5,7 @@
 
 module gcc.ldblcompat;
 
-version (Darwin)
+version (darwin)
 {
     version (PPC)
         version = GNU_CheckLongDoubleFormat;
@@ -29,7 +29,7 @@ version (GNU_CheckLongDoubleFormat)
 
 version (GNU_UseLongDoubleFormat128)
 {
-    version (Darwin)
+    version (darwin)
     {
         // Currently, the following test from cdefs.h is not supported:
         //# if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__-0 < 1040
@@ -49,7 +49,7 @@ version (GNU_UseLongDoubleFormat128)
 }
 else
 {
-    version (Darwin)
+    version (darwin)
     {
         invariant __DARWIN_LDBL_COMPAT  = "";
         invariant __DARWIN_LDBL_COMPAT2 = "";

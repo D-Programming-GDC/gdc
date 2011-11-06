@@ -104,7 +104,7 @@ float  strtof(char *,char **);  /// ditto
 double strtod(char *,char **);  /// ditto
 
 //real   strtold(char *,char **);
-version (Darwin)
+version (darwin)
     version (GNU_Have_strtold)
         version = darwin_strtold;
 version(PPC)

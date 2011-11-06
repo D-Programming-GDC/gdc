@@ -120,7 +120,7 @@ void *os_query_stackBottom()
     }
     else version (GC_Use_Stack_Fixed)
     {
-        version (Darwin)
+        version (darwin)
         {
             static if (size_t.sizeof == 4)
                 return cast(void*) 0xc0000000;

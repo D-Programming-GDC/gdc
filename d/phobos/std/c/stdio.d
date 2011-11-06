@@ -199,7 +199,7 @@ else version (AIX)
     const FILE *stdout = &_iob[1];
     const FILE *stderr = &_iob[2];
 }
-else version (Darwin)
+else version (darwin)
 {
     static if (size_t.sizeof == 4)
     {
@@ -308,7 +308,7 @@ version (Win32)
     int  _snprintf(char *,size_t,char *,...);
     int  _vsnprintf(char *,size_t,char *,va_list);
 }
-else version (Darwin)
+else version (darwin)
 {
     private import std.c.darwin.ldblcompat;
 
