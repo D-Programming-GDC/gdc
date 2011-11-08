@@ -33,7 +33,11 @@ freebsd*) d_os_versym=FreeBSD ; d_unix=1 ;;
 k*bsd*-gnu) d_os_versym=FreeBSD ; d_unix=1 ;;
 kopensolaris*-gnu) d_os_versym=Solaris; d_unix=1 ;;
 linux*) d_os_versym=linux ; d_unix=1 ;; # This is supposed to be "linux", not "Linux", according to the spec
-mingw*) d_os_versym=Win32; d_os_versym2=MinGW; d_windows=1 ;;
+mingw32*) case "$target_vendor" in
+              pc*) d_os_versym=Win32; d_os_versym2=MinGW; d_windows=1 ;;
+              w64*) d_os_versym=Win64; d_os_versym2=MinGW; d_windows=1 ;;
+          esac
+          ;;
 openbsd*) d_os_versym=OpenBSD; d_unix=1 ;;
 pe*)    case "$target" in
             *-skyos*-*) d_os_versym=SkyOS ; d_unix=1 ;;
