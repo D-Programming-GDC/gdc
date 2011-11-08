@@ -56,7 +56,7 @@ version(Posix)
         version = BsdSockets;
 }
 
-version (skyos) { /* nothging */ }
+version (SkyOs) { /* nothging */ }
 else
 {
     version = have_getservbyport;

@@ -1607,7 +1607,7 @@ Lerror:
 
 /* ======================== Unit Tests ====================================== */
 
-version (skyos)
+version (SkyOS)
     version = no_hexfloat;
 
 import std.stdio;//xx

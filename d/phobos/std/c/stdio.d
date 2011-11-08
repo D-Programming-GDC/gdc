@@ -191,7 +191,7 @@ else version (Win32)
     const FILE *stdaux = &_iob[3];      ///
     const FILE *stdprn = &_iob[4];      ///
 }
-else version (aix)
+else version (AIX)
 {
     // 32- and 64-bit
     extern FILE _iob[16];

@@ -437,7 +437,7 @@ d_init ()
     if (TARGET_THUMB)
         VersionCondition::addPredefinedGlobalIdent("Thumb");
     else
-        VersionCondition::addPredefinedGlobalIdent("Arm");
+        VersionCondition::addPredefinedGlobalIdent("ARM");
 #endif
 
     if (BYTES_BIG_ENDIAN)

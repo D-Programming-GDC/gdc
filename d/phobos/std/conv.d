@@ -873,7 +873,7 @@ unittest
  * ditto
  */
 
-version (skyos)
+version (SkyOS)
 {
     float strtof(char * s, char ** ep) {
         return strtod(s, ep);
@@ -892,7 +892,7 @@ float toFloat(in char[] s)
     char* sz;
 
     //writefln("toFloat('%s')", s);
-    version (aix)
+    version (AIX)
         s = toupper(s);
     sz = toStringz(s);
     if (std.ctype.isspace(*sz))
@@ -972,7 +972,7 @@ double toDouble(in char[] s)
     char* sz;
 
     //writefln("toDouble('%s')", s);
-    version (aix)
+    version (AIX)
         s = toupper(s);
     sz = toStringz(s);
     if (std.ctype.isspace(*sz))
@@ -1051,7 +1051,7 @@ real toReal(in char[] s)
     char* sz;
 
     //writefln("toReal('%s')", s);
-    version (aix)
+    version (AIX)
         s = toupper(s);
     sz = toStringz(s);
     if (std.ctype.isspace(*sz))
