@@ -634,6 +634,9 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     this->hinit = NULL;
     this->loc = loc;
     offset = 0;
+#if IN_GCC
+    salign = 0;
+#endif
     noscope = 0;
 #if DMDV2
     isargptr = FALSE;

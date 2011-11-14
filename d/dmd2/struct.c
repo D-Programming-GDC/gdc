@@ -27,6 +27,10 @@
 #include "statement.h"
 #include "template.h"
 
+#ifdef IN_GCC
+#include "d-dmd-gcc.h"
+#endif
+
 /********************************* AggregateDeclaration ****************************/
 
 AggregateDeclaration::AggregateDeclaration(Loc loc, Identifier *id)
@@ -206,7 +210,11 @@ void AggregateDeclaration::addField(Scope *sc, VarDeclaration *v)
     }
 
     memsize = t->size(loc);
+#if IN_GCC
+    memalignsize = d_gcc_field_align(v, t->alignsize());
+#else
     memalignsize = t->alignsize();
+#endif
     xalign = t->memalign(sc->structalign);
 #if 0
     alignmember(xalign, memalignsize, &sc->offset);

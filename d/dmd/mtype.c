@@ -63,6 +63,10 @@
 #include "aggregate.h"
 #include "hdrgen.h"
 
+#ifdef IN_GCC
+#include "d-dmd-gcc.h"
+#endif
+
 FuncDeclaration *hasThis(Scope *sc);
 
 
@@ -1093,6 +1097,9 @@ d_uns64 TypeBasic::size(Loc loc)
 unsigned TypeBasic::alignsize()
 {   unsigned sz;
 
+#if IN_GCC
+    sz = d_gcc_type_align(this);
+#else
     switch (ty)
     {
         case Tfloat80:
@@ -1125,6 +1132,7 @@ unsigned TypeBasic::alignsize()
             sz = size(0);
             break;
     }
+#endif
     return sz;
 }
 

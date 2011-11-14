@@ -685,6 +685,14 @@ void AlignDeclaration::semantic(Scope *sc)
     //printf("\tAlignDeclaration::semantic '%s'\n",toChars());
     if (decl)
     {
+#if IN_GCC
+        for (unsigned i = 0; i < decl->dim; i++)
+        {   Dsymbol *s = decl->tdata()[i];
+            VarDeclaration * v = s->isVarDeclaration();
+            if (v)
+                v->salign = salign;
+        }
+#endif
         semanticNewSc(sc, sc->stc, sc->linkage, sc->protection, sc->explicitProtection, salign);
     }
 }

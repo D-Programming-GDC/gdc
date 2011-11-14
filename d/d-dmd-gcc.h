@@ -26,8 +26,8 @@
 
 /* used in module.c */
 struct Module;
-extern void d_gcc_magic_module(Module *m);
-extern void d_gcc_dump_source(const char * filename, const char * ext, unsigned char * data, unsigned len);
+extern void d_gcc_magic_module(Module *);
+extern void d_gcc_dump_source(const char *, const char *, unsigned char *, unsigned);
 
 /* used in func.c */
 struct Type;
@@ -40,6 +40,12 @@ extern bool d_gcc_is_target_win32();
 struct VarDeclaration;
 extern void d_gcc_emit_local_variable(VarDeclaration *);
 extern bool d_gcc_supports_weak();
+
+/* used in mtype.c */
+extern int d_gcc_type_align(Type *);
+
+/* used in struct.c */
+extern int d_gcc_field_align(VarDeclaration *, int);
 
 #if V2
 struct Symbol;

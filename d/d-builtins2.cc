@@ -602,6 +602,47 @@ d_gcc_magic_module(Module *m)
     }
 }
 
+// Return GCC align size for type T.
+int
+d_gcc_type_align(Type * t)
+{
+    gcc_assert(t->isTypeBasic());
+    return TYPE_ALIGN_UNIT(t->toCtype());
+}
+
+// Return GCC align size for field VAR.
+int
+d_gcc_field_align(VarDeclaration * var, int known_align)
+{
+    static tree d_gcc_vfield = make_node(FIELD_DECL);
+
+    /* %% stor-layout.c:
+       Some targets (i.e. i386, VMS) limit struct field alignment
+       to a lower boundary than alignment of variables unless
+       it was overridden by attribute aligned.  */
+    if (var->salign != 0)
+        return var->salign;
+
+    // Work out the correct alignment for the field decl.
+    DECL_ALIGN(d_gcc_vfield) = known_align * BITS_PER_UNIT;
+
+#ifdef BIGGEST_FIELD_ALIGNMENT
+    DECL_ALIGN(d_gcc_vfield)
+        = MIN(DECL_ALIGN(d_gcc_vfield), (unsigned) BIGGEST_FIELD_ALIGNMENT);
+#endif
+#ifdef ADJUST_FIELD_ALIGN
+    if (var->type->isTypeBasic())
+    {
+        TREE_TYPE(d_gcc_vfield) = var->type->toCtype();
+        DECL_ALIGN(d_gcc_vfield)
+            = ADJUST_FIELD_ALIGN(d_gcc_vfield, DECL_ALIGN(d_gcc_vfield));
+    }
+#endif
+
+    return DECL_ALIGN_UNIT(d_gcc_vfield);
+}
+
+
 #if V2
 // Convert backend evaluated trees to D Frontend Expressions for CTFE
 static Expression *
