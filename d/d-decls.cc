@@ -655,7 +655,7 @@ Symbol *FuncDeclaration::toSymbol()
             // So are ensure and require contracts.
             if (ident == Id::ensure || ident == Id::require)
             {
-                // Maybe fix decl context so in/out contract inheritence works.
+                // Maybe fix decl context so inherited in/out contracts are reachable.
                 gcc_assert(parent->isFuncDeclaration());
                 AggregateDeclaration * ad = ((FuncDeclaration *)parent)->isMember2();
                 if (ad)

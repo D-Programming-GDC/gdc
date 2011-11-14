@@ -2943,10 +2943,8 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
 
     for (int i = VTHIS; i < (int) n_parameters; i++)
     {
-        VarDeclaration * param = 0;
-        tree parm_type = 0;
-
-        parm_decl = 0;
+        VarDeclaration * param = NULL;
+        parm_decl = NULL_TREE;
 
         if (i == VTHIS)
         {
@@ -2957,15 +2955,9 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
             else if (isNested())
             {   /* DMD still generates a vthis, but it should not be
                    referenced in any expression.
-
-                   This parameter is hidden from the debugger.
                  */
-                parm_type = ptr_type_node;
-                parm_decl = d_build_decl(PARM_DECL, NULL_TREE, parm_type);
+                parm_decl = vthis->toSymbol()->Stree;
                 DECL_ARTIFICIAL(parm_decl) = 1;
-                DECL_IGNORED_P(parm_decl) = 1;
-                // %% doc need this arg silently disappears
-                DECL_ARG_TYPE (parm_decl) = TREE_TYPE (parm_decl);
 
                 chain_func = toParent2()->isFuncDeclaration();
                 chain_expr = parm_decl;
@@ -3271,8 +3263,17 @@ void
 FuncDeclaration::buildClosure(IRState * irs)
 {
     FuncFrameInfo * ffi = irs->getFrameInfo(this);
-    if (! ffi->creates_closure)
+    gcc_assert(ffi->is_closure);
+
+    if (! ffi->creates_frame)
+    {
+        if (ffi->static_chain)
+        {
+            tree link = irs->chainLink();
+            irs->useChain(this, link);
+        }
         return;
+    }
 
     tree closure_rec_type = make_node(RECORD_TYPE);
     char *name = concat ("CLOSURE.",

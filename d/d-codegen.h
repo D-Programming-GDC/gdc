@@ -111,11 +111,12 @@ enum BinOp
 
 struct FuncFrameInfo
 {
-    bool creates_closure;
-    bool creates_frame;
+    bool creates_frame;     // Function creates nested frame.
+    bool static_chain;      // Function has static chain passed via PARM_DECL
+    bool is_closure;        // Frame is a closure (initialised on the heap).
     union
     {
-        tree closure_rec;
+        tree closure_rec;   // Frame type for static chain
         tree frame_rec;
     };
 };

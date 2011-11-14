@@ -3119,7 +3119,8 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
         outer_func = nested_func->toParent2()->isFuncDeclaration();
     gcc_assert(outer_func != NULL);
 
-    if (getFrameInfo(outer_func)->creates_frame)
+    FuncFrameInfo * ffo = getFrameInfo(outer_func);
+    if (ffo->creates_frame || ffo->static_chain)
         return getFrameRef(outer_func);
 
     return d_null_pointer;
@@ -3264,7 +3265,8 @@ IRState::getVThis(Dsymbol * decl, Expression * e)
                STATIC_CHAIN_EXPR created here will never be
                translated. Use a null pointer for the link in
                this case. */
-            if (getFrameInfo(fd_outer)->creates_frame ||
+            FuncFrameInfo * ffo = getFrameInfo(fd_outer);
+            if (ffo->creates_frame || ffo->static_chain ||
 #if V2
                 fd_outer->closureVars.dim
 #else
@@ -3289,16 +3291,21 @@ IRState::getVThis(Dsymbol * decl, Expression * e)
         FuncDeclaration *fd_outer = outer->isFuncDeclaration();
         // Assuming this is kept as trivial as possible.
         // NOTE: what about structs nested in structs nested in functions?
-        gcc_assert(fd_outer);
-        if (fd_outer->closureVars.dim ||
-            getFrameInfo(fd_outer)->creates_frame)
+        if (fd_outer)
         {
-            vthis_value = getFrameForNestedStruct(struct_decl);
+            FuncFrameInfo * ffo = getFrameInfo(fd_outer);
+            if (ffo->creates_frame || ffo->static_chain ||
+                fd_outer->closureVars.dim)
+            {
+                vthis_value = getFrameForNestedStruct(struct_decl);
+            }
+            else if (fd_outer->vthis)
+                vthis_value = var(fd_outer->vthis);
+            else
+                vthis_value = d_null_pointer;
         }
-        else if (fd_outer->vthis)
-            vthis_value = var(fd_outer->vthis);
         else
-            vthis_value = d_null_pointer;
+            gcc_unreachable();
     }
 #endif
     return vthis_value;
@@ -3348,7 +3355,9 @@ IRState::getFrameInfo(FuncDeclaration *fd)
         return fds->frameInfo;
 
     FuncFrameInfo * ffi = new FuncFrameInfo;
-    ffi->creates_closure = false;
+    ffi->creates_frame = false;
+    ffi->static_chain = false;
+    ffi->is_closure = false;
     ffi->frame_rec = NULL_TREE;
 
     fds->frameInfo = ffi;
@@ -3361,64 +3370,41 @@ IRState::getFrameInfo(FuncDeclaration *fd)
 
     // Nested functions, or functions with nested refs must create
     // a static frame for local variables to be referenced from.
-    ffi->creates_frame = nestedVars->dim != 0 || fd->isNested();
+    if (nestedVars->dim != 0 || fd->isNested() ||
+        (fd->isThis() && fd->isThis()->isNested()))
+    {
+        ffi->creates_frame = true;
+    }
 
 #if V2
     // D2 maybe setup closure instead.
     if (fd->needsClosure())
     {
         ffi->creates_frame = true;
-        ffi->creates_closure = true;
+        ffi->is_closure = true;
     }
     else
-    {   /* If fd is nested (deeply) in a function 'g' that creates a
-           closure and there exists a function 'h' nested (deeply) in
-           fd and 'h' accesses the frame of 'g', then fd must also
-           create a closure.
-
-           This is for the sake of a simple implementation.  An alternative
-           is, when determining the frame to pass to 'h', pass the pointer
-           to 'g' (the deepest 'g' whose frame is accessed by 'h') instead
-           of the usual frame that 'h' would take.
-        */
+    {   /* If fd is nested (deeply) in a function that creates a closure,
+           then fd inherits that closure via hidden vthis pointer, and
+           doesn't create a stack frame at all.  */
         FuncDeclaration * ff = fd;
 
         while (ff)
         {
-            AggregateDeclaration * ad;
-            ClassDeclaration * cd;
-            StructDeclaration * sd;
             FuncFrameInfo * ffo = getFrameInfo(ff);
 
-            if (ff != fd && ffo->creates_closure)
+            if (ff != fd && ffo->is_closure)
             {
-                for (size_t i = 0; i < ff->closureVars.dim; i++)
-                {
-                    VarDeclaration * v = ff->closureVars.tdata()[i];
-                    gcc_assert(v->isVarDeclaration());
-                    for (size_t j = 0; j < v->nestedrefs.dim; j++)
-                    {
-                        FuncDeclaration * fi = v->nestedrefs.tdata()[j];
-                        if (isFuncNestedIn(fi, fd))
-                        {
-                            ffi->creates_frame = true;
-                            ffi->creates_closure = true;
-                            goto L_done;
-                        }
-                    }
-                }
+                gcc_assert(ffo->frame_rec);
+                ffi->creates_frame = false;
+                ffi->static_chain = true;
+                ffi->is_closure = true;
+                ffi->frame_rec = copy_node(ffo->frame_rec);
+                break;
             }
 
-            if (ff->isNested())
-                ff = ff->toParent2()->isFuncDeclaration();
-            else if ((ad = ff->isThis()) && (cd = ad->isClassDeclaration()))
-                ff = isClassNestedInFunction(cd);
-            else if ((ad = ff->isThis()) && (sd = ad->isStructDeclaration()))
-                ff = isStructNestedInFunction(sd);
-            else
-                break;
+            ff = ff->toParent2()->isFuncDeclaration();
         }
-        L_done: ;
     }
 #endif
 
@@ -3438,10 +3424,17 @@ IRState::getFrameRef(FuncDeclaration * outer_func)
         ClassDeclaration * cd;
         StructDeclaration * sd;
 
-        gcc_assert(getFrameInfo(fd)->creates_frame);
-
-        // like compon(indirect, field0) parent frame/closure link is the first field;
-        result = indirect(result, ptr_type_node);
+        if (getFrameInfo(fd)->creates_frame)
+        {
+            // like compon(indirect, field0) parent frame link is the first field;
+            result = indirect(result, ptr_type_node);
+        }
+#if V1
+        else
+        {   // We should only get here for D2 only.
+            gcc_unreachable();
+        }
+#endif
 
         if (fd->isNested())
             fd = fd->toParent2()->isFuncDeclaration();
@@ -3497,7 +3490,7 @@ IRState::functionNeedsChain(FuncDeclaration *f)
     if (f->isNested()
 #if V2
         && (pf = f->toParent2()->isFuncDeclaration())
-            && ! getFrameInfo(pf)->creates_closure
+            && ! getFrameInfo(pf)->is_closure
 #endif
        )
     {
@@ -3515,7 +3508,7 @@ IRState::functionNeedsChain(FuncDeclaration *f)
         s = s->toParent2();
         if ((pf = s->isFuncDeclaration())
 #if V2
-            && ! getFrameInfo(pf)->creates_closure
+            && ! getFrameInfo(pf)->is_closure
 #endif
            )
         {
@@ -3534,7 +3527,7 @@ IRState::buildChain(FuncDeclaration * func)
     FuncFrameInfo * ffi = getFrameInfo(func);
 
 #if V2
-    if (ffi->creates_closure)
+    if (ffi->is_closure)
     {   // Build closure pointer, which is initialised on heap.
         func->buildClosure(this);
         return;
@@ -3542,7 +3535,11 @@ IRState::buildChain(FuncDeclaration * func)
 #endif
 
     if (! ffi->creates_frame)
+    {
+        // %% TODO: Implement static chain passing this way?
+        gcc_assert(! ffi->static_chain);
         return;
+    }
 
 #if V2
     VarDeclarations * nestedVars = & func->closureVars;
@@ -3608,7 +3605,7 @@ IRState::buildChain(FuncDeclaration * func)
                       vsym->Stree));
     }
 
-    useChain(func, frame_ptr); 
+    useChain(func, frame_ptr);
 }
 
 tree
