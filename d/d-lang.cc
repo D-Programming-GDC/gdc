@@ -844,6 +844,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
     enum tree_code code = TREE_CODE (*expr_p);
     switch (code)
     {
+        case INIT_EXPR:
         case MODIFY_EXPR:
         {   /* If the back end isn't clever enough to know that the lhs and rhs
                types are the same, add an explicit conversion.  */
@@ -872,6 +873,7 @@ d_gimplify_expr (tree *expr_p, tree *pre_p ATTRIBUTE_UNUSED,
     enum tree_code code = TREE_CODE (*expr_p);
     switch (code)
     {
+        case INIT_EXPR:
         case MODIFY_EXPR:
         {   /* If the back end isn't clever enough to know that the lhs and rhs
                types are the same, add an explicit conversion.  */
