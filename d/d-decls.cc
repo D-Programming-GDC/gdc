@@ -362,7 +362,7 @@ Symbol *VarDeclaration::toSymbol()
 
             // can at least do this...
             //  const doesn't seem to matter for aggregates, so prevent problems..
-            if (type->isscalar() || type->isString())
+            if (isConst() && isDataseg())
                 TREE_CONSTANT(var_decl) = 1;
         }
 
