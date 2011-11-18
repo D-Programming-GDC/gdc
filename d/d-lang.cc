@@ -2013,6 +2013,9 @@ dkeep(tree t)
     d_keep_list = tree_cons(NULL_TREE, t, d_keep_list);
 }
 
+// List of trees that we want to send to the garbage collector.
+tree d_free_list = NULL_TREE;
+
 #if D_GCC_VER >= 45
 tree d_eh_personality_decl;
 

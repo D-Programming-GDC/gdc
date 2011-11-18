@@ -278,6 +278,9 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
     if (typesSame(exp_type, target_type))
         return exp;
 
+    if (isErrorMark(exp))
+        return exp;
+
     switch (ebtype->ty)
     {
         case Tdelegate:
