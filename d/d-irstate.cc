@@ -137,7 +137,7 @@ IRBase::pushStatementList()
 {
     tree t = alloc_stmt_list ();
     statementList.push(t);
-    dkeep(t);
+    d_keep(t);
 }
 
 tree

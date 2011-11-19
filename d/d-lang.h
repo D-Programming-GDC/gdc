@@ -229,7 +229,9 @@ tree d_signed_type(tree);
 tree d_type_for_size(unsigned bits, int unsignedp);
 tree d_type_for_mode(enum machine_mode mode, int unsignedp);
 tree d_build_decl(enum tree_code code, tree name, tree type);
-void dkeep(tree t);
+
+void d_keep(tree t);
+void d_free(tree t);
 
 int global_bindings_p PARAMS ((void));
 void insert_block PARAMS ((tree));

@@ -1463,7 +1463,7 @@ struct AsmProcessor
                 for (p = buf; *p; p++)
                     *p = TOLOWER(*p);
                 regInfo[i].gccName = build_string(p - buf, buf);
-                dkeep(regInfo[i].gccName);
+                d_keep(regInfo[i].gccName);
                 if ((i <= Reg_ST || i > Reg_ST7) && i != Reg_EFLAGS)
                     regInfo[i].ident = Lexer::idPool(regInfo[i].name);
             }

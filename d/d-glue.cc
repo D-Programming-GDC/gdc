@@ -4005,7 +4005,7 @@ TypeClass::toCtype()
         rec_type = make_node(RECORD_TYPE);
         //apply_type_attributes(sym->attributes, rec_type, true);
         ctype = build_reference_type(rec_type);
-        dkeep(ctype); // because BINFO moved out to toDebug
+        d_keep(ctype); // because BINFO moved out to toDebug
         g.ofile->initTypeDecl(rec_type, sym);
 
         obj_rec_type = TREE_TYPE(gen.getObjectType()->toCtype());
@@ -4349,7 +4349,7 @@ SynchronizedStatement::toIR(IRState * irs)
         // name is only used to prevent ICEs
         g.ofile->giveDeclUniqueName(critsec_decl, "__critsec");
         tree critsec_ref = irs->addressOf(critsec_decl); // %% okay to use twice?
-        dkeep(critsec_decl);
+        d_keep(critsec_decl);
 
         TREE_STATIC(critsec_decl) = 1;
         TREE_PRIVATE(critsec_decl) = 1;

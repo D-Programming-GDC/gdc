@@ -407,9 +407,9 @@ AsmStatement::toIR(IRState * irs)
         mw_cns  = build_string(2, "=m");
         mrw_cns = build_string(2, "+m");
         memory_name = build_string(6, "memory");
-        dkeep(i_cns);
-        dkeep(p_cns);
-        dkeep(m_cns);
+        d_keep(i_cns);
+        d_keep(p_cns);
+        d_keep(m_cns);
     }
 
     AsmCode * code = (AsmCode *) asmcode;

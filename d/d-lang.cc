@@ -2008,13 +2008,20 @@ build_d_decl_lang_specific(Declaration * d)
 tree d_keep_list = NULL_TREE;
 
 void
-dkeep(tree t)
+d_keep(tree t)
 {
     d_keep_list = tree_cons(NULL_TREE, t, d_keep_list);
 }
 
 // List of trees that we want to send to the garbage collector.
 tree d_free_list = NULL_TREE;
+
+void
+d_free(tree t)
+{
+    TREE_CHAIN(t) = d_free_list;
+    d_free_list = t;
+}
 
 #if D_GCC_VER >= 45
 tree d_eh_personality_decl;

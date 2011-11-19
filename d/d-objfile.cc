@@ -1077,7 +1077,7 @@ obj_moduleinfo(Symbol *sym)
     tree f1 = TREE_CHAIN(f0);
 
     tree our_mod_ref = d_build_decl(VAR_DECL, NULL_TREE, mod_ref_type);
-    dkeep(our_mod_ref);
+    d_keep(our_mod_ref);
     g.ofile->giveDeclUniqueName(our_mod_ref, "__mod_ref");
     g.ofile->setDeclLoc(our_mod_ref, g.mod);
 
@@ -1097,7 +1097,7 @@ obj_moduleinfo(Symbol *sym)
 
     tree the_mod_ref = d_build_decl(VAR_DECL, get_identifier("_Dmodule_ref"),
         build_pointer_type(mod_ref_type));
-    dkeep(the_mod_ref);
+    d_keep(the_mod_ref);
     DECL_EXTERNAL(the_mod_ref) = 1;
     TREE_PUBLIC(the_mod_ref) = 1;
 

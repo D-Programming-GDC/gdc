@@ -295,7 +295,7 @@ Symbol *VarDeclaration::toSymbol()
             if (c_ident)
                 SET_DECL_ASSEMBLER_NAME(var_decl, get_identifier(c_ident->string));
         }
-        dkeep(var_decl);
+        d_keep(var_decl);
         g.ofile->setDeclLoc(var_decl, this);
         if (decl_kind == VAR_DECL)
         {
@@ -542,7 +542,7 @@ Symbol *FuncDeclaration::toSymbol()
             // %%CHECK: is it okay for static nested functions to have a FUNC_DECL context?
             // seems okay so far...
             fn_decl = d_build_decl(FUNCTION_DECL, id, fn_type);
-            dkeep(fn_decl);
+            d_keep(fn_decl);
             if (ident)
             {
                 csym->Sident = mangle(); // save for making thunks
@@ -762,7 +762,7 @@ Symbol *FuncDeclaration::toThunkSymbol(int offset)
 
         tree target_func_decl = csym->Stree;
         tree thunk_decl = build_fn_decl(id, TREE_TYPE(target_func_decl));
-        dkeep(thunk_decl);
+        d_keep(thunk_decl);
         sthunk->Stree = thunk_decl;
 
         //SET_DECL_ASSEMBLER_NAME(thunk_decl, DECL_NAME(thunk_decl));//old
@@ -852,7 +852,7 @@ Symbol *ClassDeclaration::toSymbol()
                 ? ClassDeclaration::classinfo->type->toCtype() // want the RECORD_TYPE, not the REFERENCE_TYPE
                 : error_mark_node));
         csym->Stree = decl;
-        dkeep(decl);
+        d_keep(decl);
 
         g.ofile->setupStaticStorage(this, decl);
         g.ofile->setDeclLoc(decl, this);
@@ -901,7 +901,7 @@ Symbol *Module::toSymbol()
         g.ofile->setDeclLoc(decl, this);
         csym->Stree = decl;
 
-        dkeep(decl);
+        d_keep(decl);
 
         g.ofile->setupStaticStorage(this, decl);
 
@@ -932,7 +932,7 @@ Symbol *ClassDeclaration::toVtblSymbol()
 
         decl = d_build_decl(VAR_DECL, get_identifier(vtblsym->Sident), vtbl_type->toCtype());
         vtblsym->Stree = decl;
-        dkeep(decl);
+        d_keep(decl);
 
         g.ofile->setupStaticStorage(this, decl);
         g.ofile->setDeclLoc(decl, this);
@@ -979,7 +979,7 @@ Symbol *AggregateDeclaration::toInitializer()
             struct_type = TREE_TYPE(struct_type); // for TypeClass, want the RECORD_TYPE, not the REFERENCE_TYPE
         tree t = d_build_decl(VAR_DECL, get_identifier(sinit->Sident), struct_type);
         sinit->Stree = t;
-        dkeep(t);
+        d_keep(t);
 
         g.ofile->setupStaticStorage(this, t);
         g.ofile->setDeclLoc(t, this);
@@ -1012,7 +1012,7 @@ Symbol *TypedefDeclaration::toInitializer()
     {
         tree t = d_build_decl(VAR_DECL, get_identifier(sinit->Sident), type->toCtype());
         sinit->Stree = t;
-        dkeep(t);
+        d_keep(t);
 
         g.ofile->setupStaticStorage(this, t);
         g.ofile->setDeclLoc(t, this);
@@ -1047,7 +1047,7 @@ Symbol *EnumDeclaration::toInitializer()
     {
         tree t = d_build_decl(VAR_DECL, get_identifier(sinit->Sident), type->toCtype());
         sinit->Stree = t;
-        dkeep(t);
+        d_keep(t);
 
         g.ofile->setupStaticStorage(this, t);
         g.ofile->setDeclLoc(t, this);
