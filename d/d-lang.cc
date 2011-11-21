@@ -852,8 +852,8 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
             tree op1 = TREE_OPERAND (*expr_p, 1);
 
             if (!gen.isErrorMark(op0) && !gen.isErrorMark(op1)
-                && (TYPE_STRUCTURAL_EQUALITY_P (TREE_TYPE (op0))
-                    || TYPE_STRUCTURAL_EQUALITY_P (TREE_TYPE (op1)))
+                && (AGGREGATE_TYPE_P (TREE_TYPE (op0))
+                    || AGGREGATE_TYPE_P (TREE_TYPE (op1)))
                 && !useless_type_conversion_p (TREE_TYPE (op1), TREE_TYPE (op0)))
             {
                 TREE_OPERAND (*expr_p, 1) = build1 (VIEW_CONVERT_EXPR,
@@ -881,8 +881,8 @@ d_gimplify_expr (tree *expr_p, tree *pre_p ATTRIBUTE_UNUSED,
             tree op1 = TREE_OPERAND (*expr_p, 1);
 
             if (!gen.isErrorMark(op0) && !gen.isErrorMark(op1)
-                && (TYPE_STRUCTURAL_EQUALITY_P (TREE_TYPE (op0))
-                    || TYPE_STRUCTURAL_EQUALITY_P (TREE_TYPE (op1)))
+                && (AGGREGATE_TYPE_P (TREE_TYPE (op0))
+                    || AGGREGATE_TYPE_P (TREE_TYPE (op1)))
                 && !useless_type_conversion_p (TREE_TYPE (op1), TREE_TYPE (op0)))
             {
                 TREE_OPERAND (*expr_p, 1) = build1 (VIEW_CONVERT_EXPR,

@@ -3640,13 +3640,6 @@ TypeStruct::toCtype()
         // %%  stor-layout.c:finalize_type_size ... it's private to that file
 
         TYPE_CONTEXT(ctype) = gen.declContext(sym);
-
-#if D_GCC_VER >= 43
-        // For aggregates GCC now relies on TYPE_CANONICAL exclusively
-        // to show that two variant types are structurally equal.
-        // %% Now conversions now handled in d_gimplify_expr.
-        SET_TYPE_STRUCTURAL_EQUALITY(ctype);
-#endif
         g.ofile->initTypeDecl(ctype, sym);
 
         AggLayout agg_layout(sym, ctype);
@@ -3828,12 +3821,6 @@ TypeDArray::toCtype()
     {
         ctype = gen.twoFieldType(Type::tsize_t, next->pointerTo(), this,
                                  "length", "ptr");
-#if D_GCC_VER >= 43
-        // Don't rely on tree type information to determine whether
-        // two distinct D types: ie: const(T[]) and const(T)[]
-        // should be treated as two distinct types in GCC.
-        SET_TYPE_STRUCTURAL_EQUALITY(ctype);
-#endif
         TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
         d_keep(ctype);
     }
