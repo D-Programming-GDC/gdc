@@ -3402,6 +3402,7 @@ IRState::getFrameInfo(FuncDeclaration *fd)
                 ffi->creates_frame = false;
                 ffi->static_chain = true;
                 ffi->is_closure = true;
+                gcc_assert(COMPLETE_TYPE_P(ffo->frame_rec));
                 ffi->frame_rec = copy_node(ffo->frame_rec);
                 break;
             }
@@ -3410,6 +3411,20 @@ IRState::getFrameInfo(FuncDeclaration *fd)
         }
     }
 #endif
+
+    // Build type now as may be referenced from another module.
+    if (ffi->creates_frame)
+    {
+        char * name = concat(ffi->is_closure ? "CLOSURE." : "FRAME.",
+                             IDENTIFIER_POINTER (DECL_NAME (fd->toSymbol()->Stree)),
+                             NULL);
+        tree frame_rec = make_node(RECORD_TYPE);
+        TYPE_NAME(frame_rec) = get_identifier(name);
+        free(name);
+
+        d_keep(frame_rec);
+        ffi->frame_rec = frame_rec;
+    }
 
     return ffi;
 }
@@ -3550,13 +3565,7 @@ IRState::buildChain(FuncDeclaration * func)
     VarDeclarations * nestedVars = & func->frameVars;
 #endif
 
-    char *name = concat ("FRAME.",
-                         IDENTIFIER_POINTER (DECL_NAME (func->toSymbol()->Stree)),
-                         NULL);
-    tree frame_rec_type = make_node(RECORD_TYPE);
-    TYPE_NAME (frame_rec_type) = get_identifier (name);
-    free (name);
-
+    tree frame_rec_type = ffi->frame_rec;
     tree chain_link = chainLink();
     tree ptr_field;
     ListMaker fields;
@@ -3582,7 +3591,6 @@ IRState::buildChain(FuncDeclaration * func)
 
     TYPE_FIELDS(frame_rec_type) = fields.head;
     layout_type(frame_rec_type);
-    ffi->frame_rec = frame_rec_type;
 
     tree frame_decl = localVar(frame_rec_type);
     tree frame_ptr = addressOf(frame_decl);

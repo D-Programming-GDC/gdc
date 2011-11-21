@@ -3275,16 +3275,12 @@ FuncDeclaration::buildClosure(IRState * irs)
         return;
     }
 
-    tree closure_rec_type = make_node(RECORD_TYPE);
-    char *name = concat ("CLOSURE.",
-                         IDENTIFIER_POINTER (DECL_NAME (toSymbol()->Stree)),
-                         NULL);
-    TYPE_NAME (closure_rec_type) = get_identifier (name);
-    free(name);
-
+    tree closure_rec_type = ffi->closure_rec;
+    tree chain_link = irs->chainLink();
     tree ptr_field = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
                                       get_identifier("__closptr"), ptr_type_node);
     DECL_CONTEXT(ptr_field) = closure_rec_type;
+    
     ListMaker fields;
     fields.chain(ptr_field);
 
@@ -3304,14 +3300,12 @@ FuncDeclaration::buildClosure(IRState * irs)
     TYPE_FIELDS(closure_rec_type) = fields.head;
     layout_type(closure_rec_type);
 
-    ffi->closure_rec = closure_rec_type;
-
     tree closure_ptr = irs->localVar(build_pointer_type(closure_rec_type));
     DECL_NAME(closure_ptr) = get_identifier("__closptr");
     DECL_IGNORED_P(closure_ptr) = 0;
 
     tree arg = d_convert_basic(Type::tsize_t->toCtype(),
-        TYPE_SIZE_UNIT(closure_rec_type));
+                               TYPE_SIZE_UNIT(closure_rec_type));
 
     DECL_INITIAL(closure_ptr) =
         irs->nop(irs->libCall(LIBCALL_ALLOCMEMORY, 1, & arg),
@@ -3319,10 +3313,11 @@ FuncDeclaration::buildClosure(IRState * irs)
     irs->expandDecl(closure_ptr);
 
     // set the first entry to the parent closure, if any
-    tree cl = irs->chainLink();
-    if (cl)
+    if (chain_link != NULL_TREE)
+    {
         irs->doExp(irs->vmodify(irs->component(irs->indirect(closure_ptr),
-                   ptr_field), cl));
+                   ptr_field), chain_link));
+    }
 
     // copy parameters that are referenced nonlocally
     for (size_t i = 0; i < closureVars.dim; i++)
