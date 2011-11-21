@@ -3621,6 +3621,7 @@ TypeStruct::toCtype()
         ctype = make_node(sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE);
 
         TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
+        d_keep(ctype);
 
         /* %% copied from AggLayout::finish -- also have to set the size
            for (indirect) self-references. */
@@ -3834,6 +3835,7 @@ TypeDArray::toCtype()
         SET_TYPE_STRUCTURAL_EQUALITY(ctype);
 #endif
         TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
+        d_keep(ctype);
     }
     return gen.addTypeModifiers(ctype, mod);
 }
@@ -3851,19 +3853,15 @@ TypeAArray::toCtype()
     if (! ctype)
     {   /* Library functions expect a struct-of-pointer which could be passed
            differently from a pointer. */
-        static tree aa_type = NULL_TREE;
-        if (! aa_type)
-        {
-            aa_type = make_node(RECORD_TYPE);
-            tree f0 = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
-                                       get_identifier("ptr"), ptr_type_node);
-            DECL_CONTEXT(f0) = aa_type;
-            TYPE_FIELDS(aa_type) = f0;
-            TYPE_NAME(aa_type) = get_identifier(toChars());
-            layout_type(aa_type);
-            TYPE_LANG_SPECIFIC(aa_type) = build_d_type_lang_specific(this);
-        }
-        ctype = aa_type;
+        ctype = make_node(RECORD_TYPE);
+        tree ptr = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
+                                    get_identifier("ptr"), ptr_type_node);
+        DECL_CONTEXT(ptr) = ctype;
+        TYPE_FIELDS(ctype) = ptr;
+        TYPE_NAME(ctype) = get_identifier(toChars());
+        layout_type(ctype);
+        TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
+        d_keep(ctype);
     }
     return gen.addTypeModifiers(ctype, mod);
 }
@@ -3887,6 +3885,7 @@ TypeDelegate::toCtype()
         ctype = gen.twoFieldType(Type::tvoidptr, next->pointerTo(),
                                  this, "object", "func");
         TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
+        d_keep(ctype);
     }
     return gen.addTypeModifiers(ctype, mod);
 }
@@ -3998,7 +3997,6 @@ TypeClass::toCtype()
         /* Need to set ctype right away in case of self-references to
            the type during this call. */
         rec_type = make_node(RECORD_TYPE);
-        //apply_type_attributes(sym->attributes, rec_type, true);
         ctype = build_reference_type(rec_type);
         d_keep(ctype); // because BINFO moved out to toDebug
         g.ofile->initTypeDecl(rec_type, sym);
