@@ -3568,7 +3568,7 @@ TypeEnum::toCtype()
             // %% c-decl.c: if (flag_short_enums) TYPE_PACKED(enumtype) = 1;
             TYPE_PRECISION(ctype) = size(0) * 8;
             TYPE_SIZE(ctype) = 0; // as in c-decl.c
-            TREE_TYPE(ctype) = enum_mem_type_node;
+            TYPE_MAIN_VARIANT(ctype) = enum_mem_type_node;
             apply_type_attributes(sym->attributes, ctype, true);
 #if V2
             /* Because minval and maxval are of this type,
