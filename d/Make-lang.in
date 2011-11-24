@@ -410,7 +410,7 @@ d.install-common: installdirs
 	-rm -f $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
 	-rm -f $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
 	$(INSTALL_PROGRAM) $(D_DRIVER_NAME)$(exeext) $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
-	-perl -e 'exit 0;' && $(INSTALL_PROGRAM) $(srcdir)/d/dmd-script $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
+	-perl -e 'exit 0;' && $(INSTALL_SCRIPT) $(srcdir)/d/dmd-script $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
 	-chmod a+x $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
 	-chmod a+x $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
 	-if [ -f $(D_COMPILER_NAME)$(exeext) ] ; then \
@@ -419,7 +419,7 @@ d.install-common: installdirs
 	      rm -f $(DESTDIR)$(gcc_tooldir)/bin/$(D_DRIVER_NAME)$(exeext); \
 	      rm -f $(DESTDIR)$(gcc_tooldir)/bin/gdmd$(exeext); \
 	      $(INSTALL_PROGRAM) $(D_DRIVER_NAME)-cross$(exeext) $(DESTDIR)$(gcc_tooldir)/bin/$(D_DRIVER_NAME)$(exeext); \
-	      perl -e 'exit 0;' && $(INSTALL_PROGRAM) $(srcdir)/d/dmd-script $(DESTDIR)$(gcc_tooldir)/bin/gdmd; \
+	      perl -e 'exit 0;' && $(INSTALL_SCRIPT) $(srcdir)/d/dmd-script $(DESTDIR)$(gcc_tooldir)/bin/gdmd; \
 	    else true; fi; \
 	  else \
 	    rm -f $(DESTDIR)$(bindir)/$(D_TARGET_INSTALL_NAME)$(exeext); \
