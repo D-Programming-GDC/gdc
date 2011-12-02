@@ -1095,17 +1095,18 @@ obj_moduleinfo(Symbol *sym)
     DECL_INITIAL(our_mod_ref) = init;
     g.ofile->rodc(our_mod_ref, 1);
 
-    tree the_mod_ref = d_build_decl(VAR_DECL, get_identifier("_Dmodule_ref"),
-        build_pointer_type(mod_ref_type));
+    tree the_mod_ref = d_build_decl_loc(BUILTINS_LOCATION, VAR_DECL,
+                                        get_identifier("_Dmodule_ref"),
+                                        build_pointer_type(mod_ref_type));
     d_keep(the_mod_ref);
     DECL_EXTERNAL(the_mod_ref) = 1;
     TREE_PUBLIC(the_mod_ref) = 1;
 
     tree m1 = build2(MODIFY_EXPR, void_type_node,
-        gen.component(our_mod_ref, f0),
-        the_mod_ref);
+                     gen.component(our_mod_ref, f0),
+                     the_mod_ref);
     tree m2 = build2(MODIFY_EXPR, void_type_node,
-        the_mod_ref, gen.addressOf(our_mod_ref));
+                     the_mod_ref, gen.addressOf(our_mod_ref));
     tree exp = build2(COMPOUND_EXPR, void_type_node, m1, m2);
 
     g.ofile->doSimpleFunction("*__modinit", exp, true);
