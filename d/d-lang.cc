@@ -558,187 +558,221 @@ static int
 d_handle_option (size_t scode, const char *arg, int value)
 #endif
 {
-  enum opt_code code = (enum opt_code) scode;
-  int level;
+    enum opt_code code = (enum opt_code) scode;
+    int level;
 
-  switch (code)
-      {
-      case OPT_I:
-          global.params.imppath->push(xstrdup(arg)); // %% not sure if we can keep the arg or not
-          break;
-      case OPT_J:
-          global.params.fileImppath->push(xstrdup(arg));
-          break;
-      case OPT_fdeprecated:
-          global.params.useDeprecated = value;
-          break;
-      case OPT_fassert:
-          global.params.useAssert = value;
-          break;
-      case OPT_frelease:
-          global.params.useInvariants = ! value;
-          global.params.useIn = ! value;
-          global.params.useOut = ! value;
-          global.params.useAssert = ! value;
+    switch (code)
+    {
+        case OPT_fasm:
+            gen.useInlineAsm = value;
+            break;
+
+        case OPT_fassert:
+            global.params.useAssert = value;
+            break;
+
 #if V2
-          // release mode doesn't turn off bounds checking for safe functions.
-          global.params.useArrayBounds = ! value ? 2 : 1;
-          flag_bounds_check = ! value;
+        case OPT_fbounds_check:
+            global.params.noboundscheck = ! value;
+            break;
+#endif
+        case OPT_fbuiltin:
+            gen.useBuiltins = value;
+            break;
+
+        case OPT_fdebug:
+            global.params.debuglevel = value ? 1 : 0;
+            break;
+
+        case OPT_fdebug_:
+            if (ISDIGIT(arg[0]))
+            {
+                if (! parse_int(arg, & level))
+                    goto Lerror_d;
+                DebugCondition::setGlobalLevel(level);
+            }
+            else if (Lexer::isValidIdentifier(CONST_CAST(char*, arg)))
+                DebugCondition::addGlobalIdent(xstrdup(arg));
+            else
+            {
+              Lerror_d:
+                error("bad argument for -fdebug");
+            }
+            break;
+
+        case OPT_fdebug_c:
+            strcpy(lang_name, value ? "GNU C" : "GNU D");
+            break;
+
+        case OPT_fdeprecated:
+            global.params.useDeprecated = value;
+            break;
+
+        case OPT_fdeps_:
+            global.params.moduleDepsFile = xstrdup(arg);
+            if (!global.params.moduleDepsFile[0])
+                error("bad argument for -fdeps");
+            global.params.moduleDeps = new OutBuffer;
+            break;
+
+        case OPT_fdoc:
+            global.params.doDocComments = value;
+            break;
+
+        case OPT_fdoc_dir_:
+            global.params.doDocComments = 1;
+            global.params.docdir = xstrdup(arg);
+            break;
+
+        case OPT_fdoc_file_:
+            global.params.doDocComments = 1;
+            global.params.docname = xstrdup(arg);
+            break;
+
+        case OPT_fdoc_inc_:
+            global.params.ddocfiles->push(xstrdup(arg));
+            break;
+
+        case OPT_fdump_source:
+            global.params.dump_source = value;
+            break;
+
+        case OPT_fd_verbose:
+            global.params.verbose = 1;
+            break;
+
+        case OPT_fd_version_1:
+            global.params.Dversion = 1;
+            break;
+
+        case OPT_fd_vtls:
+            global.params.vtls = 1;
+            break;
+
+        case OPT_femit_templates:
+            gen.emitTemplates = value ? TEauto : TEnone;
+            break;
+
+        case OPT_femit_templates_:
+            if (! arg || ! *arg)
+                gen.emitTemplates = value ? TEauto : TEnone;
+            else if (! strcmp(arg, "normal"))
+                gen.emitTemplates = TEnormal;
+            else if (! strcmp(arg, "all"))
+                gen.emitTemplates = TEall;
+            else if (! strcmp(arg, "private"))
+                gen.emitTemplates = TEprivate;
+            else if (! strcmp(arg, "none"))
+                gen.emitTemplates = TEnone;
+            else if (! strcmp(arg, "auto"))
+                gen.emitTemplates = TEauto;
+            else
+                error("bad argument for -femit-templates");
+            break;
+
+        case OPT_fignore_unknown_pragmas:
+            global.params.ignoreUnsupportedPragmas = value;
+            break;
+
+        case OPT_fintfc:
+            global.params.doHdrGeneration = value;
+            break;
+
+        case OPT_fintfc_dir_:
+            global.params.doHdrGeneration = 1;
+            global.params.hdrdir = xstrdup(arg);
+            break;
+
+        case OPT_fintfc_file_:
+            global.params.doHdrGeneration = 1;
+            global.params.hdrname = xstrdup(arg);
+            break;
+
+        case OPT_fonly_:
+            fonly_arg = xstrdup(arg);
+            break;
+#if V2
+        case OPT_fproperty:
+            global.params.enforcePropertySyntax = 1;
+#endif
+        case OPT_frelease:
+            global.params.useInvariants = ! value;
+            global.params.useIn = ! value;
+            global.params.useOut = ! value;
+            global.params.useAssert = ! value;
+#if V2
+            // release mode doesn't turn off bounds checking for safe functions.
+            global.params.useArrayBounds = ! value ? 2 : 1;
+            flag_bounds_check = ! value;
 #else
-          flag_bounds_check = global.params.useArrayBounds = ! value;
+            flag_bounds_check = global.params.useArrayBounds = ! value;
 #endif
-          global.params.useSwitchError = ! value;
-          break;
-#if V2
-      case OPT_fbounds_check:
-          global.params.noboundscheck = ! value;
-          break;
-#endif
-      case OPT_funittest:
-          global.params.useUnitTests = value;
-          break;
-      case OPT_fversion_:
-          if (ISDIGIT(arg[0]))
-          {
-              if (! parse_int(arg, & level))
-                  goto Lerror_v;
-              VersionCondition::setGlobalLevel(level);
-          }
-          else if (Lexer::isValidIdentifier(CONST_CAST(char*, arg)))
-              VersionCondition::addGlobalIdent(xstrdup(arg));
-          else
-          {
-        Lerror_v:
-              error("bad argument for -fversion");
-          }
-          break;
-      case OPT_fdebug:
-          global.params.debuglevel = value ? 1 : 0;
-          break;
-      case OPT_fdebug_:
-          if (ISDIGIT(arg[0]))
-          {
-              if (! parse_int(arg, & level))
-                  goto Lerror_d;
-              DebugCondition::setGlobalLevel(level);
-          }
-          else if (Lexer::isValidIdentifier(CONST_CAST(char*, arg)))
-              DebugCondition::addGlobalIdent(xstrdup(arg));
-          else
-          {
-        Lerror_d:
-              error("bad argument for -fdebug");
-          }
-          break;
-      case OPT_fdebug_c:
-          strcpy(lang_name, value ? "GNU C" : "GNU D");
-          break;
-      case OPT_fdeps_:
-          global.params.moduleDepsFile = xstrdup(arg);
-          if (!global.params.moduleDepsFile[0])
-              error("bad argument for -fdeps");
-          global.params.moduleDeps = new OutBuffer;
-          break;
-      case OPT_fignore_unknown_pragmas:
-          global.params.ignoreUnsupportedPragmas = value;
-          break;
-#if V2
-      case OPT_fproperty:
-          global.params.enforcePropertySyntax = 1;
-#endif
-      case OPT_fintfc:
-          global.params.doHdrGeneration = value;
-          break;
-      case OPT_fintfc_dir_:
-          global.params.doHdrGeneration = 1;
-          global.params.hdrdir = xstrdup(arg);
-          break;
-      case OPT_fintfc_file_:
-          global.params.doHdrGeneration = 1;
-          global.params.hdrname = xstrdup(arg);
-          break;
-      case OPT_fdoc:
-          global.params.doDocComments = value;
-          break;
-      case OPT_fdoc_dir_:
-          global.params.doDocComments = 1;
-          global.params.docdir = xstrdup(arg);
-          break;
-      case OPT_fdoc_file_:
-          global.params.doDocComments = 1;
-          global.params.docname = xstrdup(arg);
-          break;
-      case OPT_fdoc_inc_:
-          global.params.ddocfiles->push(xstrdup(arg));
-          break;
-      case OPT_fd_verbose:
-          global.params.verbose = 1;
-          break;
-      case OPT_fd_vtls:
-          global.params.vtls = 1;
-          break;
-      case OPT_fd_version_1:
-          global.params.Dversion = 1;
-          break;
-      case OPT_femit_templates:
-          gen.emitTemplates = value ? TEauto : TEnone;
-          break;
-      case OPT_femit_templates_:
-          if (! arg || ! *arg)
-              gen.emitTemplates = value ? TEauto : TEnone;
-          else if (! strcmp(arg, "normal"))
-              gen.emitTemplates = TEnormal;
-          else if (! strcmp(arg, "all"))
-              gen.emitTemplates = TEall;
-          else if (! strcmp(arg, "private"))
-              gen.emitTemplates = TEprivate;
-          else if (! strcmp(arg, "none"))
-              gen.emitTemplates = TEnone;
-          else if (! strcmp(arg, "auto"))
-              gen.emitTemplates = TEauto;
-          else
-              error("bad argument for -femit-templates");
-          break;
-      case OPT_fonly_:
-          fonly_arg = xstrdup(arg);
-          break;
-      case OPT_iprefix:
-          iprefix = xstrdup(arg);
-          break;
-      case OPT_imultilib:
-          multilib_dir = xstrdup(arg);
-          break;
-      case OPT_nostdinc:
-          std_inc = false;
-          break;
-      case OPT_fdump_source:
-          global.params.dump_source = value;
-          break;
-      case OPT_fasm:
-          gen.useInlineAsm = value;
-          break;
-      case OPT_fbuiltin:
-          gen.useBuiltins = value;
-          break;
-      case OPT_Wall:
-          global.params.warnings = 2;
-          gen.warnSignCompare = value;
-          break;
-      case OPT_Werror:
-          global.params.warnings = 1;
-          gen.warnSignCompare = value;
-          break;
-      case OPT_Wsign_compare:
-          gen.warnSignCompare = value;
-          break;
-      case OPT_fXf_:
-          global.params.doXGeneration = 1;
-          global.params.xfilename = xstrdup(arg);
-          break;
-      default:
-          break;
-      }
-  return 1;
+            global.params.useSwitchError = ! value;
+            break;
+
+        case OPT_funittest:
+            global.params.useUnitTests = value;
+            break;
+
+        case OPT_fversion_:
+            if (ISDIGIT(arg[0]))
+            {
+                if (! parse_int(arg, & level))
+                    goto Lerror_v;
+                VersionCondition::setGlobalLevel(level);
+            }
+            else if (Lexer::isValidIdentifier(CONST_CAST(char*, arg)))
+                VersionCondition::addGlobalIdent(xstrdup(arg));
+            else
+            {
+              Lerror_v:
+                error("bad argument for -fversion");
+            }
+            break;
+
+        case OPT_fXf_:
+            global.params.doXGeneration = 1;
+            global.params.xfilename = xstrdup(arg);
+            break;
+
+        case OPT_imultilib:
+            multilib_dir = xstrdup(arg);
+            break;
+
+        case OPT_iprefix:
+            iprefix = xstrdup(arg);
+            break;
+
+        case OPT_I:
+            global.params.imppath->push(xstrdup(arg)); // %% not sure if we can keep the arg or not
+            break;
+
+        case OPT_J:
+            global.params.fileImppath->push(xstrdup(arg));
+            break;
+
+        case OPT_nostdinc:
+            std_inc = false;
+            break;
+
+        case OPT_Wall:
+            global.params.warnings = 2;
+            gen.warnSignCompare = value;
+            break;
+
+        case OPT_Werror:
+            global.params.warnings = 1;
+            gen.warnSignCompare = value;
+            break;
+
+        case OPT_Wsign_compare:
+            gen.warnSignCompare = value;
+            break;
+
+        default:
+            break;
+    }
+    return 1;
 }
 
 bool d_post_options(const char ** fn)
