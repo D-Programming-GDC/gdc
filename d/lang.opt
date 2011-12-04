@@ -20,6 +20,10 @@
 Language
 D
 
+D
+D
+-D<macro>[=<val>]       Define a <macro> with <val> as its value.  If just <macro> is given, <val> is taken to be 1
+
 fasm
 D
 Recognize the \"asm\" keyword
@@ -159,6 +163,18 @@ D Joined Separate
 J
 D Joined Separate
 -J <dir>	Add <dir> to the end of the string import path.
+
+M
+D
+Generate make dependencies
+
+MF
+D Joined Separate
+-fMF <file>     Write dependency output to the given file
+
+MM
+D
+Like -M but ignore system header files
 
 nostdinc
 D

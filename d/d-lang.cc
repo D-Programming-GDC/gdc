@@ -563,6 +563,10 @@ d_handle_option (size_t scode, const char *arg, int value)
 
     switch (code)
     {
+        case OPT_D:
+            // Might make use of this someday.
+            break;
+
         case OPT_fasm:
             gen.useInlineAsm = value;
             break;
@@ -686,6 +690,18 @@ d_handle_option (size_t scode, const char *arg, int value)
         case OPT_fintfc_file_:
             global.params.doHdrGeneration = 1;
             global.params.hdrname = xstrdup(arg);
+            break;
+
+        case OPT_M:
+        case OPT_MM:
+            global.params.makeDeps = new OutBuffer;
+            global.params.makeDepsStyle = (code == OPT_M ? 1 : 2);
+            break;
+
+        case OPT_MF:
+            global.params.makeDepsFile = xstrdup(arg);
+            if (!global.params.makeDepsFile[0])
+                error("bad argument for -MF");
             break;
 
         case OPT_fonly_:
@@ -818,6 +834,11 @@ bool d_post_options(const char ** fn)
     if (flag_excess_precision_cmdline == EXCESS_PRECISION_DEFAULT)
        flag_excess_precision_cmdline = EXCESS_PRECISION_FAST;
 #endif
+
+    /* If we don't know what style of dependencies to output, complain.  */
+    if (global.params.makeDepsFile != NULL && global.params.makeDepsStyle == 0)
+        error("to generate dependencies you must specify either -M or -MM");
+
     return false;
 }
 
@@ -951,6 +972,77 @@ static void
 nametype(Type * t)
 {
     nametype(t->toCtype(), t->toChars());
+}
+
+static void
+deps_write(Module * m)
+{
+    OutBuffer *ob = global.params.makeDeps;
+    size_t size, column = 0, colmax = 72;
+    FileName * fn;
+
+    // Write out object name.
+    fn = m->objfile->name;
+    size = fn->len();
+    ob->writestring(fn->str);
+    column = size;
+
+    ob->writestring(": ");
+    column += 2;
+
+    // First dependency is source file for module.
+    fn = m->srcfile->name;
+    size = fn->len();
+    ob->writestring(fn->str);
+    column += size;
+
+    // Write out file dependencies.
+    for (size_t i = 0; i < m->aimports.dim; i++)
+    {
+        Module * mi = m->aimports.tdata()[i];
+
+        // Ignore self references.
+        if (mi == m)
+            continue;
+
+        if (global.params.makeDepsStyle == 2)
+        {
+            // Don't emit system modules. This includes core.*, std.*, gcc.* and object.
+            ModuleDeclaration * md = mi->md;
+
+            if (md && md->packages)
+            {
+                if (strcmp((md->packages->tdata()[0])->string, "core") == 0)
+                    continue;
+                if (strcmp((md->packages->tdata()[0])->string, "std") == 0)
+                    continue;
+                if (strcmp((md->packages->tdata()[0])->string, "gcc") == 0)
+                    continue;
+            }
+            else if (md && md->id)
+            {
+                if (strcmp(md->id->string, "object") == 0 && md->packages == NULL)
+                    continue;
+            }
+        }
+
+        // All checks done, write out file path/name.
+        fn = mi->srcfile->name;
+        size = fn->len();
+        column += size;
+        if (column > colmax)
+        {
+            ob->writestring(" \\\n ");
+            column = 1 + size;
+        }
+        else
+        {
+            ob->writestring(" ");
+            column++;
+        }
+        ob->writestring(fn->str);
+    }
+    ob->writestring("\n");
 }
 
 #if V2
@@ -1208,6 +1300,26 @@ d_parse_file (int /*set_yydebug*/)
         OutBuffer* ob = global.params.moduleDeps;
         deps.setbuffer((void*)ob->data, ob->offset);
         deps.writev();
+    }
+
+    if (global.params.makeDeps != NULL)
+    {
+        for (size_t i = 0; i < modules.dim; i++)
+        {
+            m = modules.tdata()[i];
+            deps_write(m);
+        }
+
+
+        OutBuffer* ob = global.params.makeDeps;
+        if (global.params.makeDepsFile == NULL)
+            printf((char*)ob->data);
+        else
+        {
+            File deps(global.params.makeDepsFile);
+            deps.setbuffer((void*)ob->data, ob->offset);
+            deps.writev();
+        }
     }
 
     // Do not attempt to generate output files if errors or warnings occurred
