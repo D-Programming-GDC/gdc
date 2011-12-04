@@ -20,10 +20,6 @@
 Language
 D
 
-D
-D
--D<macro>[=<val>]       Define a <macro> with <val> as its value.  If just <macro> is given, <val> is taken to be 1
-
 fasm
 D
 Recognize the \"asm\" keyword
@@ -116,6 +112,14 @@ fintfc-file=
 D Joined RejectNegative
 -fintfc-file=<filename> Write D interface file to <filename>
 
+fmake-deps=
+D Joined RejectNegative
+-fmake-deps=<file> Write dependency output to the given file
+
+fmake-mdeps=
+D Joined RejectNegative
+Like -fmake-deps=<file> but ignore system header files
+
 fonly=
 D Joined RejectNegative
 Process all modules specified on the command line, but only generate code for the module specified by the argument.
@@ -163,18 +167,6 @@ D Joined Separate
 J
 D Joined Separate
 -J <dir>	Add <dir> to the end of the string import path.
-
-M
-D
-Generate make dependencies
-
-MF
-D Joined Separate
--fMF <file>     Write dependency output to the given file
-
-MM
-D
-Like -M but ignore system header files
 
 nostdinc
 D

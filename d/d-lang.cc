@@ -563,10 +563,6 @@ d_handle_option (size_t scode, const char *arg, int value)
 
     switch (code)
     {
-        case OPT_D:
-            // Might make use of this someday.
-            break;
-
         case OPT_fasm:
             gen.useInlineAsm = value;
             break;
@@ -692,16 +688,20 @@ d_handle_option (size_t scode, const char *arg, int value)
             global.params.hdrname = xstrdup(arg);
             break;
 
-        case OPT_M:
-        case OPT_MM:
+        case OPT_fmake_deps_:
             global.params.makeDeps = new OutBuffer;
-            global.params.makeDepsStyle = (code == OPT_M ? 1 : 2);
-            break;
-
-        case OPT_MF:
+            global.params.makeDepsStyle = 1;
             global.params.makeDepsFile = xstrdup(arg);
             if (!global.params.makeDepsFile[0])
-                error("bad argument for -MF");
+                error("bad argument for -fmake-deps");
+            break;
+
+        case OPT_fmake_mdeps_:
+            global.params.makeDeps = new OutBuffer;
+            global.params.makeDepsStyle = 2;
+            global.params.makeDepsFile = xstrdup(arg);
+            if (!global.params.makeDepsFile[0])
+                error("bad argument for -fmake-deps");
             break;
 
         case OPT_fonly_:
@@ -834,11 +834,6 @@ bool d_post_options(const char ** fn)
     if (flag_excess_precision_cmdline == EXCESS_PRECISION_DEFAULT)
        flag_excess_precision_cmdline = EXCESS_PRECISION_FAST;
 #endif
-
-    /* If we don't know what style of dependencies to output, complain.  */
-    if (global.params.makeDepsFile != NULL && global.params.makeDepsStyle == 0)
-        error("to generate dependencies you must specify either -M or -MM");
-
     return false;
 }
 

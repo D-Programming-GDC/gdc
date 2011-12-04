@@ -39,7 +39,7 @@
 {".di", "@d", 0, 1, 0 },
 {".DI", "@d", 0, 1, 0 },
 {"@d",
-     "%{!E:cc1d %(cpp_options) %(cc1_options) %(cc1d) %I %{nostdinc*} %{+e*} %{I*} %{J*}\
+     "%{!E:cc1d %i %(cc1_options) %(cc1d) %I %{nostdinc*} %{+e*} %{I*} %{J*}\
       %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC, 1, 0 },
 #else
 {".d", "@d", 0, 1, 0 },
@@ -47,7 +47,7 @@
 {".di", "@d", 0, 1, 0 },
 {".DI", "@d", 0, 1, 0 },
 {"@d",
-     "%{!E:cc1d %(cpp_options) %(cc1_options) %(cc1d) %I %{nostdinc*} %{+e*} %{I*} %{J*}\
+     "%{!E:cc1d %i %(cc1_options) %(cc1d) %I %{nostdinc*} %{+e*} %{I*} %{J*}\
       %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC, 1, 0 },
 #endif
 
