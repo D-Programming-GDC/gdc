@@ -507,6 +507,13 @@ ObjectFile::shouldEmit(Declaration * d_sym)
     if (d_sym->type->ty == Tfunction && ((TypeFunction *)d_sym->type)->next->ty == Terror)
         return false;
 
+    FuncDeclaration * fd = d_sym->isFuncDeclaration();
+    if (fd && fd->isNested() && fd->vthis == NULL)
+    {
+        gcc_assert(global.errors);
+        return false;
+    }
+
     Symbol * s = d_sym->toSymbol();
     gcc_assert(s);
 
