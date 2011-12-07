@@ -1505,11 +1505,25 @@ SliceExp::toElem(IRState * irs)
 elem *
 CastExp::toElem(IRState * irs)
 {
-    if (to->ty == Tvoid)
+    Type * ebtype = e1->type->toBasetype();
+    Type * tbtype = to->toBasetype();
+    tree t;
+
+#if V2
+    if (ebtype->ty == Taarray)
+        ebtype = ((TypeAArray*)ebtype)->getImpl()->type;
+    if (tbtype->ty == Taarray)
+        tbtype = ((TypeAArray*)tbtype)->getImpl()->type;
+#endif
+
+    t = e1->toElem(irs);
+
+    if (tbtype->ty == Tvoid)
     {   // Just evaluate e1 if it has any side effects
-        return build1(NOP_EXPR, void_type_node, e1->toElem(irs));
+        return build1(NOP_EXPR, tbtype->toCtype(), t);
     }
-    return irs->convertTo(e1, to);
+
+    return irs->convertTo(t, ebtype, tbtype);
 }
 
 

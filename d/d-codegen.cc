@@ -268,14 +268,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
     Type * ebtype = exp_type->toBasetype();
     Type * tbtype = target_type->toBasetype();
 
-#if V2
-    if (ebtype->ty == Taarray)
-        exp_type = ((TypeAArray*)ebtype)->getImpl()->type;
-    if (tbtype->ty == Taarray)
-        target_type = ((TypeAArray*)tbtype)->getImpl()->type;
-#endif
-
-    if (typesSame(exp_type, target_type))
+    if (typesCompatible(exp_type, target_type))
         return exp;
 
     if (isErrorMark(exp))
