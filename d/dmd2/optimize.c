@@ -367,13 +367,8 @@ Expression *AddrExp::optimize(int result)
             e = ex;
         else
         {
-#ifndef IN_GCC
             e = ex->copy();
             e->type = type;
-#else
-            // Stuffing types does not always work in GCC
-            return this;
-#endif
         }
         return e;
     }
