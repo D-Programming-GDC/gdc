@@ -62,7 +62,7 @@ struct CppMangleState
     bool hasSubstitute(void * p, OutBuffer * buf)
     {
         for (size_t i = 0; i < substitutions.dim; i++)
-            if (substitutions.tdata()[i] == p)
+            if (substitutions[i] == p)
             {
                 if (buf)
                 {
@@ -160,13 +160,13 @@ cpp_mangle1(Dsymbol *sthis, OutBuffer * buf, CppMangleState * cms)
     unsigned ii;
     for (ii = 0; ii < pfxs.dim; ++ii)
     {
-        s = pfxs.tdata()[ii];
+        s = pfxs[ii];
         if (cms->hasSubstitute(s, buf))
             break;
     }
     while (ii > 0)
     {
-        s = pfxs.tdata()[--ii];
+        s = pfxs[ii];
         if (s->isCtorDeclaration())
         {
             buf->writeByte('C');

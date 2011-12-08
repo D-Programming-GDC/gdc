@@ -385,11 +385,6 @@ void ClassDeclaration::toObjFile(int multiobj)
     if (!members)
         return;
 
-    if (multiobj)
-    {   obj_append(this);
-        return;
-    }
-
     if (global.params.symdebug)
         toDebug();
 
@@ -402,10 +397,11 @@ void ClassDeclaration::toObjFile(int multiobj)
     // Put out the members
     for (size_t i = 0; i < members->dim; i++)
     {
-        Dsymbol *member;
-
-        member = members->tdata()[i];
-        member->toObjFile(0);
+        Dsymbol *member = (*members)[i];
+        /* There might be static ctors in the members, and they cannot
+         * be put in separate obj files.
+         */
+        member->toObjFile(multiobj);
     }
 
 #if 0
@@ -590,6 +586,8 @@ void ClassDeclaration::toObjFile(int multiobj)
     flags |= 32;
     if (ctor)
         flags |= 8;
+    if (isabstract)
+        flags |= 64;
     for (ClassDeclaration *cd = this; cd; cd = cd->baseClass)
     {
         if (cd->members)
@@ -1116,11 +1114,6 @@ void StructDeclaration::toObjFile(int multiobj)
 {
     //printf("StructDeclaration::toObjFile('%s')\n", toChars());
 
-    if (multiobj)
-    {   obj_append(this);
-        return;
-    }
-
     // Anonymous structs/unions only exist as part of others,
     // do not output forward referenced structs's
     if (!isAnonymous() && members)
@@ -1180,12 +1173,13 @@ void StructDeclaration::toObjFile(int multiobj)
         }
 
         // Put out the members
-        for (unsigned i = 0; i < members->dim; i++)
+        for (size_t i = 0; i < members->dim; i++)
         {
-            Dsymbol *member;
-
-            member = members->tdata()[i];
-            member->toObjFile(0);
+            Dsymbol *member = (*members)[i];
+            /* There might be static ctors in the members, and they cannot
+             * be put in separate obj files.
+             */
+            member->toObjFile(multiobj);
         }
     }
 }

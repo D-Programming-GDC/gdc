@@ -23,8 +23,8 @@ public import core.stdc.stdio;
 import std.stdiobase;
 import core.stdc.errno, core.stdc.stddef, core.stdc.stdlib, core.memory,
     core.stdc.string, core.stdc.wchar_;
-import std.algorithm, std.array, std.conv, std.exception, std.file, std.format,
-    std.range, std.string, std.traits, std.typecons,
+import std.algorithm, std.array, std.conv, std.exception, std.format,
+    std.file, std.range, std.string, std.traits, std.typecons,
     std.typetuple, std.utf;
 
 version (GNU)
@@ -951,7 +951,7 @@ Returns the file number corresponding to this object.
 
 /**
 Range that reads one line at a time. */
-    enum KeepTerminator : bool { no, yes }
+    alias std.string.KeepTerminator KeepTerminator;
     /// ditto
     struct ByLine(Char, Terminator)
     {

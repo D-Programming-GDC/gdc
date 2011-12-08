@@ -1743,7 +1743,7 @@ struct AsmProcessor
 
         if (operand->symbolDisplacement.dim)
         {
-            is_localsize = isLocalSize(operand->symbolDisplacement.tdata()[0]);
+            is_localsize = isLocalSize(operand->symbolDisplacement[0]);
             really_have_symbol = ! is_localsize;
         }
 
@@ -2231,11 +2231,11 @@ struct AsmProcessor
                     }
 
                     if (operand->symbolDisplacement.dim &&
-                        isLocalSize(operand->symbolDisplacement.tdata()[0]))
+                        isLocalSize(operand->symbolDisplacement[0]))
                     {    // handle __LOCAL_SIZE, which in this constant, is an immediate
                         // should do this in slotexp..
                         addOperand("%", Arg_LocalSize,
-                                operand->symbolDisplacement.tdata()[0], asmcode);
+                                operand->symbolDisplacement[0], asmcode);
                         if (operand->constDisplacement)
                             insnTemplate->writebyte('+');
                         else
@@ -2246,7 +2246,7 @@ struct AsmProcessor
                     {
                         fmt = "%a";
                         addOperand("%", Arg_Pointer,
-                                operand->symbolDisplacement.tdata()[0],
+                                operand->symbolDisplacement[0],
                                 asmcode);
 
                         if (operand->constDisplacement)
@@ -2300,7 +2300,7 @@ struct AsmProcessor
                     }
                     if (operand->symbolDisplacement.dim)
                     {
-                        Expression * e = operand->symbolDisplacement.tdata()[0];
+                        Expression * e = operand->symbolDisplacement[0];
                         Declaration * decl = NULL;
 
                         /* We are generating a memory reference, but the

@@ -2135,7 +2135,7 @@ body
 {
 	size_t ni; // current character in path
 
-    foreach (pi; 0 .. pattern.length)
+    foreach (ref pi; 0 .. pattern.length)
     {
         C pc = pattern[pi];
         switch (pc)
@@ -2236,7 +2236,7 @@ body
                 break;
 	    }
 	}
-    assert(ni >= path.length);
+    assert(ni <= path.length);
 	return ni == path.length;
 }
 
@@ -2262,6 +2262,7 @@ unittest
     assert(!globMatch("foo.bar", "[gh]???bar"));
     assert(!globMatch("foo.bar"w, "[!fg]*bar"w));
     assert(!globMatch("foo.bar"d, "[fg]???baz"d));
+    assert(!globMatch("foo.di", "*.d")); // test issue 6634: triggered bad assertion
 
     assert(globMatch("foo.bar", "{foo,bif}.bar"));
     assert(globMatch("bif.bar"w, "{foo,bif}.bar"w));
@@ -2769,15 +2770,6 @@ unittest
 // scheduled for deprecation in February 2012.
 // =============================================================================
 
-// Deprecation message
-import std.metastrings;
-private template softDeprec(string vers, string date, string oldFunc, string newFunc)
-{
-    enum softDeprec = Format!("Notice: As of Phobos %s, std.path.%s has been scheduled " ~
-                              "for deprecation in %s. Please use %s instead.",
-                              vers, oldFunc, date, newFunc);
-}
-
 
 import std.algorithm, std.array, std.conv, std.file, std.process, std.string,
     std.traits;
@@ -2839,7 +2831,10 @@ version(Posix)
     }
 }
 
-/* ****************************
+/******************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF filenameCmp) instead.)
+ *
  * Compare file names.
  * Returns:
  *      <table border=1 cellpadding=4 cellspacing=0>
@@ -2851,12 +2846,14 @@ version(Posix)
 int fcmp(alias pred = "a < b", S1, S2)(S1 s1, S2 s2)
     if (isSomeString!S1 && isSomeString!S2)
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "fcmp", "filenameCmp"));
     version (Windows) return std.string.icmp(s1, s2);
     version (Posix)   return std.algorithm.cmp(s1, s2);
 }
 
-/* *************************
+/***************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF extension) instead.)
+ *
  * Extracts the extension from a filename or path.
  *
  * This function will search fullname from the end until the
@@ -2888,7 +2885,6 @@ int fcmp(alias pred = "a < b", S1, S2)(S1 s1, S2 s2)
 
 string getExt()(string fullname)
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "getExt", "extension"));
     auto i = fullname.length;
     while (i > 0)
     {
@@ -2952,7 +2948,10 @@ version (OldStdPathUnittest) unittest
     assert(i == 0);
 }
 
-/* *************************
+/***************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF stripExtension) instead.)
+ *
  * Returns the extensionless version of a filename or path.
  *
  * This function will search fullname from the end until the
@@ -2984,7 +2983,6 @@ version (OldStdPathUnittest) unittest
 
 string getName()(string fullname)
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "getName", "stripExtension"));
     auto i = fullname.length;
     while (i > 0)
     {
@@ -3026,7 +3024,10 @@ version (OldStdPathUnittest) unittest
     assert(i == 0);
 }
 
-/* *************************
+/***************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF baseName) instead.)
+ *
  * Extracts the base name of a path and optionally chops off a
  * specific suffix.
  *
@@ -3067,7 +3068,6 @@ out (result)
 }
 body
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "basename", "baseName"));
     auto i = fullname.length;
     for (; i > 0; i--)
     {
@@ -3131,7 +3131,10 @@ version (OldStdPathUnittest) unittest
     assert(basename("dmd.conf"w.dup, ".conf"d.dup) == "dmd");
 }
 
-/* *************************
+/***************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF dirName) instead.)
+ *
  * Extracts the directory part of a path.
  *
  * This function will search $(D fullname) from the end until the
@@ -3169,7 +3172,6 @@ version (OldStdPathUnittest) unittest
 Char[] dirname(Char)(Char[] fullname)
     if (isSomeChar!Char)
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "dirname", "dirName"));
     alias immutable(Char)[] ImmString;
     Char[] s = fullname;
 
@@ -3365,7 +3367,10 @@ version (OldStdPathUnittest) unittest // dirname + basename
 }
 
 
-/* *******************************
+/*********************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF driveName) instead.)
+ *
  * Extracts the drive letter of a path.
  *
  * This function will search fullname for a colon from the beginning.
@@ -3390,7 +3395,6 @@ Char[] getDrive(Char)(Char[] fullname) if (isSomeChar!Char)
 // }
 body
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "getDrive", "driveName"));
     version(Windows)
     {
         foreach (i; 0 .. fullname.length)
@@ -3410,7 +3414,10 @@ body
     }
 }
 
-/* ***************************
+/*****************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF defaultExtension) instead.)
+ *
  * Appends a default extension to a filename.
  *
  * This function first searches filename for an extension and
@@ -3433,7 +3440,6 @@ body
 
 string defaultExt()(string filename, string ext)
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "defaultExt", "defaultExtension"));
     string existing;
 
     existing = getExt(filename);
@@ -3449,7 +3455,10 @@ string defaultExt()(string filename, string ext)
 }
 
 
-/* ***************************
+/*****************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF setExtension) instead.)
+ *
  * Adds or replaces an extension to a filename.
  *
  * This function first searches filename for an extension and
@@ -3474,7 +3483,6 @@ string defaultExt()(string filename, string ext)
 
 string addExt()(string filename, string ext)
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "addExt", "setExtension"));
     string existing;
 
     existing = getExt(filename);
@@ -3494,7 +3502,10 @@ string addExt()(string filename, string ext)
 }
 
 
-/* ************************************
+/**************************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF isAbsolute) instead.)
+ *
  * Checks if path is absolute.
  *
  * Returns: non-zero if the path starts from the root directory (Linux) or
@@ -3521,7 +3532,6 @@ string addExt()(string filename, string ext)
 
 bool isabs()(in char[] path)
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "isabs", "isAbsolute"));
     auto d = getDrive(path);
     version (Windows)
     {
@@ -3554,12 +3564,14 @@ version (OldStdPathUnittest) unittest
     }
 }
 
-/* *
+/**
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF absolutePath) instead.)
+ *
  * Converts a relative path into an absolute path.
  */
 string rel2abs()(string path)
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "rel2abs", "absolutePath"));
     if (!path.length || isabs(path))
     {
         return path;
@@ -3595,7 +3607,10 @@ version (OldStdPathUnittest) unittest
     }
 }
 
-/* ************************************
+/**************************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF buildPath) instead.)
+ *
  * Joins two or more path components.
  *
  * If p1 doesn't have a trailing path separator, one will be appended
@@ -3623,7 +3638,6 @@ version (OldStdPathUnittest) unittest
 
 string join()(const(char)[] p1, const(char)[] p2, const(char)[][] more...)
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "join", "buildPath"));
     if (more.length)
     {
         // more than two components present
@@ -3773,7 +3787,10 @@ version (OldStdPathUnittest) unittest
 }
 
 
-/* ********************************
+/**********************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF filenameCharCmp) instead.)
+ *
  * Matches filename characters.
  *
  * Under Windows, the comparison is done ignoring case. Under Linux
@@ -3800,7 +3817,6 @@ version (OldStdPathUnittest) unittest
 
 bool fncharmatch()(dchar c1, dchar c2)
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "fncharmatch", "filenameCharCmp"));
     version (Windows)
     {
         if (c1 != c2)
@@ -3823,7 +3839,10 @@ bool fncharmatch()(dchar c1, dchar c2)
     }
 }
 
-/* ***********************************
+/*************************************
+ * $(RED Scheduled for deprecation in February 2012. Please use
+ *       $(LREF globMatch) instead.)
+ *
  * Matches a pattern against a filename.
  *
  * Some characters of pattern have special a meaning (they are
@@ -3878,7 +3897,6 @@ in
 }
 body
 {
-    pragma (msg, softDeprec!("2.055", "February 2012", "fnmatch", "globMatch"));
         size_t ni; // current character in filename
 
         foreach (pi; 0 .. pattern.length)
@@ -3984,8 +4002,8 @@ body
                 break;
             }
         }
-    assert(ni >= filename.length);
-        return ni == filename.length;
+    assert(ni <= filename.length);
+    return ni == filename.length;
 }
 
 version (OldStdPathUnittest) unittest
@@ -4013,6 +4031,7 @@ version (OldStdPathUnittest) unittest
     assert(!fnmatch("foo.bar", "[gh]???bar"));
     assert(!fnmatch("foo.bar", "[!fg]*bar"));
     assert(!fnmatch("foo.bar", "[fg]???baz"));
+    assert(!fnmatch("foo.di", "*.d")); // test issue 6634: triggered bad assertion
 
     assert(fnmatch("foo.bar", "{foo,bif}.bar"));
     assert(fnmatch("bif.bar", "{foo,bif}.bar"));

@@ -16,8 +16,7 @@
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, February 2007
-   Updated by Iain Buclaw, July 2010
+   Modified by Iain Buclaw, July 2010
 */
 
 module rt.lifetime;

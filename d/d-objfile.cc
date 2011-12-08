@@ -57,7 +57,7 @@ ObjectFile::endModule()
 {
     for (size_t i = 0; i < deferredThunks.dim; i++)
     {
-        DeferredThunk * t = deferredThunks.tdata()[i];
+        DeferredThunk * t = deferredThunks[i];
         outputThunk(t->decl, t->target, t->offset);
     }
     deferredThunks.setDim(0);
@@ -71,11 +71,11 @@ ObjectFile::hasModule(Module *m)
     if (!m || ! modules.dim)
         return false;
 
-    if (modules.tdata()[moduleSearchIndex] == m)
+    if (modules[moduleSearchIndex] == m)
         return true;
     for (size_t i = 0; i < modules.dim; i++)
     {
-        if (modules.tdata()[i] == m)
+        if (modules[i] == m)
         {
             moduleSearchIndex = i;
             return true;
@@ -119,12 +119,19 @@ ObjectFile::doLineNote(const Loc & loc)
 }
 
 #ifdef D_USE_MAPPED_LOCATION
+static StringTable * lmtab = NULL;
+
 static location_t
 cvtLocToloc_t(const Loc loc)
 {
     //gcc_assert(sizeof(StringValue.intvalue) == sizeof(location_t));
-    static StringTable lmtab;
-    StringValue * sv = lmtab.update(loc.filename, strlen(loc.filename));
+    if (! lmtab)
+    {
+        lmtab = new StringTable();
+        lmtab->init();
+    }
+
+    StringValue * sv = lmtab->update(loc.filename, strlen(loc.filename));
     const struct line_map * lm = 0;
     unsigned new_line_count = 0;
 
@@ -536,7 +543,10 @@ ObjectFile::shouldEmit(Symbol * sym)
         gcc_assert(ident != NULL);
 
         if (! symtab)
+        {
             symtab = new StringTable;
+            symtab->init();
+        }
 
         if (! symtab->insert(ident, len))
             /* Don't emit, assembler name already in symtab. */
@@ -558,7 +568,7 @@ ObjectFile::addAggMethods(tree rec_type, AggregateDeclaration * agg)
         ListMaker methods;
         for (size_t i = 0; i < agg->methods.dim; i++)
         {
-            FuncDeclaration * fd = agg->methods.tdata()[i];
+            FuncDeclaration * fd = agg->methods[i];
             methods.chain(fd->toSymbol()->Stree);
         }
         TYPE_METHODS(rec_type) = methods.head;
@@ -884,13 +894,13 @@ ObjectFile::doFunctionToCallFunctions(const char * name, FuncDeclarations * func
     // If there is only one function, just return that
     if (functions->dim == 1 && ! force_and_public)
     {
-        return functions->tdata()[0];
+        return (*functions)[0];
     }
     else
     {   // %% shouldn't front end build these?
         for (size_t i = 0; i < functions->dim; i++)
         {
-            FuncDeclaration * fn_decl = functions->tdata()[i];
+            FuncDeclaration * fn_decl = (*functions)[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
             expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
@@ -913,13 +923,13 @@ ObjectFile::doCtorFunction(const char * name, FuncDeclarations * functions, VarD
     // If there is only one function, just return that
     if (functions->dim == 1 && ! gates->dim)
     {
-        return functions->tdata()[0];
+        return (*functions)[0];
     }
     else
     {   // Increment gates first.
         for (size_t i = 0; i < gates->dim; i++)
         {
-            VarDeclaration * var = gates->tdata()[i];
+            VarDeclaration * var = (*gates)[i];
             tree var_decl = var->toSymbol()->Stree;
             tree var_expr = build2(MODIFY_EXPR, void_type_node, var_decl,
                                 build2(PLUS_EXPR, TREE_TYPE(var_decl), var_decl, integer_one_node));
@@ -928,7 +938,7 @@ ObjectFile::doCtorFunction(const char * name, FuncDeclarations * functions, VarD
         // Call Ctor Functions
         for (size_t i = 0; i < functions->dim; i++)
         {
-            FuncDeclaration * fn_decl = functions->tdata()[i];
+            FuncDeclaration * fn_decl = (*functions)[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
             expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }
@@ -950,13 +960,13 @@ ObjectFile::doDtorFunction(const char * name, FuncDeclarations * functions)
     // If there is only one function, just return that
     if (functions->dim == 1)
     {
-        return functions->tdata()[0];
+        return (*functions)[0];
     }
     else
     {
         for (int i = functions->dim - 1; i >= 0; i--)
         {
-            FuncDeclaration * fn_decl = functions->tdata()[i];
+            FuncDeclaration * fn_decl = (*functions)[i];
             tree call_expr = gen.buildCall(void_type_node, gen.addressOf(fn_decl), NULL_TREE);
             expr_list = g.irs->maybeVoidCompound(expr_list, call_expr);
         }

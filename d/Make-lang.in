@@ -249,7 +249,7 @@ D_DMD_OBJS := \
 
 ifeq ($(D_LANGUAGE_VERSION),2)
 # D2 specific sources
-  D_DMD_OBJS += d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o d/intrange.dmd.o
+  D_DMD_OBJS += d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o d/intrange.dmd.o d/cppmangle.dmd.o
 else
 # D1 specific sources
   D_DMD_OBJS += d/argtypes.dmd.o
@@ -265,9 +265,9 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/symbol.glue.o d/asmstmt.glue.o d/dt.glue.o \
               d/d-incpath.glue.o
 
-ifeq ($(D_LANGUAGE_VERSION),2)
-D_GLUE_OBJS += d/d-cppmngl.glue.o
-endif
+#ifeq ($(D_LANGUAGE_VERSION),2)
+#D_GLUE_OBJS += d/d-cppmngl.glue.o
+#endif
 
 D_BI_ATTRS = d/d-bi-attrs-42.h d/d-bi-attrs-43.h d/d-bi-attrs-44.h \
              d/d-bi-attrs-45.h d/d-bi-attrs-46.h

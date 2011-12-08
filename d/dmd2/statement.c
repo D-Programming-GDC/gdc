@@ -11,8 +11,7 @@
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, September 2004
-   Modified by Vincenzo Ampolo, September 2009
+   Modified by Iain Buclaw, September 2009
 */
 
 #include <stdio.h>
@@ -677,7 +676,8 @@ int CompoundStatement::blockExit(bool mustNotThrow)
             if (global.params.warnings && result & BEfallthru && slast)
             {
                 slast = slast->last();
-                if (slast && (s->isCaseStatement() || s->isDefaultStatement()))
+                if (slast && (slast->isCaseStatement() || slast->isDefaultStatement()) &&
+                             (s->isCaseStatement() || s->isDefaultStatement()))
                 {
                     // Allow if last case/default was empty
                     CaseStatement *sc = slast->isCaseStatement();
@@ -1208,7 +1208,7 @@ void DoStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         body->toCBuffer(buf, hgs);
     buf->writestring("while (");
     condition->toCBuffer(buf, hgs);
-    buf->writebyte(')');
+    buf->writestring(");");
 }
 
 /******************************** ForStatement ***************************/
@@ -1514,18 +1514,22 @@ Lretry:
             Dsymbol *var;
             if (te)
             {   Type *tb = e->type->toBasetype();
+                Dsymbol *s = NULL;
                 if ((tb->ty == Tfunction || tb->ty == Tsarray) && e->op == TOKvar)
-                {   VarExp *ve = (VarExp *)e;
-                    var = new AliasDeclaration(loc, arg->ident, ve->var);
-                }
+                    s = ((VarExp *)e)->var;
+                else if (e->op == TOKtemplate)
+                    s =((TemplateExp *)e)->td;
+                else if (e->op == TOKimport)
+                    s =((ScopeExp *)e)->sds;
+
+                if (s)
+                    var = new AliasDeclaration(loc, arg->ident, s);
                 else
                 {
                     arg->type = e->type;
                     Initializer *ie = new ExpInitializer(0, e);
                     VarDeclaration *v = new VarDeclaration(loc, arg->type, arg->ident, ie);
-                    if (e->isConst())
-                        v->storage_class |= STCconst;
-                    if (e->op == TOKstring)
+                    if (e->isConst() || e->op == TOKstring)
                         v->storage_class |= STCmanifest;
                     var = v;
                 }
@@ -1847,6 +1851,9 @@ Lagain:
                 if (!ve->type || ve->type->ty == Terror)
                     goto Lrangeerr;
 
+                // Resolve inout qualifier of front type
+                ve->type = ve->type->substWildTo(tab->mod);
+
                 Expressions *exps = new Expressions();
                 exps->push(ve);
                 int pos = 0;
@@ -1856,7 +1863,7 @@ Lagain:
                     if (pos == -1)
                         break;
                 }
-                if (exps->dim > dim)
+                if (exps->dim != dim)
                     goto Lrangeerr;
 
                 for (size_t i = 0; i < dim; i++)
@@ -1891,6 +1898,9 @@ Lagain:
             printf("increment: %s\n", increment->toChars());
             printf("body: %s\n", forbody->toChars());
 #endif
+            if (prelude)
+                s = new CompoundStatement(loc,
+                        new ExpStatement(prelude->loc, prelude), s);
             s = s->semantic(sc);
             break;
 
@@ -3614,13 +3624,10 @@ Statement *ReturnStatement::semantic(Scope *sc)
                          * (but first ensure it doesn't fail the "check for
                          * escaping reference" test)
                          */
-                        unsigned errors = global.errors;
-                        global.gag++;
+                        unsigned errors = global.startGagging();
                         exp->checkEscapeRef();
-                        global.gag--;
-                        if (errors != global.errors)
+                        if (global.endGagging(errors))
                         {   tf->isref = FALSE;  // return by value
-                            global.errors = errors;
                         }
                     }
                     else
@@ -3728,7 +3735,7 @@ Statement *ReturnStatement::semantic(Scope *sc)
     {
         if (((TypeFunction *)fd->type)->isref && !fd->isCtorDeclaration())
         {   // Function returns a reference
-            if (tbret->isMutable())
+            if (tret->isMutable())
                 exp = exp->modifiableLvalue(sc, exp);
             else
                 exp = exp->toLvalue(sc, exp);
@@ -3789,8 +3796,14 @@ Statement *ReturnStatement::semantic(Scope *sc)
          *      exp; return;
          */
         Statement *s = new ExpStatement(loc, exp);
-        exp = NULL;
         s = s->semantic(sc);
+
+        if (exp->type->ty != Tvoid)
+        {
+            error("cannot return non-void from void function");
+        }
+
+        exp = NULL;
         return new CompoundStatement(loc, s, this);
     }
 

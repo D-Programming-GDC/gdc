@@ -157,7 +157,10 @@ uniqueName(Declaration * d, tree t, const char * asm_name)
         // Assumes one assembler output file per compiler run.  Otherwise, need
         // to reset this for each file.
         if (! uniqueNames)
+        {
             uniqueNames = new StringTable;
+            uniqueNames->init();
+        }
         sv = uniqueNames->update(asm_name, strlen(asm_name));
 
         if (sv->intvalue)
@@ -736,7 +739,7 @@ Symbol *FuncDeclaration::toThunkSymbol(int offset)
 
     for (size_t i = 0; i < thunks.dim; i++)
     {
-        thunk = thunks.tdata()[i];
+        thunk = thunks[i];
         if (thunk->offset == offset)
         {
             found = true;

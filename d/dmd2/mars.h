@@ -105,7 +105,7 @@ void unittests();
 #define MODULEINFO_IS_STRUCT DMDV2   // if ModuleInfo is a struct rather than a class
 
 // Set if C++ mangling is done by the front end
-#define CPP_MANGLE (DMDV2 && (TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS))
+#define CPP_MANGLE (IN_GCC || (DMDV2 && (TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS)))
 
 /* Other targets are TARGET_LINUX, TARGET_OSX, TARGET_FREEBSD, TARGET_OPENBSD and
  * TARGET_SOLARIS, which are
@@ -155,6 +155,7 @@ struct Param
     char verbose;       // verbose compile
     char vtls;          // identify thread local variables
     char symdebug;      // insert debug symbolic information
+    char alwaysframe;   // always emit standard stack frame
     char optimize;      // run optimizer
     char map;           // generate linker .map file
     char cpu;           // target CPU
@@ -274,9 +275,18 @@ struct Global
     const char *version;
 
     Param params;
-    unsigned errors;    // number of errors reported so far
-    unsigned warnings;  // number of warnings reported so far
-    unsigned gag;       // !=0 means gag reporting of errors & warnings
+    unsigned errors;       // number of errors reported so far
+    unsigned warnings;     // number of warnings reported so far
+    unsigned gag;          // !=0 means gag reporting of errors & warnings
+    unsigned gaggedErrors; // number of errors reported while gagged
+
+    // Start gagging. Return the current number of gagged errors
+    unsigned startGagging();
+
+    /* End gagging, restoring the old gagged state.
+     * Return true if errors occured while gagged.
+     */
+    bool endGagging(unsigned oldGagged);
 
     Global();
 };

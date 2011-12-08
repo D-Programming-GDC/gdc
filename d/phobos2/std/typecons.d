@@ -44,9 +44,9 @@ Authors:   $(WEB erdani.org, Andrei Alexandrescu),
 module std.typecons;
 import core.memory, core.stdc.stdlib;
 import std.algorithm, std.array, std.conv, std.exception, std.format,
-    std.metastrings, std.stdio, std.traits, std.typetuple, std.range;
+    std.metastrings, std.traits, std.typetuple, std.range;
 
-version(unittest) import core.vararg;
+version(unittest) import core.vararg, std.stdio;
 
 /**
 Encapsulates unique ownership of a resource.  Resource of type T is
@@ -656,6 +656,13 @@ unittest
         // incompatible
         static assert(!__traits(compiles, Tuple!(int, int)(y)));
     }
+    // 6275
+    {
+        const int x = 1;
+        auto t1 = tuple(x);
+        alias Tuple!(const(int)) T;
+        auto t2 = T(1);
+    }
 }
 
 /**
@@ -671,11 +678,9 @@ assert(value[2] == "hello");
 ----
 */
 
-Tuple!(T) tuple(T...)(T args)
+Tuple!T tuple(T...)(T args)
 {
-    typeof(return) result;
-    static if (T.length > 0) result.field = args;
-    return result;
+    return typeof(return)(args);
 }
 
 /**

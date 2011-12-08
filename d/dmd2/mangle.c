@@ -30,7 +30,7 @@
 #include "id.h"
 #include "module.h"
 
-#if IN_GCC || TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
+#if CPP_MANGLE
 char *cpp_mangle(Dsymbol *s);
 #endif
 
@@ -125,7 +125,7 @@ char *Declaration::mangle()
                     return ident->toChars();
 
                 case LINKcpp:
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
                     return cpp_mangle(this);
 #else
                     // Windows C++ mangling is done by C++ back end

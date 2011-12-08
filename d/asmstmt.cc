@@ -427,7 +427,7 @@ AsmStatement::toIR(IRState * irs)
 
     for (size_t i = 0; i < code->args.dim; i++)
     {
-        AsmArg * arg = code->args.tdata()[i];
+        AsmArg * arg = code->args[i];
 
         bool is_input = true;
         TOK arg_op = arg->expr->op;

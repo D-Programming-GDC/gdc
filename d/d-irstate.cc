@@ -199,7 +199,7 @@ IRBase::getLabelBlock(LabelDsymbol * label, Statement * from)
 
     for (int i = loops.dim - 1; i >= 0; i--)
     {
-        Flow * flow = loops.tdata()[i];
+        Flow * flow = loops[i];
 
         if (flow->kind != level_block &&
             flow->kind != level_switch)
@@ -233,7 +233,7 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
 
         for (int i = loops.dim - 1; i >= 0; i--)
         {
-            Flow * flow = loops.tdata()[i];
+            Flow * flow = loops[i];
 
             if (flow->statement == stmt)
             {
@@ -248,7 +248,7 @@ IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
     {
         for (int i = loops.dim - 1; i >= 0; i--)
         {
-            Flow * flow = loops.tdata()[i];
+            Flow * flow = loops[i];
 
             if (( ! want_continue && flow->statement->hasBreak() ) ||
                 flow->statement->hasContinue())

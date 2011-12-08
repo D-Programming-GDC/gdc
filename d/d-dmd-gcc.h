@@ -65,7 +65,7 @@ extern Module * d_gcc_get_output_module();
 /* used in interpret.c */
 struct FuncDeclaration;
 typedef ArrayBase<struct Expression> Expressions;
-extern Expression * d_gcc_eval_builtin(FuncDeclaration *, Expressions *);
+extern Expression * d_gcc_eval_builtin(Loc, FuncDeclaration *, Expressions *);
 #endif
 
 #endif

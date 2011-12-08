@@ -14,7 +14,6 @@
 #include <process.h>
 
 #include "root.h"
-#include "rmem.h"
 
 static unsigned __stdcall startthread(void *p);
 
@@ -43,7 +42,7 @@ struct AsyncRead
 
 AsyncRead *AsyncRead::create(size_t nfiles)
 {
-    AsyncRead *aw = (AsyncRead *)mem.calloc(1, sizeof(AsyncRead) +
+    AsyncRead *aw = (AsyncRead *)calloc(1, sizeof(AsyncRead) +
                                 (nfiles - 1) * sizeof(FileData));
     aw->filesmax = nfiles;
     return aw;
@@ -94,7 +93,7 @@ int AsyncRead::read(size_t i)
 
 void AsyncRead::dispose(AsyncRead *aw)
 {
-    delete aw;
+    free(aw);
 }
 
 
@@ -121,7 +120,6 @@ unsigned __stdcall startthread(void *p)
 #include <time.h>
 
 #include "root.h"
-#include "rmem.h"
 
 void *startthread(void *arg);
 
@@ -157,7 +155,7 @@ struct AsyncRead
 
 AsyncRead *AsyncRead::create(size_t nfiles)
 {
-    AsyncRead *aw = (AsyncRead *)mem.calloc(1, sizeof(AsyncRead) +
+    AsyncRead *aw = (AsyncRead *)calloc(1, sizeof(AsyncRead) +
                                 (nfiles - 1) * sizeof(FileData));
     aw->filesmax = nfiles;
     return aw;
@@ -230,7 +228,7 @@ void AsyncRead::dispose(AsyncRead *aw)
         if (status != 0)
             err_abort(status, "mutex destroy");
     }
-    delete aw;
+    free(aw);
 }
 
 
@@ -269,7 +267,6 @@ void *startthread(void *p)
 #include <errno.h>
 
 #include "root.h"
-#include "rmem.h"
 
 struct FileData
 {
@@ -296,7 +293,7 @@ struct AsyncRead
 
 AsyncRead *AsyncRead::create(size_t nfiles)
 {
-    AsyncRead *aw = (AsyncRead *)mem.calloc(1, sizeof(AsyncRead) +
+    AsyncRead *aw = (AsyncRead *)calloc(1, sizeof(AsyncRead) +
                                 (nfiles - 1) * sizeof(FileData));
     aw->filesmax = nfiles;
     return aw;
@@ -326,7 +323,7 @@ int AsyncRead::read(size_t i)
 
 void AsyncRead::dispose(AsyncRead *aw)
 {
-    delete aw;
+    free(aw);
 }
 
 #endif

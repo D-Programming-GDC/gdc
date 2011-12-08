@@ -472,7 +472,7 @@ d_gcc_magic_builtins_module(Module *m)
 
     for (size_t i = 0; i < builtin_converted_decls.dim ; ++i)
     {
-        Dsymbol * sym = builtin_converted_decls.tdata()[i];
+        Dsymbol * sym = builtin_converted_decls[i];
         /* va_list is a pain.  It can be referenced without importing
            gcc.builtins so it really needs to go in the object module. */
         if (! sym->parent)
@@ -691,7 +691,7 @@ gcc_cst_to_d_expr(tree cst)
    Return result; NULL if cannot evaluate it.
  */
 Expression *
-eval_builtin(BUILTIN builtin, Expressions * arguments)
+eval_builtin(Loc loc, BUILTIN builtin, Expressions * arguments)
 {
     Expression *e = NULL;
     Expression *arg0 = arguments->tdata()[0];
@@ -699,6 +699,7 @@ eval_builtin(BUILTIN builtin, Expressions * arguments)
     static IRState irs;
     tree callee = NULL_TREE;
     tree result;
+    irs.doLineNote(loc);
 
     switch (builtin)
     {
@@ -728,6 +729,18 @@ eval_builtin(BUILTIN builtin, Expressions * arguments)
             callee = built_in_decls[BUILT_IN_FABSL];
             break;
 
+        case BUILTINatan2:
+        case BUILTINrndtol:
+        case BUILTINexpm1:
+        case BUILTINexp2:
+        case BUILTINyl2x:
+        case BUILTINyl2xp1:
+        case BUILTINbsr:
+        case BUILTINbsf:
+        case BUILTINbswap:
+            return NULL;
+
+
         default:
             gcc_unreachable();
     }
@@ -748,12 +761,12 @@ eval_builtin(BUILTIN builtin, Expressions * arguments)
 }
 
 Expression *
-d_gcc_eval_builtin(FuncDeclaration *fd, Expressions *arguments)
+d_gcc_eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
 {
     gcc_assert(arguments && arguments->dim);
 
     if (fd->builtin != BUILTINgcc)
-        return eval_builtin(fd->builtin, arguments);
+        return eval_builtin(loc, fd->builtin, arguments);
     else
     {
         Expression * e = NULL;
@@ -762,6 +775,7 @@ d_gcc_eval_builtin(FuncDeclaration *fd, Expressions *arguments)
 
         // g.irs is not available.
         static IRState irs;
+        irs.doLineNote(loc);
         tree result = irs.call(tf, callee, NULL, arguments);
         result = fold(result);
 

@@ -109,6 +109,7 @@ Usage:
   gdmd files.d ... { -switch }
 
   files.d        D source files
+  \@cmdfile      read arguments from cmdfile
   -arch ...      pass an -arch ... option to gdc
   -c             do not link
   -cov           do code coverage analysis
@@ -127,6 +128,7 @@ Usage:
   -framework ... pass a -framework ... option to gdc
   -g             add symbolic debug info
   -gc            add symbolic debug info, pretend to be C
+  -gs            always emit stack frame
   -H             generate 'header' file
   -Hdhdrdir      write 'header' file to hdrdir directory
   -Hffilename    write 'header' file to filename
@@ -345,6 +347,8 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-gc$/ ) {
         $debug = 1;
         push @out, '-fdebug-c';
+    } elsif ( $arg =~ m/^-gs$/ ) {
+        push @out, '-fno-omit-frame-pointer';
     } elsif ( $arg =~ m/^-gt$/ ) {
         errorExit "use -profile instead of -gt";
         push @out, '-pg';
@@ -485,6 +489,8 @@ while ( $arg_i < scalar(@ARGV) ) {
         if ( targetHasEXE() ) {
             $output_file .= $2;
         }
+    } elsif ( $arg =~ m/^\@.+\.rsp$/i ) {
+        # Append response file to end of ARGV.
     } else {
         push @objects, $arg
     }

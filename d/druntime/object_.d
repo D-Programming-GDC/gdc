@@ -778,6 +778,7 @@ class TypeInfo_Class : TypeInfo
     //  8:                      // has constructors
     // 16:                      // has xgetMembers member
     // 32:                      // has typeinfo member
+    // 64:                      // is not constructable
     void*       deallocator;
     OffsetTypeInfo[] m_offTi;
     void function(Object) defaultConstructor;   // default Constructor
@@ -809,6 +810,8 @@ class TypeInfo_Class : TypeInfo
     Object create()
     {
         if (m_flags & 8 && !defaultConstructor)
+            return null;
+        if (m_flags & 64) // abstract
             return null;
         Object o = _d_newclass(this);
         if (m_flags & 8 && defaultConstructor)
@@ -926,9 +929,7 @@ class TypeInfo_Struct : TypeInfo
 
     override equals_t equals(in void* p1, in void* p2)
     {
-        if (p1 == p2)
-            return true;
-        else if (!p1 || !p2)
+        if (!p1 || !p2)
             return false;
         else if (xopEquals)
         {
@@ -939,6 +940,8 @@ class TypeInfo_Struct : TypeInfo
             else
                 return (*xopEquals)(p1, p2);
         }
+        else if (p1 == p2)
+            return true;
         else
             // BUG: relies on the GC not moving objects
             return memcmp(p1, p2, init.length) == 0;
@@ -1021,6 +1024,19 @@ class TypeInfo_Struct : TypeInfo
         TypeInfo m_arg1;
         TypeInfo m_arg2;
     }
+}
+
+unittest
+{
+    struct S
+    {
+        const bool opEquals(ref const S rhs)
+        {
+            return false;
+        }
+    }
+    S s;
+    assert(!typeid(S).equals(&s, &s));
 }
 
 class TypeInfo_Tuple : TypeInfo
@@ -2839,3 +2855,7 @@ bool _ArrayEq(T1, T2)(T1[] a1, T2[] a2)
 }
 
 
+bool _xopEquals(in void*, in void*)
+{
+    throw new Error("TypeInfo.equals is not implemented");
+}

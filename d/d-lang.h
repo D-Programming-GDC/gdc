@@ -44,7 +44,7 @@ struct Declaration;
 typedef struct Declaration *DeclarationGTYP;
 struct lang_decl GTY(())
 {
-    DeclarationGTYP GTY ((skip(""))) d_decl;
+    DeclarationGTYP GTY ((skip)) d_decl;
 };
 
 /* The lang_type field is not set for every GCC type. */
@@ -52,8 +52,8 @@ struct Type;
 typedef struct Type *TypeGTYP;
 struct lang_type GTY(())
 {
-    tree GTY((skip(""))) c_type;
-    TypeGTYP GTY((skip(""))) d_type;
+    tree GTY((skip)) c_type;
+    TypeGTYP GTY((skip)) d_type;
 };
 
 /* Another required, but unused declaration.  This could be simplified, since
@@ -181,16 +181,16 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #ifdef __cplusplus
 /* In d-lang.cc.  These are called through function pointers
    and do not need to be "extern C". */
-extern bool d_mark_addressable PARAMS ((tree));
-extern void d_mark_exp_read PARAMS ((tree));
-extern tree d_truthvalue_conversion PARAMS ((tree));
-extern tree d_convert_basic PARAMS ((tree, tree));
-extern void d_init_exceptions PARAMS ((void));
+extern bool d_mark_addressable (tree);
+extern void d_mark_exp_read (tree);
+extern tree d_truthvalue_conversion (tree);
+extern tree d_convert_basic (tree, tree);
+extern void d_init_exceptions (void);
 
 extern void init_global_binding_level(void);
 extern void set_decl_binding_chain(tree decl_chain);
 
-extern void d_add_global_declaration PARAMS(( tree ));
+extern void d_add_global_declaration (tree);
 
 extern tree d_type_promotes_to(tree);
 
@@ -221,9 +221,9 @@ extern const char * multilib_dir;
 extern "C" {
 #endif
 /* In d-lang.cc */
-tree pushdecl PARAMS ((tree));
-void pushlevel PARAMS ((int));
-tree poplevel PARAMS ((int, int, int));
+tree pushdecl (tree);
+void pushlevel (int);
+tree poplevel (int, int, int);
 tree d_unsigned_type(tree);
 tree d_signed_type(tree);
 tree d_type_for_size(unsigned bits, int unsignedp);
@@ -233,10 +233,10 @@ tree d_build_decl(enum tree_code code, tree name, tree type);
 void d_keep(tree t);
 void d_free(tree t);
 
-int global_bindings_p PARAMS ((void));
-void insert_block PARAMS ((tree));
-void set_block PARAMS ((tree));
-tree getdecls PARAMS ((void));
+int global_bindings_p (void);
+void insert_block (tree);
+void set_block (tree);
+tree getdecls (void);
 
 
 #ifdef D_USE_MAPPED_LOCATION
@@ -246,17 +246,17 @@ tree d_build_decl_loc(location_t loc, enum tree_code code, tree name, tree type)
 #endif
 
 /* In d-builtins.c */
-extern void d_init_builtins PARAMS ((void));
+extern void d_init_builtins (void);
 extern const struct attribute_spec d_common_attribute_table[];
 extern const struct attribute_spec d_common_format_attribute_table[];
-extern tree d_builtin_function PARAMS ((const char *, tree, int, enum built_in_class, const char *, tree));
-extern tree d_builtin_function43 PARAMS ((tree));
-extern void d_register_builtin_type PARAMS((tree, const char *));
+extern tree d_builtin_function (const char *, tree, int, enum built_in_class, const char *, tree);
+extern tree d_builtin_function43 (tree);
+extern void d_register_builtin_type (tree, const char *);
 
 /* In d-builtins2.cc */
-extern void d_bi_init PARAMS ((void));
-extern void d_bi_builtin_func PARAMS ((tree));
-extern void d_bi_builtin_type PARAMS ((tree));
+extern void d_bi_init (void);
+extern void d_bi_builtin_func (tree);
+extern void d_bi_builtin_type (tree);
 
 #ifdef __cplusplus
 }

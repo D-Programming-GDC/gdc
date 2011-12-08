@@ -13,8 +13,7 @@
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, September 2007
-   Modified by Vincenzo Ampolo, September 2009
+   Modified by Iain Buclaw, September 2009
 */
 
 #include <stdio.h>
@@ -396,10 +395,16 @@ Dsymbols *Parser::parseDeclDefs(int once)
                 storageClass |= stc;
                 switch (token.value)
                 {
+                    case TOKshared:
+                        // Look for "shared static this" or "shared static ~this"
+                        if (peekNext() == TOKstatic)
+                        {   TOK next2 = peekNext2();
+                            if (next2 == TOKthis || next2 == TOKtilde)
+                                break;
+                        }
                     case TOKconst:
                     case TOKinvariant:
                     case TOKimmutable:
-                    case TOKshared:
                     case TOKwild:
                         // If followed by a (, it is not a storage class
                         if (peek(&token)->value == TOKlparen)
@@ -554,7 +559,7 @@ Dsymbols *Parser::parseDeclDefs(int once)
                     nextToken();
                     if (token.value == TOKidentifier)
                         s = new DebugSymbol(loc, token.ident);
-                    else if (token.value == TOKint32v)
+                    else if (token.value == TOKint32v || token.value == TOKint64v)
                         s = new DebugSymbol(loc, (unsigned)token.uns64value);
                     else
                     {   error("identifier or integer expected, not %s", token.toChars());
@@ -577,7 +582,7 @@ Dsymbols *Parser::parseDeclDefs(int once)
                     nextToken();
                     if (token.value == TOKidentifier)
                         s = new VersionSymbol(loc, token.ident);
-                    else if (token.value == TOKint32v)
+                    else if (token.value == TOKint32v || token.value == TOKint64v)
                         s = new VersionSymbol(loc, (unsigned)token.uns64value);
                     else
                     {   error("identifier or integer expected, not %s", token.toChars());
@@ -706,10 +711,9 @@ StorageClass Parser::parsePostfix()
             case TOKpure:               stc |= STCpure;                 break;
             case TOKat:                 stc |= parseAttribute();        break;
 
-            default:
-                composeStorageClass(stc);
-                return stc;
+            default: return stc;
         }
+        composeStorageClass(stc);
         nextToken();
     }
 }
@@ -887,7 +891,7 @@ Condition *Parser::parseDebugCondition()
 
         if (token.value == TOKidentifier)
             id = token.ident;
-        else if (token.value == TOKint32v)
+        else if (token.value == TOKint32v || token.value == TOKint64v)
             level = (unsigned)token.uns64value;
         else
             error("identifier or integer expected, not %s", token.toChars());
@@ -916,7 +920,7 @@ Condition *Parser::parseVersionCondition()
         nextToken();
         if (token.value == TOKidentifier)
             id = token.ident;
-        else if (token.value == TOKint32v)
+        else if (token.value == TOKint32v || token.value == TOKint64v)
             level = (unsigned)token.uns64value;
 #if DMDV2
         /* Allow:
@@ -1006,7 +1010,9 @@ Dsymbol *Parser::parseCtor()
 
         Expression *constraint = tpl ? parseConstraint() : NULL;
 
-                Type *tf = new TypeFunction(parameters, NULL, varargs, linkage, stc);   // RetrunType -> auto
+        Type *tf = new TypeFunction(parameters, NULL, varargs, linkage, stc);   // RetrunType -> auto
+        tf = tf->addSTC(stc);
+
         CtorDeclaration *f = new CtorDeclaration(loc, 0, stc, tf);
         parseContracts(f);
 
@@ -1023,7 +1029,9 @@ Dsymbol *Parser::parseCtor()
     int varargs;
     Parameters *parameters = parseParameters(&varargs);
     StorageClass stc = parsePostfix();
-        Type *tf = new TypeFunction(parameters, NULL, varargs, linkage, stc);   // RetrunType -> auto
+    Type *tf = new TypeFunction(parameters, NULL, varargs, linkage, stc);   // RetrunType -> auto
+    tf = tf->addSTC(stc);
+
     CtorDeclaration *f = new CtorDeclaration(loc, 0, stc, tf);
     parseContracts(f);
     return f;
@@ -2644,27 +2652,7 @@ Type *Parser::parseDeclarator(Type *t, Identifier **pident, TemplateParameters *
                 StorageClass stc = parsePostfix();
                 stc |= storage_class;   // merge prefix storage classes
                 Type *tf = new TypeFunction(arguments, t, varargs, linkage, stc);
-
-                if (stc & STCconst)
-                {   if (tf->isShared())
-                        tf = tf->makeSharedConst();
-                    else
-                        tf = tf->makeConst();
-                }
-                if (stc & STCimmutable)
-                    tf = tf->makeInvariant();
-                if (stc & STCshared)
-                {   if (tf->isConst())
-                        tf = tf->makeSharedConst();
-                    else
-                        tf = tf->makeShared();
-                }
-                if (stc & STCwild)
-                {   if (tf->isShared())
-                        tf = tf->makeSharedWild();
-                    else
-                        tf = tf->makeWild();
-                }
+                tf = tf->addSTC(stc);
 
                 /* Insert tf into
                  *   ts -> ... -> t
@@ -3692,6 +3680,10 @@ Statement *Parser::parseStatement(int flags)
             check(TOKlparen);
             condition = parseExpression();
             check(TOKrparen);
+            if (token.value == TOKsemicolon)
+                nextToken();
+            else if (!global.params.useDeprecated)
+                error("do-while statement requires terminating ;");
             s = new DoStatement(loc, body, condition);
             break;
         }
@@ -5902,9 +5894,12 @@ Expression *Parser::parseUnaryExp()
         case TOKimmutable:      // immutable(type)(arguments)
         {
             Type *t = parseBasicType();
-            if (token.value != TOKlparen)
-                error("(arguments) expected following type");
             e = new TypeExp(loc, t);
+            if (token.value != TOKlparen)
+            {
+                error("(arguments) expected following %s", t->toChars());
+                return e;
+            }
             e = new CallExp(loc, e, parseArguments());
             break;
         }

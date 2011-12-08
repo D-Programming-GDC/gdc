@@ -247,7 +247,7 @@ struct Type : Object
     virtual void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     void toCBuffer3(OutBuffer *buf, HdrGenState *hgs, int mod);
     void modToBuffer(OutBuffer *buf);
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     virtual void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
     virtual int isintegral();
@@ -280,6 +280,7 @@ struct Type : Object
     Type *sharedWildOf();
     void fixTo(Type *t);
     void check();
+    Type *addSTC(StorageClass stc);
     Type *castMod(unsigned mod);
     Type *addMod(unsigned mod);
     Type *addStorageClass(StorageClass stc);
@@ -309,7 +310,7 @@ struct Type : Object
     virtual int isZeroInit(Loc loc = 0);                // if initializer is 0
     virtual dt_t **toDt(dt_t **pdt);
     Identifier *getTypeInfoIdent(int internal);
-    virtual MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    virtual MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     virtual void resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol **ps);
     Expression *getInternalTypeInfo(Scope *sc);
     Expression *getTypeInfo(Scope *sc);
@@ -317,7 +318,8 @@ struct Type : Object
     virtual int builtinTypeInfo();
     virtual Type *reliesOnTident();
     virtual int hasWild();
-    virtual unsigned wildMatch(Type *targ);
+    unsigned wildMatch(Type *targ);
+    Type *substWildTo(unsigned mod);
     virtual Expression *toExpression();
     virtual int hasPointers();
     virtual TypeTuple *toArgTypes();
@@ -360,7 +362,6 @@ struct TypeNext : Type
     void checkDeprecated(Loc loc, Scope *sc);
     Type *reliesOnTident();
     int hasWild();
-    unsigned wildMatch(Type *targ);
     Type *nextOf();
     Type *makeConst();
     Type *makeInvariant();
@@ -386,7 +387,7 @@ struct TypeBasic : Type
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
     char *toChars();
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
     int isintegral();
@@ -435,13 +436,13 @@ struct TypeSArray : TypeArray
     Expression *defaultInitLiteral(Loc loc);
     dt_t **toDt(dt_t **pdt);
     dt_t **toDtElem(dt_t **pdt, Expression *e);
-    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     Expression *toExpression();
     int hasPointers();
     int needsDestruction();
     TypeTuple *toArgTypes();
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 
@@ -466,11 +467,11 @@ struct TypeDArray : TypeArray
     MATCH implicitConvTo(Type *to);
     Expression *defaultInit(Loc loc);
     int builtinTypeInfo();
-    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
     TypeTuple *toArgTypes();
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 
@@ -495,7 +496,7 @@ struct TypeAArray : TypeArray
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
     Expression *defaultInit(Loc loc);
-    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     int isZeroInit(Loc loc);
     int checkBoolean();
     TypeInfoDeclaration *getTypeInfoDeclaration();
@@ -503,7 +504,7 @@ struct TypeAArray : TypeArray
     TypeTuple *toArgTypes();
     MATCH implicitConvTo(Type *to);
     MATCH constConv(Type *to);
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 
@@ -528,7 +529,7 @@ struct TypePointer : TypeNext
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
     TypeTuple *toArgTypes();
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 
@@ -545,7 +546,7 @@ struct TypeReference : TypeNext
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
     Expression *defaultInit(Loc loc);
     int isZeroInit(Loc loc);
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 };
@@ -599,11 +600,11 @@ struct TypeFunction : TypeNext
     void toCBufferWithAttributes(OutBuffer *buf, Identifier *ident, HdrGenState* hgs, TypeFunction *attrs, TemplateDeclaration *td);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     void attributesToCBuffer(OutBuffer *buf, int mod);
-    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     Type *reliesOnTident();
     bool hasLazyParameters();
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
     bool parameterEscapes(Parameter *p);
@@ -635,7 +636,7 @@ struct TypeDelegate : TypeNext
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
     int hasPointers();
     TypeTuple *toArgTypes();
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 
@@ -668,7 +669,7 @@ struct TypeIdentifier : TypeQualified
     void resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol **ps);
     Dsymbol *toDsymbol(Scope *sc);
     Type *semantic(Loc loc, Scope *sc);
-    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     Type *reliesOnTident();
     Expression *toExpression();
 };
@@ -687,7 +688,7 @@ struct TypeInstance : TypeQualified
     void resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol **ps);
     Type *semantic(Loc loc, Scope *sc);
     Dsymbol *toDsymbol(Scope *sc);
-    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
 };
 
 struct TypeTypeof : TypeQualified
@@ -734,14 +735,14 @@ struct TypeStruct : Type
     int checkBoolean();
     int needsDestruction();
     dt_t **toDt(dt_t **pdt);
-    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
     TypeTuple *toArgTypes();
     MATCH implicitConvTo(Type *to);
     MATCH constConv(Type *to);
     Type *toHeadMutable();
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 
@@ -778,11 +779,11 @@ struct TypeEnum : Type
     Type *toBasetype();
     Expression *defaultInit(Loc loc);
     int isZeroInit(Loc loc);
-    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
     TypeTuple *toArgTypes();
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 
@@ -821,13 +822,13 @@ struct TypeTypedef : Type
     Expression *defaultInitLiteral(Loc loc);
     int isZeroInit(Loc loc);
     dt_t **toDt(dt_t **pdt);
-    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
     TypeTuple *toArgTypes();
     int hasWild();
     Type *toHeadMutable();
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 
@@ -853,7 +854,7 @@ struct TypeClass : Type
     MATCH implicitConvTo(Type *to);
     Expression *defaultInit(Loc loc);
     int isZeroInit(Loc loc);
-    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     int isscope();
     int checkBoolean();
     TypeInfoDeclaration *getTypeInfoDeclaration();
@@ -863,7 +864,7 @@ struct TypeClass : Type
 #if DMDV2
     Type *toHeadMutable();
     MATCH constConv(Type *to);
-#if IN_GCC || CPP_MANGLE
+#if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
 #endif

@@ -994,7 +994,7 @@ deps_write(Module * m)
     // Write out file dependencies.
     for (size_t i = 0; i < m->aimports.dim; i++)
     {
-        Module * mi = m->aimports.tdata()[i];
+        Module * mi = m->aimports[i];
 
         // Ignore self references.
         if (mi == m)
@@ -1183,7 +1183,7 @@ d_parse_file (int /*set_yydebug*/)
     aw = AsyncRead::create(modules.dim);
     for (size_t i = 0; i < modules.dim; i++)
     {
-        m = modules.tdata()[i];
+        m = modules[i];
         aw->addFile(m->srcfile);
     }
     aw->start();
@@ -1200,7 +1200,7 @@ d_parse_file (int /*set_yydebug*/)
     // Parse files
     for (size_t i = 0; i < modules.dim; i++)
     {
-        m = modules.tdata()[i];
+        m = modules[i];
         if (global.params.verbose)
             printf("parse     %s\n", m->toChars());
         if (!Module::rootModule)
@@ -1229,7 +1229,7 @@ d_parse_file (int /*set_yydebug*/)
           */
          for (size_t i = 0; i < modules.dim; i++)
          {
-             m = modules.tdata()[i];
+             m = modules[i];
              if (fonly_arg && m != an_output_module)
                  continue;
              if (global.params.verbose)
@@ -1243,7 +1243,7 @@ d_parse_file (int /*set_yydebug*/)
     // load all unconditional imports for better symbol resolving
     for (size_t i = 0; i < modules.dim; i++)
     {
-        m = modules.tdata()[i];
+        m = modules[i];
         if (global.params.verbose)
             printf("importall %s\n", m->toChars());
         m->importAll(0);
@@ -1254,7 +1254,7 @@ d_parse_file (int /*set_yydebug*/)
     // Do semantic analysis
     for (size_t i = 0; i < modules.dim; i++)
     {
-        m = modules.tdata()[i];
+        m = modules[i];
         if (global.params.verbose)
             printf("semantic  %s\n", m->toChars());
         m->semantic();
@@ -1268,7 +1268,7 @@ d_parse_file (int /*set_yydebug*/)
     // Do pass 2 semantic analysis
     for (size_t i = 0; i < modules.dim; i++)
     {
-        m = modules.tdata()[i];
+        m = modules[i];
         if (global.params.verbose)
             printf("semantic2 %s\n", m->toChars());
         m->semantic2();
@@ -1279,7 +1279,7 @@ d_parse_file (int /*set_yydebug*/)
     // Do pass 3 semantic analysis
     for (size_t i = 0; i < modules.dim; i++)
     {
-        m = modules.tdata()[i];
+        m = modules[i];
         if (global.params.verbose)
             printf("semantic3 %s\n", m->toChars());
         m->semantic3();
@@ -1301,7 +1301,7 @@ d_parse_file (int /*set_yydebug*/)
     {
         for (size_t i = 0; i < modules.dim; i++)
         {
-            m = modules.tdata()[i];
+            m = modules[i];
             deps_write(m);
         }
 
@@ -1334,7 +1334,7 @@ d_parse_file (int /*set_yydebug*/)
 
     for (size_t i = 0; i < modules.dim; i++)
     {
-        m = modules.tdata()[i];
+        m = modules[i];
         if (fonly_arg && m != an_output_module)
             continue;
         if (global.params.verbose)

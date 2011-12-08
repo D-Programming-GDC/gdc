@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 2010-2011 by Digital Mars
+// Copyright (c) 2010-2010 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -155,9 +155,8 @@ TypeTuple *TypeDelegate::toArgTypes()
 
 TypeTuple *TypeStruct::toArgTypes()
 {
-    d_uns64 sz = size(0);
-    assert(sz < 0xFFFFFFFF);
-    switch ((unsigned)sz)
+    int sz = size(0);
+    switch (sz)
     {
         case 1:
             return new TypeTuple(Type::tint8);

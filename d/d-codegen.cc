@@ -1589,7 +1589,7 @@ IRState::getLibCallDecl(LibCall lib_call)
             Parameters * args = new Parameters;
             args->setDim(arg_types.dim);
             for (size_t i = 0; i < arg_types.dim; i++)
-                args->tdata()[i] = new Parameter(STCin, arg_types.tdata()[i], NULL, NULL);
+                args->tdata()[i] = new Parameter(STCin, arg_types[i], NULL, NULL);
 
             tf->parameters = args;
         }
@@ -3408,10 +3408,9 @@ IRState::getFrameInfo(FuncDeclaration *fd)
     // Build type now as may be referenced from another module.
     if (ffi->creates_frame)
     {
-        char * name = concat(ffi->is_closure ? "CLOSURE." : "FRAME.",
-                             IDENTIFIER_POINTER (DECL_NAME (fd->toSymbol()->Stree)),
-                             NULL);
         tree frame_rec = make_node(RECORD_TYPE);
+        char * name = concat(ffi->is_closure ? "CLOSURE." : "FRAME.",
+                             fd->toPrettyChars(), NULL);
         TYPE_NAME(frame_rec) = get_identifier(name);
         free(name);
 
@@ -3935,7 +3934,7 @@ IRState::checkGoto(Statement * stmt, LabelDsymbol * label)
 
     for (size_t i = 0; i < labels.dim; i++)
     {
-        Label * linfo = labels.tdata()[i];
+        Label * linfo = labels[i];
         gcc_assert(linfo);
 
         if (label == linfo->label)
@@ -3979,7 +3978,7 @@ IRState::checkPreviousGoto(Array * refs)
 
         for (size_t i = 0; i < labels.dim; i++)
         {
-            Label * linfo = labels.tdata()[i];
+            Label * linfo = labels[i];
             gcc_assert(linfo);
 
             if (ref->label == linfo->label)

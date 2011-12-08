@@ -1740,7 +1740,7 @@ PtrExp::toElem(IRState * irs)
         StructDeclaration * sd = ((TypeStruct *)rec_type)->sym;
         for (size_t i = 0; i < sd->fields.dim; i++)
         {
-            VarDeclaration * field = sd->fields.tdata()[i];
+            VarDeclaration * field = sd->fields[i];
             if (field->offset == the_offset &&
                 irs->typesSame(field->type, this->type))
             {
@@ -2661,7 +2661,7 @@ StructLiteralExp::toElem(IRState *irs)
             tree exp_tree = NULL_TREE;
             tree call_exp = NULL_TREE;
 
-            VarDeclaration * fld = sd->fields.tdata()[i];
+            VarDeclaration * fld = sd->fields[i];
             Type * fld_type = fld->type->toBasetype();
 
             if (fld_type->ty == Tsarray)
@@ -3300,7 +3300,7 @@ FuncDeclaration::buildClosure(IRState * irs)
 
     for (size_t i = 0; i < closureVars.dim; ++i)
     {
-        VarDeclaration *v = closureVars.tdata()[i];
+        VarDeclaration *v = closureVars[i];
         Symbol * s = v->toSymbol();
         tree field = d_build_decl(FIELD_DECL,
                                   v->ident ? get_identifier(v->ident->string) : NULL_TREE,
@@ -3336,7 +3336,7 @@ FuncDeclaration::buildClosure(IRState * irs)
     // copy parameters that are referenced nonlocally
     for (size_t i = 0; i < closureVars.dim; i++)
     {
-        VarDeclaration *v = closureVars.tdata()[i];
+        VarDeclaration *v = closureVars[i];
         if (! v->isParameter())
             continue;
 
@@ -3665,7 +3665,7 @@ TypeStruct::toCtype()
         {
             size_t ofs;
             {
-                VarDeclaration * last_decl = sym->fields.tdata()[sym->fields.dim-1];
+                VarDeclaration * last_decl = sym->fields[sym->fields.dim-1];
                 ofs = last_decl->offset + last_decl->size(0);
             }
             while (ofs & 3)

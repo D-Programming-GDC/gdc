@@ -59,9 +59,9 @@ module std.string;
 //debug=string;                 // uncomment to turn on debugging printf's
 
 import core.exception : onRangeError;
-import core.vararg, core.stdc.stdio, core.stdc.stdlib, core.stdc.string,
-    std.ascii, std.conv, std.exception, std.format, std.functional,
-    std.metastrings, std.range, std.regex, std.stdio, std.traits,
+import core.vararg, core.stdc.stdlib, core.stdc.string,
+    std.algorithm, std.ascii, std.conv, std.exception, std.format, std.functional,
+    std.metastrings, std.range, std.regex, std.traits,
     std.typetuple, std.uni, std.utf;
 
 //Remove when repeat is finally removed. They're only here as part of the
@@ -193,9 +193,6 @@ version(StdDdoc) bool iswhite(dchar c);
 else bool iswhite(C)(C c)
     if(is(Unqual!C : dchar))
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "iswhite",
-                            "std.ascii.isWhite or std.uni.isWhite"));
-
     return c <= 0x7F
         ? indexOf(whitespace, c) != -1
         : (c == paraSep || c == lineSep);
@@ -881,7 +878,6 @@ unittest
  */
 S tolower(S)(S s) if (isSomeString!S)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "tolower", "std.string.toLower"));
     return toLower!S(s);
 }
 
@@ -940,7 +936,6 @@ unittest
  */
 void tolowerInPlace(C)(ref C[] s) if (isSomeChar!C)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "tolowerInPlace", "std.string.toLowerInPlace"));
     toLowerInPlace!C(s);
 }
 
@@ -1056,7 +1051,6 @@ unittest
  */
 S toupper(S)(S s) if (isSomeString!S)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "toupper", "std.string.toUpper"));
     return toUpper!S(s);
 }
 
@@ -1115,7 +1109,6 @@ unittest
  */
 void toupperInPlace(C)(ref C[] s) if (isSomeChar!C)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "toupperInPlace", "std.string.toUpperInPlace"));
     toUpperInPlace!C(s);
 }
 
@@ -1296,9 +1289,6 @@ unittest
  */
 S capwords(S)(S s) if (isSomeString!S)
 {
-    pragma(msg, "Notice: As of Phobos 2.054, std.string.capwords has been " ~
-                "scheduled for deprecation in January 2012.");
-
     return _capWords!S(s);
 }
 
@@ -1372,22 +1362,27 @@ deprecated S repeat(S)(S s, size_t n)
 
 
 /**************************************
+ * $(RED Scheduled for deprecation in January 2012.
+ *       Please use $(LREF, splitLines) instead.)
+ *
  * Split s[] into an array of lines,
  * using CR, LF, or CR-LF as the delimiter.
  * The delimiter is not included in the line.
  */
 S[] splitlines(S)(S s)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "splitlines", "std.string.splitLines"));
     return splitLines!S(s);
 }
 
 /++
     Split $(D s) into an array of lines using $(D '\r'), $(D '\n'),
     $(D "\r\n"), $(XREF uni, lineSep), and $(XREF uni, paraSep) as delimiters.
-    The delimiter is not included in the strings returned.
+    If $(D keepTerm) is set to $(D KeepTerminator.yes), then the delimiter
+    is included in the strings returned.
   +/
-S[] splitLines(S)(S s)
+enum KeepTerminator : bool { no, yes }
+/// ditto
+S[] splitLines(S)(S s, KeepTerminator keepTerm = KeepTerminator.no)
     if(isSomeString!S)
 {
     size_t iStart = 0;
@@ -1400,10 +1395,18 @@ S[] splitLines(S)(S s)
 
         if(c == '\r' || c == '\n' || c == lineSep || c == paraSep)
         {
-            retval.put(s[iStart .. i]);
+            immutable isWinEOL = c == '\r' && i + 1 < s.length && s[i + 1] == '\n';
+            auto iEnd = i;
+
+            if(keepTerm == KeepTerminator.yes)
+            {
+                iEnd = isWinEOL? nextI + 1 : nextI;
+            }
+
+            retval.put(s[iStart .. iEnd]);
             iStart = nextI;
 
-            if(c == '\r' && i + 1 < s.length && s[i + 1] == '\n')
+            if(isWinEOL)
             {
                 ++nextI;
                 ++iStart;
@@ -1437,8 +1440,24 @@ unittest
         assert(lines[7] == "");
         assert(lines[8] == "sunday");
 
+        lines = splitLines(s, KeepTerminator.yes);
+        assert(lines.length == 9);
+        assert(lines[0] == "\r");
+        assert(lines[1] == "peter\n");
+        assert(lines[2] == "\r");
+        assert(lines[3] == "paul\r\n");
+        assert(lines[4] == "jerry\u2028");
+        assert(lines[5] == "ice\u2029");
+        assert(lines[6] == "cream\n");
+        assert(lines[7] == "\n");
+        assert(lines[8] == "sunday\n");
+
         s.popBack(); // Lop-off trailing \n
         lines = splitLines(s);
+        assert(lines.length == 9);
+        assert(lines[8] == "sunday");
+
+        lines = splitLines(s, KeepTerminator.yes);
         assert(lines.length == 9);
         assert(lines[8] == "sunday");
     }
@@ -1453,7 +1472,6 @@ unittest
  */
 String stripl(String)(String s)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "stripl", "std.string.stripLeft"));
     return stripLeft!String(s);
 }
 
@@ -1489,7 +1507,6 @@ S stripLeft(S)(S s) @safe pure
  */
 String stripr(String)(String s)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "stripr", "std.string.stripRight"));
     return stripRight!String(s);
 }
 
@@ -1684,7 +1701,6 @@ unittest
  */
 S ljustify(S)(S s, size_t width) if (isSomeString!S)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "ljustify", "std.string.leftJustify"));
     return leftJustify!S(s, width);
 }
 
@@ -1731,7 +1747,6 @@ S leftJustify(S)(S s, size_t width, dchar fillChar = ' ') @trusted
  */
 S rjustify(S)(S s, size_t width) if (isSomeString!S)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "rjustify", "std.string.rightJustify"));
     return rightJustify!S(s, width);
 }
 
@@ -1844,8 +1859,6 @@ unittest
  */
 S zfill(S)(S s, int width) if (isSomeString!S)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "zfill",
-                            "std.string.rightJustify with a fillChar of '0'"));
     return rightJustify!S(s, width, '0');
 }
 
@@ -1863,7 +1876,6 @@ in
 }
 body
 {
-    pragma(msg, softDeprec!("2.055", "February 2012", "insert", "std.array.insertInPlace"));
     std.array.insertInPlace(s, index, sub);
     return s;
 }
@@ -1878,7 +1890,6 @@ body
  */
 S expandtabs(S)(S str, size_t tabsize = 8) if (isSomeString!S)
 {
-    pragma(msg, softDeprec!("2.054", "January 2012", "expandtabs", "std.string.detab"));
     return detab!S(str, tabsize);
 }
 
@@ -3044,17 +3055,21 @@ unittest
     debug(string) printf("std.string.tr.unittest\n");
     import std.algorithm;
 
-    foreach(S; TypeTuple!(char[], const(char)[], immutable(char)[],
-                          wchar[], const(wchar)[], immutable(wchar)[],
-                          dchar[], const(dchar)[], immutable(dchar)[]))
+    // Complete list of test types; too slow to test'em all
+    // alias TypeTuple!(char[], const(char)[], immutable(char)[],
+    //         wchar[], const(wchar)[], immutable(wchar)[],
+    //         dchar[], const(dchar)[], immutable(dchar)[])
+    // TestTypes;
+
+    // Reduced list of test types
+    alias TypeTuple!(char[], const(wchar)[], immutable(dchar)[])
+    TestTypes;
+
+    foreach(S; TestTypes)
     {
-        foreach(T; TypeTuple!(char[], const(char)[], immutable(char)[],
-                              wchar[], const(wchar)[], immutable(wchar)[],
-                              dchar[], const(dchar)[], immutable(dchar)[]))
+        foreach(T; TestTypes)
         {
-            foreach(U; TypeTuple!(char[], const(char)[], immutable(char)[],
-                                  wchar[], const(wchar)[], immutable(wchar)[],
-                                  dchar[], const(dchar)[], immutable(dchar)[]))
+            foreach(U; TestTypes)
             {
                 assert(equal(tr(to!S("abcdef"), to!T("cd"), to!U("CD")), "abCDef"));
                 assert(equal(tr(to!S("abcdef"), to!T("b-d"), to!U("B-D")), "aBCDef"));
@@ -3802,12 +3817,216 @@ unittest
     assert(wrap("u u") == "u u\n");
 }
 
+/******************************************
+ * Removes indentation from a multi-line string or an array of single-line strings.
+ *
+ * This uniformly outdents the text as much as possible.
+ * Whitespace-only lines are always converted to blank lines.
+ *
+ * A StringException will be thrown if inconsistent indentation prevents
+ * the input from being outdented.
+ * 
+ * Works at compile-time.
+ * 
+ * Example:
+ * ---
+ * writeln(q{
+ *     import std.stdio;
+ *     void main() {
+ *         writeln("Hello");
+ *     }
+ * }.outdent());
+ * ---
+ * 
+ * Output:
+ * ---
+ * 
+ * import std.stdio;
+ * void main() {
+ *     writeln("Hello");
+ * }
+ * 
+ * ---
+ * 
+ */
 
-private template softDeprec(string vers, string date, string oldFunc, string newFunc)
+S outdent(S)(S str) if(isSomeString!S)
 {
-    enum softDeprec = Format!("Notice: As of Phobos %s, std.string.%s has been scheduled " ~
-                              "for deprecation in %s. Please use %s instead.",
-                              vers, oldFunc, date, newFunc);
+    return str.splitLines(KeepTerminator.yes).outdent().join();
+}
+
+/// ditto
+S[] outdent(S)(S[] lines) if(isSomeString!S)
+{
+    if (lines.empty)
+    {
+        return null;
+    }
+
+    static S leadingWhiteOf(S str)
+    {
+        return str[ 0 .. $-find!(not!(std.uni.isWhite))(str).length ];
+    }
+
+    S shortestIndent;
+    foreach (i, line; lines)
+    {
+        auto stripped = __ctfe? line.ctfe_strip() : line.strip();
+
+        if (stripped.empty)
+        {
+            lines[i] = line[line.chomp().length..$];
+        }
+        else
+        {
+            auto indent = leadingWhiteOf(line);
+
+            // Comparing number of code units instead of code points is OK here
+            // because this function throws upon inconsistent indentation.
+            if (shortestIndent is null || indent.length < shortestIndent.length)
+            {
+                if (indent.empty) return lines;
+                shortestIndent = indent;
+            }
+        }
+    }
+
+    foreach (i; 0..lines.length)
+    {
+        auto stripped = __ctfe? lines[i].ctfe_strip() : lines[i].strip();
+        if (stripped.empty)
+        {
+            // Do nothing
+        }
+        else if (lines[i].startsWith(shortestIndent))
+        {
+            lines[i] = lines[i][shortestIndent.length..$];
+        }
+        else
+        {
+            if (__ctfe) assert(false, "outdent: Inconsistent indentation");
+            else throw new StringException("outdent: Inconsistent indentation");
+        }
+    }
+
+    return lines;
+}
+
+// TODO: Remove this and use std.string.strip when retro() becomes ctfe-able.
+private S ctfe_strip(S)(S str) if(isSomeString!(Unqual!S))
+{
+    return str.stripLeft().ctfe_stripRight();
+}
+
+// TODO: Remove this and use std.string.strip when retro() becomes ctfe-able.
+private S ctfe_stripRight(S)(S str) if(isSomeString!(Unqual!S))
+{
+    size_t endIndex = 0;
+    size_t prevIndex = str.length;
+
+    foreach_reverse (i, dchar ch; str)
+    {
+        if (!std.uni.isWhite(ch))
+        {
+            endIndex = prevIndex;
+            break;
+        }
+        prevIndex = i;
+    }
+
+    return str[0..endIndex];
+}
+
+version(unittest)
+{
+    template outdent_testStr(S)
+    {
+        enum S outdent_testStr =
+"
+ \t\tX
+ \t\U00010143X
+ \t\t
+
+ \t\t\tX
+\t ";
+    }
+
+    template outdent_expected(S)
+    {
+        enum S outdent_expected =
+"
+\tX
+\U00010143X
+
+
+\t\tX
+";
+    }
+}
+
+unittest
+{
+    debug(string) printf("string.outdent.unittest\n");
+
+    static assert(ctfe_strip(" \tHi \r\n") == "Hi");
+    static assert(ctfe_strip(" \tHi&copy;\u2028 \r\n") == "Hi&copy;");
+    static assert(ctfe_strip("Hi")         == "Hi");
+    static assert(ctfe_strip(" \t \r\n")   == "");
+    static assert(ctfe_strip("")           == "");
+
+    foreach (S; TypeTuple!(string, wstring, dstring))
+    {
+        enum S blank = "";
+        assert(blank.outdent() == blank);
+        static assert(blank.outdent() == blank);
+
+        enum S testStr1  = " \n \t\n ";
+        enum S expected1 = "\n\n";
+        assert(testStr1.outdent() == expected1);
+        static assert(testStr1.outdent() == expected1);
+
+        assert(testStr1[0..$-1].outdent() == expected1);
+        static assert(testStr1[0..$-1].outdent() == expected1);
+
+        enum S testStr2  = "a\n \t\nb";
+        assert(testStr2.outdent() == testStr2);
+        static assert(testStr2.outdent() == testStr2);
+
+        enum S testStr3 =
+"
+ \t\tX
+ \t\U00010143X
+ \t\t
+
+ \t\t\tX
+\t ";
+
+        enum S expected3 =
+"
+\tX
+\U00010143X
+
+
+\t\tX
+";
+        assert(testStr3.outdent() == expected3);
+        static assert(testStr3.outdent() == expected3);
+
+        enum testStr4 = "  X\r  X\n  X\r\n  X\u2028  X\u2029  X";
+        enum expected4 = "X\rX\nX\r\nX\u2028X\u2029X";
+        assert(testStr4.outdent() == expected4);
+        static assert(testStr4.outdent() == expected4);
+
+        enum testStr5  = testStr4[0..$-1];
+        enum expected5 = expected4[0..$-1];
+        assert(testStr5.outdent() == expected5);
+        static assert(testStr5.outdent() == expected5);
+
+        enum testStr6 = "  \r  \n  \r\n  \u2028  \u2029";
+        enum expected6 = "\r\n\r\n\u2028\u2029";
+        assert(testStr6.outdent() == expected6);
+        static assert(testStr6.outdent() == expected6);
+    }
 }
 
 private template hardDeprec(string vers, string date, string oldFunc, string newFunc)

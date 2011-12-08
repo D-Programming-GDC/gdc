@@ -11,7 +11,7 @@
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, December 2006
+   Modified by Iain Buclaw, November 2011
 */
 
 #include <stdio.h>
@@ -420,13 +420,8 @@ Expression *PtrExp::optimize(int result)
             e = ex;
         else
         {
-#ifndef IN_GCC
             e = ex->copy();
             e->type = type;
-#else
-            // Stuffing types does not always work in GCC
-            return this;
-#endif
         }
         return e;
     }

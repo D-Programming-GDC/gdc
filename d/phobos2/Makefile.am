@@ -249,8 +249,9 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/conv.o std/cpuid.o std/cstream.o std/ctype.o std/date.o \
 	  std/datebase.o std/dateparse.o std/datetime.o \
 	  std/demangle.o std/encoding.o std/exception.o std/format.o \
-	  std/functional.o std/getopt.o std/gregorian.o std/json.o std/math.o \
-	  std/mathspecial.o std/md5.o std/metastrings.o std/numeric.o \
+	  std/functional.o std/getopt.o std/gregorian.o std/json.o \
+	  std/loader.o std/math.o std/mathspecial.o std/md5.o \
+	  std/metastrings.o std/numeric.o \
 	  std/outbuffer.o std/parallelism.o std/signals.o \
 	  std/stdarg.o std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
 	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
@@ -262,7 +263,7 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/c/string.o std/c/time.o std/c/wcharh.o \
 	  std/internal/math/biguintcore.o std/internal/math/biguintnoasm.o \
 	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
-	  std/internal/math/errorfunction.o \
+	  std/internal/math/errorfunction.o std/internal/processinit.o \
 	  std/net/isemail.o \
 	  crc32.o etc/c/curl.o etc/c/zlib.o
 
@@ -275,7 +276,7 @@ ZLIB_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 OS_OBJS=std/file.o std/mmfile.o std/path.o std/perf.o std/process.o \
 	std/socket.o std/socketstream.o
 
-LINUX_OBJS=std/c/linux/socket.o
+LINUX_OBJS=std/c/linux/linux.o std/c/linux/socket.o
 
 OSX_OBJS=std/c/osx/socket.o
 
@@ -318,7 +319,8 @@ install-data-local: $(D_PREREQ_SRCS) libgphobos2.a libgdruntime.a
 	for i in etc/c \
 		gcc std std/c \
 		std/c/linux std/c/osx std/c/unix std/c/windows \
-		std/internal/math std/windows; do \
+		std/internal std/internal/math std/internal/windows \
+		std/net std/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done

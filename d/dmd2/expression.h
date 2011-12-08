@@ -11,8 +11,7 @@
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
 
-   Modified by David Friedman, September 2004
-   Modified by Vincenzo Ampolo, September 2009
+   Modified by Iain Buclaw, September 2009
 */
 
 #ifndef DMD_EXPRESSION_H
@@ -1414,7 +1413,7 @@ struct PowExp : BinExp
     // For operator overloading
     Identifier *opId();
     Identifier *opId_r();
-
+    
     elem *toElem(IRState *irs);
 };
 #endif
@@ -1577,6 +1576,7 @@ struct InExp : BinExp
 struct RemoveExp : BinExp
 {
     RemoveExp(Loc loc, Expression *e1, Expression *e2);
+    Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     elem *toElem(IRState *irs);
 };
