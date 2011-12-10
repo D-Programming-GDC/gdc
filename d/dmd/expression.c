@@ -464,7 +464,7 @@ void preFunctionParameters(Loc loc, Scope *sc, Expressions *exps)
         expandTuples(exps);
 
         for (size_t i = 0; i < exps->dim; i++)
-        {   Expression *arg = (Expression *)exps->data[i];
+        {   Expression *arg = (*exps)[i];
 
             if (!arg->type)
             {
@@ -477,7 +477,7 @@ void preFunctionParameters(Loc loc, Scope *sc, Expressions *exps)
             }
 
             arg = resolveProperties(sc, arg);
-            exps->data[i] = (void *) arg;
+            (*exps)[i] =  arg;
 
             //arg->rvalue();
 #if 0
@@ -485,7 +485,7 @@ void preFunctionParameters(Loc loc, Scope *sc, Expressions *exps)
             {
                 arg = new AddrExp(arg->loc, arg);
                 arg = arg->semantic(sc);
-                exps->data[i] = (void *) arg;
+                (*exps)[i] =  arg;
             }
 #endif
         }
@@ -520,6 +520,23 @@ Expression *callCpCtor(Loc loc, Scope *sc, Expression *e)
 }
 #endif
 
+// Check if this function is a member of a template which has only been
+// instantiated speculatively, eg from inside is(typeof()).
+// Return the speculative template instance it is part of,
+// or NULL if not speculative.
+TemplateInstance *isSpeculativeFunction(FuncDeclaration *fd)
+{
+    Dsymbol * par = fd->parent;
+    while (par)
+    {
+        TemplateInstance *ti = par->isTemplateInstance();
+        if (ti && ti->speculative)
+            return ti;
+        par = par->toParent();
+    }
+    return NULL;
+}
+
 /****************************************
  * Now that we know the exact type of the function we're calling,
  * the arguments[] need to be adjusted:
@@ -538,6 +555,20 @@ void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argum
 
     if (nargs > nparams && tf->varargs == 0)
         error(loc, "expected %"PRIuSIZE" arguments, not %"PRIuSIZE" for non-variadic function type %s", nparams, nargs, tf->toChars());
+
+#if DMDV2
+    // If inferring return type, and semantic3() needs to be run if not already run
+    if (!tf->next && fd->inferRetType)
+    {
+        TemplateInstance *spec = isSpeculativeFunction(fd);
+        int olderrs = global.errors;
+        fd->semantic3(fd->scope);
+        // Update the template instantiation with the number
+        // of errors which occured.
+        if (spec && global.errors != olderrs)
+            spec->errors = global.errors - olderrs;
+    }
+#endif
 
     unsigned n = (nargs > nparams) ? nargs : nparams;   // n = max(nargs, nparams)
 
@@ -579,7 +610,9 @@ void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argum
                 //printf("\t\tvarargs == 2, p->type = '%s'\n", p->type->toChars());
                 if (arg->implicitConvTo(p->type))
                 {
-                    if (nargs != nparams)
+                    if (p->type->nextOf() && arg->implicitConvTo(p->type->nextOf()))
+                        goto L2;
+                    else if (nargs != nparams)
                     {   error(loc, "expected %"PRIuSIZE" function arguments, not %"PRIuSIZE, nparams, nargs);
                         return;
                     }
@@ -616,7 +649,7 @@ void functionParameters(Loc loc, Scope *sc, TypeFunction *tf, Expressions *argum
                         c->type = v->type;
 
                         for (size_t u = i; u < nargs; u++)
-                        {   Expression *a = (Expression *)arguments->data[u];
+                        {   Expression *a = (*arguments)[u];
                             if (tret && !((TypeArray *)tb)->next->equals(a->type))
                                 a = a->toDelegate(sc, tret);
 
@@ -924,6 +957,24 @@ Expression *Expression::semantic(Scope *sc)
     else
         type = Type::tvoid;
     return this;
+}
+
+/**********************************
+ * Try to run semantic routines.
+ * If they fail, return NULL.
+ */
+
+Expression *Expression::trySemantic(Scope *sc)
+{
+    //printf("+trySemantic(%s)\n", toChars());
+    unsigned errors = global.startGagging();
+    Expression *e = semantic(sc);
+    if (global.endGagging(errors))
+    {
+        e = NULL;
+    }
+    //printf("-trySemantic(%s)\n", toChars());
+    return e;
 }
 
 void Expression::print()
@@ -2143,9 +2194,10 @@ Lagain:
         return this;
     if (!s->isFuncDeclaration())        // functions are checked after overloading
         checkDeprecated(sc, s);
+    Dsymbol *olds = s;
     s = s->toAlias();
     //printf("s = '%s', s->kind = '%s', s->needThis() = %p\n", s->toChars(), s->kind(), s->needThis());
-    if (!s->isFuncDeclaration())
+    if (s != olds && !s->isFuncDeclaration())
         checkDeprecated(sc, s);
 
     if (sc->func)
@@ -2235,6 +2287,21 @@ Lagain:
 
         if (!f->originalType && f->scope)       // semantic not yet run
             f->semantic(f->scope);
+
+#if DMDV2
+        // if inferring return type, sematic3 needs to be run
+        if (f->inferRetType && f->scope && f->type && !f->type->nextOf())
+        {
+            TemplateInstance *spec = isSpeculativeFunction(f);
+            int olderrs = global.errors;
+            f->semantic3(f->scope);
+            // Update the template instantiation with the number
+            // of errors which occured.
+            if (spec && global.errors != olderrs)
+                spec->errors = global.errors - olderrs;
+        }
+#endif
+
         if (f->isUnitTestDeclaration())
         {
             error("cannot call unittest function %s", toChars());
@@ -2261,7 +2328,7 @@ Lagain:
     {
         if (!imp->pkg)
         {   error("forward reference of import %s", imp->toChars());
-            return this;
+            return new ErrorExp();
         }
         ScopeExp *ie = new ScopeExp(loc, imp->pkg);
         return ie->semantic(sc);
@@ -2286,7 +2353,8 @@ Lagain:
     t = s->getType();
     if (t)
     {
-        return new TypeExp(loc, t);
+        TypeExp *te = new TypeExp(loc, t);
+        return te->semantic(sc);
     }
 
     TupleDeclaration *tup = s->isTupleDeclaration();
@@ -2355,14 +2423,12 @@ Expression *DsymbolExp::toLvalue(Scope *sc, Expression *e)
 ThisExp::ThisExp(Loc loc)
         : Expression(loc, TOKthis, sizeof(ThisExp))
 {
+    //printf("ThisExp::ThisExp() loc = %d\n", loc.linnum);
     var = NULL;
 }
 
 Expression *ThisExp::semantic(Scope *sc)
-{   FuncDeclaration *fd;
-    FuncDeclaration *fdthis;
-    int nested = 0;
-
+{
 #if LOGSEMANTIC
     printf("ThisExp::semantic()\n");
 #endif
@@ -2371,39 +2437,39 @@ Expression *ThisExp::semantic(Scope *sc)
         return this;
     }
 
+    FuncDeclaration *fd = hasThis(sc);  // fd is the uplevel function with the 'this' variable
+
     /* Special case for typeof(this) and typeof(super) since both
      * should work even if they are not inside a non-static member function
      */
-    if (sc->intypeof)
+    if (!fd && sc->intypeof)
     {
         // Find enclosing struct or class
-        for (Dsymbol *s = sc->parent; 1; s = s->parent)
+        for (Dsymbol *s = sc->getStructClassScope(); 1; s = s->parent)
         {
-            ClassDeclaration *cd;
-            StructDeclaration *sd;
-
             if (!s)
             {
-                error("%s is not in a struct or class scope", toChars());
+                error("%s is not in a class or struct scope", toChars());
                 goto Lerr;
             }
-            cd = s->isClassDeclaration();
+            ClassDeclaration *cd = s->isClassDeclaration();
             if (cd)
             {
                 type = cd->type;
                 return this;
             }
-            sd = s->isStructDeclaration();
+            StructDeclaration *sd = s->isStructDeclaration();
             if (sd)
             {
+#if STRUCTTHISREF
+                type = sd->type;
+#else
                 type = sd->type->pointerTo();
+#endif
                 return this;
             }
         }
     }
-
-    fdthis = sc->parent->isFuncDeclaration();
-    fd = hasThis(sc);   // fd is the uplevel function with the 'this' variable
     if (!fd)
         goto Lerr;
 
@@ -2412,22 +2478,13 @@ Expression *ThisExp::semantic(Scope *sc)
     assert(var->parent);
     type = var->type;
     var->isVarDeclaration()->checkNestedReference(sc, loc);
-#if 0
-    if (fd != fdthis)           // if nested
-    {
-        fdthis->getLevel(loc, fd);
-        fd->vthis->nestedref = 1;
-        fd->nestedFrameRef = 1;
-    }
-#endif
     if (!sc->intypeof)
         sc->callSuper |= CSXthis;
     return this;
 
 Lerr:
     error("'this' is only defined in non-static member functions, not %s", sc->parent->toChars());
-    type = Type::terror;
-    return this;
+    return new ErrorExp();
 }
 
 int ThisExp::isBool(int result)
@@ -3342,7 +3399,10 @@ Expression *StructLiteralExp::semantic(Scope *sc)
                         Initializer *i2 = v->init->syntaxCopy();
                         i2 = i2->semantic(v->scope, v->type, WANTinterpret);
                         e = i2->toExpression();
-                        v->scope = NULL;
+                        // remove v->scope (see bug 3426)
+                        // but not if gagged, for we might be called again.
+                        if (!global.gag)
+                            v->scope = NULL;
                     }
                 }
             }
@@ -4347,7 +4407,7 @@ TupleExp::TupleExp(Loc loc, TupleDeclaration *tup)
 
     exps->reserve(tup->objects->dim);
     for (size_t i = 0; i < tup->objects->dim; i++)
-    {   Object *o = (Object *)tup->objects->data[i];
+    {   Object *o = tup->objects->tdata()[i];
         if (o->dyncast() == DYNCAST_EXPRESSION)
         {
             Expression *e = (Expression *)o;
@@ -4383,8 +4443,8 @@ int TupleExp::equals(Object *o)
         if (exps->dim != te->exps->dim)
             return 0;
         for (size_t i = 0; i < exps->dim; i++)
-        {   Expression *e1 = (Expression *)exps->data[i];
-            Expression *e2 = (Expression *)te->exps->data[i];
+        {   Expression *e1 = (*exps)[i];
+            Expression *e2 = (*te->exps)[i];
 
             if (!e1->equals(e2))
                 return 0;
@@ -4409,21 +4469,17 @@ Expression *TupleExp::semantic(Scope *sc)
 
     // Run semantic() on each argument
     for (size_t i = 0; i < exps->dim; i++)
-    {   Expression *e = (Expression *)exps->data[i];
+    {   Expression *e = (*exps)[i];
 
         e = e->semantic(sc);
         if (!e->type)
         {   error("%s has no value", e->toChars());
-            e->type = Type::terror;
+            e = new ErrorExp();
         }
-        exps->data[i] = (void *)e;
+        (*exps)[i] = e;
     }
 
     expandTuples(exps);
-    if (0 && exps->dim == 1)
-    {
-        return (Expression *)exps->data[0];
-    }
     type = new TypeTuple(exps);
     type = type->semantic(loc, sc);
     //printf("-TupleExp::semantic(%s)\n", toChars());
@@ -4441,7 +4497,7 @@ int TupleExp::checkSideEffect(int flag)
 {   int f = 0;
 
     for (size_t i = 0; i < exps->dim; i++)
-    {   Expression *e = (Expression *)exps->data[i];
+    {   Expression *e = (*exps)[i];
 
         f |= e->checkSideEffect(2);
     }
@@ -4451,16 +4507,16 @@ int TupleExp::checkSideEffect(int flag)
 }
 
 #if DMDV2
-int TupleExp::canThrow()
+int TupleExp::canThrow(bool mustNotThrow)
 {
-    return arrayExpressionCanThrow(exps);
+    return arrayExpressionCanThrow(exps, mustNotThrow);
 }
 #endif
 
 void TupleExp::checkEscape()
 {
     for (size_t i = 0; i < exps->dim; i++)
-    {   Expression *e = (Expression *)exps->data[i];
+    {   Expression *e = (*exps)[i];
         e->checkEscape();
     }
 }
@@ -4485,27 +4541,28 @@ Expression *FuncExp::semantic(Scope *sc)
 #endif
     if (!type)
     {
+        unsigned olderrors = global.errors;
         fd->semantic(sc);
         fd->parent = sc->parent;
-        if (global.errors)
+        if (olderrors != global.errors)
         {
         }
         else
         {
             fd->semantic2(sc);
-            if (!global.errors ||
+            if ( (olderrors == global.errors) ||
                 // need to infer return type
                 (fd->type && fd->type->ty == Tfunction && !fd->type->nextOf()))
             {
                 fd->semantic3(sc);
 
-                if (!global.errors && global.params.useInline)
+                if ( (olderrors == global.errors) && global.params.useInline)
                     fd->inlineScan();
             }
         }
 
         // need to infer return type
-        if (global.errors && fd->type && fd->type->ty == Tfunction && !fd->type->nextOf())
+        if ((olderrors != global.errors) && fd->type && fd->type->ty == Tfunction && !fd->type->nextOf())
             ((TypeFunction *)fd->type)->next = Type::terror;
 
         // Type is a "delegate to" or "pointer to" the function literal
@@ -4556,6 +4613,8 @@ Expression *DeclarationExp::semantic(Scope *sc)
     printf("DeclarationExp::semantic() %s\n", toChars());
 #endif
 
+    unsigned olderrors = global.errors;
+
     /* This is here to support extern(linkage) declaration,
      * where the extern(linkage) winds up being an AttribDeclaration
      * wrapper.
@@ -4566,7 +4625,7 @@ Expression *DeclarationExp::semantic(Scope *sc)
     if (ad)
     {
         if (ad->decl && ad->decl->dim == 1)
-            s = (Dsymbol *)ad->decl->data[0];
+            s = ad->decl->tdata()[0];
     }
 
     if (s->isVarDeclaration())
@@ -4621,14 +4680,14 @@ Expression *DeclarationExp::semantic(Scope *sc)
             sc2->pop();
         s->parent = sc->parent;
     }
-    if (!global.errors)
+    if (global.errors == olderrors)
     {
         declaration->semantic2(sc);
-        if (!global.errors)
+        if (global.errors == olderrors)
         {
             declaration->semantic3(sc);
 
-            if (!global.errors && global.params.useInline)
+            if ((global.errors == olderrors) && global.params.useInline)
                 declaration->inlineScan();
         }
     }
@@ -4796,15 +4855,9 @@ Expression *IsExp::semantic(Scope *sc)
     if (id && !(sc->flags & SCOPEstaticif))
         error("can only declare type aliases within static if conditionals");
 
-    unsigned errors_save = global.errors;
-    global.errors = 0;
-    global.gag++;                       // suppress printing of error messages
+    unsigned errors_save = global.startGagging();
     targ = targ->semantic(loc, sc);
-    global.gag--;
-    unsigned gerrors = global.errors;
-    global.errors = errors_save;
-
-    if (gerrors)                        // if any errors happened
+    if (global.endGagging(errors_save)) // if any errors happened
     {                                   // then condition is false
         goto Lno;
     }
@@ -5857,14 +5910,11 @@ Expression *DotIdExp::semantic(Scope *sc)
          * as:
          *   .ident(e1)
          */
-        unsigned errors = global.errors;
-        global.gag++;
+        unsigned errors = global.startGagging();
         Type *t1 = e1->type;
         e = e1->type->dotExp(sc, e1, ident);
-        global.gag--;
-        if (errors != global.errors)    // if failed to find the property
+        if (global.endGagging(errors))    // if failed to find the property
         {
-            global.errors = errors;
             e1->type = t1;              // kludge to restore type
             e = new DotIdExp(loc, new IdentifierExp(loc, Id::empty), ident);
             e = new CallExp(loc, e, e1);
@@ -6121,7 +6171,15 @@ L1:
         TemplateDeclaration *td = dte->td;
         eleft = dte->e1;
         ti->tempdecl = td;
-        ti->semantic(sc);
+#if DMDV2
+        if (ti->needsTypeInference(sc))
+        {
+            e = new CallExp(loc, this);
+            return e->semantic(sc);
+        }
+        else
+#endif
+            ti->semantic(sc);
         if (!ti->inst)                  // if template failed to expand
             return new ErrorExp();
         Dsymbol *s = ti->inst->toAlias();
@@ -6508,15 +6566,12 @@ Expression *CallExp::semantic(Scope *sc)
              * If not, go with partial explicit specialization.
              */
             ti->semanticTiargs(sc);
-            unsigned errors = global.errors;
-            global.gag++;
+            unsigned errors = global.startGagging();
             ti->semantic(sc);
-            global.gag--;
-            if (errors != global.errors)
+            if (global.endGagging(errors))
             {
                 /* Didn't work, go with partial explicit specialization
                  */
-                global.errors = errors;
                 targsi = ti->tiargs;
                 e1 = new IdentifierExp(loc, ti->name);
             }
@@ -6536,13 +6591,10 @@ Expression *CallExp::semantic(Scope *sc)
              */
             ti->semanticTiargs(sc);
             Expression *etmp;
-            unsigned errors = global.errors;
-            global.gag++;
+            unsigned errors = global.startGagging();
             etmp = e1->semantic(sc);
-            global.gag--;
-            if (errors != global.errors)
+            if (global.endGagging(errors))
             {
-                global.errors = errors;
                 targsi = ti->tiargs;
                 e1 = new DotIdExp(loc, se->e1, ti->name);
             }
@@ -7574,7 +7626,9 @@ Expression *CastExp::semantic(Scope *sc)
         }
 
         // Struct casts are possible only when the sizes match
-        if (tob->ty == Tstruct || t1b->ty == Tstruct)
+        // Same with static array -> static array
+        if (tob->ty == Tstruct || t1b->ty == Tstruct ||
+            (tob->ty == Tsarray && t1b->ty == Tsarray))
         {
             size_t fromsize = t1b->size(loc);
             size_t tosize = tob->size(loc);
@@ -8164,7 +8218,7 @@ Expression *IndexExp::semantic(Scope *sc)
         goto Lerr;
     }
     if (e2->type->ty == Ttuple && ((TupleExp *)e2)->exps->dim == 1) // bug 4444 fix
-        e2 = (Expression *)((TupleExp *)e2)->exps->data[0];
+        e2 = (*((TupleExp *)e2)->exps)[0];
     e2 = resolveProperties(sc, e2);
     if (e2->type == Type::terror)
         goto Lerr;

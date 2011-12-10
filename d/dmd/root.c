@@ -1116,7 +1116,7 @@ int File::read()
     }
 
     if (!ref)
-        mem.free(buffer);
+        ::free(buffer);
     ref = 0;       // we own the buffer now
 
     //printf("\tfile opened\n");
@@ -1126,7 +1126,7 @@ int File::read()
         goto err2;
     }
     size = buf.st_size;
-    buffer = (unsigned char *) mem.malloc(size + 2);
+    buffer = (unsigned char *) ::malloc(size + 2);
     if (!buffer)
     {
         fprintf(stderr, "\tmalloc error, errno = %d\n",errno);
@@ -1159,7 +1159,7 @@ int File::read()
 err2:
     close(fd);
 err:
-    mem.free(buffer);
+    ::free(buffer);
     buffer = NULL;
     len = 0;
 
@@ -1180,11 +1180,11 @@ err1:
         goto err1;
 
     if (!ref)
-        mem.free(buffer);
+        ::free(buffer);
     ref = 0;
 
     size = GetFileSize(h,NULL);
-    buffer = (unsigned char *) mem.malloc(size + 2);
+    buffer = (unsigned char *) ::malloc(size + 2);
     if (!buffer)
         goto err2;
 
@@ -1213,7 +1213,7 @@ err1:
 err2:
     CloseHandle(h);
 err:
-    mem.free(buffer);
+    ::free(buffer);
     buffer = NULL;
     len = 0;
 

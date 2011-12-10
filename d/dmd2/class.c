@@ -1354,6 +1354,9 @@ void InterfaceDeclaration::semantic(Scope *sc)
 
     sc = sc->push(this);
     sc->stc &= STCsafe | STCtrusted | STCsystem;
+#if IN_GCC
+    sc->attributes = NULL;
+#endif
     sc->parent = this;
     if (isCOMinterface())
         sc->linkage = LINKwindows;

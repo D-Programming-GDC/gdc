@@ -528,34 +528,28 @@ int Dsymbol::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 void Dsymbol::error(const char *format, ...)
 {
     //printf("Dsymbol::error()\n");
-    if (!global.gag)
+    if (!loc.filename)  // avoid bug 5861.
     {
-        char *p = locToChars();
+        Module *m = getModule();
 
-        if (*p)
-            fprintf(stdmsg, "%s: ", p);
-        mem.free(p);
-
-        fprintf(stdmsg, "Error: ");
-        if (isAnonymous())
-            fprintf(stdmsg, "%s ", kind());
-        else
-            fprintf(stdmsg, "%s %s ", kind(), toPrettyChars());
-
-        va_list ap;
-        va_start(ap, format);
-        vfprintf(stdmsg, format, ap);
-        va_end(ap);
-
-        fprintf(stdmsg, "\n");
-        fflush(stdmsg);
+        if (m && m->srcfile)
+            loc.filename = m->srcfile->toChars();
     }
-    global.errors++;
-
-    //fatal();
+    va_list ap;
+    va_start(ap, format);
+    verror(loc, format, ap);
+    va_end(ap);
 }
 
 void Dsymbol::error(Loc loc, const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    verror(loc, format, ap);
+    va_end(ap);
+}
+
+void Dsymbol::verror(Loc loc, const char *format, va_list ap)
 {
     if (!global.gag)
     {
@@ -570,13 +564,15 @@ void Dsymbol::error(Loc loc, const char *format, ...)
         fprintf(stdmsg, "Error: ");
         fprintf(stdmsg, "%s %s ", kind(), toPrettyChars());
 
-        va_list ap;
-        va_start(ap, format);
         vfprintf(stdmsg, format, ap);
-        va_end(ap);
 
         fprintf(stdmsg, "\n");
         fflush(stdmsg);
+//halt();
+    }
+    else
+    {
+        global.gaggedErrors++;
     }
 
     global.errors++;
@@ -591,21 +587,24 @@ void Dsymbol::checkDeprecated(Loc loc, Scope *sc)
         // Don't complain if we're inside a deprecated symbol's scope
         for (Dsymbol *sp = sc->parent; sp; sp = sp->parent)
         {   if (sp->isDeprecated())
-                return;
+                goto L1;
         }
 
         for (Scope *sc2 = sc; sc2; sc2 = sc2->enclosing)
         {
             if (sc2->scopesym && sc2->scopesym->isDeprecated())
-                return;
+                goto L1;
 
             // If inside a StorageClassDeclaration that is deprecated
             if (sc2->stc & STCdeprecated)
-                return;
+                goto L1;
         }
 
         error(loc, "is deprecated");
     }
+
+  L1:
+    ;
 }
 
 /**********************************
@@ -918,11 +917,19 @@ size_t ScopeDsymbol::dim(Dsymbols *members)
         for (size_t i = 0; i < members->dim; i++)
         {   Dsymbol *s = (*members)[i];
             AttribDeclaration *a = s->isAttribDeclaration();
+            TemplateMixin *tm = s->isTemplateMixin();
+            TemplateInstance *ti = s->isTemplateInstance();
 
             if (a)
             {
                 n += dim(a->decl);
             }
+            else if (tm)
+            {
+                n += dim(tm->members);
+            }
+            else if (ti)
+                ;
             else
                 n++;
         }
@@ -1140,7 +1147,9 @@ Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int flags)
                  * or a variable (in which case an expression is created in
                  * toir.c).
                  */
-                v->init = new VoidInitializer(0);
+                VoidInitializer *e = new VoidInitializer(0);
+                e->type = Type::tsize_t;
+                v->init = e;
             }
             *pvar = v;
         }
@@ -1154,89 +1163,46 @@ Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int flags)
 
 DsymbolTable::DsymbolTable()
 {
-#if STRINGTABLE
-    tab = new StringTable;
-#else
     tab = NULL;
-#endif
 }
 
 DsymbolTable::~DsymbolTable()
 {
-#if STRINGTABLE
-    delete tab;
-#endif
 }
 
 Dsymbol *DsymbolTable::lookup(Identifier *ident)
 {
-#if STRINGTABLE
-#ifdef DEBUG
-    assert(ident);
-    assert(tab);
-#endif
-    //printf("DsymbolTable::lookup(%s)\n", (char*)ident->string);
-    StringValue *sv = tab->lookup((char*)ident->string, ident->len);
-    return (Dsymbol *)(sv ? sv->ptrvalue : NULL);
-#else
     //printf("DsymbolTable::lookup(%s)\n", (char*)ident->string);
     return (Dsymbol *)_aaGetRvalue(tab, ident);
-#endif
 }
 
 Dsymbol *DsymbolTable::insert(Dsymbol *s)
 {
     //printf("DsymbolTable::insert(this = %p, '%s')\n", this, s->ident->toChars());
     Identifier *ident = s->ident;
-#if STRINGTABLE
-#ifdef DEBUG
-    assert(ident);
-    assert(tab);
-#endif
-    StringValue *sv = tab->insert(ident->toChars(), ident->len);
-    if (!sv)
-        return NULL;            // already in table
-    sv->ptrvalue = s;
-    return s;
-#else
     Dsymbol **ps = (Dsymbol **)_aaGet(&tab, ident);
     if (*ps)
         return NULL;            // already in table
     *ps = s;
     return s;
-#endif
 }
 
 Dsymbol *DsymbolTable::insert(Identifier *ident, Dsymbol *s)
 {
     //printf("DsymbolTable::insert()\n");
-#if STRINGTABLE
-    StringValue *sv = tab->insert(ident->toChars(), ident->len);
-    if (!sv)
-        return NULL;            // already in table
-    sv->ptrvalue = s;
-    return s;
-#else
     Dsymbol **ps = (Dsymbol **)_aaGet(&tab, ident);
     if (*ps)
         return NULL;            // already in table
     *ps = s;
     return s;
-#endif
 }
 
 Dsymbol *DsymbolTable::update(Dsymbol *s)
 {
     Identifier *ident = s->ident;
-#if STRINGTABLE
-    StringValue *sv = tab->update(ident->toChars(), ident->len);
-    sv->ptrvalue = s;
-    return s;
-#else
     Dsymbol **ps = (Dsymbol **)_aaGet(&tab, ident);
     *ps = s;
     return s;
-#endif
 }
 
 

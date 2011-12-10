@@ -3366,10 +3366,25 @@ IRState::getFrameInfo(FuncDeclaration *fd)
 
     // Nested functions, or functions with nested refs must create
     // a static frame for local variables to be referenced from.
-    if (nestedVars->dim != 0 || fd->isNested() ||
-        (fd->isThis() && fd->isThis()->isNested()))
+    if (nestedVars->dim != 0 || fd->isNested())
     {
         ffi->creates_frame = true;
+    }
+    else
+    {
+        AggregateDeclaration * ad = fd->isThis();
+#if V2
+        if (ad && ad->isNested())
+        {
+            ffi->creates_frame = true;
+        }
+#else
+        ClassDeclaration * cd = ad ? ad->isClassDeclaration() : NULL;
+        if (cd && cd->isNested())
+        {
+            ffi->creates_frame = true;
+        }
+#endif
     }
 
 #if V2

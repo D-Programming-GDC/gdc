@@ -36,11 +36,16 @@
 
 #ifdef IN_GCC
 #include "d-gcc-real.h"
+
+/* %% fix? */
+extern "C" bool real_isnan (const real_t *);
 #endif
 
 static real_t zero;     // work around DMC bug for now
 
 #define LOG 0
+
+int RealEquals(real_t x1, real_t x2);
 
 Expression *expType(Type *type, Expression *e)
 {
@@ -584,6 +589,7 @@ Expression *Shr(Type *type, Expression *e1, Expression *e2)
                 break;
 
         case Tuns8:
+        case Tchar:
                 value = (d_uns8)(value) >> count;
                 break;
 
@@ -592,6 +598,7 @@ Expression *Shr(Type *type, Expression *e1, Expression *e2)
                 break;
 
         case Tuns16:
+        case Twchar:
                 value = (d_uns16)(value) >> count;
                 break;
 
@@ -600,6 +607,7 @@ Expression *Shr(Type *type, Expression *e1, Expression *e2)
                 break;
 
         case Tuns32:
+        case Tdchar:
                 value = (d_uns32)(value) >> count;
                 break;
 
@@ -633,18 +641,21 @@ Expression *Ushr(Type *type, Expression *e1, Expression *e2)
     {
         case Tint8:
         case Tuns8:
+        case Tchar:
                 // Possible only with >>>=. >>> always gets promoted to int.
                 value = (value & 0xFF) >> count;
                 break;
 
         case Tint16:
         case Tuns16:
+        case Twchar:
                 // Possible only with >>>=. >>> always gets promoted to int.
                 value = (value & 0xFFFF) >> count;
                 break;
 
         case Tint32:
         case Tuns32:
+        case Tdchar:
                 value = (value & 0xFFFFFFFF) >> count;
                 break;
 
@@ -1232,7 +1243,10 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
         uinteger_t i = e2->toInteger();
 
         if (i >= es1->len)
+        {
             e1->error("string index %"PRIuMAX" is out of bounds [0 .. %"PRIuSIZE"]", i, es1->len);
+            e = new ErrorExp();
+        }
         else
         {
             e = new IntegerExp(loc, es1->charAt(i), type);
@@ -1244,7 +1258,9 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
         uinteger_t i = e2->toInteger();
 
         if (i >= length)
-        {   e1->error("array index %"PRIuMAX" is out of bounds %s[0 .. %"PRIuMAX"]", i, e1->toChars(), length);
+        {
+            e1->error("array index %"PRIuMAX" is out of bounds %s[0 .. %"PRIuMAX"]", i, e1->toChars(), length);
+            e = new ErrorExp();
         }
         else if (e1->op == TOKarrayliteral)
         {   ArrayLiteralExp *ale = (ArrayLiteralExp *)e1;
@@ -1261,7 +1277,9 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
         if (e1->op == TOKarrayliteral)
         {   ArrayLiteralExp *ale = (ArrayLiteralExp *)e1;
             if (i >= ale->elements->dim)
-            {   e1->error("array index %"PRIuMAX" is out of bounds %s[0 .. %u]", i, e1->toChars(), ale->elements->dim);
+            {
+                e1->error("array index %"PRIuMAX" is out of bounds %s[0 .. %u]", i, e1->toChars(), ale->elements->dim);
+                e = new ErrorExp();
             }
             else
             {   e = ale->elements->tdata()[i];
@@ -1315,7 +1333,10 @@ Expression *Slice(Type *type, Expression *e1, Expression *lwr, Expression *upr)
         uinteger_t iupr = upr->toInteger();
 
         if (iupr > es1->len || ilwr > iupr)
+        {
             e1->error("string slice [%"PRIuMAX" .. %"PRIuMAX"] is out of bounds", ilwr, iupr);
+            e = new ErrorExp();
+        }
         else
         {
             void *s;
@@ -1342,7 +1363,10 @@ Expression *Slice(Type *type, Expression *e1, Expression *lwr, Expression *upr)
         uinteger_t iupr = upr->toInteger();
 
         if (iupr > es1->elements->dim || ilwr > iupr)
+        {
             e1->error("array slice [%"PRIuMAX" .. %"PRIuMAX"] is out of bounds", ilwr, iupr);
+            e = new ErrorExp();
+        }
         else
         {
             Expressions *elements = new Expressions();

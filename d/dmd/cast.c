@@ -123,6 +123,8 @@ MATCH Expression::implicitConvTo(Type *t)
         toChars(), type->toChars(), t->toChars());
 #endif
     //static int nest; if (++nest == 10) halt();
+    if (t == Type::terror)
+        return MATCHnomatch;
     if (!type)
     {   error("%s is not an expression", toChars());
         type = Type::terror;
@@ -497,6 +499,10 @@ MATCH ArrayLiteralExp::implicitConvTo(Type *t)
             if (result == MATCHnomatch)
                 break;                          // no need to check for worse
         }
+
+        if (!result)
+            result = type->implicitConvTo(t);
+
         return result;
     }
     else

@@ -398,12 +398,13 @@ void FuncDeclaration::semantic(Scope *sc)
                     warning(loc, "overrides base class function %s, but is not marked with 'override'", fdv->toPrettyChars());
 #endif
 
-                if (fdv->toParent() == parent)
+                FuncDeclaration *fdc = ((Dsymbol *)cd->vtbl.data[vi])->isFuncDeclaration();
+                if (fdc->toParent() == parent)
                 {
                     // If both are mixins, then error.
                     // If either is not, the one that is not overrides
                     // the other.
-                    if (fdv->parent->isClassDeclaration())
+                    if (fdc->parent->isClassDeclaration())
                         break;
                     if (!this->parent->isClassDeclaration()
 #if !BREAKABI
@@ -415,7 +416,7 @@ void FuncDeclaration::semantic(Scope *sc)
                         )
                         error("multiple overrides of same function");
                 }
-                cd->vtbl.data[vi] = (void *)this;
+                cd->vtbl[vi] = this;
                 vtblIndex = vi;
 
                 /* Remember which functions this overrides
@@ -480,15 +481,12 @@ void FuncDeclaration::semantic(Scope *sc)
                         /* Only need to have a tintro if the vptr
                          * offsets differ
                          */
-                        unsigned errors = global.errors;
-                        global.gag++;            // suppress printing of error messages
+                        unsigned errors = global.startGagging();             // suppress printing of error messages
                         int offset;
                         int baseOf = fdv->type->nextOf()->isBaseOf(type->nextOf(), &offset);
-                        global.gag--;            // suppress printing of error messages
-                        if (errors != global.errors)
+                        if (global.endGagging(errors))
                         {
                             // any error in isBaseOf() is a forward reference error, so we bail out
-                            global.errors = errors;
                             cd->sizeok = 2;    // can't finish due to forward reference
                             Module::dprogress = dprogress_save;
                             return;
@@ -1179,15 +1177,14 @@ void FuncDeclaration::semantic3(Scope *sc)
                     Expression *e1 = new SuperExp(0);
                     Expression *e = new CallExp(0, e1);
 
-                    unsigned errors = global.errors;
-                    global.gag++;
-                    e = e->semantic(sc2);
-                    global.gag--;
-                    if (errors != global.errors)
+                    e = e->trySemantic(sc2);
+                    if (!e)
                         error("no match for implicit super() call in constructor");
-
-                    Statement *s = new ExpStatement(0, e);
-                    fbody = new CompoundStatement(0, s, fbody);
+                    else
+                    {
+                        Statement *s = new ExpStatement(0, e);
+                        fbody = new CompoundStatement(0, s, fbody);
+                    }
                 }
             }
             else if (fes)

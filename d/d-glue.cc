@@ -3595,7 +3595,6 @@ TypeEnum::toCtype()
             TYPE_MAX_VALUE(ctype) = gen.integerConstant(sym->maxval, enum_mem_type_node);
 #endif
             layout_type(ctype);
-            TYPE_UNSIGNED(ctype) = isunsigned() != 0; // layout_type can change this
 
             // Move this to toDebug() ?
             ListMaker enum_values;

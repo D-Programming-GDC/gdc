@@ -113,7 +113,9 @@ struct Parser : Lexer
     void parseContracts(FuncDeclaration *f);
     void checkDanglingElse(Loc elseloc);
     Statement *parseStatement(int flags);
+#if IN_GCC
     Statement *parseExtAsm(int expect_rparen);
+#endif
     Initializer *parseInitializer();
     Expression *parseDefaultInitExp();
     void check(Loc loc, enum TOK value);

@@ -923,7 +923,10 @@ int ClassDeclaration::isFuncHidden(FuncDeclaration *fd)
     }
     FuncDeclaration *fdstart = s->toAlias()->isFuncDeclaration();
     //printf("%s fdstart = %p\n", s->kind(), fdstart);
-    return !overloadApply(fdstart, &isf, fd);
+    if (overloadApply(fdstart, &isf, fd))
+        return 0;
+
+    return !fd->parent->isTemplateMixin();
 }
 #endif
 
@@ -935,24 +938,58 @@ int ClassDeclaration::isFuncHidden(FuncDeclaration *fd)
 FuncDeclaration *ClassDeclaration::findFunc(Identifier *ident, TypeFunction *tf)
 {
     //printf("ClassDeclaration::findFunc(%s, %s) %s\n", ident->toChars(), tf->toChars(), toChars());
+    FuncDeclaration *fdmatch = NULL;
+    FuncDeclaration *fdambig = NULL;
 
     ClassDeclaration *cd = this;
-    Array *vtbl = &cd->vtbl;
+    Dsymbols *vtbl = &cd->vtbl;
     while (1)
     {
         for (size_t i = 0; i < vtbl->dim; i++)
         {
-            FuncDeclaration *fd = ((Dsymbol*)vtbl->data[i])->isFuncDeclaration();
+            FuncDeclaration *fd = (*vtbl)[i]->isFuncDeclaration();
             if (!fd)
                 continue;               // the first entry might be a ClassInfo
 
             //printf("\t[%d] = %s\n", i, fd->toChars());
             if (ident == fd->ident &&
-                //tf->equals(fd->type)
-                fd->type->covariant(tf) == 1
-               )
-            {   //printf("\t\tfound\n");
-                return fd;
+                fd->type->covariant(tf) == 1)
+            {   //printf("fd->parent->isClassDeclaration() = %p", fd->parent->isClassDeclaration());
+                if (!fdmatch)
+                    goto Lfd;
+
+                {
+                // Function type matcing: exact > covariant
+                int m1 = tf->equals(fd     ->type) ? MATCHexact : MATCHnomatch;
+                int m2 = tf->equals(fdmatch->type) ? MATCHexact : MATCHnomatch;
+                if (m1 > m2)
+                    goto Lfd;
+                else if (m1 < m2)
+                    goto Lfdmatch;
+                }
+
+                {
+                // The way of definition: non-mixin > mixin
+                int m1 = fd     ->parent->isClassDeclaration() ? MATCHexact : MATCHnomatch;
+                int m2 = fdmatch->parent->isClassDeclaration() ? MATCHexact : MATCHnomatch;
+                if (m1 > m2)
+                    goto Lfd;
+                else if (m1 < m2)
+                    goto Lfdmatch;
+                }
+
+            Lambig:
+                fdambig = fd;
+                //printf("Lambig fdambig = %s %s [%s]\n", fdambig->toChars(), fdambig->type->toChars(), fdambig->loc.toChars());
+                continue;
+
+            Lfd:
+                fdmatch = fd, fdambig = NULL;
+                //printf("Lfd fdmatch = %s %s [%s]\n", fdmatch->toChars(), fdmatch->type->toChars(), fdmatch->loc.toChars());
+                continue;
+
+            Lfdmatch:
+                continue;
             }
             //else printf("\t\t%d\n", fd->type->covariant(tf));
         }
@@ -962,7 +999,9 @@ FuncDeclaration *ClassDeclaration::findFunc(Identifier *ident, TypeFunction *tf)
         cd = cd->baseClass;
     }
 
-    return NULL;
+    if (fdambig)
+        error("ambiguous virtual function %s", fdambig->toChars());
+    return fdmatch;
 }
 
 void ClassDeclaration::interfaceSemantic(Scope *sc)
@@ -1247,11 +1286,12 @@ void InterfaceDeclaration::semantic(Scope *sc)
 
     for (size_t i = 0; i < members->dim; i++)
     {
-        Dsymbol *s = (Dsymbol *)members->data[i];
+        Dsymbol *s = (*members)[i];
         s->addMember(sc, this, 1);
     }
 
     sc = sc->push(this);
+    sc->stc &= STCsafe | STCtrusted | STCsystem;
 #if IN_GCC
     sc->attributes = NULL;
 #endif
@@ -1259,12 +1299,14 @@ void InterfaceDeclaration::semantic(Scope *sc)
     if (isCOMinterface())
         sc->linkage = LINKwindows;
     sc->structalign = 8;
+    sc->protection = PROTpublic;
+    sc->explicitProtection = 0;
     structalign = sc->structalign;
     sc->offset = PTRSIZE * 2;
     inuse++;
     for (size_t i = 0; i < members->dim; i++)
     {
-        Dsymbol *s = (Dsymbol *)members->data[i];
+        Dsymbol *s = (*members)[i];
         s->semantic(sc);
     }
     inuse--;

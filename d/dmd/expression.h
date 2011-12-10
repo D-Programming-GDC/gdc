@@ -99,6 +99,7 @@ struct Expression : Object
     Expression *copy();
     virtual Expression *syntaxCopy();
     virtual Expression *semantic(Scope *sc);
+    Expression *trySemantic(Scope *sc);
 
     int dyncast() { return DYNCAST_EXPRESSION; }        // kludge for template.isExpression()
 
@@ -1461,6 +1462,7 @@ struct InExp : BinExp
 struct RemoveExp : BinExp
 {
     RemoveExp(Loc loc, Expression *e1, Expression *e2);
+    Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     elem *toElem(IRState *irs);
 };

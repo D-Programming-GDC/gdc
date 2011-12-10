@@ -4315,6 +4315,7 @@ Statement *Parser::parseStatement(int flags)
                         error("matching '}' expected, not end of file");
                         break;
 
+#if IN_GCC
                     case TOKlparen:
                     case TOKstring:
                         // If the first token is a string or '(', parse as extended asm.
@@ -4325,6 +4326,7 @@ Statement *Parser::parseStatement(int flags)
                             continue;
                         }
                         // ...else, drop through.
+#endif
 
                     default:
                     Ldefault:
@@ -4368,6 +4370,7 @@ Statement *Parser::parseStatement(int flags)
     return s;
 }
 
+#if IN_GCC
 Statement *Parser::parseExtAsm(int expect_rparen)
 {
     Expression * insnTemplate;
@@ -4475,6 +4478,7 @@ Statement *Parser::parseExtAsm(int expect_rparen)
     return new ExtAsmStatement(loc, insnTemplate, args, argNames,
         argConstraints, nOutputArgs, clobbers);
 }
+#endif
 
 void Parser::check(enum TOK value)
 {

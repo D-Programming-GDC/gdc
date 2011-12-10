@@ -105,7 +105,9 @@ struct Parser : Lexer
     Dsymbols *parseDeclarations();
     void parseContracts(FuncDeclaration *f);
     Statement *parseStatement(int flags);
+#if IN_GCC
     Statement *parseExtAsm(int expect_rparen);
+#endif
     Initializer *parseInitializer();
     Expression *parseDefaultInitExp();
     void check(Loc loc, enum TOK value);

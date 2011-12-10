@@ -204,7 +204,7 @@ Type *TupleDeclaration::getType()
         /* It's only a type tuple if all the Object's are types
          */
         for (size_t i = 0; i < objects->dim; i++)
-        {   Object *o = (Object *)objects->data[i];
+        {   Object *o = (*objects)[i];
 
             if (o->dyncast() != DYNCAST_TYPE)
             {
@@ -231,7 +231,7 @@ Type *TupleDeclaration::getType()
 #else
             Parameter *arg = new Parameter(STCin, t, NULL, NULL);
 #endif
-            args->data[i] = (void *)arg;
+            (*args)[i] = arg;
             if (!t->deco)
                 hasdeco = 0;
         }
@@ -248,7 +248,7 @@ int TupleDeclaration::needThis()
 {
     //printf("TupleDeclaration::needThis(%s)\n", toChars());
     for (size_t i = 0; i < objects->dim; i++)
-    {   Object *o = (Object *)objects->data[i];
+    {   Object *o = (*objects)[i];
         if (o->dyncast() == DYNCAST_EXPRESSION)
         {   Expression *e = (Expression *)o;
             if (e->op == TOKdsymbol)
@@ -272,10 +272,8 @@ TypedefDeclaration::TypedefDeclaration(Loc loc, Identifier *id, Type *basetype, 
     this->type = new TypeTypedef(this);
     this->basetype = basetype->toBasetype();
     this->init = init;
-#ifdef _DH
     this->htype = NULL;
     this->hbasetype = NULL;
-#endif
     this->sem = 0;
     this->loc = loc;
     this->sinit = NULL;
@@ -292,7 +290,7 @@ Dsymbol *TypedefDeclaration::syntaxCopy(Dsymbol *s)
     assert(!s);
     TypedefDeclaration *st;
     st = new TypedefDeclaration(loc, ident, basetype, init);
-#ifdef _DH
+
     // Syntax copy for header file
     if (!htype)      // Don't overwrite original
     {   if (type)    // Make copy for both old and new instances
@@ -310,20 +308,30 @@ Dsymbol *TypedefDeclaration::syntaxCopy(Dsymbol *s)
     }
     else
         st->hbasetype = hbasetype->syntaxCopy();
-#endif
+
     return st;
 }
 
 void TypedefDeclaration::semantic(Scope *sc)
 {
     //printf("TypedefDeclaration::semantic(%s) sem = %d\n", toChars(), sem);
-    if (sem == 0)
-    {   sem = 1;
+    if (sem == SemanticStart)
+    {   sem = SemanticIn;
+        parent = sc->parent;
+        int errors = global.errors;
+        Type *savedbasetype = basetype;
         basetype = basetype->semantic(loc, sc);
-        sem = 2;
+        if (errors != global.errors)
+        {
+            basetype = savedbasetype;
+            sem = SemanticStart;
+            return;
+        }
+        sem = SemanticDone;
 #if DMDV2
         type = type->addStorageClass(storage_class);
 #endif
+        Type *savedtype = type;
         type = type->semantic(loc, sc);
 #if IN_GCC
         if (attributes)
@@ -333,9 +341,16 @@ void TypedefDeclaration::semantic(Scope *sc)
 #endif
         if (sc->parent->isFuncDeclaration() && init)
             semantic2(sc);
+        if (errors != global.errors)
+        {
+            basetype = savedbasetype;
+            type = savedtype;
+            sem = SemanticStart;
+            return;
+        }
         storage_class |= sc->stc & STCdeprecated;
     }
-    else if (sem == 1)
+    else if (sem == SemanticIn)
     {
         error("circular definition");
     }
@@ -344,11 +359,18 @@ void TypedefDeclaration::semantic(Scope *sc)
 void TypedefDeclaration::semantic2(Scope *sc)
 {
     //printf("TypedefDeclaration::semantic2(%s) sem = %d\n", toChars(), sem);
-    if (sem == 2)
-    {   sem = 3;
+    if (sem == SemanticDone)
+    {   sem = Semantic2Done;
         if (init)
         {
+            Initializer *savedinit = init;
+            int errors = global.errors;
             init = init->semantic(sc, basetype, WANTinterpret);
+            if (errors != global.errors)
+            {
+                init = savedinit;
+                return;
+            }
 
             ExpInitializer *ie = init->isExpInitializer();
             if (ie)
@@ -477,6 +499,9 @@ void AliasDeclaration::semantic(Scope *sc)
     // type. If it is a symbol, then aliassym is set and type is NULL -
     // toAlias() will return aliasssym.
 
+    int errors = global.errors;
+    Type *savedtype = type;
+
     Dsymbol *s;
     Type *t;
     Expression *e;
@@ -529,11 +554,15 @@ void AliasDeclaration::semantic(Scope *sc)
     }
     else if (t)
     {
-        type = t;
+        type = t->semantic(loc, sc);
+        //printf("\talias resolved to type %s\n", type->toChars());
     }
     if (overnext)
         ScopeDsymbol::multiplyDefined(0, this, overnext);
     this->inSemantic = 0;
+
+    if (errors != global.errors)
+        type = savedtype;
     return;
 
   L2:
@@ -547,6 +576,7 @@ void AliasDeclaration::semantic(Scope *sc)
     }
     else
     {
+        Dsymbol *savedovernext = overnext;
         FuncDeclaration *f = s->toAlias()->isFuncDeclaration();
         if (f)
         {
@@ -566,6 +596,14 @@ void AliasDeclaration::semantic(Scope *sc)
         {
             assert(global.errors);
             s = NULL;
+        }
+        if (errors != global.errors)
+        {
+            type = savedtype;
+            overnext = savedovernext;
+            aliassym = NULL;
+            inSemantic = 0;
+            return;
         }
     }
     if (!type || type->ty != Terror)
@@ -633,7 +671,7 @@ Dsymbol *AliasDeclaration::toAlias()
     //static int count; if (++count == 75) exit(0); //*(char*)0=0;
     if (inSemantic)
     {   error("recursive alias declaration");
-        aliassym = new TypedefDeclaration(loc, ident, Type::terror, NULL);
+        aliassym = new AliasDeclaration(loc, ident, Type::terror);
         type = Type::terror;
     }
     else if (!aliassym && scope)
@@ -645,7 +683,7 @@ Dsymbol *AliasDeclaration::toAlias()
 void AliasDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     buf->writestring("alias ");
-#if 0 && _DH
+#if 0
     if (hgs->hdrgen)
     {
         if (haliassym)
@@ -1193,9 +1231,7 @@ void VarDeclaration::semantic(Scope *sc)
 
             if (!global.errors && !inferred)
             {
-                unsigned errors = global.errors;
-                global.gag++;
-                //printf("+gag\n");
+                unsigned errors = global.startGagging();
                 Expression *e;
                 Initializer *i2 = init;
                 inuse++;
@@ -1210,12 +1246,8 @@ void VarDeclaration::semantic(Scope *sc)
                     i2 = i2->semantic(sc, type, WANTinterpret);
                 }
                 inuse--;
-                global.gag--;
-                //printf("-gag\n");
-                if (errors != global.errors)    // if errors happened
+                if (global.endGagging(errors))    // if errors happened
                 {
-                    if (global.gag == 0)
-                        global.errors = errors; // act as if nothing happened
 #if DMDV2
                     /* Save scope for later use, to try again
                      */

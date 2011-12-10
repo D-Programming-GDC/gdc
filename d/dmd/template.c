@@ -3329,6 +3329,7 @@ TemplateInstance::TemplateInstance(Loc loc, Identifier *ident)
     this->havetempdecl = 0;
     this->isnested = NULL;
     this->errors = 0;
+    this->speculative = 0;
 }
 
 /*****************
@@ -3360,6 +3361,7 @@ TemplateInstance::TemplateInstance(Loc loc, TemplateDeclaration *td, Objects *ti
     this->havetempdecl = 1;
     this->isnested = NULL;
     this->errors = 0;
+    this->speculative = 0;
 
     assert((size_t)tempdecl->scope > 0x10000);
 }
@@ -3520,6 +3522,27 @@ void TemplateInstance::semantic(Scope *sc)
         // It's a match
         inst = ti;
         parent = ti->parent;
+
+        // If both this and the previous instantiation were speculative,
+        // use the number of errors that happened last time.
+        if (inst->speculative && global.gag)
+        {
+            global.errors += inst->errors;
+            global.gaggedErrors += inst->errors;
+        }
+
+        // If the first instantiation was speculative, but this is not:
+        if (inst->speculative && !global.gag)
+        {
+            // If the first instantiation had failed, re-run semantic,
+            // so that error messages are shown.
+            if (inst->errors)
+                goto L1;
+            // It had succeeded, mark it is a non-speculative instantiation,
+            // and reuse it.
+            inst->speculative = 0;
+        }
+
 #if LOG
         printf("\tit's a match with instance %p\n", inst);
 #endif
@@ -3532,10 +3555,15 @@ void TemplateInstance::semantic(Scope *sc)
     /* So, we need to implement 'this' instance.
      */
 #if LOG
-    printf("\timplement template instance '%s'\n", toChars());
+    printf("\timplement template instance %s '%s'\n", tempdecl->parent->toChars(), toChars());
+    printf("\ttempdecl %s\n", tempdecl->toChars());
 #endif
     unsigned errorsave = global.errors;
     inst = this;
+    // Mark as speculative if we are instantiated from inside is(typeof())
+    if (global.gag && sc->intypeof)
+        speculative = 1;
+
     int tempdecl_instance_idx = tempdecl->instances.dim;
     tempdecl->instances.push(this);
     parent = tempdecl->parent;
@@ -3828,7 +3856,12 @@ void TemplateInstance::semantic(Scope *sc)
             // (see bugzilla 4302 and 6602).
             tempdecl->instances.remove(tempdecl_instance_idx);
             if (target_symbol_list)
+            {
+                // Because we added 'this' in the last position above, we
+                // should be able to remove it without messing other indices up.
+                assert(target_symbol_list->tdata()[target_symbol_list_idx] == this);
                 target_symbol_list->remove(target_symbol_list_idx);
+            }
             semanticRun = 0;
             inst = NULL;
         }
@@ -3880,7 +3913,9 @@ void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int f
                 tiargs->data[j] = ea;
             }
             else if (sa)
-            {   tiargs->data[j] = sa;
+            {
+              Ldsym:
+                tiargs->tdata()[j] = sa;
                 TupleDeclaration *d = sa->toAlias()->isTupleDeclaration();
                 if (d)
                 {
@@ -3901,14 +3936,14 @@ void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int f
                     if (dim)
                     {   tiargs->reserve(dim);
                         for (size_t i = 0; i < dim; i++)
-                        {   Parameter *arg = (Parameter *)tt->arguments->data[i];
+                        {   Parameter *arg = tt->arguments->tdata()[i];
                             tiargs->insert(j + i, arg->type);
                         }
                     }
                     j--;
                 }
                 else
-                    tiargs->data[j] = ta;
+                    tiargs->tdata()[j] = ta;
             }
             else
             {
@@ -3929,6 +3964,10 @@ void TemplateInstance::semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int f
             if (ea->op == TOKtype)
             {   ta = ea->type;
                 goto Ltype;
+            }
+            if (ea->op == TOKimport)
+            {   sa = ((ScopeExp *)ea)->sds;
+                goto Ldsym;
             }
             if (ea->op == TOKtuple)
             {   // Expand tuple
@@ -4219,10 +4258,12 @@ int TemplateInstance::hasNestedArgs(Objects *args)
      * symbol that is on the stack.
      */
     for (size_t i = 0; i < args->dim; i++)
-    {   Object *o = (Object *)args->data[i];
+    {   Object *o = (*args)[i];
         Expression *ea = isExpression(o);
+        Type *ta = isType(o);
         Dsymbol *sa = isDsymbol(o);
         Tuple *va = isTuple(o);
+        //printf("o %p ea %p ta %p sa %p va %p\n", o, ea, ta, sa, va);
         if (ea)
         {
             if (ea->op == TOKvar)
@@ -4236,20 +4277,36 @@ int TemplateInstance::hasNestedArgs(Objects *args)
                 goto Lsa;
             }
         }
+        else if (ta)
+        {
+            if (ta->ty == Tstruct || ta->ty == Tclass)
+            {   sa = ta->toDsymbol(NULL);
+                TemplateInstance *ti = sa->parent->isTemplateInstance();
+                if (ti && ti->isnested)
+                {   sa = ti;
+                    goto Lsa;
+                }
+            }
+        }
         else if (sa)
         {
           Lsa:
+            //printf("sa = %s %s\n", sa->kind(), sa->toChars());
             Declaration *d = sa->isDeclaration();
-            if (d && !d->isDataseg() &&
+            TemplateInstance *ad = sa->isTemplateInstance();
+            if (
+                (ad && ad->isnested) ||
+                (d && !d->isDataseg() &&
 #if DMDV2
-                !(d->storage_class & STCmanifest) &&
+                 !(d->storage_class & STCmanifest) &&
 #endif
-                (!d->isFuncDeclaration() || d->isFuncDeclaration()->isNested()) &&
-                !isTemplateMixin())
+                 (!d->isFuncDeclaration() || d->isFuncDeclaration()->isNested()) &&
+                 !isTemplateMixin()
+                ))
             {
                 // if module level template
                 if (tempdecl->toParent()->isModule())
-                {   Dsymbol *dparent = d->toParent();
+                {   Dsymbol *dparent = sa->toParent();
                     if (!isnested)
                         isnested = dparent;
                     else if (isnested != dparent)
@@ -4270,14 +4327,14 @@ int TemplateInstance::hasNestedArgs(Objects *args)
                             }
                         }
                         error("%s is nested in both %s and %s",
-                                toChars(), isnested->toChars(), dparent->toChars());
+                                toChars(), isnested->toPrettyChars(), dparent->toPrettyChars());
                     }
                   L1:
                     //printf("\tnested inside %s\n", isnested->toChars());
                     nested |= 1;
                 }
                 else
-                    error("cannot use local '%s' as parameter to non-global template %s", d->toChars(), tempdecl->toChars());
+                    error("cannot use local '%s' as parameter to non-global template %s", sa->toChars(), tempdecl->toChars());
             }
         }
         else if (va)
@@ -4446,6 +4503,12 @@ int TemplateInstance::needsTypeInference(Scope *sc)
             return FALSE;
         }
 
+#if DMDV2
+        for (size_t i = 0; i < td->parameters->dim; i++)
+            if (td->parameters->tdata()[i]->isTemplateThisParameter())
+                return TRUE;
+#endif
+
         /* Determine if the instance arguments, tiargs, are all that is necessary
          * to instantiate the template.
          */
@@ -4453,7 +4516,7 @@ int TemplateInstance::needsTypeInference(Scope *sc)
         //printf("tp = %p, td->parameters->dim = %d, tiargs->dim = %d\n", tp, td->parameters->dim, tiargs->dim);
         TypeFunction *fdtype = (TypeFunction *)fd->type;
         if (Parameter::dim(fdtype->parameters) &&
-            (tp || tiargs->dim < td->parameters->dim))
+            ((tp && td->parameters->dim > 1) || tiargs->dim < td->parameters->dim))
             return TRUE;
     }
     //printf("false\n");
@@ -4507,10 +4570,26 @@ void TemplateInstance::semantic3(Scope *sc)
         sc = sc->push(argsym);
         sc = sc->push(this);
         sc->tinst = this;
+        int oldgag = global.gag;
+        int olderrors = global.errors;
+        /* If this is a speculative instantiation, gag errors.
+         * Future optimisation: If the results are actually needed, errors
+         * would already be gagged, so we don't really need to run semantic
+         * on the members.
+         */
+        if (speculative && !oldgag)
+            olderrors = global.startGagging();
         for (size_t i = 0; i < members->dim; i++)
         {
-            Dsymbol *s = (Dsymbol *)members->data[i];
+            Dsymbol *s = (*members)[i];
             s->semantic3(sc);
+            if (speculative && global.errors != olderrors)
+                break;
+        }
+        if (speculative && !oldgag)
+        {   // If errors occurred, this instantiation failed
+            errors += global.errors - olderrors;
+            global.endGagging(olderrors);
         }
         sc = sc->pop();
         sc->pop();

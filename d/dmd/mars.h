@@ -156,6 +156,7 @@ struct Param
     char verbose;       // verbose compile
     char vtls;          // identify thread local variables
     char symdebug;      // insert debug symbolic information
+    char alwaysframe;   // always emit standard stack frame
     char optimize;      // run optimizer
     char map;           // generate linker .map file
     char cpu;           // target CPU
@@ -275,9 +276,18 @@ struct Global
     const char *version;
 
     Param params;
-    unsigned errors;    // number of errors reported so far
-    unsigned warnings;  // number of warnings reported so far
-    unsigned gag;       // !=0 means gag reporting of errors & warnings
+    unsigned errors;       // number of errors reported so far
+    unsigned warnings;     // number of warnings reported so far
+    unsigned gag;          // !=0 means gag reporting of errors & warnings
+    unsigned gaggedErrors; // number of errors reported while gagged
+
+    // Start gagging. Return the current number of gagged errors
+    unsigned startGagging();
+
+    /* End gagging, restoring the old gagged state.
+     * Return true if errors occured while gagged.
+     */
+    bool endGagging(unsigned oldGagged);
 
     Global();
 };
@@ -338,7 +348,7 @@ typedef long double real_t;
 #define writewchar writeword
 #else
 // This needs a configuration test...
-#define writewchar write4
+#define writewchar write4s
 #endif
 
 #ifdef IN_GCC

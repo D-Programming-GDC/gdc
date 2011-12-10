@@ -1413,7 +1413,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
                 var->storage_class |= STCconst;
                 DeclarationExp *de = new DeclarationExp(loc, var);
                 st->push(new ExpStatement(loc, de));
-                arg = (Parameter *)arguments->data[1];  // value
+                arg = (*arguments)[1];  // value
             }
             // Declare value
             if (arg->storageClass & (STCout | STCref | STClazy))
@@ -1421,16 +1421,22 @@ Statement *ForeachStatement::semantic(Scope *sc)
             Dsymbol *var;
             if (te)
             {   Type *tb = e->type->toBasetype();
+                Dsymbol *s = NULL;
                 if ((tb->ty == Tfunction || tb->ty == Tsarray) && e->op == TOKvar)
-                {   VarExp *ve = (VarExp *)e;
-                    var = new AliasDeclaration(loc, arg->ident, ve->var);
-                }
+                    s = ((VarExp *)e)->var;
+                else if (e->op == TOKtemplate)
+                    s =((TemplateExp *)e)->td;
+                else if (e->op == TOKimport)
+                    s =((ScopeExp *)e)->sds;
+
+                if (s)
+                    var = new AliasDeclaration(loc, arg->ident, s);
                 else
                 {
                     arg->type = e->type;
                     Initializer *ie = new ExpInitializer(0, e);
                     VarDeclaration *v = new VarDeclaration(loc, arg->type, arg->ident, ie);
-                    if (e->isConst())
+                    if (e->isConst() || e->op == TOKstring)
                         v->storage_class |= STCconst;
                     var = v;
                 }
