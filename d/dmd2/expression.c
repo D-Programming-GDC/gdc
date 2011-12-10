@@ -131,6 +131,9 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
                         return e1;
                     }
                 }
+#if IN_GCC
+                e1 = e1->semantic(sc);
+#else
                 if (s && s->isClassDeclaration())
                 {   e1->type = s->isClassDeclaration()->type;
                     if (n > 1)
@@ -138,6 +141,7 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
                 }
                 else
                     e1 = e1->semantic(sc);
+#endif
                 goto L1;
             }
             /* Can't find a path from e1 to ad
