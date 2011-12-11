@@ -28,9 +28,7 @@
 struct Identifier;
 struct Type;
 struct Expression;
-#ifdef _DH
 struct HdrGenState;
-#endif
 
 
 struct EnumDeclaration : ScopeDsymbol

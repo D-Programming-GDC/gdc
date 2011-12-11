@@ -179,6 +179,7 @@ struct Dsymbol : Object
     virtual int oneMember(Dsymbol **ps);
     static int oneMembers(Dsymbols *members, Dsymbol **ps);
     virtual int hasPointers();
+    virtual bool hasStaticCtorOrDtor();
     virtual void addLocalClass(ClassDeclarations *) { }
     virtual void checkCtorConstInit() { }
 
@@ -262,11 +263,15 @@ struct ScopeDsymbol : Dsymbol
     const char *kind();
     FuncDeclaration *findGetMembers();
     virtual Dsymbol *symtabInsert(Dsymbol *s);
+    bool hasStaticCtorOrDtor();
 
     void emitMemberComments(Scope *sc);
 
     static size_t dim(Dsymbols *members);
     static Dsymbol *getNth(Dsymbols *members, size_t nth, size_t *pn = NULL);
+
+    typedef int (*ForeachDg)(void *ctx, size_t idx, Dsymbol *s);
+    static int foreach(Dsymbols *members, ForeachDg dg, void *ctx, size_t *pn=NULL);
 
     ScopeDsymbol *isScopeDsymbol() { return this; }
 };

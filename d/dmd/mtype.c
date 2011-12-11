@@ -1953,7 +1953,10 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
     if (dim)
     {   dinteger_t n, n2;
 
+        int errors = global.errors;
         dim = semanticLength(sc, tbn, dim);
+        if (errors != global.errors)
+            goto Lerror;
 
         dim = dim->optimize(WANTvalue | WANTinterpret);
         if (sc && sc->parameterSpecialization && dim->op == TOKvar &&
@@ -3517,7 +3520,10 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
                         //printf("e: '%s', id: '%s', type = %p\n", e->toChars(), id->toChars(), e->type);
                         e = e->type->dotExp(sc, e, id);
                     }
-                    *pe = e;
+                    if (e->op == TOKtype)
+                        *pt = e->type;
+                    else
+                        *pe = e;
                 }
                 else
                 {
@@ -4740,7 +4746,8 @@ L1:
     if (e->op == TOKtype)
     {   FuncDeclaration *fd = sc->func;
 
-        if (d->needThis() && fd && fd->vthis)
+        if (d->needThis() && fd && fd->vthis &&
+                 fd->toParent2()->isStructDeclaration() == sym)
         {
             e = new DotVarExp(e->loc, new ThisExp(e->loc), d);
             e = e->semantic(sc);
@@ -4763,7 +4770,7 @@ L1:
         accessCheck(e->loc, sc, e, d);
         ve = new VarExp(e->loc, d);
         e = new CommaExp(e->loc, e, ve);
-        e->type = d->type;
+        e = e->semantic(sc);
         return e;
     }
 
@@ -5194,7 +5201,7 @@ L1:
         accessCheck(e->loc, sc, e, d);
         ve = new VarExp(e->loc, d);
         e = new CommaExp(e->loc, e, ve);
-        e->type = d->type;
+        e = e->semantic(sc);
         return e;
     }
 
@@ -5675,21 +5682,38 @@ void Parameter::argsToCBuffer(OutBuffer *buf, HdrGenState *hgs, Parameters *argu
     buf->writeByte(')');
 }
 
+static int argsToDecoBufferDg(void *ctx, size_t n, Parameter *arg)
+{
+    arg->toDecoBuffer((OutBuffer *)ctx);
+    return 0;
+}
 
 void Parameter::argsToDecoBuffer(OutBuffer *buf, Parameters *arguments)
 {
     //printf("Parameter::argsToDecoBuffer()\n");
-
     // Write argument types
     if (arguments)
-    {
-        size_t dim = Parameter::dim(arguments);
-        for (size_t i = 0; i < dim; i++)
-        {
-            Parameter *arg = Parameter::getNth(arguments, i);
-            arg->toDecoBuffer(buf);
-        }
-    }
+        foreach(arguments, &argsToDecoBufferDg, buf);
+}
+
+/****************************************
+ * Determine if parameter list is really a template parameter list
+ * (i.e. it has auto or alias parameters)
+ */
+
+static int isTPLDg(void *ctx, size_t n, Parameter *arg)
+{
+    if (arg->storageClass & (STCalias | STCauto | STCstatic))
+        return 1;
+    return 0;
+}
+
+int Parameter::isTPL(Parameters *arguments)
+{
+    //printf("Parameter::isTPL()\n");
+    if (arguments)
+        return foreach(arguments, &isTPLDg, NULL);
+    return 0;
 }
 
 /****************************************************
@@ -5749,23 +5773,17 @@ void Parameter::toDecoBuffer(OutBuffer *buf)
  * Determine number of arguments, folding in tuples.
  */
 
+static int dimDg(void *ctx, size_t n, Parameter *)
+{
+    ++*(size_t *)ctx;
+    return 0;
+}
+
 size_t Parameter::dim(Parameters *args)
 {
     size_t n = 0;
     if (args)
-    {
-        for (size_t i = 0; i < args->dim; i++)
-        {   Parameter *arg = (Parameter *)args->data[i];
-            Type *t = arg->type->toBasetype();
-
-            if (t->ty == Ttuple)
-            {   TypeTuple *tu = (TypeTuple *)t;
-                n += dim(tu->arguments);
-            }
-            else
-                n++;
-        }
-    }
+        foreach(args, &dimDg, &n);
     return n;
 }
 
@@ -5777,29 +5795,59 @@ size_t Parameter::dim(Parameters *args)
  *                      of Parameters
  */
 
+struct GetNthParamCtx
+{
+    size_t nth;
+    Parameter *arg;
+};
+
+static int getNthParamDg(void *ctx, size_t n, Parameter *arg)
+{
+    GetNthParamCtx *p = (GetNthParamCtx *)ctx;
+    if (n == p->nth)
+    {   p->arg = arg;
+        return 1;
+    }
+    return 0;
+}
+
 Parameter *Parameter::getNth(Parameters *args, size_t nth, size_t *pn)
 {
-    if (!args)
-        return NULL;
+    GetNthParamCtx ctx = { nth, NULL };
+    int res = foreach(args, &getNthParamDg, &ctx);
+    return res ? ctx.arg : NULL;
+}
 
-    size_t n = 0;
+/***************************************
+ * Expands tuples in args in depth first order. Calls
+ * dg(void *ctx, size_t argidx, Parameter *arg) for each Parameter.
+ * If dg returns !=0, stops and returns that value else returns 0.
+ * Use this function to avoid the O(N + N^2/2) complexity of
+ * calculating dim and calling N times getNth.
+ */
+
+int Parameter::foreach(Parameters *args, Parameter::ForeachDg dg, void *ctx, size_t *pn)
+{
+    assert(args && dg);
+
+    size_t n = pn ? *pn : 0; // take over index
+    int result = 0;
     for (size_t i = 0; i < args->dim; i++)
-    {   Parameter *arg = (Parameter *)args->data[i];
+    {   Parameter *arg = args->tdata()[i];
         Type *t = arg->type->toBasetype();
 
         if (t->ty == Ttuple)
         {   TypeTuple *tu = (TypeTuple *)t;
-            arg = getNth(tu->arguments, nth - n, &n);
-            if (arg)
-                return arg;
+            result = foreach(tu->arguments, dg, ctx, &n);
         }
-        else if (n == nth)
-            return arg;
         else
-            n++;
+            result = dg(ctx, n++, arg);
+
+        if (result)
+            break;
     }
 
     if (pn)
-        *pn += n;
-    return NULL;
+        *pn = n; // update index
+    return result;
 }

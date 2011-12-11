@@ -348,7 +348,7 @@ typedef long double real_t;
 #define writewchar writeword
 #else
 // This needs a configuration test...
-#define writewchar write4s
+#define writewchar write4
 #endif
 
 #ifdef IN_GCC

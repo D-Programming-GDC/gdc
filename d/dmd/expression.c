@@ -2518,8 +2518,7 @@ SuperExp::SuperExp(Loc loc)
 }
 
 Expression *SuperExp::semantic(Scope *sc)
-{   FuncDeclaration *fd;
-    FuncDeclaration *fdthis;
+{
     ClassDeclaration *cd;
     Dsymbol *s;
 
@@ -2529,22 +2528,22 @@ Expression *SuperExp::semantic(Scope *sc)
     if (type)
         return this;
 
+    FuncDeclaration *fd = hasThis(sc);
+
     /* Special case for typeof(this) and typeof(super) since both
      * should work even if they are not inside a non-static member function
      */
-    if (sc->intypeof)
+    if (!fd && sc->intypeof)
     {
         // Find enclosing class
-        for (Dsymbol *s = sc->parent; 1; s = s->parent)
+        for (Dsymbol *s = sc->getStructClassScope(); 1; s = s->parent)
         {
-            ClassDeclaration *cd;
-
             if (!s)
             {
                 error("%s is not in a class scope", toChars());
                 goto Lerr;
             }
-            cd = s->isClassDeclaration();
+            ClassDeclaration *cd = s->isClassDeclaration();
             if (cd)
             {
                 cd = cd->baseClass;
@@ -2557,11 +2556,9 @@ Expression *SuperExp::semantic(Scope *sc)
             }
         }
     }
-
-    fdthis = sc->parent->isFuncDeclaration();
-    fd = hasThis(sc);
     if (!fd)
         goto Lerr;
+
     assert(fd->vthis);
     var = fd->vthis;
     assert(var->parent);
@@ -2582,17 +2579,12 @@ Expression *SuperExp::semantic(Scope *sc)
     else
     {
         type = cd->baseClass->type;
+#if DMDV2
+        type = type->castMod(var->type->mod);
+#endif
     }
 
     var->isVarDeclaration()->checkNestedReference(sc, loc);
-#if 0
-    if (fd != fdthis)
-    {
-        fdthis->getLevel(loc, fd);
-        fd->vthis->nestedref = 1;
-        fd->nestedFrameRef = 1;
-    }
-#endif
 
     if (!sc->intypeof)
         sc->callSuper |= CSXsuper;
@@ -2601,8 +2593,7 @@ Expression *SuperExp::semantic(Scope *sc)
 
 Lerr:
     error("'super' is only allowed in non-static class member functions");
-    type = Type::tint32;
-    return this;
+    return new ErrorExp();
 }
 
 void SuperExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -3038,10 +3029,19 @@ void StringExp::toMangleBuffer(OutBuffer *buf)
         default:
             assert(0);
     }
+    buf->reserve(1 + 11 + 2 * qlen);
     buf->writeByte(m);
-    buf->printf("%d_", qlen);
-    for (size_t i = 0; i < qlen; i++)
-        buf->printf("%02x", q[i]);
+    buf->printf("%d_", qlen); // nbytes <= 11
+
+    for (unsigned char *p = buf->data + buf->offset, *pend = p + 2 * qlen;
+         p < pend; p += 2, ++q)
+    {
+        unsigned char hi = *q >> 4 & 0xF;
+        p[0] = (hi < 10 ? hi + '0' : hi - 10 + 'a');
+        unsigned char lo = *q & 0xF;
+        p[1] = (lo < 10 ? lo + '0' : lo - 10 + 'a');
+    }
+    buf->offset += 2 * qlen;
 }
 
 /************************ ArrayLiteralExp ************************************/
@@ -3306,11 +3306,12 @@ void AssocArrayLiteralExp::toMangleBuffer(OutBuffer *buf)
 
 // sd( e1, e2, e3, ... )
 
-StructLiteralExp::StructLiteralExp(Loc loc, StructDeclaration *sd, Expressions *elements)
+StructLiteralExp::StructLiteralExp(Loc loc, StructDeclaration *sd, Expressions *elements, Type *stype)
     : Expression(loc, TOKstructliteral, sizeof(StructLiteralExp))
 {
     this->sd = sd;
     this->elements = elements;
+    this->stype = stype;
     this->sym = NULL;
     this->soffset = 0;
     this->fillHoles = 1;
@@ -3318,7 +3319,7 @@ StructLiteralExp::StructLiteralExp(Loc loc, StructDeclaration *sd, Expressions *
 
 Expression *StructLiteralExp::syntaxCopy()
 {
-    return new StructLiteralExp(loc, sd, arraySyntaxCopy(elements));
+    return new StructLiteralExp(loc, sd, arraySyntaxCopy(elements), stype);
 }
 
 Expression *StructLiteralExp::semantic(Scope *sc)
@@ -3346,7 +3347,9 @@ Expression *StructLiteralExp::semantic(Scope *sc)
             continue;
 
         if (!e->type)
-            error("%s has no value", e->toChars());
+        {   error("%s has no value", e->toChars());
+            return new ErrorExp();
+        }
         e = resolveProperties(sc, e);
         if (i >= sd->fields.dim)
         {   error("more initializers than fields of %s", sd->toChars());
@@ -3413,7 +3416,7 @@ Expression *StructLiteralExp::semantic(Scope *sc)
         elements->push(e);
     }
 
-    type = sd->type;
+    type = stype ? stype : sd->type;
     return this;
 }
 
@@ -3659,6 +3662,10 @@ Lagain:
         //printf("sds = %s, '%s'\n", sds->kind(), sds->toChars());
         //printf("\tparent = '%s'\n", sds->parent->toChars());
         sds->semantic(sc);
+
+        AggregateDeclaration *ad = sds->isAggregateDeclaration();
+        if (ad)
+            return (new TypeExp(loc, ad->type))->semantic(sc);
     }
     type = Type::tvoid;
     //printf("-2ScopeExp::semantic() %s\n", toChars());
@@ -7271,6 +7278,8 @@ Expression *PtrExp::semantic(Scope *sc)
 
             case Tsarray:
             case Tarray:
+                if (!global.params.useDeprecated)
+                    error("using * on an array is deprecated; use *(%s).ptr instead", e1->toChars());
                 type = ((TypeArray *)tb)->next;
                 e1 = e1->castTo(sc, type->pointerTo());
                 break;
@@ -8641,7 +8650,7 @@ Expression *AssignExp::checkToBoolean()
     //  if (a = b) ...
     // are usually mistakes.
 
-    error("'=' does not give a boolean result");
+    error("assignment cannot be used as a condition, perhaps == was meant?");
     return this;
 }
 
@@ -9305,15 +9314,15 @@ Expression *MinExp::semantic(Scope *sc)
         else if (t2->isintegral())
             e = scaleFactor(sc);
         else
-        {   error("incompatible types for minus");
-            return new IntegerExp(0);
+        {   error("can't subtract %s from pointer", t2->toChars());
+            return new ErrorExp();
         }
     }
     else if (t2->ty == Tpointer)
     {
         type = e2->type;
         error("can't subtract pointer from %s", e1->type->toChars());
-        return new IntegerExp(0);
+        return new ErrorExp();
     }
     else
     {

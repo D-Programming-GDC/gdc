@@ -450,7 +450,7 @@ Dsymbols *Parser::parseDeclDefs(int once)
                     nextToken();
                     if (token.value == TOKidentifier)
                         s = new DebugSymbol(loc, token.ident);
-                    else if (token.value == TOKint32v)
+                    else if (token.value == TOKint32v || token.value == TOKint64v)
                         s = new DebugSymbol(loc, (unsigned)token.uns64value);
                     else
                     {   error("identifier or integer expected, not %s", token.toChars());
@@ -471,7 +471,7 @@ Dsymbols *Parser::parseDeclDefs(int once)
                     nextToken();
                     if (token.value == TOKidentifier)
                         s = new VersionSymbol(loc, token.ident);
-                    else if (token.value == TOKint32v)
+                    else if (token.value == TOKint32v || token.value == TOKint64v)
                         s = new VersionSymbol(loc, (unsigned)token.uns64value);
                     else
                     {   error("identifier or integer expected, not %s", token.toChars());
@@ -532,6 +532,36 @@ void Parser::composeStorageClass(StorageClass stc)
         error("conflicting storage class %s", Token::toChars(token.value));
 }
 #endif
+
+/***********************************************
+ * Parse storage class, lexer is on '@'
+ */
+
+#if DMDV2
+StorageClass Parser::parseAttribute()
+{
+    nextToken();
+    StorageClass stc = 0;
+    if (token.value != TOKidentifier)
+    {
+        error("identifier expected after @, not %s", token.toChars());
+    }
+    else if (token.ident == Id::property)
+        stc = STCproperty;
+    else if (token.ident == Id::safe)
+        stc = STCsafe;
+    else if (token.ident == Id::trusted)
+        stc = STCtrusted;
+    else if (token.ident == Id::system)
+        stc = STCsystem;
+    else if (token.ident == Id::disable)
+        stc = STCdisable;
+    else
+        error("valid attribute identifiers are @property, @safe, @trusted, @system, @disable not @%s", token.toChars());
+    return stc;
+}
+#endif
+
 
 /********************************************
  * Parse declarations after an align, protection, or extern decl.
@@ -729,7 +759,7 @@ Condition *Parser::parseVersionCondition()
         nextToken();
         if (token.value == TOKidentifier)
             id = token.ident;
-        else if (token.value == TOKint32v)
+        else if (token.value == TOKint32v || token.value == TOKint64v)
             level = (unsigned)token.uns64value;
 #if DMDV2
         /* Allow:

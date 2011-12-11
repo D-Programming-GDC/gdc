@@ -254,9 +254,7 @@ struct ComplexExp : Expression
     int isBool(int result);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void toMangleBuffer(OutBuffer *buf);
-#ifdef _DH
     OutBuffer hexp;
-#endif
     elem *toElem(IRState *irs);
     dt_t **toDt(dt_t **pdt);
 };
@@ -454,12 +452,13 @@ struct StructLiteralExp : Expression
     StructDeclaration *sd;      // which aggregate this is for
     Expressions *elements;      // parallels sd->fields[] with
                                 // NULL entries for fields to skip
+    Type *stype;                // final type of result (can be different from sd's type)
 
     Symbol *sym;                // back end symbol to initialize with literal
     size_t soffset;             // offset from start of s
     int fillHoles;              // fill alignment 'holes' with zero
 
-    StructLiteralExp(Loc loc, StructDeclaration *sd, Expressions *elements);
+    StructLiteralExp(Loc loc, StructDeclaration *sd, Expressions *elements, Type *stype = NULL);
 
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);

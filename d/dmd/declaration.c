@@ -415,10 +415,8 @@ AliasDeclaration::AliasDeclaration(Loc loc, Identifier *id, Type *type)
     this->loc = loc;
     this->type = type;
     this->aliassym = NULL;
-#ifdef _DH
     this->htype = NULL;
     this->haliassym = NULL;
-#endif
     this->overnext = NULL;
     this->inSemantic = 0;
     assert(type);
@@ -432,10 +430,8 @@ AliasDeclaration::AliasDeclaration(Loc loc, Identifier *id, Dsymbol *s)
     this->loc = loc;
     this->type = NULL;
     this->aliassym = s;
-#ifdef _DH
     this->htype = NULL;
     this->haliassym = NULL;
-#endif
     this->overnext = NULL;
     this->inSemantic = 0;
     assert(s);
@@ -450,7 +446,6 @@ Dsymbol *AliasDeclaration::syntaxCopy(Dsymbol *s)
         sa = new AliasDeclaration(loc, ident, type->syntaxCopy());
     else
         sa = new AliasDeclaration(loc, ident, aliassym->syntaxCopy(NULL));
-#ifdef _DH
     // Syntax copy for header file
     if (!htype)     // Don't overwrite original
     {   if (type)       // Make copy for both old and new instances
@@ -468,7 +463,6 @@ Dsymbol *AliasDeclaration::syntaxCopy(Dsymbol *s)
     }
     else
         sa->haliassym = haliassym->syntaxCopy(s);
-#endif
     return sa;
 }
 
@@ -726,10 +720,8 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     assert(type || init);
     this->type = type;
     this->init = init;
-#ifdef _DH
     this->htype = NULL;
     this->hinit = NULL;
-#endif
     this->loc = loc;
     offset = 0;
 #if IN_GCC
@@ -746,7 +738,11 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     aliassym = NULL;
     onstack = 0;
     canassign = 0;
-    setValueNull();
+    ctfeAdrOnStack = (size_t)(-1);
+#if DMDV2
+    rundtor = NULL;
+    edtor = NULL;
+#endif
 }
 
 Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
@@ -769,7 +765,6 @@ Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
         sv = new VarDeclaration(loc, type ? type->syntaxCopy() : NULL, ident, init);
         sv->storage_class = storage_class;
     }
-#ifdef _DH
     // Syntax copy for header file
     if (!htype)      // Don't overwrite original
     {   if (type)    // Make copy for both old and new instances
@@ -787,7 +782,6 @@ Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
     }
     else
         sv->hinit = hinit->syntaxCopy();
-#endif
     return sv;
 }
 
@@ -1419,8 +1413,12 @@ void VarDeclaration::checkNestedReference(Scope *sc, Loc loc)
         // The current function
         FuncDeclaration *fdthis = sc->parent->isFuncDeclaration();
 
-        if (fdv && fdthis)
+        if (fdv && fdthis && fdv != fdthis && fdthis->ident != Id::ensure)
         {
+            /* __ensure is always called directly,
+             * so it never becomes closure.
+             */
+
             if (loc.filename)
                 fdthis->getLevel(loc, fdv);
 #if IN_GCC

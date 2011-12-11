@@ -297,7 +297,7 @@ void FuncDeclaration::semantic(Scope *sc)
 //          ctor = (CtorDeclaration *)this;
 //          if (!cd->ctor)
 //              cd->ctor = ctor;
-            return;
+            goto Ldone;
         }
 
 #if 0
@@ -758,7 +758,10 @@ void FuncDeclaration::semantic3(Scope *sc)
         sc2->sw = NULL;
         sc2->fes = fes;
         sc2->linkage = LINKd;
-        sc2->stc &= ~(STCauto | STCscope | STCstatic | STCabstract | STCdeprecated | STCfinal);
+        sc2->stc &= ~(STCauto | STCscope | STCstatic | STCabstract |
+                        STCdeprecated | STCoverride |
+                        STC_TYPECTOR | STCfinal | STCtls | STCgshared | STCref |
+                        STCproperty | STCsafe | STCtrusted | STCsystem);
 #if IN_GCC
         sc2->attributes = NULL;
 #endif
@@ -1345,15 +1348,10 @@ void FuncDeclaration::semantic3(Scope *sc)
 
             // Merge contracts together with body into one compound statement
 
-#ifdef _DH
             if (frequire && global.params.useIn)
             {   frequire->incontract = 1;
                 a->push(frequire);
             }
-#else
-            if (frequire && global.params.useIn)
-                a->push(frequire);
-#endif
 
             // Precondition invariant
             if (addPreInvariant())
@@ -3032,6 +3030,11 @@ int StaticCtorDeclaration::isVirtual()
     return FALSE;
 }
 
+bool StaticCtorDeclaration::hasStaticCtorOrDtor()
+{
+    return TRUE;
+}
+
 int StaticCtorDeclaration::addPreInvariant()
 {
     return FALSE;
@@ -3137,6 +3140,11 @@ int StaticDtorDeclaration::isStaticDestructor()
 int StaticDtorDeclaration::isVirtual()
 {
     return FALSE;
+}
+
+bool StaticDtorDeclaration::hasStaticCtorOrDtor()
+{
+    return TRUE;
 }
 
 int StaticDtorDeclaration::addPreInvariant()
