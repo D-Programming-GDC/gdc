@@ -321,15 +321,31 @@ class Throwable : Object
 
 class Exception : Throwable
 {
-    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null);
-    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__);
+    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    {
+        super(msg, file, line, next);
+    }
+
+    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, next);
+    }
 }
 
 
 class Error : Throwable
 {
-    this(string msg, Throwable next = null);
-    this(string msg, string file, size_t line, Throwable next = null);
+    this(string msg, Throwable next = null)
+    {
+        super(msg, next);
+        bypassedException = null;
+    }
+
+    this(string msg, string file, size_t line, Throwable next = null)
+    {
+        super(msg, file, line, next);
+        bypassedException = null;
+    }
     Throwable   bypassedException;
 }
 
@@ -338,13 +354,13 @@ extern (C)
     // from druntime/compiler/gdc/rt/aaA.d
 
     size_t _aaLen(void* p);
-    void* _aaGetp(void** pp, TypeInfo keyti, size_t valuesize, void* pkey);
-    void* _aaGetRvaluep(void* p, TypeInfo keyti, size_t valuesize, void* pkey);
-    void* _aaInp(void* p, TypeInfo keyti, void* pkey);
-    void _aaDelp(void* p, TypeInfo keyti, void* pkey);
+    void*  _aaGetp(void** pp, TypeInfo keyti, size_t valuesize, void* pkey);
+    void*  _aaGetRvaluep(void* p, TypeInfo keyti, size_t valuesize, void* pkey);
+    void*  _aaInp(void* p, TypeInfo keyti, void* pkey);
+    void   _aaDelp(void* p, TypeInfo keyti, void* pkey);
     void[] _aaValues(void* p, size_t keysize, size_t valuesize);
     void[] _aaKeys(void* p, size_t keysize);
-    void* _aaRehash(void** pp, TypeInfo keyti);
+    void*  _aaRehash(void** pp, TypeInfo keyti);
 
     extern (D) alias scope int delegate(void *) _dg_t;
     int _aaApply(void* aa, size_t keysize, _dg_t dg);
@@ -443,7 +459,7 @@ void clear(T)(ref T obj) if (is(T == struct))
 {
     typeid(T).destroy(&obj);
     auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
-    auto init = cast(ubyte[])typeid(T).init;
+    auto init = cast(ubyte[])typeid(T).init();
     if(init.ptr is null) // null ptr means initialize to 0s
         buf[] = 0;
     else

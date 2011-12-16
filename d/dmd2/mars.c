@@ -56,6 +56,8 @@ void getenv_setargv(const char *envvar, int *pargc, char** *pargv);
 void obj_start(char *srcfile);
 void obj_end(Library *library, File *objfile);
 
+void printCtfePerformanceStats();
+
 Global global;
 
 Global::Global()
@@ -114,7 +116,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
 #endif
     ;
-    version = "v2.056";
+    version = "v2.057";
     global.structalign = 8;
 
     memset(&params, 0, sizeof(Param));
@@ -1341,6 +1343,8 @@ int main(int argc, char *argv[])
     // Do not attempt to generate output files if errors or warnings occurred
     if (global.errors || global.warnings)
         fatal();
+
+    printCtfePerformanceStats();
 
     Library *library = NULL;
     if (global.params.lib)

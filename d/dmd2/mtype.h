@@ -72,8 +72,8 @@ enum ENUMTY
     Tident,
     Tclass,
     Tstruct,
-
     Tenum,
+
     Ttypedef,
     Tdelegate,
     Tnone,
@@ -83,8 +83,8 @@ enum ENUMTY
     Tint16,
     Tuns16,
     Tint32,
-
     Tuns32,
+
     Tint64,
     Tuns64,
     Tfloat32,
@@ -94,8 +94,8 @@ enum ENUMTY
     Timaginary64,
     Timaginary80,
     Tcomplex32,
-
     Tcomplex64,
+
     Tcomplex80,
     Tbool,
     Tchar,
@@ -104,10 +104,11 @@ enum ENUMTY
     Terror,
     Tinstance,
     Ttypeof,
-
     Ttuple,
     Tslice,
+
     Treturn,
+    Tnull,
     TMAX
 };
 typedef unsigned char TY;       // ENUMTY
@@ -188,6 +189,8 @@ struct Type : Object
     static Type *tvoidptr;              // void*
     static Type *tstring;               // immutable(char)[]
     #define terror      basic[Terror]   // for error recovery
+
+    #define tnull       basic[Tnull]    // for null type
 
     #define tsize_t     basic[Tsize_t]          // matches size_t alias
     #define tptrdiff_t  basic[Tptrdiff_t]       // matches ptrdiff_t alias
@@ -287,6 +290,7 @@ struct Type : Object
     Type *pointerTo();
     Type *referenceTo();
     Type *arrayOf();
+    Type *aliasthisOf();
     virtual Type *makeConst();
     virtual Type *makeInvariant();
     virtual Type *makeShared();
@@ -296,10 +300,12 @@ struct Type : Object
     virtual Type *makeMutable();
     virtual Dsymbol *toDsymbol(Scope *sc);
     virtual Type *toBasetype();
-    virtual Type *toHeadMutable();
     virtual int isBaseOf(Type *t, int *poffset);
-    virtual MATCH constConv(Type *to);
     virtual MATCH implicitConvTo(Type *to);
+    virtual MATCH constConv(Type *to);
+    virtual unsigned wildConvTo(Type *tprm);
+    Type *substWildTo(unsigned mod);
+    virtual Type *toHeadMutable();
     virtual ClassDeclaration *isClassHandle();
     virtual Expression *getProperty(Loc loc, Identifier *ident);
     virtual Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
@@ -318,8 +324,6 @@ struct Type : Object
     virtual int builtinTypeInfo();
     virtual Type *reliesOnTident();
     virtual int hasWild();
-    unsigned wildMatch(Type *targ);
-    Type *substWildTo(unsigned mod);
     virtual Expression *toExpression();
     virtual int hasPointers();
     virtual TypeTuple *toArgTypes();
@@ -343,6 +347,7 @@ struct Type : Object
 struct TypeError : Type
 {
     TypeError();
+    Type *syntaxCopy();
 
     void toCBuffer(OutBuffer *buf, Identifier *ident, HdrGenState *hgs);
 
@@ -371,6 +376,7 @@ struct TypeNext : Type
     Type *makeSharedWild();
     Type *makeMutable();
     MATCH constConv(Type *to);
+    unsigned wildConvTo(Type *tprm);
     void transitive();
 };
 
@@ -741,6 +747,7 @@ struct TypeStruct : Type
     TypeTuple *toArgTypes();
     MATCH implicitConvTo(Type *to);
     MATCH constConv(Type *to);
+    unsigned wildConvTo(Type *tprm);
     Type *toHeadMutable();
 #if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
@@ -818,6 +825,7 @@ struct TypeTypedef : Type
     Type *toBasetype();
     MATCH implicitConvTo(Type *to);
     MATCH constConv(Type *to);
+    Type *toHeadMutable();
     Expression *defaultInit(Loc loc);
     Expression *defaultInitLiteral(Loc loc);
     int isZeroInit(Loc loc);
@@ -827,7 +835,6 @@ struct TypeTypedef : Type
     int hasPointers();
     TypeTuple *toArgTypes();
     int hasWild();
-    Type *toHeadMutable();
 #if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
@@ -852,6 +859,9 @@ struct TypeClass : Type
     ClassDeclaration *isClassHandle();
     int isBaseOf(Type *t, int *poffset);
     MATCH implicitConvTo(Type *to);
+    MATCH constConv(Type *to);
+    unsigned wildConvTo(Type *tprm);
+    Type *toHeadMutable();
     Expression *defaultInit(Loc loc);
     int isZeroInit(Loc loc);
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
@@ -861,12 +871,8 @@ struct TypeClass : Type
     int hasPointers();
     TypeTuple *toArgTypes();
     int builtinTypeInfo();
-#if DMDV2
-    Type *toHeadMutable();
-    MATCH constConv(Type *to);
 #if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
-#endif
 #endif
 
     type *toCtype();
@@ -905,6 +911,23 @@ struct TypeSlice : TypeNext
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
 };
 
+struct TypeNull : Type
+{
+    TypeNull();
+
+    Type *syntaxCopy();
+    void toDecoBuffer(OutBuffer *buf, int flag);
+    MATCH implicitConvTo(Type *to);
+
+    void toCBuffer(OutBuffer *buf, Identifier *ident, HdrGenState *hgs);
+
+    d_uns64 size(Loc loc);
+    //Expression *getProperty(Loc loc, Identifier *ident);
+    //Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
+    Expression *defaultInit(Loc loc);
+    //Expression *defaultInitLiteral(Loc loc);
+};
+
 /**************************************************************/
 
 //enum InOut { None, In, Out, InOut, Lazy };
@@ -929,6 +952,9 @@ struct Parameter : Object
     static int isTPL(Parameters *arguments);
     static size_t dim(Parameters *arguments);
     static Parameter *getNth(Parameters *arguments, size_t nth, size_t *pn = NULL);
+
+    typedef int (*ForeachDg)(void *ctx, size_t paramidx, Parameter *param);
+    static int foreach(Parameters *args, ForeachDg dg, void *ctx, size_t *pn=NULL);
 };
 
 extern int PTRSIZE;

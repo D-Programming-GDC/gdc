@@ -28,8 +28,6 @@
 
 #include "d-codegen.h"
 
-Array IRBase::deferredFuncDecls;
-
 IRBase::IRBase()
 {
     parent = 0;
@@ -87,26 +85,6 @@ IRBase::endFunction()
     gcc_assert(scopes.dim == 0);
 
     g.irs = (IRState *) parent;
-}
-
-bool
-IRBase::shouldDeferFunction(FuncDeclaration * decl)
-{
-    /* There is no need to defer functions for 4.0.  In fact, deferring
-       causes problems because statically nested functions need to
-       be prepared (maybe just have a struct function allocated) before
-       the nesting function goes though lower_nested_functions.
-
-       Start nesting function F.
-       Defer nested function (a static class method)
-       Output class's virtual table
-       The reference to the function for the vtable creates a cgraph node
-       ...
-       lower_nested(F)
-       the method is in the nested cgraph nodes, but the function hasing
-       even been translated! */
-
-    return false;
 }
 
 void

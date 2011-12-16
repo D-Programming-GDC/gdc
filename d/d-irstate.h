@@ -115,9 +115,6 @@ struct IRBase : Object
     static IRState * startFunction(FuncDeclaration * decl);
     void endFunction();
 public:
-    static Array deferredFuncDecls;
-    bool shouldDeferFunction(FuncDeclaration * decl);
-
     static void initFunctionStart(tree fn_decl, const Loc & loc);
 
     // ** Statement Lists

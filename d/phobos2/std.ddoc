@@ -22,7 +22,7 @@ DDOC_BLANKLINE	= $(P)
 
 DDOC = <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
    "http://www.w3.org/TR/html4/loose.dtd">
-<html>
+<html lang='en'>
 
 <!--
 	Copyright (c) 1999-2010 by Digital Mars
@@ -35,9 +35,10 @@ DDOC = <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 <title>$(TITLE) - D Programming Language - Digital Mars</title>
 <link rel="stylesheet" type="text/css" href="../style.css">
 
-<script>
+<script type="text/javascript">
 function listanchors()
 {
+    if (typeof inhibitQuickIndex !== 'undefined') return;
     var a = document.getElementById("quickindex");
     if (!a) return;
     var newText = "";
@@ -51,17 +52,17 @@ function listanchors()
         var text = a.name;
         if (hash[text] > 0) continue;
         hash[text] = 1;
-    values[n++] = a.name
+        values[n++] = a.name
     }
 
     values.sort();
 
     for(var i = 0; i < values.length; i++) {
         var a = values[i];
-        newText += '<a href="#' + a + '"><span class="d_psymbol">'
-                + a + '</span></a> ';
+        newText += ' \x3Ca href="\x23' + a +
+            '"\x3E\x3Cspan class="d_psymbol"\x3E' + a + '\x3C/span\x3E\x3C/a\x3E';
     }
-    if (newText != "") newText = "<p><b>Jump to:</b> " + newText + '</p>';
+    if (newText != "") newText = "\x3Cp\x3E\x3Cb\x3EJump to:\x3C/b\x3E" + newText + "\x3C/p\x3E";
     var a = document.getElementById("quickindex");
     a.innerHTML = newText;
 }
@@ -121,7 +122,7 @@ GOOGLE_FOOTER=
 //--></script>
 <script type="text/javascript" src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
 </script>
- 
+
 TOP=
 <div class="navblock">
 <form method="get" action="http://www.google.com/search">
@@ -152,18 +153,16 @@ NAVIGATION_PHOBOS=
     $(UL
 	$(LI <a href="std_algorithm.html" title="General-purpose algorithms">std.algorithm</a>)
 	$(LI <a href="std_array.html" title="Array functions">std.array</a>)
+	$(LI <a href="std_ascii.html" title="Functions which operate on ASCII characters">std.ascii</a>)
 	$(LI <a href="std_base64.html" title="Encode/decode base64 format">std.base64</a>)
 	$(LI <a href="std_bigint.html" title="Arbitrary-precision ('bignum') arithmetic">std.bigint</a>)
-	$(LI <a href="std_bind.html" title="Function argument binding">std.bind</a>)
 	$(LI <a href="std_bitmanip.html" title="Bit-level manipulation">std.bitmanip</a>)
-	$(LI <a href="std_boxer.html" title="Box/unbox types">std.boxer</a>)
 	$(LI <a href="std_compiler.html" title="Information about the D compiler implementation">std.compiler</a>)
 	$(LI <a href="std_complex.html" title="Complex numbers">std.complex</a>)
 	$(LI <a href="std_concurrency.html" title="Message Passing">std.concurrency</a>)
 	$(LI <a href="std_container.html" title="Containers">std.container</a>)
 	$(LI <a href="std_contracts.html" title="Think assert">std.contracts</a>)
 	$(LI <a href="std_conv.html" title="Conversion of strings to integers">std.conv</a>)
-	$(LI <a href="std_cover.html" title="D coverage analyzer">std.cover</a>)
 	$(LI <a href="std_cpuid.html" title="CPU identification">std.cpuid</a>)
 	$(LI <a href="std_ctype.html" title="Simple character classification">std.ctype</a>)
 	$(LI <a href="std_date.html" title="Date and time functions">std.date</a>)
@@ -174,10 +173,8 @@ NAVIGATION_PHOBOS=
 	$(LI <a href="std_file.html" title="Basic file operations">std.file</a>)
 	$(LI <a href="std_format.html" title="Formatted conversions of values to strings">std.format</a>)
 	$(LI <a href="std_functional.html" title="functional">std.functional</a>)
-	$(LI <a href="std_gc.html" title="Control the garbage collector">std.gc</a>)
 	$(LI <a href="std_getopt.html" title="Command line options">std.getopt</a>)
 	$(LI <a href="std_gregorian.html" title="Gregorian Calendar">std.gregorian</a>)
-	$(LI <a href="std_intrinsic.html" title="Compiler built in intrinsic functions">std.intrinsic</a>)
 	$(LI <a href="std_json.html" title="JSON reader">std.json</a>)
 	$(LI <a href="std_math.html" title="the usual math functions">std.math</a>)
 	$(LI <a href="std_mathspecial.html" title="mathematical special functions">std.mathspecial</a>)
@@ -186,10 +183,9 @@ NAVIGATION_PHOBOS=
 	$(LI <a href="std_mmfile.html" title="Memory mapped files">std.mmfile</a>)
 	$(LI <a href="std_numeric.html" title="Numeric algorithms">std.numeric</a>)
 	$(LI <a href="std_outbuffer.html" title="Assemble data into an array of bytes">std.outbuffer</a>)
-	$(LI <a href="std_outofmemory.html" title="Out of memory exception">std.outofmemory</a>)
+	$(LI <a href="std_parallelism.html" title="High-level primitives for SMP parallelism">std.parallelism</a>)
 	$(LI <a href="std_path.html" title="Manipulate file names, path names, etc.">std.path</a>)
-	$(LI <a href="std_parallelism.html" title="High level primitives for SMP parallelism">std.parallelism</a>)
-	$(LI <a href="std_process.html" title="Create/destroy threads">std.process</a>)
+	$(LI <a href="std_process.html" title="Create/destroy processes">std.process</a>)
 	$(LI <a href="std_random.html" title="Random number generation">std.random</a>)
 	$(LI <a href="std_range.html" title="Ranges">std.range</a>)
 	$(LI <a href="std_regex.html" title="regular expressions">std.regex</a>)
@@ -203,7 +199,6 @@ NAVIGATION_PHOBOS=
 	$(LI <a href="std_stream.html" title="Stream I/O">std.stream</a>)
 	$(LI <a href="std_string.html" title="Basic string operations">std.string</a>)
 	$(LI <a href="std_system.html" title="Inquire about the CPU, operating system">std.system</a>)
-	$(LI <a href="std_thread.html" title="Thread operations">std.thread</a>)
 	$(LI <a href="std_traits.html" title="Type traits">std.traits</a>)
 	$(LI <a href="std_typecons.html" title="Type constructors">std.typecons</a>)
 	$(LI <a href="std_typetuple.html" title="Type tuples">std.typetuple</a>)
@@ -225,8 +220,7 @@ NAVIGATION_PHOBOS=
 	$(LI <a href="std_c_string.html" title="Strings">std.c.string</a>)
 	$(LI <a href="std_c_time.html" title="Time">std.c.time</a>)
 	$(LI <a href="std_c_wcharh.html" title="Wide characters">std.c.wcharh</a>)
-	$(LI <a href="std_net_browser.html" title="Run web browser">std.net.browser</a>)
-	$(LI <a href="std_net_isemail.html" title="Validate email addresses">std.net.isemail</a>)
+	$(LI <a href="std_net_isemail.html" title="Validate e-mail addresses">std.net.isemail</a>)
 	$(LI <a href="std_windows_charset.html" title="Conversion to/from Windows character sets">std.windows.charset</a>)
 	$(LI <a href="phobos.html#std_windows" title="Modules specific to Windows">std.windows</a>)
 	$(LI <a href="phobos.html#std_linux" title="Modules specific to Windows">std.linux</a>)
@@ -246,8 +240,8 @@ NAVIGATION_PHOBOS=
 	$(LI <a href="core_exception.html" title="Root of exception hierarchy">core.exception</a>)
 	$(LI <a href="core_memory.html" title="Interface to memory management">core.memory</a>)
 	$(LI <a href="core_runtime.html" title="Interface to D runtime library internals">core.runtime</a>)
-	$(LI <a href="core_time.html" title="Time">core.time</a>)
 	$(LI <a href="core_thread.html" title="Thread management">core.thread</a>)
+	$(LI <a href="core_time.html" title="Core time functionality">core.time</a>)
 	$(LI <a href="core_vararg.html" title="Variable function arguments">core.vararg</a>)
 	$(LI <a href="core_sync_barrier.html" title="Synchronizing progress of a group of threads">core.sync.barrier</a>)
 	$(LI <a href="core_sync_condition.html" title="Synchronized condition checking">core.sync.condition</a>)
@@ -276,8 +270,8 @@ LPAREN = (
 LESS = &lt;
 GREATER = &gt;
 WEB = $(LINK2 http://$1,$2)
-LUCKY = $(WEB 
-google.com/search?btnI=I%27m+Feeling+Lucky&ie=UTF-8&oe=UTF-8&q=$0,$0)
+LUCKY = $(WEB
+google.com/search?btnI=I%27m+Feeling+Lucky&amp;ie=UTF-8&amp;oe=UTF-8&amp;q=$0,$0)
 D = <font face=Courier><b>$0</b></font>
 D = <span class="d_inlinecode">$0</span>
 BIGOH = <i><b>&Omicron;</i>(</i></b>$(D $0)<b></i>)</i></b>
@@ -286,10 +280,13 @@ GLOSSARY = $(LINK2 ../glossary.html#$0, $0)
 DDOC_PSYMBOL = <a name="$0"></a>$(U $0)
 DDOC_DECL  = $(DT <div class="d_decl">$0</div>)
 XREF = <a href="std_$1.html#$2">$(D std.$1.$2)</a>
+CXREF = <a href="core_$1.html#$2">$(D core.$1.$2)</a>
+LREF = <a href="#$1">$(D $1)</a>
 BUGZILLA = $(LINK2 http://d.puremagic.com/issues/show_bug.cgi?id=$0, Bugzilla $0)
 PRE = <pre>$0</pre>
 PHOBOSSRC=$(LINK2 https://github.com/D-Programming-Language/phobos/blob/master/$0, $0)
-DRUNTIMESRC=$(LINK2 https://github.com/D-Programming-Language/phobos/blob/master/$0, $0)
+DRUNTIMESRC=$(LINK2 https://github.com/D-Programming-Language/druntime/blob/master/src/$0, $0)
+SAMPLESRC=$(LINK2 https://github.com/D-Programming-Language/dmd/blob/master/samples/$0, /dmd/samples/d/$0)
 
 BOOKTABLE = <table cellspacing=0 cellpadding=5 valign=top class=book><caption>$1</caption>$2</table>
 TABLE = <table cellspacing=0 cellpadding=5><caption>$1</caption>$2</table>

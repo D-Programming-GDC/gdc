@@ -2013,6 +2013,7 @@ FuncExp::toElem(IRState * irs)
 
     fd->toObjFile(false);
 
+    // If nested, this will be a trampoline...
     switch (func_type->ty)
     {
         case Tfunction:
@@ -2026,8 +2027,6 @@ FuncExp::toElem(IRState * irs)
             ::error("Unexpected FuncExp type");
             return irs->errorMark(type);
     }
-
-    // If nested, this will be a trampoline...
 }
 
 elem *
@@ -2871,14 +2870,12 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
 {
     if (! global.params.useUnitTests && isUnitTestDeclaration())
         return;
+
     if (! g.ofile->shouldEmit(this))
         return;
 
     Symbol * this_sym = toSymbol();
     if (this_sym->outputStage)
-        return;
-
-    if (g.irs->shouldDeferFunction(this))
         return;
 
     this_sym->outputStage = InProgress;
@@ -3498,6 +3495,12 @@ Type::toCtype()
                 ctype = void_type_node;
                 break;
 
+#if V2
+            case Tnull:
+                ctype = ptr_type_node;
+                break;
+#endif
+
             default:
                 ::error("unexpected call to Type::toCtype() for %s\n", this->toChars());
                 gcc_unreachable();
@@ -3576,25 +3579,22 @@ TypeEnum::toCtype()
         }
         else
         {
-            tree enum_mem_type_node = sym->memtype->toCtype();
+            tree cmemtype = sym->memtype->toCtype();
 
             ctype = make_node(ENUMERAL_TYPE);
+            TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
+            d_keep(ctype);
+
             // %% c-decl.c: if (flag_short_enums) TYPE_PACKED(enumtype) = 1;
             TYPE_PRECISION(ctype) = size(0) * 8;
             TYPE_SIZE(ctype) = 0; // as in c-decl.c
-            TYPE_MAIN_VARIANT(ctype) = enum_mem_type_node;
+            TYPE_MAIN_VARIANT(ctype) = cmemtype;
             apply_type_attributes(sym->attributes, ctype, true);
-#if V2
-            /* Because minval and maxval are of this type,
-               ctype needs to be completed enough for
-               build_int_cst to work properly. */
-            TYPE_MIN_VALUE(ctype) = sym->minval->toElem(& gen);
-            TYPE_MAX_VALUE(ctype) = sym->maxval->toElem(& gen);
-#else
-            TYPE_MIN_VALUE(ctype) = gen.integerConstant(sym->minval, enum_mem_type_node);
-            TYPE_MAX_VALUE(ctype) = gen.integerConstant(sym->maxval, enum_mem_type_node);
-#endif
+
+            TYPE_MIN_VALUE(ctype) = TYPE_MIN_VALUE(cmemtype);
+            TYPE_MAX_VALUE(ctype) = TYPE_MAX_VALUE(cmemtype);
             layout_type(ctype);
+            TYPE_UNSIGNED(ctype) = TYPE_UNSIGNED(cmemtype);
 
             // Move this to toDebug() ?
             ListMaker enum_values;
@@ -3611,7 +3611,7 @@ TypeEnum::toCtype()
                                        member->ident->string, NULL);
 
                     enum_values.cons(get_identifier(ident ? ident : member->ident->string),
-                            gen.integerConstant(member->value->toInteger(), ctype));
+                                     gen.integerConstant(member->value->toInteger(), ctype));
 
                     if (sym->ident)
                         free(ident);

@@ -562,10 +562,8 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_VINDEX(fn_decl) = vindex;
                 DECL_VIRTUAL_P(fn_decl) = 1;
             }
-            if (! gen.functionNeedsChain(this)
-                // gcc 4.0: seems to be an error to set DECL_NO_STATIC_CHAIN on a toplevel function
-                // (tree-nest.c:1282:convert_all_function_calls)
-                && decl_function_context(fn_decl))
+            // gcc 4.0: seems to be an error to set DECL_NO_STATIC_CHAIN on a toplevel function
+            if (! gen.functionNeedsChain(this) && decl_function_context(fn_decl))
             {
 #if D_GCC_VER < 45
                 // Prevent backend from thinking this is a nested function.
@@ -578,17 +576,11 @@ Symbol *FuncDeclaration::toSymbol()
                 // %% GCC-4.5: we do the opposite.
                 DECL_STATIC_CHAIN(fn_decl) = 1;
 #endif
-                /* If a template instance has a nested function (because
-                   a template argument is a local variable), the nested
-                   function may not have its toObjFile called before the
-                   outer function is finished.  GCC requires that nested
-                   functions be finished first so we need to arrange for
-                   toObjFile to be called earlier.
-
-                   It may be possible to defer calling the outer
-                   function's cgraph_finalize_function until all nested
-                   functions are finished, but this will only work for
-                   GCC >= 3.4. */
+                /* If a template instance has a nested function (because a template
+                   argument is a local variable), the nested function may not have
+                   its toObjFile called before the outer function is finished.
+                   GCC requires that nested functions be finished first so we need
+                   to arrange for toObjFile to be called earlier.  */
                 FuncDeclaration * outer_func = NULL;
                 bool is_template_member = false;
                 for (Dsymbol * p = parent; p; p = p->parent)
@@ -609,9 +601,6 @@ Symbol *FuncDeclaration::toSymbol()
                         if (! outer_sym->otherNestedFuncs)
                             outer_sym->otherNestedFuncs = new FuncDeclarations;
                         outer_sym->otherNestedFuncs->push(this);
-                    }
-                    else
-                    {   // Probably a frontend bug.
                     }
                 }
             }

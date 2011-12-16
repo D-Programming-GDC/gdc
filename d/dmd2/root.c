@@ -180,7 +180,7 @@ void error(const dchar *format, ...)
     fprintf(stderr, "Error: ");
     vfwprintf(stderr, format, ap);
     va_end( ap );
-    printf(stderr, "\n");
+    fprintf(stderr, "\n");
     fflush(stderr);
 
     exit(EXIT_FAILURE);

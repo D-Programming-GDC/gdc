@@ -565,9 +565,7 @@ d_gcc_magic_module(Module *m)
         }
         else if (! strcmp((md->packages->tdata()[0])->string, "std"))
         {
-            if (! strcmp(md->id->string, "intrinsic"))
-                IRState::setIntrinsicModule(m, false);
-            else if (! strcmp(md->id->string, "math"))
+            if (! strcmp(md->id->string, "math"))
                 IRState::setMathModule(m, false);
         }
 #else

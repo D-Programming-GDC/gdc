@@ -20,6 +20,7 @@ Authors:   $(WEB digitalmars.com, Walter Bright),
 module std.stdio;
 
 public import core.stdc.stdio;
+static import std.c.stdio;
 import std.stdiobase;
 import core.stdc.errno, core.stdc.stddef, core.stdc.stdlib, core.memory,
     core.stdc.string, core.stdc.wchar_;
@@ -215,7 +216,7 @@ public:
         assert(f.isOpen);
         file = f;
         this.format = format;
-        popFront; // prime the range
+        popFront(); // prime the range
     }
 
     /// Range primitive implementations.
@@ -237,7 +238,7 @@ public:
         file.readln(line);
         if (!line.length)
         {
-            file.detach;
+            file.detach();
         }
         else
         {
@@ -336,7 +337,7 @@ object refers to it anymore.
     ~this()
     {
         if (!p) return;
-        if (p.refs == 1) close;
+        if (p.refs == 1) close();
         else --p.refs;
     }
 
@@ -366,7 +367,7 @@ Throws exception in case of error.
  */
     void open(string name, in char[] stdioOpenmode = "rb")
     {
-        detach;
+        detach();
         auto another = File(name, stdioOpenmode);
         swap(this, another);
     }
@@ -378,7 +379,7 @@ opengroup.org/onlinepubs/007908799/xsh/_popen.html, _popen).
  */
     version(Posix) void popen(string command, in char[] stdioOpenmode = "r")
     {
-        detach;
+        detach();
         p = new Impl(errnoEnforce(.popen(command, stdioOpenmode),
                         "Cannot run command `"~command~"'"),
                 1, command, true);
@@ -425,7 +426,7 @@ and throws if that fails.
     {
         if (!p) return;
         // @@@BUG
-        //if (p.refs == 1) close;
+        //if (p.refs == 1) close();
         p = null;
     }
 
@@ -692,7 +693,7 @@ If the file is not opened, throws an exception. Otherwise, writes its
 arguments in text format to the file. */
     void write(S...)(S args)
     {
-        auto w = lockingTextWriter();
+        auto w = lockingTextWriter;
         foreach (arg; args)
         {
             alias typeof(arg) A;
@@ -749,7 +750,7 @@ first argument. */
         assert(p.handle);
         static assert(S.length>0, errorMessage);
         static assert(isSomeString!(S[0]), errorMessage);
-        auto w = lockingTextWriter();
+        auto w = lockingTextWriter;
         std.format.formattedWrite(w, args);
     }
 
@@ -907,7 +908,7 @@ with every line.  */
  cplusplus.com/reference/clibrary/cstdio/_tmpfile.html, _tmpfile). */
     static File tmpfile()
     {
-        auto h = errnoEnforce(core.stdc.stdio.tmpfile,
+        auto h = errnoEnforce(core.stdc.stdio.tmpfile(),
                 "Could not create temporary file with tmpfile()");
         File result = void;
         result.p = new Impl(h, 1, null);
@@ -937,7 +938,7 @@ Returns the $(D FILE*) corresponding to this object.
 
     unittest
     {
-        assert(stdout.getFP == std.c.stdio.stdout);
+        assert(stdout.getFP() == std.c.stdio.stdout);
     }
 
 /**
@@ -969,13 +970,13 @@ Range that reads one line at a time. */
         }
 
         /// Range primitive implementations.
-        bool empty() const
+        @property bool empty() const
         {
             return !file.isOpen;
         }
 
         /// Ditto
-        Char[] front()
+        @property Char[] front()
         {
             if (line is null) popFront();
             return line;
@@ -988,7 +989,7 @@ Range that reads one line at a time. */
             file.readln(line, terminator);
             assert(line !is null, "Bug in File.readln");
             if (!line.length)
-                file.detach;
+                file.detach();
             else if (keepTerminator == KeepTerminator.no
                     && std.algorithm.endsWith(line, terminator))
                 line.length = line.length - 1;
@@ -1017,7 +1018,7 @@ to this file. */
         auto f = File("testingByLine");
         scope(exit)
         {
-            f.close;
+            f.close();
             assert(!f.isOpen);
         }
         foreach (line; f.byLine())
@@ -1026,7 +1027,7 @@ to this file. */
         }
         assert(i == witness.length);
         i = 0;
-        f.rewind;
+        f.rewind();
         foreach (line; f.byLine(KeepTerminator.yes))
         {
             assert(line == witness[i++] ~ '\n' || i == witness.length);
@@ -1048,7 +1049,7 @@ to this file. */
         // std.file.write("deleteme", "1 2\n4 1\n5 100");
         // scope(exit) std.file.remove("deleteme");
         // File f = File("deleteme");
-        // scope(exit) f.close;
+        // scope(exit) f.close();
         // auto t = [ tuple(1, 2), tuple(4, 1), tuple(5, 100) ];
         // uint i;
         // foreach (e; f.byRecord!(int, int)("%s %s"))
@@ -1148,7 +1149,7 @@ In case of an I/O error, an $(D StdioException) is thrown.
         auto f = File("testingByChunk");
         scope(exit)
         {
-            f.close;
+            f.close();
             assert(!f.isOpen);
             std.file.remove("testingByChunk");
         }
@@ -1298,7 +1299,7 @@ $(D Range) that locks the file and allows fast writing to it.
     }
 
 /// Convenience function.
-    LockingTextWriter lockingTextWriter()
+    @property LockingTextWriter lockingTextWriter()
     {
         return LockingTextWriter(this);
     }
@@ -1370,7 +1371,7 @@ struct LockingTextReader
         return false;
     }
 
-    dchar front()
+    @property dchar front()
     {
         enforce(!empty);
         return _crt;
@@ -1394,6 +1395,8 @@ struct LockingTextReader
 
 unittest
 {
+    static assert(isInputRange!LockingTextReader);
+
     std.file.write("deleteme", "1 2 3");
     int x, y;
     auto f = File("deleteme");
@@ -1506,7 +1509,7 @@ unittest
     auto f = File(file, "w");
 //    scope(exit) { std.file.remove(file); }
      f.write("Hello, ",  "world number ", 42, "!");
-     f.close;
+     f.close();
      assert(cast(char[]) std.file.read(file) == "Hello, world number 42!");
     // // test write on stdout
     //auto saveStdout = stdout;
@@ -1514,7 +1517,7 @@ unittest
     //stdout.open(file, "w");
     Object obj;
     //write("Hello, ",  "world number ", 42, "! ", obj);
-    //stdout.close;
+    //stdout.close();
     // auto result = cast(char[]) std.file.read(file);
     // assert(result == "Hello, world number 42! null", result);
 }
@@ -1564,7 +1567,7 @@ unittest
     auto f = File(file, "w");
     scope(exit) { std.file.remove(file); }
     f.writeln("Hello, ",  "world number ", 42, "!");
-    f.close;
+    f.close();
     version (Windows)
         assert(cast(char[]) std.file.read(file) ==
                 "Hello, world number 42!\r\n");
@@ -1576,7 +1579,7 @@ unittest
     scope(exit) stdout = saveStdout;
     stdout.open(file, "w");
     writeln("Hello, ",  "world number ", 42, "!");
-    stdout.close;
+    stdout.close();
     version (Windows)
         assert(cast(char[]) std.file.read(file) ==
                 "Hello, world number 42!\r\n");
@@ -1641,14 +1644,14 @@ unittest
     auto f = File(file, "w");
     scope(exit) { std.file.remove(file); }
     f.writef("Hello, %s world number %s!", "nice", 42);
-    f.close;
+    f.close();
     assert(cast(char[]) std.file.read(file) ==  "Hello, nice world number 42!");
     // test write on stdout
     auto saveStdout = stdout;
     scope(exit) stdout = saveStdout;
     stdout.open(file, "w");
     writef("Hello, %s world number %s!", "nice", 42);
-    stdout.close;
+    stdout.close();
     assert(cast(char[]) std.file.read(file) == "Hello, nice world number 42!");
 }
 
@@ -1669,7 +1672,7 @@ unittest
     auto f = File(file, "w");
     scope(exit) { std.file.remove(file); }
     f.writefln("Hello, %s world number %s!", "nice", 42);
-    f.close;
+    f.close();
     version (Windows)
         assert(cast(char[]) std.file.read(file) ==
                 "Hello, nice world number 42!\r\n");
@@ -1689,7 +1692,7 @@ unittest
     //     F b = a % 2;
     //     writeln(b);
     // }
-    // stdout.close;
+    // stdout.close();
     // auto read = cast(char[]) std.file.read(file);
     // version (Windows)
     //     assert(read == "Hello, nice world number 42!\r\n1\r\n1\r\n1\r\n", read);
@@ -1959,7 +1962,7 @@ unittest
         {
             assert(false);
         }
-        f.close;
+        f.close();
 
         // test looping with a file with three lines
         std.file.write(file, "Line one\nline two\nline three\n");
@@ -1973,7 +1976,7 @@ unittest
             else assert(false);
             ++i;
         }
-        f.close;
+        f.close();
 
         // test looping with a file with three lines, last without a newline
         std.file.write(file, "Line one\nline two\nline three");
@@ -1987,7 +1990,7 @@ unittest
             else assert(false);
             ++i;
         }
-        f.close;
+        f.close();
     }
 
     // test with ubyte[] inputs
@@ -2002,7 +2005,7 @@ unittest
         {
             assert(false);
         }
-        f.close;
+        f.close();
 
         // test looping with a file with three lines
         std.file.write(file, "Line one\nline two\nline three\n");
@@ -2017,7 +2020,7 @@ unittest
             else assert(false);
             ++i;
         }
-        f.close;
+        f.close();
 
         // test looping with a file with three lines, last without a newline
         std.file.write(file, "Line one\nline two\nline three");
@@ -2031,7 +2034,7 @@ unittest
             else assert(false);
             ++i;
         }
-        f.close;
+        f.close();
 
     }
 
@@ -2050,7 +2053,7 @@ unittest
             else assert(false);
             ++i;
         }
-        f.close;
+        f.close();
     }
 }
 
@@ -2149,7 +2152,7 @@ unittest
     {
         assert(false);
     }
-    f.close;
+    f.close();
 
     // test looping with a file with three lines
     std.file.write(file, "Line one\nline two\nline three\n");
@@ -2163,7 +2166,7 @@ unittest
         else break;
         ++i;
     }
-    f.close;
+    f.close();
 }
 
 /*********************
@@ -2176,7 +2179,7 @@ class StdioException : Exception
 
 /**
 Initialize with a message and an error code. */
-    this(string message, uint e = .getErrno)
+    this(string message, uint e = .getErrno())
     {
         errno = e;
         version (Posix)
@@ -2209,7 +2212,7 @@ Initialize with a message and an error code. */
 /// ditto
     static void opCall()
     {
-        throw new StdioException(null, .getErrno);
+        throw new StdioException(null, .getErrno());
     }
 }
 
@@ -2244,7 +2247,7 @@ unittest
     scope(exit) std.file.remove("deleteme");
     {
         File f = File("deleteme");
-        scope(exit) f.close;
+        scope(exit) f.close();
         auto t = [ tuple(1, 2), tuple(4, 1), tuple(5, 100) ];
         uint i;
         foreach (e; f.byRecord!(int, int)("%s %s"))

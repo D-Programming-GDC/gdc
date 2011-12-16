@@ -267,13 +267,15 @@ struct VarDeclaration : Declaration
     int canassign;              // it can be assigned to
     Dsymbol *aliassym;          // if redone as alias to another symbol
 
-    // When interpreting, these hold the value (NULL if value not determinable)
+    // When interpreting, these point to the value (NULL if value not determinable)
+    // The index of this variable on the CTFE stack, -1 if not allocated
+    size_t ctfeAdrOnStack;
     // The various functions are used only to detect compiler CTFE bugs
-    Expression *literalvalue;
-    Expression *getValue() { return literalvalue; }
+    Expression *getValue();
+    bool hasValue();
     void setValueNull();
     void setValueWithoutChecking(Expression *newval);
-    void createRefValue(Expression *newval); // struct or array literal
+    void createRefValue(Expression *newval);
     void setRefValue(Expression *newval);
     void setStackValue(Expression *newval);
     void createStackValue(Expression *newval);
@@ -629,6 +631,7 @@ struct FuncDeclaration : Declaration
     void semantic3(Scope *sc);
     // called from semantic3
     void varArgs(Scope *sc, TypeFunction*, VarDeclaration *&, VarDeclaration *&);
+    VarDeclaration *declareThis(Scope *sc, AggregateDeclaration *ad);
     int equals(Object *o);
 
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -743,7 +746,7 @@ struct CtorDeclaration : FuncDeclaration
 #if DMDV2
 struct PostBlitDeclaration : FuncDeclaration
 {
-    PostBlitDeclaration(Loc loc, Loc endloc);
+    PostBlitDeclaration(Loc loc, Loc endloc, StorageClass stc = STCundefined);
     PostBlitDeclaration(Loc loc, Loc endloc, Identifier *id);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
@@ -788,6 +791,7 @@ struct StaticCtorDeclaration : FuncDeclaration
     int isVirtual();
     int addPreInvariant();
     int addPostInvariant();
+    bool hasStaticCtorOrDtor();
     void emitComment(Scope *sc);
     void toJsonBuffer(OutBuffer *buf);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -815,6 +819,7 @@ struct StaticDtorDeclaration : FuncDeclaration
     void semantic(Scope *sc);
     AggregateDeclaration *isThis();
     int isVirtual();
+    bool hasStaticCtorOrDtor();
     int addPreInvariant();
     int addPostInvariant();
     void emitComment(Scope *sc);

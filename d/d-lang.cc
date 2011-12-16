@@ -1326,7 +1326,7 @@ d_parse_file (int /*set_yydebug*/)
         g.ofile->modules.push(an_output_module);
     else
         g.ofile->modules.append(& modules);
-    g.irs = & gen; // needed for FuncDeclaration::toObjFile shouldDefer check
+    g.irs = & gen; // needed for FuncDeclaration::toObjFile
 
     // Generate output files
     if (global.params.doXGeneration)

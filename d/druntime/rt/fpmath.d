@@ -155,7 +155,7 @@ int fpclassify(real f)
             return FP_NAN;
     }
 }
-
+/+
 unittest
 {
     static if (Info.realFormat == RealFormat.SameAsDouble) {
@@ -183,4 +183,4 @@ unittest
         assert( ( signbit(xdi[i]) ?1:0 ) == (i & 1) );
         assert( ( signbit(xri[i]) ?1:0 ) == (i & 1) );
     }
-}
+}+/

@@ -3510,16 +3510,23 @@ IRState::functionNeedsChain(FuncDeclaration *f)
 {
     Dsymbol * s;
     ClassDeclaration * a;
-    FuncDeclaration *pf = 0;
+    FuncDeclaration * pf = NULL;
+    TemplateInstance * ti = NULL;
 
-    if (f->isNested()
-#if V2
-        && (pf = f->toParent2()->isFuncDeclaration())
-            && ! getFrameInfo(pf)->is_closure
-#endif
-       )
+    if (f->isNested())
     {
+        s = f->toParent();
+        ti = s->isTemplateInstance();
+        if (ti && ti->isnested == NULL)
+            return false;
+
+#if V2
+        pf = f->toParent2()->isFuncDeclaration();
+        if (pf && ! getFrameInfo(pf)->is_closure)
+            return true;
+#else
         return true;
+#endif
     }
     if (f->isStatic())
     {

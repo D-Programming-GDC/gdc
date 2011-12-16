@@ -72,7 +72,7 @@ version( GNU )
     alias __builtin_pointer_int  intptr_t;
     alias __builtin_pointer_uint uintptr_t;
 }
-else version( X86_64 )
+else version( D_LP64 )
 {
     alias long  intptr_t;
     alias ulong uintptr_t;

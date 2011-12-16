@@ -385,6 +385,11 @@ void ClassDeclaration::toObjFile(int multiobj)
     if (!members)
         return;
 
+    if (multiobj && !hasStaticCtorOrDtor())
+    {   obj_append(this);
+        return;
+    }
+
     if (global.params.symdebug)
         toDebug();
 
@@ -415,7 +420,7 @@ void ClassDeclaration::toObjFile(int multiobj)
 
         case 1:
             // One destructor, just use it directly
-            sdtor = dtors.tdata()[0]->toSymbol();
+            sdtor = dtors[0]->toSymbol();
             break;
 
         default:
@@ -436,7 +441,7 @@ void ClassDeclaration::toObjFile(int multiobj)
             // Call each of the destructors in dtors[]
             // in reverse order
             for (size_t i = 0; i < dtors.dim; i++)
-            {   DtorDeclaration *d = dtors.tdata()[i];
+            {   DtorDeclaration *d = dtors[i];
                 Symbol *s = d->toSymbol();
                 elem *e = el_bin(OPcall, TYvoid, el_var(s), el_var(sthis));
                 edtor = el_combine(e, edtor);
@@ -1113,6 +1118,11 @@ void InterfaceDeclaration::toObjFile(int multiobj)
 void StructDeclaration::toObjFile(int multiobj)
 {
     //printf("StructDeclaration::toObjFile('%s')\n", toChars());
+
+    if (multiobj && !hasStaticCtorOrDtor())
+    {   obj_append(this);
+        return;
+    }
 
     // Anonymous structs/unions only exist as part of others,
     // do not output forward referenced structs's

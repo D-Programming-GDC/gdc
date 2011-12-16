@@ -167,6 +167,15 @@ FuncDeclaration *hasThis(Scope *sc)
     fdthis = sc->parent->isFuncDeclaration();
     //printf("fdthis = %p, '%s'\n", fdthis, fdthis ? fdthis->toChars() : "");
 
+    /* Special case for inside template constraint
+     */
+    if (fdthis && (sc->flags & SCOPEstaticif) && fdthis->parent->isTemplateDeclaration())
+    {
+        //TemplateDeclaration *td = fdthis->parent->isTemplateDeclaration();
+        //printf("[%s] td = %s, fdthis->vthis = %p\n", td->loc.toChars(), td->toChars(), fdthis->vthis);
+        return fdthis->vthis ? fdthis : NULL;
+    }
+
     // Go upwards until we find the enclosing member function
     fd = fdthis;
     while (1)
@@ -814,14 +823,12 @@ Type *functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
         L1:
             if (!(p->storageClass & STClazy && p->type->ty == Tvoid))
             {
-                if (p->type->hasWild())
-                {   unsigned mod = p->type->wildMatch(arg->type);
-                    if (mod)
-                    {
-                        wildmatch |= mod;
-                        arg = arg->implicitCastTo(sc, p->type->substWildTo(mod));
-                        arg = arg->optimize(WANTvalue);
-                    }
+                unsigned mod = arg->type->wildConvTo(p->type);
+                if (mod)
+                {
+                    wildmatch |= mod;
+                    arg = arg->implicitCastTo(sc, p->type->substWildTo(mod));
+                    arg = arg->optimize(WANTvalue);
                 }
                 else if (p->type != arg->type)
                 {
@@ -2965,8 +2972,7 @@ SuperExp::SuperExp(Loc loc)
 }
 
 Expression *SuperExp::semantic(Scope *sc)
-{   FuncDeclaration *fd;
-    FuncDeclaration *fdthis;
+{
     ClassDeclaration *cd;
     Dsymbol *s;
 
@@ -2976,22 +2982,22 @@ Expression *SuperExp::semantic(Scope *sc)
     if (type)
         return this;
 
+    FuncDeclaration *fd = hasThis(sc);
+
     /* Special case for typeof(this) and typeof(super) since both
      * should work even if they are not inside a non-static member function
      */
-    if (sc->intypeof)
+    if (!fd && sc->intypeof)
     {
         // Find enclosing class
-        for (Dsymbol *s = sc->parent; 1; s = s->parent)
+        for (Dsymbol *s = sc->getStructClassScope(); 1; s = s->parent)
         {
-            ClassDeclaration *cd;
-
             if (!s)
             {
                 error("%s is not in a class scope", toChars());
                 goto Lerr;
             }
-            cd = s->isClassDeclaration();
+            ClassDeclaration *cd = s->isClassDeclaration();
             if (cd)
             {
                 cd = cd->baseClass;
@@ -3004,11 +3010,9 @@ Expression *SuperExp::semantic(Scope *sc)
             }
         }
     }
-
-    fdthis = sc->parent->isFuncDeclaration();
-    fd = hasThis(sc);
     if (!fd)
         goto Lerr;
+
     assert(fd->vthis);
     var = fd->vthis;
     assert(var->parent);
@@ -3029,6 +3033,7 @@ Expression *SuperExp::semantic(Scope *sc)
     else
     {
         type = cd->baseClass->type;
+        type = type->castMod(var->type->mod);
     }
 
     var->isVarDeclaration()->checkNestedReference(sc, loc);
@@ -3065,7 +3070,7 @@ Expression *NullExp::semantic(Scope *sc)
 #endif
     // NULL is the same as (void *)0
     if (!type)
-        type = Type::tvoid->pointerTo();
+        type = Type::tnull;
     return this;
 }
 
@@ -3488,10 +3493,19 @@ void StringExp::toMangleBuffer(OutBuffer *buf)
         default:
             assert(0);
     }
+    buf->reserve(1 + 11 + 2 * qlen);
     buf->writeByte(m);
-    buf->printf("%d_", qlen);
-    for (size_t i = 0; i < qlen; i++)
-        buf->printf("%02x", q[i]);
+    buf->printf("%d_", qlen); // nbytes <= 11
+
+    for (unsigned char *p = buf->data + buf->offset, *pend = p + 2 * qlen;
+         p < pend; p += 2, ++q)
+    {
+        unsigned char hi = *q >> 4 & 0xF;
+        p[0] = (hi < 10 ? hi + '0' : hi - 10 + 'a');
+        unsigned char lo = *q & 0xF;
+        p[1] = (lo < 10 ? lo + '0' : lo - 10 + 'a');
+    }
+    buf->offset += 2 * qlen;
 }
 
 /************************ ArrayLiteralExp ************************************/
@@ -4116,6 +4130,10 @@ Lagain:
         //printf("sds = %s, '%s'\n", sds->kind(), sds->toChars());
         //printf("\tparent = '%s'\n", sds->parent->toChars());
         sds->semantic(sc);
+
+        AggregateDeclaration *ad = sds->isAggregateDeclaration();
+        if (ad)
+            return (new TypeExp(loc, ad->type))->semantic(sc);
     }
     type = Type::tvoid;
     //printf("-2ScopeExp::semantic() %s\n", toChars());
@@ -7106,6 +7124,131 @@ Expression *CallExp::syntaxCopy()
 }
 
 
+Expression *CallExp::resolveUFCS(Scope *sc)
+{
+    Expression *ethis = NULL;
+    DotIdExp *dotid;
+    DotTemplateInstanceExp *dotti;
+    Identifier *ident;
+
+    if (e1->op == TOKdot)
+    {
+        dotid = (DotIdExp *)e1;
+        ident = dotid->ident;
+        ethis = dotid->e1 = dotid->e1->semantic(sc);
+        if (ethis->op == TOKdotexp)
+            return NULL;
+        ethis = resolveProperties(sc, ethis);
+    }
+    else if (e1->op == TOKdotti)
+    {
+        dotti = (DotTemplateInstanceExp *)e1;
+        ident = dotti->ti->name;
+        ethis = dotti->e1 = dotti->e1->semantic(sc);
+        if (ethis->op == TOKdotexp)
+            return NULL;
+        ethis = resolveProperties(sc, ethis);
+    }
+
+    if (ethis && ethis->type)
+    {
+        AggregateDeclaration *ad;
+Lagain:
+        Type *tthis = ethis->type->toBasetype();
+        if (tthis->ty == Tclass)
+        {
+            ad = ((TypeClass *)tthis)->sym;
+            if (search_function(ad, ident))
+                return NULL;
+            goto L1;
+        }
+        else if (tthis->ty == Tstruct)
+        {
+            ad = ((TypeStruct *)tthis)->sym;
+            if (search_function(ad, ident))
+                return NULL;
+        L1:
+            if (ad->aliasthis)
+            {
+                ethis = new DotIdExp(ethis->loc, ethis, ad->aliasthis->ident);
+                ethis = ethis->semantic(sc);
+                ethis = resolveProperties(sc, ethis);
+                goto Lagain;
+            }
+        }
+        else if (tthis->ty == Taarray && e1->op == TOKdot)
+        {
+            if (ident == Id::remove)
+            {
+                /* Transform:
+                 *  aa.remove(arg) into delete aa[arg]
+                 */
+                if (!arguments || arguments->dim != 1)
+                {   error("expected key as argument to aa.remove()");
+                    return new ErrorExp();
+                }
+                Expression *key = arguments->tdata()[0];
+                key = key->semantic(sc);
+                key = resolveProperties(sc, key);
+                key->rvalue();
+
+                TypeAArray *taa = (TypeAArray *)tthis;
+                key = key->implicitCastTo(sc, taa->index);
+
+                return new RemoveExp(loc, ethis, key);
+            }
+            else if (ident == Id::apply || ident == Id::applyReverse)
+            {
+                return NULL;
+            }
+            else
+            {   TypeAArray *taa = (TypeAArray *)tthis;
+                assert(taa->ty == Taarray);
+                StructDeclaration *sd = taa->getImpl();
+                Dsymbol *s = sd->search(0, ident, 2);
+                if (s)
+                    return NULL;
+                goto Lshift;
+            }
+        }
+        else if (tthis->ty == Tarray || tthis->ty == Tsarray)
+        {
+Lshift:
+            if (!arguments)
+                arguments = new Expressions();
+            arguments->shift(ethis);
+            if (e1->op == TOKdot)
+            {
+                /* Transform:
+                 *  array.id(args) into .id(array,args)
+                 */
+#if DMDV2
+                e1 = new DotIdExp(dotid->loc,
+                                  new IdentifierExp(dotid->loc, Id::empty),
+                                  ident);
+#else
+                e1 = new IdentifierExp(dotid->loc, ident);
+#endif
+            }
+            else if (e1->op == TOKdotti)
+            {
+                /* Transform:
+                 *  array.foo!(tiargs)(args) into .foo!(tiargs)(array,args)
+                 */
+#if DMDV2
+                e1 = new DotExp(dotti->loc,
+                                new IdentifierExp(dotti->loc, Id::empty),
+                                new ScopeExp(dotti->loc, dotti->ti));
+#else
+                e1 = new ScopeExp(dotti->loc, dotti->ti);
+#endif
+            }
+            //printf("-> this = %s\n", toChars());
+        }
+    }
+    return NULL;
+}
+
 Expression *CallExp::semantic(Scope *sc)
 {
     TypeFunction *tf;
@@ -7136,61 +7279,9 @@ Expression *CallExp::semantic(Scope *sc)
         return semantic(sc);
     }
 
-    /* Transform:
-     *  array.id(args) into .id(array,args)
-     *  aa.remove(arg) into delete aa[arg]
-     */
-    if (e1->op == TOKdot)
-    {
-        // BUG: we should handle array.a.b.c.e(args) too
-
-        DotIdExp *dotid = (DotIdExp *)(e1);
-        dotid->e1 = dotid->e1->semantic(sc);
-        assert(dotid->e1);
-        if (dotid->e1->type)
-        {
-            TY e1ty = dotid->e1->type->toBasetype()->ty;
-            if (e1ty == Taarray && dotid->ident == Id::remove)
-            {
-                if (!arguments || arguments->dim != 1)
-                {   error("expected key as argument to aa.remove()");
-                    return new ErrorExp();
-                }
-                Expression *key = arguments->tdata()[0];
-                key = key->semantic(sc);
-                key = resolveProperties(sc, key);
-                key->rvalue();
-
-                TypeAArray *taa = (TypeAArray *)dotid->e1->type->toBasetype();
-                key = key->implicitCastTo(sc, taa->index);
-
-                return new RemoveExp(loc, dotid->e1, key);
-            }
-            else if (e1ty == Tarray || e1ty == Tsarray ||
-                     (e1ty == Taarray && dotid->ident != Id::apply && dotid->ident != Id::applyReverse))
-            {
-                if (e1ty == Taarray)
-                {   TypeAArray *taa = (TypeAArray *)dotid->e1->type->toBasetype();
-                    assert(taa->ty == Taarray);
-                    StructDeclaration *sd = taa->getImpl();
-                    Dsymbol *s = sd->search(0, dotid->ident, 2);
-                    if (s)
-                        goto L2;
-                }
-                if (!arguments)
-                    arguments = new Expressions();
-                arguments->shift(dotid->e1);
-#if DMDV2
-                e1 = new DotIdExp(dotid->loc, new IdentifierExp(dotid->loc, Id::empty), dotid->ident);
-#else
-                e1 = new IdentifierExp(dotid->loc, dotid->ident);
-#endif
-            }
-
-         L2:
-            ;
-        }
-    }
+    Expression *e = resolveUFCS(sc);
+    if (e)
+        return e;
 
 #if 1
     /* This recognizes:
@@ -7728,7 +7819,7 @@ Lagain:
                 if (sc->func->setImpure())
                     error("pure function '%s' cannot call impure function pointer '%s'", sc->func->toChars(), e1->toChars());
             }
-            if (sc->func && !((TypeFunction *)t1)->trust <= TRUSTsystem)
+            if (sc->func && ((TypeFunction *)t1)->trust <= TRUSTsystem)
             {
                 if (sc->func->setUnsafe())
                     error("safe function '%s' cannot call system function pointer '%s'", sc->func->toChars(), e1->toChars());
@@ -8126,6 +8217,8 @@ Expression *PtrExp::semantic(Scope *sc)
 
             case Tsarray:
             case Tarray:
+                if (!global.params.useDeprecated)
+                    error("using * on an array is deprecated; use *(%s).ptr instead", e1->toChars());
                 type = ((TypeArray *)tb)->next;
                 e1 = e1->castTo(sc, type->pointerTo());
                 break;
@@ -9020,6 +9113,8 @@ ArrayExp::ArrayExp(Loc loc, Expression *e1, Expressions *args)
         : UnaExp(loc, TOKarray, sizeof(ArrayExp), e1)
 {
     arguments = args;
+    lengthVar = NULL;
+    currentDimension = 0;
 }
 
 Expression *ArrayExp::syntaxCopy()
@@ -9295,7 +9390,7 @@ Expression *IndexExp::semantic(Scope *sc)
             /* We can skip the implicit conversion if they differ only by
              * constness (Bugzilla 2684, see also bug 2954b)
              */
-            if (!arrayTypeCompatibleWithoutCasting(e2->loc, e2->type, taa->index) || e1->op == TOKnull)
+            if (!arrayTypeCompatibleWithoutCasting(e2->loc, e2->type, taa->index))
             {
                 e2 = e2->implicitCastTo(sc, taa->index);        // type checking
             }
@@ -9564,6 +9659,29 @@ Expression *AssignExp::semantic(Scope *sc)
             // Rewrite (a[i] = value) to (a.opIndexAssign(value, i))
             if (search_function(ad, Id::indexass))
             {   Expression *e = new DotIdExp(loc, ae->e1, Id::indexass);
+                // Deal with $
+                for (size_t i = 0; i < ae->arguments->dim; i++)
+                {   Expression *x = ae->arguments->tdata()[i];
+                    // Create scope for '$' variable for this dimension
+                    ArrayScopeSymbol *sym = new ArrayScopeSymbol(sc, ae);
+                    sym->loc = loc;
+                    sym->parent = sc->scopesym;
+                    sc = sc->push(sym);
+                    ae->lengthVar = NULL;       // Create it only if required
+                    ae->currentDimension = i;   // Dimension for $, if required
+
+                    x = x->semantic(sc);
+                    if (!x->type)
+                        ae->error("%s has no value", x->toChars());
+                    if (ae->lengthVar)
+                    {   // If $ was used, declare it now
+                        Expression *av = new DeclarationExp(ae->loc, ae->lengthVar);
+                        x = new CommaExp(0, av, x);
+                        x->semantic(sc);
+                    }
+                    ae->arguments->tdata()[i] = x;
+                    sc = sc->pop();
+                }
                 Expressions *a = (Expressions *)ae->arguments->copy();
 
                 a->insert(0, e2);
@@ -10014,7 +10132,7 @@ Expression *AssignExp::checkToBoolean(Scope *sc)
     //  if (a = b) ...
     // are usually mistakes.
 
-    error("'=' does not give a boolean result");
+    error("assignment cannot be used as a condition, perhaps == was meant?");
     return new ErrorExp();
 }
 
@@ -10768,7 +10886,7 @@ Expression *MinExp::semantic(Scope *sc)
         else if (t2->isintegral())
             e = scaleFactor(sc);
         else
-        {   error("incompatible types for minus");
+        {   error("can't subtract %s from pointer", t2->toChars());
             return new ErrorExp();
         }
     }
@@ -11607,7 +11725,7 @@ Expression *InExp::semantic(Scope *sc)
 
 #if DMDV2
             // Special handling for array keys
-            if (!arrayTypeCompatible(e1->loc, e1->type, ta->index) || e1->op == TOKnull)
+            if (!arrayTypeCompatible(e1->loc, e1->type, ta->index))
 #endif
             {
                 // Convert key to type of key
@@ -11703,7 +11821,33 @@ Expression *CmpExp::semantic(Scope *sc)
         return new ErrorExp();
     }
 
+    Expression *eb1 = e1;
+    Expression *eb2 = e2;
+
     typeCombine(sc);
+
+#if 0
+    // For integer comparisons, ensure the combined type can hold both arguments.
+    if (type && type->isintegral() && (op == TOKlt || op == TOKle ||
+                                       op == TOKgt || op == TOKge))
+    {
+        IntRange trange = IntRange::fromType(type);
+
+        Expression *errorexp = 0;
+        if (!trange.contains(eb1->getIntRange()))
+            errorexp = eb1;
+        if (!trange.contains(eb2->getIntRange()))
+            errorexp = eb2;
+
+        if (errorexp)
+        {
+            error("implicit conversion of '%s' to '%s' is unsafe in '(%s) %s (%s)'",
+                  errorexp->toChars(), type->toChars(), eb1->toChars(), Token::toChars(op), eb2->toChars());
+            return new ErrorExp();
+        }
+    }
+#endif
+
     type = Type::tboolean;
 
     // Special handling for array comparisons
