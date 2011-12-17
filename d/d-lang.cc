@@ -478,6 +478,10 @@ d_init ()
         VersionCondition::addPredefinedGlobalIdent("GNU_InlineAsm");
     }
 
+    /* If pointers are 64 bits */
+    if (global.params.is64bit == 1)
+        VersionCondition::addPredefinedGlobalIdent("D_LP64");
+
     /* Setting global.params.cov forces module info generation which is
        not needed for thee GCC coverage implementation.  Instead, just
        test flag_test_coverage while leaving global.params.cov unset. */
