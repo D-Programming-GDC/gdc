@@ -683,7 +683,11 @@ if ($ok && $link) {
     $ok = $ok && system(@cmd) == 0;
 } elsif ($ok && $lib) {
     my @ar_cmd = determineARcommand();
-    my @cmd = (@ar_cmd, $output_file, @dobjects, @objects);
+    my $outf = $output_file;
+    if ( $output_directory ) {
+        $outf = File::Spec->catfile($output_directory, $output_file);
+    }
+    my @cmd = (@ar_cmd, $outf, @dobjects, @objects);
     if ( $show_commands ) {
         print join(' ', @cmd), "\n";
     }
