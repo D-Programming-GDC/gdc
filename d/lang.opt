@@ -184,6 +184,10 @@ Wsign-compare
 D
 Warn about signed-unsigned comparisons
 
+Wunknown-pragmas
+D Warning
+Warn about unrecognized pragmas
+
 
 
 ; Everything below this line is used in 4.6+

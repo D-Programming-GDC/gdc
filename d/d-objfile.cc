@@ -1054,13 +1054,15 @@ outdata(Symbol * sym)
 void
 obj_includelib(const char *name)
 {
-    d_warning(OPT_Wunknown_pragmas, "pragma(lib) not implemented");
+    if (! global.params.ignoreUnsupportedPragmas)
+        d_warning(OPT_Wunknown_pragmas, "pragma(lib) not implemented");
 }
 
 void
 obj_startaddress(Symbol *s)
 {
-    d_warning(OPT_Wunknown_pragmas, "pragma(startaddress) not implemented");
+    if (! global.params.ignoreUnsupportedPragmas)
+        d_warning(OPT_Wunknown_pragmas, "pragma(startaddress) not implemented");
 }
 
 void

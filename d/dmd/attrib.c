@@ -1277,7 +1277,11 @@ void PragmaDeclaration::toObjFile(int multiobj)
         char *name = (char *)mem.malloc(se->len + 1);
         memcpy(name, se->string, se->len);
         name[se->len] = 0;
-#if OMFOBJ
+#if IN_GCC
+        /* Currently just a warning that pragma lib is unimplemented.
+         */
+        obj_includelib(name);
+#elif OMFOBJ
         /* The OMF format allows library names to be inserted
          * into the object file. The linker will then automatically
          * search that library, too.
