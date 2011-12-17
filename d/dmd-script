@@ -499,9 +499,9 @@ while ( $arg_i < scalar(@ARGV) ) {
 # Slightly different from dmd... allows -of to specify
 # the name of the executable.
 
-$combine =
-  (! $link && ! $lib && scalar(@sources) > 1 && $output_file ) ||
-  ($link && scalar(@sources) > 1); # > 0 ? does DMD now do the same for 1 vs many sources?
+$combine = scalar(@sources) > 1;
+#  (! $link && ! $lib && scalar(@sources) > 1 && $output_file ) ||
+#  ($link && scalar(@sources) > 1); # > 0 ? does DMD now do the same for 1 vs many sources?
 
 if ( $run && ! $link ) {
     errorExit "flags conflict with -run";
