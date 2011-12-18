@@ -693,6 +693,7 @@ eval_builtin(Loc loc, BUILTIN builtin, Expressions * arguments)
 {
     Expression *e = NULL;
     Expression *arg0 = arguments->tdata()[0];
+    Type * t0 = arg0->type;
 
     static IRState irs;
     tree callee = NULL_TREE;
@@ -714,11 +715,11 @@ eval_builtin(Loc loc, BUILTIN builtin, Expressions * arguments)
             break;
 
         case BUILTINsqrt:
-            if (arg0->type->ty == Tfloat32)
+            if (t0->ty == Tfloat32)
                 callee = built_in_decls[BUILT_IN_SQRTF];
-            else if (arg0->type->ty == Tfloat64)
+            else if (t0->ty == Tfloat64)
                 callee = built_in_decls[BUILT_IN_SQRT];
-            else if (arg0->type->ty == Tfloat80)
+            else if (t0->ty == Tfloat80)
                 callee = built_in_decls[BUILT_IN_SQRTL];
             gcc_assert(callee);
             break;
@@ -727,15 +728,33 @@ eval_builtin(Loc loc, BUILTIN builtin, Expressions * arguments)
             callee = built_in_decls[BUILT_IN_FABSL];
             break;
 
+        case BUILTINbsf:
+            callee = built_in_decls[BUILT_IN_CTZL];
+            break;
+
+        case BUILTINbsr:
+            callee = built_in_decls[BUILT_IN_CLZL];
+            break;
+
+        case BUILTINbswap:
+#if D_GCC_VER < 43
+            e = new IntegerExp(loc, eval_bswap(arg0), t0);
+            return e;
+#else
+            if (t0->ty == Tint64 || t0->ty == Tuns64) 
+                callee = built_in_decls[BUILT_IN_BSWAP64];
+            else if (t0->ty == Tint32 || t0->ty == Tuns32)
+                callee = built_in_decls[BUILT_IN_BSWAP32];
+            gcc_assert(callee);
+            break;
+#endif
+
         case BUILTINatan2:
         case BUILTINrndtol:
         case BUILTINexpm1:
         case BUILTINexp2:
         case BUILTINyl2x:
         case BUILTINyl2xp1:
-        case BUILTINbsr:
-        case BUILTINbsf:
-        case BUILTINbswap:
             return NULL;
 
 
@@ -746,6 +765,14 @@ eval_builtin(Loc loc, BUILTIN builtin, Expressions * arguments)
     TypeFunction * tf = (TypeFunction *) gcc_type_to_d_type(TREE_TYPE(callee));
     result = irs.call(tf, callee, NULL, arguments);
     result = fold(result);
+
+    // Special case bsr.
+    if (builtin == BUILTINbsr)
+    {
+        tree type = t0->toCtype();
+        tree lhs = fold_convert(type, size_int(tree_low_cst(TYPE_SIZE(type), 1) - 1));
+        result = fold_build2(MINUS_EXPR, type, lhs, result);
+    }
 
     if (TREE_CONSTANT(result) && TREE_CODE(result) != CALL_EXPR)
     {   // Builtin should be successfully evaluated.
