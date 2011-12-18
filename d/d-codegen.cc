@@ -268,7 +268,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
     Type * ebtype = exp_type->toBasetype();
     Type * tbtype = target_type->toBasetype();
 
-    if (typesCompatible(exp_type, target_type))
+    if (typesSame(exp_type, target_type))
         return exp;
 
     if (isErrorMark(exp))
@@ -469,6 +469,15 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             else if (tbtype->ty == Taarray && ebtype == Type::tvoidptr)
                 return vconvert(exp, target_type->toCtype());
             break;
+#if V2
+        case Tnull:
+            if (tbtype->ty == Tarray)
+            {
+                Type * pointer_type = tbtype->nextOf()->pointerTo();
+                return darrayVal(target_type, 0, nop(exp, pointer_type->toCtype()));
+            }
+            break;
+#endif
         default:
         {
             if ((ebtype->isreal() && tbtype->isimaginary())
