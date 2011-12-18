@@ -5043,21 +5043,15 @@ gcc_d_backend_init()
 
     REALSIZE = int_size_in_bytes(long_double_type_node);
     REALPAD = 0;
-    PTRSIZE = int_size_in_bytes(ptr_type_node);
 
-    switch (PTRSIZE)
-    {
-        case 4:
-            gcc_assert(POINTER_SIZE == 32);
-            Tptrdiff_t = Tint32;
-            break;
-        case 8:
-            gcc_assert(POINTER_SIZE == 64);
-            Tptrdiff_t = Tint64;
-            break;
-        default:
-            gcc_unreachable();
-    }
+    if (POINTER_SIZE == 32)
+        Tptrdiff_t = Tint32;
+    else if (POINTER_SIZE == 64)
+        Tptrdiff_t = Tint64;
+    else
+        gcc_unreachable();
+
+    PTRSIZE = (POINTER_SIZE / BITS_PER_UNIT);
 
     // %% May get changed later anyway...
     CLASSINFO_SIZE_64 = 19 * PTRSIZE;
