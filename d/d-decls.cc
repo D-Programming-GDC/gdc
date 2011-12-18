@@ -221,31 +221,27 @@ Symbol *VarDeclaration::toSymbol()
 
         enum tree_code decl_kind;
 
-#if ! V2
+#if V1
         bool is_template_const = false;
         // Logic copied from toobj.c VarDeclaration::toObjFile
 
         Dsymbol * parent = this->toParent();
-#if 1   /* private statics should still get a global symbol, in case
+        /* private statics should still get a global symbol, in case
          * another module inlines a function that references it.
          */
-        if (/*protection == PROTprivate ||*/
-            !parent || parent->ident == NULL || parent->isFuncDeclaration())
+        if (!parent || parent->ident == NULL || parent->isFuncDeclaration())
         {
             // nothing
         }
         else
-#endif
         {
-            do
-            {
-                /* Global template data members need to be in comdat's
+            while (parent)
+            {   /* Global template data members need to be in comdat's
                  * in case multiple .obj files instantiate the same
                  * template with the same types.
                  */
                 if (parent->isTemplateInstance() && !parent->isTemplateMixin())
-                {
-                    /* These symbol constants have already been copied,
+                {   /* These symbol constants have already been copied,
                      * so no reason to output them.
                      * Note that currently there is no way to take
                      * the address of such a const.
@@ -260,27 +256,25 @@ Symbol *VarDeclaration::toSymbol()
                     break;
                 }
                 parent = parent->parent;
-            } while (parent);
+            }
         }
 #endif
 
         if (storage_class & STCparameter)
             decl_kind = PARM_DECL;
-        else if (
 #if V2
-                 (storage_class & STCmanifest)
-#else
-                 is_template_const ||
-                 (
-                   isConst()
-                   && ! gen.isDeclarationReferenceType(this) &&
-                   type->isscalar() && ! isDataseg()
-                 )
-#endif
-                 )
+        else if (storage_class & STCmanifest)
         {
             decl_kind = CONST_DECL;
         }
+#else
+        else if (is_template_const ||
+                 (isConst() && ! gen.isDeclarationReferenceType(this)
+                  && type->isscalar() && ! isDataseg()))
+        {
+            decl_kind = CONST_DECL;
+        }
+#endif
         else
         {
             decl_kind = VAR_DECL;
@@ -539,12 +533,12 @@ Symbol *FuncDeclaration::toSymbol()
             {
                 TYPE_ATTRIBUTES(new_fn_type) = TYPE_ATTRIBUTES(fn_type);
                 TYPE_LANG_SPECIFIC(new_fn_type) = TYPE_LANG_SPECIFIC(fn_type);
-                fn_type = new_fn_type;
+                d_keep(new_fn_type);
             }
 
             // %%CHECK: is it okay for static nested functions to have a FUNC_DECL context?
             // seems okay so far...
-            fn_decl = d_build_decl(FUNCTION_DECL, id, fn_type);
+            fn_decl = d_build_decl(FUNCTION_DECL, id, new_fn_type ? new_fn_type : fn_type);
             d_keep(fn_decl);
             if (ident)
             {

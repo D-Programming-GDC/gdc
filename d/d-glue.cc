@@ -3752,6 +3752,7 @@ TypeFunction::toCtype()
         // Function type can be reference by parameters, etc.  Set ctype earlier?
         ctype = build_function_type(ret_type, type_list.head);
         TYPE_LANG_SPECIFIC(ctype) = build_d_type_lang_specific(this);
+        d_keep(ctype);
 
         switch (linkage)
         {
