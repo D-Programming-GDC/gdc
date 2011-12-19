@@ -750,9 +750,21 @@ eval_builtin(Loc loc, BUILTIN builtin, Expressions * arguments)
 #endif
 
         case BUILTINatan2:
+            callee = built_in_decls[BUILT_IN_ATAN2L];
+            break;
+
         case BUILTINrndtol:
+            callee = built_in_decls[BUILT_IN_LLROUNDL];
+            break;
+
         case BUILTINexpm1:
+            callee = built_in_decls[BUILT_IN_EXPM1L];
+            break;
+
         case BUILTINexp2:
+            callee = built_in_decls[BUILT_IN_EXP2L];
+            break;
+
         case BUILTINyl2x:
         case BUILTINyl2xp1:
             return NULL;
