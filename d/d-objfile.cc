@@ -515,11 +515,28 @@ ObjectFile::shouldEmit(Declaration * d_sym)
         return false;
 
     FuncDeclaration * fd = d_sym->isFuncDeclaration();
+#if 0
     if (fd && fd->isNested() && fd->vthis == NULL)
     {
         gcc_assert(global.errors);
         return false;
     }
+#else
+    if (fd && fd->isNested())
+    {
+        // Typically, an error occurred whilst compiling
+        if (fd->vthis == NULL)
+        {
+            gcc_assert(global.errors);
+            return false;
+        }
+
+        // Don't emit nested functions whose parent isn't being emitted.
+        fd = fd->toParent2()->isFuncDeclaration();
+        if (fd && fd->toSymbol()->outputStage == NotStarted)
+            return false;
+    }
+#endif
 
     Symbol * s = d_sym->toSymbol();
     gcc_assert(s);
