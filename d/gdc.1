@@ -62,6 +62,9 @@ Allow use of deprecated features.
 .IP "\fB-fd-verbose\fR" 4
 .IX Item "-fd-verbose"
 Print information about D language processing to stdout.
+.IP "\fB-fproperty\fR" 4
+.IX Item "-fproperty"
+For D2, enforce @property syntax.
 .IP "\fB-fd-version=1\fR" 4
 .IX Item "-fd-version=1"
 Compile as D language version 1.
@@ -109,6 +112,12 @@ Compile in debug code identified by ident.
 .IP "\fB-fdeps=\fR<filename>" 4
 .IX Item "-fdeps=<filename>"
 Write module dependencies to filename.
+.IP "\fB-fmake-deps=\fR<filename>" 4
+.IX Item "-fmake-deps=<filename>"
+Write makefile dependency output to the given file.
+.IP "\fB-fmake-mdeps=\fR<filename>" 4
+.IX Item "-fmake-mdeps=<filename>"
+Like -fmake-deps=<file> but ignore system header files.
 .IP "\fB-fonly=\fR<filename>" 4
 .IX Item "-fonly=<filename>"
 Process all modules specified on the command line,
@@ -153,7 +162,5 @@ GDC was written by, and copyright:
   David Friedman (C) 2004-2007
 
 Maintained by:
-  Iain Buclaw (C) 2010
-  Michael Parrott (C) 2010
-  Vincenzo Ampolo (C) 2010
+  Iain Buclaw (C) 2010-2011
 .PD

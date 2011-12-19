@@ -135,7 +135,6 @@ Usage:
   --help         print help
   -Ipath         where to look for imports
   -ignore        ignore unsupported pragmas
-  -property      enforce property syntax
   -inline        do function inlining
   -Jpath         where to look for string imports
   -Llinkerflag   pass linkerflag to link
@@ -152,6 +151,7 @@ Usage:
   -op            do not strip paths from source file
   -pipe          use pipes rather than intermediate files
   -profile       profile runtime performance of generated code
+  -property      enforce property syntax
   -quiet         suppress unnecessary messages
   -q,arg1,...    pass arg1, arg2, etc. to to gdc
   -release       compile release version

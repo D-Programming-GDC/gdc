@@ -23,6 +23,12 @@ pass -arch option to gdc
 compile only, do not link
 .IP -cov
 do code coverage analysis
+.IP -D
+generate documentation
+.IP -Dddocdir
+write documentation file to docdir directory
+.IP -Dffilename
+write documentation file to filename
 .IP -d
 allow deprecated features
 .IP -debug
@@ -31,24 +37,54 @@ compile in debug code
 compile in debug code <= level
 .IP -debug=ident
 compile in debug code identified by ident
+.IP -debuglib=lib
+debug library to use instead of phobos
+.IP -defaultlib=lib
+default library to use instead of phobos
 .IP -deps=filename
 write module dependencies to filename
+.IP -f...
+pass an -f... option to gdc
+.IP -fall-sources
+for every source file, semantically process each file preceding i
+.IP -framework ...
+pass a -framework ... option to gdc
 .IP -g
 add symbolic debug info
-.IP -gt
-add trace profiling hooks (not supported under linux)
+.IP -gc
+add symbolic debug info, pretend to be C
+.IP -gs
+always emit stack frame
 .IP -H
 generate 'header' file
 .IP -Hdhdrdir
 write 'header' file to hdrdir directory
 .IP -Hffilename
 write 'header' file to filename
+.IP -Ipath
+where to look for imports
+
+.I path
+is a ; separated list of paths. Multiple -I's can be used, and the paths are searched in the same order.
+
+.IP -ignore
+ignore unsupported pragmas
 .IP -inline
 do function inlining
+.IP -Jpath
+where to look for string imports
 .IP -Llinkerflag
 pass linkerflag to linker
 .IP -lib
 generate library
+.IP -m...
+pass an -m... option to gdc
+.IP -man
+open web browser on manual page
+.IP -map
+generate linker .map file
+.IP -noboundscheck
+turns off array bounds checking for all functions
 .IP -O
 optimize
 .IP -o-
@@ -59,15 +95,12 @@ write object files to directory objdir
 name output file to filename
 .IP -op
 do not strip paths from source file
-.IP -Ipath
-where to look for imports
-
-.I path
-is a ; separated list of paths. Multiple -I's can be used, and the paths are searched in the same order.
 .IP -pipe
 use pipes instead of intermediate files
 .IP -profile
 profile runtime performance
+.IP -property
+enforce property syntax
 .IP -quiet
 suppress unnecessary error messages
 .IP -q<arg1>[,<arg2>,<arg3>,...]
@@ -85,6 +118,12 @@ Print commands executed by this wrapper script
 .IP -version=level
 compile in version code >= level
 .IP  version=ident
+.IP -vtls
+list all variables going into thread local storage
+.IP -w
+enable warnings
+.IP -wi
+enable informational warnings
 compile in version code identified by ident
 .IP -X
 generate JSON file
@@ -97,12 +136,9 @@ write JSON to filename
 .SH AUTHOR
 Copyright
 
-(C) 2004 David Friedman
+(C) 2007 David Friedman
 
-Modified by
+Maintained by:
 
-(C) 2010 Iain Buclaw
+(C) 2011 Iain Buclaw
 
-(C) 2010 Michael Parrott
-
-(C) 2010 Vincenzo Ampolo
