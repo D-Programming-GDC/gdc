@@ -681,7 +681,7 @@ IRState::convertForCondition(tree exp_tree, Type * exp_type)
             if (TYPE_MODE(TREE_TYPE(a)) == TYPE_MODE(TREE_TYPE(b)))
             {
                 result = build2(BIT_IOR_EXPR, TREE_TYPE(a), a,
-                        convert(TREE_TYPE(a), b));
+                                convert(TREE_TYPE(a), b));
             }
             else
             {
@@ -707,6 +707,8 @@ IRState::convertForCondition(tree exp_tree, Type * exp_type)
             }
             // not worth using  or TRUTH_ORIF...
             // %%TODO: Is this okay for all targets?
+            a = d_truthvalue_conversion(a);
+            b = d_truthvalue_conversion(b);
             result = build2(BIT_IOR_EXPR, TREE_TYPE(a), a, b);
             break;
 
