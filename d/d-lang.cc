@@ -780,16 +780,13 @@ d_handle_option (size_t scode, const char *arg, int value)
 
         case OPT_Wall:
             global.params.warnings = 2;
-            gen.warnSignCompare = value;
             break;
 
         case OPT_Werror:
             global.params.warnings = 1;
-            gen.warnSignCompare = value;
             break;
 
         case OPT_Wsign_compare:
-            gen.warnSignCompare = value;
             break;
 
         default:

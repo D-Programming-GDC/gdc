@@ -531,9 +531,6 @@ struct IRState : IRBase
     static bool useInlineAsm;
     static bool useBuiltins;
 
-    // Warnings
-    static bool warnSignCompare;
-
     // %%
     static bool originalOmitFramePointer;
 

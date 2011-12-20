@@ -38,7 +38,6 @@ TemplateEmission IRState::emitTemplates;
 bool IRState::splitDynArrayVarArgs;
 bool IRState::useInlineAsm;
 bool IRState::useBuiltins;
-bool IRState::warnSignCompare = false;
 bool IRState::originalOmitFramePointer;
 
 #if V2
@@ -663,7 +662,7 @@ tree
 IRState::convertForCondition(tree exp_tree, Type * exp_type)
 {
     tree result = NULL_TREE;
-    tree a, b, tmp;
+    tree obj, func, tmp;
 
     switch (exp_type->toBasetype()->ty)
     {
@@ -676,19 +675,19 @@ IRState::convertForCondition(tree exp_tree, Type * exp_type)
         case Tarray:
             // DMD checks (length || ptr) (i.e ary !is null)
             tmp = maybeMakeTemp(exp_tree);
-            a = delegateObjectRef(tmp);
-            b = delegateMethodRef(tmp);
-            if (TYPE_MODE(TREE_TYPE(a)) == TYPE_MODE(TREE_TYPE(b)))
+            obj = delegateObjectRef(tmp);
+            func = delegateMethodRef(tmp);
+            if (TYPE_MODE(TREE_TYPE(obj)) == TYPE_MODE(TREE_TYPE(func)))
             {
-                result = build2(BIT_IOR_EXPR, TREE_TYPE(a), a,
-                                convert(TREE_TYPE(a), b));
+                result = build2(BIT_IOR_EXPR, TREE_TYPE(obj), obj,
+                                convert(TREE_TYPE(obj), func));
             }
             else
             {
-                a = d_truthvalue_conversion(a);
-                b = d_truthvalue_conversion(b);
+                obj = d_truthvalue_conversion(obj);
+                func = d_truthvalue_conversion(func);
                 // probably not worth TRUTH_OROR ...
-                result = build2(TRUTH_OR_EXPR, TREE_TYPE(a), a, b);
+                result = build2(TRUTH_OR_EXPR, TREE_TYPE(obj), obj, func);
             }
             break;
 
@@ -697,19 +696,19 @@ IRState::convertForCondition(tree exp_tree, Type * exp_type)
             // is if if there is a null function pointer?
             if (D_IS_METHOD_CALL_EXPR(exp_tree))
             {
-                extractMethodCallExpr(exp_tree, a, b);
+                extractMethodCallExpr(exp_tree, obj, func);
             }
             else
             {
                 tmp = maybeMakeTemp(exp_tree);
-                a = delegateObjectRef(tmp);
-                b = delegateMethodRef(tmp);
+                obj = delegateObjectRef(tmp);
+                func = delegateMethodRef(tmp);
             }
+            obj = d_truthvalue_conversion(obj);
+            func = d_truthvalue_conversion(func);
             // not worth using  or TRUTH_ORIF...
             // %%TODO: Is this okay for all targets?
-            a = d_truthvalue_conversion(a);
-            b = d_truthvalue_conversion(b);
-            result = build2(BIT_IOR_EXPR, TREE_TYPE(a), a, b);
+            result = build2(BIT_IOR_EXPR, TREE_TYPE(obj), obj, func);
             break;
 
         default:
