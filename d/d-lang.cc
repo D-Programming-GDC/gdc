@@ -717,6 +717,7 @@ d_handle_option (size_t scode, const char *arg, int value)
 #if V2
         case OPT_fproperty:
             global.params.enforcePropertySyntax = 1;
+            break;
 #endif
         case OPT_frelease:
             global.params.useInvariants = ! value;
