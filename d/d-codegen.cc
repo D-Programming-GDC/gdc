@@ -420,7 +420,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                 d_uns64 sz_src = src_elem_type->size();
                 d_uns64 sz_dst = dst_elem_type->size();
 
-                if (src_elem_type->ty == Tvoid || sz_src == sz_dst)
+                if (/*src_elem_type->ty == Tvoid ||*/ sz_src == sz_dst)
                 {   // Convert from void[] or elements are the same size -- don't change length
                     return vconvert(exp, target_type->toCtype());
                 }
