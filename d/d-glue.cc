@@ -3111,6 +3111,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         irs->emitLocalVar(v_arguments_var, true);
 
     Statement * the_body = fbody;
+#if 0
     if (isSynchronized())
     {
         AggregateDeclaration * asym;
@@ -3144,6 +3145,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
             error("synchronized function %s must be a member of a class", toChars());
         }
     }
+#endif
 
     the_body->toIR(irs);
 
