@@ -275,7 +275,7 @@ d_comdat_group(tree decl)
 
 
 void
-ObjectFile::makeDeclOneOnly(tree decl_tree)
+ObjectFile::makeDeclOneOnly(tree decl_tree, bool comdat)
 {
     if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates != TEprivate)
     {   /* Weak definitions have to be public.  Nested functions may or
@@ -300,7 +300,7 @@ ObjectFile::makeDeclOneOnly(tree decl_tree)
         if (SUPPORTS_ONE_ONLY)
         {
 #if D_GCC_VER >= 45
-            make_decl_one_only(decl_tree, d_comdat_group(decl_tree));
+            make_decl_one_only(decl_tree, comdat ? d_comdat_group(decl_tree) : NULL_TREE);
 #else
             make_decl_one_only(decl_tree);
 #endif
@@ -343,6 +343,8 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
         (TREE_CODE(decl_tree) == VAR_DECL && (real_decl && real_decl->isDataseg())) ||
         (TREE_CODE(decl_tree) == FUNCTION_DECL))
     {
+        bool is_static;
+        bool is_comdat;
         bool is_template = false;
         Dsymbol * sym = dsym->toParent();
         Module * ti_obj_file_mod;
@@ -359,8 +361,6 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
             sym = sym->toParent();
         }
 
-        bool is_static;
-
         if (is_template)
         {
             D_DECL_ONE_ONLY(decl_tree) = 1;
@@ -369,6 +369,8 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
         }
         else
             is_static = hasModule(dsym->getModule());
+
+        is_comdat = real_decl && (real_decl->storage_class & STCcomdat);
 
         if (real_decl && TREE_CODE(decl_tree) == VAR_DECL)
         {
@@ -380,7 +382,7 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
         {
             DECL_EXTERNAL(decl_tree) = 0;
             TREE_STATIC(decl_tree) = 1; // %% don't set until there is a body?
-            if (real_decl && (real_decl->storage_class & STCcomdat))
+            if (is_comdat)
                 D_DECL_ONE_ONLY(decl_tree) = 1;
         }
         else
@@ -394,7 +396,7 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
             TREE_PUBLIC(decl_tree) = 1;
 
         if (D_DECL_ONE_ONLY(decl_tree))
-            makeDeclOneOnly(decl_tree);
+            makeDeclOneOnly(decl_tree, is_comdat);
 
     }
     else
