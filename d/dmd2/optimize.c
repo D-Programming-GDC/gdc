@@ -106,16 +106,6 @@ Expression *expandVar(int result, VarDeclaration *v)
                     else
                         goto L1;
                 }
-#if IN_GCC
-                if (ei->op == TOKarrayliteral)
-                {   // Keep a copy of the var we are expanding from incase we decide
-                    // it is best to just use the variable for the job later...
-                    // This is because these can get quite large, and may cause the 
-                    // stack to blow up in subsequent GCC tree walking code.
-                    ArrayLiteralExp *ale = (ArrayLiteralExp *)ei;
-                    ale->var = v;
-                }
-#endif
                 if (v->scope)
                 {
                     v->inuse++;

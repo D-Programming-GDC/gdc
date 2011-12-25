@@ -2536,17 +2536,7 @@ ArrayLiteralExp::toElem(IRState * irs)
     LibCall lib_call = LIBCALL_ARRAYLITERALTP;
     tree mem = irs->libCall(lib_call, 2, args, etype->pointerTo()->toCtype());
     mem = irs->maybeMakeTemp(mem);
-#if V2
-    if (var)
-    {   // Just copy the array we are referencing, much faster.
-        result = irs->var(var);
-        if (var->type->ty == Tarray)
-            result = irs->darrayPtrRef(result);
-        else if (var->type->ty == Tsarray)
-            result = irs->addressOf(result);
-    }
-    else
-#endif
+
     {   /* Build an expression that assigns the expressions in ELEMENTS to a constructor. */
         CtorEltMaker elms;
 
@@ -2554,7 +2544,7 @@ ArrayLiteralExp::toElem(IRState * irs)
         for (size_t i = 0; i < elements->dim; i++)
         {
             elms.cons(irs->integerConstant(i, size_type_node),
-                      (elements->tdata()[i])->toElem(irs));
+                      irs->convertTo((*elements)[i], etype));
         }
         tree ctor = build_constructor(sa_type, elms.head);
         result = irs->addressOf(ctor);
