@@ -612,7 +612,12 @@ Symbol *FuncDeclaration::toSymbol()
             {
                 // See grokmethod in cp/decl.c
                 DECL_DECLARED_INLINE_P(fn_decl) = 1;
-                DECL_NO_INLINE_WARNING_P (fn_decl) = 1;
+                DECL_NO_INLINE_WARNING_P(fn_decl) = 1;
+            }
+            else if (flag_inline_functions && canInline(0))
+            {
+                DECL_DECLARED_INLINE_P(fn_decl) = 1;
+                DECL_NO_INLINE_WARNING_P(fn_decl) = 1;
             }
 #else
             else
