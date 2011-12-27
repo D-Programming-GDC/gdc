@@ -549,7 +549,6 @@ Symbol *FuncDeclaration::toSymbol()
             if (c_ident)
                 SET_DECL_ASSEMBLER_NAME(fn_decl, get_identifier(c_ident->string));
             // %% What about DECL_SECTION_NAME ?
-            //DECL_ARGUMENTS(fn_decl) = NULL_TREE; // Probably don't need to do this until toObjFile
             DECL_CONTEXT(fn_decl) = gen.declContext(this); //context;
             if (vindex)
             {
@@ -597,6 +596,10 @@ Symbol *FuncDeclaration::toSymbol()
                         outer_sym->otherNestedFuncs->push(this);
                     }
                 }
+
+                // Save context and set decl_function_context for cgraph.
+                csym->ScontextDecl = DECL_CONTEXT(fn_decl);
+                DECL_CONTEXT(fn_decl) = decl_function_context(fn_decl);
             }
 
             /* For now, inline asm means we can't inline (stack wouldn't be
@@ -757,7 +760,7 @@ Symbol *FuncDeclaration::toThunkSymbol(int offset)
         sthunk->Stree = thunk_decl;
 
         //SET_DECL_ASSEMBLER_NAME(thunk_decl, DECL_NAME(thunk_decl));//old
-        DECL_CONTEXT(thunk_decl) = DECL_CONTEXT(target_func_decl); // from c++...
+        DECL_CONTEXT(thunk_decl) = gen.declContext(this); // from c++...
         TREE_READONLY(thunk_decl) = TREE_READONLY(target_func_decl);
         TREE_THIS_VOLATILE(thunk_decl) = TREE_THIS_VOLATILE(target_func_decl);
         TREE_NOTHROW(thunk_decl) = TREE_NOTHROW(target_func_decl);

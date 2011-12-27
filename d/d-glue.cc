@@ -2818,10 +2818,19 @@ IntegerExp::toElem(IRState * irs)
 
 
 static void
-genericize_function(tree fndecl)
+d_genericize(tree fndecl)
 {
     FILE *dump_file;
     int local_dump_flags;
+
+    // Build cgraph.
+    (void) cgraph_node(fndecl);
+
+    if (DECL_STATIC_CHAIN(fndecl))
+    {   // Set back to decl context.
+        struct lang_decl * d = DECL_LANG_SPECIFIC(fndecl);
+        DECL_CONTEXT(fndecl) = d->d_decl->toSymbol()->ScontextDecl;
+    }
 
     /* Dump the C-specific tree IR.  */
     dump_file = dump_begin (TDI_original, &local_dump_flags);
@@ -2844,14 +2853,12 @@ genericize_function(tree fndecl)
 
         dump_end (TDI_original, dump_file);
     }
-
+#if D_GCC_VER < 45
     /* Go ahead and gimplify for now.  */
-    //push_context ();
     gimplify_function_tree (fndecl);
-    //pop_context ();
-
     /* Dump the genericized tree IR.  */
     dump_function (TDI_generic, fndecl);
+#endif
 }
 
 
@@ -3249,7 +3256,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     BLOCK_SUPERCONTEXT(DECL_INITIAL (fn_decl)) = fn_decl; // done in C, don't know effect
 
     if (! errorcount && ! global.errors)
-        genericize_function (fn_decl);
+        d_genericize(fn_decl);
 
     this_sym->outputStage = Finished;
     if (! errorcount && ! global.errors)

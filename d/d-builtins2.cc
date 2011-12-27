@@ -36,6 +36,10 @@ static Dsymbols builtin_converted_decls;
 
 static Type * gcc_type_to_d_type(tree t);
 
+#if V2
+uinteger_t eval_bswap(Expression *arg0);
+#endif
+
 Type * d_gcc_builtin_va_list_d_type;
 
 void

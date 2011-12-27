@@ -94,7 +94,9 @@ d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4, tree t5)
     TREE_OPERAND(t,1) = t2;     // OUTPUTS
     TREE_OPERAND(t,2) = t3;     // INPUTS
     TREE_OPERAND(t,3) = t4;     // CLOBBERS
+#if D_GCC_VER >= 45
     TREE_OPERAND(t,4) = t5;     // LABELS
+#endif
     TREE_SIDE_EFFECTS(t) = 1;
     return t;
 }
