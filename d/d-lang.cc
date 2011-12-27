@@ -1509,7 +1509,9 @@ d_mark_exp_read (tree exp)
     {
         case VAR_DECL:
         case PARM_DECL:
-            D_DECL_READ (exp) = 1;
+#if D_GCC_VER >= 46
+            DECL_READ_P (exp) = 1;
+#endif
             break;
 
         case ARRAY_REF:

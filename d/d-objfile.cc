@@ -489,7 +489,7 @@ ObjectFile::outputFunction(FuncDeclaration * f)
         }
     }
 
-    if (! gen.functionNeedsChain(f) || D_DECL_INOUT_CONTRACT(t))
+    if (! gen.functionNeedsChain(f))
     {
         bool context = decl_function_context(t) != NULL;
         cgraph_finalize_function(t, context);

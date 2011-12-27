@@ -3021,7 +3021,10 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
 
                 // Special case for __ensure and __require.
                 if (nested_func->ident == Id::ensure || nested_func->ident == Id::require)
+                {
+                    outer_func = func;
                     break;
+                }
 
                 if ((fd = this_func->isFuncDeclaration()))
                 {
@@ -3398,6 +3401,10 @@ IRState::getFrameInfo(FuncDeclaration *fd)
 #endif
     }
 
+    // Functions with In/Out contracts pass parameters to nested frame.
+    if (fd->fensure || fd->frequire)
+        ffi->creates_frame = true;
+
 #if V2
     // D2 maybe setup closure instead.
     if (fd->needsClosure())
@@ -3600,9 +3607,35 @@ IRState::buildChain(FuncDeclaration * func)
     DECL_CONTEXT(ptr_field) = frame_rec_type;
     fields.chain(ptr_field);
 
-    for (size_t i = 0; i < nestedVars->dim; ++i)
+    // Add all parameters as nested refs, possibly wholly inefficient with lots of memmove's.
+    // This is written as such so that all parameters appear at the front of the frame's
+    // structure so that overriding methods match the same layout when inheriting a contract.
+    // Same is also done in buildClosure.
+    if (func->parameters != NULL
+        && ((global.params.useIn && func->fensure)
+            || (global.params.useOut && func->frequire)))
     {
-        VarDeclaration *v = nestedVars->tdata()[i];
+        nestedVars->reserve(func->parameters->dim + nestedVars->dim);
+
+        for (size_t i = 0; i < func->parameters->dim; i++)
+        {
+            VarDeclaration * v = (*func->parameters)[i];
+            // Remove if already in nestedVars so can push to front.
+            for (size_t j = i; j < nestedVars->dim; j++)
+            {   Dsymbol * s = (*nestedVars)[j];
+                if (s == v)
+                {
+                    nestedVars->remove(j);
+                    break;
+                }
+            }
+            nestedVars->insert(i, v);
+        }
+    }
+
+    for (size_t i = 0; i < nestedVars->dim; i++)
+    {
+        VarDeclaration * v = (*nestedVars)[i];
         Symbol * s = v->toSymbol();
         tree field = d_build_decl(FIELD_DECL,
                                   v->ident ? get_identifier(v->ident->string) : NULL_TREE,
@@ -3632,7 +3665,7 @@ IRState::buildChain(FuncDeclaration * func)
     // copy parameters that are referenced nonlocally
     for (size_t i = 0; i < nestedVars->dim; i++)
     {
-        VarDeclaration * v = nestedVars->tdata()[i];
+        VarDeclaration * v = (*nestedVars)[i];
         if (! v->isParameter())
             continue;
 

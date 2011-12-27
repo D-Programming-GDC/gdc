@@ -3294,9 +3294,31 @@ FuncDeclaration::buildClosure(IRState * irs)
     ListMaker fields;
     fields.chain(ptr_field);
 
-    for (size_t i = 0; i < closureVars.dim; ++i)
+    if (parameters != NULL
+        && ((global.params.useIn && fensure)
+            || (global.params.useOut && frequire)))
     {
-        VarDeclaration *v = closureVars[i];
+        closureVars.reserve(parameters->dim + closureVars.dim);
+
+        for (size_t i = 0; i < parameters->dim; i++)
+        {
+            VarDeclaration * v = (*parameters)[i];
+            // Remove if already in closureVars so can push to front.
+            for (size_t j = i; j < closureVars.dim; j++)
+            {   Dsymbol * s = closureVars[j];
+                if (s == v)
+                {
+                    closureVars.remove(j);
+                    break;
+                }
+            }
+            closureVars.insert(i, v);
+        }
+    }
+
+    for (size_t i = 0; i < closureVars.dim; i++)
+    {
+        VarDeclaration * v = closureVars[i];
         Symbol * s = v->toSymbol();
         tree field = d_build_decl(FIELD_DECL,
                                   v->ident ? get_identifier(v->ident->string) : NULL_TREE,
