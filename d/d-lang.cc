@@ -681,6 +681,10 @@ d_handle_option (size_t scode, const char *arg, int value)
             global.params.ignoreUnsupportedPragmas = value;
             break;
 
+        case OPT_fin:
+            global.params.useIn = value;
+            break;
+
         case OPT_fintfc:
             global.params.doHdrGeneration = value;
             break;
@@ -693,6 +697,10 @@ d_handle_option (size_t scode, const char *arg, int value)
         case OPT_fintfc_file_:
             global.params.doHdrGeneration = 1;
             global.params.hdrname = xstrdup(arg);
+            break;
+
+        case OPT_finvariants:
+            global.params.useInvariants = value;
             break;
 
         case OPT_fmake_deps_:
@@ -713,6 +721,10 @@ d_handle_option (size_t scode, const char *arg, int value)
 
         case OPT_fonly_:
             fonly_arg = xstrdup(arg);
+            break;
+
+        case OPT_fout:
+            global.params.useOut = value;
             break;
 #if V2
         case OPT_fproperty:

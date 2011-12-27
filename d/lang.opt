@@ -101,6 +101,10 @@ fignore-unknown-pragmas
 D
 Ignore unsupported pragmas
 
+fin
+D
+Generate runtime code for in() contracts
+
 fintfc
 Generate D interface files
 
@@ -111,6 +115,10 @@ D Joined RejectNegative
 fintfc-file=
 D Joined RejectNegative
 -fintfc-file=<filename> Write D interface file to <filename>
+
+finvariants
+D
+Generate runtime code for invariant()'s
 
 fmake-deps=
 D Joined RejectNegative
@@ -123,6 +131,10 @@ Like -fmake-deps=<file> but ignore system header files
 fonly=
 D Joined RejectNegative
 Process all modules specified on the command line, but only generate code for the module specified by the argument.
+
+fout
+D
+Generate runtime code for out() contracts
 
 fproperty
 D
