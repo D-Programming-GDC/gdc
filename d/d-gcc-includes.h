@@ -75,6 +75,9 @@ extern "C" {
 extern bool useless_type_conversion_p (tree, tree);
 #endif
 
+#if D_GCC_VER >= 46
+#include "tree-pretty-print.h"
+#endif
 }
 
 // Define our own macro for handling mapped locations as
