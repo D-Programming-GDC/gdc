@@ -3107,44 +3107,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     if (v_arguments_var)
         irs->emitLocalVar(v_arguments_var, true);
 
-    Statement * the_body = fbody;
-#if 0
-    if (isSynchronized())
-    {
-        AggregateDeclaration * asym;
-        ClassDeclaration * sym;
-
-        if ((asym = isMember2()) && (sym = asym->isClassDeclaration()))
-        {
-            if (vthis != NULL)
-            {
-                VarExp * ve = new VarExp(fbody->loc, vthis);
-                the_body = new SynchronizedStatement(fbody->loc, ve, fbody);
-            }
-            else
-            {
-                if (!sym->vclassinfo)
-                {
-#if V2
-                    sym->vclassinfo = new TypeInfoClassDeclaration(sym->type);
-#else
-                    sym->vclassinfo = new ClassInfoDeclaration(sym);
-#endif
-                }
-                Expression * e = new VarExp(fbody->loc, sym->vclassinfo);
-                e = new AddrExp(fbody->loc, e);
-                e->type = sym->type;
-                the_body = new SynchronizedStatement(fbody->loc, e, fbody);
-            }
-        }
-        else
-        {
-            error("synchronized function %s must be a member of a class", toChars());
-        }
-    }
-#endif
-
-    the_body->toIR(irs);
+    fbody->toIR(irs);
 
     if (this_sym->otherNestedFuncs)
     {
@@ -4621,128 +4584,6 @@ ForeachStatement::toIR(IRState *)
     // Frontend rewrites this to ForStatement
     ::error("ForeachStatement::toIR: we shouldn't emit this (%s)", toChars());
     gcc_unreachable();
-#if 0
-    // %% better?: set iter to start - 1 and use result of increment for condition?
-
-    // side effects?
-
-    Type * agg_type = aggr->type->toBasetype();
-    Type * elem_type = agg_type->nextOf()->toBasetype();
-    tree iter_decl;
-    tree bound_expr;
-    tree iter_init_expr;
-    tree aggr_expr = irs->maybeMakeTemp(aggr->toElem(irs));
-
-    gcc_assert(value);
-
-    irs->startScope();
-    irs->startBindings(); /* Variables created by the function will probably
-                             end up in a contour created by emitLocalVar.  This
-                             startBindings call is just to be safe */
-    irs->doLineNote(loc);
-
-    Loc default_loc;
-    if (loc.filename)
-        default_loc = loc;
-    else {
-        fprintf(stderr, "EXPER: I need this\n");
-        default_loc = Loc(g.mod, 1); // %% fix
-    }
-
-    if (! value->loc.filename)
-        g.ofile->setDeclLoc(value->toSymbol()->Stree, default_loc);
-
-    irs->emitLocalVar(value, true);
-
-    if (key) {
-        if (! key->loc.filename)
-            g.ofile->setDeclLoc(key->toSymbol()->Stree, default_loc);
-        if (! key->init)
-            DECL_INITIAL(key->toSymbol()->Stree) = op == TOKforeach ?
-                irs->integerConstant(0, key->type) :
-                irs->arrayLength(aggr_expr, agg_type);
-
-        irs->emitLocalVar(key); // %% getExpInitializer causes uneeded initialization
-    }
-
-    bool iter_is_value;
-    if (value->isRef() || value->isOut()) {
-        iter_is_value = true;
-        iter_decl = irs->var(value);
-    } else {
-        iter_is_value = false;
-        iter_decl = irs->localVar(elem_type->pointerTo());
-        irs->expandDecl(iter_decl);
-    }
-
-    if (agg_type->ty == Tsarray) {
-        bound_expr = ((TypeSArray *) agg_type)->dim->toElem(irs);
-        iter_init_expr = irs->addressOf(aggr_expr);
-        // Type needs to be pointer-to-element to get pointerIntSum
-        // to work
-        iter_init_expr = irs->nop(iter_init_expr,
-            agg_type->nextOf()->pointerTo()->toCtype());
-    } else {
-        bound_expr = irs->darrayLenRef(aggr_expr);
-        iter_init_expr = irs->darrayPtrRef(aggr_expr);
-    }
-    iter_init_expr = save_expr(iter_init_expr);
-    bound_expr = irs->pointerIntSum(iter_init_expr, bound_expr);
-    // aggr. isn't supposed to be modified, so...
-    bound_expr = save_expr(bound_expr);
-
-    enum tree_code iter_op = PLUS_EXPR;
-
-    if (op == TOKforeach_reverse)
-    {
-        tree t = iter_init_expr;
-        iter_init_expr = bound_expr;
-        bound_expr = t;
-
-        iter_op = MINUS_EXPR;
-    }
-
-    tree condition = build2(NE_EXPR, boolean_type_node, iter_decl, bound_expr);
-    tree incr_expr;
-#if D_GCC_VER >= 43
-    incr_expr = irs->pointerOffsetOp(iter_op, iter_decl,
-        size_int(elem_type->size()));
-#else
-    incr_expr = build2(iter_op, TREE_TYPE(iter_decl), iter_decl,
-        size_int(elem_type->size()));
-#endif
-    incr_expr = irs->vmodify(iter_decl, incr_expr);
-
-    if (key) {
-        tree key_decl = irs->var(key);
-        tree key_incr_expr =
-            build2(MODIFY_EXPR, void_type_node, key_decl,
-                build2(iter_op, TREE_TYPE(key_decl), key_decl,
-                    irs->integerConstant(1, TREE_TYPE(key_decl))));
-        incr_expr = irs->compound(incr_expr, key_incr_expr);
-    }
-
-    irs->doExp(build2(MODIFY_EXPR, void_type_node, iter_decl, iter_init_expr));
-
-    irs->startLoop(this);
-    irs->exitIfFalse(condition);
-    if (op == TOKforeach_reverse)
-        irs->doExp(incr_expr);
-    if (! iter_is_value)
-        irs->doExp(build2(MODIFY_EXPR, void_type_node, irs->var(value),
-                        irs->indirect(iter_decl)));
-    if (body)
-        body->toIR(irs);
-    irs->continueHere();
-
-    if (op == TOKforeach)
-        irs->doExp(incr_expr);
-
-    irs->endLoop();
-
-    irs->endBindings(); // not really needed
-    irs->endScope();
-#endif
 }
 
 #if V2
@@ -4752,68 +4593,6 @@ ForeachRangeStatement::toIR(IRState *)
     // Frontend rewrites this to ForStatement
     ::error("ForeachRangeStatement::toIR: we shouldn't emit this (%s)", toChars());
     gcc_unreachable();
-#if 0
-    bool fwd = op == TOKforeach;
-    Type * key_type = key->type->toBasetype();
-
-    irs->startScope();
-    irs->startBindings(); /* Variables created by the function will probably
-                             end up in a contour created by emitLocalVar.  This
-                             startBindings call is just to be safe */
-    irs->doLineNote(loc);
-
-    gcc_assert(key != NULL);
-    gcc_assert(lwr != NULL);
-    gcc_assert(upr != NULL);
-
-    // Front end ensures no storage class
-    irs->emitLocalVar(key, true);
-    tree key_decl = irs->var(key);
-    tree lwr_decl = irs->localVar(lwr->type);
-    tree upr_decl = irs->localVar(upr->type);
-    tree iter_expr;
-    tree condition;
-
-#if D_GCC_VER >= 43
-    if (POINTER_TYPE_P (TREE_TYPE (key_decl)))
-    {
-        iter_expr = irs->vmodify(key_decl,
-            irs->pointerOffsetOp(fwd ? PLUS_EXPR : MINUS_EXPR,
-                key_decl, size_int(key_type->nextOf()->size())));
-    }
-    else
-#endif
-    iter_expr = irs->vmodify(key_decl,
-        build2(fwd ? PLUS_EXPR : MINUS_EXPR, TREE_TYPE(key_decl),
-            key_decl, irs->integerConstant(1, TREE_TYPE(key_decl))));
-
-    irs->expandDecl(lwr_decl);
-    irs->expandDecl(upr_decl);
-    irs->doExp(irs->vmodify(lwr_decl, lwr->toElem(irs)));
-    irs->doExp(irs->vmodify(upr_decl, upr->toElem(irs)));
-
-    condition = build2(fwd ? LT_EXPR : GT_EXPR, boolean_type_node,
-        key_decl, fwd ? upr_decl : lwr_decl);
-
-    irs->doExp(irs->vmodify(key_decl, fwd ? lwr_decl : upr_decl));
-
-    irs->startLoop(this);
-    if (! fwd)
-        irs->continueHere();
-    irs->exitIfFalse(condition);
-    if (! fwd)
-        irs->doExp(iter_expr);
-    if (body)
-        body->toIR(irs);
-    if (fwd) {
-        irs->continueHere();
-        irs->doExp(iter_expr);
-    }
-    irs->endLoop();
-
-    irs->endBindings(); // not really needed
-    irs->endScope();
-#endif
 }
 #endif
 
@@ -4869,15 +4648,6 @@ WhileStatement::toIR(IRState *)
     // Frontend rewrites this to ForStatement
     ::error("WhileStatement::toIR: we shouldn't emit this (%s)", toChars());
     gcc_unreachable();
-#if 0
-    irs->doLineNote(loc); // store for next statement...
-    irs->startLoop(this);
-    irs->exitIfFalse(condition, 1); // 1 == is topcond .. good as deprecated..
-    if (body)
-        body->toIR(irs);
-    irs->continueHere();
-    irs->endLoop();
-#endif
 }
 
 void

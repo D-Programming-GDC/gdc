@@ -517,13 +517,6 @@ ObjectFile::shouldEmit(Declaration * d_sym)
         return false;
 
     FuncDeclaration * fd = d_sym->isFuncDeclaration();
-#if 0
-    if (fd && fd->isNested() && fd->vthis == NULL)
-    {
-        gcc_assert(global.errors);
-        return false;
-    }
-#else
     if (fd && fd->isNested())
     {
         // Typically, an error occurred whilst compiling
@@ -538,7 +531,6 @@ ObjectFile::shouldEmit(Declaration * d_sym)
         if (fd && fd->toSymbol()->outputStage == NotStarted)
             return false;
     }
-#endif
 
     Symbol * s = d_sym->toSymbol();
     gcc_assert(s);

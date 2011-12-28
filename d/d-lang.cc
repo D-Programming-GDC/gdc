@@ -378,18 +378,6 @@ d_init ()
 #  endif
 #endif
 
-#ifdef D_USE_MAPPED_LOCATION
-#if 0
-    /* input_location is initially set to BUILTINS_LOCATION (2).  This
-       will cause a segfault if errors are reported before any line maps
-       are created. Setting input_location to zero stops those segfaults,
-       but then decls are created with DECL_SOURCE_LOCATION set to zero
-       which causes segfaults in dwarf2out. */
-    linemap_add(line_table, LC_RENAME, 0, "<builtin>", 1);
-    input_location = linemap_line_start(line_table, 1, 1);
-#endif
-#endif
-
     Type::init();
     Id::initialize();
     Module::init();

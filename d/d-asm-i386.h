@@ -2479,19 +2479,7 @@ struct AsmProcessor
     {
         if (exp->op == TOKint64)
             return 1;
-#if 0
-        /* This can't be right. A const variable does not guarentee
-           it's value is known at compile-time.
 
-           Should be instead checking fromConstInitializer?
-         */
-        if (exp->op == TOKvar)
-        {
-            Declaration * v = ((VarExp *) exp)->var;
-            if (v->isConst() && v->type->isintegral())
-                return 1;
-        }
-#endif
         return 0;
     }
     bool isRegExp(Expression * exp)

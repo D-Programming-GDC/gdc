@@ -487,15 +487,6 @@ struct IRState : IRBase
     // and the SIDE_EFFECTS flags of the arguments.
     static tree buildCall(tree type, tree callee, tree args)
     {
-#if 0
-        Type * t = getDType(TREE_TYPE(TREE_TYPE(callee)));
-        if (t != NULL)
-        {
-            TypeFunction * tf = getFuncType(t);
-            if (tf->linkage == LINKd && tf->varargs != 1)
-                args = nreverse(args);
-        }
-#endif
 #if D_GCC_VER >= 43
         int nargs = list_length(args);
         tree * pargs = new tree[nargs];
