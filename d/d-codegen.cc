@@ -3412,7 +3412,7 @@ IRState::getFrameInfo(FuncDeclaration *fd)
         ffi->creates_frame = true;
         ffi->is_closure = true;
     }
-    else
+    else if (nestedVars->dim == 0)
     {   /* If fd is nested (deeply) in a function that creates a closure,
            then fd inherits that closure via hidden vthis pointer, and
            doesn't create a stack frame at all.  */
