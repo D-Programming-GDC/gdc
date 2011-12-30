@@ -914,6 +914,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
                 TREE_OPERAND (*expr_p, 1) = build1 (VIEW_CONVERT_EXPR,
                                                     TREE_TYPE (op0), op1);
             }
+            return GS_OK;
         }
 
         default:
