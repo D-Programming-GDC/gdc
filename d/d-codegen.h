@@ -272,6 +272,7 @@ struct IRState : IRBase
     static tree indirect(tree exp);
 
     static tree vmodify(tree dst, tree src);
+    static tree vinit(tree dst, tree src);
 
     tree pointerIntSum(Expression * ptr_exp, Expression * idx_exp);
     tree pointerIntSum(tree ptr_node, tree idx_exp);

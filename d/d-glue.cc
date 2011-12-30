@@ -4406,8 +4406,8 @@ ReturnStatement::toIR(IRState* irs)
             }
         }
 #endif
-        tree result_assign = build2(MODIFY_EXPR, TREE_TYPE(result_decl),
-                result_decl, result_value);
+        tree result_assign = build2(INIT_EXPR, TREE_TYPE(result_decl),
+                                    result_decl, result_value);
 
         irs->doReturn(result_assign); // expand_return(result_assign);
     }

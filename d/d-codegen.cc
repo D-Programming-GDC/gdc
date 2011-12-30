@@ -189,7 +189,7 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
             DECL_INITIAL(var_decl) = NULL_TREE; // %% from expandDecl
         }
         if (! init_exp && init_val)
-            init_exp = vmodify(var_exp, init_val);
+            init_exp = vinit(var_exp, init_val);
 
         if (init_exp)
             addExp(init_exp);
@@ -247,7 +247,7 @@ IRState::expandDecl(tree t_decl)
     // nothing, pushdecl will add t_decl to a BIND_EXPR
     if (DECL_INITIAL(t_decl))
     {   // void_type_node%%?
-        doExp(build2(MODIFY_EXPR, void_type_node, t_decl, DECL_INITIAL(t_decl)));
+        doExp(build2(INIT_EXPR, void_type_node, t_decl, DECL_INITIAL(t_decl)));
         DECL_INITIAL(t_decl) = NULL_TREE;
     }
 }
@@ -1664,6 +1664,9 @@ IRState::addressOf(tree exp)
 tree
 IRState::indirect(tree exp, tree type)
 {
+    if (TREE_CODE(TREE_TYPE(exp)) == REFERENCE_TYPE)
+        return build1(INDIRECT_REF, type, exp);
+
     return build1(INDIRECT_REF, type,
                   nop(exp, build_pointer_type(type)));
 }
@@ -1678,6 +1681,12 @@ tree
 IRState::vmodify(tree dst, tree src)
 {
     return build2(MODIFY_EXPR, void_type_node, dst, src);
+}
+
+tree
+IRState::vinit(tree dst, tree src)
+{
+    return build2(INIT_EXPR, void_type_node, dst, src);
 }
 
 tree
@@ -1965,7 +1974,7 @@ IRState::binding(tree var_chain, tree body)
     // our shameful BIND_EXPR by wrapping it in a TARGET_EXPR
     if (DECL_INITIAL(var_chain))
     {
-        tree ini = build2(MODIFY_EXPR, void_type_node, var_chain, DECL_INITIAL(var_chain));
+        tree ini = build2(INIT_EXPR, void_type_node, var_chain, DECL_INITIAL(var_chain));
         DECL_INITIAL(var_chain) = NULL_TREE;
         body = compound(ini, body);
     }
@@ -1973,7 +1982,7 @@ IRState::binding(tree var_chain, tree body)
 #else
     if (DECL_INITIAL(var_chain))
     {
-        tree ini = build2(MODIFY_EXPR, void_type_node, var_chain, DECL_INITIAL(var_chain));
+        tree ini = build2(INIT_EXPR, void_type_node, var_chain, DECL_INITIAL(var_chain));
         DECL_INITIAL(var_chain) = NULL_TREE;
         body = compound(ini, body);
     }
@@ -4579,8 +4588,7 @@ ArrayScope::finish(tree e)
         {
             if (s->SframeField)
             {
-                return irs->compound(irs->vmodify(irs->var(v),
-                            DECL_INITIAL(t)), e);
+                return irs->compound(irs->vinit(irs->var(v), DECL_INITIAL(t)), e);
             }
             else
             {
