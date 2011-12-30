@@ -158,15 +158,12 @@ struct IRState : IRBase
     };
 
     static tree declContext(Dsymbol * d_sym);
+    static void doLineNote(const Loc & loc);
 
     // ** Local variables
     void emitLocalVar(VarDeclaration * v, bool no_init = false);
     tree localVar(tree t_type);
-
-    tree localVar(Type * e_type)
-    {
-        return localVar(e_type->toCtype());
-    }
+    tree localVar(Type * e_type);
 
     tree exprVar(tree t_type);
     tree maybeExprVar(tree exp, tree * out_var);
@@ -183,49 +180,15 @@ struct IRState : IRBase
     tree convertForAssignment(Expression * exp, Type * target_type);
     tree convertForAssignment(tree exp_tree, Type * exp_type, Type * target_type);
     tree convertForArgument(Expression * exp, Parameter * arg);
-
-    tree convertForCondition(Expression * exp)
-    {
-        return convertForCondition(exp->toElem(this), exp->type);
-    }
-
+    tree convertForCondition(Expression * exp);
     tree convertForCondition(tree exp_tree, Type * exp_type);
     tree toDArray(Expression * exp);
 
-    static bool typesSame(Type * t1, Type * t2)
-    {
-#if V2
-        return t1->mutableOf()->equals(t2->mutableOf());
-#else
-        return t1->equals(t2);
-#endif
-    }
-
-    static bool typesCompatible(Type * t1, Type * t2)
-    {
-#if V2
-        return t1->implicitConvTo(t2) >= MATCHconst;
-#else
-        return t1->equals(t2);
-#endif
-    }
-
-
     // ** Type management
-    static Type * getDType(tree t)
-    {   // %% TODO: assert that its a type node..
-        struct lang_type * l = TYPE_LANG_SPECIFIC(t);
-        return l ? l->d_type : 0;
-    }
-
-    static Type * getObjectType()
-    {
-        if (ClassDeclaration::object)
-            return ClassDeclaration::object->type;
-        //error("missing or corrupt object.d");
-        // %% apparently this isn't an error, so special-case in outdata.
-        return Type::terror;
-    }
+    static bool typesSame(Type * t1, Type * t2);
+    static bool typesCompatible(Type * t1, Type * t2);
+    static Type * getDType(tree t);
+    static Type * getObjectType();
 
     // Routines to handle variables that are references.
     static bool isDeclarationReferenceType(Declaration * decl);
@@ -233,18 +196,10 @@ struct IRState : IRBase
     static bool isArgumentReferenceType(Parameter * arg);
     static tree trueArgumentType(Parameter * arg);
 
-    static tree arrayType(Type * d_type, uinteger_t size) // %% use of dinteger_t
-    {
-        return arrayType(d_type->toCtype(), size);
-    }
-
+    static tree arrayType(Type * d_type, uinteger_t size); // %% use of dinteger_t
     static tree arrayType(tree type_node, uinteger_t size);
 
-    // Can't call this until common types have been built
-    static bool haveLongDouble()
-    {
-        return TYPE_MODE(long_double_type_node) != TYPE_MODE(double_type_node);
-    }
+    static bool haveLongDouble();
 
     static tree addTypeAttribute(tree type, const char * attrname, tree value = NULL_TREE);
     static void addDeclAttribute(tree type, const char * attrname, tree value = NULL_TREE);
@@ -252,61 +207,32 @@ struct IRState : IRBase
     static tree addTypeModifiers(tree type, unsigned mod);
 
     // ** Simple constants
-
-    static tree nullPointer()
-    {
-        return d_null_pointer;
-    }
-
+    static tree integerConstant(dinteger_t value, Type * type);
     static tree integerConstant(dinteger_t value, tree type = integer_type_node);
-
-    static tree integerConstant(dinteger_t value, Type * type)
-    {
-        return integerConstant(value, type->toCtype());
-    }
-
     static tree floatConstant(const real_t & value, Type * target_type);
 
     static dinteger_t hwi2toli(HOST_WIDE_INT low, HOST_WIDE_INT high);
-
-    static dinteger_t hwi2toli(double_int cst)
-    {
-        return hwi2toli(cst.low, cst.high);
-    }
+    static dinteger_t hwi2toli(double_int cst);
 
     // ** Routines for built in structured types
-
     static tree realPart(tree c);
     static tree imagPart(tree c);
 
     // ** Dynamic arrays
     static tree darrayLenRef(tree exp);
     static tree darrayPtrRef(tree exp);
-
-    tree darrayPtrRef(Expression * e)
-    {
-        return darrayPtrRef(e->toElem(this));
-    }
+    tree darrayPtrRef(Expression * e);
 
     tree darrayVal(tree type, tree len, tree data);
     // data may be NULL for a null pointer value
+    tree darrayVal(Type * type, uinteger_t len, tree data);
     tree darrayVal(tree type, uinteger_t len, tree data);
-
-    tree darrayVal(Type * type, uinteger_t len, tree data)
-    {
-        return darrayVal(type->toCtype(), len, data);
-    }
-
     tree darrayString(const char * str);
 
     static char * hostToTargetString(char * str, size_t length, unsigned unit_size);
 
     // Length of either a static or dynamic array
-    tree arrayLength(Expression * exp)
-    {
-        return arrayLength(exp->toElem(this), exp->type);
-    }
-
+    tree arrayLength(Expression * exp);
     static tree arrayLength(tree exp, Type * exp_type);
 
     // Delegates
@@ -315,13 +241,7 @@ struct IRState : IRBase
     static tree delegateVal(tree method_exp, tree object_exp, Type * d_type);
     // These are for references to nested functions/methods as opposed to a variable of
     // type Tdelegate
-    tree methodCallExpr(tree callee, tree object, Type * d_type)
-    {
-        tree t = delegateVal(callee, object, d_type);
-        D_IS_METHOD_CALL_EXPR(t) = 1;
-        return t;
-    }
-
+    tree methodCallExpr(tree callee, tree object, Type * d_type);
     void extractMethodCallExpr(tree mcr, tree & callee_out, tree & object_out);
     tree objectInstanceMethod(Expression * obj_exp, FuncDeclaration * func, Type * d_type);
 
@@ -343,66 +263,28 @@ struct IRState : IRBase
     // ** Various expressions
     tree toElemLvalue(Expression * e);
 
-    static tree addressOf(Dsymbol *d)
-    {
-        return addressOf(d->toSymbol()->Stree);
-    }
-
+    static tree addressOf(Dsymbol *d);
     static tree addressOf(tree exp);
 
     /* Cast exp (which should be a pointer) to TYPE* and then indirect.  The
        back-end requires this cast in many cases. */
-    static tree indirect(tree exp, tree type)
-    {
-        return build1(INDIRECT_REF, type,
-                nop(exp, build_pointer_type(type)));
-    }
+    static tree indirect(tree exp, tree type);
+    static tree indirect(tree exp);
 
-    static tree indirect(tree exp)
-    {
-        return indirect(exp, TREE_TYPE(TREE_TYPE(exp)));
-    }
+    static tree vmodify(tree dst, tree src);
 
-    static tree vmodify(tree dst, tree src)
-    {
-        return build2(MODIFY_EXPR, void_type_node, dst, src);
-    }
-
-    tree pointerIntSum(Expression * ptr_exp, Expression * idx_exp)
-    {
-        return pointerIntSum(ptr_exp->toElem(this), idx_exp->toElem(this));
-    }
-
+    tree pointerIntSum(Expression * ptr_exp, Expression * idx_exp);
     tree pointerIntSum(tree ptr_node, tree idx_exp);
 //  static tree pointIntOp(int op, tree ptr, tree idx);
     static tree pointerOffsetOp(int op, tree ptr, tree idx);
     static tree pointerOffset(tree ptr_node, tree byte_offset);
 
-    static tree nop(tree e, tree t)
-    {
-        return build1(NOP_EXPR, t, e);
-    }
-
-    static tree vconvert(tree e, tree t)
-    {
-        return build1(VIEW_CONVERT_EXPR, t, e);
-    }
+    static tree nop(tree e, tree t);
+    static tree vconvert(tree e, tree t);
 
     // DMD allows { void[] a; & a[3]; }
-    static tree
-    pvoidOkay(tree t)
-    {
-        if (VOID_TYPE_P(TREE_TYPE(TREE_TYPE(t))))
-        {   // ::warning("indexing array of void");
-            return convert(Type::tuns8->pointerTo()->toCtype(), t);
-        }
-        return t;
-    }
-
-    tree boolOp(enum tree_code code, tree a, tree b)
-    {
-        return build2(code, boolean_type_node, a, b);
-    }
+    static tree pvoidOkay(tree t);
+    tree boolOp(enum tree_code code, tree a, tree b);
 
     tree checkedIndex(Loc loc, tree index, tree upper_bound, bool inclusive);
     tree boundsCond(tree index, tree upper_bound, bool inclusive);
@@ -411,61 +293,20 @@ struct IRState : IRBase
     tree arrayElemRef(IndexExp * aer_exp, ArrayScope * aryscp);
 
     static tree binding(tree var_chain, tree body);
-
-    static tree compound(tree a, tree b, tree type = 0)
-    {
-        return build2(COMPOUND_EXPR, type ? type : TREE_TYPE(b), a, b);
-    }
-
-    tree voidCompound(tree a, tree b)
-    {
-        return compound(a, b, void_type_node);
-    }
-
-    tree maybeCompound(tree a, tree b)
-    {
-        if (a == NULL_TREE)
-            return b;
-        else if (b == NULL_TREE)
-            return a;
-        else
-            return build2(COMPOUND_EXPR, TREE_TYPE(b), a, b);
-    }
-
-    tree maybeVoidCompound(tree a, tree b)
-    {
-        if (a == NULL_TREE)
-            return b;
-        else if (b == NULL_TREE)
-            return a;
-        else
-            return build2(COMPOUND_EXPR, void_type_node, a, b);
-    }
-
-    static tree component(tree v, tree f)
-    {
-        return build3(COMPONENT_REF, TREE_TYPE(f), v, f, NULL_TREE);
-    }
+    static tree compound(tree a, tree b, tree type = 0);
+    tree voidCompound(tree a, tree b);
+    tree maybeCompound(tree a, tree b);
+    tree maybeVoidCompound(tree a, tree b);
+    static tree component(tree v, tree f);
 
     // Giving error_mark_node a type allows for some assumptions about
     // the type of an arbitrary expression.
     static tree errorMark(Type * t);
-    static inline bool isErrorMark(tree t)
-    {
-        return t == error_mark_node
-                || (t && TREE_TYPE(t) == error_mark_node)
-                || (t && TREE_CODE(t) == NOP_EXPR &&
-                    TREE_OPERAND(t, 0) == error_mark_node);
-    }
+    static bool isErrorMark(tree t);
 
     // ** Helpers for call
     static TypeFunction * getFuncType(Type * t);
-
-    static inline bool isFuncType(tree t)
-    {
-        return (TREE_CODE(t) == FUNCTION_TYPE ||
-                TREE_CODE(t) == METHOD_TYPE);
-    }
+    static bool isFuncType(tree t);
 
     // ** Function calls
     tree call(Expression * expr, Expressions * arguments);
@@ -481,39 +322,8 @@ struct IRState : IRBase
     // arbitrary data to be passed through varargs without going through the
     // usual conversions.
     static tree libCall(LibCall lib_call, unsigned n_args, tree *args, tree force_result_type = 0);
-
-    // GCC 3.3 does not set TREE_SIDE_EFFECTS call by default. GCC 3.4
-    // sets it depending on the const/pure attributes of the funcion
-    // and the SIDE_EFFECTS flags of the arguments.
-    static tree buildCall(tree type, tree callee, tree args)
-    {
-#if D_GCC_VER >= 43
-        int nargs = list_length(args);
-        tree * pargs = new tree[nargs];
-        for (int i = 0; args; args = TREE_CHAIN(args), i++)
-            pargs[i] = TREE_VALUE(args);
-
-        return build_call_array(type, callee, nargs, pargs);
-#else
-        return build3(CALL_EXPR, type, callee, args, NULL_TREE);
-#endif
-    }
-
-    // Conveniently construct the function arguments for passing
-    // to the real buildCall function.
-    static tree buildCall(tree callee, int n_args, ...)
-    {
-        va_list ap;
-        tree arg_list = NULL_TREE;
-        tree fntype = TREE_TYPE(callee);
-
-        va_start (ap, n_args);
-        for (int i = n_args - 1; i >= 0; i--)
-            arg_list = tree_cons(NULL_TREE, va_arg(ap, tree), arg_list);
-        va_end (ap);
-
-        return buildCall(TREE_TYPE(fntype), addressOf(callee), nreverse(arg_list));
-    }
+    static tree buildCall(tree type, tree callee, tree args);
+    static tree buildCall(tree callee, int n_args, ...);
 
     tree assignValue(Expression * e, VarDeclaration * v);
 
@@ -587,11 +397,7 @@ public:
 
     static bool maybeSetUpBuiltin(Declaration * decl);
 
-    static tree functionPointer(FuncDeclaration * func_decl)
-    {
-        return addressOf(func_decl);
-    }
-
+    static tree functionPointer(FuncDeclaration * func_decl);
     // Returns the D object that was thrown.  Different from the generic exception pointer
     static tree exceptionObject();
 
@@ -623,8 +429,6 @@ public:
         return _chainFunc;
     }
 
-    void buildChain(FuncDeclaration * func);
-
 protected:
     tree getFrameForSymbol(Dsymbol * nested_sym);
     tree getFrameRef(FuncDeclaration *outer_func);
@@ -632,8 +436,8 @@ protected:
     tree _chainLink;
 
 public:
+    void buildChain(FuncDeclaration * func);
     static FuncFrameInfo * getFrameInfo(FuncDeclaration *fd);
-public:
     static bool functionNeedsChain(FuncDeclaration *f);
 
     // Check for nested functions/class/structs
@@ -655,34 +459,14 @@ public:
 
     // ** Instruction stream manipulation
     void startCond(Statement * stmt, tree t_cond);
-
-    void startCond(Statement * stmt, Expression * e_cond)
-    {
-#if V2
-        tree t_cond = e_cond->toElemDtor(this);
-        startCond(stmt, convertForCondition(t_cond, e_cond->type));
-#else
-        startCond(stmt, convertForCondition(e_cond));
-#endif
-    }
-
+    void startCond(Statement * stmt, Expression * e_cond);
     void startElse();
     void endCond();
     void startLoop(Statement * stmt);
     void continueHere();
     void setContinueLabel(tree lbl);
     void exitIfFalse(tree t_cond, bool is_top_cond = 0);
-
-    void exitIfFalse(Expression * e_cond, bool is_top_cond = 0)
-    {
-#if V2
-        tree t_cond = e_cond->toElemDtor(this);
-        exitIfFalse(convertForCondition(t_cond, e_cond->type), is_top_cond);
-#else
-        exitIfFalse(convertForCondition(e_cond), is_top_cond);
-#endif
-    }
-
+    void exitIfFalse(Expression * e_cond, bool is_top_cond = 0);
     void endLoop();
     void startCase(Statement * stmt, tree t_cond, int has_vars = 0);
     void doCase(tree t_value, tree t_label);
@@ -696,36 +480,18 @@ public:
     void endCatches();
     void startFinally();
     void endFinally();
-    /*static*/ void doReturn(tree t_value);
-    /*static*/ void doJump(Statement * stmt, tree t_label);
+    void doReturn(tree t_value);
+    void doJump(Statement * stmt, tree t_label);
 
-    void doExp(tree t)
-    {
-        addExp(t);
-    }
-
-    void doExp(Expression * e)
-    {   // %% should handle volatile...?
-        doExp(e->toElem(this));
-    }
-
+    void doExp(tree t);
+    void doExp(Expression * e);
     void doAsm(tree insn_tmpl, tree outputs, tree inputs, tree clobbers);
 
     // ** Goto/Label statement evaluation
-
-    void pushLabel(LabelDsymbol * l)
-    {
-        labels.push(getLabelBlock(l));
-    }
-
+    void pushLabel(LabelDsymbol * l);
     void checkSwitchCase(Statement * stmt, int default_flag = 0);
     void checkGoto(Statement * stmt, LabelDsymbol * label);
     void checkPreviousGoto(Array * refs);
-
-    static void doLineNote(const Loc & loc)
-    {
-        ObjectFile::doLineNote(loc);
-    }
 };
 
 struct GlobalValues
