@@ -1773,6 +1773,12 @@ CallExp::toElem(IRState* irs)
 {
     tree call_exp = irs->call(e1, arguments);
 
+#if V2
+    TypeFunction * tf = irs->getFuncType(e1->type->toBasetype());
+    if (tf->isref)
+        call_exp = irs->indirect(call_exp);
+#endif
+
     // Some library calls are defined to return a generic type.
     // this->type is the real type. (See crash2.d)
     if (type->isTypeBasic())
@@ -2315,9 +2321,6 @@ NewExp::toElem(IRState * irs)
             if (member)
             {
                 new_call = irs->call(member, new_call, arguments);
-#if STRUCTTHISREF
-                new_call = irs->addressOf(new_call);
-#endif
             }
 #if V2
             // %% D2.0 nested structs

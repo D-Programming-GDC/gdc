@@ -2249,12 +2249,7 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Expressions *
     }
 
     tree result = buildCall(TREE_TYPE(func_type_node), actual_callee, actual_arg_list.head);
-    result = maybeExpandSpecialCall(result);
-#if V2
-    if (func_type->isref)
-        result = indirect(result);
-#endif
-    return result;
+    return maybeExpandSpecialCall(result);
 }
 
 tree
