@@ -281,7 +281,7 @@ Symbol *VarDeclaration::toSymbol()
         }
 
         var_decl = d_build_decl(decl_kind, get_identifier(csym->Sident),
-            gen.trueDeclarationType(this));
+                                gen.trueDeclarationType(this));
 
         csym->Stree = var_decl;
 
@@ -649,6 +649,9 @@ Symbol *FuncDeclaration::toSymbol()
             // So are ensure and require contracts.
             if (ident == Id::ensure || ident == Id::require)
                 DECL_ARTIFICIAL(fn_decl) = 1;
+
+            if (isStatic())
+                TREE_STATIC(fn_decl) = 1;
 #if V2
             // %% Pure functions don't imply nothrow
             DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && func_type->isnothrow);

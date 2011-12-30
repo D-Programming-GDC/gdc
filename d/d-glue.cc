@@ -2826,11 +2826,12 @@ d_genericize(tree fndecl)
     FILE *dump_file;
     int local_dump_flags;
 
-    // Build cgraph.
+    // Build cgraph for function.
     (void) cgraph_node(fndecl);
 
+    // Maybe set original decl context back to true context
     if (DECL_STATIC_CHAIN(fndecl))
-    {   // Set back to decl context.
+    {
         struct lang_decl * d = DECL_LANG_SPECIFIC(fndecl);
         DECL_CONTEXT(fndecl) = d->d_decl->toSymbol()->ScontextDecl;
     }
@@ -2848,8 +2849,8 @@ d_genericize(tree fndecl)
         fprintf (dump_file, "\n");
 
         if (local_dump_flags & TDF_RAW)
-        dump_node (DECL_SAVED_TREE (fndecl),
-                   TDF_SLIM | local_dump_flags, dump_file);
+            dump_node (DECL_SAVED_TREE (fndecl),
+                       TDF_SLIM | local_dump_flags, dump_file);
         else
             print_generic_expr (dump_file, DECL_SAVED_TREE (fndecl), local_dump_flags);
         fprintf (dump_file, "\n");
@@ -2906,30 +2907,31 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     // in 4.0, doesn't use push_function_context
     tree old_current_function_decl = current_function_decl;
     function * old_cfun = cfun;
-
     current_function_decl = fn_decl;
-    TREE_STATIC(fn_decl) = 1;
 
     TypeFunction * tf = (TypeFunction *)type;
     tree result_decl = NULL_TREE;
     {
         Type * func_type = tintro ? tintro : tf;
         Type * ret_type = func_type->nextOf()->toBasetype();
+        tree result_type;
 
         if (isMain() && ret_type->ty == Tvoid)
             ret_type = Type::tint32;
 
-        result_decl = ret_type->toCtype();
+        result_type = ret_type->toCtype();
 #if V2
         /* Build reference type */
-        if (tf->isref)
-            result_decl = build_reference_type(result_decl);
+        if(tf->isref)
+            result_type = build_reference_type(result_type);
 #endif
-        result_decl = d_build_decl(RESULT_DECL, NULL_TREE, result_decl);
+        result_decl = d_build_decl(RESULT_DECL, NULL_TREE, result_type);
     }
     g.ofile->setDeclLoc(result_decl, this);
     DECL_RESULT(fn_decl) = result_decl;
     DECL_CONTEXT(result_decl) = fn_decl;
+    DECL_ARTIFICIAL (result_decl) = 1;
+    DECL_IGNORED_P (result_decl) = 1;
     //layout_decl(result_decl, 0);
 
 #if D_GCC_VER >= 43
