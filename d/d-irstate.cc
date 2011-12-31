@@ -115,9 +115,6 @@ IRBase::addExp(tree e)
     if (EXPR_P(e) && ! EXPR_HAS_LOCATION(e))
         SET_EXPR_LOCATION(e, input_location);
 
-    if (!TREE_SIDE_EFFECTS(e))
-        e = d_void_zero_node;
-
     tree stmt_list = (tree) statementList.pop();
     append_to_statement_list_force(e, & stmt_list);
     statementList.push(stmt_list);

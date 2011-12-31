@@ -3205,8 +3205,8 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         {   /* For empty functions: Without this, there is a
                segfault when inlined.  Seen on build=ppc-linux but
                not others (why?). */
-            append_to_statement_list_force(
-               build1(RETURN_EXPR,void_type_node,NULL_TREE), & t);
+            tree ret = build1(RETURN_EXPR, void_type_node, NULL_TREE);
+            append_to_statement_list_force(ret, & t);
         }
     }
     //block = (*lang_hooks.decls.poplevel) (1, 0, 1);

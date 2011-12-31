@@ -4583,7 +4583,7 @@ ArrayScope::finish(tree e)
         {
             if (s->SframeField)
             {
-                return irs->compound(irs->vinit(irs->var(v), DECL_INITIAL(t)), e);
+                return irs->compound(irs->vmodify(irs->var(v), DECL_INITIAL(t)), e);
             }
             else
             {
