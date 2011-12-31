@@ -323,23 +323,15 @@ build_assign_math_op(TOK op, Type * type, Expression * e1, Expression * e2, IRSt
         gcc_assert(irs->typesCompatible(ce->type, ce->to)); // %% check, basetype?
         e1b = ce->e1;
     }
-    tree lhs_assign = irs->toElemLvalue(e1b);
-    lhs_assign = stabilize_reference(lhs_assign);
+    tree lhs = irs->toElemLvalue(e1b);
+    lhs = stabilize_reference(lhs);
 
-    tree lhs_var = irs->exprVar(type->toCtype());
-    DECL_INITIAL(lhs_var) = lhs_assign;
-
-    tree rhs_assign = build_math_op(out_code, e1->type->toCtype(),
-                                    irs->convertTo(lhs_var, e1b->type, e1->type), e1->type,
-                                    e2->toElem(irs), e2->type, irs);
-
-    rhs_assign = build2(MODIFY_EXPR, type->toCtype(), lhs_var,
-                        irs->convertForAssignment(rhs_assign, e1->type, type));
-
-    lhs_assign = build2(MODIFY_EXPR, type->toCtype(), lhs_assign, lhs_var);
-
-    lhs_assign = irs->compound(rhs_assign, lhs_assign);
-    return irs->binding(lhs_var, lhs_assign);
+    tree rhs = build_math_op(out_code, e1->type->toCtype(),
+                             irs->convertTo(lhs, e1b->type, e1->type), e1->type,
+                             e2->toElem(irs), e2->type, irs);
+        
+    return build2(MODIFY_EXPR, type->toCtype(), lhs,
+                  irs->convertForAssignment(rhs, e1->type, type));
 }
 
 elem *

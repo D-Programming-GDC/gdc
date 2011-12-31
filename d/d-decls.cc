@@ -617,7 +617,7 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_DECLARED_INLINE_P(fn_decl) = 1;
                 DECL_NO_INLINE_WARNING_P(fn_decl) = 1;
             }
-            else if (flag_inline_functions && canInline(0))
+            else if (flag_inline_functions && canInline(0, 1))
             {
                 DECL_DECLARED_INLINE_P(fn_decl) = 1;
                 DECL_NO_INLINE_WARNING_P(fn_decl) = 1;
