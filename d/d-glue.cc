@@ -3288,6 +3288,10 @@ FuncDeclaration::buildClosure(IRState * irs)
         DECL_CONTEXT(field) = closure_rec_type;
         fields.chain(field);
         TREE_USED(s->Stree) = 1;
+
+        /* Can't do nrvo if the variable is put in a closure.  */
+        if (nrvo_can && nrvo_var == v)
+            nrvo_can = 0;
     }
     TYPE_FIELDS(closure_rec_type) = fields.head;
     layout_type(closure_rec_type);
@@ -4386,6 +4390,15 @@ ReturnStatement::toIR(IRState* irs)
         {
             result_value = irs->addressOf(result_value);
         }
+        else if (exp->op == TOKstructliteral ||
+                 (func->nrvo_can && func->nrvo_var))
+        {
+            /* Named value return optimisation.
+               Marking the function type as addressable should be enough for
+               the backend to perform the optimisation in tree-nrv.c - but this
+               only works when compiling with optimisations turned on.
+               Should really implement in the frontend proper.  */
+        }
         else if (exp->type->toBasetype()->ty == Tstruct &&
                  (exp->op == TOKvar || exp->op == TOKdotvar || exp->op == TOKstar || exp->op == TOKthis))
         {   // Maybe call postblit on result_value
@@ -4715,7 +4728,14 @@ ExpStatement::toIR(IRState * irs)
 void
 DtorExpStatement::toIR(IRState * irs)
 {
-    ExpStatement::toIR(irs);    // %% ??
+    FuncDeclaration *fd = irs->func;
+    bool nrvo_exp = (fd->nrvo_can && fd->nrvo_var == var);
+    /* As per DMD, do not call destructor if var is returned as the
+       nrvo variable.  */
+    if (!nrvo_exp)
+    {
+        ExpStatement::toIR(irs);
+    }
 }
 
 void

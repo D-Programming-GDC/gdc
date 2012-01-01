@@ -3786,6 +3786,10 @@ IRState::buildChain(FuncDeclaration * func)
         DECL_CONTEXT(field) = frame_rec_type;
         fields.chain(field);
         TREE_USED(s->Stree) = 1;
+
+        /* Can't do nrvo if the variable is put in a frame.  */
+        if (func->nrvo_can && func->nrvo_var == v)
+            func->nrvo_can = 0;
     }
 
     TYPE_FIELDS(frame_rec_type) = fields.head;
