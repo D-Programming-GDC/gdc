@@ -3728,13 +3728,7 @@ TypeFunction::toCtype()
         if (!next)
             ret_type = void_type_node;
         else
-        {
-            // Error occurred during compilation, try to delay bailing out.
-            if (next->ty == Terror)
-                ret_type = void_type_node;
-            else
-                ret_type = next->toCtype();
-        }
+            ret_type = next->toCtype();
 #if V2
         if (isref)
             ret_type = build_reference_type(ret_type);
