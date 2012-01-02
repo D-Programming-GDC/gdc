@@ -3725,10 +3725,16 @@ TypeFunction::toCtype()
         if (varargs != 1)
             type_list.cons(void_type_node);
 
-        if (next)
-            ret_type = next->toCtype();
-        else
+        if (!next)
             ret_type = void_type_node;
+        else
+        {
+            // Error occurred during compilation, try to delay bailing out.
+            if (next->ty == Terror)
+                ret_type = void_type_node;
+            else
+                ret_type = next->toCtype();
+        }
 #if V2
         if (isref)
             ret_type = build_reference_type(ret_type);
@@ -4729,10 +4735,12 @@ void
 DtorExpStatement::toIR(IRState * irs)
 {
     FuncDeclaration *fd = irs->func;
-    bool nrvo_exp = (fd->nrvo_can && fd->nrvo_var == var);
+
     /* As per DMD, do not call destructor if var is returned as the
        nrvo variable.  */
-    if (!nrvo_exp)
+    bool noDtor = (fd->nrvo_can && fd->nrvo_var == var);
+    
+    if (!noDtor)
     {
         ExpStatement::toIR(irs);
     }
