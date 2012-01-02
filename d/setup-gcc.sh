@@ -25,7 +25,6 @@ for arg in "$@"; do
         --update) d_update_phobos=1 ;;
         -v1) d_lang_version=1 ;;
         -v2) d_lang_version=2 ;;
-        -hg) use_hg_revision=1 ;;
         *)
             echo "Usage: $0 [OPTION]"
             echo "error: invalid option '$arg'"
@@ -87,28 +86,17 @@ if test ! -f gcc/"$gcc_patch_fn"; then
 fi
 
 # 0.5. Find out what GDC and DMD version this is
-if test "$use_hg_revision" = 1; then
-    if ! command -v hg &> /dev/null; then
-        use_hg_revision=0
-        echo "Mercurial not found.  Install mercurial or remove -hg to continue."
-        exit 1
-    else        
-        hg_branch=`hg  --cwd gcc/d identify -b 2> /dev/null`        
-        hg_revision=`hg --cwd gcc/d identify -n 2> /dev/null | sed -e 's/^\(.*\)+$/\1/'`
-        hg_id=`hg --cwd gcc/d identify -i 2> /dev/null`
-        hg --cwd gcc/d identify &> /dev/null
-        if [ "$?" -ne "0" ]; then
-            echo "Sorry, mercurial cannot find repository information."
-            echo "Please remove -hg or correct the issue."
-            exit 1
-        fi        
+gdc_ver=`cat gcc/d/gdc-version`
+if command -v hg > /dev/null; then
+    hg_branch=`hg  --cwd gcc/d identify -b 2> /dev/null`
+    hg_revision=`hg --cwd gcc/d identify -n 2> /dev/null | sed -e 's/^\(.*\)+$/\1/'`
+    hg_id=`hg --cwd gcc/d identify -i 2> /dev/null`
+    hg --cwd gcc/d identify 2> /dev/null
+    if [ "$?" -eq "0" ]; then
+        # is branch useful?
+        #gdc_ver="$gdc_ver - r$hg_revision:$hg_id($hg_branch)"
+        gdc_ver="$gdc_ver - r$hg_revision:$hg_id"
     fi
-
-    # is branch useful?
-    #gdc_ver="hg r$hg_revision:$hg_id($hg_branch)"
-    gdc_ver="hg r$hg_revision:$hg_id"
-else
-    gdc_ver=`cat gcc/d/gdc-version`
 fi
 
 dmd_ver=`grep 'version = "v' gcc/d/dmd$d_subdir_sfx/mars.c | sed -e 's/^.*"v\(.*\)".*$/\1/'` || exit 1
