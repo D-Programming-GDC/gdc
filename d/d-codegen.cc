@@ -835,13 +835,15 @@ IRState::trueDeclarationType(Declaration * decl)
     tree decl_type = decl->type->toCtype();
     if (isDeclarationReferenceType(decl))
     {
-        return build_reference_type(decl_type);
+        decl_type = build_reference_type(decl_type);
+        if (decl->isParameter())
+            D_TYPE_ADDRESSABLE(decl_type) = 1;
     }
     else if (decl->storage_class & STClazy)
     {
         TypeFunction *tf = new TypeFunction(NULL, decl->type, 0, LINKd);
         TypeDelegate *t = new TypeDelegate(tf);
-        return t->merge()->toCtype();
+        decl_type = t->merge()->toCtype();
     }
     return decl_type;
 }
@@ -871,13 +873,13 @@ IRState::trueArgumentType(Parameter * arg)
     tree arg_type = arg->type->toCtype();
     if (isArgumentReferenceType(arg))
     {
-        return build_reference_type(arg_type);
+        arg_type = build_reference_type(arg_type);
     }
     else if (arg->storageClass & STClazy)
     {
         TypeFunction *tf = new TypeFunction(NULL, arg->type, 0, LINKd);
         TypeDelegate *t = new TypeDelegate(tf);
-        return t->merge()->toCtype();
+        arg_type = t->merge()->toCtype();
     }
     return arg_type;
 }

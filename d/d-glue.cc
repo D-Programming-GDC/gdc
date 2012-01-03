@@ -2818,6 +2818,27 @@ d_genericize(tree fndecl)
     FILE *dump_file;
     int local_dump_flags;
 
+    // Fix up the types of parms passed by invisible reference.
+    for (tree t = DECL_ARGUMENTS(fndecl); t; t = DECL_CHAIN(t))
+    {
+        if (D_TYPE_ADDRESSABLE(TREE_TYPE(t)))
+        {
+            gcc_assert(!DECL_BY_REFERENCE(t));
+            DECL_BY_REFERENCE(t) = 1;
+            TREE_ADDRESSABLE(t) = 0;
+            relayout_decl(t);
+        }
+    }
+
+    // Fix up result decl for named value returns.
+    if (D_TYPE_ADDRESSABLE(TREE_TYPE(fndecl)))
+    {
+        tree t = DECL_RESULT(fndecl);
+        TREE_ADDRESSABLE(TREE_TYPE(fndecl)) = 1;
+        TREE_ADDRESSABLE(t) = 0;
+        relayout_decl(t);
+    }
+
     // Build cgraph for function.
     (void) cgraph_node(fndecl);
 
@@ -4390,14 +4411,15 @@ ReturnStatement::toIR(IRState* irs)
         {
             result_value = irs->addressOf(result_value);
         }
-        else if (exp->op == TOKstructliteral ||
-                 (func->nrvo_can && func->nrvo_var))
+        else if (exp->type->toBasetype()->ty == Tstruct &&
+                 (exp->op == TOKstructliteral || (func->nrvo_can && func->nrvo_var)))
         {
             /* Named value return optimisation.
                Marking the function type as addressable should be enough for
                the backend to perform the optimisation in tree-nrv.c - but this
                only works when compiling with optimisations turned on.
                Should really implement in the frontend proper.  */
+            D_TYPE_ADDRESSABLE(tf->toCtype()) = 1;
         }
         else if (exp->type->toBasetype()->ty == Tstruct &&
                  (exp->op == TOKvar || exp->op == TOKdotvar || exp->op == TOKstar || exp->op == TOKthis))

@@ -79,6 +79,10 @@ union lang_tree_node
    but a literal function / method reference */
 #define D_IS_METHOD_CALL_EXPR(NODE) (TREE_LANG_FLAG_0(NODE))
 
+/* True if the type is a reference type and it's decl should be marked
+   in the backend as DECL_BY_REFERENCE.  For function types is for NRVO.  */
+#define D_TYPE_ADDRESSABLE(NODE) (TYPE_LANG_FLAG_0(NODE))
+
 /* True if the symbol should be made "link one only".  This is used to
    defer calling make_decl_one_only() before the decl has been prepared. */
 #define D_DECL_ONE_ONLY(NODE) (DECL_LANG_FLAG_0(NODE))
