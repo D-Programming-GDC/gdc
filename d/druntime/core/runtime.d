@@ -397,6 +397,9 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
             {
                 static enum MAXFRAMES = 128;
                 void*[MAXFRAMES]  callstack;
+              version( GNU )
+                numframes = backtrace( callstack, MAXFRAMES );
+              else
                 numframes = 0; //backtrace( callstack, MAXFRAMES );
                 if (numframes < 2) // backtrace() failed, do it ourselves
                 {

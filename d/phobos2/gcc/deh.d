@@ -159,7 +159,7 @@ _d_throw(Object obj)
     exc.unwindHeader.exception_cleanup = & _gdc_cleanupException;
 
     // Runtime now expects us to do this first before unwinding.
-    _d_createTrace (&exc.obj);
+    _d_createTrace (cast(Object*)exc.obj);
 
     version (GNU_SjLj_Exceptions) {
         _Unwind_SjLj_RaiseException (&exc.unwindHeader);
