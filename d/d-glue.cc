@@ -2819,7 +2819,7 @@ d_genericize(tree fndecl)
     int local_dump_flags;
 
     // Fix up the types of parms passed by invisible reference.
-    for (tree t = DECL_ARGUMENTS(fndecl); t; t = DECL_CHAIN(t))
+    for (tree t = DECL_ARGUMENTS(fndecl); t; t = TREE_CHAIN(t))
     {
         if (D_TYPE_ADDRESSABLE(TREE_TYPE(t)))
         {

@@ -520,7 +520,7 @@ ObjectFile::shouldEmit(Declaration * d_sym)
     if (fd && fd->isNested())
     {
         // Typically, an error occurred whilst compiling
-        if (fd->vthis == NULL)
+        if (fd->fbody && !fd->vthis)
         {
             gcc_assert(global.errors);
             return false;
