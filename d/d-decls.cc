@@ -172,7 +172,6 @@ uniqueName(Declaration * d, tree t, const char * asm_name)
     }
 
     tree id;
-#if D_GCC_VER >= 43
     /* In 4.3.x, it is now the job of the front-end to ensure decls get mangled for their target.
        We'll only allow FUNCTION_DECLs and VAR_DECLs for variables with static storage duration
        to get a mangled DECL_ASSEMBLER_NAME. And the backend should handle the rest. */
@@ -181,7 +180,6 @@ uniqueName(Declaration * d, tree t, const char * asm_name)
         id = targetm.mangle_decl_assembler_name(t, get_identifier(out_name));
     }
     else
-#endif
     {
         id = get_identifier(out_name);
     }
@@ -280,8 +278,8 @@ Symbol *VarDeclaration::toSymbol()
             decl_kind = VAR_DECL;
         }
 
-        var_decl = d_build_decl(decl_kind, get_identifier(csym->Sident),
-                                gen.trueDeclarationType(this));
+        var_decl = build_decl(UNKNOWN_LOCATION, decl_kind, get_identifier(csym->Sident),
+                              gen.trueDeclarationType(this));
 
         csym->Stree = var_decl;
 
@@ -538,7 +536,8 @@ Symbol *FuncDeclaration::toSymbol()
 
             // %%CHECK: is it okay for static nested functions to have a FUNC_DECL context?
             // seems okay so far...
-            fn_decl = d_build_decl(FUNCTION_DECL, id, new_fn_type ? new_fn_type : fn_type);
+            fn_decl = build_decl(UNKNOWN_LOCATION, FUNCTION_DECL,
+                                 id, new_fn_type ? new_fn_type : fn_type);
             d_keep(fn_decl);
             if (ident)
             {
@@ -555,20 +554,11 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_VINDEX(fn_decl) = vindex;
                 DECL_VIRTUAL_P(fn_decl) = 1;
             }
-            // gcc 4.0: seems to be an error to set DECL_NO_STATIC_CHAIN on a toplevel function
-            if (! gen.functionNeedsChain(this) && decl_function_context(fn_decl))
+
+            if (gen.functionNeedsChain(this))
             {
-#if D_GCC_VER < 45
-                // Prevent backend from thinking this is a nested function.
-                DECL_NO_STATIC_CHAIN(fn_decl) = 1;
-#endif
-            }
-            else
-            {
-#if D_GCC_VER >= 45
-                // %% GCC-4.5: we do the opposite.
                 DECL_STATIC_CHAIN(fn_decl) = 1;
-#endif
+
                 /* If a template instance has a nested function (because a template
                    argument is a local variable), the nested function may not have
                    its toObjFile called before the outer function is finished.
@@ -610,7 +600,6 @@ Symbol *FuncDeclaration::toSymbol()
             {
                 DECL_UNINLINABLE(fn_decl) = 1;
             }
-#if D_GCC_VER >= 44
             else if (isMember2() || isFuncLiteralDeclaration())
             {
                 // See grokmethod in cp/decl.c
@@ -622,14 +611,7 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_DECLARED_INLINE_P(fn_decl) = 1;
                 DECL_NO_INLINE_WARNING_P(fn_decl) = 1;
             }
-#else
-            else
-            {
-                // see grokdeclarator in c-decl.c
-                if (flag_inline_trees == 2 && fbody /* && should_emit? */)
-                    DECL_INLINE (fn_decl) = 1;
-            }
-#endif
+
             if (naked)
             {
                 D_DECL_NO_FRAME_POINTER(fn_decl) = 1;
@@ -773,12 +755,6 @@ Symbol *FuncDeclaration::toThunkSymbol(int offset)
 
         DECL_ARTIFICIAL(thunk_decl) = 1;
         DECL_IGNORED_P(thunk_decl) = 1;
-#if D_GCC_VER < 45
-        DECL_NO_STATIC_CHAIN(thunk_decl) = 1;
-#endif
-#if D_GCC_VER < 44
-        DECL_INLINE(thunk_decl) = 0;
-#endif
         DECL_DECLARED_INLINE_P(thunk_decl) = 0;
         //needed on some targets to avoid "causes a section type conflict"
         D_DECL_ONE_ONLY(thunk_decl) = D_DECL_ONE_ONLY(target_func_decl);
@@ -831,10 +807,10 @@ Symbol *ClassDeclaration::toSymbol()
         tree decl;
         csym = toSymbolX("__Class", SCextern, 0, "Z");
         slist_add(csym);
-        decl = d_build_decl(VAR_DECL, get_identifier(csym->Sident),
-            TREE_TYPE(ClassDeclaration::classinfo != NULL
-                ? ClassDeclaration::classinfo->type->toCtype() // want the RECORD_TYPE, not the REFERENCE_TYPE
-                : error_mark_node));
+        decl = build_decl(UNKNOWN_LOCATION, VAR_DECL, get_identifier(csym->Sident),
+                          TREE_TYPE(ClassDeclaration::classinfo != NULL
+                              ? ClassDeclaration::classinfo->type->toCtype() // want the RECORD_TYPE, not the REFERENCE_TYPE
+                              : error_mark_node));
         csym->Stree = decl;
         d_keep(decl);
 
@@ -880,8 +856,8 @@ Symbol *Module::toSymbol()
         csym = toSymbolX("__ModuleInfo", SCextern, 0, "Z");
         slist_add(csym);
 
-        tree decl = d_build_decl(VAR_DECL, get_identifier(csym->Sident),
-                TREE_TYPE(obj_type->toCtype())); // want the RECORD_TYPE, not the REFERENCE_TYPE
+        tree decl = build_decl(UNKNOWN_LOCATION, VAR_DECL, get_identifier(csym->Sident),
+                               TREE_TYPE(obj_type->toCtype())); // want the RECORD_TYPE, not the REFERENCE_TYPE
         g.ofile->setDeclLoc(decl, this);
         csym->Stree = decl;
 
@@ -914,7 +890,8 @@ Symbol *ClassDeclaration::toVtblSymbol()
         TypeSArray * vtbl_type = new TypeSArray(Type::tvoidptr,
                                                 new IntegerExp(loc, vtbl.dim, Type::tindex));
 
-        decl = d_build_decl(VAR_DECL, get_identifier(vtblsym->Sident), vtbl_type->toCtype());
+        decl = build_decl(UNKNOWN_LOCATION, VAR_DECL,
+                          get_identifier(vtblsym->Sident), vtbl_type->toCtype());
         vtblsym->Stree = decl;
         d_keep(decl);
 
@@ -961,7 +938,8 @@ Symbol *AggregateDeclaration::toInitializer()
         tree struct_type = type->toCtype();
         if (POINTER_TYPE_P(struct_type))
             struct_type = TREE_TYPE(struct_type); // for TypeClass, want the RECORD_TYPE, not the REFERENCE_TYPE
-        tree t = d_build_decl(VAR_DECL, get_identifier(sinit->Sident), struct_type);
+        tree t = build_decl(UNKNOWN_LOCATION, VAR_DECL,
+                            get_identifier(sinit->Sident), struct_type);
         sinit->Stree = t;
         d_keep(t);
 
@@ -994,7 +972,8 @@ Symbol *TypedefDeclaration::toInitializer()
     }
     if (! sinit->Stree && g.ofile != NULL)
     {
-        tree t = d_build_decl(VAR_DECL, get_identifier(sinit->Sident), type->toCtype());
+        tree t = build_decl(UNKNOWN_LOCATION, VAR_DECL,
+                            get_identifier(sinit->Sident), type->toCtype());
         sinit->Stree = t;
         d_keep(t);
 
@@ -1029,7 +1008,8 @@ Symbol *EnumDeclaration::toInitializer()
     }
     if (! sinit->Stree && g.ofile != NULL)
     {
-        tree t = d_build_decl(VAR_DECL, get_identifier(sinit->Sident), type->toCtype());
+        tree t = build_decl(UNKNOWN_LOCATION, VAR_DECL,
+                            get_identifier(sinit->Sident), type->toCtype());
         sinit->Stree = t;
         d_keep(t);
 

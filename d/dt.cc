@@ -274,7 +274,7 @@ dt2tree_list_of_elems(dt_t * dt)
     while (dt)
     {
         tree value = dt2node(dt);
-        tree field = d_build_decl(FIELD_DECL, NULL_TREE, TREE_TYPE(value));
+        tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, TREE_TYPE(value));
         tree size = TYPE_SIZE_UNIT(TREE_TYPE(value));
         DECL_CONTEXT(field) = aggtype;
         DECL_FIELD_OFFSET(field) = offset;

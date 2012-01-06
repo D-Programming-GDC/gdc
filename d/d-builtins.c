@@ -48,13 +48,7 @@
 
 #include "d-lang.h"
 
-#if D_GCC_VER == 42
-#include "d-bi-attrs-42.h"
-#elif D_GCC_VER == 43
-#include "d-bi-attrs-43.h"
-#elif D_GCC_VER == 44
-#include "d-bi-attrs-44.h"
-#elif D_GCC_VER == 45
+#if D_GCC_VER == 45
 #include "d-bi-attrs-45.h"
 #elif D_GCC_VER == 46
 #include "d-bi-attrs-46.h"
@@ -158,16 +152,9 @@ do_build_builtin_fn(enum built_in_function fncode,
                              strlen ("__builtin_")));
 
     libname = name + strlen ("__builtin_");
-#if D_GCC_VER >= 43
+
     decl = add_builtin_function(name, fntype, fncode, fnclass,
             fallback_p ? libname : NULL, fnattrs);
-#else
-    decl = lang_hooks.builtin_function (name, fntype,
-            fncode,
-            fnclass,
-            fallback_p ? libname : NULL,
-            fnattrs);
-#endif
 
     built_in_decls[(int) fncode] = decl;
     if (implicit_p)
@@ -375,7 +362,7 @@ void
 d_register_builtin_type (tree type, const char * name)
 {
     tree ident = get_identifier(name);
-    tree decl = d_build_decl(TYPE_DECL, ident, type);
+    tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL, ident, type);
     DECL_ARTIFICIAL(decl) = 1;
 
     if (! TYPE_NAME(type))
@@ -393,51 +380,11 @@ d_register_builtin_type (tree type, const char * name)
    the name to be called if we can't opencode the function.  If
    ATTRS is nonzero, use that for the function's attribute list.  */
 
-#if D_GCC_VER >= 43
-
 tree
-d_builtin_function43 (tree decl)
+d_builtin_function (tree decl)
 {
     d_bi_builtin_func(decl);
     return decl;
 }
-
-#else
-
-tree
-d_builtin_function (const char *name, tree type, int function_code,
-                    enum built_in_class cl, const char *library_name,
-                    tree attrs)
-{
-    // As of 4.3.x, this is done by add_builtin_function
-    //%% for D, just use library_name?
-    tree id = get_identifier (name);
-    tree decl = d_build_decl_loc (BUILTINS_LOCATION, FUNCTION_DECL, id, type);
-    TREE_PUBLIC (decl) = 1;
-    DECL_EXTERNAL (decl) = 1;
-    DECL_BUILT_IN_CLASS (decl) = cl;
-
-    DECL_FUNCTION_CODE (decl) = (enum built_in_function) function_code;
-
-    /* DECL_FUNCTION_CODE is a bitfield; verify that the value fits.  */
-    gcc_assert (DECL_FUNCTION_CODE (decl) == function_code);
-
-    if (library_name)
-    {
-        tree libname = get_identifier (library_name);
-        SET_DECL_ASSEMBLER_NAME (decl, libname);
-    }
-
-    /* Possibly apply some default attributes to this built-in function.  */
-    if (attrs)
-        decl_attributes (&decl, attrs, ATTR_FLAG_BUILT_IN);
-    else
-        decl_attributes (&decl, NULL_TREE, 0);
-
-    d_bi_builtin_func(decl);
-    return decl;
-}
-
-#endif
 
 #include "gt-d-d-builtins.h"

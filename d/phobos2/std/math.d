@@ -404,10 +404,6 @@ unittest{
 
 real tan(real x) @trusted pure nothrow
 {
-    version(GNU) {
-        // %% problems outputting Lret label.
-        return core.stdc.math.tanl(x);
-    } else
     version(D_InlineAsm_X86)
     {
     asm

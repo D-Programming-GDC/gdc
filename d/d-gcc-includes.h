@@ -25,10 +25,8 @@
 // Better to define this here
 #define __STDC_FORMAT_MACROS 1
 
-#if D_GCC_VER >= 43
 // GMP is C++-aware, so we cannot included it in an extern "C" block.
 #include "gmp.h"
-#endif
 
 extern "C" {
 // Conflicting definitions between stdio.h and libiberty.h over the throw()
@@ -61,52 +59,15 @@ extern "C" {
 
 #include "cgraph.h"
 #include "tree-iterator.h"
-#if D_GCC_VER >= 44
 #include "gimple.h"
-#else
-#include "tree-gimple.h"
-#endif
 #include "tree-dump.h"
 #include "tree-inline.h"
 #include "vec.h"
-
-#if D_GCC_VER == 43
-// Defined in tree-flow.h but gives us problems when trying to include it
-extern bool useless_type_conversion_p (tree, tree);
-#endif
 
 #if D_GCC_VER >= 46
 #include "tree-pretty-print.h"
 #endif
 }
-
-// Define our own macro for handling mapped locations as
-// future versions of GCC (> 4.3) will poison it's use.
-#ifndef D_USE_MAPPED_LOCATION
-#if D_GCC_VER <= 43
-#  ifdef USE_MAPPED_LOCATION
-#    define D_USE_MAPPED_LOCATION 1
-#  endif
-#else
-#define D_USE_MAPPED_LOCATION 1
-#endif
-#endif
-
-#if D_GCC_VER < 44
-/* This macro allows casting away const-ness to pass -Wcast-qual
-   warnings.  DO NOT USE THIS UNLESS YOU REALLY HAVE TO!  It should
-   only be used in certain specific cases.  One valid case is where
-   the C standard definitions or prototypes force you to.  E.g. if you
-   need to free a const object, or if you pass a const string to
-   execv, et al. */
-#undef CONST_CAST
-#ifdef __cplusplus
-#define CONST_CAST(TYPE,X) (const_cast<TYPE> (X))
-#else
-#define CONST_CAST(TYPE,X) ((__extension__(union {const TYPE _q; TYPE _nq;})(X))._nq)
-#endif
-
-#endif
 
 // Undefine things that give us problems
 #undef RET

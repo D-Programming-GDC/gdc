@@ -1,8 +1,5 @@
 /* GDC -- D front-end for GCC
-   Copyright (C) 2004 David Friedman
-
-   Modified by
-    Iain Buclaw, (C) 2010
+   Copyright (C) 2010, 2011 Iain Buclaw
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,21 +16,25 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#if D_GCC_VER >= 45
-#include "d-lang-45.h"
-#else
+/* Same as d-lang.h, but updated to support GCC-4.5's new GTY(()) convention */
 
 #ifndef GCC_DCMPLR_DC_LANG_H
 #define GCC_DCMPLR_DC_LANG_H
 
+#if D_GCC_VER == 45
+#include "d-lang-type-45.h"
+#else
+#include "d-lang-type.h"
+#endif
+
 /* Nothing is added to tree_identifier; */
-struct lang_identifier GTY(())
+struct GTY(()) lang_identifier
 {
     struct tree_identifier ignore;
 };
 
 /* This is required to be defined, but we do not use it. */
-struct language_function GTY(())
+struct GTY(()) language_function
 {
     int unused;
 };
@@ -42,25 +43,16 @@ struct language_function GTY(())
    collection system.  Handle this by using the "skip" attribute. */
 struct Declaration;
 typedef struct Declaration *DeclarationGTYP;
-struct lang_decl GTY(())
+struct GTY(()) lang_decl
 {
     DeclarationGTYP GTY ((skip)) d_decl;
 };
 
-/* The lang_type field is not set for every GCC type. */
-struct Type;
-typedef struct Type *TypeGTYP;
-struct lang_type GTY(())
-{
-    tree GTY((skip)) c_type;
-    TypeGTYP GTY((skip)) d_type;
-};
-
 /* Another required, but unused declaration.  This could be simplified, since
    there is no special lang_identifier */
-union lang_tree_node
-  GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
-       chain_next ("(union lang_tree_node *)GENERIC_NEXT (&%h.generic)")))
+union GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
+           chain_next ("(union lang_tree_node *)TREE_CHAIN (&%h.generic)")))
+lang_tree_node
 {
     union tree_node GTY ((tag ("0"),
                           desc ("tree_node_structure (&%h)")))
@@ -68,12 +60,7 @@ union lang_tree_node
     struct lang_identifier GTY ((tag ("1"))) identifier;
 };
 
-/* GENERIC_NEXT is needed for 4.3.x only, to prevent ICEs in gtype-d.
-   For everyone else, just alias to TREE_CHAIN. */
-#if D_GCC_VER != 43
-#define GENERIC_NEXT(NODE) TREE_CHAIN(NODE)
-#endif
-
+extern GTY(()) tree d_eh_personality_decl;
 
 /* True if the Tdelegate typed expression is not really a variable,
    but a literal function / method reference */
@@ -101,7 +88,7 @@ union lang_tree_node
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and
    otherwise support the backend. */
-struct binding_level GTY(())
+struct GTY(()) binding_level
 {
     /* A chain of declarations. These are in the reverse of the order supplied. */
     tree names;
@@ -226,7 +213,6 @@ tree d_unsigned_type(tree);
 tree d_signed_type(tree);
 tree d_type_for_size(unsigned bits, int unsignedp);
 tree d_type_for_mode(enum machine_mode mode, int unsignedp);
-tree d_build_decl(enum tree_code code, tree name, tree type);
 
 void d_keep(tree t);
 void d_free(tree t);
@@ -236,12 +222,6 @@ void insert_block (tree);
 void set_block (tree);
 tree getdecls (void);
 
-
-#ifdef D_USE_MAPPED_LOCATION
-tree d_build_decl_loc(location_t loc, enum tree_code code, tree name, tree type);
-#else
-#define d_build_decl_loc(l,c,n,t)   build_decl(c,n,t)
-#endif
 
 /* In d-builtins.c */
 extern void d_init_builtins (void);
@@ -266,22 +246,6 @@ extern GTY((deletable)) tree d_free_list;
 
 #include "d-dmd-gcc.h"
 
-#if D_GCC_VER < 44
-#define DECL_PURE_P DECL_IS_PURE
-/* nonzero means do not use a trampoline - requires patching frontend. */
-#define TREE_NO_TRAMPOLINE(NODE) (TREE_STATIC(NODE))
-#endif
-
-/* compat with D_GCC_VER >= 45 */
-#define DECL_STATIC_CHAIN(NODE) (! DECL_NO_STATIC_CHAIN(NODE))
-
-//#define d_warning(option, format, ...) warning(option, format, __VA_ARGS__)
 #define d_warning(option, ...) warning(option, __VA_ARGS__)
 
-#if D_GCC_VER < 43
-#define set_cfun(x) (cfun = (x))
 #endif
-
-#endif
-
-#endif  /* D_GCC_VER >= 45 */

@@ -245,7 +245,7 @@ build_math_op(TOK op, tree type, tree e1, Type * tb1, tree e2, Type * tb2, IRSta
 
     bool is_unsigned = TYPE_UNSIGNED(e1_type) || TYPE_UNSIGNED(e2_type)
                         || op == TOKushr;
-#if D_GCC_VER >= 43
+
     if (POINTER_TYPE_P(e1_type) && INTEGRAL_TYPE_P(e2_type))
     {
         return irs->nop(irs->pointerOffsetOp(out_code, e1, e2), type);
@@ -265,9 +265,7 @@ build_math_op(TOK op, tree type, tree e1, Type * tb1, tree e2, Type * tb2, IRSta
         e2 = convert(tt, e2);
         return convert(type, build2(out_code, tt, e1, e2));
     }
-    else
-#endif
-    if (INTEGRAL_TYPE_P(type) &&
+    else if (INTEGRAL_TYPE_P(type) &&
         (TYPE_UNSIGNED(type) != 0) != is_unsigned)
     {
         tree tt = is_unsigned
@@ -1986,16 +1984,11 @@ DeclarationExp::toElem(IRState* irs)
     declaration->toObjFile(false);
     tree t = irs->popStatementList();
 
-#if D_GCC_VER >= 45
     /* Construction of an array for typesafe-variadic function arguments
        can cause an empty STMT_LIST here.  This can causes problems
        during gimplification. */
     if (TREE_CODE(t) == STATEMENT_LIST && ! STATEMENT_LIST_HEAD(t))
         return build_empty_stmt(input_location);
-#elif D_GCC_VER >= 43
-    if (TREE_CODE(t) == STATEMENT_LIST && ! STATEMENT_LIST_HEAD(t))
-        return build_empty_stmt();
-#endif
 
     return t;
 }
@@ -2870,12 +2863,6 @@ d_genericize(tree fndecl)
 
         dump_end (TDI_original, dump_file);
     }
-#if D_GCC_VER < 45
-    /* Go ahead and gimplify for now.  */
-    gimplify_function_tree (fndecl);
-    /* Dump the genericized tree IR.  */
-    dump_function (TDI_generic, fndecl);
-#endif
 }
 
 
@@ -2938,7 +2925,8 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         if(tf->isref)
             result_type = build_reference_type(result_type);
 #endif
-        result_decl = d_build_decl(RESULT_DECL, NULL_TREE, result_type);
+        result_decl = build_decl(UNKNOWN_LOCATION, RESULT_DECL,
+                                 NULL_TREE, result_type);
     }
     g.ofile->setDeclLoc(result_decl, this);
     DECL_RESULT(fn_decl) = result_decl;
@@ -2947,11 +2935,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     DECL_IGNORED_P (result_decl) = 1;
     //layout_decl(result_decl, 0);
 
-#if D_GCC_VER >= 43
     allocate_struct_function(fn_decl, false);
-#else
-    allocate_struct_function(fn_decl);
-#endif
     // assuming the above sets cfun
     g.ofile->setCfunEndLoc(endloc);
 
@@ -3268,8 +3252,8 @@ FuncDeclaration::buildClosure(IRState * irs)
 
     tree closure_rec_type = ffi->closure_rec;
     tree chain_link = irs->chainLink();
-    tree ptr_field = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
-                                      get_identifier("__closptr"), ptr_type_node);
+    tree ptr_field = build_decl(BUILTINS_LOCATION, FIELD_DECL,
+                                get_identifier("__closptr"), ptr_type_node);
     DECL_CONTEXT(ptr_field) = closure_rec_type;
     
     ListMaker fields;
@@ -3301,9 +3285,9 @@ FuncDeclaration::buildClosure(IRState * irs)
     {
         VarDeclaration * v = closureVars[i];
         Symbol * s = v->toSymbol();
-        tree field = d_build_decl(FIELD_DECL,
-                                  v->ident ? get_identifier(v->ident->string) : NULL_TREE,
-                                  gen.trueDeclarationType(v));
+        tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
+                                v->ident ? get_identifier(v->ident->string) : NULL_TREE,
+                                gen.trueDeclarationType(v));
         s->SframeField = field;
         g.ofile->setDeclLoc(field, v);
         DECL_CONTEXT(field) = closure_rec_type;
@@ -3548,7 +3532,7 @@ TypeTypedef::toCtype()
 
         tree ident = get_identifier(name);
         tree type_node = build_variant_type_copy(base_type);
-        tree type_decl = d_build_decl(TYPE_DECL, ident, type_node);
+        tree type_decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL, ident, type_node);
         TYPE_NAME(type_node) = type_decl;
         apply_type_attributes(sym->attributes, type_node);
 
@@ -3677,7 +3661,8 @@ TypeStruct::toCtype()
                 ++ofs;
             while (ofs < sym->structsize && sym->structsize - ofs >= 4)
             {
-                tree f = d_build_decl(FIELD_DECL, get_identifier("_pad"), d_type_for_size(32, 1));
+                tree f = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
+                                    get_identifier("_pad"), d_type_for_size(32, 1));
                 DECL_FCONTEXT(f) = ctype;
                 DECL_ARTIFICIAL(f) = DECL_IGNORED_P(f) = 1;
                 DECL_IGNORED_P(f) = 1;
@@ -3861,8 +3846,8 @@ TypeAArray::toCtype()
     {   /* Library functions expect a struct-of-pointer which could be passed
            differently from a pointer. */
         ctype = make_node(RECORD_TYPE);
-        tree ptr = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
-                                    get_identifier("ptr"), ptr_type_node);
+        tree ptr = build_decl(BUILTINS_LOCATION, FIELD_DECL,
+                              get_identifier("ptr"), ptr_type_node);
         DECL_CONTEXT(ptr) = ctype;
         TYPE_FIELDS(ctype) = ptr;
         TYPE_NAME(ctype) = get_identifier(toChars());
@@ -4024,7 +4009,8 @@ TypeClass::toCtype()
         /* update: annoying messages might not appear anymore after making
            other changes */
         // Add the virtual table pointer
-        tree decl = d_build_decl(FIELD_DECL, get_identifier("_vptr$"), /*vtbl_type*/d_vtbl_ptr_type_node);
+        tree decl = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
+                               get_identifier("_vptr$"), /*vtbl_type*/d_vtbl_ptr_type_node);
         agg_layout.addField(decl, 0); // %% target stuff..
 
         if (inherited)
@@ -4045,7 +4031,8 @@ TypeClass::toCtype()
 
             // Add the monitor
             // %% target type
-            decl = d_build_decl(FIELD_DECL, get_identifier("_monitor"), ptr_type_node);
+            decl = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
+                              get_identifier("_monitor"), ptr_type_node);
             DECL_FCONTEXT(decl) = obj_rec_type;
             DECL_ARTIFICIAL(decl) = DECL_IGNORED_P(decl) = inherited;
             agg_layout.addField(decl, PTRSIZE);
@@ -4345,7 +4332,8 @@ SynchronizedStatement::toIR(IRState * irs)
         {
             critsec_type = irs->arrayType(Type::tuns8, D_CRITSEC_SIZE);
         }
-        tree critsec_decl = d_build_decl(VAR_DECL, NULL_TREE, critsec_type);
+        tree critsec_decl = build_decl(UNKNOWN_LOCATION, VAR_DECL,
+                                       NULL_TREE, critsec_type);
         // name is only used to prevent ICEs
         g.ofile->giveDeclUniqueName(critsec_decl, "__critsec");
         tree critsec_ref = irs->addressOf(critsec_decl); // %% okay to use twice?
@@ -4870,8 +4858,10 @@ gcc_d_backend_init()
     d_idouble_type_node = build_variant_type_copy(double_type_node);
     d_ireal_type_node = build_variant_type_copy(long_double_type_node);
 
-    TYPE_NAME(integer_type_node) = d_build_decl(TYPE_DECL, get_identifier("int"), integer_type_node);
-    TYPE_NAME(char_type_node) = d_build_decl(TYPE_DECL, get_identifier("char"), char_type_node);
+    TYPE_NAME(integer_type_node) = build_decl(UNKNOWN_LOCATION, TYPE_DECL,
+                                              get_identifier("int"), integer_type_node);
+    TYPE_NAME(char_type_node) = build_decl(UNKNOWN_LOCATION, TYPE_DECL,
+                                           get_identifier("char"), char_type_node);
 
     REALSIZE = int_size_in_bytes(long_double_type_node);
     REALPAD = 0;

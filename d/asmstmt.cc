@@ -94,9 +94,7 @@ d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4, tree t5)
     TREE_OPERAND(t,1) = t2;     // OUTPUTS
     TREE_OPERAND(t,2) = t3;     // INPUTS
     TREE_OPERAND(t,3) = t4;     // CLOBBERS
-#if D_GCC_VER >= 45
     TREE_OPERAND(t,4) = t5;     // LABELS
-#endif
     TREE_SIDE_EFFECTS(t) = 1;
     return t;
 }
@@ -465,11 +463,16 @@ AsmStatement::toIR(IRState * irs)
                 {
                     /* Constant scalar value.  In order to reference it as memory,
                        create an anonymous static var. */
-                    tree cnst = d_build_decl(VAR_DECL, NULL_TREE, arg->expr->type->toCtype());
+                    tree cnst = build_decl(UNKNOWN_LOCATION, VAR_DECL, NULL_TREE,
+                                           arg->expr->type->toCtype());
                     g.ofile->giveDeclUniqueName(cnst);
                     DECL_INITIAL(cnst) = arg->expr->toElem(irs);
-                    TREE_STATIC(cnst) = TREE_CONSTANT(cnst) = TREE_READONLY(cnst) =
-                        TREE_PRIVATE(cnst) = DECL_ARTIFICIAL(cnst) = DECL_IGNORED_P(cnst) = 1;
+                    TREE_STATIC(cnst) = 1;
+                    TREE_CONSTANT(cnst) = 1;
+                    TREE_READONLY(cnst) = 1;
+                    TREE_PRIVATE(cnst) = 1;
+                    DECL_ARTIFICIAL(cnst) = 1;
+                    DECL_IGNORED_P(cnst) = 1;
                     g.ofile->rodc(cnst, 1);
                     arg_val = cnst;
                 }

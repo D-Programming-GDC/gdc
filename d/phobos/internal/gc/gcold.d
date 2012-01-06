@@ -261,14 +261,6 @@ body
 
     if (newlength)
     {
-        version (GNU)
-        {
-            // required to output the label;
-            static char x = 0;
-            if (x)
-                goto Loverflow;
-        }
-
         version (D_InlineAsm_X86)
         {
             size_t newsize = void;
@@ -348,14 +340,6 @@ body
 
     if (newlength)
     {
-        version (GNU)
-        {
-            // required to output the label;
-            static char x = 0;
-            if (x)
-                goto Loverflow;
-        }
-
         version (D_InlineAsm_X86)
         {
             size_t newsize = void;
@@ -584,14 +568,6 @@ body
 
     if (newlength)
     {
-        version (GNU)
-        {
-            // required to output the label;
-            static char x = 0;
-            if (x)
-                goto Loverflow;
-        }
-
         version (D_InlineAsm_X86)
         {
             size_t newsize = void;

@@ -36,10 +36,6 @@ static Dsymbols builtin_converted_decls;
 
 static Type * gcc_type_to_d_type(tree t);
 
-#if V2
-uinteger_t eval_bswap(Expression *arg0);
-#endif
-
 Type * d_gcc_builtin_va_list_d_type;
 
 void
@@ -741,17 +737,12 @@ eval_builtin(Loc loc, BUILTIN builtin, Expressions * arguments)
             break;
 
         case BUILTINbswap:
-#if D_GCC_VER < 43
-            e = new IntegerExp(loc, eval_bswap(arg0), t0);
-            return e;
-#else
             if (t0->ty == Tint64 || t0->ty == Tuns64) 
                 callee = built_in_decls[BUILT_IN_BSWAP64];
             else if (t0->ty == Tint32 || t0->ty == Tuns32)
                 callee = built_in_decls[BUILT_IN_BSWAP32];
             gcc_assert(callee);
             break;
-#endif
 
         case BUILTINatan2:
             callee = built_in_decls[BUILT_IN_ATAN2L];

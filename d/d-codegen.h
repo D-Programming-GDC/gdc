@@ -636,7 +636,6 @@ class CallExpr
 {
 public:
     tree ce;
-#if D_GCC_VER >= 43
     int argi;
     CallExpr(tree ce_) : ce(ce_), argi(0) { }
 
@@ -652,22 +651,7 @@ public:
         ++argi;
         return result;
     }
-#else
-    tree arge;
-    CallExpr(tree ce_) : ce(ce_), arge(TREE_OPERAND(ce, 1)) { }
 
-    tree callee()
-    {
-        return TREE_OPERAND(ce, 0);
-    }
-
-    tree nextArg()
-    {
-        tree result = arge ? TREE_VALUE(arge) : NULL_TREE;
-        arge = TREE_CHAIN(arge);
-        return result;
-    }
-#endif
 private:
     CallExpr() { }
 };

@@ -201,7 +201,7 @@ IRState::emitLocalVar(VarDeclaration * v, bool no_init)
 tree
 IRState::localVar(tree t_type)
 {
-    tree t_decl = d_build_decl_loc(BUILTINS_LOCATION, VAR_DECL, NULL_TREE, t_type);
+    tree t_decl = build_decl(BUILTINS_LOCATION, VAR_DECL, NULL_TREE, t_type);
     DECL_CONTEXT(t_decl) = getLocalContext();
     DECL_ARTIFICIAL(t_decl) = 1;
     DECL_IGNORED_P(t_decl) = 1;
@@ -218,7 +218,7 @@ IRState::localVar(Type * e_type)
 tree
 IRState::exprVar(tree t_type)
 {
-    tree t_decl = d_build_decl_loc(BUILTINS_LOCATION, VAR_DECL, NULL_TREE, t_type);
+    tree t_decl = build_decl(BUILTINS_LOCATION, VAR_DECL, NULL_TREE, t_type);
     DECL_CONTEXT(t_decl) = getLocalContext();
     DECL_ARTIFICIAL(t_decl) = 1;
     DECL_IGNORED_P(t_decl) = 1;
@@ -1063,13 +1063,6 @@ IRState::integerConstant(dinteger_t value, tree type)
 #  error Fix This
 #endif
 
-#if D_GCC_VER < 43
-    /* VALUE may be an incorrect representation for TYPE.  Example:
-       uint x = cast(uint) -3; // becomes "-3u" -- value=0xfffffffffffffd type=Tuns32
-       Constant folding will not work correctly unless this is done. */
-    tree_value = force_fit_type(tree_value, 0, 0, 0);
-#endif
-
     return tree_value;
 }
 
@@ -1471,8 +1464,8 @@ IRState::objectInstanceMethod(Expression * obj_exp, FuncDeclaration * func, Type
 tree
 IRState::twoFieldType(tree rec_type, tree ft1, tree ft2, Type * d_type, const char * n1, const char * n2)
 {
-    tree f0 = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL, get_identifier(n1), ft1);
-    tree f1 = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL, get_identifier(n2), ft2);
+    tree f0 = build_decl(BUILTINS_LOCATION, FIELD_DECL, get_identifier(n1), ft1);
+    tree f1 = build_decl(BUILTINS_LOCATION, FIELD_DECL, get_identifier(n2), ft2);
     DECL_CONTEXT(f0) = rec_type;
     DECL_CONTEXT(f1) = rec_type;
     TYPE_FIELDS(rec_type) = chainon(f0, f1);
@@ -1484,8 +1477,8 @@ IRState::twoFieldType(tree rec_type, tree ft1, tree ft2, Type * d_type, const ch
 
         /* ObjectFile::declareType will try to declare it as top-level type
            which can break debugging info for element types. */
-        tree stub_decl = d_build_decl_loc(BUILTINS_LOCATION, TYPE_DECL,
-                get_identifier(d_type->toChars()), rec_type);
+        tree stub_decl = build_decl(BUILTINS_LOCATION, TYPE_DECL,
+                                    get_identifier(d_type->toChars()), rec_type);
         TYPE_STUB_DECL(rec_type) = stub_decl;
         TYPE_NAME(rec_type) = stub_decl;
         DECL_ARTIFICIAL(stub_decl) = 1;
@@ -1706,11 +1699,7 @@ IRState::pointerIntSum(tree ptr_node, tree idx_exp)
     tree size_exp;
 
     tree prod_result_type;
-#if D_GCC_VER >= 43
     prod_result_type = sizetype;
-#else
-    prod_result_type = result_type_node;
-#endif
 
     // %% TODO: real-not-long-double issues...
 
@@ -1748,51 +1737,32 @@ IRState::pointerIntSum(tree ptr_node, tree idx_exp)
 
     if (integer_zerop(intop))
         return ptr_node;
-    else
-    {
-#if D_GCC_VER >= 43
-        return build2(POINTER_PLUS_EXPR, result_type_node, ptr_node, intop);
-#else
-        return build2(PLUS_EXPR, result_type_node, ptr_node, intop);
-#endif
-    }
+    
+    return build2(POINTER_PLUS_EXPR, result_type_node, ptr_node, intop);
 }
 
 // %% op should be tree_code
 tree
 IRState::pointerOffsetOp(int op, tree ptr, tree idx)
 {
-#if D_GCC_VER >= 43
-    if (op == PLUS_EXPR)
-    {   /* nothing */
-    }
-    else if (op == MINUS_EXPR)
+    if (op == MINUS_EXPR)
     {   // %% sign extension...
         idx = fold_build1(NEGATE_EXPR, sizetype, idx);
     }
     else
     {
-        gcc_unreachable();
-        return error_mark_node;
+        gcc_assert(op == PLUS_EXPR);
+        /* nothing */
     }
     return build2(POINTER_PLUS_EXPR, TREE_TYPE(ptr), ptr,
-            convert(sizetype, idx));
-#else
-    return build2((enum tree_code) op, TREE_TYPE(ptr), ptr, idx);
-#endif
+                  convert(sizetype, idx));
 }
 
 tree
 IRState::pointerOffset(tree ptr_node, tree byte_offset)
 {
     tree ofs = fold_convert(sizetype, byte_offset);
-    tree t;
-#if D_GCC_VER >= 43
-    t = fold_build2(POINTER_PLUS_EXPR, TREE_TYPE(ptr_node), ptr_node, ofs);
-#else
-    t = fold_build2(PLUS_EXPR, TREE_TYPE(ptr_node), ptr_node, ofs);
-#endif
-    return t;
+    return fold_build2(POINTER_PLUS_EXPR, TREE_TYPE(ptr_node), ptr_node, ofs);
 }
 
 tree
@@ -1970,7 +1940,6 @@ IRState::binding(tree var_chain, tree body)
     // BIND_EXPR/DECL_INITIAL not supported in 4.0?
     gcc_assert(TREE_CHAIN(var_chain) == NULL_TREE); // TODO: only handles one var
 
-#if D_GCC_VER >= 43
     // %%EXPER -- if a BIND_EXPR is an a SAVE_EXPR, gimplify dies
     // in mostly_copy_tree_r.  prevent the latter from seeing
     // our shameful BIND_EXPR by wrapping it in a TARGET_EXPR
@@ -1981,16 +1950,6 @@ IRState::binding(tree var_chain, tree body)
         body = compound(ini, body);
     }
     return save_expr(build3(BIND_EXPR, TREE_TYPE(body), var_chain, body, NULL_TREE));
-#else
-    if (DECL_INITIAL(var_chain))
-    {
-        tree ini = build2(INIT_EXPR, void_type_node, var_chain, DECL_INITIAL(var_chain));
-        DECL_INITIAL(var_chain) = NULL_TREE;
-        body = compound(ini, body);
-    }
-
-    return build3(BIND_EXPR, TREE_TYPE(body), var_chain, body, NULL_TREE);
-#endif
 }
 
 tree
@@ -2695,16 +2654,12 @@ IRState::libCall(LibCall lib_call, unsigned n_args, tree *args, tree force_resul
 tree
 IRState::buildCall(tree type, tree callee, tree args)
 {
-#if D_GCC_VER >= 43
     int nargs = list_length(args);
     tree * pargs = new tree[nargs];
     for (int i = 0; args; args = TREE_CHAIN(args), i++)
         pargs[i] = TREE_VALUE(args);
     
     return build_call_array(type, callee, nargs, pargs);
-#else
-    return build3(CALL_EXPR, type, callee, args, NULL_TREE);
-#endif
 }
 
 // Conveniently construct the function arguments for passing
@@ -2841,38 +2796,10 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 }
 
             case INTRINSIC_BSWAP:
-#if D_GCC_VER >= 43
                 /* Backend provides builtin bswap32.
                    Assumes first argument and return type is uint. */
                 op1 = ce.nextArg();
                 return buildCall(built_in_decls[BUILT_IN_BSWAP32], 1, op1);
-#else
-                /* Expand a call to bswap intrinsic with argument op1.
-                    TODO: use asm if 386?
-                 */
-                op1 = ce.nextArg();
-                type = TREE_TYPE(op1);
-                // exp = (op1 & 0xFF) << 24
-                exp = fold_build2(BIT_AND_EXPR, type, op1, integerConstant(0xff, type));
-                exp = fold_build2(LSHIFT_EXPR, type, exp, integerConstant(24, type));
-
-                // exp |= (op1 & 0xFF00) << 8
-                op2 = fold_build2(BIT_AND_EXPR, type, op1, integerConstant(0xff00, type));
-                op2 = fold_build2(LSHIFT_EXPR, type, op2, integerConstant(8, type));
-                exp = fold_build2(BIT_IOR_EXPR, type, exp, op2);
-
-                // exp |= (op1 & 0xFF0000) >>> 8
-                op2 = fold_build2(BIT_AND_EXPR, type, op1, integerConstant(0xff0000, type));
-                op2 = fold_build2(RSHIFT_EXPR, type, op2, integerConstant(8, type));
-                exp = fold_build2(BIT_IOR_EXPR, type, exp, op2);
-
-                // exp |= op1 & 0xFF000000) >>> 24
-                op2 = fold_build2(BIT_AND_EXPR, type, op1, integerConstant(0xff000000, type));
-                op2 = fold_build2(RSHIFT_EXPR, type, op2, integerConstant(24, type));
-                exp = fold_build2(BIT_IOR_EXPR, type, exp, op2);
-
-                return exp;
-#endif
 
             case INTRINSIC_INP:
             case INTRINSIC_INPL:
@@ -3283,12 +3210,8 @@ IRState::exceptionObject()
     tree obj_type = getObjectType()->toCtype();
     // Like gjc, the actual D exception object is one
     // pointer behind the exception header
-#if D_GCC_VER >= 45
     tree t = buildCall(built_in_decls[BUILT_IN_EH_POINTER],
                        1, integer_zero_node);
-#else
-    tree t = build0(EXC_PTR_EXPR, ptr_type_node);
-#endif
     t = build1(NOP_EXPR, build_pointer_type(obj_type), t); // treat exception header as (Object*)
     t = pointerOffsetOp(MINUS_EXPR, t, TYPE_SIZE_UNIT(TREE_TYPE(t)));
     t = build1(INDIRECT_REF, obj_type, t);
@@ -3298,8 +3221,8 @@ IRState::exceptionObject()
 tree
 IRState::label(Loc loc, Identifier * ident)
 {
-    tree t_label = d_build_decl(LABEL_DECL,
-            ident ? get_identifier(ident->string) : NULL_TREE, void_type_node);
+    tree t_label = build_decl(UNKNOWN_LOCATION, LABEL_DECL,
+                              ident ? get_identifier(ident->string) : NULL_TREE, void_type_node);
     DECL_CONTEXT(t_label) = current_function_decl;
     DECL_MODE(t_label) = VOIDmode;
     if (loc.filename)
@@ -3745,8 +3668,8 @@ IRState::buildChain(FuncDeclaration * func)
     tree ptr_field;
     ListMaker fields;
 
-    ptr_field = d_build_decl_loc(BUILTINS_LOCATION, FIELD_DECL,
-                                 get_identifier("__chain"), ptr_type_node);
+    ptr_field = build_decl(BUILTINS_LOCATION, FIELD_DECL,
+                           get_identifier("__chain"), ptr_type_node);
     DECL_CONTEXT(ptr_field) = frame_rec_type;
     fields.chain(ptr_field);
 
@@ -3780,9 +3703,9 @@ IRState::buildChain(FuncDeclaration * func)
     {
         VarDeclaration * v = (*nestedVars)[i];
         Symbol * s = v->toSymbol();
-        tree field = d_build_decl(FIELD_DECL,
-                                  v->ident ? get_identifier(v->ident->string) : NULL_TREE,
-                                  gen.trueDeclarationType(v));
+        tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
+                                v->ident ? get_identifier(v->ident->string) : NULL_TREE,
+                                gen.trueDeclarationType(v));
         s->SframeField = field;
         g.ofile->setDeclLoc(field, v);
         DECL_CONTEXT(field) = frame_rec_type;
@@ -4450,8 +4373,8 @@ AggLayout::doFields(VarDeclarations * fields, AggregateDeclaration * agg)
         gcc_assert(var_decl && var_decl->storage_class & STCfield);
 
         tree ident = var_decl->ident ? get_identifier(var_decl->ident->string) : NULL_TREE;
-        tree field_decl = d_build_decl(FIELD_DECL, ident,
-            gen.trueDeclarationType(var_decl));
+        tree field_decl = build_decl(UNKNOWN_LOCATION, FIELD_DECL, ident,
+                                     gen.trueDeclarationType(var_decl));
         g.ofile->setDeclLoc(field_decl, var_decl);
         var_decl->csym = new Symbol;
         var_decl->csym->Stree = field_decl;
@@ -4488,8 +4411,8 @@ AggLayout::doInterfaces(BaseClasses * bases, AggregateDeclaration * /*agg*/)
     for (size_t i = 0; i < bases->dim; i++)
     {
         BaseClass * bc = bases->tdata()[i];
-        tree decl = d_build_decl(FIELD_DECL, NULL_TREE,
-            Type::tvoidptr->pointerTo()->toCtype() /* %% better */);
+        tree decl = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
+                               Type::tvoidptr->pointerTo()->toCtype() /* %% better */);
         //DECL_VIRTUAL_P(decl) = 1; %% nobody cares, boo hoo
         DECL_ARTIFICIAL(decl) = DECL_IGNORED_P(decl) = 1;
         // DECL_FCONTEXT(decl) = fcontext; // shouldn't be needed since it's ignored

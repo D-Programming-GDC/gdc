@@ -87,13 +87,8 @@ ObjectFile::hasModule(Module *m)
 void
 ObjectFile::finish()
 {
-#if D_GCC_VER < 43 && !(defined(__APPLE__) && D_GCC_VER == 42)
-#define D_FFN_I 'I'
-#define D_FFN_D 'D'
-#else
 #define D_FFN_I "I"
 #define D_FFN_D "D"
-#endif
     /* If the target does not directly support static constructors,
        staticCtorList contains a list of all static constructors defined
        so far.  This routine will create a function to call all of those
@@ -118,7 +113,6 @@ ObjectFile::doLineNote(const Loc & loc)
     // else do nothing
 }
 
-#ifdef D_USE_MAPPED_LOCATION
 static StringTable * lmtab = NULL;
 
 static location_t
@@ -156,19 +150,13 @@ cvtLocToloc_t(const Loc loc)
     // cheat...
     return lm->start_location + ((loc.linnum - lm->to_line) << lm->column_bits);
 }
-#endif
 
 void
 ObjectFile::setLoc(const Loc & loc)
 {
     if (loc.filename)
     {
-#ifdef D_USE_MAPPED_LOCATION
         input_location = cvtLocToloc_t(loc);
-#else
-        location_t gcc_loc = { loc.filename, loc.linnum };
-        input_location = gcc_loc;
-#endif
     }
     // else do nothing
 }
@@ -179,12 +167,7 @@ ObjectFile::setDeclLoc(tree t, const Loc & loc)
     // DWARF2 will often crash if the DECL_SOURCE_FILE is not set.  It's
     // easier the error here.
     gcc_assert(loc.filename);
-#ifdef D_USE_MAPPED_LOCATION
     DECL_SOURCE_LOCATION (t) = cvtLocToloc_t(loc);
-#else
-    DECL_SOURCE_FILE (t) = loc.filename;
-    DECL_SOURCE_LINE (t) = loc.linnum;
-#endif
 }
 
 void
@@ -219,23 +202,10 @@ void
 ObjectFile::setCfunEndLoc(const Loc & loc)
 {
     tree fn_decl = cfun->decl;
-# ifdef D_USE_MAPPED_LOCATION
     if (loc.filename)
         cfun->function_end_locus = cvtLocToloc_t(loc);
     else
         cfun->function_end_locus = DECL_SOURCE_LOCATION(fn_decl);
-# else
-    if (loc.filename)
-    {
-        cfun->function_end_locus.file = loc.filename;
-        cfun->function_end_locus.line = loc.linnum;
-    }
-    else
-    {
-        cfun->function_end_locus.file = DECL_SOURCE_FILE (fn_decl);
-        cfun->function_end_locus.line = DECL_SOURCE_LINE (fn_decl);
-    }
-# endif
 }
 
 void
@@ -260,8 +230,6 @@ ObjectFile::giveDeclUniqueName(tree decl, const char * prefix)
     SET_DECL_ASSEMBLER_NAME(decl, get_identifier(label));
 }
 
-#if D_GCC_VER >= 45
-
 /* For 4.5.x, return the COMDAT group into which DECL should be placed. */
 
 static tree
@@ -270,8 +238,6 @@ d_comdat_group(tree decl)
     // %% May need special case here.
     return DECL_ASSEMBLER_NAME(decl);
 }
-
-#endif
 
 
 void
@@ -299,21 +265,13 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, bool comdat)
            of make_decl_one_only */
         if (SUPPORTS_ONE_ONLY)
         {
-#if D_GCC_VER >= 45
             make_decl_one_only(decl_tree, comdat ? d_comdat_group(decl_tree) : NULL_TREE);
-#else
-            make_decl_one_only(decl_tree);
-#endif
         }
         else if (SUPPORTS_WEAK)
         {
             tree decl_init = DECL_INITIAL(decl_tree);
             DECL_INITIAL(decl_tree) = integer_zero_node;
-#if D_GCC_VER >= 45
             make_decl_one_only(decl_tree, d_comdat_group(decl_tree));
-#else
-            make_decl_one_only(decl_tree);
-#endif
             DECL_INITIAL(decl_tree) = decl_init;
         }
     }
@@ -593,7 +551,7 @@ ObjectFile::initTypeDecl(tree t, Dsymbol * d_sym)
     if (! TYPE_STUB_DECL(t))
     {
         const char * name = d_sym->ident ? d_sym->ident->string : "fix";
-        tree decl = d_build_decl(TYPE_DECL, get_identifier(name), t);
+        tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL, get_identifier(name), t);
         DECL_CONTEXT(decl) = gen.declContext(d_sym);
         setDeclLoc(decl, d_sym);
         initTypeDecl(t, decl);
@@ -606,7 +564,7 @@ ObjectFile::declareType(tree t, Type * d_type)
 {
     // Note: It is not safe to call d_type->toCtype().
     Loc l;
-    tree decl = d_build_decl(TYPE_DECL, get_identifier(d_type->toChars()), t);
+    tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL, get_identifier(d_type->toChars()), t);
     l.filename = "<internal>";
     l.linnum = 1;
     setDeclLoc(decl, l);
@@ -642,10 +600,8 @@ ObjectFile::initTypeDecl(tree t, tree decl)
             TYPE_STUB_DECL(t) = decl;
             // g++ does this and the debugging code assumes it:
             DECL_ARTIFICIAL(decl) = 1;
-#if D_GCC_VER >= 43
             // code now assumes...
             DECL_SOURCE_LOCATION(decl) = DECL_SOURCE_LOCATION(decl);
-#endif
             break;
 
         default:
@@ -759,18 +715,9 @@ make_alias_for_thunk (tree function)
     DECL_EXTERNAL (alias) = 0;
     DECL_ARTIFICIAL (alias) = 1;
 
-#if D_GCC_VER < 45
-    DECL_NO_STATIC_CHAIN (alias) = 1;
-#endif
-#if D_GCC_VER < 44
-    DECL_INLINE (alias) = 0;
-#endif
-
     DECL_DECLARED_INLINE_P (alias) = 0;
-#if D_GCC_VER >= 45
     DECL_INITIAL (alias) = error_mark_node;
     DECL_ARGUMENTS (alias) = copy_list (DECL_ARGUMENTS (function));
-#endif
 
     TREE_ADDRESSABLE (alias) = 1;
     TREE_USED (alias) = 1;
@@ -784,12 +731,10 @@ make_alias_for_thunk (tree function)
                                                              alias, function);
         DECL_ASSEMBLER_NAME (function);
         gcc_assert (aliasn != NULL);
-#elif D_GCC_VER >= 45
+#else
         bool ok = cgraph_same_body_alias (alias, function);
         DECL_ASSEMBLER_NAME (function);
         gcc_assert (ok);
-#else
-        assemble_alias (alias, DECL_ASSEMBLER_NAME (function));
 #endif
     }
     return alias;
@@ -836,8 +781,8 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
         const char *fnname;
 
         current_function_decl = thunk_decl;
-        DECL_RESULT(thunk_decl) = d_build_decl_loc(DECL_SOURCE_LOCATION(thunk_decl),
-                                               RESULT_DECL, 0, integer_type_node);
+        DECL_RESULT(thunk_decl) = build_decl(DECL_SOURCE_LOCATION(thunk_decl),
+                                             RESULT_DECL, 0, integer_type_node);
         fnname = XSTR(XEXP(DECL_RTL(thunk_decl), 0), 0);
         gen.initFunctionStart(thunk_decl, 0);
         cfun->is_thunk = 1;
@@ -1004,7 +949,7 @@ check_static_sym(Symbol * sym)
     {   //gcc_assert(sym->Sdt);    // Unfortunately cannot check for this; it might be an empty dt_t list...
         gcc_assert(! sym->Sident); // Can enforce that sym is anonymous though.
         tree t_ini = dt2tree(sym->Sdt); // %% recursion problems?
-        tree t_var = d_build_decl(VAR_DECL, NULL_TREE, TREE_TYPE(t_ini));
+        tree t_var = build_decl(UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, TREE_TYPE(t_ini));
         g.ofile->giveDeclUniqueName(t_var);
         DECL_INITIAL(t_var) = t_ini;
         TREE_STATIC(t_var) = 1;
@@ -1106,7 +1051,7 @@ obj_moduleinfo(Symbol *sym)
     tree f0 = TYPE_FIELDS(mod_ref_type);
     tree f1 = TREE_CHAIN(f0);
 
-    tree our_mod_ref = d_build_decl(VAR_DECL, NULL_TREE, mod_ref_type);
+    tree our_mod_ref = build_decl(UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, mod_ref_type);
     d_keep(our_mod_ref);
     g.ofile->giveDeclUniqueName(our_mod_ref, "__mod_ref");
     g.ofile->setDeclLoc(our_mod_ref, g.mod);
@@ -1125,9 +1070,9 @@ obj_moduleinfo(Symbol *sym)
     DECL_INITIAL(our_mod_ref) = init;
     g.ofile->rodc(our_mod_ref, 1);
 
-    tree the_mod_ref = d_build_decl_loc(BUILTINS_LOCATION, VAR_DECL,
-                                        get_identifier("_Dmodule_ref"),
-                                        build_pointer_type(mod_ref_type));
+    tree the_mod_ref = build_decl(BUILTINS_LOCATION, VAR_DECL,
+                                  get_identifier("_Dmodule_ref"),
+                                  build_pointer_type(mod_ref_type));
     d_keep(the_mod_ref);
     DECL_EXTERNAL(the_mod_ref) = 1;
     TREE_PUBLIC(the_mod_ref) = 1;
@@ -1152,8 +1097,8 @@ obj_tlssections()
      */
     tree tlsstart, tlsend;
 
-    tlsstart = d_build_decl(VAR_DECL, get_identifier("_tlsstart"),
-                            integer_type_node);
+    tlsstart = build_decl(UNKNOWN_LOCATION, VAR_DECL,
+                         get_identifier("_tlsstart"), integer_type_node);
     TREE_PUBLIC(tlsstart) = 1;
     TREE_STATIC(tlsstart) = 1;
     DECL_ARTIFICIAL(tlsstart) = 1;
@@ -1163,8 +1108,8 @@ obj_tlssections()
     g.ofile->setDeclLoc(tlsstart, g.mod);
     g.ofile->rodc(tlsstart, 1);
 
-    tlsend = d_build_decl(VAR_DECL, get_identifier("_tlsend"),
-                          integer_type_node);
+    tlsend = build_decl(UNKNOWN_LOCATION, VAR_DECL,
+                        get_identifier("_tlsend"), integer_type_node);
     TREE_PUBLIC(tlsend) = 1;
     TREE_STATIC(tlsend) = 1;
     DECL_ARTIFICIAL(tlsend) = 1;

@@ -281,14 +281,6 @@ array_t _d_newarrayT(TypeInfo ti, size_t length)
         result = array_t.init;
     else
     {
-        version (GNU)
-        {
-            // required to output the label;
-            static char x = 0;
-            if (x)
-                goto Loverflow;
-        }
-
         version (D_InlineAsm_X86)
         {
             asm
@@ -338,13 +330,6 @@ array_t _d_newarrayiT(TypeInfo ti, size_t length)
         auto initializer = ti.next.init();
         auto isize = initializer.length;
         auto q = initializer.ptr;
-        version (GNU)
-        {
-            // required to output the label;
-            static char x = 0;
-            if (x)
-                goto Loverflow;
-        }
 
         version (D_InlineAsm_X86)
         {
@@ -604,14 +589,6 @@ body
 
     if (newlength)
     {
-        version (GNU)
-        {
-            // required to output the label;
-            static char x = 0;
-            if (x)
-                goto Loverflow;
-        }
-
         version (D_InlineAsm_X86)
         {
             size_t newsize = void;
@@ -727,14 +704,6 @@ body
 
     if (newlength)
     {
-        version (GNU)
-        {
-            // required to output the label;
-            static char x = 0;
-            if (x)
-                goto Loverflow;
-        }
-
         version (D_InlineAsm_X86)
         {
             size_t newsize = void;

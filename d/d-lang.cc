@@ -72,32 +72,21 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_GET_ALIAS_SET            d_hook_get_alias_set
 #define LANG_HOOKS_MARK_ADDRESSABLE         d_mark_addressable
 #define LANG_HOOKS_TYPES_COMPATIBLE_P       d_types_compatible_p
+#define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function
 #define LANG_HOOKS_REGISTER_BUILTIN_TYPE    d_register_builtin_type
 #define LANG_HOOKS_FINISH_INCOMPLETE_DECL   d_finish_incomplete_decl
 
-#if D_GCC_VER >= 43
-#define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function43
-#else
-#define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function
-#endif
 
-#if D_GCC_VER >= 43
 #undef LANG_HOOKS_GIMPLIFY_EXPR
 #define LANG_HOOKS_GIMPLIFY_EXPR            d_gimplify_expr
-#endif
 
-#if D_GCC_VER >= 44
 #undef LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE
-#define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE d_builtin_function43
-#endif
+#define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE d_builtin_function
 
-#if D_GCC_VER >= 45
 #undef LANG_HOOKS_EH_PERSONALITY
 #undef LANG_HOOKS_EH_RUNTIME_TYPE
-
 #define LANG_HOOKS_EH_PERSONALITY           d_eh_personality
 #define LANG_HOOKS_EH_RUNTIME_TYPE          d_build_eh_type_type
-#endif
 
 #if D_GCC_VER >= 46
 #undef LANG_HOOKS_OPTION_LANG_MASK
@@ -124,12 +113,6 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_UNSIGNED_TYPE            d_unsigned_type
 #define LANG_HOOKS_SIGNED_TYPE              d_signed_type
 #define LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE  d_signed_or_unsigned_type
-
-/* Lang Hooks for callgraph */
-#if D_GCC_VER < 43
-#undef LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION
-#define LANG_HOOKS_CALLGRAPH_EXPAND_FUNCTION d_expand_function
-#endif
 
 /* Lang Hooks for tree inlining */
 #if V2
@@ -805,23 +788,6 @@ bool d_post_options(const char ** fn)
     // Save register names for restoring later.
     memcpy (saved_reg_names, reg_names, sizeof reg_names);
 
-#if D_GCC_VER == 43
-    // Workaround for embedded functions, don't inline if debugging is on.
-    // See Issue #38 for why.
-    flag_inline_small_functions = !write_symbols;
-#endif
-
-#if D_GCC_VER < 44
-    // Inline option code copied from c-opts.c
-    flag_inline_trees = 1;
-
-    /* Use tree inlining.  */
-    if (!flag_no_inline)
-        flag_no_inline = 1;
-    if (flag_inline_functions)
-        flag_inline_trees = 2;
-#endif
-
     /* If we are given more than one input file, we must use
        unit-at-a-time mode.  */
     if (num_in_fnames > 1)
@@ -833,12 +799,11 @@ bool d_post_options(const char ** fn)
         flag_bounds_check = global.params.useArrayBounds = 0;
 #endif
 
-#if D_GCC_VER >= 45
     /* Excess precision other than "fast" requires front-end
        support that we don't offer. */
     if (flag_excess_precision_cmdline == EXCESS_PRECISION_DEFAULT)
        flag_excess_precision_cmdline = EXCESS_PRECISION_FAST;
-#endif
+
     return false;
 }
 
@@ -862,13 +827,8 @@ d_write_global_declarations()
     wrapup_global_declarations(vec, globalDeclarations.dim);
     check_global_declarations(vec, globalDeclarations.dim);
 
-#if D_GCC_VER >= 45
     /* We're done parsing; proceed to optimize and emit assembly. */
     cgraph_finalize_compilation_unit();
-#else
-    cgraph_finalize_compilation_unit();
-    cgraph_optimize();
-#endif
 
     /* After cgraph has had a chance to emit everything that's going to
        be emitted, output debug information for globals.  */
@@ -879,19 +839,13 @@ d_write_global_declarations()
 // so I guess D doesn't have aliasing rules.  Would be nice to enable
 // strict aliasing, but hooking or defaulting flag_strict_aliasing is
 // not trivial
-static
-#if D_GCC_VER < 43
-HOST_WIDE_INT
-#else
-alias_set_type
-#endif
+static alias_set_type
 d_hook_get_alias_set(tree)
 {
     return 0;
 }
 
 /* Gimplification of expression trees.  */
-#if D_GCC_VER >= 44
 int
 d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
                  gimple_seq *post_p ATTRIBUTE_UNUSED)
@@ -921,36 +875,6 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
             return GS_UNHANDLED;
     }
 }
-#elif D_GCC_VER >= 43
-int
-d_gimplify_expr (tree *expr_p, tree *pre_p ATTRIBUTE_UNUSED,
-                 tree *post_p ATTRIBUTE_UNUSED)
-{
-    enum tree_code code = TREE_CODE (*expr_p);
-    switch (code)
-    {
-        case INIT_EXPR:
-        case MODIFY_EXPR:
-        {   /* If the back end isn't clever enough to know that the lhs and rhs
-               types are the same, add an explicit conversion.  */
-            tree op0 = TREE_OPERAND (*expr_p, 0);
-            tree op1 = TREE_OPERAND (*expr_p, 1);
-
-            if (!gen.isErrorMark(op0) && !gen.isErrorMark(op1)
-                && (AGGREGATE_TYPE_P (TREE_TYPE (op0))
-                    || AGGREGATE_TYPE_P (TREE_TYPE (op1)))
-                && !useless_type_conversion_p (TREE_TYPE (op1), TREE_TYPE (op0)))
-            {
-                TREE_OPERAND (*expr_p, 1) = build1 (VIEW_CONVERT_EXPR,
-                                                    TREE_TYPE (op0), op1);
-            }
-        }
-
-        default:
-            return GS_UNHANDLED;
-    }
-}
-#endif
 
 static Module * an_output_module = 0;
 
@@ -964,7 +888,7 @@ static void
 nametype(tree type, const char * name)
 {
     tree ident = get_identifier(name);
-    tree decl = d_build_decl(TYPE_DECL, ident, type);
+    tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL, ident, type);
     TYPE_NAME(type) = decl;
     ObjectFile::rodc(decl, 1);
 }
@@ -1396,33 +1320,6 @@ d_gcc_dump_source(const char * srcname, const char * ext, unsigned char * data, 
 
     /* cleanup */
     errno=0;
-}
-
-#ifdef D_USE_MAPPED_LOCATION
-/* Create a DECL_... node of code CODE, name NAME and data type TYPE.
-   LOC is the location of the decl.  */
-
-tree
-d_build_decl_loc(location_t loc, tree_code code, tree name, tree type)
-{
-    tree t;
-#if D_GCC_VER >= 45
-    t = build_decl(loc, code, name, type);
-#else
-    t = build_decl(code, name, type);
-    DECL_SOURCE_LOCATION(t) = loc;
-#endif
-    return t;
-}
-#endif
-
-/* Same as d_build_decl_loc, except location of DECL is unknown.
-   This is really for backwards compatibility with old code.  */
-
-tree
-d_build_decl(tree_code code, tree name, tree type)
-{
-    return d_build_decl_loc(UNKNOWN_LOCATION, code, name, type);
 }
 
 bool
@@ -1878,11 +1775,9 @@ poplevel (int keep, int reverse, int routinebody)
 #if D_GCC_VER >= 46
                     warning_at (DECL_SOURCE_LOCATION (t),
                                 OPT_Wunused_but_set_variable, "variable %qD set but not used", t);
-#elif D_GCC_VER >= 44
+#else
                     warning_at (DECL_SOURCE_LOCATION (t),
                                 OPT_Wunused_variable, "variable %qD set but not used", t);
-#else
-                    warning (OPT_Wunused_variable, "variable %qD set but not used", t);
 #endif
                 }
             }
@@ -1970,80 +1865,6 @@ getdecls ()
         return NULL_TREE;
 }
 
-
-/* Tree code classes. */
-
-#undef DEFTREECODE
-#define DEFTREECODE(SYM, NAME, TYPE, LENGTH) TYPE,
-
-#if D_GCC_VER < 44
-
-const enum tree_code_class
-tree_code_type[] = {
-#include "tree.def"
- tcc_exceptional,
-#include "d/d-tree.def"
-};
-#endif
-
-#undef DEFTREECODE
-
-#if D_GCC_VER < 44
-
-/* Table indexed by tree code giving number of expression
- operands beyond the fixed part of the node structure.
- Not used for types or decls. */
-
-#define DEFTREECODE(SYM, NAME, TYPE, LENGTH) LENGTH,
-
-const unsigned char tree_code_length[] = {
-#include "tree.def"
- 0,
-#include "d/d-tree.def"
-};
-#undef DEFTREECODE
-
-/* Names of tree components.
- Used for printing out the tree and error messages. */
-#define DEFTREECODE(SYM, NAME, TYPE, LEN) NAME,
-
-const char *const tree_code_name[] = {
-#include "tree.def"
- "@@dummy",
-#include "d/d-tree.def"
-};
-#undef DEFTREECODE
-
-#endif
-
-#if D_GCC_VER < 43
-
-static void
-d_expand_function(tree fndecl)
-{
-  if (!DECL_INITIAL (fndecl)
-      || DECL_INITIAL (fndecl) == error_mark_node)
-    return;
-
-  bool save_flag = flag_omit_frame_pointer;
-  flag_omit_frame_pointer = gen.originalOmitFramePointer ||
-      D_DECL_NO_FRAME_POINTER( fndecl );
-
-  tree_rest_of_compilation (fndecl);
-
-  flag_omit_frame_pointer = save_flag;
-
-  if (DECL_STATIC_CONSTRUCTOR (fndecl)
-      && targetm.have_ctors_dtors)
-    targetm.asm_out.constructor (XEXP (DECL_RTL (fndecl), 0),
-                                 DEFAULT_INIT_PRIORITY);
-  if (DECL_STATIC_DESTRUCTOR (fndecl)
-      && targetm.have_ctors_dtors)
-    targetm.asm_out.destructor (XEXP (DECL_RTL (fndecl), 0),
-                                DEFAULT_INIT_PRIORITY);
-}
-
-#endif
 
 static int
 d_types_compatible_p (tree t1, tree t2)
@@ -2172,7 +1993,6 @@ d_free(tree t)
     d_free_list = t;
 }
 
-#if D_GCC_VER >= 45
 tree d_eh_personality_decl;
 
 /* Return the GDC personality function decl.  */
@@ -2193,7 +2013,6 @@ d_eh_personality (void)
     }
     return d_eh_personality_decl;
 }
-#endif
 
 static tree
 d_build_eh_type_type(tree type)
@@ -2211,19 +2030,7 @@ d_build_eh_type_type(tree type)
 void
 d_init_exceptions(void)
 {
-#if D_GCC_VER >= 45
-    // Handled with langhooks eh_personality and eh_runtime_type
-#else
-    eh_personality_libfunc = init_one_libfunc(USING_SJLJ_EXCEPTIONS
-            ? "__gdc_personality_sj0" : "__gdc_personality_v0");
-    default_init_unwind_resume_libfunc ();
-    lang_eh_runtime_type = d_build_eh_type_type;
-#endif
     using_eh_for_cleanups ();
-    // lang_protect_cleanup_actions = ...; // no need? ... probably needed for autos
 }
 
-#if D_GCC_VER < 45
-const
-#endif
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;

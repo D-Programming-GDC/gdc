@@ -60,6 +60,8 @@ elif grep -q '^4\.5\.' gcc/BASE-VER; then
     gcc_ver=4.5
 elif grep -q '^4\.6\.' gcc/BASE-VER; then
     gcc_ver=4.6
+elif grep -q '^4\.7\.' gcc/BASE-VER; then
+    gcc_ver=4.7
 fi
 
 gcc_patch_key=${gcc_ver}.x
