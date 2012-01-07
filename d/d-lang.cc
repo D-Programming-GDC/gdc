@@ -55,11 +55,14 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_GET_ALIAS_SET
-#undef LANG_HOOKS_MARK_ADDRESSABLE
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
 #undef LANG_HOOKS_BUILTIN_FUNCTION
+#undef LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE
 #undef LANG_HOOKS_REGISTER_BUILTIN_TYPE
 #undef LANG_HOOKS_FINISH_INCOMPLETE_DECL
+#undef LANG_HOOKS_GIMPLIFY_EXPR
+#undef LANG_HOOKS_EH_PERSONALITY
+#undef LANG_HOOKS_EH_RUNTIME_TYPE
 
 #define LANG_HOOKS_NAME                     lang_name
 #define LANG_HOOKS_INIT                     d_init
@@ -70,21 +73,12 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE   d_common_attribute_table
 #define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE   d_common_format_attribute_table
 #define LANG_HOOKS_GET_ALIAS_SET            d_hook_get_alias_set
-#define LANG_HOOKS_MARK_ADDRESSABLE         d_mark_addressable
 #define LANG_HOOKS_TYPES_COMPATIBLE_P       d_types_compatible_p
 #define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function
+#define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE d_builtin_function
 #define LANG_HOOKS_REGISTER_BUILTIN_TYPE    d_register_builtin_type
 #define LANG_HOOKS_FINISH_INCOMPLETE_DECL   d_finish_incomplete_decl
-
-
-#undef LANG_HOOKS_GIMPLIFY_EXPR
 #define LANG_HOOKS_GIMPLIFY_EXPR            d_gimplify_expr
-
-#undef LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE
-#define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE d_builtin_function
-
-#undef LANG_HOOKS_EH_PERSONALITY
-#undef LANG_HOOKS_EH_RUNTIME_TYPE
 #define LANG_HOOKS_EH_PERSONALITY           d_eh_personality
 #define LANG_HOOKS_EH_RUNTIME_TYPE          d_build_eh_type_type
 
@@ -103,28 +97,13 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_TYPE_FOR_MODE
 #undef LANG_HOOKS_TYPE_FOR_SIZE
 #undef LANG_HOOKS_TYPE_PROMOTES_TO
-#undef LANG_HOOKS_UNSIGNED_TYPE
-#undef LANG_HOOKS_SIGNED_TYPE
-#undef LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE
 
 #define LANG_HOOKS_TYPE_FOR_MODE            d_type_for_mode
 #define LANG_HOOKS_TYPE_FOR_SIZE            d_type_for_size
 #define LANG_HOOKS_TYPE_PROMOTES_TO         d_type_promotes_to
-#define LANG_HOOKS_UNSIGNED_TYPE            d_unsigned_type
-#define LANG_HOOKS_SIGNED_TYPE              d_signed_type
-#define LANG_HOOKS_SIGNED_OR_UNSIGNED_TYPE  d_signed_or_unsigned_type
-
-/* Lang Hooks for tree inlining */
-#if V2
-#undef LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING
-#define LANG_HOOKS_TREE_INLINING_CONVERT_PARM_FOR_INLINING  d_convert_parm_for_inlining
-#endif
 
 
-////static tree d_type_for_size PARAMS ((unsigned, int));
 static tree d_signed_or_unsigned_type(int, tree);
-////tree d_unsigned_type(tree);
-////tree d_signed_type(tree);
 
 static const char * fonly_arg;
 // Because of PR16888, on x86 platforms, GCC clears unused reg names.

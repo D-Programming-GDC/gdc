@@ -116,7 +116,7 @@ endif
 D_DMD_H := $(subst d/dmd,$(D_dmd_srcdir),$(D_DMD_H))
 
 
-D_TREE_H = $(TREE_H) d/d-tree.def d/d-lang.h d/d-lang-45.h \
+D_TREE_H = $(TREE_H) d/d-tree.def d/d-lang.h \
 	d/d-lang-type.h d/d-lang-type-45.h d/d-codegen.h \
         d/d-objfile.h d/d-irstate.h d/d-dmd-gcc.h d/d-gcc-includes.h \
         d/d-gcc-real.h d/symbol.h d/dt.h \
@@ -159,13 +159,6 @@ D d: $(D_COMPILER_NAME)$(exeext) d/pkgvars
 D_BORROWED_C_OBJS=attribs.o
 ifdef D_is_apple_ver
   ifeq ($(D_gcc_main_ver),4.2)
-    D_BORROWED_C_OBJS += cppdefault.o
-  endif
-else
-  ifeq ($(D_gcc_main_ver),4.2)
-    D_BORROWED_C_OBJS += cppdefault.o
-  endif
-  ifeq ($(D_gcc_main_ver),4.3)
     D_BORROWED_C_OBJS += cppdefault.o
   endif
 endif
@@ -269,8 +262,7 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
 #D_GLUE_OBJS += d/d-cppmngl.glue.o
 #endif
 
-D_BI_ATTRS = d/d-bi-attrs-42.h d/d-bi-attrs-43.h d/d-bi-attrs-44.h \
-             d/d-bi-attrs-45.h d/d-bi-attrs-46.h
+D_BI_ATTRS = d/d-bi-attrs-45.h d/d-bi-attrs-46.h
 
 ifdef D_is_apple_ver
   ifeq ($(D_gcc_main_ver),4.2)
@@ -278,21 +270,6 @@ ifdef D_is_apple_ver
     D_BORROWED_C_OBJS += stub-objc.o prefix.o
   endif
 else
-  ifeq ($(D_gcc_main_ver),4.2)
-    D_GLUE_OBJS += d/d-c-stubs.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o
-  endif
-  ifeq ($(D_gcc_main_ver),4.3)
-    D_GLUE_OBJS += d/d-c-stubs.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o
-    D_EXTRA_LIBS += $(GMPLIBS)
-  endif
-  ifeq ($(D_gcc_main_ver),4.4)
-    D_GLUE_OBJS += d/d-c-stubs.cglue.o
-    D_BORROWED_C_OBJS += stub-objc.o prefix.o
-    D_BORROWED_C_OBJS += gimplify.o tree-iterator.o
-    D_EXTRA_LIBS += $(BACKENDLIBS)
-  endif
   ifeq ($(D_gcc_main_ver),4.5)
     D_GLUE_OBJS += d/d-c-stubs.cglue.o
     D_BORROWED_C_OBJS += stub-objc.o prefix.o

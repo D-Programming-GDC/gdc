@@ -227,8 +227,7 @@ tree getdecls (void);
 extern void d_init_builtins (void);
 extern const struct attribute_spec d_common_attribute_table[];
 extern const struct attribute_spec d_common_format_attribute_table[];
-extern tree d_builtin_function (const char *, tree, int, enum built_in_class, const char *, tree);
-extern tree d_builtin_function43 (tree);
+extern tree d_builtin_function (tree);
 extern void d_register_builtin_type (tree, const char *);
 
 /* In d-builtins2.cc */
