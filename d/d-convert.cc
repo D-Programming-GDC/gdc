@@ -155,6 +155,11 @@ d_convert_basic (tree type, tree expr)
     if (type == TREE_TYPE (expr))
         return expr;
 
+    if (TREE_CODE (type) == ARRAY_TYPE
+            && TREE_CODE (TREE_TYPE (expr)) == ARRAY_TYPE
+            && TYPE_DOMAIN (type) == TYPE_DOMAIN (TREE_TYPE (expr)))
+        return expr;
+
     ret = targetm.convert_to_type (type, expr);
     if (ret)
         return ret;
@@ -204,7 +209,10 @@ d_convert_basic (tree type, tree expr)
         case RECORD_TYPE:
         case UNION_TYPE:
             if (lang_hooks.types_compatible_p (type, TREE_TYPE (expr)))
-                return e;
+            {
+                ret = build1 (VIEW_CONVERT_EXPR, type, expr);
+                goto maybe_fold;
+            }
             break;
 
         default:

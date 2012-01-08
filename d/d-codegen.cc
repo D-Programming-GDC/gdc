@@ -2176,14 +2176,8 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Expressions *
         {   // Actual arguments for declared formal arguments
             Parameter * formal_arg = Parameter::getNth(formal_args, fi);
             actual_arg_tree = convertForArgument(actual_arg_exp, formal_arg);
+            actual_arg_tree = d_convert_basic(trueArgumentType(formal_arg), actual_arg_tree);
 
-            // from c-typeck.c: convert_arguments, default_conversion, ...
-            if (INTEGRAL_TYPE_P (TREE_TYPE(actual_arg_tree))
-                    && (TYPE_PRECISION (TREE_TYPE(actual_arg_tree)) <
-                        TYPE_PRECISION (integer_type_node)))
-            {
-                actual_arg_tree = d_convert_basic(integer_type_node, actual_arg_tree);
-            }
             ++fi;
         }
         else

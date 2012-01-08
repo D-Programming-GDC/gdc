@@ -2823,15 +2823,6 @@ d_genericize(tree fndecl)
         }
     }
 
-    // Fix up result decl for named value returns.
-    if (D_TYPE_ADDRESSABLE(TREE_TYPE(fndecl)))
-    {
-        tree t = DECL_RESULT(fndecl);
-        TREE_ADDRESSABLE(TREE_TYPE(fndecl)) = 1;
-        TREE_ADDRESSABLE(t) = 0;
-        relayout_decl(t);
-    }
-
     // Build cgraph for function.
     (void) cgraph_node(fndecl);
 
@@ -4407,7 +4398,6 @@ ReturnStatement::toIR(IRState* irs)
                the backend to perform the optimisation in tree-nrv.c - but this
                only works when compiling with optimisations turned on.
                Should really implement in the frontend proper.  */
-            D_TYPE_ADDRESSABLE(tf->toCtype()) = 1;
         }
         else if (exp->type->toBasetype()->ty == Tstruct &&
                  (exp->op == TOKvar || exp->op == TOKdotvar || exp->op == TOKstar || exp->op == TOKthis))
