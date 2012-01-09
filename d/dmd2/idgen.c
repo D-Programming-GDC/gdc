@@ -92,6 +92,7 @@ struct Msgtable msgtable[] =
     { "TypeInfo_Enum" },
     { "TypeInfo_Typedef" },
     { "TypeInfo_Pointer" },
+    { "TypeInfo_Vector" },
     { "TypeInfo_Array" },
     { "TypeInfo_StaticArray" },
     { "TypeInfo_AssociativeArray" },

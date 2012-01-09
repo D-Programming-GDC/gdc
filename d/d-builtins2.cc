@@ -194,6 +194,23 @@ gcc_type_to_d_type(tree t)
             }
             break;
         }
+        case VECTOR_TYPE:
+        {
+            d = gcc_type_to_d_type(TREE_TYPE(t));
+            if (d)
+            {
+                d = new TypeSArray(d, new IntegerExp(0, TYPE_VECTOR_SUBPARTS(t), Type::tindex));
+
+                // For now, only support 128bit vectors... what about 64bit?
+                if (d->size() != 16 || d->nextOf()->isTypeBasic() == NULL)
+                    break;
+
+                d = new TypeVector(0, d);
+                d = d->semantic(0, NULL);
+                return d;
+            }
+            break;
+        }
         case RECORD_TYPE:
         {
             for (size_t i = 0; i < builtin_converted_types.dim; i += 2)

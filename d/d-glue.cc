@@ -3778,6 +3778,29 @@ TypeFunction::retStyle()
     return RETstack;
 }
 
+#if V2
+type *
+TypeVector::toCtype()
+{
+    if (! ctype)
+    {
+        int nunits = ((TypeSArray *) basetype)->dim->toUInteger();
+        tree inner = TREE_TYPE(basetype->toCtype());
+
+        ctype = build_vector_type (inner, nunits);
+        layout_type(ctype);
+
+        /* Give a graceful error if the backend does not support the vector type
+           we are creating.  If backend has support for the inner type mode,
+           then it can safely emulate the vector.  */
+        if (! targetm.vector_mode_supported_p(TYPE_MODE(ctype))
+                && ! targetm.scalar_mode_supported_p(TYPE_MODE(inner)))
+            ::error("vector type %s is not supported on this architechture", toChars());
+    }
+    return ctype;
+}
+#endif
+
 type *
 TypeSArray::toCtype()
 {

@@ -495,6 +495,13 @@ struct TypeInfoWildDeclaration : TypeInfoDeclaration
 
     void toDt(dt_t **pdt);
 };
+
+struct TypeInfoVectorDeclaration : TypeInfoDeclaration
+{
+    TypeInfoVectorDeclaration(Type *tinfo);
+
+    void toDt(dt_t **pdt);
+};
 #endif
 
 /**************************************************************/

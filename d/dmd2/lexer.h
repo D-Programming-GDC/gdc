@@ -168,6 +168,7 @@ enum TOK
         TOKat,
         TOKpow,
         TOKpowass,
+        TOKvector,
 #endif
 
         TOKMAX

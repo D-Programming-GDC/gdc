@@ -85,6 +85,7 @@ struct Parser : Lexer
     Objects *parseTemplateArgument();
     StaticAssert *parseStaticAssert();
     TypeQualified *parseTypeof();
+    Type *parseVector();
     enum LINK parseLinkage();
     Condition *parseDebugCondition();
     Condition *parseVersionCondition();
