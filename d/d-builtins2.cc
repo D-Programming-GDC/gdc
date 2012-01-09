@@ -88,6 +88,10 @@ gcc_type_to_d_type(tree t)
     {
         case POINTER_TYPE:
         {
+            // Check for char* first. Needs to be done for chars/string.
+            if (TYPE_MAIN_VARIANT(TREE_TYPE(t)) == char_type_node)
+                return Type::tchar->pointerTo();
+
             d = gcc_type_to_d_type(TREE_TYPE(t));
             if (d)
             {
@@ -120,10 +124,6 @@ gcc_type_to_d_type(tree t)
         {
             unsigned sz = tree_low_cst(TYPE_SIZE_UNIT(t), 1);
             bool unsgn = TYPE_UNSIGNED(t);
-
-            // Check for char first. Needs to be done for chars/string.
-            if (TYPE_MAIN_VARIANT(t) == char_type_node)
-                return Type::tchar;
 
             // This search assumes that integer types come before char and bit...
             for (size_t i = 0; i < TMAX; i++)
@@ -194,6 +194,7 @@ gcc_type_to_d_type(tree t)
             }
             break;
         }
+#if V2
         case VECTOR_TYPE:
         {
             d = gcc_type_to_d_type(TREE_TYPE(t));
@@ -211,6 +212,7 @@ gcc_type_to_d_type(tree t)
             }
             break;
         }
+#endif
         case RECORD_TYPE:
         {
             for (size_t i = 0; i < builtin_converted_types.dim; i += 2)
