@@ -3787,6 +3787,9 @@ TypeVector::toCtype()
         int nunits = ((TypeSArray *) basetype)->dim->toUInteger();
         tree inner = elementType()->toCtype();
 
+        if (inner == void_type_node)
+            inner = Type::tint8->toCtype();
+
         ctype = build_vector_type (inner, nunits);
         layout_type(ctype);
 

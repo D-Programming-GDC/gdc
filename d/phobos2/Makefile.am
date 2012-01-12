@@ -128,8 +128,8 @@ RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o
 
 CORE_OBJS=core/atomic.o core/cpuid.o core/demangle.o core/exception.o \
-	  core/math.o core/memory.o core/runtime.o core/thread.o \
-	  core/time.o core/vararg.o core/sync/barrier.o \
+	  core/math.o core/memory.o core/runtime.o core/simd.o \
+	  core/thread.o core/time.o core/vararg.o core/sync/barrier.o \
 	  core/sync/condition.o core/sync/config.o core/sync/exception.o \
 	  core/sync/mutex.o core/sync/rwmutex.o core/sync/semaphore.o
 
@@ -181,7 +181,7 @@ D_GC_MODULES=@D_GC_MODULES@
 # Regardless of OS, all import headers are generated.
 CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/exception.di core/math.di core/memory.di core/runtime.di \
-	     core/thread.di core/time.di core/vararg.di \
+	     core/simd.di core/thread.di core/time.di core/vararg.di \
 	     \
 	     core/stdc/complex.di core/stdc/config.di core/stdc/ctype.di \
 	     core/stdc/errno.di core/stdc/fenv.di core/stdc/float_.di \
