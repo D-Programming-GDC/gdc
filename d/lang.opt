@@ -20,10 +20,6 @@
 Language
 D
 
-fasm
-D
-Recognize the \"asm\" keyword
-
 fassert
 D
 Generate runtime code for assert()'s
@@ -76,6 +72,10 @@ D Joined RejectNegative
 fdump-source
 D RejectNegative
 Dump decoded UTF-8 text and source from HTML
+
+fd-inline-asm
+D
+Enable the use of assembly code in D_InlineAsm version blocks.
 
 fd-verbose
 D

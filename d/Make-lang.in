@@ -30,12 +30,6 @@ target_os=$(shell echo $(target) | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)/\3/')
 # For various glibc, we need to define this to get NAN and FP_ constants
 D_EXTRA_DEFINES += -D_GNU_SOURCE=1
 
-# Enable D interface files - %% deprecated
-D_EXTRA_DEFINES += -D_DH=1
-
-# Enables correct implementation of delegates. This requires patching GCC.
-#D_EXTRA_DEFINES += -DD_NO_TRAMPOLINES=1
-
 # Enables placing some RTTI in the read-only data section.  Does not
 # have to be an ELF target.
 D_EXTRA_DEFINES += -DELFOBJ=1
@@ -43,10 +37,6 @@ D_EXTRA_DEFINES += -DELFOBJ=1
 # Enable the asm(...) style syntax for extended asm.  Deviates from the D
 # specification syntax.  Can still use extended asm if disabled.
 # D_EXTRA_DEFINES += -DGDC_EXTENDED_ASM_SYNTAX=1
-
-# Enables experimental code generation which sets out to match the D calling
-# convention as used by the DMD compiler on x86 targets.
-D_EXTRA_DEFINES += -DD_DMD_CALLING_CONVENTIONS=1
 
 # Enables correct implementation of D's va_list type (void*) as per
 # the D language specification - this is experimental.
@@ -143,8 +133,8 @@ else
 endif
 
 D_EXTRA_DEFINES += -DD_GCC_VER=$(subst .,,$(D_gcc_main_ver))
-D_EXTRA_DEFINES += -DD_PHOBOS_DIR=\"$(gcc_d_include_dir)\"
-D_EXTRA_DEFINES += -DD_PHOBOS_TARGET_DIR=\"$(gcc_d_target_include_dir)\"
+#D_EXTRA_DEFINES += -DD_PHOBOS_DIR=\"$(gcc_d_include_dir)\"
+#D_EXTRA_DEFINES += -DD_PHOBOS_TARGET_DIR=\"$(gcc_d_target_include_dir)\"
 
 # Actual names to use when installing a cross-compiler.
 D_CROSS_NAME = $(D_INSTALL_NAME)
@@ -178,18 +168,8 @@ ifeq ($(if $(findstring solaris,$(build)),T,$(if $(findstring solaris,$(host)),T
 D_CC_FLAGS += -Wcast-align
 endif
 
-D_CC_FLAGS += -fmessage-length=0
-
+#D_CC_FLAGS += -fmessage-length=0
 #D_CC_FLAGS += -O0 -g
-
-# These are not valid C++ flags remove them before assigning.
-FILTER_CFLAGS = -Wstrict-prototypes -Wmissing-prototypes -Wold-style-definition -Wc++-compat
-ifndef ALL_CXXFLAGS
-  ALL_CXXFLAGS = $(filter-out $(FILTER_CFLAGS), $(ALL_CFLAGS))
-endif
-ifndef WARN_CXXFLAGS
-  WARN_CXXFLAGS = $(filter-out $(FILTER_CFLAGS), $(WARN_CFLAGS))
-endif
 
 ALL_D_CFLAGS = $(ALL_CFLAGS) $(ALL_CPPFLAGS) \
                         $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
@@ -317,8 +297,8 @@ d/id.h: d/id.c
 	@ ls d/id.h
 
 d/d-confdefs.h: d/Make-lang.in
-	#echo "#define D_PHOBOS_DIR \""$(gcc_d_include_dir)"\"" > $@
-	#echo "#define D_PHOBOS_TARGET_DIR \""$(gcc_d_target_include_dir)"\"" >> $@
+	echo "#define D_PHOBOS_DIR \""$(gcc_d_include_dir)"\"" > $@
+	echo "#define D_PHOBOS_TARGET_DIR \""$(gcc_d_target_include_dir)"\"" >> $@
 	$(srcdir)/d/target-ver-syms.sh $(target) >> $@
 
 d/id.gen.o: d/id.c $(D_DMD_H)

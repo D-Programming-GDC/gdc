@@ -366,6 +366,8 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
 
     if (real_decl && real_decl->attributes)
         decl_attributes(& decl_tree, gen.attributes(real_decl->attributes), 0);
+    else if (DECL_ATTRIBUTES(decl_tree) != NULL)
+        decl_attributes(& decl_tree, DECL_ATTRIBUTES(decl_tree), 0);
 }
 
 void

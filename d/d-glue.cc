@@ -3505,14 +3505,6 @@ Type::toSymbol()
     return NULL;
 }
 
-static void
-apply_type_attributes(Expressions * attrs, tree & type_node, bool in_place = false)
-{
-    if (attrs)
-        decl_attributes(& type_node, gen.attributes(attrs),
-            in_place ? ATTR_FLAG_TYPE_IN_PLACE : 0);
-}
-
 type *
 TypeTypedef::toCtype()
 {
@@ -3525,7 +3517,9 @@ TypeTypedef::toCtype()
         tree type_node = build_variant_type_copy(base_type);
         tree type_decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL, ident, type_node);
         TYPE_NAME(type_node) = type_decl;
-        apply_type_attributes(sym->attributes, type_node);
+
+        if (sym->attributes)
+            decl_attributes(& type_node, gen.attributes(sym->attributes), 0);
 
         /* %% TODO ?
         DECL_CONTEXT(type_decl) =
@@ -3570,7 +3564,10 @@ TypeEnum::toCtype()
             TYPE_PRECISION(ctype) = size(0) * 8;
             TYPE_SIZE(ctype) = 0; // as in c-decl.c
             TYPE_MAIN_VARIANT(ctype) = cmemtype;
-            apply_type_attributes(sym->attributes, ctype, true);
+
+            if (sym->attributes)
+                decl_attributes(& ctype, gen.attributes(sym->attributes),
+                                ATTR_FLAG_TYPE_IN_PLACE);
 
             TYPE_MIN_VALUE(ctype) = TYPE_MIN_VALUE(cmemtype);
             TYPE_MAX_VALUE(ctype) = TYPE_MAX_VALUE(cmemtype);
@@ -3628,7 +3625,11 @@ TypeStruct::toCtype()
         TYPE_ALIGN(ctype) = sym->alignsize * BITS_PER_UNIT; // %%doc int, not a tree
         // TYPE_ALIGN_UNIT is not an lvalue
         TYPE_PACKED (ctype) = TYPE_PACKED (ctype); // %% todo
-        apply_type_attributes(sym->attributes, ctype, true);
+
+        if (sym->attributes)
+            decl_attributes(& ctype, gen.attributes(sym->attributes),
+                            ATTR_FLAG_TYPE_IN_PLACE);
+
         compute_record_mode (ctype);
 
         // %%  stor-layout.c:finalize_type_size ... it's private to that file
@@ -3747,13 +3748,7 @@ TypeFunction::toCtype()
 
             case LINKc:
             case LINKcpp:
-                break;
-
             case LINKd:
-#if D_DMD_CALLING_CONVENTIONS \
-        && defined(TARGET_386)
-                ctype = gen.addTypeAttribute(ctype, "optlink");
-#endif
                 break;
 
             default:

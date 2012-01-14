@@ -471,7 +471,7 @@ Symbol *FuncDeclaration::toSymbol()
         if (! isym)
         {
             tree id;
-            TypeFunction * func_type = (TypeFunction *)(tintro ? tintro : type);
+            TypeFunction * ftype = (TypeFunction *)(tintro ? tintro : type);
             tree fn_decl;
 
             if (ident)
@@ -492,7 +492,7 @@ Symbol *FuncDeclaration::toSymbol()
                 id = get_identifier(buf);
             }
 
-            tree fn_type = func_type->toCtype();
+            tree fn_type = ftype->toCtype();
             tree new_fn_type = NULL_TREE;
 
             tree vindex = NULL_TREE;
@@ -522,7 +522,7 @@ Symbol *FuncDeclaration::toSymbol()
                 if (isVirtual())
                     vindex = size_int(vtblIndex);
             }
-            else if (isMain() && func_type->nextOf()->toBasetype()->ty == Tvoid)
+            else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
             {
                 new_fn_type = build_function_type(integer_type_node, TYPE_ARG_TYPES(fn_type));
             }
@@ -636,12 +636,12 @@ Symbol *FuncDeclaration::toSymbol()
                 TREE_STATIC(fn_decl) = 1;
 #if V2
             // %% Pure functions don't imply nothrow
-            DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && func_type->isnothrow);
+            DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && ftype->isnothrow);
             // %% Assert contracts in functions may throw.
-            TREE_NOTHROW(fn_decl) = func_type->isnothrow && !global.params.useAssert;
+            TREE_NOTHROW(fn_decl) = ftype->isnothrow && !global.params.useAssert;
             // TODO: check 'immutable' means arguments are readonly...
-            TREE_READONLY(fn_decl) = func_type->isImmutable();
-            TREE_CONSTANT(fn_decl) = func_type->isConst();
+            TREE_READONLY(fn_decl) = ftype->isImmutable();
+            TREE_CONSTANT(fn_decl) = ftype->isConst();
 #endif
 
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
@@ -652,7 +652,28 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_DLLIMPORT_P(fn_decl) = 1;
             }
             else if (isExport())
+            {
                 gen.addDeclAttribute(fn_decl, "dllexport");
+            }
+#endif
+
+#ifdef TARGET_80387
+            if (ftype->linkage == LINKd && hasReturnExp & 8 /*inlineAsm*/)
+            {
+                // D Inline x86 ASM assumes the compiler mandates the setting up of EBP,
+                // unless 'naked' is used.  If compiling with flag turned on, shouldn't
+                // need to add a redundant optimize attribute.
+                if (naked && !flag_omit_frame_pointer)
+                {
+                    gen.addDeclAttribute(fn_decl, "optimize",
+                                         build_string(18, "omit-frame-pointer"));
+                }
+                else if (flag_omit_frame_pointer)
+                {
+                    gen.addDeclAttribute(fn_decl, "optimize",
+                                         build_string(21, "no-omit-frame-pointer"));
+                }
+            }
 #endif
             g.ofile->setDeclLoc(fn_decl, this);
             g.ofile->setupSymbolStorage(this, fn_decl);

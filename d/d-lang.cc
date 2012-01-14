@@ -141,7 +141,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
     // extra D-specific options
     gen.splitDynArrayVarArgs = true;
     gen.emitTemplates = TEnormal;
-    gen.useInlineAsm = true;
+    gen.useInlineAsm = false;
     gen.useBuiltins = true;
     std_inc = true;
 }
@@ -219,7 +219,7 @@ d_init_options (unsigned int, const char ** argv)
     // extra D-specific options
     gen.splitDynArrayVarArgs = true;
     gen.emitTemplates = TEnormal;
-    gen.useInlineAsm = true;
+    gen.useInlineAsm = false;
     gen.useBuiltins = true;
     std_inc = true;
 
@@ -412,21 +412,20 @@ d_init ()
     VersionCondition::addPredefinedGlobalIdent("GNU_StackGrowsDown");
 #endif
 
-    if (d_have_inline_asm() && gen.useInlineAsm)
+    if (gen.useInlineAsm)
     {
         VersionCondition::addPredefinedGlobalIdent("D_InlineAsm");
 
-        if (cpu_versym)
+        if (d_have_inline_asm() && cpu_versym)
         {
             if (strcmp(cpu_versym, "X86") == 0)
                 VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86");
             else if (strcmp(cpu_versym, "X86_64") == 0)
                 VersionCondition::addPredefinedGlobalIdent("D_InlineAsm_X86_64");
         }
-
-        /* Should define this anyway to set us apart from the competition. */
-        VersionCondition::addPredefinedGlobalIdent("GNU_InlineAsm");
     }
+    /* Should define this anyway to set us apart from the competition. */
+    VersionCondition::addPredefinedGlobalIdent("GNU_InlineAsm");
 
     /* Logic copied from cppbuiltins for LP64 targets. */
     if (TYPE_PRECISION (long_integer_type_node) == 64
@@ -520,10 +519,6 @@ d_handle_option (size_t scode, const char *arg, int value)
 
     switch (code)
     {
-        case OPT_fasm:
-            gen.useInlineAsm = value;
-            break;
-
         case OPT_fassert:
             global.params.useAssert = value;
             break;
@@ -594,8 +589,12 @@ d_handle_option (size_t scode, const char *arg, int value)
             global.params.dump_source = value;
             break;
 
+        case OPT_fd_inline_asm:
+            gen.useInlineAsm = value;
+            break;
+
         case OPT_fd_verbose:
-            global.params.verbose = 1;
+            global.params.verbose = value;
             break;
 
         case OPT_fd_version_1:
@@ -603,7 +602,7 @@ d_handle_option (size_t scode, const char *arg, int value)
             break;
 
         case OPT_fd_vtls:
-            global.params.vtls = 1;
+            global.params.vtls = value;
             break;
 
         case OPT_femit_templates:
@@ -678,7 +677,7 @@ d_handle_option (size_t scode, const char *arg, int value)
             break;
 #if V2
         case OPT_fproperty:
-            global.params.enforcePropertySyntax = 1;
+            global.params.enforcePropertySyntax = value;
             break;
 #endif
         case OPT_frelease:
@@ -742,11 +741,13 @@ d_handle_option (size_t scode, const char *arg, int value)
             break;
 
         case OPT_Wall:
-            global.params.warnings = 2;
+            if (value)
+                global.params.warnings = 2;
             break;
 
         case OPT_Werror:
-            global.params.warnings = 1;
+            if (value)
+                global.params.warnings = 1;
             break;
 
         case OPT_Wsign_compare:

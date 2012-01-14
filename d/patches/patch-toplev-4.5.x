@@ -1,6 +1,6 @@
---- gcc-4.5.2-orig/configure	2010-10-06 11:29:55.000000000 +0100
-+++ gcc-4.5.2/configure	2011-03-22 00:17:38.965237120 +0000
-@@ -2925,6 +2925,7 @@ target_libraries="target-libgcc \
+--- gcc-4.5.3~/configure	2011-01-25 15:49:54.000000000 +0000
++++ gcc-4.5.3/configure	2012-01-11 01:04:40.379008735 +0000
+@@ -2925,6 +2925,7 @@
  		target-boehm-gc \
  		${libgcj} \
  		target-libobjc \
@@ -8,9 +8,9 @@
  		target-libada"
  
  # these tools are built using the target libraries, and are intended to
---- gcc-4.5.2-orig/configure.ac	2010-10-06 11:29:55.000000000 +0100
-+++ gcc-4.5.2/configure.ac	2011-03-22 00:17:38.973237151 +0000
-@@ -198,6 +198,7 @@ target_libraries="target-libgcc \
+--- gcc-4.5.3~/configure.ac	2011-01-25 15:49:54.000000000 +0000
++++ gcc-4.5.3/configure.ac	2012-01-11 01:04:40.383008735 +0000
+@@ -198,6 +198,7 @@
  		target-boehm-gc \
  		${libgcj} \
  		target-libobjc \
@@ -18,9 +18,9 @@
  		target-libada"
  
  # these tools are built using the target libraries, and are intended to
---- gcc-4.5.2-orig/Makefile.def	2010-06-10 18:05:59.000000000 +0100
-+++ gcc-4.5.2/Makefile.def	2011-03-22 00:17:38.973237151 +0000
-@@ -175,6 +175,7 @@ target_modules = { module= qthreads; };
+--- gcc-4.5.3~/Makefile.def	2010-06-10 18:05:59.000000000 +0100
++++ gcc-4.5.3/Makefile.def	2012-01-11 01:04:40.383008735 +0000
+@@ -175,6 +175,7 @@
  target_modules = { module= rda; };
  target_modules = { module= libada; };
  target_modules = { module= libgomp; bootstrap= true; lib_path=.libs; };
@@ -28,9 +28,9 @@
  
  // These are (some of) the make targets to be done in each subdirectory.
  // Not all; these are the ones which don't have special options.
---- gcc-4.5.2-orig/Makefile.in	2010-06-10 18:05:59.000000000 +0100
-+++ gcc-4.5.2/Makefile.in	2011-03-22 00:17:39.041237488 +0000
-@@ -940,7 +940,8 @@ configure-target:  \
+--- gcc-4.5.3~/Makefile.in	2010-06-10 18:05:59.000000000 +0100
++++ gcc-4.5.3/Makefile.in	2012-01-11 01:04:40.439008733 +0000
+@@ -940,7 +940,8 @@
      maybe-configure-target-qthreads \
      maybe-configure-target-rda \
      maybe-configure-target-libada \
@@ -40,7 +40,7 @@
  
  # The target built for a native non-bootstrap build.
  .PHONY: all
-@@ -1125,6 +1126,7 @@ all-target: maybe-all-target-libada
+@@ -1125,6 +1126,7 @@
  @if target-libgomp-no-bootstrap
  all-target: maybe-all-target-libgomp
  @endif target-libgomp-no-bootstrap
@@ -48,7 +48,7 @@
  
  # Do a target for all the subdirectories.  A ``make do-X'' will do a
  # ``make X'' in all subdirectories (because, in general, there is a
-@@ -1244,6 +1246,7 @@ info-target: maybe-info-target-qthreads
+@@ -1244,6 +1246,7 @@
  info-target: maybe-info-target-rda
  info-target: maybe-info-target-libada
  info-target: maybe-info-target-libgomp
@@ -56,7 +56,7 @@
  
  .PHONY: do-dvi
  do-dvi:
-@@ -1358,6 +1361,7 @@ dvi-target: maybe-dvi-target-qthreads
+@@ -1358,6 +1361,7 @@
  dvi-target: maybe-dvi-target-rda
  dvi-target: maybe-dvi-target-libada
  dvi-target: maybe-dvi-target-libgomp
@@ -64,7 +64,7 @@
  
  .PHONY: do-pdf
  do-pdf:
-@@ -1472,6 +1476,7 @@ pdf-target: maybe-pdf-target-qthreads
+@@ -1472,6 +1476,7 @@
  pdf-target: maybe-pdf-target-rda
  pdf-target: maybe-pdf-target-libada
  pdf-target: maybe-pdf-target-libgomp
@@ -72,7 +72,7 @@
  
  .PHONY: do-html
  do-html:
-@@ -1586,6 +1591,7 @@ html-target: maybe-html-target-qthreads
+@@ -1586,6 +1591,7 @@
  html-target: maybe-html-target-rda
  html-target: maybe-html-target-libada
  html-target: maybe-html-target-libgomp
@@ -80,7 +80,7 @@
  
  .PHONY: do-TAGS
  do-TAGS:
-@@ -1700,6 +1706,7 @@ TAGS-target: maybe-TAGS-target-qthreads
+@@ -1700,6 +1706,7 @@
  TAGS-target: maybe-TAGS-target-rda
  TAGS-target: maybe-TAGS-target-libada
  TAGS-target: maybe-TAGS-target-libgomp
@@ -88,7 +88,7 @@
  
  .PHONY: do-install-info
  do-install-info:
-@@ -1814,6 +1821,7 @@ install-info-target: maybe-install-info-
+@@ -1814,6 +1821,7 @@
  install-info-target: maybe-install-info-target-rda
  install-info-target: maybe-install-info-target-libada
  install-info-target: maybe-install-info-target-libgomp
@@ -96,7 +96,7 @@
  
  .PHONY: do-install-pdf
  do-install-pdf:
-@@ -1928,6 +1936,7 @@ install-pdf-target: maybe-install-pdf-ta
+@@ -1928,6 +1936,7 @@
  install-pdf-target: maybe-install-pdf-target-rda
  install-pdf-target: maybe-install-pdf-target-libada
  install-pdf-target: maybe-install-pdf-target-libgomp
@@ -104,7 +104,7 @@
  
  .PHONY: do-install-html
  do-install-html:
-@@ -2042,6 +2051,7 @@ install-html-target: maybe-install-html-
+@@ -2042,6 +2051,7 @@
  install-html-target: maybe-install-html-target-rda
  install-html-target: maybe-install-html-target-libada
  install-html-target: maybe-install-html-target-libgomp
@@ -112,7 +112,7 @@
  
  .PHONY: do-installcheck
  do-installcheck:
-@@ -2156,6 +2166,7 @@ installcheck-target: maybe-installcheck-
+@@ -2156,6 +2166,7 @@
  installcheck-target: maybe-installcheck-target-rda
  installcheck-target: maybe-installcheck-target-libada
  installcheck-target: maybe-installcheck-target-libgomp
@@ -120,7 +120,7 @@
  
  .PHONY: do-mostlyclean
  do-mostlyclean:
-@@ -2270,6 +2281,7 @@ mostlyclean-target: maybe-mostlyclean-ta
+@@ -2270,6 +2281,7 @@
  mostlyclean-target: maybe-mostlyclean-target-rda
  mostlyclean-target: maybe-mostlyclean-target-libada
  mostlyclean-target: maybe-mostlyclean-target-libgomp
@@ -128,7 +128,7 @@
  
  .PHONY: do-clean
  do-clean:
-@@ -2384,6 +2396,7 @@ clean-target: maybe-clean-target-qthread
+@@ -2384,6 +2396,7 @@
  clean-target: maybe-clean-target-rda
  clean-target: maybe-clean-target-libada
  clean-target: maybe-clean-target-libgomp
@@ -136,7 +136,7 @@
  
  .PHONY: do-distclean
  do-distclean:
-@@ -2498,6 +2511,7 @@ distclean-target: maybe-distclean-target
+@@ -2498,6 +2511,7 @@
  distclean-target: maybe-distclean-target-rda
  distclean-target: maybe-distclean-target-libada
  distclean-target: maybe-distclean-target-libgomp
@@ -144,7 +144,7 @@
  
  .PHONY: do-maintainer-clean
  do-maintainer-clean:
-@@ -2612,6 +2626,7 @@ maintainer-clean-target: maybe-maintaine
+@@ -2612,6 +2626,7 @@
  maintainer-clean-target: maybe-maintainer-clean-target-rda
  maintainer-clean-target: maybe-maintainer-clean-target-libada
  maintainer-clean-target: maybe-maintainer-clean-target-libgomp
@@ -152,7 +152,7 @@
  
  
  # Here are the targets which correspond to the do-X targets.
-@@ -2780,7 +2795,8 @@ check-target:  \
+@@ -2780,7 +2795,8 @@
      maybe-check-target-qthreads \
      maybe-check-target-rda \
      maybe-check-target-libada \
@@ -162,7 +162,7 @@
  
  do-check:
  	@: $(MAKE); $(unstage)
-@@ -3001,7 +3017,8 @@ install-target:  \
+@@ -3001,7 +3017,8 @@
      maybe-install-target-qthreads \
      maybe-install-target-rda \
      maybe-install-target-libada \
@@ -172,7 +172,7 @@
  
  uninstall:
  	@echo "the uninstall target is not supported in this tree"
-@@ -55592,6 +55609,448 @@ maintainer-clean-target-libgomp:
+@@ -55592,6 +55609,448 @@
  
  
  
@@ -621,7 +621,7 @@
  # ----------
  # GCC module
  # ----------
-@@ -57670,6 +58129,7 @@ configure-stage3-target-libgomp: maybe-a
+@@ -57670,6 +58129,7 @@
  configure-stage4-target-libgomp: maybe-all-stage4-gcc
  configure-stageprofile-target-libgomp: maybe-all-stageprofile-gcc
  configure-stagefeedback-target-libgomp: maybe-all-stagefeedback-gcc
@@ -629,7 +629,7 @@
  @endif gcc-bootstrap
  
  @if gcc-no-bootstrap
-@@ -57694,6 +58154,7 @@ configure-target-qthreads: maybe-all-gcc
+@@ -57694,6 +58154,7 @@
  configure-target-rda: maybe-all-gcc
  configure-target-libada: maybe-all-gcc
  configure-target-libgomp: maybe-all-gcc
@@ -637,7 +637,7 @@
  @endif gcc-no-bootstrap
  
  
-@@ -58475,6 +58936,7 @@ configure-target-qthreads: maybe-all-tar
+@@ -58475,6 +58936,7 @@
  configure-target-rda: maybe-all-target-libgcc
  configure-target-libada: maybe-all-target-libgcc
  configure-target-libgomp: maybe-all-target-libgcc
@@ -645,7 +645,7 @@
  @endif gcc-no-bootstrap
  
  
-@@ -58518,6 +58980,8 @@ configure-target-libada: maybe-all-targe
+@@ -58518,6 +58980,8 @@
  
  configure-target-libgomp: maybe-all-target-newlib maybe-all-target-libgloss
  

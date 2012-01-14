@@ -945,12 +945,11 @@ IRState::addTypeAttribute(tree type, const char * attrname, tree value)
 void
 IRState::addDeclAttribute(tree type, const char * attrname, tree value)
 {
+    tree ident = get_identifier(attrname);
     if (value)
-    {
         value = tree_cons(NULL_TREE, value, NULL_TREE);
-    }
-    DECL_ATTRIBUTES(type) = tree_cons(get_identifier(attrname), value,
-            DECL_ATTRIBUTES(type));
+
+    DECL_ATTRIBUTES(type) = tree_cons(ident, value, DECL_ATTRIBUTES(type));
 }
 
 tree
@@ -4451,7 +4450,7 @@ AggLayout::finish(Expressions * attrs)
     if (attrs)
     {
         decl_attributes(& aggType, gen.attributes(attrs),
-            ATTR_FLAG_TYPE_IN_PLACE);
+                        ATTR_FLAG_TYPE_IN_PLACE);
     }
 
     compute_record_mode (aggType);
