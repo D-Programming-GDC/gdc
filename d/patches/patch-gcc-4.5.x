@@ -1,6 +1,6 @@
 --- gcc~/config/i386/i386.c	2011-02-17 21:22:02.000000000 +0000
-+++ gcc/config/i386/i386.c	2012-01-14 19:11:57.963356866 +0000
-@@ -4718,6 +4718,20 @@ ix86_return_pops_args (tree fundecl, tre
++++ gcc/config/i386/i386.c	2012-01-14 19:15:48.215348464 +0000
+@@ -4718,6 +4718,17 @@ ix86_return_pops_args (tree fundecl, tre
  
    return 0;
  }
@@ -11,9 +11,6 @@
 +  gcc_assert(fndecl != NULL_TREE);
 +
 +  if (lookup_attribute ("naked", DECL_ATTRIBUTES (fndecl)))
-+    gcc_assert(fndecl != NULL_TREE);
-+
-+  if (lookup_attribute ("naked", DECL_ATTRIBUTES (fndecl)))
 +    return 1;
 +
 +  return 0;
@@ -21,7 +18,7 @@
  
  /* Argument support functions.  */
  
-@@ -4903,6 +4917,10 @@ init_cumulative_args (CUMULATIVE_ARGS *c
+@@ -4903,6 +4914,10 @@ init_cumulative_args (CUMULATIVE_ARGS *c
     cum->call_abi = ix86_function_abi (fndecl);
    else
     cum->call_abi = ix86_function_type_abi (fntype);
@@ -32,7 +29,7 @@
    /* Set up the number of registers to use for passing arguments.  */
  
    if (cum->call_abi == MS_ABI && !ACCUMULATE_OUTGOING_ARGS)
-@@ -7529,6 +7547,9 @@ ix86_can_use_return_insn_p (void)
+@@ -7529,6 +7544,9 @@ ix86_can_use_return_insn_p (void)
    if (! reload_completed || frame_pointer_needed)
      return 0;
  
@@ -42,7 +39,7 @@
    /* Don't allow more than 32 pop, since that's all we can do
       with one instruction.  */
    if (crtl->args.pops_args
-@@ -7547,6 +7568,9 @@ ix86_can_use_return_insn_p (void)
+@@ -7547,6 +7565,9 @@ ix86_can_use_return_insn_p (void)
  static bool
  ix86_frame_pointer_required (void)
  {
@@ -52,7 +49,7 @@
    /* If we accessed previous frames, then the generated code expects
       to be able to access the saved ebp value in our frame.  */
    if (cfun->machine->accesses_prev_frame)
-@@ -8131,6 +8155,12 @@ ix86_compute_frame_layout (struct ix86_f
+@@ -8131,6 +8152,12 @@ ix86_compute_frame_layout (struct ix86_f
      frame->red_zone_size = 0;
    frame->to_allocate -= frame->red_zone_size;
    frame->stack_pointer_offset -= frame->red_zone_size;
@@ -65,7 +62,7 @@
  }
  
  /* Emit code to save registers in the prologue.  */
-@@ -8475,6 +8505,9 @@ ix86_expand_prologue (void)
+@@ -8475,6 +8502,9 @@ ix86_expand_prologue (void)
    HOST_WIDE_INT allocate;
    int gen_frame_pointer = frame_pointer_needed;
  
@@ -75,7 +72,7 @@
    ix86_finalize_stack_realign_flags ();
  
    /* DRAP should not coexist with stack_realign_fp */
-@@ -9006,6 +9039,9 @@ ix86_expand_epilogue (int style)
+@@ -9006,6 +9036,9 @@ ix86_expand_epilogue (int style)
    struct machine_cfa_state cfa_state_save = *ix86_cfa_state;
    bool using_drap;
  
@@ -85,7 +82,7 @@
    ix86_finalize_stack_realign_flags ();
  
   /* When stack is realigned, SP must be valid.  */
-@@ -29058,6 +29094,8 @@ static const struct attribute_spec ix86_
+@@ -29058,6 +29091,8 @@ static const struct attribute_spec ix86_
    /* force_align_arg_pointer says this function realigns the stack at entry.  */
    { (const char *)&ix86_force_align_arg_pointer_string, 0, 0,
      false, true,  true, ix86_handle_cconv_attribute },
