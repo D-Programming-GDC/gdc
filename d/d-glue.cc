@@ -3014,7 +3014,6 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     DECL_INITIAL(fn_decl) = error_mark_node; // Just doing what they tell me to do...
 
     IRState::initFunctionStart(fn_decl, loc);
-    cfun->naked = naked ? 1 : 0;
     pushlevel(0);
     irs->pushStatementList();
 

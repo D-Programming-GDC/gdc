@@ -1,18 +1,115 @@
-diff -pur gcc~/config/i386/i386.c gcc/config/i386/i386.c
 --- gcc~/config/i386/i386.c	2011-09-22 18:41:25.000000000 +0100
-+++ gcc/config/i386/i386.c	2012-01-10 22:10:15.107390593 +0000
-@@ -9397,6 +9397,10 @@ ix86_compute_frame_layout (struct ix86_f
++++ gcc/config/i386/i386.c	2012-01-14 18:08:10.823496512 +0000
+@@ -5690,6 +5690,17 @@ ix86_return_pops_args (tree fundecl, tre
+ 
+   return 0;
+ }
++
++static int
++ix86_function_naked (const_tree fndecl)
++{
++  gcc_assert(fndecl != NULL_TREE);
++
++  if (lookup_attribute ("naked", DECL_ATTRIBUTES (fndecl)))
++    return 1;
++
++  return 0;
++}
+ 
+ /* Argument support functions.  */
+ 
+@@ -5949,6 +5960,9 @@ init_cumulative_args (CUMULATIVE_ARGS *c
+ 	}
+     }
+ 
++  if (fndecl && ix86_function_naked (fndecl))
++    cfun->machine->naked = true;
++
+   cum->caller = caller;
+ 
+   /* Set up the number of registers to use for passing arguments.  */
+@@ -8714,6 +8728,9 @@ ix86_can_use_return_insn_p (void)
+   if (! reload_completed || frame_pointer_needed)
+     return 0;
+ 
++  if (ix86_current_function_naked)
++    return 0;
++
+   /* Don't allow more than 32k pop, since that's all we can do
+      with one instruction.  */
+   if (crtl->args.pops_args && crtl->args.size >= 32768)
+@@ -8731,6 +8748,9 @@ ix86_can_use_return_insn_p (void)
+ static bool
+ ix86_frame_pointer_required (void)
+ {
++  if (ix86_current_function_naked)
++    return false;
++
+   /* If we accessed previous frames, then the generated code expects
+      to be able to access the saved ebp value in our frame.  */
+   if (cfun->machine->accesses_prev_frame)
+@@ -9397,6 +9417,12 @@ ix86_compute_frame_layout (struct ix86_f
      frame->red_zone_size = 0;
    frame->stack_pointer_offset -= frame->red_zone_size;
  
-+  if (cfun->naked)
-+    /* As above, skip return address.  */
-+    frame->stack_pointer_offset = UNITS_PER_WORD;
++  if (ix86_current_function_naked)
++    {
++      /* As above, skip return address.  */
++      frame->stack_pointer_offset = UNITS_PER_WORD;
++    }
 +
    /* The SEH frame pointer location is near the bottom of the frame.
       This is enforced by the fact that the difference between the
       stack pointer and the frame pointer is limited to 240 bytes in
-diff -pur gcc~/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
+@@ -10348,6 +10374,9 @@ ix86_expand_prologue (void)
+   HOST_WIDE_INT allocate;
+   bool int_registers_saved;
+ 
++  if (ix86_current_function_naked)
++    return;
++
+   ix86_finalize_stack_realign_flags ();
+ 
+   /* DRAP should not coexist with stack_realign_fp */
+@@ -10963,6 +10992,9 @@ ix86_expand_epilogue (int style)
+   bool restore_regs_via_mov;
+   bool using_drap;
+ 
++  if (ix86_current_function_naked)
++    return;
++
+   ix86_finalize_stack_realign_flags ();
+   ix86_compute_frame_layout (&frame);
+ 
+@@ -32754,6 +32786,8 @@ static const struct attribute_spec ix86_
+   /* force_align_arg_pointer says this function realigns the stack at entry.  */
+   { (const char *)&ix86_force_align_arg_pointer_string, 0, 0,
+     false, true,  true, ix86_handle_cconv_attribute },
++  /* naked attribute says this function has no prologue or epilogue.  */
++  { "naked",     0, 0, true, false, false, ix86_handle_fndecl_attribute },
+ #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
+   { "dllimport", 0, 0, false, false, false, handle_dll_attribute },
+   { "dllexport", 0, 0, false, false, false, handle_dll_attribute },
+--- gcc~/config/i386/i386.h	2011-06-29 21:15:32.000000000 +0100
++++ gcc/config/i386/i386.h	2012-01-14 17:24:44.435591614 +0000
+@@ -2282,6 +2282,9 @@ struct GTY(()) machine_function {
+   /* Nonzero if the function requires a CLD in the prologue.  */
+   BOOL_BITFIELD needs_cld : 1;
+ 
++  /* Nonzero if current function is a naked function.  */
++  BOOL_BITFIELD naked : 1;
++
+   /* Set by ix86_compute_frame_layout and used by prologue/epilogue
+      expander to determine the style used.  */
+   BOOL_BITFIELD use_fast_prologue_epilogue : 1;
+@@ -2330,6 +2333,7 @@ struct GTY(()) machine_function {
+ #define ix86_varargs_fpr_size (cfun->machine->varargs_fpr_size)
+ #define ix86_optimize_mode_switching (cfun->machine->optimize_mode_switching)
+ #define ix86_current_function_needs_cld (cfun->machine->needs_cld)
++#define ix86_current_function_naked (cfun->machine->naked)
+ #define ix86_tls_descriptor_calls_expanded_in_cfun \
+   (cfun->machine->tls_descriptor_call_expanded_p)
+ /* Since tls_descriptor_call_expanded is not cleared, even if all TLS
 --- gcc~/config/rs6000/rs6000.c	2011-09-18 23:01:56.000000000 +0100
 +++ gcc/config/rs6000/rs6000.c	2012-01-10 21:58:14.499416886 +0000
 @@ -22062,6 +22062,7 @@ rs6000_output_function_epilogue (FILE *f
@@ -23,20 +120,6 @@ diff -pur gcc~/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
  	  || ! strcmp (language_string, "GNU GIMPLE"))
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
-diff -pur gcc~/dojump.c gcc/dojump.c
---- gcc~/dojump.c	2010-05-19 21:09:57.000000000 +0100
-+++ gcc/dojump.c	2012-01-10 21:58:14.503416886 +0000
-@@ -80,7 +80,8 @@ void
- clear_pending_stack_adjust (void)
- {
-   if (optimize > 0
--      && (! flag_omit_frame_pointer || cfun->calls_alloca)
-+      && ((! flag_omit_frame_pointer && ! cfun->naked)
-+	  || cfun->calls_alloca)
-       && EXIT_IGNORE_STACK)
-     discard_pending_stack_adjust ();
- }
-diff -pur gcc~/dwarf2out.c gcc/dwarf2out.c
 --- gcc~/dwarf2out.c	2011-10-24 19:09:21.000000000 +0100
 +++ gcc/dwarf2out.c	2012-01-10 21:58:14.519416886 +0000
 @@ -20078,6 +20078,8 @@ gen_compile_unit_die (const char *filena
@@ -57,64 +140,6 @@ diff -pur gcc~/dwarf2out.c gcc/dwarf2out.c
  
        /* If we are in terse mode, don't generate any DIEs to represent any
  	 variable declarations or definitions.  */
-diff -pur gcc~/function.c gcc/function.c
---- gcc~/function.c	2011-03-09 20:49:00.000000000 +0000
-+++ gcc/function.c	2012-01-10 21:58:14.523416886 +0000
-@@ -3409,7 +3409,8 @@ assign_parms (tree fndecl)
-       targetm.calls.function_arg_advance (&all.args_so_far, data.promoted_mode,
- 					  data.passed_type, data.named_arg);
- 
--      assign_parm_adjust_stack_rtl (&data);
-+      if (!cfun->naked)
-+	assign_parm_adjust_stack_rtl (&data);
- 
-       if (assign_parm_setup_block_p (&data))
- 	assign_parm_setup_block (&all, parm, &data);
-@@ -3426,7 +3427,8 @@ assign_parms (tree fndecl)
- 
-   /* Output all parameter conversion instructions (possibly including calls)
-      now that all parameters have been copied out of hard registers.  */
--  emit_insn (all.first_conversion_insn);
-+  if (!cfun->naked)
-+    emit_insn (all.first_conversion_insn);
- 
-   /* Estimate reload stack alignment from scalar return mode.  */
-   if (SUPPORTS_STACK_ALIGNMENT)
-@@ -3590,6 +3592,9 @@ gimplify_parameters (void)
-   VEC(tree, heap) *fnargs;
-   unsigned i;
- 
-+  if (cfun->naked)
-+    return NULL;
-+
-   assign_parms_initialize_all (&all);
-   fnargs = assign_parms_augmented_arg_list (&all);
- 
-@@ -5287,6 +5292,9 @@ thread_prologue_and_epilogue_insns (void
-   edge e;
-   edge_iterator ei;
- 
-+  if (cfun->naked)
-+    return;
-+
-   rtl_profile_for_bb (ENTRY_BLOCK_PTR);
- 
-   inserted = false;
-diff -pur gcc~/function.h gcc/function.h
---- gcc~/function.h	2011-01-03 20:52:22.000000000 +0000
-+++ gcc/function.h	2012-01-10 21:58:14.527416885 +0000
-@@ -636,6 +636,10 @@ struct GTY(()) function {
-      adjusts one of its arguments and forwards to another
-      function.  */
-   unsigned int is_thunk : 1;
-+
-+  /* Nonzero if no code should be generated for prologues, copying
-+     parameters, etc. */
-+  unsigned int naked : 1;
- };
- 
- /* Add the decl D to the local_decls list of FUN.  */
-diff -pur gcc~/gcc.c gcc/gcc.c
 --- gcc~/gcc.c	2011-02-23 02:04:43.000000000 +0000
 +++ gcc/gcc.c	2012-01-10 21:58:14.531416885 +0000
 @@ -83,6 +83,9 @@ int is_cpp_driver;
@@ -146,15 +171,3 @@ diff -pur gcc~/gcc.c gcc/gcc.c
    alloc_switch ();
    switches[n_switches].part1 = 0;
    alloc_infile ();
-diff -pur gcc~/ira.c gcc/ira.c
---- gcc~/ira.c	2011-03-08 15:51:12.000000000 +0000
-+++ gcc/ira.c	2012-01-10 21:58:14.531416885 +0000
-@@ -1341,7 +1341,7 @@ ira_setup_eliminable_regset (void)
-      case.  At some point, we should improve this by emitting the
-      sp-adjusting insns for this case.  */
-   int need_fp
--    = (! flag_omit_frame_pointer
-+    = ((! flag_omit_frame_pointer && ! cfun->naked)
-        || (cfun->calls_alloca && EXIT_IGNORE_STACK)
-        /* We need the frame pointer to catch stack overflow exceptions
- 	  if the stack pointer is moving.  */

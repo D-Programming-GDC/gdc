@@ -472,7 +472,7 @@ Symbol *FuncDeclaration::toSymbol()
         {
             tree id;
             TypeFunction * ftype = (TypeFunction *)(tintro ? tintro : type);
-            tree fn_decl;
+            tree fndecl;
 
             if (ident)
             {
@@ -536,28 +536,28 @@ Symbol *FuncDeclaration::toSymbol()
 
             // %%CHECK: is it okay for static nested functions to have a FUNC_DECL context?
             // seems okay so far...
-            fn_decl = build_decl(UNKNOWN_LOCATION, FUNCTION_DECL,
-                                 id, new_fn_type ? new_fn_type : fn_type);
-            d_keep(fn_decl);
+            fndecl = build_decl(UNKNOWN_LOCATION, FUNCTION_DECL,
+                                id, new_fn_type ? new_fn_type : fn_type);
+            d_keep(fndecl);
             if (ident)
             {
                 csym->Sident = mangle(); // save for making thunks
                 csym->prettyIdent = toPrettyChars();
-                uniqueName(this, fn_decl, csym->Sident);
+                uniqueName(this, fndecl, csym->Sident);
             }
             if (c_ident)
-                SET_DECL_ASSEMBLER_NAME(fn_decl, get_identifier(c_ident->string));
+                SET_DECL_ASSEMBLER_NAME(fndecl, get_identifier(c_ident->string));
             // %% What about DECL_SECTION_NAME ?
-            DECL_CONTEXT(fn_decl) = gen.declContext(this); //context;
+            DECL_CONTEXT(fndecl) = gen.declContext(this); //context;
             if (vindex)
             {
-                DECL_VINDEX(fn_decl) = vindex;
-                DECL_VIRTUAL_P(fn_decl) = 1;
+                DECL_VINDEX(fndecl) = vindex;
+                DECL_VIRTUAL_P(fndecl) = 1;
             }
 
             if (gen.functionNeedsChain(this))
             {
-                DECL_STATIC_CHAIN(fn_decl) = 1;
+                DECL_STATIC_CHAIN(fndecl) = 1;
 
                 /* If a template instance has a nested function (because a template
                    argument is a local variable), the nested function may not have
@@ -588,8 +588,8 @@ Symbol *FuncDeclaration::toSymbol()
                 }
 
                 // Save context and set decl_function_context for cgraph.
-                csym->ScontextDecl = DECL_CONTEXT(fn_decl);
-                DECL_CONTEXT(fn_decl) = decl_function_context(fn_decl);
+                csym->ScontextDecl = DECL_CONTEXT(fndecl);
+                DECL_CONTEXT(fndecl) = decl_function_context(fndecl);
             }
 
             /* For now, inline asm means we can't inline (stack wouldn't be
@@ -598,62 +598,59 @@ Symbol *FuncDeclaration::toSymbol()
                of extended asm, we can allow inlining. */
             if (hasReturnExp & 8 /*inlineAsm*/)
             {
-                DECL_UNINLINABLE(fn_decl) = 1;
+                DECL_UNINLINABLE(fndecl) = 1;
             }
             else if (isMember2() || isFuncLiteralDeclaration())
             {
                 // See grokmethod in cp/decl.c
-                DECL_DECLARED_INLINE_P(fn_decl) = 1;
-                DECL_NO_INLINE_WARNING_P(fn_decl) = 1;
+                DECL_DECLARED_INLINE_P(fndecl) = 1;
+                DECL_NO_INLINE_WARNING_P(fndecl) = 1;
             }
             else if (flag_inline_functions && canInline(0, 1))
             {
-                DECL_DECLARED_INLINE_P(fn_decl) = 1;
-                DECL_NO_INLINE_WARNING_P(fn_decl) = 1;
+                DECL_DECLARED_INLINE_P(fndecl) = 1;
+                DECL_NO_INLINE_WARNING_P(fndecl) = 1;
             }
 
             if (naked)
             {
-                D_DECL_NO_FRAME_POINTER(fn_decl) = 1;
-                DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT(fn_decl) = 1;
-                /* Need to do this or GCC will set up a frame pointer with -finline-functions.
-                   Must have something to do with defered processing -- after we turn
-                   flag_omit_frame_pointer back on. */
-                DECL_UNINLINABLE(fn_decl) = 1;
+                gen.addDeclAttribute(fndecl, "naked");
+                DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT(fndecl) = 1;
+                DECL_UNINLINABLE(fndecl) = 1;
             }
 
             // These are always compiler generated.
             if (isArrayOp)
             {
-                DECL_ARTIFICIAL(fn_decl) = 1;
-                D_DECL_ONE_ONLY(fn_decl) = 1;
+                DECL_ARTIFICIAL(fndecl) = 1;
+                D_DECL_ONE_ONLY(fndecl) = 1;
             }
             // So are ensure and require contracts.
             if (ident == Id::ensure || ident == Id::require)
-                DECL_ARTIFICIAL(fn_decl) = 1;
+                DECL_ARTIFICIAL(fndecl) = 1;
 
             if (isStatic())
-                TREE_STATIC(fn_decl) = 1;
+                TREE_STATIC(fndecl) = 1;
 #if V2
             // %% Pure functions don't imply nothrow
-            DECL_PURE_P(fn_decl) = (isPure() == PUREstrong && ftype->isnothrow);
+            DECL_PURE_P(fndecl) = (isPure() == PUREstrong && ftype->isnothrow);
             // %% Assert contracts in functions may throw.
-            TREE_NOTHROW(fn_decl) = ftype->isnothrow && !global.params.useAssert;
+            TREE_NOTHROW(fndecl) = ftype->isnothrow && !global.params.useAssert;
             // TODO: check 'immutable' means arguments are readonly...
-            TREE_READONLY(fn_decl) = ftype->isImmutable();
-            TREE_CONSTANT(fn_decl) = ftype->isConst();
+            TREE_READONLY(fndecl) = ftype->isImmutable();
+            TREE_CONSTANT(fndecl) = ftype->isConst();
 #endif
 
 #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
             // Have to test for import first
             if (isImportedSymbol())
             {
-                gen.addDeclAttribute(fn_decl, "dllimport");
-                DECL_DLLIMPORT_P(fn_decl) = 1;
+                gen.addDeclAttribute(fndecl, "dllimport");
+                DECL_DLLIMPORT_P(fndecl) = 1;
             }
             else if (isExport())
             {
-                gen.addDeclAttribute(fn_decl, "dllexport");
+                gen.addDeclAttribute(fndecl, "dllexport");
             }
 #endif
 
@@ -665,22 +662,22 @@ Symbol *FuncDeclaration::toSymbol()
                 // need to add a redundant optimize attribute.
                 if (naked && !flag_omit_frame_pointer)
                 {
-                    gen.addDeclAttribute(fn_decl, "optimize",
+                    gen.addDeclAttribute(fndecl, "optimize",
                                          build_string(18, "omit-frame-pointer"));
                 }
                 else if (flag_omit_frame_pointer)
                 {
-                    gen.addDeclAttribute(fn_decl, "optimize",
+                    gen.addDeclAttribute(fndecl, "optimize",
                                          build_string(21, "no-omit-frame-pointer"));
                 }
             }
 #endif
-            g.ofile->setDeclLoc(fn_decl, this);
-            g.ofile->setupSymbolStorage(this, fn_decl);
+            g.ofile->setDeclLoc(fndecl, this);
+            g.ofile->setupSymbolStorage(this, fndecl);
             if (! ident)
-                TREE_PUBLIC(fn_decl) = 0;
+                TREE_PUBLIC(fndecl) = 0;
 
-            TREE_USED (fn_decl) = 1; // %% Probably should be a little more intelligent about this
+            TREE_USED (fndecl) = 1; // %% Probably should be a little more intelligent about this
 
             // %% hack: on darwin (at least) using a DECL_EXTERNAL (IRState::getLibCallDecl)
             // and TREE_STATIC FUNCTION_DECLs causes the stub label to be output twice.  This
@@ -690,7 +687,7 @@ Symbol *FuncDeclaration::toSymbol()
             if (linkage == LINKc)
                 gen.replaceLibCallDecl(this);
 
-            csym->Stree = fn_decl;
+            csym->Stree = fndecl;
 
             gen.maybeSetUpBuiltin(this);
         }
