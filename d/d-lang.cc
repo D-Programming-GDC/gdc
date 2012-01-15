@@ -227,62 +227,21 @@ d_init_options (unsigned int, const char ** argv)
 }
 #endif
 
-// support for the -mno-cygwin switch
-// copied from cygwin.h, cygwin2.c
-#ifndef CYGWIN_MINGW_SUBDIR
-#define CYGWIN_MINGW_SUBDIR "/mingw"
-#endif
-#define CYGWIN_MINGW_SUBDIR_LEN (sizeof (CYGWIN_MINGW_SUBDIR) - 1)
-
-char cygwin_d_phobos_dir[sizeof(D_PHOBOS_DIR) + 1
-        + (CYGWIN_MINGW_SUBDIR_LEN)] = D_PHOBOS_DIR;
-#undef D_PHOBOS_DIR
-#define D_PHOBOS_DIR (cygwin_d_phobos_dir)
-char cygwin_d_target_dir[sizeof(D_PHOBOS_TARGET_DIR) + 1
-        + (CYGWIN_MINGW_SUBDIR_LEN)] = D_PHOBOS_TARGET_DIR;
-#undef D_PHOBOS_TARGET_DIR
-#define D_PHOBOS_TARGET_DIR (cygwin_d_target_dir)
-
 #ifdef D_OS_VERSYM
 const char * cygwin_d_os_versym = D_OS_VERSYM;
 #undef D_OS_VERSYM
 #define D_OS_VERSYM cygwin_d_os_versym
 #endif
 
-void
-maybe_fixup_cygwin()
+static void
+maybe_fixup_os_versym()
 {
 #ifdef D_OS_VERSYM
     char * env = getenv("GCC_CYGWIN_MINGW");
-    char * p;
-    char ** av;
 
-    static char *d_cvt_to_mingw[] = {
-        cygwin_d_phobos_dir,
-        cygwin_d_target_dir,
-        NULL
-    };
-    if (!strcmp(cygwin_d_os_versym,"cygwin") && env && *env == '1')
+    if (!strcmp(D_OS_VERSYM, "Cygwin") && env && *env == '1')
     {
         cygwin_d_os_versym = "Win32";
-
-        for (av = d_cvt_to_mingw; *av; av++)
-        {
-            int sawcygwin = 0;
-            while ((p = strstr (*av, "-cygwin")))
-            {
-                char *over = p + sizeof ("-cygwin") - 1;
-                memmove (over + 1, over, strlen (over));
-                memcpy (p, "-mingw32", sizeof("-mingw32") - 1);
-                p = ++over;
-                while (ISALNUM (*p))
-                    p++;
-                strcpy (over, p);
-                sawcygwin = 1;
-            }
-            if (!sawcygwin && !strstr (*av, "mingw"))
-                strcat (*av, CYGWIN_MINGW_SUBDIR);
-        }
     }
 #endif
 }
@@ -347,7 +306,7 @@ d_init ()
     gcc_d_backend_init();
     real_t::init();
 
-    maybe_fixup_cygwin();
+    maybe_fixup_os_versym();
 
     VersionCondition::addPredefinedGlobalIdent("GNU");
 #if V2

@@ -127,14 +127,16 @@ endif
 gcc_d_target_include_dir=$(gcc_d_include_dir)/$(target_noncanonical)
 
 ifeq ($(D_gcc_main_ver),4.6)
-  D_EXTRA_DEFINES += -DLIBPHOBOS=\"gphobos$(D_ver_suffix)\"
+  D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos$(D_ver_suffix)\"
 else
-  D_EXTRA_DEFINES += -DLIBPHOBOS=\"-lgphobos$(D_ver_suffix)\" 
+  D_LIBPHOBOS = -DLIBPHOBOS=\"-lgphobos$(D_ver_suffix)\" 
 endif
 
 D_EXTRA_DEFINES += -DD_GCC_VER=$(subst .,,$(D_gcc_main_ver))
-#D_EXTRA_DEFINES += -DD_PHOBOS_DIR=\"$(gcc_d_include_dir)\"
-#D_EXTRA_DEFINES += -DD_PHOBOS_TARGET_DIR=\"$(gcc_d_target_include_dir)\"
+
+# May be adjusted in d-incpath.cc
+PHOBOS_DIRS = -DD_PHOBOS_DIR=\"$(gcc_d_include_dir)\"
+PHOBOS_DIRS += -DD_PHOBOS_TARGET_DIR=\"$(gcc_d_target_include_dir)\"
 
 # Actual names to use when installing a cross-compiler.
 D_CROSS_NAME = $(D_INSTALL_NAME)
@@ -297,9 +299,12 @@ d/id.h: d/id.c
 	@ ls d/id.h
 
 d/d-confdefs.h: d/Make-lang.in
-	echo "#define D_PHOBOS_DIR \""$(gcc_d_include_dir)"\"" > $@
-	echo "#define D_PHOBOS_TARGET_DIR \""$(gcc_d_target_include_dir)"\"" >> $@
+	#echo "#define D_PHOBOS_DIR \""$(gcc_d_include_dir)"\"" > $@
+	#echo "#define D_PHOBOS_TARGET_DIR \""$(gcc_d_target_include_dir)"\"" >> $@
 	$(srcdir)/d/target-ver-syms.sh $(target) >> $@
+
+d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H) d/d-confdefs.h
+	$(CXX) $(ALL_D_CXXFLAGS) $(PHOBOS_DIRS) -DGCC_SAFE_DMD=1 -o $@ -c $<
 
 d/id.gen.o: d/id.c $(D_DMD_H)
 d/impcnvtab.gen.o: d/impcnvtab.c $(D_DMD_H)
@@ -317,7 +322,6 @@ d/dt.glue.o: d/symbol.cc $(D_TREE_H)
 d/d-gt.cglue.o: d/d-gt.c $(D_TREE_H)
 d/d-builtins.cglue.o: d/d-builtins.c $(D_TREE_H) $(D_BI_ATTRS)
 d/d-builtins2.glue.o: d/d-builtins.c $(D_TREE_H)
-d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H) d/d-confdefs.h
 d/todt.dmd.o: $(D_DMD_H)
 d/toobj.dmd.o: $(D_DMD_H)
 d/typinf.dmd.o: $(D_DMD_H)
@@ -335,7 +339,7 @@ d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) $(CONF
 	(SHLIB_LINK='$(SHLIB_LINK)' \
 	SHLIB_MULTILIB='$(SHLIB_MULTILIB)'; \
 	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(DRIVER_DEFINES) \
-		$(ALL_D_CFLAGS) \
+		$(ALL_D_CFLAGS) $(D_LIBPHOBOS) \
 		$(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
 
 D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_BORROWED_C_OBJS) $(D_DMD_OBJS) $(D_GLUE_OBJS)
