@@ -383,9 +383,7 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
                     return result;
                 }
             }
-            else
-            {   // nothing; default
-            }
+            // else default conversion
             break;
         case Tsarray:
             if (tbtype->ty == Tpointer)
@@ -495,6 +493,13 @@ IRState::convertTo(tree exp, Type * exp_type, Type * target_type)
             {
                 Type * pointer_type = tbtype->nextOf()->pointerTo();
                 return darrayVal(target_type, 0, nop(exp, pointer_type->toCtype()));
+            }
+            break;
+        case Tvector:
+            if (tbtype->ty == Tsarray)
+            {
+                if (tbtype->size() == ebtype->size())
+                    return vconvert(exp, target_type->toCtype());
             }
             break;
 #endif

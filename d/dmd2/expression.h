@@ -799,7 +799,7 @@ struct BinExp : Expression
     Expression *typeCombine(Scope *sc);
     Expression *optimize(int result);
     int isunsigned();
-    void incompatibleTypes();
+    Expression *incompatibleTypes();
     void dump(int indent);
     void scanForNestedRef(Scope *sc);
     Expression *interpretCommon(InterState *istate, CtfeGoal goal,
@@ -1106,6 +1106,17 @@ struct CastExp : UnaExp
     Expression *op_overload(Scope *sc);
 };
 
+struct VectorExp : UnaExp
+{
+    Type *to;
+    unsigned dim;               // number of elements in the vector
+
+    VectorExp(Loc loc, Expression *e, Type *t);
+    Expression *syntaxCopy();
+    Expression *semantic(Scope *sc);
+    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+    elem *toElem(IRState *irs);
+};
 
 struct SliceExp : UnaExp
 {

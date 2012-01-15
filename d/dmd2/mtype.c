@@ -3245,10 +3245,18 @@ MATCH TypeBasic::implicitConvTo(Type *to)
         return MATCHnomatch;
     if (to->ty == Tbool)
         return MATCHnomatch;
-    if (!to->isTypeBasic())
+
+    TypeBasic *tob;
+    if (to->ty == Tvector)
+    {
+        TypeVector *tv = (TypeVector *)to;
+        tob = tv->elementType();
+    }
+    else
+        tob = to->isTypeBasic();
+    if (!tob)
         return MATCHnomatch;
 
-    TypeBasic *tob = (TypeBasic *)to;
     if (flags & TFLAGSintegral)
     {
         // Disallow implicit conversion of integers to imaginary or complex
@@ -3257,7 +3265,7 @@ MATCH TypeBasic::implicitConvTo(Type *to)
 
 #if DMDV2
         // If converting from integral to integral
-        if (1 && tob->flags & TFLAGSintegral)
+        if (tob->flags & TFLAGSintegral)
         {   d_uns64 sz = size(0);
             d_uns64 tosz = tob->size(0);
 
@@ -3348,7 +3356,10 @@ TypeBasic *TypeVector::elementType()
     return tb;
 }
 
-
+int TypeVector::checkBoolean()
+{
+    return FALSE;
+}
 
 char *TypeVector::toChars()
 {
@@ -3397,7 +3408,12 @@ Expression *TypeVector::dotExp(Scope *sc, Expression *e, Identifier *ident)
 #if LOGDOTEXP
     printf("TypeVector::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
 #endif
-    return basetype->dotExp(sc, e, ident);
+    if (ident == Id::array)
+    {
+        e = e->castTo(sc, basetype);
+        return e;
+    }
+    return basetype->dotExp(sc, e->castTo(sc, basetype), ident);
 }
 
 Expression *TypeVector::defaultInit(Loc loc)
@@ -3428,7 +3444,7 @@ int TypeVector::isunsigned()
 
 int TypeVector::isscalar()
 {
-    return TRUE;        // I should hope so
+    return basetype->nextOf()->isscalar();
 }
 
 MATCH TypeVector::implicitConvTo(Type *to)

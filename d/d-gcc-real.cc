@@ -367,7 +367,8 @@ real_t::convert(Mode to_mode) const
 real_t
 real_t::convert(Type * to_type) const
 {
-    switch (to_type->toBasetype()->ty)
+    Type * tb = to_type->toBasetype();
+    switch (tb->ty)
     {
         case Tfloat32:
             return convert(real_t::Float);
@@ -377,7 +378,12 @@ real_t::convert(Type * to_type) const
 
         case Tfloat80:
             return convert(real_t::LongDouble);
-
+#if V2
+        case Tvector:
+            tb = ((TypeVector *)tb)->elementType();
+            gcc_assert(tb->ty != Tvector);
+            return convert(tb);
+#endif
         default:
             gcc_unreachable();
     }

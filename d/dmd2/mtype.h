@@ -436,6 +436,7 @@ struct TypeVector : Type
     int isfloating();
     int isscalar();
     int isunsigned();
+    int checkBoolean();
     MATCH implicitConvTo(Type *to);
     Expression *defaultInit(Loc loc);
     TypeBasic *elementType();

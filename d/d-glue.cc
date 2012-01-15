@@ -1492,6 +1492,18 @@ SliceExp::toElem(IRState * irs)
     return aryscp.finish(irs->darrayVal(type->toCtype(), final_len_expr, final_ptr_expr));
 }
 
+#if V2
+elem *
+VectorExp::toElem(IRState * irs)
+{
+    // Simple... maybe build our own constructor later...
+    tree vectype = type->toCtype();
+    tree sc = convert(TREE_TYPE(vectype), e1->toElem(irs));
+
+    return build_vector_from_val(vectype, sc);
+}
+#endif
+
 elem *
 CastExp::toElem(IRState * irs)
 {
