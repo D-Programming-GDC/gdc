@@ -132,15 +132,6 @@
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
-@@ -19967,7 +19969,7 @@ dwarf2out_decl (tree decl)
- 
-       /* For local statics lookup proper context die.  */
-       if (TREE_STATIC (decl) && decl_function_context (decl))
--	context_die = lookup_decl_die (DECL_CONTEXT (decl));
-+	context_die = lookup_decl_die (decl_function_context (decl));
- 
-       /* If we are in terse mode, don't generate any DIEs to represent any
- 	 variable declarations or definitions.  */
 --- gcc~/gcc.c	2010-04-18 18:46:08.000000000 +0100
 +++ gcc/gcc.c	2012-01-14 19:04:06.515374068 +0000
 @@ -139,6 +139,9 @@ int is_cpp_driver;

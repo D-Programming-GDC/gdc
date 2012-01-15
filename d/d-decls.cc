@@ -295,14 +295,12 @@ Symbol *VarDeclaration::toSymbol()
         if (decl_kind == VAR_DECL)
         {
             g.ofile->setupSymbolStorage(this, var_decl);
-            //DECL_CONTEXT(var_decl) = gen.declContext(this);//EXPERkinda
         }
         else if (decl_kind == PARM_DECL)
         {
             /* from gcc code: Some languages have different nominal and real types.  */
             // %% What about DECL_ORIGINAL_TYPE, DECL_ARG_TYPE_AS_WRITTEN, DECL_ARG_TYPE ?
             DECL_ARG_TYPE(var_decl) = TREE_TYPE (var_decl);
-
             DECL_CONTEXT(var_decl) = gen.declContext(this);
             gcc_assert(TREE_CODE(DECL_CONTEXT(var_decl)) == FUNCTION_DECL);
         }
@@ -920,9 +918,10 @@ Symbol *ClassDeclaration::toVtblSymbol()
         TREE_CONSTANT(decl) = 1;
         TREE_ADDRESSABLE(decl) = 1;
         // from cp/class.c
-        DECL_CONTEXT (decl) =  TREE_TYPE(type->toCtype());
-        DECL_VIRTUAL_P (decl) = 1;
-        DECL_ALIGN (decl) = TARGET_VTABLE_ENTRY_ALIGN;
+        DECL_CONTEXT(decl) = gen.declContext(this);
+        DECL_ARTIFICIAL(decl) = 1;
+        DECL_VIRTUAL_P(decl) = 1;
+        DECL_ALIGN(decl) = TARGET_VTABLE_ENTRY_ALIGN;
     }
     return vtblsym;
 }
