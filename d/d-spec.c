@@ -78,6 +78,13 @@
 
 #endif
 
+/* mingw and cygwin don't have pthread. %% TODO: check darwin.  */
+#if TARGET_WINDOS || TARGET_OSX
+#define USE_PTHREADS    0
+#else
+#define USE_PTHREADS    1
+#endif
+
 /* This macro allows casting away const-ness to pass -Wcast-qual
    warnings.  DO NOT USE THIS UNLESS YOU REALLY HAVE TO!  It should
    only be used in certain specific cases.  One valid case is where
@@ -88,8 +95,6 @@
 #define CONST_CAST(TYPE,X) ((__extension__(union {const TYPE _q; TYPE _nq;})(X))._nq)
 #endif
 
-/* Whether we need -pthread flag. */
-extern int need_pthreads;
 
 #if D_GCC_VER >= 46
 
@@ -128,7 +133,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
     const struct cl_decoded_option *saw_math = 0;
 
     /* "-lpthread" if it appears on the command line.  */
-    const struct cl_decoded_option *saw_pthread = 0;
+    const struct cl_decoded_option *saw_thread = 0;
 
     /* "-lrt" if it appears on the command line.  */
     const struct cl_decoded_option *saw_librt = 0;
@@ -139,6 +144,9 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
     /* An array used to flag each argument that needs a bit set for
        LANGSPEC, MATHLIB, WITHTHREAD, or WITHLIBC.  */
     int *args;
+
+    /* Whether we need the thread library.  */
+    int need_thread;
 
     /* By default, we throw on the math library if we have one.  */
     int need_math = (MATH_LIBRARY[0] != '\0');
@@ -371,7 +379,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
     /* Make sure to have room for the trailing NULL argument.  */
     /* There is one extra argument added here for the runtime
        library: -lgphobos.  The -pthread argument is added by
-       setting need_pthreads. */
+       setting need_thread. */
     num_args = argc + added + need_math + shared_libgcc + (library > 0) * 4 + 2;
     new_decoded_options = XNEWVEC (struct cl_decoded_option, num_args);
 
@@ -400,10 +408,10 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
             saw_math = &decoded_options[i];
         }
 
-        if (!saw_pthread && (args[i] & WITHTHREAD) && library > 0)
+        if (!saw_thread && (args[i] & WITHTHREAD) && library > 0)
         {
             --j;
-            saw_pthread = &decoded_options[i];
+            saw_thread = &decoded_options[i];
         }
 
         if (!saw_librt && (args[i] & TIMERLIB) && library > 0)
@@ -470,6 +478,12 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
                          CL_DRIVER, &new_decoded_options[j]);
         added_libraries++;
         j++;
+
+#if USE_PTHREADS
+        /* When linking libphobos we also need to link with the pthread library.  */
+        if (library > 1 && (static_phobos || static_link))
+            need_thread = 1;
+#endif
     }
     else if (saw_debug_flag && debuglib)
     {
@@ -483,7 +497,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
         added_libraries++;
         j++;
     }
-
+    
     if (saw_math)
         new_decoded_options[j++] = *saw_math;
     else if (library > 0 && need_math)
@@ -497,12 +511,14 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
         j++;
     }
 
-    if (saw_pthread)
-        new_decoded_options[j++] = *saw_pthread;
-    else if (library > 0)
+    if (saw_thread)
+        new_decoded_options[j++] = *saw_thread;
+    else if (library > 0 && need_thread)
     {
-        /* Handled in gcc.c  */
-        need_pthreads = 1;
+        generate_option (OPT_l, "pthread", 1, CL_DRIVER,
+                         &new_decoded_options[j]);
+        added_libraries++;
+        j++;
     }
 
     if (saw_librt)
@@ -573,7 +589,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     const char *saw_math = 0;
 
     /* "-lpthread" if it appears on the command line.  */
-    const char *saw_pthread = 0;
+    const char *saw_thread = 0;
 
     /* "-lrt" if it appears on the command line.  */
     const char *saw_librt = 0;
@@ -823,7 +839,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     /* Make sure to have room for the trailing NULL argument.  */
     /* There is one extra argument added here for the runtime
        library: -lgphobos.  The -pthread argument is added by
-       setting need_pthreads. */
+       setting need_thread. */
     num_args = argc + added + need_math + shared_libgcc + (library > 0) * 4 + 2;
     arglist = (const char **) xmalloc (num_args * sizeof (char *));
 
@@ -852,10 +868,10 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
             saw_math = argv[i];
         }
 
-        if (!saw_pthread && (args[i] & WITHTHREAD) && library > 0)
+        if (!saw_thread && (args[i] & WITHTHREAD) && library > 0)
         {
             --j;
-            saw_pthread = argv[i];
+            saw_thread = argv[i];
         }
 
         if (!saw_librt && (args[i] & TIMERLIB) && library > 0)
@@ -891,6 +907,12 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
     {
         arglist[j++] = saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS;
         added_libraries++;
+
+#if USE_PTHREADS
+        /* When linking libphobos we also need to link with the pthread library.  */
+        if (library > 1 && (static_phobos || static_link))
+            need_thread = 1;
+#endif
     }
     else if (saw_debug_flag && debuglib)
     {
@@ -911,12 +933,12 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
         added_libraries++;
     }
 
-    if (saw_pthread)
-        arglist[j++] = saw_pthread;
-    else if (library > 0)
+    if (saw_thread)
+        arglist[j++] = saw_thread;
+    else if (library > 0 && need_thread)
     {
-        /* Handled in gcc.c  */
-        need_pthreads = 1;
+        arglist[j++] = "-lpthread";
+        added_libraries++;
     }
 
     if (saw_librt)

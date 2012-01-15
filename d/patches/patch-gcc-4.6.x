@@ -131,34 +131,3 @@
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
---- gcc~/gcc.c	2011-02-23 02:04:43.000000000 +0000
-+++ gcc/gcc.c	2012-01-10 21:58:14.531416885 +0000
-@@ -83,6 +83,9 @@ int is_cpp_driver;
- /* Flag set to nonzero if an @file argument has been supplied to gcc.  */
- static bool at_file_supplied;
- 
-+/* Flag set by drivers needing Pthreads. */
-+int need_pthreads;
-+
- /* Definition of string containing the arguments given to configure.  */
- #include "configargs.h"
- 
-@@ -3925,6 +3928,18 @@ process_command (unsigned int decoded_op
-       add_infile ("help-dummy", "c");
-     }
- 
-+  if (need_pthreads)
-+    {
-+      alloc_switch ();
-+      switches[n_switches].part1 = "pthread";
-+      switches[n_switches].args = 0;
-+      switches[n_switches].live_cond = 0;
-+      /* Do not print an error if there is not expansion for -pthread. */
-+      switches[n_switches].validated = 1;
-+      switches[n_switches].ordering = 0;
-+      n_switches++;
-+    }
-+
-   alloc_switch ();
-   switches[n_switches].part1 = 0;
-   alloc_infile ();
