@@ -34,8 +34,8 @@ k*bsd*-gnu) d_os_versym=FreeBSD ; d_unix=1 ;;
 kopensolaris*-gnu) d_os_versym=Solaris; d_unix=1 ;;
 linux*) d_os_versym=linux ; d_unix=1 ;; # This is supposed to be "linux", not "Linux", according to the spec
 mingw32*) case "$target_vendor" in
-              pc*) d_os_versym=Win32; d_os_versym2=MinGW; d_windows=1 ;;
-              w64*) d_os_versym=Win64; d_os_versym2=MinGW; d_windows=1 ;;
+              pc*) d_os_versym=Win32; d_os_versym2=MinGW32; d_windows=1 ;;
+              w64*) d_os_versym=Win64; d_os_versym2=MinGW64; d_windows=1 ;;
           esac
           ;;
 openbsd*) d_os_versym=OpenBSD; d_unix=1 ;;
@@ -101,5 +101,6 @@ linux)   echo "#define TARGET_LINUX   1" ;;
 OpenBSD) echo "#define TARGET_OPENBSD 1" ;;
 Solaris) echo "#define TARGET_SOLARIS 1" ;;
 Win32)   echo "#define TARGET_WINDOS  1" ;;
+Win64)   echo "#define TARGET_WINDOS  1" ;;
 *)       echo "#define TARGET_UNIX    1" ;;
 esac
