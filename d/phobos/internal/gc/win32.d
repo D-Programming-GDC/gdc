@@ -88,6 +88,23 @@ void *os_query_stackBottom()
             mov RAX,FS:8        ;
             ret                 ;
         }
+   else version( GNU_InlineAsm )
+   {
+        void *bottom;
+        version( X86 )
+        {
+            asm{ "movl %%fs:4, %0;" : "=r" bottom; }                
+        }
+        else version( X86_64 )
+        {
+            asm{ "movq %%gs:8, %0;" : "=r" bottom; }            
+        }
+        else
+        {
+            static assert( false, "Platform not supported.");
+        }
+        return bottom;
+   }
    else
         static assert(0);
 }
