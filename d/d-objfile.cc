@@ -261,6 +261,12 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, bool comdat)
        even if the target supports one-only. */
     if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates != TEprivate)
     {
+        /* MinGW requires a comdat_group to take advantage of 
+           make_decl_one_only. */
+#ifdef TARGET_WINDOS
+        comdat = true;
+#endif
+        
         /* The following makes assumptions about the behavior
            of make_decl_one_only */
         if (SUPPORTS_ONE_ONLY)
