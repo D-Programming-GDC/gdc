@@ -685,7 +685,6 @@ ObjectFile::doThunk(tree thunk_decl, tree target_decl, int offset)
 
 /* Thunk code is based on g++ */
 
-#ifdef ASM_OUTPUT_DEF
 static int thunk_labelno;
 
 /* Create a static alias to function.  */
@@ -696,12 +695,6 @@ make_alias_for_thunk (tree function)
     tree alias;
     char buf[256];
 
-#if defined (TARGET_IS_PE_COFF)
-    /* make_alias_for_thunk does not seem to be needed for TARGET_IS_PE_COFF
-       at all, and apparently causes problems... */
-    //if (DECL_ONE_ONLY (function))
-    return function;
-#endif
     // For gdc: Thunks may reference extern functions which cannot be aliased.
     if (DECL_EXTERNAL(function))
         return function;
@@ -712,12 +705,13 @@ make_alias_for_thunk (tree function)
     ASM_GENERATE_INTERNAL_LABEL (buf, "LTHUNK", thunk_labelno);
 #endif
     thunk_labelno++;
-    alias = build_fn_decl (buf, TREE_TYPE (function));
 
+    alias = build_decl(DECL_SOURCE_LOCATION(function), FUNCTION_DECL,
+                       get_identifier(buf), TREE_TYPE(function));
+    DECL_LANG_SPECIFIC(alias) = DECL_LANG_SPECIFIC(function);
     DECL_CONTEXT (alias) = NULL;
     TREE_READONLY (alias) = TREE_READONLY (function);
     TREE_THIS_VOLATILE (alias) = TREE_THIS_VOLATILE (function);
-    TREE_NOTHROW (alias) = TREE_NOTHROW (function);
     TREE_PUBLIC (alias) = 0;
 
     DECL_EXTERNAL (alias) = 0;
@@ -747,28 +741,49 @@ make_alias_for_thunk (tree function)
     }
     return alias;
 }
-#endif
 
 void
 ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
 {
-    int delta = -offset;
+    /* Settings used to output D thunks.  */
+    int fixed_offset = -offset;
+    bool this_adjusting = true;
+    int virtual_value = 0;
+
     tree alias;
 
-#ifdef ASM_OUTPUT_DEF
-    alias = make_alias_for_thunk(target_decl);
-#else
-    alias = target_decl;
-#endif
+    if (TARGET_USE_LOCAL_THUNK_ALIAS_P (target_decl))
+        alias = make_alias_for_thunk(target_decl);
+    else
+        alias = target_decl;
 
     TREE_ADDRESSABLE(target_decl) = 1;
     TREE_USED(target_decl) = 1;
-    DECL_VISIBILITY (thunk_decl) = DECL_VISIBILITY (target_decl);
-#if ASM_OUTPUT_DEF && !defined (TARGET_IS_PE_COFF)
-    if (targetm.have_named_sections)
-    {
-        resolve_unique_section (target_decl, 0, flag_function_sections);
 
+    TREE_ADDRESSABLE(thunk_decl) = 1;
+    TREE_USED(thunk_decl) = 1;
+    DECL_EXTERNAL(thunk_decl) = 0;
+
+    TREE_PUBLIC(thunk_decl) = TREE_PUBLIC(target_decl);
+    DECL_VISIBILITY(thunk_decl) = DECL_VISIBILITY(target_decl);
+    DECL_VISIBILITY_SPECIFIED(thunk_decl)
+        = DECL_VISIBILITY_SPECIFIED(target_decl);
+    //needed on some targets to avoid "causes a section type conflict"
+    D_DECL_ONE_ONLY(thunk_decl) = D_DECL_ONE_ONLY(target_decl);
+    if (D_DECL_ONE_ONLY(thunk_decl))
+        g.ofile->makeDeclOneOnly(thunk_decl);
+
+    if (flag_syntax_only)
+    {
+        TREE_ASM_WRITTEN(thunk_decl);
+        return;
+    }
+
+    if (TARGET_USE_LOCAL_THUNK_ALIAS_P(target_decl)
+        && targetm.have_named_sections)
+    {
+        resolve_unique_section(target_decl, 0, flag_function_sections);
+        
         if (DECL_SECTION_NAME (target_decl) != NULL && DECL_ONE_ONLY (target_decl))
         {
             resolve_unique_section (thunk_decl, 0, flag_function_sections);
@@ -776,35 +791,34 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
             DECL_SECTION_NAME (thunk_decl) = DECL_SECTION_NAME (target_decl);
         }
     }
-#endif
-    // cp/method.c:
-    /* The back-end expects DECL_INITIAL to contain a BLOCK, so we
-       create one.  */
-    // ... actually doesn't seem to be the case for output_mi_thunk
-    DECL_INITIAL (thunk_decl) = make_node (BLOCK);
-    BLOCK_VARS (DECL_INITIAL (thunk_decl)) = DECL_ARGUMENTS (thunk_decl);
 
-    if (targetm.asm_out.can_output_mi_thunk(thunk_decl, delta, 0, alias))
+    /* Set up cloned argument trees for the thunk.  */
+    tree t = NULL_TREE;
+    for (tree a = DECL_ARGUMENTS(target_decl); a; a = DECL_CHAIN(a))
     {
-        const char *fnname;
-
-        current_function_decl = thunk_decl;
-        DECL_RESULT(thunk_decl) = build_decl(DECL_SOURCE_LOCATION(thunk_decl),
-                                             RESULT_DECL, 0, integer_type_node);
-        fnname = XSTR(XEXP(DECL_RTL(thunk_decl), 0), 0);
-        gen.initFunctionStart(thunk_decl, 0);
-        cfun->is_thunk = 1;
-        assemble_start_function (thunk_decl, fnname);
-        targetm.asm_out.output_mi_thunk (asm_out_file, thunk_decl,
-            delta, 0, alias);
-        assemble_end_function(thunk_decl, fnname);
-        free_after_compilation (cfun);
-        set_cfun(0);
-        current_function_decl = 0;
-        TREE_ASM_WRITTEN (thunk_decl) = 1;
+        tree x = copy_node (a);
+        DECL_CHAIN (x) = t;
+        DECL_CONTEXT (x) = thunk_decl;
+        SET_DECL_RTL (x, NULL);
+        DECL_HAS_VALUE_EXPR_P (x) = 0;
+        TREE_ADDRESSABLE (x) = 0;
+        t = x;
     }
-    else
+    DECL_ARGUMENTS(thunk_decl) = nreverse(t);
+    TREE_ASM_WRITTEN(thunk_decl) = 1;
+
+#if D_GCC_VER >= 46
+    cgraph_add_thunk(cgraph_node(target_decl), thunk_decl, target_decl,
+                     this_adjusting, fixed_offset, virtual_value, 0, alias);
+#else
+    cgraph_add_thunk(thunk_decl, target_decl, this_adjusting,
+                     fixed_offset, virtual_value, 0, alias);
+#endif
+
+    if (!targetm.asm_out.can_output_mi_thunk(thunk_decl, fixed_offset,
+                                             virtual_value, alias))
     {
+        /* if varargs... */
         sorry("backend for this target machine does not support thunks");
     }
 }

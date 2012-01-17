@@ -697,7 +697,6 @@ Symbol *FuncDeclaration::toSymbol()
     return csym;
 }
 
-#define D_PRIVATE_THUNKS 1
 
 /*************************************
  */
@@ -743,50 +742,32 @@ Symbol *FuncDeclaration::toThunkSymbol(int offset)
         slist_add(sthunk);
 
         tree target_func_decl = csym->Stree;
-        tree thunk_decl = build_fn_decl(id, TREE_TYPE(target_func_decl));
-        d_keep(thunk_decl);
-        sthunk->Stree = thunk_decl;
-
-        //SET_DECL_ASSEMBLER_NAME(thunk_decl, DECL_NAME(thunk_decl));//old
+        tree thunk_decl = build_decl(DECL_SOURCE_LOCATION (target_func_decl),
+                                     FUNCTION_DECL, NULL_TREE, TREE_TYPE(target_func_decl));
+        DECL_LANG_SPECIFIC(thunk_decl) = DECL_LANG_SPECIFIC(target_func_decl);
         DECL_CONTEXT(thunk_decl) = gen.declContext(this); // from c++...
         TREE_READONLY(thunk_decl) = TREE_READONLY(target_func_decl);
         TREE_THIS_VOLATILE(thunk_decl) = TREE_THIS_VOLATILE(target_func_decl);
         TREE_NOTHROW(thunk_decl) = TREE_NOTHROW(target_func_decl);
 
-#ifdef D_PRIVATE_THUNKS
-        DECL_EXTERNAL(thunk_decl) = 0;
-        TREE_STATIC(thunk_decl) = 0;
-        TREE_PRIVATE(thunk_decl) = 1;
+        /* D Thunks are private to the module they are defined in.  */
         TREE_PUBLIC(thunk_decl) = 0;
-#else
-        /* Due to changes in the assembler, it is not possible to emit
-           a private thunk that refers to an external symbol.
-           http://lists.gnu.org/archive/html/bug-binutils/2005-05/msg00002.html
-        */
-        DECL_EXTERNAL(thunk_decl) = DECL_EXTERNAL(target_func_decl);
-        TREE_STATIC(thunk_decl) = TREE_STATIC(target_func_decl);
-        TREE_PRIVATE(thunk_decl) = TREE_PRIVATE(target_func_decl);
-        TREE_PUBLIC(thunk_decl) = TREE_PUBLIC(target_func_decl);
-#endif
+        TREE_PRIVATE(thunk_decl) = 1;
+        DECL_EXTERNAL(thunk_decl) = 0;
 
-        DECL_ARTIFICIAL(thunk_decl) = 1;
-        DECL_IGNORED_P(thunk_decl) = 1;
-        DECL_DECLARED_INLINE_P(thunk_decl) = 0;
-        //needed on some targets to avoid "causes a section type conflict"
-        D_DECL_ONE_ONLY(thunk_decl) = D_DECL_ONE_ONLY(target_func_decl);
-        if (D_DECL_ONE_ONLY(thunk_decl))
-            g.ofile->makeDeclOneOnly(thunk_decl);
-
+        /* Thunks are always addressable.  */
         TREE_ADDRESSABLE(thunk_decl) = 1;
         TREE_USED (thunk_decl) = 1;
+        DECL_ARTIFICIAL(thunk_decl) = 1;
+        DECL_DECLARED_INLINE_P(thunk_decl) = 0;
 
-#ifdef D_PRIVATE_THUNKS
-        //g.ofile->prepareSymbolOutput(sthunk);
+        DECL_NAME(thunk_decl) = get_identifier(id);
+        SET_DECL_ASSEMBLER_NAME (thunk_decl, DECL_NAME(thunk_decl));
+
+        d_keep(thunk_decl);
+        sthunk->Stree = thunk_decl;
+
         g.ofile->doThunk(thunk_decl, target_func_decl, offset);
-#else
-        if (TREE_STATIC(thunk_decl))
-            g.ofile->doThunk(thunk_decl, target_func_decl, offset);
-#endif
 
         thunk->symbol = sthunk;
     }

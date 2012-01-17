@@ -276,33 +276,28 @@ d_init ()
     /* TARGET_64BIT is only defined on biarched archs defaulted to 64-bit
      * (as amd64 or s390x) so for full 64-bit archs (as ia64 or alpha) we
      * need to test it more. */
-#  ifdef D_CPU_VERSYM64
+#ifdef D_CPU_VERSYM64
     /* We are "defaulting" to 32-bit, which mean that if both D_CPU_VERSYM
      * and D_CPU_VERSYM64 are defined, and not TARGET_64BIT, we will use
      * 32 bits. This will be overidden for full 64-bit archs */
     global.params.is64bit = 0;
-#    ifndef D_CPU_VERSYM
+#ifndef D_CPU_VERSYM
     /* So this is typically for alpha and ia64 */
     global.params.is64bit = 1;
-#    endif
-#  else
-#    ifdef D_CPU_VERSYM /* D_CPU_VERSYM is defined and D_CPU_VERSYM64 is not. */
-    global.params.is64bit = 0;
-#    else
-    /* If none of D_CPU_VERSYM and D_CPU_VERSYM64 defined check size_t
-     * length instead. */
-    switch (sizeof(size_t))
-    {
-        case 4:
-            global.params.is64bit = 0;
-            break;
-        case 8:
-            global.params.is64bit = 1;
-            break;
-    }
-#    endif
-#  endif
 #endif
+
+#else
+
+#ifdef D_CPU_VERSYM /* D_CPU_VERSYM is defined and D_CPU_VERSYM64 is not. */
+    global.params.is64bit = 0;
+#else
+    /* If none of D_CPU_VERSYM and D_CPU_VERSYM64 defined check POINTER_SIZE instead */
+    global.params.is64bit = (POINTER_SIZE == 64);
+#endif
+
+#endif /* ! D_CPU_VERSYM */
+
+#endif /* ! TARGET_64BIT */
 
     Type::init();
     Id::initialize();
