@@ -760,19 +760,6 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
     TREE_ADDRESSABLE(target_decl) = 1;
     TREE_USED(target_decl) = 1;
 
-    TREE_ADDRESSABLE(thunk_decl) = 1;
-    TREE_USED(thunk_decl) = 1;
-    DECL_EXTERNAL(thunk_decl) = 0;
-
-    TREE_PUBLIC(thunk_decl) = TREE_PUBLIC(target_decl);
-    DECL_VISIBILITY(thunk_decl) = DECL_VISIBILITY(target_decl);
-    DECL_VISIBILITY_SPECIFIED(thunk_decl)
-        = DECL_VISIBILITY_SPECIFIED(target_decl);
-    //needed on some targets to avoid "causes a section type conflict"
-    D_DECL_ONE_ONLY(thunk_decl) = D_DECL_ONE_ONLY(target_decl);
-    if (D_DECL_ONE_ONLY(thunk_decl))
-        g.ofile->makeDeclOneOnly(thunk_decl);
-
     if (flag_syntax_only)
     {
         TREE_ASM_WRITTEN(thunk_decl);
