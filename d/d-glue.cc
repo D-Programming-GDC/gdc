@@ -2528,37 +2528,44 @@ ArrayLiteralExp::toElem(IRState * irs)
     tree sa_type = irs->arrayType(etype->toCtype(), elements->dim);
     tree result = NULL_TREE;
 
-    tree args[2] = {
-        irs->typeinfoReference(etype->arrayOf()),
-        irs->integerConstant(elements->dim, size_type_node)
-    };
-    // Call _d_arrayliteralTp(ti, dim);
-    LibCall lib_call = LIBCALL_ARRAYLITERALTP;
-    tree mem = irs->libCall(lib_call, 2, args, etype->pointerTo()->toCtype());
-    mem = irs->maybeMakeTemp(mem);
+    /* Build an expression that assigns the expressions in ELEMENTS to a constructor. */
+    CtorEltMaker elms;
+    
+    elms.reserve(elements->dim);
+    for (size_t i = 0; i < elements->dim; i++)
+    {
+        elms.cons(irs->integerConstant(i, size_type_node),
+                  irs->convertTo((*elements)[i], etype));
+    }
+    tree ctor = build_constructor(sa_type, elms.head);
 
-    {   /* Build an expression that assigns the expressions in ELEMENTS to a constructor. */
-        CtorEltMaker elms;
-
-        elms.reserve(elements->dim);
-        for (size_t i = 0; i < elements->dim; i++)
-        {
-            elms.cons(irs->integerConstant(i, size_type_node),
-                      irs->convertTo((*elements)[i], etype));
-        }
-        tree ctor = build_constructor(sa_type, elms.head);
+    // Should be ok to skip initialising constant literals on heap.
+    if (TREE_CONSTANT(ctor))
+    {
         result = irs->addressOf(ctor);
     }
-    // memcpy(mem, &ctor, size)
-    tree size = fold_build2(MULT_EXPR, size_type_node,
-                            size_int(elements->dim), size_int(typeb->nextOf()->size()));
+    else
+    {
+        tree args[2] = {
+            irs->typeinfoReference(etype->arrayOf()),
+            irs->integerConstant(elements->dim, size_type_node)
+        };
+        // Call _d_arrayliteralTp(ti, dim);
+        LibCall lib_call = LIBCALL_ARRAYLITERALTP;
+        tree mem = irs->libCall(lib_call, 2, args, etype->pointerTo()->toCtype());
+        mem = irs->maybeMakeTemp(mem);
+        
+        // memcpy(mem, &ctor, size)
+        tree size = fold_build2(MULT_EXPR, size_type_node,
+                                size_int(elements->dim), size_int(typeb->nextOf()->size()));
 
-    result = irs->buildCall(built_in_decls[BUILT_IN_MEMCPY], 3,
-                            mem, result, size);
+        result = irs->buildCall(built_in_decls[BUILT_IN_MEMCPY], 3,
+                                 mem, irs->addressOf(ctor), size);
 
-    // Returns array pointed to by MEM.
-    result = irs->maybeCompound(result, mem);
+        // Returns array pointed to by MEM.
+        result = irs->maybeCompound(result, mem);
 
+    }
     if (typeb->ty == Tarray)
         result = irs->darrayVal(type, elements->dim, result);
     else if (typeb->ty == Tsarray)
