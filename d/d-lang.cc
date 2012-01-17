@@ -54,7 +54,6 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_PARSE_FILE
 #undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
-#undef LANG_HOOKS_GET_ALIAS_SET
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
 #undef LANG_HOOKS_BUILTIN_FUNCTION
 #undef LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE
@@ -72,7 +71,6 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_PARSE_FILE               d_parse_file
 #define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE   d_common_attribute_table
 #define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE   d_common_format_attribute_table
-#define LANG_HOOKS_GET_ALIAS_SET            d_hook_get_alias_set
 #define LANG_HOOKS_TYPES_COMPATIBLE_P       d_types_compatible_p
 #define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function
 #define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE d_builtin_function
@@ -161,10 +159,14 @@ d_init_options_struct (struct gcc_options *opts)
     opts->frontend_set_flag_errno_math = true;
 
     // Keep in synch with existing -fbounds-check flag.
-    opts->x_flag_bounds_check = 1;
+    opts->x_flag_bounds_check = global.params.useArrayBounds;
 
-    // Honour left to right code evaluation
+    // Honour left to right code evaluation.
     opts->x_flag_evaluation_order = 1;
+#if V2
+    // Default to using strict aliasing.
+    opts->x_flag_strict_aliasing = 1;
+#endif
 }
 
 /* Return language mask for option parsing.  */
@@ -215,7 +217,10 @@ d_init_options (unsigned int, const char ** argv)
 
     // Honour left to right code evaluation.
     flag_evaluation_order = 1;
-
+#if V2
+    // Default to using strict aliasing.
+    flag_strict_aliasing = 1;
+#endif
     // extra D-specific options
     gen.splitDynArrayVarArgs = true;
     gen.emitTemplates = TEnormal;
@@ -788,15 +793,6 @@ d_write_global_declarations()
     emit_debug_global_declarations(vec, globalDeclarations.dim);
 }
 
-// Some phobos code (isnormal, etc.) breaks with strict aliasing...
-// so I guess D doesn't have aliasing rules.  Would be nice to enable
-// strict aliasing, but hooking or defaulting flag_strict_aliasing is
-// not trivial
-static alias_set_type
-d_hook_get_alias_set(tree)
-{
-    return 0;
-}
 
 /* Gimplification of expression trees.  */
 int
