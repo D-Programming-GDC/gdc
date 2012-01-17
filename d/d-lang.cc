@@ -333,28 +333,21 @@ d_init ()
         VersionCondition::addPredefinedGlobalIdent(cpu_versym);
 #ifdef D_OS_VERSYM
     if (strcmp(D_OS_VERSYM, "Win64") == 0 && !TARGET_64BIT)
-    {
-        // -m32 should set up for Win32.
         VersionCondition::addPredefinedGlobalIdent("Win32");
-        is_target_win32 = true;
-    }
     else
         VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM);
 
     if (strcmp(D_OS_VERSYM, "darwin") == 0)
         VersionCondition::addPredefinedGlobalIdent("OSX");
-    if (strcmp(D_OS_VERSYM, "Win32") == 0)
+    if (strcmp(D_OS_VERSYM, "Win32") == 0 || strcmp(D_OS_VERSYM, "Win64") == 0)
         is_target_win32 = true;
 #endif
 #ifdef D_OS_VERSYM2
     VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM2);
     
     if (strncmp(D_OS_VERSYM2, "MinGW", 5) == 0)
-    {
-        // Should MinGW exist? Rationale:  Windows, Win32 and Win64.
         VersionCondition::addPredefinedGlobalIdent("MinGW");
-    }
-    if (strcmp(D_OS_VERSYM2, "Win32") == 0)
+    if (strcmp(D_OS_VERSYM2, "Win32") == 0 || strcmp(D_OS_VERSYM2, "Win64") == 0)
         is_target_win32 = true;
 #endif
 #ifdef D_VENDOR_VERSYM
