@@ -241,7 +241,7 @@ d_comdat_group(tree decl)
 
 
 void
-ObjectFile::makeDeclOneOnly(tree decl_tree, bool comdat)
+ObjectFile::makeDeclOneOnly(tree decl_tree)
 {
     if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates != TEprivate)
     {   /* Weak definitions have to be public.  Nested functions may or
@@ -251,7 +251,7 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, bool comdat)
            done first.  */
         if (! TREE_PUBLIC(decl_tree) ||
                 (TREE_CODE(decl_tree) == FUNCTION_DECL &&
-                 decl_function_context(decl_tree) != NULL_TREE &&
+                 DECL_CONTEXT(decl_tree) != NULL_TREE &&
                  DECL_STATIC_CHAIN(decl_tree)))
             return;
     }
@@ -261,17 +261,11 @@ ObjectFile::makeDeclOneOnly(tree decl_tree, bool comdat)
        even if the target supports one-only. */
     if (! D_DECL_IS_TEMPLATE(decl_tree) || gen.emitTemplates != TEprivate)
     {
-        /* MinGW requires a comdat_group to take advantage of 
-           make_decl_one_only. */
-#ifdef TARGET_WINDOS
-        comdat = true;
-#endif
-        
         /* The following makes assumptions about the behavior
            of make_decl_one_only */
         if (SUPPORTS_ONE_ONLY)
         {
-            make_decl_one_only(decl_tree, comdat ? d_comdat_group(decl_tree) : NULL_TREE);
+            make_decl_one_only(decl_tree, d_comdat_group(decl_tree));
         }
         else if (SUPPORTS_WEAK)
         {
@@ -325,6 +319,8 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
             sym = sym->toParent();
         }
 
+        is_comdat = real_decl && (real_decl->storage_class & STCcomdat);
+
         if (is_template)
         {
             D_DECL_ONE_ONLY(decl_tree) = 1;
@@ -333,8 +329,6 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
         }
         else
             is_static = hasModule(dsym->getModule());
-
-        is_comdat = real_decl && (real_decl->storage_class & STCcomdat);
 
         if (real_decl && TREE_CODE(decl_tree) == VAR_DECL)
         {
@@ -360,7 +354,7 @@ ObjectFile::setupSymbolStorage(Dsymbol * dsym, tree decl_tree, bool force_static
             TREE_PUBLIC(decl_tree) = 1;
 
         if (D_DECL_ONE_ONLY(decl_tree))
-            makeDeclOneOnly(decl_tree, is_comdat);
+            makeDeclOneOnly(decl_tree);
 
     }
     else
