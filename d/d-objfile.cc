@@ -289,6 +289,7 @@ ObjectFile::makeDeclOneOnly(tree decl_tree)
                 || DECL_INITIAL(decl_tree) == error_mark_node)
             DECL_COMMON(decl_tree) = 1;
     }
+    DECL_COMDAT(decl_tree) = 1;
 }
 
 void
@@ -386,6 +387,8 @@ ObjectFile::outputStaticSymbol(Symbol * s)
     if (s->prettyIdent)
         DECL_NAME(t) = get_identifier(s->prettyIdent);
 
+    mark_decl_referenced(t);
+
     d_add_global_declaration(t);
 
     // %% Hack
@@ -410,6 +413,8 @@ ObjectFile::outputFunction(FuncDeclaration * f)
     Symbol * s = f->toSymbol();
     tree t = s->Stree;
 
+    gcc_assert(TREE_CODE(t) == FUNCTION_DECL);
+
     // Write out _tlsstart/_tlsend.
     if (f->isMain() || f->isWinMain() || f->isDllMain())
         obj_tlssections();
@@ -417,36 +422,16 @@ ObjectFile::outputFunction(FuncDeclaration * f)
     if (s->prettyIdent)
         DECL_NAME(t) = get_identifier(s->prettyIdent);
 
+    mark_decl_referenced(t);
+
     d_add_global_declaration(t);
 
-    if (TREE_CODE(t) == FUNCTION_DECL)
+    if (!targetm.have_ctors_dtors)
     {
         if (DECL_STATIC_CONSTRUCTOR(t))
-        {
-            // %% check for nested function -- error
-            // otherwise, shouldn't be in a function, so safe to do asm_out
-            if (targetm.have_ctors_dtors)
-            {
-                // handled in d_expand_function
-            }
-            else
-            {   // %% assert FuncDeclaration
-                staticCtorList.push(f);
-                // %%TODO: fallback if ! targetm.have_ctors_dtors
-            }
-        }
+            staticCtorList.push(f);
         if (DECL_STATIC_DESTRUCTOR(t))
-        {
-            if (targetm.have_ctors_dtors)
-            {
-                // handled in d_expand_function
-            }
-            else
-            {   // %% assert FuncDeclaration
-                staticDtorList.push(f);
-                // %%TODO: fallback if ! targetm.have_ctors_dtors
-            }
-        }
+            staticDtorList.push(f);
     }
 
     if (! gen.functionNeedsChain(f))
