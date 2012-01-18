@@ -766,6 +766,7 @@ Symbol *FuncDeclaration::toThunkSymbol(int offset)
             = DECL_VISIBILITY_SPECIFIED(target_func_decl);
         //needed on some targets to avoid "causes a section type conflict"
         D_DECL_ONE_ONLY(thunk_decl) = D_DECL_ONE_ONLY(target_func_decl);
+        DECL_COMDAT_GROUP(thunk_decl) = DECL_COMDAT_GROUP(target_func_decl);
         if (D_DECL_ONE_ONLY(thunk_decl))
             g.ofile->makeDeclOneOnly(thunk_decl);
 

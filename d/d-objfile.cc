@@ -235,7 +235,10 @@ ObjectFile::giveDeclUniqueName(tree decl, const char * prefix)
 static tree
 d_comdat_group(tree decl)
 {
-    // %% May need special case here.
+    // If already part of a comdat group, use that.
+    if (DECL_COMDAT_GROUP(decl))
+        return DECL_COMDAT_GROUP(decl);
+
     return DECL_ASSEMBLER_NAME(decl);
 }
 
