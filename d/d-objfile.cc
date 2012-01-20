@@ -292,7 +292,6 @@ ObjectFile::makeDeclOneOnly(tree decl_tree)
                 || DECL_INITIAL(decl_tree) == error_mark_node)
             DECL_COMMON(decl_tree) = 1;
     }
-    DECL_COMDAT(decl_tree) = 1;
 }
 
 void
@@ -390,8 +389,6 @@ ObjectFile::outputStaticSymbol(Symbol * s)
     if (s->prettyIdent)
         DECL_NAME(t) = get_identifier(s->prettyIdent);
 
-    mark_decl_referenced(t);
-
     d_add_global_declaration(t);
 
     // %% Hack
@@ -424,8 +421,6 @@ ObjectFile::outputFunction(FuncDeclaration * f)
 
     if (s->prettyIdent)
         DECL_NAME(t) = get_identifier(s->prettyIdent);
-
-    mark_decl_referenced(t);
 
     d_add_global_declaration(t);
 
