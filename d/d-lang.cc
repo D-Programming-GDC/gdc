@@ -327,7 +327,7 @@ d_init ()
     if (cpu_versym)
         VersionCondition::addPredefinedGlobalIdent(cpu_versym);
 #ifdef D_OS_VERSYM
-    if (strcmp(D_OS_VERSYM, "Win64") == 0 && !TARGET_64BIT)
+    if (strcmp(D_OS_VERSYM, "Win64") == 0 && !global.params.is64bit)
         VersionCondition::addPredefinedGlobalIdent("Win32");
     else
         VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM);
