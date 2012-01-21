@@ -82,6 +82,9 @@ extern GTY(()) tree d_eh_personality_decl;
 /* True if the symbol has been marked "static const".  */
 #define D_DECL_READONLY_STATIC(NODE) (DECL_LANG_FLAG_2(NODE))
 
+/* True if a custom static chain has been set-up for function.  */
+#define D_DECL_STATIC_CHAIN(NODE) (DECL_LANG_FLAG_3(FUNCTION_DECL_CHECK(NODE)))
+
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and
    otherwise support the backend. */

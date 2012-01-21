@@ -255,7 +255,7 @@ ObjectFile::makeDeclOneOnly(tree decl_tree)
         if (! TREE_PUBLIC(decl_tree) ||
                 (TREE_CODE(decl_tree) == FUNCTION_DECL &&
                  DECL_CONTEXT(decl_tree) != NULL_TREE &&
-                 DECL_STATIC_CHAIN(decl_tree)))
+                 D_DECL_STATIC_CHAIN(decl_tree)))
             return;
     }
 

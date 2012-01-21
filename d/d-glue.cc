@@ -2846,7 +2846,7 @@ d_genericize(tree fndecl)
     (void) cgraph_node(fndecl);
 
     // Maybe set original decl context back to true context
-    if (DECL_STATIC_CHAIN(fndecl))
+    if (D_DECL_STATIC_CHAIN(fndecl))
     {
         struct lang_decl * d = DECL_LANG_SPECIFIC(fndecl);
         DECL_CONTEXT(fndecl) = d->d_decl->toSymbol()->ScontextDecl;
@@ -3267,28 +3267,6 @@ FuncDeclaration::buildClosure(IRState * irs)
     
     ListMaker fields;
     fields.chain(ptr_field);
-
-    if (parameters != NULL
-        && ((global.params.useIn && fensure)
-            || (global.params.useOut && frequire)))
-    {
-        closureVars.reserve(parameters->dim + closureVars.dim);
-
-        for (size_t i = 0; i < parameters->dim; i++)
-        {
-            VarDeclaration * v = (*parameters)[i];
-            // Remove if already in closureVars so can push to front.
-            for (size_t j = i; j < closureVars.dim; j++)
-            {   Dsymbol * s = closureVars[j];
-                if (s == v)
-                {
-                    closureVars.remove(j);
-                    break;
-                }
-            }
-            closureVars.insert(i, v);
-        }
-    }
 
     for (size_t i = 0; i < closureVars.dim; i++)
     {

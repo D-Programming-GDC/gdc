@@ -3671,22 +3671,19 @@ IRState::buildChain(FuncDeclaration * func)
     DECL_CONTEXT(ptr_field) = frame_rec_type;
     fields.chain(ptr_field);
 
-    // Add all parameters as nested refs, possibly wholly inefficient with lots of memmove's.
-    // This is written as such so that all parameters appear at the front of the frame's
-    // structure so that overriding methods match the same layout when inheriting a contract.
-    // Same is also done in buildClosure.
-    if (func->parameters != NULL
-        && ((global.params.useIn && func->fensure)
-            || (global.params.useOut && func->frequire)))
+    /* __ensure never becomes a closure, but could still be referencing parameters
+       of the calling function.  So we add all parameters as nested refs. This is
+       written as such so that all parameters appear at the front of the frame so
+       that overriding methods match the same layout when inheriting a contract.  */
+    if (global.params.useOut && func->fensure)
     {
-        nestedVars->reserve(func->parameters->dim + nestedVars->dim);
-
-        for (size_t i = 0; i < func->parameters->dim; i++)
+        for (size_t i = 0; func->parameters && i < func->parameters->dim; i++)
         {
             VarDeclaration * v = (*func->parameters)[i];
             // Remove if already in nestedVars so can push to front.
             for (size_t j = i; j < nestedVars->dim; j++)
-            {   Dsymbol * s = (*nestedVars)[j];
+            {
+                Dsymbol * s = (*nestedVars)[j];
                 if (s == v)
                 {
                     nestedVars->remove(j);
@@ -3694,6 +3691,21 @@ IRState::buildChain(FuncDeclaration * func)
                 }
             }
             nestedVars->insert(i, v);
+        }
+
+        // Also add hidden 'this' to outer context.
+        if (func->vthis)
+        {
+            for (size_t i = 0; i < nestedVars->dim; i++)
+            {
+                Dsymbol * s = (*nestedVars)[i];
+                if (s == func->vthis)
+                {
+                    nestedVars->remove(i);
+                    break;
+                }
+            }
+            nestedVars->insert(0, func->vthis);
         }
     }
 

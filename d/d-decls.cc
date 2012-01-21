@@ -555,7 +555,7 @@ Symbol *FuncDeclaration::toSymbol()
 
             if (gen.functionNeedsChain(this))
             {
-                DECL_STATIC_CHAIN(fndecl) = 1;
+                D_DECL_STATIC_CHAIN(fndecl) = 1;
 
                 /* If a template instance has a nested function (because a template
                    argument is a local variable), the nested function may not have
