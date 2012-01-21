@@ -2955,8 +2955,6 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
 
     int n_parameters = parameters ? parameters->dim : 0;
 
-    int reverse_args = 0; //tf->linkage == LINKd && tf->varargs != 1;
-
     // Special arguments...
     static const int VTHIS = -2;
     static const int VARGUMENTS = -1;
@@ -3010,14 +3008,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         g.ofile->setDeclLoc(parm_decl, param ? (Dsymbol*) param : (Dsymbol*) this);
 
         // chain them in the correct order
-        if (reverse_args)
-        {
-            param_list = chainon (parm_decl, param_list);
-        }
-        else
-        {
-            param_list = chainon (param_list, parm_decl);
-        }
+        param_list = chainon (param_list, parm_decl);
     }
 
     // param_list is a number of PARM_DECL trees chained together (*not* a TREE_LIST of PARM_DECLs).

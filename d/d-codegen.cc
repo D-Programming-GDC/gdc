@@ -2116,6 +2116,7 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Expressions *
     // Using TREE_TYPE(callable) instead of func_type->toCtype can save a build_method_type
     tree func_type_node = TREE_TYPE(callable);
     tree actual_callee  = callable;
+    tree saved_args = NULL_TREE;
 
     ListMaker actual_arg_list;
 
@@ -2181,7 +2182,6 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Expressions *
             Parameter * formal_arg = Parameter::getNth(formal_args, fi);
             actual_arg_tree = convertForArgument(actual_arg_exp, formal_arg);
             actual_arg_tree = d_convert_basic(trueArgumentType(formal_arg), actual_arg_tree);
-
             ++fi;
         }
         else
@@ -2203,12 +2203,21 @@ IRState::call(TypeFunction *func_type, tree callable, tree object, Expressions *
                     actual_arg_tree = d_convert_basic(prom_type, actual_arg_tree);
             }
         }
+        /* Evaluate the argument before passing to the function.
+           Needed for left to right evaluation.  */
+        if (func_type->linkage == LINKd && !isFreeOfSideEffects(actual_arg_tree))
+        {
+            actual_arg_tree = maybeMakeTemp(actual_arg_tree);
+            saved_args = maybeVoidCompound(saved_args, actual_arg_tree);
+        }
 
         actual_arg_list.cons(actual_arg_tree);
     }
 
     tree result = buildCall(TREE_TYPE(func_type_node), actual_callee, actual_arg_list.head);
-    return maybeExpandSpecialCall(result);
+    result = maybeExpandSpecialCall(result);
+
+    return maybeCompound(saved_args, result);
 }
 
 tree
@@ -2654,7 +2663,7 @@ IRState::buildCall(tree type, tree callee, tree args)
 {
     int nargs = list_length(args);
     tree * pargs = new tree[nargs];
-    for (int i = 0; args; args = TREE_CHAIN(args), i++)
+    for (size_t i = 0; args; args = TREE_CHAIN(args), i++)
         pargs[i] = TREE_VALUE(args);
     
     return build_call_array(type, callee, nargs, pargs);
