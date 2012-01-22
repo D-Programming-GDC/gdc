@@ -338,8 +338,11 @@ d_init ()
         is_target_win32 = true;
 #endif
 #ifdef D_OS_VERSYM2
-    VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM2);
-    
+    if (strcmp(D_OS_VERSYM2, "MinGW64") == 0 && !global.params.is64bit)
+        VersionCondition::addPredefinedGlobalIdent("MinGW32");
+    else
+        VersionCondition::addPredefinedGlobalIdent(D_OS_VERSYM2);
+
     if (strncmp(D_OS_VERSYM2, "MinGW", 5) == 0)
         VersionCondition::addPredefinedGlobalIdent("MinGW");
     if (strcmp(D_OS_VERSYM2, "Win32") == 0 || strcmp(D_OS_VERSYM2, "Win64") == 0)
