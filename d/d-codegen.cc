@@ -2738,7 +2738,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 /* builtin count_trailing_zeros matches behaviour of bsf.
                    %% TODO: The return value is supposed to be undefined if op1 is zero. */
                 op1 = ce.nextArg();
-                return buildCall(built_in_decls[BUILT_IN_CTZL], 1, op1);
+                return buildCall(d_built_in_decls(BUILT_IN_CTZL), 1, op1);
 
             case INTRINSIC_BSR:
                 /* bsr becomes 31-(clz), but parameter passed to bsf may not be a 32bit type!!
@@ -2747,7 +2747,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 type = TREE_TYPE(op1);
 
                 op2 = integerConstant(tree_low_cst(TYPE_SIZE(type), 1) - 1, type);
-                exp = buildCall(built_in_decls[BUILT_IN_CLZL], 1, op1);
+                exp = buildCall(d_built_in_decls(BUILT_IN_CLZL), 1, op1);
 
                 // Handle int -> long conversions.
                 if (TREE_TYPE(exp) != type)
@@ -2806,7 +2806,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 /* Backend provides builtin bswap32.
                    Assumes first argument and return type is uint. */
                 op1 = ce.nextArg();
-                return buildCall(built_in_decls[BUILT_IN_BSWAP32], 1, op1);
+                return buildCall(d_built_in_decls(BUILT_IN_BSWAP32), 1, op1);
 
             case INTRINSIC_INP:
             case INTRINSIC_INPL:
@@ -2843,17 +2843,17 @@ IRState::maybeExpandSpecialCall(tree call_exp)
             case INTRINSIC_COS:
                 // Math intrinsics just map to their GCC equivalents.
                 op1 = ce.nextArg();
-                return buildCall(built_in_decls[BUILT_IN_COSL], 1, op1);
+                return buildCall(d_built_in_decls(BUILT_IN_COSL), 1, op1);
 
             case INTRINSIC_SIN:
                 op1 = ce.nextArg();
-                return buildCall(built_in_decls[BUILT_IN_SINL], 1, op1);
+                return buildCall(d_built_in_decls(BUILT_IN_SINL), 1, op1);
 
             case INTRINSIC_RNDTOL:
                 // %% not sure if llroundl stands as a good replacement
                 // for the expected behaviour of rndtol.
                 op1 = ce.nextArg();
-                return buildCall(built_in_decls[BUILT_IN_LLROUNDL], 1, op1);
+                return buildCall(d_built_in_decls(BUILT_IN_LLROUNDL), 1, op1);
 
             case INTRINSIC_SQRT:
                 // Have float, double and real variants of sqrt.
@@ -2862,16 +2862,16 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 // Could have used mathfn_built_in, but that only returns
                 // implicit built in decls.
                 if (TYPE_MAIN_VARIANT(type) == double_type_node)
-                    exp = built_in_decls[BUILT_IN_SQRT];
+                    exp = d_built_in_decls(BUILT_IN_SQRT);
                 else if (TYPE_MAIN_VARIANT(type) == float_type_node)
-                    exp = built_in_decls[BUILT_IN_SQRTF];
+                    exp = d_built_in_decls(BUILT_IN_SQRTF);
                 else if (TYPE_MAIN_VARIANT(type) == long_double_type_node)
-                    exp = built_in_decls[BUILT_IN_SQRTL];
+                    exp = d_built_in_decls(BUILT_IN_SQRTL);
                 // op1 is an integral type - use double precision.
                 else if (INTEGRAL_TYPE_P(TYPE_MAIN_VARIANT(type)))
                 {
                     op1 = d_convert_basic(double_type_node, op1);
-                    exp = built_in_decls[BUILT_IN_SQRT];
+                    exp = d_built_in_decls(BUILT_IN_SQRT);
                 }
 
                 gcc_assert(exp);    // Should never trigger.
@@ -2880,15 +2880,15 @@ IRState::maybeExpandSpecialCall(tree call_exp)
             case INTRINSIC_LDEXP:
                 op1 = ce.nextArg();
                 op2 = ce.nextArg();
-                return buildCall(built_in_decls[BUILT_IN_LDEXPL], 2, op1, op2);
+                return buildCall(d_built_in_decls(BUILT_IN_LDEXPL), 2, op1, op2);
 
             case INTRINSIC_FABS:
                 op1 = ce.nextArg();
-                return buildCall(built_in_decls[BUILT_IN_FABSL], 1, op1);
+                return buildCall(d_built_in_decls(BUILT_IN_FABSL), 1, op1);
 
             case INTRINSIC_RINT:
                 op1 = ce.nextArg();
-                return buildCall(built_in_decls[BUILT_IN_RINTL], 1, op1);
+                return buildCall(d_built_in_decls(BUILT_IN_RINTL), 1, op1);
 
 
             case INTRINSIC_C_VA_ARG:
@@ -2979,7 +2979,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 if (TREE_CODE(op2) == ADDR_EXPR)
                     op2 = TREE_OPERAND(op2, 0);
                 // assuming nobody tries to change the return type
-                return buildCall(built_in_decls[BUILT_IN_VA_START], 2, op1, op2);
+                return buildCall(d_built_in_decls(BUILT_IN_VA_START), 2, op1, op2);
 
             default:
                 gcc_unreachable();
@@ -3054,11 +3054,11 @@ IRState::floatMod(tree a, tree b, tree type)
         basetype = TREE_TYPE(basetype);
 
     if (TYPE_MAIN_VARIANT(basetype) == double_type_node)
-        fmodfn = built_in_decls[BUILT_IN_FMOD];
+        fmodfn = d_built_in_decls(BUILT_IN_FMOD);
     else if (TYPE_MAIN_VARIANT(basetype) == float_type_node)
-        fmodfn = built_in_decls[BUILT_IN_FMODF];
+        fmodfn = d_built_in_decls(BUILT_IN_FMODF);
     else if (TYPE_MAIN_VARIANT(basetype) == long_double_type_node)
-        fmodfn = built_in_decls[BUILT_IN_FMODL];
+        fmodfn = d_built_in_decls(BUILT_IN_FMODL);
 
     if (! fmodfn)
     {   // %qT pretty prints the tree type.
@@ -3217,7 +3217,7 @@ IRState::exceptionObject()
     tree obj_type = getObjectType()->toCtype();
     // Like gjc, the actual D exception object is one
     // pointer behind the exception header
-    tree t = buildCall(built_in_decls[BUILT_IN_EH_POINTER],
+    tree t = buildCall(d_built_in_decls(BUILT_IN_EH_POINTER),
                        1, integer_zero_node);
     t = build1(NOP_EXPR, build_pointer_type(obj_type), t); // treat exception header as (Object*)
     t = pointerOffsetOp(MINUS_EXPR, t, TYPE_SIZE_UNIT(TREE_TYPE(t)));
@@ -4097,8 +4097,13 @@ IRState::doCase(tree t_value, tree t_label)
     else
 #endif
     {
+#if D_GCC_VER >= 47
+        tree t_case = build_case_label(t_value, NULL_TREE, t_label);
+        addExp(t_case);
+#else
         addExp(build3(CASE_LABEL_EXPR, void_type_node,
                     t_value, NULL_TREE, t_label));
+#endif
     }
 }
 

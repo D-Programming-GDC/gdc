@@ -30,7 +30,7 @@
 /* Nothing is added to tree_identifier; */
 struct GTY(()) lang_identifier
 {
-    struct tree_identifier ignore;
+    struct tree_identifier common;
 };
 
 /* This is required to be defined, but we do not use it. */
@@ -51,7 +51,8 @@ struct GTY(()) lang_decl
 /* Another required, but unused declaration.  This could be simplified, since
    there is no special lang_identifier */
 union GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
-           chain_next ("(union lang_tree_node *)TREE_CHAIN (&%h.generic)")))
+           chain_next ("CODE_CONTAINS_STRUCT (TREE_CODE (&%h.generic), TS_COMMON)"
+                       " ? ((union lang_tree_node *) TREE_CHAIN (&%h.generic)) : NULL")))
 lang_tree_node
 {
     union tree_node GTY ((tag ("0"),
@@ -217,7 +218,11 @@ tree d_type_for_mode(enum machine_mode mode, int unsignedp);
 void d_keep(tree t);
 void d_free(tree t);
 
+#if D_GCC_VER >= 47
+bool global_bindings_p (void);
+#else
 int global_bindings_p (void);
+#endif
 void insert_block (tree);
 void set_block (tree);
 tree getdecls (void);
@@ -246,5 +251,11 @@ extern GTY((deletable)) tree d_free_list;
 #include "d-dmd-gcc.h"
 
 #define d_warning(option, ...) warning(option, __VA_ARGS__)
+
+#if D_GCC_VER >= 47
+#define d_built_in_decls(FCODE) builtin_decl_explicit(FCODE)
+#else
+#define d_built_in_decls(FCODE) built_in_decls[FCODE]
+#endif
 
 #endif

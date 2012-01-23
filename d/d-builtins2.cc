@@ -722,61 +722,61 @@ eval_builtin(Loc loc, BUILTIN builtin, Expressions * arguments)
     switch (builtin)
     {
         case BUILTINsin:
-            callee = built_in_decls[BUILT_IN_SINL];
+            callee = d_built_in_decls(BUILT_IN_SINL);
             break;
 
         case BUILTINcos:
-            callee = built_in_decls[BUILT_IN_COSL];
+            callee = d_built_in_decls(BUILT_IN_COSL);
             break;
 
         case BUILTINtan:
-            callee = built_in_decls[BUILT_IN_TANL];
+            callee = d_built_in_decls(BUILT_IN_TANL);
             break;
 
         case BUILTINsqrt:
             if (t0->ty == Tfloat32)
-                callee = built_in_decls[BUILT_IN_SQRTF];
+                callee = d_built_in_decls(BUILT_IN_SQRTF);
             else if (t0->ty == Tfloat64)
-                callee = built_in_decls[BUILT_IN_SQRT];
+                callee = d_built_in_decls(BUILT_IN_SQRT);
             else if (t0->ty == Tfloat80)
-                callee = built_in_decls[BUILT_IN_SQRTL];
+                callee = d_built_in_decls(BUILT_IN_SQRTL);
             gcc_assert(callee);
             break;
 
         case BUILTINfabs:
-            callee = built_in_decls[BUILT_IN_FABSL];
+            callee = d_built_in_decls(BUILT_IN_FABSL);
             break;
 
         case BUILTINbsf:
-            callee = built_in_decls[BUILT_IN_CTZL];
+            callee = d_built_in_decls(BUILT_IN_CTZL);
             break;
 
         case BUILTINbsr:
-            callee = built_in_decls[BUILT_IN_CLZL];
+            callee = d_built_in_decls(BUILT_IN_CLZL);
             break;
 
         case BUILTINbswap:
             if (t0->ty == Tint64 || t0->ty == Tuns64) 
-                callee = built_in_decls[BUILT_IN_BSWAP64];
+                callee = d_built_in_decls(BUILT_IN_BSWAP64);
             else if (t0->ty == Tint32 || t0->ty == Tuns32)
-                callee = built_in_decls[BUILT_IN_BSWAP32];
+                callee = d_built_in_decls(BUILT_IN_BSWAP32);
             gcc_assert(callee);
             break;
 
         case BUILTINatan2:
-            callee = built_in_decls[BUILT_IN_ATAN2L];
+            callee = d_built_in_decls(BUILT_IN_ATAN2L);
             break;
 
         case BUILTINrndtol:
-            callee = built_in_decls[BUILT_IN_LLROUNDL];
+            callee = d_built_in_decls(BUILT_IN_LLROUNDL);
             break;
 
         case BUILTINexpm1:
-            callee = built_in_decls[BUILT_IN_EXPM1L];
+            callee = d_built_in_decls(BUILT_IN_EXPM1L);
             break;
 
         case BUILTINexp2:
-            callee = built_in_decls[BUILT_IN_EXP2L];
+            callee = d_built_in_decls(BUILT_IN_EXP2L);
             break;
 
         case BUILTINyl2x:

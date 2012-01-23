@@ -126,6 +126,9 @@ endif
 
 gcc_d_target_include_dir=$(gcc_d_include_dir)/$(target_noncanonical)
 
+ifeq ($(D_gcc_main_ver),4.7)
+  D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos$(D_ver_suffix)\"
+endif
 ifeq ($(D_gcc_main_ver),4.6)
   D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos$(D_ver_suffix)\"
 else
@@ -195,9 +198,9 @@ ALL_DMD_CXXFLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
 D_GCC_OBJS = d/d-gcc.o $(filter-out gcc.o, $(GCC_OBJS))
 
 # Create the compiler driver for D.
-$(D_DRIVER_NAME)$(exeext): $(D_GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(LIBDEPS)
+$(D_DRIVER_NAME)$(exeext): $(D_GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(D_EXTRA_SPEC_LIBS) $(LIBDEPS)
 	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o $@ \
-	$(D_GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(LIBS)
+	$(D_GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(D_EXTRA_SPEC_LIBS) $(LIBS)
 
 # Create a version of the g++ driver which calls the cross-compiler.
 $(D_DRIVER_NAME)-cross$(exeext): $(D_DRIVER_NAME)$(exeext)
@@ -244,7 +247,10 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
 #D_GLUE_OBJS += d/d-cppmngl.glue.o
 #endif
 
-D_BI_ATTRS = d/d-bi-attrs-45.h d/d-bi-attrs-46.h
+D_BI_ATTRS = d/d-bi-attrs-45.h d/d-bi-attrs-46.h d/d-bi-attrs-47.h
+
+D_EXTRA_LIBS =
+D_EXTRA_SPEC_LIBS =
 
 ifdef D_is_apple_ver
   ifeq ($(D_gcc_main_ver),4.2)
@@ -262,9 +268,13 @@ else
     D_BORROWED_C_OBJS += c-family/stub-objc.o prefix.o
     D_EXTRA_LIBS += $(BACKENDLIBS)
   endif
+  ifeq ($(D_gcc_main_ver),4.7)
+    D_GLUE_OBJS += d/d-c-stubs.cglue.o
+    D_BORROWED_C_OBJS += c-family/stub-objc.o prefix.o
+    D_EXTRA_LIBS += $(BACKENDLIBS)
+    D_EXTRA_SPEC_LIBS += libcommon-target.a
+  endif
 endif
-
-D_BORROWED_C_OBJS +=
 
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h

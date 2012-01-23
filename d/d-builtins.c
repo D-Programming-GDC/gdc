@@ -43,8 +43,10 @@
 #include "langhooks.h"
 #include "tree-inline.h"
 #include "toplev.h"
-/* Only used in >= 4.1.x */
 #include "cgraph.h"
+#if D_GCC_VER >= 47
+#include "common/common-target.h"
+#endif
 
 #include "d-lang.h"
 
@@ -52,6 +54,8 @@
 #include "d-bi-attrs-45.h"
 #elif D_GCC_VER == 46
 #include "d-bi-attrs-46.h"
+#elif D_GCC_VER == 47
+#include "d-bi-attrs-47.h"
 #else
 #error "Version of GCC is not supported."
 #endif
@@ -156,9 +160,13 @@ do_build_builtin_fn(enum built_in_function fncode,
     decl = add_builtin_function(name, fntype, fncode, fnclass,
             fallback_p ? libname : NULL, fnattrs);
 
+#if D_GCC_VER >= 47
+    set_builtin_decl(fncode, decl, implicit_p);
+#else
     built_in_decls[(int) fncode] = decl;
     if (implicit_p)
         implicit_built_in_decls[(int) fncode] = decl;
+#endif
 }
 
 enum d_builtin_type

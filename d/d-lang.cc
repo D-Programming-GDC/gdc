@@ -364,7 +364,10 @@ d_init ()
     else
         VersionCondition::addPredefinedGlobalIdent("LittleEndian");
 
-#if D_GCC_VER >= 46
+#if D_GCC_VER >= 47
+    if (targetm_common.except_unwind_info (&global_options) == UI_SJLJ)
+        VersionCondition::addPredefinedGlobalIdent("GNU_SjLj_Exceptions");
+#elif D_GCC_VER >= 46
     if (targetm.except_unwind_info(&global_options) == UI_SJLJ)
         VersionCondition::addPredefinedGlobalIdent("GNU_SjLj_Exceptions");
 #else
@@ -1672,8 +1675,13 @@ poplevel (int keep, int reverse, int routinebody)
         // %% pascal does: in each subblock, record that this is the superiod..
     }
     /* In each subblock, record that this is its superior. */
+#if D_GCC_VER >= 47
+    for (tree t = level->blocks; t; t = BLOCK_CHAIN (t))
+        BLOCK_SUPERCONTEXT (t) = block;
+#else
     for (tree t = level->blocks; t; t = TREE_CHAIN (t))
         BLOCK_SUPERCONTEXT (t) = block;
+#endif
     /* Dispose of the block that we just made inside some higher level. */
     if (routinebody)
         DECL_INITIAL (current_function_decl) = block;
@@ -1726,14 +1734,23 @@ poplevel (int keep, int reverse, int routinebody)
     return block;
 }
 
+
+// This is called by the backend before parsing.  Need to make this do
+// something or lang_hooks.clear_binding_stack (lhd_clear_binding_stack)
+// loops forever.
+#if D_GCC_VER >= 47
+bool
+global_bindings_p (void)
+{
+    return current_binding_level == global_binding_level || ! global_binding_level;
+}
+#else
 int
 global_bindings_p (void)
 {
-    // This is called by the backend before parsing.  Need to make this do
-    // something or lang_hooks.clear_binding_stack (lhd_clear_binding_stack)
-    // loops forever.
     return current_binding_level == global_binding_level || ! global_binding_level;
 }
+#endif
 
 void
 init_global_binding_level()
@@ -1746,7 +1763,11 @@ void
 insert_block (tree block)
 {
     TREE_USED (block) = 1;
+#if D_GCC_VER >= 47
+    current_binding_level->blocks = block_chainon (current_binding_level->blocks, block);
+#else
     current_binding_level->blocks = chainon (current_binding_level->blocks, block);
+#endif
 }
 
 void

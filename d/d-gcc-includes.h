@@ -67,6 +67,10 @@ extern "C" {
 #if D_GCC_VER >= 46
 #include "tree-pretty-print.h"
 #endif
+
+#if D_GCC_VER >= 47
+#include "common/common-target.h"
+#endif
 }
 
 // Undefine things that give us problems

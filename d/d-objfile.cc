@@ -148,7 +148,12 @@ cvtLocToloc_t(const Loc loc)
         lm = linemap_lookup(line_table, sv->intvalue);
     }
     // cheat...
+#if D_GCC_VER >= 47
+    return linemap_position_for_line_and_column(CONST_CAST(struct line_map *, lm),
+                                                loc.linnum, 0);
+#else
     return lm->start_location + ((loc.linnum - lm->to_line) << lm->column_bits);
+#endif
 }
 
 void
@@ -705,7 +710,13 @@ make_alias_for_thunk (tree function)
 
     if (!flag_syntax_only)
     {
-#if D_GCC_VER >= 46
+#if D_GCC_VER >= 47
+        struct cgraph_node *aliasn;
+        aliasn = cgraph_same_body_alias (cgraph_get_create_node (function),
+                                         alias, function);
+        DECL_ASSEMBLER_NAME (function);
+        gcc_assert (aliasn != NULL);
+#elif D_GCC_VER >= 46
         struct cgraph_node *aliasn = cgraph_same_body_alias (cgraph_node (function),
                                                              alias, function);
         DECL_ASSEMBLER_NAME (function);
@@ -739,10 +750,24 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
 
     if (flag_syntax_only)
     {
-        TREE_ASM_WRITTEN(thunk_decl);
+        TREE_ASM_WRITTEN(thunk_decl) = 1;
         return;
     }
 
+#if D_GCC_VER >= 47
+    if (TARGET_USE_LOCAL_THUNK_ALIAS_P(target_decl)
+        && targetm_common.have_named_sections)
+    {
+        resolve_unique_section(target_decl, 0, flag_function_sections);
+        
+        if (DECL_SECTION_NAME (target_decl) != NULL && DECL_ONE_ONLY (target_decl))
+        {
+            resolve_unique_section (thunk_decl, 0, flag_function_sections);
+            /* Output the thunk into the same section as function.  */
+            DECL_SECTION_NAME (thunk_decl) = DECL_SECTION_NAME (target_decl);
+        }
+    }
+#else
     if (TARGET_USE_LOCAL_THUNK_ALIAS_P(target_decl)
         && targetm.have_named_sections)
     {
@@ -755,6 +780,7 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
             DECL_SECTION_NAME (thunk_decl) = DECL_SECTION_NAME (target_decl);
         }
     }
+#endif
 
     /* Set up cloned argument trees for the thunk.  */
     tree t = NULL_TREE;
@@ -771,7 +797,17 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
     DECL_ARGUMENTS(thunk_decl) = nreverse(t);
     TREE_ASM_WRITTEN(thunk_decl) = 1;
 
-#if D_GCC_VER >= 46
+#if D_GCC_VER >= 47
+    struct cgraph_node *funcn, *thunk_node;
+
+    funcn = cgraph_get_node (target_decl);
+    gcc_checking_assert (funcn);
+    thunk_node = cgraph_add_thunk (funcn, thunk_decl, thunk_decl,
+                                   this_adjusting, fixed_offset, virtual_value, 0, alias);
+
+    if (DECL_ONE_ONLY (target_decl))
+        cgraph_add_to_same_comdat_group (thunk_node, funcn);
+#elif D_GCC_VER >= 46
     cgraph_add_thunk(cgraph_node(target_decl), thunk_decl, target_decl,
                      this_adjusting, fixed_offset, virtual_value, 0, alias);
 #else

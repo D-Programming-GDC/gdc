@@ -389,7 +389,7 @@ IdentityExp::toElem(IRState* irs)
     }
     else if (ty1 == Tstruct || e1->type->isfloating())
     {   // Do bit compare.
-        tree t_memcmp = irs->buildCall(built_in_decls[BUILT_IN_MEMCMP], 3,
+        tree t_memcmp = irs->buildCall(d_built_in_decls(BUILT_IN_MEMCMP), 3,
                                        irs->addressOf(e1->toElem(irs)),
                                        irs->addressOf(e2->toElem(irs)),
                                        irs->integerConstant(e1->type->size()));
@@ -470,7 +470,7 @@ EqualExp::toElem(IRState* irs)
                 }
             }
 
-            tree t_memcmp = built_in_decls[BUILT_IN_MEMCMP];
+            tree t_memcmp = d_built_in_decls(BUILT_IN_MEMCMP);
             tree result;
             tree size;
 
@@ -724,11 +724,11 @@ PowExp::toElem(IRState * irs)
 
     // Lookup compatible builtin. %% TODO: handle complex types?
     if (TYPE_MAIN_VARIANT(powtype) == double_type_node)
-        powfn = built_in_decls[BUILT_IN_POW];
+        powfn = d_built_in_decls(BUILT_IN_POW);
     else if (TYPE_MAIN_VARIANT(powtype) == float_type_node)
-        powfn = built_in_decls[BUILT_IN_POWF];
+        powfn = d_built_in_decls(BUILT_IN_POWF);
     else if (TYPE_MAIN_VARIANT(powtype) == long_double_type_node)
-        powfn = built_in_decls[BUILT_IN_POWL];
+        powfn = d_built_in_decls(BUILT_IN_POWL);
 
     if (powfn == NULL_TREE)
     {
@@ -1210,7 +1210,7 @@ AssignExp::toElem(IRState* irs)
                 tree array[2] = {
                     irs->maybeMakeTemp(irs->toDArray(e1)),
                     irs->toDArray(e2) };
-                tree t_memcpy = built_in_decls[BUILT_IN_MEMCPY];
+                tree t_memcpy = d_built_in_decls(BUILT_IN_MEMCPY);
                 tree result;
                 tree size;
 
@@ -1252,7 +1252,7 @@ AssignExp::toElem(IRState* irs)
                 if (sle->fillHoles)
                 {
                     unsigned sz = sle->type->size();
-                    tree init = irs->buildCall(built_in_decls[BUILT_IN_MEMSET], 3,
+                    tree init = irs->buildCall(d_built_in_decls(BUILT_IN_MEMSET), 3,
                                                irs->addressOf(lhs), size_zero_node, size_int(sz));
                     result = irs->maybeCompound(init, result);
                 }
@@ -2036,7 +2036,7 @@ elem *
 HaltExp::toElem(IRState* irs)
 {
     // Needs improvement.  Avoid library calls if possible..
-    tree t_abort = built_in_decls[BUILT_IN_ABORT];
+    tree t_abort = d_built_in_decls(BUILT_IN_ABORT);
     return irs->buildCall(t_abort, 0);
 }
 
@@ -2559,7 +2559,7 @@ ArrayLiteralExp::toElem(IRState * irs)
         tree size = fold_build2(MULT_EXPR, size_type_node,
                                 size_int(elements->dim), size_int(typeb->nextOf()->size()));
 
-        result = irs->buildCall(built_in_decls[BUILT_IN_MEMCPY], 3,
+        result = irs->buildCall(d_built_in_decls(BUILT_IN_MEMCPY), 3,
                                  mem, irs->addressOf(ctor), size);
 
         // Returns array pointed to by MEM.
@@ -2843,7 +2843,11 @@ d_genericize(tree fndecl)
     }
 
     // Build cgraph for function.
+#if D_GCC_VER >= 47
+    cgraph_get_create_node(fndecl);
+#else
     (void) cgraph_node(fndecl);
+#endif
 
     // Maybe set original decl context back to true context
     if (D_DECL_STATIC_CHAIN(fndecl))
@@ -3175,12 +3179,12 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
         tree var = irs->var(v_argptr);
         var = irs->addressOf(var);
 
-        tree init_exp = irs->buildCall(built_in_decls[BUILT_IN_VA_START], 2, var, parm_decl);
+        tree init_exp = irs->buildCall(d_built_in_decls(BUILT_IN_VA_START), 2, var, parm_decl);
         v_argptr->init = NULL; // VoidInitializer?
         irs->emitLocalVar(v_argptr, true);
         irs->addExp(init_exp);
 
-        tree cleanup = irs->buildCall(built_in_decls[BUILT_IN_VA_END], 1, var);
+        tree cleanup = irs->buildCall(d_built_in_decls(BUILT_IN_VA_END), 1, var);
         irs->addExp(build2(TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
 
@@ -4817,12 +4821,14 @@ gcc_d_backend_init()
     // This allows the code in d-builtins2 to not have to worry about
     // converting (C signed char *) to (D char *) for string arguments of
     // built-in functions.
-    flag_signed_char = 0;
+#if D_GCC_VER >= 47
+    build_common_tree_nodes (/*signed_char*/false, /*short_double*/false);
+#else
     // This is required or we'll crash pretty early on. %%log
 #if D_GCC_VER >= 46
-    build_common_tree_nodes (flag_signed_char);
+    build_common_tree_nodes (/*signed_char*/false);
 #else
-    build_common_tree_nodes (flag_signed_char, false);
+    build_common_tree_nodes (/*signed_char*/false, /*short_double*/false);
 #endif
 
     // This is also required (or the manual equivalent) or crashes
@@ -4836,6 +4842,7 @@ gcc_d_backend_init()
     // need this for void.. %% but this crashes... probably need to impl
     // some things in dc-lang.cc
     build_common_tree_nodes_2 (0 /* %% support the option */);
+#endif
 
     // Specific to D (but so far all taken from C)
     d_void_zero_node = make_node(INTEGER_CST);
