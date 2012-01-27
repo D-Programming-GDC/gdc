@@ -87,12 +87,6 @@ IRBase::endFunction()
     g.irs = (IRState *) parent;
 }
 
-void
-IRBase::initFunctionStart(tree fn_decl, const Loc & loc)
-{
-    init_function_start (fn_decl);
-}
-
 
 void
 IRBase::addExp(tree e)

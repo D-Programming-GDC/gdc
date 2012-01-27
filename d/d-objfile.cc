@@ -131,14 +131,13 @@ cvtLocToloc_t(const Loc loc)
 
     if (! sv->intvalue)
     {
-        new_line_count = 5000;
+        new_line_count = 10000;
     }
     else
     {
         lm = linemap_lookup(line_table, sv->intvalue);
-        unsigned last_line = LAST_SOURCE_LINE(lm);
-        if (loc.linnum > last_line)
-            new_line_count = last_line * 5;
+        if (loc.linnum > line_table->highest_line)
+            new_line_count = loc.linnum * 10;
     }
     if (new_line_count)
     {
@@ -149,8 +148,8 @@ cvtLocToloc_t(const Loc loc)
     }
     // cheat...
 #if D_GCC_VER >= 47
-    return linemap_position_for_line_and_column(CONST_CAST(struct line_map *, lm),
-                                                loc.linnum, 0);
+    return lm->start_location + ((loc.linnum - LINEMAP_LINE(lm))
+                                 << ORDINARY_MAP_NUMBER_OF_COLUMN_BITS(lm));
 #else
     return lm->start_location + ((loc.linnum - lm->to_line) << lm->column_bits);
 #endif
@@ -800,8 +799,7 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
 #if D_GCC_VER >= 47
     struct cgraph_node *funcn, *thunk_node;
 
-    funcn = cgraph_get_node (target_decl);
-    gcc_checking_assert (funcn);
+    funcn = cgraph_get_create_node (target_decl);
     thunk_node = cgraph_add_thunk (funcn, thunk_decl, thunk_decl,
                                    this_adjusting, fixed_offset, virtual_value, 0, alias);
 

@@ -779,6 +779,11 @@ d_write_global_declarations()
     wrapup_global_declarations(vec, globalDeclarations.dim);
     check_global_declarations(vec, globalDeclarations.dim);
 
+#if D_GCC_VER >= 47
+    /* Complete all generated thunks. */
+    cgraph_process_same_body_aliases();
+#endif
+
     /* We're done parsing; proceed to optimize and emit assembly. */
     cgraph_finalize_compilation_unit();
 
@@ -1942,16 +1947,6 @@ void
 d_keep(tree t)
 {
     d_keep_list = tree_cons(NULL_TREE, t, d_keep_list);
-}
-
-// List of trees that we want to send to the garbage collector.
-tree d_free_list = NULL_TREE;
-
-void
-d_free(tree t)
-{
-    TREE_CHAIN(t) = d_free_list;
-    d_free_list = t;
 }
 
 tree d_eh_personality_decl;

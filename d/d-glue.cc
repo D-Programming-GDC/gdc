@@ -2912,7 +2912,7 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     }
 
     announce_function(fn_decl);
-    IRState * irs = IRState::startFunction(this);
+    IRState * irs = irs->startFunction(this);
 
     irs->useChain(NULL, NULL_TREE);
     tree chain_expr = NULL;
@@ -3027,7 +3027,6 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
 
     DECL_INITIAL(fn_decl) = error_mark_node; // Just doing what they tell me to do...
 
-    IRState::initFunctionStart(fn_decl, loc);
     pushlevel(0);
     irs->pushStatementList();
 

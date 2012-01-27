@@ -655,7 +655,6 @@ d_gcc_field_align(VarDeclaration * var, int known_align)
             = ADJUST_FIELD_ALIGN(field, DECL_ALIGN(field));
     }
 #endif
-    d_free(field);
 
     return DECL_ALIGN_UNIT(field);
 }
@@ -805,7 +804,6 @@ eval_builtin(Loc loc, BUILTIN builtin, Expressions * arguments)
         // Will only return NULL if we can't convert it.
         e = gcc_cst_to_d_expr(result);
     }
-    d_free(result);
 
     return e;
 
@@ -835,7 +833,6 @@ d_gcc_eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
             // Will only return NULL if we can't convert it.
             e = gcc_cst_to_d_expr(result);
         }
-        d_free(result);
 
         return e;
     }

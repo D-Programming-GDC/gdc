@@ -246,7 +246,6 @@ extern void d_bi_builtin_type (tree);
 
 /* protect from garbage collection */
 extern GTY(()) tree d_keep_list;
-extern GTY((deletable)) tree d_free_list;
 
 #include "d-dmd-gcc.h"
 

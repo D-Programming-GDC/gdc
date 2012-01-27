@@ -112,11 +112,10 @@ struct IRBase : Object
     // GotoStatements refer to.
     FuncDeclaration * func; // %% make this a stack
 
-    static IRState * startFunction(FuncDeclaration * decl);
+    IRState * startFunction(FuncDeclaration * decl);
     void endFunction();
-public:
-    static void initFunctionStart(tree fn_decl, const Loc & loc);
 
+public:
     // ** Statement Lists
 
     void addExp(tree e);

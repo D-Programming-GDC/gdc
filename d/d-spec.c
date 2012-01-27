@@ -543,6 +543,13 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
                          &new_decoded_options[j]);
         j++;
     }
+    else
+    {
+        generate_option (OPT_l, "gcc_eh", 1, CL_DRIVER,
+                         &new_decoded_options[j]);
+        added_libraries++;
+        j++;
+    }
 
     *in_decoded_options_count = j;
     *in_decoded_options = new_decoded_options;
@@ -910,7 +917,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 
 #if USE_PTHREADS
         /* When linking libphobos we also need to link with the pthread library.  */
-        if (library > 1 && (static_phobos || static_link))
+        if (library > 0 && (static_phobos || static_link))
             need_thread = 1;
 #endif
     }

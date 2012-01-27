@@ -131,7 +131,8 @@ ifeq ($(D_gcc_main_ver),4.7)
 endif
 ifeq ($(D_gcc_main_ver),4.6)
   D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos$(D_ver_suffix)\"
-else
+endif
+ifeq ($D_gcc_main_var),4.5)
   D_LIBPHOBOS = -DLIBPHOBOS=\"-lgphobos$(D_ver_suffix)\" 
 endif
 
