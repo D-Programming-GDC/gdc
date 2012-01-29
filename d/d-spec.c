@@ -543,13 +543,6 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
                          &new_decoded_options[j]);
         j++;
     }
-    else
-    {
-        generate_option (OPT_l, "gcc_eh", 1, CL_DRIVER,
-                         &new_decoded_options[j]);
-        added_libraries++;
-        j++;
-    }
 
     *in_decoded_options_count = j;
     *in_decoded_options = new_decoded_options;

@@ -66,22 +66,8 @@ fi
 
 gcc_patch_key=${gcc_ver}.x
 
-# 0.1. Find out if this is Apple's GCC
-if grep -qF '(Apple' gcc/version.c; then
-    gcc_apple=apple-
-    gcc_apple_build_ver=`grep '(Apple' gcc/version.c | sed -e 's/^.*build \([0-9][0-9]*\).*$/\1/'`
-    if test "$gcc_apple_build_ver" -eq 5465; then
-        gcc_patch_key=5465
-    elif test "$gcc_apple_build_ver" -eq 5664; then
-        gcc_patch_key=5664
-    else
-        echo "This version of Apple GCC ($gcc_apple_build_ver) is not supported."
-        exit 1
-    fi
-fi
-
 # 0.2. Determine if this version of GCC is supported
-gcc_patch_fn=d/patches/patch-${gcc_apple}gcc-$gcc_patch_key
+gcc_patch_fn=d/patches/patch-gcc-$gcc_patch_key
 if test ! -f gcc/"$gcc_patch_fn"; then
     echo "This version of GCC ($gcc_ver) is not supported."
     exit 1
@@ -177,22 +163,11 @@ fi
 # You will need the autogen package to do this. (http://autogen.sf.net/)
 patch -p1 < gcc/d/patches/patch-toplev-$gcc_patch_key || exit 1
 
-if test -n "$gcc_apple"; then
-    patch -l -p1 < "gcc/d/patches/patch-build_gcc-$gcc_patch_key" || exit 1
-fi
-
 
 # 3. Patch the gcc subdirectory
 cd gcc || exit 1
 patch -p1 < "$gcc_patch_fn" || exit 1
 
-
-# 4. Maybe apply Darwin patches
-if test -z "$gcc_apple" && test "`uname`" = Darwin; then
-    if test -f d/patches/patch-gcc-darwin-eh-$gcc_patch_key; then
-        patch -p1 < d/patches/patch-gcc-darwin-eh-$gcc_patch_key || exit 1
-    fi
-fi
 
 echo
 echo "Building D language version $d_lang_version."
