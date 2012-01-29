@@ -1,20 +1,19 @@
-/* GDC -- D front-end for GCC
-   Copyright (C) 2004 David Friedman
+// GDC -- D front-end for GCC
+// Copyright (C) 2004 David Friedman
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #ifndef GCC_DCMPLR_IRSTATE_H
 #define GCC_DCMPLR_IRSTATE_H
@@ -35,53 +34,50 @@
 // The kinds of levels we recognize.
 enum LevelKind
 {
-    level_block = 0,    // An ordinary block scope.
-    level_switch,       // A switch-block
-    level_try,          // A try-block.
-    level_catch,        // A catch-block.
-    level_finally,      // A finally-block.
+  level_block = 0,    // An ordinary block scope.
+  level_switch,       // A switch-block
+  level_try,          // A try-block.
+  level_catch,        // A catch-block.
+  level_finally,      // A finally-block.
 };
 
 
 struct Label 
 {
-    LabelDsymbol * label;
-    Statement * block;
-    Statement * from;
-    LevelKind kind;
-    unsigned level;
+  LabelDsymbol * label;
+  Statement * block;
+  Statement * from;
+  LevelKind kind;
+  unsigned level;
 
-    Label() : label(NULL), block(NULL), from(NULL),
-              kind(level_block), level(0) { }
+  Label() :
+    label(NULL), block(NULL), from(NULL),
+    kind(level_block), level(0) { }
 };
 
 struct Flow
 {
-    Statement * statement;
-    LevelKind kind;
-    tree exitLabel;
-    union
-    {
-        struct
-        {
-            tree continueLabel;
-            tree hasVars; // D2 specific, != NULL_TREE if switch uses Lvalues for cases.
-        };
-        struct
-        {
-            tree condition;  // Only need this if it is not okay to convert an IfStatement's
-            tree trueBranch; // condition after converting it's branches...
-        };
-        struct
-        {
-            tree tryBody;
-            tree catchType;
-        };
-    };
+  Statement * statement;
+  LevelKind kind;
+  tree exitLabel;
+  union {
+      struct {
+	  tree continueLabel;
+	  tree hasVars; // D2 specific, != NULL_TREE if switch uses Lvalues for cases.
+      };
+      struct {
+	  tree condition;  // Only need this if it is not okay to convert an IfStatement's
+	  tree trueBranch; // condition after converting it's branches...
+      };
+      struct {
+	  tree tryBody;
+	  tree catchType;
+      };
+  };
 
-    Flow(Statement * stmt) :
-            statement(stmt), kind(level_block), exitLabel(NULL_TREE),
-            continueLabel(NULL_TREE), hasVars(NULL_TREE) { }
+  Flow(Statement * stmt) :
+    statement(stmt), kind(level_block), exitLabel(NULL_TREE),
+    continueLabel(NULL_TREE), hasVars(NULL_TREE) { }
 };
 
 
@@ -102,112 +98,105 @@ typedef ArrayBase<struct Flow> Flows;
 
 struct IRBase : Object
 {
-    IRBase * parent;
+  IRBase * parent;
 
-    IRBase();
+  IRBase();
 
-    // ** Functions
+  // ** Functions
 
-    // This is used by LabelStatement to find the LabelDsymbol that
-    // GotoStatements refer to.
-    FuncDeclaration * func; // %% make this a stack
+  // This is used by LabelStatement to find the LabelDsymbol that
+  // GotoStatements refer to.
+  FuncDeclaration * func; // %% make this a stack
 
-    IRState * startFunction(FuncDeclaration * decl);
-    void endFunction();
+  IRState * startFunction(FuncDeclaration * decl);
+  void endFunction();
 
 public:
-    // ** Statement Lists
+  // ** Statement Lists
 
-    void addExp(tree e);
-    Array statementList;    // of tree
+  void addExp(tree e);
+  Array statementList;    // of tree
 
-    void pushStatementList();
-    tree popStatementList();
+  void pushStatementList();
+  tree popStatementList();
 
-    // ** Labels
+  // ** Labels
 
-    Labels labels;
+  Labels labels;
 
-    // It is only valid to call this while the function in which the label is defined
-    // is being compiled.
-    tree    getLabelTree(LabelDsymbol * label);
-    Label * getLabelBlock(LabelDsymbol * label, Statement * from = NULL);
+  // It is only valid to call this while the function in which the label is defined
+  // is being compiled.
+  tree    getLabelTree(LabelDsymbol * label);
+  Label * getLabelBlock(LabelDsymbol * label, Statement * from = NULL);
 
-    bool isReturnLabel(Identifier * ident)
-    {
-        return func->returnLabel ? ident == func->returnLabel->ident : 0;
-    }
+  bool isReturnLabel(Identifier * ident) {
+      return func->returnLabel ? ident == func->returnLabel->ident : 0;
+  }
 
-    // ** Loops (and case statements)
-    
-    Flows loops;
+  // ** Loops (and case statements)
 
-    // These routines don't generate code.  They are for tracking labeled loops.
-    Flow * getLoopForLabel(Identifier * ident, bool want_continue = false);
-    Flow * beginFlow(Statement * stmt);
+  Flows loops;
 
-    void endFlow();
+  // These routines don't generate code.  They are for tracking labeled loops.
+  Flow * getLoopForLabel(Identifier * ident, bool want_continue = false);
+  Flow * beginFlow(Statement * stmt);
 
-    Flow * currentFlow()
-    {
-        gcc_assert(loops.dim);
-        return (Flow *) loops.tos();
-    }
+  void endFlow();
 
-    void doLabel(tree t_label);
+  Flow * currentFlow() {
+      gcc_assert(loops.dim);
+      return (Flow *) loops.tos();
+  }
 
-    // ** DECL_CONTEXT support
+  void doLabel(tree t_label);
 
-    tree getLocalContext()
-    {
-        return func ? func->toSymbol()->Stree : NULL_TREE;
-    }
+  // ** DECL_CONTEXT support
 
-    // ** "Binding contours"
+  tree getLocalContext() {
+      return func ? func->toSymbol()->Stree : NULL_TREE;
+  }
 
-    /* Definitions for IRBase scope code:
-       "Scope": A container for binding contours.  Each user-declared
-       function has a toplevel scope.  Every ScopeStatement creates
-       a new scope. (And for now, until the emitLocalVar crash is
-       solved, this also creates a default binding contour.)
+  // ** "Binding contours"
 
-       "Binding contour": Same as GCC's definition, whatever that is.
-       Each user-declared variable will have a binding contour that begins
-       where the variable is declared and ends at it's containing scope.
-    */
-    Array scopes; // of unsigned*
+  /* Definitions for IRBase scope code:
+     "Scope": A container for binding contours.  Each user-declared
+     function has a toplevel scope.  Every ScopeStatement creates
+     a new scope. (And for now, until the emitLocalVar crash is
+     solved, this also creates a default binding contour.)
 
-    void startScope();
-    void endScope();
+     "Binding contour": Same as GCC's definition, whatever that is.
+     Each user-declared variable will have a binding contour that begins
+     where the variable is declared and ends at it's containing scope.
+   */
+  Array scopes; // of unsigned*
 
-    unsigned * currentScope()
-    {
-        gcc_assert(scopes.dim);
-        return (unsigned *) scopes.tos();
-    }
+  void startScope();
+  void endScope();
 
-    void startBindings();
-    void endBindings();
+  unsigned * currentScope() {
+      gcc_assert(scopes.dim);
+      return (unsigned *) scopes.tos();
+  }
+  
+  void startBindings();
+  void endBindings();
 
 
-    // ** Volatile state
+  // ** Volatile state
 
-    unsigned volatileDepth;
+  unsigned volatileDepth;
 
-    bool inVolatile()
-    {
-        return volatileDepth != 0;
-    }
+  bool inVolatile() {
+      return volatileDepth != 0;
+  }
+  
+  void pushVolatile() {
+      ++volatileDepth;
+  }
 
-    void pushVolatile()
-    {
-        ++volatileDepth;
-    }
-
-    void popVolatile()
-    {
-        --volatileDepth;
-    }
+  void popVolatile() {
+      --volatileDepth;
+  }
 };
 
 

@@ -1,20 +1,19 @@
-/* GDC -- D front-end for GCC
-   Copyright (C) 2010, 2011 Iain Buclaw
+// GDC -- D front-end for GCC
+// Copyright (C) 2010, 2011, 2012 Iain Buclaw
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Same as d-lang.h, but updated to support GCC-4.5's new GTY(()) convention */
 
@@ -30,13 +29,13 @@
 /* Nothing is added to tree_identifier; */
 struct GTY(()) lang_identifier
 {
-    struct tree_identifier common;
+  struct tree_identifier common;
 };
 
 /* This is required to be defined, but we do not use it. */
 struct GTY(()) language_function
 {
-    int unused;
+  int unused;
 };
 
 /* The DMD front end types have not been integrated into the GCC garbage
@@ -45,20 +44,19 @@ struct Declaration;
 typedef struct Declaration *DeclarationGTYP;
 struct GTY(()) lang_decl
 {
-    DeclarationGTYP GTY ((skip)) d_decl;
+  DeclarationGTYP GTY ((skip)) d_decl;
 };
 
 /* Another required, but unused declaration.  This could be simplified, since
    there is no special lang_identifier */
 union GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
-           chain_next ("CODE_CONTAINS_STRUCT (TREE_CODE (&%h.generic), TS_COMMON)"
-                       " ? ((union lang_tree_node *) TREE_CHAIN (&%h.generic)) : NULL")))
+	   chain_next ("CODE_CONTAINS_STRUCT (TREE_CODE (&%h.generic), TS_COMMON)"
+		       " ? ((union lang_tree_node *) TREE_CHAIN (&%h.generic)) : NULL")))
 lang_tree_node
 {
-    union tree_node GTY ((tag ("0"),
-                          desc ("tree_node_structure (&%h)")))
-      generic;
-    struct lang_identifier GTY ((tag ("1"))) identifier;
+  union tree_node GTY ((tag ("0"),
+			desc ("tree_node_structure (&%h)"))) generic;
+  struct lang_identifier GTY ((tag ("1"))) identifier;
 };
 
 extern GTY(()) tree d_eh_personality_decl;
@@ -91,24 +89,24 @@ extern GTY(()) tree d_eh_personality_decl;
    otherwise support the backend. */
 struct GTY(()) binding_level
 {
-    /* A chain of declarations. These are in the reverse of the order supplied. */
-    tree names;
+  /* A chain of declarations. These are in the reverse of the order supplied. */
+  tree names;
 
-    /* A pointer to the end of the names chain. Only needed to facilitate
-       a quick test if a decl is in the list by checking if its TREE_CHAIN
-       is not NULL or it is names_end (in pushdecl_nocheck()). */
-    tree names_end;
+  /* A pointer to the end of the names chain. Only needed to facilitate
+     a quick test if a decl is in the list by checking if its TREE_CHAIN
+     is not NULL or it is names_end (in pushdecl_nocheck()). */
+  tree names_end;
 
-    /* For each level (except the global one), a chain of BLOCK nodes for
-       all the levels that were entered and exited one level down. */
-    tree blocks;
+  /* For each level (except the global one), a chain of BLOCK nodes for
+     all the levels that were entered and exited one level down. */
+  tree blocks;
 
-    /* The BLOCK node for this level, if one has been preallocated.
-       If NULL_TREE, the BLOCK is allocated (if needed) when the level is popped. */
-    tree this_block;
+  /* The BLOCK node for this level, if one has been preallocated.
+     If NULL_TREE, the BLOCK is allocated (if needed) when the level is popped. */
+  tree this_block;
 
-    /* The binding level this one is contained in. */
-    struct binding_level *level_chain;
+  /* The binding level this one is contained in. */
+  struct binding_level *level_chain;
 };
 
 extern GTY(()) struct binding_level * current_binding_level;
@@ -116,30 +114,30 @@ extern GTY(()) struct binding_level * global_binding_level;
 
 enum d_tree_index
 {
-    DTI_NULL_PTR,
-    DTI_VOID_ZERO,
-    DTI_VTBL_PTR_TYPE,
+  DTI_NULL_PTR,
+  DTI_VOID_ZERO,
+  DTI_VTBL_PTR_TYPE,
 
-    DTI_BOOL_TYPE,
-    DTI_CHAR_TYPE,
-    DTI_WCHAR_TYPE,
-    DTI_DCHAR_TYPE,
+  DTI_BOOL_TYPE,
+  DTI_CHAR_TYPE,
+  DTI_WCHAR_TYPE,
+  DTI_DCHAR_TYPE,
 
-    DTI_IFLOAT_TYPE,
-    DTI_IDOUBLE_TYPE,
-    DTI_IREAL_TYPE,
+  DTI_IFLOAT_TYPE,
+  DTI_IDOUBLE_TYPE,
+  DTI_IREAL_TYPE,
 
-    DTI_VA_LIST_TYPE,
+  DTI_VA_LIST_TYPE,
 
-    /* unused except for gcc builtins. */
-    DTI_INTMAX_TYPE,
-    DTI_UINTMAX_TYPE,
-    DTI_SIGNED_SIZE_TYPE,
-    DTI_STRING_TYPE,
-    DTI_CONST_STRING_TYPE,
-    DTI_NULL,
+  /* unused except for gcc builtins. */
+  DTI_INTMAX_TYPE,
+  DTI_UINTMAX_TYPE,
+  DTI_SIGNED_SIZE_TYPE,
+  DTI_STRING_TYPE,
+  DTI_CONST_STRING_TYPE,
+  DTI_NULL,
 
-    DTI_MAX
+  DTI_MAX
 };
 
 extern GTY(()) tree d_global_trees[DTI_MAX];
@@ -206,39 +204,38 @@ extern const char * multilib_dir;
 #ifdef __cplusplus
 extern "C" {
 #endif
-/* In d-lang.cc */
-tree pushdecl (tree);
-void pushlevel (int);
-tree poplevel (int, int, int);
-tree d_unsigned_type(tree);
-tree d_signed_type(tree);
-tree d_type_for_size(unsigned bits, int unsignedp);
-tree d_type_for_mode(enum machine_mode mode, int unsignedp);
-
-void d_keep(tree t);
-void d_free(tree t);
-
+  /* In d-lang.cc */
+  tree pushdecl (tree);
+  void pushlevel (int);
+  tree poplevel (int, int, int);
+  tree d_unsigned_type(tree);
+  tree d_signed_type(tree);
+  tree d_type_for_size(unsigned bits, int unsignedp);
+  tree d_type_for_mode(enum machine_mode mode, int unsignedp);
+  
+  void d_keep(tree t);
+  void d_free(tree t);
+  
 #if D_GCC_VER >= 47
-bool global_bindings_p (void);
+  bool global_bindings_p (void);
 #else
-int global_bindings_p (void);
+  int global_bindings_p (void);
 #endif
-void insert_block (tree);
-void set_block (tree);
-tree getdecls (void);
-
-
-/* In d-builtins.c */
-extern void d_init_builtins (void);
-extern const struct attribute_spec d_common_attribute_table[];
-extern const struct attribute_spec d_common_format_attribute_table[];
-extern tree d_builtin_function (tree);
-extern void d_register_builtin_type (tree, const char *);
-
-/* In d-builtins2.cc */
-extern void d_bi_init (void);
-extern void d_bi_builtin_func (tree);
-extern void d_bi_builtin_type (tree);
+  void insert_block (tree);
+  void set_block (tree);
+  tree getdecls (void);
+  
+  /* In d-builtins.c */
+  extern void d_init_builtins (void);
+  extern const struct attribute_spec d_common_attribute_table[];
+  extern const struct attribute_spec d_common_format_attribute_table[];
+  extern tree d_builtin_function (tree);
+  extern void d_register_builtin_type (tree, const char *);
+  
+  /* In d-builtins2.cc */
+  extern void d_bi_init (void);
+  extern void d_bi_builtin_func (tree);
+  extern void d_bi_builtin_type (tree);
 
 #ifdef __cplusplus
 }

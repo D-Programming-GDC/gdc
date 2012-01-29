@@ -1,76 +1,76 @@
-/* GDC -- D front-end for GCC
-   Copyright (C) 2004 David Friedman
+// GDC -- D front-end for GCC
+// Copyright (C) 2004 David Friedman
 
-   Modified by
-    Michael Parrott, (C) 2009
-    Vincenzo Ampolo, Iain Buclaw, (C) 2010, 2011
+// Modified by Iain Buclaw, (C) 2010, 2011, 2012
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 enum Reg
 {
-    Reg_Invalid = -1,
-    Reg_EAX = 0,
-    Reg_EBX,
-    Reg_ECX,
-    Reg_EDX,
-    Reg_ESI,
-    Reg_EDI,
-    Reg_EBP,
-    Reg_ESP,
-    Reg_ST,
-    Reg_ST1, Reg_ST2, Reg_ST3, Reg_ST4, Reg_ST5, Reg_ST6, Reg_ST7,
-    Reg_MM0, Reg_MM1, Reg_MM2, Reg_MM3, Reg_MM4, Reg_MM5, Reg_MM6, Reg_MM7,
-    Reg_XMM0, Reg_XMM1, Reg_XMM2, Reg_XMM3, Reg_XMM4, Reg_XMM5, Reg_XMM6, Reg_XMM7,
-
-    Reg_RAX, Reg_RBX, Reg_RCX, Reg_RDX, Reg_RSI, Reg_RDI, Reg_RBP, Reg_RSP,
-    Reg_R8, Reg_R9, Reg_R10, Reg_R11, Reg_R12, Reg_R13, Reg_R14, Reg_R15,
-    Reg_R8B, Reg_R9B, Reg_R10B, Reg_R11B, Reg_R12B, Reg_R13B, Reg_R14B, Reg_R15B,
-    Reg_R8W, Reg_R9W, Reg_R10W, Reg_R11W, Reg_R12W, Reg_R13W, Reg_R14W, Reg_R15W,
-    Reg_R8D, Reg_R9D, Reg_R10D, Reg_R11D, Reg_R12D, Reg_R13D, Reg_R14D, Reg_R15D,
-    Reg_XMM8, Reg_XMM9, Reg_XMM10, Reg_XMM11, Reg_XMM12, Reg_XMM13, Reg_XMM14, Reg_XMM15,
-    Reg_RIP,
-    Reg_SIL, Reg_DIL, Reg_BPL, Reg_SPL,
-
-    Reg_EFLAGS,
-    Reg_CS,
-    Reg_DS,
-    Reg_SS,
-    Reg_ES,
-    Reg_FS,
-    Reg_GS,
-    Reg_AX, Reg_BX, Reg_CX, Reg_DX, Reg_SI, Reg_DI, Reg_BP, Reg_SP,
-    Reg_AL, Reg_AH, Reg_BL, Reg_BH, Reg_CL, Reg_CH, Reg_DL, Reg_DH,
-    Reg_CR0, Reg_CR2, Reg_CR3, Reg_CR4,
-    Reg_DR0, Reg_DR1, Reg_DR2, Reg_DR3, Reg_DR6, Reg_DR7,
-    Reg_TR3, Reg_TR4, Reg_TR5, Reg_TR6, Reg_TR7,
-
-    Reg_MAX
+  Reg_Invalid = -1,
+  Reg_EAX = 0,
+  Reg_EBX,
+  Reg_ECX,
+  Reg_EDX,
+  Reg_ESI,
+  Reg_EDI,
+  Reg_EBP,
+  Reg_ESP,
+  Reg_ST,
+  Reg_ST1, Reg_ST2, Reg_ST3, Reg_ST4, Reg_ST5, Reg_ST6, Reg_ST7,
+  Reg_MM0, Reg_MM1, Reg_MM2, Reg_MM3, Reg_MM4, Reg_MM5, Reg_MM6, Reg_MM7,
+  Reg_XMM0, Reg_XMM1, Reg_XMM2, Reg_XMM3, Reg_XMM4, Reg_XMM5, Reg_XMM6, Reg_XMM7,
+  
+  Reg_RAX, Reg_RBX, Reg_RCX, Reg_RDX, Reg_RSI, Reg_RDI, Reg_RBP, Reg_RSP,
+  Reg_R8, Reg_R9, Reg_R10, Reg_R11, Reg_R12, Reg_R13, Reg_R14, Reg_R15,
+  Reg_R8B, Reg_R9B, Reg_R10B, Reg_R11B, Reg_R12B, Reg_R13B, Reg_R14B, Reg_R15B,
+  Reg_R8W, Reg_R9W, Reg_R10W, Reg_R11W, Reg_R12W, Reg_R13W, Reg_R14W, Reg_R15W,
+  Reg_R8D, Reg_R9D, Reg_R10D, Reg_R11D, Reg_R12D, Reg_R13D, Reg_R14D, Reg_R15D,
+  Reg_XMM8, Reg_XMM9, Reg_XMM10, Reg_XMM11, Reg_XMM12, Reg_XMM13, Reg_XMM14, Reg_XMM15,
+  Reg_RIP,
+  Reg_SIL, Reg_DIL, Reg_BPL, Reg_SPL,
+  
+  Reg_EFLAGS,
+  Reg_CS,
+  Reg_DS,
+  Reg_SS,
+  Reg_ES,
+  Reg_FS,
+  Reg_GS,
+  Reg_AX, Reg_BX, Reg_CX, Reg_DX, Reg_SI, Reg_DI, Reg_BP, Reg_SP,
+  Reg_AL, Reg_AH, Reg_BL, Reg_BH, Reg_CL, Reg_CH, Reg_DL, Reg_DH,
+  Reg_CR0, Reg_CR2, Reg_CR3, Reg_CR4,
+  Reg_DR0, Reg_DR1, Reg_DR2, Reg_DR3, Reg_DR6, Reg_DR7,
+  Reg_TR3, Reg_TR4, Reg_TR5, Reg_TR6, Reg_TR7,
+  
+  Reg_MAX
 };
 
 static const int N_Regs = Reg_MAX;
 
-static struct
+struct RegInfo
 {
-    const char * name;
-    tree gccName; // GAS will take upper case, but GCC won't (needed for the clobber list)
-    Identifier * ident;
-    char size;
-    char baseReg; // %% todo: Reg, Reg_XX
-} regInfo[N_Regs] = {
+  const char * name;
+  tree gccName; // GAS will take upper case, but GCC won't (needed for the clobber list)
+  Identifier * ident;
+  char size;
+  char baseReg; // %% todo: Reg, Reg_XX
+};
+
+static const RegInfo regInfo[N_Regs] =
+{
     { "EAX", NULL_TREE, NULL, 4,  Reg_EAX },
     { "EBX", NULL_TREE, NULL, 4,  Reg_EBX },
     { "ECX", NULL_TREE, NULL, 4,  Reg_ECX },
@@ -198,206 +198,206 @@ static struct
 
 enum TypeNeeded
 {
-    No_Type_Needed,
-    Int_Types,
-    Word_Types, // same as Int_Types, but byte is not allowed
-    FP_Types,
-    FPInt_Types,
-    Byte_NoType, // byte only, but no type suffix
+  No_Type_Needed,
+  Int_Types,
+  Word_Types, // same as Int_Types, but byte is not allowed
+  FP_Types,
+  FPInt_Types,
+  Byte_NoType, // byte only, but no type suffix
 };
 
 enum OpLink
 {
-    No_Link,
-    Out_Mnemonic,
-    Next_Form
+  No_Link,
+  Out_Mnemonic,
+  Next_Form
 };
 
 enum ImplicitClober
 {
-    Clb_SizeAX   = 0x01,
-    Clb_SizeDXAX = 0x02,
-    Clb_EAX      = 0x03,
-    Clb_DXAX_Mask = 0x03,
-
-    Clb_Flags    = 0x04,
-    Clb_DI       = 0x08,
-    Clb_SI       = 0x10,
-    Clb_CX       = 0x20,
-    Clb_ST       = 0x40,
-    Clb_SP       = 0x80 // Doesn't actually let GCC know the frame pointer is modified
+  Clb_SizeAX   = 0x01,
+  Clb_SizeDXAX = 0x02,
+  Clb_EAX      = 0x03,
+  Clb_DXAX_Mask = 0x03,
+  
+  Clb_Flags    = 0x04,
+  Clb_DI       = 0x08,
+  Clb_SI       = 0x10,
+  Clb_CX       = 0x20,
+  Clb_ST       = 0x40,
+  Clb_SP       = 0x80 // Doesn't actually let GCC know the frame pointer is modified
 };
 
 // "^ +/..\([A-Za-z_0-9]+\).*" -> "    \1,"
 enum AsmOp
 {
-    Op_Invalid,
-    Op_Adjust,
-    Op_Dst,
-    Op_Upd,
-    Op_DstW,
-    Op_DstF,
-    Op_UpdF,
-    Op_DstQ,
-    Op_DstSrc,
-    Op_DstSrcF,
-    Op_UpdSrcF,
-    Op_DstSrcFW,
-    Op_UpdSrcFW,
-    Op_DstSrcSSE,
-    Op_DstSrcMMX,
-    Op_DstSrcImmS,
-    Op_DstSrcImmM,
-    Op_DstSrcXmmS,
-    Op_UpdSrcShft,
-    Op_DstSrcNT,
-    Op_UpdSrcNT,
-    Op_DstMemNT,
-    Op_DstRMBNT,
-    Op_DstRMWNT,
-    Op_UpdUpd,
-    Op_UpdUpdF,
-    Op_Src,
-    Op_SrcRMWNT,
-    Op_SrcW,
-    Op_SrcImm,
-    Op_Src_DXAXF,
-    Op_SrcMemNT,
-    Op_SrcMemNTF,
-    Op_SrcSrc,
-    Op_SrcSrcF,
-    Op_SrcSrcFW,
-    Op_SrcSrcSSEF,
-    Op_SrcSrcMMX,
-    Op_Shift,
-    Op_Branch,
-    Op_CBranch,
-    Op_0,
-    Op_0_AX,
-    Op_0_DXAX,
-    Op_Loop,
-    Op_Flags,
-    Op_F0_ST,
-    Op_F0_P,
-    Op_Fs_P,
-    Op_Fis,
-    Op_Fis_ST,
-    Op_Fis_P,
-    Op_Fid,
-    Op_Fid_P,
-    Op_FidR_P,
-    Op_Ffd,
-    Op_FfdR,
-    Op_Ffd_P,
-    Op_FfdR_P,
-    Op_FfdRR_P,
-    Op_Fd_P,
-    Op_FdST,
-    Op_FMath,
-    Op_FMath0,
-    Op_FMath2,
-    Op_FdSTiSTi,
-    Op_FdST0ST1,
-    Op_FPMath,
-    Op_FCmp,
-    Op_FCmp1,
-    Op_FCmpP,
-    Op_FCmpP1,
-    Op_FCmpFlg0,
-    Op_FCmpFlg1,
-    Op_FCmpFlg,
-    Op_FCmpFlgP0,
-    Op_FCmpFlgP1,
-    Op_FCmpFlgP,
-    Op_fld,
-    Op_fldR,
-    Op_fxch,
-    Op_fxch1,
-    Op_fxch0,
-    Op_SizedStack,
-    Op_bound,
-    Op_bswap,
-    Op_cmps,
-    Op_cmpsd,
-    Op_cmpsX,
-    Op_cmpxchg,
-    Op_cmpxchg8b,
-    Op_cpuid,
-    Op_enter,
-    Op_fdisi,
-    Op_feni,
-    Op_fsetpm,
-    Op_fXstsw,
-    Op_imul,
-    Op_imul2,
-    Op_imul1,
-    Op_in,
-    Op_ins,
-    Op_insX,
-    Op_iret,
-    Op_iretd,
-    Op_iretq,
-    Op_lods,
-    Op_lodsX,
-    Op_movs,
-    Op_movsd,
-    Op_movsX,
-    Op_movsx,
-    Op_movzx,
-    Op_mul,
-    Op_out,
-    Op_outs,
-    Op_outsX,
-    Op_push,
-    Op_pushq,
-    Op_ret,
-    Op_retf,
-    Op_scas,
-    Op_scasX,
-    Op_stos,
-    Op_stosX,
-    Op_xlat,
-    N_AsmOpInfo,
-    Op_Align,
-    Op_Even,
-    Op_Naked,
-    Op_db,
-    Op_ds,
-    Op_di,
-    Op_dl,
-    Op_df,
-    Op_dd,
-    Op_de
+  Op_Invalid,
+  Op_Adjust,
+  Op_Dst,
+  Op_Upd,
+  Op_DstW,
+  Op_DstF,
+  Op_UpdF,
+  Op_DstQ,
+  Op_DstSrc,
+  Op_DstSrcF,
+  Op_UpdSrcF,
+  Op_DstSrcFW,
+  Op_UpdSrcFW,
+  Op_DstSrcSSE,
+  Op_DstSrcMMX,
+  Op_DstSrcImmS,
+  Op_DstSrcImmM,
+  Op_DstSrcXmmS,
+  Op_UpdSrcShft,
+  Op_DstSrcNT,
+  Op_UpdSrcNT,
+  Op_DstMemNT,
+  Op_DstRMBNT,
+  Op_DstRMWNT,
+  Op_UpdUpd,
+  Op_UpdUpdF,
+  Op_Src,
+  Op_SrcRMWNT,
+  Op_SrcW,
+  Op_SrcImm,
+  Op_Src_DXAXF,
+  Op_SrcMemNT,
+  Op_SrcMemNTF,
+  Op_SrcSrc,
+  Op_SrcSrcF,
+  Op_SrcSrcFW,
+  Op_SrcSrcSSEF,
+  Op_SrcSrcMMX,
+  Op_Shift,
+  Op_Branch,
+  Op_CBranch,
+  Op_0,
+  Op_0_AX,
+  Op_0_DXAX,
+  Op_Loop,
+  Op_Flags,
+  Op_F0_ST,
+  Op_F0_P,
+  Op_Fs_P,
+  Op_Fis,
+  Op_Fis_ST,
+  Op_Fis_P,
+  Op_Fid,
+  Op_Fid_P,
+  Op_FidR_P,
+  Op_Ffd,
+  Op_FfdR,
+  Op_Ffd_P,
+  Op_FfdR_P,
+  Op_FfdRR_P,
+  Op_Fd_P,
+  Op_FdST,
+  Op_FMath,
+  Op_FMath0,
+  Op_FMath2,
+  Op_FdSTiSTi,
+  Op_FdST0ST1,
+  Op_FPMath,
+  Op_FCmp,
+  Op_FCmp1,
+  Op_FCmpP,
+  Op_FCmpP1,
+  Op_FCmpFlg0,
+  Op_FCmpFlg1,
+  Op_FCmpFlg,
+  Op_FCmpFlgP0,
+  Op_FCmpFlgP1,
+  Op_FCmpFlgP,
+  Op_fld,
+  Op_fldR,
+  Op_fxch,
+  Op_fxch1,
+  Op_fxch0,
+  Op_SizedStack,
+  Op_bound,
+  Op_bswap,
+  Op_cmps,
+  Op_cmpsd,
+  Op_cmpsX,
+  Op_cmpxchg,
+  Op_cmpxchg8b,
+  Op_cpuid,
+  Op_enter,
+  Op_fdisi,
+  Op_feni,
+  Op_fsetpm,
+  Op_fXstsw,
+  Op_imul,
+  Op_imul2,
+  Op_imul1,
+  Op_in,
+  Op_ins,
+  Op_insX,
+  Op_iret,
+  Op_iretd,
+  Op_iretq,
+  Op_lods,
+  Op_lodsX,
+  Op_movs,
+  Op_movsd,
+  Op_movsX,
+  Op_movsx,
+  Op_movzx,
+  Op_mul,
+  Op_out,
+  Op_outs,
+  Op_outsX,
+  Op_push,
+  Op_pushq,
+  Op_ret,
+  Op_retf,
+  Op_scas,
+  Op_scasX,
+  Op_stos,
+  Op_stosX,
+  Op_xlat,
+  N_AsmOpInfo,
+  Op_Align,
+  Op_Even,
+  Op_Naked,
+  Op_db,
+  Op_ds,
+  Op_di,
+  Op_dl,
+  Op_df,
+  Op_dd,
+  Op_de
 };
 
 enum OprVals
 {
-    Opr_None      = 0x0,
-    OprC_MRI      = 0x1,
-    OprC_MR       = 0x2,
-    OprC_Mem      = 0x4,
-    OprC_Reg      = 0x8,
-    OprC_Imm      = 0x10,
-    OprC_SSE      = 0x20,
-    OprC_SSE_Mem  = 0x40,
-    OprC_R32      = 0x80,
-    OprC_RWord    = 0x100,
-    OprC_RFP      = 0x200,
-    OprC_AbsRel   = 0x400,
-    OprC_Relative = 0x800,
-    OprC_Port     = 0x1000, // DX or imm
-    OprC_AX       = 0x2000, // AL,AX,EAX,RAX
-    OprC_DX       = 0x4000, // only DX
-    OprC_MMX      = 0x8000,
-    OprC_MMX_Mem  = 0x10000,
-    OprC_Shift    = 0x20000, // imm or CL
-
-    Opr_ClassMask = 0x40000,
-
-    Opr_Dest      = 0x80000,
-    Opr_Update    = 0x100000,
-
-    Opr_NoType    = 0x80000000,
+  Opr_None      = 0x0,
+  OprC_MRI      = 0x1,
+  OprC_MR       = 0x2,
+  OprC_Mem      = 0x4,
+  OprC_Reg      = 0x8,
+  OprC_Imm      = 0x10,
+  OprC_SSE      = 0x20,
+  OprC_SSE_Mem  = 0x40,
+  OprC_R32      = 0x80,
+  OprC_RWord    = 0x100,
+  OprC_RFP      = 0x200,
+  OprC_AbsRel   = 0x400,
+  OprC_Relative = 0x800,
+  OprC_Port     = 0x1000, // DX or imm
+  OprC_AX       = 0x2000, // AL,AX,EAX,RAX
+  OprC_DX       = 0x4000, // only DX
+  OprC_MMX      = 0x8000,
+  OprC_MMX_Mem  = 0x10000,
+  OprC_Shift    = 0x20000, // imm or CL
+  
+  Opr_ClassMask = 0x40000,
+  
+  Opr_Dest      = 0x80000,
+  Opr_Update    = 0x100000,
+  
+  Opr_NoType    = 0x80000000,
 };
 
 
@@ -405,46 +405,46 @@ typedef unsigned Opr;
 
 struct AsmOpInfo
 {
-    Opr operands[3];
-    unsigned char
-        needsType : 3,
-        implicitClobbers : 8,
-        linkType : 2;
-    unsigned link;
-
-    unsigned nOperands()
-    {
-        if (!operands[0])
-            return 0;
-        else if (!operands[1])
-            return 1;
-        else if (!operands[2])
-            return 2;
-        else
-            return 3;
-    }
+  Opr operands[3];
+  unsigned char
+    needsType : 3,
+      	      implicitClobbers : 8,
+      	      linkType : 2;
+  unsigned link;
+  
+  unsigned nOperands() {
+      if (!operands[0])
+	return 0;
+      else if (!operands[1])
+	return 1;
+      else if (!operands[2])
+	return 2;
+      else
+	return 3;
+  }
 };
 
 enum Alternate_Mnemonics
 {
-    Mn_fdisi,
-    Mn_feni,
-    Mn_fsetpm,
-    Mn_iretw,
-    Mn_iret,
-    Mn_iretq,
-    Mn_lret,
-    N_AltMn
+  Mn_fdisi,
+  Mn_feni,
+  Mn_fsetpm,
+  Mn_iretw,
+  Mn_iret,
+  Mn_iretq,
+  Mn_lret,
+  N_AltMn
 };
 
-static const char * alternateMnemonics[N_AltMn] = {
-    ".byte 0xdb, 0xe1",
-    ".byte 0xdb, 0xe0",
-    ".byte 0xdb, 0xe4",
-    "iretw",
-    "iret",
-    "iretq",
-    "lret",
+static const char * alternateMnemonics[N_AltMn] =
+{
+  ".byte 0xdb, 0xe1",
+  ".byte 0xdb, 0xe0",
+  ".byte 0xdb, 0xe4",
+  "iretw",
+  "iret",
+  "iretq",
+  "lret",
 };
 
 #define mri  OprC_MRI
@@ -471,139 +471,140 @@ static const char * alternateMnemonics[N_AltMn] = {
 //#define L    Opr_Label
 
 // D=dest, N=notype
-static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
-    /* Op_Invalid   */  {},
-    /* Op_Adjust    */  { 0,0,0,             0, Clb_EAX /*just AX*/ },
-    /* Op_Dst       */  { D|mr,  0,    0,    1  },
-    /* Op_Upd       */  { U|mr,  0,    0,    1  },
-    /* Op_DstW      */  { D|mr,  0,    0,    Word_Types  },
-    /* Op_DstF      */  { D|mr,  0,    0,    1, Clb_Flags },
-    /* Op_UpdF      */  { U|mr,  0,    0,    1, Clb_Flags },
-    /* Op_DstQ      */  { D|mr,  0,    0,    0  },
-    /* Op_DstSrc    */  { D|mr,  mri,  0,/**/1  },
-    /* Op_DstSrcF   */  { D|mr,  mri,  0,/**/1, Clb_Flags },
-    /* Op_UpdSrcF   */  { U|mr,  mri,  0,/**/1, Clb_Flags },
-    /* Op_DstSrcFW  */  { D|mr,  mri,  0,/**/Word_Types, Clb_Flags },
-    /* Op_UpdSrcFW  */  { U|mr,  mri,  0,/**/Word_Types, Clb_Flags },
-    /* Op_DstSrcSSE */  { U|sse, ssem, 0     },  // some may not be update %%
-    /* Op_DstSrcMMX */  { U|mmx, mmxm, 0     },  // some may not be update %%
-    /* Op_DstSrcImmS*/  { U|sse, ssem, N|imm  }, // some may not be update %%
-    /* Op_DstSrcImmM*/  { U|mmx, mmxm, N|imm  }, // some may not be update %%
-    /* Op_DstSrcXmmS*/  { U|sse, ssem, N|mmx  }, // some may not be update %%
-    /* Op_UpdSrcShft*/  { U|mr,  reg,  N|shft, 1, Clb_Flags }, // 16/32 only
-    /* Op_DstSrcNT  */  { D|mr,  mr,   0,    0 }, // used for movd .. operands can be rm32,sse,mmx
-    /* Op_UpdSrcNT  */  { U|mr,  mr,   0,    0 }, // used for movd .. operands can be rm32,sse,mmx
-    /* Op_DstMemNT  */  { D|mem, 0,    0     },
-    /* Op_DstRMBNT  */  { D|mr,  0,    0,    Byte_NoType },
-    /* Op_DstRMWNT  */  { D|mr,  0,    0     },
-    /* Op_UpdUpd    */  { U|mr,U|mr,   0,/**/1  },
-    /* Op_UpdUpdF   */  { U|mr,U|mr,   0,/**/1, Clb_Flags },
-    /* Op_Src       */  {   mri, 0,    0,    1  },
-    /* Op_SrcRMWNT  */  {   mr,  0,    0,    0  },
-    /* Op_SrcW      */  {   mri, 0,    0,    Word_Types  },
-    /* Op_SrcImm    */  {   imm },
-    /* Op_Src_DXAXF */  {   mr,  0,    0,    1, Clb_SizeDXAX|Clb_Flags },
-    /* Op_SrcMemNT  */  {   mem, 0,    0     },
-    /* Op_SrcMemNTF */  {   mem, 0,    0,    0, Clb_Flags },
-    /* Op_SrcSrc    */  {   mr,  mri,  0,    1  },
-    /* Op_SrcSrcF   */  {   mr,  mri,  0,    1, Clb_Flags },
-    /* Op_SrcSrcFW  */  {   mr,  mri,  0,    Word_Types, Clb_Flags },
-    /* Op_SrcSrcSSEF*/  {   sse, ssem, 0,    0, Clb_Flags },
-    /* Op_SrcSrcMMX */  {   mmx, mmx,  0, },
-    /* Op_Shift     */  { D|mr,N|shft, 0,/**/1, Clb_Flags },
-    /* Op_Branch    */  {   mri },
-    /* Op_CBranch   */  {   imm },
-    /* Op_0         */  {   0,0,0 },
-    /* Op_0_AX      */  {   0,0,0,           0, Clb_SizeAX },
-    /* Op_0_DXAX    */  {   0,0,0,           0, Clb_SizeDXAX }, // but for cwd/cdq -- how do know the size..
-    /* Op_Loop      */  {   imm, 0,    0,    0, Clb_CX },
-    /* Op_Flags     */  {   0,0,0,           0, Clb_Flags },
-    /* Op_F0_ST     */  {   0,0,0,           0, Clb_ST },
-    /* Op_F0_P      */  {   0,0,0,           0, Clb_ST }, // push, pops, etc. not sure how to inform gcc..
-    /* Op_Fs_P      */  {   mem, 0,    0,    0, Clb_ST }, // "
-    /* Op_Fis       */  {   mem, 0,    0,    FPInt_Types }, // only 16bit and 32bit, DMD defaults to 16bit
-    /* Op_Fis_ST    */  {   mem, 0,    0,    FPInt_Types, Clb_ST }, // "
-    /* Op_Fis_P     */  {   mem, 0,    0,    FPInt_Types, Clb_ST }, // push and pop, fild so also 64 bit
-    /* Op_Fid       */  { D|mem, 0,    0,    FPInt_Types }, // only 16bit and 32bit, DMD defaults to 16bit
-    /* Op_Fid_P     */  { D|mem, 0,    0,    FPInt_Types, Clb_ST, Next_Form, Op_FidR_P }, // push and pop, fild so also 64 bit
-    /* Op_FidR_P    */  { D|mem,rfp,   0,    FPInt_Types, Clb_ST }, // push and pop, fild so also 64 bit
-    /* Op_Ffd       */  { D|mfp, 0,    0,    FP_Types, 0, Next_Form, Op_FfdR }, // only 16bit and 32bit, DMD defaults to 16bit, reg form doesn't need type
-    /* Op_FfdR      */  { D|rfp, 0,    0  },
-    /* Op_Ffd_P     */  { D|mfp, 0,    0,    FP_Types, Clb_ST, Next_Form, Op_FfdR_P, }, // pop, fld so also 80 bit, "
-    /* Op_FfdR_P    */  { D|rfp, 0,    0,    0,        Clb_ST, Next_Form, Op_FfdRR_P },
-    /* Op_FfdRR_P   */  { D|rfp, rfp,  0,    0,        Clb_ST },
-    /* Op_Fd_P      */  { D|mem, 0,    0,    0,        Clb_ST }, // "
-    /* Op_FdST      */  { D|rfp, 0,    0  },
-    /* Op_FMath     */  {   mfp, 0,    0,    FP_Types, Clb_ST, Next_Form, Op_FMath0  }, // and only single or double prec
-    /* Op_FMath0    */  { 0,     0,    0,    0,        Clb_ST, Next_Form, Op_FMath2  },
-    /* Op_FMath2    */  { D|rfp, rfp,  0,    0,        Clb_ST, Next_Form, Op_FdST0ST1 },
-    /* Op_FdSTiSTi  */  { D|rfp, rfp,  0  },
-    /* Op_FdST0ST1  */  { 0,     0,    0  },
-    /* Op_FPMath    */  { D|rfp, rfp,  0,    0,        Clb_ST, Next_Form, Op_F0_P }, // pops
-    /* Op_FCmp      */  {   mfp, 0,    0,    FP_Types, 0,      Next_Form, Op_FCmp1 }, // DMD defaults to float ptr
-    /* Op_FCmp1     */  {   rfp, 0,    0,    0,        0,      Next_Form, Op_0 },
-    /* Op_FCmpP     */  {   mfp, 0,    0,    FP_Types, 0,      Next_Form, Op_FCmpP1 }, // pops
-    /* Op_FCmpP1    */  {   rfp, 0,    0,    0,        0,      Next_Form, Op_F0_P }, // pops
-    /* Op_FCmpFlg0  */  {   0,   0,    0,    0,        Clb_Flags },
-    /* Op_FCmpFlg1  */  {   rfp, 0,    0,    0,        Clb_Flags, Next_Form, Op_FCmpFlg0 },
-    /* Op_FCmpFlg   */  {   rfp, rfp,  0,    0,        Clb_Flags, Next_Form, Op_FCmpFlg1 },
-    /* Op_FCmpFlgP0 */  {   0,   0,    0,    0,        Clb_Flags }, // pops
-    /* Op_FCmpFlgP1 */  {   rfp, 0,    0,    0,        Clb_Flags, Next_Form, Op_FCmpFlgP0 }, // pops
-    /* Op_FCmpFlgP  */  {   rfp, rfp,  0,    0,        Clb_Flags, Next_Form, Op_FCmpFlgP1 }, // pops
-    /* Op_fld       */  {   mfp, 0,    0,    FP_Types, Clb_ST, Next_Form, Op_fldR },
-    /* Op_fldR      */  {   rfp, 0,    0,    0,        Clb_ST },
-    /* Op_fxch      */  { D|rfp,D|rfp, 0,    0,        Clb_ST, Next_Form, Op_fxch1 }, // not in intel manual?, but DMD allows it (gas won't), second arg must be ST
-    /* Op_fxch1     */  { D|rfp, 0,    0,    0,        Clb_ST, Next_Form, Op_fxch0 },
-    /* Op_fxch0     */  {   0,   0,    0,    0,        Clb_ST }, // Also clobbers ST(1)
-    /* Op_SizedStack*/  {   0,   0,    0,    0,        Clb_SP }, // type suffix special case
-    /* Op_bound     */  {   mr,  mri,  0,    Word_Types  }, // operands *not* reversed for gas
-    /* Op_bswap     */  { D|r32      },
-    /* Op_cmps      */  {   mem, mem, 0,     1, Clb_DI|Clb_SI|Clb_Flags },
-    /* Op_cmpsd     */  {   0,   0,   0,     0, Clb_DI|Clb_SI|Clb_Flags, Next_Form, Op_DstSrcImmS },
-    /* Op_cmpsX     */  {   0,   0,   0,     0, Clb_DI|Clb_SI|Clb_Flags },
-    /* Op_cmpxchg   */  { D|mr,  reg, 0,     1, Clb_SizeAX|Clb_Flags },
-    /* Op_cmpxchg8b */  { D|mem/*64*/,0,0,   0, Clb_SizeDXAX/*32*/|Clb_Flags },
-    /* Op_cpuid     */  {   0,0,0 },    // Clobbers eax, ebx, ecx, and edx. Handled specially below.
-    /* Op_enter     */  {   imm, imm }, // operands *not* reversed for gas, %% inform gcc of EBP clobber?,
-    /* Op_fdisi     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_fdisi },
-    /* Op_feni      */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_feni },
-    /* Op_fsetpm    */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_fsetpm },
-    /* Op_fXstsw    */  { D|mr,  0,   0,     }, // ax is the only allowed register
-    /* Op_imul      */  { D|reg, mr,  imm,   1, Clb_Flags, Next_Form, Op_imul2 }, // 16/32 only
-    /* Op_imul2     */  { D|reg, mri, 0,     1, Clb_Flags, Next_Form, Op_imul1 }, // 16/32 only
-    /* Op_imul1     */  {   mr,  0,   0,     1, Clb_Flags|Clb_SizeDXAX },
-    /* Op_in        */  { D|ax,N|port,0,     1  },
-    /* Op_ins       */  {   mem,N|dx, 0,     1, Clb_DI }, // can't override ES segment for this one
-    /* Op_insX      */  {   0,   0,   0,     0, Clb_DI }, // output segment overrides %% needs work
-    /* Op_iret      */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_iretw },
-    /* Op_iretd     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_iret },
-    /* Op_iretq     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_iretq },
-    /* Op_lods      */  {   mem, 0,   0,     1, Clb_SI },
-    /* Op_lodsX     */  {   0,   0,   0,     0, Clb_SI },
-    /* Op_movs      */  {   mem, mem, 0,     1, Clb_DI|Clb_SI }, // only src/DS can be overridden
-    /* Op_movsd     */  {   0,   0,   0,     0, Clb_DI|Clb_SI, Next_Form, Op_DstSrcSSE }, // %% gas doesn't accept movsd .. has to movsl
-    /* Op_movsX     */  {   0,   0,   0,     0, Clb_DI|Clb_SI },
-    /* Op_movsx     */  { D|reg, mr,  0,     1 }, // type suffix is special case
-    /* Op_movzx     */  { D|reg, mr,  0,     1 }, // type suffix is special case
-    /* Op_mul       */  { U|ax,  mr,  0,     1, Clb_SizeDXAX|Clb_Flags, Next_Form, Op_Src_DXAXF },
-    /* Op_out       */  { N|port,ax,  0,     1  },
-    /* Op_outs      */  { N|dx,  mem, 0,     1, Clb_SI },
-    /* Op_outsX     */  {   0,   0,   0,     0, Clb_SI },
-    /* Op_push      */  {   mri, 0,    0,    Word_Types, Clb_SP }, // would be Op_SrcW, but DMD defaults to 32-bit for immediate form
-    /* Op_pushq     */  {   mri, 0,    0,    0, Clb_SP },
-    /* Op_ret       */  {   imm, 0,   0,     0, 0, Next_Form, Op_0  },
-    /* Op_retf      */  {   0,   0,   0,     0, 0, Out_Mnemonic, Mn_lret  },
-    /* Op_scas      */  {   mem, 0,   0,     1, Clb_DI|Clb_Flags },
-    /* Op_scasX     */  {   0,   0,   0,     0, Clb_DI|Clb_Flags },
-    /* Op_stos      */  {   mem, 0,   0,     1, Clb_DI },
-    /* Op_stosX     */  {   0,   0,   0,     0, Clb_DI },
-    /* Op_xlat      */  {   mem, 0,   0,     0, Clb_SizeAX, Next_Form, Op_0_AX }
-
-    /// * Op_arpl      */  { D|mr,  reg }, // 16 only -> DstSrc
-    /// * Op_bsX       */  {   rw,  mrw,  0,    1, Clb_Flags },//->srcsrcf
-    /// * Op_bt        */  {   mrw, riw,  0,    1, Clb_Flags },//->srcsrcf
-    /// * Op_btX       */  { D|mrw, riw,  0,    1, Clb_Flags },//->dstsrcf .. immediate does not contribute to size
-    /// * Op_cmovCC    */  { D|rw,  mrw,  0,    1 } // ->dstsrc
+static const AsmOpInfo asmOpInfo[N_AsmOpInfo] =
+{
+  /* Op_Invalid   */  {},
+  /* Op_Adjust    */  { 0,0,0,             0, Clb_EAX /*just AX*/ },
+  /* Op_Dst       */  { D|mr,  0,    0,    1  },
+  /* Op_Upd       */  { U|mr,  0,    0,    1  },
+  /* Op_DstW      */  { D|mr,  0,    0,    Word_Types  },
+  /* Op_DstF      */  { D|mr,  0,    0,    1, Clb_Flags },
+  /* Op_UpdF      */  { U|mr,  0,    0,    1, Clb_Flags },
+  /* Op_DstQ      */  { D|mr,  0,    0,    0  },
+  /* Op_DstSrc    */  { D|mr,  mri,  0,/**/1  },
+  /* Op_DstSrcF   */  { D|mr,  mri,  0,/**/1, Clb_Flags },
+  /* Op_UpdSrcF   */  { U|mr,  mri,  0,/**/1, Clb_Flags },
+  /* Op_DstSrcFW  */  { D|mr,  mri,  0,/**/Word_Types, Clb_Flags },
+  /* Op_UpdSrcFW  */  { U|mr,  mri,  0,/**/Word_Types, Clb_Flags },
+  /* Op_DstSrcSSE */  { U|sse, ssem, 0     },  // some may not be update %%
+  /* Op_DstSrcMMX */  { U|mmx, mmxm, 0     },  // some may not be update %%
+  /* Op_DstSrcImmS*/  { U|sse, ssem, N|imm  }, // some may not be update %%
+  /* Op_DstSrcImmM*/  { U|mmx, mmxm, N|imm  }, // some may not be update %%
+  /* Op_DstSrcXmmS*/  { U|sse, ssem, N|mmx  }, // some may not be update %%
+  /* Op_UpdSrcShft*/  { U|mr,  reg,  N|shft, 1, Clb_Flags }, // 16/32 only
+  /* Op_DstSrcNT  */  { D|mr,  mr,   0,    0 }, // used for movd .. operands can be rm32,sse,mmx
+  /* Op_UpdSrcNT  */  { U|mr,  mr,   0,    0 }, // used for movd .. operands can be rm32,sse,mmx
+  /* Op_DstMemNT  */  { D|mem, 0,    0     },
+  /* Op_DstRMBNT  */  { D|mr,  0,    0,    Byte_NoType },
+  /* Op_DstRMWNT  */  { D|mr,  0,    0     },
+  /* Op_UpdUpd    */  { U|mr,U|mr,   0,/**/1  },
+  /* Op_UpdUpdF   */  { U|mr,U|mr,   0,/**/1, Clb_Flags },
+  /* Op_Src       */  {   mri, 0,    0,    1  },
+  /* Op_SrcRMWNT  */  {   mr,  0,    0,    0  },
+  /* Op_SrcW      */  {   mri, 0,    0,    Word_Types  },
+  /* Op_SrcImm    */  {   imm },
+  /* Op_Src_DXAXF */  {   mr,  0,    0,    1, Clb_SizeDXAX|Clb_Flags },
+  /* Op_SrcMemNT  */  {   mem, 0,    0     },
+  /* Op_SrcMemNTF */  {   mem, 0,    0,    0, Clb_Flags },
+  /* Op_SrcSrc    */  {   mr,  mri,  0,    1  },
+  /* Op_SrcSrcF   */  {   mr,  mri,  0,    1, Clb_Flags },
+  /* Op_SrcSrcFW  */  {   mr,  mri,  0,    Word_Types, Clb_Flags },
+  /* Op_SrcSrcSSEF*/  {   sse, ssem, 0,    0, Clb_Flags },
+  /* Op_SrcSrcMMX */  {   mmx, mmx,  0, },
+  /* Op_Shift     */  { D|mr,N|shft, 0,/**/1, Clb_Flags },
+  /* Op_Branch    */  {   mri },
+  /* Op_CBranch   */  {   imm },
+  /* Op_0         */  {   0,0,0 },
+  /* Op_0_AX      */  {   0,0,0,           0, Clb_SizeAX },
+  /* Op_0_DXAX    */  {   0,0,0,           0, Clb_SizeDXAX }, // but for cwd/cdq -- how do know the size..
+  /* Op_Loop      */  {   imm, 0,    0,    0, Clb_CX },
+  /* Op_Flags     */  {   0,0,0,           0, Clb_Flags },
+  /* Op_F0_ST     */  {   0,0,0,           0, Clb_ST },
+  /* Op_F0_P      */  {   0,0,0,           0, Clb_ST }, // push, pops, etc. not sure how to inform gcc..
+  /* Op_Fs_P      */  {   mem, 0,    0,    0, Clb_ST }, // "
+  /* Op_Fis       */  {   mem, 0,    0,    FPInt_Types }, // only 16bit and 32bit, DMD defaults to 16bit
+  /* Op_Fis_ST    */  {   mem, 0,    0,    FPInt_Types, Clb_ST }, // "
+  /* Op_Fis_P     */  {   mem, 0,    0,    FPInt_Types, Clb_ST }, // push and pop, fild so also 64 bit
+  /* Op_Fid       */  { D|mem, 0,    0,    FPInt_Types }, // only 16bit and 32bit, DMD defaults to 16bit
+  /* Op_Fid_P     */  { D|mem, 0,    0,    FPInt_Types, Clb_ST, Next_Form, Op_FidR_P }, // push and pop, fild so also 64 bit
+  /* Op_FidR_P    */  { D|mem,rfp,   0,    FPInt_Types, Clb_ST }, // push and pop, fild so also 64 bit
+  /* Op_Ffd       */  { D|mfp, 0,    0,    FP_Types, 0, Next_Form, Op_FfdR }, // only 16bit and 32bit, DMD defaults to 16bit, reg form doesn't need type
+  /* Op_FfdR      */  { D|rfp, 0,    0  },
+  /* Op_Ffd_P     */  { D|mfp, 0,    0,    FP_Types, Clb_ST, Next_Form, Op_FfdR_P, }, // pop, fld so also 80 bit, "
+  /* Op_FfdR_P    */  { D|rfp, 0,    0,    0,        Clb_ST, Next_Form, Op_FfdRR_P },
+  /* Op_FfdRR_P   */  { D|rfp, rfp,  0,    0,        Clb_ST },
+  /* Op_Fd_P      */  { D|mem, 0,    0,    0,        Clb_ST }, // "
+  /* Op_FdST      */  { D|rfp, 0,    0  },
+  /* Op_FMath     */  {   mfp, 0,    0,    FP_Types, Clb_ST, Next_Form, Op_FMath0  }, // and only single or double prec
+  /* Op_FMath0    */  { 0,     0,    0,    0,        Clb_ST, Next_Form, Op_FMath2  },
+  /* Op_FMath2    */  { D|rfp, rfp,  0,    0,        Clb_ST, Next_Form, Op_FdST0ST1 },
+  /* Op_FdSTiSTi  */  { D|rfp, rfp,  0  },
+  /* Op_FdST0ST1  */  { 0,     0,    0  },
+  /* Op_FPMath    */  { D|rfp, rfp,  0,    0,        Clb_ST, Next_Form, Op_F0_P }, // pops
+  /* Op_FCmp      */  {   mfp, 0,    0,    FP_Types, 0,      Next_Form, Op_FCmp1 }, // DMD defaults to float ptr
+  /* Op_FCmp1     */  {   rfp, 0,    0,    0,        0,      Next_Form, Op_0 },
+  /* Op_FCmpP     */  {   mfp, 0,    0,    FP_Types, 0,      Next_Form, Op_FCmpP1 }, // pops
+  /* Op_FCmpP1    */  {   rfp, 0,    0,    0,        0,      Next_Form, Op_F0_P }, // pops
+  /* Op_FCmpFlg0  */  {   0,   0,    0,    0,        Clb_Flags },
+  /* Op_FCmpFlg1  */  {   rfp, 0,    0,    0,        Clb_Flags, Next_Form, Op_FCmpFlg0 },
+  /* Op_FCmpFlg   */  {   rfp, rfp,  0,    0,        Clb_Flags, Next_Form, Op_FCmpFlg1 },
+  /* Op_FCmpFlgP0 */  {   0,   0,    0,    0,        Clb_Flags }, // pops
+  /* Op_FCmpFlgP1 */  {   rfp, 0,    0,    0,        Clb_Flags, Next_Form, Op_FCmpFlgP0 }, // pops
+  /* Op_FCmpFlgP  */  {   rfp, rfp,  0,    0,        Clb_Flags, Next_Form, Op_FCmpFlgP1 }, // pops
+  /* Op_fld       */  {   mfp, 0,    0,    FP_Types, Clb_ST, Next_Form, Op_fldR },
+  /* Op_fldR      */  {   rfp, 0,    0,    0,        Clb_ST },
+  /* Op_fxch      */  { D|rfp,D|rfp, 0,    0,        Clb_ST, Next_Form, Op_fxch1 }, // not in intel manual?, but DMD allows it (gas won't), second arg must be ST
+  /* Op_fxch1     */  { D|rfp, 0,    0,    0,        Clb_ST, Next_Form, Op_fxch0 },
+  /* Op_fxch0     */  {   0,   0,    0,    0,        Clb_ST }, // Also clobbers ST(1)
+  /* Op_SizedStack*/  {   0,   0,    0,    0,        Clb_SP }, // type suffix special case
+  /* Op_bound     */  {   mr,  mri,  0,    Word_Types  }, // operands *not* reversed for gas
+  /* Op_bswap     */  { D|r32      },
+  /* Op_cmps      */  {   mem, mem, 0,     1, Clb_DI|Clb_SI|Clb_Flags },
+  /* Op_cmpsd     */  {   0,   0,   0,     0, Clb_DI|Clb_SI|Clb_Flags, Next_Form, Op_DstSrcImmS },
+  /* Op_cmpsX     */  {   0,   0,   0,     0, Clb_DI|Clb_SI|Clb_Flags },
+  /* Op_cmpxchg   */  { D|mr,  reg, 0,     1, Clb_SizeAX|Clb_Flags },
+  /* Op_cmpxchg8b */  { D|mem/*64*/,0,0,   0, Clb_SizeDXAX/*32*/|Clb_Flags },
+  /* Op_cpuid     */  {   0,0,0 },    // Clobbers eax, ebx, ecx, and edx. Handled specially below.
+  /* Op_enter     */  {   imm, imm }, // operands *not* reversed for gas, %% inform gcc of EBP clobber?,
+  /* Op_fdisi     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_fdisi },
+  /* Op_feni      */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_feni },
+  /* Op_fsetpm    */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_fsetpm },
+  /* Op_fXstsw    */  { D|mr,  0,   0,     }, // ax is the only allowed register
+  /* Op_imul      */  { D|reg, mr,  imm,   1, Clb_Flags, Next_Form, Op_imul2 }, // 16/32 only
+  /* Op_imul2     */  { D|reg, mri, 0,     1, Clb_Flags, Next_Form, Op_imul1 }, // 16/32 only
+  /* Op_imul1     */  {   mr,  0,   0,     1, Clb_Flags|Clb_SizeDXAX },
+  /* Op_in        */  { D|ax,N|port,0,     1  },
+  /* Op_ins       */  {   mem,N|dx, 0,     1, Clb_DI }, // can't override ES segment for this one
+  /* Op_insX      */  {   0,   0,   0,     0, Clb_DI }, // output segment overrides %% needs work
+  /* Op_iret      */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_iretw },
+  /* Op_iretd     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_iret },
+  /* Op_iretq     */  {   0,0,0,           0, 0, Out_Mnemonic, Mn_iretq },
+  /* Op_lods      */  {   mem, 0,   0,     1, Clb_SI },
+  /* Op_lodsX     */  {   0,   0,   0,     0, Clb_SI },
+  /* Op_movs      */  {   mem, mem, 0,     1, Clb_DI|Clb_SI }, // only src/DS can be overridden
+  /* Op_movsd     */  {   0,   0,   0,     0, Clb_DI|Clb_SI, Next_Form, Op_DstSrcSSE }, // %% gas doesn't accept movsd .. has to movsl
+  /* Op_movsX     */  {   0,   0,   0,     0, Clb_DI|Clb_SI },
+  /* Op_movsx     */  { D|reg, mr,  0,     1 }, // type suffix is special case
+  /* Op_movzx     */  { D|reg, mr,  0,     1 }, // type suffix is special case
+  /* Op_mul       */  { U|ax,  mr,  0,     1, Clb_SizeDXAX|Clb_Flags, Next_Form, Op_Src_DXAXF },
+  /* Op_out       */  { N|port,ax,  0,     1  },
+  /* Op_outs      */  { N|dx,  mem, 0,     1, Clb_SI },
+  /* Op_outsX     */  {   0,   0,   0,     0, Clb_SI },
+  /* Op_push      */  {   mri, 0,    0,    Word_Types, Clb_SP }, // would be Op_SrcW, but DMD defaults to 32-bit for immediate form
+  /* Op_pushq     */  {   mri, 0,    0,    0, Clb_SP },
+  /* Op_ret       */  {   imm, 0,   0,     0, 0, Next_Form, Op_0  },
+  /* Op_retf      */  {   0,   0,   0,     0, 0, Out_Mnemonic, Mn_lret  },
+  /* Op_scas      */  {   mem, 0,   0,     1, Clb_DI|Clb_Flags },
+  /* Op_scasX     */  {   0,   0,   0,     0, Clb_DI|Clb_Flags },
+  /* Op_stos      */  {   mem, 0,   0,     1, Clb_DI },
+  /* Op_stosX     */  {   0,   0,   0,     0, Clb_DI },
+  /* Op_xlat      */  {   mem, 0,   0,     0, Clb_SizeAX, Next_Form, Op_0_AX }
+  
+  /// * Op_arpl      */  { D|mr,  reg }, // 16 only -> DstSrc
+  /// * Op_bsX       */  {   rw,  mrw,  0,    1, Clb_Flags },//->srcsrcf
+  /// * Op_bt        */  {   mrw, riw,  0,    1, Clb_Flags },//->srcsrcf
+  /// * Op_btX       */  { D|mrw, riw,  0,    1, Clb_Flags },//->dstsrcf .. immediate does not contribute to size
+  /// * Op_cmovCC    */  { D|rw,  mrw,  0,    1 } // ->dstsrc
 };
 
 #undef mri
@@ -630,18 +631,19 @@ static AsmOpInfo asmOpInfo[N_AsmOpInfo] = {
 
 struct AsmOpEnt
 {
-    const char * inMnemonic;
-    AsmOp asmOp;
+  const char * inMnemonic;
+  AsmOp asmOp;
 };
 
 /* Some opcodes which have data size restrictions, but we don't check
-
+   
    cmov, l<segreg> ?, lea, lsl, shld
-
-   todo: push <immediate> is always the 32-bit form, even tho push <mem> is 16-bit
+   
+todo: push <immediate> is always the 32-bit form, even tho push <mem> is 16-bit
 */
 
-static AsmOpEnt opData[] = {
+static const AsmOpEnt opData[] =
+{
     { "__emit", Op_db },  // %% Not sure...
     { "_emit",  Op_db },
     { "aaa",    Op_Adjust },
@@ -1297,7 +1299,8 @@ static AsmOpEnt opData[] = {
     { "xorps",  Op_DstSrcSSE },
 };
 
-static AsmOpEnt opData64[] = {
+static const AsmOpEnt opData64[] =
+{
     { "aaa",    Op_Invalid },
     { "aad",    Op_Invalid },
     { "aam",    Op_Invalid },
@@ -1358,39 +1361,41 @@ static AsmOpEnt opData64[] = {
 
 enum PtrType
 {
-    Default_Ptr = 0,
-    Byte_Ptr = 1,
-    Short_Ptr = 2,
-    Int_Ptr = 4,
-    Long_Ptr =  8,
-    Float_Ptr = 4,
-    Double_Ptr = 8,
-    Extended_Ptr = 10,
-    Near_Ptr = 98,
-    Far_Ptr = 99,
-    N_PtrTypes
+  Default_Ptr = 0,
+  Byte_Ptr = 1,
+  Short_Ptr = 2,
+  Int_Ptr = 4,
+  Long_Ptr =  8,
+  Float_Ptr = 4,
+  Double_Ptr = 8,
+  Extended_Ptr = 10,
+  Near_Ptr = 98,
+  Far_Ptr = 99,
+  N_PtrTypes
 };
 
 static const int N_PtrNames = 8;
-static const char * ptrTypeNameTable[N_PtrNames] = {
-    "word", "dword", "qword",
-    "float", "double", "extended",
-    "near",  "far"
+static const char * ptrTypeNameTable[N_PtrNames] =
+{
+  "word", "dword", "qword",
+  "float", "double", "extended",
+  "near",  "far"
 };
 
 static Identifier * ptrTypeIdentTable[N_PtrNames];
-static PtrType ptrTypeValueTable[N_PtrNames] = {
-    Short_Ptr, Int_Ptr, Long_Ptr,
-    Float_Ptr, Double_Ptr, Extended_Ptr,
-    Near_Ptr, Far_Ptr
+static const PtrType ptrTypeValueTable[N_PtrNames] =
+{
+  Short_Ptr, Int_Ptr, Long_Ptr,
+  Float_Ptr, Double_Ptr, Extended_Ptr,
+  Near_Ptr, Far_Ptr
 };
 
 enum OperandClass
 {
-    Opr_Invalid,
-    Opr_Immediate,
-    Opr_Reg,
-    Opr_Mem
+  Opr_Invalid,
+  Opr_Immediate,
+  Opr_Reg,
+  Opr_Mem
 };
 
 /* kill inlining if we reference a local? */
@@ -1410,8 +1415,7 @@ static Identifier * ident_seg;
 
 struct AsmProcessor
 {
-    struct Operand
-    {
+    struct Operand {
         int inBracket;
         int hasBracket;
         int hasNumber;
