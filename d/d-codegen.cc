@@ -3215,6 +3215,8 @@ tree
 IRState::exceptionObject()
 {
     tree obj_type = getObjectType()->toCtype();
+    if (TREE_CODE(TREE_TYPE(obj_type)) == REFERENCE_TYPE)
+        obj_type = TREE_TYPE(obj_type);
     // Like gjc, the actual D exception object is one
     // pointer behind the exception header
     tree t = buildCall(d_built_in_decls(BUILT_IN_EH_POINTER),

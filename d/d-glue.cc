@@ -2035,8 +2035,9 @@ FuncExp::toElem(IRState * irs)
 elem *
 HaltExp::toElem(IRState* irs)
 {
-    tree t_unreachable = d_built_in_decls(BUILT_IN_UNREACHABLE);
-    return irs->buildCall(t_unreachable, 0);
+    // Needs improvement.  Avoid library calls if possible..
+    tree t_abort = d_built_in_decls(BUILT_IN_ABORT);
+    return irs->buildCall(t_abort, 0);
 }
 
 #if V2
