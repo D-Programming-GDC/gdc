@@ -637,10 +637,6 @@ d_gcc_field_align(VarDeclaration * var, int known_align)
        Some targets (i.e. i386, VMS) limit struct field alignment
        to a lower boundary than alignment of variables unless
        it was overridden by attribute aligned.  */
-    if (var->salign != 0)
-        return var->salign;
-
-    // Work out the correct alignment for the field decl.
     DECL_ALIGN(field) = known_align * BITS_PER_UNIT;
 
 #ifdef BIGGEST_FIELD_ALIGNMENT

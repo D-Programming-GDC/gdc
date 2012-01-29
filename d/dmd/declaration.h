@@ -251,9 +251,6 @@ struct VarDeclaration : Declaration
 {
     Initializer *init;
     unsigned offset;
-#if IN_GCC
-    unsigned salign;            // user defined alignment
-#endif
     int noscope;                 // no auto semantics
 #if DMDV2
     FuncDeclarations nestedrefs; // referenced by these lexically nested functions
