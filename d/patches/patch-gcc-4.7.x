@@ -1,5 +1,5 @@
---- gcc~/config/i386/i386.c	2011-12-23 18:38:03.000000000 +0000
-+++ gcc/config/i386/i386.c	2012-01-21 18:30:14.895643377 +0000
+--- gcc~/config/i386/i386.c	2012-01-30 03:28:03.195381025 +0000
++++ gcc/config/i386/i386.c	2012-01-30 03:28:21.391380698 +0000
 @@ -5337,6 +5337,17 @@ ix86_return_pops_args (tree fundecl, tre
  
    return 0;
@@ -90,8 +90,8 @@
    /* End element.  */
    { NULL,        0, 0, false, false, false, NULL, false }
  };
---- gcc~/config/i386/i386.h	2011-11-24 22:11:12.000000000 +0000
-+++ gcc/config/i386/i386.h	2012-01-21 18:31:07.615641452 +0000
+--- gcc~/config/i386/i386.h	2012-01-30 03:28:03.195381025 +0000
++++ gcc/config/i386/i386.h	2012-01-30 03:28:21.395380698 +0000
 @@ -2214,6 +2214,9 @@ struct GTY(()) machine_function {
    /* Nonzero if the function requires a CLD in the prologue.  */
    BOOL_BITFIELD needs_cld : 1;
@@ -110,9 +110,9 @@
  #define ix86_tls_descriptor_calls_expanded_in_cfun \
    (cfun->machine->tls_descriptor_call_expanded_p)
  /* Since tls_descriptor_call_expanded is not cleared, even if all TLS
---- gcc~/config/rs6000/rs6000.c	2012-01-10 01:01:01.000000000 +0000
-+++ gcc/config/rs6000/rs6000.c	2012-01-21 18:32:48.387637776 +0000
-@@ -21036,7 +21036,8 @@ rs6000_output_function_epilogue (FILE *f
+--- gcc~/config/rs6000/rs6000.c	2012-01-30 03:28:10.991380885 +0000
++++ gcc/config/rs6000/rs6000.c	2012-01-30 03:28:21.407380698 +0000
+@@ -21064,7 +21064,8 @@ rs6000_output_function_epilogue (FILE *f
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
  	  || ! strcmp (language_string, "GNU GIMPLE")
@@ -122,9 +122,9 @@
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
  	       || ! strcmp (language_string, "GNU Fortran"))
---- gcc~/dwarf2out.c	2012-01-04 19:58:03.000000000 +0000
-+++ gcc/dwarf2out.c	2012-01-21 18:34:33.247633949 +0000
-@@ -18423,6 +18423,8 @@ gen_compile_unit_die (const char *filena
+--- gcc~/dwarf2out.c	2012-01-30 03:27:17.023381855 +0000
++++ gcc/dwarf2out.c	2012-01-30 03:28:21.419380696 +0000
+@@ -18455,6 +18455,8 @@ gen_compile_unit_die (const char *filena
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
      language = DW_LANG_C_plus_plus;

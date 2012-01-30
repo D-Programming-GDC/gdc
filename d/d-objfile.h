@@ -104,7 +104,7 @@ public:
 
 protected:
   static void initTypeDecl(tree t, tree decl);
-  static void declareType(tree t, tree decl);
+  static void declareType(tree decl);
 public:
 
   // Hack for systems without linkonce support

@@ -521,35 +521,6 @@ real_t::isConversionExact(Mode to_mode) const
 }
 
 void
-real_t::toBytes(unsigned char * buf, unsigned buf_size)
-{
-    // See assemble_real in varasm.c
-    // This code assumes we are storing into 8-bit host bytes.
-    unsigned ld_size = int_size_in_bytes(long_double_type_node);
-    unsigned count = ld_size;
-    long data[4];
-    long *src = data;
-    unsigned char *dest = buf;
-
-    // gcc_assert(ld_size == REALSIZE);
-    // gcc_assert(buf_size >= REALSIZE);
-    gcc_assert( ld_size <= 16 );
-
-    real_to_target (data, & rv(), TYPE_MODE(long_double_type_node));
-    while (count)
-    {
-        long l = *src++;
-        for (int i = 4; i && count; i--)
-        {
-            *dest++ = l & 0xff;
-            l >>= 8;
-            count--;
-        }
-    }
-}
-
-
-void
 real_t::dump()
 {
     char buf[128];

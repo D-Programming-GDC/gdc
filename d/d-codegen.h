@@ -328,9 +328,6 @@ struct IRState : IRBase
   static bool useInlineAsm;
   static bool useBuiltins;
 
-  // %%
-  static bool originalOmitFramePointer;
-
 #if V2
   // Variables that are in scope that will need destruction later
   static VarDeclarations * varsInScope;
@@ -427,7 +424,6 @@ public:
   static bool functionNeedsChain(FuncDeclaration *f);
 
   // Check for nested functions/class/structs
-  static bool isClassNestedIn(ClassDeclaration *inner, ClassDeclaration *outer);
   static bool isFuncNestedIn(FuncDeclaration * inner, FuncDeclaration * outer);
   static FuncDeclaration * isClassNestedInFunction(ClassDeclaration * cd);
 

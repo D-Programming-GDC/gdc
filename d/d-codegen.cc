@@ -38,7 +38,6 @@ TemplateEmission IRState::emitTemplates;
 bool IRState::splitDynArrayVarArgs;
 bool IRState::useInlineAsm;
 bool IRState::useBuiltins;
-bool IRState::originalOmitFramePointer;
 
 Module * IRState::builtinsModule = 0;
 Module * IRState::intrinsicModule = 0;
@@ -3424,13 +3423,6 @@ IRState::getFrameForSymbol(Dsymbol * nested_sym)
     return d_null_pointer;
 }
 
-bool
-IRState::isClassNestedIn(ClassDeclaration *inner, ClassDeclaration *outer)
-{
-    // not implemented yet
-    return false;
-}
-
 /* For the purposes this is used, inner is assumed to be a nested
    function or a method of a class or struct that is (eventually) nested in a
    function.
@@ -3508,10 +3500,6 @@ findThis(IRState * irs, ClassDeclaration * target_cd)
                 gcc_assert(fd->vthis); // && fd->vthis->csym->Stree
                 return irs->convertTo(irs->var(fd->vthis),
                         fd_cd->type, target_cd->type);
-            }
-            else if (irs->isClassNestedIn(fd_cd, target_cd))
-            {
-                gcc_unreachable(); // not implemented
             }
             else
             {

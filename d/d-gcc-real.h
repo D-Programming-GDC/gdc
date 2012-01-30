@@ -94,7 +94,6 @@ struct real_t
   bool isNan();
   bool isSignallingNan();
   bool isConversionExact(Mode to_mode) const;
-  void toBytes(unsigned char * buf, unsigned buf_size);
   void dump();
 private:
   // prevent this from being used

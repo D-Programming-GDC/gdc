@@ -899,7 +899,7 @@ struct ExtAsmStatement : Statement
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     int blockExit(bool mustNotThrow);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+    void toCBuffer(OutBuffer *buf);
 
     void toIR(IRState *irs);
 };

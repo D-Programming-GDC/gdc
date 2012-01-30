@@ -558,14 +558,15 @@ ObjectFile::declareType(tree t, Type * d_type)
     l.linnum = 1;
     setDeclLoc(decl, l);
 
-    declareType(t, decl);
+    initTypeDecl(t, decl);
+    declareType(decl);
 }
 
 void
 ObjectFile::declareType(tree t, Dsymbol * d_sym)
 {
     initTypeDecl(t, d_sym);
-    declareType(t, TYPE_NAME(t));
+    declareType(TYPE_NAME(t));
 }
 
 
@@ -589,8 +590,6 @@ ObjectFile::initTypeDecl(tree t, tree decl)
             TYPE_STUB_DECL(t) = decl;
             // g++ does this and the debugging code assumes it:
             DECL_ARTIFICIAL(decl) = 1;
-            // code now assumes...
-            DECL_SOURCE_LOCATION(decl) = DECL_SOURCE_LOCATION(decl);
             break;
 
         default:
@@ -600,10 +599,9 @@ ObjectFile::initTypeDecl(tree t, tree decl)
 }
 
 void
-ObjectFile::declareType(tree t, tree decl)
+ObjectFile::declareType(tree decl)
 {
-    bool top_level = /*DECL_CONTEXT(decl) == fileContext || */
-        ! DECL_CONTEXT(decl);
+    bool top_level = ! DECL_CONTEXT(decl);
     // okay to do this?
     rodc(decl, top_level);
 }

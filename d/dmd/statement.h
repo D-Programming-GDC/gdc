@@ -858,7 +858,7 @@ struct ExtAsmStatement : Statement
                     Expressions *argConstraints, int nOutputArgs, Expressions *clobbers);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+    void toCBuffer(OutBuffer *buf);
 
     void toIR(IRState *irs);
 };

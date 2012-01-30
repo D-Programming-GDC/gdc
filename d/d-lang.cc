@@ -479,8 +479,9 @@ parse_int (const char * arg, int * value_ret)
 #if D_GCC_VER >= 46
 static bool
 d_handle_option (size_t scode, const char *arg, int value,
-                 int kind, location_t loc,
-                 const struct cl_option_handlers *handlers)
+                 int kind ATTRIBUTE_UNUSED,
+                 location_t loc ATTRIBUTE_UNUSED,
+                 const struct cl_option_handlers *handlers ATTRIBUTE_UNUSED)
 #else
 static int
 d_handle_option (size_t scode, const char *arg, int value)
@@ -954,7 +955,6 @@ d_parse_file (int /*set_yydebug*/)
     //global.params.useInline = flag_inline_functions;
     global.params.obj = ! flag_syntax_only;
     global.params.pic = flag_pic != 0; // Has no effect yet.
-    gen.originalOmitFramePointer = flag_omit_frame_pointer;
 
     // better to use input_location.xxx ?
     (*debug_hooks->start_source_file) (input_line, main_input_filename);
@@ -1875,39 +1875,6 @@ d_finish_incomplete_decl (tree decl)
         }
     }
 }
-
-#if V2
-
-/* DMD 2 makes a parameter delclaration's type 'const(T)' if the
-   parameter is a simple STCin or STCconst.  The TypeFunction's
-   Argument's type stays unqualified, however.
-
-   This mismatch causes a problem with optimization and inlining.  For
-   RECORD_TYPE arguments, failure will occur in (setup_one_parameter
-   -> fold_convert).  d_types_compatible_p hacks lead to failures in
-   the sra pass.
-
-   Fortunately, the middle end provides a simple workaround by using
-   this hook.
-*/
-
-tree
-d_convert_parm_for_inlining  (tree parm, tree value, tree fndecl, int argnum)
-{
-    if (!value)
-        return value;
-
-    if (TYPE_ARG_TYPES(TREE_TYPE(fndecl))
-            && (TYPE_MAIN_VARIANT(TREE_TYPE(parm))
-                == TYPE_MAIN_VARIANT(TREE_TYPE(value))))
-        return value;
-
-    if (TREE_TYPE(parm) != TREE_TYPE(value))
-        return build1(NOP_EXPR, TREE_TYPE(parm), value);
-
-    return value;
-}
-#endif
 
 
 struct lang_type *

@@ -44,8 +44,6 @@ IRBase::startFunction(FuncDeclaration * decl)
     new_irs->parent = g.irs;
     new_irs->func = decl;
 
-    tree decl_tree = decl->toSymbol()->Stree;
-
     g.irs = (IRState*) new_irs;
     ModuleInfo & mi = * g.mi();
 #if V2
