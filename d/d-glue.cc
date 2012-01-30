@@ -1202,7 +1202,8 @@ AssignExp::toElem(IRState* irs)
                 tree args[3] = {
                     irs->integerConstant(elem_type->size(), Type::tsize_t),
                     irs->toDArray(e2),
-                    irs->toDArray(e1) };
+                    irs->toDArray(e1)
+                };
                 return irs->libCall(LIBCALL_ARRAYCOPY, 3, args, type->toCtype());
             }
             else
@@ -1333,7 +1334,7 @@ IndexExp::toElem(IRState* irs)
         if (irs->arrayBoundsCheck())
         {
             t = save_expr(t);
-            t = build3(COND_EXPR, TREE_TYPE(t), t, t,
+            t = build3(COND_EXPR, TREE_TYPE(t), d_truthvalue_conversion(t), t,
                        irs->assertCall(loc, LIBCALL_ARRAY_BOUNDS));
         }
         return irs->indirect(t, type->toCtype());

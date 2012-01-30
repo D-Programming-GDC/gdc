@@ -2650,7 +2650,7 @@ IRState::libCall(LibCall lib_call, unsigned n_args, tree *args, tree force_resul
 
     // for force_result_type, assumes caller knows what it is doing %%
     if (force_result_type != NULL_TREE)
-        return vconvert(result, force_result_type);
+        return d_convert_basic(force_result_type, result);
 
     return result;
 }
