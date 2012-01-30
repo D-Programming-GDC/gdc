@@ -2954,10 +2954,9 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                 op1 = ce.nextArg();
                 op2 = ce.nextArg();
                 type = TREE_TYPE(op1);
-                // kinda wrong... could be casting.. so need to check type too?
-                while (TREE_CODE(op1) == NOP_EXPR)
-                    op1 = TREE_OPERAND(op1, 0);
 
+                // could be casting... so need to check type too?
+                STRIP_TYPE_NOPS(op1);
                 if (TREE_CODE(op1) == ADDR_EXPR)
                 {
                     op1 = TREE_OPERAND(op1, 0);
@@ -2976,6 +2975,7 @@ IRState::maybeExpandSpecialCall(tree call_exp)
                     op1 = fix_d_va_list_type(op1);
                 }
 
+                STRIP_NOPS(op2);
                 if (TREE_CODE(op2) == ADDR_EXPR)
                     op2 = TREE_OPERAND(op2, 0);
                 // assuming nobody tries to change the return type

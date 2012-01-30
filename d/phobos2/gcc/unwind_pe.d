@@ -62,7 +62,7 @@ version (NO_SIZE_OF_ENCODED_VALUE) {
       if (encoding == DW_EH_PE_omit)
         return 0;
 
-      switch (encoding & 0x07)
+      final switch (encoding & 0x07)
         {
         case DW_EH_PE_absptr:
           return (void *).sizeof;
@@ -73,7 +73,7 @@ version (NO_SIZE_OF_ENCODED_VALUE) {
         case DW_EH_PE_udata8:
           return 8;
         }
-      abort ();
+      assert(0);
     }
 }
 
@@ -90,7 +90,7 @@ version (NO_BASE_OF_ENCODED_VALUE) {
       if (encoding == DW_EH_PE_omit)
         return cast(_Unwind_Ptr) 0;
 
-      switch (encoding & 0x70)
+      final switch (encoding & 0x70)
         {
         case DW_EH_PE_absptr:
         case DW_EH_PE_pcrel:
@@ -104,7 +104,7 @@ version (NO_BASE_OF_ENCODED_VALUE) {
         case DW_EH_PE_funcrel:
           return _Unwind_GetRegionStart (context);
         }
-      abort ();
+      assert (0);
     }
 }
 

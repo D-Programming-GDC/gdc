@@ -3953,6 +3953,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                     {
                         // Structs are pass-by-reference in V4 ABI
                         s = tis.xtoString(va_arg!(void*)(argptr));
+                        goto Lputstr;
                     }
                     else
                     {
@@ -3963,8 +3964,8 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 {
                     s = tis.xtoString(argptr);
                     argptr += (tis.tsize() + 3) & ~3;
+                    goto Lputstr;
                 }
-                goto Lputstr;
             }
 
             default:

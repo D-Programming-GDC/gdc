@@ -359,7 +359,7 @@ Symbol *VarDeclaration::toSymbol()
                 TREE_CONSTANT(var_decl) = 1;
         }
 
-#ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
+#if TARGET_DLLIMPORT_DECL_ATTRIBUTES
         // Have to test for import first
         if (isImportedSymbol())
         {
@@ -639,7 +639,7 @@ Symbol *FuncDeclaration::toSymbol()
             TREE_CONSTANT(fndecl) = ftype->isConst();
 #endif
 
-#ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
+#if TARGET_DLLIMPORT_DECL_ATTRIBUTES
             // Have to test for import first
             if (isImportedSymbol())
             {
