@@ -147,6 +147,16 @@ if test -z "$d_gc_stack"; then
        d_gc_stack=GC_Use_Stack_GLibC],
       [AC_MSG_RESULT(no)])
 fi
+if test -z "$d_gc_stack"; then
+    AC_MSG_CHECKING([for __get_stack_base])
+    AC_TRY_LINK([],[
+	int stack_size;
+	extern void*  __get_stack_base(int  *p_stack_size);
+	return __get_stack_base(&stack_size) == 0;],
+      [AC_MSG_RESULT(yes)
+       d_gc_stack=GC_Use_Stack_Bionic],
+      [AC_MSG_RESULT(no)])
+fi
 dnl if test -z "$d_gc_stack"; then
 dnl    d_gc_stack=GC_Use_Stack_Guess
 dnl    D_GC_MODULES="$D_GC_MODULES gc/gc_guess_stack.o"

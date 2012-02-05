@@ -5912,6 +5912,34 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 fi
 if test -z "$d_gc_stack"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __get_stack_base" >&5
+$as_echo_n "checking for __get_stack_base... " >&6; }
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+	int stack_size;
+	extern void*  __get_stack_base(int  *p_stack_size);
+	return __get_stack_base(&stack_size) == 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+       d_gc_stack=GC_Use_Stack_Bionic
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+if test -z "$d_gc_stack"; then
     as_fn_error $? "No usable stack origin information" "$LINENO" 5
 fi
 
