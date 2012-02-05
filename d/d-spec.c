@@ -79,7 +79,7 @@
 #endif
 
 /* mingw and cygwin don't have pthread. %% TODO: check darwin.  */
-#if TARGET_WINDOS || TARGET_OSX
+#if TARGET_WINDOS || TARGET_OSX || TARGET_ANDROID
 #define USE_PTHREADS    0
 #else
 #define USE_PTHREADS    1
@@ -146,7 +146,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
     int *args;
 
     /* Whether we need the thread library.  */
-    int need_thread;
+    int need_thread = 0;
 
     /* By default, we throw on the math library if we have one.  */
     int need_math = (MATH_LIBRARY[0] != '\0');
@@ -523,7 +523,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 
     if (saw_librt)
         new_decoded_options[j++] = *saw_librt;
-#if TARGET_LINUX
+#if TARGET_LINUX && !TARGET_ANDROID
     /* Only link if linking statically and target platform supports. */
     else if (library > 0 && (static_phobos || static_link))
     {
@@ -943,7 +943,7 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
 
     if (saw_librt)
         arglist[j++] = saw_librt;
-#if TARGET_LINUX
+#if TARGET_LINUX && !TARGET_ANDROID
     /* Only link if linking statically and target platform supports. */
     else if (library > 0 && (static_phobos || static_link))
     {
