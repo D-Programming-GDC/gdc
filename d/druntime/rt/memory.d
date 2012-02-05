@@ -31,11 +31,18 @@ private
     }
     version( linux )
     {
-        version = SimpleLibcStackEnd;
-
-        version( SimpleLibcStackEnd )
+        version(Android)
         {
-            extern (C) extern __gshared void* __libc_stack_end;
+            extern(C) void* __get_stack_base(int* p_stack_size);
+        }
+        else
+        {
+            version = SimpleLibcStackEnd;
+    
+            version( SimpleLibcStackEnd )
+            {
+                extern (C) extern __gshared void* __libc_stack_end;
+            }
         }
     }
     version( FreeBSD )
@@ -109,7 +116,12 @@ extern (C) void* rt_stackBottom()
     }
     else version( linux )
     {
-        version( SimpleLibcStackEnd )
+        version(Android)
+        {
+            int stackSize;
+            return __get_stack_base(&stackSize);
+        }
+        else version( SimpleLibcStackEnd )
         {
             return __libc_stack_end;
         }
