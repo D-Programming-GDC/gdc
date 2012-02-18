@@ -108,7 +108,5 @@ Solaris) echo "#define TARGET_SOLARIS 1" ;;
 Win32)   echo "#define TARGET_WINDOS  1" ;;
 Win64)   echo "#define TARGET_WINDOS  1" ;;
 Android) echo "#define TARGET_ANDROID 1";
-         echo "#define TARGET_LINUX 1";
-         ;;
-*)       echo "#define TARGET_UNIX    1" ;;
+         echo "#define TARGET_LINUX 1";  ;;
 esac

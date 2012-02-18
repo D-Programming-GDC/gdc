@@ -4870,6 +4870,7 @@ gcc_d_backend_init()
 
     REALSIZE = int_size_in_bytes(long_double_type_node);
     REALPAD = 0;
+    REALALIGNSIZE = TYPE_ALIGN_UNIT(long_double_type_node);
 
     if (POINTER_SIZE == 32)
         Tptrdiff_t = Tint32;

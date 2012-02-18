@@ -601,6 +601,9 @@ lang_specific_driver (int *in_argc, const char *const **in_argv,
        LANGSPEC, MATHLIB, WITHTHREAD, or WITHLIBC.  */
     int *args;
 
+    /* Whether we need the thread library.  */
+    int need_thread = 0;
+
     /* By default, we throw on the math library if we have one.  */
     int need_math = (MATH_LIBRARY[0] != '\0');
 
