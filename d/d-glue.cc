@@ -3539,7 +3539,7 @@ TypeEnum::toCtype()
     if (! ctype)
     {   /* Enums in D2 can have a base type that is not necessarily integral.
            So don't bother trying to make an ENUMERAL_TYPE using them.  */
-        if (! sym->memtype->isintegral())
+        if (! sym->memtype->isintegral() || sym->memtype->ty == Tbool)
         {
             ctype = sym->memtype->toCtype();
         }
