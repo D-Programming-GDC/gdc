@@ -346,9 +346,6 @@ void StructDeclaration::semantic(Scope *sc)
     }
 
     unsigned dprogress_save = Module::dprogress;
-#ifdef IN_GCC
-    methods.setDim(0);
-#endif
 
     parent = sc->parent;
     type = type->semantic(loc, sc);

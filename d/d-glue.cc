@@ -2955,6 +2955,17 @@ FuncDeclaration::toObjFile(int /*multiobj*/)
     g.ofile->setCfunEndLoc(endloc);
 
     AggregateDeclaration * ad = isThis();
+    // Add method to record for debug information.
+    if (ad != NULL)
+    {
+        tree rec = ad->type->toCtype();
+
+        if (ad->isClassDeclaration())
+            rec = TREE_TYPE(rec);
+
+        g.ofile->addAggMethod(rec, this);
+    }
+
     tree parm_decl = NULL_TREE;
     tree param_list = NULL_TREE;
 
@@ -3662,7 +3673,6 @@ void
 StructDeclaration::toDebug()
 {
     tree ctype = type->toCtype();
-    g.ofile->addAggMethods(ctype, this);
     g.ofile->declareType(ctype, this);
     rest_of_type_compilation(ctype, /*toplevel*/1);
 }
@@ -4062,11 +4072,9 @@ TypeClass::toCtype()
 void
 ClassDeclaration::toDebug()
 {
-    tree rec_type = TREE_TYPE(type->toCtype());
     /* Used to create BINFO even if debugging was off.  This was needed to keep
        references to inherited types. */
-
-    g.ofile->addAggMethods(rec_type, this);
+    tree rec_type = TREE_TYPE(type->toCtype());
 
     if (! isInterfaceDeclaration())
         TYPE_BINFO(rec_type) = binfo_for(NULL_TREE, this);

@@ -916,9 +916,6 @@ void FuncDeclaration::semantic3(Scope *sc)
             }
             else
                 assert(!isNested() || sc->intypeof);    // can't be both member and nested
-#ifdef IN_GCC
-            ad->methods.push(this);
-#endif
         }
         vthis = declareThis(sc2, ad);
 

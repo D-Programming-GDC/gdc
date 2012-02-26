@@ -370,9 +370,6 @@ void StructDeclaration::semantic(Scope *sc)
         scx = scope;            // save so we don't make redundant copies
         scope = NULL;
     }
-#ifdef IN_GCC
-    methods.setDim(0);
-#endif
 
     unsigned dprogress_save = Module::dprogress;
 

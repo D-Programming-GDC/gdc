@@ -81,7 +81,6 @@ struct AggregateDeclaration : ScopeDsymbol
 
 #ifdef IN_GCC
     Expressions * attributes;   // GCC decl/type attributes
-    FuncDeclarations methods;   // flat list of all methods for debug information
 #endif
 
     AggregateDeclaration(Loc loc, Identifier *id);

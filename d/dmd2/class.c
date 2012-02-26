@@ -299,7 +299,6 @@ void ClassDeclaration::semantic(Scope *sc)
         attributes->append(sc->attributes);
     else
         attributes = sc->attributes;
-    methods.setDim(0);
 #endif
 
     if (sc->stc & STCdeprecated)
