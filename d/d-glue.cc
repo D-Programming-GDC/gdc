@@ -3583,7 +3583,9 @@ TypeEnum::toCtype()
                 for (size_t i = 0; i < sym->members->dim; i++)
                 {
                     EnumMember * member = (sym->members->tdata()[i])->isEnumMember();
-                    gcc_assert(member);
+                    // Templated functions can seep through to the backend - just ignore for now.
+                    if (member == NULL)
+                        continue;
 
                     char * ident = NULL;
                     if (sym->ident)
