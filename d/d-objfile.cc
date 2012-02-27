@@ -1010,6 +1010,10 @@ outdata(Symbol * sym)
         TREE_TYPE(t) = TREE_TYPE(DECL_INITIAL(t));
     }
 
+    // see dwarf2out.c:dwarf2out_decl gcc expects local statics
+    // to have context pointing to nested function, not record.
+    DECL_CONTEXT(t) = decl_function_context(t);
+
     if (! g.ofile->shouldEmit(sym))
         return;
 
