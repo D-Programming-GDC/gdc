@@ -754,7 +754,7 @@ $(IMPORT)/%.di: %.d $(D_PREREQ_SRCS) $(IMPORT)
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 .S.o:
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -mregnames -c $<
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 %.t.o : %.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -fno-release -funittest -fversion=Unittest -c $<
