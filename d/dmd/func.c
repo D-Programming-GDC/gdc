@@ -787,9 +787,6 @@ void FuncDeclaration::semantic3(Scope *sc)
                 v->parent = this;
                 vthis = v;
             }
-#ifdef IN_GCC
-            ad->methods.push(this);
-#endif
         }
         else if (isNested())
         {

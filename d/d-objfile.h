@@ -95,7 +95,7 @@ public:
   static void outputStaticSymbol(Symbol * s);
   static void outputFunction(FuncDeclaration * f);
 
-  static void addAggMethods(tree rec_type, AggregateDeclaration * agg);
+  static void addAggMethod(tree rec_type, FuncDeclaration * fd);
 
   static void initTypeDecl(tree t, Dsymbol * d_sym);
 

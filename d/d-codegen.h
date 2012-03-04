@@ -548,7 +548,6 @@ class FieldVisitor
 public:
   AggregateDeclaration * aggDecl;
   FieldVisitor(AggregateDeclaration * decl) : aggDecl(decl) { }
-  //virtual doField(VarDeclaration * field) = 0;
   virtual void doFields(VarDeclarations * fields, AggregateDeclaration * agg) = 0;
   virtual void doInterfaces(BaseClasses * bases, AggregateDeclaration * agg) = 0;
 

@@ -3832,6 +3832,10 @@ IRState::getFrameInfo(FuncDeclaration *fd)
                 break;
             }
 
+            // Stop looking if no frame pointer for this function.
+            if (ff->vthis == NULL)
+                break;
+
             ff = ff->toParent2()->isFuncDeclaration();
         }
     }

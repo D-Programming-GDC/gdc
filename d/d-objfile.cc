@@ -519,17 +519,13 @@ ObjectFile::shouldEmit(Symbol * sym)
 }
 
 void
-ObjectFile::addAggMethods(tree rec_type, AggregateDeclaration * agg)
+ObjectFile::addAggMethod(tree rec_type, FuncDeclaration * fd)
 {
     if (write_symbols != NO_DEBUG)
     {
-        ListMaker methods;
-        for (size_t i = 0; i < agg->methods.dim; i++)
-        {
-            FuncDeclaration * fd = agg->methods[i];
-            methods.chain(fd->toSymbol()->Stree);
-        }
-        TYPE_METHODS(rec_type) = methods.head;
+        tree methods = TYPE_METHODS(rec_type);
+        tree t = fd->toSymbol()->Stree;
+        TYPE_METHODS(rec_type) = chainon(methods, t);
     }
 }
 
@@ -1013,6 +1009,10 @@ outdata(Symbol * sym)
         gcc_assert(DECL_INITIAL(t));
         TREE_TYPE(t) = TREE_TYPE(DECL_INITIAL(t));
     }
+
+    // see dwarf2out.c:dwarf2out_decl gcc expects local statics
+    // to have context pointing to nested function, not record.
+    DECL_CONTEXT(t) = decl_function_context(t);
 
     if (! g.ofile->shouldEmit(sym))
         return;
