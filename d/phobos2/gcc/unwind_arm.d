@@ -14,7 +14,7 @@ alias ulong _uw64;
 alias ushort _uw16;
 alias ubyte _uw8;
 
-typedef uint _Unwind_Reason_Code;
+alias uint _Unwind_Reason_Code;
 enum : _Unwind_Reason_Code
 {
     _URC_OK = 0,       /* operation completed successfully */
@@ -26,7 +26,7 @@ enum : _Unwind_Reason_Code
     _URC_FAILURE = 9   /* unspecified failure of some kind */
 }
 
-typedef int _Unwind_State;
+alias int _Unwind_State;
 enum : _Unwind_State
 {
     _US_VIRTUAL_UNWIND_FRAME = 0,
@@ -96,7 +96,7 @@ struct _Unwind_Control_Block
 };
 
   /* Virtual Register Set*/
-typedef int _Unwind_VRS_RegClass;
+alias int _Unwind_VRS_RegClass;
 enum : _Unwind_VRS_RegClass
 {
     _UVRSC_CORE = 0,      /* integer register */
@@ -106,7 +106,7 @@ enum : _Unwind_VRS_RegClass
     _UVRSC_WMMXC = 4      /* Intel WMMX control register */
 }
 
-typedef int _Unwind_VRS_DataRepresentation;
+alias int _Unwind_VRS_DataRepresentation;
 enum : _Unwind_VRS_DataRepresentation
 {
     _UVRSD_UINT32 = 0,
@@ -117,7 +117,7 @@ enum : _Unwind_VRS_DataRepresentation
     _UVRSD_DOUBLE = 5
 }
 
-typedef int _Unwind_VRS_Result;
+alias int _Unwind_VRS_Result;
 enum : _Unwind_VRS_Result
 {
     _UVRSR_OK = 0,
@@ -155,7 +155,7 @@ _Unwind_VRS_Result _Unwind_VRS_Pop(_Unwind_Context *, _Unwind_VRS_RegClass,
 
   /* Support functions for the PR.  */
 alias _Unwind_Control_Block _Unwind_Exception ;
-typedef char _Unwind_Exception_Class[8] = '\0';
+alias char[8] _Unwind_Exception_Class; // = '\0'
 
 void * _Unwind_GetLanguageSpecificData (_Unwind_Context *);
 _Unwind_Ptr _Unwind_GetRegionStart (_Unwind_Context *);
@@ -251,3 +251,11 @@ void _Unwind_SetIP(_Unwind_Context *context, _Unwind_Word val)
 {
     return _Unwind_SetGR (context, 15, val | (_Unwind_GetGR (context, 15) & 1));
 }
+
+/* @@@ Use unwind data to perform a stack backtrace.  The trace callback
+   is called for every stack frame in the call chain, but no cleanup
+   actions are performed.  */
+alias extern(C) _Unwind_Reason_Code function
+     (_Unwind_Context *, void *) _Unwind_Trace_Fn;
+
+_Unwind_Reason_Code _Unwind_Backtrace (_Unwind_Trace_Fn, void *);

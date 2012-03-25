@@ -81,8 +81,7 @@ alias uint _Unwind_Reason_Code;
    implementation-specific, but it will be prefixed by a header
    understood by the unwind interface.  */
 
-extern(C) typedef void (*_Unwind_Exception_Cleanup_Fn) (_Unwind_Reason_Code,
-                                              _Unwind_Exception *);
+alias extern(C) void function(_Unwind_Reason_Code, _Unwind_Exception *) _Unwind_Exception_Cleanup_Fn;
 
 align struct _Unwind_Exception // D Note: this may not be "maxium alignment required by any type"?
 {
@@ -99,7 +98,7 @@ align struct _Unwind_Exception // D Note: this may not be "maxium alignment requ
 
 /* The ACTIONS argument to the personality routine is a bitwise OR of one
    or more of the following constants.  */
-typedef int _Unwind_Action;
+alias int _Unwind_Action;
 
 enum
 {
@@ -121,9 +120,9 @@ _Unwind_Reason_Code _Unwind_RaiseException (_Unwind_Exception *);
 
 /* Raise an exception for forced unwinding.  */
 
-extern(C) typedef _Unwind_Reason_Code (*_Unwind_Stop_Fn)
+alias extern(C) _Unwind_Reason_Code function
      (int, _Unwind_Action, _Unwind_Exception_Class,
-      _Unwind_Exception *, _Unwind_Context *, void *);
+      _Unwind_Exception *, _Unwind_Context *, void *) _Unwind_Stop_Fn;
 
 _Unwind_Reason_Code _Unwind_ForcedUnwind (_Unwind_Exception *,
                                                  _Unwind_Stop_Fn,
@@ -143,8 +142,8 @@ _Unwind_Reason_Code _Unwind_Resume_or_Rethrow (_Unwind_Exception *);
 /* @@@ Use unwind data to perform a stack backtrace.  The trace callback
    is called for every stack frame in the call chain, but no cleanup
    actions are performed.  */
-extern(C) typedef _Unwind_Reason_Code (*_Unwind_Trace_Fn)
-     (_Unwind_Context *, void *);
+alias extern(C) _Unwind_Reason_Code function
+     (_Unwind_Context *, void *) _Unwind_Trace_Fn;
 
 _Unwind_Reason_Code _Unwind_Backtrace (_Unwind_Trace_Fn, void *);
 
@@ -181,9 +180,9 @@ _Unwind_Ptr _Unwind_GetRegionStart (_Unwind_Context *);
    provides more effective versioning by detecting at link time the
    lack of code to handle the different data format.  */
 
-extern(C) typedef _Unwind_Reason_Code (*_Unwind_Personality_Fn)
+alias extern(C) _Unwind_Reason_Code function
      (int, _Unwind_Action, _Unwind_Exception_Class,
-      _Unwind_Exception *, _Unwind_Context *);
+      _Unwind_Exception *, _Unwind_Context *) _Unwind_Personality_Fn;
 
 /* @@@ The following alternate entry points are for setjmp/longjmp
    based unwinding.  */

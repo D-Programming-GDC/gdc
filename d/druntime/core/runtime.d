@@ -40,7 +40,39 @@ private
 
     extern (C) string[] rt_args();
 
-    version( linux )
+    version(GNU)
+    {
+        import gcc.unwind;
+        import core.demangle;
+        import core.stdc.stdio : snprintf, printf;
+        import core.stdc.string : strlen;
+        import core.sys.posix.signal; // segv handler
+    }
+
+    version(Android)
+    {
+        version = haveDLADDR;
+    }
+
+    version(haveDLADDR)
+    {
+        extern(C)
+        {
+            int dladdr(void *addr, Dl_info *info);
+            struct Dl_info
+            {
+                const (char*) dli_fname;  /* Pathname of shared object that
+                                           contains address */
+                void*         dli_fbase;  /* Address at which shared object
+                                           is loaded */
+                const (char*) dli_sname;  /* Name of nearest symbol with address
+                                           lower than addr */
+                void*         dli_saddr;  /* Exact address of symbol named
+                                           in dli_sname */
+            }
+        }
+    }
+    else version( linux )
     {
         import core.demangle;
         import core.stdc.stdlib : free;
@@ -329,6 +361,64 @@ extern (C) bool runModuleUnitTests()
             sigaction( SIGBUS, &oldbus, null );
         }
     }
+    else version(GNU)
+    {
+        /*
+         * core.demangle may allocate, so no demangling here
+         *
+         * FIXME: At least on ARM this prints only the signal handler's
+         * stack. This is of course useless..
+         */
+        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
+        {
+            gdcBacktraceData stackframe = gdcBacktrace();
+            btSymbolData syms = gdcBacktraceSymbols(stackframe);
+
+            for(size_t i = 0; i < syms.entries; i++)
+            {
+                auto sym = syms.symbols[i];
+                if(sym.fileName)
+                {
+                    if(sym.name)
+                    {
+                        printf("%s(%s+%#x) [%p]\n", sym.fileName, sym.name,
+                            sym.offset, sym.address);
+                    }
+                    else
+                    {
+                        printf("%s() [%p]\n", sym.fileName, sym.address);
+                    }
+                }
+                else
+                {
+                    if(sym.name)
+                    {
+                        printf("(%s+%#x) [%p]\n", sym.name, sym.offset, sym.address);
+                    }
+                    else
+                    {
+                        printf("() [%p]\n", sym.address);
+                    }
+                }
+            }
+        }
+
+        sigaction_t action = void;
+        sigaction_t oldseg = void;
+        sigaction_t oldbus = void;
+
+        (cast(byte*) &action)[0 .. action.sizeof] = 0;
+        sigfillset( &action.sa_mask ); // block other signals
+        action.sa_flags = SA_SIGINFO | SA_RESETHAND;
+        action.sa_sigaction = &unittestSegvHandler;
+        sigaction( SIGSEGV, &action, &oldseg );
+        sigaction( SIGBUS, &action, &oldbus );
+        scope( exit )
+        {
+            sigaction( SIGSEGV, &oldseg, null );
+            sigaction( SIGBUS, &oldbus, null );
+        }
+    }
 
     static struct Console
     {
@@ -558,8 +648,219 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
     {
         return new StackTrace;
     }
+    else version(GNU)
+    {
+        class DefaultTraceInfo : Throwable.TraceInfo
+        {
+            this()
+            {
+                callstack = gdcBacktrace();
+                framelist = gdcBacktraceSymbols(callstack);
+            }
+
+            override int opApply( scope int delegate(ref char[]) dg )
+            {
+                return opApply( (ref size_t, ref char[] buf)
+                                {
+                                    return dg( buf );
+                                } );
+            }
+
+            override int opApply( scope int delegate(ref size_t, ref char[]) dg )
+            {
+                version( Posix )
+                {
+                    // NOTE: The first 5 frames with the current implementation are
+                    //       inside core.runtime and the object code, so eliminate
+                    //       these for readability.  The alternative would be to
+                    //       exclude the first N frames that are in a list of
+                    //       mangled function names.
+                    static enum FIRSTFRAME = 5;
+                }
+                else
+                {
+                    // NOTE: On Windows, the number of frames to exclude is based on
+                    //       whether the exception is user or system-generated, so
+                    //       it may be necessary to exclude a list of function names
+                    //       instead.
+                    static enum FIRSTFRAME = 0;
+                }
+                int ret = 0;
+
+                for( int i = FIRSTFRAME; i < framelist.entries; ++i )
+                {
+                    auto pos = cast(size_t)(i - FIRSTFRAME);
+                    auto buf = formatLine(framelist.symbols[i]);
+                    ret = dg( pos, buf );
+                    if( ret )
+                        break;
+                }
+                return ret;
+            }
+
+            override string toString()
+            {
+                string buf;
+                foreach( i, line; this )
+                    buf ~= i ? "\n" ~ line : line;
+                return buf;
+            }
+
+        private:
+            btSymbolData     framelist;
+            gdcBacktraceData callstack;
+
+        private:
+            char[4096] fixbuf;
+
+            /*Do not put \n at end of line!*/
+            char[] formatLine(backtraceSymbol sym)
+            {
+                int ret;
+                
+                if(sym.fileName)
+                {
+                    if(sym.name)
+                    {
+                        ret = snprintf(fixbuf.ptr, fixbuf.sizeof,
+                            "%s(", sym.fileName);
+                        if(ret >= fixbuf.sizeof)
+                            return fixbuf[];
+
+                        auto demangled = demangle(sym.name[0 .. strlen(sym.name)],
+                            fixbuf[ret .. $]);
+
+                        ret += demangled.length;
+                        if(ret >= fixbuf.sizeof)
+                            return fixbuf[];
+
+                        ret += snprintf(fixbuf.ptr + ret, fixbuf.sizeof - ret,
+                            "+%#x) [%p]", sym.offset, sym.address);
+                    }
+                    else
+                    {
+                        ret = snprintf(fixbuf.ptr, fixbuf.sizeof,
+                            "%s() [%p]", sym.fileName, sym.address);
+                    }
+                }
+                else
+                {
+                    if(sym.name)
+                    {
+                        fixbuf[0] = '(';
+                        ret = 1;
+
+                        auto demangled = demangle(sym.name[0 .. strlen(sym.name)],
+                            fixbuf[ret .. $]);
+
+                        ret += demangled.length;
+                        if(ret >= fixbuf.sizeof)
+                            return fixbuf[];
+
+                        ret += snprintf(fixbuf.ptr + ret, fixbuf.sizeof - ret,
+                            "+%#x) [%p]", sym.offset, sym.address);
+                    }
+                    else
+                    {
+                        ret = snprintf(fixbuf.ptr, fixbuf.sizeof, "() [%p]",
+                            sym.address);
+                    }
+                }
+
+                if(ret >= fixbuf.sizeof)
+                    return fixbuf[];
+                else
+                    return fixbuf[0 .. ret];
+            }
+        }
+
+        return new DefaultTraceInfo;
+    }
     else
     {
         return null;
+    }
+}
+
+version(GNU)
+{
+    import gcc.unwind;
+
+    static enum MAXFRAMES = 128;
+
+    struct gdcBacktraceData
+    {
+        void*[MAXFRAMES] callstack;
+        int numframes = 0;
+    }
+
+    struct backtraceSymbol
+    {
+        const(char)* name, fileName;
+        size_t offset;
+        void* address;
+    }
+
+    struct btSymbolData
+    {
+        size_t entries;
+        backtraceSymbol[MAXFRAMES] symbols;
+    }
+    
+    static extern (C) _Unwind_Reason_Code unwindCB(_Unwind_Context *ctx, void *d)
+    {
+        gdcBacktraceData* bt = cast(gdcBacktraceData*)d;
+        if(bt.numframes >= MAXFRAMES)
+            return _URC_NO_REASON;
+
+        bt.callstack[bt.numframes] = cast(void*)_Unwind_GetIP(ctx);
+        bt.numframes++;
+        return _URC_NO_REASON;
+    }
+
+    gdcBacktraceData gdcBacktrace()
+    {
+        gdcBacktraceData stackframe;
+        _Unwind_Backtrace(&unwindCB, &stackframe);
+        return stackframe;
+    }
+
+    btSymbolData gdcBacktraceSymbols(gdcBacktraceData data)
+    {
+        btSymbolData symData;
+
+        for(auto i = 0; i < data.numframes; i++)
+        {
+            version(haveDLADDR)
+            {
+                Dl_info funcInfo;
+
+                if(data.callstack[i] !is null && dladdr(data.callstack[i], &funcInfo) != 0)
+                {
+                    symData.symbols[symData.entries].name = funcInfo.dli_sname;
+                    symData.symbols[symData.entries].fileName = funcInfo.dli_fname;
+
+                    if(funcInfo.dli_saddr is null)
+                        symData.symbols[symData.entries].offset = 0;
+                    else
+                        symData.symbols[symData.entries].offset = data.callstack[i] - funcInfo.dli_saddr;
+
+                    symData.symbols[symData.entries].address = data.callstack[i];
+                    symData.entries++;
+                }
+                else
+                {
+                    symData.symbols[symData.entries].address = data.callstack[i];
+                    symData.entries++;
+                }
+            }
+            else
+            {
+                symData.symbols[symData.entries].address = data.callstack[i];
+                symData.entries++;
+            }
+        }
+
+        return symData;
     }
 }
