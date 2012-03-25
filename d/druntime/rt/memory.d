@@ -119,7 +119,7 @@ extern (C) void* rt_stackBottom()
         version(Android)
         {
             int stackSize;
-            return __get_stack_base(&stackSize);
+            return __get_stack_base(&stackSize) + stackSize;
         }
         else version( SimpleLibcStackEnd )
         {
