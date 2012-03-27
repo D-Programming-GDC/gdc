@@ -1,0 +1,450 @@
+# -*- mode: makefile -*-
+
+# GDC -- D front-end for GCC
+# Copyright (C) 2004 David Friedman
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+target_os=$(shell echo $(target) | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)/\3/')
+
+# Manual configuration since patching gcc/configure.ac is troublesome...
+
+# Which version of the language to build? '1' or '2'.
+D_LANGUAGE_VERSION=2
+
+# The file d-make-include is created by setup-gcc.sh
+-include $(srcdir)/d/d-make-include
+
+# For various glibc, we need to define this to get NAN and FP_ constants
+D_EXTRA_DEFINES += -D_GNU_SOURCE=1
+
+# Enables placing some RTTI in the read-only data section.  Does not
+# have to be an ELF target.
+D_EXTRA_DEFINES += -DELFOBJ=1
+
+# Enable the asm(...) style syntax for extended asm.  Deviates from the D
+# specification syntax.  Can still use extended asm if disabled.
+# D_EXTRA_DEFINES += -DGDC_EXTENDED_ASM_SYNTAX=1
+
+# Enables correct implementation of D's va_list type (void*) as per
+# the D language specification - this is experimental.
+#D_EXTRA_DEFINES += -DD_VA_LIST_TYPE_VOIDPTR=1
+
+# Enables MinGW support for C99 printf format specfiers
+ifeq ($(target_os), mingw32)
+D_EXTRA_DEFINES += -D__USE_MINGW_ANSI_STDIO
+endif
+
+# As with C++: (quote) OTOH, I think this means the g++ driver...
+# Note that it would be nice to move the dependency on g++
+# into the C++ rule, but that needs a little bit of work
+# to do the right thing within all.cross.
+D_DRIVER_NAME = gdc
+D_DRIVER_OBJS = d/d-spec.o version.o prefix.o intl.o
+D_COMPILER_NAME = cc1d
+
+D_INSTALL_NAME = $(shell echo $(D_DRIVER_NAME)|sed '$(program_transform_name)')
+DMD_INSTALL_NAME = $(shell echo dmd|sed '$(program_transform_name)')
+GDMD_INSTALL_NAME = $(shell echo gdmd|sed '$(program_transform_name)')
+D_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo $(D_DRIVER_NAME)|sed '$(program_transform_name)')
+DMD_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo dmd|sed '$(program_transform_name)')
+GDMD_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo gdmd|sed '$(program_transform_name)')
+
+ifdef D_LANGUAGE_VERSION
+ ifeq ($(D_LANGUAGE_VERSION),2)
+D_ver_suffix=2
+ else
+D_ver_suffix=
+ endif
+else
+$(error D_LANGUAGE_VERSION not defined)
+endif
+
+# This should be configured
+ifeq ($(host), $(target))
+  D_include_dir = `echo $(exec_prefix) | sed -e 's|^$(prefix)||' -e 's|/[^/]*|/..|g'`/include/d$(D_ver_suffix)/$(version)
+  gcc_d_include_dir = $(libsubdir)/$(unlibsubdir)/..$(D_include_dir)
+else
+  gcc_d_include_dir = $(libsubdir)/include/d$(D_ver_suffix)
+endif
+
+
+D_dmd_srcdir = d/dfrontend
+
+# Common headers between D1 and D2
+D_DMD_H := \
+    d/dmd/aav.h d/dmd/aggregate.h d/dmd/aliasthis.h d/dmd/arraytypes.h \
+    d/dmd/async.h d/dmd/attrib.h d/dmd/cond.h d/dmd/dchar.h \
+    d/dmd/declaration.h d/dmd/doc.h d/dmd/dsymbol.h d/dmd/enum.h \
+    d/dmd/expression.h d/dmd/gnuc.h d/dmd/hdrgen.h d/dmd/html.h \
+    d/dmd/identifier.h d/dmd/import.h d/dmd/init.h d/dmd/json.h \
+    d/dmd/lexer.h d/dmd/lstring.h d/dmd/macro.h d/dmd/mars.h d/dmd/module.h \
+    d/dmd/mtype.h d/dmd/parse.h d/dmd/rmem.h d/dmd/root.h d/dmd/scope.h \
+    d/dmd/speller.h d/dmd/statement.h d/dmd/staticassert.h \
+    d/dmd/stringtable.h d/dmd/template.h d/dmd/total.h d/dmd/utf.h \
+    d/dmd/version.h d/d-dmd-gcc.h d/d-gcc-complex_t.h d/d-gcc-real.h d/id.h
+
+ifeq ($(D_LANGUAGE_VERSION),2)
+# D2 specific headers
+  D_DMD_H += d/dmd/intrange.h
+else
+# D1 specific headers
+  D_DMD_H +=
+endif
+D_DMD_H := $(subst d/dmd,$(D_dmd_srcdir),$(D_DMD_H))
+
+
+D_TREE_H = $(TREE_H) d/d-tree.def d/d-lang.h \
+	d/d-lang-type.h d/d-lang-type-45.h d/d-codegen.h \
+        d/d-objfile.h d/d-irstate.h d/d-dmd-gcc.h d/d-gcc-includes.h \
+        d/d-gcc-real.h d/symbol.h d/dt.h \
+        coretypes.h function.h $(VARRAY_H) \
+	$(SYSTEM_H) $(CONFIG_H) $(TARGET_H) \
+	$(GGC_H) \
+	$(srcdir)/../include/hashtab.h $(srcdir)/../include/splay-tree.h \
+	$(D_DMD_H)
+
+
+# Would be better to configure these rather than running shell script again and again,
+# but would require a patch to gcc/configure.ac
+D_gcc_main_ver:=$(shell echo $(version) | sed -e 's/\([0-9]*\.[0-9]*\).*/\1/')
+
+gcc_d_target_include_dir=$(gcc_d_include_dir)/$(target_noncanonical)
+
+ifeq ($(D_gcc_main_ver),4.7)
+  D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos$(D_ver_suffix)\"
+endif
+ifeq ($(D_gcc_main_ver),4.6)
+  D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos$(D_ver_suffix)\"
+endif
+ifeq ($D_gcc_main_var),4.5)
+  D_LIBPHOBOS = -DLIBPHOBOS=\"-lgphobos$(D_ver_suffix)\" 
+endif
+
+D_EXTRA_DEFINES += -DD_GCC_VER=$(subst .,,$(D_gcc_main_ver))
+
+# May be adjusted in d-incpath.cc
+PHOBOS_DIRS = -DD_PHOBOS_DIR=\"$(gcc_d_include_dir)\"
+PHOBOS_DIRS += -DD_PHOBOS_TARGET_DIR=\"$(gcc_d_target_include_dir)\"
+
+# Actual names to use when installing a cross-compiler.
+D_CROSS_NAME = $(D_INSTALL_NAME)
+DMD_CROSS_NAME = $(DMD_INSTALL_NAME)
+GDMD_CROSS_NAME = $(GDMD_INSTALL_NAME)
+
+D d: $(D_COMPILER_NAME)$(exeext) d/pkgvars
+
+# Tell GNU make to ignore these if they exist.
+.PHONY: D d
+
+D_BORROWED_C_OBJS=attribs.o
+
+D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/$(D_dmd_srcdir) -Id
+# -Wno-long-double is for MacOS X -- needs to be configurated
+D_CC_FLAGS = -Wno-missing-braces
+
+# d-bi-attrs-xx.h
+D_CC_FLAGS += -Wno-format
+# d-asm-i386.h
+D_CC_FLAGS += -Wno-missing-field-initializers
+# from dmd
+D_CC_FLAGS += -Wno-deprecated -Wstrict-aliasing
+
+ifeq ($(if $(findstring solaris,$(build)),T,$(if $(findstring solaris,$(host)),T)),T)
+D_CC_FLAGS += -Wcast-align
+endif
+
+#D_CC_FLAGS += -fmessage-length=0
+#D_CC_FLAGS += -O0 -g
+
+ALL_D_CFLAGS = $(ALL_CFLAGS) $(ALL_CPPFLAGS) \
+                        $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+# %% Ditto
+ALL_D_CXXFLAGS = $(ALL_CXXFLAGS) $(ALL_CPPFLAGS) \
+                        $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+
+# Somehow, I started getting problems with the C++ <complex.h> being included..
+DMD_WARN_CFLAGS = -Wno-deprecated -Wstrict-aliasing
+DMD_CFLAGS = $(filter-out $(WARN_CFLAGS), $(ALL_CFLAGS)) $(DMD_WARN_CFLAGS)
+DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(ALL_CXXFLAGS)) $(DMD_WARN_CFLAGS)
+
+ALL_DMD_CFLAGS = $(DMD_CFLAGS) $(ALL_CPPFLAGS) \
+                        -Id -I$(srcdir)/$(D_dmd_srcdir) -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+# %% Ditto
+ALL_DMD_CXXFLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
+                        -Id -I$(srcdir)/$(D_dmd_srcdir) -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+
+
+# GDC has it's own build rule for gcc.c
+D_GCC_OBJS = d/d-gcc.o $(filter-out gcc.o, $(GCC_OBJS))
+
+# Create the compiler driver for D.
+$(D_DRIVER_NAME)$(exeext): $(D_GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(D_EXTRA_SPEC_LIBS) $(LIBDEPS)
+	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o $@ \
+	$(D_GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(D_EXTRA_SPEC_LIBS) $(LIBS)
+
+# Create a version of the g++ driver which calls the cross-compiler.
+$(D_DRIVER_NAME)-cross$(exeext): $(D_DRIVER_NAME)$(exeext)
+	-rm -f $(D_DRIVER_NAME)-cross$(exeext)
+	cp $(D_DRIVER_NAME)$(exeext) $(D_DRIVER_NAME)-cross$(exeext)
+
+
+# Common sources between D1 and D2
+D_DMD_OBJS := \
+    d/aav.dmd.o d/access.dmd.o d/aliasthis.dmd.o d/array.dmd.o \
+    d/arrayop.dmd.o d/async.dmd.o d/attrib.dmd.o d/cast.dmd.o d/class.dmd.o \
+    d/clone.dmd.o d/cond.dmd.o d/constfold.dmd.o d/dchar.dmd.o \
+    d/declaration.dmd.o d/delegatize.dmd.o d/doc.dmd.o d/dsymbol.dmd.o \
+    d/dump.dmd.o d/entity.dmd.o d/enum.dmd.o d/expression.dmd.o d/func.dmd.o \
+    d/gnuc.dmd.o d/hdrgen.dmd.o d/html.dmd.o d/identifier.dmd.o \
+    d/imphint.dmd.o d/import.dmd.o d/init.dmd.o d/inline.dmd.o \
+    d/interpret.dmd.o d/json.dmd.o d/lexer.dmd.o d/lstring.dmd.o \
+    d/macro.dmd.o d/mangle.dmd.o d/mars.dmd.o d/mtype.dmd.o d/module.dmd.o \
+    d/opover.dmd.o d/optimize.dmd.o d/parse.dmd.o d/rmem.dmd.o d/root.dmd.o \
+    d/scope.dmd.o d/speller.dmd.o d/statement.dmd.o d/staticassert.dmd.o \
+    d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o d/todt.dmd.o \
+    d/toobj.dmd.o d/typinf.dmd.o d/unialpha.dmd.o d/utf.dmd.o \
+    d/unittests.dmd.o d/version.dmd.o
+
+ifeq ($(D_LANGUAGE_VERSION),2)
+# D2 specific sources
+  D_DMD_OBJS += d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o d/intrange.dmd.o d/cppmangle.dmd.o
+else
+# D1 specific sources
+  D_DMD_OBJS += d/argtypes.dmd.o
+endif
+
+
+D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
+D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
+D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
+              d/d-objfile.glue.o d/d-irstate.glue.o d/d-glue.glue.o \
+              d/d-convert.glue.o d/d-todt.glue.o d/d-gcc-real.glue.o \
+              d/d-gt.cglue.o d/d-builtins.cglue.o d/d-builtins2.glue.o \
+              d/symbol.glue.o d/asmstmt.glue.o d/dt.glue.o \
+              d/d-incpath.glue.o
+
+#ifeq ($(D_LANGUAGE_VERSION),2)
+#D_GLUE_OBJS += d/d-cppmngl.glue.o
+#endif
+
+D_BI_ATTRS = d/d-bi-attrs-45.h d/d-bi-attrs-46.h d/d-bi-attrs-47.h
+
+D_EXTRA_LIBS =
+D_EXTRA_SPEC_LIBS =
+
+ifeq ($(D_gcc_main_ver),4.5)
+  D_BORROWED_C_OBJS += stub-objc.o prefix.o
+  D_EXTRA_LIBS += $(BACKENDLIBS)
+endif
+ifeq ($(D_gcc_main_ver),4.6)
+  D_BORROWED_C_OBJS += c-family/stub-objc.o prefix.o
+  D_EXTRA_LIBS += $(BACKENDLIBS)
+endif
+ifeq ($(D_gcc_main_ver),4.7)
+  D_BORROWED_C_OBJS += c-family/stub-objc.o prefix.o
+  D_EXTRA_LIBS += $(BACKENDLIBS)
+  D_EXTRA_SPEC_LIBS += libcommon-target.a
+endif
+
+# ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
+# Not all DMD sources depend on d-dmd-gcc.h
+d/%.dmd.o: $(srcdir)/$(D_dmd_srcdir)/%.c $(D_DMD_H) d/d-confdefs.h
+	$(CXX) $(ALL_DMD_CXXFLAGS) -include total.h -o d/$*.dmd.o -c $<
+
+# For generator programs, can't implicitly include "total.h" which includes "id.h"
+d/%.dmdgen.o: $(srcdir)/$(D_dmd_srcdir)/%.c
+	$(CC_FOR_BUILD) $(ALL_DMD_CFLAGS) -o d/$*.dmdgen.o -c $<
+
+d/%.gen.o: d/%.c
+	$(CXX) $(ALL_DMD_CXXFLAGS)  -o d/$*.gen.o -c $<
+
+d/%.glue.o: $(srcdir)/d/%.cc $(D_TREE_H)
+	$(CXX) $(ALL_D_CXXFLAGS) -DGCC_SAFE_DMD=1 -o d/$*.glue.o -c $<
+
+d/%.cglue.o: $(srcdir)/d/%.c $(D_TREE_H)
+	$(CC) $(ALL_D_CFLAGS) -o d/$*.cglue.o -c $<
+
+d/impcvgen: d/impcnvgen.dmdgen.o
+	$(CC_FOR_BUILD) $(ALL_D_CFLAGS) $(BUILD_LDFLAGS) -o $@ $^
+
+d/idgen: d/idgen.dmdgen.o
+	$(CC_FOR_BUILD) $(ALL_D_CFLAGS) $(BUILD_LDFLAGS)  -o $@ $^
+
+d/impcnvtab.c: d/impcvgen
+	cd d && ./impcvgen
+d/id.c: d/idgen
+	cd d && ./idgen
+# idgen also generates id.h; just verify id.h exists
+d/id.h: d/id.c
+	@ ls d/id.h
+
+d/d-confdefs.h: d/Make-lang.in
+	#echo "#define D_PHOBOS_DIR \""$(gcc_d_include_dir)"\"" > $@
+	#echo "#define D_PHOBOS_TARGET_DIR \""$(gcc_d_target_include_dir)"\"" >> $@
+	$(srcdir)/d/target-ver-syms.sh $(target) >> $@
+
+d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H) d/d-confdefs.h
+	$(CXX) $(ALL_D_CXXFLAGS) $(PHOBOS_DIRS) -DGCC_SAFE_DMD=1 -o $@ -c $<
+
+d/id.gen.o: d/id.c $(D_DMD_H)
+d/impcnvtab.gen.o: d/impcnvtab.c $(D_DMD_H)
+d/d-lang.glue.o: d/d-lang.cc $(D_TREE_H) d/d-confdefs.h options.h
+d/d-irstate.glue.o: d/d-irstate.cc $(D_TREE_H)
+d/d-codegen.glue.o: d/d-codegen.cc $(D_TREE_H)
+d/d-decls.glue.o: d/d-decls.cc $(D_TREE_H)
+d/d-glue.glue.o: d/d-glue.cc $(D_TREE_H)
+d/d-convert.glue.o: d/d-convert.cc $(D_TREE_H)
+d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
+d/d-gcc-real.glue.o: d/d-gcc-real.cc $(D_TREE_H)
+d/asmstmt.glue.o: d/asmstmt.cc d/d-asm-i386.h $(D_TREE_H)
+d/symbol.glue.o: d/symbol.cc $(D_TREE_H)
+d/dt.glue.o: d/symbol.cc $(D_TREE_H)
+d/d-gt.cglue.o: d/d-gt.c $(D_TREE_H)
+d/d-builtins.cglue.o: d/d-builtins.c $(D_TREE_H) $(D_BI_ATTRS)
+d/d-builtins2.glue.o: d/d-builtins.c $(D_TREE_H)
+d/todt.dmd.o: $(D_DMD_H)
+d/toobj.dmd.o: $(D_DMD_H)
+d/typinf.dmd.o: $(D_DMD_H)
+
+
+d/d-gcc.o: gcc.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) intl.h multilib.h \
+    Makefile $(lang_specs_files) specs.h prefix.h $(GCC_H)
+	(SHLIB_LINK='$(SHLIB_LINK)' \
+	 SHLIB='$(SHLIB)'; \
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+  $(DRIVER_DEFINES) -DD_DRIVER_ONLY=1 \
+  -c $(srcdir)/gcc.c $(OUTPUT_OPTION))
+
+d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) $(CONFIG_H)
+	(SHLIB_LINK='$(SHLIB_LINK)' \
+	 SHLIB='$(SHLIB)'; \
+	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(DRIVER_DEFINES) \
+		$(ALL_D_CFLAGS) $(D_LIBPHOBOS) \
+		$(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
+
+D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_BORROWED_C_OBJS) $(D_DMD_OBJS) $(D_GLUE_OBJS)
+
+$(D_COMPILER_NAME)$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
+	$(CXX) $(ALL_D_CXXFLAGS) $(LDFLAGS) -o $@ \
+		$(D_ALL_OBJS) $(BACKEND) $(LIBS) $(D_EXTRA_LIBS)
+
+
+# Build hooks:
+
+d.all.build: $(D_DRIVER_NAME)$(exeext) $(D_COMPILER_NAME)$(exeext)
+d.all.cross: $(D_DRIVER_NAME)-cross$(exeext)
+d.start.encap: $(D_DRIVER_NAME)$(exeext)
+d.rest.encap:
+d.info:
+d.srcinfo:
+d.srcextra:
+d.dvi:
+d.man:
+d.srcman:
+
+
+# Install hooks:
+
+d.install-normal:
+d.install-plugin:
+d.install-common: installdirs
+	-rm -f $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
+	-rm -f $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
+	$(INSTALL_PROGRAM) $(D_DRIVER_NAME)$(exeext) $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
+	-perl -e 'exit 0;' && $(INSTALL_SCRIPT) $(srcdir)/d/dmd-script $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
+	-chmod a+x $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
+	-chmod a+x $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
+	-if [ -f $(D_COMPILER_NAME)$(exeext) ] ; then \
+	  if [ -f $(D_DRIVER_NAME)-cross$(exeext) ] ; then \
+	    if [ -d $(DESTDIR)$(gcc_tooldir)/bin/. ] ; then \
+	      rm -f $(DESTDIR)$(gcc_tooldir)/bin/$(D_DRIVER_NAME)$(exeext); \
+	      rm -f $(DESTDIR)$(gcc_tooldir)/bin/gdmd$(exeext); \
+	      $(INSTALL_PROGRAM) $(D_DRIVER_NAME)-cross$(exeext) $(DESTDIR)$(gcc_tooldir)/bin/$(D_DRIVER_NAME)$(exeext); \
+	      perl -e 'exit 0;' && $(INSTALL_SCRIPT) $(srcdir)/d/dmd-script $(DESTDIR)$(gcc_tooldir)/bin/gdmd; \
+	    else true; fi; \
+	  else \
+	    rm -f $(DESTDIR)$(bindir)/$(D_TARGET_INSTALL_NAME)$(exeext); \
+	    rm -f $(DESTDIR)$(bindir)/$(GDMD_TARGET_INSTALL_NAME); \
+	    ( cd $(DESTDIR)$(bindir) && \
+	      $(LN) $(D_INSTALL_NAME)$(exeext) $(D_TARGET_INSTALL_NAME)$(exeext) ); \
+	    ( cd $(DESTDIR)$(bindir) && \
+	      $(LN) $(GDMD_INSTALL_NAME) $(GDMD_TARGET_INSTALL_NAME) ); \
+	  fi ; \
+	fi
+
+d.install-info:
+
+d.install-man: installdirs $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext) $(DESTDIR)$(man1dir)/$(GDMD_INSTALL_NAME)$(man1ext)
+
+$(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext): $(srcdir)/d/gdc.1
+	-rm -f $@
+	-$(INSTALL_DATA) $< $@
+	-chmod a-x $@
+
+$(DESTDIR)$(man1dir)/$(GDMD_INSTALL_NAME)$(man1ext): $(srcdir)/d/dmd-script.1
+	-rm -f $@
+	-$(INSTALL_DATA) $< $@
+	-chmod a-x $@
+
+d.uninstall:
+	-rm -rf $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
+	-rm -rf $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)$(exeext)
+	-rm -rf $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext)
+	-rm -rf $(DESTDIR)$(man1dir)/$(GDMD_INSTALL_NAME)$(man1ext)
+
+d.mostlyclean:
+	-rm -f d/*$(objext)
+	-rm -f d/*$(coverageexts)
+	-rm -f $(D_GENERATED_SRCS)
+# shouldn't this do something?
+d.clean:
+d.distclean:
+	-rm -f d/config.status
+	-rm -f d/Makefile
+d.extraclean:
+d.maintainer-clean:
+
+
+# Stage hooks:
+# The main makefile has already created stage?/d.
+
+d.stage1: stage1-start
+	-mv d/*$(objext) stage1/d
+d.stage2: stage2-start
+	-mv d/*$(objext) stage2/d
+d.stage3: stage3-start
+	-mv d/*$(objext) stage3/d
+d.stage4: stage4-start
+	-mv d/*$(objext) stage4/d
+d.stageprofile: stageprofile-start
+	-mv d/*$(objext) stageprofile/d
+d.stagefeedback: stagefeedback-start
+	-mv d/*$(objext) stagefeedback/d
+
+.PHONY: check-d
+check-d:
+	@ echo "note: check-d does not perform any tests yet."
+
+d/pkgvars: Makefile
+	@rm -f $@
+	@echo "build=$(build)" >> $@
+	@echo "host=$(host)" >> $@
+	@echo "target=$(target)" >> $@
+	@echo "target_alias=$(target_noncanonical)" >> $@
+	@echo "gcc_version=$(version)" >> $@
+	@echo "srcdir=$(srcdir)" >> $@
+	@echo "prefix=$(prefix)" >> $@
+	@echo "exeext=$(exeext)" >> $@
