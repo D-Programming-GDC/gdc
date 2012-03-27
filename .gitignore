@@ -1,0 +1,18 @@
+# gdc specific    #
+###################
+dev/
+d/d-make-include
+
+# from .hgignore  #
+###################
+.cproject
+.project
+.classpath
+Debug
+
+# OS generated files #
+######################
+.DS_Store*
+ehthumbs.db
+Icon?
+Thumbs.db
