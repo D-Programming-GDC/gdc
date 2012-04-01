@@ -14,6 +14,37 @@
  */
 module core.runtime;
 
+/*
+ * Configuration stuff for backtraces
+ * Versions:
+ *     HaveDLADDR = the extern(C) dladdr function is available
+ *     GenericBacktrace = Use GCC unwinding for backtraces
+ * 
+ * TODO: HaveDLADDR should be set by the configure script
+ */
+
+version(Android)
+{
+    version = HaveDLADDR;
+    version = GenericBacktrace;
+}
+else version(Windows)
+{
+    version = WindowsBacktrace;
+}
+else version(linux)
+{
+    //assume GLIBC backtrace function exists, not always correct!
+    version = GlibcBacktrace;
+}
+else version(OSX)
+{
+    version = OSXBacktrace;
+}
+else version(GNU)
+{
+    version = GenericBacktrace;
+}
 
 private
 {
@@ -40,21 +71,7 @@ private
 
     extern (C) string[] rt_args();
 
-    version(GNU)
-    {
-        import gcc.unwind;
-        import core.demangle;
-        import core.stdc.stdio : snprintf, printf;
-        import core.stdc.string : strlen;
-        import core.sys.posix.signal; // segv handler
-    }
-
-    version(Android)
-    {
-        version = haveDLADDR;
-    }
-
-    version(haveDLADDR)
+    version(HaveDLADDR)
     {
         extern(C)
         {
@@ -72,7 +89,18 @@ private
             }
         }
     }
-    else version( linux )
+
+    version(GenericBacktrace)
+    {
+        import gcc.unwind;
+        import core.demangle;
+        import core.stdc.stdio : snprintf, printf;
+        import core.stdc.string : strlen;
+
+        version(Posix)
+            import core.sys.posix.signal; // segv handler
+    }
+    else version(GlibcBacktrace)
     {
         import core.demangle;
         import core.stdc.stdlib : free;
@@ -80,9 +108,11 @@ private
         extern (C) int    backtrace(void**, int);
         extern (C) char** backtrace_symbols(void**, int);
         extern (C) void   backtrace_symbols_fd(void**, int, int);
-        import core.sys.posix.signal; // segv handler
+
+        version(Posix)
+            import core.sys.posix.signal; // segv handler
     }
-    else version( OSX )
+    else version(OSXBacktrace)
     {
         import core.demangle;
         import core.stdc.stdlib : free;
@@ -92,7 +122,7 @@ private
         extern (C) void   backtrace_symbols_fd(void**, int, int);
         import core.sys.posix.signal; // segv handler
     }
-    else version( Windows )
+    else version(WindowsBacktrace)
     {
         import core.sys.windows.stacktrace;
     }
@@ -333,90 +363,93 @@ private:
  */
 extern (C) bool runModuleUnitTests()
 {
-    static if( __traits( compiles, backtrace ) )
+    version(Posix) //Uses Posix signal-handlers
     {
-        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
+        static if( __traits( compiles, backtrace ) ) //GlibcBacktrace || OSXBacktrace
         {
-            static enum MAXFRAMES = 128;
-            void*[MAXFRAMES]  callstack;
-            int               numframes;
-
-            numframes = backtrace( callstack, MAXFRAMES );
-            backtrace_symbols_fd( callstack, numframes, 2 );
-        }
-
-        sigaction_t action = void;
-        sigaction_t oldseg = void;
-        sigaction_t oldbus = void;
-
-        (cast(byte*) &action)[0 .. action.sizeof] = 0;
-        sigfillset( &action.sa_mask ); // block other signals
-        action.sa_flags = SA_SIGINFO | SA_RESETHAND;
-        action.sa_sigaction = &unittestSegvHandler;
-        sigaction( SIGSEGV, &action, &oldseg );
-        sigaction( SIGBUS, &action, &oldbus );
-        scope( exit )
-        {
-            sigaction( SIGSEGV, &oldseg, null );
-            sigaction( SIGBUS, &oldbus, null );
-        }
-    }
-    else version(GNU)
-    {
-        /*
-         * core.demangle may allocate, so no demangling here
-         *
-         * FIXME: At least on ARM this prints only the signal handler's
-         * stack. This is of course useless..
-         */
-        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
-        {
-            gdcBacktraceData stackframe = gdcBacktrace();
-            btSymbolData syms = gdcBacktraceSymbols(stackframe);
-
-            for(size_t i = 0; i < syms.entries; i++)
+            static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
             {
-                auto sym = syms.symbols[i];
-                if(sym.fileName)
+                static enum MAXFRAMES = 128;
+                void*[MAXFRAMES]  callstack;
+                int               numframes;
+    
+                numframes = backtrace( callstack, MAXFRAMES );
+                backtrace_symbols_fd( callstack, numframes, 2 );
+            }
+    
+            sigaction_t action = void;
+            sigaction_t oldseg = void;
+            sigaction_t oldbus = void;
+    
+            (cast(byte*) &action)[0 .. action.sizeof] = 0;
+            sigfillset( &action.sa_mask ); // block other signals
+            action.sa_flags = SA_SIGINFO | SA_RESETHAND;
+            action.sa_sigaction = &unittestSegvHandler;
+            sigaction( SIGSEGV, &action, &oldseg );
+            sigaction( SIGBUS, &action, &oldbus );
+            scope( exit )
+            {
+                sigaction( SIGSEGV, &oldseg, null );
+                sigaction( SIGBUS, &oldbus, null );
+            }
+        }
+        else version(GenericBacktrace)
+        {
+            /*
+             * core.demangle may allocate, so no demangling here
+             *
+             * FIXME: At least on ARM this prints only the signal handler's
+             * stack. This is of course useless..
+             */
+            static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
+            {
+                gdcBacktraceData stackframe = gdcBacktrace();
+                btSymbolData syms = gdcBacktraceSymbols(stackframe);
+    
+                for(size_t i = 0; i < syms.entries; i++)
                 {
-                    if(sym.name)
+                    auto sym = syms.symbols[i];
+                    if(sym.fileName)
                     {
-                        printf("%s(%s+%#x) [%p]\n", sym.fileName, sym.name,
-                            sym.offset, sym.address);
+                        if(sym.name)
+                        {
+                            printf("%s(%s+%#x) [%p]\n", sym.fileName, sym.name,
+                                sym.offset, sym.address);
+                        }
+                        else
+                        {
+                            printf("%s() [%p]\n", sym.fileName, sym.address);
+                        }
                     }
                     else
                     {
-                        printf("%s() [%p]\n", sym.fileName, sym.address);
-                    }
-                }
-                else
-                {
-                    if(sym.name)
-                    {
-                        printf("(%s+%#x) [%p]\n", sym.name, sym.offset, sym.address);
-                    }
-                    else
-                    {
-                        printf("() [%p]\n", sym.address);
+                        if(sym.name)
+                        {
+                            printf("(%s+%#x) [%p]\n", sym.name, sym.offset, sym.address);
+                        }
+                        else
+                        {
+                            printf("() [%p]\n", sym.address);
+                        }
                     }
                 }
             }
-        }
-
-        sigaction_t action = void;
-        sigaction_t oldseg = void;
-        sigaction_t oldbus = void;
-
-        (cast(byte*) &action)[0 .. action.sizeof] = 0;
-        sigfillset( &action.sa_mask ); // block other signals
-        action.sa_flags = SA_SIGINFO | SA_RESETHAND;
-        action.sa_sigaction = &unittestSegvHandler;
-        sigaction( SIGSEGV, &action, &oldseg );
-        sigaction( SIGBUS, &action, &oldbus );
-        scope( exit )
-        {
-            sigaction( SIGSEGV, &oldseg, null );
-            sigaction( SIGBUS, &oldbus, null );
+    
+            sigaction_t action = void;
+            sigaction_t oldseg = void;
+            sigaction_t oldbus = void;
+    
+            (cast(byte*) &action)[0 .. action.sizeof] = 0;
+            sigfillset( &action.sa_mask ); // block other signals
+            action.sa_flags = SA_SIGINFO | SA_RESETHAND;
+            action.sa_sigaction = &unittestSegvHandler;
+            sigaction( SIGSEGV, &action, &oldseg );
+            sigaction( SIGBUS, &action, &oldbus );
+            scope( exit )
+            {
+                sigaction( SIGSEGV, &oldseg, null );
+                sigaction( SIGBUS, &oldbus, null );
+            }
         }
     }
 
@@ -479,7 +512,7 @@ extern (C) bool runModuleUnitTests()
  */
 Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 {
-    static if( __traits( compiles, backtrace ) )
+    static if( __traits( compiles, backtrace ) ) //GlibcBacktrace || OSXBacktrace
     {
         class DefaultTraceInfo : Throwable.TraceInfo
         {
@@ -644,11 +677,11 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 
         return new DefaultTraceInfo;
     }
-    else static if( __traits( compiles, new StackTrace ) )
+    else static if( __traits( compiles, new StackTrace ) ) // WindowsBacktrace
     {
         return new StackTrace;
     }
-    else version(GNU)
+    else version(GenericBacktrace)
     {
         class DefaultTraceInfo : Throwable.TraceInfo
         {
@@ -782,10 +815,8 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
     }
 }
 
-version(GNU)
+version(GenericBacktrace)
 {
-    import gcc.unwind;
-
     static enum MAXFRAMES = 128;
 
     struct gdcBacktraceData
@@ -831,7 +862,7 @@ version(GNU)
 
         for(auto i = 0; i < data.numframes; i++)
         {
-            version(haveDLADDR)
+            version(HaveDLADDR)
             {
                 Dl_info funcInfo;
 
