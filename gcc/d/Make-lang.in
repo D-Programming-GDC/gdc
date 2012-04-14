@@ -434,9 +434,9 @@ d.stageprofile: stageprofile-start
 d.stagefeedback: stagefeedback-start
 	-mv d/*$(objext) stagefeedback/d
 
-.PHONY: check-d
-check-d:
-	@ echo "note: check-d does not perform any tests yet."
+check-d: check-gdc
+lang_checks += check-gdc
+lang_checks_parallelized += check-gdc
 
 d/pkgvars: Makefile
 	@rm -f $@

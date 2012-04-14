@@ -1,0 +1,207 @@
+#   Copyright (C) 2000, 2007, 2009, 2010 Free Software Foundation, Inc.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
+
+# Test using the DMD testsuite.
+# Load support procs.
+load_lib gdc-dg.exp
+#load_lib gdc.exp
+
+# Translate DMD test directives to dejagnu equivalent.
+proc dmd2dg { base test } {
+    global DEFAULT_DFLAGS
+ 
+    # Split base, folder/file.
+
+    set type [file dirname $test]
+
+    # print "Filename: $base - $test"
+
+    set fdin [open $base/$test r]
+    fconfigure $fdin -encoding binary
+    
+    file mkdir [file dirname $test]
+    set fdout [ open $test w]
+    fconfigure $fdout -encoding binary
+    
+    # Add specific options for test type
+
+    # DMD's testsuite is exteremly verbose.
+    #  dg-prune-ouput generates pass.
+    puts $fdout {// { dg-prune-output .* } }
+
+    # print "[file dirname $test ]"
+
+    # Compilable files are successful if an output it generated.
+    # Fail compilable are successful if an output is not generated.
+    # Runnable must compile, link, and return 0 to be successful by default.
+    switch [ file dirname $test ] {
+        compilable {
+            puts $fdout {// { dg-final { output-exists } } }
+        }
+
+        fail_compilation {
+            puts $fdout {// { dg-final { output-exists-not } } }
+        }
+        
+    }
+
+    while { [gets $fdin copy_line] >= 0 } {
+        set out_line $copy_line
+
+        # PERMUTE_ARGS.  Must be handled separately
+        if [string match "PERMUTE_ARGS" $copy_line] {
+            #set DEFAULT_DFLAGS [regexp]
+            continue 
+        }
+
+        # COMPILE_SEPARATELY. Not handled.
+        if [string match "COMPILE_SEPARATELY" $copy_line] {
+            set out_line $copy_line
+        }
+
+        # POST_SCRIPT. not handled
+        if [string match "POST_SCRIPT" $copy_line] {
+            set out_line $copy_line
+        }
+
+        # Can be handled with dg directives.
+
+        # EXECUTE_ARGS.  ???
+        if [string match "EXECUTE_ARGS" $copy_line] {
+            set out_line $copy_line
+        }
+
+        # Handle EXTRA_SOURCES option
+        if [regexp {//\s*EXTRA_SOURCES\s*:\s*(.*)} $copy_line m m0] {
+            # Iterate imports and convert
+            foreach import $m0 {
+                # print "Import: $base $type/$import"
+                dmd2dg $base "$type/$import"  
+            }
+            set out_line "/* { dg-additional-sources \"$m0\" } */"
+        }
+
+        # REQUIRED_ARGS.
+        if [string match "REQUIRED_ARGS" $copy_line] {
+            # Also need to convert DMD arguments to GDC.
+            # regsub {"// *REQUIRED_ARGS"} $copy_line {""} out_line
+            set out_line $copy_line
+        }
+        puts $fdout $out_line
+    }
+    close $fdin
+    close $fdout
+
+    return $test 
+}
+
+proc gdc-permute-options { options } {
+    set result { }
+    set n [expr 1<<[llength $options]]
+    for { set i 0 } { $i<$n } { incr i } {
+        set option ""
+        for { set j 0 } { $j<[llength $options] } { incr j } {
+            if [expr $i & 1 << $j] {
+                append option [lindex $options $j]
+                append option " "
+            }
+        }
+        lappend result $option
+        
+    }
+    return $result
+}
+
+
+proc gdc-do-test { } {
+    load_lib gdc-dg.exp
+    global srcdir subdir
+    global dg-do-what-default
+    global verbose
+
+    # If a testcase doesn't have special options, use these.
+    global DEFAULT_DFLAGS
+    if ![info exists DEFAULT_DFLAGS] then {
+        set DEFAULT_DFLAGS "-g -O2 -funittest -frelease"
+    }
+
+    # Initialize `dg'.
+    dg-init
+
+    # Main loop.
+
+    # set verbose 1
+    # set dg-final-code ""
+    # Find all tests and pass to routine.
+    foreach test [lsort [find $srcdir/$subdir *]] {
+        regexp "(.*)/(.+)/(.+)\.(.+)$" $test match base dir name ext
+
+        # Skip invalid test directory
+        if {[lsearch "runnable compilable fail_compilation" $dir] == -1} {
+            continue
+        }
+
+        # Skip invalid test extensions
+        if {[lsearch "d" $ext] == -1} {
+            continue
+        }
+
+        # Convert to DG test.
+        set imports [file dirname $test]
+        set imports [format "-I%s -I%s/imports" $imports $imports]
+        set filename [dmd2dg $base $dir/$name.$ext]
+
+        #set options [gdc-permute-options $DEFAULT_DFLAGS]
+        set options {""}
+
+        switch $dir {
+            runnable {
+                for { set i 0 } { $i<[llength $options] } { incr i } {
+                    set flags [format "%s %s -fdeprecated" [lindex $options $i] $imports]
+                    # puts "$filename - $flags"
+                    set dg-do-what-default run
+                    gdc-dg-runtest $filename $flags
+                }
+            }
+            
+            compilable {
+                for { set i 0 } { $i<[llength $options] } { incr i } {
+                    set flags [format "%s %s -fdeprecated" [lindex $options $i] $imports]
+                    #puts "$filename - $flags"
+                    set dg-do-what-default "assemble"
+                    gdc-dg-runtest $filename "$flags"
+                }
+            }
+    
+            fail_compilation {
+                for { set i 0 } { $i<[llength $options] } { incr i } {
+                    set dg-do-what-default "compile"
+                    set flags [format "%s %s -fdeprecated" [lindex $options $i] $imports]
+                    gdc-dg-runtest $filename $flags
+                }
+            }
+        }
+
+        # Cleanup
+#        file delete $filename
+    }
+
+    # All done.
+    dg-finish
+}
+
+gdc-do-test
+
