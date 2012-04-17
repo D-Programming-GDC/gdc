@@ -17,7 +17,7 @@
 
 dnl Parts taken from libobjc configure.in
 
-AC_PREREQ(2.59)
+AC_PREREQ(2.64)
 AC_INIT(libphobos, version-unused)
 AC_CONFIG_SRCDIR(std/algorithm.d)
 AC_CONFIG_SRCDIR(libdruntime/gcc/builtins.d)
@@ -27,9 +27,13 @@ AC_CANONICAL_SYSTEM
 target_alias=${target_alias-$target}
 AC_SUBST(target_alias)
 
-AM_INIT_AUTOMAKE([1.9.4 foreign no-dependencies])
+AM_INIT_AUTOMAKE([1.9.3 foreign no-dependencies])
+AH_TEMPLATE(PACKAGE, [Name of package])
+AH_TEMPLATE(VERSION, [Version number of package])
 
-AM_ENABLE_MULTILIB(,[$d_mlcd])
+AM_ENABLE_MULTILIB(, ..)
+
+AM_MAINTAINER_MODE
 
 # libphobos is usually a symlink to gcc/d/phobos, so libphobos/..
 # is not the toplevel GCC directory.  gcc/d may also be a symlink.

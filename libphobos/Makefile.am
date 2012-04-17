@@ -127,9 +127,6 @@ libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(AR) -r $@ $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(RANLIB) $@
 
-check-local: unittest
-	./unittest
-
 install-exec-local: libgphobos2.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
 	$(INSTALL) libgphobos2.a $(DESTDIR)$(toolexeclibdir)

@@ -438,7 +438,6 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
-	$(MAKE) $(AM_MAKEFLAGS) check-local
 check: check-am
 all-am: Makefile all-local
 installdirs:
@@ -512,10 +511,10 @@ ps-am:
 
 uninstall-am: uninstall-info-am
 
-.PHONY: all all-am all-local check check-am check-local clean \
-	clean-generic clean-local distclean distclean-generic distdir \
-	dvi dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-data-local install-exec \
+.PHONY: all all-am all-local check check-am clean clean-generic \
+	clean-local distclean distclean-generic distdir dvi dvi-am \
+	html html-am info info-am install install-am install-data \
+	install-data-am install-data-local install-exec \
 	install-exec-am install-exec-local install-info \
 	install-info-am install-man install-strip installcheck \
 	installcheck-am installdirs maintainer-clean \
@@ -600,10 +599,7 @@ libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core
 	$(RANLIB) $@
 
 #--------------------------------------#
-# Unittest, install, doc, etc targets
-
-check-local: testgc
-	./testgc
+# Install, doc, etc targets
 
 install-exec-local: $(D_PREREQ_SRCS) libgdruntime.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)

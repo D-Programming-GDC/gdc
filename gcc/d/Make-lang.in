@@ -434,9 +434,15 @@ d.stageprofile: stageprofile-start
 d.stagefeedback: stagefeedback-start
 	-mv d/*$(objext) stagefeedback/d
 
+# 'make check' in gcc/ looks for check-d, as do all toplevel D-related
+# check targets.  However, our DejaGNU framework requires 'check-gdc' as its
+# entry point.  We feed the former to the latter here.
 check-d: check-gdc
+# List of targets that can use the generic check- rule and its // variant.
 lang_checks += check-gdc
 lang_checks_parallelized += check-gdc
+# For description see comment above check_gcc_parallelize in gcc/Makefile.in.
+check_gdc_parallelize = d_do_test.exp=runnable/*
 
 d/pkgvars: Makefile
 	@rm -f $@

@@ -79,13 +79,16 @@ proc gdc_include_flags { paths } {
     set gccpath ${paths}
     set target [file tail [file normalize ${paths}]]
 
-    append flags "-I${srcdir}/../../libphobos "
     if { $gccpath != "" } {
-	if [file exists "${gccpath}/libphobos"] {
-	    append flags "-I${gccpath}/libphobos "
-        append flags "-I${gccpath}/libphobos/$target "
+	if [file exists "${gccpath}/libphobos/libdruntime"] {
+	    append flags "-I${gccpath}/libphobos/libdruntime "
+	    append flags "-I${gccpath}/libphobos/libdruntime/import "
+	    append flags "-I${gccpath}/libphobos/libdruntime/$target "
 	}
     }
+
+    append flags "-I${srcdir}/../../libphobos "
+    append flags "-I${srcdir}/../../libphobos/libdruntime "
 }
 
 #
@@ -106,19 +109,27 @@ proc gdc_link_flags { paths } {
     verbose "shared lib extension: $shlib_ext"
 
     if { $gccpath != "" } {
-      if [file exists "${gccpath}/libphobos/libphobosbegin.a"] {
-	  append flags "-L${gccpath}/libphobos "
-      }
-      if { [file exists "${gccpath}/libphobos/.libs/libphobos.a"] \
-	   || [file exists "${gccpath}/libphobos/.libs/libphobos.${shlib_ext}"] } {
-          append flags "-L${gccpath}/libphobos/.libs "
-          append ld_library_path ":${gccpath}/libphobos/.libs"
+      if { [file exists "${gccpath}/libphobos/libgphobos2.a"] \
+	   || [file exists "${gccpath}/libphobos/libphobos.${shlib_ext}"] } {
+          append flags "-L${gccpath}/libphobos "
+          append ld_library_path ":${gccpath}/libphobos"
       }
       if [file exists "${gccpath}/libiberty/libiberty.a"] {
           append flags "-L${gccpath}/libiberty "
       }
-      append ld_library_path \
-	[gcc-set-multilib-library-path $GDC_UNDER_TEST]
+      append ld_library_path [gcc-set-multilib-library-path $GDC_UNDER_TEST]
+    } else {
+      global tool_root_dir
+
+      set libphobos [lookfor_file ${tool_root_dir} libgphobos2]
+      if { $libphobos != "" } {
+          append flags "-L${libphobos} "
+          append ld_library_path ":${libphobos}"
+      }
+      set libiberty [lookfor_file ${tool_root_dir} libiberty]
+      if { $libiberty != "" } {
+          append flags "-L${libiberty} "
+      }
     }
 
     set_ld_library_path_env_vars

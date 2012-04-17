@@ -229,10 +229,7 @@ libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core
 	$(RANLIB) $@
 
 #--------------------------------------#
-# Unittest, install, doc, etc targets
-
-check-local: testgc
-	./testgc
+# Install, doc, etc targets
 
 install-exec-local: $(D_PREREQ_SRCS) libgdruntime.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)

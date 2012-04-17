@@ -19,6 +19,31 @@
 load_lib gdc-dg.exp
 #load_lib gdc.exp
 
+# Convert DMD arguments to GDC equivalent
+proc gdc-convert-args { args } {
+    set out ""
+
+    if [regexp -- "-d" $args] {
+        lappend out "-fdeprecated"
+    }
+    
+    if [regexp -- "-w" $args] {
+        lappend out "-Wall -Werror"
+    }
+
+    set i 0
+    set j 0
+    while { [regexp -start $i -indices -- {-J([\w/;-]+)} $args i j] } { 
+        # Need to test for ; and split them into separate -J options
+        #print "-J $i $j"
+        set i [lindex $j 0]
+        set j [lindex $j 1]
+        lappend out "-J [string range $args $i $j]"
+        #print "-J [string range $args $i $j]" 
+    }
+    return $out
+}
+
 # Translate DMD test directives to dejagnu equivalent.
 proc dmd2dg { base test } {
     global DEFAULT_DFLAGS
@@ -64,6 +89,7 @@ proc dmd2dg { base test } {
         # PERMUTE_ARGS.  Must be handled separately
         if [string match "PERMUTE_ARGS" $copy_line] {
             #set DEFAULT_DFLAGS [regexp]
+            error "PERMUTE_ARGS not handled"
             continue 
         }
 
@@ -74,6 +100,7 @@ proc dmd2dg { base test } {
 
         # POST_SCRIPT. not handled
         if [string match "POST_SCRIPT" $copy_line] {
+            error "POST_SCRIPT not handled"
             set out_line $copy_line
         }
 
@@ -81,6 +108,7 @@ proc dmd2dg { base test } {
 
         # EXECUTE_ARGS.  ???
         if [string match "EXECUTE_ARGS" $copy_line] {
+            error "EXECUTE_ARGS not handled"
             set out_line $copy_line
         }
 
@@ -95,10 +123,8 @@ proc dmd2dg { base test } {
         }
 
         # REQUIRED_ARGS.
-        if [string match "REQUIRED_ARGS" $copy_line] {
-            # Also need to convert DMD arguments to GDC.
-            # regsub {"// *REQUIRED_ARGS"} $copy_line {""} out_line
-            set out_line $copy_line
+        if [regexp {\s*//\s*REQUIRED_ARGS\s*:\s*(.*)} $copy_line m m0] {
+            set out_line "/* { dg-additional-options [gdc-convert-args $m0] } */"
         }
         puts $fdout $out_line
     }
@@ -127,7 +153,7 @@ proc gdc-permute-options { options } {
 
 
 proc gdc-do-test { } {
-    load_lib gdc-dg.exp
+    global TORTURE_OPTIONS
     global srcdir subdir
     global dg-do-what-default
     global verbose
@@ -165,32 +191,30 @@ proc gdc-do-test { } {
         set filename [dmd2dg $base $dir/$name.$ext]
 
         #set options [gdc-permute-options $DEFAULT_DFLAGS]
-        set options {""}
+       set options {""}
 
         switch $dir {
             runnable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
-                    set flags [format "%s %s -fdeprecated" [lindex $options $i] $imports]
-                    # puts "$filename - $flags"
+                    set TORTURE_OPTIONS [lindex $options $i]
                     set dg-do-what-default run
-                    gdc-dg-runtest $filename $flags
+                    gdc-dg-runtest $filename $imports
                 }
             }
             
             compilable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
-                    set flags [format "%s %s -fdeprecated" [lindex $options $i] $imports]
-                    #puts "$filename - $flags"
+                    set TORTURE_OPTIONS [lindex $options $i]
                     set dg-do-what-default "assemble"
-                    gdc-dg-runtest $filename "$flags"
+                    gdc-dg-runtest $filename "$imports"
                 }
             }
     
             fail_compilation {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
+                    set TORTURE_OPTIONS [lindex $options $i]
                     set dg-do-what-default "compile"
-                    set flags [format "%s %s -fdeprecated" [lindex $options $i] $imports]
-                    gdc-dg-runtest $filename $flags
+                    gdc-dg-runtest $filename $imports
                 }
             }
         }

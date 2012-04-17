@@ -680,7 +680,6 @@ distcleancheck: distclean
 	       $(distcleancheck_listfiles) ; \
 	       exit 1; } >&2
 check-am: all-am
-	$(MAKE) $(AM_MAKEFLAGS) check-local
 check: check-recursive
 all-am: Makefile all-multi config.h all-local
 installdirs: installdirs-recursive
@@ -761,14 +760,14 @@ uninstall-am: uninstall-info-am
 uninstall-info: uninstall-info-recursive
 
 .PHONY: $(RECURSIVE_TARGETS) CTAGS GTAGS all all-am all-local \
-	all-multi am--refresh check check-am check-local clean \
-	clean-generic clean-local clean-multi clean-recursive ctags \
-	ctags-recursive dist dist-all dist-bzip2 dist-gzip dist-shar \
-	dist-tarZ dist-zip distcheck distclean distclean-generic \
-	distclean-hdr distclean-multi distclean-recursive \
-	distclean-tags distcleancheck distdir distuninstallcheck dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-data-local install-exec \
+	all-multi am--refresh check check-am clean clean-generic \
+	clean-local clean-multi clean-recursive ctags ctags-recursive \
+	dist dist-all dist-bzip2 dist-gzip dist-shar dist-tarZ \
+	dist-zip distcheck distclean distclean-generic distclean-hdr \
+	distclean-multi distclean-recursive distclean-tags \
+	distcleancheck distdir distuninstallcheck dvi dvi-am html \
+	html-am info info-am install install-am install-data \
+	install-data-am install-data-local install-exec \
 	install-exec-am install-exec-local install-info \
 	install-info-am install-man install-multi install-strip \
 	installcheck installcheck-am installdirs installdirs-am \
@@ -823,9 +822,6 @@ libgphobos2.a : $(ALL_PHOBOS_OBJS)
 libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(AR) -r $@ $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(RANLIB) $@
-
-check-local: unittest
-	./unittest
 
 install-exec-local: libgphobos2.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)

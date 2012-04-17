@@ -657,6 +657,9 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
+MAINT
+MAINTAINER_MODE_FALSE
+MAINTAINER_MODE_TRUE
 multi_basedir
 am__untar
 am__tar
@@ -734,6 +737,7 @@ DCFG_SQRTF'
 ac_user_opts='
 enable_option_checking
 enable_multilib
+enable_maintainer_mode
 enable_thread_lib
 enable_unix
 enable_druntime_gc
@@ -1367,6 +1371,8 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-multilib       build many library versions (default)
+  --enable-maintainer-mode  enable make rules and dependencies not useful
+			  (and sometimes confusing) to the casual installer
   --enable-thread-lib=<arg>
                           specify linker option for the system thread library
                           (default: autodetect)
@@ -2849,6 +2855,8 @@ am__tar='${AMTAR} chof - "$$tardir"'; am__untar='${AMTAR} xf -'
 
 
 
+
+
 # Default to --enable-multilib
 # Check whether --enable-multilib was given.
 if test "${enable_multilib+set}" = set; then :
@@ -2868,16 +2876,41 @@ fi
 
 if test "$srcdir" = "."; then
   if test "$with_target_subdir" != "."; then
-    multi_basedir="$srcdir/$with_multisrctop../$d_mlcd"
+    multi_basedir="$srcdir/$with_multisrctop../.."
   else
-    multi_basedir="$srcdir/$with_multisrctop$d_mlcd"
+    multi_basedir="$srcdir/$with_multisrctop.."
   fi
 else
-  multi_basedir="$srcdir/$d_mlcd"
+  multi_basedir="$srcdir/.."
 fi
 
 
 ac_config_commands="$ac_config_commands default-1"
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable maintainer-specific portions of Makefiles" >&5
+$as_echo_n "checking whether to enable maintainer-specific portions of Makefiles... " >&6; }
+    # Check whether --enable-maintainer-mode was given.
+if test "${enable_maintainer_mode+set}" = set; then :
+  enableval=$enable_maintainer_mode; USE_MAINTAINER_MODE=$enableval
+else
+  USE_MAINTAINER_MODE=no
+fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $USE_MAINTAINER_MODE" >&5
+$as_echo "$USE_MAINTAINER_MODE" >&6; }
+
+
+if test $USE_MAINTAINER_MODE = yes; then
+  MAINTAINER_MODE_TRUE=
+  MAINTAINER_MODE_FALSE='#'
+else
+  MAINTAINER_MODE_TRUE='#'
+  MAINTAINER_MODE_FALSE=
+fi
+
+  MAINT=$MAINTAINER_MODE_TRUE
+
 
 
 # libphobos is usually a symlink to gcc/d/phobos, so libphobos/..
@@ -6091,6 +6124,10 @@ LIBOBJS=$ac_libobjs
 LTLIBOBJS=$ac_ltlibobjs
 
 
+if test -z "${MAINTAINER_MODE_TRUE}" && test -z "${MAINTAINER_MODE_FALSE}"; then
+  as_fn_error $? "conditional \"MAINTAINER_MODE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 
 : "${CONFIG_STATUS=./config.status}"
 ac_write_fail=0
