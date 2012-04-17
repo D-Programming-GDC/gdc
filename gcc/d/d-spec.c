@@ -481,7 +481,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 
 #if USE_PTHREADS
         /* When linking libphobos we also need to link with the pthread library.  */
-        if (library > 1 && (static_phobos || static_link))
+        if (library > 0 && (static_phobos || static_link))
             need_thread = 1;
 #endif
     }
