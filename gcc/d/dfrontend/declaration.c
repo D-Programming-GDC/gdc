@@ -450,6 +450,7 @@ void AliasDeclaration::semantic(Scope *sc)
 #endif
 
     storage_class |= sc->stc & STCdeprecated;
+    protection = sc->protection;
 
     // Given:
     //  alias foo.bar.abc def;
@@ -1252,14 +1253,25 @@ Lnomatch:
         StructInitializer *si = init->isStructInitializer();
         ExpInitializer *ei = init->isExpInitializer();
 
-        // See if initializer is a NewExp that can be allocated on the stack
-        if (ei && isScope() && ei->exp->op == TOKnew)
-        {   NewExp *ne = (NewExp *)ei->exp;
-            if (!(ne->newargs && ne->newargs->dim))
-            {   ne->onstack = 1;
-                onstack = 1;
-                if (type->isBaseOf(ne->newtype->semantic(loc, sc), NULL))
-                    onstack = 2;
+        if (ei && ei->exp->op == TOKfunction && !inferred)
+            ((FuncExp *)ei->exp)->setType(type);
+
+        if (ei && isScope())
+        {
+            // See if initializer is a NewExp that can be allocated on the stack
+            if (ei->exp->op == TOKnew)
+            {   NewExp *ne = (NewExp *)ei->exp;
+                if (!(ne->newargs && ne->newargs->dim))
+                {   ne->onstack = 1;
+                    onstack = 1;
+                    if (type->isBaseOf(ne->newtype->semantic(loc, sc), NULL))
+                        onstack = 2;
+                }
+            }
+            // or a delegate that doesn't escape a reference to the function
+            else if (ei->exp->op == TOKfunction)
+            {   FuncDeclaration *f = ((FuncExp *)ei->exp)->fd;
+                f->tookAddressOf--;
             }
         }
 
@@ -1346,6 +1358,13 @@ Lnomatch:
                                      * variable with a bit copy of the default
                                      * initializer
                                      */
+
+                                    /* Remove ref if this declaration is ref binding.
+                                     * ref Type __self = (__ctmp = 0, __ctmp).this(...);
+                                     * ->  Type __self = (__self = 0, __self.this(...));
+                                     */
+                                    storage_class &= ~(STCref | STCforeach | STCparameter);
+
                                     Expression *e;
                                     if (sd->zeroInit == 1)
                                     {
@@ -1679,25 +1698,45 @@ void VarDeclaration::checkNestedReference(Scope *sc, Loc loc)
              * so it never becomes closure.
              */
 
+            //printf("\tfdv = %s\n", fdv->toChars());
+            //printf("\tfdthis = %s\n", fdthis->toChars());
+
             if (loc.filename)
-                fdthis->getLevel(loc, fdv);
+                fdthis->getLevel(loc, sc, fdv);
 
-            for (size_t i = 0; i < nestedrefs.dim; i++)
-            {   FuncDeclaration *f = nestedrefs.tdata()[i];
-                if (f == fdthis)
-                    goto L1;
+            // Function literals from fdthis to fdv must be delegates
+            for (Dsymbol *s = fdthis; s && s != fdv; s = s->toParent2())
+            {
+                // function literal has reference to enclosing scope is delegate
+                if (FuncLiteralDeclaration *fld = s->isFuncLiteralDeclaration())
+                {
+                    fld->tok = TOKdelegate;
+                }
             }
-            nestedrefs.push(fdthis);
-          L1: ;
 
-
-            for (size_t i = 0; i < fdv->closureVars.dim; i++)
-            {   Dsymbol *s = fdv->closureVars.tdata()[i];
-                if (s == this)
-                    goto L2;
+            // Add fdthis to nestedrefs[] if not already there
+            for (size_t i = 0; 1; i++)
+            {
+                if (i == nestedrefs.dim)
+                {
+                    nestedrefs.push(fdthis);
+                    break;
+                }
+                if (nestedrefs[i] == fdthis)
+                    break;
             }
-            fdv->closureVars.push(this);
-          L2: ;
+
+            // Add this to fdv->closureVars[] if not already there
+            for (size_t i = 0; 1; i++)
+            {
+                if (i == fdv->closureVars.dim)
+                {
+                    fdv->closureVars.push(this);
+                    break;
+                }
+                if (fdv->closureVars[i] == this)
+                    break;
+            }
 
             //printf("fdthis is %s\n", fdthis->toChars());
             //printf("var %s in function %s is nested ref\n", toChars(), fdv->toChars());

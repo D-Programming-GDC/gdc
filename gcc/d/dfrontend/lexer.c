@@ -127,11 +127,11 @@ const char *Token::toChars()
             break;
 
         case TOKint64v:
-            sprintf(buffer,"%"PRIdMAX"L",int64value);
+            sprintf(buffer,"%"PRIdMAX"L",(intmax_t)int64value);
             break;
 
         case TOKuns64v:
-            sprintf(buffer,"%"PRIuMAX"UL",uns64value);
+            sprintf(buffer,"%"PRIuMAX"UL",(uintmax_t)uns64value);
             break;
 
 #if IN_GCC
@@ -1156,6 +1156,12 @@ void Lexer::scan(Token *t)
                     else
                         t->value = TOKequal;            // ==
                 }
+#if DMDV2
+                else if (*p == '>')
+                {   p++;
+                    t->value = TOKgoesto;               // =>
+                }
+#endif
                 else
                     t->value = TOKassign;               // =
                 return;
@@ -2081,7 +2087,13 @@ TOK Lexer::number(Token *t)
                         continue;
                     }
                     if (c == '.' && p[1] != '.')
+                    {
+#if DMDV2
+                        if (isalpha(p[1]) || p[1] == '_')
+                            goto done;
+#endif
                         goto real;
+                    }
                     else if (c == 'i' || c == 'f' || c == 'F' ||
                              c == 'e' || c == 'E')
                     {
@@ -3048,7 +3060,7 @@ void Lexer::initKeywords()
 {
     unsigned nkeywords = sizeof(keywords) / sizeof(keywords[0]);
 
-    stringtable.init();
+    stringtable.init(6151);
 
     if (global.params.Dversion == 1)
         nkeywords -= 2;
@@ -3157,6 +3169,7 @@ void Lexer::initKeywords()
     Token::tochars[TOKat]               = "@";
     Token::tochars[TOKpow]              = "^^";
     Token::tochars[TOKpowass]           = "^^=";
+    Token::tochars[TOKgoesto]           = "=>";
 #endif
 
      // For debugging

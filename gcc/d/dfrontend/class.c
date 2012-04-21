@@ -301,9 +301,11 @@ void ClassDeclaration::semantic(Scope *sc)
         attributes = sc->attributes;
 #endif
 
+    int errors = global.gaggedErrors;
+
     if (sc->stc & STCdeprecated)
     {
-        isdeprecated = 1;
+        isdeprecated = true;
     }
 
     if (sc->linkage == LINKcpp)
@@ -312,9 +314,7 @@ void ClassDeclaration::semantic(Scope *sc)
     // Expand any tuples in baseclasses[]
     for (size_t i = 0; i < baseclasses->dim; )
     {   BaseClass *b = baseclasses->tdata()[i];
-//printf("test1 %s %s\n", toChars(), b->type->toChars());
         b->type = b->type->semantic(loc, sc);
-//printf("test2\n");
         Type *tb = b->type->toBasetype();
 
         if (tb->ty == Ttuple)
@@ -354,7 +354,7 @@ void ClassDeclaration::semantic(Scope *sc)
                 if (!isDeprecated())
                 {
                     // Deriving from deprecated class makes this one deprecated too
-                    isdeprecated = 1;
+                    isdeprecated = true;
 
                     tc->checkDeprecated(loc, sc);
                 }
@@ -427,7 +427,7 @@ void ClassDeclaration::semantic(Scope *sc)
                 if (!isDeprecated())
                 {
                     // Deriving from deprecated class makes this one deprecated too
-                    isdeprecated = 1;
+                    isdeprecated = true;
 
                     tc->checkDeprecated(loc, sc);
                 }
@@ -665,9 +665,15 @@ void ClassDeclaration::semantic(Scope *sc)
         s->semantic(sc);
     }
 
-    if (sizeok == 2)
-    {   // semantic() failed because of forward references.
+    if (global.gag && global.gaggedErrors != errors)
+    {   // The type is no good, yet the error messages were gagged.
+        type = Type::terror;
+    }
+
+    if (sizeok == 2)            // failed due to forward references
+    {   // semantic() failed due to forward references
         // Unwind what we did, and defer it for later
+
         fields.setDim(0);
         structsize = 0;
         alignsize = 0;
@@ -776,7 +782,7 @@ void ClassDeclaration::semantic(Scope *sc)
 #endif
     //printf("-ClassDeclaration::semantic(%s), type = %p\n", toChars(), type);
 
-    if (deferred)
+    if (deferred && !global.gag)
     {
         deferred->semantic2(sc);
         deferred->semantic3(sc);
@@ -940,6 +946,23 @@ Dsymbol *ClassDeclaration::search(Loc loc, Identifier *ident, int flags)
         }
     }
     return s;
+}
+
+Dsymbol *ClassDeclaration::searchBase(Loc loc, Identifier *ident)
+{
+    // Search bases classes in depth-first, left to right order
+
+    for (size_t i = 0; i < baseclasses->dim; i++)
+    {
+        BaseClass *b = (*baseclasses)[i];
+        Dsymbol *cdb = b->type->isClassHandle();
+        if (cdb->ident->equals(ident))
+            return cdb;
+        cdb = ((ClassDeclaration *)cdb)->searchBase(loc, ident);
+        if (cdb)
+            return cdb;
+    }
+    return NULL;
 }
 
 /**********************************************************
@@ -1223,9 +1246,11 @@ void InterfaceDeclaration::semantic(Scope *sc)
         attributes = sc->attributes;
 #endif
 
+    int errors = global.gaggedErrors;
+
     if (sc->stc & STCdeprecated)
     {
-        isdeprecated = 1;
+        isdeprecated = true;
     }
 
     // Expand any tuples in baseclasses[]
@@ -1374,11 +1399,33 @@ void InterfaceDeclaration::semantic(Scope *sc)
     structalign = sc->structalign;
     sc->offset = PTRSIZE * 2;
     inuse++;
+
+    /* Set scope so if there are forward references, we still might be able to
+     * resolve individual members like enums.
+     */
+    for (size_t i = 0; i < members->dim; i++)
+    {   Dsymbol *s = (*members)[i];
+        /* There are problems doing this in the general case because
+         * Scope keeps track of things like 'offset'
+         */
+        if (s->isEnumDeclaration() || (s->isAggregateDeclaration() && s->ident))
+        {
+            //printf("setScope %s %s\n", s->kind(), s->toChars());
+            s->setScope(sc);
+        }
+    }
+
     for (size_t i = 0; i < members->dim; i++)
     {
         Dsymbol *s = members->tdata()[i];
         s->semantic(sc);
     }
+
+    if (global.gag && global.gaggedErrors != errors)
+    {   // The type is no good, yet the error messages were gagged.
+        type = Type::terror;
+    }
+
     inuse--;
     //members->print();
     sc->pop();
