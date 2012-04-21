@@ -23,21 +23,21 @@
  *     receive(
  *         (int i) { writeln("Received the number ", i);}
  *     );
- * 
+ *
  *     // Send a message back to the owner thread
  *     // indicating success.
  *     send(tid, true);
  * }
  *
- * void main() 
+ * void main()
  * {
  *     // Start spawnedFunc in a new thread.
  *     auto tid = spawn(&spawnedFunc, thisTid);
  *
  *     // Send the number 42 to this new thread.
  *     send(tid, 42);
- *    
- *     // Receive the result code.  
+ *
+ *     // Receive the result code.
  *     auto wasSuccessful = receiveOnly!(bool);
  *     assert(wasSuccessful);
  *     writeln("Successfully printed number.");
@@ -165,7 +165,7 @@ private
     {
         foreach( i, t1; T )
         {
-            static assert( is( t1 == function ) || is( t1 == delegate ) );
+            static assert( isFunctionPointer!t1 || isDelegate!t1 );
             alias ParameterTypeTuple!(t1) a1;
             alias ReturnType!(t1) r1;
 
@@ -177,7 +177,7 @@ private
 
                 foreach( t2; T[i+1 .. $] )
                 {
-                    static assert( is( t2 == function ) || is( t2 == delegate ) );
+                    static assert( isFunctionPointer!t2 || isDelegate!t2 );
                     alias ParameterTypeTuple!(t2) a2;
 
                     static assert( !is( a1 == a2 ),
@@ -269,7 +269,7 @@ class LinkTerminated : Exception
 
 
 /**
- * Thrown if a message was sent to a thread via 
+ * Thrown if a message was sent to a thread via
  * $(XREF concurrency, prioritySend) and the receiver does not have a handler
  * for a message of this type.
  */
@@ -364,7 +364,7 @@ private:
  * Returns:
  *  A Tid representing the new context.
  *
- * Notes:  
+ * Notes:
  *  $(D args) must not have unshared aliasing.  In other words, all arguments
  *  to $(D fn) must either be $(D shared) or $(D immutable) or have no
  *  pointer indirection.  This is necessary for enforcing isolation among
@@ -374,23 +374,23 @@ private:
  * ---
  * import std.stdio;
  *
- * void f1(string str) 
+ * void f1(string str)
  * {
  *     writeln(str);
  * }
  *
- * void f2(char[] str) 
+ * void f2(char[] str)
  * {
  *     writeln(str);
  * }
- * 
- * void main() 
+ *
+ * void main()
  * {
  *     auto str = "Hello, world";
  *
  *     // Works:  string is immutable.
- *     auto tid1 = spawn(&f1, str);  
- * 
+ *     auto tid1 = spawn(&f1, str);
+ *
  *     // Fails:  char[] has mutable aliasing.
  *     auto tid2 = spawn(&f2, str.dup);
  * }
@@ -470,7 +470,7 @@ void send(T...)( Tid tid, T vals )
 
 /**
  * Send a message to $(D tid) but place it at the front of $(D tid)'s message
- * queue instead of at the back.  This function is typically used for 
+ * queue instead of at the back.  This function is typically used for
  * out-of-band communication, to signal exceptional conditions, etc.
  */
 void prioritySend(T...)( Tid tid, T vals )
@@ -501,10 +501,10 @@ private void _send(T...)( MsgType type, Tid tid, T vals )
 
 
 /**
- * Receive a message from another thread, or block if no messages of the 
+ * Receive a message from another thread, or block if no messages of the
  * specified types are available.  This function works by pattern matching
  * a message against a set of delegates and executing the first match found.
- * 
+ *
  * If a delegate that accepts a $(XREF variant, Variant) is included as
  * the last argument to $(D receive), it will match any message that was not
  * matched by an earlier delegate.  If more than one argument is sent,
@@ -515,7 +515,7 @@ private void _send(T...)( MsgType type, Tid tid, T vals )
  * ---
  * import std.stdio;
  * import std.variant;
- * 
+ *
  * void spawnedFunction()
  * {
  *     receive(
@@ -552,6 +552,20 @@ unittest
                        } ) );
 }
 
+// Make sure receive() works with free functions as well.
+version (unittest)
+{
+    private void receiveFunction(int x) {}
+}
+unittest
+{
+    assert( __traits( compiles,
+                      {
+                          receive( &receiveFunction );
+                          receive( &receiveFunction, (Variant x) {} );
+                      } ) );
+}
+
 
 private template receiveOnlyRet(T...)
 {
@@ -580,8 +594,8 @@ private template receiveOnlyRet(T...)
  *     assert(msg[0] == 42);
  *     assert(msg[1] == "42");
  * }
- * 
- * void main() 
+ *
+ * void main()
  * {
  *     auto tid = spawn(&spawnedFunc);
  *     send(tid, 42, "42");
@@ -617,10 +631,10 @@ receiveOnlyRet!(T) receiveOnly(T...)()
 
 
 /**
- * $(RED Scheduled for deprecation in January 2012. Please use the version
+ * $(RED Deprecated. It will be removed in July 2012. Please use the version
  *       which takes a $(CXREF time, Duration) instead.)
  */
-bool receiveTimeout(T...)( long ms, T ops )
+deprecated bool receiveTimeout(T...)( long ms, T ops )
 {
     return receiveTimeout( dur!"msecs"( ms ), ops );
 }
@@ -974,7 +988,7 @@ private
          * if the owner thread terminates and no existing messages match the
          * supplied ops.
          */
-        final bool get(T...)( T vals )
+        final bool get(T...)( scope T vals )
         {
             static assert( T.length );
 
