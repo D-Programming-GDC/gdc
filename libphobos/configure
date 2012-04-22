@@ -602,6 +602,7 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+ZLIB_OBJS
 D_GC_MODULES
 D_GC_FLAGS
 srcdir
@@ -657,9 +658,6 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
-MAINT
-MAINTAINER_MODE_FALSE
-MAINTAINER_MODE_TRUE
 multi_basedir
 am__untar
 am__tar
@@ -737,11 +735,11 @@ DCFG_SQRTF'
 ac_user_opts='
 enable_option_checking
 enable_multilib
-enable_maintainer_mode
 enable_thread_lib
 enable_unix
 enable_druntime_gc
 enable_loader
+with_system_zlib
 enable_proc_maps
 enable_phobos_config_dir
 with_cross_host
@@ -1371,8 +1369,6 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-multilib       build many library versions (default)
-  --enable-maintainer-mode  enable make rules and dependencies not useful
-			  (and sometimes confusing) to the casual installer
   --enable-thread-lib=<arg>
                           specify linker option for the system thread library
                           (default: autodetect)
@@ -1390,6 +1386,7 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-system-zlib      use installed libz (default: no)
   --with-cross-host=HOST  configuring with a cross compiler
 
 Some influential environment variables:
@@ -2886,31 +2883,6 @@ fi
 
 
 ac_config_commands="$ac_config_commands default-1"
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable maintainer-specific portions of Makefiles" >&5
-$as_echo_n "checking whether to enable maintainer-specific portions of Makefiles... " >&6; }
-    # Check whether --enable-maintainer-mode was given.
-if test "${enable_maintainer_mode+set}" = set; then :
-  enableval=$enable_maintainer_mode; USE_MAINTAINER_MODE=$enableval
-else
-  USE_MAINTAINER_MODE=no
-fi
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $USE_MAINTAINER_MODE" >&5
-$as_echo "$USE_MAINTAINER_MODE" >&6; }
-
-
-if test $USE_MAINTAINER_MODE = yes; then
-  MAINTAINER_MODE_TRUE=
-  MAINTAINER_MODE_FALSE='#'
-else
-  MAINTAINER_MODE_TRUE='#'
-  MAINTAINER_MODE_FALSE=
-fi
-
-  MAINT=$MAINTAINER_MODE_TRUE
-
 
 
 # libphobos is usually a symlink to gcc/d/phobos, so libphobos/..
@@ -4640,6 +4612,15 @@ else
 fi
 
 
+
+# Check whether --with-system-zlib was given.
+if test "${with_system_zlib+set}" = set; then :
+  withval=$with_system_zlib; :
+else
+  system_zlib=no
+fi
+
+
 # Check whether --enable-proc-maps was given.
 if test "${enable_proc_maps+set}" = set; then :
   enableval=$enable_proc_maps; case "${enableval}" in
@@ -4678,7 +4659,6 @@ case "$target" in
 *-skyos*-pe*) d_target_os=skyos ;;
 esac
 
-
 GDC=$CC
 GDC=`echo $CC | sed s/xgcc/gdc/`
 
@@ -4713,8 +4693,6 @@ export CFLAGS_FOR_BUILD
 
 # Find build libiberty which is needed by x3
 # Should not have to go up too many directories
-
-
 
 d_libiberty_dir=../..
 while test "$d_count" != 'xxx'; do
@@ -6000,6 +5978,56 @@ fi
 
 
 
+
+ZLIB_OBJS=
+if test "$system_zlib" = yes; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for deflate in -lz" >&5
+$as_echo_n "checking for deflate in -lz... " >&6; }
+if ${ac_cv_lib_z_deflate+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lz  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char deflate ();
+int
+main ()
+{
+return deflate ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_z_deflate=yes
+else
+  ac_cv_lib_z_deflate=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_z_deflate" >&5
+$as_echo "$ac_cv_lib_z_deflate" >&6; }
+if test "x$ac_cv_lib_z_deflate" = xyes; then :
+  ZLIB_OBJS=
+else
+  ZLIB_OBJS="\$(Z_OBJS)"
+fi
+
+else
+    ZLIB_OBJS="\$(Z_OBJS)"
+fi
+
+
 # Copied from libstdc++-v3/configure.ac
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so
 # that multilib installs will end up installed in the correct place.
@@ -6124,10 +6152,6 @@ LIBOBJS=$ac_libobjs
 LTLIBOBJS=$ac_ltlibobjs
 
 
-if test -z "${MAINTAINER_MODE_TRUE}" && test -z "${MAINTAINER_MODE_FALSE}"; then
-  as_fn_error $? "conditional \"MAINTAINER_MODE\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 
 : "${CONFIG_STATUS=./config.status}"
 ac_write_fail=0

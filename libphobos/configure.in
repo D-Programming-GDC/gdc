@@ -33,8 +33,6 @@ AH_TEMPLATE(VERSION, [Version number of package])
 
 AM_ENABLE_MULTILIB(, ..)
 
-AM_MAINTAINER_MODE
-
 # libphobos is usually a symlink to gcc/d/phobos, so libphobos/..
 # is not the toplevel GCC directory.  gcc/d may also be a symlink.
 # Find the correct top-level directory by removing "/libphobos"
@@ -136,6 +134,12 @@ AC_ARG_ENABLE(loader,
                  [builds the std.loader module (default: yes, if supported on target)]),
   :,[enable_loader=yes])
 
+dnl switch between system zlib and gcc's zlib
+AC_ARG_WITH(system-zlib,
+  AS_HELP_STRING([--with-system-zlib],
+                 [use installed libz (default: no)]),
+  :,[system_zlib=no])
+
 AC_ARG_ENABLE(proc-maps,
   AC_HELP_STRING([--enable-proc-maps],
 	         [use /proc/self/maps to find data segments for garbage collection (default: yes, if supported on target)]),
@@ -169,16 +173,6 @@ case "$target" in
 *-skyos*-pe*) d_target_os=skyos ;;
 esac
 
-dnl if test -z "$GDC"; then
-dnl   #GDC=gdc
-dnl   GDC=$CC
-dnl fi
-dnl if test -z "$"
-dnl AC_CHECK_PROG(d_have_dmd,$GDC,yes,no)
-dnl if test "$d_have_dmd" = "no"; then
-dnl   AC_MSG_ERROR([can't find the D compiler!])
-dnl fi
-
 GDC=$CC
 GDC=`echo $CC | sed s/xgcc/gdc/`
 
@@ -209,25 +203,6 @@ AC_SUBST(CFLAGS_FOR_BUILD)
 
 # Find build libiberty which is needed by x3
 # Should not have to go up too many directories
-
-
-dnl BUILD_LIBIBERTY=../../build-${build_alias}/libiberty/libiberty.a
-dnl d_count=''
-dnl while test ! -f "$BUILD_LIBIBERTY" && test "$d_count" != 'xxx'; do
-dnl     BUILD_LIBIBERTY=../$BUILD_LIBIBERTY
-dnl     d_count="x$d_count"
-dnl done
-dnl
-dnl # GCC 3.x does not use the 'build-' dir, so we have so search
-dnl # for plain 'libiberty' with some kind of check it is not a target dir
-dnl if test ! -f "$BUILD_LIBIBERTY"; then
-dnl     BUILD_LIBIBERTY=../../libiberty/libiberty.a
-dnl     d_count=''
-dnl     while (test ! -f "$BUILD_LIBIBERTY" ||&& test "$d_count" != 'xxx'; do
-dnl 	BUILD_LIBIBERTY=../$BUILD_LIBIBERTY
-dnl 	d_count="x$d_count"
-dnl     done
-dnl fi
 
 d_libiberty_dir=../..
 while test "$d_count" != 'xxx'; do
@@ -705,6 +680,15 @@ fi
 
 AC_SUBST(D_GC_FLAGS)
 AC_SUBST(D_GC_MODULES)
+
+
+ZLIB_OBJS=
+if test "$system_zlib" = yes; then
+    AC_CHECK_LIB(z, deflate, ZLIB_OBJS=, ZLIB_OBJS="\$(Z_OBJS)")
+else
+    ZLIB_OBJS="\$(Z_OBJS)"
+fi
+AC_SUBST(ZLIB_OBJS)
 
 # Copied from libstdc++-v3/configure.ac
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so

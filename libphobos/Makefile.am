@@ -21,9 +21,9 @@ ACLOCAL_AMFLAGS = -I . -I ..
 
 SUBDIRS = libdruntime
 
-OUR_CFLAGS=@DEFS@ -I . -I $(srcdir)/gcc -I $(srcdir)/zlib
+OUR_CFLAGS=@DEFS@ -I . -I $(srcdir)/gcc -I$(top_srcdir)/../zlib
 D_EXTRA_DFLAGS=-nostdinc -pipe -fdeprecated -I $(srcdir) -I $(srcdir)/libdruntime -I ./libdruntime/$(host_alias)
-ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
+ALL_DFLAGS=$(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -36,6 +36,10 @@ SUFFIXES = .d
 	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
 
 # %.o : %.c
+zlib/%.o: $(top_srcdir)/../zlib/%.c
+	@test -d zlib || mkdir zlib
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+
 # Use .c.o to override Automake
 .c.o:
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
@@ -89,10 +93,13 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/net/isemail.o \
 	  crc32.o etc/c/curl.o etc/c/zlib.o
 
-ZLIB_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
-	  zlib/gzclose.o zlib/gzlib.o zlib/gzread.o zlib/gzwrite.o \
-	  zlib/infback.o zlib/inffast.o zlib/inflate.o zlib/inftrees.o \
-	  zlib/trees.o zlib/uncompr.o zlib/zutil.o
+Z_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
+       zlib/gzclose.o zlib/gzlib.o zlib/gzread.o zlib/gzwrite.o \
+       zlib/infback.o zlib/inffast.o zlib/inflate.o zlib/inftrees.o \
+       zlib/trees.o zlib/uncompr.o zlib/zutil.o
+
+ZLIB_OBJS=@ZLIB_OBJS@
+
 
 # modules which require some kind of operating system
 OS_OBJS=std/file.o std/mmfile.o std/path.o std/perf.o std/process.o \
