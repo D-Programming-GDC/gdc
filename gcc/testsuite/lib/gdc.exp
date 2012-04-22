@@ -110,7 +110,7 @@ proc gdc_link_flags { paths } {
 
     if { $gccpath != "" } {
       if { [file exists "${gccpath}/libphobos/libgphobos2.a"] \
-	   || [file exists "${gccpath}/libphobos/libphobos.${shlib_ext}"] } {
+	   || [file exists "${gccpath}/libphobos/libgphobos2.${shlib_ext}"] } {
           append flags "-L${gccpath}/libphobos "
           append ld_library_path ":${gccpath}/libphobos"
       }

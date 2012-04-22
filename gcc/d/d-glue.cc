@@ -1,23 +1,20 @@
-/* GDC -- D front-end for GCC
-   Copyright (C) 2004 David Friedman
+// d-glue.cc -- D frontend for GCC.
+// Originally contributed by David Friedman
+// Maintained by Iain Buclaw
 
-   Modified by
-    Michael Parrott, Vincenzo Ampolo, Iain Buclaw, (C) 2010
+// GCC is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 3, or (at your option) any later
+// version.
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
+// GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+// You should have received a copy of the GNU General Public License
+// along with GCC; see the file COPYING3.  If not see
+// <http://www.gnu.org/licenses/>.
 
 #include "d-gcc-includes.h"
 
@@ -2844,11 +2841,7 @@ d_genericize(tree fndecl)
     }
 
     // Build cgraph for function.
-#if D_GCC_VER >= 47
     cgraph_get_create_node(fndecl);
-#else
-    (void) cgraph_node(fndecl);
-#endif
 
     // Maybe set original decl context back to true context
     if (D_DECL_STATIC_CHAIN(fndecl))
@@ -4831,28 +4824,7 @@ gcc_d_backend_init()
     // This allows the code in d-builtins2 to not have to worry about
     // converting (C signed char *) to (D char *) for string arguments of
     // built-in functions.
-#if D_GCC_VER >= 47
     build_common_tree_nodes (/*signed_char*/false, /*short_double*/false);
-#else
-    // This is required or we'll crash pretty early on. %%log
-#if D_GCC_VER >= 46
-    build_common_tree_nodes (/*signed_char*/false);
-#else
-    build_common_tree_nodes (/*signed_char*/false, /*short_double*/false);
-#endif
-
-    // This is also required (or the manual equivalent) or crashes
-    // will occur later
-    char_type_node = d_type_for_size(CHAR_TYPE_SIZE, 1);
-    size_type_node = d_type_for_mode(ptr_mode, 1);
-
-    // If this is called after the next statements, you'll get an ICE.
-    set_sizetype(size_type_node);
-
-    // need this for void.. %% but this crashes... probably need to impl
-    // some things in dc-lang.cc
-    build_common_tree_nodes_2 (0 /* %% support the option */);
-#endif
 
     // Specific to D (but so far all taken from C)
     d_void_zero_node = make_node(INTEGER_CST);

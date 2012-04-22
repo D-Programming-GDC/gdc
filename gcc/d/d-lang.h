@@ -1,30 +1,25 @@
-// GDC -- D front-end for GCC
-// Copyright (C) 2010, 2011, 2012 Iain Buclaw
+/* d-lang.h -- D frontend for GCC.
+   Originally contributed by David Friedman
+   Maintained by Iain Buclaw
 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 2 of the License, or
-// (at your option) any later version.
+   GCC is free software; you can redistribute it and/or modify it under
+   the terms of the GNU General Public License as published by the Free
+   Software Foundation; either version 3, or (at your option) any later
+   version.
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+   GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or
+   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+   for more details.
 
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+   You should have received a copy of the GNU General Public License
+   along with GCC; see the file COPYING3.  If not see
+   <http://www.gnu.org/licenses/>.
+*/
 
-/* Same as d-lang.h, but updated to support GCC-4.5's new GTY(()) convention */
 
 #ifndef GCC_DCMPLR_DC_LANG_H
 #define GCC_DCMPLR_DC_LANG_H
-
-#if D_GCC_VER == 45
-#include "d-lang-type-45.h"
-#else
-#include "d-lang-type.h"
-#endif
 
 /* Nothing is added to tree_identifier; */
 struct GTY(()) lang_identifier
@@ -45,6 +40,15 @@ typedef struct Declaration *DeclarationGTYP;
 struct GTY(()) lang_decl
 {
   DeclarationGTYP GTY ((skip)) d_decl;
+};
+
+/* The lang_type field is not set for every GCC type. */
+struct Type;
+typedef struct Type *TypeGTYP;
+struct GTY((variable_size)) lang_type
+{
+  tree GTY((skip)) c_type;
+  TypeGTYP GTY((skip)) d_type;
 };
 
 /* Another required, but unused declaration.  This could be simplified, since
@@ -216,11 +220,7 @@ extern "C" {
   void d_keep(tree t);
   void d_free(tree t);
   
-#if D_GCC_VER >= 47
   bool global_bindings_p (void);
-#else
-  int global_bindings_p (void);
-#endif
   void insert_block (tree);
   void set_block (tree);
   tree getdecls (void);
@@ -247,11 +247,6 @@ extern GTY(()) tree d_keep_list;
 #include "d-dmd-gcc.h"
 
 #define d_warning(option, ...) warning(option, __VA_ARGS__)
-
-#if D_GCC_VER >= 47
 #define d_built_in_decls(FCODE) builtin_decl_explicit(FCODE)
-#else
-#define d_built_in_decls(FCODE) built_in_decls[FCODE]
-#endif
 
 #endif

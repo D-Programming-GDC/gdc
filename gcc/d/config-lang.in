@@ -21,28 +21,6 @@ language="d"
 compilers="cc1d\$(exeext)"
 stagestuff="gdc\$(exeext) gdc-cross\$(exeext) cc1d\$(exeext)"
 
-# This file can be called from one of two places,
-# so ensure we account for both.
-d_gcc_version=
-if [ -e $srcdir/gcc/BASE-VER ]; then
-  d_gcc_version=$(cat $srcdir/gcc/BASE-VER)
-elif [ -e $srcdir/BASE-VER ]; then
-  d_gcc_version=$(cat $srcdir/BASE-VER)
-else
-  echo "Sorry, cannot find BASE-VER"
-  exit 1
-fi
-
-d_gcc_version=$(echo $d_gcc_version | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1\2/')
-if [ ${d_gcc_version} -ge 46 ]; then
-  d_langfiles="\$(srcdir)/d/d-lang.h \$(srcdir)/d/d-lang-type.h"
-elif [ ${d_gcc_version} -ge 45 ]; then
-  d_langfiles="\$(srcdir)/d/d-lang.h \$(srcdir)/d/d-lang-type-45.h"
-else
-  echo "Sorry, this version of gcc is not supported"
-  exit 1
-fi
-
-gtfiles="${d_langfiles} \$(srcdir)/d/d-builtins.c"
+gtfiles="\$(srcdir)/d/d-lang.h \$(srcdir)/d/d-builtins.c"
 
 target_libs="target-libphobos"

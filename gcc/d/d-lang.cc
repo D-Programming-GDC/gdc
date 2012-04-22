@@ -1,27 +1,23 @@
-/* GDC -- D front-end for GCC
-   Copyright (C) 2004 David Friedman
+// d-lang.cc -- D frontend for GCC.
+// Originally contributed by David Friedman
+// Maintained by Iain Buclaw
 
-   Modified by
-    Michael Parrott, (C) 2009, 2010
-    Iain Buclaw, (C) 2010, 2011
+// GCC is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 3, or (at your option) any later
+// version.
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
+// GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+// You should have received a copy of the GNU General Public License
+// along with GCC; see the file COPYING3.  If not see
+// <http://www.gnu.org/licenses/>.
 
 /*
-  dc-lang.cc: implementation of back-end callbacks and data structures
+  d-lang.cc: implementation of back-end callbacks and data structures
 */
 
 #include "root.h"
@@ -49,6 +45,8 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_NAME
 #undef LANG_HOOKS_INIT
 #undef LANG_HOOKS_INIT_OPTIONS
+#undef LANG_HOOKS_INIT_OPTIONS_STRUCT
+#undef LANG_HOOKS_OPTION_LANG_MASK
 #undef LANG_HOOKS_HANDLE_OPTION
 #undef LANG_HOOKS_POST_OPTIONS
 #undef LANG_HOOKS_PARSE_FILE
@@ -66,6 +64,8 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_NAME                     lang_name
 #define LANG_HOOKS_INIT                     d_init
 #define LANG_HOOKS_INIT_OPTIONS             d_init_options
+#define LANG_HOOKS_INIT_OPTIONS_STRUCT      d_init_options_struct
+#define LANG_HOOKS_OPTION_LANG_MASK         d_option_lang_mask
 #define LANG_HOOKS_HANDLE_OPTION            d_handle_option
 #define LANG_HOOKS_POST_OPTIONS             d_post_options
 #define LANG_HOOKS_PARSE_FILE               d_parse_file
@@ -79,13 +79,6 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_GIMPLIFY_EXPR            d_gimplify_expr
 #define LANG_HOOKS_EH_PERSONALITY           d_eh_personality
 #define LANG_HOOKS_EH_RUNTIME_TYPE          d_build_eh_type_type
-
-#if D_GCC_VER >= 46
-#undef LANG_HOOKS_OPTION_LANG_MASK
-#undef LANG_HOOKS_INIT_OPTIONS_STRUCT
-#define LANG_HOOKS_OPTION_LANG_MASK         d_option_lang_mask
-#define LANG_HOOKS_INIT_OPTIONS_STRUCT      d_init_options_struct
-#endif
 
 /* Lang Hooks for decls */
 #undef LANG_HOOKS_WRITE_GLOBALS
@@ -108,7 +101,6 @@ static const char * fonly_arg;
 // As this doesn't affect us, need a way to restore them.
 static const char *saved_reg_names[FIRST_PSEUDO_REGISTER];
 
-#if D_GCC_VER >= 46
 /* Common initialization before calling option handlers.  */
 static void
 d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
@@ -176,61 +168,6 @@ d_option_lang_mask (void)
     return CL_D;
 }
 
-#else
-static unsigned int
-d_init_options (unsigned int, const char ** argv)
-{
-    // Set default values
-    global.params.argv0 = xstrdup(argv[0]);
-    global.params.link = 1;
-    global.params.useAssert = 1;
-    global.params.useInvariants = 1;
-    global.params.useIn = 1;
-    global.params.useOut = 1;
-    global.params.useArrayBounds = 2;
-    global.params.useSwitchError = 1;
-    global.params.useInline = 0;
-    global.params.warnings = 0;
-    global.params.obj = 1;
-    global.params.Dversion = 2;
-    global.params.quiet = 1;
-
-    global.params.linkswitches = new Strings();
-    global.params.libfiles = new Strings();
-    global.params.objfiles = new Strings();
-    global.params.ddocfiles = new Strings();
-
-    global.params.imppath = new Strings();
-    global.params.fileImppath = new Strings();
-
-    // GCC options
-    flag_exceptions = 1;
-
-    // Avoid range issues for complex multiply and divide.
-    flag_complex_method = 2;
-
-    // Unlike C, there is no global 'errno' variable.
-    flag_errno_math = 0;
-
-    // keep in synch with existing -fbounds-check flag
-    flag_bounds_check = global.params.useArrayBounds;
-
-    // Honour left to right code evaluation.
-    flag_evaluation_order = 1;
-#if V2
-    // Default to using strict aliasing.
-    flag_strict_aliasing = 1;
-#endif
-    // extra D-specific options
-    gen.splitDynArrayVarArgs = true;
-    gen.emitTemplates = TEnormal;
-    gen.useInlineAsm = false;
-    gen.useBuiltins = true;
-    std_inc = true;
-
-    return CL_D;
-}
-#endif
 
 #ifdef D_OS_VERSYM
 const char * cygwin_d_os_versym = D_OS_VERSYM;
@@ -364,16 +301,8 @@ d_init ()
     else
         VersionCondition::addPredefinedGlobalIdent("LittleEndian");
 
-#if D_GCC_VER >= 47
     if (targetm_common.except_unwind_info (&global_options) == UI_SJLJ)
         VersionCondition::addPredefinedGlobalIdent("GNU_SjLj_Exceptions");
-#elif D_GCC_VER >= 46
-    if (targetm.except_unwind_info(&global_options) == UI_SJLJ)
-        VersionCondition::addPredefinedGlobalIdent("GNU_SjLj_Exceptions");
-#else
-    if (USING_SJLJ_EXCEPTIONS)
-        VersionCondition::addPredefinedGlobalIdent("GNU_SjLj_Exceptions");
-#endif
 
 #ifdef TARGET_LONG_DOUBLE_128
     if (TARGET_LONG_DOUBLE_128)
@@ -476,16 +405,11 @@ parse_int (const char * arg, int * value_ret)
     return true;
 }
 
-#if D_GCC_VER >= 46
 static bool
 d_handle_option (size_t scode, const char *arg, int value,
                  int kind ATTRIBUTE_UNUSED,
                  location_t loc ATTRIBUTE_UNUSED,
                  const struct cl_option_handlers *handlers ATTRIBUTE_UNUSED)
-#else
-static int
-d_handle_option (size_t scode, const char *arg, int value)
-#endif
 {
     enum opt_code code = (enum opt_code) scode;
     int level;
@@ -780,10 +704,8 @@ d_write_global_declarations()
     wrapup_global_declarations(vec, globalDeclarations.dim);
     check_global_declarations(vec, globalDeclarations.dim);
 
-#if D_GCC_VER >= 47
     /* Complete all generated thunks. */
     cgraph_process_same_body_aliases();
-#endif
 
     /* We're done parsing; proceed to optimize and emit assembly. */
     if (! global.errors && ! errorcount)
@@ -925,11 +847,7 @@ Symbol* rtlsym[N_RTLSYM];
 #endif
 
 void
-#if D_GCC_VER >= 46
 d_parse_file (void)
-#else
-d_parse_file (int /*set_yydebug*/)
-#endif
 {
     if (global.params.verbose)
     {
@@ -1344,9 +1262,7 @@ d_mark_exp_read (tree exp)
     {
         case VAR_DECL:
         case PARM_DECL:
-#if D_GCC_VER >= 46
             DECL_READ_P (exp) = 1;
-#endif
             break;
 
         case ARRAY_REF:
@@ -1634,11 +1550,7 @@ static binding_level *
 alloc_binding_level()
 {
     unsigned sz = sizeof (struct binding_level);
-#if D_GCC_VER >= 46
     return (struct binding_level *) ggc_alloc_cleared_atomic (sz);
-#else
-    return (struct binding_level *) ggc_alloc_cleared (sz);
-#endif
 }
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
@@ -1681,13 +1593,9 @@ poplevel (int keep, int reverse, int routinebody)
         // %% pascal does: in each subblock, record that this is the superiod..
     }
     /* In each subblock, record that this is its superior. */
-#if D_GCC_VER >= 47
     for (tree t = level->blocks; t; t = BLOCK_CHAIN (t))
         BLOCK_SUPERCONTEXT (t) = block;
-#else
-    for (tree t = level->blocks; t; t = TREE_CHAIN (t))
-        BLOCK_SUPERCONTEXT (t) = block;
-#endif
+    
     /* Dispose of the block that we just made inside some higher level. */
     if (routinebody)
         DECL_INITIAL (current_function_decl) = block;
@@ -1726,13 +1634,8 @@ poplevel (int keep, int reverse, int routinebody)
                     warning (OPT_Wunused_variable, "unused variable %q+D", t);
                 else if (DECL_CONTEXT (t) == current_function_decl)
                 {
-#if D_GCC_VER >= 46
                     warning_at (DECL_SOURCE_LOCATION (t),
                                 OPT_Wunused_but_set_variable, "variable %qD set but not used", t);
-#else
-                    warning_at (DECL_SOURCE_LOCATION (t),
-                                OPT_Wunused_variable, "variable %qD set but not used", t);
-#endif
                 }
             }
         }
@@ -1744,19 +1647,11 @@ poplevel (int keep, int reverse, int routinebody)
 // This is called by the backend before parsing.  Need to make this do
 // something or lang_hooks.clear_binding_stack (lhd_clear_binding_stack)
 // loops forever.
-#if D_GCC_VER >= 47
 bool
 global_bindings_p (void)
 {
     return current_binding_level == global_binding_level || ! global_binding_level;
 }
-#else
-int
-global_bindings_p (void)
-{
-    return current_binding_level == global_binding_level || ! global_binding_level;
-}
-#endif
 
 void
 init_global_binding_level()
@@ -1769,11 +1664,7 @@ void
 insert_block (tree block)
 {
     TREE_USED (block) = 1;
-#if D_GCC_VER >= 47
     current_binding_level->blocks = block_chainon (current_binding_level->blocks, block);
-#else
-    current_binding_level->blocks = chainon (current_binding_level->blocks, block);
-#endif
 }
 
 void
@@ -1883,11 +1774,7 @@ build_d_type_lang_specific(Type * t)
 {
     struct lang_type * l;
     unsigned sz = sizeof(struct lang_type);
-#if D_GCC_VER >= 46
     l = (struct lang_type *) ggc_alloc_cleared_atomic(sz);
-#else
-    l = (struct lang_type *) ggc_alloc_cleared(sz);
-#endif
     l->d_type = t;
     l->c_type = t->ctype;
     return l;
@@ -1898,11 +1785,7 @@ build_d_decl_lang_specific(Declaration * d)
 {
     struct lang_decl * l;
     unsigned sz = sizeof(struct lang_decl);
-#if D_GCC_VER >= 46
     l = (struct lang_decl *) ggc_alloc_cleared_atomic(sz);
-#else
-    l = (struct lang_decl *) ggc_alloc_cleared(sz);
-#endif
     l->d_decl = d;
     return l;
 }
@@ -1925,15 +1808,8 @@ d_eh_personality (void)
 {
     if (!d_eh_personality_decl)
     {
-#if D_GCC_VER >= 46
         d_eh_personality_decl
             = build_personality_function ("gdc");
-#else
-        d_eh_personality_decl
-            = build_personality_function (USING_SJLJ_EXCEPTIONS
-                                          ? "__gdc_personality_sj0"
-                                          : "__gdc_personality_v0");
-#endif
     }
     return d_eh_personality_decl;
 }

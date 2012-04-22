@@ -1,22 +1,20 @@
-/* GDC -- D front-end for GCC
-   Copyright (C) 2004 David Friedman
+/* d-builtins.c -- D frontend for GCC.
+   Originally contributed by David Friedman
+   Maintained by Iain Buclaw
 
-   Modified by
-    Iain Buclaw, (C) 2010, 2011
+   GCC is free software; you can redistribute it and/or modify it under
+   the terms of the GNU General Public License as published by the Free
+   Software Foundation; either version 3, or (at your option) any later
+   version.
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or
+   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+   for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+   along with GCC; see the file COPYING3.  If not see
+   <http://www.gnu.org/licenses/>.
 */
 
 /* This file is mostly a copy of gcc/c-common.c */
@@ -31,11 +29,7 @@
 #include "output.h"
 #include "rtl.h"
 #include "ggc.h"
-#if D_GCC_VER >= 46
 #include "vec.h"
-#else
-#include "varray.h"
-#endif
 #include "expr.h"
 #include "diagnostic.h"
 #include "tm_p.h"
@@ -44,21 +38,11 @@
 #include "tree-inline.h"
 #include "toplev.h"
 #include "cgraph.h"
-#if D_GCC_VER >= 47
 #include "common/common-target.h"
-#endif
 
 #include "d-lang.h"
-
-#if D_GCC_VER == 45
-#include "d-bi-attrs-45.h"
-#elif D_GCC_VER == 46
-#include "d-bi-attrs-46.h"
-#elif D_GCC_VER == 47
-#include "d-bi-attrs-47.h"
-#else
-#error "Version of GCC is not supported."
-#endif
+/* Implements GCC attributes in D. */
+#include "d-bi-attrs.h"
 
 /* Used to help initialize the builtin-types.def table.  When a type of
    the correct size doesn't exist, use error_mark_node instead of NULL.
@@ -160,13 +144,7 @@ do_build_builtin_fn(enum built_in_function fncode,
     decl = add_builtin_function(name, fntype, fncode, fnclass,
             fallback_p ? libname : NULL, fnattrs);
 
-#if D_GCC_VER >= 47
     set_builtin_decl(fncode, decl, implicit_p);
-#else
-    built_in_decls[(int) fncode] = decl;
-    if (implicit_p)
-        implicit_built_in_decls[(int) fncode] = decl;
-#endif
 }
 
 enum d_builtin_type

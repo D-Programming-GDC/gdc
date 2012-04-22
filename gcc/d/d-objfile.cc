@@ -1,24 +1,20 @@
-/* GDC -- D front-end for GCC
-   Copyright (C) 2004 David Friedman
+// d-objfile.cc -- D frontend for GCC.
+// Originally contributed by David Friedman
+// Maintained by Iain Buclaw
 
-   Modified by
-    Michael Parrott, (C) 2009
-    Iain Buclaw, (C) 2010, 2011
+// GCC is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 3, or (at your option) any later
+// version.
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
+// GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+// You should have received a copy of the GNU General Public License
+// along with GCC; see the file COPYING3.  If not see
+// <http://www.gnu.org/licenses/>.
 
 #include "d-gcc-includes.h"
 #include "d-lang.h"
@@ -147,12 +143,8 @@ cvtLocToloc_t(const Loc loc)
         lm = linemap_lookup(line_table, sv->intvalue);
     }
     // cheat...
-#if D_GCC_VER >= 47
     return lm->start_location + ((loc.linnum - LINEMAP_LINE(lm))
                                  << ORDINARY_MAP_NUMBER_OF_COLUMN_BITS(lm));
-#else
-    return lm->start_location + ((loc.linnum - lm->to_line) << lm->column_bits);
-#endif
 }
 
 void
@@ -674,11 +666,7 @@ make_alias_for_thunk (tree function)
     if (DECL_EXTERNAL(function))
         return function;
 
-#if D_GCC_VER >= 46
     targetm.asm_out.generate_internal_label (buf, "LTHUNK", thunk_labelno);
-#else
-    ASM_GENERATE_INTERNAL_LABEL (buf, "LTHUNK", thunk_labelno);
-#endif
     thunk_labelno++;
 
     alias = build_decl(DECL_SOURCE_LOCATION(function), FUNCTION_DECL,
@@ -703,22 +691,11 @@ make_alias_for_thunk (tree function)
 
     if (!flag_syntax_only)
     {
-#if D_GCC_VER >= 47
         struct cgraph_node *aliasn;
         aliasn = cgraph_same_body_alias (cgraph_get_create_node (function),
                                          alias, function);
         DECL_ASSEMBLER_NAME (function);
         gcc_assert (aliasn != NULL);
-#elif D_GCC_VER >= 46
-        struct cgraph_node *aliasn = cgraph_same_body_alias (cgraph_node (function),
-                                                             alias, function);
-        DECL_ASSEMBLER_NAME (function);
-        gcc_assert (aliasn != NULL);
-#else
-        bool ok = cgraph_same_body_alias (alias, function);
-        DECL_ASSEMBLER_NAME (function);
-        gcc_assert (ok);
-#endif
     }
     return alias;
 }
@@ -747,7 +724,6 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
         return;
     }
 
-#if D_GCC_VER >= 47
     if (TARGET_USE_LOCAL_THUNK_ALIAS_P(target_decl)
         && targetm_common.have_named_sections)
     {
@@ -760,20 +736,6 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
             DECL_SECTION_NAME (thunk_decl) = DECL_SECTION_NAME (target_decl);
         }
     }
-#else
-    if (TARGET_USE_LOCAL_THUNK_ALIAS_P(target_decl)
-        && targetm.have_named_sections)
-    {
-        resolve_unique_section(target_decl, 0, flag_function_sections);
-        
-        if (DECL_SECTION_NAME (target_decl) != NULL && DECL_ONE_ONLY (target_decl))
-        {
-            resolve_unique_section (thunk_decl, 0, flag_function_sections);
-            /* Output the thunk into the same section as function.  */
-            DECL_SECTION_NAME (thunk_decl) = DECL_SECTION_NAME (target_decl);
-        }
-    }
-#endif
 
     /* Set up cloned argument trees for the thunk.  */
     tree t = NULL_TREE;
@@ -790,7 +752,6 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
     DECL_ARGUMENTS(thunk_decl) = nreverse(t);
     TREE_ASM_WRITTEN(thunk_decl) = 1;
 
-#if D_GCC_VER >= 47
     struct cgraph_node *funcn, *thunk_node;
 
     funcn = cgraph_get_create_node (target_decl);
@@ -799,13 +760,6 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
 
     if (DECL_ONE_ONLY (target_decl))
         cgraph_add_to_same_comdat_group (thunk_node, funcn);
-#elif D_GCC_VER >= 46
-    cgraph_add_thunk(cgraph_node(target_decl), thunk_decl, target_decl,
-                     this_adjusting, fixed_offset, virtual_value, 0, alias);
-#else
-    cgraph_add_thunk(thunk_decl, target_decl, this_adjusting,
-                     fixed_offset, virtual_value, 0, alias);
-#endif
 
     if (!targetm.asm_out.can_output_mi_thunk(thunk_decl, fixed_offset,
                                              virtual_value, alias))

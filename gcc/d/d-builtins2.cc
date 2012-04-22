@@ -1,23 +1,20 @@
-/* GDC -- D front-end for GCC
-   Copyright (C) 2004 David Friedman
+// d-builtins2.cc -- D frontend for GCC.
+// Originally contributed by David Friedman
+// Maintained by Iain Buclaw
 
-   Modified by
-    Michael Parrott, Iain Buclaw, (C) 2010, 2011
+// GCC is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 3, or (at your option) any later
+// version.
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
+// GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+// You should have received a copy of the GNU General Public License
+// along with GCC; see the file COPYING3.  If not see
+// <http://www.gnu.org/licenses/>.
 
 #include "d-gcc-includes.h"
 #include "d-lang.h"
@@ -469,7 +466,6 @@ d_gcc_magic_builtins_module(Module *m)
         funcs->push(new AliasDeclaration(0, Lexer::idPool(name), dt));
     }
 
-#if D_GCC_VER >= 46
     /* Iterate through the target-specific builtin types for va_list. */
     if (targetm.enum_va_list_p)
     {
@@ -487,7 +483,6 @@ d_gcc_magic_builtins_module(Module *m)
             funcs->push(new AliasDeclaration(0, Lexer::idPool(name), dt));
         }
     }
-#endif
 
     for (size_t i = 0; i < builtin_converted_decls.dim ; ++i)
     {
