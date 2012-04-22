@@ -125,8 +125,8 @@ private
     }
 
 
-    alias scope void delegate() gc_atom;
-    extern (C) void function(gc_atom) gc_atomic;
+    alias void delegate() gc_atom;
+    extern (C) void function(scope gc_atom) gc_atomic;
 }
 
 
@@ -844,7 +844,8 @@ class Thread
         {
             version( Windows )
             {
-                m_hndl = cast(HANDLE) _beginthreadex( null, m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
+                assert(m_sz <= uint.max, "m_sz must be less than or equal to uint.max");
+                m_hndl = cast(HANDLE) _beginthreadex( null, cast(uint) m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
                 if( cast(size_t) m_hndl == 0 )
                     throw new ThreadException( "Error creating thread" );
             }
@@ -2136,7 +2137,7 @@ version( Windows )
 
 /**
  * Deregisters the calling thread from use with the runtime.  If this routine
- * is called for a thread which is already registered, the result is undefined.
+ * is called for a thread which is not registered, the result is undefined.
  */
 extern (C) void thread_detachThis()
 {
@@ -2564,9 +2565,14 @@ body
     }
 }
 
+enum ScanType
+{
+    stack,
+    tls,
+}
 
-private alias void delegate( void*, void* ) scanAllThreadsFn;
-
+alias void delegate(void*, void*) ScanAllThreadsFn;
+alias void delegate(ScanType, void*, void*) ScanAllThreadsTypeFn;
 
 /**
  * The main entry point for garbage collection.  The supplied delegate
@@ -2579,7 +2585,7 @@ private alias void delegate( void*, void* ) scanAllThreadsFn;
  * In:
  *  This routine must be preceded by a call to thread_suspendAll.
  */
-extern (C) void thread_scanAll( scanAllThreadsFn scan, void* curStackTop = null )
+extern (C) void thread_scanAllType( scope ScanAllThreadsTypeFn scan, void* curStackTop = null )
 in
 {
     assert( suspendDepth > 0 );
@@ -2620,24 +2626,52 @@ body
             // NOTE: We can't index past the bottom of the stack
             //       so don't do the "+1" for StackGrowsDown.
             if( c.tstack && c.tstack < c.bstack )
-                scan( c.tstack, c.bstack );
+                scan( ScanType.stack, c.tstack, c.bstack );
         }
         else
         {
             if( c.bstack && c.bstack < c.tstack )
-                scan( c.bstack, c.tstack + 1 );
+                scan( ScanType.stack, c.bstack, c.tstack + 1 );
         }
     }
 
     for( Thread t = Thread.sm_tbeg; t; t = t.next )
     {
-        scan( t.m_tls.ptr, t.m_tls.ptr + t.m_tls.length );
+        scan( ScanType.tls, t.m_tls.ptr, t.m_tls.ptr + t.m_tls.length );
 
         version( Windows )
         {
-            scan( t.m_reg.ptr, t.m_reg.ptr + t.m_reg.length );
+            // Ideally, we'd pass ScanType.regs or something like that, but this
+            // would make portability annoying because it only makes sense on Windows.
+            scan( ScanType.stack, t.m_reg.ptr, t.m_reg.ptr + t.m_reg.length );
         }
     }
+}
+
+/**
+ * The main entry point for garbage collection.  The supplied delegate
+ * will be passed ranges representing both stack and register values.
+ *
+ * Params:
+ *  scan        = The scanner function.  It should scan from p1 through p2 - 1.
+ *  curStackTop = An optional pointer to the top of the calling thread's stack.
+ *
+ * In:
+ *  This routine must be preceded by a call to thread_suspendAll.
+ */
+extern (C) void thread_scanAll( scope ScanAllThreadsFn scan, void* curStackTop = null )
+in
+{
+    assert( suspendDepth > 0 );
+}
+body
+{
+    void op( ScanType type, void* p1, void* p2 )
+    {
+        scan(p1, p2);
+    }
+
+    thread_scanAllType(&op, curStackTop);
 }
 
 /**
@@ -3746,22 +3780,71 @@ private:
 
         version( AsmX86_Windows )
         {
+            version( StackGrowsDown ) {} else static assert( false );
+
+            // On Windows Server 2008 and 2008 R2, an exploit mitigation
+            // technique known as SEHOP is activated by default. To avoid
+            // hijacking of the exception handler chain, the presence of a
+            // Windows-internal handler (ntdll.dll!FinalExceptionHandler) at
+            // its end is tested by RaiseException. If it is not present, all
+            // handlers are disregarded, and the program is thus aborted
+            // (see http://blogs.technet.com/b/srd/archive/2009/02/02/
+            // preventing-the-exploitation-of-seh-overwrites-with-sehop.aspx).
+            // For new threads, this handler is installed by Windows immediately
+            // after creation. To make exception handling work in fibers, we
+            // have to insert it for our new stacks manually as well.
+            //
+            // To do this, we first determine the handler by traversing the SEH
+            // chain of the current thread until its end, and then construct a
+            // registration block for the last handler on the newly created
+            // thread. We then continue to push all the initial register values
+            // for the first context switch as for the other implementations.
+            //
+            // Note that this handler is never actually invoked, as we install
+            // our own one on top of it in the fiber entry point function.
+            // Thus, it should not have any effects on OSes not implementing
+            // exception chain verification.
+
+            alias void function() fp_t; // Actual signature not relevant.
+            static struct EXCEPTION_REGISTRATION
+            {
+                EXCEPTION_REGISTRATION* next; // sehChainEnd if last one.
+                fp_t handler;
+            }
+            enum sehChainEnd = cast(EXCEPTION_REGISTRATION*) 0xFFFFFFFF;
+
+            __gshared static fp_t finalHandler = null;
+            if ( finalHandler is null )
+            {
+                static EXCEPTION_REGISTRATION* fs0()
+                {
+                    asm
+                    {
+                        naked;
+                        mov EAX, FS:[0];
+                        ret;
+                    }
+                }
+                auto reg = fs0();
+                while ( reg.next != sehChainEnd ) reg = reg.next;
+
+                // Benign races are okay here, just to avoid re-lookup on every
+                // fiber creation.
+                finalHandler = reg.handler;
+            }
+
+            pstack -= EXCEPTION_REGISTRATION.sizeof;
+            *(cast(EXCEPTION_REGISTRATION*)pstack) =
+                EXCEPTION_REGISTRATION( sehChainEnd, finalHandler );
+
             push( cast(size_t) &fiber_entryPoint );                 // EIP
-            push( cast(size_t) m_ctxt.bstack );                     // EBP
+            push( cast(size_t) m_ctxt.bstack - EXCEPTION_REGISTRATION.sizeof ); // EBP
             push( 0x00000000 );                                     // EDI
             push( 0x00000000 );                                     // ESI
             push( 0x00000000 );                                     // EBX
-            push( 0xFFFFFFFF );                                     // FS:[0]
-            version( StackGrowsDown )
-            {
-                push( cast(size_t) m_ctxt.bstack );                 // FS:[4]
-                push( cast(size_t) m_ctxt.bstack - m_size );        // FS:[8]
-            }
-            else
-            {
-                push( cast(size_t) m_ctxt.bstack );                 // FS:[4]
-                push( cast(size_t) m_ctxt.bstack + m_size );        // FS:[8]
-            }
+            push( cast(size_t) m_ctxt.bstack - EXCEPTION_REGISTRATION.sizeof ); // FS:[0]
+            push( cast(size_t) m_ctxt.bstack );                     // FS:[4]
+            push( cast(size_t) m_ctxt.bstack - m_size );            // FS:[8]
             push( 0x00000000 );                                     // EAX
         }
         else version( AsmX86_64_Windows )
@@ -4066,6 +4149,24 @@ unittest
     {
         assert(fib.sum == TestFiber.expSum);
     }
+}
+
+// Test exception handling inside fibers.
+unittest
+{
+    enum MSG = "Test message.";
+    string caughtMsg;
+    (new Fiber({
+        try
+        {
+            throw new Exception(MSG);
+        }
+        catch (Exception e)
+        {
+            caughtMsg = e.msg;
+        }
+    })).call();
+    assert(caughtMsg == MSG);
 }
 
 version( AsmX86_64_Posix )
