@@ -438,9 +438,9 @@ void Parameter::argsCppMangle(OutBuffer *buf, CppMangleState *cms, Parameters *a
              * then don't mark it const
              */
             if ((t->ty == Tenum || t->ty == Tstruct || t->isTypeBasic()) && t->isConst())
-                t = t->mutableOf();
-
-            t->toCppMangle(buf, cms);
+                t->mutableOf()->toCppMangle(buf, cms);
+            else
+                t->toCppMangle(buf, cms);
 
             n++;
         }

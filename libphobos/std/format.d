@@ -4121,7 +4121,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
             {
                 if (comma) putc(',');
                 comma = true;
-                void *pkey = &fakevalue; 
+                void *pkey = &fakevalue;
                 version (D_LP64)
                     pkey -= 16;
                 else
@@ -4129,14 +4129,14 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
                 // the key comes before the value
                 auto keysize = keyti.tsize;
-                version (D_LP64) 
-                    auto keysizet = (keysize + 15) & ~(15); 
+                version (D_LP64)
+                    auto keysizet = (keysize + 15) & ~(15);
                 else 
                     auto keysizet = (keysize + size_t.sizeof - 1) & ~(size_t.sizeof - 1); 
 
-                void* pvalue = pkey + keysizet; 
+                void* pvalue = pkey + keysizet;
 
-                //doFormat(putc, (&keyti)[0..1], pkey); 
+                //doFormat(putc, (&keyti)[0..1], pkey);
                 p_args = pkey;
                 ti = keyti;
                 m = getMan(keyti);
@@ -4144,7 +4144,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
 
                 putc(':');
                 //doFormat(putc, (&valti)[0..1], pvalue);
-                p_args = pvalue; 
+                p_args = pvalue;
                 ti = valti;
                 m = getMan(valti);
                 formatArg('s');

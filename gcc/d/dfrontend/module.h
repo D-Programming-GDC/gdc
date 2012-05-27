@@ -42,7 +42,7 @@ struct Package : ScopeDsymbol
 
     Package *isPackage() { return this; }
 
-    virtual void semantic(Scope *sc) { }
+    virtual void semantic(Scope *sc) { (void)sc; }
 };
 
 struct Module : Package

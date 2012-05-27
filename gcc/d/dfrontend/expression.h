@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by Iain Buclaw, September 2009
-*/
-
 #ifndef DMD_EXPRESSION_H
 #define DMD_EXPRESSION_H
 
@@ -1402,7 +1396,7 @@ struct PowExp : BinExp
     // For operator overloading
     Identifier *opId();
     Identifier *opId_r();
-    
+
     elem *toElem(IRState *irs);
 };
 #endif

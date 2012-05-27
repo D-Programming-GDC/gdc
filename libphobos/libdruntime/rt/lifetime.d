@@ -849,7 +849,6 @@ extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length)
         auto initializer = ti.next.init();
         auto isize = initializer.length;
         auto q = initializer.ptr;
-
         version (D_InlineAsm_X86)
         {
             asm
@@ -1239,7 +1238,6 @@ body
             return newdata[0 .. newlength];
         }
         size_t sizeelem = ti.next.tsize();
-
         version (D_InlineAsm_X86)
         {
             size_t newsize = void;

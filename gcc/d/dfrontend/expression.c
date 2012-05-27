@@ -5973,7 +5973,6 @@ int BinExp::isunsigned()
     return e1->type->isunsigned() || e2->type->isunsigned();
 }
 
-
 Expression *BinExp::incompatibleTypes()
 {
     if (e1->type->toBasetype() != Type::terror &&
@@ -8633,12 +8632,6 @@ Expression *CastExp::semantic(Scope *sc)
         {
             return new VectorExp(loc, e1, to);
         }
-
-        // Look for casting to a vector type
-        if (tob->ty == Tvector && t1b->ty != Tvector)
-        {
-            return new VectorExp(loc, e1, to);
-        }
     }
     else if (!to)
     {   error("cannot cast tuple");
@@ -11222,10 +11215,6 @@ Expression *MulExp::semantic(Scope *sc)
         e1->checkArithmetic();
     if (!e2->isArrayOperand())
         e2->checkArithmetic();
-    if (type->toBasetype()->ty == Tvector)
-    {   incompatibleTypes();
-        return new ErrorExp();
-    }
     if (type->isfloating())
     {   Type *t1 = e1->type;
         Type *t2 = e2->type;
@@ -11378,11 +11367,6 @@ Expression *ModExp::semantic(Scope *sc)
         {   error("cannot perform modulo complex arithmetic");
             return new ErrorExp();
         }
-    }
-    else if (type->toBasetype()->ty == Tvector &&
-             ((TypeVector *)type->toBasetype())->elementType()->size(loc) != 2)
-    {   // Only short[8] and ushort[8] work with multiply
-        return incompatibleTypes();
     }
     return this;
 }
@@ -11722,11 +11706,6 @@ Expression *XorExp::semantic(Scope *sc)
             if (!e2->isArrayOperand())
                 e2->checkIntegral();
         }
-    }
-    else if (type->toBasetype()->ty == Tvector &&
-             ((TypeVector *)type->toBasetype())->elementType()->size(loc) != 2)
-    {   // Only short[8] and ushort[8] work with multiply
-        return incompatibleTypes();
     }
     return this;
 }

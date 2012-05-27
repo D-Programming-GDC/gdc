@@ -612,7 +612,7 @@ Expression *Pow(Type *type, Expression *e1, Expression *e2)
     }
     else if (e2->type->isfloating())
     {
-        // x ^ y for x < 0 and y not an integer is not defined
+        // x ^^ y for x < 0 and y not an integer is not defined
         if (e1->toReal().isNegative())
         {
             e = new RealExp(loc, real_t::getnan(real_t::LongDouble), type);
