@@ -741,6 +741,18 @@ MATCH DelegateExp::implicitConvTo(Type *t)
     return result;
 }
 
+MATCH FuncExp::implicitConvTo(Type *t)
+{
+    //printf("FuncExp::implicitCastTo type = %p %s, t = %s\n", type, type ? type->toChars() : NULL, t->toChars());
+    if (type && type != Type::tvoid && tok == TOKreserved && type->ty == Tpointer
+        && (t->ty == Tpointer || t->ty == Tdelegate))
+    {   // Allow implicit function to delegate conversion
+        if (type->nextOf()->covariant(t->nextOf()) == 1)
+            return t->ty == Tpointer ? MATCHconst : MATCHconvert;
+    }
+    return Expression::implicitConvTo(t);
+}
+
 MATCH OrExp::implicitConvTo(Type *t)
 {
     MATCH result = Expression::implicitConvTo(t);
@@ -1500,6 +1512,22 @@ Expression *DelegateExp::castTo(Scope *sc, Type *t)
     return e;
 }
 
+Expression *FuncExp::castTo(Scope *sc, Type *t)
+{
+    //printf("FuncExp::castTo type = %s, t = %s\n", type->toChars(), t->toChars());
+    if (tok == TOKreserved)
+    {   assert(type && type != Type::tvoid);
+        if (type->ty == Tpointer && t->ty == Tdelegate)
+        {
+            Expression *e = copy();
+            e->type = new TypeDelegate(fd->type);
+            e->type = e->type->semantic(loc, sc);
+            return e;
+        }
+    }
+    return Expression::castTo(sc, t);
+}
+
 Expression *CondExp::castTo(Scope *sc, Type *t)
 {
     Expression *e = this;
@@ -1707,13 +1735,16 @@ Lagain:
             t = t2;
         else if (t2n->ty == Tvoid)
             ;
+        else if (t1->implicitConvTo(t2))
+        {
+            goto Lt2;
+        }
+        else if (t2->implicitConvTo(t1))
+        {
+            goto Lt1;
+        }
         else if (t1n->ty == Tfunction && t2n->ty == Tfunction)
         {
-            if (t1->implicitConvTo(t2))
-                goto Lt2;
-            if (t2->implicitConvTo(t1))
-                goto Lt1;
-
             TypeFunction *tf1 = (TypeFunction *)t1n;
             TypeFunction *tf2 = (TypeFunction *)t2n;
             TypeFunction *d = (TypeFunction *)tf1->syntaxCopy();
@@ -1751,8 +1782,11 @@ Lagain:
         }
         else if (t1n->mod != t2n->mod)
         {
-            t1 = t1n->mutableOf()->constOf()->pointerTo();
-            t2 = t2n->mutableOf()->constOf()->pointerTo();
+            if (!t1n->isImmutable() && !t2n->isImmutable() && t1n->isShared() != t2n->isShared())
+                goto Lincompatible;
+            unsigned char mod = MODmerge(t1n->mod, t2n->mod);
+            t1 = t1n->castMod(mod)->pointerTo();
+            t2 = t2n->castMod(mod)->pointerTo();
             t = t1;
             goto Lagain;
         }
@@ -1776,7 +1810,19 @@ Lagain:
                 goto Lincompatible;
         }
         else
+        {
+            t1 = t1n->constOf()->pointerTo();
+            t2 = t2n->constOf()->pointerTo();
+            if (t1->implicitConvTo(t2))
+            {
+                goto Lt2;
+            }
+            else if (t2->implicitConvTo(t1))
+            {
+                goto Lt1;
+            }
             goto Lincompatible;
+        }
     }
     else if ((t1->ty == Tsarray || t1->ty == Tarray) &&
              (e2->op == TOKnull && t2->ty == Tpointer && t2->nextOf()->ty == Tvoid ||
@@ -1809,10 +1855,14 @@ Lagain:
     }
     else if ((t1->ty == Tsarray || t1->ty == Tarray) && t1->implicitConvTo(t2))
     {
+        if (t1->ty == Tsarray && e2->op == TOKarrayliteral)
+            goto Lt1;
         goto Lt2;
     }
     else if ((t2->ty == Tsarray || t2->ty == Tarray) && t2->implicitConvTo(t1))
     {
+        if (t2->ty == Tsarray && e1->op == TOKarrayliteral)
+            goto Lt2;
         goto Lt1;
     }
     /* If one is mutable and the other invariant, then retry
@@ -1822,30 +1872,54 @@ Lagain:
              (t2->ty == Tsarray || t2->ty == Tarray || t2->ty == Tpointer) &&
              t1->nextOf()->mod != t2->nextOf()->mod
             )
-    {   unsigned char mod = MODmerge(t1->nextOf()->mod, t2->nextOf()->mod);
+    {
+        Type *t1n = t1->nextOf();
+        Type *t2n = t2->nextOf();
+        unsigned char mod;
+        if (e1->op == TOKnull && e2->op != TOKnull)
+            mod = t2n->mod;
+        else if (e1->op != TOKnull && e2->op == TOKnull)
+            mod = t1n->mod;
+        else if (!t1n->isImmutable() && !t2n->isImmutable() && t1n->isShared() != t2n->isShared())
+            goto Lincompatible;
+        else
+            mod = MODmerge(t1n->mod, t2n->mod);
 
         if (t1->ty == Tpointer)
-            t1 = t1->nextOf()->castMod(mod)->pointerTo();
+            t1 = t1n->castMod(mod)->pointerTo();
         else
-            t1 = t1->nextOf()->castMod(mod)->arrayOf();
+            t1 = t1n->castMod(mod)->arrayOf();
 
         if (t2->ty == Tpointer)
-            t2 = t2->nextOf()->castMod(mod)->pointerTo();
+            t2 = t2n->castMod(mod)->pointerTo();
         else
-            t2 = t2->nextOf()->castMod(mod)->arrayOf();
+            t2 = t2n->castMod(mod)->arrayOf();
         t = t1;
         goto Lagain;
     }
-    else if (t1->ty == Tclass || t2->ty == Tclass)
+    else if (t1->ty == Tclass && t2->ty == Tclass)
     {
         if (t1->mod != t2->mod)
-        {   unsigned char mod = MODmerge(t1->mod, t2->mod);
+        {
+            unsigned char mod;
+            if (e1->op == TOKnull && e2->op != TOKnull)
+                mod = t2->mod;
+            else if (e1->op != TOKnull && e2->op == TOKnull)
+                mod = t1->mod;
+            else if (!t1->isImmutable() && !t2->isImmutable() && t1->isShared() != t2->isShared())
+                goto Lincompatible;
+            else
+                mod = MODmerge(t1->mod, t2->mod);
             t1 = t1->castMod(mod);
             t2 = t2->castMod(mod);
             t = t1;
             goto Lagain;
         }
-
+        goto Lcc;
+    }
+    else if (t1->ty == Tclass || t2->ty == Tclass)
+    {
+Lcc:
         while (1)
         {
             int i1 = e2->implicitConvTo(t1);
@@ -1912,6 +1986,8 @@ Lagain:
     {
         if (t1->mod != t2->mod)
         {
+            if (!t1->isImmutable() && !t2->isImmutable() && t1->isShared() != t2->isShared())
+                goto Lincompatible;
             unsigned char mod = MODmerge(t1->mod, t2->mod);
             t1 = t1->castMod(mod);
             t2 = t2->castMod(mod);
@@ -1967,15 +2043,6 @@ Lagain:
     }
     else if (t1->ty == Tstruct || t2->ty == Tstruct)
     {
-        if (t1->mod != t2->mod)
-        {
-            unsigned char mod = MODmerge(t1->mod, t2->mod);
-            t1 = t1->castMod(mod);
-            t2 = t2->castMod(mod);
-            t = t1;
-            goto Lagain;
-        }
-
         if (t1->ty == Tstruct && ((TypeStruct *)t1)->sym->aliasthis)
         {
             e1 = new DotIdExp(e1->loc, e1, ((TypeStruct *)t1)->sym->aliasthis->ident);
@@ -2037,6 +2104,8 @@ Lagain:
     else if (t1->isintegral() && t2->isintegral())
     {
         assert(t1->ty == t2->ty);
+        if (!t1->isImmutable() && !t2->isImmutable() && t1->isShared() != t2->isShared())
+            goto Lincompatible;
         unsigned char mod = MODmerge(t1->mod, t2->mod);
 
         t1 = t1->castMod(mod);

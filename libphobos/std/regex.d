@@ -1403,8 +1403,9 @@ struct Parser(R, bool CTFE=false)
     //also fetches next set operation
     Tuple!(CodepointSet,Operator) parseCharTerm()
     {
-        enum State{ Start, Char, Escape, Dash, DashEscape };
-        Operator op = Operator.None;;
+        enum State{ Start, Char, Escape, CharDash, CharDashEscape,
+            PotentialTwinSymbolOperator }
+        Operator op = Operator.None;
         dchar last;
         CodepointSet set;
         State state = State.Start;
@@ -1421,6 +1422,23 @@ struct Parser(R, bool CTFE=false)
             else
                 set.add(ch);
         }
+        
+        static Operator twinSymbolOperator(dchar symbol)
+        {
+            switch(symbol)
+            {
+            case '|':
+                return Operator.Union;
+            case '-':
+                return Operator.Difference;
+            case '~':
+                return Operator.SymDifference;
+            case '&':
+                return Operator.Intersection;
+            default: 
+                assert(false);
+            }
+        }
 
         L_CharTermLoop:
         for(;;)
@@ -1430,6 +1448,13 @@ struct Parser(R, bool CTFE=false)
             case State.Start:
                 switch(current)
                 {
+                case '|':
+                case '-':
+                case '~':
+                case '&':
+                    state = State.PotentialTwinSymbolOperator;
+                    last = current;
+                    break;
                 case '[':
                     op = Operator.Union;
                     goto case;
@@ -1444,41 +1469,20 @@ struct Parser(R, bool CTFE=false)
                 }
                 break;
             case State.Char:
+                // xxx last current xxx
                 switch(current)
                 {
                 case '|':
-                    if(last == '|')
-                    {
-                        op = Operator.Union;
-                        next();
-                        break L_CharTermLoop;
-                    }
-                    goto default;
-                case '-':
-                    if(last == '-')
-                    {
-                        op = Operator.Difference;
-                        next();
-                        break L_CharTermLoop;
-                    }
-                    state = State.Dash;
-                    break;
                 case '~':
-                    if(last == '~')
-                    {
-                        op = Operator.SymDifference;
-                        next();
-                        break L_CharTermLoop;
-                    }
-                    goto default;
                 case '&':
-                    if(last == '&')
-                    {
-                        op = Operator.Intersection;
-                        next();
-                        break L_CharTermLoop;
-                    }
-                    goto default;
+                    // then last is treated as normal char and added as implicit union
+                    state = State.PotentialTwinSymbolOperator;
+                    addWithFlags(set, last, re_flags); 
+                    last = current;
+                    break;
+                case '-': // still need more info
+                    state = State.CharDash;
+                    break;
                 case '\\':
                     set.add(last);
                     state = State.Escape;
@@ -1494,7 +1498,18 @@ struct Parser(R, bool CTFE=false)
                     last = current;
                 }
                 break;
+            case State.PotentialTwinSymbolOperator:
+                // xxx last current xxxx
+                // where last = [|-&~]
+                if(current == last)
+                {
+                    op = twinSymbolOperator(last);
+                    next();//skip second twin char
+                    break L_CharTermLoop;
+                }
+                goto case State.Char;// it's not a twin lets re-run normal logic
             case State.Escape:
+                // xxx \ current xxx
                 switch(current)
                 {
                 case 'f':
@@ -1523,7 +1538,7 @@ struct Parser(R, bool CTFE=false)
                     break;
                 case '[',']','\\','^','$','.','|','?',',','-',';',':'
                 ,'#','&','%','/','<','>','`'
-                ,'*','+','(',')','{','}':
+                ,'*','+','(',')','{','}', '~':
                     last = current;
                     state = State.Char;
                     break;
@@ -1575,7 +1590,8 @@ struct Parser(R, bool CTFE=false)
                     enforce(false, "invalid escape sequence");
                 }
                 break;
-            case State.Dash:
+            case State.CharDash:
+                // xxx last - current xxx
                 switch(current)
                 {
                 case '[':
@@ -1584,7 +1600,7 @@ struct Parser(R, bool CTFE=false)
                 case ']':
                     //means dash is a single char not an interval specifier
                     addWithFlags(set, last, re_flags);
-                    set.add('-');
+                    addWithFlags(set, '-', re_flags);
                     break L_CharTermLoop;
                  case '-'://set Difference again
                     addWithFlags(set, last, re_flags);
@@ -1592,7 +1608,7 @@ struct Parser(R, bool CTFE=false)
                     next();//skip '-'
                     break L_CharTermLoop;
                 case '\\':
-                    state = State.DashEscape;
+                    state = State.CharDashEscape;
                     break;
                 default:
                     enforce(last <= current, "inverted range");
@@ -1606,7 +1622,8 @@ struct Parser(R, bool CTFE=false)
                     state = State.Start;
                 }
                 break;
-            case State.DashEscape:  //xxxx-\yyyy
+            case State.CharDashEscape:
+            //xxx last - \ current xxx
                 uint end;
                 switch(current)
                 {
@@ -1627,7 +1644,7 @@ struct Parser(R, bool CTFE=false)
                     break;
                 case '[',']','\\','^','$','.','|','?',',','-',';',':'
                 ,'#','&','%','/','<','>','`'
-                ,'*','+','(',')','{','}':
+                ,'*','+','(',')','{','}', '~':
                     end = current;
                     break;
                 case 'c':
@@ -6122,7 +6139,7 @@ enum OneShot { Fwd, Bwd };
     }
     ----
 +/
-@trusted struct Captures(R,DIndex)
+@trusted public struct Captures(R,DIndex)
     if(isSomeString!R)
 {//@trusted because of union inside
     alias DIndex DataIndex;
@@ -6590,7 +6607,7 @@ public @trusted void replaceFmt(R, Capt, OutR)
     if(isOutputRange!(OutR, ElementEncodingType!R[]) &&
         isOutputRange!(OutR, ElementEncodingType!(Capt.String)[]))
 {
-    enum State { Normal, Escape, Dollar };
+    enum State { Normal, Escape, Dollar }
     auto state = State.Normal;
     size_t offset;
 L_Replace_Loop:
@@ -6830,7 +6847,7 @@ unittest
         string format;
         string replace;
         string flags;
-    };
+    }
 
     enum TestVectors tv[] = [
         TestVectors(  "(a)b\\1",   "abaab","y",    "$&",    "aba" ),
@@ -7468,6 +7485,14 @@ else
         auto s1 = ", abc, de,  fg, hi, ";
         auto w1 = ["", "abc", "de", "fg", "hi", ""];
         assert(equal(split(s1, regex(", *")), w1[]));
+    }
+    unittest 
+    { // bugzilla 7141
+        string pattern = `[a\--b]`;
+        assert(match("-", pattern));
+        assert(match("b", pattern));
+        string pattern2 = `[&-z]`;
+        assert(match("b", pattern2));
     }
 }
 

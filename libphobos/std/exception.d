@@ -349,7 +349,7 @@ unittest
 --------------------
 auto f = enforce(fopen("data.txt"));
 auto line = readln(f);
-enforce(line.length, "Expected a non-empty line."));
+enforce(line.length, "Expected a non-empty line.");
 --------------------
  +/
 T enforce(T, string file = __FILE__, size_t line = __LINE__)
@@ -365,8 +365,9 @@ T enforce(T, string file = __FILE__, size_t line = __LINE__)
 
     The whole safety and purity are inferred from $(D Dg)'s safety and purity.
  +/
-T enforce(T, Dg : void delegate(), string file = __FILE__, size_t line = __LINE__)
+T enforce(T, Dg, string file = __FILE__, size_t line = __LINE__)
     (T value, scope Dg dg)
+    if (is(Dg : void delegate()) || is(Dg : void function()))
 {
     if (!value) dg();
     return value;
@@ -483,11 +484,14 @@ T errnoEnforce(T, string file = __FILE__, size_t line = __LINE__)
  enforceEx!DataCorruptionException(line.length);
 --------------------
  +/
-T enforceEx(E, T)(T value, lazy string msg = "", string file = __FILE__, size_t line = __LINE__) @safe pure
-    if (is(typeof(new E(msg, file, line))))
+template enforceEx(E)
+    if (is(typeof(new E("", __FILE__, __LINE__))))
 {
-    if (!value) throw new E(msg, file, line);
-    return value;
+    T enforceEx(T)(T value, lazy string msg = "", string file = __FILE__, size_t line = __LINE__) @safe pure
+    {
+        if (!value) throw new E(msg, file, line);
+        return value;
+    }
 }
 
 /++
@@ -498,11 +502,14 @@ T enforceEx(E, T)(T value, lazy string msg = "", string file = __FILE__, size_t 
     If $(D !!value) is $(D true), $(D value) is returned. Otherwise,
     $(D new E(msg)) is thrown.
   +/
-T enforceEx(E, T)(T value, lazy string msg = "") @safe pure
-    if (is(typeof(new E(msg))) && !is(typeof(new E(msg, __FILE__, __LINE__))))
+template enforceEx(E)
+    if (is(typeof(new E(""))) && !is(typeof(new E("", __FILE__, __LINE__))))
 {
-    if (!value) throw new E(msg);
-    return value;
+    T enforceEx(T)(T value, lazy string msg = "") @safe pure
+    {
+        if (!value) throw new E(msg);
+        return value;
+    }
 }
 
 unittest
@@ -525,6 +532,13 @@ unittest
         assert(e.file == "file");
         assert(e.line == 42);
     }
+}
+
+unittest
+{
+    alias enforceEx!Exception enf;
+    assertNotThrown(enf(true));
+    assertThrown(enf(false, "blah"));
 }
 
 
@@ -778,7 +792,7 @@ that points to $(D target)'s representation or somewhere inside
 it. Note that evaluating $(D pointsTo(x, x)) checks whether $(D x) has
 internal pointers.
 */
-bool pointsTo(S, T)(ref const S source, ref const T target) @trusted pure nothrow
+bool pointsTo(S, T, Tdummy=void)(ref const S source, ref const T target) @trusted pure nothrow
 {
     static if (is(S P : U*, U))
     {
@@ -803,6 +817,12 @@ bool pointsTo(S, T)(ref const S source, ref const T target) @trusted pure nothro
     {
         return false;
     }
+}
+// for shared objects
+bool pointsTo(S, T)(ref const shared S source, ref const shared T target) @trusted pure nothrow
+{
+    alias pointsTo!(shared(S), shared(T), void) ptsTo;  // do instantiate explicitly
+    return ptsTo(source, target);
 }
 
 unittest

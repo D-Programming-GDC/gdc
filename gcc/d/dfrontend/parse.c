@@ -1275,7 +1275,7 @@ DeleteDeclaration *Parser::parseDelete()
  * Parse parameter list.
  */
 
-Parameters *Parser::parseParameters(int *pvarargs)
+Parameters *Parser::parseParameters(int *pvarargs, TemplateParameters **tpl)
 {
     Parameters *arguments = new Parameters();
     int varargs = 0;
@@ -1379,17 +1379,32 @@ Parameters *Parser::parseParameters(int *pvarargs)
 
                 default:
                 Ldefault:
-                    stc = storageClass & (STCin | STCout | STCref | STClazy);
+                {   stc = storageClass & (STCin | STCout | STCref | STClazy);
                     if (stc & (stc - 1))        // if stc is not a power of 2
                         error("incompatible parameter storage classes");
                     if ((storageClass & (STCconst | STCout)) == (STCconst | STCout))
                         error("out cannot be const");
                     if ((storageClass & (STCimmutable | STCout)) == (STCimmutable | STCout))
                         error("out cannot be immutable");
-                    if ((storageClass & STCscope) &&
-                        (storageClass & (STCref | STCout)))
+                    if ((storageClass & STCscope) && (storageClass & (STCref | STCout)))
                         error("scope cannot be ref or out");
-                    at = parseType(&ai);
+
+                    Token *t;
+                    if (tpl && !stc && token.value == TOKidentifier &&
+                        (t = peek(&token), (t->value == TOKcomma || t->value == TOKrparen)))
+                    {   Identifier *id = Lexer::uniqueId("__T");
+                        at = new TypeIdentifier(loc, id);
+                        if (!*tpl)
+                            *tpl = new TemplateParameters();
+                        TemplateParameter *tp = new TemplateTypeParameter(loc, id, NULL, NULL);
+                        (*tpl)->push(tp);
+
+                        ai = token.ident;
+                        nextToken();
+                    }
+                    else
+                        at = parseType(&ai);
+
                     ae = NULL;
                     if (token.value == TOKassign)       // = defaultArg
                     {   nextToken();
@@ -1422,6 +1437,7 @@ Parameters *Parser::parseParameters(int *pvarargs)
                         goto L1;
                     }
                     break;
+                }
             }
             break;
         }
@@ -1522,6 +1538,11 @@ EnumDeclaration *Parser::parseEnum()
             }
             addComment(em, comment);
             comment = token.blockComment;
+
+            if (token.value == TOKeof)
+            {   error("premature end of file");
+                break;
+            }
         }
         nextToken();
     }
@@ -1655,26 +1676,33 @@ BaseClasses *Parser::parseBaseClasses()
 
     for (; 1; nextToken())
     {
+        bool prot = false;
         enum PROT protection = PROTpublic;
         switch (token.value)
         {
             case TOKprivate:
+                prot = true;
                 protection = PROTprivate;
                 nextToken();
                 break;
             case TOKpackage:
+                prot = true;
                 protection = PROTpackage;
                 nextToken();
                 break;
             case TOKprotected:
+                prot = true;
                 protection = PROTprotected;
                 nextToken();
                 break;
             case TOKpublic:
+                prot = true;
                 protection = PROTpublic;
                 nextToken();
                 break;
         }
+        if (prot && !global.params.useDeprecated)
+            error("use of base class protection is deprecated");
         if (token.value == TOKidentifier)
         {
             BaseClass *b = new BaseClass(parseBasicType(), protection);
@@ -2051,56 +2079,11 @@ Objects *Parser::parseTemplateArgumentList2()
             {   // Template argument is an expression
                 Expression *ea = parseAssignExp();
 
-                if (ea->op == TOKfunction)
-                {   FuncLiteralDeclaration *fd = ((FuncExp *)ea)->fd;
-                    if (fd->type->ty == Tfunction)
-                    {
-                        TypeFunction *tf = (TypeFunction *)fd->type;
-                        /* If there are parameters that consist of only an identifier,
-                         * rather than assuming the identifier is a type, as we would
-                         * for regular function declarations, assume the identifier
-                         * is the parameter name, and we're building a template with
-                         * a deduced type.
-                         */
-                        TemplateParameters *tpl = NULL;
-                        for (size_t i = 0; i < tf->parameters->dim; i++)
-                        {   Parameter *param = tf->parameters->tdata()[i];
-                            if (param->ident == NULL &&
-                                param->type &&
-                                param->type->ty == Tident &&
-                                ((TypeIdentifier *)param->type)->idents.dim == 0
-                               )
-                            {
-                                /* Switch parameter type to parameter identifier,
-                                 * parameterize with template type parameter _T
-                                 */
-                                TypeIdentifier *pt = (TypeIdentifier *)param->type;
-                                param->ident = pt->ident;
-                                Identifier *id = Lexer::uniqueId("__T");
-                                param->type = new TypeIdentifier(pt->loc, id);
-                                TemplateParameter *tp = new TemplateTypeParameter(fd->loc, id, NULL, NULL);
-                                if (!tpl)
-                                    tpl = new TemplateParameters();
-                                tpl->push(tp);
-                            }
-                        }
-
-                        if (tpl)
-                        {   // Wrap a template around function fd
-                            Dsymbols *decldefs = new Dsymbols();
-                            decldefs->push(fd);
-                            TemplateDeclaration *tempdecl =
-                                new TemplateDeclaration(fd->loc, fd->ident, tpl, NULL, decldefs, 0);
-                            tempdecl->literal = 1;      // it's a template 'literal'
-                            tiargs->push(tempdecl);
-                            goto L1;
-                        }
-                    }
-                }
-
-                tiargs->push(ea);
+                if (ea->op == TOKfunction && ((FuncExp *)ea)->td)
+                    tiargs->push(((FuncExp *)ea)->td);
+                else
+                    tiargs->push(ea);
             }
-         L1:
             if (token.value != TOKcomma)
                 break;
             nextToken();
@@ -2916,6 +2899,13 @@ L2:
         {   Declaration *v;
             Initializer *init = NULL;
 
+            /* Aliases can no longer have multiple declarators, storage classes,
+             * linkages, or auto declarations.
+             * These never made any sense, anyway.
+             * The code below needs to be fixed to reject them.
+             * The grammar has already been fixed to preclude them.
+             */
+
             if (token.value == TOKassign)
             {
                 nextToken();
@@ -3475,7 +3465,7 @@ Statement *Parser::parseStatement(int flags)
                 Identifier *ident = token.ident;
                 nextToken();
                 nextToken();
-                s = parseStatement(PSsemi);
+                s = parseStatement(PSsemi_ok);
                 s = new LabelStatement(loc, ident, s);
                 break;
             }
@@ -3721,8 +3711,15 @@ Statement *Parser::parseStatement(int flags)
         }
 
         case TOKsemicolon:
-            if (!(flags & PSsemi))
-                error("use '{ }' for an empty statement, not a ';'");
+            if (!(flags & PSsemi_ok))
+            {
+                if (flags & PSsemi)
+                {   if (global.params.warnings)
+                        warning(loc, "use '{ }' for an empty statement, not a ';'");
+                }
+                else
+                    error("use '{ }' for an empty statement, not a ';'");
+            }
             nextToken();
             s = new ExpStatement(loc, (Expression *)NULL);
             break;
@@ -3906,13 +3903,13 @@ Statement *Parser::parseStatement(int flags)
             else if (token.value == TOKidentifier)
             {
                 Token *t = peek(&token);
-                if (t->value == TOKcomma || t->value == TOKsemicolon)
+                if (t->value == TOKsemicolon)
                 {
                     arg = new Parameter(0, NULL, token.ident, NULL);
                     nextToken();
                     nextToken();
-                    if (1 || !global.params.useDeprecated)
-                        error("if (v; e) is deprecated, use if (auto v = e)");
+                    if (!global.params.useDeprecated)
+                        error("if (v%s e) is deprecated, use if (auto v = e)", t->toChars());
                 }
             }
 
@@ -4296,7 +4293,7 @@ Statement *Parser::parseStatement(int flags)
             s = parseStatement(PSsemi | PScurlyscope);
 #if DMDV2
             if (!global.params.useDeprecated)
-                error("volatile statements deprecated; used synchronized statements instead");
+                error("volatile statements deprecated; use synchronized statements instead");
 #endif
             s = new VolatileStatement(loc, s);
             break;
@@ -4894,9 +4891,12 @@ int Parser::isDeclarator(Token **pt, int *haveId, enum TOK endtok)
             case TOKrbracket:
             case TOKassign:
             case TOKcomma:
+            case TOKdotdotdot:
             case TOKsemicolon:
             case TOKlcurly:
             case TOKin:
+            case TOKout:
+            case TOKbody:
                 // The !parens is to disallow unnecessary parentheses
                 if (!parens && (endtok == TOKreserved || endtok == t->value))
                 {   *pt = t;
@@ -5265,6 +5265,9 @@ Expression *Parser::parsePrimaryExp()
     switch (token.value)
     {
         case TOKidentifier:
+            if (peekNext() == TOKgoesto)
+                goto case_delegate;
+
             id = token.ident;
             nextToken();
             if (token.value == TOKnot && (save = peekNext()) != TOKis && save != TOKin)
@@ -5613,9 +5616,14 @@ Expression *Parser::parsePrimaryExp()
         }
 
         case TOKlparen:
-            if (peekPastParen(&token)->value == TOKlcurly)
+        {   enum TOK past = peekPastParen(&token)->value;
+
+            if (past == TOKgoesto)
+            {   // (arguments) => expression
+                goto case_delegate;
+            }
+            else if (past == TOKlcurly)
             {   // (arguments) { statements... }
-                save = TOKdelegate;
                 goto case_delegate;
             }
             // ( expression )
@@ -5624,6 +5632,7 @@ Expression *Parser::parsePrimaryExp()
             e->parens = 1;
             check(loc, TOKrparen);
             break;
+        }
 
         case TOKlbracket:
         {   /* Parse array literals and associative array literals:
@@ -5664,53 +5673,102 @@ Expression *Parser::parsePrimaryExp()
         }
 
         case TOKlcurly:
-            // { statements... }
-            save = TOKdelegate;
-            goto case_delegate;
-
         case TOKfunction:
         case TOKdelegate:
-            save = token.value;
-            nextToken();
         case_delegate:
         {
-            /* function type(parameters) { body } pure nothrow
-             * delegate type(parameters) { body } pure nothrow
-             * (parameters) { body }
-             * { body }
-             */
-            Parameters *arguments;
-            int varargs;
-            FuncLiteralDeclaration *fd;
-            Type *t;
+            TemplateParameters *tpl = NULL;
+            Parameters *parameters = NULL;
+            int varargs = 0;
+            Type *tret = NULL;
             StorageClass stc = 0;
+            enum TOK save = TOKreserved;
+            Loc loc = this->loc;
 
-            if (token.value == TOKlcurly)
+            switch (token.value)
             {
-                t = NULL;
-                varargs = 0;
-                arguments = new Parameters();
+                case TOKfunction:
+                case TOKdelegate:
+                    save = token.value;
+                    nextToken();
+                    if (token.value != TOKlparen && token.value != TOKlcurly)
+                    {   // function type (parameters) { statements... }
+                        // delegate type (parameters) { statements... }
+                        tret = parseBasicType();
+                        tret = parseBasicType2(tret);   // function return type
+                    }
+
+                    if (token.value == TOKlparen)
+                    {   // function (parameters) { statements... }
+                        // delegate (parameters) { statements... }
+                    }
+                    else
+                    {   // function { statements... }
+                        // delegate { statements... }
+                        break;
+                    }
+                    /* fall through to TOKlparen */
+
+                case TOKlparen:
+                Lparen:
+                {   // (parameters) => expression
+                    // (parameters) { statements... }
+                    parameters = parseParameters(&varargs, &tpl);
+                    stc = parsePostfix();
+                    if (stc & (STCconst | STCimmutable | STCshared | STCwild))
+                        error("const/immutable/shared/inout attributes are only valid for non-static member functions");
+                    break;
+                }
+                case TOKlcurly:
+                    // { statements... }
+                    break;
+
+                case TOKidentifier:
+                {   // identifier => expression
+                    parameters = new Parameters();
+                    Identifier *id = Lexer::uniqueId("__T");
+                    Type *t = new TypeIdentifier(loc, id);
+                    parameters->push(new Parameter(0, t, token.ident, NULL));
+
+                    tpl = new TemplateParameters();
+                    TemplateParameter *tp = new TemplateTypeParameter(loc, id, NULL, NULL);
+                    tpl->push(tp);
+
+                    nextToken();
+                    break;
+                }
+                default:
+                    assert(0);
+            }
+
+            if (!parameters)
+                parameters = new Parameters();
+            TypeFunction *tf = new TypeFunction(parameters, tret, varargs, linkage, stc);
+            FuncLiteralDeclaration *fd = new FuncLiteralDeclaration(loc, 0, tf, save, NULL);
+
+            if (token.value == TOKgoesto)
+            {
+                check(TOKgoesto);
+                Loc loc = this->loc;
+                Expression *ae = parseAssignExp();
+                fd->fbody = new ReturnStatement(loc, ae);
+                fd->endloc = this->loc;
             }
             else
             {
-                if (token.value == TOKlparen)
-                    t = NULL;
-                else
-                {
-                    t = parseBasicType();
-                    t = parseBasicType2(t);     // function return type
-                }
-                arguments = parseParameters(&varargs);
-                stc = parsePostfix();
-                if (stc & (STCconst | STCimmutable | STCshared | STCwild))
-                    error("const/immutable/shared/inout attributes are only valid for non-static member functions");
+                parseContracts(fd);
             }
 
-            TypeFunction *tf = new TypeFunction(arguments, t, varargs, linkage, stc);
+            TemplateDeclaration *td = NULL;
+            if (tpl)
+            {   // Wrap a template around function fd
+                Dsymbols *decldefs = new Dsymbols();
+                decldefs->push(fd);
+                td = new TemplateDeclaration(fd->loc, fd->ident, tpl, NULL, decldefs, 0);
+                td->literal = 1;    // it's a template 'literal'
+            }
 
-            fd = new FuncLiteralDeclaration(loc, 0, tf, save, NULL);
-            parseContracts(fd);
-            e = new FuncExp(loc, fd);
+            e = new FuncExp(loc, fd, td);
             break;
         }
 
@@ -6517,7 +6575,7 @@ Expressions *Parser::parseArguments()
 
     {
         nextToken();
-        while (token.value != endtok)
+        while (token.value != endtok && token.value != TOKeof)
         {
                 arg = parseAssignExp();
                 arguments->push(arg);

@@ -600,7 +600,8 @@ Symbol *FuncDeclaration::toSymbol()
                 DECL_DECLARED_INLINE_P(fndecl) = 1;
                 DECL_NO_INLINE_WARNING_P(fndecl) = 1;
             }
-            else if (flag_inline_functions && canInline(0, 1))
+            // Don't know what to do with this.
+            else if (flag_inline_functions && canInline(0, 1, 0))
             {
                 DECL_DECLARED_INLINE_P(fndecl) = 1;
                 DECL_NO_INLINE_WARNING_P(fndecl) = 1;

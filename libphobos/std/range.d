@@ -691,7 +691,7 @@ template ElementType(R)
 
 unittest
 {
-    enum XYZ : string { a = "foo" };
+    enum XYZ : string { a = "foo" }
     auto x = front(XYZ.a);
     static assert(is(ElementType!(XYZ) : dchar));
     immutable char[3] a = "abc";
@@ -719,7 +719,7 @@ template ElementEncodingType(R)
 
 unittest
 {
-    enum XYZ : string { a = "foo" };
+    enum XYZ : string { a = "foo" }
     auto x = front(XYZ.a);
     static assert(is(ElementType!(XYZ) : dchar));
     static assert(is(ElementEncodingType!(char[]) == char));
@@ -799,8 +799,9 @@ template hasLvalueElements(R)
 {
     enum bool hasLvalueElements = is(typeof(
     {
+        void checkRef(ref ElementType!R stuff) {}
         R r = void;
-        static assert(is(typeof(&r.front) == ElementType!(R)*));
+        static assert(is(typeof(checkRef(r.front))));
     }));
 }
 
@@ -808,6 +809,9 @@ unittest
 {
     static assert(hasLvalueElements!(int[]));
     static assert(!hasLvalueElements!(typeof(iota(3))));
+    
+    auto c = chain([1, 2, 3], [4, 5, 6]);
+    static assert(hasLvalueElements!(typeof(c)));
 }
 
 /**
@@ -3495,12 +3499,17 @@ private string lockstepApply(Ranges...)(bool withIndex) if (Ranges.length > 0)
 
     if (withIndex)
     {
-        ret ~= "ref size_t, ";
+        ret ~= "size_t, ";
     }
 
-    foreach (ti, Unused; Ranges)
+    foreach (ti, Type; Ranges)
     {
-        ret ~= "ref ElementType!(Ranges[" ~ to!string(ti) ~ "]), ";
+        static if(hasLvalueElements!Type)
+        {
+            ret ~= "ref ";
+        }
+        
+        ret ~= "ElementType!(Ranges[" ~ to!string(ti) ~ "]), ";
     }
 
     // Remove trailing ,
@@ -3516,38 +3525,15 @@ private string lockstepApply(Ranges...)(bool withIndex) if (Ranges.length > 0)
         ret ~= "\tsize_t index = 0;\n";
     }
 
-    // For every range not offering ref return, declare a variable to statically
-    // copy to so we have lvalue access.
-    foreach(ti, Range; Ranges)
-    {
-        static if (!hasLvalueElements!Range) {
-            // Don't have lvalue access.
-            ret ~= "\tUnqual!(ElementType!(R[" ~ to!string(ti) ~ "])) front" ~
-                to!string(ti) ~ ";\n";
-        }
-    }
-
     // Check for emptiness.
     ret ~= "\twhile(";                 //someEmpty) {\n";
-    foreach(ti, Unused; Ranges) {
+    foreach(ti, Unused; Ranges) 
+    {
         ret ~= "!ranges[" ~ to!string(ti) ~ "].empty && ";
     }
     // Strip trailing &&
     ret = ret[0..$ - 4];
     ret ~= ") {\n";
-
-    // Populate the dummy variables for everything that doesn't have lvalue
-    // elements.
-    foreach(ti, Range; Ranges)
-    {
-        static if (!hasLvalueElements!Range)
-        {
-            immutable tiString = to!string(ti);
-            ret ~= "\t\tfront" ~ tiString ~ " = ranges["
-                ~ tiString ~ "].front;\n";
-        }
-    }
-
 
     // Create code to call the delegate.
     ret ~= "\t\tres = dg(";
@@ -3559,14 +3545,7 @@ private string lockstepApply(Ranges...)(bool withIndex) if (Ranges.length > 0)
 
     foreach(ti, Range; Ranges)
     {
-        static if (hasLvalueElements!Range)
-        {
-            ret ~= "ranges[" ~ to!string(ti) ~ "].front, ";
-        }
-        else
-        {
-            ret ~= "front" ~ to!string(ti) ~ ", ";
-        }
+        ret ~= "ranges[" ~ to!string(ti) ~ "].front, ";
     }
 
     // Remove trailing ,
@@ -3703,7 +3682,8 @@ unittest {
     auto l = lockstep(foo, bar);
 
     // Should work twice.  These are forward ranges with implicit save.
-    foreach(i; 0..2) {
+    foreach(i; 0..2) 
+    {
         uint[] res1;
         float[] res2;
 
@@ -3764,12 +3744,12 @@ unittest {
     // Make sure we've worked around the relevant compiler bugs and this at least
     // compiles w/ >2 ranges.
     lockstep(foo, foo, foo);
-    
+
     // Make sure it works with const.
     const(int[])[] foo2 = [[1, 2, 3]];
     const(int[])[] bar2 = [[4, 5, 6]];
     auto c = chain(foo2, bar2);
-    
+
     foreach(f, b; lockstep(c, c)) {}
 }
 
@@ -5670,37 +5650,33 @@ class OutputRangeObject(R, E...) : staticMap!(OutputRange, E) {
 
 /**Returns the interface type that best matches $(D R).*/
 template MostDerivedInputRange(R) if (isInputRange!(Unqual!R)) {
-    alias MostDerivedInputRangeImpl!(Unqual!R).ret MostDerivedInputRange;
-}
-
-private template MostDerivedInputRangeImpl(R) {
     private alias ElementType!R E;
 
     static if (isRandomAccessRange!R) {
         static if (isInfinite!R) {
-            alias RandomAccessInfinite!E ret;
+            alias RandomAccessInfinite!E MostDerivedInputRange;
         } else static if (hasAssignableElements!R) {
-            alias RandomFiniteAssignable!E ret;
+            alias RandomFiniteAssignable!E MostDerivedInputRange;
         } else {
-            alias RandomAccessFinite!E ret;
+            alias RandomAccessFinite!E MostDerivedInputRange;
         }
     } else static if (isBidirectionalRange!R) {
         static if (hasAssignableElements!R) {
-            alias BidirectionalAssignable!E ret;
+            alias BidirectionalAssignable!E MostDerivedInputRange;
         } else {
-            alias BidirectionalRange!E ret;
+            alias BidirectionalRange!E MostDerivedInputRange;
         }
     } else static if (isForwardRange!R) {
         static if (hasAssignableElements!R) {
-            alias ForwardAssignable!E ret;
+            alias ForwardAssignable!E MostDerivedInputRange;
         } else {
-            alias ForwardRange!E ret;
+            alias ForwardRange!E MostDerivedInputRange;
         }
     } else {
         static if (hasAssignableElements!R) {
-            alias InputAssignable!E ret;
+            alias InputAssignable!E MostDerivedInputRange;
         } else {
-            alias InputRange!E ret;
+            alias InputRange!E MostDerivedInputRange;
         }
     }
 }
