@@ -405,7 +405,8 @@ AsmStatement::semantic(Scope *sc)
     if (sc->func && sc->func->isSafe())
         error("inline assembler not allowed in @safe function %s", sc->func->toChars());
 #endif
-    sc->func->inlineStatus = ILSno; // %% not sure
+    sc->func->inlineStatusExp = ILSno; // %% not sure
+    sc->func->inlineStatusStmt = ILSno; // %% not sure
     // %% need to set DECL_UNINLINABLE too?
     
 #if V1

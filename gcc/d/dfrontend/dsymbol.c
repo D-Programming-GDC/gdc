@@ -94,7 +94,7 @@ Dsymbol *Dsymbol::syntaxCopy(Dsymbol *s)
  *      TRUE,  *ps = symbol: The one and only one symbol
  */
 
-int Dsymbol::oneMember(Dsymbol **ps)
+int Dsymbol::oneMember(Dsymbol **ps, Identifier *ident)
 {
     //printf("Dsymbol::oneMember()\n");
     *ps = this;
@@ -105,7 +105,7 @@ int Dsymbol::oneMember(Dsymbol **ps)
  * Same as Dsymbol::oneMember(), but look at an array of Dsymbols.
  */
 
-int Dsymbol::oneMembers(Dsymbols *members, Dsymbol **ps)
+int Dsymbol::oneMembers(Dsymbols *members, Dsymbol **ps, Identifier *ident)
 {
     //printf("Dsymbol::oneMembers() %d\n", members ? members->dim : 0);
     Dsymbol *s = NULL;
@@ -115,7 +115,7 @@ int Dsymbol::oneMembers(Dsymbols *members, Dsymbol **ps)
         for (size_t i = 0; i < members->dim; i++)
         {   Dsymbol *sx = (*members)[i];
 
-            int x = sx->oneMember(ps);
+            int x = sx->oneMember(ps, ident);
             //printf("\t[%d] kind %s = %d, s = %p\n", i, sx->kind(), x, *ps);
             if (!x)
             {
@@ -125,6 +125,11 @@ int Dsymbol::oneMembers(Dsymbols *members, Dsymbol **ps)
             }
             if (*ps)
             {
+                if (ident)
+                {
+                    if (!(*ps)->ident || !(*ps)->ident->equals(ident))
+                        continue;
+                }
                 if (s)                  // more than one symbol
                 {   *ps = NULL;
                     //printf("\tfalse 2\n");
@@ -636,22 +641,49 @@ void Dsymbol::checkDeprecated(Loc loc, Scope *sc)
 
 Module *Dsymbol::getModule()
 {
-    Module *m;
-    Dsymbol *s;
-
     //printf("Dsymbol::getModule()\n");
     TemplateDeclaration *td = getFuncTemplateDecl(this);
     if (td)
         return td->getModule();
 
-    s = this;
+    Dsymbol *s = this;
     while (s)
     {
-        //printf("\ts = '%s'\n", s->toChars());
-        m = s->isModule();
+        //printf("\ts = %s '%s'\n", s->kind(), s->toPrettyChars());
+        Module *m = s->isModule();
         if (m)
             return m;
         s = s->parent;
+    }
+    return NULL;
+}
+
+/**********************************
+ * Determine which Module a Dsymbol is in, as far as access rights go.
+ */
+
+Module *Dsymbol::getAccessModule()
+{
+    //printf("Dsymbol::getAccessModule()\n");
+    TemplateDeclaration *td = getFuncTemplateDecl(this);
+    if (td)
+        return td->getAccessModule();
+
+    Dsymbol *s = this;
+    while (s)
+    {
+        //printf("\ts = %s '%s'\n", s->kind(), s->toPrettyChars());
+        Module *m = s->isModule();
+        if (m)
+            return m;
+        TemplateInstance *ti = s->isTemplateInstance();
+        if (ti && ti->isnested)
+            /* Because of local template instantiation, the parent isn't where the access
+             * rights come from - it's the template declaration
+             */
+            s = ti->tempdecl;
+        else
+            s = s->parent;
     }
     return NULL;
 }
@@ -779,7 +811,7 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
 
         // Look in imported modules
         for (size_t i = 0; i < imports->dim; i++)
-        {   ScopeDsymbol *ss = (*imports)[i];
+        {   Dsymbol *ss = (*imports)[i];
             Dsymbol *s2;
 
             // If private import, don't search it
@@ -796,11 +828,13 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
             {
                 if (s->toAlias() == s2->toAlias())
                 {
-                    /* After following aliases, we found the same symbol,
-                     * so it's not an ambiguity.
-                     * But if one alias is deprecated, prefer the other.
+                    /* After following aliases, we found the same
+                     * symbol, so it's not an ambiguity.  But if one
+                     * alias is deprecated or less accessible, prefer
+                     * the other.
                      */
-                    if (s->isDeprecated())
+                    if (s->isDeprecated() ||
+                        s2->prot() > s->prot() && s2->prot() != PROTnone)
                         s = s2;
                 }
                 else
@@ -830,7 +864,8 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
                             {   Dsymbol *s3 = a->a[j];
                                 if (s2->toAlias() == s3->toAlias())
                                 {
-                                    if (s3->isDeprecated())
+                                    if (s3->isDeprecated() ||
+                                        s2->prot() > s3->prot() && s2->prot() != PROTnone)
                                         a->a[j] = s2;
                                     goto Lcontinue;
                                 }
@@ -842,7 +877,7 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
                         if (flags & 4)          // if return NULL on ambiguity
                             return NULL;
                         if (!(flags & 2))
-                            ss->multiplyDefined(loc, s, s2);
+                            ScopeDsymbol::multiplyDefined(loc, s, s2);
                         break;
                     }
                 }
@@ -869,7 +904,7 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
     return s;
 }
 
-void ScopeDsymbol::importScope(ScopeDsymbol *s, enum PROT protection)
+void ScopeDsymbol::importScope(Dsymbol *s, enum PROT protection)
 {
     //printf("%s->ScopeDsymbol::importScope(%s, %d)\n", toChars(), s->toChars(), protection);
 
@@ -877,11 +912,11 @@ void ScopeDsymbol::importScope(ScopeDsymbol *s, enum PROT protection)
     if (s != this)
     {
         if (!imports)
-            imports = new ScopeDsymbols();
+            imports = new Dsymbols();
         else
         {
             for (size_t i = 0; i < imports->dim; i++)
-            {   ScopeDsymbol *ss = (*imports)[i];
+            {   Dsymbol *ss = (*imports)[i];
                 if (ss == s)                    // if already imported
                 {
                     if (protection > prots[i])
@@ -998,8 +1033,7 @@ static int dimDg(void *ctx, size_t n, Dsymbol *)
 size_t ScopeDsymbol::dim(Dsymbols *members)
 {
     size_t n = 0;
-    if (members)
-        foreach(members, &dimDg, &n);
+    foreach(members, &dimDg, &n);
     return n;
 }
 #endif
@@ -1049,7 +1083,9 @@ Dsymbol *ScopeDsymbol::getNth(Dsymbols *members, size_t nth, size_t *pn)
 #if DMDV2
 int ScopeDsymbol::foreach(Dsymbols *members, ScopeDsymbol::ForeachDg dg, void *ctx, size_t *pn)
 {
-    assert(members);
+    assert(dg);
+    if (!members)
+        return 0;
 
     size_t n = pn ? *pn : 0; // take over index
     int result = 0;

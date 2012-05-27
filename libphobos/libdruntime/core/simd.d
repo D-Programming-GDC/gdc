@@ -357,6 +357,10 @@ enum XMM
 
 /**
  * Generate two operand instruction with XMM 128 bit operands.
+ *
+ * This is a compiler magic function - it doesn't behave like
+ * regular D functions.
+ *
  * Parameters:
  *      opcode  any of the XMM opcodes
  *      op1     first operand

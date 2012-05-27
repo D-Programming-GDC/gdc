@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2011 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -640,7 +640,6 @@ Expression *CastExp::optimize(int result)
 
     // We can convert 'head const' to mutable
     if (to->constOf()->equals(e1->type->constOf()))
-//    if (to->constConv(e1->type) >= MATCHconst)
     {
         e1->type = type;
         if (X) printf(" returning5 %s\n", e1->toChars());
@@ -685,8 +684,8 @@ Expression *BinExp::optimize(int result)
         {
             dinteger_t i2 = e2->toInteger();
             d_uns64 sz = e1->type->size() * 8;
-            if (i2 < 0 || i2 > sz)
-            {   error("shift assign by %"PRIdMAX" is outside the range 0..%"PRIuSIZE, i2, sz);
+            if (i2 < 0 || i2 >= sz)
+            {   error("shift assign by %"PRIdMAX" is outside the range 0..%"PRIuSIZE, i2, sz - 1);
                 e2 = new IntegerExp(0);
             }
         }
@@ -780,8 +779,8 @@ Expression *shift_optimize(int result, BinExp *e, Expression *(*shift)(Type *, E
     {
         dinteger_t i2 = e->e2->toInteger();
         d_uns64 sz = e->e1->type->size() * 8;
-        if (i2 < 0 || i2 > sz)
-        {   e->error("shift by %"PRIdMAX" is outside the range 0..%"PRIuSIZE, i2, sz);
+        if (i2 < 0 || i2 >= sz)
+        {   e->error("shift by %"PRIdMAX" is outside the range 0..%"PRIuSIZE, i2, sz - 1);
             e->e2 = new IntegerExp(0);
         }
         if (e->e1->isConst() == 1)
@@ -925,13 +924,10 @@ Expression *CommaExp::optimize(int result)
         e = interpret(NULL);
         return (e == EXP_CANT_INTERPRET) ?  this : e;
     }
-    // Don't constant fold if it is a compiler-generated temporary.
-    if (e1->op == TOKdeclaration)
-       return this;
 
     e1 = e1->optimize(result & WANTinterpret);
     e2 = e2->optimize(result);
-    if (!e1 || e1->op == TOKint64 || e1->op == TOKfloat64 || !e1->checkSideEffect(2))
+    if (!e1 || e1->op == TOKint64 || e1->op == TOKfloat64 || !e1->hasSideEffect())
     {
         e = e2;
         if (e)
@@ -1076,8 +1072,12 @@ Expression *AndAndExp::optimize(int result)
     e = this;
     if (e1->isBool(FALSE))
     {
-        e = new CommaExp(loc, e1, new IntegerExp(loc, 0, type));
-        e->type = type;
+        if (type->toBasetype()->ty == Tvoid)
+            e = e2;
+        else
+        {   e = new CommaExp(loc, e1, new IntegerExp(loc, 0, type));
+            e->type = type;
+        }
         e = e->optimize(result);
     }
     else
@@ -1094,7 +1094,11 @@ Expression *AndAndExp::optimize(int result)
                 e = new IntegerExp(loc, n1 && n2, type);
             }
             else if (e1->isBool(TRUE))
-                e = new BoolExp(loc, e2, type);
+            {
+                if (type->toBasetype()->ty == Tvoid)
+                    e = e2;
+                else e = new BoolExp(loc, e2, type);
+            }
         }
     }
     return e;
@@ -1125,7 +1129,12 @@ Expression *OrOrExp::optimize(int result)
                 e = new IntegerExp(loc, n1 || n2, type);
             }
             else if (e1->isBool(FALSE))
-                e = new BoolExp(loc, e2, type);
+            {
+                if (type->toBasetype()->ty == Tvoid)
+                    e = e2;
+                else
+                    e = new BoolExp(loc, e2, type);
+            }
         }
     }
     return e;

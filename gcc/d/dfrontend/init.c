@@ -196,6 +196,7 @@ Initializer *StructInitializer::semantic(Scope *sc, Type *t, int needInterpret)
                     errors = 1;
                     continue;
                 }
+                s = s->toAlias();
 
                 // Find out which field index it is
                 for (fieldi = 0; 1; fieldi++)
@@ -290,6 +291,7 @@ Expression *StructInitializer::toExpression()
                 error(loc, "'%s' is not a member of '%s'", id->toChars(), sd->toChars());
                 goto Lno;
             }
+            s = s->toAlias();
 
             // Find out which field index it is
             for (fieldi = 0; 1; fieldi++)
@@ -855,6 +857,12 @@ L1:
 Type *ExpInitializer::inferType(Scope *sc)
 {
     //printf("ExpInitializer::inferType() %s\n", toChars());
+    if (exp->op == TOKfunction && ((FuncExp *)exp)->td)
+    {
+        exp->error("cannot infer type from ambiguous function literal %s", exp->toChars());
+        return Type::terror;
+    }
+
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
 

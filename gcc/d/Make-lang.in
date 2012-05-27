@@ -208,7 +208,7 @@ D_DMD_OBJS := \
 
 ifeq ($(D_LANGUAGE_VERSION),2)
 # D2 specific sources
-  D_DMD_OBJS += d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o d/intrange.dmd.o d/cppmangle.dmd.o
+  D_DMD_OBJS += d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o d/intrange.dmd.o d/cppmangle.dmd.o d/apply.dmd.o d/canthrow.dmd.o d/sideeffect.dmd.o
 else
 # D1 specific sources
   D_DMD_OBJS += d/argtypes.dmd.o

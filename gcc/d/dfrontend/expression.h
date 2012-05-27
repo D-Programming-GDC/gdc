@@ -68,11 +68,12 @@ struct elem;
 
 void initPrecedence();
 
+typedef int (*apply_fp_t)(Expression *, void *);
+
 Expression *resolveProperties(Scope *sc, Expression *e);
 void accessCheck(Loc loc, Scope *sc, Expression *e, Declaration *d);
 Expression *build_overload(Loc loc, Scope *sc, Expression *ethis, Expression *earg, Dsymbol *d);
 Dsymbol *search_function(ScopeDsymbol *ad, Identifier *funcid);
-void inferApplyArgTypes(enum TOK op, Parameters *arguments, Expression *aggr);
 void argExpTypesToCBuffer(OutBuffer *buf, Expressions *arguments, HdrGenState *hgs);
 void argsToCBuffer(OutBuffer *buf, Expressions *arguments, HdrGenState *hgs);
 void expandTuples(Expressions *exps);
@@ -107,6 +108,7 @@ struct Expression : Object
     Expression(Loc loc, enum TOK op, int size);
     Expression *copy();
     virtual Expression *syntaxCopy();
+    virtual int apply(apply_fp_t fp, void *param);
     virtual Expression *semantic(Scope *sc);
     Expression *trySemantic(Scope *sc);
 
@@ -117,7 +119,7 @@ struct Expression : Object
     virtual void dump(int indent);
     void error(const char *format, ...);
     void warning(const char *format, ...);
-    virtual void rvalue();
+    virtual int rvalue();
 
     static Expression *combine(Expression *e1, Expression *e2);
     static Expressions *arraySyntaxCopy(Expressions *exps);
@@ -157,7 +159,6 @@ struct Expression : Object
     Expression *isTemp();
 
     Expression *toDelegate(Scope *sc, Type *t);
-    virtual void scanForNestedRef(Scope *sc);
 
     virtual Expression *optimize(int result);
     #define WANTflags   1
@@ -172,10 +173,12 @@ struct Expression : Object
     virtual int isConst();
     virtual int isBool(int result);
     virtual int isBit();
-    virtual int checkSideEffect(int flag);
-    virtual int canThrow(bool mustNotThrow);
+    bool hasSideEffect();
+    void discardValue();
+    void useValue();
+    int canThrow(bool mustNotThrow);
 
-    virtual int inlineCost(InlineCostState *ics);
+    virtual int inlineCost3(InlineCostState *ics);
     virtual Expression *doInline(InlineDoState *ids);
     virtual Expression *inlineScan(InlineScanState *iss);
     Expression *inlineCopy(Scope *sc);
@@ -324,9 +327,8 @@ struct ThisExp : Expression
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
-    void scanForNestedRef(Scope *sc);
 
-    int inlineCost(InlineCostState *ics);
+    int inlineCost3(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     //Expression *inlineScan(InlineScanState *iss);
 
@@ -338,9 +340,7 @@ struct SuperExp : ThisExp
     SuperExp(Loc loc);
     Expression *semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    void scanForNestedRef(Scope *sc);
 
-    int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     //Expression *inlineScan(InlineScanState *iss);
 };
@@ -350,6 +350,7 @@ struct NullExp : Expression
     unsigned char committed;    // !=0 if type is committed
 
     NullExp(Loc loc, Type *t = NULL);
+    int equals(Object *o);
     Expression *semantic(Scope *sc);
     int isBool(int result);
     int isConst();
@@ -370,6 +371,7 @@ struct StringExp : Expression
     unsigned char sz;   // 1: char, 2: wchar, 4: dchar
     unsigned char committed;    // !=0 if type is committed
     unsigned char postfix;      // 'c', 'w', 'd'
+    bool ownedByCtfe;   // true = created in CTFE
 
     StringExp(Loc loc, char *s);
     StringExp(Loc loc, void *s, size_t len);
@@ -389,6 +391,7 @@ struct StringExp : Expression
     int isBool(int result);
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
+    Expression *modifiableLvalue(Scope *sc, Expression *e);
     unsigned charAt(size_t i);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void toMangleBuffer(OutBuffer *buf);
@@ -405,19 +408,16 @@ struct TupleExp : Expression
     TupleExp(Loc loc, Expressions *exps);
     TupleExp(Loc loc, TupleDeclaration *tup);
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     int equals(Object *o);
     Expression *semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    void scanForNestedRef(Scope *sc);
     void checkEscape();
-    int checkSideEffect(int flag);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     Expression *castTo(Scope *sc, Type *t);
     elem *toElem(IRState *irs);
-    int canThrow(bool mustNotThrow);
 
-    int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 };
@@ -425,27 +425,25 @@ struct TupleExp : Expression
 struct ArrayLiteralExp : Expression
 {
     Expressions *elements;
+    bool ownedByCtfe;   // true = created in CTFE
 
     ArrayLiteralExp(Loc loc, Expressions *elements);
     ArrayLiteralExp(Loc loc, Expression *e);
 
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
     int isBool(int result);
     elem *toElem(IRState *irs);
-    int checkSideEffect(int flag);
     StringExp *toString();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void toMangleBuffer(OutBuffer *buf);
-    void scanForNestedRef(Scope *sc);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     MATCH implicitConvTo(Type *t);
     Expression *castTo(Scope *sc, Type *t);
     dt_t **toDt(dt_t **pdt);
-    int canThrow(bool mustNotThrow);
 
-    int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 };
@@ -454,24 +452,22 @@ struct AssocArrayLiteralExp : Expression
 {
     Expressions *keys;
     Expressions *values;
+    bool ownedByCtfe;   // true = created in CTFE
 
     AssocArrayLiteralExp(Loc loc, Expressions *keys, Expressions *values);
 
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
     int isBool(int result);
     elem *toElem(IRState *irs);
-    int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void toMangleBuffer(OutBuffer *buf);
-    void scanForNestedRef(Scope *sc);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     MATCH implicitConvTo(Type *t);
     Expression *castTo(Scope *sc, Type *t);
-    int canThrow(bool mustNotThrow);
 
-    int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 };
@@ -486,27 +482,26 @@ struct StructLiteralExp : Expression
     Symbol *sym;                // back end symbol to initialize with literal
     size_t soffset;             // offset from start of s
     int fillHoles;              // fill alignment 'holes' with zero
+    bool ownedByCtfe;           // true = created in CTFE
 
     StructLiteralExp(Loc loc, StructDeclaration *sd, Expressions *elements, Type *stype = NULL);
 
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
     Expression *getField(Type *type, unsigned offset);
     int getFieldIndex(Type *type, unsigned offset);
     elem *toElem(IRState *irs);
-    int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void toMangleBuffer(OutBuffer *buf);
-    void scanForNestedRef(Scope *sc);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     dt_t **toDt(dt_t **pdt);
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
-    int canThrow(bool mustNotThrow);
     MATCH implicitConvTo(Type *t);
 
-    int inlineCost(InlineCostState *ics);
+    int inlineCost3(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 };
@@ -518,7 +513,7 @@ struct TypeExp : Expression
     TypeExp(Loc loc, Type *type);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
-    void rvalue();
+    int rvalue();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Expression *optimize(int result);
     elem *toElem(IRState *irs);
@@ -540,7 +535,7 @@ struct TemplateExp : Expression
     TemplateDeclaration *td;
 
     TemplateExp(Loc loc, TemplateDeclaration *td);
-    void rvalue();
+    int rvalue();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 };
 
@@ -560,16 +555,14 @@ struct NewExp : Expression
     NewExp(Loc loc, Expression *thisexp, Expressions *newargs,
         Type *newtype, Expressions *arguments);
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     Expression *optimize(int result);
     elem *toElem(IRState *irs);
-    int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    void scanForNestedRef(Scope *sc);
-    int canThrow(bool mustNotThrow);
 
-    //int inlineCost(InlineCostState *ics);
+    //int inlineCost3(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     //Expression *inlineScan(InlineScanState *iss);
 };
@@ -586,10 +579,9 @@ struct NewAnonClassExp : Expression
     NewAnonClassExp(Loc loc, Expression *thisexp, Expressions *newargs,
         ClassDeclaration *cd, Expressions *arguments);
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
-    int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    int canThrow(bool mustNotThrow);
 };
 
 #if DMDV2
@@ -620,7 +612,6 @@ struct SymOffExp : SymbolExp
     Expression *doInline(InlineDoState *ids);
     MATCH implicitConvTo(Type *t);
     Expression *castTo(Scope *sc, Type *t);
-    void scanForNestedRef(Scope *sc);
 
     dt_t **toDt(dt_t **pdt);
 };
@@ -643,9 +634,8 @@ struct VarExp : SymbolExp
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);
     dt_t **toDt(dt_t **pdt);
-    void scanForNestedRef(Scope *sc);
 
-    int inlineCost(InlineCostState *ics);
+    int inlineCost3(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     //Expression *inlineScan(InlineScanState *iss);
 };
@@ -668,18 +658,26 @@ struct OverExp : Expression
 struct FuncExp : Expression
 {
     FuncLiteralDeclaration *fd;
+    TemplateDeclaration *td;
+    enum TOK tok;
+    Type *tded;
+    Scope *scope;
 
-    FuncExp(Loc loc, FuncLiteralDeclaration *fd);
+    FuncExp(Loc loc, FuncLiteralDeclaration *fd, TemplateDeclaration *td = NULL);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
+    Expression *semantic(Scope *sc, Expressions *arguments);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
-    void scanForNestedRef(Scope *sc);
+    MATCH implicitConvTo(Type *t);
+    Expression *castTo(Scope *sc, Type *t);
+    Expression *inferType(Scope *sc, Type *t);
+    void setType(Type *t);
     char *toChars();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     elem *toElem(IRState *irs);
     dt_t **toDt(dt_t **pdt);
 
-    int inlineCost(InlineCostState *ics);
+    int inlineCost3(InlineCostState *ics);
     //Expression *doInline(InlineDoState *ids);
     //Expression *inlineScan(InlineScanState *iss);
 };
@@ -694,13 +692,10 @@ struct DeclarationExp : Expression
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
-    int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     elem *toElem(IRState *irs);
-    void scanForNestedRef(Scope *sc);
-    int canThrow(bool mustNotThrow);
 
-    int inlineCost(InlineCostState *ics);
+    int inlineCost3(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 };
@@ -733,7 +728,6 @@ struct HaltExp : Expression
     HaltExp(Loc loc);
     Expression *semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    int checkSideEffect(int flag);
 
     elem *toElem(IRState *irs);
 };
@@ -765,17 +759,15 @@ struct UnaExp : Expression
 
     UnaExp(Loc loc, enum TOK op, int size, Expression *e1);
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Expression *optimize(int result);
     void dump(int indent);
-    void scanForNestedRef(Scope *sc);
     Expression *interpretCommon(InterState *istate, CtfeGoal goal,
         Expression *(*fp)(Type *, Expression *));
-    int canThrow(bool mustNotThrow);
     Expression *resolveLoc(Loc loc, Scope *sc);
 
-    int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 
@@ -789,9 +781,9 @@ struct BinExp : Expression
 
     BinExp(Loc loc, enum TOK op, int size, Expression *e1, Expression *e2);
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
     Expression *semanticp(Scope *sc);
-    int checkSideEffect(int flag);
     void checkComplexMulAssign();
     void checkComplexAddAssign();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -801,17 +793,14 @@ struct BinExp : Expression
     int isunsigned();
     Expression *incompatibleTypes();
     void dump(int indent);
-    void scanForNestedRef(Scope *sc);
     Expression *interpretCommon(InterState *istate, CtfeGoal goal,
         Expression *(*fp)(Type *, Expression *, Expression *));
     Expression *interpretCommon2(InterState *istate, CtfeGoal goal,
         Expression *(*fp)(TOK, Type *, Expression *, Expression *));
     Expression *interpretAssignCommon(InterState *istate, CtfeGoal goal,
         Expression *(*fp)(Type *, Expression *, Expression *), int post = 0);
-    int canThrow(bool mustNotThrow);
     Expression *arrayOp(Scope *sc);
 
-    int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 
@@ -860,13 +849,11 @@ struct AssertExp : UnaExp
 
     AssertExp(Loc loc, Expression *e, Expression *msg = NULL);
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
-    int checkSideEffect(int flag);
-    int canThrow(bool mustNotThrow);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
-    int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 
@@ -934,7 +921,7 @@ struct DelegateExp : UnaExp
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void dump(int indent);
 
-    int inlineCost(InlineCostState *ics);
+    int inlineCost3(InlineCostState *ics);
     elem *toElem(IRState *irs);
 };
 
@@ -959,22 +946,20 @@ struct CallExp : UnaExp
     CallExp(Loc loc, Expression *e, Expression *earg1, Expression *earg2);
 
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *resolveUFCS(Scope *sc);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
-    int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void dump(int indent);
     elem *toElem(IRState *irs);
-    void scanForNestedRef(Scope *sc);
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
-    int canThrow(bool mustNotThrow);
     Expression *addDtorHook(Scope *sc);
     MATCH implicitConvTo(Type *t);
 
-    int inlineCost(InlineCostState *ics);
+    int inlineCost3(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 };
@@ -1075,7 +1060,6 @@ struct DeleteExp : UnaExp
     DeleteExp(Loc loc, Expression *e);
     Expression *semantic(Scope *sc);
     Expression *checkToBoolean(Scope *sc);
-    int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     elem *toElem(IRState *irs);
 };
@@ -1094,7 +1078,6 @@ struct CastExp : UnaExp
     IntRange getIntRange();
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
-    int checkSideEffect(int flag);
     void checkEscape();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
@@ -1126,6 +1109,7 @@ struct SliceExp : UnaExp
 
     SliceExp(Loc loc, Expression *e1, Expression *lwr, Expression *upr);
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
     void checkEscape();
     void checkEscapeRef();
@@ -1138,12 +1122,9 @@ struct SliceExp : UnaExp
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     void dump(int indent);
     elem *toElem(IRState *irs);
-    void scanForNestedRef(Scope *sc);
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
     Expression *buildArrayLoop(Parameters *fparams);
-    int canThrow(bool mustNotThrow);
 
-    int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 };
@@ -1170,17 +1151,16 @@ struct ArrayExp : UnaExp
 
     ArrayExp(Loc loc, Expression *e1, Expressions *arguments);
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    void scanForNestedRef(Scope *sc);
 
     // For operator overloading
     Identifier *opId();
     Expression *op_overload(Scope *sc);
 
-    int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 };
@@ -1205,7 +1185,6 @@ struct CommaExp : BinExp
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);
     int isBool(int result);
-    int checkSideEffect(int flag);
     MATCH implicitConvTo(Type *t);
     Expression *addDtorHook(Scope *sc);
     Expression *castTo(Scope *sc, Type *t);
@@ -1228,7 +1207,6 @@ struct IndexExp : BinExp
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     Expression *doInline(InlineDoState *ids);
-    void scanForNestedRef(Scope *sc);
 
     elem *toElem(IRState *irs);
 };
@@ -1538,7 +1516,6 @@ struct OrOrExp : BinExp
     int isBit();
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
-    int checkSideEffect(int flag);
     elem *toElem(IRState *irs);
 };
 
@@ -1550,7 +1527,6 @@ struct AndAndExp : BinExp
     int isBit();
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
-    int checkSideEffect(int flag);
     elem *toElem(IRState *irs);
 };
 
@@ -1630,6 +1606,7 @@ struct CondExp : BinExp
 
     CondExp(Loc loc, Expression *econd, Expression *e1, Expression *e2);
     Expression *syntaxCopy();
+    int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
@@ -1639,14 +1616,10 @@ struct CondExp : BinExp
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);
     Expression *checkToBoolean(Scope *sc);
-    int checkSideEffect(int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     MATCH implicitConvTo(Type *t);
     Expression *castTo(Scope *sc, Type *t);
-    void scanForNestedRef(Scope *sc);
-    int canThrow(bool mustNotThrow);
 
-    int inlineCost(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
 
@@ -1719,5 +1692,12 @@ Expression *Cmp(enum TOK op, Type *type, Expression *e1, Expression *e2);
 Expression *Identity(enum TOK op, Type *type, Expression *e1, Expression *e2);
 
 Expression *Slice(Type *type, Expression *e1, Expression *lwr, Expression *upr);
+
+// Const-folding functions used by CTFE
+
+void sliceAssignArrayLiteralFromString(ArrayLiteralExp *existingAE, StringExp *newval, int firstIndex);
+void sliceAssignStringFromArrayLiteral(StringExp *existingSE, ArrayLiteralExp *newae, int firstIndex);
+void sliceAssignStringFromString(StringExp *existingSE, StringExp *newstr, int firstIndex);
+
 
 #endif /* DMD_EXPRESSION_H */
