@@ -22,7 +22,7 @@ D
 
 fassert
 D
-Generate runtime code for assert()'s
+Permit the use of the assert keyword
 
 ; For D: defaults to on
 fbounds-check
@@ -158,7 +158,7 @@ D Joined RejectNegative
 
 imultilib
 D Joined Separate
--imultilib <dir> Set <dir> to be the multilib include subdirectory
+-imultilib <dir>	Set <dir> to be the multilib include subdirectory
 
 iprefix
 D Joined Separate
@@ -174,15 +174,15 @@ D Joined Separate
 
 I
 D Joined Separate
--I <dir>	Add <dir> to the end of the main include path.
+-I <dir>	Add <dir> to the end of the main include path
 
 J
 D Joined Separate
--J <dir>	Add <dir> to the end of the string import path.
+-J<directory>	Put MODULE files in 'directory'
 
 nostdinc
 D
-Do not search standard system include directories
+Do not search standard system include directories (those specified with -isystem will still be used)
 
 Wall
 D
@@ -190,7 +190,7 @@ Enable most warning messages
 
 Werror
 D
-Error out the compiler on warnings
+Treat all warnings as errors
 
 Wsign-compare
 D

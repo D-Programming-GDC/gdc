@@ -1,3 +1,13 @@
+2012-05-28  Daniel Green  <venix1@gmail.com>
+
+	* d-builtins.c(DEF_ATTR_STRING): Define and undefine along with other
+	macros.
+	* d-lang.cc (d_write_global_declartions): Use
+	finalize_compilation_unit. GCC 2012-04-30
+	* d-objfile.cc (ObjectFile::outputThunk): Use
+	symtab_add_to_same_comdat_group. GCC 2012-04-30
+	* lang.opt: Match help strings for duplicated options.
+
 2012-02-01  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* setup-gcc.sh: Remove -hg option.

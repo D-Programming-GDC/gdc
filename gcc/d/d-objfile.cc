@@ -759,7 +759,7 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
                                    this_adjusting, fixed_offset, virtual_value, 0, alias);
 
     if (DECL_ONE_ONLY (target_decl))
-        cgraph_add_to_same_comdat_group (thunk_node, funcn);
+        symtab_add_to_same_comdat_group ((symtab_node)thunk_node, (symtab_node)funcn);
 
     if (!targetm.asm_out.can_output_mi_thunk(thunk_decl, fixed_offset,
                                              virtual_value, alias))

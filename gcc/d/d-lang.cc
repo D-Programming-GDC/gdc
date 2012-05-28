@@ -709,7 +709,7 @@ d_write_global_declarations()
 
     /* We're done parsing; proceed to optimize and emit assembly. */
     if (! global.errors && ! errorcount)
-        cgraph_finalize_compilation_unit();
+        finalize_compilation_unit();
 
     /* After cgraph has had a chance to emit everything that's going to
        be emitted, output debug information for globals.  */
