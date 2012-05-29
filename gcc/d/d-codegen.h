@@ -451,7 +451,7 @@ public:
   void endLoop();
   void startCase(Statement * stmt, tree t_cond, int has_vars = 0);
   void doCase(tree t_value, tree t_label);
-  void endCase(tree t_cond);
+  void endCase();
   void continueLoop(Identifier * ident);
   void exitLoop(Identifier * ident);
   void startTry(Statement * stmt);

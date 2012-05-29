@@ -1,3 +1,10 @@
+2012-05-29  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-codegen.cc(IRState::endCase): Remove parameter from function. Use
+	condition type as the SWITCH_EXPR type, rather than use of void.
+	* d-codegen.h(IRState::endCase): Update signature.
+	* d-glue.cc(SwitchStatement::toIR): Update call to endCase.
+
 2012-05-28  Daniel Green  <venix1@gmail.com>
 
 	* d-builtins.c(DEF_ATTR_STRING): Define and undefine along with other

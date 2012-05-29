@@ -4094,10 +4094,11 @@ IRState::doCase(tree t_value, tree t_label)
 }
 
 void
-IRState::endCase(tree /*t_cond*/)
+IRState::endCase()
 {
     Flow * f = currentFlow();
     tree t_body = popStatementList();
+    tree t_condtype = TREE_TYPE(f->condition);
 #if V2
     if (f->hasVars)
     {   // %% switch was converted to if-then-else expression
@@ -4106,8 +4107,8 @@ IRState::endCase(tree /*t_cond*/)
     else
 #endif
     {
-        tree t_stmt = build3(SWITCH_EXPR, void_type_node, f->condition,
-                t_body, NULL_TREE);
+        tree t_stmt = build3(SWITCH_EXPR, t_condtype, f->condition,
+	     		     t_body, NULL_TREE);
         addExp(t_stmt);
     }
     endFlow();

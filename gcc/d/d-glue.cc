@@ -4567,7 +4567,7 @@ SwitchStatement::toIR(IRState * irs)
     {
         body->toIR(irs);
     }
-    irs->endCase(cond_tree);
+    irs->endCase();
 }
 
 
