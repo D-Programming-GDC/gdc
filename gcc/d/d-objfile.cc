@@ -755,8 +755,51 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
     struct cgraph_node *funcn, *thunk_node;
 
     funcn = cgraph_get_create_node (target_decl);
-    thunk_node = cgraph_add_thunk (funcn, thunk_decl, thunk_decl,
-                                   this_adjusting, fixed_offset, virtual_value, 0, alias);
+
+    /* cgraphunit.c(assemble_thunk) is responsible for outputting thunks.
+       As of 4.8 this will never be called for external functions so it must be
+       done manually.
+     
+       The contents of assemble_thunk are duplicated here since the function is 
+       static.
+     */
+    if (DECL_EXTERNAL (target_decl))
+    {
+        const char *fnname;
+        tree fn_block;
+        tree restype = TREE_TYPE (TREE_TYPE (thunk_decl));	
+
+        current_function_decl = thunk_decl;
+
+        DECL_RESULT (thunk_decl)
+          = build_decl (DECL_SOURCE_LOCATION (thunk_decl),
+                       RESULT_DECL, 0, restype);
+
+        fnname = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (thunk_decl));
+        /* The back end expects DECL_INITIAL to contain a BLOCK, so we
+           create one.  */
+        fn_block = make_node (BLOCK);
+        BLOCK_VARS (fn_block) = DECL_ARGUMENTS (thunk_decl); 
+        DECL_INITIAL (thunk_decl) = fn_block;
+        init_function_start (thunk_decl);
+        cfun->is_thunk = 1;
+        assemble_start_function (thunk_decl, fnname);
+
+        targetm.asm_out.output_mi_thunk (asm_out_file, thunk_decl,
+                                         fixed_offset, virtual_value, alias);
+    
+        assemble_end_function (thunk_decl, fnname);
+        init_insn_lengths ();
+        free_after_compilation (cfun);
+        set_cfun (NULL);
+        TREE_ASM_WRITTEN (thunk_decl) = 1;
+        //node->thunk.thunk_p = false;
+        //node->analyzed = false;
+    } else
+    {    
+        thunk_node = cgraph_add_thunk (funcn, thunk_decl, thunk_decl,
+                                       this_adjusting, fixed_offset, virtual_value, 0, alias);
+    }
 
     if (DECL_ONE_ONLY (target_decl))
         symtab_add_to_same_comdat_group ((symtab_node)thunk_node, (symtab_node)funcn);

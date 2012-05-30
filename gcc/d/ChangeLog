@@ -1,3 +1,9 @@
+2012-05-29  Daniel Green <venix1@gmail.com>
+
+	* d-objfile.cc(ObjectFile::outputThunk): Output thunks for
+	DECL_EXTERNAL functions. 
+	See https://bitbucket.org/goshawk/gdc/issue/284
+
 2012-05-29  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.cc(IRState::endCase): Remove parameter from function. Use
