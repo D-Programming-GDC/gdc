@@ -1,3 +1,9 @@
+2012-05-29  Daniel Green  <venix1@gmail.com>
+
+	* setup-gcc.sh: Add GCC 4.8 to list of supported GCC versions. Patch
+	courtesy of Calrama
+	https://bitbucket.org/goshawk/gdc/issue/345
+
 2012-05-29  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.cc(IRState::endCase): Remove parameter from function. Use
