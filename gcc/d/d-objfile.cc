@@ -707,7 +707,6 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
     int fixed_offset = -offset;
     bool this_adjusting = true;
     int virtual_value = 0;
-
     tree alias;
 
     if (TARGET_USE_LOCAL_THUNK_ALIAS_P (target_decl))
@@ -752,14 +751,53 @@ ObjectFile::outputThunk(tree thunk_decl, tree target_decl, int offset)
     DECL_ARGUMENTS(thunk_decl) = nreverse(t);
     TREE_ASM_WRITTEN(thunk_decl) = 1;
 
-    struct cgraph_node *funcn, *thunk_node;
+    if (!DECL_EXTERNAL (target_decl))
+    {
+        struct cgraph_node *funcn, *thunk_node;
 
-    funcn = cgraph_get_create_node (target_decl);
-    thunk_node = cgraph_add_thunk (funcn, thunk_decl, thunk_decl,
-                                   this_adjusting, fixed_offset, virtual_value, 0, alias);
+        funcn = cgraph_get_create_node (target_decl);
+        gcc_assert (funcn);
+        thunk_node = cgraph_add_thunk (funcn, thunk_decl, thunk_decl,
+                                       this_adjusting, fixed_offset,
+                                       virtual_value, 0, alias);
 
-    if (DECL_ONE_ONLY (target_decl))
-        symtab_add_to_same_comdat_group ((symtab_node)thunk_node, (symtab_node)funcn);
+        if (DECL_ONE_ONLY (target_decl))
+            symtab_add_to_same_comdat_group ((symtab_node) thunk_node,
+                                             (symtab_node) funcn);
+    }
+    else
+    {
+        /* Based on cgraphunit.c(assemble_thunk).  Contents are duplicated here
+           since the function is static, and is never called for thunks to external
+           functions, so it is done manually here.  */
+        const char *fnname;
+        tree restype = TREE_TYPE (TREE_TYPE (thunk_decl));
+
+        /* The back end expects DECL_INITIAL to contain a BLOCK, so we
+           create one.  */
+        DECL_INITIAL (thunk_decl) = make_node (BLOCK);
+        BLOCK_VARS (DECL_INITIAL (thunk_decl)) = DECL_ARGUMENTS (thunk_decl);
+
+        current_function_decl = thunk_decl;
+        DECL_RESULT (thunk_decl)
+            = build_decl (DECL_SOURCE_LOCATION (thunk_decl),
+                          RESULT_DECL, 0, restype);
+
+        fnname = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (thunk_decl));
+        init_function_start (thunk_decl);
+        cfun->is_thunk = 1;
+        assemble_start_function (thunk_decl, fnname);
+
+        targetm.asm_out.output_mi_thunk (asm_out_file, thunk_decl,
+                                         fixed_offset, virtual_value, alias);
+
+        assemble_end_function (thunk_decl, fnname);
+        init_insn_lengths ();
+        free_after_compilation (cfun);
+        set_cfun (NULL);
+        current_function_decl = NULL_TREE;
+        TREE_ASM_WRITTEN (thunk_decl) = 1;
+    }
 
     if (!targetm.asm_out.can_output_mi_thunk(thunk_decl, fixed_offset,
                                              virtual_value, alias))

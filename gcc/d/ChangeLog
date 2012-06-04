@@ -1,3 +1,8 @@
+2012-06-04  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-objfile.cc(ObjectFile::outputThunk): Output thunks moved back to
+	the frontend, as backend does not emit them for DECL_EXTERNAL functions.
+
 2012-05-29  Daniel Green  <venix1@gmail.com>
 
 	* setup-gcc.sh: Add GCC 4.8 to list of supported GCC versions. Patch
