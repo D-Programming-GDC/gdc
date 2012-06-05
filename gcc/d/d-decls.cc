@@ -631,9 +631,10 @@ Symbol *FuncDeclaration::toSymbol()
             DECL_PURE_P(fndecl) = (isPure() == PUREstrong && ftype->isnothrow);
             // %% Assert contracts in functions may throw.
             TREE_NOTHROW(fndecl) = ftype->isnothrow && !global.params.useAssert;
-            // TODO: check 'immutable' means arguments are readonly...
-            TREE_READONLY(fndecl) = ftype->isImmutable();
-            TREE_CONSTANT(fndecl) = ftype->isConst();
+	    // %% Make D const methods equivalent to GCC const
+	    TREE_READONLY(fndecl) = (isPure() == PUREconst);
+	    // %% Should allow weakly pure functions to be evaluated only once.
+            DECL_IS_NOVOPS(fndecl) = (isPure() == PUREweak);
 #endif
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES

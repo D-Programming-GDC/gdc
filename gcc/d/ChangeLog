@@ -1,3 +1,12 @@
+2012-06-05  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-decls.cc(FuncDeclaration::toSymbol): Make better use of 'pure' and
+	'pure const' functions in GCC codegen.
+	* d-bi-attrs.h: Added TM_ATTR* masks.
+	(handle_tm_wrap_attribute, handle_tm_attribute, tm_attr_to_mask,
+	find_tm_attribute): New.
+	(struct d_common_attribute_table): Added transaction* attributes.
+
 2012-06-04  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-objfile.cc(ObjectFile::outputThunk): Output thunks moved back to
