@@ -57,66 +57,66 @@ struct dt_t
 
 enum TypeType;
 
-extern dt_t** dtval(dt_t** pdt, DT t, dinteger_t i, const void * p);
-extern dt_t** dtcat(dt_t** pdt, dt_t * d);
-extern tree   dt2tree(dt_t * dt);
+extern dt_t** dtval (dt_t** pdt, DT t, dinteger_t i, const void * p);
+extern dt_t** dtcat (dt_t** pdt, dt_t * d);
+extern tree   dt2tree (dt_t * dt);
 
 // %% should be dinteger_t?, but when used in todt.c, it's assigned to an unsigned
-size_t dt_size(dt_t * dt);
+size_t dt_size (dt_t * dt);
 
 // Added for GCC to get correct byte ordering / size
-extern dt_t** dtnbits(dt_t** pdt, size_t count, char * pbytes, unsigned unit_size);
-extern dt_t** dtnwords(dt_t** pdt, size_t word_count, void * pwords, unsigned word_size);
-extern dt_t** dtawords(dt_t** pdt, size_t word_count, void * pwords, unsigned word_size);
-extern dt_t** dti32(dt_t** pdt, unsigned val, int pad_to_word);
+extern dt_t** dtnbits (dt_t** pdt, size_t count, char * pbytes, unsigned unit_size);
+extern dt_t** dtnwords (dt_t** pdt, size_t word_count, void * pwords, unsigned word_size);
+extern dt_t** dtawords (dt_t** pdt, size_t word_count, void * pwords, unsigned word_size);
+extern dt_t** dti32 (dt_t** pdt, unsigned val, int pad_to_word);
 
 // Added for GCC to match types for SRA pass
-extern dt_t** dtcontainer(dt_t** pdt, Type * type, dt_t* values);
+extern dt_t** dtcontainer (dt_t** pdt, Type * type, dt_t* values);
 
 
 inline dt_t**
-dtnbytes(dt_t** pdt, size_t count, const char * pbytes)
+dtnbytes (dt_t** pdt, size_t count, const char * pbytes)
 {
-  return dtval(pdt, DT_nbytes, count, pbytes);
+  return dtval (pdt, DT_nbytes, count, pbytes);
 }
 
 inline dt_t**
-dtabytes(dt_t** pdt, TypeType, int, size_t count, const char * pbytes)
+dtabytes (dt_t** pdt, TypeType, int, size_t count, const char * pbytes)
 {
-  return dtval(pdt, DT_abytes, count, pbytes);
+  return dtval (pdt, DT_abytes, count, pbytes);
 }
 
 inline dt_t**
-dtnzeros(dt_t** pdt, size_t count)
+dtnzeros (dt_t** pdt, size_t count)
 {
-  return dtval(pdt, DT_azeros, count, 0);
+  return dtval (pdt, DT_azeros, count, 0);
 }
 
 inline dt_t**
-dtdword(dt_t** pdt, size_t val)
+dtdword (dt_t** pdt, size_t val)
 {
-  return dti32(pdt, val, false);
+  return dti32 (pdt, val, false);
 }
 
 inline dt_t**
-dtsize_t(dt_t** pdt, size_t val)
+dtsize_t (dt_t** pdt, size_t val)
 {
-  return dtval(pdt, DT_ibytes, val, 0);
+  return dtval (pdt, DT_ibytes, val, 0);
 }
 
 inline dt_t**
-dtxoff(dt_t** pdt, Symbol * sym, size_t offset, TypeType)
+dtxoff (dt_t** pdt, Symbol * sym, size_t offset, TypeType)
 {
-  return dtval(pdt, DT_xoff, offset, sym);
+  return dtval (pdt, DT_xoff, offset, sym);
 }
 
 inline dt_t**
-dttree(dt_t** pdt, tree t)
+dttree (dt_t** pdt, tree t)
 {
-  return dtval(pdt, DT_tree, 0, t);
+  return dtval (pdt, DT_tree, 0, t);
 }
 
 inline void
-dt_optimize(dt_t *) { }
+dt_optimize (dt_t *) { }
 
 #endif

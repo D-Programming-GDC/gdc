@@ -39,7 +39,7 @@ struct Declaration;
 typedef struct Declaration *DeclarationGTYP;
 struct GTY(()) lang_decl
 {
-  DeclarationGTYP GTY ((skip)) d_decl;
+  DeclarationGTYP GTY((skip)) d_decl;
 };
 
 /* The lang_type field is not set for every GCC type. */
@@ -54,39 +54,39 @@ struct GTY((variable_size)) lang_type
 /* Another required, but unused declaration.  This could be simplified, since
    there is no special lang_identifier */
 union GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
-	   chain_next ("CODE_CONTAINS_STRUCT (TREE_CODE (&%h.generic), TS_COMMON)"
-		       " ? ((union lang_tree_node *) TREE_CHAIN (&%h.generic)) : NULL")))
+ 	    chain_next ("CODE_CONTAINS_STRUCT (TREE_CODE (&%h.generic), TS_COMMON)"
+ 			" ? ((union lang_tree_node *) TREE_CHAIN (&%h.generic)) : NULL")))
 lang_tree_node
 {
-  union tree_node GTY ((tag ("0"),
+  union tree_node GTY((tag ("0"),
 			desc ("tree_node_structure (&%h)"))) generic;
-  struct lang_identifier GTY ((tag ("1"))) identifier;
+  struct lang_identifier GTY((tag ("1"))) identifier;
 };
 
 extern GTY(()) tree d_eh_personality_decl;
 
 /* True if the Tdelegate typed expression is not really a variable,
    but a literal function / method reference */
-#define D_IS_METHOD_CALL_EXPR(NODE) (TREE_LANG_FLAG_0(NODE))
+#define D_IS_METHOD_CALL_EXPR(NODE) (TREE_LANG_FLAG_0 (NODE))
 
 /* True if the type is a reference type and it's decl should be marked
    in the backend as DECL_BY_REFERENCE.  For function types is for NRVO.  */
-#define D_TYPE_ADDRESSABLE(NODE) (TYPE_LANG_FLAG_0(NODE))
+#define D_TYPE_ADDRESSABLE(NODE) (TYPE_LANG_FLAG_0 (NODE))
 
 /* True if the symbol should be made "link one only".  This is used to
    defer calling make_decl_one_only() before the decl has been prepared. */
-#define D_DECL_ONE_ONLY(NODE) (DECL_LANG_FLAG_0(NODE))
+#define D_DECL_ONE_ONLY(NODE) (DECL_LANG_FLAG_0 (NODE))
 
 /* True if the symbol is a template member.  Need to distinguish
    between templates and other shared static data so that the latter
    is not affected by -femit-templates. */
-#define D_DECL_IS_TEMPLATE(NODE) (DECL_LANG_FLAG_1(NODE))
+#define D_DECL_IS_TEMPLATE(NODE) (DECL_LANG_FLAG_1 (NODE))
 
 /* True if the symbol has been marked "static const".  */
-#define D_DECL_READONLY_STATIC(NODE) (DECL_LANG_FLAG_2(NODE))
+#define D_DECL_READONLY_STATIC(NODE) (DECL_LANG_FLAG_2 (NODE))
 
 /* True if a custom static chain has been set-up for function.  */
-#define D_DECL_STATIC_CHAIN(NODE) (DECL_LANG_FLAG_3(FUNCTION_DECL_CHECK(NODE)))
+#define D_DECL_STATIC_CHAIN(NODE) (DECL_LANG_FLAG_3 (FUNCTION_DECL_CHECK (NODE)))
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and
@@ -175,30 +175,30 @@ extern tree d_truthvalue_conversion (tree);
 extern tree d_convert_basic (tree, tree);
 extern void d_init_exceptions (void);
 
-extern void init_global_binding_level(void);
-extern void set_decl_binding_chain(tree decl_chain);
+extern void init_global_binding_level (void);
+extern void set_decl_binding_chain (tree decl_chain);
 
 extern void d_add_global_declaration (tree);
 
-extern tree d_type_promotes_to(tree);
+extern tree d_type_promotes_to (tree);
 
-extern void gcc_d_backend_init();
-extern void gcc_d_backend_term();
+extern void gcc_d_backend_init ();
+extern void gcc_d_backend_term ();
 
 struct Module;
-extern Module * d_gcc_get_output_module();
+extern Module * d_gcc_get_output_module ();
 
-extern struct lang_type * build_d_type_lang_specific(Type * t);
-extern struct lang_decl * build_d_decl_lang_specific(Declaration * d);
+extern struct lang_type * build_d_type_lang_specific (Type * t);
+extern struct lang_decl * build_d_decl_lang_specific (Declaration * d);
 
 /* In asmstmt.cc */
 struct IRState;
-extern bool d_have_inline_asm();
-extern void d_expand_priv_asm_label(IRState * irs, unsigned n);
-extern tree d_build_asm_stmt(tree t1, tree t2, tree t3, tree t4, tree t5);
+extern bool d_have_inline_asm ();
+extern void d_expand_priv_asm_label (IRState * irs, unsigned n);
+extern tree d_build_asm_stmt (tree t1, tree t2, tree t3, tree t4, tree t5);
 
 /* In d-incpath.cc */
-extern void register_import_chains();
+extern void register_import_chains ();
 extern bool std_inc;
 extern const char * iprefix;
 extern const char * multilib_dir;
@@ -212,26 +212,26 @@ extern "C" {
   tree pushdecl (tree);
   void pushlevel (int);
   tree poplevel (int, int, int);
-  tree d_unsigned_type(tree);
-  tree d_signed_type(tree);
-  tree d_type_for_size(unsigned bits, int unsignedp);
-  tree d_type_for_mode(enum machine_mode mode, int unsignedp);
-  
-  void d_keep(tree t);
-  void d_free(tree t);
-  
+  tree d_unsigned_type (tree);
+  tree d_signed_type (tree);
+  tree d_type_for_size (unsigned bits, int unsignedp);
+  tree d_type_for_mode (enum machine_mode mode, int unsignedp);
+
+  void d_keep (tree t);
+  void d_free (tree t);
+
   bool global_bindings_p (void);
   void insert_block (tree);
   void set_block (tree);
   tree getdecls (void);
-  
+
   /* In d-builtins.c */
   extern void d_init_builtins (void);
   extern const struct attribute_spec d_common_attribute_table[];
   extern const struct attribute_spec d_common_format_attribute_table[];
   extern tree d_builtin_function (tree);
   extern void d_register_builtin_type (tree, const char *);
-  
+
   /* In d-builtins2.cc */
   extern void d_bi_init (void);
   extern void d_bi_builtin_func (tree);
@@ -246,7 +246,7 @@ extern GTY(()) tree d_keep_list;
 
 #include "d-dmd-gcc.h"
 
-#define d_warning(option, ...) warning(option, __VA_ARGS__)
-#define d_built_in_decls(FCODE) builtin_decl_explicit(FCODE)
+#define d_warning(option, ...) warning (option, __VA_ARGS__)
+#define d_built_in_decls(FCODE) builtin_decl_explicit (FCODE)
 
 #endif

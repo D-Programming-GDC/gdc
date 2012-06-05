@@ -43,7 +43,7 @@ enum LevelKind
 };
 
 
-struct Label 
+struct Label
 {
   LabelDsymbol * label;
   Statement * block;
@@ -51,9 +51,9 @@ struct Label
   LevelKind kind;
   unsigned level;
 
-  Label() :
-    label(NULL), block(NULL), from(NULL),
-    kind(level_block), level(0) { }
+  Label () :
+    label (NULL), block (NULL), from (NULL),
+    kind (level_block), level (0) { }
 };
 
 struct Flow
@@ -76,9 +76,9 @@ struct Flow
       };
   };
 
-  Flow(Statement * stmt) :
-    statement(stmt), kind(level_block), exitLabel(NULL_TREE),
-    continueLabel(NULL_TREE), hasVars(NULL_TREE) { }
+  Flow (Statement * stmt) :
+    statement (stmt), kind (level_block), exitLabel (NULL_TREE),
+    continueLabel (NULL_TREE), hasVars (NULL_TREE) { }
 };
 
 
@@ -101,7 +101,7 @@ struct IRBase : Object
 {
   IRBase * parent;
 
-  IRBase();
+  IRBase ();
 
   // ** Functions
 
@@ -109,17 +109,17 @@ struct IRBase : Object
   // GotoStatements refer to.
   FuncDeclaration * func; // %% make this a stack
 
-  IRState * startFunction(FuncDeclaration * decl);
-  void endFunction();
+  IRState * startFunction (FuncDeclaration * decl);
+  void endFunction ();
 
-public:
+ public:
   // ** Statement Lists
 
-  void addExp(tree e);
+  void addExp (tree e);
   Array statementList;    // of tree
 
-  void pushStatementList();
-  tree popStatementList();
+  void pushStatementList ();
+  tree popStatementList ();
 
   // ** Labels
 
@@ -127,10 +127,10 @@ public:
 
   // It is only valid to call this while the function in which the label is defined
   // is being compiled.
-  tree    getLabelTree(LabelDsymbol * label);
-  Label * getLabelBlock(LabelDsymbol * label, Statement * from = NULL);
+  tree    getLabelTree (LabelDsymbol * label);
+  Label * getLabelBlock (LabelDsymbol * label, Statement * from = NULL);
 
-  bool isReturnLabel(Identifier * ident) {
+  bool isReturnLabel (Identifier * ident) {
       return func->returnLabel ? ident == func->returnLabel->ident : 0;
   }
 
@@ -139,21 +139,21 @@ public:
   Flows loops;
 
   // These routines don't generate code.  They are for tracking labeled loops.
-  Flow * getLoopForLabel(Identifier * ident, bool want_continue = false);
-  Flow * beginFlow(Statement * stmt);
+  Flow * getLoopForLabel (Identifier * ident, bool want_continue = false);
+  Flow * beginFlow (Statement * stmt);
 
-  void endFlow();
+  void endFlow ();
 
-  Flow * currentFlow() {
-      gcc_assert(loops.dim);
-      return (Flow *) loops.tos();
+  Flow * currentFlow () {
+      gcc_assert (loops.dim);
+      return (Flow *) loops.tos ();
   }
 
-  void doLabel(tree t_label);
+  void doLabel (tree t_label);
 
   // ** DECL_CONTEXT support
 
-  tree getLocalContext() {
+  tree getLocalContext () {
       return func ? func->toSymbol()->Stree : NULL_TREE;
   }
 
@@ -171,31 +171,31 @@ public:
    */
   Array scopes; // of unsigned*
 
-  void startScope();
-  void endScope();
+  void startScope ();
+  void endScope ();
 
-  unsigned * currentScope() {
-      gcc_assert(scopes.dim);
-      return (unsigned *) scopes.tos();
+  unsigned * currentScope () {
+      gcc_assert (scopes.dim);
+      return (unsigned *) scopes.tos ();
   }
-  
-  void startBindings();
-  void endBindings();
+
+  void startBindings ();
+  void endBindings ();
 
 
   // ** Volatile state
 
   unsigned volatileDepth;
 
-  bool inVolatile() {
+  bool inVolatile () {
       return volatileDepth != 0;
   }
-  
-  void pushVolatile() {
+
+  void pushVolatile () {
       ++volatileDepth;
   }
 
-  void popVolatile() {
+  void popVolatile () {
       --volatileDepth;
   }
 };

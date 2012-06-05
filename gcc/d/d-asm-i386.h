@@ -31,7 +31,7 @@ enum Reg
   Reg_ST1, Reg_ST2, Reg_ST3, Reg_ST4, Reg_ST5, Reg_ST6, Reg_ST7,
   Reg_MM0, Reg_MM1, Reg_MM2, Reg_MM3, Reg_MM4, Reg_MM5, Reg_MM6, Reg_MM7,
   Reg_XMM0, Reg_XMM1, Reg_XMM2, Reg_XMM3, Reg_XMM4, Reg_XMM5, Reg_XMM6, Reg_XMM7,
-  
+
   Reg_RAX, Reg_RBX, Reg_RCX, Reg_RDX, Reg_RSI, Reg_RDI, Reg_RBP, Reg_RSP,
   Reg_R8, Reg_R9, Reg_R10, Reg_R11, Reg_R12, Reg_R13, Reg_R14, Reg_R15,
   Reg_R8B, Reg_R9B, Reg_R10B, Reg_R11B, Reg_R12B, Reg_R13B, Reg_R14B, Reg_R15B,
@@ -40,7 +40,7 @@ enum Reg
   Reg_XMM8, Reg_XMM9, Reg_XMM10, Reg_XMM11, Reg_XMM12, Reg_XMM13, Reg_XMM14, Reg_XMM15,
   Reg_RIP,
   Reg_SIL, Reg_DIL, Reg_BPL, Reg_SPL,
-  
+
   Reg_EFLAGS,
   Reg_CS,
   Reg_DS,
@@ -53,7 +53,7 @@ enum Reg
   Reg_CR0, Reg_CR2, Reg_CR3, Reg_CR4,
   Reg_DR0, Reg_DR1, Reg_DR2, Reg_DR3, Reg_DR6, Reg_DR7,
   Reg_TR3, Reg_TR4, Reg_TR5, Reg_TR6, Reg_TR7,
-  
+
   Reg_MAX
 };
 
@@ -218,7 +218,7 @@ enum ImplicitClober
   Clb_SizeDXAX = 0x02,
   Clb_EAX      = 0x03,
   Clb_DXAX_Mask = 0x03,
-  
+
   Clb_Flags    = 0x04,
   Clb_DI       = 0x08,
   Clb_SI       = 0x10,
@@ -390,12 +390,12 @@ enum OprVals
   OprC_MMX      = 0x8000,
   OprC_MMX_Mem  = 0x10000,
   OprC_Shift    = 0x20000, // imm or CL
-  
+
   Opr_ClassMask = 0x40000,
-  
+
   Opr_Dest      = 0x80000,
   Opr_Update    = 0x100000,
-  
+
   Opr_NoType    = 0x80000000,
 };
 
@@ -410,8 +410,8 @@ struct AsmOpInfo
       	      implicitClobbers : 8,
       	      linkType : 2;
   unsigned link;
-  
-  unsigned nOperands() const {
+
+  unsigned nOperands () const {
       if (!operands[0])
 	return 0;
       else if (!operands[1])
@@ -598,7 +598,7 @@ static const AsmOpInfo asmOpInfo[N_AsmOpInfo] =
   /* Op_stos      */  {   mem, 0,   0,     1, Clb_DI },
   /* Op_stosX     */  {   0,   0,   0,     0, Clb_DI },
   /* Op_xlat      */  {   mem, 0,   0,     0, Clb_SizeAX, Next_Form, Op_0_AX }
-  
+
   /// * Op_arpl      */  { D|mr,  reg }, // 16 only -> DstSrc
   /// * Op_bsX       */  {   rw,  mrw,  0,    1, Clb_Flags },//->srcsrcf
   /// * Op_bt        */  {   mrw, riw,  0,    1, Clb_Flags },//->srcsrcf
@@ -635,10 +635,10 @@ struct AsmOpEnt
 };
 
 /* Some opcodes which have data size restrictions, but we don't check
-   
+
    cmov, l<segreg> ?, lea, lsl, shld
-   
-todo: push <immediate> is always the 32-bit form, even tho push <mem> is 16-bit
+
+   todo: push <immediate> is always the 32-bit form, even tho push <mem> is 16-bit
 */
 
 static const AsmOpEnt opData[] =
@@ -1415,7 +1415,7 @@ struct AsmProcessor
       int hasBracket;
       int hasNumber;
       int isOffset;
-      
+
       Reg segmentPrefix;
       Reg reg;
       sinteger_t constDisplacement; // use to build up.. should be int constant in the end..
@@ -1423,76 +1423,76 @@ struct AsmProcessor
       Reg baseReg;
       Reg indexReg;
       int scale;
-      
+
       OperandClass cls;
       PtrType dataSize;
       PtrType dataSizeHint; // DMD can use the type of a referenced variable
   };
-  
+
   static const unsigned Max_Operands = 3;
-  
+
   AsmStatement * stmt;
   Scope * sc;
-  
+
   Token * token;
   OutBuffer * insnTemplate;
-  
+
   AsmOp       op;
   const AsmOpInfo * opInfo;
   Operand operands[Max_Operands];
   Identifier * opIdent;
   Operand * operand;
-  
-  AsmProcessor(Scope * sc, AsmStatement * stmt);
-  
-  void run();
-  void nextToken();
-  Token * peekToken();
-  void expectEnd();
-  void parse();
-  
-  AsmOp searchOpdata(Identifier * opIdent, const AsmOpEnt * opdata, int nents);
-  AsmOp parseOpcode();
-  void doInstruction();
-  void setAsmCode();
-  bool matchOperands(unsigned nOperands);
-  void addOperand(const char * fmt, AsmArgType type, Expression * e,
-		  AsmCode * asmcode, AsmArgMode mode = Mode_Input);
-  
-  void addLabel(unsigned n);
-  void classifyOperand(Operand * operand);
-  OperandClass classifyOperand1(Operand * operand);
-  void writeReg(Reg reg);
-  bool opTakesLabel();
-  bool getTypeChar(TypeNeeded needed, PtrType ptrtype, char & type_char);
-  bool formatInstruction(int nOperands, AsmCode * asmcode);
-  
-  bool isIntExp(Expression * exp);
-  bool isRegExp(Expression * exp);
-  bool isLocalSize(Expression * exp);
-  bool isDollar(Expression * exp);
-  PtrType isPtrType(Token * tok);
-  
-  bool tryScale(Expression * e1, Expression * e2);
-  
-  Expression * newRegExp(int regno);
-  Expression * newIntExp(sinteger_t v /* %% type */);
-  void slotExp(Expression * exp);
-  void invalidExpression();
-  Expression * intOp(TOK op, Expression * e1, Expression * e2);
-  
-  void parseOperand();
-  Expression * parseAsmExp();
-  Expression * parseShiftExp();
-  Expression * parseAddExp();
-  Expression * parseMultExp();
-  Expression * parseBrExp();
-  Expression * parseUnaExp();
-  Expression * parsePrimaryExp();
-  
-  void doAlign();
-  void doEven();
-  void doNaked();
-  void doData();
+
+  AsmProcessor (Scope * sc, AsmStatement * stmt);
+
+  void run ();
+  void nextToken ();
+  Token * peekToken ();
+  void expectEnd ();
+  void parse ();
+
+  AsmOp searchOpdata (Identifier * opIdent, const AsmOpEnt * opdata, int nents);
+  AsmOp parseOpcode ();
+  void doInstruction ();
+  void setAsmCode ();
+  bool matchOperands (unsigned nOperands);
+  void addOperand (const char * fmt, AsmArgType type, Expression * e,
+ 		   AsmCode * asmcode, AsmArgMode mode = Mode_Input);
+
+  void addLabel (unsigned n);
+  void classifyOperand (Operand * operand);
+  OperandClass classifyOperand1 (Operand * operand);
+  void writeReg (Reg reg);
+  bool opTakesLabel ();
+  bool getTypeChar (TypeNeeded needed, PtrType ptrtype, char & type_char);
+  bool formatInstruction (int nOperands, AsmCode * asmcode);
+
+  bool isIntExp (Expression * exp);
+  bool isRegExp (Expression * exp);
+  bool isLocalSize (Expression * exp);
+  bool isDollar (Expression * exp);
+  PtrType isPtrType (Token * tok);
+
+  bool tryScale (Expression * e1, Expression * e2);
+
+  Expression * newRegExp (int regno);
+  Expression * newIntExp (sinteger_t v /* %% type */);
+  void slotExp (Expression * exp);
+  void invalidExpression ();
+  Expression * intOp (TOK op, Expression * e1, Expression * e2);
+
+  void parseOperand ();
+  Expression * parseAsmExp ();
+  Expression * parseShiftExp ();
+  Expression * parseAddExp ();
+  Expression * parseMultExp ();
+  Expression * parseBrExp ();
+  Expression * parseUnaExp ();
+  Expression * parsePrimaryExp ();
+
+  void doAlign ();
+  void doEven ();
+  void doNaked ();
+  void doData ();
 };
 

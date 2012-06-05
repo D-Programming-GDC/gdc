@@ -29,53 +29,53 @@ struct complex_t
   real_t re;
   real_t im;
 
-  complex_t() { this->re = 0; this->im = 0; }
-  complex_t(real_t re) { this->re = re; this->im = 0; }
-  complex_t(real_t re, real_t im) { this->re = re; this->im = im; }
+  complex_t () { this->re = 0; this->im = 0; }
+  complex_t (real_t re) { this->re = re; this->im = 0; }
+  complex_t (real_t re, real_t im) { this->re = re; this->im = im; }
 
   complex_t operator + (complex_t y) { complex_t r; r.re = re + y.re; r.im = im + y.im; return r; }
   complex_t operator - (complex_t y) { complex_t r; r.re = re - y.re; r.im = im - y.im; return r; }
   complex_t operator - () { complex_t r; r.re = -re; r.im = -im; return r; }
-  complex_t operator * (complex_t y) { return complex_t(re * y.re - im * y.im, im * y.re + re * y.im); }
+  complex_t operator * (complex_t y) { return complex_t (re * y.re - im * y.im, im * y.re + re * y.im); }
 
   complex_t operator / (complex_t y) {
-      real_t abs_y_re = y.re.isNegative() ? -y.re : y.re;
-      real_t abs_y_im = y.im.isNegative() ? -y.im : y.im;
+      real_t abs_y_re = y.re.isNegative () ? -y.re : y.re;
+      real_t abs_y_im = y.im.isNegative () ? -y.im : y.im;
       real_t r, den;
 
       if (abs_y_re < abs_y_im)
 	{
 	  r = y.re / y.im;
 	  den = y.im + r * y.re;
-	  return complex_t((re * r + im) / den,
+	  return complex_t ((re * r + im) / den,
 			   (im * r - re) / den);
 	}
       else
 	{
 	  r = y.im / y.re;
 	  den = y.re + r * y.im;
-	  return complex_t((re + r * im) / den,
+	  return complex_t ((re + r * im) / den,
 			   (im - r * re) / den);
 	}
   }
 
-  operator bool () { return !re.isZero() || !im.isZero(); }
+  operator bool () { return !re.isZero () || !im.isZero (); }
 
   int operator == (complex_t y) { return re == y.re && im == y.im; }
   int operator != (complex_t y) { return re != y.re || im != y.im; }
 };
 
-inline complex_t operator * (real_t x, complex_t y) { return complex_t(x) * y; }
-inline complex_t operator * (complex_t x, real_t y) { return x * complex_t(y); }
-inline complex_t operator / (complex_t x, real_t y) { return x / complex_t(y); }
+inline complex_t operator * (real_t x, complex_t y) { return complex_t (x) * y; }
+inline complex_t operator * (complex_t x, real_t y) { return x * complex_t (y); }
+inline complex_t operator / (complex_t x, real_t y) { return x / complex_t (y); }
 
 
-inline real_t creall(complex_t x)
+inline real_t creall (complex_t x)
 {
   return x.re;
 }
 
-inline real_t cimagl(complex_t x)
+inline real_t cimagl (complex_t x)
 {
   return x.im;
 }

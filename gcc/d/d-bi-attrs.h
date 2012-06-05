@@ -1277,13 +1277,13 @@ handle_alias_ifunc_attribute (bool is_alias, tree *node, tree name, tree args,
       return NULL_TREE;
     }
   else if (!is_alias
-	   && (lookup_attribute ("weak", DECL_ATTRIBUTES (decl)) 
+	   && (lookup_attribute ("weak", DECL_ATTRIBUTES (decl))
 	       || lookup_attribute ("weakref", DECL_ATTRIBUTES (decl))))
     {
       error ("weak %q+D cannot be defined %qE", decl, name);
       *no_add_attrs = true;
       return NULL_TREE;
-    }			 
+    }
 
   /* Note that the very first time we process a nested declaration,
      decl_function_context will not be set.  Indeed, *would* never

@@ -41,47 +41,47 @@ static char * make_absolute (char * path);
 #endif
 #define CYGWIN_MINGW_SUBDIR_LEN (sizeof (CYGWIN_MINGW_SUBDIR) - 1)
 
-char cygwin_d_phobos_dir[sizeof(D_PHOBOS_DIR) + 1
+char cygwin_d_phobos_dir[sizeof (D_PHOBOS_DIR) + 1
         + (CYGWIN_MINGW_SUBDIR_LEN)] = D_PHOBOS_DIR;
 #undef D_PHOBOS_DIR
 #define D_PHOBOS_DIR (cygwin_d_phobos_dir)
-char cygwin_d_target_dir[sizeof(D_PHOBOS_TARGET_DIR) + 1
+char cygwin_d_target_dir[sizeof (D_PHOBOS_TARGET_DIR) + 1
         + (CYGWIN_MINGW_SUBDIR_LEN)] = D_PHOBOS_TARGET_DIR;
 #undef D_PHOBOS_TARGET_DIR
 #define D_PHOBOS_TARGET_DIR (cygwin_d_target_dir)
 
 static void
-maybe_fixup_phobos_target()
+maybe_fixup_phobos_target ()
 {
 #ifdef D_OS_VERSYM
-    char * env = getenv("GCC_CYGWIN_MINGW");
-    char * p;
-    char ** av;
+  char * env = getenv ("GCC_CYGWIN_MINGW");
+  char * p;
+  char ** av;
 
-    static char *d_cvt_to_mingw[] = {
-        cygwin_d_phobos_dir,
-        cygwin_d_target_dir,
-        NULL
-    };
-    if (!strcmp(D_OS_VERSYM, "Cygwin") && env && *env == '1')
+  static char *d_cvt_to_mingw[] = {
+      cygwin_d_phobos_dir,
+      cygwin_d_target_dir,
+      NULL
+  };
+  if (!strcmp (D_OS_VERSYM, "Cygwin") && env && *env == '1')
     {
-        for (av = d_cvt_to_mingw; *av; av++)
-        {
-            int sawcygwin = 0;
-            while ((p = strstr (*av, "-cygwin")))
-            {
-                char *over = p + sizeof ("-cygwin") - 1;
-                memmove (over + 1, over, strlen (over));
-                memcpy (p, "-mingw32", sizeof("-mingw32") - 1);
-                p = ++over;
-                while (ISALNUM (*p))
-                    p++;
-                strcpy (over, p);
-                sawcygwin = 1;
-            }
-            if (!sawcygwin && !strstr (*av, "mingw"))
-                strcat (*av, CYGWIN_MINGW_SUBDIR);
-        }
+      for (av = d_cvt_to_mingw; *av; av++)
+	{
+	  int sawcygwin = 0;
+	  while ((p = strstr (*av, "-cygwin")))
+	    {
+	      char *over = p + sizeof ("-cygwin") - 1;
+	      memmove (over + 1, over, strlen (over));
+	      memcpy (p, "-mingw32", sizeof ("-mingw32") - 1);
+	      p = ++over;
+	      while (ISALNUM (*p))
+		p++;
+	      strcpy (over, p);
+	      sawcygwin = 1;
+	    }
+	  if (!sawcygwin && !strstr (*av, "mingw"))
+	    strcat (*av, CYGWIN_MINGW_SUBDIR);
+	}
     }
 #endif
 }
@@ -92,29 +92,29 @@ maybe_fixup_phobos_target()
 static void
 add_env_var_paths (const char *env_var)
 {
-    char *p, *q, *path;
+  char *p, *q, *path;
 
-    q = getenv (env_var);
+  q = getenv (env_var);
 
-    if (!q)
-        return;
+  if (!q)
+    return;
 
-    for (p = q; *q; p = q + 1)
+  for (p = q; *q; p = q + 1)
     {
-        q = p;
-        while (*q != 0 && *q != PATH_SEPARATOR)
-            q++;
+      q = p;
+      while (*q != 0 && *q != PATH_SEPARATOR)
+	q++;
 
-        if (p == q)
-            path = xstrdup (".");
-        else
-        {
-            path = XNEWVEC (char, q - p + 1);
-            memcpy (path, p, q - p);
-            path[q - p] = '\0';
-        }
+      if (p == q)
+	path = xstrdup (".");
+      else
+	{
+	  path = XNEWVEC (char, q - p + 1);
+	  memcpy (path, p, q - p);
+	  path[q - p] = '\0';
+	}
 
-        global.params.imppath->push (path);
+      global.params.imppath->push (path);
     }
 }
 
@@ -126,38 +126,38 @@ add_env_var_paths (const char *env_var)
 static char *
 prefixed_path (const char * path)
 {
-    // based on incpath.c
-    size_t len = cpp_GCC_INCLUDE_DIR_len;
-    if (iprefix && len != 0 && ! strncmp (path, cpp_GCC_INCLUDE_DIR, len))
-        return concat (iprefix, path + len, NULL);
-    // else
-    return xstrdup (path);
+  // based on incpath.c
+  size_t len = cpp_GCC_INCLUDE_DIR_len;
+  if (iprefix && len != 0 && ! strncmp (path, cpp_GCC_INCLUDE_DIR, len))
+    return concat (iprefix, path + len, NULL);
+  // else
+  return xstrdup (path);
 }
 
 
 /* Given a pointer to a string containing a pathname, returns a
    canonical version of the filename.
- */
+   */
 
-static char * 
+static char *
 make_absolute (char * path)
 {
 #if defined (HAVE_DOS_BASED_FILE_SYSTEM)
   /* Remove unnecessary trailing slashes.  On some versions of MS
-     Windows, trailing  _forward_ slashes cause no problems for stat().
-     On newer versions, stat() does not recognize a directory that ends
+     Windows, trailing  _forward_ slashes cause no problems for stat ().
+     On newer versions, stat () does not recognize a directory that ends
      in a '\\' or '/', unless it is a drive root dir, such as "c:/",
      where it is obligatory.  */
-    int pathlen = strlen (path);
-    char* end = path + pathlen - 1;
-    /* Preserve the lead '/' or lead "c:/".  */
-    char* start = path + (pathlen > 2 && path[1] == ':' ? 3 : 1);
+  int pathlen = strlen (path);
+  char* end = path + pathlen - 1;
+  /* Preserve the lead '/' or lead "c:/".  */
+  char* start = path + (pathlen > 2 && path[1] == ':' ? 3 : 1);
 
-    for (; end > start && IS_DIR_SEPARATOR (*end); end--)
+  for (; end > start && IS_DIR_SEPARATOR (*end); end--)
     *end = 0;
 #endif
 
-    return lrealpath (path);
+  return lrealpath (path);
 }
 
 
@@ -166,18 +166,18 @@ make_absolute (char * path)
 static void
 add_import_path (char * path)
 {
-    char * target_dir = make_absolute (path);
+  char * target_dir = make_absolute (path);
 
-    if (! global.path)
-        global.path = new Strings();
+  if (! global.path)
+    global.path = new Strings ();
 
-    if (! FileName::exists (target_dir))
+  if (! FileName::exists (target_dir))
     {
-        free (target_dir);
-        return;
+      free (target_dir);
+      return;
     }
 
-    global.path->push (target_dir);
+  global.path->push (target_dir);
 }
 
 
@@ -186,59 +186,60 @@ add_import_path (char * path)
 static void
 add_file_path (char * path)
 {
-    char * target_dir = make_absolute (path);
+  char * target_dir = make_absolute (path);
 
-    if (! global.filePath)
-        global.filePath = new Strings();
+  if (! global.filePath)
+    global.filePath = new Strings ();
 
-    if (! FileName::exists (target_dir))
+  if (! FileName::exists (target_dir))
     {
-        free (target_dir);
-        return;
+      free (target_dir);
+      return;
     }
 
-    global.filePath->push (target_dir);
+  global.filePath->push (target_dir);
 }
 
 
 void
 register_import_chains ()
 {
-    maybe_fixup_phobos_target();
+  maybe_fixup_phobos_target ();
 
-    // %%TODO: front or back?
-    if (std_inc)
+  // %%TODO: front or back?
+  if (std_inc)
     {
-        char * phobos_dir = prefixed_path (D_PHOBOS_DIR);
-        char * target_dir = prefixed_path (D_PHOBOS_TARGET_DIR);
+      char * phobos_dir = prefixed_path (D_PHOBOS_DIR);
+      char * target_dir = prefixed_path (D_PHOBOS_TARGET_DIR);
 
-        if (multilib_dir)
-            target_dir = concat (target_dir, "/", multilib_dir, NULL);
+      if (multilib_dir)
+	target_dir = concat (target_dir, "/", multilib_dir, NULL);
 
-        global.params.imppath->shift (phobos_dir);
-        global.params.imppath->shift (target_dir);
+      global.params.imppath->shift (phobos_dir);
+      global.params.imppath->shift (target_dir);
     }
 
-    /* Language-dependent environment variables may add to the include chain. */
-    add_env_var_paths ("D_IMPORT_PATH");
+  /* Language-dependent environment variables may add to the include chain. */
+  add_env_var_paths ("D_IMPORT_PATH");
 
-    if (global.params.imppath)
+  if (global.params.imppath)
     {
-        for (size_t i = 0; i < global.params.imppath->dim; i++)
-        {
-            char *path = global.params.imppath->tdata()[i];
-            if (path)
-                add_import_path (path);
-        }
+      for (size_t i = 0; i < global.params.imppath->dim; i++)
+	{
+	  char *path = global.params.imppath->tdata()[i];
+	  if (path)
+	    add_import_path (path);
+	}
     }
 
-    if (global.params.fileImppath)
+  if (global.params.fileImppath)
     {
-        for (size_t i = 0; i < global.params.fileImppath->dim; i++)
-        {
-            char *path = global.params.fileImppath->tdata()[i];
-            if (path)
-                add_file_path (path);
-        }
+      for (size_t i = 0; i < global.params.fileImppath->dim; i++)
+	{
+	  char *path = global.params.fileImppath->tdata()[i];
+	  if (path)
+	    add_file_path (path);
+	}
     }
 }
+

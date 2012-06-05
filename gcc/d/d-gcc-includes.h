@@ -69,7 +69,7 @@ extern "C" {
 #undef RET
 
 // Apple makes 'optimize' a macro
-static inline int gcc_optimize() { return optimize; }
+static inline int gcc_optimize () { return optimize; }
 #ifdef optimize
 #undef optimize
 #endif

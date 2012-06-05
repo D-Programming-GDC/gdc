@@ -25,309 +25,309 @@
 
 #include "d-codegen.h"
 
-IRBase::IRBase()
+IRBase::IRBase ()
 {
-    parent = 0;
-    func = 0;
-    volatileDepth = 0;
-    // declContextStack is composed... choose one..
-    statementList.zero();
+  parent = 0;
+  func = 0;
+  volatileDepth = 0;
+  // declContextStack is composed... choose one..
+  statementList.zero ();
 }
 
 IRState *
-IRBase::startFunction(FuncDeclaration * decl)
+IRBase::startFunction (FuncDeclaration * decl)
 {
-    IRState * new_irs = new IRState();
-    new_irs->parent = g.irs;
-    new_irs->func = decl;
+  IRState * new_irs = new IRState ();
+  new_irs->parent = g.irs;
+  new_irs->func = decl;
 
-    g.irs = (IRState*) new_irs;
-    ModuleInfo & mi = * g.mi();
+  g.irs = (IRState*) new_irs;
+  ModuleInfo & mi = * g.mi ();
 #if V2
-    if (decl->isSharedStaticCtorDeclaration())
-        mi.sharedctors.push(decl);
-    else if (decl->isStaticCtorDeclaration())
-        mi.ctors.push(decl);
-    else if (decl->isSharedStaticDtorDeclaration())
+  if (decl->isSharedStaticCtorDeclaration ())
+    mi.sharedctors.push (decl);
+  else if (decl->isStaticCtorDeclaration ())
+    mi.ctors.push (decl);
+  else if (decl->isSharedStaticDtorDeclaration ())
     {
-        VarDeclaration * vgate;
-        if ((vgate = decl->isSharedStaticDtorDeclaration()->vgate))
-            mi.sharedctorgates.push(vgate);
-        mi.shareddtors.push(decl);
+      VarDeclaration * vgate;
+      if ((vgate = decl->isSharedStaticDtorDeclaration()->vgate))
+	mi.sharedctorgates.push (vgate);
+      mi.shareddtors.push (decl);
     }
-    else if (decl->isStaticDtorDeclaration())
+  else if (decl->isStaticDtorDeclaration ())
     {
-        VarDeclaration * vgate;
-        if ((vgate = decl->isStaticDtorDeclaration()->vgate))
-            mi.ctorgates.push(vgate);
-        mi.dtors.push(decl);
+      VarDeclaration * vgate;
+      if ((vgate = decl->isStaticDtorDeclaration()->vgate))
+	mi.ctorgates.push (vgate);
+      mi.dtors.push (decl);
     }
 #else
-    if (decl->isStaticConstructor())
-        mi.ctors.push(decl);
-    else if (decl->isStaticDestructor())
-        mi.dtors.push(decl);
+  if (decl->isStaticConstructor ())
+    mi.ctors.push (decl);
+  else if (decl->isStaticDestructor ())
+    mi.dtors.push (decl);
 #endif
-    else if (decl->isUnitTestDeclaration())
-        mi.unitTests.push(decl);
+  else if (decl->isUnitTestDeclaration ())
+    mi.unitTests.push (decl);
 
-    return new_irs;
+  return new_irs;
 }
 
 void
-IRBase::endFunction()
+IRBase::endFunction ()
 {
-    gcc_assert(scopes.dim == 0);
+  gcc_assert (scopes.dim == 0);
 
-    g.irs = (IRState *) parent;
+  g.irs = (IRState *) parent;
 }
 
 
 void
-IRBase::addExp(tree e)
+IRBase::addExp (tree e)
 {
-    /* Need to check that this is actually an expression; it
-       could be an integer constant (statement with no effect.)
-       Maybe should filter those out anyway... */
-    if (TREE_TYPE(e) && !VOID_TYPE_P(TREE_TYPE(e)))
+  /* Need to check that this is actually an expression; it
+     could be an integer constant (statement with no effect.)
+     Maybe should filter those out anyway... */
+  if (TREE_TYPE (e) && !VOID_TYPE_P (TREE_TYPE (e)))
     {
-        if (warn_unused_value
-            && !TREE_NO_WARNING(e)
-            && !TREE_SIDE_EFFECTS(e))
-        {
-            warning(OPT_Wunused_value, "statement has no effect");
-        }
-        e = build1(CONVERT_EXPR, void_type_node, e);
+      if (warn_unused_value
+	  && !TREE_NO_WARNING (e)
+	  && !TREE_SIDE_EFFECTS (e))
+	{
+	  warning (OPT_Wunused_value, "statement has no effect");
+	}
+      e = build1 (CONVERT_EXPR, void_type_node, e);
     }
 
-    // C doesn't do this for label_exprs %% why?
-    if (EXPR_P(e) && ! EXPR_HAS_LOCATION(e))
-        SET_EXPR_LOCATION(e, input_location);
+  // C doesn't do this for label_exprs %% why?
+  if (EXPR_P (e) && ! EXPR_HAS_LOCATION (e))
+    SET_EXPR_LOCATION (e, input_location);
 
-    tree stmt_list = (tree) statementList.pop();
-    append_to_statement_list_force(e, & stmt_list);
-    statementList.push(stmt_list);
+  tree stmt_list = (tree) statementList.pop ();
+  append_to_statement_list_force (e, & stmt_list);
+  statementList.push (stmt_list);
 }
 
 
 void
-IRBase::pushStatementList()
+IRBase::pushStatementList ()
 {
-    tree t = alloc_stmt_list ();
-    statementList.push(t);
-    d_keep(t);
+  tree t = alloc_stmt_list ();
+  statementList.push (t);
+  d_keep (t);
 }
 
 tree
-IRBase::popStatementList()
+IRBase::popStatementList ()
 {
-    tree t = (tree) statementList.pop();
+  tree t = (tree) statementList.pop ();
 
-    // %% should gdc bother doing this?
+  // %% should gdc bother doing this?
 
-    /* If the statement list is completely empty, just return it.  This is
-       just as good small as build_empty_stmt, with the advantage that
-       statement lists are merged when they appended to one another.  So
-       using the STATEMENT_LIST avoids pathological buildup of EMPTY_STMT_P
-       statements.  */
-    if (TREE_SIDE_EFFECTS (t))
+  /* If the statement list is completely empty, just return it.  This is
+     just as good small as build_empty_stmt, with the advantage that
+     statement lists are merged when they appended to one another.  So
+     using the STATEMENT_LIST avoids pathological buildup of EMPTY_STMT_P
+     statements.  */
+  if (TREE_SIDE_EFFECTS (t))
     {
-        tree_stmt_iterator i = tsi_start (t);
+      tree_stmt_iterator i = tsi_start (t);
 
-        /* If the statement list contained exactly one statement, then
-           extract it immediately.  */
-        if (tsi_one_before_end_p (i))
-        {
-            tree u = tsi_stmt (i);
-            tsi_delink (&i);
-            free_stmt_list (t);
-            t = u;
-        }
+      /* If the statement list contained exactly one statement, then
+	 extract it immediately.  */
+      if (tsi_one_before_end_p (i))
+	{
+	  tree u = tsi_stmt (i);
+	  tsi_delink (&i);
+	  free_stmt_list (t);
+	  t = u;
+	}
     }
-    return t;
+  return t;
 }
 
 
 tree
-IRBase::getLabelTree(LabelDsymbol * label)
+IRBase::getLabelTree (LabelDsymbol * label)
 {
-    if (! label->statement)
-        return NULL_TREE;
+  if (! label->statement)
+    return NULL_TREE;
 
-    if (! label->statement->lblock)
+  if (! label->statement->lblock)
     {
-        tree label_decl = build_decl(UNKNOWN_LOCATION, LABEL_DECL,
-                                     get_identifier(label->ident->string), void_type_node);
-        gcc_assert(func != 0);
-        DECL_CONTEXT(label_decl) = getLocalContext();
-        DECL_MODE(label_decl) = VOIDmode; // Not sure why or if this is needed
-        TREE_USED(label_decl) = 1;
-        // Not setting this doesn't seem to cause problems (unlike VAR_DECLs)
-        if (label->statement->loc.filename)
-            g.ofile->setDeclLoc(label_decl, label->statement->loc); // %% label->loc okay?
-        label->statement->lblock = label_decl;
+      tree label_decl = build_decl (UNKNOWN_LOCATION, LABEL_DECL,
+				    get_identifier (label->ident->string), void_type_node);
+      gcc_assert (func != 0);
+      DECL_CONTEXT (label_decl) = getLocalContext ();
+      DECL_MODE (label_decl) = VOIDmode; // Not sure why or if this is needed
+      TREE_USED (label_decl) = 1;
+      // Not setting this doesn't seem to cause problems (unlike VAR_DECLs)
+      if (label->statement->loc.filename)
+	g.ofile->setDeclLoc (label_decl, label->statement->loc); // %% label->loc okay?
+      label->statement->lblock = label_decl;
     }
-    return label->statement->lblock;
+  return label->statement->lblock;
 }
 
 Label *
-IRBase::getLabelBlock(LabelDsymbol * label, Statement * from)
+IRBase::getLabelBlock (LabelDsymbol * label, Statement * from)
 {
-    Label * l = new Label();
+  Label * l = new Label ();
 
-    for (int i = loops.dim - 1; i >= 0; i--)
+  for (int i = loops.dim - 1; i >= 0; i--)
     {
-        Flow * flow = loops[i];
+      Flow * flow = loops[i];
 
-        if (flow->kind != level_block &&
-            flow->kind != level_switch)
-        {
-            l->block = flow->statement;
-            l->kind  = flow->kind;
-            l->level = i + 1;
-            break;
-        }
+      if (flow->kind != level_block &&
+	  flow->kind != level_switch)
+	{
+	  l->block = flow->statement;
+	  l->kind  = flow->kind;
+	  l->level = i + 1;
+	  break;
+	}
     }
-    if (from)
-        l->from = from;
+  if (from)
+    l->from = from;
 
-    l->label = label;
-    return l;
+  l->label = label;
+  return l;
 }
 
 
 Flow *
-IRBase::getLoopForLabel(Identifier * ident, bool want_continue)
+IRBase::getLoopForLabel (Identifier * ident, bool want_continue)
 {
-    if (ident)
+  if (ident)
     {
-        LabelStatement * lbl_stmt = func->searchLabel(ident)->statement;
-        gcc_assert(lbl_stmt != 0);
-        Statement * stmt = lbl_stmt->statement;
-        ScopeStatement * scope_stmt = stmt->isScopeStatement();
+      LabelStatement * lbl_stmt = func->searchLabel (ident)->statement;
+      gcc_assert (lbl_stmt != 0);
+      Statement * stmt = lbl_stmt->statement;
+      ScopeStatement * scope_stmt = stmt->isScopeStatement ();
 
-        if (scope_stmt)
-            stmt = scope_stmt->statement;
+      if (scope_stmt)
+	stmt = scope_stmt->statement;
 
-        for (int i = loops.dim - 1; i >= 0; i--)
-        {
-            Flow * flow = loops[i];
+      for (int i = loops.dim - 1; i >= 0; i--)
+	{
+	  Flow * flow = loops[i];
 
-            if (flow->statement == stmt)
-            {
-                if (want_continue)
-                    gcc_assert(stmt->hasContinue());
-                return flow;
-            }
-        }
-        gcc_unreachable();
+	  if (flow->statement == stmt)
+	    {
+	      if (want_continue)
+		gcc_assert (stmt->hasContinue ());
+	      return flow;
+	    }
+	}
+      gcc_unreachable ();
     }
-    else
+  else
     {
-        for (int i = loops.dim - 1; i >= 0; i--)
-        {
-            Flow * flow = loops[i];
+      for (int i = loops.dim - 1; i >= 0; i--)
+	{
+	  Flow * flow = loops[i];
 
-            if (( ! want_continue && flow->statement->hasBreak() ) ||
-                flow->statement->hasContinue())
-                return flow;
-        }
-        gcc_unreachable();
+	  if ((! want_continue && flow->statement->hasBreak ()) ||
+	      flow->statement->hasContinue ())
+	    return flow;
+	}
+      gcc_unreachable ();
     }
 }
 
 
 Flow *
-IRBase::beginFlow(Statement * stmt)
+IRBase::beginFlow (Statement * stmt)
 {
-    Flow * flow = new Flow(stmt);
-    loops.push(flow);
-    pushStatementList();
-    return flow;
+  Flow * flow = new Flow (stmt);
+  loops.push (flow);
+  pushStatementList ();
+  return flow;
 }
 
 void
-IRBase::endFlow()
+IRBase::endFlow ()
 {
-    Flow * flow;
+  Flow * flow;
 
-    gcc_assert(loops.dim);
+  gcc_assert (loops.dim);
 
-    flow = (Flow *) loops.pop();
-    if (flow->exitLabel)
-        doLabel(flow->exitLabel);
-    //%% delete flow;
+  flow = (Flow *) loops.pop ();
+  if (flow->exitLabel)
+    doLabel (flow->exitLabel);
+  //%% delete flow;
 }
 
 void
-IRBase::doLabel(tree t_label)
+IRBase::doLabel (tree t_label)
 {
-    /* Don't write out label unless it is marked as used by the frontend.
-       This makes auto-vectorization possible in conditional loops.
-       The only excemption to this is in LabelStatement::toIR, in which
-       all computed labels are marked regardless.  */
-    if(TREE_USED(t_label))
-        addExp(build1(LABEL_EXPR, void_type_node, t_label));
-}
-
-
-void
-IRBase::startScope()
-{
-    unsigned * p_count = new unsigned;
-    *p_count = 0;
-    scopes.push(p_count);
-
-    //printf("%*sstartScope\n", scopes.dim, "");
-    startBindings();
-}
-
-void
-IRBase::endScope()
-{
-    unsigned * p_count;
-
-    p_count = currentScope();
-
-    //endBindings();
-
-    //printf("%*s  ending scope with %d left \n", scopes.dim, "", *p_count);
-    while ( *p_count )
-        endBindings();
-    scopes.pop();
-    //printf("%*sendScope\n", scopes.dim, "");
+  /* Don't write out label unless it is marked as used by the frontend.
+     This makes auto-vectorization possible in conditional loops.
+     The only excemption to this is in LabelStatement::toIR, in which
+     all computed labels are marked regardless.  */
+  if (TREE_USED (t_label))
+    addExp (build1 (LABEL_EXPR, void_type_node, t_label));
 }
 
 
 void
-IRBase::startBindings()
+IRBase::startScope ()
 {
-    pushlevel(0);
-    tree block = make_node(BLOCK);
-    set_block(block);
+  unsigned * p_count = new unsigned;
+  *p_count = 0;
+  scopes.push (p_count);
 
-    pushStatementList();
+  //printf ("%*sstartScope\n", scopes.dim, "");
+  startBindings ();
+}
 
-    ++( * currentScope() );
-    //printf("%*s  start -> %d\n", scopes.dim, "", * currentScope() );
+void
+IRBase::endScope ()
+{
+  unsigned * p_count;
+
+  p_count = currentScope ();
+
+  //endBindings ();
+
+  //printf ("%*s  ending scope with %d left \n", scopes.dim, "", *p_count);
+  while (*p_count)
+    endBindings ();
+  scopes.pop ();
+  //printf ("%*sendScope\n", scopes.dim, "");
+}
+
+
+void
+IRBase::startBindings ()
+{
+  pushlevel (0);
+  tree block = make_node (BLOCK);
+  set_block (block);
+
+  pushStatementList ();
+
+  ++(*currentScope ());
+  //printf ("%*s  start -> %d\n", scopes.dim, "", * currentScope ());
 
 }
 
 void
-IRBase::endBindings()
+IRBase::endBindings ()
 {
-    // %%TODO: reversing list causes problems with inf loops in unshare_all_decls
-    tree block = poplevel(1,0,0);
+  // %%TODO: reversing list causes problems with inf loops in unshare_all_decls
+  tree block = poplevel (1,0,0);
 
-    tree t_body = popStatementList();
-    addExp(build3(BIND_EXPR, void_type_node,
-           BLOCK_VARS(block), t_body, block));
+  tree t_body = popStatementList ();
+  addExp (build3 (BIND_EXPR, void_type_node,
+       		  BLOCK_VARS (block), t_body, block));
 
-    // Because we used set_block, the popped level/block is not automatically recorded
-    insert_block(block);
+  // Because we used set_block, the popped level/block is not automatically recorded
+  insert_block (block);
 
-    --( * currentScope() );
-    gcc_assert( * (int *) currentScope() >= 0 );
-    //printf("%*s  end -> %d\n", scopes.dim, "", * currentScope() );
+  --(*currentScope ());
+  gcc_assert (*(int *) currentScope () >= 0);
+  //printf ("%*s  end -> %d\n", scopes.dim, "", *currentScope ());
 
 }

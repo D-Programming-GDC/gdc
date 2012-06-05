@@ -19,85 +19,87 @@
 #include "symbol.h"
 #include "rmem.h"
 
-Symbol::Symbol()
+Symbol::Symbol ()
 {
-    Sident = 0;
-    prettyIdent = 0;
-    //Stype = 0;
-    Sclass = SC_INVALID;
-    Sfl = FL_INVALID;
-    Sseg = INVALID;
-    Sflags = 0;
+  Sident = 0;
+  prettyIdent = 0;
+  //Stype = 0;
+  Sclass = SC_INVALID;
+  Sfl = FL_INVALID;
+  Sseg = INVALID;
+  Sflags = 0;
 
-    //Ssymnum = 0;
-    Sdt = 0;
+  //Ssymnum = 0;
+  Sdt = 0;
 
-    //Sstruct = 0;
-    //Sstructalign = 0;
+  //Sstruct = 0;
+  //Sstructalign = 0;
 
-    Stree = 0; // %% make it NULL-TREE, include d-gcc-include
-    ScontextDecl = 0;
-    SframeField = 0;
+  Stree = 0; // %% make it NULL-TREE, include d-gcc-include
+  ScontextDecl = 0;
+  SframeField = 0;
 
-    thunks = NULL;
-    otherNestedFuncs = NULL;
-    outputStage = NotStarted;
-    frameInfo = NULL;
+  thunks = NULL;
+  otherNestedFuncs = NULL;
+  outputStage = NotStarted;
+  frameInfo = NULL;
 }
 
 Symbol *
-symbol_calloc(const char * string)
+symbol_calloc (const char * string)
 {
-    // Need to dup the string because sometimes the string is alloca()'d
-    Symbol * s = new Symbol;
-    s->Sident = mem.strdup(string);
-    return s;
+  // Need to dup the string because sometimes the string is alloca()'d
+  Symbol * s = new Symbol;
+  s->Sident = mem.strdup (string);
+  return s;
 }
 
 Symbol *
-symbol_name(const char * id, int , TYPE *)
+symbol_name (const char * id, int , TYPE *)
 {
-    // %% Nothing special, just do the same as symbol_calloc
-    // we don't even bother using sclass and t
-    return symbol_calloc(id);
+  // %% Nothing special, just do the same as symbol_calloc
+  // we don't even bother using sclass and t
+  return symbol_calloc (id);
 }
 
 Symbol *
-struct_calloc()
+struct_calloc ()
 {
-    return new Symbol;
+  return new Symbol;
 }
 
 Symbol *
-symbol_generate(SymbolStorageClass, TYPE *)
+symbol_generate (SymbolStorageClass, TYPE *)
 {
-    return 0;
+  return 0;
 }
 
-Thunk::Thunk()
+Thunk::Thunk ()
 {
-    offset = 0;
-    symbol = 0;
+  offset = 0;
+  symbol = 0;
 }
 
 void
-symbol_func(Symbol *)
+symbol_func (Symbol *)
 {
 }
 
 Symbol *
-symbol_tree(tree t)
+symbol_tree (tree t)
 {
-    Symbol * s = new Symbol;
-    s->Stree = t;
-    return s;
+  Symbol * s = new Symbol;
+  s->Stree = t;
+  return s;
 }
 
-void slist_add(Symbol *)
+void
+slist_add (Symbol *)
 {
 }
 
-void slist_reset()
+void
+slist_reset ()
 {
 }
 

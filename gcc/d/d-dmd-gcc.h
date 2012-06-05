@@ -27,26 +27,26 @@
 
 /* used in module.c */
 struct Module;
-extern void d_gcc_magic_module(Module *);
-extern void d_gcc_dump_source(const char *, const char *, unsigned char *, unsigned);
+extern void d_gcc_magic_module (Module *);
+extern void d_gcc_dump_source (const char *, const char *, unsigned char *, unsigned);
 
 /* used in func.c */
 struct Type;
 extern Type * d_gcc_builtin_va_list_d_type;
 
 /* used in parse.c */
-extern bool d_gcc_is_target_win32();
+extern bool d_gcc_is_target_win32 ();
 
 /* used in toobj.c */
 struct VarDeclaration;
-extern void d_gcc_emit_local_variable(VarDeclaration *);
-extern bool d_gcc_supports_weak();
+extern void d_gcc_emit_local_variable (VarDeclaration *);
+extern bool d_gcc_supports_weak ();
 
 /* used in mtype.c */
-extern int d_gcc_type_align(Type *);
+extern int d_gcc_type_align (Type *);
 
 /* used in struct.c */
-extern int d_gcc_field_align(VarDeclaration *, int);
+extern int d_gcc_field_align (VarDeclaration *, int);
 
 #if V2
 struct Symbol;
@@ -59,14 +59,14 @@ extern Symbol* rtlsym[N_RTLSYM];
 #endif
 
 /* used in template.c */
-extern bool d_gcc_force_templates();
-extern Module * d_gcc_get_output_module();
+extern bool d_gcc_force_templates ();
+extern Module * d_gcc_get_output_module ();
 
 #if V2
 /* used in interpret.c */
 struct FuncDeclaration;
 typedef ArrayBase<struct Expression> Expressions;
-extern Expression * d_gcc_eval_builtin(Loc, FuncDeclaration *, Expressions *);
+extern Expression * d_gcc_eval_builtin (Loc, FuncDeclaration *, Expressions *);
 #endif
 
 #endif
