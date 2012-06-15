@@ -41,6 +41,15 @@ IRBase::startFunction (FuncDeclaration * decl)
   new_irs->parent = g.irs;
   new_irs->func = decl;
 
+  for (Dsymbol * p = decl->parent; p; p = p->parent)
+    {
+      if (p->isModule ())
+	{
+	  new_irs->mod = p->isModule();
+	  break;
+	}
+    }
+
   g.irs = (IRState*) new_irs;
   ModuleInfo & mi = * g.mi ();
 #if V2

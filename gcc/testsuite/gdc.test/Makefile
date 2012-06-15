@@ -116,7 +116,7 @@ DISABLED_TESTS += a20 cov2 sieve
 DISABLED_TESTS += hello-profile
 
 # inout contract inheritance unimplemented
-#DISABLED_TESTS += test42 testcontracts
+DISABLED_TESTS += test42 testcontracts
 
 # no exception chaining in gdc
 DISABLED_TESTS += eh test4
@@ -128,10 +128,10 @@ DISABLED_TESTS += iasm iasm64
 DISABLED_TESTS += testformat
 
 # New closures bug
-#DISABLED_TESTS += inner nested
+DISABLED_TESTS += inner nested
 
 # NRVO unimplemented
-#DISABLED_TESTS += sdtor
+DISABLED_TESTS += sdtor
 
 endif
 

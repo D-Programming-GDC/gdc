@@ -1612,11 +1612,6 @@ IRState::isFreeOfSideEffects (tree t)
 tree
 IRState::toElemLvalue (Expression * e)
 {
-  /*
-     if (e->op == TOKcast)
-     fprintf (stderr, "IRState::toElemLvalue TOKcast\n");
-     else
-     */
   if (e->op == TOKindex)
     {
       IndexExp * ie = (IndexExp *) e;
@@ -2505,7 +2500,7 @@ IRState::getLibCallDecl (LibCall lib_call)
 		  return_type = Type::tvoidptr;
 		  break;
 		case LIBCALL_AADELP:
-		  return_type = Type::tvoid;
+		  return_type = Type::tbool;
 		  break;
 		default:
 		  gcc_unreachable ();
@@ -3619,12 +3614,7 @@ IRState::getVThis (Dsymbol * decl, Expression * e)
 	     this case. */
 	  FuncFrameInfo * ffo = getFrameInfo (fd_outer);
 	  if (ffo->creates_frame || ffo->static_chain ||
-#if V2
-	      fd_outer->closureVars.dim
-#else
-	      fd_outer->nestedFrameRef
-#endif
-	  )
+	      fd_outer->hasNestedFrameRefs ())
 	    {
 	      // %% V2: rec_type->class_type
 	      vthis_value = getFrameForNestedClass (class_decl);
@@ -3648,7 +3638,7 @@ IRState::getVThis (Dsymbol * decl, Expression * e)
 	{
 	  FuncFrameInfo * ffo = getFrameInfo (fd_outer);
 	  if (ffo->creates_frame || ffo->static_chain ||
-	      fd_outer->closureVars.dim)
+	      fd_outer->hasNestedFrameRefs ())
 	    {
 	      vthis_value = getFrameForNestedStruct (struct_decl);
 	    }

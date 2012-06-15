@@ -150,6 +150,7 @@ const char *Token::toChars()
 #else
         case TOKfloat32v:
             sprintf(buffer,"%Lgf", float80value);
+            strcat(buffer, "f");
             break;
 
         case TOKfloat64v:
@@ -157,19 +158,23 @@ const char *Token::toChars()
             break;
 
         case TOKfloat80v:
-            sprintf(buffer,"%LgL", float80value);
+            sprintf(buffer,"%Lg", float80value);
+            strcat(buffer, "L");
             break;
 
         case TOKimaginary32v:
-            sprintf(buffer,"%Lgfi", float80value);
+            sprintf(buffer,"%Lg", float80value);
+            strcat(buffer, "fi");
             break;
 
         case TOKimaginary64v:
-            sprintf(buffer,"%Lgi", float80value);
+            sprintf(buffer,"%Lg", float80value);
+            strcat(buffer, "i");
             break;
 
         case TOKimaginary80v:
-            sprintf(buffer,"%LgLi", float80value);
+            sprintf(buffer,"%Lg", float80value);
+            strcat(buffer, "Li");
             break;
 #endif
 
@@ -308,7 +313,7 @@ void Lexer::error(const char *format, ...)
 {
     va_list ap;
     va_start(ap, format);
-    verror(loc, format, ap);
+    verror(tokenLoc(), format, ap);
     va_end(ap);
 }
 
@@ -371,7 +376,6 @@ Token *Lexer::peek(Token *ct)
     {
         t = new Token();
         scan(t);
-        t->next = NULL;
         ct->next = t;
     }
     return t;
@@ -1234,9 +1238,21 @@ void Lexer::scan(Token *t)
 #undef DOUBLE
 
             case '#':
+            {
                 p++;
-                pragma();
-                continue;
+                Token *n = peek(t);
+                if (n->value == TOKidentifier && n->ident == Id::line)
+                {
+                    nextToken();
+                    poundLine();
+                    continue;
+                }
+                else
+                {
+                    t->value = TOKpound;
+                    return;
+                }
+            }
 
             default:
             {   unsigned c = *p;
@@ -2572,21 +2588,16 @@ done:
 }
 
 /*********************************************
- * Do pragma.
- * Currently, the only pragma supported is:
+ * parse:
  *      #line linnum [filespec]
  */
 
-void Lexer::pragma()
+void Lexer::poundLine()
 {
     Token tok;
     int linnum;
     char *filespec = NULL;
     Loc loc = this->loc;
-
-    scan(&tok);
-    if (tok.value != TOKidentifier || tok.ident != Id::line)
-        goto Lerr;
 
     scan(&tok);
     if (tok.value == TOKint32v || tok.value == TOKint64v)
@@ -2869,6 +2880,38 @@ unsigned char *Lexer::combineComments(unsigned char *c1, unsigned char *c2)
         }
     }
     return c;
+}
+
+/*******************************************
+ * Search actual location of current token
+ * even when infinite look-ahead was done.
+ */
+Loc Lexer::tokenLoc()
+{
+    Loc result = this->loc;
+    Token* last = &token;
+    while (last->next)
+        last = last->next;
+
+    unsigned char* start = token.ptr;
+    unsigned char* stop = last->ptr;
+
+    for (unsigned char* p = start; p < stop; ++p)
+    {
+        switch (*p)
+        {
+            case '\n':
+                result.linnum--;
+                break;
+            case '\r':
+                if (p[1] != '\n')
+                    result.linnum--;
+                break;
+            default:
+                break;
+        }
+    }
+    return result;
 }
 
 /********************************************
@@ -3170,6 +3213,7 @@ void Lexer::initKeywords()
     Token::tochars[TOKpow]              = "^^";
     Token::tochars[TOKpowass]           = "^^=";
     Token::tochars[TOKgoesto]           = "=>";
+    Token::tochars[TOKpound]            = "#";
 #endif
 
      // For debugging

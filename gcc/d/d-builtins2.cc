@@ -242,7 +242,7 @@ gcc_type_to_d_type (tree t)
 	     this is called.  */
 	  sd->structsize = int_size_in_bytes (t);
 	  sd->alignsize = TYPE_ALIGN_UNIT (t);
-	  sd->sizeok = 1;
+	  sd->sizeok = SIZEOKdone;
 
 	  d = new TypeStruct (sd);
 	  d->ctype = t;

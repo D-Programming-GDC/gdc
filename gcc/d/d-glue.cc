@@ -512,6 +512,17 @@ EqualExp::toElem (IRState* irs)
 
       return convert (type->toCtype (), result);
     }
+  else if (tb1->ty == Tstruct)
+    {
+      // Do bit compare of struct's
+      tree t_memcmp = irs->buildCall (d_built_in_decls (BUILT_IN_MEMCMP), 3,
+				      irs->addressOf (e1->toElem (irs)),
+				      irs->addressOf (e2->toElem (irs)),
+				      irs->integerConstant (e1->type->size ()));
+
+      return build2 (op == TOKnotequal ? NE_EXPR : EQ_EXPR,
+		     type->toCtype (), t_memcmp, integer_zero_node);
+    }
   else
     {
       return toElemBin (irs, opComp);
@@ -977,13 +988,14 @@ CatAssignExp::toElem (IRState * irs)
 {
   unsigned n_args;
   tree * args;
-  Type * elem_type = e1->type->toBasetype()->nextOf()->toBasetype ();
+  Type * dest_type = e1->type->toBasetype ();
   Type * value_type = e2->type->toBasetype ();
+  Type * elem_type = dest_type->nextOf()->toBasetype ();
   LibCall lib_call;
   AddrOfExpr aoe;
   tree result;
 
-  if (e1->type->toBasetype()->ty == Tarray && value_type->ty == Tdchar &&
+  if (dest_type->ty == Tarray && value_type->ty == Tdchar &&
       (elem_type->ty == Tchar || elem_type->ty == Twchar))
     {
       // append a dchar to a char[] or wchar[]
@@ -997,49 +1009,56 @@ CatAssignExp::toElem (IRState * irs)
 
       result = irs->libCall (lib_call, n_args, args, type->toCtype ());
     }
-  else if (irs->typesCompatible (elem_type, value_type))
-    {
-      // append an element
-      n_args = 3;
-      args = new tree[n_args];
-
-      args[0] = irs->typeinfoReference (type);
-      args[1] = irs->addressOf (irs->toElemLvalue (e1));
-      args[2] = size_one_node;
-      lib_call = LIBCALL_ARRAYAPPENDCTP;
-
-      result = irs->libCall (lib_call, n_args, args, type->toCtype ());
-      result = save_expr (result);
-
-      // assign e2 to last element
-      tree off_exp = irs->darrayLenRef (result);
-      off_exp = build2 (MINUS_EXPR, TREE_TYPE (off_exp), off_exp, size_one_node);
-      off_exp = irs->maybeMakeTemp (off_exp);
-
-      tree ptr_exp = irs->darrayPtrRef (result);
-      ptr_exp = irs->pvoidOkay (ptr_exp);
-      ptr_exp = irs->pointerIntSum (ptr_exp, off_exp);
-
-      // evaluate expression before appending
-      tree e2e = e2->toElem (irs);
-      e2e = save_expr (e2e);
-
-      result = build2 (MODIFY_EXPR, elem_type->toCtype (), irs->indirect (ptr_exp), e2e);
-      result = build2 (COMPOUND_EXPR, elem_type->toCtype (), e2e, result);
-    }
   else
     {
-      // append an array
-      n_args = 3;
-      args = new tree[n_args];
+      gcc_assert (dest_type->ty == Tarray || value_type->ty == Tsarray);
 
-      args[0] = irs->typeinfoReference (type);
-      args[1] = irs->addressOf (irs->toElemLvalue (e1));
-      args[2] = irs->toDArray (e2);
-      lib_call = LIBCALL_ARRAYAPPENDT;
+      if ((value_type->ty == Tarray || value_type->ty == Tsarray) &&
+	  irs->typesCompatible (elem_type, value_type->nextOf()->toBasetype ()))
+	{
+    	  // append an array
+    	  n_args = 3;
+    	  args = new tree[n_args];
 
-      result = irs->libCall (lib_call, n_args, args, type->toCtype ());
+    	  args[0] = irs->typeinfoReference (type);
+    	  args[1] = irs->addressOf (irs->toElemLvalue (e1));
+    	  args[2] = irs->toDArray (e2);
+    	  lib_call = LIBCALL_ARRAYAPPENDT;
+
+    	  result = irs->libCall (lib_call, n_args, args, type->toCtype ());
+	}
+      else
+	{
+    	  // append an element
+    	  n_args = 3;
+    	  args = new tree[n_args];
+
+    	  args[0] = irs->typeinfoReference (type);
+    	  args[1] = irs->addressOf (irs->toElemLvalue (e1));
+    	  args[2] = size_one_node;
+    	  lib_call = LIBCALL_ARRAYAPPENDCTP;
+
+    	  result = irs->libCall (lib_call, n_args, args, type->toCtype ());
+    	  result = save_expr (result);
+
+    	  // assign e2 to last element
+    	  tree off_exp = irs->darrayLenRef (result);
+    	  off_exp = build2 (MINUS_EXPR, TREE_TYPE (off_exp), off_exp, size_one_node);
+    	  off_exp = irs->maybeMakeTemp (off_exp);
+
+    	  tree ptr_exp = irs->darrayPtrRef (result);
+    	  ptr_exp = irs->pvoidOkay (ptr_exp);
+    	  ptr_exp = irs->pointerIntSum (ptr_exp, off_exp);
+
+    	  // evaluate expression before appending
+    	  tree e2e = e2->toElem (irs);
+    	  e2e = save_expr (e2e);
+
+    	  result = build2 (MODIFY_EXPR, elem_type->toCtype (), irs->indirect (ptr_exp), e2e);
+    	  result = build2 (COMPOUND_EXPR, elem_type->toCtype (), e2e, result);
+	}
     }
+
   return aoe.finish (irs, result);
 }
 
@@ -1879,6 +1898,23 @@ elem *
 DelegateExp::toElem (IRState* irs)
 {
   Type * t = e1->type->toBasetype ();
+
+  if (func->fbody)
+    {
+      // Add the function as nested function if it belongs to this module
+      // ie, it is a member of this module, or it is a template instance.
+      Dsymbol * owner = func->toParent ();
+      while (!owner->isTemplateInstance () && owner->toParent ())
+	owner = owner->toParent ();
+      if (owner->isTemplateInstance () || owner == irs->mod)
+	{
+	  Symbol * s = irs->func->toSymbol ();
+	  if (!s->otherNestedFuncs)
+	    s->otherNestedFuncs = new FuncDeclarations;
+	  s->otherNestedFuncs->push (func);
+	}
+    }
+
   if (t->ty == Tclass || t->ty == Tstruct)
     {
       // %% Need to see if DotVarExp ever has legitimate
@@ -1891,13 +1927,22 @@ DelegateExp::toElem (IRState* irs)
     }
   else
     {
-      gcc_assert (func->isNested () || func->isThis ());
+      tree this_tree;
+      if (func->isNested ())
+	{
+	  if (e1->op == TOKnull)
+	    this_tree = e1->toElem (irs);
+	  else
+	    this_tree = irs->getFrameForFunction (func);
+	}
+      else
+	{
+	  gcc_assert (func->isThis ());
+	  this_tree = e1->toElem (irs);
+	}
 
       return irs->methodCallExpr (irs->functionPointer (func),
-				  (func->isNested ()
-				   ? irs->getFrameForFunction (func)
-				   : e1->toElem (irs)),
-				  type);
+				  this_tree, type);
     }
 }
 
@@ -1913,10 +1958,9 @@ DotVarExp::toElem (IRState * irs)
     case Tpointer:
       if (obj_basetype->nextOf()->toBasetype()->ty != Tstruct)
 	break;
+      // drop through
 
-      // drop through
     case Tstruct:
-      // drop through
     case Tclass:
       if ((func_decl = var->isFuncDeclaration ()))
       {
@@ -2041,14 +2085,23 @@ DeclarationExp::toElem (IRState* irs)
   return t;
 }
 
-// %% check calling this directly?
+
 elem *
 FuncExp::toElem (IRState * irs)
 {
   Type * func_type = type->toBasetype ();
 
   if (func_type->ty == Tpointer)
-    func_type = func_type->nextOf()->toBasetype ();
+    {
+      // This check is for lambda's, remove 'vthis' as function isn't nested.
+      if (fd->tok == TOKreserved && fd->vthis)
+    	{
+    	  fd->tok = TOKfunction;
+    	  fd->vthis = NULL;
+    	}
+
+      func_type = func_type->nextOf()->toBasetype ();
+    }
 
   fd->toObjFile (false);
 
@@ -2614,12 +2667,23 @@ elem *
 AssocArrayLiteralExp::toElem (IRState * irs)
 {
   Type * tb = type->toBasetype ();
-  gcc_assert (tb->ty == Taarray);
 #if V2
   // %% want mutable type for typeinfo reference.
   tb = tb->mutableOf ();
 #endif
-  TypeAArray * aa_type = (TypeAArray *)tb;
+
+  TypeAArray * aa_type;
+
+  if (tb->ty == Taarray)
+    aa_type = (TypeAArray *)tb;
+  else
+    {
+      // It's the AssociativeArray type.
+      // Turn it back into a TypeAArray
+      aa_type = new TypeAArray ((*values)[0]->type, (*keys)[0]->type);
+      aa_type->semantic (loc, NULL);
+    }
+
   Type * index = aa_type->index;
   Type * next = aa_type->next;
   gcc_assert (keys != NULL);
@@ -2842,12 +2906,22 @@ ComplexExp::toElem (IRState * irs)
   TypeBasic * compon_type;
   switch (type->toBasetype()->ty)
     {
-    case Tcomplex32: compon_type = (TypeBasic *) Type::tfloat32; break;
-    case Tcomplex64: compon_type = (TypeBasic *) Type::tfloat64; break;
-    case Tcomplex80: compon_type = (TypeBasic *) Type::tfloat80; break;
+    case Tcomplex32:
+      compon_type = (TypeBasic *) Type::tfloat32;
+      break;
+
+    case Tcomplex64:
+      compon_type = (TypeBasic *) Type::tfloat64;
+      break;
+
+    case Tcomplex80:
+      compon_type = (TypeBasic *) Type::tfloat80;
+      break;
+
     default:
-	 	     gcc_unreachable ();
+      gcc_unreachable ();
     }
+
   return build_complex (type->toCtype (),
 	    		irs->floatConstant (creall (value), compon_type),
 	    		irs->floatConstant (cimagl (value), compon_type));
@@ -3948,9 +4022,9 @@ static tree
 binfo_for (tree tgt_binfo, ClassDeclaration * cls)
 {
   tree binfo = make_tree_binfo (1);
-  TREE_TYPE              (binfo) = TREE_TYPE (cls->type->toCtype ()); // RECORD_TYPE, not REFERENCE_TYPE
+  TREE_TYPE (binfo) = TREE_TYPE (cls->type->toCtype ()); // RECORD_TYPE, not REFERENCE_TYPE
   BINFO_INHERITANCE_CHAIN (binfo) = tgt_binfo;
-  BINFO_OFFSET           (binfo) = size_zero_node; // %% type?, otherwize, integer_zero_node
+  BINFO_OFFSET (binfo) = integer_zero_node;
 
   if (cls->baseClass)
     {
@@ -3993,9 +4067,9 @@ intfc_binfo_for (tree tgt_binfo, ClassDeclaration * iface, unsigned & inout_offs
 {
   tree binfo = make_tree_binfo (iface->baseclasses->dim);
 
-  TREE_TYPE              (binfo) = TREE_TYPE (iface->type->toCtype ()); // RECORD_TYPE, not REFERENCE_TYPE
+  TREE_TYPE (binfo) = TREE_TYPE (iface->type->toCtype ()); // RECORD_TYPE, not REFERENCE_TYPE
   BINFO_INHERITANCE_CHAIN (binfo) = tgt_binfo;
-  BINFO_OFFSET           (binfo) = size_int (inout_offset * PTRSIZE);
+  BINFO_OFFSET (binfo) = size_int (inout_offset * PTRSIZE);
 
   if (iface->baseclasses->dim)
     {
@@ -4128,8 +4202,6 @@ ClassDeclaration::toDebug ()
   else
     {
       unsigned offset = 0;
-      BaseClass bc;
-      bc.base = this;
       TYPE_BINFO (rec_type) = intfc_binfo_for (NULL_TREE, this, offset);
     }
 

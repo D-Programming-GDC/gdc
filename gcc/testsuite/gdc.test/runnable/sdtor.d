@@ -1275,7 +1275,7 @@ void test51()
   A51_a = 0; { if (0) switch(1) { default: A51 a; } } assert(A51_a == 0);
   A51_a = 0; { if (1) switch(1) { A51 a; default: } } assert(A51_a == 1); // should be 0, right?
   A51_a = 0; { if (1) switch(1) { default: A51 a; } } assert(A51_a == 1);
-  A51_a = 0; { final switch(0) A51 a;               } assert(A51_a == 0);
+//  A51_a = 0; { final switch(0) A51 a;               } assert(A51_a == 0);
   A51_a = 0; { A51 a; with(a) A51 b;                } assert(A51_a == 2);
 }
 
@@ -1705,6 +1705,32 @@ void test59()
 }
 
 /**********************************/
+// 6364
+
+struct Foo6364
+{
+    int state = 1;
+
+    ~this()
+    {
+        state = 0;
+    }
+}
+
+void testfoo6364()
+{
+    static Foo6364 foo;
+    printf("%d\n", foo.state);
+    assert(foo.state == 1);
+}
+
+void test6364()
+{
+    testfoo6364();
+    testfoo6364();
+}
+
+/**********************************/
 // 6499
 
 struct S6499
@@ -1834,6 +1860,64 @@ struct A4316
 
 /**********************************/
 
+struct F6177
+{
+    ~this()    {}
+}
+
+struct G6177
+{
+    this(F6177[] p...) {}
+}
+
+void test6177()
+{
+    F6177 c;
+    auto g = G6177(c);
+}
+
+
+/**********************************/
+// 7353
+
+struct S7353
+{
+    static uint ci = 0;
+    uint i;
+
+    this(int x) { i = ci++; /*writeln("new: ", i);*/ }
+    this(this)  { i = ci++; /*writeln("copy ", i);*/ }
+    ~this()     {           /*writeln("del ", i);*/ }
+
+    S7353 save1() // produces 2 copies in total
+    {
+        S7353 s = this;
+        return s;
+    }
+    auto save2() // produces 3 copies in total
+    {
+        S7353 s = this;
+        return s;
+        pragma(msg, typeof(return));
+    }
+}
+void test7353()
+{
+    {
+        auto s = S7353(1), t = S7353(1);
+        t = s.save1();
+        assert(S7353.ci == 3);
+    }
+    S7353.ci = 0; //writeln("-");
+    {
+        auto s = S7353(1), t = S7353(1);
+        t = s.save2();
+        assert(S7353.ci == 3);
+    }
+}
+
+/**********************************/
+
 int main()
 {
     test1();
@@ -1893,11 +1977,18 @@ int main()
     test55();
     test56();
     test57();
+  // GDC does not implement NVRO
+  version (GNU) {} else
+  {
     test58();
     test59();
+    test6364();
     test6499();
+  }
     test60();
     test4316();
+    test6177();
+    test7353();
 
     printf("Success\n");
     return 0;

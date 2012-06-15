@@ -738,7 +738,6 @@ enable_multilib
 enable_thread_lib
 enable_unix
 enable_druntime_gc
-enable_loader
 with_system_zlib
 enable_proc_maps
 enable_phobos_config_dir
@@ -1375,8 +1374,6 @@ Optional Features:
   --enable-unix           enables Unix runtime (default: yes, for Unix
                           targets)
   --enable-druntime-gc    enable D runtime garbage collector (default: yes)
-  --enable-loader         builds the std.loader module (default: yes, if
-                          supported on target)
   --enable-proc-maps      use /proc/self/maps to find data segments for
                           garbage collection (default: yes, if supported on
                           target)
@@ -4604,14 +4601,6 @@ else
 fi
 
 
-# Check whether --enable-loader was given.
-if test "${enable_loader+set}" = set; then :
-  enableval=$enable_loader; :
-else
-  enable_loader=yes
-fi
-
-
 
 # Check whether --with-system-zlib was given.
 if test "${with_system_zlib+set}" = set; then :
@@ -5459,10 +5448,8 @@ case "$d_target_os" in
 	     ;;
     darwin*) d_module_mach=1
 	     d_sem_impl="mach"
-	     d_have_loader=1
 	     ;;
     freebsd*|k*bsd*-gnu)
-	     d_have_loader=1
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
@@ -5470,7 +5457,6 @@ case "$d_target_os" in
     linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
 	     d_sem_impl="posix"
-	     d_have_loader=1 # should check for <dlfcn.h>, and use verion(GNU_Have_dlopen)
              ;;
     cygwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
@@ -5482,7 +5468,6 @@ case "$d_target_os" in
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
 	     #DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     DCFG_UNIX=Windows
-	     d_have_loader=1
 	     ;;
     skyos*)  d_sem_impl="skyos"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
@@ -5801,10 +5786,6 @@ if test -z "$DFLAGS"; then
 fi
 
 
-
-if test -n "$d_have_loader" && test "$enable_loader" = yes; then
-  D_EXTRA_OBJS="$D_EXTRA_OBJS std/loader.o"
-fi
 
 
 

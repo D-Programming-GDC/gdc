@@ -810,6 +810,29 @@ void test36() {
 }
 
 /************************************************/
+// 7365
+
+struct TickDuration {
+  bool opEquals(ref const TickDuration rhs) const {
+    return true;
+  }
+}
+
+void test7365() {
+  TickDuration[Object] aa;
+  aa.keys;
+}
+
+/************************************************/
+
+enum aa5520 = [5 : "hello"];
+
+void test5520()
+{
+    auto a = aa5520.values;
+}
+
+/************************************************/
 
 int main()
 {
@@ -848,6 +871,8 @@ printf("before test 32\n");   test32();
     test34();
     test35();
     test36();
+    test7365();
+    test5520();
 
     printf("Success\n");
     return 0;

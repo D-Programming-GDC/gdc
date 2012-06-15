@@ -124,8 +124,9 @@ struct Declaration : Dsymbol
     enum PROT protection;
     enum LINK linkage;
     int inuse;                  // used to detect cycles
+
 #if IN_GCC
-    Expressions * attributes;   // GCC decl/type attributes
+    Expressions *attributes;    // GCC decl/type attributes
 #endif
 
     enum Semantic sem;
@@ -258,6 +259,7 @@ struct VarDeclaration : Declaration
     FuncDeclarations nestedrefs; // referenced by these lexically nested functions
 #endif
 #endif
+    unsigned short alignment;
     int ctorinit;               // it has been initialized in a ctor
     int onstack;                // 1: it has been allocated on the stack
                                 // 2: on stack, run destructor anyway
@@ -284,6 +286,7 @@ struct VarDeclaration : Declaration
     VarDeclaration(Loc loc, Type *t, Identifier *id, Initializer *init);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
+    void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     void semantic2(Scope *sc);
     const char *kind();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -612,6 +615,7 @@ struct FuncDeclaration : Declaration
     VarDeclarations closureVars;        // local variables in this function
                                         // which are referenced by nested
                                         // functions
+    FuncDeclarations deferred;          // toObjFile() these functions after this one
 
     unsigned flags;
     #define FUNCFLAGpurityInprocess 1   // working on determining purity
@@ -661,10 +665,12 @@ struct FuncDeclaration : Declaration
     int isAbstract();
     int isCodeseg();
     int isOverloadable();
+    int hasOverloads();
     enum PURE isPure();
     enum PURE isPureBypassingInference();
     bool setImpure();
     int isSafe();
+    bool isSafeBypassingInference();
     int isTrusted();
     bool setUnsafe();
     virtual int isNested();
@@ -698,6 +704,8 @@ struct FuncDeclaration : Declaration
     void buildClosure(IRState *irs);
 
     FuncDeclaration *isFuncDeclaration() { return this; }
+
+    virtual FuncDeclaration *toAliasFunc() { return this; }
 };
 
 #if DMDV2
@@ -711,12 +719,16 @@ FuncDeclaration *resolveFuncCall(Scope *sc, Loc loc, Dsymbol *s,
 struct FuncAliasDeclaration : FuncDeclaration
 {
     FuncDeclaration *funcalias;
+    int hasOverloads;
 
-    FuncAliasDeclaration(FuncDeclaration *funcalias);
+    FuncAliasDeclaration(FuncDeclaration *funcalias, int hasOverloads = 1);
 
     FuncAliasDeclaration *isFuncAliasDeclaration() { return this; }
     const char *kind();
     Symbol *toSymbol();
+    char *mangle() { return toAliasFunc()->mangle(); }
+
+    FuncDeclaration *toAliasFunc();
 };
 
 struct FuncLiteralDeclaration : FuncDeclaration

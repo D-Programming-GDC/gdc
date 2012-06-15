@@ -99,6 +99,7 @@ static assert( 9 ^^ -1.0 == 1.0 / 9);
 static assert( !is(typeof(2 ^^ -5)));
 static assert( !is(typeof((-2) ^^ -4)));
 
+// Bug 3535
 struct StructWithCtor
 {
     this(int _n) {
@@ -174,7 +175,6 @@ int copytest1()
 
   return 123;
 }
-version(GNU) {} else
 static assert(copytest1()==123);
 
 // This must not cause a segfault

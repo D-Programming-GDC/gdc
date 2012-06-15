@@ -242,6 +242,31 @@ void test6()
 +/
 
 /*******************************************/
+// 7218
+
+void test7218()
+{
+    size_t foo()  in{}  out{}  body{ return 0; } // OK
+    size_t bar()  in{}/*out{}*/body{ return 0; } // OK
+    size_t hoo()/*in{}*/out{}  body{ return 0; } // NG1
+    size_t baz()/*in{}  out{}*/body{ return 0; } // NG2
+}
+
+/*******************************************/
+// 7699
+
+class P7699
+{
+    void f(int n) in {
+        assert (n);
+    } body { }
+}
+class D7699 : P7699
+{
+    void f(int n) in { } body { }
+}
+
+/*******************************************/
 
 int main()
 {
@@ -251,6 +276,7 @@ int main()
     test4();
     test5();
 //    test6();
+    test7218();
 
     printf("Success\n");
     return 0;

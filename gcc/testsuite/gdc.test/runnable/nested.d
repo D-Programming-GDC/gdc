@@ -1509,6 +1509,78 @@ void test4401()
 
 /*******************************************/
 
+alias void delegate() dg_t;
+
+void Y(dg_t delegate (dg_t) y)
+{
+    struct F { void delegate(F) f; };
+
+  version (all)
+  { // generates error
+    (dg_t delegate(F) a){return a(F((F b){return y(a(b))();})); }
+    ((F b){return (){return b.f(b);};});
+  }
+  else
+  {
+    auto abc(dg_t delegate(F) a)
+    {
+	return a(F((F b){return y(a(b))();}));
+    }
+
+    abc((F b){return (){return b.f(b);};});
+  }
+}
+
+
+void test7428(){
+    dg_t foo(dg_t self)
+    {
+	void bar() { self(); }
+	return &bar;
+    }
+
+    Y(&foo);
+} 
+
+/*******************************************/
+
+struct S4841(alias pred)
+{
+    void unused_func();
+}
+
+void abc4841() {
+   int w;
+   S4841!(w) m;   
+}
+
+void test4841() {
+   abc4841();
+}
+
+/*******************************************/
+
+
+void index7199()
+{
+    void find()
+    {
+	bool hay()
+	{
+	    return true;
+	}
+    }
+
+    find();
+}
+
+void test7199()
+{
+    index7199();
+}
+
+/*******************************************/
+
 int main()
 {
     test1();
@@ -1567,6 +1639,9 @@ int main()
     test54();
     test55();
     test4401();
+    test7428();
+    test4841();
+    test7199();
 
     printf("Success\n");
     return 0;

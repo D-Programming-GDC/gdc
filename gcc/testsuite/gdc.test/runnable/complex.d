@@ -245,6 +245,30 @@ void test13()
 
 /***************************************/
 
+cdouble inv( cdouble expr )
+{
+    return (1.0 + 0.0i) / expr;
+}
+
+/***************************************/
+
+void test14()
+{
+    cfloat c;
+    cfloat d;
+    assert(c != d);
+
+    cdouble e;
+    cdouble f;
+    assert(e != f);
+
+    creal g;
+    creal h;
+    assert(g != h);
+}
+
+/***************************************/
+
 int main(char[][] args)
 {
 
@@ -261,6 +285,7 @@ int main(char[][] args)
     test11();
     test12();
     test13();
+    test14();
 
     printf("Success!\n");
     return 0;

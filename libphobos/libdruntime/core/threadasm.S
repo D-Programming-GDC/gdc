@@ -18,6 +18,7 @@
  ************************************************************************************/
 #if defined( __ppc__ ) || defined( __PPC__ ) || defined( __powerpc__ )
 
+
 /**
  * Performs a context switch.
  *

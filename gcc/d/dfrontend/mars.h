@@ -280,6 +280,12 @@ struct Global
     unsigned gag;          // !=0 means gag reporting of errors & warnings
     unsigned gaggedErrors; // number of errors reported while gagged
 
+    /* Gagging can either be speculative (is(typeof()), etc)
+     * or because of forward references
+     */
+    unsigned speculativeGag; // == gag means gagging is for is(typeof);
+    bool isSpeculativeGagging();
+
     // Start gagging. Return the current number of gagged errors
     unsigned startGagging();
 
@@ -293,13 +299,17 @@ struct Global
 
 extern Global global;
 
+#ifndef IN_GCC
 /* Set if Windows Structured Exception Handling C extensions are supported.
  * Apparently, VC has dropped support for these?
  */
-#define WINDOWS_SEH     (_WIN32 && __DMC__)
+#define WINDOWS_SEH     _WIN32
 
+#include "longdouble.h"
+#endif
 
 #ifdef __DMC__
+ #include  <complex.h>
  typedef _Complex long double complex_t;
 #else
  #ifndef IN_GCC
@@ -330,7 +340,11 @@ typedef uint64_t                d_uns64;
 
 typedef float                   d_float32;
 typedef double                  d_float64;
+#if IN_GCC
 typedef long double             d_float80;
+#else
+typedef longdouble              d_float80;
+#endif
 
 typedef d_uns8                  d_char;
 typedef d_uns16                 d_wchar;
@@ -339,7 +353,7 @@ typedef d_uns32                 d_dchar;
 #ifdef IN_GCC
 #include "d-gcc-real.h"
 #else
-typedef long double real_t;
+typedef longdouble real_t;
 #endif
 
 // Modify OutBuffer::writewchar to write the correct size of wchar

@@ -127,13 +127,6 @@ AC_ARG_ENABLE(druntime-gc,
                  [enable D runtime garbage collector (default: yes)]),
   :,[enable_druntime_gc=yes])
 
-dnl If Phobos is built as a shared library, the loader module may add a library
-dnl dependency (-ldl on Linux).  So, make it optional for now.
-AC_ARG_ENABLE(loader,
-  AC_HELP_STRING([--enable-loader],
-                 [builds the std.loader module (default: yes, if supported on target)]),
-  :,[enable_loader=yes])
-
 dnl switch between system zlib and gcc's zlib
 AC_ARG_WITH(system-zlib,
   AS_HELP_STRING([--with-system-zlib],
@@ -557,10 +550,8 @@ case "$d_target_os" in
 	     ;;
     darwin*) d_module_mach=1
 	     d_sem_impl="mach"
-	     d_have_loader=1
 	     ;;
     freebsd*|k*bsd*-gnu)
-	     d_have_loader=1
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
@@ -568,7 +559,6 @@ case "$d_target_os" in
     linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
 	     d_sem_impl="posix"
-	     d_have_loader=1 # should check for <dlfcn.h>, and use verion(GNU_Have_dlopen)
              ;;
     cygwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
@@ -580,7 +570,6 @@ case "$d_target_os" in
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
 	     #DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
 	     DCFG_UNIX=Windows
-	     d_have_loader=1
 	     ;;
     skyos*)  d_sem_impl="skyos"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
@@ -626,10 +615,6 @@ if test -z "$DFLAGS"; then
 fi
 AC_SUBST(DFLAGS)
 
-
-if test -n "$d_have_loader" && test "$enable_loader" = yes; then
-  D_EXTRA_OBJS="$D_EXTRA_OBJS std/loader.o"
-fi
 
 dnl TODO: change this to using pthreads? if so, define usepthreads
 dnl and configure semaphore

@@ -392,6 +392,26 @@ void test13()
 }
 
 /********************************************************/
+// 7123
+
+private struct DelegateFaker7123(F)
+{
+    template GeneratingPolicy() {}
+    enum WITH_BASE_CLASS = __traits(hasMember, GeneratingPolicy!(), "x");
+}
+
+auto toDelegate7123(F)(F fp)
+{
+    alias DelegateFaker7123!F Faker;
+}
+
+
+void test7123()
+{
+    static assert(is(typeof(toDelegate7123(&main))));
+}
+
+/********************************************************/
 
 class D14
 {
@@ -648,6 +668,104 @@ static assert(!__traits(compiles, { return Foo7027.a; }));
 
 /********************************************************/
 
+interface AA
+{
+     int YYY();
+}
+
+class CC : AA
+{
+    final int YYY() { return 4; }
+}
+
+static assert(__traits(isVirtualMethod, CC.YYY));
+static assert(__traits(getVirtualMethods, CC, "YYY").length == 1);
+
+class DD
+{
+    final int YYY() { return 4; }
+}
+
+static assert(__traits(isVirtualMethod, DD.YYY) == false);
+static assert(__traits(getVirtualMethods, DD, "YYY").length == 0);
+
+class EE
+{
+     int YYY() { return 0; }
+}
+
+class FF : EE
+{
+    final int YYY() { return 4; }
+}
+
+static assert(__traits(isVirtualMethod, FF.YYY));
+static assert(__traits(getVirtualMethods, FF, "YYY").length == 1);
+
+/********************************************************/
+// 7608
+
+struct S7608a(bool T)
+{
+    static if (T) { int x; }
+    int y;
+}
+struct S7608b
+{
+    version(none) { int x; }
+    int y;
+}
+template TypeTuple7608(T...){ alias T TypeTuple7608; }
+void test7608()
+{
+    alias TypeTuple7608!(__traits(allMembers, S7608a!false)) MembersA;
+    static assert(MembersA.length == 1);
+    static assert(MembersA[0] == "y");
+
+    alias TypeTuple7608!(__traits(allMembers, S7608b)) MembersB;
+    static assert(MembersB.length == 1);
+    static assert(MembersB[0] == "y");
+}
+
+/********************************************************/
+// 7858
+
+void test7858()
+{
+    class C
+    {
+        final void ffunc(){}
+        final void ffunc(int){}
+
+        void vfunc(){}
+        void vfunc(int){}
+
+        abstract void afunc();
+        abstract void afunc(int);
+
+        static void sfunc(){}
+        static void sfunc(int){}
+    }
+
+    static assert(__traits(isFinalFunction, C.ffunc) ==
+                  __traits(isFinalFunction, __traits(getOverloads, C, "ffunc")[0]));    // NG
+    static assert(__traits(isVirtualFunction, C.vfunc) ==
+                  __traits(isVirtualFunction, __traits(getOverloads, C, "vfunc")[0]));  // NG
+    static assert(__traits(isVirtualMethod, C.vfunc) ==
+                  __traits(isVirtualMethod, __traits(getOverloads, C, "vfunc")[0]));    // NG
+    static assert(__traits(isAbstractFunction, C.afunc) ==
+                  __traits(isAbstractFunction, __traits(getOverloads, C, "afunc")[0])); // OK
+    static assert(__traits(isStaticFunction, C.sfunc) ==
+                  __traits(isStaticFunction, __traits(getOverloads, C, "sfunc")[0]));   // OK
+
+    static assert(__traits(isSame, C.ffunc, __traits(getOverloads, C, "ffunc")[0]));    // NG
+    static assert(__traits(isSame, C.vfunc, __traits(getOverloads, C, "vfunc")[0]));    // NG
+    static assert(__traits(isSame, C.afunc, __traits(getOverloads, C, "afunc")[0]));    // NG
+    static assert(__traits(isSame, C.sfunc, __traits(getOverloads, C, "sfunc")[0]));    // NG
+}
+
+/********************************************************/
+
 int main()
 {
     test1();
@@ -663,6 +781,7 @@ int main()
     test11();
     test12();
     test13();
+    test7123();
     test14();
     test15();
     test16();
@@ -673,6 +792,8 @@ int main()
     test21();
     test22();
     test23();
+    test7608();
+    test7858();
 
     writeln("Success");
     return 0;

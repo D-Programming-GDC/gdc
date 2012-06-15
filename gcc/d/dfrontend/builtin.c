@@ -12,17 +12,8 @@
 #include <assert.h>
 #ifndef IN_GCC
 #include <math.h>
+#endif
 
-#if __FreeBSD__
-extern "C"
-{
-    long double sinl(long double);
-    long double cosl(long double);
-    long double tanl(long double);
-    long double sqrtl(long double);
-}
-#endif
-#endif
 
 #include "mars.h"
 #include "declaration.h"
@@ -34,6 +25,18 @@ extern "C"
 #include "identifier.h"
 #include "id.h"
 #include "module.h"
+
+#ifndef IN_GCC
+#if __FreeBSD__
+extern "C"
+{
+    longdouble sinl(longdouble);
+    longdouble cosl(longdouble);
+    longdouble tanl(longdouble);
+    longdouble sqrtl(longdouble);
+}
+#endif
+#endif
 
 #if DMDV2
 

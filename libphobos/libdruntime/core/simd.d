@@ -362,13 +362,13 @@ enum XMM
  * regular D functions.
  *
  * Parameters:
- *      opcode  any of the XMM opcodes
+ *      opcode  any of the XMM opcodes; it must be a compile time constant
  *      op1     first operand
  *      op2     second operand
  * Returns:
  *      result of opcode
  */
-void16 simd(XMM opcode, void16 op1, void16 op2);
+void16 __simd(XMM opcode, void16 op1, void16 op2);
 
 /* The following use overloading to ensure correct typing.
  * Compile with inlining on for best performance.
@@ -376,13 +376,10 @@ void16 simd(XMM opcode, void16 op1, void16 op2);
 
 short8 pcmpeq()(short8 v1, short8 v2)
 {
-    return simd(XMM.PCMPEQW, v1, v2);
+    return __simd(XMM.PCMPEQW, v1, v2);
 }
 
 ushort8 pcmpeq()(ushort8 v1, ushort8 v2)
 {
-    return simd(XMM.PCMPEQW, v1, v2);
+    return __simd(XMM.PCMPEQW, v1, v2);
 }
-
-
-

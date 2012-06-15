@@ -653,8 +653,6 @@ FuncDeclaration::toSymbol ()
 	  TREE_NOTHROW (fndecl) = ftype->isnothrow && !global.params.useAssert;
 	  // %% Make D const methods equivalent to GCC const
 	  TREE_READONLY (fndecl) = (isPure () == PUREconst);
-	  // %% Should allow weakly pure functions to be evaluated only once.
-	  DECL_IS_NOVOPS (fndecl) = (isPure () == PUREweak);
 #endif
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES

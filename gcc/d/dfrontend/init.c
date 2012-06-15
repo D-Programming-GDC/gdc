@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2011 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -27,6 +27,7 @@
 #include "scope.h"
 #include "mtype.h"
 #include "hdrgen.h"
+#include "template.h"
 
 /********************************** Initializer *******************************/
 
@@ -59,10 +60,10 @@ Initializers *Initializer::arraySyntaxCopy(Initializers *ai)
         a = new Initializers();
         a->setDim(ai->dim);
         for (size_t i = 0; i < a->dim; i++)
-        {   Initializer *e = ai->tdata()[i];
+        {   Initializer *e = (*ai)[i];
 
             e = e->syntaxCopy();
-            a->tdata()[i] = e;
+            (*a)[i] = e;
         }
     }
     return a;
@@ -131,11 +132,11 @@ Initializer *StructInitializer::syntaxCopy()
     ai->value.setDim(value.dim);
     for (size_t i = 0; i < field.dim; i++)
     {
-        ai->field.tdata()[i] = field.tdata()[i];
+        ai->field[i] = field[i];
 
-        Initializer *init = value.tdata()[i];
+        Initializer *init = value[i];
         init = init->syntaxCopy();
-        ai->value.tdata()[i] = init;
+        ai->value[i] = init;
     }
     return ai;
 }
@@ -163,12 +164,22 @@ Initializer *StructInitializer::semantic(Scope *sc, Type *t, int needInterpret)
         if (ad->ctor)
             error(loc, "%s %s has constructors, cannot use { initializers }, use %s( initializers ) instead",
                 ad->kind(), ad->toChars(), ad->toChars());
-        size_t nfields = ad->fields.dim;
-        if (((StructDeclaration *)ad)->isnested) nfields--;
+        StructDeclaration *sd = ad->isStructDeclaration();
+        assert(sd);
+        sd->size(loc);
+        if (sd->sizeok != SIZEOKdone)
+        {
+            error(loc, "struct %s is forward referenced", sd->toChars());
+            errors = 1;
+            goto Lerror;
+        }
+        size_t nfields = sd->fields.dim;
+        if (sd->isnested)
+            nfields--;
         for (size_t i = 0; i < field.dim; i++)
         {
-            Identifier *id = field.tdata()[i];
-            Initializer *val = value.tdata()[i];
+            Identifier *id = field[i];
+            Initializer *val = value[i];
             Dsymbol *s;
             VarDeclaration *v;
 
@@ -183,7 +194,7 @@ Initializer *StructInitializer::semantic(Scope *sc, Type *t, int needInterpret)
                 }
                 else
                 {
-                    s = ad->fields.tdata()[fieldi];
+                    s = ad->fields[fieldi];
                 }
             }
             else
@@ -192,7 +203,12 @@ Initializer *StructInitializer::semantic(Scope *sc, Type *t, int needInterpret)
                 s = ad->search(loc, id, 0);
                 if (!s)
                 {
-                    error(loc, "'%s' is not a member of '%s'", id->toChars(), t->toChars());
+                    s = ad->search_correct(id);
+                    if (s)
+                        error(loc, "'%s' is not a member of '%s', did you mean '%s %s'?",
+                              id->toChars(), t->toChars(), s->kind(), s->toChars());
+                    else
+                        error(loc, "'%s' is not a member of '%s'", id->toChars(), t->toChars());
                     errors = 1;
                     continue;
                 }
@@ -208,15 +224,15 @@ Initializer *StructInitializer::semantic(Scope *sc, Type *t, int needInterpret)
                         errors = 1;
                         break;
                     }
-                    if (s == ad->fields.tdata()[fieldi])
+                    if (s == ad->fields[fieldi])
                         break;
                 }
             }
             if (s && (v = s->isVarDeclaration()) != NULL)
             {
                 val = val->semantic(sc, v->type, needInterpret);
-                value.tdata()[i] = val;
-                vars.tdata()[i] = v;
+                value[i] = val;
+                vars[i] = v;
             }
             else
             {   error(loc, "%s is not a field of %s", id ? id->toChars() : s->toChars(), ad->toChars());
@@ -242,6 +258,7 @@ Initializer *StructInitializer::semantic(Scope *sc, Type *t, int needInterpret)
         error(loc, "a struct is not a valid initializer for a %s", t->toChars());
         errors = 1;
     }
+Lerror:
     if (errors)
     {
         field.setDim(0);
@@ -262,12 +279,11 @@ Expression *StructInitializer::toExpression()
 
     //printf("StructInitializer::toExpression() %s\n", toChars());
     if (!ad)                            // if fwd referenced
-    {
         return NULL;
-    }
     StructDeclaration *sd = ad->isStructDeclaration();
     if (!sd)
         return NULL;
+
     Expressions *elements = new Expressions();
     size_t nfields = ad->fields.dim;
 #if DMDV2
@@ -277,12 +293,12 @@ Expression *StructInitializer::toExpression()
     elements->setDim(nfields);
     for (size_t i = 0; i < elements->dim; i++)
     {
-        elements->tdata()[i] = NULL;
+        (*elements)[i] = NULL;
     }
     unsigned fieldi = 0;
     for (size_t i = 0; i < value.dim; i++)
     {
-        Identifier *id = field.tdata()[i];
+        Identifier *id = field[i];
         if (id)
         {
             Dsymbol * s = ad->search(loc, id, 0);
@@ -301,7 +317,7 @@ Expression *StructInitializer::toExpression()
                     s->error("is not a per-instance initializable field");
                     goto Lno;
                 }
-                if (s == ad->fields.tdata()[fieldi])
+                if (s == ad->fields[fieldi])
                     break;
             }
         }
@@ -309,18 +325,18 @@ Expression *StructInitializer::toExpression()
         {   error(loc, "too many initializers for '%s'", ad->toChars());
             goto Lno;
         }
-        Initializer *iz = value.tdata()[i];
+        Initializer *iz = value[i];
         if (!iz)
             goto Lno;
         Expression *ex = iz->toExpression();
         if (!ex)
             goto Lno;
-        if (elements->tdata()[fieldi])
+        if ((*elements)[fieldi])
         {   error(loc, "duplicate initializer for field '%s'",
-                ad->fields.tdata()[fieldi]->toChars());
+                ad->fields[fieldi]->toChars());
             goto Lno;
         }
-        elements->tdata()[fieldi] = ex;
+        (*elements)[fieldi] = ex;
         ++fieldi;
     }
     // Now, fill in any missing elements with default initializers.
@@ -328,20 +344,20 @@ Expression *StructInitializer::toExpression()
     offset = 0;
     for (size_t i = 0; i < elements->dim; )
     {
-        VarDeclaration * vd = ad->fields.tdata()[i]->isVarDeclaration();
+        VarDeclaration * vd = ad->fields[i]->isVarDeclaration();
 
         //printf("test2 [%d] : %s %d %d\n", i, vd->toChars(), (int)offset, (int)vd->offset);
         if (vd->offset < offset)
         {
             // Only the first field of a union can have an initializer
-            if (elements->tdata()[i])
+            if ((*elements)[i])
                 goto Lno;
         }
         else
         {
-            if (!elements->tdata()[i])
+            if (!(*elements)[i])
                 // Default initialize
-                elements->tdata()[i] = vd->type->defaultInit();
+                (*elements)[i] = vd->type->defaultInit();
         }
         offset = vd->offset + vd->type->size();
         i++;
@@ -349,15 +365,15 @@ Expression *StructInitializer::toExpression()
         int unionSize = ad->numFieldsInUnion(i);
         if (unionSize == 1)
         {   // Not a union -- default initialize if missing
-            if (!elements->tdata()[i])
-                elements->tdata()[i] = vd->type->defaultInit();
+            if (!(*elements)[i])
+                (*elements)[i] = vd->type->defaultInit();
         }
         else
         {   // anonymous union -- check for errors
             int found = -1; // index of the first field with an initializer
-            for (int j = i; j < i + unionSize; ++j)
+            for (size_t j = i; j < i + unionSize; ++j)
             {
-                if (!elements->tdata()[j])
+                if (!(*elements)[j])
                     continue;
                 if (found >= 0)
                 {
@@ -398,13 +414,13 @@ void StructInitializer::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     {
         if (i > 0)
             buf->writebyte(',');
-        Identifier *id = field.tdata()[i];
+        Identifier *id = field[i];
         if (id)
         {
             buf->writestring(id->toChars());
             buf->writebyte(':');
         }
-        Initializer *iz = value.tdata()[i];
+        Initializer *iz = value[i];
         if (iz)
             iz->toCBuffer(buf, hgs);
     }
@@ -431,14 +447,14 @@ Initializer *ArrayInitializer::syntaxCopy()
     ai->index.setDim(index.dim);
     ai->value.setDim(value.dim);
     for (size_t i = 0; i < ai->value.dim; i++)
-    {   Expression *e = index.tdata()[i];
+    {   Expression *e = index[i];
         if (e)
             e = e->syntaxCopy();
-        ai->index.tdata()[i] = e;
+        ai->index[i] = e;
 
-        Initializer *init = value.tdata()[i];
+        Initializer *init = value[i];
         init = init->syntaxCopy();
-        ai->value.tdata()[i] = init;
+        ai->value[i] = init;
     }
     return ai;
 }
@@ -477,17 +493,17 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t, int needInterpret)
     length = 0;
     for (i = 0; i < index.dim; i++)
     {
-        Expression *idx = index.tdata()[i];
+        Expression *idx = index[i];
         if (idx)
         {   idx = idx->semantic(sc);
             idx = idx->optimize(WANTvalue | WANTinterpret);
-            index.tdata()[i] = idx;
+            index[i] = idx;
             length = idx->toInteger();
         }
 
-        Initializer *val = value.tdata()[i];
+        Initializer *val = value[i];
         val = val->semantic(sc, t->nextOf(), needInterpret);
-        value.tdata()[i] = val;
+        value[i] = val;
         length++;
         if (length == 0)
         {   error(loc, "array dimension overflow");
@@ -555,8 +571,8 @@ Expression *ArrayInitializer::toExpression()
         edim = value.dim;
         for (size_t i = 0, j = 0; i < value.dim; i++, j++)
         {
-            if (index.tdata()[i])
-                j = index.tdata()[i]->toInteger();
+            if (index[i])
+                j = index[i]->toInteger();
             if (j >= edim)
                 edim = j + 1;
         }
@@ -567,10 +583,10 @@ Expression *ArrayInitializer::toExpression()
     elements->zero();
     for (size_t i = 0, j = 0; i < value.dim; i++, j++)
     {
-        if (index.tdata()[i])
-            j = (index.tdata()[i])->toInteger();
+        if (index[i])
+            j = (index[i])->toInteger();
         assert(j < edim);
-        Initializer *iz = value.tdata()[i];
+        Initializer *iz = value[i];
         if (!iz)
             goto Lno;
         Expression *ex = iz->toExpression();
@@ -578,7 +594,7 @@ Expression *ArrayInitializer::toExpression()
         {
             goto Lno;
         }
-        elements->tdata()[j] = ex;
+        (*elements)[j] = ex;
     }
 
     /* Fill in any missing elements with the default initializer
@@ -587,13 +603,13 @@ Expression *ArrayInitializer::toExpression()
     Expression *init = NULL;
     for (size_t i = 0; i < edim; i++)
     {
-        if (!elements->tdata()[i])
+        if (!(*elements)[i])
         {
             if (!type)
                 goto Lno;
             if (!init)
                 init = ((TypeNext *)t)->next->defaultInit();
-            elements->tdata()[i] = init;
+            (*elements)[i] = init;
         }
     }
 
@@ -624,18 +640,18 @@ Expression *ArrayInitializer::toAssocArrayLiteral()
 
     for (size_t i = 0; i < value.dim; i++)
     {
-        e = index.tdata()[i];
+        e = index[i];
         if (!e)
             goto Lno;
-        keys->tdata()[i] = e;
+        (*keys)[i] = e;
 
-        Initializer *iz = value.tdata()[i];
+        Initializer *iz = value[i];
         if (!iz)
             goto Lno;
         e = iz->toExpression();
         if (!e)
             goto Lno;
-        values->tdata()[i] = e;
+        (*values)[i] = e;
     }
     e = new AssocArrayLiteralExp(loc, keys, values);
     return e;
@@ -651,7 +667,7 @@ int ArrayInitializer::isAssociativeArray()
 {
     for (size_t i = 0; i < value.dim; i++)
     {
-        if (index.tdata()[i])
+        if (index[i])
             return 1;
     }
     return 0;
@@ -713,13 +729,13 @@ void ArrayInitializer::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     {
         if (i > 0)
             buf->writebyte(',');
-        Expression *ex = index.tdata()[i];
+        Expression *ex = index[i];
         if (ex)
         {
             ex->toCBuffer(buf, hgs);
             buf->writebyte(':');
         }
-        Initializer *iz = value.tdata()[i];
+        Initializer *iz = value[i];
         if (iz)
             iz->toCBuffer(buf, hgs);
     }
@@ -784,10 +800,8 @@ bool hasNonConstPointers(Expression *e)
 bool arrayHasNonConstPointers(Expressions *elems)
 {
     for (size_t i = 0; i < elems->dim; i++)
-    {
-        if (!elems->tdata()[i])
-            continue;
-        if (hasNonConstPointers(elems->tdata()[i]))
+    {   Expression *e = (*elems)[i];
+        if (e && hasNonConstPointers(e))
             return true;
     }
     return false;
@@ -808,7 +822,7 @@ Initializer *ExpInitializer::semantic(Scope *sc, Type *t, int needInterpret)
         return this; // Failed, suppress duplicate error messages
 
     if (exp->op == TOKtype)
-        error("initializer must be an expression, not '%s'", exp->toChars());
+        exp->error("initializer must be an expression, not '%s'", exp->toChars());
 
     // Make sure all pointers are constants
     if (needInterpret && hasNonConstPointers(exp))
@@ -857,14 +871,17 @@ L1:
 Type *ExpInitializer::inferType(Scope *sc)
 {
     //printf("ExpInitializer::inferType() %s\n", toChars());
-    if (exp->op == TOKfunction && ((FuncExp *)exp)->td)
-    {
-        exp->error("cannot infer type from ambiguous function literal %s", exp->toChars());
-        return Type::terror;
-    }
-
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
+    if (exp->op == TOKimport)
+    {   ScopeExp *se = (ScopeExp *)exp;
+        TemplateInstance *ti = se->sds->isTemplateInstance();
+        if (ti && ti->semanticRun == PASSsemantic && !ti->aliasdecl)
+            se->error("cannot infer type from %s %s, possible circular dependency", se->sds->kind(), se->toChars());
+        else
+            se->error("cannot infer type from %s %s", se->sds->kind(), se->toChars());
+        return Type::terror;
+    }
 
     // Give error for overloaded function addresses
     if (exp->op == TOKsymoff)
@@ -876,7 +893,7 @@ Type *ExpInitializer::inferType(Scope *sc)
     // Give error for overloaded function addresses
     if (exp->op == TOKdelegate)
     {   DelegateExp *se = (DelegateExp *)exp;
-        if (
+        if (se->hasOverloads &&
             se->func->isFuncDeclaration() &&
             !se->func->isFuncDeclaration()->isUnique())
             exp->error("cannot infer type from overloaded function symbol %s", exp->toChars());

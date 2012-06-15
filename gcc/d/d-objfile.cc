@@ -109,42 +109,17 @@ ObjectFile::doLineNote (const Loc & loc)
   // else do nothing
 }
 
-static StringTable * lmtab = NULL;
-
 static location_t
 cvtLocToloc_t (const Loc loc)
 {
-  //gcc_assert (sizeof (StringValue.intvalue) == sizeof (location_t));
-  if (! lmtab)
-    {
-      lmtab = new StringTable ();
-      lmtab->init ();
-    }
+  location_t gcc_location;
 
-  StringValue * sv = lmtab->update (loc.filename, strlen (loc.filename));
-  const struct line_map * lm = 0;
-  unsigned new_line_count = 0;
+  linemap_add (line_table, LC_ENTER, 0, loc.filename, loc.linnum);
+  linemap_line_start (line_table, loc.linnum, 0);
+  gcc_location = linemap_position_for_column (line_table, 0);
+  linemap_add (line_table, LC_LEAVE, 0, NULL, 0);
 
-  if (! sv->intvalue)
-    {
-      new_line_count = 10000;
-    }
-  else
-    {
-      lm = linemap_lookup (line_table, sv->intvalue);
-      if (loc.linnum > line_table->highest_line)
-	new_line_count = loc.linnum * 10;
-    }
-  if (new_line_count)
-    {
-      lm = linemap_add (line_table, LC_ENTER, 0/*...*/, loc.filename, 0);
-      sv->intvalue = linemap_line_start (line_table, new_line_count, 0);
-      linemap_add (line_table, LC_LEAVE, 0, NULL, 0);
-      lm = linemap_lookup (line_table, sv->intvalue);
-    }
-  // cheat...
-  return lm->start_location + ((loc.linnum - LINEMAP_LINE (lm))
-			       << ORDINARY_MAP_NUMBER_OF_COLUMN_BITS (lm));
+  return gcc_location;
 }
 
 void
@@ -990,6 +965,8 @@ outdata (Symbol * sym)
   if (sym->Sdt && DECL_INITIAL (t) == NULL_TREE)
     DECL_INITIAL (t) = dt2tree (sym->Sdt);
 
+  gcc_assert (! g.irs->isErrorMark (t));
+
   if (DECL_INITIAL (t) != NULL_TREE)
     {
       TREE_STATIC (t) = 1;
@@ -999,15 +976,6 @@ outdata (Symbol * sym)
   /* If the symbol was marked as readonly in the frontend, set TREE_READONLY.  */
   if (D_DECL_READONLY_STATIC (t))
     TREE_READONLY (t) = 1;
-
-  /* Special case, outputting symbol of a module, but object.d is missing
-     or corrupt. Set type as typeof DECL_INITIAL to satisfy runtime.  */
-  tree type = TREE_TYPE (t);
-  if (g.irs->isErrorMark (type))
-    {
-      gcc_assert (DECL_INITIAL (t));
-      TREE_TYPE (t) = TREE_TYPE (DECL_INITIAL (t));
-    }
 
   // see dwarf2out.c:dwarf2out_decl gcc expects local statics
   // to have context pointing to nested function, not record.
@@ -1019,7 +987,7 @@ outdata (Symbol * sym)
   // This was for typeinfo decls ... shouldn't happen now.
   // %% Oops, this was supposed to be static.
   gcc_assert (! DECL_EXTERNAL (t));
-  layout_decl (t, 0);
+  relayout_decl (t);
 
   g.ofile->outputStaticSymbol (sym);
 }

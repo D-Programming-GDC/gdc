@@ -108,6 +108,7 @@ struct IRBase : Object
   // This is used by LabelStatement to find the LabelDsymbol that
   // GotoStatements refer to.
   FuncDeclaration * func; // %% make this a stack
+  Module * mod;
 
   IRState * startFunction (FuncDeclaration * decl);
   void endFunction ();

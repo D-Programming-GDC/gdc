@@ -249,7 +249,7 @@ public:
     }
 
 
-    override string toString()
+    @safe override string toString() const pure nothrow
     {
         string result;
 
@@ -272,8 +272,8 @@ private:
             return traceNoSync();
         }
     }
-    
-    
+
+
     static char[][] traceNoSync()
     {
         auto         dbghelp  = DbgHelp.get();
@@ -350,10 +350,10 @@ private:
                     if( dbghelp.SymGetLineFromAddr64( hProcess, stackframe.AddrPC.Offset, &displacement, &line ) == TRUE )
                     {
                         char[2048] demangleBuf;
-                        auto       symbolName = (cast(char*) symbol.Name.ptr)[0 .. core.stdc.string.strlen(symbol.Name.ptr)];
+                        auto       symbolName = (cast(char*) symbol.Name.ptr)[0 .. strlen(symbol.Name.ptr)];
 
                         // displacement bytes from beginning of line
-                        trace ~= line.FileName[0 .. core.stdc.string.strlen( line.FileName )] ~
+                        trace ~= line.FileName[0 .. strlen( line.FileName )] ~
                                  "(" ~ format( temp[], line.LineNumber ) ~ "): " ~
                                  demangle( symbolName, demangleBuf );
                     }

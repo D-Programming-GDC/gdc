@@ -57,10 +57,6 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 #--------------------------------------#
 # GDC LibPhobos
 
-# boxer is currently broken
-std/boxer.t.o: std/boxer.o
-	cp $< $@
-
 # Special-case for std.xml, need to emit templates.
 std/xml.o : std/xml.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
@@ -69,16 +65,16 @@ unittest: unittest.o libgphobos2_t.a libgphobos2.a
 	$(GDC) -o $@ $(CFLAGS) -fdeprecated unittest.o -L./ -L./libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
 
 MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
-	  std/bind.o std/bitarray.o std/bitmanip.o std/compiler.o \
+	  std/bitmanip.o std/compiler.o \
 	  std/container.o std/complex.o std/concurrency.o std/contracts.o \
-	  std/conv.o std/cpuid.o std/cstream.o std/ctype.o std/csv.o std/date.o \
-	  std/datebase.o std/dateparse.o std/datetime.o \
+	  std/conv.o std/cpuid.o std/cstream.o std/ctype.o std/csv.o \
+	  std/datebase.o std/datetime.o \
 	  std/demangle.o std/encoding.o std/exception.o std/format.o \
-	  std/functional.o std/getopt.o std/gregorian.o std/json.o \
-	  std/loader.o std/math.o std/mathspecial.o std/md5.o \
+	  std/functional.o std/getopt.o std/json.o \
+	  std/math.o std/mathspecial.o std/md5.o \
 	  std/metastrings.o std/numeric.o \
 	  std/outbuffer.o std/parallelism.o std/signals.o \
-	  std/stdarg.o std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
+	  std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
 	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
 	  std/regex.o std/regexp.o std/traits.o std/typecons.o \
 	  std/typetuple.o std/uni.o std/uri.o std/utf.o std/variant.o \
@@ -125,7 +121,7 @@ std/stream.t.o: std/stream.d $(D_PREREQ_SRCS)
 ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
 
 
-libgphobos2.a : $(ALL_PHOBOS_OBJS)
+libgphobos2.a : $(ALL_PHOBOS_OBJS) libdruntime/libgdruntime.a
 	cp libdruntime/libgdruntime.a libgphobos2.a
 	$(AR) -q $@ $(ALL_PHOBOS_OBJS)
 	$(RANLIB) $@

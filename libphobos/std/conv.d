@@ -368,7 +368,7 @@ unittest
 }
 
 /**
-$(RED Deprecated. It will be removed in July 2012. Please define $(D opCast)
+$(RED Deprecated. It will be removed in August 2012. Please define $(D opCast)
       for user-defined types instead of a $(D to) function.
       $(LREF to) will now use $(D opCast).)
 
@@ -2120,8 +2120,7 @@ Target parse(Target, Source)(ref Source p)
     // static immutable string infinity = "infinity";
     // static immutable string nans = "nans";
 
-    ConvException bailOut(string fn = __FILE__, size_t ln = __LINE__)
-        (string msg = null)
+    ConvException bailOut(string msg = null, string fn = __FILE__, size_t ln = __LINE__)
     {
         if (!msg)
             msg = "Floating point conversion error";

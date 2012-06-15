@@ -389,10 +389,7 @@ void test2()
     int i = cast(int) f;
     writeln(i);
     writeln(cast(int)float.max);
-  version (GNU)
-  {
-  }
-  else
+  version (GNU) {} else
   {
     assert(i == cast(int)float.max);
     assert(i == 0x80000000);

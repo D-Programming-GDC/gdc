@@ -31,22 +31,19 @@
 #define REAL_VALUE_NEGATE(X)  real_value_negate (&(X))
 
 static enum machine_mode
-max_float_mode ()
-{
-  return TYPE_MODE (long_double_type_node);
-}
-
-static enum machine_mode
 machineMode (real_t::Mode mode)
 {
   switch (mode)
     {
     case real_t::Float:
       return TYPE_MODE (float_type_node);
+
     case real_t::Double:
       return TYPE_MODE (double_type_node);
+
     case real_t::LongDouble:
       return TYPE_MODE (long_double_type_node);
+
     default:
       gcc_unreachable ();
     }
@@ -172,7 +169,7 @@ real_t::real_t (const REAL_VALUE_TYPE & rv)
 
 real_t::real_t (int v)
 {
-  REAL_VALUE_FROM_INT (rv (), v, 0, max_float_mode ());
+  REAL_VALUE_FROM_INT (rv (), v, 0, machineMode (LongDouble));
 }
 
 real_t::real_t (d_uns64 v)
@@ -180,10 +177,10 @@ real_t::real_t (d_uns64 v)
 # if HOST_BITS_PER_WIDE_INT == 32
   REAL_VALUE_FROM_UNSIGNED_INT (rv (),
 		    		v & 0xffffffff, (v >> 32) & 0xffffffff,
-		    		max_float_mode ());
+		    		machineMode (LongDouble));
 # elif HOST_BITS_PER_WIDE_INT == 64
   REAL_VALUE_FROM_UNSIGNED_INT (rv (), v, 0,
-		    		max_float_mode ());
+		    		machineMode (LongDouble));
 # else
 #  error Fix This
 # endif
@@ -194,11 +191,11 @@ real_t::real_t (d_int64 v)
 {
 # if HOST_BITS_PER_WIDE_INT == 32
   REAL_VALUE_FROM_INT (rv (), v & 0xffffffff,
-	   	       (v >> 32) & 0xffffffff, max_float_mode ());
+	   	       (v >> 32) & 0xffffffff, machineMode (LongDouble));
 # elif HOST_BITS_PER_WIDE_INT == 64
   REAL_VALUE_FROM_INT (rv (), v,
 	   	       (v & 0x8000000000000000ULL) ? ~ (unsigned HOST_WIDE_INT) 0 : 0,
-	   	       max_float_mode ());
+	   	       machineMode (LongDouble));
 # else
 #  error Fix This
 # endif
@@ -214,7 +211,7 @@ real_t::operator= (const real_t & r)
 real_t &
 real_t::operator= (int v)
 {
-  REAL_VALUE_FROM_UNSIGNED_INT (rv (), v, 0, max_float_mode ());
+  REAL_VALUE_FROM_UNSIGNED_INT (rv (), v, 0, machineMode (LongDouble));
   return *this;
 }
 
@@ -269,7 +266,7 @@ real_t::operator% (const real_t & r)
   if (r.rv().cl == rvc_zero || REAL_VALUE_ISINF (rv ()))
     {
       REAL_VALUE_TYPE rvt;
-      real_nan (& rvt, "", 1, max_float_mode ());
+      real_nan (& rvt, "", 1, machineMode (LongDouble));
       return real_t (rvt);
     }
 
@@ -383,12 +380,15 @@ real_t::convert (Type * to_type) const
   switch (tb->ty)
     {
     case Tfloat32:
+    case Timaginary32:
       return convert (real_t::Float);
 
     case Tfloat64:
+    case Timaginary64:
       return convert (real_t::Double);
 
     case Tfloat80:
+    case Timaginary80:
       return convert (real_t::LongDouble);
 #if V2
     case Tvector:

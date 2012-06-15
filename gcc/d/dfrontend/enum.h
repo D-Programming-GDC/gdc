@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, December 2006
-*/
-
 #ifndef DMD_ENUM_H
 #define DMD_ENUM_H
 
@@ -45,12 +39,12 @@ struct EnumDeclaration : ScopeDsymbol
     Expression *minval;
     Expression *defaultval;     // default initializer
 #endif
-#if IN_GCC
-    Expressions * attributes;   // GCC decl/type attributes
-#endif
     int isdeprecated;
     int isdone;                 // 0: not done
                                 // 1: semantic() successfully completed
+#if IN_GCC
+    Expressions *attributes;    // GCC decl/type attributes
+#endif
 
     EnumDeclaration(Loc loc, Identifier *id, Type *memtype);
     Dsymbol *syntaxCopy(Dsymbol *s);

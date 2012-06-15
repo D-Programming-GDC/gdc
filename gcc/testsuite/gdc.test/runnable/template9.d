@@ -1,5 +1,7 @@
 // PERMUTE_ARGS:
 
+// Note: compiling this overflows the stack if dmd is build with DEBUG
+
 module breaker;
 
 import std.c.stdio;
@@ -305,7 +307,7 @@ void foo2579(T)(T delegate(in Object) dlg)
 
 void test2579()
 {
-    foo2579( (in Object) { return 15; } );
+    foo2579( (in Object o) { return 15; } );
 }
 
 /**********************************/
@@ -454,6 +456,121 @@ void test2778get()
 }
 
 /**********************************/
+// 6208
+
+int getRefNonref(T)(ref T s){ return 1; }
+int getRefNonref(T)(    T s){ return 2; }
+
+int getAutoRef(T)(auto ref T s){ return __traits(isRef, s) ? 1 : 2; }
+
+void getOut(T)(out T s){ ; }
+
+void getLazy1(T=int)(lazy void s){ s(), s(); }
+void getLazy2(T)(lazy T s){  s(), s(); }
+
+void test6208a()
+{
+    int lvalue;
+    int rvalue(){ int t; return t; }
+
+    assert(getRefNonref(lvalue  ) == 1);
+    assert(getRefNonref(rvalue()) == 2);
+
+    assert(getAutoRef(lvalue  ) == 1);
+    assert(getAutoRef(rvalue()) == 2);
+
+    static assert( __traits(compiles, getOut(lvalue  )));
+    static assert(!__traits(compiles, getOut(rvalue())));
+
+    int n1; getLazy1(++n1); assert(n1 == 2);
+    int n2; getLazy2(++n2); assert(n2 == 2);
+
+    struct X
+    {
+        int f(T)(auto ref T t){ return 1; }
+        int f(T)(auto ref T t, ...){ return -1; }
+    }
+    auto xm =       X ();
+    auto xc = const(X)();
+    int n;
+    assert(xm.f!int(n) == 1);   // resolved 'auto ref'
+    assert(xm.f!int(0) == 1);   // ditto
+}
+
+void test6208b()
+{
+    void foo(T)(const T value) if (!is(T == int)) {}
+
+    int mn;
+    const int cn;
+    static assert(!__traits(compiles, foo(mn)));    // OK -> OK
+    static assert(!__traits(compiles, foo(cn)));    // NG -> OK
+}
+
+void test6208c()
+{
+    struct S
+    {
+        // Original test case.
+        int foo(V)(in V v)                         { return 1; }
+        int foo(Args...)(auto ref const Args args) { return 2; }
+
+        // Reduced test cases
+
+        int hoo(V)(const V v)             { return 1; }  // typeof(10) : const V       -> MATCHconst
+        int hoo(Args...)(const Args args) { return 2; }  // typeof(10) : const Args[0] -> MATCHconst
+        // If deduction matching level is same, tuple parameter is less specialized than others.
+
+        int bar(V)(V v)                   { return 1; }  // typeof(10) : V             -> MATCHexact
+        int bar(Args...)(const Args args) { return 2; }  // typeof(10) : const Args[0] -> MATCHconst
+
+        int baz(V)(const V v)             { return 1; }  // typeof(10) : const V -> MATCHconst
+        int baz(Args...)(Args args)       { return 2; }  // typeof(10) : Args[0] -> MATCHexact
+
+        inout(int) war(V)(inout V v)            { return 1; }
+        inout(int) war(Args...)(inout Args args){ return 2; }
+
+        inout(int) waz(Args...)(inout Args args){ return 0; }   // wild deduction test
+    }
+
+    S s;
+
+    int nm = 10;
+    assert(s.foo(nm) == 1);
+    assert(s.hoo(nm) == 1);
+    assert(s.bar(nm) == 1);
+    assert(s.baz(nm) == 2);
+    assert(s.war(nm) == 1);
+    static assert(is(typeof(s.waz(nm)) == int));
+
+    const int nc = 10;
+    assert(s.foo(nc) == 1);
+    assert(s.hoo(nc) == 1);
+    assert(s.bar(nc) == 1);
+    assert(s.baz(nc) == 1);
+    assert(s.war(nc) == 1);
+    static assert(is(typeof(s.waz(nc)) == const(int)));
+
+    immutable int ni = 10;
+    assert(s.foo(ni) == 1);
+    assert(s.hoo(ni) == 1);
+    assert(s.bar(ni) == 1);
+    assert(s.baz(ni) == 2);
+    assert(s.war(ni) == 1);
+    static assert(is(typeof(s.waz(ni)) == immutable(int)));
+
+    static assert(is(typeof(s.waz(nm, nm)) == int));
+    static assert(is(typeof(s.waz(nm, nc)) == const(int)));
+    static assert(is(typeof(s.waz(nm, ni)) == const(int)));
+    static assert(is(typeof(s.waz(nc, nm)) == const(int)));
+    static assert(is(typeof(s.waz(nc, nc)) == const(int)));
+    static assert(is(typeof(s.waz(nc, ni)) == const(int)));
+    static assert(is(typeof(s.waz(ni, nm)) == const(int)));
+    static assert(is(typeof(s.waz(ni, nc)) == const(int)));
+    static assert(is(typeof(s.waz(ni, ni)) == immutable(int)));
+}
+
+/**********************************/
 // 6805
 
 struct T6805
@@ -464,6 +581,58 @@ struct T6805
     }
 }
 static assert(is(T6805.xxx.Type == int));
+
+/**********************************/
+// 6738
+
+struct Foo6738
+{
+    int _val = 10;
+
+    @property int val()() { return _val; }
+    int get() { return val; }  // fail
+}
+
+void test6738()
+{
+    Foo6738 foo;
+    auto x = foo.val;  // ok
+    assert(x == 10);
+    assert(foo.get() == 10);
+}
+
+/**********************************/
+// 7498
+
+template IndexMixin(){
+    void insert(T)(T value){  }
+}
+
+class MultiIndexContainer{
+    mixin IndexMixin!() index0;
+    class Index0{
+        void baburk(){
+            this.outer.index0.insert(1);
+        }
+    }
+}
+
+/**********************************/
+// 6780
+
+@property int foo6780()(){ return 10; }
+
+int g6780;
+@property void bar6780()(int n){ g6780 = n; }
+
+void test6780()
+{
+    auto n = foo6780;
+    assert(n == 10);
+
+    bar6780 = 10;
+    assert(g6780 == 10);
+}
 
 /**********************************/
 // 6994
@@ -516,6 +685,73 @@ struct TS6806(size_t n) { pragma(msg, typeof(n)); }
 static assert(is(TS6806!(1u) == TS6806!(1)));
 
 /**********************************/
+// 4413
+
+struct Foo4413
+{
+    alias typeof(this) typeof_this;
+    void bar1(typeof_this other) {}
+    void bar2()(typeof_this other) {}
+    void bar3(typeof(this) other) {}
+    void bar4()(typeof(this) other) {}
+}
+
+void test4413()
+{
+    Foo4413 f;
+    f.bar1(f); // OK
+    f.bar2(f); // OK
+    f.bar3(f); // OK
+    f.bar4(f); // ERR
+}
+
+/**********************************/
+// 4675
+
+template isNumeric(T)
+{
+    enum bool test1 = is(T : long);     // should be hidden
+    enum bool test2 = is(T : real);     // should be hidden
+    enum bool isNumeric = test1 || test2;
+}
+void test4675()
+{
+    static assert( isNumeric!int);
+    static assert(!isNumeric!string);
+    static assert(!__traits(compiles, isNumeric!int.test1));   // should be an error
+    static assert(!__traits(compiles, isNumeric!int.test2));   // should be an error
+    static assert(!__traits(compiles, isNumeric!int.isNumeric));
+}
+
+/**********************************/
+// 5525
+
+template foo5525(T)
+{
+    T foo5525(T t)      { return t; }
+    T foo5525(T t, T u) { return t + u; }
+}
+
+void test5525()
+{
+    alias foo5525!int f;
+    assert(f(1) == 1);
+    assert(f(1, 2) == 3);
+}
+
+/**********************************/
+// 5801
+
+int a5801;
+void bar5801(T = double)(typeof(a5801) i) {}
+void baz5801(T)(typeof(a5801) i, T t) {}
+void test5801()
+{
+    bar5801(2);  // Does not compile.
+    baz5801(3, "baz"); // Does not compile.
+}
+
+/**********************************/
 // 2550
 
 template pow10_2550(long n)
@@ -539,6 +775,21 @@ void foo10(T)(T prm)
     pragma(msg, T);
     static assert(is(T == const(int)[]));
 }
+void boo10(T)(ref T val)        // ref paramter doesn't remove top const
+{
+    pragma(msg, T);
+    static assert(is(T == const(int[])));
+}
+void goo10(T)(auto ref T val)   // auto ref with lvalue doesn't
+{
+    pragma(msg, T);
+    static assert(is(T == const(int[])));
+}
+void hoo10(T)(auto ref T val)   // auto ref with rvalue does
+{
+    pragma(msg, T);
+    static assert(is(T == const(int)[]));
+}
 void bar10(T)(T prm)
 {
     pragma(msg, T);
@@ -549,11 +800,382 @@ void test10()
     const a = [1,2,3];
     static assert(is(typeof(a) == const(int[])));
     foo10(a);
+    boo10(a);
+    goo10(a);
+    hoo10(cast(const(int[]))[1,2,3]);
 
     int n;
     const p = &n;
     static assert(is(typeof(p) == const(int*)));
     bar10(p);
+}
+
+/**********************************/
+// 3092
+
+template Foo3092(A...)
+{
+    alias A[0] Foo3092;
+}
+static assert(is(Foo3092!(int, "foo") == int));
+
+/**********************************/
+// 7037
+
+struct Foo7037 {}
+struct Bar7037 { Foo7037 f; alias f this; }
+void works7037( T )( T value ) if ( is( T : Foo7037 ) ) {}
+void doesnotwork7037( T : Foo7037 )( T value ) {}
+
+void test7037()
+{
+   Bar7037 b;
+   works7037( b );
+   doesnotwork7037( b );
+}
+
+/**********************************/
+// 7110
+
+struct S7110
+{
+    int opSlice(int, int) const { return 0; }
+    int opSlice()         const { return 0; }
+    int opIndex(int, int) const { return 0; }
+    int opIndex(int)      const { return 0; }
+}
+
+enum e7110 = S7110();
+
+template T7110(alias a) { } // or T7110(a...)
+
+alias T7110!( S7110 ) T71100; // passes
+alias T7110!((S7110)) T71101; // passes
+
+alias T7110!( S7110()[0..0]  )  A0; // passes
+alias T7110!(  (e7110[0..0]) )  A1; // passes
+alias T7110!(   e7110[0..0]  )  A2; // passes
+
+alias T7110!( S7110()[0, 0]  ) B0; // passes
+alias T7110!(  (e7110[0, 0]) ) B1; // passes
+alias T7110!(   e7110[0, 0]  ) B2; // passes
+
+alias T7110!( S7110()[]  ) C0; // passes
+alias T7110!(  (e7110[]) ) C1; // passes
+alias T7110!(   e7110[]  ) C2; // fails: e7110 is used as a type
+
+alias T7110!( S7110()[0]  ) D0; // passes
+alias T7110!(  (e7110[0]) ) D1; // passes
+alias T7110!(   e7110[0]  ) D2; // fails: e7110 must be an array or pointer type, not S7110
+
+/**********************************/
+// 7124
+
+template StaticArrayOf(T : E[dim], E, size_t dim)
+{
+    pragma(msg, "T = ", T, ", E = ", E, ", dim = ", dim);
+    alias E[dim] StaticArrayOf;
+}
+
+template DynamicArrayOf(T : E[], E)
+{
+    pragma(msg, "T = ", T, ", E = ", E);
+    alias E[] DynamicArrayOf;
+}
+
+template AssocArrayOf(T : V[K], K, V)
+{
+    pragma(msg, "T = ", T, ", K = ", K, ", V = ", V);
+    alias V[K] AssocArrayOf;
+}
+void test7124()
+{
+    struct SA { int[5] sa; alias sa this; }
+    static assert(is(StaticArrayOf!SA == int[5]));
+
+    struct DA { int[] da; alias da this; }
+    static assert(is(DynamicArrayOf!DA == int[]));
+
+    struct AA { int[string] aa; alias aa this; }
+    static assert(is(AssocArrayOf!AA == int[string]));
+}
+
+/**********************************/
+// 7359
+
+bool foo7359(T)(T[] a ...)
+{
+    return true;
+}
+
+void test7359()
+{
+    assert(foo7359(1,1,1,1,1,1));               // OK
+    assert(foo7359("abc","abc","abc","abc"));   // NG
+}
+
+/**********************************/
+// 7363
+
+template t7363()
+{
+   enum e = 0;
+   static if (true)
+       enum t7363 = 0;
+}
+static assert(!__traits(compiles, t7363!().t7363 == 0)); // Assertion fails
+static assert(t7363!() == 0); // Error: void has no value
+
+template u7363()
+{
+   static if (true)
+   {
+       enum e = 0;
+       enum u73631 = 0;
+   }
+   alias u73631 u7363;
+}
+static assert(!__traits(compiles, u7363!().u7363 == 0)); // Assertion fails
+static assert(u7363!() == 0); // Error: void has no value
+
+/**********************************/
+
+struct S4371(T ...) { }
+
+alias S4371!("hi!") t;
+
+static if (is(t U == S4371!(U))) { }
+
+/**********************************/
+// 7416
+
+void t7416(alias a)() if(is(typeof(a())))
+{}
+
+void test7416() {
+    void f() {}
+    alias t7416!f x;
+}
+
+/**********************************/
+// 7563
+
+class Test7563
+{
+    void test(T, bool a = true)(T t)
+    {
+
+    }
+}
+
+void test7563()
+{
+    auto test = new Test7563;
+    pragma(msg, typeof(test.test!(int, true)).stringof);
+    pragma(msg, typeof(test.test!(int)).stringof); // Error: expression (test.test!(int)) has no type
+}
+
+/**********************************/
+// 7580
+
+struct S7580(T)
+{
+    void opAssign()(T value) {}
+}
+struct X7580(T)
+{
+    private T val;
+    @property ref inout(T) get()() inout { return val; }    // template
+    alias get this;
+}
+struct Y7580(T)
+{
+    private T val;
+    @property ref auto get()() inout { return val; }        // template + auto return
+    alias get this;
+}
+
+void test7580()
+{
+    S7580!(int) s;
+    X7580!int x;
+    Y7580!int y;
+    s = x;
+    s = y;
+
+    shared(X7580!int) sx;
+    static assert(!__traits(compiles, s = sx));
+}
+
+/**********************************/
+// 7643
+
+template T7643(A...){ alias A T7643; }
+
+alias T7643!(long, "x", string, "y") Specs7643;
+
+alias T7643!( Specs7643[] ) U7643;	// Error: tuple A is used as a type
+
+/**********************************/
+// 7671
+
+       inout(int)[3]  id7671n1             ( inout(int)[3] );
+       inout( U )[n]  id7671x1(U, size_t n)( inout( U )[n] );
+
+shared(inout int)[3]  id7671n2             ( shared(inout int)[3] );
+shared(inout  U )[n]  id7671x2(U, size_t n)( shared(inout  U )[n] );
+
+void test7671()
+{
+    static assert(is( typeof( id7671n1( (immutable(int)[3]).init ) ) == immutable(int[3]) ));
+    static assert(is( typeof( id7671x1( (immutable(int)[3]).init ) ) == immutable(int[3]) ));
+
+    static assert(is( typeof( id7671n2( (immutable(int)[3]).init ) ) == immutable(int[3]) ));
+    static assert(is( typeof( id7671x2( (immutable(int)[3]).init ) ) == immutable(int[3]) ));
+}
+
+/************************************/
+// 7672
+
+T foo7672(T)(T a){ return a; }
+
+void test7672(inout(int[]) a = null, inout(int*) p = null)
+{
+    static assert(is( typeof(        a ) == inout(int[]) ));
+    static assert(is( typeof(foo7672(a)) == inout(int)[] ));
+
+    static assert(is( typeof(        p ) == inout(int*) ));
+    static assert(is( typeof(foo7672(p)) == inout(int)* ));
+}
+
+/**********************************/
+// 7684
+
+       U[]  id7684(U)(        U[]  );
+shared(U[]) id7684(U)( shared(U[]) );
+
+void test7684()
+{
+    shared(int)[] x;
+    static assert(is( typeof(id7684(x)) == shared(int)[] ));
+}
+
+/**********************************/
+// 7694
+
+void match7694(alias m)()
+{
+    m.foo();    //removing this line supresses ice in both cases
+}
+
+struct T7694
+{
+    void foo(){}
+    void bootstrap()
+    {
+    //next line causes ice
+        match7694!(this)();
+    //while this works:
+        alias this p;
+        match7694!(p)();
+    }
+}
+
+/**********************************/
+// 7755
+
+template to7755(T)
+{
+    T to7755(A...)(A args)
+    {
+        return toImpl7755!T(args);
+    }
+}
+
+T toImpl7755(T, S)(S value)
+{
+    return T.init;
+}
+
+template Foo7755(T){}
+
+struct Bar7755
+{
+    void qux()
+    {
+        if (is(typeof(to7755!string(Foo7755!int)))){};
+    }
+}
+
+/**********************************/
+
+       inout(U)[]  id11a(U)(        inout(U)[]  );
+       inout(U[])  id11a(U)(        inout(U[])  );
+inout(shared(U[])) id11a(U)( inout(shared(U[])) );
+
+void test11a(inout int _ = 0)
+{
+    shared(const(int))[] x;
+    static assert(is( typeof(id11a(x)) == shared(const(int))[] ));
+
+    shared(int)[] y;
+    static assert(is( typeof(id11a(y)) == shared(int)[] ));
+
+    inout(U)[n] idz(U, size_t n)( inout(U)[n] );
+
+    inout(shared(bool[1])) z;
+    static assert(is( typeof(idz(z)) == inout(shared(bool[1])) ));
+}
+
+inout(U[]) id11b(U)( inout(U[]) );
+
+void test11b()
+{
+    alias const(shared(int)[]) T;
+    static assert(is(typeof(id11b(T.init)) == const(shared(int)[])));
+}
+
+/**********************************/
+// 7769
+
+void f7769(K)(inout(K) value){}
+void test7769()
+{
+    f7769("abc");
+}
+
+/**********************************/
+// 7812
+
+template A7812(T...) {}
+
+template B7812(alias C) if (C) {}
+
+template D7812()
+{
+    alias B7812!(A7812!(NonExistent!())) D7812;
+}
+
+static assert(!__traits(compiles, D7812!()));
+
+/**********************************/
+// 7873
+
+inout(T)* foo(T)(inout(T)* t)
+{
+    static assert(is(T == int*));
+    return t;
+}
+
+inout(T)* bar(T)(inout(T)* t)
+{
+    return foo(t);
+}
+
+void test7873()
+{
+    int *i;
+    bar(&i);
 }
 
 /**********************************/
@@ -580,9 +1202,30 @@ int main()
     test2778();
     test2778aa();
     test2778get();
+    test6208a();
+    test6208b();
+    test6208c();
+    test6738();
+    test6780();
     test6994();
     test3467();
+    test4413();
+    test5525();
+    test5801();
     test10();
+    test7037();
+    test7124();
+    test7359();
+    test7416();
+    test7563();
+    test7580();
+    test7671();
+    test7672();
+    test7684();
+    test11a();
+    test11b();
+    test7769();
+    test7873();
 
     printf("Success\n");
     return 0;

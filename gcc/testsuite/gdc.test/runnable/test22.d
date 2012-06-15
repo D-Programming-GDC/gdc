@@ -1185,10 +1185,7 @@ int main()
     test9();
     test10();
     test11();
-  version(GNU)
-  {
-  }
-  else
+  version (GNU) {} else
   {
     test12();
     test13();

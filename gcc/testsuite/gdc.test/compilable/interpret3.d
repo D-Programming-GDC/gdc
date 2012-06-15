@@ -181,6 +181,42 @@ static assert(retRefTest3()==26);
 static assert(retRefTest4()==218);
 
 /**************************************************
+    Bug 7473 struct non-ref
+**************************************************/
+
+struct S7473{
+    int i;
+}
+
+static assert({
+    S7473 s = S7473(1);
+    assert(s.i == 1);
+    bug7473(s);
+    assert(s.i == 1);
+    return true;
+}());
+
+void bug7473(S7473 s){
+    s.i = 2;
+}
+
+struct S7473b{
+    S7473 m;
+}
+
+static assert({
+    S7473b s = S7473b(S7473(7));
+    assert(s.m.i == 7);
+    bug7473b(s);
+    assert(s.m.i == 7);
+    return true;
+}());
+
+void bug7473b(S7473b s){
+    s.m.i = 2;
+}
+
+/**************************************************
     Bug 4389
 **************************************************/
 
@@ -338,7 +374,7 @@ int cov2()
     SWITCHLABEL:
                 i = 27;
                 goto case 3;
-	     default: assert(0);
+             default: assert(0);
             }
             return i;
         }
@@ -739,6 +775,18 @@ auto bug5852(const(string) s) {
 
 static assert(bug5852("abc")==3);
 
+// 7217
+
+struct S7217 { int[] arr; }
+
+bool f7217() {
+    auto s = S7217();
+    auto t = s.arr;
+    return true;
+}
+
+static assert(f7217());
+
 /*******************************************
     Set array length
 *******************************************/
@@ -753,6 +801,48 @@ static assert(
     assert(w.z.length == 6);
     return true;
 }());
+
+// 7185 char[].length = n
+
+bool bug7185() {
+    auto arr = new char[2];
+    auto arr2 = new char[2];
+    arr2[] = "ab";
+    arr.length = 1;
+    arr2.length = 7;
+    assert(arr.length == 1);
+    assert(arr2.length == 7);
+    assert(arr2[0..2] == "ab");
+    return true;
+}
+
+static assert(bug7185());
+
+/*******************************************
+    6934
+*******************************************/
+
+struct Struct6934 {
+    int[] x = [1,2];
+}
+
+void bar6934(ref int[] p) {
+    p[0] = 12;
+    assert(p[0] == 12);
+    p[0..1] = 17;
+    assert(p[0] == 17);
+    p = p[1..$];
+}
+
+int bug6934() {
+    Struct6934 q;
+    bar6934(q.x);
+    int[][] y = [[2,5], [3,6, 8]];
+    bar6934(y[0]);
+    return 1;
+}
+
+static assert(bug6934());
 
 /*******************************************
              Bug 5671
@@ -1021,15 +1111,34 @@ struct Xarg
 {
    char [] s;
 }
-int zfs()
+
+int zfs(int n)
 {
+    char [] m = "exy".dup;
+    if (n == 1)
+    {   // it's OK to cast to const, then cast back
+        string ss = cast(string)m;
+        m = cast(char[])ss;
+        m[2]='q';
+        return 56;
+    }
     auto q = Xarg(cast(char[])"abc");
     assert(q.s[1]=='b');
-    q.s[1] = 'p';
+    if (n==2)
+        q.s[1] = 'p';
+    else if (n==3)
+        q.s[0..$] = 'p';
+    char * w = &q.s[2];
+    if (n==4)
+        *w = 'z';
     return 76;
 }
 
-static assert(!is(typeof(compiles!(zfs()))));
+static assert(!is(typeof(compiles!(zfs(2)))));
+static assert(!is(typeof(compiles!(zfs(3)))));
+static assert(!is(typeof(compiles!(zfs(4)))));
+static assert(is(typeof(compiles!(zfs(1)))));
+static assert(!is(typeof(compiles!(zfs(5)))));
 
 /**************************************************
    .dup must protect string literals
@@ -1214,7 +1323,8 @@ void bar5258(int n, ref Foo5258 fong) {
         fong.x++;
 }
 int bug5258() {
-    bar5258(1, Foo5258());
+    Foo5258 foo5258 = Foo5258();
+    bar5258(1, foo5258);
     return 45;
 }
 static assert(bug5258()==45);
@@ -1553,7 +1663,7 @@ struct Bug6123(T) {
     // can also trigger if the struct is normal but f is template
 }
 static assert({
-    auto piece = Bug6123!int(); 
+    auto piece = Bug6123!int();
     piece.f();
     return true;
 }());
@@ -1769,12 +1879,12 @@ static assert({
     q = p;
     assert(p == q);
     q = &x[4];
-    assert(p != q);    
+    assert(p != q);
     q += 4;
     assert(q == &x[8]);
     q = q - 2;
-    q = q + 4;    
-    assert(q is p);    
+    q = q + 4;
+    assert(q is p);
     return 6;
 }() == 6);
 
@@ -1900,6 +2010,74 @@ struct AList
 static assert(AList.checkList()==2);
 
 /**************************************************
+    7194 pointers as struct members
+**************************************************/
+
+struct S7194 { int* p, p2; }
+
+int f7194() {
+    assert(S7194().p == null);
+    assert(!S7194().p);
+    assert(S7194().p == S7194().p2);
+    S7194 s = S7194();
+    assert(!s.p);
+    assert(s.p == null);
+    assert(s.p == s.p2);
+    int x;
+    s.p = &x;
+    s.p2 = s.p;
+    assert(s.p == &x);
+    return 0;
+}
+
+int g7194() {
+    auto s = S7194();
+    assert(s.p);  // should fail
+    return 0;
+}
+
+static assert(f7194() == 0);
+static assert(!is(typeof(compiles!( g7194() ))));
+
+/**************************************************
+    7248 recursive struct pointers in array
+**************************************************/
+struct S7248 { S7248* ptr; }
+
+bool bug7248() {
+    S7248[2] sarr;
+    sarr[0].ptr = &sarr[1];
+    sarr[0].ptr = null;
+    S7248* t = sarr[0].ptr;
+    return true;
+}
+static assert(bug7248());
+
+
+/**************************************************
+    7216 calling a struct pointer member
+**************************************************/
+struct S7216 {
+    S7216* p;
+    int t;
+
+    void f() { }
+    void g() { ++t; }
+}
+
+bool bug7216() {
+    S7216 s0, s1;
+    s1.t = 6;
+    s0.p = &s1;
+    s0.p.f();
+    s0.p.g();
+    assert(s1.t == 7);
+    return true;
+}
+
+static assert(bug7216());
+
+/**************************************************
     4065 [CTFE] AA "in" operator doesn't work
 **************************************************/
 
@@ -2007,6 +2185,26 @@ int bug4448b()
 }
 
 static assert(bug4448b()==3);
+
+/**************************************************
+    6985 - non-constant case
+**************************************************/
+
+int bug6985(int z)
+{
+    int q = z *2 - 6;
+    switch(z)
+    {
+    case q:
+        q = 87;
+        break;
+    default:
+    }
+    return q;
+}
+
+static assert(bug6985(6) == 87);
+
 
 /**************************************************
     6281 - [CTFE] A null pointer '!is null' returns 'true'
@@ -2377,6 +2575,23 @@ static assert({
 }() == 4);
 
 /**************************************************
+    7789 (*p).length++ where *p is null
+**************************************************/
+
+struct S7789
+{
+    size_t foo()
+    {
+        _ary.length += 1;
+        return _ary.length;
+    }
+
+    int[] _ary;
+}
+
+static assert(S7789().foo());
+
+/**************************************************
     6418 member named 'length'
 **************************************************/
 
@@ -2414,10 +2629,10 @@ bool test3512()
     assert(q == 6);
     foreach (int i, wchar c; s) {
         assert(i >= 0 && i < s.length);
-	}   // _aApplycw2
+        }   // _aApplycw2
     foreach (int i, dchar c; s) {
         assert(i >= 0 && i < s.length);
-	} // _aApplycd2
+        } // _aApplycd2
 
     wstring w = "xüm";
     foreach (char c; w) {++q; } // _aApplywc1
@@ -2426,10 +2641,10 @@ bool test3512()
     assert(q == 13);
     foreach (int i, char c; w) {
         assert(i >= 0 && i < w.length);
-	} // _aApplywc2
+        } // _aApplywc2
     foreach (int i, dchar c; w) {
         assert(i >= 0 && i < w.length);
-	} // _aApplywd2
+        } // _aApplywd2
 
     dstring d = "yäq";
     q = 0;
@@ -2935,6 +3150,28 @@ struct S6816 {
 enum s6816 = S6816().foo();
 
 /**************************************************
+    7277 ICE
+**************************************************/
+
+struct Foo7277
+{
+    int a;
+    int func()
+    {
+        int b;
+        void nested()
+        {
+            b = 7;
+            a = 10;
+        }
+        nested();
+        return a+b;
+    }
+}
+
+static assert(Foo7277().func() == 17);
+
+/**************************************************
     classes and interfaces
 **************************************************/
 
@@ -2991,6 +3228,7 @@ auto classtest1(int n)
     if (n==7)
     {   // bad cast -- should fail
         Unrelated u = cast(Unrelated)d;
+        assert(u is null);
     }
     SomeClass e = cast(SomeClass)d;
     d.q = 35;
@@ -3014,8 +3252,8 @@ auto classtest1(int n)
     return 6;
 }
 static assert(classtest1(1));
-static assert(is(typeof(compiles!(classtest1(2)))));
-static assert(!is(typeof(compiles!(classtest1(7)))));
+static assert(classtest1(2));
+static assert(classtest1(7)); // bug 7154
 
 // can't return classes literals outside CTFE
 SomeClass classtest2(int n)
@@ -3099,10 +3337,10 @@ int test75()
 {   int x = 0;
     try
     {
-	A75.raise("a");
+        A75.raise("a");
     } catch (Exception e)
     {
-	x = 1;
+        x = 1;
     }
     assert(x == 1);
     return 1;
@@ -3115,30 +3353,30 @@ static assert(test75());
 
 int test4_test54()
 {
-	int status=0;
+        int status=0;
 
-	try
-	{
-		try
-		{
-			status++;
-			assert(status==1);
-			throw new Exception("first");
-		}
-		finally
-		{
-			status++;
-			assert(status==2);
-			status++;
-			throw new Exception("second");
-		}
-	}
-	catch(Exception e)
-	{
+        try
+        {
+                try
+                {
+                        status++;
+                        assert(status==1);
+                        throw new Exception("first");
+                }
+                finally
+                {
+                        status++;
+                        assert(status==2);
+                        status++;
+                        throw new Exception("second");
+                }
+        }
+        catch(Exception e)
+        {
         assert(e.msg == "first");
         assert(e.next.msg == "second");
-	}
-	return true;
+        }
+        return true;
 }
 
 static assert(test4_test54());
@@ -3147,34 +3385,34 @@ void foo55()
 {
     try
     {
-	Exception x = new Exception("second");
-	throw x;
+        Exception x = new Exception("second");
+        throw x;
     }
     catch (Exception e)
     {
-	assert(e.msg == "second");
+        assert(e.msg == "second");
     }
 }
 
 int test4_test55()
 {
-	int status=0;
-	try{
-		try{
-			status++;
-			assert(status==1);
-			Exception x = new Exception("first");
-			throw x;
-		}finally{
-			status++;
-			assert(status==2);
-			status++;
-			foo55();
-		}
-	}catch(Exception e){
-		assert(e.msg == "first");
-		assert(status==3);
-	}
+        int status=0;
+        try{
+                try{
+                        status++;
+                        assert(status==1);
+                        Exception x = new Exception("first");
+                        throw x;
+                }finally{
+                        status++;
+                        assert(status==2);
+                        status++;
+                        foo55();
+                }
+        }catch(Exception e){
+                assert(e.msg == "first");
+                assert(status==3);
+        }
     return 1;
 }
 
@@ -3425,7 +3663,7 @@ class Foo32
 {
    struct Bar
    {
-	int x;
+        int x;
    }
 }
 
@@ -3505,7 +3743,7 @@ static assert({
 }());
 
 /**************************************************
-    6522 opAssign + foreach
+    6522 opAssign + foreach ref
 **************************************************/
 
 struct Foo6522 {
@@ -3523,6 +3761,30 @@ bool foo6522() {
 }
 
 static assert(foo6522());
+
+/**************************************************
+    7245 pointers + foreach ref
+**************************************************/
+
+int bug7245(int testnum) {
+    int[3] arr;
+    arr[0] = 4;
+    arr[1] = 6;
+    arr[2] = 8;
+    int* ptr;
+
+    foreach(i, ref p; arr) {
+        if(i == 1)
+            ptr = &p;
+        if (testnum == 1)
+            p = 5;
+    }
+
+    return *ptr;
+}
+
+static assert(bug7245(0)==6);
+static assert(bug7245(1)==5);
 
 /**************************************************
     6919
@@ -3552,3 +3814,513 @@ void test6919b()
     assert(val == "1");
 }
 static assert({ test6919b(); return true; }());
+
+/**************************************************
+    6995
+**************************************************/
+
+struct Foo6995
+{
+    static size_t index(size_t v)()
+    {
+        return v;
+    }
+}
+
+static assert(Foo6995.index!(27)() == 27);
+
+/**************************************************
+    7043 ref with -inline
+**************************************************/
+
+int bug7043(S)(ref int x) {
+    return x;
+}
+
+static assert( {
+    int i = 416;
+    return bug7043!(char)(i);
+}() == 416 );
+
+/**************************************************
+    6037 recursive ref
+**************************************************/
+
+void bug6037(ref int x, bool b){
+    int w = 3;
+    if (b) {
+        bug6037(w, false);
+        assert(w==6);
+    } else {
+        x = 6;
+        assert(w==3); // fails
+    }
+}
+
+int bug6037outer(){
+    int q;
+    bug6037(q, true);
+    return 401;
+}
+static assert(bug6037outer() == 401);
+
+/**************************************************
+    7266 dotvar ref parameters
+**************************************************/
+
+struct S7266 { int a; }
+
+bool bug7266()
+{
+    S7266 s;
+    s.a = 4;
+    bar7266(s.a);
+    assert(s.a == 5);
+    out7266(s.a);
+    assert(s.a == 7);
+    return true;
+}
+
+void bar7266(ref int b)
+{
+    b = 5;
+    assert(b == 5);
+}
+
+void out7266(out int b)
+{
+    b = 7;
+    assert(b == 7);
+}
+
+static assert( bug7266());
+
+/**************************************************
+    7143 'is' for classes
+**************************************************/
+
+class C7143
+{
+    int x;
+}
+
+int bug7143(int test)
+{
+    C7143 c = new C7143;
+    C7143 d = new C7143;
+    if (test == 1)
+    {
+        if (c)
+            return c.x + 8;
+        return -1;
+    }
+    if (test == 2)
+    {
+        if(c is null)
+            return -1;
+        return c.x + 45;
+    }
+    if (test == 3)
+    {
+        if (c is c)
+            return 58;
+    }
+    if (test == 4)
+    {
+        if (c !is c)
+            return -1;
+        else
+            return 48;
+    }
+    if (test == 6)
+        d = c;
+    if (test == 5 || test == 6)
+    {
+        if (c is d)
+            return 188;
+        else
+            return 48;
+    }
+    return -1;
+}
+
+static assert(bug7143(1) == 8);
+static assert(bug7143(2) == 45);
+static assert(bug7143(3) == 58);
+static assert(bug7143(4) == 48);
+static assert(bug7143(5) == 48);
+static assert(bug7143(6) == 188);
+
+/**************************************************
+    7147 virtual function calls from base class
+**************************************************/
+
+class A7147
+{
+    int foo() { return 0; }
+
+    int callfoo()
+    {
+        return foo();
+    }
+}
+
+class B7147 : A7147
+{
+    override int foo() { return 1; }
+}
+
+int test7147()
+{
+    A7147 a = new B7147;
+    return a.callfoo();
+}
+
+static assert(test7147() == 1);
+
+/**************************************************
+    7158
+**************************************************/
+
+class C7158 {
+    bool b() {return true;}
+}
+struct S7158 {
+    C7158 c;
+}
+
+bool test7158() {
+    S7158 s = S7158(new C7158);
+    return s.c.b;
+}
+static assert(test7158());
+
+/**************************************************
+    7419
+**************************************************/
+
+struct X7419 {
+    double x;
+    this(double x) {
+        this.x = x;
+    }
+}
+
+void bug7419() {
+    enum x = {
+        auto p = X7419(3);
+        return p.x;
+    }();
+    static assert(x == 3);
+}
+
+/**************************************************
+    7162 and 4711
+**************************************************/
+
+void f7162() { }
+
+bool ice7162()
+{
+    false && f7162();
+    false || f7162();
+    false && f7162();  // bug 4711
+    true && f7162();
+    return true;
+}
+
+static assert(ice7162());
+
+/**************************************************
+    7527
+**************************************************/
+
+struct Bug7527
+{
+    char[] data;
+}
+
+int bug7527()
+{
+    auto app = Bug7527();
+
+    app.data.ptr[0..1] = "x";
+    return 1;
+}
+
+static assert(!is(typeof(compiles!(bug7527()))));
+
+/**************************************************
+    7527
+**************************************************/
+
+int bug7380;
+
+static assert(!is(typeof( compiles!(
+    (){
+        return &bug7380;
+    }()
+))));
+
+/**************************************************
+    7165
+**************************************************/
+
+struct S7165 {
+    int* ptr;
+    bool f() const { return !!ptr; }
+}
+
+static assert(!S7165().f());
+
+/**************************************************
+    7187
+**************************************************/
+
+int[] f7187() { return [0]; }
+int[] f7187b(int n) { return [0]; }
+
+int g7187(int[] r)
+{
+    auto t = r[0..0];
+    return 1;
+}
+
+static assert(g7187(f7187()));
+static assert(g7187(f7187b(7)));
+
+struct S7187 { const(int)[] field; }
+
+const(int)[] f7187c() {
+    auto s = S7187([0]);
+    return s.field;
+}
+
+bool g7187c(const(int)[] r)
+{
+    auto t = r[0..0];
+    return true;
+}
+
+static assert(g7187c(f7187c()));
+
+
+/**************************************************
+    6933 struct destructors
+**************************************************/
+
+struct Bug6933 {
+    int x = 3;
+    ~this()     { }
+}
+
+int test6933() {
+    Bug6933 q;
+    assert(q.x == 3);
+    return 3;
+}
+
+static assert(test6933());
+
+/**************************************************
+    7197
+**************************************************/
+
+int foo7197(int[] x...) {
+    return 1;
+}
+template bar7197(y...) {
+    enum int bar7197 = foo7197(y);
+}
+enum int bug7197 = 7;
+static assert(bar7197!(bug7197));
+
+/**************************************************
+    7667
+**************************************************/
+
+bool baz7667(int[] vars...)
+{
+     return true;
+}
+
+struct S7667
+{
+    static void his(int n)
+    {
+        static assert(baz7667(2));
+    }
+}
+
+bool bug7667()
+{
+    S7667 unused;
+    unused.his(7);
+    return true;
+}
+enum e7667 = bug7667();
+
+/**************************************************
+    7536
+**************************************************/
+
+bool bug7536(string expr) {
+    return true;
+}
+
+void vop() {
+    const string x7536 = "x";
+    static assert(bug7536(x7536));
+}
+
+/**************************************************
+    6681 unions
+**************************************************/
+
+struct S6681
+{
+    this(int a, int b) { this.a = b; this.b = a; }
+    union {
+        ulong g;
+        struct {int a, b; };
+    }
+}
+
+static immutable S6681 s6681 = S6681(0, 1);
+
+bool bug6681(int test)
+{
+    S6681 x = S6681(0, 1);
+    x.g = 5;
+    auto u = &x.g;
+    auto v = &x.a;
+    long w = *u;
+    int  z;
+    assert(w == 5);
+    if (test == 4)
+        z = *v; // error
+    x.a = 2; // invalidate g, and hence u.
+    if (test == 1)
+        w = *u; // error
+    z = *v;
+    assert(z == 2);
+    x.g = 6;
+    w = *u;
+    assert( w == 6);
+    if (test == 3)
+        z = *v;
+    return true;
+}
+static assert(bug6681(2));
+static assert(!is(typeof(compiles!(bug6681(1)))));
+static assert(!is(typeof(compiles!(bug6681(3)))));
+static assert(!is(typeof(compiles!(bug6681(4)))));
+
+/**************************************************
+    6438 void
+**************************************************/
+
+struct S6438
+{
+    int a;
+    int b = void;
+}
+
+void fill6438(int[] arr, int testnum)
+{
+    if (testnum == 2)
+    {
+        auto u = arr[0];
+    }
+    foreach(ref x; arr)
+        x = 7;
+    auto r = arr[0];
+    S6438[2] s;
+    auto p = &s[0].b;
+    if (testnum == 3)
+    {
+        auto v = *p;
+    }
+}
+
+bool bug6438(int testnum)
+{
+    int[4] stackSpace = void;
+    fill6438(stackSpace[], testnum);
+    assert(stackSpace == [7,7,7,7]);
+    return true;
+}
+
+static assert( is(typeof(compiles!(bug6438(1)))));
+static assert(!is(typeof(compiles!(bug6438(2)))));
+static assert(!is(typeof(compiles!(bug6438(3)))));
+
+/**************************************************
+    7732
+**************************************************/
+
+struct AssociativeArray
+{
+    int *impl;
+    int f()
+    {
+        if (impl !is null)
+            auto x = *impl;
+        return 1;
+    }
+}
+
+int test7732()
+{
+    AssociativeArray aa;
+    return aa.f;
+}
+
+static assert( test7732() );
+
+/**************************************************
+    7781
+**************************************************/
+
+static assert( ({return;}(), true) );
+
+/**************************************************
+    7785
+**************************************************/
+
+bool bug7785(int n)
+{
+    int val = 7;
+    auto p = &val;
+    if (n==2) {
+        auto ary = p[0 .. 1];
+    }
+    auto x = p[0];
+    val = 6;
+    assert(x == 7);
+    if (n==3)
+        p[0..1] = 1;
+    return true;
+}
+
+static assert(bug7785(1));
+static assert(!is(typeof(compiles!(bug7785(2)))));
+static assert(!is(typeof(compiles!(bug7785(3)))));
+
+/******************************************************/
+
+struct B73 {}
+struct C73 { B73 b; }
+C73 func73() { C73 b = void; b.b = B73(); return b; }
+C73 test73 = func73();
+
+/******************************************************/
+
+struct S74 {
+    int n[1];
+    static S74 test(){ S74 ret = void; ret.n[0] = 0; return ret; }
+}
+
+enum Test74 = S74.test();
+
+

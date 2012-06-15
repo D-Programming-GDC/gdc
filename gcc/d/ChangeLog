@@ -1,3 +1,25 @@
+2012-16-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* dfrontend: Merged with DMD 2.059.
+	* d-builtins2.cc(gcc_type_to_d_type): Use new frontend value.
+	* d-codegen.cc(IRState::getLibCallDecl): Fix return type of _aaDelp.
+	(IRState::getVThis): Use frontend provided member to determine if
+	function has nested references.
+	* d-decl.cc(FuncDeclaration::toSymbol): Weakly pure functions don't
+	guarantee no vops.
+	* d-gcc-real.cc(max_float_mode): Remove.
+	(real_t::convert): Catch imaginary types in conversion.
+	* d-glue.cc(EqualExp::toElem): Use memcmp for struct comparisons.
+	(CatAssignExp::toElem): Rework order of logic to allow appending
+	delegates to an array.
+	(DelegateExp::toElem): Implement handling of lambda functions.
+	(FuncExp::toElem): Ditto.
+	(AssocArrayLiteralExp::toElem): Implement handling of AssociativeArray
+	types sent to backend.
+	* d-objfile.cc(lmtab): Remove.
+	(cvtLocToloc_t): Update implementation.
+	(outdata): Now assert that we don't receive error nodes.
+
 2012-06-05  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Make better use of 'pure' and

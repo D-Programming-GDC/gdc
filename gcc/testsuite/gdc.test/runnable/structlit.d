@@ -190,8 +190,9 @@ struct S10
 {
     int i;
     union
-    {	int x = 2;
-	int y;
+    {
+        int x = 2;
+        int y;
     }
     int j = 3;
     myint10 k = 4;
@@ -249,42 +250,97 @@ void test11()
 
 struct S12
 {
-        int[5] x;
-        int[5] y = 3;
+    int[5] x;
+    int[5] y = 3;
 }
 
 void test12()
 {
-        S12 s = S12();
-	foreach (v; s.x)
-	    assert(v == 0);
-	foreach (v; s.y)
-	    assert(v == 3);
+    S12 s = S12();
+    foreach (v; s.x)
+        assert(v == 0);
+    foreach (v; s.y)
+        assert(v == 3);
 }
 
 /********************************************/
 
 struct S13
 {
-        int[5] x;
-        int[5] y;
-	int[6][3] z;
+    int[5] x;
+    int[5] y;
+    int[6][3] z;
 }
 
 void test13()
 {
-        S13 s = S13(0,3,4);
-	foreach (v; s.x)
-	    assert(v == 0);
-	foreach (v; s.y)
-	    assert(v == 3);
-	for (int i = 0; i < 6; i++)
-	{
-	    for (int j = 0; j < 3; j++)
-	    {
-		assert(s.z[j][i] == 4);
-	    }
-	}
+    S13 s = S13(0,3,4);
+    foreach (v; s.x)
+        assert(v == 0);
+    foreach (v; s.y)
+        assert(v == 3);
+    for (int i = 0; i < 6; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            assert(s.z[j][i] == 4);
+        }
+    }
+}
+
+/********************************************/
+
+struct S14a { int n; }
+struct S14b { this(int n){} }
+
+void foo14(ref S14a s) {}
+void foo14(ref S14b s) {}
+void hoo14()(ref S14a s) {}
+void hoo14()(ref S14b s) {}
+void poo14(S)(ref S s) {}
+
+void bar14(S14a s) {}
+void bar14(S14b s) {}
+void var14()(S14a s) {}
+void var14()(S14b s) {}
+void war14(S)(S s) {}
+
+int baz14(    S14a s) { return 1; }
+int baz14(ref S14a s) { return 2; }
+int baz14(    S14b s) { return 1; }
+int baz14(ref S14b s) { return 2; }
+int vaz14()(    S14a s) { return 1; }
+int vaz14()(ref S14a s) { return 2; }
+int vaz14()(    S14b s) { return 1; }
+int vaz14()(ref S14b s) { return 2; }
+int waz14(S)(    S s) { return 1; }
+int waz14(S)(ref S s) { return 2; }
+
+void test14()
+{
+    // can bind rvalue-sl with ref
+    foo14(S14a(0));
+    foo14(S14b(0));
+    hoo14(S14a(0));
+    hoo14(S14b(0));
+    poo14(S14a(0));
+    poo14(S14b(0));
+
+    // still can bind rvalue-sl with non-ref
+    bar14(S14a(0));
+    bar14(S14b(0));
+    var14(S14a(0));
+    var14(S14b(0));
+    war14(S14a(0));
+    war14(S14b(0));
+
+    // preferred binding of rvalue-sl in overload resolution
+    assert(baz14(S14a(0)) == 1);
+    assert(baz14(S14b(0)) == 1);
+    assert(vaz14(S14a(0)) == 1);
+    assert(vaz14(S14b(0)) == 1);
+    assert(waz14(S14a(0)) == 1);
+    assert(waz14(S14b(0)) == 1);
 }
 
 /********************************************/
@@ -367,6 +423,63 @@ void test5885()
 }
 
 /********************************************/
+// 5889
+
+struct S5889a { int n; }
+struct S5889b { this(int n){} }
+
+bool isLvalue(S)(auto ref S s){ return __traits(isRef, s); }
+
+int foo(ref S5889a s) { return 1; }
+int foo(    S5889a s) { return 2; }
+int foo(ref S5889b s) { return 1; }
+int foo(    S5889b s) { return 2; }
+
+int goo(ref const(S5889a) s) { return 1; }
+int goo(    const(S5889a) s) { return 2; }
+int goo(ref const(S5889b) s) { return 1; }
+int goo(    const(S5889b) s) { return 2; }
+
+int too(S)(ref S s) { return 1; }
+int too(S)(    S s) { return 2; }
+
+S makeRvalue(S)(){ S s; return s; }
+
+void test5889()
+{
+    S5889a sa;
+    S5889b sb;
+
+    assert( isLvalue(sa));
+    assert( isLvalue(sb));
+    assert(!isLvalue(S5889a(0)));
+    assert(!isLvalue(S5889b(0)));
+    assert(!isLvalue(makeRvalue!S5889a()));
+    assert(!isLvalue(makeRvalue!S5889b()));
+
+    assert(foo(sa) == 1);
+    assert(foo(sb) == 1);
+    assert(foo(S5889a(0)) == 2);
+    assert(foo(S5889b(0)) == 2);
+    assert(foo(makeRvalue!S5889a()) == 2);
+    assert(foo(makeRvalue!S5889b()) == 2);
+
+    assert(goo(sa) == 1);
+    assert(goo(sb) == 1);
+    assert(goo(S5889a(0)) == 2);
+    assert(goo(S5889b(0)) == 2);
+    assert(goo(makeRvalue!S5889a()) == 2);
+    assert(goo(makeRvalue!S5889b()) == 2);
+
+    assert(too(sa) == 1);
+    assert(too(sb) == 1);
+    assert(too(S5889a(0)) == 2);
+    assert(too(S5889b(0)) == 2);
+    assert(too(makeRvalue!S5889a()) == 2);
+    assert(too(makeRvalue!S5889b()) == 2);
+}
+
+/********************************************/
 
 int main()
 {
@@ -383,8 +496,10 @@ int main()
     test11();
     test12();
     test13();
+    test14();
     test3198and1914();
     test5885();
+    test5889();
 
     printf("Success\n");
     return 0;

@@ -236,7 +236,7 @@ struct Type : Object
     virtual Type *syntaxCopy();
     int equals(Object *o);
     int dyncast() { return DYNCAST_TYPE; } // kludge for template.isType()
-    int covariant(Type *t);
+    int covariant(Type *t, StorageClass *pstc = NULL);
     char *toChars();
     static char needThisPrefix();
     static void init();
@@ -288,7 +288,7 @@ struct Type : Object
     Type *addSTC(StorageClass stc);
     Type *castMod(unsigned mod);
     Type *addMod(unsigned mod);
-    Type *addStorageClass(StorageClass stc);
+    virtual Type *addStorageClass(StorageClass stc);
     Type *pointerTo();
     Type *referenceTo();
     Type *arrayOf();
@@ -314,7 +314,8 @@ struct Type : Object
     Expression *noMember(Scope *sc, Expression *e, Identifier *ident);
     virtual unsigned memalign(unsigned salign);
     virtual Expression *defaultInit(Loc loc = 0);
-    virtual Expression *defaultInitLiteral(Loc loc = 0);
+    virtual Expression *defaultInitLiteral(Loc loc);
+    virtual Expression *voidInitLiteral(VarDeclaration *var);
     virtual int isZeroInit(Loc loc = 0);                // if initializer is 0
     virtual dt_t **toDt(dt_t **pdt);
     Identifier *getTypeInfoIdent(int internal);
@@ -324,7 +325,7 @@ struct Type : Object
     Expression *getTypeInfo(Scope *sc);
     virtual TypeInfoDeclaration *getTypeInfoDeclaration();
     virtual int builtinTypeInfo();
-    virtual Type *reliesOnTident();
+    virtual Type *reliesOnTident(TemplateParameters *tparams = NULL);
     virtual int hasWild();
     virtual Expression *toExpression();
     virtual int hasPointers();
@@ -367,7 +368,7 @@ struct TypeNext : Type
     TypeNext(TY ty, Type *next);
     void toDecoBuffer(OutBuffer *buf, int flag);
     void checkDeprecated(Loc loc, Scope *sc);
-    Type *reliesOnTident();
+    Type *reliesOnTident(TemplateParameters *tparams = NULL);
     int hasWild();
     Type *nextOf();
     Type *makeConst();
@@ -429,6 +430,7 @@ struct TypeVector : Type
     char *toChars();
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     void toDecoBuffer(OutBuffer *buf, int flag);
+    MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
 #if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
@@ -476,6 +478,7 @@ struct TypeSArray : TypeArray
     MATCH implicitConvTo(Type *to);
     Expression *defaultInit(Loc loc);
     Expression *defaultInitLiteral(Loc loc);
+    Expression *voidInitLiteral(VarDeclaration *var);
     dt_t **toDt(dt_t **pdt);
     dt_t **toDtElem(dt_t **pdt, Expression *e);
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
@@ -500,6 +503,7 @@ struct TypeDArray : TypeArray
     d_uns64 size(Loc loc);
     unsigned alignsize();
     Type *semantic(Loc loc, Scope *sc);
+    void resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol **ps);
     void toDecoBuffer(OutBuffer *buf, int flag);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
@@ -542,6 +546,7 @@ struct TypeAArray : TypeArray
     int isZeroInit(Loc loc);
     int checkBoolean();
     TypeInfoDeclaration *getTypeInfoDeclaration();
+    Expression *toExpression();
     int hasPointers();
     TypeTuple *toArgTypes();
     MATCH implicitConvTo(Type *to);
@@ -629,6 +634,7 @@ struct TypeFunction : TypeNext
     enum LINK linkage;  // calling convention
     enum TRUST trust;   // level of trust
     enum PURE purity;   // PURExxxx
+    bool iswild;        // is inout function
     Expressions *fargs; // function arguments
 
     int inuse;
@@ -644,12 +650,13 @@ struct TypeFunction : TypeNext
     void attributesToCBuffer(OutBuffer *buf, int mod);
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
     TypeInfoDeclaration *getTypeInfoDeclaration();
-    Type *reliesOnTident();
+    Type *reliesOnTident(TemplateParameters *tparams = NULL);
     bool hasLazyParameters();
 #if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
     bool parameterEscapes(Parameter *p);
+    Type *addStorageClass(StorageClass stc);
 
     int callMatch(Expression *ethis, Expressions *toargs, int flag = 0);
     type *toCtype();
@@ -712,7 +719,7 @@ struct TypeIdentifier : TypeQualified
     Dsymbol *toDsymbol(Scope *sc);
     Type *semantic(Loc loc, Scope *sc);
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
-    Type *reliesOnTident();
+    Type *reliesOnTident(TemplateParameters *tparams = NULL);
     Expression *toExpression();
 };
 
@@ -772,6 +779,7 @@ struct TypeStruct : Type
     unsigned memalign(unsigned salign);
     Expression *defaultInit(Loc loc);
     Expression *defaultInitLiteral(Loc loc);
+    Expression *voidInitLiteral(VarDeclaration *var);
     int isZeroInit(Loc loc);
     int isAssignable();
     int checkBoolean();
@@ -928,10 +936,11 @@ struct TypeTuple : Type
     Type *syntaxCopy();
     Type *semantic(Loc loc, Scope *sc);
     int equals(Object *o);
-    Type *reliesOnTident();
+    Type *reliesOnTident(TemplateParameters *tparams = NULL);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     void toDecoBuffer(OutBuffer *buf, int flag);
     Expression *getProperty(Loc loc, Identifier *ident);
+    Expression *defaultInit(Loc loc);
     TypeInfoDeclaration *getTypeInfoDeclaration();
 };
 

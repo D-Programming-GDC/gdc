@@ -64,7 +64,7 @@ class Object
     /**
      * Compute hash function for Object.
      */
-    hash_t toHash()
+    hash_t toHash() @trusted nothrow
     {
         // BUG: this prevents a compacting GC from working, needs to be fixed
         return cast(hash_t)cast(void*)this;
@@ -219,10 +219,20 @@ struct OffsetTypeInfo
  */
 class TypeInfo
 {
-    override hash_t toHash()
+    override hash_t toHash() @trusted
     {
-        auto data = this.toString();
-        return hashOf(data.ptr, data.length);
+        try
+        {
+            auto data = this.toString();
+            return hashOf(data.ptr, data.length);
+        }
+        catch (Throwable)
+        {
+            // This should never happen; remove when toString() is made nothrow
+
+            // BUG: this prevents a compacting GC from working, needs to be fixed
+            return cast(hash_t)cast(void*)this;
+        }
     }
 
     override int opCmp(Object o)
@@ -248,7 +258,7 @@ class TypeInfo
     }
 
     /// Returns a hash of the instance of a type.
-    hash_t getHash(in void* p) { return cast(hash_t)p; }
+    hash_t getHash(in void* p) @trusted nothrow { return cast(hash_t)p; }
 
     /// Compares two instances for equality.
     equals_t equals(in void* p1, in void* p2) { return p1 == p2; }
@@ -257,7 +267,7 @@ class TypeInfo
     int compare(in void* p1, in void* p2) { return 0; }
 
     /// Returns size of the type.
-    @property size_t tsize() nothrow pure { return 0; }
+    @property size_t tsize() nothrow pure const @safe { return 0; }
 
     /// Swaps two instances of the type.
     void swap(void* p1, void* p2)
@@ -278,10 +288,10 @@ class TypeInfo
     /// Return default initializer.  If the type should be initialized to all zeros,
     /// an array with a null ptr and a length equal to the type size will be returned.
     // TODO: make this a property, but may need to be renamed to diambiguate with T.init...
-    void[] init() nothrow pure { return null; }
+    const(void)[] init() nothrow pure const @safe { return null; }
 
     /// Get flags for type: 1 means GC should scan for pointers
-    @property uint flags() nothrow pure { return 0; }
+    @property uint flags() nothrow pure const @safe { return 0; }
 
     /// Get type information on the contents of the type; null if not available
     OffsetTypeInfo[] offTi() { return null; }
@@ -292,12 +302,12 @@ class TypeInfo
 
 
     /// Return alignment of type
-    @property size_t talign() nothrow pure { return tsize; }
+    @property size_t talign() nothrow pure const @safe { return tsize; }
 
     /** Return internal info on arguments fitting into 8byte.
      * See X86-64 ABI 3.2.3
      */
-    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2) @safe nothrow
     {   arg1 = this;
         return 0;
     }
@@ -323,7 +333,7 @@ class TypeInfo_Vector : TypeInfo
 
     @property override TypeInfo next() nothrow pure { return base.next; }
     @property override uint flags() nothrow pure { return base.flags; }
-    override void[] init() nothrow pure { return base.init(); }
+    override const(void)[] init() nothrow pure { return base.init(); }
 
     @property override size_t talign() nothrow pure { return 16; }
 
@@ -355,7 +365,7 @@ class TypeInfo_Typedef : TypeInfo
 
     @property override TypeInfo next() nothrow pure { return base.next; }
     @property override uint flags() nothrow pure { return base.flags; }
-    override void[] init() nothrow pure { return m_init.length ? m_init : base.init(); }
+    override const(void)[] init() nothrow pure const @safe { return m_init.length ? m_init : base.init(); }
 
     @property override size_t talign() nothrow pure { return base.talign; }
 
@@ -385,7 +395,7 @@ class TypeInfo_Pointer : TypeInfo
                  this.m_next == c.m_next);
     }
 
-    override hash_t getHash(in void* p)
+    override hash_t getHash(in void* p) @trusted
     {
         return cast(hash_t)*cast(void**)p;
     }
@@ -435,10 +445,10 @@ class TypeInfo_Array : TypeInfo
                 this.value == c.value);
     }
 
-    override hash_t getHash(in void* p)
+    override hash_t getHash(in void* p) @trusted
     {
         void[] a = *cast(void[]*)p;
-        return hashOf(a.ptr, a.length);
+        return hashOf(a.ptr, a.length * value.tsize);
     }
 
     override equals_t equals(in void* p1, in void* p2)
@@ -524,7 +534,7 @@ class TypeInfo_StaticArray : TypeInfo
                 this.value == c.value);
     }
 
-    override hash_t getHash(in void* p)
+    override hash_t getHash(in void* p) @trusted
     {
         size_t sz = value.tsize;
         hash_t hash = 0;
@@ -585,7 +595,7 @@ class TypeInfo_StaticArray : TypeInfo
             delete pbuffer;
     }
 
-    override void[] init() nothrow pure { return value.init(); }
+    override const(void)[] init() nothrow pure { return value.init(); }
     @property override TypeInfo next() nothrow pure { return value; }
     @property override uint flags() nothrow pure { return value.flags(); }
 
@@ -749,7 +759,7 @@ class TypeInfo_Class : TypeInfo
                  this.info.name == c.info.name);
     }
 
-    override hash_t getHash(in void* p)
+    override hash_t getHash(in void* p) @trusted
     {
         Object o = *cast(Object*)p;
         return o ? o.toHash() : 0;
@@ -797,8 +807,8 @@ class TypeInfo_Class : TypeInfo
         return m_offTi;
     }
 
-    @property TypeInfo_Class info() nothrow pure { return this; }
-    @property TypeInfo typeinfo() nothrow pure { return this; }
+    @property auto info() @safe nothrow pure { return this; }
+    @property auto typeinfo() @safe nothrow pure { return this; }
 
     byte[]      init;           /** class static initializer
                                  * (init.length gives size in bytes of class)
@@ -885,7 +895,7 @@ class TypeInfo_Interface : TypeInfo
                  this.info.name == c.classinfo.name);
     }
 
-    override hash_t getHash(in void* p)
+    override hash_t getHash(in void* p) @trusted
     {
         Interface* pi = **cast(Interface ***)*cast(void**)p;
         Object o = cast(Object)(*cast(void**)p - pi.offset);
@@ -950,7 +960,7 @@ class TypeInfo_Struct : TypeInfo
                  this.init().length == s.init().length);
     }
 
-    override hash_t getHash(in void* p)
+    override hash_t getHash(in void* p) @safe pure nothrow const
     {
         assert(p);
         if (xtoHash)
@@ -965,7 +975,7 @@ class TypeInfo_Struct : TypeInfo
         }
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override equals_t equals(in void* p1, in void* p2) @trusted pure nothrow const
     {
         if (!p1 || !p2)
             return false;
@@ -985,7 +995,7 @@ class TypeInfo_Struct : TypeInfo
             return memcmp(p1, p2, init().length) == 0;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) @trusted pure nothrow const
     {
         // Regard null references as always being "less than"
         if (p1 != p2)
@@ -1018,7 +1028,7 @@ class TypeInfo_Struct : TypeInfo
         return init().length;
     }
 
-    override void[] init() nothrow pure { return m_init; }
+    override const(void)[] init() nothrow pure const @safe { return m_init; }
 
     @property override uint flags() nothrow pure { return m_flags; }
 
@@ -1039,6 +1049,8 @@ class TypeInfo_Struct : TypeInfo
     string name;
     void[] m_init;      // initializer; init.ptr == null if 0 initialize
 
+  @safe pure nothrow
+  {
     hash_t   function(in void*)           xtoHash;
     equals_t function(in void*, in void*) xopEquals;
     int      function(in void*, in void*) xopCmp;
@@ -1047,6 +1059,7 @@ class TypeInfo_Struct : TypeInfo
     uint m_flags;
 
     const(MemberInfo[]) function(in char[]) xgetMembers;
+  }
     void function(void*)                    xdtor;
     void function(void*)                    xpostblit;
 
@@ -1190,7 +1203,7 @@ class TypeInfo_Const : TypeInfo
 
     @property override TypeInfo next() nothrow pure { return base.next; }
     @property override uint flags() nothrow pure { return base.flags; }
-    override void[] init() nothrow pure { return base.init(); }
+    override const(void)[] init() nothrow pure { return base.init(); }
 
     @property override size_t talign() nothrow pure { return base.talign(); }
 
@@ -1324,9 +1337,16 @@ class Throwable : Object
         }
         if (info)
         {
-            buf ~= "\n----------------";
-            foreach (t; info)
-                buf ~= "\n" ~ t;
+            try
+            {
+                buf ~= "\n----------------";
+                foreach (t; info)
+                    buf ~= "\n" ~ t;
+            }
+            catch (Throwable)
+            {
+                // ignore more errors
+            }
         }
         return cast(string) buf;
     }
@@ -2006,7 +2026,7 @@ extern (C)
     void* _aaGetp(void** pp, TypeInfo keyti, size_t valuesize, void* pkey);
     void* _aaGetRvaluep(void* p, TypeInfo keyti, size_t valuesize, void* pkey);
     void* _aaInp(void* p, TypeInfo keyti, void* pkey);
-    void _aaDelp(void* p, TypeInfo keyti, void* pkey);
+    bool _aaDelp(void* p, TypeInfo keyti, void* pkey);
     void[] _aaValues(void* p, size_t keysize, size_t valuesize);
     void[] _aaKeys(void* p, size_t keysize);
     void* _aaRehash(void** pp, TypeInfo keyti);

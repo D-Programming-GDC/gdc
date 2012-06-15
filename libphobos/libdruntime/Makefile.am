@@ -123,9 +123,9 @@ BASE_OBJS=object_.o
 RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
 	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
-	     rt/cast_.o rt/critical_.o rt/dmain2.o \
+	     rt/cast_.o rt/critical_.o rt/dmain2.o rt/minfo.o \
 	     rt/memory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
-	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o
+	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o rt/tlsgc.o
 
 CORE_OBJS=core/atomic.o core/cpuid.o core/demangle.o core/exception.o \
 	  core/math.o core/memory.o core/runtime.o core/simd.o \
@@ -181,7 +181,7 @@ D_GC_MODULES=@D_GC_MODULES@
 # Regardless of OS, all import headers are generated.
 CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/exception.di core/math.di core/memory.di core/runtime.di \
-	     core/simd.di core/thread.di core/time.di core/vararg.di \
+	     core/simd.di core/time.di core/vararg.di \
 	     \
 	     core/stdc/complex.di core/stdc/config.di core/stdc/ctype.di \
 	     core/stdc/errno.di core/stdc/fenv.di core/stdc/float_.di \
@@ -217,6 +217,7 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/posix/sys/time.di core/sys/posix/sys/types.di \
 	     core/sys/posix/sys/uio.di core/sys/posix/sys/un.di \
 	     core/sys/posix/sys/utsname.di core/sys/posix/sys/wait.di \
+	     core/sys/freebsd/sys/event.di \
 	     \
 	     core/sys/windows/dbghelp.di core/sys/windows/dll.di \
 	     core/sys/windows/stacktrace.di core/sys/windows/threadaux.di \
@@ -237,9 +238,17 @@ install-exec-local: $(D_PREREQ_SRCS) libgdruntime.a
 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
 
 install-data-local: $(D_PREREQ_SRCS) libgdruntime.a
-	for i in gcc ; do \
+	for i in core; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+		for f in $(srcdir)/$$i/*.di; do \
+			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
+		done; \
+	done
+	for i in gcc; do \
+		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
+		for f in $(srcdir)/$$i/*.d; do \
+			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
+		done; \
 	done
 	for i in core core/stdc core/sync core/sys/osx/mach core/sys/posix \
 		core/sys/posix/arpa core/sys/posix/net core/sys/posix/netinet \
@@ -250,10 +259,12 @@ install-data-local: $(D_PREREQ_SRCS) libgdruntime.a
 		done; \
 	done
 	for i in object.di; do \
-		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done
+		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
+	done
 	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/gcc/config
-	for i in $(host_alias)/gcc/config/*.d ; \
-		do $(INSTALL_HEADER) $$i $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/gcc/config; done
+	for i in $(host_alias)/gcc/config/*.d; do \
+		$(INSTALL_HEADER) $$i $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/gcc/config; \
+	done
 	$(INSTALL) phobos-ver-syms $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)
 
 clean-local:

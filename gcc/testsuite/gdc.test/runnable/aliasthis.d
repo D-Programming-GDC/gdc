@@ -635,8 +635,8 @@ mixin template Wrapper6479()
 
 void test6832()
 {
-	static class Foo { }
-	static struct Bar { Foo foo; alias foo this; }
+    static class Foo { }
+    static struct Bar { Foo foo; alias foo this; }
     Bar bar;
     bar = new Foo;          // ok
     assert(bar !is null);   // ng
@@ -692,6 +692,105 @@ void test6929()
 }
 
 /***************************************************/
+// 7136
+
+void test7136()
+{
+    struct X
+    {
+        Object get() immutable { return null; }
+        alias get this;
+    }
+    immutable(X) x;
+    Object y;
+    static assert( is(typeof(1?x:y) == Object));        // fails
+    static assert(!is(typeof(1?x:y) == const(Object))); // fails
+
+    struct A
+    {
+        int[] get() immutable { return null; }
+        alias get this;
+    }
+    immutable(A) a;
+    int[] b;
+    static assert( is(typeof(1?a:b) == int[]));         // fails
+    static assert(!is(typeof(1?a:b) == const(int[])));  // fails
+}
+
+/***************************************************/
+// 7731
+
+struct A7731
+{
+    int a;
+}
+template Inherit7731(alias X)
+{
+    X __super;
+    alias __super this;
+}
+struct B7731
+{
+    mixin Inherit7731!A7731;
+    int b;
+}
+
+struct PolyPtr7731(X)
+{
+    X* _payload;
+    static if (is(typeof(X.init.__super)))
+    {
+        alias typeof(X.init.__super) Super;
+        @property auto getSuper(){ return PolyPtr7731!Super(&_payload.__super); }
+        alias getSuper this;
+    }
+}
+template create7731(X)
+{
+    PolyPtr7731!X create7731(T...)(T args){
+        return PolyPtr7731!X(args);
+    }
+}
+
+void f7731a(PolyPtr7731!A7731 a) {/*...*/}
+void f7731b(PolyPtr7731!B7731 b) {f7731a(b);/*...*/}
+
+void test7731()
+{
+    auto b = create7731!B7731();
+}
+
+/***************************************************/
+// 7808
+
+struct Nullable7808(T)
+{
+    private T _value;
+
+    this()(T value)
+    {
+        _value = value;
+    }
+
+    @property ref inout(T) get() inout pure @safe
+    {
+        return _value;
+    }
+    alias get this;
+}
+
+class C7808 {}
+struct S7808 { C7808 c; }
+
+void func7808(S7808 s) {}
+
+void test7808()
+{
+    auto s = Nullable7808!S7808(S7808(new C7808));
+    func7808(s);
+}
+
+/***************************************************/
 
 int main()
 {
@@ -719,6 +818,9 @@ int main()
     test6832();
     test6928();
     test6929();
+    test7136();
+    test7731();
+    test7808();
 
     printf("Success\n");
     return 0;
