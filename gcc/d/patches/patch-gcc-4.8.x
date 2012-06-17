@@ -1,58 +1,46 @@
---- gcc~/config/i386/i386.c	2012-03-31 22:03:36.000000000 +0100
-+++ gcc/config/i386/i386.c	2012-04-08 19:44:40.864738490 +0100
-@@ -5429,6 +5429,17 @@ ix86_return_pops_args (tree fundecl, tre
+--- gcc-4.8-20120527/gcc/config/i386/i386.c	2012-05-25 16:07:02.000000000 +0100
++++ gcc-4.8/gcc/config/i386/i386.c	2012-06-17 15:24:35.674317711 +0100
+@@ -5433,6 +5433,14 @@ ix86_return_pops_args (tree fundecl, tre
  
    return 0;
  }
 +
 +static int
-+ix86_function_naked (const_tree fndecl)
++ix86_function_naked_p (const_tree fndecl)
 +{
 +  gcc_assert (fndecl != NULL_TREE);
-+
-+  if (lookup_attribute ("naked", DECL_ATTRIBUTES (fndecl)))
-+    return 1;
-+
-+  return 0;
++  
++  return lookup_attribute ("naked", DECL_ATTRIBUTES (fndecl)) != NULL_TREE;
 +}
  
  /* Argument support functions.  */
  
-@@ -5688,6 +5699,9 @@ init_cumulative_args (CUMULATIVE_ARGS *c
- 	}
-     }
- 
-+  if (fndecl && ix86_function_naked (fndecl))
-+    cfun->machine->naked = true;
-+
-   cum->caller = caller;
- 
-   /* Set up the number of registers to use for passing arguments.  */
-@@ -8509,6 +8523,9 @@ ix86_can_use_return_insn_p (void)
+@@ -8524,6 +8532,9 @@ ix86_can_use_return_insn_p (void)
    if (crtl->args.pops_args && crtl->args.size >= 32768)
      return 0;
  
-+  if (ix86_current_function_naked)
++  if (ix86_function_naked_p (current_function_decl))
 +    return 0;
 +
    ix86_compute_frame_layout (&frame);
    return (frame.stack_pointer_offset == UNITS_PER_WORD
  	  && (frame.nregs + frame.nsseregs) == 0);
-@@ -8521,6 +8538,9 @@ ix86_can_use_return_insn_p (void)
+@@ -8536,6 +8547,10 @@ ix86_can_use_return_insn_p (void)
  static bool
  ix86_frame_pointer_required (void)
  {
-+  if (ix86_current_function_naked)
++  /* Naked functions have prologue set-up by programmer.  */
++  if (ix86_function_naked_p (current_function_decl))
 +    return false;
 +
    /* If we accessed previous frames, then the generated code expects
       to be able to access the saved ebp value in our frame.  */
    if (cfun->machine->accesses_prev_frame)
-@@ -9110,6 +9130,12 @@ ix86_compute_frame_layout (struct ix86_f
+@@ -9126,6 +9141,12 @@ ix86_compute_frame_layout (struct ix86_f
      frame->red_zone_size = 0;
    frame->stack_pointer_offset -= frame->red_zone_size;
  
-+  if (ix86_current_function_naked)
++  if (ix86_function_naked_p (current_function_decl))
 +    {
 +      /* As above, skip return address.  */
 +      frame->stack_pointer_offset = UNITS_PER_WORD;
@@ -61,27 +49,27 @@
    /* The SEH frame pointer location is near the bottom of the frame.
       This is enforced by the fact that the difference between the
       stack pointer and the frame pointer is limited to 240 bytes in
-@@ -10117,6 +10143,9 @@ ix86_expand_prologue (void)
+@@ -10139,6 +10160,9 @@ ix86_expand_prologue (void)
    HOST_WIDE_INT allocate;
    bool int_registers_saved;
  
-+  if (ix86_current_function_naked)
++  if (ix86_function_naked_p (current_function_decl))
 +    return;
 +
    ix86_finalize_stack_realign_flags ();
  
    /* DRAP should not coexist with stack_realign_fp */
-@@ -10757,6 +10786,9 @@ ix86_expand_epilogue (int style)
+@@ -10780,6 +10804,9 @@ ix86_expand_epilogue (int style)
    bool restore_regs_via_mov;
    bool using_drap;
  
-+  if (ix86_current_function_naked)
++  if (ix86_function_naked_p (current_function_decl))
 +    return;
 +
    ix86_finalize_stack_realign_flags ();
    ix86_compute_frame_layout (&frame);
  
-@@ -35587,6 +35619,8 @@ static const struct attribute_spec ix86_
+@@ -35957,6 +35984,8 @@ static const struct attribute_spec ix86_
      false },
    { "callee_pop_aggregate_return", 1, 1, false, true, true,
      ix86_handle_callee_pop_aggregate_return, true },
@@ -90,41 +78,114 @@
    /* End element.  */
    { NULL,        0, 0, false, false, false, NULL, false }
  };
---- gcc~/config/i386/i386.h	2012-03-28 23:42:28.000000000 +0100
-+++ gcc/config/i386/i386.h	2012-04-08 19:44:40.872738490 +0100
-@@ -2226,6 +2226,9 @@ struct GTY(()) machine_function {
-   /* Nonzero if the function requires a CLD in the prologue.  */
-   BOOL_BITFIELD needs_cld : 1;
- 
-+  /* Nonzero if current function is a naked function.  */
-+  BOOL_BITFIELD naked : 1;
-+
-   /* Set by ix86_compute_frame_layout and used by prologue/epilogue
-      expander to determine the style used.  */
-   BOOL_BITFIELD use_fast_prologue_epilogue : 1;
-@@ -2274,6 +2277,7 @@ struct GTY(()) machine_function {
- #define ix86_varargs_fpr_size (cfun->machine->varargs_fpr_size)
- #define ix86_optimize_mode_switching (cfun->machine->optimize_mode_switching)
- #define ix86_current_function_needs_cld (cfun->machine->needs_cld)
-+#define ix86_current_function_naked (cfun->machine->naked)
- #define ix86_tls_descriptor_calls_expanded_in_cfun \
-   (cfun->machine->tls_descriptor_call_expanded_p)
- /* Since tls_descriptor_call_expanded is not cleared, even if all TLS
---- gcc~/config/rs6000/rs6000.c	2012-03-21 20:13:50.000000000 +0000
-+++ gcc/config/rs6000/rs6000.c	2012-04-08 19:44:40.888738490 +0100
-@@ -21032,7 +21032,8 @@ rs6000_output_function_epilogue (FILE *f
+--- gcc-4.8-20120527/gcc/config/rs6000/rs6000.c	2012-05-24 21:28:31.000000000 +0100
++++ gcc-4.8/gcc/config/rs6000/rs6000.c	2012-06-17 14:56:55.582378286 +0100
+@@ -21205,7 +21205,8 @@ rs6000_output_function_epilogue (FILE *f
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
  	  || ! strcmp (language_string, "GNU GIMPLE")
 -	  || ! strcmp (language_string, "GNU Go"))
 +	  || ! strcmp (language_string, "GNU Go")
-+          || ! strcmp (language_string, "GNU D"))
++	  || ! strcmp (language_string, "GNU D"))
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
  	       || ! strcmp (language_string, "GNU Fortran"))
---- gcc~/dwarf2out.c	2012-03-30 19:00:03.000000000 +0100
-+++ gcc/dwarf2out.c	2012-04-08 19:44:40.900738490 +0100
-@@ -18475,6 +18475,8 @@ gen_compile_unit_die (const char *filena
+--- gcc-4.8-20120527/gcc/doc/frontends.texi	2011-01-03 20:52:22.000000000 +0000
++++ gcc-4.8/gcc/doc/frontends.texi	2012-04-22 17:09:57.525883721 +0100
+@@ -10,6 +10,7 @@
+ @cindex GNU Compiler Collection
+ @cindex GNU C Compiler
+ @cindex Ada
++@cindex D
+ @cindex Fortran
+ @cindex Go
+ @cindex Java
+@@ -18,7 +19,7 @@
+ GCC stands for ``GNU Compiler Collection''.  GCC is an integrated
+ distribution of compilers for several major programming languages.  These
+ languages currently include C, C++, Objective-C, Objective-C++, Java,
+-Fortran, Ada, and Go.
++Fortran, Ada, D and Go.
+ 
+ The abbreviation @dfn{GCC} has multiple meanings in common use.  The
+ current official meaning is ``GNU Compiler Collection'', which refers
+--- gcc-4.8-20120527/gcc/doc/install.texi	2012-04-16 19:43:00.000000000 +0100
++++ gcc-4.8/gcc/doc/install.texi	2012-05-27 22:49:00.961355670 +0100
+@@ -1360,12 +1360,12 @@ their runtime libraries should be built.
+ grep language= */config-lang.in
+ @end smallexample
+ Currently, you can use any of the following:
+-@code{all}, @code{ada}, @code{c}, @code{c++}, @code{fortran},
++@code{all}, @code{ada}, @code{c}, @code{c++}, @code{d}, @code{fortran},
+ @code{go}, @code{java}, @code{objc}, @code{obj-c++}.
+ Building the Ada compiler has special requirements, see below.
+ If you do not pass this flag, or specify the option @code{all}, then all
+ default languages available in the @file{gcc} sub-tree will be configured.
+-Ada, Go and Objective-C++ are not default languages; the rest are.
++Ada, D, Go and Objective-C++ are not default languages; the rest are.
+ 
+ @item --enable-stage1-languages=@var{lang1},@var{lang2},@dots{}
+ Specify that a particular subset of compilers and their runtime
+--- gcc-4.8-20120527/gcc/doc/invoke.texi	2012-05-17 10:13:35.000000000 +0100
++++ gcc-4.8/gcc/doc/invoke.texi	2012-05-29 22:05:34.167601556 +0100
+@@ -1136,6 +1136,15 @@ called @dfn{specs}.
+ Ada source code file containing a library unit body (a subprogram or
+ package body).  Such files are also called @dfn{bodies}.
+ 
++@item @var{file}.d
++D source code file.
++
++@item @var{file}.di
++D interface code file.
++
++@item @var{file}.dd
++D documentation code file.
++
+ @c GCC also knows about some suffixes for languages not yet included:
+ @c Pascal:
+ @c @var{file}.p
+@@ -1171,6 +1180,7 @@ objective-c  objective-c-header  objecti
+ objective-c++ objective-c++-header objective-c++-cpp-output
+ assembler  assembler-with-cpp
+ ada
++d
+ f77  f77-cpp-input f95  f95-cpp-input
+ go
+ java
+--- gcc-4.8-20120527/gcc/doc/sourcebuild.texi	2012-03-15 12:25:47.000000000 +0000
++++ gcc-4.8/gcc/doc/sourcebuild.texi	2012-04-22 17:25:20.189850056 +0100
+@@ -104,6 +104,9 @@ dereferencing operations.
+ @item libobjc
+ The Objective-C and Objective-C++ runtime library.
+ 
++@item libphobos
++The D standard runtime library.
++
+ @item libssp
+ The Stack protector runtime library.
+ 
+--- gcc-4.8-20120527/gcc/doc/standards.texi	2011-12-21 17:53:58.000000000 +0000
++++ gcc-4.8/gcc/doc/standards.texi	2012-04-22 17:11:38.553880036 +0100
+@@ -289,6 +289,16 @@ a specific version.  In general GCC trac
+ closely, and any given release will support the language as of the
+ date that the release was frozen.
+ 
++@section D language
++
++The D language continues to evolve as of this writing; see the
++@uref{http://golang.org/@/doc/@/go_spec.html, current language
++specifications}.  At present there are no specific versions of Go, and
++there is no way to describe the language supported by GCC in terms of
++a specific version.  In general GCC tracks the evolving specification
++closely, and any given release will support the language as of the
++date that the release was frozen.
++
+ @section References for other languages
+ 
+ @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
+--- gcc-4.8-20120527/gcc/dwarf2out.c	2012-05-14 18:07:41.000000000 +0100
++++ gcc-4.8/gcc/dwarf2out.c	2012-05-29 22:05:34.291601559 +0100
+@@ -17944,6 +17944,8 @@ gen_compile_unit_die (const char *filena
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
      language = DW_LANG_C_plus_plus;
@@ -133,3 +194,13 @@
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
+--- gcc-4.8-20120527/gcc/gcc.c	2012-05-22 16:17:55.000000000 +0100
++++ gcc-4.8/gcc/gcc.c	2012-05-29 22:06:10.147603108 +0100
+@@ -935,6 +935,7 @@ static const struct compiler default_com
+   {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
+   {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
+   {".go", "#Go", 0, 1, 0},
++  {".d", "#D", 0, 1, 0}, {".dd", "#D", 0, 1, 0}, {".di", "#D", 0, 1, 0},
+   /* Next come the entries for C.  */
+   {".c", "@c", 0, 0, 1},
+   {"@c",
