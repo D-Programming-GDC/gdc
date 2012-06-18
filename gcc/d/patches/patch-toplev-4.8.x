@@ -1,4 +1,4 @@
---- gcc-4.8-20120527/configure	2012-05-09 17:20:17.000000000 +0100
+--- gcc-4.8-20120617/configure	2012-05-09 17:20:17.000000000 +0100
 +++ gcc-4.8/configure	2012-05-29 22:05:16.159600778 +0100
 @@ -2699,7 +2699,8 @@ target_libraries="target-libgcc \
  		${libgcj} \
@@ -10,7 +10,7 @@
  
  # these tools are built using the target libraries, and are intended to
  # run only in the target environment
---- gcc-4.8-20120527/configure.ac	2012-05-09 17:20:17.000000000 +0100
+--- gcc-4.8-20120617/configure.ac	2012-05-09 17:20:17.000000000 +0100
 +++ gcc-4.8/configure.ac	2012-05-29 22:05:16.163600778 +0100
 @@ -165,7 +165,8 @@ target_libraries="target-libgcc \
  		${libgcj} \
@@ -22,7 +22,7 @@
  
  # these tools are built using the target libraries, and are intended to
  # run only in the target environment
---- gcc-4.8-20120527/Makefile.def	2012-05-01 16:48:28.000000000 +0100
+--- gcc-4.8-20120617/Makefile.def	2012-05-01 16:48:28.000000000 +0100
 +++ gcc-4.8/Makefile.def	2012-05-29 22:04:45.119599440 +0100
 @@ -124,6 +124,7 @@ target_modules = { module= libquadmath;
  target_modules = { module= libgfortran; };
@@ -50,7 +50,7 @@
  
  // Toplevel bootstrap
  bootstrap_stage = { id=1 ; };
---- gcc-4.8-20120527/Makefile.in	2012-05-16 14:37:14.000000000 +0100
+--- gcc-4.8-20120617/Makefile.in	2012-05-16 14:37:14.000000000 +0100
 +++ gcc-4.8/Makefile.in	2012-05-29 22:05:29.135601336 +0100
 @@ -954,6 +954,7 @@ configure-target:  \
      maybe-configure-target-libgfortran \
