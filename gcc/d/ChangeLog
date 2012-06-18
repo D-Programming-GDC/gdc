@@ -1,3 +1,9 @@
+2012-19-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-decls.cc(FuncDeclaration::toSymbol): Mark in/out contracts as
+	TREE_PUBLIC to allow calling cross-module.
+	* d-lang.cc(d_parse_file): Update for 2.059.
+
 2012-16-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* dfrontend: Merged with DMD 2.059.

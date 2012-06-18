@@ -642,7 +642,10 @@ FuncDeclaration::toSymbol ()
 	    }
 	  // So are ensure and require contracts.
 	  if (ident == Id::ensure || ident == Id::require)
-	    DECL_ARTIFICIAL (fndecl) = 1;
+	    {
+	      DECL_ARTIFICIAL (fndecl) = 1;
+	      TREE_PUBLIC (fndecl) = 1;
+	    }
 
 	  if (isStatic ())
 	    TREE_STATIC (fndecl) = 1;

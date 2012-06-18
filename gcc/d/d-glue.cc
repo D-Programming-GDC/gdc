@@ -1646,7 +1646,7 @@ DeleteExp::toElem (IRState* irs)
 	    {
 	      TypeStruct * ts = (TypeStruct *)next_type;
 	      if (ts->sym->dtor)
-		ti = base_type->nextOf()->getTypeInfo (NULL)->toElem (irs);
+		ti = base_type->nextOf()->getTypeInfo(NULL)->toElem (irs);
 	    }
 	  // call _delarray_t (&t, ti);
 	  tree args[2] = { irs->addressOf (t), ti };

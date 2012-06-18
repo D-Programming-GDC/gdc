@@ -987,15 +987,6 @@ d_parse_file (void)
       aw->addFile (m->srcfile);
     }
   aw->start ();
-  for (size_t i = 0; i < modules.dim; i++)
-    {
-      if (aw->read (i))
-	{
-	  error ("cannot read file %s", m->srcfile->name->toChars ());
-	  goto had_errors;
-	}
-    }
-  AsyncRead::dispose (aw);
 
   // Parse files
   for (size_t i = 0; i < modules.dim; i++)
@@ -1006,7 +997,11 @@ d_parse_file (void)
       if (!Module::rootModule)
 	Module::rootModule = m;
       m->importedFrom = m;
-      //m->deleteObjFile (); // %% driver does this
+      if (aw->read (i))
+	{
+	  error ("cannot read file %s", m->srcfile->name->toChars ());
+	  goto had_errors;
+	}
       m->parse (global.params.dump_source);
       d_gcc_magic_module (m);
       if (m->isDocFile)
@@ -1017,6 +1012,8 @@ d_parse_file (void)
 	  i--;
 	}
     }
+  AsyncRead::dispose (aw);
+
   if (global.errors)
     goto had_errors;
 
@@ -1037,6 +1034,7 @@ d_parse_file (void)
 	  m->genhdrfile ();
 	}
     }
+
   if (global.errors)
     goto had_errors;
 
@@ -1048,6 +1046,7 @@ d_parse_file (void)
 	printf ("importall %s\n", m->toChars ());
       m->importAll (0);
     }
+
   if (global.errors)
     goto had_errors;
 
@@ -1059,6 +1058,7 @@ d_parse_file (void)
 	printf ("semantic  %s\n", m->toChars ());
       m->semantic ();
     }
+
   if (global.errors)
     goto had_errors;
 
@@ -1073,6 +1073,7 @@ d_parse_file (void)
 	printf ("semantic2 %s\n", m->toChars ());
       m->semantic2 ();
     }
+
   if (global.errors)
     goto had_errors;
 
@@ -1084,6 +1085,7 @@ d_parse_file (void)
 	printf ("semantic3 %s\n", m->toChars ());
       m->semantic3 ();
     }
+
   if (global.errors)
     goto had_errors;
 

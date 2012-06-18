@@ -3143,7 +3143,7 @@ IRState::floatMod (tree a, tree b, tree type)
 tree
 IRState::typeinfoReference (Type * t)
 {
-  tree ti_ref = t->getInternalTypeInfo (NULL)->toElem (this);
+  tree ti_ref = t->getInternalTypeInfo(NULL)->toElem (this);
   gcc_assert (POINTER_TYPE_P (TREE_TYPE (ti_ref)));
   return ti_ref;
 }
