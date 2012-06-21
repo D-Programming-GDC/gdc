@@ -606,15 +606,7 @@ FuncDeclaration::toSymbol ()
 	      DECL_CONTEXT (fndecl) = decl_function_context (fndecl);
 	    }
 
-	  /* For now, inline asm means we can't inline (stack wouldn't be
-	     what was expected and LDASM labels aren't unique.)
-	     TODO: If the asm consists entirely
-	     of extended asm, we can allow inlining. */
-	  if (hasReturnExp & 8 /*inlineAsm*/)
-	    {
-	      DECL_UNINLINABLE (fndecl) = 1;
-	    }
-	  else if (isMember2 () || isFuncLiteralDeclaration ())
+	  if (isMember2 () || isFuncLiteralDeclaration ())
 	    {
 	      // See grokmethod in cp/decl.c
 	      DECL_DECLARED_INLINE_P (fndecl) = 1;
@@ -671,24 +663,6 @@ FuncDeclaration::toSymbol ()
 	    }
 #endif
 
-#ifdef TARGET_80387
-	  if (ftype->linkage == LINKd && hasReturnExp & 8 /*inlineAsm*/)
-	    {
-	      // D Inline x86 ASM assumes the compiler mandates the setting up of EBP,
-	      // unless 'naked' is used.  If compiling with flag turned on, shouldn't
-	      // need to add a redundant optimize attribute.
-	      if (naked && !flag_omit_frame_pointer)
-		{
-		  gen.addDeclAttribute (fndecl, "optimize",
-					build_string (18, "omit-frame-pointer"));
-		}
-	      else if (flag_omit_frame_pointer)
-		{
-		  gen.addDeclAttribute (fndecl, "optimize",
-					build_string (21, "no-omit-frame-pointer"));
-		}
-	    }
-#endif
 	  g.ofile->setDeclLoc (fndecl, this);
 	  g.ofile->setupSymbolStorage (this, fndecl);
 	  if (! ident)

@@ -129,7 +129,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   // extra D-specific options
   gen.splitDynArrayVarArgs = true;
   gen.emitTemplates = TEnormal;
-  gen.useInlineAsm = false;
+  gen.useInlineAsm = true;
   gen.useBuiltins = true;
   std_inc = true;
 }
@@ -311,18 +311,6 @@ d_init ()
   VersionCondition::addPredefinedGlobalIdent ("GNU_StackGrowsDown");
 #endif
 
-  if (gen.useInlineAsm)
-    {
-      VersionCondition::addPredefinedGlobalIdent ("D_InlineAsm");
-
-      if (d_have_inline_asm () && cpu_versym)
-	{
-	  if (strcmp (cpu_versym, "X86") == 0)
-	    VersionCondition::addPredefinedGlobalIdent ("D_InlineAsm_X86");
-	  else if (strcmp (cpu_versym, "X86_64") == 0)
-	    VersionCondition::addPredefinedGlobalIdent ("D_InlineAsm_X86_64");
-	}
-    }
   /* Should define this anyway to set us apart from the competition. */
   VersionCondition::addPredefinedGlobalIdent ("GNU_InlineAsm");
 

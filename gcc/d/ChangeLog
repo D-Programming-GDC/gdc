@@ -1,3 +1,22 @@
+2012-21-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* Make-lang.in: Remove d-asm-i386.h
+	* asmstmt.cc(d_build_asm_stmt): Update signature, use build5.
+	(getFrameRelativeValue): Remove.
+	(d_format_priv_asm_label): Likewise.
+	(d_have_inline_asm): Likewise.
+	(AsmProcessor): Likewise.
+	(AsmStatement::toIR): Update sorry message.
+	* d-codegen.cc(IRState::expandPortIntrinsic): Update call to
+	d_build_asm_stmt.
+	(IRState::doAsm): Likewise.
+	* d-decls.cc(FuncDeclaration::toSymbol): Remove check for inline asm.
+	* d-glue.cc(FuncDeclaration::toObjFile): Likewise.
+	(LabelStatement::toIR): 
+	* d-lang.cc(VersionCondition::addPredefinedGlobalIdent): Remove D
+	Inline Asm version identifiers.
+	* d-lang.h(d_build_asm_stmt): Update signature.
+
 2012-19-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Mark in/out contracts as

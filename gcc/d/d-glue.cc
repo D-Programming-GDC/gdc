@@ -3247,57 +3247,6 @@ FuncDeclaration::toObjFile (int /*multiobj*/)
 	}
     }
 
-#ifdef TARGET_80387
-  /* Users of inline assembler statements expect to be able to leave
-     the result in ST (0).  Because GCC does not know about this, it
-     will load NaN before generating the return instruction.
-
-     Solve this by faking an instruction that we claim loads a value
-     into ST (0), make GCC store it into a temp variable, and then
-     return the temp variable.
-
-     When optimization is turned on, this whole process results in
-     no extra code!
-     */
-  /* Also applies to integral types, where the result in EAX gets
-     written with '0' before return under certain optimisations.
-     */
-  /* This would apply to complex types as well, but GDC currently
-     returns complex types as a struct instead of in ST (0) and ST (1).
-     */
-  if (hasReturnExp & 8 /*inlineAsm*/ && ! naked)
-    {
-      tree cns_str = NULL_TREE;
-
-      if (type->nextOf()->isreal ())
-	cns_str = build_string (2, "=t");
-      else
-	{
-	  // On 32bit, can't return 'long' value in EAX.
-	  if (type->nextOf()->isintegral () &&
-	      type->nextOf()->size () <= Type::tsize_t->size ())
-	    {
-	      cns_str = build_string (2, "=a");
-	    }
-	}
-
-      if (cns_str != NULL_TREE)
-	{
-	  tree result_var = irs->localVar (TREE_TYPE (result_decl));
-	  tree nop_str = build_string (0, "");
-
-	  tree out_arg = tree_cons (tree_cons (NULL_TREE, cns_str, NULL_TREE),
-				    result_var, NULL_TREE);
-
-	  irs->expandDecl (result_var);
-	  irs->doAsm (nop_str, out_arg, NULL_TREE, NULL_TREE);
-	  irs->doReturn (build2 (MODIFY_EXPR, TREE_TYPE (result_decl),
-       				 result_decl, result_var));
-	}
-    }
-#endif
-
-
   if (v_argptr)
     {
       tree body = irs->popStatementList ();
@@ -4219,8 +4168,6 @@ LabelStatement::toIR (IRState* irs)
     {
       irs->pushLabel (label);
       irs->doLabel (t_label);
-      if (label->asmLabelNum)
-	d_expand_priv_asm_label (irs, label->asmLabelNum);
       if (irs->isReturnLabel (ident) && func->fensure)
 	func->fensure->toIR (irs);
       else if (statement)

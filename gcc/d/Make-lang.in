@@ -145,8 +145,6 @@ D_CC_FLAGS = -Wno-missing-braces
 
 # d-bi-attrs.h
 D_CC_FLAGS += -Wno-format
-# d-asm-i386.h
-D_CC_FLAGS += -Wno-missing-field-initializers
 # from dmd
 D_CC_FLAGS += -Wno-deprecated -Wstrict-aliasing
 
@@ -276,7 +274,7 @@ d/d-glue.glue.o: d/d-glue.cc $(D_TREE_H)
 d/d-convert.glue.o: d/d-convert.cc $(D_TREE_H)
 d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
 d/d-gcc-real.glue.o: d/d-gcc-real.cc $(D_TREE_H)
-d/asmstmt.glue.o: d/asmstmt.cc d/d-asm-i386.h $(D_TREE_H)
+d/asmstmt.glue.o: d/asmstmt.cc $(D_TREE_H)
 d/symbol.glue.o: d/symbol.cc $(D_TREE_H)
 d/dt.glue.o: d/symbol.cc $(D_TREE_H)
 d/d-gt.cglue.o: d/d-gt.c $(D_TREE_H)

@@ -850,9 +850,6 @@ struct LabelStatement : Statement
 struct LabelDsymbol : Dsymbol
 {
     LabelStatement *statement;
-#if IN_GCC
-    unsigned asmLabelNum;       // GCC-specific
-#endif
 
     LabelDsymbol(Identifier *ident);
     LabelDsymbol *isLabel();
