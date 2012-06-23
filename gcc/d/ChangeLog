@@ -1,5 +1,11 @@
 2012-23-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-decls.cc(Dsymbol::toSymbolX): Use snprintf rather than sprintf.
+	(FuncDeclaration::toSymbol): Likewise.
+	* d-gcc-real.cc(real_t::init): Likewise.
+	* symbol.cc(Symbol::Symbol): Use NULL_TREE to initialise tree.
+	(symbol_calloc): Use xstrdup to copy string.
+
 	* Make-lang.in: Remove D language version 1 from build
 	(_GNU_SOURCE): Removed macro from build.
 	(ELFOBJ): Likewise.

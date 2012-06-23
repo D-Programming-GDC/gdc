@@ -74,12 +74,11 @@ Symbol *
 Dsymbol::toSymbolX (const char *prefix, int sclass, type *t, const char *suffix)
 {
   Symbol *s;
-  char *id;
-  char *n;
+  char *n = mangle ();
+  size_t sz = (2 + strlen (n) + sizeof (size_t) * 3 + strlen (prefix) + strlen (suffix) + 1);
+  char *id = (char *) alloca (sz);
 
-  n = mangle ();
-  id = (char *) alloca (2 + strlen (n) + sizeof (size_t) * 3 + strlen (prefix) + strlen (suffix) + 1);
-  sprintf (id,"_D%s%"PRIuSIZE"%s%s", n, strlen (prefix), prefix, suffix);
+  snprintf (id, sz, "_D%s%"PRIuSIZE"%s%s", n, strlen (prefix), prefix, suffix);
   s = symbol_name (id, sclass, t);
   return s;
 }
@@ -438,7 +437,7 @@ FuncDeclaration::toSymbol ()
 
 	      static unsigned unamed_seq = 0;
 	      char buf[64];
-	      sprintf (buf, "___unamed_%u", ++unamed_seq);//%% sprintf
+	      snprintf (buf, sizeof(buf), "___unamed_%u", ++unamed_seq);
 	      id = get_identifier (buf);
 	    }
 

@@ -15,8 +15,8 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "d-gcc-includes.h"
 #include "symbol.h"
-#include "rmem.h"
 
 Symbol::Symbol ()
 {
@@ -29,7 +29,7 @@ Symbol::Symbol ()
 
   Sdt = 0;
 
-  Stree = 0; // %% make it NULL-TREE, include d-gcc-include
+  Stree = NULL_TREE;
   ScontextDecl = 0;
   SframeField = 0;
 
@@ -44,7 +44,7 @@ symbol_calloc (const char * string)
 {
   // Need to dup the string because sometimes the string is alloca()'d
   Symbol * s = new Symbol;
-  s->Sident = mem.strdup (string);
+  s->Sident = xstrdup (string);
   return s;
 }
 

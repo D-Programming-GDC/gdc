@@ -72,15 +72,15 @@ real_t::init ()
 
       /* .min, .min_normal:
 	 The smallest representable normalized value that's not 0.  */
-      sprintf (buf, "0x1p%d", rf.emin - 1);
+      snprintf (buf, sizeof(buf), "0x1p%d", rf.emin - 1);
       real_from_string (& p.minval.rv (), buf);
 
       /* .epsilon:
 	 The smallest increment to the value 1.  */
       if (rf.pnan < rf.p)
-	sprintf (buf, "0x1p%d", rf.emin - rf.p);
+	snprintf (buf, sizeof(buf), "0x1p%d", rf.emin - rf.p);
       else
-	sprintf (buf, "0x1p%d", 1 - rf.p);
+	snprintf (buf, sizeof(buf), "0x1p%d", 1 - rf.p);
       real_from_string (& p.epsilonval.rv (), buf);
 
       /* .dig:
