@@ -1,6 +1,5 @@
 // symbol.h -- D frontend for GCC.
-// Originally contributed by David Friedman
-// Maintained by Iain Buclaw
+// Copyright (C) 2011, 2012 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -114,7 +113,6 @@ struct Symbol : Object
 
   const char *Sident;
   const char *prettyIdent;
-  //unused in GCC//TYPE *Stype; // maybe type/TYPE ?
   SymbolStorageClass Sclass;
   SymbolFL           Sfl;
   SymbolSegment      Sseg;

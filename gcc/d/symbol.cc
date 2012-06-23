@@ -1,6 +1,5 @@
 // symbol.cc -- D frontend for GCC.
-// Originally contributed by David Friedman
-// Maintained by Iain Buclaw
+// Copyright (C) 2011, 2012 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -23,17 +22,12 @@ Symbol::Symbol ()
 {
   Sident = 0;
   prettyIdent = 0;
-  //Stype = 0;
   Sclass = SC_INVALID;
   Sfl = FL_INVALID;
   Sseg = INVALID;
   Sflags = 0;
 
-  //Ssymnum = 0;
   Sdt = 0;
-
-  //Sstruct = 0;
-  //Sstructalign = 0;
 
   Stree = 0; // %% make it NULL-TREE, include d-gcc-include
   ScontextDecl = 0;

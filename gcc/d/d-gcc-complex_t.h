@@ -1,21 +1,19 @@
+// d-gcc-complex_t.h -- D frontend for GCC.
+// Copyright (C) 2011, 2012 Free Software Foundation, Inc.
 
-// Compiler implementation of the D programming language
-// Copyright (c) 1999-2006 by Digital Mars
-// All Rights Reserved
-// written by Walter Bright and Burton Radons
-// www.digitalmars.com
-// License for redistribution is by either the Artistic License
-// in artistic.txt, or the GNU General Public License in gnu.txt.
-// See the included readme.txt for details.
+// GCC is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 3, or (at your option) any later
+// version.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
+// GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
 
-   Modified by David Friedman, September 2004
-
-   Same as DMD complex_t.h, but use GCC's REAL_VALUE_TYPE-based real_t
-   instead of long double.
-*/
+// You should have received a copy of the GNU General Public License
+// along with GCC; see the file COPYING3.  If not see
+// <http://www.gnu.org/licenses/>.
 
 #ifndef DMD_COMPLEX_T_H
 #define DMD_COMPLEX_T_H
@@ -38,25 +36,26 @@ struct complex_t
   complex_t operator - () { complex_t r; r.re = -re; r.im = -im; return r; }
   complex_t operator * (complex_t y) { return complex_t (re * y.re - im * y.im, im * y.re + re * y.im); }
 
-  complex_t operator / (complex_t y) {
-      real_t abs_y_re = y.re.isNegative () ? -y.re : y.re;
-      real_t abs_y_im = y.im.isNegative () ? -y.im : y.im;
-      real_t r, den;
+  complex_t operator / (complex_t y)
+  {
+    real_t abs_y_re = y.re.isNegative () ? -y.re : y.re;
+    real_t abs_y_im = y.im.isNegative () ? -y.im : y.im;
+    real_t r, den;
 
-      if (abs_y_re < abs_y_im)
-	{
-	  r = y.re / y.im;
-	  den = y.im + r * y.re;
-	  return complex_t ((re * r + im) / den,
-			   (im * r - re) / den);
-	}
-      else
-	{
-	  r = y.im / y.re;
-	  den = y.re + r * y.im;
-	  return complex_t ((re + r * im) / den,
-			   (im - r * re) / den);
-	}
+    if (abs_y_re < abs_y_im)
+      {
+	r = y.re / y.im;
+	den = y.im + r * y.re;
+	return complex_t ((re * r + im) / den,
+			  (im * r - re) / den);
+      }
+    else
+      {
+	r = y.im / y.re;
+	den = y.re + r * y.im;
+	return complex_t ((re + r * im) / den,
+			  (im - r * re) / den);
+      }
   }
 
   operator bool () { return !re.isZero () || !im.isZero (); }

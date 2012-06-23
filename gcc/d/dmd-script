@@ -1,15 +1,11 @@
 #! /usr/bin/perl -w
 
 # GDC -- D front-end for GCC
-# Copyright (C) 2004 David Friedman
-#
-# Modified by
-#  Michael Parrott, (C) 2010
-#  Iain Buclaw, (C) 2010
+# Copyright (C) 2011, 2012 Free Software Foundation, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
@@ -18,8 +14,8 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
 
 # This is a wrapper script for gdc that emulates the dmd command.
 # -f and -m options are passed to gdc.  Extra options are:
