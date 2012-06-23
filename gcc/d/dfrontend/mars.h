@@ -222,7 +222,7 @@ struct Param
     char *moduleDepsFile;       // filename for deps output
     OutBuffer *moduleDeps;      // contents to be written to deps file
 
-#if IN_GCC
+#ifdef IN_GCC
     char *makeDepsFile;         // filename for make deps output
     OutBuffer *makeDeps;        // contents to be written to make deps file
     char makeDepsStyle;         // 0: include system header files
@@ -338,7 +338,7 @@ typedef uint64_t                d_uns64;
 
 typedef float                   d_float32;
 typedef double                  d_float64;
-#if IN_GCC
+#ifdef IN_GCC
 typedef long double             d_float80;
 #else
 typedef longdouble              d_float80;
@@ -470,7 +470,7 @@ void halt();
 void util_progress();
 
 /*** Where to send error messages ***/
-#if IN_GCC
+#ifdef IN_GCC
 #define stdmsg stderr
 #else
 #define stdmsg stderr

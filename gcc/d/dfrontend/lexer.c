@@ -108,7 +108,7 @@ const char *Token::toChars()
     switch (value)
     {
         case TOKint32v:
-#if IN_GCC
+#ifdef IN_GCC
             sprintf(buffer,"%d",(d_int32)int64value);
 #else
             sprintf(buffer,"%d",int32value);
@@ -119,7 +119,7 @@ const char *Token::toChars()
         case TOKcharv:
         case TOKwcharv:
         case TOKdcharv:
-#if IN_GCC
+#ifdef IN_GCC
             sprintf(buffer,"%uU",(d_uns32)uns64value);
 #else
             sprintf(buffer,"%uU",uns32value);
@@ -134,7 +134,7 @@ const char *Token::toChars()
             sprintf(buffer,"%"PRIuMAX"UL",(uintmax_t)uns64value);
             break;
 
-#if IN_GCC
+#ifdef IN_GCC
         case TOKfloat32v:
         case TOKfloat64v:
         case TOKfloat80v:

@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#if IN_GCC
+#ifdef IN_GCC
 #include "gdc_alloca.h"
 #else
 #if (defined (__SVR4) && defined (__sun))
@@ -105,7 +105,7 @@ int wcharIsAscii(wchar_t *us, unsigned len)
 #endif
 
 
-#if IN_GCC
+#ifdef IN_GCC
 /***********************************
  * Binary search for p in tab.
  * Implementation copied from gdc/d-asm-i386.h

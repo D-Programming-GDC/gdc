@@ -46,7 +46,7 @@ Declaration::Declaration(Identifier *id)
     linkage = LINKdefault;
     inuse = 0;
     sem = SemanticStart;
-#if IN_GCC
+#ifdef IN_GCC
     attributes = NULL;
 #endif
 }
@@ -302,7 +302,7 @@ void TypedefDeclaration::semantic(Scope *sc)
 #endif
         Type *savedtype = type;
         type = type->semantic(loc, sc);
-#if IN_GCC
+#ifdef IN_GCC
         if (attributes)
             attributes->append(sc->attributes);
         else
@@ -828,7 +828,7 @@ void VarDeclaration::semantic(Scope *sc)
     this->parent = sc->parent;
     //printf("this = %p, parent = %p, '%s'\n", this, parent, parent->toChars());
     protection = sc->protection;
-#if IN_GCC
+#ifdef IN_GCC
     if (attributes)
         attributes->append(sc->attributes);
     else
@@ -1697,7 +1697,7 @@ void VarDeclaration::setFieldOffset(AggregateDeclaration *ad, unsigned *poffset,
     unsigned memsize      = t->size(loc);            // size of member
     unsigned memalignsize = t->alignsize();          // size of member for alignment purposes
     unsigned memalign     = t->memalign(alignment);  // alignment boundaries
-#if IN_GCC
+#ifdef IN_GCC
     memalignsize = d_gcc_field_align(this, memalignsize);
 #endif
 

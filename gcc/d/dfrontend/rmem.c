@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if IN_GCC
+#ifdef IN_GCC
 #include "rmem.h"
 #else
 #if linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4

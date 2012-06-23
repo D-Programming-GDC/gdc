@@ -3476,7 +3476,7 @@ DefaultStatement::DefaultStatement(Loc loc, Statement *s)
     : Statement(loc)
 {
     this->statement = s;
-#if IN_GCC
+#ifdef IN_GCC
     cblock = NULL;
 #endif
 }

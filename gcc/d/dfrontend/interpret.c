@@ -6430,7 +6430,7 @@ Expression *evaluateIfBuiltin(InterState *istate, Loc loc,
                     return earg;
                 args.tdata()[i] = earg;
             }
-#if IN_GCC
+#ifdef IN_GCC
             e = d_gcc_eval_builtin(loc, fd, &args);
 #else
             e = eval_builtin(loc, b, &args);

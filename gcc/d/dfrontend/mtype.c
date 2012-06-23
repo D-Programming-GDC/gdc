@@ -18,7 +18,7 @@
 #define __C99FEATURES__ 1       // Needed on Solaris for NaN and more
 #define __USE_ISOC99 1          // so signbit() gets defined
 
-#if IN_GCC
+#ifdef IN_GCC
 #include "gdc_alloca.h"
 #else
 #if (defined (__SVR4) && defined (__sun))
@@ -30,7 +30,7 @@
 
 #include <stdio.h>
 #include <assert.h>
-#if IN_GCC
+#ifdef IN_GCC
 #include "d-confdefs.h"
 #else
 #include <float.h>
@@ -99,7 +99,7 @@ int REALALIGNSIZE = 4;
 int REALSIZE = 10;
 int REALPAD = 0;
 int REALALIGNSIZE = 2;
-#elif IN_GCC
+#elif defined(IN_GCC)
 int REALSIZE = 0;
 int REALPAD = 0;
 int REALALIGNSIZE = 0;
@@ -2759,7 +2759,7 @@ d_uns64 TypeBasic::size(Loc loc)
 unsigned TypeBasic::alignsize()
 {   unsigned sz;
 
-#if IN_GCC
+#ifdef IN_GCC
     sz = d_gcc_type_align(this);
 #else
     switch (ty)
@@ -2929,7 +2929,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tfloat64:
             case Tfloat80:
             {
-#if IN_GCC
+#ifdef IN_GCC
                 // mode doesn't matter, will be converted in RealExp anyway
                 fvalue = real_t::getnan(real_t::LongDouble);
 #else
@@ -2952,7 +2952,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tfloat32:
             case Tfloat64:
             case Tfloat80:
-#if IN_GCC
+#ifdef IN_GCC
                 fvalue = real_t::getinfinity();
 #else
                 fvalue = Port::infinity;

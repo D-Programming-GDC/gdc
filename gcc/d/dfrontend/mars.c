@@ -272,7 +272,7 @@ void vwarning(Loc loc, const char *format, va_list ap)
     {
         char *p = loc.toChars();
 
-#if IN_GCC
+#ifdef IN_GCC
         if (global.params.warnings == 1 && !global.warnings)
             fprintf(stdmsg, "cc1d: all warnings being treated as errors\n");
 #endif

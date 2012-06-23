@@ -1008,7 +1008,7 @@ void PragmaDeclaration::semantic(Scope *sc)
         }
         goto Lnodecl;
     }
-#if IN_GCC
+#ifdef IN_GCC
     else if (ident == Id::GNU_asm)
     {
         if (! args || args->dim != 2)
@@ -1237,7 +1237,7 @@ Ldecl:
         }
     }
 
-#if IN_GCC
+#ifdef IN_GCC
     if (decl)
         if (ident == Id::GNU_attribute || ident == Id::_GNU_attribute)
             *sc = sc_save;
@@ -1277,7 +1277,7 @@ void PragmaDeclaration::toObjFile(int multiobj)
         char *name = (char *)mem.malloc(se->len + 1);
         memcpy(name, se->string, se->len);
         name[se->len] = 0;
-#if IN_GCC
+#ifdef IN_GCC
         /* Currently just a warning that pragma lib is unimplemented.
          */
         obj_includelib(name);

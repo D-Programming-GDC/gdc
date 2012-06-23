@@ -50,7 +50,7 @@ struct HdrGenState;
 struct Parameter;
 
 // Back end
-#if IN_GCC
+#ifdef IN_GCC
 union tree_node; typedef union tree_node TYPE;
 typedef TYPE type;
 #else
@@ -446,7 +446,7 @@ struct TypeVector : Type
     TypeInfoDeclaration *getTypeInfoDeclaration();
     TypeTuple *toArgTypes();
 
-#if IN_GCC
+#ifdef IN_GCC
     type *toCtype();
 #endif
 };

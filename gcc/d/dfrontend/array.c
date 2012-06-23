@@ -21,7 +21,7 @@
 #include <malloc.h>
 #endif
 
-#if IN_GCC
+#ifdef IN_GCC
 #include "gdc_alloca.h"
 #endif
 

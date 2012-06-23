@@ -60,7 +60,7 @@ FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageCla
     localsymtab = NULL;
     vthis = NULL;
     v_arguments = NULL;
-#if IN_GCC
+#ifdef IN_GCC
     v_argptr = NULL;
     v_arguments_var = NULL;
 #endif
@@ -273,7 +273,7 @@ void FuncDeclaration::semantic(Scope *sc)
     linkage = sc->linkage;
     protection = sc->protection;
 
-#if IN_GCC
+#ifdef IN_GCC
     if (attributes)
         attributes->append(sc->attributes);
     else
@@ -935,7 +935,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                         STCdeprecated | STCoverride |
                         STC_TYPECTOR | STCfinal | STCtls | STCgshared | STCref |
                         STCproperty | STCsafe | STCtrusted | STCsystem);
-#if IN_GCC
+#ifdef IN_GCC
         sc2->attributes = NULL;
 #endif
         sc2->protection = PROTpublic;
@@ -1013,7 +1013,7 @@ void FuncDeclaration::semantic3(Scope *sc)
             }
             if (f->linkage == LINKd || (f->parameters && Parameter::dim(f->parameters)))
             {   // Declare _argptr
-#if IN_GCC
+#ifdef IN_GCC
                 t = d_gcc_builtin_va_list_d_type;
 #else
                 t = Type::tvoid->pointerTo();
@@ -1451,7 +1451,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 
             if (argptr)
             {   // Initialize _argptr
-#if IN_GCC
+#ifdef IN_GCC
                 // Handled in FuncDeclaration::toObjFile
                 v_argptr = argptr;
                 v_argptr->init = new VoidInitializer(loc);
@@ -1514,7 +1514,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 
             if (_arguments)
             {
-#if IN_GCC
+#ifdef IN_GCC
                 v_arguments_var = _arguments;
                 v_arguments_var->init = new VoidInitializer(loc);
 #endif
@@ -3011,7 +3011,7 @@ FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id, Type *
     else
     {
         tf = new TypeFunction(NULL, treturn, 0, LINKc);
-#if IN_GCC
+#ifdef IN_GCC
         Parameters *args = new Parameters;
         if (t1)
         {

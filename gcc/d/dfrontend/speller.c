@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#if IN_GCC
+#ifdef IN_GCC
 #include "gdc_alloca.h"
 #else
 #if __sun&&__SVR4

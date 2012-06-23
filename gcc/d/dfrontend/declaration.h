@@ -125,7 +125,7 @@ struct Declaration : Dsymbol
     enum LINK linkage;
     int inuse;                  // used to detect cycles
 
-#if IN_GCC
+#ifdef IN_GCC
     Expressions *attributes;    // GCC decl/type attributes
 #endif
 
@@ -255,7 +255,7 @@ struct VarDeclaration : Declaration
     bool isargptr;              // if parameter that _argptr points to
 #else
     int nestedref;              // referenced by a lexically nested function
-#if IN_GCC
+#ifdef IN_GCC
     FuncDeclarations nestedrefs; // referenced by these lexically nested functions
 #endif
 #endif
@@ -538,7 +538,7 @@ enum BUILTIN
     BUILTINbsr,                 // core.bitop.bsr
     BUILTINbsf,                 // core.bitop.bsf
     BUILTINbswap,               // core.bitop.bswap
-#if IN_GCC
+#ifdef IN_GCC
     BUILTINgcc,                 // GCC builtin
 #endif
 };
@@ -568,7 +568,7 @@ struct FuncDeclaration : Declaration
                                         // scopes from having the same name
     VarDeclaration *vthis;              // 'this' parameter (member and nested)
     VarDeclaration *v_arguments;        // '_arguments' parameter
-#if IN_GCC
+#ifdef IN_GCC
     VarDeclaration *v_arguments_var;    // '_arguments' variable
     VarDeclaration *v_argptr;           // '_argptr' variable
 #endif
@@ -623,7 +623,7 @@ struct FuncDeclaration : Declaration
     #define FUNCFLAGnothrowInprocess 4  // working on determining nothrow
 #else
     int nestedFrameRef;                 // !=0 if nested variables referenced
-#if IN_GCC
+#ifdef IN_GCC
     VarDeclarations frameVars;          // local variables in this function
                                         // which are referenced by nested
                                         // functions

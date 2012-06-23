@@ -324,7 +324,7 @@ MATCH IntegerExp::implicitConvTo(Type *t)
                 goto Lno;
             goto Lyes;
 
-#if IN_GCC
+#ifdef IN_GCC
         case Tfloat32:
         case Tfloat64:
         case Tfloat80:

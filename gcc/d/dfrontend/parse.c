@@ -4382,7 +4382,7 @@ Statement *Parser::parseStatement(int flags)
                         error("matching '}' expected, not end of file");
                         break;
 
-#if IN_GCC
+#ifdef IN_GCC
                     case TOKlparen:
                     case TOKstring:
                         // If the first token is a string or '(', parse as extended asm.
@@ -4437,7 +4437,7 @@ Statement *Parser::parseStatement(int flags)
     return s;
 }
 
-#if IN_GCC
+#ifdef IN_GCC
 Statement *Parser::parseExtAsm(int expect_rparen)
 {
     Expression * insnTemplate;

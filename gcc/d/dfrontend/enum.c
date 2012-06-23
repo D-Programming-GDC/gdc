@@ -37,7 +37,7 @@ EnumDeclaration::EnumDeclaration(Loc loc, Identifier *id, Type *memtype)
     minval = NULL;
     defaultval = NULL;
     sinit = NULL;
-#if IN_GCC
+#ifdef IN_GCC
     attributes = NULL;
 #endif
     isdeprecated = 0;
@@ -124,7 +124,7 @@ void EnumDeclaration::semantic(Scope *sc)
         isdeprecated = 1;
 
     parent = sc->parent;
-#if IN_GCC
+#ifdef IN_GCC
     if (attributes)
         attributes->append(sc->attributes);
     else

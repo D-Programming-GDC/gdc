@@ -131,7 +131,7 @@ Expression *getRightThis(Loc loc, Scope *sc, AggregateDeclaration *ad,
                         return e1;
                     }
                 }
-#if IN_GCC
+#ifdef IN_GCC
                 e1 = e1->semantic(sc);
 #else
                 if (s && s->isClassDeclaration())
@@ -11384,7 +11384,7 @@ Expression *PowExp::semantic(Scope *sc)
          L1: ;
         }
 
-#if IN_GCC
+#ifdef IN_GCC
         if (hasImportMath)
         {
             e = new IdentifierExp(loc, Id::empty);
