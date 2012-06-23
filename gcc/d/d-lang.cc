@@ -152,10 +152,9 @@ d_init_options_struct (struct gcc_options *opts)
 
   // Honour left to right code evaluation.
   opts->x_flag_evaluation_order = 1;
-#if V2
+
   // Default to using strict aliasing.
   opts->x_flag_strict_aliasing = 1;
-#endif
 }
 
 /* Return language mask for option parsing.  */
@@ -243,9 +242,8 @@ d_init ()
   maybe_fixup_os_versym ();
 
   VersionCondition::addPredefinedGlobalIdent ("GNU");
-#if V2
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");
-#endif
+
 #ifdef D_CPU_VERSYM64
   if (global.params.is64bit == 1)
     cpu_versym = D_CPU_VERSYM64;
@@ -406,11 +404,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useAssert = value;
       break;
 
-#if V2
     case OPT_fbounds_check:
       global.params.noboundscheck = ! value;
       break;
-#endif
+
     case OPT_fbuiltin:
       gen.useBuiltins = value;
       break;
@@ -558,23 +555,19 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fout:
       global.params.useOut = value;
       break;
-#if V2
+
     case OPT_fproperty:
       global.params.enforcePropertySyntax = value;
       break;
-#endif
+
     case OPT_frelease:
       global.params.useInvariants = ! value;
       global.params.useIn = ! value;
       global.params.useOut = ! value;
       global.params.useAssert = ! value;
-#if V2
       // release mode doesn't turn off bounds checking for safe functions.
       global.params.useArrayBounds = ! value ? 2 : 1;
       flag_bounds_check = ! value;
-#else
-      flag_bounds_check = global.params.useArrayBounds = ! value;
-#endif
       global.params.useSwitchError = ! value;
       break;
 
@@ -657,11 +650,9 @@ d_post_options (const char ** fn)
   if (num_in_fnames > 1)
     flag_unit_at_a_time = 1;
 
-#if V2
   /* array bounds checking */
   if (global.params.noboundscheck)
     flag_bounds_check = global.params.useArrayBounds = 0;
-#endif
 
   /* Excess precision other than "fast" requires front-end
      support that we don't offer. */
@@ -830,9 +821,7 @@ deps_write (Module * m)
   ob->writestring ("\n");
 }
 
-#if V2
 Symbol* rtlsym[N_RTLSYM];
-#endif
 
 void
 d_parse_file (void)
@@ -852,9 +841,7 @@ d_parse_file (void)
 
   if (global.params.useUnitTests)
     global.params.useAssert = 1;
-#if V1
-  global.params.useArrayBounds = flag_bounds_check;
-#endif
+
   if (gen.emitTemplates == TEauto)
     {
       gen.emitTemplates = (supports_one_only ()) ? TEall : TEprivate;
@@ -947,11 +934,9 @@ d_parse_file (void)
       modules.push (m);
     }
 
-#if V2
   // There is only one of these so far...
   rtlsym[RTLSYM_DHIDDENFUNC] =
     gen.getLibCallDecl (LIBCALL_HIDDEN_FUNC)->toSymbol ();
-#endif
 
   // current_module shouldn't have any implications before genobjfile..
   // ... but it does.  We need to know what module in which to insert

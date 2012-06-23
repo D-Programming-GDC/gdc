@@ -35,9 +35,7 @@ enum LibCall
   LIBCALL_NEWARRAYMTP,
   //LIBCALL_NEWARRAYMIT,
   LIBCALL_NEWARRAYMITP,
-#if V2
   LIBCALL_ALLOCMEMORY,
-#endif
   LIBCALL_DELCLASS,
   LIBCALL_DELINTERFACE,
   LIBCALL_DELARRAY,
@@ -72,13 +70,11 @@ enum LibCall
   LIBCALL_ARRAYAPPENDCTP,
   LIBCALL_ARRAYAPPENDCD,
   LIBCALL_ARRAYAPPENDWD,
-#if V2
   LIBCALL_ARRAYASSIGN,
   LIBCALL_ARRAYCTOR,
   LIBCALL_ARRAYSETASSIGN,
   LIBCALL_ARRAYSETCTOR,
   LIBCALL_DELARRAYT,
-#endif
   LIBCALL_MONITORENTER,
   LIBCALL_MONITOREXIT,
   LIBCALL_CRITICALENTER,
@@ -89,11 +85,9 @@ enum LibCall
   LIBCALL_SWITCH_DSTRING,
   LIBCALL_ASSOCARRAYLITERALTP,
   LIBCALL_ARRAYLITERALTP,
-#if V2
   LIBCALL_UNITTEST,
   LIBCALL_UNITTEST_MSG,
   LIBCALL_HIDDEN_FUNC,
-#endif
   LIBCALL_count
 };
 
@@ -326,10 +320,8 @@ struct IRState : IRBase
   static bool useInlineAsm;
   static bool useBuiltins;
 
-#if V2
   // Variables that are in scope that will need destruction later
   static VarDeclarations * varsInScope;
-#endif
 
  protected:
   tree maybeExpandSpecialCall (tree call_exp);
@@ -431,11 +423,9 @@ struct IRState : IRBase
   tree getFrameForFunction (FuncDeclaration * f);
   tree getFrameForNestedClass (ClassDeclaration * c);
 
-#if V2
   // %% D2.0 - handle structs too
   static FuncDeclaration * isStructNestedInFunction (StructDeclaration * sd);
   tree getFrameForNestedStruct (StructDeclaration * s);
-#endif
 
   // ** Instruction stream manipulation
   void startCond (Statement * stmt, tree t_cond);

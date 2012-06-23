@@ -1,3 +1,63 @@
+2012-23-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* Make-lang.in: Remove D language version 1 from build
+	(_GNU_SOURCE): Removed macro from build.
+	(ELFOBJ): Likewise.
+	(D_VA_LIST_TYPE_VOIDPTR): Likewise.
+	* asmstmt.cc(ExtAsmStatement::semantic): Removed use of V2 macro.
+	* d-builtins2.cc(d_gcc_builtin_va_list_d_type): Removed use of
+	D_VA_LIST_TYPE_VOIDPTR macro.
+	(gcc_type_to_d_type): Likewise.
+	(d_gcc_magic_stdarg_check): Likewise.
+	(d_gcc_magic_builtins_module): Removed use of V2 macro, and V1
+	encapsulated code.
+	* d-codegen.cc(IRState::convertTo): Likewise.
+	(IRState::toDArray): Likewise.
+	(IRState::typesCompatible): Likewise.
+	(IRState::arrayBoundsCheck): Likewise.
+	(IRState::assertCall): Likewise.
+	(libcall_ids): Likewise.
+	(IRState::getLibCallDecl): Likewise.
+	(IRState::getFrameForSymbol): Likewise.
+	(IRState::isFuncNestedIn): Likewise.
+	(IRState::buildChain): Likewise.
+	(IRState::getFrameInfo): Likewise.
+	(IRState::getFrameRef): Likewise.
+	(IRState::functionNeedsChain): Likewise.
+	(IRState::startCond): Likewise.
+	(IRState::exitIfFalse): Likewise.
+	(IRState::startCase): Likewise.
+	(IRState::doCase): Likewise.
+	(IRState::endCase): Likewise.
+	* d-decls.cc(VarDeclaration::toSymbol): Likewise
+	(FuncDeclaration::toSymbol): Likewise.
+	* d-glue.cc(CondExp::toElem): Likewise.
+	(build_bool_binop): Likewise.
+	(EqualExp::toElem): Likewise.
+	(CmpExp::toElem): Likewise.
+	(AndAndExp::toElem): Likewise.
+	(OrOrExp::toElem): Likewise.
+	(AssignExp::toElem): Likewise.
+	(CastExp::toElem): Likewise.
+	(CallExp::toElem): Likewise.
+	(AssertExp::toElem): Likewise.
+	(AssocArrayLiteralExp::toElem): Likewise.
+	(StructLiteralExp::toElem): Likewise.
+	(FuncDeclaration::toObjFile): Likewise.
+	(Module::genobjfile): Likewise.
+	(TypeFunction::toCtype): Likewise.
+	(ThrowStatement::toIR): Likewise.
+	(TryCatchStatement::toIR): Likewise.
+	(ReturnStatement::toIR): Likewise.
+	(SwitchStatement::toIR): Likewise.
+	(IfStatement::toIR): Likewise.
+	(ForStatement::toIR): Likewise.
+	(ExpStatement::toIR): Likewise.
+	* d-irstate.cc(IRBase::startFunction): Likewise.
+	* d-lang.cc(d_init_options_struct): Likewise.
+	(d_handle_option): Likewise.
+	(d_parse_file): Likewise.
+
 2012-21-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* Make-lang.in: Remove d-asm-i386.h

@@ -44,9 +44,7 @@ TemplateDeclaration * IRState::stdargTemplateDecl = 0;
 TemplateDeclaration * IRState::cstdargStartTemplateDecl = 0;
 TemplateDeclaration * IRState::cstdargArgTemplateDecl = 0;
 
-#if V2
 VarDeclarations * IRState::varsInScope;
-#endif
 
 bool
 d_gcc_force_templates ()
@@ -315,6 +313,7 @@ IRState::convertTo (tree exp, Type * exp_type, Type * target_type)
 	  return error_mark_node;
 	}
       break;
+
     case Tstruct:
       if (tbtype->ty == Tstruct)
       {
@@ -331,6 +330,7 @@ IRState::convertTo (tree exp, Type * exp_type, Type * target_type)
       }
       // else, default conversion, which should produce an error
       break;
+
     case Tclass:
       if (tbtype->ty == Tclass)
       {
@@ -392,6 +392,7 @@ IRState::convertTo (tree exp, Type * exp_type, Type * target_type)
       }
       // else default conversion
       break;
+
     case Tsarray:
       if (tbtype->ty == Tpointer)
 	{
@@ -436,6 +437,7 @@ IRState::convertTo (tree exp, Type * exp_type, Type * target_type)
 	  return error_mark_node;
 	}
       break;
+
     case Tarray:
       if (tbtype->ty == Tpointer)
 	{
@@ -457,10 +459,6 @@ IRState::convertTo (tree exp, Type * exp_type, Type * target_type)
 	  else
 	    {
 	      unsigned mult = 1;
-#if V1
-	      if (dst_elem_type->isbit ())
-		mult = 8;
-#endif
 	      tree args[3] = {
 		  // assumes Type::tbit->size () == 1
 		  integerConstant (sz_dst, Type::tsize_t),
@@ -470,14 +468,12 @@ IRState::convertTo (tree exp, Type * exp_type, Type * target_type)
 	      return libCall (LIBCALL_ARRAYCAST, 3, args, target_type->toCtype ());
 	    }
 	}
-#if V2
       else if (tbtype->ty == Tsarray)
 	{
 	  // %% Strings are treated as dynamic arrays D2.
 	  if (ebtype->isString () && tbtype->isString ())
 	    return indirect (darrayPtrRef (exp), target_type->toCtype ());
 	}
-#endif
       else
 	{
 	  ::error ("cannot cast expression of type %s to %s",
@@ -485,11 +481,13 @@ IRState::convertTo (tree exp, Type * exp_type, Type * target_type)
 	  return error_mark_node;
 	}
       break;
+ 
     case Taarray:
       if (tbtype->ty == Taarray)
 	return vconvert (exp, target_type->toCtype ());
       // else, default conversion, which should product an error
       break;
+ 
     case Tpointer:
       /* For some reason, convert_to_integer converts pointers
 	 to a signed type. */
@@ -499,7 +497,7 @@ IRState::convertTo (tree exp, Type * exp_type, Type * target_type)
       else if (tbtype->ty == Taarray && ebtype == Type::tvoidptr)
 	return vconvert (exp, target_type->toCtype ());
       break;
-#if V2
+
     case Tnull:
       if (tbtype->ty == Tarray)
 	{
@@ -507,6 +505,7 @@ IRState::convertTo (tree exp, Type * exp_type, Type * target_type)
 	  return darrayVal (target_type, 0, nop (exp, pointer_type->toCtype ()));
 	}
       break;
+
     case Tvector:
       if (tbtype->ty == Tsarray)
 	{
@@ -514,7 +513,7 @@ IRState::convertTo (tree exp, Type * exp_type, Type * target_type)
 	    return vconvert (exp, target_type->toCtype ());
 	}
       break;
-#endif
+
     default:
 	{
 	  if ((ebtype->isreal () && tbtype->isimaginary ())
@@ -798,21 +797,13 @@ IRState::toDArray (Expression * exp)
 bool
 IRState::typesSame (Type * t1, Type * t2)
 {
-#if V2
   return t1->mutableOf()->equals (t2->mutableOf ());
-#else
-  return t1->equals (t2);
-#endif
 }
 
 bool
 IRState::typesCompatible (Type * t1, Type * t2)
 {
-#if V2
   return t1->implicitConvTo (t2) >= MATCHconst;
-#else
-  return t1->equals (t2);
-#endif
 }
 
 Type *
@@ -1874,7 +1865,7 @@ int
 IRState::arrayBoundsCheck ()
 {
   int result = global.params.useArrayBounds;
-#if V2
+
   if (result == 1)
     {
       // For D2 safe functions only
@@ -1886,7 +1877,7 @@ IRState::arrayBoundsCheck ()
 	    result = 1;
 	}
     }
-#endif
+
   return result;
 }
 
@@ -2268,10 +2259,10 @@ IRState::assertCall (Loc loc, LibCall libcall)
       darrayString (loc.filename ? loc.filename : ""),
       integerConstant (loc.linnum, Type::tuns32)
   };
-#if V2
+
   if (libcall == LIBCALL_ASSERT && func->isUnitTestDeclaration ())
     libcall = LIBCALL_UNITTEST;
-#endif
+
   return libCall (libcall, 2, args);
 }
 
@@ -2283,12 +2274,10 @@ IRState::assertCall (Loc loc, Expression * msg)
       darrayString (loc.filename ? loc.filename : ""),
       integerConstant (loc.linnum, Type::tuns32)
   };
-#if V2
+
   LibCall libcall = func->isUnitTestDeclaration () ?
     LIBCALL_UNITTEST_MSG : LIBCALL_ASSERT_MSG;
-#else
-  LibCall libcall = LIBCALL_ASSERT_MSG;
-#endif
+
   return libCall (libcall, 3, args);
 }
 
@@ -2298,9 +2287,7 @@ static const char * libcall_ids[LIBCALL_count] = {
     "_d_newclass", "_d_newarrayT",
     "_d_newarrayiT",
     "_d_newarraymTp", "_d_newarraymiTp",
-#if V2
     "_d_allocmemory",
-#endif
     "_d_delclass", "_d_delinterface", "_d_delarray",
     "_d_delmemory", "_d_callfinalizer", "_d_callinterfacefinalizer",
     "_d_arraysetlengthT", "_d_arraysetlengthiT",
@@ -2315,21 +2302,16 @@ static const char * libcall_ids[LIBCALL_count] = {
     "_d_arrayappendT",
     /*"_d_arrayappendc", */"_d_arrayappendcTp",
     "_d_arrayappendcd", "_d_arrayappendwd",
-#if V2
     "_d_arrayassign", "_d_arrayctor", "_d_arraysetassign",
     "_d_arraysetctor", "_d_delarray_t",
-#endif
     "_d_monitorenter", "_d_monitorexit",
     "_d_criticalenter", "_d_criticalexit",
     "_d_throw",
     "_d_switch_string", "_d_switch_ustring", "_d_switch_dstring",
     "_d_assocarrayliteralTp",
-    "_d_arrayliteralTp"
-#if V2
-      ,
+    "_d_arrayliteralTp",
     "_d_unittest", "_d_unittest_msg",
     "_d_hidden_func"
-#endif
 };
 
 static FuncDeclaration * libcall_decls[LIBCALL_count];
@@ -2360,7 +2342,7 @@ IRState::getLibCallDecl (LibCall lib_call)
 	  arg_types.push (Type::tchar->arrayOf ());
 	  arg_types.push (Type::tuns32);
 	  break;
-#if V2
+
 	case LIBCALL_UNITTEST:
 	  arg_types.push (Type::tchar->arrayOf ());
 	  arg_types.push (Type::tuns32);
@@ -2371,7 +2353,7 @@ IRState::getLibCallDecl (LibCall lib_call)
 	  arg_types.push (Type::tchar->arrayOf ());
 	  arg_types.push (Type::tuns32);
 	  break;
-#endif
+
 	case LIBCALL_NEWCLASS:
 	  arg_types.push (ClassDeclaration::classinfo->type);
 	  return_type = getObjectType ();
@@ -2391,12 +2373,12 @@ IRState::getLibCallDecl (LibCall lib_call)
 	  arg_types.push (Type::tsize_t);
 	  return_type = Type::tvoid->arrayOf ();
 	  break;
-#if V2
+
 	case LIBCALL_ALLOCMEMORY:
 	  arg_types.push (Type::tsize_t);
 	  return_type = Type::tvoidptr;
 	  break;
-#endif
+
 	case LIBCALL_DELCLASS:
 	case LIBCALL_DELINTERFACE:
 	  arg_types.push (Type::tvoidptr);
@@ -2405,12 +2387,12 @@ IRState::getLibCallDecl (LibCall lib_call)
 	case LIBCALL_DELARRAY:
 	  arg_types.push (Type::tvoid->arrayOf()->pointerTo ());
 	  break;
-#if V2
+
 	case LIBCALL_DELARRAYT:
 	  arg_types.push (Type::tvoid->arrayOf()->pointerTo ());
 	  arg_types.push (Type::typeinfo->type);
 	  break;
-#endif
+
 	case LIBCALL_DELMEMORY:
 	  arg_types.push (Type::tvoidptr->pointerTo ());
 	  break;
@@ -2561,7 +2543,7 @@ IRState::getLibCallDecl (LibCall lib_call)
 	  arg_types.push (Type::tdchar);
 	  return_type = Type::tvoid->arrayOf ();
 	  break;
-#if V2
+#
 	case LIBCALL_ARRAYASSIGN:
 	case LIBCALL_ARRAYCTOR:
 	  arg_types.push (Type::typeinfo->type);
@@ -2578,7 +2560,7 @@ IRState::getLibCallDecl (LibCall lib_call)
 	  arg_types.push (Type::typeinfo->type);
 	  return_type = Type::tvoidptr;
 	  break;
-#endif
+
 	case LIBCALL_MONITORENTER:
 	case LIBCALL_MONITOREXIT:
 	case LIBCALL_THROW:
@@ -2620,14 +2602,14 @@ IRState::getLibCallDecl (LibCall lib_call)
 	  arg_types.push (Type::tsize_t);
 	  return_type = Type::tvoidptr;
 	  break;
-#if V2
+
 	case LIBCALL_HIDDEN_FUNC:
 	  /* Argument is an Object, but can't use that as
 	     LIBCALL_HIDDEN_FUNC is needed before the Object type is
 	     created. */
 	  arg_types.push (Type::tvoidptr);
 	  break;
-#endif
+
 	default:
 	  gcc_unreachable ();
 	}
@@ -3315,13 +3297,11 @@ IRState::getFrameForNestedClass (ClassDeclaration *c)
   return getFrameForSymbol (c);
 }
 
-#if V2
 tree
 IRState::getFrameForNestedStruct (StructDeclaration *s)
 {
   return getFrameForSymbol (s);
 }
-#endif
 
 /* If nested_sym is a nested function, return the static chain to be
    used when invoking that function.
@@ -3383,7 +3363,6 @@ IRState::getFrameForSymbol (Dsymbol * nested_sym)
 		  if (outer_func == cd->toParent2 ())
 		    break;
 		}
-#if V2
 	      else if ((sd = this_func->isStructDeclaration ()))
 		{
 		  if (!sd->isNested () || !sd->vthis)
@@ -3391,7 +3370,6 @@ IRState::getFrameForSymbol (Dsymbol * nested_sym)
 		  if (outer_func == sd->toParent2 ())
 		    break;
 		}
-#endif
 	      else
 		{
 	    cannot_get_frame:
@@ -3446,9 +3424,7 @@ IRState::getFrameForSymbol (Dsymbol * nested_sym)
 	  do {
 	      if (! nested_func->isNested ())
 		{
-#if V2
 		  if (! nested_func->isMember2 ())
-#endif
 		    goto cannot_access_frame;
 		}
 	      while ((o = o->toParent2 ()))
@@ -3509,12 +3485,10 @@ IRState::isFuncNestedIn (FuncDeclaration * inner, FuncDeclaration * outer)
 	{
 	  inner = isClassNestedInFunction (cd);
 	}
-#if V2
       else if ((ad = inner->isThis ()) && (sd = ad->isStructDeclaration ()))
 	{
 	  inner = isStructNestedInFunction (sd);
 	}
-#endif
       else
 	{
 	  break;
@@ -3625,7 +3599,6 @@ IRState::getVThis (Dsymbol * decl, Expression * e)
       else
 	gcc_unreachable ();
     }
-#if V2
   else if ((struct_decl = decl->isStructDeclaration ()))
     {
       Dsymbol *outer = struct_decl->toParent2 ();
@@ -3648,7 +3621,7 @@ IRState::getVThis (Dsymbol * decl, Expression * e)
       else
 	gcc_unreachable ();
     }
-#endif
+
   return vthis_value;
 }
 
@@ -3669,7 +3642,6 @@ IRState::isClassNestedInFunction (ClassDeclaration * cd)
   return NULL;
 }
 
-#if V2
 /* Return the parent function of a nested struct. */
 FuncDeclaration *
 IRState::isStructNestedInFunction (StructDeclaration * sd)
@@ -3685,7 +3657,6 @@ IRState::isStructNestedInFunction (StructDeclaration * sd)
     }
   return NULL;
 }
-#endif
 
 
 // Build static chain decl to be passed to nested functions in D.
@@ -3694,14 +3665,12 @@ IRState::buildChain (FuncDeclaration * func)
 {
   FuncFrameInfo * ffi = getFrameInfo (func);
 
-#if V2
   if (ffi->is_closure)
     {
       // Build closure pointer, which is initialised on heap.
       func->buildClosure (this);
       return;
     }
-#endif
 
   if (! ffi->creates_frame)
     {
@@ -3710,11 +3679,7 @@ IRState::buildChain (FuncDeclaration * func)
       return;
     }
 
-#if V2
   VarDeclarations * nestedVars = & func->closureVars;
-#else
-  VarDeclarations * nestedVars = & func->frameVars;
-#endif
 
   tree frame_rec_type = ffi->frame_rec;
   tree chain_link = chainLink ();
@@ -3827,11 +3792,7 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
   fds->frameInfo = ffi;
 
-#if V2
   VarDeclarations * nestedVars = & fd->closureVars;
-#else
-  VarDeclarations * nestedVars = & fd->frameVars;
-#endif
 
   // Nested functions, or functions with nested refs must create
   // a static frame for local variables to be referenced from.
@@ -3842,25 +3803,16 @@ IRState::getFrameInfo (FuncDeclaration *fd)
   else
     {
       AggregateDeclaration * ad = fd->isThis ();
-#if V2
       if (ad && ad->isNested ())
 	{
 	  ffi->creates_frame = true;
 	}
-#else
-      ClassDeclaration * cd = ad ? ad->isClassDeclaration () : NULL;
-      if (cd && cd->isNested ())
-	{
-	  ffi->creates_frame = true;
-	}
-#endif
     }
 
   // Functions with In/Out contracts pass parameters to nested frame.
   if (fd->fensure || fd->frequire)
     ffi->creates_frame = true;
 
-#if V2
   // D2 maybe setup closure instead.
   if (fd->needsClosure ())
     {
@@ -3896,7 +3848,6 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 	  ff = ff->toParent2()->isFuncDeclaration ();
 	}
     }
-#endif
 
   // Build type now as may be referenced from another module.
   if (ffi->creates_frame)
@@ -3932,13 +3883,6 @@ IRState::getFrameRef (FuncDeclaration * outer_func)
 	  // like compon (indirect, field0) parent frame link is the first field;
 	  result = indirect (result, ptr_type_node);
 	}
-#if V1
-      else
-	{
-	  // We should only get here for D2 only.
-	  gcc_unreachable ();
-	}
-#endif
 
       if (fd->isNested ())
 	fd = fd->toParent2()->isFuncDeclaration ();
@@ -3949,10 +3893,8 @@ IRState::getFrameRef (FuncDeclaration * outer_func)
 	 So, we can just skip over those... */
  	 else if ((ad = fd->isThis ()) && (cd = ad->isClassDeclaration ()))
 	   fd = isClassNestedInFunction (cd);
-#if V2
  	 else if ((ad = fd->isThis ()) && (sd = ad->isStructDeclaration ()))
 	   fd = isStructNestedInFunction (sd);
-#endif
  	 else
 	   break;
     }
@@ -3999,13 +3941,9 @@ IRState::functionNeedsChain (FuncDeclaration *f)
       if (ti && ti->isnested == NULL)
 	return false;
 
-#if V2
       pf = f->toParent2()->isFuncDeclaration ();
       if (pf && ! getFrameInfo (pf)->is_closure)
 	return true;
-#else
-      return true;
-#endif
     }
   if (f->isStatic ())
     {
@@ -4018,10 +3956,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
     {
       s = s->toParent2 ();
       if ((pf = s->isFuncDeclaration ())
-#if V2
-	  && ! getFrameInfo (pf)->is_closure
-#endif
-      )
+	  && ! getFrameInfo (pf)->is_closure)
 	{
 	  return true;
 	}
@@ -4041,12 +3976,8 @@ IRState::startCond (Statement * stmt, tree t_cond)
 void
 IRState::startCond (Statement * stmt, Expression * e_cond)
 {
-#if V2
   tree t_cond = e_cond->toElemDtor (this);
   startCond (stmt, convertForCondition (t_cond, e_cond->type));
-#else
-  startCond (stmt, convertForCondition (e_cond));
-#endif
 }
 
 
@@ -4105,12 +4036,8 @@ IRState::exitIfFalse (tree t_cond, bool /*unused*/)
 void
 IRState::exitIfFalse (Expression * e_cond, bool is_top_cond)
 {
-#if V2
   tree t_cond = e_cond->toElemDtor (this);
   exitIfFalse (convertForCondition (t_cond, e_cond->type), is_top_cond);
-#else
-  exitIfFalse (convertForCondition (e_cond), is_top_cond);
-#endif
 }
 
 void
@@ -4130,26 +4057,22 @@ IRState::startCase (Statement * stmt, tree t_cond, int has_vars)
   Flow * f = beginFlow (stmt);
   f->condition = t_cond;
   f->kind = level_switch;
-#if V2
   if (has_vars)
     {
       // %% dummy value so the tree is not NULL
       f->hasVars = integer_one_node;
     }
-#endif
 }
 
 void
 IRState::doCase (tree t_value, tree t_label)
 {
-#if V2
   if (currentFlow ()->hasVars)
     {
       // SwitchStatement has already taken care of label jumps.
       doLabel (t_label);
     }
   else
-#endif
     {
       tree t_case = build_case_label (t_value, NULL_TREE, t_label);
       addExp (t_case);
@@ -4162,14 +4085,12 @@ IRState::endCase ()
   Flow * f = currentFlow ();
   tree t_body = popStatementList ();
   tree t_condtype = TREE_TYPE (f->condition);
-#if V2
   if (f->hasVars)
     {
       // %% switch was converted to if-then-else expression
       addExp (t_body);
     }
   else
-#endif
     {
       tree t_stmt = build3 (SWITCH_EXPR, t_condtype, f->condition,
 			    t_body, NULL_TREE);

@@ -24,11 +24,11 @@ struct ModuleInfo
   FuncDeclarations ctors;
   FuncDeclarations dtors;
   VarDeclarations ctorgates;
-#if V2
+
   FuncDeclarations sharedctors;
   FuncDeclarations shareddtors;
   VarDeclarations sharedctorgates;
-#endif
+
   FuncDeclarations unitTests;
 };
 

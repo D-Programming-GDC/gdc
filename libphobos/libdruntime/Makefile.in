@@ -313,6 +313,7 @@ CORE_IMPORTS = core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/posix/sys/time.di core/sys/posix/sys/types.di \
 	     core/sys/posix/sys/uio.di core/sys/posix/sys/un.di \
 	     core/sys/posix/sys/utsname.di core/sys/posix/sys/wait.di \
+	     core/sys/freebsd/sys/event.di \
 	     \
 	     core/sys/windows/dbghelp.di core/sys/windows/dll.di \
 	     core/sys/windows/stacktrace.di core/sys/windows/threadaux.di \

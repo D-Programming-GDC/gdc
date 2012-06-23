@@ -37,22 +37,9 @@ Type * d_gcc_builtin_va_list_d_type;
 void
 d_bi_init ()
 {
-#if D_VA_LIST_TYPE_VOIDPTR
-  // The "standard" definition of va_list is void*.
-  d_va_list_type_node = build_distinct_type_copy (ptr_type_node);
-
-  // %% Yuck. Needed to pass stabilize_va_list
-  if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
-    TYPE_MAIN_VARIANT (TREE_TYPE (d_va_list_type_node)) =
-      TYPE_MAIN_VARIANT (TREE_TYPE (va_list_type_node));
-
-  TYPE_MAIN_VARIANT (d_va_list_type_node) =
-    TYPE_MAIN_VARIANT (va_list_type_node);
-#else
   // The "standard" abi va_list is va_list_type_node.
   // assumes va_list_type_node already built
   d_va_list_type_node = build_variant_type_copy (va_list_type_node);
-#endif
 
   d_gcc_builtin_va_list_d_type = gcc_type_to_d_type (d_va_list_type_node);
   if (! d_gcc_builtin_va_list_d_type)
@@ -62,8 +49,8 @@ d_bi_init ()
       gcc_unreachable ();
     }
 
-  // if D_VA_TYPE_VOIDPTR, need to avoid errors in gimplification,
-  // else, need to not ICE in targetm.canonical_va_list_type
+  // Need to avoid errors in gimplification, else, need to not ICE
+  // in targetm.canonical_va_list_type
   d_gcc_builtin_va_list_d_type->ctype = d_va_list_type_node;
 }
 
@@ -99,6 +86,7 @@ gcc_type_to_d_type (tree t)
 	    }
 	  break;
 	}
+
     case REFERENCE_TYPE:
 	{
 	  d = gcc_type_to_d_type (TREE_TYPE (t));
@@ -113,12 +101,14 @@ gcc_type_to_d_type (tree t)
 	    }
 	  break;
 	}
+
     case BOOLEAN_TYPE:
 	{
 	  // Should be no need for size checking.
 	  return Type::tbool;
 	  break;
 	}
+
     case INTEGER_TYPE:
 	{
 	  unsigned sz = tree_low_cst (TYPE_SIZE_UNIT (t), 1);
@@ -136,6 +126,7 @@ gcc_type_to_d_type (tree t)
 	    }
 	  break;
 	}
+
     case REAL_TYPE:
 	{
 	  // Double and long double may be the same size
@@ -155,6 +146,7 @@ gcc_type_to_d_type (tree t)
 	    }
 	  break;
 	}
+
     case COMPLEX_TYPE:
 	{
 	  unsigned sz = tree_low_cst (TYPE_SIZE_UNIT (t), 1);
@@ -168,10 +160,12 @@ gcc_type_to_d_type (tree t)
 	    }
 	  break;
 	}
+
     case VOID_TYPE:
 	{
 	  return Type::tvoid;
 	}
+
     case ARRAY_TYPE:
 	{
 	  d = gcc_type_to_d_type (TREE_TYPE (t));
@@ -194,7 +188,7 @@ gcc_type_to_d_type (tree t)
 	    }
 	  break;
 	}
-#if V2
+
     case VECTOR_TYPE:
 	{
 	  d = gcc_type_to_d_type (TREE_TYPE (t));
@@ -212,7 +206,7 @@ gcc_type_to_d_type (tree t)
 	    }
 	  break;
 	}
-#endif
+
     case RECORD_TYPE:
 	{
 	  for (size_t i = 0; i < builtin_converted_types.dim; i += 2)
@@ -262,6 +256,7 @@ gcc_type_to_d_type (tree t)
 	  builtin_converted_decls.push (sd);
 	  return d;
 	}
+
     case FUNCTION_TYPE:
 	{
 	  Type * ret = gcc_type_to_d_type (TREE_TYPE (t));
@@ -286,15 +281,8 @@ gcc_type_to_d_type (tree t)
 		      ta = TREE_TYPE (ta);
 		      io = STCref;
 		    }
-#if D_VA_LIST_TYPE_VOIDPTR
-		  // C-type va_list, but require D-type void*
-		  if (ta == va_list_type_node)
-		    d_arg_type = d_gcc_builtin_va_list_d_type;
-		  else
-#endif
-		    {
-		      d_arg_type = gcc_type_to_d_type (ta);
-		    }
+		  d_arg_type = gcc_type_to_d_type (ta);
+
 		  if (! d_arg_type)
 		    goto Lfail;
 
@@ -310,11 +298,13 @@ gcc_type_to_d_type (tree t)
 	  delete args;
 	  break;
 	}
+
     default:
 	{
 	  break;
 	}
     }
+
   return NULL;
 }
 
@@ -375,7 +365,6 @@ d_gcc_magic_stdarg_check (Dsymbol *m, bool is_c_std_arg)
   if (td == NULL)     // Not handled.
     return;
 
-#ifndef D_VA_LIST_TYPE_VOIDPTR
   if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
     {
       /* For GCC, a va_list can be an array.  D static arrays are
@@ -399,7 +388,6 @@ d_gcc_magic_stdarg_check (Dsymbol *m, bool is_c_std_arg)
 	    }
 	}
     }
-#endif
 }
 
 // std.stdarg is different: it expects pointer types (i.e. _argptr)
@@ -439,7 +427,7 @@ d_gcc_magic_builtins_module (Module *m)
 	  //warning (0, "one-arg va problem: %s", name);
 	  continue;
 	}
-#if V2
+
       /* %% D2 - builtins are trusted and optionally nothrow.
 	 The purity of a builtins can vary depending on compiler flags set at
 	 init, or by the -foptions passed, such as flag_unsafe_math_optimizations
@@ -450,7 +438,7 @@ d_gcc_magic_builtins_module (Module *m)
 	TREE_READONLY (decl) ? PUREconst :
 	DECL_IS_NOVOPS (decl) ? PUREweak :
 	PUREimpure;
-#endif
+
       FuncDeclaration * func = new FuncDeclaration (0, 0,
 						    Lexer::idPool (name), STCextern, dtf);
       func->isym = new Symbol;
@@ -575,7 +563,6 @@ d_gcc_magic_module (Module *m)
 	  if (! strcmp (md->id->string, "builtins"))
 	    d_gcc_magic_builtins_module (m);
 	}
-#if V2
       else if (! strcmp((md->packages->tdata()[0])->string, "core"))
 	{
 	  if (! strcmp (md->id->string, "vararg"))
@@ -590,35 +577,15 @@ d_gcc_magic_module (Module *m)
 	  if (! strcmp (md->id->string, "math"))
 	    IRState::setMathModule (m, false);
 	}
-#else
-      else if (! strcmp(((Identifier *) md->packages->data[0])->string, "std"))
-	{
-	  if (! strcmp (md->id->string, "stdarg"))
-	    d_gcc_magic_stdarg_module (m, false);
-	  else if (! strcmp (md->id->string, "intrinsic"))
-	    IRState::setIntrinsicModule (m, false);
-	  else if (! strcmp (md->id->string, "math"))
-	    IRState::setMathModule (m, false);
-	}
-#endif
     }
   else if (md->packages->dim == 2)
     {
-#if V2
       if (! strcmp((md->packages->tdata()[0])->string, "core") &&
 	  ! strcmp((md->packages->tdata()[1])->string, "stdc"))
 	{
 	  if (! strcmp (md->id->string, "stdarg"))
 	    d_gcc_magic_stdarg_module (m, true);
 	}
-#else
-      if (! strcmp((md->packages->tdata()[0])->string, "std") &&
-	  ! strcmp((md->packages->tdata()[1])->string, "c"))
-	{
-	  if (! strcmp (md->id->string, "stdarg"))
-	    d_gcc_magic_stdarg_module (m, true);
-	}
-#endif
     }
 }
 
@@ -659,7 +626,6 @@ d_gcc_field_align (VarDeclaration * var, int known_align)
 }
 
 
-#if V2
 // Convert backend evaluated trees to D Frontend Expressions for CTFE
 static Expression *
 gcc_cst_to_d_expr (tree cst)
@@ -839,4 +805,4 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
       return e;
     }
 }
-#endif
+

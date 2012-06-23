@@ -389,12 +389,12 @@ real_t::convert (Type * to_type) const
     case Tfloat80:
     case Timaginary80:
       return convert (real_t::LongDouble);
-#if V2
+
     case Tvector:
       tb = ((TypeVector *)tb)->elementType ();
       gcc_assert (tb->ty != Tvector);
       return convert (tb);
-#endif
+
     default:
       gcc_unreachable ();
     }

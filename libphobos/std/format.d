@@ -4467,9 +4467,9 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 comma = true;
                 void *pkey = &fakevalue;
                 version (D_LP64)
-                    pkey -= 16;
+                    pkey -= (long.sizeof + 15) & ~(15);
                 else
-                    pkey -= long.sizeof;
+                    pkey -= (long.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
 
                 // the key comes before the value
                 auto keysize = keyti.tsize;

@@ -92,8 +92,6 @@ void unittests();
 
 #ifdef IN_GCC
 /* Changes for the GDC compiler by David Friedman */
-#define V1      DMDV1
-#define V2      DMDV2
 #endif
 
 #define DMDV1   0

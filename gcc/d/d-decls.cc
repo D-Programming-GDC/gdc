@@ -197,6 +197,7 @@ VarDeclaration::toSymbol ()
   if (! csym)
     {
       tree var_decl;
+      enum tree_code decl_kind;
 
       // For field declaration, it is possible for toSymbol to be called
       // before the parent's toCtype ()
@@ -218,64 +219,12 @@ VarDeclaration::toSymbol ()
       else
 	csym->Sident = ident->string;
 
-      enum tree_code decl_kind;
-
-#if V1
-      bool is_template_const = false;
-      // Logic copied from toobj.c VarDeclaration::toObjFile
-
-      Dsymbol * parent = this->toParent ();
-      /* private statics should still get a global symbol, in case
-       * another module inlines a function that references it.
-       */
-      if (!parent || parent->ident == NULL || parent->isFuncDeclaration ())
-	{
-	  // nothing
-	}
-      else
-	{
-	  while (parent)
-	    {
-	      /* Global template data members need to be in comdat's
-	       * in case multiple .obj files instantiate the same
-	       * template with the same types.
-	       */
-	      if (parent->isTemplateInstance () && !parent->isTemplateMixin ())
-		{
-		  /* These symbol constants have already been copied,
-		   * so no reason to output them.
-		   * Note that currently there is no way to take
-		   * the address of such a const.
-		   */
-		  if (isConst () && type->toBasetype()->ty != Tsarray &&
-		      init && init->isExpInitializer ())
-		    {
-		      is_template_const = true;
-		      break;
-		    }
-
-		  break;
-		}
-	      parent = parent->parent;
-	    }
-	}
-#endif
-
       if (storage_class & STCparameter)
 	decl_kind = PARM_DECL;
-#if V2
       else if (storage_class & STCmanifest)
 	{
 	  decl_kind = CONST_DECL;
 	}
-#else
-      else if (is_template_const ||
-	       (isConst () && ! gen.isDeclarationReferenceType (this)
-		&& type->isscalar () && ! isDataseg ()))
-	{
-	  decl_kind = CONST_DECL;
-	}
-#endif
       else
 	{
 	  decl_kind = VAR_DECL;
@@ -336,12 +285,7 @@ VarDeclaration::toSymbol ()
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
       // called from a varaible in an imported module
       // %% (out const X x) doesn't mean the reference is const...
-      if (
-#if V2
-	  (isConst () || isImmutable ()) && (storage_class & STCinit)
-#else
-	  isConst ()
-#endif
+      if ((isConst () || isImmutable ()) && (storage_class & STCinit)
 	  && ! gen.isDeclarationReferenceType (this))
 	{
 	  // %% CONST_DECLS don't have storage, so we can't use those,
@@ -374,7 +318,6 @@ VarDeclaration::toSymbol ()
 	gen.addDeclAttribute (var_decl, "dllexport");
 #endif
 
-#if V2
       if (isDataseg () && isThreadlocal ())
 	{
 	  if (TREE_CODE (var_decl) == VAR_DECL)
@@ -391,7 +334,6 @@ VarDeclaration::toSymbol ()
 		free (p);
 	    }
 	}
-#endif
     }
   return csym;
 }
@@ -445,7 +387,6 @@ TypeInfoDeclaration::toSymbol ()
 
 /*************************************
 */
-#if V2
 
 Symbol *
 TypeInfoClassDeclaration::toSymbol ()
@@ -455,7 +396,6 @@ TypeInfoClassDeclaration::toSymbol ()
   return tc->sym->toSymbol ();
 }
 
-#endif
 
 /*************************************
 */
@@ -640,14 +580,12 @@ FuncDeclaration::toSymbol ()
 
 	  if (isStatic ())
 	    TREE_STATIC (fndecl) = 1;
-#if V2
 	  // %% Pure functions don't imply nothrow
 	  DECL_PURE_P (fndecl) = (isPure () == PUREstrong && ftype->isnothrow);
 	  // %% Assert contracts in functions may throw.
 	  TREE_NOTHROW (fndecl) = ftype->isnothrow && !global.params.useAssert;
 	  // %% Make D const methods equivalent to GCC const
 	  TREE_READONLY (fndecl) = (isPure () == PUREconst);
-#endif
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
 	  // Have to test for import first
@@ -1043,14 +981,13 @@ Module::toModuleAssert ()
 
 /******************************************
 */
-#if V2
+
 Symbol *
 Module::toModuleUnittest ()
 {
   // Not used in GCC
   return 0;
 }
-#endif
 
 /******************************************
 */

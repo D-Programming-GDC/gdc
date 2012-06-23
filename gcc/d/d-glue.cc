@@ -46,13 +46,8 @@ elem *
 CondExp::toElem (IRState * irs)
 {
   tree cn = irs->convertForCondition (econd);
-#if V2
   tree t1 = irs->convertTo (e1->toElemDtor (irs), e1->type, type);
   tree t2 = irs->convertTo (e2->toElemDtor (irs), e2->type, type);
-#else
-  tree t1 = irs->convertTo (e1, type);
-  tree t2 = irs->convertTo (e2, type);
-#endif
   return build3 (COND_EXPR, type->toCtype (), cn, t1, t2);
 }
 
@@ -65,11 +60,7 @@ build_bool_binop (TOK op, tree type, Expression * e1, Expression * e2, IRState *
   if (op == TOKandand || op == TOKoror)
     {
       t1 = irs->convertForCondition (e1->toElem (irs), e1->type);
-#if V2
       t2 = irs->convertForCondition (e2->toElemDtor (irs), e2->type);
-#else
-      t2 = irs->convertForCondition (e2->toElem (irs), e2->type);
-#endif
     }
   else
     {
@@ -432,13 +423,10 @@ EqualExp::toElem (IRState* irs)
 	      irs->toDArray (e2),
 	      NULL_TREE,
 	  };
-#if V2
+
 	  args[2] = irs->typeinfoReference (telem->arrayOf ());
 	  result = irs->libCall (LIBCALL_ADEQ2, 3, args);
-#else
-	  args[2] = irs->typeinfoReference (telem);
-	  result = irs->libCall (LIBCALL_ADEQ, 3, args);
-#endif
+
 	  result = convert (type->toCtype (), result);
 	  if (op == TOKnotequal)
 	    result = build1 (TRUTH_NOT_EXPR, type->toCtype (), result);
@@ -572,15 +560,9 @@ CmpExp::toElem (IRState* irs)
 	}
       else
 	{
-#if V2
 	  args[2] = irs->typeinfoReference (telem->arrayOf ());
 	  n_args = 3;
 	  lib_call = LIBCALL_ADCMP2;
-#else
-	  args[2] = irs->typeinfoReference (telem);
-	  n_args = 3;
-	  lib_call = LIBCALL_ADCMP;
-#endif
 	}
 
       tree result = irs->libCall (lib_call, n_args, args);
@@ -639,11 +621,7 @@ AndAndExp::toElem (IRState * irs)
     return toElemBin (irs, opComp);
   else
     {
-#if V2
       tree t2 = e2->toElemDtor (irs);
-#else
-      tree t2 = e2->toElem (irs);
-#endif
       return build3 (COND_EXPR, type->toCtype (),
 		     irs->convertForCondition (e1), t2, d_void_zero_node);
     }
@@ -656,11 +634,7 @@ OrOrExp::toElem (IRState * irs)
     return toElemBin (irs, opComp);
   else
     {
-#if V2
       tree t2 = e2->toElemDtor (irs);
-#else
-      tree t2 = e2->toElem (irs);
-#endif
       return build3 (COND_EXPR, type->toCtype (),
 		     build1 (TRUTH_NOT_EXPR, boolean_type_node,
 			     irs->convertForCondition (e1)),
@@ -722,7 +696,6 @@ MulExp::toElem (IRState * irs)
   return toElemBin (irs, opBinary);
 }
 
-#if V2
 elem *
 PowExp::toElem (IRState * irs)
 {
@@ -759,7 +732,6 @@ PowExp::toElem (IRState * irs)
 
   return convert (type->toCtype (), irs->buildCall (powfn, 2, e1_t, e2_t));
 }
-#endif
 
 static tree
 one_elem_array (IRState * irs, Expression * value, tree & var_decl_out)
@@ -974,13 +946,11 @@ MulAssignExp::toElem (IRState * irs)
   return toElemBin (irs, opAssign);
 }
 
-#if V2
 elem *
 PowAssignExp::toElem (IRState * irs)
 {
   return toElemBin (irs, opAssign);
 }
-#endif
 
 elem *
 CatAssignExp::toElem (IRState * irs)
@@ -1132,7 +1102,6 @@ array_set_expr (IRState * irs, tree ptr, tree src, tree count)
   return irs->popStatementList ();
 }
 
-#if V2
 // Determine if type is an array of structs that need a postblit.
 static StructDeclaration *
 needsPostblit (Type *t)
@@ -1147,7 +1116,6 @@ needsPostblit (Type *t)
     }
   return NULL;
 }
-#endif
 
 
 elem *
@@ -1191,7 +1159,7 @@ AssignExp::toElem (IRState* irs)
 	  // should optimize with memset if possible
 	  // %% vararg issues
 	  tree dyn_array_exp = irs->maybeMakeTemp (e1->toElem (irs));
-#if V2
+
 	  if (op != TOKblit)
 	    {
 	      if (needsPostblit (elem_type) != NULL)
@@ -1210,14 +1178,13 @@ AssignExp::toElem (IRState* irs)
 		  return e;
 		}
 	    }
-#endif
+
 	  tree set_exp = array_set_expr (irs, irs->darrayPtrRef (dyn_array_exp),
 			 		 e2->toElem (irs), irs->darrayLenRef (dyn_array_exp));
 	  return irs->compound (set_exp, dyn_array_exp);
 	}
       else
 	{
-#if V2
 	  if (op != TOKblit && needsPostblit (elem_type) != NULL)
 	    {
 	      tree args[3] = {
@@ -1230,7 +1197,6 @@ AssignExp::toElem (IRState* irs)
 	       			   3, args, type->toCtype ());
 	    }
 	  else
-#endif
 	    if (irs->arrayBoundsCheck ())
   	      {
 		tree args[3] = {
@@ -1294,7 +1260,6 @@ AssignExp::toElem (IRState* irs)
 		  result = irs->maybeCompound (init, result);
 		}
 	    }
-#if V2
 	  else if (e2->op == TOKint64)
 	    {
 	      // Maybe set-up hidden pointer to outer scope context.
@@ -1309,7 +1274,6 @@ AssignExp::toElem (IRState* irs)
 		  result = irs->maybeCompound (result, vthis_exp);
 		}
 	    }
-#endif
 	}
       return result;
 
@@ -1540,7 +1504,6 @@ SliceExp::toElem (IRState * irs)
   return aryscp.finish (irs->darrayVal (type->toCtype (), final_len_expr, final_ptr_expr));
 }
 
-#if V2
 elem *
 VectorExp::toElem (IRState * irs)
 {
@@ -1550,7 +1513,6 @@ VectorExp::toElem (IRState * irs)
 
   return build_vector_from_val (vectype, sc);
 }
-#endif
 
 elem *
 CastExp::toElem (IRState * irs)
@@ -1559,12 +1521,10 @@ CastExp::toElem (IRState * irs)
   Type * tbtype = to->toBasetype ();
   tree t;
 
-#if V2
   if (ebtype->ty == Taarray)
     ebtype = ((TypeAArray*)ebtype)->getImpl()->type;
   if (tbtype->ty == Taarray)
     tbtype = ((TypeAArray*)tbtype)->getImpl()->type;
-#endif
 
   t = e1->toElem (irs);
 
@@ -1634,7 +1594,6 @@ DeleteExp::toElem (IRState* irs)
 	}
     case Tarray:
 	{
-#if V2
 	  // Might need to run destructor on array contents
 	  Type * next_type = base_type->nextOf()->toBasetype ();
 	  tree ti = d_null_pointer;
@@ -1650,9 +1609,6 @@ DeleteExp::toElem (IRState* irs)
 	  // call _delarray_t (&t, ti);
 	  tree args[2] = { irs->addressOf (t), ti };
 	  return irs->libCall (LIBCALL_DELARRAYT, 2, args);
-#else
-	  lib_call = LIBCALL_DELARRAY; break;
-#endif
 	}
     case Tpointer:
 	{
@@ -1825,11 +1781,9 @@ CallExp::toElem (IRState* irs)
 {
   tree call_exp = irs->call (e1, arguments);
 
-#if V2
   TypeFunction * tf = irs->getFuncType (e1->type->toBasetype ());
   if (tf->isref)
     call_exp = irs->indirect (call_exp);
-#endif
 
   // Some library calls are defined to return a generic type.
   // this->type is the real type. (See crash2.d)
@@ -1846,7 +1800,6 @@ Expression::toElem (IRState* irs)
   return irs->errorMark (type);
 }
 
-#if V2
 /*******************************************
  * Evaluate Expression, then call destructors on any temporaries in it.
  */
@@ -1877,7 +1830,6 @@ Expression::toElemDtor (IRState *irs)
     }
   return t;
 }
-#endif
 
 
 elem *
@@ -2055,7 +2007,6 @@ AssertExp::toElem (IRState* irs)
 elem *
 DeclarationExp::toElem (IRState* irs)
 {
-#if V2
   VarDeclaration * vd;
   if ((vd = declaration->isVarDeclaration ()) != NULL)
     {
@@ -2067,7 +2018,6 @@ DeclarationExp::toElem (IRState* irs)
 	  irs->varsInScope->push (vd);
 	}
     }
-#endif
 
   // VarDeclaration::toObjFile was modified to call d_gcc_emit_local_variable
   // if needed.  This assumes irs == g.irs
@@ -2128,7 +2078,6 @@ HaltExp::toElem (IRState* irs)
   return irs->buildCall (t_abort, 0);
 }
 
-#if V2
 elem *
 SymbolExp::toElem (IRState * irs)
 {
@@ -2203,73 +2152,6 @@ SymbolExp::toElem (IRState * irs)
     gcc_assert (op == TOKvar || op == TOKsymoff);
   return error_mark_node;
 }
-#else
-elem *
-VarExp::toElem (IRState* irs)
-{
-  if (var->needThis ())
-    {
-      error ("need 'this' to access member %s", var->ident->string);
-      return irs->errorMark (type);
-    }
-
-  // For variables that are references (currently only out/inout arguments;
-  // objects don't count), evaluating the variable means we want what it refers to.
-  //tree e = irs->var (var);
-  VarDeclaration * v = var->isVarDeclaration ();
-  tree e;
-  if (v)
-    e = irs->var (v);
-  else
-    e = var->toSymbol()->Stree;
-
-  TREE_USED (e) = 1;
-
-  if (irs->isDeclarationReferenceType (var))
-    {
-      e = irs->indirect (e, var->type->toCtype ());
-      if (irs->inVolatile ())
-	{
-	  TREE_THIS_VOLATILE (e) = 1;
-	}
-    }
-  else
-    {
-      if (irs->inVolatile ())
-	{
-	  e = irs->addressOf (e);
-	  TREE_THIS_VOLATILE (e) = 1;
-	  e = irs->indirect (e);
-	  TREE_THIS_VOLATILE (e) = 1;
-	}
-    }
-  return e;
-}
-
-elem *
-SymOffExp::toElem (IRState * irs)
-{
-  tree a;
-  VarDeclaration * v = var->isVarDeclaration ();
-  if (v)
-    a = irs->var (v);
-  else
-    a = var->toSymbol()->Stree;
-
-  TREE_USED (a) = 1;
-
-  if (irs->isDeclarationReferenceType (var))
-    gcc_assert (POINTER_TYPE_P (TREE_TYPE (a)));
-  else
-    a = irs->addressOf (var);
-
-  if (! offset)
-    return convert (type->toCtype (), a);
-
-  tree b = irs->integerConstant (offset, Type::tsize_t);
-  return irs->nop (irs->pointerOffset (a, b), type->toCtype ());
-}
-#endif
 
 elem *
 NewExp::toElem (IRState * irs)
@@ -2407,7 +2289,6 @@ NewExp::toElem (IRState * irs)
 	    {
 	      new_call = irs->call (member, new_call, arguments);
 	    }
-#if V2
 	  // %% D2.0 nested structs
 	  StructDeclaration * struct_decl = struct_type->sym;
 
@@ -2423,7 +2304,6 @@ NewExp::toElem (IRState * irs)
 	       			       vthis_value);
 	      new_call = irs->compound (setup_exp, new_call);
 	    }
-#endif
 	  return irs->nop (new_call, type->toCtype ());
 	}
     case Tarray:
@@ -2666,10 +2546,8 @@ elem *
 AssocArrayLiteralExp::toElem (IRState * irs)
 {
   Type * tb = type->toBasetype ();
-#if V2
   // %% want mutable type for typeinfo reference.
   tb = tb->mutableOf ();
-#endif
 
   TypeAArray * aa_type;
 
@@ -2763,7 +2641,6 @@ StructLiteralExp::toElem (IRState *irs)
 	    {
 	      if (irs->typesCompatible (exp_type, fld_type))
 		{
-#if V2
 		  StructDeclaration * sd;
 		  if ((sd = needsPostblit (fld_type)) != NULL)
 		    {
@@ -2778,7 +2655,6 @@ StructLiteralExp::toElem (IRState *irs)
 		      call_exp = irs->libCall (LIBCALL_ARRAYCTOR, 3, args);
 		    }
 		  else
-#endif
 		    {
 		      // %% This would call _d_newarrayT ... use memcpy?
 		      exp_tree = irs->convertTo (exp, fld->type);
@@ -2805,7 +2681,6 @@ StructLiteralExp::toElem (IRState *irs)
 	  else
 	    {
 	      exp_tree = irs->convertTo (exp, fld->type);
-#if V2
 	      StructDeclaration * sd;
 	      if ((sd = needsPostblit (fld_type)) != NULL)
 		{
@@ -2813,7 +2688,6 @@ StructLiteralExp::toElem (IRState *irs)
 		  Expressions args;
 		  call_exp = irs->call (sd->postblit, irs->addressOf (exp_tree), & args);
 		}
-#endif
 	    }
 
 	  if (call_exp)
@@ -2822,7 +2696,6 @@ StructLiteralExp::toElem (IRState *irs)
 	  ce.cons (fld->toSymbol()->Stree, exp_tree);
 	}
     }
-#if V2
   if (sd->isNested ())
     {
       // Maybe setup hidden pointer to outer scope context.
@@ -2830,7 +2703,6 @@ StructLiteralExp::toElem (IRState *irs)
       tree vthis_value = irs->getVThis (sd, this);
       ce.cons (vthis_field, vthis_value);
     }
-#endif
   tree ctor = build_constructor (type->toCtype (), ce.head);
   return ctor;
 }
@@ -3046,11 +2918,10 @@ FuncDeclaration::toObjFile (int /*multiobj*/)
 	ret_type = Type::tint32;
 
       result_type = ret_type->toCtype ();
-#if V2
       /* Build reference type */
       if (tf->isref)
 	result_type = build_reference_type (result_type);
-#endif
+
       result_decl = build_decl (UNKNOWN_LOCATION, RESULT_DECL,
 				NULL_TREE, result_type);
     }
@@ -3187,7 +3058,6 @@ FuncDeclaration::toObjFile (int /*multiobj*/)
 		gcc_unreachable ();
 	    }
 	}
-#if V2
       else if (sd != NULL)
 	{
 	  FuncDeclaration *f = NULL;
@@ -3207,7 +3077,6 @@ FuncDeclaration::toObjFile (int /*multiobj*/)
 		gcc_unreachable ();
 	    }
 	}
-#endif
     }
 
   if (isNested () || chain_expr)
@@ -3311,7 +3180,6 @@ FuncDeclaration::toObjFile (int /*multiobj*/)
   irs->endFunction ();
 }
 
-#if V2
 void
 FuncDeclaration::buildClosure (IRState * irs)
 {
@@ -3390,7 +3258,6 @@ FuncDeclaration::buildClosure (IRState * irs)
 
   irs->useChain (this, closure_ptr);
 }
-#endif
 
 void
 Module::genobjfile (int multiobj)
@@ -3419,13 +3286,11 @@ Module::genobjfile (int multiobj)
 	sctor = g.ofile->doCtorFunction ("*__modctor", & mi.ctors, & mi.ctorgates)->toSymbol ();
       if (mi.dtors.dim)
 	sdtor = g.ofile->doDtorFunction ("*__moddtor", & mi.dtors)->toSymbol ();
-#if V2
       if (mi.sharedctors.dim || mi.sharedctorgates.dim)
 	ssharedctor = g.ofile->doCtorFunction ("*__modsharedctor",
 					       & mi.sharedctors, & mi.sharedctorgates)->toSymbol ();
       if (mi.shareddtors.dim)
 	sshareddtor = g.ofile->doDtorFunction ("*__modshareddtor", & mi.shareddtors)->toSymbol ();
-#endif
       if (mi.unitTests.dim)
 	stest = g.ofile->doUnittestFunction ("*__modtest", & mi.unitTests)->toSymbol ();
 
@@ -3541,11 +3406,9 @@ Type::toCtype ()
 	  ctype = void_type_node;
 	  break;
 
-#if V2
 	case Tnull:
 	  ctype = ptr_type_node;
 	  break;
-#endif
 
 	default:
 	  ::error ("unexpected call to Type::toCtype () for %s\n", this->toChars ());
@@ -3796,10 +3659,9 @@ TypeFunction::toCtype ()
 	ret_type = void_type_node;
       else
 	ret_type = next->toCtype ();
-#if V2
+
       if (isref)
 	ret_type = build_reference_type (ret_type);
-#endif
 
       // Function type can be reference by parameters, etc.  Set ctype earlier?
       ctype = build_function_type (ret_type, type_list.head);
@@ -3831,18 +3693,16 @@ TypeFunction::toCtype ()
 enum RET
 TypeFunction::retStyle ()
 {
-#if V2
   /* Return by reference. Needed? */
   if (isref)
     return RETregs;
-#endif
+
   /* Need the ctype to determine this, but this is called from
      the front end before semantic processing is finished.  An
      accurate value is not currently needed anyway. */
   return RETstack;
 }
 
-#if V2
 type *
 TypeVector::toCtype ()
 {
@@ -3866,7 +3726,6 @@ TypeVector::toCtype ()
     }
   return ctype;
 }
-#endif
 
 type *
 TypeSArray::toCtype ()
@@ -4238,11 +4097,7 @@ ThrowStatement::toIR (IRState* irs)
   ClassDeclaration * class_decl = exp->type->toBasetype()->isClassHandle ();
   // Front end already checks for isClassHandle
   InterfaceDeclaration * intfc_decl = class_decl->isInterfaceDeclaration ();
-#if V2
   tree arg = exp->toElemDtor (irs);
-#else
-  tree arg = exp->toElem (irs);
-#endif
 
   if (! flag_exceptions)
     {
@@ -4301,11 +4156,7 @@ TryCatchStatement::toIR (IRState * irs)
     {
       for (size_t i = 0; i < catches->dim; i++)
 	{
-#if V2
 	  Catch * a_catch = catches->tdata()[i];
-#else
-	  Catch * a_catch = (Catch *) catches->data[i];
-#endif
 
 	  irs->startCatch (a_catch->type->toCtype ()); //expand_start_catch (xxx);
 	  irs->doLineNote (a_catch->loc);
@@ -4466,9 +4317,6 @@ ReturnStatement::toIR (IRState* irs)
 	ret_type = Type::tint32;
 
       tree result_decl = DECL_RESULT (irs->func->toSymbol()->Stree);
-#if V1
-      tree result_value = irs->convertForAssignment (exp, ret_type);
-#else
       tree result_value = irs->convertForAssignment (exp->toElemDtor (irs),
 						     exp->type, ret_type);
       // %% convert for init -- if we were returning a reference,
@@ -4503,7 +4351,7 @@ ReturnStatement::toIR (IRState* irs)
 	      irs->addExp (call_exp);
 	    }
 	}
-#endif
+
       tree result_assign = build2 (INIT_EXPR, TREE_TYPE (result_decl),
 				   result_decl, result_value);
 
@@ -4551,11 +4399,7 @@ SwitchStatement::toIR (IRState * irs)
   tree cond_tree;
   // %% also what about c-semantics doing emit_nop () ?
   irs->doLineNote (loc);
-#if V2
   cond_tree = condition->toElemDtor (irs);
-#else
-  cond_tree = condition->toElem (irs);
-#endif
 
   Type * cond_type = condition->type->toBasetype ();
   if (cond_type->ty == Tarray)
@@ -4617,7 +4461,6 @@ SwitchStatement::toIR (IRState * irs)
 	}
     }
   cond_tree = fold (cond_tree);
-#if V2
   if (hasVars)
     {
       // Write cases as a series of if-then-else blocks.
@@ -4636,9 +4479,6 @@ SwitchStatement::toIR (IRState * irs)
 	}
     }
   irs->startCase (this, cond_tree, hasVars);
-#else
-  irs->startCase (this, cond_tree);
-#endif
   if (body)
     {
       body->toIR (irs);
@@ -4659,12 +4499,6 @@ IfStatement::toIR (IRState * irs)
 {
   irs->doLineNote (loc);
   irs->startScope ();
-#if V1
-  if (match)
-    {
-      irs->emitLocalVar (match);
-    }
-#endif
   irs->startCond (this, condition);
   if (ifbody)
     {
@@ -4687,7 +4521,6 @@ ForeachStatement::toIR (IRState *)
   gcc_unreachable ();
 }
 
-#if V2
 void
 ForeachRangeStatement::toIR (IRState *)
 {
@@ -4695,7 +4528,6 @@ ForeachRangeStatement::toIR (IRState *)
   ::error ("ForeachRangeStatement::toIR: we shouldn't emit this (%s)", toChars ());
   gcc_unreachable ();
 }
-#endif
 
 void
 ForStatement::toIR (IRState * irs)
@@ -4721,11 +4553,7 @@ ForStatement::toIR (IRState * irs)
     {
       // force side effects?
       irs->doLineNote (increment->loc);
-#if V2
       irs->doExp (increment->toElemDtor (irs));
-#else
-      irs->doExp (increment->toElem (irs));
-#endif
     }
   irs->endLoop ();
 }
@@ -4808,16 +4636,11 @@ ExpStatement::toIR (IRState * irs)
   if (exp)
     {
       gen.doLineNote (loc);
-#if V2
       tree exp_tree = exp->toElemDtor (irs);
-#else
-      tree exp_tree = exp->toElem (irs);
-#endif
       irs->doExp (exp_tree);
     }
 }
 
-#if V2
 void
 DtorExpStatement::toIR (IRState * irs)
 {
@@ -4844,7 +4667,6 @@ ImportStatement::toIR (IRState *)
 {
   // nothing
 }
-#endif
 
 void
 EnumDeclaration::toDebug ()
