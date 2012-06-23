@@ -270,11 +270,9 @@ struct Msgtable msgtable[] =
     { "lib" },
     { "msg" },
     { "startaddress" },
+    // GDC specific
     { "GNU_attribute", "attribute" },
     { "GNU_set_attribute", "set_attribute" },
-    // Deprecated in GDC
-    { "_GNU_attribute", "GNU_attribute" },
-    { "_GNU_set_attribute", "GNU_set_attribute" },
 
     // For special functions
     { "tohash", "toHash" },
