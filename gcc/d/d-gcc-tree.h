@@ -18,10 +18,7 @@
 #ifndef GCC_DCMPLR_DC_GCC_TREE_H
 #define GCC_DCMPLR_DC_GCC_TREE_H
 
-// normally include config.h (hconfig.h, tconfig.h?), but that
-// includes things that cause problems, so...
-
-union tree_node;
-typedef union tree_node *tree;
+#include "config.h"
+#include "coretypes.h"
 
 #endif

@@ -19,9 +19,6 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
-#include <math.h>
-#include <limits.h>
-
 #include "template.h"
 #include "init.h"
 #include "symbol.h"

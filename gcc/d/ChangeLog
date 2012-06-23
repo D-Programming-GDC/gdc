@@ -1,5 +1,17 @@
 2012-23-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* Make-lang.in(d_OBJS): Add so IN_GCC_FRONTEND is defined when
+	building gdc sources.
+	* d-builtins.c: Remove poisoned headers.
+	* d-codegen.cc: Likewise.
+	* d-gcc-includes.h: GCC system headers included first, removed
+	internally defined macros and poisoned headers.
+	* d-gcc-tree.h: Use GCC system headers instead of defining tree_node.
+	* d-lang.cc: GCC system headers included first.
+	(pushdecl_top_level): Removed.
+	* d-objfile.cc: Remove poisoned headers.
+	* gdc_alloca.h: Use liberty.h instead of handling include of alloca.
+
 	* d-decls.cc(Dsymbol::toSymbolX): Use snprintf rather than sprintf.
 	(FuncDeclaration::toSymbol): Likewise.
 	* d-gcc-real.cc(real_t::init): Likewise.

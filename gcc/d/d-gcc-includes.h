@@ -18,36 +18,34 @@
 #ifndef GCC_DCMPLR_DC_GCC_INCLUDES_H
 #define GCC_DCMPLR_DC_GCC_INCLUDES_H
 
-// Better to define this here
-#define __STDC_FORMAT_MACROS 1
-
-// GMP is C++-aware, so we cannot included it in an extern "C" block.
-#include "gmp.h"
-
-// Conflicting definitions between stdio.h and libiberty.h over the throw()
-#define HAVE_DECL_ASPRINTF 1
-
+#ifdef __cplusplus
 extern "C" {
+#endif
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
 #include "tm.h"
+#ifdef __cplusplus
+}
+#endif
 
+// GMP is C++-aware, so we cannot included it in an extern "C" block.
+#include "gmp.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "tree.h"
 #include "real.h"
 #include "langhooks.h"
 #include "langhooks-def.h"
-#include "debug.h"
 #include "flags.h"
 #include "toplev.h"
 #include "target.h"
-#include "function.h"
-#include "rtl.h"
+//#include "function.h"
 #include "diagnostic.h"
 #include "output.h"
-#include "except.h"
 #include "libfuncs.h"
-#include "expr.h"
 #include "convert.h"
 #include "ggc.h"
 #include "opts.h"
@@ -62,13 +60,10 @@ extern "C" {
 
 #include "tree-pretty-print.h"
 #include "common/common-target.h"
+#ifdef __cplusplus
 }
+#endif
 
-// Undefine things that give us problems
-#undef RET
-
-// Apple makes 'optimize' a macro
-static inline int gcc_optimize () { return optimize; }
 #ifdef optimize
 #undef optimize
 #endif

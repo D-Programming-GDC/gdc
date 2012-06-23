@@ -19,6 +19,16 @@
   d-lang.cc: implementation of back-end callbacks and data structures
 */
 
+#include "d-gcc-includes.h"
+#include "options.h"
+#include "cppdefault.h"
+#include "debug.h"
+
+#include "d-lang.h"
+#include "d-codegen.h"
+#include "d-gcc-real.h"
+#include "d-confdefs.h"
+
 #include "root.h"
 #include "mtype.h"
 #include "id.h"
@@ -28,15 +38,6 @@
 
 #include "async.h"
 #include "json.h"
-
-#include "d-gcc-includes.h"
-#include "options.h"
-#include "cppdefault.h"
-
-#include "d-lang.h"
-#include "d-codegen.h"
-#include "d-gcc-real.h"
-#include "d-confdefs.h"
 
 static char lang_name[6] = "GNU D";
 
@@ -1668,20 +1669,6 @@ pushdecl (tree decl)
     current_binding_level->names_end = decl;
   return decl;
 }
-
-/* pushdecl_top_level is only for building with Apple GCC. */
-extern "C" tree
-pushdecl_top_level (tree x)
-{
-  tree t;
-  struct binding_level *b = current_binding_level;
-
-  current_binding_level = global_binding_level;
-  t = pushdecl (x);
-  current_binding_level = b;
-  return t;
-}
-
 
 void
 set_decl_binding_chain (tree decl_chain)

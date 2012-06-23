@@ -255,7 +255,8 @@ d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) $(CONF
 		$(ALL_D_CFLAGS) $(D_LIBPHOBOS) \
 		$(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
 
-D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_BORROWED_C_OBJS) $(D_DMD_OBJS) $(D_GLUE_OBJS)
+d_OBJS = $(D_BORROWED_C_OBJS) $(D_GLUE_OBJS)
+D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_DMD_OBJS) $(d_OBJS)
 
 $(D_COMPILER_NAME)$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
 	$(CXX) $(ALL_D_CXXFLAGS) $(LDFLAGS) -o $@ \
@@ -272,6 +273,8 @@ d.info:
 d.srcinfo:
 d.srcextra:
 d.dvi:
+d.pdf:
+d.html:
 d.man:
 d.srcman:
 
