@@ -414,7 +414,7 @@ FuncDeclaration::toSymbol ()
 {
   if (! csym)
     {
-      csym  = new Symbol ();
+      csym = new Symbol ();
 
       if (! isym)
 	{

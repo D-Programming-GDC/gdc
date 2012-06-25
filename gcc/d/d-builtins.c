@@ -266,14 +266,14 @@ d_init_builtins (void)
       va_list_ref_type_node = build_reference_type (va_list_type_node);
     }
 
-  intmax_type_node       = intDI_type_node;
-  uintmax_type_node      = unsigned_intDI_type_node;
-  signed_size_type_node  = d_signed_type (size_type_node);
-  string_type_node       = build_pointer_type (char_type_node);
+  intmax_type_node = intDI_type_node;
+  uintmax_type_node = unsigned_intDI_type_node;
+  signed_size_type_node = d_signed_type (size_type_node);
+  string_type_node = build_pointer_type (char_type_node);
   const_string_type_node = build_pointer_type (build_qualified_type
-				  	      (char_type_node, TYPE_QUAL_CONST));
+ 					       (char_type_node, TYPE_QUAL_CONST));
 
-  void_list_node = tree_cons (NULL_TREE, void_type_node, NULL_TREE);
+  void_list_node = build_tree_list (NULL_TREE, void_type_node);
 
   /* WINT_TYPE is a C type name, not an itk_ constant or something useful
      like that... */

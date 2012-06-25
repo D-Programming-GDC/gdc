@@ -24,36 +24,10 @@
 
 #include "mtype.h"
 
-enum mangle_t
-{
-  mTY_INVALID,
-  mTYman_c,
-  mTYman_cpp,
-  mTYman_std,
-  mTYman_pas,
-  mTYman_d
-};
-
 enum TypeType
 {
-  // no clue about which can be used together..
-  TYnptr =    0x001,
-  TYnfunc =   0x010,
-  TYjfunc =   0x020,
-  TYstruct =  0x040,
-  TYarray  =  0x080,
-  TYbit    =  0x100,
-  TYint    =  0x200,
-  mTYconst    = 0x1000,
-  mTYvolatile = 0x2000
-};
-
-enum TypeFlag
-{
-  TFsizeunknown = 0x01,
-  TFforward = 0x02,
-  TFprototype = 0x04,
-  TFfixed = 0x08
+  TYnptr = 0x001,
+  TYjfunc = 0x010,
 };
 
 enum SymbolStorageClass
@@ -73,16 +47,13 @@ enum SymbolFL
 {
   FL_INVALID,
   FLextern = 0x01,
-  FLauto   = 0x02,
-  FLdata   = 0x04,
+  FLdata   = 0x02,
 };
 
 enum SymbolFlag
 {
-  SFLimplem  = 0x01,
-  SFLnodebug = 0x02,
-  STRglobal  = 0x04,
-  SFLweak    = 0x08
+  SFLnodebug = 0x01,
+  SFLweak    = 0x02
 };
 
 enum SymbolSegment

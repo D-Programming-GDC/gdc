@@ -2138,7 +2138,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 {
   // Using TREE_TYPE (callable) instead of func_type->toCtype can save a build_method_type
   tree func_type_node = TREE_TYPE (callable);
-  tree actual_callee  = callable;
+  tree actual_callee = callable;
   tree saved_args = NULL_TREE;
 
   ListMaker actual_arg_list;

@@ -1422,7 +1422,7 @@ SliceExp::toElem (IRState * irs)
     }
   else if (orig_array_type->ty == Tsarray)
     {
-      array_len_expr  = ((TypeSArray *) orig_array_type)->dim->toElem (irs);
+      array_len_expr = ((TypeSArray *) orig_array_type)->dim->toElem (irs);
     }
   else
     {
@@ -2507,33 +2507,25 @@ ArrayLiteralExp::toElem (IRState * irs)
     }
   tree ctor = build_constructor (sa_type, elms.head);
 
-  // Should be ok to skip initialising constant literals on heap.
-  if (TREE_CONSTANT (ctor))
-    {
-      result = irs->addressOf (ctor);
-    }
-  else
-    {
-      tree args[2] = {
-	  irs->typeinfoReference (etype->arrayOf ()),
-	  irs->integerConstant (elements->dim, size_type_node)
-      };
-      // Call _d_arrayliteralTp (ti, dim);
-      LibCall lib_call = LIBCALL_ARRAYLITERALTP;
-      tree mem = irs->libCall (lib_call, 2, args, etype->pointerTo()->toCtype ());
-      mem = irs->maybeMakeTemp (mem);
+  tree args[2] = {
+      irs->typeinfoReference (etype->arrayOf ()),
+      irs->integerConstant (elements->dim, size_type_node)
+  };
+  // Call _d_arrayliteralTp (ti, dim);
+  LibCall lib_call = LIBCALL_ARRAYLITERALTP;
+  tree mem = irs->libCall (lib_call, 2, args, etype->pointerTo()->toCtype ());
+  mem = irs->maybeMakeTemp (mem);
 
-      // memcpy (mem, &ctor, size)
-      tree size = fold_build2 (MULT_EXPR, size_type_node,
-			       size_int (elements->dim), size_int (typeb->nextOf()->size ()));
+  // memcpy (mem, &ctor, size)
+  tree size = fold_build2 (MULT_EXPR, size_type_node,
+			   size_int (elements->dim), size_int (typeb->nextOf()->size ()));
 
-      result = irs->buildCall (d_built_in_decls (BUILT_IN_MEMCPY), 3,
-			       mem, irs->addressOf (ctor), size);
+  result = irs->buildCall (d_built_in_decls (BUILT_IN_MEMCPY), 3,
+			   mem, irs->addressOf (ctor), size);
 
-      // Returns array pointed to by MEM.
-      result = irs->maybeCompound (result, mem);
+  // Returns array pointed to by MEM.
+  result = irs->maybeCompound (result, mem);
 
-    }
   if (typeb->ty == Tarray)
     result = irs->darrayVal (type, elements->dim, result);
   else if (typeb->ty == Tsarray)
@@ -3653,7 +3645,7 @@ TypeFunction::toCtype ()
       /* Last parm if void indicates fixed length list (as opposed to
 	 printf style va_* list). */
       if (varargs != 1)
-	type_list.cons (void_type_node);
+	type_list.chain (void_list_node);
 
       if (!next)
 	ret_type = void_type_node;

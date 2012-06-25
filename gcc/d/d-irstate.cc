@@ -185,7 +185,7 @@ IRBase::getLabelBlock (LabelDsymbol * label, Statement * from)
 	  flow->kind != level_switch)
 	{
 	  l->block = flow->statement;
-	  l->kind  = flow->kind;
+	  l->kind = flow->kind;
 	  l->level = i + 1;
 	  break;
 	}

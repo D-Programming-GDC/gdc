@@ -1,3 +1,12 @@
+2012-25-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins.c(d_init_builtins): Use build_tree_list to initialise
+	void_list_node.
+	* d-glue.cc(ArrayLiteralExp::toElem): Always generate code for
+	arrayliteralTp.
+	(TypeFunction::toCtype): Chain on void_list_node to the end of the
+	function type parameters.  Fixes function signatures in debugging.
+
 2012-23-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* Make-lang.in(d_OBJS): Add so IN_GCC_FRONTEND is defined when
