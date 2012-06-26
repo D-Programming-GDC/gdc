@@ -478,10 +478,6 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.verbose = value;
       break;
 
-    case OPT_fd_version_1:
-      global.params.Dversion = 1;
-      break;
-
     case OPT_fd_vtls:
       global.params.vtls = value;
       break;

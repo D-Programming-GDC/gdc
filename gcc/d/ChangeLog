@@ -2,8 +2,12 @@
 
 	* d-glue.cc(FuncDeclaration::toObjFile): Use fprintf for diagnostic
 	message.
+	(TypeFunction::toCtype): Remove old version1 macro.
 	* d-lang.cc(d_parse_file): Remove dependency on backend header. Use
 	fprintf for diagnostic messages.
+	(d_handle_option): Remove version 1 option.
+	* dmd-script: Likewise.
+	* lang.opt: Likewise.
 
 2012-25-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 

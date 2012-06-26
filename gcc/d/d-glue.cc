@@ -3624,11 +3624,7 @@ TypeFunction::toCtype ()
       if (varargs == 1 && linkage == LINKd)
 	{
 	  // hidden _arguments parameter
-#if BREAKABI
 	  type_list.cons (Type::typeinfotypelist->type->toCtype ());
-#else
-	  type_list.cons (Type::typeinfo->type->arrayOf()->toCtype ());
-#endif
 	}
 
       if (parameters)

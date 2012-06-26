@@ -154,7 +154,6 @@ Usage:
   -run srcfile args...   run resulting program, passing args
   -unittest      compile in unit tests
   -v             verbose
-  -v1            D language version 1
   -vdmd          print commands run by this script
   -version=level compile in version code >= level
   -version=ident compile in version code identified by ident

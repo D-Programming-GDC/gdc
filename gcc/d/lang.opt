@@ -79,10 +79,6 @@ fd-verbose
 D
 Print information about D language processing to stdout
 
-fd-version=1
-D RejectNegative
-Compile as D language version 1
-
 fd-vtls
 D
 List all variables going into thread local storage
