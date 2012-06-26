@@ -2871,7 +2871,7 @@ FuncDeclaration::toObjFile (int /*multiobj*/)
   this_sym->outputStage = InProgress;
 
   if (global.params.verbose)
-    fprintf (stderr, "function %s\n", this->toChars ());
+    fprintf (stdmsg, "function %s\n", this->toChars ());
 
   tree fn_decl = this_sym->Stree;
 

@@ -55,7 +55,7 @@ void json_generate(Modules *modules)
     for (size_t i = 0; i < modules->dim; i++)
     {   Module *m = modules->tdata()[i];
         if (global.params.verbose)
-            printf("json gen %s\n", m->toChars());
+            fprintf(stdmsg, "json gen %s\n", m->toChars());
         m->toJsonBuffer(&buf);
         buf.writestring(",\n");
     }

@@ -1,3 +1,10 @@
+2012-26-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-glue.cc(FuncDeclaration::toObjFile): Use fprintf for diagnostic
+	message.
+	* d-lang.cc(d_parse_file): Remove dependency on backend header. Use
+	fprintf for diagnostic messages.
+
 2012-25-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-builtins.c(d_init_builtins): Use build_tree_list to initialise

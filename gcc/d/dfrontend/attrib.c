@@ -1002,7 +1002,7 @@ void PragmaDeclaration::semantic(Scope *sc)
                 char *name = (char *)mem.malloc(se->len + 1);
                 memcpy(name, se->string, se->len);
                 name[se->len] = 0;
-                printf("library   %s\n", name);
+                fprintf(stdmsg, "library   %s\n", name);
                 mem.free(name);
             }
         }
@@ -1196,7 +1196,7 @@ void PragmaDeclaration::semantic(Scope *sc)
         {
             /* Print unrecognized pragmas
              */
-            printf("pragma    %s", ident->toChars());
+            fprintf(stdmsg, "pragma    %s", ident->toChars());
             if (args)
             {
                 for (size_t i = 0; i < args->dim; i++)

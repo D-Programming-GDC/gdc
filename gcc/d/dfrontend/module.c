@@ -331,7 +331,7 @@ Module *Module::load(Loc loc, Identifiers *packages, Identifier *ident)
 
     if (global.params.verbose)
     {
-        printf("import    ");
+        fprintf(stdmsg, "import    ");
         if (packages)
         {
             for (size_t i = 0; i < packages->dim; i++)
