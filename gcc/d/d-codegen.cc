@@ -1506,7 +1506,7 @@ IRState::twoFieldType (tree rec_type, tree ft1, tree ft2, Type * d_type, const c
       TYPE_STUB_DECL (rec_type) = stub_decl;
       TYPE_NAME (rec_type) = stub_decl;
       DECL_ARTIFICIAL (stub_decl) = 1;
-      g.ofile->rodc (stub_decl, 0);
+      rest_of_decl_compilation (stub_decl, 0, 0);
     }
   return rec_type;
 }

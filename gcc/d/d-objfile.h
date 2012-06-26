@@ -134,10 +134,6 @@ struct ObjectFile
   // ** static constructors (not D static constructors)
   static FuncDeclarations staticCtorList; // usually only one.
   static FuncDeclarations staticDtorList; // only if __attribute__(destructor) is used.
-
-  static void rodc (tree decl, int top_level) {
-      rest_of_decl_compilation (decl, top_level, 0);
-  }
 };
 
 #endif

@@ -2883,7 +2883,7 @@ FuncDeclaration::toObjFile (int /*multiobj*/)
 	  DECL_EXTERNAL (fn_decl) = 1;
 	  TREE_PUBLIC (fn_decl) = 1;
 	}
-      g.ofile->rodc (fn_decl, 1);
+      rest_of_decl_compilation (fn_decl, 1, 0);
       return;
     }
 
@@ -4260,7 +4260,7 @@ SynchronizedStatement::toIR (IRState * irs)
       DECL_ARTIFICIAL (critsec_decl) = 1;
       DECL_IGNORED_P (critsec_decl) = 1;
 
-      g.ofile->rodc (critsec_decl, 1);
+      rest_of_decl_compilation (critsec_decl, 1, 0);
 
       irs->startTry (this);
       irs->doExp (irs->libCall (LIBCALL_CRITICALENTER, 1, & critsec_ref));

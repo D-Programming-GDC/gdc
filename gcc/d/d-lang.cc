@@ -738,7 +738,7 @@ nametype (tree type, const char * name)
   tree ident = get_identifier (name);
   tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, ident, type);
   TYPE_NAME (type) = decl;
-  ObjectFile::rodc (decl, 1);
+  rest_of_decl_compilation (decl, 1, 0);
 }
 
 static void

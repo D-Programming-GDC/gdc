@@ -364,14 +364,14 @@ ObjectFile::outputStaticSymbol (Symbol * s)
   // Defer output of tls symbols to ensure that
   // _tlsstart gets emitted first.
   if (! DECL_THREAD_LOCAL_P (t))
-    rodc (t, 1);
+    rest_of_decl_compilation (t, 1, 0);
   else
     {
       tree sinit = DECL_INITIAL (t);
       DECL_INITIAL (t) = NULL_TREE;
 
       DECL_DEFER_OUTPUT (t) = 1;
-      rodc (t, 1);
+      rest_of_decl_compilation (t, 1, 0);
       DECL_INITIAL (t) = sinit;
     }
 }
@@ -564,7 +564,7 @@ ObjectFile::declareType (tree decl)
 {
   bool top_level = ! DECL_CONTEXT (decl);
   // okay to do this?
-  rodc (decl, top_level);
+  rest_of_decl_compilation (decl, top_level, 0);
 }
 
 tree
@@ -742,36 +742,20 @@ ObjectFile::outputThunk (tree thunk_decl, tree target_decl, int offset)
     }
   else
     {
-      /* Based on cgraphunit.c (assemble_thunk).  Contents are duplicated here
-	 since the function is static, and is never called for thunks to external
-	 functions, so it is done manually here.  */
-      const char *fnname;
-      tree restype = TREE_TYPE (TREE_TYPE (thunk_decl));
+      /* Backend will not emit thunks to external symbols unless the function is
+	 being emitted in this compilation unit.  So make generated thunks weakref
+	 symbols for the methods they interface with.  */
+      tree id = DECL_ASSEMBLER_NAME (target_decl);
+      tree attrs = tree_cons (NULL_TREE, build_string (IDENTIFIER_LENGTH (id),
+						       IDENTIFIER_POINTER (id)), NULL_TREE);
+      attrs = tree_cons (get_identifier ("weakref"), attrs, NULL_TREE);
 
-      /* The back end expects DECL_INITIAL to contain a BLOCK, so we
-	 create one.  */
-      DECL_INITIAL (thunk_decl) = make_node (BLOCK);
-      BLOCK_VARS (DECL_INITIAL (thunk_decl)) = DECL_ARGUMENTS (thunk_decl);
+      DECL_INITIAL (thunk_decl) = NULL_TREE;
+      DECL_EXTERNAL (thunk_decl) = 1;
+      TREE_ASM_WRITTEN (thunk_decl) = 0;
+      decl_attributes (&thunk_decl, attrs, 0);
 
-      current_function_decl = thunk_decl;
-      DECL_RESULT (thunk_decl)
-	= build_decl (DECL_SOURCE_LOCATION (thunk_decl),
-		      RESULT_DECL, 0, restype);
-
-      fnname = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (thunk_decl));
-      init_function_start (thunk_decl);
-      cfun->is_thunk = 1;
-      assemble_start_function (thunk_decl, fnname);
-
-      targetm.asm_out.output_mi_thunk (asm_out_file, thunk_decl,
-				       fixed_offset, virtual_value, alias);
-
-      assemble_end_function (thunk_decl, fnname);
-      init_insn_lengths ();
-      free_after_compilation (cfun);
-      set_cfun (NULL);
-      current_function_decl = NULL_TREE;
-      TREE_ASM_WRITTEN (thunk_decl) = 1;
+      rest_of_decl_compilation (thunk_decl, 1, 0);
     }
 
   if (!targetm.asm_out.can_output_mi_thunk (thunk_decl, fixed_offset,
@@ -1048,7 +1032,7 @@ obj_moduleinfo (Symbol *sym)
   TREE_PRIVATE (our_mod_ref) = 1;
   TREE_STATIC (our_mod_ref) = 1;
   DECL_INITIAL (our_mod_ref) = init;
-  g.ofile->rodc (our_mod_ref, 1);
+  rest_of_decl_compilation (our_mod_ref, 1, 0);
 
   tree the_mod_ref = build_decl (BUILTINS_LOCATION, VAR_DECL,
 				 get_identifier ("_Dmodule_ref"),
@@ -1085,7 +1069,7 @@ obj_tlssections ()
   DECL_INITIAL (tlsstart) = build_int_cst (integer_type_node, 3);
   DECL_TLS_MODEL (tlsstart) = decl_default_tls_model (tlsstart);
   g.ofile->setDeclLoc (tlsstart, g.mod);
-  g.ofile->rodc (tlsstart, 1);
+  rest_of_decl_compilation (tlsstart, 1, 0);
 
   tlsend = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 		       get_identifier ("_tlsend"), integer_type_node);
@@ -1096,6 +1080,6 @@ obj_tlssections ()
   DECL_COMMON (tlsend) = 1;
   DECL_TLS_MODEL (tlsend) = decl_default_tls_model (tlsend);
   g.ofile->setDeclLoc (tlsend, g.mod);
-  g.ofile->rodc (tlsend, 1);
+  rest_of_decl_compilation (tlsend, 1, 0);
 }
 
