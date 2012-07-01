@@ -1,5 +1,17 @@
 2012-07-01  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* symbol.h(deferredNestedFuncs): Renamed from otherNestedFuncs, use as
+	value type rather than pointer.
+	(thunks): Use as value type rather than pointer.
+	* d-decls.cc(FuncDeclaration::toSymbol): Remove check for
+	deferredNestedFuncs being NULL.
+	(FuncDeclaration::toThunkSymbol): Remove check for thunks being NULL.
+	* d-glue.cc(DelegateExp::toElem): Remove check for deferredNestedFuncs
+	being NULL.
+	(FuncDeclaration::toObjFile): Likewise.
+	* d-objfile.cc(ObjectFile::shouldEmit): Add nested functions to
+	deferredNestedFuncs of their parent function incase parent is actually
+	emitted later in during compilation.
 	* d-builtins2.cc(d_gcc_type_align): Explicit alignment of variables
 	takes precedence over default alignment.
 	* d-gcc-includes.h: Re-order list of includes.

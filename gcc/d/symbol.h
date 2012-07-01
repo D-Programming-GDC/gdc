@@ -97,8 +97,8 @@ struct Symbol : Object
   tree     SframeField;  // FIELD_DECL in frame struct that this variable is allocated in
 
   // For FuncDeclarations:
-  Thunks * thunks;
-  FuncDeclarations * otherNestedFuncs;
+  Thunks thunks;
+  FuncDeclarations deferredNestedFuncs;
   OutputStage outputStage;
   FuncFrameInfo *frameInfo;
 };

@@ -33,8 +33,6 @@ Symbol::Symbol ()
   ScontextDecl = 0;
   SframeField = 0;
 
-  thunks = NULL;
-  otherNestedFuncs = NULL;
   outputStage = NotStarted;
   frameInfo = NULL;
 }

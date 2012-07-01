@@ -531,12 +531,9 @@ FuncDeclaration::toSymbol ()
 	      if (is_template_member && outer_func)
 		{
 		  Symbol * outer_sym = outer_func->toSymbol ();
+
 		  if (outer_sym->outputStage != Finished)
-		    {
-		      if (! outer_sym->otherNestedFuncs)
-			outer_sym->otherNestedFuncs = new FuncDeclarations;
-		      outer_sym->otherNestedFuncs->push (this);
-		    }
+		    outer_sym->deferredNestedFuncs.push (this);
 		}
 
 	      // Save context and set decl_function_context for cgraph.
@@ -640,14 +637,11 @@ FuncDeclaration::toThunkSymbol (int offset)
   /* If the thunk is to be static (that is, it is being emitted in this
      module, there can only be one FUNCTION_DECL for it.   Thus, there
      is a list of all thunks for a given function. */
-  if (! csym->thunks)
-    csym->thunks = new Thunks;
-  Thunks & thunks = * csym->thunks;
   bool found = false;
 
-  for (size_t i = 0; i < thunks.dim; i++)
+  for (size_t i = 0; i < csym->thunks.dim; i++)
     {
-      thunk = thunks[i];
+      thunk = csym->thunks[i];
       if (thunk->offset == offset)
 	{
 	  found = true;
@@ -659,7 +653,7 @@ FuncDeclaration::toThunkSymbol (int offset)
     {
       thunk = new Thunk;
       thunk->offset = offset;
-      thunks.push (thunk);
+      csym->thunks.push (thunk);
     }
 
   if (! thunk->symbol)

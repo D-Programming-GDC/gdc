@@ -1860,9 +1860,7 @@ DelegateExp::toElem (IRState* irs)
       if (owner->isTemplateInstance () || owner == irs->mod)
 	{
 	  Symbol * s = irs->func->toSymbol ();
-	  if (!s->otherNestedFuncs)
-	    s->otherNestedFuncs = new FuncDeclarations;
-	  s->otherNestedFuncs->push (func);
+	  s->deferredNestedFuncs.push (func);
 	}
     }
 
@@ -3099,12 +3097,10 @@ FuncDeclaration::toObjFile (int /*multiobj*/)
 
   fbody->toIR (irs);
 
-  if (this_sym->otherNestedFuncs)
+  // Process all deferred nested functions.
+  for (size_t i = 0; i < this_sym->deferredNestedFuncs.dim; ++i)
     {
-      for (size_t i = 0; i < this_sym->otherNestedFuncs->dim; ++i)
-	{
-	  (this_sym->otherNestedFuncs->tdata()[i])->toObjFile (false);
-	}
+      (this_sym->deferredNestedFuncs[i])->toObjFile (false);
     }
 
   if (v_argptr)

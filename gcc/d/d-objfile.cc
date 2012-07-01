@@ -438,21 +438,24 @@ ObjectFile::shouldEmit (Declaration * d_sym)
 	  return false;
 	}
 
-      // Don't emit nested functions whose parent isn't being emitted.
-      fd = fd->toParent2()->isFuncDeclaration ();
-      if (fd && fd->toSymbol()->outputStage == NotStarted)
-	return false;
+      // Defer emitting nested functions whose parent isn't started yet.
+      // If the parent never gets emitted, then neither will fd.
+      FuncDeclaration * outerfd = fd->toParent2()->isFuncDeclaration ();
+      if (outerfd && outerfd->toSymbol()->outputStage == NotStarted)
+	{
+	  outerfd->toSymbol()->deferredNestedFuncs.push (fd);
+	  return false;
+	}
     }
 
-  Symbol * s = d_sym->toSymbol ();
-  gcc_assert (s);
-
-  return shouldEmit (s);
+  return shouldEmit (d_sym->toSymbol ());
 }
 
 bool
 ObjectFile::shouldEmit (Symbol * sym)
 {
+  gcc_assert (sym);
+
   // If have already started emitting, continue doing so.
   if (sym->outputStage)
     return true;
