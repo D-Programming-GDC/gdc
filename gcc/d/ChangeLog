@@ -1,4 +1,10 @@
-2012-26-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+2012-07-01  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins2.cc(d_gcc_type_align): Explicit alignment of variables
+	takes precedence over default alignment.
+	* d-gcc-includes.h: Re-order list of includes.
+
+2012-06-26  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.cc(IRState::twoFieldType): Use rest_of_decl_compilation.
 	* d-gcc-includes.h: Remove last of poisoned backend headers.
@@ -21,7 +27,7 @@
 	for external symbols using weakref.
 	* d-objfile.h(rodc): Remove.
 
-2012-25-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+2012-06-25  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-builtins.c(d_init_builtins): Use build_tree_list to initialise
 	void_list_node.
@@ -30,7 +36,7 @@
 	(TypeFunction::toCtype): Chain on void_list_node to the end of the
 	function type parameters.  Fixes function signatures in debugging.
 
-2012-23-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+2012-06-23  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* Make-lang.in(d_OBJS): Add so IN_GCC_FRONTEND is defined when
 	building gdc sources.
@@ -108,7 +114,7 @@
 	(d_handle_option): Likewise.
 	(d_parse_file): Likewise.
 
-2012-21-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+2012-06-21  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* Make-lang.in: Remove d-asm-i386.h
 	* asmstmt.cc(d_build_asm_stmt): Update signature, use build5.
@@ -127,13 +133,13 @@
 	Inline Asm version identifiers.
 	* d-lang.h(d_build_asm_stmt): Update signature.
 
-2012-19-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+2012-06-19  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Mark in/out contracts as
 	TREE_PUBLIC to allow calling cross-module.
 	* d-lang.cc(d_parse_file): Update for 2.059.
 
-2012-16-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+2012-06-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* dfrontend: Merged with DMD 2.059.
 	* d-builtins2.cc(gcc_type_to_d_type): Use new frontend value.

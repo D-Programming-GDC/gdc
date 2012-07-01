@@ -1696,7 +1696,7 @@ void VarDeclaration::setFieldOffset(AggregateDeclaration *ad, unsigned *poffset,
 
     unsigned memsize      = t->size(loc);            // size of member
     unsigned memalignsize = t->alignsize();          // size of member for alignment purposes
-    unsigned memalign     = t->memalign(alignment);  // alignment boundaries
+    structalign_t memalign = t->memalign(alignment); // alignment boundaries
 #ifdef IN_GCC
     memalignsize = d_gcc_field_align(this, memalignsize);
 #endif

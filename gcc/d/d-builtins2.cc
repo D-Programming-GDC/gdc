@@ -601,12 +601,17 @@ d_gcc_type_align (Type * t)
 int
 d_gcc_field_align (VarDeclaration * var, int known_align)
 {
-  tree field = make_node (FIELD_DECL);
+  tree field;
 
   /* %% stor-layout.c:
      Some targets (i.e. i386, VMS) limit struct field alignment
      to a lower boundary than alignment of variables unless
      it was overridden by attribute aligned.  */
+  if (var->alignment != STRUCTALIGN_DEFAULT)
+    return var->alignment;
+
+  // Work out the correct alignment for the field decl.
+  field = make_node (FIELD_DECL);
   DECL_ALIGN (field) = known_align * BITS_PER_UNIT;
 
 #ifdef BIGGEST_FIELD_ALIGNMENT
@@ -621,6 +626,10 @@ d_gcc_field_align (VarDeclaration * var, int known_align)
 	= ADJUST_FIELD_ALIGN (field, DECL_ALIGN (field));
     }
 #endif
+
+  // Also controlled by -fpack-struct=
+  if (maximum_field_alignment)
+    DECL_ALIGN (field) = MIN (DECL_ALIGN (field), maximum_field_alignment);
 
   return DECL_ALIGN_UNIT (field);
 }

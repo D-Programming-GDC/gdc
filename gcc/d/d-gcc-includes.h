@@ -18,16 +18,7 @@
 #ifndef GCC_DCMPLR_DC_GCC_INCLUDES_H
 #define GCC_DCMPLR_DC_GCC_INCLUDES_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "config.h"
-#include "system.h"
-#include "coretypes.h"
-#include "tm.h"
-#ifdef __cplusplus
-}
-#endif
 
 // GMP is C++-aware, so we cannot included it in an extern "C" block.
 #include "gmp.h"
@@ -35,28 +26,32 @@ extern "C" {
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "system.h"
+#include "coretypes.h"
+#include "tm.h"
 #include "tree.h"
+#include "tm_p.h"
+#include "tree-pretty-print.h"
+#include "tree-dump.h"
+#include "ggc.h"
+#include "flags.h"
+#include "diagnostic.h"
+#include "tree-inline.h"
+
 #include "real.h"
 #include "langhooks.h"
 #include "langhooks-def.h"
-#include "flags.h"
 #include "toplev.h"
 #include "target.h"
-#include "diagnostic.h"
 #include "libfuncs.h"
 #include "convert.h"
-#include "ggc.h"
 #include "opts.h"
-#include "tm_p.h"
 
 #include "cgraph.h"
 #include "tree-iterator.h"
 #include "gimple.h"
-#include "tree-dump.h"
-#include "tree-inline.h"
 #include "vec.h"
 
-#include "tree-pretty-print.h"
 #include "common/common-target.h"
 #ifdef __cplusplus
 }

@@ -117,7 +117,7 @@ Global::Global()
 #endif
     ;
     version = "v2.059";
-    global.structalign = 8;
+    global.structalign = STRUCTALIGN_DEFAULT;
 
     memset(&params, 0, sizeof(Param));
 }
