@@ -1,3 +1,8 @@
+2012-07-05  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-glue.cc(StructLiteralExp::toElem): Stop after first assignment for
+	constructors built for union types.
+
 2012-07-01  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* symbol.h(deferredNestedFuncs): Renamed from otherNestedFuncs, use as

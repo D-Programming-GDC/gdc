@@ -2606,9 +2606,11 @@ AssocArrayLiteralExp::toElem (IRState * irs)
 elem *
 StructLiteralExp::toElem (IRState *irs)
 {
-  // %% Brings false positives on D2, maybe uncomment for debug builds...
-  //gcc_assert (irs->typesSame (type->toBasetype (), sd->type->toBasetype ()));
   CtorEltMaker ce;
+  StructDeclaration * sdecl;
+
+  gcc_assert(type->ty == Tstruct);
+  sdecl = ((TypeStruct *) type)->sym;
 
   if (elements)
     {
@@ -2684,6 +2686,10 @@ StructLiteralExp::toElem (IRState *irs)
 	    irs->addExp (call_exp);
 
 	  ce.cons (fld->toSymbol()->Stree, exp_tree);
+
+	  // Unions only have one field that gets assigned.
+	  if (sdecl->isUnionDeclaration())
+	    break;
 	}
     }
   if (sd->isNested ())
@@ -2886,7 +2892,7 @@ FuncDeclaration::toObjFile (int /*multiobj*/)
     }
 
   announce_function (fn_decl);
-  IRState * irs = irs->startFunction (this);
+  IRState * irs = g.irs->startFunction (this);
 
   irs->useChain (NULL, NULL_TREE);
   tree chain_expr = NULL;
