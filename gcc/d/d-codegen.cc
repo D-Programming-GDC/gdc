@@ -1067,6 +1067,9 @@ IRState::integerConstant (dinteger_t value, tree type)
   if (isErrorMark (type))
     return type;
 
+  return built_int_cst_type (type, value);
+
+#if 0
   tree tree_value = NULL_TREE;
 
 #if HOST_BITS_PER_WIDE_INT == 32
@@ -1079,6 +1082,7 @@ IRState::integerConstant (dinteger_t value, tree type)
 #endif
 
   return tree_value;
+#endif
 }
 
 tree
@@ -1105,6 +1109,12 @@ IRState::floatConstant (const real_t & value, Type * target_type)
 dinteger_t
 IRState::hwi2toli (HOST_WIDE_INT low, HOST_WIDE_INT high)
 {
+  if (high == 0 || (high == 0 && low >= 0) || (high == -1 && low < 0))
+    return low;
+
+  gcc_unreachable ();
+  return 0;
+#if 0
   dinteger_t result;
 
   if (high == 0 || sizeof (HOST_WIDE_INT) >= sizeof (dinteger_t))
@@ -1116,6 +1126,7 @@ IRState::hwi2toli (HOST_WIDE_INT low, HOST_WIDE_INT high)
       result += ((uinteger_t) (unsigned HOST_WIDE_INT) high) << HOST_BITS_PER_WIDE_INT;
     }
   return result;
+#endif
 }
 
 dinteger_t
@@ -3128,6 +3139,12 @@ IRState::typeinfoReference (Type * t)
 dinteger_t
 IRState::getTargetSizeConst (tree t)
 {
+  if (host_integerp (t, 0) || host_integerp (t, 1))
+    return tree_low_cst (t, 1);
+
+  return hwi2toli (TREE_INT_CST (t));
+
+#if 0
   dinteger_t result;
   if (sizeof (HOST_WIDE_INT) >= sizeof (dinteger_t))
     result = tree_low_cst (t, 1);
@@ -3139,6 +3156,7 @@ IRState::getTargetSizeConst (tree t)
 	<< HOST_BITS_PER_WIDE_INT;
     }
   return result;
+#endif
 }
 
 
