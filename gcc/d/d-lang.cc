@@ -307,8 +307,8 @@ d_init ()
   VersionCondition::addPredefinedGlobalIdent ("all");
 
   /* Insert all library-configured identifiers and import paths.  */
-  add_phobos_versyms ();
   add_import_paths ();
+  add_phobos_versyms ();
 
   return 1;
 }
