@@ -1067,7 +1067,7 @@ IRState::integerConstant (dinteger_t value, tree type)
   if (isErrorMark (type))
     return type;
 
-  return built_int_cst_type (type, value);
+  return build_int_cst_type (type, value);
 
 #if 0
   tree tree_value = NULL_TREE;
