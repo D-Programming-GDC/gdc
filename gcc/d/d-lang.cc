@@ -163,25 +163,6 @@ d_option_lang_mask (void)
 }
 
 
-#ifdef D_OS_VERSYM
-const char * cygwin_d_os_versym = D_OS_VERSYM;
-#undef D_OS_VERSYM
-#define D_OS_VERSYM cygwin_d_os_versym
-#endif
-
-static void
-maybe_fixup_os_versym ()
-{
-#ifdef D_OS_VERSYM
-  char * env = getenv ("GCC_CYGWIN_MINGW");
-
-  if (!strcmp (D_OS_VERSYM, "Cygwin") && env && *env == '1')
-    {
-      cygwin_d_os_versym = "Win32";
-    }
-#endif
-}
-
 static bool is_target_win32 = false;
 
 bool
@@ -232,8 +213,6 @@ d_init ()
   initPrecedence ();
   gcc_d_backend_init ();
   real_t::init ();
-
-  maybe_fixup_os_versym ();
 
   VersionCondition::addPredefinedGlobalIdent ("GNU");
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");

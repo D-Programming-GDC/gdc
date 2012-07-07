@@ -1,7 +1,10 @@
 2012-07-07  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-incpath.cc(maybe_fixup_phobos_target): Remove.
+	(register_import_chains): Remove use of maybe_fixup_phobos_target.
 	* d-lang.cc(saved_reg_names): Remove.
-	(d_init): Remove use of saved_reg_names.
+	(maybe_fixup_os_versym): Likewise.
+	(d_init): Remove use of saved_reg_names and maybe_fixup_os_versym.
 	(d_post_options): Likewise.
 
 2012-07-05  Iain Buclaw  <ibuclaw@ubuntu.com>
