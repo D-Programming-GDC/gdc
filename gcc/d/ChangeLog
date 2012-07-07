@@ -1,10 +1,18 @@
 2012-07-07  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-incpath.cc(add_phobos_versyms): New function to scan
+	phobos-vers-syms file.
+	(register_import_chains): Renamed to add_import_paths.
+	* d-lang.cc(d_init): Call add_phobos_versyms and add_import_paths.
+	(d_parse_int): Don't use strtol to get number from argument string.
+
 	* d-incpath.cc(maybe_fixup_phobos_target): Remove.
 	(register_import_chains): Remove use of maybe_fixup_phobos_target.
+	* d-lang.cc(maybe_fixup_os_versym): Remove
+	(d_init): Remove use of maybe_fixup_os_versym.
+
 	* d-lang.cc(saved_reg_names): Remove.
-	(maybe_fixup_os_versym): Likewise.
-	(d_init): Remove use of saved_reg_names and maybe_fixup_os_versym.
+	(d_init): Remove use of saved_reg_names.
 	(d_post_options): Likewise.
 
 2012-07-05  Iain Buclaw  <ibuclaw@ubuntu.com>

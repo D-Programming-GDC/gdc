@@ -306,45 +306,9 @@ d_init ()
 
   VersionCondition::addPredefinedGlobalIdent ("all");
 
-  register_import_chains ();
-
-    {
-      char * path = FileName::searchPath (global.path, "phobos-ver-syms", 1);
-      if (path)
-	{
-	  FILE * f = fopen (path, "r");
-	  char buf[256];
-	  char *p, *q;
-	  if (f)
-	    {
-	      while (! feof (f) && fgets (buf, 256, f))
-		{
-		  p = buf;
-		  while (*p && ISSPACE (*p))
-		    p++;
-		  q = p;
-		  while (*q && ! ISSPACE (*q))
-		    q++;
-		  *q = 0;
-		  if (p != q)
-		    {
-		      /* Needs to be predefined because we define
-			 Unix/Windows this way. */
-		      VersionCondition::addPredefinedGlobalIdent (xstrdup (p));
-		    }
-		}
-	      fclose (f);
-	    }
-	  else
-	    {
-	      //printf ("failed\n");
-	    }
-	}
-      else
-	{
-	  //printf ("no p-v-s found\n");
-	}
-    }
+  /* Insert all library-configured identifiers and import paths.  */
+  add_phobos_versyms ();
+  add_import_paths ();
 
   return 1;
 }
@@ -352,13 +316,33 @@ d_init ()
 static bool
 parse_int (const char * arg, int * value_ret)
 {
-  long v;
-  char * err;
-  errno = 0;
-  v = strtol (arg, & err, 10);
-  if (*err || errno || v > INT_MAX)
-    return false;
-  * value_ret = v;
+  /* Common case of a single digit.  */
+  if (arg[1] == '\0')
+    *value_ret = arg[0] - '0';
+  else
+    {
+      HOST_WIDE_INT v = 0;
+      unsigned int base = 10, c = 0;
+      int overflow = 0;
+      for (const char *p = arg; *p != '\0'; p++)
+	{
+	  c = *p;
+
+	  if (ISDIGIT (c))
+	    c = hex_value (c);
+	  else
+	    return false;
+
+	  v = v * base + c;
+	  overflow |= (v > INT_MAX);
+	}
+
+      if (overflow)
+	return false;
+
+      *value_ret = v;
+    }
+
   return true;
 }
 

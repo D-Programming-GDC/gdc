@@ -23,6 +23,8 @@
 #include "d-codegen.h"
 #include "d-confdefs.h"
 
+#include "cond.h"
+
 /* Global options removed from d-lang.cc */
 bool std_inc;
 const char * iprefix = NULL;
@@ -150,7 +152,7 @@ add_file_path (char * path)
 
 
 void
-register_import_chains ()
+add_import_paths ()
 {
   // %%TODO: front or back?
   if (std_inc)
@@ -185,6 +187,37 @@ register_import_chains ()
 	  char *path = global.params.fileImppath->tdata()[i];
 	  if (path)
 	    add_file_path (path);
+	}
+    }
+}
+
+
+void add_phobos_versyms()
+{
+  char * path = FileName::searchPath (global.path, "phobos-ver-syms", 1);
+  if (path)
+    {
+      FILE * f = fopen (path, "r");
+      if (f)
+	{
+	  char buf[256];
+	  while (! feof (f) && fgets (buf, 256, f))
+	    {
+	      char * p = buf;
+	      while (*p && ISSPACE (*p))
+		p++;
+	      char * q = p;
+	      while (*q && ! ISSPACE (*q))
+		q++;
+	      *q = 0;
+	      if (p != q)
+		{
+		  /* Needs to be predefined because we define
+		     Unix/Windows this way. */
+		  VersionCondition::addPredefinedGlobalIdent (xstrdup (p));
+		}
+	    }
+	  fclose (f);
 	}
     }
 }

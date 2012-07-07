@@ -194,7 +194,8 @@ extern struct lang_decl * build_d_decl_lang_specific (Declaration * d);
 extern tree d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers);
 
 /* In d-incpath.cc */
-extern void register_import_chains ();
+extern void add_import_paths ();
+extern void add_phobos_versyms ();
 extern bool std_inc;
 extern const char * iprefix;
 extern const char * multilib_dir;
