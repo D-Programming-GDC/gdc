@@ -445,13 +445,18 @@ d_gcc_magic_builtins_module (Module *m)
 
       /* %% D2 - builtins are trusted and optionally nothrow.
 	 The purity of a builtins can vary depending on compiler flags set at
-	 init, or by the -foptions passed, such as flag_unsafe_math_optimizations
-	 */
+	 init, or by the -foptions passed, such as flag_unsafe_math_optimizations.
+
+	 Similiarly, if a builtin does not correspond to a function in the standard
+	 library (is provided by the compiler), then will also mark the function as
+	 weakly pure in the D frontend.
+       */
       dtf->trust = TREE_NOTHROW (decl) ? TRUSTtrusted : TRUSTsystem;
       dtf->isnothrow = TREE_NOTHROW (decl);
       dtf->purity = DECL_PURE_P (decl) ?   PUREstrong :
 	TREE_READONLY (decl) ? PUREconst :
 	DECL_IS_NOVOPS (decl) ? PUREweak :
+	!DECL_ASSEMBLER_NAME_SET_P(decl) ? PUREweak :
 	PUREimpure;
 
       FuncDeclaration * func = new FuncDeclaration (0, 0,
@@ -622,7 +627,7 @@ d_gcc_field_align (VarDeclaration * var, int known_align)
      Some targets (i.e. i386, VMS) limit struct field alignment
      to a lower boundary than alignment of variables unless
      it was overridden by attribute aligned.  */
-  if (var->alignment != STRUCTALIGN_DEFAULT)
+  if (var->alignment != (unsigned) STRUCTALIGN_DEFAULT)
     return var->alignment;
 
   // Work out the correct alignment for the field decl.

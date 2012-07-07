@@ -1,5 +1,9 @@
 2012-07-07  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-builtins2.cc(d_gcc_magic_builtins_module): Add check for
+	DECL_ASSEMBLER_NAME_SET_P when testing for builtins that can be
+	markable as pure in the D frontend.
+
 	* d-codegen.cc(IRState::integerConstant): Hide use of
 	HOST_BITS_PER_WIDE_INT macros.
 	(IRState::hwi2toli): Likewise.
