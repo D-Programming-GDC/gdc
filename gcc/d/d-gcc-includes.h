@@ -36,6 +36,7 @@ extern "C" {
 #include "ggc.h"
 #include "flags.h"
 #include "diagnostic.h"
+#include "output.h"
 #include "tree-inline.h"
 
 #include "real.h"

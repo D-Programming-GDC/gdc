@@ -740,8 +740,7 @@ ObjectFile::outputThunk (tree thunk_decl, tree target_decl, int offset)
 				     virtual_value, 0, alias);
 
       if (DECL_ONE_ONLY (target_decl))
-	symtab_add_to_same_comdat_group ((symtab_node) thunk_node,
-					 (symtab_node) funcn);
+	cgraph_add_to_same_comdat_group (thunk_node, funcn);
     }
   else
     {
