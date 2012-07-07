@@ -1,5 +1,14 @@
 2012-07-07  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-builtins.c(d_global_trees): Move declaration here.
+	(lookup_C_type_name): Rename to lookup_ctype_name.
+	(d_init_builtins): Move set-up of d_global_trees here.
+	(gcc_d_backend_init): Move function from d-glue.cc and refactored.
+	(gcc_d_backend_term): Likewise.
+	* d-builtins2.cc(d_bi_init): Set-up D frontend sizes here.
+	* d-glue.cc(gcc_d_backend_init): Removed.
+	(gcc_d_backend_term): Likewise.
+
 	* d-incpath.cc(add_phobos_versyms): New function to scan
 	phobos-vers-syms file.
 	(register_import_chains): Renamed to add_import_paths.

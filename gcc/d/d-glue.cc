@@ -4678,111 +4678,28 @@ Dsymbol::cvMember (unsigned char*)
 {
   return 0;
 }
+
 int
 EnumDeclaration::cvMember (unsigned char*)
 {
   return 0;
 }
+
 int
 FuncDeclaration::cvMember (unsigned char*)
 {
   return 0;
 }
+
 int
 VarDeclaration::cvMember (unsigned char*)
 {
   return 0;
 }
+
 int
 TypedefDeclaration::cvMember (unsigned char*)
 {
   return 0;
 }
 
-
-// Backend init
-
-// Array of d type/decl nodes.
-tree d_global_trees[DTI_MAX];
-
-void
-gcc_d_backend_init ()
-{
-  // %% need this here to add the type decls ...
-  init_global_binding_level ();
-
-  // This allows the code in d-builtins2 to not have to worry about
-  // converting (C signed char *) to (D char *) for string arguments of
-  // built-in functions.
-  build_common_tree_nodes (/*signed_char*/false, /*short_double*/false);
-
-  // Specific to D (but so far all taken from C)
-  d_void_zero_node = make_node (INTEGER_CST);
-  TREE_TYPE (d_void_zero_node) = void_type_node;
-
-  // %%TODO: we are relying on default boolean_type_node being 8bit / same as Tbit
-
-  d_null_pointer = convert (ptr_type_node, integer_zero_node);
-
-  // %% D variant types of Ctypes.
-  d_boolean_type_node = make_unsigned_type (1);
-  TREE_SET_CODE (d_boolean_type_node, BOOLEAN_TYPE);
-
-  d_char_type_node = build_variant_type_copy (unsigned_intQI_type_node);
-  d_wchar_type_node = build_variant_type_copy (unsigned_intHI_type_node);
-  d_dchar_type_node = build_variant_type_copy (unsigned_intSI_type_node);
-  d_ifloat_type_node = build_variant_type_copy (float_type_node);
-  d_idouble_type_node = build_variant_type_copy (double_type_node);
-  d_ireal_type_node = build_variant_type_copy (long_double_type_node);
-
-  TYPE_NAME (integer_type_node) = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
-					      get_identifier ("int"), integer_type_node);
-  TYPE_NAME (char_type_node) = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
-					   get_identifier ("char"), char_type_node);
-
-  REALSIZE = int_size_in_bytes (long_double_type_node);
-  REALPAD = 0;
-  REALALIGNSIZE = TYPE_ALIGN_UNIT (long_double_type_node);
-
-  if (POINTER_SIZE == 32)
-    Tptrdiff_t = Tint32;
-  else if (POINTER_SIZE == 64)
-    Tptrdiff_t = Tint64;
-  else
-    gcc_unreachable ();
-
-  PTRSIZE = (POINTER_SIZE / BITS_PER_UNIT);
-
-  // %% May get changed later anyway...
-  CLASSINFO_SIZE_64 = 19 * PTRSIZE;
-  CLASSINFO_SIZE = 19 * PTRSIZE;
-
-  d_init_builtins ();
-
-  if (flag_exceptions)
-    d_init_exceptions ();
-
-  /* copied and modified from cp/decl.c; only way for vtable to work in gdb... */
-  // or not, I'm feeling very confused...
-    {
-      /* Make sure we get a unique function type, so we can give
-	 its pointer type a name.  (This wins for gdb.) */
-      tree vfunc_type = build_function_type (integer_type_node, NULL_TREE);
-      tree vtable_entry_type = build_pointer_type (vfunc_type);
-
-      d_vtbl_ptr_type_node = build_pointer_type (vtable_entry_type);
-      layout_type (d_vtbl_ptr_type_node);// %%TODO: check if needed
-    }
-
-  // This also allows virtual functions to be called, but when vtbl entries,
-  // are inspected, function symbol names do not appear.
-  // d_vtbl_ptr_type_node = Type::tvoid->pointerTo()->pointerTo()->toCtype ();
-
-  // This is the C main, not the D main
-  main_identifier_node = get_identifier ("main");
-}
-
-void
-gcc_d_backend_term ()
-{
-}

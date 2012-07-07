@@ -172,17 +172,10 @@ extern bool d_mark_addressable (tree);
 extern void d_mark_exp_read (tree);
 extern tree d_truthvalue_conversion (tree);
 extern tree d_convert_basic (tree, tree);
-extern void d_init_exceptions (void);
-
-extern void init_global_binding_level (void);
-extern void set_decl_binding_chain (tree decl_chain);
 
 extern void d_add_global_declaration (tree);
 
 extern tree d_type_promotes_to (tree);
-
-extern void gcc_d_backend_init ();
-extern void gcc_d_backend_term ();
 
 struct Module;
 extern Module * d_gcc_get_output_module ();
@@ -209,10 +202,16 @@ extern "C" {
   tree pushdecl (tree);
   void pushlevel (int);
   tree poplevel (int, int, int);
+
+  void init_global_binding_level (void);
+  void set_decl_binding_chain (tree decl_chain);
+
   tree d_unsigned_type (tree);
   tree d_signed_type (tree);
   tree d_type_for_size (unsigned bits, int unsignedp);
   tree d_type_for_mode (enum machine_mode mode, int unsignedp);
+
+  void d_init_exceptions (void);
 
   void d_keep (tree t);
   void d_free (tree t);
@@ -228,6 +227,8 @@ extern "C" {
   extern const struct attribute_spec d_common_format_attribute_table[];
   extern tree d_builtin_function (tree);
   extern void d_register_builtin_type (tree, const char *);
+  extern void gcc_d_backend_init ();
+  extern void gcc_d_backend_term ();
 
   /* In d-builtins2.cc */
   extern void d_bi_init (void);

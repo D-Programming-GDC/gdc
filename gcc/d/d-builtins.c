@@ -40,6 +40,9 @@
 /* Implements GCC attributes in D. */
 #include "d-bi-attrs.h"
 
+/* Array of d type/decl nodes. */
+tree d_global_trees[DTI_MAX];
+
 /* Used to help initialize the builtin-types.def table.  When a type of
    the correct size doesn't exist, use error_mark_node instead of NULL.
    The later results in segfaults even when a decl using the type doesn't
@@ -106,7 +109,7 @@ d_init_attributes (void)
 #endif
 
 static tree
-lookup_C_type_name (const char * p)
+lookup_ctype_name (const char * p)
 {
   // These are the names used in c_common_nodes_and_builtins
   if (strcmp (p,"char"))
@@ -277,8 +280,53 @@ d_init_builtins (void)
 
   /* WINT_TYPE is a C type name, not an itk_ constant or something useful
      like that... */
-  tree wint_type_node = lookup_C_type_name (WINT_TYPE);
-  pid_type_node = lookup_C_type_name (PID_TYPE);
+  tree wint_type_node = lookup_ctype_name (WINT_TYPE);
+  pid_type_node = lookup_ctype_name (PID_TYPE);
+
+  /* Create the built-in __null node.  It is important that this is
+     not shared.  */
+  null_node = make_node (INTEGER_CST);
+  TREE_TYPE (null_node) = d_type_for_size (POINTER_SIZE, 0);
+
+  TYPE_NAME (integer_type_node) = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
+					      get_identifier ("int"), integer_type_node);
+  TYPE_NAME (char_type_node) = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
+					   get_identifier ("char"), char_type_node);
+
+  /* Types specific to D (but so far all taken from C).  */
+  d_void_zero_node = make_node (INTEGER_CST);
+  TREE_TYPE (d_void_zero_node) = void_type_node;
+
+  d_null_pointer = convert (ptr_type_node, integer_zero_node);
+
+  /* D variant types of C types.  */
+  d_boolean_type_node = make_unsigned_type (1);
+  TREE_SET_CODE (d_boolean_type_node, BOOLEAN_TYPE);
+
+  d_char_type_node = build_variant_type_copy (unsigned_intQI_type_node);
+  d_wchar_type_node = build_variant_type_copy (unsigned_intHI_type_node);
+  d_dchar_type_node = build_variant_type_copy (unsigned_intSI_type_node);
+  d_ifloat_type_node = build_variant_type_copy (float_type_node);
+  d_idouble_type_node = build_variant_type_copy (double_type_node);
+  d_ireal_type_node = build_variant_type_copy (long_double_type_node);
+
+  {
+    /* Make sure we get a unique function type, so we can give
+       its pointer type a name.  (This wins for gdb.) */
+    tree vtable_entry_type;
+    tree vfunc_type = make_node (FUNCTION_TYPE);
+    TREE_TYPE (vfunc_type) = integer_type_node;
+    TYPE_ARG_TYPES (vfunc_type) = NULL_TREE;
+    layout_type (vfunc_type);
+
+    vtable_entry_type = build_pointer_type (vfunc_type);
+
+    d_vtbl_ptr_type_node = build_pointer_type (vtable_entry_type);
+    layout_type (d_vtbl_ptr_type_node);
+  }
+
+  /* Since builtin_types isn't gc'ed, don't export these nodes.  */
+  memset (builtin_types, 0, sizeof (builtin_types));
 
 #define DEF_PRIMITIVE_TYPE(ENUM, VALUE) \
   builtin_types[(int) ENUM] = VALUE;
@@ -348,13 +396,6 @@ d_init_builtins (void)
   targetm.init_builtins ();
 
   build_common_builtin_nodes ();
-
-  main_identifier_node = get_identifier ("main");
-
-  /* Create the built-in __null node.  It is important that this is
-     not shared.  */
-  null_node = make_node (INTEGER_CST);
-  TREE_TYPE (null_node) = d_type_for_size (POINTER_SIZE, 0);
 }
 
 /* Registration of machine- or os-specific builtin types.  */
@@ -385,6 +426,34 @@ d_builtin_function (tree decl)
 {
   d_bi_builtin_func (decl);
   return decl;
+}
+
+
+/* Backend init  */
+
+void
+gcc_d_backend_init (void)
+{
+  init_global_binding_level ();
+
+  /* This allows the code in d-builtins2 to not have to worry about
+     converting (C signed char *) to (D char *) for string arguments of
+     built-in functions.
+     Parameters are (signed_char = false, short_double = false).  */
+  build_common_tree_nodes (false, false);
+
+  d_init_builtins ();
+
+  if (flag_exceptions)
+    d_init_exceptions ();
+
+  /* This is the C main, not the D main.  */
+  main_identifier_node = get_identifier ("main");
+}
+
+void
+gcc_d_backend_term (void)
+{
 }
 
 #include "gt-d-d-builtins.h"

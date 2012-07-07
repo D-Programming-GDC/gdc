@@ -30,29 +30,7 @@ static ListMaker bi_type_list;
 static Array builtin_converted_types;
 static Dsymbols builtin_converted_decls;
 
-static Type * gcc_type_to_d_type (tree t);
-
 Type * d_gcc_builtin_va_list_d_type;
-
-void
-d_bi_init ()
-{
-  // The "standard" abi va_list is va_list_type_node.
-  // assumes va_list_type_node already built
-  d_va_list_type_node = build_variant_type_copy (va_list_type_node);
-
-  d_gcc_builtin_va_list_d_type = gcc_type_to_d_type (d_va_list_type_node);
-  if (! d_gcc_builtin_va_list_d_type)
-    {
-      // fallback to array of byte of the same size?
-      error ("cannot represent built in va_list type in D");
-      gcc_unreachable ();
-    }
-
-  // Need to avoid errors in gimplification, else, need to not ICE
-  // in targetm.canonical_va_list_type
-  d_gcc_builtin_va_list_d_type->ctype = d_va_list_type_node;
-}
 
 /*
    Set ctype directly for complex types to save toCtype () the work.
@@ -306,6 +284,43 @@ gcc_type_to_d_type (tree t)
     }
 
   return NULL;
+}
+
+void
+d_bi_init ()
+{
+  // The "standard" abi va_list is va_list_type_node.
+  // assumes va_list_type_node already built
+  d_va_list_type_node = build_variant_type_copy (va_list_type_node);
+
+  d_gcc_builtin_va_list_d_type = gcc_type_to_d_type (d_va_list_type_node);
+  if (! d_gcc_builtin_va_list_d_type)
+    {
+      // fallback to array of byte of the same size?
+      error ("cannot represent built in va_list type in D");
+      gcc_unreachable ();
+    }
+
+  // Need to avoid errors in gimplification, else, need to not ICE
+  // in targetm.canonical_va_list_type
+  d_gcc_builtin_va_list_d_type->ctype = d_va_list_type_node;
+
+  REALSIZE = int_size_in_bytes (long_double_type_node);
+  REALPAD = 0;
+  REALALIGNSIZE = TYPE_ALIGN_UNIT (long_double_type_node);
+
+  if (POINTER_SIZE == 32)
+    Tptrdiff_t = Tint32;
+  else if (POINTER_SIZE == 64)
+    Tptrdiff_t = Tint64;
+  else
+    gcc_unreachable ();
+
+  PTRSIZE = (POINTER_SIZE / BITS_PER_UNIT);
+
+  // %% May get changed later anyway...
+  CLASSINFO_SIZE_64 = 19 * PTRSIZE;
+  CLASSINFO_SIZE = 19 * PTRSIZE;
 }
 
 void
