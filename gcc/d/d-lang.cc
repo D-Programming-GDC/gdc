@@ -95,9 +95,6 @@ static char lang_name[6] = "GNU D";
 
 
 static const char * fonly_arg;
-// Because of PR16888, on x86 platforms, GCC clears unused reg names.
-// As this doesn't affect us, need a way to restore them.
-static const char *saved_reg_names[FIRST_PSEUDO_REGISTER];
 
 /* Common initialization before calling option handlers.  */
 static void
@@ -197,10 +194,6 @@ static bool
 d_init ()
 {
   const char * cpu_versym = NULL;
-
-  /* Restore register names if any were cleared during backend init */
-  if (memcmp (reg_names, saved_reg_names, sizeof reg_names))
-    memcpy (reg_names, saved_reg_names, sizeof reg_names);
 
   /* Currently, is64bit indicates a 64-bit target in general and is not
      Intel-specific. */
@@ -638,9 +631,6 @@ d_post_options (const char ** fn)
   // The front end considers the first input file to be the main one.
   if (num_in_fnames)
     *fn = in_fnames[0];
-
-  // Save register names for restoring later.
-  memcpy (saved_reg_names, reg_names, sizeof reg_names);
 
   /* If we are given more than one input file, we must use
      unit-at-a-time mode.  */

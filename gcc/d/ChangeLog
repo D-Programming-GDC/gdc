@@ -1,3 +1,9 @@
+2012-07-07  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-lang.cc(saved_reg_names): Remove.
+	(d_init): Remove use of saved_reg_names.
+	(d_post_options): Likewise.
+
 2012-07-05  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-glue.cc(StructLiteralExp::toElem): Stop after first assignment for
