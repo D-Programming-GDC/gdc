@@ -109,30 +109,30 @@ d_init_attributes (void)
 #endif
 
 static tree
-lookup_ctype_name (const char * p)
+lookup_ctype_name (const char *p)
 {
   // These are the names used in c_common_nodes_and_builtins
-  if (strcmp (p,"char"))
+  if (strcmp (p, "char"))
     return char_type_node;
-  else if (strcmp (p,"signed char"))
+  else if (strcmp (p, "signed char"))
     return signed_char_type_node;
-  else if (strcmp (p,"unsigned char"))
+  else if (strcmp (p, "unsigned char"))
     return unsigned_char_type_node;
-  else if (strcmp (p,"short int"))
+  else if (strcmp (p, "short int"))
     return short_integer_type_node;
-  else if (strcmp (p,"short unsigned int "))
+  else if (strcmp (p, "short unsigned int "))
     return short_unsigned_type_node; //cxx! -- affects ming/c++?
-  else if (strcmp (p,"int"))
+  else if (strcmp (p, "int"))
     return integer_type_node;
-  else if (strcmp (p,"unsigned int"))
+  else if (strcmp (p, "unsigned int"))
     return unsigned_type_node;
-  else if (strcmp (p,"long int"))
+  else if (strcmp (p, "long int"))
     return long_integer_type_node;
-  else if (strcmp (p,"long unsigned int"))
+  else if (strcmp (p, "long unsigned int"))
     return long_unsigned_type_node; // cxx!
-  else if (strcmp (p,"long long int"))
+  else if (strcmp (p, "long long int"))
     return long_integer_type_node;
-  else if (strcmp (p,"long long unsigned int"))
+  else if (strcmp (p, "long long unsigned int"))
     return long_unsigned_type_node; // cxx!
 
   internal_error ("unsigned C type '%s'", p);
@@ -247,6 +247,9 @@ def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
  egress:
   builtin_types[def] = t;
 }
+
+
+/* Build builtin functions and types for the D language frontend.  */
 
 void
 d_init_builtins (void)
@@ -400,7 +403,7 @@ d_init_builtins (void)
 
 /* Registration of machine- or os-specific builtin types.  */
 void
-d_register_builtin_type (tree type, const char * name)
+d_register_builtin_type (tree type, const char *name)
 {
   tree ident = get_identifier (name);
   tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, ident, type);

@@ -20,14 +20,14 @@
 #include "d-codegen.h"
 #include "dt.h"
 
-static tree dt2tree_list_of_elems (dt_t * dt);
-static tree dt2node (dt_t * dt);
+static tree dt2tree_list_of_elems (dt_t *dt);
+static tree dt2node (dt_t *dt);
 
 
-dt_t**
-dtval (dt_t** pdt, DT t, dinteger_t i, const void * p)
+dt_t **
+dtval (dt_t **pdt, DT t, dinteger_t i, const void *p)
 {
-  dt_t * d = new dt_t;
+  dt_t *d = new dt_t;
   d->dt = t;
   d->DTnext = 0;
   d->DTint = i;
@@ -35,8 +35,8 @@ dtval (dt_t** pdt, DT t, dinteger_t i, const void * p)
   return dtcat (pdt, d);
 }
 
-dt_t**
-dtcat (dt_t** pdt, dt_t * d)
+dt_t **
+dtcat (dt_t **pdt, dt_t *d)
 {
   gcc_assert (d);
   // wasted time and mem touching... shortcut DTend field?
@@ -48,16 +48,16 @@ dtcat (dt_t** pdt, dt_t * d)
 
 typedef unsigned bitunit_t;
 
-dt_t**
-dtnbits (dt_t** pdt, size_t count, char * pbytes, unsigned unit_size)
+dt_t **
+dtnbits (dt_t **pdt, size_t count, char *pbytes, unsigned unit_size)
 {
   gcc_assert (unit_size == sizeof (bitunit_t));
   gcc_assert (count % unit_size == 0);
 
-  bitunit_t * p_unit = (bitunit_t *) pbytes;
-  bitunit_t * p_unit_end = (bitunit_t *) (pbytes + count);
-  char * pbits = new char[count];
-  char * p_out = pbits;
+  bitunit_t *p_unit = (bitunit_t *) pbytes;
+  bitunit_t *p_unit_end = (bitunit_t *) (pbytes + count);
+  char *pbits = new char[count];
+  char *p_out = pbits;
   unsigned b = 0;
   char outv = 0;
 
@@ -81,26 +81,26 @@ dtnbits (dt_t** pdt, size_t count, char * pbytes, unsigned unit_size)
   return dtnbytes (pdt, count, pbits);
 }
 
-dt_t**
-dtnwords (dt_t** pdt, size_t word_count, void * pwords, unsigned word_size)
+dt_t **
+dtnwords (dt_t **pdt, size_t word_count, void *pwords, unsigned word_size)
 {
-  return dtnbytes (pdt, word_count * word_size,
-       		   gen.hostToTargetString ((char*) pwords, word_count, word_size));
+  return dtnbytes (pdt, word_count *word_size,
+       		   gen.hostToTargetString ((char *) pwords, word_count, word_size));
 }
 
-dt_t**
-dtawords (dt_t** pdt, size_t word_count, void * pwords, unsigned word_size)
+dt_t **
+dtawords (dt_t **pdt, size_t word_count, void *pwords, unsigned word_size)
 {
-  return dtabytes (pdt, TYnptr, 0, word_count * word_size,
-       		   gen.hostToTargetString ((char*) pwords, word_count, word_size));
+  return dtabytes (pdt, TYnptr, 0, word_count *word_size,
+       		   gen.hostToTargetString ((char *) pwords, word_count, word_size));
 }
 
 /* Add a 32-bit value to a dt.  If pad_to_word is true, adds any
    necessary padding so that the next value is aligned to PTRSIZE. */
-dt_t**
-dti32 (dt_t** pdt, unsigned val, int pad_to_word)
+dt_t **
+dti32 (dt_t **pdt, unsigned val, int pad_to_word)
 {
-  dt_t** result = dttree (pdt, gen.integerConstant (val, Type::tuns32));
+  dt_t **result = dttree (pdt, gen.integerConstant (val, Type::tuns32));
   if (! pad_to_word || PTRSIZE == 4)
     return result;
   else if (PTRSIZE == 8)
@@ -109,10 +109,10 @@ dti32 (dt_t** pdt, unsigned val, int pad_to_word)
     gcc_unreachable ();
 }
 
-dt_t**
-dtcontainer (dt_t** pdt, Type * type, dt_t* values)
+dt_t **
+dtcontainer (dt_t **pdt, Type *type, dt_t *values)
 {
-  dt_t * d = new dt_t;
+  dt_t *d = new dt_t;
   d->dt = DT_container;
   d->DTnext = 0;
   d->DTtype = type;
@@ -122,7 +122,7 @@ dtcontainer (dt_t** pdt, Type * type, dt_t* values)
 
 
 size_t
-dt_size (dt_t * dt)
+dt_size (dt_t *dt)
 {
   size_t size = 0;
 
@@ -164,7 +164,7 @@ dt_size (dt_t * dt)
 }
 
 tree
-dt2tree (dt_t * dt)
+dt2tree (dt_t *dt)
 {
   if (dt && /*dt->dt == DT_container || */dt->DTnext == NULL)
     return dt2node (dt);
@@ -173,7 +173,7 @@ dt2tree (dt_t * dt)
 }
 
 static tree
-dt2node (dt_t * dt)
+dt2node (dt_t *dt)
 {
   switch (dt->dt)
     {
@@ -229,9 +229,9 @@ dt2node (dt_t * dt)
 	    tb = dt->DTtype->toBasetype ();
 	  if (tb && tb->ty == Tsarray)
 	    {
-	      TypeSArray * tsa = (TypeSArray *) tb;
+	      TypeSArray *tsa = (TypeSArray *) tb;
 	      CtorEltMaker ctor_elts;
-	      dt_t * dte = dt->DTvalues;
+	      dt_t *dte = dt->DTvalues;
 	      size_t i = 0;
 	      ctor_elts.reserve (tsa->dim->toInteger ());
 	      while (dte)
@@ -259,7 +259,7 @@ dt2node (dt_t * dt)
 }
 
 static tree
-dt2tree_list_of_elems (dt_t * dt)
+dt2tree_list_of_elems (dt_t *dt)
 {
   // Generate type on the fly
   CtorEltMaker elts;
@@ -290,7 +290,7 @@ dt2tree_list_of_elems (dt_t * dt)
 
   TYPE_FIELDS (aggtype) = fields.head; // or finish_laout
   TYPE_SIZE (aggtype) = convert (bitsizetype,
-			 	 size_binop (MULT_EXPR, offset, size_int (BITS_PER_UNIT)));
+				 size_binop (MULT_EXPR, offset, size_int (BITS_PER_UNIT)));
   TYPE_SIZE_UNIT (aggtype) = offset;
   // okay no alignment -- decl (which has the correct type) should take care of it..
   // align=bits per word?

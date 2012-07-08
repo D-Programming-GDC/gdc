@@ -913,9 +913,7 @@ int
 x3_query_target_info(X3_TargetInfo *ti)
 {
     int v;
-    int sz[5];
     int result = 0;
-    int ok;
 
     x3_gi_push_group();
 
@@ -933,15 +931,15 @@ x3_query_target_info(X3_TargetInfo *ti)
     if (! x3_result_find_sig(global->result, X3_SIG('t','G','t','I')))
         goto cleanup;
 
-    sz[0] = ti->sizeof_char = x3_result_read_u8(global->result);
+    ti->sizeof_char = x3_result_read_u8(global->result);
     if (ti->sizeof_char != 1) {
         x3_unsupported("sizeof(char) is not 1");
         goto cleanup;
     }
-    sz[1] = ti->sizeof_short = x3_result_read_u8(global->result);
-    sz[2] = ti->sizeof_int = x3_result_read_u8(global->result);
-    sz[3] = ti->sizeof_long_long = x3_result_read_u8(global->result);
-    sz[4] = ti->sizeof_long = x3_result_read_u8(global->result);
+    ti->sizeof_short = x3_result_read_u8(global->result);
+    ti->sizeof_int = x3_result_read_u8(global->result);
+    ti->sizeof_long_long = x3_result_read_u8(global->result);
+    ti->sizeof_long = x3_result_read_u8(global->result);
     v = x3_result_read_u8(global->result);
     if (v == 0x11)
         ti->is_big_endian = 0;
@@ -958,7 +956,7 @@ x3_query_target_info(X3_TargetInfo *ti)
         "unsigned char sz_szt; }\n "
         "__attribute__((packed)) _x3i_szt_info = {\n"
         "\"zOmG\", \"tGtI\", sizeof(size_t) };\n");
-    ok = x3_compile();
+    x3_compile();
     x3_gi_pop_headers(1);
     ti->size_type = "unsigned int";
     ti->sizeof_size_type = ti->sizeof_int;

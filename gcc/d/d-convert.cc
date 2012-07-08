@@ -307,8 +307,8 @@ d_truthvalue_conversion (tree expr)
     case COND_EXPR:
       /* Distribute the conversion into the arms of a COND_EXPR.  */
       return fold_build3 (COND_EXPR, boolean_type_node, TREE_OPERAND (expr, 0),
- 			  d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
- 			  d_truthvalue_conversion (TREE_OPERAND (expr, 2)));
+			  d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
+			  d_truthvalue_conversion (TREE_OPERAND (expr, 2)));
 
     case CONVERT_EXPR:
       /* Don't cancel the effect of a CONVERT_EXPR from a REFERENCE_TYPE,
@@ -370,15 +370,15 @@ d_truthvalue_conversion (tree expr)
       return (d_build_binary_op
 	      ((TREE_SIDE_EFFECTS (expr)
 		? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-   	       d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
-   	       d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)),
+	       d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
+	       d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)),
 	       /* convert_p */ 0));
     }
   /* Without this, the backend tries to load a float reg with and integer
      value with fails (on i386 and rs6000, at least). */
   else if (SCALAR_FLOAT_TYPE_P (TREE_TYPE (expr)))
     return d_build_binary_op (NE_EXPR, expr,
-      			      convert (TREE_TYPE (expr), integer_zero_node), 1);
+			      convert (TREE_TYPE (expr), integer_zero_node), 1);
 
   return d_build_binary_op (NE_EXPR, expr, integer_zero_node, 1);
 }

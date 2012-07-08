@@ -44,7 +44,7 @@ machineMode (real_t::Mode mode)
       return TYPE_MODE (long_double_type_node);
 
     default:
-      gcc_unreachable ();
+      gcc_unreachable();
     }
 }
 
@@ -53,35 +53,35 @@ real_t_Properties real_t_properties[real_t::NumModes];
 #define M_LOG10_2       0.30102999566398119521
 
 void
-real_t::init ()
+real_t::init (void)
 {
   gcc_assert (sizeof (real_t) >= sizeof (REAL_VALUE_TYPE));
 
   for (int i = (int) Float; i < (int) NumModes; i++)
     {
-      real_t_Properties & p = real_t_properties[i];
+      real_t_Properties& p = real_t_properties[i];
 
-      enum machine_mode mode = machineMode((Mode) i);
-      const struct real_format & rf = * REAL_MODE_FORMAT (mode);
+      enum machine_mode mode = machineMode ((Mode) i);
+      const struct real_format& rf = *REAL_MODE_FORMAT (mode);
       char buf[128];
 
       /* .max:
 	 The largest representable value that's not infinity.  */
       get_max_float (& rf, buf, sizeof (buf));
-      real_from_string (& p.maxval.rv (), buf);
+      real_from_string (& p.maxval.rv(), buf);
 
       /* .min, .min_normal:
 	 The smallest representable normalized value that's not 0.  */
-      snprintf (buf, sizeof(buf), "0x1p%d", rf.emin - 1);
-      real_from_string (& p.minval.rv (), buf);
+      snprintf (buf, sizeof (buf), "0x1p%d", rf.emin - 1);
+      real_from_string (& p.minval.rv(), buf);
 
       /* .epsilon:
 	 The smallest increment to the value 1.  */
       if (rf.pnan < rf.p)
-	snprintf (buf, sizeof(buf), "0x1p%d", rf.emin - rf.p);
+	snprintf (buf, sizeof (buf), "0x1p%d", rf.emin - rf.p);
       else
-	snprintf (buf, sizeof(buf), "0x1p%d", 1 - rf.p);
-      real_from_string (& p.epsilonval.rv (), buf);
+	snprintf (buf, sizeof (buf), "0x1p%d", 1 - rf.p);
+      real_from_string (& p.epsilonval.rv(), buf);
 
       /* .dig:
 	 The number of decimal digits of precision.  */
@@ -110,10 +110,10 @@ real_t::init ()
 }
 
 real_t
-real_t::parse (const char * str, Mode mode)
+real_t::parse (const char *str, Mode mode)
 {
   real_t r;
-  r.rv () = REAL_VALUE_ATOF (str, machineMode (mode));
+  r.rv() = REAL_VALUE_ATOF (str, machineMode (mode));
   return r;
 }
 
@@ -121,7 +121,7 @@ real_t
 real_t::getnan (Mode mode)
 {
   real_t r;
-  real_nan (& r.rv (), "", 1, machineMode (mode));
+  real_nan (& r.rv(), "", 1, machineMode (mode));
   return r;
 }
 
@@ -130,234 +130,208 @@ real_t
 real_t::getsnan (Mode mode)
 {
   real_t r;
-  real_nan (& r.rv (), "", 0, machineMode (mode));
+  real_nan (& r.rv(), "", 0, machineMode (mode));
   return r;
 }
 
 real_t
-real_t::getinfinity ()
+real_t::getinfinity (void)
 {
   real_t r;
-  real_inf (& r.rv ());
+  real_inf (& r.rv());
   return r;
 }
 
 const REAL_VALUE_TYPE &
-real_t::rv () const
+real_t::rv (void) const
 {
-  REAL_VALUE_TYPE * r = (REAL_VALUE_TYPE *) & frv;
+  REAL_VALUE_TYPE *r = (REAL_VALUE_TYPE *) &this->frv_;
   return *r;
 }
 
 REAL_VALUE_TYPE &
-real_t::rv ()
+real_t::rv (void)
 {
-  REAL_VALUE_TYPE * r = (REAL_VALUE_TYPE *) & frv;
+  REAL_VALUE_TYPE *r = (REAL_VALUE_TYPE *) &this->frv_;
   return *r;
 }
 
-real_t::real_t (const real_t & r)
+real_t::real_t (const real_t& r)
 {
-  rv () = r.rv ();
+  rv() = r.rv();
 }
 
-real_t::real_t (const REAL_VALUE_TYPE & rv)
+real_t::real_t (const REAL_VALUE_TYPE& rv)
 {
-  this->rv () = rv;
+  this->rv() = rv;
 }
 
 real_t::real_t (int v)
 {
-  REAL_VALUE_FROM_INT (rv (), v, 0, machineMode (LongDouble));
+  REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Float));
 }
 
 real_t::real_t (d_uns64 v)
 {
-# if HOST_BITS_PER_WIDE_INT == 32
-  REAL_VALUE_FROM_UNSIGNED_INT (rv (),
-		    		v & 0xffffffff, (v >> 32) & 0xffffffff,
-		    		machineMode (LongDouble));
-# elif HOST_BITS_PER_WIDE_INT == 64
-  REAL_VALUE_FROM_UNSIGNED_INT (rv (), v, 0,
-		    		machineMode (LongDouble));
-# else
-#  error Fix This
-# endif
+  REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, 0, machineMode (Double));
 }
 
 
 real_t::real_t (d_int64 v)
 {
-# if HOST_BITS_PER_WIDE_INT == 32
-  REAL_VALUE_FROM_INT (rv (), v & 0xffffffff,
-	   	       (v >> 32) & 0xffffffff, machineMode (LongDouble));
-# elif HOST_BITS_PER_WIDE_INT == 64
-  REAL_VALUE_FROM_INT (rv (), v,
-	   	       (v & 0x8000000000000000ULL) ? ~ (unsigned HOST_WIDE_INT) 0 : 0,
-	   	       machineMode (LongDouble));
-# else
-#  error Fix This
-# endif
+  REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Double));
 }
 
 real_t &
-real_t::operator= (const real_t & r)
+real_t::operator= (const real_t& r)
 {
-  rv () = r.rv ();
+  rv() = r.rv();
   return *this;
 }
 
 real_t &
 real_t::operator= (int v)
 {
-  REAL_VALUE_FROM_UNSIGNED_INT (rv (), v, 0, machineMode (LongDouble));
+  REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Float));
   return *this;
 }
 
 real_t
-real_t::operator+ (const real_t & r)
+real_t::operator+ (const real_t& r)
 {
   real_t x;
-  REAL_ARITHMETIC (x.rv (), PLUS_EXPR, rv (), r.rv ());
+  REAL_ARITHMETIC (x.rv(), PLUS_EXPR, rv(), r.rv());
   return x;
 }
 
 real_t
-real_t::operator- (const real_t & r)
+real_t::operator- (const real_t& r)
 {
   real_t x;
-  REAL_ARITHMETIC (x.rv (), MINUS_EXPR, rv (), r.rv ());
+  REAL_ARITHMETIC (x.rv(), MINUS_EXPR, rv(), r.rv());
   return x;
 }
 
 real_t
-real_t::operator- ()
+real_t::operator- (void)
 {
   real_t x;
-  x.rv () = REAL_VALUE_NEGATE (rv ());
+  x.rv() = REAL_VALUE_NEGATE (rv());
   return x;
 }
 
 real_t
-real_t::operator* (const real_t & r)
+real_t::operator* (const real_t& r)
 {
   real_t x;
-  REAL_ARITHMETIC (x.rv (), MULT_EXPR, rv (), r.rv ());
+  REAL_ARITHMETIC (x.rv(), MULT_EXPR, rv(), r.rv());
   return x;
 }
 
 real_t
-real_t::operator/ (const real_t & r)
+real_t::operator/ (const real_t& r)
 {
   real_t x;
-  REAL_ARITHMETIC (x.rv (), RDIV_EXPR, rv (), r.rv ());
+  REAL_ARITHMETIC (x.rv(), RDIV_EXPR, rv(), r.rv());
   return x;
 }
 
 // Using darwin fmodl man page for special cases
 real_t
-real_t::operator% (const real_t & r)
+real_t::operator% (const real_t& r)
 {
   REAL_VALUE_TYPE q, x;
   // %% inf cases..
 
   // %% signal error?
-  if (r.rv().cl == rvc_zero || REAL_VALUE_ISINF (rv ()))
+  if (r.rv().cl == rvc_zero || REAL_VALUE_ISINF (rv()))
     {
       REAL_VALUE_TYPE rvt;
       real_nan (& rvt, "", 1, machineMode (LongDouble));
       return real_t (rvt);
     }
 
-  if (rv ().cl == rvc_zero)
+  if (rv().cl == rvc_zero)
     return *this;
 
-  if (REAL_VALUE_ISINF (r.rv ()))
+  if (REAL_VALUE_ISINF (r.rv()))
     return *this;
 
   // %% need to check for NaN?
-  REAL_ARITHMETIC (q, RDIV_EXPR, rv (), r.rv ());
-  real_arithmetic (& q, FIX_TRUNC_EXPR, & q, NULL);
-  REAL_ARITHMETIC (q, MULT_EXPR, q, r.rv ());
-  REAL_ARITHMETIC (x, MINUS_EXPR, rv (), q);
+  REAL_ARITHMETIC (q, RDIV_EXPR, rv(), r.rv());
+  real_arithmetic (& q, FIX_TRUNC_EXPR, &q, NULL);
+  REAL_ARITHMETIC (q, MULT_EXPR, q, r.rv());
+  REAL_ARITHMETIC (x, MINUS_EXPR, rv(), q);
 
   return real_t (x);
 }
 
 bool
-real_t::operator< (const real_t & r)
+real_t::operator< (const real_t& r)
 {
-  return real_compare (LT_EXPR, & rv (), & r.rv ());
+  return real_compare (LT_EXPR, &rv(), &r.rv());
 }
 
 bool
-real_t::operator> (const real_t & r)
+real_t::operator> (const real_t& r)
 {
-  return real_compare (GT_EXPR, & rv (), & r.rv ());
+  return real_compare (GT_EXPR, &rv(), &r.rv());
 }
 
 bool
-real_t::operator<= (const real_t & r)
+real_t::operator<= (const real_t& r)
 {
-  return real_compare (LE_EXPR, & rv (), & r.rv ());
+  return real_compare (LE_EXPR, &rv(), &r.rv());
 }
 
 bool
-real_t::operator>= (const real_t & r)
+real_t::operator>= (const real_t& r)
 {
-  return real_compare (GE_EXPR, & rv (), & r.rv ());
+  return real_compare (GE_EXPR, &rv(), &r.rv());
 }
 
 bool
-real_t::operator== (const real_t & r)
+real_t::operator== (const real_t& r)
 {
-  return real_compare (EQ_EXPR, & rv (), & r.rv ());
+  return real_compare (EQ_EXPR, &rv(), &r.rv());
 }
 
 bool
-real_t::operator!= (const real_t & r)
+real_t::operator!= (const real_t& r)
 {
-  return real_compare (NE_EXPR, & rv (), & r.rv ());
+  return real_compare (NE_EXPR, &rv(), &r.rv());
 }
 
-/*
-   real_t::operator d_uns64 ()
-   {
-// this may not be the same as native real->int
-// %% host_wide_int
-return real_to_integer (& rv ());
-}
-*/
 
 d_uns64
-real_t::toInt () const
+real_t::toInt (void) const
 {
   HOST_WIDE_INT low, high;
   REAL_VALUE_TYPE r;
 
-  r = rv ();
+  r = rv();
   if (REAL_VALUE_ISNAN (r))
     low = high = 0;
   else
-    REAL_VALUE_TO_INT (& low, & high, r);
+    REAL_VALUE_TO_INT (&low, &high, r);
 
   return gen.hwi2toli (low, high);
 }
 
 d_uns64
-real_t::toInt (Type * real_type, Type * int_type) const
+real_t::toInt (Type *real_type, Type *int_type) const
 {
   tree t;
   double_int cst;
   REAL_VALUE_TYPE r;
 
-  r = rv ();
+  r = rv();
   if (REAL_VALUE_ISNAN (r))
     cst.low = cst.high = 0;
   else
     {
-      t = fold_build1 (FIX_TRUNC_EXPR, int_type->toCtype (),
-		       gen.floatConstant (r, real_type->toBasetype ()));
+      t = fold_build1 (FIX_TRUNC_EXPR, int_type->toCtype(),
+		       gen.floatConstant (r, real_type->toBasetype()));
       // can't use tree_low_cst as it asserts !TREE_OVERFLOW
       cst = TREE_INT_CST (t);
     }
@@ -368,14 +342,14 @@ real_t
 real_t::convert (Mode to_mode) const
 {
   real_t result;
-  real_convert (& result.rv (), machineMode (to_mode), & rv ());
+  real_convert (& result.rv(), machineMode (to_mode), &rv());
   return result;
 }
 
 real_t
-real_t::convert (Type * to_type) const
+real_t::convert (Type *to_type) const
 {
-  Type * tb = to_type->toBasetype ();
+  Type *tb = to_type->toBasetype();
   switch (tb->ty)
     {
     case Tfloat32:
@@ -391,59 +365,59 @@ real_t::convert (Type * to_type) const
       return convert (real_t::LongDouble);
 
     case Tvector:
-      tb = ((TypeVector *)tb)->elementType ();
+      tb = ((TypeVector *)tb)->elementType();
       gcc_assert (tb->ty != Tvector);
       return convert (tb);
 
     default:
-      gcc_unreachable ();
+      gcc_unreachable();
     }
 }
 
 bool
-real_t::isConst0 ()
+real_t::isConst0 (void)
 {
-  return REAL_VALUES_EQUAL (rv (), dconst0);
+  return REAL_VALUES_EQUAL (rv(), dconst0);
 }
 
 bool
-real_t::isConst1 ()
+real_t::isConst1 (void)
 {
-  return REAL_VALUES_EQUAL (rv (), dconst1);
+  return REAL_VALUES_EQUAL (rv(), dconst1);
 }
 
 bool
-real_t::isConst2 ()
+real_t::isConst2 (void)
 {
-  return REAL_VALUES_EQUAL (rv (), dconst2);
+  return REAL_VALUES_EQUAL (rv(), dconst2);
 }
 
 bool
-real_t::isConstMinus1 ()
+real_t::isConstMinus1 (void)
 {
-  return REAL_VALUES_EQUAL (rv (), dconstm1);
+  return REAL_VALUES_EQUAL (rv(), dconstm1);
 }
 
 bool
-real_t::isConstHalf ()
+real_t::isConstHalf (void)
 {
-  return REAL_VALUES_EQUAL (rv (), dconsthalf);
+  return REAL_VALUES_EQUAL (rv(), dconsthalf);
 }
 
 bool
-real_t::isZero ()
+real_t::isZero (void)
 {
-  return rv ().cl == rvc_zero;
+  return rv().cl == rvc_zero;
 }
 
 bool
-real_t::isNegative ()
+real_t::isNegative (void)
 {
-  return REAL_VALUE_NEGATIVE (rv ());
+  return REAL_VALUE_NEGATIVE (rv());
 }
 
 bool
-real_t::floatCompare (int op, const real_t & r)
+real_t::floatCompare (int op, const real_t& r)
 {
   enum tree_code out;
 
@@ -457,7 +431,7 @@ real_t::floatCompare (int op, const real_t & r)
     case TOKlg:
 	{
 	  // n = r1 <> r2;
-	  return *this < r || * this > r;
+	  return *this < r || *this > r;
 	}
     case TOKunord:
 	{
@@ -490,57 +464,57 @@ real_t::floatCompare (int op, const real_t & r)
 	  out = UNLE_EXPR; break;
 	}
     default:
-      gcc_unreachable ();
+      gcc_unreachable();
     }
-  return real_compare (out, & rv (), & r.rv ());
+  return real_compare (out, &rv(), &r.rv());
 }
 
 bool
-real_t::isIdenticalTo (const real_t & r) const
+real_t::isIdenticalTo (const real_t& r) const
 {
-  return REAL_VALUES_IDENTICAL (rv (), r.rv ());
+  return REAL_VALUES_IDENTICAL (rv(), r.rv());
 }
 
 void
-real_t::format (char * buf, unsigned buf_size) const
+real_t::format (char *buf, unsigned buf_size) const
 {
   // %% restricting the precision of significant digits to 18.
-  real_to_decimal (buf, & rv (), buf_size, 18, 1);
+  real_to_decimal (buf, &rv(), buf_size, 18, 1);
 }
 
 void
-real_t::formatHex (char * buf, unsigned buf_size) const
+real_t::formatHex (char *buf, unsigned buf_size) const
 {
-  real_to_hexadecimal (buf, & rv (), buf_size, 0, 1);
+  real_to_hexadecimal (buf, &rv(), buf_size, 0, 1);
 }
 
 bool
-real_t::isInf ()
+real_t::isInf (void)
 {
-  return REAL_VALUE_ISINF (rv ());
+  return REAL_VALUE_ISINF (rv());
 }
 
 bool
-real_t::isNan ()
+real_t::isNan (void)
 {
-  return REAL_VALUE_ISNAN (rv ());
+  return REAL_VALUE_ISNAN (rv());
 }
 
 bool
-real_t::isSignallingNan ()
+real_t::isSignallingNan (void)
 {
   // Same as isNan, but also check if is signalling.
-  return REAL_VALUE_ISNAN (rv ()) && rv ().signalling;
+  return REAL_VALUE_ISNAN (rv()) && rv().signalling;
 }
 
 bool
 real_t::isConversionExact (Mode to_mode) const
 {
-  return exact_real_truncate (machineMode (to_mode), & rv ());
+  return exact_real_truncate (machineMode (to_mode), &rv());
 }
 
 void
-real_t::dump ()
+real_t::dump (void)
 {
   char buf[128];
   format (buf, sizeof (buf));

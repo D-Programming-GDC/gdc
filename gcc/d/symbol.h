@@ -80,21 +80,21 @@ typedef ArrayBase<struct Thunk> Thunks;
 
 struct Symbol : Object
 {
-  Symbol ();
+  Symbol (void);
 
   const char *Sident;
   const char *prettyIdent;
   SymbolStorageClass Sclass;
-  SymbolFL           Sfl;
-  SymbolSegment      Sseg;
-  int                Sflags;
+  SymbolFL Sfl;
+  SymbolSegment Sseg;
+  int Sflags;
 
-  dt_t * Sdt;
+  dt_t *Sdt;
 
   // Specific to GNU backend
-  tree     Stree;
-  tree     ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see IRState::declContext
-  tree     SframeField;  // FIELD_DECL in frame struct that this variable is allocated in
+  tree Stree;
+  tree ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see IRState::declContext
+  tree SframeField;  // FIELD_DECL in frame struct that this variable is allocated in
 
   // For FuncDeclarations:
   Thunks thunks;
@@ -106,24 +106,22 @@ struct Symbol : Object
 struct Thunk
 {
   int offset;
-  Symbol * symbol;
-  Thunk ();
+  Symbol *symbol;
+  Thunk (void);
 };
 
-extern Symbol * symbol_calloc (const char * string);
-extern Symbol * symbol_name (const char * id, int sclass, TYPE * t);
-extern Symbol * struct_calloc ();
-extern Symbol * symbol_generate (SymbolStorageClass sc, TYPE * type);
-extern void     symbol_func (Symbol * sym);
-extern tree     check_static_sym (Symbol * sym);
-extern void     outdata (Symbol * sym);
-inline void     obj_export (Symbol *, int) { }
-extern void     obj_moduleinfo (Symbol *sym);
-extern void     obj_tlssections ();
+extern Symbol *symbol_calloc (const char *string);
+extern Symbol *symbol_name (const char *id, int sclass, TYPE *t);
+extern Symbol *struct_calloc (void);
+extern Symbol *symbol_generate (SymbolStorageClass sc, TYPE *type);
+extern void symbol_func (Symbol *sym);
+extern tree check_static_sym (Symbol *sym);
+extern void outdata (Symbol *sym);
+inline void obj_export (Symbol *, int) { }
+extern void obj_moduleinfo (Symbol *sym);
+extern void obj_tlssections (void);
 
-extern Symbol * symbol_tree (tree);
-extern Symbol * static_sym ();
+extern Symbol *symbol_tree (tree);
+extern Symbol *static_sym (void);
 
-extern void     slist_add (Symbol *);
-extern void     slist_reset ();
 #endif

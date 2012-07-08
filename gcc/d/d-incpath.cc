@@ -27,13 +27,13 @@
 
 /* Global options removed from d-lang.cc */
 bool std_inc;
-const char * iprefix = NULL;
-const char * multilib_dir = NULL;
+const char *iprefix = NULL;
+const char *multilib_dir = NULL;
 
 static void add_env_var_paths (const char *);
 static void add_import_path (char *);
 static void add_file_path (char *);
-static char * make_absolute (char * path);
+static char *make_absolute (char *path);
 
 
 /* Read ENV_VAR for a PATH_SEPARATOR-separated list of file names; and
@@ -74,7 +74,7 @@ add_env_var_paths (const char *env_var)
    IPREFIX and search them first.  */
 
 static char *
-prefixed_path (const char * path)
+prefixed_path (const char *path)
 {
   // based on incpath.c
   size_t len = cpp_GCC_INCLUDE_DIR_len;
@@ -90,18 +90,18 @@ prefixed_path (const char * path)
    */
 
 static char *
-make_absolute (char * path)
+make_absolute (char *path)
 {
 #if defined (HAVE_DOS_BASED_FILE_SYSTEM)
   /* Remove unnecessary trailing slashes.  On some versions of MS
-     Windows, trailing  _forward_ slashes cause no problems for stat ().
-     On newer versions, stat () does not recognize a directory that ends
+     Windows, trailing  _forward_ slashes cause no problems for stat().
+     On newer versions, stat() does not recognize a directory that ends
      in a '\\' or '/', unless it is a drive root dir, such as "c:/",
      where it is obligatory.  */
   int pathlen = strlen (path);
-  char* end = path + pathlen - 1;
+  char *end = path + pathlen - 1;
   /* Preserve the lead '/' or lead "c:/".  */
-  char* start = path + (pathlen > 2 && path[1] == ':' ? 3 : 1);
+  char *start = path + (pathlen > 2 && path[1] == ':' ? 3 : 1);
 
   for (; end > start && IS_DIR_SEPARATOR (*end); end--)
     *end = 0;
@@ -114,12 +114,12 @@ make_absolute (char * path)
 /* Add PATH to the global import lookup path.  */
 
 static void
-add_import_path (char * path)
+add_import_path (char *path)
 {
-  char * target_dir = make_absolute (path);
+  char *target_dir = make_absolute (path);
 
   if (! global.path)
-    global.path = new Strings ();
+    global.path = new Strings();
 
   if (! FileName::exists (target_dir))
     {
@@ -134,12 +134,12 @@ add_import_path (char * path)
 /* Add PATH to the global file lookup path.  */
 
 static void
-add_file_path (char * path)
+add_file_path (char *path)
 {
-  char * target_dir = make_absolute (path);
+  char *target_dir = make_absolute (path);
 
   if (! global.filePath)
-    global.filePath = new Strings ();
+    global.filePath = new Strings();
 
   if (! FileName::exists (target_dir))
     {
@@ -152,13 +152,13 @@ add_file_path (char * path)
 
 
 void
-add_import_paths ()
+add_import_paths (void)
 {
   // %%TODO: front or back?
   if (std_inc)
     {
-      char * phobos_dir = prefixed_path (D_PHOBOS_DIR);
-      char * target_dir = prefixed_path (D_PHOBOS_TARGET_DIR);
+      char *phobos_dir = prefixed_path (D_PHOBOS_DIR);
+      char *target_dir = prefixed_path (D_PHOBOS_TARGET_DIR);
 
       if (multilib_dir)
 	target_dir = concat (target_dir, "/", multilib_dir, NULL);
@@ -192,21 +192,21 @@ add_import_paths ()
 }
 
 
-void add_phobos_versyms()
+void add_phobos_versyms (void)
 {
-  char * path = FileName::searchPath (global.path, "phobos-ver-syms", 1);
+  char *path = FileName::searchPath (global.path, "phobos-ver-syms", 1);
   if (path)
     {
-      FILE * f = fopen (path, "r");
+      FILE *f = fopen (path, "r");
       if (f)
 	{
 	  char buf[256];
 	  while (! feof (f) && fgets (buf, 256, f))
 	    {
-	      char * p = buf;
+	      char *p = buf;
 	      while (*p && ISSPACE (*p))
 		p++;
-	      char * q = p;
+	      char *q = p;
 	      while (*q && ! ISSPACE (*q))
 		q++;
 	      *q = 0;

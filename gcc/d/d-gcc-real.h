@@ -23,88 +23,93 @@ struct Type;
 
 struct real_t
 {
+ public:
   // Including gcc/real.h presents too many problems, so
   // just statically allocate enough space for REAL_VALUE_TYPE.
 #define REAL_T_SIZE (16 + sizeof (long))/sizeof (long) + 1
 
-  enum Mode {
-      Float,
-      Double,
-      LongDouble,
-      NumModes
+  enum Mode
+  {
+    Float,
+    Double,
+    LongDouble,
+    NumModes
   };
 
-  struct fake_t {
-      int c;
-      int s;
-      int e;
-      long m[REAL_T_SIZE];
+  struct fake_t
+  {
+    int c;
+    int s;
+    int e;
+    long m[REAL_T_SIZE];
   };
 
-  fake_t frv;
-
-  static void init ();
-  static real_t parse (const char * str, Mode mode);
+  static void init (void);
+  static real_t parse (const char *str, Mode mode);
   static real_t getnan (Mode mode);
   static real_t getsnan (Mode mode);
-  static real_t getinfinity ();
+  static real_t getinfinity (void);
 
   // This constructor prevent the use of the real_t in a union
-  real_t () { }
-  real_t (const real_t & r);
+  real_t (void) { }
+  real_t (const real_t& r);
 
-  const real_value & rv () const;
-  real_value & rv ();
-  real_t (const real_value & rv);
+  const real_value& rv (void) const;
+  real_value& rv (void);
+  real_t (const real_value& rv);
   real_t (int v);
   real_t (d_uns64 v);
   real_t (d_int64 v);
-  real_t & operator= (const real_t & r);
-  real_t & operator= (int v);
-  real_t operator+ (const real_t & r);
-  real_t operator- (const real_t & r);
-  real_t operator- ();
-  real_t operator* (const real_t & r);
-  real_t operator/ (const real_t & r);
-  real_t operator% (const real_t & r);
-  bool operator< (const real_t & r);
-  bool operator> (const real_t & r);
-  bool operator<= (const real_t & r);
-  bool operator>= (const real_t & r);
-  bool operator== (const real_t & r);
-  bool operator!= (const real_t & r);
-  //operator d_uns64(); // avoid bugs, but maybe allow operator bool()
-  d_uns64 toInt () const;
-  d_uns64 toInt (Type * real_type, Type * int_type) const;
+  real_t& operator= (const real_t& r);
+  real_t& operator= (int v);
+  real_t operator+ (const real_t& r);
+  real_t operator- (const real_t& r);
+  real_t operator- (void);
+  real_t operator* (const real_t& r);
+  real_t operator/ (const real_t& r);
+  real_t operator% (const real_t& r);
+  bool operator< (const real_t& r);
+  bool operator> (const real_t& r);
+  bool operator<= (const real_t& r);
+  bool operator>= (const real_t& r);
+  bool operator== (const real_t& r);
+  bool operator!= (const real_t& r);
+  d_uns64 toInt (void) const;
+  d_uns64 toInt (Type *real_type, Type *int_type) const;
   real_t convert (Mode to_mode) const;
-  real_t convert (Type * to_type) const;
-  bool isZero ();
-  bool isNegative ();
-  bool isConst0 ();
-  bool isConst1 ();
-  bool isConst2 ();
-  bool isConstMinus1 ();
-  bool isConstHalf ();
-  bool floatCompare (int op, const real_t & r);
-  bool isIdenticalTo (const real_t & r) const;
-  void format (char * buf, unsigned buf_size) const;
-  void formatHex (char * buf, unsigned buf_size) const;
+  real_t convert (Type *to_type) const;
+  bool isZero (void);
+  bool isNegative (void);
+  bool isConst0 (void);
+  bool isConst1 (void);
+  bool isConst2 (void);
+  bool isConstMinus1 (void);
+  bool isConstHalf (void);
+  bool floatCompare (int op, const real_t& r);
+  bool isIdenticalTo (const real_t& r) const;
+  void format (char *buf, unsigned buf_size) const;
+  void formatHex (char *buf, unsigned buf_size) const;
   // for debugging:
-  bool isInf ();
-  bool isNan ();
-  bool isSignallingNan ();
+  bool isInf (void);
+  bool isNan (void);
+  bool isSignallingNan (void);
   bool isConversionExact (Mode to_mode) const;
-  void dump ();
+  void dump (void);
+
  private:
   // prevent this from being used
-  real_t & operator= (float) { return *this; }
-  real_t & operator= (double) { return *this; }
-  // real_t & operator= (long double v) { return *this; }
+  real_t& operator= (float)
+  { return *this; }
+
+  real_t& operator= (double)
+  { return *this; }
+
+  fake_t frv_;
 };
 
 struct real_t_Properties
 {
-  real_t maxval, minval, epsilonval/*, nanval, infval*/;
+  real_t maxval, minval, epsilonval /*, nanval, infval */;
   d_int64 dig, mant_dig;
   d_int64 max_10_exp, min_10_exp;
   d_int64 max_exp, min_exp;

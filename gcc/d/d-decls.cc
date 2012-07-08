@@ -54,13 +54,13 @@ SymbolDeclaration::SymbolDeclaration (Loc loc, Symbol *s, StructDeclaration *dsy
 }
 
 Symbol *
-SymbolDeclaration::toSymbol ()
+SymbolDeclaration::toSymbol (void)
 {
   // Create the actual back-end value if not yet done
   if (! sym->Stree)
     {
       if (dsym)
-	dsym->toInitializer ();
+	dsym->toInitializer();
       gcc_assert (sym->Stree);
     }
   return sym;
@@ -74,7 +74,7 @@ Symbol *
 Dsymbol::toSymbolX (const char *prefix, int sclass, type *t, const char *suffix)
 {
   Symbol *s;
-  char *n = mangle ();
+  char *n = mangle();
   size_t sz = (2 + strlen (n) + sizeof (size_t) * 3 + strlen (prefix) + strlen (suffix) + 1);
   char *id = (char *) alloca (sz);
 
@@ -87,10 +87,10 @@ Dsymbol::toSymbolX (const char *prefix, int sclass, type *t, const char *suffix)
 */
 
 Symbol *
-Dsymbol::toSymbol ()
+Dsymbol::toSymbol (void)
 {
-  fprintf (stderr, "Dsymbol::toSymbol () '%s', kind = '%s'\n", toChars (), kind ());
-  gcc_unreachable ();          // BUG: implement
+  fprintf (stderr, "Dsymbol::toSymbol() '%s', kind = '%s'\n", toChars(), kind());
+  gcc_unreachable();          // BUG: implement
   return NULL;
 }
 
@@ -99,12 +99,12 @@ Dsymbol::toSymbol ()
  */
 
 Symbol *
-Dsymbol::toImport ()
+Dsymbol::toImport (void)
 {
   if (!isym)
     {
       if (!csym)
-	csym = toSymbol ();
+	csym = toSymbol();
       isym = toImport (csym);
     }
   return isym;
@@ -114,7 +114,7 @@ Dsymbol::toImport ()
 */
 
 Symbol *
-Dsymbol::toImport (Symbol * /*sym*/)
+Dsymbol::toImport (Symbol *)
 {
   // not used in GCC (yet?)
   return 0;
@@ -126,17 +126,17 @@ Dsymbol::toImport (Symbol * /*sym*/)
    or extern (C) symbols. This only should only apply to private symbols.
    Otherwise, duplicate names are an error. */
 
-static StringTable * uniqueNames = 0;
+static StringTable *uniqueNames = 0;
 
 static void
-uniqueName (Declaration * d, tree t, const char * asm_name)
+uniqueName (Declaration *d, tree t, const char *asm_name)
 {
-  Dsymbol * p = d->toParent2 ();
-  const char * out_name = asm_name;
-  char * alloc_name;
+  Dsymbol *p = d->toParent2();
+  const char *out_name = asm_name;
+  char *alloc_name;
 
-  FuncDeclaration * f = d->isFuncDeclaration ();
-  VarDeclaration * v = d->isVarDeclaration ();
+  FuncDeclaration *f = d->isFuncDeclaration();
+  VarDeclaration *v = d->isVarDeclaration();
 
   /* Check cases for which it is okay to have a duplicate symbol name.
      Otherwise, duplicate names are an error and the condition will
@@ -145,20 +145,20 @@ uniqueName (Declaration * d, tree t, const char * asm_name)
       ! (v && (v->storage_class & STCextern)) &&
       (
        // Static declarations in different scope statements
-       (p && p->isFuncDeclaration ()) ||
+       (p && p->isFuncDeclaration()) ||
        // Top-level duplicate names are okay if private.
-       ((!p || p->isModule ()) && d->protection == PROTprivate)
+       ((!p || p->isModule()) && d->protection == PROTprivate)
       )
   )
     {
-      StringValue * sv;
+      StringValue *sv;
 
       // Assumes one assembler output file per compiler run.  Otherwise, need
       // to reset this for each file.
       if (! uniqueNames)
 	{
 	  uniqueNames = new StringTable;
-	  uniqueNames->init ();
+	  uniqueNames->init();
 	}
       sv = uniqueNames->update (asm_name, strlen (asm_name));
 
@@ -191,7 +191,7 @@ uniqueName (Declaration * d, tree t, const char * asm_name)
 */
 
 Symbol *
-VarDeclaration::toSymbol ()
+VarDeclaration::toSymbol (void)
 {
   if (! csym)
     {
@@ -199,21 +199,21 @@ VarDeclaration::toSymbol ()
       enum tree_code decl_kind;
 
       // For field declaration, it is possible for toSymbol to be called
-      // before the parent's toCtype ()
+      // before the parent's toCtype()
       if (storage_class & STCfield)
 	{
-	  AggregateDeclaration * parent_decl = toParent ()->isAggregateDeclaration ();
+	  AggregateDeclaration *parent_decl = toParent()->isAggregateDeclaration();
 	  gcc_assert (parent_decl);
-	  parent_decl->type->toCtype ();
+	  parent_decl->type->toCtype();
 	  gcc_assert (csym);
 	  return csym;
 	}
 
-      csym = new Symbol ();
-      if (isDataseg ())
+      csym = new Symbol();
+      if (isDataseg())
 	{
-	  csym->Sident = mangle ();
-	  csym->prettyIdent = toPrettyChars ();
+	  csym->Sident = mangle();
+	  csym->prettyIdent = toPrettyChars();
 	}
       else
 	csym->Sident = ident->string;
@@ -236,7 +236,7 @@ VarDeclaration::toSymbol ()
 
       if (decl_kind != CONST_DECL)
 	{
-	  if (isDataseg ())
+	  if (isDataseg())
 	    uniqueName (this, var_decl, csym->Sident);
 	  if (c_ident)
 	    SET_DECL_ASSEMBLER_NAME (var_decl, get_identifier (c_ident->string));
@@ -260,31 +260,27 @@ VarDeclaration::toSymbol ()
 	  /* Not sure how much of an optimization this is... It is needed
 	     for foreach loops on tuples which 'declare' the index variable
 	     as a constant for each iteration. */
-	  Expression * e = NULL;
+	  Expression *e = NULL;
 
 	  if (init)
 	    {
-	      if (! init->isVoidInitializer ())
+	      if (! init->isVoidInitializer())
 		{
-		  e = init->toExpression ();
+		  e = init->toExpression();
 		  gcc_assert (e != NULL);
 		}
 	    }
 	  else
-	    e = type->defaultInit ();
+	    e = type->defaultInit();
 
 	  if (e)
-	    {
-	      DECL_INITIAL (var_decl) = g.irs->assignValue (e, this);
-	      if (! DECL_INITIAL (var_decl))
-		DECL_INITIAL (var_decl) = e->toElem (g.irs);
-	    }
+	    DECL_INITIAL (var_decl) = e->toElem (g.irs);
 	}
 
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
       // called from a varaible in an imported module
       // %% (out const X x) doesn't mean the reference is const...
-      if ((isConst () || isImmutable ()) && (storage_class & STCinit)
+      if ((isConst() || isImmutable()) && (storage_class & STCinit)
 	  && ! gen.isDeclarationReferenceType (this))
 	{
 	  // %% CONST_DECLS don't have storage, so we can't use those,
@@ -302,22 +298,22 @@ VarDeclaration::toSymbol ()
 
 	  // can at least do this...
 	  //  const doesn't seem to matter for aggregates, so prevent problems..
-	  if (isConst () && isDataseg ())
+	  if (isConst() && isDataseg())
 	    TREE_CONSTANT (var_decl) = 1;
 	}
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
       // Have to test for import first
-      if (isImportedSymbol ())
+      if (isImportedSymbol())
 	{
 	  gen.addDeclAttribute (var_decl, "dllimport");
 	  DECL_DLLIMPORT_P (var_decl) = 1;
 	}
-      else if (isExport ())
+      else if (isExport())
 	gen.addDeclAttribute (var_decl, "dllexport");
 #endif
 
-      if (isDataseg () && isThreadlocal ())
+      if (isDataseg() && isThreadlocal())
 	{
 	  if (TREE_CODE (var_decl) == VAR_DECL)
 	    {
@@ -327,8 +323,8 @@ VarDeclaration::toSymbol ()
 	    }
 	  if (global.params.vtls)
 	    {
-	      char *p = loc.toChars ();
-	      fprintf (stderr, "%s: %s is thread local\n", p ? p : "", toChars ());
+	      char *p = loc.toChars();
+	      fprintf (stderr, "%s: %s is thread local\n", p ? p : "", toChars());
 	      if (p)
 		free (p);
 	    }
@@ -341,29 +337,29 @@ VarDeclaration::toSymbol ()
 */
 
 Symbol *
-ClassInfoDeclaration::toSymbol ()
+ClassInfoDeclaration::toSymbol (void)
 {
-  return cd->toSymbol ();
+  return cd->toSymbol();
 }
 
 /*************************************
 */
 
 Symbol *
-ModuleInfoDeclaration::toSymbol ()
+ModuleInfoDeclaration::toSymbol (void)
 {
-  return mod->toSymbol ();
+  return mod->toSymbol();
 }
 
 /*************************************
 */
 
 Symbol *
-TypeInfoDeclaration::toSymbol ()
+TypeInfoDeclaration::toSymbol (void)
 {
   if (! csym)
     {
-      VarDeclaration::toSymbol ();
+      VarDeclaration::toSymbol();
 
       // This variable is the static initialization for the
       // given TypeInfo.  It is the actual data, not a reference
@@ -388,11 +384,11 @@ TypeInfoDeclaration::toSymbol ()
 */
 
 Symbol *
-TypeInfoClassDeclaration::toSymbol ()
+TypeInfoClassDeclaration::toSymbol (void)
 {
   gcc_assert (tinfo->ty == Tclass);
   TypeClass *tc = (TypeClass *)tinfo;
-  return tc->sym->toSymbol ();
+  return tc->sym->toSymbol();
 }
 
 
@@ -400,9 +396,9 @@ TypeInfoClassDeclaration::toSymbol ()
 */
 
 Symbol *
-FuncAliasDeclaration::toSymbol ()
+FuncAliasDeclaration::toSymbol (void)
 {
-  return funcalias->toSymbol ();
+  return funcalias->toSymbol();
 }
 
 /*************************************
@@ -410,16 +406,16 @@ FuncAliasDeclaration::toSymbol ()
 
 // returns a FUNCTION_DECL tree
 Symbol *
-FuncDeclaration::toSymbol ()
+FuncDeclaration::toSymbol (void)
 {
   if (! csym)
     {
-      csym = new Symbol ();
+      csym = new Symbol();
 
       if (! isym)
 	{
 	  tree id;
-	  TypeFunction * ftype = (TypeFunction *) (tintro ? tintro : type);
+	  TypeFunction *ftype = (TypeFunction *) (tintro ? tintro : type);
 	  tree fndecl;
 
 	  if (ident)
@@ -441,26 +437,26 @@ FuncDeclaration::toSymbol ()
 	      id = get_identifier (buf);
 	    }
 
-	  tree fn_type = ftype->toCtype ();
+	  tree fn_type = ftype->toCtype();
 	  tree new_fn_type = NULL_TREE;
 
 	  tree vindex = NULL_TREE;
-	  if (isNested ())
+	  if (isNested())
 	    {
 	      /* Even if DMD-style nested functions are not implemented, add an
 		 extra argument to be compatible with delegates. */
 	      new_fn_type = build_method_type (void_type_node, fn_type);
 	    }
-	  else if (isThis ())
+	  else if (isThis())
 	    {
 	      // Do this even if there is no debug info.  It is needed to make
 	      // sure member functions are not called statically
-	      AggregateDeclaration * agg_decl = isMember2 ();
+	      AggregateDeclaration *agg_decl = isMember2();
 	      gcc_assert (agg_decl != NULL);
 
-	      tree handle = agg_decl->handle->toCtype ();
+	      tree handle = agg_decl->handle->toCtype();
 #if STRUCTTHISREF
-	      if (agg_decl->isStructDeclaration ())
+	      if (agg_decl->isStructDeclaration())
 		{
 		  // Handle not a pointer type
 		  new_fn_type = build_method_type (handle, fn_type);
@@ -471,10 +467,10 @@ FuncDeclaration::toSymbol ()
 		  new_fn_type = build_method_type (TREE_TYPE (handle), fn_type);
 		}
 
-	      if (isVirtual ())
+	      if (isVirtual())
 		vindex = size_int (vtblIndex);
 	    }
-	  else if (isMain () && ftype->nextOf()->toBasetype()->ty == Tvoid)
+	  else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
 	    {
 	      new_fn_type = build_function_type (integer_type_node, TYPE_ARG_TYPES (fn_type));
 	    }
@@ -493,8 +489,8 @@ FuncDeclaration::toSymbol ()
 	  d_keep (fndecl);
 	  if (ident)
 	    {
-	      csym->Sident = mangle (); // save for making thunks
-	      csym->prettyIdent = toPrettyChars ();
+	      csym->Sident = mangle(); // save for making thunks
+	      csym->prettyIdent = toPrettyChars();
 	      uniqueName (this, fndecl, csym->Sident);
 	    }
 	  if (c_ident)
@@ -516,13 +512,13 @@ FuncDeclaration::toSymbol ()
 		 its toObjFile called before the outer function is finished.
 		 GCC requires that nested functions be finished first so we need
 		 to arrange for toObjFile to be called earlier.  */
-	      FuncDeclaration * outer_func = NULL;
+	      FuncDeclaration *outer_func = NULL;
 	      bool is_template_member = false;
-	      for (Dsymbol * p = parent; p; p = p->parent)
+	      for (Dsymbol *p = parent; p; p = p->parent)
 		{
-		  if (p->isTemplateInstance () && ! p->isTemplateMixin ())
+		  if (p->isTemplateInstance() && ! p->isTemplateMixin())
 		    is_template_member = true;
-		  else if (p->isFuncDeclaration ())
+		  else if (p->isFuncDeclaration())
 		    {
 		      outer_func = (FuncDeclaration *) p;
 		      break;
@@ -530,7 +526,7 @@ FuncDeclaration::toSymbol ()
 		}
 	      if (is_template_member && outer_func)
 		{
-		  Symbol * outer_sym = outer_func->toSymbol ();
+		  Symbol *outer_sym = outer_func->toSymbol();
 
 		  if (outer_sym->outputStage != Finished)
 		    outer_sym->deferredNestedFuncs.push (this);
@@ -541,7 +537,7 @@ FuncDeclaration::toSymbol ()
 	      DECL_CONTEXT (fndecl) = decl_function_context (fndecl);
 	    }
 
-	  if (isMember2 () || isFuncLiteralDeclaration ())
+	  if (isMember2() || isFuncLiteralDeclaration())
 	    {
 	      // See grokmethod in cp/decl.c
 	      DECL_DECLARED_INLINE_P (fndecl) = 1;
@@ -574,23 +570,23 @@ FuncDeclaration::toSymbol ()
 	      TREE_PUBLIC (fndecl) = 1;
 	    }
 
-	  if (isStatic ())
+	  if (isStatic())
 	    TREE_STATIC (fndecl) = 1;
 	  // %% Pure functions don't imply nothrow
-	  DECL_PURE_P (fndecl) = (isPure () == PUREstrong && ftype->isnothrow);
+	  DECL_PURE_P (fndecl) = (isPure() == PUREstrong && ftype->isnothrow);
 	  // %% Assert contracts in functions may throw.
 	  TREE_NOTHROW (fndecl) = ftype->isnothrow && !global.params.useAssert;
 	  // %% Make D const methods equivalent to GCC const
-	  TREE_READONLY (fndecl) = (isPure () == PUREconst);
+	  TREE_READONLY (fndecl) = (isPure() == PUREconst);
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
 	  // Have to test for import first
-	  if (isImportedSymbol ())
+	  if (isImportedSymbol())
 	    {
 	      gen.addDeclAttribute (fndecl, "dllimport");
 	      DECL_DLLIMPORT_P (fndecl) = 1;
 	    }
-	  else if (isExport ())
+	  else if (isExport())
 	    {
 	      gen.addDeclAttribute (fndecl, "dllexport");
 	    }
@@ -630,9 +626,9 @@ Symbol *
 FuncDeclaration::toThunkSymbol (int offset)
 {
   Symbol *sthunk;
-  Thunk * thunk;
+  Thunk *thunk;
 
-  toSymbol ();
+  toSymbol();
 
   /* If the thunk is to be static (that is, it is being emitted in this
      module, there can only be one FUNCTION_DECL for it.   Thus, there
@@ -658,12 +654,11 @@ FuncDeclaration::toThunkSymbol (int offset)
 
   if (! thunk->symbol)
     {
-      char * id;
+      char *id;
       static unsigned thunk_sym_label = 0;
       ASM_FORMAT_PRIVATE_NAME (id, "___t", thunk_sym_label);
       thunk_sym_label++;
       sthunk = symbol_calloc (id);
-      slist_add (sthunk);
 
       tree target_func_decl = csym->Stree;
       tree thunk_decl = build_decl (DECL_SOURCE_LOCATION (target_func_decl),
@@ -708,40 +703,20 @@ FuncDeclaration::toThunkSymbol (int offset)
 }
 
 
-/****************************************
- * Create a static symbol we can hang DT initializers onto.
- */
-
-Symbol *
-static_sym ()
-{
-  Symbol * s = symbol_tree (NULL_TREE);
-  //OLD//s->Sfl = FLstatic_sym;
-  /* Before GCC 4.0, it was possible to take the address of a CONSTRUCTOR
-     marked TREE_STATIC and the backend would output the data as an
-     anonymous symbol.  This doesn't work in 4.0.  To keep things, simple,
-     the same method is used for <4.0 and >= 4.0. */
-  // Can't build the VAR_DECL because the type is unknown
-  slist_add (s);
-  return s;
-}
-
-
 /*************************************
  * Create the "ClassInfo" symbol
  */
 
 Symbol *
-ClassDeclaration::toSymbol ()
+ClassDeclaration::toSymbol (void)
 {
   if (! csym)
     {
       tree decl;
       csym = toSymbolX ("__Class", SCextern, 0, "Z");
-      slist_add (csym);
       decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (csym->Sident),
 			 TREE_TYPE (ClassDeclaration::classinfo != NULL
-      				    ? ClassDeclaration::classinfo->type->toCtype () // want the RECORD_TYPE, not the REFERENCE_TYPE
+      				    ? ClassDeclaration::classinfo->type->toCtype() // want the RECORD_TYPE, not the REFERENCE_TYPE
       				    : error_mark_node));
       csym->Stree = decl;
       d_keep (decl);
@@ -760,14 +735,14 @@ ClassDeclaration::toSymbol ()
  */
 
 Symbol *
-InterfaceDeclaration::toSymbol ()
+InterfaceDeclaration::toSymbol (void)
 {
   if (!csym)
     {
-      csym = ClassDeclaration::toSymbol ();
+      csym = ClassDeclaration::toSymbol();
       tree decl = csym->Stree;
 
-      Symbol * temp_sym = toSymbolX ("__Interface", SCextern, 0, "Z");
+      Symbol *temp_sym = toSymbolX ("__Interface", SCextern, 0, "Z");
       DECL_NAME (decl) = get_identifier (temp_sym->Sident);
       delete temp_sym;
 
@@ -781,17 +756,16 @@ InterfaceDeclaration::toSymbol ()
  */
 
 Symbol *
-Module::toSymbol ()
+Module::toSymbol (void)
 {
   if (!csym)
     {
-      Type * obj_type = gen.getObjectType ();
+      Type *obj_type = gen.getObjectType();
 
       csym = toSymbolX ("__ModuleInfo", SCextern, 0, "Z");
-      slist_add (csym);
 
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (csym->Sident),
-			      TREE_TYPE (obj_type->toCtype ())); // want the RECORD_TYPE, not the REFERENCE_TYPE
+			      TREE_TYPE (obj_type->toCtype())); // want the RECORD_TYPE, not the REFERENCE_TYPE
       g.ofile->setDeclLoc (decl, this);
       csym->Stree = decl;
 
@@ -811,22 +785,21 @@ Module::toSymbol ()
  */
 
 Symbol *
-ClassDeclaration::toVtblSymbol ()
+ClassDeclaration::toVtblSymbol (void)
 {
   if (!vtblsym)
     {
       tree decl;
 
       vtblsym = toSymbolX ("__vtbl", SCextern, 0, "Z");
-      slist_add (vtblsym);
 
       /* The DECL_INITIAL value will have a different type object from the
 	 VAR_DECL.  The back end seems to accept this. */
-      TypeSArray * vtbl_type = new TypeSArray (Type::tvoidptr,
+      TypeSArray *vtbl_type = new TypeSArray (Type::tvoidptr,
 					       new IntegerExp (loc, vtbl.dim, Type::tindex));
 
       decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			 get_identifier (vtblsym->Sident), vtbl_type->toCtype ());
+			 get_identifier (vtblsym->Sident), vtbl_type->toCtype());
       vtblsym->Stree = decl;
       d_keep (decl);
 
@@ -849,10 +822,10 @@ ClassDeclaration::toVtblSymbol ()
  * Create the static initializer for the struct/class.
  */
 
-/* Because this is called from the front end (mtype.cc:TypeStruct::defaultInit ()),
+/* Because this is called from the front end (mtype.cc:TypeStruct::defaultInit()),
    we need to hold off using back-end stuff until the toobjfile phase.
 
-   Specifically, it is not safe create a VAR_DECL with a type from toCtype ()
+   Specifically, it is not safe create a VAR_DECL with a type from toCtype()
    because there may be unresolved recursive references.
    StructDeclaration::toObjFile calls toInitializer without ever calling
    SymbolDeclaration::toSymbol, so we just need to keep checking if we
@@ -860,19 +833,18 @@ ClassDeclaration::toVtblSymbol ()
    */
 
 Symbol *
-AggregateDeclaration::toInitializer ()
+AggregateDeclaration::toInitializer (void)
 {
   Symbol *s;
 
   if (!sinit)
     {
       s = toSymbolX ("__init", SCextern, 0, "Z");
-      slist_add (s);
       sinit = s;
     }
   if (! sinit->Stree && g.ofile != NULL)
     {
-      tree struct_type = type->toCtype ();
+      tree struct_type = type->toCtype();
       if (POINTER_TYPE_P (struct_type))
 	struct_type = TREE_TYPE (struct_type); // for TypeClass, want the RECORD_TYPE, not the REFERENCE_TYPE
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,
@@ -895,7 +867,7 @@ AggregateDeclaration::toInitializer ()
 }
 
 Symbol *
-TypedefDeclaration::toInitializer ()
+TypedefDeclaration::toInitializer (void)
 {
   Symbol *s;
 
@@ -904,14 +876,13 @@ TypedefDeclaration::toInitializer ()
       s = toSymbolX ("__init", SCextern, 0, "Z");
       s->Sfl = FLextern;
       s->Sflags |= SFLnodebug;
-      slist_add (s);
       sinit = s;
-      sinit->Sdt = ((TypeTypedef *)type)->sym->init->toDt ();
+      sinit->Sdt = ((TypeTypedef *)type)->sym->init->toDt();
     }
   if (! sinit->Stree && g.ofile != NULL)
     {
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			   get_identifier (sinit->Sident), type->toCtype ());
+			   get_identifier (sinit->Sident), type->toCtype());
       sinit->Stree = t;
       d_keep (t);
 
@@ -925,7 +896,7 @@ TypedefDeclaration::toInitializer ()
 }
 
 Symbol *
-EnumDeclaration::toInitializer ()
+EnumDeclaration::toInitializer (void)
 {
   Symbol *s;
 
@@ -942,13 +913,12 @@ EnumDeclaration::toInitializer ()
       ident = ident_save;
       s->Sfl = FLextern;
       s->Sflags |= SFLnodebug;
-      slist_add (s);
       sinit = s;
     }
   if (! sinit->Stree && g.ofile != NULL)
     {
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			   get_identifier (sinit->Sident), type->toCtype ());
+			   get_identifier (sinit->Sident), type->toCtype());
       sinit->Stree = t;
       d_keep (t);
 
@@ -966,7 +936,7 @@ EnumDeclaration::toInitializer ()
 */
 
 Symbol *
-Module::toModuleAssert ()
+Module::toModuleAssert (void)
 {
   // Not used in GCC
   return 0;
@@ -976,7 +946,7 @@ Module::toModuleAssert ()
 */
 
 Symbol *
-Module::toModuleUnittest ()
+Module::toModuleUnittest (void)
 {
   // Not used in GCC
   return 0;
@@ -986,7 +956,7 @@ Module::toModuleUnittest ()
 */
 
 Symbol *
-Module::toModuleArray ()
+Module::toModuleArray (void)
 {
   // Not used in GCC (all array bounds checks are inlined)
   return 0;
@@ -1001,7 +971,7 @@ Module::toModuleArray ()
  */
 
 Symbol *
-TypeAArray::aaGetSymbol (const char *func, int flags)
+TypeAArray::aaGetSymbol (const char *, int)
 {
   // This is not used in GCC (yet?)
   return 0;

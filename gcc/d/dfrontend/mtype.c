@@ -3432,8 +3432,9 @@ Type *TypeVector::semantic(Loc loc, Scope *sc)
         return this;
     }
 
-    if (t->size(loc) != 16)
-    {   error(loc, "base type of __vector must be a 16 byte static array, not %s", t->toChars());
+    d_uns64 sz = t->size(loc);
+    if (sz != 8 && sz != 16 && sz != 32)
+    {   error(loc, "base type of __vector must be a 8, 16 or 32 byte static array, not %s", t->toChars());
         return terror;
     }
     TypeBasic *tb = t->nextOf()->isTypeBasic();
@@ -3487,12 +3488,12 @@ void TypeVector::toDecoBuffer(OutBuffer *buf, int flag)
 
 d_uns64 TypeVector::size(Loc loc)
 {
-    return 16;
+    return basetype->size();
 }
 
 unsigned TypeVector::alignsize()
 {
-    return 16;
+    return (unsigned)basetype->size();
 }
 
 Expression *TypeVector::getProperty(Loc loc, Identifier *ident)

@@ -24,64 +24,62 @@
 
 #include "d-codegen.h"
 
-IRBase::IRBase ()
+IRBase::IRBase (void)
 {
-  parent = 0;
-  func = 0;
-  volatileDepth = 0;
-  // declContextStack is composed... choose one..
-  statementList.zero ();
+  this->parent = 0;
+  this->func = 0;
+  this->volatileDepth = 0;
 }
 
 IRState *
-IRBase::startFunction (FuncDeclaration * decl)
+IRBase::startFunction (FuncDeclaration *decl)
 {
-  IRState * new_irs = new IRState ();
+  IRState *new_irs = new IRState();
   new_irs->parent = g.irs;
   new_irs->func = decl;
 
-  for (Dsymbol * p = decl->parent; p; p = p->parent)
+  for (Dsymbol *p = decl->parent; p; p = p->parent)
     {
-      if (p->isModule ())
+      if (p->isModule())
 	{
 	  new_irs->mod = p->isModule();
 	  break;
 	}
     }
 
-  g.irs = (IRState*) new_irs;
-  ModuleInfo & mi = * g.mi ();
+  g.irs = (IRState *) new_irs;
+  ModuleInfo & mi = *g.ofile->moduleInfo;
 
-  if (decl->isSharedStaticCtorDeclaration ())
+  if (decl->isSharedStaticCtorDeclaration())
     mi.sharedctors.push (decl);
-  else if (decl->isStaticCtorDeclaration ())
+  else if (decl->isStaticCtorDeclaration())
     mi.ctors.push (decl);
-  else if (decl->isSharedStaticDtorDeclaration ())
+  else if (decl->isSharedStaticDtorDeclaration())
     {
-      VarDeclaration * vgate;
+      VarDeclaration *vgate;
       if ((vgate = decl->isSharedStaticDtorDeclaration()->vgate))
 	mi.sharedctorgates.push (vgate);
       mi.shareddtors.push (decl);
     }
-  else if (decl->isStaticDtorDeclaration ())
+  else if (decl->isStaticDtorDeclaration())
     {
-      VarDeclaration * vgate;
+      VarDeclaration *vgate;
       if ((vgate = decl->isStaticDtorDeclaration()->vgate))
 	mi.ctorgates.push (vgate);
       mi.dtors.push (decl);
     }
-  else if (decl->isUnitTestDeclaration ())
+  else if (decl->isUnitTestDeclaration())
     mi.unitTests.push (decl);
 
   return new_irs;
 }
 
 void
-IRBase::endFunction ()
+IRBase::endFunction (void)
 {
-  gcc_assert (scopes.dim == 0);
+  gcc_assert (this->scopes.dim == 0);
 
-  g.irs = (IRState *) parent;
+  g.irs = (IRState *) this->parent;
 }
 
 
@@ -106,24 +104,24 @@ IRBase::addExp (tree e)
   if (EXPR_P (e) && ! EXPR_HAS_LOCATION (e))
     SET_EXPR_LOCATION (e, input_location);
 
-  tree stmt_list = (tree) statementList.pop ();
+  tree stmt_list = (tree) this->statementList.pop();
   append_to_statement_list_force (e, & stmt_list);
-  statementList.push (stmt_list);
+  this->statementList.push (stmt_list);
 }
 
 
 void
-IRBase::pushStatementList ()
+IRBase::pushStatementList (void)
 {
-  tree t = alloc_stmt_list ();
-  statementList.push (t);
+  tree t = alloc_stmt_list();
+  this->statementList.push (t);
   d_keep (t);
 }
 
 tree
-IRBase::popStatementList ()
+IRBase::popStatementList (void)
 {
-  tree t = (tree) statementList.pop ();
+  tree t = (tree) this->statementList.pop();
 
   // %% should gdc bother doing this?
 
@@ -151,7 +149,7 @@ IRBase::popStatementList ()
 
 
 tree
-IRBase::getLabelTree (LabelDsymbol * label)
+IRBase::getLabelTree (LabelDsymbol *label)
 {
   if (! label->statement)
     return NULL_TREE;
@@ -159,9 +157,9 @@ IRBase::getLabelTree (LabelDsymbol * label)
   if (! label->statement->lblock)
     {
       tree label_decl = build_decl (UNKNOWN_LOCATION, LABEL_DECL,
-				    get_identifier (label->ident->string), void_type_node);
-      gcc_assert (func != 0);
-      DECL_CONTEXT (label_decl) = getLocalContext ();
+ 				    get_identifier (label->ident->string), void_type_node);
+      gcc_assert (this->func != 0);
+      DECL_CONTEXT (label_decl) = getLocalContext();
       DECL_MODE (label_decl) = VOIDmode; // Not sure why or if this is needed
       TREE_USED (label_decl) = 1;
       // Not setting this doesn't seem to cause problems (unlike VAR_DECLs)
@@ -173,13 +171,13 @@ IRBase::getLabelTree (LabelDsymbol * label)
 }
 
 Label *
-IRBase::getLabelBlock (LabelDsymbol * label, Statement * from)
+IRBase::getLabelBlock (LabelDsymbol *label, Statement *from)
 {
-  Label * l = new Label ();
+  Label *l = new Label();
 
-  for (int i = loops.dim - 1; i >= 0; i--)
+  for (int i = this->loops.dim - 1; i >= 0; i--)
     {
-      Flow * flow = loops[i];
+      Flow *flow = this->loops[i];
 
       if (flow->kind != level_block &&
 	  flow->kind != level_switch)
@@ -199,63 +197,63 @@ IRBase::getLabelBlock (LabelDsymbol * label, Statement * from)
 
 
 Flow *
-IRBase::getLoopForLabel (Identifier * ident, bool want_continue)
+IRBase::getLoopForLabel (Identifier *ident, bool want_continue)
 {
   if (ident)
     {
-      LabelStatement * lbl_stmt = func->searchLabel (ident)->statement;
+      LabelStatement *lbl_stmt = this->func->searchLabel (ident)->statement;
       gcc_assert (lbl_stmt != 0);
-      Statement * stmt = lbl_stmt->statement;
-      ScopeStatement * scope_stmt = stmt->isScopeStatement ();
+      Statement *stmt = lbl_stmt->statement;
+      ScopeStatement *scope_stmt = stmt->isScopeStatement();
 
       if (scope_stmt)
 	stmt = scope_stmt->statement;
 
-      for (int i = loops.dim - 1; i >= 0; i--)
+      for (int i = this->loops.dim - 1; i >= 0; i--)
 	{
-	  Flow * flow = loops[i];
+	  Flow *flow = this->loops[i];
 
 	  if (flow->statement == stmt)
 	    {
 	      if (want_continue)
-		gcc_assert (stmt->hasContinue ());
+		gcc_assert (stmt->hasContinue());
 	      return flow;
 	    }
 	}
-      gcc_unreachable ();
+      gcc_unreachable();
     }
   else
     {
-      for (int i = loops.dim - 1; i >= 0; i--)
+      for (int i = this->loops.dim - 1; i >= 0; i--)
 	{
-	  Flow * flow = loops[i];
+	  Flow *flow = this->loops[i];
 
-	  if ((! want_continue && flow->statement->hasBreak ()) ||
-	      flow->statement->hasContinue ())
+	  if ((! want_continue && flow->statement->hasBreak()) ||
+	      flow->statement->hasContinue())
 	    return flow;
 	}
-      gcc_unreachable ();
+      gcc_unreachable();
     }
 }
 
 
 Flow *
-IRBase::beginFlow (Statement * stmt)
+IRBase::beginFlow (Statement *stmt)
 {
-  Flow * flow = new Flow (stmt);
-  loops.push (flow);
-  pushStatementList ();
+  Flow *flow = new Flow (stmt);
+  this->loops.push (flow);
+  pushStatementList();
   return flow;
 }
 
 void
-IRBase::endFlow ()
+IRBase::endFlow (void)
 {
-  Flow * flow;
+  Flow *flow;
 
-  gcc_assert (loops.dim);
+  gcc_assert (this->loops.dim);
 
-  flow = (Flow *) loops.pop ();
+  flow = (Flow *) this->loops.pop();
   if (flow->exitLabel)
     doLabel (flow->exitLabel);
   //%% delete flow;
@@ -274,62 +272,61 @@ IRBase::doLabel (tree t_label)
 
 
 void
-IRBase::startScope ()
+IRBase::startScope (void)
 {
-  unsigned * p_count = new unsigned;
+  unsigned *p_count = new unsigned;
   *p_count = 0;
-  scopes.push (p_count);
+  this->scopes.push (p_count);
 
-  //printf ("%*sstartScope\n", scopes.dim, "");
-  startBindings ();
+  //printf ("%*sstartScope\n", this->scopes.dim, "");
+  startBindings();
 }
 
 void
-IRBase::endScope ()
+IRBase::endScope (void)
 {
-  unsigned * p_count;
+  unsigned *p_count;
 
-  p_count = currentScope ();
+  p_count = currentScope();
 
-  //endBindings ();
-
-  //printf ("%*s  ending scope with %d left \n", scopes.dim, "", *p_count);
+  //printf ("%*s  ending scope with %d left \n", this->scopes.dim, "", *p_count);
   while (*p_count)
-    endBindings ();
-  scopes.pop ();
-  //printf ("%*sendScope\n", scopes.dim, "");
+    endBindings();
+  this->scopes.pop();
+  //printf ("%*sendScope\n", this->scopes.dim, "");
 }
 
 
 void
-IRBase::startBindings ()
+IRBase::startBindings (void)
 {
   pushlevel (0);
   tree block = make_node (BLOCK);
   set_block (block);
 
-  pushStatementList ();
+  pushStatementList();
 
-  ++(*currentScope ());
-  //printf ("%*s  start -> %d\n", scopes.dim, "", * currentScope ());
+  ++(*currentScope());
+  //printf ("%*s  start -> %d\n", this->scopes.dim, "", *currentScope());
 
 }
 
 void
-IRBase::endBindings ()
+IRBase::endBindings (void)
 {
   // %%TODO: reversing list causes problems with inf loops in unshare_all_decls
   tree block = poplevel (1,0,0);
 
-  tree t_body = popStatementList ();
+  tree t_body = popStatementList();
   addExp (build3 (BIND_EXPR, void_type_node,
-       		  BLOCK_VARS (block), t_body, block));
+		  BLOCK_VARS (block), t_body, block));
 
   // Because we used set_block, the popped level/block is not automatically recorded
   insert_block (block);
 
-  --(*currentScope ());
-  gcc_assert (*(int *) currentScope () >= 0);
-  //printf ("%*s  end -> %d\n", scopes.dim, "", *currentScope ());
+  --(*currentScope());
+  gcc_assert (*(int *) currentScope() >= 0);
+  //printf ("%*s  end -> %d\n", this->scopes.dim, "", *currentScope());
 
 }
+

@@ -44,40 +44,46 @@ enum LevelKind
 
 struct Label
 {
-  LabelDsymbol * label;
-  Statement * block;
-  Statement * from;
+  LabelDsymbol *label;
+  Statement *block;
+  Statement *from;
   LevelKind kind;
   unsigned level;
 
-  Label () :
-    label (NULL), block (NULL), from (NULL),
-    kind (level_block), level (0) { }
+  Label (void)
+    : label(NULL), block(NULL), from(NULL),
+      kind(level_block), level(0)
+  { }
 };
 
 struct Flow
 {
-  Statement * statement;
+  Statement *statement;
   LevelKind kind;
   tree exitLabel;
-  union {
-      struct {
-	  tree continueLabel;
-	  tree hasVars; // D2 specific, != NULL_TREE if switch uses Lvalues for cases.
-      };
-      struct {
-	  tree condition;  // Only need this if it is not okay to convert an IfStatement's
-	  tree trueBranch; // condition after converting it's branches...
-      };
-      struct {
-	  tree tryBody;
-	  tree catchType;
-      };
+  union
+  {
+    struct
+    {
+      tree continueLabel;
+      tree hasVars;         // D2 specific, != NULL_TREE if switch uses Lvalues for cases.
+    };
+    struct
+    {
+      tree condition;       // Only need this if it is not okay to convert an IfStatement's
+      tree trueBranch;      // condition after converting it's branches...
+    };
+    struct
+    {
+      tree tryBody;
+      tree catchType;
+    };
   };
 
-  Flow (Statement * stmt) :
-    statement (stmt), kind (level_block), exitLabel (NULL_TREE),
-    continueLabel (NULL_TREE), hasVars (NULL_TREE) { }
+  Flow (Statement *stmt)
+    : statement(stmt), kind(level_block), exitLabel(NULL_TREE),
+      continueLabel(NULL_TREE), hasVars(NULL_TREE)
+  { }
 };
 
 
@@ -98,28 +104,26 @@ typedef ArrayBase<struct Flow> Flows;
 
 struct IRBase : Object
 {
-  IRBase * parent;
+ public:
+  IRBase *parent;
 
-  IRBase ();
+  IRBase (void);
 
   // ** Functions
 
-  // This is used by LabelStatement to find the LabelDsymbol that
-  // GotoStatements refer to.
-  FuncDeclaration * func; // %% make this a stack
-  Module * mod;
+  FuncDeclaration *func;
+  Module *mod;
 
-  IRState * startFunction (FuncDeclaration * decl);
-  void endFunction ();
+  IRState *startFunction (FuncDeclaration *decl);
+  void endFunction (void);
 
- public:
   // ** Statement Lists
 
-  void addExp (tree e);
   Array statementList;    // of tree
 
-  void pushStatementList ();
-  tree popStatementList ();
+  void addExp (tree e);
+  void pushStatementList (void);
+  tree popStatementList (void);
 
   // ** Labels
 
@@ -127,35 +131,34 @@ struct IRBase : Object
 
   // It is only valid to call this while the function in which the label is defined
   // is being compiled.
-  tree    getLabelTree (LabelDsymbol * label);
-  Label * getLabelBlock (LabelDsymbol * label, Statement * from = NULL);
+  tree    getLabelTree (LabelDsymbol *label);
+  Label *getLabelBlock (LabelDsymbol *label, Statement *from = NULL);
 
-  bool isReturnLabel (Identifier * ident) {
-      return func->returnLabel ? ident == func->returnLabel->ident : 0;
-  }
+  bool isReturnLabel (Identifier *ident)
+  { return this->func->returnLabel ? ident == this->func->returnLabel->ident : 0; }
 
   // ** Loops (and case statements)
 
   Flows loops;
 
   // These routines don't generate code.  They are for tracking labeled loops.
-  Flow * getLoopForLabel (Identifier * ident, bool want_continue = false);
-  Flow * beginFlow (Statement * stmt);
+  Flow *getLoopForLabel (Identifier *ident, bool want_continue = false);
+  Flow *beginFlow (Statement *stmt);
 
-  void endFlow ();
+  void endFlow (void);
 
-  Flow * currentFlow () {
-      gcc_assert (loops.dim);
-      return (Flow *) loops.tos ();
+  Flow *currentFlow (void)
+  {
+    gcc_assert (this->loops.dim);
+    return (Flow *) this->loops.tos();
   }
 
   void doLabel (tree t_label);
 
   // ** DECL_CONTEXT support
 
-  tree getLocalContext () {
-      return func ? func->toSymbol()->Stree : NULL_TREE;
-  }
+  tree getLocalContext (void)
+  { return this->func ? this->func->toSymbol()->Stree : NULL_TREE; }
 
   // ** "Binding contours"
 
@@ -169,35 +172,32 @@ struct IRBase : Object
      Each user-declared variable will have a binding contour that begins
      where the variable is declared and ends at it's containing scope.
    */
-  Array scopes; // of unsigned*
 
-  void startScope ();
-  void endScope ();
+  Array scopes; // of unsigned *
+  void startScope (void);
+  void endScope (void);
 
-  unsigned * currentScope () {
-      gcc_assert (scopes.dim);
-      return (unsigned *) scopes.tos ();
+  unsigned *currentScope (void)
+  {
+    gcc_assert (this->scopes.dim);
+    return (unsigned *) this->scopes.tos();
   }
 
-  void startBindings ();
-  void endBindings ();
-
+  void startBindings (void);
+  void endBindings (void);
 
   // ** Volatile state
 
   unsigned volatileDepth;
 
-  bool inVolatile () {
-      return volatileDepth != 0;
-  }
+  bool inVolatile (void)
+  { return this->volatileDepth != 0; }
 
-  void pushVolatile () {
-      ++volatileDepth;
-  }
+  void pushVolatile (void)
+  { this->volatileDepth++; }
 
-  void popVolatile () {
-      --volatileDepth;
-  }
+  void popVolatile (void)
+  { this->volatileDepth--; }
 };
 
 

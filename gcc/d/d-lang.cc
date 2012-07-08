@@ -61,40 +61,40 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_EH_PERSONALITY
 #undef LANG_HOOKS_EH_RUNTIME_TYPE
 
-#define LANG_HOOKS_NAME                     lang_name
-#define LANG_HOOKS_INIT                     d_init
-#define LANG_HOOKS_INIT_OPTIONS             d_init_options
-#define LANG_HOOKS_INIT_OPTIONS_STRUCT      d_init_options_struct
-#define LANG_HOOKS_OPTION_LANG_MASK         d_option_lang_mask
-#define LANG_HOOKS_HANDLE_OPTION            d_handle_option
-#define LANG_HOOKS_POST_OPTIONS             d_post_options
-#define LANG_HOOKS_PARSE_FILE               d_parse_file
-#define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE   d_common_attribute_table
-#define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE   d_common_format_attribute_table
-#define LANG_HOOKS_TYPES_COMPATIBLE_P       d_types_compatible_p
-#define LANG_HOOKS_BUILTIN_FUNCTION         d_builtin_function
-#define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE d_builtin_function
-#define LANG_HOOKS_REGISTER_BUILTIN_TYPE    d_register_builtin_type
-#define LANG_HOOKS_FINISH_INCOMPLETE_DECL   d_finish_incomplete_decl
-#define LANG_HOOKS_GIMPLIFY_EXPR            d_gimplify_expr
-#define LANG_HOOKS_EH_PERSONALITY           d_eh_personality
-#define LANG_HOOKS_EH_RUNTIME_TYPE          d_build_eh_type_type
+#define LANG_HOOKS_NAME				lang_name
+#define LANG_HOOKS_INIT				d_init
+#define LANG_HOOKS_INIT_OPTIONS			d_init_options
+#define LANG_HOOKS_INIT_OPTIONS_STRUCT		d_init_options_struct
+#define LANG_HOOKS_OPTION_LANG_MASK		d_option_lang_mask
+#define LANG_HOOKS_HANDLE_OPTION		d_handle_option
+#define LANG_HOOKS_POST_OPTIONS			d_post_options
+#define LANG_HOOKS_PARSE_FILE			d_parse_file
+#define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE	d_common_attribute_table
+#define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE	d_common_format_attribute_table
+#define LANG_HOOKS_TYPES_COMPATIBLE_P		d_types_compatible_p
+#define LANG_HOOKS_BUILTIN_FUNCTION		d_builtin_function
+#define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE	d_builtin_function
+#define LANG_HOOKS_REGISTER_BUILTIN_TYPE	d_register_builtin_type
+#define LANG_HOOKS_FINISH_INCOMPLETE_DECL	d_finish_incomplete_decl
+#define LANG_HOOKS_GIMPLIFY_EXPR		d_gimplify_expr
+#define LANG_HOOKS_EH_PERSONALITY		d_eh_personality
+#define LANG_HOOKS_EH_RUNTIME_TYPE		d_build_eh_type_type
 
 /* Lang Hooks for decls */
 #undef LANG_HOOKS_WRITE_GLOBALS
-#define LANG_HOOKS_WRITE_GLOBALS            d_write_global_declarations
+#define LANG_HOOKS_WRITE_GLOBALS		d_write_global_declarations
 
 /* Lang Hooks for types */
 #undef LANG_HOOKS_TYPE_FOR_MODE
 #undef LANG_HOOKS_TYPE_FOR_SIZE
 #undef LANG_HOOKS_TYPE_PROMOTES_TO
 
-#define LANG_HOOKS_TYPE_FOR_MODE            d_type_for_mode
-#define LANG_HOOKS_TYPE_FOR_SIZE            d_type_for_size
-#define LANG_HOOKS_TYPE_PROMOTES_TO         d_type_promotes_to
+#define LANG_HOOKS_TYPE_FOR_MODE		d_type_for_mode
+#define LANG_HOOKS_TYPE_FOR_SIZE		d_type_for_size
+#define LANG_HOOKS_TYPE_PROMOTES_TO		d_type_promotes_to
 
 
-static const char * fonly_arg;
+static const char *fonly_arg;
 
 /* Common initialization before calling option handlers.  */
 static void
@@ -115,13 +115,13 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.Dversion = 2;
   global.params.quiet = 1;
 
-  global.params.linkswitches = new Strings ();
-  global.params.libfiles = new Strings ();
-  global.params.objfiles = new Strings ();
-  global.params.ddocfiles = new Strings ();
+  global.params.linkswitches = new Strings();
+  global.params.libfiles = new Strings();
+  global.params.objfiles = new Strings();
+  global.params.ddocfiles = new Strings();
 
-  global.params.imppath = new Strings ();
-  global.params.fileImppath = new Strings ();
+  global.params.imppath = new Strings();
+  global.params.fileImppath = new Strings();
 
   // extra D-specific options
   gen.splitDynArrayVarArgs = true;
@@ -166,15 +166,15 @@ d_option_lang_mask (void)
 static bool is_target_win32 = false;
 
 bool
-d_gcc_is_target_win32 ()
+d_gcc_is_target_win32 (void)
 {
   return is_target_win32;
 }
 
 static bool
-d_init ()
+d_init (void)
 {
-  const char * cpu_versym = NULL;
+  const char *cpu_versym = NULL;
 
   /* Currently, is64bit indicates a 64-bit target in general and is not
      Intel-specific. */
@@ -207,12 +207,12 @@ d_init ()
 
 #endif /* ! TARGET_64BIT */
 
-  Type::init ();
-  Id::initialize ();
-  Module::init ();
-  initPrecedence ();
-  gcc_d_backend_init ();
-  real_t::init ();
+  Type::init();
+  Id::initialize();
+  Module::init();
+  initPrecedence();
+  gcc_d_backend_init();
+  real_t::init();
 
   VersionCondition::addPredefinedGlobalIdent ("GNU");
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");
@@ -307,14 +307,14 @@ d_init ()
   VersionCondition::addPredefinedGlobalIdent ("all");
 
   /* Insert all library-configured identifiers and import paths.  */
-  add_import_paths ();
-  add_phobos_versyms ();
+  add_import_paths();
+  add_phobos_versyms();
 
   return 1;
 }
 
 static bool
-parse_int (const char * arg, int * value_ret)
+parse_int (const char *arg, int *value_ret)
 {
   /* Common case of a single digit.  */
   if (arg[1] == '\0')
@@ -380,7 +380,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 	    goto Lerror_d;
 	  DebugCondition::setGlobalLevel (level);
 	}
-      else if (Lexer::isValidIdentifier (CONST_CAST (char*, arg)))
+      else if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
 	DebugCondition::addGlobalIdent (xstrdup (arg));
       else
 	{
@@ -535,7 +535,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 	    goto Lerror_v;
 	  VersionCondition::setGlobalLevel (level);
 	}
-      else if (Lexer::isValidIdentifier (CONST_CAST (char*, arg)))
+      else if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
 	VersionCondition::addGlobalIdent (xstrdup (arg));
       else
 	{
@@ -623,9 +623,9 @@ d_add_global_declaration (tree decl)
 }
 
 static void
-d_write_global_declarations ()
+d_write_global_declarations (void)
 {
-  tree * vec = (tree *) globalDeclarations.data;
+  tree *vec = (tree *) globalDeclarations.data;
 
   /* Process all file scopes in this compilation, and the external_scope,
      through wrapup_global_declarations and check_global_declarations.  */
@@ -633,11 +633,11 @@ d_write_global_declarations ()
   check_global_declarations (vec, globalDeclarations.dim);
 
   /* Complete all generated thunks. */
-  cgraph_process_same_body_aliases ();
+  cgraph_process_same_body_aliases();
 
   /* We're done parsing; proceed to optimize and emit assembly. */
   if (! global.errors && ! errorcount)
-    finalize_compilation_unit ();
+    finalize_compilation_unit();
 
   /* After cgraph has had a chance to emit everything that's going to
      be emitted, output debug information for globals.  */
@@ -677,16 +677,16 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
     }
 }
 
-static Module * an_output_module = 0;
+static Module *an_output_module = 0;
 
 Module *
-d_gcc_get_output_module ()
+d_gcc_get_output_module (void)
 {
   return an_output_module;
 }
 
 static void
-nametype (tree type, const char * name)
+nametype (tree type, const char *name)
 {
   tree ident = get_identifier (name);
   tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, ident, type);
@@ -695,21 +695,21 @@ nametype (tree type, const char * name)
 }
 
 static void
-nametype (Type * t)
+nametype (Type *t)
 {
-  nametype (t->toCtype (), t->toChars ());
+  nametype (t->toCtype(), t->toChars());
 }
 
 static void
-deps_write (Module * m)
+deps_write (Module *m)
 {
   OutBuffer *ob = global.params.makeDeps;
   size_t size, column = 0, colmax = 72;
-  FileName * fn;
+  FileName *fn;
 
   // Write out object name.
   fn = m->objfile->name;
-  size = fn->len ();
+  size = fn->len();
   ob->writestring (fn->str);
   column = size;
 
@@ -718,14 +718,14 @@ deps_write (Module * m)
 
   // First dependency is source file for module.
   fn = m->srcfile->name;
-  size = fn->len ();
+  size = fn->len();
   ob->writestring (fn->str);
   column += size;
 
   // Write out file dependencies.
   for (size_t i = 0; i < m->aimports.dim; i++)
     {
-      Module * mi = m->aimports[i];
+      Module *mi = m->aimports[i];
 
       // Ignore self references.
       if (mi == m)
@@ -734,15 +734,15 @@ deps_write (Module * m)
       if (global.params.makeDepsStyle == 2)
 	{
 	  // Don't emit system modules. This includes core.*, std.*, gcc.* and object.
-	  ModuleDeclaration * md = mi->md;
+	  ModuleDeclaration *md = mi->md;
 
 	  if (md && md->packages)
 	    {
-	      if (strcmp((md->packages->tdata()[0])->string, "core") == 0)
+	      if (strcmp ((md->packages->tdata()[0])->string, "core") == 0)
 		continue;
-	      if (strcmp((md->packages->tdata()[0])->string, "std") == 0)
+	      if (strcmp ((md->packages->tdata()[0])->string, "std") == 0)
 		continue;
-	      if (strcmp((md->packages->tdata()[0])->string, "gcc") == 0)
+	      if (strcmp ((md->packages->tdata()[0])->string, "gcc") == 0)
 		continue;
 	    }
 	  else if (md && md->id)
@@ -754,7 +754,7 @@ deps_write (Module * m)
 
       // All checks done, write out file path/name.
       fn = mi->srcfile->name;
-      size = fn->len ();
+      size = fn->len();
       column += size;
       if (column > colmax)
 	{
@@ -771,7 +771,7 @@ deps_write (Module * m)
   ob->writestring ("\n");
 }
 
-Symbol* rtlsym[N_RTLSYM];
+Symbol *rtlsym[N_RTLSYM];
 
 void
 d_parse_file (void)
@@ -787,7 +787,7 @@ d_parse_file (void)
 
   if (gen.emitTemplates == TEauto)
     {
-      gen.emitTemplates = (supports_one_only ()) ? TEall : TEprivate;
+      gen.emitTemplates = (supports_one_only()) ? TEall : TEprivate;
     }
   global.params.symdebug = write_symbols != NO_DEBUG;
   //global.params.useInline = flag_inline_functions;
@@ -811,8 +811,8 @@ d_parse_file (void)
   an_output_module = NULL;
   Modules modules; // vs. outmodules... = [an_output_module] or modules
   modules.reserve (num_in_fnames);
-  AsyncRead * aw = NULL;
-  Module * m = NULL;
+  AsyncRead *aw = NULL;
+  Module *m = NULL;
 
   // %% FIX
   if (! main_input_filename)
@@ -842,15 +842,15 @@ d_parse_file (void)
 	     */
 	}
       //fprintf (stderr, "fn %d = %s\n", i, in_fnames[i]);
-      char * the_fname = xstrdup (in_fnames[i]);
-      char * p = FileName::name (the_fname);
-      char * e = FileName::ext (p);
-      char * name;
+      char *the_fname = xstrdup (in_fnames[i]);
+      char *p = FileName::name (the_fname);
+      char *e = FileName::ext (p);
+      char *name;
       if (e)
 	{
 	  e--;
 	  gcc_assert (*e == '.');
-	  name = (char *) xmalloc((e - p) + 1);
+	  name = (char *) xmalloc ((e - p) + 1);
 	  memcpy (name, p, e - p);
 	  name[e - p] = 0;
 
@@ -870,7 +870,7 @@ d_parse_file (void)
 	    goto Linvalid;
 	}
 
-      Identifier * id = Lexer::idPool (name);
+      Identifier *id = Lexer::idPool (name);
       m = new Module (the_fname, id, global.params.doDocComments, global.params.doHdrGeneration);
       if (! strcmp (in_fnames[i], main_input_filename))
 	an_output_module = m;
@@ -879,7 +879,7 @@ d_parse_file (void)
 
   // There is only one of these so far...
   rtlsym[RTLSYM_DHIDDENFUNC] =
-    gen.getLibCallDecl (LIBCALL_HIDDEN_FUNC)->toSymbol ();
+    gen.getLibCallDecl (LIBCALL_HIDDEN_FUNC)->toSymbol();
 
   // current_module shouldn't have any implications before genobjfile..
   // ... but it does.  We need to know what module in which to insert
@@ -899,27 +899,27 @@ d_parse_file (void)
       m = modules[i];
       aw->addFile (m->srcfile);
     }
-  aw->start ();
+  aw->start();
 
   // Parse files
   for (size_t i = 0; i < modules.dim; i++)
     {
       m = modules[i];
       if (global.params.verbose)
-	fprintf (stdmsg, "parse     %s\n", m->toChars ());
+	fprintf (stdmsg, "parse     %s\n", m->toChars());
       if (!Module::rootModule)
 	Module::rootModule = m;
       m->importedFrom = m;
       if (aw->read (i))
 	{
-	  error ("cannot read file %s", m->srcfile->name->toChars ());
+	  error ("cannot read file %s", m->srcfile->name->toChars());
 	  goto had_errors;
 	}
-      m->parse (global.params.dump_source);
+      m->parse();
       d_gcc_magic_module (m);
       if (m->isDocFile)
 	{
-	  m->gendocfile ();
+	  m->gendocfile();
 	  // Remove m from list of modules
 	  modules.remove (i);
 	  i--;
@@ -943,8 +943,8 @@ d_parse_file (void)
 	  if (fonly_arg && m != an_output_module)
 	    continue;
 	  if (global.params.verbose)
-	    fprintf (stdmsg, "import    %s\n", m->toChars ());
-	  m->genhdrfile ();
+	    fprintf (stdmsg, "import    %s\n", m->toChars());
+	  m->genhdrfile();
 	}
     }
 
@@ -956,7 +956,7 @@ d_parse_file (void)
     {
       m = modules[i];
       if (global.params.verbose)
-	fprintf (stdmsg, "importall %s\n", m->toChars ());
+	fprintf (stdmsg, "importall %s\n", m->toChars());
       m->importAll (0);
     }
 
@@ -968,23 +968,23 @@ d_parse_file (void)
     {
       m = modules[i];
       if (global.params.verbose)
-	fprintf (stdmsg, "semantic  %s\n", m->toChars ());
-      m->semantic ();
+	fprintf (stdmsg, "semantic  %s\n", m->toChars());
+      m->semantic();
     }
 
   if (global.errors)
     goto had_errors;
 
   Module::dprogress = 1;
-  Module::runDeferredSemantic ();
+  Module::runDeferredSemantic();
 
   // Do pass 2 semantic analysis
   for (size_t i = 0; i < modules.dim; i++)
     {
       m = modules[i];
       if (global.params.verbose)
-	fprintf (stdmsg, "semantic2 %s\n", m->toChars ());
-      m->semantic2 ();
+	fprintf (stdmsg, "semantic2 %s\n", m->toChars());
+      m->semantic2();
     }
 
   if (global.errors)
@@ -995,8 +995,8 @@ d_parse_file (void)
     {
       m = modules[i];
       if (global.params.verbose)
-	fprintf (stdmsg, "semantic3 %s\n", m->toChars ());
-      m->semantic3 ();
+	fprintf (stdmsg, "semantic3 %s\n", m->toChars());
+      m->semantic3();
     }
 
   if (global.errors)
@@ -1007,9 +1007,9 @@ d_parse_file (void)
       gcc_assert (global.params.moduleDepsFile != NULL);
 
       File deps (global.params.moduleDepsFile);
-      OutBuffer* ob = global.params.moduleDeps;
-      deps.setbuffer((void*)ob->data, ob->offset);
-      deps.writev ();
+      OutBuffer *ob = global.params.moduleDeps;
+      deps.setbuffer ((void *)ob->data, ob->offset);
+      deps.writev();
     }
 
   if (global.params.makeDeps != NULL)
@@ -1021,14 +1021,14 @@ d_parse_file (void)
 	}
 
 
-      OutBuffer* ob = global.params.makeDeps;
+      OutBuffer *ob = global.params.makeDeps;
       if (global.params.makeDepsFile == NULL)
-	printf((char*)ob->data);
+	printf ((char *)ob->data);
       else
 	{
 	  File deps (global.params.makeDepsFile);
-	  deps.setbuffer((void*)ob->data, ob->offset);
-	  deps.writev ();
+	  deps.setbuffer ((void *)ob->data, ob->offset);
+	  deps.writev();
 	}
     }
 
@@ -1036,7 +1036,7 @@ d_parse_file (void)
   if (global.errors || global.warnings)
     goto had_errors;
 
-  g.ofile = new ObjectFile ();
+  g.ofile = new ObjectFile();
   if (fonly_arg)
     g.ofile->modules.push (an_output_module);
   else
@@ -1053,13 +1053,13 @@ d_parse_file (void)
       if (fonly_arg && m != an_output_module)
 	continue;
       if (global.params.verbose)
-	fprintf (stdmsg, "code      %s\n", m->toChars ());
+	fprintf (stdmsg, "code      %s\n", m->toChars());
       if (! flag_syntax_only)
 	m->genobjfile (false);
       if (! global.errors && ! errorcount)
 	{
 	  if (global.params.doDocComments)
-	    m->gendocfile ();
+	    m->gendocfile();
 	}
     }
 
@@ -1069,26 +1069,26 @@ d_parse_file (void)
   // Add DMD error count to GCC error count to to exit with error status
   errorcount += (global.errors + global.warnings);
 
-  g.ofile->finish ();
+  g.ofile->finish();
   an_output_module = 0;
 
-  gcc_d_backend_term ();
+  gcc_d_backend_term();
 }
 
 void
-d_gcc_dump_source (const char * srcname, const char * ext, unsigned char * data, unsigned len)
+d_gcc_dump_source (const char *srcname, const char *ext, unsigned char *data, unsigned len)
 {
   // Note: There is a dump_base_name variable, but as long as the all-sources hack is in
   // around, the base name has to be determined here.
 
   /* construct output name */
-  char* base = (char*) alloca (strlen (srcname)+1);
+  char *base = (char *) alloca (strlen (srcname) + 1);
   base = strcpy (base, srcname);
   base = basename (base);
 
-  char* name = (char*) alloca (strlen (base)+strlen (ext)+2);
+  char *name = (char *) alloca (strlen (base)+strlen (ext) + 2);
   name = strcpy (name, base);
-  if (strlen (ext)>0)
+  if (strlen (ext) > 0)
     {
       name = strcat (name, ".");
       name = strcat (name, ext);
@@ -1098,7 +1098,7 @@ d_gcc_dump_source (const char * srcname, const char * ext, unsigned char * data,
    * ignores if the output file exists
    * ignores if the output fails
    */
-  FILE* output = fopen (name, "w");
+  FILE *output = fopen (name, "w");
   if (output)
     {
       fwrite (data, 1, len, output);
@@ -1106,7 +1106,7 @@ d_gcc_dump_source (const char * srcname, const char * ext, unsigned char * data,
     }
 
   /* cleanup */
-  errno=0;
+  errno = 0;
 }
 
 bool
@@ -1142,7 +1142,7 @@ d_mark_addressable (tree t)
 
       case INDIRECT_REF:
 	/* %% this was in Java, not sure for D */
-	/* We sometimes add a cast *(TYPE*)&FOO to handle type and mode
+	/* We sometimes add a cast *(TYPE *)&FOO to handle type and mode
 	   incompatibility problems.  Handle this case by marking FOO.  */
 	if (TREE_CODE (TREE_OPERAND (x, 0)) == NOP_EXPR
 	    && TREE_CODE (TREE_OPERAND (TREE_OPERAND (x, 0), 0)) == ADDR_EXPR)
@@ -1225,11 +1225,6 @@ d_type_for_mode (enum machine_mode mode, int unsignedp)
   if (mode == TYPE_MODE (long_long_integer_type_node))
     return unsignedp ? long_long_unsigned_type_node : long_long_integer_type_node;
 
-  /*%% ?
-    if (mode == TYPE_MODE (widest_integer_literal_type_node))
-    return unsignedp ? widest_unsigned_literal_type_node
-    : widest_integer_literal_type_node;
-    */
   if (mode == QImode)
     return unsignedp ? unsigned_intQI_type_node : intQI_type_node;
 
@@ -1311,11 +1306,7 @@ d_type_for_size (unsigned bits, int unsignedp)
   if (bits == TYPE_PRECISION (long_long_integer_type_node))
     return (unsignedp ? long_long_unsigned_type_node
 	    : long_long_integer_type_node);
-  /* %%?
-     if (bits == TYPE_PRECISION (widest_integer_literal_type_node))
-     return (unsignedp ? widest_unsigned_literal_type_node
-     : widest_integer_literal_type_node);
-     */
+
   if (bits <= TYPE_PRECISION (intQI_type_node))
     return unsignedp ? unsigned_intQI_type_node : intQI_type_node;
 
@@ -1349,11 +1340,6 @@ d_signed_or_unsigned_type (int unsignedp, tree type)
   if (TYPE_PRECISION (type) == TYPE_PRECISION (long_long_integer_type_node))
     return (unsignedp ? long_long_unsigned_type_node
 	    : long_long_integer_type_node);
-  /* %%?
-     if (TYPE_PRECISION (type) == TYPE_PRECISION (widest_integer_literal_type_node))
-     return (unsignedp ? widest_unsigned_literal_type_node
-     : widest_integer_literal_type_node);
-     */
 #if HOST_BITS_PER_WIDE_INT >= 64
   if (TYPE_PRECISION (type) == TYPE_PRECISION (intTI_type_node))
     return unsignedp ? unsigned_intTI_type_node : intTI_type_node;
@@ -1384,10 +1370,6 @@ d_unsigned_type (tree type)
     return long_unsigned_type_node;
   if (type1 == long_long_integer_type_node)
     return long_long_unsigned_type_node;
-  /* %%?
-     if (type1 == widest_integer_literal_type_node)
-     return widest_unsigned_literal_type_node;
-     */
 #if HOST_BITS_PER_WIDE_INT >= 64
   if (type1 == intTI_type_node)
     return unsigned_intTI_type_node;
@@ -1462,12 +1444,12 @@ d_type_promotes_to (tree type)
 }
 
 
-struct binding_level * current_binding_level;
-struct binding_level * global_binding_level;
+struct binding_level *current_binding_level;
+struct binding_level *global_binding_level;
 
 
 static binding_level *
-alloc_binding_level ()
+alloc_binding_level (void)
 {
   unsigned sz = sizeof (struct binding_level);
   return (struct binding_level *) ggc_alloc_cleared_atomic (sz);
@@ -1478,9 +1460,9 @@ alloc_binding_level ()
    otherwise support the backend. */
 
 void
-pushlevel (int /*arg*/)
+pushlevel (int)
 {
-  binding_level * new_level = alloc_binding_level ();
+  binding_level *new_level = alloc_binding_level();
   new_level->level_chain = current_binding_level;
   current_binding_level = new_level;
 }
@@ -1488,7 +1470,7 @@ pushlevel (int /*arg*/)
 tree
 poplevel (int keep, int reverse, int routinebody)
 {
-  binding_level * level = current_binding_level;
+  binding_level *level = current_binding_level;
   tree block, decls;
 
   current_binding_level = level->level_chain;
@@ -1554,7 +1536,7 @@ poplevel (int keep, int reverse, int routinebody)
 	      else if (DECL_CONTEXT (t) == current_function_decl)
 		{
 		  warning_at (DECL_SOURCE_LOCATION (t),
-			      OPT_Wunused_but_set_variable, "variable %qD set but not used", t);
+			     OPT_Wunused_but_set_variable, "variable %qD set but not used", t);
 		}
 	    }
 	}
@@ -1573,9 +1555,9 @@ global_bindings_p (void)
 }
 
 void
-init_global_binding_level ()
+init_global_binding_level (void)
 {
-  current_binding_level = global_binding_level = alloc_binding_level ();
+  current_binding_level = global_binding_level = alloc_binding_level();
 }
 
 
@@ -1597,7 +1579,7 @@ pushdecl (tree decl)
 {
   // %% Pascal: if not a local external routine decl doesn't consitite nesting
 
-  // %% probably  should be cur_irs->getDeclContext ()
+  // %% probably  should be cur_irs->getDeclContext()
   // %% should only be for variables OR, should also use TRANSLATION_UNIT for toplevel..
   if (DECL_CONTEXT (decl) == NULL_TREE)
     DECL_CONTEXT (decl) = current_function_decl; // could be NULL_TREE (top level) .. hmm. // hm.m.
@@ -1620,7 +1602,7 @@ set_decl_binding_chain (tree decl_chain)
 
 // Supports dbx and stabs
 tree
-getdecls ()
+getdecls (void)
 {
   if (current_binding_level)
     return current_binding_level->names;
@@ -1634,11 +1616,6 @@ d_types_compatible_p (tree t1, tree t2)
 {
   /* Is compatible if types are equivalent */
   if (TYPE_MAIN_VARIANT (t1) == TYPE_MAIN_VARIANT (t2))
-    return 1;
-
-  /* Is compatible if we are dealing with C <-> D va_list nodes */
-  if ((t1 == d_va_list_type_node && t2 == va_list_type_node)
-      || (t2 == d_va_list_type_node && t1 == va_list_type_node))
     return 1;
 
   /* Is compatible if aggregates are same type or share the same
@@ -1676,9 +1653,9 @@ d_finish_incomplete_decl (tree decl)
 
 
 struct lang_type *
-build_d_type_lang_specific (Type * t)
+build_d_type_lang_specific (Type *t)
 {
-  struct lang_type * l;
+  struct lang_type *l;
   unsigned sz = sizeof (struct lang_type);
   l = (struct lang_type *) ggc_alloc_cleared_atomic (sz);
   l->d_type = t;
@@ -1687,9 +1664,9 @@ build_d_type_lang_specific (Type * t)
 }
 
 struct lang_decl *
-build_d_decl_lang_specific (Declaration * d)
+build_d_decl_lang_specific (Declaration *d)
 {
-  struct lang_decl * l;
+  struct lang_decl *l;
   unsigned sz = sizeof (struct lang_decl);
   l = (struct lang_decl *) ggc_alloc_cleared_atomic (sz);
   l->d_decl = d;
@@ -1726,9 +1703,9 @@ d_build_eh_type_type (tree type)
   if (TREE_CODE (type) == ADDR_EXPR)
     return type;    // %% why???
 
-  TypeClass * d_type = (TypeClass *) gen.getDType (type);
+  TypeClass *d_type = (TypeClass *) gen.getDType (type);
   gcc_assert (d_type);
-  d_type = (TypeClass *) d_type->toBasetype ();
+  d_type = (TypeClass *) d_type->toBasetype();
   gcc_assert (d_type->ty == Tclass);
   return gen.addressOf (d_type->sym->toSymbol()->Stree);
 }
@@ -1736,7 +1713,7 @@ d_build_eh_type_type (tree type)
 void
 d_init_exceptions (void)
 {
-  using_eh_for_cleanups ();
+  using_eh_for_cleanups();
 }
 
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;

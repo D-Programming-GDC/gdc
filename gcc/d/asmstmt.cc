@@ -24,6 +24,9 @@
 #include "d-codegen.h"
 
 
+/* Build an asm-statement, whose components are a INSN_TMPL, some
+   OUTPUTS, some INPUTS and some CLOBBERS.  */
+
 tree
 d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
 {
@@ -49,7 +52,7 @@ AsmStatement::toIR (IRState *)
 
 
 ExtAsmStatement::ExtAsmStatement (Loc loc, Expression *insnTemplate, Expressions *args, Identifiers *argNames,
-			      	  Expressions *argConstraints, int nOutputArgs, Expressions *clobbers)
+				  Expressions *argConstraints, int nOutputArgs, Expressions *clobbers)
     : Statement (loc)
 {
   this->insnTemplate = insnTemplate;
@@ -61,15 +64,15 @@ ExtAsmStatement::ExtAsmStatement (Loc loc, Expression *insnTemplate, Expressions
 }
 
 Statement *
-ExtAsmStatement::syntaxCopy ()
+ExtAsmStatement::syntaxCopy (void)
 {
   /* insnTemplate, argConstraints, and clobbers would be
      semantically static in GNU C. */
-  Expression *insnTemplate = this->insnTemplate->syntaxCopy ();
-  Expressions * args = Expression::arraySyntaxCopy (this->args);
+  Expression *insnTemplate = this->insnTemplate->syntaxCopy();
+  Expressions *args = Expression::arraySyntaxCopy (this->args);
   // argNames is an array of identifiers
-  Expressions * argConstraints = Expression::arraySyntaxCopy (this->argConstraints);
-  Expressions * clobbers = Expression::arraySyntaxCopy (this->clobbers);
+  Expressions *argConstraints = Expression::arraySyntaxCopy (this->argConstraints);
+  Expressions *clobbers = Expression::arraySyntaxCopy (this->clobbers);
   return new ExtAsmStatement (loc, insnTemplate, args, argNames,
 			      argConstraints, nOutputArgs, clobbers);
 }
@@ -82,8 +85,8 @@ ExtAsmStatement::semantic (Scope *sc)
 
   if (sc->func)
     {
-      if (sc->func->setUnsafe ())
-	error ("extended assembler not allowed in @safe function %s", sc->func->toChars ());
+      if (sc->func->setUnsafe())
+	error ("extended assembler not allowed in @safe function %s", sc->func->toChars());
     }
 
   if (insnTemplate->op != TOKstring || ((StringExp *)insnTemplate)->sz != 1)
@@ -93,7 +96,7 @@ ExtAsmStatement::semantic (Scope *sc)
     {
       for (size_t i = 0; i < args->dim; i++)
 	{
-	  Expression * e = args->tdata()[i];
+	  Expression *e = args->tdata()[i];
 	  e = e->semantic (sc);
 	  if (i < nOutputArgs)
 	    e = e->modifiableLvalue (sc, NULL);
@@ -113,7 +116,7 @@ ExtAsmStatement::semantic (Scope *sc)
     {
       for (size_t i = 0; i < clobbers->dim; i++)
 	{
-	  Expression * e = clobbers->tdata()[i];
+	  Expression *e = clobbers->tdata()[i];
 	  e = e->semantic (sc);
 	  e = e->optimize (WANTvalue);
 	  if (e->op != TOKstring || ((StringExp *)e)->sz != 1)
@@ -129,30 +132,30 @@ ExtAsmStatement::toCBuffer (OutBuffer *buf)
 {
   buf->writestring ("gcc asm { ");
   if (insnTemplate)
-    buf->writestring (insnTemplate->toChars ());
+    buf->writestring (insnTemplate->toChars());
   buf->writestring (" : ");
   if (args)
     {
       for (size_t i = 0; i < args->dim; i++)
 	{
-	  Identifier * name = argNames->tdata()[i];
-	  Expression * constr = argConstraints->tdata()[i];
-	  Expression * arg = args->tdata()[i];
+	  Identifier *name = argNames->tdata()[i];
+	  Expression *constr = argConstraints->tdata()[i];
+	  Expression *arg = args->tdata()[i];
 
 	  if (name)
 	    {
 	      buf->writestring ("[");
-	      buf->writestring (name->toChars ());
+	      buf->writestring (name->toChars());
 	      buf->writestring ("] ");
 	    }
 	  if (constr)
 	    {
-	      buf->writestring (constr->toChars ());
+	      buf->writestring (constr->toChars());
 	      buf->writestring (" ");
 	    }
 	  if (arg)
 	    {
-	      buf->writestring (arg->toChars ());
+	      buf->writestring (arg->toChars());
 	    }
 
 	  if (i < nOutputArgs - 1)
@@ -168,21 +171,21 @@ ExtAsmStatement::toCBuffer (OutBuffer *buf)
       buf->writestring (" : ");
       for (size_t i = 0; i < clobbers->dim; i++)
 	{
-	  Expression * clobber = clobbers->tdata()[i];
-	  buf->writestring (clobber->toChars ());
+	  Expression *clobber = clobbers->tdata()[i];
+	  buf->writestring (clobber->toChars());
 	  if (i < clobbers->dim - 1)
 	    buf->writestring (", ");
 	}
     }
   buf->writestring ("; }");
-  buf->writenl ();
+  buf->writenl();
 }
 
 int
 ExtAsmStatement::blockExit (bool mustNotThrow)
 {
   if (mustNotThrow)
-    error ("asm statements are assumed to throw", toChars ());
+    error ("asm statements are assumed to throw", toChars());
   // TODO: Be smarter about this
   return BEany;
 }
@@ -191,13 +194,13 @@ ExtAsmStatement::blockExit (bool mustNotThrow)
 // StringExp::toIR usually adds a NULL.  We don't want that...
 
 static tree
-naturalString (Expression * e)
+naturalString (Expression *e)
 {
   // don't fail, just an error?
   gcc_assert (e->op == TOKstring);
-  StringExp * s = (StringExp *) e;
+  StringExp *s = (StringExp *) e;
   gcc_assert (s->sz == 1);
-  return build_string (s->len, (char *) s->string);
+  return build_string (s->len,(char *) s->string);
 }
 
 void
@@ -213,10 +216,10 @@ ExtAsmStatement::toIR (IRState *irs)
     {
       for (size_t i = 0; i < args->dim; i++)
 	{
-	  Identifier * name = argNames->tdata()[i];
-	  Expression * constr = argConstraints->tdata()[i];
+	  Identifier *name = argNames->tdata()[i];
+	  Expression *constr = argConstraints->tdata()[i];
 	  tree p = tree_cons (name ? build_string (name->len, name->string) : NULL_TREE,
-	      		      naturalString (constr), NULL_TREE);
+			      naturalString (constr), NULL_TREE);
 	  tree v = (args->tdata()[i])->toElem (irs);
 
 	  if (i < nOutputArgs)
@@ -229,7 +232,7 @@ ExtAsmStatement::toIR (IRState *irs)
     {
       for (size_t i = 0; i < clobbers->dim; i++)
 	{
-	  Expression * clobber = clobbers->tdata()[i];
+	  Expression *clobber = clobbers->tdata()[i];
 	  tree_clobbers.cons (NULL_TREE, naturalString (clobber));
 	}
     }

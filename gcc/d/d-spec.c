@@ -27,19 +27,19 @@
 #include "opts.h"
 
 /* This bit is set if we saw a `-xfoo' language specification.  */
-#define LANGSPEC        (1<<1)
+#define LANGSPEC	(1<<1)
 /* This bit is set if they did `-lm' or `-lmath'.  */
-#define MATHLIB         (1<<2)
+#define MATHLIB		(1<<2)
 /* This bit is set if they did `-lpthread'.  */
-#define WITHTHREAD      (1<<3)
+#define WITHTHREAD	(1<<3)
 /* This bit is set if they did `-lrt'.  */
-#define TIMERLIB        (1<<4)
+#define TIMERLIB	(1<<4)
 /* This bit is set if they did `-lc'.  */
-#define WITHLIBC        (1<<6)
+#define WITHLIBC	(1<<6)
 /* This bit is set if the arguments is a D source file. */
-#define D_SOURCE_FILE   (1<<7)
+#define D_SOURCE_FILE	(1<<7)
 /* This bit is set when the argument should not be passed to gcc or the backend */
-#define REMOVE_ARG      (1<<8)
+#define REMOVE_ARG	(1<<8)
 
 #ifndef MATH_LIBRARY
 #define MATH_LIBRARY "m"
@@ -57,9 +57,9 @@
 
 /* mingw and cygwin don't have pthread. %% TODO: check darwin.  */
 #if TARGET_WINDOS || TARGET_OSX || TARGET_ANDROID
-#define USE_PTHREADS    0
+#define USE_PTHREADS	0
 #else
-#define USE_PTHREADS    1
+#define USE_PTHREADS	1
 #endif
 
 void
@@ -143,7 +143,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   int num_args = 1;
 
   /* Argument for -fod option.  */
-  char * output_directory_option = NULL;
+  char *output_directory_option = NULL;
 
   /* True if we saw -fop. */
   int output_parents_option = 0;
@@ -401,7 +401,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 
   if (only_source_option)
     {
-      const char * only_source_arg = only_source_option + 7;
+      const char *only_source_arg = only_source_option + 7;
       generate_option (OPT_fonly_, only_source_arg, 1, CL_DRIVER,
 		       &new_decoded_options[j]);
       j++;
