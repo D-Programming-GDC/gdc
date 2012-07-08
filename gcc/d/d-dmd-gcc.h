@@ -45,8 +45,8 @@ extern bool d_gcc_supports_weak (void);
 /* used in mtype.c */
 extern int d_gcc_type_align (Type *);
 
-/* used in struct.c */
-extern int d_gcc_field_align (VarDeclaration *, int);
+/* used in declaration.c */
+extern int d_gcc_field_align (VarDeclaration *);
 
 struct Symbol;
 enum RTLSYM

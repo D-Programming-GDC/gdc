@@ -88,6 +88,7 @@ struct Symbol : Object
   SymbolFL Sfl;
   SymbolSegment Sseg;
   int Sflags;
+  int Salignment;
 
   dt_t *Sdt;
 

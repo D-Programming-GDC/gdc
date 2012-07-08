@@ -609,7 +609,7 @@ d_gcc_type_align (Type *t)
 
 // Return GCC align size for field VAR.
 int
-d_gcc_field_align (VarDeclaration *var, int known_align)
+d_gcc_field_align (VarDeclaration *var)
 {
   tree field;
 
@@ -622,7 +622,7 @@ d_gcc_field_align (VarDeclaration *var, int known_align)
 
   // Work out the correct alignment for the field decl.
   field = make_node (FIELD_DECL);
-  DECL_ALIGN (field) = known_align *BITS_PER_UNIT;
+  DECL_ALIGN (field) = var->type->alignsize() * BITS_PER_UNIT;
 
 #ifdef BIGGEST_FIELD_ALIGNMENT
   DECL_ALIGN (field)

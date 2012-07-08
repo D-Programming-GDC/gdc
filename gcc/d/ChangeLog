@@ -1,3 +1,16 @@
+2012-07-08  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins2.cc(d_gcc_type_align): Update function signature. Use
+	type align size to determine the known align size of a decl.
+	* d-dmd-gcc.h(d_gcc_type_align): Update function signature.
+	* symbol.h(Symbol): New member, Salignment.
+	* symbol.cc(Symbol::Symbol): Initialise Salignment.
+	* d-decls.cc(VarDeclaration::toSymbol): Set Salignment if there is an
+	alignment in effect on the decl.
+	(AggregateDeclaration::toInitializer): Likewise.
+	* d-objfile.cc(ObjectFile::outputStaticSymbol): Set DECL_ALIGN if
+	Salignment was given for static decl.
+
 2012-07-07  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-builtins2.cc(d_gcc_magic_builtins_module): Add check for

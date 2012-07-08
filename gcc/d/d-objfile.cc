@@ -357,6 +357,11 @@ ObjectFile::outputStaticSymbol (Symbol *s)
 
   if (s->prettyIdent)
     DECL_NAME (t) = get_identifier (s->prettyIdent);
+  if (s->Salignment > 0)
+    {
+      DECL_ALIGN (t) = s->Salignment * BITS_PER_UNIT;
+      DECL_USER_ALIGN (t) = 1;
+    }
 
   d_add_global_declaration (t);
 

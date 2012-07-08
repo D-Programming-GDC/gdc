@@ -210,6 +210,8 @@ VarDeclaration::toSymbol (void)
 	}
 
       csym = new Symbol();
+      csym->Salignment = alignment;
+
       if (isDataseg())
 	{
 	  csym->Sident = mangle();
@@ -835,12 +837,13 @@ ClassDeclaration::toVtblSymbol (void)
 Symbol *
 AggregateDeclaration::toInitializer (void)
 {
-  Symbol *s;
-
   if (!sinit)
     {
-      s = toSymbolX ("__init", SCextern, 0, "Z");
-      sinit = s;
+      sinit = toSymbolX ("__init", SCextern, 0, "Z");
+
+      StructDeclaration *sd = isStructDeclaration();
+      if (sd)
+	sinit->Salignment = sd->alignment;
     }
   if (! sinit->Stree && g.ofile != NULL)
     {

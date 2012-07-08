@@ -28,10 +28,11 @@ Symbol::Symbol ()
   this->Sflags = 0;
 
   this->Sdt = 0;
+  this->Salignment = 0;
 
   this->Stree = NULL_TREE;
-  this->ScontextDecl = 0;
-  this->SframeField = 0;
+  this->ScontextDecl = NULL_TREE;
+  this->SframeField = NULL_TREE;
 
   this->outputStage = NotStarted;
   this->frameInfo = NULL;
