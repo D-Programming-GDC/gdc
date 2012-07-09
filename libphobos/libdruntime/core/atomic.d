@@ -27,10 +27,6 @@ else version( D_InlineAsm_X86_64 )
     version = AsmX86_64;
     enum has64BitCAS = true;
 }
-else version( GNU )
-{
-    enum has64BitCAS = false;
-}
 
 private
 {
@@ -1027,24 +1023,60 @@ else version( GNU )
 
 
     bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
-        if( __traits( compiles, mixin( "*here = writeThis" ) ) )
+        if( !is(T == class) && !is(T U : U*) &&  __traits( compiles, { *here = writeThis; } ) )
     {
-        version( GNU_Need_Atomics )
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis )
+        if( is(T == class) && __traits( compiles, { *here = writeThis; } ) )
+    {
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis )
+        if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
+    {
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis )
+    {
+        T res = void;
+
+        static if (__traits(isFloating, T))
         {
-            synchronized
+            static if (T.sizeof == int.sizeof)
             {
-                if (*here == ifThis)
-                {
-                    if ((*here = writeThis) == writeThis)
-                        return true;
-                }
-                return false;
+                static assert(is(T : float));
+
+                res = cast(T) __sync_bool_compare_and_swap!int(cast(shared int*) here, *cast(int*) &ifThis, *cast(int*) &writeThis);
             }
+            else static if(T.sizeof == long.sizeof)
+            {
+                static assert(is(T : double));
+
+                res = cast(T) __sync_bool_compare_and_swap!long(cast(shared long*) here, *cast(long*) &ifThis, *cast(long*) &writeThis);
+            }
+            else
+            {
+                static assert(false, "Cannot atomically store 80-bit reals.");
+            }
+        }
+        else static if (is(T P == U*, U) || _passAsSizeT!T)
+        {
+            res = cast(T) __sync_bool_compare_and_swap!size_t(cast(shared size_t*) here, cast(size_t) ifThis, cast(size_t) writeThis);
+        }
+        else static if (T.sizeof == bool.sizeof)
+        {
+            res = __sync_bool_compare_and_swap!ubyte(cast(shared ubyte*) here, ifThis ? 1 : 0, writeThis ? 1 : 0) ? 1 : 0;
         }
         else
         {
-            return __sync_bool_compare_and_swap!(T)(here, ifThis, writeThis);
+            res = __sync_bool_compare_and_swap!T(here, cast(T)ifThis, cast(T)writeThis);
         }
+
+        return res is cast(T)ifThis;
     }
 
 
@@ -1099,59 +1131,43 @@ else version( GNU )
             const bool needsStoreBarrier = ms == msync.seq ||
                                                  isHoistOp!(ms);
         }
+
+        template _passAsSizeT( T )
+        {
+            // GCC currently does not support atomic load/store for pointers, thus
+            // we have to manually cast them to size_t.
+            static if (is(T P == U*, U)) // pointer
+            {
+                enum _passAsSizeT = true;
+            }
+            else static if (is(T == interface) || is (T == class))
+            {
+                enum _passAsSizeT = true;
+            }
+            else
+            {
+                enum _passAsSizeT = false;
+            }
+        }
     }
 
 
     HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val )
-    {
-        alias HeadUnshared!(T) S;
+    if(!__traits(isFloating, T)) {
+        static if (needsLoadBarrier!ms)
+            __sync_synchronize();
 
-        version( GNU_Need_Atomics )
-        {
-            static if( needsLoadBarrier!(ms) )
-            {
-                synchronized return cast(S) val;
-            }
-            else
-            {
-                return cast(S) val;
-            }
-        }
-        else
-        {
-            static if( needsLoadBarrier!(ms) )
-            {
-                __sync_synchronize();
-            }
-
-            return cast(S) val;
-        }
+        return cast(HeadUnshared!T) val;
     }
 
 
     void atomicStore(msync ms = msync.seq, T, V1)( ref shared T val, V1 newval )
-        if( __traits( compiles, mixin( "val = newval" ) ) )
+        if( __traits( compiles, { val = newval; } ) )
     {
-        version( GNU_Need_Atomics )
-        {
-            static if( needsStoreBarrier!(ms) )
-            {
-                synchronized val = newval;
-            }
-            else
-            {
-                val = newval;
-            }
-        }
-        else
-        {
-            static if( needsLoadBarrier!(ms) )
-            {
-                __sync_synchronize();
-            }
+        static if (needsLoadBarrier!ms)
+            __sync_synchronize();
 
-            val = newval;
-        }
+        val = newval;
     }
 }
 

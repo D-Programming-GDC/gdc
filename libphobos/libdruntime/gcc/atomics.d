@@ -74,7 +74,14 @@ mixin(__sync_op_and!("nand", "fetch"));
  */
 bool __sync_bool_compare_and_swap(T)(shared(T)* ptr, const T oldval, const T newval)
 {
-    static if (T.sizeof == byte.sizeof)
+    static if (is(T == class))
+    {
+        version (D_LP64)
+            return __sync_bool_compare_and_swap_8(cast(ulong*) ptr, cast(ulong)(cast(void*) oldval), cast(ulong)(cast(void*) newval));
+        else
+            return __sync_bool_compare_and_swap_4(cast(uint*) ptr, cast(uint)(cast(void*) oldval), cast(uint)(cast(void*) newval));
+    }
+    else static if (T.sizeof == byte.sizeof)
         return __sync_bool_compare_and_swap_1(cast(void*) ptr, oldval, newval);
     else static if (T.sizeof == short.sizeof)
         return __sync_bool_compare_and_swap_2(cast(void*) ptr, oldval, newval);
@@ -88,6 +95,13 @@ bool __sync_bool_compare_and_swap(T)(shared(T)* ptr, const T oldval, const T new
 
 T __sync_val_compare_and_swap(T)(shared(T)* ptr, const T oldval, const T newval)
 {
+    static if (is(T == class))
+    {
+        version (D_LP64)
+            return cast(T)cast(void*)__sync_val_compare_and_swap_8(cast(ulong*) ptr, cast(ulong)(cast(void*) oldval), cast(ulong)(cast(void*) newval));
+        else
+            return cast(T)cast(void*)__sync_val_compare_and_swap_4(cast(uint*) ptr, cast(uint)(cast(void*) oldval), cast(uint)(cast(void*) newval));
+    }
     static if (T.sizeof == byte.sizeof)
         return __sync_val_compare_and_swap_1(cast(void*) ptr, oldval, newval);
     else static if (T.sizeof == short.sizeof)
