@@ -306,10 +306,10 @@ struct IRState : IRBase
   static tree buildCall (tree type, tree callee, tree args);
   static tree buildCall (tree callee, int n_args, ...);
 
-  static TemplateEmission emitTemplates;
-  static bool splitDynArrayVarArgs;
-  static bool useInlineAsm;
-  static bool useBuiltins;
+  TemplateEmission emitTemplates;
+  bool splitDynArrayVarArgs;
+  bool useBuiltins;
+  bool stdInc;
 
   // Variables that are in scope that will need destruction later
   static VarDeclarations *varsInScope;

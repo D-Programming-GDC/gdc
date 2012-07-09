@@ -104,7 +104,7 @@ D d: $(D_COMPILER_NAME)$(exeext) d/pkgvars
 # Tell GNU make to ignore these if they exist.
 .PHONY: D d
 
-D_BORROWED_C_OBJS = attribs.o c-family/stub-objc.o prefix.o
+D_BORROWED_C_OBJS = attribs.o
 D_EXTRA_LIBS = $(BACKENDLIBS)
 D_EXTRA_SPEC_LIBS = libcommon-target.a
 

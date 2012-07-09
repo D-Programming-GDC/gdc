@@ -186,10 +186,9 @@ struct lang_decl *build_d_decl_lang_specific (Declaration *d);
 tree d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers);
 
 /* In d-incpath.cc */
-extern bool std_inc;
 extern const char *iprefix;
 extern const char *multilib_dir;
-void add_import_paths (void);
+void add_import_paths (bool stdinc);
 void add_phobos_versyms (void);
 
 #endif

@@ -26,7 +26,6 @@
 #include "cond.h"
 
 /* Global options removed from d-lang.cc */
-bool std_inc;
 const char *iprefix = NULL;
 const char *multilib_dir = NULL;
 
@@ -152,10 +151,10 @@ add_file_path (char *path)
 
 
 void
-add_import_paths (void)
+add_import_paths (bool stdinc)
 {
   // %%TODO: front or back?
-  if (std_inc)
+  if (stdinc)
     {
       char *phobos_dir = prefixed_path (D_PHOBOS_DIR);
       char *target_dir = prefixed_path (D_PHOBOS_TARGET_DIR);

@@ -71,10 +71,6 @@ fdump-source
 D RejectNegative
 Dump decoded UTF-8 text and source from HTML
 
-fd-inline-asm
-D
-Enable the use of assembly code in D_InlineAsm version blocks.
-
 fd-verbose
 D
 Print information about D language processing to stdout
@@ -137,6 +133,10 @@ Enforce property syntax
 frelease
 D
 Compile release version
+
+fsplit-dynamic-arrays
+D
+Split dynamic arrays into length and pointer when passing to functions.
 
 funittest
 D

@@ -319,7 +319,8 @@ d_bi_init (void)
 void
 d_bi_builtin_func (tree decl)
 {
-  bi_fn_list.cons (NULL_TREE, decl);
+  if (gen.useBuiltins)
+    bi_fn_list.cons (NULL_TREE, decl);
 }
 
 

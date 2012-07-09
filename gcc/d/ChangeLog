@@ -1,3 +1,26 @@
+2012-07-10  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* Make-lang.in: Remove unused borrowed objects.
+	* d-builtins2.cc(d_bi_builtin_func): Don't add builtin if
+	-fno-builtin was given.
+	* d-codegen.cc(IRState::emitTemplates): Remove static declaration.
+	(IRState::splitDynArrayVarArgs): Likewise.
+	(IRState::useInlineAsm): Likewise.
+	(IRState::useBuiltins): Likewise.
+	(d_gcc_force_templates): Update to use global gen.
+	* d-codegen.h(emitTemplates): Remove static attribute.
+	(splitDynArrayVarArgs): Likewise.
+	(useBuiltins): Likewise.
+	(useInlineAsm): Remove member.
+	(stdInc): Define new member.
+	* d-incpath.cc(std_inc): Remove global.
+	(add_import_paths): Update function signature.
+	* d-lang.cc(d_init_options): Default splitDynArrayVarArgs to false.
+	(d_init): Update call to add_import_paths.
+	(d_handle_option): Remove OPT_fd_inline_asm, add
+	OPT_fsplit_dynamic_arrays.
+	* lang.opt: Likewise.
+
 2012-07-08  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-builtins2.cc(d_gcc_type_align): Update function signature. Use

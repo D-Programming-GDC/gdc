@@ -124,11 +124,10 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.fileImppath = new Strings();
 
   // extra D-specific options
-  gen.splitDynArrayVarArgs = true;
+  gen.splitDynArrayVarArgs = false;
   gen.emitTemplates = TEnormal;
-  gen.useInlineAsm = true;
   gen.useBuiltins = true;
-  std_inc = true;
+  gen.stdInc = true;
 }
 
 /* Initialize options structure OPTS.  */
@@ -307,7 +306,7 @@ d_init (void)
   VersionCondition::addPredefinedGlobalIdent ("all");
 
   /* Insert all library-configured identifiers and import paths.  */
-  add_import_paths();
+  add_import_paths(gen.stdInc);
   add_phobos_versyms();
 
   return 1;
@@ -353,6 +352,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 		 const struct cl_option_handlers *handlers ATTRIBUTE_UNUSED)
 {
   enum opt_code code = (enum opt_code) scode;
+  bool result = true;
   int level;
 
   switch (code)
@@ -424,10 +424,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fdump_source:
       global.params.dump_source = value;
-      break;
-
-    case OPT_fd_inline_asm:
-      gen.useInlineAsm = value;
       break;
 
     case OPT_fd_verbose:
@@ -524,6 +520,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useSwitchError = ! value;
       break;
 
+    case OPT_fsplit_dynamic_arrays:
+      gen.splitDynArrayVarArgs = value;
+      break;
+
     case OPT_funittest:
       global.params.useUnitTests = value;
       break;
@@ -566,7 +566,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_nostdinc:
-      std_inc = false;
+      gen.stdInc = false;
       break;
 
     case OPT_Wall:
@@ -585,7 +585,8 @@ d_handle_option (size_t scode, const char *arg, int value,
     default:
       break;
     }
-  return 1;
+
+  return result;
 }
 
 bool

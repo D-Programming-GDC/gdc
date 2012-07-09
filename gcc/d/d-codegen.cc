@@ -27,10 +27,6 @@
 
 GlobalValues g;
 IRState gen;
-TemplateEmission IRState::emitTemplates;
-bool IRState::splitDynArrayVarArgs;
-bool IRState::useInlineAsm;
-bool IRState::useBuiltins;
 
 Module *IRState::builtinsModule = 0;
 Module *IRState::intrinsicModule = 0;
@@ -46,8 +42,7 @@ VarDeclarations *IRState::varsInScope;
 bool
 d_gcc_force_templates (void)
 {
-  return IRState::emitTemplates == TEprivate ||
-    IRState::emitTemplates == TEall;
+  return gen.emitTemplates == TEprivate || gen.emitTemplates == TEall;
 }
 
 void
@@ -93,7 +88,7 @@ IRState::declContext (Dsymbol *d_sym)
     {
       if (d_sym->isFuncDeclaration())
 	{
-	  // 3.3.x (others?) dwarf2out chokes without this check... (output_pubnames)
+	  // dwarf2out chokes without this check... (output_pubnames)
 	  FuncDeclaration *f = orig_sym->isFuncDeclaration();
 	  if (f && ! gen.functionNeedsChain (f))
 	    return NULL_TREE;
@@ -190,6 +185,8 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
     }
 }
 
+/* Return an undeclared local temporary of type TYPE.  */
+
 tree
 IRState::localVar (tree t_type)
 {
@@ -214,6 +211,7 @@ IRState::exprVar (tree t_type)
   DECL_CONTEXT (t_decl) = getLocalContext();
   DECL_ARTIFICIAL (t_decl) = 1;
   DECL_IGNORED_P (t_decl) = 1;
+  layout_decl (t_decl, 0);
   return t_decl;
 }
 
