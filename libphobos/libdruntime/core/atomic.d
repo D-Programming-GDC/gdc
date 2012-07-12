@@ -1042,7 +1042,7 @@ else version( GNU )
 
     private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis )
     {
-        T res = void;
+        bool res = void;
 
         static if (__traits(isFloating, T))
         {
@@ -1050,13 +1050,13 @@ else version( GNU )
             {
                 static assert(is(T : float));
 
-                res = cast(T) __sync_bool_compare_and_swap!int(cast(shared int*) here, *cast(int*) &ifThis, *cast(int*) &writeThis);
+                res = __sync_bool_compare_and_swap!int(cast(shared int*) here, *cast(int*) &ifThis, *cast(int*) &writeThis);
             }
             else static if(T.sizeof == long.sizeof)
             {
                 static assert(is(T : double));
 
-                res = cast(T) __sync_bool_compare_and_swap!long(cast(shared long*) here, *cast(long*) &ifThis, *cast(long*) &writeThis);
+                res = __sync_bool_compare_and_swap!long(cast(shared long*) here, *cast(long*) &ifThis, *cast(long*) &writeThis);
             }
             else
             {
@@ -1065,7 +1065,7 @@ else version( GNU )
         }
         else static if (is(T P == U*, U) || _passAsSizeT!T)
         {
-            res = cast(T) __sync_bool_compare_and_swap!size_t(cast(shared size_t*) here, cast(size_t) ifThis, cast(size_t) writeThis);
+            res = __sync_bool_compare_and_swap!size_t(cast(shared size_t*) here, cast(size_t) ifThis, cast(size_t) writeThis);
         }
         else static if (T.sizeof == bool.sizeof)
         {
@@ -1076,7 +1076,7 @@ else version( GNU )
             res = __sync_bool_compare_and_swap!T(here, cast(T)ifThis, cast(T)writeThis);
         }
 
-        return res is cast(T)ifThis;
+        return res;
     }
 
 
