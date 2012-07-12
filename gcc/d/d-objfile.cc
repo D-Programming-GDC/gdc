@@ -223,7 +223,8 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
       if (! TREE_PUBLIC (decl_tree) ||
 	  (TREE_CODE (decl_tree) == FUNCTION_DECL &&
 	   DECL_CONTEXT (decl_tree) != NULL_TREE &&
-	   D_DECL_STATIC_CHAIN (decl_tree)))
+	   D_DECL_STATIC_CHAIN (decl_tree) == 1 &&
+	   D_DECL_IS_CONTRACT (decl_tree) == 0))
 	return;
     }
 
@@ -760,6 +761,8 @@ ObjectFile::outputThunk (tree thunk_decl, tree target_decl, int offset)
       DECL_INITIAL (thunk_decl) = NULL_TREE;
       DECL_EXTERNAL (thunk_decl) = 1;
       TREE_ASM_WRITTEN (thunk_decl) = 0;
+      TREE_PRIVATE (thunk_decl) = 1;
+      TREE_PUBLIC (thunk_decl) = 0;
       decl_attributes (&thunk_decl, attrs, 0);
 
       rest_of_decl_compilation (thunk_decl, 1, 0);

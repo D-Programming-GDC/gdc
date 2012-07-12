@@ -568,6 +568,7 @@ FuncDeclaration::toSymbol (void)
 	  // So are ensure and require contracts.
 	  if (ident == Id::ensure || ident == Id::require)
 	    {
+	      D_DECL_IS_CONTRACT (fndecl) = 1;
 	      DECL_ARTIFICIAL (fndecl) = 1;
 	      TREE_PUBLIC (fndecl) = 1;
 	    }
@@ -656,10 +657,9 @@ FuncDeclaration::toThunkSymbol (int offset)
 
   if (! thunk->symbol)
     {
-      char *id;
-      static unsigned thunk_sym_label = 0;
-      ASM_FORMAT_PRIVATE_NAME (id, "___t", thunk_sym_label);
-      thunk_sym_label++;
+      unsigned sz = strlen (csym->Sident) + 14;
+      char *id = (char *) alloca (sz);
+      snprintf (id, sz, "_DT%"PRIuSIZE"%s", offset, csym->Sident);
       sthunk = symbol_calloc (id);
 
       tree target_func_decl = csym->Stree;
@@ -671,9 +671,9 @@ FuncDeclaration::toThunkSymbol (int offset)
       TREE_THIS_VOLATILE (thunk_decl) = TREE_THIS_VOLATILE (target_func_decl);
       TREE_NOTHROW (thunk_decl) = TREE_NOTHROW (target_func_decl);
 
-      /* D Thunks are private to the module they are defined in.  */
-      TREE_PUBLIC (thunk_decl) = 0;
-      TREE_PRIVATE (thunk_decl) = 1;
+      /* Thunks inherit the public/private access of the function they are targetting.  */
+      TREE_PUBLIC (thunk_decl) = TREE_PUBLIC (target_func_decl);
+      TREE_PRIVATE (thunk_decl) = TREE_PRIVATE (target_func_decl);
       DECL_EXTERNAL (thunk_decl) = 0;
 
       /* Thunks are always addressable.  */
@@ -685,11 +685,11 @@ FuncDeclaration::toThunkSymbol (int offset)
       DECL_VISIBILITY (thunk_decl) = DECL_VISIBILITY (target_func_decl);
       DECL_VISIBILITY_SPECIFIED (thunk_decl)
 	= DECL_VISIBILITY_SPECIFIED (target_func_decl);
-      //needed on some targets to avoid "causes a section type conflict"
+      /* Needed on some targets to avoid "causes a section type conflict".  */
       D_DECL_ONE_ONLY (thunk_decl) = D_DECL_ONE_ONLY (target_func_decl);
+      DECL_COMDAT (thunk_decl) = DECL_COMDAT (target_func_decl);
       DECL_COMDAT_GROUP (thunk_decl) = DECL_COMDAT_GROUP (target_func_decl);
-      if (D_DECL_ONE_ONLY (thunk_decl))
-	g.ofile->makeDeclOneOnly (thunk_decl);
+      DECL_WEAK (thunk_decl) = DECL_WEAK (target_func_decl);
 
       DECL_NAME (thunk_decl) = get_identifier (id);
       SET_DECL_ASSEMBLER_NAME (thunk_decl, DECL_NAME (thunk_decl));

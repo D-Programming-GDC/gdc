@@ -1,3 +1,15 @@
+2012-07-12  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-lang.h(D_DECL_IS_CONTRACT): New macro.
+	* d-decls.cc(FuncDeclaration::toSymbol): Mark in and out contracts as
+	D_DECL_IS_CONTRACT.
+	(FuncDeclaration::toThunkSymbol): D thunks no longer private by
+	design. Alter mangling of thunk symbols to be unique across the entire
+	compilation unit.
+	* d-objfile.cc(ObjectFile::makeDeclOneOnly): Catch public contracts to
+	mark them as one-only.
+	(ObjectFile::outputThunk): Mark weakref thunks as private.
+
 2012-07-10  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* Make-lang.in: Remove unused borrowed objects.
