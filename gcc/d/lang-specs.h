@@ -16,22 +16,12 @@
    <http://www.gnu.org/licenses/>.
 */
 
-#ifndef D_D_SPEC
-#define D_D_SPEC 0
-#endif
-
 /* %{!M} probably doesn't make sense because we would need
    to do that -- -MD and -MMD doesn't sound like a plan for D.... */
 
 /* %(d_options) ? */
 
 #if D_DRIVER_ONLY
-{".html", "@d", 0, 1, 0 },
-{".HTML", "@d", 0, 1, 0 },
-{".htm", "@d", 0, 1, 0 },
-{".HTM", "@d", 0, 1, 0 },
-{".xhtml", "@d", 0, 1, 0 },
-{".XHTML", "@d", 0, 1, 0 },
 {".d", "@d", 0, 1, 0 },
 {".D", "@d", 0, 1, 0 },
 {".dd", "@d", 0, 1, 0 },
@@ -40,7 +30,7 @@
 {".DI", "@d", 0, 1, 0 },
 {"@d",
   "%{!E:cc1d %i %(cc1_options) %(cc1d) %I %{nostdinc*} %{+e*} %{I*} %{J*}\
-    %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC, 1, 0 },
+    %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", 0, 1, 0 },
 #else
 {".d", "@d", 0, 1, 0 },
 {".D", "@d", 0, 1, 0 },
@@ -48,6 +38,6 @@
 {".DI", "@d", 0, 1, 0 },
 {"@d",
   "%{!E:cc1d %i %(cc1_options) %(cc1d) %I %{nostdinc*} %{+e*} %{I*} %{J*}\
-    %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", D_D_SPEC, 1, 0 },
+    %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", 0, 1, 0 },
 #endif
 

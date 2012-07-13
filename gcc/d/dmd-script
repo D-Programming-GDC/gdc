@@ -469,10 +469,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         errorExit "unrecognized switch '$arg'";
     } elsif ( $arg =~ m/^.+\.d$/i ||
               $arg =~ m/^.+\.dd$/i ||
-              $arg =~ m/^.+\.di$/i ||
-              $arg =~ m/^.+\.htm$/i ||
-              $arg =~ m/^.+\.html$/i ||
-              $arg =~ m/^.+\.xhtml$/i) {
+              $arg =~ m/^.+\.di$/i) {
         addSourceFile $arg;
     } elsif ( $arg =~ m/^.+\.ddoc/i ) {
         push @out, "-fdoc-inc=$arg";
