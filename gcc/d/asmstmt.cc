@@ -128,7 +128,7 @@ ExtAsmStatement::semantic (Scope *sc)
 }
 
 void
-ExtAsmStatement::toCBuffer (OutBuffer *buf)
+ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
   buf->writestring ("gcc asm { ");
   if (insnTemplate)
