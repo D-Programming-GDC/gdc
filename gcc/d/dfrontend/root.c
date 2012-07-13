@@ -1555,7 +1555,7 @@ void File::stat()
 void File::checkoffset(size_t offset, size_t nbytes)
 {
     if (offset > len || offset + nbytes > len)
-        error("Corrupt file '%s': offset x%"PRIxSIZE" off end of file",toChars(),offset);
+        error("Corrupt file '%s': offset x%llx off end of file",toChars(),offset);
 }
 
 char *File::toChars()
@@ -1824,7 +1824,7 @@ void OutBuffer::align(unsigned size)
 // The compiler shipped with Visual Studio 2005 (and possible
 // other versions) does not support C99 printf format specfiers
 // such as %z and %j
-#if _MSC_VER
+#if 0 && _MSC_VER
 using std::string;
 using std::wstring;
 
@@ -1843,7 +1843,7 @@ search_and_replace(S& str, const S& what, const S& replacement)
 #define WORKAROUND_C99_SPECIFIERS_BUG(S,tmp,f) \
     S tmp = f;                                 \
     search_and_replace(fmt, S("%z"), S("%l")); \
-    search_and_replace(fmt, S("%j"), S("%i")); \
+    search_and_replace(fmt, S("%j"), S("%l")); \
     f = tmp.c_str();
 #else
 #define WORKAROUND_C99_SPECIFIERS_BUG(S,tmp,f)

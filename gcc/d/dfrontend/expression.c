@@ -825,7 +825,7 @@ Type *functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
     size_t nparams = Parameter::dim(tf->parameters);
 
     if (nargs > nparams && tf->varargs == 0)
-    {   error(loc, "expected %"PRIuSIZE" arguments, not %"PRIuSIZE" for non-variadic function type %s", nparams, nargs, tf->toChars());
+    {   error(loc, "expected %zu arguments, not %llu for non-variadic function type %s", nparams, (ulonglong)nargs, tf->toChars());
         return Type::terror;
     }
 
@@ -877,7 +877,7 @@ Type *functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
                 {
                     if (tf->varargs == 2 && i + 1 == nparams)
                         goto L2;
-                    error(loc, "expected %"PRIuSIZE" function arguments, not %"PRIuSIZE, nparams, nargs);
+                    error(loc, "expected %llu function arguments, not %llu", (ulonglong)nparams, (ulonglong)nargs);
                     return Type::terror;
                 }
                 arg = p->defaultArg;
@@ -906,7 +906,7 @@ Type *functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
                     if (p->type->nextOf() && arg->implicitConvTo(p->type->nextOf()) >= m)
                         goto L2;
                     else if (nargs != nparams)
-                    {   error(loc, "expected %"PRIuSIZE" function arguments, not %"PRIuSIZE, nparams, nargs);
+                    {   error(loc, "expected %llu function arguments, not %llu", (ulonglong)nparams, (ulonglong)nargs);
                         return Type::terror;
                     }
                     goto L1;
@@ -1988,7 +1988,7 @@ char *IntegerExp::toChars()
 #else
     static char buffer[sizeof(value) * 3 + 1];
 
-    sprintf(buffer, "%"PRIdMAX, value);
+    sprintf(buffer, "%lld", value);
     return buffer;
 #endif
 }
@@ -2184,12 +2184,12 @@ void IntegerExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
                 break;
 
             case Tint64:
-                buf->printf("%"PRIdMAX"L", v);
+                buf->printf("%lldL", v);
                 break;
 
             case Tuns64:
             L4:
-                buf->printf("%"PRIuMAX"LU", v);
+                buf->printf("%lluLU", v);
                 break;
 
             case Tbool:
@@ -2222,15 +2222,15 @@ void IntegerExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         }
     }
     else if (v & 0x8000000000000000LL)
-        buf->printf("0x%"PRIxMAX, v);
+        buf->printf("0x%llx", v);
     else
-        buf->printf("%"PRIdMAX, v);
+        buf->printf("%lld", v);
 }
 
 void IntegerExp::toMangleBuffer(OutBuffer *buf)
 {
     if ((sinteger_t)value < 0)
-        buf->printf("N%"PRIdMAX, -value);
+        buf->printf("N%lld", -value);
     else
     {
         /* This is an awful hack to maintain backwards compatibility.
@@ -2242,7 +2242,7 @@ void IntegerExp::toMangleBuffer(OutBuffer *buf)
         if (buf->offset > 0 && isdigit(buf->data[buf->offset - 1]))
             buf->writeByte('i');
 
-        buf->printf("%"PRIdMAX, value);
+        buf->printf("%lld", value);
     }
 }
 
@@ -3826,7 +3826,7 @@ void ArrayLiteralExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 void ArrayLiteralExp::toMangleBuffer(OutBuffer *buf)
 {
     size_t dim = elements ? elements->dim : 0;
-    buf->printf("A%"PRIuSIZE, dim);
+    buf->printf("A%u", dim);
     for (size_t i = 0; i < dim; i++)
     {   Expression *e = elements->tdata()[i];
         e->toMangleBuffer(buf);
@@ -4858,7 +4858,7 @@ void SymOffExp::checkEscape()
 void SymOffExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     if (offset)
-        buf->printf("(& %s+%"PRIuTSIZE")", var->toChars(), offset);
+        buf->printf("(& %s+%u)", var->toChars(), offset);
     else
         buf->printf("& %s", var->toChars());
 }
@@ -9236,7 +9236,7 @@ Lagain:
         }
         else
         {
-            error("string slice [%"PRIuMAX" .. %"PRIuMAX"] is out of bounds", i1, i2);
+            error("string slice [%llu .. %llu] is out of bounds", i1, i2);
             goto Lerr;
         }
         return e;
@@ -9712,8 +9712,8 @@ Expression *IndexExp::semantic(Scope *sc)
             }
             else
             {
-                error("array index [%"PRIuMAX"] is outside array bounds [0 .. %"PRIuSIZE"]",
-                        index, length);
+                error("array index [%llu] is outside array bounds [0 .. %llu]",
+                        index, (ulonglong)length);
                 e = e1;
             }
             break;

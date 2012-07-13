@@ -2190,7 +2190,7 @@ Lagain:
                     default:            assert(0);
                 }
                 const char *r = (op == TOKforeach_reverse) ? "R" : "";
-                int j = sprintf(fdname, "_aApply%s%.*s%"PRIdSIZE, r, 2, fntab[flag], dim);
+                int j = sprintf(fdname, "_aApply%s%.*s%llu", r, 2, fntab[flag], (ulonglong)dim);
                 assert(j < sizeof(fdname));
                 FuncDeclaration *fdapply = FuncDeclaration::genCfunc(Type::tindex, fdname,
                                                                      tn->arrayOf(), flde->type);

@@ -4649,10 +4649,8 @@ void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
         /* For "all" and "private" template modes, templates are always
            emitted.  Problem:  This picks up templates that aren't even
            needed in the current module. */
-        
         if (d_gcc_force_templates())
-        {
-            //fprintf(stderr, "\t0: adding to %s %s\n", sc->scopesym->kind(), sc->scopesym->toChars());
+        {   //fprintf(stderr, "\t0: adding to %s %s\n", sc->scopesym->kind(), sc->scopesym->toChars());
             objFileModule = d_gcc_get_output_module();
             a = objFileModule->members;
         }
@@ -4676,25 +4674,28 @@ void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
             //printf("\t1: adding to %s %s\n", scx->scopesym->kind(), scx->scopesym->toChars());
             a = scx->scopesym->members;
 #ifdef IN_GCC
+            Dsymbol * p = scx->scopesym;
+            while (p)
             {
-                Dsymbol * p = scx->scopesym;
-                Module * m;
-                TemplateInstance * i;
-
-                while (p) {
-                    if ( (i = p->isTemplateInstance()) ) {
-                        if (i->objFileModule) {
-                            objFileModule = i->objFileModule;
-                            break;
-                        }
-                    } else if ( (m = p->isModule()) ) {
-                        objFileModule = m; // %% importedFrom ?
+                TemplateInstance *i = p->isTemplateInstance();
+                Module *m = p->isModule();
+                if (i != NULL)
+                {
+                    if (i->objFileModule)
+                    {
+                        objFileModule = i->objFileModule;
                         break;
                     }
-                    p = p->parent;
                 }
-                // fprintf(stderr, "\t1: adding %s to module %s via %s %s\n", tempdecl->toChars(), objFileModule?objFileModule->toChars():"", sc->scopesym->kind(), sc->scopesym->toChars());
+                else if (m != NULL)
+                {
+                    objFileModule = m; // %% importedFrom ?
+                    break;
+                }
+                p = p->parent;
             }
+            //fprintf(stderr, "\t1: adding %s to module %s via %s %s\n", tempdecl->toChars(),
+            //        objFileModule ? objFileModule->toChars() : "", sc->scopesym->kind(), sc->scopesym->toChars());
 #endif
         }
         else
@@ -5415,7 +5416,7 @@ Identifier *TemplateInstance::genIdent(Objects *args)
 
     //printf("TemplateInstance::genIdent('%s')\n", tempdecl->ident->toChars());
     char *id = tempdecl->ident->toChars();
-    buf.printf("__T%"PRIuSIZE"%s", strlen(id), id);
+    buf.printf("__T%llu%s", (ulonglong)strlen(id), id);
     for (size_t i = 0; i < args->dim; i++)
     {   Object *o = args->tdata()[i];
         Type *ta = isType(o);
@@ -5512,7 +5513,7 @@ Identifier *TemplateInstance::genIdent(Objects *args)
              * Unfortunately, fixing this ambiguity will break existing binary
              * compatibility and the demanglers, so we'll leave it as is.
              */
-            buf.printf("%"PRIuSIZE"%s", strlen(p), p);
+            buf.printf("%llu%s", (ulonglong)strlen(p), p);
         }
         else if (va)
         {

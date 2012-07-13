@@ -73,14 +73,14 @@ SymbolDeclaration::toSymbol (void)
 Symbol *
 Dsymbol::toSymbolX (const char *prefix, int sclass, type *t, const char *suffix)
 {
-  Symbol *s;
   char *n = mangle();
-  size_t sz = (2 + strlen (n) + sizeof (size_t) * 3 + strlen (prefix) + strlen (suffix) + 1);
+  unsigned nlen = strlen (n);
+
+  size_t sz = (2 + nlen + sizeof (size_t) * 3 + strlen (prefix) + strlen (suffix) + 1);
   char *id = (char *) alloca (sz);
 
-  snprintf (id, sz, "_D%s%"PRIuSIZE"%s%s", n, strlen (prefix), prefix, suffix);
-  s = symbol_name (id, sclass, t);
-  return s;
+  snprintf (id, sz, "_D%s%u%s%s", n, strlen (prefix), prefix, suffix);
+  return symbol_name (id, sclass, t);
 }
 
 /*************************************
@@ -659,7 +659,7 @@ FuncDeclaration::toThunkSymbol (int offset)
     {
       unsigned sz = strlen (csym->Sident) + 14;
       char *id = (char *) alloca (sz);
-      snprintf (id, sz, "_DT%"PRIuSIZE"%s", offset, csym->Sident);
+      snprintf (id, sz, "_DT%u%s", offset, csym->Sident);
       sthunk = symbol_calloc (id);
 
       tree target_func_decl = csym->Stree;

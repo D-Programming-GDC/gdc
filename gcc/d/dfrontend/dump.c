@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, December 2006
-*/
-
 #include <stdio.h>
 #include <ctype.h>
 #include <assert.h>
@@ -61,7 +55,7 @@ void Expression::dump(int i)
 void IntegerExp::dump(int i)
 {
     indent(i);
-    printf("%p %"PRIdMAX" type=%s\n", this, (intmax_t)value, type_print(type));
+    printf("%p %lld type=%s\n", this, (ulonglong)value, type_print(type));
 }
 
 void IdentifierExp::dump(int i)

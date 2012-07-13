@@ -372,24 +372,6 @@ typedef longdouble real_t;
 #include "d-gcc-complex_t.h"
 #endif
 
-#if __MSVCRT__
-#define PRIdSIZE "Id"
-#define PRIuSIZE "Iu"
-#define PRIxSIZE "Ix"
-#elif __NEWLIB_H__
-#define PRIdSIZE "d"
-#define PRIuSIZE "u"
-#define PRIxSIZE "x"
-#else
-#define PRIdSIZE "zd"
-#define PRIuSIZE "zu"
-#define PRIxSIZE "zx"
-#endif
-
-#define PRIdTSIZE PRIdMAX
-#define PRIuTSIZE PRIuMAX
-#define PRIxTSIZE PRIxMAX
-
 struct Module;
 
 //typedef unsigned Loc;         // file location

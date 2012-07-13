@@ -387,7 +387,7 @@ Expression *AddrExp::optimize(int result)
                 TypeSArray *ts = (TypeSArray *)ve->type;
                 dinteger_t dim = ts->dim->toInteger();
                 if (index < 0 || index >= dim)
-                    error("array index %"PRIdMAX" is out of bounds [0..%"PRIdMAX"]", index, dim);
+                    error("array index %lld is out of bounds [0..%lld]", index, dim);
                 e = new SymOffExp(loc, ve->var, index * ts->nextOf()->size());
                 e->type = type;
                 return e;
@@ -685,7 +685,7 @@ Expression *BinExp::optimize(int result)
             dinteger_t i2 = e2->toInteger();
             d_uns64 sz = e1->type->size() * 8;
             if (i2 < 0 || i2 >= sz)
-            {   error("shift assign by %"PRIdMAX" is outside the range 0..%"PRIuSIZE, i2, sz - 1);
+            {   error("shift assign by %lld is outside the range 0..%llu", i2, (ulonglong)sz - 1);
                 e2 = new IntegerExp(0);
             }
         }
@@ -780,7 +780,7 @@ Expression *shift_optimize(int result, BinExp *e, Expression *(*shift)(Type *, E
         dinteger_t i2 = e->e2->toInteger();
         d_uns64 sz = e->e1->type->size() * 8;
         if (i2 < 0 || i2 >= sz)
-        {   e->error("shift by %"PRIdMAX" is outside the range 0..%"PRIuSIZE, i2, sz - 1);
+        {   e->error("shift by %lld is outside the range 0..%llu", i2, (ulonglong)sz - 1);
             e->e2 = new IntegerExp(0);
         }
         if (e->e1->isConst() == 1)

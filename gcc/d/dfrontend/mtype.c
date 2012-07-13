@@ -271,7 +271,7 @@ void Type::init()
 
     for (size_t i = 0; i < TMAX; i++)
     {   if (!mangleChar[i])
-            fprintf(stdmsg, "ty = %"PRIdSIZE"\n", i);
+            fprintf(stdmsg, "ty = %llu\n", (ulonglong)i);
         assert(mangleChar[i]);
     }
 
@@ -3719,7 +3719,7 @@ d_uns64 TypeSArray::size(Loc loc)
     return sz;
 
 Loverflow:
-    error(loc, "index %"PRIdMAX" overflow for static array", sz);
+    error(loc, "index %lld overflow for static array", sz);
     return 1;
 }
 
@@ -3789,7 +3789,7 @@ void TypeSArray::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
             sc = sc->pop();
 
             if (d >= td->objects->dim)
-            {   error(loc, "tuple index %"PRIuMAX" exceeds length %u", d, td->objects->dim);
+            {   error(loc, "tuple index %llu exceeds length %u", d, td->objects->dim);
                 goto Ldefault;
             }
             Object *o = td->objects->tdata()[(size_t)d];
@@ -3849,7 +3849,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
         uinteger_t d = dim->toUInteger();
 
         if (d >= sd->objects->dim)
-        {   error(loc, "tuple index %"PRIuMAX" exceeds %u", d, sd->objects->dim);
+        {   error(loc, "tuple index %llu exceeds %u", d, sd->objects->dim);
             return Type::terror;
         }
         Object *o = sd->objects->tdata()[(size_t)d];
@@ -3916,7 +3916,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
             if (n && n2 / n != d2)
             {
               Loverflow:
-                error(loc, "index %"PRIdMAX" overflow for static array", d1);
+                error(loc, "index %lld overflow for static array", d1);
                 goto Lerror;
             }
         }
@@ -3930,7 +3930,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
             uinteger_t d = dim->toUInteger();
 
             if (d >= tt->arguments->dim)
-            {   error(loc, "tuple index %"PRIuMAX" exceeds %u", d, tt->arguments->dim);
+            {   error(loc, "tuple index %llu exceeds %u", d, tt->arguments->dim);
                 goto Lerror;
             }
             Parameter *arg = tt->arguments->tdata()[(size_t)d];
@@ -3971,7 +3971,7 @@ void TypeSArray::toDecoBuffer(OutBuffer *buf, int flag)
 {
     Type::toDecoBuffer(buf, flag);
     if (dim)
-        buf->printf("%"PRIuMAX, dim->toInteger());
+        buf->printf("%llu", dim->toInteger());
     if (next)
         /* Note that static arrays are value types, so
          * for a parameter, propagate the 0x100 to the next
@@ -8903,7 +8903,7 @@ Type *TypeSlice::semantic(Loc loc, Scope *sc)
     uinteger_t i2 = upr->toUInteger();
 
     if (!(i1 <= i2 && i2 <= tt->arguments->dim))
-    {   error(loc, "slice [%"PRIuMAX"..%"PRIuMAX"] is out of range of [0..%u]", i1, i2, tt->arguments->dim);
+    {   error(loc, "slice [%llu..%llu] is out of range of [0..%u]", i1, i2, tt->arguments->dim);
         return Type::terror;
     }
 
@@ -8949,7 +8949,7 @@ void TypeSlice::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol 
             sc = sc->pop();
 
             if (!(i1 <= i2 && i2 <= td->objects->dim))
-            {   error(loc, "slice [%"PRIuMAX"u..%"PRIuMAX"u] is out of range of [0..%u]", i1, i2, td->objects->dim);
+            {   error(loc, "slice [%llu..%llu] is out of range of [0..%u]", i1, i2, td->objects->dim);
                 goto Ldefault;
             }
 

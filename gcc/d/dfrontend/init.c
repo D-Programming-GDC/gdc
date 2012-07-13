@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, December 2006
-*/
-
 #include <stdio.h>
 #include <assert.h>
 
@@ -470,7 +464,7 @@ void ArrayInitializer::addInit(Expression *index, Initializer *value)
 Initializer *ArrayInitializer::semantic(Scope *sc, Type *t, int needInterpret)
 {   unsigned i;
     unsigned length;
-    const uintmax_t amax = 0x80000000;
+    const unsigned amax = 0x80000000;
 
     //printf("ArrayInitializer::semantic(%s)\n", t->toChars());
     if (sem)                            // if semantic() already run
@@ -517,13 +511,13 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t, int needInterpret)
         dinteger_t edim = ((TypeSArray *)t)->dim->toInteger();
         if (dim > edim)
         {
-            error(loc, "array initializer has %"PRIuTSIZE" elements, but array length is %"PRIdMAX, dim, edim);
+            error(loc, "array initializer has %u elements, but array length is %lld", dim, edim);
             goto Lerr;
         }
     }
 
-    if ((uintmax_t) dim * t->nextOf()->size() >= amax)
-    {   error(loc, "array dimension %"PRIuTSIZE" exceeds max of %"PRIuMAX, dim, amax / t->nextOf()->size());
+    if ((unsigned long) dim * t->nextOf()->size() >= amax)
+    {   error(loc, "array dimension %u exceeds max of %u", dim, amax / t->nextOf()->size());
         goto Lerr;
     }
     return this;
