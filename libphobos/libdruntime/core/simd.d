@@ -34,6 +34,15 @@ template Vector(T)
 
 /* Handy aliases
  */
+alias Vector!(void[8])  void8;          ///
+alias Vector!(float[2])  float2;        ///
+alias Vector!(byte[8])  byte8;          ///
+alias Vector!(ubyte[8]) ubyte8;         ///
+alias Vector!(short[4])  short4;        ///
+alias Vector!(ushort[4]) ushort4;       ///
+alias Vector!(int[2])    int2;          ///
+alias Vector!(uint[2])   uint2;         ///
+
 alias Vector!(void[16])  void16;        ///
 alias Vector!(double[2]) double2;       ///
 alias Vector!(float[4])  float4;        ///
@@ -45,6 +54,18 @@ alias Vector!(int[4])    int4;          ///
 alias Vector!(uint[4])   uint4;         ///
 alias Vector!(long[2])   long2;         ///
 alias Vector!(ulong[2])  ulong2;        ///
+
+alias Vector!(void[32])   void32;        ///
+alias Vector!(double[4])  double4;       ///
+alias Vector!(float[8])   float8;        ///
+alias Vector!(byte[32])   byte32;        ///
+alias Vector!(ubyte[32])  ubyte32;       ///
+alias Vector!(short[16])  short16;       ///
+alias Vector!(ushort[16]) ushort16;      ///
+alias Vector!(int[8])     int8;          ///
+alias Vector!(uint[8])    uint8;         ///
+alias Vector!(long[4])    long4;         ///
+alias Vector!(ulong[4])   ulong4;        ///
 
 version( DigitalMars ): // Not in GDC
 
