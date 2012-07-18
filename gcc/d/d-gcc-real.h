@@ -60,6 +60,7 @@ struct real_t
   real_t (int v);
   real_t (d_uns64 v);
   real_t (d_int64 v);
+  real_t (double d);
   real_t& operator= (const real_t& r);
   real_t& operator= (int v);
   real_t operator+ (const real_t& r);

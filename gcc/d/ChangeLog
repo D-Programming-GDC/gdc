@@ -1,5 +1,9 @@
 2012-07-18  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-gcc-reah.cc(real_t::real_t): New overload for 'double' type.
+	(real_t::format): Change function type to int, return size of buffer
+	from function.
+	(real_t::formatHex): Likewise.
 	* d-builtins2.cc(d_gcc_magic_stdarg_check): Update signature, remove
 	check for is_c_std_arg.
 	(d_gcc_magic_stdarg_module): Likewise.

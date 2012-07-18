@@ -181,6 +181,13 @@ real_t::real_t (d_int64 v)
   REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Double));
 }
 
+real_t::real_t (double d)
+{
+  char buf[48];
+  snprintf(buf, sizeof (buf), "%lf", d);
+  real_from_string3 (&rv(), buf, machineMode (Double));
+}
+
 real_t &
 real_t::operator= (const real_t& r)
 {
@@ -474,17 +481,19 @@ real_t::isIdenticalTo (const real_t& r) const
   return REAL_VALUES_IDENTICAL (rv(), r.rv());
 }
 
-void
+int
 real_t::format (char *buf, unsigned buf_size) const
 {
   // %% restricting the precision of significant digits to 18.
   real_to_decimal (buf, &rv(), buf_size, 18, 1);
+  return strlen (buf);
 }
 
-void
+int
 real_t::formatHex (char *buf, unsigned buf_size) const
 {
   real_to_hexadecimal (buf, &rv(), buf_size, 0, 1);
+  return strlen (buf);
 }
 
 bool
