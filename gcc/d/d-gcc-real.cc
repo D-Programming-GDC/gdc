@@ -27,7 +27,6 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
-#define REAL_VALUE_NEGATE(X)  real_value_negate (&(X))
 
 static enum machine_mode
 machineMode (real_t::Mode mode)
@@ -67,13 +66,13 @@ real_t::init (void)
 
       /* .max:
 	 The largest representable value that's not infinity.  */
-      get_max_float (& rf, buf, sizeof (buf));
-      real_from_string (& p.maxval.rv(), buf);
+      get_max_float (&rf, buf, sizeof (buf));
+      real_from_string (&p.maxval.rv(), buf);
 
       /* .min, .min_normal:
 	 The smallest representable normalized value that's not 0.  */
       snprintf (buf, sizeof (buf), "0x1p%d", rf.emin - 1);
-      real_from_string (& p.minval.rv(), buf);
+      real_from_string (&p.minval.rv(), buf);
 
       /* .epsilon:
 	 The smallest increment to the value 1.  */
@@ -81,7 +80,7 @@ real_t::init (void)
 	snprintf (buf, sizeof (buf), "0x1p%d", rf.emin - rf.p);
       else
 	snprintf (buf, sizeof (buf), "0x1p%d", 1 - rf.p);
-      real_from_string (& p.epsilonval.rv(), buf);
+      real_from_string (&p.epsilonval.rv(), buf);
 
       /* .dig:
 	 The number of decimal digits of precision.  */
@@ -113,7 +112,7 @@ real_t
 real_t::parse (const char *str, Mode mode)
 {
   real_t r;
-  r.rv() = REAL_VALUE_ATOF (str, machineMode (mode));
+  real_from_string3 (&r.rv(), str, machineMode (mode));
   return r;
 }
 
@@ -121,7 +120,7 @@ real_t
 real_t::getnan (Mode mode)
 {
   real_t r;
-  real_nan (& r.rv(), "", 1, machineMode (mode));
+  real_nan (&r.rv(), "", 1, machineMode (mode));
   return r;
 }
 
@@ -130,7 +129,7 @@ real_t
 real_t::getsnan (Mode mode)
 {
   real_t r;
-  real_nan (& r.rv(), "", 0, machineMode (mode));
+  real_nan (&r.rv(), "", 0, machineMode (mode));
   return r;
 }
 
@@ -138,7 +137,7 @@ real_t
 real_t::getinfinity (void)
 {
   real_t r;
-  real_inf (& r.rv());
+  real_inf (&r.rv());
   return r;
 }
 
@@ -216,7 +215,7 @@ real_t
 real_t::operator- (void)
 {
   real_t x;
-  x.rv() = REAL_VALUE_NEGATE (rv());
+  x.rv() = real_value_negate (&rv());
   return x;
 }
 
@@ -247,7 +246,7 @@ real_t::operator% (const real_t& r)
   if (r.rv().cl == rvc_zero || REAL_VALUE_ISINF (rv()))
     {
       REAL_VALUE_TYPE rvt;
-      real_nan (& rvt, "", 1, machineMode (LongDouble));
+      real_nan (&rvt, "", 1, machineMode (LongDouble));
       return real_t (rvt);
     }
 
@@ -259,7 +258,7 @@ real_t::operator% (const real_t& r)
 
   // %% need to check for NaN?
   REAL_ARITHMETIC (q, RDIV_EXPR, rv(), r.rv());
-  real_arithmetic (& q, FIX_TRUNC_EXPR, &q, NULL);
+  real_arithmetic (&q, FIX_TRUNC_EXPR, &q, NULL);
   REAL_ARITHMETIC (q, MULT_EXPR, q, r.rv());
   REAL_ARITHMETIC (x, MINUS_EXPR, rv(), q);
 
@@ -342,7 +341,7 @@ real_t
 real_t::convert (Mode to_mode) const
 {
   real_t result;
-  real_convert (& result.rv(), machineMode (to_mode), &rv());
+  real_convert (&result.rv(), machineMode (to_mode), &rv());
   return result;
 }
 

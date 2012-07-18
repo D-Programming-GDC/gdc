@@ -338,9 +338,9 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
     }
 
   if (real_decl && real_decl->attributes)
-    decl_attributes (& decl_tree, gen.attributes (real_decl->attributes), 0);
+    decl_attributes (&decl_tree, gen.attributes (real_decl->attributes), 0);
   else if (DECL_ATTRIBUTES (decl_tree) != NULL)
-    decl_attributes (& decl_tree, DECL_ATTRIBUTES (decl_tree), 0);
+    decl_attributes (&decl_tree, DECL_ATTRIBUTES (decl_tree), 0);
 }
 
 void
@@ -602,7 +602,7 @@ ObjectFile::stripVarDecl (tree value)
 
 		  // need to VIEW_CONVERT?
 		  dt_t *dt = NULL;
-		  d_type->toDt (& dt);
+		  d_type->toDt (&dt);
 		  tree t = dt2tree (dt);
 		  TREE_CONSTANT (t) = 1;
 		  return t;

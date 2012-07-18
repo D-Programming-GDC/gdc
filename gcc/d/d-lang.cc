@@ -376,7 +376,7 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fdebug_:
       if (ISDIGIT (arg[0]))
 	{
-	  if (! parse_int (arg, & level))
+	  if (! parse_int (arg, &level))
 	    goto Lerror_d;
 	  DebugCondition::setGlobalLevel (level);
 	}
@@ -531,7 +531,7 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fversion_:
       if (ISDIGIT (arg[0]))
 	{
-	  if (! parse_int (arg, & level))
+	  if (! parse_int (arg, &level))
 	    goto Lerror_v;
 	  VersionCondition::setGlobalLevel (level);
 	}
@@ -1041,7 +1041,7 @@ d_parse_file (void)
   if (fonly_arg)
     g.ofile->modules.push (an_output_module);
   else
-    g.ofile->modules.append (& modules);
+    g.ofile->modules.append (&modules);
   g.irs = & gen; // needed for FuncDeclaration::toObjFile
 
   // Generate output files

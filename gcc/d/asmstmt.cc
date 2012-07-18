@@ -24,8 +24,8 @@
 #include "d-codegen.h"
 
 
-/* Build an asm-statement, whose components are a INSN_TMPL, some
-   OUTPUTS, some INPUTS and some CLOBBERS.  */
+// Build an asm-statement, whose components are a INSN_TMPL, some
+// OUTPUTS, some INPUTS and some CLOBBERS.
 
 tree
 d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
@@ -37,6 +37,8 @@ d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
   return t;
 }
 
+// Semantically analyze AsmStatement where SC is the scope.
+
 Statement *
 AsmStatement::semantic (Scope *sc)
 {
@@ -44,15 +46,23 @@ AsmStatement::semantic (Scope *sc)
   return Statement::semantic (sc);
 }
 
+// Build the intermediate representation of an AsmStatment.
+// Not used in GDC.
+
 void
 AsmStatement::toIR (IRState *)
 {
   sorry ("D inline assembler statements are not supported in GDC.");
 }
 
+// Construct an ExtAsmStatement, whose components are an INSNTEMPATE,
+// some ARGS, a list of all ARGNAMES used, and their ARGCONSTRAINTS,
+// the number of NOUTPUTARGS, and the list of CLOBBERS.
 
-ExtAsmStatement::ExtAsmStatement (Loc loc, Expression *insnTemplate, Expressions *args, Identifiers *argNames,
-				  Expressions *argConstraints, int nOutputArgs, Expressions *clobbers)
+ExtAsmStatement::ExtAsmStatement (Loc loc, Expression *insnTemplate,
+				  Expressions *args, Identifiers *argNames,
+				  Expressions *argConstraints, int nOutputArgs,
+				  Expressions *clobbers)
     : Statement (loc)
 {
   this->insnTemplate = insnTemplate;
@@ -63,84 +73,92 @@ ExtAsmStatement::ExtAsmStatement (Loc loc, Expression *insnTemplate, Expressions
   this->clobbers = clobbers;
 }
 
+// Create a copy of ExtAsmStatement.
+
 Statement *
 ExtAsmStatement::syntaxCopy (void)
 {
-  /* insnTemplate, argConstraints, and clobbers would be
-     semantically static in GNU C. */
   Expression *insnTemplate = this->insnTemplate->syntaxCopy();
   Expressions *args = Expression::arraySyntaxCopy (this->args);
-  // argNames is an array of identifiers
-  Expressions *argConstraints = Expression::arraySyntaxCopy (this->argConstraints);
+  Expressions *argConstraints
+    = Expression::arraySyntaxCopy (this->argConstraints);
   Expressions *clobbers = Expression::arraySyntaxCopy (this->clobbers);
-  return new ExtAsmStatement (loc, insnTemplate, args, argNames,
-			      argConstraints, nOutputArgs, clobbers);
+
+  return new ExtAsmStatement (this->loc, insnTemplate, args, this->argNames,
+			      argConstraints, this->nOutputArgs, clobbers);
 }
+
+// Semantically analyze ExtAsmStatement where SC is the scope of the statment.
+// Determines types, fold constants, etc.
 
 Statement *
 ExtAsmStatement::semantic (Scope *sc)
 {
-  insnTemplate = insnTemplate->semantic (sc);
-  insnTemplate = insnTemplate->optimize (WANTvalue);
+  this->insnTemplate->semantic (sc);
+  this->insnTemplate->optimize (WANTvalue);
 
   if (sc->func)
     {
       if (sc->func->setUnsafe())
-	error ("extended assembler not allowed in @safe function %s", sc->func->toChars());
+	error ("extended assembler not allowed in @safe function %s",
+	       sc->func->toChars());
     }
 
-  if (insnTemplate->op != TOKstring || ((StringExp *)insnTemplate)->sz != 1)
+  if (this->insnTemplate->op != TOKstring ||
+      ((StringExp *)this->insnTemplate)->sz != 1)
     error ("instruction template must be a constant char string");
 
-  if (args)
+  if (this->args)
     {
-      for (size_t i = 0; i < args->dim; i++)
+      for (size_t i = 0; i < this->args->dim; i++)
 	{
-	  Expression *e = args->tdata()[i];
+	  Expression *e = this->args->tdata()[i];
 	  e = e->semantic (sc);
-	  if (i < nOutputArgs)
+	  if (i < this->nOutputArgs)
 	    e = e->modifiableLvalue (sc, NULL);
 	  else
 	    e = e->optimize (WANTvalue);
-	  args->tdata()[i] = e;
+	  this->args->tdata()[i] = e;
 
-	  e = argConstraints->tdata()[i];
+	  e = this->argConstraints->tdata()[i];
 	  e = e->semantic (sc);
 	  e = e->optimize (WANTvalue);
 	  if (e->op != TOKstring || ((StringExp *)e)->sz != 1)
 	    error ("constraint must be a constant char string");
-	  argConstraints->tdata()[i] = e;
+	  this->argConstraints->tdata()[i] = e;
 	}
     }
-  if (clobbers)
+  if (this->clobbers)
     {
-      for (size_t i = 0; i < clobbers->dim; i++)
+      for (size_t i = 0; i < this->clobbers->dim; i++)
 	{
-	  Expression *e = clobbers->tdata()[i];
+	  Expression *e = this->clobbers->tdata()[i];
 	  e = e->semantic (sc);
 	  e = e->optimize (WANTvalue);
 	  if (e->op != TOKstring || ((StringExp *)e)->sz != 1)
 	    error ("clobber specification must be a constant char string");
-	  clobbers->tdata()[i] = e;
+	  this->clobbers->tdata()[i] = e;
 	}
     }
   return this;
 }
 
+// Write C-style representation of ExtAsmStatement to BUF.
+
 void
-ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
+ExtAsmStatement::toCBuffer (OutBuffer *buf, HdrGenState *hgs)
 {
   buf->writestring ("gcc asm { ");
-  if (insnTemplate)
-    buf->writestring (insnTemplate->toChars());
+  if (this->insnTemplate)
+    buf->writestring (this->insnTemplate->toChars());
   buf->writestring (" : ");
-  if (args)
+  if (this->args)
     {
-      for (size_t i = 0; i < args->dim; i++)
+      for (size_t i = 0; i < this->args->dim; i++)
 	{
-	  Identifier *name = argNames->tdata()[i];
-	  Expression *constr = argConstraints->tdata()[i];
-	  Expression *arg = args->tdata()[i];
+	  Identifier *name = this->argNames->tdata()[i];
+	  Expression *constr = this->argConstraints->tdata()[i];
+	  Expression *arg = this->args->tdata()[i];
 
 	  if (name)
 	    {
@@ -158,22 +176,22 @@ ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 	      buf->writestring (arg->toChars());
 	    }
 
-	  if (i < nOutputArgs - 1)
+	  if (i < this->nOutputArgs - 1)
 	    buf->writestring (", ");
-	  else if (i == nOutputArgs - 1)
+	  else if (i == this->nOutputArgs - 1)
 	    buf->writestring (" : ");
-	  else if (i < args->dim - 1)
+	  else if (i < this->args->dim - 1)
 	    buf->writestring (", ");
 	}
     }
-  if (clobbers)
+  if (this->clobbers)
     {
       buf->writestring (" : ");
-      for (size_t i = 0; i < clobbers->dim; i++)
+      for (size_t i = 0; i < this->clobbers->dim; i++)
 	{
-	  Expression *clobber = clobbers->tdata()[i];
+	  Expression *clobber = this->clobbers->tdata()[i];
 	  buf->writestring (clobber->toChars());
-	  if (i < clobbers->dim - 1)
+	  if (i < this->clobbers->dim - 1)
 	    buf->writestring (", ");
 	}
     }
@@ -181,27 +199,33 @@ ExtAsmStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
   buf->writenl();
 }
 
+// Return how an ExtAsmStatement exits.
+// If MUSTNOTTHROW is true, generate an error if it throws.
+
 int
 ExtAsmStatement::blockExit (bool mustNotThrow)
 {
   if (mustNotThrow)
     error ("asm statements are assumed to throw", toChars());
-  // TODO: Be smarter about this
+  // Assume the worst
   return BEany;
 }
 
-
-// StringExp::toIR usually adds a NULL.  We don't want that...
+// Return a STRING_CST node whose value is E.
 
 static tree
 naturalString (Expression *e)
 {
+  // StringExp::toIR usually adds a NULL.  We don't want that...
   // don't fail, just an error?
   gcc_assert (e->op == TOKstring);
   StringExp *s = (StringExp *) e;
   gcc_assert (s->sz == 1);
-  return build_string (s->len,(char *) s->string);
+  return build_string (s->len, (char *) s->string);
 }
+
+// Build the intermediate representation of an ExtAsmStatment where IRS
+// holds the state of the current function.
 
 void
 ExtAsmStatement::toIR (IRState *irs)
@@ -210,32 +234,33 @@ ExtAsmStatement::toIR (IRState *irs)
   ListMaker inputs;
   ListMaker tree_clobbers;
 
-  gen.doLineNote (loc);
+  gen.doLineNote (this->loc);
 
-  if (args)
+  if (this->args)
     {
-      for (size_t i = 0; i < args->dim; i++)
+      for (size_t i = 0; i < this->args->dim; i++)
 	{
-	  Identifier *name = argNames->tdata()[i];
-	  Expression *constr = argConstraints->tdata()[i];
-	  tree p = tree_cons (name ? build_string (name->len, name->string) : NULL_TREE,
-			      naturalString (constr), NULL_TREE);
-	  tree v = (args->tdata()[i])->toElem (irs);
+	  Identifier *name = this->argNames->tdata()[i];
+	  Expression *constr = this->argConstraints->tdata()[i];
+	  tree n = name ? build_string (name->len, name->string) : NULL_TREE;
+	  tree p = tree_cons (n, naturalString (constr), NULL_TREE);
+	  tree v = (this->args->tdata()[i])->toElem (irs);
 
-	  if (i < nOutputArgs)
+	  if (i < this->nOutputArgs)
 	    outputs.cons (p, v);
 	  else
 	    inputs.cons (p, v);
 	}
     }
-  if (clobbers)
+  if (this->clobbers)
     {
-      for (size_t i = 0; i < clobbers->dim; i++)
+      for (size_t i = 0; i < this->clobbers->dim; i++)
 	{
-	  Expression *clobber = clobbers->tdata()[i];
+	  Expression *clobber = this->clobbers->tdata()[i];
 	  tree_clobbers.cons (NULL_TREE, naturalString (clobber));
 	}
     }
-  irs->doAsm (naturalString (insnTemplate), outputs.head, inputs.head, tree_clobbers.head);
+  irs->doAsm (naturalString (this->insnTemplate), outputs.head,
+	      inputs.head, tree_clobbers.head);
 }
 

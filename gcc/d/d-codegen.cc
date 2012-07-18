@@ -885,7 +885,7 @@ IRState::isArgumentReferenceType (Parameter *arg)
   if (base_type->ty == Treference)
     return true;
 
-  if (arg->storageClass &(STCout | STCref))
+  if (arg->storageClass & (STCout | STCref))
     return true;
 
 #if !SARRAYVALUE
@@ -1086,7 +1086,7 @@ IRState::floatConstant (const real_t& value, Type *target_type)
   gcc_assert (tb != NULL);
 
   tree type_node = tb->toCtype();
-  real_convert (& new_value.rv(), TYPE_MODE (type_node), &value.rv());
+  real_convert (&new_value.rv(), TYPE_MODE (type_node), &value.rv());
 
   if (new_value > value)
     {
@@ -4270,7 +4270,7 @@ FieldVisitor::visit (AggregateDeclaration *decl)
     FieldVisitor::visit (class_decl->baseClass);
 
   if (decl->fields.dim)
-    doFields (& decl->fields, decl);
+    doFields (&decl->fields, decl);
 
   if (class_decl && class_decl->vtblInterfaces)
     doInterfaces (class_decl->vtblInterfaces);

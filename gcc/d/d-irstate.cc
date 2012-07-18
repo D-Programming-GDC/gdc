@@ -105,7 +105,7 @@ IRBase::addExp (tree e)
     SET_EXPR_LOCATION (e, input_location);
 
   tree stmt_list = (tree) this->statementList.pop();
-  append_to_statement_list_force (e, & stmt_list);
+  append_to_statement_list_force (e, &stmt_list);
   this->statementList.push (stmt_list);
 }
 

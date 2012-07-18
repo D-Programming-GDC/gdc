@@ -42,9 +42,11 @@ Type *d_gcc_builtin_va_list_d_type;
 // NOTE: We cannot always use type->pointerTo (in V2, at least) because
 // (explanation TBD -- see TypeFunction::semantic and
 // TypePointer::semantic: {deco = NULL;} .)
+
 static Type *
 gcc_type_to_d_type (tree t)
 {
+  Expression *e;
   Type *d;
   unsigned type_size;
   bool is_unsigned;
@@ -153,9 +155,9 @@ gcc_type_to_d_type (tree t)
 			  convert (sizetype,
 				   fold_build2(MINUS_EXPR, TREE_TYPE (lb),
 						ub, lb)));
-	  d = new TypeSArray (d,
-			      new IntegerExp (0, gen.getTargetSizeConst (length),
-					      Type::tindex));
+	  e = new IntegerExp (0, gen.getTargetSizeConst (length),
+			      Type::tindex);
+	  d = new TypeSArray (d, e);
 	  d = d->semantic (0, NULL);
 	  d->ctype = t;
 	  return d;
@@ -166,7 +168,8 @@ gcc_type_to_d_type (tree t)
       d = gcc_type_to_d_type (TREE_TYPE (t));
       if (d)
 	{
-	  d = new TypeSArray (d, new IntegerExp (0, TYPE_VECTOR_SUBPARTS (t), Type::tindex));
+	  e = new IntegerExp (0, TYPE_VECTOR_SUBPARTS (t), Type::tindex);
+	  d = new TypeSArray (d, e);
 
 	  if (d->nextOf()->isTypeBasic() == NULL)
 	    break;
@@ -194,15 +197,16 @@ gcc_type_to_d_type (tree t)
 	structname = IDENTIFIER_POINTER (DECL_NAME (TYPE_NAME (t)));
       else
 	{
-	  snprintf (structname_buf, sizeof (structname_buf), "__bi_type_%d", ++struct_serial);
+	  snprintf (structname_buf, sizeof (structname_buf),
+		    "__bi_type_%d", ++struct_serial);
 	  structname = structname_buf;
 	}
 
       sdecl = new StructDeclaration (0, Lexer::idPool (structname));
-      /* The gcc.builtins module may not exist yet, so cannot set
-	 sdecl->parent here. If it is va_list, the parent needs to
-	 be set to the object module which will not exist when
-	 this is called.  */
+      // The gcc.builtins module may not exist yet, so cannot set
+      // sdecl->parent here. If it is va_list, the parent needs to
+      // be set to the object module which will not exist when
+      // this is called.
       sdecl->structsize = int_size_in_bytes (t);
       sdecl->alignsize = TYPE_ALIGN_UNIT (t);
       sdecl->sizeok = SIZEOKdone;
@@ -216,9 +220,9 @@ gcc_type_to_d_type (tree t)
 #else
       sdecl->handle = new TypePointer (d);
 #endif
-      /* Does not seem necessary to convert fields, but the
-	 members field must be non-null for the above size
-	 setting to stick. */
+      // Does not seem necessary to convert fields, but the
+      // members field must be non-null for the above size
+      // setting to stick.
       sdecl->members = new Dsymbols;
 
       builtin_converted_types.push (t);
@@ -274,8 +278,8 @@ gcc_type_to_d_type (tree t)
   return NULL;
 }
 
-
 // Map D frontend type and sizes to GCC backend types.
+
 void
 d_bi_init (void)
 {
@@ -307,15 +311,14 @@ d_bi_init (void)
 
   PTRSIZE = (POINTER_SIZE / BITS_PER_UNIT);
 
-  // %% May get changed later anyway...
-  CLASSINFO_SIZE_64 = 19 * PTRSIZE;
   CLASSINFO_SIZE = 19 * PTRSIZE;
+  CLASSINFO_SIZE_64 = 19 * PTRSIZE;
 }
-
 
 // Hook from d_builtin_function.
 // Add DECL to builtin functions list for maybe processing later
 // if gcc.builtins was imported into the current module.
+
 void
 d_bi_builtin_func (tree decl)
 {
@@ -374,9 +377,8 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
 
   if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
     {
-      /* For GCC, a va_list can be an array.  D static arrays are
-	 automatically passed by reference, but the 'inout'
-	 modifier is not allowed. */
+      // For GCC, a va_list can be an array.  D static arrays are automatically
+      // passed by reference, but the 'inout' modifier is not allowed.
       gcc_assert (td->members);
       for (size_t j = 0; j < td->members->dim; j++)
 	{
@@ -384,8 +386,8 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
 	  if (fd && (fd->ident == id_arg || fd->ident == id_start))
 	    {
 	      TypeFunction *tf;
-	      // Should have nice error message instead of ICE in case some tries
-	      // to tweak the file.
+	      // Should have nice error message instead of ICE in case someone
+	      // tries to tweak the file.
 	      gcc_assert (! fd->parameters);
 	      tf = (TypeFunction *) fd->type;
 	      gcc_assert (tf->ty == Tfunction &&
@@ -428,7 +430,9 @@ d_gcc_magic_builtins_module (Module *m)
     {
       tree decl = TREE_VALUE (n);
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
-      TypeFunction *dtf = (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (decl));
+      TypeFunction *dtf
+	= (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (decl));
+
       if (! dtf)
 	{
 	  //warning (0, "cannot create built in function type for %s", name);
@@ -440,14 +444,14 @@ d_gcc_magic_builtins_module (Module *m)
 	  continue;
 	}
 
-      /* %% D2 - builtins are trusted and optionally nothrow.
-	 The purity of a builtins can vary depending on compiler flags set at
-	 init, or by the -foptions passed, such as flag_unsafe_math_optimizations.
+      // %% D2 - builtins are trusted and optionally nothrow.
+      // The purity of a builtins can vary depending on compiler
+      // flags set at init, or by the -foptions passed, such as
+      // flag_unsafe_math_optimizations.
 
-	 Similiarly, if a builtin does not correspond to a function in the standard
-	 library (is provided by the compiler), then will also mark the function as
-	 weakly pure in the D frontend.
-       */
+      // Similiarly, if a builtin does not correspond to a function
+      // in the standard library (is provided by the compiler), then
+      // will also mark the function as weakly pure in the D frontend.
       dtf->trust = TREE_NOTHROW (decl) ? TRUSTtrusted : TRUSTsystem;
       dtf->isnothrow = TREE_NOTHROW (decl);
       dtf->purity = DECL_PURE_P (decl) ?   PUREstrong :
@@ -457,7 +461,7 @@ d_gcc_magic_builtins_module (Module *m)
 	PUREimpure;
 
       FuncDeclaration *func = new FuncDeclaration (0, 0, Lexer::idPool (name),
-						    STCextern, dtf);
+						   STCextern, dtf);
       func->isym = new Symbol;
       func->isym->Stree = decl;
 
@@ -478,7 +482,7 @@ d_gcc_magic_builtins_module (Module *m)
       funcs->push (new AliasDeclaration (0, Lexer::idPool (name), dt));
     }
 
-  /* Iterate through the target-specific builtin types for va_list. */
+  // Iterate through the target-specific builtin types for va_list.
   if (targetm.enum_va_list_p)
     {
       const char *name;
@@ -499,63 +503,85 @@ d_gcc_magic_builtins_module (Module *m)
   for (size_t i = 0; i < builtin_converted_decls.dim ; ++i)
     {
       Dsymbol *sym = builtin_converted_decls[i];
-      /* va_list is a pain.  It can be referenced without importing
-	 gcc.builtins so it really needs to go in the object module. */
+      // va_list is a pain.  It can be referenced without importing
+      // gcc.builtins so it really needs to go in the object module.
       if (! sym->parent)
 	{
 	  Declaration *decl = sym->isDeclaration();
 	  if (! decl || decl->type != d_gcc_builtin_va_list_d_type)
 	    {
 	      sym->parent = m;
-	      /* Currently, there is no need to run semantic, but we do
-		 want to output inits, etc. */
+	      // Currently, there is no need to run semantic, but we do
+	      // want to output inits, etc.
 	      funcs->push (sym);
 	    }
 	}
     }
 
-  Type *d = NULL;
+  Type *t = NULL;
+  Declaration *d = NULL;
 
-  /* va_list should already be built, so no need to convert to D type again. */
-  d = d_gcc_builtin_va_list_d_type;
-  if (d)
-    funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_va_list"), d));
+  // va_list should already be built, so no need to convert to D type again.
+  t = d_gcc_builtin_va_list_d_type;
+  if (t)
+    {
+      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_va_list"), t);
+      funcs->push (d);
+    }
 
-  /* Provide access to target-specific integer types. */
-  d = gcc_type_to_d_type (long_integer_type_node);
-  if (d)
-    funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_Clong"), d));
+  // Provide access to target-specific integer types.
+  t = gcc_type_to_d_type (long_integer_type_node);
+  if (t)
+    {
+      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_Clong"), t);
+      funcs->push (d);
+    }
 
-  d = gcc_type_to_d_type (long_unsigned_type_node);
-  if (d)
-    funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_Culong"), d));
+  t = gcc_type_to_d_type (long_unsigned_type_node);
+  if (t)
+    {
+      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_Culong"), t);
+      funcs->push (d);
+    }
 
-  d = gcc_type_to_d_type (d_type_for_mode (word_mode, 0));
-  if (d)
-    funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_int"), d));
+  t = gcc_type_to_d_type (d_type_for_mode (word_mode, 0));
+  if (t)
+    {
+      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_int"), t);
+      funcs->push (d);
+    }
 
-  d = gcc_type_to_d_type (d_type_for_mode (word_mode, 1));
-  if (d)
-    funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_uint"), d));
+  t = gcc_type_to_d_type (d_type_for_mode (word_mode, 1));
+  if (t)
+    {
+      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_uint"), t);
+      funcs->push (d);
+    }
 
-  d = gcc_type_to_d_type (d_type_for_mode (ptr_mode, 0));
-  if (d)
-    funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_int"), d));
+  t = gcc_type_to_d_type (d_type_for_mode (ptr_mode, 0));
+  if (t)
+    {
+      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_int"), t);
+      funcs->push (d);
+    }
 
-  d = gcc_type_to_d_type (d_type_for_mode (ptr_mode, 1));
-  if (d)
-    funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_uint"), d));
+  t = gcc_type_to_d_type (d_type_for_mode (ptr_mode, 1));
+  if (t)
+    {
+      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_uint"), t);
+      funcs->push (d);
+    }
 
   m->members->push (new LinkDeclaration (LINKc, funcs));
 }
 
-
-// Check imported module for any special processing.
+// Check imported module M for any special processing.
 // Modules we look out for are:
 //  - gcc.builtins: For all gcc builtins.
 //  - core.bitop: For D bitwise intrinsics.
 //  - core.math, std.math: For D math intrinsics.
-//  - core.vararg, core.stdc.stdarg: For D va_arg intrinsics.
+//  - core.stdc.stdarg: For D va_arg intrinsics.
+
 void
 d_gcc_magic_module (Module *m)
 {
@@ -603,17 +629,17 @@ d_gcc_type_align (Type *t)
   return TYPE_ALIGN_UNIT (t->toCtype());
 }
 
-
 // Return GCC align size for field VAR.
+
 int
 d_gcc_field_align (VarDeclaration *var)
 {
   tree field;
 
-  /* %% stor-layout.c:
-     Some targets (i.e. i386, VMS) limit struct field alignment
-     to a lower boundary than alignment of variables unless
-     it was overridden by attribute aligned.  */
+  // %% stor-layout.c:
+  // Some targets (i.e. i386, VMS) limit struct field alignment
+  // to a lower boundary than alignment of variables unless
+  // it was overridden by attribute aligned.
   if (var->alignment != (unsigned) STRUCTALIGN_DEFAULT)
     return var->alignment;
 
@@ -641,8 +667,8 @@ d_gcc_field_align (VarDeclaration *var)
   return DECL_ALIGN_UNIT (field);
 }
 
+// Convert backend evaluated CST to D Frontend Expressions for CTFE
 
-// Convert backend evaluated trees to D Frontend Expressions for CTFE
 static Expression *
 gcc_cst_to_d_expr (tree cst)
 {
@@ -651,10 +677,9 @@ gcc_cst_to_d_expr (tree cst)
 
   if (type)
     {
-      /* Convert our GCC CST tree into a D Expression. This is kinda exper,
-	 as it will only be converted back to a tree again later, but this
-	 satisifies a need to have gcc builtins CTFE'able.
-       */
+      // Convert our GCC CST tree into a D Expression. This is kinda exper,
+      // as it will only be converted back to a tree again later, but this
+      // satisifies a need to have gcc builtins CTFE'able.
       tree_code code = TREE_CODE (cst);
       if (code == COMPLEX_CST)
 	{
@@ -684,9 +709,10 @@ gcc_cst_to_d_expr (tree cst)
   return NULL;
 }
 
-
-// Helper for d_gcc_eval_builtin. Evaluate builtin D function.
+// Helper for d_gcc_eval_builtin. Evaluate builtin D
+// function BUILTIN whose argument list is ARGUMENTS.
 // Return result; NULL if cannot evaluate it.
+
 Expression *
 eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
 {
@@ -776,8 +802,9 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
   if (builtin == BUILTINbsr)
     {
       tree type = t0->toCtype();
-      tree lhs = fold_convert (type, size_int (tree_low_cst (TYPE_SIZE  (type), 1) - 1));
-      result = fold_build2(MINUS_EXPR, type, lhs, result);
+      tree lhs = size_int (tree_low_cst (TYPE_SIZE (type), 1) - 1);
+      result = fold_build2(MINUS_EXPR, type,
+			   fold_convert (type, lhs), result);
     }
 
   if (TREE_CONSTANT (result) && TREE_CODE (result) != CALL_EXPR)
@@ -791,9 +818,9 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
 
 }
 
-
-// Evaluate builtin function.
+// Evaluate builtin D function FD whose argument list is ARGUMENTS.
 // Return result; NULL if cannot evaluate it.
+
 Expression *
 d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
 {
