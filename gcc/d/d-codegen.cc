@@ -1351,20 +1351,9 @@ IRState::delegateVal (tree method_exp, tree object_exp, Type *d_type)
       obj_field = TYPE_FIELDS (type);
       func_field = TREE_CHAIN (obj_field);
     }
-#if ENABLE_CHECKING
-  if (obj_field)
-    ce.cons (obj_field, convert (TREE_TYPE (obj_field), object_exp));
-  else
-    ce.cons (obj_field, object_exp);
-
-  if (func_field)
-    ce.cons (func_field, convert (TREE_TYPE (func_field), method_exp));
-  else
-    ce.cons (func_field, method_exp);
-#else
   ce.cons (obj_field, object_exp);
   ce.cons (func_field, method_exp);
-#endif
+
   CONSTRUCTOR_ELTS (ctor) = ce.head;
   return ctor;
 }
@@ -1396,18 +1385,17 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
       bool is_dottype;
       tree this_expr;
 
-      // DotTypeExp cannot be evaluated
       if (obj_exp->op == TOKdottype)
 	{
 	  is_dottype = true;
-	  this_expr = ((DotTypeExp *) obj_exp)->e1->toElem (this);
+	  this_expr = obj_exp->toElem (this);
 	}
       else if (obj_exp->op == TOKcast &&
 	       ((CastExp *) obj_exp)->e1->op == TOKdottype)
 	{
 	  is_dottype = true;
 	  // see expression.c:"See if we need to adjust the 'this' pointer"
-	  this_expr = ((DotTypeExp *) ((CastExp *) obj_exp)->e1)->e1->toElem (this);
+	  this_expr = ((CastExp *) obj_exp)->e1->toElem (this);
 	}
       else
 	{

@@ -1400,20 +1400,6 @@ IndexExp::toElem (IRState *irs)
 elem *
 CommaExp::toElem (IRState *irs)
 {
-  // CommaExp is used with DotTypeExp..?
-  if (e1->op == TOKdottype && e2->op == TOKvar)
-    {
-      VarExp *ve = (VarExp *) e2;
-      VarDeclaration *vd;
-      FuncDeclaration *fd;
-      /* Handle references to static variable and functions.  Otherwise,
-	 just let the DotTypeExp report an error. */
-      if (((vd = ve->var->isVarDeclaration()) && ! vd->needThis())
-	  || ((fd = ve->var->isFuncDeclaration()) && ! fd->isThis()))
-	{
-	  return e2->toElem (irs);
-	}
-    }
   tree t1 = e1->toElem (irs);
   tree t2 = e2->toElem (irs);
   tree tt = type ? type->toCtype() : void_type_node;
@@ -1888,13 +1874,9 @@ Expression::toElemDtor (IRState *irs)
 elem *
 DotTypeExp::toElem (IRState *irs)
 {
-  // The only case in which this seems to be a valid expression is when
-  // it is used to specify a non-virtual call (SomeClass.func (...)).
-  // This case is handled in IRState::objectInstanceMethod.
-  error ("cannot use \"%s\" as an expression", toChars());
-
-  // Can cause ICEs later; should just exit now.
-  return irs->errorMark (type);
+  // Just a pass through to e1.
+  tree t = e1->toElem (irs);
+  return t;
 }
 
 // The result will probably just be converted to a CONSTRUCTOR for a Tdelegate struct
@@ -2658,9 +2640,10 @@ StructLiteralExp::toElem (IRState *irs)
 {
   CtorEltMaker ce;
   StructDeclaration *sdecl;
+  Type *tb = type->toBasetype();
 
-  gcc_assert (type->ty == Tstruct);
-  sdecl = ((TypeStruct *) type)->sym;
+  gcc_assert (tb->ty == Tstruct);
+  sdecl = ((TypeStruct *) tb)->sym;
 
   if (elements)
     {

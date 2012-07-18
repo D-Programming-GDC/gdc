@@ -1,5 +1,11 @@
 2012-07-18  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-codegen.cc(IRState::delegateVal): Remove ENABLE_CHECKING code.
+	(IRState::objectInstanceMethod): Remove special case to avoid calling
+	DotTypeExp::toElem.
+	* d-glue.cc(CommaExp::toElem): Likewise.
+	(DotTypeExp::toElem): Implement function.
+	(StructLiteralExp::toElem): Assert instead that basetype is a struct.
 	* d-gcc-reah.cc(real_t::real_t): New overload for 'double' type.
 	(real_t::format): Change function type to int, return size of buffer
 	from function.
