@@ -33,9 +33,8 @@ Module *IRState::intrinsicModule = 0;
 Module *IRState::intrinsicCoreModule = 0;
 Module *IRState::mathModule = 0;
 Module *IRState::mathCoreModule = 0;
-TemplateDeclaration *IRState::stdargTemplateDecl = 0;
+TemplateDeclaration *IRState::cstdargTemplateDecl = 0;
 TemplateDeclaration *IRState::cstdargStartTemplateDecl = 0;
-TemplateDeclaration *IRState::cstdargArgTemplateDecl = 0;
 
 VarDeclarations *IRState::varsInScope;
 
@@ -2872,9 +2871,6 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 
 
 	case INTRINSIC_C_VA_ARG:
-	  // %% should_check c_promotes_to as in va_arg now
-	  // just drop though for now...
-	case INTRINSIC_STD_VA_ARG:
 	  op1 = ce.nextArg();
 	  /* signature is (inout va_list), but VA_ARG_EXPR expects the
 	     list itself... but not if the va_list type is an array.  In that
@@ -3183,13 +3179,7 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
       if (ti)
 	{
 	  tree t = decl->toSymbol()->Stree;
-	  if (ti->tempdecl == stdargTemplateDecl)
-	    {
-	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_STD_VA_ARG;
-	      return true;
-	    }
-	  else if (ti->tempdecl == cstdargArgTemplateDecl)
+	  if (ti->tempdecl == cstdargTemplateDecl)
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
 	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_C_VA_ARG;

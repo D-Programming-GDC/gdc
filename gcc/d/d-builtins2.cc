@@ -323,22 +323,22 @@ d_bi_builtin_func (tree decl)
     bi_fn_list.cons (NULL_TREE, decl);
 }
 
-
 // Hook from d_register_builtin_type.
 // Add DECL to builtin types list for maybe processing later
 // if gcc.builtins was imported into the current module.
+
 void
 d_bi_builtin_type (tree decl)
 {
   bi_type_list.cons (NULL_TREE, decl);
 }
 
-
 // Helper function for d_gcc_magic_stdarg_module
 // In D2, the members of std.stdarg are hidden via @system attributes.
 // This function should be sufficient in looking through all members.
+
 static void
-d_gcc_magic_stdarg_check (Dsymbol *m, bool is_c_std_arg)
+d_gcc_magic_stdarg_check (Dsymbol *m)
 {
   Identifier *id_arg = Lexer::idPool ("va_arg");
   Identifier *id_start = Lexer::idPool ("va_start");
@@ -355,20 +355,15 @@ d_gcc_magic_stdarg_check (Dsymbol *m, bool is_c_std_arg)
 	  for (size_t i = 0; i < decl->dim; i++)
 	    {
 	      Dsymbol *sym = decl->tdata()[i];
-	      d_gcc_magic_stdarg_check (sym, is_c_std_arg);
+	      d_gcc_magic_stdarg_check (sym);
 	    }
 	}
     }
   else if ((td = m->isTemplateDeclaration()))
     {
       if (td->ident == id_arg)
-	{
-	  if (is_c_std_arg)
-	    IRState::setCStdArgArg (td);
-	  else
-	    IRState::setStdArg (td);
-	}
-      else if (td->ident == id_start && is_c_std_arg)
+	IRState::setCStdArg (td);
+      else if (td->ident == id_start)
 	IRState::setCStdArgStart (td);
       else
 	td = NULL;
@@ -402,25 +397,28 @@ d_gcc_magic_stdarg_check (Dsymbol *m, bool is_c_std_arg)
     }
 }
 
+// Helper function for d_gcc_magic_module.
+// Checks all members of the stdarg module M for any special processing.
 // std.stdarg is different: it expects pointer types (i.e. _argptr)
 
 // We can make it work fine as long as the argument to va_varg is _argptr,
 // we just call va_arg on the hidden va_list.  As long _argptr is not
 // otherwise modified, it will work.
+
 static void
-d_gcc_magic_stdarg_module (Module *m, bool is_c_std_arg)
+d_gcc_magic_stdarg_module (Module *m)
 {
   Dsymbols *members = m->members;
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *sym = members->tdata()[i];
-      d_gcc_magic_stdarg_check (sym, is_c_std_arg);
+      d_gcc_magic_stdarg_check (sym);
     }
 }
 
-
 // Helper function for d_gcc_magic_module.
-// Generates all code for gcc.builtins module.
+// Generates all code for gcc.builtins module M.
+
 static void
 d_gcc_magic_builtins_module (Module *m)
 {
@@ -574,9 +572,7 @@ d_gcc_magic_module (Module *m)
 	}
       else if (! strcmp ((md->packages->tdata()[0])->string, "core"))
 	{
-	  if (! strcmp (md->id->string, "vararg"))
-	    d_gcc_magic_stdarg_module (m, false);
-	  else if (! strcmp (md->id->string, "bitop"))
+	  if (! strcmp (md->id->string, "bitop"))
 	    IRState::setIntrinsicModule (m, true);
 	  else if (! strcmp (md->id->string, "math"))
 	    IRState::setMathModule (m, true);
@@ -593,13 +589,13 @@ d_gcc_magic_module (Module *m)
 	  ! strcmp ((md->packages->tdata()[1])->string, "stdc"))
 	{
 	  if (! strcmp (md->id->string, "stdarg"))
-	    d_gcc_magic_stdarg_module (m, true);
+	    d_gcc_magic_stdarg_module (m);
 	}
     }
 }
 
-
 // Return GCC align size for type T.
+
 int
 d_gcc_type_align (Type *t)
 {

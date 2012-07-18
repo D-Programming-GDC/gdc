@@ -1,3 +1,12 @@
+2012-07-18  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins2.cc(d_gcc_magic_stdarg_check): Update signature, remove
+	check for is_c_std_arg.
+	(d_gcc_magic_stdarg_module): Likewise.
+	(d_gcc_magic_module): Remove check for core.vararg.
+	* d-codegen.cc(INTRINSIC_STD_VA_ARG): Remove.
+	(IRState::maybeSetUpBuiltin): Don't handle INTRINSIC_STD_VA_ARG.
+	
 2012-07-13  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-decls.cc(Dsymbol::toSymbolX): Remove use of PRIuSIZE format macro.

@@ -134,7 +134,6 @@ struct IRState : IRBase
     INTRINSIC_RNDTOL, INTRINSIC_SIN,
     INTRINSIC_SQRT,
 
-    INTRINSIC_STD_VA_ARG,
     INTRINSIC_C_VA_ARG,
     INTRINSIC_C_VA_START,
     INTRINSIC_count,
@@ -325,9 +324,8 @@ struct IRState : IRBase
   static Module *intrinsicCoreModule;
   static Module *mathModule;
   static Module *mathCoreModule;
-  static TemplateDeclaration *stdargTemplateDecl;
+  static TemplateDeclaration *cstdargTemplateDecl;
   static TemplateDeclaration *cstdargStartTemplateDecl;
-  static TemplateDeclaration *cstdargArgTemplateDecl;
 
   static void setBuiltinsModule (Module *mod)
   { IRState::builtinsModule = mod; }
@@ -348,14 +346,11 @@ struct IRState : IRBase
       IRState::mathModule = mod;
   }
 
-  static void setStdArg (TemplateDeclaration *td)
-  { IRState::stdargTemplateDecl = td; }
+  static void setCStdArg (TemplateDeclaration *td)
+  { IRState::cstdargTemplateDecl = td; }
 
   static void setCStdArgStart (TemplateDeclaration *td)
   { IRState::cstdargStartTemplateDecl = td; }
-
-  static void setCStdArgArg (TemplateDeclaration *td)
-  { IRState::cstdargArgTemplateDecl = td; }
 
   static bool maybeSetUpBuiltin (Declaration *decl);
 
