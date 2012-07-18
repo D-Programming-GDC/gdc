@@ -79,14 +79,6 @@ static tree handle_fnspec_attribute (tree *, tree, tree, int, bool *);
 static bool get_nonnull_operand (tree, unsigned HOST_WIDE_INT *);
 static bool parse_optimize_options (tree, bool);
 
-extern void decode_options (struct gcc_options *, struct gcc_options *,
-			    struct cl_decoded_option *, unsigned int,
-			    location_t, diagnostic_context *);
-
-extern void decode_cmdline_options_to_array_default_mask (unsigned int, const char **,
-							  struct cl_decoded_option **, unsigned int *);
-
-/* extra for gdc copy: */
 static tree
 handle_format_arg_attribute (tree *node ATTRIBUTE_UNUSED, tree name ATTRIBUTE_UNUSED,
 			     tree args ATTRIBUTE_UNUSED, int flags ATTRIBUTE_UNUSED,
@@ -101,7 +93,7 @@ handle_format_attribute (tree *node ATTRIBUTE_UNUSED, tree name ATTRIBUTE_UNUSED
 {
   return NULL_TREE;
 }
-/* -- end extra */
+
 
 /* Table of machine-independent attributes common to all C-like languages.  */
 const struct attribute_spec d_common_attribute_table[] =
