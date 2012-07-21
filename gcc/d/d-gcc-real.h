@@ -88,8 +88,8 @@ struct real_t
   bool isConstHalf (void);
   bool floatCompare (int op, const real_t& r);
   bool isIdenticalTo (const real_t& r) const;
-  void format (char *buf, unsigned buf_size) const;
-  void formatHex (char *buf, unsigned buf_size) const;
+  int format (char *buf, unsigned buf_size) const;
+  int formatHex (char *buf, unsigned buf_size) const;
   // for debugging:
   bool isInf (void);
   bool isNan (void);
