@@ -1468,13 +1468,13 @@ uinteger_t Expression::toUInteger()
 real_t Expression::toReal()
 {
     error("Floating point constant expression expected instead of %s", toChars());
-    return 0;
+    return ldouble(0);
 }
 
 real_t Expression::toImaginary()
 {
     error("Floating point constant expression expected instead of %s", toChars());
-    return 0;
+    return ldouble(0);
 }
 
 complex_t Expression::toComplex()
@@ -1483,7 +1483,7 @@ complex_t Expression::toComplex()
 #ifdef IN_GCC
     return complex_t(real_t(0)); // %% nicer
 #else
-    return 0;
+    return 0.0;
 #endif
 }
 
@@ -2060,14 +2060,14 @@ real_t IntegerExp::toReal()
     toInteger();
     t = type->toBasetype();
     if (t->ty == Tuns64)
-        return (real_t)(d_uns64)value;
+        return ldouble((d_uns64)value);
     else
-        return (real_t)(d_int64)value;
+        return ldouble((d_int64)value);
 }
 
 real_t IntegerExp::toImaginary()
 {
-    return (real_t) 0;
+    return ldouble(0);
 }
 
 complex_t IntegerExp::toComplex()
@@ -2314,12 +2314,12 @@ uinteger_t RealExp::toUInteger()
 
 real_t RealExp::toReal()
 {
-    return type->isreal() ? value : 0;
+    return type->isreal() ? value : ldouble(0);
 }
 
 real_t RealExp::toImaginary()
 {
-    return type->isreal() ? 0 : value;
+    return type->isreal() ? ldouble(0) : value;
 }
 
 complex_t RealExp::toComplex()
@@ -2382,7 +2382,7 @@ int RealExp::isBool(int result)
 #endif
 }
 
-void floatToBuffer(OutBuffer *buf, Type *type, const real_t & value)
+void floatToBuffer(OutBuffer *buf, Type *type, const real_t& value)
 {
     /* In order to get an exact representation, try converting it
      * to decimal then back again. If it matches, use it.
@@ -2395,7 +2395,7 @@ void floatToBuffer(OutBuffer *buf, Type *type, const real_t & value)
 
     value.format(buffer, sizeof(buffer));
     parsed_value = real_t::parse(buffer, real_t::LongDouble);
-    if (parsed_value.isIdenticalTo( value ))
+    if (parsed_value.isIdenticalTo(value))
         buf->writestring(buffer);
     else
     {
@@ -6060,7 +6060,7 @@ Expression *BinExp::checkComplexOpAssign(Scope *sc)
             if (t1->isreal())
             {   // x/iv = i(-x/v)
                 // Therefore, the result is 0
-                e2 = new CommaExp(loc, e2, new RealExp(loc, 0, t1));
+                e2 = new CommaExp(loc, e2, new RealExp(loc, ldouble(0), t1));
                 e2->type = t1;
                 Expression *e = new AssignExp(loc, e1, e2);
                 e->type = t1;

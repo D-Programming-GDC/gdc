@@ -181,7 +181,7 @@ real_t::real_t (d_int64 v)
   REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Double));
 }
 
-real_t::real_t (double d)
+real_t::real_t (d_float64 d)
 {
   char buf[48];
   snprintf(buf, sizeof (buf), "%lf", d);
@@ -380,35 +380,6 @@ real_t::convert (Type *to_type) const
     }
 }
 
-bool
-real_t::isConst0 (void)
-{
-  return REAL_VALUES_EQUAL (rv(), dconst0);
-}
-
-bool
-real_t::isConst1 (void)
-{
-  return REAL_VALUES_EQUAL (rv(), dconst1);
-}
-
-bool
-real_t::isConst2 (void)
-{
-  return REAL_VALUES_EQUAL (rv(), dconst2);
-}
-
-bool
-real_t::isConstMinus1 (void)
-{
-  return REAL_VALUES_EQUAL (rv(), dconstm1);
-}
-
-bool
-real_t::isConstHalf (void)
-{
-  return REAL_VALUES_EQUAL (rv(), dconsthalf);
-}
 
 bool
 real_t::isZero (void)

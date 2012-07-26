@@ -851,7 +851,7 @@ Expression *PowExp::optimize(int result)
 
     // Replace 1 ^^ x or 1.0^^x by (x, 1)
     if ((e1->op == TOKint64 && e1->toInteger() == 1) ||
-        (e1->op == TOKfloat64 && e1->toReal().isConst1()))
+        (e1->op == TOKfloat64 && e1->toReal() == 1.0))
     {
         e = new CommaExp(loc, e2, e1);
     }
@@ -864,25 +864,25 @@ Expression *PowExp::optimize(int result)
     }
     // Replace x ^^ 0 or x^^0.0 by (x, 1)
     else if ((e2->op == TOKint64 && e2->toInteger() == 0) ||
-             (e2->op == TOKfloat64 && e2->toReal().isConst0()))
+             (e2->op == TOKfloat64 && e2->toReal() == 0.0))
     {
         if (e1->type->isintegral())
             e = new IntegerExp(loc, 1, e1->type);
         else
-            e = new RealExp(loc, 1, e1->type);
+            e = new RealExp(loc, ldouble(1.0), e1->type);
 
         e = new CommaExp(loc, e1, e);
     }
     // Replace x ^^ 1 or x^^1.0 by (x)
     else if ((e2->op == TOKint64 && e2->toInteger() == 1) ||
-             (e2->op == TOKfloat64 && e2->toReal().isConst1()))
+             (e2->op == TOKfloat64 && e2->toReal() == 1.0))
     {
         e = e1;
     }
     // Replace x ^^ -1.0 by (1.0 / x)
-    else if ((e2->op == TOKfloat64 && e2->toReal().isConstMinus1()))
+    else if ((e2->op == TOKfloat64 && e2->toReal() == -1.0))
     {
-        e = new DivExp(loc, new RealExp(loc, 1, e2->type), e1);
+        e = new DivExp(loc, new RealExp(loc, ldouble(1.0), e2->type), e1);
     }
     // All other negative integral powers are illegal
     else if ((e1->type->isintegral()) && (e2->op == TOKint64) && (sinteger_t)e2->toInteger() < 0)
@@ -894,7 +894,7 @@ Expression *PowExp::optimize(int result)
     else
     {
         // If e2 *could* have been an integer, make it one.
-        if (e2->op == TOKfloat64 && (e2->toReal() == (real_t)(d_int64)(e2->toInteger())))
+        if (e2->op == TOKfloat64 && (e2->toReal() == (real_t)(sinteger_t)(e2->toInteger())))
             e2 = new IntegerExp(loc, e2->toInteger(), Type::tint64);
 
         if (e1->isConst() == 1 && e2->isConst() == 1)

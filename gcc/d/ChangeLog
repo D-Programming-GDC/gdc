@@ -1,5 +1,14 @@
 2012-07-26  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-gcc-real.cc(real_t::real_t): Use d_float64 for constructor.
+	(real_t::isConst0): Remove.
+	(real_t::isConst1): Likewise.
+	(real_t::isConst2): Likewise.
+	(real_t::isConstMinus1): Likewise.
+	(real_t::isConstHalf): Likewise.
+	* d-gcc-real.h(longdouble): New typedef for real_t.
+	(ldouble): New template for ldouble conversions.
+	(ld_sprint): New function for ldouble to string formatting.
 	* d-codegen.cc(IRState::hwi2toli): Handle maximum 64bit value case.
 
 2012-07-18  Iain Buclaw  <ibuclaw@ubuntu.com>

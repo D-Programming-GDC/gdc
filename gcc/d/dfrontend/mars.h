@@ -74,9 +74,6 @@ the target object file format:
 #include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
-#define __STDC_FORMAT_MACROS 1
-#include <inttypes.h>
-#include <stdarg.h>
 
 #ifdef __DMC__
 #ifdef DEBUG

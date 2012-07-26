@@ -325,8 +325,6 @@ void Type::init()
         Tsize_t = Tuns32;
         Tptrdiff_t = Tint32;
     }
-    CLASSINFO_SIZE = 19 * PTRSIZE;
-    CLASSINFO_SIZE_64 = 19 * PTRSIZE;
 }
 
 d_uns64 Type::size()
@@ -2833,37 +2831,6 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
 
             case Tcomplex32:
             case Timaginary32:
-#ifdef IN_GCC
-                // %% lazy, fix
-#define FLT_MAX real_t_properties[real_t::Float].maxval;                
-#define DBL_MAX real_t_properties[real_t::Double].maxval;               
-#define LDBL_MAX real_t_properties[real_t::LongDouble].maxval;
-#define FLT_MIN real_t_properties[real_t::Float].minval;
-#define DBL_MIN real_t_properties[real_t::Double].minval;
-#define LDBL_MIN real_t_properties[real_t::LongDouble].minval;
-#define FLT_DIG real_t_properties[real_t::Float].dig;
-#define DBL_DIG real_t_properties[real_t::Double].dig;
-#define LDBL_DIG real_t_properties[real_t::LongDouble].dig;
-#define FLT_MANT_DIG real_t_properties[real_t::Float].mant_dig;
-#define DBL_MANT_DIG real_t_properties[real_t::Double].mant_dig;
-#define LDBL_MANT_DIG real_t_properties[real_t::LongDouble].mant_dig;
-#define FLT_MAX_10_EXP real_t_properties[real_t::Float].max_10_exp;
-#define DBL_MAX_10_EXP real_t_properties[real_t::Double].max_10_exp;
-#define LDBL_MAX_10_EXP real_t_properties[real_t::LongDouble].max_10_exp;
-#define FLT_MIN_10_EXP real_t_properties[real_t::Float].min_10_exp;
-#define DBL_MIN_10_EXP real_t_properties[real_t::Double].min_10_exp;
-#define LDBL_MIN_10_EXP real_t_properties[real_t::LongDouble].min_10_exp;
-#define FLT_MAX_EXP real_t_properties[real_t::Float].max_exp;
-#define DBL_MAX_EXP real_t_properties[real_t::Double].max_exp;
-#define LDBL_MAX_EXP real_t_properties[real_t::LongDouble].max_exp;
-#define FLT_MIN_EXP real_t_properties[real_t::Float].min_exp;
-#define DBL_MIN_EXP real_t_properties[real_t::Double].min_exp;
-#define LDBL_MIN_EXP real_t_properties[real_t::LongDouble].min_exp;
-#define FLT_EPSILON real_t_properties[real_t::Float].epsilonval;
-#define DBL_EPSILON real_t_properties[real_t::Double].epsilonval;
-#define LDBL_EPSILON real_t_properties[real_t::LongDouble].epsilonval;
-
-#endif
             case Tfloat32:      fvalue = FLT_MAX;       goto Lfvalue;
             case Tcomplex64:
             case Timaginary64:
@@ -3130,7 +3097,7 @@ Expression *TypeBasic::dotExp(Scope *sc, Expression *e, Identifier *ident)
             case Timaginary64:  t = tfloat64;           goto L2;
             case Timaginary80:  t = tfloat80;           goto L2;
             L2:
-                e = new RealExp(e->loc, 0, t);
+                e = new RealExp(e->loc, ldouble(0.0), t);
                 break;
 
             default:
@@ -3162,7 +3129,7 @@ Expression *TypeBasic::dotExp(Scope *sc, Expression *e, Identifier *ident)
             case Tfloat32:
             case Tfloat64:
             case Tfloat80:
-                e = new RealExp(e->loc, 0, this);
+                e = new RealExp(e->loc, ldouble(0.0), this);
                 break;
 
             default:
