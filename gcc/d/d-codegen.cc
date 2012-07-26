@@ -1102,7 +1102,9 @@ dinteger_t
 IRState::hwi2toli (HOST_WIDE_INT low, HOST_WIDE_INT high)
 {
   if (high == 0 || (high == -1 && low < 0))
-      return low;
+    return low;
+  else if (low == 0 && high == 1)
+    return (~(dinteger_t) 0);
 
   gcc_unreachable();
 }

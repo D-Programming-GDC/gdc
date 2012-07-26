@@ -1,3 +1,7 @@
+2012-07-26  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-codegen.cc(IRState::hwi2toli): Handle maximum 64bit value case.
+
 2012-07-18  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.cc(IRState::delegateVal): Remove ENABLE_CHECKING code.
