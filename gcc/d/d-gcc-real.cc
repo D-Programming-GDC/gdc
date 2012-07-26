@@ -28,6 +28,8 @@
 #include "d-codegen.h"
 
 
+// Return backend machine_mode for frontend mode MODE.
+
 static enum machine_mode
 machineMode (real_t::Mode mode)
 {
@@ -50,6 +52,8 @@ machineMode (real_t::Mode mode)
 real_t_Properties real_t_properties[real_t::NumModes];
 
 #define M_LOG10_2       0.30102999566398119521
+
+// Initialise D floating point property values.
 
 void
 real_t::init (void)
@@ -108,6 +112,8 @@ real_t::init (void)
     }
 }
 
+// Return a real_t value from string STR of type MODE.
+
 real_t
 real_t::parse (const char *str, Mode mode)
 {
@@ -115,6 +121,8 @@ real_t::parse (const char *str, Mode mode)
   real_from_string3 (&r.rv(), str, machineMode (mode));
   return r;
 }
+
+// Return NaN value for type MODE.
 
 real_t
 real_t::getnan (Mode mode)
@@ -125,6 +133,7 @@ real_t::getnan (Mode mode)
 }
 
 // Same as getnan, except the significand is forced to be a signalling NaN
+
 real_t
 real_t::getsnan (Mode mode)
 {
@@ -133,6 +142,8 @@ real_t::getsnan (Mode mode)
   return r;
 }
 
+// Return value of +Inf.
+
 real_t
 real_t::getinfinity (void)
 {
@@ -140,6 +151,8 @@ real_t::getinfinity (void)
   real_inf (&r.rv());
   return r;
 }
+
+// Return the hidden REAL_VALUE_TYPE from the real_t type.
 
 const REAL_VALUE_TYPE &
 real_t::rv (void) const
@@ -155,31 +168,42 @@ real_t::rv (void)
   return *r;
 }
 
+// Construct a new real_t from real_t value R.
+
 real_t::real_t (const real_t& r)
 {
   rv() = r.rv();
 }
+
+// Construct a new real_t from REAL_VALUE_TYPE RV.
 
 real_t::real_t (const REAL_VALUE_TYPE& rv)
 {
   this->rv() = rv;
 }
 
+// Construct a new real_t from int V.
+
 real_t::real_t (int v)
 {
   REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Float));
 }
+
+// Construct a new real_t from d_uns64 V.
 
 real_t::real_t (d_uns64 v)
 {
   REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, 0, machineMode (Double));
 }
 
+// Construct a new real_t from d_int64 V.
 
 real_t::real_t (d_int64 v)
 {
   REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Double));
 }
+
+// Construct a new real_t from d_float64 D.
 
 real_t::real_t (d_float64 d)
 {
@@ -187,6 +211,8 @@ real_t::real_t (d_float64 d)
   snprintf(buf, sizeof (buf), "%lf", d);
   real_from_string3 (&rv(), buf, machineMode (Double));
 }
+
+// Overload assignment operator for real_t types.
 
 real_t &
 real_t::operator= (const real_t& r)
@@ -201,6 +227,8 @@ real_t::operator= (int v)
   REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Float));
   return *this;
 }
+
+// Overload numeric operators for real_t types.
 
 real_t
 real_t::operator+ (const real_t& r)
@@ -242,7 +270,6 @@ real_t::operator/ (const real_t& r)
   return x;
 }
 
-// Using darwin fmodl man page for special cases
 real_t
 real_t::operator% (const real_t& r)
 {
@@ -271,6 +298,8 @@ real_t::operator% (const real_t& r)
 
   return real_t (x);
 }
+
+// Overload equality operators for real_t types.
 
 bool
 real_t::operator< (const real_t& r)
@@ -308,6 +337,7 @@ real_t::operator!= (const real_t& r)
   return real_compare (NE_EXPR, &rv(), &r.rv());
 }
 
+// Return conversion of real_t value to d_uns64.
 
 d_uns64
 real_t::toInt (void) const
@@ -323,6 +353,9 @@ real_t::toInt (void) const
 
   return gen.hwi2toli (low, high);
 }
+
+// Return conversion of real_t value to d_uns64.
+// Value is converted from REAL_TYPE to INT_TYPE.
 
 d_uns64
 real_t::toInt (Type *real_type, Type *int_type) const
@@ -344,6 +377,8 @@ real_t::toInt (Type *real_type, Type *int_type) const
   return gen.hwi2toli (cst);
 }
 
+// Return value of real_t rounded to fit in TO_MODE.
+
 real_t
 real_t::convert (Mode to_mode) const
 {
@@ -351,6 +386,8 @@ real_t::convert (Mode to_mode) const
   real_convert (&result.rv(), machineMode (to_mode), &rv());
   return result;
 }
+
+// Return value of real_t rounded to fit in TO_TYPE.
 
 real_t
 real_t::convert (Type *to_type) const
@@ -380,6 +417,7 @@ real_t::convert (Type *to_type) const
     }
 }
 
+// Returns TRUE if real_t value is zero.
 
 bool
 real_t::isZero (void)
@@ -387,11 +425,15 @@ real_t::isZero (void)
   return rv().cl == rvc_zero;
 }
 
+// Returns TRUE if real_t value is negative.
+
 bool
 real_t::isNegative (void)
 {
   return REAL_VALUE_NEGATIVE (rv());
 }
+
+// Returns boolean resulf of real_t value comparison OP to R.
 
 bool
 real_t::floatCompare (int op, const real_t& r)
@@ -401,56 +443,59 @@ real_t::floatCompare (int op, const real_t& r)
   switch ((enum TOK) op)
     {
     case TOKleg:
-	{
-	  //n = r1 <>= r2;
-	  out = ORDERED_EXPR; break;
-	}
+      //n = r1 <>= r2;
+      out = ORDERED_EXPR;
+      break;
+
     case TOKlg:
-	{
-	  // n = r1 <> r2;
-	  return *this < r || *this > r;
-	}
+      // n = r1 <> r2;
+      return *this < r || *this > r;
+
     case TOKunord:
-	{
-	  // n = r1 !<>= r2;
-	  out = UNORDERED_EXPR; break;
-	}
+      // n = r1 !<>= r2;
+      out = UNORDERED_EXPR;
+      break;
+
     case TOKue:
-	{
-	  // n = r1 !<> r2;
-	  out = UNEQ_EXPR; break;
-	}
+      // n = r1 !<> r2;
+      out = UNEQ_EXPR;
+      break;
+
     case TOKug:
-	{
-	  // n = r1 !<= r2;
-	  out = UNGT_EXPR; break;
-	}
+      // n = r1 !<= r2;
+      out = UNGT_EXPR;
+      break;
+
     case TOKuge:
-	{
-	  // n = r1 !< r2;
-	  out = UNGE_EXPR; break;
-	}
+      // n = r1 !< r2;
+      out = UNGE_EXPR;
+      break;
+
     case TOKul:
-	{
-	  // n = r1 !>= r2;
-	  out = UNLT_EXPR; break;
-	}
+      // n = r1 !>= r2;
+      out = UNLT_EXPR;
+      break;
+
     case TOKule:
-	{
-	  // n = r1 !> r2;
-	  out = UNLE_EXPR; break;
-	}
+      // n = r1 !> r2;
+      out = UNLE_EXPR;
+      break;
+
     default:
       gcc_unreachable();
     }
   return real_compare (out, &rv(), &r.rv());
 }
 
+// Returns TRUE if real_t value is identical to R.
+
 bool
 real_t::isIdenticalTo (const real_t& r) const
 {
   return REAL_VALUES_IDENTICAL (rv(), r.rv());
 }
+
+// Format real_t value into decimal string BUF of size BUF_SIZE.
 
 int
 real_t::format (char *buf, unsigned buf_size) const
@@ -460,6 +505,8 @@ real_t::format (char *buf, unsigned buf_size) const
   return strlen (buf);
 }
 
+// Format real_t value into hex string BUF of size BUF_SIZE.
+
 int
 real_t::formatHex (char *buf, unsigned buf_size) const
 {
@@ -467,11 +514,15 @@ real_t::formatHex (char *buf, unsigned buf_size) const
   return strlen (buf);
 }
 
+// Returns TRUE if real_t value is +Inf.
+
 bool
 real_t::isInf (void)
 {
   return REAL_VALUE_ISINF (rv());
 }
+
+// Returns TRUE if real_t value is NaN.
 
 bool
 real_t::isNan (void)
@@ -486,11 +537,15 @@ real_t::isSignallingNan (void)
   return REAL_VALUE_ISNAN (rv()) && rv().signalling;
 }
 
+// Returns TRUE if conversion doesn't cause loss of precision.
+
 bool
 real_t::isConversionExact (Mode to_mode) const
 {
   return exact_real_truncate (machineMode (to_mode), &rv());
 }
+
+// Dump value of real_t for debugging purposes.
 
 void
 real_t::dump (void)

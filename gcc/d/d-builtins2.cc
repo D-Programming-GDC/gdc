@@ -296,7 +296,8 @@ d_bi_init (void)
   // Need to avoid errors in gimplification, else, need to not ICE
   // in targetm.canonical_va_list_type
   d_gcc_builtin_va_list_d_type->ctype = va_list_type_node;
-
+  TYPE_LANG_SPECIFIC (va_list_type_node) =
+    build_d_type_lang_specific (d_gcc_builtin_va_list_d_type);
 
   REALSIZE = int_size_in_bytes (long_double_type_node);
   REALPAD = 0;

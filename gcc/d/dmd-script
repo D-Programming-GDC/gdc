@@ -385,12 +385,6 @@ while ( $arg_i < scalar(@ARGV) ) {
         if( ! grep(/^-inline$/,@ARGV) ) {
             push @out, '-fno-inline-functions';
         }
-        if ( $gcc_maj < 4) {
-            push @out, '-frename-registers';
-        }
-        if ( $gcc_maj > 3 || ( $gcc_maj == 3 && $gcc_min >= 4 ) ) {
-            push @out, '-fweb';
-        }
     } elsif ( $arg =~ m/^-o-$/ ) {
         push @out, '-fsyntax-only';
         $link = 0;

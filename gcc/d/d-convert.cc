@@ -18,122 +18,17 @@
 #include "d-gcc-includes.h"
 #include "d-lang.h"
 
-// Helper for d_build_binary_op, so assumes exp will be converted to bool.
-static tree
-d_default_conversion (tree exp)
-{
-  tree orig_exp;
-  tree type = TREE_TYPE (exp);
-  tree_code code = TREE_CODE (type);
 
-  /* Constants can be used directly unless they're not loadable.  */
-  if (TREE_CODE (exp) == CONST_DECL)
-    exp = DECL_INITIAL (exp);
+// Because this is called by the backend, there may be cases when
+// IRState::converTo has been bypassed.  If we have type.lang_specific
+// set on both args, try using IRState::converTo.
 
-  /* Strip no-op conversions.  */
-  orig_exp = exp;
-  STRIP_TYPE_NOPS (exp);
+// tree convert (tree type, tree expr) is in d-glue.cc to get the
+// current IRState...
 
-  if (TREE_NO_WARNING (orig_exp))
-    TREE_NO_WARNING (exp) = 1;
 
-  switch (code)
-    {
-    case ARRAY_TYPE:
-      error ("used array that cannot be converted to pointer where scalar is required");
-      return error_mark_node;
-
-    case RECORD_TYPE:
-      error ("used struct type as value where scalar is required");
-      return error_mark_node;
-
-    case UNION_TYPE:
-      error ("used union type as value where scalar is required");
-      return error_mark_node;
-
-    case VOID_TYPE:
-      error ("void value not ignored as it ought to be");
-      return error_mark_node;
-
-    default:
-      break;
-    }
-
-  return exp;
-}
-
-// copied this over just to support d_truthvalue_conversion, so assumes bool
-static tree
-d_build_binary_op (tree_code code, tree orig_op0, tree orig_op1, int convert_p)
-{
-  tree type0, type1;
-  tree op0, op1;
-
-  tree result_type = NULL_TREE;
-
-  if (convert_p)
-    {
-      op0 = d_default_conversion (orig_op0);
-      op1 = d_default_conversion (orig_op1);
-    }
-  else
-    {
-      op0 = orig_op0;
-      op1 = orig_op1;
-    }
-
-  type0 = TREE_TYPE (op0);
-  type1 = TREE_TYPE (op1);
-
-  /* Strip NON_LVALUE_EXPRs, etc., since we aren't using as an lvalue.  */
-  STRIP_TYPE_NOPS (op0);
-  STRIP_TYPE_NOPS (op1);
-
-  /* Also need to convert pointer/int comparison for GCC >= 4.1 */
-  if (POINTER_TYPE_P (type0) && TREE_CODE (op1) == INTEGER_CST
-      && integer_zerop (op1))
-    {
-      result_type = type0;
-    }
-  else if (POINTER_TYPE_P (type1) && TREE_CODE (op0) == INTEGER_CST
-	   && integer_zerop (op0))
-    {
-      result_type = type1;
-    }
-  /* If integral, need to convert unsigned/signed comparison for GCC >= 4.4.x
-     Will also need to convert if type precisions differ. */
-  else if (INTEGRAL_TYPE_P (type0) && INTEGRAL_TYPE_P (type1))
-    {
-      if (TYPE_PRECISION (type0) > TYPE_PRECISION (type1))
-	result_type = type0;
-      else if (TYPE_PRECISION (type0) < TYPE_PRECISION (type1))
-	result_type = type1;
-      else if (TYPE_UNSIGNED (type0) != TYPE_UNSIGNED (type1))
-	result_type = TYPE_UNSIGNED (type0) ? type0 : type1;
-    }
-
-  if (result_type)
-    {
-      if (TREE_TYPE (op0) != result_type)
-	op0 = convert (result_type, op0);
-      if (TREE_TYPE (op1) != result_type)
-	op1 = convert (result_type, op1);
-    }
-
-  return build2 (code, boolean_type_node, op0, op1);
-}
-
-// These functions support calls from the backend.  This happens
-// for build_common_tree_nodes_2 and (anything else?%% if so, can
-// pare this down or ..just do the work of build_common_tree_nodes_2
-// OTOH, might want vector extensions some day.
-
-// probably can go back into dc-lang.cc
-
-// Because this is called by the backend, there may be cases when IRState::converTo
-// has been bypassed.  If we have type.lang_specific set on both args, try using IRState::converTo.
-
-// tree convert (tree type, tree expr) is in d-glue.cc to get the current IRState...
+// Creates an expression whose value is that of EXPR, converted to type TYPE.
+// This function implements all reasonable scalar conversions.
 
 tree
 d_convert_basic (tree type, tree expr)
@@ -141,12 +36,20 @@ d_convert_basic (tree type, tree expr)
   // taken from c-convert.c
   tree e = expr;
   enum tree_code code = TREE_CODE (type);
+  const char *invalid_conv_diag;
   tree ret;
 
   if (type == error_mark_node
       || expr == error_mark_node
       || TREE_TYPE (expr) == error_mark_node)
     return error_mark_node;
+
+  invalid_conv_diag = targetm.invalid_conversion (TREE_TYPE (expr), type);
+  if (invalid_conv_diag)
+    {
+      error (invalid_conv_diag);
+      return error_mark_node;
+    }
 
   if (type == TREE_TYPE (expr))
     return expr;
@@ -224,6 +127,127 @@ d_convert_basic (tree type, tree expr)
   return error_mark_node;
 }
 
+// Perform default target promotions for data used in expressions.
+
+static tree
+d_default_conversion (tree exp)
+{
+  tree orig_exp;
+  tree type = TREE_TYPE (exp);
+  tree promoted_type; 
+
+  /* Constants can be used directly unless they're not loadable.  */
+  if (TREE_CODE (exp) == CONST_DECL)
+    exp = DECL_INITIAL (exp);
+
+  /* Strip no-op conversions.  */
+  orig_exp = exp;
+  STRIP_TYPE_NOPS (exp);
+
+  if (TREE_NO_WARNING (orig_exp))
+    TREE_NO_WARNING (exp) = 1;
+
+  promoted_type = targetm.promoted_type (type);
+  if (promoted_type)
+    exp = d_convert_basic (promoted_type, exp);
+
+  return exp;
+}
+
+// Helper for d_build_truthvalue_op, so assumes exp will be converted to bool.
+
+static tree
+d_scalar_conversion (tree exp)
+{
+  exp = d_default_conversion (exp);
+
+  switch (TREE_CODE (exp))
+    {
+    case ARRAY_TYPE:
+    case RECORD_TYPE:
+    case UNION_TYPE:
+    case VOID_TYPE:
+    case FUNCTION_TYPE:
+    case VECTOR_TYPE:
+      // This should already be handled by the front end.
+      gcc_unreachable ();
+
+    default:
+      break;
+    }
+
+  return exp;
+}
+
+
+// Build CODE expression with operands ORIG_OP0 and ORIG_OP1,
+// performing default value conversions if CONVERT_P.
+// Helper function for d_truthvalue_conversion, so assumes bool result.
+
+static tree
+d_build_truthvalue_op (tree_code code, tree orig_op0,
+		       tree orig_op1, int convert_p)
+{
+  tree type0, type1;
+  tree op0, op1;
+
+  tree result_type = NULL_TREE;
+
+  if (convert_p)
+    {
+      op0 = d_scalar_conversion (orig_op0);
+      op1 = d_scalar_conversion (orig_op1);
+    }
+  else
+    {
+      op0 = orig_op0;
+      op1 = orig_op1;
+    }
+
+  type0 = TREE_TYPE (op0);
+  type1 = TREE_TYPE (op1);
+
+  /* Strip NON_LVALUE_EXPRs, etc., since we aren't using as an lvalue.  */
+  STRIP_TYPE_NOPS (op0);
+  STRIP_TYPE_NOPS (op1);
+
+  /* Also need to convert pointer/int comparison for GCC >= 4.1 */
+  if (POINTER_TYPE_P (type0) && TREE_CODE (op1) == INTEGER_CST
+      && integer_zerop (op1))
+    {
+      result_type = type0;
+    }
+  else if (POINTER_TYPE_P (type1) && TREE_CODE (op0) == INTEGER_CST
+	   && integer_zerop (op0))
+    {
+      result_type = type1;
+    }
+  /* If integral, need to convert unsigned/signed comparison for GCC >= 4.4.x
+     Will also need to convert if type precisions differ. */
+  else if (INTEGRAL_TYPE_P (type0) && INTEGRAL_TYPE_P (type1))
+    {
+      if (TYPE_PRECISION (type0) > TYPE_PRECISION (type1))
+	result_type = type0;
+      else if (TYPE_PRECISION (type0) < TYPE_PRECISION (type1))
+	result_type = type1;
+      else if (TYPE_UNSIGNED (type0) != TYPE_UNSIGNED (type1))
+	result_type = TYPE_UNSIGNED (type0) ? type0 : type1;
+    }
+
+  if (result_type)
+    {
+      if (TREE_TYPE (op0) != result_type)
+	op0 = convert (result_type, op0);
+      if (TREE_TYPE (op1) != result_type)
+	op1 = convert (result_type, op1);
+    }
+
+  return build2 (code, boolean_type_node, op0, op1);
+}
+
+
+// Convert EXPR to be a truth-value, validating its type for this purpose.
+
 tree
 d_truthvalue_conversion (tree expr)
 {
@@ -281,12 +305,12 @@ d_truthvalue_conversion (tree expr)
 	return boolean_true_node;
 
     case COMPLEX_EXPR:
-      return d_build_binary_op ((TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1))
-				 ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-				d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
-				d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
-				/* convert_p */ 0);
-
+      return d_build_truthvalue_op ((TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1))
+				     ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
+				    d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
+				    d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
+				    /* convert_p */ 0);
+      
     case NEGATE_EXPR:
     case ABS_EXPR:
     case FLOAT_EXPR:
@@ -367,19 +391,18 @@ d_truthvalue_conversion (tree expr)
     {
       tree t = save_expr (expr);
       tree compon_type = TREE_TYPE (TREE_TYPE (expr));
-      return (d_build_binary_op
-	      ((TREE_SIDE_EFFECTS (expr)
-		? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-	       d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
-	       d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)),
-	       /* convert_p */ 0));
+      return (d_build_truthvalue_op ((TREE_SIDE_EFFECTS (expr)
+				      ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
+				     d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
+				     d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)),
+				     /* convert_p */ 0));
     }
   /* Without this, the backend tries to load a float reg with and integer
      value with fails (on i386 and rs6000, at least). */
   else if (SCALAR_FLOAT_TYPE_P (TREE_TYPE (expr)))
-    return d_build_binary_op (NE_EXPR, expr,
-			      convert (TREE_TYPE (expr), integer_zero_node), 1);
+    return d_build_truthvalue_op (NE_EXPR, expr,
+				  convert (TREE_TYPE (expr), integer_zero_node), 1);
 
-  return d_build_binary_op (NE_EXPR, expr, integer_zero_node, 1);
+  return d_build_truthvalue_op (NE_EXPR, expr, integer_zero_node, 1);
 }
 

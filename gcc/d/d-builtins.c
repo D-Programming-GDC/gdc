@@ -263,7 +263,8 @@ d_init_builtins (void)
       /* It might seem natural to make the reference type a pointer,
 	 but this will not work in D: There is no implicit casting from
 	 an array to a pointer. */
-      va_list_arg_type_node = va_list_ref_type_node = va_list_type_node;
+      va_list_arg_type_node = build_reference_type (va_list_type_node);
+      va_list_ref_type_node = va_list_arg_type_node;
     }
   else
     {

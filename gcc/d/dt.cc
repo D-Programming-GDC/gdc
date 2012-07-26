@@ -46,16 +46,15 @@ dtcat (dt_t **pdt, dt_t *d)
   return & d->DTnext;
 }
 
-typedef unsigned bitunit_t;
 
 dt_t **
 dtnbits (dt_t **pdt, size_t count, char *pbytes, unsigned unit_size)
 {
-  gcc_assert (unit_size == sizeof (bitunit_t));
+  gcc_assert (unit_size == sizeof (unsigned));
   gcc_assert (count % unit_size == 0);
 
-  bitunit_t *p_unit = (bitunit_t *) pbytes;
-  bitunit_t *p_unit_end = (bitunit_t *) (pbytes + count);
+  unsigned *p_unit = (unsigned *) pbytes;
+  unsigned *p_unit_end = (unsigned *) (pbytes + count);
   char *pbits = new char[count];
   char *p_out = pbits;
   unsigned b = 0;
@@ -63,9 +62,9 @@ dtnbits (dt_t **pdt, size_t count, char *pbytes, unsigned unit_size)
 
   while (p_unit < p_unit_end)
     {
-      bitunit_t inv = *p_unit++;
+      unsigned inv = *p_unit++;
 
-      for (size_t i = 0; i < sizeof (bitunit_t)*8; i++)
+      for (size_t i = 0; i < sizeof (unsigned) * 8; i++)
 	{
 	  outv |= ((inv >> i) & 1) << b;
 	  if (++b == 8)
@@ -84,15 +83,13 @@ dtnbits (dt_t **pdt, size_t count, char *pbytes, unsigned unit_size)
 dt_t **
 dtnwords (dt_t **pdt, size_t word_count, void *pwords, unsigned word_size)
 {
-  return dtnbytes (pdt, word_count *word_size,
-       		   gen.hostToTargetString ((char *) pwords, word_count, word_size));
+  return dtnbytes (pdt, word_count * word_size, (char *) pwords);
 }
 
 dt_t **
 dtawords (dt_t **pdt, size_t word_count, void *pwords, unsigned word_size)
 {
-  return dtabytes (pdt, TYnptr, 0, word_count *word_size,
-       		   gen.hostToTargetString ((char *) pwords, word_count, word_size));
+  return dtabytes (pdt, TYnptr, 0, word_count * word_size, (char *) pwords);
 }
 
 /* Add a 32-bit value to a dt.  If pad_to_word is true, adds any

@@ -209,8 +209,6 @@ struct IRState : IRBase
   tree darrayVal (tree type, uinteger_t len, tree data);
   tree darrayString (const char *str);
 
-  static char *hostToTargetString (char *str, size_t length, unsigned unit_size);
-
   // Length of either a static or dynamic array
   tree arrayLength (Expression *exp);
   static tree arrayLength (tree exp, Type *exp_type);
@@ -225,9 +223,9 @@ struct IRState : IRBase
   void extractMethodCallExpr (tree mcr, tree& callee_out, tree& object_out);
   tree objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type *d_type);
 
-  static tree twoFieldType (tree rec_type, tree ft1, tree ft2, Type *d_type = 0, const char *n1 = "_a", const char *n2 = "_b");
+  static tree twoFieldType (tree ft1, tree ft2, Type *d_type = 0, const char *n1 = "_a", const char *n2 = "_b");
   static tree twoFieldType (Type *ft1, Type *ft2, Type *d_type = 0, const char *n1 = "_a", const char *n2 = "_b");
-  static tree twoFieldCtor (tree rec_type, tree f1, tree f2, int storage_class = 0);
+  static tree twoFieldCtor (tree f1, tree f2, int storage_class = 0);
 
   // ** Temporaries (currently just SAVE_EXPRs)
 
@@ -248,23 +246,31 @@ struct IRState : IRBase
 
   /* Cast exp (which should be a pointer) to TYPE *and then indirect.  The
      back-end requires this cast in many cases. */
-  static tree indirect (tree exp, tree type);
+  static tree indirect (tree type, tree exp);
   static tree indirect (tree exp);
 
-  static tree vmodify (tree dst, tree src);
-  static tree vinit (tree dst, tree src);
+  static tree vmodify (tree dst, tree src)
+  { return build2 (MODIFY_EXPR, void_type_node, dst, src); }
+
+  static tree vinit (tree dst, tree src)
+  { return build2 (INIT_EXPR, void_type_node, dst, src); }
 
   tree pointerIntSum (Expression *ptr_exp, Expression *idx_exp);
   tree pointerIntSum (tree ptr_node, tree idx_exp);
-  static tree pointerOffsetOp (int op, tree ptr, tree idx);
+  static tree pointerOffsetOp (enum tree_code op, tree ptr, tree idx);
   static tree pointerOffset (tree ptr_node, tree byte_offset);
 
-  static tree nop (tree e, tree t);
-  static tree vconvert (tree e, tree t);
+  static tree nop (tree t, tree e)
+  { return build1 (NOP_EXPR, t, e); }
+
+  static tree vconvert (tree t, tree e)
+  { return build1 (VIEW_CONVERT_EXPR, t, e); }
 
   // DMD allows { void[] a; &a[3]; }
   static tree pvoidOkay (tree t);
-  tree boolOp (enum tree_code code, tree a, tree b);
+
+  tree boolOp (enum tree_code code, tree arg0, tree arg1)
+  { return build2 (code, boolean_type_node, arg0, arg1); }
 
   tree checkedIndex (Loc loc, tree index, tree upper_bound, bool inclusive);
   tree boundsCond (tree index, tree upper_bound, bool inclusive);
@@ -273,20 +279,34 @@ struct IRState : IRBase
   tree arrayElemRef (IndexExp *aer_exp, ArrayScope *aryscp);
 
   static tree binding (tree var_chain, tree body);
-  static tree compound (tree a, tree b, tree type = 0);
-  tree voidCompound (tree a, tree b);
-  tree maybeCompound (tree a, tree b);
-  tree maybeVoidCompound (tree a, tree b);
-  static tree component (tree v, tree f);
+
+  static tree compound (tree arg0, tree arg1)
+  { return build2 (COMPOUND_EXPR, TREE_TYPE (arg1), arg0, arg1); }
+
+  static tree compound (tree type, tree arg0, tree arg1)
+  { return build2 (COMPOUND_EXPR, type, arg0, arg1); }
+
+  static tree voidCompound (tree arg0, tree arg1)
+  { return build2 (COMPOUND_EXPR, void_type_node, arg0, arg1); }
+
+  static tree maybeCompound (tree arg0, tree arg1);
+  static tree maybeVoidCompound (tree arg0, tree arg1);
+
+  static tree component (tree v, tree f)
+  { return build3 (COMPONENT_REF, TREE_TYPE (f), v, f, NULL_TREE); }
 
   // Giving error_mark_node a type allows for some assumptions about
   // the type of an arbitrary expression.
-  static tree errorMark (Type *t);
+  static tree errorMark (Type *t)
+  { return build1 (NOP_EXPR, t->toCtype(), error_mark_node); }
+
   static bool isErrorMark (tree t);
 
   // ** Helpers for call
   static TypeFunction *getFuncType (Type *t);
-  static bool isFuncType (tree t);
+
+  static bool isFuncType (tree t)
+  { return (TREE_CODE (t) == FUNCTION_TYPE || TREE_CODE (t) == METHOD_TYPE); }
 
   // ** Function calls
   tree call (Expression *expr, Expressions *arguments);
@@ -297,7 +317,6 @@ struct IRState : IRBase
   tree assertCall (Loc loc, LibCall libcall = LIBCALL_ASSERT);
   tree assertCall (Loc loc, Expression *msg);
   static FuncDeclaration *getLibCallDecl (LibCall lib_call);
-  static void replaceLibCallDecl (FuncDeclaration *d_decl);
   // This does not perform conversions on the arguments.  This allows
   // arbitrary data to be passed through varargs without going through the
   // usual conversions.
@@ -313,7 +332,7 @@ struct IRState : IRBase
   // Variables that are in scope that will need destruction later
   static VarDeclarations *varsInScope;
 
-  tree floatMod (tree a, tree b, tree type);
+  tree floatMod (tree type, tree arg0, tree arg1);
 
   tree typeinfoReference (Type *t);
 
@@ -354,7 +373,6 @@ struct IRState : IRBase
 
   static bool maybeSetUpBuiltin (Declaration *decl);
 
-  static tree functionPointer (FuncDeclaration *func_decl);
   // Returns the D object that was thrown.  Different from the generic exception pointer
   static tree exceptionObject (void);
 
@@ -387,17 +405,15 @@ struct IRState : IRBase
   static bool functionNeedsChain (FuncDeclaration *f);
 
   // Check for nested functions/class/structs
-  static bool isFuncNestedIn (FuncDeclaration *inner, FuncDeclaration *outer);
   static FuncDeclaration *isClassNestedInFunction (ClassDeclaration *cd);
+  static FuncDeclaration *isStructNestedInFunction (StructDeclaration *sd);
 
+  tree findThis (ClassDeclaration *target_cd);
   tree getVThis (Dsymbol *decl, Expression *e);
 
   // Static chain for nested functions
   tree getFrameForFunction (FuncDeclaration *f);
   tree getFrameForNestedClass (ClassDeclaration *c);
-
-  // %% D2.0 - handle structs too
-  static FuncDeclaration *isStructNestedInFunction (StructDeclaration *sd);
   tree getFrameForNestedStruct (StructDeclaration *s);
 
   // ** Instruction stream manipulation
@@ -463,7 +479,7 @@ struct WrappedExp : Expression
 {
   tree exp_node;
   WrappedExp (Loc loc, enum TOK op, tree exp_node, Type *type);
-  void toCBuffer (OutBuffer *buf);
+  void toCBuffer (OutBuffer *buf, HdrGenState *hgs);
   elem *toElem (IRState *irs);
 };
 
@@ -526,32 +542,19 @@ struct CtorEltMaker
 
 };
 
-class FieldVisitor
-{
- public:
-  AggregateDeclaration *aggDecl;
-
-  FieldVisitor (AggregateDeclaration *decl)
-    : aggDecl(decl)
-  { }
-
-  virtual void doFields (VarDeclarations *fields, AggregateDeclaration *agg) = 0;
-  virtual void doInterfaces (BaseClasses *bases) = 0;
-
-  void go (void)
-  { visit (this->aggDecl); }
-
-  void visit (AggregateDeclaration *decl);
-};
-
-class AggLayout : public FieldVisitor
+class AggLayout
 {
  public:
   AggLayout (AggregateDeclaration *ini_agg_decl, tree ini_agg_type)
-    : FieldVisitor(ini_agg_decl),
+    : aggDecl_(ini_agg_decl),
       aggType_(ini_agg_type),
       fieldList_(&TYPE_FIELDS(this->aggType_))
   { }
+
+  void go (void)
+  { visit (this->aggDecl_); }
+
+  void visit (AggregateDeclaration *decl);
 
   void doFields (VarDeclarations *fields, AggregateDeclaration *agg);
   void doInterfaces (BaseClasses *bases);
@@ -559,6 +562,7 @@ class AggLayout : public FieldVisitor
   void finish (Expressions *attrs);
 
  private:
+  AggregateDeclaration *aggDecl_;
   tree aggType_;
   ListMaker fieldList_;
 };
@@ -566,11 +570,9 @@ class AggLayout : public FieldVisitor
 class ArrayScope
 {
  public:
-  IRState *irs;
-
-  ArrayScope (IRState *ini_irs, VarDeclaration *ini_v, const Loc& loc);
-  tree setArrayExp (tree e, Type *t);
-  tree finish (tree e);
+  ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc);
+  tree setArrayExp (IRState *irs, tree e, Type *t);
+  tree finish (IRState *irs, tree e);
 
  private:
   VarDeclaration *var_;

@@ -116,6 +116,8 @@ inline int ld_sprint(char* str, int fmt, longdouble x)
 }
 
 
+// List of values for .max, .min, etc, for floats in D.
+
 struct real_t_Properties
 {
   real_t maxval, minval, epsilonval /*, nanval, infval */;
@@ -126,7 +128,7 @@ struct real_t_Properties
 
 extern real_t_Properties real_t_properties[real_t::NumModes];
 
-// Macros used by the D frontend are mapped to real_t property values.
+// Macros are used by the D frontend, so map to real_t property values instead of long double.
 
 #define FLT_MAX real_t_properties[real_t::Float].maxval;                
 #define DBL_MAX real_t_properties[real_t::Double].maxval;               

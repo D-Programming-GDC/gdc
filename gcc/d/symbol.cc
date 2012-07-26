@@ -18,6 +18,8 @@
 #include "d-gcc-includes.h"
 #include "symbol.h"
 
+// Construct a new Symbol.
+
 Symbol::Symbol ()
 {
   this->Sident = 0;
@@ -38,6 +40,8 @@ Symbol::Symbol ()
   this->frameInfo = NULL;
 }
 
+// Create a static symbol given the name STRING.
+
 Symbol *
 symbol_calloc (const char *string)
 {
@@ -47,42 +51,12 @@ symbol_calloc (const char *string)
   return s;
 }
 
-Symbol *
-symbol_name (const char *id, int , TYPE *)
-{
-  // %% Nothing special, just do the same as symbol_calloc
-  // we don't even bother using sclass and t
-  return symbol_calloc (id);
-}
+// Create a static symbol we can hang DT initializers onto.
 
 Symbol *
-struct_calloc ()
-{
-  return new Symbol;
-}
-
-Symbol *
-symbol_generate (SymbolStorageClass, TYPE *)
-{
-  return 0;
-}
-
-Thunk::Thunk ()
-{
-  offset = 0;
-  symbol = 0;
-}
-
-void
-symbol_func (Symbol *)
-{
-}
-
-Symbol *
-symbol_tree (tree t)
+static_sym (void)
 {
   Symbol *s = new Symbol;
-  s->Stree = t;
   return s;
 }
 

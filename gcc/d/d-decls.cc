@@ -42,7 +42,8 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
-/********************************* SymbolDeclaration ****************************/
+// Construct a SymbolDeclaration, whose components are a symbol S
+// and a struct declaration DSYM.
 
 SymbolDeclaration::SymbolDeclaration (Loc loc, Symbol *s, StructDeclaration *dsym)
     : Declaration (new Identifier (s->Sident, TOKidentifier))
@@ -52,6 +53,8 @@ SymbolDeclaration::SymbolDeclaration (Loc loc, Symbol *s, StructDeclaration *dsy
   this->dsym = dsym;
   storage_class |= STCconst;
 }
+
+// Create the symbol with tree for struct initialisers.
 
 Symbol *
 SymbolDeclaration::toSymbol (void)
@@ -66,12 +69,12 @@ SymbolDeclaration::toSymbol (void)
   return sym;
 }
 
-/*************************************
- * Helper
- */
+
+// Helper for toSymbol.  Generate a mangled identifier for Symbol.
+// We don't bother using sclass and t.
 
 Symbol *
-Dsymbol::toSymbolX (const char *prefix, int sclass, type *t, const char *suffix)
+Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
 {
   char *n = mangle();
   unsigned nlen = strlen (n);
@@ -80,11 +83,9 @@ Dsymbol::toSymbolX (const char *prefix, int sclass, type *t, const char *suffix)
   char *id = (char *) alloca (sz);
 
   snprintf (id, sz, "_D%s%u%s%s", n, strlen (prefix), prefix, suffix);
-  return symbol_name (id, sclass, t);
+  return symbol_calloc (id);
 }
 
-/*************************************
-*/
 
 Symbol *
 Dsymbol::toSymbol (void)
@@ -94,9 +95,7 @@ Dsymbol::toSymbol (void)
   return NULL;
 }
 
-/*********************************
- * Generate import symbol from symbol.
- */
+// Generate an import symbol from symbol.
 
 Symbol *
 Dsymbol::toImport (void)
@@ -110,23 +109,19 @@ Dsymbol::toImport (void)
   return isym;
 }
 
-/*************************************
-*/
-
 Symbol *
 Dsymbol::toImport (Symbol *)
 {
-  // not used in GCC (yet?)
-  return 0;
+  // This is not used in GDC (yet?)
+  return NULL;
 }
 
 
+// When compiling multiple sources at once, there may be name collisions
+// on compiler-generated or extern (C) symbols. This only should only
+// apply to private symbols.  Otherwise, duplicate names are an error.
 
-/* When using -combine, there may be name collisions on compiler-generated
-   or extern (C) symbols. This only should only apply to private symbols.
-   Otherwise, duplicate names are an error. */
-
-static StringTable *uniqueNames = 0;
+static StringTable *uniqueNames = NULL;
 
 static void
 uniqueName (Declaration *d, tree t, const char *asm_name)
@@ -138,18 +133,23 @@ uniqueName (Declaration *d, tree t, const char *asm_name)
   FuncDeclaration *f = d->isFuncDeclaration();
   VarDeclaration *v = d->isVarDeclaration();
 
-  /* Check cases for which it is okay to have a duplicate symbol name.
-     Otherwise, duplicate names are an error and the condition will
-     be caught by the assembler. */
-  if (! (f && ! f->fbody) &&
-      ! (v && (v->storage_class & STCextern)) &&
-      (
-       // Static declarations in different scope statements
-       (p && p->isFuncDeclaration()) ||
-       // Top-level duplicate names are okay if private.
-       ((!p || p->isModule()) && d->protection == PROTprivate)
-      )
-  )
+  // Check cases for which it is okay to have a duplicate symbol name.
+  // Otherwise, duplicate names are an error and the condition will
+  // be caught by the assembler.
+  bool duplicate_ok = false;
+
+  if (f && !f->fbody)
+    duplicate_ok = false;
+  else if (v && (v->storage_class & STCextern))
+    duplicate_ok = false;
+  // Static declarations in different scope statements.
+  else if (p && p->isFuncDeclaration())
+    duplicate_ok = true;
+  //  Top-level duplicate names are okay if private.
+  else if ((!p || p->isModule()) && d->protection == PROTprivate)
+    duplicate_ok = true;
+
+  if (duplicate_ok)
     {
       StringValue *sv;
 
@@ -170,25 +170,20 @@ uniqueName (Declaration *d, tree t, const char *asm_name)
       sv->intvalue++;
     }
 
-  tree id;
-  /* In 4.3.x, it is now the job of the front-end to ensure decls get mangled for their target.
+  /* It is now the job of the front-end to ensure decls get mangled for their target.
      We'll only allow FUNCTION_DECLs and VAR_DECLs for variables with static storage duration
      to get a mangled DECL_ASSEMBLER_NAME. And the backend should handle the rest. */
+  tree id;
   if (f || (v && (v->protection == PROTpublic || v->storage_class & (STCstatic | STCextern))))
-    {
-      id = targetm.mangle_decl_assembler_name (t, get_identifier (out_name));
-    }
+    id = targetm.mangle_decl_assembler_name (t, get_identifier (out_name));
   else
-    {
-      id = get_identifier (out_name);
-    }
+    id = get_identifier (out_name);
 
   SET_DECL_ASSEMBLER_NAME (t, id);
 }
 
 
-/*************************************
-*/
+// Create the symbol with VAR_DECL tree for static variables.
 
 Symbol *
 VarDeclaration::toSymbol (void)
@@ -223,13 +218,9 @@ VarDeclaration::toSymbol (void)
       if (storage_class & STCparameter)
 	decl_kind = PARM_DECL;
       else if (storage_class & STCmanifest)
-	{
-	  decl_kind = CONST_DECL;
-	}
+	decl_kind = CONST_DECL;
       else
-	{
-	  decl_kind = VAR_DECL;
-	}
+	decl_kind = VAR_DECL;
 
       var_decl = build_decl (UNKNOWN_LOCATION, decl_kind, get_identifier (csym->Sident),
 			     gen.trueDeclarationType (this));
@@ -246,9 +237,7 @@ VarDeclaration::toSymbol (void)
       d_keep (var_decl);
       g.ofile->setDeclLoc (var_decl, this);
       if (decl_kind == VAR_DECL)
-	{
-	  g.ofile->setupSymbolStorage (this, var_decl);
-	}
+	g.ofile->setupSymbolStorage (this, var_decl);
       else if (decl_kind == PARM_DECL)
 	{
 	  /* from gcc code: Some languages have different nominal and real types.  */
@@ -335,8 +324,7 @@ VarDeclaration::toSymbol (void)
   return csym;
 }
 
-/*************************************
-*/
+// Create the symbol with tree for classinfo decls.
 
 Symbol *
 ClassInfoDeclaration::toSymbol (void)
@@ -344,8 +332,7 @@ ClassInfoDeclaration::toSymbol (void)
   return cd->toSymbol();
 }
 
-/*************************************
-*/
+// Create the symbol with tree for moduleinfo decls.
 
 Symbol *
 ModuleInfoDeclaration::toSymbol (void)
@@ -353,8 +340,7 @@ ModuleInfoDeclaration::toSymbol (void)
   return mod->toSymbol();
 }
 
-/*************************************
-*/
+// Create the symbol with tree for typeinfo decls.
 
 Symbol *
 TypeInfoDeclaration::toSymbol (void)
@@ -382,8 +368,7 @@ TypeInfoDeclaration::toSymbol (void)
   return csym;
 }
 
-/*************************************
-*/
+// Create the symbol with tree for typeinfoclass decls.
 
 Symbol *
 TypeInfoClassDeclaration::toSymbol (void)
@@ -394,8 +379,7 @@ TypeInfoClassDeclaration::toSymbol (void)
 }
 
 
-/*************************************
-*/
+// Create the symbol with tree for function aliases.
 
 Symbol *
 FuncAliasDeclaration::toSymbol (void)
@@ -403,10 +387,8 @@ FuncAliasDeclaration::toSymbol (void)
   return funcalias->toSymbol();
 }
 
-/*************************************
-*/
+// Create the symbol with FUNCTION_DECL tree for functions.
 
-// returns a FUNCTION_DECL tree
 Symbol *
 FuncDeclaration::toSymbol (void)
 {
@@ -421,9 +403,7 @@ FuncDeclaration::toSymbol (void)
 	  tree fndecl;
 
 	  if (ident)
-	    {
-	      id = get_identifier (ident->string);
-	    }
+	    id = get_identifier (ident->string);
 	  else
 	    {
 	      // This happens for assoc array foreach bodies
@@ -601,15 +581,6 @@ FuncDeclaration::toSymbol (void)
 	    TREE_PUBLIC (fndecl) = 0;
 
 	  TREE_USED (fndecl) = 1; // %% Probably should be a little more intelligent about this
-
-	  // %% hack: on darwin (at least) using a DECL_EXTERNAL (IRState::getLibCallDecl)
-	  // and TREE_STATIC FUNCTION_DECLs causes the stub label to be output twice.  This
-	  // is a work around.  This doesn't handle the case in which the normal
-	  // getLibCallDecl has already been created and used.  Note that the problem only
-	  // occurs with function inlining is used.
-	  if (linkage == LINKc)
-	    gen.replaceLibCallDecl (this);
-
 	  csym->Stree = fndecl;
 
 	  gen.maybeSetUpBuiltin (this);
@@ -623,8 +594,9 @@ FuncDeclaration::toSymbol (void)
 }
 
 
-/*************************************
-*/
+// Create the thunk symbol functions.
+// Thunk is added to class at OFFSET.
+
 Symbol *
 FuncDeclaration::toThunkSymbol (int offset)
 {
@@ -705,9 +677,7 @@ FuncDeclaration::toThunkSymbol (int offset)
 }
 
 
-/*************************************
- * Create the "ClassInfo" symbol
- */
+// Create the "ClassInfo" symbol for classes.
 
 Symbol *
 ClassDeclaration::toSymbol (void)
@@ -732,9 +702,7 @@ ClassDeclaration::toSymbol (void)
   return csym;
 }
 
-/*************************************
- * Create the "InterfaceInfo" symbol
- */
+// Create the "InterfaceInfo" symbol for interfaces.
 
 Symbol *
 InterfaceDeclaration::toSymbol (void)
@@ -753,9 +721,7 @@ InterfaceDeclaration::toSymbol (void)
   return csym;
 }
 
-/*************************************
- * Create the "ModuleInfo" symbol
- */
+// Create the "ModuleInfo" symbol for given module.
 
 Symbol *
 Module::toSymbol (void)
@@ -781,10 +747,9 @@ Module::toSymbol (void)
   return csym;
 }
 
-/*************************************
- * This is accessible via the ClassData, but since it is frequently
- * needed directly (like for rtti comparisons), make it directly accessible.
- */
+// Create the "vtbl" symbol for ClassDeclaration.
+// This is accessible via the ClassData, but since it is frequently
+// needed directly (like for rtti comparisons), make it directly accessible.
 
 Symbol *
 ClassDeclaration::toVtblSymbol (void)
@@ -820,19 +785,16 @@ ClassDeclaration::toVtblSymbol (void)
   return vtblsym;
 }
 
-/**********************************
- * Create the static initializer for the struct/class.
- */
+// Create the static initializer for the struct/class.
 
-/* Because this is called from the front end (mtype.cc:TypeStruct::defaultInit()),
-   we need to hold off using back-end stuff until the toobjfile phase.
+// Because this is called from the front end (mtype.cc:TypeStruct::defaultInit()),
+// we need to hold off using back-end stuff until the toobjfile phase.
 
-   Specifically, it is not safe create a VAR_DECL with a type from toCtype()
-   because there may be unresolved recursive references.
-   StructDeclaration::toObjFile calls toInitializer without ever calling
-   SymbolDeclaration::toSymbol, so we just need to keep checking if we
-   are in the toObjFile phase.
-   */
+// Specifically, it is not safe create a VAR_DECL with a type from toCtype()
+// because there may be unresolved recursive references.
+// StructDeclaration::toObjFile calls toInitializer without ever calling
+// SymbolDeclaration::toSymbol, so we just need to keep checking if we
+// are in the toObjFile phase.
 
 Symbol *
 AggregateDeclaration::toInitializer (void)
@@ -869,6 +831,8 @@ AggregateDeclaration::toInitializer (void)
   return sinit;
 }
 
+// Create the static initializer for the typedef variable.
+
 Symbol *
 TypedefDeclaration::toInitializer (void)
 {
@@ -897,6 +861,8 @@ TypedefDeclaration::toInitializer (void)
     }
   return sinit;
 }
+
+// Create the static initializer for the enum.
 
 Symbol *
 EnumDeclaration::toInitializer (void)
@@ -935,48 +901,31 @@ EnumDeclaration::toInitializer (void)
 }
 
 
-/******************************************
-*/
-
 Symbol *
 Module::toModuleAssert (void)
 {
-  // Not used in GCC
-  return 0;
+  // Not used in GDC
+  return NULL;
 }
-
-/******************************************
-*/
 
 Symbol *
 Module::toModuleUnittest (void)
 {
-  // Not used in GCC
-  return 0;
+  // Not used in GDC
+  return NULL;
 }
-
-/******************************************
-*/
 
 Symbol *
 Module::toModuleArray (void)
 {
-  // Not used in GCC (all array bounds checks are inlined)
-  return 0;
+  // Not used in GDC (all array bounds checks are inlined)
+  return NULL;
 }
-
-/********************************************
- * Determine the right symbol to look up
- * an associative array element.
- * Input:
- *      flags   0       don't add value signature
- *              1       add value signature
- */
 
 Symbol *
 TypeAArray::aaGetSymbol (const char *, int)
 {
-  // This is not used in GCC (yet?)
+  // This is not used in GDC (yet?)
   return 0;
 }
 

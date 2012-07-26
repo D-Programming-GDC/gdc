@@ -40,7 +40,6 @@ extern bool d_gcc_is_target_win32 (void);
 /* used in toobj.c */
 struct VarDeclaration;
 extern void d_gcc_emit_local_variable (VarDeclaration *);
-extern bool d_gcc_supports_weak (void);
 
 /* used in mtype.c */
 extern int d_gcc_type_align (Type *);

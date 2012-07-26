@@ -1701,9 +1701,6 @@ d_eh_personality (void)
 static tree
 d_build_eh_type_type (tree type)
 {
-  if (TREE_CODE (type) == ADDR_EXPR)
-    return type;    // %% why???
-
   TypeClass *d_type = (TypeClass *) gen.getDType (type);
   gcc_assert (d_type);
   d_type = (TypeClass *) d_type->toBasetype();

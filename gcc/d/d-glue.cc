@@ -121,9 +121,9 @@ build_bool_binop (TOK op, tree type, Expression *e1, Expression *e2, IRState *ir
       t1 = irs->maybeMakeTemp (t1);
       t2 = irs->maybeMakeTemp (t2);
       // %% Write instead as (t1 != t2) ?
-      return irs->boolOp (TRUTH_ORIF_EXPR,
-			  build2 (LT_EXPR, boolean_type_node, t1, t2),
-			  build2 (GT_EXPR, boolean_type_node, t1, t2));
+      return build2 (TRUTH_ORIF_EXPR, boolean_type_node,
+		     build2 (LT_EXPR, boolean_type_node, t1, t2),
+		     build2 (GT_EXPR, boolean_type_node, t1, t2));
 
     case TOKue:
       if (FLOAT_TYPE_P (TREE_TYPE (t1)) && FLOAT_TYPE_P (TREE_TYPE (t2)))
@@ -240,7 +240,7 @@ build_math_op (TOK op, tree type, tree e1, Type *tb1, tree e2, Type *tb2, IRStat
       if (INTEGRAL_TYPE_P (e1_type))
 	out_code = TRUNC_MOD_EXPR;
       else
-	return irs->floatMod (e1, e2, e1_type);
+	return irs->floatMod (e1_type, e1, e2);
       break;
 
     case TOKdiv:
@@ -259,12 +259,12 @@ build_math_op (TOK op, tree type, tree e1, Type *tb1, tree e2, Type *tb2, IRStat
 
   if (POINTER_TYPE_P (e1_type) && INTEGRAL_TYPE_P (e2_type))
     {
-      return irs->nop (irs->pointerOffsetOp (out_code, e1, e2), type);
+      return irs->nop (type, irs->pointerOffsetOp (out_code, e1, e2));
     }
   else if (INTEGRAL_TYPE_P (e1_type) && POINTER_TYPE_P (e2_type))
     {
       gcc_assert (out_code == PLUS_EXPR);
-      return irs->nop (irs->pointerOffsetOp (out_code, e2, e1), type);
+      return irs->nop (type, irs->pointerOffsetOp (out_code, e2, e1));
     }
   else if (POINTER_TYPE_P (e1_type) && POINTER_TYPE_P (e2_type))
     {
@@ -1275,7 +1275,7 @@ AssignExp::toElem (IRState *irs)
 		result = irs->buildCall (t_memcpy, 3, irs->darrayPtrRef (array[0]),
 					 irs->darrayPtrRef (array[1]), size);
 
-		return irs->compound (result, array[0], type->toCtype());
+		return irs->compound (type->toCtype(), result, array[0]);
 	      }
 	}
     }
@@ -1393,7 +1393,7 @@ IndexExp::toElem (IRState *irs)
 	  t = build3 (COND_EXPR, TREE_TYPE (t), d_truthvalue_conversion (t), t,
 		      irs->assertCall (loc, LIBCALL_ARRAY_BOUNDS));
 	}
-      return irs->indirect (t, type->toCtype());
+      return irs->indirect (type->toCtype(), t);
     }
 }
 
@@ -1442,7 +1442,7 @@ SliceExp::toElem (IRState *irs)
 
   ArrayScope aryscp (irs, lengthVar, loc);
 
-  orig_array_expr = aryscp.setArrayExp (e1->toElem (irs), e1->type);
+  orig_array_expr = aryscp.setArrayExp (irs, e1->toElem (irs), e1->type);
   orig_array_expr = irs->maybeMakeTemp (orig_array_expr);
   // specs don't say bounds if are checked for error or clipped to current size
 
@@ -1477,7 +1477,7 @@ SliceExp::toElem (IRState *irs)
 	  lwr_tree = irs->maybeMakeTemp (lwr_tree);
 	  // Adjust .ptr offset
 	  final_ptr_expr = irs->pointerIntSum (irs->pvoidOkay (final_ptr_expr), lwr_tree);
-	  final_ptr_expr = irs->nop (final_ptr_expr, TREE_TYPE (orig_pointer_expr));
+	  final_ptr_expr = irs->nop (TREE_TYPE (orig_pointer_expr), final_ptr_expr);
 	}
       else
 	lwr_tree = NULL_TREE;
@@ -1540,7 +1540,8 @@ SliceExp::toElem (IRState *irs)
 	}
     }
 
-  return aryscp.finish (irs->darrayVal (type->toCtype(), final_len_expr, final_ptr_expr));
+  tree result = irs->darrayVal (type->toCtype(), final_len_expr, final_ptr_expr);
+  return aryscp.finish (irs, result);
 }
 
 elem *
@@ -1802,7 +1803,7 @@ PtrExp::toElem (IRState *irs)
 	}
     }
 
-  tree e = irs->indirect (e1->toElem (irs), type->toCtype());
+  tree e = irs->indirect (type->toCtype(), e1->toElem (irs));
   if (irs->inVolatile())
     TREE_THIS_VOLATILE (e) = 1;
 
@@ -1812,7 +1813,8 @@ PtrExp::toElem (IRState *irs)
 elem *
 AddrExp::toElem (IRState *irs)
 {
-  return irs->nop (irs->addressOf (e1->toElem (irs)), type->toCtype());
+  tree addrexp = irs->addressOf (e1->toElem (irs));
+  return irs->nop (type->toCtype(), addrexp);
 }
 
 elem *
@@ -1925,7 +1927,7 @@ DelegateExp::toElem (IRState *irs)
 	  this_tree = e1->toElem (irs);
 	}
 
-      return irs->methodCallExpr (irs->functionPointer (func),
+      return irs->methodCallExpr (irs->addressOf (func),
 				  this_tree, type);
     }
 }
@@ -2091,10 +2093,10 @@ FuncExp::toElem (IRState *irs)
   switch (func_type->ty)
     {
     case Tfunction:
-      return irs->nop (irs->addressOf (fd), type->toCtype());
+      return irs->nop (type->toCtype(), irs->addressOf (fd));
 
     case Tdelegate:
-      return irs->methodCallExpr (irs->functionPointer (fd),
+      return irs->methodCallExpr (irs->addressOf (fd),
 				  irs->getFrameForFunction (fd), type);
 
     default:
@@ -2141,7 +2143,7 @@ SymbolExp::toElem (IRState *irs)
 
       if (irs->isDeclarationReferenceType (var))
 	{
-	  e = irs->indirect (e, var->type->toCtype());
+	  e = irs->indirect (var->type->toCtype(), e);
 	  if (irs->inVolatile())
 	    TREE_THIS_VOLATILE (e) = 1;
 	}
@@ -2179,7 +2181,7 @@ SymbolExp::toElem (IRState *irs)
 	return convert (type->toCtype(), a);
 
       tree b = irs->integerConstant (offset, Type::tsize_t);
-      return irs->nop (irs->pointerOffset (a, b), type->toCtype());
+      return irs->nop (type->toCtype(), irs->pointerOffset (a, b));
     }
   else
     gcc_assert (op == TOKvar || op == TOKsymoff);
@@ -2213,7 +2215,7 @@ NewExp::toElem (IRState *irs)
 	      irs->expandDecl (stack_var);
 	      new_call = irs->addressOf (stack_var);
 	      setup_exp = build2 (MODIFY_EXPR, rec_type,
-				  irs->indirect (new_call, rec_type),
+				  irs->indirect (rec_type, new_call),
 				  class_decl->toInitializer()->Stree);
 	    }
 	  else if (allocator)
@@ -2222,7 +2224,7 @@ NewExp::toElem (IRState *irs)
 	      new_call = save_expr (new_call);
 	      // copy memory...
 	      setup_exp = build2 (MODIFY_EXPR, rec_type,
-				  irs->indirect (new_call, rec_type),
+				  irs->indirect (rec_type, new_call),
 				  class_decl->toInitializer()->Stree);
 	    }
 	  else
@@ -2230,7 +2232,7 @@ NewExp::toElem (IRState *irs)
 	      tree arg = irs->addressOf (class_decl->toSymbol()->Stree);
 	      new_call = irs->libCall (LIBCALL_NEWCLASS, 1, &arg);
 	    }
-	  new_call = irs->nop (new_call, class_type->toCtype());
+	  new_call = irs->nop (class_type->toCtype(), new_call);
 
 	  if (class_type->sym->isNested())
 	    {
@@ -2259,7 +2261,7 @@ NewExp::toElem (IRState *irs)
 	      if (vthis_value)
 		{
 		  new_call = save_expr (new_call);
-		  vthis_field = irs->component (irs->indirect (new_call, rec_type), vthis_field);
+		  vthis_field = irs->component (irs->indirect (rec_type, new_call), vthis_field);
 
 		  setup_exp = irs->maybeCompound (setup_exp, build2 (MODIFY_EXPR, TREE_TYPE (vthis_field),
 								     vthis_field, vthis_value));
@@ -2306,7 +2308,7 @@ NewExp::toElem (IRState *irs)
 	      new_call = irs->darrayPtrRef (new_call);
 	      need_init = false;
 	    }
-	  new_call = irs->nop (new_call, handle_type->toCtype());
+	  new_call = irs->nop (handle_type->toCtype(), new_call);
 	  if (need_init)
 	    {
 	      // Save the result allocation call.
@@ -2331,12 +2333,12 @@ NewExp::toElem (IRState *irs)
 
 	      new_call = save_expr (new_call);
 	      tree setup_exp = build2 (MODIFY_EXPR, TREE_TYPE (vthis_field),
-				       irs->component (irs->indirect (new_call, struct_type->toCtype()),
+				       irs->component (irs->indirect (struct_type->toCtype(), new_call),
 						       vthis_field),
 				       vthis_value);
 	      new_call = irs->compound (setup_exp, new_call);
 	    }
-	  return irs->nop (new_call, type->toCtype());
+	  return irs->nop (type->toCtype(), new_call);
 	}
     case Tarray:
 	{
@@ -2418,7 +2420,7 @@ NewExp::toElem (IRState *irs)
 	      new_call = irs->darrayPtrRef (new_call);
 	      need_init = false;
 	    }
-	  new_call = irs->nop (new_call, handle_type->toCtype());
+	  new_call = irs->nop (handle_type->toCtype(), new_call);
 	  if (need_init)
 	    {
 	      // Save the result allocation call.
@@ -2428,7 +2430,7 @@ NewExp::toElem (IRState *irs)
 			  irs->convertForAssignment (object_type->defaultInit(), object_type));
 	      new_call = irs->compound (t, new_call);
 	    }
-	  return irs->nop (new_call, type->toCtype());
+	  return irs->nop (type->toCtype(), new_call);
 	}
     }
 }
@@ -2456,29 +2458,26 @@ StringExp::toElem (IRState *irs)
 
   switch (base_ty)
     {
-    case Tarray:
     case Tpointer:
       // Assuming this->string is null terminated
       // .. need to terminate with more nulls for wchar and dchar?
-      value = build_string ((len + 1) * sz,
-			    gen.hostToTargetString ((char *) string, len + 1, sz));
+      value = build_string ((len + 1) * sz, (char *) string);
       break;
+
     case Tsarray:
-    case Tvoid:
-      value = build_string (len * sz,
-			    gen.hostToTargetString ((char *) string, len, sz));
+    case Tarray:
+      value = build_string (len * sz, (char *) string);
       break;
+
     default:
       error ("Invalid type for string constant: %s", type->toChars());
       return irs->errorMark (type);
     }
 
-  // %% endianess of wchar and dchar
   TREE_CONSTANT (value) = 1;
   TREE_READONLY (value) = 1;
   // %% array type doesn't match string length if null term'd...
-  Type *elem_type = base_ty != Tvoid ?
-    base_type->nextOf() : Type::tchar;
+  Type *elem_type = base_ty != Tvoid ? base_type->nextOf() : Type::tchar;
   TREE_TYPE (value) = irs->arrayType (elem_type, len);
 
   switch (base_ty)
@@ -2560,7 +2559,7 @@ ArrayLiteralExp::toElem (IRState *irs)
   if (typeb->ty == Tarray)
     result = irs->darrayVal (type, elements->dim, result);
   else if (typeb->ty == Tsarray)
-    result = irs->indirect (result, sa_type);
+    result = irs->indirect (sa_type, result);
 
   return result;
 }
@@ -2591,10 +2590,10 @@ AssocArrayLiteralExp::toElem (IRState *irs)
 
   tree keys_var = irs->exprVar (irs->arrayType (index, keys->dim)); //?
   tree vals_var = irs->exprVar (irs->arrayType (next, keys->dim));
-  tree keys_ptr = irs->nop (irs->addressOf (keys_var),
-			    index->pointerTo()->toCtype());
-  tree vals_ptr = irs->nop (irs->addressOf (vals_var),
-			    next->pointerTo()->toCtype());
+  tree keys_ptr = irs->nop (index->pointerTo()->toCtype(),
+			    irs->addressOf (keys_var));
+  tree vals_ptr = irs->nop (next->pointerTo()->toCtype(),
+			    irs->addressOf (vals_var));
   tree keys_offset = size_zero_node;
   tree vals_offset = size_zero_node;
   tree keys_size = size_int (index->size());
@@ -2632,7 +2631,7 @@ AssocArrayLiteralExp::toElem (IRState *irs)
   tree ctor = build_constructor (aat_type, ce.head);
 
   result = irs->binding (keys_var, irs->binding (vals_var, ctor));
-  return irs->nop (result, type->toCtype());
+  return irs->nop (type->toCtype(), result);
 }
 
 elem *
@@ -2697,8 +2696,8 @@ StructLiteralExp::toElem (IRState *irs)
 		  tree size = fold_build2 (TRUNC_DIV_EXPR, size_type_node,
 					   size_int (fld_type->size()), size_int (etype->size()));
 
-		  tree ptr_tree = irs->nop (irs->addressOf (exp_tree),
-					    etype->pointerTo()->toCtype());
+		  tree ptr_tree = irs->nop (etype->pointerTo()->toCtype(),
+					    irs->addressOf (exp_tree));
 		  tree set_exp = array_set_expr (irs, ptr_tree, exp->toElem (irs), size);
 		  exp_tree = irs->compound (set_exp, exp_tree);
 		}
@@ -3260,8 +3259,8 @@ FuncDeclaration::buildClosure (IRState *irs)
 			      TYPE_SIZE_UNIT (closure_rec_type));
 
   DECL_INITIAL (closure_ptr) =
-    irs->nop (irs->libCall (LIBCALL_ALLOCMEMORY, 1, &arg),
-	      TREE_TYPE (closure_ptr));
+    irs->nop (TREE_TYPE (closure_ptr),
+	      irs->libCall (LIBCALL_ALLOCMEMORY, 1, &arg));
   irs->expandDecl (closure_ptr);
 
   // set the first entry to the parent closure, if any
@@ -4400,9 +4399,7 @@ CaseStatement::toIR (IRState *irs)
   irs->checkSwitchCase (this);
   irs->doCase (case_value, cblock);
   if (statement)
-    {
-      statement->toIR (irs);
-    }
+    statement->toIR (irs);
 }
 
 void
@@ -4439,8 +4436,7 @@ SwitchStatement::toIR (IRState *irs)
 	}
 
       // Apparently the backend is supposed to sort and set the indexes
-      // on the case array
-      // have to change them to be useable
+      // on the case array, have to change them to be useable.
       cases->sort(); // %%!!
 
       Symbol *s = static_sym();
@@ -4474,11 +4470,11 @@ SwitchStatement::toIR (IRState *irs)
       for (size_t i = 0; i < cases->dim; i++)
 	{
 	  CaseStatement *case_stmt = cases->tdata()[i];
-	  case_stmt->cblock = irs->label (case_stmt->loc); //make_case_label (case_stmt->loc);
+	  case_stmt->cblock = irs->label (case_stmt->loc);
 	}
       if (sdefault)
 	{
-	  sdefault->cblock = irs->label (sdefault->loc); //make_case_label (sdefault->loc);
+	  sdefault->cblock = irs->label (sdefault->loc);
 	}
     }
   cond_tree = fold (cond_tree);
@@ -4495,15 +4491,11 @@ SwitchStatement::toIR (IRState *irs)
 	  irs->endCond();
 	}
       if (sdefault)
-	{
-	  irs->doJump (NULL, sdefault->cblock);
-	}
+	irs->doJump (NULL, sdefault->cblock);
     }
   irs->startCase (this, cond_tree, hasVars);
   if (body)
-    {
-      body->toIR (irs);
-    }
+    body->toIR (irs);
   irs->endCase();
 }
 
@@ -4522,9 +4514,7 @@ IfStatement::toIR (IRState *irs)
   irs->startScope();
   irs->startCond (this, condition);
   if (ifbody)
-    {
-      ifbody->toIR (irs);
-    }
+    ifbody->toIR (irs);
   if (elsebody)
     {
       irs->startElse();
@@ -4555,10 +4545,7 @@ ForStatement::toIR (IRState *irs)
 {
   irs->doLineNote (loc);
   if (init)
-    {
-      // %% scope
-      init->toIR (irs);
-    }
+    init->toIR (irs);
   irs->startLoop (this);
   if (condition)
     {
@@ -4566,9 +4553,7 @@ ForStatement::toIR (IRState *irs)
       irs->exitIfFalse (condition);
     }
   if (body)
-    {
-      body->toIR (irs);
-    }
+    body->toIR (irs);
   irs->continueHere();
   if (increment)
     {
@@ -4585,9 +4570,7 @@ DoStatement::toIR (IRState *irs)
   irs->doLineNote (loc);
   irs->startLoop (this);
   if (body)
-    {
-      body->toIR (irs);
-    }
+    body->toIR (irs);
   irs->continueHere();
   irs->doLineNote (condition->loc);
   irs->exitIfFalse (condition);

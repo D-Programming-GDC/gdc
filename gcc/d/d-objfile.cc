@@ -919,23 +919,12 @@ ObjectFile::doUnittestFunction (const char *name, FuncDeclarations *functions)
 }
 
 
-/* Create a static symbol we can hang DT initializers onto.  */
-
-Symbol *
-static_sym (void)
-{
-  Symbol *s = symbol_tree (NULL_TREE);
-  // Can't build the VAR_DECL because the type is unknown
-  return s;
-}
-
 tree
 check_static_sym (Symbol *sym)
 {
   if (! sym->Stree)
     {
-      //gcc_assert (sym->Sdt);    // Unfortunately cannot check for this; it might be an empty dt_t list...
-      gcc_assert (! sym->Sident); // Can enforce that sym is anonymous though.
+      gcc_assert (! sym->Sident);
       tree t_ini = dt2tree (sym->Sdt); // %% recursion problems?
       tree t_var = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, TREE_TYPE (t_ini));
       g.ofile->giveDeclUniqueName (t_var);
