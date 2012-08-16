@@ -1,5 +1,26 @@
 2012-08-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-codegen.cc(libcall_ids): Re-order list in ascii collating order,
+	add new library routines to lookup, rename all non-vararg functions to
+	match DMD ABI implementation.
+	(LibCall): Re-order enum and rename values to match libcall_ids.
+	(IRState::toElemLvalue): Use new LibCall name.
+	(IRState::getLibCallDecl): Update to match current library signatures,
+	add implementation of new library routines.
+	(IRState::maybeSetLibCallDecl): New function to set internal symbol
+	for special D RT library functions.
+	* d-decls.cc(FuncDeclaration::toSymbol): Use
+	IRState::maybeSetLibCallDecl.
+	* d-glue.cc(InExp::toElem): Use new LibCall name.
+	(CatAssignExp::toElem): Likewise.
+	(IndexExp::toElem): Likewise.
+	(DeleteExp::toElem): Likewise.
+	(RemoveExp::toElem): Likewise.
+	(NewExp::toElem): Likewise.
+	(ArrayLiteralExp::toElem): Likewise.
+	(AssocArrayLiteralExp::toElem): Likewise.
+	(NullExp::toElem): Use IRState::convertTo.
+
 	* d-codegen.cc(needs_temp): Remove.
 	(IRState::makeTemp): New function.
 	(IRState::maybeMakeTemp): Re-implement to use isFreeOfSideEffects.

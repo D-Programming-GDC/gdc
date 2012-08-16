@@ -567,7 +567,7 @@ InExp::toElem (IRState *irs)
       aoe.set (irs, irs->convertTo (e1, key_type))
   };
   return d_convert_basic (type->toCtype(),
-			  aoe.finish (irs, irs->libCall (LIBCALL_AAINP, 3, args)));
+			  aoe.finish (irs, irs->libCall (LIBCALL_AAINX, 3, args)));
 }
 
 elem *
@@ -1042,7 +1042,7 @@ CatAssignExp::toElem (IRState *irs)
 	  args[0] = irs->typeinfoReference (type);
 	  args[1] = irs->addressOf (irs->toElemLvalue (e1));
 	  args[2] = size_one_node;
-	  lib_call = LIBCALL_ARRAYAPPENDCTP;
+	  lib_call = LIBCALL_ARRAYAPPENDCTX;
 
 	  result = irs->libCall (lib_call, n_args, args, type->toCtype());
 	  result = save_expr (result);
@@ -1364,7 +1364,7 @@ IndexExp::toElem (IRState *irs)
 	  irs->integerConstant (array_type->nextOf()->size(), Type::tsize_t),
 	  aoe.set (irs, irs->convertTo (e2, key_type))
       };
-      LibCall lib_call = modifiable ? LIBCALL_AAGETP : LIBCALL_AAGETRVALUEP;
+      LibCall lib_call = modifiable ? LIBCALL_AAGETX : LIBCALL_AAGETRVALUEX;
       tree t = irs->libCall (lib_call, 4, args, type->pointerTo()->toCtype());
       t = aoe.finish (irs, t);
 
@@ -1585,7 +1585,7 @@ DeleteExp::toElem (IRState *irs)
 	      irs->typeinfoReference (key_type),
 	      aoe.set (irs, irs->convertTo (e_index, key_type)),
 	  };
-	  return aoe.finish (irs, irs->libCall (LIBCALL_AADELP, 3, args));
+	  return aoe.finish (irs, irs->libCall (LIBCALL_AADELX, 3, args));
 	}
     }
 
@@ -1665,7 +1665,7 @@ RemoveExp::toElem (IRState *irs)
 	  irs->typeinfoReference (key_type),
 	  aoe.set (irs, irs->convertTo (e_index, key_type)),
       };
-      return aoe.finish (irs, irs->libCall (LIBCALL_AADELP, 3, args));
+      return aoe.finish (irs, irs->libCall (LIBCALL_AADELX, 3, args));
     }
   else
     {
@@ -2347,7 +2347,7 @@ NewExp::toElem (IRState *irs)
 	  else
 	    {
 	      lib_call = elem_init_type->isZeroInit() ?
-		LIBCALL_NEWARRAYMTP : LIBCALL_NEWARRAYMITP;
+		LIBCALL_NEWARRAYMTX : LIBCALL_NEWARRAYMITX;
 
 	      tree dims_var = irs->exprVar (irs->arrayType (size_type_node, arguments->dim));
 		{
@@ -2522,8 +2522,8 @@ ArrayLiteralExp::toElem (IRState *irs)
       irs->typeinfoReference (etype->arrayOf()),
       irs->integerConstant (elements->dim, size_type_node)
   };
-  // Call _d_arrayliteralTp (ti, dim);
-  LibCall lib_call = LIBCALL_ARRAYLITERALTP;
+  // Call _d_arrayliteralTX (ti, dim);
+  LibCall lib_call = LIBCALL_ARRAYLITERALTX;
   tree mem = irs->libCall (lib_call, 2, args, etype->pointerTo()->toCtype());
   mem = irs->maybeMakeTemp (mem);
 
@@ -2604,7 +2604,7 @@ AssocArrayLiteralExp::toElem (IRState *irs)
       irs->darrayVal (index->arrayOf(), keys->dim, keys_ptr),
       irs->darrayVal (next->arrayOf(), keys->dim, vals_ptr),
   };
-  result = irs->maybeCompound (result, irs->libCall (LIBCALL_ASSOCARRAYLITERALTP, 3, args));
+  result = irs->maybeCompound (result, irs->libCall (LIBCALL_ASSOCARRAYLITERALTX, 3, args));
 
   CtorEltMaker ce;
   tree aat_type = aa_type->toCtype();
@@ -2736,7 +2736,7 @@ NullExp::toElem (IRState *irs)
 	  tree ttype = type->toCtype();
 	  tree fa = TYPE_FIELDS (ttype);
 
-	  ce.cons (fa, convert (TREE_TYPE (fa), integer_zero_node));
+	  ce.cons (fa, irs->convertTo (TREE_TYPE (fa), integer_zero_node));
 	  null_exp = build_constructor (ttype, ce.head);
 	  break;
 	}
@@ -2748,7 +2748,7 @@ NullExp::toElem (IRState *irs)
 	}
     default:
 	{
-	  null_exp = convert (type->toCtype(), integer_zero_node);
+	  null_exp = irs->convertTo (type->toCtype(), integer_zero_node);
 	  break;
 	}
     }

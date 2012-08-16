@@ -1612,7 +1612,7 @@ IRState::toElemLvalue (Expression *e)
 	  args[3] = aoe.set (this, this->convertTo (e2, key_type));
 	  return build1 (INDIRECT_REF, type->toCtype(),
 			 aoe.finish (this,
-				     this->libCall (LIBCALL_AAGETP, 4, args, type->pointerTo()->toCtype())));
+				     this->libCall (LIBCALL_AAGETX, 4, args, type->pointerTo()->toCtype())));
 	}
     }
   return e->toElem (this);
@@ -2247,37 +2247,47 @@ IRState::assertCall (Loc loc, Expression *msg)
 
 // Our internal list of library functions.
 // Most are extern(C) - for those that are not, correct mangling must be ensured.
+// List kept in ascii collating order to allow binary search
 
 static const char *libcall_ids[LIBCALL_count] = {
-    "_d_assert", "_d_assert_msg", "_d_array_bounds", "_d_switch_error",
     /*"_d_invariant",*/ "_D9invariant12_d_invariantFC6ObjectZv",
-    "_d_newclass", "_d_newarrayT",
-    "_d_newarrayiT",
-    "_d_newarraymTp", "_d_newarraymiTp",
-    "_d_allocmemory",
-    "_d_delclass", "_d_delinterface", "_d_delarray",
-    "_d_delmemory", "_d_callfinalizer", "_d_callinterfacefinalizer",
-    "_d_arraysetlengthT", "_d_arraysetlengthiT",
-    "_d_dynamic_cast", "_d_interface_cast",
-    "_adEq", "_adEq2", "_adCmp", "_adCmp2", "_adCmpChar",
-    "_aaEqual", "_aaLen",
-    "_aaInp", "_aaGetp", "_aaGetRvaluep", "_aaDelp",
-    "_d_arraycast",
-    "_d_arraycopy",
-    "_d_arraycatT", "_d_arraycatnT",
-    "_d_arrayappendT",
-    "_d_arrayappendcTp",
+    "_aApplyRcd1", "_aApplyRcd2", "_aApplyRcw1", "_aApplyRcw2",
+    "_aApplyRdc1", "_aApplyRdc2", "_aApplyRdw1", "_aApplyRdw2",
+    "_aApplyRwc1", "_aApplyRwc2", "_aApplyRwd1", "_aApplyRwd2",
+    "_aApplycd1", "_aApplycd2", "_aApplycw1", "_aApplycw2",
+    "_aApplydc1", "_aApplydc2", "_aApplydw1", "_aApplydw2",
+    "_aApplywc1", "_aApplywc2", "_aApplywd1", "_aApplywd2",
+    "_aaApply", "_aaApply2",
+    "_aaDelX", "_aaEqual",
+    "_aaGetRvalueX", "_aaGetX",
+    "_aaInX", "_aaLen",
+    "_adCmp", "_adCmp2", "_adCmpChar",
+    "_adDupT", "_adEq", "_adEq2",
+    "_adReverse", "_adReverseChar", "_adReverseWchar",
+    "_adSort", "_adSortChar", "_adSortWchar",
+    "_d_allocmemory", "_d_array_bounds",
+    "_d_arrayappendT", "_d_arrayappendcTX",
     "_d_arrayappendcd", "_d_arrayappendwd",
-    "_d_arrayassign", "_d_arrayctor", "_d_arraysetassign",
-    "_d_arraysetctor", "_d_delarray_t",
-    "_d_monitorenter", "_d_monitorexit",
+    "_d_arrayassign", "_d_arraycast",
+    "_d_arraycatT", "_d_arraycatnT",
+    "_d_arraycopy", "_d_arrayctor",
+    "_d_arrayliteralTX",
+    "_d_arraysetassign", "_d_arraysetctor",
+    "_d_arraysetlengthT", "_d_arraysetlengthiT",
+    "_d_assert", "_d_assert_msg",
+    "_d_assocarrayliteralTX",
+    "_d_callfinalizer", "_d_callinterfacefinalizer",
     "_d_criticalenter", "_d_criticalexit",
-    "_d_throw",
-    "_d_switch_string", "_d_switch_ustring", "_d_switch_dstring",
-    "_d_assocarrayliteralTp",
-    "_d_arrayliteralTp",
-    "_d_unittest", "_d_unittest_msg",
-    "_d_hidden_func"
+    "_d_delarray", "_d_delarray_t", "_d_delclass",
+    "_d_delinterface", "_d_delmemory",
+    "_d_dynamic_cast", "_d_hidden_func", "_d_interface_cast",
+    "_d_monitorenter", "_d_monitorexit",
+    "_d_newarrayT", "_d_newarrayiT",
+    "_d_newarraymTX", "_d_newarraymiTX",
+    "_d_newclass",
+    "_d_switch_dstring", "_d_switch_error",
+    "_d_switch_string", "_d_switch_ustring",
+    "_d_throw", "_d_unittest", "_d_unittest_msg",
 };
 
 static FuncDeclaration *libcall_decls[LIBCALL_count];
@@ -2290,12 +2300,39 @@ FuncDeclaration *
 IRState::getLibCallDecl (LibCall lib_call)
 {
   FuncDeclaration *decl = libcall_decls[lib_call];
-  Types arg_types;
-  bool varargs = false;
+
+  static Type *aa_type = NULL;
+  static Type *dg_type = NULL;
+  static Type *dg2_type = NULL;
 
   if (!decl)
     {
-      Type *return_type = Type::tvoid;
+      Types targs;
+      Type *treturn = Type::tvoid;
+      bool varargs = false;
+
+      // Build generic AA type void*[void*]
+      if (aa_type == NULL)
+	aa_type = new TypeAArray (Type::tvoidptr, Type::tvoidptr);
+
+      // Build generic delegate type int(void*)
+      if (dg_type == NULL)
+	{
+	  Parameters *fn_parms = new Parameters;
+	  fn_parms->push (new Parameter (STCin, Type::tvoidptr, NULL, NULL));
+	  Type *fn_type = new TypeFunction (fn_parms, Type::tint32, false, LINKd);
+	  dg_type = new TypeDelegate (fn_type);
+	}
+
+      // Build generic delegate type int(void*, void*)
+      if (dg2_type == NULL)
+	{
+	  Parameters *fn_parms = new Parameters;
+	  fn_parms->push (new Parameter (STCin, Type::tvoidptr, NULL, NULL));
+	  fn_parms->push (new Parameter (STCin, Type::tvoidptr, NULL, NULL));
+	  Type *fn_type = new TypeFunction (fn_parms, Type::tint32, false, LINKd);
+	  dg2_type = new TypeDelegate (fn_type);
+	}
 
       switch (lib_call)
 	{
@@ -2303,297 +2340,416 @@ IRState::getLibCallDecl (LibCall lib_call)
 	case LIBCALL_ARRAY_BOUNDS:
 	case LIBCALL_SWITCH_ERROR:
 	  // need to spec chararray/string because internal code passes string constants
-	  arg_types.push (Type::tchar->arrayOf());
-	  arg_types.push (Type::tuns32);
+	  targs.push (Type::tchar->arrayOf());
+	  targs.push (Type::tuns32);
 	  break;
 
 	case LIBCALL_ASSERT_MSG:
-	  arg_types.push (Type::tchar->arrayOf());
-	  arg_types.push (Type::tchar->arrayOf());
-	  arg_types.push (Type::tuns32);
+	  targs.push (Type::tchar->arrayOf());
+	  targs.push (Type::tchar->arrayOf());
+	  targs.push (Type::tuns32);
 	  break;
 
 	case LIBCALL_UNITTEST:
-	  arg_types.push (Type::tchar->arrayOf());
-	  arg_types.push (Type::tuns32);
+	  targs.push (Type::tchar->arrayOf());
+	  targs.push (Type::tuns32);
 	  break;
 
 	case LIBCALL_UNITTEST_MSG:
-	  arg_types.push (Type::tchar->arrayOf());
-	  arg_types.push (Type::tchar->arrayOf());
-	  arg_types.push (Type::tuns32);
+	  targs.push (Type::tchar->arrayOf());
+	  targs.push (Type::tchar->arrayOf());
+	  targs.push (Type::tuns32);
 	  break;
 
 	case LIBCALL_NEWCLASS:
-	  arg_types.push (ClassDeclaration::classinfo->type);
-	  return_type = getObjectType();
+	  targs.push (ClassDeclaration::classinfo->type->constOf());
+	  treturn = getObjectType();
 	  break;
 
 	case LIBCALL_NEWARRAYT:
 	case LIBCALL_NEWARRAYIT:
-	  arg_types.push (Type::typeinfo->type);
-	  arg_types.push (Type::tsize_t);
-	  return_type = Type::tvoid->arrayOf();
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tsize_t);
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
-	case LIBCALL_NEWARRAYMTP:
-	case LIBCALL_NEWARRAYMITP:
-	  arg_types.push (Type::typeinfo->type);
-	  arg_types.push (Type::tsize_t);
-	  arg_types.push (Type::tsize_t);
-	  return_type = Type::tvoid->arrayOf();
+	case LIBCALL_NEWARRAYMTX:
+	case LIBCALL_NEWARRAYMITX:
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tsize_t);
+	  targs.push (Type::tsize_t);
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
 	case LIBCALL_ALLOCMEMORY:
-	  arg_types.push (Type::tsize_t);
-	  return_type = Type::tvoidptr;
+	  targs.push (Type::tsize_t);
+	  treturn = Type::tvoidptr;
 	  break;
 
 	case LIBCALL_DELCLASS:
 	case LIBCALL_DELINTERFACE:
-	  arg_types.push (Type::tvoidptr);
+	  targs.push (Type::tvoidptr);
 	  break;
 
 	case LIBCALL_DELARRAY:
-	  arg_types.push (Type::tvoid->arrayOf()->pointerTo());
+	  targs.push (Type::tvoid->arrayOf()->pointerTo());
 	  break;
 
 	case LIBCALL_DELARRAYT:
-	  arg_types.push (Type::tvoid->arrayOf()->pointerTo());
-	  arg_types.push (Type::typeinfo->type);
+	  targs.push (Type::tvoid->arrayOf()->pointerTo());
+	  targs.push (Type::typeinfo->type->constOf());
 	  break;
 
 	case LIBCALL_DELMEMORY:
-	  arg_types.push (Type::tvoidptr->pointerTo());
+	  targs.push (Type::tvoidptr->pointerTo());
 	  break;
 
 	case LIBCALL_CALLFINALIZER:
 	case LIBCALL_CALLINTERFACEFINALIZER:
-	  arg_types.push (Type::tvoidptr);
+	  targs.push (Type::tvoidptr);
 	  break;
 
 	case LIBCALL_ARRAYSETLENGTHT:
 	case LIBCALL_ARRAYSETLENGTHIT:
-	  arg_types.push (Type::typeinfo->type);
-	  arg_types.push (Type::tsize_t);
-	  arg_types.push (Type::tvoid->arrayOf()->pointerTo());
-	  return_type = Type::tvoid->arrayOf();
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tsize_t);
+	  targs.push (Type::tvoid->arrayOf()->pointerTo());
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
 	case LIBCALL_DYNAMIC_CAST:
 	case LIBCALL_INTERFACE_CAST:
-	  arg_types.push (getObjectType());
-	  arg_types.push (ClassDeclaration::classinfo->type);
-	  return_type = getObjectType();
+	  targs.push (getObjectType());
+	  targs.push (ClassDeclaration::classinfo->type);
+	  treturn = getObjectType();
 	  break;
 
 	case LIBCALL_ADEQ:
 	case LIBCALL_ADEQ2:
 	case LIBCALL_ADCMP:
 	case LIBCALL_ADCMP2:
-	  arg_types.push (Type::tvoid->arrayOf());
-	  arg_types.push (Type::tvoid->arrayOf());
-	  arg_types.push (Type::typeinfo->type);
-	  return_type = Type::tint32;
+	  targs.push (Type::tvoid->arrayOf());
+	  targs.push (Type::tvoid->arrayOf());
+	  targs.push (Type::typeinfo->type->constOf());
+	  treturn = Type::tint32;
 	  break;
 
 	case LIBCALL_ADCMPCHAR:
-	  arg_types.push (Type::tchar->arrayOf());
-	  arg_types.push (Type::tchar->arrayOf());
-	  return_type = Type::tint32;
+	  targs.push (Type::tchar->arrayOf());
+	  targs.push (Type::tchar->arrayOf());
+	  treturn = Type::tint32;
 	  break;
 
 	case LIBCALL_AAEQUAL:
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (aa_type);
+	  targs.push (aa_type);
+	  treturn = Type::tint32;
+	  break;
+
 	case LIBCALL_AALEN:
-	case LIBCALL_AAINP:
-	case LIBCALL_AAGETP:
-	case LIBCALL_AAGETRVALUEP:
-	case LIBCALL_AADELP:
-	    {
-	      static Type *aa_type = NULL;
-	      if (!aa_type)
-		aa_type = new TypeAArray (Type::tvoidptr, Type::tvoidptr);
+	  targs.push (aa_type);
+	  treturn = Type::tsize_t;
+	  break;
 
-	      if (lib_call == LIBCALL_AAEQUAL)
-		{
-		  arg_types.push (Type::typeinfo->type);
-		  arg_types.push (aa_type);
-		  arg_types.push (aa_type);
-		  return_type = Type::tint32;
-		  break;
-		}
+	case LIBCALL_AAINX:
+	  targs.push (aa_type);
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tvoidptr);
+	  treturn = Type::tvoidptr;
+	  break;
 
-	      if (lib_call == LIBCALL_AALEN)
-		{
-		  arg_types.push (aa_type);
-		  return_type = Type::tsize_t;
-		  break;
-		}
+	case LIBCALL_AAGETX:
+	  targs.push (aa_type->pointerTo());
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tsize_t);
+	  targs.push (Type::tvoidptr);
+	  treturn = Type::tvoidptr;
+	  break;
 
-	      if (lib_call == LIBCALL_AAGETP)
-		aa_type = aa_type->pointerTo();
+	case LIBCALL_AAGETRVALUEX:
+	  targs.push (aa_type);
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tsize_t);
+	  targs.push (Type::tvoidptr);
+	  treturn = Type::tvoidptr;
+	  break;
 
-	      arg_types.push (aa_type);
-	      arg_types.push (Type::typeinfo->type); // typeinfo reference
-	      if (lib_call == LIBCALL_AAGETP || lib_call == LIBCALL_AAGETRVALUEP)
-		arg_types.push (Type::tsize_t);
-
-	      arg_types.push (Type::tvoidptr);
-
-	      switch (lib_call)
-		{
-		case LIBCALL_AAINP:
-		case LIBCALL_AAGETP:
-		case LIBCALL_AAGETRVALUEP:
-		  return_type = Type::tvoidptr;
-		  break;
-		case LIBCALL_AADELP:
-		  return_type = Type::tbool;
-		  break;
-		default:
-		  gcc_unreachable();
-		}
-	      break;
-	    }
+	case LIBCALL_AADELX:
+	  targs.push (aa_type);
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tvoidptr);
+	  treturn = Type::tbool;
+	  break;
 
 	case LIBCALL_ARRAYCAST:
-	  arg_types.push (Type::tsize_t);
-	  arg_types.push (Type::tsize_t);
-	  arg_types.push (Type::tvoid->arrayOf());
-	  return_type = Type::tvoid->arrayOf();
+	  targs.push (Type::tsize_t);
+	  targs.push (Type::tsize_t);
+	  targs.push (Type::tvoid->arrayOf());
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
 	case LIBCALL_ARRAYCOPY:
-	  arg_types.push (Type::tsize_t);
-	  arg_types.push (Type::tvoid->arrayOf());
-	  arg_types.push (Type::tvoid->arrayOf());
-	  return_type = Type::tvoid->arrayOf();
+	  targs.push (Type::tsize_t);
+	  targs.push (Type::tint8->arrayOf());
+	  targs.push (Type::tint8->arrayOf());
+	  treturn = Type::tint8->arrayOf();
 	  break;
 
 	case LIBCALL_ARRAYCATT:
-	  arg_types.push (Type::typeinfo->type);
-	  arg_types.push (Type::tvoid->arrayOf());
-	  arg_types.push (Type::tvoid->arrayOf());
-	  return_type = Type::tvoid->arrayOf();
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tint8->arrayOf());
+	  targs.push (Type::tint8->arrayOf());
+	  treturn = Type::tint8->arrayOf();
 	  break;
 
 	case LIBCALL_ARRAYCATNT:
-	  arg_types.push (Type::typeinfo->type);
-	  arg_types.push (Type::tuns32); // Currently 'uint', even if 64-bit
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tuns32); // Currently 'uint', even if 64-bit
 	  varargs = true;
-	  return_type = Type::tvoid->arrayOf();
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
 	case LIBCALL_ARRAYAPPENDT:
-	  arg_types.push (Type::typeinfo->type);
-	  arg_types.push (Type::tuns8->arrayOf()->pointerTo());
-	  arg_types.push (Type::tuns8->arrayOf());
-	  return_type = Type::tvoid->arrayOf();
+	  targs.push (Type::typeinfo->type); //->constOf());
+	  targs.push (Type::tint8->arrayOf()->pointerTo());
+	  targs.push (Type::tint8->arrayOf());
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
-	  //          case LIBCALL_ARRAYAPPENDCT:
-	case LIBCALL_ARRAYAPPENDCTP:
-	  arg_types.push (Type::typeinfo->type);
-	  arg_types.push (Type::tuns8->arrayOf()->pointerTo());
-	  arg_types.push (Type::tsize_t);
-	  return_type = Type::tuns8->arrayOf();
+	case LIBCALL_ARRAYAPPENDCTX:
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tint8->arrayOf()->pointerTo());
+	  targs.push (Type::tsize_t);
+	  treturn = Type::tint8->arrayOf();
 	  break;
 
 	case LIBCALL_ARRAYAPPENDCD:
-	  arg_types.push (Type::tchar->arrayOf());
-	  arg_types.push (Type::tdchar);
-	  return_type = Type::tvoid->arrayOf();
+	  targs.push (Type::tint8->arrayOf()->pointerTo());
+	  targs.push (Type::tdchar);
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
 	case LIBCALL_ARRAYAPPENDWD:
-	  arg_types.push (Type::twchar->arrayOf());
-	  arg_types.push (Type::tdchar);
-	  return_type = Type::tvoid->arrayOf();
+	  targs.push (Type::tint8->arrayOf()->pointerTo());
+	  targs.push (Type::tdchar);
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
 	case LIBCALL_ARRAYASSIGN:
 	case LIBCALL_ARRAYCTOR:
-	  arg_types.push (Type::typeinfo->type);
-	  arg_types.push (Type::tvoid->arrayOf());
-	  arg_types.push (Type::tvoid->arrayOf());
-	  return_type = Type::tvoid->arrayOf();
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tvoid->arrayOf());
+	  targs.push (Type::tvoid->arrayOf());
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
 	case LIBCALL_ARRAYSETASSIGN:
 	case LIBCALL_ARRAYSETCTOR:
-	  arg_types.push (Type::tvoidptr);
-	  arg_types.push (Type::tvoidptr);
-	  arg_types.push (Type::tsize_t);
-	  arg_types.push (Type::typeinfo->type);
-	  return_type = Type::tvoidptr;
+	  targs.push (Type::tvoidptr);
+	  targs.push (Type::tvoidptr);
+	  targs.push (Type::tsize_t);
+	  targs.push (Type::typeinfo->type->constOf());
+	  treturn = Type::tvoidptr;
 	  break;
 
 	case LIBCALL_MONITORENTER:
 	case LIBCALL_MONITOREXIT:
 	case LIBCALL_THROW:
 	case LIBCALL_INVARIANT:
-	  arg_types.push (getObjectType());
+	  targs.push (getObjectType());
 	  break;
 
 	case LIBCALL_CRITICALENTER:
 	case LIBCALL_CRITICALEXIT:
-	  arg_types.push (Type::tvoidptr);
+	  targs.push (Type::tvoidptr);
 	  break;
 
 	case LIBCALL_SWITCH_USTRING:
-	  arg_types.push (Type::twchar->arrayOf()->arrayOf());
-	  arg_types.push (Type::twchar->arrayOf());
-	  return_type = Type::tint32;
+	  targs.push (Type::twchar->arrayOf()->arrayOf());
+	  targs.push (Type::twchar->arrayOf());
+	  treturn = Type::tint32;
 	  break;
 
 	case LIBCALL_SWITCH_DSTRING:
-	  arg_types.push (Type::tdchar->arrayOf()->arrayOf());
-	  arg_types.push (Type::tdchar->arrayOf());
-	  return_type = Type::tint32;
+	  targs.push (Type::tdchar->arrayOf()->arrayOf());
+	  targs.push (Type::tdchar->arrayOf());
+	  treturn = Type::tint32;
 	  break;
 
 	case LIBCALL_SWITCH_STRING:
-	  arg_types.push (Type::tchar->arrayOf()->arrayOf());
-	  arg_types.push (Type::tchar->arrayOf());
-	  return_type = Type::tint32;
+	  targs.push (Type::tchar->arrayOf()->arrayOf());
+	  targs.push (Type::tchar->arrayOf());
+	  treturn = Type::tint32;
 	  break;
-	case LIBCALL_ASSOCARRAYLITERALTP:
-	  arg_types.push (Type::typeinfo->type);
-	  arg_types.push (Type::tvoid->arrayOf());
-	  arg_types.push (Type::tvoid->arrayOf());
-	  return_type = Type::tvoidptr;
+	case LIBCALL_ASSOCARRAYLITERALTX:
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tvoid->arrayOf());
+	  targs.push (Type::tvoid->arrayOf());
+	  treturn = Type::tvoidptr;
 	  break;
 
-	case LIBCALL_ARRAYLITERALTP:
-	  arg_types.push (Type::typeinfo->type);
-	  arg_types.push (Type::tsize_t);
-	  return_type = Type::tvoidptr;
+	case LIBCALL_ARRAYLITERALTX:
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tsize_t);
+	  treturn = Type::tvoidptr;
+	  break;
+
+	case LIBCALL_ADSORTCHAR:
+	case LIBCALL_ADREVERSECHAR:
+	  targs.push (Type::tchar->arrayOf());
+	  treturn = Type::tchar->arrayOf();
+	  break;
+
+	case LIBCALL_ADSORTWCHAR:
+	case LIBCALL_ADREVERSEWCHAR:
+	  targs.push (Type::twchar->arrayOf());
+	  treturn = Type::twchar->arrayOf();
+	  break;
+
+	case LIBCALL_ADDUPT:
+	  targs.push (Type::typeinfo->type->constOf());
+	  targs.push (Type::tvoid->arrayOf());
+	  treturn = Type::tvoid->arrayOf();
+	  break;
+
+	case LIBCALL_ADREVERSE:
+	  targs.push (Type::tvoid->arrayOf());
+	  targs.push (Type::tsize_t);
+	  treturn = Type::tvoid->arrayOf();
+	  break;
+
+	case LIBCALL_ADSORT:
+	  targs.push (Type::tvoid->arrayOf());
+	  targs.push (Type::typeinfo->type->constOf());
+	  treturn = Type::tvoid->arrayOf();
+	  break;
+
+	case LIBCALL_AAAPPLY:
+	  targs.push (aa_type);
+	  targs.push (Type::tsize_t);
+	  targs.push (dg_type);
+	  treturn = Type::tint32;
+	  break;
+
+	case LIBCALL_AAAPPLY2:
+	  targs.push (aa_type);
+	  targs.push (Type::tsize_t);
+	  targs.push (dg2_type);
+	  treturn = Type::tint32;
+	  break;
+
+	case LIBCALL_AAPPLYCD1:
+	case LIBCALL_AAPPLYCW1:
+	case LIBCALL_AAPPLYRCD1:
+	case LIBCALL_AAPPLYRCW1:
+	  targs.push (Type::tchar->arrayOf());
+	  targs.push (dg_type);
+	  treturn = Type::tint32;
+	  break;
+
+	case LIBCALL_AAPPLYCD2:
+	case LIBCALL_AAPPLYCW2:
+	case LIBCALL_AAPPLYRCD2:
+	case LIBCALL_AAPPLYRCW2:
+	  targs.push (Type::tchar->arrayOf());
+	  targs.push (dg2_type);
+	  treturn = Type::tint32;
+	  break;
+
+	case LIBCALL_AAPPLYDC1:
+	case LIBCALL_AAPPLYDW1:
+	case LIBCALL_AAPPLYRDC1:
+	case LIBCALL_AAPPLYRDW1:
+	  targs.push (Type::tdchar->arrayOf());
+	  targs.push (dg_type);
+	  treturn = Type::tint32;
+	  break;
+
+	case LIBCALL_AAPPLYDC2:
+	case LIBCALL_AAPPLYDW2:
+	case LIBCALL_AAPPLYRDC2:
+	case LIBCALL_AAPPLYRDW2:
+	  targs.push (Type::tdchar->arrayOf());
+	  targs.push (dg2_type);
+	  treturn = Type::tint32;
+	  break;
+
+	case LIBCALL_AAPPLYWC1:
+	case LIBCALL_AAPPLYWD1:
+	case LIBCALL_AAPPLYRWC1:
+	case LIBCALL_AAPPLYRWD1:
+	  targs.push (Type::twchar->arrayOf());
+	  targs.push (dg_type);
+	  treturn = Type::tint32;
+	  break;
+
+	case LIBCALL_AAPPLYWC2:
+	case LIBCALL_AAPPLYWD2:
+	case LIBCALL_AAPPLYRWC2:
+	case LIBCALL_AAPPLYRWD2:
+	  targs.push (Type::twchar->arrayOf());
+	  targs.push (dg2_type);
+	  treturn = Type::tint32;
 	  break;
 
 	case LIBCALL_HIDDEN_FUNC:
 	  /* Argument is an Object, but can't use that as
 	     LIBCALL_HIDDEN_FUNC is needed before the Object type is
 	     created. */
-	  arg_types.push (Type::tvoidptr);
+	  targs.push (Type::tvoidptr);
 	  break;
 
 	default:
 	  gcc_unreachable();
 	}
-      decl = FuncDeclaration::genCfunc (return_type, libcall_ids[lib_call]);
-	{
-	  TypeFunction *tf = (TypeFunction *) decl->type;
-	  tf->varargs = varargs ? 1 : 0;
-	  Parameters *args = new Parameters;
-	  args->setDim (arg_types.dim);
-	  for (size_t i = 0; i < arg_types.dim; i++)
-	    args->tdata()[i] = new Parameter (STCin, arg_types[i], NULL, NULL);
 
-	  tf->parameters = args;
-	}
+      // Build extern(C) function.
+      Identifier *id = Lexer::idPool(libcall_ids[lib_call]);
+      TypeFunction *tf = new TypeFunction(NULL, treturn, 0, LINKc);
+      tf->varargs = varargs ? 1 : 0;
+
+      decl = new FuncDeclaration(0, 0, id, STCstatic, tf);
+      decl->protection = PROTpublic;
+      decl->linkage = LINKc;
+
+      // Add parameter types.
+      Parameters *args = new Parameters;
+      args->setDim (targs.dim);
+      for (size_t i = 0; i < targs.dim; i++)
+	(*args)[i] = new Parameter (0, targs[i], NULL, NULL);
+
+      tf->parameters = args;
       libcall_decls[lib_call] = decl;
     }
+
   return decl;
+}
+
+void
+IRState::maybeSetLibCallDecl (FuncDeclaration *decl)
+{
+  if (!decl->ident)
+    return;
+
+  LibCall lib_call = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
+  if (lib_call == LIBCALL_NONE)
+    return;
+
+  if (libcall_decls[lib_call] == decl)
+    return;
+
+  TypeFunction *tf = (TypeFunction *) decl->type;
+  if (tf->parameters == NULL)
+    {
+      FuncDeclaration *new_decl = getLibCallDecl (lib_call);
+      new_decl->toSymbol();
+
+      decl->type = new_decl->type;
+      decl->csym = new_decl->csym;
+    }
+
+  libcall_decls[lib_call] = decl;
 }
 
 // Build call to LIB_CALL. N_ARGS is the number of call arguments

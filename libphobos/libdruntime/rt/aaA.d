@@ -223,10 +223,10 @@ body
 // retained for backwards compatibility
 void* _aaGet(AA* aa, TypeInfo keyti, size_t valuesize, ...)
 {
-    return _aaGetp(aa, keyti, valuesize, cast(void*)(&valuesize + 1));
+    return _aaGetX(aa, keyti, valuesize, cast(void*)(&valuesize + 1));
 }
 
-void* _aaGetp(AA* aa, TypeInfo keyti, size_t valuesize, void* pkey)
+void* _aaGetX(AA* aa, TypeInfo keyti, size_t valuesize, void* pkey)
 in
 {
     assert(aa);
@@ -300,10 +300,10 @@ Lret:
 
 void* _aaGetRvalue(AA aa, TypeInfo keyti, size_t valuesize, ...)
 {
-    return _aaGetRvaluep(aa, keyti, valuesize, cast(void*)(&valuesize + 1));
+    return _aaGetRvalueX(aa, keyti, valuesize, cast(void*)(&valuesize + 1));
 }
 
-void* _aaGetRvaluep(AA aa, TypeInfo keyti, size_t valuesize, void* pkey)
+void* _aaGetRvalueX(AA aa, TypeInfo keyti, size_t valuesize, void* pkey)
 {
     //printf("_aaGetRvalue(valuesize = %u)\n", valuesize);
     if (!aa.a)
@@ -342,10 +342,10 @@ void* _aaGetRvaluep(AA aa, TypeInfo keyti, size_t valuesize, void* pkey)
 
 void* _aaIn(AA aa, TypeInfo keyti, ...)
 {
-    return _aaInp(aa, keyti, cast(void*)(&keyti + 1));
+    return _aaInX(aa, keyti, cast(void*)(&keyti + 1));
 }
 
-void* _aaInp(AA aa, TypeInfo keyti, void* pkey)
+void* _aaInX(AA aa, TypeInfo keyti, void* pkey)
 in
 {
 }
@@ -390,10 +390,10 @@ body
 
 bool _aaDel(AA aa, TypeInfo keyti, ...)
 {
-    return _aaDelp(aa, keyti, cast(void*)(&keyti + 1));
+    return _aaDelX(aa, keyti, cast(void*)(&keyti + 1));
 }
 
-bool _aaDelp(AA aa, TypeInfo keyti, void* pkey)
+bool _aaDelX(AA aa, TypeInfo keyti, void* pkey)
 {
     aaA *e;
 
@@ -729,7 +729,7 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
 }
 
 extern (C)
-BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, void[] keys, void[] values)
+BB* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] values)
 {
     auto valuesize = ti.next.tsize();           // value size
     auto keyti = ti.key;
@@ -737,7 +737,7 @@ BB* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, void[] keys, void[] val
     auto length = keys.length;
     BB* result;
 
-    //printf("_d_assocarrayliteralTp(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
+    //printf("_d_assocarrayliteralTX(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
     //printf("tivalue = %.*s\n", ti.next.classinfo.name);
     assert(length == values.length);
     if (length == 0 || valuesize == 0 || keysize == 0)

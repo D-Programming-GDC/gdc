@@ -957,9 +957,9 @@ void[] _d_newarrayOpT(alias op)(TypeInfo ti, size_t ndims, size_t* pdim)
 /**
  *
  */
-extern (C) void[] _d_newarraymTp(TypeInfo ti, size_t ndims, size_t* pdim)
+extern (C) void[] _d_newarraymTX(TypeInfo ti, size_t ndims, size_t* pdim)
 {
-    debug(PRINTF) printf("_d_newarraymTp(ndims = %d)\n", ndims);
+    debug(PRINTF) printf("_d_newarraymTX(ndims = %d)\n", ndims);
 
     if (ndims == 0)
         return null;
@@ -973,9 +973,9 @@ extern (C) void[] _d_newarraymTp(TypeInfo ti, size_t ndims, size_t* pdim)
 /**
  *
  */
-extern (C) void[] _d_newarraymiTp(TypeInfo ti, size_t ndims, size_t* pdim)
+extern (C) void[] _d_newarraymiTX(TypeInfo ti, size_t ndims, size_t* pdim)
 {
-    debug(PRINTF) printf("_d_newarraymiTp(ndims = %d)\n", ndims);
+    debug(PRINTF) printf("_d_newarraymiTX(ndims = %d)\n", ndims);
 
     if (ndims == 0)
         return null;
@@ -1716,7 +1716,7 @@ extern (C) void[] _d_arrayappendcT(TypeInfo ti, ref byte[] x, ...)
  * Caller must initialize those elements.
  */
 extern (C)
-byte[] _d_arrayappendcTp(TypeInfo ti, ref byte[] px, size_t n)
+byte[] _d_arrayappendcTX(TypeInfo ti, ref byte[] px, size_t n)
 {
     // This is a cut&paste job from _d_arrayappendT(). Should be refactored.
 
@@ -2006,12 +2006,12 @@ extern (C) byte[] _d_arraycatnT(TypeInfo ti, uint n, ...)
  * Allocate the array, rely on the caller to do the initialization of the array.
  */
 extern (C)
-void* _d_arrayliteralTp(TypeInfo ti, size_t length)
+void* _d_arrayliteralTX(TypeInfo ti, size_t length)
 {
     auto sizeelem = ti.next.tsize();            // array element size
     void* result;
 
-    //printf("_d_arrayliteralTp(sizeelem = %d, length = %d)\n", sizeelem, length);
+    //printf("_d_arrayliteralTX(sizeelem = %d, length = %d)\n", sizeelem, length);
     if (length == 0 || sizeelem == 0)
         result = null;
     else

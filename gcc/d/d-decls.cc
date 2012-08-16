@@ -574,7 +574,6 @@ FuncDeclaration::toSymbol (void)
 	      gen.addDeclAttribute (fndecl, "dllexport");
 	    }
 #endif
-
 	  g.ofile->setDeclLoc (fndecl, this);
 	  g.ofile->setupSymbolStorage (this, fndecl);
 	  if (!ident)
@@ -583,6 +582,7 @@ FuncDeclaration::toSymbol (void)
 	  TREE_USED (fndecl) = 1; // %% Probably should be a little more intelligent about this
 	  csym->Stree = fndecl;
 
+	  gen.maybeSetLibCallDecl (this);
 	  gen.maybeSetUpBuiltin (this);
 	}
       else

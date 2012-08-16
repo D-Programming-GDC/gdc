@@ -694,8 +694,8 @@ struct FuncDeclaration : Declaration
     Statement *mergeFensure(Statement *);
     Parameters *getParameters(int *pvarargs);
 
-    static FuncDeclaration *genCfunc(Type *treturn, const char *name, Type *t1 = NULL, Type *t2 = NULL, Type *t3 = NULL);
-    static FuncDeclaration *genCfunc(Type *treturn, Identifier *id, Type *t1 = NULL, Type *t2 = NULL, Type *t3 = NULL);
+    static FuncDeclaration *genCfunc(Type *treturn, const char *name);
+    static FuncDeclaration *genCfunc(Type *treturn, Identifier *id);
 
     Symbol *toSymbol();
     Symbol *toThunkSymbol(int offset);  // thunk version

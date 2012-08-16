@@ -3554,7 +3554,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         static const char *name[2] = { "_adReverseChar", "_adReverseWchar" };
 
         nm = name[n->ty == Twchar];
-        fd = FuncDeclaration::genCfunc(tint32->arrayOf(), nm, Type::tvoid->arrayOf());
+        fd = FuncDeclaration::genCfunc(Type::tindex, nm);
         ec = new VarExp(0, fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
@@ -3571,7 +3571,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         static const char *name[2] = { "_adSortChar", "_adSortWchar" };
 
         nm = name[n->ty == Twchar];
-        fd = FuncDeclaration::genCfunc(tint32->arrayOf(), nm, Type::tvoid->arrayOf());
+        fd = FuncDeclaration::genCfunc(Type::tindex, nm);
         ec = new VarExp(0, fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
@@ -3590,12 +3590,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         Expression *olde = e;
         assert(size);
         dup = (ident == Id::dup || ident == Id::idup);
-        if (dup)
-            fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::adDup,
-                    Type::typeinfo->type, Type::tvoid->arrayOf());
-        else
-            fd = FuncDeclaration::genCfunc(Type::tvoid->arrayOf(), Id::adReverse,
-                    Type::tvoid->arrayOf(), Type::tsize_t);
+        fd = FuncDeclaration::genCfunc(Type::tindex, dup ? Id::adDup : Id::adReverse);
         ec = new VarExp(0, fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
@@ -3629,8 +3624,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         FuncDeclaration *fd;
         Expressions *arguments;
 
-        fd = FuncDeclaration::genCfunc(tint32->arrayOf(), "_adSort",
-                Type::tvoid->arrayOf(), Type::typeinfo->type);
+        fd = FuncDeclaration::genCfunc(tint32->arrayOf(), "_adSort");
         ec = new VarExp(0, fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();

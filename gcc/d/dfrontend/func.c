@@ -2983,12 +2983,12 @@ int FuncDeclaration::addPostInvariant()
  * Generate a FuncDeclaration for a runtime library function.
  */
 
-FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, const char *name, Type *t1, Type *t2, Type *t3)
+FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, const char *name)
 {
-    return genCfunc(treturn, Lexer::idPool(name), t1, t2 ,t3);
+    return genCfunc(treturn, Lexer::idPool(name));
 }
 
-FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id, Type *t1, Type *t2, Type *t3)
+FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id)
 {
     FuncDeclaration *fd;
     TypeFunction *tf;
@@ -3011,20 +3011,6 @@ FuncDeclaration *FuncDeclaration::genCfunc(Type *treturn, Identifier *id, Type *
     else
     {
         tf = new TypeFunction(NULL, treturn, 0, LINKc);
-#ifdef IN_GCC
-        Parameters *args = new Parameters;
-        if (t1)
-        {
-            args->push(new Parameter(STCin, t1, NULL, NULL));
-            if (t2)
-            {
-                args->push(new Parameter(STCin, t2, NULL, NULL));
-                if (t3)
-                    args->push(new Parameter(STCin, t3, NULL, NULL));
-            }
-        }
-        tf->parameters = args;
-#endif
         fd = new FuncDeclaration(0, 0, id, STCstatic, tf);
         fd->protection = PROTpublic;
         fd->linkage = LINKc;

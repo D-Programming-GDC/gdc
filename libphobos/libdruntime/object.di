@@ -357,10 +357,10 @@ extern (C)
     // from druntime/compiler/gdc/rt/aaA.d
 
     size_t _aaLen(void* p);
-    void*  _aaGetp(void** pp, TypeInfo keyti, size_t valuesize, void* pkey);
-    void*  _aaGetRvaluep(void* p, TypeInfo keyti, size_t valuesize, void* pkey);
-    void*  _aaInp(void* p, TypeInfo keyti, void* pkey);
-    bool   _aaDelp(void* p, TypeInfo keyti, void* pkey);
+    void*  _aaGetX(void** pp, TypeInfo keyti, size_t valuesize, void* pkey);
+    void*  _aaGetRvalueX(void* p, TypeInfo keyti, size_t valuesize, void* pkey);
+    void*  _aaInX(void* p, TypeInfo keyti, void* pkey);
+    bool   _aaDelX(void* p, TypeInfo keyti, void* pkey);
     void[] _aaValues(void* p, size_t keysize, size_t valuesize);
     void[] _aaKeys(void* p, size_t keysize);
     void*  _aaRehash(void** pp, TypeInfo keyti);
@@ -371,7 +371,7 @@ extern (C)
     extern (D) alias scope int delegate(void *, void *) _dg2_t;
     int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    void* _d_assocarrayliteralTp(TypeInfo_AssociativeArray ti, void[] keys, void[] values);
+    void* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] values);
 }
 
 struct AssociativeArray(Key, Value)

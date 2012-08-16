@@ -2147,11 +2147,9 @@ Lagain:
                  */
                 FuncDeclaration *fdapply;
                 if (dim == 2)
-                    fdapply = FuncDeclaration::genCfunc(Type::tint32, "_aaApply2",
-                                                        aggr->type, Type::tsize_t, flde->type);
+                    fdapply = FuncDeclaration::genCfunc(Type::tindex, "_aaApply2");
                 else
-                    fdapply = FuncDeclaration::genCfunc(Type::tint32, "_aaApply",
-                                                        aggr->type, Type::tsize_t, flde->type);
+                    fdapply = FuncDeclaration::genCfunc(Type::tindex, "_aaApply");
                 ec = new VarExp(0, fdapply);
                 Expressions *exps = new Expressions();
                 exps->push(aggr);
@@ -2192,8 +2190,7 @@ Lagain:
                 const char *r = (op == TOKforeach_reverse) ? "R" : "";
                 int j = sprintf(fdname, "_aApply%s%.*s%llu", r, 2, fntab[flag], (ulonglong)dim);
                 assert(j < sizeof(fdname));
-                FuncDeclaration *fdapply = FuncDeclaration::genCfunc(Type::tindex, fdname,
-                                                                     tn->arrayOf(), flde->type);
+                FuncDeclaration *fdapply = FuncDeclaration::genCfunc(Type::tindex, fdname);
 
                 ec = new VarExp(0, fdapply);
                 Expressions *exps = new Expressions();
@@ -4259,12 +4256,12 @@ Statement *SynchronizedStatement::semantic(Scope *sc)
         Statements *cs = new Statements();
         cs->push(new ExpStatement(loc, tmp));
 
-        FuncDeclaration *fdenter = FuncDeclaration::genCfunc(Type::tvoid, Id::monitorenter, exp->type);
+        FuncDeclaration *fdenter = FuncDeclaration::genCfunc(Type::tvoid, Id::monitorenter);
         Expression *e = new CallExp(loc, new VarExp(loc, fdenter), new VarExp(loc, tmp));
         e->type = Type::tvoid;                  // do not run semantic on e
         cs->push(new ExpStatement(loc, e));
 
-        FuncDeclaration *fdexit = FuncDeclaration::genCfunc(Type::tvoid, Id::monitorexit, exp->type);
+        FuncDeclaration *fdexit = FuncDeclaration::genCfunc(Type::tvoid, Id::monitorexit);
         e = new CallExp(loc, new VarExp(loc, fdexit), new VarExp(loc, tmp));
         e->type = Type::tvoid;                  // do not run semantic on e
         Statement *s = new ExpStatement(loc, e);
@@ -4290,14 +4287,14 @@ Statement *SynchronizedStatement::semantic(Scope *sc)
         Statements *cs = new Statements();
         cs->push(new ExpStatement(loc, tmp));
 
-        FuncDeclaration *fdenter = FuncDeclaration::genCfunc(Type::tvoid, Id::criticalenter, Type::tvoidptr);
+        FuncDeclaration *fdenter = FuncDeclaration::genCfunc(Type::tvoid, Id::criticalenter);
         Expression *e = new DotIdExp(loc, new VarExp(loc, tmp), Id::ptr);
         e = e->semantic(sc);
         e = new CallExp(loc, new VarExp(loc, fdenter), e);
         e->type = Type::tvoid;                  // do not run semantic on e
         cs->push(new ExpStatement(loc, e));
 
-        FuncDeclaration *fdexit = FuncDeclaration::genCfunc(Type::tvoid, Id::criticalexit, Type::tvoidptr);
+        FuncDeclaration *fdexit = FuncDeclaration::genCfunc(Type::tvoid, Id::criticalexit);
         e = new DotIdExp(loc, new VarExp(loc, tmp), Id::ptr);
         e = e->semantic(sc);
         e = new CallExp(loc, new VarExp(loc, fdexit), e);
