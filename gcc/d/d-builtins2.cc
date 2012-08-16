@@ -150,11 +150,11 @@ gcc_type_to_d_type (tree t)
 	  tree index = TYPE_DOMAIN (t);
 	  tree ub = TYPE_MAX_VALUE (index);
 	  tree lb = TYPE_MIN_VALUE (index);
-	  tree length
-	    = size_binop (PLUS_EXPR, size_one_node,
-			  convert (sizetype,
-				   fold_build2(MINUS_EXPR, TREE_TYPE (lb),
-						ub, lb)));
+
+	  tree length = fold_build2 (MINUS_EXPR, TREE_TYPE (lb), ub, lb);
+	  length = size_binop (PLUS_EXPR, size_one_node,
+			       d_convert_basic (sizetype, length));
+
 	  e = new IntegerExp (0, gen.getTargetSizeConst (length),
 			      Type::tindex);
 	  d = new TypeSArray (d, e);
@@ -232,7 +232,7 @@ gcc_type_to_d_type (tree t)
 
     case FUNCTION_TYPE:
       typefunc_ret= gcc_type_to_d_type (TREE_TYPE (t));
-      if (! typefunc_ret)
+      if (!typefunc_ret)
 	break;
 
       t_arg_types = TYPE_ARG_TYPES (t);
@@ -255,7 +255,7 @@ gcc_type_to_d_type (tree t)
 		}
 	      d_arg_type = gcc_type_to_d_type (ta);
 
-	      if (! d_arg_type)
+	      if (!d_arg_type)
 		goto Lfail;
 
 	      t_args->push (new Parameter (io, d_arg_type, NULL, NULL));
@@ -286,7 +286,7 @@ d_bi_init (void)
   // The "standard" abi va_list is va_list_type_node.
   // assumes va_list_type_node already built
   d_gcc_builtin_va_list_d_type = gcc_type_to_d_type (va_list_type_node);
-  if (! d_gcc_builtin_va_list_d_type)
+  if (!d_gcc_builtin_va_list_d_type)
     {
       // fallback to array of byte of the same size?
       error ("cannot represent built in va_list type in D");
@@ -389,7 +389,7 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
 	      TypeFunction *tf;
 	      // Should have nice error message instead of ICE in case someone
 	      // tries to tweak the file.
-	      gcc_assert (! fd->parameters);
+	      gcc_assert (!fd->parameters);
 	      tf = (TypeFunction *) fd->type;
 	      gcc_assert (tf->ty == Tfunction &&
   			  tf->parameters && tf->parameters->dim >= 1);
@@ -434,7 +434,7 @@ d_gcc_magic_builtins_module (Module *m)
       TypeFunction *dtf
 	= (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (decl));
 
-      if (! dtf)
+      if (!dtf)
 	{
 	  //warning (0, "cannot create built in function type for %s", name);
 	  continue;
@@ -475,7 +475,7 @@ d_gcc_magic_builtins_module (Module *m)
       tree type = TREE_TYPE (decl);
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
       Type *dt = gcc_type_to_d_type (type);
-      if (! dt)
+      if (!dt)
 	{
 	  //warning (0, "cannot create built in type for %s", name);
 	  continue;
@@ -492,7 +492,7 @@ d_gcc_magic_builtins_module (Module *m)
       for (int l = 0; targetm.enum_va_list_p (l, &name, &type); ++l)
 	{
 	  Type *dt = gcc_type_to_d_type (type);
-	  if (! dt)
+	  if (!dt)
 	    {
 	      //warning (0, "cannot create built in type for "%s", name);
 	      continue;
@@ -506,10 +506,10 @@ d_gcc_magic_builtins_module (Module *m)
       Dsymbol *sym = builtin_converted_decls[i];
       // va_list is a pain.  It can be referenced without importing
       // gcc.builtins so it really needs to go in the object module.
-      if (! sym->parent)
+      if (!sym->parent)
 	{
 	  Declaration *decl = sym->isDeclaration();
-	  if (! decl || decl->type != d_gcc_builtin_va_list_d_type)
+	  if (!decl || decl->type != d_gcc_builtin_va_list_d_type)
 	    {
 	      sym->parent = m;
 	      // Currently, there is no need to run semantic, but we do
@@ -592,30 +592,30 @@ d_gcc_magic_module (Module *m)
 
   if (md->packages->dim == 1)
     {
-      if (! strcmp ((md->packages->tdata()[0])->string, "gcc"))
+      if (!strcmp ((md->packages->tdata()[0])->string, "gcc"))
 	{
-	  if (! strcmp (md->id->string, "builtins"))
+	  if (!strcmp (md->id->string, "builtins"))
 	    d_gcc_magic_builtins_module (m);
 	}
-      else if (! strcmp ((md->packages->tdata()[0])->string, "core"))
+      else if (!strcmp ((md->packages->tdata()[0])->string, "core"))
 	{
-	  if (! strcmp (md->id->string, "bitop"))
+	  if (!strcmp (md->id->string, "bitop"))
 	    IRState::setIntrinsicModule (m, true);
-	  else if (! strcmp (md->id->string, "math"))
+	  else if (!strcmp (md->id->string, "math"))
 	    IRState::setMathModule (m, true);
 	}
-      else if (! strcmp ((md->packages->tdata()[0])->string, "std"))
+      else if (!strcmp ((md->packages->tdata()[0])->string, "std"))
 	{
-	  if (! strcmp (md->id->string, "math"))
+	  if (!strcmp (md->id->string, "math"))
 	    IRState::setMathModule (m, false);
 	}
     }
   else if (md->packages->dim == 2)
     {
-      if (! strcmp ((md->packages->tdata()[0])->string, "core") &&
-	  ! strcmp ((md->packages->tdata()[1])->string, "stdc"))
+      if (!strcmp ((md->packages->tdata()[0])->string, "core") &&
+	  !strcmp ((md->packages->tdata()[1])->string, "stdc"))
 	{
-	  if (! strcmp (md->id->string, "stdarg"))
+	  if (!strcmp (md->id->string, "stdarg"))
 	    d_gcc_magic_stdarg_module (m);
 	}
     }

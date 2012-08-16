@@ -71,7 +71,7 @@ IRState::declContext (Dsymbol *d_sym)
 	{
 	  // dwarf2out chokes without this check... (output_pubnames)
 	  FuncDeclaration *f = orig_sym->isFuncDeclaration();
-	  if (f && ! gen.functionNeedsChain (f))
+	  if (f && !gen.functionNeedsChain (f))
 	    return NULL_TREE;
 
 	  return d_sym->toSymbol()->Stree;
@@ -115,7 +115,7 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
   Symbol *sym = v->toSymbol();
   tree var_decl = sym->Stree;
 
-  gcc_assert (! TREE_STATIC (var_decl));
+  gcc_assert (!TREE_STATIC (var_decl));
   if (TREE_CODE (var_decl) == CONST_DECL)
     return;
 
@@ -138,9 +138,9 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
   tree init_exp = NULL_TREE; // complete initializer expression (include MODIFY_EXPR, e.g.)
   tree init_val = NULL_TREE;
 
-  if (! no_init && ! DECL_INITIAL (var_decl) && v->init)
+  if (!no_init && !DECL_INITIAL (var_decl) && v->init)
     {
-      if (! v->init->isVoidInitializer())
+      if (!v->init->isVoidInitializer())
 	{
 	  ExpInitializer *exp_init = v->init->isExpInitializer();
 	  Expression *ie = exp_init->toExpression();
@@ -152,21 +152,21 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
 	}
     }
 
-  if (! no_init)
+  if (!no_init)
     {
       g.ofile->doLineNote (v->loc);
 
-      if (! init_val)
+      if (!init_val)
 	{
 	  init_val = DECL_INITIAL (var_decl);
 	  DECL_INITIAL (var_decl) = NULL_TREE; // %% from expandDecl
 	}
-      if (! init_exp && init_val)
-	init_exp = build2 (INIT_EXPR, void_type_node, var_exp, init_val);
+      if (!init_exp && init_val)
+	init_exp = vinit (var_exp, init_val);
 
       if (init_exp)
 	addExp (init_exp);
-      else if (! init_val && v->size (v->loc)) // Zero-length arrays do not have an initializer
+      else if (!init_val && v->size (v->loc)) // Zero-length arrays do not have an initializer
 	d_warning (OPT_Wuninitialized, "uninitialized variable '%s'", v->ident ? v->ident->string : "(no name)");
     }
 }
@@ -268,6 +268,24 @@ IRState::var (VarDeclaration *v)
     }
 }
 
+// Return expression EXP, whose type has been converted to TYPE.
+
+tree
+IRState::convertTo (tree type, tree exp)
+{
+  // Check this first before passing to getDType.
+  if (isErrorMark (type) || isErrorMark (TREE_TYPE (exp)))
+    return error_mark_node;
+
+  Type *target_type = getDType (type);
+  Type *expr_type = getDType (TREE_TYPE (exp));
+
+  if (target_type && expr_type)
+    return convertTo (exp, expr_type, target_type);
+
+  return d_convert_basic (type, exp);
+}
+
 // Return a TREE representation of EXP implictly converted to TARGET_TYPE.
 
 tree
@@ -366,7 +384,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	    // d_convert will make a NOP cast
 	    break;
 	  }
-	else if (! obj_class_decl->isCOMclass())
+	else if (!obj_class_decl->isCOMclass())
 	  use_dynamic = true;
 
 	if (use_dynamic)
@@ -382,7 +400,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	else
 	  {
 	    d_warning (0, "cast to %s will yield null result", target_type->toChars());
-	    result = convert (target_type->toCtype(), d_null_pointer);
+	    result = convertTo (target_type->toCtype(), d_null_pointer);
 	    if (TREE_SIDE_EFFECTS (exp))
 	      {
 		// make sure the expression is still evaluated if necessary
@@ -442,7 +460,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
     case Tarray:
       if (tbtype->ty == Tpointer)
 	{
-	  return convert (target_type->toCtype(), darrayPtrRef (exp));
+	  return convertTo (target_type->toCtype(), darrayPtrRef (exp));
 	}
       else if (tbtype->ty == Tarray)
 	{
@@ -583,7 +601,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	    }
 	  else if (tbtype->iscomplex())
 	    {
-	      tree c1 = convert (TREE_TYPE (target_type->toCtype()), exp);
+	      tree c1 = convertTo (TREE_TYPE (target_type->toCtype()), exp);
 	      tree c2 = build_real_from_int_cst (TREE_TYPE (target_type->toCtype()), integer_zero_node);
 
 	      if (ebtype->isreal())
@@ -611,7 +629,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	}
     }
 
-  if (! result)
+  if (!result)
     result = d_convert_basic (target_type->toCtype(), exp);
 #if ENABLE_CHECKING
   if (isErrorMark (result))
@@ -664,7 +682,7 @@ IRState::convertForAssignment (Expression *expr, Type *target_type)
 	}
     }
 
-  if (! target_type->isscalar() && exp_base_type->isintegral())
+  if (!target_type->isscalar() && exp_base_type->isintegral())
     {
       // D Front end uses IntegerExp (0) to mean zero-init a structure
       // This could go in convert for assignment, but we only see this for
@@ -753,7 +771,7 @@ IRState::convertForCondition (tree exp_tree, Type *exp_type)
       if (TYPE_MODE (TREE_TYPE (obj)) == TYPE_MODE (TREE_TYPE (func)))
 	{
 	  result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj,
-			   convert (TREE_TYPE (obj), func));
+			   convertTo (TREE_TYPE (obj), func));
 	}
       else
 	{
@@ -890,7 +908,7 @@ IRState::trueDeclarationType (Declaration *decl)
     }
   else if (decl->storage_class & STClazy)
     {
-      TypeFunction *tf = new TypeFunction (NULL, decl->type, 0, LINKd);
+      TypeFunction *tf = new TypeFunction (NULL, decl->type, false, LINKd);
       TypeDelegate *t = new TypeDelegate (tf);
       decl_type = t->merge()->toCtype();
     }
@@ -934,7 +952,7 @@ IRState::trueArgumentType (Parameter *arg)
     }
   else if (arg->storageClass & STClazy)
     {
-      TypeFunction *tf = new TypeFunction (NULL, arg->type, 0, LINKd);
+      TypeFunction *tf = new TypeFunction (NULL, arg->type, false, LINKd);
       TypeDelegate *t = new TypeDelegate (tf);
       arg_type = t->merge()->toCtype();
     }
@@ -982,7 +1000,7 @@ tree
 IRState::addTypeAttribute (tree type, const char *attrname, tree value)
 {
   // types built by functions in tree.c need to be treated as immutable
-  if (! TYPE_ATTRIBUTES (type))
+  if (!TYPE_ATTRIBUTES (type))
     type = build_variant_type_copy (type);
 
   if (value)
@@ -1009,7 +1027,7 @@ IRState::addDeclAttribute (tree decl, const char *attrname, tree value)
 tree
 IRState::attributes (Expressions *in_attrs)
 {
-  if (! in_attrs)
+  if (!in_attrs)
     return NULL_TREE;
 
   ListMaker out_attrs;
@@ -1255,7 +1273,7 @@ IRState::darrayVal (tree type, uinteger_t len, tree data)
     }
   else
     {
-      ptr_value = convert (TREE_TYPE (ptr_field), d_null_pointer);
+      ptr_value = convertTo (TREE_TYPE (ptr_field), d_null_pointer);
     }
 
   len_value = integerConstant (len, TREE_TYPE (len_field));
@@ -1428,7 +1446,7 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
 
       if (obj_exp->op == TOKsuper ||
 	  obj_type->ty == Tstruct || obj_type->ty == Tpointer ||
-	  func->isFinal() || ! func->isVirtual() || is_dottype)
+	  func->isFinal() || !func->isVirtual() || is_dottype)
 	{
 	  if (obj_type->ty == Tstruct)
 	    this_expr = addressOf (this_expr);
@@ -1591,7 +1609,7 @@ IRState::isFreeOfSideEffects (tree t)
 {
   // SAVE_EXPR is safe to reference more than once, but not to
   // expand in a loop.
-  return TREE_CODE (t) != SAVE_EXPR && ! needs_temp (t);
+  return TREE_CODE (t) != SAVE_EXPR && !needs_temp (t);
 }
 
 // Evaluates expression E as an Lvalue.
@@ -1744,12 +1762,12 @@ IRState::pointerIntSum (tree ptr_node, tree idx_exp)
       if (TYPE_PRECISION (TREE_TYPE (intop)) != TYPE_PRECISION (sizetype)
 	  || TYPE_UNSIGNED (TREE_TYPE (intop)) != TYPE_UNSIGNED (sizetype))
 	{
-	  intop = convert (d_type_for_size (TYPE_PRECISION (sizetype),
-					    TYPE_UNSIGNED (sizetype)), intop);
+	  intop = convertTo (d_type_for_size (TYPE_PRECISION (sizetype),
+					      TYPE_UNSIGNED (sizetype)), intop);
 	}
       intop = fold_convert (prod_result_type,
 			    fold_build2 (MULT_EXPR, TREE_TYPE (size_exp), // the type here may be wrong %%
-					 intop, convert (TREE_TYPE (intop), size_exp)));
+					 intop, convertTo (TREE_TYPE (intop), size_exp)));
     }
 
   // backend will ICE otherwise
@@ -1774,7 +1792,7 @@ IRState::pointerOffsetOp (enum tree_code op, tree ptr, tree idx)
     idx = fold_build1 (NEGATE_EXPR, sizetype, idx);
 
   return build2 (POINTER_PLUS_EXPR, TREE_TYPE (ptr), ptr,
-		 convert (sizetype, idx));
+		 convertTo (sizetype, idx));
 }
 
 tree
@@ -1793,7 +1811,7 @@ IRState::pvoidOkay (tree t)
   if (VOID_TYPE_P (TREE_TYPE (TREE_TYPE (t))))
     {
       // ::warning ("indexing array of void");
-      return convert (Type::tuns8->pointerTo()->toCtype(), t);
+      return convertTo (Type::tuns8->pointerTo()->toCtype(), t);
     }
   return t;
 }
@@ -1828,10 +1846,10 @@ IRState::boundsCond (tree index, tree upper_bound, bool inclusive)
   tree bound_check;
 
   bound_check = build2 (inclusive ? LE_EXPR : LT_EXPR, boolean_type_node,
-			convert (d_unsigned_type (TREE_TYPE (index)), index),
+			convertTo (d_unsigned_type (TREE_TYPE (index)), index),
 			upper_bound);
 
-  if (! TYPE_UNSIGNED (TREE_TYPE (index)))
+  if (!TYPE_UNSIGNED (TREE_TYPE (index)))
     {
       bound_check = build2 (TRUTH_ANDIF_EXPR, boolean_type_node, bound_check,
 			    // %% conversions
@@ -2025,7 +2043,7 @@ IRState::call (Expression *expr, Expressions *arguments)
       VarExp *ve;
       gcc_assert (ce->e2->op == TOKvar);
       ve = (VarExp *) ce->e2;
-      gcc_assert (ve->var->isFuncDeclaration() && ! ve->var->needThis());
+      gcc_assert (ve->var->isFuncDeclaration() && !ve->var->needThis());
     }
 
   Type *t = expr->type->toBasetype();
@@ -2085,7 +2103,7 @@ tree
 IRState::call (FuncDeclaration *func_decl, Expressions *args)
 {
   // Otherwise need to copy code from above
-  gcc_assert (! func_decl->isNested());
+  gcc_assert (!func_decl->isNested());
 
   return call (getFuncType (func_decl->type), func_decl->toSymbol()->Stree, NULL_TREE, args);
 }
@@ -2138,7 +2156,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   else
     {
       /* METHOD_TYPE */
-      if (! object)
+      if (!object)
 	{
 	  // Front-end apparently doesn't check this.
 	  if (TREE_CODE (callable) == FUNCTION_DECL)
@@ -2163,7 +2181,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   size_t n_actual_args = arguments ? arguments->dim : 0;
   size_t fi = 0;
 
-  // assumes arguments->dim <= formal_args->dim if (! this->varargs)
+  // assumes arguments->dim <= formal_args->dim if (!this->varargs)
   for (size_t ai = 0; ai < n_actual_args; ++ai)
     {
       tree actual_arg_tree;
@@ -2300,7 +2318,7 @@ IRState::getLibCallDecl (LibCall lib_call)
   Types arg_types;
   bool varargs = false;
 
-  if (! decl)
+  if (!decl)
     {
       Type *return_type = Type::tvoid;
 
@@ -2418,7 +2436,7 @@ IRState::getLibCallDecl (LibCall lib_call)
 	case LIBCALL_AADELP:
 	    {
 	      static Type *aa_type = NULL;
-	      if (! aa_type)
+	      if (!aa_type)
 		aa_type = new TypeAArray (Type::tvoidptr, Type::tvoidptr);
 
 	      if (lib_call == LIBCALL_AAEQUAL)
@@ -3032,7 +3050,7 @@ IRState::floatMod (tree type, tree arg0, tree arg1)
   else if (TYPE_MAIN_VARIANT (basetype) == long_double_type_node)
     fmodfn = d_built_in_decls (BUILT_IN_FMODL);
 
-  if (! fmodfn)
+  if (!fmodfn)
     {
       // %qT pretty prints the tree type.
       ::error ("tried to perform floating-point modulo division on %qT", type);
@@ -3093,7 +3111,7 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
   // Don't use toParent2.  We are looking for a template below.
   dsym = decl->toParent();
 
-  if (! dsym)
+  if (!dsym)
     return false;
 
   if ((intrinsicModule && dsym->getModule() == intrinsicModule) ||
@@ -3327,9 +3345,9 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
 	{
 	  Dsymbol *o = nested_func = this->func;
 	  do {
-	      if (! nested_func->isNested())
+	      if (!nested_func->isNested())
 		{
-		  if (! nested_func->isMember2())
+		  if (!nested_func->isMember2())
 		    goto cannot_access_frame;
 		}
 	      while ((o = o->toParent2()))
@@ -3339,7 +3357,7 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
 		}
 	  } while (o && o != outer_func);
 
-	  if (! o)
+	  if (!o)
 	    {
 	cannot_access_frame:
 	      error ("cannot access frame of function '%s' from '%s'",
@@ -3349,7 +3367,7 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
 	}
     }
 
-  if (! outer_func)
+  if (!outer_func)
     outer_func = nested_func->toParent2()->isFuncDeclaration();
   gcc_assert (outer_func != NULL);
 
@@ -3531,10 +3549,10 @@ IRState::buildChain (FuncDeclaration *func)
       return;
     }
 
-  if (! ffi->creates_frame)
+  if (!ffi->creates_frame)
     {
       // %% TODO: Implement static chain passing this way?
-      gcc_assert (! ffi->static_chain);
+      gcc_assert (!ffi->static_chain);
       return;
     }
 
@@ -3625,7 +3643,7 @@ IRState::buildChain (FuncDeclaration *func)
   for (size_t i = 0; i < nestedVars->dim; i++)
     {
       VarDeclaration *v = (*nestedVars)[i];
-      if (! v->isParameter())
+      if (!v->isParameter())
 	continue;
 
       Symbol *vsym = v->toSymbol();
@@ -3804,7 +3822,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
 	return false;
 
       pf = f->toParent2()->isFuncDeclaration();
-      if (pf && ! getFrameInfo (pf)->is_closure)
+      if (pf && !getFrameInfo (pf)->is_closure)
 	return true;
     }
   if (f->isStatic())
@@ -3818,7 +3836,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
     {
       s = s->toParent2();
       if ((pf = s->isFuncDeclaration())
-	  && ! getFrameInfo (pf)->is_closure)
+	  && !getFrameInfo (pf)->is_closure)
 	{
 	  return true;
 	}
@@ -3934,7 +3952,7 @@ void
 IRState::exitLoop (Identifier *ident)
 {
   Flow *flow = getLoopForLabel (ident);
-  if (! flow->exitLabel)
+  if (!flow->exitLabel)
     flow->exitLabel = label (flow->statement->loc);
   doJump (NULL, flow->exitLabel);
 }
@@ -4189,9 +4207,9 @@ IRState::checkGoto (Statement *stmt, LabelDsymbol *label)
 	}
     }
   // Push forward referenced gotos.
-  if (! found)
+  if (!found)
     {
-      if (! label->statement->fwdrefs)
+      if (!label->statement->fwdrefs)
 	label->statement->fwdrefs = new Array();
       label->statement->fwdrefs->push (getLabelBlock (label, stmt));
     }
@@ -4444,7 +4462,7 @@ ArrayScope::finish (IRState *irs, tree e)
       tree t = s->Stree;
       if (TREE_CODE (t) == VAR_DECL)
 	{
-	  gcc_assert (! s->SframeField);
+	  gcc_assert (!s->SframeField);
 	  return gen.binding (t, e);
 	}
       else

@@ -1,3 +1,30 @@
+2012-08-16  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins2.cc(gcc_type_to_d_type): Use d_convert_basic.
+	* d-codegen.cc(IRState::emitLocalVar): Use IRState::vinit.
+	(IRState::convertTo): New function for tree conversions.
+	(IRState::convertTo): Use IRState::convertTo.
+	(IRState::convertForCondition): Likewise.
+	(IRState::darrayVal): Likewise.
+	(IRState::pointerIntSum): Likewise.
+	(IRState::pointerOffsetOp): Likewise.
+	(IRState::pvoidOkay): Likewise.
+	(IRState::boundsCond): Likewise.
+	* d-convert.cc(convert): New function to be called from C.
+	(d_build_truthvalue_op): Use d_convert_basic.
+	* d-glue.cc(convert): Remove.
+	(build_bool_binop): Use IRState::convertTo.
+	(build_math_op): Likewise.
+	(CmpExp::toElem): Likewise.
+	(PowExp::toElem): Likewise.
+	(do_array_set): Likewise.
+	(AssignExp::toElem): Likewise.
+	(VectorExp::toElem): Likewise.
+	(NotExp::toElem): Likewise.
+	(CallExp::toElem): Likewise.
+	(SymbolExp::toElem): Likewise.
+	* dt.cc(dt2tree_list_of_elems): Use d_convert_basic.
+
 2012-07-26  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-gcc-real.cc(real_t::real_t): Use d_float64 for constructor.

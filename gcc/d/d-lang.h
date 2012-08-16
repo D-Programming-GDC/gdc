@@ -173,7 +173,6 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 bool d_mark_addressable (tree);
 void d_mark_exp_read (tree);
 tree d_truthvalue_conversion (tree);
-tree d_convert_basic (tree, tree);
 
 void d_add_global_declaration (tree);
 
@@ -236,6 +235,9 @@ void gcc_d_backend_term (void);
 void d_bi_init (void);
 void d_bi_builtin_func (tree);
 void d_bi_builtin_type (tree);
+
+/* In d-convert.cc */
+tree d_convert_basic (tree, tree);
 
 #ifdef __cplusplus
 }

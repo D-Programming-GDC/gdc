@@ -60,7 +60,7 @@ Symbol *
 SymbolDeclaration::toSymbol (void)
 {
   // Create the actual back-end value if not yet done
-  if (! sym->Stree)
+  if (!sym->Stree)
     {
       if (dsym)
 	dsym->toInitializer();
@@ -155,7 +155,7 @@ uniqueName (Declaration *d, tree t, const char *asm_name)
 
       // Assumes one assembler output file per compiler run.  Otherwise, need
       // to reset this for each file.
-      if (! uniqueNames)
+      if (!uniqueNames)
 	{
 	  uniqueNames = new StringTable;
 	  uniqueNames->init();
@@ -188,7 +188,7 @@ uniqueName (Declaration *d, tree t, const char *asm_name)
 Symbol *
 VarDeclaration::toSymbol (void)
 {
-  if (! csym)
+  if (!csym)
     {
       tree var_decl;
       enum tree_code decl_kind;
@@ -255,7 +255,7 @@ VarDeclaration::toSymbol (void)
 
 	  if (init)
 	    {
-	      if (! init->isVoidInitializer())
+	      if (!init->isVoidInitializer())
 		{
 		  e = init->toExpression();
 		  gcc_assert (e != NULL);
@@ -272,13 +272,13 @@ VarDeclaration::toSymbol (void)
       // called from a varaible in an imported module
       // %% (out const X x) doesn't mean the reference is const...
       if ((isConst() || isImmutable()) && (storage_class & STCinit)
-	  && ! gen.isDeclarationReferenceType (this))
+	  && !gen.isDeclarationReferenceType (this))
 	{
 	  // %% CONST_DECLS don't have storage, so we can't use those,
 	  // but it would be nice to get the benefit of them (could handle in
 	  // VarExp -- makeAddressOf could switch back to the VAR_DECL
 
-	  if (! TREE_STATIC (var_decl))
+	  if (!TREE_STATIC (var_decl))
 	    TREE_READONLY (var_decl) = 1;
 	  else
 	    {
@@ -345,7 +345,7 @@ ModuleInfoDeclaration::toSymbol (void)
 Symbol *
 TypeInfoDeclaration::toSymbol (void)
 {
-  if (! csym)
+  if (!csym)
     {
       VarDeclaration::toSymbol();
 
@@ -392,11 +392,11 @@ FuncAliasDeclaration::toSymbol (void)
 Symbol *
 FuncDeclaration::toSymbol (void)
 {
-  if (! csym)
+  if (!csym)
     {
       csym = new Symbol();
 
-      if (! isym)
+      if (!isym)
 	{
 	  tree id;
 	  TypeFunction *ftype = (TypeFunction *) (tintro ? tintro : type);
@@ -498,7 +498,7 @@ FuncDeclaration::toSymbol (void)
 	      bool is_template_member = false;
 	      for (Dsymbol *p = parent; p; p = p->parent)
 		{
-		  if (p->isTemplateInstance() && ! p->isTemplateMixin())
+		  if (p->isTemplateInstance() && !p->isTemplateMixin())
 		    is_template_member = true;
 		  else if (p->isFuncDeclaration())
 		    {
@@ -577,7 +577,7 @@ FuncDeclaration::toSymbol (void)
 
 	  g.ofile->setDeclLoc (fndecl, this);
 	  g.ofile->setupSymbolStorage (this, fndecl);
-	  if (! ident)
+	  if (!ident)
 	    TREE_PUBLIC (fndecl) = 0;
 
 	  TREE_USED (fndecl) = 1; // %% Probably should be a little more intelligent about this
@@ -620,14 +620,14 @@ FuncDeclaration::toThunkSymbol (int offset)
 	}
     }
 
-  if (! found)
+  if (!found)
     {
       thunk = new Thunk;
       thunk->offset = offset;
       csym->thunks.push (thunk);
     }
 
-  if (! thunk->symbol)
+  if (!thunk->symbol)
     {
       unsigned sz = strlen (csym->Sident) + 14;
       char *id = (char *) alloca (sz);
@@ -682,7 +682,7 @@ FuncDeclaration::toThunkSymbol (int offset)
 Symbol *
 ClassDeclaration::toSymbol (void)
 {
-  if (! csym)
+  if (!csym)
     {
       tree decl;
       csym = toSymbolX ("__Class", SCextern, 0, "Z");
@@ -807,7 +807,7 @@ AggregateDeclaration::toInitializer (void)
       if (sd)
 	sinit->Salignment = sd->alignment;
     }
-  if (! sinit->Stree && g.ofile != NULL)
+  if (!sinit->Stree && g.ofile != NULL)
     {
       tree struct_type = type->toCtype();
       if (POINTER_TYPE_P (struct_type))
@@ -846,7 +846,7 @@ TypedefDeclaration::toInitializer (void)
       sinit = s;
       sinit->Sdt = ((TypeTypedef *)type)->sym->init->toDt();
     }
-  if (! sinit->Stree && g.ofile != NULL)
+  if (!sinit->Stree && g.ofile != NULL)
     {
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 			   get_identifier (sinit->Sident), type->toCtype());
@@ -884,7 +884,7 @@ EnumDeclaration::toInitializer (void)
       s->Sflags |= SFLnodebug;
       sinit = s;
     }
-  if (! sinit->Stree && g.ofile != NULL)
+  if (!sinit->Stree && g.ofile != NULL)
     {
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 			   get_identifier (sinit->Sident), type->toCtype());

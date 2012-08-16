@@ -362,7 +362,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fbounds_check:
-      global.params.noboundscheck = ! value;
+      global.params.noboundscheck = !value;
       break;
 
     case OPT_fbuiltin:
@@ -376,7 +376,7 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fdebug_:
       if (ISDIGIT (arg[0]))
 	{
-	  if (! parse_int (arg, &level))
+	  if (!parse_int (arg, &level))
 	    goto Lerror_d;
 	  DebugCondition::setGlobalLevel (level);
 	}
@@ -439,17 +439,17 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates_:
-      if (! arg || ! *arg)
+      if (!arg || !arg[0])
 	gen.emitTemplates = value ? TEauto : TEnone;
-      else if (! strcmp (arg, "normal"))
+      else if (!strcmp (arg, "normal"))
 	gen.emitTemplates = TEnormal;
-      else if (! strcmp (arg, "all"))
+      else if (!strcmp (arg, "all"))
 	gen.emitTemplates = TEall;
-      else if (! strcmp (arg, "private"))
+      else if (!strcmp (arg, "private"))
 	gen.emitTemplates = TEprivate;
-      else if (! strcmp (arg, "none"))
+      else if (!strcmp (arg, "none"))
 	gen.emitTemplates = TEnone;
-      else if (! strcmp (arg, "auto"))
+      else if (!strcmp (arg, "auto"))
 	gen.emitTemplates = TEauto;
       else
 	error ("bad argument for -femit-templates");
@@ -510,14 +510,14 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_frelease:
-      global.params.useInvariants = ! value;
-      global.params.useIn = ! value;
-      global.params.useOut = ! value;
-      global.params.useAssert = ! value;
+      global.params.useInvariants = !value;
+      global.params.useIn = !value;
+      global.params.useOut = !value;
+      global.params.useAssert = !value;
       // release mode doesn't turn off bounds checking for safe functions.
-      global.params.useArrayBounds = ! value ? 2 : 1;
-      flag_bounds_check = ! value;
-      global.params.useSwitchError = ! value;
+      global.params.useArrayBounds = !value ? 2 : 1;
+      flag_bounds_check = !value;
+      global.params.useSwitchError = !value;
       break;
 
     case OPT_fsplit_dynamic_arrays:
@@ -531,7 +531,7 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fversion_:
       if (ISDIGIT (arg[0]))
 	{
-	  if (! parse_int (arg, &level))
+	  if (!parse_int (arg, &level))
 	    goto Lerror_v;
 	  VersionCondition::setGlobalLevel (level);
 	}
@@ -637,7 +637,7 @@ d_write_global_declarations (void)
   cgraph_process_same_body_aliases();
 
   /* We're done parsing; proceed to optimize and emit assembly. */
-  if (! global.errors && ! errorcount)
+  if (!global.errors && !errorcount)
     finalize_compilation_unit();
 
   /* After cgraph has had a chance to emit everything that's going to
@@ -792,7 +792,7 @@ d_parse_file (void)
     }
   global.params.symdebug = write_symbols != NO_DEBUG;
   //global.params.useInline = flag_inline_functions;
-  global.params.obj = ! flag_syntax_only;
+  global.params.obj = !flag_syntax_only;
   global.params.pic = flag_pic != 0; // Has no effect yet.
 
   // better to use input_location.xxx ?
@@ -816,7 +816,7 @@ d_parse_file (void)
   Module *m = NULL;
 
   // %% FIX
-  if (! main_input_filename)
+  if (!main_input_filename)
     {
       ::error ("input file name required; cannot use stdin");
       goto had_errors;
@@ -873,7 +873,7 @@ d_parse_file (void)
 
       Identifier *id = Lexer::idPool (name);
       m = new Module (the_fname, id, global.params.doDocComments, global.params.doHdrGeneration);
-      if (! strcmp (in_fnames[i], main_input_filename))
+      if (!strcmp (in_fnames[i], main_input_filename))
 	an_output_module = m;
       modules.push (m);
     }
@@ -1055,9 +1055,9 @@ d_parse_file (void)
 	continue;
       if (global.params.verbose)
 	fprintf (stdmsg, "code      %s\n", m->toChars());
-      if (! flag_syntax_only)
+      if (!flag_syntax_only)
 	m->genobjfile (false);
-      if (! global.errors && ! errorcount)
+      if (!global.errors && !errorcount)
 	{
 	  if (global.params.doDocComments)
 	    m->gendocfile();
@@ -1326,7 +1326,7 @@ d_type_for_size (unsigned bits, int unsignedp)
 static tree
 d_signed_or_unsigned_type (int unsignedp, tree type)
 {
-  if (! INTEGRAL_TYPE_P (type)
+  if (!INTEGRAL_TYPE_P (type)
       || TYPE_UNSIGNED (type) == (unsigned) unsignedp)
     return type;
 
@@ -1552,7 +1552,7 @@ poplevel (int keep, int reverse, int routinebody)
 bool
 global_bindings_p (void)
 {
-  return current_binding_level == global_binding_level || ! global_binding_level;
+  return current_binding_level == global_binding_level || !global_binding_level;
 }
 
 void

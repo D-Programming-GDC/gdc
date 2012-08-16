@@ -77,7 +77,7 @@ prefixed_path (const char *path)
 {
   // based on incpath.c
   size_t len = cpp_GCC_INCLUDE_DIR_len;
-  if (iprefix && len != 0 && ! strncmp (path, cpp_GCC_INCLUDE_DIR, len))
+  if (iprefix && len != 0 && !strncmp (path, cpp_GCC_INCLUDE_DIR, len))
     return concat (iprefix, path + len, NULL);
   // else
   return xstrdup (path);
@@ -117,10 +117,10 @@ add_import_path (char *path)
 {
   char *target_dir = make_absolute (path);
 
-  if (! global.path)
+  if (!global.path)
     global.path = new Strings();
 
-  if (! FileName::exists (target_dir))
+  if (!FileName::exists (target_dir))
     {
       free (target_dir);
       return;
@@ -137,10 +137,10 @@ add_file_path (char *path)
 {
   char *target_dir = make_absolute (path);
 
-  if (! global.filePath)
+  if (!global.filePath)
     global.filePath = new Strings();
 
-  if (! FileName::exists (target_dir))
+  if (!FileName::exists (target_dir))
     {
       free (target_dir);
       return;
@@ -200,13 +200,13 @@ void add_phobos_versyms (void)
       if (f)
 	{
 	  char buf[256];
-	  while (! feof (f) && fgets (buf, 256, f))
+	  while (!feof (f) && fgets (buf, 256, f))
 	    {
 	      char *p = buf;
 	      while (*p && ISSPACE (*p))
 		p++;
 	      char *q = p;
-	      while (*q && ! ISSPACE (*q))
+	      while (*q && !ISSPACE (*q))
 		q++;
 	      *q = 0;
 	      if (p != q)

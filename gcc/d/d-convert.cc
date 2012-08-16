@@ -18,17 +18,14 @@
 #include "d-gcc-includes.h"
 #include "d-lang.h"
 
-
-// Because this is called by the backend, there may be cases when
-// IRState::converTo has been bypassed.  If we have type.lang_specific
-// set on both args, try using IRState::converTo.
-
-// tree convert (tree type, tree expr) is in d-glue.cc to get the
-// current IRState...
-
-
 // Creates an expression whose value is that of EXPR, converted to type TYPE.
 // This function implements all reasonable scalar conversions.
+
+tree
+convert (tree type, tree expr)
+{
+  return d_convert_basic (type, expr);
+}
 
 tree
 d_convert_basic (tree type, tree expr)
@@ -118,7 +115,7 @@ d_convert_basic (tree type, tree expr)
       break;
 
     maybe_fold:
-      if (! TREE_CONSTANT (ret))
+      if (!TREE_CONSTANT (ret))
 	ret = fold (ret);
       return ret;
     }
@@ -237,9 +234,9 @@ d_build_truthvalue_op (tree_code code, tree orig_op0,
   if (result_type)
     {
       if (TREE_TYPE (op0) != result_type)
-	op0 = convert (result_type, op0);
+	op0 = d_convert_basic (result_type, op0);
       if (TREE_TYPE (op1) != result_type)
-	op1 = convert (result_type, op1);
+	op1 = d_convert_basic (result_type, op1);
     }
 
   return build2 (code, boolean_type_node, op0, op1);
@@ -401,7 +398,7 @@ d_truthvalue_conversion (tree expr)
      value with fails (on i386 and rs6000, at least). */
   else if (SCALAR_FLOAT_TYPE_P (TREE_TYPE (expr)))
     return d_build_truthvalue_op (NE_EXPR, expr,
-				  convert (TREE_TYPE (expr), integer_zero_node), 1);
+				  d_convert_basic (TREE_TYPE (expr), integer_zero_node), 1);
 
   return d_build_truthvalue_op (NE_EXPR, expr, integer_zero_node, 1);
 }

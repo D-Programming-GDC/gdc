@@ -409,7 +409,7 @@ d_register_builtin_type (tree type, const char *name)
   tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, ident, type);
   DECL_ARTIFICIAL (decl) = 1;
 
-  if (! TYPE_NAME (type))
+  if (!TYPE_NAME (type))
     TYPE_NAME (type) = decl;
 
   d_bi_builtin_type (decl);

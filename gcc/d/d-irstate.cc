@@ -101,7 +101,7 @@ IRBase::addExp (tree e)
     }
 
   // C doesn't do this for label_exprs %% why?
-  if (EXPR_P (e) && ! EXPR_HAS_LOCATION (e))
+  if (EXPR_P (e) && !EXPR_HAS_LOCATION (e))
     SET_EXPR_LOCATION (e, input_location);
 
   tree stmt_list = (tree) this->statementList.pop();
@@ -151,10 +151,10 @@ IRBase::popStatementList (void)
 tree
 IRBase::getLabelTree (LabelDsymbol *label)
 {
-  if (! label->statement)
+  if (!label->statement)
     return NULL_TREE;
 
-  if (! label->statement->lblock)
+  if (!label->statement->lblock)
     {
       tree label_decl = build_decl (UNKNOWN_LOCATION, LABEL_DECL,
  				    get_identifier (label->ident->string), void_type_node);
@@ -228,7 +228,7 @@ IRBase::getLoopForLabel (Identifier *ident, bool want_continue)
 	{
 	  Flow *flow = this->loops[i];
 
-	  if ((! want_continue && flow->statement->hasBreak()) ||
+	  if ((!want_continue && flow->statement->hasBreak()) ||
 	      flow->statement->hasContinue())
 	    return flow;
 	}

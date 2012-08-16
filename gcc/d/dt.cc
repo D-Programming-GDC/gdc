@@ -98,7 +98,7 @@ dt_t **
 dti32 (dt_t **pdt, unsigned val, int pad_to_word)
 {
   dt_t **result = dttree (pdt, gen.integerConstant (val, Type::tuns32));
-  if (! pad_to_word || PTRSIZE == 4)
+  if (!pad_to_word || PTRSIZE == 4)
     return result;
   else if (PTRSIZE == 8)
     return dttree (result, gen.integerConstant (0, Type::tuns32));
@@ -140,7 +140,7 @@ dt_size (dt_t *dt)
 	  break;
 
 	case DT_tree:
-	  if (! gen.isErrorMark (dt->DTtree))
+	  if (!gen.isErrorMark (dt->DTtree))
 	    {
 	      tree t_size = TYPE_SIZE_UNIT (TREE_TYPE (dt->DTtree));
 	      size += gen.getTargetSizeConst (t_size);
@@ -285,9 +285,9 @@ dt2tree_list_of_elems (dt_t *dt)
       dt = dt->DTnext;
     }
 
-  TYPE_FIELDS (aggtype) = fields.head; // or finish_laout
-  TYPE_SIZE (aggtype) = convert (bitsizetype,
-				 size_binop (MULT_EXPR, offset, size_int (BITS_PER_UNIT)));
+  TYPE_FIELDS (aggtype) = fields.head; // or finish_layout
+  TYPE_SIZE (aggtype) = d_convert_basic (bitsizetype,
+					 size_binop (MULT_EXPR, offset, size_int (BITS_PER_UNIT)));
   TYPE_SIZE_UNIT (aggtype) = offset;
   // okay no alignment -- decl (which has the correct type) should take care of it..
   // align=bits per word?

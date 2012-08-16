@@ -26,22 +26,6 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
-// see d-convert.cc
-tree
-convert (tree type, tree expr)
-{
-  // Check this first before passing to getDType.
-  if (g.irs->isErrorMark (type) || g.irs->isErrorMark (TREE_TYPE (expr)))
-    return error_mark_node;
-
-  Type *target_type = g.irs->getDType (type);
-  Type *expr_type = g.irs->getDType (TREE_TYPE (expr));
-  if (target_type && expr_type)
-    return g.irs->convertTo (expr, expr_type, target_type);
-  else
-    return d_convert_basic (type, expr);
-}
-
 elem *
 CondExp::toElem (IRState *irs)
 {
@@ -106,7 +90,7 @@ build_bool_binop (TOK op, tree type, Expression *e1, Expression *e2, IRState *ir
 	out_code = ORDERED_EXPR;
       else
 	// %% is this properly optimized away?
-	return convert (boolean_type_node, integer_one_node);
+	return irs->convertTo (boolean_type_node, integer_one_node);
       break;
 
     case TOKunord:
@@ -114,7 +98,7 @@ build_bool_binop (TOK op, tree type, Expression *e1, Expression *e2, IRState *ir
 	out_code = UNORDERED_EXPR;
       else
 	// %% is this properly optimized away?
-	return convert (boolean_type_node, integer_zero_node);
+	return irs->convertTo (boolean_type_node, integer_zero_node);
       break;
 
     case TOKlg:
@@ -191,7 +175,7 @@ build_bool_binop (TOK op, tree type, Expression *e1, Expression *e2, IRState *ir
      gimplified correctly.  */
   tree t = fold_build2 (out_code, boolean_type_node, t1, t2);
 
-  return convert (type, t);
+  return irs->convertTo (type, t);
 }
 
 static tree
@@ -273,9 +257,9 @@ build_math_op (TOK op, tree type, tree e1, Type *tb1, tree e2, Type *tb2, IRStat
 
       // %% need to work on this
       tree tt = d_type_for_mode (ptr_mode, TYPE_UNSIGNED (type));
-      e1 = convert (tt, e1);
-      e2 = convert (tt, e2);
-      return convert (type, build2 (out_code, tt, e1, e2));
+      e1 = irs->convertTo (tt, e1);
+      e2 = irs->convertTo (tt, e2);
+      return irs->convertTo (type, build2 (out_code, tt, e1, e2));
     }
   else if (INTEGRAL_TYPE_P (type) &&
 	   (TYPE_UNSIGNED (type) != 0) != is_unsigned)
@@ -288,10 +272,10 @@ build_math_op (TOK op, tree type, tree e1, Type *tb1, tree e2, Type *tb2, IRStat
 	  /* For >>> and >>>= operations, need e1 to be of the same
 	     signedness as what we are converting to, else we get
 	     undefined behaviour when optimizations are enabled. */
-	  e1 = convert (tt, e1);
+	  e1 = irs->convertTo (tt, e1);
 	}
       tree t = build2 (out_code, tt, e1, e2);
-      return convert (type, t);
+      return irs->convertTo (type, t);
     }
   else
     {
@@ -659,7 +643,7 @@ CmpExp::toElem (IRState *irs)
 	  gcc_unreachable();
 	}
       result = build2 (out_code, boolean_type_node, result, integer_zero_node);
-      return convert (type->toCtype(), result);
+      return irs->convertTo (type->toCtype(), result);
     }
   else
     {
@@ -780,10 +764,10 @@ PowExp::toElem (IRState *irs)
       return irs->errorMark (type);
     }
 
-  e1_t = convert (powtype, e1->toElem (irs));
-  e2_t = convert (powtype, e2->toElem (irs));
+  e1_t = irs->convertTo (powtype, e1->toElem (irs));
+  e2_t = irs->convertTo (powtype, e2->toElem (irs));
 
-  return convert (type->toCtype(), irs->buildCall (powfn, 2, e1_t, e2_t));
+  return irs->convertTo (type->toCtype(), irs->buildCall (powfn, 2, e1_t, e2_t));
 }
 
 static tree
@@ -1126,11 +1110,9 @@ do_array_set (IRState *irs, tree in_ptr, tree in_val, tree in_cnt)
     }
 
   irs->startLoop (NULL);
-
   irs->continueHere();
-
   irs->exitIfFalse (build2 (NE_EXPR, boolean_type_node,
-			    convert (TREE_TYPE (count_var), integer_zero_node), count_var));
+			    irs->convertTo (TREE_TYPE (count_var), integer_zero_node), count_var));
 
   irs->doExp (build2 (MODIFY_EXPR, void_type_node, irs->indirect (ptr_var), value_to_use));
   irs->doExp (build2 (MODIFY_EXPR, void_type_node, ptr_var,
@@ -1138,10 +1120,9 @@ do_array_set (IRState *irs, tree in_ptr, tree in_val, tree in_cnt)
 					  TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (ptr_var))))));
   irs->doExp (build2 (MODIFY_EXPR, void_type_node, count_var,
 		      build2 (MINUS_EXPR, TREE_TYPE (count_var), count_var,
-			      convert (TREE_TYPE (count_var), integer_one_node))));
+			      irs->convertTo (TREE_TYPE (count_var), integer_one_node))));
 
   irs->endLoop();
-
   irs->endBindings();
 }
 
@@ -1269,7 +1250,7 @@ AssignExp::toElem (IRState *irs)
 		tree size;
 
 		size = fold_build2 (MULT_EXPR, size_type_node,
-				    convert (size_type_node, irs->darrayLenRef (array[0])),
+				    irs->convertTo (size_type_node, irs->darrayLenRef (array[0])),
 				    size_int (elem_type->size()));
 
 		result = irs->buildCall (t_memcpy, 3, irs->darrayPtrRef (array[0]),
@@ -1429,7 +1410,7 @@ SliceExp::toElem (IRState *irs)
   gcc_assert (type->toBasetype()->ty == Tarray);
 
   // Use convert-to-dynamic-array code if possible
-  if (e1->type->toBasetype()->ty == Tsarray && ! upr && ! lwr)
+  if (e1->type->toBasetype()->ty == Tsarray && !upr && !lwr)
     return irs->convertTo (e1->toElem (irs), e1->type, type);
 
   Type *orig_array_type = e1->type->toBasetype();
@@ -1472,7 +1453,7 @@ SliceExp::toElem (IRState *irs)
     {
       lwr_tree = lwr->toElem (irs);
 
-      if (! integer_zerop (lwr_tree))
+      if (!integer_zerop (lwr_tree))
 	{
 	  lwr_tree = irs->maybeMakeTemp (lwr_tree);
 	  // Adjust .ptr offset
@@ -1549,7 +1530,7 @@ VectorExp::toElem (IRState *irs)
 {
   // Simple... maybe build our own constructor later...
   tree vectype = type->toCtype();
-  tree sc = convert (TREE_TYPE (vectype), e1->toElem (irs));
+  tree sc = irs->convertTo (TREE_TYPE (vectype), e1->toElem (irs));
 
   return build_vector_from_val (vectype, sc);
 }
@@ -1586,7 +1567,7 @@ DeleteExp::toElem (IRState *irs)
       ((IndexExp *)e1)->e1->type->toBasetype()->ty == Taarray)
     {
 
-      if (! global.params.useDeprecated)
+      if (!global.params.useDeprecated)
 	error ("delete aa[key] deprecated, use aa.remove (key)", e1->toChars());
 
       Expression *e_array = ((BinExp *) e1)->e1;
@@ -1712,7 +1693,7 @@ NotExp::toElem (IRState *irs)
   // %% doc: need to convert to boolean type or this will fail.
   tree t = build1 (TRUTH_NOT_EXPR, boolean_type_node,
 		   irs->convertForCondition (e1));
-  return convert (type->toCtype(), t);
+  return irs->convertTo (type->toCtype(), t);
 }
 
 elem *
@@ -1770,7 +1751,7 @@ PtrExp::toElem (IRState *irs)
     {
       // is this ever not a VarDeclaration?
       SymOffExp *sym_exp = (SymOffExp *) e1;
-      if (! irs->isDeclarationReferenceType (sym_exp->var))
+      if (!irs->isDeclarationReferenceType (sym_exp->var))
 	{
 	  rec_type = sym_exp->var->type->toBasetype();
 	  VarDeclaration *v = sym_exp->var->isVarDeclaration();
@@ -1829,7 +1810,7 @@ CallExp::toElem (IRState *irs)
   // Some library calls are defined to return a generic type.
   // this->type is the real type. (See crash2.d)
   if (type->isTypeBasic())
-    call_exp = convert (type->toCtype(), call_exp);
+    call_exp = irs->convertTo (type->toCtype(), call_exp);
 
   return call_exp;
 }
@@ -1906,7 +1887,7 @@ DelegateExp::toElem (IRState *irs)
       // %% Need to see if DotVarExp ever has legitimate
       // <aggregate>.<static method>.  If not, move this test
       // to objectInstanceMethod.
-      if (! func->isThis())
+      if (!func->isThis())
 	error ("delegates are only for non-static functions");
 
       return irs->objectInstanceMethod (e1, func, type);
@@ -1955,7 +1936,7 @@ DotVarExp::toElem (IRState *irs)
       }
       else if ((var_decl = var->isVarDeclaration()))
 	{
-	  if (! (var_decl->storage_class & STCfield))
+	  if (!(var_decl->storage_class & STCfield))
 	    return irs->var (var_decl);
 	  else
 	    {
@@ -2046,9 +2027,9 @@ DeclarationExp::toElem (IRState *irs)
   if ((vd = declaration->isVarDeclaration()) != NULL)
     {
       // Put variable on list of things needing destruction
-      if (vd->edtor && ! vd->noscope)
+      if (vd->edtor && !vd->noscope)
 	{
-	  if (! irs->varsInScope)
+	  if (!irs->varsInScope)
 	    irs->varsInScope = new VarDeclarations();
 	  irs->varsInScope->push (vd);
 	}
@@ -2063,7 +2044,7 @@ DeclarationExp::toElem (IRState *irs)
   /* Construction of an array for typesafe-variadic function arguments
      can cause an empty STMT_LIST here.  This can causes problems
      during gimplification. */
-  if (TREE_CODE (t) == STATEMENT_LIST && ! STATEMENT_LIST_HEAD (t))
+  if (TREE_CODE (t) == STATEMENT_LIST && !STATEMENT_LIST_HEAD (t))
     return build_empty_stmt (input_location);
 
   return t;
@@ -2177,8 +2158,8 @@ SymbolExp::toElem (IRState *irs)
       else
 	a = irs->addressOf (a);
 
-      if (! offset)
-	return convert (type->toCtype(), a);
+      if (!offset)
+	return irs->convertTo (type->toCtype(), a);
 
       tree b = irs->integerConstant (offset, Type::tsize_t);
       return irs->nop (type->toCtype(), irs->pointerOffset (a, b));
@@ -2342,7 +2323,7 @@ NewExp::toElem (IRState *irs)
 	}
     case Tarray:
 	{
-	  gcc_assert (! allocator);
+	  gcc_assert (!allocator);
 	  gcc_assert (arguments && arguments->dim > 0);
 
 	  LibCall lib_call;
@@ -2650,7 +2631,7 @@ StructLiteralExp::toElem (IRState *irs)
 
       for (size_t i = 0; i < elements->dim; ++i)
 	{
-	  if (! elements->tdata()[i])
+	  if (!elements->tdata()[i])
 	    continue;
 
 	  Expression *exp = elements->tdata()[i];
@@ -2894,10 +2875,10 @@ d_genericize (tree fndecl)
 void
 FuncDeclaration::toObjFile (int)
 {
-  if (! global.params.useUnitTests && isUnitTestDeclaration())
+  if (!global.params.useUnitTests && isUnitTestDeclaration())
     return;
 
-  if (! g.ofile->shouldEmit (this))
+  if (!g.ofile->shouldEmit (this))
     return;
 
   Symbol *this_sym = toSymbol();
@@ -2911,9 +2892,9 @@ FuncDeclaration::toObjFile (int)
 
   tree fn_decl = this_sym->Stree;
 
-  if (! fbody)
+  if (!fbody)
     {
-      if (! isNested())
+      if (!isNested())
 	{
 	  // %% Should set this earlier...
 	  DECL_EXTERNAL (fn_decl) = 1;
@@ -3060,7 +3041,7 @@ FuncDeclaration::toObjFile (int)
      function, construct an expession for this member function's static chain
      by going through parent link of nested classes.
      */
-  //if (! irs->functionNeedsChain (this))
+  //if (!irs->functionNeedsChain (this))
     {
       /* D 2.0 Closures: this->vthis is passed as a normal parameter and
 	 is valid to access as Stree before the closure frame is created. */
@@ -3082,7 +3063,7 @@ FuncDeclaration::toObjFile (int)
 		  chain_func = f;
 		  break;
 		}
-	      else if (! (cd = d->isClassDeclaration()))
+	      else if (!(cd = d->isClassDeclaration()))
 		gcc_unreachable();
 	    }
 	}
@@ -3101,7 +3082,7 @@ FuncDeclaration::toObjFile (int)
 		  chain_func = f;
 		  break;
 		}
-	      else if (! (sd = d->isStructDeclaration()))
+	      else if (!(sd = d->isStructDeclaration()))
 		gcc_unreachable();
 	    }
 	}
@@ -3112,7 +3093,7 @@ FuncDeclaration::toObjFile (int)
 
   if (chain_expr)
     {
-      if (! DECL_P (chain_expr))
+      if (!DECL_P (chain_expr))
 	{
 	  tree c = irs->localVar (ptr_type_node);
 	  DECL_INITIAL (c) = chain_expr;
@@ -3178,7 +3159,7 @@ FuncDeclaration::toObjFile (int)
 	  append_to_statement_list_force (t, &sl);
 	  TREE_OPERAND (body, 1) = sl;
 	}
-      else if (! STATEMENT_LIST_HEAD (t))
+      else if (!STATEMENT_LIST_HEAD (t))
 	{
 	  /* For empty functions: Without this, there is a
 	     segfault when inlined.  Seen on build=ppc-linux but
@@ -3193,11 +3174,11 @@ FuncDeclaration::toObjFile (int)
   DECL_INITIAL (fn_decl) = block; // %% redundant, see poplevel
   BLOCK_SUPERCONTEXT (DECL_INITIAL (fn_decl)) = fn_decl; // done in C, don't know effect
 
-  if (! errorcount && ! global.errors)
+  if (!errorcount && !global.errors)
     d_genericize (fn_decl);
 
   this_sym->outputStage = Finished;
-  if (! errorcount && ! global.errors)
+  if (!errorcount && !global.errors)
     g.ofile->outputFunction (this);
 
   current_function_decl = old_current_function_decl; // must come before endFunction
@@ -3212,7 +3193,7 @@ FuncDeclaration::buildClosure (IRState *irs)
   FuncFrameInfo *ffi = irs->getFrameInfo (this);
   gcc_assert (ffi->is_closure);
 
-  if (! ffi->creates_frame)
+  if (!ffi->creates_frame)
     {
       if (ffi->static_chain)
 	{
@@ -3274,7 +3255,7 @@ FuncDeclaration::buildClosure (IRState *irs)
   for (size_t i = 0; i < closureVars.dim; i++)
     {
       VarDeclaration *v = closureVars[i];
-      if (! v->isParameter())
+      if (!v->isParameter())
 	continue;
 
       Symbol *vsym = v->toSymbol();
@@ -3335,7 +3316,7 @@ Type::totym (void)
 type *
 Type::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       switch (ty)
 	{
@@ -3462,7 +3443,7 @@ Type::toSymbol (void)
 type *
 TypeTypedef::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       tree base_type = sym->basetype->toCtype();
       const char *name = toChars();
@@ -3495,11 +3476,11 @@ TypedefDeclaration::toDebug (void)
 type *
 TypeEnum::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       /* Enums in D2 can have a base type that is not necessarily integral.
 	 So don't bother trying to make an ENUMERAL_TYPE using them.  */
-      if (! sym->memtype->isintegral() || sym->memtype->ty == Tbool)
+      if (!sym->memtype->isintegral() || sym->memtype->ty == Tbool)
 	{
 	  ctype = sym->memtype->toCtype();
 	}
@@ -3560,7 +3541,7 @@ TypeEnum::toCtype (void)
 type *
 TypeStruct::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       // need to set this right away in case of self-references
       ctype = make_node (sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE);
@@ -3596,7 +3577,7 @@ TypeStruct::toCtype (void)
 
       /* On PowerPC 64, GCC may not always clear the padding at the end
 	 of the struct. Adding 32-bit words at the end helps. */
-      if (global.params.is64bit && ! sym->isUnionDeclaration() && sym->fields.dim)
+      if (global.params.is64bit && !sym->isUnionDeclaration() && sym->fields.dim)
 	{
 	  size_t ofs;
 	    {
@@ -3646,7 +3627,7 @@ TypeFunction::toCtype (void)
 {
   // %%TODO: If x86, and D linkage, use regparm (1)
 
-  if (! ctype)
+  if (!ctype)
     {
       ListMaker type_list;
       tree ret_type;
@@ -3691,7 +3672,7 @@ TypeFunction::toCtype (void)
 	case LINKpascal:
 	  // stdcall and reverse params?
 	case LINKwindows:
-	  if (! global.params.is64bit)
+	  if (!global.params.is64bit)
 	    ctype = gen.addTypeAttribute (ctype, "stdcall");
 	  break;
 
@@ -3724,7 +3705,7 @@ TypeFunction::retStyle (void)
 type *
 TypeVector::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       int nunits = ((TypeSArray *) basetype)->dim->toUInteger();
       tree inner = elementType()->toCtype();
@@ -3738,8 +3719,8 @@ TypeVector::toCtype (void)
       /* Give a graceful error if the backend does not support the vector type
 	 we are creating.  If backend has support for the inner type mode,
 	 then it can safely emulate the vector.  */
-      if (! targetm.vector_mode_supported_p (TYPE_MODE (ctype))
-	  && ! targetm.scalar_mode_supported_p (TYPE_MODE (inner)))
+      if (!targetm.vector_mode_supported_p (TYPE_MODE (ctype))
+	  && !targetm.scalar_mode_supported_p (TYPE_MODE (inner)))
 	::error ("vector type %s is not supported on this architechture", toChars());
     }
   return ctype;
@@ -3748,7 +3729,7 @@ TypeVector::toCtype (void)
 type *
 TypeSArray::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       if (dim->isConst() && dim->type->isintegral())
 	{
@@ -3780,7 +3761,7 @@ TypeSArray::toCParamtype (void)
 type *
 TypeDArray::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       ctype = gen.twoFieldType (Type::tsize_t, next->pointerTo(), this,
 				"length", "ptr");
@@ -3793,7 +3774,7 @@ TypeDArray::toCtype (void)
 type *
 TypeAArray::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       /* Library functions expect a struct-of-pointer which could be passed
 	 differently from a pointer. */
@@ -3813,7 +3794,7 @@ TypeAArray::toCtype (void)
 type *
 TypePointer::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       ctype = build_pointer_type (next->toCtype());
     }
@@ -3823,7 +3804,7 @@ TypePointer::toCtype (void)
 type *
 TypeDelegate::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       gcc_assert (next->toBasetype()->ty == Tfunction);
       ctype = gen.twoFieldType (Type::tvoidptr, next->pointerTo(),
@@ -3930,7 +3911,7 @@ intfc_binfo_for (tree tgt_binfo, ClassDeclaration *iface, unsigned& inout_offset
 type *
 TypeClass::toCtype (void)
 {
-  if (! ctype)
+  if (!ctype)
     {
       tree rec_type;
       Array base_class_decls;
@@ -3977,7 +3958,7 @@ TypeClass::toCtype (void)
       DECL_VIRTUAL_P (vfield) = 1;
       TYPE_VFIELD (rec_type) = vfield; // This only seems to affect debug info
 
-      if (! sym->isInterfaceDeclaration())
+      if (!sym->isInterfaceDeclaration())
 	{
 	  DECL_FCONTEXT (vfield) = obj_rec_type;
 
@@ -4015,7 +3996,7 @@ ClassDeclaration::toDebug (void)
      references to inherited types. */
   tree rec_type = TREE_TYPE (type->toCtype());
 
-  if (! isInterfaceDeclaration())
+  if (!isInterfaceDeclaration())
     TYPE_BINFO (rec_type) = binfo_for (NULL_TREE, this);
   else
     {
@@ -4110,10 +4091,10 @@ ThrowStatement::toIR (IRState *irs)
   InterfaceDeclaration *intfc_decl = class_decl->isInterfaceDeclaration();
   tree arg = exp->toElemDtor (irs);
 
-  if (! flag_exceptions)
+  if (!flag_exceptions)
     {
       static int warned = 0;
-      if (! warned)
+      if (!warned)
 	{
 	  error ("exception handling disabled, use -fexceptions to enable");
 	  warned = 1;
@@ -4122,7 +4103,7 @@ ThrowStatement::toIR (IRState *irs)
 
   if (intfc_decl)
     {
-      if (! intfc_decl->isCOMclass())
+      if (!intfc_decl->isCOMclass())
 	{
 	  arg = irs->convertTo (arg, exp->type, irs->getObjectType());
 	}
@@ -4231,7 +4212,7 @@ SynchronizedStatement::toIR (IRState *irs)
       iface = ((TypeClass *) exp->type->toBasetype())->sym->isInterfaceDeclaration();
       if (iface)
 	{
-	  if (! iface->isCOMclass())
+	  if (!iface->isCOMclass())
 	    {
 	      init_exp = irs->convertTo (exp, irs->getObjectType());
 	    }
@@ -4267,7 +4248,7 @@ SynchronizedStatement::toIR (IRState *irs)
 #endif
       static tree critsec_type = 0;
 
-      if (! critsec_type)
+      if (!critsec_type)
 	{
 	  critsec_type = irs->arrayType (Type::tuns8, D_CRITSEC_SIZE);
 	}
@@ -4459,7 +4440,7 @@ SwitchStatement::toIR (IRState *irs)
 
       cond_tree = irs->libCall (lib_call, 2, args);
     }
-  else if (! cond_type->isscalar())
+  else if (!cond_type->isscalar())
     {
       ::error ("cannot handle switch condition of type %s", cond_type->toChars());
       gcc_unreachable();
@@ -4599,7 +4580,7 @@ ScopeStatement::toIR (IRState *irs)
 void
 CompoundStatement::toIR (IRState *irs)
 {
-  if (! statements)
+  if (!statements)
     return;
 
   for (size_t i = 0; i < statements->dim; i++)
@@ -4615,7 +4596,7 @@ CompoundStatement::toIR (IRState *irs)
 void
 UnrolledLoopStatement::toIR (IRState *irs)
 {
-  if (! statements)
+  if (!statements)
     return;
 
   irs->startLoop (this);

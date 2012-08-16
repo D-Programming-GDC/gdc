@@ -156,8 +156,9 @@ struct IRState : IRBase
   // ** Type conversion
 
   // 'convertTo' just to give it a different name from the extern "C" convert
+  static tree convertTo (tree type, tree exp);
   tree convertTo (Expression *exp, Type *target_type);
-  tree convertTo (tree exp, Type *exp_type, Type *target_type);
+  static tree convertTo (tree exp, Type *exp_type, Type *target_type);
 
   tree convertForAssignment (Expression *exp, Type *target_type);
   tree convertForAssignment (tree exp_tree, Type *exp_type, Type *target_type);
@@ -203,11 +204,11 @@ struct IRState : IRBase
   static tree darrayPtrRef (tree exp);
   tree darrayPtrRef (Expression *e);
 
-  tree darrayVal (tree type, tree len, tree data);
+  static tree darrayVal (tree type, tree len, tree data);
   // data may be NULL for a null pointer value
-  tree darrayVal (Type *type, uinteger_t len, tree data);
-  tree darrayVal (tree type, uinteger_t len, tree data);
-  tree darrayString (const char *str);
+  static tree darrayVal (Type *type, uinteger_t len, tree data);
+  static tree darrayVal (tree type, uinteger_t len, tree data);
+  static tree darrayString (const char *str);
 
   // Length of either a static or dynamic array
   tree arrayLength (Expression *exp);
@@ -269,7 +270,7 @@ struct IRState : IRBase
   // DMD allows { void[] a; &a[3]; }
   static tree pvoidOkay (tree t);
 
-  tree boolOp (enum tree_code code, tree arg0, tree arg1)
+  static tree boolOp (enum tree_code code, tree arg0, tree arg1)
   { return build2 (code, boolean_type_node, arg0, arg1); }
 
   tree checkedIndex (Loc loc, tree index, tree upper_bound, bool inclusive);

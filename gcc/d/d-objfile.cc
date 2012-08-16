@@ -60,7 +60,7 @@ ObjectFile::endModule (void)
 bool
 ObjectFile::hasModule (Module *m)
 {
-  if (!m || ! modules.dim)
+  if (!m || !modules.dim)
     return false;
 
   if (modules[moduleSearchIndex] == m)
@@ -213,14 +213,14 @@ d_comdat_group (tree decl)
 void
 ObjectFile::makeDeclOneOnly (tree decl_tree)
 {
-  if (! D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates != TEprivate)
+  if (!D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates != TEprivate)
     {
       /* Weak definitions have to be public.  Nested functions may or
 	 may not be emitted as public even if TREE_PUBLIC is set.
 	 There is no way to tell if the back end implements
 	 make_decl_one_only with DECL_WEAK, so this check is
 	 done first.  */
-      if (! TREE_PUBLIC (decl_tree) ||
+      if (!TREE_PUBLIC (decl_tree) ||
 	  (TREE_CODE (decl_tree) == FUNCTION_DECL &&
 	   DECL_CONTEXT (decl_tree) != NULL_TREE &&
 	   D_DECL_STATIC_CHAIN (decl_tree) == 1 &&
@@ -231,7 +231,7 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
   /* First method: Use one-only.
      If user has specified -femit-templates=private, honor that
      even if the target supports one-only. */
-  if (! D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates != TEprivate)
+  if (!D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates != TEprivate)
     {
       /* The following makes assumptions about the behavior
 	 of make_decl_one_only */
@@ -250,7 +250,7 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
   /* Second method: Make a private copy.
      For RTTI, we can always make a private copy.  For templates, only do
      this if the user specified -femit-templates=private. */
-  else if (! D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates == TEprivate)
+  else if (!D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates == TEprivate)
     {
       TREE_PRIVATE (decl_tree) = 1;
       TREE_PUBLIC (decl_tree) = 0;
@@ -323,7 +323,7 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
 	}
 
       // Do this by default, but allow private templates to override
-      if (! func_decl || ! func_decl->isNested())
+      if (!func_decl || !func_decl->isNested())
 	TREE_PUBLIC (decl_tree) = 1;
 
       if (D_DECL_ONE_ONLY (decl_tree))
@@ -369,7 +369,7 @@ ObjectFile::outputStaticSymbol (Symbol *s)
   // %% Hack
   // Defer output of tls symbols to ensure that
   // _tlsstart gets emitted first.
-  if (! DECL_THREAD_LOCAL_P (t))
+  if (!DECL_THREAD_LOCAL_P (t))
     rest_of_decl_compilation (t, 1, 0);
   else
     {
@@ -407,7 +407,7 @@ ObjectFile::outputFunction (FuncDeclaration *f)
 	staticDtorList.push (f);
     }
 
-  if (! gen.functionNeedsChain (f))
+  if (!gen.functionNeedsChain (f))
     {
       bool context = decl_function_context (t) != NULL;
       cgraph_finalize_function (t, context);
@@ -474,20 +474,20 @@ ObjectFile::shouldEmit (Symbol *sym)
 
       gcc_assert (ident != NULL);
 
-      if (! symtab)
+      if (!symtab)
 	{
 	  symtab = new StringTable;
 	  symtab->init();
 	}
 
-      if (! symtab->insert (ident, len))
+      if (!symtab->insert (ident, len))
 	/* Don't emit, assembler name already in symtab. */
 	return false;
     }
 
   // Not emitting templates, so return true all others.
   if (gen.emitTemplates == TEnone)
-    return ! D_DECL_IS_TEMPLATE (sym->Stree);
+    return !D_DECL_IS_TEMPLATE (sym->Stree);
 
   return true;
 }
@@ -506,8 +506,8 @@ ObjectFile::addAggMethod (tree rec_type, FuncDeclaration *fd)
 void
 ObjectFile::initTypeDecl (tree t, Dsymbol *d_sym)
 {
-  gcc_assert (! POINTER_TYPE_P (t));
-  if (! TYPE_STUB_DECL (t))
+  gcc_assert (!POINTER_TYPE_P (t));
+  if (!TYPE_STUB_DECL (t))
     {
       const char *name = d_sym->ident ? d_sym->ident->string : "fix";
       tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, get_identifier (name), t);
@@ -546,7 +546,7 @@ ObjectFile::initTypeDecl (tree t, tree decl)
   if (TYPE_STUB_DECL (t))
     return;
 
-  gcc_assert (! POINTER_TYPE_P (t));
+  gcc_assert (!POINTER_TYPE_P (t));
 
   TYPE_CONTEXT (t) = DECL_CONTEXT (decl);
   TYPE_NAME (t) = decl;
@@ -571,7 +571,7 @@ ObjectFile::initTypeDecl (tree t, tree decl)
 void
 ObjectFile::declareType (tree decl)
 {
-  bool top_level = ! DECL_CONTEXT (decl);
+  bool top_level = !DECL_CONTEXT (decl);
   // okay to do this?
   rest_of_decl_compilation (decl, top_level, 0);
 }
@@ -779,7 +779,7 @@ ObjectFile::outputThunk (tree thunk_decl, tree target_decl, int offset)
 FuncDeclaration *
 ObjectFile::doSimpleFunction (const char *name, tree expr, bool static_ctor, bool public_fn)
 {
-  if (! g.mod)
+  if (!g.mod)
     g.mod = d_gcc_get_output_module();
 
   if (name[0] == '*')
@@ -823,7 +823,7 @@ ObjectFile::doFunctionToCallFunctions (const char *name, FuncDeclarations *funct
   tree expr_list = NULL_TREE;
 
   // If there is only one function, just return that
-  if (functions->dim == 1 && ! force_and_public)
+  if (functions->dim == 1 && !force_and_public)
     {
       return (*functions)[0];
     }
@@ -853,7 +853,7 @@ ObjectFile::doCtorFunction (const char *name, FuncDeclarations *functions, VarDe
   tree expr_list = NULL_TREE;
 
   // If there is only one function, just return that
-  if (functions->dim == 1 && ! gates->dim)
+  if (functions->dim == 1 && !gates->dim)
     {
       return (*functions)[0];
     }
@@ -922,9 +922,9 @@ ObjectFile::doUnittestFunction (const char *name, FuncDeclarations *functions)
 tree
 check_static_sym (Symbol *sym)
 {
-  if (! sym->Stree)
+  if (!sym->Stree)
     {
-      gcc_assert (! sym->Sident);
+      gcc_assert (!sym->Sident);
       tree t_ini = dt2tree (sym->Sdt); // %% recursion problems?
       tree t_var = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, TREE_TYPE (t_ini));
       g.ofile->giveDeclUniqueName (t_var);
@@ -954,7 +954,7 @@ outdata (Symbol *sym)
   if (sym->Sdt && DECL_INITIAL (t) == NULL_TREE)
     DECL_INITIAL (t) = dt2tree (sym->Sdt);
 
-  gcc_assert (! g.irs->isErrorMark (t));
+  gcc_assert (!g.irs->isErrorMark (t));
 
   if (DECL_INITIAL (t) != NULL_TREE)
     {
@@ -970,12 +970,12 @@ outdata (Symbol *sym)
   // to have context pointing to nested function, not record.
   DECL_CONTEXT (t) = decl_function_context (t);
 
-  if (! g.ofile->shouldEmit (sym))
+  if (!g.ofile->shouldEmit (sym))
     return;
 
   // This was for typeinfo decls ... shouldn't happen now.
   // %% Oops, this was supposed to be static.
-  gcc_assert (! DECL_EXTERNAL (t));
+  gcc_assert (!DECL_EXTERNAL (t));
   relayout_decl (t);
 
   g.ofile->outputStaticSymbol (sym);
@@ -984,14 +984,14 @@ outdata (Symbol *sym)
 void
 obj_includelib (const char *)
 {
-  if (! global.params.ignoreUnsupportedPragmas)
+  if (!global.params.ignoreUnsupportedPragmas)
     d_warning (OPT_Wunknown_pragmas, "pragma(lib) not implemented");
 }
 
 void
 obj_startaddress (Symbol *)
 {
-  if (! global.params.ignoreUnsupportedPragmas)
+  if (!global.params.ignoreUnsupportedPragmas)
     d_warning (OPT_Wunknown_pragmas, "pragma(startaddress) not implemented");
 }
 

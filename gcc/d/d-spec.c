@@ -327,7 +327,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
     }
 
   /* If we know we don't have to do anything, bail now.  */
-  if (! added && library <= 0 && ! only_source_option)
+  if (!added && library <= 0 && !only_source_option)
     {
       free (args);
       return;
