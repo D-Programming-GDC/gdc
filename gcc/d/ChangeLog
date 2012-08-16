@@ -1,5 +1,11 @@
 2012-08-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-glue.cc(IdentityExp::toElem): Re-order precendence of type
+	checking. Treat static arrays as D arrays in identity comparisons.
+	(EqualExp::toElem): Use adEq2 over built-in memcmp for equality
+	comparisons for static and dynamic arrays.
+	(TypeStruct::toCtype): Remove old platform specific workaround.
+
 	* d-builtins2.cc(bi_lib_list): New decl to hold list of GCC library
 	built-ins.
 	(d_bi_init): Add decls to bi_list_list if recognising built-ins.

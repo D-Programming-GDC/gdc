@@ -398,24 +398,10 @@ BinExp::toElemBin (IRState *irs, int binop)
 elem *
 IdentityExp::toElem (IRState *irs)
 {
-  TY ty1 = e1->type->toBasetype()->ty;
+  Type *tb1 = e1->type->toBasetype();
+  Type *tb2 = e2->type->toBasetype();
 
-  // Assuming types are the same from typeCombine
-  if (ty1 == Tsarray)
-    {
-      return build2 (op == TOKidentity ? EQ_EXPR : NE_EXPR,
-		     type->toCtype(),
-		     irs->addressOf (e1->toElem (irs)),
-		     irs->addressOf (e2->toElem (irs)));
-    }
-  else if (ty1 == Treference || ty1 == Tclass || ty1 == Tarray)
-    {
-      return build2 (op == TOKidentity ? EQ_EXPR : NE_EXPR,
-		     type->toCtype(),
-		     e1->toElem (irs),
-		     e2->toElem (irs));
-    }
-  else if (ty1 == Tstruct || e1->type->isfloating())
+  if (tb1->ty == Tstruct || tb1->isfloating())
     {
       // Do bit compare.
       tree t_memcmp = irs->buildCall (d_built_in_decls (BUILT_IN_MEMCMP), 3,
@@ -426,13 +412,29 @@ IdentityExp::toElem (IRState *irs)
       return irs->boolOp (op == TOKidentity ? EQ_EXPR : NE_EXPR,
 			  t_memcmp, integer_zero_node);
     }
+  else if ((tb1->ty == Tsarray || tb1->ty == Tarray) &&
+     	   (tb2->ty == Tsarray || tb2->ty == Tarray))
+    {
+      return build2 (op == TOKidentity ? EQ_EXPR : NE_EXPR,
+		     type->toCtype(),
+		     irs->toDArray (e1),
+		     irs->toDArray (e2));
+    }
+  else if (tb1->ty == Treference || tb1->ty == Tclass || tb1->ty == Tarray)
+    {
+      // Assuming types are the same from typeCombine
+      return build2 (op == TOKidentity ? EQ_EXPR : NE_EXPR,
+		     type->toCtype(),
+		     e1->toElem (irs),
+		     e2->toElem (irs));
+    }
   else
     {
       // For operand types other than class objects, static or dynamic
       // arrays, identity is defined as being the same as equality
 
       // Assumes object == object has been changed to function call
-      // ... impl is really the same as the special cales
+      // ... impl is really the same as the special cases
       return toElemBin (irs, opComp);
     }
 }
@@ -443,100 +445,7 @@ EqualExp::toElem (IRState *irs)
   Type *tb1 = e1->type->toBasetype();
   Type *tb2 = e2->type->toBasetype();
 
-  if ((tb1->ty == Tsarray || tb1->ty == Tarray) &&
-      (tb2->ty == Tsarray || tb2->ty == Tarray))
-    {
-      Type *telem = tb1->nextOf()->toBasetype();
-
-      // _adEq compares each element.  If bitwise comparison is ok,
-      // use memcmp.
-      if (telem->isfloating() || telem->isClassHandle() ||
-	  telem->ty == Tsarray || telem->ty == Tarray ||
-	  telem->ty == Tstruct)
-	{
-	  tree result;
-	  tree args[3] = {
-	      irs->toDArray (e1),
-	      irs->toDArray (e2),
-	      NULL_TREE,
-	  };
-
-	  args[2] = irs->typeinfoReference (telem->arrayOf());
-	  result = irs->libCall (LIBCALL_ADEQ2, 3, args);
-
-	  result = convert (type->toCtype(), result);
-	  if (op == TOKnotequal)
-	    result = build1 (TRUTH_NOT_EXPR, type->toCtype(), result);
-	  return result;
-	}
-      else if (tb1->ty == Tsarray && tb2->ty == Tsarray)
-	{
-	  // Assuming sizes are equal.
-	  return build2 (op == TOKnotequal ? NE_EXPR : EQ_EXPR,
-			 type->toCtype(), e1->toElem (irs), e2->toElem (irs));
-	}
-      else
-	{
-	  tree len_expr[2];
-	  tree data_expr[2];
-
-	  for (int i = 0; i < 2; i++)
-	    {
-	      Expression *exp = i == 0 ? e1 : e2;
-	      TY ety = i == 0 ? tb1->ty : tb2->ty;
-
-	      if (ety == Tarray)
-		{
-		  tree ae = irs->maybeMakeTemp (exp->toElem (irs));
-		  data_expr[i] = irs->darrayPtrRef (ae);
-		  len_expr[i] = irs->darrayLenRef (ae);    // may be used twice -- should be okay
-		}
-	      else
-		{
-		  data_expr[i] = irs->addressOf (exp->toElem (irs));
-		  len_expr[i] = ((TypeSArray *) exp->type->toBasetype())->dim->toElem (irs);
-		}
-	    }
-
-	  tree t_memcmp = d_built_in_decls (BUILT_IN_MEMCMP);
-	  tree result;
-	  tree size;
-
-	  size = fold_build2 (MULT_EXPR, size_type_node,
-			      convert (size_type_node, len_expr[0]), // should be size_type already, though
-			      size_int (telem->size()));
-
-	  result = irs->buildCall (t_memcmp, 3, data_expr[0], data_expr[1], size);
-
-	  if (op == TOKequal)
-	    result = irs->boolOp (TRUTH_ANDIF_EXPR,
-				  irs->boolOp (EQ_EXPR, len_expr[0], len_expr[1]),
-				  irs->boolOp (EQ_EXPR, result, integer_zero_node));
-	  else
-	    result = irs->boolOp (TRUTH_ORIF_EXPR,
-				  irs->boolOp (NE_EXPR, len_expr[0], len_expr[1]),
-				  irs->boolOp (NE_EXPR, result, integer_zero_node));
-
-	  return convert (type->toCtype(), result);
-	}
-    }
-  else if (tb1->ty == Taarray && tb2->ty == Taarray)
-    {
-      TypeAArray *aatype_1 = (TypeAArray *) tb1;
-      tree args[3] = {
-	  irs->typeinfoReference (aatype_1),
-	  e1->toElem (irs),
-	  e2->toElem (irs)
-      };
-      tree result = irs->libCall (LIBCALL_AAEQUAL, 3, args);
-      result = convert (type->toCtype(), result);
-
-      if (op == TOKnotequal)
-	result = build1 (TRUTH_NOT_EXPR, type->toCtype(), result);
-
-      return convert (type->toCtype(), result);
-    }
-  else if (tb1->ty == Tstruct)
+  if (tb1->ty == Tstruct)
     {
       // Do bit compare of struct's
       tree t_memcmp = irs->buildCall (d_built_in_decls (BUILT_IN_MEMCMP), 3,
@@ -546,6 +455,41 @@ EqualExp::toElem (IRState *irs)
 
       return build2 (op == TOKnotequal ? NE_EXPR : EQ_EXPR,
 		     type->toCtype(), t_memcmp, integer_zero_node);
+    }
+  else if ((tb1->ty == Tsarray || tb1->ty == Tarray) &&
+	   (tb2->ty == Tsarray || tb2->ty == Tarray))
+    {
+      // _adEq2 compares each element.
+      Type *telem = tb1->nextOf()->toBasetype();
+      tree args[3] = {
+	  irs->toDArray (e1),
+	  irs->toDArray (e2),
+	  NULL_TREE,
+      };
+      args[2] = irs->typeinfoReference (telem->arrayOf());
+      
+      tree result = irs->libCall (LIBCALL_ADEQ2, 3, args);
+      result = irs->convertTo (type->toCtype(), result);
+      if (op == TOKnotequal)
+	result = build1 (TRUTH_NOT_EXPR, type->toCtype(), result);
+
+      return result;
+    }
+  else if (tb1->ty == Taarray && tb2->ty == Taarray)
+    {
+      TypeAArray *taa1 = (TypeAArray *) tb1;
+      tree args[3] = {
+	  irs->typeinfoReference (taa1),
+	  e1->toElem (irs),
+	  e2->toElem (irs)
+      };
+
+      tree result = irs->libCall (LIBCALL_AAEQUAL, 3, args);
+      result = irs->convertTo (type->toCtype(), result);
+      if (op == TOKnotequal)
+	result = build1 (TRUTH_NOT_EXPR, type->toCtype(), result);
+
+      return result;
     }
   else
     {
@@ -1098,9 +1042,7 @@ do_array_set (IRState *irs, tree in_ptr, tree in_val, tree in_cnt)
   irs->expandDecl (ptr_var);
 
   if (irs->isFreeOfSideEffects (in_val))
-    {
-      value_to_use = in_val;
-    }
+    value_to_use = in_val;
   else
     {
       val_var = irs->localVar (TREE_TYPE (in_val));
@@ -2488,7 +2430,7 @@ TupleExp::toElem (IRState *irs)
     {
       for (size_t i = 0; i < exps->dim; ++i)
 	{
-	  Expression *e = exps->tdata()[i];
+	  Expression *e = (*exps)[i];
 	  result = irs->maybeVoidCompound (result, e->toElem (irs));
 	}
     }
@@ -2586,13 +2528,13 @@ AssocArrayLiteralExp::toElem (IRState *irs)
       Expression *e;
       tree elemp_e, assgn_e;
 
-      e = keys->tdata()[i];
+      e = (*keys)[i];
       elemp_e = irs->pointerOffset (keys_ptr, keys_offset);
       assgn_e = irs->vmodify (irs->indirect (elemp_e), e->toElem (irs));
       keys_offset = size_binop (PLUS_EXPR, keys_offset, keys_size);
       result = irs->maybeCompound (result, assgn_e);
 
-      e = values->tdata()[i];
+      e = (*values)[i];
       elemp_e = irs->pointerOffset (vals_ptr, vals_offset);
       assgn_e = irs->vmodify (irs->indirect (elemp_e), e->toElem (irs));
       vals_offset = size_binop (PLUS_EXPR, vals_offset, vals_size);
@@ -3002,7 +2944,7 @@ FuncDeclaration::toObjFile (int)
 	}
       else
 	{
-	  param = parameters->tdata()[i];
+	  param = (*parameters)[i];
 	}
       if (param)
 	{
@@ -3280,7 +3222,7 @@ Module::genobjfile (int multiobj)
     {
       for (size_t i = 0; i < members->dim; i++)
 	{
-	  Dsymbol *dsym = members->tdata()[i];
+	  Dsymbol *dsym = (*members)[i];
 	  dsym->toObjFile (multiobj);
 	}
     }
@@ -3574,29 +3516,6 @@ TypeStruct::toCtype (void)
 
       AggLayout agg_layout (sym, ctype);
       agg_layout.go();
-
-      /* On PowerPC 64, GCC may not always clear the padding at the end
-	 of the struct. Adding 32-bit words at the end helps. */
-      if (global.params.is64bit && !sym->isUnionDeclaration() && sym->fields.dim)
-	{
-	  size_t ofs;
-	    {
-	      VarDeclaration *last_decl = sym->fields[sym->fields.dim-1];
-	      ofs = last_decl->offset + last_decl->size (0);
-	    }
-	  while (ofs & 3)
-	    ++ofs;
-	  while (ofs < sym->structsize && sym->structsize - ofs >= 4)
-	    {
-	      tree f = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-				   get_identifier ("_pad"), d_type_for_size (32, 1));
-	      DECL_FCONTEXT (f) = ctype;
-	      DECL_ARTIFICIAL (f) = DECL_IGNORED_P (f) = 1;
-	      DECL_IGNORED_P (f) = 1;
-	      agg_layout.addField (f, ofs);
-	      ofs += 4;
-	    }
-	}
       agg_layout.finish (sym->attributes);
     }
   return ctype;
@@ -3625,8 +3544,6 @@ TypeFunction::totym (void)
 type *
 TypeFunction::toCtype (void)
 {
-  // %%TODO: If x86, and D linkage, use regparm (1)
-
   if (!ctype)
     {
       ListMaker type_list;
@@ -4148,7 +4065,7 @@ TryCatchStatement::toIR (IRState *irs)
     {
       for (size_t i = 0; i < catches->dim; i++)
 	{
-	  Catch *a_catch = catches->tdata()[i];
+	  Catch *a_catch = (*catches)[i];
 
 	  irs->startCatch (a_catch->type->toCtype()); //expand_start_catch (xxx);
 	  irs->doLineNote (a_catch->loc);
@@ -4423,11 +4340,11 @@ SwitchStatement::toIR (IRState *irs)
       Symbol *s = static_sym();
       dt_t **  pdt = &s->Sdt;
       s->Sseg = CDATA;
-      for (size_t case_i = 0; case_i < cases->dim; case_i++)
+      for (size_t i = 0; i < cases->dim; i++)
 	{
-	  CaseStatement *case_stmt = cases->tdata()[case_i];
+	  CaseStatement *case_stmt = (*cases)[i];
 	  pdt = case_stmt->exp->toDt (pdt);
-	  case_stmt->index = case_i;
+	  case_stmt->index = i;
 	}
       outdata (s);
       tree p_table = irs->addressOf (s->Stree);
@@ -4450,7 +4367,7 @@ SwitchStatement::toIR (IRState *irs)
       // Build LABEL_DECLs now so they can be refered to by goto case
       for (size_t i = 0; i < cases->dim; i++)
 	{
-	  CaseStatement *case_stmt = cases->tdata()[i];
+	  CaseStatement *case_stmt = (*cases)[i];
 	  case_stmt->cblock = irs->label (case_stmt->loc);
 	}
       if (sdefault)
@@ -4464,7 +4381,7 @@ SwitchStatement::toIR (IRState *irs)
       // Write cases as a series of if-then-else blocks.
       for (size_t i = 0; i < cases->dim; i++)
 	{
-	  CaseStatement *case_stmt = cases->tdata()[i];
+	  CaseStatement *case_stmt = (*cases)[i];
 	  tree case_cond = build2 (EQ_EXPR, cond_type->toCtype(), cond_tree,
 				   case_stmt->exp->toElemDtor (irs));
 	  irs->startCond (this, case_cond);
@@ -4585,7 +4502,7 @@ CompoundStatement::toIR (IRState *irs)
 
   for (size_t i = 0; i < statements->dim; i++)
     {
-      Statement *statement = statements->tdata()[i];
+      Statement *statement = (*statements)[i];
       if (statement)
 	{
 	  statement->toIR (irs);
@@ -4603,7 +4520,7 @@ UnrolledLoopStatement::toIR (IRState *irs)
   irs->continueHere();
   for (size_t i = 0; i < statements->dim; i++)
     {
-      Statement *statement = statements->tdata()[i];
+      Statement *statement = (*statements)[i];
       if (statement)
 	{
 	  irs->setContinueLabel (irs->label (loc));
