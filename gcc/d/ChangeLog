@@ -1,5 +1,11 @@
 2012-08-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-codegen.cc(needs_temp): Remove.
+	(IRState::makeTemp): New function.
+	(IRState::maybeMakeTemp): Re-implement to use isFreeOfSideEffects.
+	(IRState::isFreeOfSideEffects): Re-implement to allow better CSE.
+	(IRState::call): Use IRState::makeTemp.
+
 	* d-builtins2.cc(gcc_type_to_d_type): Use d_convert_basic.
 	* d-codegen.cc(IRState::emitLocalVar): Use IRState::vinit.
 	(IRState::convertTo): New function for tree conversions.

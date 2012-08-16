@@ -1544,72 +1544,47 @@ IRState::twoFieldCtor (tree f1, tree f2, int storage_class)
   return ctor;
 }
 
-
-// This could be made more lax to allow better CSE (?)
-// Returns TRUE if T requires a SAVE_EXPR.
-
-bool
-needs_temp (tree t)
+tree
+IRState::makeTemp (tree t)
 {
-  // %%TODO: check for anything with TREE_SIDE_EFFECTS?
-  switch (TREE_CODE (t))
-    {
-    case VAR_DECL:
-    case FUNCTION_DECL:
-    case PARM_DECL:
-    case CONST_DECL:
-    case SAVE_EXPR:
-      return false;
-
-    case ADDR_EXPR:
-      /* This check is needed for 4.0.  Without it, typeinfo.methodCall may not be
-      */
-      return !(DECL_P (TREE_OPERAND (t, 0)));
-
-    case INDIRECT_REF:
-    case COMPONENT_REF:
-    case NOP_EXPR:
-    case NON_LVALUE_EXPR:
-    case VIEW_CONVERT_EXPR:
-      return needs_temp (TREE_OPERAND (t, 0));
-
-    case ARRAY_REF:
-      return true;
-
-    default:
-	{
-	  if (TREE_CODE_CLASS (TREE_CODE (t)) == tcc_constant)
-	    return false;
-	  else
-	    return true;
-	}
-    }
+  if (TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
+    return save_expr (t);
+  else
+    return stabilize_reference (t);
 }
 
 tree
 IRState::maybeMakeTemp (tree t)
 {
-  if (needs_temp (t))
-    {
-      if (TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
-	return save_expr (t);
-      else
-	return stabilize_reference (t);
-    }
-  else
-    {
-      return t;
-    }
+  if (!isFreeOfSideEffects (t))
+    return makeTemp (t);
+
+  return t;
 }
 
 // Return TRUE if T is free of side effects.
 
 bool
-IRState::isFreeOfSideEffects (tree t)
+IRState::isFreeOfSideEffects (tree expr)
 {
+  tree t = STRIP_NOPS (expr);
+
   // SAVE_EXPR is safe to reference more than once, but not to
   // expand in a loop.
-  return TREE_CODE (t) != SAVE_EXPR && !needs_temp (t);
+  if (TREE_CODE (t) == SAVE_EXPR)
+    return true;
+
+  if (DECL_P (t) ||
+      CONSTANT_CLASS_P (t) ||
+      EXCEPTIONAL_CLASS_P (t))
+    return true;
+
+  if (INDIRECT_REF_P (t) ||
+      TREE_CODE (t) == ADDR_EXPR ||
+      TREE_CODE (t) == COMPONENT_REF)
+    return isFreeOfSideEffects (TREE_OPERAND (t, 0));
+
+  return !TREE_SIDE_EFFECTS (t);
 }
 
 // Evaluates expression E as an Lvalue.
@@ -2223,7 +2198,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 	 Needed for left to right evaluation.  */
       if (func_type->linkage == LINKd && !isFreeOfSideEffects (actual_arg_tree))
 	{
-	  actual_arg_tree = maybeMakeTemp (actual_arg_tree);
+	  actual_arg_tree = makeTemp (actual_arg_tree);
 	  saved_args = maybeVoidCompound (saved_args, actual_arg_tree);
 	}
 
