@@ -27,9 +27,9 @@
 
   $(TABLE
   $(TR $(TD ___builtin_va_list)      $(TD The target's va_list type ))
-  $(TR $(TD ___builtin_Clong  )      $(TD The D equivalent of the target's
+  $(TR $(TD ___builtin_clong  )      $(TD The D equivalent of the target's
                                            C "long" type ))
-  $(TR $(TD ___builtin_Culong )      $(TD The D equivalent of the target's
+  $(TR $(TD ___builtin_culong )      $(TD The D equivalent of the target's
                                            C "unsigned long" type ))
   $(TR $(TD ___builtin_machine_int ) $(TD Signed word-sized integer ))
   $(TR $(TD ___builtin_machine_uint) $(TD Unsigned word-sized integer ))

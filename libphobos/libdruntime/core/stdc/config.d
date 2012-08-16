@@ -15,12 +15,14 @@
 module core.stdc.config;
 
 extern (C):
+@trusted: // Types only.
+nothrow:
 
 version( GNU )
 {
     import gcc.builtins;
-    alias __builtin_Clong c_long;
-    alias __builtin_Culong c_ulong;
+    alias __builtin_clong c_long;
+    alias __builtin_culong c_ulong;
 }
 else version( Windows )
 {

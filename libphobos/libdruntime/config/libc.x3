@@ -2,8 +2,8 @@ x3_out_text(""
     "module gcc.config.libc;\n"
     "private import gcc.builtins;\n"
     "\n"
-    "//alias __builtin_Clong Clong_t;\n"
-    "//alias __builtin_Culong Culong_t;\n");
+    "//alias __builtin_clong clong_t;\n"
+    "//alias __builtin_culong culong_t;\n");
 
 x3_gi_push_header("\"config.h\"");
 x3_gi_push_header("<sys/types.h>");

@@ -34,6 +34,8 @@ private
 }
 
 extern (C):
+@trusted: // Types and constants only.
+nothrow:
 
 alias byte      int8_t;
 alias short     int16_t;

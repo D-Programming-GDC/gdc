@@ -18,6 +18,14 @@
 Language
 D
 
+debuglib=
+Driver Joined
+Debug library to use instead of phobos
+
+defaultlib=
+Driver Joined
+Default library to use instead of phobos
+
 fassert
 D
 Permit the use of the assert keyword
@@ -28,7 +36,7 @@ D
 Generate code to check bounds before indexing arrays
 
 fbuiltin
-D
+D Var(flag_no_builtin, 0)
 Recognize built-in functions
 
 fdebug
@@ -118,9 +126,17 @@ fmake-mdeps=
 D Joined RejectNegative
 Like -fmake-deps=<file> but ignore system header files
 
+fod=
+Driver Joined
+-fod=<directory> Specify the object output directory.
+
 fonly=
 D Joined RejectNegative
 Process all modules specified on the command line, but only generate code for the module specified by the argument.
+
+fop
+Driver
+Specify that the source file's parent directories should be appended to the object output directory.
 
 fout
 D
@@ -174,9 +190,17 @@ J
 D Joined Separate
 -J<directory>	Put MODULE files in 'directory'
 
+nophoboslib
+Driver
+Do not link the standard D library in the compilation.
+
 nostdinc
 D
 Do not search standard system include directories (those specified with -isystem will still be used)
+
+static_libphobos
+Driver
+Link the standard D library statically in the compilation.
 
 Wall
 D
@@ -194,28 +218,3 @@ Wunknown-pragmas
 D Warning
 Warn about unrecognized pragmas
 
-
-
-; Everything below this line is used in 4.6+
-
-debuglib=
-Driver Joined
-Debug library to use instead of phobos
-
-defaultlib=
-Driver Joined
-Default library to use instead of phobos
-
-fod=
-Driver Joined
--fod=<directory> Specify the object output directory.
-
-fop
-Driver
-Specify that the source file's parent directories should be appended to the object output directory.
-
-nophoboslib
-Driver
-
-static_libphobos
-Driver

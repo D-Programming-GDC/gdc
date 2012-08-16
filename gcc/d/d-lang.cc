@@ -126,7 +126,6 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   // extra D-specific options
   gen.splitDynArrayVarArgs = false;
   gen.emitTemplates = TEnormal;
-  gen.useBuiltins = true;
   gen.stdInc = true;
 }
 
@@ -363,10 +362,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fbounds_check:
       global.params.noboundscheck = !value;
-      break;
-
-    case OPT_fbuiltin:
-      gen.useBuiltins = value;
       break;
 
     case OPT_fdebug:

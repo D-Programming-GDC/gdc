@@ -24,6 +24,7 @@
 #include "d-codegen.h"
 
 static ListMaker bi_fn_list;
+static ListMaker bi_lib_list;
 static ListMaker bi_type_list;
 
 // Necessary for built-in struct types
@@ -323,8 +324,10 @@ d_bi_init (void)
 void
 d_bi_builtin_func (tree decl)
 {
-  if (gen.useBuiltins)
-    bi_fn_list.cons (NULL_TREE, decl);
+  if (!flag_no_builtin && DECL_ASSEMBLER_NAME_SET_P (decl))
+    bi_lib_list.cons (NULL_TREE, decl);
+
+  bi_fn_list.cons (NULL_TREE, decl);
 }
 
 // Hook from d_register_builtin_type.
@@ -534,14 +537,14 @@ d_gcc_magic_builtins_module (Module *m)
   t = gcc_type_to_d_type (long_integer_type_node);
   if (t)
     {
-      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_Clong"), t);
+      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_clong"), t);
       funcs->push (d);
     }
 
   t = gcc_type_to_d_type (long_unsigned_type_node);
   if (t)
     {
-      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_Culong"), t);
+      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_culong"), t);
       funcs->push (d);
     }
 
@@ -574,6 +577,54 @@ d_gcc_magic_builtins_module (Module *m)
     }
 
   m->members->push (new LinkDeclaration (LINKc, funcs));
+}
+
+static void
+d_gcc_magic_libbuiltins_check (Dsymbol *m)
+{
+  AttribDeclaration *ad = NULL;
+  FuncDeclaration *fd = NULL;
+
+  if ((ad = m->isAttribDeclaration()))
+    {
+      // Recursively search through attribute decls
+      Dsymbols *decl = ad->include (NULL, NULL);
+      if (decl && decl->dim)
+	{
+	  for (size_t i = 0; i < decl->dim; i++)
+	    {
+	      Dsymbol *sym = decl->tdata()[i];
+	      d_gcc_magic_libbuiltins_check (sym);
+	    }
+	}
+    }
+  else if ((fd = m->isFuncDeclaration()) && !fd->fbody)
+    {
+      for (tree n = bi_lib_list.head; n; n = TREE_CHAIN (n))
+	{
+	  tree decl = TREE_VALUE (n);
+	  gcc_assert (DECL_ASSEMBLER_NAME_SET_P (decl));
+	  
+	  const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
+	  if (fd->ident == Lexer::idPool (name))
+	    {
+	      fd->isym = new Symbol;
+	      fd->isym->Stree = decl;
+	      return;
+	    }
+	}
+    }
+}
+
+static void
+d_gcc_magic_libbuiltins_module (Module *m)
+{
+  Dsymbols *members = m->members;
+  for (size_t i = 0; i < members->dim; i++)
+    {
+      Dsymbol *sym = members->tdata()[i];
+      d_gcc_magic_libbuiltins_check (sym);
+    }
 }
 
 // Check imported module M for any special processing.
@@ -617,6 +668,8 @@ d_gcc_magic_module (Module *m)
 	{
 	  if (!strcmp (md->id->string, "stdarg"))
 	    d_gcc_magic_stdarg_module (m);
+	  else
+	    d_gcc_magic_libbuiltins_module (m);
 	}
     }
 }

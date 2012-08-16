@@ -1,5 +1,21 @@
 2012-08-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-builtins2.cc(bi_lib_list): New decl to hold list of GCC library
+	built-ins.
+	(d_bi_init): Add decls to bi_list_list if recognising built-ins.
+	(d_gcc_magic_builtins_module): Rename built-in type C long to
+	__builtin_clong, built-in type C ulong to __builtin_culong.
+	(d_gcc_magic_libbuiltins_check): New function to assign internal
+	symbol for built-in library functions.
+	(d_gcc_magic_libbuiltins_module): New function to scan modules that
+	contain GCC library built-ins.
+	(d_gcc_magic_module): Search all core.stdc modules for possible GCC
+	library built-ins.
+	* d-codegen.h(IRState::useBuiltins): Remove.
+	* d-lang.cc(d_init_options): Don't set IRState::useBuiltins.
+	(d_handle_option): Likewise.
+	* lang.opt: Re-order D frontend compiler options.
+
 	* d-codegen.cc(IRState::buildChain): Override chainLink and chainFunc
 	for function if static chain is passed via hidden 'this' and no frame
 	is created.
