@@ -3682,8 +3682,11 @@ IRState::buildChain (FuncDeclaration *func)
 
   if (!ffi->creates_frame)
     {
-      // %% TODO: Implement static chain passing this way?
-      gcc_assert (!ffi->static_chain);
+      if (ffi->static_chain)
+	{
+	  tree link = chainLink();
+	  useChain (func, link);
+	}
       return;
     }
 
@@ -3841,12 +3844,12 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 	{
 	  FuncFrameInfo *ffo = getFrameInfo (ff);
 
-	  if (ff != fd && ffo->is_closure)
+	  if (ff != fd && ffo->creates_frame)
 	    {
 	      gcc_assert (ffo->frame_rec);
 	      ffi->creates_frame = false;
 	      ffi->static_chain = true;
-	      ffi->is_closure = true;
+	      ffi->is_closure = ffo->is_closure;
 	      gcc_assert (COMPLETE_TYPE_P (ffo->frame_rec));
 	      ffi->frame_rec = copy_node (ffo->frame_rec);
 	      break;

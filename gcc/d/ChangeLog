@@ -1,5 +1,11 @@
 2012-08-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-codegen.cc(IRState::buildChain): Override chainLink and chainFunc
+	for function if static chain is passed via hidden 'this' and no frame
+	is created.
+	(IRState::getFrameInfo): Pass static chain around nested functions in
+	the same way as closures for better performance.
+
 	* d-codegen.cc(libcall_ids): Re-order list in ascii collating order,
 	add new library routines to lookup, rename all non-vararg functions to
 	match DMD ABI implementation.
