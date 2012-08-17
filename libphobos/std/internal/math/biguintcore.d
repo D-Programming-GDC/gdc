@@ -31,18 +31,9 @@ Idioms:
   in order to disable implicit conversion.
 
 */
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
- */
 module std.internal.math.biguintcore;
 
-version(GNU)
-{
-    // Disable ASM in GDC until things improve.
-    import std.internal.math.biguintnoasm;
-}
-else version(D_InlineAsm_X86)
+version(D_InlineAsm_X86)
 {
     import std.internal.math.biguintx86;
 }

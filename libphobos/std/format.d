@@ -4460,11 +4460,6 @@ myPrint("The answer is %s:", x, 6);
  */
 void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
 {
-    doFormatPtr(putc, arguments, argptr, null);
-}
-
-void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr, void* p_args)
-{
     TypeInfo ti;
     Mangle m;
     uint flags;
@@ -4654,7 +4649,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
           putc('[');
           valti = skipCI(valti);
           size_t tsize = valti.tsize();
-          auto argptrSave = p_args;
+          auto argptrSave = argptr;
           auto tiSave = ti;
           auto mSave = m;
           ti = valti;
@@ -4663,7 +4658,21 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
           while (len--)
           {
             //doFormat(putc, (&valti)[0 .. 1], p);
-            p_args = p;
+            version(X86)
+                argptr = cast(va_list) p;
+            else version(X86_64)
+            {
+                __va_list va;
+                va.stack_args = p;
+                argptr = *cast(va_list*)&va;
+            }
+            else
+            {
+                static if (is(va_list == void*))
+                    argptr = p;
+                else
+                    static assert(false, "unsupported platform");
+            }
             formatArg('s');
 
             p += tsize;
@@ -4671,7 +4680,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
           }
           m = mSave;
           ti = tiSave;
-          p_args = argptrSave;
+          argptr = argptrSave;
           putc(']');
         }
 
@@ -4679,7 +4688,7 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
         {
             putc('[');
             bool comma=false;
-            auto argptrSave = p_args;
+            auto argptrSave = argptr;
             auto tiSave = ti;
             auto mSave = m;
             valti = skipCI(valti);
@@ -4704,26 +4713,53 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 void* pvalue = pkey + keysizet;
 
                 //doFormat(putc, (&keyti)[0..1], pkey);
-                p_args = pkey;
+                version (X86)
+                    argptr = cast(va_list) pkey;
+                else version (X86_64)
+                {   __va_list va;
+                    va.stack_args = pkey;
+                    argptr = *cast(va_list*)&va;
+                }
+                else
+                {
+                    static if (is(va_list == void*))
+                        argptr = pkey;
+                    else
+                        static assert(false, "unsupported platform");
+                }
+
                 ti = keyti;
                 m = getMan(keyti);
                 formatArg('s');
 
                 putc(':');
                 //doFormat(putc, (&valti)[0..1], pvalue);
-                p_args = pvalue;
+                version (X86)
+                    argptr = cast(va_list) pvalue;
+                else version (X86_64)
+                {   __va_list va2;
+                    va2.stack_args = pvalue;
+                    argptr = *cast(va_list*)&va2;
+                }
+                else
+                {
+                    static if (is(va_list == void*))
+                        argptr = pvalue;
+                    else
+                        static assert(false, "unsupported platform");
+                }
+
                 ti = valti;
                 m = getMan(valti);
                 formatArg('s');
             }
             m = mSave;
             ti = tiSave;
-            p_args = argptrSave;
+            argptr = argptrSave;
             putc(']');
         }
 
         //printf("formatArg(fc = '%c', m = '%c')\n", fc, m);
-        if (! p_args)
         switch (m)
         {
             case Mangle.Tbool:
@@ -4857,15 +4893,11 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 goto Lcomplex;
 
             case Mangle.Tsarray:
-                /* Static arrays are converted to dynamic arrays when
-                   passed as a variadic argument, so this code should
-                   never be executed with GDC.  The case of an
-                   embedded static array is handled below.
-
-                putArray(argptr, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
+                version (X86)
+                    putArray(argptr, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
+                else
+                    putArray((cast(__va_list*)argptr).stack_args, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
                 return;
-                 */
-                goto Lerror;
 
             case Mangle.Tarray:
                 int mi = 10;
@@ -4957,267 +4989,46 @@ void doFormatPtr(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr
                 if (tis.xtoString is null)
                     throw new FormatException("Can't convert " ~ tis.toString()
                             ~ " to string: \"string toString()\" not defined");
-                static if (is(va_list : void[]) || is(va_list == struct))
-                {
-                    version(PPC)
-                    {
-                        // Structs are pass-by-reference in V4 ABI
-                        s = tis.xtoString(va_arg!(void*)(argptr));
-                        goto Lputstr;
-                    }
-                    else
-                    {
-                        throw new FormatException("cannot portably format a struct on this target");
-                    }
-                }
-                else
+                version(X86)
                 {
                     s = tis.xtoString(argptr);
                     argptr += (tis.tsize() + 3) & ~3;
-                    goto Lputstr;
                 }
+                else version (X86_64)
+                {
+                    void[32] parmn = void; // place to copy struct if passed in regs
+                    void* p;
+                    auto tsize = tis.tsize();
+                    TypeInfo arg1, arg2;
+                    if (!tis.argTypes(arg1, arg2))      // if could be passed in regs
+                    {   assert(tsize <= parmn.length);
+                        p = parmn.ptr;
+                        va_arg(argptr, tis, p);
+                    }
+                    else
+                    {   /* Avoid making a copy of the struct; take advantage of
+                         * it always being passed in memory
+                         */
+                        // The arg may have more strict alignment than the stack
+                        auto talign = tis.talign();
+                        __va_list* ap = cast(__va_list*)argptr;
+                        p = cast(void*)((cast(size_t)ap.stack_args + talign - 1) & ~(talign - 1));
+                        ap.stack_args = cast(void*)(cast(size_t)p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
+                    }
+                    s = tis.xtoString(p);
+                }
+                else version(PPC)
+                {   // Structs are pass-by-reference in V4 ABI
+                    void* p = va_arg!(void*)(argptr);
+                    s = tis.xtoString(p);
+                }
+                else
+                     throw new FormatException("cannot portably format a struct on this target");
+                goto Lputstr;
             }
 
             default:
                 goto Lerror;
-        }
-        else
-        {
-            switch (m)
-            {
-                case Mangle.Tbool:
-                    vbit = *cast(bool*)(p_args); p_args += bool.sizeof; // int.sizeof, etc.?
-                    if (fc != 's')
-                    {   vnumber = vbit;
-                        goto Lnumber;
-                    }
-                    putstr(vbit ? "true" : "false");
-                    return;
-
-                case Mangle.Tchar:
-                    vchar = *cast(char*)(p_args); p_args += char.sizeof;
-                    if (fc != 's')
-                    {   vnumber = vchar;
-                        goto Lnumber;
-                    }
-            PL2:
-                    putstr((&vchar)[0 .. 1]);
-                    return;
-
-                case Mangle.Twchar:
-                    vdchar = *cast(wchar*)(p_args); p_args += wchar.sizeof;
-                    goto PL1;
-
-                case Mangle.Tdchar:
-                    vdchar = *cast(dchar*)(p_args); p_args += dchar.sizeof;
-            PL1:
-                    if (fc != 's')
-                    {   vnumber = vdchar;
-                        goto Lnumber;
-                    }
-                    if (vdchar <= 0x7F)
-                    {   vchar = cast(char)vdchar;
-                        goto PL2;
-                    }
-                    else
-                    {   if (!isValidDchar(vdchar))
-                        throw new UtfException("invalid dchar in format", 0);
-                        char[4] vbuf;
-                        putstr(toUTF8(vbuf, vdchar));
-                    }
-                    return;
-
-                case Mangle.Tbyte:
-                    signed = 1;
-                    vnumber = *cast(byte*)p_args; p_args += byte.sizeof;
-                    goto Lnumber;
-
-                case Mangle.Tubyte:
-                    vnumber = *cast(ubyte*)p_args; p_args += ubyte.sizeof;
-                    goto Lnumber;
-
-                case Mangle.Tshort:
-                    signed = 1;
-                    vnumber = *cast(short*)p_args; p_args += short.sizeof;
-                    goto Lnumber;
-
-                case Mangle.Tushort:
-                    vnumber = *cast(ushort*)p_args; p_args += ushort.sizeof;
-                    goto Lnumber;
-
-                case Mangle.Tint:
-                    signed = 1;
-                    vnumber = *cast(int*)p_args; p_args += int.sizeof;
-                    goto Lnumber;
-
-                case Mangle.Tuint:
-            PLuint:
-                    vnumber = *cast(uint*)p_args; p_args += uint.sizeof;
-                    goto Lnumber;
-
-                case Mangle.Tlong:
-                    signed = 1;
-                    vnumber = cast(ulong)*cast(long*)p_args; p_args += long.sizeof;
-                    goto Lnumber;
-
-                case Mangle.Tulong:
-            PLulong:
-                    vnumber = *cast(ulong*)p_args; p_args += ulong.sizeof;
-                    goto Lnumber;
-
-                case Mangle.Tclass:
-                    vobject = *cast(Object*)p_args; p_args += Object.sizeof;
-                    if (vobject is null)
-                        s = "null";
-                    else
-                        s = vobject.toString();
-                    goto Lputstr;
-
-                case Mangle.Tpointer:
-                    vnumber = cast(size_t)*cast(void**)p_args; p_args += (void*).sizeof;
-                    uc = 1;
-                    flags |= FL0pad;
-                    if (!(flags & FLprecision))
-                    {   flags |= FLprecision;
-                        precision = (void*).sizeof;
-                    }
-                    base = 16;
-                    goto Lnumber;
-
-                case Mangle.Tfloat:
-                case Mangle.Tifloat:
-                    if (fc == 'x' || fc == 'X')
-                        goto PLuint;
-                    vreal = *cast(float*)p_args; p_args += float.sizeof;
-                    goto Lreal;
-
-                case Mangle.Tdouble:
-                case Mangle.Tidouble:
-                    if (fc == 'x' || fc == 'X')
-                        goto PLulong;
-                    vreal = *cast(double*)p_args; p_args += double.sizeof;
-                    goto Lreal;
-
-                case Mangle.Treal:
-                case Mangle.Tireal:
-                    vreal = *cast(real*)p_args; p_args += real.sizeof;
-                    goto Lreal;
-
-                case Mangle.Tcfloat:
-                    vcreal = *cast(cfloat*)p_args; p_args += cfloat.sizeof;
-                    goto Lcomplex;
-
-                case Mangle.Tcdouble:
-                    vcreal = *cast(cdouble*)p_args; p_args += cdouble.sizeof;
-                    goto Lcomplex;
-
-                case Mangle.Tcreal:
-                    vcreal = *cast(creal*)p_args; p_args += creal.sizeof;
-                    goto Lcomplex;
-
-                case Mangle.Tsarray:
-                    putArray(p_args, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
-                    p_args += ti.tsize();
-                    return;
-
-                case Mangle.Tarray:
-                    int mi = 10;
-                    if (ti.classinfo.name.length == 14 &&
-                            ti.classinfo.name[9..14] == "Array")
-                    { // array of non-primitive types
-                        TypeInfo tn = cast()(cast(TypeInfo_Array)ti).next;
-                        tn = skipCI(tn);
-                        switch (cast(Mangle)tn.classinfo.name[9])
-                        {
-                            case Mangle.Tchar:  goto LarrayChar;
-                            case Mangle.Twchar: goto LarrayWchar;
-                            case Mangle.Tdchar: goto LarrayDchar;
-                            default:
-                                                break;
-                        }
-                        void[] va = *cast(void[]*)p_args; p_args += (void[]).sizeof;
-                        putArray(va.ptr, va.length, tn);
-                        return;
-                    }
-                    if (ti.classinfo.name.length == 25 &&
-                            ti.classinfo.name[9..25] == "AssociativeArray")
-                    { // associative array
-                        ubyte[long] vaa = *cast(ubyte[long]*)p_args; p_args += (ubyte[long]).sizeof;
-                        putAArray(vaa,
-                                cast()(cast(TypeInfo_AssociativeArray)ti).next,
-                                (cast(TypeInfo_AssociativeArray)ti).key);
-                        return;
-                    }
-
-                    while (1)
-                    {
-                        m2 = cast(Mangle)ti.classinfo.name[mi];
-                        switch (m2)
-                        {
-                            case Mangle.Tchar:
-                    PLarrayChar:
-                                s = *cast(string*)p_args; p_args += (string).sizeof;
-                                goto PLputstr;
-
-                            case Mangle.Twchar:
-                    PLarrayWchar:
-                                wchar[] sw = *cast(wchar[]*)p_args; p_args += (wchar[]).sizeof;
-                                s = toUTF8(sw);
-                                goto PLputstr;
-
-                            case Mangle.Tdchar:
-                    PLarrayDchar:
-                                auto sd = *cast(dchar[]*)p_args; p_args += (dchar[]).sizeof;
-                                s = toUTF8(sd);
-                    PLputstr:
-                                if (fc != 's')
-                                    throw new FormatException("string");
-                                if (flags & FLprecision && precision < s.length)
-                                    s = s[0 .. precision];
-                                putstr(s);
-                                break;
-
-                            case Mangle.Tconst:
-                            case Mangle.Timmutable:
-                                mi++;
-                                continue;
-
-                            default:
-                                TypeInfo ti2 = primitiveTypeInfo(m2);
-                                if (!ti2)
-                                    goto Lerror;
-                                void[] va = *cast(void[]*)p_args; p_args += (void[]).sizeof;
-                                putArray(va.ptr, va.length, ti2);
-                        }
-                        return;
-                    }
-                    assert(0);
-
-                case Mangle.Ttypedef:
-                    ti = (cast(TypeInfo_Typedef)ti).base;
-                    m = cast(Mangle)ti.classinfo.name[9];
-                    formatArg(fc);
-                    return;
-
-                case Mangle.Tenum:
-                    ti = (cast(TypeInfo_Enum)ti).base;
-                    m = cast(Mangle)ti.classinfo.name[9];
-                    formatArg(fc);
-                    return;
-
-                case Mangle.Tstruct:
-                {   TypeInfo_Struct tis = cast(TypeInfo_Struct)ti;
-                    if (tis.xtoString is null)
-                        throw new FormatException("Can't convert " ~ tis.toString()
-                                ~ " to string: \"string toString()\" not defined");
-                    s = tis.xtoString(p_args);
-                    p_args += tis.tsize();
-                    goto Lputstr;
-                }
-
-                default:
-                    goto Lerror;
-            }
         }
 
     Lnumber:
