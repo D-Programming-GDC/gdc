@@ -37,7 +37,7 @@ SUFFIXES = .d
 
 # %.o : %.c
 zlib/%.o: $(top_srcdir)/../zlib/%.c
-	@test -d zlib || mkdir zlib
+	@test -d zlib || mkdir -p zlib
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 # Use .c.o to override Automake

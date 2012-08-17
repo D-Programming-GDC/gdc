@@ -4664,7 +4664,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
             {
                 __va_list va;
                 va.stack_args = p;
-                argptr = *cast(va_list*)&va;
+                argptr = *cast(va_list*) &va;
             }
             else
             {
@@ -4718,7 +4718,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 else version (X86_64)
                 {   __va_list va;
                     va.stack_args = pkey;
-                    argptr = *cast(va_list*)&va;
+                    argptr = *cast(va_list*) &va;
                 }
                 else
                 {
@@ -4739,7 +4739,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 else version (X86_64)
                 {   __va_list va2;
                     va2.stack_args = pvalue;
-                    argptr = *cast(va_list*)&va2;
+                    argptr = *cast(va_list*) &va2;
                 }
                 else
                 {
@@ -4893,10 +4893,17 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 goto Lcomplex;
 
             case Mangle.Tsarray:
-                version (X86)
+                version (X86_64)
+                    putArray((cast(__va_list*)argptr).stack_args, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
+                else version (X86)
                     putArray(argptr, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
                 else
-                    putArray((cast(__va_list*)argptr).stack_args, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
+                {
+                    static if (is(va_list == void*))
+                        putArray(argptr, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
+                    else
+                        static assert(false, "unsupported platform");
+                }
                 return;
 
             case Mangle.Tarray:
@@ -5023,7 +5030,15 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                     s = tis.xtoString(p);
                 }
                 else
-                     throw new FormatException("cannot portably format a struct on this target");
+                {
+                    static if (is(va_list == void*))
+                    {
+                        s = tis.xtoString(argptr);
+                        argptr += (tis.tsize() + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+                    }
+                    else
+                        throw new FormatException("cannot portably format a struct on this target");
+                }
                 goto Lputstr;
             }
 
