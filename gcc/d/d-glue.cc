@@ -2114,248 +2114,207 @@ SymbolExp::toElem (IRState *irs)
 elem *
 NewExp::toElem (IRState *irs)
 {
-  Type *base_type = newtype->toBasetype();
+  Type *base_type = type->toBasetype();
+  LibCall lib_call;
   tree result;
 
   if (allocator)
     gcc_assert (newargs);
 
-  switch (base_type->ty)
+  // New'ing a class.
+  if (base_type->ty == Tclass)
     {
-    case Tclass:
+      base_type = newtype->toBasetype();
+      gcc_assert (base_type->ty == Tclass);
+      TypeClass *class_type = (TypeClass *) base_type;
+      ClassDeclaration *class_decl = class_type->sym;
+
+      tree new_call;
+      tree setup_exp = NULL_TREE;
+      // type->toCtype() is a REFERENCE_TYPE; we want the RECORD_TYPE
+      tree rec_type = TREE_TYPE (class_type->toCtype());
+
+      // Call allocator (custom allocator or _d_newclass).
+      if (onstack)
 	{
-	  TypeClass *class_type = (TypeClass *) base_type;
-	  ClassDeclaration *class_decl = class_type->sym;
-
-	  tree new_call;
-	  tree setup_exp = NULL_TREE;
-	  // type->toCtype() is a REFERENCE_TYPE; we want the RECORD_TYPE
-	  tree rec_type = TREE_TYPE (class_type->toCtype());
-	  // Allocation call (custom allocator or _d_newclass)
-	  if (onstack)
-	    {
-	      tree stack_var = irs->localVar (rec_type);
-	      irs->expandDecl (stack_var);
-	      new_call = irs->addressOf (stack_var);
-	      setup_exp = build2 (MODIFY_EXPR, rec_type,
-				  irs->indirect (rec_type, new_call),
-				  class_decl->toInitializer()->Stree);
-	    }
-	  else if (allocator)
-	    {
-	      new_call = irs->call (allocator, newargs);
-	      new_call = save_expr (new_call);
-	      // copy memory...
-	      setup_exp = build2 (MODIFY_EXPR, rec_type,
-				  irs->indirect (rec_type, new_call),
-				  class_decl->toInitializer()->Stree);
-	    }
-	  else
-	    {
-	      tree arg = irs->addressOf (class_decl->toSymbol()->Stree);
-	      new_call = irs->libCall (LIBCALL_NEWCLASS, 1, &arg);
-	    }
-	  new_call = irs->nop (class_type->toCtype(), new_call);
-
-	  if (class_type->sym->isNested())
-	    {
-	      tree vthis_value = NULL_TREE;
-	      tree vthis_field = class_type->sym->vthis->toSymbol()->Stree;
-	      if (thisexp)
-		{
-		  ClassDeclaration *thisexp_cd = thisexp->type->isClassHandle();
-		  Dsymbol *outer = class_decl->toParent2();
-		  int offset = 0;
-
-		  vthis_value = thisexp->toElem (irs);
-		  if (outer != thisexp_cd)
-		    {
-		      ClassDeclaration *outer_cd = outer->isClassDeclaration();
-		      gcc_assert (outer_cd->isBaseOf (thisexp_cd, &offset));
-		      // could just add offset
-		      vthis_value = irs->convertTo (vthis_value, thisexp->type, outer_cd->type);
-		    }
-		}
-	      else
-		{
-		  vthis_value = irs->getVThis (class_decl, this);
-		}
-
-	      if (vthis_value)
-		{
-		  new_call = save_expr (new_call);
-		  vthis_field = irs->component (irs->indirect (rec_type, new_call), vthis_field);
-
-		  setup_exp = irs->maybeCompound (setup_exp, build2 (MODIFY_EXPR, TREE_TYPE (vthis_field),
-								     vthis_field, vthis_value));
-		}
-	    }
-	  new_call = irs->maybeCompound (setup_exp, new_call);
-	  // Constructor call
-	  if (member)
-	    {
-	      result = irs->call (member, new_call, arguments);
-	    }
-	  else
-	    {
-	      result = new_call;
-	    }
-	  return irs->convertTo (result, base_type, type);
+	  tree stack_var = irs->localVar (rec_type);
+	  irs->expandDecl (stack_var);
+	  new_call = irs->addressOf (stack_var);
+	  setup_exp = build2 (MODIFY_EXPR, rec_type,
+			      irs->indirect (rec_type, new_call),
+			      class_decl->toInitializer()->Stree);
 	}
-    case Tstruct:
+      else if (allocator)
 	{
-	  TypeStruct *struct_type = (TypeStruct *)newtype;
-	  Type *handle_type = base_type->pointerTo();
-	  tree new_call;
-	  tree t;
-	  bool need_init = true;
+	  new_call = irs->call (allocator, newargs);
+	  new_call = irs->maybeMakeTemp (new_call);
+	  // copy memory...
+	  setup_exp = build2 (MODIFY_EXPR, rec_type,
+			      irs->indirect (rec_type, new_call),
+			      class_decl->toInitializer()->Stree);
+	}
+      else
+	{
+	  tree arg = irs->addressOf (class_decl->toSymbol()->Stree);
+	  new_call = irs->libCall (LIBCALL_NEWCLASS, 1, &arg);
+	}
+      new_call = irs->nop (base_type->toCtype(), new_call);
 
-	  if (onstack)
+      // Set vthis for nested classes.
+      if (class_decl->isNested())
+	{
+	  tree vthis_value = NULL_TREE;
+	  tree vthis_field = class_decl->vthis->toSymbol()->Stree;
+	  if (thisexp)
 	    {
-	      tree stack_var = irs->localVar (struct_type);
-	      irs->expandDecl (stack_var);
-	      new_call = irs->addressOf (stack_var);
-	    }
-	  else if (allocator)
-	    {
-	      new_call = irs->call (allocator, newargs);
+	      ClassDeclaration *thisexp_cd = thisexp->type->isClassHandle();
+	      Dsymbol *outer = class_decl->toParent2();
+	      int offset = 0;
+
+	      vthis_value = thisexp->toElem (irs);
+	      if (outer != thisexp_cd)
+		{
+		  ClassDeclaration *outer_cd = outer->isClassDeclaration();
+		  gcc_assert (outer_cd->isBaseOf (thisexp_cd, &offset));
+		  // could just add offset
+		  vthis_value = irs->convertTo (vthis_value, thisexp->type, outer_cd->type);
+		}
 	    }
 	  else
 	    {
-	      tree args[2];
-	      LibCall lib_call = struct_type->isZeroInit (loc) ?
-		LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
-	      args[0] = irs->typeinfoReference (struct_type->arrayOf());
-	      args[1] = irs->integerConstant (1, Type::tsize_t);
-	      new_call = irs->libCall (lib_call, 2, args);
-	      new_call = irs->darrayPtrRef (new_call);
-	      need_init = false;
+	      vthis_value = irs->getVThis (class_decl, this);
 	    }
-	  new_call = irs->nop (handle_type->toCtype(), new_call);
-	  if (need_init)
+
+	  if (vthis_value)
 	    {
-	      // Save the result allocation call.
-	      new_call = save_expr (new_call);
-	      t = irs->indirect (new_call);
-	      t = build2 (MODIFY_EXPR, TREE_TYPE (t), t,
+	      new_call = irs->maybeMakeTemp (new_call);
+	      vthis_field = irs->component (irs->indirect (rec_type, new_call), vthis_field);
+
+	      setup_exp = irs->maybeCompound (setup_exp, build2 (MODIFY_EXPR, TREE_TYPE (vthis_field),
+								 vthis_field, vthis_value));
+	    }
+	}
+      new_call = irs->maybeCompound (setup_exp, new_call);
+
+      // Call constructor.
+      if (member)
+	result = irs->call (member, new_call, arguments);
+      else
+	result = new_call;
+    }
+  // New'ing a struct.
+  else if (base_type->ty == Tpointer && base_type->nextOf()->toBasetype()->ty == Tstruct)
+    {
+      gcc_assert (!onstack);
+
+      Type * handle_type = newtype->toBasetype();
+      gcc_assert (handle_type->ty == Tstruct);
+      TypeStruct *struct_type = (TypeStruct *) handle_type;
+      StructDeclaration *sd = struct_type->sym;
+
+      tree new_call;
+      tree setup_exp = NULL_TREE;
+
+      if (allocator)
+	new_call = irs->call (allocator, newargs);
+      else
+	{
+	  lib_call = struct_type->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
+	  tree arg = type->getTypeInfo(NULL)->toElem (irs);
+	  new_call = irs->libCall (lib_call, 1, &arg);
+	}
+      new_call = irs->nop (base_type->toCtype(), new_call);
+
+      // Save the result allocation call.
+      new_call = irs->maybeMakeTemp (new_call);
+      setup_exp = irs->indirect (new_call);
+      setup_exp = build2 (MODIFY_EXPR, TREE_TYPE (setup_exp), setup_exp,
 			  irs->convertForAssignment (struct_type->defaultInit (loc), struct_type));
-	      new_call = irs->compound (t, new_call);
-	    }
-	  // Constructor call
-	  if (member)
-	    {
-	      new_call = irs->call (member, new_call, arguments);
-	    }
-	  // %% D2.0 nested structs
-	  StructDeclaration *struct_decl = struct_type->sym;
+      new_call = irs->compound (setup_exp, new_call);
 
-	  if (struct_decl->isNested())
-	    {
-	      tree vthis_value = irs->getVThis (struct_decl, this);
-	      tree vthis_field = struct_decl->vthis->toSymbol()->Stree;
-
-	      new_call = save_expr (new_call);
-	      tree setup_exp = build2 (MODIFY_EXPR, TREE_TYPE (vthis_field),
-				       irs->component (irs->indirect (struct_type->toCtype(), new_call),
-						       vthis_field),
-				       vthis_value);
-	      new_call = irs->compound (setup_exp, new_call);
-	    }
-	  return irs->nop (type->toCtype(), new_call);
-	}
-    case Tarray:
+      // Set vthis for nested structs/classes.
+      if (sd->isNested())
 	{
-	  gcc_assert (!allocator);
-	  gcc_assert (arguments && arguments->dim > 0);
+	  tree vthis_value = irs->getVThis (sd, this);
+	  tree vthis_field = sd->vthis->toSymbol()->Stree;
 
-	  LibCall lib_call;
+	  new_call = save_expr (new_call);
+	  setup_exp = build2 (MODIFY_EXPR, TREE_TYPE (vthis_field),
+			      irs->component (irs->indirect (struct_type->toCtype(), new_call),
+					      vthis_field), vthis_value);
+	  new_call = irs->compound (setup_exp, new_call);
+	}
 
-	  Type *elem_init_type = newtype;
+      // Call constructor.
+      if (member)
+	result = irs->call (member, new_call, arguments);
+      else
+	result = new_call;
+    }
+  // New'ing a D array.
+  else if (base_type->ty == Tarray)
+    {
+      base_type = newtype->toBasetype();
+      gcc_assert (base_type->ty == Tarray);
+      TypeDArray *array_type = (TypeDArray *) base_type;
+      gcc_assert (!allocator);
+      gcc_assert (arguments && arguments->dim >= 1);
 
-	  /* First, skip past dynamic array dimensions/types that will be
-	     allocated by this call. */
+      if (arguments->dim == 1)
+	{
+	  // Single dimension array allocations.
+	  Expression *arg = (*arguments)[0];
+	  lib_call = array_type->next->isZeroInit() ? LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
+	  tree args[2] = {
+	      type->getTypeInfo(NULL)->toElem (irs),
+	      arg->toElem (irs)
+	  };
+	  result = irs->libCall (lib_call, 2, args, base_type->toCtype());
+	}
+      else
+	{
+	  // Multidimensional array allocations.
+
+	  tree dims_var = irs->exprVar (irs->arrayType (size_type_node, arguments->dim));
+	  tree dims_init;
+	  CtorEltMaker elms;
+
+    	  Type *telem = newtype->toBasetype();
 	  for (size_t i = 0; i < arguments->dim; i++)
-	    elem_init_type = elem_init_type->toBasetype()->nextOf(); // assert ty == Tarray
-	  if (arguments->dim == 1)
 	    {
-	      lib_call = elem_init_type->isZeroInit() ?
-		LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
+	      Expression *arg = (*arguments)[i];
+	      elms.cons (irs->integerConstant (i, size_type_node), arg->toElem (irs));
+	      dims_init = build_constructor (TREE_TYPE (dims_var), elms.head);
+	      DECL_INITIAL (dims_var) = dims_init;
 
-	      tree args[2];
-	      args[0] = irs->typeinfoReference (type);
-	      args[1] = (arguments->tdata()[0])->toElem (irs);
-	      result = irs->libCall (lib_call, 2, args, type->toCtype());
+	      gcc_assert (telem->ty == Tarray);
+	      telem = telem->toBasetype()->nextOf();
+	      gcc_assert (telem);
 	    }
-	  else
-	    {
-	      lib_call = elem_init_type->isZeroInit() ?
-		LIBCALL_NEWARRAYMTX : LIBCALL_NEWARRAYMITX;
 
-	      tree dims_var = irs->exprVar (irs->arrayType (size_type_node, arguments->dim));
-		{
-		  tree dims_init;
-		  CtorEltMaker elms;
-
-		  elms.reserve (arguments->dim);
-		  for (size_t i = 0; i < arguments->dim; i++)
-		    elms.cons (irs->integerConstant (i, size_type_node),
-			       (arguments->tdata()[i])->toElem (irs));
-		  dims_init = build_constructor (TREE_TYPE (dims_var), elms.head);
-		  DECL_INITIAL (dims_var) = dims_init;
-		}
-
-	      tree args[3];
-	      args[0] = irs->typeinfoReference (type);
-	      args[1] = irs->integerConstant (arguments->dim, Type::tint32); // The ndims arg is declared as 'int'
-	      args[2] = irs->addressOf (dims_var);
-
-	      result = irs->libCall (lib_call, 3, args, type->toCtype());
-	      result = irs->binding (dims_var, result);
-	    }
-	  return irs->convertTo (result, base_type, type);
-	}
-    default:
-	{
-	  Type *object_type = newtype;
-	  Type *handle_type = base_type->pointerTo();
-	  tree new_call;
-	  tree t;
-	  bool need_init = true;
-
-	  if (onstack)
-	    {
-	      tree stack_var = irs->localVar (object_type);
-	      irs->expandDecl (stack_var);
-	      new_call = irs->addressOf (stack_var);
-	    }
-	  else if (allocator)
-	    {
-	      new_call = irs->call (allocator, newargs);
-	    }
-	  else
-	    {
-	      tree args[2];
-	      LibCall lib_call = object_type->isZeroInit() ?
-		LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
-	      args[0] = irs->typeinfoReference (object_type->arrayOf());
-	      args[1] = irs->integerConstant (1, Type::tsize_t);
-	      new_call = irs->libCall (lib_call, 2, args);
-	      new_call = irs->darrayPtrRef (new_call);
-	      need_init = false;
-	    }
-	  new_call = irs->nop (handle_type->toCtype(), new_call);
-	  if (need_init)
-	    {
-	      // Save the result allocation call.
-	      new_call = save_expr (new_call);
-	      t = irs->indirect (new_call);
-	      t = build2 (MODIFY_EXPR, TREE_TYPE (t), t,
-			  irs->convertForAssignment (object_type->defaultInit(), object_type));
-	      new_call = irs->compound (t, new_call);
-	    }
-	  return irs->nop (type->toCtype(), new_call);
+	  lib_call = telem->isZeroInit() ? LIBCALL_NEWARRAYMTX : LIBCALL_NEWARRAYMITX;
+	  tree args[3] = {
+	      type->getTypeInfo(NULL)->toElem (irs),
+	      irs->integerConstant (arguments->dim, Type::tint32), // The ndims arg is declared as 'int'
+	      irs->addressOf (dims_var)
+	  };
+	  result = irs->libCall (lib_call, 3, args, base_type->toCtype());
+	  result = irs->binding (dims_var, result);
 	}
     }
+  // New'ing a pointer
+  else if (base_type->ty == Tpointer)
+    {
+      TypePointer *pointer_type = (TypePointer *) base_type;
+
+      lib_call = pointer_type->next->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
+      tree arg = type->getTypeInfo(NULL)->toElem (irs);
+      result = irs->libCall (lib_call, 1, &arg, base_type->toCtype());
+    }
+  else
+    gcc_unreachable();
+
+  return irs->convertTo (result, base_type, type);
 }
 
 elem *
@@ -2569,14 +2528,15 @@ StructLiteralExp::toElem (IRState *irs)
 
   if (elements)
     {
-      gcc_assert (elements->dim <= sd->fields.dim);
+      size_t dim = elements->dim;
+      gcc_assert (dim <= sd->fields.dim - sd->isnested);
 
-      for (size_t i = 0; i < elements->dim; ++i)
+      for (size_t i = 0; i < dim; i++)
 	{
-	  if (!elements->tdata()[i])
+	  if (!(*elements)[i])
 	    continue;
 
-	  Expression *exp = elements->tdata()[i];
+	  Expression *exp = (*elements)[i];
 	  Type *exp_type = exp->type->toBasetype();
 	  tree exp_tree = NULL_TREE;
 	  tree call_exp = NULL_TREE;
@@ -4243,12 +4203,11 @@ ReturnStatement::toIR (IRState *irs)
 	     only works when compiling with optimisations turned on.
 	     Should really implement in the frontend proper.  */
 	}
-      else if (exp->type->toBasetype()->ty == Tstruct &&
-	       (exp->op == TOKvar || exp->op == TOKdotvar || exp->op == TOKstar || exp->op == TOKthis))
+      else if (exp->isLvalue() && exp->type->toBasetype()->ty == Tstruct)
 	{
 	  // Maybe call postblit on result_value
 	  StructDeclaration *sd;
-	  if ((sd = needsPostblit (exp->type->toBasetype())) != NULL)
+	  if ((sd = needsPostblit (exp->type)) != NULL)
 	    {
 	      Expressions args;
 	      FuncDeclaration *fd = sd->postblit;

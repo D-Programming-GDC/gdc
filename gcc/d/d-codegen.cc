@@ -2274,7 +2274,7 @@ static const char *libcall_ids[LIBCALL_count] = {
     "_d_monitorenter", "_d_monitorexit",
     "_d_newarrayT", "_d_newarrayiT",
     "_d_newarraymTX", "_d_newarraymiTX",
-    "_d_newclass",
+    "_d_newclass", "_d_newitemT", "_d_newitemiT",
     "_d_switch_dstring", "_d_switch_error",
     "_d_switch_string", "_d_switch_ustring",
     "_d_throw", "_d_unittest", "_d_unittest_msg",
@@ -2369,6 +2369,12 @@ IRState::getLibCallDecl (LibCall lib_call)
 	  targs.push (Type::tsize_t);
 	  targs.push (Type::tsize_t);
 	  treturn = Type::tvoid->arrayOf();
+	  break;
+
+	case LIBCALL_NEWITEMT:
+	case LIBCALL_NEWITEMIT:
+	  targs.push (Type::typeinfo->type->constOf());
+	  treturn = Type::tvoidptr;
 	  break;
 
 	case LIBCALL_ALLOCMEMORY:

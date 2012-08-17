@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -8,13 +8,8 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by Iain Buclaw, December 2011
-*/
-
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
 #include "mars.h"
@@ -75,7 +70,7 @@ int CppMangleState::substitute(OutBuffer *buf, void *p)
 {
     for (size_t i = 0; i < components.dim; i++)
     {
-        if (p == components.tdata()[i])
+        if (p == components[i])
         {
             /* Sequence is S_, S0_, .., S9_, SA_, ..., SZ_, S10_, ...
              */
@@ -86,6 +81,7 @@ int CppMangleState::substitute(OutBuffer *buf, void *p)
             return 1;
         }
     }
+    components.push(p);
     return 0;
 }
 
@@ -93,7 +89,7 @@ int CppMangleState::exist(void *p)
 {
     for (size_t i = 0; i < components.dim; i++)
     {
-        if (p == components.tdata()[i])
+        if (p == components[i])
         {
             return 1;
         }
@@ -165,7 +161,7 @@ char *cpp_mangle(Dsymbol *s)
     cms.components.setDim(0);
 
     OutBuffer buf;
-#if MACHOBJ
+#if TARGET_OSX
     buf.writestring("__Z");
 #else
     buf.writestring("_Z");
@@ -419,7 +415,7 @@ void Parameter::argsCppMangle(OutBuffer *buf, CppMangleState *cms, Parameters *a
     if (arguments)
     {
         for (size_t i = 0; i < arguments->dim; i++)
-        {   Parameter *arg = arguments->tdata()[i];
+        {   Parameter *arg = (*arguments)[i];
             Type *t = arg->type;
             if (arg->storageClass & (STCout | STCref))
                 t = t->referenceTo();

@@ -23,31 +23,56 @@ load_lib gdc-dg.exp
 proc gdc-convert-args { args } {
     set out ""
 
+    if [regexp -- "-c" $args] {
+        lappend out "-c"
+    }
     if [regexp -- "-d" $args] {
         lappend out "-fdeprecated"
     }
-    
+    if [regexp -- "-inline" $args] {
+        lappend out "-finline-functions"
+    }
+    if [regexp -- "-unittest" $args] {
+        lappend out "-funittest"
+    }
     if [regexp -- "-w" $args] {
         lappend out "-Wall -Werror"
     }
 
     set i 0
-    set j 0
-    while { [regexp -start $i -indices -- {-J([\w/;-]+)} $args i j] } { 
-        # Need to test for ; and split them into separate -J options
-        #print "-J $i $j"
+    while { [regexp -start $i -indices -- {-I([\w/-]+)} $args i j] } {
         set i [lindex $j 0]
         set j [lindex $j 1]
-        lappend out "-J [string range $args $i $j]"
-        #print "-J [string range $args $i $j]" 
+        #print "-I[string range $args $i $j]"
+        lappend out "-I[string range $args $i $j]"
     }
+
+    set i 0
+    while { [regexp -start $i -indices -- {-J([\w/-]+)} $args i j] } { 
+        set i [lindex $j 0]
+        set j [lindex $j 1]
+        #print "-J[string range $args $i $j]" 
+        lappend out "-J[string range $args $i $j]"
+    }
+
+    set i 0
+    while { [regexp -start $i -indices -- {-version=([\w]+)} $args i j] } { 
+        set i [lindex $j 0]
+        set j [lindex $j 1]
+        #print "-J[string range $args $i $j]" 
+        lappend out "-fversion=[string range $args $i $j]"
+    }
+    
     return $out
 }
 
 # Translate DMD test directives to dejagnu equivalent.
 proc dmd2dg { base test } {
     global DEFAULT_DFLAGS
- 
+    global PERMUTE_ARGS
+
+    set PERMUTE_ARGS $DEFAULT_DFLAGS
+
     # Split base, folder/file.
 
     set type [file dirname $test]
@@ -55,41 +80,43 @@ proc dmd2dg { base test } {
     # print "Filename: $base - $test"
 
     set fdin [open $base/$test r]
-    fconfigure $fdin -encoding binary
-    
+    #fconfigure $fdin -encoding binary
+
     file mkdir [file dirname $test]
     set fdout [ open $test w]
-    fconfigure $fdout -encoding binary
-    
+    #fconfigure $fdout -encoding binary
+
+    # print "[file dirname $test ]"
+
     # Add specific options for test type
 
     # DMD's testsuite is exteremly verbose.
     #  dg-prune-ouput generates pass.
-    puts $fdout {// { dg-prune-output .* } }
-
-    # print "[file dirname $test ]"
+    set out_line "// { dg-prune-output .* }"
+    puts $fdout $out_line
 
     # Compilable files are successful if an output it generated.
     # Fail compilable are successful if an output is not generated.
     # Runnable must compile, link, and return 0 to be successful by default.
     switch [ file dirname $test ] {
         compilable {
-            puts $fdout {// { dg-final { output-exists } } }
+            set out_line "// { dg-final { output-exists } }"
+            puts $fdout $out_line
         }
 
         fail_compilation {
-            puts $fdout {// { dg-final { output-exists-not } } }
+            set out_line "// { dg-final { output-exists-not } }"
+            puts $fdout $out_line
         }
-        
+
     }
 
     while { [gets $fdin copy_line] >= 0 } {
         set out_line $copy_line
 
         # PERMUTE_ARGS.  Must be handled separately
-        if [string match "PERMUTE_ARGS" $copy_line] {
-            #set DEFAULT_DFLAGS [regexp]
-            error "PERMUTE_ARGS not handled"
+        if [regexp -- {//\s*PERMUTE_ARGS\s*:\s*(.*)} $copy_line m m0] {
+            set PERMUTE_ARGS [gdc-convert-args $m0]
             continue 
         }
 
@@ -113,21 +140,22 @@ proc dmd2dg { base test } {
         }
 
         # Handle EXTRA_SOURCES option
-        if [regexp {//\s*EXTRA_SOURCES\s*:\s*(.*)} $copy_line m m0] {
+        if [regexp -- {//\s*EXTRA_SOURCES\s*:\s*(.*)} $copy_line m m0] {
             # Iterate imports and convert
             foreach import $m0 {
                 # print "Import: $base $type/$import"
                 dmd2dg $base "$type/$import"  
             }
-            set out_line "/* { dg-additional-sources \"$m0\" } */"
+            set out_line "// { dg-additional-sources \"$m0\" }"
         }
 
         # REQUIRED_ARGS.
-        if [regexp {\s*//\s*REQUIRED_ARGS\s*:\s*(.*)} $copy_line m m0] {
-            set out_line "/* { dg-additional-options [gdc-convert-args $m0] } */"
+        if [regexp -- {//\s*REQUIRED_ARGS\s*:\s*(.*)} $copy_line m m0] {
+            set out_line "// { dg-additional-options \"[gdc-convert-args $m0]\" }"
         }
         puts $fdout $out_line
     }
+
     close $fdin
     close $fdout
 
@@ -146,7 +174,7 @@ proc gdc-permute-options { options } {
             }
         }
         lappend result $option
-        
+
     }
     return $result
 }
@@ -161,8 +189,12 @@ proc gdc-do-test { } {
     # If a testcase doesn't have special options, use these.
     global DEFAULT_DFLAGS
     if ![info exists DEFAULT_DFLAGS] then {
-        set DEFAULT_DFLAGS "-g -O2 -funittest -frelease"
+        #set DEFAULT_DFLAGS "-g -O2 -funittest -frelease"
+        set DEFAULT_DFLAGS "-O2"
     }
+
+    # These are special options to use on testcase, and override DEFAULT_DFLAGS
+    global PERMUTE_ARGS
 
     # Initialize `dg'.
     dg-init
@@ -173,7 +205,7 @@ proc gdc-do-test { } {
     # set dg-final-code ""
     # Find all tests and pass to routine.
     foreach test [lsort [find $srcdir/$subdir *]] {
-        regexp "(.*)/(.+)/(.+)\.(.+)$" $test match base dir name ext
+        regexp -- "(.*)/(.+)/(.+)\.(.+)$" $test match base dir name ext
 
         # Skip invalid test directory
         if {[lsearch "runnable compilable fail_compilation" $dir] == -1} {
@@ -190,18 +222,17 @@ proc gdc-do-test { } {
         set imports [format "-I%s -I%s/imports" $imports $imports]
         set filename [dmd2dg $base $dir/$name.$ext]
 
-        #set options [gdc-permute-options $DEFAULT_DFLAGS]
-       set options {""}
+        set options [gdc-permute-options $PERMUTE_ARGS]
 
         switch $dir {
             runnable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
                     set TORTURE_OPTIONS [lindex $options $i]
-                    set dg-do-what-default run
+                    set dg-do-what-default "run"
                     gdc-dg-runtest $filename $imports
                 }
             }
-            
+
             compilable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
                     set TORTURE_OPTIONS [lindex $options $i]
@@ -209,7 +240,7 @@ proc gdc-do-test { } {
                     gdc-dg-runtest $filename "$imports"
                 }
             }
-    
+
             fail_compilation {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
                     set TORTURE_OPTIONS [lindex $options $i]
@@ -220,7 +251,7 @@ proc gdc-do-test { } {
         }
 
         # Cleanup
-#        file delete $filename
+        #file delete $filename
     }
 
     # All done.

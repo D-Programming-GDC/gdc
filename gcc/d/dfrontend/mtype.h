@@ -1,19 +1,12 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
 // License for redistribution is by either the Artistic License
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, January 2007
-   Modified by Vincenzo Ampolo, September 2009
-*/
 
 #ifndef DMD_MTYPE_H
 #define DMD_MTYPE_H
@@ -217,6 +210,7 @@ struct Type : Object
     static ClassDeclaration *typeinfowild;
 
     static TemplateDeclaration *associativearray;
+    static TemplateDeclaration *rtinfo;
 
     static Type *basic[TMAX];
     static unsigned char mangleChar[TMAX];
@@ -359,6 +353,7 @@ struct TypeError : Type
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident);
     Expression *defaultInit(Loc loc);
     Expression *defaultInitLiteral(Loc loc);
+    TypeTuple *toArgTypes();
 };
 
 struct TypeNext : Type
@@ -546,6 +541,7 @@ struct TypeAArray : TypeArray
     int isZeroInit(Loc loc);
     int checkBoolean();
     TypeInfoDeclaration *getTypeInfoDeclaration();
+    Type *reliesOnTident(TemplateParameters *tparams);
     Expression *toExpression();
     int hasPointers();
     TypeTuple *toArgTypes();
@@ -737,6 +733,7 @@ struct TypeInstance : TypeQualified
     void resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol **ps);
     Type *semantic(Loc loc, Scope *sc);
     Dsymbol *toDsymbol(Scope *sc);
+    Type *reliesOnTident(TemplateParameters *tparams = NULL);
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
 };
 

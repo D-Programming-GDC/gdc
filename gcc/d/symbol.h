@@ -19,9 +19,7 @@
 #define DMD_SYMBOL_H
 
 #include "root.h"
-
 #include "d-gcc-tree.h"
-
 #include "mtype.h"
 
 enum TypeType
@@ -113,14 +111,28 @@ struct Thunk
   Symbol *symbol;
 };
 
-extern Symbol *symbol_calloc (const char *string);
-extern tree check_static_sym (Symbol *sym);
-extern void outdata (Symbol *sym);
-inline void obj_export (Symbol *, int) { }
-extern void obj_moduleinfo (Symbol *sym);
-extern void obj_tlssections (void);
+struct Obj
+{
+  static void init ();
+  static void term ();
 
-extern Symbol *symbol_tree (tree);
-extern Symbol *static_sym (void);
+  static void startaddress(Symbol *);
+  static bool includelib(const char *);
+  static bool allowZeroSize();
+  static void moduleinfo(Symbol *);
+  static void export_symbol (Symbol *, unsigned);
+};
+
+extern Obj *objmod;
+
+Symbol *symbol_calloc (const char *string);
+tree check_static_sym (Symbol *sym);
+void outdata (Symbol *sym);
+inline void out_readonly (Symbol *s) { s->Sseg = CDATA; }
+void obj_moduleinfo (Symbol *sym);
+void obj_tlssections (void);
+
+Symbol *symbol_tree (tree);
+Symbol *static_sym (void);
 
 #endif

@@ -730,8 +730,7 @@ PACKAGE_TARNAME
 PACKAGE_NAME
 PATH_SEPARATOR
 SHELL'
-ac_subst_files='DCFG_LONG_DOUBLE_FUNCS
-DCFG_SQRTF'
+ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_multilib
@@ -4831,9 +4830,6 @@ DCFG_USE_IEEE_FPSB=$d_use_ieee_fpsb
 
 
 if test "$with_newlib" = yes; then
-    # TODO: there is some way to enable long double funcs in newlib so need to support that
-    DCFG_LONG_DOUBLE_FUNCS=config/noldfuncs
-    DCFG_SQRTF=config/sqrtf
     # TODO: newlib has trunc and exp2, but not log2 -- so configure all separately
     DCFG_TRUNC=""
     DCFG_NEARBYINT=""
@@ -4961,12 +4957,9 @@ fi
 esac
 
 case "$target_os" in
-  darwin6*) DCFG_LONG_DOUBLE_FUNCS=config/noldfuncs ;;
-  darwin*)  DCFG_LONG_DOUBLE_FUNCS=config/ldfuncs-darwin ;;
   linux*|k*bsd*-gnu)
     case "$target_cpu" in
 	powerpc*)
-	    DCFG_LONG_DOUBLE_FUNCS=config/ldfuncs-ppclinux
 	    # Libc without nldbl not supported...
 	    ac_fn_c_check_func "$LINENO" "__nldbl_printf" "ac_cv_func___nldbl_printf"
 if test "x$ac_cv_func___nldbl_printf" = xyes; then :
@@ -4981,38 +4974,6 @@ fi
 	    ;;
     esac
 esac
-
-if test -z "$DCFG_LONG_DOUBLE_FUNCS"; then
-    ac_fn_c_check_func "$LINENO" "acosl" "ac_cv_func_acosl"
-if test "x$ac_cv_func_acosl" = xyes; then :
-  have_ldf_a=1
-else
-  :
-fi
-
-    ac_fn_c_check_func "$LINENO" "truncl" "ac_cv_func_truncl"
-if test "x$ac_cv_func_truncl" = xyes; then :
-  have_ldf_b=1
-else
-  :
-fi
-
-    if test "${have_ldf_a}${have_ldf_b}" = "11"; then
-	DCFG_LONG_DOUBLE_FUNCS=config/ldfuncs
-    else
-	DCFG_LONG_DOUBLE_FUNCS=config/noldfuncs
-    fi
-    DCFG_LONG_DOUBLE_FUNCS="$DCFG_LONG_DOUBLE_FUNCS"
-fi
-
-# on darwin, we don't seem to have sqrtf, even though it's in math.h
-ac_fn_c_check_func "$LINENO" "sqrtf" "ac_cv_func_sqrtf"
-if test "x$ac_cv_func_sqrtf" = xyes; then :
-  DCFG_SQRTF=config/sqrtf
-else
-  DCFG_SQRTF=config/nosqrtf
-fi
-
 
 # on freebsd, trunc,exp2,log2 are not provided
 # This is "need" and not "have" to mesh better with non-GNU.  Othrewise, it
@@ -5379,11 +5340,6 @@ done
 
 # end of 'if $with_newlib...'
 fi
-
-DCFG_LONG_DOUBLE_FUNCS="$srcdir/$DCFG_LONG_DOUBLE_FUNCS"
-
-DCFG_SQRTF="$srcdir/$DCFG_SQRTF"
-
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ARM unwinder" >&5
 $as_echo_n "checking for ARM unwinder... " >&6; }
@@ -6022,7 +5978,7 @@ ac_config_files="$ac_config_files libdruntime/Makefile"
 
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-ac_config_files="$ac_config_files Makefile phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/frag-ac libdruntime/frag-math"
+ac_config_files="$ac_config_files Makefile phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/frag-ac"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -6753,7 +6709,6 @@ do
     "phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES phobos-ver-syms" ;;
     "libdruntime/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES libdruntime/phobos-ver-syms" ;;
     "libdruntime/frag-ac") CONFIG_FILES="$CONFIG_FILES libdruntime/frag-ac" ;;
-    "libdruntime/frag-math") CONFIG_FILES="$CONFIG_FILES libdruntime/frag-math" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
@@ -6802,24 +6757,7 @@ ac_tmp=$tmp
 # This happens for instance with `./config.status config.h'.
 if test -n "$CONFIG_FILES"; then
 
-if $AWK 'BEGIN { getline <"/dev/null" }' </dev/null 2>/dev/null; then
-  ac_cs_awk_getline=:
-  ac_cs_awk_pipe_init=
-  ac_cs_awk_read_file='
-      while ((getline aline < (F[key])) > 0)
-	print(aline)
-      close(F[key])'
-  ac_cs_awk_pipe_fini=
-else
-  ac_cs_awk_getline=false
-  ac_cs_awk_pipe_init="print \"cat <<'|#_!!_#|' &&\""
-  ac_cs_awk_read_file='
-      print "|#_!!_#|"
-      print "cat " F[key] " &&"
-      '$ac_cs_awk_pipe_init
-  # The final `:' finishes the AND list.
-  ac_cs_awk_pipe_fini='END { print "|#_!!_#|"; print ":" }'
-fi
+
 ac_cr=`echo X | tr X '\015'`
 # On cygwin, bash can eat \r inside `` if the user requested igncr.
 # But we know of no other shell where ac_cr would be empty at this
@@ -6837,17 +6775,6 @@ fi
 echo 'BEGIN {' >"$ac_tmp/subs1.awk" &&
 _ACEOF
 
-# Create commands to substitute file output variables.
-{
-  echo "cat >>$CONFIG_STATUS <<_ACEOF || ac_write_fail=1" &&
-  echo 'cat >>"\$ac_tmp/subs1.awk" <<\\_ACAWK &&' &&
-  echo "$ac_subst_files" | sed 's/.*/F["&"]="$&"/' &&
-  echo "_ACAWK" &&
-  echo "_ACEOF"
-} >conf$$files.sh &&
-. ./conf$$files.sh ||
-  as_fn_error $? "could not make $CONFIG_STATUS" "$LINENO" 5
-rm -f conf$$files.sh
 
 {
   echo "cat >conf$$subs.awk <<_ACEOF" &&
@@ -6924,7 +6851,7 @@ _ACAWK
 cat >>"\$ac_tmp/subs1.awk" <<_ACAWK &&
   for (key in S) S_is_set[key] = 1
   FS = ""
-  \$ac_cs_awk_pipe_init
+
 }
 {
   line = $ 0
@@ -6942,16 +6869,10 @@ cat >>"\$ac_tmp/subs1.awk" <<_ACAWK &&
     } else
       len += 1 + keylen
   }
-  if (nfields == 3 && !substed) {
-    key = field[2]
-    if (F[key] != "" && line ~ /^[	 ]*@.*@[	 ]*$/) {
-      \$ac_cs_awk_read_file
-      next
-    }
-  }
+
   print line
 }
-\$ac_cs_awk_pipe_fini
+
 _ACAWK
 _ACEOF
 cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
@@ -7292,12 +7213,7 @@ s&@abs_top_builddir@&$ac_abs_top_builddir&;t t
 s&@INSTALL@&$ac_INSTALL&;t t
 $ac_datarootdir_hack
 "
-eval sed \"\$ac_sed_extra\" "$ac_file_inputs" |
-if $ac_cs_awk_getline; then
-  $AWK -f "$ac_tmp/subs.awk"
-else
-  $AWK -f "$ac_tmp/subs.awk" | $SHELL
-fi \
+eval sed \"\$ac_sed_extra\" "$ac_file_inputs" | $AWK -f "$ac_tmp/subs.awk" \
   >$ac_tmp/out || as_fn_error $? "could not create $ac_file" "$LINENO" 5
 
 test -z "$ac_datarootdir_hack$ac_datarootdir_seen" &&

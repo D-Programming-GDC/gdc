@@ -554,13 +554,16 @@ FuncDeclaration::toSymbol (void)
 	    }
 
 	  if (isStatic())
-	    TREE_STATIC (fndecl) = 1;
+ 	    TREE_STATIC (fndecl) = 1;
 	  // %% Pure functions don't imply nothrow
-	  DECL_PURE_P (fndecl) = (isPure() == PUREstrong && ftype->isnothrow);
+	  if (isPure() == PUREstrong && ftype->isnothrow)
+	    DECL_PURE_P (fndecl) = 1;
 	  // %% Assert contracts in functions may throw.
-	  TREE_NOTHROW (fndecl) = ftype->isnothrow && !global.params.useAssert;
+	  if (ftype->isnothrow && !global.params.useAssert)
+	    TREE_NOTHROW (fndecl) = 1;
 	  // %% Make D const methods equivalent to GCC const
-	  TREE_READONLY (fndecl) = (isPure() == PUREconst);
+	  if (isPure() == PUREconst)
+	    TREE_READONLY (fndecl) = 1;
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
 	  // Have to test for import first

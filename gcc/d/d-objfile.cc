@@ -981,39 +981,71 @@ outdata (Symbol *sym)
   g.ofile->outputStaticSymbol (sym);
 }
 
+// Interface to object file format.
+
+Obj *objmod = NULL;
+
+// Perform initialisation that applies to all output files.
+
 void
-obj_includelib (const char *)
+Obj::init ()
+{
+  gcc_assert (objmod == NULL);
+  objmod = new Obj;
+}
+
+// Terminate package.
+
+void
+Obj::term ()
+{
+  delete objmod;
+  objmod = NULL;
+}
+
+// Output library name.
+
+bool
+Obj::includelib (const char *)
 {
   if (!global.params.ignoreUnsupportedPragmas)
     d_warning (OPT_Wunknown_pragmas, "pragma(lib) not implemented");
+  return false;
 }
 
+// Set start address.
+
 void
-obj_startaddress (Symbol *)
+Obj::startaddress (Symbol *s)
 {
   if (!global.params.ignoreUnsupportedPragmas)
     d_warning (OPT_Wunknown_pragmas, "pragma(startaddress) not implemented");
 }
 
-void
-obj_append (Dsymbol *s)
+// Do we allow zero sized objects?
+
+bool
+Obj::allowZeroSize ()
 {
-  // GDC does not do multi-obj, so just write it out now.
-  s->toObjFile (false);
+  return true;
 }
 
+// Generate our module reference and append to _Dmodule_ref.
+
 void
-obj_moduleinfo (Symbol *sym)
+Obj::moduleinfo (Symbol *sym)
 {
   /* Generate:
-     struct _modref_t {
-	_modref_t *next;
-	ModuleInfo m;
+     struct ModuleReference
+     {
+	void *next;
+	ModuleReference m;
      }
-     extern (C) _modref_t *_Dmodule_ref;
-     private _modref_t our_mod_ref =
+     extern (C) ModuleReference *_Dmodule_ref;
+     private ModuleReference our_mod_ref =
 	{ next: null, m: _ModuleInfo_xxx };
-     void ___modinit() {  // a static constructor
+     void ___modinit()  // a static constructor
+     {
 	our_mod_ref.next = _Dmodule_ref;
 	_Dmodule_ref = &our_mod_ref;
      }
@@ -1059,6 +1091,33 @@ obj_moduleinfo (Symbol *sym)
 
   g.ofile->doSimpleFunction ("*__modinit", exp, true);
 }
+
+void
+Obj::export_symbol (Symbol *, unsigned)
+{
+}
+
+bool
+obj_includelib (const char *name)
+{
+  return objmod->includelib (name);
+}
+
+void
+obj_startaddress (Symbol *s)
+{
+  return objmod->startaddress (s);
+}
+
+void
+obj_append (Dsymbol *s)
+{
+  // GDC does not do multi-obj, so just write it out now.
+  s->toObjFile (false);
+}
+
+// Put out symbols that define the beginning and end
+// of the thread local storage sections.
 
 void
 obj_tlssections (void)

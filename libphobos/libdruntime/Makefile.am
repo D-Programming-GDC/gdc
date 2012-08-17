@@ -48,13 +48,6 @@ $(IMPORT)/%.di: %.d $(D_PREREQ_SRCS) $(IMPORT)
 .S.o:
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
-%.t.o : %.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fno-release -funittest -fversion=Unittest -c $<
-
-%.t.o : %.o
-	cp $< $@
-
-
 #--------------------------------------#
 # X3 Config
 
@@ -62,7 +55,6 @@ config_d_src          =$(host_alias)/gcc/config/config.d
 config_libc_d_src     =$(host_alias)/gcc/config/libc.d
 config_errno_d_src    =$(host_alias)/gcc/config/errno.d
 config_fpcls_d_src    =$(host_alias)/gcc/config/fpcls.d
-config_mathfuncs_d_src=$(host_alias)/gcc/config/mathfuncs.d
 config_unix_d_src     =$(host_alias)/gcc/config/unix.d
 
 X3=CC_FOR_BUILD="$(CC_FOR_BUILD) -I $(srcdir)/config" BUILD_LIBIBERTY=$(BUILD_LIBIBERTY) $(srcdir)/config/x3
@@ -87,22 +79,12 @@ $(config_errno_d_src): config/errno.x3 $(X3_DEPS) stamp-tgtdir
 $(config_fpcls_d_src): config/fpcls.x3 $(X3_DEPS) stamp-tgtdir
 	$(X3) $< -o $@ $(X3_GCC_COMMAND)
 
-$(config_mathfuncs_d_src): frag-math stamp-tgtdir
-	cp $< $@
-
 $(config_unix_d_src): config/unix.x3 $(X3_DEPS) stamp-tgtdir
 	$(X3) $< -o $@ $(X3_GCC_COMMAND)
 
 # because these are in the $(host_alias) subdir, pattern match rules will not work
 gcc/config/unix.o: $(config_unix_d_src) $(config_d_src) $(config_libc_d_src)
 	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
-gcc/config/unix.t.o: gcc/config/unix.o
-	cp $< $@
-
-gcc/config/mathfuncs.o: $(config_mathfuncs_d_src) $(config_d_src) $(config_libc_d_src)
-	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
-gcc/config/mathfuncs.t.o: gcc/config/mathfuncs.o
-	cp $< $@
 
 # This has to be an empty file because it is included in the prerequisites of rules
 # that use "cat $^" to generate their targets.
@@ -134,10 +116,10 @@ CORE_OBJS=core/atomic.o core/cpuid.o core/demangle.o core/exception.o \
 	  core/sync/mutex.o core/sync/rwmutex.o core/sync/semaphore.o
 
 GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
-	 gcc/builtins.o gcc/config/mathfuncs.o gcc/support.o \
-	 gcc/cbridge_time.o gcc/cbridge_strerror.o gcc/atomics.o
+	 gcc/builtins.o gcc/support.o gcc/cbridge_time.o \
+	 gcc/cbridge_strerror.o gcc/atomics.o
 
-UTIL_OBJS=rt/util/console.o rt/util/ctype.o rt/util/hash.o rt/util/string.o \
+UTIL_OBJS=rt/util/console.o rt/util/hash.o rt/util/string.o \
 	  rt/util/utf.o
 
 TI=ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
@@ -195,9 +177,12 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sync/exception.di core/sync/mutex.di core/sync/rwmutex.di \
 	     core/sync/semaphore.di \
 	     \
-	     core/sys/osx/mach/kern_return.di core/sys/osx/mach/port.di \
-	     core/sys/osx/mach/semaphore.di core/sys/osx/mach/thread_act.di \
-	     core/sys/osx/pthread.di \
+	     core/sys/freebsd/sys/event.di \
+	     \
+	     core/sys/osx/mach/dyld.di core/sys/osx/mach/getsect.di \
+	     core/sys/osx/mach/kern_return.di core/sys/osx/mach/loader.di \
+	     core/sys/osx/mach/port.di core/sys/osx/mach/semaphore.di \
+	     core/sys/osx/mach/thread_act.di core/sys/osx/pthread.di \
 	     \
 	     core/sys/posix/arpa/inet.di core/sys/posix/config.di \
 	     core/sys/posix/dirent.di core/sys/posix/dlfcn.di \
@@ -217,7 +202,6 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/posix/sys/time.di core/sys/posix/sys/types.di \
 	     core/sys/posix/sys/uio.di core/sys/posix/sys/un.di \
 	     core/sys/posix/sys/utsname.di core/sys/posix/sys/wait.di \
-	     core/sys/freebsd/sys/event.di \
 	     \
 	     core/sys/windows/dbghelp.di core/sys/windows/dll.di \
 	     core/sys/windows/stacktrace.di core/sys/windows/threadaux.di \

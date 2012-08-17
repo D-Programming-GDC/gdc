@@ -8,16 +8,10 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, December 2006
-   Modified by Vincenzo Ampolo, September 2009
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>                     // memcpy()
 
 #include "rmem.h"
 
@@ -37,7 +31,7 @@
  #include "frontend.net/pragma.h"
 #endif
 
-extern void obj_includelib(const char *name);
+extern bool obj_includelib(const char *name);
 void obj_startaddress(Symbol *s);
 
 
@@ -931,7 +925,7 @@ void PragmaDeclaration::setScope(Scope *sc)
         {
             Expression *e = (*args)[0];
             e = e->semantic(sc);
-            e = e->optimize(WANTvalue | WANTinterpret);
+            e = e->ctfeInterpret();
             (*args)[0] = e;
             StringExp* se = e->toString();
             if (!se)
@@ -966,8 +960,8 @@ void PragmaDeclaration::semantic(Scope *sc)
                 Expression *e = (*args)[i];
 
                 e = e->semantic(sc);
-                if (e->op != TOKerror)
-                    e = e->optimize(WANTvalue | WANTinterpret);
+                if (e->op != TOKerror && e->op != TOKtype)
+                    e = e->ctfeInterpret();
                 if (e->op == TOKerror)
                 {   errorSupplemental(loc, "while evaluating pragma(msg, %s)", (*args)[i]->toChars());
                     return;
@@ -993,7 +987,7 @@ void PragmaDeclaration::semantic(Scope *sc)
             Expression *e = (*args)[0];
 
             e = e->semantic(sc);
-            e = e->optimize(WANTvalue | WANTinterpret);
+            e = e->ctfeInterpret();
             (*args)[0] = e;
             if (e->op == TOKerror)
                 goto Lnodecl;
@@ -1035,7 +1029,7 @@ void PragmaDeclaration::semantic(Scope *sc)
 
             e = (*args)[1];
             e = e->semantic(sc);
-            e = e->optimize(WANTvalue | WANTinterpret);
+            e = e->ctfeInterpret();
             e = e->toString();
             if (e && ((StringExp *)e)->sz == 1)
                 s = ((StringExp *)e);
@@ -1179,7 +1173,7 @@ void PragmaDeclaration::semantic(Scope *sc)
         {
             Expression *e = (*args)[0];
             e = e->semantic(sc);
-            e = e->optimize(WANTvalue | WANTinterpret);
+            e = e->ctfeInterpret();
             (*args)[0] = e;
             Dsymbol *sa = getDsymbol(e);
             if (!sa || !sa->isFuncDeclaration())
@@ -1206,7 +1200,7 @@ void PragmaDeclaration::semantic(Scope *sc)
                 {
                     Expression *e = (*args)[i];
                     e = e->semantic(sc);
-                    e = e->optimize(WANTvalue | WANTinterpret);
+                    e = e->ctfeInterpret();
                     if (i == 0)
                         printf(" (");
                     else
@@ -1233,7 +1227,6 @@ Ldecl:
             s->semantic(sc);
         }
     }
-
 #ifdef IN_GCC
     if (decl)
     {
@@ -1276,25 +1269,19 @@ void PragmaDeclaration::toObjFile(int multiobj)
         char *name = (char *)mem.malloc(se->len + 1);
         memcpy(name, se->string, se->len);
         name[se->len] = 0;
-#ifdef IN_GCC
-        /* Currently just a warning that pragma lib is unimplemented.
-         */
-        obj_includelib(name);
-#elif OMFOBJ
-        /* The OMF format allows library names to be inserted
-         * into the object file. The linker will then automatically
+
+        /* Embed the library names into the object file.
+         * The linker will then automatically
          * search that library, too.
          */
-        obj_includelib(name);
-#elif ELFOBJ || MACHOBJ
-        /* The format does not allow embedded library names,
-         * so instead append the library name to the list to be passed
-         * to the linker.
-         */
-        global.params.libfiles->push(name);
-#else
-        error("pragma lib not supported");
-#endif
+        if (!obj_includelib(name))
+        {
+            /* The format does not allow embedded library names,
+             * so instead append the library name to the list to be passed
+             * to the linker.
+             */
+            global.params.libfiles->push(name);
+        }
     }
 #if DMDV2
     else if (ident == Id::startaddress)
@@ -1510,6 +1497,31 @@ Dsymbol *StaticIfDeclaration::syntaxCopy(Dsymbol *s)
     return dd;
 }
 
+Dsymbols *StaticIfDeclaration::include(Scope *sc, ScopeDsymbol *sd)
+{
+    //printf("StaticIfDeclaration::include(sc = %p) scope = %p\n", sc, scope);
+
+    if (condition->inc == 0)
+    {
+        Dsymbols *d = ConditionalDeclaration::include(sc, sd);
+
+        // Set the scopes lazily.
+        if (scope && d)
+        {
+           for (size_t i = 0; i < d->dim; i++)
+           {
+               Dsymbol *s = (*d)[i];
+
+               s->setScope(sc);
+           }
+        }
+        return d;
+    }
+    else
+    {
+        return ConditionalDeclaration::include(sc, sd);
+    }
+}
 
 int StaticIfDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
@@ -1616,7 +1628,7 @@ void CompileDeclaration::compileIt(Scope *sc)
     //printf("CompileDeclaration::compileIt(loc = %d) %s\n", loc.linnum, exp->toChars());
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
-    exp = exp->optimize(WANTvalue | WANTinterpret);
+    exp = exp->ctfeInterpret();
     StringExp *se = exp->toString();
     if (!se)
     {   exp->error("argument to mixin must be a string, not (%s)", exp->toChars());

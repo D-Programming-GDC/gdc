@@ -25,18 +25,13 @@
 
 #include "cond.h"
 
-/* Global options removed from d-lang.cc */
+// Global options removed from d-lang.cc
 const char *iprefix = NULL;
 const char *multilib_dir = NULL;
 
-static void add_env_var_paths (const char *);
-static void add_import_path (char *);
-static void add_file_path (char *);
-static char *make_absolute (char *path);
 
-
-/* Read ENV_VAR for a PATH_SEPARATOR-separated list of file names; and
-   append all the names to the import search path.  */
+// Read ENV_VAR for a PATH_SEPARATOR-separated list of file names; and
+// append all the names to the import search path.
 
 static void
 add_env_var_paths (const char *env_var)
@@ -68,9 +63,9 @@ add_env_var_paths (const char *env_var)
 }
 
 
-/* Look for directories that start with the standard prefix.
-   "Translate" them, i.e. replace /usr/local/lib/gcc... with
-   IPREFIX and search them first.  */
+// Look for directories that start with the standard prefix.
+// "Translate" them, i.e. replace /usr/local/lib/gcc... with
+// IPREFIX and search them first.
 
 static char *
 prefixed_path (const char *path)
@@ -84,9 +79,8 @@ prefixed_path (const char *path)
 }
 
 
-/* Given a pointer to a string containing a pathname, returns a
-   canonical version of the filename.
-   */
+// Given a pointer to a string containing a pathname, returns a
+// canonical version of the filename.
 
 static char *
 make_absolute (char *path)
@@ -109,46 +103,61 @@ make_absolute (char *path)
   return lrealpath (path);
 }
 
-
-/* Add PATH to the global import lookup path.  */
+/* Add PATHS to the global import lookup path.  */
 
 static void
-add_import_path (char *path)
+add_import_path (Strings *paths)
 {
-  char *target_dir = make_absolute (path);
-
-  if (!global.path)
-    global.path = new Strings();
-
-  if (!FileName::exists (target_dir))
+  if (paths)
     {
-      free (target_dir);
-      return;
-    }
+      if (!global.path)
+	global.path = new Strings();
 
-  global.path->push (target_dir);
+      for (size_t i = 0; i < paths->dim; i++)
+	{
+	  String p = (*paths)[i];
+	  char *target_dir = make_absolute (p.toChars());
+
+	  if (!FileName::exists (target_dir))
+	    {
+	      free (target_dir);
+	      continue;
+	    }
+
+	  global.path->push (target_dir);
+	}
+    }
+}
+
+/* Add PATHS to the global file import lookup path.  */
+
+static void
+add_fileimp_path (Strings *paths)
+{
+  if (paths)
+    {
+      if (!global.path)
+	global.path = new Strings();
+
+      for (size_t i = 0; i < paths->dim; i++)
+	{
+	  String p = (*paths)[i];
+	  char *target_dir = make_absolute (p.toChars());
+
+	  if (!FileName::exists (target_dir))
+	    {
+	      free (target_dir);
+	      continue;
+	    }
+
+	  global.filePath->push (target_dir);
+	}
+    }
 }
 
 
-/* Add PATH to the global file lookup path.  */
-
-static void
-add_file_path (char *path)
-{
-  char *target_dir = make_absolute (path);
-
-  if (!global.filePath)
-    global.filePath = new Strings();
-
-  if (!FileName::exists (target_dir))
-    {
-      free (target_dir);
-      return;
-    }
-
-  global.filePath->push (target_dir);
-}
-
+// Add all search directories to compiler runtime.
+// if STDINC, also include standard library paths.
 
 void
 add_import_paths (bool stdinc)
@@ -166,30 +175,34 @@ add_import_paths (bool stdinc)
       global.params.imppath->shift (target_dir);
     }
 
-  /* Language-dependent environment variables may add to the include chain. */
+  // Language-dependent environment variables may add to the include chain.
   add_env_var_paths ("D_IMPORT_PATH");
 
+  // Build import search path
   if (global.params.imppath)
     {
       for (size_t i = 0; i < global.params.imppath->dim; i++)
 	{
-	  char *path = global.params.imppath->tdata()[i];
+	  char *path = (*global.params.imppath)[i];
 	  if (path)
-	    add_import_path (path);
+	    add_import_path (FileName::splitPath (path));
 	}
     }
 
+  // Build string import search path
   if (global.params.fileImppath)
     {
       for (size_t i = 0; i < global.params.fileImppath->dim; i++)
 	{
-	  char *path = global.params.fileImppath->tdata()[i];
+	  char *path = (*global.params.fileImppath)[i];
 	  if (path)
-	    add_file_path (path);
+	    add_fileimp_path (FileName::splitPath (path));
 	}
     }
 }
 
+// Read from the library file phobos-ver-syms and add
+// all version identifiers into compilation runtime.
 
 void add_phobos_versyms (void)
 {

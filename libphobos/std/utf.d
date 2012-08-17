@@ -95,10 +95,10 @@ class UTFException : Exception
 
 
 /++
-    $(RED Scheduled for deprecation in December 2012.
+    $(RED Deprecated. It will be removed in January 2013.
           Please use $(LREF UTFException) instead.)
   +/
-alias UTFException UtfException;
+deprecated alias UTFException UtfException;
 
 
 /++
@@ -150,7 +150,7 @@ unittest
         $(D UTFException) if $(D str[index]) is not the start of a valid UTF-8
         sequence.
   +/
-uint stride(S)(in S str, size_t index) @safe pure
+uint stride(S)(auto ref const S str, size_t index) @trusted pure
     if (is(S : const(char[])))
 {
     immutable c = str[index];
@@ -158,29 +158,17 @@ uint stride(S)(in S str, size_t index) @safe pure
         return 1;
     else
         return strideImpl(c, index);
- }
+}
 
 private uint strideImpl(char c, size_t index) @trusted pure
 in { assert(c & 0x80); }
 body
 {
-    static if (__traits(compiles, {import core.bitop; bsr(1);}))
-    {
-        import core.bitop;
-        immutable msbs = 7 - bsr(~c);
-        if (msbs >= 2 && msbs <= 6) return msbs;
-    }
-    else
-    {
-        if (!(c & 0x40)) goto Lerr;
-        if (!(c & 0x20)) return 2;
-        if (!(c & 0x10)) return 3;
-        if (!(c & 0x08)) return 4;
-        if (!(c & 0x04)) return 5;
-        if (!(c & 0x02)) return 6;
-    }
- Lerr:
-    throw new UTFException("Invalid UTF-8 sequence", index);
+    import core.bitop;
+    immutable msbs = 7 - bsr(~c);
+    enforce((msbs >= 2 && msbs <= 6),
+            new UTFException("Invalid UTF-8 sequence", index));
+    return msbs;
 }
 
 @trusted unittest
@@ -1129,6 +1117,7 @@ assert(codeLength!dchar('\U0010FFFF') == 1);
 ------
   +/
 ubyte codeLength(C)(dchar c) @safe pure nothrow
+    if(isSomeChar!C)
 {
     static if (C.sizeof == 1)
     {
@@ -1160,6 +1149,90 @@ unittest
     assert(codeLength!char('\U0010FFFF') == 4);
     assert(codeLength!wchar('\U0010FFFF') == 2);
     assert(codeLength!dchar('\U0010FFFF') == 1);
+}
+
+
+/++
+    Returns the number of code units that are required to encode $(D str)
+    in a string whose character type is $(D C). This is particularly useful
+    when slicing one string with the length of another and the two string
+    types use different character types.
+
+Examples:
+------
+assert(codeLength!char("hello world") ==
+       to!string("hello world").length);
+assert(codeLength!wchar("hello world") ==
+       to!wstring("hello world").length);
+assert(codeLength!dchar("hello world") ==
+       to!dstring("hello world").length);
+
+assert(codeLength!char(`プログラミング`) ==
+       to!string(`プログラミング`).length);
+assert(codeLength!wchar(`プログラミング`) ==
+       to!wstring(`プログラミング`).length);
+assert(codeLength!dchar(`プログラミング`) ==
+       to!dstring(`プログラミング`).length);
+
+string haystack = `Être sans la verité, ça, ce ne serait pas bien.`;
+wstring needle = `Être sans la verité`;
+assert(haystack[codeLength!char(needle) .. $] ==
+       `, ça, ce ne serait pas bien.`);
+------
+  +/
+size_t codeLength(C1, C2)(C2[] str) @safe pure
+    if(isSomeChar!C1 && isSomeChar!C2)
+{
+    static if(is(Unqual!C1 == Unqual!C2))
+        return str.length;
+    else
+    {
+        size_t total = 0;
+
+        foreach(dchar c; str)
+            total += codeLength!C1(c);
+
+        return total;
+    }
+}
+
+//Verify Examples.
+unittest
+{
+    assert(codeLength!char("hello world") ==
+           to!string("hello world").length);
+    assert(codeLength!wchar("hello world") ==
+           to!wstring("hello world").length);
+    assert(codeLength!dchar("hello world") ==
+           to!dstring("hello world").length);
+
+    assert(codeLength!char(`プログラミング`) ==
+           to!string(`プログラミング`).length);
+    assert(codeLength!wchar(`プログラミング`) ==
+           to!wstring(`プログラミング`).length);
+    assert(codeLength!dchar(`プログラミング`) ==
+           to!dstring(`プログラミング`).length);
+
+    string haystack = `Être sans la verité, ça, ce ne serait pas bien.`;
+    wstring needle = `Être sans la verité`;
+    assert(haystack[codeLength!char(needle) .. $] ==
+           `, ça, ce ne serait pas bien.`);
+}
+
+unittest
+{
+    foreach(S; TypeTuple!(char[], const char[], string,
+                          wchar[], const wchar[], wstring,
+                          dchar[], const dchar[], dstring))
+    {
+        foreach(C; TypeTuple!(char, wchar, dchar))
+        {
+            assert(codeLength!C(to!S("Walter Bright")) == to!(C[])("Walter Bright").length);
+            assert(codeLength!C(to!S(`言語`)) == to!(C[])(`言語`).length);
+            assert(codeLength!C(to!S(`ウェブサイト@La_Verité.com`)) ==
+                   to!(C[])(`ウェブサイト@La_Verité.com`).length);
+        }
+    }
 }
 
 
@@ -1424,7 +1497,7 @@ dstring toUTF32(in dchar[] s) @safe
 /++
     Returns a C-style zero-terminated string equivalent to $(D str). $(D str)
     must not contain embedded $(D '\0')'s as any C function will treat the first
-    $(D '\0') that it sees a the end of the string. If $(D str.empty) is
+    $(D '\0') that it sees as the end of the string. If $(D str.empty) is
     $(D true), then a string containing only $(D '\0') is returned.
 
     $(D toUTFz) accepts any type of string and is templated on the type of
@@ -1604,7 +1677,7 @@ unittest
 
     foreach(S; TypeTuple!(string, wstring, dstring))
     {
-        alias Unqual!(typeof(S.init[0])) C;
+        alias Unqual!(ElementEncodingType!S) C;
 
         auto s1 = to!S("hello\U00010143\u0100\U00010143");
         auto temp = new C[](s1.length + 1);

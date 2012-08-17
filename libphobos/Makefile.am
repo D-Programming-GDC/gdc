@@ -66,10 +66,10 @@ unittest: unittest.o libgphobos2_t.a libgphobos2.a
 
 MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/bitmanip.o std/compiler.o \
-	  std/container.o std/complex.o std/concurrency.o std/contracts.o \
+	  std/container.o std/complex.o std/concurrency.o \
 	  std/conv.o std/cpuid.o std/cstream.o std/ctype.o std/csv.o \
-	  std/datebase.o std/datetime.o \
-	  std/demangle.o std/encoding.o std/exception.o std/format.o \
+	  std/datetime.o std/demangle.o std/encoding.o \
+	  std/exception.o std/format.o \
 	  std/functional.o std/getopt.o std/json.o \
 	  std/math.o std/mathspecial.o std/md5.o \
 	  std/metastrings.o std/numeric.o \
@@ -77,8 +77,8 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
 	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
 	  std/regex.o std/regexp.o std/traits.o std/typecons.o \
-	  std/typetuple.o std/uni.o std/uri.o std/utf.o std/variant.o \
-	  std/xml.o std/zip.o std/zlib.o \
+	  std/typelist.o std/typetuple.o std/uni.o std/uri.o std/utf.o \
+	  std/uuid.o std/variant.o std/xml.o std/zip.o std/zlib.o \
 	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \
 	  std/c/stdarg.o std/c/stddef.o std/c/stdio.o std/c/stdlib.o \
 	  std/c/string.o std/c/time.o std/c/wcharh.o \
@@ -137,7 +137,7 @@ install-exec-local: libgphobos2.a
 
 install-data-local: libgphobos2.a
 	for i in etc/c \
-		std std/c \
+		std std/c std/c/freebsd \
 		std/c/linux std/c/osx std/c/unix std/c/windows \
 		std/internal std/internal/math std/internal/windows \
 		std/net std/windows; do \

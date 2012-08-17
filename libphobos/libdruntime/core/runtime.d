@@ -9,7 +9,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.runtime;
@@ -48,8 +48,6 @@ else version(GNU)
 
 private
 {
-    extern (C) bool rt_isHalting();
-
     alias bool function() ModuleUnitTester;
     alias bool function(Object) CollectHandler;
     alias Throwable.TraceInfo function( void* ptr ) TraceHandler;
@@ -195,20 +193,6 @@ struct Runtime
     static bool terminate( ExceptionHandler dg = null )
     {
         return rt_term( dg );
-    }
-
-
-    /**
-     * Returns true if the runtime is halting.  Under normal circumstances,
-     * this will be set between the time that normal application code has
-     * exited and before module dtors are called.
-     *
-     * Returns:
-     *  true if the runtime is halting.
-     */
-    deprecated static @property bool isHalting()
-    {
-        return rt_isHalting();
     }
 
 
@@ -363,93 +347,32 @@ private:
  */
 extern (C) bool runModuleUnitTests()
 {
-    version(Posix) //Uses Posix signal-handlers
+    static if( __traits( compiles, backtrace ) )
     {
-        static if( __traits( compiles, backtrace ) ) //GlibcBacktrace || OSXBacktrace
+        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
         {
-            static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
-            {
-                static enum MAXFRAMES = 128;
-                void*[MAXFRAMES]  callstack;
-                int               numframes;
-    
-                numframes = backtrace( callstack, MAXFRAMES );
-                backtrace_symbols_fd( callstack, numframes, 2 );
-            }
-    
-            sigaction_t action = void;
-            sigaction_t oldseg = void;
-            sigaction_t oldbus = void;
-    
-            (cast(byte*) &action)[0 .. action.sizeof] = 0;
-            sigfillset( &action.sa_mask ); // block other signals
-            action.sa_flags = SA_SIGINFO | SA_RESETHAND;
-            action.sa_sigaction = &unittestSegvHandler;
-            sigaction( SIGSEGV, &action, &oldseg );
-            sigaction( SIGBUS, &action, &oldbus );
-            scope( exit )
-            {
-                sigaction( SIGSEGV, &oldseg, null );
-                sigaction( SIGBUS, &oldbus, null );
-            }
+            static enum MAXFRAMES = 128;
+            void*[MAXFRAMES]  callstack;
+            int               numframes;
+
+            numframes = backtrace( callstack.ptr, MAXFRAMES );
+            backtrace_symbols_fd( callstack.ptr, numframes, 2 );
         }
-        else version(GenericBacktrace)
+
+        sigaction_t action = void;
+        sigaction_t oldseg = void;
+        sigaction_t oldbus = void;
+
+        (cast(byte*) &action)[0 .. action.sizeof] = 0;
+        sigfillset( &action.sa_mask ); // block other signals
+        action.sa_flags = SA_SIGINFO | SA_RESETHAND;
+        action.sa_sigaction = &unittestSegvHandler;
+        sigaction( SIGSEGV, &action, &oldseg );
+        sigaction( SIGBUS, &action, &oldbus );
+        scope( exit )
         {
-            /*
-             * core.demangle may allocate, so no demangling here
-             *
-             * FIXME: At least on ARM this prints only the signal handler's
-             * stack. This is of course useless..
-             */
-            static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
-            {
-                gdcBacktraceData stackframe = gdcBacktrace();
-                btSymbolData syms = gdcBacktraceSymbols(stackframe);
-    
-                for(size_t i = 0; i < syms.entries; i++)
-                {
-                    auto sym = syms.symbols[i];
-                    if(sym.fileName)
-                    {
-                        if(sym.name)
-                        {
-                            printf("%s(%s+%#x) [%p]\n", sym.fileName, sym.name,
-                                sym.offset, sym.address);
-                        }
-                        else
-                        {
-                            printf("%s() [%p]\n", sym.fileName, sym.address);
-                        }
-                    }
-                    else
-                    {
-                        if(sym.name)
-                        {
-                            printf("(%s+%#x) [%p]\n", sym.name, sym.offset, sym.address);
-                        }
-                        else
-                        {
-                            printf("() [%p]\n", sym.address);
-                        }
-                    }
-                }
-            }
-    
-            sigaction_t action = void;
-            sigaction_t oldseg = void;
-            sigaction_t oldbus = void;
-    
-            (cast(byte*) &action)[0 .. action.sizeof] = 0;
-            sigfillset( &action.sa_mask ); // block other signals
-            action.sa_flags = SA_SIGINFO | SA_RESETHAND;
-            action.sa_sigaction = &unittestSegvHandler;
-            sigaction( SIGSEGV, &action, &oldseg );
-            sigaction( SIGBUS, &action, &oldbus );
-            scope( exit )
-            {
-                sigaction( SIGSEGV, &oldseg, null );
-                sigaction( SIGBUS, &oldbus, null );
-            }
+            sigaction( SIGSEGV, &oldseg, null );
+            sigaction( SIGBUS, &oldbus, null );
         }
     }
 
@@ -521,7 +444,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                 static enum MAXFRAMES = 128;
                 void*[MAXFRAMES]  callstack;
               version( GNU )
-                numframes = backtrace( callstack, MAXFRAMES );
+                numframes = backtrace( callstack.ptr, MAXFRAMES );
               else
                 numframes = 0; //backtrace( callstack, MAXFRAMES );
                 if (numframes < 2) // backtrace() failed, do it ourselves
@@ -546,7 +469,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                         auto stackPtr = stackTop;
 
                         for( numframes = 0; stackTop <= stackPtr &&
-                                            stackPtr < stackBottom && 
+                                            stackPtr < stackBottom &&
                                             numframes < MAXFRAMES; )
                         {
                             callstack[numframes++] = *(stackPtr + 1);
@@ -554,7 +477,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                         }
                     }
                 }
-                framelist = backtrace_symbols( callstack, numframes );
+                framelist = backtrace_symbols( callstack.ptr, numframes );
             }
 
             ~this()
@@ -562,15 +485,15 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                 free( framelist );
             }
 
-            override int opApply( scope int delegate(ref char[]) dg )
+            override int opApply( scope int delegate(ref const(char[])) dg ) const
             {
-                return opApply( (ref size_t, ref char[] buf)
+                return opApply( (ref size_t, ref const(char[]) buf)
                                 {
                                     return dg( buf );
                                 } );
             }
 
-            override int opApply( scope int delegate(ref size_t, ref char[]) dg )
+            override int opApply( scope int delegate(ref size_t, ref const(char[])) dg ) const
             {
                 version( Posix )
                 {
@@ -593,9 +516,10 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 
                 for( int i = FIRSTFRAME; i < numframes; ++i )
                 {
+                    char[4096] fixbuf;
                     auto buf = framelist[i][0 .. strlen(framelist[i])];
                     auto pos = cast(size_t)(i - FIRSTFRAME);
-                    buf = fixline( buf );
+                    buf = fixline( buf, fixbuf );
                     ret = dg( pos, buf );
                     if( ret )
                         break;
@@ -603,7 +527,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                 return ret;
             }
 
-            override string toString()
+            override string toString() const
             {
                 string buf;
                 foreach( i, line; this )
@@ -616,8 +540,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
             char**  framelist;
 
         private:
-            char[4096] fixbuf;
-            char[] fixline( char[] buf )
+            const(char)[] fixline( const(char)[] buf, ref char[4096] fixbuf ) const
             {
                 version( OSX )
                 {

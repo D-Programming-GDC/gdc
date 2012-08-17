@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, December 2006
-*/
-
 #ifndef DMD_DECLARATION_H
 #define DMD_DECLARATION_H
 
@@ -90,6 +84,12 @@ enum PURE;
 #define STCdisable      0x2000000000LL  // for functions that are not callable
 #define STCresult       0x4000000000LL  // for result variables passed to out contracts
 #define STCnodefaultctor 0x8000000000LL  // must be set inside constructor
+#define STCtemp         0x10000000000LL  // temporary variable introduced by inlining
+                                         // and used only in backend process, so it's rvalue
+
+#ifdef BUG6652
+#define STCbug6652      0x800000000000LL //
+#endif
 
 struct Match
 {
@@ -136,6 +136,8 @@ struct Declaration : Dsymbol
     const char *kind();
     unsigned size(Loc loc);
     void checkModify(Loc loc, Scope *sc, Type *t);
+
+    Dsymbol *search(Loc loc, Identifier *ident, int flags);
 
     void emitComment(Scope *sc);
     void toJsonBuffer(OutBuffer *buf);
@@ -255,9 +257,6 @@ struct VarDeclaration : Declaration
     bool isargptr;              // if parameter that _argptr points to
 #else
     int nestedref;              // referenced by a lexically nested function
-#ifdef IN_GCC
-    FuncDeclarations nestedrefs; // referenced by these lexically nested functions
-#endif
 #endif
     structalign_t alignment;
     int ctorinit;               // it has been initialized in a ctor
@@ -563,6 +562,7 @@ struct FuncDeclaration : Declaration
     Identifier *outId;                  // identifier for out statement
     VarDeclaration *vresult;            // variable corresponding to outId
     LabelDsymbol *returnLabel;          // where the return goes
+    Scope *scout;                       // out contract scope for vresult->semantic
 
     DsymbolTable *localsymtab;          // used to prevent symbols in different
                                         // scopes from having the same name
@@ -623,11 +623,6 @@ struct FuncDeclaration : Declaration
     #define FUNCFLAGnothrowInprocess 4  // working on determining nothrow
 #else
     int nestedFrameRef;                 // !=0 if nested variables referenced
-#ifdef IN_GCC
-    VarDeclarations frameVars;          // local variables in this function
-                                        // which are referenced by nested
-                                        // functions
-#endif
 #endif
 
     FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageClass storage_class, Type *type);
@@ -690,6 +685,7 @@ struct FuncDeclaration : Declaration
     void checkNestedReference(Scope *sc, Loc loc);
     int needsClosure();
     int hasNestedFrameRefs();
+    void buildResultVar();
     Statement *mergeFrequire(Statement *);
     Statement *mergeFensure(Statement *);
     Parameters *getParameters(int *pvarargs);
@@ -734,6 +730,7 @@ struct FuncAliasDeclaration : FuncDeclaration
 struct FuncLiteralDeclaration : FuncDeclaration
 {
     enum TOK tok;                       // TOKfunction or TOKdelegate
+    Type *treq;                         // target of return type inference
 
     FuncLiteralDeclaration(Loc loc, Loc endloc, Type *type, enum TOK tok,
         ForeachStatement *fes);

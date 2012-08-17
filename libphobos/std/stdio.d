@@ -11,15 +11,15 @@ WIKI=Phobos/StdStdio
 Copyright: Copyright Digital Mars 2007-.
 License:   $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors:   $(WEB digitalmars.com, Walter Bright),
-           $(WEB erdani.org, Andrei Alexandrescu)
+           $(WEB erdani.org, Andrei Alexandrescu),
+           Alex Rønne Petersen
  */
-
 /* NOTE: This file has been patched from the original DMD distribution to
    work with the GDC compiler.
  */
 module std.stdio;
 
-public import core.stdc.stdio;
+public import core.stdc.stdio, std.string : KeepTerminator;
 static import std.c.stdio;
 import std.stdiobase;
 import core.stdc.errno, core.stdc.stddef, core.stdc.stdlib, core.memory,
@@ -387,7 +387,7 @@ opengroup.org/onlinepubs/007908799/xsh/_popen.html, _popen).
     }
 
 /** Returns $(D true) if the file is opened. */
-    @property bool isOpen() const
+    @property bool isOpen() const pure nothrow
     {
         return p !is null && p.handle;
     }
@@ -397,14 +397,14 @@ Returns $(D true) if the file is at end (see $(WEB
 cplusplus.com/reference/clibrary/cstdio/feof.html, feof)). The file
 must be opened, otherwise an exception is thrown.
  */
-    @property bool eof() const
+    @property bool eof() const pure
     {
         enforce(p && p.handle, "Calling eof() against an unopened file.");
         return .feof(cast(FILE*) p.handle) != 0;
     }
 
 /** Returns the name of the file, if any. */
-    @property string name() const
+    @property string name() const pure nothrow
     {
         return p.name;
     }
@@ -414,7 +414,7 @@ If the file is not opened, returns $(D false). Otherwise, returns
 $(WEB cplusplus.com/reference/clibrary/cstdio/ferror.html, ferror) for
 the file handle.
  */
-    @property bool error() const
+    @property bool error() const pure nothrow
     {
         return !p.handle || .ferror(cast(FILE*) p.handle);
     }
@@ -426,9 +426,22 @@ and throws if that fails.
     void detach()
     {
         if (!p) return;
-        // @@@BUG
-        //if (p.refs == 1) close();
+        if (p.refs == 1) close();
+        else if(p.refs != 0) p.refs--;
         p = null;
+    }
+
+    unittest
+    {
+        auto deleteme = testFilename();
+        scope(exit) std.file.remove(deleteme);
+        auto f = File(deleteme, "w");
+        {
+            auto f2 = f;
+            f2.detach();
+        }
+        assert(f.p.refs == 1);
+        f.close();
     }
 
 /**
@@ -475,7 +488,7 @@ If the file is not opened, succeeds vacuously. Otherwise, returns
 $(WEB cplusplus.com/reference/clibrary/cstdio/_clearerr.html,
 _clearerr) for the file handle.
  */
-    void clearerr()
+    void clearerr() pure nothrow
     {
         p is null || p.handle is null ||
         .clearerr(p.handle);
@@ -709,19 +722,23 @@ arguments in text format to the file. */
         foreach (arg; args)
         {
             alias typeof(arg) A;
-            static if (isSomeString!A && !is(A == enum))
+            static if (isAggregateType!A)
+            {
+                std.format.formattedWrite(w, "%s", arg);
+            }
+            else static if (isSomeString!A)
             {
                 put(w, arg);
             }
-            else static if (isIntegral!A && !is(A == enum))
+            else static if (isIntegral!A)
             {
                 toTextRange(arg, w);
             }
-            else static if (isBoolean!A && !is(A == enum))
+            else static if (isBoolean!A)
             {
                 put(w, arg ? "true" : "false");
             }
-            else static if (isSomeChar!A && !is(A == enum))
+            else static if (isSomeChar!A)
             {
                 put(w, arg);
             }
@@ -813,7 +830,7 @@ by $(D buf), whereas $(D buf = stdin.readln()) makes a new memory allocation
 with every line.  */
     S readln(S = string)(dchar terminator = '\n')
     {
-        Unqual!(typeof(S.init[0]))[] buf;
+        Unqual!(ElementEncodingType!S)[] buf;
         readln(buf, terminator);
         return assumeUnique(buf);
     }
@@ -946,7 +963,7 @@ File) never takes the initiative in closing the file. */
 /**
 Returns the $(D FILE*) corresponding to this object.
  */
-    FILE* getFP()
+    FILE* getFP() pure
     {
         enforce(p && p.handle,
                 "Attempting to call getFP() on an unopened file");
@@ -969,7 +986,6 @@ Returns the file number corresponding to this object.
 
 /**
 Range that reads one line at a time. */
-    alias std.string.KeepTerminator KeepTerminator;
     /// ditto
     struct ByLine(Char, Terminator)
     {
@@ -1419,7 +1435,7 @@ struct LockingTextReader
             _crt = FGETC(cast(_iobuf*) _f.p.handle);
             if (_crt == -1)
             {
-                clear(_f);
+                .destroy(_f);
                 return true;
             }
             else
@@ -1539,11 +1555,26 @@ void writefx(FILE* fps, TypeInfo[] arguments, va_list argptr, int newline=false)
     }
 }
 
-template isStreamingDevice(T)
+/**
+ * Indicates whether $(D T) is a file handle of some kind.
+ */
+template isFileHandle(T)
 {
-    enum isStreamingDevice = is(T : FILE*) ||
+    enum isFileHandle = is(T : FILE*) ||
         is(T : File);
 }
+
+unittest
+{
+    static assert(isFileHandle!(FILE*));
+    static assert(isFileHandle!(File));
+}
+
+/**
+ * $(RED Scheduled for deprecation in January 2013.
+ *       Please use $(D isFileHandle) instead.)
+ */
+alias isFileHandle isStreamingDevice;
 
 /***********************************
 For each argument $(D arg) in $(D args), format the argument (as per
@@ -1587,41 +1618,44 @@ unittest
  * arguments is valid and just prints a newline to the standard
  * output.
  */
-void writeln(T...)(T args) if (T.length == 0)
+void writeln(T...)(T args)
 {
-    enforce(fputc('\n', .stdout.p.handle) == '\n');
+    static if (T.length == 0)
+    {
+        enforce(fputc('\n', .stdout.p.handle) == '\n');
+    }
+    else static if (T.length == 1 &&
+                    isSomeString!(typeof(args[0])) && is(typeof(args[0]) : const(char)[]) &&
+                    !isAggregateType!(typeof(args[0])))
+    {
+        // Specialization for strings - a very frequent case
+        enforce(fprintf(.stdout.p.handle, "%.*s\n",
+                        cast(int) args[0].length, args[0].ptr) >= 0);
+    }
+    else
+    {
+        // Most general instance
+        stdout.write(args, '\n');
+    }
 }
 
 unittest
 {
     // Just make sure the call compiles
     if (false) writeln();
-}
 
-// Specialization for strings - a very frequent case
-void writeln(T...)(T args)
-if (T.length == 1 && is(typeof(args[0]) : const(char)[]) && !is(typeof(args[0]) == enum))
-{
-    enforce(fprintf(.stdout.p.handle, "%.*s\n",
-                    cast(int) args[0].length, args[0].ptr) >= 0);
-}
-
-unittest
-{
     if (false) writeln("wyda");
-}
 
-// Most general instance
-void writeln(T...)(T args)
-if (T.length > 1 || T.length == 1 && !(is(typeof(args[0]) : const(char)[]) && !is(typeof(args[0]) == enum)))
-{
-    stdout.write(args, '\n');
+    // bug 8040
+    if (false) writeln(null);
+    if (false) writeln(">", null, "<");
 }
 
 unittest
 {
-        //printf("Entering test at line %d\n", __LINE__);
+    //printf("Entering test at line %d\n", __LINE__);
     scope(failure) printf("Failed test at line %d\n", __LINE__);
+
     // test writeln
     auto deleteme = testFilename();
     auto f = File(deleteme, "w");
@@ -1634,6 +1668,7 @@ unittest
     else
         assert(cast(char[]) std.file.read(deleteme) ==
                 "Hello, world number 42!\n");
+
     // test writeln on stdout
     auto saveStdout = stdout;
     scope(exit) stdout = saveStdout;
@@ -1646,6 +1681,18 @@ unittest
     else
         assert(cast(char[]) std.file.read(deleteme) ==
                 "Hello, world number 42!\n");
+
+    stdout.open(deleteme, "w");
+    writeln("Hello!"c);
+    writeln("Hello!"w);    // bug 8386
+    writeln("Hello!"d);    // bug 8386
+    stdout.close();
+    version (Windows)
+        assert(cast(char[]) std.file.read(deleteme) ==
+            "Hello!\r\nHello!\r\nHello!\r\n");
+    else
+        assert(cast(char[]) std.file.read(deleteme) ==
+            "Hello!\nHello!\nHello!\n");
 }
 
 unittest
@@ -2273,7 +2320,7 @@ class StdioException : Exception
 
 /**
 Initialize with a message and an error code. */
-    this(string message, uint e = .getErrno())
+    this(string message, uint e = .errno)
     {
         errno = e;
         version (Posix)
@@ -2306,7 +2353,7 @@ Initialize with a message and an error code. */
 /// ditto
     static void opCall()
     {
-        throw new StdioException(null, .getErrno());
+        throw new StdioException(null, .errno);
     }
 }
 
@@ -2329,9 +2376,9 @@ extern(C) void std_stdio_static_this()
 //---------
 __gshared
 {
-    File stdin;
-    File stdout;
-    File stderr;
+    File stdin; /// The standard input stream.
+    File stdout; /// The standard output stream.
+    File stderr; /// The standard error stream.
 }
 
 unittest

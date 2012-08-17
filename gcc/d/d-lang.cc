@@ -675,12 +675,12 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
     }
 }
 
-static Module *an_output_module = 0;
+static Module *output_module = NULL;
 
 Module *
 d_gcc_get_output_module (void)
 {
-  return an_output_module;
+  return output_module;
 }
 
 static void
@@ -806,11 +806,12 @@ d_parse_file (void)
 	nametype (Type::basic[ty]);
     }
 
-  an_output_module = NULL;
-  Modules modules; // vs. outmodules... = [an_output_module] or modules
+  // Create Modules
+  Modules modules;
   modules.reserve (num_in_fnames);
   AsyncRead *aw = NULL;
   Module *m = NULL;
+  output_module = NULL;
 
   // %% FIX
   if (!main_input_filename)
@@ -832,32 +833,30 @@ d_parse_file (void)
 
   for (size_t i = 0; i < num_in_fnames; i++)
     {
-      if (fonly_arg)
-	{
-	  /* %% Do the other modules really need to be processed?
- 	     if (an_output_module)
-	     break;
-	     */
-	}
       //fprintf (stderr, "fn %d = %s\n", i, in_fnames[i]);
-      char *the_fname = xstrdup (in_fnames[i]);
-      char *p = FileName::name (the_fname);
-      char *e = FileName::ext (p);
+      char *fname = xstrdup (in_fnames[i]);
+
+      // Strip path
+      char *p = FileName::name (fname);
+      char *ext = FileName::ext (p);
       char *name;
-      if (e)
+
+      if (ext)
 	{
-	  e--;
-	  gcc_assert (*e == '.');
-	  name = (char *) xmalloc ((e - p) + 1);
-	  memcpy (name, p, e - p);
-	  name[e - p] = 0;
+	  // Skip onto '.'
+	  ext--;
+	  gcc_assert (*ext == '.');
+	  name = (char *) xmalloc ((ext - p) + 1);
+	  memcpy (name, p, ext - p);
+	  // Strip extension
+	  name[ext - p] = 0;
 
 	  if (name[0] == 0 ||
 	      strcmp (name, "..") == 0 ||
 	      strcmp (name, ".") == 0)
 	    {
 	Linvalid:
-	      ::error ("invalid file name '%s'", the_fname);
+	      ::error ("invalid file name '%s'", fname);
 	      goto had_errors;
 	    }
 	}
@@ -868,11 +867,14 @@ d_parse_file (void)
 	    goto Linvalid;
 	}
 
+      // At this point, name is the D source file name stripped of
+      // its path and extension.
       Identifier *id = Lexer::idPool (name);
-      m = new Module (the_fname, id, global.params.doDocComments, global.params.doHdrGeneration);
-      if (!strcmp (in_fnames[i], main_input_filename))
-	an_output_module = m;
+      m = new Module (fname, id, global.params.doDocComments, global.params.doHdrGeneration);
       modules.push (m);
+
+      if (!strcmp (in_fnames[i], main_input_filename))
+	output_module = m;
     }
 
   // There is only one of these so far...
@@ -881,14 +883,14 @@ d_parse_file (void)
 
   // current_module shouldn't have any implications before genobjfile..
   // ... but it does.  We need to know what module in which to insert
-  // TemplateInstanceS during the semantic pass.  In order for
+  // TemplateInstances during the semantic pass.  In order for
   // -femit-templates=private to work, template instances must be emitted
   // in every translation unit.  To do this, the TemplateInstaceS have to
   // have toObjFile called in the module being compiled.
   // TemplateInstance puts itself somwhere during ::semantic, thus it has
   // to know the current module...
 
-  gcc_assert (an_output_module);
+  gcc_assert (output_module);
 
   // Read files
   aw = AsyncRead::create (modules.dim);
@@ -938,7 +940,7 @@ d_parse_file (void)
       for (size_t i = 0; i < modules.dim; i++)
 	{
 	  m = modules[i];
-	  if (fonly_arg && m != an_output_module)
+	  if (fonly_arg && m != output_module)
 	    continue;
 	  if (global.params.verbose)
 	    fprintf (stdmsg, "import    %s\n", m->toChars());
@@ -1036,10 +1038,10 @@ d_parse_file (void)
 
   g.ofile = new ObjectFile();
   if (fonly_arg)
-    g.ofile->modules.push (an_output_module);
+    g.ofile->modules.push (output_module);
   else
     g.ofile->modules.append (&modules);
-  g.irs = & gen; // needed for FuncDeclaration::toObjFile
+  g.irs = &gen; // needed for FuncDeclaration::toObjFile
 
   // Generate output files
   if (global.params.doXGeneration)
@@ -1048,12 +1050,16 @@ d_parse_file (void)
   for (size_t i = 0; i < modules.dim; i++)
     {
       m = modules[i];
-      if (fonly_arg && m != an_output_module)
+      if (fonly_arg && m != output_module)
 	continue;
       if (global.params.verbose)
 	fprintf (stdmsg, "code      %s\n", m->toChars());
       if (!flag_syntax_only)
-	m->genobjfile (false);
+	{
+	  Obj::init ();
+	  m->genobjfile (false);
+	  Obj::term ();
+	}
       if (!global.errors && !errorcount)
 	{
 	  if (global.params.doDocComments)
@@ -1068,7 +1074,7 @@ d_parse_file (void)
   errorcount += (global.errors + global.warnings);
 
   g.ofile->finish();
-  an_output_module = 0;
+  output_module = NULL;
 
   gcc_d_backend_term();
 }

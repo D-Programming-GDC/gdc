@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, December 2006
-*/
-
 #include <stdio.h>
 #include <assert.h>
 
@@ -53,7 +47,6 @@ AggregateDeclaration::AggregateDeclaration(Loc loc, Identifier *id)
 #ifdef IN_GCC
     attributes = NULL;
 #endif
-
     stag = NULL;
     sinit = NULL;
     isnested = 0;
@@ -66,6 +59,7 @@ AggregateDeclaration::AggregateDeclaration(Loc loc, Identifier *id)
     noDefaultCtor = FALSE;
 #endif
     dtor = NULL;
+    getRTInfo = NULL;
 }
 
 enum PROT AggregateDeclaration::prot()
@@ -85,7 +79,7 @@ void AggregateDeclaration::semantic2(Scope *sc)
         sc = sc->push(this);
         for (size_t i = 0; i < members->dim; i++)
         {
-            Dsymbol *s = members->tdata()[i];
+            Dsymbol *s = (*members)[i];
             s->semantic2(sc);
         }
         sc->pop();
@@ -100,10 +94,25 @@ void AggregateDeclaration::semantic3(Scope *sc)
         sc = sc->push(this);
         for (size_t i = 0; i < members->dim; i++)
         {
-            Dsymbol *s = members->tdata()[i];
+            Dsymbol *s = (*members)[i];
             s->semantic3(sc);
         }
         sc->pop();
+
+        if (!getRTInfo)
+        {   // Evaluate: gcinfo!type
+            Objects *tiargs = new Objects();
+            tiargs->push(type);
+            TemplateInstance *ti = new TemplateInstance(loc, Type::rtinfo, tiargs);
+            ti->semantic(sc);
+            ti->semantic2(sc);
+            ti->semantic3(sc);
+            Dsymbol *s = ti->toAlias();
+            Expression *e = new DsymbolExp(0, s, 0);
+            e = e->semantic(ti->tempdecl->scope);
+            e = e->ctfeInterpret();
+            getRTInfo = e;
+        }
     }
 }
 
@@ -114,7 +123,7 @@ void AggregateDeclaration::inlineScan()
     {
         for (size_t i = 0; i < members->dim; i++)
         {
-            Dsymbol *s = members->tdata()[i];
+            Dsymbol *s = (*members)[i];
             //printf("inline scan aggregate symbol '%s'\n", s->toChars());
             s->inlineScan();
         }
@@ -124,6 +133,8 @@ void AggregateDeclaration::inlineScan()
 unsigned AggregateDeclaration::size(Loc loc)
 {
     //printf("AggregateDeclaration::size() %s, scope = %p\n", toChars(), scope);
+    if (loc.linnum == 0)
+        loc = this->loc;
     if (!members)
         error(loc, "unknown size");
     if (sizeok != SIZEOKdone && scope)
@@ -286,13 +297,13 @@ int AggregateDeclaration::firstFieldInUnion(int indx)
 {
     if (isUnionDeclaration())
         return 0;
-    VarDeclaration * vd = fields.tdata()[indx];
+    VarDeclaration * vd = fields[indx];
     int firstNonZero = indx; // first index in the union with non-zero size
     for (; ;)
     {
         if (indx == 0)
             return firstNonZero;
-        VarDeclaration * v = fields.tdata()[indx - 1];
+        VarDeclaration * v = fields[indx - 1];
         if (v->offset != vd->offset)
             return firstNonZero;
         --indx;
@@ -311,7 +322,7 @@ int AggregateDeclaration::firstFieldInUnion(int indx)
  */
 int AggregateDeclaration::numFieldsInUnion(int firstIndex)
 {
-    VarDeclaration * vd = fields.tdata()[firstIndex];
+    VarDeclaration * vd = fields[firstIndex];
     /* If it is a zero-length field, AND we can't find an earlier non-zero
      * sized field with the same offset, we assume it's not part of a union.
      */
@@ -321,7 +332,7 @@ int AggregateDeclaration::numFieldsInUnion(int firstIndex)
     int count = 1;
     for (size_t i = firstIndex+1; i < fields.dim; ++i)
     {
-        VarDeclaration * v = fields.tdata()[i];
+        VarDeclaration * v = fields[i];
         // If offsets are different, they are not in the same union
         if (v->offset != vd->offset)
             break;
@@ -345,6 +356,8 @@ StructDeclaration::StructDeclaration(Loc loc, Identifier *id)
     xeq = NULL;
     alignment = 0;
 #endif
+    arg1type = NULL;
+    arg2type = NULL;
 
     // For forward references
     type = new TypeStruct(this);
@@ -416,7 +429,7 @@ void StructDeclaration::semantic(Scope *sc)
         int hasfunctions = 0;
         for (size_t i = 0; i < members->dim; i++)
         {
-            Dsymbol *s = members->tdata()[i];
+            Dsymbol *s = (*members)[i];
             //printf("adding member '%s' to '%s'\n", s->toChars(), this->toChars());
             s->addMember(sc, this, 1);
             if (s->isFuncDeclaration())
@@ -648,6 +661,15 @@ void StructDeclaration::semantic(Scope *sc)
     aggNew =       (NewDeclaration *)search(0, Id::classNew,       0);
     aggDelete = (DeleteDeclaration *)search(0, Id::classDelete,    0);
 
+    TypeTuple *tup = type->toArgTypes();
+    size_t dim = tup->arguments->dim;
+    if (dim >= 1)
+    {   assert(dim <= 2);
+        arg1type = (*tup->arguments)[0]->type;
+        if (dim == 2)
+            arg2type = (*tup->arguments)[1]->type;
+    }
+
     if (sc->func)
     {
         semantic2(sc);
@@ -684,6 +706,7 @@ Dsymbol *StructDeclaration::search(Loc loc, Identifier *ident, int flags)
 
 void StructDeclaration::finalizeSize(Scope *sc)
 {
+    //printf("StructDeclaration::finalizeSize() %s\n", toChars());
     if (sizeok != SIZEOKnone)
         return;
 
@@ -715,6 +738,48 @@ void StructDeclaration::finalizeSize(Scope *sc)
     sizeok = SIZEOKdone;
 }
 
+/***************************************
+ * Return true if struct is POD (Plain Old Data).
+ * This is defined as:
+ *      not nested
+ *      no postblits, constructors, destructors, or assignment operators
+ *      no fields with with any of those
+ * The idea being these are compatible with C structs.
+ *
+ * Note that D struct constructors can mean POD, since there is always default
+ * construction with no ctor, but that interferes with OPstrpar which wants it
+ * on the stack in memory, not in registers.
+ */
+bool StructDeclaration::isPOD()
+{
+    if (isnested || cpctor || postblit || ctor || dtor)
+        return false;
+
+    /* Recursively check any fields have a constructor.
+     * We should cache the results of this.
+     */
+    for (size_t i = 0; i < fields.dim; i++)
+    {
+        Dsymbol *s = fields[i];
+        VarDeclaration *v = s->isVarDeclaration();
+        assert(v && v->storage_class & STCfield);
+        if (v->storage_class & STCref)
+            continue;
+        Type *tv = v->type->toBasetype();
+        while (tv->ty == Tsarray)
+        {   TypeSArray *ta = (TypeSArray *)tv;
+            tv = tv->nextOf()->toBasetype();
+        }
+        if (tv->ty == Tstruct)
+        {   TypeStruct *ts = (TypeStruct *)tv;
+            StructDeclaration *sd = ts->sym;
+            if (!sd->isPOD())
+                return false;
+        }
+    }
+    return true;
+}
+
 void StructDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 {
     buf->printf("%s ", kind());
@@ -731,7 +796,7 @@ void StructDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     buf->writenl();
     for (size_t i = 0; i < members->dim; i++)
     {
-        Dsymbol *s = members->tdata()[i];
+        Dsymbol *s = (*members)[i];
 
         buf->writestring("    ");
         s->toCBuffer(buf, hgs);

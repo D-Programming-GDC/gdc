@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by Iain Buclaw, September 2009
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -34,6 +28,7 @@
 #include "parse.h"
 #include "template.h"
 #include "attrib.h"
+#include "import.h"
 
 #if _WIN32
 #include <windows.h>
@@ -413,7 +408,7 @@ Statements *CompileStatement::flatten(Scope *sc)
     //printf("CompileStatement::flatten() %s\n", exp->toChars());
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
-    exp = exp->optimize(WANTvalue | WANTinterpret);
+    exp = exp->ctfeInterpret();
     if (exp->op == TOKerror)
         return NULL;
     StringExp *se = exp->toString();
@@ -1572,6 +1567,10 @@ Statement *ForeachStatement::semantic(Scope *sc)
             return s;
         }
 
+        Type *argtype = (*arguments)[dim-1]->type;
+        if (argtype)
+            argtype = argtype->semantic(loc, sc);
+
         TypeTuple *tuple = (TypeTuple *)tab;
         Statements *statements = new Statements();
         //printf("aggr: op = %d, %s\n", aggr->op, aggr->toChars());
@@ -1586,9 +1585,8 @@ Statement *ForeachStatement::semantic(Scope *sc)
                 ((DotVarExp *)(*te->exps)[0])->e1->isTemp())
             {
                 CommaExp *ce = (CommaExp *)((DotVarExp *)(*te->exps)[0])->e1;
-
-                                prelude = ce->e1;
-                                ((DotVarExp *)(*te->exps)[0])->e1 = ce->e2;
+                prelude = ce->e1;
+                ((DotVarExp *)(*te->exps)[0])->e1 = ce->e2;
             }
         }
         else if (aggr->op == TOKtype)   // type tuple
@@ -1599,8 +1597,8 @@ Statement *ForeachStatement::semantic(Scope *sc)
             assert(0);
         for (size_t j = 0; j < n; j++)
         {   size_t k = (op == TOKforeach) ? j : n - 1 - j;
-            Expression *e;
-            Type *t;
+            Expression *e = NULL;
+            Type *t = NULL;
             if (te)
                 e = (*te->exps)[k];
             else
@@ -1651,14 +1649,20 @@ Statement *ForeachStatement::semantic(Scope *sc)
                     var = new AliasDeclaration(loc, arg->ident, s);
                     if (arg->storageClass & STCref)
                         error("symbol %s cannot be ref", s->toChars());
+                    if (argtype && argtype->ty != Terror)
+                        error("cannot specify element type for symbol %s", s->toChars());
                 }
                 else if (e->op == TOKtype)
                 {
                     var = new AliasDeclaration(loc, arg->ident, e->type);
+                    if (argtype && argtype->ty != Terror)
+                        error("cannot specify element type for type %s", e->type->toChars());
                 }
                 else
                 {
                     arg->type = e->type;
+                    if (argtype && argtype->ty != Terror)
+                        arg->type = argtype;
                     Initializer *ie = new ExpInitializer(0, e);
                     VarDeclaration *v = new VarDeclaration(loc, arg->type, arg->ident, ie);
                     if (arg->storageClass & STCref)
@@ -1675,6 +1679,8 @@ Statement *ForeachStatement::semantic(Scope *sc)
             else
             {
                 var = new AliasDeclaration(loc, arg->ident, t);
+                if (argtype && argtype->ty != Terror)
+                    error("cannot specify element type for symbol %s", s->toChars());
             }
             DeclarationExp *de = new DeclarationExp(loc, var);
             st->push(new ExpStatement(loc, de));
@@ -1744,23 +1750,47 @@ Lagain:
                 Type *argtype = arg->type->semantic(loc, sc);
                 VarDeclaration *var;
 
-                var = new VarDeclaration(loc, argtype, arg->ident, NULL);
-                var->storage_class |= STCforeach;
-                var->storage_class |= arg->storageClass & (STCin | STCout | STCref | STC_TYPECTOR);
-                if (var->storage_class & (STCref | STCout))
-                    var->storage_class |= STCnodtor;
                 if (dim == 2 && i == 0)
-                {   key = var;
-                    //var->storage_class |= STCfinal;
+                {
+#if (BUG6652 == 1 || BUG6652 == 2)
+                    var = new VarDeclaration(loc, arg->type, Lexer::uniqueId("__key"), NULL);
+                    var->storage_class |= arg->storageClass & (STCin | STCout | STC_TYPECTOR);
+#else
+                    if (arg->storageClass & STCref)
+                        var = new VarDeclaration(loc, argtype, arg->ident, NULL);
+                    else
+                        var = new VarDeclaration(loc, arg->type, Lexer::uniqueId("__key"), NULL);
+                    var->storage_class |= arg->storageClass & (STCin | STCout | STC_TYPECTOR);
+#endif
+                    var->storage_class |= STCforeach;
+                    if (var->storage_class & (STCref | STCout))
+                        var->storage_class |= STCnodtor;
+
+                    key = var;
                 }
                 else
                 {
+                    var = new VarDeclaration(loc, argtype, arg->ident, NULL);
+                    var->storage_class |= STCforeach;
+                    var->storage_class |= arg->storageClass & (STCin | STCout | STCref | STC_TYPECTOR);
+                    if (var->storage_class & (STCref | STCout))
+                        var->storage_class |= STCnodtor;
+
                     value = var;
-                    /* Reference to immutable data should be marked as const
-                     */
-                    if (var->storage_class & STCref && !tn->isMutable())
+                    if (var->storage_class & STCref)
                     {
-                        var->storage_class |= STCconst;
+                        /* Reference to immutable data should be marked as const
+                         */
+                        if (!tn->isMutable())
+                            var->storage_class |= STCconst;
+
+                        Type *t = tab->nextOf();
+                        if (!t->invariantOf()->equals(argtype->invariantOf()) ||
+                            !MODimplicitConv(t->mod, argtype->mod))
+                        {
+                            error("argument type mismatch, %s to ref %s",
+                                  t->toChars(), argtype->toChars());
+                        }
                     }
                 }
 #if 0
@@ -1818,6 +1848,30 @@ Lagain:
             value->init = new ExpInitializer(loc, new IndexExp(loc, new VarExp(loc, tmp), new VarExp(loc, key)));
             Statement *ds = new ExpStatement(loc, value);
 
+            if (dim == 2)
+            {   Parameter *arg = (*arguments)[0];
+#if (BUG6652 == 1 || BUG6652 == 2)
+                if ((*arguments)[0]->storageClass & STCref)
+                {
+                    AliasDeclaration *v = new AliasDeclaration(loc, arg->ident, key);
+                    body = new CompoundStatement(loc, new ExpStatement(loc, v), body);
+                }
+                else
+                {
+                    ExpInitializer *ie = new ExpInitializer(loc, new IdentifierExp(loc, key->ident));
+                    VarDeclaration *v = new VarDeclaration(loc, NULL, arg->ident, ie);
+                    v->storage_class |= STCforeach | STCref | STCbug6652;
+                    body = new CompoundStatement(loc, new ExpStatement(loc, v), body);
+                }
+#else
+                if (!(arg->storageClass & STCref))
+                {
+                    ExpInitializer *ie = new ExpInitializer(loc, new IdentifierExp(loc, key->ident));
+                    VarDeclaration *v = new VarDeclaration(loc, NULL, arg->ident, ie);
+                    body = new CompoundStatement(loc, new ExpStatement(loc, v), body);
+                }
+#endif
+            }
             body = new CompoundStatement(loc, ds, body);
 
             s = new ForStatement(loc, forinit, cond, increment, body);
@@ -1888,29 +1942,29 @@ Lagain:
                 goto Lapply;
 
         {   /* Look for range iteration, i.e. the properties
-             * .empty, .next, .retreat, .head and .rear
+             * .empty, .popFront, .popBack, .front and .back
              *    foreach (e; aggr) { ... }
              * translates to:
-             *    for (auto __r = aggr[]; !__r.empty; __r.next)
-             *    {   auto e = __r.head;
+             *    for (auto __r = aggr[]; !__r.empty; __r.popFront)
+             *    {   auto e = __r.front;
              *        ...
              *    }
              */
             AggregateDeclaration *ad = (tab->ty == Tclass)
                         ? (AggregateDeclaration *)((TypeClass  *)tab)->sym
                         : (AggregateDeclaration *)((TypeStruct *)tab)->sym;
-            Identifier *idhead;
-            Identifier *idnext;
+            Identifier *idfront;
+            Identifier *idpopFront;
             if (op == TOKforeach)
-            {   idhead = Id::Ffront;
-                idnext = Id::FpopFront;
+            {   idfront = Id::Ffront;
+                idpopFront = Id::FpopFront;
             }
             else
-            {   idhead = Id::Fback;
-                idnext = Id::FpopBack;
+            {   idfront = Id::Fback;
+                idpopFront = Id::FpopBack;
             }
-            Dsymbol *shead = search_function(ad, idhead);
-            if (!shead)
+            Dsymbol *sfront = ad->search(0, idfront, 0);
+            if (!sfront)
                 goto Lapply;
 
             /* Generate a temporary __r and initialize it with the aggregate.
@@ -1926,13 +1980,13 @@ Lagain:
 
             // __r.next
             e = new VarExp(loc, r);
-            Expression *increment = new CallExp(loc, new DotIdExp(loc, e, idnext));
+            Expression *increment = new CallExp(loc, new DotIdExp(loc, e, idpopFront));
 
             /* Declaration statement for e:
-             *    auto e = __r.idhead;
+             *    auto e = __r.idfront;
              */
             e = new VarExp(loc, r);
-            Expression *einit = new DotIdExp(loc, e, idhead);
+            Expression *einit = new DotIdExp(loc, e, idfront);
             Statement *makeargs, *forbody;
             if (dim == 1)
             {
@@ -1955,7 +2009,7 @@ Lagain:
                 makeargs = new ExpStatement(loc, de);
 
                 Expression *ve = new VarExp(loc, vd);
-                ve->type = shead->isDeclaration()->type;
+                ve->type = sfront->isDeclaration()->type;
                 if (ve->type->toBasetype()->ty == Tfunction)
                     ve->type = ve->type->toBasetype()->nextOf();
                 if (!ve->type || ve->type->ty == Terror)
@@ -2028,18 +2082,6 @@ Lagain:
             }
 
             Type *tret = func->type->nextOf();
-
-            // Need a variable to hold value from any return statements in body.
-            if (!sc->func->vresult && tret && tret != Type::tvoid)
-            {
-                VarDeclaration *v = new VarDeclaration(loc, tret, Id::result, NULL);
-                v->noscope = 1;
-                v->semantic(sc);
-                if (!sc->insert(v))
-                    assert(0);
-                v->parent = sc->func;
-                sc->func->vresult = v;
-            }
 
             TypeFunction *tfld = NULL;
             if (sapply)
@@ -2456,7 +2498,14 @@ Statement *ForeachRangeStatement::semantic(Scope *sc)
      */
 
     ExpInitializer *ie = new ExpInitializer(loc, (op == TOKforeach) ? lwr : upr);
-    key = new VarDeclaration(loc, arg->type, arg->ident, ie);
+#if (BUG6652 == 1 || BUG6652 == 2)
+    key = new VarDeclaration(loc, arg->type, Lexer::uniqueId("__key"), ie);
+#else
+    if (arg->storageClass & STCref)
+        key = new VarDeclaration(loc, arg->type, arg->ident, ie);
+    else
+        key = new VarDeclaration(loc, arg->type, Lexer::uniqueId("__key"), ie);
+#endif
 
     Identifier *id = Lexer::uniqueId("__limit");
     ie = new ExpInitializer(loc, (op == TOKforeach) ? upr : lwr);
@@ -2502,6 +2551,28 @@ Statement *ForeachRangeStatement::semantic(Scope *sc)
         // key += 1
         //increment = new AddAssignExp(loc, new VarExp(loc, key), new IntegerExp(1));
         increment = new PreExp(TOKpreplusplus, loc, new VarExp(loc, key));
+
+#if (BUG6652 == 1 || BUG6652 == 2)
+    if (arg->storageClass & STCref)
+    {
+        AliasDeclaration *v = new AliasDeclaration(loc, arg->ident, key);
+        body = new CompoundStatement(loc, new ExpStatement(loc, v), body);
+    }
+    else
+    {
+        ExpInitializer *ie = new ExpInitializer(loc, new IdentifierExp(loc, key->ident));
+        VarDeclaration *v = new VarDeclaration(loc, NULL, arg->ident, ie);
+        v->storage_class |= STCforeach | STCref | STCbug6652;
+        body = new CompoundStatement(loc, new ExpStatement(loc, v), body);
+    }
+#else
+    if (!(arg->storageClass & STCref))
+    {
+        ExpInitializer *ie = new ExpInitializer(loc, new IdentifierExp(loc, key->ident));
+        VarDeclaration *v = new VarDeclaration(loc, NULL, arg->ident, ie);
+        body = new CompoundStatement(loc, new ExpStatement(loc, v), body);
+    }
+#endif
 
     ForStatement *fs = new ForStatement(loc, forinit, cond, increment, body);
     s = fs->semantic(sc);
@@ -2894,8 +2965,8 @@ Statement *PragmaStatement::semantic(Scope *sc)
                 Expression *e = (*args)[i];
 
                 e = e->semantic(sc);
-                if (e->op != TOKerror)
-                    e = e->optimize(WANTvalue | WANTinterpret);
+                if (e->op != TOKerror && e->op != TOKtype)
+                    e = e->ctfeInterpret();
                 if (e->op == TOKerror)
                 {   errorSupplemental(loc, "while evaluating pragma(msg, %s)", (*args)[i]->toChars());
                     goto Lerror;
@@ -2925,7 +2996,7 @@ Statement *PragmaStatement::semantic(Scope *sc)
             Expression *e = (*args)[0];
 
             e = e->semantic(sc);
-            e = e->optimize(WANTvalue | WANTinterpret);
+            e = e->ctfeInterpret();
             (*args)[0] = e;
             StringExp *se = e->toString();
             if (!se)
@@ -2950,7 +3021,7 @@ Statement *PragmaStatement::semantic(Scope *sc)
         {
             Expression *e = (*args)[0];
             e = e->semantic(sc);
-            e = e->optimize(WANTvalue | WANTinterpret);
+            e = e->ctfeInterpret();
             (*args)[0] = e;
             Dsymbol *sa = getDsymbol(e);
             if (!sa || !sa->isFuncDeclaration())
@@ -3082,6 +3153,10 @@ Statement *SwitchStatement::semantic(Scope *sc)
         return this;            // already run
     condition = condition->semantic(sc);
     condition = resolveProperties(sc, condition);
+    TypeEnum *te = NULL;
+    // preserve enum type for final switches
+    if (condition->type->ty == Tenum)
+        te = (TypeEnum *)condition->type;
     if (condition->type->isString())
     {
         // If it's not an array, cast it to one
@@ -3146,8 +3221,8 @@ Statement *SwitchStatement::semantic(Scope *sc)
         {   // Don't use toBasetype() because that will skip past enums
             t = ((TypeTypedef *)t)->sym->basetype;
         }
-        if (condition->type->ty == Tenum)
-        {   TypeEnum *te = (TypeEnum *)condition->type;
+        if (te)
+        {
             EnumDeclaration *ed = te->toDsymbol(sc)->isEnumDeclaration();
             assert(ed);
             size_t dim = ed->members->dim;
@@ -3158,7 +3233,7 @@ Statement *SwitchStatement::semantic(Scope *sc)
                 {
                     for (size_t j = 0; j < cases->dim; j++)
                     {   CaseStatement *cs = (*cases)[j];
-                        if (cs->exp->equals(em->value))
+                        if (cs->exp->equals(em->value) || cs->exp->toInteger() == em->value->toInteger())
                             goto L1;
                     }
                     error("enum member %s not represented in final switch", em->toChars());
@@ -3297,7 +3372,7 @@ Statement *CaseStatement::semantic(Scope *sc)
             }
         }
         else
-            exp = exp->optimize(WANTvalue | WANTinterpret);
+            exp = exp->ctfeInterpret();
 
         if (exp->op != TOKstring && exp->op != TOKint64 && exp->op != TOKerror)
         {
@@ -3402,12 +3477,11 @@ Statement *CaseRangeStatement::semantic(Scope *sc)
 
     first = first->semantic(sc);
     first = first->implicitCastTo(sc, sw->condition->type);
-    first = first->optimize(WANTvalue | WANTinterpret);
-
+    first = first->ctfeInterpret();
 
     last = last->semantic(sc);
     last = last->implicitCastTo(sc, sw->condition->type);
-    last = last->optimize(WANTvalue | WANTinterpret);
+    last = last->ctfeInterpret();
 
     if (first->op == TOKerror || last->op == TOKerror)
         return statement ? statement->semantic(sc) : NULL;
@@ -3640,6 +3714,7 @@ ReturnStatement::ReturnStatement(Loc loc, Expression *exp)
     : Statement(loc)
 {
     this->exp = exp;
+    this->implicit0 = 0;
 }
 
 Statement *ReturnStatement::syntaxCopy()
@@ -3657,7 +3732,6 @@ Statement *ReturnStatement::semantic(Scope *sc)
 
     FuncDeclaration *fd = sc->parent->isFuncDeclaration();
     Scope *scx = sc;
-    int implicit0 = 0;
     Expression *eorg = NULL;
 
     if (fd->fes)
@@ -3701,8 +3775,11 @@ Statement *ReturnStatement::semantic(Scope *sc)
     {
         fd->hasReturnExp |= 1;
 
+        FuncLiteralDeclaration *fld = fd->isFuncLiteralDeclaration();
         if (tret)
             exp = exp->inferType(tbret);
+        else if (fld && fld->treq && fld->treq->nextOf())
+            exp = exp->inferType(fld->treq->nextOf());
         exp = exp->semantic(sc);
         exp = resolveProperties(sc, exp);
         if (!((TypeFunction *)fd->type)->isref)
@@ -3871,11 +3948,14 @@ Statement *ReturnStatement::semantic(Scope *sc)
             // Construct: return vresult;
             if (!fd->vresult)
             {   // Declare vresult
+                Scope *sco = fd->scout ? fd->scout : scx;
                 VarDeclaration *v = new VarDeclaration(loc, tret, Id::result, NULL);
                 v->noscope = 1;
                 v->storage_class |= STCresult;
-                v->semantic(scx);
-                if (!scx->insert(v))
+                if (((TypeFunction *)fd->type)->isref)
+                    v->storage_class |= STCref | STCforeach;
+                v->semantic(sco);
+                if (!sco->insert(v))
                     assert(0);
                 v->parent = fd;
                 fd->vresult = v;
@@ -3914,7 +3994,7 @@ Statement *ReturnStatement::semantic(Scope *sc)
 
         if (fd->returnLabel && tbret->ty != Tvoid)
         {
-            assert(fd->vresult);
+            fd->buildResultVar();
             VarExp *v = new VarExp(0, fd->vresult);
 
             assert(eorg);
@@ -4236,9 +4316,16 @@ Statement *SynchronizedStatement::semantic(Scope *sc)
         {   /* Cast the interface to an object, as the object has the monitor,
              * not the interface.
              */
-            Type *t = new TypeIdentifier(0, Id::Object);
+            if (!ClassDeclaration::object)
+            {
+                error("missing or corrupt object.d");
+                fatal();
+            }
 
-            t = t->semantic(0, sc);
+            Type *t = ClassDeclaration::object->type;
+            t = t->semantic(0, sc)->toBasetype();
+            assert(t->ty == Tclass);
+
             exp = new CastExp(loc, exp, t);
             exp = exp->semantic(sc);
         }
@@ -5233,9 +5320,29 @@ Statement *ImportStatement::syntaxCopy()
 Statement *ImportStatement::semantic(Scope *sc)
 {
     for (size_t i = 0; i < imports->dim; i++)
-    {   Dsymbol *s = (*imports)[i];
+    {   Import *s = (*imports)[i]->isImport();
+
+        for (size_t i = 0; i < s->names.dim; i++)
+        {
+            Identifier *name = s->names[i];
+            Identifier *alias = s->aliases[i];
+
+            if (!alias)
+                alias = name;
+
+            TypeIdentifier *tname = new TypeIdentifier(s->loc, name);
+            AliasDeclaration *ad = new AliasDeclaration(s->loc, alias, tname);
+
+            s->aliasdecls.push(ad);
+        }
+
         s->semantic(sc);
         sc->insert(s);
+
+        for (size_t i = 0; i < s->aliasdecls.dim; i++)
+        {
+            sc->insert(s->aliasdecls[i]);
+        }
     }
     return this;
 }

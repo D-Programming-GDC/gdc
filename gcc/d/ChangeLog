@@ -1,5 +1,30 @@
 2012-08-17  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* dfrontend: Update to D frontend version 2.060
+
+	* d-codegen.cc(libcall_ids): New library functions.
+	(IRState::getLibCallDecl): Implement new library function signatures.
+	* d-codegen.h(LibCall::LIBCALL_NEWITEMT): New enum value.
+	(LibCall::LIBCALL_NEWITEMIT): Likewise.
+	* d-decls.cc(FuncDeclaration::toSymbol): Small readability cleanup.
+	* d-glue.cc(NewExp::toElem): Use new library functions.
+	(StructLiteralExp::toElem): Update for new frontend.
+	(ReturnStatement::toIR): Likewise.
+	* d-incpath.cc(add_import_path): New signature.
+	(add_fileimp_path): Likewise.
+	(add_import_paths): Pass split Strings to helper functions.
+	* d-lang.cc(d_parse_file): Use Obj::init and Obj::term.
+	* d-objfile.cc(objmod): New variable.
+	(Obj::init): New function.
+	(Obj::term): Likewise.
+	(Obj::includelib): Likewise.
+	(Obj::startaddress): Likewise.
+	(Obj::allowZeroSize): Likewise.
+	(Obj::moduleinfo): Likewise.
+	(Obj::export_symbol): Likewise.
+	* symbol.h(Obj): New struct to allow object oriented interface to glue
+	code from frontend.
+
 	* d-builtins2.cc(d_gcc_magic_stdarg_check): Add new va_arg magic
 	function that stores the next value through a passed parameter.
 	Remove workaround for inout signature as va_list is always passed by

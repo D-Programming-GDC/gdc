@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2011 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -8,12 +8,6 @@
 // License for redistribution is by either the Artistic License
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, January 2007
-*/
 
 // Program to generate string files in d data structures.
 // Saves much tedious typing, and eliminates typo problems.
@@ -72,6 +66,7 @@ struct Msgtable msgtable[] =
     { "outer" },
     { "Exception" },
     { "AssociativeArray" },
+    { "RTInfo" },
     { "Throwable" },
     { "Error" },
     { "withSym", "__withSym" },
@@ -341,6 +336,7 @@ struct Msgtable msgtable[] =
     { "derivedMembers" },
     { "isSame" },
     { "compiles" },
+    { "parameters" },
 };
 
 

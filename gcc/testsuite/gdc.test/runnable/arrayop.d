@@ -425,6 +425,19 @@ void test4()
 }
 
 /***************************************************/
+
+void test4662()
+{
+    immutable double[] nums = [1.0, 2.0];
+
+    static assert(!is(typeof({ nums[] += nums[]; })));
+    static assert(!is(typeof({ nums[] -= nums[]; })));
+    static assert(!is(typeof({ nums[] /= nums[]; })));
+    static assert(!is(typeof({ nums[] += 4; })));
+    static assert(!is(typeof({ nums[] /= 7; })));
+}
+
+/***************************************************/
 // 5284
 
 void bug5284_1()
@@ -529,6 +542,14 @@ void test6()
 
 /************************************************************************/
 
+void test8390() {
+    const int[] a = new int[5];
+    int[] b = new int[5];
+    b[] += a[];
+}
+
+/************************************************************************/
+
 int main()
 {
     test1();
@@ -537,6 +558,7 @@ int main()
     test4();
     test5();
     test6();
+    test8390();
 
     printf("Success\n");
     return 0;

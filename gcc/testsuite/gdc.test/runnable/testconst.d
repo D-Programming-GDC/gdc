@@ -5,6 +5,8 @@ class C { }
 
 int ctfe() { return 3; }
 
+template TypeTuple(T...) { alias T TypeTuple; }
+
 /************************************/
 
 void showf(string f)
@@ -2029,6 +2031,48 @@ void test4251b()
 }
 
 /************************************/
+// 5473
+
+void test5473()
+{
+    class C
+    {
+        int b;
+        void f(){}
+        static int x;
+        static void g(){};
+    }
+    struct S
+    {
+        int b;
+        void f(){}
+        static int x;
+        static void g(){};
+    }
+
+    void dummy(){}
+    alias typeof(dummy) VoidFunc;
+
+    const C c = new C;
+    const S s;
+
+    foreach (a; TypeTuple!(c, s))
+    {
+        alias typeof(a) A;
+
+        static assert(is(typeof(a.b) == const int));    // const(int)
+        static assert(is(typeof(a.f) == VoidFunc));
+        static assert(is(typeof(a.x) == int));
+        static assert(is(typeof(a.g) == VoidFunc));
+
+        static assert(is(typeof((const A).b) == const int));    // int, should be const(int)
+        static assert(is(typeof((const A).f) == VoidFunc));
+        static assert(is(typeof((const A).x) == int));
+        static assert(is(typeof((const A).g) == VoidFunc));
+    }
+}
+
+/************************************/
 // 5493
 
 void test5493()
@@ -2604,6 +2648,89 @@ void test7757()
 }
 
 /************************************/
+// 8098
+
+class Outer8098
+{
+    int i = 6;
+
+    class Inner
+    {
+        int y=0;
+
+        void foo() const
+        {
+            static assert(is(typeof(this.outer) == const(Outer8098)));
+            static assert(is(typeof(i) == const(int)));
+            static assert(!__traits(compiles, ++i));
+        }
+    }
+
+    Inner inner;
+
+    this()
+    {
+        inner = new Inner;
+    }
+}
+
+void test8098()
+{
+    const(Outer8098) x = new Outer8098();
+    static assert(is(typeof(x) == const(Outer8098)));
+    static assert(is(typeof(x.inner) == const(Outer8098.Inner)));
+}
+
+/************************************/
+// 8099
+
+void test8099()
+{
+    static class Outer
+    {
+        class Inner {}
+    }
+
+    auto m = new Outer;
+    auto c = new const(Outer);
+    auto i = new immutable(Outer);
+
+    auto mm = m.new Inner;            // m -> m  OK
+    auto mc = m.new const(Inner);     // m -> c  OK
+  static assert(!__traits(compiles, {
+    auto mi = m.new immutable(Inner); // m -> i  bad
+  }));
+
+  static assert(!__traits(compiles, {
+    auto cm = c.new Inner;            // c -> m  bad
+  }));
+    auto cc = c.new const(Inner);     // c -> c  OK
+  static assert(!__traits(compiles, {
+    auto ci = c.new immutable(Inner); // c -> i  bad
+  }));
+
+  static assert(!__traits(compiles, {
+    auto im = i.new Inner;            // i -> m  bad
+  }));
+    auto ic = i.new const(Inner);     // i -> c  OK
+    auto ii = i.new immutable(Inner); // i -> i  OK
+}
+
+/************************************/
+
+struct S8212 { int x; }
+
+shared S8212 s8212;
+
+shared int x8212;
+
+void test8212()
+{
+   int y = x8212;
+   S8212 s2 = s8212;
+}
+
+/************************************/
 
 int main()
 {
@@ -2698,6 +2825,7 @@ int main()
     test88();
     test4251a();
     test4251b();
+    test5473();
     test5493();
     test5493inout();
     test6782();
@@ -2716,6 +2844,9 @@ int main()
     test7518();
     test7669();
     test7757();
+    test8098();
+    test8099();
+    test8212();
 
     printf("Success\n");
     return 0;

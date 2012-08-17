@@ -1,9 +1,0 @@
-module gcc.config.mathfuncs;
-
-private import gcc.config.libc;
-private import gcc.builtins;
-private import core.stdc.stdint;
-
-@DCFG_LONG_DOUBLE_FUNCS@
-
-@DCFG_SQRTF@

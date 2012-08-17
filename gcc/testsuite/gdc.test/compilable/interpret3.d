@@ -432,6 +432,26 @@ static assert(!is(typeof(compiles!(badslice3([1,2,3])))));
 
 /*******************************************/
 
+int bug7894()
+{
+    for (int k = 0; k < 2; ++k) {
+        goto Lagain;
+Lagain: ;
+    }
+    int m = 1;
+    do {
+        ++m;
+        goto Ldo;
+Ldo: ;
+    } while (m < 3);
+    assert( m == 3);
+
+    return 1;
+}
+static assert( bug7894() );
+
+/*******************************************/
+
 size_t bug5524(int x, int[] more...)
 {
     int[0] zz;
@@ -1210,6 +1230,30 @@ int sdfgasf()
 static assert(sdfgasf() == 1);
 
 /**************************************************
+   Bug 7770
+**************************************************/
+
+immutable char[] foo7770 = "abcde";
+
+int bug7770a(string a)
+{
+    return 1;
+}
+
+bool bug7770b(char c)
+{
+    return true;
+}
+
+static assert( bug7770a(foo7770[0 .. $]));
+static assert( bug7770b(foo7770[ $ - 2 ]));
+void baz7770()
+{
+    static assert( bug7770a(foo7770[0 .. $]));
+    static assert( bug7770b(foo7770[ $ - 2 ]));
+}
+
+/**************************************************
    Bug 6015
 **************************************************/
 
@@ -1823,6 +1867,80 @@ static assert({
     assert(q>p);
     return 6;
 }() == 6);
+
+// Relations involving null pointers
+bool nullptrcmp()
+{
+    // null tests
+    void * null1 = null, null2 = null;
+    int x = 2;
+    void * p = &x;
+    assert( null1 == null2);
+    assert( null1 is null2);
+    assert( null1 <= null2);
+    assert( null1 >= null2);
+    assert( !(null1 > null2) );
+    assert( !(null2 > null1) );
+    assert( null1 != p);
+    assert( null1 !is p);
+    assert( p != null1);
+    assert( p !is null1);
+    assert( null1 <= p);
+    assert( p >= null2);
+    assert( p > null1);
+    assert( !(null1 > p) );
+    return true;
+}
+
+static assert(nullptrcmp());
+
+/**************************************************
+  8216 ptr inside a pointer range
+**************************************************/
+
+// Four-pointer relations. Return true if [p1..p2] points inside [q1..q2]
+// (where the end points dont coincide).
+bool ptr4cmp(void *p1, void *p2, void *q1, void *q2)
+{
+// Each compare can be written with <, <=, >, or >=.
+// Either && or || can be used, giving 32 permutations.
+// Additionally each compare can be negated with !, yielding 128 in total.
+    bool b1 = (p1 > q1 && p2 <= q2);
+    bool b2 = (p1 > q1 && p2 < q2);
+    bool b3 = (p1 >= q1 && p2 <= q2);
+    bool b4 = (p1 >= q1 && p2 < q2);
+
+    bool b5 = (q1 <= p1 && q2 > p2);
+    bool b6 = (q1 <= p1 && q2 >= p2);
+    bool b7 = (p2 <= q2 && p1 > q1);
+    bool b8 = (!(p1 <= q1) && p2 <= q2);
+    bool b9 = (!(p1 <= q1) && !(p2 > q2));
+    bool b10 = (!!!(p1 <= q1) && !(p2 > q2));
+
+    assert( b1 == b2 && b1 == b3 && b1 == b4 && b1 == b5 && b1 == b6 );
+    assert( b1 == b7 && b1 == b8 && b1 == b9 && b1 == b10 );
+
+    bool c1 = (p1 <= q1 || p2 > q2);
+    assert ( c1 == !b1 );
+    bool c2 = (p1 < q1 || p2 >= q2);
+    bool c3 = (!(q1 <= p1) || !(q2 >= p2));
+    assert( c1 == c2 && c1 == c3 );
+    return b1;
+}
+
+bool bug8216()
+{
+   int[4] a;
+   int [13] b;
+   int v;
+   int *p = &v;
+   assert(!ptr4cmp(&a[0], &a[3], p, p));
+   assert(!ptr4cmp(&b[2], &b[9], &a[1], &a[2]));
+   assert(!ptr4cmp(&b[1], &b[9], &b[2], &b[8]));
+   assert( ptr4cmp(&b[2], &b[8], &b[1], &b[9]));
+   return 1;
+}
+static assert(bug8216());
 
 /**************************************************
   6517 ptr++, ptr--
@@ -3097,6 +3215,29 @@ static assert({
 }());
 
 /**************************************************
+   7780 array cast
+**************************************************/
+int bug7780(int testnum){
+    int[] y = new int[2];
+    y[0]=2000000;
+    if (testnum == 1)
+    {
+        void[] x = y;
+        return (cast(byte[])x)[1];
+    }
+    if (testnum == 2)
+    {
+        int[] x = y[0..1];
+        return (cast(byte[])x)[1];
+    }
+    return 1;
+}
+
+static assert( is(typeof(compiles!(bug7780(0)))));
+static assert(!is(typeof(compiles!(bug7780(1)))));
+static assert(!is(typeof(compiles!(bug7780(2)))));
+
+/**************************************************
     6851 passing pointer by argument
 **************************************************/
 
@@ -3170,6 +3311,23 @@ struct Foo7277
 }
 
 static assert(Foo7277().func() == 17);
+
+/**************************************************
+    8276 ICE
+**************************************************/
+
+void bug8676(int n)
+{
+    const int X1 = 4 + n;
+    const int X2 = 4;
+    int X3 = 4;
+    int bar1() { return X1; }
+    int bar2() { return X2; }
+    int bar3() { return X3; }
+    static assert(!is(typeof(compiles!(bar1()))));
+    static assert( is(typeof(compiles!(bar2()))));
+    static assert(!is(typeof(compiles!(bar3()))));
+}
 
 /**************************************************
     classes and interfaces
@@ -4279,6 +4437,36 @@ int test7732()
 static assert( test7732() );
 
 /**************************************************
+    7784
+**************************************************/
+struct Foo7784
+{
+    void bug()
+    {
+        tab["A"] = Bar7784(&this);
+        auto pbar = "A" in tab;
+        auto bar = *pbar;
+    }
+
+    Bar7784[string] tab;
+}
+
+struct Bar7784
+{
+    Foo7784* foo;
+    int val;
+}
+
+bool ctfe7784()
+{
+    auto foo = Foo7784();
+    foo.bug();
+    return true;
+}
+
+static assert(ctfe7784());
+
+/**************************************************
     7781
 **************************************************/
 
@@ -4306,6 +4494,46 @@ bool bug7785(int n)
 static assert(bug7785(1));
 static assert(!is(typeof(compiles!(bug7785(2)))));
 static assert(!is(typeof(compiles!(bug7785(3)))));
+
+/**************************************************
+    7987
+**************************************************/
+
+class C7987 {
+    int m;
+}
+
+struct S7987 {
+    int *p;
+    C7987 c;
+}
+
+bool bug7987()
+{
+    int [7] q;
+    int[][2] b = q[0..5];
+    assert(b == b);
+    assert(b is b);
+    C7987 c1 = new C7987;
+    C7987 c2 = new C7987;
+    S7987 s, t;
+    s.p = &q[0];
+    t.p = &q[1];
+    assert(s!=t);
+    s.p = &q[1];
+    assert(s == t);
+    s.c = c1;
+    t.c = c2;
+    assert(s != t);
+    assert(s !is t);
+    s.c = c2;
+    assert(s == t);
+    assert(s is t);
+    return true;
+}
+
+static assert(bug7987());
+
 
 /******************************************************/
 

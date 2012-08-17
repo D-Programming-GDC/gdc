@@ -304,9 +304,6 @@ DCFG_USE_IEEE_FPSB=$d_use_ieee_fpsb
 AC_SUBST(DCFG_USE_IEEE_FPSB)
 
 if test "$with_newlib" = yes; then
-    # TODO: there is some way to enable long double funcs in newlib so need to support that
-    DCFG_LONG_DOUBLE_FUNCS=config/noldfuncs
-    DCFG_SQRTF=config/sqrtf
     # TODO: newlib has trunc and exp2, but not log2 -- so configure all separately
     DCFG_TRUNC=""
     DCFG_NEARBYINT=""
@@ -342,12 +339,9 @@ case "$d_target_os" in
 esac
 
 case "$target_os" in
-  darwin6*) DCFG_LONG_DOUBLE_FUNCS=config/noldfuncs ;;
-  darwin*)  DCFG_LONG_DOUBLE_FUNCS=config/ldfuncs-darwin ;;
   linux*|k*bsd*-gnu)
     case "$target_cpu" in
 	powerpc*)
-	    DCFG_LONG_DOUBLE_FUNCS=config/ldfuncs-ppclinux
 	    # Libc without nldbl not supported...
 	    AC_CHECK_FUNC(__nldbl_printf,d_have_nldbl_funcs=1,:)
 	    if test "$d_have_nldbl_funcs" = 1; then
@@ -356,20 +350,6 @@ case "$target_os" in
 	    ;;
     esac
 esac
-
-if test -z "$DCFG_LONG_DOUBLE_FUNCS"; then
-    AC_CHECK_FUNC(acosl,have_ldf_a=1,:)
-    AC_CHECK_FUNC(truncl,have_ldf_b=1,:)
-    if test "${have_ldf_a}${have_ldf_b}" = "11"; then
-	DCFG_LONG_DOUBLE_FUNCS=config/ldfuncs
-    else
-	DCFG_LONG_DOUBLE_FUNCS=config/noldfuncs
-    fi
-    DCFG_LONG_DOUBLE_FUNCS="$DCFG_LONG_DOUBLE_FUNCS"
-fi
-
-# on darwin, we don't seem to have sqrtf, even though it's in math.h
-AC_CHECK_FUNC(sqrtf,DCFG_SQRTF=config/sqrtf,DCFG_SQRTF=config/nosqrtf)
 
 # on freebsd, trunc,exp2,log2 are not provided
 # This is "need" and not "have" to mesh better with non-GNU.  Othrewise, it
@@ -501,11 +481,6 @@ AC_CHECK_FUNCS(vsnprintf _vsnprintf,break,[AC_MSG_ERROR([No variant of vsnprintf
 
 # end of 'if $with_newlib...'
 fi
-
-DCFG_LONG_DOUBLE_FUNCS="$srcdir/$DCFG_LONG_DOUBLE_FUNCS"
-AC_SUBST_FILE(DCFG_LONG_DOUBLE_FUNCS)
-DCFG_SQRTF="$srcdir/$DCFG_SQRTF"
-AC_SUBST_FILE(DCFG_SQRTF)
 
 AC_MSG_CHECKING([for ARM unwinder])
 AC_TRY_COMPILE([#include <unwind.h>],[
@@ -698,4 +673,4 @@ _EOF
 ])
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-AC_OUTPUT([Makefile phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/frag-ac libdruntime/frag-math])
+AC_OUTPUT([Makefile phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/frag-ac])
