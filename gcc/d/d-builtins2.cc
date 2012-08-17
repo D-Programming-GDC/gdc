@@ -369,38 +369,33 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
   else if ((td = m->isTemplateDeclaration()))
     {
       if (td->ident == id_arg)
-	IRState::setCStdArg (td);
+	{
+	  FuncDeclaration *fd;
+	  TypeFunction *tf;
+
+	  // Should have nice error message instead of ICE in case someone
+	  // tries to tweak the file.
+	  gcc_assert (td->members && td->members->dim == 1);
+	  fd = ((*td->members)[0])->isFuncDeclaration();
+	  gcc_assert (fd && !fd->parameters);
+	  tf = (TypeFunction *) fd->type;
+
+	  // Handle the following cases:
+	  //   T va_arg (va_list va);
+	  //   void va_arg (va_list va, T parm);
+	  if (tf->parameters->dim == 1 && tf->nextOf()->ty == Tident)
+	    gen.cstdargTemplateDecl = td;
+	  else if (tf->parameters->dim == 2 && tf->nextOf()->ty == Tvoid)
+	    gen.stdargTemplateDecl = td;
+	}
       else if (td->ident == id_start)
-	IRState::setCStdArgStart (td);
+	gen.cstdargStartTemplateDecl = td;
       else
 	td = NULL;
     }
 
   if (td == NULL)     // Not handled.
     return;
-
-  if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
-    {
-      // For GCC, a va_list can be an array.  D static arrays are automatically
-      // passed by reference, but the 'inout' modifier is not allowed.
-      gcc_assert (td->members);
-      for (size_t j = 0; j < td->members->dim; j++)
-	{
-	  FuncDeclaration *fd = (td->members->tdata()[j])->isFuncDeclaration();
-	  if (fd && (fd->ident == id_arg || fd->ident == id_start))
-	    {
-	      TypeFunction *tf;
-	      // Should have nice error message instead of ICE in case someone
-	      // tries to tweak the file.
-	      gcc_assert (!fd->parameters);
-	      tf = (TypeFunction *) fd->type;
-	      gcc_assert (tf->ty == Tfunction &&
-  			  tf->parameters && tf->parameters->dim >= 1);
-	      (tf->parameters->tdata()[0])->storageClass &= ~(STCin|STCout|STCref);
-	      (tf->parameters->tdata()[0])->storageClass |= STCin;
-	    }
-	}
-    }
 }
 
 // Helper function for d_gcc_magic_module.
@@ -651,14 +646,14 @@ d_gcc_magic_module (Module *m)
       else if (!strcmp ((md->packages->tdata()[0])->string, "core"))
 	{
 	  if (!strcmp (md->id->string, "bitop"))
-	    IRState::setIntrinsicModule (m, true);
+	    gen.intrinsicModule = m;
 	  else if (!strcmp (md->id->string, "math"))
-	    IRState::setMathModule (m, true);
+	    gen.mathCoreModule = m;
 	}
       else if (!strcmp ((md->packages->tdata()[0])->string, "std"))
 	{
 	  if (!strcmp (md->id->string, "math"))
-	    IRState::setMathModule (m, false);
+	    gen.mathModule = m;
 	}
     }
   else if (md->packages->dim == 2)

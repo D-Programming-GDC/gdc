@@ -28,16 +28,6 @@
 GlobalValues g;
 IRState gen;
 
-Module *IRState::builtinsModule = 0;
-Module *IRState::intrinsicModule = 0;
-Module *IRState::intrinsicCoreModule = 0;
-Module *IRState::mathModule = 0;
-Module *IRState::mathCoreModule = 0;
-TemplateDeclaration *IRState::cstdargTemplateDecl = 0;
-TemplateDeclaration *IRState::cstdargStartTemplateDecl = 0;
-
-VarDeclarations *IRState::varsInScope;
-
 // Public routine called from D frontend to hide from glue interface.
 // Returns TRUE if all templates are being emitted, either publicly
 // or privately, into the current compilation.
@@ -2177,7 +2167,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 	}
       else
 	{
-	  if (splitDynArrayVarArgs && actual_arg_exp->type->toBasetype()->ty == Tarray)
+	  if (flag_split_darrays && actual_arg_exp->type->toBasetype()->ty == Tarray)
 	    {
 	      tree da_exp = maybeMakeTemp (actual_arg_exp->toElem (this));
 	      actual_arg_list.cons (darrayLenRef (da_exp));
@@ -2821,7 +2811,8 @@ IRState::maybeExpandSpecialCall (tree call_exp)
   // More code duplication from C
   CallExpr ce (call_exp);
   tree callee = ce.callee();
-  tree exp = NULL_TREE, op1, op2;
+  tree op1 = NULL_TREE, op2 = NULL_TREE;
+  tree exp = NULL_TREE;
 
   if (POINTER_TYPE_P (TREE_TYPE (callee)))
     callee = TREE_OPERAND (callee, 0);
@@ -2992,63 +2983,54 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  op1 = ce.nextArg();
 	  return buildCall (d_built_in_decls (BUILT_IN_RINTL), 1, op1);
 
-
+	case INTRINSIC_VA_ARG:
 	case INTRINSIC_C_VA_ARG:
 	  op1 = ce.nextArg();
-	  STRIP_TYPE_NOPS (op1);
-	  type = TREE_TYPE (op1);
-	  /* signature is (inout va_list), but VA_ARG_EXPR expects the
-	     list itself... but not if the va_list type is an array.  In that
-	     case, it should be a pointer.  */
-	  if (TREE_CODE (type) != ARRAY_TYPE)
-	    {
-	      if (TREE_CODE (op1) == ADDR_EXPR)
-		{
-		  op1 = TREE_OPERAND (op1, 0);
-		}
-	      else
-		{
-		  /* this probably doesn't happen... passing an inout va_list argument,
-		     but again,  it's probably { &(* inout_arg) }  */
-		  op1 = indirect (op1);
-		}
-	    }
-#if SARRAYVALUE
+	  STRIP_NOPS (op1);
+	  gcc_assert (TREE_CODE (op1) == ADDR_EXPR);
+	  op1 = TREE_OPERAND (op1, 0);
+
+	  if (intrinsic == INTRINSIC_C_VA_ARG)
+	    type = TREE_TYPE (TREE_TYPE (callee));
 	  else
 	    {
-	      // list would be passed by value, convert to reference.
-	      gcc_assert (TREE_CODE (type) == ARRAY_TYPE);
-	      op1 = addressOf (op1);
+	      op2 = ce.nextArg();
+	      STRIP_NOPS (op2);
+	      gcc_assert (TREE_CODE (op2) == ADDR_EXPR);
+	      op2 = TREE_OPERAND (op2, 0);
+	      type = TREE_TYPE (op2);
 	    }
-#endif
-	  type = TREE_TYPE (TREE_TYPE (callee));
-	  if (splitDynArrayVarArgs && (d_type = getDType (type)) &&
-	      d_type->toBasetype()->ty == Tarray)
+
+	  d_type = getDType (type);
+	  if (flag_split_darrays &&
+	      (d_type && d_type->toBasetype()->ty == Tarray))
 	    {
 	      /* should create a temp var of type TYPE and move the binding
 		 to outside this expression.  */
-	      op1 = stabilize_reference (op1);
 	      tree ltype = TREE_TYPE (TYPE_FIELDS (type));
 	      tree ptype = TREE_TYPE (TREE_CHAIN (TYPE_FIELDS (type)));
 	      tree lvar = exprVar (ltype);
 	      tree pvar = exprVar (ptype);
+
+	      op1 = stabilize_reference (op1);
 	      tree e1 = vmodify (lvar, build1 (VA_ARG_EXPR, ltype, op1));
 	      tree e2 = vmodify (pvar, build1 (VA_ARG_EXPR, ptype, op1));
-	      tree b = compound (compound (e1, e2), darrayVal (type, lvar, pvar));
-	      return binding (lvar, binding (pvar, b));
+	      exp = compound (compound (e1, e2), darrayVal (type, lvar, pvar));
+	      exp = binding (lvar, binding (pvar, exp));
 	    }
 	  else
 	    {
 	      tree type2 = d_type_promotes_to (type);
-	      op1 = build1 (VA_ARG_EXPR, type2, op1);
+	      exp = build1 (VA_ARG_EXPR, type2, op1);
+	      // silently convert promoted type...
 	      if (type != type2)
-		{
-		  // silently convert promoted type...
-		  op1 = d_convert_basic (type, op1);
-		}
-	      return op1;
+		exp = d_convert_basic (type, exp);
 	    }
-	  break;
+
+	  if (intrinsic == INTRINSIC_VA_ARG)
+	    exp = vmodify (op2, exp);
+
+	  return exp;
 
 	case INTRINSIC_C_VA_START:
 	  /* The va_list argument should already have its
@@ -3060,22 +3042,11 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 
 	  // could be casting... so need to check type too?
 	  STRIP_NOPS (op1);
-	  if (TREE_CODE (op1) == ADDR_EXPR)
-	    {
-	      op1 = TREE_OPERAND (op1, 0);
-	      op1 = addressOf (op1);
-	    }
-#if SARRAYVALUE
-	  else if (TREE_CODE (type) == ARRAY_TYPE)
-	    {
-	      // pass list by reference.
-	      op1 = addressOf (op1);
-	    }
-#endif
-
 	  STRIP_NOPS (op2);
-	  if (TREE_CODE (op2) == ADDR_EXPR)
-	    op2 = TREE_OPERAND (op2, 0);
+	  gcc_assert (TREE_CODE (op1) == ADDR_EXPR &&
+		      TREE_CODE (op2) == ADDR_EXPR);
+
+	  op2 = TREE_OPERAND (op2, 0);
 	  // assuming nobody tries to change the return type
 	  return buildCall (d_built_in_decls (BUILT_IN_VA_START), 2, op1, op2);
 
@@ -3245,8 +3216,7 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
   if (!dsym)
     return false;
 
-  if ((intrinsicModule && dsym->getModule() == intrinsicModule) ||
-      (intrinsicCoreModule && dsym->getModule() == intrinsicCoreModule))
+  if ((gen.intrinsicModule && dsym->getModule() == gen.intrinsicModule))
     {
       // Matches order of Intrinsic enum
       static const char *intrinsic_names[] = {
@@ -3269,8 +3239,8 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
       DECL_FUNCTION_CODE (t) = (built_in_function) i;
       return true;
     }
-  else if ((mathModule && dsym->getModule() == mathModule) ||
-	   (mathCoreModule && dsym->getModule() == mathCoreModule))
+  else if ((gen.mathModule && dsym->getModule() == gen.mathModule) ||
+	   (gen.mathCoreModule && dsym->getModule() == gen.mathCoreModule))
     {
       // Matches order of Intrinsic enum
       static const char *math_names[] = {
@@ -3307,13 +3277,19 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
       if (ti)
 	{
 	  tree t = decl->toSymbol()->Stree;
-	  if (ti->tempdecl == cstdargTemplateDecl)
+	  if (ti->tempdecl == gen.stdargTemplateDecl)
+	    {
+	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
+	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_ARG;
+	      return true;
+	    }
+	  if (ti->tempdecl == gen.cstdargTemplateDecl)
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
 	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_C_VA_ARG;
 	      return true;
 	    }
-	  else if (ti->tempdecl == cstdargStartTemplateDecl)
+	  else if (ti->tempdecl == gen.cstdargStartTemplateDecl)
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
 	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_C_VA_START;

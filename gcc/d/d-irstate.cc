@@ -37,6 +37,7 @@ IRBase::startFunction (FuncDeclaration *decl)
   IRState *new_irs = new IRState();
   new_irs->parent = g.irs;
   new_irs->func = decl;
+  new_irs->varsInScope = NULL;
 
   for (Dsymbol *p = decl->parent; p; p = p->parent)
     {

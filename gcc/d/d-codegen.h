@@ -168,6 +168,7 @@ struct IRState : IRBase
     INTRINSIC_RNDTOL, INTRINSIC_SIN,
     INTRINSIC_SQRT,
 
+    INTRINSIC_VA_ARG,
     INTRINSIC_C_VA_ARG,
     INTRINSIC_C_VA_START,
     INTRINSIC_count,
@@ -363,11 +364,10 @@ struct IRState : IRBase
   static tree buildCall (tree callee, int n_args, ...);
 
   TemplateEmission emitTemplates;
-  bool splitDynArrayVarArgs;
   bool stdInc;
 
   // Variables that are in scope that will need destruction later
-  static VarDeclarations *varsInScope;
+  VarDeclarations *varsInScope;
 
   tree floatMod (tree type, tree arg0, tree arg1);
 
@@ -375,38 +375,13 @@ struct IRState : IRBase
 
   dinteger_t getTargetSizeConst (tree t);
 
-  static Module *builtinsModule;
-  static Module *intrinsicModule;
-  static Module *intrinsicCoreModule;
-  static Module *mathModule;
-  static Module *mathCoreModule;
-  static TemplateDeclaration *cstdargTemplateDecl;
-  static TemplateDeclaration *cstdargStartTemplateDecl;
-
-  static void setBuiltinsModule (Module *mod)
-  { IRState::builtinsModule = mod; }
-
-  static void setIntrinsicModule (Module *mod, bool coremod)
-  {
-    if (coremod)
-      IRState::intrinsicCoreModule = mod;
-    else
-      IRState::intrinsicModule = mod;
-  }
-
-  static void setMathModule (Module *mod, bool coremod)
-  {
-    if (coremod)
-      IRState::mathCoreModule = mod;
-    else
-      IRState::mathModule = mod;
-  }
-
-  static void setCStdArg (TemplateDeclaration *td)
-  { IRState::cstdargTemplateDecl = td; }
-
-  static void setCStdArgStart (TemplateDeclaration *td)
-  { IRState::cstdargStartTemplateDecl = td; }
+  // Built-in symbols that require special handling.
+  Module *intrinsicModule;
+  Module *mathModule;
+  Module *mathCoreModule;
+  TemplateDeclaration *stdargTemplateDecl;
+  TemplateDeclaration *cstdargTemplateDecl;
+  TemplateDeclaration *cstdargStartTemplateDecl;
 
   static bool maybeSetUpBuiltin (Declaration *decl);
 

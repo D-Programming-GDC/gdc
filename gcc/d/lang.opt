@@ -151,7 +151,7 @@ D
 Compile release version
 
 fsplit-dynamic-arrays
-D
+D Var(flag_split_darrays)
 Split dynamic arrays into length and pointer when passing to functions.
 
 funittest

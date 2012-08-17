@@ -1,3 +1,35 @@
+2012-08-17  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins2.cc(d_gcc_magic_stdarg_check): Add new va_arg magic
+	function that stores the next value through a passed parameter.
+	Remove workaround for inout signature as va_list is always passed by
+	reference to intrinsic templates.
+	(d_gcc_magic_module): Assign module directly to global IRState.
+	* d-codegen.cc(IRState::builtinsModule): Remove static declaration.
+	(IRState::intrinsicModule): Likewise.
+	(IRState::intrinsicCoreModule): Likewise.
+	(IRState::mathModule): Likewise.
+	(IRState::mathCoreModule): Likewise.
+	(IRState::cstdargTemplateDecl): Likewise.
+	(IRState::cstdargStartTemplateDecl): Likewise.
+	(IRState::varsInScope): Likewise.
+	(IRState::call): Use flag_split_darrays.
+	(IRState::maybeExpandSpecialCall): Clean-up va_start and va_arg
+	implementations.
+	(IRState::maybeSetUpBuiltin): Handle new va_arg function.
+	* d-codegen.h(Intrinsic::INTRINSIC_VA_ARG): New enum definition.
+	(IRState::setBuiltinsModule): Remove.
+	(IRState::setIntrinsicModule): Likewise.
+	(IRState::setMathModule): Likewise.
+	(IRState::setCStdArg): Likewise.
+	* d-glue.cc(CatExp::toElem): Use flag_split_darrays.
+	* d-irstate.cc(IRBase::startFunction): Set varsInScope.
+	* d-lang.cc(d_init_options): Set modules that require special
+	handling.
+	(d_handle_option): Don't handle OPT_fsplit_dynamic_arrays.
+	* lang.opt: fsplit-dynamic-arrays mapped to variable
+	flag_split_darrays.
+
 2012-08-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-glue.cc(IdentityExp::toElem): Re-order precendence of type

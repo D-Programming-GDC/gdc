@@ -124,9 +124,15 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.fileImppath = new Strings();
 
   // extra D-specific options
-  gen.splitDynArrayVarArgs = false;
   gen.emitTemplates = TEnormal;
   gen.stdInc = true;
+
+  gen.intrinsicModule = NULL;
+  gen.mathModule = NULL;
+  gen.mathCoreModule = NULL;
+  gen.stdargTemplateDecl = NULL;
+  gen.cstdargTemplateDecl = NULL;
+  gen.cstdargStartTemplateDecl = NULL;
 }
 
 /* Initialize options structure OPTS.  */
@@ -513,10 +519,6 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useArrayBounds = !value ? 2 : 1;
       flag_bounds_check = !value;
       global.params.useSwitchError = !value;
-      break;
-
-    case OPT_fsplit_dynamic_arrays:
-      gen.splitDynArrayVarArgs = value;
       break;
 
     case OPT_funittest:
