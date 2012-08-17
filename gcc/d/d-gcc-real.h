@@ -130,8 +130,8 @@ extern real_t_Properties real_t_properties[real_t::NumModes];
 
 // Macros are used by the D frontend, so map to real_t property values instead of long double.
 
-#define FLT_MAX real_t_properties[real_t::Float].maxval;                
-#define DBL_MAX real_t_properties[real_t::Double].maxval;               
+#define FLT_MAX real_t_properties[real_t::Float].maxval;
+#define DBL_MAX real_t_properties[real_t::Double].maxval;
 #define LDBL_MAX real_t_properties[real_t::LongDouble].maxval;
 #define FLT_MIN real_t_properties[real_t::Float].minval;
 #define DBL_MIN real_t_properties[real_t::Double].minval;

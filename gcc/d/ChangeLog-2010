@@ -120,7 +120,7 @@
 	d/dmd2/declaration.h, d/dmd2/interpret.c, d/phobos2/Makefile.in,
 	d/phobos2/configure: D2 - GCC builtins now CTFE'd.
 	[46b8a2bb22f5]
-	
+
 2010-12-04  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d/d-lang.cc, d/druntime/gc/gcgccextern.d, d/phobos2/Makefile.am,
@@ -403,7 +403,7 @@
 	[b8673983b46b]
 
 	* d/patches/*, d/set-gcc.sh: Updated patches and setup-gcc.sh for
-	Apple GCC. 
+	Apple GCC.
 	[b25313940945]
 
 	* d/d-asm-i386.h, d/phobos/std/cpuid.d, d/phobos2/std/cpuid.d: Tell
@@ -668,7 +668,7 @@
 	* gcc-mars.cc:
 	Removed gcc-mars.cc from top level d/ folder.
 	[e4b1e3753bf5]
-	
+
 	* Make-lang.in:
 	Updated Make-lang.in for removal of gcc-mars.cc.
 	[db7d6aae8ceb]
@@ -1332,7 +1332,7 @@
 
 	* phobos/Makefile.am, phobos/Makefile.in, phobos2/Makefile.am,
 	phobos2/Makefile.in: Fix build for check-target-libphobos tests.
-	
+
 	* d-decls.cc, d-objfile: Fixed ICE in gdc-4.3 [39825b8156a3]
 
 2010-07-14  Iain Buclaw  <ibuclaw@ubuntu.com>
@@ -1426,14 +1426,14 @@
 
 	* dmd/mem.c, dmd/mem.h, dmd/port.c, dmd/rmem.h, dt.cc, dt.h,
 	phobos/internal/qsortg.d: Remove executable bit on source files.
-	
+
 2010-06-12  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	Merge with DMD 1.047
 
 	* d-codegen.cc: Look for reference initializations in foreach
 	statement assignments.
-	
+
 	* dmd/..., dmd2/..., phobos/..., phobos2/...: Converted CR, CRLF line
 	endings to LF (thanks to venix1).
 
@@ -1458,7 +1458,7 @@
 2010-02-17  Vincenzo Ampolo  <vincenzo.ampolo@gmail.com>
 
 	* d-glue.cc: Make d1 classinfo like d2 ones.
-	
+
 	* dmd/expression.c, phobos/std/process.d: Apply feep (downs) patch.
 
 2010-02-07  michaelp  <baseball.mjp@gmail.com>

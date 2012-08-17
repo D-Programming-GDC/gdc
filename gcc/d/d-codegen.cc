@@ -331,6 +331,11 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	    // Allowed to cast to structs with same type size.
 	    result = vconvert (target_type->toCtype(), exp);
 	  }
+	else if (tbtype->ty == Taarray)
+	  {
+	    tbtype = ((TypeAArray *)tbtype)->getImpl()->type;
+	    return convertTo (exp, exp_type, tbtype);
+	  }
 	else
 	  {
 	    ::error ("can't convert struct %s to %s", exp_type->toChars(), target_type->toChars());
@@ -494,16 +499,20 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
     case Taarray:
       if (tbtype->ty == Taarray)
 	return vconvert (target_type->toCtype(), exp);
+      else if (tbtype->ty == Tstruct)
+	{
+	  ebtype = ((TypeAArray *)ebtype)->getImpl()->type;
+	  return convertTo (exp, ebtype, target_type);
+	}
+      // Can convert associative arrays to void pointers.
+      else if (tbtype == Type::tvoidptr)
+	return vconvert (target_type->toCtype(), exp);
       // else, default conversion, which should product an error
       break;
 
     case Tpointer:
-      /* For some reason, convert_to_integer converts pointers
-	 to a signed type. */
-      if (tbtype->isintegral())
-	exp = d_convert_basic (d_type_for_size (POINTER_SIZE, 1), exp);
       // Can convert void pointers to associative arrays too...
-      else if (tbtype->ty == Taarray && ebtype == Type::tvoidptr)
+      if (tbtype->ty == Taarray && ebtype == Type::tvoidptr)
 	return vconvert (target_type->toCtype(), exp);
       break;
 
@@ -684,7 +693,7 @@ IRState::convertForAssignment (Expression *expr, Type *target_type)
 	  TREE_STATIC (empty) = 1;
 	  return empty;
 	}
-	
+
       gcc_unreachable();
     }
 
@@ -711,15 +720,14 @@ IRState::convertForArgument (Expression *expr, Parameter *arg)
       // front-end already sometimes automatically takes the address
       // TODO: Make this safer?  Can this be confused by a non-zero SymOff?
       if (expr->op != TOKaddress && expr->op != TOKsymoff && expr->op != TOKadd)
-	return addressOf (exp_tree);
-      else
-	return exp_tree;
+	exp_tree = addressOf (exp_tree);
+
+      return d_convert_basic (trueArgumentType (arg), exp_tree);
     }
   else
     {
       // Lazy arguments: expr should already be a delegate
-      tree exp_tree = expr->toElem (this);
-      return exp_tree;
+      return expr->toElem (this);
     }
 }
 
@@ -2162,7 +2170,6 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 	  // Actual arguments for declared formal arguments
 	  Parameter *formal_arg = Parameter::getNth (formal_args, fi);
 	  actual_arg_tree = convertForArgument (actual_arg_exp, formal_arg);
-	  actual_arg_tree = d_convert_basic (trueArgumentType (formal_arg), actual_arg_tree);
 	  ++fi;
 	}
       else
@@ -3185,7 +3192,7 @@ IRState::floatMod (tree type, tree arg0, tree arg1)
     }
 }
 
-// 
+//
 
 tree
 IRState::typeinfoReference (Type *t)
@@ -4262,7 +4269,7 @@ IRState::doAsm (tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
 }
 
 // Routines for checking goto statements don't jump to invalid locations.
-// In particular, it is illegal for a goto to be used to skip initializations. 
+// In particular, it is illegal for a goto to be used to skip initializations.
 // Saves the block label L is declared in for analysis later.
 
 void
@@ -4519,7 +4526,7 @@ AggLayout::finish (Expressions *attrs)
     }
 
   compute_record_mode (this->aggType_);
-  
+
   // Set up variants.
   for (tree x = TYPE_MAIN_VARIANT (this->aggType_); x; x = TYPE_NEXT_VARIANT (x))
     {

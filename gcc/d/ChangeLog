@@ -1,3 +1,14 @@
+2012-08-18  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-codegen.cc(IRState::convertTo): Fix to allow conversion between
+	void* and associative arrays.
+	(IRState::convertForArgument): Use d_convert_basic.
+	(IRState::call): Don't use d_convert_basic, now handled by
+	convertForArgument.
+	* d-gcc-real.cc(real_t::real_t): Increase real type mode to be greater
+	than integer type size to prevent overflow in conversions.
+	* d-glue.cc(CastExp::toElem): Don't get implicit AA type.
+
 2012-08-17  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* dfrontend: Update to D frontend version 2.060
@@ -168,7 +179,7 @@
 	(d_gcc_magic_module): Remove check for core.vararg.
 	* d-codegen.cc(INTRINSIC_STD_VA_ARG): Remove.
 	(IRState::maybeSetUpBuiltin): Don't handle INTRINSIC_STD_VA_ARG.
-	
+
 2012-07-13  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-decls.cc(Dsymbol::toSymbolX): Remove use of PRIuSIZE format macro.
@@ -404,7 +415,7 @@
 	(IRState::doAsm): Likewise.
 	* d-decls.cc(FuncDeclaration::toSymbol): Remove check for inline asm.
 	* d-glue.cc(FuncDeclaration::toObjFile): Likewise.
-	(LabelStatement::toIR): 
+	(LabelStatement::toIR): Likewise.
 	* d-lang.cc(VersionCondition::addPredefinedGlobalIdent): Remove D
 	Inline Asm version identifiers.
 	* d-lang.h(d_build_asm_stmt): Update signature.

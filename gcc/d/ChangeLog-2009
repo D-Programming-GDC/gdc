@@ -3,7 +3,7 @@
 	Merge with DMD 1.043
 
 	* phobos/configure.in: Changed part of phobos configure.
-	
+
 	* samples/README, samples/samples.sh: Uploading the start of the some
 	small tests to help in the testing of GDC/D components.
 
@@ -36,14 +36,14 @@
 2009-11-07  Vincenzo Ampolo  <vincenzo.ampolo@gmail.com>
 
 	Changes to GCC-4.4.x branch:
-	
+
 	* tools/makewebstatistics.d: Added d tool to generate webstats about
 	dstress in D2.
 
 2009-10-25  michaelp  <baseball.mjp@gmail.com>
 
 	Merge with DMD 1.040
-	
+
 	* dmd/..., phobos/...: Now working for D1 (Not on GCC 4.3.4?)
 
 	* asmstmt.cc: Merge from dmd/statement.c
@@ -59,7 +59,7 @@
 	no fix. The problem may be in phobos then.
 
 	Changes to GCC-4.4.x branch:
-	
+
 	* d-lang.cc, d-lang.h setup-gcc.sh, patches/patch-gcc-4.4.x,
 	patches/patch-toplev-4.4.x: Applied Eldar patches for gcc 4.4.0
 
@@ -68,7 +68,7 @@
 	* dmd2/attrib.c, dmd2/class.c, dmd2/declaration.c, dmd2/doc.c,
 	dmd2/dsymbol.h, dmd2/func.c, dmd2/parse.c, dmd2/statement.c,
 	dmd2/template.c, dmd2/toir.c: 2.015 WORKING ;)
-	
+
 	* dmd2/parse.c: Fixed problem with static if.
 
 	* dmd2/template.c: Fixed problem with tuples.
@@ -87,9 +87,9 @@
 	Merge with DMD 1.039
 
 	* d-decls.cc: Merge changes from dmd/mtype.h.
-	
+
 	* phobos/internal/aaA.d, phobos/std/stdio.d: Small Phobos fix.
-	
+
 2009-09-30  Vincenzo Ampolo  <vincenzo.ampolo@gmail.com>
 
 	* phobos2/internal/aaA.d, phobos2/linux.mak, phobos2/std/algorithm.d,
@@ -117,11 +117,11 @@
 	Merge with DMD 1.035
 
 	* d-objfile.cc: Merge changes from dmd/attrib.c.
-	
+
 	* phobos/Makefile.in, phobos/internal/arraydouble.d,
 	phobos/internal/arrayfloat.d: Included arraydouble, arrayfloat, and
 	arrayreal in libphobos Makefile.
-	
+
 	* asmstmt.cc, dmd/statement.c, dmd/statement.h, phobos/std/math.d: Fixed
 	Phobos std.math bug.
 
@@ -139,7 +139,7 @@
 
 	* phobos/std/boxer.d phobos/std/dateparse.d: Fixed phobos build and
 	possible implicit conversion errors in boxer.d.
-	
+
 	* d-objfile.cc: Removed assert(0) line 926.
 
 2009-09-13  Vincenzo Ampolo  <vincenzo.ampolo@gmail.com>

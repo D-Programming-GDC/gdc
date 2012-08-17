@@ -131,7 +131,7 @@ d_default_conversion (tree exp)
 {
   tree orig_exp;
   tree type = TREE_TYPE (exp);
-  tree promoted_type; 
+  tree promoted_type;
 
   /* Constants can be used directly unless they're not loadable.  */
   if (TREE_CODE (exp) == CONST_DECL)
@@ -307,7 +307,7 @@ d_truthvalue_conversion (tree expr)
 				    d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
 				    d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
 				    /* convert_p */ 0);
-      
+
     case NEGATE_EXPR:
     case ABS_EXPR:
     case FLOAT_EXPR:

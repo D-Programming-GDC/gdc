@@ -599,7 +599,7 @@ d_gcc_magic_libbuiltins_check (Dsymbol *m)
 	{
 	  tree decl = TREE_VALUE (n);
 	  gcc_assert (DECL_ASSEMBLER_NAME_SET_P (decl));
-	  
+
 	  const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
 	  if (fd->ident == Lexer::idPool (name))
 	    {

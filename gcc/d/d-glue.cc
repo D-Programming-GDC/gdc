@@ -467,7 +467,7 @@ EqualExp::toElem (IRState *irs)
 	  NULL_TREE,
       };
       args[2] = irs->typeinfoReference (telem->arrayOf());
-      
+
       tree result = irs->libCall (LIBCALL_ADEQ2, 3, args);
       result = irs->convertTo (type->toCtype(), result);
       if (op == TOKnotequal)
@@ -1482,14 +1482,7 @@ CastExp::toElem (IRState *irs)
 {
   Type *ebtype = e1->type->toBasetype();
   Type *tbtype = to->toBasetype();
-  tree t;
-
-  if (ebtype->ty == Taarray)
-    ebtype = ((TypeAArray *)ebtype)->getImpl()->type;
-  if (tbtype->ty == Taarray)
-    tbtype = ((TypeAArray *)tbtype)->getImpl()->type;
-
-  t = e1->toElem (irs);
+  tree t = e1->toElem (irs);
 
   if (tbtype->ty == Tvoid)
     {

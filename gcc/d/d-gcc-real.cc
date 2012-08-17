@@ -186,21 +186,21 @@ real_t::real_t (const REAL_VALUE_TYPE& rv)
 
 real_t::real_t (int v)
 {
-  REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Float));
+  REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Double));
 }
 
 // Construct a new real_t from d_uns64 V.
 
 real_t::real_t (d_uns64 v)
 {
-  REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, 0, machineMode (Double));
+  REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, 0, machineMode (LongDouble));
 }
 
 // Construct a new real_t from d_int64 V.
 
 real_t::real_t (d_int64 v)
 {
-  REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Double));
+  REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (LongDouble));
 }
 
 // Construct a new real_t from d_float64 D.
@@ -224,7 +224,7 @@ real_t::operator= (const real_t& r)
 real_t &
 real_t::operator= (int v)
 {
-  REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Float));
+  REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Double));
   return *this;
 }
 
