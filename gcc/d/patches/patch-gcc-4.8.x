@@ -1,5 +1,5 @@
---- gcc-4.8-20120812/gcc/config/rs6000/rs6000.c	2012-07-31 23:14:44.000000000 +0100
-+++ gcc-4.8/gcc/config/rs6000/rs6000.c	2012-08-17 18:30:37.121021742 +0100
+--- gcc/config/rs6000/rs6000.c	2012-07-31 23:14:44.000000000 +0100
++++ gcc/config/rs6000/rs6000.c	2012-08-17 18:30:37.121021742 +0100
 @@ -21410,7 +21410,8 @@ rs6000_output_function_epilogue (FILE *f
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
@@ -10,8 +10,8 @@
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
  	       || ! strcmp (language_string, "GNU Fortran"))
---- gcc-4.8-20120812/gcc/doc/frontends.texi	2011-01-03 20:52:22.000000000 +0000
-+++ gcc-4.8/gcc/doc/frontends.texi	2012-08-17 18:30:37.133021743 +0100
+--- gcc/doc/frontends.texi	2011-01-03 20:52:22.000000000 +0000
++++ gcc/doc/frontends.texi	2012-08-17 18:30:37.133021743 +0100
 @@ -10,6 +10,7 @@
  @cindex GNU Compiler Collection
  @cindex GNU C Compiler
@@ -29,8 +29,8 @@
  
  The abbreviation @dfn{GCC} has multiple meanings in common use.  The
  current official meaning is ``GNU Compiler Collection'', which refers
---- gcc-4.8-20120812/gcc/doc/install.texi	2012-07-16 20:14:18.000000000 +0100
-+++ gcc-4.8/gcc/doc/install.texi	2012-08-17 18:30:37.141021743 +0100
+--- gcc/doc/install.texi	2012-07-16 20:14:18.000000000 +0100
++++ gcc/doc/install.texi	2012-08-17 18:30:37.141021743 +0100
 @@ -1355,12 +1355,12 @@ their runtime libraries should be built.
  grep language= */config-lang.in
  @end smallexample
@@ -46,8 +46,8 @@
  
  @item --enable-stage1-languages=@var{lang1},@var{lang2},@dots{}
  Specify that a particular subset of compilers and their runtime
---- gcc-4.8-20120812/gcc/doc/invoke.texi	2012-08-10 15:19:09.000000000 +0100
-+++ gcc-4.8/gcc/doc/invoke.texi	2012-08-17 18:30:37.209021746 +0100
+--- gcc/doc/invoke.texi	2012-08-10 15:19:09.000000000 +0100
++++ gcc/doc/invoke.texi	2012-08-17 18:30:37.209021746 +0100
 @@ -1142,6 +1142,15 @@ called @dfn{specs}.
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
@@ -72,8 +72,8 @@
  f77  f77-cpp-input f95  f95-cpp-input
  go
  java
---- gcc-4.8-20120812/gcc/doc/sourcebuild.texi	2012-08-10 13:11:29.000000000 +0100
-+++ gcc-4.8/gcc/doc/sourcebuild.texi	2012-08-17 18:30:37.249021748 +0100
+--- gcc/doc/sourcebuild.texi	2012-08-10 13:11:29.000000000 +0100
++++ gcc/doc/sourcebuild.texi	2012-08-17 18:30:37.249021748 +0100
 @@ -114,6 +114,9 @@ The Objective-C and Objective-C++ runtim
  @item libquadmath
  The runtime support library for quad-precision math operations.
@@ -84,8 +84,8 @@
  @item libssp
  The Stack protector runtime library.
  
---- gcc-4.8-20120812/gcc/doc/standards.texi	2011-12-21 17:53:58.000000000 +0000
-+++ gcc-4.8/gcc/doc/standards.texi	2012-08-17 18:30:37.277021749 +0100
+--- gcc/doc/standards.texi	2011-12-21 17:53:58.000000000 +0000
++++ gcc/doc/standards.texi	2012-08-17 18:30:37.277021749 +0100
 @@ -289,6 +289,16 @@ a specific version.  In general GCC trac
  closely, and any given release will support the language as of the
  date that the release was frozen.
@@ -103,8 +103,8 @@
  @section References for other languages
  
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
---- gcc-4.8-20120812/gcc/dwarf2out.c	2012-07-24 18:31:01.000000000 +0100
-+++ gcc-4.8/gcc/dwarf2out.c	2012-08-17 18:30:37.345021752 +0100
+--- gcc/dwarf2out.c	2012-07-24 18:31:01.000000000 +0100
++++ gcc/dwarf2out.c	2012-08-17 18:30:37.345021752 +0100
 @@ -18199,6 +18199,8 @@ gen_compile_unit_die (const char *filena
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
@@ -114,8 +114,8 @@
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
---- gcc-4.8-20120812/gcc/gcc.c	2012-07-27 19:17:00.000000000 +0100
-+++ gcc-4.8/gcc/gcc.c	2012-08-17 18:30:37.377021753 +0100
+--- gcc/gcc.c	2012-07-27 19:17:00.000000000 +0100
++++ gcc/gcc.c	2012-08-17 18:30:37.377021753 +0100
 @@ -935,6 +935,7 @@ static const struct compiler default_com
    {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
    {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
