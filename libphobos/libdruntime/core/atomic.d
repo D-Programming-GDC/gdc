@@ -1261,6 +1261,12 @@ else version( GNU )
 
         val = newval;
     }
+
+
+    void atomicFence() nothrow
+    {
+        __sync_synchronize();
+    }
 }
 
 // This is an ABI adapter that works on all architectures.  It type puns
