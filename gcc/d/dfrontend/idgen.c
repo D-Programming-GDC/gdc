@@ -26,7 +26,7 @@ struct Msgtable
         const char *name;       // name in D executable
 };
 
-struct Msgtable msgtable[] =
+Msgtable msgtable[] =
 {
     { "IUnknown" },
     { "Object" },

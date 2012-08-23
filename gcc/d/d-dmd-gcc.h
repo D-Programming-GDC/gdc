@@ -22,7 +22,7 @@
 #ifndef GCC_DCMPLR_DMD_GCC_H
 #define GCC_DCMPLR_DMD_GCC_H
 
-#ifdef __cplusplus
+#ifndef GCC_SAFE_DMD
 
 #include "mars.h"
 #include "arraytypes.h"
@@ -62,6 +62,10 @@ extern Module *d_gcc_get_output_module (void);
 /* used in interpret.c */
 extern Expression *d_gcc_eval_builtin (Loc, FuncDeclaration *, Expressions *);
 
-#endif
+/* used in arrayop.c */
+extern int binary(const char *p , const char **tab, int high);
+
+#endif /* GCC_SAFE_DMD */
 
 #endif
+

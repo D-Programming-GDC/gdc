@@ -20,6 +20,7 @@
 
 #ifdef IN_GCC
 #include "gdc_alloca.h"
+#include "errors.h"
 #else
 #if (defined (__SVR4) && defined (__sun))
 #include <alloca.h>
@@ -96,32 +97,7 @@ int wcharIsAscii(wchar_t *us, unsigned len)
     }
     return 1;
 }
-#endif
 
-
-#ifdef IN_GCC
-/***********************************
- * Binary search for p in tab.
- * Implementation copied from gdc/d-asm-i386.h
- */
-int binary(const char *p , const char **tab, int high)
-{
-    int low = 0;
-    do
-    {
-        int pos = (low + high) / 2;
-        int cmp = strcmp(p, tab[pos]);
-        if (! cmp)
-            return pos;
-        else if (cmp < 0)
-            high = pos;
-        else
-            low = pos + 1;
-    } while (low != high);
-
-    return -1;
-}
-#endif
 
 /***********************************
  * Compare length-prefixed strings (bstr).
@@ -156,11 +132,11 @@ void error(const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    fprintf(stderr, "Error: ");
-    vfprintf(stderr, format, ap);
+    printf("Error: ");
+    vprintf(format, ap);
     va_end( ap );
-    fprintf(stderr, "\n");
-    fflush(stderr);
+    printf("\n");
+    fflush(stdout);
 
     exit(EXIT_FAILURE);
 }
@@ -179,12 +155,13 @@ void warning(const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    fprintf(stderr, "Warning: ");
-    vfprintf(stderr, format, ap);
+    printf("Warning: ");
+    vprintf(format, ap);
     va_end( ap );
-    fprintf(stderr, "\n");
-    fflush(stderr);
+    printf("\n");
+    fflush(stdout);
 }
+#endif
 
 /****************************** Object ********************************/
 

@@ -117,21 +117,15 @@ D_CC_FLAGS += -Wno-format
 # from dmd
 D_CC_FLAGS += -Wno-deprecated -Wstrict-aliasing
 
-ALL_D_CFLAGS = $(ALL_CFLAGS) $(ALL_CPPFLAGS) \
-                        $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
-# %% Ditto
-ALL_D_CXXFLAGS = $(ALL_CXXFLAGS) $(ALL_CPPFLAGS) \
+ALL_D_COMPILER_FLAGS = $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) \
                         $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 
-# Somehow, I started getting problems with the C++ <complex.h> being included..
+# D Frontend has slightly relaxed warnings compared to rest of GDC.
 DMD_WARN_CFLAGS = -Wno-deprecated -Wstrict-aliasing
-DMD_CFLAGS = $(filter-out $(WARN_CFLAGS), $(ALL_CFLAGS)) $(DMD_WARN_CFLAGS)
-DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(ALL_CXXFLAGS)) $(DMD_WARN_CFLAGS)
+DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(ALL_COMPILERFLAGS)) $(DMD_WARN_CFLAGS)
 
-ALL_DMD_CFLAGS = $(DMD_CFLAGS) $(ALL_CPPFLAGS) \
-                        -Id -I$(srcdir)/d/dfrontend -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 # %% Ditto
-ALL_DMD_CXXFLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
+ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
                         -Id -I$(srcdir)/d/dfrontend -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
 
 
@@ -140,7 +134,7 @@ D_GCC_OBJS = d/d-gcc.o $(filter-out gcc.o, $(GCC_OBJS))
 
 # Create the compiler driver for D.
 $(D_DRIVER_NAME)$(exeext): $(D_GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(D_EXTRA_SPEC_LIBS) $(LIBDEPS)
-	$(LINKER) $(ALL_CFLAGS) $(LDFLAGS) -o $@ \
+	$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 	$(D_GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(D_EXTRA_SPEC_LIBS) $(LIBS)
 
 # Create a version of the g++ driver which calls the cross-compiler.
@@ -182,26 +176,26 @@ D_BI_ATTRS = d/d-bi-attrs.h
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
 d/%.dmd.o: $(srcdir)/d/dfrontend/%.c $(D_DMD_H) d/d-confdefs.h
-	$(CXX) $(ALL_DMD_CXXFLAGS) -include total.h -o d/$*.dmd.o -c $<
+	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS) -include total.h -o d/$*.dmd.o -c $<
 
 # For generator programs, can't implicitly include "total.h" which includes "id.h"
 d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
-	$(CC_FOR_BUILD) $(ALL_DMD_CFLAGS) -o d/$*.dmdgen.o -c $<
+	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmdgen.o -c $<
 
 d/%.gen.o: d/%.c
-	$(CXX) $(ALL_DMD_CXXFLAGS)  -o d/$*.gen.o -c $<
+	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS)  -o d/$*.gen.o -c $<
 
 d/%.glue.o: $(srcdir)/d/%.cc $(D_TREE_H)
-	$(CXX) $(ALL_D_CXXFLAGS) -DGCC_SAFE_DMD=1 -o d/$*.glue.o -c $<
+	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -o d/$*.glue.o -c $<
 
 d/%.cglue.o: $(srcdir)/d/%.c $(D_TREE_H)
-	$(CC) $(ALL_D_CFLAGS) -o d/$*.cglue.o -c $<
+	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -DGCC_SAFE_DMD=1 -o d/$*.cglue.o -c $<
 
 d/impcvgen: d/impcnvgen.dmdgen.o
-	$(CC_FOR_BUILD) $(ALL_D_CFLAGS) $(BUILD_LDFLAGS) -o $@ $^
+	$(COMPILER) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
 
 d/idgen: d/idgen.dmdgen.o
-	$(CC_FOR_BUILD) $(ALL_D_CFLAGS) $(BUILD_LDFLAGS)  -o $@ $^
+	$(COMPILER) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS)  -o $@ $^
 
 d/impcnvtab.c: d/impcvgen
 	cd d && ./impcvgen
@@ -217,7 +211,8 @@ d/d-confdefs.h: d/Make-lang.in
 	$(srcdir)/d/target-ver-syms.sh $(target) >> $@
 
 d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H) d/d-confdefs.h
-	$(CXX) $(ALL_D_CXXFLAGS) $(PHOBOS_DIRS) -DGCC_SAFE_DMD=1 -o $@ -c $<
+	$(COMPILER) $(ALL_D_COMPILER_FLAGS) $(PHOBOS_DIRS) -DGCC_SAFE_DMD=1 -o $@ -c $<
+
 
 d/id.gen.o: d/id.c $(D_DMD_H)
 d/impcnvtab.gen.o: d/impcnvtab.c $(D_DMD_H)
@@ -244,24 +239,56 @@ d/d-gcc.o: gcc.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) intl.h multilib.h \
     Makefile $(lang_specs_files) specs.h prefix.h $(GCC_H)
 	(SHLIB_LINK='$(SHLIB_LINK)' \
 	 SHLIB='$(SHLIB)'; \
-	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+	$(COMPILER) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
   $(DRIVER_DEFINES) -DD_DRIVER_ONLY=1 \
   -c $(srcdir)/gcc.c $(OUTPUT_OPTION))
 
 d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) $(CONFIG_H)
 	(SHLIB_LINK='$(SHLIB_LINK)' \
 	 SHLIB='$(SHLIB)'; \
-	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(DRIVER_DEFINES) \
-		$(ALL_D_CFLAGS) $(D_LIBPHOBOS) \
-		$(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
+	$(COMPILER) -c $(ALL_D_COMPILER_FLAGS) $(DRIVER_DEFINES) \
+		$(D_LIBPHOBOS) $(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
 
 d_OBJS = $(D_BORROWED_C_OBJS) $(D_GLUE_OBJS)
 D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_DMD_OBJS) $(d_OBJS)
 
 $(D_COMPILER_NAME)$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
-	$(CXX) $(ALL_D_CXXFLAGS) $(LDFLAGS) -o $@ \
+	$(COMPILER) $(ALL_D_COMPILER_FLAGS) $(LDFLAGS) -o $@ \
 		$(D_ALL_OBJS) $(BACKEND) $(LIBS) $(D_EXTRA_LIBS)
 
+
+# Documentation.
+
+D_TEXI_FILES = \
+	d/gdc.texi \
+	$(gcc_docdir)/include/fdl.texi \
+	$(gcc_docdir)/include/gpl_v3.texi \
+	$(gcc_docdir)/include/gcc-common.texi \
+	gcc-vers.texi
+
+doc/gdc.info: $(D_TEXI_FILES)
+	if test "x$(BUILD_INFO)" = xinfo; then \
+	    rm -f doc/gdc.info*; \
+	    $(MAKEINFO) $(MAKEINFOFLAGS) -I $(gcc_docdir) \
+		-I $(gcc_docdir)/include -o $@ $<; \
+	else true; fi
+
+doc/gdc.dvi: $(D_TEXI_FILES)
+	$(TEXI2DVI) -I $(abs_docdir) -I $(abs_docdir)/include -o $@ $<
+
+doc/gdc.pdf: $(D_TEXI_FILES)
+	$(TEXI2PDF) -I $(abs_docdir) -I $(abs_docdir)/include -o $@ $<
+
+$(build_htmldir)/d/index.html: $(D_TEXI_FILES)
+	$(mkinstalldirs) $(@D)
+	rm -f $(@D)/*
+	$(TEXI2HTML) -I $(gcc_docdir) -I $(gcc_docdir)/include \
+		-I $(srcdir)/d -o $(@D) $<
+
+.INTERMEDIATE: gdc.pod
+
+gdc.pod: d/gdc.texi
+	-$(TEXI2POD) -D gdc < $< > $@
 
 # Build hooks:
 
@@ -269,14 +296,16 @@ d.all.build: $(D_DRIVER_NAME)$(exeext) $(D_COMPILER_NAME)$(exeext)
 d.all.cross: $(D_DRIVER_NAME)-cross$(exeext)
 d.start.encap: $(D_DRIVER_NAME)$(exeext)
 d.rest.encap:
-d.info:
-d.srcinfo:
+d.info: doc/gdc.info
+d.srcinfo: doc/gdc.info
+	-cp -p $^ $(srcdir)/doc
 d.srcextra:
-d.dvi:
-d.pdf:
-d.html:
-d.man:
-d.srcman:
+d.dvi: doc/gdc.dvi
+d.pdf: doc/gdc.pdf
+d.html: $(build_htmldir)/d/index.html
+d.man: doc/gdc.1
+d.srcman: doc/gdc.1
+	cp -p $^ $(srcdir)/doc
 
 
 # Install hooks:
@@ -308,11 +337,38 @@ d.install-common: installdirs
 	  fi ; \
 	fi
 
-d.install-info:
+d.install-info: $(DESTDIR)$(infodir)/gdc.info
 
-d.install-man: installdirs $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext) $(DESTDIR)$(man1dir)/$(GDMD_INSTALL_NAME)$(man1ext)
+d.install-pdf: doc/gdc.pdf
+	@$(NORMAL_INSTALL)
+	test -z "$(pdfdir)" || $(mkinstalldirs) "$(DESTDIR)$(pdfdir)/gcc"
+	@for p in doc/gdc.pdf; do \
+	    if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	    f=$(pdf__strip_dir) \
+	    echo " $(INSTALL_DATA) '$$d$$p' '$(DESTDIR)$(pdfdir)/gcc/$$f'"; \
+	    $(INSTALL_DATA) "$$d$$p" "$(DESTDIR)$(pdfdir)/gcc/$$f"; \
+	done
 
-$(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext): $(srcdir)/d/gdc.1
+d.install-html: $(build_htmldir)/d
+	@$(NORMAL_INSTALL)
+	test -z "$(htmldir)" || $(mkinstalldirs) "$(DESTDIR)$(htmldir)"
+	@for p in $(build_htmldir)/d; do \
+	    if test -f "$$p" || test -d "$$p"; then d=""; else d="$(srcdir)/"; fi; \
+	    f=$(html__strip_dir) \
+	    if test -d "$$d$$p"; then \
+		echo " $(mkinstalldirs) '$(DESTDIR)$(htmldir)/$$f'"; \
+		$(mkinstalldirs) "$(DESTDIR)$(htmldir)/$$f" || exit 1; \
+		echo " $(INSTALL_DATA) '$$d$$p'/* '$(DESTDIR)$(htmldir)/$$f'"; \
+		$(INSTALL_DATA) "$$d$$p"/* "$(DESTDIR)$(htmldir)/$$f"; \
+	    else \
+		echo " $(INSTALL_DATA) '$$d$$p' '$(DESTDIR)$(htmldir)/$$f'"; \
+		$(INSTALL_DATA) "$$d$$p" "$(DESTDIR)$(htmldir)/$$f"; \
+	    fi; \
+        done
+
+d.install-man: $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext) $(DESTDIR)$(man1dir)/$(GDMD_INSTALL_NAME)$(man1ext)
+
+$(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext): doc/gdc.1 installdirs
 	-rm -f $@
 	-$(INSTALL_DATA) $< $@
 	-chmod a-x $@

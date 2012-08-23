@@ -391,10 +391,10 @@ struct Loc
     bool equals(const Loc& loc);
 };
 
-#ifndef GCC_SAFE_DMD
+#undef TRUE
+#undef FALSE
 #define TRUE    1
 #define FALSE   0
-#endif
 
 #define INTERFACE_OFFSET        0       // if 1, put classinfo as first entry
                                         // in interface vtbl[]'s

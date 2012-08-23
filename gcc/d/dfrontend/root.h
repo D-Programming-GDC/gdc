@@ -29,9 +29,6 @@ int wcharIsAscii(wchar_t *);
 char *wchar2ascii(wchar_t *, unsigned len);
 int wcharIsAscii(wchar_t *, unsigned len);
 
-#ifdef IN_GCC
-int binary(const char *p , const char **tab, int high);
-#endif
 int bstrcmp(unsigned char *s1, unsigned char *s2);
 char *bstr2str(unsigned char *b);
 

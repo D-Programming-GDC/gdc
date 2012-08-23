@@ -1,3 +1,16 @@
+2012-08-22  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-lang.cc(binary): Moved function from frontend.
+	* d-codegen.cc(IRState::extractMethodCallExpr): Update for new C++ VEC
+	template in GCC.
+	* d-bi-attrs.h(parse_optimize_options): Likewise.
+	* d-dmd-gcc.h: Remove ifdef __cplusplus, use GCC_SAFE_DMD.
+	* d-gcc-includes.h: Remove ifdef __cplusplus.
+	* d-lang.h: Likewise.
+	* Make-lang.in: Remove CC and CFLAGS from Makefile, add build rule for
+	new texi man pages.
+	* gdc.texi: New documentation for GDC.
+
 2012-08-18  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.cc(IRState::convertTo): Fix to allow conversion between

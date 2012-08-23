@@ -167,7 +167,6 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define null_node                       d_global_trees[DTI_NULL]
 
 
-#ifdef __cplusplus
 /* In d-lang.cc.  These are called through function pointers
    and do not need to be "extern C". */
 bool d_mark_addressable (tree);
@@ -192,12 +191,6 @@ extern const char *iprefix;
 extern const char *multilib_dir;
 void add_import_paths (bool stdinc);
 void add_phobos_versyms (void);
-
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* In d-lang.cc */
 tree pushdecl (tree);
@@ -238,10 +231,6 @@ void d_bi_builtin_type (tree);
 
 /* In d-convert.cc */
 tree d_convert_basic (tree, tree);
-
-#ifdef __cplusplus
-}
-#endif
 
 /* protect from garbage collection */
 extern GTY(()) tree d_keep_list;

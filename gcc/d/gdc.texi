@@ -1,0 +1,334 @@
+\input texinfo @c -*-texinfo-*-
+@setfilename gdc.info
+@settitle The GNU D Compiler
+
+@c Merge the standard indexes into a single one.
+@syncodeindex fn cp
+@syncodeindex vr cp
+@syncodeindex ky cp
+@syncodeindex pg cp
+@syncodeindex tp cp
+
+@include gcc-common.texi
+
+@c Copyright years for this manual.
+@set copyrights-d 2011, 2012
+
+@copying
+@c man begin COPYRIGHT
+Copyright @copyright{} @value{copyrights-d} Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, the Front-Cover Texts being (a) (see below), and
+with the Back-Cover Texts being (b) (see below).
+A copy of the license is included in the
+@c man end
+section entitled ``GNU Free Documentation License''.
+@ignore
+@c man begin COPYRIGHT
+man page gfdl(7).
+@c man end
+@end ignore
+
+@c man begin COPYRIGHT
+
+(a) The FSF's Front-Cover Text is:
+
+     A GNU Manual
+
+(b) The FSF's Back-Cover Text is:
+
+     You have freedom to copy and modify this GNU Manual, like GNU
+     software.  Copies published by the Free Software Foundation raise
+     funds for GNU development.
+@c man end
+@end copying
+
+@ifinfo
+@format
+@dircategory Software development
+@direntry
+* gdc - A GCC-based compiler for the D language
+@end direntry
+@end format
+
+@insertcopying
+@end ifinfo
+
+@titlepage
+@title The GNU D Compiler
+@versionsubtitle
+@author David Friedman, Iain Buclaw
+
+@page
+@vskip 0pt plus 1filll
+Published by the Free Software Foundation @*
+51 Franklin Street, Fifth Floor@*
+Boston, MA 02110-1301, USA@*
+@sp 1
+@insertcopying
+@end titlepage
+@contents
+@page
+
+@node Top
+@top Introduction
+
+This manual describes how to use @command{gdc}, the GNU compiler for
+the o programming language.  This manual is specifically about
+@command{gdc}.  For more information about the D programming
+language in general, including language specifications and standard
+package documentation, see @uref{http://dlang.org/}.
+
+@menu
+* Copying::                     The GNU General Public License.
+* GNU Free Documentation License::
+                                How you can share and copy this manual.
+* Invoking gdc::                How to run gdc.
+* Index::                       Index.
+@end menu
+
+
+@include gpl_v3.texi
+
+@include fdl.texi
+
+
+@node Invoking gdc
+@chapter Invoking gdc
+
+@c man title gdc A GCC-based compiler for the D language
+
+@ignore
+@c man begin SYNOPSIS gdc
+gdc [@option{-c}]
+    [@option{-g}] [@option{-pg}] [@option{-O}@var{level}]
+    [@option{-I}@var{dir}@dots{}] [@option{-L}@var{dir}@dots{}]
+    [@option{-o} @var{outfile}] @var{infile}@dots{}
+
+For any given input file, the file name suffix determines what kind of
+compilation is done:
+
+@table @gcctabopt
+@item @var{file}.d
+D source files.
+
+@item @var{file}.di
+D interface files.
+
+@item @var{file}.o
+Object files to link in.
+
+@item @var{file}.a
+Library files to link in
+@end table
+
+@c man end
+@c man begin SEEALSO
+gpl(7), gfdl(7), fsf-funding(7), gcc(1)
+and the Info entries for @file{gdc} and @file{gcc}.
+@c man end
+@end ignore
+
+@c man begin DESCRIPTION gdc
+
+The @command{gdc} command is a frontend to @command{gcc} and
+supports many of the same options.  @xref{Option Summary, , Option
+Summary, gcc, Using the GNU Compiler Collection (GCC)}.  This manual
+only documents the options specific to @command{gdc}.
+Most of these have both positive and negative forms; the negative
+form of -ffoo would be -fno-foo.
+This manual documents only one of these two forms, whichever one is
+not the default.
+
+The @command{gdc} command may be used to compile D source code into
+an object file, link a collection of object files together, or do both
+in sequence.
+
+Only the most useful options are listed here; see below for the
+remainder.
+
+@c man end
+
+@c man begin OPTIONS gdc
+
+@table @gcctabopt
+@item -frelease
+@cindex @option{-frelease}
+Compile release version.
+
+@item -funittest
+@cindex @option{-funittest}
+Compile in unittest code.
+
+@item -fno-assert
+@cindex @option{-fno-assert}
+Turn off code generation for runtime assert()'s.
+
+@item -fno-invariants
+@cindex @option{-fno-invariants}
+Turn off code generation for runtime invariant()'s.
+
+@item -fno-in
+@cindex @option{-fno-in}
+Turn off code generation for runtime in() contracts.
+
+@item -fno-out
+@cindex @option{-fno-out}
+Turn off code generation for runtime out() contracts.
+
+@item -fno-bounds-check
+@cindex @option{-fno-bounds-check}
+Turns off array bounds checking for all functions.
+
+@item -fno-builtin
+@cindex @option{-fno-builtin}
+Don't recognize built-in functions that do not begin with
+@samp{__builtin_} as prefix.
+
+@item -fdebug-c
+@cindex @option{-fdebug-c}
+With -g, generate C debug information.
+
+@item -fdeprecated
+@cindex @option{-fdeprecated}
+Allow use of deprecated features.
+
+@item -fd-verbose
+@cindex @option{-fd-verbose}
+Print information about D language processing to stdout.
+
+@item -fproperty
+@cindex @option{-fproperty}
+For D2, enforce @@property syntax.
+
+@item -fd-vtls
+@cindex @option{-fd-vtls}
+List all variables going into thread local storage.
+
+@item -fignore-unknown-pragmas
+@cindex @option{-fignore-unknown-pragmas}
+Ignore unsupported pragmas.
+
+@item -fsplit-dynamic-arrays
+@cindex @option{-fsplit-dynamic-arrays}
+Split dynamic arrays into length and pointer when passing to functions.
+
+@item -femit-templates=@var{opt}
+@cindex @option{-femit-templates}
+Control template emission.
+
+These are the supported options:
+
+@table @samp
+@item all
+Emit templates, expecting multiple copies to be merged by the linker.
+
+@item normal
+Emits templates, but only if the compiler determines that it needs to.
+
+@item private
+Emit templates, but make them private to the translation unit.
+The executable will have multiple copies of code and data.
+
+@item none
+Do not emit templates at all.
+
+@item auto
+For targets that support templates, the "all" mode is used.
+Otherwise, the "private" mode is used.
+@end table
+
+@item -fdebug=@var{opt}
+@cindex @option{-fdebug}
+Compile in debug code into the program.
+
+These are supported options:
+
+@table @samp
+@item level
+Compile in debug code <= level.
+
+@item ident
+Compile in debug code identified by ident.
+@end table
+
+@item -fdeps=@var{filename}
+@cindex @option{-fdeps}
+Write module dependencies to filename.
+
+@item -fmake-deps=@var{filename}
+@cindex @option{-fmake-deps}
+Write makefile dependency output to the given file.
+
+@item -fmake-mdeps=@var{filename}
+@cindex @option{-fmake-mdeps}
+Like -fmake-deps=@var{filename} but ignore system header files.
+
+@item -fonly=@var{filename}
+@cindex @option{-fonly}
+Process all modules specified on the command line,
+but only generate code for the module specified by the argument.
+
+@item -fversion=@var{opt}
+@cindex @option{-fversion}
+Compile in version code into the program.
+
+These are the supported options:
+
+@table @samp
+@item level
+Compile in version code >= level.
+
+@item ident
+Compile in debug code identified by ident.
+@end table
+
+@item -fintfc
+@cindex @option{-fintfc}
+Generate D interface files.
+
+@item -fintfc-dir=@var{directory}
+@cindex @option{-fintfc-dir}
+Write D interface files to @var{directory}.
+
+@item -fintfc-file=@var{filename}
+@cindex @option{-fintfc-file}
+Write D interface file to @var{filename}.
+
+@item -fdoc
+@cindex @option{-fdoc}
+Generate documentation.
+
+@item -fdoc-dir=@var{directory}
+@cindex @option{-fdoc-dir}
+Write documentation file in @var{directory}.
+
+@item -fdoc-file=@var{filename}
+@cindex @option{-fdoc-file}
+Write documentation file to @var{filename}.
+
+@item -fdoc-inc=@var{filename}
+@cindex @option{-fdoc-inc}
+Include a Ddoc macro file.
+
+@item -fXf=@var{filename}
+@cindex @option{-fXf}
+Write JSON file to filename.
+
+@item -fdump-source
+@cindex @option{fdump-source}
+Dump decoded UTF-8 text from source.
+@end table
+
+@c man end
+
+@node Index
+@unnumbered Index
+
+@printindex cp
+
+@bye
+

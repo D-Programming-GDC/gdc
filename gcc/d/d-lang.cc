@@ -771,6 +771,27 @@ deps_write (Module *m)
 
 Symbol *rtlsym[N_RTLSYM];
 
+
+// Binary search for P in TAB between the range 0 to HIGH.
+
+int binary(const char *p , const char **tab, int high)
+{
+    int low = 0;
+    do
+    {
+        int pos = (low + high) / 2;
+        int cmp = strcmp(p, tab[pos]);
+        if (! cmp)
+            return pos;
+        else if (cmp < 0)
+            high = pos;
+        else
+            low = pos + 1;
+    } while (low != high);
+
+    return -1;
+}
+
 void
 d_parse_file (void)
 {
