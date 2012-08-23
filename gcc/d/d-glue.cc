@@ -404,7 +404,7 @@ IdentityExp::toElem (IRState *irs)
   if (tb1->ty == Tstruct || tb1->isfloating())
     {
       // Do bit compare.
-      tree t_memcmp = irs->buildCall (d_built_in_decls (BUILT_IN_MEMCMP), 3,
+      tree t_memcmp = irs->buildCall (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
 				      irs->addressOf (e1->toElem (irs)),
 				      irs->addressOf (e2->toElem (irs)),
 				      irs->integerConstant (e1->type->size()));
@@ -448,7 +448,7 @@ EqualExp::toElem (IRState *irs)
   if (tb1->ty == Tstruct)
     {
       // Do bit compare of struct's
-      tree t_memcmp = irs->buildCall (d_built_in_decls (BUILT_IN_MEMCMP), 3,
+      tree t_memcmp = irs->buildCall (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
 				      irs->addressOf (e1->toElem (irs)),
 				      irs->addressOf (e2->toElem (irs)),
 				      irs->integerConstant (e1->type->size()));
@@ -693,11 +693,11 @@ PowExp::toElem (IRState *irs)
 
   // Lookup compatible builtin. %% TODO: handle complex types?
   if (TYPE_MAIN_VARIANT (powtype) == double_type_node)
-    powfn = d_built_in_decls (BUILT_IN_POW);
+    powfn = builtin_decl_explicit (BUILT_IN_POW);
   else if (TYPE_MAIN_VARIANT (powtype) == float_type_node)
-    powfn = d_built_in_decls (BUILT_IN_POWF);
+    powfn = builtin_decl_explicit (BUILT_IN_POWF);
   else if (TYPE_MAIN_VARIANT (powtype) == long_double_type_node)
-    powfn = d_built_in_decls (BUILT_IN_POWL);
+    powfn = builtin_decl_explicit (BUILT_IN_POWL);
 
   if (powfn == NULL_TREE)
     {
@@ -1187,7 +1187,7 @@ AssignExp::toElem (IRState *irs)
 		tree array[2] = {
 		    irs->maybeMakeTemp (irs->toDArray (e1)),
 		    irs->toDArray (e2) };
-		tree t_memcpy = d_built_in_decls (BUILT_IN_MEMCPY);
+		tree t_memcpy = builtin_decl_explicit (BUILT_IN_MEMCPY);
 		tree result;
 		tree size;
 
@@ -1231,7 +1231,7 @@ AssignExp::toElem (IRState *irs)
 	      if (sle->fillHoles)
 		{
 		  unsigned sz = sle->type->size();
-		  tree init = irs->buildCall (d_built_in_decls (BUILT_IN_MEMSET), 3,
+		  tree init = irs->buildCall (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
 					      irs->addressOf (lhs), size_zero_node, size_int (sz));
 		  result = irs->maybeCompound (init, result);
 		}
@@ -2025,7 +2025,7 @@ elem *
 HaltExp::toElem (IRState *irs)
 {
   // Needs improvement.  Avoid library calls if possible..
-  tree t_abort = d_built_in_decls (BUILT_IN_ABORT);
+  tree t_abort = builtin_decl_explicit (BUILT_IN_ABORT);
   return irs->buildCall (t_abort, 0);
 }
 
@@ -2425,7 +2425,7 @@ ArrayLiteralExp::toElem (IRState *irs)
   tree size = fold_build2 (MULT_EXPR, size_type_node,
 			   size_int (elements->dim), size_int (typeb->nextOf()->size()));
 
-  result = irs->buildCall (d_built_in_decls (BUILT_IN_MEMCPY), 3,
+  result = irs->buildCall (builtin_decl_explicit (BUILT_IN_MEMCPY), 3,
 			   mem, irs->addressOf (ctor), size);
 
   // Returns array pointed to by MEM.
@@ -3023,12 +3023,12 @@ FuncDeclaration::toObjFile (int)
       tree var = irs->var (v_argptr);
       var = irs->addressOf (var);
 
-      tree init_exp = irs->buildCall (d_built_in_decls (BUILT_IN_VA_START), 2, var, parm_decl);
+      tree init_exp = irs->buildCall (builtin_decl_explicit (BUILT_IN_VA_START), 2, var, parm_decl);
       v_argptr->init = NULL; // VoidInitializer?
       irs->emitLocalVar (v_argptr, true);
       irs->addExp (init_exp);
 
-      tree cleanup = irs->buildCall (d_built_in_decls (BUILT_IN_VA_END), 1, var);
+      tree cleanup = irs->buildCall (builtin_decl_explicit (BUILT_IN_VA_END), 1, var);
       irs->addExp (build2 (TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
 

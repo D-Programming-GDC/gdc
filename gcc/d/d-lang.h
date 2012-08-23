@@ -169,12 +169,8 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 
 /* In d-lang.cc.  These are called through function pointers
    and do not need to be "extern C". */
-bool d_mark_addressable (tree);
-void d_mark_exp_read (tree);
 tree d_truthvalue_conversion (tree);
-
 void d_add_global_declaration (tree);
-
 tree d_type_promotes_to (tree);
 
 struct Module;
@@ -236,8 +232,5 @@ tree d_convert_basic (tree, tree);
 extern GTY(()) tree d_keep_list;
 
 #include "d-dmd-gcc.h"
-
-#define d_warning(option, ...) warning (option, __VA_ARGS__)
-#define d_built_in_decls(FCODE) builtin_decl_explicit (FCODE)
 
 #endif

@@ -1006,26 +1006,26 @@ Obj::term ()
 // Output library name.
 
 bool
-Obj::includelib (const char *)
+Obj::includelib (const char *name ATTRIBUTE_UNUSED)
 {
   if (!global.params.ignoreUnsupportedPragmas)
-    d_warning (OPT_Wunknown_pragmas, "pragma(lib) not implemented");
+    warning (OPT_Wunknown_pragmas, "pragma(lib) not implemented");
   return false;
 }
 
 // Set start address.
 
 void
-Obj::startaddress (Symbol *s)
+Obj::startaddress (Symbol *s ATTRIBUTE_UNUSED)
 {
   if (!global.params.ignoreUnsupportedPragmas)
-    d_warning (OPT_Wunknown_pragmas, "pragma(startaddress) not implemented");
+    warning (OPT_Wunknown_pragmas, "pragma(startaddress) not implemented");
 }
 
 // Do we allow zero sized objects?
 
 bool
-Obj::allowZeroSize ()
+Obj::allowZeroSize (void)
 {
   return true;
 }

@@ -157,7 +157,7 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
       if (init_exp)
 	addExp (init_exp);
       else if (!init_val && v->size (v->loc)) // Zero-length arrays do not have an initializer
-	d_warning (OPT_Wuninitialized, "uninitialized variable '%s'", v->ident ? v->ident->string : "(no name)");
+	warning (OPT_Wuninitialized, "uninitialized variable '%s'", v->ident ? v->ident->string : "(no name)");
     }
 }
 
@@ -394,7 +394,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	  }
 	else
 	  {
-	    d_warning (0, "cast to %s will yield null result", target_type->toChars());
+	    warning (0, "cast to %s will yield null result", target_type->toChars());
 	    result = convertTo (target_type->toCtype(), d_null_pointer);
 	    if (TREE_SIDE_EFFECTS (exp))
 	      {
@@ -1631,7 +1631,7 @@ IRState::addressOf (tree exp)
 {
   tree t, ptrtype;
   tree exp_type = TREE_TYPE (exp);
-  d_mark_addressable (exp);
+  markAddressable (exp);
 
   // Gimplify doesn't like &(* (ptr-to-array-type)) with static arrays
   if (TREE_CODE (exp) == INDIRECT_REF)
@@ -1667,6 +1667,141 @@ IRState::addressOf (tree exp)
 
   return t;
 }
+
+tree
+IRState::markAddressable (tree exp)
+{
+  switch (TREE_CODE (exp))
+    {
+    case ADDR_EXPR:
+    case COMPONENT_REF:
+      /* If D had bit fields, we would need to handle that here */
+    case ARRAY_REF:
+    case REALPART_EXPR:
+    case IMAGPART_EXPR:
+      markAddressable (TREE_OPERAND (exp, 0));
+      break;
+      
+      /* %% C++ prevents {& this} .... */
+      /* %% TARGET_EXPR ... */
+    case TRUTH_ANDIF_EXPR:
+    case TRUTH_ORIF_EXPR:
+    case COMPOUND_EXPR:
+      markAddressable (TREE_OPERAND (exp, 1));
+      break;
+      
+    case COND_EXPR:
+      markAddressable (TREE_OPERAND (exp, 1));
+      markAddressable (TREE_OPERAND (exp, 2));
+      break;
+      
+    case CONSTRUCTOR:
+      TREE_ADDRESSABLE (exp) = 1;
+      break;
+      
+    case INDIRECT_REF:
+      /* %% this was in Java, not sure for D */
+      /* We sometimes add a cast *(TYPE *)&FOO to handle type and mode
+	 incompatibility problems.  Handle this case by marking FOO.  */
+      if (TREE_CODE (TREE_OPERAND (exp, 0)) == NOP_EXPR
+	  && TREE_CODE (TREE_OPERAND (TREE_OPERAND (exp, 0), 0)) == ADDR_EXPR)
+	{
+	  markAddressable (TREE_OPERAND (TREE_OPERAND (exp, 0), 0));
+	  break;
+	}
+      if (TREE_CODE (TREE_OPERAND (exp, 0)) == ADDR_EXPR)
+	{
+	  markAddressable (TREE_OPERAND (exp, 0));
+	  break;
+	}
+      break;
+      
+    case VAR_DECL:
+    case CONST_DECL:
+    case PARM_DECL:
+    case RESULT_DECL:
+    case FUNCTION_DECL:
+      TREE_USED (exp) = 1;
+      TREE_ADDRESSABLE (exp) = 1;
+      
+      /* drops through */
+    default:
+      break;
+    }
+
+  return exp;
+}
+
+/* Mark EXP as "used" in the program for the benefit of
+   -Wunused warning purposes.  */
+
+tree
+IRState::markUsed (tree exp)
+{
+  switch (TREE_CODE (exp))
+    {
+    case VAR_DECL:
+    case PARM_DECL:
+      TREE_USED (exp) = 1;
+      break;
+
+    case ARRAY_REF:
+    case COMPONENT_REF:
+    case MODIFY_EXPR:
+    case REALPART_EXPR:
+    case IMAGPART_EXPR:
+    case NOP_EXPR:
+    case CONVERT_EXPR:
+    case ADDR_EXPR:
+      markUsed (TREE_OPERAND (exp, 0));
+      break;
+
+    case COMPOUND_EXPR:
+      markUsed (TREE_OPERAND (exp, 0));
+      markUsed (TREE_OPERAND (exp, 1));
+      break;
+
+    default:
+      break;
+    }
+  return exp;
+}
+
+/* Mark EXP as read, not just set, for set but not used -Wunused
+   warning purposes.  */
+
+tree
+IRState::markRead (tree exp)
+{
+  switch (TREE_CODE (exp))
+    {
+    case VAR_DECL:
+    case PARM_DECL:
+      TREE_USED (exp) = 1;
+      DECL_READ_P (exp) = 1;
+      break;
+
+    case ARRAY_REF:
+    case COMPONENT_REF:
+    case MODIFY_EXPR:
+    case REALPART_EXPR:
+    case IMAGPART_EXPR:
+    case NOP_EXPR:
+    case CONVERT_EXPR:
+    case ADDR_EXPR:
+      markRead (TREE_OPERAND (exp, 0));
+      break;
+
+    case COMPOUND_EXPR:
+      markRead (TREE_OPERAND (exp, 1));
+      break;
+
+    default:
+      break;
+    }
+  return exp;
+}
+
 
 // Cast EXP (which should be a pointer) to TYPE * and then indirect.  The
 // back-end requires this cast in many cases.
@@ -2842,7 +2977,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  /* builtin count_trailing_zeros matches behaviour of bsf.
 	     %% TODO: The return value is supposed to be undefined if op1 is zero. */
 	  op1 = ce.nextArg();
-	  return buildCall (d_built_in_decls (BUILT_IN_CTZL), 1, op1);
+	  return buildCall (builtin_decl_explicit (BUILT_IN_CTZL), 1, op1);
 
 	case INTRINSIC_BSR:
 	  /* bsr becomes 31-(clz), but parameter passed to bsf may not be a 32bit type!!
@@ -2851,7 +2986,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  type = TREE_TYPE (op1);
 
 	  op2 = integerConstant (tree_low_cst (TYPE_SIZE (type), 1) - 1, type);
-	  exp = buildCall (d_built_in_decls (BUILT_IN_CLZL), 1, op1);
+	  exp = buildCall (builtin_decl_explicit (BUILT_IN_CLZL), 1, op1);
 
 	  // Handle int -> long conversions.
 	  if (TREE_TYPE (exp) != type)
@@ -2912,7 +3047,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  /* Backend provides builtin bswap32.
 	     Assumes first argument and return type is uint. */
 	  op1 = ce.nextArg();
-	  return buildCall (d_built_in_decls (BUILT_IN_BSWAP32), 1, op1);
+	  return buildCall (builtin_decl_explicit (BUILT_IN_BSWAP32), 1, op1);
 
 	case INTRINSIC_INP:
 	case INTRINSIC_INPL:
@@ -2949,17 +3084,17 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	case INTRINSIC_COS:
 	  // Math intrinsics just map to their GCC equivalents.
 	  op1 = ce.nextArg();
-	  return buildCall (d_built_in_decls (BUILT_IN_COSL), 1, op1);
+	  return buildCall (builtin_decl_explicit (BUILT_IN_COSL), 1, op1);
 
 	case INTRINSIC_SIN:
 	  op1 = ce.nextArg();
-	  return buildCall (d_built_in_decls (BUILT_IN_SINL), 1, op1);
+	  return buildCall (builtin_decl_explicit (BUILT_IN_SINL), 1, op1);
 
 	case INTRINSIC_RNDTOL:
 	  // %% not sure if llroundl stands as a good replacement
 	  // for the expected behaviour of rndtol.
 	  op1 = ce.nextArg();
-	  return buildCall (d_built_in_decls (BUILT_IN_LLROUNDL), 1, op1);
+	  return buildCall (builtin_decl_explicit (BUILT_IN_LLROUNDL), 1, op1);
 
 	case INTRINSIC_SQRT:
 	  // Have float, double and real variants of sqrt.
@@ -2968,16 +3103,16 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  // Could have used mathfn_built_in, but that only returns
 	  // implicit built in decls.
 	  if (TYPE_MAIN_VARIANT (type) == double_type_node)
-	    exp = d_built_in_decls (BUILT_IN_SQRT);
+	    exp = builtin_decl_explicit (BUILT_IN_SQRT);
 	  else if (TYPE_MAIN_VARIANT (type) == float_type_node)
-	    exp = d_built_in_decls (BUILT_IN_SQRTF);
+	    exp = builtin_decl_explicit (BUILT_IN_SQRTF);
 	  else if (TYPE_MAIN_VARIANT (type) == long_double_type_node)
-	    exp = d_built_in_decls (BUILT_IN_SQRTL);
+	    exp = builtin_decl_explicit (BUILT_IN_SQRTL);
 	  // op1 is an integral type - use double precision.
 	  else if (INTEGRAL_TYPE_P (TYPE_MAIN_VARIANT (type)))
 	    {
 	      op1 = d_convert_basic (double_type_node, op1);
-	      exp = d_built_in_decls (BUILT_IN_SQRT);
+	      exp = builtin_decl_explicit (BUILT_IN_SQRT);
 	    }
 
 	  gcc_assert (exp);    // Should never trigger.
@@ -2986,15 +3121,15 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	case INTRINSIC_LDEXP:
 	  op1 = ce.nextArg();
 	  op2 = ce.nextArg();
-	  return buildCall (d_built_in_decls (BUILT_IN_LDEXPL), 2, op1, op2);
+	  return buildCall (builtin_decl_explicit (BUILT_IN_LDEXPL), 2, op1, op2);
 
 	case INTRINSIC_FABS:
 	  op1 = ce.nextArg();
-	  return buildCall (d_built_in_decls (BUILT_IN_FABSL), 1, op1);
+	  return buildCall (builtin_decl_explicit (BUILT_IN_FABSL), 1, op1);
 
 	case INTRINSIC_RINT:
 	  op1 = ce.nextArg();
-	  return buildCall (d_built_in_decls (BUILT_IN_RINTL), 1, op1);
+	  return buildCall (builtin_decl_explicit (BUILT_IN_RINTL), 1, op1);
 
 	case INTRINSIC_VA_ARG:
 	case INTRINSIC_C_VA_ARG:
@@ -3061,7 +3196,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 
 	  op2 = TREE_OPERAND (op2, 0);
 	  // assuming nobody tries to change the return type
-	  return buildCall (d_built_in_decls (BUILT_IN_VA_START), 2, op1, op2);
+	  return buildCall (builtin_decl_explicit (BUILT_IN_VA_START), 2, op1, op2);
 
 	default:
 	  gcc_unreachable();
@@ -3159,11 +3294,11 @@ IRState::floatMod (tree type, tree arg0, tree arg1)
     basetype = TREE_TYPE (basetype);
 
   if (TYPE_MAIN_VARIANT (basetype) == double_type_node)
-    fmodfn = d_built_in_decls (BUILT_IN_FMOD);
+    fmodfn = builtin_decl_explicit (BUILT_IN_FMOD);
   else if (TYPE_MAIN_VARIANT (basetype) == float_type_node)
-    fmodfn = d_built_in_decls (BUILT_IN_FMODF);
+    fmodfn = builtin_decl_explicit (BUILT_IN_FMODF);
   else if (TYPE_MAIN_VARIANT (basetype) == long_double_type_node)
-    fmodfn = d_built_in_decls (BUILT_IN_FMODL);
+    fmodfn = builtin_decl_explicit (BUILT_IN_FMODL);
 
   if (!fmodfn)
     {
@@ -3323,7 +3458,7 @@ IRState::exceptionObject (void)
     obj_type = TREE_TYPE (obj_type);
   // Like Java, the actual D exception object is one
   // pointer behind the exception header
-  tree t = buildCall (d_built_in_decls (BUILT_IN_EH_POINTER),
+  tree t = buildCall (builtin_decl_explicit (BUILT_IN_EH_POINTER),
 		      1, integer_zero_node);
   // treat exception header as (Object *)
   t = build1 (NOP_EXPR, build_pointer_type (obj_type), t);
@@ -4586,7 +4721,7 @@ ArrayScope::finish (IRState *irs, tree e)
       if (TREE_CODE (t) == VAR_DECL)
 	{
 	  gcc_assert (!s->SframeField);
-	  return gen.binding (t, e);
+	  return irs->binding (t, e);
 	}
       else
 	gcc_unreachable();

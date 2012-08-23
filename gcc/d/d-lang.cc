@@ -1134,102 +1134,6 @@ d_gcc_dump_source (const char *srcname, const char *ext, unsigned char *data, un
   errno = 0;
 }
 
-bool
-d_mark_addressable (tree t)
-{
-  tree x = t;
-  while (1)
-    switch (TREE_CODE (x))
-      {
-      case ADDR_EXPR:
-      case COMPONENT_REF:
-	/* If D had bit fields, we would need to handle that here */
-      case ARRAY_REF:
-      case REALPART_EXPR:
-      case IMAGPART_EXPR:
-	x = TREE_OPERAND (x, 0);
-	break;
-	/* %% C++ prevents {& this} .... */
-	/* %% TARGET_EXPR ... */
-      case TRUTH_ANDIF_EXPR:
-      case TRUTH_ORIF_EXPR:
-      case COMPOUND_EXPR:
-	x = TREE_OPERAND (x, 1);
-	break;
-
-      case COND_EXPR:
-	return d_mark_addressable (TREE_OPERAND (x, 1))
-	  && d_mark_addressable (TREE_OPERAND (x, 2));
-
-      case CONSTRUCTOR:
-	TREE_ADDRESSABLE (x) = 1;
-	return true;
-
-      case INDIRECT_REF:
-	/* %% this was in Java, not sure for D */
-	/* We sometimes add a cast *(TYPE *)&FOO to handle type and mode
-	   incompatibility problems.  Handle this case by marking FOO.  */
-	if (TREE_CODE (TREE_OPERAND (x, 0)) == NOP_EXPR
-	    && TREE_CODE (TREE_OPERAND (TREE_OPERAND (x, 0), 0)) == ADDR_EXPR)
-	  {
-	    x = TREE_OPERAND (TREE_OPERAND (x, 0), 0);
-	    break;
-	  }
-	if (TREE_CODE (TREE_OPERAND (x, 0)) == ADDR_EXPR)
-	  {
-	    x = TREE_OPERAND (x, 0);
-	    break;
-	  }
-	return true;
-
-      case VAR_DECL:
-      case CONST_DECL:
-      case PARM_DECL:
-      case RESULT_DECL:
-      case FUNCTION_DECL:
-	TREE_ADDRESSABLE (x) = 1;
-	/* drops through */
-      default:
-	return true;
-      }
-
-  return 1;
-}
-
-
-/* Mark EXP as read, not just set, for set but not used -Wunused
-   warning purposes.  */
-
-void
-d_mark_exp_read (tree exp)
-{
-  switch (TREE_CODE (exp))
-    {
-    case VAR_DECL:
-    case PARM_DECL:
-      DECL_READ_P (exp) = 1;
-      break;
-
-    case ARRAY_REF:
-    case COMPONENT_REF:
-    case MODIFY_EXPR:
-    case REALPART_EXPR:
-    case IMAGPART_EXPR:
-    case NOP_EXPR:
-    case CONVERT_EXPR:
-    case ADDR_EXPR:
-      d_mark_exp_read (TREE_OPERAND (exp, 0));
-      break;
-
-    case COMPOUND_EXPR:
-      d_mark_exp_read (TREE_OPERAND (exp, 1));
-      break;
-
-    default:
-      break;
-    }
-}
-
 
 tree
 d_type_for_mode (enum machine_mode mode, int unsignedp)
@@ -1551,18 +1455,17 @@ poplevel (int keep, int reverse, int routinebody)
       for (tree t = nreverse (vars); t != NULL_TREE; t = TREE_CHAIN (t))
 	{
 	  gcc_assert (TREE_CODE (t) == VAR_DECL);
-	  if ((!TREE_USED (t) /*|| !D_DECL_READ (t)*/) //%% TODO
+	  if ((!TREE_USED (t) /*|| !DECL_READ_P (t)*/) // %% TODO
 	      && !TREE_NO_WARNING (t)
 	      && DECL_NAME (t)
 	      && !DECL_ARTIFICIAL (t))
 	    {
 	      if (!TREE_USED (t))
-		warning (OPT_Wunused_variable, "unused variable %q+D", t);
+		warning_at (DECL_SOURCE_LOCATION (t),
+			    OPT_Wunused_variable, "unused variable %q+D", t);
 	      else if (DECL_CONTEXT (t) == current_function_decl)
-		{
-		  warning_at (DECL_SOURCE_LOCATION (t),
-			     OPT_Wunused_but_set_variable, "variable %qD set but not used", t);
-		}
+		warning_at (DECL_SOURCE_LOCATION (t),
+			    OPT_Wunused_but_set_variable, "variable %qD set but not used", t);
 	    }
 	}
     }

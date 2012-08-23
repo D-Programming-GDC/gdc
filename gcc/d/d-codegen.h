@@ -283,6 +283,10 @@ struct IRState : IRBase
   static tree addressOf (Dsymbol *d);
   static tree addressOf (tree exp);
 
+  static tree markAddressable (tree exp);
+  static tree markUsed (tree exp);
+  static tree markRead (tree exp);
+
   /* Cast exp (which should be a pointer) to TYPE *and then indirect.  The
      back-end requires this cast in many cases. */
   static tree indirect (tree type, tree exp);

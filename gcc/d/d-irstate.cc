@@ -95,9 +95,8 @@ IRBase::addExp (tree e)
       if (warn_unused_value
 	  && !TREE_NO_WARNING (e)
 	  && !TREE_SIDE_EFFECTS (e))
-	{
-	  warning (OPT_Wunused_value, "statement has no effect");
-	}
+	warning (OPT_Wunused_value, "statement has no effect");
+
       e = build1 (CONVERT_EXPR, void_type_node, e);
     }
 

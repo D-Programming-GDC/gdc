@@ -429,20 +429,16 @@ d_gcc_magic_builtins_module (Module *m)
     {
       tree decl = TREE_VALUE (n);
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
-      TypeFunction *dtf
-	= (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (decl));
+      TypeFunction *dtf = (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (decl));
 
+      // Cannot create built-in function type for DECL
       if (!dtf)
-	{
-	  //warning (0, "cannot create built in function type for %s", name);
-	  continue;
-	}
-      if (dtf->parameters && dtf->parameters->dim == 0 && dtf->varargs)
-	{
-	  //warning (0, "one-arg va problem: %s", name);
-	  continue;
-	}
+	continue;
 
+      // Typically gcc macro functions that can't be represented in D.
+      if (dtf->parameters && dtf->parameters->dim == 0 && dtf->varargs)
+	continue;
+      
       // %% D2 - builtins are trusted and optionally nothrow.
       // The purity of a builtins can vary depending on compiler
       // flags set at init, or by the -foptions passed, such as
@@ -473,11 +469,10 @@ d_gcc_magic_builtins_module (Module *m)
       tree type = TREE_TYPE (decl);
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
       Type *dt = gcc_type_to_d_type (type);
+      // Cannot create built-in type for DECL.
       if (!dt)
-	{
-	  //warning (0, "cannot create built in type for %s", name);
-	  continue;
-	}
+	continue;
+
       funcs->push (new AliasDeclaration (0, Lexer::idPool (name), dt));
     }
 
@@ -490,11 +485,10 @@ d_gcc_magic_builtins_module (Module *m)
       for (int l = 0; targetm.enum_va_list_p (l, &name, &type); ++l)
 	{
 	  Type *dt = gcc_type_to_d_type (type);
+	  // Cannot create built-in type.
 	  if (!dt)
-	    {
-	      //warning (0, "cannot create built in type for "%s", name);
-	      continue;
-	    }
+	    continue;
+
 	  funcs->push (new AliasDeclaration (0, Lexer::idPool (name), dt));
 	}
     }
@@ -777,61 +771,61 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
   switch (builtin)
     {
     case BUILTINsin:
-      callee = d_built_in_decls (BUILT_IN_SINL);
+      callee = builtin_decl_explicit (BUILT_IN_SINL);
       break;
 
     case BUILTINcos:
-      callee = d_built_in_decls (BUILT_IN_COSL);
+      callee = builtin_decl_explicit (BUILT_IN_COSL);
       break;
 
     case BUILTINtan:
-      callee = d_built_in_decls (BUILT_IN_TANL);
+      callee = builtin_decl_explicit (BUILT_IN_TANL);
       break;
 
     case BUILTINsqrt:
       if (t0->ty == Tfloat32)
-	callee = d_built_in_decls (BUILT_IN_SQRTF);
+	callee = builtin_decl_explicit (BUILT_IN_SQRTF);
       else if (t0->ty == Tfloat64)
-	callee = d_built_in_decls (BUILT_IN_SQRT);
+	callee = builtin_decl_explicit (BUILT_IN_SQRT);
       else if (t0->ty == Tfloat80)
-	callee = d_built_in_decls (BUILT_IN_SQRTL);
+	callee = builtin_decl_explicit (BUILT_IN_SQRTL);
       gcc_assert (callee);
       break;
 
     case BUILTINfabs:
-      callee = d_built_in_decls (BUILT_IN_FABSL);
+      callee = builtin_decl_explicit (BUILT_IN_FABSL);
       break;
 
     case BUILTINbsf:
-      callee = d_built_in_decls (BUILT_IN_CTZL);
+      callee = builtin_decl_explicit (BUILT_IN_CTZL);
       break;
 
     case BUILTINbsr:
-      callee = d_built_in_decls (BUILT_IN_CLZL);
+      callee = builtin_decl_explicit (BUILT_IN_CLZL);
       break;
 
     case BUILTINbswap:
       if (t0->ty == Tint64 || t0->ty == Tuns64)
-	callee = d_built_in_decls (BUILT_IN_BSWAP64);
+	callee = builtin_decl_explicit (BUILT_IN_BSWAP64);
       else if (t0->ty == Tint32 || t0->ty == Tuns32)
-	callee = d_built_in_decls (BUILT_IN_BSWAP32);
+	callee = builtin_decl_explicit (BUILT_IN_BSWAP32);
       gcc_assert (callee);
       break;
 
     case BUILTINatan2:
-      callee = d_built_in_decls (BUILT_IN_ATAN2L);
+      callee = builtin_decl_explicit (BUILT_IN_ATAN2L);
       break;
 
     case BUILTINrndtol:
-      callee = d_built_in_decls (BUILT_IN_LLROUNDL);
+      callee = builtin_decl_explicit (BUILT_IN_LLROUNDL);
       break;
 
     case BUILTINexpm1:
-      callee = d_built_in_decls (BUILT_IN_EXPM1L);
+      callee = builtin_decl_explicit (BUILT_IN_EXPM1L);
       break;
 
     case BUILTINexp2:
-      callee = d_built_in_decls (BUILT_IN_EXP2L);
+      callee = builtin_decl_explicit (BUILT_IN_EXP2L);
       break;
 
     case BUILTINyl2x:

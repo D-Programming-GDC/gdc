@@ -16,7 +16,6 @@
    <http://www.gnu.org/licenses/>.
 */
 
-/* This file is mostly a copy of gcc/c-common.c */
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"

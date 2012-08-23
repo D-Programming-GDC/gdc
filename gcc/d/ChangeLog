@@ -1,3 +1,29 @@
+2012-08-23  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins2.cc(eval_builtin): Use builtin_decl_explicit.
+	* d-codegen.cc(IRState::emitLocalVar): Use warning.
+	(IRState::convertTo): Likewise.
+	(IRState::addressOf): Use IRState::markAddressable.
+	(IRState::markAddressable): New function.
+	(IRState::markUsed): New function.
+	(IRState::markRead): New function.
+	(IRState::maybeExpandSpecialCall): Use builtin_decl_explicit.
+	(IRState::floatMod): Likewise.
+	(IRState::exceptionObject): Likewise.
+	* d-glue.cc(IdentityExp::toElem): Likewise.
+	(EqualExp::toElem): Likewise.
+	(PowExp::toElem): Likewise.
+	(AssignExp::toElem): Likewise.
+	(HaltExp::toElem): Likewise.
+	(ArrayLiteralExp::toElem): Likewise.
+	(FuncDeclaration::toObjFile): Likewise.
+	* d-lang.cc(d_mark_addressable): Remove function.
+	(d_mark_exp_read): Remove function.
+	* d-lang.h(d_warning): Remove macro.
+	(d_built_in_decls): Remove macro.
+	* d-objfile.cc(Obj::includelib): Use warning.
+	(Obj::startaddress): Likewise.
+
 2012-08-22  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-lang.cc(binary): Moved function from frontend.
