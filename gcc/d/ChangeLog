@@ -1,7 +1,11 @@
 2012-08-29  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* lang-specs.h: Remove special case for handled D source files.
-	* Make-lang.in: Remove special case for building gcc.o
+	* Make-lang.in: Remove special case for building gcc.o, use
+	GCC_EXTRA_LIBS to link against, rather than specific gcc object files.
+	(D_DRIVER_NAME): Remove use of variable.
+	(D_DRIVER_OBJS): Likewise.
+	(D_COMPILER_NAME): Likewise.
 
 2012-08-23  Iain Buclaw  <ibuclaw@ubuntu.com>
 

@@ -33,18 +33,10 @@ ifeq ($(target_os), mingw32)
 D_EXTRA_DEFINES += -D__USE_MINGW_ANSI_STDIO
 endif
 
-# As with C++: (quote) OTOH, I think this means the g++ driver...
-# Note that it would be nice to move the dependency on g++
-# into the C++ rule, but that needs a little bit of work
-# to do the right thing within all.cross.
-D_DRIVER_NAME = gdc
-D_DRIVER_OBJS = d/d-spec.o version.o prefix.o intl.o
-D_COMPILER_NAME = cc1d
-
-D_INSTALL_NAME = $(shell echo $(D_DRIVER_NAME)|sed '$(program_transform_name)')
+D_INSTALL_NAME = $(shell echo gdc|sed '$(program_transform_name)')
 DMD_INSTALL_NAME = $(shell echo dmd|sed '$(program_transform_name)')
 GDMD_INSTALL_NAME = $(shell echo gdmd|sed '$(program_transform_name)')
-D_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo $(D_DRIVER_NAME)|sed '$(program_transform_name)')
+D_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo gdc|sed '$(program_transform_name)')
 DMD_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo dmd|sed '$(program_transform_name)')
 GDMD_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo gdmd|sed '$(program_transform_name)')
 
@@ -99,26 +91,15 @@ D_CROSS_NAME = $(D_INSTALL_NAME)
 DMD_CROSS_NAME = $(DMD_INSTALL_NAME)
 GDMD_CROSS_NAME = $(GDMD_INSTALL_NAME)
 
-D d: $(D_COMPILER_NAME)$(exeext) d/pkgvars
+D d: cc1d$(exeext) d/pkgvars
 
 # Tell GNU make to ignore these if they exist.
 .PHONY: D d
 
-D_BORROWED_C_OBJS = attribs.o
-D_EXTRA_LIBS = $(BACKENDLIBS)
-D_EXTRA_SPEC_LIBS = libcommon-target.a
-
 D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/d/dfrontend -Id
-# -Wno-long-double is for MacOS X -- needs to be configurated
-D_CC_FLAGS = -Wno-missing-braces
-
-# d-bi-attrs.h
-D_CC_FLAGS += -Wno-format
-# from dmd
-D_CC_FLAGS += -Wno-deprecated -Wstrict-aliasing
 
 ALL_D_COMPILER_FLAGS = $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) \
-                        $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+                        $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES)
 
 # D Frontend has slightly relaxed warnings compared to rest of GDC.
 DMD_WARN_CFLAGS = -Wno-deprecated -Wstrict-aliasing
@@ -126,17 +107,19 @@ DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(ALL_COMPILERFLAGS)) $(DMD_WARN_C
 
 # %% Ditto
 ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
-                        -Id -I$(srcdir)/d/dfrontend -I$(srcdir)/d $(D_EXTRA_DEFINES) $(D_CC_FLAGS)
+                        -Id -I$(srcdir)/d/dfrontend -I$(srcdir)/d $(D_EXTRA_DEFINES)
 
 # Create the compiler driver for D.
-$(D_DRIVER_NAME)$(exeext): $(GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(D_EXTRA_SPEC_LIBS) $(LIBDEPS)
+GDC_OBJS = $(GCC_OBJS) d/d-spec.o
+gdc$(exeext): $(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a $(LIBDEPS)
 	$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
-	$(GCC_OBJS) $(D_DRIVER_OBJS) $(EXTRA_GCC_OBJS) $(D_EXTRA_SPEC_LIBS) $(LIBS)
+	$(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a \
+	$(EXTRA_GCC_LIBS) $(LIBS)
 
 # Create a version of the g++ driver which calls the cross-compiler.
-$(D_DRIVER_NAME)-cross$(exeext): $(D_DRIVER_NAME)$(exeext)
-	-rm -f $(D_DRIVER_NAME)-cross$(exeext)
-	cp $(D_DRIVER_NAME)$(exeext) $(D_DRIVER_NAME)-cross$(exeext)
+gdc-cross$(exeext): gdc$(exeext)
+	-rm -f gdc-cross$(exeext)
+	cp gdc$(exeext) gdc-cross$(exeext)
 
 
 # Common sources between D1 and D2
@@ -231,18 +214,21 @@ d/toobj.dmd.o: $(D_DMD_H)
 d/typinf.dmd.o: $(D_DMD_H)
 
 
-d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) $(CONFIG_H)
-	(SHLIB_LINK='$(SHLIB_LINK)' \
-	 SHLIB='$(SHLIB)'; \
+d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) \
+    $(CONFIG_H) $(OPTS_H)
+	(SHLIB='$(SHLIB)'; \
 	$(COMPILER) -c $(ALL_D_COMPILER_FLAGS) $(DRIVER_DEFINES) \
 		$(D_LIBPHOBOS) $(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
 
+D_BORROWED_C_OBJS = attribs.o
+
 d_OBJS = $(D_BORROWED_C_OBJS) $(D_GLUE_OBJS)
+
 D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_DMD_OBJS) $(d_OBJS)
 
-$(D_COMPILER_NAME)$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
-	$(COMPILER) $(ALL_D_COMPILER_FLAGS) $(LDFLAGS) -o $@ \
-		$(D_ALL_OBJS) $(BACKEND) $(LIBS) $(D_EXTRA_LIBS)
+cc1d$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
+	$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
+		$(D_ALL_OBJS) $(BACKEND) $(LIBS) $(BACKENDLIBS)
 
 
 # Documentation.
@@ -280,9 +266,9 @@ gdc.pod: d/gdc.texi
 
 # Build hooks:
 
-d.all.build: $(D_DRIVER_NAME)$(exeext) $(D_COMPILER_NAME)$(exeext)
-d.all.cross: $(D_DRIVER_NAME)-cross$(exeext)
-d.start.encap: $(D_DRIVER_NAME)$(exeext)
+d.all.build: gdc$(exeext) cc1d$(exeext)
+d.all.cross: gdc-cross$(exeext)
+d.start.encap: gdc$(exeext)
 d.rest.encap:
 d.info: doc/gdc.info
 d.srcinfo: doc/gdc.info
@@ -303,16 +289,16 @@ d.install-plugin:
 d.install-common: installdirs
 	-rm -f $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
 	-rm -f $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
-	$(INSTALL_PROGRAM) $(D_DRIVER_NAME)$(exeext) $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
+	$(INSTALL_PROGRAM) gdc$(exeext) $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
 	-perl -e 'exit 0;' && $(INSTALL_SCRIPT) $(srcdir)/d/dmd-script $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
 	-chmod a+x $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
 	-chmod a+x $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
-	-if [ -f $(D_COMPILER_NAME)$(exeext) ] ; then \
-	  if [ -f $(D_DRIVER_NAME)-cross$(exeext) ] ; then \
+	-if [ -f cc1d$(exeext) ] ; then \
+	  if [ -f gdc-cross$(exeext) ] ; then \
 	    if [ -d $(DESTDIR)$(gcc_tooldir)/bin/. ] ; then \
-	      rm -f $(DESTDIR)$(gcc_tooldir)/bin/$(D_DRIVER_NAME)$(exeext); \
+	      rm -f $(DESTDIR)$(gcc_tooldir)/bin/gdc$(exeext); \
 	      rm -f $(DESTDIR)$(gcc_tooldir)/bin/gdmd$(exeext); \
-	      $(INSTALL_PROGRAM) $(D_DRIVER_NAME)-cross$(exeext) $(DESTDIR)$(gcc_tooldir)/bin/$(D_DRIVER_NAME)$(exeext); \
+	      $(INSTALL_PROGRAM) gdc-cross$(exeext) $(DESTDIR)$(gcc_tooldir)/bin/gdc$(exeext); \
 	      perl -e 'exit 0;' && $(INSTALL_SCRIPT) $(srcdir)/d/dmd-script $(DESTDIR)$(gcc_tooldir)/bin/gdmd; \
 	    else true; fi; \
 	  else \
