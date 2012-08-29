@@ -1,3 +1,8 @@
+2012-08-29  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* lang-specs.h: Remove special case for handled D source files.
+	* Make-lang.in: Remove special case for building gcc.o
+
 2012-08-23  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-builtins2.cc(eval_builtin): Use builtin_decl_explicit.

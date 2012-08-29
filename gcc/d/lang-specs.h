@@ -19,9 +19,6 @@
 /* %{!M} probably doesn't make sense because we would need
    to do that -- -MD and -MMD doesn't sound like a plan for D.... */
 
-/* %(d_options) ? */
-
-#if D_DRIVER_ONLY
 {".d", "@d", 0, 1, 0 },
 {".D", "@d", 0, 1, 0 },
 {".dd", "@d", 0, 1, 0 },
@@ -31,13 +28,4 @@
 {"@d",
   "%{!E:cc1d %i %(cc1_options) %(cc1d) %I %{nostdinc*} %{+e*} %{I*} %{J*}\
     %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", 0, 1, 0 },
-#else
-{".d", "@d", 0, 1, 0 },
-{".D", "@d", 0, 1, 0 },
-{".di", "@d", 0, 1, 0 },
-{".DI", "@d", 0, 1, 0 },
-{"@d",
-  "%{!E:cc1d %i %(cc1_options) %(cc1d) %I %{nostdinc*} %{+e*} %{I*} %{J*}\
-    %{M} %{MM} %{!fsyntax-only:%(invoke_as)}}", 0, 1, 0 },
-#endif
 
