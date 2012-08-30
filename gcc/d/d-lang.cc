@@ -261,11 +261,6 @@ d_init (void)
   VersionCondition::addPredefinedGlobalIdent (D_VENDOR_VERSYM);
 #endif
 
-#ifdef TARGET_ARM
-  if (TARGET_AAPCS_BASED)
-    VersionCondition::addPredefinedGlobalIdent("ARM_EABI");
-#endif
-
   if (BYTES_BIG_ENDIAN)
     VersionCondition::addPredefinedGlobalIdent ("BigEndian");
   else
@@ -273,11 +268,6 @@ d_init (void)
 
   if (targetm_common.except_unwind_info (&global_options) == UI_SJLJ)
     VersionCondition::addPredefinedGlobalIdent ("GNU_SjLj_Exceptions");
-
-#ifdef TARGET_LONG_DOUBLE_128
-  if (TARGET_LONG_DOUBLE_128)
-    VersionCondition::addPredefinedGlobalIdent ("GNU_LongDouble128");
-#endif
 
 #ifdef STACK_GROWS_DOWNWARD
   VersionCondition::addPredefinedGlobalIdent ("GNU_StackGrowsDown");

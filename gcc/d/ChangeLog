@@ -1,7 +1,9 @@
 2012-08-30  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-lang.cc(d_init): Remove 'Thumb' identifier for ARM as 16bit
-	platforms aren't supported. Add ARM_EABI identifier.
+	platforms aren't supported.
+	(GNU_LongDouble128): Remove identifier as long double size is
+	determined from type information.
 
 	* d-decls.cc(TypeInfoDeclaration::toSymbol): Mark all typeinfo decls
 	as 'used'.

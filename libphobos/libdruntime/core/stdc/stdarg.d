@@ -184,32 +184,12 @@ version( GNU )
   }
   else version( ARM )
   {
-    version( ARM_EABI )
+    void va_arg()(ref va_list ap, TypeInfo ti, void* parmn)
     {
-        // Layout of this struct must match __gnuc_va_list for C ABI compatibility
-        struct __va_list
-        {
-            void* ptr;
-        }
-
-        void va_arg()(ref va_list apx, TypeInfo ti, void* parmn)
-        {
-            __va_list* ap = cast(__va_list*)apx;
-            auto p = ap.ptr;
-            auto tsize = ti.tsize();
-            ap.ptr = cast(va_list)( cast(void*) p + ( ( tsize + size_t.sizeof - 1 ) & ~( size_t.sizeof - 1 ) ) );
-            parmn[0..tsize] = p[0..tsize];
-        }
-    }
-    else
-    {
-        void va_arg()(ref va_list ap, TypeInfo ti, void* parmn)
-        {
-            auto p = ap;
-            auto tsize = ti.tsize();
-            ap = cast(va_list)( cast(void*) p + ( ( tsize + size_t.sizeof - 1 ) & ~( size_t.sizeof - 1 ) ) );
-            parmn[0..tsize] = p[0..tsize];
-        }
+        auto p = *cast(void**) &ap;
+        auto tsize = ti.tsize();
+        *cast(void**) &ap += ( tsize + size_t.sizeof - 1 ) & ~( size_t.sizeof - 1 );
+        parmn[0..tsize] = p[0..tsize];
     }
   }
   else

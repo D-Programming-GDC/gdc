@@ -4668,14 +4668,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
             }
             else version(ARM)
             {
-                version(ARM_EABI)
-                {
-                    __va_list va;
-                    va.ptr = p;
-                    argptr = cast(va_list) va;
-                }
-                else
-                    argptr = p;
+                *cast(void**) &argptr = p;
             }
             else
             {
@@ -4733,13 +4726,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 }
                 else version (ARM)
                 {
-                    version (ARM_EABI)
-                    {   __va_list va;
-                        va.ptr = pkey;
-                        argptr = cast(va_list) va;
-                    }
-                    else
-                        argptr = cast(va_list) pkey;
+                    *cast(void**) &argptr = pkey;
                 }
                 else
                 {
@@ -4764,13 +4751,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 }
                 else version (ARM)
                 {
-                    version (ARM_EABI)
-                    {   __va_list va2;
-                        va.ptr = pvalue;
-                        argptr = cast(va_list) va2;
-                    }
-                    else
-                        argptr = cast(va_list) pvalue;
+                    *cast(void**) &argptr = pvalue;
                 }
                 else
                 {
@@ -4929,12 +4910,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 else version (X86_64)
                     putArray((cast(__va_list*)argptr).stack_args, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
                 else version (ARM)
-                {
-                    version (ARM_EABI)
-                        putArray((cast(__va_list)argptr).ptr, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
-                    else
-                        putArray(argptr, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
-                }
+                    putArray(*cast(void**) &argptr, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
                 else
                 {
                     static if (is(va_list == void*))
@@ -5069,19 +5045,8 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 }
                 else version (ARM)
                 {
-                    void* p;
-                    version (ARM_EABI)
-                    {
-                        auto talign = tis.talign();
-                        __va_list* ap = cast(__va_list*)&argptr;
-                        p = ap.ptr;
-                        ap.ptr += (tis.tsize() + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
-                    }
-                    else
-                    {
-                        p = argptr;
-                        argptr += (tis.tsize() + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
-                    }
+                    void* p = *cast(void**) &argptr;
+                    *cast(void**) &argptr += (tis.tsize() + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
                     s = tis.xtoString(p);
                 }
                 else
