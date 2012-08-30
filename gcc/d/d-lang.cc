@@ -261,11 +261,9 @@ d_init (void)
   VersionCondition::addPredefinedGlobalIdent (D_VENDOR_VERSYM);
 #endif
 
-#ifdef TARGET_THUMB
-  if (TARGET_THUMB)
-    VersionCondition::addPredefinedGlobalIdent ("Thumb");
-  else
-    VersionCondition::addPredefinedGlobalIdent ("Arm");
+#ifdef TARGET_ARM
+  if (TARGET_AAPCS_BASED)
+    VersionCondition::addPredefinedGlobalIdent("ARM_EABI");
 #endif
 
   if (BYTES_BIG_ENDIAN)

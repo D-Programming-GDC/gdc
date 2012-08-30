@@ -1,5 +1,8 @@
 2012-08-30  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-lang.cc(d_init): Remove 'Thumb' identifier for ARM as 16bit
+	platforms aren't supported. Add ARM_EABI identifier.
+
 	* d-decls.cc(TypeInfoDeclaration::toSymbol): Mark all typeinfo decls
 	as 'used'.
 	* d-glue.cc(one_elem_array): Remove.
@@ -8,6 +11,7 @@
 	handle use of declarations marked with comdat, extern or static.
 	(ObjectFile::doSimpleFunction): Mark function as 'used'.
 	* dt.cc(dt2node): Clean-up indentation.
+
 	* Make-lang.in: Fix issue with cross-compiler configuration.
 
 2012-08-29  Iain Buclaw  <ibuclaw@ubuntu.com>

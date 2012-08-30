@@ -4666,6 +4666,17 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 va.stack_args = p;
                 argptr = *cast(va_list*) &va;
             }
+            else version(ARM)
+            {
+                version(ARM_EABI)
+                {
+                    __va_list va;
+                    va.ptr = p;
+                    argptr = cast(va_list) va;
+                }
+                else
+                    argptr = p;
+            }
             else
             {
                 static if (is(va_list == void*))
@@ -4720,6 +4731,16 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                     va.stack_args = pkey;
                     argptr = *cast(va_list*) &va;
                 }
+                else version (ARM)
+                {
+                    version (ARM_EABI)
+                    {   __va_list va;
+                        va.ptr = pkey;
+                        argptr = cast(va_list) va;
+                    }
+                    else
+                        argptr = cast(va_list) pkey;
+                }
                 else
                 {
                     static if (is(va_list == void*))
@@ -4740,6 +4761,16 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 {   __va_list va2;
                     va2.stack_args = pvalue;
                     argptr = *cast(va_list*) &va2;
+                }
+                else version (ARM)
+                {
+                    version (ARM_EABI)
+                    {   __va_list va2;
+                        va.ptr = pvalue;
+                        argptr = cast(va_list) va2;
+                    }
+                    else
+                        argptr = cast(va_list) pvalue;
                 }
                 else
                 {
@@ -4893,10 +4924,17 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 goto Lcomplex;
 
             case Mangle.Tsarray:
-                version (X86_64)
-                    putArray((cast(__va_list*)argptr).stack_args, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
-                else version (X86)
+                version (X86)
                     putArray(argptr, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
+                else version (X86_64)
+                    putArray((cast(__va_list*)argptr).stack_args, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
+                else version (ARM)
+                {
+                    version (ARM_EABI)
+                        putArray((cast(__va_list)argptr).ptr, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
+                    else
+                        putArray(argptr, (cast(TypeInfo_StaticArray)ti).len, cast()(cast(TypeInfo_StaticArray)ti).next);
+                }
                 else
                 {
                     static if (is(va_list == void*))
@@ -5024,9 +5062,26 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                     }
                     s = tis.xtoString(p);
                 }
-                else version(PPC)
+                else version (PPC)
                 {   // Structs are pass-by-reference in V4 ABI
                     void* p = va_arg!(void*)(argptr);
+                    s = tis.xtoString(p);
+                }
+                else version (ARM)
+                {
+                    void* p;
+                    version (ARM_EABI)
+                    {
+                        auto talign = tis.talign();
+                        __va_list* ap = cast(__va_list*)&argptr;
+                        p = ap.ptr;
+                        ap.ptr += (tis.tsize() + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+                    }
+                    else
+                    {
+                        p = argptr;
+                        argptr += (tis.tsize() + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+                    }
                     s = tis.xtoString(p);
                 }
                 else
