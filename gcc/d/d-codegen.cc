@@ -4530,7 +4530,7 @@ WrappedExp::WrappedExp (Loc loc, enum TOK op, tree exp_node, Type *type)
 // Write C-style representation of WrappedExp to BUF.
 
 void
-WrappedExp::toCBuffer (OutBuffer *buf, HdrGenState *hgs)
+WrappedExp::toCBuffer (OutBuffer *buf, HdrGenState *hgs ATTRIBUTE_UNUSED)
 {
   buf->printf ("<wrapped expression>");
 }

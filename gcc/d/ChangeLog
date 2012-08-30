@@ -1,5 +1,11 @@
 2012-08-30  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* asmstmt.cc(ExtAsmStatement::toCBuffer): Mark unused parameter as
+	ATTRIBUTE_UNUSED.
+	* d-codegen.cc(WrappedExp::toCBuffer): Likewise.
+	* d-objfile.cc(ObjectFile::setupSymbolStorage): Revert to previous
+	behaviour of setting symbol storage.
+
 	* d-codegen.cc(IRState::expandDecl): Use IRState::vinit.
 	(IRState::binding): Likewise.
 	(IRState::var): Handle all declarations, not just vars.

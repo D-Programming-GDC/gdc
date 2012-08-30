@@ -300,29 +300,30 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
       else
 	has_module = hasModule (dsym->getModule());
 
+      if (real_decl)
+	{
+	  if (real_decl->isVarDeclaration() &&
+	      real_decl->storage_class & STCextern)
+	    has_module = false;
+	}
+
       if (has_module)
 	{
-	  if (real_decl)
-	    {
-	      if (real_decl->storage_class & STCcomdat)
-		D_DECL_ONE_ONLY (decl_tree) = 1;
-	      if (real_decl->storage_class & STCextern)
-		DECL_EXTERNAL (decl_tree) = 1;
-	      if (real_decl->storage_class & STCstatic)
-		TREE_STATIC (decl_tree) = 1;
-	      // Do this by default, but allow private templates to override
-	      if (!func_decl || !func_decl->isNested())
-		TREE_PUBLIC (decl_tree) = 1;
-	    }
+	  DECL_EXTERNAL (decl_tree) = 0;
+	  TREE_STATIC (decl_tree) = 1;
 
-	  if (force_static_public)
-	    TREE_PUBLIC (decl_tree) = 1;
+	  if (real_decl && real_decl->storage_class & STCcomdat)
+	    D_DECL_ONE_ONLY (decl_tree) = 1;
 	}
       else
 	{
 	  DECL_EXTERNAL (decl_tree) = 1;
 	  TREE_STATIC (decl_tree) = 0;
 	}
+
+      // Do this by default, but allow private templates to override
+      if (!func_decl || !func_decl->isNested())
+	TREE_PUBLIC (decl_tree) = 1;
 
       if (D_DECL_ONE_ONLY (decl_tree))
 	makeDeclOneOnly (decl_tree);

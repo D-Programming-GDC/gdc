@@ -146,7 +146,7 @@ ExtAsmStatement::semantic (Scope *sc)
 // Write C-style representation of ExtAsmStatement to BUF.
 
 void
-ExtAsmStatement::toCBuffer (OutBuffer *buf, HdrGenState *hgs)
+ExtAsmStatement::toCBuffer (OutBuffer *buf, HdrGenState *hgs ATTRIBUTE_UNUSED)
 {
   buf->writestring ("gcc asm { ");
   if (this->insnTemplate)
