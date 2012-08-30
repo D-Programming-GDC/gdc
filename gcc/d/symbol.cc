@@ -20,7 +20,7 @@
 
 // Construct a new Symbol.
 
-Symbol::Symbol ()
+Symbol::Symbol (void)
 {
   this->Sident = 0;
   this->prettyIdent = 0;

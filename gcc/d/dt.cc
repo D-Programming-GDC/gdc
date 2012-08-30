@@ -172,86 +172,83 @@ dt2tree (dt_t *dt)
 static tree
 dt2node (dt_t *dt)
 {
+  tree t, type;
+  Type *tb = NULL;
+
   switch (dt->dt)
     {
     case DT_azeros:
     case DT_common:
-	{
-	  tree type = gen.arrayType (Type::tuns8, dt->DTint);
-	  tree a = build_constructor (type, 0);
-	  TREE_READONLY (a) = 1;
-	  TREE_CONSTANT (a) = 1;
-	  return a;
-	}
-    case DT_nbytes:
-	{
-	  tree s = build_string (dt->DTint, (char *) dt->DTpointer);
-	  TREE_TYPE (s) = gen.arrayType (Type::tuns8, dt->DTint);
-	  return s;
-	}
-    case DT_abytes:
-	{
-	  tree s = build_string (dt->DTint, (char *) dt->DTpointer);
-	  TREE_TYPE (s) = gen.arrayType (Type::tuns8, dt->DTint);
-	  TREE_STATIC (s) = 1;
-	  return gen.addressOf (s);
-	}
-    case DT_ibytes:
-	{
-	  // %% make sure this is the target word type
-	  return gen.integerConstant (dt->DTint, Type::tsize_t);
-	}
-    case DT_xoff:
-	{
-	  return gen.pointerOffset (
-				    gen.addressOf (check_static_sym (dt->DTsym)),
-				    gen.integerConstant (dt->DTint, Type::tsize_t));
-	}
-    case DT_tree:
-	{
-	  return dt->DTtree;
-	}
-    case DT_container:
-	{
-	  /* It is necessary to give static array data its original
-	     type.  Otherwise, the SRA pass will not find the array
-	     elements.
+      type = gen.arrayType (Type::tuns8, dt->DTint);
+      t = build_constructor (type, 0);
+      TREE_READONLY (t) = 1;
+      TREE_CONSTANT (t) = 1;
+      return t;
 
-	     SRA accesses struct elements by field offset, so the ad
-	     hoc type from dt2tree is fine.  It must still be a
-	     CONSTRUCTOR, or the CCP pass may use it incorrectly.
-	    */
-	  Type *tb = NULL;
-	  if (dt->DTtype)
-	    tb = dt->DTtype->toBasetype ();
-	  if (tb && tb->ty == Tsarray)
+    case DT_nbytes:
+      t = build_string (dt->DTint, (const char *) dt->DTpointer);
+      TREE_TYPE (t) = gen.arrayType (Type::tuns8, dt->DTint);
+      return t;
+
+    case DT_abytes:
+      t = build_string (dt->DTint, (const char *) dt->DTpointer);
+      TREE_TYPE (t) = gen.arrayType (Type::tuns8, dt->DTint);
+      TREE_STATIC (t) = 1;
+      return gen.addressOf (t);
+
+    case DT_ibytes:
+      // %% make sure this is the target word type
+      return gen.integerConstant (dt->DTint, Type::tsize_t);
+
+    case DT_xoff:
+      return gen.pointerOffset (gen.addressOf (check_static_sym (dt->DTsym)),
+				gen.integerConstant (dt->DTint, Type::tsize_t));
+
+    case DT_tree:
+      return dt->DTtree;
+
+    case DT_container:
+      /* It is necessary to give static array data its original
+	 type.  Otherwise, the SRA pass will not find the array
+	 elements.
+	 
+	 SRA accesses struct elements by field offset, so the ad
+	 hoc type from dt2tree is fine.  It must still be a
+	 CONSTRUCTOR, or the CCP pass may use it incorrectly.
+       */
+      if (dt->DTtype)
+	tb = dt->DTtype->toBasetype ();
+      if (tb && tb->ty == Tsarray)
+	{
+	  TypeSArray *tsa = (TypeSArray *) tb;
+	  CtorEltMaker ctor_elts;
+	  dt_t *dte = dt->DTvalues;
+	  size_t i = 0;
+	  ctor_elts.reserve (tsa->dim->toInteger ());
+	  while (dte)
 	    {
-	      TypeSArray *tsa = (TypeSArray *) tb;
-	      CtorEltMaker ctor_elts;
-	      dt_t *dte = dt->DTvalues;
-	      size_t i = 0;
-	      ctor_elts.reserve (tsa->dim->toInteger ());
-	      while (dte)
-		{
-		  ctor_elts.cons (gen.integerConstant (i++, size_type_node),
-      				  dt2node (dte));
-		  dte = dte->DTnext;
-		}
-	      tree ctor = build_constructor (dt->DTtype->toCtype (), ctor_elts.head);
-	      // DT data should always be constant.  If the decl is not TREE_CONSTANT, fine.
-	      TREE_CONSTANT (ctor) = 1;
-	      TREE_READONLY (ctor) = 1;
-	      TREE_STATIC (ctor) = 1;
-	      return ctor;
+	      ctor_elts.cons (gen.integerConstant (i++, size_type_node),
+			      dt2node (dte));
+	      dte = dte->DTnext;
 	    }
-	  else if (tb && tb->ty == Tstruct)
-	    return dt2tree_list_of_elems (dt->DTvalues);
-	  else
-	    return dt2tree (dt->DTvalues);
+	  tree ctor = build_constructor (dt->DTtype->toCtype (), ctor_elts.head);
+	  // DT data should always be constant.  If the decl is not TREE_CONSTANT, fine.
+	  TREE_CONSTANT (ctor) = 1;
+	  TREE_READONLY (ctor) = 1;
+	  TREE_STATIC (ctor) = 1;
+	  return ctor;
 	}
+      else if (tb && tb->ty == Tstruct)
+	{
+	  return dt2tree_list_of_elems (dt->DTvalues);
+	}
+
+      return dt2tree (dt->DTvalues);
+
     default:
       gcc_unreachable ();
     }
+
   return NULL;
 }
 

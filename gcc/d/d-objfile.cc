@@ -271,11 +271,10 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
   FuncDeclaration *func_decl = real_decl ? real_decl->isFuncDeclaration() : 0;
 
   if (force_static_public ||
-      (TREE_CODE (decl_tree) == VAR_DECL &&(real_decl && real_decl->isDataseg())) ||
+      (TREE_CODE (decl_tree) == VAR_DECL && (real_decl && real_decl->isDataseg())) ||
       (TREE_CODE (decl_tree) == FUNCTION_DECL))
     {
-      bool is_static;
-      bool is_comdat;
+      bool has_module = false;
       bool is_template = false;
       Dsymbol *sym = dsym->toParent();
       Module *ti_obj_file_mod;
@@ -292,29 +291,32 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
 	  sym = sym->toParent();
 	}
 
-      is_comdat = real_decl && (real_decl->storage_class & STCcomdat);
-
       if (is_template)
 	{
 	  D_DECL_ONE_ONLY (decl_tree) = 1;
 	  D_DECL_IS_TEMPLATE (decl_tree) = 1;
-	  is_static = hasModule (ti_obj_file_mod) && gen.emitTemplates != TEnone;
+	  has_module = hasModule (ti_obj_file_mod) && gen.emitTemplates != TEnone;
 	}
       else
-	is_static = hasModule (dsym->getModule());
+	has_module = hasModule (dsym->getModule());
 
-      if (real_decl && TREE_CODE (decl_tree) == VAR_DECL)
+      if (has_module)
 	{
-	  if (real_decl->storage_class & STCextern)
-	    is_static = false;
-	}
+	  if (real_decl)
+	    {
+	      if (real_decl->storage_class & STCcomdat)
+		D_DECL_ONE_ONLY (decl_tree) = 1;
+	      if (real_decl->storage_class & STCextern)
+		DECL_EXTERNAL (decl_tree) = 1;
+	      if (real_decl->storage_class & STCstatic)
+		TREE_STATIC (decl_tree) = 1;
+	      // Do this by default, but allow private templates to override
+	      if (!func_decl || !func_decl->isNested())
+		TREE_PUBLIC (decl_tree) = 1;
+	    }
 
-      if (is_static)
-	{
-	  DECL_EXTERNAL (decl_tree) = 0;
-	  TREE_STATIC (decl_tree) = 1; // %% don't set until there is a body?
-	  if (is_comdat)
-	    D_DECL_ONE_ONLY (decl_tree) = 1;
+	  if (force_static_public)
+	    TREE_PUBLIC (decl_tree) = 1;
 	}
       else
 	{
@@ -322,13 +324,8 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
 	  TREE_STATIC (decl_tree) = 0;
 	}
 
-      // Do this by default, but allow private templates to override
-      if (!func_decl || !func_decl->isNested())
-	TREE_PUBLIC (decl_tree) = 1;
-
       if (D_DECL_ONE_ONLY (decl_tree))
 	makeDeclOneOnly (decl_tree);
-
     }
   else
     {
@@ -803,9 +800,9 @@ ObjectFile::doSimpleFunction (const char *name, tree expr, bool static_ctor, boo
   // D static ctors, dtors, unittests, and the ModuleInfo chain function
   // are always private (see ObjectFile::setupSymbolStorage, default case)
   TREE_PUBLIC (func_decl) = public_fn;
+  TREE_USED (func_decl) = 1;
 
   // %% maybe remove the identifier
-
   func->fbody = new ExpStatement (g.mod->loc,
 				  new WrappedExp (g.mod->loc, TOKcomma, expr, Type::tvoid));
 
@@ -988,7 +985,7 @@ Obj *objmod = NULL;
 // Perform initialisation that applies to all output files.
 
 void
-Obj::init ()
+Obj::init (void)
 {
   gcc_assert (objmod == NULL);
   objmod = new Obj;
@@ -997,7 +994,7 @@ Obj::init ()
 // Terminate package.
 
 void
-Obj::term ()
+Obj::term (void)
 {
   delete objmod;
   objmod = NULL;

@@ -714,13 +714,6 @@ PowExp::toElem (IRState *irs)
   return irs->convertTo (type->toCtype(), irs->buildCall (powfn, 2, e1_t, e2_t));
 }
 
-static tree
-one_elem_array (IRState *irs, Expression *value, tree& var_decl_out)
-{
-  tree v = irs->maybeExprVar (value->toElem (irs), &var_decl_out);
-  return irs->darrayVal (value->type->arrayOf(), 1, irs->addressOf (v));
-}
-
 elem *
 CatExp::toElem (IRState *irs)
 {
@@ -728,22 +721,22 @@ CatExp::toElem (IRState *irs)
 
   // One of the operands may be an element instead of an array.
   // Logic copied from CatExp::semantic
-    {
-      Type *tb1 = e1->type->toBasetype();
-      Type *tb2 = e2->type->toBasetype();
+  Type *tb1 = e1->type->toBasetype();
+  Type *tb2 = e2->type->toBasetype();
 
-      if ((tb1->ty == Tsarray || tb1->ty == Tarray) &&
-	  irs->typesCompatible (e2->type, tb1->nextOf()))
-	{
-	  elem_type = tb1->nextOf();
-	}
-      else if ((tb2->ty == Tsarray || tb2->ty == Tarray) &&
-	       irs->typesCompatible (e1->type, tb2->nextOf()))
-	{
-	  elem_type = tb2->nextOf();
-	}
-      else
-	elem_type = tb1->nextOf();
+  if ((tb1->ty == Tsarray || tb1->ty == Tarray) &&
+      irs->typesCompatible (e2->type, tb1->nextOf()))
+    {
+      elem_type = tb1->nextOf();
+    }
+  else if ((tb2->ty == Tsarray || tb2->ty == Tarray) &&
+	   irs->typesCompatible (e1->type, tb2->nextOf()))
+    {
+      elem_type = tb2->nextOf();
+    }
+  else
+    {
+      elem_type = tb1->nextOf();
     }
 
   // Flatten multiple concatenations
@@ -762,10 +755,12 @@ CatExp::toElem (IRState *irs)
 	}
     }
 
-  n_args = 1 + (n_operands > 2 ? 1 : 0) +
-    n_operands * (n_operands > 2 && flag_split_darrays ? 2 : 1);
+  n_args = (1 + (n_operands > 2 ? 1 : 0) +
+	    n_operands * (n_operands > 2 && flag_split_darrays ? 2 : 1));
+
   args = new tree[n_args];
   args[0] = irs->typeinfoReference (type);
+
   if (n_operands > 2)
     args[1] = irs->integerConstant (n_operands, Type::tuns32);
 
@@ -781,7 +776,9 @@ CatExp::toElem (IRState *irs)
 	  if (irs->typesCompatible (oe->type->toBasetype(), elem_type->toBasetype()))
 	    {
 	      tree elem_var = NULL_TREE;
-	      array_exp = one_elem_array (irs, oe, elem_var);
+	      tree expr = irs->maybeExprVar (oe->toElem (irs), &elem_var);
+	      array_exp = irs->darrayVal (oe->type->arrayOf(), 1, irs->addressOf (expr));
+
 	      if (elem_var)
 		elem_vars.push (elem_var);
 	    }
@@ -3974,13 +3971,9 @@ ThrowStatement::toIR (IRState *irs)
   if (intfc_decl)
     {
       if (!intfc_decl->isCOMclass())
-	{
-	  arg = irs->convertTo (arg, exp->type, irs->getObjectType());
-	}
+	arg = irs->convertTo (arg, exp->type, irs->getObjectType());
       else
-	{
-	  error ("cannot throw COM interfaces");
-	}
+	error ("cannot throw COM interfaces");
     }
   irs->doLineNote (loc);
   irs->doExp (irs->libCall (LIBCALL_THROW, 1, &arg));
@@ -4020,7 +4013,7 @@ TryCatchStatement::toIR (IRState *irs)
 	{
 	  Catch *a_catch = (*catches)[i];
 
-	  irs->startCatch (a_catch->type->toCtype()); //expand_start_catch (xxx);
+	  irs->startCatch (a_catch->type->toCtype());
 	  irs->doLineNote (a_catch->loc);
 	  irs->startScope();
 
@@ -4028,9 +4021,10 @@ TryCatchStatement::toIR (IRState *irs)
 	    {
 	      tree exc_obj = irs->convertTo (irs->exceptionObject(),
 					     irs->getObjectType(), a_catch->type);
+	      tree catch_var = a_catch->var->toSymbol()->Stree;
 	      // need to override initializer...
 	      // set DECL_INITIAL now and emitLocalVar will know not to change it
-	      DECL_INITIAL (a_catch->var->toSymbol()->Stree) = exc_obj;
+	      DECL_INITIAL (catch_var) = exc_obj;
 	      irs->emitLocalVar (a_catch->var);
 	    }
 

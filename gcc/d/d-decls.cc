@@ -16,17 +16,6 @@
 // <http://www.gnu.org/licenses/>.
 
 
-//This file is based on dmd/tocsym.c.  Original copyright:
-
-// Copyright (c) 1999-2002 by Digital Mars
-// All Rights Reserved
-// written by Walter Bright
-// www.digitalmars.com
-// License for redistribution is by either the Artistic License
-// in artistic.txt, or the GNU General Public License in gnu.txt.
-// See the included readme.txt for details.
-
-
 #include "d-gcc-includes.h"
 
 #include "mars.h"
@@ -353,15 +342,11 @@ TypeInfoDeclaration::toSymbol (void)
       // given TypeInfo.  It is the actual data, not a reference
       gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == REFERENCE_TYPE);
       TREE_TYPE (csym->Stree) = TREE_TYPE (TREE_TYPE (csym->Stree));
+      TREE_USED (csym->Stree) = 1;
 
-      /* DMD makes typeinfo decls one-only by doing:
-
-	 s->Sclass = SCcomdat;
-
-	 in TypeInfoDeclaration::toObjFile.  The difference is
-	 that, in gdc, built-in typeinfo will be referenced as
-	 one-only.
- 	 */
+      /* DMD makes typeinfo decls one-only by doing: s->Sclass = SCcomdat;
+	 in TypeInfoDeclaration::toObjFile.  The difference is that,
+	 in gdc, built-in typeinfo will be referenced as one-only.  */
       D_DECL_ONE_ONLY (csym->Stree) = 1;
       g.ofile->makeDeclOneOnly (csym->Stree);
     }
