@@ -1686,11 +1686,7 @@ PtrExp::toElem (IRState *irs)
       if (!irs->isDeclarationReferenceType (sym_exp->var))
 	{
 	  rec_type = sym_exp->var->type->toBasetype();
-	  VarDeclaration *v = sym_exp->var->isVarDeclaration();
-	  if (v)
-	    rec_tree = irs->var (v);
-	  else
-	    rec_tree = sym_exp->var->toSymbol()->Stree;
+	  rec_tree = irs->var (sym_exp->var);
 	  the_offset = sym_exp->offset;
 	}
       // otherwise, no real benefit?
@@ -2029,6 +2025,8 @@ HaltExp::toElem (IRState *irs)
 elem *
 SymbolExp::toElem (IRState *irs)
 {
+  tree exp;
+
   if (op == TOKvar)
     {
       if (var->needThis())
@@ -2041,63 +2039,49 @@ SymbolExp::toElem (IRState *irs)
       if (var->ident == Id::ctfe)
 	return integer_zero_node;
 
+      exp = irs->var (var);
+      TREE_USED (exp) = 1;
+
       // For variables that are references (currently only out/inout arguments;
       // objects don't count), evaluating the variable means we want what it refers to.
-
-      // TODO: is this ever not a VarDeclaration; (four sequences like this...)
-      VarDeclaration *v = var->isVarDeclaration();
-      tree e;
-      if (v)
-	e = irs->var (v);
-      else
-	e = var->toSymbol()->Stree;
-
-      TREE_USED (e) = 1;
-
       if (irs->isDeclarationReferenceType (var))
 	{
-	  e = irs->indirect (var->type->toCtype(), e);
+	  exp = irs->indirect (var->type->toCtype(), exp);
 	  if (irs->inVolatile())
-	    TREE_THIS_VOLATILE (e) = 1;
+	    TREE_THIS_VOLATILE (exp) = 1;
 	}
       else
 	{
 	  if (irs->inVolatile())
 	    {
-	      e = irs->addressOf (e);
-	      TREE_THIS_VOLATILE (e) = 1;
-	      e = irs->indirect (e);
-	      TREE_THIS_VOLATILE (e) = 1;
+	      exp = irs->addressOf (exp);
+	      TREE_THIS_VOLATILE (exp) = 1;
+	      exp = irs->indirect (exp);
+	      TREE_THIS_VOLATILE (exp) = 1;
 	    }
 	}
-      return e;
+      return exp;
     }
   else if (op == TOKsymoff)
     {
       size_t offset = ((SymOffExp *) this)->offset;
 
-      VarDeclaration *v = var->isVarDeclaration();
-      tree a;
-      if (v)
-	a = irs->var (v);
-      else
-	a = var->toSymbol()->Stree;
-
-      TREE_USED (a) = 1;
+      exp = irs->var (var);
+      TREE_USED (exp) = 1;
 
       if (irs->isDeclarationReferenceType (var))
-	gcc_assert (POINTER_TYPE_P (TREE_TYPE (a)));
+	gcc_assert (POINTER_TYPE_P (TREE_TYPE (exp)));
       else
-	a = irs->addressOf (a);
+	exp = irs->addressOf (exp);
 
       if (!offset)
-	return irs->convertTo (type->toCtype(), a);
+	return irs->convertTo (type->toCtype(), exp);
 
       tree b = irs->integerConstant (offset, Type::tsize_t);
-      return irs->nop (type->toCtype(), irs->pointerOffset (a, b));
+      return irs->nop (type->toCtype(), irs->pointerOffset (exp, b));
     }
-  else
-    gcc_assert (op == TOKvar || op == TOKsymoff);
+
+  gcc_assert (op == TOKvar || op == TOKsymoff);
   return error_mark_node;
 }
 
@@ -2655,20 +2639,20 @@ ThisExp::toElem (IRState *irs)
 
   if (var)
     {
-      this_tree = irs->var (var->isVarDeclaration());
+      gcc_assert(var->isVarDeclaration());
+      this_tree = irs->var (var);
     }
   else
     {
-      // %% DMD issue -- creates ThisExp without setting var to vthis
-      // %%TODO: updated in 0.79-0.81?
-      gcc_assert (irs->func);
-      gcc_assert (irs->func->vthis);
+      gcc_assert (irs->func && irs->func->vthis);
       this_tree = irs->var (irs->func->vthis);
     }
+
 #if STRUCTTHISREF
   if (type->ty == Tstruct)
     this_tree = irs->indirect (this_tree);
 #endif
+
   return this_tree;
 }
 

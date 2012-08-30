@@ -229,7 +229,8 @@ IRState::expandDecl (tree t_decl)
   // nothing, pushdecl will add t_decl to a BIND_EXPR
   if (DECL_INITIAL (t_decl))
     {
-      doExp (build2 (INIT_EXPR, void_type_node, t_decl, DECL_INITIAL (t_decl)));
+      tree exp = vinit(t_decl, DECL_INITIAL (t_decl));
+      doExp (exp);
       DECL_INITIAL (t_decl) = NULL_TREE;
     }
 }
@@ -238,11 +239,11 @@ IRState::expandDecl (tree t_decl)
 // Could be a VAR_DECL, or a FIELD_DECL from a closure.
 
 tree
-IRState::var (VarDeclaration *v)
+IRState::var (Declaration *decl)
 {
-  bool is_frame_var = v->toSymbol()->SframeField != NULL;
+  VarDeclaration *v = decl->isVarDeclaration();
 
-  if (is_frame_var)
+  if (v && v->toSymbol()->SframeField != NULL_TREE)
     {
       FuncDeclaration *f = v->toParent2()->isFuncDeclaration();
 
@@ -254,7 +255,7 @@ IRState::var (VarDeclaration *v)
   else
     {
       // Static var or auto var that the back end will handle for us
-      return v->toSymbol()->Stree;
+      return decl->toSymbol()->Stree;
     }
 }
 
@@ -2075,7 +2076,7 @@ IRState::binding (tree var_chain, tree body)
 
   if (DECL_INITIAL (var_chain))
     {
-      tree ini = build2 (INIT_EXPR, void_type_node, var_chain, DECL_INITIAL (var_chain));
+      tree ini = vinit (var_chain, DECL_INITIAL (var_chain));
       DECL_INITIAL (var_chain) = NULL_TREE;
       body = compound (ini, body);
     }
