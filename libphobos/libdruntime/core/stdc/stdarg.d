@@ -55,9 +55,6 @@ version( GNU )
      * Retrieve and store through parmn the next value that is of TypeInfo ti.
      * Used when the static type is not known.
      */
-    void va_arg()(ref va_list ap, TypeInfo ti, void* parmn);
-
-
   version( X86_64 )
   {
     // Layout of this struct must match __gnuc_va_list for C ABI compatibility
