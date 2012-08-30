@@ -107,8 +107,6 @@ else
 fi
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
-dnl GNU_SOURCE needed for fpclassify on Linux
-AC_GNU_SOURCE
 dnl AC_PROG_LIBTOOL
 
 AC_ARG_ENABLE(thread-lib,
@@ -262,74 +260,27 @@ AC_SUBST(phobos_toolexeclibdir)
 dnl Checks for header files.
 # Sanity check for the cross-compilation case:
 AC_CHECK_HEADER(stdio.h,:,
-  [AC_MSG_ERROR([can't find stdio.h.])])
+  [AC_MSG_ERROR([cannot find stdio.h.])])
 
 dnl AC_HEADER_STDC
 # TODO...
-
-dnl There was some target on sizeof(FILE) didn't work.
-dnl Also, anything less than 4 bytes is probably a lie.
-AC_MSG_CHECKING([for sizeof(FILE)])
-AC_TRY_COMPILE([#include <stdio.h>],[
-struct Test { int x: sizeof(FILE)>4; };],
-  [AC_MSG_RESULT([yes])
-   AC_DEFINE(HAVE_SIZEOF_FILE,1,[Define to 1 if it is possible to determine the size of the FILE struct])],
-  [AC_MSG_RESULT([no])])
-
-AC_MSG_CHECKING([for sizeof(DIR)])
-AC_TRY_COMPILE([#include <dirent.h>],[
-struct Test { int x: sizeof(DIR)>4; };],
-  [AC_MSG_RESULT([yes])
-   AC_DEFINE(HAVE_SIZEOF_DIR,1,[Define to 1 if it is possible to determine the size of the DIR struct])],
-  [AC_MSG_RESULT([no])])
 
 D_EXTRA_OBJS=
 AC_SUBST(D_EXTRA_OBJS)
 DRUNTIME_OBJS=
 AC_SUBST(DRUNTIME_OBJS)
 
-D_PREREQ_SRCS='$(config_d_src) $(config_errno_d_src) $(config_libc_d_src) $(config_mathfuncs_d_src)'
+D_PREREQ_SRCS='$(config_d_src)'
 AC_SUBST(D_PREREQ_SRCS)
-
-case "$target_cpu" in
-    i*86|powerpc*|ppc*|x86_64 ) d_use_ieee_fpsb=1 ;;
-    *) d_use_ieee_fpsb=0 ;;
-esac
-
-if test $d_use_ieee_fpsb -gt 0; then
-    DRUNTIME_OBJS="$DRUNTIME_OBJS rt/fpmath.o"
-fi
-
-DCFG_USE_IEEE_FPSB=$d_use_ieee_fpsb
-AC_SUBST(DCFG_USE_IEEE_FPSB)
 
 if test "$with_newlib" = yes; then
     # TODO: newlib has trunc and exp2, but not log2 -- so configure all separately
     DCFG_TRUNC=""
-    DCFG_NEARBYINT=""
     DCFG_ROUND=""
-    DCFG_TGAMMA=""
-    DCFG_NAN=""
     DCFG_EXP2="GNU_Need_exp2"
     DCFG_LOG2="GNU_Need_log2"
 
-    AC_DEFINE(HAVE_FP_CLASSIFY_SIGNBIT,1,[Define to 1 fpclassify and signbit are available])
-    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_math.o"
-    D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_fpcls_d_src)'
-
     # TODO: exec stuff
-
-    DCFG_FWIDE=0
-    # Have getdelim, but it may not be unix (need ssize_t)... TODO
-    DCFG_HAVE_GETDELIM=0
-    DCFG_HAVE_FGETLN=0
-    DCFG_HAVE_FGETLINE=0
-    DCFG_HAVE_UNLOCKED_STDIO=0
-    DCFG_HAVE_UNLOCKED_WIDE_STDIO=$DCFG_HAVE_UNLOCKED_STDIO
-    DCFG_STRTOLD="0"
-    # NO HAVE_TM_GMTOFF_AND_ZONE
-    # NO HAVE_TIMEZONE
-    AC_DEFINE(HAVE__TIMEZONE,1,[Another global timezone variable])
 else
 
 AC_CHECK_LIB(m,cos)
@@ -357,17 +308,8 @@ esac
 AC_CHECK_FUNC(trunc,DCFG_TRUNC="",DCFG_TRUNC="GNU_Need_trunc")
 AC_SUBST(DCFG_TRUNC)
 
-AC_CHECK_FUNC(nearbyint,DCFG_NEARBYINT="",DCFG_NEARBYINT="GNU_Need_nearbyint")
-AC_SUBST(DCFG_NEARBYINT)
-
 AC_CHECK_FUNC(round,DCFG_ROUND="",DCFG_ROUND="GNU_Need_round")
 AC_SUBST(DCFG_ROUND)
-
-AC_CHECK_FUNC(tgamma,DCFG_TGAMMA="",DCFG_TGAMMA="GNU_Need_tgamma")
-AC_SUBST(DCFG_TGAMMA)
-
-AC_CHECK_FUNC(nan,DCFG_NAN="",DCFG_NAN="GNU_Need_nan")
-AC_SUBST(DCFG_NAN)
 
 AC_CHECK_FUNC(exp2, DCFG_EXP2="", DCFG_EXP2="GNU_Need_exp2")
 AC_SUBST(DCFG_EXP2)
@@ -375,80 +317,7 @@ AC_SUBST(DCFG_EXP2)
 AC_CHECK_FUNC(log2, DCFG_LOG2="", DCFG_LOG2="GNU_Need_log2")
 AC_SUBST(DCFG_LOG2)
 
-AC_MSG_CHECKING([for fpclassify and signbit])
-AC_TRY_COMPILE([
-    #ifndef fpclassify
-    static void fpclassify(int x, int y) { }
-    #endif
-    #ifndef signbit
-    static void signbit(int x, int y) { }
-    #endif
-    #include <math.h>],
-  [int x = fpclassify(4.2);
-   int y = signbit(1.1);
-   int z = FP_NAN + FP_INFINITE + FP_ZERO + FP_SUBNORMAL + FP_NORMAL;],
-  [AC_MSG_RESULT([yes])
-   d_have_fpsb=1],
-  [AC_MSG_RESULT([no])])
-
-# Currently can only have either internal/fpmath or gcc/cbridge_math
-if test $d_use_ieee_fpsb -eq 0; then
-    if test -n "$d_have_fpsb"; then
-	AC_DEFINE(HAVE_FP_CLASSIFY_SIGNBIT,1,[Define to 1 fpclassify and signbit are available])
-	DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_math.o"
-	D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_fpcls_d_src)'
-    fi
-fi
-
-# no expm1 on mingw (msvcrt)
-# AC_CHECK_FUNCS(expm1,DCFG_EXPM1="",DCFG_EXPM1="GNU_Need_expm1")
-# AC_SUBST(DCFG_EXPM1)
-# also erf, erfc
-
-AC_CHECK_FUNC(execvpe,DCFG_EXECVPE="",DCFG_EXECVPE="GNU_Need_execvpe")
-AC_SUBST(DCFG_EXECVPE)
-
-AC_CHECK_FUNC(spawnvp,DCFG_SPAWNVP="",DCFG_SPAWNVP="GNU_Need_spawnvp")
-AC_SUBST(DCFG_SPAWNVP)
-
-AC_CHECK_FUNC(fwide,[DCFG_FWIDE=1],[DCFG_FWIDE=0])
-AC_SUBST(DCFG_FWIDE)
-
-AC_CHECK_FUNC(getdelim,[DCFG_HAVE_GETDELIM=1],[DCFG_HAVE_GETDELIM=0])
-AC_SUBST(DCFG_HAVE_GETDELIM)
-
-AC_CHECK_FUNC(fgetln,[DCFG_HAVE_FGETLN=1],[DCFG_HAVE_FGETLN=0])
-AC_SUBST(DCFG_HAVE_FGETLN)
-
-AC_CHECK_FUNC(fgetline,[DCFG_HAVE_FGETLINE=1],[DCFG_HAVE_FGETLINE=0])
-AC_SUBST(DCFG_HAVE_FGETLINE)
-
-DCFG_HAVE_UNLOCKED_STDIO=1
-AC_CHECK_FUNCS([flockfile funlockfile putc_unlocked getc_unlocked],
-	[],[DCFG_HAVE_UNLOCKED_STDIO=0])
-AC_SUBST(DCFG_HAVE_UNLOCKED_STDIO)
-
-DCFG_HAVE_UNLOCKED_WIDE_STDIO=$DCFG_HAVE_UNLOCKED_STDIO
-AC_CHECK_FUNCS([putwc_unlocked getwc_unlocked], [],[DCFG_HAVE_UNLOCKED_WIDE_STDIO=0])
-AC_SUBST(DCFG_HAVE_UNLOCKED_WIDE_STDIO)
-
-AC_CHECK_FUNC(strtold,DCFG_STRTOLD="1",DCFG_STRTOLD="0")
-AC_SUBST(DCFG_STRTOLD)
-
 save_CFLAGS=$CFLAGS
-# Check for the glibc version of strerror_r
-AC_MSG_CHECKING([for glibc strerror_r])
-CFLAGS="$CFLAGS -D_GNU_SOURCE=1"
-AC_TRY_COMPILE([#include <string.h>],[
-char c = * strerror_r(0, NULL, 0);
-],
-  [AC_MSG_RESULT([yes])
-   AC_DEFINE(HAVE_GLIBC_STRERROR_R,1,[Have glibc strerror_r])],
-  [AC_MSG_RESULT([no])])
-CFLAGS=$save_CFLAGS
-
-AC_CHECK_FUNCS([strerror_r],[],[])
-
 dnl Check for BSD(?) specific fields in struct tm
 dnl Maybe test fields separately
 AC_MSG_CHECKING([for tm_gmtoff])
@@ -489,10 +358,10 @@ AC_TRY_COMPILE([#include <unwind.h>],[
 #endif
 ],
   [AC_MSG_RESULT([no])
-   DCFG_ARM_EABI_UNWINDER=0
+   DCFG_ARM_EABI_UNWINDER=""
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_generic.o"],
   [AC_MSG_RESULT([yes])
-   DCFG_ARM_EABI_UNWINDER=1
+   DCFG_ARM_EABI_UNWINDER="GNU_ARM_EABI_Unwinder"
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_arm.o"])
 AC_SUBST(DCFG_ARM_EABI_UNWINDER)
 
@@ -529,41 +398,34 @@ case "$d_target_os" in
     freebsd*|k*bsd*-gnu)
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
-	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
+	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
     linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
 	     d_sem_impl="posix"
              ;;
     cygwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
+	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
     mingw*)  #DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-	     #DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
+	     #DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     DCFG_UNIX=Windows
 	     ;;
     skyos*)  d_sem_impl="skyos"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
-	     AC_DEFINE(PTHREAD_MUTEX_ALREADY_RECURSIVE,1,[Define if mutexes are recursive by default])
+	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
     *)       if test "$enable_unix" != "yes"; then
 	         DCFG_UNIX=NoSystem
-		 AC_DEFINE(PHOBOS_NO_SYSTEM,1,[Define if there is no file system, synchronization services, etc.])
 	     fi
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
+	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
 esac
-
-# = D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
-# for cygw: WINDOWS_DFLAGS=-mno-cygwin
-#
-# in Make: .win.o maybe... to get a separate rule
 
 if test -n "$d_module_mach"; then
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_OSX_OBJS)"
@@ -673,4 +535,4 @@ _EOF
 ])
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-AC_OUTPUT([Makefile phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/frag-ac])
+AC_OUTPUT([Makefile phobos-ver-syms libdruntime/phobos-ver-syms])

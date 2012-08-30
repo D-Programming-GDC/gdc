@@ -48,51 +48,6 @@ $(IMPORT)/%.di: %.d $(D_PREREQ_SRCS) $(IMPORT)
 .S.o:
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
-#--------------------------------------#
-# X3 Config
-
-config_d_src          =$(host_alias)/gcc/config/config.d
-config_libc_d_src     =$(host_alias)/gcc/config/libc.d
-config_errno_d_src    =$(host_alias)/gcc/config/errno.d
-config_fpcls_d_src    =$(host_alias)/gcc/config/fpcls.d
-config_unix_d_src     =$(host_alias)/gcc/config/unix.d
-
-X3=CC_FOR_BUILD="$(CC_FOR_BUILD) -I $(srcdir)/config" BUILD_LIBIBERTY=$(BUILD_LIBIBERTY) $(srcdir)/config/x3
-X3_GCC_COMMAND=$(CC) $(OUR_CFLAGS) $(MULTIFLAGS)
-X3_DEPS=config/x3.o config/x3main.o
-
-config/x3.o: config/x3.c config/x3.h
-	$(CC_FOR_BUILD) $(CFLAGS_FOR_BUILD) -g -Wall -I $(LIBIBERTY_H_PATH) -c -o $@ $<
-
-config/x3main.o: config/x3main.c config/x3.h
-	$(CC_FOR_BUILD) $(CFLAGS_FOR_BUILD) -g -Wall -c -o $@ $<
-
-$(config_d_src): frag-ac stamp-tgtdir
-	cp $< $@
-
-$(config_libc_d_src): config/libc.x3 $(X3_DEPS) stamp-tgtdir
-	$(X3) $< -o $@ $(X3_GCC_COMMAND)
-
-$(config_errno_d_src): config/errno.x3 $(X3_DEPS) stamp-tgtdir
-	$(X3) $< -o $@ $(X3_GCC_COMMAND)
-
-$(config_fpcls_d_src): config/fpcls.x3 $(X3_DEPS) stamp-tgtdir
-	$(X3) $< -o $@ $(X3_GCC_COMMAND)
-
-$(config_unix_d_src): config/unix.x3 $(X3_DEPS) stamp-tgtdir
-	$(X3) $< -o $@ $(X3_GCC_COMMAND)
-
-# because these are in the $(host_alias) subdir, pattern match rules will not work
-gcc/config/unix.o: $(config_unix_d_src) $(config_d_src) $(config_libc_d_src)
-	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
-
-# This has to be an empty file because it is included in the prerequisites of rules
-# that use "cat $^" to generate their targets.
-stamp-tgtdir:
-	mkdir -p gcc/config
-	mkdir -p $(host_alias)/gcc/config
-	touch $@
-
 
 #--------------------------------------#
 # GDC Runtime
@@ -115,9 +70,7 @@ CORE_OBJS=core/atomic.o core/cpuid.o core/demangle.o core/exception.o \
 	  core/sync/condition.o core/sync/config.o core/sync/exception.o \
 	  core/sync/mutex.o core/sync/rwmutex.o core/sync/semaphore.o
 
-GCC_OBJS=gcc/unwind_pe.o gcc/deh.o gcc/threadsem.o \
-	 gcc/builtins.o gcc/support.o gcc/cbridge_time.o \
-	 gcc/cbridge_strerror.o gcc/atomics.o
+GCC_OBJS=gcc/atomics.o gcc/builtins.o gcc/deh.o gcc/unwind_pe.o
 
 UTIL_OBJS=rt/util/console.o rt/util/hash.o rt/util/string.o \
 	  rt/util/utf.o
@@ -245,10 +198,6 @@ install-data-local: $(D_PREREQ_SRCS) libgdruntime.a
 	for i in object.di; do \
 		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
 	done
-	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/gcc/config
-	for i in $(host_alias)/gcc/config/*.d; do \
-		$(INSTALL_HEADER) $$i $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/gcc/config; \
-	done
 	$(INSTALL) phobos-ver-syms $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)
 
 clean-local:
@@ -257,8 +206,6 @@ clean-local:
 	rm -f $(CORE_IMPORTS)
 	rm -rf $(IMPORT)
 	rm -f testgc$(EXEEXT)
-	rm -f $(config_d_src) $(config_errno_d_src) $(config_libc_d_src)
-	rm -f $(config_unix_d_src)
 	rm -f libgdruntime.a
 
 

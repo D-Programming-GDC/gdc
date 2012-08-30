@@ -119,29 +119,16 @@ CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DCFG_ARM_EABI_UNWINDER = @DCFG_ARM_EABI_UNWINDER@
 DCFG_CBRIDGE_STDIO = @DCFG_CBRIDGE_STDIO@
-DCFG_EXECVPE = @DCFG_EXECVPE@
 DCFG_EXP2 = @DCFG_EXP2@
-DCFG_FWIDE = @DCFG_FWIDE@
 DCFG_GETPWNAM_R = @DCFG_GETPWNAM_R@
-DCFG_HAVE_FGETLINE = @DCFG_HAVE_FGETLINE@
-DCFG_HAVE_FGETLN = @DCFG_HAVE_FGETLN@
-DCFG_HAVE_GETDELIM = @DCFG_HAVE_GETDELIM@
-DCFG_HAVE_UNLOCKED_STDIO = @DCFG_HAVE_UNLOCKED_STDIO@
-DCFG_HAVE_UNLOCKED_WIDE_STDIO = @DCFG_HAVE_UNLOCKED_WIDE_STDIO@
 DCFG_LOG2 = @DCFG_LOG2@
 DCFG_MMAP = @DCFG_MMAP@
-DCFG_NAN = @DCFG_NAN@
-DCFG_NEARBYINT = @DCFG_NEARBYINT@
 DCFG_POSIX = @DCFG_POSIX@
 DCFG_PTHREAD_SUSPEND = @DCFG_PTHREAD_SUSPEND@
 DCFG_ROUND = @DCFG_ROUND@
 DCFG_SEMAPHORE_IMPL = @DCFG_SEMAPHORE_IMPL@
-DCFG_SPAWNVP = @DCFG_SPAWNVP@
-DCFG_STRTOLD = @DCFG_STRTOLD@
-DCFG_TGAMMA = @DCFG_TGAMMA@
 DCFG_TRUNC = @DCFG_TRUNC@
 DCFG_UNIX = @DCFG_UNIX@
-DCFG_USE_IEEE_FPSB = @DCFG_USE_IEEE_FPSB@
 DEFS = @DEFS@
 DFLAGS = @DFLAGS@
 DRUNTIME_OBJS = @DRUNTIME_OBJS@
@@ -233,7 +220,7 @@ AUTOMAKE_OPTIONS = 1.9.4 foreign no-dependencies
 ACLOCAL_AMFLAGS = -I . -I ..
 SUBDIRS = libdruntime
 OUR_CFLAGS = @DEFS@ -I . -I $(srcdir)/gcc -I$(top_srcdir)/../zlib
-D_EXTRA_DFLAGS = -nostdinc -pipe -fdeprecated -I $(srcdir) -I $(srcdir)/libdruntime -I ./libdruntime/$(host_alias)
+D_EXTRA_DFLAGS = -nostdinc -pipe -fdeprecated -fproperty -I $(srcdir) -I $(srcdir)/libdruntime -I ./libdruntime/$(host_alias)
 ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -832,7 +819,7 @@ install-exec-local: libgphobos2.a
 install-data-local: libgphobos2.a
 	for i in etc/c \
 		std std/c std/c/freebsd \
-		std/c/linux std/c/osx std/c/unix std/c/windows \
+		std/c/linux std/c/osx std/c/windows \
 		std/internal std/internal/math std/internal/windows \
 		std/net std/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \

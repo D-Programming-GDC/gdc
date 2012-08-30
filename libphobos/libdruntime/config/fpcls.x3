@@ -1,7 +1,0 @@
-x3_out_text(""
-    "module gcc.config.fpcls;\n");
-
-x3_gi_push_header("\"config.h\"");
-x3_gi_push_header("<math.h>");
-x3_out_enum(NULL, NULL, "^FP_[^_].*", "-^FP_ILOG.*", NULL);
-x3_gi_pop_header();

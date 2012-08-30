@@ -22,7 +22,7 @@ ACLOCAL_AMFLAGS = -I . -I ..
 SUBDIRS = libdruntime
 
 OUR_CFLAGS=@DEFS@ -I . -I $(srcdir)/gcc -I$(top_srcdir)/../zlib
-D_EXTRA_DFLAGS=-nostdinc -pipe -fdeprecated -I $(srcdir) -I $(srcdir)/libdruntime -I ./libdruntime/$(host_alias)
+D_EXTRA_DFLAGS=-nostdinc -pipe -fdeprecated -fproperty -I $(srcdir) -I $(srcdir)/libdruntime -I ./libdruntime/$(host_alias)
 ALL_DFLAGS=$(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
@@ -138,7 +138,7 @@ install-exec-local: libgphobos2.a
 install-data-local: libgphobos2.a
 	for i in etc/c \
 		std std/c std/c/freebsd \
-		std/c/linux std/c/osx std/c/unix std/c/windows \
+		std/c/linux std/c/osx std/c/windows \
 		std/internal std/internal/math std/internal/windows \
 		std/net std/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \

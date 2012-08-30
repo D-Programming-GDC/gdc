@@ -17,9 +17,6 @@ module core.stdc.stdlib;
 private import core.stdc.config;
 public import core.stdc.stddef; // for size_t, wchar_t
 
-version (GNU)
-    private import libc = gcc.config.libc;
-
 extern (C):
 @system:
 nothrow:
@@ -51,7 +48,6 @@ else version(linux)   enum RAND_MAX = 0x7fffffff;
 else version(OSX)     enum RAND_MAX = 0x7fffffff;
 else version(FreeBSD) enum RAND_MAX = 0x7fffffff;
 else version(Solaris) enum RAND_MAX = 0x7fff;
-else version(GNU)     enum RAND_MAX = libc.RAND_MAX;
 else static assert( false, "Unsupported platform" );
 
 double  atof(in char* nptr);

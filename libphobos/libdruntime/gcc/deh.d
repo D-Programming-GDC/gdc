@@ -1,23 +1,22 @@
 /* GDC -- D front-end for GCC
-   Copyright (C) 2004 David Friedman
+   Copyright (C) 2011, 2012 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
+   GCC is free software; you can redistribute it and/or modify it under
+   the terms of the GNU General Public License as published by the Free
+   Software Foundation; either version 3, or (at your option) any later
+   version.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or
+   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+   for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+   along with GCC; see the file COPYING3.  If not see
+   <http://www.gnu.org/licenses/>.
 */
-/*
-  This code is based on the libstdc++ exception handling routines.
-*/
+
+/* This code is based on the libstdc++ exception handling routines.  */
 
 module gcc.deh;
 
@@ -33,7 +32,7 @@ extern (C)
     void _d_createTrace(Object *);
 }
 
-static if (Use_ARM_EABI_Unwinder)
+version (GNU_ARM_EABI_Unwinder)
     const _Unwind_Exception_Class GDC_Exception_Class =
         ['G','N','U','C',
          'D','_','_','\0'];
@@ -50,7 +49,7 @@ struct Phase1Info
 
 struct OurUnwindException {
 
-    static if (Use_ARM_EABI_Unwinder)
+    version (GNU_ARM_EABI_Unwinder)
     {
         // Cached parsed handler data is stored elsewhere
         /* DNotes: There is no ARM exception handling ABI for the D
@@ -97,7 +96,7 @@ struct OurUnwindException {
     }
 
 
-    static if (Use_ARM_EABI_Unwinder)
+    version (GNU_ARM_EABI_Unwinder)
         int _pad; // to place 'obj' behind unwindHeader
 
     Object obj;
@@ -190,7 +189,7 @@ version (GNU_SjLj_Exceptions) {
 
     private int __builtin_eh_return_data_regno(int x) { return x; }
 } else {
-    static if (Use_ARM_EABI_Unwinder)
+    version (GNU_ARM_EABI_Unwinder)
         extern (C) _Unwind_Reason_Code __gdc_personality_v0(_Unwind_State state,
                       _Unwind_Exception* ue_header,
                       _Unwind_Context* context) {
@@ -209,7 +208,7 @@ version (GNU_SjLj_Exceptions) {
                 break;
 
             case _US_UNWIND_FRAME_RESUME:
-                //static if (Use_ARM_EABI_Unwinder)...
+                //version (GNU_ARM_EABI_Unwinder)...
                 if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
                     return _URC_FAILURE;
                 return _URC_CONTINUE_UNWIND;
@@ -264,7 +263,7 @@ private _Unwind_Reason_Code personalityImpl(int iversion,
     _Unwind_Ptr /*landing_pad, */ip;
     Phase1Info phase1;
 
-    static if (Use_ARM_EABI_Unwinder)
+    version (GNU_ARM_EABI_Unwinder)
     {
 
         // The dwarf unwinder assumes the context structure holds things like the
@@ -294,7 +293,7 @@ private _Unwind_Reason_Code personalityImpl(int iversion,
     // If no LSDA, then there are no handlers or cleanups.
     if ( ! phase1.languageSpecificData )
     {
-        static if (Use_ARM_EABI_Unwinder)
+        version (GNU_ARM_EABI_Unwinder)
             if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
                 return _URC_FAILURE;
         return _URC_CONTINUE_UNWIND;
@@ -468,7 +467,7 @@ private _Unwind_Reason_Code personalityImpl(int iversion,
  do_something:
    if (found_type == Found.nothing)
    {
-       static if (Use_ARM_EABI_Unwinder)
+       version (GNU_ARM_EABI_Unwinder)
            if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
                return _URC_FAILURE;
        return _URC_CONTINUE_UNWIND;
@@ -478,7 +477,7 @@ private _Unwind_Reason_Code personalityImpl(int iversion,
     {
       if (found_type == Found.cleanup)
       {
-          static if (Use_ARM_EABI_Unwinder)
+          version (GNU_ARM_EABI_Unwinder)
               if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
                   return _URC_FAILURE;
           return _URC_CONTINUE_UNWIND;
@@ -574,7 +573,7 @@ get_classinfo_entry (lsda_header_info *info, _Unwind_Word i)
 {
   _Unwind_Ptr ptr;
 
-  static if (Use_ARM_EABI_Unwinder)
+  version (GNU_ARM_EABI_Unwinder)
   {
       ptr = cast(_Unwind_Ptr) (info.TType - (i * 4));
       ptr = _Unwind_decode_target2(ptr);

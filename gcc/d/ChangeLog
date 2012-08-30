@@ -1,3 +1,7 @@
+2012-08-30  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* Make-lang.in: Fix issue with cross-compiler configuration.
+
 2012-08-29  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* lang-specs.h: Remove special case for handled D source files.

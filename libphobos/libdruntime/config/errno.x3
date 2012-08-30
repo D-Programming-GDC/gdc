@@ -1,7 +1,0 @@
-// this is not really unix, is it?
-x3_out_text(""
-    "module gcc.config.errno;\n");
-
-x3_gi_push_header("<errno.h>");
-x3_out_enum(NULL, NULL, "^E[^_].*", NULL);
-x3_gi_pop_header();

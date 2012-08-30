@@ -24,12 +24,6 @@ private
   {
     import core.sys.posix.sys.types;
   }
-
-  version (GNU)
-  {
-    import gcc.builtins;
-    import libc = gcc.config.libc;
-  }
 }
 
 extern (C):
@@ -114,18 +108,6 @@ else version ( FreeBSD )
     {
         char[128]   _mbstate8;
         long        _mbstateL;
-    }
-}
-else version ( GNU )
-{
-    enum
-    {
-        BUFSIZ       = libc.BUFSIZ,
-        EOF          = libc.EOF,
-        FOPEN_MAX    = libc.FOPEN_MAX,
-        FILENAME_MAX = libc.FILENAME_MAX,
-        TMP_MAX      = libc.TMP_MAX,
-        L_tmpnam     = libc.L_tmpnam
     }
 }
 else
@@ -247,11 +229,6 @@ else version( FreeBSD )
         int             _orientation;
         __mbstate_t     _mbstate;
     }
-}
-else version( GNU )
-{
-    // want to get rid of this...
-    byte[libc.FILE_struct_size] opaque;
 }
 else
 {

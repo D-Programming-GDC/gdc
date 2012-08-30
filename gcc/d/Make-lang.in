@@ -45,7 +45,7 @@ ifeq ($(host), $(target))
   D_include_dir = `echo $(exec_prefix) | sed -e 's|^$(prefix)||' -e 's|/[^/]*|/..|g'`/include/d/$(version)
   gcc_d_include_dir = $(libsubdir)/$(unlibsubdir)/..$(D_include_dir)
 else
-  gcc_d_include_dir = $(libsubdir)/include/d)
+  gcc_d_include_dir = $(libsubdir)/include/d
 endif
 
 
