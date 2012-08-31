@@ -1,5 +1,9 @@
 2012-08-31  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-glue.cc(FuncDeclaration::toObjFile): Flatten nested levels and
+	loops in function, delay printing function name in verbose mode until
+	we know the function is being compiled.
+
 	* d-codegen.cc(IRState::buildFrameForFunction): New function.
 	(IRState::buildChain): Use IRState::buildFrameForFunction to get the
 	frame record type.

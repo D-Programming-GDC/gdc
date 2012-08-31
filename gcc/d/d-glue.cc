@@ -2763,9 +2763,6 @@ FuncDeclaration::toObjFile (int)
 
   this_sym->outputStage = InProgress;
 
-  if (global.params.verbose)
-    fprintf (stdmsg, "function %s\n", this->toChars());
-
   tree fn_decl = this_sym->Stree;
 
   if (!fbody)
@@ -2780,7 +2777,9 @@ FuncDeclaration::toObjFile (int)
       return;
     }
 
-  announce_function (fn_decl);
+  if (global.params.verbose)
+    fprintf (stdmsg, "function  %s\n", this->toPrettyChars());
+
   IRState *irs = g.irs->startFunction (this);
 
   irs->useChain (NULL, NULL_TREE);
@@ -2792,39 +2791,23 @@ FuncDeclaration::toObjFile (int)
   function *old_cfun = cfun;
   current_function_decl = fn_decl;
 
-  TypeFunction *tf = (TypeFunction *)type;
-  tree result_decl = NULL_TREE;
-    {
-      Type *func_type = tintro ? tintro : tf;
-      Type *ret_type = func_type->nextOf()->toBasetype();
-      tree result_type;
-
-      if (isMain() && ret_type->ty == Tvoid)
-	ret_type = Type::tint32;
-
-      result_type = ret_type->toCtype();
-      /* Build reference type */
-      if (tf->isref)
-	result_type = build_reference_type (result_type);
-
-      result_decl = build_decl (UNKNOWN_LOCATION, RESULT_DECL,
-				NULL_TREE, result_type);
-    }
+  tree return_type = TREE_TYPE (TREE_TYPE (fn_decl));
+  tree result_decl = build_decl (UNKNOWN_LOCATION, RESULT_DECL,
+				 NULL_TREE, return_type);
   g.ofile->setDeclLoc (result_decl, this);
   DECL_RESULT (fn_decl) = result_decl;
   DECL_CONTEXT (result_decl) = fn_decl;
   DECL_ARTIFICIAL (result_decl) = 1;
   DECL_IGNORED_P (result_decl) = 1;
-  //layout_decl (result_decl, 0);
 
   allocate_struct_function (fn_decl, false);
   // assuming the above sets cfun
   g.ofile->setCfunEndLoc (endloc);
 
-  AggregateDeclaration *ad = isThis();
   // Add method to record for debug information.
-  if (ad != NULL)
+  if (isThis())
     {
+      AggregateDeclaration *ad = isThis();
       tree rec = ad->type->toCtype();
 
       if (ad->isClassDeclaration())
@@ -2836,76 +2819,52 @@ FuncDeclaration::toObjFile (int)
   tree parm_decl = NULL_TREE;
   tree param_list = NULL_TREE;
 
-  int n_parameters = parameters ? parameters->dim : 0;
-
   // Special arguments...
-  static const int VTHIS = -2;
-  static const int VARGUMENTS = -1;
 
-  for (int i = VTHIS; i < (int) n_parameters; i++)
+  // 'this' parameter
+  if (vthis)
     {
-      VarDeclaration *param = NULL;
-      parm_decl = NULL_TREE;
-
-      if (i == VTHIS)
+      parm_decl = vthis->toSymbol()->Stree;
+      if (!isThis() && isNested())
 	{
-	  if (ad != NULL)
-	    {
-	      param = vthis;
-	    }
-	  else if (isNested())
-	    {
-	      /* DMD still generates a vthis, but it should not be
-		 referenced in any expression.
-	       */
-	      parm_decl = vthis->toSymbol()->Stree;
-	      DECL_ARTIFICIAL (parm_decl) = 1;
-
-	      chain_func = toParent2()->isFuncDeclaration();
-	      chain_expr = parm_decl;
-	    }
-	  else
-	    continue;
+	  /* DMD still generates a vthis, but it should not be
+	     referenced in any expression.
+	   */
+	  DECL_ARTIFICIAL (parm_decl) = 1;
+	  chain_func = toParent2()->isFuncDeclaration();
+	  chain_expr = parm_decl;
 	}
-      else if (i == VARGUMENTS)
-	{
-	  if (v_arguments)
-	    {
-	      param = v_arguments;
-	    }
-	  else
-	    continue;
-	}
-      else
-	{
-	  param = (*parameters)[i];
-	}
-      if (param)
-	{
-	  parm_decl = param->toSymbol()->Stree;
-	}
-
-      gcc_assert (parm_decl != NULL_TREE);
-      DECL_CONTEXT (parm_decl) = fn_decl;
-      // param->loc is not set, so use the function's loc
-      // %%doc not setting this crashes debug generating code
-      g.ofile->setDeclLoc (parm_decl, param ? (Dsymbol *) param : (Dsymbol *) this);
-
-      // chain them in the correct order
+      g.ofile->setDeclLoc (parm_decl, vthis);
       param_list = chainon (param_list, parm_decl);
     }
 
-  // param_list is a number of PARM_DECL trees chained together (*not* a TREE_LIST of PARM_DECLs).
-  // The leftmost parameter is the first in the chain.  %% varargs?
-  // %% in treelang, useless ? because it just sets them to getdecls() later
+  // _arguments parameter.
+  if (v_arguments)
+    {
+      parm_decl = v_arguments->toSymbol()->Stree;
+      g.ofile->setDeclLoc (parm_decl, v_arguments);
+      param_list = chainon (param_list, parm_decl);
+    }
+
+  // formal function parameters.
+  size_t n_parameters = parameters ? parameters->dim : 0;
+
+  for (size_t i = 0; i < n_parameters; i++)
+    {
+      VarDeclaration *param = (*parameters)[i];
+      parm_decl = param->toSymbol()->Stree;
+      g.ofile->setDeclLoc (parm_decl, (Dsymbol *) param);
+      // chain them in the correct order
+      param_list = chainon (param_list, parm_decl);
+    }
   DECL_ARGUMENTS (fn_decl) = param_list;
+  for (tree t = param_list; t; t = DECL_CHAIN (t))
+    DECL_CONTEXT (t) = fn_decl;
 
   // http://www.tldp.org/HOWTO/GCC-Frontend-HOWTO-7.html
   rest_of_decl_compilation (fn_decl, /*toplevel*/1, /*atend*/0);
 
-  // ... has this here, but with more args...
-
-  DECL_INITIAL (fn_decl) = error_mark_node; // Just doing what they tell me to do...
+  DECL_INITIAL (fn_decl) = error_mark_node;
 
   pushlevel (0);
   irs->pushStatementList();
@@ -2917,49 +2876,26 @@ FuncDeclaration::toObjFile (int)
      function, construct an expession for this member function's static chain
      by going through parent link of nested classes.
      */
-  //if (!irs->functionNeedsChain (this))
+  /* D 2.0 Closures: this->vthis is passed as a normal parameter and
+     is valid to access as Stree before the closure frame is created. */
+  if (isThis())
     {
-      /* D 2.0 Closures: this->vthis is passed as a normal parameter and
-	 is valid to access as Stree before the closure frame is created. */
-      ClassDeclaration *cd = ad ? ad->isClassDeclaration() : NULL;
-      StructDeclaration *sd = ad ? ad->isStructDeclaration() : NULL;
+      AggregateDeclaration *ad = isThis();
+      tree this_tree = vthis->toSymbol()->Stree;
+      while (ad->isNested())
+	{
+	  Dsymbol *d = ad->toParent2();
+	  tree vthis_field = ad->vthis->toSymbol()->Stree;
+	  this_tree = irs->component (irs->indirect (this_tree), vthis_field);
 
-      if (cd != NULL)
-	{
-	  FuncDeclaration *f = NULL;
-	  tree t = vthis->toSymbol()->Stree;
-	  while (cd->isNested())
+	  FuncDeclaration *fd = d->isFuncDeclaration();
+	  ad = d->isAggregateDeclaration();
+	  if (ad == NULL)
 	    {
-	      Dsymbol *d = cd->toParent2();
-	      tree vthis_field = cd->vthis->toSymbol()->Stree;
-	      t = irs->component (irs->indirect (t), vthis_field);
-	      if ((f = d->isFuncDeclaration()))
-		{
-		  chain_expr = t;
-		  chain_func = f;
-		  break;
-		}
-	      else if (!(cd = d->isClassDeclaration()))
-		gcc_unreachable();
-	    }
-	}
-      else if (sd != NULL)
-	{
-	  FuncDeclaration *f = NULL;
-	  tree t = vthis->toSymbol()->Stree;
-	  while (sd->isNested())
-	    {
-	      Dsymbol *d = sd->toParent2();
-	      tree vthis_field = sd->vthis->toSymbol()->Stree;
-	      t = irs->component (irs->indirect (t), vthis_field);
-	      if ((f = d->isFuncDeclaration()))
-		{
-		  chain_expr = t;
-		  chain_func = f;
-		  break;
-		}
-	      else if (!(sd = d->isStructDeclaration()))
-		gcc_unreachable();
+	      gcc_assert (fd != NULL);
+	      chain_expr = this_tree;
+	      chain_func = fd;
+	      break;
 	    }
 	}
     }
@@ -3485,10 +3421,7 @@ TypeFunction::toCtype (void)
       if (varargs != 1)
 	type_list.chain (void_list_node);
 
-      if (!next)
-	ret_type = void_type_node;
-      else
-	ret_type = next->toCtype();
+      ret_type = next ? next->toCtype() : void_type_node;
 
       if (isref)
 	ret_type = build_reference_type (ret_type);
@@ -4178,7 +4111,6 @@ ReturnStatement::toIR (IRState *irs)
     }
   else
     {
-      //irs->doExp (exp);
       irs->doReturn (NULL_TREE);
     }
 }

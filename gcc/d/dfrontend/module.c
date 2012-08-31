@@ -326,7 +326,7 @@ Module *Module::load(Loc loc, Identifiers *packages, Identifier *ident)
                 printf("%s.", pid->toChars());
             }
         }
-        printf("%s\t(%s)\n", ident->toChars(), m->srcfile->toChars());
+        fprintf(stdmsg, "%s\t(%s)\n", ident->toChars(), m->srcfile->toChars());
     }
 
     if (!m->read(loc))
