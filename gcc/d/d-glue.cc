@@ -3079,34 +3079,8 @@ FuncDeclaration::buildClosure (IRState *irs)
       return;
     }
 
-  tree closure_rec_type = ffi->closure_rec;
-  tree chain_link = irs->chainLink();
-  tree ptr_field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
-			       get_identifier ("__closptr"), ptr_type_node);
-  DECL_CONTEXT (ptr_field) = closure_rec_type;
-
-  ListMaker fields;
-  fields.chain (ptr_field);
-
-  for (size_t i = 0; i < closureVars.dim; i++)
-    {
-      VarDeclaration *v = closureVars[i];
-      Symbol *s = v->toSymbol();
-      tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
-			       gen.trueDeclarationType (v));
-      s->SframeField = field;
-      g.ofile->setDeclLoc (field, v);
-      DECL_CONTEXT (field) = closure_rec_type;
-      fields.chain (field);
-      TREE_USED (s->Stree) = 1;
-
-      /* Can't do nrvo if the variable is put in a closure.  */
-      if (nrvo_can && nrvo_var == v)
-	nrvo_can = 0;
-    }
-  TYPE_FIELDS (closure_rec_type) = fields.head;
-  layout_type (closure_rec_type);
+  tree closure_rec_type = irs->buildFrameForFunction (this);
+  gcc_assert(COMPLETE_TYPE_P (closure_rec_type));
 
   tree closure_ptr = irs->localVar (build_pointer_type (closure_rec_type));
   DECL_NAME (closure_ptr) = get_identifier ("__closptr");
@@ -3121,10 +3095,14 @@ FuncDeclaration::buildClosure (IRState *irs)
   irs->expandDecl (closure_ptr);
 
   // set the first entry to the parent closure, if any
+  tree chain_link = irs->chainLink();
+
   if (chain_link != NULL_TREE)
     {
-      irs->doExp (irs->vmodify (irs->component (irs->indirect (closure_ptr),
-						ptr_field), chain_link));
+      tree chain_field = irs->component (irs->indirect (closure_ptr),
+					 TYPE_FIELDS (closure_rec_type));
+      tree chain_expr = irs->vmodify (chain_field, chain_link);
+      irs->doExp (chain_expr);
     }
 
   // copy parameters that are referenced nonlocally
@@ -3135,8 +3113,10 @@ FuncDeclaration::buildClosure (IRState *irs)
 	continue;
 
       Symbol *vsym = v->toSymbol();
-      irs->doExp (irs->vmodify (irs->component (irs->indirect (closure_ptr),
-						vsym->SframeField), vsym->Stree));
+
+      tree closure_field = irs->component (irs->indirect (closure_ptr), vsym->SframeField);
+      tree closure_expr = irs->vmodify (closure_field, vsym->Stree);
+      irs->doExp (closure_expr);
     }
 
   irs->useChain (this, closure_ptr);

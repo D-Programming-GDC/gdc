@@ -1,3 +1,11 @@
+2012-08-31  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-codegen.cc(IRState::buildFrameForFunction): New function.
+	(IRState::buildChain): Use IRState::buildFrameForFunction to get the
+	frame record type.
+	(IRState::getFrameInfo): Likewise.
+	* d-glue.cc(FuncDeclaration::buildClosure): Likewise.
+
 2012-08-30  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* asmstmt.cc(ExtAsmStatement::toCBuffer): Mark unused parameter as

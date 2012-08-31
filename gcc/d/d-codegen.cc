@@ -3815,59 +3815,107 @@ IRState::buildChain (FuncDeclaration *func)
       return;
     }
 
-  VarDeclarations *nestedVars = &func->closureVars;
+  tree frame_rec_type = buildFrameForFunction (func);
+  gcc_assert(COMPLETE_TYPE_P (frame_rec_type));
 
-  tree frame_rec_type = ffi->frame_rec;
+  tree frame_decl = localVar (frame_rec_type);
+  tree frame_ptr = addressOf (frame_decl);
+  DECL_IGNORED_P (frame_decl) = 0;
+  expandDecl (frame_decl);
+
+  // set the first entry to the parent frame, if any
   tree chain_link = chainLink();
-  tree ptr_field;
-  ListMaker fields;
 
-  ptr_field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
-			  get_identifier ("__chain"), ptr_type_node);
+  if (chain_link != NULL_TREE)
+    {
+      tree chain_field = component (indirect (frame_ptr),
+				    TYPE_FIELDS (frame_rec_type));
+      tree chain_expr = vmodify (chain_field, chain_link);
+      doExp (chain_expr);
+    }
+
+  // copy parameters that are referenced nonlocally
+  for (size_t i = 0; i < func->closureVars.dim; i++)
+    {
+      VarDeclaration *v = func->closureVars[i];
+      if (!v->isParameter())
+	continue;
+
+      Symbol *vsym = v->toSymbol();
+
+      tree frame_field = component (indirect (frame_ptr), vsym->SframeField);
+      tree frame_expr = vmodify (frame_field, vsym->Stree);
+      doExp (frame_expr);
+    }
+
+  useChain (this->func, frame_ptr);
+}
+
+tree
+IRState::buildFrameForFunction (FuncDeclaration *func)
+{
+  FuncFrameInfo *ffi = getFrameInfo (func);
+
+  if (ffi->frame_rec != NULL_TREE)
+    return ffi->frame_rec;
+
+  tree frame_rec_type = make_node (RECORD_TYPE);
+  char *name = concat (ffi->is_closure ? "CLOSURE." : "FRAME.",
+		       func->toPrettyChars(), NULL);
+  TYPE_NAME (frame_rec_type) = get_identifier (name);
+  free (name);
+
+  tree ptr_field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
+			       get_identifier ("__chain"), ptr_type_node);
   DECL_CONTEXT (ptr_field) = frame_rec_type;
+  
+  ListMaker fields;
   fields.chain (ptr_field);
 
-  /* __ensure never becomes a closure, but could still be referencing parameters
-     of the calling function.  So we add all parameters as nested refs. This is
-     written as such so that all parameters appear at the front of the frame so
-     that overriding methods match the same layout when inheriting a contract.  */
-  if (global.params.useOut && func->fensure)
+  if (!ffi->is_closure)
     {
-      for (size_t i = 0; func->parameters && i < func->parameters->dim; i++)
+      /* __ensure never becomes a closure, but could still be referencing parameters
+	 of the calling function.  So we add all parameters as nested refs. This is
+	 written as such so that all parameters appear at the front of the frame so
+	 that overriding methods match the same layout when inheriting a contract.  */
+      if (global.params.useOut && func->fensure)
 	{
-	  VarDeclaration *v = (*func->parameters)[i];
-	  // Remove if already in nestedVars so can push to front.
-	  for (size_t j = i; j < nestedVars->dim; j++)
+	  for (size_t i = 0; func->parameters && i < func->parameters->dim; i++)
 	    {
-	      Dsymbol *s = (*nestedVars)[j];
-	      if (s == v)
+	      VarDeclaration *v = (*func->parameters)[i];
+	      // Remove if already in closureVars so can push to front.
+	      for (size_t j = i; j < func->closureVars.dim; j++)
 		{
-		  nestedVars->remove (j);
-		  break;
+		  Dsymbol *s = func->closureVars[j];
+		  if (s == v)
+		    {
+		      func->closureVars.remove (j);
+		      break;
+		    }
 		}
+	      func->closureVars.insert (i, v);
 	    }
-	  nestedVars->insert (i, v);
-	}
 
-      // Also add hidden 'this' to outer context.
-      if (func->vthis)
-	{
-	  for (size_t i = 0; i < nestedVars->dim; i++)
+	  // Also add hidden 'this' to outer context.
+	  if (func->vthis)
 	    {
-	      Dsymbol *s = (*nestedVars)[i];
-	      if (s == func->vthis)
+	      for (size_t i = 0; i < func->closureVars.dim; i++)
 		{
-		  nestedVars->remove (i);
-		  break;
+		  Dsymbol *s = func->closureVars[i];
+		  if (s == func->vthis)
+		    {
+		      func->closureVars.remove (i);
+		      break;
+		    }
 		}
+	      func->closureVars.insert (0, func->vthis);
 	    }
-	  nestedVars->insert (0, func->vthis);
 	}
     }
 
-  for (size_t i = 0; i < nestedVars->dim; i++)
+  for (size_t i = 0; i < func->closureVars.dim; i++)
     {
-      VarDeclaration *v = (*nestedVars)[i];
+      VarDeclaration *v = func->closureVars[i];
       Symbol *s = v->toSymbol();
       tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
 			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
@@ -3880,37 +3928,13 @@ IRState::buildChain (FuncDeclaration *func)
 
       /* Can't do nrvo if the variable is put in a frame.  */
       if (func->nrvo_can && func->nrvo_var == v)
-	this->func->nrvo_can = 0;
+	func->nrvo_can = 0;
     }
-
   TYPE_FIELDS (frame_rec_type) = fields.head;
   layout_type (frame_rec_type);
+  d_keep (frame_rec_type);
 
-  tree frame_decl = localVar (frame_rec_type);
-  tree frame_ptr = addressOf (frame_decl);
-  DECL_IGNORED_P (frame_decl) = 0;
-  expandDecl (frame_decl);
-
-  // set the first entry to the parent frame, if any
-  if (chain_link != NULL_TREE)
-    {
-      doExp (vmodify (component (indirect (frame_ptr), ptr_field),
-		      chain_link));
-    }
-
-  // copy parameters that are referenced nonlocally
-  for (size_t i = 0; i < nestedVars->dim; i++)
-    {
-      VarDeclaration *v = (*nestedVars)[i];
-      if (!v->isParameter())
-	continue;
-
-      Symbol *vsym = v->toSymbol();
-      doExp (vmodify (component (indirect (frame_ptr), vsym->SframeField),
-		      vsym->Stree));
-    }
-
-  useChain (this->func, frame_ptr);
+  return frame_rec_type;
 }
 
 // Return the frame of FD.  This could be a static chain or a closure
@@ -3931,11 +3955,9 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
   fds->frameInfo = ffi;
 
-  VarDeclarations *nestedVars = &fd->closureVars;
-
   // Nested functions, or functions with nested refs must create
   // a static frame for local variables to be referenced from.
-  if (nestedVars->dim != 0 || fd->isNested())
+  if (fd->closureVars.dim != 0 || fd->isNested())
     {
       ffi->creates_frame = true;
     }
@@ -3958,7 +3980,7 @@ IRState::getFrameInfo (FuncDeclaration *fd)
       ffi->creates_frame = true;
       ffi->is_closure = true;
     }
-  else if (nestedVars->dim == 0)
+  else if (fd->closureVars.dim == 0)
     {
       /* If fd is nested (deeply) in a function that creates a closure,
 	 then fd inherits that closure via hidden vthis pointer, and
@@ -3990,16 +4012,7 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
   // Build type now as may be referenced from another module.
   if (ffi->creates_frame)
-    {
-      tree frame_rec = make_node (RECORD_TYPE);
-      char *name = concat (ffi->is_closure ? "CLOSURE." : "FRAME.",
-			   fd->toPrettyChars(), NULL);
-      TYPE_NAME (frame_rec) = get_identifier (name);
-      free (name);
-
-      d_keep (frame_rec);
-      ffi->frame_rec = frame_rec;
-    }
+    ffi->frame_rec = buildFrameForFunction (fd);
 
   return ffi;
 }

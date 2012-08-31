@@ -419,8 +419,9 @@ struct IRState : IRBase
   { return this->chainFunc_; }
 
   void buildChain (FuncDeclaration *func);
-  static FuncFrameInfo *getFrameInfo (FuncDeclaration *fd);
-  static bool functionNeedsChain (FuncDeclaration *f);
+  tree buildFrameForFunction (FuncDeclaration *func);
+  FuncFrameInfo *getFrameInfo (FuncDeclaration *fd);
+  bool functionNeedsChain (FuncDeclaration *f);
 
   // Check for nested functions/class/structs
   static FuncDeclaration *isClassNestedInFunction (ClassDeclaration *cd);
