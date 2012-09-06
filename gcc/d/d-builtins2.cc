@@ -537,28 +537,28 @@ d_gcc_magic_builtins_module (Module *m)
       funcs->push (d);
     }
 
-  t = gcc_type_to_d_type (d_type_for_mode (word_mode, 0));
+  t = gcc_type_to_d_type (lang_hooks.types.type_for_mode (word_mode, 0));
   if (t)
     {
       d = new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_int"), t);
       funcs->push (d);
     }
 
-  t = gcc_type_to_d_type (d_type_for_mode (word_mode, 1));
+  t = gcc_type_to_d_type (lang_hooks.types.type_for_mode (word_mode, 1));
   if (t)
     {
       d = new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_uint"), t);
       funcs->push (d);
     }
 
-  t = gcc_type_to_d_type (d_type_for_mode (ptr_mode, 0));
+  t = gcc_type_to_d_type (lang_hooks.types.type_for_mode (ptr_mode, 0));
   if (t)
     {
       d = new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_int"), t);
       funcs->push (d);
     }
 
-  t = gcc_type_to_d_type (d_type_for_mode (ptr_mode, 1));
+  t = gcc_type_to_d_type (lang_hooks.types.type_for_mode (ptr_mode, 1));
   if (t)
     {
       d = new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_uint"), t);

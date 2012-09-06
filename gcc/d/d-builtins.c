@@ -218,7 +218,8 @@ static tree builtin_types[(int) BT_LAST + 1];
 static void
 def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
 {
-  tree args = NULL, t;
+  tree t;
+  tree *args = XALLOCAVEC (tree, n);
   va_list list;
   int i;
 
@@ -229,21 +230,20 @@ def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
       t = builtin_types[a];
       if (t == error_mark_node)
 	goto egress;
-      args = tree_cons (NULL_TREE, t, args);
+      args[i] = t;
     }
-  va_end (list);
-
-  args = nreverse (args);
-  if (!var)
-    args = chainon (args, void_list_node);
 
   t = builtin_types[ret];
   if (t == error_mark_node)
     goto egress;
-  t = build_function_type (t, args);
+  if (var)
+    t = build_varargs_function_type_array (t, n, args);
+  else
+    t = build_function_type_array (t, n, args);
 
  egress:
   builtin_types[def] = t;
+  va_end (list);
 }
 
 
@@ -288,7 +288,7 @@ d_init_builtins (void)
   /* Create the built-in __null node.  It is important that this is
      not shared.  */
   null_node = make_node (INTEGER_CST);
-  TREE_TYPE (null_node) = d_type_for_size (POINTER_SIZE, 0);
+  TREE_TYPE (null_node) = lang_hooks.types.type_for_size (POINTER_SIZE, 0);
 
   TYPE_NAME (integer_type_node) = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
 					      get_identifier ("int"), integer_type_node);

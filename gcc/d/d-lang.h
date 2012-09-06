@@ -171,7 +171,6 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
    and do not need to be "extern C". */
 tree d_truthvalue_conversion (tree);
 void d_add_global_declaration (tree);
-tree d_type_promotes_to (tree);
 
 struct Module;
 Module *d_gcc_get_output_module (void);
@@ -198,8 +197,6 @@ void set_decl_binding_chain (tree decl_chain);
 
 tree d_unsigned_type (tree);
 tree d_signed_type (tree);
-tree d_type_for_size (unsigned bits, int unsignedp);
-tree d_type_for_mode (enum machine_mode mode, int unsignedp);
 
 void d_init_exceptions (void);
 

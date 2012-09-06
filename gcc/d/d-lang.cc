@@ -1123,7 +1123,7 @@ d_gcc_dump_source (const char *srcname, const char *ext, unsigned char *data, un
 }
 
 
-tree
+static tree
 d_type_for_mode (enum machine_mode mode, int unsignedp)
 {
   // taken from c-common.c
@@ -1205,7 +1205,7 @@ d_type_for_mode (enum machine_mode mode, int unsignedp)
   return 0;
 }
 
-tree
+static tree
 d_type_for_size (unsigned bits, int unsignedp)
 {
   if (bits == TYPE_PRECISION (integer_type_node))
@@ -1338,7 +1338,7 @@ d_signed_type (tree type)
 }
 
 /* Type promotion for variable arguments.  */
-tree
+static tree
 d_type_promotes_to (tree type)
 {
   /* Almost the same as c_type_promotes_to.  This is needed varargs to work on

@@ -1,3 +1,19 @@
+2012-09-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins.c(def_fn_type): Use build_varargs_function_type_array and
+	build_function_type_array to create built-in functions.
+	(d_init_builtins): Use lang_hooks.types.type_for_size.
+	* d-builtins2.cc(d_gcc_magic_builtins_module): Use
+	lang_hooks.types.type_for_mode.
+	* d-codegen.cc(IRState::pointerIntSum): Use
+	lang_hooks.types.type_for_size.
+	(IRState::call): Use lang_hooks.types.type_promotes_to.
+	(IRState::maybeExpandSpecialCall): Likewise.
+	* d-glue.cc(build_math_op): Use lang_hooks.types.type_for_mode.
+	* d-lang.cc(d_type_for_mode): Mark static.
+	(d_type_for_size): Likewise.
+	(d_type_promotes_to): Likewise.
+
 2012-08-31  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-glue.cc(FuncDeclaration::toObjFile): Flatten nested levels and

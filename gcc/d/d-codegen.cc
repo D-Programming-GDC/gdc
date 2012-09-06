@@ -1871,8 +1871,9 @@ IRState::pointerIntSum (tree ptr_node, tree idx_exp)
       if (TYPE_PRECISION (TREE_TYPE (intop)) != TYPE_PRECISION (sizetype)
 	  || TYPE_UNSIGNED (TREE_TYPE (intop)) != TYPE_UNSIGNED (sizetype))
 	{
-	  intop = convertTo (d_type_for_size (TYPE_PRECISION (sizetype),
-					      TYPE_UNSIGNED (sizetype)), intop);
+	  tree type = lang_hooks.types.type_for_size (TYPE_PRECISION (sizetype),
+						      TYPE_UNSIGNED (sizetype));
+	  intop = convertTo (type, intop);
 	}
       intop = fold_convert (prod_result_type,
 			    fold_build2 (MULT_EXPR, TREE_TYPE (size_exp), // the type here may be wrong %%
@@ -2322,7 +2323,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 	      actual_arg_tree = actual_arg_exp->toElem (this);
 	      /* Not all targets support passing unpromoted types, so
 		 promote anyway. */
-	      tree prom_type = d_type_promotes_to (TREE_TYPE (actual_arg_tree));
+	      tree prom_type = lang_hooks.types.type_promotes_to (TREE_TYPE (actual_arg_tree));
 	      if (prom_type != TREE_TYPE (actual_arg_tree))
 		actual_arg_tree = d_convert_basic (prom_type, actual_arg_tree);
 	    }
@@ -3169,7 +3170,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	    }
 	  else
 	    {
-	      tree type2 = d_type_promotes_to (type);
+	      tree type2 = lang_hooks.types.type_promotes_to (type);
 	      exp = build1 (VA_ARG_EXPR, type2, op1);
 	      // silently convert promoted type...
 	      if (type != type2)

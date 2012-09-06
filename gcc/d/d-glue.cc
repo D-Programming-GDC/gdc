@@ -256,7 +256,7 @@ build_math_op (TOK op, tree type, tree e1, Type *tb1, tree e2, Type *tb2, IRStat
 	 against (ptr MINUS ptr). */
 
       // %% need to work on this
-      tree tt = d_type_for_mode (ptr_mode, TYPE_UNSIGNED (type));
+      tree tt = lang_hooks.types.type_for_mode (ptr_mode, TYPE_UNSIGNED (type));
       e1 = irs->convertTo (tt, e1);
       e2 = irs->convertTo (tt, e2);
       return irs->convertTo (type, build2 (out_code, tt, e1, e2));
