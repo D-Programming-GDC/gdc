@@ -204,17 +204,21 @@ Link the standard D library statically in the compilation.
 
 Wall
 D
-Enable most warning messages
+; Documented in c.opt
+
+Wcast-result
+D Warning Var(warn_cast_result)
+Warn about casts that will produce a null or nil result.
 
 Werror
 D
-Treat all warnings as errors
+; Documented in common.opt
 
 Wsign-compare
 D
-Warn about signed-unsigned comparisons
+; Documented in c.opt
 
 Wunknown-pragmas
-D Warning
-Warn about unrecognized pragmas
+D
+; Documented in c.opt
 

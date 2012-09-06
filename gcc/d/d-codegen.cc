@@ -391,13 +391,13 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	    tree args[2] = {
 		exp,
 		addressOf (target_class_decl->toSymbol()->Stree)
-	    }; // %% (and why not just addressOf (target_class_decl)
+	    };
 	    return libCall (obj_class_decl->isInterfaceDeclaration()
 			    ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
 	  }
 	else
 	  {
-	    warning (0, "cast to %s will yield null result", target_type->toChars());
+	    warning (OPT_Wcast_result, "cast to %s will produce null result", target_type->toChars());
 	    result = convertTo (target_type->toCtype(), d_null_pointer);
 	    if (TREE_SIDE_EFFECTS (exp))
 	      {
@@ -477,7 +477,6 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	    {
 	      unsigned mult = 1;
 	      tree args[3] = {
-		  // assumes Type::tbit->size() == 1
 		  integerConstant (sz_dst, Type::tsize_t),
 		  integerConstant (sz_src * mult, Type::tsize_t),
 		  exp
@@ -1071,30 +1070,6 @@ IRState::hwi2toli (HOST_WIDE_INT low, HOST_WIDE_INT high)
   gcc_unreachable();
 }
 
-// Convert CST into into dinteger_t type.
-
-dinteger_t
-IRState::hwi2toli (double_int cst)
-{
-  return hwi2toli (cst.low, cst.high);
-}
-
-// Returns the REAPART of COMPLEX_CST C.
-
-tree
-IRState::realPart (tree c)
-{
-  return build1 (REALPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c);
-}
-
-// Returns the IMAGPART of COMPLEX_CST C.
-
-tree
-IRState::imagPart (tree c)
-{
-  return build1 (IMAGPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c);
-}
-
 // Returns the .length component from the D dynamic array EXP.
 
 tree
@@ -1511,16 +1486,17 @@ IRState::toElemLvalue (Expression *e)
 	  Type *key_type = ((TypeAArray *) array_type)->index->toBasetype();
 	  AddrOfExpr aoe;
 
-	  tree args[4];
-	  args[0] = this->addressOf (this->toElemLvalue (e1));
-	  args[1] = this->typeinfoReference (key_type);
-	  args[2] = this->integerConstant (array_type->nextOf()->size(), Type::tsize_t);
-	  args[3] = aoe.set (this, this->convertTo (e2, key_type));
-	  return build1 (INDIRECT_REF, type->toCtype(),
-			 aoe.finish (this,
-				     this->libCall (LIBCALL_AAGETX, 4, args, type->pointerTo()->toCtype())));
+	  tree args[4] = {
+	      addressOf (toElemLvalue (e1)),
+    	      typeinfoReference (key_type),
+    	      integerConstant (array_type->nextOf()->size(), Type::tsize_t),
+    	      aoe.set (this, convertTo (e2, key_type))
+	  };
+	  tree result = aoe.finish (this, libCall (LIBCALL_AAGETX, 4, args, type->pointerTo()->toCtype()));
+	  return build1 (INDIRECT_REF, type->toCtype(), result);
 	}
     }
+
   return e->toElem (this);
 }
 
@@ -1840,16 +1816,12 @@ IRState::pvoidOkay (tree t)
 tree
 IRState::checkedIndex (Loc loc, tree index, tree upper_bound, bool inclusive)
 {
-  if (arrayBoundsCheck())
-    {
-      return build3 (COND_EXPR, TREE_TYPE (index),
-		     this->boundsCond (index, upper_bound, inclusive),
-		     index, this->assertCall (loc, LIBCALL_ARRAY_BOUNDS));
-    }
-  else
-    {
-      return index;
-    }
+  if (!arrayBoundsCheck())
+    return index;
+
+  return build3 (COND_EXPR, TREE_TYPE (index),
+		 boundsCond (index, upper_bound, inclusive),
+		 index, assertCall (loc, LIBCALL_ARRAY_BOUNDS));
 }
 
 // Builds the condition [INDEX < UPPER_BOUND] and optionally [INDEX >= 0]
@@ -1886,9 +1858,9 @@ IRState::arrayBoundsCheck (void)
     {
       // For D2 safe functions only
       result = 0;
-      if (this->func && this->func->type->ty == Tfunction)
+      if (func && func->type->ty == Tfunction)
 	{
-	  TypeFunction *tf = (TypeFunction *)this->func->type;
+	  TypeFunction *tf = (TypeFunction *)func->type;
 	  if (tf->trust == TRUSTsafe)
 	    result = 1;
 	}
@@ -1972,6 +1944,57 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
 		       pointerIntSum (ptr_exp, subscript_expr));
 
   return elem_ref;
+}
+
+
+void
+IRState::doArraySet (tree in_ptr, tree in_value, tree in_count)
+{
+  startBindings();
+
+  tree count = localVar (Type::tsize_t);
+  DECL_INITIAL (count) = in_count;
+  expandDecl (count);
+
+  tree ptr = localVar (TREE_TYPE (in_ptr));
+  DECL_INITIAL (ptr) = in_ptr;
+  expandDecl (ptr);
+
+  tree ptr_type = TREE_TYPE (ptr);
+  tree count_type = TREE_TYPE (count);
+
+  tree value = NULL_TREE;
+
+  if (isFreeOfSideEffects (in_value))
+    value = in_value;
+  else
+    {
+      value = localVar (TREE_TYPE (in_value));
+      DECL_INITIAL (value) = in_value;
+      expandDecl (value);
+    }
+
+  startLoop (NULL);
+  continueHere();
+  exitIfFalse (build2 (NE_EXPR, boolean_type_node,
+		       convertTo (TREE_TYPE (count), integer_zero_node), count));
+
+  doExp (vmodify (indirect (ptr), value));
+  doExp (vmodify (ptr, pointerOffset (ptr, TYPE_SIZE_UNIT (TREE_TYPE (ptr_type)))));
+  doExp (vmodify (count, build2 (MINUS_EXPR, count_type, count,
+				 convertTo (count_type, integer_one_node))));
+
+  endLoop();
+  endBindings();
+}
+
+// Create a tree node to set multiple elements to a single value
+tree
+IRState::arraySetExpr (tree ptr, tree value, tree count)
+{
+  pushStatementList();
+  doArraySet (ptr, value, count);
+  return popStatementList();
 }
 
 // Builds a BIND_EXPR around BODY for the variables VAR_CHAIN.

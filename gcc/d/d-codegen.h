@@ -230,11 +230,16 @@ struct IRState : IRBase
   static tree floatConstant (const real_t& value, Type *target_type);
 
   static dinteger_t hwi2toli (HOST_WIDE_INT low, HOST_WIDE_INT high);
-  static dinteger_t hwi2toli (double_int cst);
+
+  static dinteger_t hwi2toli (double_int cst)
+  { return hwi2toli (cst.low, cst.high); }
 
   // ** Routines for built in structured types
-  static tree realPart (tree c);
-  static tree imagPart (tree c);
+  static tree realPart (tree c)
+  { return build1_loc (input_location, REALPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c); }
+
+  static tree imagPart (tree c)
+  { return build1_loc (input_location, IMAGPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c); }
 
   // ** Dynamic arrays
   static tree darrayLenRef (tree exp);
@@ -292,11 +297,17 @@ struct IRState : IRBase
   static tree indirect (tree type, tree exp);
   static tree indirect (tree exp);
 
+  static tree modify (tree dst, tree src)
+  { return modify (TREE_TYPE (dst), dst, src); }
+
+  static tree modify (tree type, tree dst, tree src)
+  { return build2_loc (input_location, MODIFY_EXPR, type, dst, src); }
+
   static tree vmodify (tree dst, tree src)
-  { return build2 (MODIFY_EXPR, void_type_node, dst, src); }
+  { return build2_loc (input_location, MODIFY_EXPR, void_type_node, dst, src); }
 
   static tree vinit (tree dst, tree src)
-  { return build2 (INIT_EXPR, void_type_node, dst, src); }
+  { return build2_loc (input_location, INIT_EXPR, void_type_node, dst, src); }
 
   tree pointerIntSum (Expression *ptr_exp, Expression *idx_exp);
   tree pointerIntSum (tree ptr_node, tree idx_exp);
@@ -304,7 +315,7 @@ struct IRState : IRBase
   static tree pointerOffset (tree ptr_node, tree byte_offset);
 
   static tree nop (tree t, tree e)
-  { return build1 (NOP_EXPR, t, e); }
+  { return build1_loc (input_location, NOP_EXPR, t, e); }
 
   static tree vconvert (tree t, tree e)
   { return build1 (VIEW_CONVERT_EXPR, t, e); }
@@ -313,7 +324,7 @@ struct IRState : IRBase
   static tree pvoidOkay (tree t);
 
   static tree boolOp (enum tree_code code, tree arg0, tree arg1)
-  { return build2 (code, boolean_type_node, arg0, arg1); }
+  { return fold_build2_loc (input_location, code, boolean_type_node, arg0, arg1); }
 
   tree checkedIndex (Loc loc, tree index, tree upper_bound, bool inclusive);
   tree boundsCond (tree index, tree upper_bound, bool inclusive);
@@ -321,27 +332,30 @@ struct IRState : IRBase
 
   tree arrayElemRef (IndexExp *aer_exp, ArrayScope *aryscp);
 
+  void doArraySet (tree in_ptr, tree in_value, tree in_count);
+  tree arraySetExpr (tree ptr, tree value, tree count);
+
   static tree binding (tree var_chain, tree body);
 
   static tree compound (tree arg0, tree arg1)
-  { return build2 (COMPOUND_EXPR, TREE_TYPE (arg1), arg0, arg1); }
+  { return build2_loc (input_location, COMPOUND_EXPR, TREE_TYPE (arg1), arg0, arg1); }
 
   static tree compound (tree type, tree arg0, tree arg1)
-  { return build2 (COMPOUND_EXPR, type, arg0, arg1); }
+  { return build2_loc (input_location, COMPOUND_EXPR, type, arg0, arg1); }
 
   static tree voidCompound (tree arg0, tree arg1)
-  { return build2 (COMPOUND_EXPR, void_type_node, arg0, arg1); }
+  { return build2_loc (input_location, COMPOUND_EXPR, void_type_node, arg0, arg1); }
 
   static tree maybeCompound (tree arg0, tree arg1);
   static tree maybeVoidCompound (tree arg0, tree arg1);
 
   static tree component (tree v, tree f)
-  { return build3 (COMPONENT_REF, TREE_TYPE (f), v, f, NULL_TREE); }
+  { return build3_loc (input_location, COMPONENT_REF, TREE_TYPE (f), v, f, NULL_TREE); }
 
   // Giving error_mark_node a type allows for some assumptions about
   // the type of an arbitrary expression.
   static tree errorMark (Type *t)
-  { return build1 (NOP_EXPR, t->toCtype(), error_mark_node); }
+  { return build1_loc (input_location, NOP_EXPR, t->toCtype(), error_mark_node); }
 
   static bool isErrorMark (tree t);
 

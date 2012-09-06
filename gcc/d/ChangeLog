@@ -1,5 +1,25 @@
 2012-09-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* lang.opt: Define Wcast-result.
+	* d-codegen.cc(IRState::convertTo): Warn about null result, but only
+	if -Wcast-result.
+	(IRState::hwi2toli): Move to header.
+	(IRState::realPart): Likewise.
+	(IRState::imagPart): Likewise.
+	(IRState::toElemLvalue): Clean-up tree args array.
+	(IRState::doArraySet): New function.
+	(IRState::arraySetExpr): New function.
+	* d-glue.cc(EqualExp::toElem): Clean-up tree args array.
+	(CatAssignExp::toElem): Likewise.
+	(AssignExp::toElem): Likewise.
+	(DeleteExp::toElem): Likewise.
+	(NewExp::toElem): Use IRState::modify.
+	(ArrayLiteralExp::toElem): Don't call ARRAYLITERALTX library function
+	if assigning to static array.
+	(StructLiteralExp::toElem): Use IRState::arraySetExpr.
+	(do_array_set): Move to IRState::doArraySet.
+	(array_set_expr): Move to IRState::arraySetExpr.
+
 	* d-lang.h(D_TYPE_IMAGINARY_FLOAT): Define.
 	(d_convert_basic): Remove.
 	* d-builtins.c(d_init_builtins): Mark imaginary types as
