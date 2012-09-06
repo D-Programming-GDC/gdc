@@ -44,6 +44,7 @@ static char lang_name[6] = "GNU D";
 /* Lang Hooks */
 #undef LANG_HOOKS_NAME
 #undef LANG_HOOKS_INIT
+#undef LANG_HOOKS_INIT_TS
 #undef LANG_HOOKS_INIT_OPTIONS
 #undef LANG_HOOKS_INIT_OPTIONS_STRUCT
 #undef LANG_HOOKS_OPTION_LANG_MASK
@@ -63,6 +64,7 @@ static char lang_name[6] = "GNU D";
 
 #define LANG_HOOKS_NAME				lang_name
 #define LANG_HOOKS_INIT				d_init
+#define LANG_HOOKS_INIT_TS			d_common_init_ts
 #define LANG_HOOKS_INIT_OPTIONS			d_init_options
 #define LANG_HOOKS_INIT_OPTIONS_STRUCT		d_init_options_struct
 #define LANG_HOOKS_OPTION_LANG_MASK		d_option_lang_mask
@@ -304,6 +306,15 @@ d_init (void)
 
   return 1;
 }
+
+void
+d_common_init_ts (void)
+{
+  MARK_TS_TYPED (IASM_EXPR);
+  MARK_TS_TYPED (FLOAT_MOD_EXPR);
+  MARK_TS_TYPED (UNSIGNED_RSHIFT_EXPR);
+}
+
 
 static bool
 parse_int (const char *arg, int *value_ret)
@@ -613,17 +624,19 @@ d_write_global_declarations (void)
 {
   tree *vec = (tree *) globalDeclarations.data;
 
-  /* Process all file scopes in this compilation, and the external_scope,
-     through wrapup_global_declarations and check_global_declarations.  */
-  wrapup_global_declarations (vec, globalDeclarations.dim);
-  check_global_declarations (vec, globalDeclarations.dim);
-
   /* Complete all generated thunks. */
   cgraph_process_same_body_aliases();
+
+  /* Process all file scopes in this compilation, and the external_scope,
+     through wrapup_global_declarations.  */
+  wrapup_global_declarations (vec, globalDeclarations.dim);
 
   /* We're done parsing; proceed to optimize and emit assembly. */
   if (!global.errors && !errorcount)
     finalize_compilation_unit();
+
+  /* Now, issue warnings about static, but not defined, functions.  */
+  check_global_declarations (vec, globalDeclarations.dim);
 
   /* After cgraph has had a chance to emit everything that's going to
      be emitted, output debug information for globals.  */
@@ -642,8 +655,8 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
     case INIT_EXPR:
     case MODIFY_EXPR:
 	{
-	  /* If the back end isn't clever enough to know that the lhs and rhs
-	     types are the same, add an explicit conversion.  */
+	  // If the back end isn't clever enough to know that the lhs and rhs
+	  // types are the same, add an explicit conversion.
 	  tree op0 = TREE_OPERAND (*expr_p, 0);
 	  tree op1 = TREE_OPERAND (*expr_p, 1);
 
@@ -657,6 +670,23 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 	    }
 	  return GS_OK;
 	}
+
+    case UNSIGNED_RSHIFT_EXPR:
+	{
+	  // Convert op0 to an unsigned type.
+    	  tree op0 = TREE_OPERAND (*expr_p, 0);
+    	  tree op1 = TREE_OPERAND (*expr_p, 1);
+
+	  tree unstype = d_unsigned_type (TREE_TYPE (op0));
+
+	  *expr_p = convert (TREE_TYPE (*expr_p),
+			     build2 (RSHIFT_EXPR, unstype,
+	 			     convert (unstype, op0), op1));
+    	  return GS_UNHANDLED;
+	}
+
+    case IASM_EXPR:
+      gcc_unreachable();
 
     default:
       return GS_UNHANDLED;

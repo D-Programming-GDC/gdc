@@ -119,12 +119,6 @@ enum LibCall
   LIBCALL_count
 };
 
-enum BinOp
-{
-  opComp,
-  opBinary,
-  opAssign,
-};
 
 struct FuncFrameInfo
 {
@@ -255,6 +249,8 @@ struct IRState : IRBase
   tree arrayLength (Expression *exp);
   static tree arrayLength (tree exp, Type *exp_type);
 
+  static bool arrayOpNotImplemented (BinExp *exp);
+
   // Delegates
   static tree delegateMethodRef (tree exp);
   static tree delegateObjectRef (tree exp);
@@ -325,6 +321,9 @@ struct IRState : IRBase
   static tree boolOp (enum tree_code code, tree arg0, tree arg1)
   { return fold_build2_loc (input_location, code, boolean_type_node, arg0, arg1); }
 
+  static tree buildOp (enum tree_code code, tree type, tree arg0, tree arg1);
+  tree buildAssignOp (enum tree_code code, Type *type, Expression *e1, Expression *e2);
+
   tree checkedIndex (Loc loc, tree index, tree upper_bound, bool inclusive);
   tree boundsCond (tree index, tree upper_bound, bool inclusive);
   int arrayBoundsCheck (void);
@@ -388,7 +387,7 @@ struct IRState : IRBase
   // Variables that are in scope that will need destruction later
   VarDeclarations *varsInScope;
 
-  tree floatMod (tree type, tree arg0, tree arg1);
+  static tree floatMod (tree type, tree arg0, tree arg1);
 
   tree typeinfoReference (Type *t);
 

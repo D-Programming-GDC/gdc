@@ -1209,6 +1209,21 @@ IRState::arrayLength (tree exp, Type *exp_type)
     }
 }
 
+bool
+IRState::arrayOpNotImplemented (BinExp *exp)
+{
+  TY ty1 = exp->e1->type->toBasetype()->ty;
+  TY ty2 = exp->e2->type->toBasetype()->ty;
+
+  if ((ty1 == Tarray || ty1 == Tsarray ||
+       ty2 == Tarray || ty2 == Tsarray))
+    {
+      exp->error ("Array operation %s not implemented", exp->toChars());
+      return true;
+    }
+  return false;
+}
+
 // Returns the .funcptr component from the D delegate EXP.
 
 tree
@@ -1807,6 +1822,85 @@ IRState::pvoidOkay (tree t)
       return convertTo (Type::tuns8->pointerTo()->toCtype(), t);
     }
   return t;
+}
+
+// Build an expression of code CODE, data type TYPE, and operands ARG0
+// and ARG1. Perform relevant conversions needs for correct code operations.
+
+tree
+IRState::buildOp (tree_code code, tree type, tree arg0, tree arg1)
+{
+  tree t0 = TREE_TYPE (arg0);
+  tree t1 = TREE_TYPE (arg1);
+
+  bool unsignedp = TYPE_UNSIGNED (t0) || TYPE_UNSIGNED (t1);
+
+  tree t = NULL_TREE;
+
+  // Deal with float mod expressions immediately.
+  if (code == FLOAT_MOD_EXPR)
+    return floatMod (TREE_TYPE (arg0), arg0, arg1);
+
+  if (POINTER_TYPE_P (t0) && INTEGRAL_TYPE_P (t1))
+    return nop (type, pointerOffsetOp (code, arg0, arg1));
+  
+  if (INTEGRAL_TYPE_P (t0) && POINTER_TYPE_P (t1))
+    return nop (type, pointerOffsetOp (code, arg1, arg0));
+  
+  if (POINTER_TYPE_P (t0) && POINTER_TYPE_P (t1))
+    {
+      // Need to convert pointers to integers because tree-vrp asserts
+      // against (ptr MINUS ptr).
+      tree ptrtype = lang_hooks.types.type_for_mode (ptr_mode, TYPE_UNSIGNED (type));
+      arg0 = convertTo (ptrtype, arg0);
+      arg1 = convertTo (ptrtype, arg1);
+
+      t = build2 (code, ptrtype, arg0, arg1);
+    }
+  else if (INTEGRAL_TYPE_P (type) && (TYPE_UNSIGNED (type) != unsignedp))
+    {
+      t = build2 (code, unsignedp ? d_unsigned_type (type) : d_signed_type (type),
+		  arg0, arg1);
+    }
+  else
+    {
+      // Front-end does not do this conversion and GCC does not
+      // always do it right.
+      if (COMPLEX_FLOAT_TYPE_P (t0) && !COMPLEX_FLOAT_TYPE_P (t1))
+	arg1 = convertTo (t0, arg1);
+      else if (COMPLEX_FLOAT_TYPE_P (t1) && !COMPLEX_FLOAT_TYPE_P (t0))
+	arg0 = convertTo (t1, arg0);
+
+      t = build2 (code, type, arg0, arg1);
+    }
+
+  return convertTo (type, t);
+}
+
+// Build an assignment expression of code CODE, data type TYPE, and
+// operands E1 and E2.
+
+tree
+IRState::buildAssignOp (tree_code code, Type *type, Expression *e1, Expression *e2)
+{
+  // Skip casts for lhs assignment.
+  Expression *e1b = e1;
+  while (e1b->op == TOKcast)
+    {
+      CastExp *ce = (CastExp *) e1b;
+      gcc_assert (typesCompatible (ce->type, ce->to));
+      e1b = ce->e1;
+    }
+
+  // Prevent multiple evaluations of LHS
+  tree lhs = toElemLvalue (e1b);
+  lhs = stabilize_reference (lhs);
+
+  tree rhs = buildOp (code, e1->type->toCtype(),
+		      convertTo (lhs, e1b->type, e1->type), e2->toElem (this));
+
+  return modify (type->toCtype(), lhs,
+		 convertForAssignment (rhs, e1->type, type));
 }
 
 

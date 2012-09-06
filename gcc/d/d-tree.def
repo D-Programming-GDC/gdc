@@ -20,3 +20,12 @@
    representation of an ASM_EXPR.  Reserved for future use and
    implementation yet to be defined.  */
 DEFTREECODE (IASM_EXPR, "iasm_expr", tcc_statement, 5)
+
+/* Logical shift done on an unsigned type.  If the first operand is
+   signed, it will be converted to the unsigned equivalent.  The second
+   operand is the number of bits to shift by; it need not be the same
+   type as the first operand and result.  */
+DEFTREECODE (UNSIGNED_RSHIFT_EXPR, "unsigned_rshift_expr", tcc_binary, 2)
+
+/* Floating point modulus that expands to a call to fmod.  */
+DEFTREECODE (FLOAT_MOD_EXPR, "float_mod_expr", tcc_binary, 2)
