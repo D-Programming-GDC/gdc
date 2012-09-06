@@ -1503,9 +1503,9 @@ IRState::toElemLvalue (Expression *e)
 
 	  tree args[4] = {
 	      addressOf (toElemLvalue (e1)),
-    	      typeinfoReference (key_type),
-    	      integerConstant (array_type->nextOf()->size(), Type::tsize_t),
-    	      aoe.set (this, convertTo (e2, key_type))
+	      typeinfoReference (key_type),
+	      integerConstant (array_type->nextOf()->size(), Type::tsize_t),
+	      aoe.set (this, convertTo (e2, key_type))
 	  };
 	  tree result = aoe.finish (this, libCall (LIBCALL_AAGETX, 4, args, type->pointerTo()->toCtype()));
 	  return build1 (INDIRECT_REF, type->toCtype(), result);
@@ -1580,7 +1580,7 @@ IRState::markAddressable (tree exp)
     case IMAGPART_EXPR:
       markAddressable (TREE_OPERAND (exp, 0));
       break;
-      
+
       /* %% C++ prevents {& this} .... */
       /* %% TARGET_EXPR ... */
     case TRUTH_ANDIF_EXPR:
@@ -1588,16 +1588,16 @@ IRState::markAddressable (tree exp)
     case COMPOUND_EXPR:
       markAddressable (TREE_OPERAND (exp, 1));
       break;
-      
+
     case COND_EXPR:
       markAddressable (TREE_OPERAND (exp, 1));
       markAddressable (TREE_OPERAND (exp, 2));
       break;
-      
+
     case CONSTRUCTOR:
       TREE_ADDRESSABLE (exp) = 1;
       break;
-      
+
     case INDIRECT_REF:
       /* %% this was in Java, not sure for D */
       /* We sometimes add a cast *(TYPE *)&FOO to handle type and mode
@@ -1614,7 +1614,7 @@ IRState::markAddressable (tree exp)
 	  break;
 	}
       break;
-      
+
     case VAR_DECL:
     case CONST_DECL:
     case PARM_DECL:
@@ -1622,7 +1622,7 @@ IRState::markAddressable (tree exp)
     case FUNCTION_DECL:
       TREE_USED (exp) = 1;
       TREE_ADDRESSABLE (exp) = 1;
-      
+
       /* drops through */
     default:
       break;
@@ -1843,10 +1843,10 @@ IRState::buildOp (tree_code code, tree type, tree arg0, tree arg1)
 
   if (POINTER_TYPE_P (t0) && INTEGRAL_TYPE_P (t1))
     return nop (type, pointerOffsetOp (code, arg0, arg1));
-  
+
   if (INTEGRAL_TYPE_P (t0) && POINTER_TYPE_P (t1))
     return nop (type, pointerOffsetOp (code, arg1, arg0));
-  
+
   if (POINTER_TYPE_P (t0) && POINTER_TYPE_P (t1))
     {
       // Need to convert pointers to integers because tree-vrp asserts
@@ -3887,7 +3887,7 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
   tree ptr_field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
 			       get_identifier ("__chain"), ptr_type_node);
   DECL_CONTEXT (ptr_field) = frame_rec_type;
-  
+
   ListMaker fields;
   fields.chain (ptr_field);
 

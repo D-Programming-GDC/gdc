@@ -674,15 +674,15 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
     case UNSIGNED_RSHIFT_EXPR:
 	{
 	  // Convert op0 to an unsigned type.
-    	  tree op0 = TREE_OPERAND (*expr_p, 0);
-    	  tree op1 = TREE_OPERAND (*expr_p, 1);
+	  tree op0 = TREE_OPERAND (*expr_p, 0);
+	  tree op1 = TREE_OPERAND (*expr_p, 1);
 
 	  tree unstype = d_unsigned_type (TREE_TYPE (op0));
 
 	  *expr_p = convert (TREE_TYPE (*expr_p),
 			     build2 (RSHIFT_EXPR, unstype,
 	 			     convert (unstype, op0), op1));
-    	  return GS_UNHANDLED;
+	  return GS_UNHANDLED;
 	}
 
     case IASM_EXPR:

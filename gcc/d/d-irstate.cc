@@ -157,7 +157,7 @@ IRBase::getLabelTree (LabelDsymbol *label)
   if (!label->statement->lblock)
     {
       tree label_decl = build_decl (UNKNOWN_LOCATION, LABEL_DECL,
- 				    get_identifier (label->ident->string), void_type_node);
+				    get_identifier (label->ident->string), void_type_node);
       gcc_assert (this->func != 0);
       DECL_CONTEXT (label_decl) = getLocalContext();
       DECL_MODE (label_decl) = VOIDmode; // Not sure why or if this is needed

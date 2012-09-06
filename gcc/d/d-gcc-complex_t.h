@@ -83,14 +83,14 @@ struct complex_t
 	r = y.re / y.im;
 	den = y.im + r * y.re;
 	return complex_t ((this->re * r + this->im) / den,
- 			  (this->im * r - this->re) / den);
+			  (this->im * r - this->re) / den);
       }
     else
       {
 	r = y.im / y.re;
 	den = y.re + r * y.im;
 	return complex_t ((this->re + r * this->im) / den,
- 			  (this->im - r * this->re) / den);
+			  (this->im - r * this->re) / den);
       }
   }
 

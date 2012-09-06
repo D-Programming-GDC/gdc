@@ -438,7 +438,7 @@ d_gcc_magic_builtins_module (Module *m)
       // Typically gcc macro functions that can't be represented in D.
       if (dtf->parameters && dtf->parameters->dim == 0 && dtf->varargs)
 	continue;
-      
+
       // %% D2 - builtins are trusted and optionally nothrow.
       // The purity of a builtins can vary depending on compiler
       // flags set at init, or by the -foptions passed, such as

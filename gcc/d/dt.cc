@@ -211,7 +211,7 @@ dt2node (dt_t *dt)
       /* It is necessary to give static array data its original
 	 type.  Otherwise, the SRA pass will not find the array
 	 elements.
-	 
+
 	 SRA accesses struct elements by field offset, so the ad
 	 hoc type from dt2tree is fine.  It must still be a
 	 CONSTRUCTOR, or the CCP pass may use it incorrectly.

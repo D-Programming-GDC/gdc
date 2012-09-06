@@ -1138,7 +1138,7 @@ obj_tlssections (void)
   rest_of_decl_compilation (tlsstart, 1, 0);
 
   tlsend = build_decl (UNKNOWN_LOCATION, VAR_DECL,
- 		       get_identifier ("_tlsend"), integer_type_node);
+		       get_identifier ("_tlsend"), integer_type_node);
   TREE_PUBLIC (tlsend) = 1;
   TREE_STATIC (tlsend) = 1;
   DECL_ARTIFICIAL (tlsend) = 1;

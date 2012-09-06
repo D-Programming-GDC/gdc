@@ -837,8 +837,8 @@ AssignExp::toElem (IRState *irs)
       // Don't want ->toBasetype() for the element type.
       Type *elem_type = ale->e1->type->toBasetype()->nextOf();
       tree args[3] = {
-    	  irs->typeinfoReference (ale->e1->type),
-    	  irs->convertTo (e2, Type::tsize_t),
+	  irs->typeinfoReference (ale->e1->type),
+	  irs->convertTo (e2, Type::tsize_t),
 	  irs->addressOf (ale->e1->toElem (irs))
       };
 
@@ -867,9 +867,9 @@ AssignExp::toElem (IRState *irs)
 		  AddrOfExpr aoe;
 		  tree args[4] = {
 		      irs->darrayPtrRef (dyn_array_exp),
-    		      aoe.set (irs, e2->toElem (irs)),
-    		      irs->darrayLenRef (dyn_array_exp),
-    		      irs->typeinfoReference (elem_type),
+		      aoe.set (irs, e2->toElem (irs)),
+		      irs->darrayLenRef (dyn_array_exp),
+		      irs->typeinfoReference (elem_type),
 		  };
 		  tree t = irs->libCall (op == TOKconstruct ?
 					 LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN,
@@ -1935,8 +1935,8 @@ NewExp::toElem (IRState *irs)
       // Set vthis for nested structs/classes.
       if (sd->isNested())
 	{
-    	  tree vthis_value = irs->getVThis (sd, this);
-    	  tree vthis_field;
+	  tree vthis_value = irs->getVThis (sd, this);
+	  tree vthis_field;
 	  new_call = irs->maybeMakeTemp (new_call);
 	  vthis_field = irs->component (irs->indirect (struct_type->toCtype(), new_call),
 					sd->vthis->toSymbol()->Stree);
@@ -2125,8 +2125,8 @@ ArrayLiteralExp::toElem (IRState *irs)
   else
     {
       tree args[2] = {
-    	  irs->typeinfoReference (etype->arrayOf()),
-    	  irs->integerConstant (elements->dim, size_type_node)
+	  irs->typeinfoReference (etype->arrayOf()),
+	  irs->integerConstant (elements->dim, size_type_node)
       };
       // Call _d_arrayliteralTX (ti, dim);
       LibCall lib_call = LIBCALL_ARRAYLITERALTX;
@@ -2135,10 +2135,10 @@ ArrayLiteralExp::toElem (IRState *irs)
 
       // memcpy (mem, &ctor, size)
       tree size = fold_build2 (MULT_EXPR, size_type_node,
-    			       size_int (elements->dim), size_int (typeb->nextOf()->size()));
+			       size_int (elements->dim), size_int (typeb->nextOf()->size()));
 
       result = irs->buildCall (builtin_decl_explicit (BUILT_IN_MEMCPY), 3,
-    			       mem, irs->addressOf (ctor), size);
+			       mem, irs->addressOf (ctor), size);
 
       // Returns array pointed to by MEM.
       result = irs->maybeCompound (result, mem);

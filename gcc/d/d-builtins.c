@@ -88,8 +88,8 @@ d_init_attributes (void)
 #define DEF_ATTR_TREE_LIST(ENUM, PURPOSE, VALUE, CHAIN) \
   built_in_attributes[(int) ENUM]                       \
   = tree_cons (built_in_attributes[(int) PURPOSE],    \
-   	       built_in_attributes[(int) VALUE],      \
-   	       built_in_attributes[(int) CHAIN]);
+	       built_in_attributes[(int) VALUE],      \
+	       built_in_attributes[(int) CHAIN]);
 #include "builtin-attrs.def"
 #undef DEF_ATTR_NULL_TREE
 #undef DEF_ATTR_INT
@@ -138,10 +138,10 @@ lookup_ctype_name (const char *p)
 
 static void
 do_build_builtin_fn (enum built_in_function fncode,
- 		     const char *name,
- 		     enum built_in_class fnclass,
- 		     tree fntype, bool both_p, bool fallback_p,
- 		     tree fnattrs, bool implicit_p)
+		     const char *name,
+		     enum built_in_class fnclass,
+		     tree fntype, bool both_p, bool fallback_p,
+		     tree fnattrs, bool implicit_p)
 {
   tree decl;
   const char *libname;
@@ -156,7 +156,7 @@ do_build_builtin_fn (enum built_in_function fncode,
   libname = name + strlen ("__builtin_");
 
   decl = add_builtin_function (name, fntype, fncode, fnclass,
- 			       fallback_p ? libname : NULL, fnattrs);
+			       fallback_p ? libname : NULL, fnattrs);
 
   set_builtin_decl (fncode, decl, implicit_p);
 }
@@ -276,7 +276,7 @@ d_init_builtins (void)
   signed_size_type_node = d_signed_type (size_type_node);
   string_type_node = build_pointer_type (char_type_node);
   const_string_type_node = build_pointer_type (build_qualified_type
- 					       (char_type_node, TYPE_QUAL_CONST));
+					       (char_type_node, TYPE_QUAL_CONST));
 
   void_list_node = build_tree_list (NULL_TREE, void_type_node);
 
@@ -396,9 +396,9 @@ d_init_builtins (void)
 		    NONANSI_P, ATTRS, IMPLICIT, COND)                   \
   if (NAME && COND)                                                     \
   do_build_builtin_fn (ENUM, NAME, CLASS,                            \
- 		       builtin_types[(int) TYPE],                    \
- 		       BOTH_P, FALLBACK_P,                           \
- 		       built_in_attributes[(int) ATTRS], IMPLICIT);
+		       builtin_types[(int) TYPE],                    \
+		       BOTH_P, FALLBACK_P,                           \
+		       built_in_attributes[(int) ATTRS], IMPLICIT);
 #include "builtins.def"
 #undef DEF_BUILTIN
 

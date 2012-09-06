@@ -539,7 +539,7 @@ FuncDeclaration::toSymbol (void)
 	    }
 
 	  if (isStatic())
- 	    TREE_STATIC (fndecl) = 1;
+	    TREE_STATIC (fndecl) = 1;
 	  // %% Pure functions don't imply nothrow
 	  if (isPure() == PUREstrong && ftype->isnothrow)
 	    DECL_PURE_P (fndecl) = 1;
@@ -676,8 +676,8 @@ ClassDeclaration::toSymbol (void)
       csym = toSymbolX ("__Class", SCextern, 0, "Z");
       decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (csym->Sident),
 			 TREE_TYPE (ClassDeclaration::classinfo != NULL
-      				    ? ClassDeclaration::classinfo->type->toCtype() // want the RECORD_TYPE, not the REFERENCE_TYPE
-      				    : error_mark_node));
+				    ? ClassDeclaration::classinfo->type->toCtype() // want the RECORD_TYPE, not the REFERENCE_TYPE
+				    : error_mark_node));
       csym->Stree = decl;
       d_keep (decl);
 
