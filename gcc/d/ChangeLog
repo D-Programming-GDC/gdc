@@ -1,5 +1,27 @@
 2012-09-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-lang.h(D_TYPE_IMAGINARY_FLOAT): Define.
+	(d_convert_basic): Remove.
+	* d-builtins.c(d_init_builtins): Mark imaginary types as
+	D_TYPE_IMAGINARY_FLOAT.
+	* d-builtins2.cc(gcc_type_to_d_type): Use convert.
+	* d-codegen.cc(IRState::emitLocalVar): Call pushdecl earlier so
+	catches CONST_DECLs.
+	(IRState::convertTo): Remove handling of conversions between
+	imaginary/real, imaginary/complex, complex/imaginary types, use
+	convert.
+	(IRState::convertForArgument): Use convert.
+	(IRState::arrayElemRef): Likewise.
+	(IRState::call): Likewise.
+	(IRState::libCall): Likewise.
+	(IRState::maybeExpandSpecialCall): Likewise.
+	* d-convert.cc(d_convert_basic): Mark static.
+	(convert): Handle correct conversions between imaginary/real,
+	imaginary/complex, complex/imaginary types.
+	* d-glue.cc(InExp::toElem): Use convert.
+	(BoolExp::toElem): Likewise.
+	(FuncDeclaration::buildClosure): Likewise.
+
 	* d-builtins.c(def_fn_type): Use build_varargs_function_type_array and
 	build_function_type_array to create built-in functions.
 	(d_init_builtins): Use lang_hooks.types.type_for_size.

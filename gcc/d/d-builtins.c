@@ -308,9 +308,16 @@ d_init_builtins (void)
   d_char_type_node = build_variant_type_copy (unsigned_intQI_type_node);
   d_wchar_type_node = build_variant_type_copy (unsigned_intHI_type_node);
   d_dchar_type_node = build_variant_type_copy (unsigned_intSI_type_node);
+
+  /* Imaginary types.  */
   d_ifloat_type_node = build_variant_type_copy (float_type_node);
+  D_TYPE_IMAGINARY_FLOAT (d_ifloat_type_node) = 1;
+
   d_idouble_type_node = build_variant_type_copy (double_type_node);
+  D_TYPE_IMAGINARY_FLOAT (d_idouble_type_node) = 1;
+
   d_ireal_type_node = build_variant_type_copy (long_double_type_node);
+  D_TYPE_IMAGINARY_FLOAT (d_ireal_type_node) = 1;
 
   {
     /* Make sure we get a unique function type, so we can give

@@ -72,6 +72,9 @@ extern GTY(()) tree d_eh_personality_decl;
    in the backend as DECL_BY_REFERENCE.  For function types is for NRVO.  */
 #define D_TYPE_ADDRESSABLE(NODE) (TYPE_LANG_FLAG_0 (NODE))
 
+/* True if the type is an imaginary float type.  */
+#define D_TYPE_IMAGINARY_FLOAT(NODE) (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), REAL_TYPE)))
+
 /* True if the symbol should be made "link one only".  This is used to
    defer calling make_decl_one_only() before the decl has been prepared. */
 #define D_DECL_ONE_ONLY(NODE) (DECL_LANG_FLAG_0 (NODE))
@@ -221,9 +224,6 @@ void gcc_d_backend_term (void);
 void d_bi_init (void);
 void d_bi_builtin_func (tree);
 void d_bi_builtin_type (tree);
-
-/* In d-convert.cc */
-tree d_convert_basic (tree, tree);
 
 /* protect from garbage collection */
 extern GTY(()) tree d_keep_list;

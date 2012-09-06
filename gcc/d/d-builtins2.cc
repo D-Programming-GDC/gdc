@@ -154,7 +154,7 @@ gcc_type_to_d_type (tree t)
 
 	  tree length = fold_build2 (MINUS_EXPR, TREE_TYPE (lb), ub, lb);
 	  length = size_binop (PLUS_EXPR, size_one_node,
-			       d_convert_basic (sizetype, length));
+			       convert (sizetype, length));
 
 	  e = new IntegerExp (0, gen.getTargetSizeConst (length),
 			      Type::tindex);

@@ -106,6 +106,8 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
   tree var_decl = sym->Stree;
 
   gcc_assert (!TREE_STATIC (var_decl));
+  pushdecl (var_decl);
+
   if (TREE_CODE (var_decl) == CONST_DECL)
     return;
 
@@ -123,9 +125,9 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
       DECL_HAS_VALUE_EXPR_P (var_decl) = 1;
     }
   var_exp = var_decl;
-  pushdecl (var_decl);
 
-  tree init_exp = NULL_TREE; // complete initializer expression (include MODIFY_EXPR, e.g.)
+  // complete initializer expression (include MODIFY_EXPR, e.g.)
+  tree init_exp = NULL_TREE;
   tree init_val = NULL_TREE;
 
   if (!no_init && !DECL_INITIAL (var_decl) && v->init)
@@ -274,7 +276,7 @@ IRState::convertTo (tree type, tree exp)
   if (target_type && expr_type)
     return convertTo (exp, expr_type, target_type);
 
-  return d_convert_basic (type, exp);
+  return convert (type, exp);
 }
 
 // Return a TREE representation of EXP implictly converted to TARGET_TYPE.
@@ -534,108 +536,13 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
       break;
 
     default:
-	{
-	  if ((ebtype->isreal() && tbtype->isimaginary())
-	      || (ebtype->isimaginary() && tbtype->isreal()))
-	    {
-	      // warn? handle in front end?
-	      result = build_real_from_int_cst (target_type->toCtype(), integer_zero_node);
-	      if (TREE_SIDE_EFFECTS (exp))
-		result = compound (exp, result);
-	      return result;
-	    }
-	  else if (ebtype->iscomplex())
-	    {
-	      Type *part_type;
-	      // creal.re, .im implemented by cast to real or ireal
-	      // Assumes target type is the same size as the original's components size
-	      if (tbtype->isreal())
-		{
-		  // maybe install lang_specific...
-		  switch (ebtype->ty)
-		    {
-		    case Tcomplex32:
-		      part_type = Type::tfloat32;
-		      break;
-
-		    case Tcomplex64:
-		      part_type = Type::tfloat64;
-		      break;
-
-		    case Tcomplex80:
-		      part_type = Type::tfloat80;
-		      break;
-
-		    default:
-		      gcc_unreachable();
-		    }
-		  result = realPart (exp);
-		}
-	      else if (tbtype->isimaginary())
-		{
-		  switch (ebtype->ty)
-		    {
-		    case Tcomplex32:
-		      part_type = Type::timaginary32;
-		      break;
-
-		    case Tcomplex64:
-		      part_type = Type::timaginary64;
-		      break;
-
-		    case Tcomplex80:
-		      part_type = Type::timaginary80;
-		      break;
-
-		    default:
-		      gcc_unreachable();
-		    }
-		  result = imagPart (exp);
-		}
-	      else
-		{
-		  // default conversion
-		  break;
-		}
-	      result = convertTo (result, part_type, target_type);
-	    }
-	  else if (tbtype->iscomplex())
-	    {
-	      tree c1 = convertTo (TREE_TYPE (target_type->toCtype()), exp);
-	      tree c2 = build_real_from_int_cst (TREE_TYPE (target_type->toCtype()), integer_zero_node);
-
-	      if (ebtype->isreal())
-		{
-		  // nothing
-		}
-	      else if (ebtype->isimaginary())
-		{
-		  tree swap = c1;
-		  c1 = c2;
-		  c2 = swap;
-		}
-	      else
-		{
-		  // default conversion
-		  break;
-		}
-	      result = build2 (COMPLEX_EXPR, target_type->toCtype(), c1, c2);
-	    }
-	  else
-	    {
-	      gcc_assert (TREE_CODE (exp) != STRING_CST);
-	      // default conversion
-	    }
-	}
+      exp = fold_convert (exp_type->toCtype(), exp);
+      gcc_assert (TREE_CODE (exp) != STRING_CST);
+      // default conversion
     }
 
-  if (!result)
-    result = d_convert_basic (target_type->toCtype(), exp);
-#if ENABLE_CHECKING
-  if (isErrorMark (result))
-    error ("type: %s, target: %s", exp_type->toChars(), target_type->toChars());
-#endif
-  return result;
+  return result ? result :
+    convert (target_type->toCtype(), exp);
 }
 
 
@@ -723,7 +630,7 @@ IRState::convertForArgument (Expression *expr, Parameter *arg)
       if (expr->op != TOKaddress && expr->op != TOKsymoff && expr->op != TOKadd)
 	exp_tree = addressOf (exp_tree);
 
-      return d_convert_basic (trueArgumentType (arg), exp_tree);
+      return convert (trueArgumentType (arg), exp_tree);
     }
   else
     {
@@ -2047,7 +1954,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
 
       // This conversion is required for static arrays and is just-to-be-safe
       // for dynamic arrays
-      ptr_exp = d_convert_basic (base_type->nextOf()->pointerTo()->toCtype(), ptr_exp);
+      ptr_exp = convert (base_type->nextOf()->pointerTo()->toCtype(), ptr_exp);
       break;
 
     case Tpointer:
@@ -2325,7 +2232,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 		 promote anyway. */
 	      tree prom_type = lang_hooks.types.type_promotes_to (TREE_TYPE (actual_arg_tree));
 	      if (prom_type != TREE_TYPE (actual_arg_tree))
-		actual_arg_tree = d_convert_basic (prom_type, actual_arg_tree);
+		actual_arg_tree = convert (prom_type, actual_arg_tree);
 	    }
 	}
       /* Evaluate the argument before passing to the function.
@@ -2912,7 +2819,7 @@ IRState::libCall (LibCall lib_call, unsigned n_args, tree *args, tree force_resu
 
   // for force_result_type, assumes caller knows what it is doing %%
   if (force_result_type != NULL_TREE)
-    return d_convert_basic (force_result_type, result);
+    return convert (force_result_type, result);
 
   return result;
 }
@@ -3060,7 +2967,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 
 	  op1 = ce.nextArg();
 	  // %% Port is always cast to ushort
-	  op1 = d_convert_basic (d_type->toCtype(), op1);
+	  op1 = convert (d_type->toCtype(), op1);
 	  op2 = localVar (type);
 	  return expandPortIntrinsic (intrinsic, op1, op2, 0);
 #endif
@@ -3075,7 +2982,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  op1 = ce.nextArg();
 	  op2 = ce.nextArg();
 	  // %% Port is always cast to ushort
-	  op1 = d_convert_basic (d_type->toCtype(), op1);
+	  op1 = convert (d_type->toCtype(), op1);
 	  return expandPortIntrinsic (intrinsic, op1, op2, 1);
 #else
 	  ::error ("Port I/O intrinsic '%s' is only available on ix86 targets",
@@ -3113,7 +3020,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  // op1 is an integral type - use double precision.
 	  else if (INTEGRAL_TYPE_P (TYPE_MAIN_VARIANT (type)))
 	    {
-	      op1 = d_convert_basic (double_type_node, op1);
+	      op1 = convert (double_type_node, op1);
 	      exp = builtin_decl_explicit (BUILT_IN_SQRT);
 	    }
 
@@ -3174,7 +3081,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	      exp = build1 (VA_ARG_EXPR, type2, op1);
 	      // silently convert promoted type...
 	      if (type != type2)
-		exp = d_convert_basic (type, exp);
+		exp = convert (type, exp);
 	    }
 
 	  if (intrinsic == INTRINSIC_VA_ARG)

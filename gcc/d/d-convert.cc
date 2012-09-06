@@ -18,16 +18,11 @@
 #include "d-gcc-includes.h"
 #include "d-lang.h"
 
+
 // Creates an expression whose value is that of EXPR, converted to type TYPE.
 // This function implements all reasonable scalar conversions.
 
-tree
-convert (tree type, tree expr)
-{
-  return d_convert_basic (type, expr);
-}
-
-tree
+static tree
 d_convert_basic (tree type, tree expr)
 {
   // taken from c-convert.c
@@ -123,6 +118,58 @@ d_convert_basic (tree type, tree expr)
   error ("conversion to non-scalar type requested");
   return error_mark_node;
 }
+
+tree
+convert (tree type, tree expr)
+{
+  enum tree_code code = TREE_CODE (type);
+  tree etype = TREE_TYPE (expr);
+
+  switch (code)
+    {
+    case REAL_TYPE:
+      if (TREE_CODE (etype) == REAL_TYPE)
+	{
+	  // Casts between real and imaginary result in 0.0
+	  if ((D_TYPE_IMAGINARY_FLOAT (type) && !D_TYPE_IMAGINARY_FLOAT (etype)) ||
+	      (!D_TYPE_IMAGINARY_FLOAT (type) && D_TYPE_IMAGINARY_FLOAT (etype)))
+	    {
+	      warning (OPT_Wcast_result, "cast from %qT to %qT will produce nil result",
+		       etype, type);
+
+	      return build2 (COMPOUND_EXPR, type,
+			     build1 (CONVERT_EXPR, void_type_node, expr),
+			     build_zero_cst (type));
+	    }
+	}
+      else if (TREE_CODE (etype) == COMPLEX_TYPE)
+	{
+	  // creal.re, .im implemented by cast to real or ireal
+	  // Assumes target type is the same size as the original's components size
+	  gcc_assert (TYPE_SIZE (type) == TYPE_SIZE (TREE_TYPE (etype)));
+
+	  if (D_TYPE_IMAGINARY_FLOAT (type))
+	    expr = build1 (IMAGPART_EXPR, TREE_TYPE (etype), expr);
+	}
+      break;
+      
+    case COMPLEX_TYPE:
+      if (TREE_CODE (etype) == REAL_TYPE)
+	{
+	  if (D_TYPE_IMAGINARY_FLOAT (etype))
+	    return build2 (COMPLEX_EXPR, type,
+			   build_zero_cst (TREE_TYPE (type)),
+			   d_convert_basic (TREE_TYPE (type), expr));
+	}
+      break;
+
+    default:
+      break;
+    }
+
+  return d_convert_basic (type, expr);
+}
+
 
 // Perform default target promotions for data used in expressions.
 

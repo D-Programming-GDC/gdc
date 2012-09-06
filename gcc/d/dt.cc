@@ -283,8 +283,8 @@ dt2tree_list_of_elems (dt_t *dt)
     }
 
   TYPE_FIELDS (aggtype) = fields.head; // or finish_layout
-  TYPE_SIZE (aggtype) = d_convert_basic (bitsizetype,
-					 size_binop (MULT_EXPR, offset, size_int (BITS_PER_UNIT)));
+  TYPE_SIZE (aggtype) = convert (bitsizetype,
+				 size_binop (MULT_EXPR, offset, size_int (BITS_PER_UNIT)));
   TYPE_SIZE_UNIT (aggtype) = offset;
   // okay no alignment -- decl (which has the correct type) should take care of it..
   // align=bits per word?

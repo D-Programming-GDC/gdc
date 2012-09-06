@@ -510,8 +510,8 @@ InExp::toElem (IRState *irs)
       irs->typeinfoReference (key_type),
       aoe.set (irs, irs->convertTo (e1, key_type))
   };
-  return d_convert_basic (type->toCtype(),
-			  aoe.finish (irs, irs->libCall (LIBCALL_AAINX, 3, args)));
+  return convert (type->toCtype(),
+		  aoe.finish (irs, irs->libCall (LIBCALL_AAINX, 3, args)));
 }
 
 elem *
@@ -1616,7 +1616,7 @@ BoolExp::toElem (IRState *irs)
       return e1->toElem (irs);
     }
 
-  return d_convert_basic (type->toCtype(), irs->convertForCondition (e1));
+  return convert (type->toCtype(), irs->convertForCondition (e1));
 }
 
 elem *
@@ -3022,8 +3022,8 @@ FuncDeclaration::buildClosure (IRState *irs)
   DECL_NAME (closure_ptr) = get_identifier ("__closptr");
   DECL_IGNORED_P (closure_ptr) = 0;
 
-  tree arg = d_convert_basic (Type::tsize_t->toCtype(),
-			      TYPE_SIZE_UNIT (closure_rec_type));
+  tree arg = convert (Type::tsize_t->toCtype(),
+		      TYPE_SIZE_UNIT (closure_rec_type));
 
   DECL_INITIAL (closure_ptr) =
     irs->nop (TREE_TYPE (closure_ptr),
