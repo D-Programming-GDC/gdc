@@ -313,7 +313,7 @@ struct IRState : IRBase
   { return build1_loc (input_location, NOP_EXPR, t, e); }
 
   static tree vconvert (tree t, tree e)
-  { return build1 (VIEW_CONVERT_EXPR, t, e); }
+  { return indirect (t, addressOf (e)); }
 
   // DMD allows { void[] a; &a[3]; }
   static tree pvoidOkay (tree t);

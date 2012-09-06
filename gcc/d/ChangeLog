@@ -1,5 +1,10 @@
 2012-09-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-codegen.h(IRState::vconvert): Don't use VIEW_CONVERT_EXPR.
+	* d-glue.cc(TypeEnum::toCtype): Mark TYPE_PACKED if flag_short_enums.
+	(TypeClass::toCtype): Mark TREE_ADDRESSABLE to ensure class is always
+	passed in memory.
+
 	* d-tree.def(UNSIGNED_RSHIFT_EXPR): Define new tree expression.
 	(FLOAT_MOD_EXPR): Define new tree expression.
 	* d-lang.cc(d_common_init_ts): New function.

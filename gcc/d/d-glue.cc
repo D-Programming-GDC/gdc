@@ -3015,9 +3015,11 @@ TypeEnum::toCtype (void)
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);
 
-	  // %% c-decl.c: if (flag_short_enums) TYPE_PACKED (enumtype) = 1;
+	  if (flag_short_enums)
+	    TYPE_PACKED (ctype) = 1;
+
 	  TYPE_PRECISION (ctype) = size (0) * 8;
-	  TYPE_SIZE (ctype) = 0; // as in c-decl.c
+	  TYPE_SIZE (ctype) = 0;
 	  TYPE_MAIN_VARIANT (ctype) = cmemtype;
 
 	  if (sym->attributes)
@@ -3452,6 +3454,7 @@ TypeClass::toCtype (void)
 	}
       DECL_VIRTUAL_P (vfield) = 1;
       TYPE_VFIELD (rec_type) = vfield; // This only seems to affect debug info
+      TREE_ADDRESSABLE (rec_type) = 1;
 
       if (!sym->isInterfaceDeclaration())
 	{
