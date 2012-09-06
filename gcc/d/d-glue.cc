@@ -523,29 +523,13 @@ CmpExp::toElem (IRState *irs)
       (tb2->ty == Tsarray || tb2->ty == Tarray))
     {
       Type *telem = tb1->nextOf()->toBasetype();
-      unsigned n_args = 2;
-      LibCall lib_call;
       tree args[3] = {
 	  irs->toDArray (e1),
 	  irs->toDArray (e2),
-	  NULL_TREE,
+	  irs->typeinfoReference (telem->arrayOf())
       };
 
-      if (telem->ty == Tvoid ||
-	  (telem->size() == 1 && telem->isscalar() &&
-	   telem->isunsigned()))
-	{
-	  // Tvoid, Tuns8, Tchar, Tbool
-	  lib_call = LIBCALL_ADCMPCHAR;
-	}
-      else
-	{
-	  args[2] = irs->typeinfoReference (telem->arrayOf());
-	  n_args = 3;
-	  lib_call = LIBCALL_ADCMP2;
-	}
-
-      tree result = irs->libCall (lib_call, n_args, args);
+      tree result = irs->libCall (LIBCALL_ADCMP2, 3, args);
       enum tree_code out_code;
 
       // %% For float element types, warn that NaN is not taken into account ?

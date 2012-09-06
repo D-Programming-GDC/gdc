@@ -2325,7 +2325,7 @@ static const char *libcall_ids[LIBCALL_count] = {
     "_aaDelX", "_aaEqual",
     "_aaGetRvalueX", "_aaGetX",
     "_aaInX", "_aaLen",
-    "_adCmp", "_adCmp2", "_adCmpChar",
+    "_adCmp", "_adCmp2",
     "_adDupT", "_adEq", "_adEq2",
     "_adReverse", "_adReverseChar", "_adReverseWchar",
     "_adSort", "_adSortChar", "_adSortWchar",
@@ -2501,12 +2501,6 @@ IRState::getLibCallDecl (LibCall lib_call)
 	  targs.push (Type::tvoid->arrayOf());
 	  targs.push (Type::tvoid->arrayOf());
 	  targs.push (Type::typeinfo->type->constOf());
-	  treturn = Type::tint32;
-	  break;
-
-	case LIBCALL_ADCMPCHAR:
-	  targs.push (Type::tchar->arrayOf());
-	  targs.push (Type::tchar->arrayOf());
 	  treturn = Type::tint32;
 	  break;
 
