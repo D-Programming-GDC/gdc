@@ -4620,6 +4620,8 @@ AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
       SET_DECL_OFFSET_ALIGN (field_decl, TYPE_ALIGN (TREE_TYPE (field_decl)));
       layout_decl (field_decl, 0);
 
+      TREE_THIS_VOLATILE (field_decl) = TYPE_VOLATILE (TREE_TYPE (field_decl));
+
       if (var_decl->size (var_decl->loc))
 	{
 	  gcc_assert (DECL_MODE (field_decl) != VOIDmode);
@@ -4656,6 +4658,8 @@ AggLayout::addField (tree field_decl, size_t offset)
   DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_zero_node;
   Loc l (this->aggDecl_->getModule(), 1); // Must set this or we crash with DWARF debugging
   g.ofile->setDeclLoc (field_decl, l);
+
+  TREE_THIS_VOLATILE (field_decl) = TYPE_VOLATILE (TREE_TYPE (field_decl));
 
   layout_decl (field_decl, 0);
   this->fieldList_.chain (field_decl);

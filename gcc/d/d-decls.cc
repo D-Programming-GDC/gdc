@@ -282,6 +282,10 @@ VarDeclaration::toSymbol (void)
 	    TREE_CONSTANT (var_decl) = 1;
 	}
 
+      // Propagate volatile.
+      if (TYPE_VOLATILE (TREE_TYPE (var_decl)))
+	TREE_THIS_VOLATILE (var_decl) = 1;
+
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
       // Have to test for import first
       if (isImportedSymbol())

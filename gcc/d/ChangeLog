@@ -1,3 +1,9 @@
+2012-10-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-codegen.cc(AggLayout::doFields): Propagate volatile out of type.
+	(AggLayout::addField): Likewise.
+	* d-decls.cc(VarDeclaration::toSymbol): Likewise.
+
 2012-09-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.h(IRState::vconvert): Don't use VIEW_CONVERT_EXPR.
@@ -20,36 +26,17 @@
 	(build_assign_math_op): Remove function, mostly move to
 	IRState::buildAssignOp.
 	(BinExp::toElemBin): Remove function.
-	(IdentityExp::toElem): Clean-up, use IRState::boolOp.
-	(EqualExp::toElem): Likewise.
-	(CmpExp::toElem): Likewise.
-	(AndAndExp::toElem): Likewise.
-	(OrOrExp::toElem): Likewise.
-	(XorExp::toElem): Use IRState::arrayOpNotImplemented,
-	IRState::buildOp.
-	(OrExp::toElem): Likewise.
-	(AndExp::toElem): Likewise.
-	(UshrExp::toElem): Likewise.
-	(ShrExp::toElem): Likewise.
-	(ShlExp::toElem): Likewise.
-	(ModExp::toElem): Likewise.
-	(DivExp::toElem): Likewise.
-	(MulExp::toElem): Likewise.
-	(MinExp::toElem): Likewise.
-	(AddExp::toElem): Likewise.
-	(XorAssignExp::toElem): Use IRState::arrayOpNotImplemented,
-	IRState::buildOp.
-	(OrAssignExp::toElem): Likewise.
-	(AndAssignExp::toElem): Likewise.
-	(UshrAssignExp::toElem): Likewise.
-	(ShrAssignExp::toElem): Likewise.
-	(ShlAssignExp::toElem): Likewise.
-	(ModAssignExp::toElem): Likewise.
-	(DivAssignExp::toElem): Likewise.
-	(MulAssignExp::toElem): Likewise.
-	(PowAssignExp::toElem): Likewise.
-	(MinAssignExp::toElem): Likewise.
-	(AddAssignExp::toElem): Likewise.
+	(IdentityExp::toElem, EqualExp::toElem, CmpExp::toElem)
+	(AndAndExp::toElem, OrOrExp::toElem): Clean-up, use IRState::boolOp.
+	(XorExp::toElem, OrExp::toElem, AndExp::toElem, UshrExp::toElem)
+	(ShrExp::toElem, ShlExp::toElem, ModExp::toElem, DivExp::toElem)
+	(MulExp::toElem, MinExp::toElem, AddExp::toElem):Use
+	IRState::arrayOpNotImplemented,	IRState::buildOp.
+	(XorAssignExp::toElem, OrAssignExp::toElem, AndAssignExp::toElem)
+	(UshrAssignExp::toElem, ShrAssignExp::toElem, ShlAssignExp::toElem)
+	(ModAssignExp::toElem, DivAssignExp::toElem, MulAssignExp::toElem)
+	(MinAssignExp::toElem, AddAssignExp::toElem): Use
+	IRState::arrayOpNotImplemented, IRState::buildAssignOp.
 
 	* d-codegen.cc(libcall_ids): Remove _adCmpChar.
 	(IRState::getLibCallDecl): Remove LIBCALL_ADCMPCHAR.
