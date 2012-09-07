@@ -285,8 +285,8 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	  if (arg != NULL)
 	    {
 	      int len = strlen (only_source_option);
-	      if (len <= 2 || only_source_option[len-1] != 'd' ||
-		  only_source_option[len-2] != '.')
+	      if (len <= 2 || only_source_option[len-1] != 'd'
+		  || only_source_option[len-2] != '.')
 		only_source_option = concat (only_source_option, ".d", NULL);
 	    }
 	  break;

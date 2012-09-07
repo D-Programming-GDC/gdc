@@ -890,9 +890,9 @@ d_parse_file (void)
 	  // Strip extension
 	  name[ext - p] = 0;
 
-	  if (name[0] == 0 ||
-	      strcmp (name, "..") == 0 ||
-	      strcmp (name, ".") == 0)
+	  if (name[0] == 0
+	      || strcmp (name, "..") == 0
+	      || strcmp (name, ".") == 0)
 	    {
 	Linvalid:
 	      ::error ("invalid file name '%s'", fname);
@@ -1377,8 +1377,8 @@ d_type_promotes_to (tree type)
     return double_type_node;
 
   // not quite the same as... if (c_promoting_integer_type_p (type))
-  if (INTEGRAL_TYPE_P (type) &&
-      (TYPE_PRECISION (type) < TYPE_PRECISION (integer_type_node)))
+  if (INTEGRAL_TYPE_P (type)
+      && (TYPE_PRECISION (type) < TYPE_PRECISION (integer_type_node)))
     {
       /* Preserve unsignedness if not really getting any wider.  */
       if (TYPE_UNSIGNED (type)
@@ -1472,8 +1472,8 @@ poplevel (int keep, int reverse, int routinebody)
       /* Warnings for unused variables.  */
       for (tree t = nreverse (vars); t != NULL_TREE; t = TREE_CHAIN (t))
 	{
-	  gcc_assert (TREE_CODE (t) == VAR_DECL);
-	  if ((!TREE_USED (t) /*|| !DECL_READ_P (t)*/) // %% TODO
+	  if (TREE_CODE (t) == VAR_DECL
+	      && (!TREE_USED (t) /*|| !DECL_READ_P (t)*/) // %% TODO
 	      && !TREE_NO_WARNING (t)
 	      && DECL_NAME (t)
 	      && !DECL_ARTIFICIAL (t))

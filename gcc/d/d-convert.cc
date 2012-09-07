@@ -131,8 +131,8 @@ convert (tree type, tree expr)
       if (TREE_CODE (etype) == REAL_TYPE)
 	{
 	  // Casts between real and imaginary result in 0.0
-	  if ((D_TYPE_IMAGINARY_FLOAT (type) && !D_TYPE_IMAGINARY_FLOAT (etype)) ||
-	      (!D_TYPE_IMAGINARY_FLOAT (type) && D_TYPE_IMAGINARY_FLOAT (etype)))
+	  if ((D_TYPE_IMAGINARY_FLOAT (type) && !D_TYPE_IMAGINARY_FLOAT (etype))
+	      || (!D_TYPE_IMAGINARY_FLOAT (type) && D_TYPE_IMAGINARY_FLOAT (etype)))
 	    {
 	      warning (OPT_Wcast_result, "cast from %qT to %qT will produce nil result",
 		       etype, type);

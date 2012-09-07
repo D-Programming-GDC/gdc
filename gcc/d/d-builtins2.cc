@@ -105,8 +105,8 @@ gcc_type_to_d_type (tree t)
       for (size_t i = 0; i < TMAX; i++)
 	{
 	  d = Type::basic[i];
-	  if (d && d->isintegral() && d->size() == type_size &&
-	      (d->isunsigned() ? true : false) == is_unsigned)
+	  if (d && d->isintegral() && d->size() == type_size
+	      && (d->isunsigned() ? true : false) == is_unsigned)
 	    return d;
 	}
       break;
@@ -652,8 +652,8 @@ d_gcc_magic_module (Module *m)
     }
   else if (md->packages->dim == 2)
     {
-      if (!strcmp ((md->packages->tdata()[0])->string, "core") &&
-	  !strcmp ((md->packages->tdata()[1])->string, "stdc"))
+      if (!strcmp ((md->packages->tdata()[0])->string, "core")
+	  && !strcmp ((md->packages->tdata()[1])->string, "stdc"))
 	{
 	  if (!strcmp (md->id->string, "stdarg"))
 	    d_gcc_magic_stdarg_module (m);

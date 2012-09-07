@@ -220,11 +220,11 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
 	 There is no way to tell if the back end implements
 	 make_decl_one_only with DECL_WEAK, so this check is
 	 done first.  */
-      if (!TREE_PUBLIC (decl_tree) ||
-	  (TREE_CODE (decl_tree) == FUNCTION_DECL &&
-	   DECL_CONTEXT (decl_tree) != NULL_TREE &&
-	   D_DECL_STATIC_CHAIN (decl_tree) == 1 &&
-	   D_DECL_IS_CONTRACT (decl_tree) == 0))
+      if (!TREE_PUBLIC (decl_tree)
+	  || (TREE_CODE (decl_tree) == FUNCTION_DECL
+	      && DECL_CONTEXT (decl_tree) != NULL_TREE
+	      && D_DECL_STATIC_CHAIN (decl_tree) == 1
+	      && D_DECL_IS_CONTRACT (decl_tree) == 0))
 	return;
     }
 
@@ -270,9 +270,9 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
   Declaration *real_decl = dsym->isDeclaration();
   FuncDeclaration *func_decl = real_decl ? real_decl->isFuncDeclaration() : 0;
 
-  if (force_static_public ||
-      (TREE_CODE (decl_tree) == VAR_DECL && (real_decl && real_decl->isDataseg())) ||
-      (TREE_CODE (decl_tree) == FUNCTION_DECL))
+  if (force_static_public
+      || (TREE_CODE (decl_tree) == VAR_DECL && (real_decl && real_decl->isDataseg()))
+      || (TREE_CODE (decl_tree) == FUNCTION_DECL))
     {
       bool has_module = false;
       bool is_template = false;
@@ -302,8 +302,8 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
 
       if (real_decl)
 	{
-	  if (real_decl->isVarDeclaration() &&
-	      real_decl->storage_class & STCextern)
+	  if (real_decl->isVarDeclaration()
+	      && real_decl->storage_class & STCextern)
 	    has_module = false;
 	}
 

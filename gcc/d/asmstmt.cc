@@ -104,8 +104,8 @@ ExtAsmStatement::semantic (Scope *sc)
 	       sc->func->toChars());
     }
 
-  if (this->insnTemplate->op != TOKstring ||
-      ((StringExp *)this->insnTemplate)->sz != 1)
+  if (this->insnTemplate->op != TOKstring
+      || ((StringExp *)this->insnTemplate)->sz != 1)
     error ("instruction template must be a constant char string");
 
   if (this->args)

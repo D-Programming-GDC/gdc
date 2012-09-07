@@ -179,8 +179,8 @@ IRBase::getLabelBlock (LabelDsymbol *label, Statement *from)
     {
       Flow *flow = this->loops[i];
 
-      if (flow->kind != level_block &&
-	  flow->kind != level_switch)
+      if (flow->kind != level_block
+	  && flow->kind != level_switch)
 	{
 	  l->block = flow->statement;
 	  l->kind = flow->kind;
@@ -228,8 +228,8 @@ IRBase::getLoopForLabel (Identifier *ident, bool want_continue)
 	{
 	  Flow *flow = this->loops[i];
 
-	  if ((!want_continue && flow->statement->hasBreak()) ||
-	      flow->statement->hasContinue())
+	  if ((!want_continue && flow->statement->hasBreak())
+	      || flow->statement->hasContinue())
 	    return flow;
 	}
       gcc_unreachable();

@@ -372,12 +372,12 @@ struct IRState : IRBase
   tree assertCall (Loc loc, LibCall libcall = LIBCALL_ASSERT);
   tree assertCall (Loc loc, Expression *msg);
 
-  static FuncDeclaration *getLibCallDecl (LibCall lib_call);
+  static FuncDeclaration *getLibCallDecl (LibCall libcall);
   // This does not perform conversions on the arguments.  This allows
   // arbitrary data to be passed through varargs without going through the
   // usual conversions.
   static void maybeSetLibCallDecl (FuncDeclaration *decl);
-  static tree libCall (LibCall lib_call, unsigned n_args, tree *args, tree force_result_type = NULL_TREE);
+  static tree libCall (LibCall libcall, unsigned n_args, tree *args, tree force_result_type = NULL_TREE);
   static tree buildCall (tree type, tree callee, tree args);
   static tree buildCall (tree callee, int n_args, ...);
 

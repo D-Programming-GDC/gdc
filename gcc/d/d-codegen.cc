@@ -1215,8 +1215,8 @@ IRState::arrayOpNotImplemented (BinExp *exp)
   TY ty1 = exp->e1->type->toBasetype()->ty;
   TY ty2 = exp->e2->type->toBasetype()->ty;
 
-  if ((ty1 == Tarray || ty1 == Tsarray ||
-       ty2 == Tarray || ty2 == Tsarray))
+  if ((ty1 == Tarray || ty1 == Tsarray
+       || ty2 == Tarray || ty2 == Tsarray))
     {
       exp->error ("Array operation %s not implemented", exp->toChars());
       return true;
@@ -1323,8 +1323,8 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
 	  is_dottype = true;
 	  this_expr = obj_exp->toElem (this);
 	}
-      else if (obj_exp->op == TOKcast &&
-	       ((CastExp *) obj_exp)->e1->op == TOKdottype)
+      else if (obj_exp->op == TOKcast
+	       && ((CastExp *) obj_exp)->e1->op == TOKdottype)
 	{
 	  is_dottype = true;
 	  this_expr = ((CastExp *) obj_exp)->e1->toElem (this);
@@ -1340,9 +1340,9 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
       // Final and non-virtual methods can be called directly.
       // DotTypeExp means non-virtual
 
-      if (obj_exp->op == TOKsuper ||
-	  obj_type->ty == Tstruct || obj_type->ty == Tpointer ||
-	  func->isFinal() || !func->isVirtual() || is_dottype)
+      if (obj_exp->op == TOKsuper
+	  || obj_type->ty == Tstruct || obj_type->ty == Tpointer
+	  || func->isFinal() || !func->isVirtual() || is_dottype)
 	{
 	  if (obj_type->ty == Tstruct)
 	    this_expr = addressOf (this_expr);
@@ -1470,14 +1470,14 @@ IRState::isFreeOfSideEffects (tree expr)
   if (TREE_CODE (t) == SAVE_EXPR)
     return true;
 
-  if (DECL_P (t) ||
-      CONSTANT_CLASS_P (t) ||
-      EXCEPTIONAL_CLASS_P (t))
+  if (DECL_P (t)
+      || CONSTANT_CLASS_P (t)
+      || EXCEPTIONAL_CLASS_P (t))
     return true;
 
-  if (INDIRECT_REF_P (t) ||
-      TREE_CODE (t) == ADDR_EXPR ||
-      TREE_CODE (t) == COMPONENT_REF)
+  if (INDIRECT_REF_P (t)
+      || TREE_CODE (t) == ADDR_EXPR
+      || TREE_CODE (t) == COMPONENT_REF)
     return isFreeOfSideEffects (TREE_OPERAND (t, 0));
 
   return !TREE_SIDE_EFFECTS (t);
@@ -1991,8 +1991,8 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
 
       // If it's a static array and the index is constant,
       // the front end has already checked the bounds.
-      if (arrayBoundsCheck() &&
-	  !(base_type_ty == Tsarray && e2->isConst()))
+      if (arrayBoundsCheck()
+	  && !(base_type_ty == Tsarray && e2->isConst()))
 	{
 	  tree array_len_expr;
 	  // implement bounds check as a conditional expression:
@@ -2142,8 +2142,8 @@ IRState::isErrorMark (tree t)
 {
   return (t == error_mark_node
 	  || (t && TREE_TYPE (t) == error_mark_node)
-	  || (t && TREE_CODE (t) == NOP_EXPR &&
-	      TREE_OPERAND (t, 0) == error_mark_node));
+	  || (t && TREE_CODE (t) == NOP_EXPR
+	      && TREE_OPERAND (t, 0) == error_mark_node));
 }
 
 // Returns the TypeFunction class for Type T.
@@ -2455,9 +2455,9 @@ static FuncDeclaration *libcall_decls[LIBCALL_count];
 // more like GCC builtin trees.
 
 FuncDeclaration *
-IRState::getLibCallDecl (LibCall lib_call)
+IRState::getLibCallDecl (LibCall libcall)
 {
-  FuncDeclaration *decl = libcall_decls[lib_call];
+  FuncDeclaration *decl = libcall_decls[libcall];
 
   static Type *aa_type = NULL;
   static Type *dg_type = NULL;
@@ -2492,7 +2492,7 @@ IRState::getLibCallDecl (LibCall lib_call)
 	  dg2_type = new TypeDelegate (fn_type);
 	}
 
-      switch (lib_call)
+      switch (libcall)
 	{
 	case LIBCALL_ASSERT:
 	case LIBCALL_ARRAY_BOUNDS:
@@ -2863,7 +2863,7 @@ IRState::getLibCallDecl (LibCall lib_call)
 	}
 
       // Build extern(C) function.
-      Identifier *id = Lexer::idPool(libcall_ids[lib_call]);
+      Identifier *id = Lexer::idPool(libcall_ids[libcall]);
       TypeFunction *tf = new TypeFunction(NULL, treturn, 0, LINKc);
       tf->varargs = varargs ? 1 : 0;
 
@@ -2878,7 +2878,7 @@ IRState::getLibCallDecl (LibCall lib_call)
 	(*args)[i] = new Parameter (0, targs[i], NULL, NULL);
 
       tf->parameters = args;
-      libcall_decls[lib_call] = decl;
+      libcall_decls[libcall] = decl;
     }
 
   return decl;
@@ -2890,35 +2890,35 @@ IRState::maybeSetLibCallDecl (FuncDeclaration *decl)
   if (!decl->ident)
     return;
 
-  LibCall lib_call = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
-  if (lib_call == LIBCALL_NONE)
+  LibCall libcall = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
+  if (libcall == LIBCALL_NONE)
     return;
 
-  if (libcall_decls[lib_call] == decl)
+  if (libcall_decls[libcall] == decl)
     return;
 
   TypeFunction *tf = (TypeFunction *) decl->type;
   if (tf->parameters == NULL)
     {
-      FuncDeclaration *new_decl = getLibCallDecl (lib_call);
+      FuncDeclaration *new_decl = getLibCallDecl (libcall);
       new_decl->toSymbol();
 
       decl->type = new_decl->type;
       decl->csym = new_decl->csym;
     }
 
-  libcall_decls[lib_call] = decl;
+  libcall_decls[libcall] = decl;
 }
 
-// Build call to LIB_CALL. N_ARGS is the number of call arguments
+// Build call to LIBCALL. N_ARGS is the number of call arguments
 // which are specified in as a tree array ARGS.  The caller can
 // force the return type of the call to FORCE_RESULT_TYPE if the
 // library call returns a generic value.
 
 tree
-IRState::libCall (LibCall lib_call, unsigned n_args, tree *args, tree force_result_type)
+IRState::libCall (LibCall libcall, unsigned n_args, tree *args, tree force_result_type)
 {
-  FuncDeclaration *lib_decl = getLibCallDecl (lib_call);
+  FuncDeclaration *lib_decl = getLibCallDecl (libcall);
   Type *type = lib_decl->type->nextOf();
   tree callee = addressOf (lib_decl);
   tree arg_list = NULL_TREE;
@@ -3170,8 +3170,8 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	    }
 
 	  d_type = getDType (type);
-	  if (flag_split_darrays &&
-	      (d_type && d_type->toBasetype()->ty == Tarray))
+	  if (flag_split_darrays
+	      && (d_type && d_type->toBasetype()->ty == Tarray))
 	    {
 	      /* should create a temp var of type TYPE and move the binding
 		 to outside this expression.  */
@@ -3211,8 +3211,8 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  // could be casting... so need to check type too?
 	  STRIP_NOPS (op1);
 	  STRIP_NOPS (op2);
-	  gcc_assert (TREE_CODE (op1) == ADDR_EXPR &&
-		      TREE_CODE (op2) == ADDR_EXPR);
+	  gcc_assert (TREE_CODE (op1) == ADDR_EXPR
+		      && TREE_CODE (op2) == ADDR_EXPR);
 
 	  op2 = TREE_OPERAND (op2, 0);
 	  // assuming nobody tries to change the return type
@@ -3407,8 +3407,8 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
       DECL_FUNCTION_CODE (t) = (built_in_function) i;
       return true;
     }
-  else if ((gen.mathModule && dsym->getModule() == gen.mathModule) ||
-	   (gen.mathCoreModule && dsym->getModule() == gen.mathCoreModule))
+  else if ((gen.mathModule && dsym->getModule() == gen.mathModule)
+	   || (gen.mathCoreModule && dsym->getModule() == gen.mathCoreModule))
     {
       // Matches order of Intrinsic enum
       static const char *math_names[] = {
@@ -3507,9 +3507,7 @@ tree
 IRState::getFrameForFunction (FuncDeclaration *f)
 {
   if (f->fbody)
-    {
-      return getFrameForSymbol (f);
-    }
+    return getFrameForSymbol (f);
   else
     {
       // Should instead error on line that references f
@@ -3656,44 +3654,34 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
 // Starting from the current function, try to find a suitable value of
 // 'this' in nested function instances.
 
-// A suitable 'this' value is an instance of TARGET_CD or a class that
-// has TARGET_CD as a base.
+// A suitable 'this' value is an instance of OCD or a class that has
+// OCD as a base.
 
 tree
-IRState::findThis (ClassDeclaration *target_cd)
+IRState::findThis (ClassDeclaration *ocd)
 {
   FuncDeclaration *fd = func;
 
   while (fd)
     {
-      AggregateDeclaration *fd_ad;
-      ClassDeclaration *fd_cd;
+      AggregateDeclaration *ad = fd->isThis();
+      ClassDeclaration *cd = ad ? ad->isClassDeclaration() : NULL;
 
-      if ((fd_ad = fd->isThis()) &&
-	  (fd_cd = fd_ad->isClassDeclaration()))
+      if (cd != NULL)
 	{
-	  if (target_cd == fd_cd)
-	    {
-	      return var (fd->vthis);
-	    }
-	  else if (target_cd->isBaseOf (fd_cd, NULL))
-	    {
-	      gcc_assert (fd->vthis); // && fd->vthis->csym->Stree
-	      return convertTo (var (fd->vthis),
-				fd_cd->type, target_cd->type);
-	    }
+	  if (ocd == cd)
+	    return var (fd->vthis);
+	  else if (ocd->isBaseOf (cd, NULL))
+	    return convertTo (var (fd->vthis), cd->type, ocd->type);
 	  else
-	    {
-	      fd = isClassNestedInFunction (fd_cd);
-	    }
-	}
-      else if (fd->isNested())
-	{
-	  fd = fd->toParent2()->isFuncDeclaration();
+	    fd = isClassNestedInFunction (cd);
 	}
       else
 	{
-	  fd = NULL;
+	  if (fd->isNested())
+	    fd = fd->toParent2()->isFuncDeclaration();
+	  else
+	    fd = NULL;
 	}
     }
   return NULL_TREE;
@@ -3735,8 +3723,8 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	     translated. Use a null pointer for the link in
 	     this case. */
 	  FuncFrameInfo *ffo = getFrameInfo (fd_outer);
-	  if (ffo->creates_frame || ffo->static_chain ||
-	      fd_outer->hasNestedFrameRefs())
+	  if (ffo->creates_frame || ffo->static_chain
+	      || fd_outer->hasNestedFrameRefs())
 	    {
 	      // %% V2: rec_type->class_type
 	      vthis_value = getFrameForNestedClass (class_decl);
@@ -3758,8 +3746,8 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
       if (fd_outer)
 	{
 	  FuncFrameInfo *ffo = getFrameInfo (fd_outer);
-	  if (ffo->creates_frame || ffo->static_chain ||
-	      fd_outer->hasNestedFrameRefs())
+	  if (ffo->creates_frame || ffo->static_chain
+	      || fd_outer->hasNestedFrameRefs())
 	    {
 	      vthis_value = getFrameForNestedStruct (struct_decl);
 	    }
@@ -3775,7 +3763,7 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
   return vthis_value;
 }
 
-// Return the parent function of a nested class.
+// Return the parent function of a nested class CD.
 
 FuncDeclaration *
 IRState::isClassNestedInFunction (ClassDeclaration *cd)
@@ -3792,7 +3780,7 @@ IRState::isClassNestedInFunction (ClassDeclaration *cd)
   return NULL;
 }
 
-// Return the parent function of a nested struct.
+// Return the parent function of a nested struct SD.
 
 FuncDeclaration *
 IRState::isStructNestedInFunction (StructDeclaration *sd)
@@ -4483,8 +4471,8 @@ IRState::checkGoto (Statement *stmt, LabelDsymbol *label)
       if (label == linfo->label)
 	{
 	  // No need checking for finally, should have already been handled.
-	  if (linfo->kind == level_try &&
-	      curLevel <= linfo->level && curBlock != linfo->block)
+	  if (linfo->kind == level_try
+	      && curLevel <= linfo->level && curBlock != linfo->block)
 	    {
 	      stmt->error ("cannot goto into try block");
 	    }
@@ -4530,15 +4518,15 @@ IRState::checkPreviousGoto (Array *refs)
 	  if (ref->label == linfo->label)
 	    {
 	      // No need checking for finally, should have already been handled.
-	      if (linfo->kind == level_try &&
-		  ref->level <= linfo->level && ref->block != linfo->block)
+	      if (linfo->kind == level_try
+		  && ref->level <= linfo->level && ref->block != linfo->block)
 		{
 		  stmt->error ("cannot goto into try block");
 		}
 	      // %% doc: It is illegal for goto to be used to skip initializations,
 	      // %%      so this should include all gotos into catches...
-	      if (linfo->kind == level_catch &&
-		  (ref->block != linfo->block || ref->kind != linfo->kind))
+	      if (linfo->kind == level_catch
+		  && (ref->block != linfo->block || ref->kind != linfo->kind))
 		stmt->error ("cannot goto into catch block");
 
 	      found = 1;
