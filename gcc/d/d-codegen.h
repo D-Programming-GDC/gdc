@@ -361,6 +361,8 @@ struct IRState : IRBase
   static bool isFuncType (tree t)
   { return (TREE_CODE (t) == FUNCTION_TYPE || TREE_CODE (t) == METHOD_TYPE); }
 
+  static bool isCallByAlias (FuncDeclaration *caller, FuncDeclaration *callee);
+
   // ** Function calls
   tree call (Expression *expr, Expressions *arguments);
   tree call (FuncDeclaration *func_decl, Expressions *args);

@@ -322,7 +322,7 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
 	}
 
       // Do this by default, but allow private templates to override
-      if (!func_decl || !func_decl->isNested())
+      if (!func_decl || !func_decl->isNested() || force_static_public)
 	TREE_PUBLIC (decl_tree) = 1;
 
       if (D_DECL_ONE_ONLY (decl_tree))

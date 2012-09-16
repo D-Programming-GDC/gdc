@@ -2162,6 +2162,29 @@ IRState::getFuncType (Type *t)
   return tf;
 }
 
+// Returns TRUE if CALLEE is a plain nested function outside the scope of CALLER.
+// In which case, CALLEE is being called through an alias that was passed to CALLER.
+
+bool
+IRState::isCallByAlias (FuncDeclaration *caller, FuncDeclaration *callee)
+{
+  if (!callee->isNested())
+    return false;
+
+  Dsymbol *dsym = callee;
+
+  while (dsym)
+    {
+      if (dsym->isTemplateInstance())
+	return false;
+      else if (dsym->isFuncDeclaration() == caller)
+	return false;
+      dsym = dsym->toParent();
+    }
+
+  return true;
+}
+
 // Entry point for call routines.  Extracts the callee, object,
 // and function type from expression EXPR, passing down ARGUMENTS.
 
@@ -2215,6 +2238,11 @@ IRState::call (Expression *expr, Expressions *arguments)
       tf = (TypeFunction *) fd->type;
       if (fd->isNested())
 	{
+	  if (isCallByAlias (func, fd))
+	    {
+	      // Re-evaluate symbol storage treating 'fd' as public.
+	      g.ofile->setupSymbolStorage (fd, callee, true);
+	    }
 	  object = getFrameForFunction (fd);
 	}
       else if (fd->needThis())
