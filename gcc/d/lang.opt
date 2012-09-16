@@ -198,7 +198,7 @@ nostdinc
 D
 Do not search standard system include directories (those specified with -isystem will still be used)
 
-static_libphobos
+static-libphobos
 Driver
 Link the standard D library statically in the compilation.
 

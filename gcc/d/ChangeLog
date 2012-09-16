@@ -1,5 +1,8 @@
 2012-09-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-spec.c(lang_specific_driver): Update for GCC-4.8.
+	* lang.opt: Fix spelling of option -static-libphobos
+
 	* d-codegen.cc(IRState::maybeExpandSpecialCall): Do not handle inp*
 	and outp* port intrinsic functions.
 	(IRState::maybeSetUpBuiltin): Likewise.
