@@ -155,8 +155,6 @@ struct IRState : IRBase
     INTRINSIC_BSF, INTRINSIC_BSR,
     INTRINSIC_BSWAP,
     INTRINSIC_BT, INTRINSIC_BTC, INTRINSIC_BTR, INTRINSIC_BTS,
-    INTRINSIC_INP, INTRINSIC_INPL, INTRINSIC_INPW,
-    INTRINSIC_OUTP, INTRINSIC_OUTPL, INTRINSIC_OUTPW,
 
     INTRINSIC_COS, INTRINSIC_FABS,
     INTRINSIC_LDEXP, INTRINSIC_RINT,
@@ -485,7 +483,6 @@ struct IRState : IRBase
 
  protected:
   tree maybeExpandSpecialCall (tree call_exp);
-  static tree expandPortIntrinsic (Intrinsic code, tree port, tree value, int outp);
 
   tree getFrameForSymbol (Dsymbol *nested_sym);
   tree getFrameRef (FuncDeclaration *outer_func);

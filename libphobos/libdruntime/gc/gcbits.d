@@ -29,7 +29,7 @@ version (DigitalMars)
 }
 else version (GNU)
 {
-    // use the unoptimized version
+    version = bitops;
 }
 else version (D_InlineAsm_X86)
 {

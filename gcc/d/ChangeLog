@@ -1,4 +1,11 @@
-2012-10-06  Iain Buclaw  <ibuclaw@ubuntu.com>
+2012-09-16  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-codegen.cc(IRState::maybeExpandSpecialCall): Do not handle inp*
+	and outp* port intrinsic functions.
+	(IRState::maybeSetUpBuiltin): Likewise.
+	(IRState::expandPortIntrinsic): Remove.
+
+2012-09-10  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.cc(AggLayout::doFields): Propagate volatile out of type.
 	(AggLayout::addField): Likewise.

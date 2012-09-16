@@ -3069,38 +3069,6 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  op1 = ce.nextArg();
 	  return buildCall (builtin_decl_explicit (BUILT_IN_BSWAP32), 1, op1);
 
-	case INTRINSIC_INP:
-	case INTRINSIC_INPL:
-	case INTRINSIC_INPW:
-#ifdef TARGET_386
-	  type = TREE_TYPE (call_exp);
-	  d_type = Type::tuns16;
-
-	  op1 = ce.nextArg();
-	  // %% Port is always cast to ushort
-	  op1 = convert (d_type->toCtype(), op1);
-	  op2 = localVar (type);
-	  return expandPortIntrinsic (intrinsic, op1, op2, 0);
-#endif
-	  // else fall through to error below.
-	case INTRINSIC_OUTP:
-	case INTRINSIC_OUTPL:
-	case INTRINSIC_OUTPW:
-#ifdef TARGET_386
-	  type = TREE_TYPE (call_exp);
-	  d_type = Type::tuns16;
-
-	  op1 = ce.nextArg();
-	  op2 = ce.nextArg();
-	  // %% Port is always cast to ushort
-	  op1 = convert (d_type->toCtype(), op1);
-	  return expandPortIntrinsic (intrinsic, op1, op2, 1);
-#else
-	  ::error ("Port I/O intrinsic '%s' is only available on ix86 targets",
-		   IDENTIFIER_POINTER (DECL_NAME (callee)));
-	  break;
-#endif
-
 	case INTRINSIC_COS:
 	  // Math intrinsics just map to their GCC equivalents.
 	  op1 = ce.nextArg();
@@ -3226,81 +3194,6 @@ IRState::maybeExpandSpecialCall (tree call_exp)
   return call_exp;
 }
 
-// Expand a call to CODE with argument PORT and return value VALUE.
-// These are x86 / x86_64 instructions, and so calls to this function,
-// should be safe guarded from use on other architectures.
-
-tree
-IRState::expandPortIntrinsic (Intrinsic code, tree port, tree value, int outp)
-{
-  const char *insn_string;
-  tree insn_tmpl;
-  ListMaker outputs;
-  ListMaker inputs;
-
-  if (outp)
-    {
-      /* Writing outport operand:
-	 asm ("op %[value], %[port]" :: "a" value, "Nd" port);
-       */
-      const char *valconstr = "a";
-      tree val = tree_cons (NULL_TREE, build_string (strlen (valconstr), valconstr), NULL_TREE);
-      inputs.cons (val, value);
-    }
-  else
-    {
-      /* Writing inport operand:
-	 asm ("op %[port], %[value]" : "=a" value : "Nd" port);
-       */
-      const char *outconstr = "=a";
-      tree out = tree_cons (NULL_TREE, build_string (strlen (outconstr), outconstr), NULL_TREE);
-      outputs.cons (out, value);
-    }
-
-  const char *inconstr = "Nd";
-  tree in = tree_cons (NULL_TREE, build_string (strlen (inconstr), inconstr), NULL_TREE);
-  inputs.cons (in, port);
-
-  switch (code)
-    {
-    case INTRINSIC_INP:
-      insn_string = "inb %w1, %0";
-      break;
-
-    case INTRINSIC_INPL:
-      insn_string = "inl %w1, %0";
-      break;
-
-    case INTRINSIC_INPW:
-      insn_string = "inw %w1, %0";
-      break;
-
-    case INTRINSIC_OUTP:
-      insn_string = "outb %b0, %w1";
-      break;
-
-    case INTRINSIC_OUTPL:
-      insn_string = "outl %0, %w1";
-      break;
-
-    case INTRINSIC_OUTPW:
-      insn_string = "outw %w0, %w1";
-      break;
-
-    default:
-      gcc_unreachable();
-    }
-  insn_tmpl = build_string (strlen (insn_string), insn_string);
-
-  // ::doAsm
-  tree exp = d_build_asm_stmt (insn_tmpl, outputs.head, inputs.head, NULL_TREE);
-  ASM_VOLATILE_P (exp) = 1;
-
-  // These functions always return the contents of 'value'
-  return build2 (COMPOUND_EXPR, TREE_TYPE (value), exp, value);
-}
-
-
 // Build and return the correct call to fmod depending on TYPE.
 // ARG0 and ARG1 are the arguments pass to the function.
 
@@ -3388,11 +3281,8 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
     {
       // Matches order of Intrinsic enum
       static const char *intrinsic_names[] = {
-	  "bsf", "bsr",
-	  "bswap",
+	  "bsf", "bsr", "bswap",
 	  "bt", "btc", "btr", "bts",
-	  "inp", "inpl", "inpw",
-	  "outp", "outpl", "outpw",
       };
       const size_t sz = sizeof (intrinsic_names) / sizeof (char *);
       int i = binary (decl->ident->string, intrinsic_names, sz);
@@ -3400,7 +3290,7 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
 	return false;
 
       // Make sure 'i' is within the range we require.
-      gcc_assert (i >= INTRINSIC_BSF && i <= INTRINSIC_OUTPW);
+      gcc_assert (i >= INTRINSIC_BSF && i <= INTRINSIC_BTS);
       tree t = decl->toSymbol()->Stree;
 
       DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
