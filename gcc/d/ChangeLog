@@ -1,3 +1,8 @@
+2012-09-17  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-codegen.h(CtorEltMaker::cons): Adjust call to VEC_safe_push.
+	* d-objfile.cc(ObjectFile::stripVarDecl): Clean-up.
+
 2012-09-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.cc(IRState::isCallByAlias): New function.

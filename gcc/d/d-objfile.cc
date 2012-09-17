@@ -578,41 +578,29 @@ tree
 ObjectFile::stripVarDecl (tree value)
 {
   if (TREE_CODE (value) != VAR_DECL)
-    {
-      return value;
-    }
+    return value;
   else if (DECL_INITIAL (value))
-    {
-      return DECL_INITIAL (value);
-    }
+    return DECL_INITIAL (value);
   else
     {
       Type *d_type = gen.getDType (TREE_TYPE (value));
-      if (d_type)
-	{
-	  d_type = d_type->toBasetype();
-	  switch (d_type->ty)
-	    {
-	    case Tstruct:
-		{
-		  // %% maker sure this is doing the right thing...
-		  // %% better do get rid of it..
+      gcc_assert (d_type);
 
-		  // need to VIEW_CONVERT?
-		  dt_t *dt = NULL;
-		  d_type->toDt (&dt);
-		  tree t = dt2tree (dt);
-		  TREE_CONSTANT (t) = 1;
-		  return t;
-		}
-	    default:
-		{
-		  // error below
-		  break;
-		}
-	    }
+      d_type = d_type->toBasetype();
+      switch (d_type->ty)
+	{
+	case Tstruct:
+	  // %% maker sure this is doing the right thing...
+	  // %% better do get rid of it..
+	  dt_t *dt = NULL;
+	  d_type->toDt (&dt);
+	  tree t = dt2tree (dt);
+	  TREE_CONSTANT (t) = 1;
+	  return t;
+
+	default:
+	  gcc_unreachable();
 	}
-      gcc_unreachable();
     }
 }
 
