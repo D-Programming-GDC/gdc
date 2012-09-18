@@ -143,12 +143,6 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   /* The total number of arguments with the new stuff.  */
   int num_args = 1;
 
-  /* Argument for -fod option.  */
-  char *output_directory_option = NULL;
-
-  /* True if we saw -fop. */
-  int output_parents_option = 0;
-
   /* "-fonly" if it appears on the command line.  */
   const char *only_source_option = 0;
 
@@ -290,21 +284,6 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 		  || only_source_option[len-2] != '.')
 		only_source_option = concat (only_source_option, ".d", NULL);
 	    }
-	  break;
-
-	case OPT_fod_:
-	  args[i] |= SKIPOPT;
-	  if (arg != NULL)
-	    {
-	      output_directory_option = xstrdup (arg);
-	      fprintf (stderr, "** outputdir = '%s'\n", output_directory_option);
-	    }
-	  break;
-
-	case OPT_fop:
-	  args[i] |= SKIPOPT;
-	  output_parents_option = 1;
-	  fprintf (stderr, "** output parents\n");
 	  break;
 
 	case OPT_SPECIAL_input_file:

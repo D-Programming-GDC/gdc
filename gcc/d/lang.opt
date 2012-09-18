@@ -47,10 +47,6 @@ fdebug=
 D Joined RejectNegative
 -fdebug,-fdebug=<level>,-fdebug=<ident> Compile in debug code, code <= level, or code identified by ident
 
-fdebug-c
-D
-With -g, generate C debug information for debugger compatibility
-
 fdeprecated
 D
 Allow use of deprecated features
@@ -124,19 +120,11 @@ D Joined RejectNegative
 
 fmake-mdeps=
 D Joined RejectNegative
-Like -fmake-deps=<file> but ignore system header files
-
-fod=
-Driver Joined
--fod=<directory> Specify the object output directory.
+Like -fmake-deps=<file> but ignore system modules
 
 fonly=
 D Joined RejectNegative
 Process all modules specified on the command line, but only generate code for the module specified by the argument.
-
-fop
-Driver
-Specify that the source file's parent directories should be appended to the object output directory.
 
 fout
 D

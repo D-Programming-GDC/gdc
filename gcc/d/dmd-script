@@ -336,12 +336,9 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @link_out, '-defaultlib', $1;
     } elsif ( $arg =~ m/^-deps=(.*)$/ ) {
         push @out, (defined($1) ? "-fdeps=$1" : '-fdeps');
-    } elsif ( $arg =~ m/^-g$/ ) {
+    } elsif ( $arg =~ m/^-g$|^-gc$/ ) {
         $debug = 1;
         push @out, '-g';
-    } elsif ( $arg =~ m/^-gc$/ ) {
-        $debug = 1;
-        push @out, '-fdebug-c';
     } elsif ( $arg =~ m/^-gs$/ ) {
         push @out, '-fno-omit-frame-pointer';
     } elsif ( $arg =~ m/^-gt$/ ) {

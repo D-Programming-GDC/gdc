@@ -1,3 +1,11 @@
+2012-09-18  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-lang.cc(d_initialize_diagnostics): New function, disable unneeded
+	diagnostic options.
+	(d_handle_option): Remove OPT_fdebug_c.
+	* d-spec.c(lang_specific_driver): Remove OPT_fod_, OPT_fop.
+	* lang.opt: Remove -fdebug-c, -fod, and -fop compiler options.
+
 2012-09-17  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.h(CtorEltMaker::cons): Adjust call to VEC_safe_push.

@@ -47,6 +47,7 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_INIT_TS
 #undef LANG_HOOKS_INIT_OPTIONS
 #undef LANG_HOOKS_INIT_OPTIONS_STRUCT
+#undef LANG_HOOKS_INITIALIZE_DIAGNOSTICS
 #undef LANG_HOOKS_OPTION_LANG_MASK
 #undef LANG_HOOKS_HANDLE_OPTION
 #undef LANG_HOOKS_POST_OPTIONS
@@ -67,6 +68,7 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_INIT_TS			d_common_init_ts
 #define LANG_HOOKS_INIT_OPTIONS			d_init_options
 #define LANG_HOOKS_INIT_OPTIONS_STRUCT		d_init_options_struct
+#define LANG_HOOKS_INITIALIZE_DIAGNOSTICS	d_initialize_diagnostics
 #define LANG_HOOKS_OPTION_LANG_MASK		d_option_lang_mask
 #define LANG_HOOKS_HANDLE_OPTION		d_handle_option
 #define LANG_HOOKS_POST_OPTIONS			d_post_options
@@ -159,6 +161,15 @@ d_init_options_struct (struct gcc_options *opts)
 
   // Default to using strict aliasing.
   opts->x_flag_strict_aliasing = 1;
+}
+
+static void
+d_initialize_diagnostics (diagnostic_context *context)
+{
+  // We don't need any of these in error messages.
+  context->show_caret = false;
+  context->show_option_requested = false;
+  context->show_column = false;
 }
 
 /* Return language mask for option parsing.  */
@@ -387,10 +398,6 @@ d_handle_option (size_t scode, const char *arg, int value,
     Lerror_d:
 	  error ("bad argument for -fdebug");
 	}
-      break;
-
-    case OPT_fdebug_c:
-      strcpy (lang_name, value ? "GNU C" : "GNU D");
       break;
 
     case OPT_fdeprecated:
