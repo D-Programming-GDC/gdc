@@ -266,6 +266,8 @@ dt_t *ArrayInitializer::toDt()
         dt = val->toDt();
         if (dts[length])
             error(loc, "duplicate initializations for index %d", length);
+        if (tn->ty == Tsarray)
+            dt = createTsarrayDt(dt, tb->nextOf());
         dts[length] = dt;
         length++;
     }
@@ -313,21 +315,26 @@ dt_t *ArrayInitializer::toDt()
             tadim = ta->dim->toInteger();
             if (dim < tadim)
             {
+ 	
+
+#ifdef IN_GCC
+                // Pad out the rest of the array with single elements.
+                // Issue #120 - breaks -fsection-anchors on ARM when
+                // backend calculates field positions for array members.
+                for (size_t i = dim; i < tadim; i++)
+                    pdtend = dtcontainer(pdtend, NULL, sadefault);
+#else
                 if (edefault->isBool(FALSE))
                     // pad out end of array
-                    // (ok for GDC as well)
                     pdtend = dtnzeros(pdtend, size * (tadim - dim));
                 else
                 {
                     for (size_t i = dim; i < tadim; i++)
-#ifdef IN_GCC
-                        pdtend = dtcontainer(pdtend, NULL, sadefault);
-#else
                     {   for (size_t j = 0; j < n; j++)
                             pdtend = edefault->toDt(pdtend);
                     }
-#endif
                 }
+#endif
             }
             else if (dim > tadim)
             {
