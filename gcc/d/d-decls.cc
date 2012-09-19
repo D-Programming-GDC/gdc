@@ -347,6 +347,7 @@ TypeInfoDeclaration::toSymbol (void)
       gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == REFERENCE_TYPE);
       TREE_TYPE (csym->Stree) = TREE_TYPE (TREE_TYPE (csym->Stree));
       TREE_USED (csym->Stree) = 1;
+      layout_decl (csym->Stree, 0);
 
       /* DMD makes typeinfo decls one-only by doing: s->Sclass = SCcomdat;
 	 in TypeInfoDeclaration::toObjFile.  The difference is that,
