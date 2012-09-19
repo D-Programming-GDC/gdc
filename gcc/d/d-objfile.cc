@@ -936,8 +936,18 @@ outdata (Symbol *sym)
   tree t = check_static_sym (sym);
   gcc_assert (t);
 
-  if (sym->Sdt && DECL_INITIAL (t) == NULL_TREE)
-    DECL_INITIAL (t) = dt2tree (sym->Sdt);
+  if (sym->Sdt)
+    {
+      if (!COMPLETE_TYPE_P (TREE_TYPE (t)))
+        {
+          size_t fsize = dt_size (sym->Sdt);
+          TYPE_SIZE (TREE_TYPE (t)) = bitsize_int (fsize * BITS_PER_UNIT);
+          TYPE_SIZE_UNIT (TREE_TYPE (t)) = size_int (fsize);
+        }
+
+      if (DECL_INITIAL (t) == NULL_TREE)
+        DECL_INITIAL (t) = dt2tree (sym->Sdt);
+    }
 
   gcc_assert (!g.irs->isErrorMark (t));
 
