@@ -1,4 +1,16 @@
-2012-09-18  Iain Buclaw  <ibuclaw@ubuntu.com>
+2012-09-22  iain buclaw  <ibuclaw@ubuntu.com>
+
+	* d-codegen.cc(IRState::maybeCompound): Use IRState::compound.
+	(IRState::maybeVoidCompound): Use IRState::voidCompound.
+	(IRState::call): Check TREE_SIDE_EFFECTS to determine order of
+	evaluation in function calls.  Evaluate callee before arguments if has
+	side effects.
+	* d-decls.cc(FuncDeclaration::toSymbol): Don't set any pure/nothrow
+	attributes if asserts are generated in code.
+	* d-incpath(add_fileimp_path): Fix ICE using -J option.
+	* d-objfile.cc(Obj::moduleinfo): Clean-up.
+
+2012-09-18  iain buclaw  <ibuclaw@ubuntu.com>
 
 	* d-lang.cc(d_initialize_diagnostics): New function, disable unneeded
 	diagnostic options.

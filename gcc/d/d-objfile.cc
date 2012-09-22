@@ -33,10 +33,6 @@ DeferredThunks ObjectFile::deferredThunks;
 FuncDeclarations ObjectFile::staticCtorList;
 FuncDeclarations ObjectFile::staticDtorList;
 
-ObjectFile::ObjectFile (void)
-{
-}
-
 void
 ObjectFile::beginModule (Module *m)
 {
@@ -1020,61 +1016,55 @@ Obj::allowZeroSize (void)
 void
 Obj::moduleinfo (Symbol *sym)
 {
-  /* Generate:
-     struct ModuleReference
-     {
-	void *next;
-	ModuleReference m;
-     }
-     extern (C) ModuleReference *_Dmodule_ref;
-     private ModuleReference our_mod_ref =
-	{ next: null, m: _ModuleInfo_xxx };
-     void ___modinit()  // a static constructor
-     {
-	our_mod_ref.next = _Dmodule_ref;
-	_Dmodule_ref = &our_mod_ref;
-     }
-   */
-  // struct ModuleReference in moduleinit.d
-  tree mod_ref_type = gen.twoFieldType (Type::tvoidptr, gen.getObjectType(),
-					NULL, "next", "mod");
-  tree f0 = TYPE_FIELDS (mod_ref_type);
-  tree f1 = TREE_CHAIN (f0);
+  // Generate:
+  //   struct ModuleReference
+  //   {
+  //     void *next;
+  //     ModuleReference m;
+  //   }
 
-  tree our_mod_ref = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, mod_ref_type);
+  // struct ModuleReference in moduleinit.d
+  tree modref_type_node = gen.twoFieldType (Type::tvoidptr, gen.getObjectType(),
+					    NULL, "next", "mod");
+  tree fld_next = TYPE_FIELDS (modref_type_node);
+  tree fld_mod = TREE_CHAIN (fld_next);
+
+  // extern (C) ModuleReference *_Dmodule_ref;
+  tree module_ref = build_decl (BUILTINS_LOCATION, VAR_DECL,
+			     get_identifier ("_Dmodule_ref"),
+			     build_pointer_type (modref_type_node));
+  d_keep (module_ref);
+  DECL_EXTERNAL (module_ref) = 1;
+  TREE_PUBLIC (module_ref) = 1;
+
+  // private ModuleReference our_mod_ref = { next: null, mod: _ModuleInfo_xxx };
+  tree our_mod_ref = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, modref_type_node);
   d_keep (our_mod_ref);
   g.ofile->giveDeclUniqueName (our_mod_ref, "__mod_ref");
   g.ofile->setDeclLoc (our_mod_ref, g.mod);
 
-  CtorEltMaker ce;
-  ce.cons (f0, d_null_pointer);
-  ce.cons (f1, gen.addressOf (sym->Stree));
-
-  tree init = build_constructor (mod_ref_type, ce.head);
-
-  TREE_STATIC (init) = 1;
   DECL_ARTIFICIAL (our_mod_ref) = 1;
   DECL_IGNORED_P (our_mod_ref) = 1;
   TREE_PRIVATE (our_mod_ref) = 1;
   TREE_STATIC (our_mod_ref) = 1;
-  DECL_INITIAL (our_mod_ref) = init;
+
+  CtorEltMaker ce;
+  ce.cons (fld_next, d_null_pointer);
+  ce.cons (fld_mod, gen.addressOf (sym->Stree));
+
+  DECL_INITIAL (our_mod_ref) = build_constructor (modref_type_node, ce.head);
+  TREE_STATIC (DECL_INITIAL (our_mod_ref)) = 1;
   rest_of_decl_compilation (our_mod_ref, 1, 0);
 
-  tree the_mod_ref = build_decl (BUILTINS_LOCATION, VAR_DECL,
-				 get_identifier ("_Dmodule_ref"),
-				 build_pointer_type (mod_ref_type));
-  d_keep (the_mod_ref);
-  DECL_EXTERNAL (the_mod_ref) = 1;
-  TREE_PUBLIC (the_mod_ref) = 1;
+  // void ___modinit()  // a static constructor
+  // {
+  //   our_mod_ref.next = _Dmodule_ref;
+  //   _Dmodule_ref = &our_mod_ref;
+  // }
+  tree m1 = gen.vmodify (gen.component (our_mod_ref, fld_next), module_ref);
+  tree m2 = gen.vmodify (module_ref, gen.addressOf (our_mod_ref));
 
-  tree m1 = build2 (MODIFY_EXPR, void_type_node,
-		    gen.component (our_mod_ref, f0),
-		    the_mod_ref);
-  tree m2 = build2 (MODIFY_EXPR, void_type_node,
-		    the_mod_ref, gen.addressOf (our_mod_ref));
-  tree exp = build2 (COMPOUND_EXPR, void_type_node, m1, m2);
-
-  g.ofile->doSimpleFunction ("*__modinit", exp, true);
+  g.ofile->doSimpleFunction ("*__modinit", gen.voidCompound (m1, m2), true);
 }
 
 void

@@ -56,7 +56,7 @@ typedef ArrayBase<DeferredThunk> DeferredThunks;
 struct ObjectFile
 {
  public:
-  ObjectFile (void);  // constructor is *NOT* static
+  ObjectFile (void) { };
 
   static void beginModule (Module *m);
   static void endModule (void);

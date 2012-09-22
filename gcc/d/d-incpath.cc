@@ -136,8 +136,8 @@ add_fileimp_path (Strings *paths)
 {
   if (paths)
     {
-      if (!global.path)
-	global.path = new Strings();
+      if (!global.filePath)
+	global.filePath = new Strings();
 
       for (size_t i = 0; i < paths->dim; i++)
 	{

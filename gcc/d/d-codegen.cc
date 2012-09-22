@@ -2119,7 +2119,7 @@ IRState::maybeCompound (tree arg0, tree arg1)
   else if (arg1 == NULL_TREE)
     return arg0;
   else
-    return build2 (COMPOUND_EXPR, TREE_TYPE (arg1), arg0, arg1);
+    return compound (TREE_TYPE (arg1), arg0, arg1);
 }
 
 // Like IRState::voidCompound, but ARG0 or ARG1 might be NULL_TREE.
@@ -2132,7 +2132,7 @@ IRState::maybeVoidCompound (tree arg0, tree arg1)
   else if (arg1 == NULL_TREE)
     return arg0;
   else
-    return build2 (COMPOUND_EXPR, void_type_node, arg0, arg1);
+    return voidCompound (arg0, arg1);
 }
 
 // Returns TRUE if T is an ERROR_MARK node.
@@ -2301,6 +2301,13 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   gcc_assert (func_type != NULL);
   gcc_assert (func_type->ty == Tfunction);
 
+  // Evaluate the callee before calling it.
+  if (TREE_SIDE_EFFECTS (actual_callee))
+    {
+      actual_callee = maybeMakeTemp (actual_callee);
+      saved_args = actual_callee;
+    }
+
   bool is_d_vararg = func_type->varargs == 1 && func_type->linkage == LINKd;
 
   // Account for the hidden object/frame pointer argument
@@ -2382,9 +2389,9 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 	}
       /* Evaluate the argument before passing to the function.
 	 Needed for left to right evaluation.  */
-      if (func_type->linkage == LINKd && !isFreeOfSideEffects (actual_arg_tree))
+      if (func_type->linkage == LINKd && TREE_SIDE_EFFECTS (actual_arg_tree))
 	{
-	  actual_arg_tree = makeTemp (actual_arg_tree);
+	  actual_arg_tree = maybeMakeTemp (actual_arg_tree);
 	  saved_args = maybeVoidCompound (saved_args, actual_arg_tree);
 	}
 
