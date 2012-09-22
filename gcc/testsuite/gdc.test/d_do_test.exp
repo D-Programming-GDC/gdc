@@ -48,21 +48,21 @@ proc gdc-convert-args { args } {
     }
 
     set i 0
-    while { [regexp -start $i -indices -- {-J([\w/-]+)} $args i j] } { 
+    while { [regexp -start $i -indices -- {-J([\w/-]+)} $args i j] } {
         set i [lindex $j 0]
         set j [lindex $j 1]
-        #print "-J[string range $args $i $j]" 
+        #print "-J[string range $args $i $j]"
         lappend out "-J[string range $args $i $j]"
     }
 
     set i 0
-    while { [regexp -start $i -indices -- {-version=([\w]+)} $args i j] } { 
+    while { [regexp -start $i -indices -- {-version=([\w]+)} $args i j] } {
         set i [lindex $j 0]
         set j [lindex $j 1]
-        #print "-J[string range $args $i $j]" 
+        #print "-J[string range $args $i $j]"
         lappend out "-fversion=[string range $args $i $j]"
     }
-    
+
     return $out
 }
 
@@ -117,7 +117,7 @@ proc dmd2dg { base test } {
         # PERMUTE_ARGS.  Must be handled separately
         if [regexp -- {//\s*PERMUTE_ARGS\s*:\s*(.*)} $copy_line m m0] {
             set PERMUTE_ARGS [gdc-convert-args $m0]
-            continue 
+            continue
         }
 
         # COMPILE_SEPARATELY. Not handled.
@@ -144,9 +144,19 @@ proc dmd2dg { base test } {
             # Iterate imports and convert
             foreach import $m0 {
                 # print "Import: $base $type/$import"
-                dmd2dg $base "$type/$import"  
+                dmd2dg $base "$type/$import"
             }
             set out_line "// { dg-additional-sources \"$m0\" }"
+        }
+
+        # Handle EXTRA_FILES option
+        if [regexp -- {//\s*EXTRA_FILES\s*:\s*(.*)} $copy_line m m0] {
+            # Iterate imports and convert
+            foreach import $m0 {
+                # print "Import: $base $type/$import"
+                dmd2dg $base "$type/$import"
+            }
+            set out_line "// { dg-additional-files \"$m0\" }"
         }
 
         # REQUIRED_ARGS.
@@ -159,7 +169,7 @@ proc dmd2dg { base test } {
     close $fdin
     close $fdout
 
-    return $test 
+    return $test
 }
 
 proc gdc-permute-options { options } {
@@ -244,7 +254,8 @@ proc gdc-do-test { } {
             fail_compilation {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
                     set TORTURE_OPTIONS [lindex $options $i]
-                    set dg-do-what-default "compile"
+                    set dg-do-what-default "assemble"
+                    #set dg-do-what-default "compile"
                     gdc-dg-runtest $filename $imports
                 }
             }
