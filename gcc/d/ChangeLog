@@ -1,3 +1,7 @@
+2012-09-27  iain buclaw  <ibuclaw@ubuntu.com>
+
+	* d-convert.cc(convert): Remove assert.
+
 2012-09-22  iain buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.cc(IRState::maybeCompound): Use IRState::compound.

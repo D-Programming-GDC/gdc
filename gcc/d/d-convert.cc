@@ -144,10 +144,7 @@ convert (tree type, tree expr)
 	}
       else if (TREE_CODE (etype) == COMPLEX_TYPE)
 	{
-	  // creal.re, .im implemented by cast to real or ireal
-	  // Assumes target type is the same size as the original's components size
-	  gcc_assert (TYPE_SIZE (type) == TYPE_SIZE (TREE_TYPE (etype)));
-
+	  // creal.re, creal.im implemented by cast to real or ireal
 	  if (D_TYPE_IMAGINARY_FLOAT (type))
 	    expr = build1 (IMAGPART_EXPR, TREE_TYPE (etype), expr);
 	}
