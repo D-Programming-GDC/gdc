@@ -19,9 +19,11 @@ AUTOMAKE_OPTIONS = 1.9.4 foreign no-dependencies
 
 ACLOCAL_AMFLAGS = -I . -I ..
 
-OUR_CFLAGS=@DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib
+#PIC_FLAGS=
+
+OUR_CFLAGS=@DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib $(PIC_FLAGS)
 D_EXTRA_DFLAGS=-nostdinc -pipe -fdeprecated -I $(srcdir) -I ./$(host_alias) -I .
-ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
+ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) $(PIC_FLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -60,7 +62,7 @@ BASE_OBJS=object_.o
 RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
 	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
-	     rt/cast_.o rt/critical_.o rt/dmain2.o rt/minfo.o \
+	     rt/cast_.o rt/critical_.o rt/minfo.o \
 	     rt/memory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
 	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o rt/tlsgc.o
 
@@ -109,7 +111,7 @@ RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
 		core/sys/windows/windows.o
 
 # This should not be linked into a shared library.
-CMAIN_OBJS= #rt/cmain.o
+MAIN_OBJS= rt/dmain2.o #rt/cmain.o
 
 D_GC_MODULES=@D_GC_MODULES@
 
@@ -162,9 +164,13 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 
-libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
+libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(MAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
+	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(MAIN_OBJS)
 	$(RANLIB) $@
+
+libgdruntime.so : $(ALL_DRUNTIME_OBJS) $(MAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
+	$(GDC) -shared $(ALL_DRUNTIME_OBJS) -Wl,-soname,libgdruntime.so.0 -o libgdruntime.so.0 -nophoboslib
+	ln -s -f libgdruntime.so.0 libgdruntime.so
 
 #--------------------------------------#
 # Install, doc, etc targets
@@ -201,12 +207,14 @@ install-data-local: $(D_PREREQ_SRCS) libgdruntime.a
 	$(INSTALL) phobos-ver-syms $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)
 
 clean-local:
-	rm -f $(CMAIN_OBJS)
+	rm -f $(MAIN_OBJS)
 	rm -f $(ALL_DRUNTIME_OBJS)
 	rm -f $(CORE_IMPORTS)
 	rm -rf $(IMPORT)
 	rm -f testgc$(EXEEXT)
 	rm -f libgdruntime.a
+	rm -f libgdruntime.so
+	rm -f libgdruntime.so.0
 
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
