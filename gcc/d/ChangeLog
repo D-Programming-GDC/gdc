@@ -1,8 +1,13 @@
-2012-09-27  iain buclaw  <ibuclaw@ubuntu.com>
+2012-10-04  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-glue.cc(VectorExp::toElem): Handle both array literal as well as
+	single element constructors for vector expressions.
+
+2012-09-27  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-convert.cc(convert): Remove assert.
 
-2012-09-22  iain buclaw  <ibuclaw@ubuntu.com>
+2012-09-22  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.cc(IRState::maybeCompound): Use IRState::compound.
 	(IRState::maybeVoidCompound): Use IRState::voidCompound.
@@ -14,7 +19,7 @@
 	* d-incpath(add_fileimp_path): Fix ICE using -J option.
 	* d-objfile.cc(Obj::moduleinfo): Clean-up.
 
-2012-09-18  iain buclaw  <ibuclaw@ubuntu.com>
+2012-09-18  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-lang.cc(d_initialize_diagnostics): New function, disable unneeded
 	diagnostic options.

@@ -1194,11 +1194,30 @@ SliceExp::toElem (IRState *irs)
 elem *
 VectorExp::toElem (IRState *irs)
 {
-  // Simple... maybe build our own constructor later...
   tree vectype = type->toCtype();
-  tree sc = irs->convertTo (TREE_TYPE (vectype), e1->toElem (irs));
+  tree elemtype = TREE_TYPE (vectype);
 
-  return build_vector_from_val (vectype, sc);
+  // First handle array literal expressions.
+  if (e1->op == TOKarrayliteral)
+    {
+      Expressions *elements = ((ArrayLiteralExp *) e1)->elements;
+      tree *vals = new tree[elements->dim];
+
+      for (size_t i = 0; i < elements->dim; i++)
+	{
+	  Expression *e = (*elements)[i];
+	  vals[i] = irs->convertTo (elemtype, e->toElem (irs));
+	}
+
+      return build_vector (vectype, vals);
+    }
+  else
+    {
+      // Build constructor from single value.
+      tree val = irs->convertTo (elemtype, e1->toElem (irs));
+
+      return build_vector_from_val (vectype, val);
+    }
 }
 
 elem *
