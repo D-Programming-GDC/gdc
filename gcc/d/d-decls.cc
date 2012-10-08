@@ -71,7 +71,7 @@ Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
   size_t sz = (2 + nlen + sizeof (size_t) * 3 + strlen (prefix) + strlen (suffix) + 1);
   char *id = (char *) alloca (sz);
 
-  snprintf (id, sz, "_D%s%u%s%s", n, strlen (prefix), prefix, suffix);
+  snprintf (id, sz, "_D%s%zu%s%s", n, strlen (prefix), prefix, suffix);
   return symbol_calloc (id);
 }
 

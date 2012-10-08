@@ -1201,15 +1201,25 @@ VectorExp::toElem (IRState *irs)
   if (e1->op == TOKarrayliteral)
     {
       Expressions *elements = ((ArrayLiteralExp *) e1)->elements;
-      tree *vals = new tree[elements->dim];
+      CtorEltMaker elms;
+      bool constant_p = true;
 
+      elms.reserve (elements->dim);
       for (size_t i = 0; i < elements->dim; i++)
 	{
 	  Expression *e = (*elements)[i];
-	  vals[i] = irs->convertTo (elemtype, e->toElem (irs));
+	  tree value = irs->convertTo (elemtype, e->toElem (irs));
+	  if (!CONSTANT_CLASS_P (value))
+	    constant_p = false;
+
+	  elms.cons (irs->integerConstant (i, size_type_node), value);
 	}
 
-      return build_vector (vectype, vals);
+      // Build a VECTOR_CST from a constant vector constructor.
+      if (constant_p)
+	return build_vector_from_ctor (vectype, elms.head);
+
+      return build_constructor (vectype, elms.head);
     }
   else
     {

@@ -26,8 +26,8 @@
 
 IRBase::IRBase (void)
 {
-  this->parent = 0;
-  this->func = 0;
+  this->parent = NULL;
+  this->func = NULL;
   this->volatileDepth = 0;
 }
 

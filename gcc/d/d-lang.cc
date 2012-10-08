@@ -292,9 +292,7 @@ d_init (void)
   /* Logic copied from cppbuiltins for LP64 targets. */
   if (TYPE_PRECISION (long_integer_type_node) == 64
       && TYPE_PRECISION (integer_type_node) == 32 && POINTER_SIZE == 64)
-    {
-      VersionCondition::addPredefinedGlobalIdent ("D_LP64");
-    }
+    VersionCondition::addPredefinedGlobalIdent ("D_LP64");
 
   /* Setting global.params.cov forces module info generation which is
      not needed for thee GCC coverage implementation.  Instead, just

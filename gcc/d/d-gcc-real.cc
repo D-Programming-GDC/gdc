@@ -157,7 +157,7 @@ real_t::getinfinity (void)
 const REAL_VALUE_TYPE &
 real_t::rv (void) const
 {
-  REAL_VALUE_TYPE *r = (REAL_VALUE_TYPE *) &this->frv_;
+  const REAL_VALUE_TYPE *r = (const REAL_VALUE_TYPE *) &this->frv_;
   return *r;
 }
 

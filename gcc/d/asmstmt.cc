@@ -234,7 +234,7 @@ ExtAsmStatement::toIR (IRState *irs)
   ListMaker inputs;
   ListMaker tree_clobbers;
 
-  gen.doLineNote (this->loc);
+  irs->doLineNote (this->loc);
 
   if (this->args)
     {

@@ -1,3 +1,8 @@
+2012-10-08  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-glue.cc(VectorExp::toElem): Handle non-constant array literals as
+	vector expressions.
+
 2012-10-04  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-glue.cc(VectorExp::toElem): Handle both array literal as well as
