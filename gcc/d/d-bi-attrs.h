@@ -56,8 +56,6 @@ static tree handle_returns_twice_attribute (tree *, tree, tree, int, bool *);
 static tree handle_no_limit_stack_attribute (tree *, tree, tree, int,
 					     bool *);
 static tree handle_pure_attribute (tree *, tree, tree, int, bool *);
-static tree handle_tm_attribute (tree *, tree, tree, int, bool *);
-static tree handle_tm_wrap_attribute (tree *, tree, tree, int, bool *);
 static tree handle_novops_attribute (tree *, tree, tree, int, bool *);
 static tree handle_deprecated_attribute (tree *, tree, tree, int,
 					 bool *);
@@ -113,8 +111,6 @@ const struct attribute_spec d_common_attribute_table[] =
      to check the function type instead.  */
   { "noreturn",               0, 0, true,  false, false,
 			      handle_noreturn_attribute, false },
-  { "volatile",               0, 0, true,  false, false,
-			      handle_noreturn_attribute, false },
   { "noinline",               0, 0, true,  false, false,
 			      handle_noinline_attribute, false },
   { "noclone",                0, 0, true,  false, false,
@@ -123,11 +119,6 @@ const struct attribute_spec d_common_attribute_table[] =
 			      handle_leaf_attribute, false },
   { "always_inline",          0, 0, true,  false, false,
 			      handle_always_inline_attribute, false },
-/* not in gdc
-  { "gnu_inline",             0, 0, true,  false, false,
-			      handle_gnu_inline_attribute, false },
-  { "artificial",             0, 0, true,  false, false,
-			      handle_artificial_attribute, false },  */
   { "flatten",                0, 0, true,  false, false,
 			      handle_flatten_attribute, false },
   { "used",                   0, 0, true,  false, false,
@@ -170,20 +161,6 @@ const struct attribute_spec d_common_attribute_table[] =
 			      handle_no_limit_stack_attribute, false },
   { "pure",                   0, 0, true,  false, false,
 			      handle_pure_attribute, false },
-  { "transaction_callable",   0, 0, false, true,  false,
-			      handle_tm_attribute, false },
-  { "transaction_unsafe",     0, 0, false, true,  false,
-			      handle_tm_attribute, false },
-  { "transaction_safe",       0, 0, false, true,  false,
-			      handle_tm_attribute, false },
-  { "transaction_may_cancel_outer", 0, 0, false, true, false,
-			      handle_tm_attribute, false },
-  /* ??? These two attributes didn't make the transition from the
-     Intel language document to the multi-vendor language document.  */
-  { "transaction_pure",       0, 0, false, true,  false,
-			      handle_tm_attribute, false },
-  { "transaction_wrap",       1, 1, true,  false,  false,
-			     handle_tm_wrap_attribute, false },
   /* For internal use (marking of builtins) only.  The name contains space
      to prevent its usage in source code.  */
   { "no vops",                0, 0, true,  false, false,
@@ -201,9 +178,6 @@ const struct attribute_spec d_common_attribute_table[] =
   { "nothrow",                0, 0, true,  false, false,
 			      handle_nothrow_attribute, false },
   { "may_alias",	      0, 0, false, true, false, NULL, false },
-/* not in gdc
-  { "cleanup",		      1, 1, true, false, false,
-			      handle_cleanup_attribute, false },  */
   { "warn_unused_result",     0, 0, false, true, true,
 			      handle_warn_unused_result_attribute, false },
   { "sentinel",               0, 1, false, true, true,
@@ -1686,155 +1660,6 @@ handle_pure_attribute (tree *node, tree name, tree ARG_UNUSED (args),
     {
       warning (OPT_Wattributes, "%qE attribute ignored", name);
       *no_add_attrs = true;
-    }
-
-  return NULL_TREE;
-}
-
-/* Mask used by tm_attr_to_mask and tm_mask_to_attr.  Note that these
-   are ordered specifically such that more restrictive attributes are
-   at lower bit positions.  This fact is known by the C++ tm attribute
-   inheritance code such that least bit extraction (mask & -mask) results
-   in the most restrictive attribute.  */
-#define TM_ATTR_SAFE			1
-#define TM_ATTR_CALLABLE		2
-#define TM_ATTR_PURE			4
-#define TM_ATTR_IRREVOCABLE		8
-#define TM_ATTR_MAY_CANCEL_OUTER	16
-
-/* Transform a TM attribute name into a maskable integer and back.
-   Note that NULL (i.e. no attribute) is mapped to UNKNOWN, corresponding
-   to how the lack of an attribute is treated.  */
-
-static int
-tm_attr_to_mask (tree attr)
-{
-  if (attr == NULL)
-    return 0;
-  if (is_attribute_p ("transaction_safe", attr))
-    return TM_ATTR_SAFE;
-  if (is_attribute_p ("transaction_callable", attr))
-    return TM_ATTR_CALLABLE;
-  if (is_attribute_p ("transaction_pure", attr))
-    return TM_ATTR_PURE;
-  if (is_attribute_p ("transaction_unsafe", attr))
-    return TM_ATTR_IRREVOCABLE;
-  if (is_attribute_p ("transaction_may_cancel_outer", attr))
-    return TM_ATTR_MAY_CANCEL_OUTER;
-  return 0;
-}
-
-/* Return the first TM attribute seen in LIST.  */
-
-static tree
-find_tm_attribute (tree list)
-{
-  for (; list ; list = TREE_CHAIN (list))
-    {
-      tree name = TREE_PURPOSE (list);
-      if (tm_attr_to_mask (name) != 0)
-	return name;
-    }
-  return NULL_TREE;
-}
-
-/* Handle the TM attributes; arguments as in struct attribute_spec.handler.
-   Here we accept only function types, and verify that none of the other
-   function TM attributes are also applied.  */
-/* ??? We need to accept class types for C++, but not C.  This greatly
-   complicates this function, since we can no longer rely on the extra
-   processing given by function_type_required.  */
-
-static tree
-handle_tm_attribute (tree *node, tree name, tree args,
-		     int flags, bool *no_add_attrs)
-{
-  /* Only one path adds the attribute; others don't.  */
-  *no_add_attrs = true;
-
-  switch (TREE_CODE (*node))
-    {
-    case RECORD_TYPE:
-    case UNION_TYPE:
-      /* Only tm_callable and tm_safe apply to classes.  */
-      if (tm_attr_to_mask (name) & ~(TM_ATTR_SAFE | TM_ATTR_CALLABLE))
-	goto ignored;
-      /* FALLTHRU */
-
-    case FUNCTION_TYPE:
-    case METHOD_TYPE:
-      {
-	tree old_name = find_tm_attribute (TYPE_ATTRIBUTES (*node));
-	if (old_name == name)
-	  ;
-	else if (old_name != NULL_TREE)
-	  error ("type was previously declared %qE", old_name);
-	else
-	  *no_add_attrs = false;
-      }
-      break;
-
-    case POINTER_TYPE:
-      {
-	enum tree_code subcode = TREE_CODE (TREE_TYPE (*node));
-	if (subcode == FUNCTION_TYPE || subcode == METHOD_TYPE)
-	  {
-	    tree fn_tmp = TREE_TYPE (*node);
-	    decl_attributes (&fn_tmp, tree_cons (name, args, NULL), 0);
-	    *node = build_pointer_type (fn_tmp);
-	    break;
-	  }
-      }
-      /* FALLTHRU */
-
-    default:
-      /* If a function is next, pass it on to be tried next.  */
-      if (flags & (int) ATTR_FLAG_FUNCTION_NEXT)
-	return tree_cons (name, args, NULL);
-
-    ignored:
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      break;
-    }
-
-  return NULL_TREE;
-}
-
-/* Handle the TM_WRAP attribute; arguments as in
-   struct attribute_spec.handler.  */
-
-static tree
-handle_tm_wrap_attribute (tree *node, tree name, tree args,
-			  int ARG_UNUSED (flags), bool *no_add_attrs)
-{
-  tree decl = *node;
-
-  /* We don't need the attribute even on success, since we
-     record the entry in an external table.  */
-  *no_add_attrs = true;
-
-  if (TREE_CODE (decl) != FUNCTION_DECL)
-    warning (OPT_Wattributes, "%qE attribute ignored", name);
-  else
-    {
-      tree wrap_decl = TREE_VALUE (args);
-      /* For gdc: does not accept identifier nodes. */
-      if (TREE_CODE (wrap_decl) != VAR_DECL
-	  && TREE_CODE (wrap_decl) != FUNCTION_DECL)
-	error ("%qE argument not an identifier", name);
-      else
-	{
-	  if (wrap_decl && TREE_CODE (wrap_decl) == FUNCTION_DECL)
-	    {
-	      if (lang_hooks.types_compatible_p (TREE_TYPE (decl),
-						 TREE_TYPE (wrap_decl)))
-		record_tm_replacement (wrap_decl, decl);
-	      else
-		error ("%qD is not compatible with %qD", wrap_decl, decl);
-	    }
-	  else
-	    error ("transaction_wrap argument is not a function");
-	}
     }
 
   return NULL_TREE;
