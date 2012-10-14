@@ -304,6 +304,17 @@ d_bi_init (void)
   REALPAD = 0;
   REALALIGNSIZE = TYPE_ALIGN_UNIT (long_double_type_node);
 
+  /* Define what type to use for size_t.  */
+  size_t wordsize = int_size_in_bytes (size_type_node);
+  if (wordsize == 2)
+    Tsize_t = Tuns16;
+  else if (wordsize == 4)
+    Tsize_t = Tuns32;
+  else if (wordsize == 8)
+    Tsize_t = Tuns64;
+  else
+    gcc_unreachable();
+
   if (POINTER_SIZE == 32)
     Tptrdiff_t = Tint32;
   else if (POINTER_SIZE == 64)

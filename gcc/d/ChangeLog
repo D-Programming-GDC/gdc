@@ -1,3 +1,9 @@
+2012-10-14  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins2.cc(d_bi_init): Determine D frontend type for size_t.
+	* d-objfile.cc(ObjectFile::hasModule): Remove old compatibility
+	macros.
+
 2012-10-08  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-glue.cc(VectorExp::toElem): Handle non-constant array literals as

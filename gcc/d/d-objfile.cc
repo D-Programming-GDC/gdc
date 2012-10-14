@@ -75,20 +75,18 @@ ObjectFile::hasModule (Module *m)
 void
 ObjectFile::finish (void)
 {
-#define D_FFN_I "I"
-#define D_FFN_D "D"
   /* If the target does not directly support static constructors,
      staticCtorList contains a list of all static constructors defined
      so far.  This routine will create a function to call all of those
      and is picked up by collect2. */
   if (staticCtorList.dim)
     {
-      doFunctionToCallFunctions (IDENTIFIER_POINTER (get_file_function_name (D_FFN_I)),
+      doFunctionToCallFunctions (IDENTIFIER_POINTER (get_file_function_name ("I")),
 				 &staticCtorList, true);
     }
   if (staticDtorList.dim)
     {
-      doFunctionToCallFunctions (IDENTIFIER_POINTER (get_file_function_name (D_FFN_D)),
+      doFunctionToCallFunctions (IDENTIFIER_POINTER (get_file_function_name ("D")),
 				 &staticDtorList, true);
     }
 }
