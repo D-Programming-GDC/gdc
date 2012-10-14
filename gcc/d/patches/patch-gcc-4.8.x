@@ -1,6 +1,6 @@
---- gcc/config/rs6000/rs6000.c	2012-07-31 23:14:44.000000000 +0100
-+++ gcc/config/rs6000/rs6000.c	2012-08-17 18:30:37.121021742 +0100
-@@ -21410,7 +21410,8 @@ rs6000_output_function_epilogue (FILE *f
+--- gcc/config/rs6000/rs6000.c	2012-10-07 03:07:42.000000000 +0100
++++ gcc/config/rs6000/rs6000.c	2012-10-14 10:25:56.025866841 +0100
+@@ -21418,7 +21418,8 @@ rs6000_output_function_epilogue (FILE *f
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
  	  || ! strcmp (language_string, "GNU GIMPLE")
@@ -11,7 +11,7 @@
        else if (! strcmp (language_string, "GNU F77")
  	       || ! strcmp (language_string, "GNU Fortran"))
 --- gcc/doc/frontends.texi	2011-01-03 20:52:22.000000000 +0000
-+++ gcc/doc/frontends.texi	2012-08-17 18:30:37.133021743 +0100
++++ gcc/doc/frontends.texi	2012-10-14 10:25:56.029866841 +0100
 @@ -10,6 +10,7 @@
  @cindex GNU Compiler Collection
  @cindex GNU C Compiler
@@ -29,9 +29,9 @@
  
  The abbreviation @dfn{GCC} has multiple meanings in common use.  The
  current official meaning is ``GNU Compiler Collection'', which refers
---- gcc/doc/install.texi	2012-07-16 20:14:18.000000000 +0100
-+++ gcc/doc/install.texi	2012-08-17 18:30:37.141021743 +0100
-@@ -1355,12 +1355,12 @@ their runtime libraries should be built.
+--- gcc/doc/install.texi	2012-09-26 23:47:22.000000000 +0100
++++ gcc/doc/install.texi	2012-10-14 10:25:56.033866841 +0100
+@@ -1345,12 +1345,12 @@ their runtime libraries should be built.
  grep language= */config-lang.in
  @end smallexample
  Currently, you can use any of the following:
@@ -46,9 +46,9 @@
  
  @item --enable-stage1-languages=@var{lang1},@var{lang2},@dots{}
  Specify that a particular subset of compilers and their runtime
---- gcc/doc/invoke.texi	2012-08-10 15:19:09.000000000 +0100
-+++ gcc/doc/invoke.texi	2012-08-17 18:30:37.209021746 +0100
-@@ -1142,6 +1142,15 @@ called @dfn{specs}.
+--- gcc/doc/invoke.texi	2012-10-06 15:06:04.000000000 +0100
++++ gcc/doc/invoke.texi	2012-10-14 10:25:56.045866839 +0100
+@@ -1149,6 +1149,15 @@ called @dfn{specs}.
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
  
@@ -64,7 +64,7 @@
  @c GCC also knows about some suffixes for languages not yet included:
  @c Pascal:
  @c @var{file}.p
-@@ -1177,6 +1186,7 @@ objective-c  objective-c-header  objecti
+@@ -1184,6 +1193,7 @@ objective-c  objective-c-header  objecti
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -72,8 +72,8 @@
  f77  f77-cpp-input f95  f95-cpp-input
  go
  java
---- gcc/doc/sourcebuild.texi	2012-08-10 13:11:29.000000000 +0100
-+++ gcc/doc/sourcebuild.texi	2012-08-17 18:30:37.249021748 +0100
+--- gcc/doc/sourcebuild.texi	2012-09-24 16:15:14.000000000 +0100
++++ gcc/doc/sourcebuild.texi	2012-10-14 10:25:56.049866840 +0100
 @@ -114,6 +114,9 @@ The Objective-C and Objective-C++ runtim
  @item libquadmath
  The runtime support library for quad-precision math operations.
@@ -85,7 +85,7 @@
  The Stack protector runtime library.
  
 --- gcc/doc/standards.texi	2011-12-21 17:53:58.000000000 +0000
-+++ gcc/doc/standards.texi	2012-08-17 18:30:37.277021749 +0100
++++ gcc/doc/standards.texi	2012-10-14 10:25:56.049866840 +0100
 @@ -289,6 +289,16 @@ a specific version.  In general GCC trac
  closely, and any given release will support the language as of the
  date that the release was frozen.
@@ -103,9 +103,9 @@
  @section References for other languages
  
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
---- gcc/dwarf2out.c	2012-07-24 18:31:01.000000000 +0100
-+++ gcc/dwarf2out.c	2012-08-17 18:30:37.345021752 +0100
-@@ -18199,6 +18199,8 @@ gen_compile_unit_die (const char *filena
+--- gcc/dwarf2out.c	2012-10-04 12:23:18.000000000 +0100
++++ gcc/dwarf2out.c	2012-10-14 10:25:56.061866840 +0100
+@@ -18242,6 +18242,8 @@ gen_compile_unit_die (const char *filena
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
      language = DW_LANG_C_plus_plus;
@@ -114,8 +114,8 @@
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
---- gcc/gcc.c	2012-07-27 19:17:00.000000000 +0100
-+++ gcc/gcc.c	2012-08-17 18:30:37.377021753 +0100
+--- gcc/gcc.c	2012-10-04 18:01:31.000000000 +0100
++++ gcc/gcc.c	2012-10-14 10:25:56.065866839 +0100
 @@ -935,6 +935,7 @@ static const struct compiler default_com
    {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
    {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
