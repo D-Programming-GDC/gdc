@@ -52,7 +52,7 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_HANDLE_OPTION
 #undef LANG_HOOKS_POST_OPTIONS
 #undef LANG_HOOKS_PARSE_FILE
-#undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
+#undef LANG_HOOKS_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
 #undef LANG_HOOKS_BUILTIN_FUNCTION
@@ -65,7 +65,7 @@ static char lang_name[6] = "GNU D";
 
 #define LANG_HOOKS_NAME				lang_name
 #define LANG_HOOKS_INIT				d_init
-#define LANG_HOOKS_INIT_TS			d_common_init_ts
+#define LANG_HOOKS_INIT_TS			d_init_ts
 #define LANG_HOOKS_INIT_OPTIONS			d_init_options
 #define LANG_HOOKS_INIT_OPTIONS_STRUCT		d_init_options_struct
 #define LANG_HOOKS_INITIALIZE_DIAGNOSTICS	d_initialize_diagnostics
@@ -73,8 +73,8 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_HANDLE_OPTION		d_handle_option
 #define LANG_HOOKS_POST_OPTIONS			d_post_options
 #define LANG_HOOKS_PARSE_FILE			d_parse_file
-#define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE	d_common_attribute_table
-#define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE	d_common_format_attribute_table
+#define LANG_HOOKS_ATTRIBUTE_TABLE		d_attribute_table
+#define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE	d_format_attribute_table
 #define LANG_HOOKS_TYPES_COMPATIBLE_P		d_types_compatible_p
 #define LANG_HOOKS_BUILTIN_FUNCTION		d_builtin_function
 #define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE	d_builtin_function
@@ -317,7 +317,7 @@ d_init (void)
 }
 
 void
-d_common_init_ts (void)
+d_init_ts (void)
 {
   MARK_TS_TYPED (IASM_EXPR);
   MARK_TS_TYPED (FLOAT_MOD_EXPR);

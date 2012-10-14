@@ -150,8 +150,6 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/symbol.glue.o d/asmstmt.glue.o d/dt.glue.o \
               d/d-incpath.glue.o
 
-D_BI_ATTRS = d/d-bi-attrs.h
-
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
 d/%.dmd.o: $(srcdir)/d/dfrontend/%.c $(D_DMD_H) d/d-confdefs.h
@@ -207,7 +205,7 @@ d/asmstmt.glue.o: d/asmstmt.cc $(D_TREE_H)
 d/symbol.glue.o: d/symbol.cc $(D_TREE_H)
 d/dt.glue.o: d/symbol.cc $(D_TREE_H)
 d/d-gt.cglue.o: d/d-gt.c $(D_TREE_H)
-d/d-builtins.cglue.o: d/d-builtins.c $(D_TREE_H) $(D_BI_ATTRS)
+d/d-builtins.cglue.o: d/d-builtins.c $(D_TREE_H)
 d/d-builtins2.glue.o: d/d-builtins.c $(D_TREE_H)
 d/todt.dmd.o: $(D_DMD_H)
 d/toobj.dmd.o: $(D_DMD_H)

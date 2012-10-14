@@ -1,5 +1,25 @@
 2012-10-14  Iain Buclaw  <ibuclaw@ubuntu.com>
 
+	* d-bi-attrs.h: Remove file.
+	* d-builtins.c(d_attribute_table): Define table of machine independant
+	attributes for gcc builtins.
+	(d_format_attribute_table): Define table of format attributes for gcc
+	builtins.
+	(handle_noreturn_attribute, handle_leaf_attribute,
+	handle_const_attribute, handle_malloc_attribute,
+	handle_returns_twice_attribute, handle_pure_attribute,
+	handle_novops_attribute, get_nonnull_operand,
+	handle_nonnull_attribute, handle_nothrow_attribute,
+	handle_sentinel_attribute, handle_type_generic_attribute,
+	handle_fnspec_attribute, handle_transaction_pure_attribute,
+	ignore_attribute): Moved common attribute handlers from d-bi-attrs.h.
+	* d-lang.cc(LANG_HOOKS_ATTRIBUTE_TABLE): Use instead of
+	LANG_HOOKS_COMMON_ATTRIBUTE_TABLE.
+	(d_attribute_table): Renamed from d_common_attribute_table.
+	(d_format_attribute_table): Renamed from
+	d_common_format_attribute_table.
+	(d_init_ts): Renamed from d_common_init_ts.
+
 	* d-builtins2.cc(d_bi_init): Determine D frontend type for size_t.
 	* d-objfile.cc(ObjectFile::hasModule): Remove old compatibility
 	macros.
