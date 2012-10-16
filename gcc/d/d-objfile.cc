@@ -730,19 +730,18 @@ ObjectFile::outputThunk (tree thunk_decl, tree target_decl, int offset)
   else
     {
       /* Backend will not emit thunks to external symbols unless the function is
-	 being emitted in this compilation unit.  So make generated thunks weakref
+	 being emitted in this compilation unit.  So make generated thunks weak
 	 symbols for the methods they interface with.  */
-      tree id = DECL_ASSEMBLER_NAME (target_decl);
-      tree attrs = tree_cons (NULL_TREE, build_string (IDENTIFIER_LENGTH (id),
-						       IDENTIFIER_POINTER (id)), NULL_TREE);
-      attrs = tree_cons (get_identifier ("weakref"), attrs, NULL_TREE);
-
       DECL_INITIAL (thunk_decl) = NULL_TREE;
       DECL_EXTERNAL (thunk_decl) = 1;
       TREE_ASM_WRITTEN (thunk_decl) = 0;
       TREE_PRIVATE (thunk_decl) = 1;
       TREE_PUBLIC (thunk_decl) = 0;
-      decl_attributes (&thunk_decl, attrs, 0);
+
+      /* Can't call declare_weak because it wants this to be TREE_PUBLIC,
+	 and that isn't supported; and because it wants to add it to
+	 the list of weak decls, which isn't helpful.  */
+      DECL_WEAK (thunk_decl) = 1;
 
       rest_of_decl_compilation (thunk_decl, 1, 0);
     }
