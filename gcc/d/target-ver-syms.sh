@@ -43,6 +43,7 @@ mingw32*) case "$target_vendor" in
               w64*) d_os_versym=Win64; d_os_versym2=MinGW64; d_windows=1 ;;
           esac
           ;;
+netbsd*) d_os_versym=NetBSD; d_unix=1 ;;
 openbsd*) d_os_versym=OpenBSD; d_unix=1 ;;
 pe*)    case "$target" in
             *-skyos*-*) d_os_versym=SkyOS ; d_unix=1 ;;

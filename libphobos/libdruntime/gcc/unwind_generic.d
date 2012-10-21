@@ -33,24 +33,20 @@ extern (C):
 
 /* @@@ The IA-64 ABI uses uint64 throughout.  Most places this is
    inefficient for 32-bit and smaller machines.  */
-
-// %% These were typedefs, then made alias -- there are some
-// extra casts now
-
-alias __builtin_machine_uint _Unwind_Word;
-alias __builtin_machine_int  _Unwind_Sword;
-alias __builtin_pointer_uint _Unwind_Internal_Ptr;
-
-version (IA64) {
-    version (HPUX) {
-        alias __builtin_machine_uint _Unwind_Ptr;
-    } else {
-        alias __builtin_pointer_uint _Unwind_Ptr;
-    }
-} else {
+alias __builtin_unwind_uint _Unwind_Word;
+alias __builtin_unwind_int  _Unwind_Sword;
+version (IA64)
+{
+  version (HPUX)
+    alias __builtin_machine_uint _Unwind_Ptr;
+  else
     alias __builtin_pointer_uint _Unwind_Ptr;
 }
-
+else
+{
+  alias __builtin_pointer_uint _Unwind_Ptr;
+}
+alias __builtin_pointer_uint _Unwind_Internal_Ptr;
 
 /* @@@ The IA-64 ABI uses a 64-bit word to identify the producer and
    consumer of an exception.  We'll go along with this for now even on
@@ -60,7 +56,8 @@ alias ulong _Unwind_Exception_Class;
 
 /* The unwind interface uses reason codes in several contexts to
    identify the reasons for failures or other actions.  */
-enum
+alias uint _Unwind_Reason_Code;
+enum : _Unwind_Reason_Code
 {
   _URC_NO_REASON = 0,
   _URC_FOREIGN_EXCEPTION_CAUGHT = 1,
@@ -72,7 +69,6 @@ enum
   _URC_INSTALL_CONTEXT = 7,
   _URC_CONTINUE_UNWIND = 8
 }
-alias uint _Unwind_Reason_Code;
 
 
 /* The unwind interface uses a pointer to an exception header object
@@ -83,16 +79,15 @@ alias uint _Unwind_Reason_Code;
 
 alias extern(C) void function(_Unwind_Reason_Code, _Unwind_Exception *) _Unwind_Exception_Cleanup_Fn;
 
-align struct _Unwind_Exception // D Note: this may not be "maxium alignment required by any type"?
+/* @@@ The IA-64 ABI says that this structure must be double-word aligned.
+   Taking that literally does not make much sense generically.  Instead we
+   provide the maximum alignment required by any type for the machine.  */
+align struct _Unwind_Exception
 {
   _Unwind_Exception_Class exception_class;
   _Unwind_Exception_Cleanup_Fn exception_cleanup;
   _Unwind_Word private_1;
   _Unwind_Word private_2;
-
-  /* @@@ The IA-64 ABI says that this structure must be double-word aligned.
-     Taking that literally does not make much sense generically.  Instead we
-     provide the maximum alignment required by any type for the machine.  */
 }
 
 
@@ -102,11 +97,11 @@ alias int _Unwind_Action;
 
 enum
 {
-    _UA_SEARCH_PHASE  = 1,
-    _UA_CLEANUP_PHASE = 2,
-    _UA_HANDLER_FRAME = 4,
-    _UA_FORCE_UNWIND  = 8,
-    _UA_END_OF_STACK  = 16
+  _UA_SEARCH_PHASE  = 1,
+  _UA_CLEANUP_PHASE = 2,
+  _UA_HANDLER_FRAME = 4,
+  _UA_FORCE_UNWIND  = 8,
+  _UA_END_OF_STACK  = 16
 }
 
 /* This is an opaque type used to refer to a system-specific data
@@ -120,13 +115,10 @@ _Unwind_Reason_Code _Unwind_RaiseException (_Unwind_Exception *);
 
 /* Raise an exception for forced unwinding.  */
 
-alias extern(C) _Unwind_Reason_Code function
-     (int, _Unwind_Action, _Unwind_Exception_Class,
-      _Unwind_Exception *, _Unwind_Context *, void *) _Unwind_Stop_Fn;
+alias extern(C) _Unwind_Reason_Code function (int, _Unwind_Action, _Unwind_Exception_Class,
+					      _Unwind_Exception *, _Unwind_Context *, void *) _Unwind_Stop_Fn;
 
-_Unwind_Reason_Code _Unwind_ForcedUnwind (_Unwind_Exception *,
-                                                 _Unwind_Stop_Fn,
-                                                 void *);
+_Unwind_Reason_Code _Unwind_ForcedUnwind (_Unwind_Exception *, _Unwind_Stop_Fn, void *);
 
 /* Helper to invoke the exception_cleanup routine.  */
 void _Unwind_DeleteException (_Unwind_Exception *);
@@ -142,20 +134,20 @@ _Unwind_Reason_Code _Unwind_Resume_or_Rethrow (_Unwind_Exception *);
 /* @@@ Use unwind data to perform a stack backtrace.  The trace callback
    is called for every stack frame in the call chain, but no cleanup
    actions are performed.  */
-alias extern(C) _Unwind_Reason_Code function
-     (_Unwind_Context *, void *) _Unwind_Trace_Fn;
+alias extern(C) _Unwind_Reason_Code function (_Unwind_Context *, void *) _Unwind_Trace_Fn;
 
 _Unwind_Reason_Code _Unwind_Backtrace (_Unwind_Trace_Fn, void *);
 
 /* These functions are used for communicating information about the unwind
    context (i.e. the unwind descriptors and the user register state) between
    the unwind library and the personality routine and landing pad.  Only
-   selected registers maybe manipulated.  */
+   selected registers may be manipulated.  */
 
 _Unwind_Word _Unwind_GetGR (_Unwind_Context *, int);
 void _Unwind_SetGR (_Unwind_Context *, int, _Unwind_Word);
 
 _Unwind_Ptr _Unwind_GetIP (_Unwind_Context *);
+_Unwind_Ptr _Unwind_GetIPInfo (_Unwind_Context *, int *);
 void _Unwind_SetIP (_Unwind_Context *, _Unwind_Ptr);
 
 /* @@@ Retrieve the CFA of the given context.  */
@@ -180,9 +172,8 @@ _Unwind_Ptr _Unwind_GetRegionStart (_Unwind_Context *);
    provides more effective versioning by detecting at link time the
    lack of code to handle the different data format.  */
 
-alias extern(C) _Unwind_Reason_Code function
-     (int, _Unwind_Action, _Unwind_Exception_Class,
-      _Unwind_Exception *, _Unwind_Context *) _Unwind_Personality_Fn;
+alias extern(C) _Unwind_Reason_Code function (int, _Unwind_Action, _Unwind_Exception_Class,
+					      _Unwind_Exception *, _Unwind_Context *) _Unwind_Personality_Fn;
 
 /* @@@ The following alternate entry points are for setjmp/longjmp
    based unwinding.  */
@@ -191,10 +182,8 @@ struct SjLj_Function_Context;
 extern void _Unwind_SjLj_Register (SjLj_Function_Context *);
 extern void _Unwind_SjLj_Unregister (SjLj_Function_Context *);
 
-_Unwind_Reason_Code _Unwind_SjLj_RaiseException
-     (_Unwind_Exception *);
-_Unwind_Reason_Code _Unwind_SjLj_ForcedUnwind
-     (_Unwind_Exception *, _Unwind_Stop_Fn, void *);
+_Unwind_Reason_Code _Unwind_SjLj_RaiseException (_Unwind_Exception *);
+_Unwind_Reason_Code _Unwind_SjLj_ForcedUnwind (_Unwind_Exception *, _Unwind_Stop_Fn, void *);
 void _Unwind_SjLj_Resume (_Unwind_Exception *);
 _Unwind_Reason_Code _Unwind_SjLj_Resume_or_Rethrow (_Unwind_Exception *);
 
@@ -202,28 +191,54 @@ _Unwind_Reason_Code _Unwind_SjLj_Resume_or_Rethrow (_Unwind_Exception *);
    and data-relative addressing in the LDSA.  In order to stay link
    compatible with the standard ABI for IA-64, we inline these.  */
 
-version (IA64) {
-_Unwind_Ptr
-_Unwind_GetDataRelBase (_Unwind_Context *_C)
+version (IA64)
 {
-  /* The GP is stored in R1.  */
-  return _Unwind_GetGR (_C, 1);
-}
+  _Unwind_Ptr _Unwind_GetDataRelBase (_Unwind_Context *_C)
+  {
+    /* The GP is stored in R1.  */
+    return _Unwind_GetGR (_C, 1);
+  }
 
-_Unwind_Ptr
-_Unwind_GetTextRelBase (_Unwind_Context *)
+  _Unwind_Ptr _Unwind_GetTextRelBase (_Unwind_Context *)
+  {
+    abort ();
+    return 0;
+  }
+
+  /* @@@ Retrieve the Backing Store Pointer of the given context.  */
+  _Unwind_Word _Unwind_GetBSP (_Unwind_Context *);
+}
+else
 {
-  abort ();
-  return 0;
-}
-
-/* @@@ Retrieve the Backing Store Pointer of the given context.  */
-_Unwind_Word _Unwind_GetBSP (_Unwind_Context *);
-} else {
-_Unwind_Ptr _Unwind_GetDataRelBase (_Unwind_Context *);
-_Unwind_Ptr _Unwind_GetTextRelBase (_Unwind_Context *);
+  _Unwind_Ptr _Unwind_GetDataRelBase (_Unwind_Context *);
+  _Unwind_Ptr _Unwind_GetTextRelBase (_Unwind_Context *);
 }
 
 /* @@@ Given an address, return the entry point of the function that
    contains it.  */
 extern void * _Unwind_FindEnclosingFunction (void *pc);
+
+
+/* leb128 type numbers have a potentially unlimited size.
+   The target of the following definitions of _sleb128_t and _uleb128_t
+   is to have efficient data types large enough to hold the leb128 type
+   numbers used in the unwind code.
+   Mostly these types will simply be defined to long and unsigned long
+   except when a unsigned long data type on the target machine is not
+   capable of storing a pointer.  */
+
+static if (__builtin_clong.sizeof >= (void*).sizeof)
+{
+  alias __builtin_clong _sleb128_t;
+  alias __builtin_culong _uleb128_t;
+}
+else static if (long.sizeof >= (void*).sizeof)
+{
+  alias long _sleb128_t;
+  alias ulong _uleb128_t;
+}
+else
+{
+  static assert (0, "What type shall we use for _sleb128_t?");
+}
+

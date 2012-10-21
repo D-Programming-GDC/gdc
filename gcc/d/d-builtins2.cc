@@ -112,12 +112,6 @@ gcc_type_to_d_type (tree t)
       break;
 
     case REAL_TYPE:
-      // Double and long double may be the same size
-      if (TYPE_MAIN_VARIANT (t) == double_type_node)
-	return Type::tfloat64;
-      else if (TYPE_MAIN_VARIANT (t) == long_double_type_node)
-	return Type::tfloat80;
-
       type_size = tree_low_cst (TYPE_SIZE_UNIT (t), 1);
       for (size_t i = 0; i < TMAX; i++)
 	{
@@ -522,59 +516,41 @@ d_gcc_magic_builtins_module (Module *m)
 	}
     }
 
-  Type *t = NULL;
-  Declaration *d = NULL;
-
   // va_list should already be built, so no need to convert to D type again.
-  t = d_gcc_builtin_va_list_d_type;
-  if (t)
-    {
-      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_va_list"), t);
-      funcs->push (d);
-    }
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_va_list"),
+				     d_gcc_builtin_va_list_d_type));
 
   // Provide access to target-specific integer types.
-  t = gcc_type_to_d_type (long_integer_type_node);
-  if (t)
-    {
-      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_clong"), t);
-      funcs->push (d);
-    }
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_clong"),
+				     gcc_type_to_d_type (long_integer_type_node)));
 
-  t = gcc_type_to_d_type (long_unsigned_type_node);
-  if (t)
-    {
-      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_culong"), t);
-      funcs->push (d);
-    }
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_culong"),
+				     gcc_type_to_d_type (long_unsigned_type_node)));
 
-  t = gcc_type_to_d_type (lang_hooks.types.type_for_mode (word_mode, 0));
-  if (t)
-    {
-      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_int"), t);
-      funcs->push (d);
-    }
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_byte"),
+				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (byte_mode, 0))));
 
-  t = gcc_type_to_d_type (lang_hooks.types.type_for_mode (word_mode, 1));
-  if (t)
-    {
-      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_uint"), t);
-      funcs->push (d);
-    }
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_ubyte"),
+				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (byte_mode, 1))));
 
-  t = gcc_type_to_d_type (lang_hooks.types.type_for_mode (ptr_mode, 0));
-  if (t)
-    {
-      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_int"), t);
-      funcs->push (d);
-    }
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_int"),
+				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (word_mode, 0))));
 
-  t = gcc_type_to_d_type (lang_hooks.types.type_for_mode (ptr_mode, 1));
-  if (t)
-    {
-      d = new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_uint"), t);
-      funcs->push (d);
-    }
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_uint"),
+				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (word_mode, 1))));
+
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_int"),
+				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (ptr_mode, 0))));
+
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_uint"),
+				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (ptr_mode, 1))));
+
+  // _Unwind_Word has it's own target specific mode.
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_unwind_int"),
+				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (targetm.unwind_word_mode(), 0))));
+
+  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_unwind_uint"),
+				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (targetm.unwind_word_mode(), 1))));
 
   m->members->push (new LinkDeclaration (LINKc, funcs));
 }

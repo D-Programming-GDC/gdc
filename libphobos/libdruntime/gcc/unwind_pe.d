@@ -23,90 +23,86 @@ module gcc.unwind_pe;
 import gcc.unwind;
 private import core.stdc.stdlib : abort;
 
-/* @@@ Really this should be out of line, but this also causes link
-   compatibility problems with the base ABI.  This is slightly better
-   than duplicating code, however.  */
-
 /* Pointer encodings, from dwarf2.h.  */
-enum {
-    DW_EH_PE_absptr = 0x00,
-    DW_EH_PE_omit = 0xff,
+enum
+{
+  DW_EH_PE_absptr   = 0x00,
+  DW_EH_PE_omit     = 0xff,
 
-    DW_EH_PE_uleb128 = 0x01,
-    DW_EH_PE_udata2 = 0x02,
-    DW_EH_PE_udata4 = 0x03,
-    DW_EH_PE_udata8 = 0x04,
-    DW_EH_PE_sleb128 = 0x09,
-    DW_EH_PE_sdata2 = 0x0A,
-    DW_EH_PE_sdata4 = 0x0B,
-    DW_EH_PE_sdata8 = 0x0C,
-    DW_EH_PE_signed = 0x08,
+  DW_EH_PE_uleb128  = 0x01,
+  DW_EH_PE_udata2   = 0x02,
+  DW_EH_PE_udata4   = 0x03,
+  DW_EH_PE_udata8   = 0x04,
+  DW_EH_PE_sleb128  = 0x09,
+  DW_EH_PE_sdata2   = 0x0A,
+  DW_EH_PE_sdata4   = 0x0B,
+  DW_EH_PE_sdata8   = 0x0C,
+  DW_EH_PE_signed   = 0x08,
 
-    DW_EH_PE_pcrel = 0x10,
-    DW_EH_PE_textrel = 0x20,
-    DW_EH_PE_datarel = 0x30,
-    DW_EH_PE_funcrel = 0x40,
-    DW_EH_PE_aligned = 0x50,
+  DW_EH_PE_pcrel    = 0x10,
+  DW_EH_PE_textrel  = 0x20,
+  DW_EH_PE_datarel  = 0x30,
+  DW_EH_PE_funcrel  = 0x40,
+  DW_EH_PE_aligned  = 0x50,
 
-    DW_EH_PE_indirect = 0x80
+  DW_EH_PE_indirect = 0x80
 }
 
-version (NO_SIZE_OF_ENCODED_VALUE) {
-} else {
-    /* Given an encoding, return the number of bytes the format occupies.
-       This is only defined for fixed-size encodings, and so does not
-       include leb128.  */
-
-    uint
-    size_of_encoded_value (ubyte encoding)
-    {
+version (NO_SIZE_OF_ENCODED_VALUE) {}
+else
+{
+  /* Given an encoding, return the number of bytes the format occupies.
+     This is only defined for fixed-size encodings, and so does not
+     include leb128.  */
+  uint size_of_encoded_value (ubyte encoding)
+  {
       if (encoding == DW_EH_PE_omit)
-        return 0;
+	return 0;
 
       final switch (encoding & 0x07)
-        {
-        case DW_EH_PE_absptr:
-          return (void *).sizeof;
-        case DW_EH_PE_udata2:
-          return 2;
-        case DW_EH_PE_udata4:
-          return 4;
-        case DW_EH_PE_udata8:
-          return 8;
-        }
+	{
+	case DW_EH_PE_absptr:
+	  return (void *).sizeof;
+	case DW_EH_PE_udata2:
+	  return 2;
+	case DW_EH_PE_udata4:
+	  return 4;
+	case DW_EH_PE_udata8:
+	  return 8;
+	}
       assert(0);
-    }
+  }
 }
 
-version (NO_BASE_OF_ENCODED_VALUE) {
-} else {
-    /* Given an encoding and an _Unwind_Context, return the base to which
-       the encoding is relative.  This base may then be passed to
-       read_encoded_value_with_base for use when the _Unwind_Context is
-       not available.  */
+version (NO_BASE_OF_ENCODED_VALUE) {}
+else
+{
+  /* Given an encoding and an _Unwind_Context, return the base to which
+     the encoding is relative.  This base may then be passed to
+     read_encoded_value_with_base for use when the _Unwind_Context is
+     not available.  */
 
-    _Unwind_Ptr
-    base_of_encoded_value (ubyte encoding, _Unwind_Context *context)
-    {
-      if (encoding == DW_EH_PE_omit)
-        return cast(_Unwind_Ptr) 0;
+  _Unwind_Ptr base_of_encoded_value (ubyte encoding, _Unwind_Context *context)
+  {
+    if (encoding == DW_EH_PE_omit)
+      return cast(_Unwind_Ptr) 0;
 
-      final switch (encoding & 0x70)
-        {
-        case DW_EH_PE_absptr:
-        case DW_EH_PE_pcrel:
-        case DW_EH_PE_aligned:
-          return cast(_Unwind_Ptr) 0;
+    final switch (encoding & 0x70)
+      {
+      case DW_EH_PE_absptr:
+      case DW_EH_PE_pcrel:
+      case DW_EH_PE_aligned:
+	return cast(_Unwind_Ptr) 0;
 
-        case DW_EH_PE_textrel:
-          return _Unwind_GetTextRelBase (context);
-        case DW_EH_PE_datarel:
-          return _Unwind_GetDataRelBase (context);
-        case DW_EH_PE_funcrel:
-          return _Unwind_GetRegionStart (context);
-        }
-      assert (0);
-    }
+      case DW_EH_PE_textrel:
+	return _Unwind_GetTextRelBase (context);
+      case DW_EH_PE_datarel:
+	return _Unwind_GetDataRelBase (context);
+      case DW_EH_PE_funcrel:
+	return _Unwind_GetRegionStart (context);
+      }
+    assert (0);
+  }
 }
 
 /* Read an unsigned leb128 value from P, store the value in VAL, return
@@ -115,17 +111,17 @@ version (NO_BASE_OF_ENCODED_VALUE) {
    pointers should not be leb128 encoded on that target.  */
 
 ubyte *
-read_uleb128 (ubyte *p, _Unwind_Word *val)
+read_uleb128 (ubyte *p, _uleb128_t *val)
 {
   uint shift = 0;
   ubyte a_byte;
-  _Unwind_Word result;
+  _uleb128_t result;
 
-  result = cast(_Unwind_Word) 0;
+  result = cast(_uleb128_t) 0;
   do
     {
       a_byte = *p++;
-      result |= (cast(_Unwind_Word)a_byte & 0x7f) << shift;
+      result |= (cast(_uleb128_t)a_byte & 0x7f) << shift;
       shift += 7;
     }
   while (a_byte & 0x80);
@@ -134,30 +130,29 @@ read_uleb128 (ubyte *p, _Unwind_Word *val)
   return p;
 }
 
-
 /* Similar, but read a signed leb128 value.  */
 
 ubyte *
-read_sleb128 (ubyte *p, _Unwind_Sword *val)
+read_sleb128 (ubyte *p, _sleb128_t *val)
 {
   uint shift = 0;
   ubyte a_byte;
-  _Unwind_Word result;
+  _uleb128_t result;
 
-  result = cast(_Unwind_Word) 0;
+  result = cast(_uleb128_t) 0;
   do
     {
       a_byte = *p++;
-      result |= (cast(_Unwind_Word)a_byte & 0x7f) << shift;
+      result |= (cast(_uleb128_t)a_byte & 0x7f) << shift;
       shift += 7;
     }
   while (a_byte & 0x80);
 
   /* Sign-extend a negative value.  */
   if (shift < 8 * result.sizeof && (a_byte & 0x40) != 0)
-    result |= -((cast(_Unwind_Word)1L) << shift);
+    result |= -((cast(_uleb128_t)1L) << shift);
 
-  *val = cast(_Unwind_Sword) result;
+  *val = cast(_sleb128_t) result;
   return p;
 }
 
@@ -169,16 +164,16 @@ ubyte *
 read_encoded_value_with_base (ubyte encoding, _Unwind_Ptr base,
                               ubyte *p, _Unwind_Ptr *val)
 {
-    // D Notes: Todo -- packed!
   union unaligned
     {
-      align(1) void *ptr;
-      align(1) ushort u2 ;
-      align(1) uint u4 ;
-      align(1) ulong u8 ;
-      align(1) short s2 ;
-      align(1) int s4 ;
-      align(1) long s8 ;
+      align(1):
+      void *ptr;
+      ushort u2;
+      uint u4;
+      ulong u8;
+      short s2;
+      int s4;
+      long s8;
     }
 
   unaligned *u = cast(unaligned *) p;
@@ -188,7 +183,7 @@ read_encoded_value_with_base (ubyte encoding, _Unwind_Ptr base,
     {
       _Unwind_Internal_Ptr a = cast(_Unwind_Internal_Ptr) p;
       a = cast(_Unwind_Internal_Ptr)( (a + (void *).sizeof - 1) & - (void *).sizeof );
-      result = * cast(_Unwind_Internal_Ptr *) a;
+      result = *cast(_Unwind_Internal_Ptr *) a;
       p = cast(ubyte *) cast(_Unwind_Internal_Ptr) (a + (void *).sizeof);
     }
   else
@@ -202,7 +197,7 @@ read_encoded_value_with_base (ubyte encoding, _Unwind_Ptr base,
 
         case DW_EH_PE_uleb128:
           {
-            _Unwind_Word tmp;
+            _uleb128_t tmp;
             p = read_uleb128 (p, &tmp);
             result = cast(_Unwind_Internal_Ptr) tmp;
           }
@@ -210,7 +205,7 @@ read_encoded_value_with_base (ubyte encoding, _Unwind_Ptr base,
 
         case DW_EH_PE_sleb128:
           {
-            _Unwind_Sword tmp;
+            _sleb128_t tmp;
             p = read_sleb128 (p, &tmp);
             result = cast(_Unwind_Internal_Ptr) tmp;
           }
@@ -259,18 +254,18 @@ read_encoded_value_with_base (ubyte encoding, _Unwind_Ptr base,
   return p;
 }
 
-version (NO_BASE_OF_ENCODED_VALUE) {
-} else {
-    /* Like read_encoded_value_with_base, but get the base from the context
-       rather than providing it directly.  */
+version (NO_BASE_OF_ENCODED_VALUE) {}
+else
+{
+  /* Like read_encoded_value_with_base, but get the base from the context
+     rather than providing it directly.  */
 
-    ubyte *
-    read_encoded_value (_Unwind_Context *context, ubyte encoding,
-                        ubyte *p, _Unwind_Ptr *val)
-    {
-      return read_encoded_value_with_base (encoding,
-                    base_of_encoded_value (encoding, context),
-                    p, val);
-    }
+  ubyte *read_encoded_value (_Unwind_Context *context, ubyte encoding,
+			     ubyte *p, _Unwind_Ptr *val)
+  {
+    return read_encoded_value_with_base (encoding,
+					 base_of_encoded_value (encoding, context),
+					 p, val);
+  }
 }
 
