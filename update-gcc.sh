@@ -67,5 +67,22 @@ if test $d_setup_gcc -eq 1; then
         cd $top
 fi
 
+# 3. Patch the top-level directory
+#
+# If the patch for the top-level Makefile.in doesn't take, you can regenerate
+# it with:
+#   autogen -T Makefile.tpl Makefile.def
+#
+# You will need the autogen package to do this. (http://autogen.sf.net/)
+cd $d_gccsrc && \
+  patch -p1 < gcc/d/patches/patch-toplev-4.7.x && \
+  cd $top || exit 1
+
+
+# 4. Patch the gcc subdirectory
+cd $d_gccsrc/gcc && \
+  patch -p1 < d/patches/patch-gcc-4.7.x && \
+  cd $top || exit 1
+
 echo "GDC update complete."
 exit 0
