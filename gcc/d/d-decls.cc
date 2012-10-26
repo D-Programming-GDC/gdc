@@ -347,6 +347,7 @@ TypeInfoDeclaration::toSymbol (void)
       gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == REFERENCE_TYPE);
       TREE_TYPE (csym->Stree) = TREE_TYPE (TREE_TYPE (csym->Stree));
       TREE_USED (csym->Stree) = 1;
+      layout_decl (csym->Stree, 0);
 
       /* DMD makes typeinfo decls one-only by doing: s->Sclass = SCcomdat;
 	 in TypeInfoDeclaration::toObjFile.  The difference is that,
@@ -680,9 +681,7 @@ ClassDeclaration::toSymbol (void)
       tree decl;
       csym = toSymbolX ("__Class", SCextern, 0, "Z");
       decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (csym->Sident),
-			 TREE_TYPE (ClassDeclaration::classinfo != NULL
-				    ? ClassDeclaration::classinfo->type->toCtype() // want the RECORD_TYPE, not the REFERENCE_TYPE
-				    : error_mark_node));
+			 make_node (RECORD_TYPE));
       csym->Stree = decl;
       d_keep (decl);
 
@@ -721,12 +720,10 @@ Module::toSymbol (void)
 {
   if (!csym)
     {
-      Type *obj_type = gen.getObjectType();
-
       csym = toSymbolX ("__ModuleInfo", SCextern, 0, "Z");
 
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (csym->Sident),
-			      TREE_TYPE (obj_type->toCtype())); // want the RECORD_TYPE, not the REFERENCE_TYPE
+			      make_node (RECORD_TYPE));
       g.ofile->setDeclLoc (decl, this);
       csym->Stree = decl;
 

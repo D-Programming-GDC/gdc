@@ -929,8 +929,18 @@ outdata (Symbol *sym)
   tree t = check_static_sym (sym);
   gcc_assert (t);
 
-  if (sym->Sdt && DECL_INITIAL (t) == NULL_TREE)
-    DECL_INITIAL (t) = dt2tree (sym->Sdt);
+  if (sym->Sdt)
+    {
+      if (!COMPLETE_TYPE_P (TREE_TYPE (t)))
+        {
+          size_t fsize = dt_size (sym->Sdt);
+          TYPE_SIZE (TREE_TYPE (t)) = bitsize_int (fsize * BITS_PER_UNIT);
+          TYPE_SIZE_UNIT (TREE_TYPE (t)) = size_int (fsize);
+        }
+
+      if (DECL_INITIAL (t) == NULL_TREE)
+        DECL_INITIAL (t) = dt2tree (sym->Sdt);
+    }
 
   gcc_assert (!g.irs->isErrorMark (t));
 
@@ -955,6 +965,25 @@ outdata (Symbol *sym)
   // %% Oops, this was supposed to be static.
   gcc_assert (!DECL_EXTERNAL (t));
   relayout_decl (t);
+
+  if (DECL_INITIAL (t) != NULL_TREE)
+    {
+      //Initializer must never be bigger than symbol size
+      //(see ARM issue #120, section anchors)
+      //According to gcc manual, DECL_SIZE is authoritative:
+      HOST_WIDE_INT typesize = int_size_in_bytes (TREE_TYPE (t));
+      HOST_WIDE_INT initsize = int_size_in_bytes (TREE_TYPE (DECL_INITIAL (t)));
+      HOST_WIDE_INT declsize = gen.getTargetSizeConst (DECL_SIZE (t)) / BITS_PER_UNIT;
+
+      if (declsize < initsize)
+        internal_error ("Mismatch between declaration '%s' size (%wd) and it's initializer size (%wd).",
+                        sym->prettyIdent ? sym->prettyIdent : sym->Sident,
+                        declsize,  initsize);
+      else if (declsize != typesize)
+        internal_error ("Mismatch between declaration '%s' size (%wd) and it's type size (%wd).",
+                        sym->prettyIdent ? sym->prettyIdent : sym->Sident,
+                        declsize,  typesize);
+    }
 
   g.ofile->outputStaticSymbol (sym);
 }
