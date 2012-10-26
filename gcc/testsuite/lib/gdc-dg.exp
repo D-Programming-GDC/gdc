@@ -61,3 +61,22 @@ proc gdc-dg-runtest { testcases default-extra-flags } {
         dg-test $test $TORTURE_OPTIONS ${default-extra-flags}
     }
 }
+
+#
+# gdc_load -- wrapper around default gdc_load to handle tests that
+# require program arguments passed to them.
+#
+
+if { [info procs gdc_load] != [list] \
+      && [info procs prev_gdc_load] == [list] } {
+    rename gdc_load prev_gdc_load
+
+    proc gdc_load { program args } {
+        global EXECUTE_ARGS
+        #print "Running: $program $EXECUTE_ARGS $args"
+        set result [eval [list prev_gdc_load $program] "$EXECUTE_ARGS $args"]
+
+        return $result
+    }
+}
+

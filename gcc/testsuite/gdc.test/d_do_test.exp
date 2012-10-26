@@ -66,15 +66,42 @@ proc gdc-convert-args { args } {
     return $out
 }
 
+proc gdc-copy-extra { base extra } {
+    # Split base, folder/file.
+    set type [file dirname $extra ]
+
+    # print "Filename: $base - $extra"
+
+    set fdin [open $base/$extra r]
+    fconfigure $fdin -encoding binary
+
+    file mkdir [file dirname $extra ]
+    set fdout [ open $extra w]
+    fconfigure $fdout -encoding binary
+
+    # print "[file dirname $test ]"
+    while { [gets $fdin copy_line] >= 0 } {
+        set out_line $copy_line
+        puts $fdout $out_line
+    }
+
+    close $fdin
+    close $fdout
+
+    return $extra
+}
+
+
 # Translate DMD test directives to dejagnu equivalent.
 proc dmd2dg { base test } {
     global DEFAULT_DFLAGS
     global PERMUTE_ARGS
+    global EXECUTE_ARGS
 
     set PERMUTE_ARGS $DEFAULT_DFLAGS
+    set EXECUTE_ARGS ""
 
     # Split base, folder/file.
-
     set type [file dirname $test]
 
     # print "Filename: $base - $test"
@@ -133,10 +160,12 @@ proc dmd2dg { base test } {
 
         # Can be handled with dg directives.
 
-        # EXECUTE_ARGS.  ???
-        if [string match "EXECUTE_ARGS" $copy_line] {
-            error "EXECUTE_ARGS not handled"
-            set out_line $copy_line
+        # Handle EXECUTE_ARGS option.
+        if [regexp -- {//\s*EXECUTE_ARGS\s*:\s*(.*)} $copy_line m m0] {
+            foreach arg $m0 {
+                lappend EXECUTE_ARGS $arg
+            }
+            continue
         }
 
         # Handle EXTRA_SOURCES option
@@ -144,7 +173,7 @@ proc dmd2dg { base test } {
             # Iterate imports and convert
             foreach import $m0 {
                 # print "Import: $base $type/$import"
-                dmd2dg $base "$type/$import"
+                gdc-copy-extra $base "$type/$import"
             }
             set out_line "// { dg-additional-sources \"$m0\" }"
         }
@@ -154,7 +183,7 @@ proc dmd2dg { base test } {
             # Iterate imports and convert
             foreach import $m0 {
                 # print "Import: $base $type/$import"
-                dmd2dg $base "$type/$import"
+                gdc-copy-extra $base "$type/$import"
             }
             set out_line "// { dg-additional-files \"$m0\" }"
         }
@@ -205,6 +234,9 @@ proc gdc-do-test { } {
 
     # These are special options to use on testcase, and override DEFAULT_DFLAGS
     global PERMUTE_ARGS
+
+    # Additional arguments for gdc_load
+    global EXECUTE_ARGS
 
     # Initialize `dg'.
     dg-init
