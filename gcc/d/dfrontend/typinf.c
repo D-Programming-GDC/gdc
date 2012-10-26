@@ -532,8 +532,7 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
     const char *name = sd->toPrettyChars();
     size_t namelen = strlen(name);
     dtsize_t(pdt, namelen);
-    //dtabytes(pdt, TYnptr, 0, namelen + 1, name);
-    dtxoff(pdt, toSymbol(), offset, TYnptr);
+    dtabytes(pdt, TYnptr, 0, namelen + 1, name);
     offset += namelen + 1;
 
     // void[] init;
@@ -709,9 +708,6 @@ void TypeInfoStructDeclaration::toDt(dt_t **pdt)
         dtsize_t(pdt, 1);       // has pointers
     else
         dtsize_t(pdt, 0);       // no pointers
-
-    // name[]
-    dtnbytes(pdt, namelen + 1, name);
 }
 
 void TypeInfoClassDeclaration::toDt(dt_t **pdt)
