@@ -188,10 +188,6 @@ Turns off array bounds checking for all functions.
 Don't recognize built-in functions that do not begin with
 @samp{__builtin_} as prefix.
 
-@item -fdebug-c
-@cindex @option{-fdebug-c}
-With -g, generate C debug information.
-
 @item -fdeprecated
 @cindex @option{-fdeprecated}
 Allow use of deprecated features.
