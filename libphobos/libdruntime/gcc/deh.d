@@ -62,7 +62,7 @@ struct OurUnwindException
     // barrier_cache.bitpattern, but might as well use the space.
     void save(_Unwind_Context* context, ref Phase1Info info)
     {
-      unwindHeader.barrier_cache.sp = _Unwind_GetGR (context, UNWIND_REG_STACK);
+      unwindHeader.barrier_cache.sp = _Unwind_GetGR (context, UNWIND_STACK_REG);
       with (unwindHeader.barrier_cache)
 	{
 	  //bitpattern[0] = cast(_uw) info.obj; // No need for this yet
@@ -109,7 +109,7 @@ struct OurUnwindException
   static assert(unwindHeader.offsetof - obj.offsetof == obj.sizeof);
 
   // The generic exception header
-  _Unwind_Exception unwindHeader;
+  align(4) _Unwind_Exception unwindHeader;
 
   static OurUnwindException * fromHeader(_Unwind_Exception * p_ue)
   {
@@ -224,7 +224,6 @@ else version (GNU_ARM_EABI_Unwinder)
 	if (__gnu_unwind_frame (ue_header, context) != _URC_OK)
 	  return _URC_FAILURE;
 	return _URC_CONTINUE_UNWIND;
-	break;
 
       default:
 	abort();
@@ -568,7 +567,7 @@ parse_lsda_header (_Unwind_Context *context, ubyte *p,
       {
 	// Older ARM EABI toolchains set this value incorrectly, so use a
 	// hardcoded OS-specific format.
-	info.ttype_encoding = _TTYPE_ENCODING;
+	info.ttype_encoding = 0;
       }
       p = read_uleb128 (p, &tmp);
       info.TType = p + tmp;

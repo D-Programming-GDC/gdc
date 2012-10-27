@@ -239,10 +239,10 @@ enum int UNWIND_POINTER_REG = 12;
 
 
 /* Decode an R_ARM_TARGET2 relocation.  */
-_Unwind_decode_typeinfo_ptr (_Unwind_Word base, _Unwind_Word ptr)
+_Unwind_Word _Unwind_decode_typeinfo_ptr (_Unwind_Word base, _Unwind_Word ptr)
 {
   _Unwind_Word tmp;
-  tmp = *(_Unwind_Word *) ptr;
+  tmp = *cast(_Unwind_Word *) ptr;
   /* Zero values are always NULL.  */
   if (!tmp)
     return 0;
@@ -252,14 +252,14 @@ _Unwind_decode_typeinfo_ptr (_Unwind_Word base, _Unwind_Word ptr)
     /* Pc-relative indirect.  */
     static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
     tmp += ptr;
-    tmp = *(_Unwind_Word *) tmp;
+    tmp = *cast(_Unwind_Word *) tmp;
   }
   else version (NetBSD)
   {
     /* Pc-relative indirect.  */
     static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
     tmp += ptr;
-    tmp = *(_Unwind_Word *) tmp;
+    tmp = *cast(_Unwind_Word *) tmp;
   }
   else version (symbian) // TODO: name
   {
