@@ -62,7 +62,7 @@ struct OurUnwindException
     // barrier_cache.bitpattern, but might as well use the space.
     void save(_Unwind_Context* context, ref Phase1Info info)
     {
-      unwindHeader.barrier_cache.sp = _Unwind_GetGR (context, UNWIND_REG_STACK);
+      unwindHeader.barrier_cache.sp = _Unwind_GetGR (context, UNWIND_STACK_REG);
       with (unwindHeader.barrier_cache)
 	{
 	  //bitpattern[0] = cast(_uw) info.obj; // No need for this yet
@@ -101,6 +101,9 @@ struct OurUnwindException
       info = cache;
     }
   }
+
+  version (GNU_ARM_EABI_Unwinder)
+    int _pad;  // to place 'obj' behind unwindHeader
 
   Object obj;
 
@@ -224,7 +227,6 @@ else version (GNU_ARM_EABI_Unwinder)
 	if (__gnu_unwind_frame (ue_header, context) != _URC_OK)
 	  return _URC_FAILURE;
 	return _URC_CONTINUE_UNWIND;
-	break;
 
       default:
 	abort();

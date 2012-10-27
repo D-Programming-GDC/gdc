@@ -237,46 +237,42 @@ enum int UNWIND_STACK_REG = 13;
 /* Use IP as a scratch register within the personality routine.  */
 enum int UNWIND_POINTER_REG = 12;
 
+version (linux)
+  static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
+else version (NetBSD)
+  static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
+else version (symbian) // TODO: name
+  static uint _TTYPE_ENCODING = (DW_EH_PE_absptr);
+else version (uclinux) // TODO: name
+  static uint _TTYPE_ENCODING = (DW_EH_PE_absptr);
+else
+  static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel);
 
 /* Decode an R_ARM_TARGET2 relocation.  */
-_Unwind_decode_typeinfo_ptr (_Unwind_Word base, _Unwind_Word ptr)
+_Unwind_Word _Unwind_decode_typeinfo_ptr (_Unwind_Word base, _Unwind_Word ptr)
 {
   _Unwind_Word tmp;
-  tmp = *(_Unwind_Word *) ptr;
+  tmp = *cast(_Unwind_Word *) ptr;
   /* Zero values are always NULL.  */
   if (!tmp)
     return 0;
 
-  version (linux)
-  {
-    /* Pc-relative indirect.  */
-    static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
-    tmp += ptr;
-    tmp = *(_Unwind_Word *) tmp;
-  }
-  else version (NetBSD)
-  {
-    /* Pc-relative indirect.  */
-    static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
-    tmp += ptr;
-    tmp = *(_Unwind_Word *) tmp;
-  }
-  else version (symbian) // TODO: name
-  {
-    /* Absolute pointer.  Nothing more to do.  */
-    static uint _TTYPE_ENCODING = (DW_EH_PE_absptr);
-  }
-  else version (uclinux) // TODO: name
-  {
-    /* Absolute pointer.  Nothing more to do.  */
-    static uint _TTYPE_ENCODING = (DW_EH_PE_absptr);
-  }
+  if (_TTYPE_ENCODING == (DW_EH_PE_pcrel | DW_EH_PE_indirect))
+    {
+      /* Pc-relative indirect.  */
+      static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
+      tmp += ptr;
+      tmp = *cast(_Unwind_Word *) tmp;
+    }
+  else if (_TTYPE_ENCODING == DW_EH_PE_absptr)
+    {
+      /* Absolute pointer.  Nothing more to do.  */
+    }
   else
-  {
-    /* Pc-relative pointer.  */
-    static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel);
-    tmp += ptr;
-  }
+    {
+      /* Pc-relative pointer.  */
+      tmp += ptr;
+    }
   return tmp;
 }
 
