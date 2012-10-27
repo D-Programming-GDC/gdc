@@ -1899,8 +1899,10 @@ IRState::buildAssignOp (tree_code code, Type *type, Expression *e1, Expression *
   tree rhs = buildOp (code, e1->type->toCtype(),
 		      convertTo (lhs, e1b->type, e1->type), e2->toElem (this));
 
-  return modify (type->toCtype(), lhs,
-		 convertForAssignment (rhs, e1->type, type));
+  tree expr = modify (e1b->type->toCtype(), lhs,
+		      convertForAssignment (rhs, e1->type, e1b->type));
+
+  return convertTo (expr, e1b->type, type);
 }
 
 

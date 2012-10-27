@@ -319,7 +319,7 @@ dt_t *ArrayInitializer::toDt()
 
 #ifdef IN_GCC
                 // Pad out the rest of the array with single elements.
-                // Issue #120 - breaks -fsection-anchors on ARM when
+                // Otherwise breaks -fsection-anchors on ARM when
                 // backend calculates field positions for array members.
                 for (size_t i = dim; i < tadim; i++)
                     pdtend = dtcontainer(pdtend, NULL, sadefault);

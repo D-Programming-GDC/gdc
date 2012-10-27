@@ -1,3 +1,29 @@
+2012-10-27  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-codegen.cc(IRState::buildAssignOp): Handle case where LHS type is
+	not compatible with expression type.
+
+2012-10-26  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-decls.cc(ClassDeclaration::toSymbol): Use empty RECORD_TYPE to
+	build internal symbol.
+	(Module::toSymbol): Likewise.
+	* d-objfile.cc(outdata): Set type size from constructor if not
+	COMPLETE_TYPE_P.  Assert that DECL_INITIAL is never bigger than
+	TYPE_SIZE.
+
+2012-10-25  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-codegen.cc(IRState::getFrameInfo): Use vthis to determine whether
+	function is nested.
+
+2012-10-21  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins2.cc(gcc_type_to_d_type): Remove special case for
+	double/long double types.
+	(d_gcc_magic_builtins_module): Cleanup generation of builtin types.
+	Add __builtin_unwind_int and __builtin_unwind_uint.
+
 2012-10-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-objfile.cc(ObjectFile::outputThunk): Mark thunk as DECL_WEAK
