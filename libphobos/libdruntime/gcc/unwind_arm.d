@@ -238,15 +238,15 @@ enum int UNWIND_STACK_REG = 13;
 enum int UNWIND_POINTER_REG = 12;
 
 version (linux)
-  static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
+  const ubyte _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
 else version (NetBSD)
-  static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
+  const ubyte _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
 else version (symbian) // TODO: name
-  static uint _TTYPE_ENCODING = (DW_EH_PE_absptr);
+  const ubyte _TTYPE_ENCODING = (DW_EH_PE_absptr);
 else version (uclinux) // TODO: name
-  static uint _TTYPE_ENCODING = (DW_EH_PE_absptr);
+  const ubyte _TTYPE_ENCODING = (DW_EH_PE_absptr);
 else
-  static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel);
+  const ubyte _TTYPE_ENCODING = (DW_EH_PE_pcrel);
 
 /* Decode an R_ARM_TARGET2 relocation.  */
 _Unwind_Word _Unwind_decode_typeinfo_ptr (_Unwind_Word base, _Unwind_Word ptr)
@@ -260,7 +260,6 @@ _Unwind_Word _Unwind_decode_typeinfo_ptr (_Unwind_Word base, _Unwind_Word ptr)
   if (_TTYPE_ENCODING == (DW_EH_PE_pcrel | DW_EH_PE_indirect))
     {
       /* Pc-relative indirect.  */
-      static uint _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
       tmp += ptr;
       tmp = *cast(_Unwind_Word *) tmp;
     }
