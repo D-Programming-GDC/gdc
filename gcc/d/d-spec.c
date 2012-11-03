@@ -56,7 +56,7 @@
 #endif
 
 /* mingw and cygwin don't have pthread. %% TODO: check darwin.  */
-#if TARGET_WINDOS || TARGET_OSX || TARGET_ANDROID
+#if TARGET_WINDOS || TARGET_OSX || TARGET_ANDROID_D
 #define USE_PTHREADS	0
 #else
 #define USE_PTHREADS	1
@@ -485,7 +485,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 
   if (saw_librt)
     new_decoded_options[j++] = *saw_librt;
-#if TARGET_LINUX && !TARGET_ANDROID
+#if TARGET_LINUX && !TARGET_ANDROID_D
   /* Only link if linking statically and target platform supports. */
   else if (library > 1 || static_link || static_phobos)
     {
