@@ -274,6 +274,9 @@ gcc_type_to_d_type (tree t)
 }
 
 // Map D frontend type and sizes to GCC backend types.
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void
 d_bi_init (void)
@@ -344,6 +347,11 @@ d_bi_builtin_type (tree decl)
 {
   bi_type_list.cons (NULL_TREE, decl);
 }
+
+#ifdef __cplusplus
+} //extern "C"
+#endif
+
 
 // Helper function for d_gcc_magic_stdarg_module
 // In D2, the members of std.stdarg are hidden via @system attributes.

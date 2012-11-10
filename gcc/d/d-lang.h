@@ -176,10 +176,10 @@ tree d_truthvalue_conversion (tree);
 void d_add_global_declaration (tree);
 
 struct Module;
-Module *d_gcc_get_output_module (void);
+struct Module *d_gcc_get_output_module (void);
 
-struct lang_type *build_d_type_lang_specific (Type *t);
-struct lang_decl *build_d_decl_lang_specific (Declaration *d);
+struct lang_type *build_d_type_lang_specific (struct Type *t);
+struct lang_decl *build_d_decl_lang_specific (struct Declaration *d);
 
 /* In asmstmt.cc */
 tree d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers);
@@ -195,6 +195,10 @@ tree pushdecl (tree);
 void pushlevel (int);
 tree poplevel (int, int, int);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void init_global_binding_level (void);
 void set_decl_binding_chain (tree decl_chain);
 
@@ -202,6 +206,10 @@ tree d_unsigned_type (tree);
 tree d_signed_type (tree);
 
 void d_init_exceptions (void);
+
+#ifdef __cplusplus
+} //extern "C"
+#endif
 
 void d_keep (tree t);
 void d_free (tree t);
@@ -212,6 +220,9 @@ void set_block (tree);
 tree getdecls (void);
 
 /* In d-builtins.c */
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern const struct attribute_spec d_attribute_table[];
 extern const struct attribute_spec d_format_attribute_table[];
 tree d_builtin_function (tree);
@@ -224,6 +235,10 @@ void gcc_d_backend_term (void);
 void d_bi_init (void);
 void d_bi_builtin_func (tree);
 void d_bi_builtin_type (tree);
+#ifdef __cplusplus
+} //extern "C"
+#endif
+
 
 /* protect from garbage collection */
 extern GTY(()) tree d_keep_list;

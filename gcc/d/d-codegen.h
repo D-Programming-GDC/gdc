@@ -561,8 +561,10 @@ struct CtorEltMaker
 
   void cons (tree p, tree v)
   {
-    constructor_elt ce = { p, v };
-    VEC_safe_push (constructor_elt, gc, this->head, ce);
+    constructor_elt *ce;
+    ce = VEC_safe_push (constructor_elt, gc, this->head, NULL);
+    ce->index = p;
+    ce->value = v;
   }
 
   void cons (tree v)
