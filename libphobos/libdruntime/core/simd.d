@@ -21,7 +21,10 @@ nothrow:
  *
  * Parameters:
  *      T = one of double[2], float[4], void[16], byte[16], ubyte[16],
- *      short[8], ushort[8], int[4], uint[4], long[2], ulong[2]
+ *      short[8], ushort[8], int[4], uint[4], long[2], ulong[2].
+ *      For 256 bit vectors,
+ *      one of double[4], float[8], void[32], byte[32], ubyte[32],
+ *      short[16], ushort[16], int[8], uint[8], long[4], ulong[4]
  */
 
 template Vector(T)
@@ -34,6 +37,15 @@ template Vector(T)
 
 /* Handy aliases
  */
+alias Vector!(void[8])  void8;          ///
+alias Vector!(float[2])  float2;        ///
+alias Vector!(byte[8])  byte8;          ///
+alias Vector!(ubyte[8]) ubyte8;         ///
+alias Vector!(short[4])  short4;        ///
+alias Vector!(ushort[4]) ushort4;       ///
+alias Vector!(int[2])    int2;          ///
+alias Vector!(uint[2])   uint2;         ///
+
 alias Vector!(void[16])  void16;        ///
 alias Vector!(double[2]) double2;       ///
 alias Vector!(float[4])  float4;        ///
@@ -46,16 +58,28 @@ alias Vector!(uint[4])   uint4;         ///
 alias Vector!(long[2])   long2;         ///
 alias Vector!(ulong[2])  ulong2;        ///
 
-version( DigitalMars ): // Not in GDC
+alias Vector!(void[32])   void32;        ///
+alias Vector!(double[4])  double4;       ///
+alias Vector!(float[8])   float8;        ///
+alias Vector!(byte[32])   byte32;        ///
+alias Vector!(ubyte[32])  ubyte32;       ///
+alias Vector!(short[16])  short16;       ///
+alias Vector!(ushort[16]) ushort16;      ///
+alias Vector!(int[8])     int8;          ///
+alias Vector!(uint[8])    uint8;         ///
+alias Vector!(long[4])    long4;         ///
+alias Vector!(ulong[4])   ulong4;        ///
 
-/** XMM opcodes that conform to the following:
- *
- *  opcode xmm1,xmm2/mem
-
- * and do not have side effects (i.e. do not write to memory).
- */
-enum XMM
+version( D_SIMD )
 {
+  /** XMM opcodes that conform to the following:
+   *
+   *  opcode xmm1,xmm2/mem
+   *
+   * and do not have side effects (i.e. do not write to memory).
+   */
+  enum XMM
+  {
     ADDSS = 0xF30F58,
     ADDSD = 0xF20F58,
     ADDPS = 0x000F58,
@@ -353,33 +377,34 @@ enum XMM
 // POPCNT and LZCNT (have their own CPUID bits)
     POPCNT     = 0xF30FB8,
     // LZCNT
-}
+  }
 
-/**
- * Generate two operand instruction with XMM 128 bit operands.
- *
- * This is a compiler magic function - it doesn't behave like
- * regular D functions.
- *
- * Parameters:
- *      opcode  any of the XMM opcodes; it must be a compile time constant
- *      op1     first operand
- *      op2     second operand
- * Returns:
- *      result of opcode
- */
-void16 __simd(XMM opcode, void16 op1, void16 op2);
+  /**
+   * Generate two operand instruction with XMM 128 bit operands.
+   *
+   * This is a compiler magic function - it doesn't behave like
+   * regular D functions.
+   *
+   * Parameters:
+   *      opcode  any of the XMM opcodes; it must be a compile time constant
+   *      op1     first operand
+   *      op2     second operand
+   * Returns:
+   *      result of opcode
+   */
+  void16 __simd(XMM opcode, void16 op1, void16 op2);
 
-/* The following use overloading to ensure correct typing.
- * Compile with inlining on for best performance.
- */
+  /* The following use overloading to ensure correct typing.
+   * Compile with inlining on for best performance.
+   */
 
-short8 pcmpeq()(short8 v1, short8 v2)
-{
-    return __simd(XMM.PCMPEQW, v1, v2);
-}
+  short8 pcmpeq()(short8 v1, short8 v2)
+  {
+      return __simd(XMM.PCMPEQW, v1, v2);
+  }
 
-ushort8 pcmpeq()(ushort8 v1, ushort8 v2)
-{
-    return __simd(XMM.PCMPEQW, v1, v2);
+  ushort8 pcmpeq()(ushort8 v1, ushort8 v2)
+  {
+      return __simd(XMM.PCMPEQW, v1, v2);
+  }
 }

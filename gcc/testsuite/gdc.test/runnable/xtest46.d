@@ -830,6 +830,28 @@ void test44()
 }
 
 /***************************************************/
+// 2006
+
+void test2006()
+{
+    string [][] aas = [];
+    assert(aas.length == 0);
+    aas ~= cast (string []) [];
+    assert(aas.length == 1);
+    aas = aas ~ cast (string []) [];
+    assert(aas.length == 2);
+}
+
+/***************************************************/
+// 8442
+
+void test8442()
+{
+    enum int[] fooEnum = [];
+    immutable fooImmutable = fooEnum;
+}
+
+/***************************************************/
 
 class A45
 {
@@ -1577,6 +1599,13 @@ void test83()
 
 /***************************************************/
 
+interface Test4174
+{
+    void func(T)() {}
+}
+
+/***************************************************/
+
 auto foo84 = [1, 2.4];
 
 void test84()
@@ -1966,6 +1995,27 @@ void test101()
    assert(d1 == d2);
    d2 ~= [ 6, 1, 2 ];
    assert(d1 != d2);
+}
+
+/***************************************************/
+
+
+void test5403()
+{
+    struct S
+    {
+        static int front;
+        enum back = "yes!";
+        bool empty;
+        void popAny() { empty = true; }
+        alias popAny popFront;
+        alias popAny popBack;
+    }
+    S.front = 7;
+    foreach(int i; S()) assert(i == 7);
+    S.front = 2;
+    foreach(i; S()) assert(i == 2);
+    foreach_reverse(i; S()) assert(i == "yes!");
 }
 
 /***************************************************/
@@ -2448,6 +2498,17 @@ alias typeof(foo5195) food5195;
 const int * foo5195 = null;
 alias typeof(foo5195) good5195;
 static assert( is (food5195 == good5195));
+
+/***************************************************/
+
+version (Windows)
+{
+}
+else
+{
+int[0] var5332;
+void test5332() { auto x = var5332; }
+}
 
 /***************************************************/
 // 5191
@@ -3561,6 +3622,31 @@ pure int test4031()
 }
 
 /***************************************************/
+// 5437
+
+template EnumMembers5437(E)
+{
+    template TypeTuple(T...){ alias T TypeTuple; }
+
+    alias TypeTuple!("A", "B") EnumMembers5437;
+}
+template IntValue5437()
+{
+    int IntValue5437 = 10;
+}
+
+void test5437()
+{
+    enum Foo { A, B }
+    alias EnumMembers5437!Foo members;      // OK
+    enum n1 = members.length;               // OK
+    enum n2 = (EnumMembers5437!Foo).length; // NG, type -> symbol
+
+    enum s1 = IntValue5437!().sizeof;       // OK
+    enum s2 = (IntValue5437!()).sizeof;     // NG, type -> expression
+}
+
+/***************************************************/
 // 1962
 
 
@@ -4030,6 +4116,17 @@ void test4647()
     assert(app.Application.run() == 2); // error, no Application property
     assert(app.run() == 1);             // This would call Timer.run() if the two calls
                                         // above were commented out
+}
+
+/***************************************************/
+
+template T1064(E...) { alias E T1064; }
+
+int[] var1064 = [ T1064!(T1064!(T1064!(1, 2), T1064!(), T1064!(3)), T1064!(4, T1064!(T1064!(T1064!(T1064!(5)))), T1064!(T1064!(T1064!(T1064!())))),6) ];
+
+void test1064()
+{
+    assert(var1064 == [1,2,3,4,5,6]);
 }
 
 /***************************************************/
@@ -4576,6 +4673,30 @@ void test7073()
 }
 
 /***************************************************/
+// 7150
+
+struct A7150
+{
+    static int cnt;
+
+    this(T)(T thing, int i)
+    {
+        this(thing, i > 0); // Error: constructor call must be in a constructor
+        ++cnt;
+    }
+    this(T)(T thing, bool b)
+    {
+        ++cnt;
+    }
+}
+
+void test7150()
+{
+    auto a = A7150(5, 5); // Error: template instance constructtest.A.__ctor!(int) error instantiating
+    assert(A7150.cnt == 2);
+}
+
+/***************************************************/
 // 7160
 
 class HomeController {
@@ -4967,6 +5088,237 @@ void test7871()
 }
 
 /***************************************************/
+// 7906
+
+void test7906()
+{
+    static assert(!__traits(compiles, { enum s = [string.min]; }));
+}
+
+/***************************************************/
+// 7907
+
+template Id7907(E)
+{
+    alias E Id7907;
+}
+template Id7907(alias E)
+{
+    alias E Id7907;
+}
+
+void test7907()
+{
+    static assert(!__traits(compiles, { alias Id7907!([string.min]) X; }));
+}
+
+/***************************************************/
+// 1175
+
+class A1175
+{
+    class I1 { }
+}
+
+class B1175 : A1175
+{
+    class I2 : I1 { }
+
+    I1 getI() { return new I2; }
+}
+
+/***************************************************/
+// 7983
+
+class A7983 {
+        void f() {
+                g7983(this);
+        }
+        unittest {
+        }
+}
+
+void g7983(T)(T a)
+{
+        foreach (name; __traits(allMembers, T)) {
+                pragma(msg, name);
+                static if (__traits(compiles, &__traits(getMember, a, name)))
+                {
+                }
+        }
+}
+
+/***************************************************/
+// 8004
+
+void test8004()
+{
+    auto n = (int n = 10){ return n; }();
+    assert(n == 10);
+}
+
+/***************************************************/
+// 8064
+
+void test8064()
+{
+    uint[5] arry;
+    ref uint acc(size_t i) {
+        return arry[i];
+    }
+    auto arryacc = &acc;
+    arryacc(3) = 5; // same error
+}
+
+/***************************************************/
+
+void func8105(in ref int x) { }
+
+void test8105()
+{
+}
+
+/***************************************************/
+
+template ParameterTypeTuple159(alias foo)
+{
+    static if (is(typeof(foo) P == __parameters))
+        alias P ParameterTypeTuple159;
+    else
+        static assert(0, "argument has no parameters");
+}
+
+int func159(int i, long j = 7) { return 3; }
+
+alias ParameterTypeTuple159!func159 PT;
+
+int bar159(PT) { return 4; }
+
+pragma(msg, typeof(bar159));
+pragma(msg, PT[1]);
+
+PT[1] boo159(PT[1..2] a) { return a[0]; }
+
+void test159()
+{
+    assert(bar159(1) == 4);
+    assert(boo159() == 7);
+}
+
+/***************************************************/
+// 8283
+
+struct Foo8283 {
+    this(long) { }
+}
+
+struct FooContainer {
+    Foo8283 value;
+}
+
+auto get8283() {
+    union Buf { FooContainer result; }
+    Buf buf = {};
+    return buf.result;
+}
+
+void test8283() {
+    auto a = get8283();
+}
+
+
+/***************************************************/
+// 8395
+
+struct S8395
+{
+    int v;
+    this(T : long)(T x) { v = x * 2; }
+}
+void test8395()
+{
+    S8395 ms = 6;
+    assert(ms.v == 12);
+    const S8395 cs = 7;
+    assert(cs.v == 14);
+}
+
+/***************************************************/
+
+enum E160 : ubyte { jan = 1 }
+
+struct D160
+{
+    short _year  = 1;
+    E160 _month = E160.jan;
+    ubyte _day   = 1;
+
+    this(int year, int month, int day) pure
+    {
+        _year  = cast(short)year;
+        _month = cast(E160)month;
+        _day   = cast(ubyte)day;
+    }
+}
+
+struct T160
+{
+    ubyte _hour;
+    ubyte _minute;
+    ubyte _second;
+
+    this(int hour, int minute, int second = 0) pure
+    {
+        _hour   = cast(ubyte)hour;
+        _minute = cast(ubyte)minute;
+        _second = cast(ubyte)second;
+    }
+}
+
+struct DT160
+{
+    D160 _date;
+    T160 _tod;
+
+    this(int year, int month, int day,
+         int hour = 0, int minute = 0, int second = 0) pure
+    {
+        _date = D160(year, month, day);
+        _tod = T160(hour, minute, second);
+    }
+}
+
+void foo160(DT160 dateTime)
+{
+    printf("test7 year %d, day %d\n", dateTime._date._year, dateTime._date._day);
+    assert(dateTime._date._year == 1999);
+    assert(dateTime._date._day == 6);
+}
+
+void test160()
+{
+    auto dateTime = DT160(1999, 7, 6, 12, 30, 33);
+    printf("test5 year %d, day %d\n", dateTime._date._year, dateTime._date._day);
+    assert(dateTime._date._year == 1999);
+    assert(dateTime._date._day == 6);
+    foo160(DT160(1999, 7, 6, 12, 30, 33));
+}
+
+/***************************************************/
+// 8437
+
+class Cgi8437
+{
+    struct PostParserState {
+        UploadedFile piece;
+    }
+
+    static struct UploadedFile {
+        string contentFilename;
+    }
+}
+
+/***************************************************/
 
 int main()
 {
@@ -5058,6 +5410,8 @@ int main()
     test3559();
     test84();
     test85();
+    test2006();
+    test8442();
     test86();
     test87();
     test5554();
@@ -5071,6 +5425,7 @@ int main()
     test93();
     test94();
     test95();
+    test5403();
     test96();
     test97();
     test98();
@@ -5111,6 +5466,7 @@ int main()
     test1891();
     test129();
     test130();
+    test1064();
     test131();
     test132();
     test133();
@@ -5145,6 +5501,7 @@ int main()
     test4539();
     test4963();
     test4031();
+    test5437();
     test6230();
     test6264();
     test6284();
@@ -5180,6 +5537,7 @@ int main()
     test2856();
     test6056();
     test7073();
+    test7150();
     test7160();
     test7168();
     test7170();
@@ -5195,6 +5553,15 @@ int main()
     test7735();
     test7823();
     test7871();
+    test7906();
+    test7907();
+    test8004();
+    test8064();
+    test8105();
+    test159();
+    test8283();
+    test8395();
+    test160();
 
     printf("Success\n");
     return 0;

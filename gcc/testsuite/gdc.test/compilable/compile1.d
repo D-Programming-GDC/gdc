@@ -148,3 +148,65 @@ void bug6720() { }
 //static assert(!is(typeof(
 //cast(bool)bug6720()
 //)));
+
+/**************************************************
+    1099
+**************************************************/
+
+template Mix1099(int a) {
+   alias typeof(this) ThisType;
+    static assert (ThisType.init.tupleof.length == 2);
+}
+
+
+struct Foo1099 {
+    mixin Mix1099!(0);
+    int foo;
+    mixin Mix1099!(1);
+    int bar;
+    mixin Mix1099!(2);
+}
+
+/**************************************************
+    4967, 7058
+**************************************************/
+
+enum Bug7058 bug7058 = { 1.5f, 2};
+static assert(bug7058.z == 99);
+
+struct Bug7058
+{
+     float x = 0;
+     float y = 0;
+     float z = 99;
+}
+
+
+/***************************************************/
+
+template test8163(T...)
+{
+    struct Point
+    {
+        T fields;
+    }
+
+    enum N = 2; // N>=2 triggers the bug
+    extern Point[N] bar();
+
+    void foo()
+    {
+        Point[N] _ = bar();
+    }
+}
+
+alias test8163!(long) _l;
+alias test8163!(double) _d;
+alias test8163!(float, float) _ff;
+alias test8163!(int, int) _ii;
+alias test8163!(int, float) _if;
+alias test8163!(ushort, ushort, ushort, ushort) _SSSS;
+alias test8163!(ubyte, ubyte, ubyte, ubyte, ubyte, ubyte, ubyte, ubyte) _BBBBBBBB;
+alias test8163!(ubyte, ubyte, ushort, float) _BBSf;
+
+

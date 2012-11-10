@@ -608,7 +608,7 @@
 	* d/phobos/internal/gc/win32.d, d/phobos/std/stream.d: Win64 support
 	for Phobos/D1.
 	[b2b0dae5dec2]
-	
+
 	* d/Make-lang.in, d/dmd/root.c: Enables ANSI implemention of MinGW
 	stdio.
 	[fd0f112bfca8]

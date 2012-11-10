@@ -20,20 +20,26 @@
 #include "d-codegen.h"
 #include "dt.h"
 
-dt_t**
-ComplexExp::toDt (dt_t** pdt)
+// Create constructor for ComplexExp to be written to data segment.
+
+dt_t **
+ComplexExp::toDt (dt_t **pdt)
 {
-  return dttree (pdt, toElem (& gen));
+  return dttree (pdt, toElem (&gen));
 }
 
-dt_t**
-IntegerExp::toDt (dt_t** pdt)
+// Create constructor for IntegerExp to be written to data segment.
+
+dt_t **
+IntegerExp::toDt (dt_t **pdt)
 {
-  return dttree (pdt, toElem (& gen));
+  return dttree (pdt, toElem (&gen));
 }
 
-dt_t**
-RealExp::toDt (dt_t** pdt)
+// Create constructor for RealExp to be written to data segment.
+
+dt_t **
+RealExp::toDt (dt_t **pdt)
 {
-  return dttree (pdt, toElem (& gen));
+  return dttree (pdt, toElem (&gen));
 }

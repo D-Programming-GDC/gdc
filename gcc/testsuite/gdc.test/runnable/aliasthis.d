@@ -1,5 +1,6 @@
 
 extern (C) int printf(const(char*) fmt, ...);
+import core.vararg;
 
 struct Tup(T...)
 {
@@ -791,6 +792,73 @@ void test7808()
 }
 
 /***************************************************/
+// 7945
+
+struct S7945
+{
+    int v;
+    alias v this;
+}
+void foo7945(ref int n){}
+
+void test7945()
+{
+    auto s = S7945(1);
+    foo7945(s);         // 1.NG -> OK
+    s.foo7945();        // 2.OK, ufcs
+    foo7945(s.v);       // 3.OK
+    s.v.foo7945();      // 4.OK, ufcs
+}
+
+/***************************************************/
+// 7992
+
+struct S7992
+{
+    int[] arr;
+    alias arr this;
+}
+S7992 func7992(...)
+{
+    S7992 ret;
+    ret.arr.length = _arguments.length;
+    return ret;
+}
+void test7992()
+{
+    int[] arr;
+    assert(arr.length == 0);
+    arr ~= func7992(1, 2);  //NG
+    //arr = func7992(1, 2); //OK
+    assert(arr.length == 2);
+}
+
+/***************************************************/
+// 8169
+
+void test8169()
+{
+    static struct ValueImpl
+    {
+       static immutable(int) getValue()
+       {
+           return 42;
+       }
+    }
+
+    static struct ValueUser
+    {
+       ValueImpl m_valueImpl;
+       alias m_valueImpl this;
+    }
+
+    static assert(ValueImpl.getValue() == 42); // #0, OK
+    static assert(ValueUser.getValue() == 42); // #1, NG
+    static assert(       ValueUser.m_valueImpl .getValue() == 42); // #2, NG
+    static assert(typeof(ValueUser.m_valueImpl).getValue() == 42); // #3, OK
+}
+
+/***************************************************/
 
 int main()
 {
@@ -821,6 +889,9 @@ int main()
     test7136();
     test7731();
     test7808();
+    test7945();
+    test7992();
+    test8169();
 
     printf("Success\n");
     return 0;

@@ -73,7 +73,7 @@ uint update_crc32(char val, uint crc)
 uint strcrc32(char[] s)
 {
 	uint crc = init_crc32();
-	for (size_t i = 0; i < s.length; i++)
+	for (int i = 0; i < s.length; i++)
 		crc = update_crc32(s[i], crc);
 	return crc;
 }

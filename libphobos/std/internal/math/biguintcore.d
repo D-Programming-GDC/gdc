@@ -31,18 +31,9 @@ Idioms:
   in order to disable implicit conversion.
 
 */
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
- */
 module std.internal.math.biguintcore;
 
-version(GNU)
-{
-    // Disable ASM in GDC until things improve.
-    import std.internal.math.biguintnoasm;
-}
-else version(D_InlineAsm_X86)
+version(D_InlineAsm_X86)
 {
     import std.internal.math.biguintx86;
 }
@@ -330,7 +321,7 @@ public:
     }
 
     // return false if invalid character found
-    bool fromHexString(string s)
+    bool fromHexString(const(char)[] s)
     {
         //Strip leading zeros
         int firstNonZero = 0;
@@ -378,7 +369,7 @@ public:
     }
 
     // return true if OK; false if erroneous characters found
-    bool fromDecimalString(string s)
+    bool fromDecimalString(const(char)[] s)
     {
         //Strip leading zeros
         int firstNonZero = 0;
@@ -556,8 +547,10 @@ public:
     }
 
     // return x / y
-    static BigUint divInt(T)(BigUint x, T y) if ( is(T==uint) )
+    static BigUint divInt(T)(BigUint x, T y) if ( is(T == uint) )
     {
+        if (y == 1)
+            return x;
         uint [] result = new BigDigit[x.data.length];
         if ((y&(-y))==y)
         {
@@ -1422,7 +1415,7 @@ size_t biguintToDecimal(char [] buff, BigDigit [] data)
  * Returns:
  *    the highest index of data which was used.
  */
-int biguintFromDecimal(BigDigit [] data, string s)
+int biguintFromDecimal(BigDigit [] data, const(char)[] s)
 in
 {
     assert((data.length >= 2) || (data.length == 1 && s.length == 1));

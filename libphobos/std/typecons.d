@@ -39,14 +39,15 @@ License:   $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors:   $(WEB erdani.org, Andrei Alexandrescu),
            $(WEB bartoszmilewski.wordpress.com, Bartosz Milewski),
            Don Clugston,
-           Shin Fujishiro
+           Shin Fujishiro,
+           Kenji Hara
  */
 module std.typecons;
 import core.memory, core.stdc.stdlib;
 import std.algorithm, std.array, std.conv, std.exception, std.format,
     std.metastrings, std.traits, std.typetuple, std.range;
 
-version(unittest) import core.vararg, std.stdio;
+debug(Unique) import std.stdio;
 
 /**
 Encapsulates unique ownership of a resource.  Resource of type T is
@@ -57,7 +58,6 @@ class object, in which case Unique behaves polymorphically too.
 
 Example:
 */
-
 struct Unique(T)
 {
 static if (is(T:Object))
@@ -88,7 +88,7 @@ public:
     */
     this(RefT p)
     {
-        writeln("Unique constructor with rvalue");
+        debug(Unique) writeln("Unique constructor with rvalue");
         _p = p;
     }
     /**
@@ -99,7 +99,7 @@ public:
     this(ref RefT p)
     {
         _p = p;
-        writeln("Unique constructor nulling source");
+        debug(Unique) writeln("Unique constructor nulling source");
         p = null;
         assert(p is null);
     }
@@ -131,7 +131,7 @@ public:
 
     ~this()
     {
-        writeln("Unique destructor of ", (_p is null)? null: _p);
+        debug(Unique) writeln("Unique destructor of ", (_p is null)? null: _p);
         delete _p;
         _p = null;
     }
@@ -142,10 +142,10 @@ public:
     /** Returns a unique rvalue. Nullifies the current contents */
     Unique release()
     {
-        writeln("Release");
+        debug(Unique) writeln("Release");
         auto u = Unique(_p);
         assert(_p is null);
-        writeln("return from Release");
+        debug(Unique) writeln("return from Release");
         return u;
     }
     /** Forwards member access to contents */
@@ -367,8 +367,9 @@ public:
 
     // This mitigates breakage of old code now that std.range.Zip uses
     // Tuple instead of the old Proxy.  It's intentionally lacking ddoc
-    // because it should eventually be deprecated.
-    auto at(size_t index)() {
+    // because it was intended for deprecation.
+    // Now that it has been deprecated, it will be removed in January 2013.
+    deprecated auto at(size_t index)() {
         return field[index];
     }
 
@@ -450,11 +451,6 @@ public:
         {
             field[i] = rhs.field[i];
         }
-    }
-
-    deprecated void assign(R)(R rhs) if (isTuple!R)
-    {
-        this = rhs;
     }
 
     // @@@BUG4424@@@ workaround
@@ -723,149 +719,6 @@ unittest
     static assert(!isTuple!(S));
 }
 
-
-/**
-Defines truly named enumerated values with parsing and stringizing
-primitives.
-
-Example:
-
-----
-mixin(defineEnum!("Abc", "A", "B", 5, "C"));
-----
-
-is equivalent to the following code:
-
-----
-enum Abc { A, B = 5, C }
-string enumToString(Abc v) { ... }
-Abc enumFromString(string s) { ... }
-----
-
-The $(D enumToString) function generates the unqualified names
-of the enumerated values, i.e. "A", "B", and "C". The $(D
-enumFromString) function expects one of "A", "B", and "C", and throws
-an exception in any other case.
-
-A base type can be specified for the enumeration like this:
-
-----
-mixin(defineEnum!("Abc", ubyte, "A", "B", "C", 255));
-----
-
-In this case the generated $(D enum) will have a $(D ubyte)
-representation.  */
-
-deprecated template defineEnum(string name, T...)
-{
-    static if (is(typeof(cast(T[0]) T[0].init)))
-    {
-        template enumValuesImpl(string name, BaseType, long index, T...)
-        {
-            static if (name.length)
-            {
-                enum string enumValuesImpl = "enum "~name~" : "~BaseType.stringof
-                    ~" { "~enumValuesImpl!("", BaseType, index, T)~"}\n";
-            }
-            else
-            {
-                static if (!T.length)
-                {
-                    enum string enumValuesImpl = "";
-                }
-                else
-                {
-                    static if (T.length == 1
-                               || T.length > 1 && is(typeof(T[1]) : string))
-                    {
-                        enum string enumValuesImpl =  T[0]~" = "~ToString!(index)~", "
-                            ~enumValuesImpl!("", BaseType, index + 1, T[1 .. $]);
-                    }
-                    else
-                    {
-                        enum string enumValuesImpl = T[0]~" = "~ToString!(T[1])~", "
-                            ~enumValuesImpl!("", BaseType, T[1] + 1, T[2 .. $]);
-                    }
-                }
-            }
-        }
-
-        template enumParserImpl(string name, bool first, T...)
-        {
-            static if (first)
-            {
-                enum string enumParserImpl = "bool enumFromString(string s, ref "
-                    ~name~" v) {\n"
-                    ~enumParserImpl!(name, false, T)
-                    ~"return false;\n}\n";
-            }
-            else
-            {
-                static if (T.length)
-                    enum string enumParserImpl =
-                        "if (s == `"~T[0]~"`) return (v = "~name~"."~T[0]~"), true;\n"
-                        ~enumParserImpl!(name, false, T[1 .. $]);
-                else
-                    enum string enumParserImpl = "";
-            }
-        }
-
-        template enumPrinterImpl(string name, bool first, T...)
-        {
-            static if (first)
-            {
-                enum string enumPrinterImpl = "string enumToString("~name~" v) {\n"
-                    ~enumPrinterImpl!(name, false, T)~"\n}\n";
-            }
-            else
-            {
-                static if (T.length)
-                    enum string enumPrinterImpl =
-                        "if (v == "~name~"."~T[0]~") return `"~T[0]~"`;\n"
-                        ~enumPrinterImpl!(name, false, T[1 .. $]);
-                else
-                    enum string enumPrinterImpl = "return null;";
-            }
-        }
-
-        template StringsOnly(T...)
-        {
-            template ValueTuple(T...)
-            {
-                alias T ValueTuple;
-            }
-
-            static if (T.length == 1)
-                static if (is(typeof(T[0]) : string))
-                    alias ValueTuple!(T[0]) StringsOnly;
-                else
-                    alias ValueTuple!() StringsOnly;
-            else
-                static if (is(typeof(T[0]) : string))
-                    alias ValueTuple!(T[0], StringsOnly!(T[1 .. $])) StringsOnly;
-                else
-                    alias ValueTuple!(StringsOnly!(T[1 .. $])) StringsOnly;
-        }
-
-        enum string defineEnum =
-            enumValuesImpl!(name, T[0], 0, T[1 .. $])
-            ~ enumParserImpl!(name, true, StringsOnly!(T[1 .. $]))
-            ~ enumPrinterImpl!(name, true, StringsOnly!(T[1 .. $]));
-    }
-    else
-        alias defineEnum!(name, int, T) defineEnum;
-}
-
-unittest
-{
-    mixin(defineEnum!("_24b455e148a38a847d65006bca25f7fe",
-                      "A1", 1, "B1", "C1"));
-    auto a = _24b455e148a38a847d65006bca25f7fe.A1;
-    assert(enumToString(a) == "A1");
-    _24b455e148a38a847d65006bca25f7fe b;
-    assert(enumFromString("B1", b)
-           && b == _24b455e148a38a847d65006bca25f7fe.B1);
-}
 
 /**
 $(D Rebindable!(T)) is a simple, efficient wrapper that behaves just
@@ -1187,7 +1040,7 @@ Forces $(D this) to the null state.
  */
     void nullify()()
     {
-        clear(_value);
+        .destroy(_value);
         _isNull = true;
     }
 
@@ -2034,6 +1887,7 @@ private static:
 }
 
 //debug = SHOW_GENERATED_CODE;
+version(unittest) import core.vararg;
 unittest
 {
     // no function to implement
@@ -2588,7 +2442,7 @@ Constructor that tracks the reference count appropriately. If $(D
 /**
 Destructor that tracks the reference count appropriately. If $(D
 !refCountedIsInitialized), does nothing. When the reference count goes
-down to zero, calls $(D clear) agaist the payload and calls $(D free)
+down to zero, calls $(D destroy) agaist the payload and calls $(D free)
 to deallocate the corresponding resource.
  */
     ~this()
@@ -2611,7 +2465,7 @@ to deallocate the corresponding resource.
         }
         // Done, deallocate
         assert(RefCounted._store);
-        clear(RefCounted._store._payload);
+        .destroy(RefCounted._store._payload);
         if (hasIndirections!T && RefCounted._store)
             GC.removeRange(RefCounted._store);
         free(RefCounted._store);
@@ -2715,9 +2569,7 @@ unittest
     }
     auto a = A(4);
     auto b = a.copy();
-    if (a.x.RefCounted._store._count != 2) {
-        stderr.writeln("*** BUG 4356 still unfixed");
-    }
+    assert(a.x.RefCounted._store._count == 2, "BUG 4356 still unfixed");
 }
 
 unittest
@@ -3067,6 +2919,9 @@ therefore avoiding the overhead of $(D new). This facility is unsafe;
 it is the responsibility of the user to not escape a reference to the
 object outside the scope.
 
+Note: it's illegal to move a class reference even if you are sure there
+is no pointers to it.
+
 Example:
 ----
 unittest
@@ -3077,59 +2932,124 @@ unittest
     a1.x = 42;
     a2.x = 53;
     assert(a1.x == 42);
+
+    auto a3 = a2; // illegal, fails to compile
+    assert([a2][0].x == 42); // illegal, unexpected behaviour
 }
 ----
  */
-@system Scoped!T scoped(T, Args...)(Args args) if (is(T == class))
+@system auto scoped(T, Args...)(Args args) if (is(T == class))
 {
+    static struct Scoped(T)
+    {
+        private
+        {
+            // _d_newclass now use default GC alignment (looks like (void*).sizeof * 2 for
+            // small objects). We will just use the maximum of filed alignments.
+            alias maxAlignment!(void*, typeof(T.tupleof)) alignment;
+
+            static size_t aligned(size_t n)
+            {
+                enum badEnd = alignment - 1; // 0b11, 0b111, ...
+                return (n + badEnd) & ~badEnd;
+            }
+
+            void[aligned(__traits(classInstanceSize, T)) + alignment] Scoped_store = void;
+        }
+        @property inout(T) Scoped_payload() inout
+        {
+            return cast(inout(T)) cast(void*) aligned(cast(size_t) Scoped_store.ptr);
+        }
+        alias Scoped_payload this;
+
+        @disable this(this)
+        {
+            assert(false, "Illegal call to Scoped this(this)");
+        }
+
+        ~this()
+        {
+            // `destroy` will also write .init but we have no functions in druntime
+            // for deterministic finalization and memory releasing for now.
+            .destroy(Scoped_payload);
+        }
+    }
+
     Scoped!T result;
     emplace!(Unqual!T)(cast(void[])result.Scoped_store, args);
     return result;
 }
 
-private struct Scoped(T)
+private template maxAlignment(U...) if(isTypeTuple!U)
 {
-    private byte[__traits(classInstanceSize, T)] Scoped_store = void;
-    @property inout(T) Scoped_payload() inout
-    {
-        return cast(inout(T))(Scoped_store.ptr);
-    }
-    alias Scoped_payload this;
+    static if(U.length == 1)
+        enum maxAlignment = U[0].alignof;
+    else
+        enum maxAlignment = max(U[0].alignof, .maxAlignment!(U[1 .. $]));
+}
 
-    @disable this(this)
+unittest // Issue 6580 testcase
+{
+    enum alignment = (void*).alignof;
+
+    static class C0 { }
+    static class C1 { byte b; }
+    static class C2 { byte[2] b; }
+    static class C3 { byte[3] b; }
+    static class C7 { byte[7] b; }
+    static assert(scoped!C0().sizeof % alignment == 0);
+    static assert(scoped!C1().sizeof % alignment == 0);
+    static assert(scoped!C2().sizeof % alignment == 0);
+    static assert(scoped!C3().sizeof % alignment == 0);
+    static assert(scoped!C7().sizeof % alignment == 0);
+
+    enum longAlignment = long.alignof;
+    static class C1long { long l; byte b; }
+    static class C2long { byte[2] b; long l; }
+    static assert(scoped!C1long().sizeof % longAlignment == 0);
+    static assert(scoped!C2long().sizeof % longAlignment == 0);
+
+    void alignmentTest()
     {
-        assert(false, "Illegal call to Scoped this(this)");
+        // Enshure `forAlignmentOnly` field really helps
+        auto c1long = scoped!C1long();
+        auto c2long = scoped!C2long();
+        assert(cast(size_t)&c1long.l % longAlignment == 0);
+        assert(cast(size_t)&c2long.l % longAlignment == 0);
     }
 
-    ~this()
+    alignmentTest();
+
+    version(DigitalMars)
     {
-        destroy(Scoped_payload);
-        if ((cast(void**) Scoped_store.ptr)[1]) // if monitor is not null
+        void test(size_t size)
         {
-            _d_monitordelete(Scoped_payload, true);
+            import core.stdc.stdlib;
+            alloca(size);
+            alignmentTest();
         }
+        foreach(i; 0 .. 10)
+            test(i);
+    }
+    else
+    {
+        void test(size_t size)()
+        {
+            byte[size] arr;
+            alignmentTest();
+        }
+        foreach(i; TypeTuple!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+            test!i();
     }
 }
 
-// Used by scoped() above
-private extern (C) static void _d_monitordelete(Object h, bool det);
-
-/*
-  Used by scoped() above.  Calls the destructors of an object
-  transitively up the inheritance path, but work properly only if the
-  static type of the object (T) is known.
- */
-private void destroy(T)(T obj) if (is(T == class))
+unittest // Original Issue 6580 testcase
 {
-    static if (is(typeof(obj.__dtor())))
-    {
-        obj.__dtor();
-    }
-    static if (!is(T == Object) && is(T Base == super))
-    {
-        Base[0] b = obj;
-        destroy(b);
-    }
+    class C { int i; byte b; }
+
+    auto sa = [scoped!C(), scoped!C()];
+    assert(cast(size_t)&sa[0].i % int.alignof == 0);
+    assert(cast(size_t)&sa[1].i % int.alignof == 0); // fails
 }
 
 unittest
@@ -3174,6 +3094,29 @@ unittest
     }
     assert(B.dead, "asdasd");
     assert(A.dead, "asdasd");
+}
+
+unittest // Issue 8039 testcase
+{
+    static int dels;
+    static struct S { ~this(){ ++dels; } }
+
+    static class A { S s; }
+    dels = 0; { scoped!A(); }
+    assert(dels == 1);
+
+    static class B { S[2] s; }
+    dels = 0; { scoped!B(); }
+    assert(dels == 2);
+
+    static struct S2 { S[3] s; }
+    static class C { S2[2] s; }
+    dels = 0; { scoped!C(); }
+    assert(dels == 6);
+
+    static class D: A { S2[2] s; }
+    dels = 0; { scoped!D(); }
+    assert(dels == 1+6);
 }
 
 unittest

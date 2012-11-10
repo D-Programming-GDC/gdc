@@ -30,4 +30,3 @@
 
 /* This is in a .c file because gentype produces C code with prototypes */
 #include "gtype-d.h"
-/*#include "gt-d-dc-lang.h"*/

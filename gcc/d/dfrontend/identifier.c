@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, May 2005
-*/
-
 #include <stdio.h>
 #include <string.h>
 
@@ -100,7 +94,7 @@ Identifier *Identifier::generateId(const char *prefix, size_t i)
 {   OutBuffer buf;
 
     buf.writestring(prefix);
-    buf.printf("%"PRIuTSIZE, i);
+    buf.printf("%llu", (ulonglong)i);
 
     char *id = buf.toChars();
     buf.data = NULL;

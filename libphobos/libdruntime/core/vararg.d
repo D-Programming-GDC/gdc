@@ -11,7 +11,7 @@
 
 /*          Copyright Digital Mars 2000 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 
@@ -24,12 +24,6 @@ module core.vararg;
 
 version( GNU )
 {
-    // va_list might be a pointer, but assuming so is not portable.
-    private import gcc.builtins;
-    alias __builtin_va_list va_list;
-
-    T va_arg(T)( ref va_list ap );
-
     public import core.stdc.stdarg;
 }
 else version( X86 )

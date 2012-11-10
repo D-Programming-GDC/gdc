@@ -111,6 +111,56 @@ void test2()
 }
 
 /*******************************************/
+
+auto init(T)(T val) { return 1; }
+
+auto sort(alias fun, T)(T val) { return 1; }
+
+@property auto max(alias fun, T)(T val) { return 1; }
+
+@property auto infinity(alias opt, T)(T val) { return 1; }
+
+void test3()
+{
+    // See built-in 'init' property
+    assert(1    .init == 0);
+    assert([1]  .init == null);
+    assert([1:1].init == null);
+    assert(1.0  .init is double.nan);
+    assert(10i  .init is idouble.nan);
+    assert('c'  .init == 0xFF);
+    assert("s"  .init == null);
+
+    // x.init() has parens, so it runs UFCS call
+    assert( 1   .init() == 1);
+    assert([1]  .init() == 1);
+    assert([1:1].init() == 1);
+    assert(1.0  .init() == 1);
+    assert(10i  .init() == 1);
+    assert('c'  .init() == 1);
+    assert("s"  .init() == 1);
+
+    // x.init!YYY matches templatized UFCS call.
+    assert( 1   .init!int()        == 1);
+    assert([1]  .init!(int[])()    == 1);
+    assert([1:1].init!(int[int])() == 1);
+    assert(1.0  .init!double()     == 1);
+    assert(10i  .init!idouble()    == 1);
+    assert('c'  .init!char()       == 1);
+    assert("s"  .init!string()     == 1);
+
+    assert([1].sort!"a<b"() == 1);
+    assert([1].sort == [1]);
+
+    // templatized properties runs UFCS call.
+    assert(1024.max!"a<b" == 1);
+    assert(1024.max  == int.max);
+
+    assert(3.14.infinity!"+" == 1);
+    assert(3.14.infinity == (double).infinity);
+}
+
+/*******************************************/
 // 662
 
 import std.stdio,std.string, std.conv;
@@ -219,14 +269,97 @@ void test7773()
 }
 
 /*******************************************/
+// 7943
 
-void main()
+struct Foo7943
+{
+    int _member;
+    alias _member this;
+}
+
+int foo7943(Foo7943 f) { return 1; }
+int foo7943(int i) { return 2; }
+
+void test7943()
+{
+    Foo7943 f;
+    assert(f.foo7943() == 1);
+}
+
+/*******************************************/
+// 8180
+
+int writeln8180(T...)(T args) { return 1; }
+
+struct Tuple8180(T...)
+{
+    T field;
+    alias field this;
+}
+
+void test8180()
+{
+    auto t = Tuple8180!(int)(10);
+    assert(t.writeln8180() == 1);
+}
+
+/*******************************************/
+// 8252
+
+bool f(int x) { return !x; }
+
+void test8252()
+{
+    static assert(!1.f); // ok
+    static assert( 0.f); // fail
+}
+
+/*******************************************/
+// 8453
+
+T[] sort8453(T)(T[] a) { return a; }
+
+void test8453()
+{
+    int[int] foo;
+    auto bar1 = foo.keys().sort8453(); // OK
+    auto bar2 = foo.keys.sort8453();   // Error
+}
+
+/*******************************************/
+
+template Signal4()
+{
+    void connect(){}
+}
+struct S4
+{
+    mixin Signal4!() s;
+}
+void test4()
+{
+    S4 s;
+    s.s.connect();  // s.s is TOKdotexp, so never match UFCS
+}
+
+/*******************************************/
+
+int main()
 {
     test1();
     test2();
+    test3();
     test682();
     test3382();
     test7670();
     test7703();
     test7773();
+    test7943();
+    test8180();
+    test8252();
+    test8453();
+    test4();
+
+    printf("Success\n");
+    return 0;
 }
