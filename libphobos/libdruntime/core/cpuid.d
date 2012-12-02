@@ -82,13 +82,28 @@ module core.cpuid;
 // AMD K10    --   + isX86_64()
 // Cyrix 6x86 -- preferPentium1()
 //    6x86MX  --   + mmx()
-version(D_InlineAsm_X86)
+
+version(GNU)
 {
-    version = InlineAsm_X86_Any;
+    version(X86)
+    {
+        version = InlineAsm_X86_Any;
+    }
+    else version(X86_64)
+    {
+        version = InlineAsm_X86_Any;
+    }
 }
-else version(D_InlineAsm_X86_64)
+else
 {
-    version = InlineAsm_X86_Any;
+    version(D_InlineAsm_X86)
+    {
+        version = InlineAsm_X86_Any;
+    }
+    else version(D_InlineAsm_X86_64)
+    {
+        version = InlineAsm_X86_Any;
+    }
 }
 
 public:
@@ -326,6 +341,36 @@ private:
 version(InlineAsm_X86_Any) {
 // Note that this code will also work for Itanium in x86 mode.
 
+version(GNU)
+{
+    // EBX is used to store GOT's address in PIC on x86, so we must preserve its value
+    version(D_PIC)
+        version(X86)
+            version = PreserveEBX;
+
+    private void rawCpuid(uint ain, uint cin, ref uint a, ref uint b, ref uint c, ref uint d)
+    {
+        version(PreserveEBX)
+        {
+            asm { 
+                "xchg %1, %%ebx
+                cpuid 
+                xchg %1, %%ebx"
+              : "=a" a, "=r" b, "=c" c, "=d" d 
+              : "0" ain, "2" cin; 
+            }
+        }
+        else
+        {
+            asm { 
+                "cpuid"
+              : "=a" a, "=b" b, "=c" c, "=d" d 
+              : "0" ain, "2" cin; 
+            }
+        }
+    }
+}
+
 __gshared uint max_cpuid, max_extended_cpuid;
 
 // CPUID2: "cache and tlb information"
@@ -391,13 +436,20 @@ void getcacheinfoCPUID2()
     // for old single-core CPUs.
     uint numinfos = 1;
     do {
-        asm {
-            mov EAX, 2;
-            cpuid;
-            mov a, EAX;
-            mov a+4, EBX;
-            mov a+8, ECX;
-            mov a+12, EDX;
+        version(GNU)
+        {
+            rawCpuid(2, 0, a[0], a[1], a[2], a[3]);    
+        }
+        else
+        {
+            asm {
+                mov EAX, 2;
+                cpuid;
+                mov a, EAX;
+                mov a+4, EBX;
+                mov a+8, ECX;
+                mov a+12, EDX;
+            }
         }
         if (firstTime) {
             if (a[0]==0x0000_7001 && a[3]==0x80 && a[1]==0 && a[2]==0) {
@@ -431,15 +483,23 @@ void getcacheinfoCPUID2()
 void getcacheinfoCPUID4()
 {
     int cachenum = 0;
+    uint unused;
     for(;;) {
         uint a, b, number_of_sets;
-        asm {
-            mov EAX, 4;
-            mov ECX, cachenum;
-            cpuid;
-            mov a, EAX;
-            mov b, EBX;
-            mov number_of_sets, ECX;
+        version(GNU)
+        {
+            rawCpuid(4, cachenum, a, b, number_of_sets, unused);
+        }
+        else
+        {
+            asm {
+                mov EAX, 4;
+                mov ECX, cachenum;
+                cpuid;
+                mov a, EAX;
+                mov b, EBX;
+                mov number_of_sets, ECX;
+            }
         }
         ++cachenum;
         if ((a&0x1F)==0) break; // no more caches
@@ -471,13 +531,22 @@ void getcacheinfoCPUID4()
 void getAMDcacheinfo()
 {
     uint c5, c6, d6;
-    asm {
-        mov EAX, 0x8000_0005; // L1 cache
-        cpuid;
-        // EAX has L1_TLB_4M.
-        // EBX has L1_TLB_4K
-        // EDX has L1 instruction cache
-        mov c5, ECX;
+    uint unused;
+    
+    version(GNU)
+    {
+        rawCpuid(0x8000_0005, 0, unused, unused, c5, unused);
+    }
+    else
+    {
+        asm {
+            mov EAX, 0x8000_0005; // L1 cache
+            cpuid;
+            // EAX has L1_TLB_4M.
+            // EBX has L1_TLB_4K
+            // EDX has L1 instruction cache
+            mov c5, ECX;
+        }
     }
 
     datacache[0].size = ( (c5>>24) & 0xFF);
@@ -488,19 +557,35 @@ void getAMDcacheinfo()
         // AMD K6-III or K6-2+ or later.
         ubyte numcores = 1;
         if (max_extended_cpuid >=0x8000_0008) {
-            asm {
-                mov EAX, 0x8000_0008;
-                cpuid;
-                mov numcores, CL;
+            version(GNU)
+            {
+                uint tmpC;
+                rawCpuid(0x8000_0008, 0, unused, unused, tmpC, unused);
+                numcores = cast(ubyte) tmpC;
+            }
+            else
+            {
+                asm {
+                    mov EAX, 0x8000_0008;
+                    cpuid;
+                    mov numcores, CL;
+                }
             }
             ++numcores;
             if (numcores>maxCores) maxCores = numcores;
         }
-        asm {
-            mov EAX, 0x8000_0006; // L2/L3 cache
-            cpuid;
-            mov c6, ECX; // L2 cache info
-            mov d6, EDX; // L3 cache info
+        version(GNU)
+        {
+            rawCpuid(0x8000_0006, 0, unused, unused, c6, d6);
+        }
+        else
+        {
+            asm {
+                mov EAX, 0x8000_0006; // L2/L3 cache
+                cpuid;
+                mov c6, ECX; // L2 cache info
+                mov d6, EDX; // L3 cache info
+            }
         }
 
         immutable ubyte [] assocmap = [ 0, 1, 2, 0, 4, 0, 8, 0, 16, 0, 32, 48, 64, 96, 128, 0xFF ];
@@ -523,14 +608,21 @@ void getCpuInfo0B()
     int threadsPerCore;
     uint a, b, c, d;
     do {
-        asm {
-            mov EAX, 0x0B;
-            mov ECX, level;
-            cpuid;
-            mov a, EAX;
-            mov b, EBX;
-            mov c, ECX;
-            mov d, EDX;
+        version(GNU)
+        {
+            rawCpuid(0xb, level, a, b, c, d);     
+        }
+        else
+        { 
+            asm {
+                mov EAX, 0x0B;
+                mov ECX, level;
+                cpuid;
+                mov a, EAX;
+                mov b, EBX;
+                mov c, ECX;
+                mov d, EDX;
+            }
         }
         if (b!=0) {
            // I'm not sure about this. The docs state that there
@@ -550,9 +642,15 @@ void getCpuInfo0B()
 
 void cpuidX86()
 {
-    char * venptr = vendorID.ptr;
+    uint* venptr = cast(uint*) vendorID.ptr;
     uint a, b, c, d, a2;
-    version(D_InlineAsm_X86)
+    uint unused;    
+
+    version(GNU)
+    {
+        rawCpuid(0, 0, a, venptr[0], venptr[2], venptr[1]); 
+    }
+    else version(D_InlineAsm_X86)
     {
         asm {
             mov EAX, 0;
@@ -576,47 +674,85 @@ void cpuidX86()
             mov [RAX + 8], ECX;
         }
     }
-    asm {
-        mov EAX, 0x8000_0000;
-        cpuid;
-        mov a2, EAX;
+
+    version(GNU)
+    {
+        rawCpuid(0x8000_0000, 0, a2, unused, unused, unused);
     }
+    else
+    {
+        asm {
+            mov EAX, 0x8000_0000;
+            cpuid;
+            mov a2, EAX;
+        }
+    }
+
     max_cpuid = a;
     max_extended_cpuid = a2;
-
+    
 
     probablyIntel = vendorID == "GenuineIntel";
     probablyAMD = vendorID == "AuthenticAMD";
     uint apic = 0; // brand index, apic id
-    asm {
-        mov EAX, 1; // model, stepping
-        cpuid;
-        mov a, EAX;
-        mov apic, EBX;
-        mov c, ECX;
-        mov d, EDX;
+    
+    version(GNU)
+    {
+        rawCpuid(1, 0, a, apic, c, d);
+    }
+    else
+    {
+        asm {
+            mov EAX, 1; // model, stepping
+            cpuid;
+            mov a, EAX;
+            mov apic, EBX;
+            mov c, ECX;
+            mov d, EDX;
+        }
     }
     features = d;
     miscfeatures = c;
 
     if (miscfeatures & OSXSAVE_BIT)
     {
-        asm {
-            mov ECX, 0;
-            xgetbv;
-            mov d, EDX;
-            mov a, EAX;
+        version(GNU)
+        {
+            // xgetbv does not affect ebx
+            asm {
+                "mov $0, %%ecx
+                xgetbv"
+              : "=a" a, "=d" d
+              :
+              : "ecx";
+            }    
+        }
+        else
+        {
+            asm {
+                mov ECX, 0;
+                xgetbv;
+                mov d, EDX;
+                mov a, EAX;
+            }
         }
         xfeatures = cast(ulong)d << 32 | a;
     }
     amdfeatures = 0;
     amdmiscfeatures = 0;
     if (max_extended_cpuid >= 0x8000_0001) {
-        asm {
-            mov EAX, 0x8000_0001;
-            cpuid;
-            mov c, ECX;
-            mov d, EDX;
+        version(GNU)
+        {
+            rawCpuid(0x8000_0001, 0, unused, unused, c, d);
+        }
+        else
+        {
+            asm {
+                mov EAX, 0x8000_0001;
+                cpuid;
+                mov c, ECX;
+                mov d, EDX;
+            }
         }
         amdmiscfeatures = c;
         amdfeatures = d;
@@ -633,10 +769,17 @@ void cpuidX86()
 
     if (!probablyIntel && max_extended_cpuid >= 0x8000_0008) {
         // determine max number of cores for AMD
-        asm {
-            mov EAX, 0x8000_0008;
-            cpuid;
-            mov c, ECX;
+        version(GNU)
+        {
+            rawCpuid(0x8000_0008, 0, unused, unused, c, unused);
+        }
+        else
+        {
+            asm {
+                mov EAX, 0x8000_0008;
+                cpuid;
+                mov c, ECX;
+            }
         }
         uint apicsize = (c>>12) & 0xF;
         if (apicsize == 0) {
@@ -651,8 +794,16 @@ void cpuidX86()
     }
 
     if (max_extended_cpuid >= 0x8000_0004) {
-        char *procptr = processorNameBuffer.ptr;
-        version(D_InlineAsm_X86)
+        uint* procptr = cast(uint*) processorNameBuffer.ptr;
+        version(GNU)
+        {
+            foreach(i; 0 .. 3)
+            {
+                auto pp = procptr + 4 * i;
+                rawCpuid(0x8000_0002 + i, 0, pp[0], pp[1], pp[2], pp[3]);
+            }
+        }
+        else version(D_InlineAsm_X86)
         {
             asm {
                 push ESI;
@@ -781,21 +932,41 @@ void cpuidX86()
 // BUG(WONTFIX): Returns false for Cyrix 6x86 and 6x86L. They will be treated as 486 machines.
 bool hasCPUID()
 {
-    version(D_InlineAsm_X86_64)
+    version(X86_64)
         return true;
     else
     {
-        uint flags;
-        asm {
-            pushfd;
-            pop EAX;
-            mov flags, EAX;
-            xor EAX, 0x0020_0000;
-            push EAX;
-            popfd;
-            pushfd;
-            pop EAX;
-            xor flags, EAX;
+        uint flags; 
+        version(GNU)
+        {
+            asm {
+                "pushfl
+                pop %%eax
+                mov %%eax, %0
+                xor $0x00200000, %%eax
+                push %%eax
+                popfl
+                pushfl
+                pop %%eax
+                xor %%eax, %0"
+              : "=r" flags
+              : 
+              : "eax"; 
+            }
+        }
+        else
+        {
+            asm {
+                pushfd;
+                pop EAX;
+                mov flags, EAX;
+                xor EAX, 0x0020_0000;
+                push EAX;
+                popfd;
+                pushfd;
+                pop EAX;
+                xor flags, EAX;
+            }
         }
         return (flags & 0x0020_0000) !=0;
     }
