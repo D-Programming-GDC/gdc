@@ -550,19 +550,19 @@ struct ListMaker
 struct CtorEltMaker
 {
  public:
-  VEC(constructor_elt, gc) *head;
+  vec<constructor_elt, va_gc>* head;
 
   CtorEltMaker (void)
     : head(NULL)
   { }
 
   void reserve (int i)
-  { VEC_reserve (constructor_elt, gc, this->head, i); }
+  { vec_safe_reserve (this->head, i); }
 
   void cons (tree p, tree v)
   {
     constructor_elt ce = { p, v };
-    VEC_safe_push (constructor_elt, gc, this->head, ce);
+    vec_safe_push (this->head, ce);
   }
 
   void cons (tree v)
