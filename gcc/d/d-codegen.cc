@@ -1301,9 +1301,9 @@ IRState::extractMethodCallExpr (tree mcr, tree& callee_out, tree& object_out)
 {
   gcc_assert (D_IS_METHOD_CALL_EXPR (mcr));
 
-  VEC (constructor_elt,gc) *elts = CONSTRUCTOR_ELTS (mcr);
-  object_out = VEC_index (constructor_elt, elts, 0).value;
-  callee_out = VEC_index (constructor_elt, elts, 1).value;
+  vec<constructor_elt, va_gc>* elts = CONSTRUCTOR_ELTS (mcr);
+  object_out = (*elts)[0].value;
+  callee_out = (*elts)[1].value;
 }
 
 // Return correct callee for method FUNC, which is dereferenced from
