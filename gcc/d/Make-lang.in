@@ -98,12 +98,16 @@ D d: cc1d$(exeext) d/pkgvars
 
 D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/d/dfrontend -Id
 
-ALL_D_COMPILER_FLAGS = $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) \
+#ALL_COMPILERFLAGS includes these flags, but they're not valid for c++
+#so they should be filtered out.
+GDC_OLD_CFLAGS = -Wstrict-prototypes -Wmissing-prototypes -Wold-style-definition -Wc++-compat
+GDC_ALL_COMPILERFLAGS = $(filter-out $(GDC_OLD_CFLAGS), $(ALL_COMPILERFLAGS))
+ALL_D_COMPILER_FLAGS = $(GDC_ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) \
                         $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES)
 
 # D Frontend has slightly relaxed warnings compared to rest of GDC.
 DMD_WARN_CFLAGS = -Wno-deprecated -Wstrict-aliasing
-DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(ALL_COMPILERFLAGS)) $(DMD_WARN_CFLAGS)
+DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(GDC_ALL_COMPILERFLAGS)) $(DMD_WARN_CFLAGS)
 
 # %% Ditto
 ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
