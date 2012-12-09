@@ -21,9 +21,11 @@ ACLOCAL_AMFLAGS = -I . -I ..
 
 SUBDIRS = libdruntime
 
-OUR_CFLAGS=@DEFS@ -I . -I $(srcdir)/gcc -I$(top_srcdir)/../zlib
+#PIC_FLAGS=
+
+OUR_CFLAGS=@DEFS@ -I . -I $(srcdir)/gcc -I$(top_srcdir)/../zlib $(PIC_FLAGS)
 D_EXTRA_DFLAGS=-nostdinc -pipe -fdeprecated -fproperty -I $(srcdir) -I $(srcdir)/libdruntime -I ./libdruntime/$(host_alias)
-ALL_DFLAGS=$(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
+ALL_DFLAGS=$(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) $(PIC_FLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -101,7 +103,9 @@ ZLIB_OBJS=@ZLIB_OBJS@
 OS_OBJS=std/file.o std/mmfile.o std/path.o std/perf.o std/process.o \
 	std/socket.o std/socketstream.o
 
-LINUX_OBJS=std/c/linux/linux.o std/c/linux/socket.o
+# std/c/linux/linux.o is currently included on all unix systems for
+# compatibility, see acinclude.m4. Do not add std/c/linux/linux.o twice!
+LINUX_OBJS=std/c/linux/socket.o
 
 OSX_OBJS=std/c/osx/socket.o
 
@@ -125,6 +129,10 @@ libgphobos2.a : $(ALL_PHOBOS_OBJS) libdruntime/libgdruntime.a
 	cp libdruntime/libgdruntime.a libgphobos2.a
 	$(AR) -q $@ $(ALL_PHOBOS_OBJS)
 	$(RANLIB) $@
+
+libgphobos2.so : $(ALL_PHOBOS_OBJS) libdruntime/libgdruntime.so
+	$(GDC) -shared $(ALL_PHOBOS_OBJS) -Wl,-soname,libgphobos2.so.0 -o libgphobos2.so.0 -nophoboslib
+	ln -s -f libgphobos2.so.0 libgphobos2.so
 
 libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(AR) -r $@ $(ALL_PHOBOS_OBJS:.o=.t.o)
@@ -155,6 +163,8 @@ clean-local:
 	rm -f unittest.o
 	rm -f unittest$(EXEEXT)
 	rm -f libgphobos2.a
+	rm -f libgphobos2.so
+	rm -f libgphobos2.so.0
 	rm -f libgphobos2_t.a
 
 
