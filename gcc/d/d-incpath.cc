@@ -16,14 +16,18 @@
 // <http://www.gnu.org/licenses/>.
 
 #include "d-gcc-includes.h"
+extern "C" {
 #include "options.h"
 #include "cppdefault.h"
+}//extern "C"
 
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-confdefs.h"
 
+extern "C" {
 #include "cond.h"
+}//extern "C"
 
 // Global options removed from d-lang.cc
 const char *iprefix = NULL;

@@ -16,15 +16,19 @@
    <http://www.gnu.org/licenses/>.
 */
 
+extern "C" {
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
 #include "tm.h"
+}//extern "C"
 
 #include "d-confdefs.h"
 
+extern "C" {
 #include "gcc.h"
 #include "opts.h"
+}//extern "C"
 
 /* This bit is set if we saw a `-xfoo' language specification.  */
 #define LANGSPEC	(1<<1)

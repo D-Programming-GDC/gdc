@@ -16,7 +16,12 @@
    <http://www.gnu.org/licenses/>.
 */
 
+//Must inlcude gmp here because it can't be included in an
+//extern "C" block and tree.h includes gmp
+#include "gmp.h"
+
 /* ggc.h and debug.h needed to support gt*.h includes below */
+extern "C" {
 #include "config.h"
 #include "system.h"
 
@@ -25,8 +30,10 @@
 #include "tree.h"
 #include "ggc.h"
 #include "debug.h"
-
+}//extern "C"
 #include "d-lang.h"
 
 /* This is in a .c file because gentype produces C code with prototypes */
+extern "C" {
 #include "gtype-d.h"
+} //extern "C"

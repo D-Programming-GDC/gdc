@@ -112,7 +112,7 @@ ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
 # Create the compiler driver for D.
 GDC_OBJS = $(GCC_OBJS) d/d-spec.o
 gdc$(exeext): $(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a $(LIBDEPS)
-	$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
+	$(CXX) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 	$(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a \
 	$(EXTRA_GCC_LIBS) $(LIBS)
 
@@ -166,7 +166,7 @@ d/%.glue.o: $(srcdir)/d/%.cc $(D_TREE_H)
 	$(CXX) $(ALL_D_COMPILER_FLAGS) -o d/$*.glue.o -c $<
 
 d/%.cglue.o: $(srcdir)/d/%.c $(D_TREE_H)
-	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -DGCC_SAFE_DMD=1 -o d/$*.cglue.o -c $<
+	$(CXX) $(ALL_D_COMPILER_FLAGS) -DGCC_SAFE_DMD=1 -o d/$*.cglue.o -c $<
 
 d/impcvgen: d/impcnvgen.dmdgen.o
 	$(CXX_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
@@ -215,7 +215,7 @@ d/typinf.dmd.o: $(D_DMD_H)
 d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) \
     $(CONFIG_H) $(OPTS_H)
 	(SHLIB='$(SHLIB)'; \
-	$(COMPILER) -c $(ALL_D_COMPILER_FLAGS) $(DRIVER_DEFINES) \
+	$(CXX) -c $(ALL_D_COMPILER_FLAGS) $(DRIVER_DEFINES) \
 		$(D_LIBPHOBOS) $(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
 
 D_BORROWED_C_OBJS = attribs.o

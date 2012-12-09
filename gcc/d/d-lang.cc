@@ -20,9 +20,11 @@
 */
 
 #include "d-gcc-includes.h"
+extern "C" {
 #include "options.h"
 #include "cppdefault.h"
 #include "debug.h"
+}//extern "C"
 
 #include "d-lang.h"
 #include "d-codegen.h"
@@ -1307,6 +1309,69 @@ d_signed_or_unsigned_type (int unsignedp, tree type)
   return type;
 }
 
+tree
+d_unsigned_type (tree type)
+{
+  tree type1 = TYPE_MAIN_VARIANT (type);
+  if (type1 == signed_char_type_node || type1 == char_type_node)
+    return unsigned_char_type_node;
+  if (type1 == integer_type_node)
+    return unsigned_type_node;
+  if (type1 == short_integer_type_node)
+    return short_unsigned_type_node;
+  if (type1 == long_integer_type_node)
+    return long_unsigned_type_node;
+  if (type1 == long_long_integer_type_node)
+    return long_long_unsigned_type_node;
+#if HOST_BITS_PER_WIDE_INT >= 64
+  if (type1 == intTI_type_node)
+    return unsigned_intTI_type_node;
+#endif
+  if (type1 == intDI_type_node)
+    return unsigned_intDI_type_node;
+  if (type1 == intSI_type_node)
+    return unsigned_intSI_type_node;
+  if (type1 == intHI_type_node)
+    return unsigned_intHI_type_node;
+  if (type1 == intQI_type_node)
+    return unsigned_intQI_type_node;
+
+  return d_signed_or_unsigned_type (1, type);
+}
+
+tree
+d_signed_type (tree type)
+{
+  tree type1 = TYPE_MAIN_VARIANT (type);
+  if (type1 == unsigned_char_type_node || type1 == char_type_node)
+    return signed_char_type_node;
+  if (type1 == unsigned_type_node)
+    return integer_type_node;
+  if (type1 == short_unsigned_type_node)
+    return short_integer_type_node;
+  if (type1 == long_unsigned_type_node)
+    return long_integer_type_node;
+  if (type1 == long_long_unsigned_type_node)
+    return long_long_integer_type_node;
+  /*
+     if (type1 == widest_unsigned_literal_type_node)
+     return widest_integer_literal_type_node;
+     */
+#if HOST_BITS_PER_WIDE_INT >= 64
+  if (type1 == unsigned_intTI_type_node)
+    return intTI_type_node;
+#endif
+  if (type1 == unsigned_intDI_type_node)
+    return intDI_type_node;
+  if (type1 == unsigned_intSI_type_node)
+    return intSI_type_node;
+  if (type1 == unsigned_intHI_type_node)
+    return intHI_type_node;
+  if (type1 == unsigned_intQI_type_node)
+    return intQI_type_node;
+
+  return d_signed_or_unsigned_type (0, type);
+}
 
 /* Type promotion for variable arguments.  */
 static tree
@@ -1330,6 +1395,7 @@ d_type_promotes_to (tree type)
 
   return type;
 }
+
 
 struct binding_level *current_binding_level;
 struct binding_level *global_binding_level;
@@ -1440,96 +1506,12 @@ global_bindings_p (void)
   return current_binding_level == global_binding_level || !global_binding_level;
 }
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void
 init_global_binding_level (void)
 {
   current_binding_level = global_binding_level = alloc_binding_level();
 }
 
-void
-set_decl_binding_chain (tree decl_chain)
-{
-  gcc_assert (current_binding_level);
-  current_binding_level->names = decl_chain;
-}
-
-tree
-d_unsigned_type (tree type)
-{
-  tree type1 = TYPE_MAIN_VARIANT (type);
-  if (type1 == signed_char_type_node || type1 == char_type_node)
-    return unsigned_char_type_node;
-  if (type1 == integer_type_node)
-    return unsigned_type_node;
-  if (type1 == short_integer_type_node)
-    return short_unsigned_type_node;
-  if (type1 == long_integer_type_node)
-    return long_unsigned_type_node;
-  if (type1 == long_long_integer_type_node)
-    return long_long_unsigned_type_node;
-#if HOST_BITS_PER_WIDE_INT >= 64
-  if (type1 == intTI_type_node)
-    return unsigned_intTI_type_node;
-#endif
-  if (type1 == intDI_type_node)
-    return unsigned_intDI_type_node;
-  if (type1 == intSI_type_node)
-    return unsigned_intSI_type_node;
-  if (type1 == intHI_type_node)
-    return unsigned_intHI_type_node;
-  if (type1 == intQI_type_node)
-    return unsigned_intQI_type_node;
-
-  return d_signed_or_unsigned_type (1, type);
-}
-
-tree
-d_signed_type (tree type)
-{
-  tree type1 = TYPE_MAIN_VARIANT (type);
-  if (type1 == unsigned_char_type_node || type1 == char_type_node)
-    return signed_char_type_node;
-  if (type1 == unsigned_type_node)
-    return integer_type_node;
-  if (type1 == short_unsigned_type_node)
-    return short_integer_type_node;
-  if (type1 == long_unsigned_type_node)
-    return long_integer_type_node;
-  if (type1 == long_long_unsigned_type_node)
-    return long_long_integer_type_node;
-  /*
-     if (type1 == widest_unsigned_literal_type_node)
-     return widest_integer_literal_type_node;
-     */
-#if HOST_BITS_PER_WIDE_INT >= 64
-  if (type1 == unsigned_intTI_type_node)
-    return intTI_type_node;
-#endif
-  if (type1 == unsigned_intDI_type_node)
-    return intDI_type_node;
-  if (type1 == unsigned_intSI_type_node)
-    return intSI_type_node;
-  if (type1 == unsigned_intHI_type_node)
-    return intHI_type_node;
-  if (type1 == unsigned_intQI_type_node)
-    return intQI_type_node;
-
-  return d_signed_or_unsigned_type (0, type);
-}
-
-void
-d_init_exceptions (void)
-{
-  using_eh_for_cleanups();
-}
-
-#ifdef __cplusplus
-} //extern "C"
-#endif
 
 void
 insert_block (tree block)
@@ -1560,6 +1542,13 @@ pushdecl (tree decl)
   if (!TREE_CHAIN (decl))
     current_binding_level->names_end = decl;
   return decl;
+}
+
+void
+set_decl_binding_chain (tree decl_chain)
+{
+  gcc_assert (current_binding_level);
+  current_binding_level->names = decl_chain;
 }
 
 
@@ -1668,6 +1657,12 @@ d_build_eh_type_type (tree type)
   d_type = (TypeClass *) d_type->toBasetype();
   gcc_assert (d_type->ty == Tclass);
   return gen.addressOf (d_type->sym->toSymbol()->Stree);
+}
+
+void
+d_init_exceptions (void)
+{
+  using_eh_for_cleanups();
 }
 
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;

@@ -16,6 +16,11 @@
    <http://www.gnu.org/licenses/>.
 */
 
+//Must inlcude gmp here because it can't be included in an
+//extern "C" block and tree.h includes gmp
+#include "gmp.h"
+
+extern "C" {
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
@@ -33,6 +38,7 @@
 #include "diagnostic.h"
 #include "opts.h"
 #include "cgraph.h"
+} //extern "C"
 
 #include "d-lang.h"
 

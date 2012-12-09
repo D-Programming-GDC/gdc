@@ -19,8 +19,10 @@
 #include "d-lang.h"
 #include "d-irstate.h"
 
+extern "C" {
 #include "init.h"
 #include "symbol.h"
+}//extern "C"
 
 #include "d-codegen.h"
 

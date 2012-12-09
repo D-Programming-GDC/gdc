@@ -19,18 +19,10 @@
 #include <ctype.h>
 
 #ifdef IN_GCC
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "gdc_alloca.h"
+extern "C" {
 #include "errors.h"
-
-#ifdef __cplusplus
-}
-#endif
-
+}//extern "C"
 #else
 #if (defined (__SVR4) && defined (__sun))
 #include <alloca.h>
