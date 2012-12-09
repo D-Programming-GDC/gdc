@@ -1,3 +1,4 @@
+#line 1
 module line;
 
 static assert(__LINE__ == 3);

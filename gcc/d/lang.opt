@@ -18,6 +18,14 @@
 Language
 D
 
+debuglib=
+Driver Joined
+Debug library to use instead of phobos
+
+defaultlib=
+Driver Joined
+Default library to use instead of phobos
+
 fassert
 D
 Permit the use of the assert keyword
@@ -28,7 +36,7 @@ D
 Generate code to check bounds before indexing arrays
 
 fbuiltin
-D
+D Var(flag_no_builtin, 0)
 Recognize built-in functions
 
 fdebug
@@ -38,10 +46,6 @@ Compile in debug code
 fdebug=
 D Joined RejectNegative
 -fdebug,-fdebug=<level>,-fdebug=<ident> Compile in debug code, code <= level, or code identified by ident
-
-fdebug-c
-D
-With -g, generate C debug information for debugger compatibility
 
 fdeprecated
 D
@@ -70,10 +74,6 @@ D Joined RejectNegative
 fdump-source
 D RejectNegative
 Dump decoded UTF-8 text and source from HTML
-
-fd-inline-asm
-D
-Enable the use of assembly code in D_InlineAsm version blocks.
 
 fd-verbose
 D
@@ -120,7 +120,7 @@ D Joined RejectNegative
 
 fmake-mdeps=
 D Joined RejectNegative
-Like -fmake-deps=<file> but ignore system header files
+Like -fmake-deps=<file> but ignore system modules
 
 fonly=
 D Joined RejectNegative
@@ -137,6 +137,10 @@ Enforce property syntax
 frelease
 D
 Compile release version
+
+fsplit-dynamic-arrays
+D Var(flag_split_darrays)
+Split dynamic arrays into length and pointer when passing to functions.
 
 funittest
 D
@@ -174,48 +178,35 @@ J
 D Joined Separate
 -J<directory>	Put MODULE files in 'directory'
 
+nophoboslib
+Driver
+Do not link the standard D library in the compilation.
+
 nostdinc
 D
 Do not search standard system include directories (those specified with -isystem will still be used)
 
+static-libphobos
+Driver
+Link the standard D library statically in the compilation.
+
 Wall
 D
-Enable most warning messages
+; Documented in c.opt
+
+Wcast-result
+D Warning Var(warn_cast_result)
+Warn about casts that will produce a null or nil result.
 
 Werror
 D
-Treat all warnings as errors
+; Documented in common.opt
 
 Wsign-compare
 D
-Warn about signed-unsigned comparisons
+; Documented in c.opt
 
 Wunknown-pragmas
-D Warning
-Warn about unrecognized pragmas
+D
+; Documented in c.opt
 
-
-
-; Everything below this line is used in 4.6+
-
-debuglib=
-Driver Joined
-Debug library to use instead of phobos
-
-defaultlib=
-Driver Joined
-Default library to use instead of phobos
-
-fod=
-Driver Joined
--fod=<directory> Specify the object output directory.
-
-fop
-Driver
-Specify that the source file's parent directories should be appended to the object output directory.
-
-nophoboslib
-Driver
-
-static_libphobos
-Driver

@@ -18,7 +18,9 @@
 #ifndef GCC_DCMPLR_DC_GCC_TREE_H
 #define GCC_DCMPLR_DC_GCC_TREE_H
 
+extern "C" {
 #include "config.h"
 #include "coretypes.h"
+} //extern "C"
 
 #endif

@@ -16,77 +16,26 @@
 // <http://www.gnu.org/licenses/>.
 
 #include "d-gcc-includes.h"
+extern "C" {
 #include "options.h"
 #include "cppdefault.h"
+}//extern "C"
 
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-confdefs.h"
 
-/* Global options removed from d-lang.cc */
-bool std_inc;
-const char * iprefix = NULL;
-const char * multilib_dir = NULL;
+extern "C" {
+#include "cond.h"
+}//extern "C"
 
-static void add_env_var_paths (const char *);
-static void add_import_path (char *);
-static void add_file_path (char *);
-static char * make_absolute (char * path);
+// Global options removed from d-lang.cc
+const char *iprefix = NULL;
+const char *multilib_dir = NULL;
 
 
-/* support for the -mno-cygwin switch copied from cygwin.h, cygwin2.c  */
-#ifndef CYGWIN_MINGW_SUBDIR
-#define CYGWIN_MINGW_SUBDIR "/mingw"
-#endif
-#define CYGWIN_MINGW_SUBDIR_LEN (sizeof (CYGWIN_MINGW_SUBDIR) - 1)
-
-char cygwin_d_phobos_dir[sizeof (D_PHOBOS_DIR) + 1
-        + (CYGWIN_MINGW_SUBDIR_LEN)] = D_PHOBOS_DIR;
-#undef D_PHOBOS_DIR
-#define D_PHOBOS_DIR (cygwin_d_phobos_dir)
-char cygwin_d_target_dir[sizeof (D_PHOBOS_TARGET_DIR) + 1
-        + (CYGWIN_MINGW_SUBDIR_LEN)] = D_PHOBOS_TARGET_DIR;
-#undef D_PHOBOS_TARGET_DIR
-#define D_PHOBOS_TARGET_DIR (cygwin_d_target_dir)
-
-static void
-maybe_fixup_phobos_target ()
-{
-#ifdef D_OS_VERSYM
-  char * env = getenv ("GCC_CYGWIN_MINGW");
-  char * p;
-  char ** av;
-
-  static char *d_cvt_to_mingw[] = {
-      cygwin_d_phobos_dir,
-      cygwin_d_target_dir,
-      NULL
-  };
-  if (!strcmp (D_OS_VERSYM, "Cygwin") && env && *env == '1')
-    {
-      for (av = d_cvt_to_mingw; *av; av++)
-	{
-	  int sawcygwin = 0;
-	  while ((p = strstr (*av, "-cygwin")))
-	    {
-	      char *over = p + sizeof ("-cygwin") - 1;
-	      memmove (over + 1, over, strlen (over));
-	      memcpy (p, "-mingw32", sizeof ("-mingw32") - 1);
-	      p = ++over;
-	      while (ISALNUM (*p))
-		p++;
-	      strcpy (over, p);
-	      sawcygwin = 1;
-	    }
-	  if (!sawcygwin && !strstr (*av, "mingw"))
-	    strcat (*av, CYGWIN_MINGW_SUBDIR);
-	}
-    }
-#endif
-}
-
-/* Read ENV_VAR for a PATH_SEPARATOR-separated list of file names; and
-   append all the names to the import search path.  */
+// Read ENV_VAR for a PATH_SEPARATOR-separated list of file names; and
+// append all the names to the import search path.
 
 static void
 add_env_var_paths (const char *env_var)
@@ -118,39 +67,38 @@ add_env_var_paths (const char *env_var)
 }
 
 
-/* Look for directories that start with the standard prefix.
-   "Translate" them, i.e. replace /usr/local/lib/gcc... with
-   IPREFIX and search them first.  */
+// Look for directories that start with the standard prefix.
+// "Translate" them, i.e. replace /usr/local/lib/gcc... with
+// IPREFIX and search them first.
 
 static char *
-prefixed_path (const char * path)
+prefixed_path (const char *path)
 {
   // based on incpath.c
   size_t len = cpp_GCC_INCLUDE_DIR_len;
-  if (iprefix && len != 0 && ! strncmp (path, cpp_GCC_INCLUDE_DIR, len))
+  if (iprefix && len != 0 && !strncmp (path, cpp_GCC_INCLUDE_DIR, len))
     return concat (iprefix, path + len, NULL);
   // else
   return xstrdup (path);
 }
 
 
-/* Given a pointer to a string containing a pathname, returns a
-   canonical version of the filename.
-   */
+// Given a pointer to a string containing a pathname, returns a
+// canonical version of the filename.
 
 static char *
-make_absolute (char * path)
+make_absolute (char *path)
 {
 #if defined (HAVE_DOS_BASED_FILE_SYSTEM)
   /* Remove unnecessary trailing slashes.  On some versions of MS
-     Windows, trailing  _forward_ slashes cause no problems for stat ().
-     On newer versions, stat () does not recognize a directory that ends
+     Windows, trailing  _forward_ slashes cause no problems for stat().
+     On newer versions, stat() does not recognize a directory that ends
      in a '\\' or '/', unless it is a drive root dir, such as "c:/",
      where it is obligatory.  */
   int pathlen = strlen (path);
-  char* end = path + pathlen - 1;
+  char *end = path + pathlen - 1;
   /* Preserve the lead '/' or lead "c:/".  */
-  char* start = path + (pathlen > 2 && path[1] == ':' ? 3 : 1);
+  char *start = path + (pathlen > 2 && path[1] == ':' ? 3 : 1);
 
   for (; end > start && IS_DIR_SEPARATOR (*end); end--)
     *end = 0;
@@ -159,57 +107,70 @@ make_absolute (char * path)
   return lrealpath (path);
 }
 
-
-/* Add PATH to the global import lookup path.  */
+/* Add PATHS to the global import lookup path.  */
 
 static void
-add_import_path (char * path)
+add_import_path (Strings *paths)
 {
-  char * target_dir = make_absolute (path);
-
-  if (! global.path)
-    global.path = new Strings ();
-
-  if (! FileName::exists (target_dir))
+  if (paths)
     {
-      free (target_dir);
-      return;
-    }
+      if (!global.path)
+	global.path = new Strings();
 
-  global.path->push (target_dir);
+      for (size_t i = 0; i < paths->dim; i++)
+	{
+	  String p = (*paths)[i];
+	  char *target_dir = make_absolute (p.toChars());
+
+	  if (!FileName::exists (target_dir))
+	    {
+	      free (target_dir);
+	      continue;
+	    }
+
+	  global.path->push (target_dir);
+	}
+    }
+}
+
+/* Add PATHS to the global file import lookup path.  */
+
+static void
+add_fileimp_path (Strings *paths)
+{
+  if (paths)
+    {
+      if (!global.filePath)
+	global.filePath = new Strings();
+
+      for (size_t i = 0; i < paths->dim; i++)
+	{
+	  String p = (*paths)[i];
+	  char *target_dir = make_absolute (p.toChars());
+
+	  if (!FileName::exists (target_dir))
+	    {
+	      free (target_dir);
+	      continue;
+	    }
+
+	  global.filePath->push (target_dir);
+	}
+    }
 }
 
 
-/* Add PATH to the global file lookup path.  */
-
-static void
-add_file_path (char * path)
-{
-  char * target_dir = make_absolute (path);
-
-  if (! global.filePath)
-    global.filePath = new Strings ();
-
-  if (! FileName::exists (target_dir))
-    {
-      free (target_dir);
-      return;
-    }
-
-  global.filePath->push (target_dir);
-}
-
+// Add all search directories to compiler runtime.
+// if STDINC, also include standard library paths.
 
 void
-register_import_chains ()
+add_import_paths (bool stdinc)
 {
-  maybe_fixup_phobos_target ();
-
   // %%TODO: front or back?
-  if (std_inc)
+  if (stdinc)
     {
-      char * phobos_dir = prefixed_path (D_PHOBOS_DIR);
-      char * target_dir = prefixed_path (D_PHOBOS_TARGET_DIR);
+      char *phobos_dir = prefixed_path (D_PHOBOS_DIR);
+      char *target_dir = prefixed_path (D_PHOBOS_TARGET_DIR);
 
       if (multilib_dir)
 	target_dir = concat (target_dir, "/", multilib_dir, NULL);
@@ -218,26 +179,61 @@ register_import_chains ()
       global.params.imppath->shift (target_dir);
     }
 
-  /* Language-dependent environment variables may add to the include chain. */
+  // Language-dependent environment variables may add to the include chain.
   add_env_var_paths ("D_IMPORT_PATH");
 
+  // Build import search path
   if (global.params.imppath)
     {
       for (size_t i = 0; i < global.params.imppath->dim; i++)
 	{
-	  char *path = global.params.imppath->tdata()[i];
+	  char *path = (*global.params.imppath)[i];
 	  if (path)
-	    add_import_path (path);
+	    add_import_path (FileName::splitPath (path));
 	}
     }
 
+  // Build string import search path
   if (global.params.fileImppath)
     {
       for (size_t i = 0; i < global.params.fileImppath->dim; i++)
 	{
-	  char *path = global.params.fileImppath->tdata()[i];
+	  char *path = (*global.params.fileImppath)[i];
 	  if (path)
-	    add_file_path (path);
+	    add_fileimp_path (FileName::splitPath (path));
+	}
+    }
+}
+
+// Read from the library file phobos-ver-syms and add
+// all version identifiers into compilation runtime.
+
+void add_phobos_versyms (void)
+{
+  char *path = FileName::searchPath (global.path, "phobos-ver-syms", 1);
+  if (path)
+    {
+      FILE *f = fopen (path, "r");
+      if (f)
+	{
+	  char buf[256];
+	  while (!feof (f) && fgets (buf, 256, f))
+	    {
+	      char *p = buf;
+	      while (*p && ISSPACE (*p))
+		p++;
+	      char *q = p;
+	      while (*q && !ISSPACE (*q))
+		q++;
+	      *q = 0;
+	      if (p != q)
+		{
+		  /* Needs to be predefined because we define
+		     Unix/Windows this way. */
+		  VersionCondition::addPredefinedGlobalIdent (xstrdup (p));
+		}
+	    }
+	  fclose (f);
 	}
     }
 }

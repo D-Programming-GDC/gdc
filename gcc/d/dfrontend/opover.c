@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2011 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <assert.h>
+#include <string.h>                     // memset()
 #if _MSC_VER
 #include <complex>
 #else
@@ -354,9 +355,11 @@ Expression *UnaExp::op_overload(Scope *sc)
             /* Rewrite op(e1) as:
              *  op(e1.aliasthis)
              */
-            UnaExp *e = (UnaExp *)syntaxCopy();
-            e->e1 = new DotIdExp(loc, e->e1, ad->aliasthis->ident);
-            return e->trySemantic(sc);
+            Expression *e1 = new DotIdExp(loc, this->e1, ad->aliasthis->ident);
+            Expression *e = copy();
+            ((UnaExp *)e)->e1 = e1;
+            e = e->trySemantic(sc);
+            return e;
         }
 #endif
     }
@@ -373,7 +376,7 @@ Expression *ArrayExp::op_overload(Scope *sc)
         if (fd)
         {
             for (size_t i = 0; i < arguments->dim; i++)
-            {   Expression *x = arguments->tdata()[i];
+            {   Expression *x = (*arguments)[i];
                 // Create scope for '$' variable for this dimension
                 ArrayScopeSymbol *sym = new ArrayScopeSymbol(sc, this);
                 sym->loc = loc;
@@ -392,7 +395,7 @@ Expression *ArrayExp::op_overload(Scope *sc)
                     x = new CommaExp(0, av, x);
                     x->semantic(sc);
                 }
-                arguments->tdata()[i] = x;
+                (*arguments)[i] = x;
                 sc = sc->pop();
             }
 
@@ -411,9 +414,11 @@ Expression *ArrayExp::op_overload(Scope *sc)
             /* Rewrite op(e1) as:
              *  op(e1.aliasthis)
              */
-            UnaExp *e = (UnaExp *)syntaxCopy();
-            e->e1 = new DotIdExp(loc, e->e1, ad->aliasthis->ident);
-            return e->trySemantic(sc);
+            Expression *e1 = new DotIdExp(loc, this->e1, ad->aliasthis->ident);
+            Expression *e = copy();
+            ((UnaExp *)e)->e1 = e1;
+            e = e->trySemantic(sc);
+            return e;
         }
     }
     return NULL;
@@ -456,9 +461,11 @@ Expression *CastExp::op_overload(Scope *sc)
             /* Rewrite op(e1) as:
              *  op(e1.aliasthis)
              */
-            UnaExp *e = (UnaExp *)syntaxCopy();
-            e->e1 = new DotIdExp(loc, e->e1, ad->aliasthis->ident);
-            return e->trySemantic(sc);
+            Expression *e1 = new DotIdExp(loc, this->e1, ad->aliasthis->ident);
+            Expression *e = copy();
+            ((UnaExp *)e)->e1 = e1;
+            e = e->trySemantic(sc);
+            return e;
         }
     }
     return NULL;
@@ -528,9 +535,9 @@ Expression *BinExp::op_overload(Scope *sc)
          */
 
         args1.setDim(1);
-        args1.tdata()[0] = e1;
+        args1[0] = e1;
         args2.setDim(1);
-        args2.tdata()[0] = e2;
+        args2[0] = e2;
         argsset = 1;
 
         Match m;
@@ -621,9 +628,9 @@ L1:
 
             if (!argsset)
             {   args1.setDim(1);
-                args1.tdata()[0] = e1;
+                args1[0] = e1;
                 args2.setDim(1);
-                args2.tdata()[0] = e2;
+                args2[0] = e2;
             }
 
             Match m;
@@ -714,9 +721,11 @@ L1:
         /* Rewrite (e1 op e2) as:
          *      (e1.aliasthis op e2)
          */
-        BinExp *e = (BinExp *)syntaxCopy();
-        e->e1 = new DotIdExp(loc, e->e1, ad1->aliasthis->ident);
-        return e->trySemantic(sc);
+        Expression *e1 = new DotIdExp(loc, this->e1, ad1->aliasthis->ident);
+        Expression *e = copy();
+        ((BinExp *)e)->e1 = e1;
+        e = e->trySemantic(sc);
+        return e;
     }
 
     // Try alias this on second operand
@@ -729,9 +738,11 @@ L1:
         /* Rewrite (e1 op e2) as:
          *      (e1 op e2.aliasthis)
          */
-        BinExp *e = (BinExp *)syntaxCopy();
-        e->e2 = new DotIdExp(loc, e->e2, ad2->aliasthis->ident);
-        return e->trySemantic(sc);
+        Expression *e2 = new DotIdExp(loc, this->e2, ad2->aliasthis->ident);
+        Expression *e = copy();
+        ((BinExp *)e)->e2 = e2;
+        e = e->trySemantic(sc);
+        return e;
     }
 #endif
     return NULL;
@@ -775,9 +786,9 @@ Expression *BinExp::compare_overload(Scope *sc, Identifier *id)
         Expressions args2;
 
         args1.setDim(1);
-        args1.tdata()[0] = e1;
+        args1[0] = e1;
         args2.setDim(1);
-        args2.tdata()[0] = e2;
+        args2[0] = e2;
 
         Match m;
         memset(&m, 0, sizeof(m));
@@ -883,9 +894,11 @@ Expression *BinExp::compare_overload(Scope *sc, Identifier *id)
         /* Rewrite (e1 op e2) as:
          *      (e1.aliasthis op e2)
          */
-        BinExp *e = (BinExp *)syntaxCopy();
-        e->e1 = new DotIdExp(loc, e->e1, ad1->aliasthis->ident);
-        return e->trySemantic(sc);
+        Expression *e1 = new DotIdExp(loc, this->e1, ad1->aliasthis->ident);
+        Expression *e = copy();
+        ((BinExp *)e)->e1 = e1;
+        e = e->trySemantic(sc);
+        return e;
     }
 
     // Try alias this on second operand
@@ -894,9 +907,11 @@ Expression *BinExp::compare_overload(Scope *sc, Identifier *id)
         /* Rewrite (e1 op e2) as:
          *      (e1 op e2.aliasthis)
          */
-        BinExp *e = (BinExp *)syntaxCopy();
-        e->e2 = new DotIdExp(loc, e->e2, ad2->aliasthis->ident);
-        return e->trySemantic(sc);
+        Expression *e2 = new DotIdExp(loc, this->e2, ad2->aliasthis->ident);
+        Expression *e = copy();
+        ((BinExp *)e)->e2 = e2;
+        e = e->trySemantic(sc);
+        return e;
     }
 
     return NULL;
@@ -915,12 +930,20 @@ Expression *EqualExp::op_overload(Scope *sc)
         if (!(cd1->isCPPinterface() || cd2->isCPPinterface()))
         {
             /* Rewrite as:
-             *      .object.opEquals(cast(Object)e1, cast(Object)e2)
+             *      .object.opEquals(e1, e2)
+             */
+            Expression *e1x = e1;
+            Expression *e2x = e2;
+
+            /*
              * The explicit cast is necessary for interfaces,
              * see http://d.puremagic.com/issues/show_bug.cgi?id=4088
              */
-            Expression *e1x = new CastExp(loc, e1, ClassDeclaration::object->getType());
-            Expression *e2x = new CastExp(loc, e2, ClassDeclaration::object->getType());
+            Type *to = ClassDeclaration::object->getType();
+            if (cd1->isInterfaceDeclaration())
+                e1x = new CastExp(loc, e1, t1->isMutable() ? to : to->constOf());
+            if (cd2->isInterfaceDeclaration())
+                e2x = new CastExp(loc, e2, t2->isMutable() ? to : to->constOf());
 
             Expression *e = new IdentifierExp(loc, Id::empty);
             e = new DotIdExp(loc, e, Id::object);
@@ -967,7 +990,7 @@ Expression *BinAssignExp::op_overload(Scope *sc)
                 Expressions *a = new Expressions();
                 a->push(e2);
                 for (size_t i = 0; i < ae->arguments->dim; i++)
-                    a->push(ae->arguments->tdata()[i]);
+                    a->push((*ae->arguments)[i]);
 
                 Objects *targsi = opToArg(sc, op);
                 Expression *e = new DotTemplateInstanceExp(loc, ae->e1, fd->ident, targsi);
@@ -1084,7 +1107,7 @@ Expression *BinAssignExp::op_overload(Scope *sc)
          */
 
         args2.setDim(1);
-        args2.tdata()[0] = e2;
+        args2[0] = e2;
 
         Match m;
         memset(&m, 0, sizeof(m));
@@ -1131,9 +1154,11 @@ L1:
         /* Rewrite (e1 op e2) as:
          *      (e1.aliasthis op e2)
          */
-        BinExp *e = (BinExp *)syntaxCopy();
-        e->e1 = new DotIdExp(loc, e->e1, ad1->aliasthis->ident);
-        return e->trySemantic(sc);
+        Expression *e1 = new DotIdExp(loc, this->e1, ad1->aliasthis->ident);
+        Expression *e = copy();
+        ((BinExp *)e)->e1 = e1;
+        e = e->trySemantic(sc);
+        return e;
     }
 
     // Try alias this on second operand
@@ -1143,9 +1168,11 @@ L1:
         /* Rewrite (e1 op e2) as:
          *      (e1 op e2.aliasthis)
          */
-        BinExp *e = (BinExp *)syntaxCopy();
-        e->e2 = new DotIdExp(loc, e->e2, ad2->aliasthis->ident);
-        return e->trySemantic(sc);
+        Expression *e2 = new DotIdExp(loc, this->e2, ad2->aliasthis->ident);
+        Expression *e = copy();
+        ((BinExp *)e)->e2 = e2;
+        e = e->trySemantic(sc);
+        return e;
     }
 #endif
     return NULL;
@@ -1208,7 +1235,7 @@ int ForeachStatement::inferAggregate(Scope *sc, Dsymbol *&sapply)
 {
     Identifier *idapply = (op == TOKforeach) ? Id::apply : Id::applyReverse;
 #if DMDV2
-    Identifier *idhead = (op == TOKforeach) ? Id::Ffront : Id::Fback;
+    Identifier *idfront = (op == TOKforeach) ? Id::Ffront : Id::Fback;
     int sliced = 0;
 #endif
     Type *tab;
@@ -1261,7 +1288,7 @@ int ForeachStatement::inferAggregate(Scope *sc, Dsymbol *&sapply)
                     }
                 }
 
-                if (Dsymbol *shead = search_function(ad, idhead))
+                if (Dsymbol *shead = ad->search(0, idfront, 0))
                 {   // range aggregate
                     break;
                 }
@@ -1315,7 +1342,7 @@ int ForeachStatement::inferApplyArgTypes(Scope *sc, Dsymbol *&sapply)
     if (sapply)     // prefer opApply
     {
         for (size_t u = 0; u < arguments->dim; u++)
-        {   Parameter *arg = arguments->tdata()[u];
+        {   Parameter *arg = (*arguments)[u];
             if (arg->type)
                 arg->type = arg->type->semantic(loc, sc);
         }
@@ -1349,14 +1376,14 @@ int ForeachStatement::inferApplyArgTypes(Scope *sc, Dsymbol *&sapply)
     /* Return if no arguments need types.
      */
     for (size_t u = 0; u < arguments->dim; u++)
-    {   Parameter *arg = arguments->tdata()[u];
+    {   Parameter *arg = (*arguments)[u];
         if (!arg->type)
             break;
     }
 
     AggregateDeclaration *ad;
 
-    Parameter *arg = arguments->tdata()[0];
+    Parameter *arg = (*arguments)[0];
     Type *taggr = aggr->type;
     assert(taggr);
     Type *tab = taggr->toBasetype();
@@ -1369,7 +1396,7 @@ int ForeachStatement::inferApplyArgTypes(Scope *sc, Dsymbol *&sapply)
             {
                 if (!arg->type)
                     arg->type = Type::tsize_t;  // key type
-                arg = arguments->tdata()[1];
+                arg = (*arguments)[1];
             }
             if (!arg->type && tab->ty != Ttuple)
                 arg->type = tab->nextOf();      // value type
@@ -1382,7 +1409,7 @@ int ForeachStatement::inferApplyArgTypes(Scope *sc, Dsymbol *&sapply)
             {
                 if (!arg->type)
                     arg->type = taa->index;     // key type
-                arg = arguments->tdata()[1];
+                arg = (*arguments)[1];
             }
             if (!arg->type)
                 arg->type = taa->next;          // value type
@@ -1402,20 +1429,24 @@ int ForeachStatement::inferApplyArgTypes(Scope *sc, Dsymbol *&sapply)
             {
                 if (!arg->type)
                 {
-                    /* Look for a head() or rear() overload
+                    /* Look for a front() or back() overload
                      */
                     Identifier *id = (op == TOKforeach) ? Id::Ffront : Id::Fback;
-                    Dsymbol *s = search_function(ad, id);
+                    Dsymbol *s = ad->search(0, id, 0);
                     FuncDeclaration *fd = s ? s->isFuncDeclaration() : NULL;
-                    if (!fd)
-                    {   if (s && s->isTemplateDeclaration())
-                            break;
-                        break;
+                    if (fd)
+                    {
+                        // Resolve inout qualifier of front type
+                        arg->type = fd->type->nextOf();
+                        if (arg->type)
+                            arg->type = arg->type->substWildTo(tab->mod);
                     }
-                    // Resolve inout qualifier of front type
-                    arg->type = fd->type->nextOf();
-                    if (arg->type)
-                        arg->type = arg->type->substWildTo(tab->mod);
+                    else if (s && s->isTemplateDeclaration())
+                        ;
+                    else if (s && s->isDeclaration())
+                        arg->type = ((Declaration *)s)->type;
+                    else
+                        break;
                 }
                 break;
             }
@@ -1521,7 +1552,7 @@ static int inferApplyArgTypesY(TypeFunction *tf, Parameters *arguments, int flag
 
     for (size_t u = 0; u < nparams; u++)
     {
-        Parameter *arg = arguments->tdata()[u];
+        Parameter *arg = (*arguments)[u];
         Parameter *param = Parameter::getNth(tf->parameters, u);
         if (arg->type)
         {   if (!arg->type->equals(param->type))
@@ -1559,7 +1590,7 @@ void inferApplyArgTypesZ(TemplateDeclaration *tstart, Parameters *arguments)
         }
         if (!td->parameters || td->parameters->dim != 1)
             continue;
-        TemplateParameter *tp = td->parameters->tdata()[0];
+        TemplateParameter *tp = (*td->parameters)[0];
         TemplateAliasParameter *tap = tp->isTemplateAliasParameter();
         if (!tap || !tap->specType || tap->specType->ty != Tfunction)
             continue;

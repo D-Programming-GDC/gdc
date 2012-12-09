@@ -600,7 +600,9 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='LTLIBOBJS
+ac_subst_vars='am__EXEEXT_FALSE
+am__EXEEXT_TRUE
+LTLIBOBJS
 LIBOBJS
 ZLIB_OBJS
 D_GC_MODULES
@@ -615,26 +617,16 @@ DCFG_SEMAPHORE_IMPL
 DCFG_PTHREAD_SUSPEND
 DCFG_CBRIDGE_STDIO
 DCFG_ARM_EABI_UNWINDER
-DCFG_STRTOLD
-DCFG_HAVE_UNLOCKED_WIDE_STDIO
-DCFG_HAVE_UNLOCKED_STDIO
-DCFG_HAVE_FGETLINE
-DCFG_HAVE_FGETLN
-DCFG_HAVE_GETDELIM
-DCFG_FWIDE
-DCFG_SPAWNVP
-DCFG_EXECVPE
 DCFG_LOG2
 DCFG_EXP2
-DCFG_NAN
-DCFG_TGAMMA
 DCFG_ROUND
-DCFG_NEARBYINT
 DCFG_TRUNC
-DCFG_USE_IEEE_FPSB
 D_PREREQ_SRCS
 DRUNTIME_OBJS
 D_EXTRA_OBJS
+EGREP
+GREP
+CPP
 phobos_toolexeclibdir
 phobos_toolexecdir
 gdc_include_dir
@@ -643,9 +635,6 @@ BUILD_LIBIBERTY
 CFLAGS_FOR_BUILD
 CC_FOR_BUILD
 GDC
-EGREP
-GREP
-CPP
 RANLIB
 AR
 ac_ct_CXX
@@ -666,6 +655,7 @@ am__leading_dot
 SET_MAKE
 AWK
 mkdir_p
+MKDIR_P
 INSTALL_STRIP_PROGRAM
 STRIP
 install_sh
@@ -677,6 +667,7 @@ ACLOCAL
 VERSION
 PACKAGE
 CYGPATH_W
+am__isrc
 INSTALL_DATA
 INSTALL_SCRIPT
 INSTALL_PROGRAM
@@ -730,8 +721,7 @@ PACKAGE_TARNAME
 PACKAGE_NAME
 PATH_SEPARATOR
 SHELL'
-ac_subst_files='DCFG_LONG_DOUBLE_FUNCS
-DCFG_SQRTF'
+ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_multilib
@@ -2417,7 +2407,8 @@ test -n "$target_alias" &&
 target_alias=${target_alias-$target}
 
 
-am__api_version="1.9"
+am__api_version='1.11'
+
 # Find a good install program.  We prefer a C program (faster),
 # so one script is as good as another.  But avoid the broken or
 # incompatible versions:
@@ -2516,16 +2507,29 @@ $as_echo_n "checking whether build environment is sane... " >&6; }
 # Just in case
 sleep 1
 echo timestamp > conftest.file
+# Reject unsafe characters in $srcdir or the absolute working directory
+# name.  Accept space and tab only in the latter.
+am_lf='
+'
+case `pwd` in
+  *[\\\"\#\$\&\'\`$am_lf]*)
+    as_fn_error $? "unsafe absolute working directory name" "$LINENO" 5;;
+esac
+case $srcdir in
+  *[\\\"\#\$\&\'\`$am_lf\ \	]*)
+    as_fn_error $? "unsafe srcdir value: \`$srcdir'" "$LINENO" 5;;
+esac
+
 # Do `set' in a subshell so we don't clobber the current shell's
 # arguments.  Must try -L first in case configure is actually a
 # symlink; some systems play weird games with the mod time of symlinks
 # (eg FreeBSD returns the mod time of the symlink's containing
 # directory).
 if (
-   set X `ls -Lt $srcdir/configure conftest.file 2> /dev/null`
+   set X `ls -Lt "$srcdir/configure" conftest.file 2> /dev/null`
    if test "$*" = "X"; then
       # -L didn't work.
-      set X `ls -t $srcdir/configure conftest.file`
+      set X `ls -t "$srcdir/configure" conftest.file`
    fi
    rm -f conftest.file
    if test "$*" != "X $srcdir/configure conftest.file" \
@@ -2563,7 +2567,14 @@ program_transform_name=`$as_echo "$program_transform_name" | sed "$ac_script"`
 # expand $ac_aux_dir to an absolute path
 am_aux_dir=`cd $ac_aux_dir && pwd`
 
-test x"${MISSING+set}" = xset || MISSING="\${SHELL} $am_aux_dir/missing"
+if test x"${MISSING+set}" != xset; then
+  case $am_aux_dir in
+  *\ * | *\	*)
+    MISSING="\${SHELL} \"$am_aux_dir/missing\"" ;;
+  *)
+    MISSING="\${SHELL} $am_aux_dir/missing" ;;
+  esac
+fi
 # Use eval to expand $SHELL
 if eval "$MISSING --run true"; then
   am_missing_run="$MISSING --run "
@@ -2573,168 +2584,14 @@ else
 $as_echo "$as_me: WARNING: \`missing' script is too old or missing" >&2;}
 fi
 
-if mkdir -p --version . >/dev/null 2>&1 && test ! -d ./--version; then
-  # We used to keeping the `.' as first argument, in order to
-  # allow $(mkdir_p) to be used without argument.  As in
-  #   $(mkdir_p) $(somedir)
-  # where $(somedir) is conditionally defined.  However this is wrong
-  # for two reasons:
-  #  1. if the package is installed by a user who cannot write `.'
-  #     make install will fail,
-  #  2. the above comment should most certainly read
-  #     $(mkdir_p) $(DESTDIR)$(somedir)
-  #     so it does not work when $(somedir) is undefined and
-  #     $(DESTDIR) is not.
-  #  To support the latter case, we have to write
-  #     test -z "$(somedir)" || $(mkdir_p) $(DESTDIR)$(somedir),
-  #  so the `.' trick is pointless.
-  mkdir_p='mkdir -p --'
-else
-  # On NextStep and OpenStep, the `mkdir' command does not
-  # recognize any option.  It will interpret all options as
-  # directories to create, and then abort because `.' already
-  # exists.
-  for d in ./-p ./--version;
-  do
-    test -d $d && rmdir $d
-  done
-  # $(mkinstalldirs) is defined by Automake if mkinstalldirs exists.
-  if test -f "$ac_aux_dir/mkinstalldirs"; then
-    mkdir_p='$(mkinstalldirs)'
-  else
-    mkdir_p='$(install_sh) -d'
-  fi
-fi
-
-for ac_prog in gawk mawk nawk awk
-do
-  # Extract the first word of "$ac_prog", so it can be a program name with args.
-set dummy $ac_prog; ac_word=$2
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-$as_echo_n "checking for $ac_word... " >&6; }
-if ${ac_cv_prog_AWK+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  if test -n "$AWK"; then
-  ac_cv_prog_AWK="$AWK" # Let the user override the test.
-else
-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  test -z "$as_dir" && as_dir=.
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
-    ac_cv_prog_AWK="$ac_prog"
-    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-fi
-fi
-AWK=$ac_cv_prog_AWK
-if test -n "$AWK"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $AWK" >&5
-$as_echo "$AWK" >&6; }
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-
-  test -n "$AWK" && break
-done
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ${MAKE-make} sets \$(MAKE)" >&5
-$as_echo_n "checking whether ${MAKE-make} sets \$(MAKE)... " >&6; }
-set x ${MAKE-make}
-ac_make=`$as_echo "$2" | sed 's/+/p/g; s/[^a-zA-Z0-9_]/_/g'`
-if eval \${ac_cv_prog_make_${ac_make}_set+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat >conftest.make <<\_ACEOF
-SHELL = /bin/sh
-all:
-	@echo '@@@%%%=$(MAKE)=@@@%%%'
-_ACEOF
-# GNU make sometimes prints "make[1]: Entering ...", which would confuse us.
-case `${MAKE-make} -f conftest.make 2>/dev/null` in
-  *@@@%%%=?*=@@@%%%*)
-    eval ac_cv_prog_make_${ac_make}_set=yes;;
+if test x"${install_sh}" != xset; then
+  case $am_aux_dir in
+  *\ * | *\	*)
+    install_sh="\${SHELL} '$am_aux_dir/install-sh'" ;;
   *)
-    eval ac_cv_prog_make_${ac_make}_set=no;;
-esac
-rm -f conftest.make
+    install_sh="\${SHELL} $am_aux_dir/install-sh"
+  esac
 fi
-if eval test \$ac_cv_prog_make_${ac_make}_set = yes; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-  SET_MAKE=
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-  SET_MAKE="MAKE=${MAKE-make}"
-fi
-
-rm -rf .tst 2>/dev/null
-mkdir .tst 2>/dev/null
-if test -d .tst; then
-  am__leading_dot=.
-else
-  am__leading_dot=_
-fi
-rmdir .tst 2>/dev/null
-
-# test to see if srcdir already configured
-if test "`cd $srcdir && pwd`" != "`pwd`" &&
-   test -f $srcdir/config.status; then
-  as_fn_error $? "source directory already configured; run \"make distclean\" there first" "$LINENO" 5
-fi
-
-# test whether we have cygpath
-if test -z "$CYGPATH_W"; then
-  if (cygpath --version) >/dev/null 2>/dev/null; then
-    CYGPATH_W='cygpath -w'
-  else
-    CYGPATH_W=echo
-  fi
-fi
-
-
-# Define the identity of the package.
- PACKAGE='libphobos'
- VERSION='version-unused'
-
-
-cat >>confdefs.h <<_ACEOF
-#define PACKAGE "$PACKAGE"
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define VERSION "$VERSION"
-_ACEOF
-
-# Some tools Automake needs.
-
-ACLOCAL=${ACLOCAL-"${am_missing_run}aclocal-${am__api_version}"}
-
-
-AUTOCONF=${AUTOCONF-"${am_missing_run}autoconf"}
-
-
-AUTOMAKE=${AUTOMAKE-"${am_missing_run}automake-${am__api_version}"}
-
-
-AUTOHEADER=${AUTOHEADER-"${am_missing_run}autoheader"}
-
-
-MAKEINFO=${MAKEINFO-"${am_missing_run}makeinfo"}
-
-install_sh=${install_sh-"$am_aux_dir/install-sh"}
 
 # Installed binaries are usually stripped using `strip' when the user
 # run `make install-strip'.  However `strip' might not be the right
@@ -2834,15 +2691,195 @@ else
 fi
 
 fi
-INSTALL_STRIP_PROGRAM="\${SHELL} \$(install_sh) -c -s"
+INSTALL_STRIP_PROGRAM="\$(install_sh) -c -s"
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a thread-safe mkdir -p" >&5
+$as_echo_n "checking for a thread-safe mkdir -p... " >&6; }
+if test -z "$MKDIR_P"; then
+  if ${ac_cv_path_mkdir+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH$PATH_SEPARATOR/opt/sfw/bin
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_prog in mkdir gmkdir; do
+	 for ac_exec_ext in '' $ac_executable_extensions; do
+	   { test -f "$as_dir/$ac_prog$ac_exec_ext" && $as_test_x "$as_dir/$ac_prog$ac_exec_ext"; } || continue
+	   case `"$as_dir/$ac_prog$ac_exec_ext" --version 2>&1` in #(
+	     'mkdir (GNU coreutils) '* | \
+	     'mkdir (coreutils) '* | \
+	     'mkdir (fileutils) '4.1*)
+	       ac_cv_path_mkdir=$as_dir/$ac_prog$ac_exec_ext
+	       break 3;;
+	   esac
+	 done
+       done
+  done
+IFS=$as_save_IFS
+
+fi
+
+  test -d ./--version && rmdir ./--version
+  if test "${ac_cv_path_mkdir+set}" = set; then
+    MKDIR_P="$ac_cv_path_mkdir -p"
+  else
+    # As a last resort, use the slow shell script.  Don't cache a
+    # value for MKDIR_P within a source directory, because that will
+    # break other packages using the cache if that directory is
+    # removed, or if the value is a relative name.
+    MKDIR_P="$ac_install_sh -d"
+  fi
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $MKDIR_P" >&5
+$as_echo "$MKDIR_P" >&6; }
+
+mkdir_p="$MKDIR_P"
+case $mkdir_p in
+  [\\/$]* | ?:[\\/]*) ;;
+  */*) mkdir_p="\$(top_builddir)/$mkdir_p" ;;
+esac
+
+for ac_prog in gawk mawk nawk awk
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_AWK+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$AWK"; then
+  ac_cv_prog_AWK="$AWK" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_prog_AWK="$ac_prog"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+fi
+fi
+AWK=$ac_cv_prog_AWK
+if test -n "$AWK"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $AWK" >&5
+$as_echo "$AWK" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+  test -n "$AWK" && break
+done
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ${MAKE-make} sets \$(MAKE)" >&5
+$as_echo_n "checking whether ${MAKE-make} sets \$(MAKE)... " >&6; }
+set x ${MAKE-make}
+ac_make=`$as_echo "$2" | sed 's/+/p/g; s/[^a-zA-Z0-9_]/_/g'`
+if eval \${ac_cv_prog_make_${ac_make}_set+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat >conftest.make <<\_ACEOF
+SHELL = /bin/sh
+all:
+	@echo '@@@%%%=$(MAKE)=@@@%%%'
+_ACEOF
+# GNU make sometimes prints "make[1]: Entering ...", which would confuse us.
+case `${MAKE-make} -f conftest.make 2>/dev/null` in
+  *@@@%%%=?*=@@@%%%*)
+    eval ac_cv_prog_make_${ac_make}_set=yes;;
+  *)
+    eval ac_cv_prog_make_${ac_make}_set=no;;
+esac
+rm -f conftest.make
+fi
+if eval test \$ac_cv_prog_make_${ac_make}_set = yes; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+  SET_MAKE=
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+  SET_MAKE="MAKE=${MAKE-make}"
+fi
+
+rm -rf .tst 2>/dev/null
+mkdir .tst 2>/dev/null
+if test -d .tst; then
+  am__leading_dot=.
+else
+  am__leading_dot=_
+fi
+rmdir .tst 2>/dev/null
+
+if test "`cd $srcdir && pwd`" != "`pwd`"; then
+  # Use -I$(srcdir) only when $(srcdir) != ., so that make's output
+  # is not polluted with repeated "-I."
+  am__isrc=' -I$(srcdir)'
+  # test to see if srcdir already configured
+  if test -f $srcdir/config.status; then
+    as_fn_error $? "source directory already configured; run \"make distclean\" there first" "$LINENO" 5
+  fi
+fi
+
+# test whether we have cygpath
+if test -z "$CYGPATH_W"; then
+  if (cygpath --version) >/dev/null 2>/dev/null; then
+    CYGPATH_W='cygpath -w'
+  else
+    CYGPATH_W=echo
+  fi
+fi
+
+
+# Define the identity of the package.
+ PACKAGE='libphobos'
+ VERSION='version-unused'
+
+
+cat >>confdefs.h <<_ACEOF
+#define PACKAGE "$PACKAGE"
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define VERSION "$VERSION"
+_ACEOF
+
+# Some tools Automake needs.
+
+ACLOCAL=${ACLOCAL-"${am_missing_run}aclocal-${am__api_version}"}
+
+
+AUTOCONF=${AUTOCONF-"${am_missing_run}autoconf"}
+
+
+AUTOMAKE=${AUTOMAKE-"${am_missing_run}automake-${am__api_version}"}
+
+
+AUTOHEADER=${AUTOHEADER-"${am_missing_run}autoheader"}
+
+
+MAKEINFO=${MAKEINFO-"${am_missing_run}makeinfo"}
 
 # We need awk for the "check" target.  The system "awk" is bad on
 # some platforms.
-# Always define AMTAR for backward compatibility.
+# Always define AMTAR for backward compatibility.  Yes, it's still used
+# in the wild :-(  We should find a proper way to deprecate it ...
+AMTAR='$${TAR-tar}'
 
-AMTAR=${AMTAR-"${am_missing_run}tar"}
-
-am__tar='${AMTAR} chof - "$$tardir"'; am__untar='${AMTAR} xf -'
+am__tar='$${TAR-tar} chof - "$$tardir"' am__untar='$${TAR-tar} xf -'
 
 
 
@@ -2878,6 +2915,13 @@ else
   multi_basedir="$srcdir/.."
 fi
 
+
+# Even if the default multilib is not a cross compilation,
+# it may be that some of the other multilibs are.
+if test $cross_compiling = no && test $multilib = yes \
+   && test "x${with_multisubdir}" != x ; then
+   cross_compiling=maybe
+fi
 
 ac_config_commands="$ac_config_commands default-1"
 
@@ -4117,6 +4161,177 @@ $as_echo "no" >&6; }
 fi
 
 
+# Check whether --enable-thread-lib was given.
+if test "${enable_thread_lib+set}" = set; then :
+  enableval=$enable_thread_lib; d_thread_lib=$enableval
+else
+  d_thread_lib=""
+fi
+
+
+# Check whether --enable-unix was given.
+if test "${enable_unix+set}" = set; then :
+  enableval=$enable_unix; :
+else
+  enable_unix=auto
+fi
+
+
+# Check whether --enable-druntime-gc was given.
+if test "${enable_druntime_gc+set}" = set; then :
+  enableval=$enable_druntime_gc; :
+else
+  enable_druntime_gc=yes
+fi
+
+
+
+# Check whether --with-system-zlib was given.
+if test "${with_system_zlib+set}" = set; then :
+  withval=$with_system_zlib; :
+else
+  system_zlib=no
+fi
+
+
+# Check whether --enable-proc-maps was given.
+if test "${enable_proc_maps+set}" = set; then :
+  enableval=$enable_proc_maps; case "${enableval}" in
+yes) echo 'TODO: If cross, warn that there is no check that this works'
+     ;;
+auto|no)
+     ;;
+*)   as_fn_error $? "--enable-proc-maps argument must be \"yes\", \"no\", or \"auto\"" "$LINENO" 5
+     ;;
+esac
+else
+  enable_proc_maps=auto
+fi
+
+
+# Check whether --enable-phobos-config-dir was given.
+if test "${enable_phobos_config_dir+set}" = set; then :
+  enableval=$enable_phobos_config_dir; if test -z "${enableval}"; then
+  as_fn_error $? "must specify a value for --enable-phobos-config-dir" "$LINENO" 5
+fi
+else
+  :
+fi
+
+
+if test ${multilib} = yes; then
+  multilib_arg="--enable-multilib"
+else
+  multilib_arg=
+fi
+
+d_target_os=`echo $target_os | sed 's/^\(A-Za-z_+\)/\1/'`
+
+# SkyOS uses i386-skyos-pe
+case "$target" in
+*-skyos*-pe*) d_target_os=skyos ;;
+esac
+
+GDC=$CC
+GDC=`echo $CC | sed s/xgcc/gdc/`
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking If $GDC can compile D sources" >&5
+$as_echo_n "checking If $GDC can compile D sources... " >&6; }
+echo "int function(int) test;" > actest.d
+$GDC -c -x d -I "$srcdir/libdruntime" actest.d
+r=$?
+rm -f actest.do
+if test $r -eq 0; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+  as_fn_error $? "can't compile D sources!" "$LINENO" 5
+  fi
+
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking D GCC version" >&5
+$as_echo_n "checking D GCC version... " >&6; }
+d_gcc_ver=`$GDC -dumpversion`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $d_gcc_ver" >&5
+$as_echo "$d_gcc_ver" >&6; }
+
+# Need to export this variables for multilib
+export CC_FOR_BUILD
+export CFLAGS_FOR_BUILD
+
+
+
+# Find build libiberty which is needed by x3
+# Should not have to go up too many directories
+
+d_libiberty_dir=../..
+while test "$d_count" != 'xxx'; do
+    BUILD_LIBIBERTY=$d_libiberty_dir/build-${build_alias}/libiberty/libiberty.a
+    if test -f $BUILD_LIBIBERTY; then
+	break
+    fi
+    # GCC 3.x does not use the 'build-' dir, so we have so search
+    # for plain 'libiberty' with some kind of check it is not a target dir
+    BUILD_LIBIBERTY=$d_libiberty_dir/libiberty/libiberty.a
+    if test -f $BUILD_LIBIBERTY && test -d $d_libiberty_dir/gcc; then
+	break
+    fi
+
+    d_libiberty_dir=../$d_libiberty_dir
+    d_count="x$d_count"
+done
+
+if test ! -f "$BUILD_LIBIBERTY"; then
+    as_fn_error $? "cannot find libiberty.a for build" "$LINENO" 5
+fi
+
+#used in druntime, so srcdir is 'libphobos/libdruntime'
+LIBIBERTY_H_PATH='$(srcdir)/../../include'
+BUILD_LIBIBERTY="../$BUILD_LIBIBERTY"
+
+
+
+
+
+
+# include dir .. need to support --enable-version-specific.. but
+# will have to modify gcc/configure.ac ..
+# For now, basic workaround for cross compilers ..
+if test "${host}" != "${build}"; then
+    gdc_include_dir='${libdir}/gcc/${host_alias}'/${d_gcc_ver}/include/d
+else
+    gdc_include_dir='${prefix}'/include/d/${d_gcc_ver}
+fi
+
+
+# Check whether --with-cross-host was given.
+if test "${with_cross_host+set}" = set; then :
+  withval=$with_cross_host;
+fi
+
+if test -n "$with_cross_host" &&
+   test x"$with_cross_host" != x"no"; then
+  phobos_toolexecdir='${exec_prefix}/${host_alias}'
+  phobos_toolexeclibdir='${toolexecdir}/lib'
+else
+  phobos_toolexecdir='${libdir}/gcc/${host_alias}'
+  phobos_toolexeclibdir='${libdir}'
+fi
+# The norm would be to use $GDC -print-multi-os-directory, but
+# that would require modifying config-ml.in
+multi_os_directory=`$CC -print-multi-os-directory`
+case $multi_os_directory in
+  .) ;; # Avoid trailing /.
+  *) phobos_toolexeclibdir=$phobos_toolexeclibdir/$multi_os_directory ;;
+esac
+
+
+
+# Sanity check for the cross-compilation case:
+
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -4514,356 +4729,33 @@ fi
 done
 
 
-
-  ac_fn_c_check_header_mongrel "$LINENO" "minix/config.h" "ac_cv_header_minix_config_h" "$ac_includes_default"
-if test "x$ac_cv_header_minix_config_h" = xyes; then :
-  MINIX=yes
-else
-  MINIX=
-fi
-
-
-  if test "$MINIX" = yes; then
-
-$as_echo "#define _POSIX_SOURCE 1" >>confdefs.h
-
-
-$as_echo "#define _POSIX_1_SOURCE 2" >>confdefs.h
-
-
-$as_echo "#define _MINIX 1" >>confdefs.h
-
-  fi
-
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether it is safe to define __EXTENSIONS__" >&5
-$as_echo_n "checking whether it is safe to define __EXTENSIONS__... " >&6; }
-if ${ac_cv_safe_to_define___extensions__+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#	  define __EXTENSIONS__ 1
-	  $ac_includes_default
-int
-main ()
-{
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  ac_cv_safe_to_define___extensions__=yes
-else
-  ac_cv_safe_to_define___extensions__=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_safe_to_define___extensions__" >&5
-$as_echo "$ac_cv_safe_to_define___extensions__" >&6; }
-  test $ac_cv_safe_to_define___extensions__ = yes &&
-    $as_echo "#define __EXTENSIONS__ 1" >>confdefs.h
-
-  $as_echo "#define _ALL_SOURCE 1" >>confdefs.h
-
-  $as_echo "#define _GNU_SOURCE 1" >>confdefs.h
-
-  $as_echo "#define _POSIX_PTHREAD_SEMANTICS 1" >>confdefs.h
-
-  $as_echo "#define _TANDEM_SOURCE 1" >>confdefs.h
-
-
-
-
-# Check whether --enable-thread-lib was given.
-if test "${enable_thread_lib+set}" = set; then :
-  enableval=$enable_thread_lib; d_thread_lib=$enableval
-else
-  d_thread_lib=""
-fi
-
-
-# Check whether --enable-unix was given.
-if test "${enable_unix+set}" = set; then :
-  enableval=$enable_unix; :
-else
-  enable_unix=auto
-fi
-
-
-# Check whether --enable-druntime-gc was given.
-if test "${enable_druntime_gc+set}" = set; then :
-  enableval=$enable_druntime_gc; :
-else
-  enable_druntime_gc=yes
-fi
-
-
-
-# Check whether --with-system-zlib was given.
-if test "${with_system_zlib+set}" = set; then :
-  withval=$with_system_zlib; :
-else
-  system_zlib=no
-fi
-
-
-# Check whether --enable-proc-maps was given.
-if test "${enable_proc_maps+set}" = set; then :
-  enableval=$enable_proc_maps; case "${enableval}" in
-yes) echo 'TODO: If cross, warn that there is no check that this works'
-     ;;
-auto|no)
-     ;;
-*)   as_fn_error $? "--enable-proc-maps argument must be \"yes\", \"no\", or \"auto\"" "$LINENO" 5
-     ;;
-esac
-else
-  enable_proc_maps=auto
-fi
-
-
-# Check whether --enable-phobos-config-dir was given.
-if test "${enable_phobos_config_dir+set}" = set; then :
-  enableval=$enable_phobos_config_dir; if test -z "${enableval}"; then
-  as_fn_error $? "must specify a value for --enable-phobos-config-dir" "$LINENO" 5
-fi
-else
-  :
-fi
-
-
-if test ${multilib} = yes; then
-  multilib_arg="--enable-multilib"
-else
-  multilib_arg=
-fi
-
-d_target_os=`echo $target_os | sed 's/^\(A-Za-z_+\)/\1/'`
-
-# SkyOS uses i386-skyos-pe
-case "$target" in
-*-skyos*-pe*) d_target_os=skyos ;;
-esac
-
-GDC=$CC
-GDC=`echo $CC | sed s/xgcc/gdc/`
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking If $GDC can compile D sources" >&5
-$as_echo_n "checking If $GDC can compile D sources... " >&6; }
-echo "int function(int) test;" > actest.d
-$GDC -c -x d -I "$srcdir/libdruntime" actest.d
-r=$?
-rm -f actest.do
-if test $r -eq 0; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-  as_fn_error $? "can't compile D sources!" "$LINENO" 5
-  fi
-
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking D GCC version" >&5
-$as_echo_n "checking D GCC version... " >&6; }
-d_gcc_ver=`$GDC -dumpversion`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $d_gcc_ver" >&5
-$as_echo "$d_gcc_ver" >&6; }
-
-# Need to export this variables for multilib
-export CC_FOR_BUILD
-export CFLAGS_FOR_BUILD
-
-
-
-# Find build libiberty which is needed by x3
-# Should not have to go up too many directories
-
-d_libiberty_dir=../..
-while test "$d_count" != 'xxx'; do
-    BUILD_LIBIBERTY=$d_libiberty_dir/build-${build_alias}/libiberty/libiberty.a
-    if test -f $BUILD_LIBIBERTY; then
-	break
-    fi
-    # GCC 3.x does not use the 'build-' dir, so we have so search
-    # for plain 'libiberty' with some kind of check it is not a target dir
-    BUILD_LIBIBERTY=$d_libiberty_dir/libiberty/libiberty.a
-    if test -f $BUILD_LIBIBERTY && test -d $d_libiberty_dir/gcc; then
-	break
-    fi
-
-    d_libiberty_dir=../$d_libiberty_dir
-    d_count="x$d_count"
-done
-
-if test ! -f "$BUILD_LIBIBERTY"; then
-    as_fn_error $? "cannot find libiberty.a for build" "$LINENO" 5
-fi
-
-#used in druntime, so srcdir is 'libphobos/libdruntime'
-LIBIBERTY_H_PATH='$(srcdir)/../../include'
-BUILD_LIBIBERTY="../$BUILD_LIBIBERTY"
-
-
-
-
-
-
-# include dir .. need to support --enable-version-specific.. but
-# will have to modify gcc/configure.ac ..
-# For now, basic workaround for cross compilers ..
-if test "${host}" != "${build}"; then
-    gdc_include_dir='${libdir}/gcc/${host_alias}'/${d_gcc_ver}/include/d
-else
-    gdc_include_dir='${prefix}'/include/d/${d_gcc_ver}
-fi
-
-
-# Check whether --with-cross-host was given.
-if test "${with_cross_host+set}" = set; then :
-  withval=$with_cross_host;
-fi
-
-if test -n "$with_cross_host" &&
-   test x"$with_cross_host" != x"no"; then
-  phobos_toolexecdir='${exec_prefix}/${host_alias}'
-  phobos_toolexeclibdir='${toolexecdir}/lib'
-else
-  phobos_toolexecdir='${libdir}/gcc/${host_alias}'
-  phobos_toolexeclibdir='${libdir}'
-fi
-# The norm would be to use $GDC -print-multi-os-directory, but
-# that would require modifying config-ml.in
-multi_os_directory=`$CC -print-multi-os-directory`
-case $multi_os_directory in
-  .) ;; # Avoid trailing /.
-  *) phobos_toolexeclibdir=$phobos_toolexeclibdir/$multi_os_directory ;;
-esac
-
-
-
-# Sanity check for the cross-compilation case:
 ac_fn_c_check_header_mongrel "$LINENO" "stdio.h" "ac_cv_header_stdio_h" "$ac_includes_default"
 if test "x$ac_cv_header_stdio_h" = xyes; then :
   :
 else
-  as_fn_error $? "can't find stdio.h." "$LINENO" 5
+  as_fn_error $? "cannot find stdio.h." "$LINENO" 5
 fi
 
 
 
 # TODO...
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for sizeof(FILE)" >&5
-$as_echo_n "checking for sizeof(FILE)... " >&6; }
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <stdio.h>
-int
-main ()
-{
-
-struct Test { int x: sizeof(FILE)>4; };
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-
-$as_echo "#define HAVE_SIZEOF_FILE 1" >>confdefs.h
-
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for sizeof(DIR)" >&5
-$as_echo_n "checking for sizeof(DIR)... " >&6; }
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <dirent.h>
-int
-main ()
-{
-
-struct Test { int x: sizeof(DIR)>4; };
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-
-$as_echo "#define HAVE_SIZEOF_DIR 1" >>confdefs.h
-
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
 D_EXTRA_OBJS=
 
 DRUNTIME_OBJS=
 
 
-D_PREREQ_SRCS='$(config_d_src) $(config_errno_d_src) $(config_libc_d_src) $(config_mathfuncs_d_src)'
-
-
-case "$target_cpu" in
-    i*86|powerpc*|ppc*|x86_64 ) d_use_ieee_fpsb=1 ;;
-    *) d_use_ieee_fpsb=0 ;;
-esac
-
-if test $d_use_ieee_fpsb -gt 0; then
-    DRUNTIME_OBJS="$DRUNTIME_OBJS rt/fpmath.o"
-fi
-
-DCFG_USE_IEEE_FPSB=$d_use_ieee_fpsb
+D_PREREQ_SRCS='$(config_d_src)'
 
 
 if test "$with_newlib" = yes; then
-    # TODO: there is some way to enable long double funcs in newlib so need to support that
-    DCFG_LONG_DOUBLE_FUNCS=config/noldfuncs
-    DCFG_SQRTF=config/sqrtf
     # TODO: newlib has trunc and exp2, but not log2 -- so configure all separately
     DCFG_TRUNC=""
-    DCFG_NEARBYINT=""
     DCFG_ROUND=""
-    DCFG_TGAMMA=""
-    DCFG_NAN=""
     DCFG_EXP2="GNU_Need_exp2"
     DCFG_LOG2="GNU_Need_log2"
 
-
-$as_echo "#define HAVE_FP_CLASSIFY_SIGNBIT 1" >>confdefs.h
-
-    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_math.o"
-    D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_fpcls_d_src)'
-
     # TODO: exec stuff
-
-    DCFG_FWIDE=0
-    # Have getdelim, but it may not be unix (need ssize_t)... TODO
-    DCFG_HAVE_GETDELIM=0
-    DCFG_HAVE_FGETLN=0
-    DCFG_HAVE_FGETLINE=0
-    DCFG_HAVE_UNLOCKED_STDIO=0
-    DCFG_HAVE_UNLOCKED_WIDE_STDIO=$DCFG_HAVE_UNLOCKED_STDIO
-    DCFG_STRTOLD="0"
-    # NO HAVE_TM_GMTOFF_AND_ZONE
-    # NO HAVE_TIMEZONE
-
-$as_echo "#define HAVE__TIMEZONE 1" >>confdefs.h
-
 else
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for cos in -lm" >&5
@@ -4961,12 +4853,9 @@ fi
 esac
 
 case "$target_os" in
-  darwin6*) DCFG_LONG_DOUBLE_FUNCS=config/noldfuncs ;;
-  darwin*)  DCFG_LONG_DOUBLE_FUNCS=config/ldfuncs-darwin ;;
   linux*|k*bsd*-gnu)
     case "$target_cpu" in
 	powerpc*)
-	    DCFG_LONG_DOUBLE_FUNCS=config/ldfuncs-ppclinux
 	    # Libc without nldbl not supported...
 	    ac_fn_c_check_func "$LINENO" "__nldbl_printf" "ac_cv_func___nldbl_printf"
 if test "x$ac_cv_func___nldbl_printf" = xyes; then :
@@ -4982,38 +4871,6 @@ fi
     esac
 esac
 
-if test -z "$DCFG_LONG_DOUBLE_FUNCS"; then
-    ac_fn_c_check_func "$LINENO" "acosl" "ac_cv_func_acosl"
-if test "x$ac_cv_func_acosl" = xyes; then :
-  have_ldf_a=1
-else
-  :
-fi
-
-    ac_fn_c_check_func "$LINENO" "truncl" "ac_cv_func_truncl"
-if test "x$ac_cv_func_truncl" = xyes; then :
-  have_ldf_b=1
-else
-  :
-fi
-
-    if test "${have_ldf_a}${have_ldf_b}" = "11"; then
-	DCFG_LONG_DOUBLE_FUNCS=config/ldfuncs
-    else
-	DCFG_LONG_DOUBLE_FUNCS=config/noldfuncs
-    fi
-    DCFG_LONG_DOUBLE_FUNCS="$DCFG_LONG_DOUBLE_FUNCS"
-fi
-
-# on darwin, we don't seem to have sqrtf, even though it's in math.h
-ac_fn_c_check_func "$LINENO" "sqrtf" "ac_cv_func_sqrtf"
-if test "x$ac_cv_func_sqrtf" = xyes; then :
-  DCFG_SQRTF=config/sqrtf
-else
-  DCFG_SQRTF=config/nosqrtf
-fi
-
-
 # on freebsd, trunc,exp2,log2 are not provided
 # This is "need" and not "have" to mesh better with non-GNU.  Othrewise, it
 # would be version(GNU)version(GNU_Have_trunc)....
@@ -5026,38 +4883,11 @@ fi
 
 
 
-ac_fn_c_check_func "$LINENO" "nearbyint" "ac_cv_func_nearbyint"
-if test "x$ac_cv_func_nearbyint" = xyes; then :
-  DCFG_NEARBYINT=""
-else
-  DCFG_NEARBYINT="GNU_Need_nearbyint"
-fi
-
-
-
 ac_fn_c_check_func "$LINENO" "round" "ac_cv_func_round"
 if test "x$ac_cv_func_round" = xyes; then :
   DCFG_ROUND=""
 else
   DCFG_ROUND="GNU_Need_round"
-fi
-
-
-
-ac_fn_c_check_func "$LINENO" "tgamma" "ac_cv_func_tgamma"
-if test "x$ac_cv_func_tgamma" = xyes; then :
-  DCFG_TGAMMA=""
-else
-  DCFG_TGAMMA="GNU_Need_tgamma"
-fi
-
-
-
-ac_fn_c_check_func "$LINENO" "nan" "ac_cv_func_nan"
-if test "x$ac_cv_func_nan" = xyes; then :
-  DCFG_NAN=""
-else
-  DCFG_NAN="GNU_Need_nan"
 fi
 
 
@@ -5080,194 +4910,7 @@ fi
 
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for fpclassify and signbit" >&5
-$as_echo_n "checking for fpclassify and signbit... " >&6; }
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-    #ifndef fpclassify
-    static void fpclassify(int x, int y) { }
-    #endif
-    #ifndef signbit
-    static void signbit(int x, int y) { }
-    #endif
-    #include <math.h>
-int
-main ()
-{
-int x = fpclassify(4.2);
-   int y = signbit(1.1);
-   int z = FP_NAN + FP_INFINITE + FP_ZERO + FP_SUBNORMAL + FP_NORMAL;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-   d_have_fpsb=1
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-# Currently can only have either internal/fpmath or gcc/cbridge_math
-if test $d_use_ieee_fpsb -eq 0; then
-    if test -n "$d_have_fpsb"; then
-
-$as_echo "#define HAVE_FP_CLASSIFY_SIGNBIT 1" >>confdefs.h
-
-	DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_math.o"
-	D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_fpcls_d_src)'
-    fi
-fi
-
-# no expm1 on mingw (msvcrt)
-# AC_CHECK_FUNCS(expm1,DCFG_EXPM1="",DCFG_EXPM1="GNU_Need_expm1")
-# AC_SUBST(DCFG_EXPM1)
-# also erf, erfc
-
-ac_fn_c_check_func "$LINENO" "execvpe" "ac_cv_func_execvpe"
-if test "x$ac_cv_func_execvpe" = xyes; then :
-  DCFG_EXECVPE=""
-else
-  DCFG_EXECVPE="GNU_Need_execvpe"
-fi
-
-
-
-ac_fn_c_check_func "$LINENO" "spawnvp" "ac_cv_func_spawnvp"
-if test "x$ac_cv_func_spawnvp" = xyes; then :
-  DCFG_SPAWNVP=""
-else
-  DCFG_SPAWNVP="GNU_Need_spawnvp"
-fi
-
-
-
-ac_fn_c_check_func "$LINENO" "fwide" "ac_cv_func_fwide"
-if test "x$ac_cv_func_fwide" = xyes; then :
-  DCFG_FWIDE=1
-else
-  DCFG_FWIDE=0
-fi
-
-
-
-ac_fn_c_check_func "$LINENO" "getdelim" "ac_cv_func_getdelim"
-if test "x$ac_cv_func_getdelim" = xyes; then :
-  DCFG_HAVE_GETDELIM=1
-else
-  DCFG_HAVE_GETDELIM=0
-fi
-
-
-
-ac_fn_c_check_func "$LINENO" "fgetln" "ac_cv_func_fgetln"
-if test "x$ac_cv_func_fgetln" = xyes; then :
-  DCFG_HAVE_FGETLN=1
-else
-  DCFG_HAVE_FGETLN=0
-fi
-
-
-
-ac_fn_c_check_func "$LINENO" "fgetline" "ac_cv_func_fgetline"
-if test "x$ac_cv_func_fgetline" = xyes; then :
-  DCFG_HAVE_FGETLINE=1
-else
-  DCFG_HAVE_FGETLINE=0
-fi
-
-
-
-DCFG_HAVE_UNLOCKED_STDIO=1
-for ac_func in flockfile funlockfile putc_unlocked getc_unlocked
-do :
-  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
-ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
-if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
-  cat >>confdefs.h <<_ACEOF
-#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
-_ACEOF
-
-else
-  DCFG_HAVE_UNLOCKED_STDIO=0
-fi
-done
-
-
-
-DCFG_HAVE_UNLOCKED_WIDE_STDIO=$DCFG_HAVE_UNLOCKED_STDIO
-for ac_func in putwc_unlocked getwc_unlocked
-do :
-  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
-ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
-if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
-  cat >>confdefs.h <<_ACEOF
-#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
-_ACEOF
-
-else
-  DCFG_HAVE_UNLOCKED_WIDE_STDIO=0
-fi
-done
-
-
-
-ac_fn_c_check_func "$LINENO" "strtold" "ac_cv_func_strtold"
-if test "x$ac_cv_func_strtold" = xyes; then :
-  DCFG_STRTOLD="1"
-else
-  DCFG_STRTOLD="0"
-fi
-
-
-
 save_CFLAGS=$CFLAGS
-# Check for the glibc version of strerror_r
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for glibc strerror_r" >&5
-$as_echo_n "checking for glibc strerror_r... " >&6; }
-CFLAGS="$CFLAGS -D_GNU_SOURCE=1"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <string.h>
-int
-main ()
-{
-
-char c = * strerror_r(0, NULL, 0);
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-
-$as_echo "#define HAVE_GLIBC_STRERROR_R 1" >>confdefs.h
-
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-CFLAGS=$save_CFLAGS
-
-for ac_func in strerror_r
-do :
-  ac_fn_c_check_func "$LINENO" "strerror_r" "ac_cv_func_strerror_r"
-if test "x$ac_cv_func_strerror_r" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_STRERROR_R 1
-_ACEOF
-
-fi
-done
-
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for tm_gmtoff" >&5
 $as_echo_n "checking for tm_gmtoff... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -5380,11 +5023,6 @@ done
 # end of 'if $with_newlib...'
 fi
 
-DCFG_LONG_DOUBLE_FUNCS="$srcdir/$DCFG_LONG_DOUBLE_FUNCS"
-
-DCFG_SQRTF="$srcdir/$DCFG_SQRTF"
-
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ARM unwinder" >&5
 $as_echo_n "checking for ARM unwinder... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -5405,12 +5043,12 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-   DCFG_ARM_EABI_UNWINDER=0
+   DCFG_ARM_EABI_UNWINDER=""
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_generic.o"
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-   DCFG_ARM_EABI_UNWINDER=1
+   DCFG_ARM_EABI_UNWINDER="GNU_ARM_EABI_Unwinder"
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_arm.o"
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
@@ -5452,45 +5090,34 @@ case "$d_target_os" in
     freebsd*|k*bsd*-gnu)
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
-	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
+	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
     linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
 	     d_sem_impl="posix"
              ;;
     cygwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
+	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
     mingw*)  #DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-	     #DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
+	     #DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     DCFG_UNIX=Windows
 	     ;;
     skyos*)  d_sem_impl="skyos"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
-
-$as_echo "#define PTHREAD_MUTEX_ALREADY_RECURSIVE 1" >>confdefs.h
-
+	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
     *)       if test "$enable_unix" != "yes"; then
 	         DCFG_UNIX=NoSystem
-
-$as_echo "#define PHOBOS_NO_SYSTEM 1" >>confdefs.h
-
 	     fi
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO=GNU_CBridge_Stdio
+	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
 esac
-
-# = D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
-# for cygw: WINDOWS_DFLAGS=-mno-cygwin
-#
-# in Make: .win.o maybe... to get a separate rule
 
 if test -n "$d_module_mach"; then
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_OSX_OBJS)"
@@ -5763,11 +5390,8 @@ fi
 
 
 
-D_EXTRA_OBJS="std/c/unix/unix.o $D_EXTRA_OBJS"
-DRUNTIME_OBJS="gcc/config/unix.o $DRUNTIME_OBJS"
 # Add "linux" module for compatibility even if not Linux
 D_EXTRA_OBJS="std/c/linux/linux.o $D_EXTRA_OBJS"
-D_PREREQ_SRCS="$D_PREREQ_SRCS "'$(config_unix_d_src)'
 DCFG_UNIX="Unix"
 DCFG_POSIX="Posix"
 
@@ -6022,7 +5646,7 @@ ac_config_files="$ac_config_files libdruntime/Makefile"
 
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-ac_config_files="$ac_config_files Makefile phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/frag-ac libdruntime/frag-math"
+ac_config_files="$ac_config_files Makefile phobos-ver-syms libdruntime/phobos-ver-syms"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -6132,6 +5756,14 @@ LIBOBJS=$ac_libobjs
 
 LTLIBOBJS=$ac_ltlibobjs
 
+
+ if test -n "$EXEEXT"; then
+  am__EXEEXT_TRUE=
+  am__EXEEXT_FALSE='#'
+else
+  am__EXEEXT_TRUE='#'
+  am__EXEEXT_FALSE=
+fi
 
 
 : "${CONFIG_STATUS=./config.status}"
@@ -6619,6 +6251,7 @@ gives unlimited permission to copy, distribute and modify it."
 ac_pwd='$ac_pwd'
 srcdir='$srcdir'
 INSTALL='$INSTALL'
+MKDIR_P='$MKDIR_P'
 AWK='$AWK'
 test -n "\$AWK" || AWK=awk
 _ACEOF
@@ -6752,8 +6385,6 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES phobos-ver-syms" ;;
     "libdruntime/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES libdruntime/phobos-ver-syms" ;;
-    "libdruntime/frag-ac") CONFIG_FILES="$CONFIG_FILES libdruntime/frag-ac" ;;
-    "libdruntime/frag-math") CONFIG_FILES="$CONFIG_FILES libdruntime/frag-math" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
@@ -6802,24 +6433,7 @@ ac_tmp=$tmp
 # This happens for instance with `./config.status config.h'.
 if test -n "$CONFIG_FILES"; then
 
-if $AWK 'BEGIN { getline <"/dev/null" }' </dev/null 2>/dev/null; then
-  ac_cs_awk_getline=:
-  ac_cs_awk_pipe_init=
-  ac_cs_awk_read_file='
-      while ((getline aline < (F[key])) > 0)
-	print(aline)
-      close(F[key])'
-  ac_cs_awk_pipe_fini=
-else
-  ac_cs_awk_getline=false
-  ac_cs_awk_pipe_init="print \"cat <<'|#_!!_#|' &&\""
-  ac_cs_awk_read_file='
-      print "|#_!!_#|"
-      print "cat " F[key] " &&"
-      '$ac_cs_awk_pipe_init
-  # The final `:' finishes the AND list.
-  ac_cs_awk_pipe_fini='END { print "|#_!!_#|"; print ":" }'
-fi
+
 ac_cr=`echo X | tr X '\015'`
 # On cygwin, bash can eat \r inside `` if the user requested igncr.
 # But we know of no other shell where ac_cr would be empty at this
@@ -6837,17 +6451,6 @@ fi
 echo 'BEGIN {' >"$ac_tmp/subs1.awk" &&
 _ACEOF
 
-# Create commands to substitute file output variables.
-{
-  echo "cat >>$CONFIG_STATUS <<_ACEOF || ac_write_fail=1" &&
-  echo 'cat >>"\$ac_tmp/subs1.awk" <<\\_ACAWK &&' &&
-  echo "$ac_subst_files" | sed 's/.*/F["&"]="$&"/' &&
-  echo "_ACAWK" &&
-  echo "_ACEOF"
-} >conf$$files.sh &&
-. ./conf$$files.sh ||
-  as_fn_error $? "could not make $CONFIG_STATUS" "$LINENO" 5
-rm -f conf$$files.sh
 
 {
   echo "cat >conf$$subs.awk <<_ACEOF" &&
@@ -6924,7 +6527,7 @@ _ACAWK
 cat >>"\$ac_tmp/subs1.awk" <<_ACAWK &&
   for (key in S) S_is_set[key] = 1
   FS = ""
-  \$ac_cs_awk_pipe_init
+
 }
 {
   line = $ 0
@@ -6942,16 +6545,10 @@ cat >>"\$ac_tmp/subs1.awk" <<_ACAWK &&
     } else
       len += 1 + keylen
   }
-  if (nfields == 3 && !substed) {
-    key = field[2]
-    if (F[key] != "" && line ~ /^[	 ]*@.*@[	 ]*$/) {
-      \$ac_cs_awk_read_file
-      next
-    }
-  }
+
   print line
 }
-\$ac_cs_awk_pipe_fini
+
 _ACAWK
 _ACEOF
 cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
@@ -7236,6 +6833,11 @@ ac_abs_srcdir=$ac_abs_top_srcdir$ac_dir_suffix
   [\\/$]* | ?:[\\/]* ) ac_INSTALL=$INSTALL ;;
   *) ac_INSTALL=$ac_top_build_prefix$INSTALL ;;
   esac
+  ac_MKDIR_P=$MKDIR_P
+  case $MKDIR_P in
+  [\\/$]* | ?:[\\/]* ) ;;
+  */*) ac_MKDIR_P=$ac_top_build_prefix$MKDIR_P ;;
+  esac
 _ACEOF
 
 cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
@@ -7290,14 +6892,10 @@ s&@builddir@&$ac_builddir&;t t
 s&@abs_builddir@&$ac_abs_builddir&;t t
 s&@abs_top_builddir@&$ac_abs_top_builddir&;t t
 s&@INSTALL@&$ac_INSTALL&;t t
+s&@MKDIR_P@&$ac_MKDIR_P&;t t
 $ac_datarootdir_hack
 "
-eval sed \"\$ac_sed_extra\" "$ac_file_inputs" |
-if $ac_cs_awk_getline; then
-  $AWK -f "$ac_tmp/subs.awk"
-else
-  $AWK -f "$ac_tmp/subs.awk" | $SHELL
-fi \
+eval sed \"\$ac_sed_extra\" "$ac_file_inputs" | $AWK -f "$ac_tmp/subs.awk" \
   >$ac_tmp/out || as_fn_error $? "could not create $ac_file" "$LINENO" 5
 
 test -z "$ac_datarootdir_hack$ac_datarootdir_seen" &&
@@ -7340,21 +6938,22 @@ $as_echo "$as_me: $ac_file is unchanged" >&6;}
       || as_fn_error $? "could not create -" "$LINENO" 5
   fi
 # Compute "$ac_file"'s index in $config_headers.
+_am_arg="$ac_file"
 _am_stamp_count=1
 for _am_header in $config_headers :; do
   case $_am_header in
-    "$ac_file" | "$ac_file":* )
+    $_am_arg | $_am_arg:* )
       break ;;
     * )
       _am_stamp_count=`expr $_am_stamp_count + 1` ;;
   esac
 done
-echo "timestamp for "$ac_file"" >`$as_dirname -- "$ac_file" ||
-$as_expr X"$ac_file" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
-	 X"$ac_file" : 'X\(//\)[^/]' \| \
-	 X"$ac_file" : 'X\(//\)$' \| \
-	 X"$ac_file" : 'X\(/\)' \| . 2>/dev/null ||
-$as_echo X"$ac_file" |
+echo "timestamp for $_am_arg" >`$as_dirname -- "$_am_arg" ||
+$as_expr X"$_am_arg" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
+	 X"$_am_arg" : 'X\(//\)[^/]' \| \
+	 X"$_am_arg" : 'X\(//\)$' \| \
+	 X"$_am_arg" : 'X\(/\)' \| . 2>/dev/null ||
+$as_echo X"$_am_arg" |
     sed '/^X\(.*[^/]\)\/\/*[^/][^/]*\/*$/{
 	    s//\1/
 	    q

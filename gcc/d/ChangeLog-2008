@@ -11,7 +11,7 @@
 2008-07-21  David Friedman  <David Friedman>
 
 	* dmd/root.c, dmd2/root.c: Fix earlier patching error.
-	
+
 	* phobos/config/x3.c, phobos2/config/x3.c: Fix problem when
 	building under MSYS.
 
@@ -19,7 +19,7 @@
 
 2008-07-20  David Friedman  <David Friedman>
 
-	* dmd/expression.c, dmd2/expression.c: Make integer conversion 
+	* dmd/expression.c, dmd2/expression.c: Make integer conversion
 	fix work for other hosts/targets.
 
 2008-07-20  Arthur Loiret  <arthur.loiret@u-psud.fr>
@@ -60,7 +60,7 @@
 
 	* phobos2/config/{ldfuncs,ldfuncs-darwin,ldfuncs-ppclinux,noldfuncs},
 	Merge nanl change from std/c/math.d
-	
+
 	* phobos2/gcc/support.d: Merge std/c/math.d changes.
 
 	* d-objfile.cc (obj_append): Implement.
@@ -77,13 +77,13 @@
 	up generation of unique symbol names.
 
 	* phobos/internal/object.d: Correct merge error
-	
+
 	----
 
 	* dmd-script, lang.opt, d-lang.cc, : support -ignore
 
 	Merge DMD 1.029 and 2.013
-	
+
 	* phobos2/std/perf.d: use std.c.unix.unix
 
 2008-05-22  Arthur Loiret  <arthur.loiret@u-psud.fr>
@@ -127,7 +127,7 @@
 	termios.d as termios.d.orig-dmd
 
 	* asmstsmt.cc: Implement blockExit
-	
+
 	* phobos2/config/unix.x3: Add termios stuff
 
 	* phobos2/std/c/unix/unix.d: Merge new funcs from std.c.linux.d
@@ -145,7 +145,7 @@
 	Also use _d_delinterface instead of casting.
 
 	* dmd/..., dmd2/..., phbobos/..., phobos2/...: Merge
-	
+
 2008-04-27  David Friedman  <dvdfrdmn@users.sf.net>
 
 	Merge DMD 1.026 and 2.010
@@ -175,13 +175,13 @@
 	* d-glue.cc (TypeEnum::toCtype): Update.
 
 	Phobos changes (applies to V2 Phobos as well):
-	
+
 	* phobos/Makefile.am, phobos/configure.in:
 	Deal with strerror_r portability.
 
 	* phobos/Makefile.in, phobos/configure, phobos/config.h.in:
 	Updated.
-	
+
 	* phobos/gcc/cbridge_strerror.c: New file.
 
 	* phobos/std/c/string.d: Replace non-portable strerror_r with
@@ -228,7 +228,7 @@
 2008-03-11  David Friedman  <dvdfrdmn@users.sf.net>
 
 	* d-glue.cc: cleanup
-	
+
 	* dmd/expression.c (DotVarExp::semantic): Apply fix from dmd2/
 
 	* dmd2/expression.c (DotVarExp::semantic): Move fix to
@@ -251,7 +251,7 @@
 
 	* d-builtins2.cc: Fixes for pointer-to-function types (for V2)
 
-	* d-codegen.cc: Add _d_allocmemory libcall. 
+	* d-codegen.cc: Add _d_allocmemory libcall.
 	(emitLocalVar): Rework.
 	(var): New function to handle static-frame/closure variables
 	(convertTo): Use typesSame instead of typesCompatible
@@ -286,9 +286,9 @@
 	setting TREE_READONLY.
 
 	* phobos2/std/c/linux/linux.d: Do not import std.c.dirent.
-	
+
 	* phobos2/std/c/dirent.d: Deprecated std.c.dirent.
-	
+
 	* phobos2/std/c/unix/unix.d: Move dirent/DIR routines here.
 
 	* phobos*/std/c/darwin/ldblcompat.d: declare constants as 'string'

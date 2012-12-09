@@ -333,6 +333,7 @@ unittest
     }
 }
 
+
 /++
     If $(D !!value) is true, $(D value) is returned. Otherwise,
     $(D new Exception(msg)) is thrown.
@@ -352,7 +353,19 @@ auto line = readln(f);
 enforce(line.length, "Expected a non-empty line.");
 --------------------
  +/
-T enforce(T, string file = __FILE__, size_t line = __LINE__)
+T enforce(T)(T value, lazy const(char)[] msg = null, string file = __FILE__, size_t line = __LINE__) @safe pure
+{
+    if (!value) bailOut(file, line, msg);
+    return value;
+}
+
+/++
+   $(RED Scheduled for deprecation in January 2013. If passing the file or line
+         number explicitly, please use the version of enforce which takes them as
+         function arguments. Taking them as template arguments causes
+         unnecessary template bloat.)
+ +/
+T enforce(T, string file, size_t line = __LINE__)
     (T value, lazy const(char)[] msg = null) @safe pure
 {
     if (!value) bailOut(file, line, msg);
@@ -475,7 +488,9 @@ T errnoEnforce(T, string file = __FILE__, size_t line = __LINE__)
 
 /++
     If $(D !!value) is $(D true), $(D value) is returned. Otherwise,
-    $(D new E(msg, file, line)) is thrown.
+    $(D new E(msg, file, line)) is thrown. Or if $(D E) doesn't take a message
+    and can be constructed with $(D new E(file, line)), then
+    $(D new E(file, line)) will be thrown.
 
    Example:
 --------------------
@@ -494,6 +509,16 @@ template enforceEx(E)
     }
 }
 
+template enforceEx(E)
+    if (is(typeof(new E(__FILE__, __LINE__))) && !is(typeof(new E("", __FILE__, __LINE__))))
+{
+    T enforceEx(T)(T value, string file = __FILE__, size_t line = __LINE__) @safe pure
+    {
+        if (!value) throw new E(file, line);
+        return value;
+    }
+}
+
 /++
     $(RED Deprecated. It will be removed in October 2012. Please use the version
           of $(D enforceEx) which takes an exception that constructs with
@@ -503,7 +528,7 @@ template enforceEx(E)
     $(D new E(msg)) is thrown.
   +/
 deprecated template enforceEx(E)
-    if (is(typeof(new E(""))) && !is(typeof(new E("", __FILE__, __LINE__))))
+    if (is(typeof(new E(""))) && !is(typeof(new E("", __FILE__, __LINE__))) && !is(typeof(new E(__FILE__, __LINE__))))
 {
     T enforceEx(T)(T value, lazy string msg = "") @safe pure
     {
@@ -516,6 +541,7 @@ unittest
 {
     assertNotThrown(enforceEx!Exception(true));
     assertNotThrown(enforceEx!Exception(true, "blah"));
+    assertNotThrown(enforceEx!OutOfMemoryError(true));
 
     {
         auto e = collectException(enforceEx!Exception(false));
@@ -883,7 +909,7 @@ class ErrnoException : Exception
     uint errno;                 // operating system error code
     this(string msg, string file = null, size_t line = 0)
     {
-        errno = getErrno();
+        errno = .errno();
         version (linux)
         {
             char[1024] buf = void;

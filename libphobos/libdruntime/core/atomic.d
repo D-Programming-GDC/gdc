@@ -4,13 +4,13 @@
  *
  * Copyright: Copyright Sean Kelly 2005 - 2010.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Sean Kelly
+ * Authors:   Sean Kelly, Alex Rønne Petersen
  * Source:    $(DRUNTIMESRC core/_atomic.d)
  */
 
 /*          Copyright Sean Kelly 2005 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.atomic;
@@ -21,15 +21,11 @@ version( D_InlineAsm_X86 )
     version = AsmX86_32;
     enum has64BitCAS = true;
 }
-else version( D_InlineAsm_X86_64 )
+version( D_InlineAsm_X86_64 )
 {
     version = AsmX86;
     version = AsmX86_64;
     enum has64BitCAS = true;
-}
-else version( GNU )
-{
-    enum has64BitCAS = false;
 }
 
 private
@@ -44,7 +40,19 @@ private
 }
 
 
-version( D_Ddoc )
+version( AsmX86 )
+{
+    // NOTE: Strictly speaking, the x86 supports atomic operations on
+    //       unaligned values.  However, this is far slower than the
+    //       common case, so such behavior should be prohibited.
+    private bool atomicValueIsProperlyAligned(T)( size_t addr ) pure nothrow
+    {
+        return addr % T.sizeof == 0;
+    }
+}
+
+
+version( CoreDdoc )
 {
     /**
      * Performs the binary operation 'op' on val using 'mod' as the modifier.
@@ -56,7 +64,7 @@ version( D_Ddoc )
      * Returns:
      *  The result of the operation.
      */
-    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod )
+    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
         if( __traits( compiles, mixin( "val" ~ op ~ "mod" ) ) )
     {
         return HeadUnshared!(T).init;
@@ -76,15 +84,15 @@ version( D_Ddoc )
      * Returns:
      *  true if the store occurred, false if not.
      */
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) nothrow
         if( !is(T == class) && !is(T U : U*) && __traits( compiles, { *here = writeThis; } ) );
 
     /// Ditto
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) nothrow
         if( is(T == class) && __traits( compiles, { *here = writeThis; } ) );
 
     /// Ditto
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) nothrow
         if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) );
 
     /**
@@ -98,7 +106,7 @@ version( D_Ddoc )
      * Returns:
      *  The value of 'val'.
      */
-    HeadUnshared!(T) atomicLoad(msync ms = msync.seq,T)( ref const shared T val )
+    HeadUnshared!(T) atomicLoad(msync ms = msync.seq,T)( ref const shared T val ) nothrow
     {
         return HeadUnshared!(T).init;
     }
@@ -112,7 +120,7 @@ version( D_Ddoc )
      *  val    = The target variable.
      *  newval = The value to store.
      */
-    void atomicStore(msync ms = msync.seq,T,V1)( ref shared T val, V1 newval )
+    void atomicStore(msync ms = msync.seq,T,V1)( ref shared T val, V1 newval ) nothrow
         if( __traits( compiles, { val = newval; } ) )
     {
 
@@ -129,13 +137,26 @@ version( D_Ddoc )
         rel,    /// sink-load + sink-store barrier
         seq,    /// fully sequenced (acq + rel)
     }
+
+    /**
+     * Inserts a full load/store memory fence (on platforms that need it). This ensures
+     * that all loads and stores before a call to this function are executed before any
+     * loads and stores after the call.
+     */
+    void atomicFence() nothrow;
 }
 else version( AsmX86_32 )
 {
-    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod )
+    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
         if( __traits( compiles, mixin( "val" ~ op ~ "mod" ) ) )
     in
     {
+        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
+        //       4 byte alignment, so use size_t as the align type here.
+        static if( T.sizeof > size_t.sizeof )
+            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) &val ) );
+        else
+            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) &val ) );
     }
     body
     {
@@ -178,27 +199,33 @@ else version( AsmX86_32 )
         }
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) nothrow
         if( !is(T == class) && !is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) nothrow
         if( is(T == class) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) nothrow
         if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis )
+    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) nothrow
     in
     {
+        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
+        //       4 byte alignment, so use size_t as the align type here.
+        static if( T.sizeof > size_t.sizeof )
+            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) here ) );
+        else
+            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) here ) );
     }
     body
     {
@@ -336,7 +363,7 @@ else version( AsmX86_32 )
     }
 
 
-    HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val )
+    HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val ) nothrow
     if(!__traits(isFloating, T))
     {
         static if( T.sizeof == byte.sizeof )
@@ -444,7 +471,7 @@ else version( AsmX86_32 )
         }
     }
 
-    void atomicStore(msync ms = msync.seq, T, V1)( ref shared T val, V1 newval )
+    void atomicStore(msync ms = msync.seq, T, V1)( ref shared T val, V1 newval ) nothrow
         if( __traits( compiles, { val = newval; } ) )
     {
         static if( T.sizeof == byte.sizeof )
@@ -553,13 +580,55 @@ else version( AsmX86_32 )
             static assert( false, "Invalid template type specified." );
         }
     }
+
+
+    void atomicFence() nothrow
+    {
+        import core.cpuid;
+
+        asm
+        {
+            naked;
+
+            call sse2;
+            test AL, AL;
+            jne Lcpuid;
+
+            // Fast path: We have SSE2, so just use mfence.
+            mfence;
+            jmp Lend;
+
+        Lcpuid:
+
+            // Slow path: We use cpuid to serialize. This is
+            // significantly slower than mfence, but is the
+            // only serialization facility we have available
+            // on older non-SSE2 chips.
+            push EBX;
+
+            mov EAX, 0;
+            cpuid;
+
+            pop EBX;
+
+        Lend:
+
+            ret;
+        }
+    }
 }
 else version( AsmX86_64 )
 {
-    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod )
+    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
         if( __traits( compiles, mixin( "val" ~ op ~ "mod" ) ) )
     in
     {
+        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
+        //       4 byte alignment, so use size_t as the align type here.
+        static if( T.sizeof > size_t.sizeof )
+            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) &val ) );
+        else
+            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) &val ) );
     }
     body
     {
@@ -603,27 +672,33 @@ else version( AsmX86_64 )
     }
 
 
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) nothrow
         if( !is(T == class) && !is(T U : U*) &&  __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) nothrow
         if( is(T == class) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) nothrow
         if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis )
+    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) nothrow
     in
     {
+        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
+        //       4 byte alignment, so use size_t as the align type here.
+        static if( T.sizeof > size_t.sizeof )
+            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) here ) );
+        else
+            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) here ) );
     }
     body
     {
@@ -752,7 +827,7 @@ else version( AsmX86_64 )
     }
 
 
-    HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val )
+    HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val ) nothrow
     if(!__traits(isFloating, T)) {
         static if( T.sizeof == byte.sizeof )
         {
@@ -865,7 +940,7 @@ else version( AsmX86_64 )
     }
 
 
-    void atomicStore(msync ms = msync.seq, T, V1)( ref shared T val, V1 newval )
+    void atomicStore(msync ms = msync.seq, T, V1)( ref shared T val, V1 newval ) nothrow
         if( __traits( compiles, { val = newval; } ) )
     {
         static if( T.sizeof == byte.sizeof )
@@ -977,6 +1052,19 @@ else version( AsmX86_64 )
             static assert( false, "Invalid template type specified." );
         }
     }
+
+
+    void atomicFence() nothrow
+    {
+        // SSE2 is always present in 64-bit x86 chips.
+        asm
+        {
+            naked;
+
+            mfence;
+            ret;
+        }
+    }
 }
 else version( GNU )
 {
@@ -1027,24 +1115,60 @@ else version( GNU )
 
 
     bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
-        if( __traits( compiles, mixin( "*here = writeThis" ) ) )
+        if( !is(T == class) && !is(T U : U*) &&  __traits( compiles, { *here = writeThis; } ) )
     {
-        version( GNU_Need_Atomics )
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis )
+        if( is(T == class) && __traits( compiles, { *here = writeThis; } ) )
+    {
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis )
+        if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
+    {
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis )
+    {
+        bool res = void;
+
+        static if (__traits(isFloating, T))
         {
-            synchronized
+            static if (T.sizeof == int.sizeof)
             {
-                if (*here == ifThis)
-                {
-                    if ((*here = writeThis) == writeThis)
-                        return true;
-                }
-                return false;
+                static assert(is(T : float));
+
+                res = __sync_bool_compare_and_swap!int(cast(shared int*) here, *cast(int*) &ifThis, *cast(int*) &writeThis);
             }
+            else static if(T.sizeof == long.sizeof)
+            {
+                static assert(is(T : double));
+
+                res = __sync_bool_compare_and_swap!long(cast(shared long*) here, *cast(long*) &ifThis, *cast(long*) &writeThis);
+            }
+            else
+            {
+                static assert(false, "Cannot atomically store 80-bit reals.");
+            }
+        }
+        else static if (is(T P == U*, U) || _passAsSizeT!T)
+        {
+            res = __sync_bool_compare_and_swap!size_t(cast(shared size_t*) here, cast(size_t) ifThis, cast(size_t) writeThis);
+        }
+        else static if (T.sizeof == bool.sizeof)
+        {
+            res = __sync_bool_compare_and_swap!ubyte(cast(shared ubyte*) here, ifThis ? 1 : 0, writeThis ? 1 : 0) ? 1 : 0;
         }
         else
         {
-            return __sync_bool_compare_and_swap!(T)(here, ifThis, writeThis);
+            res = __sync_bool_compare_and_swap!T(here, cast(T)ifThis, cast(T)writeThis);
         }
+
+        return res;
     }
 
 
@@ -1099,59 +1223,49 @@ else version( GNU )
             const bool needsStoreBarrier = ms == msync.seq ||
                                                  isHoistOp!(ms);
         }
+
+        template _passAsSizeT( T )
+        {
+            // GCC currently does not support atomic load/store for pointers, thus
+            // we have to manually cast them to size_t.
+            static if (is(T P == U*, U)) // pointer
+            {
+                enum _passAsSizeT = true;
+            }
+            else static if (is(T == interface) || is (T == class))
+            {
+                enum _passAsSizeT = true;
+            }
+            else
+            {
+                enum _passAsSizeT = false;
+            }
+        }
     }
 
 
     HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val )
-    {
-        alias HeadUnshared!(T) S;
+    if(!__traits(isFloating, T)) {
+        static if (needsLoadBarrier!ms)
+            __sync_synchronize();
 
-        version( GNU_Need_Atomics )
-        {
-            static if( needsLoadBarrier!(ms) )
-            {
-                synchronized return cast(S) val;
-            }
-            else
-            {
-                return cast(S) val;
-            }
-        }
-        else
-        {
-            static if( needsLoadBarrier!(ms) )
-            {
-                __sync_synchronize();
-            }
-
-            return cast(S) val;
-        }
+        return cast(HeadUnshared!T) val;
     }
 
 
     void atomicStore(msync ms = msync.seq, T, V1)( ref shared T val, V1 newval )
-        if( __traits( compiles, mixin( "val = newval" ) ) )
+        if( __traits( compiles, { val = newval; } ) )
     {
-        version( GNU_Need_Atomics )
-        {
-            static if( needsStoreBarrier!(ms) )
-            {
-                synchronized val = newval;
-            }
-            else
-            {
-                val = newval;
-            }
-        }
-        else
-        {
-            static if( needsLoadBarrier!(ms) )
-            {
-                __sync_synchronize();
-            }
+        static if (needsLoadBarrier!ms)
+            __sync_synchronize();
 
-            val = newval;
-        }
+        val = newval;
+    }
+
+
+    void atomicFence() nothrow
+    {
+        __sync_synchronize();
     }
 }
 
@@ -1159,7 +1273,7 @@ else version( GNU )
 // floats and doubles to ints and longs, atomically loads them, then puns
 // them back.  This is necessary so that they get returned in floating
 // point instead of integer registers.
-HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val )
+HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val ) nothrow
 if(__traits(isFloating, T))
 {
     static if(T.sizeof == int.sizeof)
@@ -1189,7 +1303,7 @@ if(__traits(isFloating, T))
 
 version( unittest )
 {
-    void testCAS(T)( T val )
+    void testCAS(T)( T val ) pure nothrow
     in
     {
         assert(val !is T.init);
@@ -1208,7 +1322,7 @@ version( unittest )
         assert( atom is val, T.stringof );
     }
 
-    void testLoadStore(msync ms = msync.seq, T)( T val = T.init + 1 )
+    void testLoadStore(msync ms = msync.seq, T)( T val = T.init + 1 ) pure nothrow
     {
         T         base = cast(T) 0;
         shared(T) atom = cast(T) 0;
@@ -1223,7 +1337,7 @@ version( unittest )
     }
 
 
-    void testType(T)( T val = T.init + 1 )
+    void testType(T)( T val = T.init + 1 ) pure nothrow
     {
         testCAS!(T)( val );
         testLoadStore!(msync.seq, T)( val );
@@ -1231,7 +1345,8 @@ version( unittest )
     }
 
 
-    unittest
+    //@@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=8081
+    /+pure nothrow+/ unittest
     {
         testType!(bool)();
 
@@ -1275,7 +1390,8 @@ version( unittest )
         assert( d == 1 );
     }
 
-    unittest
+    //@@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=8081
+    /+pure nothrow+/ unittest
     {
         static struct S { int val; }
         auto s = shared(S)(1);
@@ -1299,5 +1415,41 @@ version( unittest )
         shared(S)* ptr2;
         static assert(!__traits(compiles, cas(&ptr2, ifThis, writeThis)));
         static assert(!__traits(compiles, cas(&ptr2, ifThis2, writeThis2)));
+    }
+
+    unittest
+    {
+        import core.thread;
+
+        // Use heap memory to ensure an optimizing
+        // compiler doesn't put things in registers.
+        uint* x = new uint();
+        bool* f = new bool();
+        uint* r = new uint();
+
+        auto thr = new Thread(()
+        {
+            while (!*f)
+            {
+            }
+
+            atomicFence();
+
+            *r = *x;
+        });
+
+        thr.start();
+
+        *x = 42;
+
+        atomicFence();
+
+        *f = true;
+
+        atomicFence();
+
+        thr.join();
+
+        assert(*r == 42);
     }
 }

@@ -53,12 +53,12 @@ struct GTY((variable_size)) lang_type
 /* Another required, but unused declaration.  This could be simplified, since
    there is no special lang_identifier */
 union GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
- 	    chain_next ("CODE_CONTAINS_STRUCT (TREE_CODE (&%h.generic), TS_COMMON)"
- 			" ? ((union lang_tree_node *) TREE_CHAIN (&%h.generic)) : NULL")))
+	   chain_next ("CODE_CONTAINS_STRUCT (TREE_CODE (&%h.generic), TS_COMMON)"
+		       " ? ((union lang_tree_node *) TREE_CHAIN (&%h.generic)) : NULL")))
 lang_tree_node
 {
   union tree_node GTY((tag ("0"),
-			desc ("tree_node_structure (&%h)"))) generic;
+		       desc ("tree_node_structure (&%h)"))) generic;
   struct lang_identifier GTY((tag ("1"))) identifier;
 };
 
@@ -71,6 +71,9 @@ extern GTY(()) tree d_eh_personality_decl;
 /* True if the type is a reference type and it's decl should be marked
    in the backend as DECL_BY_REFERENCE.  For function types is for NRVO.  */
 #define D_TYPE_ADDRESSABLE(NODE) (TYPE_LANG_FLAG_0 (NODE))
+
+/* True if the type is an imaginary float type.  */
+#define D_TYPE_IMAGINARY_FLOAT(NODE) (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), REAL_TYPE)))
 
 /* True if the symbol should be made "link one only".  This is used to
    defer calling make_decl_one_only() before the decl has been prepared. */
@@ -86,6 +89,9 @@ extern GTY(()) tree d_eh_personality_decl;
 
 /* True if a custom static chain has been set-up for function.  */
 #define D_DECL_STATIC_CHAIN(NODE) (DECL_LANG_FLAG_3 (FUNCTION_DECL_CHECK (NODE)))
+
+/* True if the symbol is an in/out contract.  */
+#define D_DECL_IS_CONTRACT(NODE) (DECL_LANG_FLAG_4 (FUNCTION_DECL_CHECK (NODE)))
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and
@@ -112,8 +118,8 @@ struct GTY(()) binding_level
   struct binding_level *level_chain;
 };
 
-extern GTY(()) struct binding_level * current_binding_level;
-extern GTY(()) struct binding_level * global_binding_level;
+extern GTY(()) struct binding_level *current_binding_level;
+extern GTY(()) struct binding_level *global_binding_level;
 
 enum d_tree_index
 {
@@ -155,7 +161,6 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define d_ifloat_type_node              d_global_trees[DTI_IFLOAT_TYPE]
 #define d_idouble_type_node             d_global_trees[DTI_IDOUBLE_TYPE]
 #define d_ireal_type_node               d_global_trees[DTI_IREAL_TYPE]
-#define d_va_list_type_node             d_global_trees[DTI_VA_LIST_TYPE]
 
 #define intmax_type_node                d_global_trees[DTI_INTMAX_TYPE]
 #define uintmax_type_node               d_global_trees[DTI_UINTMAX_TYPE]
@@ -165,84 +170,64 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define null_node                       d_global_trees[DTI_NULL]
 
 
-#ifdef __cplusplus
 /* In d-lang.cc.  These are called through function pointers
    and do not need to be "extern C". */
-extern bool d_mark_addressable (tree);
-extern void d_mark_exp_read (tree);
-extern tree d_truthvalue_conversion (tree);
-extern tree d_convert_basic (tree, tree);
-extern void d_init_exceptions (void);
-
-extern void init_global_binding_level (void);
-extern void set_decl_binding_chain (tree decl_chain);
-
-extern void d_add_global_declaration (tree);
-
-extern tree d_type_promotes_to (tree);
-
-extern void gcc_d_backend_init ();
-extern void gcc_d_backend_term ();
+tree d_truthvalue_conversion (tree);
+void d_add_global_declaration (tree);
 
 struct Module;
-extern Module * d_gcc_get_output_module ();
+Module *d_gcc_get_output_module (void);
 
-extern struct lang_type * build_d_type_lang_specific (Type * t);
-extern struct lang_decl * build_d_decl_lang_specific (Declaration * d);
+struct lang_type *build_d_type_lang_specific (Type *t);
+struct lang_decl *build_d_decl_lang_specific (Declaration *d);
 
 /* In asmstmt.cc */
-extern tree d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers);
+tree d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers);
 
 /* In d-incpath.cc */
-extern void register_import_chains ();
-extern bool std_inc;
-extern const char * iprefix;
-extern const char * multilib_dir;
+extern const char *iprefix;
+extern const char *multilib_dir;
+void add_import_paths (bool stdinc);
+void add_phobos_versyms (void);
 
-#endif
+/* In d-lang.cc */
+tree pushdecl (tree);
+void pushlevel (int);
+tree poplevel (int, int, int);
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-  /* In d-lang.cc */
-  tree pushdecl (tree);
-  void pushlevel (int);
-  tree poplevel (int, int, int);
-  tree d_unsigned_type (tree);
-  tree d_signed_type (tree);
-  tree d_type_for_size (unsigned bits, int unsignedp);
-  tree d_type_for_mode (enum machine_mode mode, int unsignedp);
+void init_global_binding_level (void);
+void set_decl_binding_chain (tree decl_chain);
 
-  void d_keep (tree t);
-  void d_free (tree t);
+tree d_unsigned_type (tree);
+tree d_signed_type (tree);
 
-  bool global_bindings_p (void);
-  void insert_block (tree);
-  void set_block (tree);
-  tree getdecls (void);
+void d_init_exceptions (void);
 
-  /* In d-builtins.c */
-  extern void d_init_builtins (void);
-  extern const struct attribute_spec d_common_attribute_table[];
-  extern const struct attribute_spec d_common_format_attribute_table[];
-  extern tree d_builtin_function (tree);
-  extern void d_register_builtin_type (tree, const char *);
+void d_keep (tree t);
+void d_free (tree t);
 
-  /* In d-builtins2.cc */
-  extern void d_bi_init (void);
-  extern void d_bi_builtin_func (tree);
-  extern void d_bi_builtin_type (tree);
+bool global_bindings_p (void);
+void insert_block (tree);
+void set_block (tree);
+tree getdecls (void);
 
-#ifdef __cplusplus
-}
-#endif
+/* In d-builtins.c */
+extern const struct attribute_spec d_attribute_table[];
+extern const struct attribute_spec d_format_attribute_table[];
+tree d_builtin_function (tree);
+void d_init_builtins (void);
+void d_register_builtin_type (tree, const char *);
+void gcc_d_backend_init (void);
+void gcc_d_backend_term (void);
+
+/* In d-builtins2.cc */
+void d_bi_init (void);
+void d_bi_builtin_func (tree);
+void d_bi_builtin_type (tree);
 
 /* protect from garbage collection */
 extern GTY(()) tree d_keep_list;
 
 #include "d-dmd-gcc.h"
-
-#define d_warning(option, ...) warning (option, __VA_ARGS__)
-#define d_built_in_decls(FCODE) builtin_decl_explicit (FCODE)
 
 #endif

@@ -336,12 +336,9 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @link_out, '-defaultlib', $1;
     } elsif ( $arg =~ m/^-deps=(.*)$/ ) {
         push @out, (defined($1) ? "-fdeps=$1" : '-fdeps');
-    } elsif ( $arg =~ m/^-g$/ ) {
+    } elsif ( $arg =~ m/^-g$|^-gc$/ ) {
         $debug = 1;
         push @out, '-g';
-    } elsif ( $arg =~ m/^-gc$/ ) {
-        $debug = 1;
-        push @out, '-fdebug-c';
     } elsif ( $arg =~ m/^-gs$/ ) {
         push @out, '-fno-omit-frame-pointer';
     } elsif ( $arg =~ m/^-gt$/ ) {
@@ -384,12 +381,6 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @out, '-O3';
         if( ! grep(/^-inline$/,@ARGV) ) {
             push @out, '-fno-inline-functions';
-        }
-        if ( $gcc_maj < 4) {
-            push @out, '-frename-registers';
-        }
-        if ( $gcc_maj > 3 || ( $gcc_maj == 3 && $gcc_min >= 4 ) ) {
-            push @out, '-fweb';
         }
     } elsif ( $arg =~ m/^-o-$/ ) {
         push @out, '-fsyntax-only';
@@ -469,10 +460,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         errorExit "unrecognized switch '$arg'";
     } elsif ( $arg =~ m/^.+\.d$/i ||
               $arg =~ m/^.+\.dd$/i ||
-              $arg =~ m/^.+\.di$/i ||
-              $arg =~ m/^.+\.htm$/i ||
-              $arg =~ m/^.+\.html$/i ||
-              $arg =~ m/^.+\.xhtml$/i) {
+              $arg =~ m/^.+\.di$/i) {
         addSourceFile $arg;
     } elsif ( $arg =~ m/^.+\.ddoc/i ) {
         push @out, "-fdoc-inc=$arg";

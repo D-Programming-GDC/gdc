@@ -1,18 +1,12 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2011 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
 // License for redistribution is by either the Artistic License
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, December 2006
-*/
 
 #include <stdio.h>
 #include <ctype.h>
@@ -42,7 +36,7 @@ void dumpExpressions(int i, Expressions *exps)
     if (exps)
     {
         for (size_t j = 0; j < exps->dim; j++)
-        {   Expression *e = exps->tdata()[j];
+        {   Expression *e = (*exps)[j];
             indent(i);
             printf("(\n");
             e->dump(i + 2);
@@ -61,7 +55,7 @@ void Expression::dump(int i)
 void IntegerExp::dump(int i)
 {
     indent(i);
-    printf("%p %"PRIdMAX" type=%s\n", this, (intmax_t)value, type_print(type));
+    printf("%p %lld type=%s\n", this, (ulonglong)value, type_print(type));
 }
 
 void IdentifierExp::dump(int i)

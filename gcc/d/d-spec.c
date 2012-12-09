@@ -16,30 +16,34 @@
    <http://www.gnu.org/licenses/>.
 */
 
+extern "C" {
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
 #include "tm.h"
+}//extern "C"
 
 #include "d-confdefs.h"
 
+extern "C" {
 #include "gcc.h"
 #include "opts.h"
+}//extern "C"
 
 /* This bit is set if we saw a `-xfoo' language specification.  */
-#define LANGSPEC        (1<<1)
+#define LANGSPEC	(1<<1)
 /* This bit is set if they did `-lm' or `-lmath'.  */
-#define MATHLIB         (1<<2)
+#define MATHLIB		(1<<2)
 /* This bit is set if they did `-lpthread'.  */
-#define WITHTHREAD      (1<<3)
+#define WITHTHREAD	(1<<3)
 /* This bit is set if they did `-lrt'.  */
-#define TIMERLIB        (1<<4)
+#define TIMERLIB	(1<<4)
 /* This bit is set if they did `-lc'.  */
-#define WITHLIBC        (1<<6)
+#define WITHLIBC	(1<<6)
 /* This bit is set if the arguments is a D source file. */
-#define D_SOURCE_FILE   (1<<7)
+#define D_SOURCE_FILE	(1<<7)
 /* This bit is set when the argument should not be passed to gcc or the backend */
-#define REMOVE_ARG      (1<<8)
+#define SKIPOPT		(1<<8)
 
 #ifndef MATH_LIBRARY
 #define MATH_LIBRARY "m"
@@ -56,10 +60,10 @@
 #endif
 
 /* mingw and cygwin don't have pthread. %% TODO: check darwin.  */
-#if TARGET_WINDOS || TARGET_OSX || TARGET_ANDROID
-#define USE_PTHREADS    0
+#if TARGET_WINDOS || TARGET_OSX || TARGET_ANDROID_D
+#define USE_PTHREADS	0
 #else
-#define USE_PTHREADS    1
+#define USE_PTHREADS	1
 #endif
 
 void
@@ -75,10 +79,11 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   /* Used by -debuglib */
   int saw_debug_flag = 0;
 
-  /* This is a tristate:
-     -1 means we should not link in libphobos
-     0  means we should link in libphobos if it is needed
-     1  means libphobos is needed and should be linked in.  */
+  /* What do with libgphobos:
+     -1 means we should not link in libgphobos
+     0  means we should link in libgphobos if it is needed
+     1  means libgphobos is needed and should be linked in.
+     2  means libgphobos is needed and should be linked statically.  */
   int library = 0;
 
   /* If nonzero, use the standard D runtime library when linking with
@@ -142,12 +147,6 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   /* The total number of arguments with the new stuff.  */
   int num_args = 1;
 
-  /* Argument for -fod option.  */
-  char * output_directory_option = NULL;
-
-  /* True if we saw -fop. */
-  int output_parents_option = 0;
-
   /* "-fonly" if it appears on the command line.  */
   const char *only_source_option = 0;
 
@@ -177,13 +176,13 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	case OPT_nophoboslib:
 	  added = 1; // force argument rebuild
 	  phobos = 0;
-	  args[i] |= REMOVE_ARG;
+	  args[i] |= SKIPOPT;
 	  break;
 
 	case OPT_defaultlib_:
 	  added = 1;
 	  phobos = 0;
-	  args[i] |= REMOVE_ARG;
+	  args[i] |= SKIPOPT;
 	  if (defaultlib != NULL)
 	    free (CONST_CAST (char *, defaultlib));
 	  if (arg == NULL)
@@ -198,7 +197,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	case OPT_debuglib_:
 	  added = 1;
 	  phobos = 0;
-	  args[i] |= REMOVE_ARG;
+	  args[i] |= SKIPOPT;
 	  if (debuglib != NULL)
 	    free (CONST_CAST (char *, debuglib));
 	  if (arg == NULL)
@@ -274,36 +273,21 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_static_libphobos:
-	  static_phobos = 1;
-	  args[i] |= REMOVE_ARG;
+	  library = library >= 0 ? 2 : library;
+	  args[i] |= SKIPOPT;
 	  break;
 
 	case OPT_fonly_:
-	  args[i] |= REMOVE_ARG;
+	  args[i] |= SKIPOPT;
 	  only_source_option = decoded_options[i].orig_option_with_args_text;
 
 	  if (arg != NULL)
 	    {
 	      int len = strlen (only_source_option);
-	      if (len <= 2 || only_source_option[len-1] != 'd' ||
-		  only_source_option[len-2] != '.')
+	      if (len <= 2 || only_source_option[len-1] != 'd'
+		  || only_source_option[len-2] != '.')
 		only_source_option = concat (only_source_option, ".d", NULL);
 	    }
-	  break;
-
-	case OPT_fod_:
-	  args[i] |= REMOVE_ARG;
-	  if (arg != NULL)
-	    {
-	      output_directory_option = xstrdup (arg);
-	      fprintf (stderr, "** outputdir = '%s'\n", output_directory_option);
-	    }
-	  break;
-
-	case OPT_fop:
-	  args[i] |= REMOVE_ARG;
-	  output_parents_option = 1;
-	  fprintf (stderr, "** output parents\n");
 	  break;
 
 	case OPT_SPECIAL_input_file:
@@ -327,7 +311,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
     }
 
   /* If we know we don't have to do anything, bail now.  */
-  if (! added && library <= 0 && ! only_source_option)
+  if (!added && library <= 0 && !only_source_option)
     {
       free (args);
       return;
@@ -355,7 +339,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   /* NOTE: We start at 1 now, not 0.  */
   while (i < argc)
     {
-      if (args[i] & REMOVE_ARG)
+      if (args[i] & SKIPOPT)
 	{
 	  ++i;
 	  continue;
@@ -401,7 +385,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 
   if (only_source_option)
     {
-      const char * only_source_arg = only_source_option + 7;
+      const char *only_source_arg = only_source_option + 7;
       generate_option (OPT_fonly_, only_source_arg, 1, CL_DRIVER,
 		       &new_decoded_options[j]);
       j++;
@@ -437,14 +421,33 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   /* Add `-lgphobos' if we haven't already done so.  */
   if (library > 0 && phobos)
     {
+#ifdef HAVE_LD_STATIC_DYNAMIC
+      if (library > 1 && !static_link)
+	{
+	  generate_option (OPT_Wl_, LD_STATIC_OPTION, 1, CL_DRIVER,
+			   &new_decoded_options[j]);
+	  j++;
+	}
+#endif
+
       generate_option (OPT_l, saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS, 1,
 		       CL_DRIVER, &new_decoded_options[j]);
       added_libraries++;
       j++;
 
+#ifdef HAVE_LD_STATIC_DYNAMIC
+      if (library > 1 && !static_link)
+	{
+	  generate_option (OPT_Wl_, LD_DYNAMIC_OPTION, 1, CL_DRIVER,
+			   &new_decoded_options[j]);
+	  j++;
+	}
+#endif
+
 #if USE_PTHREADS
-      /* When linking libphobos we also need to link with the pthread library.  */
-      if (library > 0 && (static_phobos || static_link))
+      /* When linking libphobos statically we also need to link with the
+	 pthread library.  */
+      if (library > 1 || static_link || static_phobos)
 	need_thread = 1;
 #endif
     }
@@ -486,9 +489,9 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 
   if (saw_librt)
     new_decoded_options[j++] = *saw_librt;
-#if TARGET_LINUX && !TARGET_ANDROID
+#if TARGET_LINUX && !TARGET_ANDROID_D
   /* Only link if linking statically and target platform supports. */
-  else if (library > 0 && (static_phobos || static_link))
+  else if (library > 1 || static_link || static_phobos)
     {
       generate_option (OPT_l, "rt", 1, CL_DRIVER,
 		       &new_decoded_options[j]);

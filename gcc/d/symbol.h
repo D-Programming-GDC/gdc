@@ -19,9 +19,7 @@
 #define DMD_SYMBOL_H
 
 #include "root.h"
-
 #include "d-gcc-tree.h"
-
 #include "mtype.h"
 
 enum TypeType
@@ -80,21 +78,22 @@ typedef ArrayBase<struct Thunk> Thunks;
 
 struct Symbol : Object
 {
-  Symbol ();
+  Symbol (void);
 
   const char *Sident;
   const char *prettyIdent;
   SymbolStorageClass Sclass;
-  SymbolFL           Sfl;
-  SymbolSegment      Sseg;
-  int                Sflags;
+  SymbolFL Sfl;
+  SymbolSegment Sseg;
+  int Sflags;
+  int Salignment;
 
-  dt_t * Sdt;
+  dt_t *Sdt;
 
   // Specific to GNU backend
-  tree     Stree;
-  tree     ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see IRState::declContext
-  tree     SframeField;  // FIELD_DECL in frame struct that this variable is allocated in
+  tree Stree;
+  tree ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see IRState::declContext
+  tree SframeField;  // FIELD_DECL in frame struct that this variable is allocated in
 
   // For FuncDeclarations:
   Thunks thunks;
@@ -105,25 +104,35 @@ struct Symbol : Object
 
 struct Thunk
 {
+  Thunk (void)
+  { offset = 0; symbol = NULL; }
+
   int offset;
-  Symbol * symbol;
-  Thunk ();
+  Symbol *symbol;
 };
 
-extern Symbol * symbol_calloc (const char * string);
-extern Symbol * symbol_name (const char * id, int sclass, TYPE * t);
-extern Symbol * struct_calloc ();
-extern Symbol * symbol_generate (SymbolStorageClass sc, TYPE * type);
-extern void     symbol_func (Symbol * sym);
-extern tree     check_static_sym (Symbol * sym);
-extern void     outdata (Symbol * sym);
-inline void     obj_export (Symbol *, int) { }
-extern void     obj_moduleinfo (Symbol *sym);
-extern void     obj_tlssections ();
+struct Obj
+{
+  static void init ();
+  static void term ();
 
-extern Symbol * symbol_tree (tree);
-extern Symbol * static_sym ();
+  static void startaddress(Symbol *);
+  static bool includelib(const char *);
+  static bool allowZeroSize();
+  static void moduleinfo(Symbol *);
+  static void export_symbol (Symbol *, unsigned);
+};
 
-extern void     slist_add (Symbol *);
-extern void     slist_reset ();
+extern Obj *objmod;
+
+Symbol *symbol_calloc (const char *string);
+tree check_static_sym (Symbol *sym);
+void outdata (Symbol *sym);
+inline void out_readonly (Symbol *s) { s->Sseg = CDATA; }
+void obj_moduleinfo (Symbol *sym);
+void obj_tlssections (void);
+
+Symbol *symbol_tree (tree);
+Symbol *static_sym (void);
+
 #endif

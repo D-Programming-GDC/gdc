@@ -12,7 +12,7 @@
 	* phobos/config/unix.x3, phobos/config/x3.c, phobos/config/x3.h
 	phobos/config/x3, phobos/config/x3main.c: better diagnostics
 	and behavior
-	
+
 2007-11-24  David Friedman  <dvdfrdmn@users.sf.net>
 
 	* setup-gcc.sh: Ignore .svn directories when making symlink trees.
@@ -96,9 +96,9 @@
 	* phobos/unwind.d: Move pointer encoding to deh_pe.d. Move generic
 	unwinder interface to unwind_generic.d.  Import either generic or
 	ARM interfaces based on config value.
-	
+
 	* phobos/unwind_generic.d, phobos/unwind_pe.d: New file; old code.
-	
+
 	* phobos/unwind_arm.d: New file.
 
 	* phobos/deh.d: Support ARM exception handling ABI.
@@ -113,7 +113,7 @@
 
 	* phobos/Makefile.am, phobos/Makefile.in, phobos/config.h.in,
 	phobos/configure : Update.
-	
+
 	* phobos2/...: Duplicate phobos/ changes
 
 2007-10-07  David Friedman  <dvdfrdmn@users.sf.net>
@@ -144,7 +144,7 @@
 
 	* phobos/gcc/configext.d: Removed
 	* phobos/gcc/support.d: Move fallback strtold definition here.
-	
+
 	* phobos/Makefile.am: Do not compile std/c/stdio.o
 	* phobos/std/c/stdio.c: Change function definitions to external
 	declarations.
@@ -219,7 +219,7 @@
 
 	* d-objfile.cc (ObjectFile::hasModule): Add checks to allow
 	this function to be called earlier.
-	
+
 	* dmd*/mars.c: Make changes for GDC.
 
 	* dmd*/attrib.c: Use WANTinterpret for pragma(GNU_asm)
@@ -244,7 +244,7 @@
 	* phobos2/std/loader.d: Update for D 2.0.
 
 	* phobos2/std/hiddenfunc.d: Use C calling conventions for GDC.
-	
+
 2007-09-14  David Friedman  <dvdfrdmn@users.sf.net>
 
 
@@ -393,7 +393,7 @@
 	phobos/std/socket.d, phobos/std/uni.d: Merge
 
 2007-07-22  David Friedman  <dvdfrdmn@users.sf.net>
-	
+
 	Merge DMD 1.015 - 1.018:
 
 	* dmd/lexer.c (escapeSequence): Change vendor string.
@@ -454,7 +454,7 @@
 	as in StructInitializer::toDt.
 
 	Bugzilla 1032:
-	
+
 	* dmd/todt.c: Use DT_container for arrays, array elements,
 	and structs
 
@@ -482,7 +482,7 @@
 
 	* d-codegen.cc (darrayVal): Do not set TREE_READONLY.
 	(Bugzilla 1329)
-	
+
 	(delegateVal): ditto
 
 	* d-codegen.cc (FieldVisitor::visit): Handle classes that
@@ -504,7 +504,7 @@
 
 	* phobos/std/format.d (doFormat): Use original signature.  Actual
 	work is done by new doFormatPtr. (Bugzilla 1109)
-	
+
 	* phobos/std/boxer.d: Use doFormatPtr
 
 2007-07-11  David Friedman  <dvdfrdmn@users.sf.net>
@@ -535,7 +535,7 @@
 	routines instead of native.
 
 	* d-gcc-real.cc (toInt): Correctly convert to long integer
-	
+
 	* Make-lang.in (D_DMD_H): Add d-gcc-real.h
 
 	* phobos/internal/dgccmain2.d: Print newline after error message
@@ -560,12 +560,12 @@
 	------------
 
 	Merge DMD 1.013:
-	
+
 	* dmd/cast.c, dmd/constfold.c, dmd/declaration.c,
 	dmd/expression.c, dmd/expression.h, dmd/interpret.c, dmd/link.c,
 	dmd/mars.c, dmd/mtype.c, dmd/opover.c, dmd/optimize.c,
 	dmd/parse.c, dmd/port.h, dmd/statement.c: Merge.
-	
+
 	* phobos/internal/aaA.d, phobos/internal/switch.d,
 	phobos/std/date.d, phobos/std/file.d, phobos/std/format: Merge.
 
@@ -574,7 +574,7 @@
 
 	* phobos/internal/aaA.d (_d_assocarrayliteralT): modified
 	to use pointers to keys, values.
-	
+
 	--------------
 
 	Merge DMD 1.012:
@@ -586,7 +586,7 @@
 	dmd/template.h: Merge
 
 	* phobos/internal/object.d: Merge
-	
+
 	* dmd/template.c (TemplateInstance::mangle): printf portability
 
 	* d-glue.cc (AssocArrayLiteralExp::toElem): non-working implementation
@@ -718,7 +718,7 @@
 	patch-gcc-darwin-eh-3.3.x, patch-toplev-3.3.x,
 	phobos/config/ldfuncs33, phobos/config/noldfuncs33,
 	d-bi-attrs-33.h: Removed.
-	
+
 2007-03-05  David Friedman  <dvdfrdmn@users.sf.net>
 
 	Release GDC 0.23
@@ -829,7 +829,7 @@
 	* Make-lang.in: Put target-ver-syms.sh output in d-confdefs.h.
 
 	* package/simple.sh: Handle multilib.
-	
+
 	* phobos/configure.in: Use Automake, multilib.
 	* phobos/Makefile.am: New file.
 	* phobos/acinclude.m4: Fix quoting.
@@ -961,7 +961,7 @@
 
 	* phobos/internal/object.d: Use integer type definitions from
 	phobos/object.d.  Split %.*s args.
-  
+
 	* phobos/internal/adi.d:
 	(_adReverse): Use size_t for szelem.
 	* phobos/configure.in: fix multilib dir
@@ -1007,19 +1007,19 @@
 	(Unix read): Make sure file's size is within range.
 
 	* phobos/crc32.d, phobos/gcstats.d,
-	phobos/internal/qsortg.d: 
+	phobos/internal/qsortg.d:
 	phobos/internal/gc/gc.d (_d_arraycatnT),
 	phobos/internal/gc/gcold.d (_d_arraycatn),
 	phobos/internal/gc/gcx.d,
 	phobos/internal/mars.h,
 	phobos/std/base64.d, phobos/std/bitarray.d, phobos/std/math.d,
-	phobos/std/math2.d, phobos/std/md5sum.d, phobos/std/outbuffer.d, 
+	phobos/std/math2.d, phobos/std/md5sum.d, phobos/std/outbuffer.d,
 	phobos/std/path.d, phobos/std/string.d, phobos/std/uri.d
 	phobos/std/typeinfo/ti_AC.d,
 	use size_t, ptrdiff_t/ssize_t
 
 	* phobos/std/loader.d: Add definitions for 64-bit Mach-O objects.
-	
+
 	* phobos/std/openrj.d, phobos/std/loader.d, phobos/std/moduleinit.d,
 	phobos/std/socket.d, phobos/std/regexp.d, phobos/std/uri.
 	d, phobos/std/zip.d: split '%.*s' args
@@ -1029,7 +1029,7 @@
 
 	* phobos/internal/gc/gc_dyld.c: use uintptr_t
 
-	* phobos/std/c/stdio.d, phobos/internal/gc/gcgcc.d: 
+	* phobos/std/c/stdio.d, phobos/internal/gc/gcgcc.d:
 	Don't use old version symbols.
 
 	* phobos/std/c/mach/mach.d (natural_t): always a uint
@@ -1123,7 +1123,7 @@
 
 	* phobos/std/regexp.d: update
 
-	* phobos/internal/gc/gcold.d (_d_newarrayip): 
+	* phobos/internal/gc/gcold.d (_d_newarrayip):
 
 	* phobos/internal/gc/gc.d: Fix argument and result types.
 
@@ -1133,7 +1133,7 @@
 
 	* d-decls.cc (TypedefDeclaration::toInitializer): Copy
 	from dmd/tocsym.c.  Create the Sdt here.
-	
+
 	* dmd/toobj.c (TypedefDeclaration::toObjFile): Update
 	for toInitializer change
 
@@ -1152,7 +1152,7 @@
 	* phobos/config/unix-head, phobos/config/unix-mid: update
 
 	* phobos/internal/gc/gcold.d: Use old GDC modifications.
-	
+
 2007-02-02  David Friedman  <dvdfrdmn@users.sf.net>
 
 	Initial merge DMD 1.004:
@@ -1216,7 +1216,7 @@
 
 	* patch-gcc-4.1.x, patch-toplev-4.1.x: New files
 
-	* Make-lang.in: Use $(version) instead of $(gcc_version). 
+	* Make-lang.in: Use $(version) instead of $(gcc_version).
 	Add d-bi-attrs-41.h.  Use C for generator programs instead of C++.
 
 	* d-bi-attrs-41.h: New file.
@@ -1279,7 +1279,7 @@
 	* GDC.html: New file.
 
 	* README: Update, refer to GDC.html
-	
+
 	Rest of DMD 1.00 merge:
 
 	* d-codegen.cc: Patch from Anders Bjšrklund for GCC 3.3
@@ -1315,10 +1315,10 @@
 	* internal/gc/gc.d, phobos/linux.mak,
 	phobos/std/c/linux/linux.d.orig-dmd, phobos/std/c/stdlib.d,
 	phobos/std/conv.d, phobos/win32.mak: Merge 1.00
-	
+
 	* phobos/std/c/linux/pthread.d.orig-dmd: New file (originally
 	pthread.d DMD)
-	
+
 	------------------------
 
 	* dmd/init.c (ArrayInitializer::semantic),

@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2011 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -123,7 +123,6 @@ Expression *BinExp::arrayOp(Scope *sc)
     buf.writestring(type->toBasetype()->nextOf()->toBasetype()->deco);
 #endif
 
-    size_t namelen = buf.offset;
     buf.writeByte(0);
     char *name = buf.toChars();
     Identifier *ident = Lexer::idPool(name);
@@ -326,7 +325,7 @@ Expression *BinExp::arrayOp(Scope *sc)
             Initializer *init = new ExpInitializer(0, new IntegerExp(0, 0, Type::tsize_t));
             Dsymbol *d = new VarDeclaration(0, Type::tsize_t, Id::p, init);
             Statement *s1 = new ForStatement(0,
-                new DeclarationStatement(0, d),
+                new ExpStatement(0, d),
                 new CmpExp(TOKlt, 0, new IdentifierExp(0, Id::p), new ArrayLengthExp(0, new IdentifierExp(0, p->ident))),
                 new PostExp(TOKplusplus, 0, new IdentifierExp(0, Id::p)),
                 new ExpStatement(0, loopbody));
@@ -334,7 +333,7 @@ Expression *BinExp::arrayOp(Scope *sc)
             // foreach (i; 0 .. p.length)
             Statement *s1 = new ForeachRangeStatement(0, TOKforeach,
                 new Parameter(0, NULL, Id::p, NULL),
-                new IntegerExp(0, 0, Type::tint32),
+                new IntegerExp(0, 0, Type::tsize_t),
                 new ArrayLengthExp(0, new IdentifierExp(0, p->ident)),
                 new ExpStatement(0, loopbody));
 #endif
@@ -376,7 +375,7 @@ Expression *BinExp::arrayOp(Scope *sc)
             for (unsigned i = 0; i < arguments->dim; i++)
             {
                 targs->tdata()[i] = new Parameter(STCin,
-                        (arguments->tdata()[i])->type, NULL, NULL);
+                        ((*arguments)[i])->type, NULL, NULL);
             }
             tf->parameters = targs;
 #endif
@@ -390,6 +389,23 @@ Expression *BinExp::arrayOp(Scope *sc)
     Expression *e = new CallExp(loc, ec, arguments);
     e->type = type;
     return e;
+}
+
+Expression *BinAssignExp::arrayOp(Scope *sc)
+{
+    //printf("BinAssignExp::arrayOp() %s\n", toChars());
+
+    /* Check that the elements of e1 can be assigned to
+     */
+    Type *tn = e1->type->toBasetype()->nextOf();
+
+    if (tn && (!tn->isMutable() || !tn->isAssignable()))
+    {
+        error("slice %s is not mutable", e1->toChars());
+        return new ErrorExp();
+    }
+
+    return BinExp::arrayOp(sc);
 }
 
 /******************************************

@@ -18,9 +18,16 @@
 # <http://www.gnu.org/licenses/>.
 
 language="d"
+
 compilers="cc1d\$(exeext)"
+
 stagestuff="gdc\$(exeext) gdc-cross\$(exeext) cc1d\$(exeext)"
 
 gtfiles="\$(srcdir)/d/d-lang.h \$(srcdir)/d/d-builtins.c"
 
-target_libs="target-libphobos"
+target_libs="target-libphobos target-zlib"
+
+lang_requires=c++
+lang_requires_boot_languages=c++
+
+build_by_default="no"

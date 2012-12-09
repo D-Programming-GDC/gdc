@@ -9,18 +9,20 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.stdc.config;
 
 extern (C):
+@trusted: // Types only.
+nothrow:
 
 version( GNU )
 {
     import gcc.builtins;
-    alias __builtin_Clong c_long;
-    alias __builtin_Culong c_ulong;
+    alias __builtin_clong c_long;
+    alias __builtin_culong c_ulong;
 }
 else version( Windows )
 {

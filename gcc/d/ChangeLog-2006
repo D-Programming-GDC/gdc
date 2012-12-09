@@ -66,7 +66,7 @@
 	dmd/declaration.h, dmd/enum.c, dmd/enum.h, dmd/func.c,
 	dmd/idgen.c, dmd/scope.c, dmd/scope.h, dmd/struct.c: Implement
 	GCC attributes.
-	
+
 	* dmd/mtype.c (TypeDelegate::dotExp): Fix regression caused by
 	last fix.
 
@@ -77,7 +77,7 @@
 
 2006-12-20  David Friedman  <dvdfrdmn@users.sf.net>
 
-	* dmd/mars.h: format issues are due to newlib, not Cygwin 
+	* dmd/mars.h: format issues are due to newlib, not Cygwin
 
 	* setup-gcc.sh: Fix sed patterns and options.
 
@@ -102,7 +102,7 @@
 
 	* gcc-mars.cc, gdc-version: update
 
-	* d-decls.cc: warnings cleanup 
+	* d-decls.cc: warnings cleanup
 
 	* dmd/expression.c (realToMangleBuffer): filter out 'x'
 
@@ -121,7 +121,7 @@
 	* phobos/std/format.d,
 	* phobos/std/string.d,
 	* phobos/std/loader.d: update
-	
+
 	* phobos/std/file.d: fix merge. update.
 
 	* dmd/root.[ch] (writestring): make arg const
@@ -158,7 +158,7 @@
 	phobos/std/windows/registry.d, phobos/std/zlib.d: Merge 0.177
 
 	--------------
-	
+
 	* patch-apple-gcc-4.0.x, patch-build_gcc-4.0: Support
 	building the Apple way on PowerPC machines.
 
@@ -176,7 +176,7 @@
 2006-12-05  David Friedman  <dvdfrdmn@users.sf.net>
 
 	* dmd/mars.h: Handle msvcrt C99 printf incompatibility.
-	
+
 	* dmd/template.c, dmd/declaration.c, dmd/expression.c, dmd/func.c,
 	dmd/init.c, dmd/lexer.c, dmd/mangle.c, dmd/mtype.c,
 	dmd/optimize.c, dmd/root.c: ditto
@@ -237,7 +237,7 @@
 	phobos/std.ddoc, phobos/win32.mak: Merge 0.176
 
 	* phobos/std/bind.d: New file in 0.176
-	
+
 	* dmd/toir.[ch]: New files (from DMD 0.175)
 
 	* phobos/phobos.d: New file (from DMD 0.160)
@@ -259,7 +259,7 @@
 	dmd/optimize.c, dmd/parse.c, dmd/root.c, dmd/root.h, dmd/scope.c,
 	dmd/scope.h, dmd/statement.c, dmd/statement.h, dmd/stringtable.c,
 	dmd/todt.c, dmd/typinf.c: Merge 0.175
-	
+
 	dmd/html.c: not merged
 
 	* phobos/internal/object.d, phobos/std/demangle.d,
@@ -388,7 +388,7 @@
 
 	* phobos/std/cpuid.d: fixes for PIC
 
-	* d-asm-i386.h: Fix for referencing funcs (Bugzilla 307).	
+	* d-asm-i386.h: Fix for referencing funcs (Bugzilla 307).
 	Correct clobbers for cpuid, but left out EBX as a kludge for
 	std.cpuid.
 
@@ -438,7 +438,7 @@
 
 	* phobos/std/c/locale.d, phobos/std/cpuid.d, phobos/std/signals.d:
 	New files in 0.173
-	
+
 	----
 
 	* dmd/class.c, dmd/mars.c, dmd/opover.c, dmd/statement.c:
@@ -532,7 +532,7 @@
 
 	----
 
-	* dmd-script: Create directories for output files 
+	* dmd-script: Create directories for output files
 
 	Rest of 0.168 changes:
 
@@ -541,7 +541,7 @@
 
 	* d-codegen.cc (convertTo): handle delegate .ptr property
 
-	* lang-specs.h, dmd-script: handle .xhtml extension 
+	* lang-specs.h, dmd-script: handle .xhtml extension
 
 	Initial merge of DMD 0.168
 
@@ -630,7 +630,7 @@
 
 2006-09-06  David Friedman  <dvdfrdmn@users.sf.net>
 
-	* d-glue.cc (FuncDelaration::toObjFile):	
+	* d-glue.cc (FuncDelaration::toObjFile):
 	Assert isMember	for synchronized functions.
 	(NewExp::toElem): Correct some cases for nested classes
 
@@ -654,7 +654,7 @@
 	dmd/typinf.c: Merge DMD 0.166
 
 	* phobos/etc/c/zlib/...: Merge 0.166
-	
+
 	* phobos/internal/aApply.d, phobos/internal/gc/linux.mak,
 	phobos/linux.mak, phobos/std/cover.d, phobos/std/utf.d,
 	phobos/win32.mak: Merge 0.166
@@ -732,7 +732,7 @@
 2006-07-03  David Friedman  <dvdfrdmn@users.sf.net>
 
 	* ../../gcc/tree.h, ../../gcc/tree-dump.c: machine readable dump
-	
+
 	Merge DMD 0.162
 
 	* d-glue.cc (AssignExp::toElem): use _d_arraysetlength2p
@@ -827,11 +827,11 @@
 
 	* History: new file
 	* package/install.sif: ditto
-	* package/simple.sh: 
-	
+	* package/simple.sh:
+
 	* phobos/std/zip.d (putUshort): fix for BigEndian case
 
-	* phobos/internal/gc/gcgccextern.d: update for version(freebsd) 
+	* phobos/internal/gc/gcgccextern.d: update for version(freebsd)
 
 	* target-ver-syms.sh: Use "freebsd" for FreeBSD.
 
@@ -869,7 +869,7 @@
 
 	* d-glue.cc (NewExp::toElem): support 'exp. new ...'
 
-	* d-codegen.{h, cc}: support _d_assert_msg 
+	* d-codegen.{h, cc}: support _d_assert_msg
 
 	* dmd/attrib.c, dmd/enum.c, dmd/expression.[ch], dmd/idgen.c,
 	dmd/inifile.c, dmd/inline.c, dmd/mars.c, dmd/module.c,

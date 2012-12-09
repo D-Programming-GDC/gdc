@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, December 2006
-*/
-
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -240,7 +234,7 @@ char *TemplateInstance::mangle()
             buf.writestring(p);
         }
     }
-    buf.printf("%"PRIuSIZE"%s", strlen(id), id);
+    buf.printf("%llu%s", (ulonglong)strlen(id), id);
     id = buf.toChars();
     buf.data = NULL;
     //printf("TemplateInstance::mangle() %s = %s\n", toChars(), id);
@@ -268,7 +262,7 @@ char *Dsymbol::mangle()
             p += 2;
         buf.writestring(p);
     }
-    buf.printf("%"PRIuSIZE"%s", strlen(id), id);
+    buf.printf("%llu%s", (ulonglong)strlen(id), id);
     id = buf.toChars();
     buf.data = NULL;
     //printf("Dsymbol::mangle() %s = %s\n", toChars(), id);
