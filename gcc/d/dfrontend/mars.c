@@ -9,22 +9,15 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by Vincenzo Ampolo, September 2009
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <assert.h>
 #include <limits.h>
+#include <string.h>
 
-#ifndef IN_GCC
 #if linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4
 #include <errno.h>
-#endif
 #endif
 
 #include "rmem.h"
@@ -116,7 +109,7 @@ Global::Global()
     "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
 #endif
     ;
-    version = "v2.059";
+    version = "v2.060";
     global.structalign = STRUCTALIGN_DEFAULT;
 
     memset(&params, 0, sizeof(Param));
@@ -217,7 +210,7 @@ void errorSupplemental(Loc loc, const char *format, ...)
     va_end( ap );
 }
 
-void verror(Loc loc, const char *format, va_list ap)
+void verror(Loc loc, const char *format, va_list ap, const char *p1, const char *p2)
 {
     if (!global.gag)
     {
@@ -228,6 +221,10 @@ void verror(Loc loc, const char *format, va_list ap)
         mem.free(p);
 
         fprintf(stdmsg, "Error: ");
+        if (p1)
+            fprintf(stdmsg, "%s ", p1);
+        if (p2)
+            fprintf(stdmsg, "%s ", p2);
 #if _MSC_VER
         // MS doesn't recognize %zu format
         OutBuffer tmp;
@@ -238,6 +235,8 @@ void verror(Loc loc, const char *format, va_list ap)
 #endif
         fprintf(stdmsg, "\n");
         fflush(stdmsg);
+        if (global.errors >= 20)        // moderate blizzard of cascading messages
+            fatal();
 //halt();
     }
     else
@@ -397,8 +396,8 @@ Usage:\n\
   -version=level compile in version code >= level\n\
   -version=ident compile in version code identified by ident\n\
   -vtls          list all variables going into thread local storage\n\
-  -w             enable warnings\n\
-  -wi            enable informational warnings\n\
+  -w             warnings as errors (compilation will halt)\n\
+  -wi            warnings as messages (compilation will continue)\n\
   -X             generate JSON file\n\
   -Xffilename    write JSON file to filename\n\
 ", fpic);
@@ -581,7 +580,7 @@ int tryMain(int argc, char *argv[])
             else if (strcmp(p + 1, "gs") == 0)
                 global.params.alwaysframe = 1;
             else if (strcmp(p + 1, "gt") == 0)
-            {   error(0, "use -profile instead of -gt\n");
+            {   error(0, "use -profile instead of -gt");
                 global.params.trace = 1;
             }
             else if (strcmp(p + 1, "m32") == 0)
@@ -922,7 +921,7 @@ int tryMain(int argc, char *argv[])
 
 #if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
     if (global.params.lib && global.params.dll)
-        error(0, "cannot mix -lib and -shared\n");
+        error(0, "cannot mix -lib and -shared");
 #endif
 
     if (global.params.release)
@@ -1065,7 +1064,7 @@ int tryMain(int argc, char *argv[])
     {
         for (size_t i = 0; i < global.params.fileImppath->dim; i++)
         {
-            char *path = global.params.fileImppath->tdata()[i];
+            char *path = (*global.params.fileImppath)[i];
             Strings *a = FileName::splitPath(path);
 
             if (a)
@@ -1086,7 +1085,7 @@ int tryMain(int argc, char *argv[])
         char *ext;
         char *name;
 
-        p = files.tdata()[i];
+        p = files[i];
 
 #if _WIN32
         // Convert / to \ so linker will work
@@ -1104,47 +1103,47 @@ int tryMain(int argc, char *argv[])
              */
             if (FileName::equals(ext, global.obj_ext))
             {
-                global.params.objfiles->push(files.tdata()[i]);
-                libmodules.push(files.tdata()[i]);
+                global.params.objfiles->push(files[i]);
+                libmodules.push(files[i]);
                 continue;
             }
 
             if (FileName::equals(ext, global.lib_ext))
             {
-                global.params.libfiles->push(files.tdata()[i]);
-                libmodules.push(files.tdata()[i]);
+                global.params.libfiles->push(files[i]);
+                libmodules.push(files[i]);
                 continue;
             }
 
             if (strcmp(ext, global.ddoc_ext) == 0)
             {
-                global.params.ddocfiles->push(files.tdata()[i]);
+                global.params.ddocfiles->push(files[i]);
                 continue;
             }
 
             if (FileName::equals(ext, global.json_ext))
             {
                 global.params.doXGeneration = 1;
-                global.params.xfilename = files.tdata()[i];
+                global.params.xfilename = files[i];
                 continue;
             }
 
             if (FileName::equals(ext, global.map_ext))
             {
-                global.params.mapfile = files.tdata()[i];
+                global.params.mapfile = files[i];
                 continue;
             }
 
 #if TARGET_WINDOS
             if (FileName::equals(ext, "res"))
             {
-                global.params.resfile = files.tdata()[i];
+                global.params.resfile = files[i];
                 continue;
             }
 
             if (FileName::equals(ext, "def"))
             {
-                global.params.deffile = files.tdata()[i];
+                global.params.deffile = files[i];
                 continue;
             }
 
@@ -1159,10 +1158,7 @@ int tryMain(int argc, char *argv[])
              */
             if (FileName::equals(ext, global.mars_ext) ||
                 FileName::equals(ext, global.hdr_ext) ||
-                FileName::equals(ext, "dd") ||
-                FileName::equals(ext, "htm") ||
-                FileName::equals(ext, "html") ||
-                FileName::equals(ext, "xhtml"))
+                FileName::equals(ext, "dd"))
             {
                 ext--;                  // skip onto '.'
                 assert(*ext == '.');
@@ -1175,12 +1171,12 @@ int tryMain(int argc, char *argv[])
                     strcmp(name, ".") == 0)
                 {
                 Linvalid:
-                    error(0, "invalid file name '%s'", files.tdata()[i]);
+                    error(0, "invalid file name '%s'", files[i]);
                     fatal();
                 }
             }
             else
-            {   error(0, "unrecognized file extension %s\n", ext);
+            {   error(0, "unrecognized file extension %s", ext);
                 fatal();
             }
         }
@@ -1257,7 +1253,7 @@ int tryMain(int argc, char *argv[])
             // Remove m's object file from list of object files
             for (size_t j = 0; j < global.params.objfiles->dim; j++)
             {
-                if (m->objfile->name->str == global.params.objfiles->tdata()[j])
+                if (m->objfile->name->str == (*global.params.objfiles)[j])
                 {
                     global.params.objfiles->remove(j);
                     break;
@@ -1347,24 +1343,13 @@ int tryMain(int argc, char *argv[])
     if (global.errors)
         fatal();
 
-    if (global.params.moduleDeps != NULL)
-    {
-        assert(global.params.moduleDepsFile != NULL);
-
-        File deps(global.params.moduleDepsFile);
-        OutBuffer* ob = global.params.moduleDeps;
-        deps.setbuffer((void*)ob->data, ob->offset);
-        deps.writev();
-    }
-
-
-    // Scan for functions to inline
     if (global.params.useInline)
     {
         /* The problem with useArrayBounds and useAssert is that the
          * module being linked to may not have generated them, so if
          * we inline functions from those modules, the symbols for them will
          * not be found at link time.
+         * We must do this BEFORE generating the .deps file!
          */
         if (!global.params.useArrayBounds && !global.params.useAssert)
         {
@@ -1380,7 +1365,21 @@ int tryMain(int argc, char *argv[])
             if (global.errors)
                 fatal();
         }
+    }
 
+    if (global.params.moduleDeps != NULL)
+    {
+        assert(global.params.moduleDepsFile != NULL);
+
+        File deps(global.params.moduleDepsFile);
+        OutBuffer* ob = global.params.moduleDeps;
+        deps.setbuffer((void*)ob->data, ob->offset);
+        deps.writev();
+    }
+
+    // Scan for functions to inline
+    if (global.params.useInline)
+    {
         for (size_t i = 0; i < modules.dim; i++)
         {
             m = modules[i];
@@ -1399,7 +1398,7 @@ int tryMain(int argc, char *argv[])
     Library *library = NULL;
     if (global.params.lib)
     {
-        library = new Library();
+        library = Library::factory();
         library->setFilename(global.params.objdir, global.params.libname);
 
         // Add input object and input library files to output library
@@ -1430,7 +1429,7 @@ int tryMain(int argc, char *argv[])
         }
         if (!global.errors && modules.dim)
         {
-            obj_end(library, modules.tdata()[0]->objfile);
+            obj_end(library, modules[0]->objfile);
         }
     }
     else
@@ -1544,7 +1543,7 @@ void getenv_setargv(const char *envvar, int *pargc, char** *pargv)
     argv->setDim(argc);
 
     for (size_t i = 0; i < argc; i++)
-        argv->tdata()[i] = (*pargv)[i];
+        (*argv)[i] = (*pargv)[i];
 
     size_t j = 1;               // leave argv[0] alone
     while (1)

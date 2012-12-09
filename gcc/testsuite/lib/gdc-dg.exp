@@ -20,7 +20,7 @@ load_lib gcc-dg.exp
 
 proc gdc-dg-test { prog do_what extra_tool_flags } {
     set result \
-	[gcc-dg-test-1 gdc_target_compile $prog $do_what $extra_tool_flags]
+        [gcc-dg-test-1 gdc_target_compile $prog $do_what $extra_tool_flags]
     
     set comp_output [lindex $result 0]
     set output_file [lindex $result 1]
@@ -41,23 +41,42 @@ proc gdc-dg-runtest { testcases default-extra-flags } {
     global TORTURE_OPTIONS
 
     foreach test $testcases {
-	# If we're only testing specific files and this isn't one of
-	# them, skip it.
-	if ![runtest_file_p $runtests $test] {
-	    continue
+        # If we're only testing specific files and this isn't one of
+        # them, skip it.
+        if ![runtest_file_p $runtests $test] {
+            continue
         }
 
-    if [expr [search_for $test "dg-do run"]] {
-        set flags ""
-    } else {
-        set flags $TORTURE_OPTIONS
-    }
+        if [expr [search_for $test "dg-do run"]] {
+            set flags ""
+        } else {
+            set flags $TORTURE_OPTIONS
+        }
 
-    # Use dg-options if specified
-    #dg-options
+        # Use dg-options if specified
+        #dg-options
 
-	set nshort [file tail [file dirname $test]]/[file tail $test]
-    verbose "Testing $nshort, $TORTURE_OPTIONS" 1
-    dg-test $test $TORTURE_OPTIONS ${default-extra-flags}
+        set nshort [file tail [file dirname $test]]/[file tail $test]
+        verbose "Testing $nshort, $TORTURE_OPTIONS" 1
+        dg-test $test $TORTURE_OPTIONS ${default-extra-flags}
     }
 }
+
+#
+# gdc_load -- wrapper around default gdc_load to handle tests that
+# require program arguments passed to them.
+#
+
+if { [info procs gdc_load] != [list] \
+      && [info procs prev_gdc_load] == [list] } {
+    rename gdc_load prev_gdc_load
+
+    proc gdc_load { program args } {
+        global EXECUTE_ARGS
+        #print "Running: $program $EXECUTE_ARGS $args"
+        set result [eval [list prev_gdc_load $program] "$EXECUTE_ARGS $args"]
+
+        return $result
+    }
+}
+

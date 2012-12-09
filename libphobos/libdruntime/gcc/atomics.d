@@ -1,11 +1,23 @@
-/**
- * This module is intended to provide some basic support for lock-free
- * concurrent programming via the GCC builtins if the platform supports it.
- *
- * Copyright: (C) 2010 Iain Buclaw
- * License:   LGPLv3
- * Authors:   Iain Buclaw
- */
+/* GDC -- D front-end for GCC
+   Copyright (C) 2011, 2012 Free Software Foundation, Inc.
+
+   GCC is free software; you can redistribute it and/or modify it under
+   the terms of the GNU General Public License as published by the Free
+   Software Foundation; either version 3, or (at your option) any later
+   version.
+
+   GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or
+   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+   for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with GCC; see the file COPYING3.  If not see
+   <http://www.gnu.org/licenses/>.
+*/
+
+/* This module is intended to provide some basic support for lock-free
+   concurrent programming via the GCC builtins if the platform supports it.  */
 
 module gcc.atomics;
 
@@ -74,7 +86,14 @@ mixin(__sync_op_and!("nand", "fetch"));
  */
 bool __sync_bool_compare_and_swap(T)(shared(T)* ptr, const T oldval, const T newval)
 {
-    static if (T.sizeof == byte.sizeof)
+    static if (is(T == class))
+    {
+        version (D_LP64)
+            return __sync_bool_compare_and_swap_8(cast(ulong*) ptr, cast(ulong)(cast(void*) oldval), cast(ulong)(cast(void*) newval));
+        else
+            return __sync_bool_compare_and_swap_4(cast(uint*) ptr, cast(uint)(cast(void*) oldval), cast(uint)(cast(void*) newval));
+    }
+    else static if (T.sizeof == byte.sizeof)
         return __sync_bool_compare_and_swap_1(cast(void*) ptr, oldval, newval);
     else static if (T.sizeof == short.sizeof)
         return __sync_bool_compare_and_swap_2(cast(void*) ptr, oldval, newval);
@@ -88,6 +107,13 @@ bool __sync_bool_compare_and_swap(T)(shared(T)* ptr, const T oldval, const T new
 
 T __sync_val_compare_and_swap(T)(shared(T)* ptr, const T oldval, const T newval)
 {
+    static if (is(T == class))
+    {
+        version (D_LP64)
+            return cast(T)cast(void*)__sync_val_compare_and_swap_8(cast(ulong*) ptr, cast(ulong)(cast(void*) oldval), cast(ulong)(cast(void*) newval));
+        else
+            return cast(T)cast(void*)__sync_val_compare_and_swap_4(cast(uint*) ptr, cast(uint)(cast(void*) oldval), cast(uint)(cast(void*) newval));
+    }
     static if (T.sizeof == byte.sizeof)
         return __sync_val_compare_and_swap_1(cast(void*) ptr, oldval, newval);
     else static if (T.sizeof == short.sizeof)

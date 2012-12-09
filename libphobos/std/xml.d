@@ -1,6 +1,10 @@
 // Written in the D programming language.
 
 /**
+$(RED Warning: This module is considered out-dated and not up to Phobos'
+      current standards. It will remain until we have a suitable replacement,
+      but be aware that it will not remain long term.)
+
 Classes and functions for creating and parsing XML
 
 The basic architecture of this module is that there are standalone functions,
@@ -17,6 +21,7 @@ Example: This example creates a DOM (Document Object Model) tree
 import std.xml;
 import std.stdio;
 import std.string;
+import std.file;
 
 // books.xml is used in various samples throughout the Microsoft XML Core
 // Services (MSXML) SDK.
@@ -34,7 +39,7 @@ void main()
     auto doc = new Document(s);
 
     // Plain-print it
-    writefln(doc);
+    writeln(doc);
 }
 ------------------------------------------------------------------------------
 
@@ -123,6 +128,7 @@ Distributed under the Boost Software License, Version 1.0.
 */
 module std.xml;
 
+import std.algorithm : count;
 import std.array;
 import std.ascii;
 import std.string;
@@ -592,7 +598,7 @@ class Document : Element
             const doc = toType!(const Document)(o);
             return
                 (prolog != doc.prolog            ) ? false : (
-                (cast()super  != cast()cast(const Element)doc) ? false : (
+                (super  != cast(const Element)doc) ? false : (
                 (epilog != doc.epilog            ) ? false : (
             true )));
         }
@@ -615,7 +621,7 @@ class Document : Element
             return
                 ((prolog != doc.prolog            )
                     ? ( prolog < doc.prolog             ? -1 : 1 ) :
-                ((cast()super  != cast()cast(const Element)doc)
+                ((super  != cast(const Element)doc)
                     ? ( cast()super  < cast()cast(const Element)doc ? -1 : 1 ) :
                 ((epilog != doc.epilog            )
                     ? ( epilog < doc.epilog             ? -1 : 1 ) :
@@ -850,7 +856,7 @@ class Element : Item
             if (i == items.length && i == element.items.length) return 0;
             if (i == items.length) return -1;
             if (i == element.items.length) return 1;
-            if (items[i] != cast()element.items[i])
+            if (items[i] != element.items[i])
                 return items[i].opCmp(cast()element.items[i]);
         }
     }
@@ -861,7 +867,7 @@ class Element : Item
      * You should rarely need to call this function. It exists so that Elements
      * can be used as associative array keys.
      */
-    override hash_t toHash()
+    override const hash_t toHash()
     {
         hash_t hash = tag.toHash();
         foreach(item;items) hash += item.toHash();
@@ -921,7 +927,7 @@ class Element : Item
                 string[] b = item.pretty(indent);
                 foreach(s;b)
                 {
-                    a ~= rightJustify(s,s.length + indent);
+                    a ~= rightJustify(s,count(s) + indent);
                 }
             }
             a ~= tag.toEndString();
@@ -1260,7 +1266,7 @@ class Comment : Item
      * You should rarely need to call this function. It exists so that Comments
      * can be used as associative array keys.
      */
-    override hash_t toHash() { return hash(content); }
+    override const hash_t toHash() { return hash(content); }
 
     /**
      * Returns a string representation of this comment
@@ -1339,7 +1345,7 @@ class CData : Item
      * You should rarely need to call this function. It exists so that CDatas
      * can be used as associative array keys.
      */
-    override hash_t toHash() { return hash(content); }
+    override const hash_t toHash() { return hash(content); }
 
     /**
      * Returns a string representation of this CData section
@@ -1416,7 +1422,7 @@ class Text : Item
      * You should rarely need to call this function. It exists so that Texts
      * can be used as associative array keys.
      */
-    override hash_t toHash() { return hash(content); }
+    override const hash_t toHash() { return hash(content); }
 
     /**
      * Returns a string representation of this Text section
@@ -1498,7 +1504,7 @@ class XMLInstruction : Item
      * You should rarely need to call this function. It exists so that
      * XmlInstructions can be used as associative array keys.
      */
-    override hash_t toHash() { return hash(content); }
+    override const hash_t toHash() { return hash(content); }
 
     /**
      * Returns a string representation of this XmlInstruction
@@ -1577,7 +1583,7 @@ class ProcessingInstruction : Item
      * You should rarely need to call this function. It exists so that
      * ProcessingInstructions can be used as associative array keys.
      */
-    override hash_t toHash() { return hash(content); }
+    override const hash_t toHash() { return hash(content); }
 
     /**
      * Returns a string representation of this ProcessingInstruction
@@ -1599,7 +1605,7 @@ abstract class Item
     abstract override int opCmp(Object o);
 
     /// Returns the hash of this item
-    abstract override hash_t toHash();
+    abstract override const hash_t toHash();
 
     /// Returns a string representation of this item
     abstract override const string toString();
@@ -2064,7 +2070,7 @@ class ElementParser
     /**
      * Returns that part of the element which has already been parsed
      */
-    const override string toString()
+    override const string toString()
     {
         assert(elementStart.length >= s.length);
         return elementStart[0 .. elementStart.length - s.length];

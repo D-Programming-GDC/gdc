@@ -13,6 +13,8 @@
  * additional features specific to in-process messaging.
  *
  * Synposis:
+ *$(D_RUN_CODE
+ *$(ARGS
  * ---
  * import std.stdio;
  * import std.concurrency;
@@ -43,6 +45,7 @@
  *     writeln("Successfully printed number.");
  * }
  * ---
+ *), $(ARGS), $(ARGS), $(ARGS))
  *
  * Copyright: Copyright Sean Kelly 2009 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
@@ -59,17 +62,13 @@ module std.concurrency;
 
 public
 {
-    import core.atomic;
-    import core.sync.barrier;
-    import core.sync.condition;
-    import core.sync.mutex;
-    import core.sync.rwmutex;
-    import core.sync.semaphore;
     import std.variant;
 }
 private
 {
     import core.thread;
+    import core.sync.mutex;
+    import core.sync.condition;
     import std.algorithm;
     import std.exception;
     import std.range;
@@ -371,8 +370,10 @@ private:
  *  threads.
  *
  * Example:
+ *$(D_RUN_CODE
+ *$(ARGS
  * ---
- * import std.stdio;
+ * import std.stdio, std.concurrency;
  *
  * void f1(string str)
  * {
@@ -395,6 +396,7 @@ private:
  *     auto tid2 = spawn(&f2, str.dup);
  * }
  * ---
+ *), $(ARGS), $(ARGS), $(ARGS))
  */
 Tid spawn(T...)( void function(T) fn, T args )
 {
@@ -513,9 +515,12 @@ private void _send(T...)( MsgType type, Tid tid, T vals )
  * sent.
  *
  * Example:
+ *$(D_RUN_CODE
+ *$(ARGS
  * ---
  * import std.stdio;
  * import std.variant;
+ * import std.concurrency;
  *
  * void spawnedFunction()
  * {
@@ -525,7 +530,14 @@ private void _send(T...)( MsgType type, Tid tid, T vals )
  *         (Variant v) { writeln("Received some other type."); }
  *     );
  * }
+ *
+ * void main()
+ * {
+ *      auto tid = spawn(&spawnedFunction);
+ *      send(tid, 42);
+ * }
  * ---
+ *), $(ARGS), $(ARGS), $(ARGS))
  */
 void receive(T...)( T ops )
 {
@@ -586,6 +598,8 @@ private template receiveOnlyRet(T...)
  *          the message will be packed into a $(XREF typecons, Tuple).
  *
  * Example:
+ *$(D_RUN_CODE
+ *$(ARGS
  * ---
  * import std.concurrency;
 
@@ -602,6 +616,7 @@ private template receiveOnlyRet(T...)
  *     send(tid, 42, "42");
  * }
  * ---
+ *), $(ARGS), $(ARGS), $(ARGS))
  */
 receiveOnlyRet!(T) receiveOnly(T...)()
 {
@@ -632,7 +647,7 @@ receiveOnlyRet!(T) receiveOnly(T...)()
 
 
 /**
- * $(RED Deprecated. It will be removed in August 2012. Please use the version
+ * $(RED Deprecated. It will be removed in September 2012. Please use the version
  *       which takes a $(CXREF time, Duration) instead.)
  */
 deprecated bool receiveTimeout(T...)( long ms, T ops )

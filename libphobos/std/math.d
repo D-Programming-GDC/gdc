@@ -59,7 +59,7 @@
  */
 module std.math;
 
-import core.stdc.math;
+static import core.stdc.math;
 import std.range, std.traits;
 
 version(unittest) {
@@ -928,7 +928,7 @@ creal sqrt(creal z) @safe pure nothrow
  *    $(TR $(TD $(NAN))        $(TD $(NAN))    )
  *  )
  */
-real exp(real x) @safe pure nothrow
+real exp(real x) @trusted pure nothrow
 {
     version(D_InlineAsm_X86)
     {
@@ -1901,18 +1901,6 @@ unittest
         }
 }
 
-deprecated
-{
-// Deprecated: use std.mathspecial.erf instead
-real erf(real x)  @trusted nothrow   { return core.stdc.math.erfl(x); }
-// Deprecated: use std.mathspecial.erfc instead
-real erfc(real x)  @trusted nothrow  { return core.stdc.math.erfcl(x); }
-// Deprecated: use std.mathspecial.logGamma instead
-real lgamma(real x) @trusted nothrow { return core.stdc.math.lgammal(x); }
-// Deprecated: use std.mathspecial.gamma instead
-real tgamma(real x) @trusted nothrow { return core.stdc.math.tgammal(x); }
-}
-
 /**************************************
  * Returns the value of x rounded upward to the next integer
  * (toward positive infinity).
@@ -2151,6 +2139,14 @@ private:
             DIVBYZERO_MASK = 0x020,
             INVALID_MASK   = 0xF80 // PowerPC has five types of invalid exceptions.
         }
+    } else version (ARM) {
+        enum : int {
+            INEXACT_MASK   = 0x00001000,
+            UNDERFLOW_MASK = 0x00000800,
+            OVERFLOW_MASK  = 0x00000400,
+            DIVBYZERO_MASK = 0x00000200,
+            INVALID_MASK   = 0x00000100
+        }
     } else version(SPARC) { // SPARC FSR is a 32bit register
              //(64 bits for Sparc 7 & 8, but high 32 bits are uninteresting).
         enum : int {
@@ -2159,14 +2155,6 @@ private:
             OVERFLOW_MASK  = 0x100,
             DIVBYZERO_MASK = 0x040,
             INVALID_MASK   = 0x200
-        }
-    } else version (ARM) {
-        enum : int {
-            INEXACT_MASK   = 0x00001000,
-            UNDERFLOW_MASK = 0x00000800,
-            OVERFLOW_MASK  = 0x00000400,
-            DIVBYZERO_MASK = 0x00000200,
-            INVALID_MASK   = 0x00000100
         }
     } else
         static assert(0, "Not implemented");
@@ -2196,6 +2184,8 @@ private:
                return retval;
             */
            assert(0, "Not yet supported");
+        } else version (ARM) {
+            assert(false, "Not yet supported.");
         } else
             assert(0, "Not yet supported");
     }
@@ -2216,6 +2206,7 @@ private:
         }
     }
 public:
+     version (X86_Any) { // TODO: Lift this version condition when we support !x86.
      /// The result cannot be represented exactly, so rounding occured.
      /// (example: x = sin(0.1); )
      @property bool inexact() { return (flags & INEXACT_MASK) != 0; }
@@ -2227,6 +2218,7 @@ public:
      @property bool divByZero() { return (flags & DIVBYZERO_MASK) != 0; }
      /// A machine NaN was generated. (example: x = real.infinity * 0.0; )
      @property bool invalid() { return (flags & INVALID_MASK) != 0; }
+     }
 }
 
 
@@ -3582,18 +3574,27 @@ int feqrel(X)(X x, X y) @trusted pure nothrow
 {
     /* Public Domain. Author: Don Clugston, 18 Aug 2005.
      */
-    static if (X.mant_dig == 106) { // doubledouble.
-        if (cast(double*)(&x)[MANTISSA_MSB] == cast(double*)(&y)[MANTISSA_MSB]) {
+    static if (X.mant_dig == 106)   // doubledouble
+    {
+        if (cast(double*)(&x)[MANTISSA_MSB] == cast(double*)(&y)[MANTISSA_MSB])
+        {
             return double.mant_dig
             + feqrel(cast(double*)(&x)[MANTISSA_LSB],
                     cast(double*)(&y)[MANTISSA_LSB]);
-        } else {
+        }
+        else
+        {
             return feqrel(cast(double*)(&x)[MANTISSA_MSB],
                     cast(double*)(&y)[MANTISSA_MSB]);
         }
-    } else static if (X.mant_dig==64 || X.mant_dig==113 || X.mant_dig==53) {
+    }
+    else
+    {
+        static assert( X.mant_dig == 64 || X.mant_dig == 113
+            || X.mant_dig == double.mant_dig || X.mant_dig == float.mant_dig);
 
-        if (x == y) return X.mant_dig; // ensure diff!=0, cope with INF.
+        if (x == y)
+            return X.mant_dig; // ensure diff!=0, cope with INF.
 
         X diff = fabs(x - y);
 
@@ -3613,16 +3614,25 @@ int feqrel(X)(X x, X y) @trusted pure nothrow
         // always 1 lower than we want, except that if bitsdiff==0,
         // they could have 0 or 1 bits in common.
 
-        static if (X.mant_dig==64 || X.mant_dig==113) { // real80 or quadruple
+        static if (X.mant_dig == 64 || X.mant_dig == 113)
+        {   // real80 or quadruple
             int bitsdiff = ( ((pa[F.EXPPOS_SHORT] & F.EXPMASK)
                               + (pb[F.EXPPOS_SHORT] & F.EXPMASK) - 1) >> 1)
                               - pd[F.EXPPOS_SHORT];
-        } else static if (X.mant_dig==53) { // double
+        }
+        else static if (X.mant_dig == double.mant_dig)
+        {   // double
             int bitsdiff = (( ((pa[F.EXPPOS_SHORT]&0x7FF0)
                                + (pb[F.EXPPOS_SHORT]&0x7FF0)-0x10)>>1)
                                - (pd[F.EXPPOS_SHORT]&0x7FF0))>>4;
         }
-        if (pd[F.EXPPOS_SHORT] == 0)
+        else static if (X.mant_dig == float.mant_dig)
+        {   // float
+            int bitsdiff = (( ((pa[F.EXPPOS_SHORT]&0x7F80)
+                               + (pb[F.EXPPOS_SHORT]&0x7F80)-0x80)>>1)
+                               - (pd[F.EXPPOS_SHORT]&0x7F80))>>7;
+        }
+        if ( (pd[F.EXPPOS_SHORT] & F.EXPMASK) == 0)
         {   // Difference is subnormal
             // For subnormals, we need to add the number of zeros that
             // lie at the start of diff's significand.
@@ -3635,11 +3645,15 @@ int feqrel(X)(X x, X y) @trusted pure nothrow
             return bitsdiff + 1; // add the 1 we subtracted before
 
         // Avoid out-by-1 errors when factor is almost 2.
-        static if (X.mant_dig==64 || X.mant_dig==113) { // real80 or quadruple
+        static if (X.mant_dig == 64 || X.mant_dig == 113)
+        {   // real80 or quadruple
             return (bitsdiff == 0) ? (pa[F.EXPPOS_SHORT] == pb[F.EXPPOS_SHORT]) : 0;
-        } else static if (X.mant_dig==53) { // double
+        }
+        else static if (X.mant_dig == double.mant_dig || X.mant_dig == float.mant_dig)
+        {
             if (bitsdiff == 0
-                && !((pa[F.EXPPOS_SHORT] ^ pb[F.EXPPOS_SHORT])& F.EXPMASK)) {
+                && !((pa[F.EXPPOS_SHORT] ^ pb[F.EXPPOS_SHORT]) & F.EXPMASK))
+            {
                 return 1;
             } else return 0;
         }
@@ -3648,53 +3662,55 @@ int feqrel(X)(X x, X y) @trusted pure nothrow
 
 unittest
 {
-   // Exact equality
-   assert(feqrel(real.max,real.max)==real.mant_dig);
-   assert(feqrel(0.0L,0.0L)==real.mant_dig);
-   assert(feqrel(7.1824L,7.1824L)==real.mant_dig);
-   assert(feqrel(real.infinity,real.infinity)==real.mant_dig);
+    void testFeqrel(F)()
+    {
+       // Exact equality
+       assert(feqrel(F.max, F.max) == F.mant_dig);
+       assert(feqrel!(F)(0.0, 0.0) == F.mant_dig);
+       assert(feqrel(F.infinity, F.infinity) == F.mant_dig);
 
-   // a few bits away from exact equality
-   real w=1;
-   for (int i=1; i<real.mant_dig-1; ++i) {
-      assert(feqrel(1+w*real.epsilon,1.0L)==real.mant_dig-i);
-      assert(feqrel(1-w*real.epsilon,1.0L)==real.mant_dig-i);
-      assert(feqrel(1.0L,1+(w-1)*real.epsilon)==real.mant_dig-i+1);
-      w*=2;
-   }
-   assert(feqrel(1.5+real.epsilon,1.5L)==real.mant_dig-1);
-   assert(feqrel(1.5-real.epsilon,1.5L)==real.mant_dig-1);
-   assert(feqrel(1.5-real.epsilon,1.5+real.epsilon)==real.mant_dig-2);
+       // a few bits away from exact equality
+       F w=1;
+       for (int i = 1; i < F.mant_dig - 1; ++i)
+       {
+          assert(feqrel!(F)(1.0 + w * F.epsilon, 1.0) == F.mant_dig-i);
+          assert(feqrel!(F)(1.0 - w * F.epsilon, 1.0) == F.mant_dig-i);
+          assert(feqrel!(F)(1.0, 1 + (w-1) * F.epsilon) == F.mant_dig - i + 1);
+          w*=2;
+       }
 
-   version(X86_64)
-   {
-       pragma(msg, "test disabled, see bug 5628");
-   }
-   else
-   {
-       assert(feqrel(real.min_normal/8,real.min_normal/17)==3);
-   }
+       assert(feqrel!(F)(1.5+F.epsilon, 1.5) == F.mant_dig-1);
+       assert(feqrel!(F)(1.5-F.epsilon, 1.5) == F.mant_dig-1);
+       assert(feqrel!(F)(1.5-F.epsilon, 1.5+F.epsilon) == F.mant_dig-2);
 
-   // Numbers that are close
-   assert(feqrel(0x1.Bp+84, 0x1.B8p+84)==5);
-   assert(feqrel(0x1.8p+10, 0x1.Cp+10)==2);
-   assert(feqrel(1.5*(1-real.epsilon), 1.0L)==2);
-   assert(feqrel(1.5, 1.0)==1);
-   assert(feqrel(2*(1-real.epsilon), 1.0L)==1);
 
-   // Factors of 2
-   assert(feqrel(real.max,real.infinity)==0);
-   assert(feqrel(2*(1-real.epsilon), 1.0L)==1);
-   assert(feqrel(1.0, 2.0)==0);
-   assert(feqrel(4.0, 1.0)==0);
+       // Numbers that are close
+       assert(feqrel!(F)(0x1.Bp+84, 0x1.B8p+84) == 5);
+       assert(feqrel!(F)(0x1.8p+10, 0x1.Cp+10) == 2);
+       assert(feqrel!(F)(1.5 * (1 - F.epsilon), 1.0L) == 2);
+       assert(feqrel!(F)(1.5, 1.0) == 1);
+       assert(feqrel!(F)(2 * (1 - F.epsilon), 1.0L) == 1);
 
-   // Extreme inequality
-   assert(feqrel(real.nan,real.nan)==0);
-   assert(feqrel(0.0L,-real.nan)==0);
-   assert(feqrel(real.nan,real.infinity)==0);
-   assert(feqrel(real.infinity,-real.infinity)==0);
-   assert(feqrel(-real.max,real.infinity)==0);
-   assert(feqrel(real.max,-real.max)==0);
+       // Factors of 2
+       assert(feqrel(F.max, F.infinity) == 0);
+       assert(feqrel!(F)(2 * (1 - F.epsilon), 1.0L) == 1);
+       assert(feqrel!(F)(1.0, 2.0) == 0);
+       assert(feqrel!(F)(4.0, 1.0) == 0);
+
+       // Extreme inequality
+       assert(feqrel(F.nan, F.nan) == 0);
+       assert(feqrel!(F)(0.0L, -F.nan) == 0);
+       assert(feqrel(F.nan, F.infinity) == 0);
+       assert(feqrel(F.infinity, -F.infinity) == 0);
+       assert(feqrel(F.max, -F.max) == 0);
+    }
+
+    assert(feqrel(7.1824L, 7.1824L) == real.mant_dig);
+    assert(feqrel(real.min_normal / 8, real.min_normal / 17) == 3);
+
+    testFeqrel!(real)();
+    testFeqrel!(double)();
+    testFeqrel!(float)();
 }
 
 package: // Not public yet

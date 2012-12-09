@@ -432,18 +432,10 @@ public:
     {
         version(Windows)
         {
-            //FILETIME represents hnsecs from midnight, January 1st, 1601.
-            enum hnsecsFrom1601 = 504_911_232_000_000_000L;
-
             FILETIME fileTime;
-
             GetSystemTimeAsFileTime(&fileTime);
 
-            ulong tempHNSecs = fileTime.dwHighDateTime;
-            tempHNSecs <<= 32;
-            tempHNSecs |= fileTime.dwLowDateTime;
-
-            return cast(long)tempHNSecs + hnsecsFrom1601;
+            return FILETIMEToStdTime(&fileTime);
         }
         else version(Posix)
         {
@@ -883,55 +875,42 @@ public:
         _assertPred!("opCmp", "==")(SysTime(Date.init, UTC()), SysTime(0));
         _assertPred!("opCmp", "==")(SysTime(0), SysTime(0));
 
-        static void testEqual(DateTime dt,
+        static void testEqual(SysTime st,
                               immutable TimeZone tz1,
                               immutable TimeZone tz2)
         {
-            auto st1 = SysTime(dt);
+            auto st1 = st;
             st1.timezone = tz1;
 
-            auto st2 = SysTime(dt);
+            auto st2 = st;
             st2.timezone = tz2;
 
             _assertPred!("opCmp", "==")(st1, st2);
         }
 
-        foreach(dt; chain(testDateTimesBC, testDateTimesAD))
-        {
-            foreach(tz1; testTZs)
-            {
-                foreach(tz2; testTZs)
-                    testEqual(dt, tz1, tz2);
-            }
-        }
+        auto sts = array(map!SysTime(chain(testDateTimesBC, testDateTimesAD)));
 
-        static void testCmp(DateTime dt1,
+        foreach(st; sts)
+            foreach(tz1; testTZs)
+                foreach(tz2; testTZs)
+                    testEqual(st, tz1, tz2);
+
+        static void testCmp(SysTime st1,
                             immutable TimeZone tz1,
-                            DateTime dt2,
+                            SysTime st2,
                             immutable TimeZone tz2)
         {
-            auto st1 = SysTime(dt1);
             st1.timezone = tz1;
-
-            auto st2 = SysTime(dt2);
             st2.timezone = tz2;
-
             _assertPred!("opCmp", "<")(st1, st2);
             _assertPred!("opCmp", ">")(st2, st1);
         }
 
-        auto dts = testDateTimesBC ~ testDateTimesAD;
-        foreach(tz1; testTZs)
-        {
-            foreach(tz2; testTZs)
-            {
-                for(size_t i = 0; i < dts.length; ++i)
-                {
-                    for(size_t j = i + 1; j < dts.length; ++j)
-                        testCmp(dts[i], tz1, dts[j], tz2);
-                }
-            }
-        }
+        foreach(si, st1; sts)
+            foreach(st2; sts[si+1 .. $])
+                foreach(tz1; testTZs)
+                    foreach(tz2; testTZs)
+                        testCmp(st1, tz1, st2, tz2);
 
         auto st = SysTime(DateTime(1999, 7, 6, 12, 33, 30));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 33, 30));
@@ -7414,7 +7393,7 @@ assert(SysTime(DateTime(2000, 6, 4, 12, 22, 9)).daysInMonth == 30);
     }
 
     /++
-        $(RED Deprecated. It will be removed in August 2012.
+        $(RED Deprecated. It will be removed in September 2012.
               Please use daysInMonth instead.)
       +/
     deprecated @property ubyte endOfMonthDay() const nothrow
@@ -7961,15 +7940,6 @@ assert(SysTime(DateTime(-4, 1, 5, 0, 0, 2),
         }
         catch(Exception e)
             assert(0, "format() threw.");
-    }
-
-    /++
-        $(RED Deprecated. It will be removed in May 2012.
-              Please use toISOExtString instead.)
-      +/
-    deprecated string toISOExtendedString() const nothrow
-    {
-        return toISOExtString();
     }
 
     unittest
@@ -8519,16 +8489,6 @@ assert(SysTime.fromISOExtString("2010-07-04T07:06:12+8:00") ==
         }
         catch(DateTimeException dte)
             throw new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString));
-    }
-
-    /++
-        $(RED Deprecated. It will be removed in May 2012.
-              Please use fromISOExtString instead.)
-      +/
-    deprecated static SysTime fromISOExtendedString(S)(in S isoExtString, immutable TimeZone tz = null)
-        if(isSomeString!(S))
-    {
-        return fromISOExtString!string(isoExtString, tz);
     }
 
     unittest
@@ -12446,7 +12406,7 @@ assert(Date(2000, 6, 4).daysInMonth == 30);
     }
 
     /++
-        $(RED Deprecated. It will be removed in August 2012.
+        $(RED Deprecated. It will be removed in September 2012.
               Please use daysInMonth instead.)
       +/
     deprecated @property ubyte endOfMonthDay() const pure nothrow
@@ -12688,15 +12648,6 @@ assert(Date(-4, 1, 5).toISOExtString() == "-0004-01-05");
         }
         catch(Exception e)
             assert(0, "format() threw.");
-    }
-
-    /++
-        $(RED Deprecated. It will be removed in May 2012.
-              Please use toISOExtString instead.)
-      +/
-    deprecated string toISOExtendedString() const nothrow
-    {
-        return toISOExtString();
     }
 
     unittest
@@ -13008,16 +12959,6 @@ assert(Date.fromISOExtString(" 2010-07-04 ") == Date(2010, 7, 4));
                     new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
 
         return Date(to!short(year), to!ubyte(month), to!ubyte(day));
-    }
-
-    /++
-        $(RED Deprecated. It will be removed in May 2012.
-              Please use fromISOExtString instead.)
-      +/
-    deprecated static Date fromISOExtendedString(S)(in S isoExtString)
-        if(isSomeString!(S))
-    {
-        return fromISOExtString!string(isoExtString);
     }
 
     unittest
@@ -14413,15 +14354,6 @@ assert(TimeOfDay(12, 30, 33).toISOExtString() == "123033");
             assert(0, "format() threw.");
     }
 
-    /++
-        $(RED Deprecated. It will be removed in May 2012.
-              Please use toISOExtString instead.)
-      +/
-    deprecated string toISOExtendedString() const nothrow
-    {
-        return toISOExtString();
-    }
-
     unittest
     {
         version(testStdDateTime)
@@ -14628,16 +14560,6 @@ assert(TimeOfDay.fromISOExtString(" 12:30:33 ") == TimeOfDay(12, 30, 33));
                 new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
 
         return TimeOfDay(to!int(hours), to!int(minutes), to!int(seconds));
-    }
-
-    /++
-        $(RED Deprecated. It will be removed in May 2012.
-              Please use fromISOExtString instead.)
-      +/
-    deprecated static TimeOfDay fromISOExtendedString(S)(in S isoExtString)
-        if(isSomeString!(S))
-    {
-        return fromISOExtString!string(isoExtString);
     }
 
     unittest
@@ -17377,7 +17299,7 @@ assert(DateTime(Date(2000, 6, 4), TimeOfDay(12, 22, 9)).daysInMonth == 30);
     }
 
     /++
-        $(RED Deprecated. It will be removed in August 2012.
+        $(RED Deprecated. It will be removed in September 2012.
               Please use daysInMonth instead.)
       +/
     deprecated @property ubyte endOfMonthDay() const pure nothrow
@@ -17598,15 +17520,6 @@ assert(DateTime(Date(-4, 1, 5), TimeOfDay(0, 0, 2)).toISOExtString() ==
             return format("%sT%s", _date.toISOExtString(), _tod.toISOExtString());
         catch(Exception e)
             assert(0, "format() threw.");
-    }
-
-    /++
-        $(RED Deprecated. It will be removed in May 2012.
-              Please use toISOExtString instead.)
-      +/
-    deprecated string toISOExtendedString() const nothrow
-    {
-        return toISOExtString();
     }
 
     unittest
@@ -17873,16 +17786,6 @@ assert(DateTime.fromISOExtString(" 2010-07-04T07:06:12 ") ==
         immutable tod = TimeOfDay.fromISOExtString(dstr[t+1 .. $]);
 
         return DateTime(date, tod);
-    }
-
-    /++
-        $(RED Deprecated. It will be removed in May 2012.
-              Please use fromISOExtString instead.)
-      +/
-    deprecated static DateTime fromISOExtendedString(S)(in S isoExtString)
-        if(isSomeString!(S))
-    {
-        return fromISOExtString!string(isoExtString);
     }
 
     unittest
@@ -18365,7 +18268,7 @@ Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1));
 
         Examples:
 --------------------
-assert(Interval!Date(Date(1996, 1, 2), Dur.years(3)) ==
+assert(Interval!Date(Date(1996, 1, 2), dur!"years"(3)) ==
        Interval!Date(Date(1996, 1, 2), Date(1999, 1, 2)));
 --------------------
       +/
@@ -27733,9 +27636,9 @@ auto tz = TimeZone.getTimeZone("America/Los_Angeles");
 
                     //Whenever a leap second is added/removed,
                     //this will have to be adjusted.
-                    enum leapDiff = convert!("seconds", "hnsecs")(24);
-                    _assertPred!"=="(leapSTD.adjTime - leapDiff, std.adjTime);
-                    _assertPred!"=="(leapDST.adjTime - leapDiff, dst.adjTime);
+                    //enum leapDiff = convert!("seconds", "hnsecs")(25);
+                    //_assertPred!"=="(leapSTD.adjTime - leapDiff, std.adjTime);
+                    //_assertPred!"=="(leapDST.adjTime - leapDiff, dst.adjTime);
                 }
             }
 
@@ -29286,7 +29189,7 @@ assert(tz.dstName == "PDT");
         version(Posix)
             auto file = tzDatabaseDir ~ name;
         else version(Windows)
-            auto file = tzDatabaseDir ~ replace(strip(name), "/", sep);
+            auto file = tzDatabaseDir ~ replace(strip(name), "/", dirSeparator);
 
         enforce(file.exists, new DateTimeException(format("File %s does not exist.", file)));
         enforce(file.isFile, new DateTimeException(format("%s is not a file.", file)));
@@ -29595,10 +29498,10 @@ assert(tz.dstName == "PDT");
         version(Posix)
             subName = strip(subName);
         else version(Windows)
-            subName = replace(strip(subName), "/", sep);
+            subName = replace(strip(subName), "/", dirSeparator);
 
-        if(!tzDatabaseDir.endsWith(sep))
-            tzDatabaseDir ~= sep;
+        if(!tzDatabaseDir.endsWith(dirSeparator))
+            tzDatabaseDir ~= dirSeparator;
 
         enforce(tzDatabaseDir.exists, new DateTimeException(format("Directory %s does not exist.", tzDatabaseDir)));
         enforce(tzDatabaseDir.isDir, new DateTimeException(format("%s is not a directory.", tzDatabaseDir)));
@@ -30980,12 +30883,11 @@ int a;
 void f0() {}
 void f1() {auto b = a;}
 void f2() {auto b = to!(string)(a);}
-auto r = benchmark!(f0, f1, f2)(10_000_000);
+auto r = benchmark!(f0, f1, f2)(10_000);
 writefln("Milliseconds to call fun[0] n times: %s", r[0].to!("msecs", int));
 --------------------
   +/
-@safe TickDuration[lengthof!(fun)()] benchmark(fun...)(uint n)
-    if(areAllSafe!fun)
+TickDuration[lengthof!(fun)()] benchmark(fun...)(uint n)
 {
     TickDuration[lengthof!(fun)()] result;
     StopWatch sw;
@@ -31002,26 +30904,6 @@ writefln("Milliseconds to call fun[0] n times: %s", r[0].to!("msecs", int));
     return result;
 }
 
-/++ Ditto +/
-TickDuration[lengthof!(fun)()] benchmark(fun...)(uint times)
-    if(!areAllSafe!fun)
-{
-    TickDuration[lengthof!(fun)()] result;
-    StopWatch sw;
-    sw.start();
-
-    foreach(i, unused; fun)
-    {
-        sw.reset();
-        foreach(j; 0 .. times)
-            fun[i]();
-
-        result[i] = sw.peek();
-    }
-
-    return result;
-}
-
 //Verify Examples.
 version(testStdDateTime) unittest
 {
@@ -31031,7 +30913,7 @@ version(testStdDateTime) unittest
     void f0() {}
     void f1() {auto b = a;}
     void f2() {auto b = to!(string)(a);}
-    auto r = benchmark!(f0, f1, f2)(10_000_000);
+    auto r = benchmark!(f0, f1, f2)(10_000);
     writefln("Milliseconds to call fun[0] n times: %s", r[0].to!("msecs", int)());
 }
 
@@ -31116,26 +30998,13 @@ void main() {
 }
 --------------------
   +/
-@safe ComparingBenchmarkResult comparingBenchmark(alias baseFunc,
-                                                  alias targetFunc,
-                                                  int times = 0xfff)()
-    if(isSafe!baseFunc && isSafe!targetFunc)
-{
-    auto t = benchmark!(baseFunc, targetFunc)(times);
-    return ComparingBenchmarkResult(t[0], t[1]);
-}
-
-
-/++ Ditto +/
 ComparingBenchmarkResult comparingBenchmark(alias baseFunc,
                                             alias targetFunc,
                                             int times = 0xfff)()
-    if(!isSafe!baseFunc || !isSafe!targetFunc)
 {
     auto t = benchmark!(baseFunc, targetFunc)(times);
     return ComparingBenchmarkResult(t[0], t[1]);
 }
-
 
 version(testStdDateTime) @safe unittest
 {
@@ -31147,7 +31016,6 @@ version(testStdDateTime) @safe unittest
     //static auto b2 = comparingBenchmark!(f1x, f2x, 1); // NG
 }
 
-
 version(testStdDateTime) unittest
 {
     void f1x() {}
@@ -31156,6 +31024,20 @@ version(testStdDateTime) unittest
     @safe void f2o() {}
     auto b1 = comparingBenchmark!(f1o, f2o, 1)(); // OK
     auto b2 = comparingBenchmark!(f1x, f2x, 1)(); // OK
+}
+
+//Bug# 8450
+version(testStdDateTime) unittest
+{
+    @safe    void safeFunc() {}
+    @trusted void trustFunc() {}
+    @system  void sysFunc() {}
+    auto safeResult  = comparingBenchmark!((){safeFunc();}, (){safeFunc();})();
+    auto trustResult = comparingBenchmark!((){trustFunc();}, (){trustFunc();})();
+    auto sysResult   = comparingBenchmark!((){sysFunc();}, (){sysFunc();})();
+    auto mixedResult1  = comparingBenchmark!((){safeFunc();}, (){trustFunc();})();
+    auto mixedResult2  = comparingBenchmark!((){trustFunc();}, (){sysFunc();})();
+    auto mixedResult3  = comparingBenchmark!((){safeFunc();}, (){sysFunc();})();
 }
 
 
@@ -31366,6 +31248,22 @@ version(StdDdoc)
     /++
         $(BLUE This function is Windows-Only.)
 
+        Converts a $(D FILETIME) struct to the number of hnsecs since midnight,
+        January 1st, 1 A.D.
+
+        Params:
+            ft = The $(D FILETIME) struct to convert.
+
+        Throws:
+            $(D DateTimeException) if the given $(D FILETIME) cannot be
+            represented as the return value.
+      +/
+    long FILETIMEToStdTime(const FILETIME* ft);
+
+
+    /++
+        $(BLUE This function is Windows-Only.)
+
         Converts a $(D FILETIME) struct to a $(D SysTime).
 
         Params:
@@ -31375,10 +31273,25 @@ version(StdDdoc)
 
         Throws:
             $(D DateTimeException) if the given $(D FILETIME) will not fit in a
-            $(D SysTime) or if the $(D FILETIME) cannot be converted to a
-            $(D SYSTEMTIME).
+            $(D SysTime).
       +/
     SysTime FILETIMEToSysTime(const FILETIME* ft, immutable TimeZone tz = LocalTime());
+
+
+    /++
+        $(BLUE This function is Windows-Only.)
+
+        Converts a number of hnsecs since midnight, January 1st, 1 A.D. to a
+        $(D FILETIME) struct.
+
+        Params:
+            sysTime = The $(D SysTime) to convert.
+
+        Throws:
+            $(D DateTimeException) if the given value will not fit in a
+            $(D FILETIME).
+      +/
+    FILETIME stdTimeToFILETIME(long stdTime);
 
 
     /++
@@ -31504,15 +31417,24 @@ else version(Windows)
         }
     }
 
+    private enum hnsecsFrom1601 = 504_911_232_000_000_000L;
+
+    long FILETIMEToStdTime(const FILETIME* ft)
+    {
+        ULARGE_INTEGER ul;
+        ul.HighPart = ft.dwHighDateTime;
+        ul.LowPart = ft.dwLowDateTime;
+        ulong tempHNSecs = ul.QuadPart;
+
+        if(tempHNSecs > long.max - hnsecsFrom1601)
+            throw new DateTimeException("The given FILETIME cannot be represented as a stdTime value.");
+
+        return cast(long)tempHNSecs + hnsecsFrom1601;
+    }
 
     SysTime FILETIMEToSysTime(const FILETIME* ft, immutable TimeZone tz = LocalTime())
     {
-        SYSTEMTIME st = void;
-
-        if(!FileTimeToSystemTime(ft, &st))
-            throw new DateTimeException("FileTimeToSystemTime() failed.");
-
-        auto sysTime = SYSTEMTIMEToSysTime(&st, UTC());
+        auto sysTime = SysTime(FILETIMEToStdTime(ft), UTC());
         sysTime.timezone = tz;
 
         return sysTime;
@@ -31537,14 +31459,24 @@ else version(Windows)
     }
 
 
-    FILETIME SysTimeToFILETIME(SysTime sysTime)
+    FILETIME stdTimeToFILETIME(long stdTime)
     {
-        SYSTEMTIME st = SysTimeToSYSTEMTIME(sysTime.toUTC());
+        if(stdTime < hnsecsFrom1601)
+            throw new DateTimeException("The given stdTime value cannot be represented as a FILETIME.");
 
-        FILETIME ft = void;
-        SystemTimeToFileTime(&st, &ft);
+        ULARGE_INTEGER ul;
+        ul.QuadPart = cast(ulong)stdTime - hnsecsFrom1601;
+
+        FILETIME ft;
+        ft.dwHighDateTime = ul.HighPart;
+        ft.dwLowDateTime = ul.LowPart;
 
         return ft;
+    }
+
+    FILETIME SysTimeToFILETIME(SysTime sysTime)
+    {
+        return stdTimeToFILETIME(sysTime.stdTime);
     }
 
     unittest
@@ -32115,7 +32047,7 @@ version(StdDdoc)
 
         When the value that is returned by this function is destroyed,
         $(D func) will run. $(D func) is a unary function that takes a
-        $(CXREF TickDuration).
+        $(CXREF time, TickDuration).
 
         Examples:
 --------------------
@@ -32132,7 +32064,7 @@ writeln("benchmark end!");
 else
 {
     @safe auto measureTime(alias func)()
-        if(isSafe!func)
+        if(isSafe!((){StopWatch sw; unaryFun!func(sw.peek());}))
     {
         struct Result
         {
@@ -32150,7 +32082,7 @@ else
     }
 
     auto measureTime(alias func)()
-        if(!isSafe!func)
+        if(!isSafe!((){StopWatch sw; unaryFun!func(sw.peek());}))
     {
         struct Result
         {
@@ -32202,6 +32134,17 @@ version(testStdDateTime) unittest
         // @@@BUG@@@ doesn't work yet.
     }
     +/
+}
+
+//Bug# 8450
+version(testStdDateTime) unittest
+{
+    @safe    void safeFunc() {}
+    @trusted void trustFunc() {}
+    @system  void sysFunc() {}
+    auto safeResult  = measureTime!((a){safeFunc();})();
+    auto trustResult = measureTime!((a){trustFunc();})();
+    auto sysResult   = measureTime!((a){sysFunc();})();
 }
 
 //==============================================================================

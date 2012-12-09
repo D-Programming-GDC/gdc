@@ -15,7 +15,7 @@
 #ifdef IN_GCC
 #include "gdc_alloca.h"
 #else
-#if __sun&&__SVR4
+#if __sun&&__SVR4 || _MSC_VER
 #include <alloca.h>
 #endif
 #endif

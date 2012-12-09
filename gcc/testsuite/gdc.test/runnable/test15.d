@@ -1,4 +1,5 @@
 // REQUIRED_ARGS:
+// EXTRA_FILES: extra-files/test15.txt
 
 import core.stdc.math : cos, fabs, sin, sqrt, rint;
 import core.vararg;

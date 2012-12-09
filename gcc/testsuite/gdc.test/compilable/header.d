@@ -344,3 +344,10 @@ struct T12
 }
 
 
+// 6591
+import std.stdio : writeln, F = File;
+
+void foo6591()()
+{
+    import std.stdio : writeln, F = File;
+}

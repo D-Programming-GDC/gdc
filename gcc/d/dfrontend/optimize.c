@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by Iain Buclaw, November 2011
-*/
-
 #include <stdio.h>
 #include <ctype.h>
 #include <assert.h>
@@ -159,7 +153,6 @@ Expression *fromConstInitializer(int result, Expression *e1)
     if (e1->op == TOKvar)
     {   VarExp *ve = (VarExp *)e1;
         VarDeclaration *v = ve->var->isVarDeclaration();
-        int fwdref = (v && !v->originalType && v->scope);
         e = expandVar(result, v);
         if (e)
         {
@@ -208,10 +201,10 @@ Expression *VarExp::optimize(int result)
 Expression *TupleExp::optimize(int result)
 {
     for (size_t i = 0; i < exps->dim; i++)
-    {   Expression *e = exps->tdata()[i];
+    {   Expression *e = (*exps)[i];
 
         e = e->optimize(WANTvalue | (result & WANTinterpret));
-        exps->tdata()[i] = e;
+        (*exps)[i] = e;
     }
     return this;
 }
@@ -221,10 +214,10 @@ Expression *ArrayLiteralExp::optimize(int result)
     if (elements)
     {
         for (size_t i = 0; i < elements->dim; i++)
-        {   Expression *e = elements->tdata()[i];
+        {   Expression *e = (*elements)[i];
 
             e = e->optimize(WANTvalue | (result & (WANTinterpret | WANTexpand)));
-            elements->tdata()[i] = e;
+            (*elements)[i] = e;
         }
     }
     return this;
@@ -234,14 +227,14 @@ Expression *AssocArrayLiteralExp::optimize(int result)
 {
     assert(keys->dim == values->dim);
     for (size_t i = 0; i < keys->dim; i++)
-    {   Expression *e = keys->tdata()[i];
+    {   Expression *e = (*keys)[i];
 
         e = e->optimize(WANTvalue | (result & (WANTinterpret | WANTexpand)));
-        keys->tdata()[i] = e;
+        (*keys)[i] = e;
 
-        e = values->tdata()[i];
+        e = (*values)[i];
         e = e->optimize(WANTvalue | (result & (WANTinterpret | WANTexpand)));
-        values->tdata()[i] = e;
+        (*values)[i] = e;
     }
     return this;
 }
@@ -251,11 +244,11 @@ Expression *StructLiteralExp::optimize(int result)
     if (elements)
     {
         for (size_t i = 0; i < elements->dim; i++)
-        {   Expression *e = elements->tdata()[i];
+        {   Expression *e = (*elements)[i];
             if (!e)
                 continue;
             e = e->optimize(WANTvalue | (result & (WANTinterpret | WANTexpand)));
-            elements->tdata()[i] = e;
+            (*elements)[i] = e;
         }
     }
     return this;
@@ -387,7 +380,7 @@ Expression *AddrExp::optimize(int result)
                 TypeSArray *ts = (TypeSArray *)ve->type;
                 dinteger_t dim = ts->dim->toInteger();
                 if (index < 0 || index >= dim)
-                    error("array index %"PRIdMAX" is out of bounds [0..%"PRIdMAX"]", index, dim);
+                    error("array index %lld is out of bounds [0..%lld]", index, dim);
                 e = new SymOffExp(loc, ve->var, index * ts->nextOf()->size());
                 e->type = type;
                 return e;
@@ -475,20 +468,20 @@ Expression *NewExp::optimize(int result)
     if (newargs)
     {
         for (size_t i = 0; i < newargs->dim; i++)
-        {   Expression *e = newargs->tdata()[i];
+        {   Expression *e = (*newargs)[i];
 
             e = e->optimize(WANTvalue);
-            newargs->tdata()[i] = e;
+            (*newargs)[i] = e;
         }
     }
 
     if (arguments)
     {
         for (size_t i = 0; i < arguments->dim; i++)
-        {   Expression *e = arguments->tdata()[i];
+        {   Expression *e = (*arguments)[i];
 
             e = e->optimize(WANTvalue);
-            arguments->tdata()[i] = e;
+            (*arguments)[i] = e;
         }
     }
     if (result & WANTinterpret)
@@ -507,10 +500,10 @@ Expression *CallExp::optimize(int result)
     if (arguments)
     {
         for (size_t i = 0; i < arguments->dim; i++)
-        {   Expression *e = arguments->tdata()[i];
+        {   Expression *e = (*arguments)[i];
 
             e = e->optimize(WANTvalue);
-            arguments->tdata()[i] = e;
+            (*arguments)[i] = e;
         }
     }
 
@@ -685,7 +678,7 @@ Expression *BinExp::optimize(int result)
             dinteger_t i2 = e2->toInteger();
             d_uns64 sz = e1->type->size() * 8;
             if (i2 < 0 || i2 >= sz)
-            {   error("shift assign by %"PRIdMAX" is outside the range 0..%"PRIuSIZE, i2, sz - 1);
+            {   error("shift assign by %lld is outside the range 0..%llu", i2, (ulonglong)sz - 1);
                 e2 = new IntegerExp(0);
             }
         }
@@ -780,7 +773,7 @@ Expression *shift_optimize(int result, BinExp *e, Expression *(*shift)(Type *, E
         dinteger_t i2 = e->e2->toInteger();
         d_uns64 sz = e->e1->type->size() * 8;
         if (i2 < 0 || i2 >= sz)
-        {   e->error("shift by %"PRIdMAX" is outside the range 0..%"PRIuSIZE, i2, sz - 1);
+        {   e->error("shift by %lld is outside the range 0..%llu", i2, (ulonglong)sz - 1);
             e->e2 = new IntegerExp(0);
         }
         if (e->e1->isConst() == 1)
@@ -851,7 +844,7 @@ Expression *PowExp::optimize(int result)
 
     // Replace 1 ^^ x or 1.0^^x by (x, 1)
     if ((e1->op == TOKint64 && e1->toInteger() == 1) ||
-        (e1->op == TOKfloat64 && e1->toReal().isConst1()))
+        (e1->op == TOKfloat64 && e1->toReal() == 1.0))
     {
         e = new CommaExp(loc, e2, e1);
     }
@@ -864,25 +857,25 @@ Expression *PowExp::optimize(int result)
     }
     // Replace x ^^ 0 or x^^0.0 by (x, 1)
     else if ((e2->op == TOKint64 && e2->toInteger() == 0) ||
-             (e2->op == TOKfloat64 && e2->toReal().isConst0()))
+             (e2->op == TOKfloat64 && e2->toReal() == 0.0))
     {
         if (e1->type->isintegral())
             e = new IntegerExp(loc, 1, e1->type);
         else
-            e = new RealExp(loc, 1, e1->type);
+            e = new RealExp(loc, ldouble(1.0), e1->type);
 
         e = new CommaExp(loc, e1, e);
     }
     // Replace x ^^ 1 or x^^1.0 by (x)
     else if ((e2->op == TOKint64 && e2->toInteger() == 1) ||
-             (e2->op == TOKfloat64 && e2->toReal().isConst1()))
+             (e2->op == TOKfloat64 && e2->toReal() == 1.0))
     {
         e = e1;
     }
     // Replace x ^^ -1.0 by (1.0 / x)
-    else if ((e2->op == TOKfloat64 && e2->toReal().isConstMinus1()))
+    else if ((e2->op == TOKfloat64 && e2->toReal() == -1.0))
     {
-        e = new DivExp(loc, new RealExp(loc, 1, e2->type), e1);
+        e = new DivExp(loc, new RealExp(loc, ldouble(1.0), e2->type), e1);
     }
     // All other negative integral powers are illegal
     else if ((e1->type->isintegral()) && (e2->op == TOKint64) && (sinteger_t)e2->toInteger() < 0)
@@ -894,7 +887,7 @@ Expression *PowExp::optimize(int result)
     else
     {
         // If e2 *could* have been an integer, make it one.
-        if (e2->op == TOKfloat64 && (e2->toReal() == (real_t)(d_int64)(e2->toInteger())))
+        if (e2->op == TOKfloat64 && (e2->toReal() == (real_t)(sinteger_t)(e2->toInteger())))
             e2 = new IntegerExp(loc, e2->toInteger(), Type::tint64);
 
         if (e1->isConst() == 1 && e2->isConst() == 1)

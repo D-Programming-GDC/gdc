@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, July 2007
-*/
-
 /* A dt_t is a simple structure representing data to be added
  * to the data segment of the output object file. As such,
  * it is a list of initialized bytes, 0 data, and offsets from
@@ -239,6 +233,9 @@ dt_t *ArrayInitializer::toDt()
 {
     //printf("ArrayInitializer::toDt('%s')\n", toChars());
     Type *tb = type->toBasetype();
+    if (tb->ty == Tvector)
+        tb = ((TypeVector *)tb)->basetype;
+
     Type *tn = tb->nextOf()->toBasetype();
 
     Dts dts;
@@ -269,6 +266,8 @@ dt_t *ArrayInitializer::toDt()
         dt = val->toDt();
         if (dts[length])
             error(loc, "duplicate initializations for index %d", length);
+        if (tn->ty == Tsarray)
+            dt = createTsarrayDt(dt, tb->nextOf());
         dts[length] = dt;
         length++;
     }
@@ -316,21 +315,26 @@ dt_t *ArrayInitializer::toDt()
             tadim = ta->dim->toInteger();
             if (dim < tadim)
             {
+ 	
+
+#ifdef IN_GCC
+                // Pad out the rest of the array with single elements.
+                // Otherwise breaks -fsection-anchors on ARM when
+                // backend calculates field positions for array members.
+                for (size_t i = dim; i < tadim; i++)
+                    pdtend = dtcontainer(pdtend, NULL, sadefault);
+#else
                 if (edefault->isBool(FALSE))
                     // pad out end of array
-                    // (ok for GDC as well)
                     pdtend = dtnzeros(pdtend, size * (tadim - dim));
                 else
                 {
                     for (size_t i = dim; i < tadim; i++)
-#ifdef IN_GCC
-                        pdtend = dtcontainer(pdtend, NULL, sadefault);
-#else
                     {   for (size_t j = 0; j < n; j++)
                             pdtend = edefault->toDt(pdtend);
                     }
-#endif
                 }
+#endif
             }
             else if (dim > tadim)
             {
@@ -912,6 +916,11 @@ dt_t **VarExp::toDt(dt_t **pdt)
 dt_t **FuncExp::toDt(dt_t **pdt)
 {
     //printf("FuncExp::toDt() %d\n", op);
+    if (fd->tok == TOKreserved && type->ty == Tpointer)
+    {   // change to non-nested
+        fd->tok = TOKfunction;
+        fd->vthis = NULL;
+    }
     Symbol *s = fd->toSymbol();
     if (fd->isNested())
     {   error("non-constant nested delegate literal expression %s", toChars());
@@ -919,6 +928,24 @@ dt_t **FuncExp::toDt(dt_t **pdt)
     }
     fd->toObjFile(0);
     return dtxoff(pdt, s, 0, TYnptr);
+}
+
+dt_t **VectorExp::toDt(dt_t **pdt)
+{
+    //printf("VectorExp::toDt() %s\n", toChars());
+    for (unsigned i = 0; i < dim; i++)
+    {   Expression *elem;
+
+        if (e1->op == TOKarrayliteral)
+        {
+            ArrayLiteralExp *ea = (ArrayLiteralExp *)e1;
+            elem = (*ea->elements)[i];
+        }
+        else
+            elem = e1;
+        pdt = elem->toDt(pdt);
+    }
+    return pdt;
 }
 
 /* ================================================================= */

@@ -7,12 +7,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, December 2006
-*/
-
 #include <stdio.h>
 #include <assert.h>
 
@@ -198,11 +192,11 @@ void EnumDeclaration::semantic(Scope *sc)
         {
             assert(e->dyncast() == DYNCAST_EXPRESSION);
             e = e->semantic(sce);
-            e = e->optimize(WANTvalue | WANTinterpret);
+            e = e->ctfeInterpret();
             if (memtype)
             {
                 e = e->implicitCastTo(sce, memtype);
-                e = e->optimize(WANTvalue | WANTinterpret);
+                e = e->ctfeInterpret();
                 if (!isAnonymous())
                     e = e->castTo(sce, type);
                 t = memtype;
@@ -210,7 +204,7 @@ void EnumDeclaration::semantic(Scope *sc)
             else if (em->type)
             {
                 e = e->implicitCastTo(sce, em->type);
-                e = e->optimize(WANTvalue | WANTinterpret);
+                e = e->ctfeInterpret();
                 assert(isAnonymous());
                 t = e->type;
             }
@@ -227,7 +221,7 @@ void EnumDeclaration::semantic(Scope *sc)
                 t = Type::tint32;
             e = new IntegerExp(em->loc, 0, Type::tint32);
             e = e->implicitCastTo(sce, t);
-            e = e->optimize(WANTvalue | WANTinterpret);
+            e = e->ctfeInterpret();
             if (!isAnonymous())
                 e = e->castTo(sce, type);
         }
@@ -238,7 +232,7 @@ void EnumDeclaration::semantic(Scope *sc)
             {
                 emax = t->getProperty(0, Id::max);
                 emax = emax->semantic(sce);
-                emax = emax->optimize(WANTvalue | WANTinterpret);
+                emax = emax->ctfeInterpret();
             }
 
             // Set value to (elast + 1).
@@ -246,7 +240,7 @@ void EnumDeclaration::semantic(Scope *sc)
             assert(elast);
             e = new EqualExp(TOKequal, em->loc, elast, emax);
             e = e->semantic(sce);
-            e = e->optimize(WANTvalue | WANTinterpret);
+            e = e->ctfeInterpret();
             if (e->toInteger())
                 error("overflow of enum value %s", elast->toChars());
 
@@ -254,14 +248,14 @@ void EnumDeclaration::semantic(Scope *sc)
             e = new AddExp(em->loc, elast, new IntegerExp(em->loc, 1, Type::tint32));
             e = e->semantic(sce);
             e = e->castTo(sce, elast->type);
-            e = e->optimize(WANTvalue | WANTinterpret);
+            e = e->ctfeInterpret();
 
             if (t->isfloating())
             {
                 // Check that e != elast (not always true for floats)
                 Expression *etest = new EqualExp(TOKequal, em->loc, e, elast);
                 etest = etest->semantic(sce);
-                etest = etest->optimize(WANTvalue | WANTinterpret);
+                etest = etest->ctfeInterpret();
                 if (etest->toInteger())
                     error("enum member %s has inexact value, due to loss of precision", em->toChars());
             }
@@ -311,13 +305,13 @@ void EnumDeclaration::semantic(Scope *sc)
                 // Compute if(e < minval)
                 ec = new CmpExp(TOKlt, em->loc, e, minval);
                 ec = ec->semantic(sce);
-                ec = ec->optimize(WANTvalue | WANTinterpret);
+                ec = ec->ctfeInterpret();
                 if (ec->toInteger())
                     minval = e;
 
                 ec = new CmpExp(TOKgt, em->loc, e, maxval);
                 ec = ec->semantic(sce);
-                ec = ec->optimize(WANTvalue | WANTinterpret);
+                ec = ec->ctfeInterpret();
                 if (ec->toInteger())
                     maxval = e;
             }

@@ -43,6 +43,7 @@ mingw32*) case "$target_vendor" in
               w64*) d_os_versym=Win64; d_os_versym2=MinGW64; d_windows=1 ;;
           esac
           ;;
+netbsd*) d_os_versym=NetBSD; d_unix=1 ;;
 openbsd*) d_os_versym=OpenBSD; d_unix=1 ;;
 pe*)    case "$target" in
             *-skyos*-*) d_os_versym=SkyOS ; d_unix=1 ;;
@@ -100,13 +101,13 @@ fi
 
 # In DMD, this is usually defined in the target's Makefile.
 case "$d_os_versym" in
-darwin)  echo "#define TARGET_OSX     1" ;;
-FreeBSD) echo "#define TARGET_FREEBSD 1" ;;
-linux)   echo "#define TARGET_LINUX   1" ;;
-OpenBSD) echo "#define TARGET_OPENBSD 1" ;;
-Solaris) echo "#define TARGET_SOLARIS 1" ;;
-Win32)   echo "#define TARGET_WINDOS  1" ;;
-Win64)   echo "#define TARGET_WINDOS  1" ;;
-Android) echo "#define TARGET_ANDROID 1";
-         echo "#define TARGET_LINUX 1";  ;;
+darwin)  echo "#define TARGET_OSX       1" ;;
+FreeBSD) echo "#define TARGET_FREEBSD   1" ;;
+linux)   echo "#define TARGET_LINUX     1" ;;
+OpenBSD) echo "#define TARGET_OPENBSD   1" ;;
+Solaris) echo "#define TARGET_SOLARIS   1" ;;
+Win32)   echo "#define TARGET_WINDOS    1" ;;
+Win64)   echo "#define TARGET_WINDOS    1" ;;
+Android) echo "#define TARGET_ANDROID_D 1";
+         echo "#define TARGET_LINUX     1";  ;;
 esac

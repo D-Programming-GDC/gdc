@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2011 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -10,14 +10,9 @@
 
 // This is the D parser
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by Iain Buclaw, September 2009
-*/
-
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>                     // strlen(),memcpy()
 
 #include "rmem.h"
 #include "lexer.h"
@@ -463,7 +458,10 @@ Dsymbols *Parser::parseDeclDefs(int once)
                     ((tk = peek(tk)), 1) &&
                     skipAttributes(tk, &tk) &&
                     (tk->value == TOKlparen ||
-                     tk->value == TOKlcurly)
+                     tk->value == TOKlcurly ||
+                     tk->value == TOKin ||
+                     tk->value == TOKout ||
+                     tk->value == TOKbody)
                    )
                 {
                     a = parseDeclarations(storageClass, comment);
@@ -1384,7 +1382,8 @@ Parameters *Parser::parseParameters(int *pvarargs, TemplateParameters **tpl)
                 default:
                 Ldefault:
                 {   stc = storageClass & (STCin | STCout | STCref | STClazy);
-                    if (stc & (stc - 1))        // if stc is not a power of 2
+                    if (stc & (stc - 1) &&        // if stc is not a power of 2
+                        !(stc == (STCin | STCref)))
                         error("incompatible parameter storage classes");
                     if ((storageClass & (STCconst | STCout)) == (STCconst | STCout))
                         error("out cannot be const");
@@ -2874,7 +2873,10 @@ Dsymbols *Parser::parseDeclarations(StorageClass storage_class, unsigned char *c
         ((tk = peek(tk)), 1) &&
         skipAttributes(tk, &tk) &&
         (tk->value == TOKlparen ||
-         tk->value == TOKlcurly)
+         tk->value == TOKlcurly ||
+         tk->value == TOKin ||
+         tk->value == TOKout ||
+         tk->value == TOKbody)
        )
     {
         ts = NULL;
@@ -3361,7 +3363,15 @@ Initializer *Parser::parseInitializer()
                         if (comma == 1)
                             error("comma expected separating array initializers, not %s", token.toChars());
                         value = parseInitializer();
-                        ia->addInit(NULL, value);
+                        if (token.value == TOKcolon)
+                        {
+                            nextToken();
+                            e = value->toExpression();
+                            value = parseInitializer();
+                        }
+                        else
+                            e = NULL;
+                        ia->addInit(e, value);
                         comma = 1;
                         continue;
 
@@ -3615,7 +3625,7 @@ Statement *Parser::parseStatement(int flags)
                 as->reserve(a->dim);
                 for (size_t i = 0; i < a->dim; i++)
                 {
-                    Dsymbol *d = a->tdata()[i];
+                    Dsymbol *d = (*a)[i];
                     s = new ExpStatement(loc, d);
                     as->push(s);
                 }
@@ -3623,7 +3633,7 @@ Statement *Parser::parseStatement(int flags)
             }
             else if (a->dim == 1)
             {
-                Dsymbol *d = a->tdata()[0];
+                Dsymbol *d = (*a)[0];
                 s = new ExpStatement(loc, d);
             }
             else
@@ -3855,7 +3865,7 @@ Statement *Parser::parseStatement(int flags)
             Expression *aggr = parseExpression();
             if (token.value == TOKslice && arguments->dim == 1)
             {
-                Parameter *a = arguments->tdata()[0];
+                Parameter *a = (*arguments)[0];
                 delete arguments;
                 nextToken();
                 Expression *upr = parseExpression();
@@ -4101,7 +4111,7 @@ Statement *Parser::parseStatement(int flags)
                 // Keep cases in order by building the case statements backwards
                 for (size_t i = cases.dim; i; i--)
                 {
-                    exp = cases.tdata()[i - 1];
+                    exp = cases[i - 1];
                     s = new CaseStatement(loc, exp, s);
                 }
             }
@@ -4256,7 +4266,7 @@ Statement *Parser::parseStatement(int flags)
                 Loc loc = this->loc;
 
                 nextToken();
-                if (token.value == TOKlcurly)
+                if (token.value == TOKlcurly || token.value != TOKlparen)
                 {
                     t = NULL;
                     id = NULL;
@@ -5551,6 +5561,7 @@ Expression *Parser::parsePrimaryExp()
                          token.value == TOKenum ||
                          token.value == TOKinterface ||
                          token.value == TOKargTypes ||
+                         token.value == TOKparameters ||
 #if DMDV2
                          token.value == TOKconst && peek(&token)->value == TOKrparen ||
                          token.value == TOKinvariant && peek(&token)->value == TOKrparen ||

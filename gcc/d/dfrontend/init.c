@@ -8,12 +8,6 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by David Friedman, December 2006
-*/
-
 #include <stdio.h>
 #include <assert.h>
 
@@ -41,7 +35,7 @@ Initializer *Initializer::syntaxCopy()
     return this;
 }
 
-Initializer *Initializer::semantic(Scope *sc, Type *t, int needInterpret)
+Initializer *Initializer::semantic(Scope *sc, Type *t, NeedInterpret needInterpret)
 {
     return this;
 }
@@ -94,7 +88,7 @@ Initializer *VoidInitializer::syntaxCopy()
 }
 
 
-Initializer *VoidInitializer::semantic(Scope *sc, Type *t, int needInterpret)
+Initializer *VoidInitializer::semantic(Scope *sc, Type *t, NeedInterpret needInterpret)
 {
     //printf("VoidInitializer::semantic(t = %p)\n", t);
     type = t;
@@ -148,7 +142,7 @@ void StructInitializer::addInit(Identifier *field, Initializer *value)
     this->value.push(value);
 }
 
-Initializer *StructInitializer::semantic(Scope *sc, Type *t, int needInterpret)
+Initializer *StructInitializer::semantic(Scope *sc, Type *t, NeedInterpret needInterpret)
 {
     int errors = 0;
 
@@ -230,7 +224,7 @@ Initializer *StructInitializer::semantic(Scope *sc, Type *t, int needInterpret)
             }
             if (s && (v = s->isVarDeclaration()) != NULL)
             {
-                val = val->semantic(sc, v->type, needInterpret);
+                val = val->semantic(sc, v->type->addMod(t->mod), needInterpret);
                 value[i] = val;
                 vars[i] = v;
             }
@@ -356,8 +350,12 @@ Expression *StructInitializer::toExpression()
         else
         {
             if (!(*elements)[i])
-                // Default initialize
-                (*elements)[i] = vd->type->defaultInit();
+            {   // Default initialize
+                if (vd->init)
+                    (*elements)[i] = vd->init->toExpression();
+                else
+                    (*elements)[i] = vd->type->defaultInit();
+            }
         }
         offset = vd->offset + vd->type->size();
         i++;
@@ -467,10 +465,10 @@ void ArrayInitializer::addInit(Expression *index, Initializer *value)
     type = NULL;
 }
 
-Initializer *ArrayInitializer::semantic(Scope *sc, Type *t, int needInterpret)
+Initializer *ArrayInitializer::semantic(Scope *sc, Type *t, NeedInterpret needInterpret)
 {   unsigned i;
     unsigned length;
-    const uintmax_t amax = 0x80000000;
+    const unsigned amax = 0x80000000;
 
     //printf("ArrayInitializer::semantic(%s)\n", t->toChars());
     if (sem)                            // if semantic() already run
@@ -485,6 +483,10 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t, int needInterpret)
         case Tarray:
             break;
 
+        case Tvector:
+            t = ((TypeVector *)t)->basetype;
+            break;
+
         default:
             error(loc, "cannot use array to initialize %s", type->toChars());
             goto Lerr;
@@ -496,14 +498,39 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t, int needInterpret)
         Expression *idx = index[i];
         if (idx)
         {   idx = idx->semantic(sc);
-            idx = idx->optimize(WANTvalue | WANTinterpret);
+            idx = idx->ctfeInterpret();
             index[i] = idx;
             length = idx->toInteger();
         }
 
         Initializer *val = value[i];
+        ExpInitializer *ei = val->isExpInitializer();
+        if (ei && !idx)
+            ei->expandTuples = 1;
         val = val->semantic(sc, t->nextOf(), needInterpret);
-        value[i] = val;
+
+        ei = val->isExpInitializer();
+        // found a tuple, expand it
+        if (ei && ei->exp->op == TOKtuple)
+        {
+            TupleExp *te = (TupleExp *)ei->exp;
+            index.remove(i);
+            value.remove(i);
+
+            for (size_t j = 0; j < te->exps->dim; ++j)
+            {
+                Expression *e = (*te->exps)[j];
+                index.insert(i + j, (Expression *)NULL);
+                value.insert(i + j, new ExpInitializer(e->loc, e));
+            }
+            i--;
+            continue;
+        }
+        else
+        {
+            value[i] = val;
+        }
+
         length++;
         if (length == 0)
         {   error(loc, "array dimension overflow");
@@ -517,13 +544,13 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t, int needInterpret)
         dinteger_t edim = ((TypeSArray *)t)->dim->toInteger();
         if (dim > edim)
         {
-            error(loc, "array initializer has %"PRIuTSIZE" elements, but array length is %"PRIdMAX, dim, edim);
+            error(loc, "array initializer has %u elements, but array length is %lld", dim, edim);
             goto Lerr;
         }
     }
 
-    if ((uintmax_t) dim * t->nextOf()->size() >= amax)
-    {   error(loc, "array dimension %"PRIuTSIZE" exceeds max of %"PRIuMAX, dim, amax / t->nextOf()->size());
+    if ((unsigned long) dim * t->nextOf()->size() >= amax)
+    {   error(loc, "array dimension %u exceeds max of %u", dim, amax / t->nextOf()->size());
         goto Lerr;
     }
     return this;
@@ -749,6 +776,7 @@ ExpInitializer::ExpInitializer(Loc loc, Expression *exp)
     : Initializer(loc)
 {
     this->exp = exp;
+    this->expandTuples = 0;
 }
 
 Initializer *ExpInitializer::syntaxCopy()
@@ -760,6 +788,9 @@ bool arrayHasNonConstPointers(Expressions *elems);
 
 bool hasNonConstPointers(Expression *e)
 {
+    if (e->type->ty == Terror)
+        return false;
+
     if (e->op == TOKnull)
         return false;
     if (e->op == TOKstructliteral)
@@ -809,15 +840,19 @@ bool arrayHasNonConstPointers(Expressions *elems)
 
 
 
-Initializer *ExpInitializer::semantic(Scope *sc, Type *t, int needInterpret)
+Initializer *ExpInitializer::semantic(Scope *sc, Type *t, NeedInterpret needInterpret)
 {
     //printf("ExpInitializer::semantic(%s), type = %s\n", exp->toChars(), t->toChars());
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
-    int wantOptimize = needInterpret ? WANTinterpret|WANTvalue : WANTvalue;
+    if (exp->op == TOKerror)
+        return this;
 
     int olderrors = global.errors;
-    exp = exp->optimize(wantOptimize);
+    if (needInterpret)
+        exp = exp->ctfeInterpret();
+    else
+        exp = exp->optimize(WANTvalue);
     if (!global.gag && olderrors != global.errors)
         return this; // Failed, suppress duplicate error messages
 
@@ -832,6 +867,11 @@ Initializer *ExpInitializer::semantic(Scope *sc, Type *t, int needInterpret)
     }
 
     Type *tb = t->toBasetype();
+
+    if (exp->op == TOKtuple &&
+        expandTuples &&
+        !exp->implicitConvTo(t))
+        return new ExpInitializer(loc, exp);
 
     /* Look for case of initializing a static array with a too-short
      * string literal, such as:
@@ -862,8 +902,13 @@ Initializer *ExpInitializer::semantic(Scope *sc, Type *t, int needInterpret)
     }
 
     exp = exp->implicitCastTo(sc, t);
+    if (exp->op == TOKerror)
+        return this;
 L1:
-    exp = exp->optimize(wantOptimize);
+    if (needInterpret)
+        exp = exp->ctfeInterpret();
+    else
+        exp = exp->optimize(WANTvalue);
     //printf("-ExpInitializer::semantic(): "); exp->print();
     return this;
 }

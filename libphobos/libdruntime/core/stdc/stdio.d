@@ -9,7 +9,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.stdc.stdio;
@@ -24,15 +24,10 @@ private
   {
     import core.sys.posix.sys.types;
   }
-
-  version (GNU)
-  {
-    import gcc.builtins;
-    import libc = gcc.config.libc;
-  }
 }
 
 extern (C):
+@system:
 nothrow:
 
 version( Windows )
@@ -115,18 +110,6 @@ else version ( FreeBSD )
         long        _mbstateL;
     }
 }
-else version ( GNU )
-{
-    enum
-    {
-        BUFSIZ       = libc.BUFSIZ,
-        EOF          = libc.EOF,
-        FOPEN_MAX    = libc.FOPEN_MAX,
-        FILENAME_MAX = libc.FILENAME_MAX,
-        TMP_MAX      = libc.TMP_MAX,
-        L_tmpnam     = libc.L_tmpnam
-    }
-}
 else
 {
     static assert( false, "Unsupported platform" );
@@ -139,10 +122,9 @@ enum
     SEEK_END
 }
 
-struct _iobuf
+version( Windows )
 {
-    align (1):
-    version( Windows )
+    struct _iobuf
     {
         char* _ptr;
         int   _cnt;
@@ -151,9 +133,12 @@ struct _iobuf
         int   _file;
         int   _charbuf;
         int   _bufsiz;
-        int   __tmpnum;
+        char* __tmpnum;
     }
-    else version( linux )
+}
+else version( linux )
+{
+    align(1) struct _iobuf
     {
         int     _flags;
         char*   _read_ptr;
@@ -177,7 +162,10 @@ struct _iobuf
         char[1] _shortbuf;
         void*   _lock;
     }
-    else version( OSX )
+}
+else version( OSX )
+{
+    align (1) struct _iobuf
     {
         ubyte*    _p;
         int       _r;
@@ -204,7 +192,10 @@ struct _iobuf
         int       _blksize;
         fpos_t    _offset;
     }
-    else version( FreeBSD )
+}
+else version( FreeBSD )
+{
+    align (1) struct _iobuf
     {
         ubyte*          _p;
         int             _r;
@@ -238,16 +229,12 @@ struct _iobuf
         int             _orientation;
         __mbstate_t     _mbstate;
     }
-    else version( GNU )
-    {
-        // want to get rid of this...
-        byte[libc.FILE_struct_size] opaque;
-    }
-    else
-    {
-        static assert( false, "Unsupported platform" );
-    }
 }
+else
+{
+    static assert( false, "Unsupported platform" );
+}
+
 
 alias shared(_iobuf) FILE;
 
@@ -389,11 +376,17 @@ alias int fpos_t;
 int remove(in char* filename);
 int rename(in char* from, in char* to);
 
-FILE* tmpfile();
+@trusted FILE* tmpfile(); // No unsafe pointer manipulation.
 char* tmpnam(char* s);
 
 int   fclose(FILE* stream);
-int   fflush(FILE* stream);
+
+// No unsafe pointer manipulation.
+@trusted
+{
+    int   fflush(FILE* stream);
+}
+
 FILE* fopen(in char* filename, in char* mode);
 FILE* freopen(in char* filename, in char* mode, FILE* stream);
 
@@ -413,15 +406,20 @@ int vscanf(in char* format, va_list arg);
 int printf(in char* format, ...);
 int scanf(in char* format, ...);
 
-int fgetc(FILE* stream);
-int fputc(int c, FILE* stream);
+// No usafe pointer manipulation.
+@trusted
+{
+    int fgetc(FILE* stream);
+    int fputc(int c, FILE* stream);
+}
 
 char* fgets(char* s, int n, FILE* stream);
 int   fputs(in char* s, FILE* stream);
 char* gets(char* s);
 int   puts(in char* s);
 
-extern (D)
+// No unsafe pointer manipulation.
+extern (D) @trusted
 {
     int getchar()                 { return getc(stdin);     }
     int putchar(int c)            { return putc(c,stdout);  }
@@ -429,25 +427,30 @@ extern (D)
     int putc(int c, FILE* stream) { return fputc(c,stream); }
 }
 
-int ungetc(int c, FILE* stream);
+@trusted int ungetc(int c, FILE* stream); // No unsafe pointer manipulation.
 
 size_t fread(void* ptr, size_t size, size_t nmemb, FILE* stream);
 size_t fwrite(in void* ptr, size_t size, size_t nmemb, FILE* stream);
 
-int fgetpos(FILE* stream, fpos_t * pos);
-int fsetpos(FILE* stream, in fpos_t* pos);
+// No unsafe pointer manipulation.
+@trusted
+{
+    int fgetpos(FILE* stream, fpos_t * pos);
+    int fsetpos(FILE* stream, in fpos_t* pos);
 
-int    fseek(FILE* stream, c_long offset, int whence);
-c_long ftell(FILE* stream);
+    int    fseek(FILE* stream, c_long offset, int whence);
+    c_long ftell(FILE* stream);
+}
 
 version( Windows )
 {
-  extern (D)
+  // No unsafe pointer manipulation.
+  extern (D) @trusted
   {
     void rewind(FILE* stream)   { fseek(stream,0L,SEEK_SET); stream._flag&=~_IOERR; }
-    void clearerr(FILE* stream) { stream._flag &= ~(_IOERR|_IOEOF);                 }
-    int  feof(FILE* stream)     { return stream._flag&_IOEOF;                       }
-    int  ferror(FILE* stream)   { return stream._flag&_IOERR;                       }
+    pure void clearerr(FILE* stream) { stream._flag &= ~(_IOERR|_IOEOF);                 }
+    pure int  feof(FILE* stream)     { return stream._flag&_IOEOF;                       }
+    pure int  ferror(FILE* stream)   { return stream._flag&_IOERR;                       }
   }
     int   _snprintf(char* s, size_t n, in char* fmt, ...);
     alias _snprintf snprintf;
@@ -457,47 +460,63 @@ version( Windows )
 }
 else version( linux )
 {
+  // No unsafe pointer manipulation.
+  @trusted
+  {
     void rewind(FILE* stream);
-    void clearerr(FILE* stream);
-    int  feof(FILE* stream);
-    int  ferror(FILE* stream);
+    pure void clearerr(FILE* stream);
+    pure int  feof(FILE* stream);
+    pure int  ferror(FILE* stream);
     int  fileno(FILE *);
+  }
 
     int  snprintf(char* s, size_t n, in char* format, ...);
     int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
 }
 else version( OSX )
 {
+  // No unsafe pointer manipulation.
+  @trusted
+  {
     void rewind(FILE*);
-    void clearerr(FILE*);
-    int  feof(FILE*);
-    int  ferror(FILE*);
+    pure void clearerr(FILE*);
+    pure int  feof(FILE*);
+    pure int  ferror(FILE*);
     int  fileno(FILE*);
+  }
 
     int  snprintf(char* s, size_t n, in char* format, ...);
     int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
 }
 else version( FreeBSD )
 {
+  // No unsafe pointer manipulation.
+  @trusted
+  {
     void rewind(FILE*);
-    void clearerr(FILE*);
-    int  feof(FILE*);
-    int  ferror(FILE*);
+    pure void clearerr(FILE*);
+    pure int  feof(FILE*);
+    pure int  ferror(FILE*);
     int  fileno(FILE*);
+  }
 
     int  snprintf(char* s, size_t n, in char* format, ...);
     int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
 }
 else version( GNU )
 {
+  // No unsafe pointer manipulation.
+  @trusted
+  {
     void rewind(FILE*);
-    void clearerr(FILE*);
-    int  feof(FILE*);
-    int  ferror(FILE*);
+    pure void clearerr(FILE*);
+    pure int  feof(FILE*);
+    pure int  ferror(FILE*);
     int  fileno(FILE*);
+  }
 
-    alias __builtin_snprintf snprintf;
-    alias __builtin_vsnprintf vsnprintf;
+    int  snprintf(char* s, size_t n, in char* format, ...);
+    int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
 }
 else
 {
