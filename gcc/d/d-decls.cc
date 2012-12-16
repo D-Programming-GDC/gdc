@@ -551,7 +551,6 @@ FuncDeclaration::toSymbol (void)
 	    {
 	      // Pure functions don't imply nothrow
 	      DECL_PURE_P (fndecl) = (isPure() == PUREstrong && ftype->isnothrow);
-	      TREE_READONLY (fndecl) = (isPure() == PUREconst && ftype->isnothrow);
 	      TREE_NOTHROW (fndecl) = ftype->isnothrow;
 	    }
 
