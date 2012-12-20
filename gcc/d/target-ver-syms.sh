@@ -63,8 +63,10 @@ case "$target_vendor" in
 *) ;;
 esac
 
+# Normalize some architecture values for the case below.
 case "$target_cpu" in
 i*86 | x86_64) gdc_target_cpu=x86 ;;
+arm* | aarch64*) gdc_target_cpu=arm ;;
 parisc* | hppa*) gdc_target_cpu=hppa ;;
 *ppc* | powerpc*) gdc_target_cpu=ppc ;;
 *) gdc_target_cpu="$target_cpu"
@@ -72,7 +74,7 @@ esac
 
 case "$gdc_target_cpu" in
 alpha*)                       d_cpu_versym64=Alpha ;;
-arm*)    d_cpu_versym=ARM  ;;
+arm*)    d_cpu_versym=ARM   ; d_cpu_versym64=ARM64 ;;
 hppa)    d_cpu_versym=HPPA  ; d_cpu_versym64=HPPA64 ;;
 ia64*)                        d_cpu_versym64=IA64 ;;
 mips*)   d_cpu_versym=MIPS  ; d_cpu_versym64=MIPS64 ;;
