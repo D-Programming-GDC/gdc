@@ -1,3 +1,74 @@
+--- gcc/config/i386/i386.h
++++ gcc/config/i386/i386.h
+@@ -583,6 +583,14 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+ /* Target CPU builtins.  */
+ #define TARGET_CPU_CPP_BUILTINS() ix86_target_macros ()
+ 
++#define TARGET_CPU_D_BUILTINS()                 \
++do {                                            \
++  if (TARGET_64BIT)                             \
++    builtin_define("X86_64");                   \
++  else                                          \
++    builtin_define("X86");                      \
++} while (0)
++
+ /* Target Pragmas.  */
+ #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
+ 
+--- gcc/config/mips/mips.h
++++ gcc/config/mips/mips.h
+@@ -554,6 +554,51 @@ struct mips_cpu_info {
+     }									\
+   while (0)
+ 
++
++#define TARGET_CPU_D_BUILTINS()                 \
++  do                                            \
++    {                                           \
++      builtin_define("MIPS");                   \
++      if (TARGET_64BIT)                         \
++        builtin_define("MIPS64");               \
++      else                                      \
++        builtin_define("MIPS32");               \
++                                                \
++      switch (mips_abi)                         \
++        {                                       \
++        case ABI_32:                            \
++          builtin_define("MIPS_O32");           \
++          break;                                \
++                                                \
++        case ABI_O64:                           \
++          builtin_define("MIPS_O64");           \
++          break;                                \
++                                                \
++        case ABI_N32:                           \
++          builtin_define("MIPS_N32");           \
++          break;                                \
++                                                \
++        case ABI_64:                            \
++          builtin_define("MIPS_N64");           \
++          break;                                \
++                                                \
++        case ABI_EABI:                          \
++          builtin_define("MIPS_EABI");          \
++          break;                                \
++                                                \
++        default:                                \
++          gcc_unreachable();                    \
++        }                                       \
++                                                \
++      if (TARGET_NO_FLOAT)                      \
++        builtin_define("MIPS_NoFloat");         \
++      else if (TARGET_HARD_FLOAT_ABI)           \
++        builtin_define("MIPS_HardFloat");       \
++      else                                      \
++        builtin_define("MIPS_SoftFloat");       \
++    }                                           \
++  while (0)
++
+ /* Default target_flags if no switches are specified  */
+ 
+ #ifndef TARGET_DEFAULT
 --- gcc/config/rs6000/rs6000.c	2012-10-07 03:07:42.000000000 +0100
 +++ gcc/config/rs6000/rs6000.c	2012-10-14 10:25:56.025866841 +0100
 @@ -21418,7 +21418,8 @@ rs6000_output_function_epilogue (FILE *f

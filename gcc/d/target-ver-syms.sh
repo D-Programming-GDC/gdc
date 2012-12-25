@@ -75,12 +75,10 @@ alpha*)                       d_cpu_versym64=Alpha ;;
 arm*)    d_cpu_versym=ARM  ;;
 hppa)    d_cpu_versym=HPPA  ; d_cpu_versym64=HPPA64 ;;
 ia64*)                        d_cpu_versym64=IA64 ;;
-mips*)   d_cpu_versym=MIPS  ; d_cpu_versym64=MIPS64 ;;
 ppc)     d_cpu_versym=PPC   ; d_cpu_versym64=PPC64 ;;
 s390*)   d_cpu_versym=S390  ; d_cpu_versym64=S390X ;;
 sh*)     d_cpu_versym=SH    ; d_cpu_versym64=SH64 ;;
 sparc*)  d_cpu_versym=SPARC ; d_cpu_versym64=SPARC64 ;;
-x86)     d_cpu_versym=X86   ; d_cpu_versym64=X86_64 ;;
 esac
 
 if test -n "$d_cpu_versym"; then
