@@ -1,3 +1,9 @@
+2013-01-08  Daniel Green <venix1@gmail.com>
+
+	* d-objfile.cc(ObjectFile::outputThunk): Force output of private thunks
+	when declaration is external.  Duplicates GCC's output_thunk
+	functionality.
+
 2012-12-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Don't optimise PUREconst

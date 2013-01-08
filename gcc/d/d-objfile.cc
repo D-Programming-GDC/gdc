@@ -25,6 +25,8 @@
 #include "symbol.h"
 #include "dt.h"
 
+#include "output.h"
+
 
 ModuleInfo *ObjectFile::moduleInfo;
 Modules ObjectFile::modules;
@@ -730,19 +732,42 @@ ObjectFile::outputThunk (tree thunk_decl, tree target_decl, int offset)
   else
     {
       /* Backend will not emit thunks to external symbols unless the function is
-	 being emitted in this compilation unit.  So make generated thunks weak
-	 symbols for the methods they interface with.  */
-      DECL_INITIAL (thunk_decl) = NULL_TREE;
-      DECL_EXTERNAL (thunk_decl) = 1;
-      TREE_ASM_WRITTEN (thunk_decl) = 0;
-      TREE_PRIVATE (thunk_decl) = 1;
-      TREE_PUBLIC (thunk_decl) = 0;
+         being emitted in this compilation unit.  Duplicate GCC's output_thunk 
+         to force output of thunks.
+       */ 
+      const char *fnname;
+      tree fn_block;
+      tree restype = TREE_TYPE (TREE_TYPE (thunk_decl));  
 
-      /* Can't call declare_weak because it wants this to be TREE_PUBLIC,
-	 and that isn't supported; and because it wants to add it to
-	 the list of weak decls, which isn't helpful.  */
-      DECL_WEAK (thunk_decl) = 1;
+      current_function_decl = thunk_decl;
 
+      DECL_RESULT (thunk_decl)
+        = build_decl (DECL_SOURCE_LOCATION (thunk_decl),
+                      RESULT_DECL, 0, restype);
+  
+      TREE_PUBLIC(thunk_decl) = 0;  
+
+      fnname = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (thunk_decl));
+      /* The back end expects DECL_INITIAL to contain a BLOCK, so we
+create one. */
+      fn_block = make_node (BLOCK);
+      BLOCK_VARS (fn_block) = DECL_ARGUMENTS (thunk_decl);
+      DECL_INITIAL (thunk_decl) = fn_block;
+      init_function_start (thunk_decl);
+      cfun->is_thunk = 1;
+      assemble_start_function (thunk_decl, fnname);
+
+      targetm.asm_out.output_mi_thunk (asm_out_file, thunk_decl,
+                                       fixed_offset, virtual_value, alias);
+    
+      assemble_end_function (thunk_decl, fnname);
+      init_insn_lengths ();
+      free_after_compilation (cfun);
+      set_cfun (NULL);
+      TREE_ASM_WRITTEN (thunk_decl) = 1;
+      //node->thunk.thunk_p = false;
+      //node->analyzed = false;
+     
       rest_of_decl_compilation (thunk_decl, 1, 0);
     }
 
