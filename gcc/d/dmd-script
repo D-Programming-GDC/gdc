@@ -458,6 +458,12 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @out, $arg;
     } elsif ( $arg =~ m/^-.+$/ ) {
         errorExit "unrecognized switch '$arg'";
+    } elsif ( $arg =~ m/^\@(.*)/ ) {
+        open CMDFILE, "<$1" or die "Error: can't open response file\n";
+        while(<CMDFILE>) {
+            push @ARGV, split /\s+/, $_;
+        }
+        close CMDFILE;
     } elsif ( $arg =~ m/^.+\.d$/i ||
               $arg =~ m/^.+\.dd$/i ||
               $arg =~ m/^.+\.di$/i) {
@@ -472,8 +478,6 @@ while ( $arg_i < scalar(@ARGV) ) {
         if ( targetHasEXE() ) {
             $output_file .= $2;
         }
-    } elsif ( $arg =~ m/^\@.+\.rsp$/i ) {
-        # Append response file to end of ARGV.
     } else {
         push @objects, $arg
     }
