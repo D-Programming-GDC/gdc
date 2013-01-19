@@ -1,3 +1,8 @@
+2012-12-16  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-decls.cc(FuncDeclaration::toSymbol): Don't optimise PUREconst
+	calls.
+
 2012-10-27  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-codegen.cc(IRState::buildAssignOp): Handle case where LHS type is
