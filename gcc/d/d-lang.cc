@@ -234,6 +234,24 @@ d_init (void)
   VersionCondition::addPredefinedGlobalIdent ("GNU");
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");
 
+#ifndef TARGET_CPU_D_BUILTINS
+# define TARGET_CPU_D_BUILTINS()
+#endif
+
+#ifndef TARGET_OS_D_BUILTINS
+# define TARGET_OS_D_BUILTINS()
+#endif
+
+#ifndef TARGET_OBJFMT_D_BUILTINS
+# define TARGET_OBJFMT_D_BUILTINS()
+#endif
+
+# define builtin_define(TXT) VersionCondition::addPredefinedGlobalIdent (TXT)
+
+  TARGET_CPU_D_BUILTINS();
+  TARGET_OS_D_BUILTINS();
+  TARGET_OBJFMT_D_BUILTINS();
+
 #ifdef D_CPU_VERSYM64
   if (global.params.is64bit == 1)
     cpu_versym = D_CPU_VERSYM64;
