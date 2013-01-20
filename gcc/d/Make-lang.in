@@ -152,7 +152,8 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-gcc-real.glue.o \
               d/d-gt.cglue.o d/d-builtins.cglue.o d/d-builtins2.glue.o \
               d/symbol.glue.o d/asmstmt.glue.o d/dt.glue.o \
-              d/d-incpath.glue.o
+              d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
+              d/d-ir.glue.o
 
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
@@ -184,7 +185,6 @@ d/id.c: d/idgen
 	cd d && ./idgen
 # idgen also generates id.h; just verify id.h exists
 d/id.h: d/id.c
-	@ ls d/id.h
 
 d/d-confdefs.h: d/Make-lang.in
 	#echo "#define D_PHOBOS_DIR \""$(gcc_d_include_dir)"\"" > $@
@@ -202,6 +202,9 @@ d/d-irstate.glue.o: d/d-irstate.cc $(D_TREE_H)
 d/d-codegen.glue.o: d/d-codegen.cc $(D_TREE_H)
 d/d-decls.glue.o: d/d-decls.cc $(D_TREE_H)
 d/d-glue.glue.o: d/d-glue.cc $(D_TREE_H)
+d/d-ctype.glue.o: d/d-ctype.cc $(D_TREE_H)
+d/d-elem.glue.o: d/d-elem.cc $(D_TREE_H)
+d/d-ir.glue.o: d/d-ir.cc $(D_TREE_H)
 d/d-convert.glue.o: d/d-convert.cc $(D_TREE_H)
 d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
 d/d-gcc-real.glue.o: d/d-gcc-real.cc $(D_TREE_H)
