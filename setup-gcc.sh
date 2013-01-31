@@ -28,27 +28,30 @@ for arg in "$@"; do
     esac
 done
 
+pushd $d_gccsrc  > /dev/null
+d_gccsrc=`pwd`
+popd > /dev/null
 
 # 0. Find out what GCC version this is
-if grep version_string $d_gccsrc/gcc/version.c | grep -q '"3.4'; then
+if grep version_string "$d_gccsrc/gcc/version.c" | grep -q '"3.4'; then
     gcc_ver=3.4
-elif grep version_string $d_gccsrc/gcc/version.c | grep -q '"4.0'; then
+elif grep version_string "$d_gccsrc/gcc/version.c" | grep -q '"4.0'; then
     gcc_ver=4.0
-elif grep -q -E '^4\.1([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+elif grep -q -E '^4\.1([^0-9]|$)' "$d_gccsrc/gcc/BASE-VER"; then
     gcc_ver=4.1
-elif grep -q -E '^4\.2([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+elif grep -q -E '^4\.2([^0-9]|$)' "$d_gccsrc/gcc/BASE-VER"; then
     gcc_ver=4.2
-elif grep -q -E '^4\.3([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+elif grep -q -E '^4\.3([^0-9]|$)' "$d_gccsrc/gcc/BASE-VER"; then
     gcc_ver=4.3
-elif grep -q -E '^4\.4([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+elif grep -q -E '^4\.4([^0-9]|$)' "$d_gccsrc/gcc/BASE-VER"; then
     gcc_ver=4.4
-elif grep -q -E '^4\.5([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+elif grep -q -E '^4\.5([^0-9]|$)' "$d_gccsrc/gcc/BASE-VER"; then
     gcc_ver=4.5
-elif grep -q -E '^4\.6([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+elif grep -q -E '^4\.6([^0-9]|$)' "$d_gccsrc/gcc/BASE-VER"; then
     gcc_ver=4.6
-elif grep -q -E '^4\.7([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+elif grep -q -E '^4\.7([^0-9]|$)' "$d_gccsrc/gcc/BASE-VER"; then
     gcc_ver=4.7
-elif grep -q -E '^4\.8([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+elif grep -q -E '^4\.8([^0-9]|$)' "$d_gccsrc/gcc/BASE-VER"; then
     gcc_ver=4.8
 fi
 
@@ -87,7 +90,7 @@ ln -s "$top/gcc/d" "$d_gccsrc/gcc/d"   && \
   ../symlink-tree "$top/libphobos"     && \
   cd "../gcc/testsuite"                && \
   ../../symlink-tree "$top/gcc/testsuite" && \
-  cd $top
+  cd "$top"
 
 
 if test $d_update_gcc -eq 1; then
@@ -103,15 +106,15 @@ fi
 #   autogen -T Makefile.tpl Makefile.def
 #
 # You will need the autogen package to do this. (http://autogen.sf.net/)
-cd $d_gccsrc && \
+cd "$d_gccsrc" && \
   patch -p1 < gcc/d/patches/patch-toplev-$gcc_patch_key && \
-  cd $top || exit 1
+  cd "$top" || exit 1
 
 
 # 4. Patch the gcc subdirectory
-cd $d_gccsrc/gcc && \
+cd "$d_gccsrc/gcc" && \
   patch -p1 < "$gcc_patch_fn" && \
-  cd $top || exit 1
+  cd "$top" || exit 1
 
 
 echo "GDC setup complete."
