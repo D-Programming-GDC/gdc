@@ -111,6 +111,7 @@ cd $d_gccsrc && \
 # 4. Patch the gcc subdirectory
 cd $d_gccsrc/gcc && \
   patch -p1 < "$gcc_patch_fn" && \
+  patch -p1 < "d/patches/patch-versym-cpu-$gcc_patch_key" && \
   cd $top || exit 1
 
 
