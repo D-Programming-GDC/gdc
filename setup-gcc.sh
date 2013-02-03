@@ -112,6 +112,7 @@ cd $d_gccsrc && \
 cd $d_gccsrc/gcc && \
   patch -p1 < "$gcc_patch_fn" && \
   patch -p1 < "d/patches/patch-versym-cpu-$gcc_patch_key" && \
+  patch -p1 < "d/patches/patch-versym-os-$gcc_patch_key" && \
   cd $top || exit 1
 
 

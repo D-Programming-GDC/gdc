@@ -1,3 +1,9 @@
+2013-02-07  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-lang.cc(d_init): Use gcc's config system for predefined OS versions.
+	* setup-gcc.sh: Likewise.
+	* target-ver-syms.sh: Likewise.
+
 2013-02-05  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-builtins2.cc(gcc_type_to_d_type): Remove STRUCTTHISREF condition.
