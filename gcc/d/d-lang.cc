@@ -191,38 +191,9 @@ d_gcc_is_target_win32 (void)
 static bool
 d_init (void)
 {
-  const char *cpu_versym = NULL;
-
-  /* Currently, is64bit indicates a 64-bit target in general and is not
-     Intel-specific. */
-#ifdef TARGET_64BIT
-  global.params.is64bit = TARGET_64BIT ? 1 : 0;
-#else
-  /* TARGET_64BIT is only defined on biarched archs defaulted to 64-bit
-     (as amd64 or s390x) so for full 64-bit archs (as ia64 or alpha) we
-     need to test it more. */
-#ifdef D_CPU_VERSYM64
-  /* We are "defaulting" to 32-bit, which mean that if both D_CPU_VERSYM
-     and D_CPU_VERSYM64 are defined, and not TARGET_64BIT, we will use
-     32 bits. This will be overidden for full 64-bit archs */
-  global.params.is64bit = 0;
-#ifndef D_CPU_VERSYM
-  /* So this is typically for alpha and ia64 */
-  global.params.is64bit = 1;
-#endif
-
-#else
-
-#ifdef D_CPU_VERSYM /* D_CPU_VERSYM is defined and D_CPU_VERSYM64 is not. */
-  global.params.is64bit = 0;
-#else
-  /* If none of D_CPU_VERSYM and D_CPU_VERSYM64 defined check POINTER_SIZE instead */
-  global.params.is64bit = (POINTER_SIZE == 64);
-#endif
-
-#endif /* ! D_CPU_VERSYM */
-
-#endif /* ! TARGET_64BIT */
+  if(POINTER_SIZE == 64)
+    global.params.is64bit = 1;
+  else global.params.is64bit = 0;
 
   Type::init();
   Id::initialize();
@@ -231,23 +202,22 @@ d_init (void)
   gcc_d_backend_init();
   real_t::init();
 
+#ifndef TARGET_CPU_D_BUILTINS
+# define TARGET_CPU_D_BUILTINS()
+#endif
+
+#ifndef TARGET_OS_D_BUILTINS
+# define TARGET_OS_D_BUILTINS()
+#endif
+
+# define builtin_define(TXT) VersionCondition::addPredefinedGlobalIdent (TXT)
+
+  TARGET_CPU_D_BUILTINS();
+  TARGET_OS_D_BUILTINS();
+
   VersionCondition::addPredefinedGlobalIdent ("GNU");
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");
 
-#ifdef D_CPU_VERSYM64
-  if (global.params.is64bit == 1)
-    cpu_versym = D_CPU_VERSYM64;
-#  ifdef D_CPU_VERSYM
-  else
-    cpu_versym = D_CPU_VERSYM;
-#  endif
-#else
-#  ifdef D_CPU_VERSYM
-  cpu_versym = D_CPU_VERSYM;
-#  endif
-#endif
-  if (cpu_versym)
-    VersionCondition::addPredefinedGlobalIdent (cpu_versym);
 #ifdef D_OS_VERSYM
   if (strcmp (D_OS_VERSYM, "Win64") == 0 && !global.params.is64bit)
     VersionCondition::addPredefinedGlobalIdent ("Win32");
@@ -289,9 +259,8 @@ d_init (void)
   /* Should define this anyway to set us apart from the competition. */
   VersionCondition::addPredefinedGlobalIdent ("GNU_InlineAsm");
 
-  /* Logic copied from cppbuiltins for LP64 targets. */
-  if (TYPE_PRECISION (long_integer_type_node) == 64
-      && TYPE_PRECISION (integer_type_node) == 32 && POINTER_SIZE == 64)
+  /* LP64 only means 64bit pointers in D. */
+  if (global.params.is64bit)
     VersionCondition::addPredefinedGlobalIdent ("D_LP64");
 
   /* Setting global.params.cov forces module info generation which is
