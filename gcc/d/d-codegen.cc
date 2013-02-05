@@ -783,17 +783,13 @@ bool
 IRState::isDeclarationReferenceType (Declaration *decl)
 {
   Type *base_type = decl->type->toBasetype();
-  // D doesn't do this now..
+  // D doesn't do this now...
   if (base_type->ty == Treference)
     return true;
 
   if (decl->isOut() || decl->isRef())
     return true;
 
-#if !SARRAYVALUE
-  if (decl->isParameter() && base_type->ty == Tsarray)
-    return true;
-#endif
   return false;
 }
 
@@ -836,10 +832,6 @@ IRState::isArgumentReferenceType (Parameter *arg)
   if (arg->storageClass & (STCout | STCref))
     return true;
 
-#if !SARRAYVALUE
-  if (base_type->ty == Tsarray)
-    return true;
-#endif
   return false;
 }
 

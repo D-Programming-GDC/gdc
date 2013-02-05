@@ -1,4 +1,13 @@
-2012-02-01  Johannes Pfau  <johannespfau@gmail.com>
+2013-02-05  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins2.cc(gcc_type_to_d_type): Remove STRUCTTHISREF condition.
+	* d-decls.cc(FuncDeclaration::toSymbol): Likewise.
+	* d-elem.cc(ThisExp::toElem): Likewise.
+	* d-ctype.cc(TypeSArray::toCtype): Remove SARRAYVALUE condition.
+	* d-codegen.cc(IRState::isDeclarationReferenceType): Likewise.
+	(IRState::isArgumentReferenceType): Likewise.
+
+2013-02-01  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-lang.cc(d_init): Use gcc's config system for predefined CPU versions.
 	(d_init): Fix definition of D_LP64 version.
