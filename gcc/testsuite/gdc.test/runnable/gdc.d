@@ -1,4 +1,8 @@
+// EXTRA_SOURCES: imports/gdca.d
+
 module gdc;
+
+import imports.gdca;
 
 /*
  * Here getChar is a function in a template where template.isnested == false
@@ -73,10 +77,45 @@ void test3()
     test3helper().g();
 }
 
+/*
+ * empty is a (private) function which is nested in lightPostprocess.
+ * At the same time it's a template instance, so it has to be declared
+ * as weak or otherwise one-only. imports/gdca.d creates another instance
+ * of Regex!char to verify that.
+ */
+struct Parser(R)
+{
+    @property program()
+    {
+        return Regex!char();
+    }
+}
+
+
+struct Regex(Char)
+{
+    @trusted lightPostprocess()
+    {
+        struct FixedStack(T) 
+        {
+            @property empty(){  return false; }
+        }
+
+        auto counterRange = FixedStack!uint();
+    }
+}
+
+void test4()
+{
+    auto parser = Parser!(char[])();
+    imports.gdca.test4a;
+}
+
 
 void main()
 {
     test1('n');
     test2('n');
     test3();
+    test4();
 }
