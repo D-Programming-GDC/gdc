@@ -46,9 +46,37 @@ void test2()(char val)
     }
 }
 
+/*
+ * If g had accessed a, the frontend would have generated a closure.
+ *
+ * As we do not access it, there's no closure. We have to be careful
+ * not to set a static chain for g containing test3helper though,
+ * as g can be called from outside (here from test3). In the end
+ * we have to treat this as if everything in test3helper was declared
+ * at module scope.
+ */
+auto test3helper()
+{
+    int a;
+    void c() {};
+    class Result
+    {
+        int b;
+        void g() { c(); /*a = 42;*/ }
+    }
+
+    return new Result();
+}
+
+void test3()
+{
+    test3helper().g();
+}
+
 
 void main()
 {
     test1('n');
     test2('n');
+    test3();
 }
