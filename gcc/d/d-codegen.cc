@@ -4009,7 +4009,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
     {
       s = f->toParent();
       ti = s->isTemplateInstance();
-      if (ti && ti->isnested == NULL)
+      if (ti && ti->isnested == NULL && ti->parent->isModule())
 	return false;
 
       pf = f->toParent2()->isFuncDeclaration();
