@@ -3998,7 +3998,7 @@ bool
 IRState::functionNeedsChain (FuncDeclaration *f)
 {
   Dsymbol *s;
-  ClassDeclaration *a;
+  AggregateDeclaration *a;
   FuncDeclaration *pf = NULL;
   TemplateInstance *ti = NULL;
 
@@ -4020,7 +4020,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
 
   s = f->toParent2();
 
-  while (s && (a = s->isClassDeclaration()) && a->isNested())
+  while (s && (((a = s->isAggregateDeclaration()) && a->isNested()) || s->isTemplateInstance()))
     {
       s = s->toParent2();
       if ((pf = s->isFuncDeclaration())

@@ -22,7 +22,33 @@ void test1()(char val)
     }
 }
 
+/*
+ * Similar as test1, but a little more complicated:
+ * Here getChar is nested in a struct template which is nested
+ * in a function. getChar's static chain still needs to contain test2.
+ */
+void test2()(char val)
+{
+    void error()
+    {
+    }
+    
+    struct S(T){
+    void getChar()
+    {
+        error();
+    }}
+
+
+    void parseString()
+    {
+        S!(int)().getChar();
+    }
+}
+
+
 void main()
 {
     test1('n');
+    test2('n');
 }
