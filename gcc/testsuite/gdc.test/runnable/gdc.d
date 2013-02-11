@@ -112,10 +112,76 @@ void test4()
 }
 
 
+/*
+ * Here the BinaryHeap instance uses an alias parameter and therefore
+ * the instance's functions (percolateDown) need to be generated in
+ * topNIndex->BinaryHeap scope and not in the declaration scope
+ * (module->BinaryHeap).
+ */
+void topNIndex()()
+{
+    bool indirectLess(int a, int b)
+    {
+        return a > b;
+    }
+
+    auto a = BinaryHeap!(indirectLess)();
+}
+
+struct BinaryHeap(alias less)
+{
+    void percolateDown()
+    {
+        less(0, 1);
+    }
+}
+
+void test5()
+{
+    topNIndex();
+}
+
+/*
+ * Similar as test5 but with an additional indirection.
+ * The nested function chain for percolateDown should look like this:
+ * topNIndex2->BinaryHeap2->percolateDown.
+ */
+void topNIndex2()()
+{
+    bool indirectLess(int a, int b)
+    {
+        return a > b;
+    }
+    auto a = BinaryHeap2!(Test!(indirectLess)())();
+}
+
+struct Test(alias a)
+{
+    void foo()
+    {
+        a(0, 0);
+    }
+}
+
+struct BinaryHeap2(alias less)
+{
+    void percolateDown()
+    {
+        less.foo();
+    }
+}
+
+void test6()
+{
+    topNIndex2();
+}
+
 void main()
 {
     test1('n');
     test2('n');
     test3();
     test4();
+    test5();
+    test6();
 }
