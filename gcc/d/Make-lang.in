@@ -146,7 +146,7 @@ D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-objfile.glue.o d/d-irstate.glue.o d/d-glue.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-gcc-real.glue.o \
-              d/d-gt.cglue.o d/d-builtins.cglue.o d/d-builtins2.glue.o \
+              d/d-gt.cglue.o d/d-builtins.cglue.o \
               d/symbol.glue.o d/asmstmt.glue.o d/dt.glue.o \
               d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
               d/d-ir.glue.o
@@ -209,7 +209,6 @@ d/symbol.glue.o: d/symbol.cc $(D_TREE_H)
 d/dt.glue.o: d/symbol.cc $(D_TREE_H)
 d/d-gt.cglue.o: d/d-gt.c $(D_TREE_H)
 d/d-builtins.cglue.o: d/d-builtins.c $(D_TREE_H)
-d/d-builtins2.glue.o: d/d-builtins.c $(D_TREE_H)
 d/todt.dmd.o: $(D_DMD_H)
 d/toobj.dmd.o: $(D_DMD_H)
 d/typinf.dmd.o: $(D_DMD_H)
