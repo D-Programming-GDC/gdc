@@ -214,35 +214,12 @@ d_init (void)
 
   TARGET_CPU_D_BUILTINS();
   TARGET_OS_D_BUILTINS();
+  
+  if (findCondition(global.params.versionids, new Identifier("Windows", 0)))
+    is_target_win32 = true;
 
   VersionCondition::addPredefinedGlobalIdent ("GNU");
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");
-
-#ifdef D_OS_VERSYM
-  if (strcmp (D_OS_VERSYM, "Win64") == 0 && !global.params.is64bit)
-    VersionCondition::addPredefinedGlobalIdent ("Win32");
-  else
-    VersionCondition::addPredefinedGlobalIdent (D_OS_VERSYM);
-
-  if (strcmp (D_OS_VERSYM, "darwin") == 0)
-    VersionCondition::addPredefinedGlobalIdent ("OSX");
-  if (strcmp (D_OS_VERSYM, "Win32") == 0 || strcmp (D_OS_VERSYM, "Win64") == 0)
-    is_target_win32 = true;
-#endif
-#ifdef D_OS_VERSYM2
-  if (strcmp (D_OS_VERSYM2, "MinGW64") == 0 && !global.params.is64bit)
-    VersionCondition::addPredefinedGlobalIdent ("MinGW32");
-  else
-    VersionCondition::addPredefinedGlobalIdent (D_OS_VERSYM2);
-
-  if (strncmp (D_OS_VERSYM2, "MinGW", 5) == 0)
-    VersionCondition::addPredefinedGlobalIdent ("MinGW");
-  if (strcmp (D_OS_VERSYM2, "Win32") == 0 || strcmp (D_OS_VERSYM2, "Win64") == 0)
-    is_target_win32 = true;
-#endif
-#ifdef D_VENDOR_VERSYM
-  VersionCondition::addPredefinedGlobalIdent (D_VENDOR_VERSYM);
-#endif
 
   if (BYTES_BIG_ENDIAN)
     VersionCondition::addPredefinedGlobalIdent ("BigEndian");
