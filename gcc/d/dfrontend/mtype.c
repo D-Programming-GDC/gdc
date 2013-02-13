@@ -132,6 +132,7 @@ TemplateDeclaration *Type::rtinfo;
 
 Type *Type::tvoidptr;
 Type *Type::tstring;
+Type *Type::tvalist;
 Type *Type::basic[TMAX];
 unsigned char Type::mangleChar[TMAX];
 unsigned char Type::sizeTy[TMAX];
@@ -291,6 +292,7 @@ void Type::init()
 
     tvoidptr = tvoid->pointerTo();
     tstring = tchar->invariantOf()->arrayOf();
+    tvalist = tvoid->pointerTo();
 
     if (global.params.is64bit)
     {
