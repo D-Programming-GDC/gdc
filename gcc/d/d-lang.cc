@@ -179,13 +179,23 @@ d_option_lang_mask (void)
   return CL_D;
 }
 
-
-static bool is_target_win32 = false;
-
-bool
-d_gcc_is_target_win32 (void)
+static void
+d_add_builtin_version(const char* ident)
 {
-  return is_target_win32;
+  if (strcmp (ident, "linux") == 0)
+    global.params.isLinux = 1;
+  else if (strcmp (ident, "OSX") == 0)
+    global.params.isOSX = 1;
+  else if (strcmp (ident, "Windows") == 0)
+    global.params.isWindows = 1;
+  else if (strcmp (ident, "FreeBSD") == 0)
+    global.params.isFreeBSD = 1;
+  else if (strcmp (ident, "OpenBSD") == 0)
+    global.params.isOPenBSD = 1;
+  else if (strcmp (ident, "Solaris") == 0)
+    global.params.isSolaris = 1;
+  
+  VersionCondition::addPredefinedGlobalIdent (ident);
 }
 
 static bool
@@ -210,14 +220,11 @@ d_init (void)
 # define TARGET_OS_D_BUILTINS()
 #endif
 
-# define builtin_define(TXT) VersionCondition::addPredefinedGlobalIdent (TXT)
+# define builtin_define(TXT) d_add_builtin_version(TXT)
 
   TARGET_CPU_D_BUILTINS();
   TARGET_OS_D_BUILTINS();
   
-  if (findCondition(global.params.versionids, new Identifier("Windows", 0)))
-    is_target_win32 = true;
-
   VersionCondition::addPredefinedGlobalIdent ("GNU");
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");
 
@@ -1013,7 +1020,7 @@ d_parse_file (void)
 
       OutBuffer *ob = global.params.makeDeps;
       if (global.params.makeDepsFile == NULL)
-	printf ((char *)ob->data);
+	printf ("%s", (char *)ob->data);
       else
 	{
 	  File deps (global.params.makeDepsFile);
