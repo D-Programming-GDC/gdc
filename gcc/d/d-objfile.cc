@@ -209,16 +209,8 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
 {
   if (!D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates != TEprivate)
     {
-      /* Weak definitions have to be public.  Nested functions may or
-	 may not be emitted as public even if TREE_PUBLIC is set.
-	 There is no way to tell if the back end implements
-	 make_decl_one_only with DECL_WEAK, so this check is
-	 done first.  */
-      if (!TREE_PUBLIC (decl_tree)
-	  || (TREE_CODE (decl_tree) == FUNCTION_DECL
-	      && DECL_CONTEXT (decl_tree) != NULL_TREE
-	      && D_DECL_STATIC_CHAIN (decl_tree) == 1
-	      && D_DECL_IS_CONTRACT (decl_tree) == 0))
+      // Weak definitions have to be public.
+      if (!TREE_PUBLIC (decl_tree))
 	return;
     }
 

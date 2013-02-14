@@ -3993,6 +3993,37 @@ IRState::getFrameRef (FuncDeclaration *outer_func)
     }
 }
 
+// Special case: If a function returns a nested class with functions
+// but there are no "closure variables" the frontend (needsClosure) 
+// returns false even though the nested class _is_ returned from the
+// function. (See case 4 in needsClosure)
+// A closure is strictly speaking not necessary, but we also can not
+// use a static function chain for functions in the nested class as
+// they can be called from outside. GCC's nested functions can't deal
+// with those kind of functions. We have to detect them manually here
+// and make sure we neither construct a static chain nor a closure.
+
+bool
+functionDegenerateClosure (FuncDeclaration *f)
+{
+  if (!f->needsClosure() && f->closureVars.dim == 0)
+  {
+    Type *tret = ((TypeFunction *)f->type)->next;
+    gcc_assert(tret);
+    tret = tret->toBasetype();
+    if (tret->ty == Tclass || tret->ty == Tstruct)
+    { 
+      Dsymbol *st = tret->toDsymbol(NULL);
+      for (Dsymbol *s = st->parent; s; s = s->parent)
+      {
+	if (s == f)
+	  return true;
+      }
+    }
+  }
+  return false;
+}
+
 // Return true if function F needs to have the static chain passed to
 // it.  This only applies to nested function handling provided by the
 // GCC back end (not D closures.)
@@ -4001,7 +4032,7 @@ bool
 IRState::functionNeedsChain (FuncDeclaration *f)
 {
   Dsymbol *s;
-  ClassDeclaration *a;
+  AggregateDeclaration *a;
   FuncDeclaration *pf = NULL;
   TemplateInstance *ti = NULL;
 
@@ -4009,7 +4040,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
     {
       s = f->toParent();
       ti = s->isTemplateInstance();
-      if (ti && ti->isnested == NULL)
+      if (ti && ti->isnested == NULL && ti->parent->isModule())
 	return false;
 
       pf = f->toParent2()->isFuncDeclaration();
@@ -4023,11 +4054,11 @@ IRState::functionNeedsChain (FuncDeclaration *f)
 
   s = f->toParent2();
 
-  while (s && (a = s->isClassDeclaration()) && a->isNested())
+  while (s && (((a = s->isAggregateDeclaration()) && a->isNested()) || s->isTemplateInstance()))
     {
       s = s->toParent2();
       if ((pf = s->isFuncDeclaration())
-	  && !getFrameInfo (pf)->is_closure)
+	  && !getFrameInfo (pf)->is_closure && !functionDegenerateClosure(pf))
 	{
 	  return true;
 	}
