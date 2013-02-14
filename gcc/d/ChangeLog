@@ -1,3 +1,8 @@
+2013-02-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.h(D_DECL_IS_CONTRACT): Remove macro.
+	* d-decls.cc(FuncDeclaration::toSymbol): Likewise.
+
 2013-02-13  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc(d_gcc_is_target_win32): Remove.
