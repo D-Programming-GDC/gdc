@@ -21,9 +21,6 @@ target_os=$(shell echo $(target) | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)/\3/')
 
 # Manual configuration since patching gcc/configure.ac is troublesome...
 
-# The file d-make-include is created by setup-gcc.sh
--include $(srcdir)/d/d-make-include
-
 # Enable the asm(...) style syntax for extended asm.  Deviates from the D
 # specification syntax.  Can still use extended asm if disabled.
 # D_EXTRA_DEFINES += -DGDC_EXTENDED_ASM_SYNTAX=1

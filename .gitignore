@@ -1,7 +1,6 @@
 # gdc specific    #
 ###################
 dev/
-d/d-make-include
 
 # libphobos specific #
 ######################
