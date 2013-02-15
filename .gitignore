@@ -3,6 +3,14 @@
 dev/
 d/d-make-include
 
+# libphobos specific #
+######################
+libphobos/autom4te.cache/
+libphobos/config.guess
+libphobos/config.sub
+libphobos/install-sh
+libphobos/missing
+
 # from .hgignore  #
 ###################
 .cproject
