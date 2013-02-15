@@ -9,6 +9,7 @@
 // See the included readme.txt for details.
 
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
 //#include "mem.h"

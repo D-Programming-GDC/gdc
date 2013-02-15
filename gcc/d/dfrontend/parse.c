@@ -4327,14 +4327,6 @@ Statement *Parser::parseStatement(int flags)
             // Defer parsing of AsmStatements until semantic processing.
 
             nextToken();
-#if GDC_EXTENDED_ASM_SYNTAX
-            if (token.value == TOKlparen)
-            {
-                nextToken();
-                s = parseExtAsm(1);
-                break;
-            }
-#endif
             check(TOKlcurly);
             toklist = NULL;
             ptoklist = &toklist;
