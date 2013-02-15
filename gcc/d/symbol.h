@@ -18,8 +18,10 @@
 #ifndef DMD_SYMBOL_H
 #define DMD_SYMBOL_H
 
+#include "config.h"
+#include "coretypes.h"
+
 #include "root.h"
-#include "d-gcc-tree.h"
 #include "mtype.h"
 
 enum TypeType
