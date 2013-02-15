@@ -18,8 +18,10 @@
 #ifndef DMD_DT_H
 #define DMD_DT_H
 
+#include "config.h"
+#include "coretypes.h"
+
 #include "symbol.h"
-#include "d-gcc-tree.h"
 
 enum DT
 {
