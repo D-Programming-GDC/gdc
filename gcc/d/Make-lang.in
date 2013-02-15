@@ -19,17 +19,7 @@
 
 target_os=$(shell echo $(target) | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)/\3/')
 
-# Manual configuration since patching gcc/configure.ac is troublesome...
-
-# Enable the asm(...) style syntax for extended asm.  Deviates from the D
-# specification syntax.  Can still use extended asm if disabled.
-# D_EXTRA_DEFINES += -DGDC_EXTENDED_ASM_SYNTAX=1
-
-# Enables MinGW support for C99 printf format specfiers
-ifeq ($(target_os), mingw32)
-D_EXTRA_DEFINES += -D__USE_MINGW_ANSI_STDIO
-endif
-
+# Actual names to use when installing a native compiler.
 D_INSTALL_NAME = $(shell echo gdc|sed '$(program_transform_name)')
 DMD_INSTALL_NAME = $(shell echo dmd|sed '$(program_transform_name)')
 GDMD_INSTALL_NAME = $(shell echo gdmd|sed '$(program_transform_name)')
@@ -60,7 +50,7 @@ D_DMD_H := \
     d/dfrontend/parse.h d/dfrontend/rmem.h d/dfrontend/root.h \
     d/dfrontend/scope.h d/dfrontend/speller.h d/dfrontend/statement.h \
     d/dfrontend/staticassert.h d/dfrontend/stringtable.h \
-    d/dfrontend/template.h d/dfrontend/total.h d/dfrontend/utf.h \
+    d/dfrontend/template.h d/dfrontend/utf.h \
     d/dfrontend/version.h d/d-dmd-gcc.h d/d-gcc-complex_t.h d/d-gcc-real.h \
     d/id.h
 
@@ -151,9 +141,9 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
 d/%.dmd.o: $(srcdir)/d/dfrontend/%.c $(D_DMD_H) d/d-confdefs.h
-	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS) -include total.h -o d/$*.dmd.o -c $<
+	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmd.o -c $<
 
-# For generator programs, can't implicitly include "total.h" which includes "id.h"
+# For generator programs.
 d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
 	$(COMPILER_FOR_BUILD) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmdgen.o -c $<
 
