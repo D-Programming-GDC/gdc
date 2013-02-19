@@ -219,6 +219,10 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
      even if the target supports one-only. */
   if (!D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates != TEprivate)
     {
+      // Necessary to allow DECL_ONE_ONLY or DECL_WEAK functions to be inlined
+      if (TREE_CODE (decl_tree) == FUNCTION_DECL)
+	DECL_DECLARED_INLINE_P (decl_tree) = 1;
+
       /* The following makes assumptions about the behavior
 	 of make_decl_one_only */
       if (SUPPORTS_ONE_ONLY)
