@@ -24,12 +24,6 @@
 #include "root.h"
 #include "mtype.h"
 
-enum TypeType
-{
-  TYnptr = 0x001,
-  TYjfunc = 0x010,
-};
-
 enum SymbolStorageClass
 {
   SC_INVALID,

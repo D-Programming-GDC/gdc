@@ -4,7 +4,6 @@
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
-// http://www.dsource.org/projects/dmd/browser/branches/dmd-1.x/src/argtypes.c
 // License for redistribution is by either the Artistic License
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
@@ -370,6 +369,8 @@ TypeTuple *TypeStruct::toArgTypes()
                 unsigned off2 = f->offset;
                 if (ft1)
                     off2 = 8;
+                if (!t2 && off2 != 8)
+                    goto Lmemory;
                 assert(t2 || off2 == 8);
                 t2 = argtypemerge(t2, ft2, off2 - 8);
                 if (!t2)

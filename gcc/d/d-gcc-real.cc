@@ -377,22 +377,22 @@ real_t::toInt (Type *real_type, Type *int_type) const
   return gen.hwi2toli (cst);
 }
 
-// Return value of real_t rounded to fit in TO_MODE.
+// Return value of real_t rounded to fit in mode.
 
 real_t
-real_t::convert (Mode to_mode) const
+real_t::convert (Mode mode) const
 {
   real_t result;
-  real_convert (&result.rv(), machineMode (to_mode), &rv());
+  real_convert (&result.rv(), machineMode (mode), &rv());
   return result;
 }
 
-// Return value of real_t rounded to fit in TO_TYPE.
+// Return value of real_t rounded to fit in TYPE.
 
 real_t
-real_t::convert (Type *to_type) const
+real_t::convert (Type *type) const
 {
-  Type *tb = to_type->toBasetype();
+  Type *tb = type->toBasetype();
   switch (tb->ty)
     {
     case Tfloat32:
@@ -535,14 +535,6 @@ real_t::isSignallingNan (void)
 {
   // Same as isNan, but also check if is signalling.
   return REAL_VALUE_ISNAN (rv()) && rv().signalling;
-}
-
-// Returns TRUE if conversion doesn't cause loss of precision.
-
-bool
-real_t::isConversionExact (Mode to_mode) const
-{
-  return exact_real_truncate (machineMode (to_mode), &rv());
 }
 
 // Dump value of real_t for debugging purposes.

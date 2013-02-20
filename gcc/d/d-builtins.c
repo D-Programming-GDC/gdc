@@ -891,6 +891,28 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
     }
 }
 
+Expression *
+d_gcc_paint_type (Expression *expr, Type *type)
+{
+  /* We support up to 512-bit values.  */
+  unsigned char buffer[64];
+  int len;
+  Expression *e;
+  tree cst;
+
+  if (type->isintegral())
+    cst = IRState::floatConstant (expr->toReal(), expr->type);
+  else
+    cst = IRState::integerConstant (expr->toInteger(), expr->type);
+
+  len = native_encode_expr (cst, buffer, sizeof (buffer));
+  cst = native_interpret_expr (type->toCtype(), buffer, len);
+
+  e = gcc_cst_to_d_expr (cst);
+  gcc_assert (e != NULL);
+
+  return e;
+}
 
 /* Used to help initialize the builtin-types.def table.  When a type of
    the correct size doesn't exist, use error_mark_node instead of NULL.

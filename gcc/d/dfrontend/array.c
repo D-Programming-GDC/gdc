@@ -1,5 +1,5 @@
 
-// Copyright (c) 1999-2010 by Digital Mars
+// Copyright (c) 1999-2013 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -9,34 +9,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
 #include <assert.h>
-
-#if (defined (__SVR4) && defined (__sun))
-#include <alloca.h>
-#endif
-
-#if _MSC_VER || __MINGW32__
-#include <malloc.h>
-#endif
-
-#ifdef IN_GCC
-#include "gdc_alloca.h"
-#endif
-
-#if _WIN32
-#include <windows.h>
-#endif
-
-#ifndef _WIN32
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <unistd.h>
-#include <utime.h>
-#endif
 
 //#include "port.h"
 #include "root.h"
@@ -59,16 +33,15 @@ Array::~Array()
 }
 
 void Array::mark()
-{   unsigned u;
-
+{
     mem.mark(data);
-    for (u = 0; u < dim; u++)
+    for (size_t u = 0; u < dim; u++)
         mem.mark(data[u]);      // BUG: what if arrays of Object's?
 }
 
-void Array::reserve(unsigned nentries)
+void Array::reserve(size_t nentries)
 {
-    //printf("Array::reserve: dim = %d, allocdim = %d, nentries = %d\n", dim, allocdim, nentries);
+    //printf("Array::reserve: dim = %d, allocdim = %d, nentries = %d\n", (int)dim, (int)allocdim, (int)nentries);
     if (allocdim - dim < nentries)
     {
         if (allocdim == 0)
@@ -95,7 +68,7 @@ void Array::reserve(unsigned nentries)
     }
 }
 
-void Array::setDim(unsigned newdim)
+void Array::setDim(size_t newdim)
 {
     if (dim < newdim)
     {
@@ -141,7 +114,7 @@ void Array::shift(void *ptr)
     dim++;
 }
 
-void Array::insert(unsigned index, void *ptr)
+void Array::insert(size_t index, void *ptr)
 {
     reserve(1);
     memmove(data + index + 1, data + index, (dim - index) * sizeof(*data));
@@ -150,12 +123,11 @@ void Array::insert(unsigned index, void *ptr)
 }
 
 
-void Array::insert(unsigned index, Array *a)
+void Array::insert(size_t index, Array *a)
 {
     if (a)
-    {   unsigned d;
-
-        d = a->dim;
+    {
+        size_t d = a->dim;
         reserve(d);
         if (dim != index)
             memmove(data + index + d, data + index, (dim - index) * sizeof(*data));
@@ -174,7 +146,7 @@ void Array::append(Array *a)
     insert(dim, a);
 }
 
-void Array::remove(unsigned i)
+void Array::remove(size_t i)
 {
     if (dim - i - 1)
         memmove(data + i, data + i + 1, (dim - i - 1) * sizeof(data[0]));
@@ -183,25 +155,19 @@ void Array::remove(unsigned i)
 
 char *Array::toChars()
 {
-    unsigned len;
-    unsigned u;
-    char **buf;
-    char *str;
-    char *p;
-
-    buf = (char **)malloc(dim * sizeof(char *));
+    char **buf = (char **)malloc(dim * sizeof(char *));
     assert(buf);
-    len = 2;
-    for (u = 0; u < dim; u++)
+    size_t len = 2;
+    for (size_t u = 0; u < dim; u++)
     {
         buf[u] = ((Object *)data[u])->toChars();
         len += strlen(buf[u]) + 1;
     }
-    str = (char *)mem.malloc(len);
+    char *str = (char *)mem.malloc(len);
 
     str[0] = '[';
-    p = str + 1;
-    for (u = 0; u < dim; u++)
+    char *p = str + 1;
+    for (size_t u = 0; u < dim; u++)
     {
         if (u)
             *p++ = ',';

@@ -118,6 +118,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.obj = 1;
   global.params.Dversion = 2;
   global.params.quiet = 1;
+  global.params.useDeprecated = 2;
 
   global.params.linkswitches = new Strings();
   global.params.libfiles = new Strings();
@@ -191,7 +192,7 @@ d_add_builtin_version(const char* ident)
   else if (strcmp (ident, "FreeBSD") == 0)
     global.params.isFreeBSD = 1;
   else if (strcmp (ident, "OpenBSD") == 0)
-    global.params.isOPenBSD = 1;
+    global.params.isOpenBSD = 1;
   else if (strcmp (ident, "Solaris") == 0)
     global.params.isSolaris = 1;
   
@@ -259,6 +260,10 @@ d_init (void)
     VersionCondition::addPredefinedGlobalIdent ("D_Ddoc");
   if (global.params.useUnitTests)
     VersionCondition::addPredefinedGlobalIdent ("unittest");
+  if (global.params.useAssert)
+    VersionCondition::addPredefinedGlobalIdent("assert");
+  if (global.params.noboundscheck)
+    VersionCondition::addPredefinedGlobalIdent("D_NoBoundsChecks");
 
   VersionCondition::addPredefinedGlobalIdent ("all");
 
@@ -826,7 +831,6 @@ d_parse_file (void)
       if (strcmp (fonly_arg, in_fnames[0]))
 	::error ("-fonly= argument is different from first input file name");
     }
-  //fprintf (stderr, "***** %d files  main=%s\n", num_in_fnames, input_filename);
 
   for (size_t i = 0; i < num_in_fnames; i++)
     {
@@ -834,8 +838,8 @@ d_parse_file (void)
       char *fname = xstrdup (in_fnames[i]);
 
       // Strip path
-      char *p = FileName::name (fname);
-      char *ext = FileName::ext (p);
+      char *p = CONST_CAST (char *, FileName::name (fname));
+      const char *ext = FileName::ext (p);
       char *name;
 
       if (ext)
@@ -1042,7 +1046,40 @@ d_parse_file (void)
 
   // Generate output files
   if (global.params.doXGeneration)
-    json_generate (&modules);
+    {
+      OutBuffer buf;
+      json_generate(&buf, &modules);
+
+      // Write buf to file
+      const char *name = global.params.xfilename;
+
+      if (name && name[0] == '-' && name[1] == 0)
+	{
+	  size_t n = fwrite (buf.data, 1, buf.offset, stdmsg);
+	  gcc_assert (n == buf.offset);
+	}
+      else
+	{
+	  const char *jsonfilename;
+
+	  if (name && *name)
+	    jsonfilename = FileName::defaultExt(name, global.json_ext);
+	  else
+	    {
+	      // Generate json file name from first obj name
+	      const char *n = (*global.params.objfiles)[0];
+	      n = FileName::name(n);
+	      jsonfilename = FileName::forceExt(n, global.json_ext);
+	    }
+
+	  FileName::ensurePathToNameExists(jsonfilename);
+	  File *jsonfile = new File(jsonfilename);
+
+	  jsonfile->setbuffer(buf.data, buf.offset);
+	  jsonfile->ref = 1;
+	  jsonfile->writev();
+	}
+    }
 
   for (size_t i = 0; i < modules.dim; i++)
     {

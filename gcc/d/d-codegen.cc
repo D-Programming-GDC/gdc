@@ -4432,7 +4432,7 @@ IRState::checkGoto (Statement *stmt, LabelDsymbol *label)
   if (!found)
     {
       if (!label->statement->fwdrefs)
-	label->statement->fwdrefs = new Array();
+	label->statement->fwdrefs = new Blocks();
       label->statement->fwdrefs->push (getLabelBlock (label, stmt));
     }
 }
