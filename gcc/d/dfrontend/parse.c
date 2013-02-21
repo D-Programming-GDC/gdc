@@ -994,11 +994,7 @@ enum LINK Parser::parseLinkage()
         }
         else if (id == Id::System)
         {
-#if _WIN32
-            link = LINKwindows;
-#else
-            link = LINKc;
-#endif
+            link = global.params.isWindows ? LINKwindows : LINKc;
         }
         else
         {
