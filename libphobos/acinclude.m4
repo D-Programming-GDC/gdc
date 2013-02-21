@@ -20,63 +20,42 @@ AC_CHECK_TYPES([clockid_t],,,[#include <pthread.h>])
 
 AC_SEARCH_LIBS(sem_init, pthread rt posix4)
 
-DCFG_PTHREAD_SUSPEND=
-AC_SUBST(DCFG_PTHREAD_SUSPEND)
+AC_CHECK_HEADERS(semaphore.h)
+AC_CHECK_FUNC(sem_init)
+AC_CHECK_FUNC(semaphore_create)
+AC_CHECK_FUNC(pthread_cond_wait)
 
-if true; then
-    AC_CHECK_HEADERS(semaphore.h)
-    AC_CHECK_FUNC(sem_init)
-    AC_CHECK_FUNC(semaphore_create)
-    AC_CHECK_FUNC(pthread_cond_wait)
-
-    if test -z "$d_sem_impl"; then
-	# Probably need to test what actually works.  sem_init is defined
-	# on AIX and Darwin but does not actually work.
-	# For now, test for Mach semaphores first so it overrides Posix.  AIX
-	# is a special case.
-	if test "$ac_cv_func_semaphore_create" = "yes"; then
-	    d_sem_impl="mach"
-	elif test "$ac_cv_func_sem_init" = "yes" && \
-		test "$ac_cv_header_semaphore_h" = "yes" && \
-		test -z "$d_is_aix"; then
-	    d_sem_impl="posix"
-	elif test "$ac_cv_func_pthread_cond_wait" = "yes"; then
-	    d_sem_impl="pthreads"
-	fi
-    fi
-
-    dnl TODO: change this to using pthreads? if so, define usepthreads
-    dnl and configure semaphore
-
-    case "$d_sem_impl" in
-      posix) DCFG_SEMAPHORE_IMPL="GNU_Semaphore_POSIX" ;;
-      mach)  DCFG_SEMAPHORE_IMPL="GNU_Semaphore_Mach"
-	     d_module_mach=1 ;;
-      pthreads) DCFG_SEMAPHORE_IMPL="GNU_Sempahore_Pthreads" ;;
-      skyos) DCFG_SEMAPHORE_IMPL="GNU_Sempahore_Pthreads"
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/skyos/compat.o"
-	     ;;
-      *)     AC_MSG_ERROR([No usable semaphore implementation]) ;;
-    esac
-else
-    dnl Need to be able to query thread state for this method to be useful
-    AC_CHECK_FUNC(pthread_suspend_np)
-    AC_CHECK_FUNC(pthread_continue_np)
-
-    if test "$ac_cv_func_pthread_suspend_np" = "yes" && \
-       test "$ac_cv_func_pthread_continue_np" = "yes" ; then
-	# TODO: need to test that these actually work.
-	DCFG_PTHREAD_SUSPEND=GNU_pthread_suspend
-    else
-	AC_MSG_ERROR([TODO])
+if test -z "$d_sem_impl"; then
+    # Probably need to test what actually works.  sem_init is defined
+    # on AIX and Darwin but does not actually work.
+    # For now, test for Mach semaphores first so it overrides Posix.  AIX
+    # is a special case.
+    if test "$ac_cv_func_semaphore_create" = "yes"; then
+	d_sem_impl="mach"
+    elif test "$ac_cv_func_sem_init" = "yes" && \
+	    test "$ac_cv_header_semaphore_h" = "yes" && \
+	    test -z "$d_is_aix"; then
+	d_sem_impl="posix"
+    elif test "$ac_cv_func_pthread_cond_wait" = "yes"; then
+	d_sem_impl="pthreads"
     fi
 fi
 
+dnl TODO: change this to using pthreads? if so, define usepthreads
+dnl and configure semaphore
+
+case "$d_sem_impl" in
+    posix) DCFG_SEMAPHORE_IMPL="GNU_Semaphore_POSIX" ;;
+    mach)  DCFG_SEMAPHORE_IMPL="GNU_Semaphore_Mach"
+	d_module_mach=1 ;;
+    pthreads) DCFG_SEMAPHORE_IMPL="GNU_Sempahore_Pthreads" ;;
+    skyos) DCFG_SEMAPHORE_IMPL="GNU_Sempahore_Pthreads"
+	D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/skyos/compat.o"
+	;;
+    *)  AC_MSG_ERROR([No usable semaphore implementation]) ;;
+esac
+
 AC_DEFINE(PHOBOS_USE_PTHREADS,1,[Define if using pthreads])
-
-AC_CHECK_FUNC(mmap,DCFG_MMAP="GNU_Unix_Have_MMap",[])
-
-AC_CHECK_FUNC(getpwnam_r,DCFG_GETPWNAM_R="GNU_Unix_Have_getpwnam_r",[])
 
 
 # Add "linux" module for compatibility even if not Linux

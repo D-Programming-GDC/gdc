@@ -12,10 +12,8 @@
 
 module rt.minfo;
 
-import core.stdc.stdio;   // printf
 import core.stdc.stdlib;  // alloca
 import core.stdc.string;  // memcpy
-import rt.util.console;   // console
 
 enum
 {
@@ -83,8 +81,6 @@ struct ModuleGroup
         // clean all initialized flags
         foreach (m; _modules)
             m.flags = m.flags & ~MIctordone;
-
-        free();
     }
 
     void free()
@@ -100,18 +96,6 @@ private:
     ModuleInfo*[]  _modules;
     ModuleInfo*[]    _ctors;
     ModuleInfo*[] _tlsctors;
-}
-
-version (Windows)
-{
-    // Windows: this gets initialized by minit.asm
-    // Posix: this gets initialized in _moduleCtor()
-    extern(C) __gshared ModuleInfo*[] _moduleinfo_array;
-    extern(C) void _minit();
-}
-version (OSX)
-{
-    extern (C) __gshared ModuleInfo*[] _moduleinfo_array;
 }
 
 __gshared ModuleGroup _moduleGroup;
@@ -161,7 +145,7 @@ extern (C) void rt_moduleTlsDtor()
 extern (C) void rt_moduleDtor()
 {
     _moduleGroup.runDtors();
-    version (Posix)
+    version (Win32) {} else
         .free(_moduleGroup._modules.ptr);
     _moduleGroup.free();
 }
@@ -182,7 +166,28 @@ version (GNU)
 
     extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
 }
-else version (OSX) {}
+else version (Win32)
+{
+    // Windows: this gets initialized by minit.asm
+    // Posix: this gets initialized in _moduleCtor()
+    extern(C) __gshared ModuleInfo*[] _moduleinfo_array;
+    extern(C) void _minit();
+}
+else version (Win64)
+{
+    extern (C)
+    {
+        extern __gshared void* _minfo_beg;
+        extern __gshared void* _minfo_end;
+
+        // Dummy so Win32 code can still call it
+        extern(C) void _minit() { }
+    }
+}
+else version (OSX)
+{
+    extern (C) __gshared ModuleInfo*[] _moduleinfo_array;
+}
 else version (Posix)
 {
     // This linked list is created by a compiler generated function inserted
@@ -194,6 +199,10 @@ else version (Posix)
     }
 
     extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
+}
+else
+{
+    static assert(0);
 }
 
 ModuleInfo*[] getModuleInfos()
@@ -254,11 +263,38 @@ body
             len++;
         }
     }
-    else version (Windows)
+    else version (Win32)
     {
         // _minit directly alters the global _moduleinfo_array
         _minit();
         result = _moduleinfo_array;
+    }
+    else version (Win64)
+    {
+        auto m = (cast(ModuleInfo**)&_minfo_beg)[1 .. &_minfo_end - &_minfo_beg];
+        /* Because of alignment inserted by the linker, various null pointers
+         * are there. We need to filter them out.
+         */
+        auto p = m.ptr;
+        auto pend = m.ptr + m.length;
+
+        // count non-null pointers
+        size_t cnt;
+        for (; p < pend; ++p)
+        {
+            if (*p !is null) ++cnt;
+        }
+
+        result = (cast(ModuleInfo**).malloc(cnt * size_t.sizeof))[0 .. cnt];
+
+        p = m.ptr;
+        cnt = 0;
+        for (; p < pend; ++p)
+            if (*p !is null) result[cnt++] = *p;
+    }
+    else
+    {
+        static assert(0);
     }
     return result;
 }
@@ -324,21 +360,6 @@ body
 
 private:
 
-void print(string m)
-{
-    // write message to stderr
-    console(m);
-}
-
-void println(string m)
-{
-    print(m);
-    version (Windows)
-        print("\r\n");
-    else
-        print("\n");
-}
-
 struct StackRec
 {
     @property ModuleInfo* mod()
@@ -352,21 +373,14 @@ struct StackRec
 
 void onCycleError(StackRec[] stack)
 {
-    version (unittest)
-    {
-        if (_inUnitTest)
-            goto Lerror;
-    }
-
-    println("Cycle detected between modules with ctors/dtors:");
+    string msg = "Aborting: Cycle detected between modules with ctors/dtors:\n";
     foreach (e; stack)
     {
-        print(e.mod.name);
-        print(" -> ");
+        msg ~= e.mod.name;
+        msg ~= " -> ";
     }
-    println(stack[0].mod.name);
- Lerror:
-    throw new Exception("Aborting!");
+    msg ~= stack[0].mod.name;
+    throw new Exception(msg);
 }
 
 private void sortCtorsImpl(ref ModuleGroup mgroup, StackRec[] stack)
@@ -483,14 +497,8 @@ private void sortCtorsImpl(ref ModuleGroup mgroup, StackRec[] stack)
     }
 }
 
-version (unittest)
-  bool _inUnitTest;
-
 unittest
 {
-    _inUnitTest = true;
-    scope (exit) _inUnitTest = false;
-
     static void assertThrown(T : Throwable, E)(lazy E expr)
     {
         try

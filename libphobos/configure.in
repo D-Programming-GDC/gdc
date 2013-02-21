@@ -273,15 +273,7 @@ AC_SUBST(DRUNTIME_OBJS)
 D_PREREQ_SRCS='$(config_d_src)'
 AC_SUBST(D_PREREQ_SRCS)
 
-if test "$with_newlib" = yes; then
-    # TODO: newlib has trunc and exp2, but not log2 -- so configure all separately
-    DCFG_TRUNC=""
-    DCFG_ROUND=""
-    DCFG_EXP2="GNU_Need_exp2"
-    DCFG_LOG2="GNU_Need_log2"
-
-    # TODO: exec stuff
-else
+if test "$with_newlib" = no; then
 
 AC_CHECK_LIB(m,cos)
 
@@ -301,21 +293,6 @@ case "$target_os" in
 	    ;;
     esac
 esac
-
-# on freebsd, trunc,exp2,log2 are not provided
-# This is "need" and not "have" to mesh better with non-GNU.  Othrewise, it
-# would be version(GNU)version(GNU_Have_trunc)....
-AC_CHECK_FUNC(trunc,DCFG_TRUNC="",DCFG_TRUNC="GNU_Need_trunc")
-AC_SUBST(DCFG_TRUNC)
-
-AC_CHECK_FUNC(round,DCFG_ROUND="",DCFG_ROUND="GNU_Need_round")
-AC_SUBST(DCFG_ROUND)
-
-AC_CHECK_FUNC(exp2, DCFG_EXP2="", DCFG_EXP2="GNU_Need_exp2")
-AC_SUBST(DCFG_EXP2)
-
-AC_CHECK_FUNC(log2, DCFG_LOG2="", DCFG_LOG2="GNU_Need_log2")
-AC_SUBST(DCFG_LOG2)
 
 save_CFLAGS=$CFLAGS
 dnl Check for BSD(?) specific fields in struct tm

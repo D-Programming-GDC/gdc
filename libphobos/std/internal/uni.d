@@ -21,6 +21,13 @@ public:
         insertInPlace(arr, idx, items);
 }
 
+//ditto + nothing better in std.algo for overlapping arrays anyway
+@trusted void copyForwardAlt(T)(T[] src, T[] dest)
+{
+    for(size_t i = 0; i < src.length; i++)
+        dest[i] = src[i];
+}
+
 //ditto
 @trusted void replaceInPlaceAlt(T)(ref T[] arr, size_t from, size_t to, T[] items...)
 in
@@ -398,9 +405,9 @@ struct CodepointSet
     }
 
     //ditto
-    hash_t toHash() const pure nothrow @safe
+    size_t toHash() const pure nothrow @safe
     {
-        hash_t hash = 5381+7*ivals.length;
+        size_t hash = 5381+7*ivals.length;
         if(!empty)
             hash = 31*ivals[0] + 17*ivals[$-1];
         return hash;
@@ -432,7 +439,7 @@ struct CodepointSet
                     j = ivals[0];
             }
         }
-        @property auto ref save() const { return this; }
+        @property ByCodepoint save() const { return this; }
     }
     static assert(isForwardRange!ByCodepoint);
 
@@ -633,7 +640,7 @@ unittest
 @system unittest
 {
     import std.conv, std.random, std.range;
-    immutable seed = unpredictableSeed();
+    immutable seed = unpredictableSeed;
     auto rnd = Random(seed);
 
     auto testCases = randomSample(unicodeProperties, 10, rnd);

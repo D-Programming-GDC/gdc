@@ -173,15 +173,10 @@ CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DCFG_ARM_EABI_UNWINDER = @DCFG_ARM_EABI_UNWINDER@
 DCFG_CBRIDGE_STDIO = @DCFG_CBRIDGE_STDIO@
-DCFG_EXP2 = @DCFG_EXP2@
 DCFG_GETPWNAM_R = @DCFG_GETPWNAM_R@
-DCFG_LOG2 = @DCFG_LOG2@
 DCFG_MMAP = @DCFG_MMAP@
 DCFG_POSIX = @DCFG_POSIX@
-DCFG_PTHREAD_SUSPEND = @DCFG_PTHREAD_SUSPEND@
-DCFG_ROUND = @DCFG_ROUND@
 DCFG_SEMAPHORE_IMPL = @DCFG_SEMAPHORE_IMPL@
-DCFG_TRUNC = @DCFG_TRUNC@
 DCFG_UNIX = @DCFG_UNIX@
 DEFS = @DEFS@
 DFLAGS = @DFLAGS@
@@ -303,7 +298,7 @@ MAIN_OBJS = std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
 	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
 	  std/regex.o std/regexp.o std/traits.o std/typecons.o \
-	  std/typelist.o std/typetuple.o std/uni.o std/uri.o std/utf.o \
+	  std/typetuple.o std/uni.o std/uri.o std/utf.o \
 	  std/uuid.o std/variant.o std/xml.o std/zip.o std/zlib.o \
 	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \
 	  std/c/stdarg.o std/c/stddef.o std/c/stdio.o std/c/stdlib.o \

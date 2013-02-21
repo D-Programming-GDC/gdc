@@ -1,17 +1,12 @@
 /**
  * This module contains a collection of bit-level operations.
  *
- * Copyright: Copyright Don Clugston 2005 - 2009.
+ * Copyright: Copyright Don Clugston 2005 - 2013.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Don Clugston, Sean Kelly, Walter Bright, Alex Rønne Petersen
  * Source:    $(DRUNTIMESRC core/_bitop.d)
  */
 
-/*          Copyright Don Clugston 2005 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module core.bitop;
 
 nothrow:
@@ -21,6 +16,11 @@ version( D_InlineAsm_X86_64 )
     version = AsmX86;
 else version( D_InlineAsm_X86 )
     version = AsmX86;
+
+version (X86_64)
+    version = AnyX86;
+else version (X86)
+    version = AnyX86;
 
 /**
  * Scans the bits in v starting with bit 0, looking
@@ -143,7 +143,7 @@ int main()
     assert(array[0] == 2);
     assert(array[1] == 0x108);
 
-    assert(btc(array, 35) == -1);
+    assert(btc(array, 35));
     assert(array[0] == 2);
     assert(array[1] == 0x100);
 
@@ -151,11 +151,11 @@ int main()
     assert(array[0] == 2);
     assert(array[1] == 0x108);
 
-    assert(btr(array, 35) == -1);
+    assert(btr(array, 35));
     assert(array[0] == 2);
     assert(array[1] == 0x100);
 
-    assert(bt(array, 1) == -1);
+    assert(bt(array, 1));
     assert(array[0] == 2);
     assert(array[1] == 0x100);
 
@@ -184,7 +184,7 @@ unittest
         assert(array[1] == 0x108);
     }
 
-    assert(btc(array.ptr, 35) == -1);
+    assert(btc(array.ptr, 35));
     assert(array[0] == 2);
     assert(array[1] == 0x100);
 
@@ -200,7 +200,7 @@ unittest
         assert(array[1] == 0x108);
     }
 
-    assert(btr(array.ptr, 35) == -1);
+    assert(btr(array.ptr, 35));
     assert(array[0] == 2);
     assert(array[1] == 0x100);
 }
@@ -212,7 +212,7 @@ unittest
  */
 uint bswap(uint v) pure;
 
-version (DigitalMars) @system // not pure
+version (DigitalMars) version (AnyX86) @system // not pure
 {
     /**
      * Reads I/O port at port_address.
@@ -305,13 +305,19 @@ unittest
 {
     version (AsmX86)
     {
+        asm { naked; }
+
         version (D_InlineAsm_X86_64)
-        asm { naked; mov EAX, EDI; }
+        {
+            version (Win64)
+                asm { mov EAX, ECX; }
+            else
+                asm { mov EAX, EDI; }
+        }
 
         asm
         {
             // Author: Tiago Gasiba.
-            naked;
             mov EDX, EAX;
             shr EAX, 1;
             and EDX, 0x5555_5555;

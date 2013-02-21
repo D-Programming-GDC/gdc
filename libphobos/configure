@@ -634,13 +634,8 @@ DCFG_UNIX
 DCFG_GETPWNAM_R
 DCFG_MMAP
 DCFG_SEMAPHORE_IMPL
-DCFG_PTHREAD_SUSPEND
 DCFG_CBRIDGE_STDIO
 DCFG_ARM_EABI_UNWINDER
-DCFG_LOG2
-DCFG_EXP2
-DCFG_ROUND
-DCFG_TRUNC
 D_PREREQ_SRCS
 DRUNTIME_OBJS
 D_EXTRA_OBJS
@@ -4765,15 +4760,7 @@ DRUNTIME_OBJS=
 D_PREREQ_SRCS='$(config_d_src)'
 
 
-if test "$with_newlib" = yes; then
-    # TODO: newlib has trunc and exp2, but not log2 -- so configure all separately
-    DCFG_TRUNC=""
-    DCFG_ROUND=""
-    DCFG_EXP2="GNU_Need_exp2"
-    DCFG_LOG2="GNU_Need_log2"
-
-    # TODO: exec stuff
-else
+if test "$with_newlib" = no; then
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for cos in -lm" >&5
 $as_echo_n "checking for cos in -lm... " >&6; }
@@ -4887,45 +4874,6 @@ fi
 	    ;;
     esac
 esac
-
-# on freebsd, trunc,exp2,log2 are not provided
-# This is "need" and not "have" to mesh better with non-GNU.  Othrewise, it
-# would be version(GNU)version(GNU_Have_trunc)....
-ac_fn_c_check_func "$LINENO" "trunc" "ac_cv_func_trunc"
-if test "x$ac_cv_func_trunc" = xyes; then :
-  DCFG_TRUNC=""
-else
-  DCFG_TRUNC="GNU_Need_trunc"
-fi
-
-
-
-ac_fn_c_check_func "$LINENO" "round" "ac_cv_func_round"
-if test "x$ac_cv_func_round" = xyes; then :
-  DCFG_ROUND=""
-else
-  DCFG_ROUND="GNU_Need_round"
-fi
-
-
-
-ac_fn_c_check_func "$LINENO" "exp2" "ac_cv_func_exp2"
-if test "x$ac_cv_func_exp2" = xyes; then :
-  DCFG_EXP2=""
-else
-  DCFG_EXP2="GNU_Need_exp2"
-fi
-
-
-
-ac_fn_c_check_func "$LINENO" "log2" "ac_cv_func_log2"
-if test "x$ac_cv_func_log2" = xyes; then :
-  DCFG_LOG2=""
-else
-  DCFG_LOG2="GNU_Need_log2"
-fi
-
-
 
 save_CFLAGS=$CFLAGS
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for tm_gmtoff" >&5
@@ -5310,11 +5258,7 @@ if test "$ac_res" != no; then :
 fi
 
 
-DCFG_PTHREAD_SUSPEND=
-
-
-if true; then
-    for ac_header in semaphore.h
+for ac_header in semaphore.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "semaphore.h" "ac_cv_header_semaphore_h" "$ac_includes_default"
 if test "x$ac_cv_header_semaphore_h" = xyes; then :
@@ -5326,84 +5270,52 @@ fi
 
 done
 
-    ac_fn_c_check_func "$LINENO" "sem_init" "ac_cv_func_sem_init"
+ac_fn_c_check_func "$LINENO" "sem_init" "ac_cv_func_sem_init"
 if test "x$ac_cv_func_sem_init" = xyes; then :
 
 fi
 
-    ac_fn_c_check_func "$LINENO" "semaphore_create" "ac_cv_func_semaphore_create"
+ac_fn_c_check_func "$LINENO" "semaphore_create" "ac_cv_func_semaphore_create"
 if test "x$ac_cv_func_semaphore_create" = xyes; then :
 
 fi
 
-    ac_fn_c_check_func "$LINENO" "pthread_cond_wait" "ac_cv_func_pthread_cond_wait"
+ac_fn_c_check_func "$LINENO" "pthread_cond_wait" "ac_cv_func_pthread_cond_wait"
 if test "x$ac_cv_func_pthread_cond_wait" = xyes; then :
 
 fi
 
 
-    if test -z "$d_sem_impl"; then
-	# Probably need to test what actually works.  sem_init is defined
-	# on AIX and Darwin but does not actually work.
-	# For now, test for Mach semaphores first so it overrides Posix.  AIX
-	# is a special case.
-	if test "$ac_cv_func_semaphore_create" = "yes"; then
-	    d_sem_impl="mach"
-	elif test "$ac_cv_func_sem_init" = "yes" && \
-		test "$ac_cv_header_semaphore_h" = "yes" && \
-		test -z "$d_is_aix"; then
-	    d_sem_impl="posix"
-	elif test "$ac_cv_func_pthread_cond_wait" = "yes"; then
-	    d_sem_impl="pthreads"
-	fi
-    fi
-
-
-    case "$d_sem_impl" in
-      posix) DCFG_SEMAPHORE_IMPL="GNU_Semaphore_POSIX" ;;
-      mach)  DCFG_SEMAPHORE_IMPL="GNU_Semaphore_Mach"
-	     d_module_mach=1 ;;
-      pthreads) DCFG_SEMAPHORE_IMPL="GNU_Sempahore_Pthreads" ;;
-      skyos) DCFG_SEMAPHORE_IMPL="GNU_Sempahore_Pthreads"
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/skyos/compat.o"
-	     ;;
-      *)     as_fn_error $? "No usable semaphore implementation" "$LINENO" 5 ;;
-    esac
-else
-        ac_fn_c_check_func "$LINENO" "pthread_suspend_np" "ac_cv_func_pthread_suspend_np"
-if test "x$ac_cv_func_pthread_suspend_np" = xyes; then :
-
-fi
-
-    ac_fn_c_check_func "$LINENO" "pthread_continue_np" "ac_cv_func_pthread_continue_np"
-if test "x$ac_cv_func_pthread_continue_np" = xyes; then :
-
-fi
-
-
-    if test "$ac_cv_func_pthread_suspend_np" = "yes" && \
-       test "$ac_cv_func_pthread_continue_np" = "yes" ; then
-	# TODO: need to test that these actually work.
-	DCFG_PTHREAD_SUSPEND=GNU_pthread_suspend
-    else
-	as_fn_error $? "TODO" "$LINENO" 5
+if test -z "$d_sem_impl"; then
+    # Probably need to test what actually works.  sem_init is defined
+    # on AIX and Darwin but does not actually work.
+    # For now, test for Mach semaphores first so it overrides Posix.  AIX
+    # is a special case.
+    if test "$ac_cv_func_semaphore_create" = "yes"; then
+	d_sem_impl="mach"
+    elif test "$ac_cv_func_sem_init" = "yes" && \
+	    test "$ac_cv_header_semaphore_h" = "yes" && \
+	    test -z "$d_is_aix"; then
+	d_sem_impl="posix"
+    elif test "$ac_cv_func_pthread_cond_wait" = "yes"; then
+	d_sem_impl="pthreads"
     fi
 fi
+
+
+case "$d_sem_impl" in
+    posix) DCFG_SEMAPHORE_IMPL="GNU_Semaphore_POSIX" ;;
+    mach)  DCFG_SEMAPHORE_IMPL="GNU_Semaphore_Mach"
+	d_module_mach=1 ;;
+    pthreads) DCFG_SEMAPHORE_IMPL="GNU_Sempahore_Pthreads" ;;
+    skyos) DCFG_SEMAPHORE_IMPL="GNU_Sempahore_Pthreads"
+	D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/skyos/compat.o"
+	;;
+    *)  as_fn_error $? "No usable semaphore implementation" "$LINENO" 5 ;;
+esac
 
 
 $as_echo "#define PHOBOS_USE_PTHREADS 1" >>confdefs.h
-
-
-ac_fn_c_check_func "$LINENO" "mmap" "ac_cv_func_mmap"
-if test "x$ac_cv_func_mmap" = xyes; then :
-  DCFG_MMAP="GNU_Unix_Have_MMap"
-fi
-
-
-ac_fn_c_check_func "$LINENO" "getpwnam_r" "ac_cv_func_getpwnam_r"
-if test "x$ac_cv_func_getpwnam_r" = xyes; then :
-  DCFG_GETPWNAM_R="GNU_Unix_Have_getpwnam_r"
-fi
 
 
 
