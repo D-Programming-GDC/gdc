@@ -101,7 +101,7 @@ RT_OSX_OBJS=core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
 	    core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o \
 	    core/sys/osx/pthread.o
 
-RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o
+RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
 	      core/sys/posix/signal.o core/sys/posix/sys/ioctl.o \
 	      core/sys/posix/sys/select.o core/sys/posix/sys/socket.o \
 	      core/sys/posix/sys/stat.o core/sys/posix/sys/wait.o \
