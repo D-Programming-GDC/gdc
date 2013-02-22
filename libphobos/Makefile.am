@@ -82,6 +82,9 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \
 	  std/c/stdarg.o std/c/stddef.o std/c/stdio.o std/c/stdlib.o \
 	  std/c/string.o std/c/time.o std/c/wcharh.o \
+	  std/digest/digest.o std/digest/crc.o std/digest/md.o \
+	  std/digest/ripemd.o std/digest/sha.o \
+	  std/internal/digest/sha_SSSE3.o \
 	  std/internal/math/biguintcore.o std/internal/math/biguintnoasm.o \
 	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
 	  std/internal/math/errorfunction.o std/internal/processinit.o \
