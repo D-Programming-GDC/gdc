@@ -1342,10 +1342,6 @@ d_signed_type (tree type)
     return long_integer_type_node;
   if (type1 == long_long_unsigned_type_node)
     return long_long_integer_type_node;
-  /*
-     if (type1 == widest_unsigned_literal_type_node)
-     return widest_integer_literal_type_node;
-     */
 #if HOST_BITS_PER_WIDE_INT >= 64
   if (type1 == unsigned_intTI_type_node)
     return intTI_type_node;

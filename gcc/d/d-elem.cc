@@ -1215,34 +1215,6 @@ CastExp::toElem (IRState *irs)
 elem *
 DeleteExp::toElem (IRState *irs)
 {
-  // Does this look like an associative array delete?
-  if (e1->op == TOKindex
-      && ((IndexExp *)e1)->e1->type->toBasetype()->ty == Taarray)
-    {
-
-      if (!global.params.useDeprecated)
-	error ("delete aa[key] deprecated, use aa.remove (key)", e1->toChars());
-
-      Expression *e_array = ((BinExp *) e1)->e1;
-      Expression *e_index = ((BinExp *) e1)->e2;
-
-      // Check that the array is actually an associative array
-      if (e_array->type->toBasetype()->ty == Taarray)
-	{
-	  Type *a_type = e_array->type->toBasetype();
-	  Type *key_type = ((TypeAArray *) a_type)->index->toBasetype();
-	  AddrOfExpr aoe;
-
-	  tree args[3] = {
-	      e_array->toElem (irs),
-	      irs->typeinfoReference (key_type),
-	      aoe.set (irs, irs->convertTo (e_index, key_type)),
-	  };
-	  return aoe.finish (irs, irs->libCall (LIBCALL_AADELX, 3, args));
-	}
-    }
-
-  // Otherwise, this is normal delete
   LibCall libcall;
   tree t1 = e1->toElem (irs);
   Type *tb1 = e1->type->toBasetype();
@@ -1561,12 +1533,14 @@ DotVarExp::toElem (IRState *irs)
 
     case Tstruct:
     case Tclass:
-      if ((func_decl = var->isFuncDeclaration()))
+      func_decl = var->isFuncDeclaration();
+      var_decl = var->isVarDeclaration();
+      if (func_decl)
       {
 	// if Tstruct, objInstanceMethod will use the address of e1
 	return irs->objectInstanceMethod (e1, func_decl, type);
       }
-      else if ((var_decl = var->isVarDeclaration()))
+      else if (var_decl)
 	{
 	  if (!(var_decl->storage_class & STCfield))
 	    return irs->var (var_decl);
@@ -1655,8 +1629,8 @@ AssertExp::toElem (IRState *irs)
 elem *
 DeclarationExp::toElem (IRState *irs)
 {
-  VarDeclaration *vd;
-  if ((vd = declaration->isVarDeclaration()) != NULL)
+  VarDeclaration *vd = declaration->isVarDeclaration();
+  if (vd != NULL)
     {
       // Put variable on list of things needing destruction
       if (vd->edtor && !vd->noscope)
@@ -2266,8 +2240,8 @@ StructLiteralExp::toElem (IRState *irs)
 	    {
 	      if (irs->typesCompatible (exp_type, fld_type))
 		{
-		  StructDeclaration *sd;
-		  if ((sd = needsPostblit (fld_type)) != NULL)
+		  StructDeclaration *sd = needsPostblit (fld_type);
+		  if (sd != NULL)
 		    {
 		      // Generate _d_arrayctor (ti, from = exp, to = exp_tree)
 		      Type *ti = fld_type->nextOf();
@@ -2306,8 +2280,8 @@ StructLiteralExp::toElem (IRState *irs)
 	  else
 	    {
 	      exp_tree = irs->convertTo (exp, fld->type);
-	      StructDeclaration *sd;
-	      if ((sd = needsPostblit (fld_type)) != NULL)
+	      StructDeclaration *sd = needsPostblit (fld_type);
+	      if (sd && exp->isLvalue())
 		{
 		  // Call __postblit (&exp_tree)
 		  Expressions args;

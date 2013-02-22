@@ -365,10 +365,10 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
   Identifier *id_arg = Lexer::idPool ("va_arg");
   Identifier *id_start = Lexer::idPool ("va_start");
 
-  AttribDeclaration *ad = NULL;
-  TemplateDeclaration *td = NULL;
+  AttribDeclaration *ad = m->isAttribDeclaration();
+  TemplateDeclaration *td = m->isTemplateDeclaration();
 
-  if ((ad = m->isAttribDeclaration()))
+  if (ad != NULL)
     {
       // Recursively search through attribute decls
       Dsymbols *decl = ad->include (NULL, NULL);
@@ -381,7 +381,7 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
 	    }
 	}
     }
-  else if ((td = m->isTemplateDeclaration()))
+  else if (td != NULL)
     {
       if (td->ident == id_arg)
 	{
@@ -568,10 +568,10 @@ d_gcc_magic_builtins_module (Module *m)
 static void
 d_gcc_magic_libbuiltins_check (Dsymbol *m)
 {
-  AttribDeclaration *ad = NULL;
-  FuncDeclaration *fd = NULL;
+  AttribDeclaration *ad = m->isAttribDeclaration();
+  FuncDeclaration *fd = m->isFuncDeclaration();
 
-  if ((ad = m->isAttribDeclaration()))
+  if (ad != NULL)
     {
       // Recursively search through attribute decls
       Dsymbols *decl = ad->include (NULL, NULL);
@@ -584,7 +584,7 @@ d_gcc_magic_libbuiltins_check (Dsymbol *m)
 	    }
 	}
     }
-  else if ((fd = m->isFuncDeclaration()) && !fd->fbody)
+  else if (fd && !fd->fbody)
     {
       for (tree n = bi_lib_list.head; n; n = TREE_CHAIN (n))
 	{
