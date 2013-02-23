@@ -31,9 +31,6 @@
 extern void d_gcc_magic_module (Module *);
 extern void d_gcc_dump_source (const char *, const char *, unsigned char *, unsigned);
 
-/* used in func.c */
-extern Type *d_gcc_builtin_va_list_d_type;
-
 /* used in toobj.c */
 struct VarDeclaration;
 extern void d_gcc_emit_local_variable (VarDeclaration *);

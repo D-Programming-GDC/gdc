@@ -3,6 +3,10 @@
 	* d-lang.cc(d_gcc_is_target_win32): Remove.
 	(d_add_builtin_version): New function to handle define_builtin
 	callback from backend.
+	* d-codegen.cc(IRState::maybeExpandSpecialCall): Remove intrinsic bt.
+
+	* d-builtins.c: Merge with d-builtins2.cc.
+	* d-builtins2.cc: Remove.
 
 2013-02-07  Johannes Pfau  <johannespfau@gmail.com>
 

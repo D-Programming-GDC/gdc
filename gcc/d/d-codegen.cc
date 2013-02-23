@@ -3009,7 +3009,8 @@ IRState::maybeExpandSpecialCall (tree call_exp)
   CallExpr ce (call_exp);
   tree callee = ce.callee();
   tree op1 = NULL_TREE, op2 = NULL_TREE;
-  tree exp = NULL_TREE;
+  tree exp = NULL_TREE, val;
+  enum tree_code code;
 
   if (POINTER_TYPE_P (TREE_TYPE (callee)))
     callee = TREE_OPERAND (callee, 0);
@@ -3043,7 +3044,6 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 
 	  return fold_build2 (MINUS_EXPR, type, op2, exp);
 
-	case INTRINSIC_BT:
 	case INTRINSIC_BTC:
 	case INTRINSIC_BTR:
 	case INTRINSIC_BTS:
@@ -3067,30 +3067,22 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  // cond ? -1 : 0;
 	  exp = build3 (COND_EXPR, TREE_TYPE (call_exp), d_truthvalue_conversion (exp),
 			integer_minus_one_node, integer_zero_node);
+	  
+	  // Update the bit as needed.
+	  code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
+	    (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
+	    (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
+	  gcc_assert (code != ERROR_MARK);
 
-	  if (intrinsic == INTRINSIC_BT)
-	    {
-	      // Only testing the bit.
-	      return exp;
-	    }
-	  else
-	    {
-	      // Update the bit as needed.
-	      tree result = localVar (TREE_TYPE (call_exp));
-	      enum tree_code code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
-		(intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
-		(intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
-	      gcc_assert (code != ERROR_MARK);
+	  // op1[op2 / size] op= mask
+	  if (intrinsic == INTRINSIC_BTR)
+	    op2 = build1 (BIT_NOT_EXPR, TREE_TYPE (op2), op2);
 
-	      // op1[op2 / size] op= mask
-	      if (intrinsic == INTRINSIC_BTR)
-		op2 = build1 (BIT_NOT_EXPR, TREE_TYPE (op2), op2);
-
-	      exp = vmodify (result, exp);
-	      op1 = vmodify (op1, fold_build2 (code, TREE_TYPE (op1), op1, op2));
-	      op1 = compound (op1, result);
-	      return compound (exp, op1);
-	    }
+	  val = localVar (TREE_TYPE (call_exp));
+	  exp = vmodify (val, exp);
+	  op1 = vmodify (op1, fold_build2 (code, TREE_TYPE (op1), op1, op2));
+	  op1 = compound (op1, val);
+	  return compound (exp, op1);
 
 	case INTRINSIC_BSWAP:
 	  /* Backend provides builtin bswap32.
@@ -3311,7 +3303,7 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
       // Matches order of Intrinsic enum
       static const char *intrinsic_names[] = {
 	  "bsf", "bsr", "bswap",
-	  "bt", "btc", "btr", "bts",
+	  "btc", "btr", "bts",
       };
       const size_t sz = sizeof (intrinsic_names) / sizeof (char *);
       int i = binary (decl->ident->string, intrinsic_names, sz);
