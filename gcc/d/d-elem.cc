@@ -2392,10 +2392,8 @@ ThisExp::toElem (IRState *irs)
       this_tree = irs->var (irs->func->vthis);
     }
 
-#if STRUCTTHISREF
   if (type->ty == Tstruct)
     this_tree = irs->indirect (this_tree);
-#endif
 
   return this_tree;
 }

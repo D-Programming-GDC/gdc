@@ -877,15 +877,7 @@ enum LINK Parser::parseLinkage()
         }
         else if (id == Id::System)
         {
-#ifdef IN_GCC
-            link = d_gcc_is_target_win32() ? LINKwindows : LINKc;
-#else
-#if _WIN32
-            link = LINKwindows;
-#else
-            link = LINKc;
-#endif
-#endif
+            link = global.params.isWindows ? LINKwindows : LINKc;
         }
         else
         {

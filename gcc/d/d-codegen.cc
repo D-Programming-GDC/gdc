@@ -783,17 +783,13 @@ bool
 IRState::isDeclarationReferenceType (Declaration *decl)
 {
   Type *base_type = decl->type->toBasetype();
-  // D doesn't do this now..
+  // D doesn't do this now...
   if (base_type->ty == Treference)
     return true;
 
   if (decl->isOut() || decl->isRef())
     return true;
 
-#if !SARRAYVALUE
-  if (decl->isParameter() && base_type->ty == Tsarray)
-    return true;
-#endif
   return false;
 }
 
@@ -836,10 +832,6 @@ IRState::isArgumentReferenceType (Parameter *arg)
   if (arg->storageClass & (STCout | STCref))
     return true;
 
-#if !SARRAYVALUE
-  if (base_type->ty == Tsarray)
-    return true;
-#endif
   return false;
 }
 
@@ -3667,11 +3659,22 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
   else if ((struct_decl = decl->isStructDeclaration()))
     {
       Dsymbol *outer = struct_decl->toParent2();
+      ClassDeclaration *cd_outer = outer->isClassDeclaration();
       FuncDeclaration *fd_outer = outer->isFuncDeclaration();
-      // Assuming this is kept as trivial as possible.
-      // NOTE: what about structs nested in structs nested in functions?
-      if (fd_outer)
+
+      if (cd_outer)
 	{
+	  vthis_value = findThis (cd_outer);
+	  if (vthis_value == NULL_TREE)
+	    {
+	      e->error ("outer class %s 'this' needed to create nested struct %s",
+			cd_outer->toChars(), struct_decl->toChars());
+	    }
+	}
+      else if (fd_outer)
+	{
+	  // Assuming this is kept as trivial as possible.
+	  // NOTE: what about structs nested in structs nested in functions?
 	  FuncFrameInfo *ffo = getFrameInfo (fd_outer);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fd_outer->hasNestedFrameRefs())

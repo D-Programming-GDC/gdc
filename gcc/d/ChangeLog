@@ -1,3 +1,31 @@
+2013-02-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc(d_gcc_is_target_win32): Remove.
+	(d_add_builtin_version): New function to handle define_builtin
+	callback from backend.
+
+2013-02-07  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-lang.cc(d_init): Use gcc's config system for predefined OS versions.
+	* setup-gcc.sh: Likewise.
+	* target-ver-syms.sh: Likewise.
+
+2013-02-05  Iain Buclaw  <ibuclaw@ubuntu.com>
+
+	* d-builtins2.cc(gcc_type_to_d_type): Remove STRUCTTHISREF condition.
+	* d-decls.cc(FuncDeclaration::toSymbol): Likewise.
+	* d-elem.cc(ThisExp::toElem): Likewise.
+	* d-ctype.cc(TypeSArray::toCtype): Remove SARRAYVALUE condition.
+	* d-codegen.cc(IRState::isDeclarationReferenceType): Likewise.
+	(IRState::isArgumentReferenceType): Likewise.
+
+2013-02-01  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-lang.cc(d_init): Use gcc's config system for predefined CPU versions.
+	(d_init): Fix definition of D_LP64 version.
+	* setup-gcc.sh: Likewise.
+	* target-ver-syms.sh: Likewise.
+
 2012-12-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Don't optimise PUREconst

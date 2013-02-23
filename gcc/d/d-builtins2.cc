@@ -210,11 +210,8 @@ gcc_type_to_d_type (tree t)
       d->ctype = t;
 
       sdecl->type = d;
-#if STRUCTTHISREF
       sdecl->handle = d;
-#else
-      sdecl->handle = new TypePointer (d);
-#endif
+
       // Does not seem necessary to convert fields, but the
       // members field must be non-null for the above size
       // setting to stick.

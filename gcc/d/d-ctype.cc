@@ -431,11 +431,7 @@ TypeSArray::toCtype (void)
 type *
 TypeSArray::toCParamtype (void)
 {
-#if SARRAYVALUE
   return toCtype();
-#else
-  return next->pointerTo()->toCtype();
-#endif
 }
 
 type *

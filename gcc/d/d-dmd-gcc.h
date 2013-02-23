@@ -34,9 +34,6 @@ extern void d_gcc_dump_source (const char *, const char *, unsigned char *, unsi
 /* used in func.c */
 extern Type *d_gcc_builtin_va_list_d_type;
 
-/* used in parse.c */
-extern bool d_gcc_is_target_win32 (void);
-
 /* used in toobj.c */
 struct VarDeclaration;
 extern void d_gcc_emit_local_variable (VarDeclaration *);
