@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2011 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -92,15 +92,16 @@ struct Statement : Object
 
     void error(const char *format, ...);
     void warning(const char *format, ...);
+    void deprecation(const char *format, ...);
     virtual void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    int incontract;
     virtual ScopeStatement *isScopeStatement() { return NULL; }
     virtual Statement *semantic(Scope *sc);
     Statement *semanticScope(Scope *sc, Statement *sbreak, Statement *scontinue);
     Statement *semanticNoScope(Scope *sc);
-    virtual int hasBreak();
-    virtual int hasContinue();
-    virtual int usesEH();
+    virtual Statement *getRelatedLabeled() { return this; }
+    virtual bool hasBreak();
+    virtual bool hasContinue();
+    virtual bool usesEH();
     virtual int blockExit(bool mustNotThrow);
     virtual int comeFrom();
     virtual int isEmpty();
@@ -193,7 +194,7 @@ struct CompoundStatement : Statement
     Statement *syntaxCopy();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Statement *semantic(Scope *sc);
-    int usesEH();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     int isEmpty();
@@ -229,9 +230,9 @@ struct UnrolledLoopStatement : Statement
     UnrolledLoopStatement(Loc loc, Statements *statements);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
-    int hasBreak();
-    int hasContinue();
-    int usesEH();
+    bool hasBreak();
+    bool hasContinue();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     Expression *interpret(InterState *istate);
@@ -254,9 +255,9 @@ struct ScopeStatement : Statement
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     ScopeStatement *isScopeStatement() { return this; }
     Statement *semantic(Scope *sc);
-    int hasBreak();
-    int hasContinue();
-    int usesEH();
+    bool hasBreak();
+    bool hasContinue();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     int isEmpty();
@@ -278,9 +279,9 @@ struct WhileStatement : Statement
     WhileStatement(Loc loc, Expression *c, Statement *b);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
-    int hasBreak();
-    int hasContinue();
-    int usesEH();
+    bool hasBreak();
+    bool hasContinue();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     Expression *interpret(InterState *istate);
@@ -299,9 +300,9 @@ struct DoStatement : Statement
     DoStatement(Loc loc, Statement *b, Expression *c);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
-    int hasBreak();
-    int hasContinue();
-    int usesEH();
+    bool hasBreak();
+    bool hasContinue();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     Expression *interpret(InterState *istate);
@@ -320,14 +321,20 @@ struct ForStatement : Statement
     Statement *body;
     int nest;
 
+    // When wrapped in try/finally clauses, this points to the outermost one,
+    // which may have an associated label. Internal break/continue statements
+    // treat that label as referring to this loop.
+    Statement *relatedLabeled;
+
     ForStatement(Loc loc, Statement *init, Expression *condition, Expression *increment, Statement *body);
     Statement *syntaxCopy();
     Statement *semanticInit(Scope *sc);
     Statement *semantic(Scope *sc);
     Statement *scopeCode(Scope *sc, Statement **sentry, Statement **sexit, Statement **sfinally);
-    int hasBreak();
-    int hasContinue();
-    int usesEH();
+    Statement *getRelatedLabeled() { return relatedLabeled ? relatedLabeled : this; }
+    bool hasBreak();
+    bool hasContinue();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     Expression *interpret(InterState *istate);
@@ -361,9 +368,9 @@ struct ForeachStatement : Statement
     bool checkForArgTypes();
     int inferAggregate(Scope *sc, Dsymbol *&sapply);
     int inferApplyArgTypes(Scope *sc, Dsymbol *&sapply);
-    int hasBreak();
-    int hasContinue();
-    int usesEH();
+    bool hasBreak();
+    bool hasContinue();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     Expression *interpret(InterState *istate);
@@ -389,9 +396,9 @@ struct ForeachRangeStatement : Statement
         Expression *lwr, Expression *upr, Statement *body);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
-    int hasBreak();
-    int hasContinue();
-    int usesEH();
+    bool hasBreak();
+    bool hasContinue();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     Expression *interpret(InterState *istate);
@@ -417,7 +424,7 @@ struct IfStatement : Statement
     Statement *semantic(Scope *sc);
     Expression *interpret(InterState *istate);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    int usesEH();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     IfStatement *isIfStatement() { return this; }
 
@@ -439,7 +446,7 @@ struct ConditionalStatement : Statement
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     Statements *flatten(Scope *sc);
-    int usesEH();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
 
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -454,7 +461,7 @@ struct PragmaStatement : Statement
     PragmaStatement(Loc loc, Identifier *ident, Expressions *args, Statement *body);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
-    int usesEH();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
 
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -490,8 +497,8 @@ struct SwitchStatement : Statement
     SwitchStatement(Loc loc, Expression *c, Statement *b, bool isFinal);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
-    int hasBreak();
-    int usesEH();
+    bool hasBreak();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     Expression *interpret(InterState *istate);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -513,7 +520,7 @@ struct CaseStatement : Statement
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     int compare(Object *obj);
-    int usesEH();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     Expression *interpret(InterState *istate);
@@ -551,7 +558,7 @@ struct DefaultStatement : Statement
     DefaultStatement(Loc loc, Statement *s);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
-    int usesEH();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     Expression *interpret(InterState *istate);
@@ -604,7 +611,7 @@ struct SwitchErrorStatement : Statement
 struct ReturnStatement : Statement
 {
     Expression *exp;
-    int implicit0;
+    bool implicit0;             // this is an implicit "return 0;"
 
     ReturnStatement(Loc loc, Expression *exp);
     Statement *syntaxCopy();
@@ -659,9 +666,9 @@ struct SynchronizedStatement : Statement
     SynchronizedStatement(Loc loc, Expression *exp, Statement *body);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
-    int hasBreak();
-    int hasContinue();
-    int usesEH();
+    bool hasBreak();
+    bool hasContinue();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
@@ -683,7 +690,7 @@ struct WithStatement : Statement
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    int usesEH();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     Expression *interpret(InterState *istate);
 
@@ -700,8 +707,8 @@ struct TryCatchStatement : Statement
     TryCatchStatement(Loc loc, Statement *body, Catches *catches);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
-    int hasBreak();
-    int usesEH();
+    bool hasBreak();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     Expression *interpret(InterState *istate);
 
@@ -718,7 +725,8 @@ struct Catch : Object
     Identifier *ident;
     VarDeclaration *var;
     Statement *handler;
-    bool internalCatch;
+    bool internalCatch;         // was generated by the compiler,
+                                // wasn't present in source code
 
     Catch(Loc loc, Type *t, Identifier *id, Statement *handler);
     Catch *syntaxCopy();
@@ -736,9 +744,9 @@ struct TryFinallyStatement : Statement
     Statement *syntaxCopy();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Statement *semantic(Scope *sc);
-    int hasBreak();
-    int hasContinue();
-    int usesEH();
+    bool hasBreak();
+    bool hasContinue();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     Expression *interpret(InterState *istate);
 
@@ -757,7 +765,7 @@ struct OnScopeStatement : Statement
     int blockExit(bool mustNotThrow);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Statement *semantic(Scope *sc);
-    int usesEH();
+    bool usesEH();
     Statement *scopeCode(Scope *sc, Statement **sentry, Statement **sexit, Statement **sfinally);
     Expression *interpret(InterState *istate);
 
@@ -767,6 +775,8 @@ struct OnScopeStatement : Statement
 struct ThrowStatement : Statement
 {
     Expression *exp;
+    bool internalThrow;         // was generated by the compiler,
+                                // wasn't present in source code
 
     ThrowStatement(Loc loc, Expression *exp);
     Statement *syntaxCopy();
@@ -830,13 +840,13 @@ struct LabelStatement : Statement
     TryFinallyStatement *tf;
     block *lblock;              // back end
 
-    Array *fwdrefs;            // forward references to this LabelStatement
+    Blocks *fwdrefs;            // forward references to this LabelStatement
 
     LabelStatement(Loc loc, Identifier *ident, Statement *statement);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     Statements *flatten(Scope *sc);
-    int usesEH();
+    bool usesEH();
     int blockExit(bool mustNotThrow);
     int comeFrom();
     Expression *interpret(InterState *istate);

@@ -23,13 +23,14 @@ struct HdrGenState
     int inBinExp;
     int inArrExp;
     int emitInst;
+    int autoMember;
+
     struct
     {
         int init;
         int decl;
     } FLinit;
+    Scope* scope;       // Scope when generating ddoc
 
     HdrGenState() { memset(this, 0, sizeof(HdrGenState)); }
 };
-
-

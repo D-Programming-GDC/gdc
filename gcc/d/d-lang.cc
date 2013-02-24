@@ -120,6 +120,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.obj = 1;
   global.params.Dversion = 2;
   global.params.quiet = 1;
+  global.params.useDeprecated = 2;
 
   global.params.linkswitches = new Strings();
   global.params.libfiles = new Strings();
@@ -180,50 +181,31 @@ d_option_lang_mask (void)
   return CL_D;
 }
 
-
-static bool is_target_win32 = false;
-
-bool
-d_gcc_is_target_win32 (void)
+static void
+d_add_builtin_version(const char* ident)
 {
-  return is_target_win32;
+  if (strcmp (ident, "linux") == 0)
+    global.params.isLinux = 1;
+  else if (strcmp (ident, "OSX") == 0)
+    global.params.isOSX = 1;
+  else if (strcmp (ident, "Windows") == 0)
+    global.params.isWindows = 1;
+  else if (strcmp (ident, "FreeBSD") == 0)
+    global.params.isFreeBSD = 1;
+  else if (strcmp (ident, "OpenBSD") == 0)
+    global.params.isOpenBSD = 1;
+  else if (strcmp (ident, "Solaris") == 0)
+    global.params.isSolaris = 1;
+  
+  VersionCondition::addPredefinedGlobalIdent (ident);
 }
 
 static bool
 d_init (void)
 {
-  const char *cpu_versym = NULL;
-
-  /* Currently, is64bit indicates a 64-bit target in general and is not
-     Intel-specific. */
-#ifdef TARGET_64BIT
-  global.params.is64bit = TARGET_64BIT ? 1 : 0;
-#else
-  /* TARGET_64BIT is only defined on biarched archs defaulted to 64-bit
-     (as amd64 or s390x) so for full 64-bit archs (as ia64 or alpha) we
-     need to test it more. */
-#ifdef D_CPU_VERSYM64
-  /* We are "defaulting" to 32-bit, which mean that if both D_CPU_VERSYM
-     and D_CPU_VERSYM64 are defined, and not TARGET_64BIT, we will use
-     32 bits. This will be overidden for full 64-bit archs */
-  global.params.is64bit = 0;
-#ifndef D_CPU_VERSYM
-  /* So this is typically for alpha and ia64 */
-  global.params.is64bit = 1;
-#endif
-
-#else
-
-#ifdef D_CPU_VERSYM /* D_CPU_VERSYM is defined and D_CPU_VERSYM64 is not. */
-  global.params.is64bit = 0;
-#else
-  /* If none of D_CPU_VERSYM and D_CPU_VERSYM64 defined check POINTER_SIZE instead */
-  global.params.is64bit = (POINTER_SIZE == 64);
-#endif
-
-#endif /* ! D_CPU_VERSYM */
-
-#endif /* ! TARGET_64BIT */
+  if(POINTER_SIZE == 64)
+    global.params.is64bit = 1;
+  else global.params.is64bit = 0;
 
   Type::init();
   Id::initialize();
@@ -232,48 +214,21 @@ d_init (void)
   gcc_d_backend_init();
   real_t::init();
 
+#ifndef TARGET_CPU_D_BUILTINS
+# define TARGET_CPU_D_BUILTINS()
+#endif
+
+#ifndef TARGET_OS_D_BUILTINS
+# define TARGET_OS_D_BUILTINS()
+#endif
+
+# define builtin_define(TXT) d_add_builtin_version(TXT)
+
+  TARGET_CPU_D_BUILTINS();
+  TARGET_OS_D_BUILTINS();
+  
   VersionCondition::addPredefinedGlobalIdent ("GNU");
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");
-
-#ifdef D_CPU_VERSYM64
-  if (global.params.is64bit == 1)
-    cpu_versym = D_CPU_VERSYM64;
-#  ifdef D_CPU_VERSYM
-  else
-    cpu_versym = D_CPU_VERSYM;
-#  endif
-#else
-#  ifdef D_CPU_VERSYM
-  cpu_versym = D_CPU_VERSYM;
-#  endif
-#endif
-  if (cpu_versym)
-    VersionCondition::addPredefinedGlobalIdent (cpu_versym);
-#ifdef D_OS_VERSYM
-  if (strcmp (D_OS_VERSYM, "Win64") == 0 && !global.params.is64bit)
-    VersionCondition::addPredefinedGlobalIdent ("Win32");
-  else
-    VersionCondition::addPredefinedGlobalIdent (D_OS_VERSYM);
-
-  if (strcmp (D_OS_VERSYM, "darwin") == 0)
-    VersionCondition::addPredefinedGlobalIdent ("OSX");
-  if (strcmp (D_OS_VERSYM, "Win32") == 0 || strcmp (D_OS_VERSYM, "Win64") == 0)
-    is_target_win32 = true;
-#endif
-#ifdef D_OS_VERSYM2
-  if (strcmp (D_OS_VERSYM2, "MinGW64") == 0 && !global.params.is64bit)
-    VersionCondition::addPredefinedGlobalIdent ("MinGW32");
-  else
-    VersionCondition::addPredefinedGlobalIdent (D_OS_VERSYM2);
-
-  if (strncmp (D_OS_VERSYM2, "MinGW", 5) == 0)
-    VersionCondition::addPredefinedGlobalIdent ("MinGW");
-  if (strcmp (D_OS_VERSYM2, "Win32") == 0 || strcmp (D_OS_VERSYM2, "Win64") == 0)
-    is_target_win32 = true;
-#endif
-#ifdef D_VENDOR_VERSYM
-  VersionCondition::addPredefinedGlobalIdent (D_VENDOR_VERSYM);
-#endif
 
   if (BYTES_BIG_ENDIAN)
     VersionCondition::addPredefinedGlobalIdent ("BigEndian");
@@ -290,9 +245,8 @@ d_init (void)
   /* Should define this anyway to set us apart from the competition. */
   VersionCondition::addPredefinedGlobalIdent ("GNU_InlineAsm");
 
-  /* Logic copied from cppbuiltins for LP64 targets. */
-  if (TYPE_PRECISION (long_integer_type_node) == 64
-      && TYPE_PRECISION (integer_type_node) == 32 && POINTER_SIZE == 64)
+  /* LP64 only means 64bit pointers in D. */
+  if (global.params.is64bit)
     VersionCondition::addPredefinedGlobalIdent ("D_LP64");
 
   /* Setting global.params.cov forces module info generation which is
@@ -307,6 +261,10 @@ d_init (void)
     VersionCondition::addPredefinedGlobalIdent ("D_Ddoc");
   if (global.params.useUnitTests)
     VersionCondition::addPredefinedGlobalIdent ("unittest");
+  if (global.params.useAssert)
+    VersionCondition::addPredefinedGlobalIdent("assert");
+  if (global.params.noboundscheck)
+    VersionCondition::addPredefinedGlobalIdent("D_NoBoundsChecks");
 
   VersionCondition::addPredefinedGlobalIdent ("all");
 
@@ -874,7 +832,6 @@ d_parse_file (void)
       if (strcmp (fonly_arg, in_fnames[0]))
 	::error ("-fonly= argument is different from first input file name");
     }
-  //fprintf (stderr, "***** %d files  main=%s\n", num_in_fnames, input_filename);
 
   for (size_t i = 0; i < num_in_fnames; i++)
     {
@@ -882,8 +839,8 @@ d_parse_file (void)
       char *fname = xstrdup (in_fnames[i]);
 
       // Strip path
-      char *p = FileName::name (fname);
-      char *ext = FileName::ext (p);
+      char *p = CONST_CAST (char *, FileName::name (fname));
+      const char *ext = FileName::ext (p);
       char *name;
 
       if (ext)
@@ -1068,7 +1025,7 @@ d_parse_file (void)
 
       OutBuffer *ob = global.params.makeDeps;
       if (global.params.makeDepsFile == NULL)
-	printf ((char *)ob->data);
+	printf ("%s", (char *)ob->data);
       else
 	{
 	  File deps (global.params.makeDepsFile);
@@ -1090,7 +1047,40 @@ d_parse_file (void)
 
   // Generate output files
   if (global.params.doXGeneration)
-    json_generate (&modules);
+    {
+      OutBuffer buf;
+      json_generate(&buf, &modules);
+
+      // Write buf to file
+      const char *name = global.params.xfilename;
+
+      if (name && name[0] == '-' && name[1] == 0)
+	{
+	  size_t n = fwrite (buf.data, 1, buf.offset, stdmsg);
+	  gcc_assert (n == buf.offset);
+	}
+      else
+	{
+	  const char *jsonfilename;
+
+	  if (name && *name)
+	    jsonfilename = FileName::defaultExt(name, global.json_ext);
+	  else
+	    {
+	      // Generate json file name from first obj name
+	      const char *n = (*global.params.objfiles)[0];
+	      n = FileName::name(n);
+	      jsonfilename = FileName::forceExt(n, global.json_ext);
+	    }
+
+	  FileName::ensurePathToNameExists(jsonfilename);
+	  File *jsonfile = new File(jsonfilename);
+
+	  jsonfile->setbuffer(buf.data, buf.offset);
+	  jsonfile->ref = 1;
+	  jsonfile->writev();
+	}
+    }
 
   for (size_t i = 0; i < modules.dim; i++)
     {
@@ -1353,10 +1343,6 @@ d_signed_type (tree type)
     return long_integer_type_node;
   if (type1 == long_long_unsigned_type_node)
     return long_long_integer_type_node;
-  /*
-     if (type1 == widest_unsigned_literal_type_node)
-     return widest_integer_literal_type_node;
-     */
 #if HOST_BITS_PER_WIDE_INT >= 64
   if (type1 == unsigned_intTI_type_node)
     return intTI_type_node;

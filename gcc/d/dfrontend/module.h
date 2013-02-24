@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2008 by Digital Mars
+// Copyright (c) 1999-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -24,7 +24,7 @@ struct ModuleDeclaration;
 struct Macro;
 struct Escape;
 struct VarDeclaration;
-struct Library;
+class Library;
 
 // Back end
 #ifdef IN_GCC
@@ -68,9 +68,6 @@ struct Module : Package
     unsigned numlines;  // number of lines in source file
     int isDocFile;      // if it is a documentation input file, not D source
     int needmoduleinfo;
-#ifdef IN_GCC
-    int strictlyneedmoduleinfo;
-#endif
 
     int selfimports;            // 0: don't know, 1: does not, 2: does
     int selfImports();          // returns !=0 if module imports itself
@@ -116,9 +113,11 @@ struct Module : Package
     static Module *load(Loc loc, Identifiers *packages, Identifier *ident);
 
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    void toJsonBuffer(OutBuffer *buf);
+    void toJson(JsonOut *json);
+    void jsonProperties(JsonOut *json);
     const char *kind();
-    void setDocfile();  // set docfile member
+    File *setOutfile(const char *name, const char *dir, const char *arg, const char *ext);
+    void setDocfile();
     bool read(Loc loc); // read file, returns 'true' if succeed, 'false' otherwise.
     void parse();       // syntactic parse
     void importAll(Scope *sc);
@@ -126,7 +125,6 @@ struct Module : Package
     void semantic2();   // pass 2 semantic analysis
     void semantic3();   // pass 3 semantic analysis
     void inlineScan();  // scan for functions to inline
-    void setHdrfile();  // set hdrfile member
     void genhdrfile();  // generate D import file
     void genobjfile(int multiobj);
     void gensymfile();

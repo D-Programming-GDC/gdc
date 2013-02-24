@@ -169,6 +169,50 @@ unittest
     }
 }
 
+/**
+Returns a newly allocated associative array out of elements of the input range,
+which must be a range of tuples (Key, Value).
+
+Example:
+
+$(D_RUN_CODE
+$(ARGS
+----
+auto a = assocArray(zip([0, 1, 2], ["a", "b", "c"]));
+assert(a == [0:"a", 1:"b", 2:"c"]);
+auto b = assocArray([ tuple("foo", "bar"), tuple("baz", "quux") ]);
+assert(b == ["foo":"bar", "baz":"quux"]);
+----
+), $(ARGS), $(ARGS), $(ARGS import std.array;))
+ */
+
+auto assocArray(Range)(Range r)
+    if (isInputRange!Range && isTuple!(ElementType!Range)
+     && ElementType!Range.length == 2)
+{
+    alias ElementType!Range.Types[0] KeyType;
+    alias ElementType!Range.Types[1] ValueType;
+    ValueType[KeyType] aa;
+    foreach (t; r)
+        aa[t[0]] = t[1];
+    return aa;
+}
+
+unittest
+{
+    static assert(!__traits(compiles, [ tuple("foo", "bar", "baz") ].assocArray()));
+    static assert(!__traits(compiles, [ tuple("foo") ].assocArray()));
+    static assert(__traits(compiles, [ tuple("foo", "bar") ].assocArray()));
+
+    auto aa1 = [ tuple("foo", "bar"), tuple("baz", "quux") ].assocArray();
+    assert(is(typeof(aa1) == string[string]));
+    assert(aa1 == ["foo":"bar", "baz":"quux"]);
+
+    auto aa2 = zip([0, 1, 2], ["a", "b", "c"]).assocArray();
+    assert(is(typeof(aa2) == string[int]));
+    assert(aa2 == [0:"a", 1:"b", 2:"c"]);
+}
+
 private template blockAttribute(T)
 {
     static if (hasIndirections!(T) || is(T == void))
@@ -393,16 +437,8 @@ if (isNarrowString!S && isMutable!S && !isStaticArray!S)
         immutable c = str[0];
         if(c < 0x80)
         {
-            if(__ctfe)
-            {
-                //The ptr trick doesn't work in CTFE.
-                str = str[1 .. $];
-            }
-            else
-            {
-                //ptr is used to avoid unnnecessary bounds checking.
-                str = str.ptr[1 .. str.length];
-            }
+            //ptr is used to avoid unnnecessary bounds checking.
+            str = str.ptr[1 .. str.length];
         }
         else
         {
@@ -623,6 +659,7 @@ unittest
 
 // overlap
 /*
+NOTE: Undocumented for now, overlap does not yet work with ctfe.
 Returns the overlapping portion, if any, of two arrays. Unlike $(D
 equal), $(D overlap) only compares the pointers in the ranges, not the
 values referred by them. If $(D r1) and $(D r2) have an overlapping
@@ -791,6 +828,22 @@ unittest
 }
 +/
 
+private void copyBackwards(T)(T[] src, T[] dest)
+{
+    import core.stdc.string;
+    assert(src.length == dest.length);
+    if (!__ctfe)
+        memmove(dest.ptr, src.ptr, src.length * T.sizeof);
+    else
+    {
+        immutable len = src.length;
+        for (size_t i = len; i-- > 0;)
+        {
+            dest[i] = src[i];
+        }
+    }
+}
+
 /++
     Inserts $(D stuff) (which must be an input range or any number of
     implicitly convertible items) in $(D array) at position $(D pos).
@@ -807,59 +860,146 @@ assert(a == [ 1, 2, 1, 10, 11, 2, 3, 4]);
 ---
 ), $(ARGS), $(ARGS), $(ARGS import std.array;))
  +/
-void insertInPlace(T, Range)(ref T[] array, size_t pos, Range stuff)
-    if(isInputRange!Range &&
-       (is(ElementType!Range : T) ||
-        isSomeString!(T[]) && is(ElementType!Range : dchar)))
+void insertInPlace(T, U...)(ref T[] array, size_t pos, U stuff)
+    if(!isSomeString!(T[])
+        && allSatisfy!(isInputRangeOrConvertible!T, U) && U.length > 0)
 {
-    insertInPlaceImpl(array, pos, stuff);
+    static if(allSatisfy!(isInputRangeWithLengthOrConvertible!T, U))
+    {
+        immutable oldLen = array.length;
+        size_t to_insert = 0;
+        foreach (i, E; U)
+        {
+            static if (is(E : T)) //a single convertible value, not a range
+                to_insert += 1;
+            else
+                to_insert += stuff[i].length;
+        }
+        array.length += to_insert;
+        copyBackwards(array[pos..oldLen], array[pos+to_insert..$]);
+        auto ptr = array.ptr + pos;
+        foreach (i, E; U)
+        {
+            static if (is(E : T)) //ditto
+            {
+                emplace(ptr++, stuff[i]);
+            }
+            else
+            {
+                foreach (v; stuff[i])
+                    emplace(ptr++, v);
+            }
+        }
+    }
+    else
+    {
+        // stuff has some InputRanges in it that don't have length
+        // assume that stuff to be inserted is typically shorter
+        // then the array that can be arbitrary big
+        // TODO: needs a better implementation as there is no need to build an _array_
+        // a singly-linked list of memory blocks (rope, etc.) will do
+        auto app = appender!(T[])();
+        foreach (i, E; U)
+            app.put(stuff[i]);
+        insertInPlace(array, pos, app.data);
+    }
 }
 
 /++ Ditto +/
 void insertInPlace(T, U...)(ref T[] array, size_t pos, U stuff)
-    if(isSomeString!(T[]) && allSatisfy!(isCharOrString, U))
+    if(isSomeString!(T[]) && allSatisfy!(isCharOrStringOrDcharRange, U))
 {
-    dchar[staticConvertible!(dchar, U)] stackSpace = void;
-    auto range = chain(makeRangeTuple(stackSpace[], stuff).expand);
-    insertInPlaceImpl(array, pos, range);
-}
-
-/++ Ditto +/
-void insertInPlace(T, U...)(ref T[] array, size_t pos, U stuff)
-    if(!isSomeString!(T[]) && allSatisfy!(isInputRangeOrConvertible!T, U))
-{
-    T[staticConvertible!(T, U)] stackSpace = void;
-    auto range = chain(makeRangeTuple(stackSpace[], stuff).expand);
-    insertInPlaceImpl(array, pos, range);
-}
-
-// returns number of consecutive elements at front of U that are convertible to E
-private template staticFrontConvertible(E, U...)
-{
-    static if(U.length == 0)
-        enum staticFrontConvertible = 0;
-    else static if(isImplicitlyConvertible!(U[0],E))
-        enum staticFrontConvertible = 1 + staticFrontConvertible!(E, U[1..$]);
+    static if(is(Unqual!T == T)
+        && allSatisfy!(isInputRangeWithLengthOrConvertible!dchar, U))
+    {
+        // mutable, can do in place
+        //helper function: re-encode dchar to Ts and store at *ptr
+        static T* putDChar(T* ptr, dchar ch)
+        {
+            static if(is(T == dchar))
+            {
+                *ptr++ = ch;
+                return ptr;
+            }
+            else
+            {
+                T[dchar.sizeof/T.sizeof] buf;
+                size_t len = encode(buf, ch);
+                final switch(len)
+                {
+                    static if(T.sizeof == char.sizeof)
+                    {
+                case 4:
+                        ptr[3] = buf[3];
+                        goto case;
+                case 3:
+                        ptr[2] = buf[2];
+                        goto case;
+                    }
+                case 2:
+                    ptr[1] = buf[1];
+                    goto case;
+                case 1:
+                    ptr[0] = buf[0];
+                }
+                ptr += len;
+                return ptr;
+            }
+        }
+        immutable oldLen = array.length;
+        size_t to_insert = 0;
+        //count up the number of *codeunits* to insert
+        foreach (i, E; U)
+            to_insert += codeLength!T(stuff[i]);
+        array.length += to_insert;
+        copyBackwards(array[pos..oldLen], array[pos+to_insert..$]);
+        auto ptr = array.ptr + pos;
+        foreach (i, E; U)
+        {
+            static if(is(E : dchar))
+            {
+                ptr = putDChar(ptr, stuff[i]);
+            }
+            else
+            {
+                foreach (dchar ch; stuff[i])
+                    ptr = putDChar(ptr, ch);
+            }
+        }
+        assert(ptr == array.ptr + pos + to_insert, text(ptr - array.ptr, " vs ", pos + to_insert ));
+    }
     else
-        enum staticFrontConvertible = 0;
+    {
+        // immutable/const, just construct a new array
+        auto app = appender!(T[])();
+        app.put(array[0..pos]);
+        foreach (i, E; U)
+            app.put(stuff[i]);
+        app.put(array[pos..$]);
+        array = app.data;
+    }
 }
 
-// returns total number of elements in U that are convertible to E
-private template staticConvertible(E, U...)
+//constraint helpers
+private template isInputRangeWithLengthOrConvertible(E)
 {
-    static if (U.length == 0)
-        enum staticConvertible = 0;
-    else static if(isImplicitlyConvertible!(U[0], E))
-        enum staticConvertible = 1 + staticConvertible!(E, U[1..$]);
-    else
-        enum staticConvertible = staticConvertible!(E, U[1..$]);
+    template isInputRangeWithLengthOrConvertible(R)
+    {
+        //hasLength not defined for char[], wchar[] and dchar[]
+        enum isInputRangeWithLengthOrConvertible =
+            (isInputRange!R && is(typeof(R.init.length))
+                && is(ElementType!R : E))  || is(R : E);
+    }
 }
 
-private template isCharOrString(T)
+//ditto
+private template isCharOrStringOrDcharRange(T)
 {
-    enum isCharOrString = isSomeString!T || isSomeChar!T;
+    enum isCharOrStringOrDcharRange = isSomeString!T || isSomeChar!T ||
+        (isInputRange!T && is(ElementType!T : dchar));
 }
 
+//ditto
 private template isInputRangeOrConvertible(E)
 {
     template isInputRangeOrConvertible(R)
@@ -867,44 +1007,6 @@ private template isInputRangeOrConvertible(E)
         enum isInputRangeOrConvertible =
             (isInputRange!R && is(ElementType!R : E))  || is(R : E);
     }
-}
-
-//packs individual convertible elements into provided slack array,
-//and chains them with the rest into a tuple
-private auto makeRangeTuple(E, U...)(E[] place, U stuff)
-    if(U.length > 0 && is(U[0] : E) )
-{
-    enum toPack = staticFrontConvertible!(E, U);
-    foreach(i, v; stuff[0..toPack])
-        emplace!E(&place[i], v);
-    assert(place.length >= toPack);
-    static if(U.length != staticFrontConvertible!(E,U))
-        return tuple(place[0..toPack],
-                makeRangeTuple(place[toPack..$], stuff[toPack..$]).expand);
-    else
-        return tuple(place[0..toPack]);
-}
-//ditto
-private auto makeRangeTuple(E, U...)(E[] place, U stuff)
-    if(U.length > 0 && isInputRange!(U[0]) && is(ElementType!(U[0]) : E))
-{
-    static if(U.length == 1)
-        return tuple(stuff[0]);
-    else
-        return tuple(stuff[0],makeRangeTuple(place, stuff[1..$]).expand);
-}
-
-
-private void insertInPlaceImpl(T, Range)(ref T[] array, size_t pos, Range stuff)
-    if(isInputRange!Range &&
-       (is(ElementType!Range : T) ||
-        isSomeString!(T[]) && is(ElementType!Range : dchar)))
-{
-    auto app = appender!(T[])();
-    app.put(array[0 .. pos]);
-    app.put(stuff);
-    app.put(array[pos .. $]);
-    array = app.data;
 }
 
 
@@ -956,25 +1058,26 @@ unittest
     {
 
         auto l = to!T("hello");
-        auto r = to!U(" world");
+        auto r = to!U(" વિશ્વ");
 
-        enforce(test(l, 0, r, " worldhello"),
+        enforce(test(l, 0, r, " વિશ્વhello"),
                 new AssertError("testStr failure 1", file, line));
-        enforce(test(l, 3, r, "hel worldlo"),
+        enforce(test(l, 3, r, "hel વિશ્વlo"),
                 new AssertError("testStr failure 2", file, line));
-        enforce(test(l, l.length, r, "hello world"),
+        enforce(test(l, l.length, r, "hello વિશ્વ"),
                 new AssertError("testStr failure 3", file, line));
     }
 
-    testStr!(string, string)();
-    testStr!(string, wstring)();
-    testStr!(string, dstring)();
-    testStr!(wstring, string)();
-    testStr!(wstring, wstring)();
-    testStr!(wstring, dstring)();
-    testStr!(dstring, string)();
-    testStr!(dstring, wstring)();
-    testStr!(dstring, dstring)();
+    foreach (T; TypeTuple!(char, wchar, dchar,
+        immutable(char), immutable(wchar), immutable(dchar)))
+    {
+        foreach (U; TypeTuple!(char, wchar, dchar,
+            immutable(char), immutable(wchar), immutable(dchar)))
+        {
+            testStr!(T[], U[])();
+        }
+
+    }
 
     // variadic version
     bool testVar(T, U...)(T orig, size_t pos, U args)
@@ -986,7 +1089,7 @@ unittest
         auto result = args[$-1];
 
         a.insertInPlace(pos, args[0..$-1]);
-        if(!std.algorithm.equal(a, result))
+        if (!std.algorithm.equal(a, result))
             return false;
         return true;
     }
@@ -1003,6 +1106,50 @@ unittest
     assert(testVar("flipflop"d.idup, 4, '_',
                     "xyz"w, '\U00010143', '_', "abc"d, "__",
                     "flip_xyz\U00010143_abc__flop"));
+}
+
+unittest
+{
+    // insertInPlace interop with postblit
+    struct Int
+    {
+        int* payload;
+        this(int k)
+        {
+            payload = new int;
+            *payload = k;
+        }
+        this(this)
+        {
+            int* np = new int;
+            *np = *payload;
+            payload = np;
+        }
+        ~this()
+        {
+            *payload = 0; //'destroy' it
+        }
+        @property int getPayload(){ return *payload; }
+        alias getPayload this;
+    }
+
+    Int[] arr;// = [Int(1), Int(4), Int(5)]; //@@BUG 8740
+    arr ~= [Int(1), Int(4), Int(5)];
+    assert(arr[0] == 1);
+    insertInPlace(arr, 1, Int(2), Int(3));
+    assert(equal(arr, [1, 2, 3, 4, 5]));  //check it works with postblit
+}
+
+unittest
+{
+    static int[] testCTFE()
+    {
+        int[] a = [1, 2];
+        a.insertInPlace(2, 3);
+        a.insertInPlace(0, -1, 0);
+        return a;
+    }
+    static assert(testCTFE() == [-1, 0, 1, 2, 3]);
 }
 
 unittest // bugzilla 6874
@@ -1028,9 +1175,20 @@ unittest // bugzilla 6874
     same place in memory, making one of the arrays a slice of the other which
     starts at index $(D 0).
   +/
-pure bool sameHead(T)(in T[] lhs, in T[] rhs)
+pure bool sameHead(T)(T[] lhs, T[] rhs)
 {
     return lhs.ptr == rhs.ptr;
+}
+
+
+/++
+    Returns whether the $(D back)s of $(D lhs) and $(D rhs) both refer to the
+    same place in memory, making one of the arrays a slice of the other which
+    end at index $(D $).
+  +/
+pure bool sameTail(T)(T[] lhs, T[] rhs)
+{
+    return lhs.ptr + lhs.length == rhs.ptr + rhs.length;
 }
 
 unittest
@@ -1048,6 +1206,16 @@ unittest
         assert(!sameHead(a, c));
         assert(sameHead(a, d));
         assert(!sameHead(a, e));
+
+        assert(sameTail(a, a));
+        assert(sameTail(a, b));
+        assert(sameTail(a, c));
+        assert(!sameTail(a, d));
+        assert(!sameTail(a, e));
+
+        //verifies R-value compatibilty
+        assert(a.sameHead(a[0 .. 0]));
+        assert(a.sameTail(a[$ .. $]));
     }
 }
 
@@ -1273,17 +1441,71 @@ assert(join([[1, 2, 3], [4, 5]]) == [1, 2, 3, 4, 5]);
 ElementEncodingType!(ElementType!RoR)[] join(RoR, R)(RoR ror, R sep)
     if(isInputRange!RoR &&
        isInputRange!(ElementType!RoR) &&
-       isForwardRange!R &&
+       isInputRange!R &&
        is(Unqual!(ElementType!(ElementType!RoR)) == Unqual!(ElementType!R)))
 {
-    return joinImpl(ror, sep);
+    alias ElementType!RoR RoRElem;
+    alias typeof(return) RetType;
+
+    if (ror.empty)
+        return RetType.init;
+
+    // Constraint only requires input range for sep.
+    // This converts sep to an array (forward range) if it isn't one,
+    // and makes sure it has the same string encoding for string types.
+    static if (isSomeString!RetType &&
+               !is(Unqual!(ElementEncodingType!RetType) == Unqual!(ElementEncodingType!R)))
+        auto sepArr = to!RetType(sep);
+    else static if (!isArray!R)
+        auto sepArr = array(sep);
+    else
+        alias sep sepArr;
+
+    auto result = appender!RetType();
+    static if(isForwardRange!RoR &&
+              (isNarrowString!RetType || hasLength!RoRElem))
+    {
+        // Reserve appender length if it can be computed.
+        size_t resultLen = 0;
+        immutable sepArrLength = sepArr.length;
+        for (auto temp = ror.save; !temp.empty; temp.popFront())
+            resultLen += temp.front.length + sepArrLength;
+        resultLen -= sepArrLength;
+        result.reserve(resultLen);
+        version(unittest) scope(exit) assert(result.data.length == resultLen);
+    }
+    put(result, ror.front);
+    ror.popFront();
+    for (; !ror.empty; ror.popFront())
+    {
+        put(result, sepArr);
+        put(result, ror.front);
+    }
+    return result.data;
 }
 
 /// Ditto
 ElementEncodingType!(ElementType!RoR)[] join(RoR)(RoR ror)
-    if(isInputRange!RoR && isInputRange!(ElementType!RoR))
+    if(isInputRange!RoR &&
+       isInputRange!(ElementType!RoR))
 {
-    return joinImpl(ror);
+    alias typeof(return) RetType;
+
+    if (ror.empty)
+        return RetType.init;
+
+    alias ElementType!RoR R;
+    auto result = appender!RetType();
+    static if(isForwardRange!RoR && (hasLength!R || isNarrowString!R))
+    {
+        // Reserve appender length if it can be computed.
+        immutable resultLen = reduce!("a + b.length")(cast(size_t) 0, ror.save);
+        result.reserve(resultLen);
+        version(unittest) scope(exit) assert(result.data.length == resultLen);
+    }
+    for (; !ror.empty; ror.popFront())
+        put(result, ror.front);
+    return result.data;
 }
 
 //Verify Examples.
@@ -1296,230 +1518,86 @@ unittest
     assert(join([[1, 2, 3], [4, 5]]) == [1, 2, 3, 4, 5]);
 }
 
-// We have joinImpl instead of just making them all join in order to simplify
-// the template constraint that the user will see on errors (it's condensed down
-// to the conditions that are common to all).
-ElementEncodingType!(ElementType!RoR)[] joinImpl(RoR, R)(RoR ror, R sep)
-    if(isInputRange!RoR &&
-       isInputRange!(ElementType!RoR) &&
-       !isDynamicArray!(ElementType!RoR) &&
-       isForwardRange!R &&
-       is(Unqual!(ElementType!(ElementType!RoR)) == Unqual!(ElementType!R)))
-{
-    if(ror.empty)
-        return typeof(return).init;
-    auto iter = joiner(ror, sep);
-
-    static if(isForwardRange!RoR &&
-              hasLength!RoR &&
-              hasLength!(ElementType!RoR) &&
-              hasLength!R)
-    {
-        immutable resultLen = reduce!"a + b.length"(cast(size_t) 0, ror.save)
-            + sep.length * (ror.length - 1);
-        auto result = new ElementEncodingType!(ElementType!RoR)[resultLen];
-        copy(iter, result);
-        return result;
-    }
-    else
-        return copy(iter, appender!(typeof(return))()).data;
-}
-
-ElementEncodingType!(ElementType!RoR)[] joinImpl(RoR, R)(RoR ror, R sep)
-    if(isForwardRange!RoR &&
-       hasLength!RoR &&
-       isDynamicArray!(ElementType!RoR) &&
-       isForwardRange!R &&
-       is(Unqual!(ElementType!(ElementType!RoR)) == Unqual!(ElementType!R)))
-{
-    alias ElementEncodingType!(ElementType!RoR) RetElem;
-    alias RetElem[] RetType;
-
-    if(ror.empty)
-        return RetType.init;
-
-    auto sepArr = to!RetType(sep);
-    immutable resultLen = reduce!"a + b.length"(cast(size_t) 0, ror) +
-                          sepArr.length * (ror.length - 1);
-    auto result = new Unqual!RetElem[](resultLen);
-
-    size_t i = 0;
-    size_t j = 0;
-    foreach(r; ror)
-    {
-        result[i .. i + r.length] = r[];
-        i += r.length;
-
-        if(++j < ror.length)
-        {
-            result[i .. i + sepArr.length] = sepArr[];
-            i += sepArr.length;
-        }
-    }
-
-    return cast(RetType)result;
-}
-
-ElementEncodingType!(ElementType!RoR)[] joinImpl(RoR, R)(RoR ror, R sep)
-    if(isInputRange!RoR &&
-       ((isForwardRange!RoR && !hasLength!RoR) || !isForwardRange!RoR) &&
-       isDynamicArray!(ElementType!RoR) &&
-       isForwardRange!R &&
-       is(Unqual!(ElementType!(ElementType!RoR)) == Unqual!(ElementType!R)))
-{
-    if(ror.empty)
-        return typeof(return).init;
-
-    auto result = appender!(typeof(return))();
-
-    static if(isForwardRange!RoR)
-    {
-        immutable numRanges = walkLength(ror);
-        size_t j = 0;
-    }
-
-    foreach(r; ror)
-    {
-        result.put(r);
-
-        static if(isForwardRange!RoR)
-        {
-            if(++j < numRanges)
-                result.put(sep);
-        }
-        else
-            result.put(sep);
-    }
-
-    static if(isForwardRange!RoR)
-        return result.data;
-    else
-        return result.data[0 .. $ - sep.length];
-}
-
-ElementEncodingType!(ElementType!RoR)[] joinImpl(RoR)(RoR ror)
-    if(isInputRange!RoR &&
-       isInputRange!(ElementType!RoR) &&
-       !isDynamicArray!(ElementType!RoR))
-{
-    auto iter = joiner(ror);
-
-    static if(isForwardRange!RoR &&
-              hasLength!RoR &&
-              hasLength!(ElementType!RoR))
-    {
-        immutable resultLen = reduce!"a + b.length"(cast(size_t) 0, ror);
-        auto result = new Unqual!(ElementEncodingType!(ElementType!RoR))[resultLen];
-        copy(iter, result);
-        return cast(typeof(return)) result;
-    }
-    else
-        return copy(iter, appender!(typeof(return))()).data;
-}
-
-ElementEncodingType!(ElementType!RoR)[] joinImpl(RoR)(RoR ror)
-    if(isForwardRange!RoR &&
-       hasLength!RoR &&
-       isDynamicArray!(ElementType!RoR))
-{
-    alias ElementEncodingType!(ElementType!RoR) RetElem;
-    alias RetElem[] RetType;
-
-    if(ror.empty)
-        return RetType.init;
-
-    immutable resultLen = reduce!"a + b.length"(cast(size_t) 0, ror);
-    auto result = new Unqual!RetElem[](resultLen);
-
-    size_t i = 0;
-    foreach(r; ror)
-    {
-        result[i .. i + r.length] = r[];
-        i += r.length;
-    }
-
-    return cast(RetType)result;
-}
-
-ElementEncodingType!(ElementType!RoR)[] joinImpl(RoR)(RoR ror)
-    if(isInputRange!RoR &&
-       ((isForwardRange!RoR && !hasLength!RoR) || !isForwardRange!RoR) &&
-       isDynamicArray!(ElementType!RoR))
-{
-    if(ror.empty)
-        return typeof(return).init;
-
-    auto result = appender!(typeof(return))();
-
-    foreach(r; ror)
-        result.put(r);
-
-    return result.data;
-}
-
 unittest
 {
     debug(std_array) printf("array.join.unittest\n");
 
-    string word1   = "peter";
-    string word2   = "paul";
-    string word3   = "jerry";
-    string[] words = [word1, word2, word3];
-
-    auto filteredWord1    = filter!"true"(word1);
-    auto filteredLenWord1 = takeExactly(filteredWord1, word1.length);
-    auto filteredWord2    = filter!"true"(word2);
-    auto filteredLenWord2 = takeExactly(filteredWord2, word2.length);
-    auto filteredWord3    = filter!"true"(word3);
-    auto filteredLenWord3 = takeExactly(filteredWord3, word3.length);
-    auto filteredWordsArr = [filteredWord1, filteredWord2, filteredWord3];
-    auto filteredLenWordsArr = [filteredLenWord1, filteredLenWord2, filteredLenWord3];
-    auto filteredWords    = filter!"true"(filteredWordsArr);
-
-    foreach(S; TypeTuple!(string, wstring, dstring))
+    foreach(R; TypeTuple!(string, wstring, dstring))
     {
-        assert(join(filteredWords, to!S(", ")) == "peter, paul, jerry");
-        assert(join(filteredWordsArr, to!S(", ")) == "peter, paul, jerry");
-        assert(join(filteredLenWordsArr, to!S(", ")) == "peter, paul, jerry");
-        assert(join(filter!"true"(words), to!S(", ")) == "peter, paul, jerry");
-        assert(join(words, to!S(", ")) == "peter, paul, jerry");
+        R word1 = "日本語";
+        R word2 = "paul";
+        R word3 = "jerry";
+        R[] words = [word1, word2, word3];
 
-        assert(join(filteredWords, to!S("")) == "peterpauljerry");
-        assert(join(filteredWordsArr, to!S("")) == "peterpauljerry");
-        assert(join(filteredLenWordsArr, to!S("")) == "peterpauljerry");
-        assert(join(filter!"true"(words), to!S("")) == "peterpauljerry");
-        assert(join(words, to!S("")) == "peterpauljerry");
+        auto filteredWord1    = filter!"true"(word1);
+        auto filteredLenWord1 = takeExactly(filteredWord1, word1.walkLength());
+        auto filteredWord2    = filter!"true"(word2);
+        auto filteredLenWord2 = takeExactly(filteredWord2, word2.walkLength());
+        auto filteredWord3    = filter!"true"(word3);
+        auto filteredLenWord3 = takeExactly(filteredWord3, word3.walkLength());
+        auto filteredWordsArr = [filteredWord1, filteredWord2, filteredWord3];
+        auto filteredLenWordsArr = [filteredLenWord1, filteredLenWord2, filteredLenWord3];
+        auto filteredWords    = filter!"true"(filteredWordsArr);
 
-        assert(join(filter!"true"([word1]), to!S(", ")) == "peter");
-        assert(join([filteredWord1], to!S(", ")) == "peter");
-        assert(join([filteredLenWord1], to!S(", ")) == "peter");
-        assert(join(filter!"true"([filteredWord1]), to!S(", ")) == "peter");
-        assert(join([word1], to!S(", ")) == "peter");
+        foreach(S; TypeTuple!(string, wstring, dstring))
+        {
+            assert(join(filteredWords, to!S(", ")) == "日本語, paul, jerry");
+            assert(join(filteredWordsArr, to!S(", ")) == "日本語, paul, jerry");
+            assert(join(filteredLenWordsArr, to!S(", ")) == "日本語, paul, jerry");
+            assert(join(filter!"true"(words), to!S(", ")) == "日本語, paul, jerry");
+            assert(join(words, to!S(", ")) == "日本語, paul, jerry");
+
+            assert(join(filteredWords, to!S("")) == "日本語pauljerry");
+            assert(join(filteredWordsArr, to!S("")) == "日本語pauljerry");
+            assert(join(filteredLenWordsArr, to!S("")) == "日本語pauljerry");
+            assert(join(filter!"true"(words), to!S("")) == "日本語pauljerry");
+            assert(join(words, to!S("")) == "日本語pauljerry");
+
+            assert(join(filter!"true"([word1]), to!S(", ")) == "日本語");
+            assert(join([filteredWord1], to!S(", ")) == "日本語");
+            assert(join([filteredLenWord1], to!S(", ")) == "日本語");
+            assert(join(filter!"true"([filteredWord1]), to!S(", ")) == "日本語");
+            assert(join([word1], to!S(", ")) == "日本語");
+
+            assert(join(filteredWords, to!S(word1)) == "日本語日本語paul日本語jerry");
+            assert(join(filteredWordsArr, to!S(word1)) == "日本語日本語paul日本語jerry");
+            assert(join(filteredLenWordsArr, to!S(word1)) == "日本語日本語paul日本語jerry");
+            assert(join(filter!"true"(words), to!S(word1)) == "日本語日本語paul日本語jerry");
+            assert(join(words, to!S(word1)) == "日本語日本語paul日本語jerry");
+
+            auto filterComma = filter!"true"(to!S(", "));
+            assert(join(filteredWords, filterComma) == "日本語, paul, jerry");
+            assert(join(filteredWordsArr, filterComma) == "日本語, paul, jerry");
+            assert(join(filteredLenWordsArr, filterComma) == "日本語, paul, jerry");
+            assert(join(filter!"true"(words), filterComma) == "日本語, paul, jerry");
+            assert(join(words, filterComma) == "日本語, paul, jerry");
+        }
+
+        assert(join(filteredWords) == "日本語pauljerry");
+        assert(join(filteredWordsArr) == "日本語pauljerry");
+        assert(join(filteredLenWordsArr) == "日本語pauljerry");
+        assert(join(filter!"true"(words)) == "日本語pauljerry");
+        assert(join(words) == "日本語pauljerry");
+
+        assert(join(filteredWords, filter!"true"(", ")) == "日本語, paul, jerry");
+        assert(join(filteredWordsArr, filter!"true"(", ")) == "日本語, paul, jerry");
+        assert(join(filteredLenWordsArr, filter!"true"(", ")) == "日本語, paul, jerry");
+        assert(join(filter!"true"(words), filter!"true"(", ")) == "日本語, paul, jerry");
+        assert(join(words, filter!"true"(", ")) == "日本語, paul, jerry");
+
+        assert(join(filter!"true"(cast(typeof(filteredWordsArr))[]), ", ").empty);
+        assert(join(cast(typeof(filteredWordsArr))[], ", ").empty);
+        assert(join(cast(typeof(filteredLenWordsArr))[], ", ").empty);
+        assert(join(filter!"true"(cast(R[])[]), ", ").empty);
+        assert(join(cast(R[])[], ", ").empty);
+
+        assert(join(filter!"true"(cast(typeof(filteredWordsArr))[])).empty);
+        assert(join(cast(typeof(filteredWordsArr))[]).empty);
+        assert(join(cast(typeof(filteredLenWordsArr))[]).empty);
+
+        assert(join(filter!"true"(cast(R[])[])).empty);
+        assert(join(cast(R[])[]).empty);
     }
-
-    assert(join(filteredWords) == "peterpauljerry");
-    assert(join(filteredWordsArr) == "peterpauljerry");
-    assert(join(filteredLenWordsArr) == "peterpauljerry");
-    assert(join(filter!"true"(words)) == "peterpauljerry");
-    assert(join(words) == "peterpauljerry");
-
-    assert(join(filteredWords, filter!"true"(", ")) == "peter, paul, jerry");
-    assert(join(filteredWordsArr, filter!"true"(", ")) == "peter, paul, jerry");
-    assert(join(filteredLenWordsArr, filter!"true"(", ")) == "peter, paul, jerry");
-    assert(join(filter!"true"(words), filter!"true"(", ")) == "peter, paul, jerry");
-    assert(join(words, filter!"true"(", ")) == "peter, paul, jerry");
-
-    assert(join(filter!"true"(cast(typeof(filteredWordsArr))[]), ", ").empty);
-    assert(join(cast(typeof(filteredWordsArr))[], ", ").empty);
-    assert(join(cast(typeof(filteredLenWordsArr))[], ", ").empty);
-    assert(join(filter!"true"(cast(string[])[]), ", ").empty);
-    assert(join(cast(string[])[], ", ").empty);
-
-    assert(join(filter!"true"(cast(typeof(filteredWordsArr))[])).empty);
-    assert(join(cast(typeof(filteredWordsArr))[]).empty);
-    assert(join(cast(typeof(filteredLenWordsArr))[]).empty);
-    assert(join(filter!"true"(cast(string[])[])).empty);
-    assert(join(cast(string[])[]).empty);
 
     assert(join([[1, 2], [41, 42]], [5, 6]) == [1, 2, 5, 6, 41, 42]);
     assert(join([[1, 2], [41, 42]], cast(int[])[]) == [1, 2, 41, 42]);
@@ -1528,6 +1606,16 @@ unittest
 
     assert(join([[1, 2], [41, 42]]) == [1, 2, 41, 42]);
     assert(join(cast(int[][])[]).empty);
+
+    alias filter!"true" f;
+    assert(join([[1, 2], [41, 42]],          [5, 6]) == [1, 2, 5, 6, 41, 42]);
+    assert(join(f([[1, 2], [41, 42]]),       [5, 6]) == [1, 2, 5, 6, 41, 42]);
+    assert(join([f([1, 2]), f([41, 42])],    [5, 6]) == [1, 2, 5, 6, 41, 42]);
+    assert(join(f([f([1, 2]), f([41, 42])]), [5, 6]) == [1, 2, 5, 6, 41, 42]);
+    assert(join([[1, 2], [41, 42]],          f([5, 6])) == [1, 2, 5, 6, 41, 42]);
+    assert(join(f([[1, 2], [41, 42]]),       f([5, 6])) == [1, 2, 5, 6, 41, 42]);
+    assert(join([f([1, 2]), f([41, 42])],    f([5, 6])) == [1, 2, 5, 6, 41, 42]);
+    assert(join(f([f([1, 2]), f([41, 42])]), f([5, 6])) == [1, 2, 5, 6, 41, 42]);
 }
 
 
@@ -1555,11 +1643,11 @@ if (isDynamicArray!(E[]) && isForwardRange!R1 && isForwardRange!R2
 }
 
 /++
-    Same as above, but outputs the result via OutputRange $(D sink). 
+    Same as above, but outputs the result via OutputRange $(D sink).
     If no match is found the original array is transfered to $(D sink) as is.
 +/
 void replaceInto(E, Sink, R1, R2)(Sink sink, E[] subject, R1 from, R2 to)
-if (isOutputRange!(Sink, E) && isDynamicArray!(E[]) 
+if (isOutputRange!(Sink, E) && isDynamicArray!(E[])
     && isForwardRange!R1 && isForwardRange!R2
     && (hasLength!R2 || isSomeString!R2))
 {
@@ -1764,7 +1852,7 @@ void replaceInPlace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff
     {
         // replacement reduces length
         immutable stuffEnd = from + stuff.length;
-        array[from .. stuffEnd] = stuff;
+        array[from .. stuffEnd] = stuff[];
         array = remove(array, tuple(stuffEnd, to));
     }
     else
@@ -1943,7 +2031,7 @@ body
     auto result = new T[s.length - slice.length + replacement.length];
     immutable so = slice.ptr - s.ptr;
     result[0 .. so] = s[0 .. so];
-    result[so .. so + replacement.length] = replacement;
+    result[so .. so + replacement.length] = replacement[];
     result[so + replacement.length .. result.length] =
         s[so + slice.length .. s.length];
 
@@ -2131,11 +2219,28 @@ Returns the managed array.
         return newext > newlength ? newext : newlength;
     }
 
+    private template canPutItem(U)
+    {
+        enum bool canPutItem = isImplicitlyConvertible!(U, T) ||
+            isSomeChar!T && isSomeChar!U;
+    }
+
+    private template canPutConstRange(Range)
+    {
+        enum bool canPutConstRange = isInputRange!(Unqual!Range) &&
+            !isInputRange!Range;
+    }
+
+    private template canPutRange(Range)
+    {
+        enum bool canPutRange = isInputRange!Range &&
+            is(typeof(Appender.init.put(Range.init.front)));
+    }
+
 /**
 Appends one item to the managed array.
  */
-    void put(U)(U item) if (isImplicitlyConvertible!(U, T) ||
-            isSomeChar!T && isSomeChar!U)
+    void put(U)(U item) if (canPutItem!U)
     {
         static if (isSomeChar!T && isSomeChar!U && T.sizeof < U.sizeof)
         {
@@ -2154,8 +2259,8 @@ Appends one item to the managed array.
     }
 
     // Const fixing hack.
-    void put(Range)(Range items)
-    if(isInputRange!(Unqual!Range) && !isInputRange!Range) {
+    void put(Range)(Range items) if (canPutConstRange!Range)
+    {
         alias put!(Unqual!Range) p;
         p(items);
     }
@@ -2163,8 +2268,7 @@ Appends one item to the managed array.
 /**
 Appends an entire range to the managed array.
  */
-    void put(Range)(Range items) if (isInputRange!Range
-            && is(typeof(Appender.init.put(items.front))))
+    void put(Range)(Range items) if (canPutRange!Range)
     {
         // note, we disable this branch for appending one type of char to
         // another because we can't trust the length portion.
@@ -2191,9 +2295,9 @@ Appends an entire range to the managed array.
             immutable len = _data.arr.length;
             immutable newlen = len + items.length;
             _data.arr = _data.arr.ptr[0..newlen];
-            static if(is(typeof(_data.arr[] = items)))
+            static if(is(typeof(_data.arr[] = items[])))
             {
-                _data.arr.ptr[len..newlen] = items;
+                _data.arr.ptr[len..newlen] = items[];
             }
             else
             {
@@ -2210,6 +2314,28 @@ Appends an entire range to the managed array.
                 put(items.front);
             }
         }
+    }
+
+/**
+Appends one item to the managed array.
+ */
+    void opOpAssign(string op : "~", U)(U item) if (canPutItem!U)
+    {
+        put(item);
+    }
+
+    // Const fixing hack.
+    void opOpAssign(string op : "~", Range)(Range items) if (canPutConstRange!Range)
+    {
+        put(items);
+    }
+
+/**
+Appends an entire range to the managed array.
+ */
+    void opOpAssign(string op : "~", Range)(Range items) if (canPutRange!Range)
+    {
+        put(items);
     }
 
     // only allow overwriting data on non-immutable and non-const data
@@ -2283,6 +2409,33 @@ those appends.
         mixin("return impl." ~ fn ~ "(args);");
     }
 
+    private alias Appender!(A, T) AppenderType;
+
+/**
+Appends one item to the managed array.
+ */
+    void opOpAssign(string op : "~", U)(U item) if (AppenderType.canPutItem!U)
+    {
+        scope(exit) *this.arr = impl.data;
+        impl.put(item);
+    }
+
+    // Const fixing hack.
+    void opOpAssign(string op : "~", Range)(Range items) if (AppenderType.canPutConstRange!Range)
+    {
+        scope(exit) *this.arr = impl.data;
+        impl.put(items);
+    }
+
+/**
+Appends an entire range to the managed array.
+ */
+    void opOpAssign(string op : "~", Range)(Range items) if (AppenderType.canPutRange!Range)
+    {
+        scope(exit) *this.arr = impl.data;
+        impl.put(items);
+    }
+
 /**
 Returns the capacity of the array (the maximum number of elements the
 managed array can accommodate before triggering a reallocation).  If any
@@ -2313,18 +2466,36 @@ Appender!(E[]) appender(A : E[], E)(A array = null)
 
 unittest
 {
-    auto app = appender!(char[])();
-    string b = "abcdefg";
-    foreach (char c; b) app.put(c);
-    assert(app.data == "abcdefg");
+    {
+        auto app = appender!(char[])();
+        string b = "abcdefg";
+        foreach (char c; b) app.put(c);
+        assert(app.data == "abcdefg");
+    }
+    {
+        auto app = appender!(char[])();
+        string b = "abcdefg";
+        foreach (char c; b) app ~= c;
+        assert(app.data == "abcdefg");
+    }
+    {
+        int[] a = [ 1, 2 ];
+        auto app2 = appender(a);
+        assert(app2.data == [ 1, 2 ]);
+        app2.put(3);
+        app2.put([ 4, 5, 6 ][]);
+        assert(app2.data == [ 1, 2, 3, 4, 5, 6 ]);
+        app2.put([ 7 ]);
+        assert(app2.data == [ 1, 2, 3, 4, 5, 6, 7 ]);
+    }
 
     int[] a = [ 1, 2 ];
     auto app2 = appender(a);
     assert(app2.data == [ 1, 2 ]);
-    app2.put(3);
-    app2.put([ 4, 5, 6 ][]);
+    app2 ~= 3;
+    app2 ~= [ 4, 5, 6 ][];
     assert(app2.data == [ 1, 2, 3, 4, 5, 6 ]);
-    app2.put([ 7 ]);
+    app2 ~= [ 7 ];
     assert(app2.data == [ 1, 2, 3, 4, 5, 6, 7 ]);
 
     app2.reserve(5);
@@ -2355,6 +2526,20 @@ unittest
         assertNotThrown(app5663m.put(cast(char[])"\xE3"));
         assert(app5663m.data == "\xE3");
     }
+    // ditto for ~=
+    {
+        Appender!(char[]) app5663i;
+        assertNotThrown(app5663i ~= "\xE3");
+        assert(app5663i.data == "\xE3");
+
+        Appender!(char[]) app5663c;
+        assertNotThrown(app5663c ~= cast(const(char)[])"\xE3");
+        assert(app5663c.data == "\xE3");
+
+        Appender!(char[]) app5663m;
+        assertNotThrown(app5663m ~= cast(char[])"\xE3");
+        assert(app5663m.data == "\xE3");
+    }
 }
 
 /++
@@ -2369,19 +2554,39 @@ RefAppender!(E[]) appender(A : E[]*, E)(A array)
 
 unittest
 {
-    auto arr = new char[0];
-    auto app = appender(&arr);
-    string b = "abcdefg";
-    foreach (char c; b) app.put(c);
-    assert(app.data == "abcdefg");
-    assert(arr == "abcdefg");
+    {
+        auto arr = new char[0];
+        auto app = appender(&arr);
+        string b = "abcdefg";
+        foreach (char c; b) app.put(c);
+        assert(app.data == "abcdefg");
+        assert(arr == "abcdefg");
+    }
+    {
+        auto arr = new char[0];
+        auto app = appender(&arr);
+        string b = "abcdefg";
+        foreach (char c; b) app ~= c;
+        assert(app.data == "abcdefg");
+        assert(arr == "abcdefg");
+    }
+    {
+        int[] a = [ 1, 2 ];
+        auto app2 = appender(&a);
+        assert(app2.data == [ 1, 2 ]);
+        assert(a == [ 1, 2 ]);
+        app2.put(3);
+        app2.put([ 4, 5, 6 ][]);
+        assert(app2.data == [ 1, 2, 3, 4, 5, 6 ]);
+        assert(a == [ 1, 2, 3, 4, 5, 6 ]);
+    }
 
     int[] a = [ 1, 2 ];
     auto app2 = appender(&a);
     assert(app2.data == [ 1, 2 ]);
     assert(a == [ 1, 2 ]);
-    app2.put(3);
-    app2.put([ 4, 5, 6 ][]);
+    app2 ~= 3;
+    app2 ~= [ 4, 5, 6 ][];
     assert(app2.data == [ 1, 2, 3, 4, 5, 6 ]);
     assert(a == [ 1, 2, 3, 4, 5, 6 ]);
 

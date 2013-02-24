@@ -31,12 +31,6 @@
 extern void d_gcc_magic_module (Module *);
 extern void d_gcc_dump_source (const char *, const char *, unsigned char *, unsigned);
 
-/* used in func.c */
-extern Type *d_gcc_builtin_va_list_d_type;
-
-/* used in parse.c */
-extern bool d_gcc_is_target_win32 (void);
-
 /* used in toobj.c */
 struct VarDeclaration;
 extern void d_gcc_emit_local_variable (VarDeclaration *);
@@ -64,6 +58,9 @@ extern Expression *d_gcc_eval_builtin (Loc, FuncDeclaration *, Expressions *);
 
 /* used in arrayop.c */
 extern int binary(const char *p , const char **tab, int high);
+
+/* used in ctfeexpr.c */
+extern Expression *d_gcc_paint_type (Expression *, Type *);
 
 #endif /* GCC_SAFE_DMD */
 

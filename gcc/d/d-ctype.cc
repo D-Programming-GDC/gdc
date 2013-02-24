@@ -61,6 +61,14 @@ Type::toCtype (void)
 	  ctype = intDI_type_node;
 	  break;
 
+	case Tint128:
+	  ctype = intTI_type_node;
+	  break;
+
+	case Tuns128:
+	  ctype = unsigned_intTI_type_node;
+	  break;
+
 	case Tuns64:
 	  ctype = unsigned_intDI_type_node;
 	  break;
@@ -431,11 +439,7 @@ TypeSArray::toCtype (void)
 type *
 TypeSArray::toCParamtype (void)
 {
-#if SARRAYVALUE
   return toCtype();
-#else
-  return next->pointerTo()->toCtype();
-#endif
 }
 
 type *

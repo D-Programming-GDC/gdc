@@ -36,6 +36,7 @@ struct Expression;
 struct AliasDeclaration;
 struct FuncDeclaration;
 struct HdrGenState;
+struct Parameter;
 enum MATCH;
 enum PASS;
 
@@ -64,6 +65,7 @@ struct TemplateDeclaration : ScopeDsymbol
 
     int literal;                // this template declaration is a literal
     int ismixin;                // template declaration is only to be used as a mixin
+    enum PROT protection;
 
     struct Previous
     {   Previous *prev;
@@ -83,7 +85,7 @@ struct TemplateDeclaration : ScopeDsymbol
     char *toChars();
 
     void emitComment(Scope *sc);
-    void toJsonBuffer(OutBuffer *buf);
+    void toJson(JsonOut *json);
 //    void toDocBuffer(OutBuffer *buf);
 
     MATCH matchWithInstance(TemplateInstance *ti, Objects *atypes, Expressions *fargs, int flag);
@@ -91,7 +93,7 @@ struct TemplateDeclaration : ScopeDsymbol
 
     MATCH deduceFunctionTemplateMatch(Scope *sc, Loc loc, Objects *targsi, Expression *ethis, Expressions *fargs, Objects *dedargs);
     FuncDeclaration *deduceFunctionTemplate(Scope *sc, Loc loc, Objects *targsi, Expression *ethis, Expressions *fargs, int flags = 0);
-    void declareParameter(Scope *sc, TemplateParameter *tp, Object *o);
+    Object *declareParameter(Scope *sc, TemplateParameter *tp, Object *o);
     FuncDeclaration *doHeaderInstantiation(Scope *sc, Objects *tdargs, Expressions *fargs);
 
     TemplateDeclaration *isTemplateDeclaration() { return this; }
@@ -318,7 +320,7 @@ struct TemplateInstance : ScopeDsymbol
     int oneMember(Dsymbol **ps, Identifier *ident);
     int needsTypeInference(Scope *sc);
     char *toChars();
-    char *mangle();
+    char *mangle(bool isv = false);
     void printInstantiationTrace();
 
     void toObjFile(int multiobj);                       // compile to .obj file
@@ -357,6 +359,7 @@ struct TemplateMixin : TemplateInstance
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     char *toChars();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+    void toJson(JsonOut *json);
 
     void toObjFile(int multiobj);                       // compile to .obj file
 
@@ -367,6 +370,7 @@ Expression *isExpression(Object *o);
 Dsymbol *isDsymbol(Object *o);
 Type *isType(Object *o);
 Tuple *isTuple(Object *o);
+Parameter *isParameter(Object *o);
 int arrayObjectIsError(Objects *args);
 int isError(Object *o);
 Type *getType(Object *o);

@@ -193,15 +193,7 @@ version( GNU )
   {
     void va_arg()(ref va_list ap, TypeInfo ti, void* parmn)
     {
-        version( X86 ) { } else
-        {
-            // The standard definition of va_list is void*
-            static assert(is(va_list == void*), "Unsupported platform");
-        }
-        auto p = ap;
-        auto tsize = ti.tsize();
-        ap = cast(va_list)( cast(void*) p + ( ( tsize + size_t.sizeof - 1 ) & ~( size_t.sizeof - 1 ) ) );
-        parmn[0..tsize] = p[0..tsize];
+        static assert(false, "Unsupported platform");
     }
   }
 
@@ -262,13 +254,87 @@ else version( X86 )
      */
     void va_arg()(ref va_list ap, TypeInfo ti, void* parmn)
     {
-        // Wait until everyone updates to get TypeInfo.talign()
-        //auto talign = ti.talign();
+        // Wait until everyone updates to get TypeInfo.talign
+        //auto talign = ti.talign;
         //auto p = cast(void*)(cast(size_t)ap + talign - 1) & ~(talign - 1);
         auto p = ap;
-        auto tsize = ti.tsize();
+        auto tsize = ti.tsize;
         ap = cast(void*)(cast(size_t)p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
         parmn[0..tsize] = p[0..tsize];
+    }
+
+    /***********************
+     * End use of ap.
+     */
+    void va_end(va_list ap)
+    {
+    }
+
+    void va_copy(out va_list dest, va_list src)
+    {
+        dest = src;
+    }
+}
+else version (Windows) // Win64
+{   /* Win64 is characterized by all arguments fitting into a register size.
+     * Smaller ones are padded out to register size, and larger ones are passed by
+     * reference.
+     */
+
+    /*********************
+     * The argument pointer type.
+     */
+    alias void* va_list;
+
+    /**********
+     * Initialize ap.
+     * parmn should be the last named parameter.
+     */
+    void va_start(T)(out va_list ap, ref T parmn)
+    {
+        ap = cast(va_list)(cast(void*)&parmn + ((size_t.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
+    }
+
+    /************
+     * Retrieve and return the next value that is type T.
+     */
+    T va_arg(T)(ref va_list ap)
+    {
+        static if (T.sizeof > size_t.sizeof)
+            T arg = **cast(T**)ap;
+        else
+            T arg = *cast(T*)ap;
+        ap = cast(va_list)(cast(void*)ap + ((size_t.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
+        return arg;
+    }
+
+    /************
+     * Retrieve and return the next value that is type T.
+     * This is the preferred version.
+     */
+    void va_arg(T)(ref va_list ap, ref T parmn)
+    {
+        static if (T.sizeof > size_t.sizeof)
+            parmn = **cast(T**)ap;
+        else
+            parmn = *cast(T*)ap;
+        ap = cast(va_list)(cast(void*)ap + ((size_t.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
+    }
+
+    /*************
+     * Retrieve and store through parmn the next value that is of TypeInfo ti.
+     * Used when the static type is not known.
+     */
+    void va_arg()(ref va_list ap, TypeInfo ti, void* parmn)
+    {
+        // Wait until everyone updates to get TypeInfo.talign
+        //auto talign = ti.talign;
+        //auto p = cast(void*)(cast(size_t)ap + talign - 1) & ~(talign - 1);
+        auto p = ap;
+        auto tsize = ti.tsize;
+        ap = cast(void*)(cast(size_t)p + ((size_t.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
+        void* q = (tsize > size_t.sizeof) ? *cast(void**)p : p;
+        parmn[0..tsize] = q[0..tsize];
     }
 
     /***********************
@@ -483,9 +549,9 @@ else version (X86_64)
             }
 
             TypeInfo_Vector v1 = arg1 ? cast(TypeInfo_Vector)arg1 : null;
-            if (arg1 && (arg1.tsize() <= 8 || v1))
+            if (arg1 && (arg1.tsize <= 8 || v1))
             {   // Arg is passed in one register
-                auto tsize = arg1.tsize();
+                auto tsize = arg1.tsize;
                 void* p;
                 bool stack = false;
                 auto offset_fpregs_save = ap.offset_fpregs;
@@ -540,7 +606,7 @@ else version (X86_64)
                                 goto L1;
                             }
                             p = ap.stack_args;
-                            ap.stack_args += (arg2.tsize() + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+                            ap.stack_args += (arg2.tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
                         }
                     }
                     else
@@ -563,15 +629,15 @@ else version (X86_64)
                             ap.stack_args += 8;
                         }
                     }
-                    auto sz = ti.tsize() - 8;
+                    auto sz = ti.tsize - 8;
                     (parmn + 8)[0..sz] = p[0..sz];
                 }
             }
             else
             {   // Always passed in memory
                 // The arg may have more strict alignment than the stack
-                auto talign = ti.talign();
-                auto tsize = ti.tsize();
+                auto talign = ti.talign;
+                auto tsize = ti.tsize;
                 auto p = cast(void*)((cast(size_t)ap.stack_args + talign - 1) & ~(talign - 1));
                 ap.stack_args = cast(void*)(cast(size_t)p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
                 parmn[0..tsize] = p[0..tsize];

@@ -1,24 +1,14 @@
-/**
+﻿/**
  * The thread module provides support for thread creation and management.
  *
- * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Sean Kelly, Walter Bright, Alex Rønne Petersen
+ * Copyright: Copyright Sean Kelly 2005 - 2012.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
+ * Authors:   Sean Kelly, Walter Bright, Alex Rønne Petersen, Martin Nowak
  * Source:    $(DRUNTIMESRC core/_thread.d)
  */
 
-/*          Copyright Sean Kelly 2005 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- * Source: $(LINK http://www.dsource.org/projects/druntime/browser/trunk/src/core/thread.d)
- */
-
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by Iain Buclaw, September 2010.
- */
 module core.thread;
 
 
@@ -125,7 +115,7 @@ version( Windows )
     private
     {
         import core.stdc.stdint : uintptr_t; // for _beginthreadex decl below
-        import core.stdc.stdlib;             // for malloc
+        import core.stdc.stdlib;             // for malloc, atexit
         import core.sys.windows.windows;
         import core.sys.windows.threadaux;   // for OpenThreadHandle
 
@@ -137,21 +127,29 @@ version( Windows )
 
         version( DigitalMars )
         {
-            // NOTE: The memory between the addresses of _tlsstart and _tlsend
-            //       is the storage for thread-local data in D 2.0.  Both of
-            //       these are defined in dm\src\win32\tlsseg.asm by DMC.
-            extern (C)
+            version (Win32)
             {
-                extern int _tlsstart;
-                extern int _tlsend;
+                // NOTE: The memory between the addresses of _tlsstart and _tlsend
+                //       is the storage for thread-local data in D 2.0.  Both of
+                //       these are defined in dm\src\win32\tlsseg.asm by DMC.
+                extern (C)
+                {
+                    extern int _tlsstart;
+                    extern int _tlsend;
+                }
             }
-        }
-        else version( GNU )
-        {
-            extern (C)
+            version (Win64)
             {
-                extern int _tlsstart;
-                extern int _tlsend;
+                // NOTE: The memory between the addresses of _tls_start and _tls_end
+                //       is the storage for thread-local data in D 2.0.  Both of
+                //       these are defined in LIBCMT:tlssub.obj
+                extern (C)
+                {
+                    extern int _tls_start;
+                    extern int _tls_end;
+                }
+                alias _tls_start _tlsstart;
+                alias _tls_end   _tlsend;
             }
         }
         else
@@ -254,7 +252,7 @@ else version( Posix )
     {
         import core.stdc.errno;
         import core.sys.posix.semaphore;
-        import core.sys.posix.stdlib; // for malloc, valloc, free
+        import core.sys.posix.stdlib; // for malloc, valloc, free, atexit
         import core.sys.posix.pthread;
         import core.sys.posix.signal;
         import core.sys.posix.time;
@@ -707,7 +705,7 @@ class Thread
 
         version( Windows )
         {
-            // NOTE: If a thread is just executing DllMain() 
+            // NOTE: If a thread is just executing DllMain()
             //       while another thread is started here, it holds an OS internal
             //       lock that serializes DllMain with CreateThread. As the code
             //       might request a synchronization on slock (e.g. in thread_findByAddr()),
@@ -717,7 +715,7 @@ class Thread
             // Solution: Create the thread in suspended state and then
             //       add and resume it with slock acquired
             assert(m_sz <= uint.max, "m_sz must be less than or equal to uint.max");
-            m_hndl = cast(HANDLE) _beginthreadex( null, m_sz, &thread_entryPoint, cast(void*) this, CREATE_SUSPENDED, &m_addr );
+            m_hndl = cast(HANDLE) _beginthreadex( null, cast(uint) m_sz, &thread_entryPoint, cast(void*) this, CREATE_SUSPENDED, &m_addr );
             if( cast(size_t) m_hndl == 0 )
                 throw new ThreadException( "Error creating thread" );
         }
@@ -793,7 +791,7 @@ class Thread
             // NOTE: m_addr must be cleared before m_hndl is closed to avoid
             //       a race condition with isRunning. The operation is done
             //       with atomicStore to prevent compiler reordering.
-            atomicStore!(msync.raw)(*cast(shared)&m_addr, m_addr.init);
+            atomicStore!(MemoryOrder.raw)(*cast(shared)&m_addr, m_addr.init);
             CloseHandle( m_hndl );
             m_hndl = m_hndl.init;
         }
@@ -1043,24 +1041,24 @@ class Thread
             while( val > maxSleepMillis )
             {
                 Sleep( cast(uint)
-                       maxSleepMillis.total!("msecs")() );
+                       maxSleepMillis.total!"msecs" );
                 val -= maxSleepMillis;
             }
-            Sleep( cast(uint) val.total!("msecs")() );
+            Sleep( cast(uint) val.total!"msecs" );
         }
         else version( Posix )
         {
             timespec tin  = void;
             timespec tout = void;
 
-            if( val.total!("seconds")() > tin.tv_sec.max )
+            if( val.total!"seconds" > tin.tv_sec.max )
             {
                 tin.tv_sec  = tin.tv_sec.max;
                 tin.tv_nsec = cast(typeof(tin.tv_nsec)) val.fracSec.nsecs;
             }
             else
             {
-                tin.tv_sec  = cast(typeof(tin.tv_sec)) val.total!("seconds")();
+                tin.tv_sec  = cast(typeof(tin.tv_sec)) val.total!"seconds";
                 tin.tv_nsec = cast(typeof(tin.tv_nsec)) val.fracSec.nsecs;
             }
             while( true )
@@ -1098,7 +1096,8 @@ class Thread
      *
      * ------------------------------------------------------------------------
      */
-    deprecated static void sleep( long period )
+    deprecated("Please use the overload of sleep which takes a Duration.")
+    static void sleep( long period )
     in
     {
         assert( period >= 0 );
@@ -1534,21 +1533,22 @@ private:
     //
     @property static Mutex slock()
     {
-        __gshared Mutex m = null;
+        __gshared Mutex m;
+        __gshared byte[__traits(classInstanceSize, Mutex)] ms;
 
-        if( m !is null )
-            return m;
-        else
+        if (m is null)
         {
-            auto ci = Mutex.classinfo;
-            auto p  = malloc( ci.init.length );
-            (cast(byte*) p)[0 .. ci.init.length] = ci.init[];
-            m = cast(Mutex) p;
+            // Initialization doesn't need to be synchronized because
+            // creating a thread will lock this mutex.
+            ms[] = Mutex.classinfo.init[];
+            m = cast(Mutex)ms.ptr;
             m.__ctor();
-            return m;
-        }
-    }
 
+            extern(C) void destroy() { m.__dtor(); }
+            atexit(&destroy);
+        }
+        return m;
+    }
 
     __gshared Context*  sm_cbeg;
     __gshared size_t    sm_clen;
@@ -1748,6 +1748,8 @@ version (D_LP64)
         static assert(__traits(classInstanceSize, Thread) == 312);
     else version (OSX)
         static assert(__traits(classInstanceSize, Thread) == 320);
+    else version (Solaris)
+        static assert(__traits(classInstanceSize, Thread) == 176);
     else version (Posix)
         static assert(__traits(classInstanceSize, Thread) == 184);
     else
@@ -2298,7 +2300,7 @@ private void suspend( Thread t )
         else version( X86_64 )
         {
             if( !t.m_lock )
-                t.m_curr.tstack = cast(void*) context.Rsp;            
+                t.m_curr.tstack = cast(void*) context.Rsp;
             // rax,rbx,rcx,rdx,rdi,rsi,rbp,rsp
             t.m_reg[0] = context.Rax;
             t.m_reg[1] = context.Rbx;
@@ -2316,7 +2318,7 @@ private void suspend( Thread t )
             t.m_reg[12] = context.R12;
             t.m_reg[13] = context.R13;
             t.m_reg[14] = context.R14;
-            t.m_reg[15] = context.R15;                    
+            t.m_reg[15] = context.R15;
         }
         else
         {
@@ -2851,6 +2853,7 @@ extern (C)
 {
     version (linux) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
     version (FreeBSD) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
+    version (Solaris) int thr_stksegment(stack_t* stk);
 }
 
 
@@ -2874,7 +2877,12 @@ private void* getStackBottom()
         version (D_InlineAsm_X86)
             asm { naked; mov EAX, FS:4; ret; }
         else version(D_InlineAsm_X86_64)
-            asm { naked; mov RAX, GS:4; ret; }
+            asm
+            {    naked;
+                 mov RAX, 8;
+                 mov RAX, GS:[RAX];
+                 ret;
+            }
         else
             static assert(false, "Architecture not supported.");
     }
@@ -2903,6 +2911,13 @@ private void* getStackBottom()
         pthread_attr_getstack(&attr, &addr, &size);
         pthread_attr_destroy(&attr);
         return addr + size;
+    }
+    else version (Solaris)
+    {
+        stack_t stk;
+
+        thr_stksegment(&stk);
+        return stk.ss_sp;
     }
     else
         static assert(false, "Platform not supported.");
@@ -3131,7 +3146,18 @@ private
     else version( PPC )
     {
         version( Posix )
+        {
             version = AsmPPC_Posix;
+            version = AsmExternal;
+        }
+    }
+    else version( MIPS_O32 )
+    {
+        version( Posix )
+        {
+            version = AsmMIPS_O32_Posix;
+            version = AsmExternal;
+        }
     }
 
 
@@ -3143,7 +3169,7 @@ private
         version( AsmX86_Posix )      {} else
         version( AsmX86_64_Windows ) {} else
         version( AsmX86_64_Posix )   {} else
-        version( AsmPPC_Posix )      {} else
+        version( AsmExternal )       {} else
         {
             // NOTE: The ucontext implementation requires architecture specific
             //       data definitions to operate so testing for it must be done
@@ -3198,7 +3224,7 @@ private
         assert( obj );
 
         assert( Thread.getThis().m_curr is obj.m_ctxt );
-        atomicStore!(msync.raw)(*cast(shared)&Thread.getThis().m_lock, false);
+        atomicStore!(MemoryOrder.raw)(*cast(shared)&Thread.getThis().m_lock, false);
         obj.m_ctxt.tstack = obj.m_ctxt.bstack;
         obj.m_state = Fiber.State.EXEC;
 
@@ -3219,9 +3245,7 @@ private
     }
 
 
-  // NOTE: If AsmPPC_Posix is defined then the context switch routine will
-  //       be defined externally until inline PPC ASM is supported.
-  version( AsmPPC_Posix )
+  version( AsmExternal )
     extern (C) void fiber_switchContext( void** oldp, void* newp );
   else
     extern (C) void fiber_switchContext( void** oldp, void* newp )
@@ -3281,9 +3305,10 @@ private
                 push R13;
                 push R14;
                 push R15;
-                push qword ptr GS:[0];
-                push qword ptr GS:[8];
-                push qword ptr GS:[16];
+                xor  RCX,RCX;
+                push qword ptr GS:[RCX];
+                push qword ptr GS:8[RCX];
+                push qword ptr GS:16[RCX];
 
                 // store oldp
                 mov [RDI], RSP;
@@ -3291,9 +3316,9 @@ private
                 mov RSP, RSI;
 
                 // load saved state from new stack
-                pop qword ptr GS:[16];
-                pop qword ptr GS:[8];
-                pop qword ptr GS:[0];
+                pop qword ptr GS:16[RCX];
+                pop qword ptr GS:8[RCX];
+                pop qword ptr GS:[RCX];
                 pop R15;
                 pop R14;
                 pop R13;
@@ -3380,6 +3405,8 @@ private
             swapcontext( **(cast(ucontext_t***) oldp),
                           *(cast(ucontext_t**)  newp) );
         }
+        else
+            static assert(0, "Not implemented");
     }
 }
 
@@ -3885,7 +3912,7 @@ private:
         }
         else
         {
-            import core.sys.posix.sys.mman; // mmap
+            version (Posix) import core.sys.posix.sys.mman; // mmap
 
             static if( __traits( compiles, mmap ) )
             {
@@ -3947,23 +3974,26 @@ private:
         //       global context list.
         Thread.remove( m_ctxt );
 
-        import core.sys.posix.sys.mman; // munmap
-
         static if( __traits( compiles, VirtualAlloc ) )
         {
             VirtualFree( m_pmem, 0, MEM_RELEASE );
         }
-        else static if( __traits( compiles, mmap ) )
+        else
         {
-            munmap( m_pmem, m_size );
-        }
-        else static if( __traits( compiles, valloc ) )
-        {
-            free( m_pmem );
-        }
-        else static if( __traits( compiles, malloc ) )
-        {
-            free( m_pmem );
+            import core.sys.posix.sys.mman; // munmap
+
+            static if( __traits( compiles, mmap ) )
+            {
+                munmap( m_pmem, m_size );
+            }
+            else static if( __traits( compiles, valloc ) )
+            {
+                free( m_pmem );
+            }
+            else static if( __traits( compiles, malloc ) )
+            {
+                free( m_pmem );
+            }
         }
         m_pmem = null;
         m_ctxt = null;
@@ -4152,6 +4182,47 @@ private:
 
             assert( (cast(size_t) pstack & 0x0f) == 0 );
         }
+        else version( AsmMIPS_O32_Posix )
+        {
+            version (StackGrowsDown) {}
+            else static assert(0);
+
+            /* We keep the FP registers and the return address below
+             * the stack pointer, so they don't get scanned by the
+             * GC. The last frame before swapping the stack pointer is
+             * organized like the following.
+             *
+             *     |-----------|<= frame pointer
+             *     |    $gp    |
+             *     |   $s0-8   |
+             *     |-----------|<= stack pointer
+             *     |    $ra    |
+             *     |  align(8) |
+             *     |  $f20-30  |
+             *     |-----------|
+             *
+             */
+            enum SZ_GP = 10 * size_t.sizeof; // $gp + $s0-8
+            enum SZ_RA = size_t.sizeof;      // $ra
+            version (MIPS_HardFloat)
+            {
+                enum SZ_FP = 6 * 8;          // $f20-30
+                enum ALIGN = -(SZ_FP + SZ_RA) & (8 - 1);
+            }
+            else
+            {
+                enum SZ_FP = 0;
+                enum ALIGN = 0;
+            }
+
+            enum BELOW = SZ_FP + ALIGN + SZ_RA;
+            enum ABOVE = SZ_GP;
+            enum SZ = BELOW + ABOVE;
+
+            (cast(ubyte*)pstack - SZ)[0 .. SZ] = 0;
+            pstack -= ABOVE;
+            *cast(size_t*)(pstack - SZ_RA) = cast(size_t)&fiber_entryPoint;
+        }
         else static if( __traits( compiles, ucontext_t ) )
         {
             getcontext( &m_utxt );
@@ -4162,6 +4233,8 @@ private:
             //       be a pointer to the ucontext_t struct for that fiber.
             push( cast(size_t) &m_utxt );
         }
+        else
+            static assert(0, "Not implemented");
     }
 
 
@@ -4223,7 +4296,7 @@ private:
         //       that it points to exactly the correct stack location so the
         //       successive pop operations will succeed.
         *oldp = getStackTop();
-        atomicStore!(msync.raw)(*cast(shared)&tobj.m_lock, true);
+        atomicStore!(MemoryOrder.raw)(*cast(shared)&tobj.m_lock, true);
         tobj.pushContext( m_ctxt );
 
         fiber_switchContext( oldp, newp );
@@ -4231,7 +4304,7 @@ private:
         // NOTE: As above, these operations must be performed in a strict order
         //       to prevent Bad Things from happening.
         tobj.popContext();
-        atomicStore!(msync.raw)(*cast(shared)&tobj.m_lock, false);
+        atomicStore!(MemoryOrder.raw)(*cast(shared)&tobj.m_lock, false);
         tobj.m_curr.tstack = tobj.m_curr.bstack;
     }
 
@@ -4257,7 +4330,7 @@ private:
         //       that it points to exactly the correct stack location so the
         //       successive pop operations will succeed.
         *oldp = getStackTop();
-        atomicStore!(msync.raw)(*cast(shared)&tobj.m_lock, true);
+        atomicStore!(MemoryOrder.raw)(*cast(shared)&tobj.m_lock, true);
 
         fiber_switchContext( oldp, newp );
 
@@ -4267,7 +4340,7 @@ private:
         //       executing here may be different from the one above, so get the
         //       current thread handle before unlocking, etc.
         tobj = Thread.getThis();
-        atomicStore!(msync.raw)(*cast(shared)&tobj.m_lock, false);
+        atomicStore!(MemoryOrder.raw)(*cast(shared)&tobj.m_lock, false);
         tobj.m_curr.tstack = tobj.m_curr.bstack;
     }
 }
@@ -4299,6 +4372,9 @@ else
         static assert(0, "Platform not supported.");
 }
 
+
+version(Win64) {}
+else {
 
 version( unittest )
 {
@@ -4505,6 +4581,7 @@ unittest
     expect(fib, "delegate");
 }
 
+}
 
 version( AsmX86_64_Posix )
 {

@@ -4,7 +4,6 @@
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
-// http://www.dsource.org/projects/dmd/browser/trunk/src/idgen.c
 // License for redistribution is by either the Artistic License
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
@@ -311,6 +310,7 @@ Msgtable msgtable[] =
     { "isArithmetic" },
     { "isAssociativeArray" },
     { "isFinalClass" },
+    { "isPOD" },
     { "isFloating" },
     { "isIntegral" },
     { "isScalar" },
@@ -326,6 +326,7 @@ Msgtable msgtable[] =
     { "isLazy" },
     { "hasMember" },
     { "identifier" },
+    { "getProtection" },
     { "parent" },
     { "getMember" },
     { "getOverloads" },
@@ -337,6 +338,7 @@ Msgtable msgtable[] =
     { "isSame" },
     { "compiles" },
     { "parameters" },
+    { "getAttributes" },
 };
 
 

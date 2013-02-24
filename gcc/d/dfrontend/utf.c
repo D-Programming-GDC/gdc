@@ -1,4 +1,3 @@
-// utf.c
 // Copyright (c) 2003-2012 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
@@ -230,7 +229,7 @@ const char *utf_decodeChar(utf8_t const *s, size_t len, size_t *pidx, dchar_t *p
     //printf("utf_decodeChar(s = %02x, %02x, %02x len = %d)\n", u, s[1], s[2], len);
 
     // Get expected sequence length
-    unsigned n = UTF8_STRIDE[u];
+    size_t n = UTF8_STRIDE[u];
     switch (n)
     {
     case 1:                             // ASCII
