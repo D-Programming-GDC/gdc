@@ -59,46 +59,6 @@ gnu*) d_os_versym=Hurd; d_unix=1 ;;
 *) d_os_versym="$d_target_os"
 esac
 
-case "$target_vendor" in
-*) ;;
-esac
-
-case "$target_cpu" in
-i*86 | x86_64) gdc_target_cpu=x86 ;;
-parisc* | hppa*) gdc_target_cpu=hppa ;;
-*ppc* | powerpc*) gdc_target_cpu=ppc ;;
-*) gdc_target_cpu="$target_cpu"
-esac
-
-case "$gdc_target_cpu" in
-alpha*)                       d_cpu_versym64=Alpha ;;
-arm*)    d_cpu_versym=ARM  ;;
-hppa)    d_cpu_versym=HPPA  ; d_cpu_versym64=HPPA64 ;;
-ia64*)                        d_cpu_versym64=IA64 ;;
-mips*)   d_cpu_versym=MIPS  ; d_cpu_versym64=MIPS64 ;;
-ppc)     d_cpu_versym=PPC   ; d_cpu_versym64=PPC64 ;;
-s390*)   d_cpu_versym=S390  ; d_cpu_versym64=S390X ;;
-sh*)     d_cpu_versym=SH    ; d_cpu_versym64=SH64 ;;
-sparc*)  d_cpu_versym=SPARC ; d_cpu_versym64=SPARC64 ;;
-x86)     d_cpu_versym=X86   ; d_cpu_versym64=X86_64 ;;
-esac
-
-if test -n "$d_cpu_versym"; then
-    echo "#define D_CPU_VERSYM \"$d_cpu_versym\""
-fi
-if test -n "$d_cpu_versym64"; then
-    echo "#define D_CPU_VERSYM64 \"$d_cpu_versym64\""
-fi
-if test -n "$d_os_versym"; then
-    echo "#define D_OS_VERSYM \"$d_os_versym\""
-fi
-if test -n "$d_os_versym2"; then
-    echo "#define D_OS_VERSYM2 \"$d_os_versym2\""
-fi
-if test -n "$d_vendor_versym"; then
-    echo "#define D_VENDOR_VERSYM \"$d_vendor_versym\""
-fi
-
 # In DMD, this is usually defined in the target's Makefile.
 case "$d_os_versym" in
 darwin)  echo "#define TARGET_OSX       1" ;;

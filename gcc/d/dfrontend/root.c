@@ -7,7 +7,7 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-#define POSIX (linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4)
+#define POSIX (linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun)
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,7 +24,7 @@ extern "C" {
 #include "errors.h"
 }//extern "C"
 #else
-#if (defined (__SVR4) && defined (__sun))
+#if defined (__sun)
 #include <alloca.h>
 #endif
 
@@ -40,7 +40,7 @@ extern "C" {
 #include <errno.h>
 #endif
 
-#ifndef _WIN32
+#if POSIX
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -63,67 +63,6 @@ extern "C" void __cdecl _assert(void *e, void *f, unsigned line)
 #endif
 
 #ifndef IN_GCC
-/*************************************
- * Convert wchar string to ascii string.
- */
-
-char *wchar2ascii(wchar_t *us)
-{
-    return wchar2ascii(us, wcslen(us));
-}
-
-char *wchar2ascii(wchar_t *us, unsigned len)
-{
-    unsigned i;
-    char *p;
-
-    p = (char *)mem.malloc(len + 1);
-    for (i = 0; i <= len; i++)
-        p[i] = (char) us[i];
-    return p;
-}
-
-int wcharIsAscii(wchar_t *us)
-{
-    return wcharIsAscii(us, wcslen(us));
-}
-
-int wcharIsAscii(wchar_t *us, unsigned len)
-{
-    unsigned i;
-
-    for (i = 0; i <= len; i++)
-    {
-        if (us[i] & ~0xFF)      // if high bits set
-            return 0;           // it's not ascii
-    }
-    return 1;
-}
-
-
-/***********************************
- * Compare length-prefixed strings (bstr).
- */
-
-int bstrcmp(unsigned char *b1, unsigned char *b2)
-{
-    return (*b1 == *b2 && memcmp(b1 + 1, b2 + 1, *b2) == 0) ? 0 : 1;
-}
-
-/***************************************
- * Convert bstr into a malloc'd string.
- */
-
-char *bstr2str(unsigned char *b)
-{
-    char *s;
-    unsigned len;
-
-    len = *b;
-    s = (char *) mem.malloc(len + 1);
-    s[len] = 0;
-    return (char *)memcpy(s,b + 1,len);
-}
 
 /**************************************
  * Print error message and exit.
@@ -141,11 +80,6 @@ void error(const char *format, ...)
     fflush(stdout);
 
     exit(EXIT_FAILURE);
-}
-
-void error_mem()
-{
-    error("out of memory");
 }
 
 /**************************************
@@ -208,20 +142,19 @@ void Object::mark()
 
 /****************************** String ********************************/
 
-String::String(char *str, int ref)
+String::String(const char *str)
+    : str(mem.strdup(str))
 {
-    this->str = ref ? str : mem.strdup(str);
-    this->ref = ref;
 }
 
 String::~String()
 {
-    mem.free(str);
+    mem.free((void *)str);
 }
 
 void String::mark()
 {
-    mem.mark(str);
+    mem.mark((void *)str);
 }
 
 hash_t String::calcHash(const char *str, size_t len)
@@ -271,7 +204,7 @@ hash_t String::hashCode()
     return calcHash(str, strlen(str));
 }
 
-unsigned String::len()
+size_t String::len()
 {
     return strlen(str);
 }
@@ -288,7 +221,7 @@ int String::compare(Object *obj)
 
 char *String::toChars()
 {
-    return str;
+    return (char *)str;         // toChars() should really be const
 }
 
 void String::print()
@@ -299,12 +232,12 @@ void String::print()
 
 /****************************** FileName ********************************/
 
-FileName::FileName(char *str, int ref)
-    : String(str,ref)
+FileName::FileName(const char *str)
+    : String(str)
 {
 }
 
-char *FileName::combine(const char *path, const char *name)
+const char *FileName::combine(const char *path, const char *name)
 {   char *f;
     size_t pathlen;
     size_t namelen;
@@ -315,27 +248,23 @@ char *FileName::combine(const char *path, const char *name)
     namelen = strlen(name);
     f = (char *)mem.malloc(pathlen + 1 + namelen + 1);
     memcpy(f, path, pathlen);
-#ifndef _WIN32
+#if POSIX
     if (path[pathlen - 1] != '/')
     {   f[pathlen] = '/';
         pathlen++;
     }
-#endif
-#if _WIN32
+#elif _WIN32
     if (path[pathlen - 1] != '\\' &&
         path[pathlen - 1] != '/'  &&
         path[pathlen - 1] != ':')
     {   f[pathlen] = '\\';
         pathlen++;
     }
+#else
+    assert(0);
 #endif
     memcpy(f + pathlen, name, namelen + 1);
     return f;
-}
-
-FileName::FileName(char *path, char *name)
-    : String(combine(path,name),1)
-{
 }
 
 // Split a path into an Array of paths
@@ -371,7 +300,7 @@ Strings *FileName::splitPath(const char *path)
 #if _WIN32
                     case ';':
 #endif
-#ifndef _WIN32
+#if POSIX
                     case ':':
 #endif
                         p++;
@@ -385,7 +314,7 @@ Strings *FileName::splitPath(const char *path)
                     case '\r':
                         continue;       // ignore carriage returns
 
-#ifndef _WIN32
+#if POSIX
                     case '~':
                         buf.writestring(getenv("HOME"));
                         continue;
@@ -492,9 +421,10 @@ int FileName::absolute(const char *name)
     return (*name == '\\') ||
            (*name == '/')  ||
            (*name && name[1] == ':');
-#endif
-#ifndef _WIN32
+#elif POSIX
     return (*name == '/');
+#else
+    assert(0);
 #endif
 }
 
@@ -504,18 +434,17 @@ int FileName::absolute(const char *name)
  * If there isn't one, return NULL.
  */
 
-char *FileName::ext(const char *str)
+const char *FileName::ext(const char *str)
 {
-    char *e;
     size_t len = strlen(str);
 
-    e = (char *)str + len;
+    const char *e = str + len;
     for (;;)
     {
         switch (*e)
         {   case '.':
                 return e + 1;
-#ifndef _WIN32
+#if POSIX
             case '/':
                 break;
 #endif
@@ -535,7 +464,7 @@ char *FileName::ext(const char *str)
     }
 }
 
-char *FileName::ext()
+const char *FileName::ext()
 {
     return ext(str);
 }
@@ -544,7 +473,7 @@ char *FileName::ext()
  * Return mem.malloc'd filename with extension removed.
  */
 
-char *FileName::removeExt(const char *str)
+const char *FileName::removeExt(const char *str)
 {
     const char *e = ext(str);
     if (e)
@@ -561,17 +490,16 @@ char *FileName::removeExt(const char *str)
  * Return filename name excluding path (read-only).
  */
 
-char *FileName::name(const char *str)
+const char *FileName::name(const char *str)
 {
-    char *e;
     size_t len = strlen(str);
 
-    e = (char *)str + len;
+    const char *e = str + len;
     for (;;)
     {
         switch (*e)
         {
-#ifndef _WIN32
+#if POSIX
             case '/':
                return e + 1;
 #endif
@@ -598,7 +526,7 @@ char *FileName::name(const char *str)
     }
 }
 
-char *FileName::name()
+const char *FileName::name()
 {
     return name(str);
 }
@@ -608,25 +536,25 @@ char *FileName::name()
  * Path will does not include trailing path separator.
  */
 
-char *FileName::path(const char *str)
+const char *FileName::path(const char *str)
 {
-    char *n = name(str);
-    char *path;
+    const char *n = name(str);
     size_t pathlen;
 
     if (n > str)
     {
-#ifndef _WIN32
+#if POSIX
         if (n[-1] == '/')
             n--;
-#endif
-#if _WIN32
+#elif _WIN32
         if (n[-1] == '\\' || n[-1] == '/')
             n--;
+#else
+        assert(0);
 #endif
     }
     pathlen = n - str;
-    path = (char *)mem.malloc(pathlen + 1);
+    char *path = (char *)mem.malloc(pathlen + 1);
     memcpy(path, str, pathlen);
     path[pathlen] = 0;
     return path;
@@ -637,82 +565,74 @@ char *FileName::path(const char *str)
  */
 
 const char *FileName::replaceName(const char *path, const char *name)
-{   char *f;
-    char *n;
+{
     size_t pathlen;
     size_t namelen;
 
     if (absolute(name))
         return name;
 
-    n = FileName::name(path);
+    const char *n = FileName::name(path);
     if (n == path)
         return name;
     pathlen = n - path;
     namelen = strlen(name);
-    f = (char *)mem.malloc(pathlen + 1 + namelen + 1);
+    char *f = (char *)mem.malloc(pathlen + 1 + namelen + 1);
     memcpy(f, path, pathlen);
-#ifndef _WIN32
+#if POSIX
     if (path[pathlen - 1] != '/')
     {   f[pathlen] = '/';
         pathlen++;
     }
-#endif
-#if _WIN32
+#elif _WIN32
     if (path[pathlen - 1] != '\\' &&
         path[pathlen - 1] != '/' &&
         path[pathlen - 1] != ':')
     {   f[pathlen] = '\\';
         pathlen++;
     }
+#else
+    assert(0);
 #endif
     memcpy(f + pathlen, name, namelen + 1);
     return f;
 }
 
 /***************************
+ * Free returned value with FileName::free()
  */
 
-FileName *FileName::defaultExt(const char *name, const char *ext)
+const char *FileName::defaultExt(const char *name, const char *ext)
 {
-    char *e;
-    char *s;
-    size_t len;
-    size_t extlen;
-
-    e = FileName::ext(name);
+    const char *e = FileName::ext(name);
     if (e)                              // if already has an extension
-        return new FileName((char *)name, 0);
+        return mem.strdup(name);
 
-    len = strlen(name);
-    extlen = strlen(ext);
-    s = (char *)alloca(len + 1 + extlen + 1);
+    size_t len = strlen(name);
+    size_t extlen = strlen(ext);
+    char *s = (char *)mem.malloc(len + 1 + extlen + 1);
     memcpy(s,name,len);
     s[len] = '.';
     memcpy(s + len + 1, ext, extlen + 1);
-    return new FileName(s, 0);
+    return s;
 }
 
 /***************************
+ * Free returned value with FileName::free()
  */
 
-FileName *FileName::forceExt(const char *name, const char *ext)
+const char *FileName::forceExt(const char *name, const char *ext)
 {
-    char *e;
-    char *s;
-    size_t len;
-    size_t extlen;
-
-    e = FileName::ext(name);
+    const char *e = FileName::ext(name);
     if (e)                              // if already has an extension
     {
-        len = e - name;
-        extlen = strlen(ext);
+        size_t len = e - name;
+        size_t extlen = strlen(ext);
 
-        s = (char *)alloca(len + extlen + 1);
+        char *s = (char *)mem.malloc(len + extlen + 1);
         memcpy(s,name,len);
         memcpy(s + len, ext, extlen + 1);
-        return new FileName(s, 0);
+        return s;
     }
     else
         return defaultExt(name, ext);   // doesn't have one
@@ -723,19 +643,18 @@ FileName *FileName::forceExt(const char *name, const char *ext)
  */
 
 int FileName::equalsExt(const char *ext)
-{   const char *e;
+{
+    return equalsExt(str, ext);
+}
 
-    e = FileName::ext();
+int FileName::equalsExt(const char *name, const char *ext)
+{
+    const char *e = FileName::ext(name);
     if (!e && !ext)
         return 1;
     if (!e || !ext)
         return 0;
-#ifndef _WIN32
-    return strcmp(e,ext) == 0;
-#endif
-#if _WIN32
-    return stricmp(e,ext) == 0;
-#endif
+    return FileName::compare(e, ext) == 0;
 }
 
 /*************************************
@@ -748,9 +667,10 @@ void FileName::CopyTo(FileName *to)
 
 #if _WIN32
     file.touchtime = mem.malloc(sizeof(WIN32_FIND_DATAA));      // keep same file time
-#endif
-#ifndef _WIN32
+#elif POSIX
     file.touchtime = mem.malloc(sizeof(struct stat)); // keep same file time
+#else
+    assert(0);
 #endif
     file.readv();
     file.name = to;
@@ -763,24 +683,24 @@ void FileName::CopyTo(FileName *to)
  *      cwd     if !=0, search current directory before searching path
  */
 
-char *FileName::searchPath(Strings *path, const char *name, int cwd)
+const char *FileName::searchPath(Strings *path, const char *name, int cwd)
 {
     if (absolute(name))
     {
-        return exists(name) ? (char *)name : NULL;
+        return exists(name) ? name : NULL;
     }
     if (cwd)
     {
         if (exists(name))
-            return (char *)name;
+            return name;
     }
     if (path)
-    {   unsigned i;
+    {
 
-        for (i = 0; i < path->dim; i++)
+        for (size_t i = 0; i < path->dim; i++)
         {
-            char *p = path->tdata()[i];
-            char *n = combine(p, name);
+            const char *p = path->tdata()[i];
+            const char *n = combine(p, name);
 
             if (exists(n))
                 return n;
@@ -803,7 +723,7 @@ char *FileName::searchPath(Strings *path, const char *name, int cwd)
  *      !=NULL  mem.malloc'd file name
  */
 
-char *FileName::safeSearchPath(Strings *path, const char *name)
+const char *FileName::safeSearchPath(Strings *path, const char *name)
 {
 #if _WIN32
     /* Disallow % / \ : and .. in name characters
@@ -832,15 +752,14 @@ char *FileName::safeSearchPath(Strings *path, const char *name)
     }
 
     if (path)
-    {   unsigned i;
-
+    {
         /* Each path is converted to a cannonical name and then a check is done to see
          * that the searched name is really a child one of the the paths searched.
          */
-        for (i = 0; i < path->dim; i++)
+        for (size_t i = 0; i < path->dim; i++)
         {
-            char *cname = NULL;
-            char *cpath = canonicalName(path->tdata()[i]);
+            const char *cname = NULL;
+            const char *cpath = canonicalName(path->tdata()[i]);
             //printf("FileName::safeSearchPath(): name=%s; path=%s; cpath=%s\n",
             //      name, (char *)path->data[i], cpath);
             if (cpath == NULL)
@@ -855,16 +774,16 @@ char *FileName::safeSearchPath(Strings *path, const char *name)
             // exists and name is *really* a "child" of path
             if (exists(cname) && strncmp(cpath, cname, strlen(cpath)) == 0)
             {
-                free(cpath);
-                char *p = mem.strdup(cname);
-                free(cname);
+                ::free((void *)cpath);
+                const char *p = mem.strdup(cname);
+                ::free((void *)cname);
                 return p;
             }
 cont:
             if (cpath)
-                free(cpath);
+                ::free((void *)cpath);
             if (cname)
-                free(cname);
+                ::free((void *)cname);
         }
     }
     return NULL;
@@ -876,7 +795,7 @@ cont:
 
 int FileName::exists(const char *name)
 {
-#ifndef _WIN32
+#if POSIX
     struct stat st;
 
     if (stat(name, &st) < 0)
@@ -908,18 +827,18 @@ void FileName::ensurePathExists(const char *path)
     {
         if (!exists(path))
         {
-            char *p = FileName::path(path);
+            const char *p = FileName::path(path);
             if (*p)
             {
 #if _WIN32
                 size_t len = strlen(path);
                 if (len > 2 && p[-1] == ':' && path + 2 == p)
-                {   mem.free(p);
+                {   mem.free((void *)p);
                     return;
                 }
 #endif
                 ensurePathExists(p);
-                mem.free(p);
+                mem.free((void *)p);
             }
 #if _WIN32
             if (path[strlen(path) - 1] != '\\')
@@ -930,9 +849,9 @@ void FileName::ensurePathExists(const char *path)
             {
                 //printf("mkdir(%s)\n", path);
 #if _WIN32
-                if (mkdir(path))
+                if (_mkdir(path))
 #endif
-#ifndef _WIN32
+#if POSIX
                 if (mkdir(path, 0777))
 #endif
                 {
@@ -947,12 +866,20 @@ void FileName::ensurePathExists(const char *path)
     }
 }
 
+void FileName::ensurePathToNameExists(const char *name)
+{
+    const char *pt = path(name);
+    if (*pt)
+        ensurePathExists(pt);
+    free(pt);
+}
+
 
 /******************************************
  * Return canonical version of name in a malloc'd buffer.
  * This code is high risk.
  */
-char *FileName::canonicalName(const char *name)
+const char *FileName::canonicalName(const char *name)
 {
 #if linux
     // Lovely glibc extension to do it for us
@@ -982,9 +909,20 @@ char *FileName::canonicalName(const char *name)
   #endif
 #elif _WIN32
     /* Apparently, there is no good way to do this on Windows.
-     * GetFullPathName isn't it.
+     * GetFullPathName isn't it, but use it anyway.
      */
-    assert(0);
+    DWORD result = GetFullPathName(name, 0, NULL, NULL);
+    if (result)
+    {
+        char *buf = (char *)malloc(result);
+        result = GetFullPathName(name, result, buf, NULL);
+        if (result == 0)
+        {
+            ::free(buf);
+            return NULL;
+        }
+        return buf;
+    }
     return NULL;
 #else
     assert(0);
@@ -992,25 +930,37 @@ char *FileName::canonicalName(const char *name)
 #endif
 }
 
+/********************************
+ * Free memory allocated by FileName routines
+ */
+void FileName::free(const char *str)
+{
+    if (str)
+    {   assert(str[0] != 0xAB);
+        memset((void *)str, 0xAB, strlen(str) + 1);     // stomp
+    }
+    mem.free((void *)str);
+}
+
 
 /****************************** File ********************************/
 
-File::File(FileName *n)
+File::File(const FileName *n)
 {
     ref = 0;
     buffer = NULL;
     len = 0;
     touchtime = NULL;
-    name = n;
+    name = (FileName *)n;
 }
 
-File::File(char *n)
+File::File(const char *n)
 {
     ref = 0;
     buffer = NULL;
     len = 0;
     touchtime = NULL;
-    name = new FileName(n, 0);
+    name = new FileName(n);
 }
 
 File::~File()
@@ -1040,7 +990,7 @@ void File::mark()
 
 int File::read()
 {
-#ifndef _WIN32
+#if POSIX
     off_t size;
     ssize_t numread;
     int fd;
@@ -1173,10 +1123,9 @@ err1:
 
 int File::mmread()
 {
-#ifndef _WIN32
+#if POSIX
     return read();
-#endif
-#if _WIN32
+#elif _WIN32
     HANDLE hFile;
     HANDLE hFileMap;
     DWORD size;
@@ -1229,7 +1178,7 @@ Lerr:
 
 int File::write()
 {
-#ifndef _WIN32
+#if POSIX
     int fd;
     ssize_t numwritten;
     char *name;
@@ -1303,10 +1252,9 @@ err:
 
 int File::append()
 {
-#ifndef _WIN32
+#if POSIX
     return 1;
-#endif
-#if _WIN32
+#elif _WIN32
     HANDLE h;
     DWORD numwritten;
     char *name;
@@ -1385,10 +1333,9 @@ void File::appendv()
 
 int File::exists()
 {
-#ifndef _WIN32
+#if POSIX
     return 0;
-#endif
-#if _WIN32
+#elif _WIN32
     DWORD dw;
     int result;
     char *name;
@@ -1405,39 +1352,38 @@ int File::exists()
     else
         result = 1;
     return result;
+#else
+    assert(0);
 #endif
 }
 
 void File::remove()
 {
-#ifndef _WIN32
+#if POSIX
     ::remove(this->name->toChars());
-#endif
-#if _WIN32
+#elif _WIN32
     DeleteFileA(this->name->toChars());
+#else
+    assert(0);
 #endif
 }
 
 Files *File::match(char *n)
 {
-    return match(new FileName(n, 0));
+    return match(new FileName(n));
 }
 
 Files *File::match(FileName *n)
 {
-#ifndef _WIN32
+#if POSIX
     return NULL;
-#endif
-#if _WIN32
+#elif _WIN32
     HANDLE h;
     WIN32_FIND_DATAA fileinfo;
-    Files *a;
-    char *c;
-    char *name;
 
-    a = new Files();
-    c = n->toChars();
-    name = n->name();
+    Files *a = new Files();
+    const char *c = n->toChars();
+    const char *name = n->name();
     h = FindFirstFileA(c,&fileinfo);
     if (h != INVALID_HANDLE_VALUE)
     {
@@ -1458,32 +1404,34 @@ Files *File::match(FileName *n)
         FindClose(h);
     }
     return a;
+#else
+    assert(0);
 #endif
 }
 
 int File::compareTime(File *f)
 {
-#ifndef _WIN32
+#if POSIX
     return 0;
-#endif
-#if _WIN32
+#elif _WIN32
     if (!touchtime)
         stat();
     if (!f->touchtime)
         f->stat();
     return CompareFileTime(&((WIN32_FIND_DATAA *)touchtime)->ftLastWriteTime, &((WIN32_FIND_DATAA *)f->touchtime)->ftLastWriteTime);
+#else
+    assert(0);
 #endif
 }
 
 void File::stat()
 {
-#ifndef _WIN32
+#if POSIX
     if (!touchtime)
     {
         touchtime = mem.calloc(1, sizeof(struct stat));
     }
-#endif
-#if _WIN32
+#elif _WIN32
     HANDLE h;
 
     if (!touchtime)
@@ -1503,7 +1451,7 @@ void File::stat()
 void File::checkoffset(size_t offset, size_t nbytes)
 {
     if (offset > len || offset + nbytes > len)
-        error("Corrupt file '%s': offset x%llx off end of file",toChars(),offset);
+        error("Corrupt file '%s': offset x%llx off end of file",toChars(),(ulonglong)offset);
 }
 
 char *File::toChars()
@@ -1519,6 +1467,10 @@ OutBuffer::OutBuffer()
     data = NULL;
     offset = 0;
     size = 0;
+
+    doindent = 0;
+    level = 0;
+    linehead = 1;
 }
 
 OutBuffer::~OutBuffer()
@@ -1542,7 +1494,7 @@ void OutBuffer::mark()
     mem.mark(data);
 }
 
-void OutBuffer::reserve(unsigned nbytes)
+void OutBuffer::reserve(size_t nbytes)
 {
     //printf("OutBuffer::reserve: size = %d, offset = %d, nbytes = %d\n", size, offset, nbytes);
     if (size - offset < nbytes)
@@ -1557,13 +1509,26 @@ void OutBuffer::reset()
     offset = 0;
 }
 
-void OutBuffer::setsize(unsigned size)
+void OutBuffer::setsize(size_t size)
 {
     offset = size;
 }
 
-void OutBuffer::write(const void *data, unsigned nbytes)
+void OutBuffer::write(const void *data, size_t nbytes)
 {
+    if (doindent && linehead)
+    {
+        if (level)
+        {
+            reserve(level);
+            for (size_t i=0; i<level; i++)
+            {
+                this->data[offset] = '\t';
+                offset++;
+            }
+        }
+        linehead = 0;
+    }
     reserve(nbytes);
     memcpy(this->data + offset, data, nbytes);
     offset += nbytes;
@@ -1580,9 +1545,8 @@ void OutBuffer::writestring(const char *string)
 }
 
 void OutBuffer::prependstring(const char *string)
-{   unsigned len;
-
-    len = strlen(string);
+{
+    size_t len = strlen(string);
     reserve(len);
     memmove(data + len, data, offset);
     memcpy(data, string, len);
@@ -1596,10 +1560,26 @@ void OutBuffer::writenl()
 #else
     writeByte('\n');
 #endif
+    if (doindent)
+        linehead = 1;
 }
 
 void OutBuffer::writeByte(unsigned b)
 {
+    if (doindent && linehead
+        && b != '\n')
+    {
+        if (level)
+        {
+            reserve(level);
+            for (size_t i=0; i<level; i++)
+            {
+                this->data[offset] = '\t';
+                offset++;
+            }
+        }
+        linehead = 0;
+    }
     reserve(1);
     this->data[offset] = (unsigned char)b;
     offset++;
@@ -1667,6 +1647,24 @@ void OutBuffer::prependbyte(unsigned b)
 
 void OutBuffer::writeword(unsigned w)
 {
+    if (doindent && linehead
+#if _WIN32
+        && w != 0x0A0D)
+#else
+        && w != '\n')
+#endif
+    {
+        if (level)
+        {
+            reserve(level);
+            for (size_t i=0; i<level; i++)
+            {
+                this->data[offset] = '\t';
+                offset++;
+            }
+        }
+        linehead = 0;
+    }
     reserve(2);
     *(unsigned short *)(this->data + offset) = (unsigned short)w;
     offset += 2;
@@ -1692,6 +1690,24 @@ void OutBuffer::writeUTF16(unsigned w)
 
 void OutBuffer::write4(unsigned w)
 {
+    if (doindent && linehead
+#if _WIN32
+        && w != 0x000A000D)
+#else
+        )
+#endif
+    {
+        if (level)
+        {
+            reserve(level);
+            for (size_t i=0; i<level; i++)
+            {
+                this->data[offset] = '\t';
+                offset++;
+            }
+        }
+        linehead = 0;
+    }
     reserve(4);
     *(unsigned *)(this->data + offset) = w;
     offset += 4;
@@ -1714,17 +1730,16 @@ void OutBuffer::write(Object *obj)
     }
 }
 
-void OutBuffer::fill0(unsigned nbytes)
+void OutBuffer::fill0(size_t nbytes)
 {
     reserve(nbytes);
     memset(data + offset,0,nbytes);
     offset += nbytes;
 }
 
-void OutBuffer::align(unsigned size)
-{   unsigned nbytes;
-
-    nbytes = ((offset + size - 1) & ~(size - 1)) - offset;
+void OutBuffer::align(size_t size)
+{
+    size_t nbytes = ((offset + size - 1) & ~(size - 1)) - offset;
     fill0(nbytes);
 }
 
@@ -1771,13 +1786,12 @@ void OutBuffer::vprintf(const char *format, va_list args)
     psize = sizeof(buffer);
     for (;;)
     {
-/* MinGW32 supports ANSI with -D__USE_MINGW_ANSI_STDIO */
-#if _WIN32 && !defined( __MINGW32__ )
+#if _WIN32
         count = _vsnprintf(p,psize,format,args);
         if (count != -1)
             break;
         psize *= 2;
-#else
+#elif POSIX
         va_list va;
         va_copy(va, args);
 /*
@@ -1797,6 +1811,8 @@ void OutBuffer::vprintf(const char *format, va_list args)
             psize = count + 1;
         else
             break;
+#else
+    assert(0);
 #endif
         p = (char *) alloca(psize);     // buffer too small, try again with larger size
     }
@@ -1825,7 +1841,7 @@ void OutBuffer::bracket(char left, char right)
  * Return index just past right.
  */
 
-unsigned OutBuffer::bracket(unsigned i, const char *left, unsigned j, const char *right)
+size_t OutBuffer::bracket(size_t i, const char *left, size_t j, const char *right)
 {
     size_t leftlen = strlen(left);
     size_t rightlen = strlen(right);
@@ -1835,7 +1851,7 @@ unsigned OutBuffer::bracket(unsigned i, const char *left, unsigned j, const char
     return j + leftlen + rightlen;
 }
 
-void OutBuffer::spread(unsigned offset, unsigned nbytes)
+void OutBuffer::spread(size_t offset, size_t nbytes)
 {
     reserve(nbytes);
     memmove(data + offset + nbytes, data + offset,
@@ -1847,14 +1863,14 @@ void OutBuffer::spread(unsigned offset, unsigned nbytes)
  * Returns: offset + nbytes
  */
 
-unsigned OutBuffer::insert(unsigned offset, const void *p, unsigned nbytes)
+size_t OutBuffer::insert(size_t offset, const void *p, size_t nbytes)
 {
     spread(offset, nbytes);
     memmove(data + offset, p, nbytes);
     return offset + nbytes;
 }
 
-void OutBuffer::remove(unsigned offset, unsigned nbytes)
+void OutBuffer::remove(size_t offset, size_t nbytes)
 {
     memmove(data + offset, data + offset + nbytes, this->offset - (offset + nbytes));
     this->offset -= nbytes;
@@ -1866,6 +1882,7 @@ char *OutBuffer::toChars()
     return (char *)data;
 }
 
+// TODO: Remove (only used by disabled GC)
 /********************************* Bits ****************************/
 
 Bits::Bits()
@@ -1958,18 +1975,3 @@ void Bits::sub(Bits *b)
     for (u = 0; u < allocdim; u++)
         data[u] &= ~b->data[u];
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

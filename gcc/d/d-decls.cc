@@ -426,17 +426,13 @@ FuncDeclaration::toSymbol (void)
 	      gcc_assert (agg_decl != NULL);
 
 	      tree handle = agg_decl->handle->toCtype();
-#if STRUCTTHISREF
 	      if (agg_decl->isStructDeclaration())
 		{
 		  // Handle not a pointer type
 		  new_fn_type = build_method_type (handle, fn_type);
 		}
 	      else
-#endif
-		{
-		  new_fn_type = build_method_type (TREE_TYPE (handle), fn_type);
-		}
+		new_fn_type = build_method_type (TREE_TYPE (handle), fn_type);
 
 	      if (isVirtual())
 		vindex = size_int (vtblIndex);
@@ -537,7 +533,6 @@ FuncDeclaration::toSymbol (void)
 	  // So are ensure and require contracts.
 	  if (ident == Id::ensure || ident == Id::require)
 	    {
-	      D_DECL_IS_CONTRACT (fndecl) = 1;
 	      DECL_ARTIFICIAL (fndecl) = 1;
 	      TREE_PUBLIC (fndecl) = 1;
 	    }

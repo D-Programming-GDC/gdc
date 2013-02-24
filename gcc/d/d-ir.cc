@@ -50,9 +50,9 @@ LabelStatement::toIR (IRState *irs)
 {
   FuncDeclaration *func = irs->func;
   LabelDsymbol *label = irs->isReturnLabel (ident) ? func->returnLabel : func->searchLabel (ident);
-  tree t_label;
+  tree t_label = irs->getLabelTree (label);
 
-  if ((t_label = irs->getLabelTree (label)))
+  if (t_label != NULL_TREE)
     {
       irs->pushLabel (label);
       irs->doLabel (t_label);
@@ -84,7 +84,8 @@ GotoStatement::toIR (IRState *irs)
   else
     irs->checkGoto (this, label);
 
-  if ((t_label = irs->getLabelTree (label)))
+  t_label = irs->getLabelTree (label);
+  if (t_label != NULL_TREE)
     irs->doJump (this, t_label);
   // else, there was an error
 }
@@ -364,8 +365,8 @@ ReturnStatement::toIR (IRState *irs)
       else if (exp->isLvalue() && exp->type->toBasetype()->ty == Tstruct)
 	{
 	  // Maybe call postblit on result_value
-	  StructDeclaration *sd;
-	  if ((sd = needsPostblit (exp->type)) != NULL)
+	  StructDeclaration *sd = needsPostblit (exp->type);
+	  if (sd != NULL)
 	    {
 	      Expressions args;
 	      FuncDeclaration *fd = sd->postblit;

@@ -48,7 +48,7 @@ d_genericize (tree fndecl)
   // Build cgraph for function.
   cgraph_get_create_node (fndecl);
 
-  // Maybe set original decl context back to true context
+  // Set original decl context back to true context
   if (D_DECL_STATIC_CHAIN (fndecl))
     {
       struct lang_decl *d = DECL_LANG_SPECIFIC (fndecl);

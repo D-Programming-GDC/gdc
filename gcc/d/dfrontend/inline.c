@@ -1111,62 +1111,6 @@ Statement *ReturnStatement::inlineScan(InlineScanState *iss)
 
         FuncDeclaration *func = iss->fd;
         TypeFunction *tf = (TypeFunction *)(func->type);
-
-        /* Postblit call on return statement is processed in glue layer
-         * (Because NRVO may eliminate the copy), but inlining may remove
-         * ReturnStatement itself. To keep semantics we should insert
-         * temporary variable for postblit call.
-         * This is mostly the same as ReturnStatement::toIR.
-         */
-        enum RET retmethod = tf->retStyle();
-        if (retmethod == RETstack)
-        {
-            if (func->nrvo_can && func->nrvo_var)
-                ;
-            else
-            {
-                Type *tb = exp->type->toBasetype();
-                if (exp->isLvalue() && tb->ty == Tstruct)
-                {   StructDeclaration *sd = ((TypeStruct *)tb)->sym;
-                    if (sd->postblit)
-                    {   FuncDeclaration *fd = sd->postblit;
-                        if (fd->storage_class & STCdisable)
-                        {
-                            fd->toParent()->error(loc, "is not copyable because it is annotated with @disable");
-                        }
-
-                        /* Rewirte exp as:
-                         *     (__inlinectmp = exp), __inlinectmp.__postblit(), __inlinectmp
-                         * And, __inlinectmp is marked as rvalue (See STCtemp comment)
-                         */
-                        ExpInitializer *ei = new ExpInitializer(loc, exp);
-
-                        Identifier* tmp = Identifier::generateId("__inlinectmp");
-                        VarDeclaration *v = new VarDeclaration(loc, exp->type, tmp, ei);
-                        v->storage_class = STCtemp;
-                        v->linkage = LINKd;
-                        v->parent = func;
-
-                        VarExp *ve = new VarExp(loc, v);
-                        ve->type = exp->type;
-
-                        ei->exp = new ConstructExp(loc, ve, exp);
-                        ei->exp->type = exp->type;
-
-                        DeclarationExp *de = new DeclarationExp(0, v);
-                        de->type = Type::tvoid;
-
-                        Expression *e = new DotVarExp(ve->loc, ve, sd->postblit, 0);
-                        e->type = sd->postblit->type;
-                        e = new CallExp(ve->loc, e);
-                        e->type = Type::tvoid;
-
-                        exp = Expression::combine(de, e);
-                        exp = Expression::combine(exp, ve);
-                    }
-                }
-            }
-        }
     }
     return this;
 }
@@ -1669,7 +1613,6 @@ Expression *FuncDeclaration::expandInline(InlineScanState *iss, Expression *ethi
         ExpInitializer *ei;
         VarExp *ve;
 
-#if STRUCTTHISREF
         if (ethis->type->ty == Tpointer)
         {   Type *t = ethis->type->nextOf();
             ethis = new PtrExp(ethis->loc, ethis);
@@ -1682,17 +1625,6 @@ Expression *FuncDeclaration::expandInline(InlineScanState *iss, Expression *ethi
             vthis->storage_class = STCref;
         else
             vthis->storage_class = STCin;
-#else
-        if (ethis->type->ty != Tclass && ethis->type->ty != Tpointer)
-        {
-            ethis = ethis->addressOf(NULL);
-        }
-
-        ei = new ExpInitializer(ethis->loc, ethis);
-
-        vthis = new VarDeclaration(ethis->loc, ethis->type, Id::This, ei);
-        vthis->storage_class = STCin;
-#endif
         vthis->linkage = LINKd;
         vthis->parent = iss->fd;
 
@@ -1701,13 +1633,11 @@ Expression *FuncDeclaration::expandInline(InlineScanState *iss, Expression *ethi
 
         ei->exp = new AssignExp(vthis->loc, ve, ethis);
         ei->exp->type = ve->type;
-#if STRUCTTHISREF
         if (ethis->type->ty != Tclass)
         {   /* This is a reference initialization, not a simple assignment.
              */
             ei->exp->op = TOKconstruct;
         }
-#endif
 
         ids.vthis = vthis;
     }

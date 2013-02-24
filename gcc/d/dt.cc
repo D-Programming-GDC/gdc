@@ -89,7 +89,7 @@ dtnwords (dt_t **pdt, size_t word_count, void *pwords, unsigned word_size)
 dt_t **
 dtawords (dt_t **pdt, size_t word_count, void *pwords, unsigned word_size)
 {
-  return dtabytes (pdt, TYnptr, 0, word_count * word_size, (char *) pwords);
+  return dtabytes (pdt, 0, word_count * word_size, (char *) pwords);
 }
 
 /* Add a 32-bit value to a dt.  If pad_to_word is true, adds any

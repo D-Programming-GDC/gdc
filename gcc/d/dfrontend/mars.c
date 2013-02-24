@@ -16,7 +16,7 @@
 #include <limits.h>
 #include <string.h>
 
-#if linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4
+#if linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun
 #include <errno.h>
 #endif
 
@@ -42,14 +42,16 @@ long __cdecl __ehfilter(LPEXCEPTION_POINTERS ep);
 #endif
 
 
-int response_expand(int *pargc, char ***pargv);
+int response_expand(size_t *pargc, char ***pargv);
 void browse(const char *url);
-void getenv_setargv(const char *envvar, int *pargc, char** *pargv);
+void getenv_setargv(const char *envvar, size_t *pargc, char** *pargv);
 
 void obj_start(char *srcfile);
 void obj_end(Library *library, File *objfile);
 
 void printCtfePerformanceStats();
+
+static bool parse_arch(size_t argc, char** argv, bool is64bit);
 
 Global global;
 
@@ -68,7 +70,6 @@ Global::Global()
     obj_ext  = "obj";
 #elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
     obj_ext  = "o";
-#elif TARGET_NET
 #else
 #error "fix this"
 #endif
@@ -81,7 +82,6 @@ Global::Global()
     lib_ext  = "lib";
 #elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
     lib_ext  = "a";
-#elif TARGET_NET
 #else
 #error "fix this"
 #endif
@@ -104,12 +104,11 @@ Global::Global()
 #endif
 
     copyright = "Copyright (c) 1999-2012 by Digital Mars";
-    written = "written by Walter Bright"
-#if TARGET_NET
-    "\nMSIL back-end (alpha release) by Cristian L. Vlasceanu and associates.";
-#endif
+    written = "written by Walter Bright";
+    version = "v"
+#include "verstr.h"
     ;
-    version = "v2.060";
+
     global.structalign = STRUCTALIGN_DEFAULT;
 
     memset(&params, 0, sizeof(Param));
@@ -210,33 +209,51 @@ void errorSupplemental(Loc loc, const char *format, ...)
     va_end( ap );
 }
 
-void verror(Loc loc, const char *format, va_list ap, const char *p1, const char *p2)
+void deprecation(Loc loc, const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    vdeprecation(loc, format, ap);
+
+    va_end( ap );
+}
+
+// Just print, doesn't care about gagging
+void verrorPrint(Loc loc, const char *header, const char *format, va_list ap,
+                const char *p1, const char *p2)
+{
+    char *p = loc.toChars();
+
+    if (*p)
+        fprintf(stdmsg, "%s: ", p);
+    mem.free(p);
+
+    fputs(header, stdmsg);
+    if (p1)
+        fprintf(stdmsg, "%s ", p1);
+    if (p2)
+        fprintf(stdmsg, "%s ", p2);
+#if _MSC_VER
+    // MS doesn't recognize %zu format
+    OutBuffer tmp;
+    tmp.vprintf(format, ap);
+    fprintf(stdmsg, "%s", tmp.toChars());
+#else
+    vfprintf(stdmsg, format, ap);
+#endif
+    fprintf(stdmsg, "\n");
+    fflush(stdmsg);
+}
+
+// header is "Error: " by default (see mars.h)
+void verror(Loc loc, const char *format, va_list ap,
+                const char *p1, const char *p2, const char *header)
 {
     if (!global.gag)
     {
-        char *p = loc.toChars();
-
-        if (*p)
-            fprintf(stdmsg, "%s: ", p);
-        mem.free(p);
-
-        fprintf(stdmsg, "Error: ");
-        if (p1)
-            fprintf(stdmsg, "%s ", p1);
-        if (p2)
-            fprintf(stdmsg, "%s ", p2);
-#if _MSC_VER
-        // MS doesn't recognize %zu format
-        OutBuffer tmp;
-        tmp.vprintf(format, ap);
-        fprintf(stdmsg, "%s", tmp.toChars());
-#else
-        vfprintf(stdmsg, format, ap);
-#endif
-        fprintf(stdmsg, "\n");
-        fflush(stdmsg);
+        verrorPrint(loc, header, format, ap, p1, p2);
         if (global.errors >= 20)        // moderate blizzard of cascading messages
-            fatal();
+                fatal();
 //halt();
     }
     else
@@ -250,51 +267,32 @@ void verror(Loc loc, const char *format, va_list ap, const char *p1, const char 
 void verrorSupplemental(Loc loc, const char *format, va_list ap)
 {
     if (!global.gag)
-    {
-        fprintf(stdmsg, "%s:        ", loc.toChars());
-#if _MSC_VER
-        // MS doesn't recognize %zu format
-        OutBuffer tmp;
-        tmp.vprintf(format, ap);
-        fprintf(stdmsg, "%s", tmp.toChars());
-#else
-        vfprintf(stdmsg, format, ap);
-#endif
-        fprintf(stdmsg, "\n");
-        fflush(stdmsg);
-    }
+        verrorPrint(loc, "       ", format, ap);
 }
 
 void vwarning(Loc loc, const char *format, va_list ap)
 {
     if (global.params.warnings && !global.gag)
     {
-        char *p = loc.toChars();
-
 #ifdef IN_GCC
         if (global.params.warnings == 1 && !global.warnings)
             fprintf(stdmsg, "cc1d: all warnings being treated as errors\n");
 #endif
-
-        if (*p)
-            fprintf(stdmsg, "%s: ", p);
-        mem.free(p);
-
-        fprintf(stdmsg, "Warning: ");
-#if _MSC_VER
-        // MS doesn't recognize %zu format
-        OutBuffer tmp;
-        tmp.vprintf(format, ap);
-        fprintf(stdmsg, "%s", tmp.toChars());
-#else
-        vfprintf(stdmsg, format, ap);
-#endif
-        fprintf(stdmsg, "\n");
-        fflush(stdmsg);
+        verrorPrint(loc, "Warning: ", format, ap);
 //halt();
         if (global.params.warnings == 1)
             global.warnings++;  // warnings don't count if gagged
     }
+}
+
+void vdeprecation(Loc loc, const char *format, va_list ap,
+                const char *p1, const char *p2)
+{
+    static const char *header = "Deprecation: ";
+    if (global.params.useDeprecated == 0)
+        verror(loc, format, ap, p1, p2, header);
+    else if (global.params.useDeprecated == 2 && !global.gag)
+        verrorPrint(loc, header, format, ap, p1, p2);
 }
 
 /***************************************
@@ -335,11 +333,11 @@ void usage()
 #else
     const char fpic[] = "";
 #endif
-    printf("DMD%s D Compiler %s\n%s %s\n",
-        sizeof(size_t) == 4 ? "32" : "64",
+    printf("DMD%d D Compiler %s\n%s %s\n",
+        sizeof(size_t) * 8,
         global.version, global.copyright, global.written);
     printf("\
-Documentation: http://www.dlang.org/index.html\n\
+Documentation: http://dlang.org/\n\
 Usage:\n\
   dmd files.d ... { -switch }\n\
 \n\
@@ -350,7 +348,9 @@ Usage:\n\
   -D             generate documentation\n\
   -Dddocdir      write documentation file to docdir directory\n\
   -Dffilename    write documentation file to filename\n\
-  -d             allow deprecated features\n\
+  -d             silently allow deprecated features\n\
+  -dw            show use of deprecated features as warnings (default)\n\
+  -de            show use of deprecated features as errors (halt compilation)\n\
   -debug         compile in debug code\n\
   -debug=level   compile in debug code <= level\n\
   -debug=ident   compile in debug code identified by ident\n\
@@ -360,6 +360,7 @@ Usage:\n\
 "  -g             add symbolic debug info\n\
   -gc            add symbolic debug info, pretend to be C\n\
   -gs            always emit stack frame\n\
+  -gx            add stack stomp code\n\
   -H             generate 'header' file\n\
   -Hddirectory   write 'header' file to directory\n\
   -Hffilename    write 'header' file to filename\n\
@@ -377,7 +378,6 @@ Usage:\n\
 "  -man           open web browser on manual page\n\
   -map           generate linker .map file\n\
   -noboundscheck turns off array bounds checking for all functions\n\
-  -nofloat       do not emit reference to floating point\n\
   -O             optimize\n\
   -o-            do not write object file\n\
   -odobjdir      write object & library files to directory objdir\n\
@@ -413,7 +413,7 @@ extern "C"
 }
 #endif
 
-int tryMain(int argc, char *argv[])
+int tryMain(size_t argc, char *argv[])
 {
     mem.init();                         // initialize storage allocator
     mem.setStackBottom(&argv);
@@ -425,10 +425,10 @@ int tryMain(int argc, char *argv[])
     Strings libmodules;
     char *p;
     Module *m;
-    int status = EXIT_SUCCESS;
-    int argcstart = argc;
+    size_t argcstart = argc;
     int setdebuglib = 0;
     char noboundscheck = 0;
+        int setdefaultlib = 0;
     const char *inifilename = NULL;
 
 #ifdef DEBUG
@@ -468,6 +468,7 @@ int tryMain(int argc, char *argv[])
     global.params.obj = 1;
     global.params.Dversion = 2;
     global.params.quiet = 1;
+    global.params.useDeprecated = 2;
 
     global.params.linkswitches = new Strings();
     global.params.libfiles = new Strings();
@@ -482,7 +483,6 @@ int tryMain(int argc, char *argv[])
     global.params.defaultlibname = "phobos";
 #elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
     global.params.defaultlibname = "phobos2";
-#elif TARGET_NET
 #else
 #error "fix this"
 #endif
@@ -493,10 +493,6 @@ int tryMain(int argc, char *argv[])
 #if TARGET_WINDOS
     VersionCondition::addPredefinedGlobalIdent("Windows");
     global.params.isWindows = 1;
-#if TARGET_NET
-    // TARGET_NET macro is NOT mutually-exclusive with TARGET_WINDOS
-    VersionCondition::addPredefinedGlobalIdent("D_NET");
-#endif
 #elif TARGET_LINUX
     VersionCondition::addPredefinedGlobalIdent("Posix");
     VersionCondition::addPredefinedGlobalIdent("linux");
@@ -532,12 +528,24 @@ int tryMain(int argc, char *argv[])
     VersionCondition::addPredefinedGlobalIdent("all");
 
 #if _WIN32
-    inifilename = inifile(argv[0], "sc.ini");
-#elif linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4
-    inifilename = inifile(argv[0], "dmd.conf");
+    inifilename = inifile(argv[0], "sc.ini", "Environment");
+#elif linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun
+    inifilename = inifile(argv[0], "dmd.conf", "Environment");
 #else
 #error "fix this"
 #endif
+
+    size_t dflags_argc = 0;
+    char** dflags_argv = NULL;
+    getenv_setargv("DFLAGS", &dflags_argc, &dflags_argv);
+
+    bool is64bit = global.params.is64bit; // use default
+    is64bit = parse_arch(argc, argv, is64bit);
+    is64bit = parse_arch(dflags_argc, dflags_argv, is64bit);
+    global.params.is64bit = is64bit;
+
+    inifile(argv[0], inifilename, is64bit ? "Environment64" : "Environment32");
+
     getenv_setargv("DFLAGS", &argc, &argv);
 
 #if 0
@@ -552,8 +560,12 @@ int tryMain(int argc, char *argv[])
         p = argv[i];
         if (*p == '-')
         {
-            if (strcmp(p + 1, "d") == 0)
+            if (strcmp(p + 1, "de") == 0)
+                global.params.useDeprecated = 0;
+            else if (strcmp(p + 1, "d") == 0)
                 global.params.useDeprecated = 1;
+            else if (strcmp(p + 1, "dw") == 0)
+                global.params.useDeprecated = 2;
             else if (strcmp(p + 1, "c") == 0)
                 global.params.link = 0;
             else if (strcmp(p + 1, "cov") == 0)
@@ -579,6 +591,8 @@ int tryMain(int argc, char *argv[])
                 global.params.symdebug = 2;
             else if (strcmp(p + 1, "gs") == 0)
                 global.params.alwaysframe = 1;
+            else if (strcmp(p + 1, "gx") == 0)
+                global.params.stackstomp = true;
             else if (strcmp(p + 1, "gt") == 0)
             {   error(0, "use -profile instead of -gt");
                 global.params.trace = 1;
@@ -720,6 +734,8 @@ int tryMain(int argc, char *argv[])
                 global.params.quiet = 1;
             else if (strcmp(p + 1, "release") == 0)
                 global.params.release = 1;
+            else if (strcmp(p + 1, "betterC") == 0)
+                global.params.betterC = 1;
 #if DMDV2
             else if (strcmp(p + 1, "noboundscheck") == 0)
                 noboundscheck = 1;
@@ -765,7 +781,7 @@ int tryMain(int argc, char *argv[])
                 else
                     global.params.debuglevel = 1;
             }
-            else if (memcmp(p + 1, "version", 5) == 0)
+            else if (memcmp(p + 1, "version", 7) == 0)
             {
                 // Parse:
                 //      -version=number
@@ -811,6 +827,7 @@ int tryMain(int argc, char *argv[])
             }
             else if (memcmp(p + 1, "defaultlib=", 11) == 0)
             {
+                setdefaultlib = 1;
                 global.params.defaultlibname = p + 1 + 11;
             }
             else if (memcmp(p + 1, "debuglib=", 9) == 0)
@@ -831,35 +848,35 @@ int tryMain(int argc, char *argv[])
 #if DMDV1
                 browse("http://www.digitalmars.com/d/1.0/dmd-windows.html");
 #else
-                browse("http://www.dlang.org/dmd-windows.html");
+                browse("http://dlang.org/dmd-windows.html");
 #endif
 #endif
 #if linux
 #if DMDV1
                 browse("http://www.digitalmars.com/d/1.0/dmd-linux.html");
 #else
-                browse("http://www.dlang.org/dmd-linux.html");
+                browse("http://dlang.org/dmd-linux.html");
 #endif
 #endif
 #if __APPLE__
 #if DMDV1
                 browse("http://www.digitalmars.com/d/1.0/dmd-osx.html");
 #else
-                browse("http://www.dlang.org/dmd-osx.html");
+                browse("http://dlang.org/dmd-osx.html");
 #endif
 #endif
 #if __FreeBSD__
 #if DMDV1
                 browse("http://www.digitalmars.com/d/1.0/dmd-freebsd.html");
 #else
-                browse("http://www.dlang.org/dmd-freebsd.html");
+                browse("http://dlang.org/dmd-freebsd.html");
 #endif
 #endif
 #if __OpenBSD__
 #if DMDV1
                 browse("http://www.digitalmars.com/d/1.0/dmd-openbsd.html");
 #else
-                browse("http://www.dlang.org/dmd-openbsd.html");
+                browse("http://dlang.org/dmd-openbsd.html");
 #endif
 #endif
                 exit(EXIT_SUCCESS);
@@ -869,6 +886,14 @@ int tryMain(int argc, char *argv[])
                 global.params.runargs_length = ((i >= argcstart) ? argc : argcstart) - i - 1;
                 if (global.params.runargs_length)
                 {
+                    const char *ext = FileName::ext(argv[i + 1]);
+                    if (ext && FileName::equals(ext, "d") == 0
+                            && FileName::equals(ext, "di") == 0)
+                    {
+                        error(0, "-run must be followed by a source file, not '%s'", argv[i + 1]);
+                        break;
+                    }
+
                     files.push(argv[i + 1]);
                     global.params.runargs = &argv[i + 2];
                     i += global.params.runargs_length;
@@ -893,7 +918,7 @@ int tryMain(int argc, char *argv[])
         else
         {
 #if TARGET_WINDOS
-            char *ext = FileName::ext(p);
+            const char *ext = FileName::ext(p);
             if (ext && FileName::compare(ext, "exe") == 0)
             {
                 global.params.objname = p;
@@ -903,6 +928,11 @@ int tryMain(int argc, char *argv[])
             files.push(p);
         }
     }
+
+    if(global.params.is64bit != is64bit)
+        error(0, "the architecture must not be changed in the %s section of %s",
+              is64bit ? "Environment64" : "Environment32", inifilename);
+
     if (global.errors)
     {
         fatal();
@@ -953,14 +983,14 @@ int tryMain(int argc, char *argv[])
             /* Use this to name the one object file with the same
              * name as the exe file.
              */
-            global.params.objname = FileName::forceExt(global.params.objname, global.obj_ext)->toChars();
+            global.params.objname = const_cast<char *>(FileName::forceExt(global.params.objname, global.obj_ext));
 
             /* If output directory is given, use that path rather than
              * the exe file path.
              */
             if (global.params.objdir)
-            {   char *name = FileName::name(global.params.objname);
-                global.params.objname = FileName::combine(global.params.objdir, name);
+            {   const char *name = FileName::name(global.params.objname);
+                global.params.objname = (char *)FileName::combine(global.params.objdir, name);
             }
         }
     }
@@ -1003,6 +1033,11 @@ int tryMain(int argc, char *argv[])
         VersionCondition::addPredefinedGlobalIdent("D_SIMD");
 #if TARGET_WINDOS
         VersionCondition::addPredefinedGlobalIdent("Win64");
+        if (!setdefaultlib)
+        {   global.params.defaultlibname = "phobos64";
+            if (!setdebuglib)
+                global.params.debuglibname = global.params.defaultlibname;
+        }
 #endif
     }
     else
@@ -1026,7 +1061,13 @@ int tryMain(int argc, char *argv[])
 #if DMDV2
     if (global.params.useUnitTests)
         VersionCondition::addPredefinedGlobalIdent("unittest");
+    if (global.params.useAssert)
+        VersionCondition::addPredefinedGlobalIdent("assert");
+    if (noboundscheck)
+        VersionCondition::addPredefinedGlobalIdent("D_NoBoundsChecks");
 #endif
+
+    VersionCondition::addPredefinedGlobalIdent("D_HardFloat");
 
     // Initialization
     Type::init();
@@ -1082,7 +1123,7 @@ int tryMain(int argc, char *argv[])
     int firstmodule = 1;
     for (size_t i = 0; i < files.dim; i++)
     {
-        char *ext;
+        const char *ext;
         char *name;
 
         p = files[i];
@@ -1096,7 +1137,7 @@ int tryMain(int argc, char *argv[])
         }
 #endif
 
-        p = FileName::name(p);          // strip path
+        p = (char *)FileName::name(p);          // strip path
         ext = FileName::ext(p);
         if (ext)
         {   /* Deduce what to do with a file based on its extension
@@ -1195,7 +1236,7 @@ int tryMain(int argc, char *argv[])
         modules.push(m);
 
         if (firstmodule)
-        {   global.params.objfiles->push(m->objfile->name->str);
+        {   global.params.objfiles->push((char *)m->objfile->name->str);
             firstmodule = 0;
         }
     }
@@ -1303,7 +1344,7 @@ int tryMain(int argc, char *argv[])
        m->importAll(0);
     }
     if (global.errors)
-       fatal();
+        fatal();
 
     backend_init();
 
@@ -1412,7 +1453,50 @@ int tryMain(int argc, char *argv[])
     // Generate output files
 
     if (global.params.doXGeneration)
-        json_generate(&modules);
+    {
+        OutBuffer buf;
+        json_generate(&buf, &modules);
+
+        // Write buf to file
+        const char *name = global.params.xfilename;
+
+        if (name && name[0] == '-' && name[1] == 0)
+        {   // Write to stdout; assume it succeeds
+            int n = fwrite(buf.data, 1, buf.offset, stdout);
+            assert(n == buf.offset);        // keep gcc happy about return values
+        }
+        else
+        {
+            /* The filename generation code here should be harmonized with Module::setOutfile()
+             */
+
+            const char *jsonfilename;
+
+            if (name && *name)
+            {
+                jsonfilename = FileName::defaultExt(name, global.json_ext);
+            }
+            else
+            {
+                // Generate json file name from first obj name
+                const char *n = (*global.params.objfiles)[0];
+                n = FileName::name(n);
+
+                //if (!FileName::absolute(name))
+                    //name = FileName::combine(dir, name);
+
+                jsonfilename = FileName::forceExt(n, global.json_ext);
+            }
+
+            FileName::ensurePathToNameExists(jsonfilename);
+
+            File *jsonfile = new File(jsonfilename);
+
+            jsonfile->setbuffer(buf.data, buf.offset);
+            jsonfile->ref = 1;
+            jsonfile->writev();
+        }
+    }
 
     if (global.params.oneobj)
     {
@@ -1465,6 +1549,7 @@ int tryMain(int argc, char *argv[])
     if (global.errors)
         fatal();
 
+    int status = EXIT_SUCCESS;
     if (!global.params.objfiles->dim)
     {
         if (global.params.link)
@@ -1524,7 +1609,7 @@ int main(int argc, char *argv[])
  * The string is separated into arguments, processing \ and ".
  */
 
-void getenv_setargv(const char *envvar, int *pargc, char** *pargv)
+void getenv_setargv(const char *envvar, size_t *pargc, char** *pargv)
 {
     char *p;
 
@@ -1538,7 +1623,7 @@ void getenv_setargv(const char *envvar, int *pargc, char** *pargv)
 
     env = mem.strdup(env);      // create our own writable copy
 
-    int argc = *pargc;
+    size_t argc = *pargc;
     Strings *argv = new Strings();
     argv->setDim(argc);
 
@@ -1620,6 +1705,28 @@ void getenv_setargv(const char *envvar, int *pargc, char** *pargv)
 Ldone:
     *pargc = argc;
     *pargv = argv->tdata();
+}
+
+/***********************************
+ * Parse command line arguments for -m32 or -m64
+ * to detect the desired architecture.
+ */
+
+static bool parse_arch(size_t argc, char** argv, bool is64bit)
+{
+    for (size_t i = 0; i < argc; ++i)
+    {   char* p = argv[i];
+        if (p[0] == '-')
+        {
+            if (strcmp(p + 1, "m32") == 0)
+                is64bit = 0;
+            else if (strcmp(p + 1, "m64") == 0)
+                is64bit = 1;
+            else if (strcmp(p + 1, "run") == 0)
+                break;
+        }
+    }
+    return is64bit;
 }
 
 #if WINDOWS_SEH

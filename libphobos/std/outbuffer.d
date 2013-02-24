@@ -23,6 +23,7 @@ module std.outbuffer;
 private
 {
     import core.memory;
+    import std.algorithm;
     import std.string;
     import std.c.stdio;
     import std.c.stdlib;
@@ -95,7 +96,7 @@ class OutBuffer
     void write(const(ubyte)[] bytes)
         {
             reserve(bytes.length);
-            data[offset .. offset + bytes.length] = bytes;
+            data[offset .. offset + bytes.length] = bytes[];
             offset += bytes.length;
         }
 
@@ -266,7 +267,7 @@ class OutBuffer
         auto psize = buffer.length;
         for (;;)
         {
-            version(Win32)
+            version(Windows)
             {
                 count = _vsnprintf(p,psize,f,args);
                 if (count != -1)
@@ -274,7 +275,7 @@ class OutBuffer
                 psize *= 2;
                 p = cast(char *) alloca(psize); // buffer too small, try again with larger size
             }
-            version(Posix)
+            else version(Posix)
             {
                 count = vsnprintf(p,psize,f,args);
                 if (count == -1)
@@ -289,6 +290,10 @@ class OutBuffer
                 p = (char *) c.stdlib.malloc(psize);    // buffer too small, try again with larger size
                 +/
                 p = cast(char *) alloca(psize); // buffer too small, try again with larger size
+            }
+            else
+            {
+                static assert(0);
             }
         }
         write(cast(ubyte[]) p[0 .. count]);
@@ -305,27 +310,33 @@ class OutBuffer
      * Append output of C's printf() to internal buffer.
      */
 
-    version (GNU)
     void printf(string format, ...)
     {
-        vprintf(format, _argptr);
-    }
-    else
-    version (X86_64)
-    void printf(string format, ...)
-    {
-        va_list ap;
-        va_start(ap, __va_argsave);
-        vprintf(format, ap);
-        va_end(ap);
-    }
-    else
-    void printf(string format, ...)
-    {
-        va_list ap;
-        ap = cast(va_list)&format;
-        ap += format.sizeof;
-        vprintf(format, ap);
+        version (GNU)
+        {
+            vprintf(format, _argptr);
+        }
+        else version (Win64)
+        {
+            va_list ap;
+            ap = cast(va_list)&format;
+            ap += format.sizeof;
+            vprintf(format, ap);
+        }
+        else version (X86_64)
+        {
+            va_list ap;
+            va_start(ap, __va_argsave);
+            vprintf(format, ap);
+            va_end(ap);
+        }
+        else
+        {
+            va_list ap;
+            ap = cast(va_list)&format;
+            ap += format.sizeof;
+            vprintf(format, ap);
+        }
     }
 
     /*****************************************

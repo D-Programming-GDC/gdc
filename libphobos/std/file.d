@@ -25,8 +25,6 @@ import core.stdc.stdio, core.stdc.stdlib, core.stdc.string,
        std.range, std.stdio, std.string, std.traits,
        std.typecons, std.typetuple, std.utf;
 
-import std.metastrings; //For generating deprecation messages only. Remove once
-                        //deprecation path complete.
 
 version (Windows)
 {
@@ -73,110 +71,7 @@ version (Windows)
 }
 else version (Posix)
 {
-    version (OSX)
-    {
-        import core.stdc.config : c_long;
-        // struct prefix to distinguish it from the stat() function.
-        // Ported from /usr/include/sys/stat.h on an OS X Lion box.
-        struct struct_stat64
-        {
-            dev_t st_dev;        /// device
-            mode_t st_mode;
-            nlink_t st_nlink;    /// link count
-            ulong st_ino;        /// file serial number
-            uid_t st_uid;        /// user ID of file's owner
-            gid_t st_gid;        /// user ID of group's owner
-            dev_t st_rdev;       /// if device then device number
-
-            time_t st_atime;
-            c_long st_atimensec;
-            time_t st_mtime;
-            c_long st_mtimensec;
-            time_t st_ctime;
-            c_long st_ctimensec;
-            time_t st_birthtime;
-            c_long st_birthtimensec;
-
-            off_t st_size;
-            blkcnt_t st_blocks;      /// number of allocated 512 byte blocks
-            blksize_t st_blksize;    /// optimal I/O block size
-
-            uint st_flags;
-            uint st_gen;
-            int st_lspare; /* RESERVED: DO NOT USE! */
-            long st_qspare[2]; /* RESERVED: DO NOT USE! */
-        }
-
-        extern(C) int fstat64(int, struct_stat64*);
-        extern(C) int stat64(in char*, struct_stat64*);
-        extern(C) int lstat64(in char*, struct_stat64*);
-    }
-    else version (FreeBSD)
-    {
-        alias core.sys.posix.sys.stat.stat_t struct_stat64;
-        alias core.sys.posix.sys.stat.fstat  fstat64;
-        alias core.sys.posix.sys.stat.stat   stat64;
-        alias core.sys.posix.sys.stat.lstat  lstat64;
-    }
-    else
-    {
-        version(D_LP64)
-        {
-            struct struct_stat64
-            {
-                ulong st_dev;
-                ulong st_ino;
-                ulong st_nlink;
-                uint  st_mode;
-                uint  st_uid;
-                uint  st_gid;
-                int   __pad0;
-                ulong st_rdev;
-                long  st_size;
-                long  st_blksize;
-                long  st_blocks;
-                long  st_atime;
-                ulong st_atimensec;
-                long  st_mtime;
-                ulong st_mtimensec;
-                long  st_ctime;
-                ulong st_ctimensec;
-                long[3]  __unused;
-            }
-            static assert(struct_stat64.sizeof == 144);
-        }
-        else
-        {
-            struct struct_stat64        // distinguish it from the stat() function
-            {
-                ulong st_dev;        /// device
-                uint __pad1;
-                uint st_ino;        /// file serial number
-                uint st_mode;        /// file mode
-                uint st_nlink;        /// link count
-                uint st_uid;        /// user ID of file's owner
-                uint st_gid;        /// user ID of group's owner
-                ulong st_rdev;        /// if device then device number
-                uint __pad2;
-                align(4) ulong st_size;
-                int st_blksize;        /// optimal I/O block size
-                ulong st_blocks;        /// number of allocated 512 byte blocks
-                int st_atime;
-                uint st_atimensec;
-                int st_mtime;
-                uint st_mtimensec;
-                int st_ctime;
-                uint st_ctimensec;
-
-                ulong st_ino64;
-            }
-            //static assert(struct_stat64.sizeof == 88); // copied from d1, but it's currently 96 bytes, not 88.
-        }
-
-        extern(C) int fstat64(int, struct_stat64*);
-        extern(C) int stat64(in char*, struct_stat64*);
-        extern(C) int lstat64(in char*, struct_stat64*);
-    }
+    deprecated alias stat_t struct_stat64;
 }
 // }}}
 
@@ -319,9 +214,8 @@ void[] read(in char[] name, size_t upTo = size_t.max)
         cenforce(fd != -1, name);
         scope(exit) core.sys.posix.unistd.close(fd);
 
-        struct_stat64 statbuf = void;
-        cenforce(fstat64(fd, &statbuf) == 0, name);
-        //cenforce(core.sys.posix.sys.stat.fstat(fd, &statbuf) == 0, name);
+        stat_t statbuf = void;
+        cenforce(fstat(fd, &statbuf) == 0, name);
 
         immutable initialAlloc = to!size_t(statbuf.st_size
             ? min(statbuf.st_size + 1, maxInitialAlloc)
@@ -556,8 +450,8 @@ ulong getSize(in char[] name)
     }
     else version(Posix)
     {
-        struct_stat64 statbuf = void;
-        cenforce(stat64(toStringz(name), &statbuf) == 0, name);
+        stat_t statbuf = void;
+        cenforce(stat(toStringz(name), &statbuf) == 0, name);
         return statbuf.st_size;
     }
 }
@@ -599,9 +493,9 @@ void getTimes(in char[] name,
     }
     else version(Posix)
     {
-        struct_stat64 statbuf = void;
+        stat_t statbuf = void;
 
-        cenforce(stat64(toStringz(name), &statbuf) == 0, name);
+        cenforce(stat(toStringz(name), &statbuf) == 0, name);
 
         fileAccessTime = SysTime(unixTimeToStdTime(statbuf.st_atime));
         fileModificationTime = SysTime(unixTimeToStdTime(statbuf.st_mtime));
@@ -777,9 +671,9 @@ SysTime timeLastModified(in char[] name)
     }
     else version(Posix)
     {
-        struct_stat64 statbuf = void;
+        stat_t statbuf = void;
 
-        cenforce(stat64(toStringz(name), &statbuf) == 0, name);
+        cenforce(stat(toStringz(name), &statbuf) == 0, name);
 
         return SysTime(unixTimeToStdTime(statbuf.st_mtime));
     }
@@ -832,9 +726,9 @@ SysTime timeLastModified(in char[] name, SysTime returnIfMissing)
     }
     else version(Posix)
     {
-        struct_stat64 statbuf = void;
+        stat_t statbuf = void;
 
-        return stat64(toStringz(name), &statbuf) != 0 ?
+        return stat(toStringz(name), &statbuf) != 0 ?
                returnIfMissing :
                SysTime(unixTimeToStdTime(statbuf.st_mtime));
     }
@@ -893,8 +787,8 @@ unittest
             so it's safer to use stat instead.
         */
 
-        struct_stat64 statbuf = void;
-        return stat64(toStringz(name), &statbuf) == 0;
+        stat_t statbuf = void;
+        return stat(toStringz(name), &statbuf) == 0;
     }
 }
 
@@ -938,9 +832,9 @@ uint getAttributes(in char[] name)
     }
     else version(Posix)
     {
-        struct_stat64 statbuf = void;
+        stat_t statbuf = void;
 
-        cenforce(stat64(toStringz(name), &statbuf) == 0, name);
+        cenforce(stat(toStringz(name), &statbuf) == 0, name);
 
         return statbuf.st_mode;
     }
@@ -971,8 +865,8 @@ uint getLinkAttributes(in char[] name)
     }
     else version(Posix)
     {
-        struct_stat64 lstatbuf = void;
-        cenforce(lstat64(toStringz(name), &lstatbuf) == 0, name);
+        stat_t lstatbuf = void;
+        cenforce(lstat(toStringz(name), &lstatbuf) == 0, name);
         return lstatbuf.st_mode;
     }
 }
@@ -1743,14 +1637,15 @@ assert(!de2.isFile);
           +/
         @property uint linkAttributes();
 
-        version(Windows) alias void* struct_stat64;
+        version(Windows)
+            alias void* stat_t;
 
         /++
             $(BLUE This function is Posix-Only.)
 
             The $(D stat) struct gotten from calling $(D stat).
           +/
-        @property struct_stat64 statBuf();
+        @property stat_t statBuf();
     }
 }
 else version(Windows)
@@ -1945,7 +1840,7 @@ else version(Posix)
             return _lstatMode;
         }
 
-        @property struct_stat64 statBuf()
+        @property stat_t statBuf()
         {
             _ensureStatDone();
 
@@ -1997,7 +1892,7 @@ else version(Posix)
             if(_didStat)
                 return;
 
-            enforce(stat64(toStringz(_name), &_statBuf) == 0,
+            enforce(stat(toStringz(_name), &_statBuf) == 0,
                     "Failed to stat file `" ~ _name ~ "'");
 
             _didStat = true;
@@ -2012,9 +1907,9 @@ else version(Posix)
             if(_didLStat)
                 return;
 
-            struct_stat64 statbuf = void;
+            stat_t statbuf = void;
 
-            enforce(lstat64(toStringz(_name), &statbuf) == 0,
+            enforce(lstat(toStringz(_name), &statbuf) == 0,
                 "Failed to stat file `" ~ _name ~ "'");
 
             _lstatMode = statbuf.st_mode;
@@ -2026,7 +1921,7 @@ else version(Posix)
 
         string _name; /// The file or directory represented by this DirEntry.
 
-        struct_stat64 _statBuf = void;  /// The result of stat().
+        stat_t _statBuf = void;  /// The result of stat().
         uint  _lstatMode;               /// The stat mode from lstat().
         ubyte _dType;                   /// The type of the file.
 
@@ -2096,44 +1991,6 @@ unittest
     }
 }
 
-
-/******************************************************
- * $(RED Deprecated. It will be removed in November 2012.
- *       Please use $(LREF dirEntries) instead.)
- *
- * For each file and directory $(D DirEntry) in $(D pathname[])
- * pass it to the callback delegate.
- *
- * Params:
- *        callback =        Delegate that processes each
- *                        DirEntry in turn. Returns true to
- *                        continue, false to stop.
- * Example:
- *        This program lists all the files in its
- *        path argument and all subdirectories thereof.
- * ----
- * import std.stdio;
- * import std.file;
- *
- * void main(string[] args)
- * {
- *    bool callback(DirEntry* de)
- *    {
- *      if(de.isDir)
- *        listdir(de.name, &callback);
- *      else
- *        writefln(de.name);
-
- *      return true;
- *    }
- *
- *    listdir(args[1], &callback);
- * }
- * ----
- */
-deprecated alias listDir listdir;
-
-
 /***************************************************
 Copy file $(D from) to file $(D to). File timestamps are preserved.
  */
@@ -2151,8 +2008,8 @@ void copy(in char[] from, in char[] to)
         cenforce(fd != -1, from);
         scope(exit) core.sys.posix.unistd.close(fd);
 
-        struct_stat64 statbuf = void;
-        cenforce(fstat64(fd, &statbuf) == 0, from);
+        stat_t statbuf = void;
+        cenforce(fstat(fd, &statbuf) == 0, from);
         //cenforce(core.sys.posix.sys.stat.fstat(fd, &statbuf) == 0, from);
 
         auto toz = toStringz(to);
@@ -2285,7 +2142,7 @@ void rmdirRecurse(ref DirEntry de)
     if(!de.isDir)
         throw new FileException(text("File ", de.name, " is not a directory"));
 
-    if(de.isSymlink())
+    if(de.isSymlink)
         remove(de.name);
     else
     {
@@ -2348,35 +2205,6 @@ unittest
     remove("unittest_write2.tmp");
     assert(!exists("unittest_write2.tmp"));
 }
-
-//Remove this when _listDir is removed. It's not needed to test
-//DirEntry. Plenty of other tests to do that already.
-unittest
-{
-    _listDir(".", delegate bool (DirEntry * de)
-    {
-        version(Windows)
-        {
-            auto s = std.string.format("%s : c %s, w %s, a %s",
-                                       de.name,
-                                       de.timeCreated,
-                                       de.timeLastModified,
-                                       de.timeLastAccessed);
-        }
-        else version(Posix)
-        {
-            auto s = std.string.format("%s : c %s, w %s, a %s",
-                                       de.name,
-                                       de.timeStatusChanged,
-                                       de.timeLastModified,
-                                       de.timeLastAccessed);
-        }
-
-        return true;
-    }
-    );
-}
-
 
 /**
  * Dictates directory spanning policy for $(D_PARAM dirEntries) (see below).
@@ -2660,6 +2488,9 @@ public:
                          should be treated as directories and their contents
                          iterated over.
 
+    Throws:
+        $(D FileException) if the directory does not exist.
+
 Examples:
 --------------------
 // Iterate a directory in depth
@@ -2689,7 +2520,6 @@ foreach(d; parallel(dFiles, 1)) //passes by 1 file to each thread
     std.process.system(cmd);
 }
 --------------------
-//
  +/
 auto dirEntries(string path, SpanMode mode, bool followSymlink = true)
 {
@@ -2762,6 +2592,9 @@ unittest
                          should be treated as directories and their contents
                          iterated over.
 
+    Throws:
+        $(D FileException) if the directory does not exist.
+
 Examples:
 --------------------
 // Iterate over all D source files in current directory and all its
@@ -2770,7 +2603,6 @@ auto dFiles = dirEntries(".","*.{d,di}",SpanMode.depth);
 foreach(d; dFiles)
     writeln(d.name);
 --------------------
-//
  +/
 auto dirEntries(string path, string pattern, SpanMode mode,
     bool followSymlink = true)
@@ -3096,256 +2928,4 @@ string tempDir()
         if (cache is null) cache = ".";
     }
     return cache;
-}
-
-
-/++
-    $(RED Deprecated. It will be removed in November 2012.
-          Please use $(LREF dirEntries) instead.)
-
-    Returns the contents of the given directory.
-
-    The names in the contents do not include the pathname.
-
-    Throws:
-        $(D FileException) on error.
-
-Examples:
-    This program lists all the files and subdirectories in its
-    path argument.
---------------------
-import std.stdio;
-import std.file;
-
-void main(string[] args)
-{
-    auto dirs = std.file.listDir(args[1]);
-
-    foreach(d; dirs)
-        writefln(d);
-}
---------------------
- +/
-deprecated string[] listDir(C)(in C[] pathname)
-{
-    auto result = appender!(string[])();
-
-    bool listing(string filename)
-    {
-        result.put(filename);
-        return true; // continue
-    }
-
-    _listDir(pathname, &listing);
-
-    return result.data;
-}
-
-unittest
-{
-    assert(listDir(".").length > 0);
-}
-
-
-/++
-    $(RED Deprecated. It will be removed in November 2012.
-          Please use $(LREF dirEntries) instead.)
-
-    Returns all the files in the directory and its sub-directories
-    which match pattern or regular expression r.
-
-    Params:
-        pathname = The path of the directory to search.
-        pattern  = String with wildcards, such as $(RED "*.d"). The supported
-                   wildcard strings are described under fnmatch() in
-                   $(LINK2 std_path.html, std.path).
-        r        = Regular expression, for more powerful pattern matching.
-        followSymlink = Whether symbolic links which point to directories
-                         should be treated as directories and their contents
-                         iterated over. Ignored on Windows.
-
-Examples:
-    This program lists all the files with a "d" extension in
-    the path passed as the first argument.
---------------------
-import std.stdio;
-import std.file;
-
-void main(string[] args)
-{
-  auto d_source_files = std.file.listDir(args[1], "*.d");
-
-  foreach(d; d_source_files)
-      writefln(d);
-}
---------------------
-
-    A regular expression version that searches for all files with "d" or
-    "obj" extensions:
---------------------
-import std.stdio;
-import std.file;
-import std.regexp;
-
-void main(string[] args)
-{
-  auto d_source_files = std.file.listDir(args[1], RegExp(r"\.(d|obj)$"));
-
-  foreach(d; d_source_files)
-      writefln(d);
-}
---------------------
- +/
-deprecated string[] listDir(C, U)(in C[] pathname, U filter, bool followSymlink = true)
-    if(is(C : char) && !is(U: bool delegate(string filename)))
-{
-    import std.regexp;
-    auto result = appender!(string[])();
-    bool callback(DirEntry* de)
-    {
-        if(followSymlink ? de.isDir : attrIsDir(de.linkAttributes))
-        {
-            _listDir(de.name, &callback);
-        }
-        else
-        {
-            static if(is(U : const(C[])))
-            {//pattern version
-                if(std.path.fnmatch(de.name, filter))
-                    result.put(de.name);
-            }
-            else static if(is(U : RegExp))
-            {//RegExp version
-
-                if(filter.test(de.name))
-                    result.put(de.name);
-            }
-            else
-                static assert(0,"There is no version of listDir that takes " ~ U.stringof);
-        }
-        return true; // continue
-    }
-
-    _listDir(pathname, &callback);
-
-    return result.data;
-}
-
-/******************************************************
- * $(RED Deprecated. It will be removed in November 2012.
- *       Please use $(LREF dirEntries) instead.)
- *
- * For each file and directory name in pathname[],
- * pass it to the callback delegate.
- *
- * Params:
- *        callback =        Delegate that processes each
- *                        filename in turn. Returns true to
- *                        continue, false to stop.
- * Example:
- *        This program lists all the files in its
- *        path argument, including the path.
- * ----
- * import std.stdio;
- * import std.path;
- * import std.file;
- *
- * void main(string[] args)
- * {
- *    auto pathname = args[1];
- *    string[] result;
- *
- *    bool listing(string filename)
- *    {
- *      result ~= buildPath(pathname, filename);
- *      return true; // continue
- *    }
- *
- *    listdir(pathname, &listing);
- *
- *    foreach (name; result)
- *      writefln("%s", name);
- * }
- * ----
- */
-deprecated void listDir(C, U)(in C[] pathname, U callback)
-    if(is(C : char) && is(U: bool delegate(string filename)))
-{
-    _listDir(pathname, callback);
-}
-
-
-//==============================================================================
-// Private Section.
-//==============================================================================
-private:
-
-
-deprecated void _listDir(in char[] pathname, bool delegate(string filename) callback)
-{
-    bool listing(DirEntry* de)
-    {
-        return callback(baseName(de.name));
-    }
-
-    _listDir(pathname, &listing);
-}
-
-
-version(Windows)
-{
-    deprecated void _listDir(in char[] pathname, bool delegate(DirEntry* de) callback)
-    {
-        DirEntry de;
-        auto c = buildPath(pathname, "*.*");
-
-        WIN32_FIND_DATAW fileinfo;
-
-        auto h = FindFirstFileW(std.utf.toUTF16z(c), &fileinfo);
-        if(h == INVALID_HANDLE_VALUE)
-            return;
-
-        scope(exit) FindClose(h);
-
-        do
-        {
-            // Skip "." and ".."
-            if(std.string.wcscmp(fileinfo.cFileName.ptr, ".") == 0 ||
-               std.string.wcscmp(fileinfo.cFileName.ptr, "..") == 0)
-            {
-                continue;
-            }
-
-            de._init(pathname, &fileinfo);
-
-            if(!callback(&de))
-                break;
-
-        } while(FindNextFileW(h, &fileinfo) != FALSE);
-    }
-}
-else version(Posix)
-{
-    deprecated void _listDir(in char[] pathname, bool delegate(DirEntry* de) callback)
-    {
-        auto h = cenforce(opendir(toStringz(pathname)), pathname);
-        scope(exit) closedir(h);
-
-        DirEntry de;
-
-        for(dirent* fdata; (fdata = readdir(h)) != null; )
-        {
-            // Skip "." and ".."
-            if(!core.stdc.string.strcmp(fdata.d_name.ptr, ".") ||
-               !core.stdc.string.strcmp(fdata.d_name.ptr, ".."))
-            {
-                continue;
-            }
-
-            de._init(pathname, fdata);
-
-            if(!callback(&de))
-                break;
-        }
-    }
 }

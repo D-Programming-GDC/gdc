@@ -3,7 +3,6 @@
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
-// http://www.dsource.org/projects/dmd/browser/trunk/src/staticassert.c
 // License for redistribution is by either the Artistic License
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
@@ -57,6 +56,7 @@ void StaticAssert::semantic2(Scope *sc)
     sc = sc->push(sd);
     sc->flags |= SCOPEstaticassert;
     Expression *e = exp->semantic(sc);
+    e = resolveProperties(sc, e);
     sc = sc->pop();
     if (!e->type->checkBoolean())
     {
@@ -77,8 +77,14 @@ void StaticAssert::semantic2(Scope *sc)
             OutBuffer buf;
 
             msg = msg->semantic(sc);
+            msg = resolveProperties(sc, msg);
             msg = msg->ctfeInterpret();
             hgs.console = 1;
+            StringExp * s = msg->toString();
+            if (s)
+            {   s->postfix = 0; // Don't display a trailing 'c'
+                msg = s;
+            }
             msg->toCBuffer(&buf, &hgs);
             error("%s", buf.toChars());
         }

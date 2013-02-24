@@ -18,8 +18,12 @@
 #ifndef DMD_DT_H
 #define DMD_DT_H
 
+extern "C" {
+#include "config.h"
+#include "coretypes.h"
+} //extern "C"
+
 #include "symbol.h"
-#include "d-gcc-tree.h"
 
 enum DT
 {
@@ -56,8 +60,6 @@ struct dt_t
   };
 };
 
-enum TypeType;
-
 extern dt_t **dtval (dt_t **pdt, DT t, dinteger_t i, const void *p);
 extern dt_t **dtcat (dt_t **pdt, dt_t *d);
 extern tree   dt2tree (dt_t *dt);
@@ -82,7 +84,7 @@ dtnbytes (dt_t **pdt, size_t count, const char *pbytes)
 }
 
 inline dt_t **
-dtabytes (dt_t **pdt, TypeType, int, size_t count, const char *pbytes)
+dtabytes (dt_t **pdt, int, size_t count, const char *pbytes)
 {
   return dtval (pdt, DT_abytes, count, pbytes);
 }
@@ -106,7 +108,7 @@ dtsize_t (dt_t **pdt, size_t val)
 }
 
 inline dt_t **
-dtxoff (dt_t ** pdt, Symbol *sym, size_t offset, TypeType)
+dtxoff (dt_t ** pdt, Symbol *sym, size_t offset)
 {
   return dtval (pdt, DT_xoff, offset, sym);
 }

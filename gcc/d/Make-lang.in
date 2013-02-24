@@ -19,20 +19,7 @@
 
 target_os=$(shell echo $(target) | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)/\3/')
 
-# Manual configuration since patching gcc/configure.ac is troublesome...
-
-# The file d-make-include is created by setup-gcc.sh
--include $(srcdir)/d/d-make-include
-
-# Enable the asm(...) style syntax for extended asm.  Deviates from the D
-# specification syntax.  Can still use extended asm if disabled.
-# D_EXTRA_DEFINES += -DGDC_EXTENDED_ASM_SYNTAX=1
-
-# Enables MinGW support for C99 printf format specfiers
-ifeq ($(target_os), mingw32)
-D_EXTRA_DEFINES += -D__USE_MINGW_ANSI_STDIO
-endif
-
+# Actual names to use when installing a native compiler.
 D_INSTALL_NAME = $(shell echo gdc|sed '$(program_transform_name)')
 DMD_INSTALL_NAME = $(shell echo dmd|sed '$(program_transform_name)')
 GDMD_INSTALL_NAME = $(shell echo gdmd|sed '$(program_transform_name)')
@@ -53,7 +40,7 @@ endif
 D_DMD_H := \
     d/dfrontend/aav.h d/dfrontend/aggregate.h d/dfrontend/aliasthis.h \
     d/dfrontend/arraytypes.h d/dfrontend/async.h d/dfrontend/attrib.h \
-    d/dfrontend/cond.h d/dfrontend/declaration.h \
+    d/dfrontend/cond.h d/dfrontend/ctfe.h d/dfrontend/declaration.h \
     d/dfrontend/doc.h d/dfrontend/dsymbol.h d/dfrontend/enum.h \
     d/dfrontend/expression.h d/dfrontend/gnuc.h d/dfrontend/hdrgen.h \
     d/dfrontend/identifier.h d/dfrontend/import.h \
@@ -63,9 +50,10 @@ D_DMD_H := \
     d/dfrontend/parse.h d/dfrontend/rmem.h d/dfrontend/root.h \
     d/dfrontend/scope.h d/dfrontend/speller.h d/dfrontend/statement.h \
     d/dfrontend/staticassert.h d/dfrontend/stringtable.h \
-    d/dfrontend/template.h d/dfrontend/total.h d/dfrontend/utf.h \
-    d/dfrontend/version.h d/d-dmd-gcc.h d/d-gcc-complex_t.h d/d-gcc-real.h \
-    d/id.h
+    d/dfrontend/template.h d/dfrontend/utf.h \
+    d/dfrontend/version.h \
+    d/d-dmd-gcc.h d/d-gcc-complex_t.h d/d-gcc-real.h \
+    d/id.h d/verstr.h
 
 D_TREE_H = $(TREE_H) d/d-tree.def d/d-lang.h d/d-codegen.h \
         d/d-objfile.h d/d-irstate.h d/d-dmd-gcc.h d/d-gcc-includes.h \
@@ -130,7 +118,7 @@ gdc-cross$(exeext): gdc$(exeext)
 D_DMD_OBJS := \
     d/aav.dmd.o d/access.dmd.o d/aliasthis.dmd.o d/array.dmd.o \
     d/arrayop.dmd.o d/async.dmd.o d/attrib.dmd.o d/cast.dmd.o d/class.dmd.o \
-    d/clone.dmd.o d/cond.dmd.o d/constfold.dmd.o \
+    d/clone.dmd.o d/cond.dmd.o d/constfold.dmd.o d/ctfeexpr.dmd.o \
     d/declaration.dmd.o d/delegatize.dmd.o d/doc.dmd.o d/dsymbol.dmd.o \
     d/dump.dmd.o d/entity.dmd.o d/enum.dmd.o d/expression.dmd.o d/func.dmd.o \
     d/gnuc.dmd.o d/hdrgen.dmd.o d/identifier.dmd.o \
@@ -150,7 +138,7 @@ D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-objfile.glue.o d/d-irstate.glue.o d/d-glue.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-gcc-real.glue.o \
-              d/d-gt.cglue.o d/d-builtins.cglue.o d/d-builtins2.glue.o \
+              d/d-gt.cglue.o d/d-builtins.cglue.o \
               d/symbol.glue.o d/asmstmt.glue.o d/dt.glue.o \
               d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
               d/d-ir.glue.o
@@ -158,9 +146,9 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
 d/%.dmd.o: $(srcdir)/d/dfrontend/%.c $(D_DMD_H) d/d-confdefs.h
-	$(CXX) $(ALL_DMD_COMPILER_FLAGS) -include total.h -o d/$*.dmd.o -c $<
+	$(CXX) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmd.o -c $<
 
-# For generator programs, can't implicitly include "total.h" which includes "id.h"
+# For generator programs.
 d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
 	$(CXX_FOR_BUILD) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmdgen.o -c $<
 
@@ -181,10 +169,14 @@ d/idgen: d/idgen.dmdgen.o
 
 d/impcnvtab.c: d/impcvgen
 	cd d && ./impcvgen
+
 d/id.c: d/idgen
 	cd d && ./idgen
 # idgen also generates id.h; just verify id.h exists
 d/id.h: d/id.c
+
+d/verstr.h: d/VERSION
+	$(ECHO) -n \"`cat $^`\" > $@
 
 d/d-confdefs.h: d/Make-lang.in
 	#echo "#define D_PHOBOS_DIR \""$(gcc_d_include_dir)"\"" > $@
@@ -213,7 +205,6 @@ d/symbol.glue.o: d/symbol.cc $(D_TREE_H)
 d/dt.glue.o: d/symbol.cc $(D_TREE_H)
 d/d-gt.cglue.o: d/d-gt.c $(D_TREE_H)
 d/d-builtins.cglue.o: d/d-builtins.c $(D_TREE_H)
-d/d-builtins2.glue.o: d/d-builtins.c $(D_TREE_H)
 d/todt.dmd.o: $(D_DMD_H)
 d/toobj.dmd.o: $(D_DMD_H)
 d/typinf.dmd.o: $(D_DMD_H)

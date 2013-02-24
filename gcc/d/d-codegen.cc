@@ -783,17 +783,13 @@ bool
 IRState::isDeclarationReferenceType (Declaration *decl)
 {
   Type *base_type = decl->type->toBasetype();
-  // D doesn't do this now..
+  // D doesn't do this now...
   if (base_type->ty == Treference)
     return true;
 
   if (decl->isOut() || decl->isRef())
     return true;
 
-#if !SARRAYVALUE
-  if (decl->isParameter() && base_type->ty == Tsarray)
-    return true;
-#endif
   return false;
 }
 
@@ -836,10 +832,6 @@ IRState::isArgumentReferenceType (Parameter *arg)
   if (arg->storageClass & (STCout | STCref))
     return true;
 
-#if !SARRAYVALUE
-  if (base_type->ty == Tsarray)
-    return true;
-#endif
   return false;
 }
 
@@ -3017,7 +3009,8 @@ IRState::maybeExpandSpecialCall (tree call_exp)
   CallExpr ce (call_exp);
   tree callee = ce.callee();
   tree op1 = NULL_TREE, op2 = NULL_TREE;
-  tree exp = NULL_TREE;
+  tree exp = NULL_TREE, val;
+  enum tree_code code;
 
   if (POINTER_TYPE_P (TREE_TYPE (callee)))
     callee = TREE_OPERAND (callee, 0);
@@ -3051,7 +3044,6 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 
 	  return fold_build2 (MINUS_EXPR, type, op2, exp);
 
-	case INTRINSIC_BT:
 	case INTRINSIC_BTC:
 	case INTRINSIC_BTR:
 	case INTRINSIC_BTS:
@@ -3075,30 +3067,22 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  // cond ? -1 : 0;
 	  exp = build3 (COND_EXPR, TREE_TYPE (call_exp), d_truthvalue_conversion (exp),
 			integer_minus_one_node, integer_zero_node);
+	  
+	  // Update the bit as needed.
+	  code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
+	    (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
+	    (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
+	  gcc_assert (code != ERROR_MARK);
 
-	  if (intrinsic == INTRINSIC_BT)
-	    {
-	      // Only testing the bit.
-	      return exp;
-	    }
-	  else
-	    {
-	      // Update the bit as needed.
-	      tree result = localVar (TREE_TYPE (call_exp));
-	      enum tree_code code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
-		(intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
-		(intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
-	      gcc_assert (code != ERROR_MARK);
+	  // op1[op2 / size] op= mask
+	  if (intrinsic == INTRINSIC_BTR)
+	    op2 = build1 (BIT_NOT_EXPR, TREE_TYPE (op2), op2);
 
-	      // op1[op2 / size] op= mask
-	      if (intrinsic == INTRINSIC_BTR)
-		op2 = build1 (BIT_NOT_EXPR, TREE_TYPE (op2), op2);
-
-	      exp = vmodify (result, exp);
-	      op1 = vmodify (op1, fold_build2 (code, TREE_TYPE (op1), op1, op2));
-	      op1 = compound (op1, result);
-	      return compound (exp, op1);
-	    }
+	  val = localVar (TREE_TYPE (call_exp));
+	  exp = vmodify (val, exp);
+	  op1 = vmodify (op1, fold_build2 (code, TREE_TYPE (op1), op1, op2));
+	  op1 = compound (op1, val);
+	  return compound (exp, op1);
 
 	case INTRINSIC_BSWAP:
 	  /* Backend provides builtin bswap32.
@@ -3319,7 +3303,7 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
       // Matches order of Intrinsic enum
       static const char *intrinsic_names[] = {
 	  "bsf", "bsr", "bswap",
-	  "bt", "btc", "btr", "bts",
+	  "btc", "btr", "bts",
       };
       const size_t sz = sizeof (intrinsic_names) / sizeof (char *);
       int i = binary (decl->ident->string, intrinsic_names, sz);
@@ -3667,11 +3651,22 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
   else if ((struct_decl = decl->isStructDeclaration()))
     {
       Dsymbol *outer = struct_decl->toParent2();
+      ClassDeclaration *cd_outer = outer->isClassDeclaration();
       FuncDeclaration *fd_outer = outer->isFuncDeclaration();
-      // Assuming this is kept as trivial as possible.
-      // NOTE: what about structs nested in structs nested in functions?
-      if (fd_outer)
+
+      if (cd_outer)
 	{
+	  vthis_value = findThis (cd_outer);
+	  if (vthis_value == NULL_TREE)
+	    {
+	      e->error ("outer class %s 'this' needed to create nested struct %s",
+			cd_outer->toChars(), struct_decl->toChars());
+	    }
+	}
+      else if (fd_outer)
+	{
+	  // Assuming this is kept as trivial as possible.
+	  // NOTE: what about structs nested in structs nested in functions?
 	  FuncFrameInfo *ffo = getFrameInfo (fd_outer);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fd_outer->hasNestedFrameRefs())
@@ -3998,6 +3993,37 @@ IRState::getFrameRef (FuncDeclaration *outer_func)
     }
 }
 
+// Special case: If a function returns a nested class with functions
+// but there are no "closure variables" the frontend (needsClosure) 
+// returns false even though the nested class _is_ returned from the
+// function. (See case 4 in needsClosure)
+// A closure is strictly speaking not necessary, but we also can not
+// use a static function chain for functions in the nested class as
+// they can be called from outside. GCC's nested functions can't deal
+// with those kind of functions. We have to detect them manually here
+// and make sure we neither construct a static chain nor a closure.
+
+bool
+functionDegenerateClosure (FuncDeclaration *f)
+{
+  if (!f->needsClosure() && f->closureVars.dim == 0)
+  {
+    Type *tret = ((TypeFunction *)f->type)->next;
+    gcc_assert(tret);
+    tret = tret->toBasetype();
+    if (tret->ty == Tclass || tret->ty == Tstruct)
+    { 
+      Dsymbol *st = tret->toDsymbol(NULL);
+      for (Dsymbol *s = st->parent; s; s = s->parent)
+      {
+	if (s == f)
+	  return true;
+      }
+    }
+  }
+  return false;
+}
+
 // Return true if function F needs to have the static chain passed to
 // it.  This only applies to nested function handling provided by the
 // GCC back end (not D closures.)
@@ -4006,7 +4032,7 @@ bool
 IRState::functionNeedsChain (FuncDeclaration *f)
 {
   Dsymbol *s;
-  ClassDeclaration *a;
+  AggregateDeclaration *a;
   FuncDeclaration *pf = NULL;
   TemplateInstance *ti = NULL;
 
@@ -4014,7 +4040,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
     {
       s = f->toParent();
       ti = s->isTemplateInstance();
-      if (ti && ti->isnested == NULL)
+      if (ti && ti->isnested == NULL && ti->parent->isModule())
 	return false;
 
       pf = f->toParent2()->isFuncDeclaration();
@@ -4028,11 +4054,11 @@ IRState::functionNeedsChain (FuncDeclaration *f)
 
   s = f->toParent2();
 
-  while (s && (a = s->isClassDeclaration()) && a->isNested())
+  while (s && (((a = s->isAggregateDeclaration()) && a->isNested()) || s->isTemplateInstance()))
     {
       s = s->toParent2();
       if ((pf = s->isFuncDeclaration())
-	  && !getFrameInfo (pf)->is_closure)
+	  && !getFrameInfo (pf)->is_closure && !functionDegenerateClosure(pf))
 	{
 	  return true;
 	}
@@ -4406,7 +4432,7 @@ IRState::checkGoto (Statement *stmt, LabelDsymbol *label)
   if (!found)
     {
       if (!label->statement->fwdrefs)
-	label->statement->fwdrefs = new Array();
+	label->statement->fwdrefs = new Blocks();
       label->statement->fwdrefs->push (getLabelBlock (label, stmt));
     }
 }
