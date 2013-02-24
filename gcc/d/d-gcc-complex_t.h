@@ -15,8 +15,8 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-#ifndef DMD_COMPLEX_T_H
-#define DMD_COMPLEX_T_H
+#ifndef GCC_DCMPLR_COMPLEX_T_H
+#define GCC_DCMPLR_COMPLEX_T_H
 
 /* Roll our own complex type for compilers that don't support complex
  */

@@ -53,17 +53,17 @@ version(D_LP64)
 {
     alias ulong size_t;
     alias long  ptrdiff_t;
-    alias long  sizediff_t;
 }
 else
 {
     alias uint  size_t;
     alias int   ptrdiff_t;
-    alias int   sizediff_t;
 }
 
-alias size_t hash_t;
-alias bool equals_t;
+alias ptrdiff_t sizediff_t; //For backwards compatibility only.
+
+alias size_t hash_t; //For backwards compatibility only.
+alias bool equals_t; //For backwards compatibility only.
 
 alias immutable(char)[]  string;
 alias immutable(wchar)[] wstring;
@@ -85,10 +85,10 @@ class Object
     /**
      * Compute hash function for Object.
      */
-    hash_t toHash() @trusted nothrow
+    size_t toHash() @trusted nothrow
     {
         // BUG: this prevents a compacting GC from working, needs to be fixed
-        return cast(hash_t)cast(void*)this;
+        return cast(size_t)cast(void*)this;
     }
 
     /**
@@ -112,12 +112,12 @@ class Object
     /**
      * Returns !=0 if this object does have the same contents as obj.
      */
-    equals_t opEquals(Object o)
+    bool opEquals(Object o)
     {
         return this is o;
     }
 
-    equals_t opEquals(Object lhs, Object rhs)
+    bool opEquals(Object lhs, Object rhs)
     {
         if (lhs is rhs)
             return true;
@@ -246,7 +246,7 @@ class TypeInfo
         return (cast()super).toString();
     }
 
-    override hash_t toHash() @trusted const
+    override size_t toHash() @trusted const
     {
         try
         {
@@ -258,7 +258,7 @@ class TypeInfo
             // This should never happen; remove when toString() is made nothrow
 
             // BUG: this prevents a compacting GC from working, needs to be fixed
-            return cast(hash_t)cast(void*)this;
+            return cast(size_t)cast(void*)this;
         }
     }
 
@@ -272,7 +272,7 @@ class TypeInfo
         return dstrcmp(this.toString(), ti.toString());
     }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         /* TypeInfo instances are singletons, but duplicates can exist
          * across DLL's. Therefore, comparing for a name match is
@@ -285,10 +285,10 @@ class TypeInfo
     }
 
     /// Returns a hash of the instance of a type.
-    hash_t getHash(in void* p) @trusted nothrow const { return cast(hash_t)p; }
+    size_t getHash(in void* p) @trusted nothrow const { return cast(size_t)p; }
 
     /// Compares two instances for equality.
-    equals_t equals(in void* p1, in void* p2) const { return p1 == p2; }
+    bool equals(in void* p1, in void* p2) const { return p1 == p2; }
 
     /// Compares two instances for &lt;, ==, or &gt;.
     int compare(in void* p1, in void* p2) const { return 0; }
@@ -349,7 +349,7 @@ class TypeInfo_Vector : TypeInfo
 {
     override string toString() const { return "__vector(" ~ base.toString() ~ ")"; }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -357,8 +357,8 @@ class TypeInfo_Vector : TypeInfo
         return c && this.base == c.base;
     }
 
-    override hash_t getHash(in void* p) const { return base.getHash(p); }
-    override equals_t equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
+    override size_t getHash(in void* p) const { return base.getHash(p); }
+    override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
     override int compare(in void* p1, in void* p2) const { return base.compare(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
     override void swap(void* p1, void* p2) const { return base.swap(p1, p2); }
@@ -381,7 +381,7 @@ class TypeInfo_Typedef : TypeInfo
 {
     override string toString() const { return name; }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -390,8 +390,8 @@ class TypeInfo_Typedef : TypeInfo
                     this.base == c.base;
     }
 
-    override hash_t getHash(in void* p) const { return base.getHash(p); }
-    override equals_t equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
+    override size_t getHash(in void* p) const { return base.getHash(p); }
+    override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
     override int compare(in void* p1, in void* p2) const { return base.compare(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
     override void swap(void* p1, void* p2) const { return base.swap(p1, p2); }
@@ -423,7 +423,7 @@ class TypeInfo_Pointer : TypeInfo
 {
     override string toString() const { return m_next.toString() ~ "*"; }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -431,12 +431,12 @@ class TypeInfo_Pointer : TypeInfo
         return c && this.m_next == c.m_next;
     }
 
-    override hash_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p) @trusted const
     {
-        return cast(hash_t)*cast(void**)p;
+        return cast(size_t)*cast(void**)p;
     }
 
-    override equals_t equals(in void* p1, in void* p2) const
+    override bool equals(in void* p1, in void* p2) const
     {
         return *cast(void**)p1 == *cast(void**)p2;
     }
@@ -473,7 +473,7 @@ class TypeInfo_Array : TypeInfo
 {
     override string toString() const { return value.toString() ~ "[]"; }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -481,13 +481,13 @@ class TypeInfo_Array : TypeInfo
         return c && this.value == c.value;
     }
 
-    override hash_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p) @trusted const
     {
         void[] a = *cast(void[]*)p;
         return hashOf(a.ptr, a.length * value.tsize);
     }
 
-    override equals_t equals(in void* p1, in void* p2) const
+    override bool equals(in void* p1, in void* p2) const
     {
         void[] a1 = *cast(void[]*)p1;
         void[] a2 = *cast(void[]*)p2;
@@ -559,10 +559,10 @@ class TypeInfo_StaticArray : TypeInfo
     override string toString() const
     {
         char[20] tmp = void;
-        return cast(string)(value.toString() ~ "[" ~ tmp.intToString(len) ~ "]");
+        return cast(string)(value.toString() ~ "[" ~ tmp.uintToString(len) ~ "]");
     }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -571,16 +571,16 @@ class TypeInfo_StaticArray : TypeInfo
                     this.value == c.value;
     }
 
-    override hash_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p) @trusted const
     {
         size_t sz = value.tsize;
-        hash_t hash = 0;
+        size_t hash = 0;
         for (size_t i = 0; i < len; i++)
             hash += value.getHash(p + i * sz);
         return hash;
     }
 
-    override equals_t equals(in void* p1, in void* p2) const
+    override bool equals(in void* p1, in void* p2) const
     {
         size_t sz = value.tsize;
 
@@ -680,13 +680,18 @@ class TypeInfo_AssociativeArray : TypeInfo
         return cast(string)(next.toString() ~ "[" ~ key.toString() ~ "]");
     }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
         auto c = cast(const TypeInfo_AssociativeArray)o;
         return c && this.key == c.key &&
                     this.value == c.value;
+    }
+
+    override hash_t getHash(in void* p) nothrow @trusted const
+    {
+        return _aaGetHash(cast(void*)p, this);
     }
 
     // BUG: need to add the rest of the functions
@@ -723,7 +728,7 @@ class TypeInfo_Function : TypeInfo
         return cast(string)(next.toString() ~ "()");
     }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -749,7 +754,7 @@ class TypeInfo_Delegate : TypeInfo
         return cast(string)(next.toString() ~ " delegate()");
     }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -793,7 +798,7 @@ class TypeInfo_Class : TypeInfo
 {
     override string toString() const { return info.name; }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -801,13 +806,13 @@ class TypeInfo_Class : TypeInfo
         return c && this.info.name == c.info.name;
     }
 
-    override hash_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p) @trusted const
     {
         auto o = *cast(Object*)p;
         return o ? o.toHash() : 0;
     }
 
-    override equals_t equals(in void* p1, in void* p2) const
+    override bool equals(in void* p1, in void* p2) const
     {
         Object o1 = *cast(Object*)p1;
         Object o2 = *cast(Object*)p2;
@@ -920,7 +925,7 @@ class TypeInfo_Interface : TypeInfo
 {
     override string toString() const { return info.name; }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -928,7 +933,7 @@ class TypeInfo_Interface : TypeInfo
         return c && this.info.name == c.classinfo.name;
     }
 
-    override hash_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p) @trusted const
     {
         Interface* pi = **cast(Interface ***)*cast(void**)p;
         Object o = cast(Object)(*cast(void**)p - pi.offset);
@@ -936,7 +941,7 @@ class TypeInfo_Interface : TypeInfo
         return o.toHash();
     }
 
-    override equals_t equals(in void* p1, in void* p2) const
+    override bool equals(in void* p1, in void* p2) const
     {
         Interface* pi = **cast(Interface ***)*cast(void**)p1;
         Object o1 = cast(Object)(*cast(void**)p1 - pi.offset);
@@ -984,7 +989,7 @@ class TypeInfo_Struct : TypeInfo
 {
     override string toString() const { return name; }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -993,22 +998,20 @@ class TypeInfo_Struct : TypeInfo
                     this.init().length == s.init().length;
     }
 
-    override hash_t getHash(in void* p) @safe pure nothrow const
+    override size_t getHash(in void* p) @safe pure nothrow const
     {
         assert(p);
         if (xtoHash)
         {
-            debug(PRINTF) printf("getHash() using xtoHash\n");
             return (*xtoHash)(p);
         }
         else
         {
-            debug(PRINTF) printf("getHash() using default hash\n");
             return hashOf(p, init().length);
         }
     }
 
-    override equals_t equals(in void* p1, in void* p2) @trusted pure nothrow const
+    override bool equals(in void* p1, in void* p2) @trusted pure nothrow const
     {
         if (!p1 || !p2)
             return false;
@@ -1084,8 +1087,8 @@ class TypeInfo_Struct : TypeInfo
 
   @safe pure nothrow
   {
-    hash_t   function(in void*)           xtoHash;
-    equals_t function(in void*, in void*) xopEquals;
+    size_t   function(in void*)           xtoHash;
+    bool     function(in void*, in void*) xopEquals;
     int      function(in void*, in void*) xopCmp;
     char[]   function(in void*)           xtoString;
 
@@ -1142,7 +1145,7 @@ class TypeInfo_Tuple : TypeInfo
         return s;
     }
 
-    override equals_t opEquals(Object o)
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -1160,12 +1163,12 @@ class TypeInfo_Tuple : TypeInfo
         return false;
     }
 
-    override hash_t getHash(in void* p) const
+    override size_t getHash(in void* p) const
     {
         assert(0);
     }
 
-    override equals_t equals(in void* p1, in void* p2) const
+    override bool equals(in void* p1, in void* p2) const
     {
         assert(0);
     }
@@ -1213,8 +1216,8 @@ class TypeInfo_Const : TypeInfo
         return cast(string) ("const(" ~ base.toString() ~ ")");
     }
 
-    //override equals_t opEquals(Object o) { return base.opEquals(o); }
-    override equals_t opEquals(Object o)
+    //override bool opEquals(Object o) { return base.opEquals(o); }
+    override bool opEquals(Object o)
     {
         if (this is o)
             return true;
@@ -1226,8 +1229,8 @@ class TypeInfo_Const : TypeInfo
         return base.opEquals(t.base);
     }
 
-    override hash_t getHash(in void *p) const { return base.getHash(p); }
-    override equals_t equals(in void *p1, in void *p2) const { return base.equals(p1, p2); }
+    override size_t getHash(in void *p) const { return base.getHash(p); }
+    override bool equals(in void *p1, in void *p2) const { return base.equals(p1, p2); }
     override int compare(in void *p1, in void *p2) const { return base.compare(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
     override void swap(void *p1, void *p2) const { return base.swap(p1, p2); }
@@ -1236,7 +1239,7 @@ class TypeInfo_Const : TypeInfo
     override @property uint flags() nothrow pure const { return base.flags; }
     override const(void)[] init() nothrow pure const { return base.init(); }
 
-    override @property size_t talign() nothrow pure const { return base.talign(); }
+    override @property size_t talign() nothrow pure const { return base.talign; }
 
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
     {
@@ -1320,6 +1323,17 @@ class MemberInfo_function : MemberInfo
 ///////////////////////////////////////////////////////////////////////////////
 
 
+/**
+ * The base class of all thrown objects.
+ *
+ * All thrown objects must inherit from Throwable. Class $(D Exception), which
+ * derives from this class, represents the category of thrown objects that are
+ * safe to catch and handle. In principle, one should not catch Throwable
+ * objects that are not derived from $(D Exception), as they represent
+ * unrecoverable runtime errors. Certain runtime guarantees may fail to hold
+ * when these errors are thrown, making it unsafe to continue execution after
+ * catching them.
+ */
 class Throwable : Object
 {
     interface TraceInfo
@@ -1329,20 +1343,38 @@ class Throwable : Object
         string toString() const;
     }
 
-    string      msg;
+    string      msg;    /// A message describing the error.
+
+    /**
+     * The _file name and line number of the D source code corresponding with
+     * where the error was thrown from.
+     */
     string      file;
-    size_t      line;
+    size_t      line;   /// ditto
+
+    /**
+     * The stack trace of where the error happened. This is an opaque object
+     * that can either be converted to $(D string), or iterated over with $(D
+     * foreach) to extract the items in the stack trace (as strings).
+     */
     TraceInfo   info;
+
+    /**
+     * A reference to the _next error in the list. This is used when a new
+     * $(D Throwable) is thrown from inside a $(D catch) block. The originally
+     * caught $(D Exception) will be chained to the new $(D Throwable) via this
+     * field.
+     */
     Throwable   next;
 
-    this(string msg, Throwable next = null)
+    @safe pure nothrow this(string msg, Throwable next = null)
     {
         this.msg = msg;
         this.next = next;
         //this.info = _d_traceContext();
     }
 
-    this(string msg, string file, size_t line, Throwable next = null)
+    @safe pure nothrow this(string msg, string file, size_t line, Throwable next = null)
     {
         this(msg, next);
         this.file = file;
@@ -1357,7 +1389,7 @@ class Throwable : Object
 
         if (file)
         {
-           buf ~= this.classinfo.name ~ "@" ~ file ~ "(" ~ tmp.intToString(line) ~ ")";
+           buf ~= this.classinfo.name ~ "@" ~ file ~ "(" ~ tmp.uintToString(line) ~ ")";
         }
         else
         {
@@ -1430,15 +1462,29 @@ extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null)
 }
 
 
+/**
+ * The base class of all errors that are safe to catch and handle.
+ *
+ * In principle, only thrown objects derived from this class are safe to catch
+ * inside a $(D catch) block. Thrown objects not derived from Exception
+ * represent runtime errors that should not be caught, as certain runtime
+ * guarantees may not hold, making it unsafe to continue program execution.
+ */
 class Exception : Throwable
 {
 
-    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    /**
+     * Creates a new instance of Exception. The next parameter is used
+     * internally and should be always be $(D null) when passed by user code.
+     * This constructor does not automatically throw the newly-created
+     * Exception; the $(D throw) statement should be used for that purpose.
+     */
+    @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
         super(msg, file, line, next);
     }
 
-    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    @safe pure nothrow this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line, next);
     }
@@ -1474,13 +1520,13 @@ unittest
 
 class Error : Throwable
 {
-    this(string msg, Throwable next = null)
+    @safe pure nothrow this(string msg, Throwable next = null)
     {
         super(msg, next);
         bypassedException = null;
     }
 
-    this(string msg, string file, size_t line, Throwable next = null)
+    @safe pure nothrow this(string msg, string file, size_t line, Throwable next = null)
     {
         super(msg, file, line, next);
         bypassedException = null;
@@ -2073,6 +2119,7 @@ extern (C)
     int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
     void* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] values);
+    hash_t _aaGetHash(void* aa, const(TypeInfo) tiRaw) nothrow;
 }
 
 struct AssociativeArray(Key, Value)
@@ -2082,9 +2129,13 @@ private:
     struct Slot
     {
         Slot *next;
-        hash_t hash;
+        size_t hash;
         Key key;
-        Value value;
+        version(D_LP64) align(16) Value value; // c.f. rt/aaA.d, aligntsize()
+        else align(4) Value value;
+
+        // Stop creating built-in opAssign
+        @disable void opAssign(Slot);
     }
 
     struct Hashtable
@@ -2279,6 +2330,36 @@ unittest
     assert(a == b);
 }
 
+unittest
+{
+    // test for bug 9052
+    static struct Json {
+        Json[string] aa;
+        void opAssign(Json) {}
+        size_t length() const { return aa.length; }
+        // This length() instantiates AssociativeArray!(string, const(Json)) to call AA.length(), and
+        // inside ref Slot opAssign(Slot p); (which is automatically generated by compiler in Slot),
+        // this.value = p.value would actually fail, because both side types of the assignment
+        // are const(Json).
+    }
+}
+
+unittest
+{
+    // test for bug 8583: ensure Slot and aaA are on the same page wrt value alignment
+    string[byte]    aa0 = [0: "zero"];
+    string[uint[3]] aa1 = [[1,2,3]: "onetwothree"];
+    ushort[uint[3]] aa2 = [[9,8,7]: 987];
+    ushort[uint[4]] aa3 = [[1,2,3,4]: 1234];
+    string[uint[5]] aa4 = [[1,2,3,4,5]: "onetwothreefourfive"];
+
+    assert(aa0.byValue.front == "zero");
+    assert(aa1.byValue.front == "onetwothree");
+    assert(aa2.byValue.front == 987);
+    assert(aa3.byValue.front == 1234);
+    assert(aa4.byValue.front == "onetwothreefourfive");
+}
+
 // Scheduled for deprecation in December 2012.
 // Please use destroy instead of clear.
 alias destroy clear;
@@ -2294,18 +2375,28 @@ void destroy(T)(T obj) if (is(T == class))
     rt_finalize(cast(void*)obj);
 }
 
+void destroy(T)(T obj) if (is(T == interface))
+{
+    destroy(cast(Object)obj);
+}
+
 version(unittest) unittest
 {
+   interface I { }
    {
-       class A { string s = "A"; this() {} }
-       auto a = new A;
-       a.s = "asd";
+       class A: I { string s = "A"; this() {} }
+       auto a = new A, b = new A;
+       a.s = b.s = "asd";
        destroy(a);
        assert(a.s == "A");
+
+       I i = b;
+       destroy(i);
+       assert(b.s == "A");
    }
    {
        static bool destroyed = false;
-       class B
+       class B: I
        {
            string s = "B";
            this() {}
@@ -2314,11 +2405,17 @@ version(unittest) unittest
                destroyed = true;
            }
        }
-       auto a = new B;
-       a.s = "asd";
+       auto a = new B, b = new B;
+       a.s = b.s = "asd";
        destroy(a);
        assert(destroyed);
        assert(a.s == "B");
+
+       destroyed = false;
+       I i = b;
+       destroy(i);
+       assert(destroyed);
+       assert(b.s == "B");
    }
    // this test is invalid now that the default ctor is not run after clearing
    version(none)
@@ -2403,7 +2500,7 @@ version(unittest) unittest
 }
 
 void destroy(T)(ref T obj)
-    if (!is(T == struct) && !is(T == class) && !_isStaticArray!T)
+    if (!is(T == struct) && !is(T == interface) && !is(T == class) && !_isStaticArray!T)
 {
     obj = T.init;
 }

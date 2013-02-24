@@ -27,6 +27,7 @@
 #include "module.h"
 #include "expression.h"
 #include "statement.h"
+#include "template.h"
 
 /********************************* ClassDeclaration ****************************/
 
@@ -308,6 +309,7 @@ void ClassDeclaration::semantic(Scope *sc)
     {
         isdeprecated = true;
     }
+    userAttributes = sc->userAttributes;
 
     if (sc->linkage == LINKcpp)
         error("cannot create C++ classes");
@@ -536,11 +538,12 @@ void ClassDeclaration::semantic(Scope *sc)
          */
         if (vthis)              // if inheriting from nested class
         {   // Use the base class's 'this' member
-            isnested = 1;
+            isnested = true;
             if (storage_class & STCstatic)
                 error("static class cannot inherit from nested class %s", baseClass->toChars());
             if (toParent2() != baseClass->toParent2() &&
                 (!toParent2() ||
+                 !baseClass->toParent2()->getType() ||
                  !baseClass->toParent2()->getType()->isBaseOf(toParent2()->getType(), NULL)))
             {
                 if (toParent2())
@@ -556,7 +559,7 @@ void ClassDeclaration::semantic(Scope *sc)
                         baseClass->toChars(),
                         baseClass->toParent2()->toChars());
                 }
-                isnested = 0;
+                isnested = false;
             }
         }
         else if (!(storage_class & STCstatic))
@@ -568,7 +571,7 @@ void ClassDeclaration::semantic(Scope *sc)
 
 
                 if (ad || fd)
-                {   isnested = 1;
+                {   isnested = true;
                     Type *t;
                     if (ad)
                         t = ad->handle;
@@ -612,14 +615,13 @@ void ClassDeclaration::semantic(Scope *sc)
 
     if (isCOMclass())
     {
-#if _WIN32
-        sc->linkage = LINKwindows;
-#else
-        /* This enables us to use COM objects under Linux and
-         * work with things like XPCOM
-         */
-        sc->linkage = LINKc;
-#endif
+        if (global.params.isWindows)
+            sc->linkage = LINKwindows;
+        else
+            /* This enables us to use COM objects under Linux and
+             * work with things like XPCOM
+             */
+            sc->linkage = LINKc;
     }
     sc->protection = PROTpublic;
     sc->explicitProtection = 0;
@@ -634,6 +636,7 @@ void ClassDeclaration::semantic(Scope *sc)
     {   sc->offset = PTRSIZE * 2;       // allow room for __vptr and __monitor
         alignsize = PTRSIZE;
     }
+    sc->userAttributes = NULL;
     structsize = sc->offset;
     Scope scsave = *sc;
     size_t members_dim = members->dim;
@@ -739,8 +742,9 @@ void ClassDeclaration::semantic(Scope *sc)
     if (!ctor && baseClass && baseClass->ctor)
     {
         //printf("Creating default this(){} for class %s\n", toChars());
-                Type *tf = new TypeFunction(NULL, NULL, 0, LINKd, 0);
+        Type *tf = new TypeFunction(NULL, NULL, 0, LINKd, 0);
         CtorDeclaration *ctor = new CtorDeclaration(loc, 0, 0, tf);
+        ctor->isImplicit = true;
         ctor->fbody = new CompoundStatement(0, new Statements());
         members->push(ctor);
         ctor->addMember(sc, this, 1);
@@ -786,7 +790,14 @@ void ClassDeclaration::semantic(Scope *sc)
     Module::dprogress++;
 
     dtor = buildDtor(sc);
-
+    if (Dsymbol *assign = search_function(this, Id::assign))
+    {
+        if (FuncDeclaration *f = hasIdentityOpAssign(sc, assign))
+        {
+            if (!(f->storage_class & STCdisable))
+                error("identity assignment operator overload is illegal");
+        }
+    }
     sc->pop();
 
 #if 0 // Do not call until toObjfile() because of forward references
@@ -830,13 +841,13 @@ void ClassDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         buf->writenl();
         buf->writeByte('{');
         buf->writenl();
+        buf->level++;
         for (size_t i = 0; i < members->dim; i++)
         {
             Dsymbol *s = (*members)[i];
-
-            buf->writestring("    ");
             s->toCBuffer(buf, hgs);
         }
+        buf->level--;
         buf->writestring("}");
     }
     else
@@ -1286,6 +1297,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
     {
         isdeprecated = true;
     }
+    userAttributes = sc->userAttributes;
 
     // Expand any tuples in baseclasses[]
     for (size_t i = 0; i < baseclasses->dim; )
@@ -1432,6 +1444,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
     sc->explicitProtection = 0;
 //    structalign = sc->structalign;
     sc->offset = PTRSIZE * 2;
+    sc->userAttributes = NULL;
     structsize = sc->offset;
     inuse++;
 
@@ -1481,11 +1494,9 @@ void InterfaceDeclaration::semantic(Scope *sc)
 
 int InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
 {
-    unsigned j;
-
     //printf("%s.InterfaceDeclaration::isBaseOf(cd = '%s')\n", toChars(), cd->toChars());
     assert(!baseClass);
-    for (j = 0; j < cd->interfaces_dim; j++)
+    for (size_t j = 0; j < cd->interfaces_dim; j++)
     {
         BaseClass *b = cd->interfaces[j];
 
@@ -1519,7 +1530,7 @@ int InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
 int InterfaceDeclaration::isBaseOf(BaseClass *bc, int *poffset)
 {
     //printf("%s.InterfaceDeclaration::isBaseOf(bc = '%s')\n", toChars(), bc->base->toChars());
-    for (unsigned j = 0; j < bc->baseInterfaces_dim; j++)
+    for (size_t j = 0; j < bc->baseInterfaces_dim; j++)
     {
         BaseClass *b = &bc->baseInterfaces[j];
 
@@ -1645,6 +1656,7 @@ int BaseClass::fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newins
         assert(ifd);
         // Find corresponding function in this class
         tf = (ifd->type->ty == Tfunction) ? (TypeFunction *)(ifd->type) : NULL;
+        assert(tf);  // should always be non-null
         fd = cd->findFunc(ifd->ident, tf);
         if (fd && !fd->isAbstract())
         {
@@ -1668,8 +1680,10 @@ int BaseClass::fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newins
             //printf("            not found\n");
             // BUG: should mark this class as abstract?
             if (!cd->isAbstract())
-                cd->error("interface function %s.%s isn't implemented",
-                    id->toChars(), ifd->ident->toChars());
+                cd->error("interface function %s.%s%s isn't implemented",
+                    id->toChars(), ifd->ident->toChars(),
+                    Parameter::argsTypesToChars(tf->parameters, tf->varargs));
+
             fd = NULL;
         }
         if (vtbl)
@@ -1689,7 +1703,7 @@ void BaseClass::copyBaseInterfaces(BaseClasses *vtblInterfaces)
     baseInterfaces = (BaseClass *)mem.calloc(baseInterfaces_dim, sizeof(BaseClass));
 
     //printf("%s.copyBaseInterfaces()\n", base->toChars());
-    for (int i = 0; i < baseInterfaces_dim; i++)
+    for (size_t i = 0; i < baseInterfaces_dim; i++)
     {
         BaseClass *b = &baseInterfaces[i];
         BaseClass *b2 = base->interfaces[i];

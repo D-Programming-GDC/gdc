@@ -18,15 +18,13 @@
 #ifndef DMD_SYMBOL_H
 #define DMD_SYMBOL_H
 
-#include "root.h"
-#include "d-gcc-tree.h"
-#include "mtype.h"
+extern "C" {
+#include "config.h"
+#include "coretypes.h"
+} //extern "C"
 
-enum TypeType
-{
-  TYnptr = 0x001,
-  TYjfunc = 0x010,
-};
+#include "root.h"
+#include "mtype.h"
 
 enum SymbolStorageClass
 {

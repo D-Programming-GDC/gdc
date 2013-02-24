@@ -64,11 +64,19 @@ typedef ArrayBase<struct CompoundStatement> CompoundStatements;
 
 typedef ArrayBase<struct GotoCaseStatement> GotoCaseStatements;
 
+typedef ArrayBase<struct ReturnStatement> ReturnStatements;
+
 typedef ArrayBase<struct TemplateInstance> TemplateInstances;
 
 //typedef ArrayBase<char> Strings;
 
 typedef ArrayBase<void> Voids;
+
+#ifdef IN_GCC
+typedef ArrayBase<struct Label> Blocks;
+#else
+typedef ArrayBase<struct block> Blocks;
+#endif
 
 typedef ArrayBase<struct Symbol> Symbols;
 

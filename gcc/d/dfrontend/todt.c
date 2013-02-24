@@ -358,7 +358,7 @@ dt_t *ArrayInitializer::toDt()
             d = NULL;
             if (tb->ty == Tarray)
                 dtsize_t(&d, dim);
-            dtxoff(&d, s, 0, TYnptr);
+            dtxoff(&d, s, 0);
 #ifdef IN_GCC
             dt_t * cdt;
             cdt = NULL;
@@ -375,124 +375,6 @@ dt_t *ArrayInitializer::toDt()
             assert(0);
     }
     return d;
-}
-
-
-dt_t *ArrayInitializer::toDtBit()
-{
-#if DMDV1
-    unsigned size;
-    unsigned length;
-    unsigned tadim;
-    dt_t *d;
-    dt_t **pdtend;
-    Type *tb = type->toBasetype();
-
-    //printf("ArrayInitializer::toDtBit('%s')\n", toChars());
-
-    Bits databits;
-    Bits initbits;
-
-    if (tb->ty == Tsarray)
-    {
-        /* The 'dim' for ArrayInitializer is only the maximum dimension
-         * seen in the initializer, not the type. So, for static arrays,
-         * use instead the dimension of the type in order
-         * to get the whole thing.
-         */
-        dinteger_t value = ((TypeSArray*)tb)->dim->toInteger();
-        tadim = value;
-        assert(tadim == value);  // truncation overflow should already be checked
-        databits.resize(tadim);
-        initbits.resize(tadim);
-    }
-    else
-    {
-        databits.resize(dim);
-        initbits.resize(dim);
-    }
-
-    /* The default initializer may be something other than zero.
-     */
-    if (tb->nextOf()->defaultInit()->toInteger())
-       databits.set();
-
-    size = sizeof(databits[0]);
-
-    length = 0;
-    for (size_t i = 0; i < index.dim; i++)
-    {   Expression *idx;
-        Initializer *val;
-        Expression *eval;
-
-        idx = index[i];
-        if (idx)
-        {   dinteger_t value;
-            value = idx->toInteger();
-            length = value;
-            if (length != value)
-            {   error(loc, "index overflow %llu", value);
-                length = 0;
-            }
-        }
-        assert(length < dim);
-
-        val = value[i];
-        eval = val->toExpression();
-        if (initbits.test(length))
-            error(loc, "duplicate initializations for index %d", length);
-        initbits.set(length);
-        if (eval->toInteger())          // any non-zero value is boolean 'true'
-            databits.set(length);
-        else
-            databits.clear(length);     // boolean 'false'
-        length++;
-    }
-
-    d = NULL;
-#ifdef IN_GCC
-    pdtend = dtnbits(&d, databits.allocdim * size, (char *)databits.data, sizeof(databits.tdata()[0]));
-#else
-    pdtend = dtnbytes(&d, databits.allocdim * size, (char *)databits.data);
-#endif
-    switch (tb->ty)
-    {
-        case Tsarray:
-        {
-            if (dim > tadim)
-            {
-                error(loc, "too many initializers, %d, for array[%d]", dim, tadim);
-            }
-            else
-            {
-                tadim = (tadim + 31) / 32;
-                if (databits.allocdim < tadim)
-                    pdtend = dtnzeros(pdtend, size * (tadim - databits.allocdim));      // pad out end of array
-            }
-            break;
-        }
-
-        case Tpointer:
-        case Tarray:
-            // Create symbol, and then refer to it
-            Symbol *s;
-            s = static_sym();
-            s->Sdt = d;
-            outdata(s);
-
-            d = NULL;
-            if (tb->ty == Tarray)
-                dtsize_t(&d, dim);
-            dtxoff(&d, s, 0, TYnptr);
-            break;
-
-        default:
-            assert(0);
-    }
-    return d;
-#else
-    return NULL;
-#endif
 }
 
 
@@ -636,7 +518,7 @@ dt_t **StringExp::toDt(dt_t **pdt)
             dtawords(&adt, len + 1, string, sz);
             dtcontainer(pdt, type, adt);
 #else
-            dtabytes(&adt, TYnptr, 0, (len + 1) * sz, (char *)string);
+            dtabytes(&adt, 0, 0, (len + 1) * sz, (char *)string);
             dtcat(pdt, adt);
 #endif
             
@@ -666,7 +548,7 @@ dt_t **StringExp::toDt(dt_t **pdt)
 #ifdef IN_GCC
             pdt = dtawords(pdt, len + 1, string, sz);
 #else
-            pdt = dtabytes(pdt, TYnptr, 0, (len + 1) * sz, (char *)string);
+            pdt = dtabytes(pdt, 0, 0, (len + 1) * sz, (char *)string);
 #endif
             break;
 
@@ -717,7 +599,7 @@ dt_t **ArrayLiteralExp::toDt(dt_t **pdt)
                 s->Sdt = d;
                 outdata(s);
 
-                dtxoff(&adt, s, 0, TYnptr);
+                dtxoff(&adt, s, 0);
             }
             else
                 dtsize_t(&adt, 0);
@@ -876,7 +758,7 @@ dt_t **SymOffExp::toDt(dt_t **pdt)
         return pdt;
     }
     s = var->toSymbol();
-    return dtxoff(pdt, s, offset, TYnptr);
+    return dtxoff(pdt, s, offset);
 }
 
 dt_t **VarExp::toDt(dt_t **pdt)
@@ -927,7 +809,7 @@ dt_t **FuncExp::toDt(dt_t **pdt)
         return NULL;
     }
     fd->toObjFile(0);
-    return dtxoff(pdt, s, 0, TYnptr);
+    return dtxoff(pdt, s, 0);
 }
 
 dt_t **VectorExp::toDt(dt_t **pdt)
@@ -957,7 +839,7 @@ void ClassDeclaration::toDt(dt_t **pdt)
     //printf("ClassDeclaration::toDt(this = '%s')\n", toChars());
 
     // Put in first two members, the vtbl[] and the monitor
-    dtxoff(pdt, toVtblSymbol(), 0, TYnptr);
+    dtxoff(pdt, toVtblSymbol(), 0);
     dtsize_t(pdt, 0);                    // monitor
 
     // Put in the rest
@@ -1040,14 +922,14 @@ void ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
             {
                 if (offset < b->offset)
                     dtnzeros(pdt, b->offset - offset);
-                dtxoff(pdt, cd2->toSymbol(), csymoffset, TYnptr);
+                dtxoff(pdt, cd2->toSymbol(), csymoffset);
                 break;
             }
         }
 #else
         csymoffset = baseVtblOffset(b);
         assert(csymoffset != ~0);
-        dtxoff(pdt, csym, csymoffset, TYnptr);
+        dtxoff(pdt, csym, csymoffset);
 #endif
         offset = b->offset + PTRSIZE;
     }

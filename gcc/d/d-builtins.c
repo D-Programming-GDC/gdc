@@ -365,10 +365,10 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
   Identifier *id_arg = Lexer::idPool ("va_arg");
   Identifier *id_start = Lexer::idPool ("va_start");
 
-  AttribDeclaration *ad = NULL;
-  TemplateDeclaration *td = NULL;
+  AttribDeclaration *ad = m->isAttribDeclaration();
+  TemplateDeclaration *td = m->isTemplateDeclaration();
 
-  if ((ad = m->isAttribDeclaration()))
+  if (ad != NULL)
     {
       // Recursively search through attribute decls
       Dsymbols *decl = ad->include (NULL, NULL);
@@ -381,7 +381,7 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
 	    }
 	}
     }
-  else if ((td = m->isTemplateDeclaration()))
+  else if (td != NULL)
     {
       if (td->ident == id_arg)
 	{
@@ -568,10 +568,10 @@ d_gcc_magic_builtins_module (Module *m)
 static void
 d_gcc_magic_libbuiltins_check (Dsymbol *m)
 {
-  AttribDeclaration *ad = NULL;
-  FuncDeclaration *fd = NULL;
+  AttribDeclaration *ad = m->isAttribDeclaration();
+  FuncDeclaration *fd = m->isFuncDeclaration();
 
-  if ((ad = m->isAttribDeclaration()))
+  if (ad != NULL)
     {
       // Recursively search through attribute decls
       Dsymbols *decl = ad->include (NULL, NULL);
@@ -584,7 +584,7 @@ d_gcc_magic_libbuiltins_check (Dsymbol *m)
 	    }
 	}
     }
-  else if ((fd = m->isFuncDeclaration()) && !fd->fbody)
+  else if (fd && !fd->fbody)
     {
       for (tree n = bi_lib_list.head; n; n = TREE_CHAIN (n))
 	{
@@ -891,6 +891,28 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
     }
 }
 
+Expression *
+d_gcc_paint_type (Expression *expr, Type *type)
+{
+  /* We support up to 512-bit values.  */
+  unsigned char buffer[64];
+  int len;
+  Expression *e;
+  tree cst;
+
+  if (type->isintegral())
+    cst = IRState::floatConstant (expr->toReal(), expr->type);
+  else
+    cst = IRState::integerConstant (expr->toInteger(), expr->type);
+
+  len = native_encode_expr (cst, buffer, sizeof (buffer));
+  cst = native_interpret_expr (type->toCtype(), buffer, len);
+
+  e = gcc_cst_to_d_expr (cst);
+  gcc_assert (e != NULL);
+
+  return e;
+}
 
 /* Used to help initialize the builtin-types.def table.  When a type of
    the correct size doesn't exist, use error_mark_node instead of NULL.

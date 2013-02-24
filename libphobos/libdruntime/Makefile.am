@@ -64,16 +64,17 @@ RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/memory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
 	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o rt/tlsgc.o
 
-CORE_OBJS=core/atomic.o core/cpuid.o core/demangle.o core/exception.o \
-	  core/math.o core/memory.o core/runtime.o core/simd.o \
-	  core/thread.o core/time.o core/vararg.o core/sync/barrier.o \
-	  core/sync/condition.o core/sync/config.o core/sync/exception.o \
-	  core/sync/mutex.o core/sync/rwmutex.o core/sync/semaphore.o
+CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
+	  core/exception.o core/math.o core/memory.o core/runtime.o \
+	  core/simd.o core/thread.o core/time.o core/vararg.o \
+	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
+	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
+	  core/sync/semaphore.o
 
 GCC_OBJS=gcc/atomics.o gcc/builtins.o gcc/deh.o gcc/unwind_pe.o
 
-UTIL_OBJS=rt/util/console.o rt/util/hash.o rt/util/string.o \
-	  rt/util/utf.o
+UTIL_OBJS=rt/util/console.o rt/util/container.o rt/util/hash.o \
+	  rt/util/string.o rt/util/utf.o
 
 TI=ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
    ti_Ag.o ti_Aint.o ti_Along.o ti_Areal.o ti_Ashort.o ti_byte.o ti_C.o \
@@ -87,7 +88,6 @@ DRUNTIME_OBJS=@DRUNTIME_OBJS@
 DRUNTIME_OBJS+=$(BASE_OBJS) $(RUNTIME_OBJS) $(UTIL_OBJS) \
 	       $(subst ti_,rt/typeinfo/ti_,$(TI))
 
-
 # OS specific
 RT_STDC_OBJS=core/stdc/config.o core/stdc/ctype.o core/stdc/errno.o \
 	     core/stdc/errno_.o core/stdc/math.o core/stdc/signal.o \
@@ -95,14 +95,18 @@ RT_STDC_OBJS=core/stdc/config.o core/stdc/ctype.o core/stdc/errno.o \
 	     core/stdc/stdint.o core/stdc/stddef.o core/stdc/string.o \
 	     core/stdc/time.o core/stdc/wchar_.o
 
+RT_FREEBSD_OBJS=core/sys/freebsd/execinfo.o core/sys/freebsd/sys/event.o
+
 RT_OSX_OBJS=core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
 	    core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o \
 	    core/sys/osx/pthread.o
 
-RT_POSIX_OBJS=core/sys/posix/netinet/in_.o core/sys/posix/sys/select.o \
-	      core/sys/posix/sys/socket.o core/sys/posix/sys/stat.o \
-	      core/sys/posix/sys/wait.o core/sys/posix/sys/un.o \
-	      core/sys/posix/sys/utsname.o core/sys/posix/netdb.o
+RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
+	      core/sys/posix/signal.o core/sys/posix/sys/ioctl.o \
+	      core/sys/posix/sys/select.o core/sys/posix/sys/socket.o \
+	      core/sys/posix/sys/stat.o core/sys/posix/sys/wait.o \
+	      core/sys/posix/sys/un.o core/sys/posix/sys/utsname.o \
+	      core/sys/posix/sys/utsname.o core/sys/posix/netinet/in_.o
 
 RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
@@ -130,28 +134,36 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sync/exception.di core/sync/mutex.di core/sync/rwmutex.di \
 	     core/sync/semaphore.di \
 	     \
+	     core/sys/freebsd/dlfcn.di core/sys/freebsd/execinfo.di \
 	     core/sys/freebsd/sys/event.di \
 	     \
-	     core/sys/osx/mach/dyld.di core/sys/osx/mach/getsect.di \
-	     core/sys/osx/mach/kern_return.di core/sys/osx/mach/loader.di \
-	     core/sys/osx/mach/port.di core/sys/osx/mach/semaphore.di \
-	     core/sys/osx/mach/thread_act.di core/sys/osx/pthread.di \
+	     core/sys/linux/elf.di core/sys/linux/epoll.di \
+	     core/sys/linux/execinfo.di core/sys/linux/sys/signalfd.di \
+	     core/sys/linux/sys/xattr.di \
+	     \
+	     core/sys/osx/execinfo.di core/sys/osx/mach/dyld.di \
+	     core/sys/osx/mach/getsect.di core/sys/osx/mach/kern_return.di \
+	     core/sys/osx/mach/loader.di core/sys/osx/mach/port.di \
+	     core/sys/osx/mach/semaphore.di core/sys/osx/mach/thread_act.di \
+	     core/sys/osx/pthread.di \
 	     \
 	     core/sys/posix/arpa/inet.di core/sys/posix/config.di \
 	     core/sys/posix/dirent.di core/sys/posix/dlfcn.di \
-	     core/sys/posix/fcntl.di core/sys/posix/inttypes.di \
-	     core/sys/posix/netdb.di core/sys/posix/poll.di \
-	     core/sys/posix/pthread.di core/sys/posix/pwd.di \
-	     core/sys/posix/sched.di core/sys/posix/semaphore.di \
-	     core/sys/posix/setjmp.di core/sys/posix/signal.di \
-	     core/sys/posix/stdio.di core/sys/posix/stdlib.di \
-	     core/sys/posix/termios.di core/sys/posix/time.di \
-	     core/sys/posix/ucontext.di core/sys/posix/unistd.di \
-	     core/sys/posix/utime.di core/sys/posix/net/if_.di \
-	     core/sys/posix/netinet/in_.di core/sys/posix/netinet/tcp.di \
-	     core/sys/posix/sys/ipc.di core/sys/posix/sys/mman.di \
-	     core/sys/posix/sys/select.di core/sys/posix/sys/shm.di \
-	     core/sys/posix/sys/socket.di core/sys/posix/sys/stat.di \
+	     core/sys/posix/fcntl.di core/sys/posix/grp.di \
+	     core/sys/posix/inttypes.di core/sys/posix/netdb.di \
+	     core/sys/posix/poll.di core/sys/posix/pthread.di \
+	     core/sys/posix/pwd.di core/sys/posix/sched.di \
+	     core/sys/posix/semaphore.di core/sys/posix/setjmp.di \
+	     core/sys/posix/signal.di core/sys/posix/stdio.di \
+	     core/sys/posix/stdlib.di core/sys/posix/termios.di \
+	     core/sys/posix/time.di core/sys/posix/ucontext.di \
+	     core/sys/posix/unistd.di core/sys/posix/utime.di \
+	     core/sys/posix/net/if_.di core/sys/posix/netinet/in_.di \
+	     core/sys/posix/netinet/tcp.di \
+	     core/sys/posix/sys/ioctl.di core/sys/posix/sys/ipc.di \
+	     core/sys/posix/sys/mman.di core/sys/posix/sys/select.di \
+	     core/sys/posix/sys/shm.di core/sys/posix/sys/socket.di \
+	     core/sys/posix/sys/stat.di core/sys/posix/sys/statvfs.di \
 	     core/sys/posix/sys/time.di core/sys/posix/sys/types.di \
 	     core/sys/posix/sys/uio.di core/sys/posix/sys/un.di \
 	     core/sys/posix/sys/utsname.di core/sys/posix/sys/wait.di \

@@ -337,7 +337,8 @@ class Thread
      *
      * ------------------------------------------------------------------------
      */
-    deprecated static void sleep( long period );
+    deprecated("Please use the overload of sleep which takes a Duration.")
+    static void sleep( long period );
 
 
     /**
@@ -422,6 +423,7 @@ private:
     {
         version (Windows)      enum ThreadSize = 312;
         else version (OSX)     enum ThreadSize = 320;
+        else version (Solaris) enum ThreadSize = 176;
         else version (Posix)   enum ThreadSize = 184;
         else static assert(0, "Platform not supported.");
     }

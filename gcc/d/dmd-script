@@ -112,7 +112,9 @@ Usage:
   -D             generate documentation
   -Dddocdir      write documentation file to docdir directory
   -Dffilename    write documentation file to filename
-  -d             allow deprecated features
+  -d             silently allow deprecated features
+  -dw            show use of deprecated features as warnings (default)
+  -de            show use of deprecated features as errors (halt compilation)
   -debug         compile in debug code
   -debug=level   compile in debug code <= level
   -debug=ident   compile in debug code identified by ident
@@ -125,6 +127,7 @@ Usage:
   -g             add symbolic debug info
   -gc            add symbolic debug info, pretend to be C
   -gs            always emit stack frame
+  -gx            add stack stomp code
   -H             generate 'header' file
   -Hdhdrdir      write 'header' file to hdrdir directory
   -Hffilename    write 'header' file to filename
@@ -139,7 +142,6 @@ Usage:
   -man           open web browser on manual page
   -map           generate linker .map file
   -noboundscheck turns off array bounds checking for all functions
-  -nofloat       do not emit reference to floating point
   -O             optimize
   -o-            do not write object file
   -odobjdir      write object files to directory objdir
@@ -391,8 +393,6 @@ while ( $arg_i < scalar(@ARGV) ) {
         $output_file = $1;
     } elsif ( $arg =~ m/^-op$/ ) {
         $output_parents = 1;
-    } elsif ( $arg =~ m/^-nofloat$/ ) {
-        # do nothing
     } elsif ( $arg =~ m/^-pipe$/ ) {
         push @out, '-pipe';
     } elsif ( $arg =~ m/^-profile$/ ) {

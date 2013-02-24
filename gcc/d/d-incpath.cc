@@ -210,7 +210,7 @@ add_import_paths (bool stdinc)
 
 void add_phobos_versyms (void)
 {
-  char *path = FileName::searchPath (global.path, "phobos-ver-syms", 1);
+  const char *path = FileName::searchPath (global.path, "phobos-ver-syms", 1);
   if (path)
     {
       FILE *f = fopen (path, "r");
