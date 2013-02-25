@@ -926,29 +926,30 @@ IRState::attributes (Expressions *in_attrs)
 {
   if (!in_attrs)
     return NULL_TREE;
-
+  
+  expandTuples(in_attrs);
+  
   ListMaker out_attrs;
 
   for (size_t i = 0; i < in_attrs->dim; i++)
     {
-      Expression *e = in_attrs->tdata()[i];
-      IdentifierExp *ident_e = NULL;
+      Expression *attr = in_attrs->tdata()[i]->ctfeInterpret();
+
+      Dsymbol *mod = (Dsymbol*) attr->type->toDsymbol(0)->getModule();  
+      if (!(strcmp(mod->toChars(), "attribute") == 0
+          && mod->parent 
+          && strcmp(mod->parent->toChars(), "gcc") == 0
+          && !mod->parent->parent))
+        continue;
+
+      gcc_assert(attr->op == TOKstructliteral);
+      Expressions *elem = ((StructLiteralExp*) attr)->elements;
 
       ListMaker args;
-
-      if (e->op == TOKidentifier)
-	ident_e = (IdentifierExp *) e;
-      else if (e->op == TOKcall)
-	{
-	  CallExp *c = (CallExp *) e;
-	  gcc_assert (c->e1->op == TOKidentifier);
-	  ident_e = (IdentifierExp *) c->e1;
-
-	  if (c->arguments)
-	    {
-	      for (size_t ai = 0; ai < c->arguments->dim; ai++)
-		{
-		  Expression *ae = c->arguments->tdata()[ai];
+      
+      for(size_t j = 1; j < elem->dim; j++)
+        {
+		  Expression *ae = elem->tdata()[j];
 		  tree aet;
 		  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
 		    {
@@ -958,15 +959,12 @@ IRState::attributes (Expressions *in_attrs)
 		  else
 		    aet = ae->toElem (&gen);
 		  args.cons (aet);
-		}
-	    }
-	}
-      else
-	{
-	  gcc_unreachable();
-	  continue;
-	}
-      out_attrs.cons (get_identifier (ident_e->ident->string), args.head);
+        }
+
+      gcc_assert(elem->tdata()[0]->op == TOKstring);
+      StringExp *name = (StringExp*) elem->tdata()[0];
+      gcc_assert(name->sz == 1);
+      out_attrs.cons (get_identifier ((const char*) name->string), args.head);
     }
 
   return out_attrs.head;
