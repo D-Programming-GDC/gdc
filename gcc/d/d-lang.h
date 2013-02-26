@@ -209,7 +209,7 @@ void set_block (tree);
 tree getdecls (void);
 
 /* In d-builtins.c */
-extern const struct attribute_spec d_attribute_table[];
+extern const struct attribute_spec d_builtins_attribute_table[];
 extern const struct attribute_spec d_format_attribute_table[];
 tree d_builtin_function (tree);
 void d_init_builtins (void);

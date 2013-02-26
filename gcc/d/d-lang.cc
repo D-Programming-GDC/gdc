@@ -41,6 +41,10 @@
 
 static char lang_name[6] = "GNU D";
 
+const struct attribute_spec d_attribute_table[] = { 
+  { NULL,                     0, 0, false, false, false, NULL, false }
+};
+
 /* Lang Hooks */
 #undef LANG_HOOKS_NAME
 #undef LANG_HOOKS_INIT
@@ -52,6 +56,7 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_HANDLE_OPTION
 #undef LANG_HOOKS_POST_OPTIONS
 #undef LANG_HOOKS_PARSE_FILE
+#undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
@@ -73,7 +78,8 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_HANDLE_OPTION		d_handle_option
 #define LANG_HOOKS_POST_OPTIONS			d_post_options
 #define LANG_HOOKS_PARSE_FILE			d_parse_file
-#define LANG_HOOKS_ATTRIBUTE_TABLE		d_attribute_table
+#define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE       d_builtins_attribute_table
+#define LANG_HOOKS_ATTRIBUTE_TABLE              d_attribute_table
 #define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE	d_format_attribute_table
 #define LANG_HOOKS_TYPES_COMPATIBLE_P		d_types_compatible_p
 #define LANG_HOOKS_BUILTIN_FUNCTION		d_builtin_function
