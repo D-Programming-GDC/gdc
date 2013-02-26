@@ -41,7 +41,8 @@
 
 static char lang_name[6] = "GNU D";
 
-const struct attribute_spec d_attribute_table[] = { 
+const struct attribute_spec d_attribute_table[] = 
+{ 
   { NULL,                     0, 0, false, false, false, NULL, false }
 };
 

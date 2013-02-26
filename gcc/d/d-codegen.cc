@@ -921,6 +921,15 @@ IRState::addDeclAttribute (tree decl, const char *attrname, tree value)
 
 // Return chain of all GCC attributes found in list IN_ATTRS.
 
+bool is_d_attribute(const char* name)
+{
+  for (const attribute_spec *p = d_attribute_table; p->name; p++)
+    if(strcmp(p->name, name) == 0)
+      return true;
+
+  return false;
+}
+
 tree
 IRState::attributes (Expressions *in_attrs)
 {
@@ -945,26 +954,34 @@ IRState::attributes (Expressions *in_attrs)
       gcc_assert(attr->op == TOKstructliteral);
       Expressions *elem = ((StructLiteralExp*) attr)->elements;
 
+      gcc_assert(elem->tdata()[0]->op == TOKstring);
+      StringExp *nameExp = (StringExp*) elem->tdata()[0];
+      gcc_assert(nameExp->sz == 1);
+      const char* name = (const char*) nameExp->string;
+
+      if (!is_d_attribute (name))
+      {
+        error ("unknown attribute %s", name);
+        return error_mark_node;
+      }
+
       ListMaker args;
       
-      for(size_t j = 1; j < elem->dim; j++)
+      for (size_t j = 1; j < elem->dim; j++)
         {
-		  Expression *ae = elem->tdata()[j];
-		  tree aet;
-		  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
-		    {
-		      StringExp *s = (StringExp *) ae;
-		      aet = build_string (s->len, (const char *) s->string);
-		    }
-		  else
-		    aet = ae->toElem (&gen);
-		  args.cons (aet);
+	  Expression *ae = elem->tdata()[j];
+	  tree aet;
+	  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
+	    {
+	      StringExp *s = (StringExp *) ae;
+	      aet = build_string (s->len, (const char *) s->string);
+	    }
+	  else
+	    aet = ae->toElem (&gen);
+	  args.cons (aet);
         }
 
-      gcc_assert(elem->tdata()[0]->op == TOKstring);
-      StringExp *name = (StringExp*) elem->tdata()[0];
-      gcc_assert(name->sz == 1);
-      out_attrs.cons (get_identifier ((const char*) name->string), args.head);
+      out_attrs.cons (get_identifier (name), args.head);
     }
 
   return out_attrs.head;
