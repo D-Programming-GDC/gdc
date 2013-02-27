@@ -263,7 +263,7 @@ Module *Module::load(Loc loc, Identifiers *packages, Identifier *ident)
         {
             for (size_t i = 0; i < packages->dim; i++)
             {   Identifier *pid = (*packages)[i];
-                printf("%s.", pid->toChars());
+                fprintf(stdmsg, "%s.", pid->toChars());
             }
         }
         fprintf(stdmsg, "%s\t(%s)\n", ident->toChars(), m->srcfile->toChars());

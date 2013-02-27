@@ -106,72 +106,6 @@ Dsymbol::toImport (Symbol *)
 }
 
 
-// When compiling multiple sources at once, there may be name collisions
-// on compiler-generated or extern (C) symbols. This only should only
-// apply to private symbols.  Otherwise, duplicate names are an error.
-
-static StringTable *uniqueNames = NULL;
-
-static void
-uniqueName (Declaration *d, tree t, const char *asm_name)
-{
-  Dsymbol *p = d->toParent2();
-  const char *out_name = asm_name;
-  char *alloc_name;
-
-  FuncDeclaration *f = d->isFuncDeclaration();
-  VarDeclaration *v = d->isVarDeclaration();
-
-  // Check cases for which it is okay to have a duplicate symbol name.
-  // Otherwise, duplicate names are an error and the condition will
-  // be caught by the assembler.
-  bool duplicate_ok = false;
-
-  if (f && !f->fbody)
-    duplicate_ok = false;
-  else if (v && (v->storage_class & STCextern))
-    duplicate_ok = false;
-  // Static declarations in different scope statements.
-  else if (p && p->isFuncDeclaration())
-    duplicate_ok = true;
-  //  Top-level duplicate names are okay if private.
-  else if ((!p || p->isModule()) && d->protection == PROTprivate)
-    duplicate_ok = true;
-
-  if (duplicate_ok)
-    {
-      StringValue *sv;
-
-      // Assumes one assembler output file per compiler run.  Otherwise, need
-      // to reset this for each file.
-      if (!uniqueNames)
-	{
-	  uniqueNames = new StringTable;
-	  uniqueNames->init();
-	}
-      sv = uniqueNames->update (asm_name, strlen (asm_name));
-
-      if (sv->intvalue)
-	{
-	  ASM_FORMAT_PRIVATE_NAME (alloc_name, asm_name, sv->intvalue);
-	  out_name = alloc_name;
-	}
-      sv->intvalue++;
-    }
-
-  /* It is now the job of the front-end to ensure decls get mangled for their target.
-     We'll only allow FUNCTION_DECLs and VAR_DECLs for variables with static storage duration
-     to get a mangled DECL_ASSEMBLER_NAME. And the backend should handle the rest. */
-  tree id;
-  if (f || (v && (v->protection == PROTpublic || v->storage_class & (STCstatic | STCextern))))
-    id = targetm.mangle_decl_assembler_name (t, get_identifier (out_name));
-  else
-    id = get_identifier (out_name);
-
-  SET_DECL_ASSEMBLER_NAME (t, id);
-}
-
-
 // Create the symbol with VAR_DECL tree for static variables.
 
 Symbol *
@@ -219,7 +153,12 @@ VarDeclaration::toSymbol (void)
       if (decl_kind != CONST_DECL)
 	{
 	  if (isDataseg())
-	    uniqueName (this, var_decl, csym->Sident);
+	    {
+	      tree id = get_identifier (csym->Sident);
+	      if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
+		id = targetm.mangle_decl_assembler_name (var_decl, id);
+	      SET_DECL_ASSEMBLER_NAME (var_decl, id);
+	    }
 	  if (c_ident)
 	    SET_DECL_ASSEMBLER_NAME (var_decl, get_identifier (c_ident->string));
 	}
@@ -458,7 +397,9 @@ FuncDeclaration::toSymbol (void)
 	    {
 	      csym->Sident = mangle(); // save for making thunks
 	      csym->prettyIdent = toPrettyChars();
-	      uniqueName (this, fndecl, csym->Sident);
+	      tree id = get_identifier (csym->Sident);
+	      id = targetm.mangle_decl_assembler_name (fndecl, id);
+	      SET_DECL_ASSEMBLER_NAME (fndecl, id);
 	    }
 	  if (c_ident)
 	    SET_DECL_ASSEMBLER_NAME (fndecl, get_identifier (c_ident->string));

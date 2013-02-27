@@ -85,7 +85,7 @@ void json_generate(OutBuffer *buf, Modules *modules)
     for (size_t i = 0; i < modules->dim; i++)
     {   Module *m = (*modules)[i];
         if (global.params.verbose)
-            printf("json gen %s\n", m->toChars());
+            fprintf(stdmsg, "json gen %s\n", m->toChars());
         m->toJson(&json);
     }
     json.arrayEnd();

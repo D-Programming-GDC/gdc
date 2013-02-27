@@ -25,7 +25,7 @@ struct StringEntry;
 struct StringValue
 {
     union
-    {   size_t intvalue;
+    {
         void *ptrvalue;
         char *string;
     };

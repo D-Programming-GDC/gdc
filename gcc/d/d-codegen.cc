@@ -4647,7 +4647,8 @@ AggLayout::finish (Expressions *attrs)
 ArrayScope::ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc) :
   var_(ini_v)
 {
-  if (this->var_)
+  /* If STCconst, the temp var is not required.  */
+  if (this->var_ && !(this->var_->storage_class & STCconst))
     {
       /* Need to set the location or the expand_decl in the BIND_EXPR will
 	 cause the line numbering for the statement to be incorrect. */
@@ -4657,6 +4658,8 @@ ArrayScope::ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc) :
       tree decl = s->Stree;
       DECL_CONTEXT (decl) = irs->getLocalContext();
     }
+  else
+    this->var_ = NULL;
 }
 
 // Set index expression E of type T as the initialiser for
@@ -4665,9 +4668,7 @@ ArrayScope::ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc) :
 tree
 ArrayScope::setArrayExp (IRState *irs, tree e, Type *t)
 {
-  /* If STCconst, the value will be assigned in d-decls.cc
-     of the runtime length of the array expression. */
-  if (this->var_ && !(this->var_->storage_class & STCconst))
+  if (this->var_)
     {
       tree v = this->var_->toSymbol()->Stree;
       if (t->toBasetype()->ty != Tsarray)
