@@ -919,16 +919,30 @@ IRState::addDeclAttribute (tree decl, const char *attrname, tree value)
   DECL_ATTRIBUTES (decl) = tree_cons (ident, value, DECL_ATTRIBUTES (decl));
 }
 
-// Return chain of all GCC attributes found in list IN_ATTRS.
-
-bool is_d_attribute(const char* name)
+bool d_attribute_p(const char* name)
 {
-  for (const attribute_spec *p = d_attribute_table; p->name; p++)
-    if(strcmp(p->name, name) == 0)
-      return true;
+  static StringTable* table;
 
-  return false;
+  if(!table)
+    {
+      size_t n = 0;
+      for (const attribute_spec *p = d_attribute_table; p->name; p++)
+        n++;
+      
+      if(n == 0)
+        return false;
+
+      table = new StringTable();
+      table->init(n);
+    
+      for (const attribute_spec *p = d_attribute_table; p->name; p++)
+        table->insert(p->name, strlen(p->name));
+    }
+
+  return table->lookup(name, strlen(name)) != NULL;
 }
+
+// Return chain of all GCC attributes found in list IN_ATTRS.
 
 tree
 IRState::attributes (Expressions *in_attrs)
@@ -959,7 +973,7 @@ IRState::attributes (Expressions *in_attrs)
       gcc_assert(nameExp->sz == 1);
       const char* name = (const char*) nameExp->string;
 
-      if (!is_d_attribute (name))
+      if (!d_attribute_p (name))
       {
         error ("unknown attribute %s", name);
         return error_mark_node;

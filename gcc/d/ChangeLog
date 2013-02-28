@@ -1,3 +1,16 @@
+2013-02-28 Jernej Krempus <jkrempus@gmail.com>
+	* d-builtins.c(d_attribute_table): renamed it to
+	d_builtins_attribute_table.
+	* d-lang.cc(d_attribute_table): Added an empty table	
+	* d-lang.cc(LANG_HOOKS_COMMON_ATTRIBUTE_TABLE): defined it as
+	d_builtins_attribute_table
+	* d-lang.h(d_builtins_attribute_table): added a declaration
+	* d-codegen.cc(IRState::attributes): changed it so it goes through
+	in_attrs and looks for any @gcc.attribute.attribute("attr_name").
+	* d-objfile.cc, d-ctype.cc: Pass userAttributes instead of attributes
+	in all calls to IRState::attributes.
+	* libphobos/libdruntime/gcc/attribute.d: new file
+
 2013-02-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in(GDC_EXTENDED_ASM_SYNTAX): Remove macro.
