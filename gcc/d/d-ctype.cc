@@ -181,8 +181,8 @@ TypeTypedef::toCtype (void)
       tree type_decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, ident, type_node);
       TYPE_NAME (type_node) = type_decl;
 
-      if (sym->attributes)
-	decl_attributes (&type_node, gen.attributes (sym->attributes), 0);
+      if (sym->userAttributes)
+	decl_attributes (&type_node, gen.attributes (sym->userAttributes), 0);
 
       ctype = type_node;
     }
@@ -222,8 +222,8 @@ TypeEnum::toCtype (void)
 	  TYPE_SIZE (ctype) = 0;
 	  TYPE_MAIN_VARIANT (ctype) = cmemtype;
 
-	  if (sym->attributes)
-	    decl_attributes (&ctype, gen.attributes (sym->attributes),
+	  if (sym->userAttributes)
+	    decl_attributes (&ctype, gen.attributes (sym->userAttributes),
 			     ATTR_FLAG_TYPE_IN_PLACE);
 
 	  TYPE_MIN_VALUE (ctype) = TYPE_MIN_VALUE (cmemtype);
@@ -287,8 +287,8 @@ TypeStruct::toCtype (void)
       // TYPE_ALIGN_UNIT is not an lvalue
       TYPE_PACKED (ctype) = TYPE_PACKED (ctype); // %% todo
 
-      if (sym->attributes)
-	decl_attributes (&ctype, gen.attributes (sym->attributes),
+      if (sym->userAttributes)
+	decl_attributes (&ctype, gen.attributes (sym->userAttributes),
 			 ATTR_FLAG_TYPE_IN_PLACE);
 
       compute_record_mode (ctype);
@@ -300,7 +300,7 @@ TypeStruct::toCtype (void)
 
       AggLayout agg_layout (sym, ctype);
       agg_layout.go();
-      agg_layout.finish (sym->attributes);
+      agg_layout.finish (sym->userAttributes);
     }
 
   return ctype;
@@ -578,7 +578,7 @@ TypeClass::toCtype (void)
 
       TYPE_CONTEXT (rec_type) = gen.declContext (sym);
 
-      agg_layout.finish (sym->attributes);
+      agg_layout.finish (sym->userAttributes);
     }
 
   return ctype;

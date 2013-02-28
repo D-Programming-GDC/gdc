@@ -21,6 +21,7 @@ AC_PREREQ(2.64)
 AC_INIT(libphobos, version-unused)
 AC_CONFIG_SRCDIR(std/algorithm.d)
 AC_CONFIG_SRCDIR(libdruntime/gcc/builtins.d)
+AC_CONFIG_SRCDIR(libdruntime/gcc/attribute.d)
 AC_CONFIG_HEADERS(config.h)
 
 AC_CANONICAL_SYSTEM

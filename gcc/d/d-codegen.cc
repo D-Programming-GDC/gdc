@@ -919,6 +919,29 @@ IRState::addDeclAttribute (tree decl, const char *attrname, tree value)
   DECL_ATTRIBUTES (decl) = tree_cons (ident, value, DECL_ATTRIBUTES (decl));
 }
 
+bool d_attribute_p(const char* name)
+{
+  static StringTable* table;
+
+  if(!table)
+    {
+      size_t n = 0;
+      for (const attribute_spec *p = d_attribute_table; p->name; p++)
+        n++;
+      
+      if(n == 0)
+        return false;
+
+      table = new StringTable();
+      table->init(n);
+    
+      for (const attribute_spec *p = d_attribute_table; p->name; p++)
+        table->insert(p->name, strlen(p->name));
+    }
+
+  return table->lookup(name, strlen(name)) != NULL;
+}
+
 // Return chain of all GCC attributes found in list IN_ATTRS.
 
 tree
@@ -926,47 +949,53 @@ IRState::attributes (Expressions *in_attrs)
 {
   if (!in_attrs)
     return NULL_TREE;
-
+  
+  expandTuples(in_attrs);
+  
   ListMaker out_attrs;
 
   for (size_t i = 0; i < in_attrs->dim; i++)
     {
-      Expression *e = in_attrs->tdata()[i];
-      IdentifierExp *ident_e = NULL;
+      Expression *attr = in_attrs->tdata()[i]->ctfeInterpret();
+
+      Dsymbol *mod = (Dsymbol*) attr->type->toDsymbol(0)->getModule();  
+      if (!(strcmp(mod->toChars(), "attribute") == 0
+          && mod->parent 
+          && strcmp(mod->parent->toChars(), "gcc") == 0
+          && !mod->parent->parent))
+        continue;
+
+      gcc_assert(attr->op == TOKstructliteral);
+      Expressions *elem = ((StructLiteralExp*) attr)->elements;
+
+      gcc_assert(elem->tdata()[0]->op == TOKstring);
+      StringExp *nameExp = (StringExp*) elem->tdata()[0];
+      gcc_assert(nameExp->sz == 1);
+      const char* name = (const char*) nameExp->string;
+
+      if (!d_attribute_p (name))
+      {
+        error ("unknown attribute %s", name);
+        return error_mark_node;
+      }
 
       ListMaker args;
-
-      if (e->op == TOKidentifier)
-	ident_e = (IdentifierExp *) e;
-      else if (e->op == TOKcall)
-	{
-	  CallExp *c = (CallExp *) e;
-	  gcc_assert (c->e1->op == TOKidentifier);
-	  ident_e = (IdentifierExp *) c->e1;
-
-	  if (c->arguments)
+      
+      for (size_t j = 1; j < elem->dim; j++)
+        {
+	  Expression *ae = elem->tdata()[j];
+	  tree aet;
+	  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
 	    {
-	      for (size_t ai = 0; ai < c->arguments->dim; ai++)
-		{
-		  Expression *ae = c->arguments->tdata()[ai];
-		  tree aet;
-		  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
-		    {
-		      StringExp *s = (StringExp *) ae;
-		      aet = build_string (s->len, (const char *) s->string);
-		    }
-		  else
-		    aet = ae->toElem (&gen);
-		  args.cons (aet);
-		}
+	      StringExp *s = (StringExp *) ae;
+	      aet = build_string (s->len, (const char *) s->string);
 	    }
-	}
-      else
-	{
-	  gcc_unreachable();
-	  continue;
-	}
-      out_attrs.cons (get_identifier (ident_e->ident->string), args.head);
+	  else
+	    aet = ae->toElem (&gen);
+	  args.cons (aet);
+        }
+
+      out_attrs.cons (get_identifier (name), args.head);
     }
 
   return out_attrs.head;
