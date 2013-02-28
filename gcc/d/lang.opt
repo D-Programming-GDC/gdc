@@ -47,10 +47,6 @@ fdebug=
 D Joined RejectNegative
 -fdebug,-fdebug=<level>,-fdebug=<ident> Compile in debug code, code <= level, or code identified by ident
 
-fdeprecated
-D
-Allow use of deprecated features
-
 fdeps=
 D Joined RejectNegative
 -fdeps=<filename> Write module dependencies to filename
@@ -198,13 +194,13 @@ Wcast-result
 D Warning Var(warn_cast_result)
 Warn about casts that will produce a null or nil result.
 
+Wdeprecated
+D
+; Documented in c.opt
+
 Werror
 D
 ; Documented in common.opt
-
-Wsign-compare
-D
-; Documented in c.opt
 
 Wunknown-pragmas
 D

@@ -356,10 +356,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 	}
       break;
 
-    case OPT_fdeprecated:
-      global.params.useDeprecated = value;
-      break;
-
     case OPT_fdeps_:
       global.params.moduleDepsFile = xstrdup (arg);
       if (!global.params.moduleDepsFile[0])
@@ -533,12 +529,13 @@ d_handle_option (size_t scode, const char *arg, int value,
 	global.params.warnings = 2;
       break;
 
+    case OPT_Wdeprecated:
+      global.params.useDeprecated = value ? 2 : 1;
+      break;
+
     case OPT_Werror:
       if (value)
 	global.params.warnings = 1;
-      break;
-
-    case OPT_Wsign_compare:
       break;
 
     default:
@@ -560,9 +557,13 @@ d_post_options (const char ** fn)
   if (num_in_fnames > 1)
     flag_unit_at_a_time = 1;
 
-  /* array bounds checking */
+  /* Array bounds checking. */
   if (global.params.noboundscheck)
     flag_bounds_check = global.params.useArrayBounds = 0;
+
+  /* Error about use of deprecated features. */
+  if (global.params.useDeprecated == 2 && global.params.warnings == 1)
+    global.params.useDeprecated = 0;
 
   /* Excess precision other than "fast" requires front-end
      support that we don't offer. */

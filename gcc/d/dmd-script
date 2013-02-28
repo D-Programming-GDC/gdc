@@ -326,7 +326,11 @@ while ( $arg_i < scalar(@ARGV) ) {
         $documentation = 1;
         $documentation_file = $1;
     } elsif ( $arg =~ m/^-d$/ ) {
-        push @out, '-fdeprecated';
+        push @out, '-Wno-deprecated';
+    } elsif ( $arg =~ m/^-de$/ ) {
+        push @out, '-Wdeprecated', '-Werror';
+    } elsif ( $arg =~ m/^-dw$/ ) {
+        push @out, '-Wdeprecated';
     } elsif ( $arg =~ m/^-debug(?:=(.*))?$/ ) {
         push @out, (defined($1) ? "-fdebug=$1" : '-fdebug');
     } elsif ( $arg =~ m/^-debuglib=(.*)$/ ) {

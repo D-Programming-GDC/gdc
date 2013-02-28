@@ -188,10 +188,6 @@ Turns off array bounds checking for all functions.
 Don't recognize built-in functions that do not begin with
 @samp{__builtin_} as prefix.
 
-@item -fdeprecated
-@cindex @option{-fdeprecated}
-Allow use of deprecated features.
-
 @item -fd-verbose
 @cindex @option{-fd-verbose}
 Print information about D language processing to stdout.
@@ -317,6 +313,22 @@ Write JSON file to filename.
 @item -fdump-source
 @cindex @option{fdump-source}
 Dump decoded UTF-8 text from source.
+
+@item -Wcast-result
+@cindex @option{Wcast-result}
+Warn about casts that will produce a null or nil result.
+
+@item -Werror
+@cindex @option{Werror}
+Make all warnings into errors.
+
+@item -Wno-deprecated
+@cindex @option{Wno-deprecated}
+Do not warn about usage of deprecated features.
+
+@item -Wunknown-pragmas
+@cindex @option{Wunknown-pragmas}
+Warn when a pragma is encountered that is not understood by GDC.
 @end table
 
 @c man end

@@ -1,3 +1,9 @@
+2013-02-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc(d_handle_option): Remove OPT_fdeprecated and
+	OPT_Wsign_compare, add handling for OPT_Wdeprecated.
+	(d_post_options): Handle Wdeprecated and Werror switch combination.
+
 2013-02-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(ArrayScope::ArrayScope): Don't setup length var if its
