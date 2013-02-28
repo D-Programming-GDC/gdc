@@ -350,6 +350,8 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-gt$/ ) {
         errorExit "use -profile instead of -gt";
         push @out, '-pg';
+    } elsif ( $arg =~ m/^-gx$/ ) {
+        push @out, '-fstack-protector';
     } elsif ( $arg =~ m/^-H$/ ) {
         $header = 1;
     } elsif ( $arg =~ m/^-Hd(.*)$/ ) {
