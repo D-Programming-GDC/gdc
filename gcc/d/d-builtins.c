@@ -1366,18 +1366,18 @@ const struct attribute_spec d_format_attribute_table[] =
 };
 
 
-/* Attribute handlers.  */
+/* Built-in Attribute handlers.  */
 
 /* Handle a "noreturn" attribute; arguments as in
    struct attribute_spec.handler.  */
 
-tree
-handle_noreturn_attribute (tree *node, tree name, tree ARG_UNUSED (args),
-			   int ARG_UNUSED (flags), bool *no_add_attrs)
+static tree
+handle_noreturn_attribute (tree *node, tree ARG_UNUSED (name),
+			   tree ARG_UNUSED (args), int ARG_UNUSED (flags),
+			   bool * ARG_UNUSED (no_add_attrs))
 {
   tree type = TREE_TYPE (*node);
 
-  /* See FIXME comment in c_common_attribute_table.  */
   if (TREE_CODE (*node) == FUNCTION_DECL)
     TREE_THIS_VOLATILE (*node) = 1;
   else if (TREE_CODE (type) == POINTER_TYPE
@@ -1387,10 +1387,7 @@ handle_noreturn_attribute (tree *node, tree name, tree ARG_UNUSED (args),
 	(build_type_variant (TREE_TYPE (type),
 			     TYPE_READONLY (TREE_TYPE (type)), 1));
   else
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
+    gcc_unreachable ();
 
   return NULL_TREE;
 }
@@ -1398,7 +1395,7 @@ handle_noreturn_attribute (tree *node, tree name, tree ARG_UNUSED (args),
 /* Handle a "leaf" attribute; arguments as in
    struct attribute_spec.handler.  */
 
-tree
+static tree
 handle_leaf_attribute (tree *node, tree name,
 		       tree ARG_UNUSED (args),
 		       int ARG_UNUSED (flags), bool *no_add_attrs)
@@ -1420,9 +1417,10 @@ handle_leaf_attribute (tree *node, tree name,
 /* Handle a "const" attribute; arguments as in
    struct attribute_spec.handler.  */
 
-tree
-handle_const_attribute (tree *node, tree name, tree ARG_UNUSED (args),
-			int ARG_UNUSED (flags), bool *no_add_attrs)
+static tree
+handle_const_attribute (tree *node, tree ARG_UNUSED (name),
+			tree ARG_UNUSED (args), int ARG_UNUSED (flags),
+			bool * ARG_UNUSED (no_add_attrs))
 {
   tree type = TREE_TYPE (*node);
 
@@ -1436,10 +1434,7 @@ handle_const_attribute (tree *node, tree name, tree ARG_UNUSED (args),
 	(build_type_variant (TREE_TYPE (type), 1,
 			     TREE_THIS_VOLATILE (TREE_TYPE (type))));
   else
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
+    gcc_unreachable ();
 
   return NULL_TREE;
 }
@@ -1448,35 +1443,15 @@ handle_const_attribute (tree *node, tree name, tree ARG_UNUSED (args),
    struct attribute_spec.handler.  */
 
 tree
-handle_malloc_attribute (tree *node, tree name, tree ARG_UNUSED (args),
-			 int ARG_UNUSED (flags), bool *no_add_attrs)
+handle_malloc_attribute (tree *node, tree ARG_UNUSED (name),
+			 tree ARG_UNUSED (args), int ARG_UNUSED (flags),
+			 bool * ARG_UNUSED (no_add_attrs))
 {
   if (TREE_CODE (*node) == FUNCTION_DECL
       && POINTER_TYPE_P (TREE_TYPE (TREE_TYPE (*node))))
     DECL_IS_MALLOC (*node) = 1;
   else
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
-
-  return NULL_TREE;
-}
-
-/* Handle a "returns_twice" attribute; arguments as in
-   struct attribute_spec.handler.  */
-
-tree
-handle_returns_twice_attribute (tree *node, tree name, tree ARG_UNUSED (args),
-			 int ARG_UNUSED (flags), bool *no_add_attrs)
-{
-  if (TREE_CODE (*node) == FUNCTION_DECL)
-    DECL_IS_RETURNS_TWICE (*node) = 1;
-  else
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
+    gcc_unreachable ();
 
   return NULL_TREE;
 }
@@ -1484,17 +1459,15 @@ handle_returns_twice_attribute (tree *node, tree name, tree ARG_UNUSED (args),
 /* Handle a "pure" attribute; arguments as in
    struct attribute_spec.handler.  */
 
-tree
-handle_pure_attribute (tree *node, tree name, tree ARG_UNUSED (args),
-		       int ARG_UNUSED (flags), bool *no_add_attrs)
+static tree
+handle_pure_attribute (tree *node, tree ARG_UNUSED (name),
+		       tree ARG_UNUSED (args), int ARG_UNUSED (flags),
+		       bool * ARG_UNUSED (no_add_attrs))
 {
   if (TREE_CODE (*node) == FUNCTION_DECL)
     DECL_PURE_P (*node) = 1;
   else
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
+    gcc_unreachable ();
 
   return NULL_TREE;
 }
@@ -1502,7 +1475,7 @@ handle_pure_attribute (tree *node, tree name, tree ARG_UNUSED (args),
 /* Handle a "no vops" attribute; arguments as in
    struct attribute_spec.handler.  */
 
-tree
+static tree
 handle_novops_attribute (tree *node, tree ARG_UNUSED (name),
 			 tree ARG_UNUSED (args), int ARG_UNUSED (flags),
 			 bool *ARG_UNUSED (no_add_attrs))
@@ -1528,70 +1501,45 @@ get_nonnull_operand (tree arg_num_expr, unsigned HOST_WIDE_INT *valp)
 }
 
 /* Handle the "nonnull" attribute.  */
-tree
+
+static tree
 handle_nonnull_attribute (tree *node, tree ARG_UNUSED (name),
 			  tree args, int ARG_UNUSED (flags),
-			  bool *no_add_attrs)
+			  bool * ARG_UNUSED (no_add_attrs))
 {
   tree type = *node;
-  unsigned HOST_WIDE_INT attr_arg_num;
 
   /* If no arguments are specified, all pointer arguments should be
      non-null.  Verify a full prototype is given so that the arguments
      will have the correct types when we actually check them later.  */
   if (!args)
     {
-      if (!prototype_p (type))
-	{
-	  error ("nonnull attribute without arguments on a non-prototype");
-	  *no_add_attrs = true;
-	}
+      gcc_assert (prototype_p (type));
       return NULL_TREE;
     }
 
   /* Argument list specified.  Verify that each argument number references
      a pointer argument.  */
-  for (attr_arg_num = 1; args; args = TREE_CHAIN (args))
+  for (; args; args = TREE_CHAIN (args))
     {
+      tree argument;
       unsigned HOST_WIDE_INT arg_num = 0, ck_num;
 
       if (!get_nonnull_operand (TREE_VALUE (args), &arg_num))
-	{
-	  error ("nonnull argument has invalid operand number (argument %lu)",
-		 (unsigned long) attr_arg_num);
-	  *no_add_attrs = true;
-	  return NULL_TREE;
-	}
+	gcc_unreachable ();
 
-      if (prototype_p (type))
+      argument = TYPE_ARG_TYPES (type);
+      if (argument)
 	{
-	  function_args_iterator iter;
-	  tree argument;
-
-	  function_args_iter_init (&iter, type);
-	  for (ck_num = 1; ; ck_num++, function_args_iter_next (&iter))
+	  for (ck_num = 1; ; ck_num++)
 	    {
-	      argument = function_args_iter_cond (&iter);
-	      if (argument == NULL_TREE || ck_num == arg_num)
+	      if (!argument || ck_num == arg_num)
 		break;
+	      argument = TREE_CHAIN (argument);
 	    }
 
-	  if (!argument
-	      || TREE_CODE (argument) == VOID_TYPE)
-	    {
-	      error ("nonnull argument with out-of-range operand number (argument %lu, operand %lu)",
-		     (unsigned long) attr_arg_num, (unsigned long) arg_num);
-	      *no_add_attrs = true;
-	      return NULL_TREE;
-	    }
-
-	  if (TREE_CODE (argument) != POINTER_TYPE)
-	    {
-	      error ("nonnull argument references non-pointer operand (argument %lu, operand %lu)",
-		   (unsigned long) attr_arg_num, (unsigned long) arg_num);
-	      *no_add_attrs = true;
-	      return NULL_TREE;
-	    }
+	  gcc_assert (argument
+		      && TREE_CODE (TREE_VALUE (argument)) == POINTER_TYPE);
 	}
     }
 
@@ -1601,62 +1549,34 @@ handle_nonnull_attribute (tree *node, tree ARG_UNUSED (name),
 /* Handle a "nothrow" attribute; arguments as in
    struct attribute_spec.handler.  */
 
-tree
-handle_nothrow_attribute (tree *node, tree name, tree ARG_UNUSED (args),
-			  int ARG_UNUSED (flags), bool *no_add_attrs)
+static tree
+handle_nothrow_attribute (tree *node, tree ARG_UNUSED (name),
+			  tree ARG_UNUSED (args), int ARG_UNUSED (flags),
+			  bool * ARG_UNUSED (no_add_attrs))
 {
   if (TREE_CODE (*node) == FUNCTION_DECL)
     TREE_NOTHROW (*node) = 1;
   else
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
+    gcc_unreachable ();
 
   return NULL_TREE;
 }
 
 /* Handle a "sentinel" attribute.  */
 
-tree
-handle_sentinel_attribute (tree *node, tree name, tree args,
-			   int ARG_UNUSED (flags), bool *no_add_attrs)
+static tree
+handle_sentinel_attribute (tree *node, tree ARG_UNUSED (name), tree args,
+			   int ARG_UNUSED (flags),
+			   bool * ARG_UNUSED (no_add_attrs))
 {
-  if (!prototype_p (*node))
-    {
-      warning (OPT_Wattributes,
-	       "%qE attribute requires prototypes with named arguments", name);
-      *no_add_attrs = true;
-    }
-  else
-    {
-      if (!stdarg_p (*node))
-	{
-	  warning (OPT_Wattributes,
-		   "%qE attribute only applies to variadic functions", name);
-	  *no_add_attrs = true;
-	}
-    }
+  gcc_assert (stdarg_p (*node));
 
   if (args)
     {
       tree position = TREE_VALUE (args);
-
-      if (TREE_CODE (position) != INTEGER_CST)
-	{
-	  warning (OPT_Wattributes,
-		   "requested position is not an integer constant");
-	  *no_add_attrs = true;
-	}
-      else
-	{
-	  if (tree_int_cst_lt (position, integer_zero_node))
-	    {
-	      warning (OPT_Wattributes,
-		       "requested position is less than zero");
-	      *no_add_attrs = true;
-	    }
-	}
+      gcc_assert (TREE_CODE (position) == INTEGER_CST);
+      if (tree_int_cst_lt (position, integer_zero_node))
+	gcc_unreachable ();
     }
 
   return NULL_TREE;
@@ -1664,7 +1584,7 @@ handle_sentinel_attribute (tree *node, tree name, tree args,
 
 /* Handle a "type_generic" attribute.  */
 
-tree
+static tree
 handle_type_generic_attribute (tree *node, tree ARG_UNUSED (name),
 			       tree ARG_UNUSED (args), int ARG_UNUSED (flags),
 			       bool * ARG_UNUSED (no_add_attrs))
@@ -1674,6 +1594,35 @@ handle_type_generic_attribute (tree *node, tree ARG_UNUSED (name),
 
   /* Ensure we have a variadic function.  */
   gcc_assert (!prototype_p (*node) || stdarg_p (*node));
+
+  return NULL_TREE;
+}
+
+/* Handle a "transaction_pure" attribute.  */
+
+static tree
+handle_transaction_pure_attribute (tree *node, tree ARG_UNUSED (name),
+				   tree ARG_UNUSED (args),
+				   int ARG_UNUSED (flags),
+				   bool * ARG_UNUSED (no_add_attrs))
+{
+  /* Ensure we have a function type.  */
+  gcc_assert (TREE_CODE (*node) == FUNCTION_TYPE);
+
+  return NULL_TREE;
+}
+
+/* Handle a "returns_twice" attribute.  */
+
+static tree
+handle_returns_twice_attribute (tree *node, tree ARG_UNUSED (name),
+				tree ARG_UNUSED (args),
+				int ARG_UNUSED (flags),
+				bool * ARG_UNUSED (no_add_attrs))
+{
+  gcc_assert (TREE_CODE (*node) == FUNCTION_DECL);
+
+  DECL_IS_RETURNS_TWICE (*node) = 1;
 
   return NULL_TREE;
 }
@@ -1689,22 +1638,6 @@ handle_fnspec_attribute (tree *node ATTRIBUTE_UNUSED, tree ARG_UNUSED (name),
   gcc_assert (args
 	      && TREE_CODE (TREE_VALUE (args)) == STRING_CST
 	      && !TREE_CHAIN (args));
-  return NULL_TREE;
-}
-
-/* Handle a "transaction_pure" attribute.  */
-
-tree
-handle_transaction_pure_attribute (tree *node, tree name, tree ARG_UNUSED (args),
-				   int ARG_UNUSED (flags), bool *no_add_attrs)
-{
-  /* Ensure we have a function type.  */
-  if (TREE_CODE (*node) != FUNCTION_TYPE)
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
-
   return NULL_TREE;
 }
 

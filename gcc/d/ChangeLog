@@ -2,6 +2,16 @@
 
 	* d-decls.cc(VarDeclaration::toSymbol): Remove use of c_ident.
 	(FuncDeclaration::toSymbol): Likewise.
+	* d-builtins.c(handle_noreturn_attribute): Assert that this is only
+	used for internal purposes.
+	(handle_const_attribute): Likewise.
+	(handle_malloc_attribute): Likewise.
+	(handle_pure_attribute): Likewise.
+	(handle_nonnull_attribute): Likewise.
+	(handle_nothrow_attribute): Likewise.
+	(handle_sentinel_attribute): Likewise.
+	(handle_transaction_pure_attribute): Likewise.
+	(handle_returns_twice_attribute): Likewise.
 
 2013-02-28  Jernej Krempus  <jkrempus@gmail.com>
 
