@@ -114,7 +114,8 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
   DECL_CONTEXT (var_decl) = getLocalContext();
 
   // Compiler generated symbols
-  if (v == this->func->vresult || v == this->func->v_argptr || v == this->func->v_arguments_var)
+  if (v == this->func->vresult || v == this->func->v_argptr
+      || v == this->func->v_arguments_var)
     DECL_ARTIFICIAL (var_decl) = 1;
 
   tree var_exp;
@@ -139,10 +140,10 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
 	  init_exp = ie->toElem (this);
 	}
       else
-	{
-	  no_init = true;
-	}
+	no_init = true;
     }
+  else
+    gcc_assert (v->init == NULL);
 
   if (!no_init)
     {
@@ -2937,6 +2938,12 @@ IRState::getLibCallDecl (LibCall libcall)
 
       tf->parameters = args;
       libcall_decls[libcall] = decl;
+
+      // These functions do not return except through catching a thrown exception.
+      if (libcall == LIBCALL_ASSERT || libcall == LIBCALL_ASSERT_MSG
+	  || libcall == LIBCALL_UNITTEST || libcall == LIBCALL_UNITTEST_MSG
+	  || libcall == LIBCALL_ARRAY_BOUNDS || libcall == LIBCALL_SWITCH_ERROR)
+	TREE_THIS_VOLATILE (decl->toSymbol()->Stree) = 1;
     }
 
   return decl;

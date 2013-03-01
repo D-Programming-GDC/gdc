@@ -250,12 +250,12 @@ FuncDeclaration::toObjFile (int)
   DECL_LANG_SPECIFIC (fn_decl) = build_d_decl_lang_specific (this);
 
   if (vresult)
-    irs->emitLocalVar (vresult);
+    irs->emitLocalVar (vresult, true);
 
   if (v_argptr)
     irs->pushStatementList();
   if (v_arguments_var)
-    irs->emitLocalVar (v_arguments_var, true);
+    irs->emitLocalVar (v_arguments_var);
 
   fbody->toIR (irs);
 

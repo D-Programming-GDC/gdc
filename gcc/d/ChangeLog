@@ -12,6 +12,12 @@
 	(handle_sentinel_attribute): Likewise.
 	(handle_transaction_pure_attribute): Likewise.
 	(handle_returns_twice_attribute): Likewise.
+	* d-glue.cc(FuncDeclaration::toObjFile): Result variables have no
+	default initialiser.
+	* d-codegen.cc(IRState::emitLocalVar): Add in assert that the local
+	variable has no initialiser if called with no_init = true.
+	(IRState::getLibCallDecl): Mark exceptional library functions as
+	noreturn.
 
 2013-02-28  Jernej Krempus  <jkrempus@gmail.com>
 
