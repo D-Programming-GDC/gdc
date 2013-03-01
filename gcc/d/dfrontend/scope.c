@@ -68,9 +68,6 @@ Scope::Scope()
     this->explicitProtection = 0;
     this->stc = 0;
     this->depmsg = NULL;
-#ifdef IN_GCC
-    this->attributes = NULL;
-#endif
     this->offset = 0;
     this->inunion = 0;
     this->nofree = 0;
@@ -120,9 +117,6 @@ Scope::Scope(Scope *enclosing)
     this->explicitProtection = enclosing->explicitProtection;
     this->depmsg = enclosing->depmsg;
     this->stc = enclosing->stc;
-#ifdef IN_GCC
-    this->attributes = enclosing->attributes;
-#endif
     this->offset = 0;
     this->inunion = enclosing->inunion;
     this->nofree = 0;

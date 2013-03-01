@@ -159,8 +159,6 @@ VarDeclaration::toSymbol (void)
 		id = targetm.mangle_decl_assembler_name (var_decl, id);
 	      SET_DECL_ASSEMBLER_NAME (var_decl, id);
 	    }
-	  if (c_ident)
-	    SET_DECL_ASSEMBLER_NAME (var_decl, get_identifier (c_ident->string));
 	}
       d_keep (var_decl);
       g.ofile->setDeclLoc (var_decl, this);
@@ -401,8 +399,6 @@ FuncDeclaration::toSymbol (void)
 	      id = targetm.mangle_decl_assembler_name (fndecl, id);
 	      SET_DECL_ASSEMBLER_NAME (fndecl, id);
 	    }
-	  if (c_ident)
-	    SET_DECL_ASSEMBLER_NAME (fndecl, get_identifier (c_ident->string));
 	  // %% What about DECL_SECTION_NAME ?
 	  DECL_CONTEXT (fndecl) = gen.declContext (this); //context;
 	  if (vindex)
