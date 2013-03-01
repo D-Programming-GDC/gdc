@@ -325,8 +325,8 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
       TREE_PUBLIC (decl_tree) = 0;
     }
 
-  if (real_decl && real_decl->attributes)
-    decl_attributes (&decl_tree, gen.attributes (real_decl->attributes), 0);
+  if (real_decl && real_decl->userAttributes)
+    decl_attributes (&decl_tree, gen.attributes (real_decl->userAttributes), 0);
   else if (DECL_ATTRIBUTES (decl_tree) != NULL)
     decl_attributes (&decl_tree, DECL_ATTRIBUTES (decl_tree), 0);
 }

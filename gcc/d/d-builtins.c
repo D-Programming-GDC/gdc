@@ -1312,7 +1312,7 @@ d_builtin_function (tree decl)
 
 
 /* Table of machine-independent attributes supported in GIMPLE.  */
-const struct attribute_spec d_attribute_table[] =
+const struct attribute_spec d_builtins_attribute_table[] =
 {
   /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler,
        affects_type_identity } */
