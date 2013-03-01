@@ -958,8 +958,11 @@ IRState::attributes (Expressions *in_attrs)
   for (size_t i = 0; i < in_attrs->dim; i++)
     {
       Expression *attr = in_attrs->tdata()[i]->ctfeInterpret();
+      Dsymbol *sym = attr->type->toDsymbol(0);
+      if (!sym)
+        continue;
 
-      Dsymbol *mod = (Dsymbol*) attr->type->toDsymbol(0)->getModule();  
+      Dsymbol *mod = (Dsymbol*) sym->getModule();  
       if (!(strcmp(mod->toChars(), "attribute") == 0
           && mod->parent 
           && strcmp(mod->parent->toChars(), "gcc") == 0
