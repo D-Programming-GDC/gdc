@@ -18,6 +18,8 @@
 	variable has no initialiser if called with no_init = true.
 	(IRState::getLibCallDecl): Mark exceptional library functions as
 	noreturn.
+	(IRState::attributes): Gracefully handle @attribute, and
+	@attribute(null).
 
 2013-02-28  Jernej Krempus  <jkrempus@gmail.com>
 

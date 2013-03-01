@@ -957,9 +957,13 @@ IRState::attributes (Expressions *in_attrs)
 
   for (size_t i = 0; i < in_attrs->dim; i++)
     {
-      Expression *attr = in_attrs->tdata()[i]->ctfeInterpret();
+      Expression *attr = (*in_attrs)[i]->ctfeInterpret();
+      Dsymbol *sym = attr->type->toDsymbol (0);
 
-      Dsymbol *mod = (Dsymbol*) attr->type->toDsymbol(0)->getModule();  
+      if (!sym)
+	continue;
+
+      Dsymbol *mod = (Dsymbol*) sym->getModule();  
       if (!(strcmp(mod->toChars(), "attribute") == 0
           && mod->parent 
           && strcmp(mod->parent->toChars(), "gcc") == 0
@@ -969,8 +973,14 @@ IRState::attributes (Expressions *in_attrs)
       gcc_assert(attr->op == TOKstructliteral);
       Expressions *elem = ((StructLiteralExp*) attr)->elements;
 
-      gcc_assert(elem->tdata()[0]->op == TOKstring);
-      StringExp *nameExp = (StringExp*) elem->tdata()[0];
+      if ((*elem)[0]->op == TOKnull)
+	{
+	  error ("expected string attribute, not null");
+	  return error_mark_node;
+	}
+
+      gcc_assert((*elem)[0]->op == TOKstring);
+      StringExp *nameExp = (StringExp*) (*elem)[0];
       gcc_assert(nameExp->sz == 1);
       const char* name = (const char*) nameExp->string;
 
@@ -984,7 +994,7 @@ IRState::attributes (Expressions *in_attrs)
       
       for (size_t j = 1; j < elem->dim; j++)
         {
-	  Expression *ae = elem->tdata()[j];
+	  Expression *ae = (*elem)[j];
 	  tree aet;
 	  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
 	    {
