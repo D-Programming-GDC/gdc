@@ -2378,7 +2378,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   for (size_t ai = 0; ai < n_actual_args; ++ai)
     {
       tree actual_arg_tree;
-      Expression *actual_arg_exp = arguments->tdata()[ai];
+      Expression *actual_arg_exp = (*arguments)[ai];
 
       if (ai == 0 && is_d_vararg)
 	{
@@ -4577,7 +4577,7 @@ AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
     {
       // %% D anonymous unions just put the fields into the outer struct...
       // does this cause problems?
-      VarDeclaration *var_decl = fields->tdata()[i];
+      VarDeclaration *var_decl = (*fields)[i];
       gcc_assert (var_decl && var_decl->storage_class & STCfield);
 
       tree ident = var_decl->ident ? get_identifier (var_decl->ident->string) : NULL_TREE;
@@ -4617,7 +4617,7 @@ AggLayout::doInterfaces (BaseClasses *bases)
 {
   for (size_t i = 0; i < bases->dim; i++)
     {
-      BaseClass *bc = bases->tdata()[i];
+      BaseClass *bc = (*bases)[i];
       tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
 			      Type::tvoidptr->pointerTo()->toCtype());
       DECL_ARTIFICIAL (decl) = 1;

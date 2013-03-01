@@ -376,7 +376,7 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
 	{
 	  for (size_t i = 0; i < decl->dim; i++)
 	    {
-	      Dsymbol *sym = decl->tdata()[i];
+	      Dsymbol *sym = (*decl)[i];
 	      d_gcc_magic_stdarg_check (sym);
 	    }
 	}
@@ -427,7 +427,7 @@ d_gcc_magic_stdarg_module (Module *m)
   Dsymbols *members = m->members;
   for (size_t i = 0; i < members->dim; i++)
     {
-      Dsymbol *sym = members->tdata()[i];
+      Dsymbol *sym = (*members)[i];
       d_gcc_magic_stdarg_check (sym);
     }
 }
@@ -579,7 +579,7 @@ d_gcc_magic_libbuiltins_check (Dsymbol *m)
 	{
 	  for (size_t i = 0; i < decl->dim; i++)
 	    {
-	      Dsymbol *sym = decl->tdata()[i];
+	      Dsymbol *sym = (*decl)[i];
 	      d_gcc_magic_libbuiltins_check (sym);
 	    }
 	}
@@ -608,7 +608,7 @@ d_gcc_magic_libbuiltins_module (Module *m)
   Dsymbols *members = m->members;
   for (size_t i = 0; i < members->dim; i++)
     {
-      Dsymbol *sym = members->tdata()[i];
+      Dsymbol *sym = (*members)[i];
       d_gcc_magic_libbuiltins_check (sym);
     }
 }
@@ -757,7 +757,7 @@ Expression *
 eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
 {
   Expression *e = NULL;
-  Expression *arg0 = arguments->tdata()[0];
+  Expression *arg0 = (*arguments)[0];
   Type *t0 = arg0->type;
 
   static IRState irs;
