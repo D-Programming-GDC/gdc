@@ -1,5 +1,21 @@
 2013-03-04  Johannes Pfau  <johannespfau@gmail.com>
 
+	* d-ctype.cc(Type::toCtype): Always call gen.addTypeModifiers to
+	make sure TYPE_MAIN_VARIANT is set. Reuse tree from unqualified
+	variant for that. Also cache the resulting qualified tree.
+	(TypeTypedef::toCtype): Likewise.
+	(TypeEnum::toCtype): Likewise.
+	(TypeStruct::toCtype): Likewise.
+	(TypeFunction::toCtype): Likewise.
+	(TypeVector::toCtype): Likewise.
+	(TypeSArray::toCtype): Likewise.
+	(TypeDArray::toCtype): Likewise.
+	(TypeAArray::toCtype): Likewise.
+	(TypeDelegate::toCtype): Likewise.
+	(TypeClass::toCtype): Likewise.
+
+2013-03-04  Johannes Pfau  <johannespfau@gmail.com>
+
 	* d-objfile.cc(ObjectFile::giveDeclUniqueName): Make sure DECL_NAME is set
 
 2013-03-01  Iain Buclaw  <ibuclaw@gdcproject.org>
