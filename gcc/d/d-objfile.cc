@@ -189,6 +189,9 @@ ObjectFile::giveDeclUniqueName (tree decl, const char *prefix)
   char *label;
   ASM_FORMAT_PRIVATE_NAME (label, name, DECL_UID (decl));
   SET_DECL_ASSEMBLER_NAME (decl, get_identifier (label));
+
+  if (!DECL_NAME (decl))
+    DECL_NAME (decl) = DECL_ASSEMBLER_NAME (decl);
 }
 
 /* For 4.5.x, return the COMDAT group into which DECL should be placed. */
